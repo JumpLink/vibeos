@@ -1,0 +1,37 @@
+# The phone's session: GNOME Shell (mobile, /opt/gnome-mobile) with the gnome-phone extension, no display manager.
+# Phosh's place; gnome-desktop.service (the docked desktop) and phosh.service exclude it.
+[Unit]
+Description=GNOME Phone session
+Conflicts=phosh.service gnome-desktop.service
+After=phosh.service gnome-desktop.service systemd-user-sessions.service plymouth-quit-wait.service dbus.socket s10e-gpu-load.service
+Wants=dbus.socket s10e-gpu-load.service
+# while the shell is young: a session that dies falls back to Phosh
+OnFailure=phosh.service
+ConditionPathExists=/dev/tty0
+
+[Service]
+Environment=LANG=C.UTF-8
+Environment=XDG_CURRENT_DESKTOP=GNOME
+Environment=XDG_SESSION_DESKTOP=gnome
+Environment=XDG_SESSION_TYPE=wayland
+EnvironmentFile=-/run/s10e-gpu.env
+ExecStart=/usr/bin/gnome-session
+ExecStartPost=+chvt 7
+User=user
+PAMName=login
+WorkingDirectory=~
+TimeoutStartSec=30
+TimeoutStopSec=10s
+
+TTYPath=/dev/tty7
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+StandardInput=tty-fail
+StandardOutput=journal
+StandardError=journal
+UtmpIdentifier=tty7
+UtmpMode=user
+
+[Install]
+WantedBy=graphical.target
