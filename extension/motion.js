@@ -292,9 +292,19 @@ export class Animator {
             }
         });
         this._timeline.start();
+        // a timeline outlives its actor and would go on calling onFrame on a disposed object, every frame
+        this._actor = actor;
+        this._destroyId = actor.connect('destroy', () => {
+            this._actor = null;
+            this.stop();
+        });
     }
 
     stop() {
+        if (this._actor) {
+            this._actor.disconnect(this._destroyId);
+            this._actor = null;
+        }
         if (!this._timeline)
             return;
         this._timeline.stop();

@@ -58,11 +58,13 @@ class AndroidText extends Canvas {
         this._text = text ?? '';
         measureContext ??= PangoCairo.FontMap.get_default().create_context();
         const layout = this._layout(measureContext);
-        const [, logical] = layout.get_pixel_extents();
+        this._measured = layout;
+        const [ink, logical] = layout.get_pixel_extents();
         // screen px: the logical box, plus the stroke's reach past it
         const pad = Math.ceil(this._embolden / 2) + 1;
         this._pad = pad;
         this._box = {width: logical.width, height: logical.height, baseline: layout.get_baseline() / Pango.SCALE};
+        this._ink = {x: ink.x, y: ink.y, width: ink.width, height: ink.height};
         this.set_size((logical.width + 2 * pad) / SCALE, (logical.height + 2 * pad) / SCALE);
         this.queue_repaint();
     }
@@ -84,17 +86,25 @@ class AndroidText extends Canvas {
         return this._box.baseline;
     }
 
+    // the ink's box, screen px from the logical box's origin
+    get ink() {
+        return this._ink;
+    }
+
     setColour(colour, alpha = 1) {
         this._colour = colour;
         this._alpha = alpha;
         this.queue_repaint();
     }
 
+    // The measured layout, not one made for cr: the shell's surfaces are at resource scale 3, so cr is 1.2x screen
+    // pixels, and Pango laying the text out again at that scale rounds its advances differently, by up to 4% of the
+    // width either way ("Wed, Nov 4" 251 px for 260, "17% • Charging" wider than its box and clipped). Drawing the
+    // measured layout keeps the glyphs where they were measured.
     draw(cr) {
         screenPixels(cr);
-        const layout = this._layout(PangoCairo.create_context(cr));
         cr.moveTo(this._pad, this._pad);
-        PangoCairo.layout_path(cr, layout);
+        PangoCairo.layout_path(cr, this._measured);
         setSource(cr, this._colour, this._alpha);
         if (this._embolden) {
             cr.fillPreserve();
