@@ -13,6 +13,7 @@ import Shell from 'gi://Shell';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 
 import {capture, capturing} from './capture.js';
 
@@ -30,6 +31,7 @@ const SPLASH_SHIFT_DP = 20;
 const SPLASH_SOLID = 0.8;               // the vanish gradient is opaque to 0.8 R
 const SPLASH_TIMEOUT_MS = 15000;        // no window by then: the splash goes
 const SPLASH_RGB = [47, 47, 47];        // dark theme starting window, measured
+const FAIL_FADE_MS = 150;               // the splash of an app that cannot start
 
 const ANDROID_DENSITY = 3;              // px per dp on the S10e
 
@@ -356,7 +358,61 @@ export class LaunchTransition {
             }
             splash.destroy();
         };
-        app.activate();
+        this._activate(app, run);
+    }
+
+    // A D-Bus activatable app is started through its bus name first: app.activate() only logs a service that cannot
+    // start (masked: the GSM gateway masks Calls and Chatty), and the splash waited its whole timeout for a window
+    // that never came, the gestures dead under it (2026-11-04)
+    _activate(app, run) {
+        if (!app.get_app_info()?.get_boolean('DBusActivatable')) {
+            app.activate();
+            return;
+        }
+        const name = app.get_id().replace(/\.desktop$/, '');
+        Gio.DBus.session.call('org.freedesktop.DBus', '/org/freedesktop/DBus', 'org.freedesktop.DBus',
+            'StartServiceByName', new GLib.Variant('(su)', [name, 0]), null, Gio.DBusCallFlags.NONE, -1, null,
+            (bus, res) => {
+                try {
+                    bus.call_finish(res);
+                } catch (e) {
+                    if (this._running === run)
+                        this._failed(run, app, e);
+                    return;
+                }
+                if (this._running === run)
+                    app.activate();
+            });
+    }
+
+    // the app cannot start: the splash fades where it got to, and a notification says why
+    _failed(run, app, error) {
+        Gio.DBusError.strip_remote_error(error);
+        console.warn(`gnome-phone: ${app.get_id()} cannot start: ${error.message}`);
+        run.timeline?.stop();
+        run.timeline = null;
+        run.exiting = true;
+        const {actor: splash} = run;
+        run.timeline = this._timeline(splash, FAIL_FADE_MS, t => {
+            splash.opacity = Math.round(255 * (1 - clamp(t / FAIL_FADE_MS, 0, 1)));
+        }, () => {
+            run.timeline = null;
+            this._finish();
+        });
+        // from the app itself, with its icon
+        const source = new MessageTray.Source({title: app.get_name(), icon: app.get_icon()});
+        Main.messageTray.add(source);
+        source.addNotification(new MessageTray.Notification({
+            source,
+            title: `${app.get_name()} can't open`,
+            body: /masked/.test(error.message) ? "It's turned off on this phone" : error.message,
+        }));
+    }
+
+    // a swipe home or to recents over a splash still waiting for its window: the splash goes
+    cancelSplash() {
+        if (this._running && !this._running.exiting && this._running.app)
+            this._finish();
     }
 
     // The splash exit (WM Shell's SplashScreenExitAnimation, type 0): the icon fades, a hole opens from the top

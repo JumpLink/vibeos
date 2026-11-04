@@ -31,6 +31,7 @@ export class Service {
         this._home = home;
         this._launch = new LaunchTransition();
         this._nav = new Navigation(home);
+        this._nav.onGestureBegin = () => this._launch.cancelSplash();
         this._impl = Gio.DBusExportedObject.wrapJSObject(IFACE, this);
         this._impl.export(Gio.DBus.session, '/de/yesman/GnomePhone');
         this._nameId = Gio.bus_own_name(Gio.BusType.SESSION, 'de.yesman.GnomePhone',

@@ -305,6 +305,7 @@ export class Navigation {
     }
 
     _begin() {
+        this.onGestureBegin?.();
         const win = this._appWindow();
         if (!win) {
             if (this._atHome())
