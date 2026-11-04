@@ -7,6 +7,8 @@ import Meta from 'gi://Meta';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
+import {SingleStack} from './stack.js';
+
 const LAUNCHER = ['/usr/local/bin/neo-launcher'];
 const RESPAWN_MS = 1000;
 
@@ -20,6 +22,7 @@ export class Home {
         global.display.connectObject('window-created', (_d, win) => this._windowCreated(win), this);
         this._spawn();
         this._takeOverview();
+        this._stack = new SingleStack(this);
     }
 
     // The overview was the mobile shell's home: whatever would show it goes home instead
@@ -104,6 +107,7 @@ export class Home {
 
     destroy() {
         this._destroyed = true;
+        this._stack.destroy();
         this._giveOverview();
         global.display.disconnectObject(this);
         this._window?.disconnectObject(this);
