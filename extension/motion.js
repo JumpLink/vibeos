@@ -199,7 +199,15 @@ export class Spring {
     }
 }
 
-// VelocityTracker, the LSQ2 strategy: a quadratic least-squares fit of the last 100 ms of positions; px/s
+// VelocityTracker, the LSQ2 strategy: a quadratic least-squares fit of the last 100 ms of positions; px/s.
+//
+// Android's tracker sees every sample a touch made (a MotionEvent carries the ones batched since the last as its
+// history), and so takes a 40 ms gap between two for a pointer that stopped. Clutter merges the moves that queue up
+// while the shell is busy into the last of them: after a stall of 60-80 ms as the shade showed, a fast pull came as
+// two samples 96 ms and 940 px apart, read as a stop, and the shade fell shut (2026-11-04). Here a pointer stopped
+// only if it is also where it was; and the sample before the newest is kept past 100 ms, for a longer stall.
+const STOPPED_SLOP = 24;            // screen px, 8 dp
+
 export class VelocityTracker {
     constructor() {
         this._samples = [];
@@ -209,14 +217,14 @@ export class VelocityTracker {
         this._samples = [];
     }
 
-    // t in ms
+    // t in ms, x and y in screen px
     add(t, x, y) {
         const last = this._samples.at(-1);
         // a pause of 40 ms means the pointer stopped (VelocityTracker::ASSUME_POINTER_STOPPED_TIME)
-        if (last && t - last.t > 40)
+        if (last && t - last.t > 40 && Math.hypot(x - last.x, y - last.y) < STOPPED_SLOP)
             this._samples = [];
         this._samples.push({t, x, y});
-        while (this._samples.length > 20 || this._samples[0].t < t - 100)
+        while (this._samples.length > 20 || (this._samples.length > 2 && this._samples[0].t < t - 100))
             this._samples.shift();
     }
 
