@@ -63,7 +63,7 @@ export const SystemState = GObject.registerClass({
         super();
         this.wifi = {available: false, enabled: false, connected: false, level: 0, name: ''};
         this.mobile = {present: false, level: 0, operator: '', tech: '', dataConnected: false, dataEnabled: false};
-        this.battery = {present: false, level: 0, plugged: false};
+        this.battery = {present: false, level: 0, plugged: false, icon: 'battery-missing-symbolic'};
         this.powerSave = null;          // null: no power-profiles-daemon
         this.bluetooth = {available: false, powered: false, connected: false, name: ''};
         this.airplane = false;
@@ -255,6 +255,7 @@ export const SystemState = GObject.registerClass({
             level: Math.round(prop('Percentage') ?? 0),
             plugged: onBattery !== undefined ? !onBattery
                 : [UP_CHARGING, UP_FULLY_CHARGED, UP_PENDING_CHARGE].includes(prop('State') ?? 0),
+            icon: prop('IconName') || 'battery-missing-symbolic',
         };
         this._changed();
     }

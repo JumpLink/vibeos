@@ -8,8 +8,10 @@ import {CollectWhenStill} from './gc.js';
 import {EndMark} from './endmark.js';
 import {HeadsUp} from './headsup.js';
 import {Home} from './home.js';
+import {Keyguard} from './keyguard.js';
 import {NoWindowMipmaps} from './mipmaps.js';
 import {overWindows} from './scanout.js';
+import {Power} from './power.js';
 import {Service} from './service.js';
 import {Shade} from './shade.js';
 import {SystemState} from './state.js';
@@ -43,19 +45,41 @@ export default class GnomePhoneExtension extends Extension {
         this._headsUp = new HeadsUp(this._shade);
         Main.layoutManager.addTopChrome(this._headsUp.layer);
         overWindows(this._headsUp.layer);
-        // the volume keys show the volume dialog, over the shade too
+        // the lock screen, over them all (the heads-ups hold back while it is up)
+        this._keyguard = new Keyguard(this._state);
+        Main.layoutManager.addTopChrome(this._keyguard.actor);
+        overWindows(this._keyguard.actor);
+        this._service.setKeyguard(this._keyguard);
+        // the volume keys show the volume dialog, over the shade and the lock screen too
         this._volume = new VolumeDialog();
         Main.layoutManager.addTopChrome(this._volume);
         overWindows(this._volume);
-        // ... and over them both, the end of uiGroup
+        // the screen off, the AOD or black, over everything: the power key, the double tap, the timeout
+        this._power = new Power(this._keyguard, this._state);
+        Main.layoutManager.addTopChrome(this._power.layer);
+        overWindows(this._power.layer);
+        // ... and over them all, the end of uiGroup
         this._endMark = new EndMark();
+        // locked from the start, as a phone after boot, once the extension system is done with this
+        this._lockId = GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+            this._lockId = 0;
+            this._keyguard.lock();
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     disable() {
+        if (this._lockId)
+            GLib.source_remove(this._lockId);
+        this._lockId = 0;
         this._endMark?.destroy();
         this._endMark = null;
+        this._power?.destroy();
+        this._power = null;
         this._volume?.destroy();
         this._volume = null;
+        this._keyguard?.destroy();
+        this._keyguard = null;
         this._headsUp?.destroy();
         this._headsUp = null;
         this._shade?.destroy();

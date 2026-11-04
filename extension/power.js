@@ -1,0 +1,341 @@
+// The screen on and off, as Android's PowerManager and doze do it: the power key, the double tap, the screen timeout,
+// the always-on display, and the session's org.gnome.ScreenSaver.
+//
+// Awake, the screen shows the shell. Asleep, the lock screen is up behind a black layer over everything, and the
+// panel is in its low power mode; with the AOD on (de.yesman.neo aod), that layer shows the AOD (aod.js) and the
+// panel ticks a clock of its own. The display is never turned off: the S10e's DSI link cannot be brought back up
+// once it went down, so mutter keeps the outputs on whatever gnome-settings-daemon asks of them
+// (power-save-blocked, patches/mutter/0002) and "off" is a black frame at the panel's lowest brightness.
+//
+// org.gnome.ScreenSaver is active while asleep, as Phosh had it: s10e-sleepd suspends the phone then, and
+// gnome-settings-daemon's blank, which follows it, is refused by mutter.
+import Clutter from 'gi://Clutter';
+import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
+import St from 'gi://St';
+
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as Signals from 'resource:///org/gnome/shell/misc/signals.js';
+
+import {Aod, Panel} from './aod.js';
+import {HardwareKeys} from './keys.js';
+import {animate, bezier, LINEAR} from './motion.js';
+
+Gio._promisify(Gio.DBusProxy.prototype, 'call');
+
+export const State = {AWAKE: 'awake', DOZING: 'dozing', ASLEEP: 'asleep'};
+
+// going to sleep, the AOD (or black) fades in over the screen; waking from the AOD it fades out the same way, and from
+// black the wake-up scrim fades over ANIMATION_DURATION_WAKEUP_SCRIM with a DecelerateInterpolator(1) (ScrimState.java)
+const SLEEP_MS = 500;
+const WAKE_FROM_AOD_MS = 500;
+const WAKE_FROM_OFF_MS = 667;
+const DECELERATE = t => 1 - (1 - t) * (1 - t);
+// the lock screen's and the bouncer's own screen timeout (config_lockScreenDisplayTimeout,
+// KeyguardViewMediator.AWAKE_INTERVAL_BOUNCER_MS)
+const KEYGUARD_TIMEOUT_MS = 10000;
+// a press of the power key held this long is a long press (the power menu): ViewConfiguration's
+// getDeviceGlobalActionKeyTimeout
+const LONG_PRESS_MS = 500;
+// a sleep this soon after waking is taken as a bounce of the key
+const MIN_AWAKE_MS = 300;
+// gnome-session's inhibitor flag for idle (video playback, a presentation)
+const INHIBIT_IDLE = 8;
+
+const SCREENSAVER_IFACE = `<node>
+  <interface name="org.gnome.ScreenSaver">
+    <method name="Lock"/>
+    <method name="GetActive"><arg name="active" direction="out" type="b"/></method>
+    <method name="SetActive"><arg name="value" direction="in" type="b"/></method>
+    <method name="GetActiveTime"><arg name="value" direction="out" type="u"/></method>
+    <signal name="ActiveChanged"><arg name="new_value" type="b"/></signal>
+    <signal name="WakeUpScreen"/>
+  </interface>
+</node>`;
+
+function neoSettings() {
+    const schema = Gio.SettingsSchemaSource.get_default()?.lookup('de.yesman.neo', true);
+    return schema ? new Gio.Settings({settings_schema: schema}) : null;
+}
+
+export class Power extends Signals.EventEmitter {
+    // @keyguard: lock() as the screen goes off, .showing, .bouncerShowing; @state: the SystemState
+    constructor(keyguard, state) {
+        super();
+        this._keyguard = keyguard;
+        this._state = State.AWAKE;
+        this._sleptAt = 0;
+        this._wokeAt = GLib.get_monotonic_time();
+
+        this._neo = neoSettings();
+        this._session = new Gio.Settings({schema_id: 'org.gnome.desktop.session'});
+        this._neo?.connectObject('changed', () => this._syncTimeout(), this);
+        this._session.connectObject('changed::idle-delay', () => this._syncTimeout(), this);
+
+        // mutter keeps the outputs on (see above)
+        this._monitors = global.backend.get_monitor_manager();
+        this._monitors.power_save_blocked = true;
+        this._panel = new Panel();
+        // whatever a shell that crashed asleep left behind
+        this._panel.lowPower(false);
+        this._panel.wakeGesture(false);
+
+        // over everything, uiGroup's last: the AOD, or black
+        const monitor = Main.layoutManager.primaryMonitor;
+        this.layer = new St.Widget({
+            name: 'gnomePhoneScreenOff',
+            style: 'background-color: black;',
+            reactive: true,
+            visible: false,
+            opacity: 0,
+            x: monitor.x,
+            y: monitor.y,
+            width: monitor.width,
+            height: monitor.height,
+        });
+        this._aod = new Aod(this._panel, state);
+        this.layer.add_child(this._aod);
+
+        this._keys = new HardwareKeys({
+            onPower: (pressed, time) => this._powerKey(pressed, time),
+            onWake: () => this._doubleTap(),
+        });
+
+        this._idleMonitor = global.backend.get_core_idle_monitor();
+        this._idleWatch = 0;
+        this._inhibited = false;
+        this._watchInhibitors();
+        keyguard.connectObject('changed', () => this._syncTimeout(), this);
+
+        this._exportScreenSaver();
+        this._syncTimeout();
+    }
+
+    get state() {
+        return this._state;
+    }
+
+    get interactive() {
+        return this._state === State.AWAKE;
+    }
+
+    // --- the keys
+
+    _powerKey(pressed, time) {
+        const now = GLib.get_monotonic_time();
+        if (pressed) {
+            this._pressedAt = now;
+            // Android wakes on the key's down (PhoneWindowManager.interceptPowerKeyDown)
+            this._wokeByPress = !this.interactive;
+            if (this._wokeByPress)
+                this.wakeUp('power');
+            return;
+        }
+        const held = (now - (this._pressedAt ?? now)) / 1000;
+        this._pressedAt = null;
+        // ... and goes to sleep on its up, if the down did not wake it and the press was short
+        if (this._wokeByPress || held >= LONG_PRESS_MS)
+            return;
+        if ((now - this._wokeAt) / 1000 < MIN_AWAKE_MS)
+            return;
+        this.goToSleep('power');
+    }
+
+    _doubleTap() {
+        if (!this.interactive && this._neo?.get_boolean('double-tap-wake') !== false)
+            this.wakeUp('double-tap');
+    }
+
+    // --- going to sleep and waking
+
+    get _aodEnabled() {
+        return this._neo?.get_boolean('aod') ?? false;
+    }
+
+    goToSleep(reason) {
+        if (!this.interactive)
+            return;
+        log(`gnome-phone: going to sleep (${reason})`);
+        this._state = this._aodEnabled ? State.DOZING : State.ASLEEP;
+        this._sleptAt = GLib.get_monotonic_time();
+        this._keyguard.lock();
+
+        this._aod.visible = this._state === State.DOZING;
+        this._aod.prepare();
+        this._showLayer();
+        this._fade(255, SLEEP_MS, LINEAR, () => {
+            // all black or all AOD on the panel: its low power mode, and with it the clock
+            if (this._state === State.DOZING)
+                this._aod.shown();
+            else
+                this._panel.lowPower(true);
+            this._panel.wakeGesture(this._neo?.get_boolean('double-tap-wake') !== false);
+        });
+        this._syncTimeout();
+        this._setActive(true);
+        this.emit('state-changed');
+    }
+
+    wakeUp(reason) {
+        if (this.interactive)
+            return;
+        log(`gnome-phone: waking up (${reason})`);
+        const from = this._state;
+        this._state = State.AWAKE;
+        this._wokeAt = GLib.get_monotonic_time();
+        // out of the low power mode before anything shows through
+        this._panel.wakeGesture(false);
+        this._aod.hidden();
+        this._panel.lowPower(false);
+        this._keyguard.wokeUp?.();
+        if (from === State.DOZING)
+            this._fade(0, WAKE_FROM_AOD_MS, bezier(0.4, 0, 0.2, 1), () => this._hideLayer());
+        else
+            this._fade(0, WAKE_FROM_OFF_MS, DECELERATE, () => this._hideLayer());
+        this._syncTimeout();
+        this._setActive(false);
+        this._emitScreenSaver('WakeUpScreen');
+        this.emit('state-changed');
+    }
+
+    // the layer's fade; a fade the other way picks up from where this one got to
+    _fade(to, duration, interpolator, onDone) {
+        this._fadeAnim?.stop();
+        const from = this.layer.opacity;
+        if (!St.Settings.get().enable_animations)
+            duration = 0;
+        this._fadeAnim = animate(this.layer, {
+            from, to, duration: duration * Math.abs(to - from) / 255, interpolator,
+            onUpdate: v => {
+                this.layer.opacity = Math.round(v);
+            },
+            onDone: () => {
+                this._fadeAnim = null;
+                onDone?.();
+            },
+        });
+    }
+
+    _showLayer() {
+        this.layer.show();
+        // touches on a dark screen go nowhere, and what is under it stops taking them
+        if (!this._grab)
+            this._grab = Main.pushModal(this.layer, {actionMode: Main.actionMode});
+    }
+
+    _hideLayer() {
+        this.layer.hide();
+        if (this._grab)
+            Main.popModal(this._grab);
+        this._grab = null;
+    }
+
+    // --- the screen timeout: the lock screen's own, else the session's idle delay (0: never) unless an app inhibits
+    // idle; after any input
+
+    _syncTimeout() {
+        if (this._idleWatch)
+            this._idleMonitor.remove_watch(this._idleWatch);
+        this._idleWatch = 0;
+        if (!this.interactive)
+            return;
+        let ms;
+        if (this._keyguard.showing)
+            ms = KEYGUARD_TIMEOUT_MS;
+        else if (!this._inhibited)
+            ms = this._session.get_uint('idle-delay') * 1000;
+        if (!ms)
+            return;
+        // the idle watch counts from the last input: a screen woken without one (a call) long after it gets its whole
+        // timeout from now
+        const idle = this._idleMonitor.get_idletime();
+        this._idleWatch = this._idleMonitor.add_idle_watch(idle > ms - 1000 ? idle + ms : ms, () => {
+            this._idleWatch = 0;
+            this.goToSleep('timeout');
+        });
+    }
+
+    _watchInhibitors() {
+        this._sessionManager = Gio.DBusProxy.new_for_bus_sync(Gio.BusType.SESSION, Gio.DBusProxyFlags.DO_NOT_LOAD_PROPERTIES,
+            null, 'org.gnome.SessionManager', '/org/gnome/SessionManager', 'org.gnome.SessionManager', null);
+        this._sessionManager.connectObject('g-signal', (proxy, sender, signal) => {
+            if (signal === 'InhibitorAdded' || signal === 'InhibitorRemoved')
+                this._checkInhibited();
+        }, this);
+        this._checkInhibited();
+    }
+
+    async _checkInhibited() {
+        try {
+            const [inhibited] = (await this._sessionManager.call('IsInhibited',
+                new GLib.Variant('(u)', [INHIBIT_IDLE]), Gio.DBusCallFlags.NONE, 2000, null)).deepUnpack();
+            if (inhibited !== this._inhibited) {
+                this._inhibited = inhibited;
+                this._syncTimeout();
+            }
+        } catch (e) {
+            logError(e, 'gnome-phone: idle inhibitors');
+        }
+    }
+
+    // --- org.gnome.ScreenSaver: active while the screen is asleep
+
+    _exportScreenSaver() {
+        this._dbus = Gio.DBusExportedObject.wrapJSObject(SCREENSAVER_IFACE, this);
+        this._dbus.export(Gio.DBus.session, '/org/gnome/ScreenSaver');
+        this._nameId = Gio.bus_own_name_on_connection(Gio.DBus.session, 'org.gnome.ScreenSaver',
+            Gio.BusNameOwnerFlags.REPLACE, null, null);
+        this._active = false;
+    }
+
+    _setActive(active) {
+        if (active === this._active)
+            return;
+        this._active = active;
+        this._dbus?.emit_signal('ActiveChanged', new GLib.Variant('(b)', [active]));
+    }
+
+    _emitScreenSaver(signal) {
+        this._dbus?.emit_signal(signal, null);
+    }
+
+    Lock() {
+        this.goToSleep('lock');
+    }
+
+    GetActive() {
+        return this._active;
+    }
+
+    SetActive(value) {
+        if (value)
+            this.goToSleep('screensaver');
+        else
+            this.wakeUp('screensaver');
+    }
+
+    GetActiveTime() {
+        return this._active ? Math.floor((GLib.get_monotonic_time() - this._sleptAt) / 1e6) : 0;
+    }
+
+    destroy() {
+        this._fadeAnim?.stop();
+        if (this._idleWatch)
+            this._idleMonitor.remove_watch(this._idleWatch);
+        this._sessionManager?.disconnectObject(this);
+        this._keyguard.disconnectObject(this);
+        this._keys.destroy();
+        if (this._nameId)
+            Gio.bus_unown_name(this._nameId);
+        this._dbus?.unexport();
+        this._dbus = null;
+        this._panel.wakeGesture(false);
+        this._panel.lowPower(false);
+        this._aod.destroy();
+        this._hideLayer();
+        this.layer.destroy();
+        this._monitors.power_save_blocked = false;
+        this._neo?.disconnectObject(this);
+        this._session.disconnectObject(this);
+    }
+}

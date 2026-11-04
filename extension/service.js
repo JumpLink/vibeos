@@ -55,6 +55,10 @@ export class Service {
         this._nav.drawerOpen = open;
     }
 
+    setKeyguard(keyguard) {
+        this._nav.setKeyguard(keyguard);
+    }
+
     destroy() {
         this._launch.destroy();
         this._nav.destroy();

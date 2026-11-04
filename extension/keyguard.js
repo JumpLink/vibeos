@@ -1,0 +1,809 @@
+// The keyguard: Android 16's lock screen over everything while the phone is locked, its bouncer, and the unlock
+// (systemui.md §6, keyguard-pin.md, keyguard-extras.md; screen px of the 1080x2280 reference).
+//
+// Locked, the shell is in the 'unlock-dialog' session mode, as GNOME's own screen shield puts it: windows hidden,
+// gestures, heads-ups and keybindings off, and this view holds a modal grab. It locks when the screen goes off
+// (power.js) and when the session starts. de.yesman.neo lock-type picks the bouncer: the PIN pad, the pattern, or none
+// (swipe). The secret is the user's password, checked by gp-auth through PAM; wrong attempts are throttled as the
+// AOSP gatekeeper does, kept across restarts in ~/.local/state/gnome-phone/keyguard.json.
+import Clutter from 'gi://Clutter';
+import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
+import GnomeDesktop from 'gi://GnomeDesktop';
+import GObject from 'gi://GObject';
+import Shell from 'gi://Shell';
+import St from 'gi://St';
+
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as Signals from 'resource:///org/gnome/shell/misc/signals.js';
+
+import {PatternView, PinView, Strings, touchSlot, tryAgainIn} from './bouncer.js';
+import {Canvas, paintIcon} from './icons.js';
+import {animate, clamp, EMPHASIZED_ACCELERATE, FAST_OUT_SLOW_IN, lerp, LINEAR, MIN_FLING_VELOCITY,
+    TOUCH_RESPONSE, VelocityTracker} from './motion.js';
+import {Color, rgba, SHADE_PANEL} from './palette.js';
+import {notificationIcon, SystemIcons} from './statusbar.js';
+import {AndroidText} from './text.js';
+import {px, screenPixels, SCALE} from './units.js';
+
+Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
+Gio._promisify(Gio.File.prototype, 'load_contents_async');
+Gio._promisify(Gio.File.prototype, 'replace_contents_async');
+
+const GP_AUTH = ['/usr/local/libexec/gp-auth', '/usr/libexec/gp-auth'];
+
+// --- the lock screen (§6.1-6.3)
+const CLOCK_SIZE = 86 * 0.98;           // dp, the small Flex clock
+const CLOCK_WGHT = 550;                 // matched to the reference's ink: 582 px for "05:12"
+// a soft grey-white, the owner's choice for the launcher's clock (2026-11-04), not the accent
+const CLOCK_COLOUR = [224, 224, 224];
+const CLOCK_LEFT = 84;                  // 28 dp
+const CLOCK_INK_TOP = 246;
+const DATE_SIZE = 16;
+const DATE_WGHT = 630;                  // ink 262 px for "Wed, Nov 4"
+const DATE_INK_TOP = 541.5;
+const CARRIER_LEFT = 48;
+const CARRIER_INK_TOP = 42;
+const SYSTEM_END = 880;                 // 9 px left of the home status bar's (keyguard-extras §C.3)
+const PILL = {x: 48, y: 664, h: 144, pad: 39, slot: 66, icon: 45, max: 3};
+const PILL_COLOUR = [19, 27, 28];
+const PILL_ICON = [221, 231, 233];
+const LOCK_ICON = {cx: 540, cy: 1950, size: 65 * 2.54};
+const INDICATION_SIZE = 14;
+const INDICATION_WGHT = 700;            // body 400 + Bold text's 300: stems 6-7 px, cap height 32 at opsz 16
+const INDICATION_INK_TOP = 2083;
+
+// --- the swipe up (§6.4): f is the panel's expansion, 1 at rest; f = 1 - (d + 142) / 1590 for a drag of d px
+const SLOP = 24;
+const F_OFFSET = 142;
+const F_RANGE = 1590;
+const BOUNCER_SHIFT = 240;              // keyguard_host_view_translation_y 80 dp
+const BLUR_MAX = 102;                   // 34 dp
+const SETTLE_MS = 300;
+const CANCEL_MS = 100;
+const DISMISS_SWIPE = 30;               // a bouncer dragged down 10 dp goes on release
+const BACK_EDGE = 90;                   // config_backGestureInset 30 dp: the bouncer leaves these touches to back
+const BOUNCER_TO_LOCK_MS = 450;
+const LOCK_ALPHA_BACK_MS = 250;
+
+// --- the unlock (keyguard-extras §D)
+const GONE_SHORT_MS = 200;
+const GONE_MS = 500;
+const SURFACE_DELAY_MS = 67;
+const SURFACE_MS = 300;
+const SURFACE_SCALE = 0.95;
+const SURFACE_SHIFT = 114;              // 5 % of 2280
+const SURFACE_PIVOT_Y = 0.66;
+// swipe (no secret): dismissing past 0.3 unlocks; the content fades out by 0.18 and rises up to 180 dp
+const SWIPE_FINISH = 0.3;
+const SWIPE_RISE = 540;
+
+const showBouncerProgress = f => f >= 0.9 ? 1 : f < 0.6 ? 0 : (f - 0.6) / 0.3;
+// LockscreenToPrimaryBouncer: progress over f 1 -> 0.88, the lock screen gone by half of it
+const toBouncerProgress = f => 1 - clamp((f - 0.88) / 0.12);
+
+// the AOSP gatekeeper's retry timeout after n failures, s
+function lockoutSeconds(n) {
+    if (n < 5)
+        return 0;
+    if (n < 11)
+        return n === 5 || n === 10 ? 30 : 0;
+    if (n < 30)
+        return 30;
+    if (n < 140)
+        return 30 * 2 ** Math.floor((n - 30) / 10);
+    return 86400;
+}
+
+function neoSettings() {
+    const schema = Gio.SettingsSchemaSource.get_default()?.lookup('de.yesman.neo', true);
+    return schema ? new Gio.Settings({settings_schema: schema}) : null;
+}
+
+// One line of AndroidText placed by its ink: left at its logical start (or centred), its ink top at a y
+function placeText(text, {left, centre, inkTop}) {
+    const x = centre !== undefined ? centre - text.textWidth / 2 : left;
+    text.set_position(px(x - text.inset), px(inkTop - text.inset - text.ink.y));
+}
+
+const LockIcon = GObject.registerClass(
+class LockIcon extends Canvas {
+    constructor() {
+        super({width: px(LOCK_ICON.size), height: px(LOCK_ICON.size), reactive: true});
+        this.set_position(px(LOCK_ICON.cx - LOCK_ICON.size / 2), px(LOCK_ICON.cy - LOCK_ICON.size / 2));
+        this._name = 'keyguard_ic_lock';
+    }
+
+    set unlocked(on) {
+        const name = on ? 'keyguard_ic_unlocked' : 'keyguard_ic_lock';
+        if (name !== this._name) {
+            this._name = name;
+            this.queue_repaint();
+        }
+    }
+
+    draw(cr) {
+        screenPixels(cr);
+        paintIcon(cr, this._name, 0, 0, LOCK_ICON.size, Color.accent1_100);
+    }
+});
+
+export class Keyguard extends Signals.EventEmitter {
+    // @state: the SystemState (carrier, battery, the status icons)
+    constructor(state) {
+        super();
+        this._state = state;
+        this._neo = neoSettings();
+        this._screensaver = new Gio.Settings({schema_id: 'org.gnome.desktop.screensaver'});
+        this._interface = new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
+        this.showing = false;
+        this.bouncerShowing = false;
+        this._f = 1;
+        this._bouncer = null;
+        this._modeLocked = false;
+        this._grab = null;
+        this._afterRestart = true;
+        this._failures = 0;
+        this._lockedUntil = 0;          // realtime, ms
+        this._countdownId = 0;
+        this._checking = false;
+        this._loadThrottle();
+
+        this._build();
+        this._wallClock = new GnomeDesktop.WallClock({time_only: true});
+        this._wallClock.connectObject('notify::clock', () => this._syncClock(), this);
+        this._interface.connectObject('changed::clock-format', () => this._syncClock(), this);
+        this._screensaver.connectObject('changed::picture-uri', () => this._syncWallpaper(), this);
+        state.connectObject('changed', () => this._syncState(), this);
+        Main.messageTray.connectObject(
+            'source-added', (_tray, source) => this._addSource(source),
+            'source-removed', (_tray, source) => {
+                source.disconnectObject(this);
+                this._syncPill();
+            }, this);
+        for (const source of Main.messageTray.getSources())
+            this._addSource(source);
+        this._syncClock();
+        this._syncState();
+        this._syncWallpaper();
+    }
+
+    get _lockType() {
+        return this._neo?.get_string('lock-type') ?? 'pin';
+    }
+
+    get _secure() {
+        return this._lockType !== 'swipe';
+    }
+
+    // --- the view
+
+    _build() {
+        const monitor = Main.layoutManager.primaryMonitor;
+        this.actor = new St.Widget({
+            name: 'gnomePhoneKeyguard',
+            reactive: true,
+            visible: false,
+            x: monitor.x,
+            y: monitor.y,
+            width: monitor.width,
+            height: monitor.height,
+            style: 'background-color: black;',
+        });
+        this._wallpaper = new St.Widget({width: monitor.width, height: monitor.height});
+        this.actor.add_child(this._wallpaper);
+
+        // the bouncer's backdrop: the wallpaper blurred, under the shade panel's tint
+        this._blurLayer = new St.Widget({width: monitor.width, height: monitor.height});
+        this._blur = new Shell.BlurEffect({mode: Shell.BlurMode.BACKGROUND, radius: 0, brightness: 1});
+        this._blur.enabled = false;
+        this._blurLayer.add_effect(this._blur);
+        this.actor.add_child(this._blurLayer);
+        this._scrim = new St.Widget({width: monitor.width, height: monitor.height, opacity: 0,
+            style: `background-color: ${rgba(SHADE_PANEL[0].map(Math.round), SHADE_PANEL[1])};`});
+        this.actor.add_child(this._scrim);
+
+        // what the lock screen shows
+        this._content = new St.Widget({width: monitor.width, height: monitor.height});
+        this.actor.add_child(this._content);
+        this._carrier = new AndroidText('', 14, 700, {colour: Color.white, opsz: 16});
+        this._content.add_child(this._carrier);
+        this._systemIcons = new SystemIcons(this._state, {end: SYSTEM_END});
+        this._content.add_child(this._systemIcons);
+        this._clock = new AndroidText('', CLOCK_SIZE, CLOCK_WGHT, {colour: CLOCK_COLOUR});
+        this._content.add_child(this._clock);
+        this._date = new AndroidText('', DATE_SIZE, DATE_WGHT, {colour: Color.white});
+        this._content.add_child(this._date);
+        this._pill = new St.Widget({x: px(PILL.x), y: px(PILL.y), height: px(PILL.h), visible: false,
+            style: `background-color: rgb(${PILL_COLOUR.join(', ')}); border-radius: ${px(PILL.h / 2)}px;`});
+        this._content.add_child(this._pill);
+        this._lockIcon = new LockIcon();
+        this._content.add_child(this._lockIcon);
+        this._lockIcon.connect('button-release-event', () => this._lockIconTapped());
+        this._lockIcon.connect('touch-event', (a, event) => {
+            if (event.type() === Clutter.EventType.TOUCH_END && !this._tracking)
+                this._lockIconTapped();
+            return Clutter.EVENT_PROPAGATE;
+        });
+        this._indication = new AndroidText('', INDICATION_SIZE, INDICATION_WGHT, {colour: Color.white, opsz: 16});
+        this._content.add_child(this._indication);
+
+        this._bouncerBox = new St.Widget({width: monitor.width, height: monitor.height, opacity: 0, visible: false});
+        this.actor.add_child(this._bouncerBox);
+
+        this._tracker = new VelocityTracker();
+        this._down = null;
+        this.actor.connect('event', (a, event) => this._onEvent(event));
+    }
+
+    _syncWallpaper() {
+        const uri = this._screensaver.get_string('picture-uri');
+        const style = uri ? `background-image: url("${uri}"); background-size: cover; background-position: center;`
+            : 'background-color: black;';
+        this._wallpaper.style = style;
+        this._wallpaperStyle = style;
+    }
+
+    _syncClock() {
+        const now = GLib.DateTime.new_now_local();
+        const h24 = this._interface.get_string('clock-format') === '24h';
+        this._clock.setText(now.format(h24 ? '%H:%M' : '%-I:%M'));
+        placeText(this._clock, {left: CLOCK_LEFT, inkTop: CLOCK_INK_TOP});
+        this._date.setText(now.format('%a, %b %-e'));
+        placeText(this._date, {left: CLOCK_LEFT, inkTop: DATE_INK_TOP});
+    }
+
+    _syncState() {
+        const {mobile, battery} = this._state;
+        const carrier = mobile.present ? mobile.operator || 'Emergency calls only' : 'No SIM';
+        if (carrier !== this._carrierText) {
+            this._carrierText = carrier;
+            this._carrier.setText(carrier);
+            placeText(this._carrier, {left: CARRIER_LEFT, inkTop: CARRIER_INK_TOP});
+        }
+        // KeyguardIndicationController's power line
+        let indication = '';
+        if (battery.present && battery.plugged)
+            indication = battery.level >= 100 ? 'Charged' : `${battery.level}% • Charging`;
+        if (indication !== this._indicationText) {
+            this._indicationText = indication;
+            this._indication.setText(indication);
+            this._indication.visible = !!indication;
+            placeText(this._indication, {centre: 540, inkTop: INDICATION_INK_TOP});
+        }
+    }
+
+    _addSource(source) {
+        source.connectObject(
+            'notification-added', () => this._syncPill(),
+            'notification-removed', () => this._syncPill(), this);
+        this._syncPill();
+    }
+
+    // the notification icons in their pill (keyguard-extras §B): one per app, three and the overflow dot at most
+    _syncPill() {
+        this._pill.destroy_all_children();
+        const sources = Main.messageTray.getSources().filter(s => s.notifications.length && s.icon);
+        const n = Math.min(sources.length, PILL.max + 1);
+        this._pill.visible = n > 0;
+        if (!n)
+            return;
+        this._pill.width = px((26 + 22 * n) * 3);
+        sources.slice(0, sources.length > PILL.max + 1 ? PILL.max : n).forEach((source, k) => {
+            const icon = notificationIcon(source, px(PILL.icon));
+            icon.opacity = 255;
+            icon.style = `color: rgb(${PILL_ICON.join(', ')});`;
+            icon.set_position(px(PILL.pad + PILL.slot * k + (PILL.slot - PILL.icon) / 2), px((PILL.h - PILL.icon) / 2));
+            this._pill.add_child(icon);
+        });
+        if (sources.length > PILL.max + 1) {
+            const dot = new St.Widget({width: px(12), height: px(12),
+                style: `background-color: rgba(255, 255, 255, ${0xdd / 255}); border-radius: ${px(6)}px;`});
+            dot.set_position(px(PILL.pad + PILL.slot * PILL.max + PILL.slot / 2 - 6), px(PILL.h / 2 - 6));
+            this._pill.add_child(dot);
+        }
+    }
+
+    // --- locking
+
+    lock() {
+        if (this.showing) {
+            // the screen went off over the bouncer: back to the lock screen
+            this._hideBouncer(false);
+            return;
+        }
+        this.showing = true;
+        this._unlocking?.stop();
+        this._lockIcon.unlocked = !this._secure;
+        this._syncClock();
+        this._syncState();
+        this._syncPill();
+        this._setF(1);
+        this._content.opacity = 255;
+        this._content.translation_y = 0;
+        this._wallpaper.show();
+        this.actor.show();
+        if (!this._modeLocked) {
+            Main.sessionMode.pushMode('unlock-dialog');
+            this._modeLocked = true;
+        }
+        this._grab ??= Main.pushModal(this.actor, {actionMode: Shell.ActionMode.LOCK_SCREEN});
+        this.emit('changed');
+    }
+
+    // the screen came on: the lock screen as it was, the clock up to date
+    wokeUp() {
+        if (!this.showing)
+            return;
+        this._syncClock();
+        this._syncState();
+    }
+
+    // --- the swipe up and the bouncer
+
+    _local(event) {
+        const [sx, sy] = event.get_coords();
+        return [sx * SCALE, sy * SCALE];
+    }
+
+    _onEvent(event) {
+        if (!this.showing || this._unlockingNow)
+            return Clutter.EVENT_PROPAGATE;
+        const type = event.type();
+        const seq = touchSlot(event);
+        const isTouch = type >= Clutter.EventType.TOUCH_BEGIN && type <= Clutter.EventType.TOUCH_CANCEL;
+        if (type === Clutter.EventType.TOUCH_BEGIN || type === Clutter.EventType.BUTTON_PRESS) {
+            if (this._down)
+                return Clutter.EVENT_STOP;
+            const [x, y] = this._local(event);
+            // a touch stopped here cancels the back gesture before it can recognize
+            if (this.bouncerShowing && isTouch && (x < BACK_EDGE || x > 1080 - BACK_EDGE))
+                return Clutter.EVENT_PROPAGATE;
+            this._settle?.stop();
+            this._settle = null;
+            this._down = {seq: isTouch ? seq : 'pointer', x, y, t: event.get_time(), f: this._f};
+            this._tracking = false;
+            this._tracker.clear();
+            this._tracker.add(event.get_time(), x, y);
+            return Clutter.EVENT_STOP;
+        }
+        const down = this._down;
+        const mine = down && (isTouch ? down.seq !== 'pointer' && down.seq === seq
+            : down.seq === 'pointer' && (type === Clutter.EventType.MOTION || type === Clutter.EventType.BUTTON_RELEASE));
+        if (!mine)
+            return Clutter.EVENT_PROPAGATE;
+        const [x, y] = this._local(event);
+        this._tracker.add(event.get_time(), x, y);
+        if (type === Clutter.EventType.TOUCH_UPDATE || type === Clutter.EventType.MOTION) {
+            this._drag(down, x, y);
+            return Clutter.EVENT_STOP;
+        }
+        this._down = null;
+        this._release(down, x, y, type !== Clutter.EventType.TOUCH_CANCEL);
+        return Clutter.EVENT_STOP;
+    }
+
+    _drag(down, x, y) {
+        const d = down.y - y;
+        if (this.bouncerShowing) {
+            // a bouncer dragged down goes back to the lock screen on release
+            this._bouncerBox.translation_y = px(Math.max(0, -d) * 0.5);
+            return;
+        }
+        if (!this._tracking) {
+            if (d < SLOP)
+                return;
+            this._tracking = true;
+            if (this._secure)
+                this._ensureBouncer();
+        }
+        this._setF(Math.min(1, 1 - (d + F_OFFSET) / F_RANGE));
+        if (!this._secure && 1 - this._f >= SWIPE_FINISH)
+            this._goingAway();
+    }
+
+    _release(down, x, y, lifted) {
+        if (this.bouncerShowing) {
+            const dragged = y - down.y;
+            if (lifted && dragged > DISMISS_SWIPE && !this._bouncer?.ownsPoint(px(down.x), px(down.y)))
+                this._hideBouncer(true);
+            else
+                this._springBouncerBack();
+            return;
+        }
+        if (!this._tracking)
+            return;
+        this._tracking = false;
+        const v = this._tracker.velocityY;
+        const up = lifted && (Math.abs(v) >= MIN_FLING_VELOCITY ? v < 0 : this._f < 0.5);
+        if (!this._secure) {
+            if (up)
+                this._goingAway();
+            else
+                this._settleTo(1, CANCEL_MS * 2);
+            return;
+        }
+        if (up)
+            this._settleTo(0, SETTLE_MS, () => this._bouncerShown());
+        else
+            this._settleTo(1, CANCEL_MS, () => this._dropBouncer());
+    }
+
+    _springBouncerBack() {
+        const from = this._bouncerBox.translation_y;
+        if (!from)
+            return;
+        animate(this._bouncerBox, {from, to: 0, duration: 150, interpolator: FAST_OUT_SLOW_IN,
+            onUpdate: v => {
+                this._bouncerBox.translation_y = v;
+            }});
+    }
+
+    _settleTo(f, ms, onDone) {
+        this._settle?.stop();
+        const from = this._f;
+        this._settle = animate(this.actor, {from, to: f, duration: ms * Math.min(1, Math.abs(f - from) / 0.5),
+            interpolator: FAST_OUT_SLOW_IN, onUpdate: v => this._setF(v),
+            onDone: () => {
+                this._settle = null;
+                onDone?.();
+            }});
+    }
+
+    // The panel's expansion f: the lock screen's content, the bouncer's progress, the blur and the tint
+    _setF(f) {
+        this._f = f;
+        if (!this._secure) {
+            // dismissing: the content fades out by 18 % and rises
+            this._content.opacity = Math.round(255 * clamp((f - 0.82) / 0.18));
+            this._content.translation_y = px(-SWIPE_RISE * (1 - f));
+            return;
+        }
+        const p = toBouncerProgress(f);
+        this._content.opacity = Math.round(255 * (1 - clamp(p / 0.5)));
+        this._content.translation_y = 0;
+        this._setBackdrop(p);
+        if (!this._bouncer)
+            return;
+        const sp = showBouncerProgress(f);
+        this._bouncerBox.opacity = Math.round(255 * (1 - sp));
+        this._bouncerBox.translation_y = px(BOUNCER_SHIFT * sp);
+        if (sp < 1 && !this._appeared) {
+            this._appeared = true;
+            this._bouncer.appear();
+        }
+    }
+
+    _setBackdrop(p) {
+        const blur = Math.trunc(lerp(0, BLUR_MAX, p));
+        this._blur.enabled = blur > 0;
+        if (blur > 0 && this._blur.radius !== blur)
+            this._blur.radius = blur;
+        this._scrim.opacity = Math.round(255 * p);
+    }
+
+    _ensureBouncer() {
+        if (this._bouncer)
+            return;
+        const type = this._lockType;
+        this._bouncer = type === 'pattern' ? new PatternView() : new PinView();
+        this._strings = Strings[this._bouncer.kind];
+        this._bouncer.connect('submit', (view, secret) => this._submit(secret));
+        this._bouncerBox.add_child(this._bouncer);
+        this._bouncerBox.translation_y = px(BOUNCER_SHIFT);
+        this._bouncerBox.opacity = 0;
+        this._bouncerBox.show();
+        this._appeared = false;
+        this._showPrompt();
+        this._syncLockout();
+    }
+
+    _dropBouncer() {
+        this._bouncer?.destroy();
+        this._bouncer = null;
+        this._bouncerBox.hide();
+        this._bouncerBox.translation_y = 0;
+        this._appeared = false;
+        if (this.bouncerShowing) {
+            this.bouncerShowing = false;
+            this.emit('changed');
+        }
+    }
+
+    _bouncerShown() {
+        if (this.bouncerShowing)
+            return;
+        this.bouncerShowing = true;
+        this.emit('changed');
+    }
+
+    // the lock icon: the bouncer, or with no secret the unlock
+    _lockIconTapped() {
+        if (!this.showing || this.bouncerShowing || this._tracking || this._unlockingNow)
+            return;
+        if (!this._secure) {
+            this._goingAway();
+            return;
+        }
+        this._ensureBouncer();
+        this._settleTo(0, SETTLE_MS * 2, () => this._bouncerShown());
+    }
+
+    // the back gesture: the bouncer goes, the lock screen comes back
+    back() {
+        if (this.bouncerShowing && !this._unlockingNow)
+            this._hideBouncer(true);
+    }
+
+    // PRIMARY_BOUNCER -> LOCKSCREEN: the bouncer fades, the lock screen comes back in 250 ms, the blur clears in 450
+    _hideBouncer(animated) {
+        this._settle?.stop();
+        this._settle = null;
+        if (!this._bouncer) {
+            this._setF(1);
+            return;
+        }
+        if (!animated) {
+            this._dropBouncer();
+            this._setF(1);
+            return;
+        }
+        const content = this._content.opacity / 255, box = this._bouncerBox.opacity / 255;
+        const start = this._f;
+        this._settle = animate(this.actor, {from: 0, to: BOUNCER_TO_LOCK_MS, duration: BOUNCER_TO_LOCK_MS,
+            interpolator: LINEAR,
+            onUpdate: ms => {
+                this._content.opacity = Math.round(255 * lerp(content, 1, clamp(ms / LOCK_ALPHA_BACK_MS)));
+                this._bouncerBox.opacity = Math.round(255 * box * (1 - clamp(ms / GONE_SHORT_MS)));
+                this._setBackdrop(toBouncerProgress(start) * (1 - ms / BOUNCER_TO_LOCK_MS));
+            },
+            onDone: () => {
+                this._settle = null;
+                this._dropBouncer();
+                this._f = 1;
+                this._setBackdrop(0);
+            }});
+    }
+
+    // --- the secret
+
+    _showPrompt() {
+        if (!this._bouncer)
+            return;
+        this._bouncer.setMessage(this._strings.prompt, this._afterRestart ? this._strings.restart : '');
+    }
+
+    // @secret: what was entered, or null for any input (the message goes back to the prompt)
+    async _submit(secret) {
+        if (secret === null) {
+            if (!this._lockedOut && !this._checking)
+                this._showPrompt();
+            return;
+        }
+        if (this._lockedOut) {
+            this._bouncer?.setEnabled(false);
+            return;
+        }
+        // an entry of 3 characters or fewer is no attempt
+        if (secret.length <= 3) {
+            this._bouncer?.wrong();
+            this._bouncer?.setEnabled(true);
+            return;
+        }
+        this._checking = true;
+        const result = await this._check(secret);
+        this._checking = false;
+        if (!this._bouncer)
+            return;
+        if (result === 0) {
+            this._failures = 0;
+            this._lockedUntil = 0;
+            this._saveThrottle();
+            this._afterRestart = false;
+            this._bouncer.disappear(() => this._goingAway());
+            return;
+        }
+        if (result === 2) {
+            // PAM could not run: no attempt counted
+            this._bouncer.setMessage('Could not check', 'Try again');
+            this._bouncer.wrong();
+            this._bouncer.setEnabled(true);
+            return;
+        }
+        this._failures++;
+        const timeout = lockoutSeconds(this._failures);
+        this._lockedUntil = timeout ? Date.now() + timeout * 1000 : 0;
+        this._saveThrottle();
+        this._bouncer.wrong();
+        if (timeout) {
+            this._syncLockout();
+        } else {
+            this._bouncer.setMessage(this._strings.wrong, '');
+            this._bouncer.setEnabled(true);
+        }
+    }
+
+    async _check(secret) {
+        const helper = GP_AUTH.find(p => GLib.file_test(p, GLib.FileTest.IS_EXECUTABLE));
+        if (!helper) {
+            log('gnome-phone: no gp-auth to check the lock screen secret with');
+            return 2;
+        }
+        try {
+            const proc = Gio.Subprocess.new([helper],
+                Gio.SubprocessFlags.STDIN_PIPE | Gio.SubprocessFlags.STDOUT_SILENCE | Gio.SubprocessFlags.STDERR_SILENCE);
+            await proc.communicate_utf8_async(`${secret}\n`, null);
+            return proc.get_if_exited() ? proc.get_exit_status() : 2;
+        } catch (e) {
+            logError(e, 'gnome-phone: gp-auth');
+            return 2;
+        }
+    }
+
+    get _lockedOut() {
+        return this._lockedUntil > Date.now();
+    }
+
+    // a lockout counts down a second at a time, the input off meanwhile
+    _syncLockout() {
+        if (this._countdownId)
+            GLib.source_remove(this._countdownId);
+        this._countdownId = 0;
+        if (!this._bouncer)
+            return;
+        if (!this._lockedOut) {
+            this._bouncer.setEnabled(true);
+            return;
+        }
+        this._bouncer.setEnabled(false);
+        const tick = () => {
+            const left = Math.round((this._lockedUntil - Date.now()) / 1000);
+            if (left <= 0 || !this._bouncer) {
+                this._countdownId = 0;
+                this._showPrompt();
+                this._bouncer?.setEnabled(true);
+                return GLib.SOURCE_REMOVE;
+            }
+            this._bouncer.setMessage(tryAgainIn(left), this._strings.tooMany);
+            return GLib.SOURCE_CONTINUE;
+        };
+        tick();
+        this._countdownId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, tick);
+    }
+
+    get _throttleFile() {
+        return Gio.File.new_for_path(GLib.build_filenamev([GLib.get_user_state_dir(), 'gnome-phone', 'keyguard.json']));
+    }
+
+    _loadThrottle() {
+        try {
+            const [, bytes] = this._throttleFile.load_contents(null);
+            const {failures, until} = JSON.parse(new TextDecoder().decode(bytes));
+            this._failures = failures | 0;
+            this._lockedUntil = Number(until) || 0;
+        } catch (e) {
+        }
+    }
+
+    async _saveThrottle() {
+        const file = this._throttleFile;
+        try {
+            file.get_parent().make_directory_with_parents(null);
+        } catch (e) {
+        }
+        try {
+            const data = JSON.stringify({failures: this._failures, until: this._lockedUntil});
+            await file.replace_contents_async(new TextEncoder().encode(data), null, false,
+                Gio.FileCreateFlags.PRIVATE | Gio.FileCreateFlags.REPLACE_DESTINATION, null);
+        } catch (e) {
+            logError(e, 'gnome-phone: keyguard state');
+        }
+    }
+
+    // --- the unlock: the keyguard goes, the screen behind comes up from 95 % (keyguard-extras §D.3-D.5)
+
+    _goingAway() {
+        if (this._unlockingNow || !this.showing)
+            return;
+        this._unlockingNow = true;
+        this._settle?.stop();
+        this._settle = null;
+        if (this._countdownId)
+            GLib.source_remove(this._countdownId);
+        this._countdownId = 0;
+
+        // the wallpaper under the windows now: the launcher draws the same one, apps come up over it
+        const monitor = Main.layoutManager.primaryMonitor;
+        const under = new St.Widget({x: monitor.x, y: monitor.y, width: monitor.width, height: monitor.height,
+            style: this._wallpaperStyle});
+        Main.layoutManager.uiGroup.insert_child_below(under, global.window_group);
+        this._wallpaper.hide();
+
+        const group = global.window_group;
+        const redirect = group.offscreen_redirect;
+        group.offscreen_redirect = Clutter.OffscreenRedirect.AUTOMATIC_FOR_OPACITY;
+        group.set_pivot_point(0.5, SURFACE_PIVOT_Y);
+        const surface = a => {
+            group.opacity = Math.round(255 * a);
+            group.scale_x = group.scale_y = lerp(SURFACE_SCALE, 1, a);
+            group.translation_y = px(SURFACE_SHIFT * (1 - a));
+        };
+        surface(0);
+        if (this._modeLocked) {
+            Main.sessionMode.popMode('unlock-dialog');
+            this._modeLocked = false;
+        }
+
+        const content = this._content.opacity / 255, box = this._bouncerBox.opacity / 255;
+        const blur = this._blur.enabled ? this._blur.radius : 0, scrim = this._scrim.opacity / 255;
+        const end = SURFACE_DELAY_MS + SURFACE_MS;
+        this._unlocking = animate(this.actor, {from: 0, to: Math.max(GONE_MS, end), duration: Math.max(GONE_MS, end),
+            interpolator: LINEAR,
+            onUpdate: ms => {
+                const short = clamp(ms / GONE_SHORT_MS);
+                this._content.opacity = Math.round(255 * content * (1 - clamp(ms / (this._secure ? 50 : 126))));
+                this._bouncerBox.opacity = Math.round(255 * box * (1 - short));
+                const radius = Math.trunc(blur * (1 - short));
+                this._blur.enabled = radius > 0;
+                if (radius > 0)
+                    this._blur.radius = radius;
+                this._scrim.opacity = Math.round(255 * scrim * (1 - EMPHASIZED_ACCELERATE(clamp(ms / GONE_MS))));
+                surface(TOUCH_RESPONSE(clamp((ms - SURFACE_DELAY_MS) / SURFACE_MS)));
+            },
+            onDone: () => {
+                this._unlocking = null;
+                surface(1);
+                group.set_pivot_point(0, 0);
+                group.offscreen_redirect = redirect;
+                under.destroy();
+                this._finishUnlock();
+            }});
+    }
+
+    _finishUnlock() {
+        this._unlockingNow = false;
+        this._dropBouncer();
+        this._setBackdrop(0);
+        this._f = 1;
+        this.actor.hide();
+        this._wallpaper.show();
+        if (this._grab)
+            Main.popModal(this._grab);
+        this._grab = null;
+        this.showing = false;
+        this.emit('changed');
+    }
+
+    // for development (gp-eval): the lock screen goes as if the secret was right
+    unlockForDevelopment() {
+        if (!this.showing)
+            return;
+        this._afterRestart = false;
+        this._goingAway();
+    }
+
+    destroy() {
+        this._settle?.stop();
+        this._unlocking?.stop();
+        if (this._countdownId)
+            GLib.source_remove(this._countdownId);
+        this._wallClock.disconnectObject(this);
+        this._interface.disconnectObject(this);
+        this._screensaver.disconnectObject(this);
+        this._state.disconnectObject(this);
+        Main.messageTray.disconnectObject(this);
+        for (const source of Main.messageTray.getSources())
+            source.disconnectObject(this);
+        if (this._grab)
+            Main.popModal(this._grab);
+        this._grab = null;
+        if (this._modeLocked)
+            Main.sessionMode.popMode('unlock-dialog');
+        this._modeLocked = false;
+        const group = global.window_group;
+        group.opacity = 255;
+        group.scale_x = group.scale_y = 1;
+        group.translation_y = 0;
+        this.actor.destroy();
+    }
+}

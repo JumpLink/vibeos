@@ -235,6 +235,21 @@ export class Navigation {
         return !!(this._g || this._anim);
     }
 
+    // the lock screen: while it is up its grab keeps touches from the stage, so back watches it; back from its
+    // bouncer goes to the lock screen (StatusBarKeyguardViewManager.onBackPressed)
+    setKeyguard(keyguard) {
+        this._keyguard = keyguard;
+        this._keyguardId = keyguard.connect('changed', () => this.watchBack(keyguard.showing ? keyguard.actor : null));
+    }
+
+    get bouncerShown() {
+        return !!this._keyguard?.bouncerShowing;
+    }
+
+    keyguardBack() {
+        this._keyguard?.back();
+    }
+
     get recentsShown() {
         return !!this._recents?.shown;
     }
@@ -728,6 +743,9 @@ export class Navigation {
         this._g = null;
         this._recents?.destroy();
         this._recents = null;
+        if (this._keyguardId)
+            this._keyguard.disconnect(this._keyguardId);
+        this._keyguard = null;
         this._pause.destroy();
         this._back.destroy();
         dropKeptViews();

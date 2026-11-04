@@ -774,20 +774,27 @@ CORE_ICONS = [
     'stat_notify_call_mute', 'stat_notify_disabled_data', 'stat_notify_wifi_in_range',
     'ic_lock_power_off', 'ic_restart',
 ] + [f'ic_signal_cellular_{i}_4_bar' for i in range(5)]
+KEYGUARD = 'packages/SystemUI/res-keyguard'
+# the lock screen's, named keyguard_*: SystemUI has another ic_lock
+KEYGUARD_ICONS = {'keyguard_' + n: n for n in ('ic_lock', 'ic_unlocked', 'pin_bouncer_delete_outline',
+                                               'pin_bouncer_confirm')}
 # Compose ImageVectors that have no XML drawable: key -> source
 KOTLIN_ICONS = {'qs_edit': 'packages/SystemUI/src/com/android/systemui/common/ui/icons/Edit.kt'}
 
 
 def icon_names():
     names = [n[:-4] for n in list_dir(FLAG_DRAWABLES) if n.endswith('.xml')]
-    for n in SYSUI_ICONS + SLIB_ICONS + CORE_ICONS:
+    for n in SYSUI_ICONS + SLIB_ICONS + CORE_ICONS + list(KEYGUARD_ICONS):
         if n not in names:
             names.append(n)
     return names
 
 
 def locate(name):
-    """Top-level lookup: flag dir, SystemUI, SettingsLib, core."""
+    """Top-level lookup: flag dir, SystemUI, SettingsLib, core; keyguard_* in res-keyguard."""
+    if name in KEYGUARD_ICONS:
+        rel = f'{KEYGUARD}/drawable/{KEYGUARD_ICONS[name]}.xml'
+        return (rel, SYSUI) if read_text(rel) is not None else (None, None)
     for root, origin in ((f'{SYSUI}/{FLAG}', SYSUI), (SYSUI, SYSUI), (SLIB, SLIB), (CORE, CORE)):
         rel = f'{root}/drawable/{name}.xml'
         if read_text(rel) is not None:

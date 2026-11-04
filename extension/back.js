@@ -221,6 +221,8 @@ export class EdgeBack {
         const nav = this._nav;
         if (nav.recentsShown)
             return {kind: 'recents'};
+        if (nav.bouncerShown)
+            return {kind: 'keyguard'};
         const focus = global.display.focus_window;
         if (!focus || nav.home.isHome(focus))
             return {kind: nav.drawerOpen ? 'drawer' : 'home-screen'};
@@ -241,7 +243,7 @@ export class EdgeBack {
         const nav = this._nav;
         if (nav.busy || nav.shadeOpen())
             return false;
-        if (!nav.recentsShown && Main.actionMode !== Shell.ActionMode.NORMAL)
+        if (!nav.recentsShown && !nav.bouncerShown && Main.actionMode !== Shell.ActionMode.NORMAL)
             return false;
         const [x, y] = event.get_coords().map(v => v * this._scale);
         if (y >= SCREEN_H - NAV_GESTURE_H || (x >= EDGE_W && x <= SCREEN_W - EDGE_W))
@@ -475,6 +477,9 @@ export class EdgeBack {
             break;
         case 'recents':
             nav.recentsBack();
+            break;
+        case 'keyguard':
+            nav.keyguardBack();
             break;
         case 'drawer':
             nav.launcher('Back', null);
