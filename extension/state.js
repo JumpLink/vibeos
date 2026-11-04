@@ -17,12 +17,15 @@ import {getRfkillManager} from 'resource:///org/gnome/shell/ui/status/rfkill.js'
 Gio._promisify(NM.Client, 'new_async');
 
 const UPOWER_BUS = 'org.freedesktop.UPower';
+const UPOWER_PATH = '/org/freedesktop/UPower';
 const DISPLAY_DEVICE = '/org/freedesktop/UPower/devices/DisplayDevice';
 const UPOWER_DEVICE = 'org.freedesktop.UPower.Device';
 const PPD_BUS = 'net.hadess.PowerProfiles';
 const PPD_PATH = '/net/hadess/PowerProfiles';
 
-// UPower device states that mean "plugged in"
+// UPower device states that mean "plugged in", until UPower's OnBattery is known: on a charger that gives about what
+// the phone takes (the S10e's 500 mA with the screen on), the battery's state flips between charging and discharging
+// every few seconds, and Android's bolt is there as long as the charger is (BatteryControllerImpl.mPluggedIn)
 const UP_CHARGING = 1;
 const UP_FULLY_CHARGED = 4;
 const UP_PENDING_CHARGE = 5;
@@ -221,6 +224,16 @@ export const SystemState = GObject.registerClass({
                 this._syncBattery();
             });
         Gio.DBusProxy.new(Gio.DBus.system, Gio.DBusProxyFlags.NONE, null,
+            UPOWER_BUS, UPOWER_PATH, UPOWER_BUS, this._cancellable, (o, res) => {
+                try {
+                    this._upowerDaemon = Gio.DBusProxy.new_finish(res);
+                } catch (e) {
+                    return;
+                }
+                this._upowerDaemon.connectObject('g-properties-changed', () => this._syncBattery(), this);
+                this._syncBattery();
+            });
+        Gio.DBusProxy.new(Gio.DBus.system, Gio.DBusProxyFlags.NONE, null,
             PPD_BUS, PPD_PATH, PPD_BUS, this._cancellable, (o, res) => {
                 try {
                     this._ppd = Gio.DBusProxy.new_finish(res);
@@ -233,12 +246,15 @@ export const SystemState = GObject.registerClass({
     }
 
     _syncBattery() {
+        if (!this._upower)
+            return;
         const prop = name => this._upower.get_cached_property(name)?.unpack();
-        const state = prop('State') ?? 0;
+        const onBattery = this._upowerDaemon?.get_cached_property('OnBattery')?.unpack();
         this.battery = {
             present: !!prop('IsPresent'),
             level: Math.round(prop('Percentage') ?? 0),
-            plugged: [UP_CHARGING, UP_FULLY_CHARGED, UP_PENDING_CHARGE].includes(state),
+            plugged: onBattery !== undefined ? !onBattery
+                : [UP_CHARGING, UP_FULLY_CHARGED, UP_PENDING_CHARGE].includes(prop('State') ?? 0),
         };
         this._changed();
     }
@@ -391,7 +407,7 @@ export const SystemState = GObject.registerClass({
         Main.brightnessManager.globalScale?.disconnectObject(this);
         for (const obj of [this._notifications, this._interface, this._location, this._touchscreen, this._power,
             this._color, this._client, this._wifiDevice, this._accessPoint, this._modemDevice, this._modem, this._upower,
-            this._ppd, this._bt, this._rfkill])
+            this._upowerDaemon, this._ppd, this._bt, this._rfkill])
             obj?.disconnectObject(this);
         const devices = this._bt.get_devices();
         for (let i = 0; i < devices.get_n_items(); i++)
