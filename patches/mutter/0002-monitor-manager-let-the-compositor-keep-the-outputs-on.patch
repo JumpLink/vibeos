@@ -1,0 +1,113 @@
+From: pulpoff <pashkovsky@gmail.com>
+Subject: [PATCH] monitor-manager: Let the compositor keep the outputs on
+
+gnome-settings-daemon turns the outputs off through DisplayConfig's
+PowerSaveMode as soon as the screen saver goes active. A phone's shell
+that draws an always-on display shows it on a panel the session takes as
+off, and the S10e's DSI link cannot be brought back up once it went
+down: either way the outputs must stay on.
+
+The new power-save-blocked property keeps them on: while it is set, a
+request for any mode other than on is refused and the property goes
+back to the mode the outputs are in. A request to turn them on still
+goes through.
+
+For mutter-mobile 51.1.mobile.22 (/usr/src/gnome-mobile/mutter on the
+S10e, built into /opt/gnome-mobile by build51.sh).
+---
+diff --git a/src/backends/meta-monitor-manager.c b/src/backends/meta-monitor-manager.c
+index 68148dd..b158fe9 100644
+--- a/src/backends/meta-monitor-manager.c
++++ b/src/backends/meta-monitor-manager.c
+@@ -75,6 +75,7 @@ enum
+   PROP_PANEL_ORIENTATION_MANAGED,
+   PROP_HAS_BUILTIN_PANEL,
+   PROP_NIGHT_LIGHT_SUPPORTED,
++  PROP_POWER_SAVE_BLOCKED,
+ 
+   PROP_LAST
+ };
+@@ -125,6 +126,8 @@ typedef struct _MetaMonitorManagerPrivate
+ 
+   gboolean power_save_inhibit_orientation_tracking;
+   gboolean orientation_unmanaged_inhibited;
++
++  gboolean power_save_blocked;
+ } MetaMonitorManagerPrivate;
+ 
+ G_DEFINE_TYPE_WITH_PRIVATE (MetaMonitorManager, meta_monitor_manager,
+@@ -362,6 +365,19 @@ power_save_mode_changed (MetaMonitorManager *manager,
+       return;
+     }
+ 
++  /* The compositor keeps the outputs on: put the property back to what they
++   * are, without coming back here for it. */
++  if (priv->power_save_blocked && mode != META_POWER_SAVE_ON)
++    {
++      g_signal_handlers_block_by_func (manager->display_config,
++                                       power_save_mode_changed, manager);
++      meta_dbus_display_config_set_power_save_mode (manager->display_config,
++                                                    priv->power_save_mode);
++      g_signal_handlers_unblock_by_func (manager->display_config,
++                                         power_save_mode_changed, manager);
++      return;
++    }
++
+   meta_monitor_manager_set_power_save_mode (manager, mode);
+ }
+ 
+@@ -1523,12 +1539,21 @@ meta_monitor_manager_set_property (GObject      *object,
+                                    GParamSpec   *pspec)
+ {
+   MetaMonitorManager *manager = META_MONITOR_MANAGER (object);
++  MetaMonitorManagerPrivate *priv =
++    meta_monitor_manager_get_instance_private (manager);
+ 
+   switch (prop_id)
+     {
+     case PROP_BACKEND:
+       manager->backend = g_value_get_object (value);
+       break;
++    case PROP_POWER_SAVE_BLOCKED:
++      if (priv->power_save_blocked != g_value_get_boolean (value))
++        {
++          priv->power_save_blocked = g_value_get_boolean (value);
++          g_object_notify_by_pspec (object, pspec);
++        }
++      break;
+     case PROP_PANEL_ORIENTATION_MANAGED:
+     case PROP_HAS_BUILTIN_PANEL:
+     case PROP_NIGHT_LIGHT_SUPPORTED:
+@@ -1561,6 +1586,9 @@ meta_monitor_manager_get_property (GObject    *object,
+     case PROP_NIGHT_LIGHT_SUPPORTED:
+       g_value_set_boolean (value, priv->night_light_supported);
+       break;
++    case PROP_POWER_SAVE_BLOCKED:
++      g_value_set_boolean (value, priv->power_save_blocked);
++      break;
+     default:
+       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+     }
+@@ -1664,6 +1692,22 @@ meta_monitor_manager_class_init (MetaMonitorManagerClass *klass)
+                           G_PARAM_EXPLICIT_NOTIFY |
+                           G_PARAM_STATIC_STRINGS);
+ 
++  /**
++   * MetaMonitorManager:power-save-blocked:
++   *
++   * Whether the compositor keeps the outputs on whatever power save mode
++   * the session asks for on D-Bus (org.gnome.Mutter.DisplayConfig's
++   * PowerSaveMode), for instance because it draws an always-on display on a
++   * panel the session takes as off, or because a panel cannot be turned
++   * back on. Requests to turn them on still go through.
++   */
++  obj_props[PROP_POWER_SAVE_BLOCKED] =
++    g_param_spec_boolean ("power-save-blocked", NULL, NULL,
++                          FALSE,
++                          G_PARAM_READWRITE |
++                          G_PARAM_EXPLICIT_NOTIFY |
++                          G_PARAM_STATIC_STRINGS);
++
+   g_object_class_install_properties (object_class, PROP_LAST, obj_props);
+ }
+ 
