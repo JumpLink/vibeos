@@ -260,6 +260,14 @@ export function paintSystemIcons(cr, state, end, centerY) {
     }
 }
 
+// What paintSystemIcons draws. The state changes far more often than that (an access point's strength within a bar,
+// UPower's energy rate), and a repaint is a texture across the whole bar converted on the CPU on its way to the GPU:
+// 15 ms of the shell's frame, wherever it lands in an animation
+function systemIconsKey({wifi, mobile, battery, powerSave}) {
+    return [battery.present, battery.level, battery.plugged, !!powerSave, wifi.connected, wifi.level, mobile.present,
+        mobile.level].join();
+}
+
 export const SystemIcons = GObject.registerClass(
 class SystemIcons extends St.DrawingArea {
     // @end, @centerY in screen px of the area
@@ -268,7 +276,11 @@ class SystemIcons extends St.DrawingArea {
         this._state = state;
         this._end = end;
         this._centerY = centerY;
-        state.connectObject('changed', () => this.queue_repaint(), this);
+        this._drawn = null;
+        state.connectObject('changed', () => {
+            if (systemIconsKey(state) !== this._drawn)
+                this.queue_repaint();
+        }, this);
     }
 
     vfunc_repaint() {
@@ -276,6 +288,7 @@ class SystemIcons extends St.DrawingArea {
         screenPixels(cr);
         paintSystemIcons(cr, this._state, this._end, this._centerY);
         cr.$dispose();
+        this._drawn = systemIconsKey(this._state);
     }
 });
 
