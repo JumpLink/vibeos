@@ -43,6 +43,7 @@ icon_ready (gpointer data)
   if (t && j->splash) {
     g_free (t->splash_icon);
     t->splash_icon = g_steal_pointer (&j->splash);
+    nav_icons_changed ();
   }
   if (t && j->pb) {
     gfx_tex_free (t->icon);

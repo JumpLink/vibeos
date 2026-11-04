@@ -368,9 +368,8 @@ draw_list (float top, float view_h)
     float x = roundf (D.cols_x0 + (i % GRID_COLS) * D.col_w + (D.col_w - D.icon) / 2);
     float y = roundf (top + first_icon + (i / GRID_COLS) * row_h - off);
     tile_draw_icon (t, x, y, D.icon, 1);
-    if (!t->hidden)
-      text_draw (t->dlabel, x + D.icon / 2 - lw / 2, y + dp (LIST_LABEL_BASELINE_DP) - text_ascent (N.label_font),
-                 GFX_RGBA (LABEL_RGB, 1));
+    text_draw (t->dlabel, x + D.icon / 2 - lw / 2, y + dp (LIST_LABEL_BASELINE_DP) - text_ascent (N.label_font),
+               GFX_RGBA (LABEL_RGB, 1));
   }
 }
 

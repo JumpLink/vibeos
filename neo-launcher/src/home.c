@@ -165,7 +165,7 @@ draw_icon_and_label (Tile *t, float x, float y, bool label)
   if (!t)
     return;
   tile_draw_icon (t, x, y, H.icon, 1);
-  if (label && !t->hidden) {
+  if (label) {
     float lw = dp (LABEL_HOME_MAX_DP);
     label_draw (t->label, x + H.icon / 2 - lw / 2, y + dp (LABEL_BASELINE_DP) - text_ascent (N.label_font),
                 (GfxColor) { 1, 1, 1, 1 }, true);
@@ -234,6 +234,8 @@ snap_to (int page, float velocity)
 {
   page = CLAMP (page, 0, n_pages () - 1);
   float to = page * N.W, delta = to - H.scroll;
+  if (page != H.page)
+    nav_icons_changed ();
   H.page = page;
   if (fabsf (delta) < 0.5f) {
     H.scroll = to;

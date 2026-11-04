@@ -116,6 +116,15 @@ Tile  *home_tile_at      (float x, float y, float *ix, float *iy);
 void   home_clock_tick   (void);
 bool   home_icon_rect    (const char *id, float r[4]);
 
+/* nav.c: gesture navigation, the launcher's half (the shell drives it over D-Bus) */
+void   nav_init          (void);
+bool   nav_frame         (void);                         /* true while the home reveal runs */
+float  nav_depth         (void);                         /* the depth an app over the launcher puts on it */
+bool   nav_blurs         (void);                         /* that depth blurs (not during the reveal) */
+float  nav_home_scale    (void);                         /* the workspace and dock's scale and alpha */
+float  nav_home_alpha    (void);
+void   nav_icons_changed (void);                         /* the page or the dock's icons moved */
+
 /* drawer.c */
 void   drawer_layout     (void);
 float  drawer_progress   (void);                         /* f: 0 home, 1 all apps */

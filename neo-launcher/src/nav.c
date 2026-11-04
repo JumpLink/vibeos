@@ -1,0 +1,246 @@
+/* Gesture navigation, the launcher's half. The shell runs the gestures and moves the windows; it tells the launcher
+ * what to look like behind them (de.yesman.NeoLauncher.State), and the launcher tells the shell where its icons are
+ * (de.yesman.GnomePhone.Icons), so a window going home can fly into its own icon.
+ *
+ *   background  an app is being dragged: Launcher3's BACKGROUND_APP, depth 0.7 (wallpaper blurred to 30 dp and
+ *               zoomed out), no workspace
+ *   reveal      the app went home: ScalingWorkspaceRevealAnim from t0, the workspace and dock 0.85 → 1 over
+ *               1000 ms on SCALE_REVEAL, their alpha 0 → 1 over the first 200 ms, depth 0.7 → 0 on the same curve
+ *               with the blur dropped in the first frame; the app's icon stays hidden until the shell says
+ *   normal      at rest */
+#include <math.h>
+
+#include "neo.h"
+
+#define REVEAL_MS          1000.0
+#define REVEAL_FADE_MS     200.0
+#define REVEAL_SCALE_FROM  0.85f
+#define BACKGROUND_DEPTH   0.7f
+#define ICONS_DELAY_MS     100
+
+typedef enum { NAV_NORMAL, NAV_BACKGROUND, NAV_REVEAL } NavState;
+
+static struct {
+  NavState state;
+  double   t0;              /* ms on the frame clock */
+  char    *hidden;          /* the app whose icon the window is flying into */
+  guint    owner_id, watch_id, icons_id;
+  bool     shell;           /* the shell's service is on the bus */
+} V;
+
+/* ---- curves --------------------------------------------------------------------------------------------------- */
+
+static float
+bezier (float t, float a, float b, float c, float d)
+{
+  float u = 1 - t;
+  return u * u * u * a + 3 * u * u * t * b + 3 * u * t * t * c + t * t * t * d;
+}
+
+/* PathInterpolator over cubic segments {x0,y0, x1,y1, x2,y2, x3,y3} */
+static float
+path (const float (*seg)[8], int n, float x)
+{
+  if (x <= 0)
+    return 0;
+  if (x >= 1)
+    return 1;
+  int i = 0;
+  while (i < n - 1 && x > seg[i][6])
+    i++;
+  const float *s = seg[i];
+  float lo = 0, hi = 1;
+  for (int k = 0; k < 24; k++) {
+    float mid = (lo + hi) / 2;
+    if (bezier (mid, s[0], s[2], s[4], s[6]) < x)
+      lo = mid;
+    else
+      hi = mid;
+  }
+  return bezier ((lo + hi) / 2, s[1], s[3], s[5], s[7]);
+}
+
+/* ScalingWorkspaceRevealAnim.SCALE_REVEAL */
+static float
+scale_reveal (float x)
+{
+  static const float seg[2][8] = {
+    { 0, 0, 0.045f, 0.0356f, 0.0975f, 0.2055f, 0.15f, 0.3952f },
+    { 0.15f, 0.3952f, 0.235f, 0.6855f, 0.235f, 1, 1, 1 },
+  };
+  return path (seg, 2, x);
+}
+
+/* ---- what the home looks like now ------------------------------------------------------------------------------ */
+
+static float
+reveal_t (void)
+{
+  return V.state == NAV_REVEAL ? (float) MAX (0, N.now - V.t0) : 0;
+}
+
+float
+nav_depth (void)
+{
+  if (V.state == NAV_BACKGROUND)
+    return BACKGROUND_DEPTH;
+  if (V.state == NAV_REVEAL)
+    return BACKGROUND_DEPTH * (1 - scale_reveal (reveal_t () / REVEAL_MS));
+  return 0;
+}
+
+bool
+nav_blurs (void)
+{
+  return V.state == NAV_BACKGROUND;
+}
+
+float
+nav_home_scale (void)
+{
+  if (V.state == NAV_BACKGROUND)
+    return REVEAL_SCALE_FROM;
+  if (V.state == NAV_REVEAL)
+    return REVEAL_SCALE_FROM + (1 - REVEAL_SCALE_FROM) * scale_reveal (reveal_t () / REVEAL_MS);
+  return 1;
+}
+
+float
+nav_home_alpha (void)
+{
+  if (V.state == NAV_BACKGROUND)
+    return 0;
+  if (V.state == NAV_REVEAL)
+    return CLAMP (reveal_t () / REVEAL_FADE_MS, 0, 1);
+  return 1;
+}
+
+bool
+nav_frame (void)
+{
+  if (V.state == NAV_REVEAL && reveal_t () >= REVEAL_MS)
+    V.state = NAV_NORMAL;
+  return V.state == NAV_REVEAL;
+}
+
+static void
+show_icon (void)
+{
+  Tile *t = tiles_get (V.hidden);
+  if (t)
+    t->hidden = false;
+  g_clear_pointer (&V.hidden, g_free);
+  wl_schedule (N.wl);
+}
+
+/* ---- the icons, for the shell ---------------------------------------------------------------------------------- */
+
+static gboolean
+push_icons (gpointer data)
+{
+  V.icons_id = 0;
+  if (!V.shell || !N.bus || !N.model)
+    return G_SOURCE_REMOVE;
+  GVariantBuilder b;
+  g_variant_builder_init (&b, G_VARIANT_TYPE ("a(s(dddd)s)"));
+  GHashTableIter it;
+  gpointer key, value;
+  g_hash_table_iter_init (&it, N.tiles);
+  while (g_hash_table_iter_next (&it, &key, &value)) {
+    Tile *t = value;
+    float r[4];
+    if (!home_icon_rect (t->id, r))
+      continue;
+    g_variant_builder_add (&b, "(s(dddd)s)", t->id, (double) r[0], (double) r[1], (double) r[2], (double) r[3],
+                           t->splash_icon ? t->splash_icon : "");
+  }
+  g_dbus_connection_call (N.bus, "de.yesman.GnomePhone", "/de/yesman/GnomePhone", "de.yesman.GnomePhone", "Icons",
+                          g_variant_new ("(a(s(dddd)s))", &b), NULL, G_DBUS_CALL_FLAGS_NONE, 2000, NULL, NULL, NULL);
+  return G_SOURCE_REMOVE;
+}
+
+/* the icons on the page or the dock moved: tell the shell, once things settle */
+void
+nav_icons_changed (void)
+{
+  if (V.icons_id)
+    g_source_remove (V.icons_id);
+  V.icons_id = g_timeout_add (ICONS_DELAY_MS, push_icons, NULL);
+}
+
+/* ---- de.yesman.NeoLauncher ------------------------------------------------------------------------------------- */
+
+static const char IFACE[] =
+  "<node>"
+  "  <interface name='de.yesman.NeoLauncher'>"
+  /* state: normal | background | reveal; t0: when it starts (µs, CLOCK_MONOTONIC); app_id: the icon a window is
+   * flying into, hidden until ShowIcon */
+  "    <method name='State'>"
+  "      <arg type='s' name='state' direction='in'/>"
+  "      <arg type='x' name='t0' direction='in'/>"
+  "      <arg type='s' name='app_id' direction='in'/>"
+  "    </method>"
+  "    <method name='ShowIcon'/>"
+  "  </interface>"
+  "</node>";
+
+static void
+method_call (GDBusConnection *bus, const char *sender, const char *path, const char *iface, const char *method,
+             GVariant *params, GDBusMethodInvocation *inv, gpointer data)
+{
+  if (!g_strcmp0 (method, "State")) {
+    const char *state, *app;
+    gint64 t0;
+    g_variant_get (params, "(&sx&s)", &state, &t0, &app);
+    show_icon ();
+    if (!g_strcmp0 (state, "background")) {
+      V.state = NAV_BACKGROUND;
+      drawer_close_now ();
+    } else if (!g_strcmp0 (state, "reveal")) {
+      V.state = NAV_REVEAL;
+      V.t0 = t0 / 1000.0;
+      Tile *t = tiles_get (app);
+      if (t) {
+        t->hidden = true;
+        V.hidden = g_strdup (app);
+      }
+    } else {
+      V.state = NAV_NORMAL;
+    }
+    wl_schedule (N.wl);
+  } else if (!g_strcmp0 (method, "ShowIcon")) {
+    show_icon ();
+  }
+  g_dbus_method_invocation_return_value (inv, NULL);
+}
+
+static const GDBusInterfaceVTable vtable = { method_call, NULL, NULL };
+
+static void
+shell_appeared (GDBusConnection *bus, const char *name, const char *owner, gpointer data)
+{
+  V.shell = true;
+  nav_icons_changed ();
+}
+
+static void
+shell_vanished (GDBusConnection *bus, const char *name, gpointer data)
+{
+  V.shell = false;
+}
+
+void
+nav_init (void)
+{
+  if (!N.bus)
+    N.bus = g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, NULL);
+  if (!N.bus)
+    return;
+  g_autoptr (GDBusNodeInfo) info = g_dbus_node_info_new_for_xml (IFACE, NULL);
+  g_dbus_connection_register_object (N.bus, "/de/yesman/NeoLauncher", info->interfaces[0], &vtable, NULL, NULL,
+                                     NULL);
+  V.owner_id = g_bus_own_name_on_connection (N.bus, "de.yesman.NeoLauncher", G_BUS_NAME_OWNER_FLAGS_REPLACE,
+                                             NULL, NULL, NULL, NULL);
+  V.watch_id = g_bus_watch_name_on_connection (N.bus, "de.yesman.GnomePhone", G_BUS_NAME_WATCHER_FLAGS_NONE,
+                                               shell_appeared, shell_vanished, NULL, NULL);
+}

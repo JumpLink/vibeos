@@ -138,6 +138,7 @@ init_gpu (void)
   tiles_load ();
   home_layout ();
   drawer_layout ();
+  nav_init ();
   clock_tick (NULL);
   if (g_getenv ("NEO_STATS"))
     A.stats_font = text_font ("Roboto Mono", 400, dp (12));
@@ -180,6 +181,11 @@ stats_frame (gint64 time, gint64 cpu_start)
 static void
 draw_home (float scale, float stretch)
 {
+  float alpha = nav_home_alpha ();
+  if (alpha <= 0)
+    return;
+  gfx_save ();
+  gfx_opacity (alpha);
   if (stretch != 0 && A.home_target) {
     float p[8] = { stretch, 0, N.W, N.H };
     gfx_effect_params (p);
@@ -192,6 +198,7 @@ draw_home (float scale, float stretch)
   } else {
     home_draw (scale);
   }
+  gfx_restore ();
 }
 
 static void
@@ -211,19 +218,23 @@ on_frame (gpointer data, gint64 time)
       parallax_resize (A.par, N.W, N.H, N.dp);
     home_layout ();
     drawer_layout ();
+    nav_icons_changed ();
   }
   bool more = A.par ? parallax_tick (A.par) : false;
   more |= home_frame ();
   more |= drawer_frame ();
+  more |= nav_frame ();
   more |= N.launch_t0 != 0;
 
-  /* the drawer's depth: the wallpaper zooms out, the home shrinks, both blur (BaseDepthController) */
+  /* the drawer's depth, or an app's over the launcher: the wallpaper zooms out, the home shrinks, both blur
+   * (BaseDepthController) */
   float f = drawer_progress ();
   float de = spongy_curve (SPONGY_LINEAR_OUT_SLOW_IN, f);           /* DECELERATED_EASE (0, 0, 0.2, 1) */
-  float depth = floorf (DRAWER_DEPTH * de * 256) / 256;
-  float radius = floorf (MIN (1, depth / BLUR_FULL_DEPTH) * dp (BLUR_MAX_DP));
+  float depth = floorf (MAX (DRAWER_DEPTH * de, nav_depth ()) * 256) / 256;
+  float blurring = floorf (MAX (DRAWER_DEPTH * de, nav_blurs () ? nav_depth () : 0) * 256) / 256;
+  float radius = floorf (MIN (1, blurring / BLUR_FULL_DEPTH) * dp (BLUR_MAX_DP));
   float zoom = 1 + (WALLPAPER_ZOOM - 1) * (1 - depth);
-  float scale = (1 + (CONTENT_SCALE - 1) * de) * launch_content_scale ();
+  float scale = (1 + (CONTENT_SCALE - 1) * de) * launch_content_scale () * nav_home_scale ();
   float stretch = home_stretch ();
 
   if (!gfx_frame_begin ()) {
