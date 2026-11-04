@@ -141,6 +141,71 @@ export function springCurve([k, zeta], minVisible) {
 
 const black = () => new Cogl.Color({red: 0, green: 0, blue: 0, alpha: 255});
 
+// A view's offscreen buffer is what it costs: a new crop effect allocates a screen-sized one on its first paint,
+// 15-50 ms of the shell's frame on the S10e, at the start of every back gesture and for every recents card. So
+// the roots, each with its effect and buffer, are kept for the next views.
+const VIEWS_KEPT = 3;
+const keptViews = [];
+
+function takeView() {
+    const m = Main.layoutManager.primaryMonitor;
+    const kept = keptViews.pop();
+    if (kept) {
+        kept.root.set({x: m.x, y: m.y, width: m.width, height: m.height, visible: true, scale_x: 1, scale_y: 1,
+            translation_x: 0, translation_y: 0, background_color: black()});
+        return kept;
+    }
+    const view = {
+        root: new Clutter.Actor({x: m.x, y: m.y, width: m.width, height: m.height, background_color: black()}),
+        effect: new CropEffect(),
+        gone: false,
+    };
+    view.root.add_effect(view.effect);
+    view.root.connect('destroy', () => (view.gone = true));
+    return view;
+}
+
+function keepView(view) {
+    if (view.gone)
+        return;
+    view.root.get_parent()?.remove_child(view.root);
+    if (keptViews.length < VIEWS_KEPT)
+        keptViews.push(view);
+    else
+        view.root.destroy();
+}
+
+let warming = null;
+
+// Two views (a flight home takes the window's and its icon's) painted once ahead of time, under everything (the
+// launcher covers them), so that the first gesture of a session does not pay for their buffers either: 76 ms of
+// the frame the first time
+export function warmViews() {
+    if (keptViews.length || warming)
+        return;
+    const views = [takeView(), takeView()];
+    for (const view of views)
+        Main.layoutManager.uiGroup.insert_child_below(view.root, null);
+    const id = global.stage.connect('after-paint', () => {
+        global.stage.disconnect(id);
+        warming = null;
+        views.forEach(keepView);
+    });
+    warming = {views, id};
+}
+
+// the kept views' buffers go with the extension
+export function dropKeptViews() {
+    if (warming) {
+        global.stage.disconnect(warming.id);
+        for (const view of warming.views)
+            view.root.destroy();
+        warming = null;
+    }
+    for (const view of keptViews.splice(0))
+        view.root.destroy();
+}
+
 // The app as its recents card shows it: the whole screen (the status bar's band black, as the bar is over an app)
 // with a clone of the window in it, through the crop shader for the corners. The real window is hidden while the
 // clone stands in. parent: the actor the card is drawn in (the recents layer).
@@ -150,13 +215,13 @@ export class TaskView {
         this.actor = win.get_compositor_private();
         this._scale = scale;
         const m = Main.layoutManager.primaryMonitor;
-        this.root = new Clutter.Actor({x: m.x, y: m.y, width: m.width, height: m.height, background_color: black()});
+        this._view = takeView();
+        this.root = this._view.root;
         this._clone = new Clutter.Clone({source: this.actor, x: this.actor.x - m.x, y: this.actor.y - m.y});
         this.root.add_child(this._clone);
-        this._effect = new CropEffect();
+        this._effect = this._view.effect;
         this._effect.setAlpha(1);
         this._effect.setHole(0, 0, 0, 0, 0);
-        this.root.add_effect(this._effect);
         parent.add_child(this.root);
         this.actor.opacity = 0;
         // the window closed under the card: nothing left to show or restore
@@ -188,7 +253,8 @@ export class TaskView {
     }
 
     destroy() {
-        this.root.destroy();
+        this._clone.destroy();
+        keepView(this._view);
         if (this.actor) {
             this.actor.disconnectObject(this);
             this.actor.opacity = 255;
@@ -237,22 +303,23 @@ export class FloatingIcon {
     constructor(app, path, scale, below) {
         this._scale = scale;
         this._colour = path ? plateColour(path) : null;
-        this.root = new Clutter.Actor();
+        // a kept screen-sized view, the footprint drawn through its crop: an actor resized every frame would have
+        // its effect allocate a new buffer every frame (a 53 ms paint in the flight home)
+        this._view = takeView();
+        this.root = this._view.root;
         this._size = Math.round(SPLASH_ICON_DP * 3 / scale);
         this._icon = new St.Icon({gicon: appGicon(app, path), icon_size: this._size, style: 'padding: 0;'});
         this.root.add_child(this._icon);
-        this._effect = new CropEffect();
+        this._effect = this._view.effect;
         this._effect.setHole(0, 0, 0, 0, 0);
-        this.root.add_effect(this._effect);
         below.get_parent().insert_child_below(this.root, below);
     }
 
     place(rect, r, p) {
         const sc = this._scale;
-        const [x0, y0, x1, y1] = rect.map(v => v / sc);
+        // the footprint in the root's own coordinates (the root covers the monitor)
+        const [x0, y0, x1, y1] = rect.map((v, i) => v / sc - (i % 2 ? this.root.y : this.root.x));
         const w = x1 - x0, h = y1 - y0;
-        this.root.set_position(x0, y0);
-        this.root.set_size(w, h);
         const plate = 1 - clamp((p - HOME_SHAPE_START) / (1 - HOME_SHAPE_START), 0, 1);
         const [red, green, blue] = this._colour ?? [0, 0, 0];
         this.root.background_color = new Cogl.Color({red, green, blue,
@@ -261,12 +328,13 @@ export class FloatingIcon {
         const size = Math.max(HOME_ICON_PX / sc, Math.min(w, h));
         this._icon.set_pivot_point(0, 0);
         this._icon.scale_x = this._icon.scale_y = size / this._size;
-        this._icon.set_position((w - size) / 2, (h - size) / 2);
-        this._effect.setGeometry(this.root, [0, 0, w, h], r / sc, 1 / sc);
+        this._icon.set_position(x0 + (w - size) / 2, y0 + (h - size) / 2);
+        this._effect.setGeometry(this.root, [x0, y0, x1, y1], r / sc, 1 / sc);
         this._effect.setAlpha(clamp(p / HOME_ICON_ALPHA_END, 0, 1));
     }
 
     destroy() {
-        this.root.destroy();
+        this._icon.destroy();
+        keepView(this._view);
     }
 }

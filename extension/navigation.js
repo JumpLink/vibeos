@@ -26,7 +26,7 @@ import {HINT_SCRIM, PAGER_SNAP_MS, Recents, SETTLE_MS, warmUp} from './recents.j
 import {
     ACCELERATE, DECELERATE, DECELERATE_3, FRAME_MS, FloatingIcon, HOME_ICON_PX, LINEAR, NAV_GESTURE_H,
     OVERSHOOT_1_2, SCALE_REVEAL, SCREEN_H, SCREEN_W, SCROLL, SCROLL_CUBIC, Spring, TASK, TASK_CORNER_R, TASK_PIVOT,
-    TASK_W, animate, clamp, lerp, lerpRect,
+    TASK_W, animate, clamp, dropKeptViews, lerp, lerpRect, warmViews,
 } from './task.js';
 
 const TOUCH_SLOP = 34;                  // 8 dp × √2, on the hypotenuse
@@ -195,6 +195,7 @@ export class Navigation {
         this._warmId = GLib.idle_add(GLib.PRIORITY_LOW, () => {
             this._warmId = 0;
             warmUp();
+            warmViews();
             return GLib.SOURCE_REMOVE;
         });
     }
@@ -728,6 +729,7 @@ export class Navigation {
         this._recents = null;
         this._pause.destroy();
         this._back.destroy();
+        dropKeptViews();
         this._keyboard?.run_dispose();
         global.stage.remove_action(this._gesture);
         this._gesture.disconnectObject(this);
