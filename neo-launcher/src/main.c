@@ -1,5 +1,6 @@
-/* Neo Launcher 3: the home screen as a Vulkan Wayland client. For now the renderer's test scene: the parallax
- * wallpaper under every installed app in a five-column stretch-scrolling grid, with frame timing on screen. */
+/* Neo Launcher 2: the home screen as a Vulkan Wayland client. Launcher3 on Android 16, 1:1: the parallax
+ * wallpaper zoomed ×1.10, the workspace and dock, and the app drawer sheet whose depth zooms the wallpaper out,
+ * shrinks the home to 0.97 and blurs both behind it. */
 #include <glib.h>
 #include <glib-unix.h>
 #include <linux/input-event-codes.h>
@@ -7,43 +8,42 @@
 #include <math.h>
 #include <time.h>
 
-#include "apps.h"
-#include "gfx.h"
 #include "image.h"
+#include "neo.h"
 #include "parallax.h"
-#include "spongy.h"
-#include "text.h"
-#include "wl.h"
 
-typedef struct {
-  GAppInfo   *info;
-  GfxTex     *icon;
-  TextLayout *label;
-} Tile;
+#define DRAWER_DEPTH       0.33f      /* bottomSheetDepth */
+#define BLUR_MAX_DP        30         /* max_depth_blur_radius_enhanced */
+#define BLUR_FULL_DEPTH    0.3f
+
+void drawer_prepare (void);
+
+Neo N;
+
+typedef enum { OWNER_NONE, OWNER_HOME, OWNER_DRAWER } Owner;
 
 static struct {
-  Wl         *wl;
   Vk          vk;
   bool        ready;
-  int         W, H, vk_w, vk_h;
-  double      dp;                  /* pixels per dp: Android's density (480 dpi = 3), whatever the shell's scale */
+  int         vk_w, vk_h;
   GMainLoop  *loop;
-
   Parallax   *par;
-  GPtrArray  *tiles;
-  SpongyList  list;
-  float       list_top, row_h, col_w, icon_px;
-  TextFont   *label_font, *stats_font;
-  GfxTex     *target;              /* the list, while it is stretched */
-  int         touch;               /* the touch that drives the list, or -1 */
-  float       down_x, down_y;
-  GDBusConnection *bus;
+  GfxTex     *home_target, *bg_target;
 
-  /* frame timing */
+  int         touch;              /* the finger being followed, or -1 */
+  Owner       owner;
+  float       down_x, down_y;
+  bool        moved;
+  bool        debug_touch;        /* NEO_DEBUG_TOUCH or ~/.config/neo-launcher/debug-touch */
+  Tile       *down_tile;
+  float       down_ix, down_iy;
+
+  /* frame timing (NEO_STATS) */
+  TextFont   *stats_font;
+  TextLayout *stats;
   gint64      prev, stats_t0;
   int         frames, late;
   double      worst_ms, cpu_ms;
-  TextLayout *stats;
 } A = { .touch = -1 };
 
 static gint64
@@ -66,69 +66,57 @@ event_ms (guint32 t)
 static void
 wake (void *data)
 {
-  wl_schedule (A.wl);
+  wl_schedule (N.wl);
 }
 
-/* ---- the grid ------------------------------------------------------------------------------------------------- */
-
-#define COLS 5
-
-static void
-layout_grid (void)
+static gboolean
+clock_tick (gpointer data)
 {
-  A.col_w = A.W / (float) COLS;
-  A.icon_px = roundf (52 * A.dp);
-  A.row_h = roundf (A.icon_px + 8 * A.dp + text_line_height (A.label_font) * 2 + 16 * A.dp);
-  A.list_top = roundf (48 * A.dp);
-  int rows = (A.tiles->len + COLS - 1) / COLS;
-  float content = rows * A.row_h + 16 * A.dp;
-  if (A.list.view_height == 0)
-    spongy_list_init (&A.list, A.H - A.list_top, content);
-  else
-    spongy_list_set_size (&A.list, A.H - A.list_top, content);
+  home_clock_tick ();
+  /* on the next minute's boundary */
+  g_autoptr (GDateTime) now = g_date_time_new_now_local ();
+  int ms = (60 - g_date_time_get_second (now)) * 1000 + 20;
+  g_timeout_add (MAX (ms, 1000), clock_tick, NULL);
+  return G_SOURCE_REMOVE;
 }
 
+/* ---- the blur ------------------------------------------------------------------------------------------------- */
+
+/* σ (full-size px) of gfx_blur on a half-size picture, per levels and offset 0.5 … 4 (simulated, then drawn back
+ * up bilinearly): pick the levels whose range holds σ, interpolate the offset */
+static const float SIGMA[4][8] = {
+  { 1.7f, 1.7f, 2.1f, 2.4f, 2.5f, 2.6f, 3.1f, 3.3f },
+  { 4.2f, 6.0f, 8.4f, 10.7f, 12.7f, 14.9f, 17.6f, 20.0f },
+  { 8.7f, 13.0f, 18.5f, 23.5f, 27.9f, 33.0f, 38.8f, 44.2f },
+  { 17.6f, 26.5f, 37.9f, 48.0f, 57.1f, 67.4f, 79.2f, 90.3f },
+};
+
 static void
-load_tiles (void)
+blur_params (float sigma, int *levels, float *offset)
 {
-  g_autoptr (GHashTable) apps = apps_installed ();
-  GList *infos = g_list_sort (g_hash_table_get_values (apps), app_compare);
-  A.tiles = g_ptr_array_new ();
-  gint64 t0 = g_get_monotonic_time ();
-  int px = (int) roundf (52 * A.dp);
-  float label_w = A.W / (float) COLS - 8 * A.dp;
-  for (GList *l = infos; l; l = l->next) {
-    Tile *t = g_new0 (Tile, 1);
-    t->info = g_object_ref (l->data);
-    GdkPixbuf *pb = image_icon (g_app_info_get_icon (t->info), px);
-    if (pb) {
-      t->icon = image_texture (pb);
-      g_object_unref (pb);
+  int l = sigma <= 3.3f ? 0 : sigma <= 14.9f ? 1 : sigma <= 33.0f ? 2 : 3;
+  const float *row = SIGMA[l];
+  float o = 4;
+  for (int i = 0; i < 7; i++)
+    if (sigma <= row[i + 1]) {
+      float span = row[i + 1] - row[i];
+      o = 0.5f + 0.5f * (i + (span > 0 ? CLAMP ((sigma - row[i]) / span, 0, 1) : 1));
+      break;
     }
-    t->label = text_layout (A.label_font, app_name (t->info), label_w, 1, TEXT_CENTER);
-    g_ptr_array_add (A.tiles, t);
-  }
-  g_list_free (infos);
-  g_message ("%u apps, icons and labels in %.0f ms", A.tiles->len, (g_get_monotonic_time () - t0) / 1000.0);
+  if (sigma < row[0])
+    o = 0.5f;
+  *levels = l + 1;
+  *offset = o;
 }
 
-static void
-draw_grid (float view_h)
+static GfxTex *
+target (GfxTex **t, int w, int h)
 {
-  float off = roundf (A.list.offset);        /* whole pixels, as Android scrolls */
-  int first = MAX (0, (int) floorf (off / A.row_h)) * COLS;
-  int last = MIN ((int) A.tiles->len, ((int) ceilf ((off + view_h) / A.row_h) + 1) * COLS);
-  GfxColor white = { 1, 1, 1, 1 };
-  for (int i = first; i < last; i++) {
-    Tile *t = A.tiles->pdata[i];
-    float x = (i % COLS) * A.col_w, y = (i / COLS) * A.row_h - off + 8 * A.dp;
-    if (t->icon)
-      gfx_image (t->icon, roundf (x + (A.col_w - A.icon_px) / 2), roundf (y), A.icon_px, A.icon_px, 0, 1);
-    else
-      gfx_rect (roundf (x + (A.col_w - A.icon_px) / 2), roundf (y), A.icon_px, A.icon_px, A.icon_px / 2,
-                GFX_RGBA (0x5f6368, 1));
-    text_draw (t->label, x + 4 * A.dp, y + A.icon_px + 8 * A.dp, white);
+  if (!*t || (*t)->w != w || (*t)->h != h) {
+    gfx_tex_free (*t);
+    *t = gfx_target_new (w, h);
   }
+  return *t;
 }
 
 /* ---- frames --------------------------------------------------------------------------------------------------- */
@@ -136,21 +124,23 @@ draw_grid (float view_h)
 static bool
 init_gpu (void)
 {
-  if (!vk_init (&A.vk, wl_get_display (A.wl), wl_get_surface (A.wl), A.W, A.H) || !gfx_init (&A.vk) || !text_init ())
+  if (!vk_init (&A.vk, wl_get_display (N.wl), wl_get_surface (N.wl), N.W, N.H) || !gfx_init (&A.vk) || !text_init ())
     return false;
-  A.vk_w = A.W;
-  A.vk_h = A.H;
-  A.label_font = text_font ("Roboto", 400, roundf (14 * A.dp));
-  A.stats_font = text_font ("Roboto Mono", 400, roundf (12 * A.dp));
+  A.vk_w = N.W;
+  A.vk_h = N.H;
   const char *dir = g_getenv ("NEO_PARALLAX");
-  g_autofree char *def = g_build_filename (g_get_user_data_dir (), "neo-launcher", "parallax", "solar", NULL);
-  A.par = parallax_new (dir ? dir : def, wake, NULL);
+  g_autofree char *set = g_settings_get_string (N.settings, "wallpaper-parallax");
+  A.par = parallax_new (dir ? dir : set, wake, NULL);
   if (A.par) {
-    parallax_resize (A.par, A.W, A.H, A.dp);
+    parallax_resize (A.par, N.W, N.H, N.dp);
     parallax_run (A.par, true);
   }
-  load_tiles ();
-  layout_grid ();
+  tiles_load ();
+  home_layout ();
+  drawer_layout ();
+  clock_tick (NULL);
+  if (g_getenv ("NEO_STATS"))
+    A.stats_font = text_font ("Roboto Mono", 400, dp (12));
   A.ready = true;
   return true;
 }
@@ -158,10 +148,9 @@ init_gpu (void)
 static void
 stats_frame (gint64 time, gint64 cpu_start)
 {
-  gint64 refresh = wl_refresh_ns (A.wl);
+  gint64 refresh = wl_refresh_ns (N.wl);
   if (A.prev) {
     double dt = (time - A.prev) / 1e6;
-    /* only frames in a run count: a gap of more than ~100 ms is the clock having stopped, not a dropped frame */
     if (dt < 100) {
       A.frames++;
       A.worst_ms = MAX (A.worst_ms, dt);
@@ -175,14 +164,33 @@ stats_frame (gint64 time, gint64 cpu_start)
     A.stats_t0 = time;
   if (time - A.stats_t0 > 1000000000) {
     double secs = (time - A.stats_t0) / 1e9;
-    g_autofree char *s = g_strdup_printf ("%.1f fps  late %d  worst %.1f ms  cpu %.1f ms  %.2f Hz", A.frames / secs,
-                                          A.late, A.worst_ms, A.cpu_ms, refresh ? 1e9 / refresh : 0);
-    g_message ("%s", s);
-    text_layout_free (A.stats);
-    A.stats = text_layout (A.stats_font, s, 0, 1, TEXT_LEFT);
+    g_autofree char *s = g_strdup_printf ("%.1f fps  late %d  worst %.1f ms  cpu %.1f ms", A.frames / secs, A.late,
+                                          A.worst_ms, A.cpu_ms);
+    if (A.stats_font) {
+      text_layout_free (A.stats);
+      A.stats = text_layout (A.stats_font, s, 0, 1, TEXT_LEFT);
+    }
     A.frames = A.late = 0;
     A.worst_ms = A.cpu_ms = 0;
     A.stats_t0 = time;
+  }
+}
+
+/* the workspace and dock, through the page stretch when one shows */
+static void
+draw_home (float scale, float stretch)
+{
+  if (stretch != 0 && A.home_target) {
+    float p[8] = { stretch, 0, N.W, N.H };
+    gfx_effect_params (p);
+    GfxInst *q = gfx_push (A.home_target, GFX_PIPE_STRETCH);
+    q->w = N.W;
+    q->h = N.H;
+    q->u1 = q->v1 = 1;
+    q->r = q->g = q->b = q->a;
+    q->mode = GFX_MODE_TEX;
+  } else {
+    home_draw (scale);
   }
 }
 
@@ -190,98 +198,76 @@ static void
 on_frame (gpointer data, gint64 time)
 {
   gint64 cpu_start = mono_ns ();
+  N.now = time / 1e6;
   if (!A.ready && !init_gpu ()) {
     g_main_loop_quit (A.loop);
     return;
   }
-  if (A.vk_w != A.W || A.vk_h != A.H) {
-    vk_resize (&A.vk, A.W, A.H);
-    A.vk_w = A.W;
-    A.vk_h = A.H;
+  if (A.vk_w != N.W || A.vk_h != N.H) {
+    vk_resize (&A.vk, N.W, N.H);
+    A.vk_w = N.W;
+    A.vk_h = N.H;
     if (A.par)
-      parallax_resize (A.par, A.W, A.H, A.dp);
-    layout_grid ();
+      parallax_resize (A.par, N.W, N.H, N.dp);
+    home_layout ();
+    drawer_layout ();
   }
-  double now = time / 1e6;
-  bool more = parallax_tick (A.par);
-  float top, bottom;
-  more |= spongy_list_frame (&A.list, now, &top, &bottom);
-  float amount = top + bottom;
+  bool more = A.par ? parallax_tick (A.par) : false;
+  more |= home_frame ();
+  more |= drawer_frame ();
+  more |= N.launch_t0 != 0;
+
+  /* the drawer's depth: the wallpaper zooms out, the home shrinks, both blur (BaseDepthController) */
+  float f = drawer_progress ();
+  float de = spongy_curve (SPONGY_LINEAR_OUT_SLOW_IN, f);           /* DECELERATED_EASE (0, 0, 0.2, 1) */
+  float depth = floorf (DRAWER_DEPTH * de * 256) / 256;
+  float radius = floorf (MIN (1, depth / BLUR_FULL_DEPTH) * dp (BLUR_MAX_DP));
+  float zoom = 1 + (WALLPAPER_ZOOM - 1) * (1 - depth);
+  float scale = (1 + (CONTENT_SCALE - 1) * de) * launch_content_scale ();
+  float stretch = home_stretch ();
 
   if (!gfx_frame_begin ()) {
-    wl_schedule (A.wl);
+    wl_schedule (N.wl);
     return;
   }
-  float lh = A.H - A.list_top;
-  if (amount != 0) {
-    if (!A.target || A.target->w != A.W || A.target->h != (int) lh) {
-      gfx_tex_free (A.target);
-      A.target = gfx_target_new (A.W, (int) lh);
-    }
-    gfx_pass_begin (A.target, (GfxColor) { 0, 0, 0, 0 });
-    draw_grid (lh);
+  if (stretch != 0) {
+    gfx_pass_begin (target (&A.home_target, N.W, N.H), (GfxColor) { 0, 0, 0, 0 });
+    home_draw (scale);
     gfx_pass_end ();
   }
-  gfx_pass_begin (NULL, (GfxColor) { 0, 0, 0, 1 });
-  if (A.par)
-    parallax_draw (A.par, 1);
-  gfx_rect (0, 0, A.W, A.H, 0, (GfxColor) { 0, 0, 0, 0.45f });
-  if (amount != 0 && A.target) {
-    float p[8] = { 0, amount, A.W, lh };
-    gfx_effect_params (p);
-    GfxInst *q = gfx_push (A.target, GFX_PIPE_STRETCH);
-    q->x = 0;
-    q->y = A.list_top;
-    q->w = A.W;
-    q->h = lh;
-    q->u1 = q->v1 = 1;
-    q->r = q->g = q->b = q->a;
-    q->mode = GFX_MODE_TEX;
-  } else {
-    gfx_save ();
-    gfx_translate (0, A.list_top);
-    gfx_clip (0, 0, A.W, lh);
-    draw_grid (lh);
-    gfx_restore ();
+  GfxTex *blurred = NULL;
+  if (radius >= 1) {
+    /* the wallpaper and home at half size, blurred to hwui's σ = 0.57735·r + 0.5 */
+    gfx_pass_begin (target (&A.bg_target, N.W / 2, N.H / 2), (GfxColor) { 0, 0, 0, 1 });
+    gfx_scale (0.5f, 0.5f, 0, 0);
+    if (A.par)
+      parallax_draw (A.par, zoom);
+    draw_home (scale, stretch);
+    gfx_pass_end ();
+    int levels;
+    float offset;
+    blur_params (0.57735f * radius + 0.5f, &levels, &offset);
+    blurred = gfx_blur (A.bg_target, levels, offset, 0);
   }
+  drawer_prepare ();
+
+  gfx_pass_begin (NULL, (GfxColor) { 0, 0, 0, 1 });
+  if (blurred) {
+    gfx_image (blurred, 0, 0, N.W, N.H, 0, 1);
+  } else {
+    if (A.par)
+      parallax_draw (A.par, zoom);
+    draw_home (scale, stretch);
+  }
+  drawer_draw ();
   if (A.stats)
-    text_draw (A.stats, 16 * A.dp, 14 * A.dp, (GfxColor) { 1, 1, 1, 0.9f });
+    text_draw (A.stats, dp (16), dp (48), (GfxColor) { 1, 1, 1, 0.9f });
   gfx_pass_end ();
-  wl_frame_requested (A.wl);       /* before the present, which commits it */
+  wl_frame_requested (N.wl);       /* before the present, which commits it */
   gfx_frame_end ();
   stats_frame (time, cpu_start);
   if (more || g_getenv ("NEO_SPIN"))
-    wl_schedule (A.wl);
-}
-
-/* the tile under a point on screen, or -1 */
-static int
-tile_at (float x, float y)
-{
-  float gy = y - A.list_top + roundf (A.list.offset) - 8 * A.dp;
-  if (y < A.list_top || gy < 0 || x < 0 || x >= A.W)
-    return -1;
-  int row = (int) (gy / A.row_h), col = (int) (x / A.col_w);
-  int i = row * COLS + col;
-  if (i >= (int) A.tiles->len || gy - row * A.row_h > A.icon_px + 8 * A.dp + text_line_height (A.label_font))
-    return -1;
-  return i;
-}
-
-static void
-launch (int i)
-{
-  Tile *t = A.tiles->pdata[i];
-  float x = (i % COLS) * A.col_w + (A.col_w - A.icon_px) / 2;
-  float y = (i / COLS) * A.row_h - roundf (A.list.offset) + 8 * A.dp + A.list_top;
-  if (!A.bus)
-    A.bus = g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, NULL);
-  if (!A.bus)
-    return;
-  g_dbus_connection_call (A.bus, "de.yesman.GnomePhone", "/de/yesman/GnomePhone", "de.yesman.GnomePhone", "Launch",
-                          g_variant_new ("(s(dddd))", g_app_info_get_id (t->info), (double) x, (double) y,
-                                         (double) A.icon_px, (double) A.icon_px),
-                          NULL, G_DBUS_CALL_FLAGS_NONE, 2000, NULL, NULL, NULL);
+    wl_schedule (N.wl);
 }
 
 /* ---- input ---------------------------------------------------------------------------------------------------- */
@@ -292,6 +278,9 @@ on_touch (gpointer data, WlTouchType type, int id, double x, double y, guint32 t
   if (!A.ready)
     return;
   double t = event_ms (time);
+  N.now = MAX (N.now, t);
+  if (A.debug_touch && type != WL_TOUCH_MOTION)
+    g_message ("touch %d id %d at %.0f,%.0f owner %d", type, id, x, y, A.owner);
   switch (type) {
   case WL_TOUCH_DOWN:
     if (A.touch >= 0)
@@ -299,49 +288,82 @@ on_touch (gpointer data, WlTouchType type, int id, double x, double y, guint32 t
     A.touch = id;
     A.down_x = x;
     A.down_y = y;
-    spongy_list_down (&A.list, y, t);
+    A.moved = false;
+    A.down_tile = NULL;
+    if (drawer_touch_down (x, y, t)) {
+      A.owner = OWNER_DRAWER;
+      break;
+    }
+    A.owner = OWNER_HOME;
+    home_touch_down (x, y, t);
+    A.down_tile = home_tile_at (x, y, &A.down_ix, &A.down_iy);
+    if (A.down_tile)
+      press_down (A.down_tile);
     break;
   case WL_TOUCH_MOTION:
     if (id != A.touch)
       return;
-    spongy_list_move (&A.list, y, t);
+    if (hypot (x - A.down_x, y - A.down_y) > dp (8))
+      A.moved = true;
+    if (A.owner == OWNER_HOME) {
+      bool vertical = false;
+      home_touch_move (x, y, t, &vertical);
+      if (A.moved)
+        press_up ();
+      if (vertical) {
+        if (y < A.down_y) {
+          A.owner = OWNER_DRAWER;
+          drawer_drag_begin (A.down_y, y, t);
+        } else {
+          A.owner = OWNER_NONE;     /* down: the shell's notification shade */
+        }
+      }
+    } else if (A.owner == OWNER_DRAWER) {
+      drawer_touch_move (x, y, t);
+    }
     break;
   case WL_TOUCH_UP:
     if (id != A.touch)
       return;
-    {
-      /* a tap: down and up without a drag, on a tile */
-      bool tap = !A.list.dragging;
-      spongy_list_up (&A.list, t);
-      int i = tap ? tile_at (A.down_x, A.down_y) : -1;
-      if (i >= 0)
-        launch (i);
+    if (A.owner == OWNER_HOME) {
+      home_touch_up (x, y, t);
+      press_up ();
+      if (!A.moved && A.down_tile)
+        tile_launch (A.down_tile, A.down_ix, A.down_iy, roundf (dp (ICON_DP)), false);
+    } else if (A.owner == OWNER_DRAWER) {
+      drawer_touch_up (x, y, t);
     }
     A.touch = -1;
+    A.owner = OWNER_NONE;
     break;
   case WL_TOUCH_CANCEL:
-    spongy_list_cancel (&A.list, t);
+    if (A.owner == OWNER_HOME)
+      home_touch_cancel (t);
+    else if (A.owner == OWNER_DRAWER)
+      drawer_touch_cancel (t);
+    press_up ();
     A.touch = -1;
+    A.owner = OWNER_NONE;
     break;
   }
-  wl_schedule (A.wl);
+  wl_schedule (N.wl);
 }
 
 static void
 on_key (gpointer data, guint32 key, bool pressed)
 {
-  if (pressed && (key == KEY_ESC || key == KEY_Q))
+  if (pressed && key == KEY_Q)
     g_main_loop_quit (A.loop);
 }
 
 static void
 on_resize (gpointer data, int w, int h, double scale)
 {
-  A.W = w;
-  A.H = h;
+  N.W = w;
+  N.H = h;
   const char *d = g_getenv ("NEO_DENSITY");
-  A.dp = d ? g_ascii_strtod (d, NULL) : 3.0;
-  spongy_set_density (A.dp);
+  N.dp = d ? g_ascii_strtod (d, NULL) : 3.0;
+  spongy_set_density (N.dp);
 }
 
 static void
@@ -363,12 +385,15 @@ main (int argc, char **argv)
   setlocale (LC_ALL, "");
   static const WlCallbacks cb = { on_resize, on_frame, on_touch, on_key, on_close };
   A.loop = g_main_loop_new (NULL, FALSE);
-  A.wl = wl_open ("de.yesman.NeoLauncher", &cb, NULL);
-  if (!A.wl)
+  N.settings = g_settings_new ("de.yesman.neo");
+  g_autofree char *flag = g_build_filename (g_get_user_config_dir (), "neo-launcher", "debug-touch", NULL);
+  A.debug_touch = g_getenv ("NEO_DEBUG_TOUCH") || g_file_test (flag, G_FILE_TEST_EXISTS);
+  N.wl = wl_open ("de.yesman.NeoLauncher", &cb, NULL);
+  if (!N.wl)
     return 1;
   g_unix_signal_add (SIGTERM, on_signal, NULL);
   g_unix_signal_add (SIGINT, on_signal, NULL);
-  wl_schedule (A.wl);
+  wl_schedule (N.wl);
   g_main_loop_run (A.loop);
   if (A.ready)
     vkDeviceWaitIdle (A.vk.dev);

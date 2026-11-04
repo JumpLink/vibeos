@@ -1,0 +1,286 @@
+/* The apps as tiles: an icon texture (drawn by a thread, so the first frame never waits for cairo), the two labels,
+ * the press feedback, and the launch hand-off to the shell. */
+#include <math.h>
+
+#include "apps.h"
+#include "icons.h"
+#include "image.h"
+#include "neo.h"
+
+#define PRESS_SCALE   1.10f
+#define PRESS_MS      200.0
+#define LAUNCH_SCALE_DELAY_MS 16.0
+#define LAUNCH_SCALE_MS       350.0
+#define LAUNCH_END_MS         600.0
+
+/* ---- the icon thread ---------------------------------------------------------------------------------------------- */
+
+typedef struct {
+  char      *id;
+  GAppInfo  *info;
+  GdkPixbuf *pb;
+} IconJob;
+
+static void
+icon_job_free (IconJob *j)
+{
+  g_free (j->id);
+  g_object_unref (j->info);
+  g_clear_object (&j->pb);
+  g_free (j);
+}
+
+/* on the main thread: the texture for a drawn icon */
+static gboolean
+icon_ready (gpointer data)
+{
+  IconJob *j = data;
+  Tile *t = tiles_get (j->id);
+  if (t && j->pb) {
+    gfx_tex_free (t->icon);
+    t->icon = image_texture (j->pb);
+    wl_schedule (N.wl);
+  }
+  icon_job_free (j);
+  return G_SOURCE_REMOVE;
+}
+
+/* Every icon in order (the dock and the first page first): the cached or stock one at once, then the pack's
+ * drawing where it still has to be made. Only this thread touches the icon theme and the pack. */
+static gpointer
+icon_thread (gpointer data)
+{
+  GPtrArray *jobs = data;
+  g_autoptr (GSettings) settings = g_settings_new ("de.yesman.neo");
+  Icons *icons = icons_new (settings);
+  int px = (int) lroundf (dp (ICON_DP));
+  GPtrArray *pending = g_ptr_array_new ();
+  for (guint i = 0; i < jobs->len; i++) {
+    IconJob *j = jobs->pdata[i];
+    gboolean later = FALSE;
+    j->pb = icons_lookup (icons, j->info, px, &later);
+    IconJob *again = later ? g_new0 (IconJob, 1) : NULL;
+    if (again) {
+      again->id = g_strdup (j->id);
+      again->info = g_object_ref (j->info);
+      g_ptr_array_add (pending, again);
+    }
+    g_idle_add_full (G_PRIORITY_DEFAULT, icon_ready, j, NULL);
+  }
+  for (guint i = 0; i < pending->len; i++) {
+    IconJob *j = pending->pdata[i];
+    j->pb = icons_render (icons, j->info, px);
+    g_idle_add_full (G_PRIORITY_DEFAULT_IDLE, icon_ready, j, NULL);
+  }
+  g_ptr_array_unref (pending);
+  g_ptr_array_unref (jobs);
+  icons_free (icons);
+  return NULL;
+}
+
+/* ---- tiles -------------------------------------------------------------------------------------------------------- */
+
+static void
+tile_free (Tile *t)
+{
+  g_free (t->id);
+  g_object_unref (t->info);
+  gfx_tex_free (t->icon);
+  text_layout_free (t->label);
+  text_layout_free (t->dlabel);
+  g_free (t);
+}
+
+Tile *
+tiles_get (const char *id)
+{
+  return id ? g_hash_table_lookup (N.tiles, id) : NULL;
+}
+
+static void
+queue_icon (GPtrArray *jobs, GHashTable *queued, const char *id)
+{
+  Tile *t = tiles_get (id);
+  if (!t || g_hash_table_contains (queued, id))
+    return;
+  g_hash_table_add (queued, (gpointer) t->id);
+  IconJob *j = g_new0 (IconJob, 1);
+  j->id = g_strdup (t->id);
+  j->info = g_object_ref (t->info);
+  g_ptr_array_add (jobs, j);
+}
+
+void
+tiles_load (void)
+{
+  g_autoptr (GHashTable) apps = apps_installed ();
+  N.tiles = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, (GDestroyNotify) tile_free);
+  N.sorted = g_ptr_array_new ();
+  N.label_font = text_font_axes ("Google Sans Flex", 700, dp (LABEL_SP), "opsz=72,ROND=100");
+
+  GList *infos = g_list_sort (g_hash_table_get_values (apps), app_compare);
+  for (GList *l = infos; l; l = l->next) {
+    Tile *t = g_new0 (Tile, 1);
+    t->info = g_object_ref (l->data);
+    t->id = g_strdup (g_app_info_get_id (t->info));
+    const char *name = app_name (t->info);
+    t->label = text_layout (N.label_font, name, dp (LABEL_HOME_MAX_DP), 1, TEXT_CENTER);
+    t->dlabel = text_layout (N.label_font, name, dp (LABEL_DRAWER_MAX_DP), 1, TEXT_CENTER);
+    g_hash_table_insert (N.tiles, t->id, t);
+    g_ptr_array_add (N.sorted, t);
+  }
+  g_list_free (infos);
+
+  N.model = model_new (GRID_COLS, GRID_ROWS, GRID_COLS);
+  g_auto (GStrv) hidden = g_settings_get_strv (N.settings, "hidden-from-home");
+  model_set_hidden (N.model, hidden);
+  model_load (N.model, apps);
+  model_set_reserved (N.model, GRID_COLS);            /* the clock widget's row on the first page */
+
+  /* the icons the first frame shows go first */
+  GPtrArray *jobs = g_ptr_array_new ();
+  g_autoptr (GHashTable) queued = g_hash_table_new (g_str_hash, g_str_equal);
+  for (guint i = 0; i < N.model->dock->len; i++)
+    queue_icon (jobs, queued, N.model->dock->pdata[i]);
+  for (guint p = 0; p < N.model->pages->len; p++) {
+    GPtrArray *page = N.model->pages->pdata[p];
+    for (guint i = 0; i < page->len; i++)
+      queue_icon (jobs, queued, page->pdata[i]);
+  }
+  for (guint i = 0; i < N.sorted->len; i++)
+    queue_icon (jobs, queued, ((Tile *) N.sorted->pdata[i])->id);
+  g_thread_unref (g_thread_new ("neo-icons", icon_thread, jobs));
+}
+
+/* the icon, or its place-holder circle until the thread has drawn it */
+void
+tile_draw_icon (Tile *t, float x, float y, float size, float alpha)
+{
+  if (t->hidden)
+    return;
+  float s = press_scale (t);
+  if (s != 1) {
+    gfx_save ();
+    gfx_scale (s, s, x + size / 2, y + size / 2);
+  }
+  if (t->icon)
+    gfx_image (t->icon, x, y, size, size, 0, alpha);
+  else
+    gfx_rect (x + size * 0.04f, y + size * 0.04f, size * 0.92f, size * 0.92f, size * 0.46f,
+              (GfxColor) { 1, 1, 1, 0.18f * alpha });
+  if (s != 1)
+    gfx_restore ();
+}
+
+/* ---- press feedback ----------------------------------------------------------------------------------------------- */
+
+static float
+press_value (void)
+{
+  Press *p = &N.press;
+  if (!p->tile)
+    return 1;
+  float t = CLAMP ((N.now - p->t0) / PRESS_MS, 0, 1);
+  float e = p->up ? 1 - (1 - t) * (1 - t) : t * t;
+  return p->from + (p->to - p->from) * e;
+}
+
+float
+press_scale (Tile *t)
+{
+  return t && t == N.press.tile ? press_value () : 1;
+}
+
+bool
+press_animating (void)
+{
+  if (!N.press.tile)
+    return false;
+  if (N.now - N.press.t0 < PRESS_MS)
+    return true;
+  if (N.press.up)
+    N.press.tile = NULL;            /* back at 1 */
+  return false;
+}
+
+void
+press_down (Tile *t)
+{
+  N.press = (Press) { .tile = t, .t0 = N.now, .from = 1, .to = PRESS_SCALE };
+  wl_schedule (N.wl);
+}
+
+void
+press_up (void)
+{
+  if (!N.press.tile || N.press.up)
+    return;
+  float v = press_value ();
+  N.press = (Press) { .tile = N.press.tile, .t0 = N.now, .from = v, .to = 1, .up = true };
+  wl_schedule (N.wl);
+}
+
+/* ---- launch ------------------------------------------------------------------------------------------------------- */
+
+static gboolean
+launch_end (gpointer data)
+{
+  GHashTableIter it;
+  gpointer key, value;
+  g_hash_table_iter_init (&it, N.tiles);
+  while (g_hash_table_iter_next (&it, &key, &value))
+    ((Tile *) value)->hidden = false;
+  N.launch_t0 = 0;
+  if (N.launch_from_drawer)
+    drawer_close_now ();
+  N.launch_from_drawer = false;
+  wl_schedule (N.wl);
+  return G_SOURCE_REMOVE;
+}
+
+/* The shell starts the app and grows its window (or splash) out of the icon's box; the icon hides meanwhile and
+ * the home content behind shrinks to 0.97 (Launcher3's QuickstepTransitionManager). */
+void
+tile_launch (Tile *t, float x, float y, float size, bool from_drawer)
+{
+  if (!N.bus)
+    N.bus = g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, NULL);
+  if (!N.bus)
+    return;
+  g_dbus_connection_call (N.bus, "de.yesman.GnomePhone", "/de/yesman/GnomePhone", "de.yesman.GnomePhone", "Launch",
+                          g_variant_new ("(s(dddd))", t->id, (double) x, (double) y, (double) size, (double) size),
+                          NULL, G_DBUS_CALL_FLAGS_NONE, 2000, NULL, NULL, NULL);
+  N.press.tile = NULL;              /* the press scale is dropped at launch */
+  t->hidden = true;
+  N.launch_t0 = N.now;
+  N.launch_from_drawer = from_drawer;
+  g_timeout_add ((guint) LAUNCH_END_MS, launch_end, NULL);
+  wl_schedule (N.wl);
+}
+
+/* the home content's scale for a launch at time now (1 when none runs) */
+float
+launch_content_scale (void)
+{
+  if (!N.launch_t0)
+    return 1;
+  float t = CLAMP ((N.now - N.launch_t0 - LAUNCH_SCALE_DELAY_MS) / LAUNCH_SCALE_MS, 0, 1);
+  float e = 1 - powf (1 - t, 3);    /* DECELERATE_1_5 */
+  return 1 + (CONTENT_SCALE - 1) * e;
+}
+
+/* A label; on the wallpaper with Launcher3's two shadows (ambient #40000000 blur 1.5 dp, key #89000000 blur
+ * 0.5 dp offset 0.5 dp), the blur stood in for by a ring of faint copies. */
+void
+label_draw (TextLayout *l, float x, float y, GfxColor c, bool shadow)
+{
+  if (shadow) {
+    float o = dp (0.5), r = dp (1.5) * 0.6f;
+    for (int i = 0; i < 8; i++) {
+      float a = i * (float) G_PI / 4;
+      text_draw (l, x + r * cosf (a), y + r * sinf (a), (GfxColor) { 0, 0, 0, 0.07f * c.a });
+    }
+    text_draw (l, x + o, y + o, (GfxColor) { 0, 0, 0, 0.54f * c.a });
+  }
+  text_draw (l, x, y, c);
+}

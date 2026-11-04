@@ -10,6 +10,7 @@ deps = [
   dependency('harfbuzz'),
   dependency('fontconfig'),
   dependency('json-glib-1.0'),
+  dependency('threads'),
   libm,
   spongy_dep,
 ]
@@ -35,6 +36,7 @@ endforeach
 
 executable('neo-launcher',
   'src/main.c', 'src/vk.c', 'src/gfx.c', 'src/wl.c', 'src/text.c', 'src/image.c', 'src/parallax.c', 'src/apps.c',
+  'src/icons.c', 'src/model.c', 'src/tiles.c', 'src/home.c', 'src/drawer.c',
   proto_src,
   include_directories: include_directories('src', 'shaders'),
   dependencies: deps,
