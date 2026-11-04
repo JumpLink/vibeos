@@ -41,6 +41,25 @@ main (void)
   bad += fabsf (m - 500) > 0.01;
   printf ("emphasized(0.5) = %.4f, fast_out_slow_in(0.5) = %.4f\n", spongy_curve (SPONGY_EMPHASIZED, 0.5f),
           spongy_curve (SPONGY_FAST_OUT_SLOW_IN, 0.5f));
+  /* a list moved by fractional pixels (GTK's logical ones): a fling from the middle runs to the end, and a pull
+   * held at the top stays a stretch (float noise once read as an end reached, and as the list scrolled off it) */
+  SpongyList l;
+  spongy_list_init (&l, 816, 1350);
+  spongy_list_down (&l, 663.8f, 0);
+  for (int i = 1; i <= 12; i++)
+    spongy_list_move (&l, 663.8f - 26.67f * i, 8.33 * i);
+  spongy_list_up (&l, 104);
+  for (double ms = 107; ms < 1000 && l.flinging; ms += 16.7)
+    spongy_list_frame (&l, ms, NULL, NULL);
+  printf ("fling from %.0f: ended at %.1f of %.0f, bottom stretch %s\n", 314.0, l.offset, l.max_offset,
+          spongy_edge_is_finished (&l.bottom) ? "no" : "yes");
+  bad += l.offset != l.max_offset || spongy_edge_is_finished (&l.bottom);
+  spongy_list_init (&l, 816, 1350);
+  spongy_list_down (&l, 104.f, 0);
+  for (int i = 1; i <= 60; i++)
+    spongy_list_move (&l, 104.f + 7.9f * i, 8.33 * i);
+  printf ("pull at the top: offset %.3f, stretch %.4f\n", l.offset, l.top.distance);
+  bad += l.offset != 0 || l.top.distance < 0.5f;
   printf (bad ? "FAILED %d\n" : "ok\n", bad);
   return bad != 0;
 }

@@ -722,14 +722,22 @@ spongy_list_scroll_to (SpongyList *l, float offset)
   l->flinging = false;
 }
 
-/* scrolls by dy, returns what was not taken */
+/* scrolls by dy, returns what was not taken: how far past an end it would have gone, exactly 0 inside (dy − what
+ * the offset moved is float noise that reads as an end reached, for fractional moves) */
 static float
 scroll_by (SpongyList *l, float dy)
 {
-  float to = fminf (fmaxf (0, l->offset + dy), l->max_offset);
-  float taken = to - l->offset;
+  float to = l->offset + dy;
+  if (to < 0) {
+    l->offset = 0;
+    return to;
+  }
+  if (to > l->max_offset) {
+    l->offset = l->max_offset;
+    return to - l->max_offset;
+  }
   l->offset = to;
-  return dy - taken;
+  return 0;
 }
 
 void
@@ -757,7 +765,13 @@ spongy_list_down (SpongyList *l, float y, double t)
   }
 }
 
-/* releaseVerticalGlow: a drag back toward the content shrinks a stretch first; what it took, px */
+/* RecyclerView rounds what a stretch took to whole pixels, which is exact for its whole-pixel moves. Ours are
+ * fractional: an edge that took all of a move took exactly it, or the rounding's leftover scrolls the list off its
+ * end and the stretch is let go. EPS: float noise in a pull, in units of the size. */
+#define PULL_EPS 1e-6f
+
+/* releaseVerticalGlow: a drag while stretched goes to the stretch first, and only what is left of it (once a drag
+ * back has undone the stretch) scrolls; what it took, px */
 static float
 release_glow (SpongyList *l, float dy, double t)
 {
@@ -768,7 +782,8 @@ release_glow (SpongyList *l, float dy, double t)
     if (can_scroll_up (l))
       spongy_edge_release (&l->top, t);
     else {
-      consumed = -spongy_edge_pull_distance (&l->top, -dy / H, t);
+      float want = -dy / H, got = spongy_edge_pull_distance (&l->top, want, t);
+      consumed = fabsf (got - want) < PULL_EPS ? dy : -got * H;
       if (l->top.distance == 0)
         spongy_edge_release (&l->top, t);
     }
@@ -776,12 +791,13 @@ release_glow (SpongyList *l, float dy, double t)
     if (can_scroll_down (l))
       spongy_edge_release (&l->bottom, t);
     else {
-      consumed = spongy_edge_pull_distance (&l->bottom, dy / H, t);
+      float want = dy / H, got = spongy_edge_pull_distance (&l->bottom, want, t);
+      consumed = fabsf (got - want) < PULL_EPS ? dy : got * H;
       if (l->bottom.distance == 0)
         spongy_edge_release (&l->bottom, t);
     }
   }
-  return roundf (consumed * H);
+  return consumed;
 }
 
 bool
@@ -882,19 +898,20 @@ consume_fling_in_stretch (SpongyList *l, float unconsumed, double t)
   float size = l->view_height;
   if (size <= 0)
     return unconsumed;
+  /* the stretch takes all of the step until it is undone (exactly all: see PULL_EPS); the rest scrolls */
   if (unconsumed > 0 && l->top.distance != 0) {
-    float delta = -unconsumed * FLING_DESTRETCH_FACTOR / size;
-    float consumed = roundf (-size / FLING_DESTRETCH_FACTOR * spongy_edge_pull_distance (&l->top, delta, t));
-    if (consumed != unconsumed)
-      spongy_edge_finish (&l->top);
-    return unconsumed - consumed;
+    float delta = -unconsumed * FLING_DESTRETCH_FACTOR / size, got = spongy_edge_pull_distance (&l->top, delta, t);
+    if (fabsf (got - delta) < PULL_EPS)
+      return 0;
+    spongy_edge_finish (&l->top);
+    return unconsumed + size / FLING_DESTRETCH_FACTOR * got;
   }
   if (unconsumed < 0 && l->bottom.distance != 0) {
-    float delta = unconsumed * FLING_DESTRETCH_FACTOR / size;
-    float consumed = roundf (size / FLING_DESTRETCH_FACTOR * spongy_edge_pull_distance (&l->bottom, delta, t));
-    if (consumed != unconsumed)
-      spongy_edge_finish (&l->bottom);
-    return unconsumed - consumed;
+    float delta = unconsumed * FLING_DESTRETCH_FACTOR / size, got = spongy_edge_pull_distance (&l->bottom, delta, t);
+    if (fabsf (got - delta) < PULL_EPS)
+      return 0;
+    spongy_edge_finish (&l->bottom);
+    return unconsumed - size / FLING_DESTRETCH_FACTOR * got;
   }
   return unconsumed;
 }
