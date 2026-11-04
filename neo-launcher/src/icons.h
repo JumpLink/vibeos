@@ -10,7 +10,7 @@ typedef struct {
   char *id, *title, *dir;
 } IconPack;
 
-Icons  *icons_new        (GSettings *settings);
+Icons     *icons_new        (GSettings *settings);
 void       icons_free       (Icons *self);
 /* installed packs, a user's pack winning over a system one of the same name; g_ptr_array_unref frees them */
 GPtrArray *icons_list_packs (void);
@@ -19,6 +19,8 @@ GPtrArray *icons_list_packs (void);
 GdkPixbuf *icons_lookup     (Icons *self, GAppInfo *info, int px, gboolean *pending);
 /* Draws the custom icon (up to ~100 ms of cairo); NULL when the stock icon stays. */
 GdkPixbuf *icons_render     (Icons *self, GAppInfo *info, int px);
+/* the cache's file of a custom icon at px, when one was drawn (NULL for the stock icon) */
+char      *icons_cached_path (Icons *self, GAppInfo *info, int px);
 /* the app's stock icon at px, never NULL */
 GdkPixbuf *icons_stock      (GAppInfo *info, int px);
 void       icons_reset      (Icons *self);   /* the settings changed: read the pack again */

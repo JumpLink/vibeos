@@ -15,16 +15,20 @@
 
 /* ---- the icon thread ---------------------------------------------------------------------------------------------- */
 
+#define SPLASH_ICON_DP 160
+
 typedef struct {
   char      *id;
   GAppInfo  *info;
   GdkPixbuf *pb;
+  char      *splash;
 } IconJob;
 
 static void
 icon_job_free (IconJob *j)
 {
   g_free (j->id);
+  g_free (j->splash);
   g_object_unref (j->info);
   g_clear_object (&j->pb);
   g_free (j);
@@ -36,6 +40,10 @@ icon_ready (gpointer data)
 {
   IconJob *j = data;
   Tile *t = tiles_get (j->id);
+  if (t && j->splash) {
+    g_free (t->splash_icon);
+    t->splash_icon = g_steal_pointer (&j->splash);
+  }
   if (t && j->pb) {
     gfx_tex_free (t->icon);
     t->icon = image_texture (j->pb);
@@ -54,9 +62,13 @@ icon_thread (gpointer data)
   g_autoptr (GSettings) settings = g_settings_new ("de.yesman.neo");
   Icons *icons = icons_new (settings);
   int px = (int) lroundf (dp (ICON_DP));
-  GPtrArray *pending = g_ptr_array_new ();
+  GPtrArray *pending = g_ptr_array_new (), *splash = g_ptr_array_new ();
   for (guint i = 0; i < jobs->len; i++) {
     IconJob *j = jobs->pdata[i];
+    IconJob *s = g_new0 (IconJob, 1);
+    s->id = g_strdup (j->id);
+    s->info = g_object_ref (j->info);
+    g_ptr_array_add (splash, s);
     gboolean later = FALSE;
     j->pb = icons_lookup (icons, j->info, px, &later);
     IconJob *again = later ? g_new0 (IconJob, 1) : NULL;
@@ -73,6 +85,20 @@ icon_thread (gpointer data)
     g_idle_add_full (G_PRIORITY_DEFAULT_IDLE, icon_ready, j, NULL);
   }
   g_ptr_array_unref (pending);
+  /* the same icons at the splash's size, for the shell (drawn once, then cached) */
+  int big = (int) lroundf (dp (SPLASH_ICON_DP));
+  for (guint i = 0; i < splash->len; i++) {
+    IconJob *j = splash->pdata[i];
+    gboolean later = FALSE;
+    g_autoptr (GdkPixbuf) pb = icons_lookup (icons, j->info, big, &later);
+    if (later) {
+      g_clear_object (&pb);
+      pb = icons_render (icons, j->info, big);
+    }
+    j->splash = icons_cached_path (icons, j->info, big);
+    g_idle_add_full (G_PRIORITY_DEFAULT_IDLE, icon_ready, j, NULL);
+  }
+  g_ptr_array_unref (splash);
   g_ptr_array_unref (jobs);
   icons_free (icons);
   return NULL;
@@ -84,6 +110,7 @@ static void
 tile_free (Tile *t)
 {
   g_free (t->id);
+  g_free (t->splash_icon);
   g_object_unref (t->info);
   gfx_tex_free (t->icon);
   text_layout_free (t->label);
@@ -248,7 +275,8 @@ tile_launch (Tile *t, float x, float y, float size, bool from_drawer)
   if (!N.bus)
     return;
   g_dbus_connection_call (N.bus, "de.yesman.GnomePhone", "/de/yesman/GnomePhone", "de.yesman.GnomePhone", "Launch",
-                          g_variant_new ("(s(dddd))", t->id, (double) x, (double) y, (double) size, (double) size),
+                          g_variant_new ("(s(dddd)s)", t->id, (double) x, (double) y, (double) size, (double) size,
+                                         t->splash_icon ? t->splash_icon : ""),
                           NULL, G_DBUS_CALL_FLAGS_NONE, 2000, NULL, NULL, NULL);
   N.press.tile = NULL;              /* the press scale is dropped at launch */
   t->hidden = true;

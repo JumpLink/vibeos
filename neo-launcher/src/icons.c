@@ -375,6 +375,18 @@ cache_key (Icons *self, GAppInfo *info, int px)
                           wrap ? 1 : 0, legacy ? 1 : 0, android, safe, px);
 }
 
+char *
+icons_cached_path (Icons *self, GAppInfo *info, int px)
+{
+  current_pack (self);
+  g_autofree char *key = cache_key (self, info, px);
+  char *png = g_strdup_printf ("%s/%s.png", self->cache, key);
+  if (g_file_test (png, G_FILE_TEST_EXISTS))
+    return png;
+  g_free (png);
+  return NULL;
+}
+
 GdkPixbuf *
 icons_lookup (Icons *self, GAppInfo *info, int px, gboolean *pending)
 {

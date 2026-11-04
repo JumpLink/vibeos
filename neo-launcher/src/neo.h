@@ -58,6 +58,7 @@ typedef struct {
   TextLayout  *label;             /* the home label (52 dp) */
   TextLayout  *dlabel;            /* the drawer label (54.6 dp) */
   bool         hidden;            /* its window is growing out of it */
+  char        *splash_icon;       /* the icon drawn at the splash's 160 dp (a cached PNG), or NULL: the theme's */
 } Tile;
 
 /* the icon pressed under a finger: 1 → 1.1 in 200 ms (t²) on down, back with 1 − (1 − t)² */
