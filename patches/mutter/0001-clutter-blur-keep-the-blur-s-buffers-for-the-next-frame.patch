@@ -1,0 +1,223 @@
+From: pulpoff <pashkovsky@gmail.com>
+Subject: [PATCH] clutter/blur: Keep the blur's buffers for the next frame
+
+A blur that changes (its radius animating, or what it blurs moving) makes
+a new blur node, and with it a new ClutterBlur, for every frame it
+paints, and each made new textures and framebuffers: three GPU buffers
+allocated, mapped and cleared per frame. On the S10e (panfrost) that was
+GEM buffer creation, MMU mapping and page clearing in every frame of
+GNOME Shell's background blur behind the notification shade.
+
+The next frame wants the same sizes again, so the blur's offscreens are
+now kept when a blur or blur node is freed, up to eight of them and two
+screens' worth of pixels, and taken again by the next one that needs
+that size.
+
+For mutter-mobile 51.1.mobile.22 (/usr/src/gnome-mobile/mutter on the
+S10e, built into /opt/gnome-mobile by build51.sh).
+---
+diff --git a/clutter/clutter/clutter-blur-private.h b/clutter/clutter/clutter-blur-private.h
+index bbc9bdc..afa9c92 100644
+--- a/clutter/clutter/clutter-blur-private.h
++++ b/clutter/clutter/clutter-blur-private.h
+@@ -38,4 +38,10 @@ CoglTexture * clutter_blur_get_texture (ClutterBlur *blur);
+ 
+ void clutter_blur_free (ClutterBlur *blur);
+ 
++CoglOffscreen * clutter_blur_take_offscreen (CoglContext *context,
++                                             int          width,
++                                             int          height);
++
++void clutter_blur_keep_offscreen (CoglOffscreen *offscreen);
++
+ G_END_DECLS
+diff --git a/clutter/clutter/clutter-blur.c b/clutter/clutter/clutter-blur.c
+index 5151a4a..63d2e64 100644
+--- a/clutter/clutter/clutter-blur.c
++++ b/clutter/clutter/clutter-blur.c
+@@ -134,6 +134,87 @@ struct _ClutterBlur
+   BlurPass pass[2];
+ };
+ 
++/* A blur that changes (its radius animating, or what it blurs moving) makes
++ * a new blur node, and with it a new ClutterBlur, for every frame it paints,
++ * and each made new textures and framebuffers: three GPU buffers allocated,
++ * mapped and cleared per frame, the bulk of the frame for GNOME Shell's
++ * background blur on a phone. The next frame wants the same sizes again, so
++ * the last ones are kept for it, up to a few screens' worth of pixels.
++ */
++#define MAX_KEPT_OFFSCREENS 8
++#define MAX_KEPT_PIXELS (2 * 1920 * 1080)
++
++static GList *kept_offscreens = NULL;
++
++static int
++offscreen_pixels (CoglOffscreen *offscreen)
++{
++  CoglTexture *texture = cogl_offscreen_get_texture (offscreen);
++
++  return cogl_texture_get_width (texture) * cogl_texture_get_height (texture);
++}
++
++/* An offscreen whose texture is @width x @height, kept or new */
++CoglOffscreen *
++clutter_blur_take_offscreen (CoglContext *context,
++                             int          width,
++                             int          height)
++{
++  g_autoptr (CoglTexture) texture = NULL;
++  GList *l;
++
++  for (l = kept_offscreens; l; l = l->next)
++    {
++      CoglOffscreen *offscreen = l->data;
++      CoglTexture *kept = cogl_offscreen_get_texture (offscreen);
++
++      if (cogl_framebuffer_get_context (COGL_FRAMEBUFFER (offscreen)) == context &&
++          cogl_texture_get_width (kept) == width &&
++          cogl_texture_get_height (kept) == height)
++        {
++          kept_offscreens = g_list_delete_link (kept_offscreens, l);
++          return offscreen;
++        }
++    }
++
++  texture = cogl_texture_2d_new_with_size (context, width, height);
++  if (!texture)
++    return NULL;
++
++  cogl_texture_set_premultiplied (texture, TRUE);
++
++  return cogl_offscreen_new_with_texture (texture);
++}
++
++/* Takes @offscreen (from clutter_blur_take_offscreen()) back */
++void
++clutter_blur_keep_offscreen (CoglOffscreen *offscreen)
++{
++  int pixels = 0;
++  GList *l;
++
++  if (!offscreen)
++    return;
++
++  kept_offscreens = g_list_prepend (kept_offscreens, offscreen);
++
++  for (l = kept_offscreens; l; )
++    {
++      GList *next = l->next;
++
++      pixels += offscreen_pixels (l->data);
++      if (l != kept_offscreens &&
++          (pixels > MAX_KEPT_PIXELS ||
++           g_list_position (kept_offscreens, l) >= MAX_KEPT_OFFSCREENS))
++        {
++          pixels -= offscreen_pixels (l->data);
++          g_object_unref (l->data);
++          kept_offscreens = g_list_delete_link (kept_offscreens, l);
++        }
++      l = next;
++    }
++}
++
+ static CoglPipeline*
+ create_blur_pipeline (CoglContext *ctx)
+ {
+@@ -226,33 +307,32 @@ create_fbo (ClutterBlur *blur,
+             CoglContext *ctx,
+             BlurPass    *pass)
+ {
++  CoglOffscreen *offscreen;
+   float scaled_height;
+   float scaled_width;
+   float height;
+   float width;
+ 
+   g_clear_object (&pass->texture);
+-  g_clear_object (&pass->framebuffer);
++  clutter_blur_keep_offscreen ((CoglOffscreen *) g_steal_pointer (&pass->framebuffer));
+ 
+   width = cogl_texture_get_width (blur->source_texture);
+   height = cogl_texture_get_height (blur->source_texture);
+   scaled_width = floorf (width / blur->downscale_factor);
+   scaled_height = floorf (height / blur->downscale_factor);
+ 
+-  pass->texture = cogl_texture_2d_new_with_size (ctx,
+-                                                 (int) scaled_width,
+-                                                 (int) scaled_height);
+-  if (!pass->texture)
+-    return FALSE;
+-
+-  pass->framebuffer =
+-    COGL_FRAMEBUFFER (cogl_offscreen_new_with_texture (pass->texture));
+-  if (!pass->framebuffer)
++  offscreen = clutter_blur_take_offscreen (ctx,
++                                           (int) scaled_width,
++                                           (int) scaled_height);
++  if (!offscreen)
+     {
+       g_warning ("%s: Unable to create an Offscreen buffer", G_STRLOC);
+       return FALSE;
+     }
+ 
++  pass->framebuffer = COGL_FRAMEBUFFER (offscreen);
++  pass->texture = g_object_ref (cogl_offscreen_get_texture (offscreen));
++
+   cogl_framebuffer_orthographic (pass->framebuffer,
+                                  0.0, 0.0,
+                                  scaled_width,
+@@ -330,7 +410,7 @@ clear_blur_pass (BlurPass *pass)
+ {
+   g_clear_object (&pass->pipeline);
+   g_clear_object (&pass->texture);
+-  g_clear_object (&pass->framebuffer);
++  clutter_blur_keep_offscreen ((CoglOffscreen *) g_steal_pointer (&pass->framebuffer));
+ }
+ 
+ /**
+diff --git a/clutter/clutter/clutter-paint-nodes.c b/clutter/clutter/clutter-paint-nodes.c
+index 92545b7..e097c49 100644
+--- a/clutter/clutter/clutter-paint-nodes.c
++++ b/clutter/clutter/clutter-paint-nodes.c
+@@ -1551,11 +1551,14 @@ static void
+ clutter_blur_node_finalize (ClutterPaintNode *node)
+ {
+   ClutterBlurNode *blur_node = CLUTTER_BLUR_NODE (node);
++  ClutterLayerNode *layer_node = CLUTTER_LAYER_NODE (node);
+ 
+   g_clear_pointer (&blur_node->blur, clutter_blur_free);
+   g_clear_object (&blur_node->source_framebuffer);
+   g_clear_object (&blur_node->capture_framebuffer);
+   g_clear_object (&blur_node->capture_pipeline);
++  /* the next frame's blur node has a use for it */
++  clutter_blur_keep_offscreen ((CoglOffscreen *) g_steal_pointer (&layer_node->offscreen));
+ 
+   CLUTTER_PAINT_NODE_CLASS (clutter_blur_node_parent_class)->finalize (node);
+ }
+@@ -1610,11 +1613,13 @@ clutter_blur_node_new (unsigned int width,
+   backend = clutter_context_get_backend (context);
+   cogl_context = clutter_backend_get_cogl_context (backend);
+   blur_node = _clutter_paint_node_create (CLUTTER_TYPE_BLUR_NODE);
+-  texture = cogl_texture_2d_new_with_size (cogl_context, width, height);
+-
+-  cogl_texture_set_premultiplied (texture, TRUE);
++  offscreen = clutter_blur_take_offscreen (cogl_context, width, height);
++  if (!offscreen)
++    {
++      g_warning ("Unable to create paint node offscreen");
++      goto out;
++    }
+ 
+-  offscreen = cogl_offscreen_new_with_texture (texture);
+   if (!cogl_framebuffer_allocate (COGL_FRAMEBUFFER (offscreen), &error))
+     {
+       g_warning ("Unable to allocate paint node offscreen: %s",
+@@ -1622,6 +1627,8 @@ clutter_blur_node_new (unsigned int width,
+       goto out;
+     }
+ 
++  texture = g_object_ref (cogl_offscreen_get_texture (offscreen));
++
+   blur = clutter_blur_new (texture, radius);
+   blur_node->blur = blur;
+ 
