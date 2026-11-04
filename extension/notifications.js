@@ -342,10 +342,16 @@ class Row extends St.Widget {
         this._lastBaseline = last;
         this.expandedHeight = Math.max(MIN_H,
             last + (this._actionButtons.length > 0 ? BOTTOM_WITH_ACTIONS : BOTTOM_NO_ACTIONS));
-        this.updateTime();
+        this._setTime();
     }
 
+    // every row's time is looked at as the shade shows, in its first frame, and most say what they said
     updateTime() {
+        if (this.notification && shortTime(this.notification.datetime) !== this._time.text)
+            this._setTime();
+    }
+
+    _setTime() {
         if (!this.notification)
             return;
         this._time.text = shortTime(this.notification.datetime);
