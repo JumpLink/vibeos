@@ -4,6 +4,7 @@ import GLib from 'gi://GLib';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
+import {CollectWhenStill} from './gc.js';
 import {Home} from './home.js';
 import {overWindows} from './scanout.js';
 import {Service} from './service.js';
@@ -20,6 +21,7 @@ export default class GnomePhoneExtension extends Extension {
         if (GLib.file_test(debug, GLib.FileTest.EXISTS))
             global.context.unsafe_mode = true;
 
+        this._gc = new CollectWhenStill();
         this._home = new Home(this);
         this._service = new Service(this._home);
 
@@ -55,5 +57,7 @@ export default class GnomePhoneExtension extends Extension {
         this._service = null;
         this._home?.destroy();
         this._home = null;
+        this._gc?.destroy();
+        this._gc = null;
     }
 }
