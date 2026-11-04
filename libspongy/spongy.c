@@ -891,6 +891,16 @@ spongy_list_cancel (SpongyList *l, double t)
   release_glows (l, t);
 }
 
+void
+spongy_list_fling (SpongyList *l, float velocity, double t)
+{
+  velocity = fmaxf (-l->max_fling, fminf (velocity, l->max_fling));
+  if (fabsf (velocity) < l->min_fling)
+    return;
+  spongy_fling_start (&l->fling, 0, velocity, -INFINITY, INFINITY, t);
+  l->flinging = !l->fling.finished;
+}
+
 /* consumeFlingInStretch: a fling out of a stretch first undoes it, four times as fast as it scrolls */
 static float
 consume_fling_in_stretch (SpongyList *l, float unconsumed, double t)

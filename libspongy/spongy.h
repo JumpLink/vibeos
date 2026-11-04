@@ -9,7 +9,7 @@
  *
  * Plain C, no allocation, no clock of its own: every call takes the frame or event time in milliseconds. Distances
  * are pixels. The stretch itself is drawn by whoever renders (see spongy_stretch_map and the GLSL in
- * stretch.glsl); the GObject/GTK layer (spongy-gtk.h) does it for GTK 4. Numbers and line references are in
+ * stretch.glsl); spongy-gtk.h is a GTK 4 widget that does all of it. Numbers and line references are in
  * SPEC.md. */
 #pragma once
 
@@ -190,6 +190,8 @@ void   spongy_list_down           (SpongyList *l, float y, double t_ms);
 bool   spongy_list_move           (SpongyList *l, float y, double t_ms);
 void   spongy_list_up             (SpongyList *l, double t_ms);
 void   spongy_list_cancel         (SpongyList *l, double t_ms);
+/* A fling that no drag started (a touchpad's kinetic scroll): px/s, toward the end positive */
+void   spongy_list_fling          (SpongyList *l, float velocity, double t_ms);
 /* One frame: advances the fling and the springs. *top_amount / *bottom_amount are the stretch amounts to draw
  * with (the top one anchored at the top, positive; the bottom one at the bottom, negative). Returns true while
  * anything still moves. */
