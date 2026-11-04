@@ -163,6 +163,23 @@ drawer_close_now (void)
   spongy_edge_finish (&D.bump);
 }
 
+/* back with the drawer open: the programmatic close, 200 ms on ACCELERATE (it comes over D-Bus, between frames) */
+void
+drawer_back (void)
+{
+  if (D.f <= 0)
+    return;
+  N.now = MAX (N.now, g_get_monotonic_time () / 1000.0);
+  D.from = D.f;
+  D.to = 0;
+  D.t0 = N.now;
+  D.ms = PROG_CLOSE_MS;
+  D.curve = SPONGY_ACCELERATE;
+  D.settling = true;
+  D.overshot = false;
+  wl_schedule (N.wl);
+}
+
 bool
 drawer_frame (void)
 {

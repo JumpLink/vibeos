@@ -236,7 +236,8 @@ on_frame (gpointer data, gint64 time)
   float de = spongy_curve (SPONGY_LINEAR_OUT_SLOW_IN, f);           /* DECELERATED_EASE (0, 0, 0.2, 1) */
   float depth = floorf (MAX (DRAWER_DEPTH * de, nav_depth ()) * 256) / 256;
   float blurring = floorf (MAX (DRAWER_DEPTH * de, nav_blurs () ? nav_depth () : 0) * 256) / 256;
-  float radius = floorf (MIN (1, blurring / BLUR_FULL_DEPTH) * dp (BLUR_MAX_DP));
+  float radius = MAX (floorf (MIN (1, blurring / BLUR_FULL_DEPTH) * dp (BLUR_MAX_DP)), nav_scrim_blur ());
+  float scrim = nav_scrim_alpha ();
   float zoom = 1 + (WALLPAPER_ZOOM - 1) * (1 - depth);
   float scale = (1 + (CONTENT_SCALE - 1) * de) * launch_content_scale () * nav_home_scale ();
   float stretch = home_stretch ();
@@ -275,6 +276,8 @@ on_frame (gpointer data, gint64 time)
     draw_home (scale, stretch);
   }
   drawer_draw ();
+  if (scrim > 0)
+    gfx_rect (0, 0, N.W, N.H, 0, (GfxColor) { 0, 0, 0, scrim });
   if (A.stats)
     text_draw (A.stats, dp (16), dp (48), (GfxColor) { 1, 1, 1, 0.9f });
   gfx_pass_end ();

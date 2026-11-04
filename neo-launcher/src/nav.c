@@ -11,6 +11,12 @@
  *               ACCELERATE over 250 ms, depth 0.7 → 0 LINEAR, the blur following the depth
  *   home-reveal recents went home on a swipe up from the bar: WorkspaceRevealAnim, 0.88 → 1 and alpha 0 → 1, and
  *               the depth, all on DECELERATED_EASE over 350 ms
+ *   back        the back swipe from an app at its root (LauncherBackAnimationController): the workspace and dock
+ *               set to 0.85, depth 0.7 with its blur paused, the app's icon hidden, and the scrim over it all:
+ *               black at 0.8 with a blur of 90 px, which the shell then moves with the progress (Scrim)
+ *   back-reveal the back swipe committed: the reveal's scale and depth on SCALE_REVEAL over 1000 ms, but no alpha
+ *               (playAlphaReveal = false) and still no depth blur; the scrim's alpha and blur from where the shell
+ *               left them to 0 over 233 ms LINEAR; the icon stays hidden until the shell says
  *   normal      at rest
  *
  * Pose: the shell drives the workspace frame by frame (the swipe up from the bar on the home screen: HINT_STATE
@@ -28,14 +34,20 @@
 #define HOME_SCALE_FROM    0.92f
 #define HOME_REVEAL_MS     350.0
 #define HOME_REVEAL_FROM   0.88f
+#define BACK_SCRIM_ALPHA   0.8f           /* the dark theme's */
+#define BACK_SCRIM_BLUR    90.0f          /* px: max_depth_blur_radius_enhanced */
+#define BACK_SCRIM_FADE_MS 233.0
 
-typedef enum { NAV_NORMAL, NAV_BACKGROUND, NAV_REVEAL, NAV_HOME, NAV_HOME_REVEAL, NAV_POSE } NavState;
+typedef enum {
+  NAV_NORMAL, NAV_BACKGROUND, NAV_REVEAL, NAV_HOME, NAV_HOME_REVEAL, NAV_BACK, NAV_BACK_REVEAL, NAV_POSE
+} NavState;
 
 static struct {
   NavState state;
   double   t0;              /* ms on the frame clock */
   char    *hidden;          /* the app whose icon the window is flying into */
   struct { float scale, alpha, depth, ty; } pose;
+  struct { float alpha, blur; } scrim;  /* back: the scrim as the shell last set it */
   int      drawer;          /* the drawer as the shell last heard of it: -1 never told, 0 closed, 1 open */
   guint    owner_id, watch_id, icons_id;
   bool     shell;           /* the shell's service is on the bus */
@@ -104,7 +116,8 @@ static double
 state_ms (void)
 {
   switch (V.state) {
-  case NAV_REVEAL:      return REVEAL_MS;
+  case NAV_REVEAL:
+  case NAV_BACK_REVEAL: return REVEAL_MS;
   case NAV_HOME:        return HOME_MS;
   case NAV_HOME_REVEAL: return HOME_REVEAL_MS;
   default:              return 0;
@@ -123,8 +136,10 @@ float
 nav_depth (void)
 {
   switch (V.state) {
-  case NAV_BACKGROUND:  return BACKGROUND_DEPTH;
-  case NAV_REVEAL:      return BACKGROUND_DEPTH * (1 - scale_reveal (state_p ()));
+  case NAV_BACKGROUND:
+  case NAV_BACK:        return BACKGROUND_DEPTH;
+  case NAV_REVEAL:
+  case NAV_BACK_REVEAL: return BACKGROUND_DEPTH * (1 - scale_reveal (state_p ()));
   case NAV_HOME:        return BACKGROUND_DEPTH * (1 - state_p ());
   case NAV_HOME_REVEAL: return BACKGROUND_DEPTH * (1 - decelerated_ease (state_p ()));
   case NAV_POSE:        return V.pose.depth;
@@ -144,8 +159,10 @@ nav_home_scale (void)
 {
   float p = state_p ();
   switch (V.state) {
-  case NAV_BACKGROUND:  return REVEAL_SCALE_FROM;
-  case NAV_REVEAL:      return REVEAL_SCALE_FROM + (1 - REVEAL_SCALE_FROM) * scale_reveal (p);
+  case NAV_BACKGROUND:
+  case NAV_BACK:        return REVEAL_SCALE_FROM;
+  case NAV_REVEAL:
+  case NAV_BACK_REVEAL: return REVEAL_SCALE_FROM + (1 - REVEAL_SCALE_FROM) * scale_reveal (p);
   case NAV_HOME:        return HOME_SCALE_FROM + (1 - HOME_SCALE_FROM) * (1 - (1 - p) * (1 - p));
   case NAV_HOME_REVEAL: return HOME_REVEAL_FROM + (1 - HOME_REVEAL_FROM) * decelerated_ease (p);
   case NAV_POSE:        return V.pose.scale;
@@ -164,6 +181,27 @@ nav_home_alpha (void)
   case NAV_POSE:        return V.pose.alpha;
   default:              return 1;
   }
+}
+
+/* back's scrim over the whole launcher: its black's alpha, and the blur behind it in px */
+static float
+scrim_fade (void)
+{
+  return V.state == NAV_BACK_REVEAL ? 1 - CLAMP (state_t () / BACK_SCRIM_FADE_MS, 0, 1) : 1;
+}
+
+float
+nav_scrim_alpha (void)
+{
+  bool back = V.state == NAV_BACK || V.state == NAV_BACK_REVEAL;
+  return back ? V.scrim.alpha * scrim_fade () : 0;
+}
+
+float
+nav_scrim_blur (void)
+{
+  bool back = V.state == NAV_BACK || V.state == NAV_BACK_REVEAL;
+  return back ? V.scrim.blur * scrim_fade () : 0;
 }
 
 /* px down */
@@ -244,14 +282,21 @@ nav_drawer (bool open)
 static const char IFACE[] =
   "<node>"
   "  <interface name='de.yesman.NeoLauncher'>"
-  /* state: normal | background | reveal | home | home-reveal; t0: when it starts (µs, CLOCK_MONOTONIC); app_id
-   * (reveal): the icon a window is flying into, hidden until ShowIcon */
+  /* state: normal | background | reveal | home | home-reveal | back | back-reveal; t0: when it starts (µs,
+   * CLOCK_MONOTONIC); app_id (reveal, back, back-reveal): the icon a window is flying into, hidden until ShowIcon */
   "    <method name='State'>"
   "      <arg type='s' name='state' direction='in'/>"
   "      <arg type='x' name='t0' direction='in'/>"
   "      <arg type='s' name='app_id' direction='in'/>"
   "    </method>"
   "    <method name='ShowIcon'/>"
+  /* back: the scrim's alpha, and its blur in px */
+  "    <method name='Scrim'>"
+  "      <arg type='d' name='alpha' direction='in'/>"
+  "      <arg type='d' name='blur' direction='in'/>"
+  "    </method>"
+  /* back, as the launcher takes it: the drawer closes */
+  "    <method name='Back'/>"
   /* the workspace and dock now: scale (about the screen's centre), alpha, depth, and px down */
   "    <method name='Pose'>"
   "      <arg type='d' name='scale' direction='in'/>"
@@ -274,9 +319,14 @@ method_call (GDBusConnection *bus, const char *sender, const char *path, const c
     if (!g_strcmp0 (state, "background")) {
       V.state = NAV_BACKGROUND;
       drawer_close_now ();
-    } else if (!g_strcmp0 (state, "reveal")) {
-      V.state = NAV_REVEAL;
+    } else if (!g_strcmp0 (state, "reveal") || !g_strcmp0 (state, "back") || !g_strcmp0 (state, "back-reveal")) {
+      V.state = state[0] == 'r' ? NAV_REVEAL : state[4] ? NAV_BACK_REVEAL : NAV_BACK;
       V.t0 = t0 / 1000.0;
+      if (V.state == NAV_BACK) {
+        drawer_close_now ();
+        V.scrim.alpha = BACK_SCRIM_ALPHA;
+        V.scrim.blur = BACK_SCRIM_BLUR;
+      }
       Tile *t = tiles_get (app);
       if (t) {
         t->hidden = true;
@@ -291,6 +341,14 @@ method_call (GDBusConnection *bus, const char *sender, const char *path, const c
     wl_schedule (N.wl);
   } else if (!g_strcmp0 (method, "ShowIcon")) {
     show_icon ();
+  } else if (!g_strcmp0 (method, "Back")) {
+    drawer_back ();
+  } else if (!g_strcmp0 (method, "Scrim")) {
+    double alpha, blur;
+    g_variant_get (params, "(dd)", &alpha, &blur);
+    V.scrim.alpha = alpha;
+    V.scrim.blur = blur;
+    wl_schedule (N.wl);
   } else if (!g_strcmp0 (method, "Pose")) {
     double scale, alpha, depth, ty;
     g_variant_get (params, "(dddd)", &scale, &alpha, &depth, &ty);

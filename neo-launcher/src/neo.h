@@ -125,6 +125,8 @@ bool   nav_blurs         (void);                         /* that depth blurs (no
 float  nav_home_scale    (void);                         /* the workspace and dock's scale and alpha */
 float  nav_home_alpha    (void);
 float  nav_home_ty       (void);                         /* … and how far down it is moved */
+float  nav_scrim_alpha   (void);                         /* back's scrim over it all: black at this alpha */
+float  nav_scrim_blur    (void);                         /* … over a blur of this radius (px) */
 void   nav_drawer        (bool open);                    /* tell the shell the drawer opened or closed */
 void   nav_icons_changed (void);                         /* the page or the dock's icons moved */
 
@@ -141,4 +143,5 @@ void   drawer_touch_move (float x, float y, double t);
 void   drawer_touch_up   (float x, float y, double t);
 void   drawer_touch_cancel (double t);
 void   drawer_close_now  (void);
+void   drawer_back       (void);                         /* close on back: 200 ms ACCELERATE */
 bool   drawer_dragging   (void);
