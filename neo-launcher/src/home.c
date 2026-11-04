@@ -19,7 +19,7 @@
 #define CLOCK_TIME_BASELINE_DP (208.5 / 3.0)   /* below the widget cell's top */
 #define CLOCK_DATE_DP         9
 #define CLOCK_DATE_BASELINE_DP (247 / 3.0)
-#define CLOCK_TIME_RGB        0xA9EEF8      /* the wallpaper's accent (system_accent1_100), measured */
+#define CLOCK_TIME_RGB        0xE0E0E0      /* a soft grey-white, the owner's choice over the accent (0xA9EEF8) */
 
 static struct {
   /* geometry */
