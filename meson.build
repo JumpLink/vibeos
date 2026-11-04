@@ -7,3 +7,4 @@ libm = cc.find_library('m')
 
 subdir('libspongy')
 subdir('neo-launcher')
+subdir('boost')
