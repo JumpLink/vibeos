@@ -446,12 +446,15 @@ class StatusBar extends St.Widget {
             !w.minimized && !this._home.isHome(w) && w.get_window_type() === Meta.WindowType.NORMAL);
         const overApp = this._overAppOverride ?? apps.length > 0;
         const fullscreen = apps.some(w => w.is_fullscreen());
+        // an ease is 1.5-7 ms of the shell's frame here, and this runs on every restack and focus change
+        if (overApp !== this._overApp) {
+            this._background.ease({
+                opacity: overApp ? 255 : 0,
+                duration: 200,
+                mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+            });
+        }
         this._overApp = overApp;
-        this._background.ease({
-            opacity: overApp ? 255 : 0,
-            duration: 200,
-            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-        });
         this.visible = !fullscreen;
     }
 
