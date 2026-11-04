@@ -13,7 +13,7 @@ import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as Volume from 'resource:///org/gnome/shell/ui/status/volume.js';
 
-import {paintIcon, VectorIcon} from './icons.js';
+import {Canvas, paintIcon, VectorIcon} from './icons.js';
 import {animate, animateSpring, bezier, clamp, EMPHASIZED_DECELERATE, lerp, Spring} from './motion.js';
 import {Color, rgba, setSource} from './palette.js';
 import {px, SCALE, screenPixels} from './units.js';
@@ -107,7 +107,7 @@ function shapeStyle(color, radius, alpha = 1) {
 // --- the slider: track, handle and stream icon, 0 at the bottom
 
 const VolumeSlider = GObject.registerClass(
-class VolumeSlider extends St.DrawingArea {
+class VolumeSlider extends Canvas {
     constructor(dialog) {
         super({
             x: px(SLIDER_X), y: px(S), width: px(SLIDER_W), height: px(SLIDER_H),
@@ -164,8 +164,7 @@ class VolumeSlider extends St.DrawingArea {
         });
     }
 
-    vfunc_repaint() {
-        const cr = this.get_context();
+    draw(cr) {
         screenPixels(cr);
         const v = clamp(this.value);
         const x = TRACK_INSET_X, bottom = TRACK_TOP + TRACK_LEN;
@@ -197,7 +196,6 @@ class VolumeSlider extends St.DrawingArea {
             paintIcon(cr, icon, ix, activeStart + inset, ICON, Color.surfaceContainerHighest,
                 this._activeIconAlpha);
         }
-        cr.$dispose();
     }
 
     destroy() {
@@ -241,17 +239,15 @@ class VolumeDialog extends St.Widget {
             button_mask: St.ButtonMask.PRIMARY,
             accessible_name: 'Sound settings',
         });
-        const dots = new St.DrawingArea({width: px(BUTTON), height: px(BUTTON)});
-        dots.connect('repaint', () => {
-            const cr = dots.get_context();
+        const dots = new Canvas({width: px(BUTTON), height: px(BUTTON)});
+        dots.draw = cr => {
             screenPixels(cr);
             setSource(cr, Color.primary);
             for (const dx of [-DOT_PITCH, 0, DOT_PITCH]) {
                 cr.arc(BUTTON / 2 + dx, BUTTON / 2, DOT_RADIUS, 0, 2 * Math.PI);
                 cr.fill();
             }
-            cr.$dispose();
-        });
+        };
         const ripple = new St.Widget({
             x: px((BUTTON - SETTINGS_RIPPLE) / 2), y: px((BUTTON - SETTINGS_RIPPLE) / 2),
             width: px(SETTINGS_RIPPLE), height: px(SETTINGS_RIPPLE),

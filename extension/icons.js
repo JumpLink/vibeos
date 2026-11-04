@@ -91,9 +91,45 @@ export function paintIcon(cr, name, x, y, size, color, alpha = 1) {
     cr.restore();
 }
 
+// St.DrawingArea draws its picture again on every allocation, a move as much as a resize, and each drawing is a new
+// texture that Mesa converts on the CPU on its way to the GPU. The QS tiles' icons move on every frame of the shade
+// as the tiles squish, and drawing them again was half the shell's main thread there; and every icon in the shade was
+// allocated anew as it showed, 10 ms of texture uploads in its first frame (2026-11-04). A Canvas draws again only
+// when its size changes or it is asked to (queue_repaint). The size of a box that moved, x2 - x1, is off in its last
+// bits as often as not (46.400005, 46.399998 for 46.4): that is no change. Subclasses draw in draw(cr, width, height),
+// in logical px.
+export const Canvas = GObject.registerClass(
+class Canvas extends St.DrawingArea {
+    constructor(params) {
+        super(params);
+        this._width = this._height = -1;
+    }
+
+    vfunc_allocate(box) {
+        const [width, height] = box.get_size();
+        if (Math.abs(width - this._width) <= 1e-3 && Math.abs(height - this._height) <= 1e-3) {
+            this.set_allocation(box);
+            return;
+        }
+        this._width = width;
+        this._height = height;
+        super.vfunc_allocate(box);
+    }
+
+    vfunc_repaint() {
+        const cr = this.get_context();
+        const [width, height] = this.get_surface_size();
+        this.draw(cr, width, height);
+        cr.$dispose();
+    }
+
+    draw(_cr, _width, _height) {
+    }
+});
+
 // One icon as an actor, size in logical pixels
 export const VectorIcon = GObject.registerClass(
-class VectorIcon extends St.DrawingArea {
+class VectorIcon extends Canvas {
     constructor(name, size, color, alpha = 1) {
         super({width: size, height: size});
         this._name = name;
@@ -113,19 +149,18 @@ class VectorIcon extends St.DrawingArea {
     }
 
     setColor(color, alpha = 1) {
+        if (alpha === this._alpha && color.join() === this._color.join())
+            return;
         this._color = color;
         this._alpha = alpha;
         this.queue_repaint();
     }
 
-    vfunc_repaint() {
-        const cr = this.get_context();
-        const [w, h] = this.get_surface_size();
+    draw(cr, w, h) {
         cr.setOperator(0);
         cr.paint();
         cr.setOperator(2);
         const size = Math.min(w, h);
         paintIcon(cr, this._name, (w - size) / 2, (h - size) / 2, size, this._color, this._alpha);
-        cr.$dispose();
     }
 });

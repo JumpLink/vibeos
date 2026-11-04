@@ -13,7 +13,7 @@ import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
-import {paintIcon} from './icons.js';
+import {Canvas, paintIcon} from './icons.js';
 import {Color, cogl, font, setSource, Type} from './palette.js';
 import {px, screenPixels, SCALE} from './units.js';
 
@@ -269,7 +269,7 @@ function systemIconsKey({wifi, mobile, battery, powerSave}) {
 }
 
 export const SystemIcons = GObject.registerClass(
-class SystemIcons extends St.DrawingArea {
+class SystemIcons extends Canvas {
     // @end, @centerY in screen px of the area
     constructor(state, {end = SYSTEM_END, centerY = CENTER_Y, height = BAR_HEIGHT} = {}) {
         super({x: 0, y: 0, width: px(1080), height: px(height)});
@@ -283,11 +283,9 @@ class SystemIcons extends St.DrawingArea {
         }, this);
     }
 
-    vfunc_repaint() {
-        const cr = this.get_context();
+    draw(cr) {
         screenPixels(cr);
         paintSystemIcons(cr, this._state, this._end, this._centerY);
-        cr.$dispose();
         this._drawn = systemIconsKey(this._state);
     }
 });
@@ -412,15 +410,12 @@ class StatusBar extends St.Widget {
             this._notifications.add_child(icon);
         });
         if (sources.length > NOTIF_MAX) {
-            const dot = new St.DrawingArea({width: px(DOT_RADIUS * 2), height: px(DOT_RADIUS * 2)});
-            dot.connect('repaint', area => {
-                const cr = area.get_context();
-                const [w, h] = area.get_surface_size();
+            const dot = new Canvas({width: px(DOT_RADIUS * 2), height: px(DOT_RADIUS * 2)});
+            dot.draw = (cr, w, h) => {
                 cr.arc(w / 2, h / 2, w / 2, 0, 2 * Math.PI);
                 cr.setSourceRGBA(1, 1, 1, NOTIF_ALPHA);
                 cr.fill();
-                cr.$dispose();
-            });
+            };
             this._notifications.add_child(dot);
         }
         this._layoutNotifications();

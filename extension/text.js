@@ -6,8 +6,8 @@
 import GObject from 'gi://GObject';
 import Pango from 'gi://Pango';
 import PangoCairo from 'gi://PangoCairo';
-import St from 'gi://St';
 
+import {Canvas} from './icons.js';
 import {setSource} from './palette.js';
 import {SCALE, screenPixels, sp} from './units.js';
 
@@ -29,7 +29,7 @@ let measureContext = null;
 // One line of text, drawn in screen pixels. sizeSp, wght: the weight the phone actually draws (after its +300);
 // embolden: whether Skia also fakes bold on it; letterSpacing in em
 export const AndroidText = GObject.registerClass(
-class AndroidText extends St.DrawingArea {
+class AndroidText extends Canvas {
     constructor(text, sizeSp, wght, {colour, alpha = 1, embolden = false, letterSpacing = 0, opsz = sizeSp, wdth,
         rond} = {}) {
         super();
@@ -90,8 +90,7 @@ class AndroidText extends St.DrawingArea {
         this.queue_repaint();
     }
 
-    vfunc_repaint() {
-        const cr = this.get_context();
+    draw(cr) {
         screenPixels(cr);
         const layout = this._layout(PangoCairo.create_context(cr));
         cr.moveTo(this._pad, this._pad);
@@ -104,6 +103,5 @@ class AndroidText extends St.DrawingArea {
         } else {
             cr.fill();
         }
-        cr.$dispose();
     }
 });

@@ -12,7 +12,7 @@ import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as SystemActions from 'resource:///org/gnome/shell/misc/systemActions.js';
 
-import {hasIcon, paintIcon, VectorIcon} from './icons.js';
+import {Canvas, hasIcon, paintIcon, VectorIcon} from './icons.js';
 import {animate, animateSpring, clamp, lerp, Spring} from './motion.js';
 import {Color, cogl, font, mix, rgba, setSource, SurfaceEffect} from './palette.js';
 import {inkBox, SystemIcons} from './statusbar.js';
@@ -361,10 +361,10 @@ class BrightnessSlider extends St.Widget {
         this._state = state;
         this._shade = shade;
 
-        this._track = new St.DrawingArea({
+        this._track = new Canvas({
             x: px(SLIDER_X), y: 0, width: px(SLIDER_END - SLIDER_X), height: px(THUMB_H), reactive: true,
         });
-        this._track.connect('repaint', () => this._paintTrack());
+        this._track.draw = cr => this._paintTrack(cr);
         this.add_child(this._track);
 
         this._value = state.brightness ?? 0.5;
@@ -480,8 +480,7 @@ class BrightnessSlider extends St.Widget {
         });
     }
 
-    _paintTrack() {
-        const cr = this._track.get_context();
+    _paintTrack(cr) {
         screenPixels(cr);
         const w = SLIDER_END - SLIDER_X;
         const c = THUMB_W / 2 + this._value * (w - THUMB_W);
@@ -533,7 +532,6 @@ class BrightnessSlider extends St.Widget {
             paintIcon(cr, icon, activeEnd - TRACK_ICON_PAD - TRACK_ICON, iy, TRACK_ICON, Color.onPrimary,
                 this._activeIconAlpha);
         }
-        cr.$dispose();
     }
 
     destroy() {
