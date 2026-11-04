@@ -7,7 +7,14 @@
  *   reveal      the app went home: ScalingWorkspaceRevealAnim from t0, the workspace and dock 0.85 → 1 over
  *               1000 ms on SCALE_REVEAL, their alpha 0 → 1 over the first 200 ms, depth 0.7 → 0 on the same curve
  *               with the blur dropped in the first frame; the app's icon stays hidden until the shell says
- *   normal      at rest */
+ *   home        recents went home (OVERVIEW → NORMAL): the workspace 0.92 → 1 on DECELERATE and its alpha on
+ *               ACCELERATE over 250 ms, depth 0.7 → 0 LINEAR, the blur following the depth
+ *   home-reveal recents went home on a swipe up from the bar: WorkspaceRevealAnim, 0.88 → 1 and alpha 0 → 1, and
+ *               the depth, all on DECELERATED_EASE over 350 ms
+ *   normal      at rest
+ *
+ * Pose: the shell drives the workspace frame by frame (the swipe up from the bar on the home screen: HINT_STATE
+ * under the finger, then OVERVIEW or back to NORMAL), its scale, alpha, depth and offset; it stays until a State. */
 #include <math.h>
 
 #include "neo.h"
@@ -17,13 +24,19 @@
 #define REVEAL_SCALE_FROM  0.85f
 #define BACKGROUND_DEPTH   0.7f
 #define ICONS_DELAY_MS     100
+#define HOME_MS            250.0
+#define HOME_SCALE_FROM    0.92f
+#define HOME_REVEAL_MS     350.0
+#define HOME_REVEAL_FROM   0.88f
 
-typedef enum { NAV_NORMAL, NAV_BACKGROUND, NAV_REVEAL } NavState;
+typedef enum { NAV_NORMAL, NAV_BACKGROUND, NAV_REVEAL, NAV_HOME, NAV_HOME_REVEAL, NAV_POSE } NavState;
 
 static struct {
   NavState state;
   double   t0;              /* ms on the frame clock */
   char    *hidden;          /* the app whose icon the window is flying into */
+  struct { float scale, alpha, depth, ty; } pose;
+  int      drawer;          /* the drawer as the shell last heard of it: -1 never told, 0 closed, 1 open */
   guint    owner_id, watch_id, icons_id;
   bool     shell;           /* the shell's service is on the bus */
 } V;
@@ -71,56 +84,101 @@ scale_reveal (float x)
   return path (seg, 2, x);
 }
 
+/* Interpolators.DECELERATED_EASE */
+static float
+decelerated_ease (float x)
+{
+  static const float seg[1][8] = { { 0, 0, 0, 0, 0.2f, 1, 1, 1 } };
+  return path (seg, 1, x);
+}
+
 /* ---- what the home looks like now ------------------------------------------------------------------------------ */
 
 static float
-reveal_t (void)
+state_t (void)
 {
-  return V.state == NAV_REVEAL ? (float) MAX (0, N.now - V.t0) : 0;
+  return (float) MAX (0, N.now - V.t0);
+}
+
+static double
+state_ms (void)
+{
+  switch (V.state) {
+  case NAV_REVEAL:      return REVEAL_MS;
+  case NAV_HOME:        return HOME_MS;
+  case NAV_HOME_REVEAL: return HOME_REVEAL_MS;
+  default:              return 0;
+  }
+}
+
+/* progress through the state's own animation, 0 … 1 */
+static float
+state_p (void)
+{
+  double ms = state_ms ();
+  return ms > 0 ? CLAMP (state_t () / ms, 0, 1) : 1;
 }
 
 float
 nav_depth (void)
 {
-  if (V.state == NAV_BACKGROUND)
-    return BACKGROUND_DEPTH;
-  if (V.state == NAV_REVEAL)
-    return BACKGROUND_DEPTH * (1 - scale_reveal (reveal_t () / REVEAL_MS));
-  return 0;
+  switch (V.state) {
+  case NAV_BACKGROUND:  return BACKGROUND_DEPTH;
+  case NAV_REVEAL:      return BACKGROUND_DEPTH * (1 - scale_reveal (state_p ()));
+  case NAV_HOME:        return BACKGROUND_DEPTH * (1 - state_p ());
+  case NAV_HOME_REVEAL: return BACKGROUND_DEPTH * (1 - decelerated_ease (state_p ()));
+  case NAV_POSE:        return V.pose.depth;
+  default:              return 0;
+  }
 }
 
+/* whether the blur follows the depth (the reveal drops it in its first frame) */
 bool
 nav_blurs (void)
 {
-  return V.state == NAV_BACKGROUND;
+  return V.state == NAV_BACKGROUND || V.state == NAV_HOME || V.state == NAV_HOME_REVEAL || V.state == NAV_POSE;
 }
 
 float
 nav_home_scale (void)
 {
-  if (V.state == NAV_BACKGROUND)
-    return REVEAL_SCALE_FROM;
-  if (V.state == NAV_REVEAL)
-    return REVEAL_SCALE_FROM + (1 - REVEAL_SCALE_FROM) * scale_reveal (reveal_t () / REVEAL_MS);
-  return 1;
+  float p = state_p ();
+  switch (V.state) {
+  case NAV_BACKGROUND:  return REVEAL_SCALE_FROM;
+  case NAV_REVEAL:      return REVEAL_SCALE_FROM + (1 - REVEAL_SCALE_FROM) * scale_reveal (p);
+  case NAV_HOME:        return HOME_SCALE_FROM + (1 - HOME_SCALE_FROM) * (1 - (1 - p) * (1 - p));
+  case NAV_HOME_REVEAL: return HOME_REVEAL_FROM + (1 - HOME_REVEAL_FROM) * decelerated_ease (p);
+  case NAV_POSE:        return V.pose.scale;
+  default:              return 1;
+  }
 }
 
 float
 nav_home_alpha (void)
 {
-  if (V.state == NAV_BACKGROUND)
-    return 0;
-  if (V.state == NAV_REVEAL)
-    return CLAMP (reveal_t () / REVEAL_FADE_MS, 0, 1);
-  return 1;
+  switch (V.state) {
+  case NAV_BACKGROUND:  return 0;
+  case NAV_REVEAL:      return CLAMP (state_t () / REVEAL_FADE_MS, 0, 1);
+  case NAV_HOME:        return state_p () * state_p ();
+  case NAV_HOME_REVEAL: return decelerated_ease (state_p ());
+  case NAV_POSE:        return V.pose.alpha;
+  default:              return 1;
+  }
+}
+
+/* px down */
+float
+nav_home_ty (void)
+{
+  return V.state == NAV_POSE ? V.pose.ty : 0;
 }
 
 bool
 nav_frame (void)
 {
-  if (V.state == NAV_REVEAL && reveal_t () >= REVEAL_MS)
+  if (state_ms () > 0 && state_t () >= state_ms ())
     V.state = NAV_NORMAL;
-  return V.state == NAV_REVEAL;
+  return state_ms () > 0;
 }
 
 static void
@@ -135,6 +193,8 @@ show_icon (void)
 
 /* ---- the icons, for the shell ---------------------------------------------------------------------------------- */
 
+/* Every app's picture, and where its icon is when it is on the current page or the dock (else a zero rect): the
+ * shell flies windows home into the rects and shows the pictures on its recents cards */
 static gboolean
 push_icons (gpointer data)
 {
@@ -148,8 +208,8 @@ push_icons (gpointer data)
   g_hash_table_iter_init (&it, N.tiles);
   while (g_hash_table_iter_next (&it, &key, &value)) {
     Tile *t = value;
-    float r[4];
-    if (!home_icon_rect (t->id, r))
+    float r[4] = { 0 };
+    if (!home_icon_rect (t->id, r) && !t->splash_icon)
       continue;
     g_variant_builder_add (&b, "(s(dddd)s)", t->id, (double) r[0], (double) r[1], (double) r[2], (double) r[3],
                            t->splash_icon ? t->splash_icon : "");
@@ -168,19 +228,37 @@ nav_icons_changed (void)
   V.icons_id = g_timeout_add (ICONS_DELAY_MS, push_icons, NULL);
 }
 
+/* the drawer opened or closed: the shell leaves a swipe up from the bar to it while it is open */
+void
+nav_drawer (bool open)
+{
+  if (!V.shell || !N.bus || V.drawer == (int) open)
+    return;
+  V.drawer = open;
+  g_dbus_connection_call (N.bus, "de.yesman.GnomePhone", "/de/yesman/GnomePhone", "de.yesman.GnomePhone", "Drawer",
+                          g_variant_new ("(b)", open), NULL, G_DBUS_CALL_FLAGS_NONE, 2000, NULL, NULL, NULL);
+}
+
 /* ---- de.yesman.NeoLauncher ------------------------------------------------------------------------------------- */
 
 static const char IFACE[] =
   "<node>"
   "  <interface name='de.yesman.NeoLauncher'>"
-  /* state: normal | background | reveal; t0: when it starts (µs, CLOCK_MONOTONIC); app_id: the icon a window is
-   * flying into, hidden until ShowIcon */
+  /* state: normal | background | reveal | home | home-reveal; t0: when it starts (µs, CLOCK_MONOTONIC); app_id
+   * (reveal): the icon a window is flying into, hidden until ShowIcon */
   "    <method name='State'>"
   "      <arg type='s' name='state' direction='in'/>"
   "      <arg type='x' name='t0' direction='in'/>"
   "      <arg type='s' name='app_id' direction='in'/>"
   "    </method>"
   "    <method name='ShowIcon'/>"
+  /* the workspace and dock now: scale (about the screen's centre), alpha, depth, and px down */
+  "    <method name='Pose'>"
+  "      <arg type='d' name='scale' direction='in'/>"
+  "      <arg type='d' name='alpha' direction='in'/>"
+  "      <arg type='d' name='depth' direction='in'/>"
+  "      <arg type='d' name='ty' direction='in'/>"
+  "    </method>"
   "  </interface>"
   "</node>";
 
@@ -204,12 +282,26 @@ method_call (GDBusConnection *bus, const char *sender, const char *path, const c
         t->hidden = true;
         V.hidden = g_strdup (app);
       }
+    } else if (!g_strcmp0 (state, "home") || !g_strcmp0 (state, "home-reveal")) {
+      V.state = state[4] ? NAV_HOME_REVEAL : NAV_HOME;
+      V.t0 = t0 / 1000.0;
     } else {
       V.state = NAV_NORMAL;
     }
     wl_schedule (N.wl);
   } else if (!g_strcmp0 (method, "ShowIcon")) {
     show_icon ();
+  } else if (!g_strcmp0 (method, "Pose")) {
+    double scale, alpha, depth, ty;
+    g_variant_get (params, "(dddd)", &scale, &alpha, &depth, &ty);
+    if (V.state != NAV_POSE)
+      drawer_close_now ();
+    V.state = NAV_POSE;
+    V.pose.scale = scale;
+    V.pose.alpha = alpha;
+    V.pose.depth = depth;
+    V.pose.ty = ty;
+    wl_schedule (N.wl);
   }
   g_dbus_method_invocation_return_value (inv, NULL);
 }
@@ -220,6 +312,7 @@ static void
 shell_appeared (GDBusConnection *bus, const char *name, const char *owner, gpointer data)
 {
   V.shell = true;
+  V.drawer = -1;
   nav_icons_changed ();
 }
 

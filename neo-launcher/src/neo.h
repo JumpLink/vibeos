@@ -14,6 +14,7 @@
 /* ---- geometry (dp unless named _PX) ----------------------------------------------------------------------------- */
 
 #define STATUS_BAR_DP            (116 / 3.0)   /* the shell's status bar: the cutout sets it, not the 24 dp default */
+#define NAV_GESTURE_DP           32            /* the bottom strip the shell's swipe up starts in */
 #define GRID_COLS                5
 #define GRID_ROWS                5
 #define ICON_DP                  56
@@ -123,6 +124,8 @@ float  nav_depth         (void);                         /* the depth an app ove
 bool   nav_blurs         (void);                         /* that depth blurs (not during the reveal) */
 float  nav_home_scale    (void);                         /* the workspace and dock's scale and alpha */
 float  nav_home_alpha    (void);
+float  nav_home_ty       (void);                         /* … and how far down it is moved */
+void   nav_drawer        (bool open);                    /* tell the shell the drawer opened or closed */
 void   nav_icons_changed (void);                         /* the page or the dock's icons moved */
 
 /* drawer.c */

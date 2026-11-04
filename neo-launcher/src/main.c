@@ -186,6 +186,9 @@ draw_home (float scale, float stretch)
     return;
   gfx_save ();
   gfx_opacity (alpha);
+  float ty = nav_home_ty ();
+  if (ty != 0)
+    gfx_translate (0, ty);
   if (stretch != 0 && A.home_target) {
     float p[8] = { stretch, 0, N.W, N.H };
     gfx_effect_params (p);
@@ -223,6 +226,7 @@ on_frame (gpointer data, gint64 time)
   bool more = A.par ? parallax_tick (A.par) : false;
   more |= home_frame ();
   more |= drawer_frame ();
+  nav_drawer (drawer_progress () > 0 || drawer_dragging ());
   more |= nav_frame ();
   more |= N.launch_t0 != 0;
 
@@ -295,6 +299,9 @@ on_touch (gpointer data, WlTouchType type, int id, double x, double y, guint32 t
   switch (type) {
   case WL_TOUCH_DOWN:
     if (A.touch >= 0)
+      return;
+    /* the shell's from the bar: on the workspace that swipe is the hint and recents, never the drawer */
+    if (y >= N.H - dp (NAV_GESTURE_DP) && drawer_progress () == 0)
       return;
     A.touch = id;
     A.down_x = x;
