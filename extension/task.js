@@ -167,8 +167,8 @@ export class TaskView {
     }
 
     // The window's content scaled uniformly to the rect's width (device px), cropped about its middle to the
-    // rect's height; r the corners on screen (px). Off screen, the card is not drawn at all.
-    place(rect, r, alpha = 1) {
+    // rect's height (or from its top); r the corners on screen (px). Off screen, the card is not drawn at all.
+    place(rect, r, alpha = 1, cropTop = false) {
         const sc = this._scale;
         this.rect = rect;
         const visible = alpha > 0 && rect[2] > 0 && rect[0] < SCREEN_W && rect[3] > 0 && rect[1] < SCREEN_H;
@@ -177,12 +177,12 @@ export class TaskView {
             return;
         const s = (rect[2] - rect[0]) / SCREEN_W;
         const cropH = (rect[3] - rect[1]) / s;
-        const cropTop = (SCREEN_H - cropH) / 2;
+        const top = cropTop ? 0 : (SCREEN_H - cropH) / 2;
         this.root.set_pivot_point(0, 0);
         this.root.scale_x = this.root.scale_y = s;
         this.root.translation_x = rect[0] / sc - this.root.x;
-        this.root.translation_y = (rect[1] - cropTop * s) / sc - this.root.y;
-        this._effect.setGeometry(this.root, [0, cropTop / sc, SCREEN_W / sc, (cropTop + cropH) / sc],
+        this.root.translation_y = (rect[1] - top * s) / sc - this.root.y;
+        this._effect.setGeometry(this.root, [0, top / sc, SCREEN_W / sc, (top + cropH) / sc],
             r / (s * sc), 1 / (s * sc));
         this._effect.setAlpha(alpha);
     }

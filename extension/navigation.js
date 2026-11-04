@@ -19,6 +19,7 @@ import Shell from 'gi://Shell';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
+import {EdgeBack} from './back.js';
 import {capturing} from './capture.js';
 import {VelocityTracker} from './motion.js';
 import {HINT_SCRIM, PAGER_SNAP_MS, Recents, SETTLE_MS, warmUp} from './recents.js';
@@ -189,6 +190,8 @@ export class Navigation {
         Main.layoutManager.untrackChrome(bar);
         bar.hide();
 
+        this._back = new EdgeBack(this);
+
         this._warmId = GLib.idle_add(GLib.PRIORITY_LOW, () => {
             this._warmId = 0;
             warmUp();
@@ -222,8 +225,46 @@ export class Navigation {
         return !!this.home.window && !this.drawerOpen && (!focus || this.home.isHome(focus));
     }
 
-    _shadeOpen() {
+    shadeOpen() {
         return !!Main.layoutManager.uiGroup.get_children().find(a => a.name === 'gnomePhoneShade')?.isOpen;
+    }
+
+    // a swipe or its animation is under way
+    get busy() {
+        return !!(this._g || this._anim);
+    }
+
+    get recentsShown() {
+        return !!this._recents?.shown;
+    }
+
+    recentsBack() {
+        this._recents?.back();
+    }
+
+    // the actor whose grab keeps touches from the stage (recents), or null: back watches its touches
+    watchBack(actor) {
+        this._back.watch(actor);
+    }
+
+    // HapticFeedbackConstants.GESTURE_THRESHOLD_(DE)ACTIVATE: feedbackd's shortest tick
+    haptic() {
+        Gio.DBus.session.call('org.sigxcpu.Feedback', '/org/sigxcpu/Feedback', 'org.sigxcpu.Feedback',
+            'TriggerFeedback', new GLib.Variant('(ssa{sv}i)', ['de.yesman.GnomePhone', 'button-released', {}, -1]),
+            null, Gio.DBusCallFlags.NO_AUTO_START, -1, null, null);
+    }
+
+    // a key press for the focused window, with modifiers held
+    key(keyval, modifiers = []) {
+        this._keyboard ??= global.stage.context.get_backend().get_default_seat()
+            .create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
+        let t = GLib.get_monotonic_time();
+        for (const m of modifiers)
+            this._keyboard.notify_keyval(t++, m, Clutter.KeyState.PRESSED);
+        this._keyboard.notify_keyval(t++, keyval, Clutter.KeyState.PRESSED);
+        this._keyboard.notify_keyval(t++, keyval, Clutter.KeyState.RELEASED);
+        for (const m of [...modifiers].reverse())
+            this._keyboard.notify_keyval(t++, m, Clutter.KeyState.RELEASED);
     }
 
     // a window recents shows as a task
@@ -247,7 +288,9 @@ export class Navigation {
     _shouldHandle(event) {
         if (event.type() !== Clutter.EventType.TOUCH_BEGIN || this._g || this._anim || this._recents)
             return false;
-        if (Main.actionMode !== Shell.ActionMode.NORMAL || this._shadeOpen() || (!this._appWindow() && !this._atHome()))
+        if (this._back.busy)
+            return false;
+        if (Main.actionMode !== Shell.ActionMode.NORMAL || this.shadeOpen() || (!this._appWindow() && !this._atHome()))
             return false;
         const [x, y] = event.get_coords();
         if (y * this.scale < SCREEN_H - NAV_GESTURE_H)
@@ -461,22 +504,33 @@ export class Navigation {
     // none), with ScalingWorkspaceRevealAnim on the launcher from the same moment
     _flyHome(v) {
         const g = this._g;
-        const {win, recents} = g;
-        const task = recents.takeRunning();
+        const task = g.recents.takeRunning();
+        this.flight(g.win, task, task.rect ?? g.rect, g.r, v, {state: 'reveal'}, () => {
+            g.recents.destroy();
+            this._g = null;
+        });
+    }
+
+    // The window, shown by task (a TaskView) at start with corners r on screen, flies into its icon (or the
+    // icon-sized square above the dock when it has none) on RectFSpringAnim's springs from velocity v (px/ms), the
+    // launcher playing `state` from the same moment. cropTop: the window keeps its top as it narrows (predictive
+    // back), not its middle.
+    flight(win, task, start, r, v, {state, cropTop = false}, done) {
         const app = Shell.WindowTracker.get_default().get_window_app(win);
         const known = app ? this.icons.get(app.get_id()) : null;
         const icon = known?.rect[2] > 0 ? known : null;
         const t0 = GLib.get_monotonic_time();
-        this.launcherState('reveal', t0, icon ? app.get_id() : '');
+        this.launcherState(state, t0, icon ? app.get_id() : '');
 
         // the app goes to recents and the launcher takes the focus now; the clone flies on
-        Main.wm.skipNextEffect(task.actor);
+        if (task.actor)
+            Main.wm.skipNextEffect(task.actor);
         win.minimize();
         this.home.window?.activate(global.get_current_time());
         this.statusBarOverApp(null);
 
-        const start = task.rect ?? g.rect, startW = start[2] - start[0], startH = start[3] - start[1];
-        const r0 = g.r / (startW / SCREEN_W);          // the start radius in window px
+        const startW = start[2] - start[0], startH = start[3] - start[1];
+        const r0 = r / (startW / SCREEN_W);            // the start radius in window px
         // the icon moves while the home scales in, so the target is re-read every frame
         const target = elapsed => {
             if (!icon) {
@@ -514,7 +568,7 @@ export class Navigation {
             const rect = [X.x - w / 2, top, X.x + w / 2, top + h];
             const r = lerp(r0, SCREEN_W / 2, p) * w / SCREEN_W;
             const alpha = p < HOME_WIN_ALPHA_END ? 1 - Math.pow(p / HOME_WIN_ALPHA_END, 3) : 0;
-            task.place(rect, r, alpha);
+            task.place(rect, r, alpha, cropTop);
             floating?.place(rect, r, p);
             if (capturing())
                 log(`gnome-phone: home ${Math.round(elapsed * 1000)} p=${p.toFixed(3)} a=${alpha.toFixed(3)} ` +
@@ -523,8 +577,7 @@ export class Navigation {
         }, () => {
             this._anim = null;
             floating?.destroy();
-            recents.destroy();
-            this._g = null;
+            done();
             this.launcher('ShowIcon', null);
         });
     }
@@ -674,6 +727,8 @@ export class Navigation {
         this._recents?.destroy();
         this._recents = null;
         this._pause.destroy();
+        this._back.destroy();
+        this._keyboard?.run_dispose();
         global.stage.remove_action(this._gesture);
         this._gesture.disconnectObject(this);
         if (this._edgeDrag)

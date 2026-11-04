@@ -562,6 +562,8 @@ export class Recents {
             this._tween('chips', CHIP_FADE_MS, t => (this._chipAlpha = LINEAR(t)));
         this._grab = Main.pushModal(this.layer, {actionMode: Shell.ActionMode.NONE});
         this.layer.grab_key_focus();
+        // the grab keeps touches from the stage: back watches them here
+        this._nav.watchBack(this.layer);
         // this Clutter emits only the generic signal
         this.layer.connectObject('event', (_a, event) => {
             switch (event.type()) {
@@ -609,9 +611,13 @@ export class Recents {
             this._touch = {seq, x0: x, y0: y, x, y, mode: caught ? 'scroll' : null, hit: this._hit(x, y)};
             this._tracker.clear();
             this._tracker.add(time, x, y);
-            if (caught)
+            if (caught) {
                 this._scrolling = true;
-            return Clutter.EVENT_STOP;
+                return Clutter.EVENT_STOP;
+            }
+            // not claimed until it scrolls, dismisses or goes home: an actor handling an event drops the gestures
+            // tracking it (back, from the edges)
+            return Clutter.EVENT_PROPAGATE;
         }
         const touch = this._touch;
         if (!touch || seq !== touch.seq)
@@ -624,7 +630,7 @@ export class Recents {
             if (!touch.mode) {
                 const tx = x - touch.x0, ty = y - touch.y0;
                 if (Math.hypot(tx, ty) < TOUCH_SLOP)
-                    return Clutter.EVENT_STOP;
+                    return Clutter.EVENT_PROPAGATE;
                 if (touch.hit.kind === 'bar')
                     touch.mode = ty < 0 ? 'home' : 'none';
                 else if (Math.abs(tx) > Math.abs(ty))
@@ -673,14 +679,23 @@ export class Recents {
     _onKey(event) {
         if (this._busy)
             return Clutter.EVENT_STOP;
-        // back: to the app recents was opened over, if it is still there, else home
-        if (event.get_key_symbol() === Clutter.KEY_Escape) {
-            if (this._tasks.includes(this._runningTask))
-                this._launch(this._runningTask);
-            else
-                this.goHome();
-        }
+        if (event.get_key_symbol() === Clutter.KEY_Escape)
+            this.back();
         return Clutter.EVENT_STOP;
+    }
+
+    // back (RecentsState.onBackInvoked): to the app recents was opened over when its card is wholly on screen, to
+    // its card when it is not, home when it is gone
+    back() {
+        if (this._busy)
+            return;
+        const task = this._runningTask;
+        if (!this._tasks.includes(task) || task.dismissed)
+            this.goHome();
+        else if (task.view.rect && task.view.rect[0] >= 0 && task.view.rect[2] <= SCREEN_W)
+            this._launch(task);
+        else
+            this.snapTo(this._tasks.indexOf(task), PAGER_SNAP_MS);
     }
 
     _tap(hit) {
@@ -1204,6 +1219,7 @@ export class Recents {
         this._ticker?.stop();
         this._ticker = null;
         this._motions.clear();
+        this._nav.watchBack(null);
         if (this._grab)
             Main.popModal(this._grab);
         this._grab = null;
