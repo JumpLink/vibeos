@@ -227,9 +227,12 @@ export function symbolicIcon(gicon) {
 
 // The notification icon for a source: its -symbolic variant when the theme has one, else the icon masked white
 export function notificationIcon(source, size) {
-    const symbolic = symbolicIcon(source.icon);
+    // a source with no icon (a D-Bus client with no desktop file, Waydroid's apps): the fallback the shade's rows
+    // show. Not its notification's picture: that is mostly a round app icon, which the white mask makes a disc
+    const gicon = source.icon ?? new Gio.ThemedIcon({name: 'dialog-information'});
+    const symbolic = symbolicIcon(gicon);
     const icon = new St.Icon({
-        gicon: symbolic ?? source.icon,
+        gicon: symbolic ?? gicon,
         icon_size: size,
         style: 'color: white;',
         opacity: Math.round(NOTIF_ALPHA * 255),

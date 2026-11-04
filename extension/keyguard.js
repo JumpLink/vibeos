@@ -305,7 +305,7 @@ export class Keyguard extends Signals.EventEmitter {
     // the notification icons in their pill (keyguard-extras §B): one per app, three and the overflow dot at most
     _syncPill() {
         this._pill.destroy_all_children();
-        const sources = Main.messageTray.getSources().filter(s => s.notifications.length && s.icon);
+        const sources = Main.messageTray.getSources().filter(s => s.notifications.length);
         const n = Math.min(sources.length, PILL.max + 1);
         this._pill.visible = n > 0;
         if (!n)

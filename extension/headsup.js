@@ -448,8 +448,6 @@ class Entry {
 export class HeadsUp {
     constructor(shade) {
         this.shade = shade;
-        // nothing peeks while this is set: for the lock screen and the always-on display
-        this.suppressed = false;
         this.layer = new St.Widget({
             name: 'gnomePhoneHeadsUp',
             visible: false,
@@ -476,6 +474,11 @@ export class HeadsUp {
             'notify::visible', () => this._shadeVisibleChanged(),
             'expansion-changed', () => this._tracked?.follow(shade),
             this);
+        // the lock screen (it locks as the screen goes off, so the AOD too): nothing peeks, and what was up goes
+        Main.sessionMode.connectObject('updated', () => {
+            if (Main.sessionMode.isLocked)
+                this._releaseAll();
+        }, this);
     }
 
     _addSource(source) {
@@ -513,7 +516,7 @@ export class HeadsUp {
     }
 
     _canPeek() {
-        return !this.suppressed && !this.shade.visible && !Main.sessionMode.isLocked &&
+        return !this.shade.visible && !Main.sessionMode.isLocked &&
             Main.sessionMode.hasNotifications;
     }
 
@@ -649,6 +652,26 @@ export class HeadsUp {
         this._reschedule();
     }
 
+    // all of them, at once, with no animation (HeadsUpManager.releaseAllImmediately): the lock screen covers them,
+    // and one left pinned under it would still be there, its time run out, after the unlock
+    _releaseAll() {
+        this._queue = [];
+        this._clearTimeout();
+        this._held = false;
+        for (const e of [this._entry, this._tracked, ...this._leaving]) {
+            if (!e)
+                continue;
+            if (e.updateId)
+                GLib.source_remove(e.updateId);
+            e.updateId = 0;
+            this._leaving.delete(e);
+            e.destroy();
+            this._left(e);
+        }
+        this._entry = this._tracked = null;
+        this._sync();
+    }
+
     _sync() {
         this.layer.visible = !!this._entry || !!this._tracked || this._leaving.size > 0;
     }
@@ -750,6 +773,7 @@ export class HeadsUp {
         for (const source of Main.messageTray.getSources())
             source.disconnectObject(this);
         this.shade.disconnectObject(this);
+        Main.sessionMode.disconnectObject(this);
         for (const e of [this._entry, this._tracked, ...this._leaving]) {
             if (!e)
                 continue;
