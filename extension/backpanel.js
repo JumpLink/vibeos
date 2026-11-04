@@ -15,6 +15,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {cubic} from './launch.js';
 import {Animator, VelocityTracker} from './motion.js';
+import {overWindows} from './scanout.js';
 import {SCREEN_H, SCREEN_W, Spring, clamp, lerp} from './task.js';
 import {SCALE} from './units.js';
 
@@ -323,6 +324,7 @@ class BackPanel {
         this._effect = new PanelEffect();
         this.actor.add_effect(this._effect);
         Main.layoutManager.uiGroup.add_child(this.actor);
+        overWindows(this.actor);
         this.isLeft = true;
         this._anim = null;
 

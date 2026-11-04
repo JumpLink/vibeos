@@ -22,6 +22,7 @@ import {BackProbe} from './a11y.js';
 import {BackPanelController} from './backpanel.js';
 import {cubic} from './launch.js';
 import {Animator} from './motion.js';
+import {overWindows} from './scanout.js';
 import {NAV_GESTURE_H, SCREEN_H, SCREEN_W, Spring, TaskView, clamp, lerp} from './task.js';
 
 const EDGE_W = 30 * 3;                  // config_backGestureInset
@@ -64,6 +65,7 @@ class BackToHome {
         const m = Main.layoutManager.primaryMonitor;
         this.layer = new Clutter.Actor({name: 'gnomePhoneBack', x: m.x, y: m.y, width: m.width, height: m.height});
         Main.layoutManager.uiGroup.insert_child_above(this.layer, global.window_group);
+        overWindows(this.layer);
         // The scrim over the launcher, Android's colour layer with a background blur, is the launcher's to draw: the
         // shell's own blur reads the framebuffer at logical coordinates on a scaled monitor, and rebuilds its buffers
         // whenever the radius changes (17 fps here). The back state starts it at 0.8 over 90 px.

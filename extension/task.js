@@ -15,6 +15,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {capture, capturing} from './capture.js';
 import {CropEffect, PathInterpolator, cubic} from './launch.js';
 import {Animator} from './motion.js';
+import {overWindows} from './scanout.js';
 
 export const SCREEN_W = 1080, SCREEN_H = 2280;
 export const NAV_GESTURE_H = 96;               // the bottom strip a swipe starts in, 32 dp
@@ -162,6 +163,7 @@ function takeView() {
     };
     view.root.add_effect(view.effect);
     view.root.connect('destroy', () => (view.gone = true));
+    overWindows(view.root);
     return view;
 }
 

@@ -26,6 +26,7 @@ import {VectorIcon} from './icons.js';
 import {ICONS as L3_ICONS} from './l3icondata.js';
 import {VelocityTracker} from './motion.js';
 import {Color, cogl} from './palette.js';
+import {overWindows} from './scanout.js';
 import {
     ACCELERATE_2, ACCELERATE_DECELERATE, DECELERATE, DECELERATE_3, FAST_OUT_SLOW_IN, LINEAR, NAV_GESTURE_H,
     OVERSHOOT_1_2, SCREEN_H, SCREEN_W, SCROLL, Spring, TASK, TASK_CORNER_R, TASK_PIVOT, TASK_W, TOUCH_RESPONSE,
@@ -275,6 +276,7 @@ export class Recents {
         this.layer = new Clutter.Actor({name: 'gnomePhoneRecents', reactive: true,
             x: m.x, y: m.y, width: m.width, height: m.height});
         Main.layoutManager.uiGroup.insert_child_above(this.layer, global.window_group);
+        overWindows(this.layer);
         this._scrim = new Clutter.Actor({width: m.width, height: m.height, background_color: cogl(SCRIM), opacity: 0});
         this.layer.add_child(this._scrim);
 

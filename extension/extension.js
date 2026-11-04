@@ -5,6 +5,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {Home} from './home.js';
+import {overWindows} from './scanout.js';
 import {Service} from './service.js';
 import {Shade} from './shade.js';
 import {SystemState} from './state.js';
@@ -27,12 +28,15 @@ export default class GnomePhoneExtension extends Extension {
         this._restorePanel = hideShellPanel();
         this._statusBar = new StatusBar(this._state, this._home);
         Main.layoutManager.addChrome(this._statusBar, {affectsStruts: true});
+        overWindows(this._statusBar);
         // ... and the notification shade pulled from it, above everything
         this._shade = new Shade(this._state, this._statusBar);
         Main.layoutManager.addTopChrome(this._shade);
+        overWindows(this._shade);
         // the volume keys show the volume dialog, over the shade too
         this._volume = new VolumeDialog();
         Main.layoutManager.addTopChrome(this._volume);
+        overWindows(this._volume);
     }
 
     disable() {
