@@ -6,6 +6,7 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {CollectWhenStill} from './gc.js';
 import {Home} from './home.js';
+import {NoWindowMipmaps} from './mipmaps.js';
 import {overWindows} from './scanout.js';
 import {Service} from './service.js';
 import {Shade} from './shade.js';
@@ -22,6 +23,7 @@ export default class GnomePhoneExtension extends Extension {
             global.context.unsafe_mode = true;
 
         this._gc = new CollectWhenStill();
+        this._mipmaps = new NoWindowMipmaps();
         this._home = new Home(this);
         this._service = new Service(this._home);
 
@@ -57,6 +59,8 @@ export default class GnomePhoneExtension extends Extension {
         this._service = null;
         this._home?.destroy();
         this._home = null;
+        this._mipmaps?.destroy();
+        this._mipmaps = null;
         this._gc?.destroy();
         this._gc = null;
     }
