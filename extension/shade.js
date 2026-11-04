@@ -174,6 +174,34 @@ export const Shade = GObject.registerClass({
         return this._f > 0;
     }
 
+    // how far it is pulled, screen px
+    get pulledHeight() {
+        return this._f * H;
+    }
+
+    // where the stack's first row is, screen px, and whether it shows @notification expanded
+    get notificationsTop() {
+        return this._stackY + SCRIM_TOP_PADDING;
+    }
+
+    rowExpanded(notification) {
+        return this._stack.rowExpanded(notification);
+    }
+
+    // A pull from a heads-up notification: the shade starts as far open as the notification reaches down
+    // (HeadsUpTouchHelper: startExpand(startHeight)), and the drag goes on from there
+    beginPull(gesture, startHeight) {
+        this._beginDrag(gesture, false, startHeight);
+    }
+
+    updatePull(gesture) {
+        this._updateDrag(gesture);
+    }
+
+    endPull(cancelled) {
+        this._endDrag(cancelled);
+    }
+
     // --- dragging
 
     // the shade's position along one axis: f · H, then the QS's q · QS_TRAVEL (px)
@@ -188,7 +216,7 @@ export const Shade = GObject.registerClass({
         this._queueApply();
     }
 
-    _beginDrag(gesture, open) {
+    _beginDrag(gesture, open, startP = null) {
         // on the open shade a drag on a long stack scrolls it first (NPVC: canCollapsePanelOnTouch, QS expands
         // only from the stack's top)
         if (open && this._f === 1 && this._q === 0 && !this._anim) {
@@ -207,7 +235,7 @@ export const Shade = GObject.registerClass({
         this._stopAnimation();
         this._tracking = true;
         this._dragOpen = open;
-        this._dragStartP = this._position;
+        this._dragStartP = startP ?? this._position;
         this._dragStartY = gesture.get_centroid_abs().y;
         this._velocity.clear();
         this._trackVelocity(gesture);

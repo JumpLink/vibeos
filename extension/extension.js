@@ -6,6 +6,7 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {CollectWhenStill} from './gc.js';
 import {EndMark} from './endmark.js';
+import {HeadsUp} from './headsup.js';
 import {Home} from './home.js';
 import {NoWindowMipmaps} from './mipmaps.js';
 import {overWindows} from './scanout.js';
@@ -38,6 +39,10 @@ export default class GnomePhoneExtension extends Extension {
         this._shade = new Shade(this._state, this._statusBar);
         Main.layoutManager.addTopChrome(this._shade);
         overWindows(this._shade);
+        // heads-up notifications in place of GNOME's banners, over the shade too: it takes them along as it opens
+        this._headsUp = new HeadsUp(this._shade);
+        Main.layoutManager.addTopChrome(this._headsUp.layer);
+        overWindows(this._headsUp.layer);
         // the volume keys show the volume dialog, over the shade too
         this._volume = new VolumeDialog();
         Main.layoutManager.addTopChrome(this._volume);
@@ -51,6 +56,8 @@ export default class GnomePhoneExtension extends Extension {
         this._endMark = null;
         this._volume?.destroy();
         this._volume = null;
+        this._headsUp?.destroy();
+        this._headsUp = null;
         this._shade?.destroy();
         this._shade = null;
         this._statusBar?.destroy();

@@ -22,8 +22,8 @@ import {px, SCALE} from './units.js';
 // --- the stack, screen px (spec §4.1)
 const SCREEN_W = 1080;
 const SCREEN_H = 2280;
-const SIDE = 48;                        // 16 dp each side
-const ROW_W = 984;
+export const SIDE = 48;                 // 16 dp each side
+export const ROW_W = 984;
 const GAP = 6;                          // 2 dp between rows: the scrim shows through
 const SECTION_GAP = 48;                 // 16 dp before a new section
 const TOP_PADDING = 48;                 // the first row sits 16 dp under the scrim top
@@ -32,7 +32,7 @@ const BOTTOM_INSET = 48;                // the stack scrolls to end above the 16
 const MAX_FLING_VELOCITY = 24000;       // 8000 dp/s
 
 // --- a row (spec §4.3, the 2025 templates); y relative to the row's top
-const MIN_H = 216;                      // 72 dp, collapsed
+export const MIN_H = 216;               // 72 dp, collapsed
 const RADIUS = 84;                      // 28 dp at a section's ends
 const RADIUS_SMALL = 12;                // 4 dp elsewhere
 const ICON_POS = 48;
@@ -58,6 +58,8 @@ const ACTION_PAD = 36;                  // 4 dp inset + 8 dp padding on each sid
 const ACTION_MARGIN = 12;               // 4 dp between buttons
 const BOTTOM_WITH_ACTIONS = 175;        // the row's end below its last baseline (measured 420 px for one text line)
 const BOTTOM_NO_ACTIONS = 61;           // the text's descent + the action list's 10 dp minimum + 6 dp
+const HEADS_UP_ACTIONS_Y = 156;         // a heads-up's actions: under the collapsed layout, 20 dp up into it,
+const HEADS_UP_ACTIONS_H = 318;         // ... 72 - 20 + 48 + 6 dp in all (notification_2025_template_heads_up_base)
 const PILL_X = 858;                     // the expand pill: 26 x 18 dp, 16 dp in from the top right corner
 const PILL_Y = 48;
 const PILL_W = 78;
@@ -192,19 +194,26 @@ function cardStyle(color, top, bottom) {
 
 // --- a notification row
 
-const Row = GObject.registerClass(
+// @stack takes the row's taps and swipes; a heads-up has a card of its own colour (@card [rgb, alpha]), and the
+// circle's glyph is punched out in it (@glyph)
+export const Row = GObject.registerClass(
 class Row extends St.Widget {
-    constructor(stack, notification) {
+    constructor(stack, notification, {card = SurfaceEffect[1], glyph = GLYPH_COLOR} = {}) {
         super({reactive: true, width: px(ROW_W), height: px(MIN_H)});
         this._stack = stack;
         this.notification = notification;
+        this._cardColor = card;
+        this._glyphColor = glyph;
+        this.headsUp = false;
         this.userExpanded = null;       // the user's choice; else the stack opens the first alerting row
         this.expanded = false;
         this.expandP = 0;               // as laid out: 0 collapsed .. 1 expanded
         this.tx = 0;                    // the swipe's translation, px
         this.dismissing = false;
         this._roundness = [0, 0];       // top, bottom: 0 is 4 dp, 1 is 28 dp
+        this._visibleTop = 0;
         this._visibleH = MIN_H;
+        this._contentAlpha = 1;
         this._velocity = new VelocityTracker();
 
         // the card is the button that opens the notification; the content lies over it and takes no touches
@@ -383,7 +392,7 @@ class Row extends St.Widget {
                 icon_size: Math.round(px(GLYPH)),
                 // every class of a symbolic icon in the one colour
                 style: ['color', 'warning-color', 'error-color', 'success-color']
-                    .map(p => `${p}: ${rgba(GLYPH_COLOR)};`).join(' '),
+                    .map(p => `${p}: ${rgba(this._glyphColor)};`).join(' '),
             });
             glyph.set_position((px(ICON) - glyph.icon_size) / 2, (px(ICON) - glyph.icon_size) / 2);
             circle.add_child(glyph);
@@ -427,8 +436,18 @@ class Row extends St.Widget {
         }
     }
 
+    // collapsed, a heads-up has its actions under the content
+    get collapsedHeight() {
+        return this.headsUp && this._actionButtons.length > 0 ? HEADS_UP_ACTIONS_H : MIN_H;
+    }
+
     heightFor(p) {
-        return lerp(MIN_H, this.expandedHeight, p);
+        return lerp(this.collapsedHeight, this.expandedHeight, p);
+    }
+
+    setHeadsUp(headsUp) {
+        this.headsUp = headsUp;
+        this._layoutContent();
     }
 
     setChevron(expanded) {
@@ -478,10 +497,13 @@ class Row extends St.Widget {
             this._bigText.opacity = Math.round(255 * p);
         }
 
-        // the actions sit where the expanded layout has them; the growing row uncovers them
-        this._actions.visible = p > 0 && this._actionButtons.length > 0;
-        this._actions.set_position(0, px(this._lastBaseline + ACTIONS_TOP));
-        this._actions.opacity = Math.round(255 * fadeIn(p));
+        // the actions sit where the expanded layout has them; the growing row uncovers them. A heads-up shows them
+        // under its collapsed layout, and they move down to there as it expands
+        const headsUpActions = this.headsUp && this._actionButtons.length > 0;
+        const actionsY = this._lastBaseline + ACTIONS_TOP;
+        this._actions.visible = (p > 0 || headsUpActions) && this._actionButtons.length > 0;
+        this._actions.set_position(0, px(headsUpActions ? lerp(HEADS_UP_ACTIONS_Y, actionsY, p) : actionsY));
+        this._actions.opacity = headsUpActions ? 255 : Math.round(255 * fadeIn(p));
 
         // the pill: centred in a one-line row, at the top otherwise
         const pillY = this._hasText ? PILL_Y : lerp((MIN_H - PILL_H) / 2, PILL_Y, p);
@@ -491,13 +513,26 @@ class Row extends St.Widget {
     // --- the card: its height (the stack's clip) and corners
 
     setVisibleHeight(h) {
-        if (Math.abs(h - this._visibleH) < 0.01)
+        this.setVisibleRange(0, h);
+    }
+
+    // the card from @top to @bottom of the layout: a heads-up cycling out is cut from the top
+    setVisibleRange(top, bottom) {
+        if (Math.abs(top - this._visibleTop) < 0.01 && Math.abs(bottom - this._visibleH) < 0.01)
             return;
-        this._visibleH = h;
-        this.height = px(h);
-        this._card.set_size(px(ROW_W), px(h));
-        this._highlight.set_size(px(ROW_W), px(h));
-        this._content.set_clip(0, 0, px(ROW_W), px(h));
+        this._visibleTop = top;
+        this._visibleH = bottom;
+        this.height = px(bottom);
+        this._card.set_position(0, px(top));
+        this._card.set_size(px(ROW_W), px(bottom - top));
+        this._highlight.set_size(px(ROW_W), px(bottom - top));
+        this._content.set_clip(0, px(top), px(ROW_W), px(bottom - top));
+    }
+
+    // the content's alpha in a heads-up's appear animation (ActivatableNotificationView.setContentAlpha)
+    setContentAlpha(alpha) {
+        this._contentAlpha = alpha;
+        this._applyContentAlpha();
     }
 
     setRoundness(top, bottom, animated = false) {
@@ -527,7 +562,7 @@ class Row extends St.Widget {
 
     _applyCard() {
         const [top, bottom] = this._roundness;
-        this._card.style = cardStyle(rgba(...SurfaceEffect[1]), top, bottom);
+        this._card.style = cardStyle(rgba(...this._cardColor), top, bottom);
         this._highlight.style = cardStyle(rgba(Color.onSurface, PRESS_ALPHA), top, bottom);
     }
 
@@ -582,7 +617,12 @@ class Row extends St.Widget {
     setTranslation(tx) {
         this.tx = tx;
         this.translation_x = px(tx);
-        this._content.opacity = Math.round(255 * (1 - clamp(Math.abs(tx) / ROW_W / FAR_ENOUGH)));
+        this._applyContentAlpha();
+    }
+
+    _applyContentAlpha() {
+        this._content.opacity = Math.round(255 * this._contentAlpha *
+            (1 - clamp(Math.abs(this.tx) / ROW_W / FAR_ENOUGH)));
     }
 
     // SwipeHelper.dismissChild: a slow release accelerates out, a fling keeps its speed
@@ -888,6 +928,11 @@ class NotificationStack extends St.Widget {
         return !row.notification || row.dismissing || row.swiping || this._clearing;
     }
 
+    // a notification's row is shown expanded
+    rowExpanded(notification) {
+        return this._rows.get(notification)?.expanded ?? false;
+    }
+
     toggleExpanded(row) {
         if (this._busy(row))
             return;
@@ -1120,16 +1165,11 @@ class NotificationStack extends St.Widget {
     // --- the shade opening and closing
 
     _shadeVisibleChanged() {
-        const tray = Main.messageTray;
         if (this._shade.visible) {
-            // no banners over the open shade
-            this._bannerWasBlocked = tray.bannerBlocked;
-            tray.bannerBlocked = true;
             for (const row of this._rows.values())
                 row.updateTime();
             this._relayout(false);
         } else {
-            tray.bannerBlocked = this._bannerWasBlocked ?? false;
             this._clearing = false;
             this._fadeFooter?.stop();
             this._fadeFooter = null;
@@ -1147,8 +1187,6 @@ class NotificationStack extends St.Widget {
         this._fadeFooter?.stop();
         if (this._updateId)
             GLib.source_remove(this._updateId);
-        if (this._shade.visible)
-            Main.messageTray.bannerBlocked = this._bannerWasBlocked ?? false;
         for (const n of this._rows.keys())
             n.disconnectObject(this);
     }

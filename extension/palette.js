@@ -10,6 +10,7 @@ export const Color = {
     primary: [156, 207, 215],               // #9CCFD7, slider, active tiles, actions
     onPrimary: [13, 71, 78],                // #0D474E
     surface: [10, 15, 16],                  // #0A0F10, volume pill
+    surfaceContainer: [20, 27, 28],         // a heads-up's card: tone 9 at High's hue (2025 dark: 9, 12, 15), not measured
     surfaceContainerHigh: [24, 32, 34],
     surfaceContainerHighest: [30, 39, 41],  // #1E2729, inactive volume track
     onSurface: [221, 231, 233],             // #DDE7E9, all notification text
