@@ -15,6 +15,8 @@ import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 import {VectorIcon} from './icons.js';
 import {animate, animateSpring, Animator, bezier, clamp, FAST_OUT_LINEAR_IN, FAST_OUT_SLOW_IN, flingDismissing,
     lerp, splineFling, Spring, VelocityTracker} from './motion.js';
+import {magnetic} from './magnetic.js';
+import {RoundRect} from './roundrect.js';
 import {Color, cogl, font, rgba, SurfaceEffect} from './palette.js';
 import {symbolicIcon} from './statusbar.js';
 import {px, SCALE} from './units.js';
@@ -89,10 +91,12 @@ const ROUNDNESS_MS = 200;
 const ESCAPE_MS = 200;                  // a slow release's dismiss, and each of Clear all's slides
 const MAX_ESCAPE_MS = 400;
 const ESCAPE_VELOCITY = 1500;           // 500 dp/s
-const FAR_ENOUGH = 0.6;                 // of the row's width
+const MIN_DISMISS_VELOCITY = 6000;      // 2000 dp/s: a row that let go of its neighbours leaves at least this fast
+const MAX_VELOCITY = 12000;             // 4000 dp/s
+const FAR_ENOUGH = 0.6;                 // of the row's width: where the content has faded out
 const SWIPE_SLOP = 48;                  // the paging touch slop, 16 dp
-const SNAP_STIFFNESS = 200;             // the legacy snap back: STIFFNESS_LOW, DAMPING_RATIO_LOW_BOUNCY
-const SNAP_DAMPING = 0.5;
+const SNAP_STIFFNESS = 550;             // the magnetic snap back (SwipeHelper)
+const SNAP_DAMPING = 0.52;
 const CLEAR_DELAY = 60;                 // Clear all starts the rows bottom-up at 0, 60, 115, 165, ... ms
 const CLEAR_DELAY_STEP = 5;
 const CLEAR_DELAY_MIN = 30;
@@ -186,12 +190,6 @@ function openNotificationSettings() {
     }
 }
 
-function cardStyle(color, top, bottom) {
-    const rt = px(lerp(RADIUS_SMALL, RADIUS, top)).toFixed(2);
-    const rb = px(lerp(RADIUS_SMALL, RADIUS, bottom)).toFixed(2);
-    return `background-color: ${color}; border-radius: ${rt}px ${rt}px ${rb}px ${rb}px;`;
-}
-
 // --- a notification row
 
 // @stack takes the row's taps and swipes; a heads-up has a card of its own colour (@card [rgb, alpha]), and the
@@ -209,8 +207,11 @@ class Row extends St.Widget {
         this.expanded = false;
         this.expandP = 0;               // as laid out: 0 collapsed .. 1 expanded
         this.tx = 0;                    // the swipe's translation, px
+        this._fadeTx = 0;               // ... the part the content fades by: the row's own swipe, not a neighbour's
         this.dismissing = false;
         this._roundness = [0, 0];       // top, bottom: 0 is 4 dp, 1 is 28 dp
+        this._baseRound = [0, 0];       // ... the row's own (a section's ends are round)
+        this._swipeRound = [0, 0];      // ... what a swipe asks for; the larger of the two shows
         this._visibleTop = 0;
         this._visibleH = MIN_H;
         this._contentAlpha = 1;
@@ -224,11 +225,10 @@ class Row extends St.Widget {
             width: px(ROW_W),
             height: px(MIN_H),
         });
-        this._highlight = new St.Widget({opacity: 0});
-        this._card.set_child(this._highlight);
-        this._card.connect('notify::pressed', () => {
-            this._highlight.opacity = this._card.pressed ? 255 : 0;
-        });
+        // its fill a shader's: a swipe changes the corners every frame, which St would draw anew each time
+        this._shape = new RoundRect();
+        this._card.set_child(this._shape);
+        this._card.connect('notify::pressed', () => this._applyCard());
         this._card.connect('clicked', () => this._stack.activate(this));
         this.add_child(this._card);
 
@@ -275,7 +275,7 @@ class Row extends St.Widget {
         this._pill.connect('clicked', () => this._stack.toggleExpanded(this));
         this._content.add_child(this._pill);
 
-        // swiped sideways it goes (SwipeHelper, the legacy path)
+        // swiped sideways it goes (SwipeHelper, the magnetic path: magnetic.js)
         const swipe = new Clutter.PanGesture({
             pan_axis: Clutter.PanAxis.X,
             max_n_points: 1,
@@ -289,6 +289,7 @@ class Row extends St.Widget {
 
         this.connect('destroy', () => {
             this._swipeAnim?.stop();
+            this._magneticAnim?.stop();
             this._roundAnim?.stop();
         });
 
@@ -525,7 +526,7 @@ class Row extends St.Widget {
         this.height = px(bottom);
         this._card.set_position(0, px(top));
         this._card.set_size(px(ROW_W), px(bottom - top));
-        this._highlight.set_size(px(ROW_W), px(bottom - top));
+        this._shape.set_size(px(ROW_W), px(bottom - top));
         this._content.set_clip(0, px(top), px(ROW_W), px(bottom - top));
     }
 
@@ -533,6 +534,23 @@ class Row extends St.Widget {
     setContentAlpha(alpha) {
         this._contentAlpha = alpha;
         this._applyContentAlpha();
+    }
+
+    // the row's own corners
+    setBaseRoundness(top, bottom, animated = false) {
+        this._baseRound = [top, bottom];
+        this._syncRoundness(animated);
+    }
+
+    // the corners a swipe asks for (NotificationRoundnessManager's DISMISS_ANIMATION source); 0, 0 lets go
+    setSwipeRoundness(top, bottom, animated = false) {
+        this._swipeRound = [top, bottom];
+        this._syncRoundness(animated);
+    }
+
+    _syncRoundness(animated) {
+        this.setRoundness(Math.max(this._baseRound[0], this._swipeRound[0]),
+            Math.max(this._baseRound[1], this._swipeRound[1]), animated);
     }
 
     setRoundness(top, bottom, animated = false) {
@@ -562,8 +580,17 @@ class Row extends St.Widget {
 
     _applyCard() {
         const [top, bottom] = this._roundness;
-        this._card.style = cardStyle(rgba(...this._cardColor), top, bottom);
-        this._highlight.style = cardStyle(rgba(Color.onSurface, PRESS_ALPHA), top, bottom);
+        const rt = px(lerp(RADIUS_SMALL, RADIUS, top)), rb = px(lerp(RADIUS_SMALL, RADIUS, bottom));
+        this._shape.setRadii(rt, rt, rb, rb);
+        // pressed: the press highlight over the card, as one colour
+        const [rgb, alpha] = this._cardColor;
+        if (!this._card.pressed) {
+            this._shape.setColor(...rgb, alpha);
+            return;
+        }
+        const a = PRESS_ALPHA + alpha * (1 - PRESS_ALPHA);
+        const mix = (c, i) => (Color.onSurface[i] * PRESS_ALPHA + c * alpha * (1 - PRESS_ALPHA)) / a;
+        this._shape.setColor(...rgb.map(mix), a);
     }
 
     // --- swipe to dismiss
@@ -588,6 +615,7 @@ class Row extends St.Widget {
         this._swipeStartTx = this.tx;
         this._velocity.clear();
         this._trackVelocity(gesture);
+        magnetic.setTargets(this, this._stack.magneticRows?.(this));
         this._stack.onSwipeBegin(this);
     }
 
@@ -595,34 +623,86 @@ class Row extends St.Widget {
         if (!this._swiping)
             return;
         this._trackVelocity(gesture);
-        this.setTranslation(this._swipeStartTx + (gesture.get_centroid_abs().x - this._swipeStartX) * SCALE);
+        const t = this._swipeStartTx + (gesture.get_centroid_abs().x - this._swipeStartX) * SCALE;
+        if (!magnetic.setTranslation(this, t))
+            this.setTranslation(t);
     }
 
     _endSwipe(cancelled) {
         if (!this._swiping)
             return;
-        this._swiping = false;
-        const v = cancelled ? 0 : this._velocity.velocityX;
-        const fast = Math.abs(v) > ESCAPE_VELOCITY && (v > 0) === (this.tx > 0);
-        const far = Math.abs(this.tx) > FAR_ENOUGH * ROW_W;
-        if (!cancelled && (fast || far)) {
-            this.dismiss(v, !fast);
+        const v = cancelled ? 0 : clamp(this._velocity.velocityX, -MAX_VELOCITY, MAX_VELOCITY);
+        if (!cancelled && magnetic.isDismissible(this, v)) {
+            // SwipeHelper.dismissChild: one that let go leaves the way it went, at 2000 dp/s at least
+            const fast = Math.abs(v) > ESCAPE_VELOCITY && (v > 0) === (this.tx > 0);
+            const direction = magnetic.detachDirection(this);
+            const out = direction !== 0 ? direction * Math.max(MIN_DISMISS_VELOCITY, Math.abs(v)) : v;
+            this._swiping = false;
+            magnetic.end(this, true, out);
+            this.dismiss(out, !fast);
         } else {
+            this._swiping = false;
+            magnetic.end(this, false, v);
             this._stack.onSwipeEnd(this);
             this._snapBack(v);
         }
     }
 
-    // the content fades as the row goes, the card does not (SwipeHelper.updateSwipeProgressFromOffset)
-    setTranslation(tx) {
+    // --- the magnetic swipe's listener (ExpandableView.mMagneticRowListener)
+
+    get canBeDismissed() {
+        return !this.dismissing;
+    }
+
+    // the finger's speed while this row is the one swiped, px/s
+    get swipeVelocity() {
+        return this._swiping ? this._velocity.velocityX : 0;
+    }
+
+    // to @t at once, or, while a magnetic spring runs, by that spring
+    setMagneticTranslation(t) {
+        if (this._magneticAnim)
+            this._magneticSpring.target = t;
+        else
+            this.setTranslation(t, this._swiping);
+    }
+
+    triggerMagneticForce(t, {stiffness, dampingRatio}, v = 0) {
+        this.cancelTranslationAnimations();
+        this._magneticAnim?.stop();
+        // SpringForce's thresholds for a translation: 0.75 px, 46.9 px/s
+        this._magneticSpring = new Spring({stiffness, dampingRatio, value: this.tx, velocity: v, target: t,
+            threshold: 0.75});
+        const follow = x => this.setTranslation(x, this._swiping);
+        this._magneticAnim = animateSpring(this, this._magneticSpring, follow, () => {
+            this._magneticAnim = null;
+        });
+    }
+
+    cancelMagneticAnimations() {
+        this._magneticAnim?.stop();
+        this._magneticAnim = null;
+    }
+
+    cancelTranslationAnimations() {
+        this._swipeAnim?.stop();
+        this._swipeAnim = null;
+    }
+
+    // the content fades as the row goes, the card does not (SwipeHelper.updateSwipeProgressFromOffset); not for a
+    // neighbour a swipe pulls along (@fade false), which SwipeHelper never touches
+    setTranslation(tx, fade = true) {
         this.tx = tx;
         this.translation_x = px(tx);
-        this._applyContentAlpha();
+        if (fade || this._fadeTx !== 0) {
+            this._fadeTx = fade ? tx : 0;
+            this._applyContentAlpha();
+        }
     }
 
     _applyContentAlpha() {
         this._content.opacity = Math.round(255 * this._contentAlpha *
-            (1 - clamp(Math.abs(this.tx) / ROW_W / FAR_ENOUGH)));
+            (1 - clamp(Math.abs(this._fadeTx) / ROW_W / FAR_ENOUGH)));
     }
 
     // SwipeHelper.dismissChild: a slow release accelerates out, a fling keeps its speed
@@ -638,11 +718,15 @@ class Row extends St.Widget {
             ({duration, interpolator} = flingDismissing(this.tx, target, v, ROW_W));
         }
         this._swipeAnim?.stop();
+        this._magneticAnim?.stop();
+        this._magneticAnim = null;
         this._swipeAnim = animate(this, {
             from: this.tx, to: target, duration, interpolator, delay,
             onUpdate: x => this.setTranslation(x),
             onDone: () => {
                 this._swipeAnim = null;
+                // the swipe's corners go (handleChildViewDismissed)
+                magnetic.resetRoundness();
                 if (onDone)
                     onDone();
                 else
@@ -651,14 +735,26 @@ class Row extends St.Widget {
         });
     }
 
+    // the corners go back as it first swings past where it rests (onChildSnapBackOvershoots)
     _snapBack(v) {
         const spring = new Spring({
             stiffness: SNAP_STIFFNESS, dampingRatio: SNAP_DAMPING, value: this.tx, velocity: v, target: 0,
-            threshold: 0.5,
+            threshold: 0.75,
         });
+        let side = Math.sign(this.tx);
         this._swipeAnim?.stop();
-        this._swipeAnim = animateSpring(this, spring, x => this.setTranslation(x), () => {
+        this._magneticAnim?.stop();
+        this._magneticAnim = null;
+        this._swipeAnim = animateSpring(this, spring, x => {
+            this.setTranslation(x);
+            if (side !== 0 && Math.sign(x) === -side) {
+                side = 0;
+                magnetic.resetRoundness();
+            }
+        }, () => {
             this._swipeAnim = null;
+            if (side !== 0)
+                magnetic.resetRoundness();
         });
     }
 
@@ -669,6 +765,8 @@ class Row extends St.Widget {
         this._swiping = false;
         this._swipeAnim?.stop();
         this._swipeAnim = null;
+        this.cancelMagneticAnimations();
+        this.setSwipeRoundness(0, 0);
         this.setTranslation(0);
     }
 });
@@ -742,6 +840,7 @@ class NotificationStack extends St.Widget {
         this._shade = shade;
         this._rows = new Map();         // Notification -> Row
         this._items = [];               // laid out top to bottom: rows, "Silent", the footer
+        this._sections = [];            // the alerting rows and the silent ones, each in order
         this._layout = new Map();       // actor -> {offset, h, alpha, p} as shown, and the transition's ends
         this._order = 0;
         this._stackY = 0;
@@ -961,12 +1060,13 @@ class NotificationStack extends St.Widget {
             items.push(this._footer);
         this._items = items;
 
-        for (const section of [alerting, silent]) {
+        this._sections = [alerting, silent];
+        for (const section of this._sections) {
             section.forEach((row, i) => {
                 row.sectionTop = i === 0;
                 row.sectionBottom = i === section.length - 1;
-                if (!row.swiping && !row.dismissing)
-                    row.setRoundness(row.sectionTop ? 1 : 0, row.sectionBottom ? 1 : 0, animated);
+                if (!row.dismissing)
+                    row.setBaseRoundness(row.sectionTop ? 1 : 0, row.sectionBottom ? 1 : 0, animated);
             });
         }
 
@@ -1082,37 +1182,21 @@ class NotificationStack extends St.Widget {
 
     // --- swipes
 
-    _neighbours(row) {
-        const rows = this._items;
-        const i = rows.indexOf(row);
-        const above = rows[i - 1] instanceof Row ? rows[i - 1] : null;
-        const below = rows[i + 1] instanceof Row ? rows[i + 1] : null;
-        return [above, below];
+    // the rows a swipe pulls along: the swiped one's section, in order (NotificationTargetsHelper)
+    magneticRows(row) {
+        const section = this._sections.find(rows => rows.includes(row)) ?? [row];
+        return section.filter(r => r === row || !r.dismissing);
     }
 
-    // the swiped row and the corners facing it go round (NotificationRoundnessManager)
-    onSwipeBegin(row) {
-        const [above, below] = this._neighbours(row);
-        row.setRoundness(1, 1, true);
-        above?.setRoundness(above.sectionTop ? 1 : 0, 1, true);
-        below?.setRoundness(1, below.sectionBottom ? 1 : 0, true);
+    onSwipeBegin(_row) {
     }
 
-    onSwipeEnd(row) {
-        for (const r of [row, ...this._neighbours(row)]) {
-            if (r && !r.dismissing)
-                r.setRoundness(r.sectionTop ? 1 : 0, r.sectionBottom ? 1 : 0, true);
-        }
+    onSwipeEnd(_row) {
     }
 
     onDismissed(row) {
         if (this._clearing)
             return;
-        const [above, below] = this._neighbours(row);
-        for (const r of [above, below]) {
-            if (r && !r.dismissing)
-                r.setRoundness(r.sectionTop ? 1 : 0, r.sectionBottom ? 1 : 0, true);
-        }
         row.notification?.destroy(MessageTray.NotificationDestroyedReason.DISMISSED);
     }
 
@@ -1173,6 +1257,7 @@ class NotificationStack extends St.Widget {
             this._clearing = false;
             this._fadeFooter?.stop();
             this._fadeFooter = null;
+            magnetic.reset();
             for (const row of this._rows.values())
                 row.resetSwipe();
             this.stopScroll();

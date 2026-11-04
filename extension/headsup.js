@@ -188,11 +188,16 @@ class Entry {
         this.earliestRemoval = this.shownAt + MIN_SHOWN_MS;
 
         this.row = new Row(headsUp, notification, {card: [Color.surfaceContainer, 1], glyph: Color.surfaceContainer});
-        this.row.setRoundness(1, 1);
+        this.row.setBaseRoundness(1, 1);
         this.row.setHeadsUp(true);
         this.shadow = new Shadow();
         headsUp.layer.add_child(this.shadow.actor);
         headsUp.layer.add_child(this.row);
+        // swiped sideways, the card takes its shadow along
+        this.row.connect('notify::translation-x', () => {
+            if (this.shadow)
+                this.shadow.actor.translation_x = this.row.translation_x;
+        });
 
         // laid out: the expansion p, the reveal f (0 .. 1, linear in time), cut from the top or the bottom
         this.p = 0;
