@@ -81,6 +81,9 @@ export const SystemState = GObject.registerClass({
             this._power, this._color])
             settings.connectObject('changed', () => this._changed(), this);
         Main.brightnessManager.globalScale?.connectObject('notify::value', () => this._changed(), this);
+        // no brightness pop-up, as on Android: the shade's slider is the only one. The shell's manager shows its OSD
+        // for every change it is asked for, the slider's included (BrightnessManager._sync)
+        Main.brightnessManager._showOSD = () => {};
 
         this._initNetwork();
         this._initBattery();
@@ -406,6 +409,7 @@ export const SystemState = GObject.registerClass({
         if (this._changedId)
             global.compositor.get_laters().remove(this._changedId);
         Main.brightnessManager.globalScale?.disconnectObject(this);
+        delete Main.brightnessManager._showOSD;
         for (const obj of [this._notifications, this._interface, this._location, this._touchscreen, this._power,
             this._color, this._client, this._wifiDevice, this._accessPoint, this._modemDevice, this._modem, this._upower,
             this._upowerDaemon, this._ppd, this._bt, this._rfkill])
