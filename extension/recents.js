@@ -41,8 +41,9 @@ const TOUCH_SLOP = 24;                  // 8 dp
 const CARD_H = TASK[3] - TASK[1];
 const CARD_CENTER_Y = (TASK[1] + TASK[3]) / 2;
 
-// the scrim: over the launcher's blurred wallpaper, measured on the recording (recents.mp4)
-const SCRIM = [67, 91, 95];
+// the scrim over the launcher's blurred wallpaper: the dark surface, a dark blur (the recording's (67, 91, 95)
+// read as light gray here)
+const SCRIM = Color.surface;
 const SCRIM_ALPHA = 0.77;
 // HintState's: the overview's colour at alpha round(0.77 × 100) / 255, as a fraction of the overview's
 export const HINT_SCRIM = Math.round(SCRIM_ALPHA * 100) / 255 / SCRIM_ALPHA;
