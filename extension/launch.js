@@ -36,7 +36,7 @@ const ANDROID_DENSITY = 3;              // px per dp on the S10e
 // ---- curves -------------------------------------------------------------------------------------------------------
 
 // android.view.animation.PathInterpolator for a path of cubic segments ("M0,0 C… …")
-class PathInterpolator {
+export class PathInterpolator {
     constructor(path) {
         const n = path.match(/-?[\d.]+/g).map(Number);
         this._segs = [];
@@ -70,7 +70,7 @@ class PathInterpolator {
     }
 }
 
-const cubic = (x1, y1, x2, y2) => new PathInterpolator(`M0,0 C${x1},${y1} ${x2},${y2} 1,1`);
+export const cubic = (x1, y1, x2, y2) => new PathInterpolator(`M0,0 C${x1},${y1} ${x2},${y2} 1,1`);
 
 const EMPHASIZED = new PathInterpolator('M0,0 C0.05,0 0.133333,0.06 0.166666,0.4 C0.208333,0.82 0.25,1 1,1');
 const APP_OPEN_X = new PathInterpolator('M0,0 C0.1217,0.0462 0.15,0.4686 0.1667,0.66 C0.1834,0.8878 0.1667,1 1,1');
@@ -109,7 +109,7 @@ cogl_color_out *= cov * alpha;
 `;
 
 // The window (or splash) through a rounded crop: what Android's SurfaceControl crop + corner radius do
-const CropEffect = GObject.registerClass(
+export const CropEffect = GObject.registerClass(
 class CropEffect extends Clutter.ShaderEffect {
     vfunc_get_static_snippet() {
         return Cogl.Snippet.new(Cogl.SnippetHook.FRAGMENT, DECLARATIONS, CODE);
