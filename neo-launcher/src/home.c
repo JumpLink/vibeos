@@ -149,8 +149,9 @@ home_icon_rect (const char *id, float r[4])
   GPtrArray *items = N.model->pages->pdata[H.page];
   for (guint i = 0; i < items->len; i++)
     if (!g_strcmp0 (items->pdata[i], id)) {
+      /* where it rests once the page has settled: the shell reads this 100 ms after a swipe, mid-snap */
       slot_rect (H.page, i, &r[0], &r[1]);
-      r[0] -= H.scroll;
+      r[0] -= H.page * N.W;
       r[2] = r[3] = H.icon;
       return true;
     }
