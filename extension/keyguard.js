@@ -5,7 +5,9 @@
 // gestures, heads-ups and keybindings off, and this view holds a modal grab. It locks when the screen goes off
 // (power.js) and when the session starts. de.yesman.neo lock-type picks the bouncer: the PIN pad, the pattern, or none
 // (swipe). The secret is the user's password, checked by gp-auth through PAM; wrong attempts are throttled as the
-// AOSP gatekeeper does, kept across restarts in ~/.local/state/gnome-phone/keyguard.json.
+// AOSP gatekeeper does, kept across restarts in ~/.local/state/gnome-phone/keyguard.json. That file also keeps the
+// length of the last PIN that unlocked, for Android 14's auto-confirm: a PIN of 6 or more digits unlocks as its last
+// digit is typed.
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
@@ -78,6 +80,11 @@ const SURFACE_PIVOT_Y = 0.66;
 const SWIPE_FINISH = 0.3;
 const SWIPE_RISE = 540;
 
+// auto-confirm: AOSP's MIN_AUTO_PIN_REQUIREMENT_LENGTH
+const MIN_AUTO_CONFIRM = 6;
+// frames the bouncer is painted at opacity 1/255 when it is built, so its canvases are drawn and uploaded then
+const PRERENDER_FRAMES = 3;
+
 const showBouncerProgress = f => f >= 0.9 ? 1 : f < 0.6 ? 0 : (f - 0.6) / 0.3;
 // LockscreenToPrimaryBouncer: progress over f 1 -> 0.88, the lock screen gone by half of it
 const toBouncerProgress = f => 1 - clamp((f - 0.88) / 0.12);
@@ -138,6 +145,8 @@ export class Keyguard extends Signals.EventEmitter {
         this._interface = new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
         this.showing = false;
         this.bouncerShowing = false;
+        this._bouncerActive = false;
+        this._pinLength = 0;
         this._f = 1;
         this._bouncer = null;
         this._modeLocked = false;
@@ -155,6 +164,14 @@ export class Keyguard extends Signals.EventEmitter {
         this._interface.connectObject('changed::clock-format', () => this._syncClock(), this);
         this._screensaver.connectObject('changed::picture-uri', () => this._syncWallpaper(), this);
         state.connectObject('changed', () => this._syncState(), this);
+        // another lock type: the next lock builds its bouncer
+        this._neo?.connectObject('changed::lock-type', () => {
+            if (this._bouncerActive)
+                return;
+            this._endPrerender();
+            this._bouncer?.destroy();
+            this._bouncer = null;
+        }, this);
         Main.messageTray.connectObject(
             'source-added', (_tray, source) => this._addSource(source),
             'source-removed', (_tray, source) => {
@@ -190,6 +207,10 @@ export class Keyguard extends Signals.EventEmitter {
             height: monitor.height,
             style: 'background-color: black;',
         });
+        // Plain actors first and last: what shows and hides between them (the bouncer, the wallpaper) never changes
+        // the first or last visible child. St restyles a child that gains or loses :first-child or :last-child, and a
+        // restyle redraws every canvas under it: the bouncer showing restyled all its keys, mid-swipe.
+        this.actor.add_child(new Clutter.Actor());
         this._wallpaper = new St.Widget({width: monitor.width, height: monitor.height});
         this.actor.add_child(this._wallpaper);
 
@@ -230,6 +251,7 @@ export class Keyguard extends Signals.EventEmitter {
 
         this._bouncerBox = new St.Widget({width: monitor.width, height: monitor.height, opacity: 0, visible: false});
         this.actor.add_child(this._bouncerBox);
+        this.actor.add_child(new Clutter.Actor());
 
         this._tracker = new VelocityTracker();
         this._down = null;
@@ -328,6 +350,7 @@ export class Keyguard extends Signals.EventEmitter {
             this._modeLocked = true;
         }
         this._grab ??= Main.pushModal(this.actor, {actionMode: Shell.ActionMode.LOCK_SCREEN});
+        this._prepareBouncer();
         this.emit('changed');
     }
 
@@ -463,7 +486,7 @@ export class Keyguard extends Signals.EventEmitter {
         this._content.opacity = Math.round(255 * (1 - clamp(p / 0.5)));
         this._content.translation_y = 0;
         this._setBackdrop(p);
-        if (!this._bouncer)
+        if (!this._bouncerActive)
             return;
         const sp = showBouncerProgress(f);
         this._bouncerBox.opacity = Math.round(255 * (1 - sp));
@@ -482,14 +505,54 @@ export class Keyguard extends Signals.EventEmitter {
         this._scrim.opacity = Math.round(255 * p);
     }
 
-    _ensureBouncer() {
-        if (this._bouncer)
+    // The bouncer is built once and kept (a new one only when the lock type changes), and built when the phone locks,
+    // not when a swipe starts: building it and drawing its canvases for the first time cost the swipe's first 100 ms.
+    // Painted for a few frames at opacity 1/255 as it is built, so every canvas in it is drawn then, under the screen
+    // going off, and then hidden: hidden widgets keep their drawings.
+    _prepareBouncer() {
+        const kind = this._lockType === 'pattern' ? 'pattern' : 'pin';
+        if (this._bouncer?.kind === kind || !this._secure)
             return;
-        const type = this._lockType;
-        this._bouncer = type === 'pattern' ? new PatternView() : new PinView();
+        if (this._bouncerActive)
+            return;
+        this._bouncer?.destroy();
+        this._bouncer = kind === 'pattern' ? new PatternView() : new PinView();
         this._strings = Strings[this._bouncer.kind];
-        this._bouncer.connect('submit', (view, secret) => this._submit(secret));
+        this._bouncer.connect('submit', (view, secret) => this._submit(secret, view.autoConfirmed));
         this._bouncerBox.add_child(this._bouncer);
+        this._bouncer.setMessage(this._strings.prompt, '');
+        this._bouncer.setEnabled(false);
+        this._bouncerBox.translation_y = 0;
+        this._bouncerBox.opacity = 1;
+        this._bouncerBox.show();
+        let frames = 0;
+        this._prerenderId = global.stage.connect('after-paint', () => {
+            if (++frames < PRERENDER_FRAMES)
+                return;
+            this._endPrerender();
+        });
+    }
+
+    _endPrerender() {
+        if (!this._prerenderId)
+            return;
+        global.stage.disconnect(this._prerenderId);
+        this._prerenderId = 0;
+        if (!this._bouncerActive) {
+            this._bouncerBox.hide();
+            this._bouncerBox.opacity = 0;
+            this._bouncer?.setEnabled(true);
+        }
+    }
+
+    _ensureBouncer() {
+        if (this._bouncerActive)
+            return;
+        this._endPrerender();
+        this._prepareBouncer();
+        this._bouncerActive = true;
+        this._autoSuspended = false;
+        this._syncAutoConfirm();
         this._bouncerBox.translation_y = px(BOUNCER_SHIFT);
         this._bouncerBox.opacity = 0;
         this._bouncerBox.show();
@@ -499,8 +562,8 @@ export class Keyguard extends Signals.EventEmitter {
     }
 
     _dropBouncer() {
-        this._bouncer?.destroy();
-        this._bouncer = null;
+        this._bouncerActive = false;
+        this._bouncer?.park();
         this._bouncerBox.hide();
         this._bouncerBox.translation_y = 0;
         this._appeared = false;
@@ -508,6 +571,14 @@ export class Keyguard extends Signals.EventEmitter {
             this.bouncerShowing = false;
             this.emit('changed');
         }
+    }
+
+    // auto-confirm on while the last PIN that unlocked was 6 digits or more, and off for the rest of this bouncer once
+    // a PIN it confirmed was wrong: then the PIN may have changed, and only enter can take one of another length
+    _syncAutoConfirm() {
+        const length = this._pinLength >= MIN_AUTO_CONFIRM && !this._autoSuspended ? this._pinLength : 0;
+        if (this._bouncer)
+            this._bouncer.autoConfirm = length;
     }
 
     _bouncerShown() {
@@ -539,7 +610,7 @@ export class Keyguard extends Signals.EventEmitter {
     _hideBouncer(animated) {
         this._settle?.stop();
         this._settle = null;
-        if (!this._bouncer) {
+        if (!this._bouncerActive) {
             this._setF(1);
             return;
         }
@@ -568,13 +639,14 @@ export class Keyguard extends Signals.EventEmitter {
     // --- the secret
 
     _showPrompt() {
-        if (!this._bouncer)
+        if (!this._bouncerActive)
             return;
         this._bouncer.setMessage(this._strings.prompt, this._afterRestart ? this._strings.restart : '');
     }
 
-    // @secret: what was entered, or null for any input (the message goes back to the prompt)
-    async _submit(secret) {
+    // @secret: what was entered, or null for any input (the message goes back to the prompt); @auto: a PIN that
+    // confirmed itself
+    async _submit(secret, auto = false) {
         if (secret === null) {
             if (!this._lockedOut && !this._checking)
                 this._showPrompt();
@@ -593,11 +665,14 @@ export class Keyguard extends Signals.EventEmitter {
         this._checking = true;
         const result = await this._check(secret);
         this._checking = false;
-        if (!this._bouncer)
+        if (!this._bouncerActive)
             return;
         if (result === 0) {
             this._failures = 0;
             this._lockedUntil = 0;
+            // the length auto-confirm goes by: this PIN's, if it is digits only and long enough
+            if (this._bouncer.kind === 'pin')
+                this._pinLength = /^[0-9]+$/.test(secret) && secret.length >= MIN_AUTO_CONFIRM ? secret.length : 0;
             this._saveThrottle();
             this._afterRestart = false;
             this._bouncer.disappear(() => this._goingAway());
@@ -611,6 +686,10 @@ export class Keyguard extends Signals.EventEmitter {
             return;
         }
         this._failures++;
+        if (auto) {
+            this._autoSuspended = true;
+            this._syncAutoConfirm();
+        }
         const timeout = lockoutSeconds(this._failures);
         this._lockedUntil = timeout ? Date.now() + timeout * 1000 : 0;
         this._saveThrottle();
@@ -649,7 +728,7 @@ export class Keyguard extends Signals.EventEmitter {
         if (this._countdownId)
             GLib.source_remove(this._countdownId);
         this._countdownId = 0;
-        if (!this._bouncer)
+        if (!this._bouncerActive)
             return;
         if (!this._lockedOut) {
             this._bouncer.setEnabled(true);
@@ -658,7 +737,7 @@ export class Keyguard extends Signals.EventEmitter {
         this._bouncer.setEnabled(false);
         const tick = () => {
             const left = Math.round((this._lockedUntil - Date.now()) / 1000);
-            if (left <= 0 || !this._bouncer) {
+            if (left <= 0 || !this._bouncerActive) {
                 this._countdownId = 0;
                 this._showPrompt();
                 this._bouncer?.setEnabled(true);
@@ -678,9 +757,10 @@ export class Keyguard extends Signals.EventEmitter {
     _loadThrottle() {
         try {
             const [, bytes] = this._throttleFile.load_contents(null);
-            const {failures, until} = JSON.parse(new TextDecoder().decode(bytes));
+            const {failures, until, pinLength} = JSON.parse(new TextDecoder().decode(bytes));
             this._failures = failures | 0;
             this._lockedUntil = Number(until) || 0;
+            this._pinLength = pinLength | 0;
         } catch (e) {
         }
     }
@@ -692,7 +772,8 @@ export class Keyguard extends Signals.EventEmitter {
         } catch (e) {
         }
         try {
-            const data = JSON.stringify({failures: this._failures, until: this._lockedUntil});
+            const data = JSON.stringify({failures: this._failures, until: this._lockedUntil,
+                pinLength: this._pinLength});
             await file.replace_contents_async(new TextEncoder().encode(data), null, false,
                 Gio.FileCreateFlags.PRIVATE | Gio.FileCreateFlags.REPLACE_DESTINATION, null);
         } catch (e) {
@@ -785,6 +866,10 @@ export class Keyguard extends Signals.EventEmitter {
     destroy() {
         this._settle?.stop();
         this._unlocking?.stop();
+        if (this._prerenderId)
+            global.stage.disconnect(this._prerenderId);
+        this._prerenderId = 0;
+        this._neo?.disconnectObject(this);
         if (this._countdownId)
             GLib.source_remove(this._countdownId);
         this._wallClock.disconnectObject(this);

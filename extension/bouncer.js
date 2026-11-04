@@ -67,6 +67,10 @@ function centredText(parent, sizeSp, wght, cx, baseline) {
     return {
         actor: text,
         set: s => {
+            // each digit typed sets the prompt again: the same text is not drawn and uploaded again
+            if (s === text.shown)
+                return;
+            text.shown = s;
             text.setText(s);
             text.visible = !!s;
             place();
@@ -77,6 +81,9 @@ function centredText(parent, sizeSp, wght, cx, baseline) {
 // The primary and the two-line secondary message
 class Messages {
     constructor(parent) {
+        // A plain actor first, so a message coming or going never changes the parent's first visible child: St
+        // restyles the child that gains or loses :first-child, and a restyle redraws every canvas under it
+        parent.add_child(new Clutter.Actor());
         this._primary = centredText(parent, 18, 600, 540, MESSAGE_BASELINE);
         this._secondary = [0, 1].map(i => centredText(parent, 14, 600, 540, SECONDARY_BASELINE + i * SECONDARY_LINE));
     }
@@ -168,23 +175,149 @@ function squircle(cr, cx, cy, a, b, n) {
     cr.closePath();
 }
 
-// A key: the squircle, its digit or icon
+// A key's squircle, drawn once: at rest, or pressed (a little squarer, in the pressed colour). The key animates its
+// layers, not their drawings. Every redraw of a canvas costs a fresh texture upload, which Mesa converts pixel by pixel
+// on the S10e: the 12 keys redrawn each frame of the appear made a frame take 115 ms.
+const KeyShape = GObject.registerClass(
+class KeyShape extends Canvas {
+    constructor([fill, alpha], squareness) {
+        super({width: px(KEY), height: px(KEY)});
+        this.set_pivot_point(0.5, 0.5);
+        this._fill = fill;
+        this._alpha = alpha;
+        this._squareness = squareness;
+    }
+
+    draw(cr) {
+        screenPixels(cr);
+        squircle(cr, KEY / 2, KEY / 2, KEY / 2, KEY / 2, this._squareness);
+        setSource(cr, this._fill, this._alpha);
+        cr.fill();
+    }
+});
+
+// The digit, on a canvas just big enough for it at its widest: it is redrawn while the key is pressed (its colour and
+// width follow the press), and a small canvas is a small upload
+const DIGIT_FONT = `Google Sans Flex ${DIGIT_SIZE * 3}px @wght=600,wdth=100,ROND=100`;
+const DIGIT_WIDEST = 1.35;
+let digitBox = null;
+
+// the canvas for a digit, screen px, even so it centres on a whole pixel: the widest digit's logical box, 1.35 wide
+function digitCanvasSize() {
+    if (!digitBox) {
+        const layout = Pango.Layout.new(PangoCairo.FontMap.get_default().create_context());
+        layout.set_font_description(Pango.FontDescription.from_string(DIGIT_FONT));
+        let w = 0, h = 0;
+        for (const digit of '0123456789') {
+            layout.set_text(digit, -1);
+            const [, logical] = layout.get_pixel_extents();
+            w = Math.max(w, logical.width);
+            h = Math.max(h, logical.height);
+        }
+        const even = v => 2 * Math.ceil(v / 2);
+        digitBox = [even(w * DIGIT_WIDEST + 12), even(h + 12)];
+    }
+    return digitBox;
+}
+
+const DigitFace = GObject.registerClass(
+class DigitFace extends Canvas {
+    constructor(digit) {
+        const [w, h] = digitCanvasSize();
+        super({width: px(w), height: px(h)});
+        this.set_position(px((KEY - w) / 2), px((KEY - h) / 2));
+        this._w = w;
+        this._h = h;
+        this._digit = digit;
+        this._press = 0;
+    }
+
+    set press(v) {
+        if (v === this._press)
+            return;
+        this._press = v;
+        this.queue_repaint();
+    }
+
+    draw(cr) {
+        screenPixels(cr);
+        const layout = PangoCairo.create_layout(cr);
+        layout.set_font_description(Pango.FontDescription.from_string(DIGIT_FONT));
+        layout.set_text(this._digit, -1);
+        const [, logical] = layout.get_pixel_extents();
+        const [colour] = mixColour([Color.onSurface, 1], [Color.accent1_100, 1], this._press);
+        cr.translate(this._w / 2, (this._h - logical.height) / 2);
+        cr.scale(lerp(1, DIGIT_WIDEST, this._press), 1);
+        cr.moveTo(-logical.width / 2, 0);
+        setSource(cr, colour);
+        PangoCairo.show_layout(cr, layout);
+    }
+});
+
+// delete and enter: the icon, which does not change with the press
+const IconFace = GObject.registerClass(
+class IconFace extends Canvas {
+    constructor(icon) {
+        super({width: px(ICON), height: px(ICON)});
+        this.set_position(px((KEY - ICON) / 2), px((KEY - ICON) / 2));
+        this._icon = icon;
+    }
+
+    draw(cr) {
+        screenPixels(cr);
+        paintIcon(cr, this._icon, 0, 0, ICON, Color.onSurface);
+    }
+});
+
+// A key: the squircle at rest, the pressed one faded in over it, the digit or icon on top
 const PinKey = GObject.registerClass(
-class PinKey extends Canvas {
+class PinKey extends St.Widget {
     constructor({digit = null, icon = null, action = false}) {
         super({width: px(KEY), height: px(KEY)});
         this.set_pivot_point(0.5, 0.5);
-        this._digit = digit;
-        this._icon = icon;
-        this._fill = action ? SurfaceEffect[3] : SurfaceEffect[1];
+        this._layers = new St.Widget({width: px(KEY), height: px(KEY)});
+        this.add_child(this._layers);
+        this._shape = new KeyShape(action ? SurfaceEffect[3] : SurfaceEffect[1], SQUIRCLE_REST);
+        this._pressedShape = new KeyShape([PRIMARY_CONTAINER, 1], SQUIRCLE_PRESSED);
+        this._pressedShape.opacity = 0;
+        this._face = icon ? new IconFace(icon) : new DigitFace(digit);
+        this._layers.add_child(this._shape);
+        this._layers.add_child(this._pressedShape);
+        this._layers.add_child(this._face);
         this._press = 0;            // 0 normal .. 1 pressed: the shape, the colours, the digit's width
-        this._appear = 1;           // setProgress
         this._anim = null;
+        this._hidden = false;
     }
 
+    // The appear fades each key: without this, Clutter flattens a fading key's layers into an offscreen buffer of
+    // its own every frame (12 of them). Faded layer by layer instead, the digit lets a little of the squircle through
+    // while it fades in; nothing anyone can see in 650 ms.
+    vfunc_has_overlaps() {
+        return false;
+    }
+
+    // setProgress: the squircle's height 70 % -> 100 %, a scale of the whole shape as the drawing was
     set appear(s) {
-        this._appear = s;
-        this.queue_repaint();
+        const y = 0.7 + 0.3 * s;
+        this._shape.scale_y = y;
+        this._pressedShape.scale_y = y;
+    }
+
+    // the enter key while the PIN confirms itself: still there, so nothing around it restyles, but not seen
+    get hidden() {
+        return this._hidden;
+    }
+
+    set hidden(on) {
+        this._hidden = on;
+        this._layers.opacity = on ? 0 : 255;
+    }
+
+    _setPress(v) {
+        this._press = v;
+        this._pressedShape.opacity = Math.round(255 * v);
+        if (this._face instanceof DigitFace)
+            this._face.press = v;
     }
 
     // NumPadAnimator: down runs from its start values in 33 ms LINEAR, up back in 300 ms STANDARD
@@ -193,43 +326,23 @@ class PinKey extends Canvas {
         const from = down ? 0 : 1, to = down ? 1 : 0;
         this._anim = animate(this, {
             from, to, duration: down ? 33 : 300, interpolator: down ? LINEAR : STANDARD,
-            onUpdate: v => {
-                this._press = v;
-                this.queue_repaint();
-            },
+            onUpdate: v => this._setPress(v),
             onDone: () => {
                 this._anim = null;
             },
         });
     }
 
-    draw(cr) {
-        screenPixels(cr);
-        // appear: the height 70 % -> 100 %
-        const h = Math.floor(KEY * (0.7 + 0.3 * this._appear));
-        const [fill, alpha] = mixColour(this._fill, [PRIMARY_CONTAINER, 1], this._press);
-        squircle(cr, KEY / 2, KEY / 2, KEY / 2, h / 2, lerp(SQUIRCLE_REST, SQUIRCLE_PRESSED, this._press));
-        setSource(cr, fill, alpha);
-        cr.fill();
+    // back at rest at once: a bouncer put away mid-press
+    release() {
+        this._anim?.stop();
+        this._anim = null;
+        this._setPress(0);
+    }
 
-        if (this._icon) {
-            paintIcon(cr, this._icon, (KEY - ICON) / 2, (KEY - ICON) / 2, ICON, Color.onSurface);
-            return;
-        }
-        const layout = PangoCairo.create_layout(cr);
-        layout.set_font_description(Pango.FontDescription.from_string(
-            `Google Sans Flex ${DIGIT_SIZE * 3}px @wght=600,wdth=100,ROND=100`));
-        layout.set_text(this._digit, -1);
-        const [, logical] = layout.get_pixel_extents();
-        const [colour] = mixColour([Color.onSurface, 1], [Color.accent1_100, 1], this._press);
-        const scaleX = lerp(1, 1.35, this._press);
-        cr.save();
-        cr.translate(KEY / 2, (KEY - logical.height) / 2);
-        cr.scale(scaleX, 1);
-        cr.moveTo(-logical.width / 2, 0);
-        setSource(cr, colour);
-        PangoCairo.show_layout(cr, layout);
-        cr.restore();
+    destroy() {
+        this._anim?.stop();
+        super.destroy();
     }
 });
 
@@ -351,6 +464,8 @@ export const PinView = GObject.registerClass({
     _wireKey(key) {
         let longPress = 0;
         pressable(key, () => {
+            if (key.hidden)
+                return;
             key.animatePress(true);
             if (key.name === 'delete') {
                 longPress = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
@@ -360,6 +475,8 @@ export const PinView = GObject.registerClass({
                 });
             }
         }, inside => {
+            if (key.hidden)
+                return;
             key.animatePress(false);
             if (longPress) {
                 GLib.source_remove(longPress);
@@ -381,13 +498,26 @@ export const PinView = GObject.registerClass({
         if (!this._enabled)
             return;
         if (name === 'enter') {
-            this._enabled = false;
-            const pin = this._digits.join('');
-            this._digits = [];
-            this.emit('submit', pin);
+            this._confirm(false);
             return;
         }
         this._append(name);
+    }
+
+    // the PIN goes to keyguard.js: from enter, or by itself once it is as long as the PIN (@auto)
+    _confirm(auto) {
+        this._enabled = false;
+        const pin = this._digits.join('');
+        this._digits = [];
+        this.autoConfirmed = auto;
+        this.emit('submit', pin);
+    }
+
+    // Android 14's auto-confirm (LockSettings' PIN length, KeyguardPinViewController): with the PIN's length known and
+    // 6 or more, the PIN goes as its last digit is typed, and the enter key is not shown. 0 turns it off
+    set autoConfirm(length) {
+        this._autoLength = length;
+        this._keys.find(k => k.name === 'enter').hidden = length > 0;
     }
 
     // --- the dots
@@ -424,6 +554,8 @@ export const PinView = GObject.registerClass({
         dot.pop();
         this._layoutDots(true);
         this.emit('submit', null);
+        if (this._autoLength && this._digits.length === this._autoLength)
+            this._confirm(true);
     }
 
     _delete() {
@@ -525,11 +657,39 @@ export const PinView = GObject.registerClass({
 
     // on the right PIN: the whole view fades and rises 50 dp in 200 ms
     disappear(onDone) {
-        animate(this, {from: 0, to: 1, duration: 200, interpolator: FAST_OUT_LINEAR_IN,
+        this._disappearAnim = animate(this, {from: 0, to: 1, duration: 200, interpolator: FAST_OUT_LINEAR_IN,
             onUpdate: v => {
                 this.opacity = Math.round(255 * (1 - v));
                 this.translation_y = px(-150 * v);
-            }, onDone});
+            }, onDone: () => {
+                this._disappearAnim = null;
+                onDone?.();
+            }});
+    }
+
+    // put away until the next time: the keyguard keeps one bouncer, drawn while the screen goes off, rather than
+    // building and drawing one under the finger of every swipe up
+    park() {
+        this._appearAnim?.stop();
+        this._appearAnim = null;
+        this._disappearAnim?.stop();
+        this._disappearAnim = null;
+        this.reset(false);
+        for (const key of this._keys) {
+            key.shake?.stop();
+            key.shake = null;
+            key.set_scale(1, 1);
+            key.release();
+        }
+        this._rows.forEach(row => row.forEach(actor => {
+            actor.opacity = 255;
+            actor.translation_y = 0;
+            if (actor instanceof PinKey)
+                actor.appear = 1;
+        }));
+        this.opacity = 255;
+        this.translation_y = 0;
+        this._enabled = true;
     }
 
     // a touch on the keys or the field is the bouncer's own; elsewhere it may be a swipe
@@ -540,6 +700,7 @@ export const PinView = GObject.registerClass({
 
     destroy() {
         this._appearAnim?.stop();
+        this._disappearAnim?.stop();
         this._resetTimers?.forEach(id => GLib.source_remove(id));
         this._resetTimers = [];
         super.destroy();
@@ -848,7 +1009,7 @@ export const PatternView = GObject.registerClass({
     disappear(onDone) {
         const delay = (r, c) => (r * 60 + c * (r ** 0.4 + 0.4) * 10) * 0.6;
         let finished = false;
-        animate(this, {from: 0, to: 300, duration: 300, interpolator: LINEAR,
+        this._disappearAnim = animate(this, {from: 0, to: 300, duration: 300, interpolator: LINEAR,
             onUpdate: ms => {
                 this._grid.translation_y = px(-115.2 * FAST_OUT_LINEAR_IN(ms / 300));
                 this._lines.opacity = Math.round(255 * (1 - FAST_OUT_LINEAR_IN(clamp(ms / 125))));
@@ -862,7 +1023,34 @@ export const PatternView = GObject.registerClass({
                     finished = true;
                     onDone?.();
                 }
+            },
+            onDone: () => {
+                this._disappearAnim = null;
             }});
+    }
+
+    // put away until the next time (see PinView.park)
+    park() {
+        this._appearAnim?.stop();
+        this._appearAnim = null;
+        this._disappearAnim?.stop();
+        this._disappearAnim = null;
+        this._down = null;
+        this._clear();
+        this._grid.translation_y = 0;
+        this._lines.opacity = 255;
+        this._cells.forEach(({cell}) => {
+            cell.opacity = 255;
+            cell.translation_y = 0;
+            cell.set_scale(1, 1);
+        });
+        this.opacity = 255;
+        this.translation_y = 0;
+        this._enabled = true;
+    }
+
+    // the pattern has no length to confirm by
+    set autoConfirm(_length) {
     }
 
     ownsPoint(x, y) {
@@ -872,6 +1060,7 @@ export const PatternView = GObject.registerClass({
 
     destroy() {
         this._appearAnim?.stop();
+        this._disappearAnim?.stop();
         this._frames.stop();
         if (this._clearId)
             GLib.source_remove(this._clearId);
