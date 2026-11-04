@@ -13,6 +13,7 @@ import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as Volume from 'resource:///org/gnome/shell/ui/status/volume.js';
 
+import {raiseToTop} from './endmark.js';
 import {Canvas, paintIcon, VectorIcon} from './icons.js';
 import {animate, animateSpring, bezier, clamp, EMPHASIZED_DECELERATE, lerp, Spring} from './motion.js';
 import {Color, rgba, setSource} from './palette.js';
@@ -613,7 +614,7 @@ class VolumeDialog extends St.Widget {
     // --- showing and hiding
 
     show() {
-        Main.layoutManager.uiGroup.set_child_above_sibling(this, null);
+        raiseToTop(this);
         this._shown = true;
         this._syncStreamValue();
         this._animateShow(1);
@@ -711,6 +712,13 @@ class VolumeDialog extends St.Widget {
                 this.hide();
             return Clutter.EVENT_PROPAGATE;
         });
+    }
+
+    // the grab gives the panel key focus, and :focus would restyle all inside it (Shade.vfunc_key_focus_in)
+    vfunc_key_focus_in() {
+    }
+
+    vfunc_key_focus_out() {
     }
 
     _openSettings() {

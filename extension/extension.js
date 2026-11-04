@@ -5,6 +5,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {CollectWhenStill} from './gc.js';
+import {EndMark} from './endmark.js';
 import {Home} from './home.js';
 import {NoWindowMipmaps} from './mipmaps.js';
 import {overWindows} from './scanout.js';
@@ -41,9 +42,13 @@ export default class GnomePhoneExtension extends Extension {
         this._volume = new VolumeDialog();
         Main.layoutManager.addTopChrome(this._volume);
         overWindows(this._volume);
+        // ... and over them both, the end of uiGroup
+        this._endMark = new EndMark();
     }
 
     disable() {
+        this._endMark?.destroy();
+        this._endMark = null;
         this._volume?.destroy();
         this._volume = null;
         this._shade?.destroy();

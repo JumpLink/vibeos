@@ -421,6 +421,15 @@ export const Shade = GObject.registerClass({
         this._grabbed = null;
     }
 
+    // St gives the actor with key focus the :focus pseudo class, and that restyles every actor inside it: each icon
+    // in the shade drew its picture again as the grab was taken, and again as it was given back. Nothing here is
+    // styled by focus.
+    vfunc_key_focus_in() {
+    }
+
+    vfunc_key_focus_out() {
+    }
+
     vfunc_key_press_event(event) {
         const key = event.get_key_symbol();
         if (key === Clutter.KEY_Escape || key === Clutter.KEY_Back) {

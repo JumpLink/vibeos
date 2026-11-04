@@ -12,6 +12,7 @@ import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as SystemActions from 'resource:///org/gnome/shell/misc/systemActions.js';
 
+import {addEndMark} from './endmark.js';
 import {Canvas, hasIcon, paintIcon, VectorIcon} from './icons.js';
 import {animate, animateSpring, clamp, lerp, Spring} from './motion.js';
 import {Color, cogl, font, mix, rgba, setSource, SurfaceEffect} from './palette.js';
@@ -703,6 +704,7 @@ class QSPanel extends St.Widget {
         this._footer.add_child(settings);
         this._footer.add_child(power);
         this.add_child(this._footer);
+        addEndMark(this);
 
         this._f = -1;
         this._q = -1;
