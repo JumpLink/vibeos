@@ -1,0 +1,53 @@
+From: pulpoff <pashkovsky@gmail.com>
+Subject: [PATCH] blur-effect: Blur at a quarter of the resolution at least
+
+ShellBlurEffect downscaled only once the radius passed 12 px, so a blur
+that starts small, as the phone's notification shade's does (1 px and
+up), began on full-size framebuffers and reallocated them at each step
+of the factor as it grew: 1080x2280 buffers in the shade's first frames
+on the S10e, and a 46 ms first frame.
+
+SurfaceFlinger's Kawase blur works at a quarter of the resolution
+whatever the radius (kInputScale). Do the same as soon as there is a
+blur at all, as long as the downscaled size stays above
+MIN_DOWNSCALE_SIZE.
+
+For gnome-shell-mobile 51.1.mobile.22 (/usr/src/gnome-mobile/gnome-shell
+on the S10e, built into /opt/gnome-mobile by build51.sh).
+---
+diff --git a/src/shell-blur-effect.c b/src/shell-blur-effect.c
+index d362b0a..7382bde 100644
+--- a/src/shell-blur-effect.c
++++ b/src/shell-blur-effect.c
+@@ -52,6 +52,7 @@ static const gchar *brightness_glsl =
+ 
+ #define MIN_DOWNSCALE_SIZE 256.f
+ #define MAX_RADIUS 12.f
++#define MIN_DOWNSCALE_FACTOR 4.f
+ 
+ typedef enum
+ {
+@@ -296,6 +297,23 @@ calculate_downscale_factor (float width,
+   float scaled_height = height;
+   float scaled_radius = radius;
+ 
++  /* A quarter of the resolution at least, once there is a blur at all, as
++   * SurfaceFlinger's Kawase blur has whatever the radius (kInputScale). A blur
++   * that starts small, as the phone's notification shade's does, otherwise
++   * began on full-size framebuffers and reallocated them at every step of
++   * the factor as it grew.
++   */
++  while (radius > 0 && downscale_factor < MIN_DOWNSCALE_FACTOR &&
++         width / (downscale_factor * 2.f) >= MIN_DOWNSCALE_SIZE &&
++         height / (downscale_factor * 2.f) >= MIN_DOWNSCALE_SIZE)
++    {
++      downscale_factor *= 2.f;
++
++      scaled_width = width / downscale_factor;
++      scaled_height = height / downscale_factor;
++      scaled_radius = radius / downscale_factor;
++    }
++
+   /* This is the algorithm used by Firefox; keep downscaling until either the
+    * blur radius is lower than the threshold, or the downscaled texture is too
+    * small.
