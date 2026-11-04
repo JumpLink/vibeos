@@ -6,7 +6,6 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GnomeDesktop from 'gi://GnomeDesktop';
 import GObject from 'gi://GObject';
-import Shell from 'gi://Shell';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -16,6 +15,7 @@ import {addEndMark} from './endmark.js';
 import {Canvas, hasIcon, paintIcon, VectorIcon} from './icons.js';
 import {animate, animateSpring, clamp, lerp, Spring} from './motion.js';
 import {Color, cogl, font, mix, rgba, setSource, SurfaceEffect} from './palette.js';
+import {openSettings} from './settings.js';
 import {inkBox, SystemIcons} from './statusbar.js';
 import {px, screenPixels, SCALE} from './units.js';
 
@@ -97,17 +97,6 @@ const TILE_COLORS = {
 const MOBILE_ICONS = ['ic_signal_cellular_0_4_bar', 'ic_signal_cellular_1_4_bar', 'ic_signal_cellular_2_4_bar',
     'ic_signal_cellular_3_4_bar', 'ic_signal_cellular_4_4_bar'];
 
-function launchSettings(panel) {
-    const app = Shell.AppSystem.get_default().lookup_app('org.gnome.Settings.desktop');
-    try {
-        if (panel)
-            Gio.Subprocess.new(['gnome-control-center', panel], Gio.SubprocessFlags.NONE);
-        else
-            app?.activate();
-    } catch (e) {
-        logError(e, 'gnome-phone: cannot start Settings');
-    }
-}
 
 // The tiles of this phone (no torch LED, no power-profiles-daemon: battery saver shows unavailable)
 // state: 'active' | 'inactive' | 'unavailable'
@@ -249,7 +238,7 @@ class Tile extends St.Button {
         if (spec.panel && Clutter.LongPressGesture) {
             const longPress = new Clutter.LongPressGesture({required_button: Clutter.BUTTON_PRIMARY});
             longPress.connect('recognize', () => {
-                launchSettings(spec.panel);
+                openSettings(spec.panel);
                 onActivated?.(this, true);
             });
             this.add_action(longPress);
@@ -693,7 +682,7 @@ class QSPanel extends St.Widget {
             'Settings');
         settings.connect('clicked', () => {
             shade.close?.();
-            launchSettings(null);
+            openSettings();
         });
         const power = new FooterButton('ic_qs_footer_power', [Color.primary, 1], Color.onPrimary, POWER_X,
             'Power menu');

@@ -17,6 +17,7 @@ import {raiseToTop} from './endmark.js';
 import {Canvas, paintIcon, VectorIcon} from './icons.js';
 import {animate, animateSpring, bezier, clamp, EMPHASIZED_DECELERATE, lerp, Spring} from './motion.js';
 import {Color, rgba, setSource} from './palette.js';
+import {openSettings} from './settings.js';
 import {px, SCALE, screenPixels} from './units.js';
 
 // --- geometry, screen px (spec §5.3); the window runs from the status bar's bottom to the screen's
@@ -723,11 +724,7 @@ class VolumeDialog extends St.Widget {
 
     _openSettings() {
         this.hide();
-        try {
-            Gio.Subprocess.new(['gnome-control-center', 'sound'], Gio.SubprocessFlags.NONE);
-        } catch (e) {
-            logError(e, 'gnome-phone: cannot start Settings');
-        }
+        openSettings('sound');
     }
 
     _onDestroy() {

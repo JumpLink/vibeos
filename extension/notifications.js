@@ -18,6 +18,7 @@ import {animate, animateSpring, Animator, bezier, clamp, FAST_OUT_LINEAR_IN, FAS
 import {magnetic} from './magnetic.js';
 import {RoundRect} from './roundrect.js';
 import {Color, cogl, font, rgba, SurfaceEffect} from './palette.js';
+import {openSettings} from './settings.js';
 import {symbolicIcon} from './statusbar.js';
 import {px, SCALE} from './units.js';
 
@@ -180,14 +181,6 @@ function plainBody(notification) {
         }
     }
     return body.trim();
-}
-
-function openNotificationSettings() {
-    try {
-        Gio.Subprocess.new(['gnome-control-center', 'notifications'], Gio.SubprocessFlags.NONE);
-    } catch (e) {
-        logError(e, 'gnome-phone: cannot start Settings');
-    }
 }
 
 // --- a notification row
@@ -1041,7 +1034,7 @@ class NotificationStack extends St.Widget {
 
     openSettings() {
         this._shade.close();
-        openNotificationSettings();
+        openSettings('notifications');
     }
 
     // --- layout
