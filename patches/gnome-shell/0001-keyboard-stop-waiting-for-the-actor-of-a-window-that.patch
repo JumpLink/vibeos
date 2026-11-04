@@ -1,0 +1,38 @@
+From: pulpoff <pashkovsky@gmail.com>
+Subject: [PATCH] keyboard: Stop waiting for the actor of a window that is gone
+
+FocusTracker waits for every new window's actor in an idle that returns
+SOURCE_CONTINUE until the actor is there. A window unmanaged before that
+never gets one, and the idle then runs on every main loop iteration for
+the rest of the session: 21,000 times a second, the shell's main thread
+at 100% CPU, and every source below PRIORITY_DEFAULT_IDLE starved, GJS's
+garbage collection among them (one major GC in 25 minutes).
+
+Stop waiting once the window is unmanaged.
+
+For gnome-shell-mobile 51.1.mobile.22 (/usr/src/gnome-mobile/gnome-shell on
+the S10e, built into /opt/gnome-mobile by build51.sh).
+---
+diff --git a/js/ui/keyboard.js b/js/ui/keyboard.js
+index aaf172d..5b44808 100644
+--- a/js/ui/keyboard.js
++++ b/js/ui/keyboard.js
+@@ -664,11 +664,17 @@ class FocusTracker extends Signals.EventEmitter {
+                 this.emit('window-changed', this._currentWindow);
+             },
+             'window-created', (display, window) => {
++                let unmanaged = false;
++                const unmanagedId = window.connect('unmanaged', () => (unmanaged = true));
+                 GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                     const windowActor = window.get_compositor_private();
+-                    if (!windowActor)
++                    if (!windowActor && !unmanaged)
+                         return GLib.SOURCE_CONTINUE;
+ 
++                    window.disconnect(unmanagedId);
++                    if (!windowActor)
++                        return GLib.SOURCE_REMOVE;
++
+                     // We assume skip_taskbar windows are popovers
+                     if (window.skip_taskbar) {
+                         this.emit('focus-popover-added', window);
