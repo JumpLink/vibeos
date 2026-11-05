@@ -584,6 +584,18 @@ gfx_scale (float sx, float sy, float px, float py)
 }
 
 void
+gfx_rotate (float radians, float px, float py)
+{
+  gfx_translate (px, py);
+  State *s = &G.state;
+  float c = cosf (radians), n = sinf (radians);
+  float m0 = s->m[0], m1 = s->m[1], m2 = s->m[2], m3 = s->m[3];
+  s->m[0] = m0 * c + m1 * n; s->m[1] = -m0 * n + m1 * c;
+  s->m[2] = m2 * c + m3 * n; s->m[3] = -m2 * n + m3 * c;
+  gfx_translate (-px, -py);
+}
+
+void
 gfx_opacity (float a)
 {
   G.state.alpha *= a;
@@ -645,8 +657,8 @@ gfx_effect_params (const float p[8])
   }
 }
 
-void
-gfx_rect (float x, float y, float w, float h, float radius, GfxColor c)
+static GfxInst *
+solid (float x, float y, float w, float h, float radius, GfxColor c)
 {
   GfxInst *q = gfx_push (NULL, GFX_PIPE_QUAD);
   float a = c.a * q->a;
@@ -655,6 +667,29 @@ gfx_rect (float x, float y, float w, float h, float radius, GfxColor c)
   q->u1 = q->v1 = 1;
   q->radius = radius;
   q->mode = GFX_MODE_SOLID;
+  return q;
+}
+
+void
+gfx_rect (float x, float y, float w, float h, float radius, GfxColor c)
+{
+  solid (x, y, w, h, radius, c);
+}
+
+void
+gfx_rect_corners (float x, float y, float w, float h, const float r[4], GfxColor c)
+{
+  GfxInst *q = solid (x, y, w, h, 0, c);
+  q->u0 = r[0]; q->v0 = r[1]; q->u1 = r[2]; q->v1 = r[3];
+  q->mode = GFX_MODE_CORNERS;
+}
+
+void
+gfx_ring (float x, float y, float w, float h, float radius, float width, GfxColor c)
+{
+  GfxInst *q = solid (x, y, w, h, radius, c);
+  q->u0 = width; q->v0 = q->u1 = q->v1 = 0;
+  q->mode = GFX_MODE_RING;
 }
 
 void

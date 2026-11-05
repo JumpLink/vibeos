@@ -107,7 +107,7 @@ dock_rect (int slot, float *x, float *y)
 }
 
 Tile *
-home_tile_at (float x, float y, float *ix, float *iy)
+home_tile_at (float x, float y, float *ix, float *iy, ModelPos *pos)
 {
   for (guint i = 0; i < N.model->dock->len; i++) {
     float rx, ry;
@@ -116,6 +116,7 @@ home_tile_at (float x, float y, float *ix, float *iy)
         y < H.dock_top + dp (HOTSEAT_CELL_DP)) {
       *ix = rx;
       *iy = ry;
+      *pos = (ModelPos) { i, -1, -1 };
       return tiles_get (N.model->dock->pdata[i]);
     }
   }
@@ -131,10 +132,21 @@ home_tile_at (float x, float y, float *ix, float *iy)
     if (x >= rx - dp (8) && x < rx + H.icon + dp (8) && y >= ry - dp (8) && y < ry + dp (LABEL_BASELINE_DP + 8)) {
       *ix = rx;
       *iy = ry;
+      *pos = (ModelPos) { -1, page, i };
       return tiles_get (items->pdata[i]);
     }
   }
   return NULL;
+}
+
+void
+home_model_changed (void)
+{
+  H.page = CLAMP (H.page, 0, n_pages () - 1);
+  if (!H.snapping && !H.dragging)
+    H.scroll = H.page * N.W;
+  nav_icons_changed ();
+  wl_schedule (N.wl);
 }
 
 bool

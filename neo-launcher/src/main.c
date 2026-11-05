@@ -15,12 +15,15 @@
 #define DRAWER_DEPTH       0.33f      /* bottomSheetDepth */
 #define BLUR_MAX_DP        30         /* max_depth_blur_radius_enhanced */
 #define BLUR_FULL_DEPTH    0.3f
+#define HOLD_MS            375        /* a long press: the menu, measured on the S10e */
+#define DRAG_SLOP_DP       16         /* a held finger moving this far leaves the menu */
 
 void drawer_prepare (void);
 
 Neo N;
 
-typedef enum { OWNER_NONE, OWNER_HOME, OWNER_DRAWER } Owner;
+/* OWNER_POPUP: a touch on an open menu; OWNER_HELD: the finger whose long press opened it, still down */
+typedef enum { OWNER_NONE, OWNER_HOME, OWNER_DRAWER, OWNER_POPUP, OWNER_HELD } Owner;
 
 static struct {
   Vk          vk;
@@ -37,6 +40,8 @@ static struct {
   bool        debug_touch;        /* NEO_DEBUG_TOUCH or ~/.config/neo-launcher/debug-touch */
   Tile       *down_tile;
   float       down_ix, down_iy;
+  ModelPos    down_pos;
+  guint       hold_id;            /* the long press's timeout */
 
   /* frame timing (NEO_STATS) */
   TextFont   *stats_font;
@@ -226,6 +231,7 @@ on_frame (gpointer data, gint64 time)
   bool more = A.par ? parallax_tick (A.par) : false;
   more |= home_frame ();
   more |= drawer_frame ();
+  more |= popup_frame ();
   nav_drawer (drawer_progress () > 0 || drawer_dragging ());
   more |= nav_frame ();
   more |= N.launch_t0 != 0;
@@ -276,6 +282,7 @@ on_frame (gpointer data, gint64 time)
     draw_home (scale, stretch);
   }
   drawer_draw ();
+  popup_draw ();
   if (scrim > 0)
     gfx_rect (0, 0, N.W, N.H, 0, (GfxColor) { 0, 0, 0, scrim });
   if (A.stats)
@@ -289,6 +296,45 @@ on_frame (gpointer data, gint64 time)
 }
 
 /* ---- input ---------------------------------------------------------------------------------------------------- */
+
+static void
+hold_cancel (void)
+{
+  if (A.hold_id)
+    g_source_remove (A.hold_id);
+  A.hold_id = 0;
+}
+
+/* a finger held still: the icon's menu, or on the wallpaper the home's options; the finger stays the menu's */
+static gboolean
+on_hold (gpointer data)
+{
+  A.hold_id = 0;
+  if (A.touch < 0 || A.moved)
+    return G_SOURCE_REMOVE;
+  N.now = MAX (N.now, mono_ns () / 1e6);
+  float isz = roundf (dp (ICON_DP));
+  if (A.owner == OWNER_HOME) {
+    if (nav_home_alpha () < 1 || launch_content_scale () != 1)
+      return G_SOURCE_REMOVE;
+    home_touch_cancel (N.now);
+    if (A.down_tile)
+      popup_open_icon (A.down_tile, A.down_pos, false, A.down_ix, A.down_iy, isz);
+    else
+      popup_open_options (A.down_x, A.down_y);
+  } else if (A.owner == OWNER_DRAWER) {
+    float ix, iy;
+    Tile *t = drawer_hold_tile (A.down_x, A.down_y, &ix, &iy);
+    if (!t)
+      return G_SOURCE_REMOVE;
+    drawer_touch_cancel (N.now);
+    popup_open_icon (t, MODEL_POS_NONE, true, ix, iy, isz);
+  } else {
+    return G_SOURCE_REMOVE;
+  }
+  A.owner = OWNER_HELD;
+  return G_SOURCE_REMOVE;
+}
 
 static void
 on_touch (gpointer data, WlTouchType type, int id, double x, double y, guint32 time)
@@ -311,22 +357,40 @@ on_touch (gpointer data, WlTouchType type, int id, double x, double y, guint32 t
     A.down_y = y;
     A.moved = false;
     A.down_tile = NULL;
+    hold_cancel ();
+    if (popup_is_open ()) {
+      A.owner = OWNER_POPUP;
+      popup_touch_down (x, y);
+      break;
+    }
+    A.hold_id = g_timeout_add (HOLD_MS, on_hold, NULL);
     if (drawer_touch_down (x, y, t)) {
       A.owner = OWNER_DRAWER;
       break;
     }
     A.owner = OWNER_HOME;
     home_touch_down (x, y, t);
-    A.down_tile = home_tile_at (x, y, &A.down_ix, &A.down_iy);
+    A.down_tile = home_tile_at (x, y, &A.down_ix, &A.down_iy, &A.down_pos);
     if (A.down_tile)
       press_down (A.down_tile);
     break;
   case WL_TOUCH_MOTION:
     if (id != A.touch)
       return;
-    if (hypot (x - A.down_x, y - A.down_y) > dp (8))
+    if (hypot (x - A.down_x, y - A.down_y) > dp (8)) {
       A.moved = true;
-    if (A.owner == OWNER_HOME) {
+      hold_cancel ();
+    }
+    if (A.owner == OWNER_POPUP) {
+      popup_touch_move (x, y);
+    } else if (A.owner == OWNER_HELD) {
+      /* Launcher3 starts dragging the icon here; until that exists the menu just goes */
+      if (hypot (x - A.down_x, y - A.down_y) > dp (DRAG_SLOP_DP)) {
+        popup_close ();
+        press_up ();
+        A.owner = OWNER_NONE;
+      }
+    } else if (A.owner == OWNER_HOME) {
       bool vertical = false;
       home_touch_move (x, y, t, &vertical);
       if (A.moved)
@@ -346,7 +410,12 @@ on_touch (gpointer data, WlTouchType type, int id, double x, double y, guint32 t
   case WL_TOUCH_UP:
     if (id != A.touch)
       return;
-    if (A.owner == OWNER_HOME) {
+    hold_cancel ();
+    if (A.owner == OWNER_POPUP) {
+      popup_touch_up (x, y);
+    } else if (A.owner == OWNER_HELD) {
+      N.press.tile = NULL;          /* the held icon snaps back to 1 as the finger lifts */
+    } else if (A.owner == OWNER_HOME) {
       home_touch_up (x, y, t);
       press_up ();
       if (!A.moved && A.down_tile)
@@ -358,7 +427,12 @@ on_touch (gpointer data, WlTouchType type, int id, double x, double y, guint32 t
     A.owner = OWNER_NONE;
     break;
   case WL_TOUCH_CANCEL:
-    if (A.owner == OWNER_HOME)
+    hold_cancel ();
+    if (A.owner == OWNER_POPUP)
+      popup_touch_cancel ();
+    else if (A.owner == OWNER_HELD)
+      N.press.tile = NULL;
+    else if (A.owner == OWNER_HOME)
       home_touch_cancel (t);
     else if (A.owner == OWNER_DRAWER)
       drawer_touch_cancel (t);

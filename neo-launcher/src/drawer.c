@@ -180,6 +180,15 @@ drawer_back (void)
   wl_schedule (N.wl);
 }
 
+void
+drawer_open (void)
+{
+  if (D.f >= 1 && !D.settling)
+    return;
+  N.now = MAX (N.now, g_get_monotonic_time () / 1000.0);
+  settle (1, 0);
+}
+
 bool
 drawer_frame (void)
 {
@@ -319,6 +328,14 @@ tile_at (float x, float y, float *ix, float *iy)
   *ix = roundf (D.cols_x0 + col * D.col_w + (D.col_w - D.icon) / 2);
   *iy = roundf (top + dp (LIST_ICON_TOP_DP) + row * dp (LIST_ROW_DP) - roundf (D.list.offset));
   return N.sorted->pdata[i];
+}
+
+Tile *
+drawer_hold_tile (float x, float y, float *ix, float *iy)
+{
+  if (!D.down || !D.list_touch || D.decided || D.dragging || D.list.dragging || D.settling || D.f < 1)
+    return NULL;
+  return tile_at (x, y, ix, iy);
 }
 
 void

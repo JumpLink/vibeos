@@ -125,6 +125,18 @@ tiles_get (const char *id)
   return id ? g_hash_table_lookup (N.tiles, id) : NULL;
 }
 
+GHashTable *
+tiles_apps (void)
+{
+  GHashTable *apps = g_hash_table_new (g_str_hash, g_str_equal);
+  GHashTableIter it;
+  gpointer key, value;
+  g_hash_table_iter_init (&it, N.tiles);
+  while (g_hash_table_iter_next (&it, &key, &value))
+    g_hash_table_insert (apps, key, ((Tile *) value)->info);
+  return apps;
+}
+
 static void
 queue_icon (GPtrArray *jobs, GHashTable *queued, const char *id)
 {

@@ -15,6 +15,7 @@ layout(location = 1) out vec2 v_local;          // from the rect's centre, in it
 layout(location = 2) flat out vec4 v_color;
 layout(location = 3) flat out vec4 v_shape;     // half w, half h, radius, mode
 layout(location = 4) flat out vec4 v_clip;
+layout(location = 5) flat out vec4 v_extra;     // the corners' radii (mode 3), the ring's width (mode 4)
 
 const vec2 corners[6] = vec2[](vec2(0, 0), vec2(1, 0), vec2(0, 1), vec2(0, 1), vec2(1, 0), vec2(1, 1));
 
@@ -42,4 +43,5 @@ void main()
   v_color = i_color;
   v_shape = vec4(i_rect.zw * 0.5, i_misc.z, mode);
   v_clip = i_clip;
+  v_extra = i_uv;
 }

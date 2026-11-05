@@ -11,6 +11,8 @@ typedef enum {
   GFX_MODE_TEX = 0,     /* texture × colour */
   GFX_MODE_SOLID = 1,   /* colour */
   GFX_MODE_MASK = 2,    /* colour × texture.r (glyphs) */
+  GFX_MODE_CORNERS = 3, /* colour, the corners' radii in u0 v0 u1 v1 (top left, top right, bottom right, left) */
+  GFX_MODE_RING = 4,    /* colour, an outline u0 wide inside the rounded rect */
 } GfxMode;
 
 typedef enum {
@@ -72,6 +74,7 @@ void     gfx_save            (void);
 void     gfx_restore         (void);
 void     gfx_translate       (float x, float y);
 void     gfx_scale           (float sx, float sy, float px, float py);   /* about (px, py) */
+void     gfx_rotate          (float radians, float px, float py);        /* clockwise on screen, about (px, py) */
 void     gfx_opacity         (float a);
 void     gfx_clip            (float x0, float y0, float x1, float y1);  /* in the current space */
 
@@ -80,6 +83,9 @@ GfxInst *gfx_push            (GfxTex *tex, GfxPipe pipe);
 void     gfx_effect_params   (const float p[8]);
 
 void     gfx_rect            (float x, float y, float w, float h, float radius, GfxColor c);
+/* r: top left, top right, bottom right, bottom left */
+void     gfx_rect_corners    (float x, float y, float w, float h, const float r[4], GfxColor c);
+void     gfx_ring            (float x, float y, float w, float h, float radius, float width, GfxColor c);
 void     gfx_image           (GfxTex *t, float x, float y, float w, float h, float radius, float alpha);
 void     gfx_image_uv        (GfxTex *t, float x, float y, float w, float h, float u0, float v0, float u1, float v1,
                               float radius, float alpha);

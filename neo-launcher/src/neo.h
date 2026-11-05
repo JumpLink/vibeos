@@ -95,6 +95,7 @@ static inline float dp (double v) { return (float) (v * N.dp); }
 /* tiles.c */
 void   tiles_load        (void);                       /* the apps, their labels, and the icon thread */
 Tile  *tiles_get         (const char *id);
+GHashTable *tiles_apps   (void);                       /* id -> GAppInfo, as model_reconcile takes them */
 void   tile_draw_icon    (Tile *t, float x, float y, float size, float alpha);
 float  press_scale       (Tile *t);                    /* this tile's press scale now */
 bool   press_animating   (void);
@@ -113,7 +114,8 @@ void   home_touch_move   (float x, float y, double t, bool *vertical);
 void   home_touch_up     (float x, float y, double t);
 void   home_touch_cancel (double t);
 float  home_stretch      (void);                         /* the horizontal edge stretch amount */
-Tile  *home_tile_at      (float x, float y, float *ix, float *iy);
+Tile  *home_tile_at      (float x, float y, float *ix, float *iy, ModelPos *pos);
+void   home_model_changed (void);                        /* icons added or taken away: the pages reflowed */
 void   home_clock_tick   (void);
 bool   home_icon_rect    (const char *id, float r[4]);
 
@@ -144,4 +146,20 @@ void   drawer_touch_up   (float x, float y, double t);
 void   drawer_touch_cancel (double t);
 void   drawer_close_now  (void);
 void   drawer_back       (void);                         /* close on back: 200 ms ACCELERATE */
+void   drawer_open       (void);                         /* open it as a settle from where it is */
+/* the tile under a finger held still on the list (a long press), and its icon box; NULL when it scrolled */
+Tile  *drawer_hold_tile  (float x, float y, float *ix, float *iy);
 bool   drawer_dragging   (void);
+
+/* popup.c: the long-press menus (an icon's, the wallpaper's options) */
+void   popup_open_icon   (Tile *t, ModelPos pos, bool from_drawer, float ix, float iy, float isz);
+void   popup_open_options (float x, float y);
+bool   popup_is_open     (void);                         /* open, not closing: a touch goes to it */
+void   popup_close       (void);
+void   popup_close_now   (void);
+bool   popup_frame       (void);
+void   popup_draw        (void);
+void   popup_touch_down  (float x, float y);
+void   popup_touch_move  (float x, float y);
+void   popup_touch_up    (float x, float y);
+void   popup_touch_cancel (void);

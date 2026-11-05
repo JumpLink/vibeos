@@ -316,6 +316,8 @@ method_call (GDBusConnection *bus, const char *sender, const char *path, const c
     gint64 t0;
     g_variant_get (params, "(&sx&s)", &state, &t0, &app);
     show_icon ();
+    if (g_strcmp0 (state, "normal"))
+      popup_close_now ();           /* an app over the launcher, or going home: no menu left behind */
     if (!g_strcmp0 (state, "background")) {
       V.state = NAV_BACKGROUND;
       drawer_close_now ();
@@ -342,7 +344,10 @@ method_call (GDBusConnection *bus, const char *sender, const char *path, const c
   } else if (!g_strcmp0 (method, "ShowIcon")) {
     show_icon ();
   } else if (!g_strcmp0 (method, "Back")) {
-    drawer_back ();
+    if (popup_is_open ())
+      popup_close ();
+    else
+      drawer_back ();
   } else if (!g_strcmp0 (method, "Scrim")) {
     double alpha, blur;
     g_variant_get (params, "(dd)", &alpha, &blur);
@@ -352,8 +357,10 @@ method_call (GDBusConnection *bus, const char *sender, const char *path, const c
   } else if (!g_strcmp0 (method, "Pose")) {
     double scale, alpha, depth, ty;
     g_variant_get (params, "(dddd)", &scale, &alpha, &depth, &ty);
-    if (V.state != NAV_POSE)
+    if (V.state != NAV_POSE) {
       drawer_close_now ();
+      popup_close_now ();
+    }
     V.state = NAV_POSE;
     V.pose.scale = scale;
     V.pose.alpha = alpha;
