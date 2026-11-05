@@ -303,7 +303,8 @@ class StatusBar extends St.Widget {
             x: monitor.x,
             y: monitor.y,
             width: monitor.width,
-            // the strut is whole logical pixels: 47 = 117.5 px, the bar's content is laid out on 116
+            // the strut is whole logical pixels (39 = 117 px at scale 3, 47 = 117.5 px at 2.5); the bar's content is
+            // laid out on 116
             height: Math.ceil(px(BAR_HEIGHT)),
         });
         this._state = state;

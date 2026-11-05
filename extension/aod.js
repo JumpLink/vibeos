@@ -20,7 +20,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {Canvas} from './icons.js';
 import {notificationIcon} from './statusbar.js';
-import {screenPixels, SCALE} from './units.js';
+import {px, screenPixels, SCALE} from './units.js';
 
 Gio._promisify(Gio.File.prototype, 'open_readwrite_async');
 Gio._promisify(Gio.OutputStream.prototype, 'write_bytes_async');
@@ -190,28 +190,30 @@ class Aod extends St.BoxLayout {
         this._replace = false;          // the dial moved: the hands follow once it is laid out
 
         // the clock near the top, under the camera hole; the date, the battery and the app icons under it
+        // (sizes in screen px: they were set as logical px at scale 2.5)
         this._box = new St.BoxLayout({
             orientation: Clutter.Orientation.VERTICAL,
-            style: 'spacing: 6px;',
+            style: `spacing: ${px(15)}px;`,
             x_expand: true,
             x_align: Clutter.ActorAlign.CENTER,
             y_align: Clutter.ActorAlign.START,
         });
         this._time = new St.Label({
-            style: `color: ${GREY}; font-size: 64px; font-weight: 300;`,
+            style: `color: ${GREY}; font-size: ${px(160)}px; font-weight: 300;`,
             x_align: Clutter.ActorAlign.CENTER,
         });
         this._dial = new Dial();
-        this._date = new St.Label({style: `color: ${GREY}; font-size: 17px;`, x_align: Clutter.ActorAlign.CENTER});
+        this._date = new St.Label({style: `color: ${GREY}; font-size: ${px(42.5)}px;`, x_align: Clutter.ActorAlign.CENTER});
 
-        const bottom = new St.BoxLayout({style: 'spacing: 12px;', x_align: Clutter.ActorAlign.CENTER, margin_top: 18});
-        const battery = new St.BoxLayout({style: 'spacing: 6px;'});
-        this._batteryIcon = new St.Icon({icon_size: 24, style: `color: ${GREY};`, y_align: Clutter.ActorAlign.CENTER});
-        this._batteryLabel = new St.Label({style: `color: ${GREY}; font-size: 15px;`,
+        const bottom = new St.BoxLayout({style: `spacing: ${px(30)}px;`, x_align: Clutter.ActorAlign.CENTER,
+            margin_top: Math.round(px(45))});
+        const battery = new St.BoxLayout({style: `spacing: ${px(15)}px;`});
+        this._batteryIcon = new St.Icon({icon_size: Math.round(px(60)), style: `color: ${GREY};`, y_align: Clutter.ActorAlign.CENTER});
+        this._batteryLabel = new St.Label({style: `color: ${GREY}; font-size: ${px(37.5)}px;`,
             y_align: Clutter.ActorAlign.CENTER});
         battery.add_child(this._batteryIcon);
         battery.add_child(this._batteryLabel);
-        this._icons = new St.BoxLayout({style: 'spacing: 10px;', y_align: Clutter.ActorAlign.CENTER});
+        this._icons = new St.BoxLayout({style: `spacing: ${px(25)}px;`, y_align: Clutter.ActorAlign.CENTER});
         bottom.add_child(battery);
         bottom.add_child(this._icons);
 

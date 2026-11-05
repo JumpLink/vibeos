@@ -559,8 +559,10 @@ on_resize (gpointer data, int w, int h, double scale)
 {
   N.W = w;
   N.H = h;
+  /* a dp is a logical pixel of the compositor's, which picks the scale from the panel's DPI (3 on the S10e, Android's
+   * own density there); NEO_DENSITY overrides it */
   const char *d = g_getenv ("NEO_DENSITY");
-  N.dp = d ? g_ascii_strtod (d, NULL) : 3.0;
+  N.dp = d ? g_ascii_strtod (d, NULL) : scale > 0 ? scale : 3.0;
   spongy_set_density (N.dp);
 }
 

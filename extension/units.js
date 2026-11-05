@@ -1,8 +1,9 @@
-// Android's pixels in the shell's: the reference phone (Android 16 on the same S10e) is 1080x2280 at 3 px per dp, the
-// shell runs at scale 2.5, so its stage is 432x912 logical pixels. Every size in the SystemUI spec goes through here.
+// Android's pixels in the shell's: the reference phone (Android 16 on the same S10e) is 1080x2280 at 3 px per dp. The
+// shell's scale is mutter's, from the panel's DPI (3 on the S10e since mutter allows a 360-wide logical screen; 2.5
+// before, a 432x912 stage). Every size in the SystemUI spec goes through here.
 
-// screen pixels per logical pixel
-export const SCALE = 2.5;
+// screen pixels per logical pixel, the primary monitor's as the extension starts
+export const SCALE = global.display.get_monitor_scale(global.display.get_primary_monitor()) || 3;
 
 // a physical (screen) pixel length of the 1080x2280 reference
 export const px = v => v / SCALE;

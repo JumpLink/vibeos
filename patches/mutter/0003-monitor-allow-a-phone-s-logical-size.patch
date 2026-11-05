@@ -1,0 +1,24 @@
+From: pulpoff <pashkovsky@gmail.com>
+Subject: [PATCH] monitor: Allow a phone's logical size
+
+A scale is valid only if the logical monitor it leaves is at least
+600 x 600 in area. The S10e's 1080 x 2280 panel at scale 3, Android's own
+3 px per dp, is 360 x 760: under that, so mutter refused it and the
+phone ran at 2.5, every GNOME app at 0.83 of Android's size. Allow down
+to 360 x 640, the smallest logical screen GNOME's adaptive apps are
+built for (libadwaita's 360 px minimum width).
+
+For mutter-mobile 51.1.mobile.22 (/usr/src/gnome-mobile/mutter on the
+S10e, built into /opt/gnome-mobile by build51.sh).
+---
+--- a/src/backends/meta-monitor.c
++++ b/src/backends/meta-monitor.c
+@@ -33,7 +33,7 @@
+ #define MAX_DENOMINATOR 4
+ #define MIN_INTEGER_SCALE 1
+ #define MAX_INTEGER_SCALE 4
+-#define MINIMUM_LOGICAL_AREA (600 * 600)
++#define MINIMUM_LOGICAL_AREA (360 * 640)
+ #define MAXIMUM_REFRESH_RATE_DIFF 0.001f
+ 
+ typedef struct _MetaMonitorModePrivate
