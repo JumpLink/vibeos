@@ -4,6 +4,7 @@ import GLib from 'gi://GLib';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
+import {ScreenshotChord} from './chord.js';
 import {CollectWhenStill} from './gc.js';
 import {EndMark} from './endmark.js';
 import {HeadsUp} from './headsup.js';
@@ -56,6 +57,9 @@ export default class GnomePhoneExtension extends Extension {
         this._volume = new VolumeDialog();
         Main.layoutManager.addTopChrome(this._volume);
         overWindows(this._volume);
+        // power and volume down together: a screenshot
+        this._chord = new ScreenshotChord();
+        this._volume.chord = this._chord;
         // the power menu a long press of the power key opens, over the lock screen too
         this._powerMenu = new PowerMenu({
             secure: () => this._keyguard._secure,
@@ -64,7 +68,7 @@ export default class GnomePhoneExtension extends Extension {
         Main.layoutManager.addTopChrome(this._powerMenu.layer);
         overWindows(this._powerMenu.layer);
         // the screen off, the AOD or black, over everything: the power key, the double tap, the timeout
-        this._power = new Power(this._keyguard, this._state, this._powerMenu);
+        this._power = new Power(this._keyguard, this._state, this._powerMenu, this._chord);
         Main.layoutManager.addTopChrome(this._power.layer);
         overWindows(this._power.layer);
         // ... and over them all, the end of uiGroup
@@ -93,6 +97,8 @@ export default class GnomePhoneExtension extends Extension {
         this._powerMenu = null;
         this._volume?.destroy();
         this._volume = null;
+        this._chord?.destroy();
+        this._chord = null;
         this._keyguard?.destroy();
         this._keyguard = null;
         this._headsUp?.destroy();

@@ -68,10 +68,11 @@ function neoSettings() {
 export class Power extends Signals.EventEmitter {
     // @keyguard: lock() as the screen goes off, .showing, .bouncerShowing; @state: the SystemState; @menu: the power
     // menu a long press opens
-    constructor(keyguard, state, menu) {
+    constructor(keyguard, state, menu, chord) {
         super();
         this._keyguard = keyguard;
         this._menu = menu;
+        this._chord = chord;
         this._longPressId = 0;
         this._state = State.AWAKE;
         this._sleptAt = 0;
@@ -135,6 +136,8 @@ export class Power extends Signals.EventEmitter {
         const now = GLib.get_monotonic_time();
         if (pressed) {
             this._pressedAt = now;
+            // with volume down, a screenshot (chord.js); the press then does nothing more
+            this._chord?.powerDown(this.interactive);
             // a press with the menu up closes it; the key then does what it would have
             this._menu?.closeNow();
             // Android wakes on the key's down (PhoneWindowManager.interceptPowerKeyDown)
@@ -145,7 +148,7 @@ export class Power extends Signals.EventEmitter {
             this._cancelLongPress();
             this._longPressId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, LONG_PRESS_MS, () => {
                 this._longPressId = 0;
-                if (!this.interactive)
+                if (!this.interactive || this._chord?.powerTaken)
                     return GLib.SOURCE_REMOVE;
                 haptic();
                 this._menu?.open();
@@ -156,8 +159,9 @@ export class Power extends Signals.EventEmitter {
         this._cancelLongPress();
         const held = (now - (this._pressedAt ?? now)) / 1000;
         this._pressedAt = null;
+        const chord = this._chord?.powerUp();
         // ... and goes to sleep on its up, if the down did not wake it and the press was short
-        if (this._wokeByPress || held >= LONG_PRESS_MS)
+        if (chord || this._wokeByPress || held >= LONG_PRESS_MS)
             return;
         if ((now - this._wokeAt) / 1000 < MIN_AWAKE_MS)
             return;

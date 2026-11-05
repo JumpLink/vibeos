@@ -284,6 +284,7 @@ class VolumeDialog extends St.Widget {
             this);
         this._syncStream();
 
+        this.chord = null;                  // chord.js's, which volume down goes through
         this._takeVolumeKeys();
         this.connect('destroy', () => this._onDestroy());
     }
@@ -309,11 +310,18 @@ class VolumeDialog extends St.Widget {
                 return;
             }
             const event = Clutter.get_current_event();
-            this.volumeKey(direction, !!(event && event.get_flags() & Clutter.EventFlags.FLAG_REPEATED));
+            const repeat = !!(event && event.get_flags() & Clutter.EventFlags.FLAG_REPEATED);
+            // volume down waits for the power key: the two are a screenshot (chord.js)
+            if (direction < 0 && this.chord)
+                this.chord.volumeDown(() => this.volumeKey(direction, repeat), repeat);
+            else
+                this.volumeKey(direction, repeat);
         };
         dbus._emitAcceleratorDeactivated = (action, device, timestamp) => {
             if (!this._volumeActions.has(action))
                 deactivated.call(dbus, action, device, timestamp);
+            else if (this._volumeActions.get(action) < 0)
+                this.chord?.volumeUp();
         };
     }
 
