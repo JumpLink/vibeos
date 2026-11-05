@@ -302,10 +302,11 @@ export class Keyguard extends Signals.EventEmitter {
         this._syncPill();
     }
 
-    // the notification icons in their pill (keyguard-extras §B): one per app, three and the overflow dot at most
+    // the notification icons in their pill (keyguard-extras §B): one per app, three and the overflow dot at most;
+    // none after a lockdown
     _syncPill() {
         this._pill.destroy_all_children();
-        const sources = Main.messageTray.getSources().filter(s => s.notifications.length);
+        const sources = this._lockedDown ? [] : Main.messageTray.getSources().filter(s => s.notifications.length);
         const n = Math.min(sources.length, PILL.max + 1);
         this._pill.visible = n > 0;
         if (!n)
@@ -352,6 +353,13 @@ export class Keyguard extends Signals.EventEmitter {
         this._grab ??= Main.pushModal(this.actor, {actionMode: Shell.ActionMode.LOCK_SCREEN});
         this._prepareBouncer();
         this.emit('changed');
+    }
+
+    // the power menu's Lockdown: locked at once, and the notifications kept off the lock screen until the next unlock
+    lockdown() {
+        this._lockedDown = true;
+        this.lock();
+        this._syncPill();
     }
 
     // the screen came on: the lock screen as it was, the clock up to date
@@ -843,6 +851,7 @@ export class Keyguard extends Signals.EventEmitter {
 
     _finishUnlock() {
         this._unlockingNow = false;
+        this._lockedDown = false;
         this._dropBouncer();
         this._setBackdrop(0);
         this._f = 1;

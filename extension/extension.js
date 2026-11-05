@@ -12,6 +12,7 @@ import {Keyguard} from './keyguard.js';
 import {NoWindowMipmaps} from './mipmaps.js';
 import {overWindows} from './scanout.js';
 import {Power} from './power.js';
+import {PowerMenu} from './powermenu.js';
 import {Service} from './service.js';
 import {Shade} from './shade.js';
 import {SystemState} from './state.js';
@@ -54,8 +55,15 @@ export default class GnomePhoneExtension extends Extension {
         this._volume = new VolumeDialog();
         Main.layoutManager.addTopChrome(this._volume);
         overWindows(this._volume);
+        // the power menu a long press of the power key opens, over the lock screen too
+        this._powerMenu = new PowerMenu({
+            secure: () => this._keyguard._secure,
+            lockdown: () => this._keyguard.lockdown(),
+        });
+        Main.layoutManager.addTopChrome(this._powerMenu.layer);
+        overWindows(this._powerMenu.layer);
         // the screen off, the AOD or black, over everything: the power key, the double tap, the timeout
-        this._power = new Power(this._keyguard, this._state);
+        this._power = new Power(this._keyguard, this._state, this._powerMenu);
         Main.layoutManager.addTopChrome(this._power.layer);
         overWindows(this._power.layer);
         // ... and over them all, the end of uiGroup
@@ -76,6 +84,8 @@ export default class GnomePhoneExtension extends Extension {
         this._endMark = null;
         this._power?.destroy();
         this._power = null;
+        this._powerMenu?.destroy();
+        this._powerMenu = null;
         this._volume?.destroy();
         this._volume = null;
         this._keyguard?.destroy();

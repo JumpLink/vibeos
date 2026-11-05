@@ -773,6 +773,7 @@ CORE_ICONS = [
     'ic_expand_notification', 'ic_collapse_notification',
     'stat_notify_call_mute', 'stat_notify_disabled_data', 'stat_notify_wifi_in_range',
     'ic_lock_power_off', 'ic_restart',
+    'ic_lock_power_off_round', 'ic_restart_round', 'ic_lock_lockdown_round',   # the power menu's buttons
 ] + [f'ic_signal_cellular_{i}_4_bar' for i in range(5)]
 KEYGUARD = 'packages/SystemUI/res-keyguard'
 # the lock screen's, named keyguard_*: SystemUI has another ic_lock

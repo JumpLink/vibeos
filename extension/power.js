@@ -53,16 +53,26 @@ const SCREENSAVER_IFACE = `<node>
   </interface>
 </node>`;
 
+// feedbackd's shortest tick, as the back gesture's
+function haptic() {
+    Gio.DBus.session.call('org.sigxcpu.Feedback', '/org/sigxcpu/Feedback', 'org.sigxcpu.Feedback',
+        'TriggerFeedback', new GLib.Variant('(ssa{sv}i)', ['de.yesman.GnomePhone', 'button-released', {}, -1]),
+        null, Gio.DBusCallFlags.NONE, -1, null, null);
+}
+
 function neoSettings() {
     const schema = Gio.SettingsSchemaSource.get_default()?.lookup('de.yesman.neo', true);
     return schema ? new Gio.Settings({settings_schema: schema}) : null;
 }
 
 export class Power extends Signals.EventEmitter {
-    // @keyguard: lock() as the screen goes off, .showing, .bouncerShowing; @state: the SystemState
-    constructor(keyguard, state) {
+    // @keyguard: lock() as the screen goes off, .showing, .bouncerShowing; @state: the SystemState; @menu: the power
+    // menu a long press opens
+    constructor(keyguard, state, menu) {
         super();
         this._keyguard = keyguard;
+        this._menu = menu;
+        this._longPressId = 0;
         this._state = State.AWAKE;
         this._sleptAt = 0;
         this._wokeAt = GLib.get_monotonic_time();
@@ -125,12 +135,25 @@ export class Power extends Signals.EventEmitter {
         const now = GLib.get_monotonic_time();
         if (pressed) {
             this._pressedAt = now;
+            // a press with the menu up closes it; the key then does what it would have
+            this._menu?.closeNow();
             // Android wakes on the key's down (PhoneWindowManager.interceptPowerKeyDown)
             this._wokeByPress = !this.interactive;
             if (this._wokeByPress)
                 this.wakeUp('power');
+            // ... and held, opens the power menu (MSG_POWER_LONG_PRESS), with LONG_PRESS_POWER_BUTTON's tick
+            this._cancelLongPress();
+            this._longPressId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, LONG_PRESS_MS, () => {
+                this._longPressId = 0;
+                if (!this.interactive)
+                    return GLib.SOURCE_REMOVE;
+                haptic();
+                this._menu?.open();
+                return GLib.SOURCE_REMOVE;
+            });
             return;
         }
+        this._cancelLongPress();
         const held = (now - (this._pressedAt ?? now)) / 1000;
         this._pressedAt = null;
         // ... and goes to sleep on its up, if the down did not wake it and the press was short
@@ -139,6 +162,12 @@ export class Power extends Signals.EventEmitter {
         if ((now - this._wokeAt) / 1000 < MIN_AWAKE_MS)
             return;
         this.goToSleep('power');
+    }
+
+    _cancelLongPress() {
+        if (this._longPressId)
+            GLib.source_remove(this._longPressId);
+        this._longPressId = 0;
     }
 
     _doubleTap() {
@@ -158,6 +187,7 @@ export class Power extends Signals.EventEmitter {
         log(`gnome-phone: going to sleep (${reason})`);
         this._state = this._aodEnabled ? State.DOZING : State.ASLEEP;
         this._sleptAt = GLib.get_monotonic_time();
+        this._menu?.closeNow();
         this._keyguard.lock();
 
         this._aod.visible = this._state === State.DOZING;
@@ -319,6 +349,7 @@ export class Power extends Signals.EventEmitter {
     }
 
     destroy() {
+        this._cancelLongPress();
         this._fadeAnim?.stop();
         if (this._idleWatch)
             this._idleMonitor.remove_watch(this._idleWatch);
