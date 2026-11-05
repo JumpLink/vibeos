@@ -239,7 +239,15 @@ export class Navigation {
     // bouncer goes to the lock screen (StatusBarKeyguardViewManager.onBackPressed)
     setKeyguard(keyguard) {
         this._keyguard = keyguard;
-        this._keyguardId = keyguard.connect('changed', () => this.watchBack(keyguard.showing ? keyguard.actor : null));
+        let locked = keyguard.showing;
+        this._keyguardId = keyguard.connect('changed', () => {
+            this.watchBack(keyguard.showing ? keyguard.actor : null);
+            // locked: the launcher closes its menus and its drawer, as Launcher3 goes to NORMAL when the screen goes
+            // off, so nothing of them is waiting after the unlock
+            if (keyguard.showing && !locked)
+                this.launcher('Locked', null);
+            locked = keyguard.showing;
+        });
     }
 
     get bouncerShown() {

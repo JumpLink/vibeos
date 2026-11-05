@@ -295,6 +295,10 @@ export class EdgeBack {
             return;
         this._clearLongPress();
         g.started = true;
+        // the finger is back's now: the launcher under it lets go (Android pilfers it), so the drawer's list
+        // neither scrolls nor opens the app it started on
+        if (g.target.kind === 'drawer' || g.target.kind === 'home-screen')
+            this._nav.launcher('Cancel', null);
         this._move();
     }
 
