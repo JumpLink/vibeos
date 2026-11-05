@@ -1,0 +1,43 @@
+From: pulpoff <pashkovsky@gmail.com>
+Subject: [PATCH] keyboard: Keep a window moved for the OSK at the top
+
+When the keyboard comes up, _animateWindow unmaximizes the focus window
+vertically and moves it to the top of the work area at the height left
+above the keyboard. Mutter applies the unmaximize only once the client
+acks it, and that restores the window's floating position, centred in
+the work area: the window kept the new height and lost the new y. On
+the S10e a chat's composer sat 125 px under the top of a 269 px
+keyboard, out of reach.
+
+Move it back to the top whenever it moves while the keyboard is up.
+
+For gnome-shell-mobile 51.1.mobile.22 (/usr/src/gnome-mobile/gnome-shell
+on the S10e, built into /opt/gnome-mobile by build51.sh).
+---
+--- a/js/ui/keyboard.js
++++ b/js/ui/keyboard.js
+@@ -2356,11 +2356,24 @@
+             window.unmaximize(Meta.MaximizeFlags.VERTICAL);
+             window.move_resize_frame(false, frameRect.x, workArea.y, frameRect.width, workArea.height - (this.allocation.get_height() - (this._bottomPanelBox?.allocation.get_height() ?? 0)));
+ 
++            // Mutter applies the unmaximize only once the client acks it, and that restores the window's floating
++            // position, centred in the work area: the move above keeps its height and loses its y, and the window
++            // sits half under the keyboard. Put it back at the top whenever it moves while the keyboard is up.
++            window.__keyboardTopId = window.connect('position-changed', () => {
++                const rect = window.get_frame_rect();
++                const top = window.get_work_area_current_monitor().y;
++                if (rect.y !== top)
++                    window.move_frame(false, rect.x, top);
++            });
++
+             window.__keyboardMoved = true;
+         } else if (!show && window.__keyboardMoved) {
+             this.disconnect(this._bla);
+             delete this._bla;
+ 
++            window.disconnect(window.__keyboardTopId);
++            delete window.__keyboardTopId;
++
+             window.maximize(Meta.MaximizeFlags.VERTICAL);
+             delete window.__keyboardMoved;
+         }
