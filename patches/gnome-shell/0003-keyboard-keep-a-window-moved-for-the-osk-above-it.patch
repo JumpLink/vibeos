@@ -1,0 +1,53 @@
+From: pulpoff <pashkovsky@gmail.com>
+Subject: [PATCH] keyboard: Keep a window moved for the OSK above it
+
+When the keyboard comes up, _animateWindow unmaximizes the focus window
+vertically and moves it to the top of the work area at the height left
+above the keyboard. Mutter applies the unmaximize only once the client
+acks it, and that restores the window's floating size and position,
+centred in the work area: on the S10e the Yesman window came back 360
+wide at x 36, and a chat's composer sat under the keys, out of reach.
+
+Put the window back, full width from the top of the work area down to
+the keyboard, whenever it moves or resizes while the keyboard is up.
+Measure down to the keyboard's own top: the height above subtracts the
+bottom panel, which on gnome-phone reserves no strut, so the last 18 px
+of the window were still under the keys.
+
+For gnome-shell-mobile 51.1.mobile.22 (/usr/src/gnome-mobile/gnome-shell
+on the S10e, built into /opt/gnome-mobile by build51.sh).
+---
+--- a/js/ui/keyboard.js
++++ b/js/ui/keyboard.js
+@@ -2356,11 +2356,31 @@
+             window.unmaximize(Meta.MaximizeFlags.VERTICAL);
+             window.move_resize_frame(false, frameRect.x, workArea.y, frameRect.width, workArea.height - (this.allocation.get_height() - (this._bottomPanelBox?.allocation.get_height() ?? 0)));
+ 
++            // Mutter applies the unmaximize only once the client acks it, and that restores the window's floating
++            // size and position, centred in the work area: the move above is lost and the window sits half under
++            // the keyboard. Put it back, full width from the top of the work area down to the keyboard, whenever
++            // it moves or resizes while the keyboard is up. Down to the keyboard's own top, not to the work area
++            // less the bottom panel as above: on gnome-phone that panel reserves no strut, so it is under the keys.
++            const fit = () => {
++                const rect = window.get_frame_rect();
++                const area = window.get_work_area_current_monitor();
++                const monitor = Main.layoutManager.keyboardMonitor;
++                const top = monitor.y + monitor.height - this.allocation.get_height();
++                const height = Math.min(area.y + area.height, top) - area.y;
++                if (rect.x !== area.x || rect.y !== area.y || rect.width !== area.width || rect.height !== height)
++                    window.move_resize_frame(false, area.x, area.y, area.width, height);
++            };
++            window.__keyboardFitIds = [window.connect('position-changed', fit), window.connect('size-changed', fit)];
++            fit();
++
+             window.__keyboardMoved = true;
+         } else if (!show && window.__keyboardMoved) {
+             this.disconnect(this._bla);
+             delete this._bla;
+ 
++            window.__keyboardFitIds.forEach(id => window.disconnect(id));
++            delete window.__keyboardFitIds;
++
+             window.maximize(Meta.MaximizeFlags.VERTICAL);
+             delete window.__keyboardMoved;
+         }
