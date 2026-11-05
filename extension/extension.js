@@ -8,6 +8,7 @@ import {CollectWhenStill} from './gc.js';
 import {EndMark} from './endmark.js';
 import {HeadsUp} from './headsup.js';
 import {Home} from './home.js';
+import {KeyHaptics} from './keyhaptics.js';
 import {Keyguard} from './keyguard.js';
 import {NoWindowMipmaps} from './mipmaps.js';
 import {overWindows} from './scanout.js';
@@ -68,6 +69,8 @@ export default class GnomePhoneExtension extends Extension {
         overWindows(this._power.layer);
         // ... and over them all, the end of uiGroup
         this._endMark = new EndMark();
+        // the on-screen keyboard's keys tick under the finger
+        this._keyHaptics = new KeyHaptics();
         // locked from the start, as a phone after boot, once the extension system is done with this
         this._lockId = GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
             this._lockId = 0;
@@ -80,6 +83,8 @@ export default class GnomePhoneExtension extends Extension {
         if (this._lockId)
             GLib.source_remove(this._lockId);
         this._lockId = 0;
+        this._keyHaptics?.destroy();
+        this._keyHaptics = null;
         this._endMark?.destroy();
         this._endMark = null;
         this._power?.destroy();
