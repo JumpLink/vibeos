@@ -33,6 +33,8 @@ static struct {
   int         vk_w, vk_h;
   GMainLoop  *loop;
   Parallax   *par;
+  GSettings  *bg, *iface;         /* GNOME's wallpaper, and the style that picks its light or dark picture */
+  guint       wallpaper_id;       /* a reload, once the keys that changed together are all in */
   GfxTex     *home_target, *bg_target;
 
   int         touch;              /* the finger being followed, or -1 */
@@ -129,6 +131,58 @@ target (GfxTex **t, int w, int h)
 
 /* ---- frames --------------------------------------------------------------------------------------------------- */
 
+/* The wallpaper is GNOME's (org.gnome.desktop.background, its dark picture under the dark style), which Settings'
+ * Background panel sets: a picture in a folder with a parallax.json is that parallax set (its picture is the set at
+ * rest, for the panel and the lock screen), any other picture a still one. NEO_PARALLAX names a set instead; with no
+ * picture at all, the old de.yesman.neo wallpaper-parallax. */
+static void
+wallpaper_load (void)
+{
+  const char *env = g_getenv ("NEO_PARALLAX");
+  g_autofree char *scheme = g_settings_get_string (A.iface, "color-scheme");
+  g_autofree char *uri = g_settings_get_string (A.bg, !g_strcmp0 (scheme, "prefer-dark") ? "picture-uri-dark"
+                                                                                       : "picture-uri");
+  if (!*uri) {
+    g_free (uri);
+    uri = g_settings_get_string (A.bg, "picture-uri");
+  }
+  g_autofree char *file = g_filename_from_uri (uri, NULL, NULL);
+  g_autofree char *dir = file ? g_path_get_dirname (file) : NULL;
+  g_autofree char *json = dir ? g_build_filename (dir, "parallax.json", NULL) : NULL;
+  g_autofree char *set = g_settings_get_string (N.settings, "wallpaper-parallax");
+  Parallax *p = NULL;
+  if (env)
+    p = parallax_new (env, wake, NULL);
+  else if (json && g_file_test (json, G_FILE_TEST_EXISTS))
+    p = parallax_new (dir, wake, NULL);
+  else if (file)
+    p = parallax_new_image (file);
+  else if (*set)
+    p = parallax_new (set, wake, NULL);
+  parallax_free (A.par);
+  A.par = p;
+  if (p) {
+    parallax_resize (p, N.W, N.H, N.dp);
+    parallax_run (p, true);
+  }
+  wl_schedule (N.wl);
+}
+
+static gboolean
+wallpaper_reload (gpointer data)
+{
+  A.wallpaper_id = 0;
+  wallpaper_load ();
+  return G_SOURCE_REMOVE;
+}
+
+static void
+wallpaper_changed (GSettings *settings, const char *key, gpointer data)
+{
+  if (!A.wallpaper_id)
+    A.wallpaper_id = g_idle_add (wallpaper_reload, NULL);
+}
+
 static bool
 init_gpu (void)
 {
@@ -136,13 +190,9 @@ init_gpu (void)
     return false;
   A.vk_w = N.W;
   A.vk_h = N.H;
-  const char *dir = g_getenv ("NEO_PARALLAX");
-  g_autofree char *set = g_settings_get_string (N.settings, "wallpaper-parallax");
-  A.par = parallax_new (dir ? dir : set, wake, NULL);
-  if (A.par) {
-    parallax_resize (A.par, N.W, N.H, N.dp);
-    parallax_run (A.par, true);
-  }
+  wallpaper_load ();
+  g_signal_connect (A.bg, "changed", G_CALLBACK (wallpaper_changed), NULL);
+  g_signal_connect (A.iface, "changed::color-scheme", G_CALLBACK (wallpaper_changed), NULL);
   tiles_load ();
   home_layout ();
   drawer_layout ();
@@ -534,6 +584,8 @@ main (int argc, char **argv)
   static const WlCallbacks cb = { on_resize, on_frame, on_touch, on_key, on_close };
   A.loop = g_main_loop_new (NULL, FALSE);
   N.settings = g_settings_new ("de.yesman.neo");
+  A.bg = g_settings_new ("org.gnome.desktop.background");
+  A.iface = g_settings_new ("org.gnome.desktop.interface");
   g_autofree char *flag = g_build_filename (g_get_user_config_dir (), "neo-launcher", "debug-touch", NULL);
   A.debug_touch = g_getenv ("NEO_DEBUG_TOUCH") || g_file_test (flag, G_FILE_TEST_EXISTS);
   N.wl = wl_open ("de.yesman.NeoLauncher", &cb, NULL);

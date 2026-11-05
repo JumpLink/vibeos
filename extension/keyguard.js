@@ -141,7 +141,9 @@ export class Keyguard extends Signals.EventEmitter {
         super();
         this._state = state;
         this._neo = neoSettings();
-        this._screensaver = new Gio.Settings({schema_id: 'org.gnome.desktop.screensaver'});
+        // the wallpaper is the launcher's (GNOME's background, its dark picture under the dark style), as Shell 51's
+        // own unlock dialog has it: Settings' Background panel no longer sets the screensaver's picture
+        this._background = new Gio.Settings({schema_id: 'org.gnome.desktop.background'});
         this._interface = new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
         this.showing = false;
         this.bouncerShowing = false;
@@ -161,8 +163,9 @@ export class Keyguard extends Signals.EventEmitter {
         this._build();
         this._wallClock = new GnomeDesktop.WallClock({time_only: true});
         this._wallClock.connectObject('notify::clock', () => this._syncClock(), this);
-        this._interface.connectObject('changed::clock-format', () => this._syncClock(), this);
-        this._screensaver.connectObject('changed::picture-uri', () => this._syncWallpaper(), this);
+        this._interface.connectObject('changed::clock-format', () => this._syncClock(),
+            'changed::color-scheme', () => this._syncWallpaper(), this);
+        this._background.connectObject('changed', () => this._syncWallpaper(), this);
         state.connectObject('changed', () => this._syncState(), this);
         // another lock type: the next lock builds its bouncer
         this._neo?.connectObject('changed::lock-type', () => {
@@ -259,7 +262,9 @@ export class Keyguard extends Signals.EventEmitter {
     }
 
     _syncWallpaper() {
-        const uri = this._screensaver.get_string('picture-uri');
+        const dark = this._interface.get_string('color-scheme') === 'prefer-dark';
+        const uri = (dark && this._background.get_string('picture-uri-dark')) ||
+            this._background.get_string('picture-uri');
         const style = uri ? `background-image: url("${uri}"); background-size: cover; background-position: center;`
             : 'background-color: black;';
         this._wallpaper.style = style;
@@ -883,7 +888,7 @@ export class Keyguard extends Signals.EventEmitter {
             GLib.source_remove(this._countdownId);
         this._wallClock.disconnectObject(this);
         this._interface.disconnectObject(this);
-        this._screensaver.disconnectObject(this);
+        this._background.disconnectObject(this);
         this._state.disconnectObject(this);
         Main.messageTray.disconnectObject(this);
         for (const source of Main.messageTray.getSources())

@@ -9,6 +9,8 @@ typedef struct Parallax Parallax;
 
 /* `dir` holds parallax.json ({"range": dp, "tilt": g, "layers": [{"file", "depth"}…]}, back to front) */
 Parallax *parallax_new    (const char *dir, void (*wake) (void *data), void *data);
+/* a still picture: one layer that never moves, and no sensor */
+Parallax *parallax_new_image (const char *file);
 void      parallax_free   (Parallax *p);
 void      parallax_resize (Parallax *p, int w, int h, double scale);
 void      parallax_run    (Parallax *p, bool run);     /* follow the tilt while shown */

@@ -228,6 +228,19 @@ parallax_new (const char *dir, void (*wake) (void *data), void *data)
   return p;
 }
 
+Parallax *
+parallax_new_image (const char *file)
+{
+  Parallax *p = g_new0 (Parallax, 1);
+  p->dir = g_path_get_dirname (file);
+  p->layers = g_ptr_array_new_with_free_func (layer_free);
+  p->tilt = 0.2;
+  Layer *l = g_new0 (Layer, 1);
+  l->file = g_strdup (file);
+  g_ptr_array_add (p->layers, l);
+  return p;
+}
+
 void
 parallax_free (Parallax *p)
 {
@@ -269,8 +282,8 @@ parallax_resize (Parallax *p, int w, int h, double scale)
 void
 parallax_run (Parallax *p, bool run)
 {
-  if (!p || p->running == run)
-    return;
+  if (!p || p->running == run || !p->accel[0])
+    return;                 /* a still picture has no sensor to follow */
   p->running = run;
   p->still = 0;
   set_rate (p, run ? RATE_RUN : RATE_IDLE);
