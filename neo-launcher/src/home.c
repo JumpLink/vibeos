@@ -1,6 +1,11 @@
 /* The home screen: Launcher3's workspace (5 × 5 cells, the clock widget across the first page's top row), the dock
  * and the page dots, with PagedView's paging: 1:1 drag after the paging slop, fling or snap with the quintic
- * scroller, and the edge stretch past the first and last page. */
+ * scroller, and the edge stretch past the first and last page. Pages sit 10.77 dp apart.
+ *
+ * While an icon is dragged (drag.c) the workspace is SPRING_LOADED: every page, its CellLayout bounds included,
+ * shrinks to fit between the drop bar's room (status bar + 104 dp) and 76 dp above the hotseat, about the
+ * workspace's centre, and each shows its card: accent1_100 at 0.35, 28 dp corners, a 2 dp outline of the same on
+ * the page under the drag. The hotseat stays as it is. */
 #include <math.h>
 
 #include "neo.h"
@@ -21,13 +26,27 @@
 #define CLOCK_DATE_BASELINE_DP (247 / 3.0)
 #define CLOCK_TIME_RGB        0xE0E0E0      /* a soft grey-white, the owner's choice over the accent (0xA9EEF8) */
 
+#define PAGE_SPACING_DP       10.77         /* Workspace: max(10.77 dp, its padding + 1) */
+#define CARD_PAD_TOP_DP       12.7          /* the CellLayout's bounds around its cells, measured shrunk */
+#define CARD_PAD_BOTTOM_DP    11.3
+#define SPRING_TOP_DP         (32 + 56 + 16)  /* below the status bar: the drop bar and its margins */
+#define SPRING_BOTTOM_DP      76            /* above the hotseat */
+#define SPRING_SIDE_DP        48            /* the shrunk page leaves at least this at each side */
+#define CARD_RADIUS_DP        28            /* dialogCornerRadius */
+#define CARD_STROKE_DP        2
+#define CARD_FILL_ALPHA       0.35f
+#define CARD_RGB              0xB8EBF3      /* system_accent1_100 */
+#define DOTS_SPRING_DP        36            /* the page dots above the hotseat while shrunk, measured */
+
 static struct {
   /* geometry */
   float cell_x0, cell_w, cell_y0, cell_h, icon, icon_top, dock_top, dock_icon_top, dots_y;
 
   /* paging */
-  float       scroll;              /* px: page × W at rest */
+  float       pitch;               /* px from one page to the next: W and the page spacing */
+  float       scroll;              /* px: page × pitch at rest */
   int         page;
+  bool        extra;               /* an empty page after the last, while a drag may drop on it */
   bool        down, dragging, vertical, gave_up;
   int         touch_page;
   float       down_x, down_y, last_x, scroll_down;
@@ -46,7 +65,14 @@ static struct {
 static int
 n_pages (void)
 {
-  return MAX (1, (int) N.model->pages->len);
+  return MAX (1, (int) N.model->pages->len) + H.extra;
+}
+
+/* a page's cells; NULL for the extra page */
+static GPtrArray *
+page_cells (int p)
+{
+  return p >= 0 && p < (int) N.model->pages->len ? N.model->pages->pdata[p] : NULL;
 }
 
 void
@@ -64,8 +90,9 @@ home_layout (void)
   H.dots_y = bottom + dp (PAGE_IND_DP) / 2;
   spongy_edge_init (&H.left, N.W);
   spongy_edge_init (&H.right, N.W);
+  H.pitch = N.W + dp (PAGE_SPACING_DP);
   H.page = CLAMP (H.page, 0, n_pages () - 1);
-  H.scroll = H.page * N.W;
+  H.scroll = H.page * H.pitch;
   if (!H.time_font) {
     H.time_font = text_font_axes ("Google Sans Flex", 600, dp (CLOCK_TIME_DP), "opsz=144,wdth=86");
     H.date_font = text_font_axes ("Google Sans Flex", 700, dp (CLOCK_DATE_DP), "opsz=18,ROND=100");
@@ -88,14 +115,14 @@ home_clock_tick (void)
 
 /* ---- where things are ----------------------------------------------------------------------------------------- */
 
-/* the icon box of a page's slot (page coordinates: page p starts at x = p·W) */
+/* the icon box of a page's slot (the strip of pages: page p starts at x = p·pitch) */
 static void
 slot_rect (int page, int slot, float *x, float *y)
 {
   if (page == 0)
     slot += N.model->reserved;
   int col = slot % GRID_COLS, row = slot / GRID_COLS;
-  *x = roundf (page * N.W + H.cell_x0 + col * H.cell_w + (H.cell_w - H.icon) / 2);
+  *x = roundf (page * H.pitch + H.cell_x0 + col * H.cell_w + (H.cell_w - H.icon) / 2);
   *y = roundf (H.cell_y0 + row * H.cell_h + H.icon_top);
 }
 
@@ -120,11 +147,9 @@ home_tile_at (float x, float y, float *ix, float *iy, ModelPos *pos)
       return tiles_get (N.model->dock->pdata[i]);
     }
   }
-  int page = (int) floorf ((x + H.scroll) / N.W);
-  if (page < 0 || page >= n_pages ())
-    return NULL;
-  GPtrArray *items = N.model->pages->pdata[page];
-  for (guint i = 0; i < items->len; i++) {
+  int page = (int) floorf ((x + H.scroll) / H.pitch);
+  GPtrArray *items = page_cells (page);
+  for (guint i = 0; items && i < items->len; i++) {
     float rx, ry;
     slot_rect (page, i, &rx, &ry);
     rx -= H.scroll;
@@ -144,7 +169,7 @@ home_model_changed (void)
 {
   H.page = CLAMP (H.page, 0, n_pages () - 1);
   if (!H.snapping && !H.dragging)
-    H.scroll = H.page * N.W;
+    H.scroll = H.page * H.pitch;
   nav_icons_changed ();
   wl_schedule (N.wl);
 }
@@ -158,12 +183,12 @@ home_icon_rect (const char *id, float r[4])
       r[2] = r[3] = H.icon;
       return true;
     }
-  GPtrArray *items = N.model->pages->pdata[H.page];
-  for (guint i = 0; i < items->len; i++)
+  GPtrArray *items = page_cells (H.page);
+  for (guint i = 0; items && i < items->len; i++)
     if (!g_strcmp0 (items->pdata[i], id)) {
       /* where it rests once the page has settled: the shell reads this 100 ms after a swipe, mid-snap */
       slot_rect (H.page, i, &r[0], &r[1]);
-      r[0] -= H.page * N.W;
+      r[0] -= H.page * H.pitch;
       r[2] = r[3] = H.icon;
       return true;
     }
@@ -198,46 +223,254 @@ draw_clock (float x0)
 }
 
 static void
-draw_dots (void)
+draw_dots (float spring)
 {
   int n = n_pages ();
   if (n < 2)
     return;
   float d = dp (PAGE_DOT_DP), pitch = d + dp (PAGE_DOT_GAP_DP);
   float x0 = N.W / 2 - (n * pitch - dp (PAGE_DOT_GAP_DP)) / 2;
+  float y = H.dots_y + (H.dock_top - dp (DOTS_SPRING_DP) - H.dots_y) * spring;
   for (int i = 0; i < n; i++)
-    gfx_rect (x0 + i * pitch, H.dots_y - d / 2, d, d, d / 2, (GfxColor) { 1, 1, 1, 0.5f });
-  float at = CLAMP (H.scroll / N.W, 0, n - 1);
-  gfx_rect (x0 + at * pitch, H.dots_y - d / 2, d, d, d / 2, (GfxColor) { 1, 1, 1, 1 });
+    gfx_rect (x0 + i * pitch, y - d / 2, d, d, d / 2, (GfxColor) { 1, 1, 1, 0.5f });
+  float at = CLAMP (H.scroll / H.pitch, 0, n - 1);
+  gfx_rect (x0 + at * pitch, y - d / 2, d, d, d / 2, (GfxColor) { 1, 1, 1, 1 });
+}
+
+/* the CellLayout's bounds: its cells and its padding */
+static void
+card_rect (int page, float r[4])
+{
+  r[0] = page * H.pitch;
+  r[1] = H.cell_y0 - dp (CARD_PAD_TOP_DP);
+  r[2] = N.W;
+  r[3] = GRID_ROWS * H.cell_h + dp (CARD_PAD_TOP_DP + CARD_PAD_BOTTOM_DP);
+}
+
+/* the spring-loaded transform now: the strip scaled by S about the workspace's centre, then moved TY down */
+static void
+spring (float *S, float *TY)
+{
+  float q = drag_spring ();
+  *S = 1;
+  *TY = 0;
+  if (q <= 0)
+    return;
+  float card[4];
+  card_rect (0, card);
+  float to_top = roundf (dp (STATUS_BAR_DP + SPRING_TOP_DP)), to_bottom = N.H - dp (HOTSEAT_DP + SPRING_BOTTOM_DP);
+  float s = MIN (1, (to_bottom - to_top) / card[3]);
+  if (s * N.W > N.W - 2 * dp (SPRING_SIDE_DP))
+    s = (N.W - 2 * dp (SPRING_SIDE_DP)) / N.W;
+  float P = N.H / 2.0f;
+  *S = 1 + (s - 1) * q;
+  *TY = (to_top - (P + (card[1] - P) * s)) * q;
+}
+
+static void
+draw_cell (int page, int i, const char *id, bool label)
+{
+  if (!id || drag_hides (page, i))
+    return;
+  float x, y, dx = 0, dy = 0;
+  if (page < 0)
+    dock_rect (i, &x, &y);
+  else
+    slot_rect (page, i, &x, &y);
+  drag_offset (page, i, &dx, &dy);
+  draw_icon_and_label (tiles_get (id), x + dx, y + dy, label);
 }
 
 void
 home_draw (float content_scale)
 {
+  float S, TY, q = drag_spring ();
+  spring (&S, &TY);
   gfx_save ();
   if (content_scale != 1)
     gfx_scale (content_scale, content_scale, N.W / 2.0f, N.H / 2.0f);
-  int first = MAX (0, (int) floorf (H.scroll / N.W)), last = MIN (n_pages () - 1, (int) ceilf (H.scroll / N.W));
+  /* shrunk, the neighbours show at the sides */
+  float at = H.scroll / H.pitch;
+  int first = MAX (0, (int) floorf (at) - (q > 0)), last = MIN (n_pages () - 1, (int) ceilf (at) + (q > 0));
   gfx_save ();
+  if (q > 0) {
+    gfx_translate (0, TY);
+    gfx_scale (S, S, N.W / 2.0f, N.H / 2.0f);
+  }
   gfx_translate (-H.scroll, 0);
+  int over = drag_over_page ();
   for (int p = first; p <= last; p++) {
+    if (q > 0) {
+      float r[4];
+      card_rect (p, r);
+      gfx_rect (r[0], r[1], r[2], r[3], dp (CARD_RADIUS_DP), GFX_RGBA (CARD_RGB, CARD_FILL_ALPHA * q));
+      if (p == over)
+        gfx_ring (r[0], r[1], r[2], r[3], dp (CARD_RADIUS_DP), dp (CARD_STROKE_DP), GFX_RGBA (CARD_RGB, q));
+    }
     if (p == 0)
       draw_clock (0);
-    GPtrArray *items = N.model->pages->pdata[p];
-    for (guint i = 0; i < items->len; i++) {
-      float x, y;
-      slot_rect (p, i, &x, &y);
-      draw_icon_and_label (tiles_get (items->pdata[i]), x, y, true);
-    }
+    GPtrArray *items = page_cells (p);
+    for (guint i = 0; items && i < items->len; i++)
+      draw_cell (p, i, items->pdata[i], true);
+    drag_draw_cells (p);
   }
   gfx_restore ();
-  draw_dots ();
-  for (guint i = 0; i < N.model->dock->len; i++) {
-    float x, y;
-    dock_rect (i, &x, &y);
-    draw_icon_and_label (tiles_get (N.model->dock->pdata[i]), x, y, false);
-  }
+  draw_dots (q);
+  for (guint i = 0; i < N.model->dock->len; i++)
+    draw_cell (-1, i, N.model->dock->pdata[i], false);
+  drag_draw_cells (-1);
   gfx_restore ();
+}
+
+/* ---- for a drag ----------------------------------------------------------------------------------------------- */
+
+void
+home_to_screen (float x, float y, float *sx, float *sy)
+{
+  float S, TY, P = N.H / 2.0f;
+  spring (&S, &TY);
+  *sx = N.W / 2.0f + (x - H.scroll - N.W / 2.0f) * S;
+  *sy = P + (y - P) * S + TY;
+}
+
+void
+home_from_screen (float sx, float sy, float *x, float *y)
+{
+  float S, TY, P = N.H / 2.0f;
+  spring (&S, &TY);
+  *x = N.W / 2.0f + (sx - N.W / 2.0f) / S + H.scroll;
+  *y = P + (sy - TY - P) / S;
+}
+
+float
+home_spring_scale (void)
+{
+  float S, TY;
+  spring (&S, &TY);
+  return S;
+}
+
+float
+home_icon_size (void)
+{
+  return H.icon;
+}
+
+int
+home_n_pages (void)
+{
+  return n_pages ();
+}
+
+int
+home_page (void)
+{
+  return H.page;
+}
+
+bool
+home_snapping (void)
+{
+  return H.snapping;
+}
+
+void
+home_set_extra_page (bool on)
+{
+  H.extra = on;
+  wl_schedule (N.wl);
+}
+
+int
+home_page_at (float x)
+{
+  return (int) floorf (x / H.pitch);
+}
+
+void
+home_card (int page, float r[4])
+{
+  card_rect (page, r);
+}
+
+int
+home_cells (int page)
+{
+  return page < 0 ? N.model->dock_size : model_capacity (N.model, page);
+}
+
+void
+home_cell_grid (int page, int index, int *col, int *row)
+{
+  int slot = page < 0 ? index : index + (page == 0 ? N.model->reserved : 0);
+  *col = page < 0 ? slot : slot % GRID_COLS;
+  *row = page < 0 ? 0 : slot / GRID_COLS;
+}
+
+void
+home_cell_box (int page, int index, float r[4])
+{
+  int col, row;
+  home_cell_grid (page, index, &col, &row);
+  if (page < 0) {
+    r[0] = H.cell_x0 + col * H.cell_w;
+    r[1] = H.dock_top;
+    r[2] = H.cell_w;
+    r[3] = dp (HOTSEAT_CELL_DP);
+    return;
+  }
+  r[0] = page * H.pitch + H.cell_x0 + col * H.cell_w;
+  r[1] = H.cell_y0 + row * H.cell_h;
+  r[2] = H.cell_w;
+  r[3] = H.cell_h;
+}
+
+void
+home_icon_pos (int page, int index, float *x, float *y)
+{
+  if (page < 0)
+    dock_rect (index, x, y);
+  else
+    slot_rect (page, index, x, y);
+}
+
+int
+home_cell_nearest (int page, float x, float y)
+{
+  /* on the first page the clock's row is never one: the row under it is nearest */
+  int top = page == 0 ? N.model->reserved / GRID_COLS : 0;
+  int col = CLAMP ((int) floorf ((x - page * H.pitch - H.cell_x0) / H.cell_w), 0, GRID_COLS - 1);
+  int row = CLAMP ((int) floorf ((y - H.cell_y0) / H.cell_h), top, GRID_ROWS - 1);
+  int slot = row * GRID_COLS + col, reserved = page == 0 ? N.model->reserved : 0;
+  return slot < reserved ? -1 : slot - reserved;
+}
+
+bool
+home_in_dock (float sx, float sy)
+{
+  return sy >= H.dock_top && sy < N.H - dp (NAV_GESTURE_DP) && sx >= H.cell_x0 && sx < N.W - H.cell_x0;
+}
+
+int
+home_dock_nearest (float sx)
+{
+  return CLAMP ((int) floorf ((sx - H.cell_x0) / H.cell_w), 0, N.model->dock_size - 1);
+}
+
+/* the drag is over: the extra page goes, and so does any page it emptied, the one on show staying on show */
+void
+home_tidy_pages (void)
+{
+  int before = 0;
+  for (int p = 1; p < H.page && p < (int) N.model->pages->len; p++)
+    before += ((GPtrArray *) N.model->pages->pdata[p])->len == 0;
+  H.extra = false;
+  model_tidy (N.model);
+  H.page -= before;
+  H.scroll -= before * H.pitch;
+  H.snap_from -= before * H.pitch;
+  H.snap_to -= before * H.pitch;
+  home_model_changed ();
 }
 
 /* ---- paging --------------------------------------------------------------------------------------------------- */
@@ -246,7 +479,7 @@ static void
 snap_to (int page, float velocity)
 {
   page = CLAMP (page, 0, n_pages () - 1);
-  float to = page * N.W, delta = to - H.scroll;
+  float to = page * H.pitch, delta = to - H.scroll;
   if (page != H.page)
     nav_icons_changed ();
   H.page = page;
@@ -345,7 +578,7 @@ home_touch_move (float x, float y, double t, bool *vertical)
   }
   float delta = H.last_x - x;
   H.last_x = x;
-  float max = (n_pages () - 1) * (float) N.W;
+  float max = (n_pages () - 1) * H.pitch;
   float next = H.scroll + delta;
   /* a stretch showing shrinks first when the finger goes back */
   if (!spongy_edge_is_finished (&H.left) && delta > 0) {
@@ -375,8 +608,8 @@ home_touch_up (float x, float y, double t)
   spongy_edge_release (&H.left, t);
   spongy_edge_release (&H.right, t);
   if (!H.dragging) {
-    if (H.scroll != H.page * N.W)
-      snap_to (lroundf (H.scroll / N.W), 0);
+    if (H.scroll != H.page * H.pitch)
+      snap_to (lroundf (H.scroll / H.pitch), 0);
     return;
   }
   H.dragging = false;
@@ -384,7 +617,7 @@ home_touch_up (float x, float y, double t)
   spongy_velocity_get (&H.vel, t, &vx, &vy);
   vx = CLAMP (vx, -dp (8000), dp (8000));
   float delta = x - H.down_x;
-  int page = (int) floorf (H.scroll_down / N.W + 0.5f);
+  int page = (int) floorf (H.scroll_down / H.pitch + 0.5f);
   bool fling = fabsf (delta) > dp (PAGING_SLOP_DP) && fabsf (vx) > dp (FLING_PX_S_DP);
   bool significant = fabsf (delta) > N.W * SIGNIFICANT_MOVE;
   if ((significant && !fling && delta > 0) || (fling && vx > 0))
@@ -392,7 +625,7 @@ home_touch_up (float x, float y, double t)
   else if ((significant && !fling && delta < 0) || (fling && vx < 0))
     snap_to (page + 1, vx);
   else
-    snap_to (lroundf (H.scroll / N.W), 0);
+    snap_to (lroundf (H.scroll / H.pitch), 0);
   wl_schedule (N.wl);
 }
 
@@ -403,5 +636,14 @@ home_touch_cancel (double t)
   H.dragging = false;
   spongy_edge_release (&H.left, t);
   spongy_edge_release (&H.right, t);
-  snap_to (lroundf (H.scroll / N.W), 0);
+  snap_to (lroundf (H.scroll / H.pitch), 0);
+}
+
+/* a drag waiting at a neighbouring page: there, on the scroller's 750 ms (or `ms`) */
+void
+home_snap (int page, double ms)
+{
+  snap_to (page, 0);
+  if (H.snapping && ms > 0)
+    H.snap_ms = ms;
 }

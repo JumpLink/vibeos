@@ -297,6 +297,11 @@ static const char IFACE[] =
   "    </method>"
   /* back, as the launcher takes it: the drawer closes */
   "    <method name='Back'/>"
+  /* a back swipe began over the launcher: the finger is the shell's from now on (Android pilfers it) */
+  "    <method name='Cancel'/>"
+  /* the lock screen came up: Launcher3 goes to NORMAL as the screen goes off, so no menu and no drawer are left
+   * behind it */
+  "    <method name='Locked'/>"
   /* the workspace and dock now: scale (about the screen's centre), alpha, depth, and px down */
   "    <method name='Pose'>"
   "      <arg type='d' name='scale' direction='in'/>"
@@ -316,8 +321,10 @@ method_call (GDBusConnection *bus, const char *sender, const char *path, const c
     gint64 t0;
     g_variant_get (params, "(&sx&s)", &state, &t0, &app);
     show_icon ();
-    if (g_strcmp0 (state, "normal"))
-      popup_close_now ();           /* an app over the launcher, or going home: no menu left behind */
+    if (g_strcmp0 (state, "normal")) {
+      popup_close_now ();           /* an app over the launcher, or going home: no menu or drag left behind */
+      drag_cancel (true);
+    }
     if (!g_strcmp0 (state, "background")) {
       V.state = NAV_BACKGROUND;
       drawer_close_now ();
@@ -344,10 +351,20 @@ method_call (GDBusConnection *bus, const char *sender, const char *path, const c
   } else if (!g_strcmp0 (method, "ShowIcon")) {
     show_icon ();
   } else if (!g_strcmp0 (method, "Back")) {
-    if (popup_is_open ())
+    if (drag_holding ())
+      touch_drop ();                /* back drops the drag (a held icon too) */
+    else if (popup_is_open ())
       popup_close ();
     else
       drawer_back ();
+  } else if (!g_strcmp0 (method, "Cancel")) {
+    touch_drop ();
+  } else if (!g_strcmp0 (method, "Locked")) {
+    touch_drop ();
+    drag_cancel (true);
+    popup_close_now ();
+    drawer_close_now ();
+    wl_schedule (N.wl);
   } else if (!g_strcmp0 (method, "Scrim")) {
     double alpha, blur;
     g_variant_get (params, "(dd)", &alpha, &blur);
@@ -360,6 +377,7 @@ method_call (GDBusConnection *bus, const char *sender, const char *path, const c
     if (V.state != NAV_POSE) {
       drawer_close_now ();
       popup_close_now ();
+      drag_cancel (true);
     }
     V.state = NAV_POSE;
     V.pose.scale = scale;

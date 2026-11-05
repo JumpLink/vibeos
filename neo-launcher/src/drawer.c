@@ -2,7 +2,10 @@
  * (AbstractStateChangeTouchController); a release flings (> 1 dp/ms) or commits at f = 0.4 opening / 0.6 closing and
  * settles in max(100, 1200/max(2, |v|/2)·max(0.2, rest)) ms, quintic for fast flings, cubic otherwise. Every settle
  * into the open sheet starts with a stretch bump of the whole container; the list inside scrolls and stretches the
- * RecyclerView way (libspongy). */
+ * RecyclerView way (libspongy). A swipe up from the bar while it is open goes home (NavBarToHomeTouchController):
+ * the sheet shrinks towards 0.9 on DECELERATE_3 of the swipe over the screen's height, and the release closes it
+ * past half of that or on an upward fling, else it grows back in 80 ms. A tile opens on a tap only: a finger that
+ * moved past the slop, or that stopped a fling, opens nothing. */
 #include <librsvg/rsvg.h>
 #include <math.h>
 
@@ -21,6 +24,9 @@
 #define MIN_ABSORB           1000
 #define INTERP_COEFF         1.7f
 #define PROG_CLOSE_MS        200.0        /* back, a launch: ACCELERATE */
+#define HOME_MIN_SCALE       0.9f         /* PREDICTIVE_BACK_MIN_SCALE */
+#define HOME_SUCCESS         0.5f         /* SUCCESS_TRANSITION_PROGRESS, of DECELERATE_3 */
+#define HOME_REVERT_MS       80.0
 
 #define SHEET_RGB            0x082D31     /* over the blur at 0.54, measured (18, 38, 42) on the S10e */
 #define SHEET_ALPHA          0.54f
@@ -45,8 +51,14 @@ static struct {
   SpongyCurve curve;
   /* the state drag */
   bool        down, dragging, decided, opening, overshot, list_touch, catch_anim;
+  bool        moved;               /* past the slop: no tap */
   float       down_x, down_y, f_start;
   SpongyVelocity vel;
+  /* the swipe up from the bar (home): its progress over the screen's height, and the way back */
+  bool        home_down, home_dragging;
+  float       home_x0, home_y0, home_p;
+  double      revert_t0;           /* 0: none */
+  float       revert_from;
   /* the container's own stretch (the bottom edge: over-drag past open and the settle bump) */
   SpongyEdge  bump;
   float       bump_amount;
@@ -159,22 +171,44 @@ drawer_close_now (void)
 {
   D.settling = false;
   D.f = 0;
+  D.home_p = 0;
+  D.revert_t0 = 0;
   spongy_list_scroll_to (&D.list, 0);
   spongy_edge_finish (&D.bump);
 }
 
-/* back with the drawer open: the programmatic close, 200 ms on ACCELERATE (it comes over D-Bus, between frames) */
+/* back with the drawer open, or home from the bar: the programmatic close, 200 ms on ACCELERATE (back comes over
+ * D-Bus, between frames) */
 void
 drawer_back (void)
 {
   if (D.f <= 0)
     return;
   N.now = MAX (N.now, g_get_monotonic_time () / 1000.0);
+  D.revert_t0 = 0;
   D.from = D.f;
   D.to = 0;
   D.t0 = N.now;
   D.ms = PROG_CLOSE_MS;
   D.curve = SPONGY_ACCELERATE;
+  D.settling = true;
+  D.overshot = false;
+  wl_schedule (N.wl);
+}
+
+/* a drag took an icon out: the sheet slides away in 150 ms (DECELERATE_1_7 in Launcher3, 1.5 here) */
+void
+drawer_close_for_drag (void)
+{
+  if (D.f <= 0)
+    return;
+  D.down = D.dragging = false;
+  D.revert_t0 = 0;
+  D.from = D.f;
+  D.to = 0;
+  D.t0 = N.now;
+  D.ms = 150;
+  D.curve = SPONGY_DECELERATE_CUBIC;
   D.settling = true;
   D.overshot = false;
   wl_schedule (N.wl);
@@ -199,9 +233,18 @@ drawer_frame (void)
     if (t >= 1) {
       D.settling = false;
       D.f = D.to;
-      if (D.f == 0)
+      if (D.f == 0) {
         spongy_list_scroll_to (&D.list, 0);
+        D.home_p = 0;               /* the sheet's scale goes back to 1 once it is gone */
+      }
     }
+    more = true;
+  }
+  if (D.revert_t0) {
+    float t = CLAMP ((N.now - D.revert_t0) / HOME_REVERT_MS, 0, 1);
+    D.home_p = D.revert_from * (1 - t);
+    if (t >= 1)
+      D.revert_t0 = 0;
     more = true;
   }
   bool a = false;
@@ -256,7 +299,7 @@ drawer_touch_down (float x, float y, double t)
   D.down = true;
   D.down_x = x;
   D.down_y = y;
-  D.dragging = D.decided = false;
+  D.dragging = D.decided = D.moved = false;
   D.overshot = false;
   D.opening = false;
   spongy_velocity_clear (&D.vel);
@@ -287,7 +330,17 @@ drawer_touch_move (float x, float y, double t)
     drag_to (y, t);
     return;
   }
-  float dy = y - D.down_y;
+  float dx = x - D.down_x, dy = y - D.down_y;
+  if (hypotf (dx, dy) > dp (SLOP_DP))
+    D.moved = true;
+  /* sideways past the slop first: not the list's (a back swipe from the edge) */
+  if (D.list_touch && !D.decided && !D.list.dragging && fabsf (dx) > dp (SLOP_DP) && fabsf (dx) > fabsf (dy)) {
+    spongy_list_cancel (&D.list, t);
+    D.list_touch = false;
+    D.decided = true;
+    wl_schedule (N.wl);
+    return;
+  }
   if (!D.decided) {
     /* down: closing, when the list is at its top or the finger is on the handle/search */
     bool at_top = !D.list_touch || D.list.offset <= 0;
@@ -356,13 +409,89 @@ drawer_touch_up (float x, float y, double t)
     return;
   }
   if (D.list_touch) {
-    bool tap = !D.list.dragging && !D.decided;
+    bool tap = !D.list.dragging && !D.decided && !D.moved;
     spongy_list_up (&D.list, t);
     float ix, iy;
     Tile *tile = tap ? tile_at (D.down_x, D.down_y, &ix, &iy) : NULL;
     if (tile)
       tile_launch (tile, ix, iy, D.icon, true);
   }
+  wl_schedule (N.wl);
+}
+
+/* ---- home from the bar ---------------------------------------------------------------------------------------- */
+
+static float
+decelerate3 (float t)
+{
+  return 1 - powf (1 - t, 6);
+}
+
+bool
+drawer_home_down (float x, float y, double t)
+{
+  if (!drawer_is_open () || D.down)
+    return false;
+  D.home_down = true;
+  D.home_dragging = false;
+  D.home_x0 = x;
+  D.home_y0 = y;
+  D.revert_t0 = 0;
+  spongy_velocity_clear (&D.vel);
+  spongy_velocity_add (&D.vel, t, x, y);
+  return true;
+}
+
+void
+drawer_home_move (float x, float y, double t)
+{
+  if (!D.home_down)
+    return;
+  spongy_velocity_add (&D.vel, t, x, y);
+  float up = D.home_y0 - y;
+  if (!D.home_dragging) {
+    /* SingleAxisSwipeDetector, up only: along past the slop and past the across */
+    if (up < MAX (dp (SLOP_DP), fabsf (x - D.home_x0)))
+      return;
+    D.home_dragging = true;
+    D.home_y0 -= dp (SLOP_DP);        /* from the slop's edge on */
+    up = D.home_y0 - y;
+  }
+  D.home_p = CLAMP (up / N.H, 0, 1);
+  wl_schedule (N.wl);
+}
+
+bool
+drawer_home_up (float x, float y, double t)
+{
+  if (!D.home_down)
+    return false;
+  D.home_down = false;
+  if (!D.home_dragging)
+    return false;
+  D.home_dragging = false;
+  float vx, vy;
+  spongy_velocity_get (&D.vel, t, &vx, &vy);
+  float v = vy / 1000;                       /* px/ms, + down */
+  bool home = decelerate3 (D.home_p) >= HOME_SUCCESS || (v < 0 && fabsf (v) > dp (FLING_PX_MS_DP));
+  if (home) {
+    drawer_back ();
+  } else {
+    D.revert_from = D.home_p;
+    D.revert_t0 = N.now;
+  }
+  wl_schedule (N.wl);
+  return home;
+}
+
+void
+drawer_home_cancel (double t)
+{
+  if (!D.home_down)
+    return;
+  D.home_down = D.home_dragging = false;
+  D.revert_from = D.home_p;
+  D.revert_t0 = N.now;
   wl_schedule (N.wl);
 }
 
@@ -401,7 +530,8 @@ draw_list (float top, float view_h)
     Tile *t = N.sorted->pdata[i];
     float x = roundf (D.cols_x0 + (i % GRID_COLS) * D.col_w + (D.col_w - D.icon) / 2);
     float y = roundf (top + first_icon + (i / GRID_COLS) * row_h - off);
-    tile_draw_icon (t, x, y, D.icon, 1);
+    if (t != drag_drawer_tile ())   /* held or dragged out: the drag view is it */
+      tile_draw_icon (t, x, y, D.icon, 1);
     text_draw (t->dlabel, x + D.icon / 2 - lw / 2, y + dp (LIST_LABEL_BASELINE_DP) - text_ascent (N.label_font),
                GFX_RGBA (LABEL_RGB, 1));
   }
@@ -491,6 +621,10 @@ drawer_draw (void)
   if (top >= N.H)
     return;
   float r = dp (SHEET_RADIUS_DP);
+  float scale = 1 - (1 - HOME_MIN_SCALE) * decelerate3 (D.home_p);
+  gfx_save ();
+  if (scale != 1)
+    gfx_scale (scale, scale, N.W / 2.0f, N.H / 2.0f);   /* the apps view and its header, about their centre */
   gfx_rect (0, top, N.W, N.H - top + r, r, GFX_RGBA (SHEET_RGB, SHEET_ALPHA));
   gfx_save ();
   gfx_translate (0, top);
@@ -505,5 +639,6 @@ drawer_draw (void)
   } else {
     draw_box (D.list_top_amount + D.list_bottom_amount != 0);
   }
+  gfx_restore ();
   gfx_restore ();
 }

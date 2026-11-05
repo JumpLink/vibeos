@@ -104,6 +104,9 @@ void   press_up          (void);
 void   tile_launch       (Tile *t, float x, float y, float size, bool from_drawer);
 float  launch_content_scale (void);                    /* the home content's scale while a launch runs */
 void   label_draw        (TextLayout *l, float x, float y, GfxColor c, bool shadow);
+void   haptic            (const char *event);              /* feedbackd: HAPTIC_LONG_PRESS, HAPTIC_TICK */
+#define HAPTIC_LONG_PRESS "window-close"
+#define HAPTIC_TICK       "button-released"
 
 /* home.c */
 void   home_layout       (void);
@@ -118,6 +121,28 @@ Tile  *home_tile_at      (float x, float y, float *ix, float *iy, ModelPos *pos)
 void   home_model_changed (void);                        /* icons added or taken away: the pages reflowed */
 void   home_clock_tick   (void);
 bool   home_icon_rect    (const char *id, float r[4]);
+/* for a drag. "page" -1 is the dock; a page's cells are in the strip's coordinates (page p from x = p·pitch, before
+ * the scroll and the spring-loaded shrink), the dock's on the screen; a page's index is the model's (page 0's start
+ * after the clock row) */
+void   home_to_screen    (float x, float y, float *sx, float *sy);
+void   home_from_screen  (float sx, float sy, float *x, float *y);
+float  home_spring_scale (void);
+float  home_icon_size    (void);
+int    home_n_pages      (void);                         /* with the extra page */
+int    home_page         (void);
+bool   home_snapping     (void);
+void   home_snap         (int page, double ms);          /* ms 0: the scroller's 750 */
+void   home_set_extra_page (bool on);
+int    home_page_at      (float x);
+void   home_card         (int page, float r[4]);         /* the page's CellLayout bounds */
+int    home_cells        (int page);
+void   home_cell_grid    (int page, int index, int *col, int *row);
+void   home_cell_box     (int page, int index, float r[4]);
+void   home_icon_pos     (int page, int index, float *x, float *y);
+int    home_cell_nearest (int page, float x, float y);   /* never the clock's row; -1 only past it */
+bool   home_in_dock      (float sx, float sy);
+int    home_dock_nearest (float sx);
+void   home_tidy_pages   (void);
 
 /* nav.c: gesture navigation, the launcher's half (the shell drives it over D-Bus) */
 void   nav_init          (void);
@@ -147,9 +172,18 @@ void   drawer_touch_cancel (double t);
 void   drawer_close_now  (void);
 void   drawer_back       (void);                         /* close on back: 200 ms ACCELERATE */
 void   drawer_open       (void);                         /* open it as a settle from where it is */
+void   drawer_close_for_drag (void);
 /* the tile under a finger held still on the list (a long press), and its icon box; NULL when it scrolled */
 Tile  *drawer_hold_tile  (float x, float y, float *ix, float *iy);
 bool   drawer_dragging   (void);
+/* the swipe up from the bar while the drawer is open: home (false from down: not the drawer's) */
+bool   drawer_home_down  (float x, float y, double t);
+void   drawer_home_move  (float x, float y, double t);
+bool   drawer_home_up    (float x, float y, double t);   /* true: it goes home */
+void   drawer_home_cancel (double t);
+
+/* main.c: the shell took the finger (a back swipe began over the launcher): drop it, as on a touch cancel */
+void   touch_drop        (void);
 
 /* popup.c: the long-press menus (an icon's, the wallpaper's options) */
 void   popup_open_icon   (Tile *t, ModelPos pos, bool from_drawer, float ix, float iy, float isz);
@@ -163,3 +197,24 @@ void   popup_touch_down  (float x, float y);
 void   popup_touch_move  (float x, float y);
 void   popup_touch_up    (float x, float y);
 void   popup_touch_cancel (void);
+GfxTex *svg_texture      (const char *svg, int px);
+void   home_remove_icon  (const char *id, ModelPos pos);   /* Remove: this copy, or the app off the home screen */
+void   home_unhide       (const char *id);
+
+/* drag.c: moving an icon (Launcher3's drag and drop) */
+void   drag_hold         (Tile *t, ModelPos from, bool from_drawer, float ix, float iy, float down_x, float down_y);
+bool   drag_holding      (void);                         /* a held icon, or a drag: the finger is the drag's */
+void   drag_move         (float x, float y);
+void   drag_up           (float x, float y);
+void   drag_cancel       (bool now);                     /* now: no 500 ms before the workspace comes back */
+bool   drag_busy         (void);                         /* landing or the workspace coming back: touches wait */
+void   drag_hurry        (void);
+bool   drag_frame        (void);
+float  drag_spring       (void);                         /* 0 normal .. 1 SPRING_LOADED, eased */
+int    drag_over_page    (void);                         /* the page under the drag, or -1 */
+bool   drag_hides        (int page, int index);
+void   drag_offset       (int page, int index, float *dx, float *dy);
+void   drag_draw_cells   (int page);                     /* the drop preview, in the page's coordinates */
+void   drag_draw_scrim   (void);                         /* over the wallpaper, under the workspace */
+void   drag_draw         (void);                         /* the drop bar and the drag view */
+Tile  *drag_drawer_tile  (void);                         /* the drawer's icon being held or dragged */

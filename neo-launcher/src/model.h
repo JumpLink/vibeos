@@ -15,8 +15,8 @@ typedef struct {
 typedef struct {
   int        cols, rows, dock_size;
   int        reserved;    /* slots at the top of the first page that widgets take */
-  GPtrArray *dock;        /* char* desktop ids */
-  GPtrArray *pages;       /* GPtrArray* of char* desktop ids */
+  GPtrArray *dock;        /* char* desktop ids, NULL for an empty slot; none empty at the end */
+  GPtrArray *pages;       /* GPtrArray* of char* desktop ids, the same way (page 0's cells start after `reserved`) */
   GHashTable *hidden;     /* ids taken off the home screen (still in the drawer) */
 } Model;
 
@@ -31,5 +31,10 @@ gboolean  model_reconcile  (Model *self, GHashTable *apps);
 gboolean  model_on_home    (Model *self, const char *id);
 gboolean  model_remove_one (Model *self, const char *id, ModelPos from);
 void      model_add_shortcut (Model *self, const char *id);
-void      model_move       (Model *self, const char *id, ModelPos target, ModelPos from, gboolean copy);
+GPtrArray *model_cells     (Model *self, ModelPos pos);     /* the dock's or pos.page's cells, NULL past the last */
+const char *model_at       (Model *self, ModelPos pos);     /* the id in a cell, NULL when it is empty */
+/* A drag's drop: `id` leaves `from` (unless it is a copy, from the drawer), and the dock (page < 0) or the page
+ * gets these n cells (NULL = empty), the dropped icon among them. */
+void      model_drop       (Model *self, const char *id, ModelPos from, gboolean copy, int page, char **cells, int n);
+void      model_tidy       (Model *self);              /* the pages a drag left empty go (a drop keeps them) */
 void      model_save       (Model *self);

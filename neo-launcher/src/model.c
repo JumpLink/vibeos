@@ -1,5 +1,7 @@
 /* The home layout. The first start fills the dock from Phosh's favourites and the pages with every other app, A→Z;
- * apps installed later go to the first free cell, uninstalled ones drop out. Same file and format as the GJS Neo. */
+ * apps installed later go to the first free cell. A cell may be empty, as on Launcher3's grid: an icon removed or
+ * uninstalled leaves its cell empty, and a drag can drop an icon on any cell. The GJS Neo's file, plus null for an
+ * empty cell. */
 #include "model.h"
 #include "apps.h"
 
@@ -65,13 +67,33 @@ model_capacity (Model *self, int page)
   return MAX (1, model_per_page (self) - (page == 0 ? self->reserved : 0));
 }
 
-/* a full page pushes its last icons on to the next */
+/* no empty cells at the end */
+static void
+trim (GPtrArray *cells)
+{
+  guint n = cells->len;
+  while (n && !cells->pdata[n - 1])
+    n--;
+  g_ptr_array_set_size (cells, n);
+}
+
+/* a page with more icons than cells (the widget row came after them): its last empty cell closes up, or its last
+ * icon goes on to the next page */
 static void
 spill (Model *self, guint from)
 {
   for (guint p = from; p < self->pages->len; p++) {
     GPtrArray *cur = self->pages->pdata[p];
+    trim (cur);
     while ((int) cur->len > model_capacity (self, p)) {
+      guint hole = cur->len;
+      for (guint i = 0; i < cur->len; i++)
+        if (!cur->pdata[i])
+          hole = i;
+      if (hole < cur->len) {
+        g_ptr_array_remove_index (cur, hole);
+        continue;
+      }
       if (p + 1 >= self->pages->len)
         g_ptr_array_add (self->pages, page_new ());
       GPtrArray *next = self->pages->pdata[p + 1];
@@ -113,12 +135,14 @@ list_count (GPtrArray *list, const char *id)
   return n;
 }
 
+/* every icon of `id` leaves its cell empty */
 static void
-list_remove_all (GPtrArray *list, const char *id)
+list_clear_all (GPtrArray *list, const char *id)
 {
-  for (guint i = list->len; i-- > 0;)
+  for (guint i = 0; i < list->len; i++)
     if (!g_strcmp0 (list->pdata[i], id))
-      g_ptr_array_remove_index (list, i);
+      g_clear_pointer (&list->pdata[i], g_free);
+  trim (list);
 }
 
 static void
@@ -142,37 +166,49 @@ model_on_home (Model *self, const char *id)
   return FALSE;
 }
 
-static GPtrArray *
-free_page (Model *self)
+/* `id` in the first empty cell, on a new page when every page is full */
+static void
+place (Model *self, const char *id)
 {
   for (guint p = 0; p < self->pages->len; p++) {
     GPtrArray *page = self->pages->pdata[p];
-    if ((int) page->len < model_capacity (self, p))
-      return page;
+    for (guint i = 0; i < page->len; i++)
+      if (!page->pdata[i]) {
+        page->pdata[i] = g_strdup (id);
+        return;
+      }
+    if ((int) page->len < model_capacity (self, p)) {
+      g_ptr_array_add (page, g_strdup (id));
+      return;
+    }
   }
   GPtrArray *page = page_new ();
+  g_ptr_array_add (page, g_strdup (id));
   g_ptr_array_add (self->pages, page);
-  return page;
 }
 
 static void
 drop_empty_pages (Model *self)
 {
   /* any empty page but the first: one emptied by a move, or skipped over while turning pages */
-  for (guint p = self->pages->len; p-- > 1;)
-    if (((GPtrArray *) self->pages->pdata[p])->len == 0)
+  for (guint p = self->pages->len; p-- > 1;) {
+    GPtrArray *page = self->pages->pdata[p];
+    trim (page);
+    if (page->len == 0)
       g_ptr_array_remove_index (self->pages, p);
+  }
 }
 
+/* ids and nulls (empty cells) */
 static GPtrArray *
 json_ids (JsonArray *arr)
 {
   GPtrArray *list = id_list ();
   for (guint i = 0; arr && i < json_array_get_length (arr); i++) {
-    const char *id = json_node_get_string (json_array_get_element (arr, i));
-    if (id)
-      g_ptr_array_add (list, g_strdup (id));
+    JsonNode *n = json_array_get_element (arr, i);
+    g_ptr_array_add (list, g_strdup (JSON_NODE_HOLDS_VALUE (n) ? json_node_get_string (n) : NULL));
   }
+  trim (list);
   return list;
 }
 
@@ -201,10 +237,8 @@ fresh (Model *self, GHashTable *apps)
   rest = g_list_sort (rest, app_compare);
 
   g_ptr_array_set_size (self->pages, 0);
-  for (GList *l = rest; l; l = l->next) {
-    GPtrArray *page = free_page (self);
-    g_ptr_array_add (page, g_strdup (g_app_info_get_id (l->data)));
-  }
+  for (GList *l = rest; l; l = l->next)
+    place (self, g_app_info_get_id (l->data));
   g_list_free (rest);
   if (!self->pages->len)
     g_ptr_array_add (self->pages, page_new ());
@@ -235,6 +269,7 @@ model_load (Model *self, GHashTable *apps)
   if (!loaded)
     fresh (self, apps);
   model_reconcile (self, apps);
+  model_tidy (self);
 }
 
 gboolean
@@ -248,28 +283,30 @@ model_reconcile (Model *self, GHashTable *apps)
     if (!model_on_home (self, from) || g_hash_table_contains (apps, from) || !g_hash_table_contains (apps, to))
       continue;
     /* the new app's own icon (put on a free cell when it was installed) gives way to the old one's places */
-    list_remove_all (self->dock, to);
+    list_clear_all (self->dock, to);
     for (guint p = 0; p < self->pages->len; p++)
-      list_remove_all (self->pages->pdata[p], to);
+      list_clear_all (self->pages->pdata[p], to);
     list_replace_all (self->dock, from, to);
     for (guint p = 0; p < self->pages->len; p++)
       list_replace_all (self->pages->pdata[p], from, to);
     changed = TRUE;
   }
 
-  /* drop uninstalled and hidden apps */
+  /* uninstalled and hidden apps leave their cells empty */
   GPtrArray *lists[1 + self->pages->len];
   lists[0] = self->dock;
   for (guint p = 0; p < self->pages->len; p++)
     lists[1 + p] = self->pages->pdata[p];
-  for (guint l = 0; l < G_N_ELEMENTS (lists); l++)
-    for (guint i = lists[l]->len; i-- > 0;) {
+  for (guint l = 0; l < G_N_ELEMENTS (lists); l++) {
+    for (guint i = 0; i < lists[l]->len; i++) {
       const char *id = lists[l]->pdata[i];
-      if (!g_hash_table_contains (apps, id) || g_hash_table_contains (self->hidden, id)) {
-        g_ptr_array_remove_index (lists[l], i);
+      if (id && (!g_hash_table_contains (apps, id) || g_hash_table_contains (self->hidden, id))) {
+        g_clear_pointer (&lists[l]->pdata[i], g_free);
         changed = TRUE;
       }
     }
+    trim (lists[l]);
+  }
 
   /* a smaller dock (dock-num-icons) loses its extra icons; they come back on the pages below */
   if ((int) self->dock->len > self->dock_size) {
@@ -287,14 +324,12 @@ model_reconcile (Model *self, GHashTable *apps)
       fresh_apps = g_list_prepend (fresh_apps, value);
   fresh_apps = g_list_sort (fresh_apps, app_compare);
   for (GList *l = fresh_apps; l; l = l->next) {
-    g_ptr_array_add (free_page (self), g_strdup (g_app_info_get_id (l->data)));
+    place (self, g_app_info_get_id (l->data));
     changed = TRUE;
   }
   g_list_free (fresh_apps);
 
-  guint before = self->pages->len;
-  drop_empty_pages (self);
-  changed |= self->pages->len != before;
+  /* a page it emptied stays until the caller tidies (home_tidy_pages keeps the page on show where it is) */
   if (!self->pages->len)
     g_ptr_array_add (self->pages, page_new ());
   if (changed)
@@ -302,25 +337,21 @@ model_reconcile (Model *self, GHashTable *apps)
   return changed;
 }
 
-/* Takes one icon away: the one at `from` when it is `id`, else every icon of `id`. An app may sit in several
- * places (a home shortcut of a dock app). */
+/* Takes one icon away, leaving its cell empty: the one at `from` when it is `id`, else every icon of `id`. An app
+ * may sit in several places (a home shortcut of a dock app). */
 static void
 take (Model *self, const char *id, ModelPos from)
 {
-  if (from.dock >= 0 && from.dock < (int) self->dock->len && !g_strcmp0 (self->dock->pdata[from.dock], id)) {
-    g_ptr_array_remove_index (self->dock, from.dock);
+  GPtrArray *cells = model_cells (self, from);
+  int i = from.dock >= 0 ? from.dock : from.index;
+  if (cells && i >= 0 && i < (int) cells->len && !g_strcmp0 (cells->pdata[i], id)) {
+    g_clear_pointer (&cells->pdata[i], g_free);
+    trim (cells);
     return;
   }
-  if (from.dock < 0 && from.page >= 0 && from.page < (int) self->pages->len) {
-    GPtrArray *page = self->pages->pdata[from.page];
-    if (from.index >= 0 && from.index < (int) page->len && !g_strcmp0 (page->pdata[from.index], id)) {
-      g_ptr_array_remove_index (page, from.index);
-      return;
-    }
-  }
-  list_remove_all (self->dock, id);
+  list_clear_all (self->dock, id);
   for (guint p = 0; p < self->pages->len; p++)
-    list_remove_all (self->pages->pdata[p], id);
+    list_clear_all (self->pages->pdata[p], id);
 }
 
 gboolean
@@ -332,7 +363,6 @@ model_remove_one (Model *self, const char *id, ModelPos from)
   if (count < 2)
     return FALSE;
   take (self, id, from);
-  drop_empty_pages (self);
   model_save (self);
   return TRUE;
 }
@@ -340,32 +370,54 @@ model_remove_one (Model *self, const char *id, ModelPos from)
 void
 model_add_shortcut (Model *self, const char *id)
 {
-  g_ptr_array_add (free_page (self), g_strdup (id));
+  place (self, id);
+  model_save (self);
+}
+
+GPtrArray *
+model_cells (Model *self, ModelPos pos)
+{
+  if (pos.dock >= 0)
+    return self->dock;
+  return pos.page >= 0 && pos.page < (int) self->pages->len ? self->pages->pdata[pos.page] : NULL;
+}
+
+const char *
+model_at (Model *self, ModelPos pos)
+{
+  GPtrArray *cells = model_cells (self, pos);
+  int i = pos.dock >= 0 ? pos.dock : pos.index;
+  return cells && i >= 0 && i < (int) cells->len ? cells->pdata[i] : NULL;
+}
+
+void
+model_drop (Model *self, const char *id, ModelPos from, gboolean copy, int page, char **cells, int n)
+{
+  g_autofree char *moving = g_strdup (id);
+  if (!copy)
+    take (self, moving, from);
+  GPtrArray *to;
+  if (page < 0) {
+    to = self->dock;
+  } else {
+    while ((int) self->pages->len <= page)
+      g_ptr_array_add (self->pages, page_new ());
+    to = self->pages->pdata[page];
+  }
+  g_ptr_array_set_size (to, 0);
+  for (int i = 0; i < n; i++)
+    g_ptr_array_add (to, g_strdup (cells[i]));
+  trim (to);
   model_save (self);
 }
 
 void
-model_move (Model *self, const char *id, ModelPos target, ModelPos from, gboolean copy)
+model_tidy (Model *self)
 {
-  g_autofree char *moving = g_strdup (id);
-
-  if (!copy)
-    take (self, moving, from);
-  if (target.dock >= 0) {
-    g_ptr_array_insert (self->dock, MIN (target.dock, (int) self->dock->len), g_strdup (moving));
-    if ((int) self->dock->len > self->dock_size) {
-      char *out = g_ptr_array_steal_index (self->dock, self->dock->len - 1);
-      g_ptr_array_add (free_page (self), out);
-    }
-  } else {
-    while ((int) self->pages->len <= target.page)
-      g_ptr_array_add (self->pages, page_new ());
-    GPtrArray *page = self->pages->pdata[target.page];
-    g_ptr_array_insert (page, MIN (target.index, (int) page->len), g_strdup (moving));
-    spill (self, target.page);
-  }
+  guint before = self->pages->len;
   drop_empty_pages (self);
-  model_save (self);
+  if (self->pages->len != before)
+    model_save (self);
 }
 
 static void
@@ -373,7 +425,10 @@ add_ids (JsonBuilder *b, GPtrArray *list)
 {
   json_builder_begin_array (b);
   for (guint i = 0; i < list->len; i++)
-    json_builder_add_string_value (b, list->pdata[i]);
+    if (list->pdata[i])
+      json_builder_add_string_value (b, list->pdata[i]);
+    else
+      json_builder_add_null_value (b);
   json_builder_end_array (b);
 }
 

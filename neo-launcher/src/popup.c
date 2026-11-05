@@ -98,6 +98,24 @@ static struct {
 
 static const char *const SVGS[N_ICONS] = { INFO_SVG, REMOVE_SVG, PLUS_SVG, PALETTE_SVG, APPS_SVG, SETTING_SVG };
 
+GfxTex *
+svg_texture (const char *svg, int px)
+{
+  RsvgHandle *h = rsvg_handle_new_from_data ((const guint8 *) svg, strlen (svg), NULL);
+  if (!h)
+    return NULL;
+  cairo_surface_t *s = cairo_image_surface_create (CAIRO_FORMAT_ARGB32, px, px);
+  cairo_t *cr = cairo_create (s);
+  RsvgRectangle vp = { 0, 0, px, px };
+  rsvg_handle_render_document (h, cr, &vp, NULL);
+  cairo_destroy (cr);
+  cairo_surface_flush (s);
+  GfxTex *t = gfx_tex_from_bgra (px, px, cairo_image_surface_get_data (s), cairo_image_surface_get_stride (s));
+  cairo_surface_destroy (s);
+  g_object_unref (h);
+  return t;
+}
+
 static void
 load_icons (void)
 {
@@ -105,20 +123,8 @@ load_icons (void)
     return;
   P.font = text_font_axes ("Google Sans Flex", 600, dp (TEXT_SP), "opsz=14");
   int px = (int) lroundf (dp (SYS_ICON_DP));
-  for (int i = 0; i < N_ICONS; i++) {
-    RsvgHandle *h = rsvg_handle_new_from_data ((const guint8 *) SVGS[i], strlen (SVGS[i]), NULL);
-    if (!h)
-      continue;
-    cairo_surface_t *s = cairo_image_surface_create (CAIRO_FORMAT_ARGB32, px, px);
-    cairo_t *cr = cairo_create (s);
-    RsvgRectangle vp = { 0, 0, px, px };
-    rsvg_handle_render_document (h, cr, &vp, NULL);
-    cairo_destroy (cr);
-    cairo_surface_flush (s);
-    P.icons[i] = gfx_tex_from_bgra (px, px, cairo_image_surface_get_data (s), cairo_image_surface_get_stride (s));
-    cairo_surface_destroy (s);
-    g_object_unref (h);
-  }
+  for (int i = 0; i < N_ICONS; i++)
+    P.icons[i] = svg_texture (SVGS[i], px);
 }
 
 static void
@@ -434,6 +440,27 @@ set_hidden (const char *id, bool hidden)
   model_reconcile (N.model, apps);
 }
 
+void
+home_remove_icon (const char *id, ModelPos pos)
+{
+  /* one of several copies goes; the last one takes the app off the home screen; its cell stays empty, and a page
+   * it leaves empty goes (not while a drag is on: its end tidies) */
+  if (!model_remove_one (N.model, id, pos))
+    set_hidden (id, true);
+  if (drag_holding () || drag_busy ())
+    home_model_changed ();
+  else
+    home_tidy_pages ();
+}
+
+/* a drawer icon dropped on the home screen while the app was off it: back on, where it was dropped */
+void
+home_unhide (const char *id)
+{
+  if (g_hash_table_contains (N.model->hidden, id))
+    set_hidden (id, false);
+}
+
 static void
 activate (Row *r)
 {
@@ -443,10 +470,7 @@ activate (Row *r)
     spawn ("neo-settings", "--app", t->id);
     break;
   case ACT_REMOVE:
-    /* one of several copies goes; the last one takes the app off the home screen */
-    if (!model_remove_one (N.model, t->id, P.pos))
-      set_hidden (t->id, true);
-    home_model_changed ();
+    home_remove_icon (t->id, P.pos);
     break;
   case ACT_ADD_HOME:
     if (g_hash_table_contains (N.model->hidden, t->id))

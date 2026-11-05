@@ -278,6 +278,20 @@ launch_end (gpointer data)
   return G_SOURCE_REMOVE;
 }
 
+/* A vibration from feedbackd's theme: HAPTIC_LONG_PRESS is window-close (a 25 ms rumble, the theme's heaviest
+ * short one), a tick is button-released (12 ms) */
+void
+haptic (const char *event)
+{
+  if (!N.bus)
+    return;
+  g_dbus_connection_call (N.bus, "org.sigxcpu.Feedback", "/org/sigxcpu/Feedback", "org.sigxcpu.Feedback",
+                          "TriggerFeedback",
+                          g_variant_new ("(ss@a{sv}i)", "de.yesman.NeoLauncher", event,
+                                         g_variant_new_array (G_VARIANT_TYPE ("{sv}"), NULL, 0), -1),
+                          NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
+}
+
 /* The shell starts the app and grows its window (or splash) out of the icon's box; the icon hides meanwhile and
  * the home content behind shrinks to 0.97 (Launcher3's QuickstepTransitionManager). */
 void
