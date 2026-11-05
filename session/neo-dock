@@ -1,0 +1,18 @@
+#!/bin/sh
+# Docked to an external display: the GNOME desktop. Undocked: the phone's session, GNOME Phone where it is enabled
+# (Phosh otherwise). Run from neo-dock.service (udev DRM hotplug, and once at boot). Phosh's own copy started Phosh
+# here unconditionally, and Phosh's start stopped GNOME Phone (they conflict) a second into every boot.
+[ -e /run/neo-dock.off ] && exit 0
+sleep 2	# let the alt mode settle; a replug flaps for a second
+state=disconnected
+for f in /sys/class/drm/card*-DP-*/status; do
+	[ -r "$f" ] && [ "$(cat "$f")" = connected ] && state=connected
+done
+if [ "$state" = connected ]; then
+	session=gnome-desktop.service
+elif systemctl is-enabled -q gnome-phone.service; then
+	session=gnome-phone.service
+else
+	session=phosh.service
+fi
+systemctl is-active -q $session || systemctl start $session
