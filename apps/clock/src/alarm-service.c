@@ -14,6 +14,7 @@
 #include "alarm-engine.h"
 #include "alarm-klaxon.h"
 #include "alarm-notifications.h"
+#include "elapsed.h"
 #include "phone.h"
 
 #include <errno.h>
@@ -69,6 +70,7 @@ struct _AlarmService {
   guint registration;
 
   int timer_fd;                 /* CLOCK_REALTIME, at the next change; cancelled when the clock is set */
+  gint64 clock_offset;          /* the wall clock less the elapsed one, to tell a clock set from a resume */
   GFileMonitor *zone_monitor;   /* /etc/localtime: the time zone changed */
   gint64 sent_alarm, sent_change;       /* what neo-wakeup was last told */
   guint wakeup_watch;
@@ -351,8 +353,15 @@ on_timer (int fd, GIOCondition condition, gpointer data)
 {
   Service *self = data;
   guint64 expirations;
+  gint64 offset = elapsed_wall_now () - elapsed_now ();
+  gboolean cancelled = read (fd, &expirations, sizeof expirations) < 0 && errno == ECANCELED;
+  gboolean moved = ABS (offset - self->clock_offset) > 1000;
 
-  if (read (fd, &expirations, sizeof expirations) < 0 && errno == ECANCELED)
+  self->clock_offset = offset;
+  /* The kernel cancels the timer at every resume from sleep too, and fixing every instance then would post their
+   * notifications again, or ring a fired one anew. Both clocks went on through the sleep, so the clock was set only
+   * if the wall clock moved against the elapsed one; else this is a tick, which does what came due meanwhile. */
+  if (cancelled && moved)
     {
       /* the clock was set: every instance anew, as after a reboot (ACTION_TIME_CHANGED) */
       g_message ("the clock was set");
@@ -553,6 +562,7 @@ alarm_service_new (GDBusConnection *session, GDBusConnection *system, GSettings 
   if (!self->registration)
     return NULL;
   self->timer_fd = timerfd_create (CLOCK_REALTIME, TFD_NONBLOCK | TFD_CLOEXEC);
+  self->clock_offset = elapsed_wall_now () - elapsed_now ();
   g_unix_fd_add (self->timer_fd, G_IO_IN, on_timer, self);
   self->zone_monitor = g_file_monitor_file (localtime, G_FILE_MONITOR_WATCH_MOVES, NULL, NULL);
   if (self->zone_monitor)
