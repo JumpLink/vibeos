@@ -1,0 +1,100 @@
+#!/bin/sh
+# neo-headless: a phone-sized display of its own, for checking the neo apps on the phone while the phone itself
+# stays locked (or in someone's hands).
+#
+# It is a headless mutter on a private D-Bus, so nothing it does reaches the running shell. An app run on it talks
+# to the real session bus (its services, its settings) but draws on the headless display, where it gets frames as
+# on a lit screen: its animations run. Pictures come from the app itself (libneo's NEO_SHOT, at 3x, the phone's
+# scale); touches go in through mutter's RemoteDesktop API (neo-headless-input).
+#
+#   neo-headless start                  the display: 360 x 721 dp, the phone's app area under its status bar
+#   neo-headless run APP [ARGS...]      an app on it (as the session user)
+#   neo-headless shot OUT.png           what the app shows now
+#   neo-headless tap X Y                a finger down and up at (X, Y) dp
+#   neo-headless swipe X0 Y0 X1 Y1 [MS] a finger drawn from one point to the other
+#   neo-headless stop
+#
+# An app already running on the phone's own screen keeps its window there: run again, it only hands its
+# arguments to that instance (GApplication), and `run` finds no window. Stop that one first.
+#
+# Run it as root on the phone; it does the rest as the session user.
+set -e
+
+USER_NAME=${NEO_USER:-user}
+RUNTIME=/run/user/$(id -u "$USER_NAME")
+STATE=$RUNTIME/neo-headless.d   # beside the Wayland socket, $RUNTIME/neo-headless
+SHOT=$STATE/shot.png
+HERE=$(dirname "$(readlink -f "$0")")
+
+as_user() {
+    sudo -u "$USER_NAME" env XDG_RUNTIME_DIR="$RUNTIME" "$@"
+}
+
+# A daemon as the session user, detached, its pid in $STATE/NAME.pid and its output in $STATE/NAME.log. Not
+# `as_user ... &`: that forks the script to run the function, and the fork keeps the caller's stdout open (dash's
+# saved copy), so an ssh running this script never sees it end.
+as_user_daemon() {
+    name=$1
+    shift
+    as_user setsid -f sh -c 'echo $$ >"$0"; exec "$@"' "$STATE/$name.pid" "$@" \
+        </dev/null >"$STATE/$name.log" 2>&1
+}
+
+case $1 in
+start)
+    as_user mkdir -p "$STATE"
+    # the private bus, and mutter on it; --print-address writes where the bus is, for the input tool
+    as_user dbus-daemon --session --fork --print-address=1 --print-pid=1 </dev/null >"$STATE/bus.tmp"
+    head -1 "$STATE/bus.tmp" >"$STATE/bus"
+    tail -1 "$STATE/bus.tmp" >"$STATE/bus.pid"
+    rm -f "$STATE/bus.tmp"
+    as_user_daemon mutter env DBUS_SESSION_BUS_ADDRESS="$(cat "$STATE/bus")" mutter --headless --wayland --no-x11 \
+        --wayland-display=neo-headless --virtual-monitor 360x721
+    # ready once its Wayland socket is there
+    for _ in $(seq 50); do [ -S "$RUNTIME/neo-headless" ] && break; sleep 0.1; done
+    if [ ! -S "$RUNTIME/neo-headless" ]; then
+        echo "neo-headless: mutter did not start, see $STATE/mutter.log" >&2
+        exit 1
+    fi
+    # A phone that suspends under the display stops mutter, the app and the ssh that drives them alike, so the
+    # phone stays awake for as long as mutter runs (a logind inhibitor, which s10e-sleepd honours)
+    setsid -f systemd-inhibit --what=sleep --who=neo-headless --why="a test display is running" \
+        tail --pid="$(cat "$STATE/mutter.pid")" -f /dev/null </dev/null >/dev/null 2>&1
+    ;;
+run)
+    shift
+    rm -f "$SHOT"
+    as_user_daemon app env DBUS_SESSION_BUS_ADDRESS="unix:path=$RUNTIME/bus" WAYLAND_DISPLAY=neo-headless \
+        GDK_BACKEND=wayland GSK_RENDERER=gl NEO_SHOT="$SHOT" NEO_SHOT_SCALE=3 "$@"
+    # the app's first picture comes a second after its window shows
+    for _ in $(seq 100); do [ -f "$SHOT" ] && exit 0; sleep 0.1; done
+    echo "neo-headless: no window yet, see $STATE/app.log" >&2
+    exit 1
+    ;;
+shot)
+    # the app draws a new picture on SIGUSR1; wait for the file to change
+    before=$(stat -c %Y.%s "$SHOT" 2>/dev/null || true)
+    kill -USR1 "$(cat "$STATE/app.pid")"
+    for _ in $(seq 50); do
+        [ "$(stat -c %Y.%s "$SHOT" 2>/dev/null)" != "$before" ] && sleep 0.2 && cp "$SHOT" "$2" && exit 0
+        sleep 0.1
+    done
+    # an unchanged picture is as good as a new one
+    cp "$SHOT" "$2"
+    ;;
+tap | swipe)
+    # the script goes in on stdin, read by root: the session user cannot read it where it is (root's home)
+    as_user env NEO_HEADLESS_BUS="$(cat "$STATE/bus")" python3 - "$@" <"$HERE/neo-headless-input"
+    ;;
+stop)
+    for p in app mutter bus; do
+        [ -f "$STATE/$p.pid" ] && kill "$(cat "$STATE/$p.pid")" 2>/dev/null || true
+        rm -f "$STATE/$p.pid"
+    done
+    ;;
+*)
+    # the comment at the top
+    awk 'NR > 1 && !/^#/ { exit } NR > 1 { sub(/^# ?/, ""); print }' "$0"
+    exit 2
+    ;;
+esac

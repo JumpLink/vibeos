@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+# neo-headless-input: touches on neo-headless's display, through mutter's RemoteDesktop D-Bus API.
+#
+#   neo-headless-input tap X Y
+#   neo-headless-input swipe X0 Y0 X1 Y1 [MS]
+#
+# Coordinates are in dp (the headless display runs at scale 1). NEO_HEADLESS_BUS is the private bus the headless
+# mutter is on. Absolute input needs a screen-cast stream of the monitor to give the coordinates a frame, so each
+# run opens a remote-desktop session with one, sends the touch, and closes it.
+import os
+import sys
+import time
+
+from gi.repository import Gio, GLib
+
+MUTTER = 'org.gnome.Mutter.'
+STEP_MS = 8          # a moving finger reports at 120 Hz, like the phone's panel
+
+
+def call(bus, name, path, interface, method, args=None, reply=None):
+    return bus.call_sync(name, path, interface, method, args, GLib.VariantType(reply) if reply else None,
+                         Gio.DBusCallFlags.NONE, -1, None)
+
+
+def spin(seconds):
+    # let the session's signals and mutter's replies go through
+    context = GLib.MainContext.default()
+    end = time.monotonic() + seconds
+    while time.monotonic() < end:
+        context.iteration(False)
+        time.sleep(0.005)
+
+
+def main():
+    bus = Gio.DBusConnection.new_for_address_sync(
+        os.environ['NEO_HEADLESS_BUS'],
+        Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT | Gio.DBusConnectionFlags.MESSAGE_BUS_CONNECTION, None, None)
+
+    rd_service = MUTTER + 'RemoteDesktop'
+    rd_session = call(bus, rd_service, '/org/gnome/Mutter/RemoteDesktop', rd_service, 'CreateSession',
+                      reply='(o)').unpack()[0]
+    session_id = call(bus, rd_service, rd_session, 'org.freedesktop.DBus.Properties', 'Get',
+                      GLib.Variant('(ss)', (rd_service + '.Session', 'SessionId')), '(v)').unpack()[0]
+
+    sc_service = MUTTER + 'ScreenCast'
+    sc_session = call(bus, sc_service, '/org/gnome/Mutter/ScreenCast', sc_service, 'CreateSession',
+                      GLib.Variant('(a{sv})', ({'remote-desktop-session-id': GLib.Variant('s', session_id)},)),
+                      '(o)').unpack()[0]
+    stream = call(bus, sc_service, sc_session, sc_service + '.Session', 'RecordMonitor',
+                  GLib.Variant('(sa{sv})', ('Meta-0', {})), '(o)').unpack()[0]
+
+    def rd(method, signature=None, *args):
+        call(bus, rd_service, rd_session, rd_service + '.Session', method,
+             GLib.Variant(signature, args) if signature else None)
+
+    rd('Start')
+    # Mutter makes the session's touchscreen on its first touch: that touch announces the device to the app, which
+    # binds wl_touch a round trip later, after the touch has gone by. So the first one primes the device (and is
+    # lost on the way, whatever it lands on), and the real one follows once the app is listening.
+    rd('NotifyTouchDown', '(sudd)', stream, 0, 0.0, 0.0)
+    rd('NotifyTouchUp', '(u)', 0)
+    spin(0.3)
+
+    command, numbers = sys.argv[1], [float(v) for v in sys.argv[2:]]
+    if command == 'tap':
+        x, y = numbers
+        rd('NotifyTouchDown', '(sudd)', stream, 0, x, y)
+        spin(0.06)
+        rd('NotifyTouchUp', '(u)', 0)
+    elif command == 'swipe':
+        x0, y0, x1, y1 = numbers[:4]
+        duration = numbers[4] if len(numbers) > 4 else 300
+        steps = max(1, int(duration / STEP_MS))
+        rd('NotifyTouchDown', '(sudd)', stream, 0, x0, y0)
+        for i in range(1, steps + 1):
+            spin(STEP_MS / 1000)
+            t = i / steps
+            rd('NotifyTouchMotion', '(sudd)', stream, 0, x0 + (x1 - x0) * t, y0 + (y1 - y0) * t)
+        rd('NotifyTouchUp', '(u)', 0)
+    else:
+        sys.exit(f'neo-headless-input: no command {command}')
+
+    spin(0.1)
+    rd('Stop')
+
+
+main()
