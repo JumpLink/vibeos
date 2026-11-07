@@ -1,0 +1,192 @@
+/* libneo's look: Material 3, dark, as the LineageOS 23.2 apps draw it on the reference phone.
+ *
+ * The colours are named by their Material 3 roles (@neo_primary, @neo_on_surface, ...). neo-style.c defines them
+ * from its palette table before this file is loaded, so drawn widgets and CSS share one source; apps use the roles,
+ * never the values.
+ *
+ * Sizes are in dp: at the phone's scale 3, 1 CSS px is 1 dp, and with font scale 1.0 one sp too.
+ *
+ * Weights: the reference phone has "Bold text" on, which adds 300 to every weight Android draws (TextView's
+ * fontWeightAdjustment): Regular 400 shows as 700, Medium 500 as 800, Light 300 as 600, Bold 700 as 900 (Roboto's
+ * axis ends there). The weights below are those effective ones; the comments say what Android asked for. */
+
+/* --- the window */
+
+window.neo {
+  background-color: @neo_surface;
+  color: @neo_on_surface;
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 700;              /* 400 */
+}
+
+window.neo label {
+  font-feature-settings: "tnum" 0;
+}
+
+/* --- text styles, by role (Material 3 type scale; size in sp) */
+
+.neo-display-large { font-size: 57px; font-weight: 700; }
+.neo-headline-large { font-size: 32px; font-weight: 700; }
+.neo-title-large { font-size: 22px; font-weight: 700; }
+.neo-title-medium { font-size: 16px; font-weight: 800; }   /* 500 */
+.neo-body-large { font-size: 16px; font-weight: 700; }
+.neo-body-medium { font-size: 14px; font-weight: 700; }
+.neo-label-large { font-size: 14px; font-weight: 800; }    /* 500 */
+.neo-label-medium { font-size: 12px; font-weight: 800; }
+.neo-tabular { font-feature-settings: "tnum" 1; }
+
+/* --- the top app bar: 64 dp, the title at 24 dp from the start, no shadow */
+
+.neo-app-bar {
+  min-height: 64px;
+  padding-left: 24px;
+}
+
+.neo-app-bar-title {
+  font-size: 22px;
+  font-weight: 800;              /* AppCompat ActionBar.Title: Medium 500 */
+  color: @neo_on_surface;
+}
+
+/* --- icon buttons: a 48 dp touch target around a 24 dp icon */
+
+.neo-icon-button {
+  min-width: 48px;
+  min-height: 48px;
+  color: @neo_on_surface;
+}
+
+/* --- floating action buttons: full circles (neo_fab_new draws the fill, so that it scales with the button) */
+
+.neo-fab {
+  color: @neo_on_primary;
+  min-width: 88px;
+  min-height: 88px;
+}
+
+.neo-fab-small {
+  color: @neo_on_secondary;
+  min-width: 56px;
+  min-height: 56px;
+}
+
+/* --- cards */
+
+.neo-card {
+  background-color: @neo_surface_container_highest;
+  border-radius: 28px;
+}
+
+/* --- the navigation bar: 80 dp; a 64 x 32 dp pill behind the selected icon */
+
+.neo-nav-bar {
+  background-color: @neo_surface_container_highest;
+  min-height: 80px;
+}
+
+.neo-nav-item {                 /* tab_tint_color: white_50p, or colorPrimary when selected */
+  color: alpha(white, 0.5);
+}
+
+.neo-nav-item.selected {
+  color: @neo_primary;
+}
+
+.neo-nav-label {
+  font-size: 12px;
+  font-weight: 700;              /* navText: no weight of its own, 400 */
+}
+
+.neo-nav-indicator {
+  background-color: @neo_secondary_container;
+  border-radius: 16px;
+}
+
+/* --- text buttons (dialogs, snackbars, "Delete") */
+
+.neo-text-button {
+  color: @neo_primary;
+  font-size: 14px;
+  font-weight: 800;              /* labelLarge: Medium 500 */
+  min-height: 48px;
+  padding: 0 12px;
+}
+
+/* --- dialogs: a 28 dp corner over a 60 % black scrim */
+
+.neo-scrim {
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+.neo-dialog {
+  background-color: @neo_surface_container_highest;
+  border-radius: 28px;
+  padding: 24px 24px 18px 24px;
+}
+
+.neo-dialog-title {
+  font-size: 24px;
+  font-weight: 700;              /* headlineSmall 400 */
+  color: @neo_on_surface;
+  margin-bottom: 16px;
+}
+
+.neo-dialog-message {
+  font-size: 14px;
+  color: @neo_on_surface_variant;
+}
+
+.neo-dialog-buttons {
+  margin-top: 18px;
+}
+
+/* a dialog around a picker: the picker reaches the edges, the card is colorSurface (the platform dialog's window
+ * background), the buttons sit in their own 8 dp band */
+.neo-dialog.flush {
+  background-color: @neo_surface;
+  padding: 0;
+}
+
+.neo-dialog.flush .neo-dialog-buttons {
+  margin: 4px 12px 8px 12px;
+}
+
+/* --- snackbars */
+
+.neo-snackbar {                  /* NeoSnackbar keeps the 8 dp margin itself */
+  background-color: @neo_surface_container_highest;
+  border-radius: 4px;
+  min-height: 48px;
+  padding: 0 8px 0 16px;
+}
+
+.neo-snackbar-text {
+  color: @neo_on_surface_variant;
+  font-size: 14px;
+}
+
+/* --- text fields: the underlined AppCompat EditText */
+
+.neo-entry {
+  background: none;
+  border: none;
+  border-bottom: 2px solid @neo_on_surface_variant;
+  border-radius: 0;
+  box-shadow: none;
+  outline: none;
+  color: @neo_on_surface;
+  caret-color: @neo_primary;
+  font-size: 18px;
+  min-height: 40px;
+  padding: 0 4px;
+}
+
+.neo-entry:focus-within {
+  border-bottom-color: @neo_primary;
+}
+
+.neo-entry selection {
+  background-color: alpha(@neo_primary, 0.4);
+  color: @neo_on_surface;
+}
