@@ -1,0 +1,12 @@
+[Unit]
+Description=A mobile data profile for every new SIM
+After=ModemManager.service NetworkManager.service
+Wants=ModemManager.service NetworkManager.service
+
+[Service]
+ExecStart=/usr/local/sbin/sim-apn
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

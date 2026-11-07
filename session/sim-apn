@@ -1,0 +1,211 @@
+#!/usr/bin/python3
+# sim-apn: gives every SIM a mobile data profile of its own, as Android provisions a SIM's APNs when it loads.
+#
+# ModemManager reports the SIM; NetworkManager brings mobile data up, but only through a gsm connection, and without
+# one the Mobile data tile has nothing to switch on. For a SIM that no connection applies to, this adds one: named
+# after the SIM's operator, its APN from mobile-broadband-provider-info, pinned to that SIM (gsm.sim-id), on by
+# default and at home only (Android's defaults: mobile data on, roaming off). A connection someone made by hand is
+# left alone, and so is a SIM that already has one.
+#
+# Which APN, in this order:
+#  1. a correction measured on this phone (OVERRIDES), where the database's APN is refused;
+#  2. a provider whose name is the SIM's own name for its operator (the SPN). That is how Android matches a virtual
+#     operator: the database lists those under their own network code only, and a Lycamobile SIM numbered on o2's
+#     26203 is in no list under that code;
+#  3. a provider with the name the network gives itself, when the SIM has none;
+#  4. the APN most providers under the SIM's network code agree on;
+#  5. "internet".
+# It waits for the modem to register, so the network's name is known.
+import re
+import xml.etree.ElementTree as ET
+from collections import Counter
+
+import gi
+gi.require_version('NM', '1.0')
+from gi.repository import Gio, GLib, NM  # noqa: E402
+
+MM = 'org.freedesktop.ModemManager1'
+MODEM = MM + '.Modem'
+SIM = MM + '.Sim'
+MODEM_3GPP = MODEM + '.Modem3gpp'
+PROVIDERS = '/usr/share/mobile-broadband-provider-info/serviceproviders.xml'
+REGISTERED = 8          # MMModemState: registered, then connecting/connected above it
+
+# network code -> APN, where the database's is refused on this phone
+OVERRIDES = {
+    '26223': 'internet',    # 1&1 / PremiumSIM, roaming on Vodafone: web.vodafone.de is refused (2026-10-29)
+}
+
+
+def log(message):
+    print(message, flush=True)
+
+
+# --- the APN
+
+def normalized(name):
+    """'LycaMobile', 'Lycamobile' and 'lyca mobile' all read 'lycamobile'."""
+    return re.sub(r'[^a-z0-9]', '', (name or '').lower())
+
+
+def internet_apn(provider):
+    """The provider's APN for data (not MMS), with its username and password: (apn, user, password) or None."""
+    for apn in provider.iter('apn'):
+        usages = [u.get('type') for u in apn.findall('usage')]
+        if usages and 'internet' not in usages:
+            continue
+        return apn.get('value'), apn.findtext('username') or '', apn.findtext('password') or ''
+    return None
+
+
+def by_name(providers, mcc, wanted):
+    """The internet APN of a provider in country @mcc whose name is @wanted (normalized), or None."""
+    if not wanted:
+        return None
+    for provider, codes in providers:
+        if not any(code.startswith(mcc) for code in codes):
+            continue
+        for name in provider.findall('name'):
+            have = normalized(name.text)
+            if have and (have == wanted or wanted.startswith(have) or have.startswith(wanted)):
+                apn = internet_apn(provider)
+                if apn:
+                    return apn
+    return None
+
+
+def pick_apn(operator_id, spn, network=''):
+    """(name, apn, user, password) for a SIM: its network code (MCC + MNC), its SPN, the network's own name."""
+    name = spn or (network if not network.isdigit() else '') or 'Mobile data'
+    if operator_id in OVERRIDES:
+        return name, OVERRIDES[operator_id], '', ''
+    mcc, providers = operator_id[:3], []
+    try:
+        for provider in ET.parse(PROVIDERS).getroot().iter('provider'):
+            codes = [n.get('mcc') + n.get('mnc') for n in provider.iter('network-id')]
+            providers.append((provider, codes))
+    except (OSError, ET.ParseError) as e:
+        log(f'no provider database: {e}')
+
+    # the SIM's own operator; else, a SIM without a name, the network's (a code like "26203" is no name)
+    apn = by_name(providers, mcc, normalized(spn))
+    if not apn and not spn and not network.isdigit():
+        apn = by_name(providers, mcc, normalized(network))
+    if apn:
+        return (name, *apn)
+
+    # the network code: what most of the providers under it use
+    candidates = [internet_apn(p) for p, codes in providers if operator_id in codes]
+    candidates = [c for c in candidates if c]
+    if candidates:
+        return (name, *Counter(candidates).most_common(1)[0][0])
+    return name, 'internet', '', ''
+
+
+# --- NetworkManager
+
+def applies(connection, sim_id, operator_id):
+    """Whether NetworkManager would bring this connection up on this SIM."""
+    gsm = connection.get_setting_gsm()
+    if not gsm:
+        return False
+    if gsm.get_sim_id():
+        return gsm.get_sim_id() == sim_id
+    return not gsm.get_sim_operator_id() or gsm.get_sim_operator_id() == operator_id
+
+
+def add_profile(client, sim_id, operator_id, spn, network):
+    name, apn, user, password = pick_apn(operator_id, spn, network)
+    taken = {c.get_id() for c in client.get_connections()}
+    label, n = name, 2
+    while label in taken:
+        label, n = f'{name} {n}', n + 1
+
+    connection = NM.SimpleConnection.new()
+    s_con = NM.SettingConnection.new()
+    s_con.props.id = label
+    s_con.props.uuid = NM.utils_uuid_generate()
+    s_con.props.type = NM.SETTING_GSM_SETTING_NAME
+    s_con.props.autoconnect = True
+    connection.add_setting(s_con)
+
+    s_gsm = NM.SettingGsm.new()
+    s_gsm.props.apn = apn
+    s_gsm.props.sim_id = sim_id
+    s_gsm.props.sim_operator_id = operator_id
+    s_gsm.props.home_only = True
+    if user:
+        s_gsm.props.username = user
+    if password:
+        s_gsm.props.password = password
+    connection.add_setting(s_gsm)
+
+    s_ip4 = NM.SettingIP4Config.new()
+    s_ip4.props.method = NM.SETTING_IP4_CONFIG_METHOD_AUTO
+    connection.add_setting(s_ip4)
+    # IPv4 only for now: the modem's IPv6 (a v4v6 bearer, rmnet0 passing v6) is not done yet, and asking for it
+    # would fail the whole connection
+    s_ip6 = NM.SettingIP6Config.new()
+    s_ip6.props.method = NM.SETTING_IP6_CONFIG_METHOD_IGNORE
+    connection.add_setting(s_ip6)
+
+    def added(client, result):
+        try:
+            client.add_connection_finish(result)
+            log(f'added "{label}" for SIM {operator_id} ({spn or "no name"}), APN {apn}')
+        except GLib.Error as e:
+            log(f'could not add a profile for SIM {operator_id}: {e.message}')
+
+    client.add_connection_async(connection, True, None, added)
+
+
+# --- ModemManager
+
+class Provisioner:
+    def __init__(self):
+        self.client = NM.Client.new(None)
+        self.done = set()       # SIMs seen in this run, by their ICCID
+        self.manager = Gio.DBusObjectManagerClient.new_for_bus_sync(
+            Gio.BusType.SYSTEM, Gio.DBusObjectManagerClientFlags.DO_NOT_AUTO_START, MM,
+            '/org/freedesktop/ModemManager1', None, None, None)
+        self.manager.connect('object-added', lambda _m, obj: self.watch(obj))
+        for obj in self.manager.get_objects():
+            self.watch(obj)
+
+    def watch(self, obj):
+        modem = obj.get_interface(MODEM)
+        if not modem:
+            return
+        # the SIM is read some time after the modem shows up; its state changes say when to look again
+        modem.connect('g-properties-changed', lambda proxy, *_: self.check(obj, proxy))
+        self.check(obj, modem)
+
+    def check(self, obj, modem):
+        state = modem.get_cached_property('State')
+        if not state or state.unpack() < REGISTERED:
+            return
+        sim_path = modem.get_cached_property('Sim')
+        if not sim_path or sim_path.unpack() == '/':
+            return
+        sim = Gio.DBusProxy.new_for_bus_sync(Gio.BusType.SYSTEM, Gio.DBusProxyFlags.NONE, None, MM,
+                                             sim_path.unpack(), SIM, None)
+
+        def prop(name):
+            value = sim.get_cached_property(name)
+            return value.unpack() if value else ''
+
+        sim_id, operator_id, spn = prop('SimIdentifier'), prop('OperatorIdentifier'), prop('OperatorName')
+        network = obj.get_interface(MODEM_3GPP)
+        network = network.get_cached_property('OperatorName') if network else None
+        network = network.unpack() if network else ''
+        if not sim_id or not operator_id or sim_id in self.done:
+            return
+        self.done.add(sim_id)
+        if any(applies(c, sim_id, operator_id) for c in self.client.get_connections()):
+            return
+        add_profile(self.client, sim_id, operator_id, spn, network)
+
+
+if __name__ == '__main__':
+    Provisioner()
+    GLib.MainLoop().run()
