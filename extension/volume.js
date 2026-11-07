@@ -347,6 +347,7 @@ class VolumeDialog extends St.Widget {
             return;
         this._dbus = dbus;
         this._volumeActions = new Map();       // accelerator action -> +1 / -1
+        this._takenKeys = new Set();           // ... handed to the app that took the keys, until let go
         const activated = dbus._emitAcceleratorActivated;
         const deactivated = dbus._emitAcceleratorDeactivated;
         this._restoreKeys = () => {
@@ -361,6 +362,17 @@ class VolumeDialog extends St.Widget {
             }
             const event = Clutter.get_current_event();
             const repeat = !!(event && event.get_flags() & Clutter.EventFlags.FLAG_REPEATED);
+            // The app in front took the volume keys (service.js TakeVolumeKeys): it gets this one, and the release
+            // is swallowed. On the press, where Android acts on the release: the shell is not always told of the
+            // release (none came for a key from a virtual keyboard, 2026-11-07), and a ringing timer that a press
+            // could not stop would go on ringing.
+            const taker = this.keysTaker?.();
+            if (taker) {
+                this._takenKeys.add(action);
+                if (!repeat)
+                    taker(direction);
+                return;
+            }
             // volume down waits for the power key: the two are a screenshot (chord.js)
             if (direction < 0 && this.chord)
                 this.chord.volumeDown(() => this.volumeKey(direction, repeat), repeat);
@@ -368,6 +380,8 @@ class VolumeDialog extends St.Widget {
                 this.volumeKey(direction, repeat);
         };
         dbus._emitAcceleratorDeactivated = (action, device, timestamp) => {
+            if (this._takenKeys.delete(action))
+                return;
             if (!this._volumeActions.has(action))
                 deactivated.call(dbus, action, device, timestamp);
             else if (this._volumeActions.get(action) < 0)

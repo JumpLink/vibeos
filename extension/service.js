@@ -1,5 +1,6 @@
 // de.yesman.GnomePhone on the session bus: what the launcher asks of the shell.
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 import Shell from 'gi://Shell';
 
 import {LaunchTransition} from './launch.js';
@@ -31,6 +32,15 @@ const IFACE = `<node>
       <arg type="s" name="app_id" direction="in"/>
       <arg type="b" name="started" direction="out"/>
     </method>
+    <!-- Android hands a key to the focused activity first, and a ringing alarm or timer stops on a volume key. Here
+         the volume keys are the shell's, so an app asks for them: while a window of app_id (the caller's GApplication
+         id) has the focus, a volume key does not change the volume but activates the app's "volume-key" action, with
+         1 for up and -1 for down, when it is pressed. take = false gives them back, and so does the caller leaving
+         the bus. -->
+    <method name="TakeVolumeKeys">
+      <arg type="s" name="app_id" direction="in"/>
+      <arg type="b" name="take" direction="in"/>
+    </method>
   </interface>
 </node>`;
 
@@ -40,6 +50,7 @@ export class Service {
         this._launch = new LaunchTransition();
         this._nav = new Navigation(home);
         this._nav.onGestureBegin = () => this._launch.cancelSplash();
+        this._volumeKeys = new Map();   // app id -> {sender, watch}: who took the volume keys
         this._impl = Gio.DBusExportedObject.wrapJSObject(IFACE, this);
         this._impl.export(Gio.DBus.session, '/de/yesman/GnomePhone');
         this._nameId = Gio.bus_own_name(Gio.BusType.SESSION, 'de.yesman.GnomePhone',
@@ -88,9 +99,44 @@ export class Service {
         return true;
     }
 
+    TakeVolumeKeysAsync([appId, take], invocation) {
+        this._giveVolumeKeysBack(appId);
+        if (take) {
+            const sender = invocation.get_sender();
+            const watch = Gio.bus_watch_name_on_connection(invocation.get_connection(), sender,
+                Gio.BusNameWatcherFlags.NONE, null, () => this._giveVolumeKeysBack(appId));
+            this._volumeKeys.set(appId, {sender, watch});
+        }
+        invocation.return_value(null);
+    }
+
+    _giveVolumeKeysBack(appId) {
+        const taker = this._volumeKeys.get(appId);
+        if (!taker)
+            return;
+        Gio.bus_unwatch_name(taker.watch);
+        this._volumeKeys.delete(appId);
+    }
+
+    // volume.js: whether the app in front took the volume keys; if so, a function that hands it one (+1 or -1)
+    volumeKeysTaker() {
+        const app = Shell.WindowTracker.get_default().focus_app;
+        const appId = app?.get_id().replace(/\.desktop$/, '');
+        const taker = appId && this._volumeKeys.get(appId);
+        if (!taker)
+            return null;
+        // the GApplication's object path: its id as a path, de.yesman.Clock.Ringing at /de/yesman/Clock/Ringing
+        const path = `/${appId.replaceAll('.', '/')}`;
+        return direction => Gio.DBus.session.call(taker.sender, path, 'org.freedesktop.Application',
+            'ActivateAction', new GLib.Variant('(sava{sv})', ['volume-key', [new GLib.Variant('i', direction)], {}]),
+            null, Gio.DBusCallFlags.NONE, -1, null, null);
+    }
+
     destroy() {
         this._launch.destroy();
         this._nav.destroy();
+        for (const appId of [...this._volumeKeys.keys()])
+            this._giveVolumeKeysBack(appId);
         Gio.bus_unown_name(this._nameId);
         this._impl.unexport();
     }

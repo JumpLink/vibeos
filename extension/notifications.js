@@ -11,6 +11,7 @@ import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
+import {FdoNotificationDaemonSource} from 'resource:///org/gnome/shell/ui/notificationDaemon.js';
 
 import {VectorIcon} from './icons.js';
 import {animate, animateSpring, Animator, bezier, clamp, FAST_OUT_LINEAR_IN, FAST_OUT_SLOW_IN, flingDismissing,
@@ -171,6 +172,65 @@ function shortTime(datetime) {
     return `${Math.floor(s / (365 * 86400))}y`;
 }
 
+// Chronometer.updateText: whole seconds since @base (Unix ms), or left until it, as DateUtils.formatElapsedTime;
+// a count-down gone past zero gets a minus
+function chronometer(base, countDown) {
+    const now = GLib.get_real_time() / 1000;
+    let s = Math.trunc((countDown ? base - now : now - base) / 1000);
+    const minus = s < 0 ? '\u2212' : '';
+    s = Math.abs(s);
+    const mm = String(Math.floor(s / 60) % 60).padStart(2, '0');
+    const ss = String(s % 60).padStart(2, '0');
+    return s >= 3600 ? `${minus}${Math.floor(s / 3600)}:${mm}:${ss}` : `${minus}${mm}:${ss}`;
+}
+
+// what follows the "•" in the header: the chronometer, the sub-text, both, or else how long ago it came
+function headerInfo(n) {
+    const parts = [];
+    if (n.neoSubtext)
+        parts.push(n.neoSubtext);
+    if (n.neoChronometer)
+        parts.push(chronometer(n.neoChronometer, n.neoCountDown));
+    return parts.length ? parts.join(' \u2022 ') : shortTime(n.datetime);
+}
+
+// Android's header extras (setUsesChronometer, setChronometerCountDown, setSubText), which
+// org.freedesktop.Notifications has no place for: the Clock sends them as hints (apps/clock/src/clock-notifier.h),
+// and the shell's daemon keeps only the hints it knows. Its Notify unpacks the hints in place and then hands the notification to its source, so
+// the source's processNotification can still read them, before a row is made for a new notification and before an
+// old one's row updates (on an idle). Returns the undo.
+function keepHeaderHints() {
+    const daemon = Main.notificationDaemon?._fdoNotificationDaemon;
+    if (!daemon)
+        return () => {};
+    const notify = daemon.NotifyAsync;
+    daemon.NotifyAsync = function (params, invocation) {
+        this._neoHints = params[6];
+        try {
+            return notify.call(this, params, invocation);
+        } finally {
+            this._neoHints = null;
+        }
+    };
+    const proto = FdoNotificationDaemonSource.prototype;
+    const process = proto.processNotification;
+    proto.processNotification = function (notification, ...args) {
+        const hints = daemon._neoHints;
+        if (hints) {
+            notification.neoChronometer = Number(hints['x-neo-chronometer'] ?? 0);
+            notification.neoCountDown = !!hints['x-neo-chronometer-countdown'];
+            notification.neoSubtext = hints['x-neo-subtext'] ?? '';
+        }
+        return process.call(this, notification, ...args);
+    };
+    return () => {
+        delete daemon.NotifyAsync;
+        if (daemon.NotifyAsync !== notify)
+            daemon.NotifyAsync = notify;
+        proto.processNotification = process;
+    };
+}
+
 function plainBody(notification) {
     let body = notification.body ?? '';
     if (notification.useBodyMarkup) {
@@ -280,10 +340,15 @@ class Row extends St.Widget {
         swipe.connect('cancel', () => this._endSwipe(true));
         this.add_action(swipe);
 
+        // a chronometer ticks while the row is on screen
+        this._tickId = 0;
+        this.connect('notify::mapped', () => this._setTime(false));
         this.connect('destroy', () => {
             this._swipeAnim?.stop();
             this._magneticAnim?.stop();
             this._roundAnim?.stop();
+            if (this._tickId)
+                GLib.source_remove(this._tickId);
         });
 
         this._applyCard();
@@ -350,16 +415,30 @@ class Row extends St.Widget {
 
     // every row's time is looked at as the shade shows, in its first frame, and most say what they said
     updateTime() {
-        if (this.notification && shortTime(this.notification.datetime) !== this._time.text)
+        if (this.notification && headerInfo(this.notification) !== this._time.text)
             this._setTime();
     }
 
-    _setTime() {
-        if (!this.notification)
+    // @relayout: the rest of the row changed too (update); else only a different time moves anything
+    _setTime(relayout = true) {
+        const n = this.notification;
+        if (!n)
             return;
-        this._time.text = shortTime(this.notification.datetime);
-        this._timeW = naturalWidth(this._time);
-        this._layoutContent();
+        const text = headerInfo(n);
+        if (relayout || text !== this._time.text) {
+            this._time.text = text;
+            this._timeW = naturalWidth(this._time);
+            this._layoutContent();
+        }
+        // the next whole second from the chronometer's base, where its text changes
+        if (n.neoChronometer && this.mapped && !this._tickId) {
+            const phase = ((GLib.get_real_time() / 1000 - n.neoChronometer) % 1000 + 1000) % 1000;
+            this._tickId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, Math.ceil(1000 - phase) + 1, () => {
+                this._tickId = 0;
+                this._setTime(false);
+                return GLib.SOURCE_REMOVE;
+            });
+        }
     }
 
     // the app's own icon for an app (notificationsRedesignAppIcons); else the small icon in a primary circle,
@@ -858,6 +937,7 @@ class NotificationStack extends St.Widget {
         for (const source of Main.messageTray.getSources())
             this._addSource(source);
         shade.connectObject('notify::visible', () => this._shadeVisibleChanged(), this);
+        this._undoHints = keepHeaderHints();
         this.connect('destroy', () => this._onDestroy());
         this._relayout(false);
     }
@@ -1265,6 +1345,7 @@ class NotificationStack extends St.Widget {
         this._fadeFooter?.stop();
         if (this._updateId)
             GLib.source_remove(this._updateId);
+        this._undoHints();
         for (const n of this._rows.keys())
             n.disconnectObject(this);
     }

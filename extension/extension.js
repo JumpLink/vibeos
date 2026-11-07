@@ -58,6 +58,8 @@ export default class GnomePhoneExtension extends Extension {
         this._whenLocked = new WhenLocked(this._keyguard);
         // the volume keys show the volume dialog, over the shade and the lock screen too
         this._volume = new VolumeDialog();
+        // ... unless the app in front took them (a ringing timer stops on one)
+        this._volume.keysTaker = () => this._service.volumeKeysTaker();
         Main.layoutManager.addTopChrome(this._volume);
         overWindows(this._volume);
         // power and volume down together: a screenshot
