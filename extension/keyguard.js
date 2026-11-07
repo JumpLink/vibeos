@@ -282,8 +282,13 @@ export class Keyguard extends Signals.EventEmitter {
     }
 
     _syncState() {
-        const {mobile, battery} = this._state;
-        const carrier = mobile.present ? mobile.operator || 'Emergency calls only' : 'No SIM';
+        const {mobile, wifi, battery} = this._state;
+        // the mobile network, then (the owner's addition to Android's carrier text) the Wi-Fi network, joined as
+        // CarrierTextManager joins two SIMs' names
+        const names = [mobile.present ? mobile.operator || 'Emergency calls only' : 'No SIM'];
+        if (wifi.connected && wifi.name)
+            names.push(wifi.name);
+        const carrier = names.join(' | ');
         if (carrier !== this._carrierText) {
             this._carrierText = carrier;
             this._carrier.setText(carrier);

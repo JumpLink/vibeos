@@ -202,15 +202,58 @@ export const SystemState = GObject.registerClass({
                     this._modem = new BroadbandModem(modem.udi, modem.current_capabilities);
                     this._modem.connectObject(
                         'notify::signal-quality', () => this._syncNetwork(),
-                        'notify::operator-name', () => this._syncNetwork(),
+                        'notify::operator-name', () => this._readOperatorNames(),
                         'notify::access-technology', () => this._syncNetwork(),
                         this);
                 } catch (e) {
                     console.warn(`gnome-phone: no modem: ${e.message}`);
                 }
             }
+            this._readOperatorNames();
         }
         this._syncNetwork();
+    }
+
+    // The mobile network's name, as Android has it. A network that sends no name of its own leaves ModemManager
+    // with its code ("26203"), and the shell's BroadbandModem then picks a name from mobile-broadband-provider-info,
+    // which lists several operators under one code: it said "sipgate" for a LycaMobile SIM. So, read from
+    // ModemManager directly: the SIM's own name for its operator (its SPN, what Android shows at home), and the
+    // network's name while roaming, when it has a real one.
+    async _readOperatorNames() {
+        const path = this._modemDevice?.udi;
+        if (!path?.startsWith('/org/freedesktop/ModemManager1/')) {
+            this._simOperator = this._networkOperator = '';
+            return;
+        }
+        const get = async (object, iface, prop) => {
+            try {
+                const reply = await Gio.DBus.system.call('org.freedesktop.ModemManager1', object,
+                    'org.freedesktop.DBus.Properties', 'Get', new GLib.Variant('(ss)', [iface, prop]),
+                    null, Gio.DBusCallFlags.NONE, 2000, this._cancellable);
+                return reply.deepUnpack()[0].deepUnpack();
+            } catch {
+                return null;
+            }
+        };
+        const sim = await get(path, 'org.freedesktop.ModemManager1.Modem', 'Sim');
+        const spn = sim && sim !== '/' ? await get(sim, 'org.freedesktop.ModemManager1.Sim', 'OperatorName') : null;
+        const network = await get(path, 'org.freedesktop.ModemManager1.Modem.Modem3gpp', 'OperatorName');
+        const registration = await get(path, 'org.freedesktop.ModemManager1.Modem.Modem3gpp', 'RegistrationState');
+        if (path !== this._modemDevice?.udi)
+            return;             // another modem by now
+        this._simOperator = spn ?? '';
+        // a name, not the code; MMModem3gppRegistrationState 5 is roaming
+        this._networkOperator = network && !/^\d+$/.test(network) ? network : '';
+        this._roaming = registration === 5;
+        this._syncNetwork();
+    }
+
+    // home: the SIM's name, else the network's; roaming: the network's first. The shell's guess only when neither
+    // has one.
+    _operatorName() {
+        const sim = this._simOperator ?? '', network = this._networkOperator ?? '';
+        const name = this._roaming ? network || sim : sim || network;
+        return name || this._modem?.operator_name || '';
     }
 
     _syncAccessPoint() {
@@ -240,7 +283,7 @@ export const SystemState = GObject.registerClass({
         this.mobile = {
             present: !!this._modemDevice,
             level: mobileLevel(this._modem?.signal_quality ?? 0),
-            operator: this._modem?.operator_name ?? '',
+            operator: this._operatorName(),
             tech: tech === 'unknown' || tech === 'other' ? '' : tech,
             dataConnected: modemState === NM.DeviceState.ACTIVATED,
             dataEnabled: client.wwan_enabled && modemState === NM.DeviceState.ACTIVATED,
