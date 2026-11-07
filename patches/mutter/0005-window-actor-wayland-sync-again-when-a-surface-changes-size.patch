@@ -1,0 +1,129 @@
+From: pulpoff <pashkovsky@gmail.com>
+Subject: [PATCH] window-actor/wayland: Sync again when a surface changes size
+
+A fullscreen Wayland window whose surfaces don't cover the monitor is
+shown centred on a black background. Where the surfaces go is worked
+out in do_sync_geometry() from their allocation, and that runs when the
+window's geometry changes - not when a surface's size does.
+
+When the monitor is rotated the two come apart: the window takes the
+new size first, and the client's buffer for it arrives later. The sync
+sees the old buffer and offsets the surfaces by (new - old) / 2, and
+when the new buffer lands nothing syncs again. On a 360x760 phone
+turned back from landscape the launcher was left at (-200, 200),
+mostly off the screen, until something else moved the window.
+
+Sync again, before the next frame, whenever a surface actor reports a
+new size.
+
+For mutter-mobile 51.1.mobile.22 (/usr/src/gnome-mobile/mutter on the
+S10e, built into /opt/gnome-mobile by build51.sh).
+---
+--- a/src/compositor/meta-window-actor-wayland.c	2026-11-07 05:50:07.245694293 +0100
++++ b/src/compositor/meta-window-actor-wayland.c	2026-11-07 05:51:08.024070997 +0100
+@@ -24,6 +24,9 @@
+ #include "compositor/meta-cullable.h"
+ #include "compositor/meta-surface-actor-wayland.h"
+ #include "compositor/meta-window-actor-wayland.h"
++#include "meta/compositor.h"
++#include "meta/display.h"
++#include "meta/meta-later.h"
+ #include "meta/meta-window-actor.h"
+ #include "wayland/meta-wayland-actor-surface.h"
+ #include "wayland/meta-wayland-buffer.h"
+@@ -53,6 +56,7 @@
+   MetaSurfaceContainerActorWayland *surface_container;
+   gulong highest_scale_monitor_handler_id;
+   gboolean needs_sync;
++  unsigned int sync_later_id;
+ };
+ 
+ static void cullable_iface_init (MetaCullableInterface *iface);
+@@ -68,6 +72,8 @@
+   int index;
+ } SurfaceTreeTraverseData;
+ 
++static void surface_size_changed (MetaWindowActorWayland *self);
++
+ static MetaSurfaceContainerActorWayland *
+ surface_container_new (MetaWindowActor *window_actor)
+ {
+@@ -222,6 +228,9 @@
+       clutter_actor_insert_child_at_index (container,
+                                            surface_actor,
+                                            traverse_data->index);
++      g_signal_connect_object (surface_actor, "size-changed",
++                               G_CALLBACK (surface_size_changed),
++                               window_actor, G_CONNECT_SWAPPED);
+     }
+   traverse_data->index++;
+ 
+@@ -259,6 +268,9 @@
+         {
+           MetaSurfaceActor *child_surface_actor = META_SURFACE_ACTOR (child_actor);
+ 
++          g_signal_handlers_disconnect_by_func (child_actor,
++                                                surface_size_changed,
++                                                self);
+           meta_window_actor_remove_surface_actor (actor, child_surface_actor);
+           clutter_actor_remove_child (CLUTTER_ACTOR (self->surface_container),
+                                       child_actor);
+@@ -656,6 +668,45 @@
+   self->needs_sync = !do_sync_geometry (self);
+ }
+ 
++static MetaLaters *
++get_laters (MetaWindowActorWayland *self)
++{
++  MetaWindow *window = meta_window_actor_get_meta_window (META_WINDOW_ACTOR (self));
++  MetaDisplay *display = meta_window_get_display (window);
++
++  return meta_compositor_get_laters (meta_display_get_compositor (display));
++}
++
++static gboolean
++sync_geometry_later (gpointer user_data)
++{
++  MetaWindowActorWayland *self = user_data;
++
++  self->sync_later_id = 0;
++  self->needs_sync = !do_sync_geometry (self);
++
++  return G_SOURCE_REMOVE;
++}
++
++/* A fullscreen window's black background, and where its surfaces sit on it,
++ * follow the surfaces' sizes, and those can change after the window's
++ * geometry was synced: when the monitor is rotated, the window takes the new
++ * size first and the buffer drawn for it arrives later. The surfaces then
++ * stayed offset for the old buffer, (new - old) / 2 off the monitor, until
++ * something else moved the window. The texture learns its new size as the
++ * stage is laid out, so sync again before the next frame. */
++static void
++surface_size_changed (MetaWindowActorWayland *self)
++{
++  if (self->sync_later_id)
++    return;
++
++  self->sync_later_id = meta_laters_add (get_laters (self),
++                                         META_LATER_BEFORE_REDRAW,
++                                         sync_geometry_later,
++                                         self, NULL);
++}
++
+ static void
+ meta_window_actor_wayland_map (ClutterActor *actor)
+ {
+@@ -683,6 +734,12 @@
+   g_clear_signal_handler (&self->highest_scale_monitor_handler_id,
+                           window);
+ 
++  if (self->sync_later_id)
++    {
++      meta_laters_remove (get_laters (self), self->sync_later_id);
++      self->sync_later_id = 0;
++    }
++
+   parent_class->dispose (object);
+ }
+ 
