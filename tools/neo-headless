@@ -8,7 +8,8 @@
 # scale); touches go in through mutter's RemoteDesktop API (neo-headless-input).
 #
 #   neo-headless start                  the display: 360 x 721 dp, the phone's app area under its status bar
-#   neo-headless run APP [ARGS...]      an app on it (as the session user)
+#   neo-headless run APP [ARGS...]      an app on it (as the session user), on GL; GSK_RENDERER=cairo in the
+#                                       environment to compare with the software renderer
 #   neo-headless shot OUT.png           what the app shows now
 #   neo-headless tap X Y                a finger down and up at (X, Y) dp
 #   neo-headless swipe X0 Y0 X1 Y1 [MS] a finger drawn from one point to the other
@@ -17,12 +18,16 @@
 # An app already running on the phone's own screen keeps its window there: run again, it only hands its
 # arguments to that instance (GApplication), and `run` finds no window. Stop that one first.
 #
+# One display per name: NEO_HEADLESS=other in the environment gives a second one (its own bus, state and Wayland
+# socket) beside a display someone else is using; every command then takes the same NEO_HEADLESS.
+#
 # Run it as root on the phone; it does the rest as the session user.
 set -e
 
 USER_NAME=${NEO_USER:-user}
 RUNTIME=/run/user/$(id -u "$USER_NAME")
-STATE=$RUNTIME/neo-headless.d   # beside the Wayland socket, $RUNTIME/neo-headless
+NAME=${NEO_HEADLESS:-neo-headless}
+STATE=$RUNTIME/$NAME.d          # beside the Wayland socket, $RUNTIME/$NAME
 SHOT=$STATE/shot.png
 HERE=$(dirname "$(readlink -f "$0")")
 
@@ -42,6 +47,12 @@ as_user_daemon() {
 
 case $1 in
 start)
+    # a second start would fail on mutter's lock, but only after taking over the first one's bus and pid files
+    if [ -f "$STATE/mutter.pid" ] && kill -0 "$(cat "$STATE/mutter.pid")" 2>/dev/null; then
+        echo "neo-headless: $NAME is running already (mutter $(cat "$STATE/mutter.pid")); NEO_HEADLESS=another-name" \
+            "for a second display" >&2
+        exit 1
+    fi
     as_user mkdir -p "$STATE"
     # the private bus, and mutter on it; --print-address writes where the bus is, for the input tool
     as_user dbus-daemon --session --fork --print-address=1 --print-pid=1 </dev/null >"$STATE/bus.tmp"
@@ -49,10 +60,10 @@ start)
     tail -1 "$STATE/bus.tmp" >"$STATE/bus.pid"
     rm -f "$STATE/bus.tmp"
     as_user_daemon mutter env DBUS_SESSION_BUS_ADDRESS="$(cat "$STATE/bus")" mutter --headless --wayland --no-x11 \
-        --wayland-display=neo-headless --virtual-monitor 360x721
+        --wayland-display="$NAME" --virtual-monitor 360x721
     # ready once its Wayland socket is there
-    for _ in $(seq 50); do [ -S "$RUNTIME/neo-headless" ] && break; sleep 0.1; done
-    if [ ! -S "$RUNTIME/neo-headless" ]; then
+    for _ in $(seq 50); do [ -S "$RUNTIME/$NAME" ] && break; sleep 0.1; done
+    if [ ! -S "$RUNTIME/$NAME" ]; then
         echo "neo-headless: mutter did not start, see $STATE/mutter.log" >&2
         exit 1
     fi
@@ -64,8 +75,8 @@ start)
 run)
     shift
     rm -f "$SHOT"
-    as_user_daemon app env DBUS_SESSION_BUS_ADDRESS="unix:path=$RUNTIME/bus" WAYLAND_DISPLAY=neo-headless \
-        GDK_BACKEND=wayland GSK_RENDERER=gl NEO_SHOT="$SHOT" NEO_SHOT_SCALE=3 "$@"
+    as_user_daemon app env DBUS_SESSION_BUS_ADDRESS="unix:path=$RUNTIME/bus" WAYLAND_DISPLAY="$NAME" \
+        GDK_BACKEND=wayland GSK_RENDERER=${GSK_RENDERER:-gl} NEO_SHOT="$SHOT" NEO_SHOT_SCALE=3 "$@"
     # the app's first picture comes a second after its window shows
     for _ in $(seq 100); do [ -f "$SHOT" ] && exit 0; sleep 0.1; done
     echo "neo-headless: no window yet, see $STATE/app.log" >&2
