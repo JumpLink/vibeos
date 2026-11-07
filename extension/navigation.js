@@ -316,6 +316,9 @@ export class Navigation {
             return false;
         if (Main.actionMode !== Shell.ActionMode.NORMAL || this.shadeOpen() || (!this._appWindow() && !this._atHome()))
             return false;
+        // locked with an app's window over the lock screen (whenlocked.js): no way home past the lock
+        if (this._keyguard?.showing)
+            return false;
         const [x, y] = event.get_coords();
         if (y * this.scale < SCREEN_H - NAV_GESTURE_H)
             return false;

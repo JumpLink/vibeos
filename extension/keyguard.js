@@ -159,6 +159,10 @@ export class Keyguard extends Signals.EventEmitter {
         this._lockedUntil = 0;          // realtime, ms
         this._countdownId = 0;
         this._checking = false;
+        // an app's window over the lock screen (setOccluded), and the other windows' actors hidden meanwhile
+        this.occludedBy = null;
+        this._occlusionHidden = new Set();
+        this._occlusion = {};           // the connections that last while occluded
         this._loadThrottle();
 
         this._build();
@@ -371,6 +375,60 @@ export class Keyguard extends Signals.EventEmitter {
         this._lockedDown = true;
         this.lock();
         this._syncPill();
+    }
+
+    // --- occluded: an app's window over the lock screen (whenlocked.js; KeyguardViewMediator.setOccluded)
+
+    // @win: the window that shows over the lock screen, or null for the lock screen itself. Only the keyguard's view
+    // and its grab step aside for it: every other window stays hidden, and the phone stays locked (showing stays
+    // true), so home, recents and the shade stay shut. Unlocked, nothing is occluded.
+    setOccluded(win) {
+        if (this._unlockingNow)
+            return;
+        win = this.showing ? win : null;
+        if (win === this.occludedBy)
+            return;
+        this._showHiddenWindows();
+        this.occludedBy = win;
+        if (win) {
+            if (this.bouncerShowing)
+                this._hideBouncer(false);
+            this.actor.hide();
+            if (this._grab)
+                Main.popModal(this._grab);
+            this._grab = null;
+            // the locked session mode hides the window group (LayoutManager._updateVisibility): shown for this window,
+            // with every other window in it hidden, the ones that come later too
+            const group = global.window_group;
+            group.connectObject(
+                'notify::visible', () => group.show(),
+                'child-added', (_group, actor) => this._hideForOcclusion(actor), this._occlusion);
+            group.show();
+            for (const actor of global.get_window_actors())
+                this._hideForOcclusion(actor);
+        } else if (this.showing) {
+            this.actor.show();
+            this._grab ??= Main.pushModal(this.actor, {actionMode: Shell.ActionMode.LOCK_SCREEN});
+            Main.layoutManager._updateVisibility();
+        }
+        this.emit('changed');
+    }
+
+    _hideForOcclusion(actor) {
+        if (actor === this.occludedBy?.get_compositor_private() || !actor.visible)
+            return;
+        actor.hide();
+        this._occlusionHidden.add(actor);
+        actor.connectObject('destroy', () => this._occlusionHidden.delete(actor), this._occlusion);
+    }
+
+    _showHiddenWindows() {
+        global.window_group.disconnectObject(this._occlusion);
+        for (const actor of this._occlusionHidden) {
+            actor.disconnectObject(this._occlusion);
+            actor.show();
+        }
+        this._occlusionHidden.clear();
     }
 
     // the screen came on: the lock screen as it was, the clock up to date
@@ -902,6 +960,7 @@ export class Keyguard extends Signals.EventEmitter {
         if (this._grab)
             Main.popModal(this._grab);
         this._grab = null;
+        this._showHiddenWindows();
         if (this._modeLocked)
             Main.sessionMode.popMode('unlock-dialog');
         this._modeLocked = false;

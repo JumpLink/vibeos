@@ -23,6 +23,14 @@ const IFACE = `<node>
     <method name="Drawer">
       <arg type="b" name="open" direction="in"/>
     </method>
+    <!-- Android's full-screen intent (Notification.Builder.setFullScreenIntent): an app's urgent screen, a ringing alarm
+         or a call coming in, starts when the phone is asleep or locked, and the screen comes on for it; with the phone
+         in use the app's heads-up notification is enough. app_id: a desktop file id; started: whether it started it.
+         Over the lock screen it shows if its desktop file says X-GnomePhone-ShowWhenLocked=true (whenlocked.js) -->
+    <method name="LaunchFullScreen">
+      <arg type="s" name="app_id" direction="in"/>
+      <arg type="b" name="started" direction="out"/>
+    </method>
   </interface>
 </node>`;
 
@@ -56,7 +64,26 @@ export class Service {
     }
 
     setKeyguard(keyguard) {
+        this._keyguard = keyguard;
         this._nav.setKeyguard(keyguard);
+    }
+
+    // power.js's Power: whether the screen is on, and waking it
+    setPower(power) {
+        this._power = power;
+    }
+
+    LaunchFullScreen(appId) {
+        if (this._power?.interactive && !this._keyguard?.showing)
+            return false;
+        const app = Shell.AppSystem.get_default().lookup_app(appId);
+        if (!app) {
+            console.warn(`gnome-phone: no app ${appId} to launch full-screen`);
+            return false;
+        }
+        app.activate();
+        this._power?.wakeUp('full-screen');
+        return true;
     }
 
     destroy() {

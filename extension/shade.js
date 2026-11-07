@@ -130,6 +130,8 @@ export const Shade = GObject.registerClass({
             max_n_points: 1,
             begin_threshold: px(TOUCH_SLOP),
         });
+        // not while locked: an app's window over the lock screen (whenlocked.js) shows the status bar, not the shade
+        this._pull.connect('may-recognize', () => !Main.sessionMode.isLocked);
         this._pull.connect('recognize', g => this._beginDrag(g, false));
         this._pull.connect('pan-update', g => this._updateDrag(g));
         this._pull.connect('end', () => this._endDrag(false));

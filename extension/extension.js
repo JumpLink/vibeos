@@ -20,6 +20,7 @@ import {Shade} from './shade.js';
 import {SystemState} from './state.js';
 import {StatusBar, hideShellPanel} from './statusbar.js';
 import {VolumeDialog} from './volume.js';
+import {WhenLocked} from './whenlocked.js';
 
 export default class GnomePhoneExtension extends Extension {
     enable() {
@@ -53,6 +54,8 @@ export default class GnomePhoneExtension extends Extension {
         Main.layoutManager.addTopChrome(this._keyguard.actor);
         overWindows(this._keyguard.actor);
         this._service.setKeyguard(this._keyguard);
+        // an app's window over the lock screen: the ringing alarm, a call coming in
+        this._whenLocked = new WhenLocked(this._keyguard);
         // the volume keys show the volume dialog, over the shade and the lock screen too
         this._volume = new VolumeDialog();
         Main.layoutManager.addTopChrome(this._volume);
@@ -71,6 +74,7 @@ export default class GnomePhoneExtension extends Extension {
         this._power = new Power(this._keyguard, this._state, this._powerMenu, this._chord);
         Main.layoutManager.addTopChrome(this._power.layer);
         overWindows(this._power.layer);
+        this._service.setPower(this._power);
         // ... and over them all, the end of uiGroup
         this._endMark = new EndMark();
         // the on-screen keyboard's keys tick under the finger
@@ -99,6 +103,8 @@ export default class GnomePhoneExtension extends Extension {
         this._volume = null;
         this._chord?.destroy();
         this._chord = null;
+        this._whenLocked?.destroy();
+        this._whenLocked = null;
         this._keyguard?.destroy();
         this._keyguard = null;
         this._headsUp?.destroy();
