@@ -7,6 +7,7 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GnomeBluetooth from 'gi://GnomeBluetooth';
 import GObject from 'gi://GObject';
+import GUdev from 'gi://GUdev';
 import Meta from 'gi://Meta';
 import NM from 'gi://NM';
 
@@ -29,6 +30,62 @@ const PPD_PATH = '/net/hadess/PowerProfiles';
 const UP_CHARGING = 1;
 const UP_FULLY_CHARGED = 4;
 const UP_PENDING_CHARGE = 5;
+
+// How fast it charges, from the power the charger is allowed to give: the negotiated voltage (a PD contract's 9 V)
+// times the input limit the charger chip was set to, as Android's BatteryStatus does it (max current x max voltage of
+// the plugged supply), with Samsung's names on top. Slowly below 7.5 W (a computer's USB port is 2.5 W), fast from
+// 12 W, super fast from 20 W. The S10e itself takes 15 W at most (stock's cap, the max77705 driver's PD_MAX_MW), so a
+// 27 W charger shows "Fast charging" there, as on One UI.
+const POWER_SUPPLY = '/sys/class/power_supply';
+const CHARGE_SLOW_W = 7.5;
+const CHARGE_FAST_W = 12;
+const CHARGE_SUPER_FAST_W = 20;
+// a plug-in brings a burst of uevents while the PD contract is made (500 mA first, the 9 V limit ~1 s later)
+const CHARGE_SETTLE_MS = 400;
+
+function readSysfs(path) {
+    try {
+        return new TextDecoder().decode(GLib.file_get_contents(path)[1]).trim();
+    } catch (e) {
+        return null;
+    }
+}
+
+// what the lock screen and the AOD say after the percentage: AOSP's "Charging slowly" and "Charging", One UI's
+// "Fast charging" and "Super fast charging"
+export function chargingText(speed) {
+    return {slow: 'Charging slowly', fast: 'Fast charging', superfast: 'Super fast charging'}[speed] ?? 'Charging';
+}
+
+// 'slow', 'normal', 'fast', 'superfast', or null when nothing is plugged in (or the supply says too little to tell)
+function readChargeSpeed() {
+    let volts = 0, limit = 0, max = 0, plugged = false;
+    let dir;
+    try {
+        dir = GLib.Dir.open(POWER_SUPPLY, 0);
+    } catch (e) {
+        return null;
+    }
+    for (let name; (name = dir.read_name()) !== null;) {
+        const at = attr => readSysfs(`${POWER_SUPPLY}/${name}/${attr}`);
+        if (at('type') === 'Battery' || at('online') !== '1')
+            continue;
+        plugged = true;
+        volts = Math.max(volts, parseInt(at('voltage_now') ?? at('voltage_max') ?? '0') || 0);
+        limit = Math.max(limit, parseInt(at('input_current_limit') ?? '0') || 0);
+        max = Math.max(max, parseInt(at('current_max') ?? '0') || 0);
+    }
+    dir.close();
+    if (!plugged)
+        return null;
+    // the charger chip's limit is what the phone draws; a port's current_max is only what it offers
+    const amps = (limit || max) / 1e6;
+    if (!amps)
+        return null;
+    const watts = (volts ? volts / 1e6 : 5) * amps;
+    return watts >= CHARGE_SUPER_FAST_W ? 'superfast' : watts >= CHARGE_FAST_W ? 'fast'
+        : watts >= CHARGE_SLOW_W ? 'normal' : 'slow';
+}
 
 // Android's 5 Wi-Fi levels from NetworkManager's 0..100 strength (WifiManager.calculateSignalLevel, roughly)
 function wifiLevel(strength) {
@@ -63,7 +120,7 @@ export const SystemState = GObject.registerClass({
         super();
         this.wifi = {available: false, enabled: false, connected: false, level: 0, name: ''};
         this.mobile = {present: false, level: 0, operator: '', tech: '', dataConnected: false, dataEnabled: false};
-        this.battery = {present: false, level: 0, plugged: false, icon: 'battery-missing-symbolic'};
+        this.battery = {present: false, level: 0, plugged: false, speed: null, icon: 'battery-missing-symbolic'};
         this.powerSave = null;          // null: no power-profiles-daemon
         this.bluetooth = {available: false, powered: false, connected: false, name: ''};
         this.airplane = false;
@@ -216,6 +273,24 @@ export const SystemState = GObject.registerClass({
     // --- UPower, power-profiles-daemon
 
     _initBattery() {
+        // UPower says nothing when only the charger's limit changes (a PD contract after the plug-in): the kernel's
+        // power_supply uevents do
+        this._chargeSpeed = readChargeSpeed();
+        this._chargeSpeedId = 0;
+        this._udev = new GUdev.Client({subsystems: ['power_supply']});
+        this._udev.connectObject('uevent', () => {
+            if (this._chargeSpeedId)
+                return;
+            this._chargeSpeedId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, CHARGE_SETTLE_MS, () => {
+                this._chargeSpeedId = 0;
+                const speed = readChargeSpeed();
+                if (speed !== this._chargeSpeed) {
+                    this._chargeSpeed = speed;
+                    this._syncBattery();
+                }
+                return GLib.SOURCE_REMOVE;
+            });
+        }, this);
         Gio.DBusProxy.new(Gio.DBus.system, Gio.DBusProxyFlags.NONE, null,
             UPOWER_BUS, DISPLAY_DEVICE, UPOWER_DEVICE, this._cancellable, (o, res) => {
                 try {
@@ -253,11 +328,13 @@ export const SystemState = GObject.registerClass({
             return;
         const prop = name => this._upower.get_cached_property(name)?.unpack();
         const onBattery = this._upowerDaemon?.get_cached_property('OnBattery')?.unpack();
+        const plugged = onBattery !== undefined ? !onBattery
+            : [UP_CHARGING, UP_FULLY_CHARGED, UP_PENDING_CHARGE].includes(prop('State') ?? 0);
         this.battery = {
             present: !!prop('IsPresent'),
             level: Math.round(prop('Percentage') ?? 0),
-            plugged: onBattery !== undefined ? !onBattery
-                : [UP_CHARGING, UP_FULLY_CHARGED, UP_PENDING_CHARGE].includes(prop('State') ?? 0),
+            plugged,
+            speed: plugged ? this._chargeSpeed : null,
             icon: prop('IconName') || 'battery-missing-symbolic',
         };
         this._changed();
@@ -408,6 +485,10 @@ export const SystemState = GObject.registerClass({
         this._cancellable.cancel();
         if (this._changedId)
             global.compositor.get_laters().remove(this._changedId);
+        if (this._chargeSpeedId)
+            GLib.source_remove(this._chargeSpeedId);
+        this._udev?.disconnectObject(this);
+        this._udev = null;
         Main.brightnessManager.globalScale?.disconnectObject(this);
         delete Main.brightnessManager._showOSD;
         for (const obj of [this._notifications, this._interface, this._location, this._touchscreen, this._power,

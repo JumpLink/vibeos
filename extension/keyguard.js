@@ -24,6 +24,7 @@ import {Canvas, paintIcon} from './icons.js';
 import {animate, clamp, EMPHASIZED_ACCELERATE, FAST_OUT_SLOW_IN, lerp, LINEAR, MIN_FLING_VELOCITY,
     TOUCH_RESPONSE, VelocityTracker} from './motion.js';
 import {Color, rgba, SHADE_PANEL} from './palette.js';
+import {chargingText} from './state.js';
 import {notificationIcon, SystemIcons} from './statusbar.js';
 import {AndroidText} from './text.js';
 import {px, screenPixels, SCALE} from './units.js';
@@ -288,10 +289,10 @@ export class Keyguard extends Signals.EventEmitter {
             this._carrier.setText(carrier);
             placeText(this._carrier, {left: CARRIER_LEFT, inkTop: CARRIER_INK_TOP});
         }
-        // KeyguardIndicationController's power line
+        // KeyguardIndicationController's power line, with how fast (SystemState's speed; One UI's names)
         let indication = '';
         if (battery.present && battery.plugged)
-            indication = battery.level >= 100 ? 'Charged' : `${battery.level}% • Charging`;
+            indication = battery.level >= 100 ? 'Charged' : `${battery.level}% • ${chargingText(battery.speed)}`;
         if (indication !== this._indicationText) {
             this._indicationText = indication;
             this._indication.setText(indication);

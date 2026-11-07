@@ -19,6 +19,7 @@ import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {Canvas} from './icons.js';
+import {chargingText} from './state.js';
 import {notificationIcon} from './statusbar.js';
 import {px, screenPixels, SCALE} from './units.js';
 
@@ -289,7 +290,9 @@ class Aod extends St.BoxLayout {
     _syncBattery() {
         const {battery} = this._state;
         this._batteryIcon.icon_name = battery.icon;
-        this._batteryLabel.text = `${battery.level}%`;
+        // plugged in, how fast it charges, as One UI's AOD says it under the clock
+        this._batteryLabel.text = battery.plugged && battery.level < 100
+            ? `${battery.level}% • ${chargingText(battery.speed)}` : `${battery.level}%`;
         this._batteryIcon.get_parent().visible = battery.present;
     }
 
