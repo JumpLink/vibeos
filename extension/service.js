@@ -76,7 +76,9 @@ export class Service {
     LaunchFullScreen(appId) {
         if (this._power?.interactive && !this._keyguard?.showing)
             return false;
-        const app = Shell.AppSystem.get_default().lookup_app(appId);
+        // an app id ("de.yesman.Clock.Ringing") or a desktop id ("de.yesman.Clock.Ringing.desktop")
+        const appSystem = Shell.AppSystem.get_default();
+        const app = appSystem.lookup_app(appId) ?? appSystem.lookup_app(`${appId}.desktop`);
         if (!app) {
             console.warn(`gnome-phone: no app ${appId} to launch full-screen`);
             return false;
