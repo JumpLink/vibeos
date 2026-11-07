@@ -58,6 +58,10 @@ void        neo_window_set_content (GtkWindow *window, GtkWidget *content);
 /* the root overlay of the window `widget` is in, or NULL */
 GtkOverlay *neo_window_get_overlay (GtkWidget *widget);
 
+/* Device pixels per dp for `widget`: its scale factor on the phone, or NEO_SHOT_SCALE on a test display at scale 1,
+ * so that what Android does in whole pixels (sizes, guidelines, centring) comes out the same in the test's picture */
+int     neo_device_scale (GtkWidget *widget);
+
 /* Android's includeFontPadding (on by default in every TextView): the line is as tall as the font's bounding box
  * (Roboto's yMax 2163 and yMin -555 of 2048 units) rather than its ascent and descent (1900, -500), so a text view
  * stands 0.128 of the text size taller above the text and 0.027 below it than a GtkLabel does. This adds those

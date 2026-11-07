@@ -115,7 +115,7 @@ shoot (gpointer data)
   const char *path = g_getenv ("NEO_SHOT");
   int width = gtk_widget_get_width (window), height = gtk_widget_get_height (window);
   /* the screen's scale, or NEO_SHOT_SCALE: a window on a test display at scale 1 still makes a phone-sized picture */
-  int scale = g_getenv ("NEO_SHOT_SCALE") ? atoi (g_getenv ("NEO_SHOT_SCALE")) : gtk_widget_get_scale_factor (window);
+  int scale = neo_device_scale (window);
   GdkPaintable *paintable = gtk_widget_paintable_new (window);
   GtkSnapshot *snapshot = gtk_snapshot_new ();
   GskRenderNode *node;
@@ -194,6 +194,14 @@ neo_window_get_overlay (GtkWidget *widget)
 {
   GtkRoot *root = gtk_widget_get_root (widget);
   return root ? g_object_get_data (G_OBJECT (root), "neo-overlay") : NULL;
+}
+
+int
+neo_device_scale (GtkWidget *widget)
+{
+  const char *shot_scale = g_getenv ("NEO_SHOT_SCALE");
+
+  return shot_scale && atoi (shot_scale) > 0 ? atoi (shot_scale) : gtk_widget_get_scale_factor (widget);
 }
 
 /* ---- text ---------------------------------------------------------------------------------------------------- */
