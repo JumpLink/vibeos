@@ -10,6 +10,7 @@
  * pointer sets, and the value it shows is that fraction through the animators' default AccelerateDecelerate curve. */
 #include "ringing-window.h"
 #include "alarms-client.h"
+#include "clock-draw.h"
 #include "clock-format.h"
 
 #include <glib/gi18n.h>
@@ -504,17 +505,6 @@ on_drag_cancel (GtkGesture *gesture, GdkEventSequence *sequence, RingingView *se
 /* ---- drawing -------------------------------------------------------------------------------------------------- */
 
 static void
-fill_circle (GtkSnapshot *snapshot, double x, double y, double radius, const GdkRGBA *color)
-{
-  g_autoptr(GskPathBuilder) builder = gsk_path_builder_new ();
-  g_autoptr(GskPath) path = NULL;
-
-  gsk_path_builder_add_circle (builder, &GRAPHENE_POINT_INIT (x, y), radius);
-  path = gsk_path_builder_to_path (builder);
-  gtk_snapshot_append_fill (snapshot, path, GSK_FILL_RULE_WINDING, color);
-}
-
-static void
 draw_text (GtkSnapshot *snapshot, PangoLayout *layout, double width, double y, double alpha)
 {
   gtk_snapshot_save (snapshot);
@@ -549,7 +539,7 @@ draw_button (RingingView *self, GtkSnapshot *snapshot, double x, double y, doubl
   gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (x, y));
   gtk_snapshot_scale (snapshot, scale, scale);
   if (v > 0)
-    fill_circle (snapshot, 0, 0, BUTTON / 2.0, &disc);
+    clock_snapshot_dot (snapshot, 0, 0, BUTTON / 2.0, &disc);
   neo_snapshot_icon (snapshot, GTK_WIDGET (self), button == TARGET_SNOOZE ? "clock-snooze-symbolic"
                                                                           : "clock-dismiss-symbolic",
                      -BUTTON / 2.0, -BUTTON / 2.0, BUTTON, &glyph);
@@ -566,8 +556,8 @@ draw_content (RingingView *self, GtkSnapshot *snapshot, const Geometry *g, doubl
 
   /* the pulse: radius 0 → 128 dp, white fading to nothing */
   if (self->pulse_value > 0 && self->pulse_value < 1)
-    fill_circle (snapshot, g->handle_x, g->cy, PULSE_RADIUS * self->pulse_value,
-                 &(GdkRGBA) { 1, 1, 1, 1 - self->pulse_value });
+    clock_snapshot_dot (snapshot, g->handle_x, g->cy, PULSE_RADIUS * self->pulse_value,
+                        &(GdkRGBA) { 1, 1, 1, 1 - self->pulse_value });
 
   draw_button (self, snapshot, g->snooze_x, g->cy, self->snooze, TARGET_SNOOZE);
   draw_button (self, snapshot, g->dismiss_x, g->cy, self->dismiss, TARGET_DISMISS);
@@ -610,8 +600,8 @@ ringing_view_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
         draw_text (snapshot, self->alert_info, width, y + line + PAD_TOP (ALERT_SIZE), 1);
     }
   if (self->handled && self->reveal_alpha > 0)
-    fill_circle (snapshot, self->reveal_x, self->reveal_y, self->reveal_radius,
-                 &(GdkRGBA) { 0x44 / 255.0, 0x44 / 255.0, 0x44 / 255.0, self->reveal_alpha });
+    clock_snapshot_dot (snapshot, self->reveal_x, self->reveal_y, self->reveal_radius,
+                        &(GdkRGBA) { 0x44 / 255.0, 0x44 / 255.0, 0x44 / 255.0, self->reveal_alpha });
 }
 
 /* ---- the alarm ------------------------------------------------------------------------------------------------ */

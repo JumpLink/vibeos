@@ -3,6 +3,7 @@
 #include "alarm-card.h"
 #include "alarms-client.h"
 #include "clock-format.h"
+#include "clock-tab.h"
 
 #include <glib/gi18n.h>
 #include <spongy-gtk.h>
@@ -25,7 +26,10 @@ struct _AlarmPage
   NeoAnim *empty_fade;
 };
 
-G_DEFINE_FINAL_TYPE (AlarmPage, alarm_page, GTK_TYPE_WIDGET)
+static void alarm_page_tab_init (ClockTabInterface *iface);
+
+G_DEFINE_FINAL_TYPE_WITH_CODE (AlarmPage, alarm_page, GTK_TYPE_WIDGET,
+                               G_IMPLEMENT_INTERFACE (CLOCK_TYPE_TAB, alarm_page_tab_init))
 
 static AlarmCard *
 find_card (AlarmPage *self, guint id)
@@ -260,6 +264,28 @@ alarm_page_add_alarm (AlarmPage *self)
 
   neo_time_picker_dialog (GTK_WIDGET (self), g_date_time_get_hour (now), g_date_time_get_minute (now), on_new_time,
                           g_object_ref (self), g_object_unref);
+}
+
+/* --- the buttons: the FAB adds an alarm (AlarmClockFragment.onUpdateFab) */
+
+static void
+alarm_page_get_buttons (ClockTab *tab, ClockButton *buttons)
+{
+  buttons[CLOCK_FAB] = (ClockButton) { "clock-add-symbolic", _("Add alarm") };
+}
+
+static void
+alarm_page_clicked (ClockTab *tab, ClockButtonPosition button)
+{
+  if (button == CLOCK_FAB)
+    alarm_page_add_alarm (ALARM_PAGE (tab));
+}
+
+static void
+alarm_page_tab_init (ClockTabInterface *iface)
+{
+  iface->get_buttons = alarm_page_get_buttons;
+  iface->clicked = alarm_page_clicked;
 }
 
 /* --- GObject */

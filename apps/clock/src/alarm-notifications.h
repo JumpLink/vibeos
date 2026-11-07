@@ -2,9 +2,8 @@
  * "Snoozing until ...", the ringing alarm with Snooze and Dismiss, "Missed alarm". Each instance has at most one,
  * the one for its state.
  *
- * They go through org.freedesktop.Notifications rather than GNotification: that one says when the user swiped a
- * notification away (Android's delete intent), which some states answer: the upcoming one then stays hidden, a
- * missed one is over. */
+ * Some states answer the user swiping their notification away (Android's delete intent): the upcoming one then
+ * stays hidden, a missed one is over. clock-notifier.c says why that takes org.freedesktop.Notifications. */
 #pragma once
 
 #include "alarm-model.h"

@@ -8,19 +8,24 @@ m = meson.get_compiler('c').find_library('m')
 bindir = get_option('prefix') / get_option('bindir')
 datadir = get_option('prefix') / get_option('datadir')
 
-# the alarms and their rules, shared by the service, the app and the tests
-alarms = static_library('alarms', 'src/alarm-model.c', 'src/alarm-engine.c', dependencies: gio)
+# the alarms, the timers and the stopwatch, and their rules: shared by the service, the app and the tests
+models = static_library('models', 'src/alarm-model.c', 'src/alarm-engine.c', 'src/timer-model.c',
+                        'src/stopwatch-model.c', 'src/elapsed.c', dependencies: gio)
 
-# the alarm service
-executable('neo-clock-alarms', 'src/alarm-service.c', 'src/alarm-klaxon.c', 'src/alarm-notifications.c',
-           link_with: alarms, install: true,
+# the service: alarms, timers and the stopwatch, with the app closed
+executable('neo-clock-alarms', 'src/clock-service.c', 'src/alarm-service.c', 'src/timer-service.c',
+           'src/stopwatch-service.c', 'src/alarm-klaxon.c', 'src/alarm-notifications.c', 'src/clock-notifier.c',
+           'src/phone.c', link_with: models, install: true,
            dependencies: [gio, m, dependency('gstreamer-1.0'), dependency('libpulse-mainloop-glib')])
 
-# the app: its tabs, and the full-screen ringing alarm (neo-clock --ringing)
+# the app: its tabs, and the full-screen ringing alarm and expired timers (neo-clock --ringing)
 resources = gnome.compile_resources('clock-resources', 'src/clock.gresource.xml', source_dir: ['src', 'data'])
 executable('neo-clock', 'src/clock-main.c', 'src/clock-window.c', 'src/alarm-page.c', 'src/alarm-card.c',
-           'src/clock-page.c', 'src/ringing-window.c', 'src/alarms-client.c', 'src/clock-format.c', resources,
-           link_with: alarms, install: true,
+           'src/clock-page.c', 'src/ringing-window.c', 'src/alarms-client.c', 'src/clock-format.c',
+           'src/clock-tab.c', 'src/clock-draw.c', 'src/timers-client.c', 'src/stopwatch-client.c',
+           'src/timer-page.c', 'src/timer-card.c', 'src/timer-setup.c', 'src/stopwatch-page.c',
+           'src/expired-window.c', resources,
+           link_with: models, install: true,
            c_args: ['-DGETTEXT_PACKAGE="neo-clock"', '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir'))],
            dependencies: [gio, m, dependency('gtk4', version: '>= 4.14'), dependency('neo-1'),
                           dependency('spongy-gtk-1')])
@@ -39,6 +44,6 @@ install_data('data/de.yesman.Clock.gschema.xml', install_dir: datadir / 'glib-2.
 install_data('data/sounds/alarm_expire.ogg', 'data/sounds/timer_expire.ogg', install_dir: datadir / 'neo-clock/sounds')
 gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
 
-foreach name : ['alarm-model', 'alarm-engine']
-  test(name, executable('test-' + name, 'tests/test-' + name + '.c', link_with: alarms, dependencies: gio))
+foreach name : ['alarm-model', 'alarm-engine', 'timer-model']
+  test(name, executable('test-' + name, 'tests/test-' + name + '.c', link_with: models, dependencies: gio))
 endforeach

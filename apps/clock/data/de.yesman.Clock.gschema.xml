@@ -11,6 +11,12 @@
     <value nick="snooze" value="1"/>
     <value nick="dismiss" value="2"/>
   </enum>
+  <enum id="de.yesman.Clock.Tab">
+    <value nick="alarm" value="0"/>     <!-- DeskClock's Tab, in its order -->
+    <value nick="clock" value="1"/>
+    <value nick="timer" value="2"/>
+    <value nick="stopwatch" value="3"/>
+  </enum>
   <enum id="de.yesman.Clock.WeekStart">
     <value nick="locale" value="0"/>    <!-- not set: the locale's first day -->
     <value nick="saturday" value="7"/>  <!-- Calendar.SATURDAY ... -->
@@ -19,6 +25,11 @@
   </enum>
 
   <schema id="de.yesman.Clock" path="/de/yesman/Clock/">
+    <!-- the app opens where it was left (TabDAO, KEY_SELECTED_TAB), on the Clock tab the first time -->
+    <key name="selected-tab" enum="de.yesman.Clock.Tab">
+      <default>'clock'</default>
+      <summary>The tab the app shows</summary>
+    </key>
     <!-- Clock -->
     <key name="clock-style" enum="de.yesman.Clock.ClockStyle">
       <default>'digital'</default>

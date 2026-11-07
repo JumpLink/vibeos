@@ -8,7 +8,6 @@
 #include <pulse/pulseaudio.h>
 
 #define FALLBACK_SOUND "neo-clock/sounds/alarm_expire.ogg"     /* DeskClock's R.raw.alarm_expire */
-#define DEFAULT_SOUND "sounds/android/alarms/Hassium.ogg"      /* LineageOS's ro.config.alarm_alert */
 #define CRESCENDO_STEP_MS 50
 #define VIBRATE_PERIOD_MS 1000                                  /* AlarmKlaxon.VIBRATE_PATTERN: 500 off, 500 on */
 
@@ -16,8 +15,19 @@
 #define PLAY_FLAG_AUDIO 0x02
 #define PLAY_FLAG_SOFT_VOLUME 0x10
 
+/* each kind's settings, and its sound when the setting is empty */
+static const struct {
+  const char *ringtone_key, *crescendo_key, *default_sound;
+} kinds[] = {
+  /* LineageOS's ro.config.alarm_alert */
+  [ALARM_KLAXON_ALARM] = { "default-alarm-ringtone", "alarm-crescendo-duration", "sounds/android/alarms/Hassium.ogg" },
+  /* DeskClock's R.raw.timer_expire, "Timer Expired" */
+  [ALARM_KLAXON_TIMER] = { "timer-ringtone", "timer-crescendo-duration", "neo-clock/sounds/timer_expire.ogg" },
+};
+
 struct _AlarmKlaxon {
   GSettings *settings;
+  AlarmKlaxonKind kind;
 
   GstElement *player;
   char *uri;
@@ -220,7 +230,7 @@ make_player (AlarmKlaxon *self)
 static void
 play (AlarmKlaxon *self, const char *uri)
 {
-  int crescendo = g_settings_get_int (self->settings, "alarm-crescendo-duration");
+  int crescendo = g_settings_get_int (self->settings, kinds[self->kind].crescendo_key);
 
   if (!self->player)
     self->player = make_player (self);
@@ -289,12 +299,12 @@ alarm_klaxon_start (AlarmKlaxon *self, const char *ringtone, gboolean vibrate)
 
   if (!ringtone || *ringtone)
     {
-      g_autofree char *setting = g_settings_get_string (self->settings, "default-alarm-ringtone");
+      g_autofree char *setting = g_settings_get_string (self->settings, kinds[self->kind].ringtone_key);
       g_autofree char *found = NULL;
       const char *uri = ringtone;
 
       if (!uri)
-        uri = *setting ? setting : (found = alarm_klaxon_find_sound (DEFAULT_SOUND));
+        uri = *setting ? setting : (found = alarm_klaxon_find_sound (kinds[self->kind].default_sound));
       if (!uri)
         uri = found = alarm_klaxon_find_sound (FALLBACK_SOUND);
       self->fell_back = FALSE;
@@ -305,7 +315,7 @@ alarm_klaxon_start (AlarmKlaxon *self, const char *ringtone, gboolean vibrate)
           play (self, uri);
         }
       else
-        g_warning ("klaxon: no alarm sound installed");
+        g_warning ("klaxon: no sound installed");
     }
   if (vibrate)
     {
@@ -325,11 +335,12 @@ alarm_klaxon_stop (AlarmKlaxon *self)
 }
 
 AlarmKlaxon *
-alarm_klaxon_new (GSettings *settings)
+alarm_klaxon_new (GSettings *settings, AlarmKlaxonKind kind)
 {
   AlarmKlaxon *self = g_new0 (AlarmKlaxon, 1);
 
   self->settings = g_object_ref (settings);
+  self->kind = kind;
   self->pa_loop = pa_glib_mainloop_new (NULL);
   return self;
 }

@@ -1,5 +1,5 @@
-/* neo-clock-alarms: the Clock's alarm service (DeskClock's AlarmService and the AlarmManager calls of its
- * AlarmStateManager). It runs in the session from login, whether or not the Clock app is open, and:
+/* The alarms in the Clock's service (DeskClock's AlarmService and the AlarmManager calls of its
+ * AlarmStateManager). From login, whether or not the Clock app is open, it:
  *
  *  - keeps the alarms (the store, ~/.local/share/de.yesman.Clock/alarms.ini) and takes each instance through its
  *    states (alarm-engine.c) when they are due;
@@ -10,22 +10,19 @@
  *    locked, as Android's full-screen intent;
  *  - serves the Clock app and the ringing screen over D-Bus (de.yesman.Clock.Alarms, below): the app never writes
  *    the store itself. */
-#include <errno.h>
-#include <gio/gio.h>
-#include <gio/gdesktopappinfo.h>
-#include <gio/gunixfdlist.h>
-#include <glib/gi18n.h>
-#include <glib/gstdio.h>
-#include <glib-unix.h>
-#include <locale.h>
-#include <sys/timerfd.h>
-#include <unistd.h>
-
+#include "alarm-service.h"
 #include "alarm-engine.h"
 #include "alarm-klaxon.h"
 #include "alarm-notifications.h"
+#include "phone.h"
 
-#define BUS_NAME "de.yesman.Clock.Alarms"
+#include <errno.h>
+#include <glib/gi18n.h>
+#include <glib/gstdio.h>
+#include <glib-unix.h>
+#include <sys/timerfd.h>
+#include <unistd.h>
+
 #define INTERFACE "de.yesman.Clock.Alarms"
 #define OBJECT_PATH "/de/yesman/Clock/Alarms"
 #define APP_ID "de.yesman.Clock"
@@ -59,8 +56,7 @@ static const char introspection[] =
   "  </interface>"
   "</node>";
 
-typedef struct {
-  GMainLoop *loop;
+struct _AlarmService {
   GSettings *settings;
   char *store_path;
   AlarmEngine *engine;
@@ -81,7 +77,9 @@ typedef struct {
   int sleep_inhibitor;          /* logind's sleep lock while it rings, or -1 */
   gint64 published_next;
   guint published_ringing;
-} Service;
+};
+
+typedef struct _AlarmService Service;
 
 static void publish (Service *self);
 
@@ -167,72 +165,17 @@ alarm_apply (Alarm *alarm, GVariant *changes, GError **error)
 
 /* --- ringing */
 
-/* logind keeps the phone from sleeping while it rings: neo-wakeup's hold on waking lasts only 30 s */
-static void
-hold_awake (Service *self)
-{
-  g_autoptr(GUnixFDList) fds = NULL;
-  g_autoptr(GVariant) reply = NULL;
-  g_autoptr(GError) error = NULL;
-  int index;
-
-  if (self->sleep_inhibitor >= 0 || !self->system)
-    return;
-  reply = g_dbus_connection_call_with_unix_fd_list_sync (self->system, "org.freedesktop.login1",
-                                                         "/org/freedesktop/login1", "org.freedesktop.login1.Manager",
-                                                         "Inhibit",
-                                                         g_variant_new ("(ssss)", "sleep", "Clock",
-                                                                        "An alarm is ringing", "block"),
-                                                         G_VARIANT_TYPE ("(h)"), G_DBUS_CALL_FLAGS_NONE, 3000, NULL,
-                                                         &fds, NULL, &error);
-  if (!reply)
-    {
-      g_warning ("cannot keep the phone awake: %s", error->message);
-      return;
-    }
-  g_variant_get (reply, "(h)", &index);
-  self->sleep_inhibitor = g_unix_fd_list_get (fds, index, NULL);
-}
-
-static void
-let_sleep (Service *self)
-{
-  if (self->sleep_inhibitor >= 0)
-    close (self->sleep_inhibitor);
-  self->sleep_inhibitor = -1;
-}
-
-static void
-launch_ringing_screen (Service *self)
-{
-  g_autoptr(GDesktopAppInfo) info = g_desktop_app_info_new (RINGING_APP_ID ".desktop");
-  g_autoptr(GError) error = NULL;
-
-  if (!info || !g_app_info_launch (G_APP_INFO (info), NULL, NULL, &error))
-    g_warning ("cannot open the ringing screen: %s", error ? error->message : "not installed");
-}
-
-static void
-on_full_screen (GObject *source, GAsyncResult *result, gpointer data)
-{
-  g_autoptr(GVariant) reply = g_dbus_connection_call_finish (G_DBUS_CONNECTION (source), result, NULL);
-
-  /* no shell to ask: the screen is opened anyway (the shell would have said no only when in use, unlocked) */
-  if (!reply)
-    launch_ringing_screen (data);
-}
-
 static void
 start_ringing (Service *self, AlarmInstance *instance)
 {
   self->ringing = instance->id;
-  hold_awake (self);
+  /* logind keeps the phone from sleeping while it rings: neo-wakeup's hold on waking lasts only 30 s */
+  if (self->sleep_inhibitor < 0)
+    self->sleep_inhibitor = phone_inhibit_sleep (self->system, "An alarm is ringing");
   alarm_klaxon_start (self->klaxon, instance->ringtone, instance->vibrate);
-  /* the full-screen intent: the shell opens the ringing screen (and wakes the screen) if the phone is asleep or
-   * locked; in use, the notification's heads-up is the alarm, as on Android */
-  g_dbus_connection_call (self->session, "de.yesman.GnomePhone", "/de/yesman/GnomePhone", "de.yesman.GnomePhone",
-                          "LaunchFullScreen", g_variant_new ("(s)", RINGING_APP_ID), G_VARIANT_TYPE ("(b)"),
-                          G_DBUS_CALL_FLAGS_NONE, 5000, NULL, on_full_screen, self);
+  /* the full-screen intent: the ringing screen over the lock screen if the phone is asleep or locked; in use, the
+   * notification's heads-up is the alarm, as on Android */
+  phone_show_full_screen (self->session, RINGING_APP_ID);
 }
 
 static void
@@ -240,7 +183,7 @@ stop_ringing (Service *self)
 {
   self->ringing = 0;
   alarm_klaxon_stop (self->klaxon);
-  let_sleep (self);
+  phone_allow_sleep (&self->sleep_inhibitor);
 }
 
 /* --- the engine's changes */
@@ -275,19 +218,6 @@ on_store_changed (AlarmEngine *engine, Service *self)
 /* --- the user, from the notifications */
 
 static void
-open_app (Service *self, guint alarm_id)
-{
-  GVariantBuilder parameter;
-
-  /* the Clock on its Alarm tab, at the alarm (Android's createViewAlarmIntent) */
-  g_variant_builder_init (&parameter, G_VARIANT_TYPE ("av"));
-  g_variant_builder_add (&parameter, "v", g_variant_new_uint32 (alarm_id));
-  g_dbus_connection_call (self->session, APP_ID, "/de/yesman/Clock", "org.freedesktop.Application",
-                          "ActivateAction", g_variant_new ("(sava{sv})", "show-alarm", &parameter, NULL), NULL,
-                          G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
-}
-
-static void
 on_notification (guint instance_id, const char *action, gpointer data)
 {
   Service *self = data;
@@ -304,13 +234,14 @@ on_notification (guint instance_id, const char *action, gpointer data)
       guint alarm_id = instance->alarm_id;
 
       if (instance->state == ALARM_STATE_FIRED)
-        launch_ringing_screen (self);
+        phone_start_app (RINGING_APP_ID);
       else
         {
           /* a missed one tapped is seen: over (SHOW_AND_DISMISS_ALARM_ACTION) */
           if (instance->state == ALARM_STATE_MISSED)
             alarm_engine_dismiss (self->engine, instance_id);
-          open_app (self, alarm_id);
+          /* the Clock on its Alarm tab, at the alarm (Android's createViewAlarmIntent) */
+          phone_open_app (self->session, APP_ID, "show-alarm", g_variant_new_uint32 (alarm_id));
         }
     }
   else if (g_str_equal (action, "closed"))
@@ -331,17 +262,10 @@ on_notification (guint instance_id, const char *action, gpointer data)
 static void
 tell_wakeup (Service *self, const char *name, gint64 time, gboolean alarm_clock, gint64 *sent)
 {
-  GVariantBuilder options;
-
-  if (*sent == time || !self->system)
+  if (*sent == time)
     return;
   *sent = time;
-  g_variant_builder_init (&options, G_VARIANT_TYPE_VARDICT);
-  g_variant_builder_add (&options, "{sv}", "alarm-clock", g_variant_new_boolean (alarm_clock));
-  g_variant_builder_add (&options, "{sv}", "app", g_variant_new_string (APP_ID));
-  g_dbus_connection_call (self->system, "de.yesman.Wakeup", "/de/yesman/Wakeup", "de.yesman.Wakeup", "Set",
-                          g_variant_new ("(sxa{sv})", name, time, &options), NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL,
-                          NULL, NULL);
+  phone_wake_at (self->system, name, time, alarm_clock);
 }
 
 static gint64
@@ -582,16 +506,6 @@ on_get_property (GDBusConnection *bus, const char *sender, const char *path, con
 
 static const GDBusInterfaceVTable vtable = { .method_call = on_method_call, .get_property = on_get_property };
 
-static void
-on_name_lost (GDBusConnection *bus, const char *name, gpointer data)
-{
-  Service *self = data;
-
-  /* another one runs: two would ring twice */
-  g_warning ("%s is taken: quitting", name);
-  g_main_loop_quit (self->loop);
-}
-
 /* --- start */
 
 /* the store, or a new one if it cannot be read: the unreadable file is kept aside, never overwritten */
@@ -610,29 +524,23 @@ load_store (const char *path)
   return alarm_store_load (path, NULL);
 }
 
-int
-main (int argc, char **argv)
+AlarmService *
+alarm_service_new (GDBusConnection *session, GDBusConnection *system, GSettings *settings, const char *store_path,
+                   GError **error)
 {
-  Service service = { .timer_fd = -1, .sleep_inhibitor = -1, .sent_alarm = -1, .sent_change = -1 };
-  Service *self = &service;
-  g_autofree char *dir = g_build_filename (g_get_user_data_dir (), APP_ID, NULL);
+  Service *self = g_new0 (Service, 1);
   g_autoptr(GFile) localtime = g_file_new_for_path ("/etc/localtime");
-  g_autoptr(GError) error = NULL;
 
-  setlocale (LC_ALL, "");
-  self->loop = g_main_loop_new (NULL, FALSE);
-  self->session = g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, &error);
-  if (!self->session)
-    g_error ("no session bus: %s", error->message);
-  self->system = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, NULL);
+  self->timer_fd = self->sleep_inhibitor = -1;
+  self->sent_alarm = self->sent_change = -1;
+  self->session = g_object_ref (session);
+  self->system = system ? g_object_ref (system) : NULL;
   self->node = g_dbus_node_info_new_for_xml (introspection, NULL);
-
-  g_mkdir_with_parents (dir, 0700);
-  self->store_path = g_build_filename (dir, "alarms.ini", NULL);
-  self->settings = g_settings_new (APP_ID);
+  self->store_path = g_strdup (store_path);
+  self->settings = g_object_ref (settings);
   self->engine = alarm_engine_new (load_store (self->store_path));
   apply_settings (self);
-  self->klaxon = alarm_klaxon_new (self->settings);
+  self->klaxon = alarm_klaxon_new (self->settings, ALARM_KLAXON_ALARM);
   self->notifications = alarm_notifications_new (on_notification, self);
 
   g_signal_connect (self->engine, "instance-changed", G_CALLBACK (on_instance_changed), self);
@@ -640,6 +548,10 @@ main (int argc, char **argv)
   g_signal_connect (self->engine, "store-changed", G_CALLBACK (on_store_changed), self);
   g_signal_connect (self->settings, "changed", G_CALLBACK (on_settings_changed), self);
 
+  self->registration = g_dbus_connection_register_object (self->session, OBJECT_PATH, self->node->interfaces[0],
+                                                          &vtable, self, NULL, error);
+  if (!self->registration)
+    return NULL;
   self->timer_fd = timerfd_create (CLOCK_REALTIME, TFD_NONBLOCK | TFD_CLOEXEC);
   g_unix_fd_add (self->timer_fd, G_IO_IN, on_timer, self);
   self->zone_monitor = g_file_monitor_file (localtime, G_FILE_MONITOR_WATCH_MOVES, NULL, NULL);
@@ -650,16 +562,8 @@ main (int argc, char **argv)
                                                          G_BUS_NAME_WATCHER_FLAGS_NONE, on_wakeup_appeared, NULL,
                                                          self, NULL);
 
-  self->registration = g_dbus_connection_register_object (self->session, OBJECT_PATH, self->node->interfaces[0],
-                                                          &vtable, self, NULL, &error);
-  if (!self->registration)
-    g_error ("cannot serve %s: %s", OBJECT_PATH, error->message);
-  g_bus_own_name_on_connection (self->session, BUS_NAME, G_BUS_NAME_OWNER_FLAGS_DO_NOT_QUEUE, NULL, on_name_lost,
-                                self, NULL);
-
   /* as after a reboot: whatever came due while nothing ran (the phone off, the session out) */
   alarm_engine_fix (self->engine);
   publish (self);
-  g_main_loop_run (self->loop);
-  return 0;
+  return self;
 }

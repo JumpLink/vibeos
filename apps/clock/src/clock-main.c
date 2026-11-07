@@ -1,15 +1,17 @@
 /* neo-clock: the Clock app, DeskClock rebuilt in GTK 4 (spec/clock.md).
  *
  * One program, two applications:
- *  - de.yesman.Clock, the app with its tabs. It is D-Bus activatable: the launcher starts it, and the alarm
- *    service opens it at an alarm with its "show-alarm" action (a tap on an alarm notification).
- *  - de.yesman.Clock.Ringing ("neo-clock --ringing"), the full-screen ringing alarm. The alarm service has the shell
- *    start it when an alarm rings while the phone sleeps or is locked; it has a desktop file of its own so the
- *    shell lets it over the lock screen.
+ *  - de.yesman.Clock, the app with its tabs. It is D-Bus activatable: the launcher starts it, and the clock
+ *    service opens it at an alarm, a timer or the stopwatch with its "show-alarm", "show-timer" and
+ *    "show-stopwatch" actions (a tap on their notifications).
+ *  - de.yesman.Clock.Ringing ("neo-clock --ringing"), the full-screen ringing alarm and the timers that ran out.
+ *    The clock service has the shell start it when an alarm rings while the phone sleeps or is locked, and when a
+ *    timer runs out; it has a desktop file of its own so the shell lets it over the lock screen.
  *
- * The alarms themselves are not here: the alarm service (neo-clock-alarms) keeps them, rings them and wakes the
- * phone for them, whether or not this app runs. */
+ * The alarms, timers and stopwatch themselves are not here: the clock service (neo-clock-alarms) keeps them, rings
+ * them and wakes the phone for them, whether or not this app runs. */
 #include "clock-window.h"
+#include "expired-window.h"
 #include "ringing-window.h"
 
 #include <glib/gi18n.h>
@@ -21,6 +23,7 @@
 #define RINGING_ID    "de.yesman.Clock.Ringing"
 
 static GSettings *settings;
+static GtkWidget *alarm_window;         /* the Ringing app's ringing alarm, while it is open */
 
 static void
 load_style (void)
@@ -67,18 +70,48 @@ on_show_alarm (GSimpleAction *action, GVariant *parameter, gpointer data)
   gtk_window_present (GTK_WINDOW (window));
 }
 
-/* --- the ringing alarm */
+/* ... at a timer */
+static void
+on_show_timer (GSimpleAction *action, GVariant *parameter, gpointer data)
+{
+  GtkWidget *window = clock_window (GTK_APPLICATION (data));
 
+  clock_window_show_timer (window, g_variant_get_uint32 (parameter));
+  gtk_window_present (GTK_WINDOW (window));
+}
+
+/* ... at the stopwatch */
+static void
+on_show_stopwatch (GSimpleAction *action, GVariant *parameter, gpointer data)
+{
+  GtkWidget *window = clock_window (GTK_APPLICATION (data));
+
+  clock_window_show_stopwatch (window);
+  gtk_window_present (GTK_WINDOW (window));
+}
+
+/* --- the ringing alarm and the timers that ran out */
+
+/* a volume key, which the shell passes on while the expired timers' screen is in front (expired-window.c) */
+static void
+on_volume_key (GSimpleAction *action, GVariant *parameter, gpointer data)
+{
+  expired_window_volume_key ();
+}
+
+/* each has its window, either or both; with nothing ringing (any more) there is none, and the application ends */
 static void
 on_activate_ringing (GApplication *app, gpointer data)
 {
-  GtkWindow *window = gtk_application_get_active_window (GTK_APPLICATION (app));
-
-  /* nothing ringing (any more): no window, and with none the application ends */
-  if (!window)
-    window = GTK_WINDOW (ringing_window_new (GTK_APPLICATION (app), settings));
-  if (window)
-    gtk_window_present (window);
+  if (!alarm_window)
+    {
+      alarm_window = ringing_window_new (GTK_APPLICATION (app), settings);
+      if (alarm_window)
+        g_object_add_weak_pointer (G_OBJECT (alarm_window), (gpointer *) &alarm_window);
+    }
+  if (alarm_window)
+    gtk_window_present (GTK_WINDOW (alarm_window));
+  expired_window_show (GTK_APPLICATION (app));
 }
 
 int
@@ -109,11 +142,20 @@ main (int argc, char **argv)
   g_application_set_resource_base_path (G_APPLICATION (app), "/de/yesman/Clock");
   g_signal_connect (app, "startup", G_CALLBACK (on_startup), NULL);
   if (ringing)
-    g_signal_connect (app, "activate", G_CALLBACK (on_activate_ringing), NULL);
+    {
+      static const GActionEntry actions[] = {
+        { .name = "volume-key", .activate = on_volume_key, .parameter_type = "i" },
+      };
+
+      g_action_map_add_action_entries (G_ACTION_MAP (app), actions, G_N_ELEMENTS (actions), app);
+      g_signal_connect (app, "activate", G_CALLBACK (on_activate_ringing), NULL);
+    }
   else
     {
       static const GActionEntry actions[] = {
         { .name = "show-alarm", .activate = on_show_alarm, .parameter_type = "u" },
+        { .name = "show-timer", .activate = on_show_timer, .parameter_type = "u" },
+        { .name = "show-stopwatch", .activate = on_show_stopwatch },
       };
 
       g_action_map_add_action_entries (G_ACTION_MAP (app), actions, G_N_ELEMENTS (actions), app);

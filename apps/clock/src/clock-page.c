@@ -3,6 +3,7 @@
 #include "clock-page.h"
 #include "alarms-client.h"
 #include "clock-format.h"
+#include "clock-tab.h"
 
 #include <glib/gi18n.h>
 #include <neo.h>
@@ -17,7 +18,8 @@ struct _ClockPage
   guint tick;
 };
 
-G_DEFINE_FINAL_TYPE (ClockPage, clock_page, GTK_TYPE_WIDGET)
+/* (no buttons: DeskClock's FAB here opens the cities, which this app does not have yet) */
+G_DEFINE_FINAL_TYPE_WITH_CODE (ClockPage, clock_page, GTK_TYPE_WIDGET, G_IMPLEMENT_INTERFACE (CLOCK_TYPE_TAB, NULL))
 
 static void
 show_next_alarm (ClockPage *self)

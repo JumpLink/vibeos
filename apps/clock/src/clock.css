@@ -79,3 +79,101 @@
 .next-alarm {
   color: white;
 }
+
+/* --- the Timer tab (§7.2, §7.4) */
+
+/* the keypad's time ("00h 00m 00s"), which timer-setup.c lays out and sizes itself: sans-serif, Normal */
+timer-setup {
+  font-weight: 700;
+  color: @neo_on_surface;
+}
+
+/* a digit key: the tonal button's label at 36 sp, Medium, onSurface; ⌫ in onTertiaryContainer */
+.timer-digit {
+  font-size: 36px;
+  font-weight: 800;
+  color: @neo_on_surface;
+}
+
+.timer-delete {
+  color: @neo_on_tertiary_container;
+}
+
+/* a card's label, TimerLabelTextAppearance: 20 sp Medium in colorSecondary; the "Label" hint at onSurface 60 % */
+.timer-label {
+  font-size: 20px;
+  font-weight: 800;
+  color: @neo_secondary;
+}
+
+.timer-label.hint {
+  color: alpha(@neo_on_surface, 0.6);
+}
+
+/* ic_close_circle: a white cross on a disc in colorOutline */
+.timer-close {
+  background-color: @neo_outline;
+  border-radius: 50%;
+  color: white;
+}
+
+/* display_time at 40 sp, Normal, tabular digits */
+.timer-time {
+  font-size: 40px;
+  font-weight: 700;
+  font-feature-settings: "tnum" 1;
+  color: @neo_on_surface;
+}
+
+/* ic_reset tinted colorPrimary */
+.timer-reset {
+  color: @neo_primary;
+}
+
+/* "+ 1:00", 20 sp sans-serif-medium on colorTertiary; play/pause tinted onPrimary on colorPrimary */
+.timer-add {
+  font-size: 20px;
+  font-weight: 800;
+  color: @neo_on_primary;
+}
+
+.timer-play {
+  color: @neo_on_primary;
+}
+
+/* --- the Stopwatch tab (§8) */
+
+/* the time at 72 sp and the hundredths at 42 sp, Normal, tabular digits; colorAccent while the ring is held */
+.stopwatch-main {
+  font-size: 72px;
+  font-weight: 700;
+  font-feature-settings: "tnum" 1;
+  color: @neo_on_surface;
+}
+
+.stopwatch-hundredths {
+  font-size: 42px;
+  font-weight: 700;
+  font-feature-settings: "tnum" 1;
+  color: @neo_on_surface;
+}
+
+.stopwatch-main.pressed,
+.stopwatch-hundredths.pressed {
+  color: @neo_secondary;
+}
+
+/* a lap row: the number in colorAccent, the lap and total times in white, all body (14 sp Medium) */
+.lap-number {
+  font-size: 14px;
+  font-weight: 800;
+  font-feature-settings: "tnum" 1;
+  color: @neo_secondary;
+}
+
+.lap-time {
+  font-size: 14px;
+  font-weight: 800;
+  font-feature-settings: "tnum" 1;
+  color: white;
+}
