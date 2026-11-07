@@ -13,7 +13,7 @@
 #   neo-headless shot OUT.png           what the app shows now
 #   neo-headless tap X Y                a finger down and up at (X, Y) dp
 #   neo-headless swipe X0 Y0 X1 Y1 [MS] a finger drawn from one point to the other
-#   neo-headless stop
+#   neo-headless stop                   (it stops by itself after 15 minutes unused: NEO_HEADLESS_IDLE)
 #
 # An app already running on the phone's own screen keeps its window there: run again, it only hands its
 # arguments to that instance (GApplication), and `run` finds no window. Stop that one first.
@@ -46,6 +46,13 @@ as_user_daemon() {
 }
 
 case $1 in
+run | shot | tap | swipe)
+    # in use: put off the idle stop (start)
+    [ -d "$STATE" ] && touch "$STATE/used"
+    ;;
+esac
+
+case $1 in
 start)
     # a second start would fail on mutter's lock, but only after taking over the first one's bus and pid files
     if [ -f "$STATE/mutter.pid" ] && kill -0 "$(cat "$STATE/mutter.pid")" 2>/dev/null; then
@@ -71,6 +78,14 @@ start)
     # phone stays awake for as long as mutter runs (a logind inhibitor, which s10e-sleepd honours)
     setsid -f systemd-inhibit --what=sleep --who=neo-headless --why="a test display is running" \
         tail --pid="$(cat "$STATE/mutter.pid")" -f /dev/null </dev/null >/dev/null 2>&1
+    # Left running, that kept a phone off its charger awake until the battery was empty (11-07: four hours from
+    # 70 %). So the display stops itself once no command has used it for NEO_HEADLESS_IDLE minutes (15).
+    touch "$STATE/used"
+    setsid -f sh -c 'while kill -0 "$1" 2>/dev/null; do
+            sleep 60
+            [ -n "$(find "$2" -mmin +"$3")" ] && exec sh "$0" stop
+        done' "$(readlink -f "$0")" "$(cat "$STATE/mutter.pid")" "$STATE/used" "${NEO_HEADLESS_IDLE:-15}" \
+        </dev/null >/dev/null 2>&1
     ;;
 run)
     shift
