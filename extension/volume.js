@@ -91,6 +91,54 @@ const RINGER_MODES = [
 ];
 const FEEDBACKD_SCHEMA = 'org.sigxcpu.feedbackd';
 
+// --- haptics: SliderHapticFeedbackProvider with VolumeHapticsConfigsProvider.continuousConfigs, as it plays on the
+// S10e under Android (no composition primitives there, so MSDL's fallbacks, read back with dumpsys vibrator_manager)
+const DRAG_THRESHOLD = 0.02;            // deltaProgressForDragThreshold
+const LOWER_BOOKEND = 0.01;             // SeekableSliderTrackerConfig
+const UPPER_BOOKEND = 0.99;
+// the HAL writes amplitude a as intensity a x 10000, which Samsung's driver puts on a PWM duty between 50 % (still)
+// and max_duty 27551 of 37741 ns (sec_haptic.c:63); max77693-haptic spans 50..100 % for feedbackd's magnitude
+const DUTY_MATCH = (27551 - 37741 / 2) / (37741 / 2);
+const DRAG_TEXTURE = [[0.04, 10], [0.12, 20], [0.2, 20], [0.04, 10]];      // DRAG_INDICATOR_CONTINUOUS
+const LIMIT_TICK = [[0.5, 5]];          // DRAG_THRESHOLD_INDICATOR_LIMIT: Prebaked TICK, MEDIUM = 0.5 for 5 ms
+
+function vibrate(pattern) {
+    const steps = pattern.map(([amplitude, ms]) => [amplitude * DUTY_MATCH, ms]);
+    Gio.DBus.session.call('org.sigxcpu.Feedback', '/org/sigxcpu/Feedback', 'org.sigxcpu.Feedback.Haptic',
+        'Vibrate', new GLib.Variant('(sa(du))', ['de.yesman.GnomePhone', steps]),
+        null, Gio.DBusCallFlags.NO_AUTO_START, -1, null, null);
+}
+
+// a texture each time the progress has moved 2 % since the last one, a tick once on reaching either end
+export class SliderHaptics {
+    constructor() {
+        this._last = -1;
+        this._atLower = false;
+        this._atUpper = false;
+    }
+
+    progress(p) {
+        if (p <= LOWER_BOOKEND || p >= UPPER_BOOKEND) {
+            const upper = p >= UPPER_BOOKEND;
+            if (!(upper ? this._atUpper : this._atLower))
+                vibrate(LIMIT_TICK);
+            this._atUpper = upper;
+            this._atLower = !upper;
+            return;
+        }
+        if (Math.abs(p - this._last) >= DRAG_THRESHOLD) {
+            vibrate(DRAG_TEXTURE);
+            this._last = p;
+        }
+        this._atUpper = this._atLower = false;
+    }
+
+    // onHandleReleasedFromTouch
+    released() {
+        this._last = -1;
+    }
+}
+
 function roundedRect(cr, x, y, w, h, rTop, rBottom) {
     rTop = Math.min(rTop, w / 2, h / 2);
     rBottom = Math.min(rBottom, w / 2, h / 2);
@@ -232,6 +280,8 @@ class VolumeDialog extends St.Widget {
 
         this._slider = new VolumeSlider(this);
         this.add_child(this._slider);
+        this._haptics = new SliderHaptics();
+        this._keyHaptics = false;       // a volume key's step is animating
 
         // the settings button: three primary dots, opens the sound settings
         this._settings = new St.Button({
@@ -354,6 +404,7 @@ class VolumeDialog extends St.Widget {
         this._restartTimeout();
         if (repeat && now < this._suppressUntil)
             return;
+        this._keyHaptics = true;
         this._setLevel(clamp((this._level ?? 0) + direction, 0, LEVELS), true);
     }
 
@@ -415,6 +466,7 @@ class VolumeDialog extends St.Widget {
             this._valueAnim?.stop();
             this._valueAnim = null;
             this._valueSpring = null;
+            this._keyHaptics = false;
             this._slider.setValue(value);
             return;
         }
@@ -426,9 +478,15 @@ class VolumeDialog extends St.Widget {
             stiffness: VALUE_STIFFNESS, dampingRatio: 1, value: this._slider.value, target: value,
             threshold: 0.01 / LEVELS,
         });
-        this._valueAnim = animateSpring(this, this._valueSpring, v => this._slider.setValue(v), () => {
+        this._valueAnim = animateSpring(this, this._valueSpring, v => {
+            this._slider.setValue(v);
+            // a key's step is felt along the way, as the tracker follows the animated progress
+            if (this._keyHaptics)
+                this._haptics.progress(clamp(v));
+        }, () => {
             this._valueAnim = null;
             this._valueSpring = null;
+            this._keyHaptics = false;
         });
     }
 
@@ -441,6 +499,7 @@ class VolumeDialog extends St.Widget {
             this._overscrollAnim = null;
         }
         this._restartTimeout();
+        this._haptics.progress(clamp(fraction));
         const level = Math.round(clamp(fraction) * LEVELS);
         if (level !== this._level)
             this._setLevel(level, false);
@@ -456,6 +515,7 @@ class VolumeDialog extends St.Widget {
         if (!this._dragging)
             return;
         this._dragging = false;
+        this._haptics.released();
         this._ignoreUntil = GLib.get_monotonic_time() / 1000 + 1000;
         this._restartTimeout();
         if (this._overscroll === 0)
