@@ -1,8 +1,8 @@
 // The always-on display, and the panel's low power mode under it: Phosh's AOD (Neo's aod.c) as the owner signed it
 // off, moved into the shell.
 //
-// While the screen is "off" with de.yesman.neo aod on, power.js's black layer shows this: the date, the battery and
-// one icon per app with notifications, dim grey on black, which costs next to nothing on OLED. With a panel that
+// While the screen is "off" with de.yesman.neo aod on, power.js's black layer shows this: the date, one icon per app
+// with notifications, and the battery at the bottom where the lock screen says it charges, dim grey on black, which costs next to nothing on OLED. With a panel that
 // keeps a clock of its own (the S10e's S6E3FA7: a `self_clock` attribute next to `lpm`), the AOD is Samsung's: once
 // it shows, the panel goes into its low power mode and draws analog hands over the dial drawn here, ticking by itself
 // while the phone sleeps, so nothing has to wake the phone for the time (s10e-sleepd sees the clock run). Against
@@ -42,6 +42,10 @@ const DIAL_DOT = 9;
 // the frame with the dial reaches the panel before its clock starts over it
 const CLOCK_DELAY_MS = 300;
 const MAX_ICONS = 6;
+// the battery line's centre: the lock screen's charging line (keyguard.js INDICATION_INK_TOP 2083, half its cap
+// height of 32 below), screen px
+const BATTERY_CENTRE_Y = 2099;
+const BATTERY_ROW_H = 60;               // the icon's height; the label is centred on it
 const GREY = '#8a8a8a';
 const ICON_OPACITY = 0x8a;              // white icons over black: #8a8a8a
 
@@ -190,8 +194,8 @@ class Aod extends St.BoxLayout {
         this._step = 0;
         this._replace = false;          // the dial moved: the hands follow once it is laid out
 
-        // the clock near the top, under the camera hole; the date, the battery and the app icons under it
-        // (sizes in screen px: they were set as logical px at scale 2.5)
+        // the clock near the top, under the camera hole, the date and the app icons under it; the battery at the
+        // bottom (sizes in screen px: they were set as logical px at scale 2.5)
         this._box = new St.BoxLayout({
             orientation: Clutter.Orientation.VERTICAL,
             style: `spacing: ${px(15)}px;`,
@@ -206,24 +210,28 @@ class Aod extends St.BoxLayout {
         this._dial = new Dial();
         this._date = new St.Label({style: `color: ${GREY}; font-size: ${px(42.5)}px;`, x_align: Clutter.ActorAlign.CENTER});
 
-        const bottom = new St.BoxLayout({style: `spacing: ${px(30)}px;`, x_align: Clutter.ActorAlign.CENTER,
+        this._icons = new St.BoxLayout({style: `spacing: ${px(25)}px;`, x_align: Clutter.ActorAlign.CENTER,
             margin_top: Math.round(px(45))});
-        const battery = new St.BoxLayout({style: `spacing: ${px(15)}px;`});
-        this._batteryIcon = new St.Icon({icon_size: Math.round(px(60)), style: `color: ${GREY};`, y_align: Clutter.ActorAlign.CENTER});
+
+        this._battery = new St.BoxLayout({style: `spacing: ${px(15)}px;`, x_align: Clutter.ActorAlign.CENTER,
+            height: px(BATTERY_ROW_H)});
+        this._batteryIcon = new St.Icon({icon_size: Math.round(px(60)), style: `color: ${GREY};`,
+            y_align: Clutter.ActorAlign.CENTER});
         this._batteryLabel = new St.Label({style: `color: ${GREY}; font-size: ${px(37.5)}px;`,
             y_align: Clutter.ActorAlign.CENTER});
-        battery.add_child(this._batteryIcon);
-        battery.add_child(this._batteryLabel);
-        this._icons = new St.BoxLayout({style: `spacing: ${px(25)}px;`, y_align: Clutter.ActorAlign.CENTER});
-        bottom.add_child(battery);
-        bottom.add_child(this._icons);
+        this._battery.add_child(this._batteryIcon);
+        this._battery.add_child(this._batteryLabel);
 
         this._box.add_child(this._time);
         this._box.add_child(this._dial);
         this._box.add_child(this._date);
-        this._box.add_child(bottom);
+        this._box.add_child(this._icons);
+        // top to bottom: the hole's room, the clock's column, the room left, the battery, what is under it
         this.add_child(new St.Widget({height: TOP}));
         this.add_child(this._box);
+        this.add_child(new St.Widget({y_expand: true}));
+        this.add_child(this._battery);
+        this.add_child(new St.Widget({height: px(monitor.height * SCALE - BATTERY_CENTRE_Y - BATTERY_ROW_H / 2)}));
         this._box.connectObject('notify::allocation', () => this._onMoved(), this);
 
         this._wallClock = new GnomeDesktop.WallClock({time_only: true});
@@ -284,16 +292,18 @@ class Aod extends St.BoxLayout {
         box.margin_right = SHIFT - dx;
         box.margin_top = SHIFT + dy;
         box.margin_bottom = SHIFT - dy;
+        // the battery line wanders as far, apart from the column
+        this._battery.set_translation(dx, dy, 0);
         return true;
     }
 
     _syncBattery() {
         const {battery} = this._state;
         this._batteryIcon.icon_name = battery.icon;
-        // plugged in, how fast it charges, as One UI's AOD says it under the clock
+        // plugged in, how fast it charges, as the lock screen says it
         this._batteryLabel.text = battery.plugged && battery.level < 100
             ? `${battery.level}% • ${chargingText(battery.speed)}` : `${battery.level}%`;
-        this._batteryIcon.get_parent().visible = battery.present;
+        this._battery.visible = battery.present;
     }
 
     _addSource(source) {
