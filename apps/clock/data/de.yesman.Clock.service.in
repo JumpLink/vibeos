@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=de.yesman.Clock
+Exec=@bindir@/neo-clock --gapplication-service

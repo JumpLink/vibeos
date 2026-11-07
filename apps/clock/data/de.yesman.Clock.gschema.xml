@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The Clock's settings: DeskClock's (res/xml/settings.xml), with its keys, choices and defaults. The alarm service
+     reads the alarm ones as it rings; the app's Settings page writes them all. -->
+<schemalist>
+  <enum id="de.yesman.Clock.ClockStyle">
+    <value nick="analog" value="0"/>
+    <value nick="digital" value="1"/>
+  </enum>
+  <enum id="de.yesman.Clock.ButtonAction">
+    <value nick="nothing" value="0"/>   <!-- volume buttons: "Control volume" -->
+    <value nick="snooze" value="1"/>
+    <value nick="dismiss" value="2"/>
+  </enum>
+  <enum id="de.yesman.Clock.WeekStart">
+    <value nick="locale" value="0"/>    <!-- not set: the locale's first day -->
+    <value nick="saturday" value="7"/>  <!-- Calendar.SATURDAY ... -->
+    <value nick="sunday" value="1"/>
+    <value nick="monday" value="2"/>
+  </enum>
+
+  <schema id="de.yesman.Clock" path="/de/yesman/Clock/">
+    <!-- Clock -->
+    <key name="clock-style" enum="de.yesman.Clock.ClockStyle">
+      <default>'digital'</default>
+      <summary>Style</summary>
+    </key>
+    <key name="display-clock-seconds" type="b">
+      <!-- SettingsDAO.getDisplayClockSeconds: getBoolean (KEY_CLOCK_DISPLAY_SECONDS, false) -->
+      <default>false</default>
+      <summary>Display time with seconds</summary>
+    </key>
+    <key name="automatic-home-clock" type="b">
+      <default>true</default>
+      <summary>Automatic home clock</summary>
+      <description>While traveling in an area where the time is different, add a clock for home</description>
+    </key>
+    <key name="home-time-zone" type="s">
+      <default>''</default>
+      <summary>Home time zone</summary>
+      <description>An IANA zone; empty for the zone the phone was in when the clock was first set up</description>
+    </key>
+    <key name="world-clocks" type="as">
+      <default>[]</default>
+      <summary>The cities on the Clock tab, as IANA zones</summary>
+    </key>
+
+    <!-- Alarms -->
+    <key name="auto-silence" type="i">
+      <!-- the choices are 1, 5, 10, 15, 20, 25 and -1 (choices are only for strings) -->
+      <range min="-1" max="25"/>
+      <default>10</default>
+      <summary>Silence after (minutes; -1 never)</summary>
+    </key>
+    <key name="snooze-duration" type="i">
+      <range min="1" max="30"/>
+      <default>10</default>
+      <summary>Snooze length (minutes)</summary>
+    </key>
+    <key name="alarm-volume" type="d">
+      <range min="0" max="1"/>
+      <!-- Android's default for STREAM_ALARM: 6 of 7 -->
+      <default>0.857</default>
+      <summary>Alarm volume</summary>
+      <description>The speaker's volume while an alarm rings, whatever the media volume is</description>
+    </key>
+    <key name="alarm-crescendo-duration" type="i">
+      <range min="0" max="60"/>
+      <default>0</default>
+      <summary>Gradually increase volume (seconds; 0 off)</summary>
+    </key>
+    <key name="volume-buttons" enum="de.yesman.Clock.ButtonAction">
+      <default>'nothing'</default>
+      <summary>Volume buttons</summary>
+    </key>
+    <key name="flip-action" enum="de.yesman.Clock.ButtonAction">
+      <default>'nothing'</default>
+      <summary>Flip action</summary>
+    </key>
+    <key name="shake-action" enum="de.yesman.Clock.ButtonAction">
+      <default>'nothing'</default>
+      <summary>Shake action</summary>
+    </key>
+    <key name="week-start" enum="de.yesman.Clock.WeekStart">
+      <default>'locale'</default>
+      <summary>Start week on</summary>
+    </key>
+    <key name="default-alarm-ringtone" type="s">
+      <default>''</default>
+      <summary>Default alarm sound</summary>
+      <description>A sound file's URI; empty for Hassium, as on LineageOS</description>
+    </key>
+    <key name="custom-ringtones" type="as">
+      <default>[]</default>
+      <summary>Sounds the user added to the ringtone picker (URIs)</summary>
+    </key>
+
+    <!-- Timers -->
+    <key name="timer-ringtone" type="s">
+      <default>''</default>
+      <summary>Timer sound</summary>
+      <description>A sound file's URI; empty for "Timer Expired", DeskClock's own</description>
+    </key>
+    <key name="timer-crescendo-duration" type="i">
+      <range min="0" max="60"/>
+      <default>0</default>
+      <summary>Gradually increase volume (seconds; 0 off)</summary>
+    </key>
+    <key name="timer-vibrate" type="b">
+      <default>false</default>
+      <summary>Timer vibrate</summary>
+    </key>
+  </schema>
+</schemalist>

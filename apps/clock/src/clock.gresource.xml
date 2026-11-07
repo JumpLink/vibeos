@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- the app's stylesheet and its icons (data/icons, made from DeskClock's vector drawables by tools/vd2svg.py),
+     where GtkApplication looks for icons: the resource base path + /icons -->
+<gresources>
+  <gresource prefix="/de/yesman/Clock">
+    <file>clock.css</file>
+    <file alias="icons/scalable/actions/clock-add-symbolic.svg">icons/clock-add-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-alarm-off-symbolic.svg">icons/clock-alarm-off-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-alarm-small-symbolic.svg">icons/clock-alarm-small-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-backspace-symbolic.svg">icons/clock-backspace-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-check-symbolic.svg">icons/clock-check-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-close-symbolic.svg">icons/clock-close-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-delete-symbolic.svg">icons/clock-delete-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-dismiss-symbolic.svg">icons/clock-dismiss-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-fab-alarm-symbolic.svg">icons/clock-fab-alarm-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-label-symbolic.svg">icons/clock-label-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-more-symbolic.svg">icons/clock-more-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-noalarms-symbolic.svg">icons/clock-noalarms-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-pause-play-symbolic.svg">icons/clock-pause-play-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-play-pause-symbolic.svg">icons/clock-play-pause-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-public-symbolic.svg">icons/clock-public-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-reset-symbolic.svg">icons/clock-reset-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-ringtone-silent-symbolic.svg">icons/clock-ringtone-silent-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-ringtone-symbolic.svg">icons/clock-ringtone-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-selector-checkbox-checked-symbolic.svg">icons/clock-selector-checkbox-checked-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-selector-checkbox-unchecked-symbolic.svg">icons/clock-selector-checkbox-unchecked-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-settings-symbolic.svg">icons/clock-settings-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-share-symbolic.svg">icons/clock-share-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-snooze-symbolic.svg">icons/clock-snooze-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-stop-play-symbolic.svg">icons/clock-stop-play-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-stopwatch-black-symbolic.svg">icons/clock-stopwatch-black-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-tab-alarm-symbolic.svg">icons/clock-tab-alarm-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-tab-clock-symbolic.svg">icons/clock-tab-clock-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-tab-stopwatch-symbolic.svg">icons/clock-tab-stopwatch-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-tab-timer-symbolic.svg">icons/clock-tab-timer-symbolic.svg</file>
+    <file alias="icons/scalable/actions/clock-vibrate-symbolic.svg">icons/clock-vibrate-symbolic.svg</file>
+  </gresource>
+</gresources>

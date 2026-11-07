@@ -1,0 +1,81 @@
+/* The Clock's own styles, over libneo's (neo.css). Weights are the effective ones with Bold text on (neo.css says
+ * how); the numbers and colours are from spec/clock.md, the section in each comment. */
+
+/* body (V/styles.xml:38-42): 14 sp Medium, white. Most of the app's text. */
+.body {
+  font-size: 14px;
+  font-weight: 800;
+  color: white;
+}
+
+/* --- the Alarm tab (§2); alarm-card.c draws the card itself */
+
+/* display_time at 56 sp, tabular digits: Typeface.BOLD (900) when the alarm is on, NORMAL (700) when it is off */
+.alarm-time {
+  font-size: 56px;
+  font-weight: 700;
+  font-feature-settings: "tnum" 1;
+  color: white;
+}
+
+.alarm-time.enabled {
+  font-weight: 900;
+}
+
+/* the label row's icon, colorControlNormal; the "Add label" hint, the theme's hint colour (onSurface at 60 %) */
+.label-icon {
+  color: @neo_on_surface_variant;
+}
+
+.body.hint {
+  color: alpha(@neo_on_surface, 0.6);
+}
+
+/* the ringtone row: icon and name in white; the vibrate row: its text in onSurface, its check in colorAccent, or
+ * an unchecked ring in colorControlNormal */
+.ringtone image {
+  color: white;
+}
+
+.body.vibrate-text {
+  color: @neo_on_surface;
+}
+
+.vibrate-check {
+  color: @neo_on_surface_variant;
+}
+
+.vibrate-check.checked {
+  color: @neo_secondary;
+}
+
+/* Delete and Dismiss: borderless body-styled buttons in colorPrimary, paddingStart 4 dp, paddingEnd 12 dp */
+.neo-text-button.alarm-text-button {
+  font-size: 14px;
+  font-weight: 800;
+  padding: 0 12px 0 4px;
+}
+
+/* the empty list: ic_noalarms at 120 dp over "No Alarms" at 16 sp, both in no_alarms (#4CFFFFFF) */
+.no-alarms {
+  color: alpha(white, 0.3);
+}
+
+.no-alarms label {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* --- the Clock tab (§6.1) */
+
+/* display_time at 90 sp, tabular digits, white */
+.main-clock {
+  font-size: 90px;
+  font-weight: 700;
+  font-feature-settings: "tnum" 1;
+  color: white;
+}
+
+.next-alarm {
+  color: white;
+}

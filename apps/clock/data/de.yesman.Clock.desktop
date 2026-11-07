@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Clock
+Comment=Alarms and the time
+Exec=neo-clock
+Icon=de.yesman.Clock
+Terminal=false
+Categories=Utility;Clock;
+Keywords=alarm;time;
+DBusActivatable=true
+StartupNotify=false
+X-Purism-FormFactor=Workstation;Mobile;
