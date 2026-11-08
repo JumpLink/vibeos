@@ -1,0 +1,1025 @@
+/* neo-messaging-sms: the Messaging's service, for everything about text messages that must go on with the app
+ * closed, as Android's Messaging does from its receivers and actions (spec §10.2). It runs in the session from login
+ * (neo-messaging-sms.service): a message that comes is kept in bugle_db, taken off the modem and notified; one
+ * written is sent, tried again while there is no network, and notified when it is given up.
+ *
+ * This file is its face on D-Bus (de.yesman.Messaging.Sms) and its notifications. It is bugle_db's only writer: the
+ * app reads the store itself, read-only, and is told by Changed what to read again.
+ *
+ * It stands aside while gsm2sip is in gateway mode, as the Phone's service does: then gsm2sipd takes the modem's
+ * messages to SIP, and a second taker would delete them off the modem before it got them. */
+#include "messaging-types.h"
+#include "sms-modem.h"
+#include "sms-store.h"
+#include "contacts.h"
+#include "notifier.h"
+#include "phone.h"
+#include "phone-number.h"
+
+#include <glib/gi18n.h>
+#include <glib-unix.h>
+#include <locale.h>
+#include <string.h>
+
+#define GATEWAY_NAME "com.callagent.Gsm2sipd"
+#define GATEWAY_PATH "/com/callagent/Gsm2sipd"
+#define GATEWAY_INTERFACE "com.callagent.Gsm2sipd1"
+
+/* BugleGservicesKeys: a message that cannot go is tried again 5 s on, then twice as long each time up to 2 h, and
+ * given up 20 min after it was first tried */
+#define RETRY_INITIAL_MS 5000
+#define RETRY_MAX_MS (2 * 60 * 60 * 1000)
+#define RETRY_TIMEOUT_MS (20 * 60 * 1000)
+/* MessageNotificationState: a conversation's notification shows its last 7 messages; a group's name, in the
+ * notification for several conversations, its first 30 characters */
+#define NOTIFICATION_LINES 7
+#define GROUP_NAME_CHARS 30
+
+static const char introspection[] =
+  "<node>"
+  "  <interface name='" SMS_INTERFACE "'>"
+  /* a modem that can send: FALSE without one, and in gateway mode */
+  "    <property name='Available' type='b' access='read'/>"
+  /* the network's country (ISO 3166), for formatting numbers; '' when not registered */
+  "    <property name='Country' type='s' access='read'/>"
+  /* the conversation with exactly these people (numbers as typed or stored), made if there is none */
+  "    <method name='GetConversation'><arg name='destinations' type='as' direction='in'/>"
+  "      <arg name='conversation' type='x' direction='out'/></method>"
+  /* a message written into a conversation: kept, then sent. The message's id */
+  "    <method name='Send'><arg name='conversation' type='x' direction='in'/>"
+  "      <arg name='text' type='s' direction='in'/><arg name='message' type='x' direction='out'/></method>"
+  /* a failed message tried again (its "Tap to try again") */
+  "    <method name='Resend'><arg name='message' type='x' direction='in'/></method>"
+  "    <method name='MarkRead'><arg name='conversation' type='x' direction='in'/></method>"
+  "    <method name='SetArchived'><arg name='conversation' type='x' direction='in'/>"
+  "      <arg name='archived' type='b' direction='in'/></method>"
+  /* the text typed and not sent; '' for none */
+  "    <method name='SetDraft'><arg name='conversation' type='x' direction='in'/>"
+  "      <arg name='text' type='s' direction='in'/></method>"
+  "    <method name='DeleteConversation'><arg name='conversation' type='x' direction='in'/></method>"
+  "    <method name='DeleteMessage'><arg name='message' type='x' direction='in'/></method>"
+  /* what the app shows in front: -1 nothing, 0 the conversation list scrolled to its top, else that conversation.
+   * Then what comes there is not notified (it is read, or seen, at once); an app that quits counts as -1 */
+  "    <method name='SetVisible'><arg name='conversation' type='x' direction='in'/></method>"
+  /* bugle_db changed: this conversation, or 0 for more than one */
+  "    <signal name='Changed'><arg name='conversation' type='x'/></signal>"
+  "  </interface>"
+  "</node>";
+
+typedef struct {
+  gint64 start;                 /* when it was first tried, monotonic µs */
+  guint delay;                  /* the next wait, ms */
+  guint timer;
+  guint sent_to;                /* a group's: the destinations it went to already */
+} Retry;
+
+typedef struct {
+  GMainLoop *loop;
+  GDBusConnection *session, *system;
+  guint registration;
+  SmsStore *store;
+  SmsModem *modem;              /* NULL in gateway mode */
+  GDBusProxy *gateway;
+  gboolean available;
+  Contacts *contacts;
+  Notifier *notifier;
+
+  guint32 notification;         /* the new messages' */
+  gint64 notification_conversation;  /* what tapping it opens: a conversation, or 0 for the list */
+  guint32 failure_notification;
+  gint64 failure_conversation;
+  GHashTable *failed;           /* the messages given up since that was looked at: id -> conversation id */
+
+  GQueue outbox;                /* message ids to send now, in order */
+  gint64 sending;               /* the one going, or 0 */
+  GHashTable *retries;          /* message id -> Retry, while it is still to go */
+
+  gint64 visible;               /* SetVisible's */
+  char *visible_sender;
+  guint visible_watch;
+} Service;
+
+static void send_next (Service *self);
+
+static const char *
+country (Service *self)
+{
+  return self->modem ? sms_modem_get_country (self->modem) : NULL;
+}
+
+static void
+emit_changed (Service *self, gint64 conversation)
+{
+  g_dbus_connection_emit_signal (self->session, NULL, SMS_PATH, SMS_INTERFACE, "Changed",
+                                 g_variant_new ("(x)", conversation), NULL);
+}
+
+static void
+emit_properties (Service *self)
+{
+  GVariantBuilder changed;
+
+  g_variant_builder_init (&changed, G_VARIANT_TYPE_VARDICT);
+  g_variant_builder_add (&changed, "{sv}", "Available", g_variant_new_boolean (self->available));
+  g_variant_builder_add (&changed, "{sv}", "Country", g_variant_new_string (country (self) ? country (self) : ""));
+  g_dbus_connection_emit_signal (self->session, NULL, SMS_PATH, "org.freedesktop.DBus.Properties",
+                                 "PropertiesChanged", g_variant_new ("(sa{sv}as)", SMS_INTERFACE, &changed, NULL),
+                                 NULL);
+}
+
+/* --- names */
+
+/* a participant as the notifications name them: the contact's name, else the number formatted */
+static char *
+participant_name (Service *self, const char *destination)
+{
+  const Contact *contact = contacts_lookup (self->contacts, destination, country (self));
+
+  return contact && contact->name ? g_strdup (contact->name) : phone_number_format (destination, country (self));
+}
+
+/* a conversation's: its people's names, joined (a group has no name of its own here) */
+static char *
+conversation_name (Service *self, const SmsConversation *conversation)
+{
+  GString *name = g_string_new (NULL);
+
+  for (guint i = 0; conversation->destinations && conversation->destinations[i]; i++)
+    {
+      g_autofree char *one = participant_name (self, conversation->destinations[i]);
+
+      if (name->len)
+        g_string_append (name, ", ");
+      g_string_append (name, one);
+    }
+  return g_string_free (name, FALSE);
+}
+
+static char *
+first_chars (const char *text, glong chars)
+{
+  return g_utf8_strlen (text, -1) > chars ? g_utf8_substring (text, 0, chars) : g_strdup (text);
+}
+
+/* --- the notifications (spec §5) */
+
+/* the new messages' notification, from the messages not yet seen: one conversation's (its last messages), or one
+ * for several (a line for each, newest first). @alert: a message came; otherwise it is updated without a heads-up */
+static void
+update_notification (Service *self, gboolean alert)
+{
+  static const char *actions[] = { "default", "Open", NULL };
+  g_autoptr(GPtrArray) unseen = sms_store_list_unseen (self->store);
+  g_autoptr(GArray) conversations = g_array_new (FALSE, FALSE, sizeof (gint64));
+  g_autoptr(GString) body = g_string_new (NULL);
+  g_autofree char *title = NULL;
+
+  /* the conversations, newest first */
+  for (guint i = unseen->len; i > 0; i--)
+    {
+      gint64 id = ((SmsMessage *) unseen->pdata[i - 1])->conversation_id;
+      gboolean listed = FALSE;
+
+      for (guint j = 0; j < conversations->len && !listed; j++)
+        listed = g_array_index (conversations, gint64, j) == id;
+      if (!listed)
+        g_array_append_val (conversations, id);
+    }
+  if (conversations->len == 0)
+    {
+      if (self->notification)
+        notifier_close (self->notifier, self->notification);
+      self->notification = 0;
+      return;
+    }
+
+  if (conversations->len == 1)
+    {
+      gint64 id = g_array_index (conversations, gint64, 0);
+      g_autoptr(SmsConversation) conversation = sms_store_get (self->store, id);
+      gboolean group = conversation && conversation->destinations && g_strv_length (conversation->destinations) > 1;
+      guint first = unseen->len > NOTIFICATION_LINES ? unseen->len - NOTIFICATION_LINES : 0;
+
+      title = conversation ? conversation_name (self, conversation) : g_strdup ("");
+      /* oldest first; in a group each line says who: "Anna  See you" */
+      for (guint i = first; i < unseen->len; i++)
+        {
+          SmsMessage *message = unseen->pdata[i];
+
+          if (body->len)
+            g_string_append_c (body, '\n');
+          if (group)
+            {
+              g_autofree char *sender = participant_name (self, message->sender);
+
+              g_string_append_printf (body, "%s  ", sender);
+            }
+          g_string_append (body, message->text ? message->text : "");
+        }
+      self->notification_conversation = id;
+    }
+  else
+    {
+      title = g_strdup_printf (ngettext ("New message", "%d new messages", unseen->len), unseen->len);
+      for (guint i = 0; i < conversations->len; i++)
+        {
+          gint64 id = g_array_index (conversations, gint64, i);
+          g_autoptr(SmsConversation) conversation = sms_store_get (self->store, id);
+          g_autofree char *name = conversation ? conversation_name (self, conversation) : g_strdup ("");
+          g_autofree char *shown = first_chars (name, GROUP_NAME_CHARS);
+          const char *text = "";
+
+          for (guint j = unseen->len; j > 0 && !*text; j--)
+            if (((SmsMessage *) unseen->pdata[j - 1])->conversation_id == id)
+              text = ((SmsMessage *) unseen->pdata[j - 1])->text ? ((SmsMessage *) unseen->pdata[j - 1])->text : "";
+          if (body->len)
+            g_string_append_c (body, '\n');
+          g_string_append_printf (body, "%s  %s", shown, text);
+        }
+      self->notification_conversation = 0;
+    }
+  self->notification = notifier_notify (self->notifier, self->notification, title, body->str, actions,
+                                        NOTIFIER_URGENCY_NORMAL,
+                                        alert ? NULL : notifier_header_hints (0, NULL, TRUE));
+}
+
+/* the messages given up: "Message not sent", the conversation it was in; for more, how many in how many */
+static void
+update_failures (Service *self, gboolean alert)
+{
+  static const char *actions[] = { "default", "Open", NULL };
+  guint messages = g_hash_table_size (self->failed);
+  g_autoptr(GHashTable) conversations = g_hash_table_new (g_int64_hash, g_int64_equal);
+  g_autofree char *title = NULL, *body = NULL;
+  GHashTableIter iter;
+  gpointer conversation;
+
+  if (messages == 0)
+    {
+      if (self->failure_notification)
+        notifier_close (self->notifier, self->failure_notification);
+      self->failure_notification = 0;
+      return;
+    }
+  g_hash_table_iter_init (&iter, self->failed);
+  while (g_hash_table_iter_next (&iter, NULL, &conversation))
+    g_hash_table_add (conversations, conversation);
+  self->failure_conversation = 0;
+  if (g_hash_table_size (conversations) == 1)
+    {
+      title = g_strdup (_("Message not sent"));
+      g_hash_table_iter_init (&iter, conversations);
+      g_hash_table_iter_next (&iter, &conversation, NULL);
+      self->failure_conversation = *(gint64 *) conversation;
+      if (messages == 1)
+        {
+          g_autoptr(SmsConversation) one = sms_store_get (self->store, self->failure_conversation);
+
+          body = one ? conversation_name (self, one) : g_strdup ("");
+        }
+      else
+        body = g_strdup_printf (_("%d messages in one conversation"), messages);
+    }
+  else
+    {
+      title = g_strdup (_("Some messages not sent in Messaging"));
+      body = g_strdup_printf (_("%d messages in %d conversations"), messages, g_hash_table_size (conversations));
+    }
+  self->failure_notification = notifier_notify (self->notifier, self->failure_notification, title, body, actions,
+                                                NOTIFIER_URGENCY_NORMAL,
+                                                alert ? NULL : notifier_header_hints (0, NULL, TRUE));
+}
+
+/* the failures of @conversation (0: all) were looked at */
+static void
+failures_seen (Service *self, gint64 conversation)
+{
+  GHashTableIter iter;
+  gpointer value;
+  guint before = g_hash_table_size (self->failed);
+
+  g_hash_table_iter_init (&iter, self->failed);
+  while (g_hash_table_iter_next (&iter, NULL, &value))
+    if (conversation == 0 || *(gint64 *) value == conversation)
+      g_hash_table_iter_remove (&iter);
+  if (g_hash_table_size (self->failed) != before)
+    update_failures (self, FALSE);
+}
+
+static void
+open_app (Service *self, gint64 conversation)
+{
+  if (conversation)
+    phone_open_app (self->session, MESSAGING_APP_ID, "open-conversation", g_variant_new_int64 (conversation));
+  else
+    phone_open_app (self->session, MESSAGING_APP_ID, "show-conversations", NULL);
+}
+
+static void
+on_notification_action (guint32 id, const char *action, gpointer data)
+{
+  Service *self = data;
+
+  if (id == self->notification)
+    {
+      if (g_str_equal (action, "default"))
+        {
+          /* it goes when tapped (FLAG_AUTO_CANCEL); the app marks what it shows read */
+          notifier_close (self->notifier, id);
+          self->notification = 0;
+          open_app (self, self->notification_conversation);
+        }
+      else if (g_str_equal (action, "closed"))
+        {
+          /* swiped away: its messages are seen (the delete intent's MarkAsSeenAction) */
+          self->notification = 0;
+          sms_store_mark_seen (self->store, 0);
+        }
+      else if (g_str_equal (action, "gone"))
+        self->notification = 0;
+    }
+  else if (id == self->failure_notification)
+    {
+      gint64 conversation = self->failure_conversation;
+
+      self->failure_notification = 0;
+      if (g_str_equal (action, "gone"))
+        return;
+      if (g_str_equal (action, "default"))
+        {
+          notifier_close (self->notifier, id);
+          open_app (self, conversation);
+        }
+      g_hash_table_remove_all (self->failed);
+    }
+}
+
+static void
+on_notifications_restart (gpointer data)
+{
+  Service *self = data;
+
+  /* a new server has none of ours: shown again, without a heads-up */
+  self->notification = 0;
+  self->failure_notification = 0;
+  update_notification (self, FALSE);
+  update_failures (self, FALSE);
+}
+
+static void
+on_contacts_changed (Contacts *contacts, gpointer data)
+{
+  Service *self = data;
+
+  /* the names in them */
+  if (self->notification)
+    update_notification (self, FALSE);
+  if (self->failure_notification)
+    update_failures (self, FALSE);
+}
+
+/* --- sending */
+
+static void
+retry_free (gpointer data)
+{
+  Retry *retry = data;
+
+  if (retry->timer)
+    g_source_remove (retry->timer);
+  g_free (retry);
+}
+
+static void
+queue_message (Service *self, gint64 id)
+{
+  if (id != self->sending && !g_queue_find (&self->outbox, GINT_TO_POINTER (id)))
+    g_queue_push_tail (&self->outbox, GINT_TO_POINTER (id));
+}
+
+static gint64 *
+int64_dup (gint64 value)
+{
+  return g_memdup2 (&value, sizeof value);
+}
+
+/* (gint64 ids in GINT_TO_POINTER: bugle_db's ids are row ids, far below 2^31 on a phone) */
+static gboolean
+on_retry (gpointer data)
+{
+  Retry *retry;
+  Service *self = g_object_get_data (G_OBJECT (data), "service");
+  gint64 id = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (data), "message"));
+
+  retry = g_hash_table_lookup (self->retries, &id);
+  if (retry)
+    retry->timer = 0;
+  queue_message (self, id);
+  send_next (self);
+  return G_SOURCE_REMOVE;
+}
+
+/* it is still to go: when and how many times it was tried */
+static Retry *
+retry_of (Service *self, gint64 id)
+{
+  Retry *retry = g_hash_table_lookup (self->retries, &id);
+
+  if (!retry)
+    {
+      retry = g_new0 (Retry, 1);
+      retry->start = g_get_monotonic_time ();
+      retry->delay = RETRY_INITIAL_MS;
+      g_hash_table_insert (self->retries, int64_dup (id), retry);
+    }
+  return retry;
+}
+
+/* the network could not be reached (no modem, the radio off, out of coverage): worth trying again. Anything else
+ * the network or the modem refused, and trying again would not change */
+static gboolean
+is_transient (const GError *error)
+{
+  g_autofree char *name = g_dbus_error_get_remote_error (error);
+
+  if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NOT_CONNECTED)
+      || g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
+    return TRUE;
+  return name && (g_str_has_suffix (name, ".Core.WrongState") || g_str_has_suffix (name, ".NoNetwork")
+                  || g_str_has_suffix (name, ".NetworkTimeout"));
+}
+
+static void
+set_status (Service *self, const SmsMessage *message, MessageStatus status, int raw_status, gint64 sent)
+{
+  sms_store_set_status (self->store, message->id, status, raw_status, sent);
+  emit_changed (self, message->conversation_id);
+}
+
+static void send_to_next_destination (Service *self, SmsMessage *message, Retry *retry);
+
+typedef struct {
+  Service *self;
+  SmsMessage *message;
+} Sending;
+
+static void
+on_sent (GObject *source, GAsyncResult *result, gpointer data)
+{
+  Sending *sending = data;
+  Service *self = sending->self;
+  g_autoptr(SmsMessage) message = sending->message;
+  g_autoptr(GError) error = NULL;
+  Retry *retry = g_hash_table_lookup (self->retries, &message->id);
+
+  g_free (sending);
+  if (!retry)
+    {
+      /* deleted while it went */
+      self->sending = 0;
+      send_next (self);
+      return;
+    }
+  if (sms_modem_send_finish (NULL, result, &error))
+    {
+      retry->sent_to++;
+      send_to_next_destination (self, g_steal_pointer (&message), retry);
+      return;
+    }
+
+  self->sending = 0;
+  if (is_transient (error)
+      && (g_get_monotonic_time () - retry->start) / 1000 + retry->delay < RETRY_TIMEOUT_MS)
+    {
+      GObject *timer = g_object_new (G_TYPE_OBJECT, NULL);
+
+      g_message ("sms: message %" G_GINT64_FORMAT " waits %u s: %s", message->id, retry->delay / 1000,
+                 error->message);
+      set_status (self, message, MESSAGE_STATUS_OUTGOING_AWAITING_RETRY, 0, 0);
+      g_object_set_data (timer, "service", self);
+      g_object_set_data (timer, "message", GINT_TO_POINTER (message->id));
+      retry->timer = g_timeout_add_full (G_PRIORITY_DEFAULT, retry->delay, on_retry, timer, g_object_unref);
+      retry->delay = MIN (retry->delay * 2, RETRY_MAX_MS);
+    }
+  else
+    {
+      g_dbus_error_strip_remote_error (error);
+      g_message ("sms: message %" G_GINT64_FORMAT " not sent: %s", message->id, error->message);
+      g_hash_table_remove (self->retries, &message->id);
+      set_status (self, message, MESSAGE_STATUS_OUTGOING_FAILED, error->code, 0);
+      g_hash_table_insert (self->failed, int64_dup (message->id), int64_dup (message->conversation_id));
+      update_failures (self, TRUE);
+    }
+  send_next (self);
+}
+
+/* a group's message goes to each of them in turn, as Android sends a group SMS: one message each */
+static void
+send_to_next_destination (Service *self, SmsMessage *message, Retry *retry)
+{
+  g_autoptr(SmsConversation) conversation = sms_store_get (self->store, message->conversation_id);
+  Sending *sending;
+
+  if (!conversation || !conversation->destinations || retry->sent_to >= g_strv_length (conversation->destinations))
+    {
+      if (conversation)
+        {
+          g_message ("sms: message %" G_GINT64_FORMAT " sent", message->id);
+          set_status (self, message, MESSAGE_STATUS_OUTGOING_COMPLETE, 0, g_get_real_time () / 1000);
+        }
+      g_hash_table_remove (self->retries, &message->id);
+      sms_message_free (message);
+      self->sending = 0;
+      send_next (self);
+      return;
+    }
+  sending = g_new0 (Sending, 1);
+  sending->self = self;
+  sending->message = message;
+  if (self->modem)
+    sms_modem_send (self->modem, conversation->destinations[retry->sent_to], message->text ? message->text : "",
+                    NULL, on_sent, sending);
+  else
+    {
+      /* gateway mode: no modem of ours, as if it had none */
+      GTask *task = g_task_new (NULL, NULL, on_sent, sending);
+
+      g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_NOT_CONNECTED, "No modem");
+      g_object_unref (task);
+    }
+}
+
+/* the next message in the outbox goes, one at a time */
+static void
+send_next (Service *self)
+{
+  while (!self->sending && !g_queue_is_empty (&self->outbox))
+    {
+      gint64 id = GPOINTER_TO_INT (g_queue_pop_head (&self->outbox));
+      SmsMessage *message = sms_store_get_message (self->store, id);
+
+      if (!message || MESSAGE_STATUS_IS_INCOMING (message->status)
+          || message->status == MESSAGE_STATUS_OUTGOING_COMPLETE || message->status == MESSAGE_STATUS_OUTGOING_FAILED)
+        {
+          g_hash_table_remove (self->retries, &id);
+          g_clear_pointer (&message, sms_message_free);
+          continue;
+        }
+      self->sending = id;
+      if (message->status != MESSAGE_STATUS_OUTGOING_RESENDING)
+        set_status (self, message, MESSAGE_STATUS_OUTGOING_SENDING, 0, 0);
+      send_to_next_destination (self, message, retry_of (self, id));
+    }
+}
+
+/* the network may be back: every message waiting goes now (PendingMessagesAction on a service state change) */
+static void
+send_waiting (Service *self)
+{
+  GHashTableIter iter;
+  gpointer id, value;
+
+  g_hash_table_iter_init (&iter, self->retries);
+  while (g_hash_table_iter_next (&iter, &id, &value))
+    {
+      Retry *retry = value;
+
+      if (retry->timer)
+        {
+          g_source_remove (retry->timer);
+          retry->timer = 0;
+          queue_message (self, *(gint64 *) id);
+        }
+    }
+  send_next (self);
+}
+
+/* --- messages coming */
+
+static void
+on_received (const char *path, const char *number, const char *text, gint64 timestamp, gpointer data)
+{
+  Service *self = data;
+  g_autofree char *sender = phone_number_canonical (number, country (self));
+  gint64 now = g_get_real_time () / 1000;
+  g_autoptr(SmsMessage) message = NULL;
+  gint64 id;
+
+  id = sms_store_add_incoming (self->store, sender, text, timestamp ? timestamp : now, now, path);
+  if (!id)
+    return;                     /* left on the modem: the next start hands it over again */
+  sms_modem_delete (self->modem, path);
+  message = sms_store_get_message (self->store, id);
+  /* where the app shows it, it is read (the conversation open) or seen (the list at its top) at once */
+  if (self->visible > 0 && message->conversation_id == self->visible)
+    sms_store_mark_read (self->store, self->visible);
+  else if (self->visible == 0)
+    sms_store_mark_seen (self->store, 0);
+  emit_changed (self, message->conversation_id);
+  update_notification (self, TRUE);
+}
+
+static void
+on_available_changed (gboolean available, gpointer data)
+{
+  Service *self = data;
+
+  self->available = available;
+  emit_properties (self);
+  if (available)
+    send_waiting (self);
+}
+
+static void
+start_modem (Service *self)
+{
+  static const SmsModemCallbacks callbacks = { .available_changed = on_available_changed,
+                                               .received = on_received };
+
+  if (!self->modem)
+    self->modem = sms_modem_new (self->system, &callbacks, self);
+}
+
+static void
+stop_modem (Service *self)
+{
+  if (!self->modem)
+    return;
+  g_clear_pointer (&self->modem, sms_modem_free);
+  self->available = FALSE;
+  emit_properties (self);
+}
+
+/* --- gsm2sip's gateway mode */
+
+static void
+sync_gateway (Service *self)
+{
+  g_autofree char *owner = self->gateway ? g_dbus_proxy_get_name_owner (self->gateway) : NULL;
+  g_autoptr(GVariant) enabled = owner ? g_dbus_proxy_get_cached_property (self->gateway, "Enabled") : NULL;
+
+  if (enabled && g_variant_get_boolean (enabled))
+    {
+      if (self->modem)
+        g_message ("sms: gateway mode, the messages are gsm2sipd's");
+      stop_modem (self);
+    }
+  else
+    start_modem (self);
+}
+
+static void
+on_gateway_changed (GObject *proxy, gpointer arg1, gpointer arg2, gpointer data)
+{
+  sync_gateway (data);
+}
+
+static void
+on_gateway_proxy (GObject *source, GAsyncResult *result, gpointer data)
+{
+  Service *self = data;
+  g_autoptr(GError) error = NULL;
+
+  self->gateway = g_dbus_proxy_new_finish (result, &error);
+  if (!self->gateway)
+    g_warning ("no gsm2sip proxy: %s", error->message);
+  else
+    {
+      g_signal_connect (self->gateway, "g-properties-changed", G_CALLBACK (on_gateway_changed), self);
+      g_signal_connect (self->gateway, "notify::g-name-owner", G_CALLBACK (on_gateway_changed), self);
+    }
+  /* the modem is started only now: in gateway mode it is never ours, not even for a moment */
+  sync_gateway (self);
+}
+
+/* --- what the app shows */
+
+static void set_visible (Service *self, const char *sender, gint64 conversation);
+
+static void
+on_visible_vanished (GDBusConnection *bus, const char *name, gpointer data)
+{
+  set_visible (data, NULL, -1);
+}
+
+static void
+set_visible (Service *self, const char *sender, gint64 conversation)
+{
+  if (g_strcmp0 (sender, self->visible_sender) != 0)
+    {
+      if (self->visible_watch)
+        g_bus_unwatch_name (self->visible_watch);
+      self->visible_watch = 0;
+      g_clear_pointer (&self->visible_sender, g_free);
+      if (sender)
+        {
+          self->visible_sender = g_strdup (sender);
+          self->visible_watch = g_bus_watch_name_on_connection (self->session, sender, G_BUS_NAME_WATCHER_FLAGS_NONE,
+                                                                NULL, on_visible_vanished, self, NULL);
+        }
+    }
+  self->visible = sender ? conversation : -1;
+  if (self->visible > 0)
+    {
+      if (sms_store_mark_read (self->store, self->visible))
+        {
+          emit_changed (self, self->visible);
+          update_notification (self, FALSE);
+        }
+      failures_seen (self, self->visible);
+    }
+  else if (self->visible == 0)
+    {
+      /* ConversationListData: scrolled to the newest conversation, everything is seen */
+      if (sms_store_mark_seen (self->store, 0))
+        update_notification (self, FALSE);
+      failures_seen (self, 0);
+    }
+}
+
+/* --- the service */
+
+static gboolean
+check_conversation (Service *self, gint64 id, GError **error)
+{
+  g_autoptr(SmsConversation) conversation = id > 0 ? sms_store_get (self->store, id) : NULL;
+
+  if (!conversation)
+    g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS, "No conversation %" G_GINT64_FORMAT, id);
+  return conversation != NULL;
+}
+
+static void
+on_method_call (GDBusConnection *bus, const char *sender, const char *path, const char *interface,
+                const char *method, GVariant *parameters, GDBusMethodInvocation *invocation, gpointer data)
+{
+  Service *self = data;
+  g_autoptr(GError) error = NULL;
+  gint64 id = 0;
+  gboolean flag;
+  const char *text;
+
+  if (g_str_equal (method, "GetConversation"))
+    {
+      g_autofree const char **numbers = NULL;
+      g_autoptr(GPtrArray) destinations = g_ptr_array_new_with_free_func (g_free);
+
+      g_variant_get (parameters, "(^a&s)", &numbers);
+      for (guint i = 0; numbers[i]; i++)
+        {
+          char *destination = phone_number_canonical (numbers[i], country (self));
+
+          /* the same person twice is once */
+          if (*destination && !g_ptr_array_find_with_equal_func (destinations, destination, g_str_equal, NULL))
+            g_ptr_array_add (destinations, destination);
+          else
+            g_free (destination);
+        }
+      g_ptr_array_add (destinations, NULL);
+      id = destinations->len > 1
+           ? sms_store_get_conversation (self->store, (const char * const *) destinations->pdata) : 0;
+      if (!id)
+        g_dbus_method_invocation_return_error (invocation, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+                                               "No conversation for these numbers");
+      else
+        g_dbus_method_invocation_return_value (invocation, g_variant_new ("(x)", id));
+      return;
+    }
+  if (g_str_equal (method, "Send"))
+    {
+      gint64 message;
+
+      g_variant_get (parameters, "(x&s)", &id, &text);
+      if (!check_conversation (self, id, &error))
+        {
+          g_dbus_method_invocation_return_gerror (invocation, error);
+          return;
+        }
+      if (!*text || !(message = sms_store_add_outgoing (self->store, id, text, g_get_real_time () / 1000)))
+        {
+          g_dbus_method_invocation_return_error (invocation, G_DBUS_ERROR, G_DBUS_ERROR_FAILED, "Not kept");
+          return;
+        }
+      /* written in it: the conversation is read, and back from the archive (InsertNewMessageAction) */
+      sms_store_mark_read (self->store, id);
+      sms_store_set_archived (self->store, id, FALSE);
+      emit_changed (self, id);
+      g_dbus_method_invocation_return_value (invocation, g_variant_new ("(x)", message));
+      queue_message (self, message);
+      send_next (self);
+      return;
+    }
+
+  if (g_str_equal (method, "Resend"))
+    {
+      g_autoptr(SmsMessage) message = NULL;
+
+      g_variant_get (parameters, "(x)", &id);
+      message = sms_store_get_message (self->store, id);
+      if (!message || message->status != MESSAGE_STATUS_OUTGOING_FAILED)
+        {
+          g_dbus_method_invocation_return_error (invocation, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+                                                 "No failed message %" G_GINT64_FORMAT, id);
+          return;
+        }
+      g_hash_table_remove (self->failed, &id);
+      update_failures (self, FALSE);
+      g_hash_table_remove (self->retries, &id);
+      set_status (self, message, MESSAGE_STATUS_OUTGOING_RESENDING, 0, 0);
+      queue_message (self, id);
+      send_next (self);
+    }
+  else if (g_str_equal (method, "MarkRead"))
+    {
+      g_variant_get (parameters, "(x)", &id);
+      if (sms_store_mark_read (self->store, id))
+        {
+          emit_changed (self, id);
+          update_notification (self, FALSE);
+        }
+      failures_seen (self, id);
+    }
+  else if (g_str_equal (method, "SetArchived"))
+    {
+      g_variant_get (parameters, "(xb)", &id, &flag);
+      if (check_conversation (self, id, &error))
+        {
+          sms_store_set_archived (self->store, id, flag);
+          emit_changed (self, id);
+        }
+    }
+  else if (g_str_equal (method, "SetDraft"))
+    {
+      g_variant_get (parameters, "(x&s)", &id, &text);
+      if (check_conversation (self, id, &error))
+        {
+          sms_store_set_draft (self->store, id, *text ? text : NULL);
+          emit_changed (self, id);
+        }
+    }
+  else if (g_str_equal (method, "DeleteConversation"))
+    {
+      g_variant_get (parameters, "(x)", &id);
+      if (sms_store_delete_conversation (self->store, id))
+        {
+          emit_changed (self, id);
+          update_notification (self, FALSE);
+          failures_seen (self, id);
+        }
+    }
+  else if (g_str_equal (method, "DeleteMessage"))
+    {
+      gint64 conversation;
+
+      g_variant_get (parameters, "(x)", &id);
+      /* one still going is not stopped on the modem, but nothing more of it goes */
+      g_hash_table_remove (self->retries, &id);
+      if (g_hash_table_remove (self->failed, &id))
+        update_failures (self, FALSE);
+      conversation = sms_store_delete_message (self->store, id);
+      if (conversation)
+        {
+          emit_changed (self, conversation);
+          update_notification (self, FALSE);
+        }
+    }
+  else if (g_str_equal (method, "SetVisible"))
+    {
+      g_variant_get (parameters, "(x)", &id);
+      if (id >= 0)
+        set_visible (self, sender, id);
+      else if (g_strcmp0 (sender, self->visible_sender) == 0)
+        set_visible (self, NULL, -1);
+    }
+
+  if (error)
+    g_dbus_method_invocation_return_gerror (invocation, error);
+  else
+    g_dbus_method_invocation_return_value (invocation, NULL);
+}
+
+static GVariant *
+on_get_property (GDBusConnection *bus, const char *sender, const char *path, const char *interface,
+                 const char *property, GError **error, gpointer data)
+{
+  Service *self = data;
+
+  if (g_str_equal (property, "Available"))
+    return g_variant_new_boolean (self->available);
+  return g_variant_new_string (country (self) ? country (self) : "");
+}
+
+static const GDBusInterfaceVTable vtable = { on_method_call, on_get_property, NULL };
+
+static void
+on_name_acquired (GDBusConnection *bus, const char *name, gpointer data)
+{
+  g_message ("serving %s", name);
+}
+
+static void
+on_name_lost (GDBusConnection *bus, const char *name, gpointer data)
+{
+  Service *self = data;
+
+  /* another one has it: two would take the same messages off the modem */
+  g_warning ("lost the bus name %s", name);
+  g_main_loop_quit (self->loop);
+}
+
+static gboolean
+on_signal (gpointer data)
+{
+  g_main_loop_quit (((Service *) data)->loop);
+  return G_SOURCE_REMOVE;
+}
+
+/* the system bus, or for the tests a bus of their own with a ModemManager of their own (tests/mock-modem.py) */
+static GDBusConnection *
+system_bus (GError **error)
+{
+  const char *address = g_getenv ("NEO_MESSAGING_SYSTEM_BUS");
+
+  if (address && *address)
+    return g_dbus_connection_new_for_address_sync (address, G_DBUS_CONNECTION_FLAGS_AUTHENTICATION_CLIENT
+                                                            | G_DBUS_CONNECTION_FLAGS_MESSAGE_BUS_CONNECTION,
+                                                   NULL, NULL, error);
+  return g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, error);
+}
+
+int
+main (int argc, char **argv)
+{
+  Service service = { .visible = -1 };
+  g_autoptr(GError) error = NULL;
+  g_autoptr(GDBusNodeInfo) node = NULL;
+  g_autoptr(GPtrArray) unsent = NULL;
+  g_autofree char *dir = g_build_filename (g_get_user_data_dir (), "neo-messaging", NULL);
+  g_autofree char *store_path = g_build_filename (dir, "bugle_db", NULL);
+  guint owner;
+
+  setlocale (LC_ALL, "");
+  bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
+  bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
+  textdomain (GETTEXT_PACKAGE);
+
+  service.loop = g_main_loop_new (NULL, FALSE);
+  service.session = g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, &error);
+  if (!service.session)
+    g_error ("no session bus: %s", error->message);
+  service.system = system_bus (&error);
+  if (!service.system)
+    g_error ("no system bus: %s", error->message);
+  g_mkdir_with_parents (dir, 0700);
+  service.store = sms_store_open (store_path, FALSE, &error);
+  if (!service.store)
+    g_error ("%s", error->message);
+  service.contacts = contacts_new ();
+  g_signal_connect (service.contacts, "changed", G_CALLBACK (on_contacts_changed), &service);
+  service.notifier = notifier_new (on_notification_action, on_notifications_restart, &service);
+  service.failed = g_hash_table_new_full (g_int64_hash, g_int64_equal, g_free, g_free);
+  service.retries = g_hash_table_new_full (g_int64_hash, g_int64_equal, g_free, retry_free);
+  g_queue_init (&service.outbox);
+
+  node = g_dbus_node_info_new_for_xml (introspection, NULL);
+  service.registration = g_dbus_connection_register_object (service.session, SMS_PATH, node->interfaces[0],
+                                                            &vtable, &service, NULL, &error);
+  if (!service.registration)
+    g_error ("%s", error->message);
+  owner = g_bus_own_name_on_connection (service.session, SMS_BUS_NAME, G_BUS_NAME_OWNER_FLAGS_NONE,
+                                        on_name_acquired, on_name_lost, &service, NULL);
+  g_dbus_proxy_new (service.system, G_DBUS_PROXY_FLAGS_DO_NOT_AUTO_START, NULL, GATEWAY_NAME, GATEWAY_PATH,
+                    GATEWAY_INTERFACE, NULL, on_gateway_proxy, &service);
+
+  /* what was still to go when the service last stopped goes now, its 20 minutes from now; what came and was not
+   * seen is notified again, quietly */
+  unsent = sms_store_list_unsent (service.store);
+  for (guint i = 0; i < unsent->len; i++)
+    queue_message (&service, ((SmsMessage *) unsent->pdata[i])->id);
+  update_notification (&service, FALSE);
+
+  g_unix_signal_add (SIGTERM, on_signal, &service);
+  g_unix_signal_add (SIGINT, on_signal, &service);
+  g_main_loop_run (service.loop);
+
+  g_bus_unown_name (owner);
+  g_dbus_connection_unregister_object (service.session, service.registration);
+  if (service.visible_watch)
+    g_bus_unwatch_name (service.visible_watch);
+  g_free (service.visible_sender);
+  if (service.gateway)
+    g_signal_handlers_disconnect_by_data (service.gateway, &service);
+  g_clear_object (&service.gateway);
+  g_clear_pointer (&service.modem, sms_modem_free);
+  g_queue_clear (&service.outbox);
+  g_hash_table_unref (service.retries);
+  g_hash_table_unref (service.failed);
+  notifier_free (service.notifier);
+  g_signal_handlers_disconnect_by_data (service.contacts, &service);
+  g_object_unref (service.contacts);
+  sms_store_free (service.store);
+  g_object_unref (service.system);
+  g_object_unref (service.session);
+  g_main_loop_unref (service.loop);
+  return 0;
+}

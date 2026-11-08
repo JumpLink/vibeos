@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=de.yesman.Messaging
+Exec=@bindir@/neo-messaging --gapplication-service

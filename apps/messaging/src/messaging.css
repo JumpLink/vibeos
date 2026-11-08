@@ -1,0 +1,325 @@
+/* Messaging's look (spec §0.3, the palette force dark makes of the light theme): window #181c1d, action bars in
+ * primary_color #33666d, Roboto at the weights Bold text makes (regular 400 is drawn 700, medium 500 800, bold 900). */
+
+.msg-window,
+.msg-page {
+  background-color: #181c1d;
+}
+
+/* --- the action bar (§1.2, §2.2) */
+
+.msg-action-bar {
+  background-color: #33666d;
+  color: #ffffff;
+}
+
+.msg-action-title {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.msg-action-icon {
+  color: #ffffff;
+}
+
+/* --- the conversation list (§1.4, §1.5) */
+
+/* opaque, to cover the swipe background (§1.8) as it moves over it */
+.msg-row {
+  background-color: #181c1d;
+}
+
+.msg-swipe-background {
+  background-color: #181c1d;
+  color: #ffffff;
+}
+
+.msg-row-name {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #a6a6a6;
+}
+
+.msg-row-snippet,
+.msg-row-time {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #a6a6a6;
+}
+
+.msg-row-name.unread,
+.msg-row-snippet.unread {
+  font-weight: 900;
+  color: #e0e0e0;
+}
+
+.msg-row-snippet.draft,
+.msg-row-time.draft {
+  font-style: italic;
+}
+
+.msg-row-time.failed {
+  color: #f05a24;
+}
+
+/* the FAB: "START CHAT", literal colours (forceDark off) */
+.msg-fab-label {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 1.25px;
+  color: #000000;
+}
+
+.msg-fab-content {
+  color: #000000;
+}
+
+.msg-empty-text {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #9b9b9b;
+}
+
+/* --- a conversation (§2.3, §2.4) */
+
+.msg-message-text {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.msg-message-status {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* the bubble's subtree is out of force dark: outgoing is dark grey on white */
+.outgoing .msg-message-text {
+  color: #323232;
+}
+
+.outgoing .msg-message-status {
+  color: rgba(50, 50, 50, 0.6);
+}
+
+.incoming .msg-message-text {
+  color: #ffffff;
+}
+
+.incoming .msg-message-status {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.msg-message-status.failed {
+  color: rgba(255, 0, 0, 0.6);
+}
+
+.selected .msg-message-text,
+.selected .msg-message-status {
+  color: #ffffff;
+}
+
+/* the 4 dp shadow over the list's foot while the newest message is out of sight */
+.msg-compose-shadow {
+  min-height: 4px;
+  margin-top: -4px;
+  background-image: linear-gradient(to top, rgba(0, 0, 0, 0.267), transparent);
+}
+
+/* --- the compose bar (§2.6) */
+
+.msg-compose-field {
+  background-color: #5a5f60;
+  border-radius: 28px;
+  min-height: 48px;
+}
+
+.msg-compose-field scrolledwindow,
+.msg-compose-field textview,
+.msg-compose-field text {
+  background: none;
+}
+
+.msg-compose-text {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  caret-color: #ffffff;
+  padding: 13px 16px;
+}
+
+.msg-compose-text selection {
+  background-color: rgba(184, 235, 243, 0.4);
+}
+
+.msg-compose-hint {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.22);
+  margin: 0 16px;
+}
+
+.msg-send {
+  color: #ffffff;
+}
+
+.msg-counter {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: #b5b5b5;
+}
+
+/* --- the contact picker (§3) */
+
+.msg-picker-field {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+  caret-color: #ffffff;
+  background: none;
+  padding: 0 4px;
+  min-height: 42px;
+}
+
+.msg-picker-field > placeholder {
+  color: rgba(255, 255, 255, 0.627);
+}
+
+.msg-picker-tabs {
+  background-color: #33666d;
+}
+
+.msg-picker-tab {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.msg-picker-tab.selected {
+  color: #cef8ff;
+}
+
+.msg-picker-underline {
+  background-color: #ffffff;
+}
+
+.msg-picker-letter {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: #b8ebf3;
+}
+
+.msg-picker-name {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #bfbfbf;
+}
+
+.msg-picker-number {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #999999;
+}
+
+.msg-picker-type {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.541);
+}
+
+/* --- the pop-up menus (the Phone's popup-menu.c, §1.3: the same card) */
+
+.popup-menu {
+  background-color: #181c1d;
+  border-radius: 2px;
+}
+
+.popup-menu-text {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #f6f7fb;
+}
+
+.popup-menu-text.disabled {
+  opacity: 0.38;
+}
+
+/* --- the alert dialogs (§7.4): AppCompat's, not Material 3's. Panel #1b1b1b under #181c1d content, 28 dp corners;
+ * title 20 sp medium, message 16 sp, both #DEffffff; buttons #81b5bc in capitals, 12 dp in from the sides */
+
+.msg-window .neo-dialog {
+  background-color: #181c1d;
+  padding: 18px 0 4px 0;
+}
+
+.msg-window .neo-dialog-title {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.87);
+  margin: 0 24px 16px 24px;
+}
+
+.msg-window .neo-dialog-message {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.87);
+  margin: 0 24px;
+}
+
+.msg-window .neo-dialog-buttons {
+  margin: 12px 12px 0 12px;
+}
+
+.msg-window .neo-dialog .neo-text-button {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 1.25px;
+  color: #81b5bc;
+  padding: 0 8px;
+  min-width: 64px;
+}
+
+/* --- the snackbar (§1.13): edge to edge, #323232; text 24 dp in and 18 dp over and under; the action #EEFF41 */
+
+.msg-window .neo-snackbar {
+  background-color: #323232;
+  border-radius: 0;
+  padding: 0;
+  min-height: 0;
+}
+
+.msg-window .neo-snackbar-text {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 18px 0 18px 24px;
+}
+
+.msg-window .neo-snackbar .neo-text-button {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  color: #eeff41;
+  padding: 0 24px;
+}
