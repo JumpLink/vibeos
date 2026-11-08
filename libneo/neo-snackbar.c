@@ -4,7 +4,7 @@
 #include "neo-anim.h"
 #include "neo-pressable.h"
 
-#define MARGIN   8
+#define MARGIN   8               /* the default: Material's floating bar */
 #define SLIDE_MS 250
 
 struct _NeoSnackbar {
@@ -14,6 +14,7 @@ struct _NeoSnackbar {
   gpointer           action_data;
   guint              timeout;
   double             shown;          /* 0 below the edge .. 1 in place */
+  int                margin;         /* around the bar: MARGIN, or 0 for an edge-to-edge one */
   NeoAnim           *slide;
 };
 
@@ -25,7 +26,7 @@ static GParamSpec *props[N_PROPS];
 double
 neo_snackbar_get_lift (NeoSnackbar *self)
 {
-  return (gtk_widget_get_height (self->box) + MARGIN) * self->shown;
+  return (gtk_widget_get_height (self->box) + self->margin) * self->shown;
 }
 
 static void
@@ -85,17 +86,17 @@ neo_snackbar_show (NeoSnackbar *self, const char *text, const char *action, NeoS
     neo_anim_start (self->slide, self->shown, 1, SLIDE_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
 }
 
-/* ---- layout: the bar sits MARGIN above the bottom, pushed down by (1 - shown) of its height and margin ---------- */
+/* ---- layout: the bar sits its margin above the bottom, pushed down by (1 - shown) of its height and margin ----- */
 
 static void
 neo_snackbar_measure (GtkWidget *widget, GtkOrientation orientation, int for_size,
                       int *minimum, int *natural, int *minimum_baseline, int *natural_baseline)
 {
   NeoSnackbar *self = NEO_SNACKBAR (widget);
-  gtk_widget_measure (self->box, orientation, for_size < 0 ? -1 : MAX (0, for_size - 2 * MARGIN),
+  gtk_widget_measure (self->box, orientation, for_size < 0 ? -1 : MAX (0, for_size - 2 * self->margin),
                       minimum, natural, NULL, NULL);
-  *minimum += 2 * MARGIN;
-  *natural += 2 * MARGIN;
+  *minimum += 2 * self->margin;
+  *natural += 2 * self->margin;
 }
 
 static void
@@ -103,10 +104,11 @@ neo_snackbar_size_allocate (GtkWidget *widget, int width, int height, int baseli
 {
   NeoSnackbar *self = NEO_SNACKBAR (widget);
   int h, unused;
-  gtk_widget_measure (self->box, GTK_ORIENTATION_VERTICAL, width - 2 * MARGIN, &h, &unused, NULL, NULL);
-  double y = height - MARGIN - h + (h + MARGIN) * (1 - self->shown);
-  gtk_widget_allocate (self->box, width - 2 * MARGIN, h, -1,
-                       gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (MARGIN, y)));
+  int margin = self->margin;
+  gtk_widget_measure (self->box, GTK_ORIENTATION_VERTICAL, width - 2 * margin, &h, &unused, NULL, NULL);
+  double y = height - margin - h + (h + margin) * (1 - self->shown);
+  gtk_widget_allocate (self->box, width - 2 * margin, h, -1,
+                       gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (margin, y)));
 }
 
 static gboolean
@@ -158,6 +160,7 @@ neo_snackbar_class_init (NeoSnackbarClass *klass)
 static void
 neo_snackbar_init (NeoSnackbar *self)
 {
+  self->margin = MARGIN;
   self->box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_widget_add_css_class (self->box, "neo-snackbar");
   gtk_widget_set_parent (self->box, GTK_WIDGET (self));
@@ -185,4 +188,11 @@ GtkWidget *
 neo_snackbar_new (void)
 {
   return g_object_new (NEO_TYPE_SNACKBAR, NULL);
+}
+
+void
+neo_snackbar_set_margin (NeoSnackbar *self, int margin)
+{
+  self->margin = margin;
+  gtk_widget_queue_resize (GTK_WIDGET (self));
 }

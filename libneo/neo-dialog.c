@@ -164,6 +164,8 @@ neo_dialog_class_init (NeoDialogClass *klass)
   widget_class->size_allocate = neo_dialog_size_allocate;
   widget_class->snapshot = neo_dialog_snapshot;
   gtk_widget_class_set_css_name (widget_class, "neo-dialog-scrim");
+  /* a dialog to the shell's back gesture too (a11y.js), which then closes it with Escape instead of leaving the app */
+  gtk_widget_class_set_accessible_role (widget_class, GTK_ACCESSIBLE_ROLE_DIALOG);
 
   signals[RESPONSE] = g_signal_new ("response", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0,
                                     NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_INT);

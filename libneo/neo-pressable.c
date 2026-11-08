@@ -29,7 +29,7 @@ struct _NeoPressable {
 
 G_DEFINE_FINAL_TYPE (NeoPressable, neo_pressable, GTK_TYPE_WIDGET)
 
-enum { CLICKED, LONG_PRESSED, N_SIGNALS };
+enum { CLICKED, LONG_PRESSED, ACTIVATE, N_SIGNALS };
 static guint signals[N_SIGNALS];
 
 /* ---- the press ------------------------------------------------------------------------------------------------- */
@@ -213,6 +213,26 @@ neo_pressable_unmap (GtkWidget *widget)
   GTK_WIDGET_CLASS (neo_pressable_parent_class)->unmap (widget);
 }
 
+/* "activate": a click that came from elsewhere than a finger, such as the accessibility bus's DoAction (the shell's
+ * back gesture presses a "Back" button that way) */
+static void
+on_activate (NeoPressable *self)
+{
+  g_signal_emit (self, signals[CLICKED], 0);
+}
+
+static void
+on_click_action (GtkWidget *widget, const char *action, GVariant *parameter)
+{
+  g_signal_emit (widget, signals[CLICKED], 0);
+}
+
+static void
+on_long_press_action (GtkWidget *widget, const char *action, GVariant *parameter)
+{
+  g_signal_emit (widget, signals[LONG_PRESSED], 0);
+}
+
 static void
 neo_pressable_class_init (NeoPressableClass *klass)
 {
@@ -228,6 +248,16 @@ neo_pressable_class_init (NeoPressableClass *klass)
                                    NULL, NULL, NULL, G_TYPE_NONE, 0);
   signals[LONG_PRESSED] = g_signal_new ("long-pressed", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0,
                                         NULL, NULL, NULL, G_TYPE_NONE, 0);
+  signals[ACTIVATE] = g_signal_new_class_handler ("activate", G_TYPE_FROM_CLASS (klass),
+                                                  G_SIGNAL_RUN_FIRST | G_SIGNAL_ACTION, G_CALLBACK (on_activate),
+                                                  NULL, NULL, NULL, G_TYPE_NONE, 0);
+  gtk_widget_class_set_activate_signal (widget_class, signals[ACTIVATE]);
+  /* GTK offers a custom widget's class actions as its AT-SPI actions, the last installed first: 0 clicks it (what
+   * the back gesture's DoAction (0) does), 1 long-presses it (TalkBack's long-click) */
+  gtk_widget_class_install_action (widget_class, "pressable.long-press", NULL, on_long_press_action);
+  gtk_widget_class_install_action (widget_class, "pressable.click", NULL, on_click_action);
+  /* a button to assistive technology: its label is read, and it can be pressed (GENERIC would drop the label) */
+  gtk_widget_class_set_accessible_role (widget_class, GTK_ACCESSIBLE_ROLE_BUTTON);
 }
 
 static void

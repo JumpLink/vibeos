@@ -23,6 +23,8 @@ GtkWidget *neo_snackbar_new      (void);
 void       neo_snackbar_show     (NeoSnackbar *self, const char *text, const char *action,
                                   NeoSnackbarAction action_cb, gpointer data, guint duration);
 void       neo_snackbar_dismiss  (NeoSnackbar *self);
+/* the space around the bar, 8 dp by default; 0 for an edge-to-edge one (the older Material, AOSP Messaging's) */
+void       neo_snackbar_set_margin (NeoSnackbar *self, int margin);
 double     neo_snackbar_get_lift (NeoSnackbar *self);
 
 /* Properties: "lift" (double, read-only) */
