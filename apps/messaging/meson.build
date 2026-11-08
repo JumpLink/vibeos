@@ -42,7 +42,8 @@ configure_file(input: 'data/de.yesman.Messaging.Sms.service.in', output: 'de.yes
 configure_file(input: 'data/de.yesman.Messaging.service.in', output: 'de.yesman.Messaging.service',
                configuration: unit, install_dir: datadir / 'dbus-1/services')
 install_data('data/de.yesman.Messaging.desktop', install_dir: datadir / 'applications')
-gnome.post_install(update_desktop_database: true)
+install_data('data/de.yesman.Messaging.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
+gnome.post_install(gtk_update_icon_cache: true, update_desktop_database: true)
 
 test('sms-store', executable('test-sms-store', 'tests/test-sms-store.c', link_with: store, dependencies: [gio]))
 test('sms-segments', executable('test-sms-segments', 'tests/test-sms-segments.c', 'src/sms-segments.c',

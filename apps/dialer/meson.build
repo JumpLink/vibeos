@@ -40,8 +40,9 @@ configure_file(input: 'data/de.yesman.Dialer.service.in', output: 'de.yesman.Dia
                configuration: unit, install_dir: datadir / 'dbus-1/services')
 install_data('data/de.yesman.Dialer.desktop', 'data/de.yesman.Dialer.InCall.desktop',
              install_dir: datadir / 'applications')
+install_data('data/de.yesman.Dialer.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
 install_data('data/de.yesman.Dialer.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
-gnome.post_install(glib_compile_schemas: true, update_desktop_database: true)
+gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
 
 foreach name : ['call-log', 'phone-number']
   test(name, executable('test-' + name, 'tests/test-' + name + '.c', link_with: common,

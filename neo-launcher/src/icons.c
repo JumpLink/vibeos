@@ -15,6 +15,12 @@ static const char *distinct[][2] = {
   { "waydroid.com.android.settings.desktop", "flatdroid" },
 };
 
+/* apps that took over a GNOME app's job wear its pack icon (a pack maps only the apps it knew): new id -> old id */
+static const char *took_over[][2] = {
+  { "de.yesman.Dialer.desktop", "org.gnome.Calls.desktop" },
+  { "de.yesman.Messaging.desktop", "sm.puri.Chatty.desktop" },
+};
+
 typedef struct {
   char       *dir;
   GHashTable *map;          /* desktop id -> drawable */
@@ -186,6 +192,11 @@ current_pack (Icons *self)
     g_autofree char *path = g_build_filename (p->dir, "icons", png, NULL);
     if (g_file_test (path, G_FILE_TEST_EXISTS))
       g_hash_table_replace (p->map, g_strdup (distinct[i][0]), g_strdup (distinct[i][1]));
+  }
+  for (guint i = 0; i < G_N_ELEMENTS (took_over); i++) {
+    const char *drawable = g_hash_table_lookup (p->map, took_over[i][1]);
+    if (drawable && !g_hash_table_contains (p->map, took_over[i][0]))
+      g_hash_table_insert (p->map, g_strdup (took_over[i][0]), g_strdup (drawable));
   }
   g_autofree char *meta_path = g_build_filename (p->dir, "pack.json", NULL);
   JsonNode *meta = read_json (meta_path);

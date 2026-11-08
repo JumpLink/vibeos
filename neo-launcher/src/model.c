@@ -11,6 +11,8 @@
 /* desktop ids that another app took over */
 static const char *replaced[][2] = {
   { "de.yesman.Browser.desktop", "de.yesman.NeoBrowser.desktop" },
+  { "org.gnome.Calls.desktop", "de.yesman.Dialer.desktop" },
+  { "sm.puri.Chatty.desktop", "de.yesman.Messaging.desktop" },
 };
 
 static char *
