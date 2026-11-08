@@ -5,7 +5,8 @@
 # It is a headless mutter on a private D-Bus, so nothing it does reaches the running shell. An app run on it talks
 # to the real session bus (its services, its settings) but draws on the headless display, where it gets frames as
 # on a lit screen: its animations run. Pictures come from the app itself (libneo's NEO_SHOT, at 3x, the phone's
-# scale); touches go in through mutter's RemoteDesktop API (neo-headless-input).
+# scale); touches go in through mutter's RemoteDesktop API (neo-headless-input), which also keeps a keyboard
+# plugged in, so its windows are active as on the phone.
 #
 #   neo-headless start                  the display: 360 x 721 dp, the phone's app area under its status bar
 #   neo-headless run APP [ARGS...]      an app on it (as the session user), on GL; GSK_RENDERER=cairo in the
@@ -74,6 +75,10 @@ start)
         echo "neo-headless: mutter did not start, see $STATE/mutter.log" >&2
         exit 1
     fi
+    # a keyboard for the seat, or no window on it is ever active (see neo-headless-input); the script goes in as an
+    # argument, read by root, since the daemon's stdin is /dev/null
+    as_user_daemon keyboard env NEO_HEADLESS_BUS="$(cat "$STATE/bus")" \
+        python3 -c "$(cat "$HERE/neo-headless-input")" keyboard
     # A phone that suspends under the display stops mutter, the app and the ssh that drives them alike, so the
     # phone stays awake for as long as mutter runs (a logind inhibitor, which s10e-sleepd honours)
     setsid -f systemd-inhibit --what=sleep --who=neo-headless --why="a test display is running" \
@@ -113,7 +118,7 @@ tap | swipe)
     as_user env NEO_HEADLESS_BUS="$(cat "$STATE/bus")" python3 - "$@" <"$HERE/neo-headless-input"
     ;;
 stop)
-    for p in app mutter bus; do
+    for p in app keyboard mutter bus; do
         [ -f "$STATE/$p.pid" ] && kill "$(cat "$STATE/$p.pid")" 2>/dev/null || true
         rm -f "$STATE/$p.pid"
     done

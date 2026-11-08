@@ -3,6 +3,7 @@
 #
 #   neo-headless-input tap X Y
 #   neo-headless-input swipe X0 Y0 X1 Y1 [MS]
+#   neo-headless-input keyboard      a keyboard plugged in until mutter goes (neo-headless start runs it)
 #
 # Coordinates are in dp (the headless display runs at scale 1). NEO_HEADLESS_BUS is the private bus the headless
 # mutter is on. Absolute input needs a screen-cast stream of the monitor to give the coordinates a frame, so each
@@ -15,6 +16,7 @@ from gi.repository import Gio, GLib
 
 MUTTER = 'org.gnome.Mutter.'
 STEP_MS = 8          # a moving finger reports at 120 Hz, like the phone's panel
+SHIFT_L = 0xffe1
 
 
 def call(bus, name, path, interface, method, args=None, reply=None):
@@ -36,9 +38,36 @@ def main():
         os.environ['NEO_HEADLESS_BUS'],
         Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT | Gio.DBusConnectionFlags.MESSAGE_BUS_CONNECTION, None, None)
 
+    command, numbers = sys.argv[1], [float(v) for v in sys.argv[2:]]
     rd_service = MUTTER + 'RemoteDesktop'
-    rd_session = call(bus, rd_service, '/org/gnome/Mutter/RemoteDesktop', rd_service, 'CreateSession',
-                      reply='(o)').unpack()[0]
+    # just after mutter's start its Wayland socket can be there before its D-Bus API
+    for _ in range(50):
+        try:
+            rd_session = call(bus, rd_service, '/org/gnome/Mutter/RemoteDesktop', rd_service, 'CreateSession',
+                              reply='(o)').unpack()[0]
+            break
+        except GLib.Error:
+            spin(0.1)
+    else:
+        sys.exit('neo-headless-input: no RemoteDesktop on the display')
+
+    def rd(method, signature=None, *args):
+        call(bus, rd_service, rd_session, rd_service + '.Session', method,
+             GLib.Variant(signature, args) if signature else None)
+
+    if command == 'keyboard':
+        # Mutter activates a window (xdg_toplevel "activated": GTK's is-active, an app's onResume) only while the
+        # seat has a keyboard. The phone always has one (its power and volume keys), the headless display none, so
+        # every window on it was inactive. A session's keyboard is made on its first key and lasts as long as the
+        # session: one key (Shift, which no app acts on alone), then the session is held until mutter's bus goes.
+        rd('Start')
+        rd('NotifyKeyboardKeysym', '(ub)', SHIFT_L, True)
+        rd('NotifyKeyboardKeysym', '(ub)', SHIFT_L, False)
+        loop = GLib.MainLoop()
+        bus.connect('closed', lambda *args: loop.quit())
+        loop.run()
+        return
+
     session_id = call(bus, rd_service, rd_session, 'org.freedesktop.DBus.Properties', 'Get',
                       GLib.Variant('(ss)', (rd_service + '.Session', 'SessionId')), '(v)').unpack()[0]
 
@@ -49,10 +78,6 @@ def main():
     stream = call(bus, sc_service, sc_session, sc_service + '.Session', 'RecordMonitor',
                   GLib.Variant('(sa{sv})', ('Meta-0', {})), '(o)').unpack()[0]
 
-    def rd(method, signature=None, *args):
-        call(bus, rd_service, rd_session, rd_service + '.Session', method,
-             GLib.Variant(signature, args) if signature else None)
-
     rd('Start')
     # Mutter makes the session's touchscreen on its first touch: that touch announces the device to the app, which
     # binds wl_touch a round trip later, after the touch has gone by. So the first one primes the device (and is
@@ -61,7 +86,6 @@ def main():
     rd('NotifyTouchUp', '(u)', 0)
     spin(0.3)
 
-    command, numbers = sys.argv[1], [float(v) for v in sys.argv[2:]]
     if command == 'tap':
         x, y = numbers
         rd('NotifyTouchDown', '(sudd)', stream, 0, x, y)
