@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- the app's stylesheet and its icons (data/icons, made from the Dialer's vector drawables by tools/vd2svg.py),
+     where GtkApplication looks for icons: the resource base path + /icons -->
+<gresources>
+  <gresource prefix="/de/yesman/Dialer">
+    <file>dialer.css</file>
+    <file alias="images/empty-contacts.png">images/empty-contacts.png</file>
+    <file alias="images/empty-speed-dial.png">images/empty-speed-dial.png</file>
+    <file alias="icons/scalable/actions/dialer-access-time-symbolic.svg">icons/dialer-access-time-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-add-call-symbolic.svg">icons/dialer-add-call-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-back-symbolic.svg">icons/dialer-back-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-backspace-symbolic.svg">icons/dialer-backspace-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-block-symbolic.svg">icons/dialer-block-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-business-symbolic.svg">icons/dialer-business-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-call-end-symbolic.svg">icons/dialer-call-end-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-call-made-symbolic.svg">icons/dialer-call-made-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-call-missed-symbolic.svg">icons/dialer-call-missed-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-call-received-symbolic.svg">icons/dialer-call-received-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-call-symbolic.svg">icons/dialer-call-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-check-mark-symbolic.svg">icons/dialer-check-mark-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-clock-filled-symbolic.svg">icons/dialer-clock-filled-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-close-symbolic.svg">icons/dialer-close-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-copy-symbolic.svg">icons/dialer-copy-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-delete-symbolic.svg">icons/dialer-delete-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-dialpad-symbolic.svg">icons/dialer-dialpad-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-empty-call-log-symbolic.svg">icons/dialer-empty-call-log-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-end-answer-symbolic.svg">icons/dialer-end-answer-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-group-symbolic.svg">icons/dialer-group-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-hd-symbolic.svg">icons/dialer-hd-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-history-symbolic.svg">icons/dialer-history-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-info-symbolic.svg">icons/dialer-info-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-message-symbolic.svg">icons/dialer-message-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-mic-off-symbolic.svg">icons/dialer-mic-off-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-mic-symbolic.svg">icons/dialer-mic-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-more-symbolic.svg">icons/dialer-more-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-pause-symbolic.svg">icons/dialer-pause-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-people-outline-symbolic.svg">icons/dialer-people-outline-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-people-symbolic.svg">icons/dialer-people-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-person-add-symbolic.svg">icons/dialer-person-add-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-person-symbolic.svg">icons/dialer-person-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-phone-paused-symbolic.svg">icons/dialer-phone-paused-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-phone-symbolic.svg">icons/dialer-phone-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-search-symbolic.svg">icons/dialer-search-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-star-outline-symbolic.svg">icons/dialer-star-outline-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-star-symbolic.svg">icons/dialer-star-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-swap-calls-symbolic.svg">icons/dialer-swap-calls-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-unblock-symbolic.svg">icons/dialer-unblock-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-videocam-symbolic.svg">icons/dialer-videocam-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-voicemail-symbolic.svg">icons/dialer-voicemail-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-volume-up-symbolic.svg">icons/dialer-volume-up-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-wifi-symbolic.svg">icons/dialer-wifi-symbolic.svg</file>
+  </gresource>
+</gresources>

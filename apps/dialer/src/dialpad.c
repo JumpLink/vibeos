@@ -1,0 +1,609 @@
+/* The dialpad: see dialpad.h. The numbers are dialer/dialpadview's (DialpadView.java, DialpadTextView.java,
+ * res/layout/dialpad*.xml, res/values/dimens.xml, theme/res/values/dimens.xml) and, for the in-call keypad,
+ * incallui's (DialpadFragment.java, theme/res/values/styles.xml InCallDialpad); spec §3 has the measurements. */
+#include "dialpad.h"
+
+#include <glib/gi18n.h>
+#include <math.h>
+#include <neo.h>
+
+#define DIGITS_HEIGHT   60      /* dialpad_digits_height */
+#define DIGITS_SIZE     34      /* dialpad_digits_text_size */
+#define DIGITS_MIN_SIZE 24      /* dialpad_digits_text_min_size */
+#define SPACE_ABOVE     (1 + 14)        /* the 1 dp view and dialpad_space_above_keys */
+#define KEY_HEIGHT      64      /* dialpad_key_height: the rows' minimum; they share what is left over */
+#define SPACE_BELOW     8       /* dialpad_space_below_keys */
+#define END_SPACE       80      /* dialpad_bottom_space_height: under the keys, for the dial button */
+#define INCALL_END_SPACE 116    /* incall_end_call_spacing: for the end-call button */
+#define CORNER          28      /* rounded_dialpad_bg's top corners */
+#define BUTTON_MARGIN   8       /* dialpad_overflow_margin */
+#define MENU_PADDING    10      /* dialpad_digits_menu_left/right_padding: ✕ and ⋮ */
+#define DELETE_PADDING  16      /* dialpad_digits_padding: ⌫ */
+#define NUMBER_SIZE     36      /* dialpad_key_numbers_default_size: in dp, not sp */
+#define NUMBER_GAP      3       /* dialpad_key_number_default_margin_bottom */
+#define LETTERS_SIZE    12
+#define STAR_SIZE       36
+#define POUND_SIZE      23
+#define SYMBOL_GAP      13      /* dialpad_symbol_margin_bottom */
+#define VOICEMAIL_SIZE  18      /* dialpad_voicemail_icon_size */
+#define LONG_PRESS_MS   400
+
+/* raw colours: the dialpad opts out of force dark (spec §3) */
+#define BACKGROUND      0x2c3132        /* rounded_dialpad_bg_color, neutral1_800 */
+#define PRIMARY         0xb8ebf3        /* dialpad_text_color_primary, accent1_100 */
+#define SECONDARY       0x5f6368        /* dialpad_text_color_secondary, google_grey_700 */
+
+static GdkRGBA
+rgb (guint32 value, double alpha)
+{
+  return (GdkRGBA) { ((value >> 16) & 0xff) / 255.0, ((value >> 8) & 0xff) / 255.0, (value & 0xff) / 255.0, alpha };
+}
+
+static PangoLayout *
+gsf_layout (GtkWidget *widget, const char *text, double size)
+{
+  PangoLayout *layout = gtk_widget_create_pango_layout (widget, text);
+  g_autoptr(PangoFontDescription) font = pango_font_description_from_string ("Google Sans Flex, Neo Roboto");
+
+  /* config_bodyFontFamily at 400, which Bold text makes 700 */
+  pango_font_description_set_absolute_size (font, size * PANGO_SCALE);
+  pango_font_description_set_weight (font, 700);
+  pango_layout_set_font_description (layout, font);
+  return layout;
+}
+
+/* ---- a key ---------------------------------------------------------------------------------------------------- */
+
+#define DIALPAD_TYPE_KEY (dialpad_key_get_type ())
+G_DECLARE_FINAL_TYPE (DialpadKey, dialpad_key, DIALPAD, KEY, GtkWidget)
+
+struct _DialpadKey
+{
+  GtkWidget parent;
+  DialerDialpad *pad;           /* the dialpad it is on, which says what a key did */
+  char c;
+  PangoLayout *number, *letters;
+  NeoRipple ripple;
+  gboolean down;
+  guint long_press;
+};
+
+G_DEFINE_FINAL_TYPE (DialpadKey, dialpad_key, GTK_TYPE_WIDGET)
+
+enum { KEY_DOWN, KEY_UP, KEY_LONG_PRESSED, DIGITS_CHANGED, CLOSE, OVERFLOW, N_SIGNALS };
+static guint signals[N_SIGNALS];
+
+static void pad_key_down (DialerDialpad *self, char c);
+static void pad_key_up (DialerDialpad *self, char c);
+static void pad_key_long_pressed (DialerDialpad *self, char c);
+
+/* DialpadCharMappings, Latin */
+static const char *
+key_letters (char c)
+{
+  static const char *letters[] = { "+", "", "ABC", "DEF", "GHI", "JKL", "MNO", "PQRS", "TUV", "WXYZ" };
+
+  return c >= '0' && c <= '9' ? letters[c - '0'] : NULL;
+}
+
+/* DialpadTextView: a view exactly as big as its glyphs' ink, so the key centres what is drawn, not the line box */
+typedef struct
+{
+  double x, y, width, height;
+} Ink;
+
+static Ink
+ink_of (PangoLayout *layout)
+{
+  PangoRectangle ink;
+
+  pango_layout_get_extents (layout, &ink, NULL);
+  return (Ink) { ink.x / (double) PANGO_SCALE, ink.y / (double) PANGO_SCALE, ink.width / (double) PANGO_SCALE,
+                 ink.height / (double) PANGO_SCALE };
+}
+
+static void
+draw_ink (GtkSnapshot *snapshot, PangoLayout *layout, const Ink *ink, double cx, double top, const GdkRGBA *color)
+{
+  gtk_snapshot_save (snapshot);
+  gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (cx - ink->width / 2 - ink->x, top - ink->y));
+  gtk_snapshot_append_layout (snapshot, layout, color);
+  gtk_snapshot_restore (snapshot);
+}
+
+static void
+dialpad_key_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
+{
+  DialpadKey *self = DIALPAD_KEY (widget);
+  double width = gtk_widget_get_width (widget), height = gtk_widget_get_height (widget), cx = width / 2;
+  graphene_rect_t box = GRAPHENE_RECT_INIT (0, 0, width, height);
+  GdkRGBA primary = rgb (PRIMARY, 1), secondary = rgb (SECONDARY, 1);
+  Ink number = ink_of (self->number), letters = { 0 };
+  double group, top;
+
+  /* btn_dialpad_key: ?colorControlHighlight, black at 12 % (the dialpad opts out of dark), halved */
+  if (neo_ripple_is_active (&self->ripple))
+    {
+      gtk_snapshot_push_clip (snapshot, &box);
+      neo_ripple_snapshot (&self->ripple, snapshot, &box, &(GdkRGBA) { 0, 0, 0, 0.06 });
+      gtk_snapshot_pop (snapshot);
+    }
+
+  if (self->c == '*' || self->c == '#')
+    {
+      /* DialpadKeyStarStyle / PoundStyle: secondary colour at 0.8, 13 dp under them */
+      GdkRGBA symbol = rgb (SECONDARY, 0.8);
+
+      top = round ((height - (number.height + SYMBOL_GAP)) / 2);
+      draw_ink (snapshot, self->number, &number, cx, top, &symbol);
+      return;
+    }
+  if (self->c == '1')
+    group = number.height + NUMBER_GAP + 1 + VOICEMAIL_SIZE;
+  else
+    {
+      letters = ink_of (self->letters);
+      group = number.height + NUMBER_GAP + letters.height;
+    }
+  top = round ((height - group) / 2);
+  draw_ink (snapshot, self->number, &number, cx, top, &primary);
+  top += number.height + NUMBER_GAP;
+  if (self->c == '1')
+    /* the voicemail glyph, under a 1 dp spacer that lines it up with the letters of the keys beside it */
+    neo_snapshot_icon (snapshot, widget, "dialer-voicemail-symbolic", cx - VOICEMAIL_SIZE / 2.0, top + 1,
+                       VOICEMAIL_SIZE, &secondary);
+  else
+    draw_ink (snapshot, self->letters, &letters, cx, top, &secondary);
+}
+
+static void
+dialpad_key_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, int *minimum, int *natural,
+                     int *minimum_baseline, int *natural_baseline)
+{
+  *minimum = *natural = orientation == GTK_ORIENTATION_VERTICAL ? KEY_HEIGHT : 0;
+}
+
+static void
+key_up (DialpadKey *self)
+{
+  g_clear_handle_id (&self->long_press, g_source_remove);
+  if (!self->down)
+    return;
+  self->down = FALSE;
+  neo_ripple_release (&self->ripple);
+  pad_key_up (self->pad, self->c);
+}
+
+static gboolean
+on_long_press (gpointer data)
+{
+  DialpadKey *self = data;
+
+  self->long_press = 0;
+  pad_key_long_pressed (self->pad, self->c);
+  return G_SOURCE_REMOVE;
+}
+
+/* onPressed: the tone starts as the key goes down and lasts until it comes up */
+static void
+on_key_pressed (GtkGestureClick *gesture, int n_press, double x, double y, DialpadKey *self)
+{
+  if (self->down)
+    return;
+  self->down = TRUE;
+  neo_ripple_press (&self->ripple, x, y);
+  g_clear_handle_id (&self->long_press, g_source_remove);
+  self->long_press = g_timeout_add (LONG_PRESS_MS, on_long_press, self);
+  pad_key_down (self->pad, self->c);
+}
+
+static void
+on_key_released (GtkGestureClick *gesture, int n_press, double x, double y, DialpadKey *self)
+{
+  key_up (self);
+}
+
+static void
+on_key_stopped (GtkGestureClick *gesture, DialpadKey *self)
+{
+  key_up (self);
+}
+
+static void
+dialpad_key_dispose (GObject *object)
+{
+  DialpadKey *self = DIALPAD_KEY (object);
+
+  g_clear_handle_id (&self->long_press, g_source_remove);
+  neo_ripple_clear (&self->ripple);
+  g_clear_object (&self->number);
+  g_clear_object (&self->letters);
+  G_OBJECT_CLASS (dialpad_key_parent_class)->dispose (object);
+}
+
+static void
+dialpad_key_class_init (DialpadKeyClass *klass)
+{
+  GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
+
+  G_OBJECT_CLASS (klass)->dispose = dialpad_key_dispose;
+  widget_class->snapshot = dialpad_key_snapshot;
+  widget_class->measure = dialpad_key_measure;
+  gtk_widget_class_set_css_name (widget_class, "dialpad-key");
+  gtk_widget_class_set_accessible_role (widget_class, GTK_ACCESSIBLE_ROLE_BUTTON);
+}
+
+static void
+dialpad_key_init (DialpadKey *self)
+{
+  neo_ripple_init (&self->ripple, GTK_WIDGET (self));
+}
+
+static GtkWidget *
+dialpad_key_new (DialerDialpad *pad, char c)
+{
+  DialpadKey *self = g_object_new (DIALPAD_TYPE_KEY, NULL);
+  GtkGesture *click = gtk_gesture_click_new ();
+  char text[2] = { c, '\0' };
+  const char *letters = key_letters (c);
+  g_autofree char *description = g_strdup_printf ("%c,%s", c, letters ? letters : "");
+
+  self->pad = pad;
+  self->c = c;
+  self->number = gsf_layout (GTK_WIDGET (self), text,
+                             c == '*' ? STAR_SIZE : c == '#' ? POUND_SIZE : NUMBER_SIZE);
+  if (letters && *letters)
+    self->letters = gsf_layout (GTK_WIDGET (self), letters, LETTERS_SIZE);
+  /* the content descriptions are "1," "2,ABC" … "*" "#" */
+  gtk_accessible_update_property (GTK_ACCESSIBLE (self), GTK_ACCESSIBLE_PROPERTY_LABEL,
+                                  c == '*' || c == '#' ? text : description, -1);
+  gtk_gesture_single_set_button (GTK_GESTURE_SINGLE (click), 0);
+  g_signal_connect (click, "pressed", G_CALLBACK (on_key_pressed), self);
+  g_signal_connect (click, "released", G_CALLBACK (on_key_released), self);
+  g_signal_connect (click, "stopped", G_CALLBACK (on_key_stopped), self);
+  g_signal_connect_swapped (click, "cancel", G_CALLBACK (key_up), self);
+  gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (click));
+  return GTK_WIDGET (self);
+}
+
+/* ---- the dialpad ---------------------------------------------------------------------------------------------- */
+
+struct _DialerDialpad
+{
+  GtkWidget parent;
+  DialpadMode mode;
+  GtkWidget *keys[12];          /* 1 2 3 / 4 5 6 / 7 8 9 / * 0 # */
+  GtkWidget *close, *overflow, *backspace;
+  GString *digits;
+  PangoLayout *digits_layout;
+  NeoAnim *overflow_fade;
+  double overflow_alpha;
+};
+
+G_DEFINE_FINAL_TYPE (DialerDialpad, dialer_dialpad, GTK_TYPE_WIDGET)
+
+static const char key_order[] = "123456789*0#";
+
+static int
+end_space (DialerDialpad *self)
+{
+  return self->mode == DIALPAD_INCALL ? INCALL_END_SPACE : END_SPACE;
+}
+
+static void
+dialer_dialpad_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, int *minimum, int *natural,
+                        int *minimum_baseline, int *natural_baseline)
+{
+  DialerDialpad *self = DIALER_DIALPAD (widget);
+
+  if (orientation == GTK_ORIENTATION_HORIZONTAL)
+    *minimum = *natural = 0;
+  else
+    *minimum = *natural = DIGITS_HEIGHT + SPACE_ABOVE + 4 * KEY_HEIGHT + end_space (self) + SPACE_BELOW;
+}
+
+/* the ✕, ⋮ and ⌫ buttons: an icon with padding beside it, the row's height less the margins */
+static void
+allocate_button (GtkWidget *button, double x, double width)
+{
+  if (!gtk_widget_get_visible (button))
+    return;
+  gtk_widget_size_allocate (button, &(GtkAllocation) { (int) x, BUTTON_MARGIN, (int) width,
+                                                       DIGITS_HEIGHT - 2 * BUTTON_MARGIN }, -1);
+}
+
+/* the field between the buttons */
+static void
+digits_field (DialerDialpad *self, double width, double *x0, double *x1)
+{
+  *x0 = 0;
+  *x1 = width;
+  if (self->mode == DIALPAD_INCALL)
+    *x0 = BUTTON_MARGIN + 2 * MENU_PADDING + 24 + BUTTON_MARGIN;
+  else if (gtk_widget_get_visible (self->overflow))
+    *x0 = BUTTON_MARGIN + 2 * MENU_PADDING + 24 + BUTTON_MARGIN;
+  /* ⌫ takes its room even where it is hidden (INVISIBLE on the in-call keypad) */
+  *x1 = width - (BUTTON_MARGIN + 2 * DELETE_PADDING + 24 + BUTTON_MARGIN);
+}
+
+static void
+dialer_dialpad_size_allocate (GtkWidget *widget, int width, int height, int baseline)
+{
+  DialerDialpad *self = DIALER_DIALPAD (widget);
+  double fixed = DIGITS_HEIGHT + SPACE_ABOVE + end_space (self) + SPACE_BELOW;
+  double row = MAX (KEY_HEIGHT, (height - fixed) / 4);
+  double key = width * 15.0 / 47, side = width / 47.0;
+
+  allocate_button (self->close, BUTTON_MARGIN, 2 * MENU_PADDING + 24);
+  allocate_button (self->overflow, BUTTON_MARGIN, 2 * MENU_PADDING + 24);
+  allocate_button (self->backspace, width - BUTTON_MARGIN - (2 * DELETE_PADDING + 24), 2 * DELETE_PADDING + 24);
+  /* each row: a space of weight 1, three keys of 15, a space of 1 */
+  for (int i = 0; i < 12; i++)
+    {
+      int r = i / 3, c = i % 3;
+      double x = side + c * key, y = DIGITS_HEIGHT + SPACE_ABOVE + r * row;
+
+      gtk_widget_size_allocate (self->keys[i], &(GtkAllocation) { (int) round (x), (int) round (y),
+                                                                  (int) (round (x + key) - round (x)),
+                                                                  (int) (round (y + row) - round (y)) }, -1);
+    }
+}
+
+static void
+dialer_dialpad_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
+{
+  DialerDialpad *self = DIALER_DIALPAD (widget);
+  double width = gtk_widget_get_width (widget), height = gtk_widget_get_height (widget), x0, x1, size = DIGITS_SIZE;
+  graphene_rect_t box = GRAPHENE_RECT_INIT (0, 0, width, height);
+  GskRoundedRect shape;
+  GdkRGBA background = rgb (BACKGROUND, 1), primary = rgb (PRIMARY, 1);
+  int text_width, text_height;
+
+  /* rounded_dialpad_bg, at elevation 10 dp */
+  gsk_rounded_rect_init (&shape, &box, &GRAPHENE_SIZE_INIT (CORNER, CORNER), &GRAPHENE_SIZE_INIT (CORNER, CORNER),
+                         &GRAPHENE_SIZE_INIT (0, 0), &GRAPHENE_SIZE_INIT (0, 0));
+  gtk_snapshot_append_outset_shadow (snapshot, &shape, &(GdkRGBA) { 0, 0, 0, 0.25 }, 0, -2, 0, 10);
+  gtk_snapshot_push_rounded_clip (snapshot, &shape);
+  gtk_snapshot_append_color (snapshot, &background, &box);
+  gtk_snapshot_pop (snapshot);
+
+  /* the digits: centred in their field; too wide, the size shrinks with the width down to 24 sp
+   * (ViewUtil.resizeText), and past that the field shows the end of them */
+  digits_field (self, width, &x0, &x1);
+  pango_layout_set_text (self->digits_layout, self->digits->str, -1);
+  {
+    g_autoptr(PangoFontDescription) font = pango_font_description_copy (pango_layout_get_font_description (self->digits_layout));
+
+    pango_font_description_set_absolute_size (font, DIGITS_SIZE * PANGO_SCALE);
+    pango_layout_set_font_description (self->digits_layout, font);
+    pango_layout_get_pixel_size (self->digits_layout, &text_width, &text_height);
+    if (text_width > x1 - x0)
+      {
+        size = MAX (DIGITS_MIN_SIZE, DIGITS_SIZE * (x1 - x0) / text_width);
+        pango_font_description_set_absolute_size (font, size * PANGO_SCALE);
+        pango_layout_set_font_description (self->digits_layout, font);
+        pango_layout_get_pixel_size (self->digits_layout, &text_width, &text_height);
+      }
+  }
+  gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (x0, 0, x1 - x0, DIGITS_HEIGHT));
+  gtk_snapshot_save (snapshot);
+  gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (text_width > x1 - x0 ? x1 - text_width
+                                                                               : round ((x0 + x1 - text_width) / 2),
+                                                          round ((DIGITS_HEIGHT - text_height) / 2.0)));
+  gtk_snapshot_append_layout (snapshot, self->digits_layout, &primary);
+  gtk_snapshot_restore (snapshot);
+  gtk_snapshot_pop (snapshot);
+
+  for (GtkWidget *child = gtk_widget_get_first_child (widget); child; child = gtk_widget_get_next_sibling (child))
+    if (child == self->overflow)
+      {
+        gtk_snapshot_push_opacity (snapshot, self->overflow_alpha);
+        gtk_widget_snapshot_child (widget, child, snapshot);
+        gtk_snapshot_pop (snapshot);
+      }
+    else
+      gtk_widget_snapshot_child (widget, child, snapshot);
+}
+
+/* ---- digits --------------------------------------------------------------------------------------------------- */
+
+static void
+on_overflow_fade (NeoAnim *anim, double value, gpointer data)
+{
+  DialerDialpad *self = data;
+
+  self->overflow_alpha = value;
+  /* AnimUtils.fadeOut: gone at the end */
+  if (!neo_anim_is_running (anim) && value == 0)
+    gtk_widget_set_visible (self->overflow, FALSE);
+  gtk_widget_queue_draw (GTK_WIDGET (self));
+}
+
+/* updateMenuOverflowButton: ⋮ fades in with the first digit and out with the last, over 300 ms */
+static void
+update_overflow (DialerDialpad *self)
+{
+  gboolean show = self->mode == DIALPAD_DIALER && self->digits->len > 0;
+  double to = show ? 1 : 0;
+
+  if (neo_anim_is_running (self->overflow_fade) ? neo_anim_get_to (self->overflow_fade) == to
+                                                : self->overflow_alpha == to)
+    return;
+  if (show)
+    gtk_widget_set_visible (self->overflow, TRUE);
+  neo_anim_start (self->overflow_fade, self->overflow_alpha, to, 300, 0, SPONGY_ACCELERATE_DECELERATE);
+}
+
+static void
+digits_changed (DialerDialpad *self)
+{
+  update_overflow (self);
+  gtk_widget_queue_draw (GTK_WIDGET (self));
+  g_signal_emit (self, signals[DIGITS_CHANGED], 0);
+}
+
+const char *
+dialer_dialpad_get_digits (DialerDialpad *self)
+{
+  return self->digits->str;
+}
+
+void
+dialer_dialpad_set_digits (DialerDialpad *self, const char *digits)
+{
+  g_string_assign (self->digits, digits ? digits : "");
+  digits_changed (self);
+}
+
+void
+dialer_dialpad_append (DialerDialpad *self, char c)
+{
+  g_string_append_c (self->digits, c);
+  digits_changed (self);
+}
+
+static void
+pad_key_down (DialerDialpad *self, char c)
+{
+  /* the main dialpad types the key; the in-call one shows the tone once it is sent (dialer_dialpad_append) */
+  if (self->mode == DIALPAD_DIALER)
+    dialer_dialpad_append (self, c);
+  g_signal_emit (self, signals[KEY_DOWN], 0, (int) c);
+}
+
+static void
+pad_key_up (DialerDialpad *self, char c)
+{
+  g_signal_emit (self, signals[KEY_UP], 0, (int) c);
+}
+
+static void
+pad_key_long_pressed (DialerDialpad *self, char c)
+{
+  /* a long press on 0 makes the 0 just typed a + */
+  if (self->mode == DIALPAD_DIALER && c == '0' && self->digits->len > 0
+      && self->digits->str[self->digits->len - 1] == '0')
+    {
+      self->digits->str[self->digits->len - 1] = '+';
+      digits_changed (self);
+    }
+  g_signal_emit (self, signals[KEY_LONG_PRESSED], 0, (int) c);
+}
+
+static void
+on_backspace (NeoPressable *button, DialerDialpad *self)
+{
+  if (self->digits->len == 0)
+    return;
+  g_string_truncate (self->digits, self->digits->len - 1);
+  digits_changed (self);
+}
+
+static void
+on_backspace_long (NeoPressable *button, DialerDialpad *self)
+{
+  dialer_dialpad_set_digits (self, "");
+}
+
+static void
+on_close (NeoPressable *button, DialerDialpad *self)
+{
+  g_signal_emit (self, signals[CLOSE], 0);
+}
+
+static void
+on_overflow (NeoPressable *button, DialerDialpad *self)
+{
+  g_signal_emit (self, signals[OVERFLOW], 0, button);
+}
+
+/* ✕, ⋮, ⌫: a 24 dp icon in #b8ebf3 on the keys' ripple */
+static GtkWidget *
+row_button (DialerDialpad *self, const char *icon_name, const char *description)
+{
+  GtkWidget *image = gtk_image_new_from_icon_name (icon_name);
+  GtkWidget *button = neo_pressable_new (image);
+
+  gtk_image_set_pixel_size (GTK_IMAGE (image), 24);
+  gtk_widget_add_css_class (image, "dialpad-icon");
+  neo_pressable_set_ripple (NEO_PRESSABLE (button), NEO_RIPPLE_BOUNDED, 0);
+  neo_pressable_set_ripple_color (NEO_PRESSABLE (button), &(GdkRGBA) { 0, 0, 0, 0.06 });
+  gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, description, -1);
+  gtk_widget_set_parent (button, GTK_WIDGET (self));
+  return button;
+}
+
+/* ---- GObject -------------------------------------------------------------------------------------------------- */
+
+static void
+dialer_dialpad_dispose (GObject *object)
+{
+  DialerDialpad *self = DIALER_DIALPAD (object);
+  GtkWidget *child;
+
+  while ((child = gtk_widget_get_first_child (GTK_WIDGET (self))))
+    gtk_widget_unparent (child);
+  g_clear_pointer (&self->overflow_fade, neo_anim_free);
+  g_clear_object (&self->digits_layout);
+  if (self->digits)
+    g_string_free (self->digits, TRUE);
+  self->digits = NULL;
+  G_OBJECT_CLASS (dialer_dialpad_parent_class)->dispose (object);
+}
+
+static void
+dialer_dialpad_class_init (DialerDialpadClass *klass)
+{
+  GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
+
+  G_OBJECT_CLASS (klass)->dispose = dialer_dialpad_dispose;
+  widget_class->measure = dialer_dialpad_measure;
+  widget_class->size_allocate = dialer_dialpad_size_allocate;
+  widget_class->snapshot = dialer_dialpad_snapshot;
+  gtk_widget_class_set_css_name (widget_class, "dialpad");
+  signals[KEY_DOWN] = g_signal_new ("key-down", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL, NULL,
+                                    G_TYPE_NONE, 1, G_TYPE_INT);
+  signals[KEY_UP] = g_signal_new ("key-up", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL, NULL,
+                                  G_TYPE_NONE, 1, G_TYPE_INT);
+  signals[KEY_LONG_PRESSED] = g_signal_new ("key-long-pressed", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0,
+                                            NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_INT);
+  signals[DIGITS_CHANGED] = g_signal_new ("digits-changed", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL,
+                                          NULL, NULL, G_TYPE_NONE, 0);
+  signals[CLOSE] = g_signal_new ("close", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL, NULL,
+                                 G_TYPE_NONE, 0);
+  signals[OVERFLOW] = g_signal_new ("overflow", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL, NULL,
+                                    G_TYPE_NONE, 1, GTK_TYPE_WIDGET);
+}
+
+static void
+dialer_dialpad_init (DialerDialpad *self)
+{
+  self->digits = g_string_new (NULL);
+  self->digits_layout = gsf_layout (GTK_WIDGET (self), "", DIGITS_SIZE);
+  self->overflow_fade = neo_anim_new (GTK_WIDGET (self), on_overflow_fade, self);
+}
+
+GtkWidget *
+dialer_dialpad_new (DialpadMode mode)
+{
+  DialerDialpad *self = g_object_new (DIALER_TYPE_DIALPAD, NULL);
+
+  self->mode = mode;
+  for (int i = 0; i < 12; i++)
+    {
+      self->keys[i] = dialpad_key_new (self, key_order[i]);
+      gtk_widget_set_parent (self->keys[i], GTK_WIDGET (self));
+    }
+  self->close = row_button (self, "dialer-close-symbolic", _("Close keypad"));
+  self->overflow = row_button (self, "dialer-more-symbolic", _("More options"));
+  self->backspace = row_button (self, "dialer-backspace-symbolic", _("backspace"));
+  g_signal_connect (self->close, "clicked", G_CALLBACK (on_close), self);
+  g_signal_connect (self->overflow, "clicked", G_CALLBACK (on_overflow), self);
+  g_signal_connect (self->backspace, "clicked", G_CALLBACK (on_backspace), self);
+  g_signal_connect (self->backspace, "long-pressed", G_CALLBACK (on_backspace_long), self);
+  /* the in-call keypad: ✕ shown, ⋮ gone, ⌫ invisible but keeping its room (setCanDigitsBeEdited (false)) */
+  gtk_widget_set_visible (self->close, mode == DIALPAD_INCALL);
+  gtk_widget_set_visible (self->overflow, FALSE);
+  gtk_widget_set_visible (self->backspace, mode == DIALPAD_DIALER);
+  return GTK_WIDGET (self);
+}

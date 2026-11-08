@@ -1,0 +1,252 @@
+/* The Phone's styles, over libneo's (neo.css). The Dialer is a light theme made dark by force dark (spec §0.2):
+ * these are the colours it renders, not a palette's. The InCallUI screens draw themselves (answer-view.c,
+ * incall-view.c); only the icons inside their buttons are styled here. */
+
+window.neo.dialer,
+.dialer-page {
+  background-color: #181c1d;            /* dialer_background_color, neutral1_900 */
+}
+
+/* the dialpad opts out of force dark: its icons are raw dialer_theme_color_light */
+.dialpad-icon {
+  color: #b8ebf3;
+}
+
+/* the dial button's handset (dialer_call_icon_color) and the in-call end button's (incall_end_call_icon_color) */
+.dial-icon,
+.end-call-icon {
+  color: #000000;
+}
+
+/* ?colorIcon, inverted: the action and toolbar icons */
+.dialer-icon {
+  color: #eff0f2;
+}
+
+/* searchbar_icon_color, made light */
+.search-bar-icon {
+  color: #fefefe;
+}
+
+/* Dialer.TextAppearance.Primary: Google Sans Flex 16 sp, 400 drawn as 700 ("Bold text") */
+.dialer-primary-text {
+  font-family: "Google Sans Flex", "Neo Roboto", sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #f6f7fb;
+}
+
+/* dialer_divider_line_color, rendered */
+.recents-divider {
+  min-height: 1px;
+  background-color: #383838;
+}
+
+/* the expanded search field opts out of force dark: textColorSecondary, textColorHint and colorPrimary raw;
+ * no fontFamily, so the platform's Roboto */
+.dialer-search-field {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #5f6368;
+  caret-color: #e8f3f4;
+  background: none;
+}
+
+.dialer-search-field > placeholder {
+  color: #80868b;
+  opacity: 1;
+}
+
+/* EmptyContentView: the picture in colorIconSecondary, the line in textColorSecondary (16 sp, the TextView's
+ * Roboto), the button in white TextAppearance.Material.Button (Roboto medium, 500 drawn as 800) */
+.dialer-empty-image {
+  color: #bdc1c6;
+}
+
+.dialer-empty-text {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #a3a7ac;
+  padding: 8px 16px;
+}
+
+.dialer-empty-button {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+/* the pop-up menus (popup-menu.c): the measured card, TextAppearance.Material.Menu (Roboto 16 sp, 400 drawn as 700) */
+.popup-menu {
+  background-color: #181c1d;
+  border-radius: 2px;
+}
+
+.popup-menu-text {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #f6f7fb;
+}
+
+.popup-menu-text.disabled {
+  opacity: 0.38;
+}
+
+/* Dialer.TextAppearance.Secondary: Google Sans Flex 14 sp, 700, textColorSecondary */
+.dialer-secondary-text {
+  font-family: "Google Sans Flex", "Neo Roboto", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #a3a7ac;
+}
+
+/* Favorites (favorite_item_layout, speed_dial_header_layout) */
+.favorite-name {
+  font-family: "Google Sans Flex", "Neo Roboto", sans-serif;
+  font-size: 14px;
+  font-weight: 800;               /* config_headlineFontFamilyMedium */
+  color: #f6f7fb;
+}
+
+.favorite-type {
+  font-family: "Google Sans Flex", "Neo Roboto", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #a3a7ac;
+}
+
+.favorites-header {
+  font-family: "Google Sans Flex", "Neo Roboto", sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #a3a7ac;
+}
+
+/* Widget.AppCompat.Button.Borderless in colorAccent: TextAppearance.AppCompat.Button, no caps */
+.favorites-add {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  color: #81b5bc;
+}
+
+/* Choose call type (disambig_dialog_layout): the strips in colorBackgroundFloating, the title in Header2 */
+.disambig {
+  background-color: #1b1b1b;
+}
+
+.disambig-title {
+  font-family: "Google Sans Flex", "Neo Roboto", sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  color: #f6f7fb;
+  padding: 0 24px;
+  background-color: #2c3132;
+}
+
+.disambig-remember {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #f6f7fb;
+  margin: 0 16px;
+}
+
+/* the contact picker over the window */
+.dialer-picker {
+  background-color: #181c1d;
+}
+
+.dialer-picker-title {
+  font-family: "Google Sans Flex", "Neo Roboto", sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #f6f7fb;
+}
+
+/* a floating context menu: popup_background_material in colorBackgroundFloating, the header in the platform's
+ * TextAppearance.Material.Widget.PopupMenu.Header */
+.popup-menu.context {
+  background-color: #2c3132;
+}
+
+.popup-menu-header {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #a3a7ac;
+}
+
+/* Call history (call-history.c): the action bar and the tab strip both colorPrimary, with no seam between them */
+.dialer-history {
+  background-color: #181c1d;
+}
+
+.dialer-history-bar,
+history-tabs {
+  background-color: #1f2728;
+}
+
+/* TextAppearance.AppCompat.Widget.ActionBar.Title: Roboto medium 20 sp (500 drawn as 800), measured #f6f7fb */
+.dialer-history-title {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  color: #f6f7fb;
+}
+
+/* the Up arrow and the overflow, measured */
+.dialer-history-icon {
+  color: #fdfdfd;
+}
+
+/* DialtactsActionBarTabTextStyle less its fontFamily (ViewPagerTabs copies only the size, style and colour):
+ * Roboto 14 sp, 400 drawn as 700; tab_text in dialer_theme_color when selected */
+.history-tab {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #f6f7fb;
+}
+
+.history-tab.selected {
+  color: #81b5bc;
+}
+
+/* Settings (dialer-settings.c): the bar is Call history's; the rows are preference_material's, Roboto at 16 and
+ * 14 sp (400 drawn as 700), a category's title in colorAccent, a choice's text as measured in the Sort by dialog */
+.dialer-settings {
+  background-color: #181c1d;
+}
+
+.settings-title {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #f6f7fb;
+}
+
+.settings-summary {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #a3a7ac;
+}
+
+.settings-category {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  color: #81b5bc;
+}
+
+.settings-choice {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #e1e1e1;
+}
