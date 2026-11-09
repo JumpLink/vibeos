@@ -1,0 +1,554 @@
+/* The Calendar's look: Etar on the reference phone (spec/calendar.md; sizes in dp, measured from the stills).
+ *
+ * Etar's Material 3 theme is the library baseline with only colorPrimary taken from the wallpaper (spec §1), so
+ * the M3 roles libneo's stylesheet uses are redefined here with Etar's values; this provider is above libneo's, and
+ * named colours resolve through the cascade. cal-colors.h holds the same values for what is drawn in C.
+ *
+ * Weights are the effective ones with "Bold text" on (+300; neo.css). */
+
+@define-color neo_primary #4d7f86;
+@define-color neo_on_primary #381e72;
+@define-color neo_primary_container #4f378b;
+@define-color neo_on_primary_container #eaddff;
+@define-color neo_secondary_container #00363c;
+@define-color neo_on_secondary_container #e8def8;
+@define-color neo_surface #141218;
+@define-color neo_surface_container_low #1d1b20;
+@define-color neo_surface_container #211f26;
+@define-color neo_surface_container_high #2b2930;
+@define-color neo_surface_container_highest #36343b;
+@define-color neo_on_surface #e6e0e9;
+@define-color neo_on_surface_variant #cac4d0;
+@define-color neo_outline #938f99;
+
+@define-color cal_separator #555555;     /* edit_event_separator */
+@define-color cal_divider #312f34;       /* event info's dividers, the editor's CANCEL | DONE divider (measured) */
+@define-color cal_hint #928d96;          /* the editor's hints (measured) */
+
+window.neo.cal-window {
+  background-color: @neo_surface;
+  color: @neo_on_surface;
+}
+
+/* --- the toolbars: 64 dp on the surface (all_in_one_material.xml, the activities' MaterialToolbar) */
+
+.cal-toolbar {
+  min-height: 64px;
+  background-color: @neo_surface;
+}
+
+.cal-toolbar-nav,
+.cal-toolbar-back {                      /* the navigation button: 56 dp, its icon centred 28 dp in */
+  min-width: 56px;
+  min-height: 56px;
+  color: @neo_on_surface_variant;
+}
+
+/* the title 4 dp after the 56 dp button (measured: its first glyph at 180 px); the subtitle's glyphs start where
+ * the title's do (measured), 1 dp further than Pango puts them */
+.cal-toolbar-titles,
+.cal-toolbar > .cal-toolbar-title {
+  margin-left: 4px;
+}
+
+.cal-toolbar-subtitle {
+  margin-left: 1px;
+}
+
+.cal-toolbar-title {
+  font-size: 22px;
+  font-weight: 700;                      /* measured Roboto 700 */
+  color: @neo_on_surface;
+}
+
+.cal-toolbar-subtitle {                  /* measured: 16 sp Medium, onSurface (the M3 toolbar's subtitle) */
+  font-size: 16px;
+  font-weight: 800;
+  color: @neo_on_surface;
+}
+
+.cal-toolbar-more {                      /* the overflow button: 40 dp wide (measured 960…1080) */
+  min-width: 40px;
+  color: @neo_on_surface_variant;
+}
+
+.cal-action {                            /* event info's actions: 48 dp */
+  min-width: 48px;
+  min-height: 48px;
+  color: @neo_on_surface_variant;
+}
+
+/* --- the FAB: M3, 56 dp, a 16 dp corner, colorAccent, the white plus, 16 dp from the edges */
+
+.cal-fab {
+  min-width: 56px;
+  min-height: 56px;
+  border-radius: 16px;
+  margin: 0 16px 16px 0;
+  color: white;
+}
+
+/* --- the drawer (calendar_view.xml as NavigationView draws it; still:cal-drawer) */
+
+.cal-drawer {
+  background-color: @neo_surface_container_low;
+  border-radius: 0 16px 16px 0;
+  padding-top: 8px;
+}
+
+.cal-drawer-item {                       /* the pill: 12 dp in from the sheet's edges, 48 dp, a full radius */
+  margin: 0 12px;
+  min-height: 48px;
+  border-radius: 24px;
+}
+
+.cal-drawer-item.selected {
+  background-color: @neo_secondary_container;
+}
+
+.cal-drawer-row {
+  padding-left: 18px;                    /* the icon at 30 dp */
+}
+
+.cal-drawer-icon {
+  color: @neo_on_surface_variant;
+}
+
+.cal-drawer-label {                      /* 14 sp Medium, at 64 dp */
+  margin-left: 10px;
+  font-size: 14px;
+  font-weight: 800;
+  color: @neo_on_surface_variant;
+}
+
+.cal-drawer-item.selected .cal-drawer-label,
+.cal-drawer-item.selected .cal-drawer-icon {
+  color: @neo_on_secondary_container;
+}
+
+.cal-drawer-divider {                    /* 1 px between 8 dp gaps (716…767 measured) */
+  min-height: 1px;
+  margin: 8px 0;
+  background-color: @cal_divider;
+}
+
+/* --- menus and spinner dropdowns (M3 ListPopupWindow; still:cal-menu) */
+
+.cal-menu {
+  background-color: @neo_surface_container;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.cal-menu-item {
+  min-height: 48px;
+  padding: 0 16px;
+  font-size: 16px;
+  color: @neo_on_surface;
+}
+
+.cal-menu-item label {
+  font-size: 16px;
+}
+
+.cal-menu-item.selected {
+  background-color: alpha(@neo_on_surface, 0.08);
+}
+
+cal-spinner {
+  min-height: 48px;
+}
+
+.cal-spinner-text {
+  font-size: 16px;
+  color: @neo_on_surface;
+}
+
+.cal-spinner-arrow {
+  color: @neo_on_surface_variant;
+}
+
+/* --- toasts (SystemUI's text_toast.xml) */
+
+.cal-toast {
+  margin: 0 16px 48px 16px;              /* toast_y_offset */
+  padding: 0 16px;
+  min-height: 48px;
+  border-radius: 28px;
+  background-color: @neo_surface_container_high;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.cal-toast-icon {
+  margin: 10px 10px 10px 0;
+}
+
+.cal-toast-text {
+  padding: 12px 0;
+  font-size: 14px;
+  color: @neo_on_surface;
+}
+
+/* --- dialogs: M3 AlertDialog on surfaceContainerHigh */
+
+.neo-dialog {
+  background-color: @neo_surface_container_high;
+}
+
+.neo-text-button {
+  color: @neo_primary;
+}
+
+.cal-dialog-list {
+  margin: 0 -24px;
+}
+
+.cal-dialog-item {
+  min-height: 48px;
+  padding: 0 24px;
+  font-size: 16px;
+  color: @neo_on_surface;
+}
+
+.cal-dialog-item label {
+  font-size: 16px;
+}
+
+.cal-radio {
+  margin-right: 16px;
+  color: @neo_on_surface_variant;
+}
+
+/* --- the date dialog (MaterialDatePicker; still:cal-dlg-date, measured) */
+
+.neo-dialog.cal-date-card {
+  background-color: @neo_surface_container_high;
+}
+
+.cal-date-card .neo-dialog-buttons {
+  margin: 2px 8px 2px 8px;
+}
+
+.cal-date-header {
+  min-height: 120px;
+  padding: 0 12px 0 24px;
+}
+
+.cal-date-title {
+  margin-top: 16px;
+  font-size: 14px;
+  font-weight: 800;
+  color: @neo_on_surface_variant;
+}
+
+.cal-date-selection {
+  font-size: 32px;
+  font-weight: 700;
+  color: @neo_on_surface;
+}
+
+.cal-date-divider {
+  min-height: 1px;
+  background-color: @neo_outline;
+  opacity: 0.4;
+}
+
+.cal-date-nav {
+  min-height: 56px;
+  padding: 0 12px;
+}
+
+.cal-date-month-toggle {
+  min-height: 48px;
+  padding: 0 8px;
+  border-radius: 24px;
+}
+
+.cal-date-month {
+  font-size: 14px;
+  font-weight: 800;
+  color: @neo_on_surface_variant;
+}
+
+.cal-date-arrow {
+  min-width: 48px;
+  min-height: 48px;
+  color: @neo_on_surface_variant;
+}
+
+.cal-year {
+  min-height: 52px;
+  border-radius: 18px;
+  font-size: 16px;
+  color: @neo_on_surface_variant;
+}
+
+.cal-year.today {
+  color: @neo_primary;
+}
+
+/* --- pages (event info, the editor, settings) */
+
+.cal-page {
+  background-color: @neo_surface;
+}
+
+/* event info (event_info_headline.xml, event_info.xml; still:cal-event) */
+
+.cal-info-headline {
+  padding: 8px 16px 16px 16px;
+}
+
+.cal-info-title {
+  font-size: 24px;
+  font-weight: 900;                      /* bold */
+  color: white;
+}
+
+.cal-info-when,
+.cal-info-where {
+  margin-top: 4px;
+  font-size: 14px;
+  color: white;
+}
+
+.cal-info-repeat {
+  margin-top: -3px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.cal-info-body {
+  margin-top: 8px;
+  padding: 0 16px;
+}
+
+.cal-info-small {
+  font-size: 14px;
+  color: @neo_on_surface_variant;
+}
+
+.cal-info-calendar-name {
+  margin-left: 2px;
+  color: @neo_on_surface;
+}
+
+.cal-info-description {
+  margin-top: 8px;
+  color: @neo_on_surface;
+}
+
+.cal-list-separator {                    /* listSeparatorTextViewStyle: 14 sp bold caps, 8 dp in */
+  min-height: 32px;
+  margin: 4px 8px 0 8px;
+  padding: 0 8px;
+  font-size: 14px;
+  font-weight: 900;
+  color: @neo_on_surface_variant;
+  border-bottom: 1px solid @cal_divider;
+}
+
+.cal-add-reminder {                      /* 18 sp, 12 dp margins, 12 dp below */
+  margin: 4px 12px 12px 12px;
+  padding: 12px 0 12px 0;
+  font-size: 18px;
+  color: @neo_on_surface;
+}
+
+.cal-add-reminder label {
+  font-size: 18px;
+}
+
+.cal-reminder-row {
+  min-height: 48px;
+  padding-left: 12px;
+}
+
+.cal-reminder-minutes {
+  min-width: 160px;
+}
+
+.cal-reminder-remove {
+  color: @neo_on_surface_variant;
+}
+
+/* the editor (edit_event_custom_actionbar.xml, edit_event_all.xml; still:cal-new-event) */
+
+.cal-edit-bar {
+  min-height: 64px;
+  background-color: @neo_surface;
+}
+
+.cal-edit-action-icon {
+  margin-right: 5px;
+  color: @neo_on_surface;
+}
+
+.cal-edit-action-text {
+  font-size: 16px;
+  font-weight: 800;
+  color: @neo_on_surface;
+}
+
+.cal-edit-action-divider {
+  min-width: 1px;
+  margin: 16px 0;
+  background-color: @cal_divider;
+}
+
+.cal-edit-title {                        /* from 48 dp, 40 dp tall, 20 sp */
+  margin: 4px 32px 0 48px;
+  min-height: 40px;
+  padding: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+  outline: none;
+  font-size: 20px;
+  color: @neo_on_surface;
+  caret-color: @neo_primary;
+}
+
+.cal-edit-title text placeholder,
+.cal-text-field text placeholder {
+  color: @cal_hint;
+}
+
+.cal-edit-separator {                    /* 2 dp, 12 dp in from both sides */
+  min-height: 2px;
+  margin: 4px 12px;
+  background-color: @cal_separator;
+}
+
+.cal-edit-row {
+  padding-left: 12px;
+  min-height: 48px;
+}
+
+.cal-edit-icon {
+  margin-right: 12px;
+  color: @neo_on_surface_variant;
+}
+
+.cal-edit-calendar {
+  min-height: 43px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.cal-edit-calendar-name {
+  font-size: 18px;
+  color: @neo_on_surface;
+}
+
+.cal-edit-calendar-account {
+  font-size: 14px;
+  color: @neo_on_surface_variant;
+}
+
+.cal-edit-label {
+  font-size: 18px;
+  color: @neo_on_surface;
+}
+
+.cal-edit-row > switch,
+.cal-edit-row .neo-switch {
+  margin-right: 24px;
+}
+
+.cal-edit-dates {
+  margin-left: 48px;
+}
+
+.cal-outlined {                          /* an M3 outlined button: a 40 dp pill in a 48 dp target */
+  min-height: 40px;
+  margin: 4px 16px 4px 0;
+  padding: 0 24px;
+  border: 1px solid @neo_outline;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 800;
+  color: @neo_primary;
+}
+
+.cal-outlined label {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.cal-text-field {                        /* an M3 text field under its hint, 18 sp */
+  margin-right: 24px;
+  min-height: 54px;
+  padding: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+  outline: none;
+  font-size: 18px;
+  color: @neo_on_surface;
+  caret-color: @neo_primary;
+}
+
+.cal-text-area,
+.cal-text-area text {
+  background: none;
+  font-size: 18px;
+  color: @neo_on_surface;
+  caret-color: @neo_primary;
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+.cal-text-hint {
+  padding-top: 16px;
+  font-size: 18px;
+  color: @cal_hint;
+}
+
+.cal-edit-reminders {
+  padding-top: 8px;
+}
+
+/* settings (androidx.preference with Material 3; still:cal-settings, cal-settings-general) */
+
+.cal-pref {
+  min-height: 56px;
+  padding: 16px 24px 16px 0;
+}
+
+.cal-pref-icon-frame {
+  min-width: 72px;                       /* the icon 16 dp in, the title from 72 dp */
+}
+
+.cal-pref-icon {
+  margin-left: 16px;
+  color: @neo_on_surface_variant;
+}
+
+.cal-pref-title {
+  font-size: 16px;
+  color: @neo_on_surface;
+}
+
+.cal-pref-summary {
+  font-size: 14px;
+  color: @neo_on_surface_variant;
+}
+
+.cal-pref-widget {
+  margin-left: 16px;
+}
+
+.cal-pref-category {
+  padding: 24px 24px 8px 0;
+}
+
+.cal-pref-category-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: @neo_primary;
+}
+
+.cal-about-icon {
+  margin: 16px;
+}

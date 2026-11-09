@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- the app's stylesheet and its icons (data/icons, made from Etar's and Material's vector drawables by tools/vd2svg.py),
+     where GtkApplication looks for icons: the resource base path + /icons -->
+<gresources>
+  <gresource prefix="/de/yesman/Calendar">
+    <file>calendar.css</file>
+    <file alias="icons/scalable/actions/cal-account-symbolic.svg">icons/cal-account-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-add-symbolic.svg">icons/cal-add-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-back-symbolic.svg">icons/cal-back-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-business-symbolic.svg">icons/cal-business-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-calendar-symbolic.svg">icons/cal-calendar-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-cancel-symbolic.svg">icons/cal-cancel-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-chevron-left-symbolic.svg">icons/cal-chevron-left-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-chevron-right-symbolic.svg">icons/cal-chevron-right-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-circle-outline-symbolic.svg">icons/cal-circle-outline-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-circle-symbolic.svg">icons/cal-circle-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-close-symbolic.svg">icons/cal-close-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-collapse-symbolic.svg">icons/cal-collapse-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-color-symbolic.svg">icons/cal-color-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-delete-symbolic.svg">icons/cal-delete-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-done-symbolic.svg">icons/cal-done-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-drop-down-symbolic.svg">icons/cal-drop-down-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-duplicate-symbolic.svg">icons/cal-duplicate-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-edit-symbolic.svg">icons/cal-edit-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-expand-symbolic.svg">icons/cal-expand-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-export-symbolic.svg">icons/cal-export-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-info-symbolic.svg">icons/cal-info-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-keyboard-symbolic.svg">icons/cal-keyboard-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-link-symbolic.svg">icons/cal-link-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-lock-symbolic.svg">icons/cal-lock-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-menu-symbolic.svg">icons/cal-menu-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-more-symbolic.svg">icons/cal-more-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-notes-symbolic.svg">icons/cal-notes-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-notifications-symbolic.svg">icons/cal-notifications-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-notify-symbolic.svg">icons/cal-notify-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-pencil-symbolic.svg">icons/cal-pencil-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-person-add-symbolic.svg">icons/cal-person-add-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-place-symbolic.svg">icons/cal-place-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-public-symbolic.svg">icons/cal-public-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-radio-off-symbolic.svg">icons/cal-radio-off-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-radio-on-symbolic.svg">icons/cal-radio-on-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-repeat-symbolic.svg">icons/cal-repeat-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-schedule-symbolic.svg">icons/cal-schedule-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-settings-symbolic.svg">icons/cal-settings-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-share-symbolic.svg">icons/cal-share-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-today-symbolic.svg">icons/cal-today-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-view-agenda-symbolic.svg">icons/cal-view-agenda-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-view-day-symbolic.svg">icons/cal-view-day-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-view-month-symbolic.svg">icons/cal-view-month-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-view-week-symbolic.svg">icons/cal-view-week-symbolic.svg</file>
+    <file alias="icons/scalable/apps/de.yesman.Calendar.svg">de.yesman.Calendar.svg</file>
+  </gresource>
+</gresources>

@@ -1,0 +1,17 @@
+# The Calendar's reminder service: from login, whether or not the Calendar app is open (a reminder notifies either
+# way, and wakes the phone for it through neo-wakeup)
+[Unit]
+Description=Calendar reminders
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=dbus
+BusName=de.yesman.Calendar.Reminders
+ExecStart=@bindir@/neo-calendar-reminders
+# a crash must not cost a reminder: it comes back and notifies what is due and missed
+Restart=on-failure
+RestartSec=1
+
+[Install]
+WantedBy=graphical-session.target

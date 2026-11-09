@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The Calendar's settings: Etar's GeneralPreferences keys that the app acts on (spec/calendar.md §9) -->
+<schemalist gettext-domain="neo-calendar">
+  <schema id="de.yesman.Calendar" path="/de/yesman/Calendar/">
+    <key name="view" type="s">
+      <default>"week"</default>
+      <summary>The view shown last (day, week, month, agenda): KEY_START_VIEW</summary>
+    </key>
+    <key name="default-view" type="s">
+      <default>"previous"</default>
+      <summary>Default view: "previous" (Previously used view), day, week, month or agenda</summary>
+    </key>
+    <key name="week-start" type="i">
+      <default>-1</default>
+      <summary>Week starts on: -1 the locale's, 1 Sunday … 7 Saturday (preferences_week_start_day)</summary>
+    </key>
+    <key name="default-event-duration" type="i">
+      <default>60</default>
+      <summary>Default event duration, minutes</summary>
+    </key>
+    <key name="real-event-colors" type="b">
+      <default>false</default>
+      <summary>Use real event colors (else Etar's darker, more saturated ones)</summary>
+    </key>
+    <key name="cell-height" type="d">
+      <default>64.0</default>
+      <summary>The day and week views' hour height in dp, as pinched (DayView's mCellHeight)</summary>
+    </key>
+    <key name="last-calendar" type="s">
+      <default>""</default>
+      <summary>The calendar the last new event went to (the next new one goes there too)</summary>
+    </key>
+    <key name="notifications" type="b">
+      <default>true</default>
+      <summary>Notifications: the reminder service notifies for reminders</summary>
+    </key>
+    <key name="default-snooze" type="i">
+      <default>5</default>
+      <summary>Default snooze delay time, minutes; -1 no Snooze</summary>
+    </key>
+    <key name="default-reminder" type="i">
+      <default>10</default>
+      <summary>Default reminder time of a new event, minutes; -1 none</summary>
+    </key>
+  </schema>
+</schemalist>

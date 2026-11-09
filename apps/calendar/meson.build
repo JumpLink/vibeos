@@ -1,0 +1,39 @@
+project('neo-calendar', 'c', version: '1.0', meson_version: '>= 1.0',
+        default_options: ['warning_level=2', 'c_std=gnu11', 'buildtype=release'])
+add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers', language: 'c')
+
+gnome = import('gnome')
+gio = dependency('gio-unix-2.0', version: '>= 2.76')
+ecal = dependency('libecal-2.0', version: '>= 3.46')
+m = meson.get_compiler('c').find_library('m')
+bindir = get_option('prefix') / get_option('bindir')
+datadir = get_option('prefix') / get_option('datadir')
+gettext_args = ['-DGETTEXT_PACKAGE="neo-calendar"',
+                '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir')),
+                '-DCAL_VERSION="@0@"'.format(meson.project_version())]
+
+# the events and their rules (cal-model), their text (cal-format) and evolution-data-server (cal-store): shared by
+# the app, the reminder service and the tests
+core = static_library('calcore', 'src/cal-model.c', 'src/cal-format.c', 'src/cal-store.c',
+                      c_args: gettext_args, dependencies: [gio, ecal, m])
+
+# the app
+resources = gnome.compile_resources('calendar-resources', 'src/calendar.gresource.xml', source_dir: ['src', 'data'])
+executable('neo-calendar', 'src/cal-main.c', 'src/cal-window.c', 'src/cal-text.c', 'src/day-view.c',
+           'src/month-view.c', 'src/agenda-view.c', 'src/cal-popup.c', 'src/cal-dialogs.c', 'src/cal-page.c',
+           'src/cal-date-picker.c', 'src/cal-reminders.c', 'src/event-info.c', 'src/event-editor.c',
+           'src/cal-settings.c', resources,
+           link_with: core, install: true, c_args: gettext_args,
+           dependencies: [gio, ecal, m, dependency('gtk4', version: '>= 4.14'), dependency('neo-1'),
+                          dependency('spongy-gtk-1')])
+
+unit = configuration_data({'bindir': bindir})
+configure_file(input: 'data/de.yesman.Calendar.service.in', output: 'de.yesman.Calendar.service',
+               configuration: unit, install_dir: datadir / 'dbus-1/services')
+install_data('data/de.yesman.Calendar.desktop', install_dir: datadir / 'applications')
+install_data('data/de.yesman.Calendar.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
+install_data('data/de.yesman.Calendar.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
+gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
+
+# the test rig's events (tests/try-calendar.sh): refuses to run outside the rig
+executable('cal-seed', 'tests/cal-seed.c', dependencies: [gio, ecal])
