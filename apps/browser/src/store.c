@@ -328,10 +328,13 @@ url_starts (const NbEntry *e, const char *t)
 
 static const char *suggest_text;
 
+/* g_ptr_array_sort_values () hands the comparison the array's pointers themselves (NbEntry *), not pointers to them
+ * as g_ptr_array_sort () does: dereferencing once more read a URL's text as a pointer and crashed at the first
+ * keystroke with two hits */
 static int
 by_suggestion (gconstpointer a, gconstpointer b)
 {
-  const NbEntry *x = *(NbEntry **) a, *y = *(NbEntry **) b;
+  const NbEntry *x = a, *y = b;
   int sx = url_starts (x, suggest_text), sy = url_starts (y, suggest_text);
 
   if (sx != sy)
@@ -364,7 +367,7 @@ nb_store_suggest (NbStore *store, const char *text, guint limit)
 static int
 by_visits (gconstpointer a, gconstpointer b)
 {
-  return (*(NbEntry **) b)->visits - (*(NbEntry **) a)->visits;
+  return ((const NbEntry *) b)->visits - ((const NbEntry *) a)->visits;   /* the entries themselves, as above */
 }
 
 GPtrArray *
