@@ -17,6 +17,9 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE (ConversationList, conversation_list, MSG, CONVERSATION_LIST, GtkWidget)
 
 GtkWidget *conversation_list_new (SmsClient *client, Contacts *contacts, gboolean archived);
+/* ForwardMessageActivity's list (§2.5 Forward): the conversations that are not archived, without the action bar, the
+ * FAB, swiping or select mode; a tap or a long press picks one ("open-conversation") */
+GtkWidget *conversation_list_new_forward (SmsClient *client, Contacts *contacts);
 /* scrolled to its top, with nothing selected: what comes is then seen (SetVisible 0) */
 gboolean   conversation_list_is_at_top (ConversationList *self);
 /* leaves select mode; FALSE when it was not in it (Back then closes the screen) */

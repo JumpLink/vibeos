@@ -305,6 +305,12 @@
   margin: 12px 12px 0 12px;
 }
 
+/* Forward message (§2.5): a dialog activity's window title (abc_dialog_title_material: 24 dp in from the sides,
+ * 18 dp from the top, nothing under it) over the conversation list, edge to edge */
+.msg-window .msg-forward-dialog .neo-dialog-title {
+  margin-bottom: 0;
+}
+
 .msg-window .neo-dialog .neo-text-button {
   font-family: "Neo Roboto", Roboto, sans-serif;
   font-size: 14px;

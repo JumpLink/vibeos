@@ -40,6 +40,7 @@ struct _ConversationList {
   Contacts *contacts;
   GSettings *settings;          /* de.yesman.Messaging: Swipe to delete */
   gboolean archived;
+  gboolean forward;             /* ForwardMessageActivity's list: no bars, no FAB, no swipe, no select */
 
   GtkWidget *box;               /* the page: bar over the content */
   GtkWidget *bar, *select_bar;
@@ -106,8 +107,8 @@ sync_select (ConversationList *self)
       gboolean on = g_hash_table_contains (self->selected, key);
 
       msg_avatar_set_checked (MSG_AVATAR (row->avatar), on);
-      /* no swiping while selecting, nor in the archived list */
-      msg_swipe_set_enabled (MSG_SWIPE (row->swipe), !self->archived && !selecting (self));
+      /* no swiping while selecting, nor in the archived list or the forward one */
+      msg_swipe_set_enabled (MSG_SWIPE (row->swipe), !self->archived && !self->forward && !selecting (self));
       if (on)
         {
           any_archived |= row->archived;
@@ -115,7 +116,7 @@ sync_select (ConversationList *self)
         }
     }
   gtk_widget_set_visible (self->select_bar, selecting (self));
-  gtk_widget_set_visible (self->bar, !selecting (self));
+  gtk_widget_set_visible (self->bar, !self->forward && !selecting (self));
   gtk_widget_set_visible (self->archive_action, any_unarchived);
   gtk_widget_set_visible (self->unarchive_action, any_archived);
   gtk_widget_set_visible (self->block_action, blockable (self) != NULL);
@@ -347,8 +348,13 @@ static void
 on_row_long_pressed (GtkWidget *pressable, gpointer data)
 {
   ConversationList *self = g_object_get_data (G_OBJECT (pressable), "list");
+  gint64 id = *(gint64 *) g_object_get_data (G_OBJECT (pressable), "id");
 
-  toggle_selected (self, *(gint64 *) g_object_get_data (G_OBJECT (pressable), "id"));
+  /* ForwardMessageActivity.onConversationClick takes a long click as a tap */
+  if (self->forward)
+    g_signal_emit (self, signals[OPEN_CONVERSATION], 0, id);
+  else
+    toggle_selected (self, id);
 }
 
 static GtkWidget *
@@ -757,8 +763,8 @@ conversation_list_init (ConversationList *self)
   gtk_widget_set_focusable (GTK_WIDGET (self), TRUE);
 }
 
-GtkWidget *
-conversation_list_new (SmsClient *client, Contacts *contacts, gboolean archived)
+static GtkWidget *
+build (SmsClient *client, Contacts *contacts, gboolean archived, gboolean forward)
 {
   ConversationList *self = g_object_new (MSG_TYPE_CONVERSATION_LIST, NULL);
   GtkWidget *content = gtk_overlay_new ();
@@ -769,6 +775,7 @@ conversation_list_new (SmsClient *client, Contacts *contacts, gboolean archived)
   self->contacts = g_object_ref (contacts);
   self->settings = g_settings_new ("de.yesman.Messaging");
   self->archived = archived;
+  self->forward = forward;
   self->box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_parent (self->box, GTK_WIDGET (self));
   gtk_widget_add_css_class (self->box, "msg-page");
@@ -809,7 +816,7 @@ conversation_list_new (SmsClient *client, Contacts *contacts, gboolean archived)
   gtk_overlay_set_child (GTK_OVERLAY (content), gtk_box_new (GTK_ORIENTATION_VERTICAL, 0));
   gtk_box_append (GTK_BOX (gtk_overlay_get_child (GTK_OVERLAY (content))), self->scroll);
   gtk_box_append (GTK_BOX (gtk_overlay_get_child (GTK_OVERLAY (content))), self->empty);
-  if (!archived)
+  if (!archived && !forward)
     {
       self->fab = make_fab ();
       g_signal_connect_swapped (self->fab, "clicked", G_CALLBACK (on_fab), self);
@@ -830,4 +837,16 @@ conversation_list_new (SmsClient *client, Contacts *contacts, gboolean archived)
   self->refresh_id = g_timeout_add (REFRESH_MS, on_refresh, self);
   reload (self);
   return GTK_WIDGET (self);
+}
+
+GtkWidget *
+conversation_list_new (SmsClient *client, Contacts *contacts, gboolean archived)
+{
+  return build (client, contacts, archived, FALSE);
+}
+
+GtkWidget *
+conversation_list_new_forward (SmsClient *client, Contacts *contacts)
+{
+  return build (client, contacts, FALSE, TRUE);
 }

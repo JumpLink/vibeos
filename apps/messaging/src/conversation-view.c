@@ -45,7 +45,7 @@ struct _ConversationView {
   GPtrArray *people;            /* MsgPerson */
 
   GtkWidget *box, *bar, *select_bar, *call_action;
-  GtkWidget *copy_action, *resend_action;
+  GtkWidget *forward_action, *copy_action, *resend_action;
   GtkWidget *scroll, *messages, *shadow;
   GtkWidget *field, *hint, *send, *self_avatar, *counter;
   NeoAnim *reveal;
@@ -59,7 +59,7 @@ struct _ConversationView {
 
 G_DEFINE_FINAL_TYPE (ConversationView, conversation_view, GTK_TYPE_WIDGET)
 
-enum { CLOSED, SHOW_OPTIONS, N_SIGNALS };
+enum { CLOSED, SHOW_OPTIONS, FORWARD, N_SIGNALS };
 static guint signals[N_SIGNALS];
 
 static void reload (ConversationView *self);
@@ -287,7 +287,12 @@ select_message (ConversationView *self, gint64 id)
   gtk_widget_set_visible (self->bar, self->selected == 0);
   if (message)
     {
-      /* copy: text, and sent or come whole; send: one that failed */
+      /* forward: sent, delivered or come whole (getCanForwardMessage), with text to pass on (an SMS is all text);
+       * copy: text, and sent or come whole; send: one that failed */
+      gtk_widget_set_visible (self->forward_action, message->text && *message->text
+                                                    && (message->status == MESSAGE_STATUS_OUTGOING_COMPLETE
+                                                        || message->status == MESSAGE_STATUS_OUTGOING_DELIVERED
+                                                        || message->status == MESSAGE_STATUS_INCOMING_COMPLETE));
       gtk_widget_set_visible (self->copy_action, message->text && *message->text
                                                  && (!MESSAGE_STATUS_IS_INCOMING (message->status)
                                                      || message->status == MESSAGE_STATUS_INCOMING_COMPLETE));
@@ -313,6 +318,18 @@ on_copy (ConversationView *self)
   if (message)
     gdk_clipboard_set_text (gtk_widget_get_clipboard (GTK_WIDGET (self)), message->text ? message->text : "");
   select_message (self, 0);
+}
+
+/* the text goes on as a draft to the conversation picked (createForwardedMessage: a text part for a text part) */
+static void
+on_forward (ConversationView *self)
+{
+  g_autoptr(SmsMessage) message = selected_message (self);
+  g_autofree char *text = message && message->text ? g_strdup (message->text) : NULL;
+
+  select_message (self, 0);
+  if (text)
+    g_signal_emit (self, signals[FORWARD], 0, text);
 }
 
 static void
@@ -760,6 +777,8 @@ conversation_view_class_init (ConversationViewClass *klass)
                                   G_TYPE_NONE, 0);
   signals[SHOW_OPTIONS] = g_signal_new ("show-options", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
                                         NULL, G_TYPE_NONE, 0);
+  signals[FORWARD] = g_signal_new ("forward", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL, NULL,
+                                   G_TYPE_NONE, 1, G_TYPE_STRING);
 }
 
 static void
@@ -806,6 +825,9 @@ conversation_view_new (SmsClient *client, Contacts *contacts, gint64 conversatio
   self->select_bar = msg_action_bar_new (FALSE, "");
   cancel = msg_action_bar_add_close (self->select_bar, _("Done"));
   g_signal_connect_swapped (cancel, "clicked", G_CALLBACK (conversation_view_back), self);
+  /* conversation_fragment_select_menu's order, less Share (no share sheet here) and Save/Download (no MMS) */
+  self->forward_action = msg_action_bar_add_action (self->select_bar, "messaging-forward-symbolic", _("Forward"));
+  g_signal_connect_swapped (self->forward_action, "clicked", G_CALLBACK (on_forward), self);
   self->copy_action = msg_action_bar_add_action (self->select_bar, "messaging-copy-symbolic", _("Copy text"));
   g_signal_connect_swapped (self->copy_action, "clicked", G_CALLBACK (on_copy), self);
   g_signal_connect_swapped (msg_action_bar_add_action (self->select_bar, "messaging-info-symbolic",

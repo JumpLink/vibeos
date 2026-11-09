@@ -232,6 +232,61 @@ on_show_options (ConversationView *view, gpointer data)
   msg_navigator_push (MSG_NAVIGATOR (shell->navigator), page);
 }
 
+/* --- Forward (§2.5): ForwardMessageActivity, a dialog over the conversation (BugleTheme.DialogActivity: the window's
+ * #181c1d under 28 dp corners, titled "Forward message"; no still of it, so the card is the app's alert dialog's) */
+
+typedef struct
+{
+  Shell *shell;
+  NeoDialog *dialog;
+  char *text;
+  gboolean picked;
+} Forward;
+
+static void
+forward_free (gpointer data)
+{
+  Forward *forward = data;
+
+  g_free (forward->text);
+  g_free (forward);
+}
+
+static void
+on_forward_picked (GtkWidget *list, gint64 id, gpointer data)
+{
+  Forward *forward = data;
+  Shell *shell = forward->shell;
+  g_autofree char *text = g_strdup (forward->text);
+  GtkWidget *top = msg_navigator_get_top (MSG_NAVIGATOR (shell->navigator));
+
+  /* a second tap while the dialog fades */
+  if (forward->picked)
+    return;
+  forward->picked = TRUE;
+  neo_dialog_respond (forward->dialog, NEO_RESPONSE_OK);
+  /* launchConversationActivity with FLAG_ACTIVITY_CLEAR_TOP: the conversation picked, with the text as its draft,
+   * takes the place of the one it came from, so Back goes to the list */
+  open_conversation (shell, id, text, MSG_IS_CONVERSATION_VIEW (top));
+}
+
+static void
+on_forward (ConversationView *view, const char *text, gpointer data)
+{
+  Shell *shell = data;
+  Forward *forward = g_new0 (Forward, 1);
+  GtkWidget *list = conversation_list_new_forward (shell->client, shell->contacts);
+
+  forward->shell = shell;
+  forward->text = g_strdup (text);
+  forward->dialog = neo_dialog_new (_("Forward message"));
+  gtk_widget_add_css_class (GTK_WIDGET (forward->dialog), "msg-forward-dialog");
+  g_object_set_data_full (G_OBJECT (forward->dialog), "msg-forward", forward, forward_free);
+  g_signal_connect (list, "open-conversation", G_CALLBACK (on_forward_picked), forward);
+  neo_dialog_set_content (forward->dialog, list);
+  neo_dialog_present (forward->dialog, shell->navigator);
+}
+
 static void
 open_conversation (Shell *shell, gint64 id, const char *draft, gboolean replace)
 {
@@ -249,6 +304,7 @@ open_conversation (Shell *shell, gint64 id, const char *draft, gboolean replace)
     conversation_view_set_text (MSG_CONVERSATION_VIEW (view), draft);
   g_signal_connect (view, "closed", G_CALLBACK (on_page_closed), shell);
   g_signal_connect (view, "show-options", G_CALLBACK (on_show_options), shell);
+  g_signal_connect (view, "forward", G_CALLBACK (on_forward), shell);
   if (replace)
     msg_navigator_replace (MSG_NAVIGATOR (shell->navigator), view);
   else
