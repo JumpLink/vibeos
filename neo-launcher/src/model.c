@@ -13,6 +13,8 @@ static const char *replaced[][2] = {
   { "de.yesman.Browser.desktop", "de.yesman.NeoBrowser.desktop" },
   { "org.gnome.Calls.desktop", "de.yesman.Dialer.desktop" },
   { "sm.puri.Chatty.desktop", "de.yesman.Messaging.desktop" },
+  { "org.gnome.Calculator.desktop", "de.yesman.Calculator.desktop" },
+  { "org.gnome.Calendar.desktop", "de.yesman.Calendar.desktop" },
 };
 
 static char *

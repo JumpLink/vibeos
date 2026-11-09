@@ -19,6 +19,8 @@ static const char *distinct[][2] = {
 static const char *took_over[][2] = {
   { "de.yesman.Dialer.desktop", "org.gnome.Calls.desktop" },
   { "de.yesman.Messaging.desktop", "sm.puri.Chatty.desktop" },
+  { "de.yesman.Calculator.desktop", "org.gnome.Calculator.desktop" },
+  { "de.yesman.Calendar.desktop", "org.gnome.Calendar.desktop" },
 };
 
 typedef struct {
