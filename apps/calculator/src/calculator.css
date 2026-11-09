@@ -49,3 +49,18 @@ window.neo.calculator {
   background-color: #eeeeee;
   padding: 13px;
 }
+
+/* a dialog's message (dialog_message.xml): 18 sp in textColorPrimary, padded 20 dp inside a custom panel that has
+ * no padding of its own, so 4 dp less than the card's 24 at the sides and on top when there is no title. Under a
+ * title it is 20 dp from it (AppCompat's alert layout leaves out the title's divider space when there is a custom
+ * view; not in this tree): 4 more than NeoDialog's 16. Above the buttons, 2 dp more than NeoDialog's 18. From the
+ * source alone: no still shows one of these dialogs. */
+label.calc-dialog-message {
+  font-size: 18px;
+  color: @neo_on_surface;
+  margin: 4px -4px 2px -4px;
+}
+
+label.calc-dialog-message.untitled {
+  margin-top: -4px;
+}

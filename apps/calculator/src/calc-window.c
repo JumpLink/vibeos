@@ -193,8 +193,18 @@ static void
 message_dialog (CalcMain *self, const char *title, const char *message, const char *positive, DialogAction action)
 {
   NeoDialog *dialog = neo_dialog_new (title && *title ? title : NULL);
+  GtkWidget *label = gtk_label_new (message);
 
-  neo_dialog_set_message (dialog, message);
+  /* the message is the dialog's custom view, dialog_message.xml: textAppearanceMedium (18 sp, textColorPrimary)
+   * with 20 dp of padding all round, the custom panel itself having none (calculator.css). Its textIsSelectable
+   * is left out: a selectable GtkLabel selects all of itself when the dialog gives it the focus. */
+  gtk_label_set_wrap (GTK_LABEL (label), TRUE);
+  gtk_label_set_wrap_mode (GTK_LABEL (label), PANGO_WRAP_WORD_CHAR);
+  gtk_label_set_xalign (GTK_LABEL (label), 0);
+  gtk_widget_add_css_class (label, "calc-dialog-message");
+  if (!(title && *title))
+    gtk_widget_add_css_class (label, "untitled");
+  neo_dialog_set_content (dialog, label);
   neo_dialog_add_button (dialog, _("Dismiss"), NEO_RESPONSE_CANCEL);
   if (positive)
     neo_dialog_add_button (dialog, positive, NEO_RESPONSE_OK);
