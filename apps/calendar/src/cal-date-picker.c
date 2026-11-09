@@ -262,6 +262,20 @@ on_year (NeoPressable *button, Picker *picker)
   gtk_widget_set_visible (picker->next, TRUE);
 }
 
+/* the year shown in view, rows of three, 52 dp each: once the list has its size (scrolled before it is laid out,
+ * the view clamps the offset to the top) */
+static gboolean
+scroll_to_year (GtkWidget *years, GdkFrameClock *clock, gpointer data)
+{
+  Picker *picker = data;
+
+  if (gtk_widget_get_height (years) <= 0)
+    return G_SOURCE_CONTINUE;
+  spongy_scroll_view_scroll_to (SPONGY_SCROLL_VIEW (years),
+                                MAX (0, ((picker->month / 12 - YEAR_FIRST) / 3 - 1) * 52.0));
+  return G_SOURCE_REMOVE;
+}
+
 static void
 on_month_toggle (NeoPressable *button, Picker *picker)
 {
@@ -271,11 +285,7 @@ on_month_toggle (NeoPressable *button, Picker *picker)
   gtk_widget_set_visible (picker->prev, !years);
   gtk_widget_set_visible (picker->next, !years);
   if (years)
-    {
-      /* the year shown in view: rows of three, 52 dp each */
-      spongy_scroll_view_scroll_to (SPONGY_SCROLL_VIEW (picker->years),
-                                    MAX (0, ((picker->month / 12 - YEAR_FIRST) / 3 - 1) * 52.0));
-    }
+    gtk_widget_add_tick_callback (picker->years, scroll_to_year, picker, NULL);
 }
 
 static void
@@ -300,7 +310,11 @@ years_list (Picker *picker)
       GtkWidget *button = neo_pressable_new (label);
 
       gtk_widget_add_css_class (button, "cal-year");
-      if (year == this_year)
+      gtk_widget_set_halign (button, GTK_ALIGN_CENTER);
+      /* YearGridAdapter: the year of the chosen day filled, this year outlined */
+      if (year == month_of (picker->selected) / 12)
+        gtk_widget_add_css_class (button, "selected");
+      else if (year == this_year)
         gtk_widget_add_css_class (button, "today");
       neo_pressable_set_ripple (NEO_PRESSABLE (button), NEO_RIPPLE_BOUNDED, 18);
       g_object_set_data (G_OBJECT (button), "cal-year", GINT_TO_POINTER (year));
@@ -330,7 +344,7 @@ cal_date_picker_show (GtkWidget *parent, const char *title, int day, int week_st
   GtkWidget *selection_row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *nav = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *toggle_box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  GtkWidget *toggle, *arrow, *divider;
+  GtkWidget *toggle, *arrow;
   CalDayGrid *grid;
 
   picker->dialog = dialog;
@@ -353,10 +367,8 @@ cal_date_picker_show (GtkWidget *parent, const char *title, int day, int week_st
   gtk_widget_add_css_class (picker->selection, "cal-date-selection");
   gtk_box_append (GTK_BOX (selection_row), picker->selection);
   gtk_box_append (GTK_BOX (header), selection_row);
+  /* no divider under it: MaterialDatePicker draws one in its fullscreen mode only (none on still:cal-dlg-date) */
   gtk_box_append (GTK_BOX (content), header);
-  divider = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  gtk_widget_add_css_class (divider, "cal-date-divider");
-  gtk_box_append (GTK_BOX (content), divider);
 
   /* the month: "November 2026 ▾" (the year list), ‹ › */
   gtk_widget_add_css_class (nav, "cal-date-nav");

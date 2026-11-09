@@ -14,7 +14,7 @@ gettext_args = ['-DGETTEXT_PACKAGE="neo-calendar"',
 
 # the events and their rules (cal-model), their text (cal-format) and evolution-data-server (cal-store): shared by
 # the app, the reminder service and the tests
-core = static_library('calcore', 'src/cal-model.c', 'src/cal-format.c', 'src/cal-store.c',
+core = static_library('calcore', 'src/cal-model.c', 'src/cal-format.c', 'src/cal-store.c', 'src/cal-alerts.c',
                       c_args: gettext_args, dependencies: [gio, ecal, m])
 
 # the app
@@ -22,12 +22,20 @@ resources = gnome.compile_resources('calendar-resources', 'src/calendar.gresourc
 executable('neo-calendar', 'src/cal-main.c', 'src/cal-window.c', 'src/cal-text.c', 'src/day-view.c',
            'src/month-view.c', 'src/agenda-view.c', 'src/cal-popup.c', 'src/cal-dialogs.c', 'src/cal-page.c',
            'src/cal-date-picker.c', 'src/cal-reminders.c', 'src/event-info.c', 'src/event-editor.c',
-           'src/cal-settings.c', resources,
+           'src/cal-settings.c', 'src/cal-compat-switch.c', 'src/cal-time-picker.c', resources,
            link_with: core, install: true, c_args: gettext_args,
            dependencies: [gio, ecal, m, dependency('gtk4', version: '>= 4.14'), dependency('neo-1'),
                           dependency('spongy-gtk-1')])
 
+# the reminder service: notifies at each reminder, and wakes the phone for it, with the app closed
+executable('neo-calendar-reminders', 'src/reminders-main.c', link_with: core, install: true, c_args: gettext_args,
+           dependencies: [gio, ecal, m])
+
 unit = configuration_data({'bindir': bindir})
+configure_file(input: 'data/neo-calendar-reminders.service.in', output: 'neo-calendar-reminders.service',
+               configuration: unit, install_dir: get_option('prefix') / 'lib/systemd/user')
+configure_file(input: 'data/de.yesman.Calendar.Reminders.service.in', output: 'de.yesman.Calendar.Reminders.service',
+               configuration: unit, install_dir: datadir / 'dbus-1/services')
 configure_file(input: 'data/de.yesman.Calendar.service.in', output: 'de.yesman.Calendar.service',
                configuration: unit, install_dir: datadir / 'dbus-1/services')
 install_data('data/de.yesman.Calendar.desktop', install_dir: datadir / 'applications')
@@ -37,3 +45,8 @@ gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, upda
 
 # the test rig's events (tests/try-calendar.sh): refuses to run outside the rig
 executable('cal-seed', 'tests/cal-seed.c', dependencies: [gio, ecal])
+
+foreach name : ['cal-model', 'cal-format', 'cal-alerts']
+  test(name, executable('test-' + name, 'tests/test-' + name + '.c', link_with: core, c_args: gettext_args,
+                        dependencies: [gio, ecal, m]))
+endforeach

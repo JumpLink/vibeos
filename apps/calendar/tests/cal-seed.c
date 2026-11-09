@@ -53,6 +53,16 @@ local_time (GDateTime *day, int days, int hour, int minute, ICalTimezone *zone)
   return time;
 }
 
+/* whole days from @today to @time's day */
+static int
+cal_days (GDateTime *today, GDateTime *time)
+{
+  g_autoptr(GDateTime) day = g_date_time_new_local (g_date_time_get_year (time), g_date_time_get_month (time),
+                                                    g_date_time_get_day_of_month (time), 0, 0, 0);
+
+  return (int) ((g_date_time_difference (day, today) + G_TIME_SPAN_HOUR * 12) / G_TIME_SPAN_DAY);
+}
+
 static ICalTime *
 date_of (GDateTime *day, int days)
 {
@@ -135,7 +145,11 @@ work_calendar (ESourceRegistry *registry)
       work = g_object_ref (l->data);
   g_list_free_full (sources, g_object_unref);
   if (work)
-    return work;
+    {
+      /* a second seed would give every event twice */
+      g_printerr ("cal-seed: seeded already (there is a \"Work\" calendar)\n");
+      exit (0);
+    }
 
   work = e_source_new (NULL, NULL, NULL);
   e_source_set_parent (work, "local-stub");
@@ -189,12 +203,14 @@ main (int argc, char **argv)
   if (argc == 3 && g_str_equal (argv[1], "alarm"))
     {
       g_autoptr(GDateTime) start = g_date_time_add_minutes (now, atoi (argv[2]));
-      ICalTime *begin = i_cal_time_new_from_timet_with_zone (g_date_time_to_unix (start), FALSE, zone);
-      ICalTime *end = i_cal_time_new_from_timet_with_zone (g_date_time_to_unix (start) + 1800, FALSE, zone);
+      g_autoptr(GDateTime) end = g_date_time_add_minutes (start, 30);
 
-      i_cal_time_set_second (begin, 0);
-      i_cal_time_set_second (end, 0);
-      create (personal_client, "Reminder test", begin, end, "Room 4", NULL, NULL, 0);
+      /* local wall-clock times in the phone's zone, as the other events (from_timet_with_zone writes UTC) */
+      create (personal_client, "Reminder test",
+              local_time (today, cal_days (today, start), g_date_time_get_hour (start), g_date_time_get_minute (start),
+                          zone),
+              local_time (today, cal_days (today, end), g_date_time_get_hour (end), g_date_time_get_minute (end), zone),
+              "Room 4", NULL, NULL, 0);
       return 0;
     }
 

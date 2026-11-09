@@ -7,6 +7,7 @@
 #include "cal-page.h"
 #include "cal-popup.h"
 #include "cal-reminders.h"
+#include "cal-time-picker.h"
 #include "cal-window.h"
 
 #include <glib/gi18n.h>
@@ -429,31 +430,30 @@ week_start (Editor *editor)
   return cal_week_start (-1);
 }
 
+/* EditEventView titles its date pickers "Go to…" as well (R.string.goto_date, :1681) */
 static void
 on_start_date_clicked (NeoPressable *button, Editor *editor)
 {
-  cal_date_picker_show (editor->page, _("Select date"), editor->start_day, week_start (editor), on_start_date,
+  cal_date_picker_show (editor->page, _("Go to…"), editor->start_day, week_start (editor), on_start_date,
                         editor);
 }
 
 static void
 on_end_date_clicked (NeoPressable *button, Editor *editor)
 {
-  cal_date_picker_show (editor->page, _("Select date"), editor->end_day, week_start (editor), on_end_date, editor);
+  cal_date_picker_show (editor->page, _("Go to…"), editor->end_day, week_start (editor), on_end_date, editor);
 }
 
 static void
 on_start_time_clicked (NeoPressable *button, Editor *editor)
 {
-  neo_time_picker_dialog (editor->page, editor->start_minute / 60, editor->start_minute % 60, on_start_minute, editor,
-                          NULL);
+  cal_time_picker_show (editor->page, editor->start_minute / 60, editor->start_minute % 60, on_start_minute, editor);
 }
 
 static void
 on_end_time_clicked (NeoPressable *button, Editor *editor)
 {
-  neo_time_picker_dialog (editor->page, editor->end_minute / 60, editor->end_minute % 60, on_end_minute, editor,
-                          NULL);
+  cal_time_picker_show (editor->page, editor->end_minute / 60, editor->end_minute % 60, on_end_minute, editor);
 }
 
 /* --- repeat */
@@ -530,6 +530,13 @@ on_add_reminder (NeoPressable *button, Editor *editor)
 
 /* --- building it */
 
+/* the description's hint shows while it is empty */
+static void
+on_description_changed (GtkTextBuffer *buffer, GtkWidget *hint)
+{
+  gtk_widget_set_visible (hint, gtk_text_buffer_get_char_count (buffer) == 0);
+}
+
 static GtkWidget *
 separator (void)
 {
@@ -592,7 +599,7 @@ action_button (const char *icon_name, const char *label, GCallback callback, Edi
   GtkWidget *text = gtk_label_new (label);
   GtkWidget *button;
 
-  gtk_image_set_pixel_size (GTK_IMAGE (icon), 24);
+  gtk_image_set_pixel_size (GTK_IMAGE (icon), 36);     /* ic_menu_cancel, ic_menu_done: 36 dp */
   gtk_widget_add_css_class (icon, "cal-edit-action-icon");
   gtk_widget_add_css_class (text, "cal-edit-action-text");
   gtk_box_append (GTK_BOX (box), icon);
@@ -660,6 +667,9 @@ build (Editor *editor)
   gtk_label_set_xalign (GTK_LABEL (editor->calendar_account), 0);
   gtk_label_set_ellipsize (GTK_LABEL (editor->calendar_account), PANGO_ELLIPSIZE_END);
   gtk_widget_add_css_class (editor->calendar_account, "cal-edit-calendar-account");
+  /* textAppearanceMedium over textAppearanceSmall: 24.3 dp and 19 dp with the font padding, 43 dp in all */
+  neo_label_set_font_padding (editor->calendar_name, 18);
+  neo_label_set_font_padding (editor->calendar_account, 14);
   gtk_box_append (GTK_BOX (calendar_text), editor->calendar_name);
   gtk_box_append (GTK_BOX (calendar_text), editor->calendar_account);
   {
@@ -678,6 +688,7 @@ build (Editor *editor)
     gtk_widget_add_css_class (editor->calendar_color, "cal-edit-calendar-color");
     gtk_overlay_add_overlay (GTK_OVERLAY (icon_box), editor->calendar_color);
     gtk_widget_set_valign (icon_box, GTK_ALIGN_CENTER);
+    gtk_widget_add_css_class (icon_box, "cal-edit-calendar-icon");
     box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_box_append (GTK_BOX (box), icon_box);
     gtk_widget_set_hexpand (calendar_text, TRUE);
@@ -711,8 +722,21 @@ build (Editor *editor)
   gtk_accessible_update_property (GTK_ACCESSIBLE (editor->all_day_switch), GTK_ACCESSIBLE_PROPERTY_LABEL,
                                   _("All day event"), -1);
   g_signal_connect (editor->all_day_switch, "notify::active", G_CALLBACK (on_all_day), editor);
-  gtk_box_append (GTK_BOX (box), editor->all_day_switch);
-  gtk_box_append (GTK_BOX (content), row ("cal-schedule-symbolic", box));
+  {
+    /* The row is the icon's 24 dp line (16 dp under the separator, the buttons 8 dp under it); the 32 dp switch
+     * overhangs it, centred a dp under the line's middle, 24 dp from the end. An overlay, so it adds no height. */
+    GtkWidget *overlay = gtk_overlay_new ();
+
+    neo_label_set_font_padding (label, 18);
+    line = row ("cal-schedule-symbolic", box);
+    gtk_widget_add_css_class (line, "cal-edit-all-day");
+    gtk_overlay_set_child (GTK_OVERLAY (overlay), line);
+    gtk_widget_set_halign (editor->all_day_switch, GTK_ALIGN_END);
+    gtk_widget_set_valign (editor->all_day_switch, GTK_ALIGN_START);
+    gtk_widget_add_css_class (editor->all_day_switch, "cal-edit-all-day-switch");
+    gtk_overlay_add_overlay (GTK_OVERLAY (overlay), editor->all_day_switch);
+    gtk_box_append (GTK_BOX (content), overlay);
+  }
 
   dates = gtk_grid_new ();
   gtk_widget_add_css_class (dates, "cal-edit-dates");
@@ -746,11 +770,9 @@ build (Editor *editor)
     gtk_widget_set_can_target (hint, FALSE);
     gtk_widget_set_valign (hint, GTK_ALIGN_START);
     gtk_widget_add_css_class (hint, "cal-text-hint");
-    g_object_bind_property_full (buffer, "text", hint, "visible", G_BINDING_SYNC_CREATE, NULL, NULL, NULL, NULL);
-    g_signal_connect_swapped (buffer, "changed", G_CALLBACK (gtk_widget_set_visible), hint);
+    g_signal_connect_object (buffer, "changed", G_CALLBACK (on_description_changed), hint, 0);
     gtk_overlay_add_overlay (GTK_OVERLAY (description_frame), hint);
-    gtk_widget_set_visible (hint, gtk_text_buffer_get_char_count (buffer) == 0);
-    g_object_set_data (G_OBJECT (buffer), "cal-hint", hint);
+    on_description_changed (buffer, hint);
   }
   gtk_widget_add_css_class (description_frame, "cal-text-field");
   gtk_box_append (GTK_BOX (content), row ("cal-notes-symbolic", description_frame));
@@ -789,6 +811,14 @@ build (Editor *editor)
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (editor->scroll), content);
   gtk_widget_set_vexpand (editor->scroll, TRUE);
   gtk_box_append (GTK_BOX (page), editor->scroll);
+}
+
+/* the cursor at the title's end, nothing selected (an EditText's focus selects nothing; GtkText's selects all) */
+static void
+focus_title (GtkWidget *title)
+{
+  gtk_widget_grab_focus (title);
+  gtk_editable_set_position (GTK_EDITABLE (title), -1);
 }
 
 static GtkWidget *
@@ -863,8 +893,9 @@ editor_page (GtkWidget *window, CalEvent *original, CalEvent *source, gint64 sta
   show_calendar (editor);
   show_times (editor);
   show_repeat (editor);
+  /* Etar focuses the title of a new event only (an existing one opens with nothing focused: cal_window_push) */
   if (!original)
-    gtk_widget_grab_focus (editor->title);
+    g_signal_connect_object (page, "map", G_CALLBACK (focus_title), editor->title, G_CONNECT_SWAPPED);
   return page;
 }
 

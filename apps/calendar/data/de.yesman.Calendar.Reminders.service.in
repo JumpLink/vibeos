@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=de.yesman.Calendar.Reminders
+Exec=@bindir@/neo-calendar-reminders
+SystemdService=neo-calendar-reminders.service

@@ -1,6 +1,7 @@
 /* Settings and About (cal-settings.h). */
 #include "cal-settings.h"
 #include "cal-colors.h"
+#include "cal-compat-switch.h"
 #include "cal-dialogs.h"
 #include "cal-format.h"
 #include "cal-page.h"
@@ -63,15 +64,18 @@ pref_row (const char *icon_name, guint32 color, const char *title, const char *s
   gtk_label_set_xalign (GTK_LABEL (pref.title), 0);
   gtk_label_set_wrap (GTK_LABEL (pref.title), TRUE);
   gtk_widget_add_css_class (pref.title, "cal-pref-title");
+  neo_label_set_font_padding (pref.title, 16);
   gtk_box_append (GTK_BOX (texts), pref.title);
   pref.summary = gtk_label_new (summary);
   gtk_label_set_xalign (GTK_LABEL (pref.summary), 0);
   gtk_label_set_wrap (GTK_LABEL (pref.summary), TRUE);
   gtk_widget_add_css_class (pref.summary, "cal-pref-summary");
+  neo_label_set_font_padding (pref.summary, 14);
   gtk_widget_set_visible (pref.summary, summary && *summary);
   gtk_box_append (GTK_BOX (texts), pref.summary);
   gtk_widget_set_hexpand (texts, TRUE);
   gtk_widget_set_valign (texts, GTK_ALIGN_CENTER);
+  gtk_widget_add_css_class (texts, "cal-pref-texts");
   gtk_box_append (GTK_BOX (box), texts);
   if (end)
     {
@@ -94,7 +98,8 @@ set_summary (GtkWidget *summary, const char *text)
   gtk_widget_set_visible (summary, text && *text);
 }
 
-/* PreferenceCategory: its title 14 sp in colorPrimary, 24 dp above, 8 dp below; an account's with its icon */
+/* PreferenceCategory: its title 14 sp in colorPrimary, 24 dp above, 8 dp below; an account's with its icon. One
+ * after other rows has a 1 dp divider at the top of that space; the first on a page ("first") has none. */
 static GtkWidget *
 category (const char *icon_name, const char *title)
 {
@@ -103,16 +108,29 @@ category (const char *icon_name, const char *title)
   GtkWidget *label = gtk_label_new (title);
 
   gtk_widget_add_css_class (frame, "cal-pref-icon-frame");
-  if (icon_name)
-    gtk_box_append (GTK_BOX (frame), row_icon (icon_name, 0));
   gtk_box_append (GTK_BOX (box), frame);
   gtk_label_set_xalign (GTK_LABEL (label), 0);
   gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
   gtk_widget_set_hexpand (label, TRUE);
   gtk_widget_add_css_class (label, "cal-pref-category-title");
+  neo_label_set_font_padding (label, 14);
   gtk_box_append (GTK_BOX (box), label);
   gtk_widget_add_css_class (box, "cal-pref-category");
   gtk_accessible_update_property (GTK_ACCESSIBLE (box), GTK_ACCESSIBLE_PROPERTY_LABEL, title, -1);
+  if (icon_name)
+    {
+      /* The 24 dp icon is taller than the 19 dp title and adds nothing to the category's height (the title 8 dp
+       * from both ends, 35 dp in all): over the row, 8 dp above the title's top and 7 px under its bottom. */
+      GtkWidget *overlay = gtk_overlay_new ();
+      GtkWidget *icon = row_icon (icon_name, 0);
+
+      gtk_overlay_set_child (GTK_OVERLAY (overlay), box);
+      gtk_widget_set_halign (icon, GTK_ALIGN_START);
+      gtk_widget_set_valign (icon, GTK_ALIGN_END);
+      gtk_widget_add_css_class (icon, "cal-pref-category-icon");
+      gtk_overlay_add_overlay (GTK_OVERLAY (overlay), icon);
+      return overlay;
+    }
   return box;
 }
 
@@ -134,19 +152,18 @@ page_with_list (GtkWidget *window, const char *title, GtkWidget **list)
 /* --- a switch preference: the row toggles it, as a tap on SwitchPreference does */
 
 static void
-on_switch_row (NeoPressable *row, NeoSwitch *toggle)
+on_switch_row (NeoPressable *row, CalCompatSwitch *toggle)
 {
-  neo_switch_set_active (toggle, !neo_switch_get_active (toggle));
+  cal_compat_switch_set_active (toggle, !cal_compat_switch_get_active (toggle));
 }
 
 static GtkWidget *
 switch_pref (GSettings *settings, const char *key, const char *title)
 {
-  GtkWidget *toggle = neo_switch_new ();
+  GtkWidget *toggle = cal_compat_switch_new ();
   Pref pref;
 
-  neo_switch_set_thumb_icons (NEO_SWITCH (toggle), FALSE);
-  neo_switch_set_active (NEO_SWITCH (toggle), g_settings_get_boolean (settings, key));
+  cal_compat_switch_set_active (CAL_COMPAT_SWITCH (toggle), g_settings_get_boolean (settings, key));
   gtk_accessible_update_property (GTK_ACCESSIBLE (toggle), GTK_ACCESSIBLE_PROPERTY_LABEL, title, -1);
   g_settings_bind (settings, key, toggle, "active", G_SETTINGS_BIND_DEFAULT);
   pref = pref_row (NULL, 0, title, NULL, toggle);
@@ -281,7 +298,7 @@ static GtkWidget *
 general_page (GtkWidget *window)
 {
   GSettings *settings = cal_window_get_settings (window);
-  GtkWidget *list, *page = page_with_list (window, _("General settings"), &list);
+  GtkWidget *list, *line, *page = page_with_list (window, _("General settings"), &list);
   ListPref *pref;
   /* preferences_default_duration_values */
   static const int durations[] = { 0, 15, 30, 60, 90, 120 };
@@ -293,7 +310,9 @@ general_page (GtkWidget *window)
   static const int reminders[] = { -1, 0, 1, 5, 10, 15, 20, 25, 30, 45, 60, 120, 180, 360, 540, 720, 1440, 2880,
                                    10080, 20160, 40320 };
 
-  gtk_box_append (GTK_BOX (list), category (NULL, _("Calendar view setting")));
+  line = category (NULL, _("Calendar view setting"));
+  gtk_widget_add_css_class (line, "first");
+  gtk_box_append (GTK_BOX (list), line);
   gtk_box_append (GTK_BOX (list), switch_pref (settings, "real-event-colors", _("Use real event colors")));
 
   /* default_start_entries */
@@ -351,14 +370,14 @@ static void
 on_visible (GObject *toggle, GParamSpec *pspec, CalendarPage *page)
 {
   cal_store_set_visible (cal_window_get_store (page->window), page->uid,
-                         neo_switch_get_active (NEO_SWITCH (toggle)));
+                         cal_compat_switch_get_active (CAL_COMPAT_SWITCH (toggle)));
 }
 
 static GtkWidget *
 calendar_page (GtkWidget *window, const CalCalendar *calendar)
 {
   GtkWidget *list, *page;
-  GtkWidget *toggle = neo_switch_new ();
+  GtkWidget *toggle = cal_compat_switch_new ();
   CalendarPage *data = g_new0 (CalendarPage, 1);
   Pref pref;
 
@@ -366,8 +385,7 @@ calendar_page (GtkWidget *window, const CalCalendar *calendar)
   data->window = window;
   data->uid = g_strdup (calendar->uid);
   g_object_set_data_full (G_OBJECT (page), "cal-calendar", data, calendar_page_free);
-  neo_switch_set_thumb_icons (NEO_SWITCH (toggle), FALSE);
-  neo_switch_set_active (NEO_SWITCH (toggle), calendar->visible);
+  cal_compat_switch_set_active (CAL_COMPAT_SWITCH (toggle), calendar->visible);
   gtk_accessible_update_property (GTK_ACCESSIBLE (toggle), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Display events"), -1);
   g_signal_connect (toggle, "notify::active", G_CALLBACK (on_visible), data);
   pref = pref_row (NULL, 0, _("Display events"), NULL, toggle);

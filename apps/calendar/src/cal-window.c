@@ -446,6 +446,8 @@ drawer_item (Shell *shell, const char *icon, const char *label, GCallback callba
   gtk_widget_add_css_class (image, "cal-drawer-icon");
   gtk_widget_add_css_class (text, "cal-drawer-label");
   gtk_label_set_xalign (GTK_LABEL (text), 0);
+  neo_label_set_font_padding (text, 14);
+  gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (row), image);
   gtk_box_append (GTK_BOX (row), text);
   gtk_widget_add_css_class (item, "cal-drawer-item");
@@ -632,6 +634,7 @@ on_more (NeoPressable *button, Shell *shell)
   gtk_widget_add_controller (scrim, GTK_EVENT_CONTROLLER (press));
   gtk_overlay_set_child (GTK_OVERLAY (layer), scrim);
   gtk_widget_add_css_class (menu, "cal-menu");
+  gtk_widget_add_css_class (menu, "cal-overflow-menu");
   gtk_widget_set_size_request (menu, (int) MENU_WIDTH, -1);
   gtk_widget_set_halign (menu, GTK_ALIGN_END);
   gtk_widget_set_valign (menu, GTK_ALIGN_START);
@@ -815,6 +818,9 @@ cal_window_push (GtkWidget *window, GtkWidget *page)
   g_autofree char *name = g_strdup_printf ("page-%u", ++shell->page_serial);
 
   close_menu (shell);
+  /* A page opens with nothing focused, as an Android activity does unless it asks: with the focus still in the
+   * stack, GtkStack would hand it to the new page's first entry, which selects its text and calls up the keyboard. */
+  gtk_window_set_focus (GTK_WINDOW (window), NULL);
   gtk_stack_add_named (GTK_STACK (shell->pages), page, name);
   g_ptr_array_add (shell->pushed, page);
   gtk_stack_set_visible_child (GTK_STACK (shell->pages), page);

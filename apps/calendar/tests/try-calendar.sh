@@ -7,9 +7,11 @@
 #   try-calendar.sh seed [ARGS]         test events (BUILD_DIR/cal-seed: a "Work" calendar, events around today;
 #                                       "seed alarm M": one starting in M minutes with a reminder at its start)
 #   try-calendar.sh app [ARGS...]       the app on the display, on the rig's bus and settings
-#   try-calendar.sh reminders           the reminder service on the rig's bus (notifications go to the rig's bus,
-#                                       where nothing shows them: see notify-log)
-#   try-calendar.sh notify-log          the notifications the reminder service sent (dbus-monitor on the rig's bus)
+#   try-calendar.sh reminders           the reminder service on the rig's bus, with a stand-in notification server
+#                                       there (fake-notify.py: nothing is shown or heard); its wake-ups go to the
+#                                       phone's neo-wakeup under a key of their own, cleared on stop
+#   try-calendar.sh notify-log          the notifications the reminder service sent
+#   try-calendar.sh invoke ID ACTION    a tap on notification ID ("default") or its button ("snooze")
 #   try-calendar.sh env                 the rig's environment, for running something else in it
 #   try-calendar.sh shot OUT.png | tap X Y | swipe X0 Y0 X1 Y1 [MS]   as neo-headless
 #   try-calendar.sh stop                the display, the app, the service, EDS and the bus
@@ -55,45 +57,54 @@ start)
         echo "try-calendar: running already; stop it first" >&2
         exit 1
     fi
-    build=$(readlink -f "$2")
+    build=$(readlink -f "${2:?BUILD_DIR}")
     # each run its own calendars (the rig is on tmpfs)
     run=$RIG/run-$(date +%s)
-    as_user mkdir -p "$run/config" "$run/data" "$run/cache" "$run/state" "$run/schemas"
+    as_user mkdir -p "$run/config" "$run/data" "$run/cache" "$run/state" "$run/schemas" "$run/bin"
     echo "$run" | as_user tee "$RIG/run" >/dev/null
-    echo "$build" | as_user tee "$RIG/build" >/dev/null
-    as_user cp "$HERE/../data/de.yesman.Calendar.gschema.xml" "$run/schemas/"
+    # the programs and the schema where the session user can run and read them (not root's home)
+    for f in neo-calendar neo-calendar-reminders cal-seed; do
+        as_user tee "$run/bin/$f" <"$build/$f" >/dev/null
+        chmod 755 "$run/bin/$f"
+    done
+    as_user tee "$run/bin/fake-notify.py" <"$HERE/fake-notify.py" >/dev/null
+    as_user tee "$run/schemas/de.yesman.Calendar.gschema.xml" <"$HERE/../data/de.yesman.Calendar.gschema.xml" >/dev/null
     as_user glib-compile-schemas "$run/schemas"
     # The bus. Services it activates (evolution-source-registry, evolution-calendar-factory) inherit its
     # environment, so they keep everything under $run.
     as_user env CAL_RIG_DIR="$run" XDG_CONFIG_HOME="$run/config" XDG_DATA_HOME="$run/data" \
         XDG_CACHE_HOME="$run/cache" XDG_STATE_HOME="$run/state" GSETTINGS_BACKEND=memory \
         GSETTINGS_SCHEMA_DIR="$run/schemas" \
-        dbus-daemon --session --fork --print-address=1 --print-pid=1 </dev/null >"$run/bus.tmp"
+        dbus-daemon --session --fork --print-address=1 --print-pid=1 </dev/null >"$run/bus.tmp" 2>"$run/bus.log"
     head -1 "$run/bus.tmp" | as_user tee "$run/bus" >/dev/null
     tail -1 "$run/bus.tmp" | as_user tee "$run/bus.pid" >/dev/null
-    rm -f "$run/bus.tmp"
     "$HEADLESS" start
     ;;
 seed)
     shift
     # shellcheck disable=SC2046
-    as_user env $(rig_env) "$(cat "$RIG/build")/cal-seed" "$@"
+    as_user env $(rig_env) "$(cat "$RIG/run")/bin/cal-seed" "$@"
     ;;
 app)
     shift
     # shellcheck disable=SC2046
-    "$HEADLESS" run env $(rig_env) "$(cat "$RIG/build")/neo-calendar" "$@"
+    "$HEADLESS" run env $(rig_env) "$(cat "$RIG/run")/bin/neo-calendar" "$@"
     ;;
 reminders)
     run=$(cat "$RIG/run")
     # shellcheck disable=SC2046
-    as_user_daemon reminders env $(rig_env) "$(cat "$RIG/build")/neo-calendar-reminders"
+    as_user_daemon notify env $(rig_env) python3 -u "$run/bin/fake-notify.py"
+    sleep 1
     # shellcheck disable=SC2046
-    as_user_daemon monitor env $(rig_env) dbus-monitor --session \
-        "interface='org.freedesktop.Notifications',member='Notify'"
+    as_user_daemon reminders env $(rig_env) "$run/bin/neo-calendar-reminders"
     ;;
 notify-log)
-    cat "$RIG/monitor.log"
+    cat "$RIG/notify.log"
+    ;;
+invoke)
+    # shellcheck disable=SC2046
+    as_user env $(rig_env) gdbus call --session --dest org.freedesktop.Notifications \
+        --object-path /org/freedesktop/Notifications --method org.freedesktop.Notifications.TestInvoke "$2" "$3"
     ;;
 env)
     rig_env
@@ -103,11 +114,19 @@ shot | tap | swipe)
     ;;
 stop)
     "$HEADLESS" stop || true
-    for p in reminders monitor; do
-        [ -f "$RIG/$p.pid" ] && kill "$(cat "$RIG/$p.pid")" 2>/dev/null || true
-        rm -f "$RIG/$p.pid"
+    # each by its pid file, if that pid is still the program it was (a stale file's pid may be another's now)
+    for p in reminders:neo-calendar-reminders notify:fake-notify.py; do
+        f=$RIG/${p%%:*}.pid
+        pid=$(cat "$f" 2>/dev/null || true)
+        if [ -n "$pid" ] && tr '\0' ' ' <"/proc/$pid/cmdline" 2>/dev/null | grep -q "${p#*:}"; then
+            kill "$pid" || true
+        fi
+        [ -f "$f" ] && : >"$f"
     done
-    if [ -f "$RIG/run" ]; then
+    # the rig service's wake-up, if it left one
+    as_user busctl --system call de.yesman.Wakeup /de/yesman/Wakeup de.yesman.Wakeup Set 'sxa{sv}' \
+        calendar-reminder-rig 0 0 2>/dev/null || true
+    if [ -f "$RIG/run" ] && [ -f "$(cat "$RIG/run")/bus" ]; then
         run=$(cat "$RIG/run")
         bus=$(cat "$run/bus")
         # the services the bus started (EDS), by their exact pids, then the bus

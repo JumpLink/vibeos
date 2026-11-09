@@ -429,6 +429,11 @@ event_info_new (GtkWidget *window, CalEvent *event)
   info->when = text ("cal-info-when", TRUE);
   info->repeat = text ("cal-info-repeat", TRUE);
   info->where = text ("cal-info-where", TRUE);
+  /* TextView's font padding (still:cal-event: the title 97 px, the time 57 px) */
+  neo_label_set_font_padding (info->title, 24);
+  neo_label_set_font_padding (info->when, 14);
+  neo_label_set_font_padding (info->repeat, 14);
+  neo_label_set_font_padding (info->where, 14);
   gtk_box_append (GTK_BOX (info->headline), info->title);
   gtk_box_append (GTK_BOX (info->headline), info->when);
   gtk_box_append (GTK_BOX (info->headline), info->repeat);
@@ -441,10 +446,12 @@ event_info_new (GtkWidget *window, CalEvent *event)
   info->calendar_row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   label = text ("cal-info-small", FALSE);
   gtk_label_set_label (GTK_LABEL (label), _("Calendar:"));
+  neo_label_set_font_padding (label, 14);
   gtk_box_append (GTK_BOX (info->calendar_row), label);
   info->calendar_name = text ("cal-info-small", TRUE);
   gtk_widget_add_css_class (info->calendar_name, "cal-info-calendar-name");
   gtk_widget_set_hexpand (info->calendar_name, TRUE);
+  neo_label_set_font_padding (info->calendar_name, 14);
   gtk_box_append (GTK_BOX (info->calendar_row), info->calendar_name);
   gtk_box_append (GTK_BOX (body), info->calendar_row);
   info->description = text ("cal-info-small", TRUE);
