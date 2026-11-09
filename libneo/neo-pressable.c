@@ -3,6 +3,7 @@
 #include "neo-ripple.h"
 #include "neo-style.h"
 
+#include <math.h>
 #include <spongy-gtk.h>
 
 #define TAP_TIMEOUT_MS        100      /* ViewConfiguration.TAP_TIMEOUT */
@@ -119,7 +120,7 @@ on_released (GtkGestureClick *click, int n_press, double x, double y, NeoPressab
     g_signal_emit (self, signals[CLICKED], 0);
 }
 
-/* the press is lost: the finger moved too far ("stopped") or a scroll view took the touch ("cancel") */
+/* the press is lost: the finger moved away (on_stopped, on_update) or a scroll view took the touch ("cancel") */
 static void
 on_lost (GtkGesture *gesture, gpointer unused, NeoPressable *self)
 {
@@ -130,10 +131,37 @@ on_lost (GtkGesture *gesture, gpointer unused, NeoPressable *self)
   neo_ripple_release (&self->ripple);
 }
 
+/* the finger is up, or further from where it went down than a click allows (gtk-double-click-distance, the
+ * distance GtkGestureClick itself stops at) */
+static gboolean
+moved_away (NeoPressable *self, GtkGesture *gesture)
+{
+  GdkEventSequence *sequence = gtk_gesture_single_get_current_sequence (GTK_GESTURE_SINGLE (gesture));
+  int distance = 5;
+  double x, y;
+
+  if (!gtk_gesture_get_point (gesture, sequence, &x, &y))
+    return TRUE;
+  g_object_get (gtk_widget_get_settings (GTK_WIDGET (self)), "gtk-double-click-distance", &distance, NULL);
+  return hypot (x - self->down_x, y - self->down_y) > distance;
+}
+
+/* GtkGestureClick stops for two reasons: the finger moved away, or its double-click time (400 ms) ran out with the
+ * finger still down. Only the first loses the press: the second is a press held, which goes on to be a long press
+ * (whose 400 ms the click's timer would otherwise always beat) */
 static void
 on_stopped (GtkGestureClick *click, NeoPressable *self)
 {
-  on_lost (GTK_GESTURE (click), NULL, self);
+  if (moved_away (self, GTK_GESTURE (click)))
+    on_lost (GTK_GESTURE (click), NULL, self);
+}
+
+/* once the click has stopped on its timer it says nothing more, so a finger moving away after that is seen here */
+static void
+on_update (GtkGesture *gesture, GdkEventSequence *sequence, NeoPressable *self)
+{
+  if (self->down && moved_away (self, gesture))
+    on_lost (gesture, NULL, self);
 }
 
 /* ---- drawing --------------------------------------------------------------------------------------------------- */
@@ -273,6 +301,7 @@ neo_pressable_init (NeoPressable *self)
   g_signal_connect (click, "pressed", G_CALLBACK (on_pressed), self);
   g_signal_connect (click, "released", G_CALLBACK (on_released), self);
   g_signal_connect (click, "stopped", G_CALLBACK (on_stopped), self);
+  g_signal_connect (click, "update", G_CALLBACK (on_update), self);
   g_signal_connect (click, "cancel", G_CALLBACK (on_lost), self);
   gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (click));
 }
