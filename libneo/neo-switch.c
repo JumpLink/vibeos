@@ -9,6 +9,7 @@
 #define THUMB          24
 #define THUMB_INSET    4       /* from the track's edge to the thumb's */
 #define ICON           16
+#define THUMB_PLAIN    16      /* without an icon, off: MaterialSwitch's unchecked thumb */
 #define TARGET_H       48      /* minHeight 48dp */
 #define TOGGLE_MS      250
 
@@ -16,6 +17,7 @@ struct _NeoSwitch {
   GtkWidget  parent;
   gboolean   active;
   double     position;           /* the thumb: 0 at the start (off) .. 1 at the end (on) */
+  gboolean   plain;              /* no icons: a 16 dp thumb off */
   NeoAnim   *slide;
 };
 
@@ -65,12 +67,17 @@ neo_switch_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
     gtk_snapshot_append_border (snapshot, &rect, widths, colors);
   }
 
+  /* the thumb's centre slides between the centres of its 24 dp places; without icons it grows from 16 dp to 24 */
+  double size = self->plain ? THUMB_PLAIN + (THUMB - THUMB_PLAIN) * t : THUMB;
   double travel = TRACK_W - 2 * THUMB_INSET - THUMB;
-  double tx = x + THUMB_INSET + travel * t, ty = y + (TRACK_H - THUMB) / 2.0;
-  gsk_rounded_rect_init_from_rect (&rect, &GRAPHENE_RECT_INIT (tx, ty, THUMB, THUMB), THUMB / 2.0);
+  double cx = x + THUMB_INSET + THUMB / 2.0 + travel * t, cy = y + TRACK_H / 2.0;
+  double tx = cx - size / 2, ty = cy - size / 2;
+  gsk_rounded_rect_init_from_rect (&rect, &GRAPHENE_RECT_INIT (tx, ty, size, size), size / 2.0);
   gtk_snapshot_push_rounded_clip (snapshot, &rect);
   gtk_snapshot_append_color (snapshot, &thumb, &rect.bounds);
   gtk_snapshot_pop (snapshot);
+  if (self->plain)
+    return;
 
   /* the icon is a state selector, so it swaps at once; only its tint blends */
   gtk_snapshot_save (snapshot);
@@ -174,4 +181,12 @@ neo_switch_set_active (NeoSwitch *self, gboolean active)
   /* SwitchCompat animates from where the thumb is, with ObjectAnimator's default accelerate-decelerate curve */
   neo_anim_start (self->slide, self->position, active, TOGGLE_MS, 0, SPONGY_ACCELERATE_DECELERATE);
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_ACTIVE]);
+}
+
+void
+neo_switch_set_thumb_icons (NeoSwitch *self, gboolean icons)
+{
+  g_return_if_fail (NEO_IS_SWITCH (self));
+  self->plain = !icons;
+  gtk_widget_queue_draw (GTK_WIDGET (self));
 }

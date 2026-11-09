@@ -20,5 +20,8 @@ GtkWidget *neo_switch_new        (void);
 gboolean   neo_switch_get_active (NeoSwitch *self);
 /* animates when the switch is on screen */
 void       neo_switch_set_active (NeoSwitch *self, gboolean active);
+/* without the icons (a preference row's MaterialSwitch): the thumb is 16 dp off and grows to 24 dp on, in the same
+ * colours. On by default */
+void       neo_switch_set_thumb_icons (NeoSwitch *self, gboolean icons);
 
 G_END_DECLS
