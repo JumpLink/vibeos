@@ -40,9 +40,10 @@ typedef struct {
   GtkWidget *views;
   GtkWidget *view_widgets[N_VIEWS];
   GtkWidget *fab;
-  GtkWidget *drawer, *drawer_scrim, *drawer_sheet, *drawer_items[N_VIEWS];
+  GtkWidget *drawer, *drawer_scrim, *drawer_sheet, *drawer_slide, *drawer_items[N_VIEWS];
   NeoAnim *drawer_anim;
   double drawer_open;                   /* 0 closed … 1 open */
+  gboolean drawer_dragging;             /* a drag on the sheet past the touch slop */
   double drawer_drag_from;
   GtkWidget *menu;                      /* the overflow menu while it shows */
   GtkWidget *toast, *toast_label;
@@ -355,17 +356,70 @@ on_fab (NeoPressable *fab, Shell *shell)
 
 /* --- the drawer */
 
+/* CalSlide: its child moved along x by a transform (a negative margin, the other way to slide it, is one GTK warns
+ * about on every frame) */
+#define CAL_TYPE_SLIDE (cal_slide_get_type ())
+G_DECLARE_FINAL_TYPE (CalSlide, cal_slide, CAL, SLIDE, GtkWidget)
+
+struct _CalSlide {
+  GtkWidget parent;
+  double offset;
+};
+
+G_DEFINE_FINAL_TYPE (CalSlide, cal_slide, GTK_TYPE_WIDGET)
+
+static void
+cal_slide_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, int *minimum, int *natural,
+                   int *minimum_baseline, int *natural_baseline)
+{
+  GtkWidget *child = gtk_widget_get_first_child (widget);
+
+  *minimum = *natural = 0;
+  if (child)
+    gtk_widget_measure (child, orientation, for_size, minimum, natural, NULL, NULL);
+}
+
+static void
+cal_slide_size_allocate (GtkWidget *widget, int width, int height, int baseline)
+{
+  GtkWidget *child = gtk_widget_get_first_child (widget);
+
+  if (child)
+    gtk_widget_allocate (child, width, height, -1,
+                         gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT ((float) CAL_SLIDE (widget)->offset, 0)));
+}
+
+static void
+cal_slide_dispose (GObject *object)
+{
+  GtkWidget *child;
+
+  while ((child = gtk_widget_get_first_child (GTK_WIDGET (object))))
+    gtk_widget_unparent (child);
+  G_OBJECT_CLASS (cal_slide_parent_class)->dispose (object);
+}
+
+static void
+cal_slide_class_init (CalSlideClass *klass)
+{
+  G_OBJECT_CLASS (klass)->dispose = cal_slide_dispose;
+  GTK_WIDGET_CLASS (klass)->measure = cal_slide_measure;
+  GTK_WIDGET_CLASS (klass)->size_allocate = cal_slide_size_allocate;
+}
+
+static void
+cal_slide_init (CalSlide *self)
+{
+}
+
 static void
 place_drawer (Shell *shell)
 {
-  GtkWidget *sheet = shell->drawer_sheet;
-
   gtk_widget_set_visible (shell->drawer, shell->drawer_open > 0);
   gtk_widget_set_opacity (shell->drawer_scrim, shell->drawer_open);
-  gtk_widget_set_margin_start (sheet, 0);
   /* slid in from the left */
-  gtk_widget_set_margin_start (sheet, (int) round (-DRAWER_WIDTH * (1 - shell->drawer_open)));
-  gtk_widget_queue_allocate (shell->drawer);
+  CAL_SLIDE (shell->drawer_slide)->offset = round (-DRAWER_WIDTH * (1 - shell->drawer_open));
+  gtk_widget_queue_allocate (shell->drawer_slide);
 }
 
 static void
@@ -413,9 +467,19 @@ on_scrim_pressed (GtkGestureClick *gesture, int n, double x, double y, Shell *sh
   open_drawer (shell, FALSE);
 }
 
+/* A drag on the sheet moves it once it is past the touch slop (8 dp); a tap is its item's, and must not set the
+ * sheet back where it was: an item's tap closes the drawer, and letting go would open it again. */
 static void
 on_sheet_drag_update (GtkGestureDrag *gesture, double dx, double dy, Shell *shell)
 {
+  if (!shell->drawer_dragging)
+    {
+      if (fabs (dx) < 8)
+        return;
+      shell->drawer_dragging = TRUE;
+      neo_anim_stop (shell->drawer_anim);
+      shell->drawer_drag_from = shell->drawer_open;
+    }
   shell->drawer_open = CLAMP (shell->drawer_drag_from + dx / DRAWER_WIDTH, 0, 1);
   place_drawer (shell);
 }
@@ -423,14 +487,15 @@ on_sheet_drag_update (GtkGestureDrag *gesture, double dx, double dy, Shell *shel
 static void
 on_sheet_drag_begin (GtkGestureDrag *gesture, double x, double y, Shell *shell)
 {
-  neo_anim_stop (shell->drawer_anim);
-  shell->drawer_drag_from = shell->drawer_open;
+  shell->drawer_dragging = FALSE;
 }
 
 static void
 on_sheet_drag_end (GtkGestureDrag *gesture, double dx, double dy, Shell *shell)
 {
-  open_drawer (shell, shell->drawer_open > 0.5);
+  if (shell->drawer_dragging)
+    open_drawer (shell, shell->drawer_open > 0.5);
+  shell->drawer_dragging = FALSE;
 }
 
 static GtkWidget *
@@ -502,7 +567,11 @@ make_drawer (Shell *shell)
   g_signal_connect (drag, "drag-update", G_CALLBACK (on_sheet_drag_update), shell);
   g_signal_connect (drag, "drag-end", G_CALLBACK (on_sheet_drag_end), shell);
   gtk_widget_add_controller (sheet, GTK_EVENT_CONTROLLER (drag));
-  gtk_overlay_add_overlay (GTK_OVERLAY (overlay), sheet);
+  shell->drawer_slide = g_object_new (CAL_TYPE_SLIDE, NULL);
+  gtk_widget_set_parent (sheet, shell->drawer_slide);
+  gtk_widget_set_halign (shell->drawer_slide, GTK_ALIGN_START);
+  gtk_widget_set_valign (shell->drawer_slide, GTK_ALIGN_FILL);
+  gtk_overlay_add_overlay (GTK_OVERLAY (overlay), shell->drawer_slide);
 
   shell->drawer_scrim = scrim;
   shell->drawer_sheet = sheet;
