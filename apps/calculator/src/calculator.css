@@ -1,0 +1,51 @@
+/* The Calculator's styles, over libneo's (neo.css). Its own widgets draw themselves with libneo's palette; only
+ * the icon buttons (neo_icon_button: the toolbars' ⋮ and back arrows) and the licenses page are styled here. */
+
+window.neo.calculator {
+  background-color: @neo_surface;
+}
+
+/* the toolbars' icons: colorOnSurfaceVariant (measured #a2adaf on still:calc-main and still:calc-history) */
+.calc-toolbar-icon {
+  color: @neo_on_surface_variant;
+}
+
+/* licenses.html in Chrome's default styles: black on white, 8 px of body margin (a page without a doctype:
+ * quirks mode, so the first and last elements' own margins go at the body's edges) */
+.calc-licenses-page {
+  background-color: #ffffff;
+  padding: 8px;
+}
+
+.calc-licenses-page label {
+  color: #000000;
+  font-family: "Neo Roboto", sans-serif;
+  font-weight: 400;
+}
+
+/* the elements' own rules under the page's label rule, which is more specific than a class alone */
+.calc-licenses-page label.calc-licenses-h3 {
+  font-size: 18.72px;
+  font-weight: 700;
+  margin-bottom: 18.72px;
+}
+
+.calc-licenses-li {
+  margin-bottom: 16px;
+}
+
+.calc-licenses-li label {
+  font-size: 16px;
+}
+
+.calc-licenses-bullet {
+  margin-left: 22px;
+  min-width: 18px;
+}
+
+.calc-licenses-page label.calc-licenses-pre {
+  font-family: monospace;
+  font-size: 13px;
+  background-color: #eeeeee;
+  padding: 13px;
+}

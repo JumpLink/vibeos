@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Calculator
+Comment=Exact arithmetic, with its history
+Exec=neo-calculator
+Icon=de.yesman.Calculator
+Terminal=false
+StartupNotify=false
+DBusActivatable=true
+Categories=Utility;Calculator;GTK;
+Keywords=Calculator;Math;Arithmetic;
+X-Purism-FormFactor=Workstation;Mobile;

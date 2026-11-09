@@ -1,0 +1,29 @@
+/* CalcPopupMenu: the calculator's pop-up menus, the toolbar's overflow menu and the history's (Material 3's
+ * PopupMenu as Theme.Material3Expressive draws it), shown inside the app's own window.
+ *
+ * Measured on still:calc-menu: a card in surfaceContainer with 4 dp corners, its end 4 dp in from the window's end
+ * and its top 1 px under the ⋮'s top; as wide as its longest item (703 px for "Answer with leading digits"): 16 dp
+ * of padding either side of 16 sp text, 48 dp rows, 8 dp above and below the rows. A tap on a row closes the menu
+ * and runs the row's action; a tap outside, Back or Escape just closes it. It comes in growing down from its top
+ * while fading in (250 ms) and fades out (150 ms), as the Dialer's.
+ *
+ * A libneo candidate: the Dialer has its own (popup-menu.c) with other measurements. */
+#pragma once
+
+#include <gtk/gtk.h>
+
+G_BEGIN_DECLS
+
+#define CALC_TYPE_POPUP_MENU (calc_popup_menu_get_type ())
+G_DECLARE_FINAL_TYPE (CalcPopupMenu, calc_popup_menu, CALC, POPUP_MENU, GtkWidget)
+
+typedef void (*CalcMenuAction) (gpointer data);
+
+CalcPopupMenu *calc_popup_menu_new     (void);
+void           calc_popup_menu_append  (CalcPopupMenu *self, const char *label, CalcMenuAction action, gpointer data);
+/* shows it over the window `anchor` is in (made by neo_window_new), at the anchor's end and top; it destroys
+ * itself once closed */
+void           calc_popup_menu_present (CalcPopupMenu *self, GtkWidget *anchor);
+void           calc_popup_menu_dismiss (CalcPopupMenu *self);
+
+G_END_DECLS
