@@ -295,6 +295,26 @@ on_response (NeoDialog *dialog, int response, Picker *picker)
     picker->chosen (picker->selected, picker->data);
 }
 
+/* The year list is as tall as the days (six rows and the weekday row) and scrolls the rest. A size request alone
+ * no longer does it: NeoDialog wraps its content's natural height, and the list's is all of its 67 rows, which
+ * would stretch the card to the window. Its holder asks for that one height, natural and minimum. */
+static void
+years_measure (GtkWidget *holder, GtkOrientation orientation, int for_size, int *min, int *nat, int *min_base,
+               int *nat_base)
+{
+  if (orientation == GTK_ORIENTATION_VERTICAL)
+    *min = *nat = (int) ((GRID_ROWS + 1) * CELL);
+  else
+    gtk_widget_measure (gtk_widget_get_first_child (holder), orientation, for_size, min, nat, NULL, NULL);
+}
+
+static void
+years_allocate (GtkWidget *holder, int width, int height, int baseline)
+{
+  gtk_widget_allocate (gtk_widget_get_first_child (holder), width, height, baseline, NULL);
+}
+
+/* the years page: picker->years is the list, the page its holder */
 static GtkWidget *
 years_list (Picker *picker)
 {
@@ -322,8 +342,14 @@ years_list (Picker *picker)
       gtk_grid_attach (GTK_GRID (grid), button, (year - YEAR_FIRST) % 3, (year - YEAR_FIRST) / 3, 1, 1);
     }
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), grid);
-  gtk_widget_set_size_request (scroll, -1, (int) ((GRID_ROWS + 1) * CELL));
-  return scroll;
+  picker->years = scroll;
+  {
+    GtkWidget *holder = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+
+    gtk_widget_set_layout_manager (holder, gtk_custom_layout_new (NULL, years_measure, years_allocate));
+    gtk_box_append (GTK_BOX (holder), scroll);
+    return holder;
+  }
 }
 
 static void
@@ -410,10 +436,9 @@ cal_date_picker_show (GtkWidget *parent, const char *title, int day, int week_st
   grid->picker = picker;
   picker->grid = GTK_WIDGET (grid);
   gtk_widget_set_halign (picker->grid, GTK_ALIGN_CENTER);
-  picker->years = years_list (picker);
   picker->stack = gtk_stack_new ();
   gtk_stack_add_named (GTK_STACK (picker->stack), picker->grid, "days");
-  gtk_stack_add_named (GTK_STACK (picker->stack), picker->years, "years");
+  gtk_stack_add_named (GTK_STACK (picker->stack), years_list (picker), "years");
   gtk_widget_add_css_class (picker->stack, "cal-date-days");
   gtk_box_append (GTK_BOX (content), picker->stack);
 
