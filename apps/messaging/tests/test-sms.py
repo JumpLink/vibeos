@@ -193,6 +193,24 @@ def run(t):
     check('and not notified', t.notification() is None, t.report()['notifications'])
     t.service('SetVisible', (-1,), '(x)')
 
+    # an MMS notification (a binary message, no text) is mmsd-tng's: not an empty message here, not deleted
+    binary = t.modem('IncomingBinary', (BOB,), '(s)')[0]
+    t.settle(0.5)
+    check('a binary message is not kept as a message', not t.query('SELECT _id FROM parts WHERE text = ?', ''),
+          t.query('SELECT message_id, text FROM parts'))
+    check('and is left on the modem for mmsd-tng', binary in t.report()['messages'], t.report()['messages'])
+    t.modem('Take', (binary,), '(o)')
+
+    # the modem going away entirely and coming back (a ModemManager restart, a modem reset): the service lives on
+    t.modem('SetModem', (False,), '(b)')
+    t.wait('the modem gone, not available', lambda: not t.prop('Available'))
+    t.modem('SetModem', (True,), '(b)')
+    t.wait('the modem back, available again', lambda: t.prop('Available'))
+    t.incoming(BOB, 'After the restart')
+    t.wait('and messages come again', lambda: t.query('SELECT _id FROM parts WHERE text = ?', 'After the restart'))
+    n = t.wait('and are notified', lambda: t.notification('0170 9999999'))
+    t.modem('Dismiss', (n[0] if n else 0,), '(u)')
+
     # a delivery report is not a message
     report = t.modem('StatusReport')[0]
     t.wait('a delivery report is deleted off the modem', lambda: report not in t.report()['messages'])

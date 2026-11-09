@@ -74,6 +74,18 @@ uint_property (GDBusProxy *proxy, const char *name)
   return value && g_variant_is_of_type (value, G_VARIANT_TYPE_UINT32) ? g_variant_get_uint32 (value) : 0;
 }
 
+/* a binary message: no text, only data. The one that comes is an MMS notification (a WAP push to port 2948), which
+ * is mmsd-tng's to read and fetch; as a text message it would be an empty bubble */
+static gboolean
+is_binary (GDBusProxy *proxy)
+{
+  g_autoptr(GVariant) data = g_dbus_proxy_get_cached_property (proxy, "Data");
+  g_autofree char *text = string_property (proxy, "Text");
+
+  return (!text || !*text) && data && g_variant_is_of_type (data, G_VARIANT_TYPE_BYTESTRING) &&
+         g_variant_n_children (data) > 0;
+}
+
 /* the service centre's timestamp, ISO 8601 with the network's offset ("2026-11-08T01:02:03+01"), as Unix ms */
 static gint64
 timestamp_ms (const char *text)
@@ -117,6 +129,13 @@ check (SmsModem *self, GDBusProxy *proxy)
       unwatch (self, path);
       if (state == SMS_STATE_RECEIVED && type == PDU_STATUS_REPORT)
         sms_modem_delete (self, path);
+      return;
+    }
+  if (is_binary (proxy))
+    {
+      /* left on the modem, not deleted: mmsd-tng takes it from there */
+      g_message ("sms: %s is binary (an MMS notification): left to mmsd-tng", path);
+      unwatch (self, path);
       return;
     }
   number = string_property (proxy, "Number");
