@@ -41,6 +41,12 @@ rig_env() {
         GSETTINGS_BACKEND=memory GSETTINGS_SCHEMA_DIR="$RIG" PULSE_SERVER="unix:$RIG/no-sound"
 }
 
+# this run's call log, blocked numbers, state and config, for the service and the app alike
+run_dirs() {
+    run=$(cat "$RIG/run")
+    echo XDG_DATA_HOME="$run/data" XDG_STATE_HOME="$run/state" XDG_CONFIG_HOME="$run/config"
+}
+
 case $1 in
 start)
     # a second start would take over the first one's pid files and leave its daemons running
@@ -52,6 +58,7 @@ start)
     # each run its own call log, settings and what the service learned of the modem (the rig is on tmpfs)
     run=$RIG/run-$(date +%s)
     as_user mkdir -p "$run/data" "$run/state" "$run/config"
+    echo "$run" >"$RIG/run"
     # the session user cannot read root's home, where the build is
     install -o "$USER_NAME" -m 755 "$build/neo-dialer" "$build/neo-dialer-calls" "$HERE/mock-phone.py" "$RIG/"
     glib-compile-schemas --targetdir "$RIG" "$HERE/../data"
@@ -78,16 +85,16 @@ EOF
         fi
     done
     # shellcheck disable=SC2046
-    as_user_daemon calls env $(rig_env) XDG_DATA_HOME="$run/data" XDG_STATE_HOME="$run/state" \
-        XDG_CONFIG_HOME="$run/config" "$RIG/neo-dialer-calls"
+    as_user_daemon calls env $(rig_env) $(run_dirs) "$RIG/neo-dialer-calls"
     sh "$HEADLESS" start
     ;;
 ui | app)
     what=$1
     shift
     [ "$what" = ui ] && set -- --incall "$@"
+    # the app with the service's data too: what it blocks or deletes is this run's, never the phone's own
     # shellcheck disable=SC2046
-    sh "$HEADLESS" run env $(rig_env) "$RIG/neo-dialer" "$@"
+    sh "$HEADLESS" run env $(rig_env) $(run_dirs) "$RIG/neo-dialer" "$@"
     ;;
 phone)
     shift

@@ -44,6 +44,19 @@ def start_bus(tmp, name):
     return bus, bus.stdout.readline().strip()
 
 
+def block(data_home, number):
+    # what the Phone's or the Messaging's Block does: a row in the shared list (dialer/src/blocked-numbers.c), which
+    # the service hears of through its file monitor
+    path = os.path.join(data_home, 'neo-phone', 'blocked_numbers.db')
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    db = sqlite3.connect(path)
+    db.execute('CREATE TABLE IF NOT EXISTS blocked (_id INTEGER PRIMARY KEY AUTOINCREMENT,'
+               ' original_number TEXT NOT NULL UNIQUE, e164_number TEXT)')
+    db.execute('INSERT OR IGNORE INTO blocked (original_number) VALUES (?)', (number,))
+    db.commit()
+    db.close()
+
+
 class Test:
     def __init__(self, session_address, store):
         self.bus = Gio.DBusConnection.new_for_address_sync(
@@ -210,6 +223,18 @@ def run(t):
     t.wait('and messages come again', lambda: t.query('SELECT _id FROM parts WHERE text = ?', 'After the restart'))
     n = t.wait('and are notified', lambda: t.notification('0170 9999999'))
     t.modem('Dismiss', (n[0] if n else 0,), '(u)')
+
+    # a blocked number's text: kept, archived, seen, and not notified
+    carol = '+491705555555'
+    block(os.path.dirname(os.path.dirname(t.store)), '0170 5555555')
+    t.settle(0.5)
+    t.incoming(carol, 'Buy now')
+    conversation = t.wait('a blocked number\'s text is kept', lambda: t.conversation_of(carol))
+    t.wait('in an archived conversation', lambda: t.query('SELECT archive_status FROM conversations WHERE _id = ?',
+                                                            conversation) == [(1,)])
+    check('seen', t.messages(conversation)[-1][3] == 1, t.messages(conversation))
+    t.settle()
+    check('and not notified', t.notification() is None, t.report()['notifications'])
 
     # a delivery report is not a message
     report = t.modem('StatusReport')[0]

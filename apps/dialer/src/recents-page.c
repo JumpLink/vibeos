@@ -3,6 +3,7 @@
  * call_log_list_item.xml's, measured on still:dialer-recents and still:dialer-recents-expanded (spec §5.2–§5.4). */
 #include "recents-page.h"
 #include "avatar.h"
+#include "blocked-numbers.h"
 #include "call-dates.h"
 #include "call-log.h"
 #include "call-types.h"
@@ -900,6 +901,17 @@ menu_target_free (gpointer data)
   g_free (target);
 }
 
+static MenuTarget *
+menu_target_copy (const MenuTarget *target)
+{
+  MenuTarget *copy = g_new0 (MenuTarget, 1);
+
+  copy->page = g_object_ref (target->page);
+  copy->number = g_strdup (target->number);
+  copy->ids = g_array_ref (target->ids);
+  return copy;
+}
+
 static void
 on_menu_copy (gpointer data)
 {
@@ -925,8 +937,83 @@ on_menu_delete (gpointer data)
   calls_client_delete_call_log (calls_client_get (), (gint64 *) target->ids->data, target->ids->len);
 }
 
-/* the number as a header, then Copy number, Edit number before call and Delete. (Block number needs a blocked
- * numbers list, which this phone does not keep.) */
+static const char *
+menu_country (void)
+{
+  const char *country = calls_client_get_country (calls_client_get ());
+
+  return country && *country ? country : phone_number_locale_country ();
+}
+
+static void
+on_block_response (NeoDialog *dialog, int response, gpointer data)
+{
+  MenuTarget *target = data;
+  g_autoptr(GError) error = NULL;
+
+  if (response == NEO_RESPONSE_OK
+      && !blocked_numbers_add (blocked_numbers_get_default (), target->number, menu_country (), &error))
+    {
+      g_warning ("recents: %s", error->message);
+      neo_snackbar_show (target->page->snackbar, _("Problem blocking this number"), NULL, NULL, NULL,
+                         NEO_SNACKBAR_LONG);
+    }
+}
+
+static void
+on_unblock_response (NeoDialog *dialog, int response, gpointer data)
+{
+  MenuTarget *target = data;
+  g_autoptr(GError) error = NULL;
+
+  if (response == NEO_RESPONSE_OK
+      && !blocked_numbers_remove (blocked_numbers_get_default (), target->number, menu_country (), &error))
+    {
+      g_warning ("recents: %s", error->message);
+      neo_snackbar_show (target->page->snackbar, _("Problem unblocking this number"), NULL, NULL, NULL,
+                         NEO_SNACKBAR_LONG);
+    }
+}
+
+/* BlockReportSpamDialogs (spec §5.8.1): "Block %s?", and the platform's own filtering, which takes texts too */
+static void
+on_menu_block (gpointer data)
+{
+  MenuTarget *target = data;
+  g_autofree char *shown = phone_number_format (target->number, menu_country ());
+  g_autofree char *title = g_strdup_printf (_("Block %s?"), shown);
+  NeoDialog *dialog = neo_dialog_new (title);
+
+  neo_dialog_set_message (dialog, _("You will no longer receive calls or texts from this number."));
+  neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
+  neo_dialog_add_button (dialog, _("BLOCK"), NEO_RESPONSE_OK);
+  /* the target lives with the menu, which goes before the dialog answers: the dialog holds its own */
+  g_object_set_data_full (G_OBJECT (dialog), "menu-target", menu_target_copy (target), menu_target_free);
+  g_signal_connect (dialog, "response", G_CALLBACK (on_block_response),
+                    g_object_get_data (G_OBJECT (dialog), "menu-target"));
+  neo_dialog_present (dialog, GTK_WIDGET (target->page));
+}
+
+/* §5.8.3: no title, the question is the message */
+static void
+on_menu_unblock (gpointer data)
+{
+  MenuTarget *target = data;
+  g_autofree char *shown = phone_number_format (target->number, menu_country ());
+  g_autofree char *question = g_strdup_printf (_("Unblock %s?"), shown);
+  NeoDialog *dialog = neo_dialog_new (NULL);
+
+  neo_dialog_set_message (dialog, question);
+  neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
+  neo_dialog_add_button (dialog, _("UNBLOCK"), NEO_RESPONSE_OK);
+  g_object_set_data_full (G_OBJECT (dialog), "menu-target", menu_target_copy (target), menu_target_free);
+  g_signal_connect (dialog, "response", G_CALLBACK (on_unblock_response),
+                    g_object_get_data (G_OBJECT (dialog), "menu-target"));
+  neo_dialog_present (dialog, GTK_WIDGET (target->page));
+}
+
+/* the number as a header, then Copy number, Edit number before call, Block or Unblock number and Delete
+ * (CallLogListItemViewHolder.onCreateContextMenu, spec §5.7.1) */
 static void
 page_row_menu (RecentsPage *self, RecentsRow *row)
 {
@@ -947,6 +1034,14 @@ page_row_menu (RecentsPage *self, RecentsRow *row)
     dialer_popup_menu_append (menu, _("Copy number"), on_menu_copy, target);
   if (group->callable && !strchr (group->number, '@'))
     dialer_popup_menu_append (menu, _("Edit number before call"), on_menu_edit, target);
+  /* a withheld number has nothing to block, and an emergency number never is */
+  if (group->callable && !phone_number_is_emergency (group->number))
+    {
+      if (blocked_numbers_contains (blocked_numbers_get_default (), group->number, menu_country ()))
+        dialer_popup_menu_append (menu, _("Unblock number"), on_menu_unblock, target);
+      else
+        dialer_popup_menu_append (menu, _("Block number"), on_menu_block, target);
+    }
   dialer_popup_menu_append (menu, _("Delete"), on_menu_delete, target);
   dialer_popup_menu_present_at (menu, row->primary, row->press_x, row->press_y);
 }

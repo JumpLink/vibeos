@@ -37,5 +37,9 @@ Presentation phone_number_presentation (const char *number, Presentation present
 /* "Private number", "Unknown", "Payphone"; NULL for a number that is shown as it is */
 const char *phone_number_presentation_name (Presentation presentation);
 
+/* a number that reaches the emergency services everywhere ("112", "911"; PhoneNumberUtils' defaults when the SIM
+ * gives no list): one a phone dials even without a SIM, and one that cannot be blocked */
+gboolean    phone_number_is_emergency (const char *number);
+
 /* the country to format for when the network says none: the locale's ("en_GB" -> "GB") */
 const char *phone_number_locale_country (void);

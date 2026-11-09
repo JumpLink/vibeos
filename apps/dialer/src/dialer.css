@@ -244,6 +244,30 @@ history-tabs {
   color: #81b5bc;
 }
 
+/* Blocked numbers: Telecom's page, its own theme (measured on still:dialer-set-blocked) */
+.blocked-numbers {
+  background-color: #24292a;
+}
+
+.blocked-body,
+.blocked-number {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #d6e3e5;
+}
+
+.blocked-add {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #f6f7fb;
+}
+
+.blocked-unblock {
+  color: #d6e3e5;
+}
+
 .settings-choice {
   font-family: "Neo Roboto", Roboto, sans-serif;
   font-size: 16px;

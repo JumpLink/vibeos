@@ -12,7 +12,7 @@ bindir = get_option('prefix') / get_option('bindir')
 datadir = get_option('prefix') / get_option('datadir')
 
 # numbers, the call log and the contacts: shared by the service, the app and the tests
-common = static_library('common', 'src/phone-number.c', 'src/call-log.c', 'src/contacts.c',
+common = static_library('common', 'src/phone-number.c', 'src/call-log.c', 'src/contacts.c', 'src/blocked-numbers.c',
                         dependencies: [gio, ebook, dependency('sqlite3')])
 
 # the service: the calls with the app closed, ringing, the call log, the notifications
@@ -44,7 +44,7 @@ install_data('data/de.yesman.Dialer.svg', install_dir: datadir / 'icons/hicolor/
 install_data('data/de.yesman.Dialer.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
 gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
 
-foreach name : ['call-log', 'phone-number']
+foreach name : ['call-log', 'phone-number', 'blocked-numbers']
   test(name, executable('test-' + name, 'tests/test-' + name + '.c', link_with: common,
                         dependencies: [gio, ebook, dependency('sqlite3')]))
 endforeach

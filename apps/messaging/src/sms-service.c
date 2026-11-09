@@ -11,6 +11,7 @@
 #include "messaging-types.h"
 #include "sms-modem.h"
 #include "sms-store.h"
+#include "blocked-numbers.h"
 #include "contacts.h"
 #include "notifier.h"
 #include "phone.h"
@@ -82,6 +83,7 @@ typedef struct {
   GDBusProxy *gateway;
   gboolean available;
   Contacts *contacts;
+  BlockedNumbers *blocked;      /* the numbers whose texts are kept archived and not notified (blocked-numbers.h) */
   Notifier *notifier;
 
   guint32 notification;         /* the new messages' */
@@ -610,8 +612,17 @@ on_received (const char *path, const char *number, const char *text, gint64 time
     return;                     /* left on the modem: the next start hands it over again */
   sms_modem_delete (self->modem, path);
   message = sms_store_get_message (self->store, id);
+  /* from a blocked number: kept, but seen (never notified) and its conversation archived, as Messaging's block
+   * dialog says ("You'll continue to receive messages from this number but won't be notified anymore. This
+   * conversation will be archived."; ReceiveSmsMessageAction) */
+  if (blocked_numbers_contains (self->blocked, sender, country (self)))
+    {
+      sms_store_mark_seen (self->store, message->conversation_id);
+      sms_store_set_archived (self->store, message->conversation_id, TRUE);
+      g_message ("sms: %s is from a blocked number: archived, not notified", path);
+    }
   /* where the app shows it, it is read (the conversation open) or seen (the list at its top) at once */
-  if (self->visible > 0 && message->conversation_id == self->visible)
+  else if (self->visible > 0 && message->conversation_id == self->visible)
     sms_store_mark_read (self->store, self->visible);
   else if (self->visible == 0)
     sms_store_mark_seen (self->store, 0);
@@ -983,6 +994,7 @@ main (int argc, char **argv)
   if (!service.store)
     g_error ("%s", error->message);
   service.contacts = contacts_new ();
+  service.blocked = blocked_numbers_new (NULL);
   g_signal_connect (service.contacts, "changed", G_CALLBACK (on_contacts_changed), &service);
   service.notifier = notifier_new (on_notification_action, on_notifications_restart, &service);
   service.failed = g_hash_table_new_full (g_int64_hash, g_int64_equal, g_free, g_free);
@@ -1025,6 +1037,7 @@ main (int argc, char **argv)
   notifier_free (service.notifier);
   g_signal_handlers_disconnect_by_data (service.contacts, &service);
   g_object_unref (service.contacts);
+  g_object_unref (service.blocked);
   sms_store_free (service.store);
   g_object_unref (service.system);
   g_object_unref (service.session);

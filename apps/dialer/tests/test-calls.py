@@ -7,6 +7,7 @@
 import json
 import os
 import shutil
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -22,7 +23,7 @@ NAME, PATH, IFACE = 'de.yesman.Dialer.Calls', '/de/yesman/Dialer/Calls', 'de.yes
 # call-types.h
 CONNECTING, DIALING, INCOMING, CALL_WAITING, ACTIVE, ONHOLD, DISCONNECTING, DISCONNECTED = range(8)
 END_NONE, END_LOCAL, END_REMOTE, END_MISSED, END_REJECTED, END_CANCELED, END_BUSY, END_ERROR = range(8)
-T_INCOMING, T_OUTGOING, T_MISSED, T_REJECTED = 1, 2, 3, 5
+T_INCOMING, T_OUTGOING, T_MISSED, T_REJECTED, T_BLOCKED = 1, 2, 3, 5, 6
 R_TERMINATED = 4                        # MMCallStateReason
 
 failures = []
@@ -43,8 +44,22 @@ def start_bus(tmp, name):
     return bus, bus.stdout.readline().strip()
 
 
+def block(data_home, number):
+    # what the Phone's or the Messaging's Block does: a row in the shared list (blocked-numbers.c), which the
+    # service hears of through its file monitor
+    path = os.path.join(data_home, 'neo-phone', 'blocked_numbers.db')
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    db = sqlite3.connect(path)
+    db.execute('CREATE TABLE IF NOT EXISTS blocked (_id INTEGER PRIMARY KEY AUTOINCREMENT,'
+               ' original_number TEXT NOT NULL UNIQUE, e164_number TEXT)')
+    db.execute('INSERT OR IGNORE INTO blocked (original_number) VALUES (?)', (number,))
+    db.commit()
+    db.close()
+
+
 class Test:
-    def __init__(self, session_address):
+    def __init__(self, session_address, data_home):
+        self.data_home = data_home
         self.bus = Gio.DBusConnection.new_for_address_sync(
             session_address, Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT |
             Gio.DBusConnectionFlags.MESSAGE_BUS_CONNECTION, None, None)
@@ -66,6 +81,14 @@ class Test:
             time.sleep(0.02)
         check(what, False, 'timed out (%r); the phone has %s' % (last, json.dumps(self.report())[:1500]))
         return None
+
+    def settle(self, seconds=0.3):
+        ctx = GLib.MainContext.default()
+        end = time.time() + seconds
+        while time.time() < end:
+            while ctx.pending():
+                ctx.iteration(False)
+            time.sleep(0.02)
 
     def service(self, method, args=None, signature=None):
         reply = self.bus.call_sync(NAME, PATH, IFACE, method, GLib.Variant(signature, args) if signature else None,
@@ -223,6 +246,21 @@ def run(t):
     t.wait('the modem back: ready again', lambda: t.prop('Status') == 'ready')
     t.phone('Incoming', ('+493023575124',), '(s)')
     t.wait('and a call comes in again', lambda: any(c['state'] == INCOMING for c in t.calls()))
+    t.service('Decline', (next(c['id'] for c in t.calls() if c['state'] == INCOMING),), '(u)')
+    t.wait('the last call has gone', lambda: not t.calls())
+
+    # --- a call from a blocked number: declined before it rings, never shown, logged as "Blocked call"
+    block(t.data_home, '030 99887766')
+    t.settle(0.5)
+    t.phone('Clear')
+    t.phone('Incoming', ('+493099887766',), '(s)')
+    t.wait('a blocked caller is hung up on', lambda: t.logged('Hangup'))
+    check('without ringing or its answer screen', not t.logged('LaunchFullScreen'), t.report()['log'])
+    check('not among the calls', not t.calls(), t.calls())
+    t.wait('and deleted off the modem', lambda: t.logged('DeleteCall'))
+    t.wait('logged as a blocked call, seen', lambda: t.call_log()[0]['type'] == T_BLOCKED
+           and t.call_log()[0]['is_read'])
+    check('no notification', not t.report()['notifications'], t.report()['notifications'])
 
 
 def main():
@@ -245,7 +283,7 @@ def main():
             print('FAIL the mock phone did not start')
             return 1
         procs.append(subprocess.Popen([os.path.join(build, 'neo-dialer-calls')], env=env))
-        run(Test(session_address))
+        run(Test(session_address, env['XDG_DATA_HOME']))
     finally:
         for p in reversed(procs):
             p.terminate()

@@ -207,3 +207,15 @@ phone_number_presentation_name (Presentation presentation)
       return NULL;
     }
 }
+
+/* the numbers that reach the emergency services everywhere, which a phone dials even without a SIM
+ * (PhoneNumberUtils' defaults when the SIM gives no list) */
+static const char * const emergency_numbers[] = { "112", "911", "999", "000", "08", "110", "118", "119", NULL };
+
+gboolean
+phone_number_is_emergency (const char *number)
+{
+  g_autofree char *digits = number ? phone_number_normalize (number) : NULL;
+
+  return digits && g_strv_contains (emergency_numbers, digits);
+}

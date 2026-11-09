@@ -6,13 +6,14 @@
  *   Quick responses      the incoming call's "Reply" sends a text message: the phone has no messages app yet
  *   Phone number lookup  Lineage's lookup providers are web services this phone has no client for
  *   Calling accounts     Telecom's page for SIP and other accounts: calls here only go over the modem
- *   Blocked numbers      nothing blocks a call yet (the context menu has no Block number either)
  *   Voicemail            its rows open Telecom's and the carrier's pages; the phone has no visual voicemail
  *   Accessibility        TTY mode: the modem's TTY setting, which ModemManager does not reach
  * In Sounds and vibration, "Enable Do Not Disturb during calls" and Call recording are left out too: the phone has
  * no do-not-disturb to turn on, and nothing records calls. */
 #include "dialer-settings.h"
+#include "blocked-numbers.h"
 #include "calls-client.h"
+#include "phone-number.h"
 #include "ringer.h"
 
 #include <glib/gi18n.h>
@@ -701,6 +702,172 @@ on_sounds (DialerSettings *self)
   push_page (self, page, _("Sounds and vibration"));
 }
 
+/* ---- Blocked numbers (§9.7): Telecom's BlockedNumbersActivity, another app with its own theme ----------------
+ *
+ * Measured on still:dialer-set-blocked (an empty list): the explanation, then "Add a number"; each blocked number is
+ * a row with an X that unblocks it (blocked_number_item). Left out: the "Unknown / Block calls from unidentified
+ * callers" switch. A caller's number can come a moment after the call starts ringing, so "no number yet" is not
+ * "unidentified", and blocking on it would turn away callers who are not withheld at all. */
+
+#define BLOCKED_ROW_HEIGHT  56
+#define BLOCKED_BODY_PAD    16
+#define BLOCKED_ADD_HEIGHT  52      /* measured: 51.67 dp */
+#define BLOCKED_X_SIZE      48
+
+static const char *
+blocked_country (void)
+{
+  const char *country = calls_client_get_country (calls_client_get ());
+
+  return country && *country ? country : phone_number_locale_country ();
+}
+
+static void
+on_unblock_response (NeoDialog *dialog, int response, gpointer data)
+{
+  const char *number = g_object_get_data (G_OBJECT (dialog), "number");
+  g_autoptr(GError) error = NULL;
+
+  if (response == NEO_RESPONSE_OK
+      && !blocked_numbers_remove (blocked_numbers_get_default (), number, blocked_country (), &error))
+    g_warning ("settings: %s", error->message);
+}
+
+/* the X on a row: "Unblock %s?", Cancel and Unblock */
+static void
+on_unblock_clicked (GtkWidget *button, gpointer data)
+{
+  const char *number = g_object_get_data (G_OBJECT (button), "number");
+  g_autofree char *shown = phone_number_format (number, blocked_country ());
+  g_autofree char *question = g_strdup_printf (_("Unblock %s?"), shown);
+  NeoDialog *dialog = neo_dialog_new (NULL);
+
+  neo_dialog_set_message (dialog, question);
+  neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
+  neo_dialog_add_button (dialog, _("Unblock"), NEO_RESPONSE_OK);
+  g_object_set_data_full (G_OBJECT (dialog), "number", g_strdup (number), g_free);
+  g_signal_connect (dialog, "response", G_CALLBACK (on_unblock_response), NULL);
+  neo_dialog_present (dialog, button);
+}
+
+/* the rows under "Add a number": one per blocked number, the last blocked first; made again on every change, from
+ * this app or another (the Messaging blocks into the same list) */
+static void
+fill_blocked (GtkWidget *rows)
+{
+  g_auto(GStrv) numbers = blocked_numbers_list (blocked_numbers_get_default ());
+  GtkWidget *child;
+
+  while ((child = gtk_widget_get_first_child (rows)))
+    gtk_box_remove (GTK_BOX (rows), child);
+  for (guint i = 0; numbers[i]; i++)
+    {
+      GtkWidget *row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+      g_autofree char *shown = phone_number_format (numbers[i], blocked_country ());
+      GtkWidget *label = text_label (shown, "blocked-number", 16);
+      GtkWidget *unblock = neo_icon_button_new ("dialer-close-symbolic");
+
+      gtk_widget_set_size_request (row, -1, BLOCKED_ROW_HEIGHT);
+      gtk_widget_set_margin_start (row, ROW_PAD_X);
+      /* the X's 24 dp glyph ends at the 16 dp padding; its 48 dp touch area reaches past it */
+      gtk_widget_set_margin_end (row, ROW_PAD_X - (BLOCKED_X_SIZE - 24) / 2);
+      gtk_widget_set_hexpand (label, TRUE);
+      gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
+      gtk_label_set_wrap (GTK_LABEL (label), FALSE);
+      gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
+      gtk_box_append (GTK_BOX (row), label);
+      gtk_widget_set_size_request (unblock, BLOCKED_X_SIZE, BLOCKED_X_SIZE);
+      gtk_widget_set_valign (unblock, GTK_ALIGN_CENTER);
+      gtk_widget_add_css_class (unblock, "blocked-unblock");
+      gtk_accessible_update_property (GTK_ACCESSIBLE (unblock), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Unblock"), -1);
+      g_object_set_data_full (G_OBJECT (unblock), "number", g_strdup (numbers[i]), g_free);
+      g_signal_connect (unblock, "clicked", G_CALLBACK (on_unblock_clicked), NULL);
+      gtk_box_append (GTK_BOX (row), unblock);
+      gtk_box_append (GTK_BOX (rows), row);
+    }
+}
+
+static void
+on_add_response (NeoDialog *dialog, int response, gpointer data)
+{
+  GtkWidget *entry = g_object_get_data (G_OBJECT (dialog), "entry");
+  g_autofree char *number = g_strstrip (g_strdup (gtk_editable_get_text (GTK_EDITABLE (entry))));
+  g_autoptr(GError) error = NULL;
+
+  if (response != NEO_RESPONSE_OK || !*number)
+    return;
+  /* Telecom refuses to block an emergency number */
+  if (phone_number_is_emergency (number))
+    return;
+  if (!blocked_numbers_add (blocked_numbers_get_default (), number, blocked_country (), &error))
+    g_warning ("settings: %s", error->message);
+}
+
+static void
+on_add_activate (GtkEntry *entry, NeoDialog *dialog)
+{
+  neo_dialog_respond (dialog, NEO_RESPONSE_OK);
+}
+
+/* "Add a number": one line for the number (the phone keypad), Cancel and Block */
+static void
+on_add_clicked (GtkWidget *link, gpointer data)
+{
+  NeoDialog *dialog = neo_dialog_new (NULL);
+  GtkWidget *entry = gtk_entry_new ();
+
+  neo_dialog_set_message (dialog, _("Add a number"));
+  gtk_entry_set_placeholder_text (GTK_ENTRY (entry), _("Phone number"));
+  gtk_entry_set_input_purpose (GTK_ENTRY (entry), GTK_INPUT_PURPOSE_PHONE);
+  gtk_widget_add_css_class (entry, "neo-entry");
+  g_signal_connect (entry, "activate", G_CALLBACK (on_add_activate), dialog);
+  neo_dialog_set_content (dialog, entry);
+  neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
+  neo_dialog_add_button (dialog, _("Block"), NEO_RESPONSE_OK);
+  g_object_set_data (G_OBJECT (dialog), "entry", entry);
+  g_signal_connect (dialog, "response", G_CALLBACK (on_add_response), NULL);
+  neo_dialog_present (dialog, link);
+  gtk_widget_grab_focus (entry);
+}
+
+static void
+on_blocked (DialerSettings *self)
+{
+  GtkWidget *page = page_new ();
+  GtkWidget *list = page_list (page);
+  GtkWidget *body = text_label (_("You won't receive calls or texts from blocked numbers."), "blocked-body", 16);
+  GtkWidget *add = text_label (_("Add a number"), "blocked-add", 16);
+  GtkWidget *add_pressable, *rows;
+
+  gtk_widget_add_css_class (page, "blocked-numbers");
+  gtk_widget_set_margin_start (body, ROW_PAD_X);
+  gtk_widget_set_margin_end (body, ROW_PAD_X);
+  gtk_widget_set_margin_top (body, BLOCKED_BODY_PAD);
+  gtk_widget_set_margin_bottom (body, BLOCKED_BODY_PAD);
+  gtk_box_append (GTK_BOX (list), body);
+
+  /* a link, not a full-width row: the measured touch area is the text's (x 16 dp, 52 dp tall). One line: a
+   * wrapping label asks for its narrowest width, and a link sized to it broke "Add a number" in two */
+  gtk_label_set_wrap (GTK_LABEL (add), FALSE);
+  gtk_widget_set_valign (add, GTK_ALIGN_CENTER);
+  add_pressable = neo_pressable_new (add);
+  neo_pressable_set_ripple (NEO_PRESSABLE (add_pressable), NEO_RIPPLE_BOUNDED, 0);
+  gtk_widget_set_halign (add_pressable, GTK_ALIGN_START);
+  gtk_widget_set_size_request (add_pressable, -1, BLOCKED_ADD_HEIGHT);
+  gtk_widget_set_margin_start (add_pressable, ROW_PAD_X);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (add_pressable), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Add a number"),
+                                  -1);
+  g_signal_connect (add_pressable, "clicked", G_CALLBACK (on_add_clicked), NULL);
+  gtk_box_append (GTK_BOX (list), add_pressable);
+
+  rows = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  gtk_box_append (GTK_BOX (list), rows);
+  fill_blocked (rows);
+  g_signal_connect_object (blocked_numbers_get_default (), "changed", G_CALLBACK (fill_blocked), rows,
+                           G_CONNECT_SWAPPED);
+  push_page (self, page, _("Blocked numbers"));
+}
+
 /* ---- the screen ---------------------------------------------------------------------------------------------- */
 
 static void
@@ -780,6 +947,8 @@ dialer_settings_new (GSettings *settings)
                             G_CALLBACK (on_display_options), self);
   g_signal_connect_swapped (add_row (top, _("Sounds and vibration"), NULL, NULL, NULL), "clicked",
                             G_CALLBACK (on_sounds), self);
+  g_signal_connect_swapped (add_row (top, _("Blocked numbers"), NULL, NULL, NULL), "clicked",
+                            G_CALLBACK (on_blocked), self);
   push_page (self, top, _("Settings"));
 
   g_signal_connect (keys, "key-pressed", G_CALLBACK (on_key), self);

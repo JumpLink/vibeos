@@ -1,5 +1,6 @@
 /* The calls (calls.h). */
 #include "calls.h"
+#include "blocked-numbers.h"
 #include "call-notifications.h"
 #include "contacts.h"
 #include "modem.h"
@@ -32,10 +33,6 @@ enum {
   MM_CALL_REASON_AUDIO_SETUP_FAILED = 7,
 };
 
-/* the numbers that reach the emergency services everywhere, which a phone dials even without a SIM
- * (PhoneNumberUtils' defaults when the SIM gives no list) */
-static const char * const emergency_numbers[] = { "112", "911", "999", "000", "08", "110", "118", "119", NULL };
-
 /* An answer that has to wait until other calls are gone. A modem without +CHLD cannot hold the call that is up, so it
  * ends, and the waiting call (RINGING_IN once it is alone) is accepted; and GSM holds one call at most, so with one
  * on hold already, that one ends before the call that is up is held (Telecom answers the same two ways). */
@@ -62,6 +59,7 @@ typedef struct {
   gboolean hangup_requested;    /* we asked for the hang-up, so it ended here (LOCAL, CANCELED or REJECTED) */
   gboolean multiparty;
   gboolean announced;           /* it rang and its screen was asked for */
+  gboolean blocked;             /* from a blocked number: declined unseen, logged as "Blocked call" */
   AnswerAfter answer_after;     /* answered, the other calls going first */
   guint remove_id;              /* an ended call stays a moment */
 } Call;
@@ -77,6 +75,7 @@ struct _Calls {
   Ringer *ringer;
   CallNotifications *notifications;
   Contacts *contacts;
+  BlockedNumbers *blocked;      /* the numbers whose calls are declined unseen (blocked-numbers.h) */
   GPtrArray *calls;             /* Call, oldest first */
   GPtrArray *deferred;          /* call paths that came while one of ours waited for its path (char *) */
   guint next_id;
@@ -518,6 +517,8 @@ log_call (Calls *self, Call *call)
 
   if (call->direction == CALL_DIRECTION_OUTGOING)
     entry.type = CALL_TYPE_OUTGOING;
+  else if (call->blocked)
+    entry.type = CALL_TYPE_BLOCKED;
   else if (call->end == CALL_END_MISSED)
     {
       entry.type = CALL_TYPE_MISSED;
@@ -554,6 +555,53 @@ end_call (Calls *self, Call *call)
   sync_calls (self);
 }
 
+/* --- a call from a blocked number */
+
+typedef struct {
+  Calls *self;
+  char *path;
+} BlockedHangup;
+
+static void
+on_blocked_hung_up (GObject *source, GAsyncResult *result, gpointer data)
+{
+  g_autoptr(GVariant) reply = g_dbus_connection_call_finish (G_DBUS_CONNECTION (source), result, NULL);
+  BlockedHangup *hangup = data;
+
+  /* ModemManager keeps a call that ended until someone deletes it; once hung up, it is ours to delete */
+  if (modem_is_available (hangup->self->modem))
+    modem_delete_call (hangup->self->modem, hangup->path);
+  g_free (hangup->path);
+  g_free (hangup);
+}
+
+/* Telecom's CallScreening for a blocked number (BlockCheckerAdapter): the call is declined before it rings, never
+ * shown, never notified, and logged as "Blocked call" (spec §5.8.5). If its number came only after it started
+ * ringing (the +CLIP can come after the first RING), it is taken away the moment the number shows who it is. */
+static void
+block_call (Calls *self, Call *call)
+{
+  g_message ("calls: call %u is from a blocked number: declined", call->id);
+  call->blocked = TRUE;
+  call->state = CALL_STATE_DISCONNECTED;
+  call->end = CALL_END_REJECTED;
+  log_call (self, call);
+  if (call->path)
+    {
+      BlockedHangup *hangup = g_new0 (BlockedHangup, 1);
+
+      hangup->self = self;
+      hangup->path = g_strdup (call->path);
+      /* not through call_method: that one goes with the call's cancellable, cancelled as the call is freed below */
+      g_dbus_connection_call (self->system, MM_NAME, call->path, CALL_INTERFACE, "Hangup", NULL, NULL,
+                              G_DBUS_CALL_FLAGS_NONE, -1, NULL, on_blocked_hung_up, hangup);
+    }
+  if (call->id == self->full_screen_call)
+    self->full_screen_call = 0;
+  g_ptr_array_remove (self->calls, call);
+  sync_calls (self);
+}
+
 /* --- following ModemManager's call */
 
 static void
@@ -576,6 +624,15 @@ update_from_modem (Calls *self, Call *call)
       g_free (call->number);
       call->number = g_variant_dup_string (number, NULL);
       call->presentation = phone_number_presentation (call->number, PRESENTATION_ALLOWED);
+    }
+
+  if (call->direction == CALL_DIRECTION_INCOMING
+      && (mm_state == MM_CALL_STATE_RINGING_IN || mm_state == MM_CALL_STATE_WAITING)
+      && call->presentation == PRESENTATION_ALLOWED
+      && blocked_numbers_contains (self->blocked, call->number, calls_get_country (self)))
+    {
+      block_call (self, call);
+      return;
     }
 
   switch (mm_state)
@@ -793,14 +850,6 @@ on_created (GObject *source, GAsyncResult *result, gpointer data)
 }
 
 static gboolean
-is_emergency_number (const char *number)
-{
-  g_autofree char *digits = phone_number_normalize (number);
-
-  return g_strv_contains (emergency_numbers, digits);
-}
-
-static gboolean
 check_ready (Calls *self, GError **error)
 {
   if (self->gateway)
@@ -826,7 +875,7 @@ calls_dial (Calls *self, const char *number, GError **error)
       return 0;
     }
   /* no SIM, or no network of its own: only the emergency numbers go through (and the modem knows which) */
-  if (modem_get_emergency_only (self->modem) && !is_emergency_number (digits))
+  if (modem_get_emergency_only (self->modem) && !phone_number_is_emergency (digits))
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED, _("Emergency calls only"));
       return 0;
@@ -1378,6 +1427,7 @@ calls_new (GDBusConnection *session, GDBusConnection *system, GSettings *setting
   self->ringer = ringer_new (settings);
   self->notifications = call_notifications_new (on_notification_action, self);
   self->contacts = contacts_new ();
+  self->blocked = blocked_numbers_new (NULL);
   g_signal_connect (self->contacts, "changed", G_CALLBACK (on_contacts_changed), self);
   /* the missed calls' notifications wait for the contacts, to say who called */
   g_signal_connect (self->contacts, "changed", G_CALLBACK (on_contacts_loaded), self);
@@ -1394,6 +1444,7 @@ calls_free (Calls *self)
   modem_free (self->modem);
   g_signal_handlers_disconnect_by_data (self->contacts, self);
   g_object_unref (self->contacts);
+  g_object_unref (self->blocked);
   call_notifications_free (self->notifications);
   ringer_free (self->ringer);
   g_object_unref (self->settings);
