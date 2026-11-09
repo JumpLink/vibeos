@@ -46,12 +46,14 @@ static void
 neo_dialog_size_allocate (GtkWidget *widget, int width, int height, int baseline)
 {
   NeoDialog *self = NEO_DIALOG (widget);
-  int min_w, nat_w, h, unused;
+  int min_w, nat_w, h, min_h;
   gtk_widget_measure (self->card, GTK_ORIENTATION_HORIZONTAL, -1, &min_w, &nat_w, NULL, NULL);
   /* an alert dialog spans the window less its insets; one that holds a picker wraps it (TimePickerDialog) */
   int w = self->flush ? MIN (nat_w, width) : MAX (card_width (width), min_w);
-  gtk_widget_measure (self->card, GTK_ORIENTATION_VERTICAL, w, &h, &unused, NULL, NULL);
-  h = MIN (h, height - 2 * SIDE_INSET);
+  /* its content's natural height (a list wraps its rows, as a dialog's WRAP_CONTENT window does), up to the window
+   * less its insets: a scrolled list then scrolls */
+  gtk_widget_measure (self->card, GTK_ORIENTATION_VERTICAL, w, &min_h, &h, NULL, NULL);
+  h = MAX (MIN (h, height - 2 * SIDE_INSET), MIN (min_h, height - 2 * SIDE_INSET));
   gtk_widget_allocate (self->card, w, h, -1,
                        gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT ((width - w) / 2.0, (height - h) / 2.0)));
 }
@@ -196,6 +198,8 @@ neo_dialog_init (NeoDialog *self)
   self->buttons = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 8);
   gtk_widget_set_halign (self->buttons, GTK_ALIGN_END);
   gtk_widget_add_css_class (self->buttons, "neo-dialog-buttons");
+  /* shown with its first button: a dialog without any (a list to pick from) has no button row's space */
+  gtk_widget_set_visible (self->buttons, FALSE);
   gtk_box_append (GTK_BOX (self->card), self->buttons);
 
   self->anim = neo_anim_new (GTK_WIDGET (self), on_anim, self);
@@ -243,6 +247,7 @@ neo_dialog_add_button (NeoDialog *self, const char *label, int response)
   g_object_set_data (G_OBJECT (button), "neo-response", GINT_TO_POINTER (response));
   g_signal_connect (button, "clicked", G_CALLBACK (on_button), self);
   gtk_box_append (GTK_BOX (self->buttons), button);
+  gtk_widget_set_visible (self->buttons, TRUE);
   return button;
 }
 
