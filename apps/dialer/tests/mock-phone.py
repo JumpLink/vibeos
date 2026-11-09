@@ -81,6 +81,7 @@ SESSION_XML = '''<node>
 <method name="SetInUse"><arg name="in_use" type="b" direction="in"/></method>
 <method name="SetHold"><arg name="supported" type="b" direction="in"/></method>
 <method name="SetDtmf"><arg name="supported" type="b" direction="in"/></method>
+<method name="SetModem"><arg name="present" type="b" direction="in"/></method>
 <method name="InvokeAction"><arg type="u" direction="in"/><arg type="s" direction="in"/></method>
 <method name="Dismiss"><arg type="u" direction="in"/></method>
 <method name="Report"><arg type="s" direction="out"/></method>
@@ -113,6 +114,8 @@ class Phone:
         self.hold = False
         self.dtmf = False               # SendDtmf refused, as a modem that cannot (the service then learns it)
         self.chld = False               # a +CHLD is moving the calls
+        self.present = True             # the modem is there at all (ModemManager found it)
+        self.modem_ids = []             # its interfaces' registrations
 
         modem = Gio.DBusNodeInfo.new_for_xml(MODEM_XML)
         self.modem_ifaces = {i.name: i for i in modem.interfaces}
@@ -120,7 +123,7 @@ class Phone:
         system.register_object(MM_PATH, Gio.DBusNodeInfo.new_for_xml(MANAGER_XML).interfaces[0],
                                self.manager_call, None, None)
         for iface in self.modem_ifaces.values():
-            system.register_object(MODEM_PATH, iface, self.modem_call, self.modem_get, None)
+            self.modem_ids.append(system.register_object(MODEM_PATH, iface, self.modem_call, self.modem_get, None))
         for iface in Gio.DBusNodeInfo.new_for_xml(SESSION_XML).interfaces:
             session.register_object('/org/mobian_project/CallAudio' if 'CallAudio' in iface.name else
                                     '/org/freedesktop/Notifications' if 'Notifications' in iface.name else
@@ -138,7 +141,7 @@ class Phone:
         }[name]
 
     def manager_call(self, conn, sender, path, iface, method, params, inv):
-        objects = {MODEM_PATH: {name: self.modem_props(name) for name in self.modem_ifaces}}
+        objects = {MODEM_PATH: {name: self.modem_props(name) for name in self.modem_ifaces}} if self.present else {}
         inv.return_value(GLib.Variant('(a{oa{sa{sv}}})', (objects,)))
 
     def modem_get(self, conn, sender, path, iface, prop):
@@ -257,7 +260,30 @@ class Phone:
             return inv.return_value(GLib.Variant('(b)', (not self.in_use,)))
         inv.return_value(GLib.Variant('(b)', (True,)))
 
+    def set_modem(self, present):
+        # the whole modem goes and comes, as at a ModemManager restart or when the modem resets: its object is
+        # removed (all interfaces) and added again (object-removed / object-added to a GDBusObjectManagerClient)
+        if present == self.present:
+            return
+        self.present = present
+        if present:
+            for iface in self.modem_ifaces.values():
+                self.modem_ids.append(self.system.register_object(MODEM_PATH, iface, self.modem_call,
+                                                                  self.modem_get, None))
+            self.system.emit_signal(None, MM_PATH, 'org.freedesktop.DBus.ObjectManager', 'InterfacesAdded',
+                                    GLib.Variant('(oa{sa{sv}})', (MODEM_PATH, {name: self.modem_props(name)
+                                                                               for name in self.modem_ifaces})))
+        else:
+            for i in self.modem_ids:
+                self.system.unregister_object(i)
+            self.modem_ids = []
+            self.system.emit_signal(None, MM_PATH, 'org.freedesktop.DBus.ObjectManager', 'InterfacesRemoved',
+                                    GLib.Variant('(oas)', (MODEM_PATH, list(self.modem_ifaces))))
+
     def control(self, method, args, inv):
+        if method == 'SetModem':
+            self.set_modem(args[0])
+            return inv.return_value(None)
         if method == 'Incoming':
             # a second call, while one is up or held, waits (ModemManager's WAITING, +CCWA)
             busy = self.in_state(ACTIVE) or self.in_state(HELD)

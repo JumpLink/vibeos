@@ -215,6 +215,15 @@ def run(t):
     t.service('ClearCallLog')
     t.wait('the log cleared', lambda: not t.call_log())
 
+    # --- the modem going away entirely and coming back (a ModemManager restart, a modem reset): the service lives on
+    # (a handler with the wrong arguments for object-added crashed it here once)
+    t.phone('SetModem', (False,), '(b)')
+    t.wait('the modem gone: no-modem', lambda: t.prop('Status') == 'no-modem')
+    t.phone('SetModem', (True,), '(b)')
+    t.wait('the modem back: ready again', lambda: t.prop('Status') == 'ready')
+    t.phone('Incoming', ('+493023575124',), '(s)')
+    t.wait('and a call comes in again', lambda: any(c['state'] == INCOMING for c in t.calls()))
+
 
 def main():
     build, source = sys.argv[1], sys.argv[2]
