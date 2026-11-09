@@ -21,6 +21,8 @@ struct _SpongyScrollView {
   GtkWidget      parent_instance;
   GtkWidget     *child;
   GtkAdjustment *vadj;         /* a GtkScrollable child's */
+  GtkAdjustment *own_adj;      /* any other child's: follows the list (get_vadjustment) */
+  bool           allocating;
   SpongyList     list;
   float          stretch;      /* as drawn: the top edge's amount (positive) plus the bottom's (negative) */
   double         offset;       /* as laid out and notified */
@@ -30,10 +32,14 @@ struct _SpongyScrollView {
   bool           setting_adj;
   GtkWidget     *pressed;      /* what the touch went down on (weak) */
   guint          press_timer;  /* to show the press, or to end a tap's flash of it */
+  float          top_at_down, bottom_at_down;   /* the edges' stretch when the touch went down */
+  bool           overshot_top, overshot_bottom; /* edge-overshot sent for this touch */
 };
 
 enum { PROP_0, PROP_CHILD, PROP_OFFSET, N_PROPS };
 static GParamSpec *props[N_PROPS];
+enum { EDGE_OVERSHOT, N_SIGNALS };
+static guint signals[N_SIGNALS];
 
 G_DEFINE_FINAL_TYPE (SpongyScrollView, spongy_scroll_view, GTK_TYPE_WIDGET)
 
@@ -98,8 +104,14 @@ sync_offset (SpongyScrollView *self)
       gtk_adjustment_set_value (self->vadj, offset);
       self->setting_adj = false;
     }
-  } else if (offset != self->offset) {
-    gtk_widget_queue_allocate (GTK_WIDGET (self));
+  } else {
+    if (gtk_adjustment_get_value (self->own_adj) != offset) {
+      self->setting_adj = true;
+      gtk_adjustment_set_value (self->own_adj, offset);
+      self->setting_adj = false;
+    }
+    if (offset != self->offset)
+      gtk_widget_queue_allocate (GTK_WIDGET (self));
   }
   if (offset != self->offset) {
     self->offset = offset;
@@ -176,11 +188,41 @@ press_flash_end (gpointer data)
 /* ---- touch ---- */
 
 static void
+emit_overshot (SpongyScrollView *self, GtkPositionType pos)
+{
+  /* a handler may take the view out of its window (a refresh building the list again) */
+  g_object_ref (self);
+  g_signal_emit (self, signals[EDGE_OVERSHOT], 0, pos);
+  g_object_unref (self);
+}
+
+/* edge-overshot: the touch pulled an edge further than it found it */
+static void
+overshoot (SpongyScrollView *self)
+{
+  if (!self->list.dragging)
+    return;
+  if (!self->overshot_top && self->list.top.state == SPONGY_EDGE_PULL &&
+      self->list.top.distance > self->top_at_down) {
+    self->overshot_top = true;
+    emit_overshot (self, GTK_POS_TOP);
+  }
+  if (!self->overshot_bottom && self->list.bottom.state == SPONGY_EDGE_PULL &&
+      self->list.bottom.distance > self->bottom_at_down) {
+    self->overshot_bottom = true;
+    emit_overshot (self, GTK_POS_BOTTOM);
+  }
+}
+
+static void
 drag_begin (GtkGestureDrag *drag, double x, double y, SpongyScrollView *self)
 {
   GtkEventController *c = GTK_EVENT_CONTROLLER (drag);
   self->clock_offset = now_ms () - gtk_event_controller_get_current_event_time (c);
   self->start_y = y;
+  self->top_at_down = self->list.top.distance;
+  self->bottom_at_down = self->list.bottom.distance;
+  self->overshot_top = self->overshot_bottom = false;
   spongy_list_down (&self->list, y, event_ms (self, c));
   press_forget (self);
   g_set_weak_pointer (&self->pressed, gtk_widget_pick (GTK_WIDGET (self), x, y, GTK_PICK_DEFAULT));
@@ -226,6 +268,7 @@ drag_update (GtkGestureDrag *drag, double dx, double dy, SpongyScrollView *self)
   }
   sync_offset (self);
   start_ticking (self);
+  overshoot (self);
 }
 
 static void
@@ -261,8 +304,12 @@ scrolled (GtkEventControllerScroll *c, double dx, double dy, SpongyScrollView *s
                 pow (self->list.view_height, 2.0 / 3.0) : 1.0;
   if (dy == 0)
     return GDK_EVENT_PROPAGATE;
+  bool past_top = dy < 0 && self->list.offset <= 0;
+  bool past_bottom = dy > 0 && self->list.offset >= self->list.max_offset;
   spongy_list_scroll_to (&self->list, self->list.offset + dy * step);
   sync_offset (self);
+  if (past_top || past_bottom)
+    emit_overshot (self, past_top ? GTK_POS_TOP : GTK_POS_BOTTOM);
   return GDK_EVENT_STOP;
 }
 
@@ -285,6 +332,21 @@ adj_value_changed (GtkAdjustment *adj, SpongyScrollView *self)
   self->list.offset = fminf (fmaxf (0, gtk_adjustment_get_value (adj)), self->list.max_offset);
   self->offset = self->list.offset;
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_OFFSET]);
+}
+
+/* get_vadjustment's for a plain child: the app set its value */
+static void
+own_value_changed (GtkAdjustment *adj, SpongyScrollView *self)
+{
+  if (self->setting_adj || self->vadj)
+    return;
+  double value = gtk_adjustment_get_value (adj);
+  if (fabs (value - self->list.offset) < 0.001)
+    return;     /* configured with the list's own offset */
+  spongy_list_scroll_to (&self->list, (float) value);
+  /* while allocating (from a handler of the adjustment's "changed"), the child is placed right after */
+  if (!self->allocating)
+    sync_offset (self);
 }
 
 static void
@@ -333,7 +395,15 @@ size_allocate (GtkWidget *widget, int width, int height, int baseline)
   gtk_widget_measure (self->child, GTK_ORIENTATION_VERTICAL, width, &min, &nat, NULL, NULL);
   int content = MAX (nat, height);
   spongy_list_set_size (&self->list, height, content);
-  self->offset = self->list.offset;
+  /* as GtkScrolledWindow configures its adjustment, before the child is placed: a handler of its "changed" may
+   * move the list from here (to stay at the end of a chat) */
+  self->allocating = true;
+  gtk_adjustment_configure (self->own_adj, self->list.offset, 0, content, height * 0.1, height * 0.9, height);
+  self->allocating = false;
+  if (self->offset != self->list.offset) {
+    self->offset = self->list.offset;
+    g_object_notify_by_pspec (G_OBJECT (self), props[PROP_OFFSET]);
+  }
   double scale = device_scale (self);
   float y = (float) (round (self->offset * scale) / scale);
   gtk_widget_allocate (self->child, width, content, -1, gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (0, -y)));
@@ -563,6 +633,9 @@ spongy_scroll_view_set_child (SpongyScrollView *self, GtkWidget *child)
   self->child = child;
   spongy_list_scroll_to (&self->list, 0);
   self->offset = 0;
+  self->setting_adj = true;
+  gtk_adjustment_set_value (self->own_adj, 0);
+  self->setting_adj = false;
   if (child) {
     gtk_widget_set_parent (child, GTK_WIDGET (self));
     if (GTK_IS_SCROLLABLE (child)) {
@@ -598,6 +671,18 @@ spongy_scroll_view_scroll_to (SpongyScrollView *self, double offset)
   g_return_if_fail (SPONGY_IS_SCROLL_VIEW (self));
   spongy_list_scroll_to (&self->list, (float) offset);
   sync_offset (self);
+}
+
+/**
+ * spongy_scroll_view_get_vadjustment:
+ *
+ * Returns: (transfer none): the vertical adjustment, as GtkScrolledWindow's
+ */
+GtkAdjustment *
+spongy_scroll_view_get_vadjustment (SpongyScrollView *self)
+{
+  g_return_val_if_fail (SPONGY_IS_SCROLL_VIEW (self), NULL);
+  return self->vadj ? self->vadj : self->own_adj;
 }
 
 /**
@@ -639,6 +724,9 @@ dispose (GObject *object)
   SpongyScrollView *self = SPONGY_SCROLL_VIEW (object);
   press_forget (self);
   spongy_scroll_view_set_child (self, NULL);
+  if (self->own_adj)
+    g_signal_handlers_disconnect_by_data (self->own_adj, self);
+  g_clear_object (&self->own_adj);
   G_OBJECT_CLASS (spongy_scroll_view_parent_class)->dispose (object);
 }
 
@@ -663,6 +751,16 @@ spongy_scroll_view_class_init (SpongyScrollViewClass *klass)
   props[PROP_OFFSET] = g_param_spec_double ("offset", NULL, NULL, 0, G_MAXDOUBLE, 0,
                                             G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS | G_PARAM_EXPLICIT_NOTIFY);
   g_object_class_install_properties (object_class, N_PROPS, props);
+
+  /**
+   * SpongyScrollView::edge-overshot:
+   * @self: the view
+   * @pos: the edge
+   *
+   * As GtkScrolledWindow's: a touch pulled the edge into a stretch (once per touch), or a wheel scrolled past it.
+   */
+  signals[EDGE_OVERSHOT] = g_signal_new ("edge-overshot", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL,
+                                         NULL, NULL, G_TYPE_NONE, 1, GTK_TYPE_POSITION_TYPE);
   gtk_widget_class_set_css_name (widget_class, "spongyscrollview");
 }
 
@@ -671,6 +769,8 @@ spongy_scroll_view_init (SpongyScrollView *self)
 {
   GtkWidget *widget = GTK_WIDGET (self);
   spongy_list_init (&self->list, 0, 0);
+  self->own_adj = g_object_ref_sink (gtk_adjustment_new (0, 0, 0, 0, 0, 0));
+  g_signal_connect (self->own_adj, "value-changed", G_CALLBACK (own_value_changed), self);
   gtk_widget_set_overflow (widget, GTK_OVERFLOW_HIDDEN);
 
   /* in the capture phase, so the drag is seen before the rows' presses take it */
