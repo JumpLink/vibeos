@@ -319,8 +319,16 @@ sync_gateway (Service *self)
   calls_set_gateway (self->calls, enabled && g_variant_get_boolean (enabled));
 }
 
+/* Two handlers, because the signals differ: g-properties-changed passes (changed, invalidated), notify:: passes
+ * (pspec). One handler for both read the user data from the wrong argument when the gateway came or went. */
 static void
-on_gateway_changed (GObject *proxy, gpointer arg1, gpointer arg2, gpointer data)
+on_gateway_properties (GDBusProxy *proxy, GVariant *changed, GStrv invalidated, gpointer data)
+{
+  sync_gateway (data);
+}
+
+static void
+on_gateway_owner (GObject *proxy, GParamSpec *pspec, gpointer data)
 {
   sync_gateway (data);
 }
@@ -334,8 +342,8 @@ on_gateway_proxy (GObject *source, GAsyncResult *result, gpointer data)
   self->gateway = g_dbus_proxy_new_finish (result, &error);
   if (!self->gateway)
     return;
-  g_signal_connect (self->gateway, "g-properties-changed", G_CALLBACK (on_gateway_changed), self);
-  g_signal_connect (self->gateway, "notify::g-name-owner", G_CALLBACK (on_gateway_changed), self);
+  g_signal_connect (self->gateway, "g-properties-changed", G_CALLBACK (on_gateway_properties), self);
+  g_signal_connect (self->gateway, "notify::g-name-owner", G_CALLBACK (on_gateway_owner), self);
   sync_gateway (self);
 }
 

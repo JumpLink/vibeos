@@ -164,8 +164,17 @@ choose_modem (Modem *self)
     use_modem (self, chosen);
 }
 
+/* Two handlers, because the signals differ: object-added/-removed pass (object), interface-added/-removed pass
+ * (object, interface). One handler for both read the user data from the wrong argument on object-added, and the
+ * service crashed whenever a modem appeared after it started (at boot on the POCO, at every ModemManager restart). */
 static void
-on_objects_changed (GDBusObjectManager *manager, gpointer arg1, gpointer arg2, gpointer data)
+on_object_changed (GDBusObjectManager *manager, GDBusObject *object, gpointer data)
+{
+  choose_modem (data);
+}
+
+static void
+on_interface_changed (GDBusObjectManager *manager, GDBusObject *object, GDBusInterface *interface, gpointer data)
 {
   choose_modem (data);
 }
@@ -184,10 +193,10 @@ on_manager (GObject *source, GAsyncResult *result, gpointer data)
       return;
     }
   self->manager = manager;
-  g_signal_connect (manager, "object-added", G_CALLBACK (on_objects_changed), self);
-  g_signal_connect (manager, "object-removed", G_CALLBACK (on_objects_changed), self);
-  g_signal_connect (manager, "interface-added", G_CALLBACK (on_objects_changed), self);
-  g_signal_connect (manager, "interface-removed", G_CALLBACK (on_objects_changed), self);
+  g_signal_connect (manager, "object-added", G_CALLBACK (on_object_changed), self);
+  g_signal_connect (manager, "object-removed", G_CALLBACK (on_object_changed), self);
+  g_signal_connect (manager, "interface-added", G_CALLBACK (on_interface_changed), self);
+  g_signal_connect (manager, "interface-removed", G_CALLBACK (on_interface_changed), self);
   /* ModemManager gone: its objects go (object-removed); back: they come again (object-added) */
   choose_modem (self);
 }

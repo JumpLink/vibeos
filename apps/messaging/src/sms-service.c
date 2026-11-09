@@ -668,8 +668,16 @@ sync_gateway (Service *self)
     start_modem (self);
 }
 
+/* Two handlers, because the signals differ: g-properties-changed passes (changed, invalidated), notify:: passes
+ * (pspec). One handler for both read the user data from the wrong argument when the gateway came or went. */
 static void
-on_gateway_changed (GObject *proxy, gpointer arg1, gpointer arg2, gpointer data)
+on_gateway_properties (GDBusProxy *proxy, GVariant *changed, GStrv invalidated, gpointer data)
+{
+  sync_gateway (data);
+}
+
+static void
+on_gateway_owner (GObject *proxy, GParamSpec *pspec, gpointer data)
 {
   sync_gateway (data);
 }
@@ -685,8 +693,8 @@ on_gateway_proxy (GObject *source, GAsyncResult *result, gpointer data)
     g_warning ("no gsm2sip proxy: %s", error->message);
   else
     {
-      g_signal_connect (self->gateway, "g-properties-changed", G_CALLBACK (on_gateway_changed), self);
-      g_signal_connect (self->gateway, "notify::g-name-owner", G_CALLBACK (on_gateway_changed), self);
+      g_signal_connect (self->gateway, "g-properties-changed", G_CALLBACK (on_gateway_properties), self);
+      g_signal_connect (self->gateway, "notify::g-name-owner", G_CALLBACK (on_gateway_owner), self);
     }
   /* the modem is started only now: in gateway mode it is never ours, not even for a moment */
   sync_gateway (self);
