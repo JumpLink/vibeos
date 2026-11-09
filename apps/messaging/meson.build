@@ -28,12 +28,15 @@ gnome = import('gnome')
 gtk = dependency('gtk4', version: '>= 4.14')
 resources = gnome.compile_resources('messaging-resources', 'src/messaging.gresource.xml', source_dir: ['src', 'data'])
 executable('neo-messaging', 'src/messaging-main.c', 'src/messaging-window.c', 'src/msg-navigator.c',
+           'src/blocked-contacts.c', 'src/people-options.c', 'src/msg-settings.c', 'src/msg-sound.c',
            'src/conversation-list.c', 'src/conversation-view.c', 'src/contact-picker.c', 'src/msg-action-bar.c',
            'src/msg-avatar.c', 'src/msg-bubble.c', 'src/msg-dates.c', 'src/msg-image.c', 'src/msg-people.c', 'src/msg-swipe.c', 'src/sms-client.c',
-           'src/sms-segments.c', '../dialer/src/popup-menu.c', resources, link_with: [store, phone],
+           'src/sms-segments.c', '../dialer/src/popup-menu.c', '../dialer/src/contacts-app.c', resources,
+           link_with: [store, phone],
            include_directories: dialer, install: true,
+           c_args: ['-DSOUNDS_DIR="@0@"'.format(datadir / 'neo-messaging/sounds')],
            dependencies: [gio, ebook, gtk, dependency('neo-1'), dependency('spongy-gtk-1'),
-                          meson.get_compiler('c').find_library('m')])
+                          dependency('gstreamer-1.0'), meson.get_compiler('c').find_library('m')])
 
 unit = configuration_data({'bindir': bindir})
 configure_file(input: 'data/neo-messaging-sms.service.in', output: 'neo-messaging-sms.service',
@@ -44,7 +47,9 @@ configure_file(input: 'data/de.yesman.Messaging.service.in', output: 'de.yesman.
                configuration: unit, install_dir: datadir / 'dbus-1/services')
 install_data('data/de.yesman.Messaging.desktop', install_dir: datadir / 'applications')
 install_data('data/de.yesman.Messaging.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
-gnome.post_install(gtk_update_icon_cache: true, update_desktop_database: true)
+install_data('data/de.yesman.Messaging.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
+install_data('data/sounds/message_sent.wav', install_dir: datadir / 'neo-messaging/sounds')
+gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
 
 test('sms-store', executable('test-sms-store', 'tests/test-sms-store.c', link_with: store, dependencies: [gio]))
 test('sms-segments', executable('test-sms-segments', 'tests/test-sms-segments.c', 'src/sms-segments.c',

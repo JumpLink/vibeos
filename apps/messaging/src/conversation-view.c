@@ -6,6 +6,7 @@
 #include "msg-dates.h"
 #include "msg-dialog.h"
 #include "msg-people.h"
+#include "msg-sound.h"
 #include "phone-number.h"
 #include "popup-menu.h"
 #include "sms-segments.h"
@@ -58,7 +59,7 @@ struct _ConversationView {
 
 G_DEFINE_FINAL_TYPE (ConversationView, conversation_view, GTK_TYPE_WIDGET)
 
-enum { CLOSED, N_SIGNALS };
+enum { CLOSED, SHOW_OPTIONS, N_SIGNALS };
 static guint signals[N_SIGNALS];
 
 static void reload (ConversationView *self);
@@ -552,9 +553,11 @@ static void
 on_send (ConversationView *self)
 {
   g_autofree char *text = field_text (self);
+  g_autofree char *stripped = g_strstrip (g_strdup (text));
 
-  if (!*g_strstrip (g_strdup (text)) || !self->conversation)
+  if (!*stripped || !self->conversation)
     return;
+  msg_sound_play_sent ();
   sms_client_send (self->client, self->id, text);
   gtk_text_buffer_set_text (gtk_text_view_get_buffer (GTK_TEXT_VIEW (self->field)), "", -1);
   self->at_bottom = TRUE;
@@ -702,6 +705,12 @@ delete_conversation (gpointer data)
 }
 
 static void
+show_options (gpointer data)
+{
+  g_signal_emit (data, signals[SHOW_OPTIONS], 0);
+}
+
+static void
 on_overflow (GtkWidget *button, gpointer data)
 {
   ConversationView *self = data;
@@ -709,7 +718,8 @@ on_overflow (GtkWidget *button, gpointer data)
 
   if (!self->conversation)
     return;
-  /* "People & options" and "Add contact" are not here yet */
+  /* "Add contact" is not here yet */
+  dialer_popup_menu_append (menu, _("People & options"), show_options, self);
   dialer_popup_menu_append (menu, self->conversation->archived ? _("Unarchive") : _("Archive"), archive, self);
   dialer_popup_menu_append (menu, _("Delete"), delete_conversation, self);
   dialer_popup_menu_present (menu, button, POPUP_MENU_END);
@@ -748,6 +758,8 @@ conversation_view_class_init (ConversationViewClass *klass)
   gtk_widget_class_set_css_name (widget_class, "msg-conversation");
   signals[CLOSED] = g_signal_new ("closed", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL, NULL,
                                   G_TYPE_NONE, 0);
+  signals[SHOW_OPTIONS] = g_signal_new ("show-options", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
+                                        NULL, G_TYPE_NONE, 0);
 }
 
 static void

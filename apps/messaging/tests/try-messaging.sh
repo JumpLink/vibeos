@@ -34,10 +34,12 @@ as_user_daemon() {
     as_user setsid -f sh -c 'echo $$ >"$0"; exec "$@"' "$RIG/$name.pid" "$@" </dev/null >"$RIG/$name.log" 2>&1
 }
 
-# what the service, the mock and the app run with: the rig's buses and this run's message database
+# what the service, the mock and the app run with: the rig's buses, this run's message database and blocked list,
+# the app's settings in memory, and no sound server (the sent sound stays quiet)
 rig_env() {
     echo DBUS_SESSION_BUS_ADDRESS="$(cat "$RIG/session")" NEO_MESSAGING_SYSTEM_BUS="$(cat "$RIG/system")" \
-        GSETTINGS_BACKEND=memory XDG_DATA_HOME="$(cat "$RIG/run")/data"
+        GSETTINGS_BACKEND=memory GSETTINGS_SCHEMA_DIR="$RIG" PULSE_SERVER="unix:$RIG/no-sound" \
+        XDG_DATA_HOME="$(cat "$RIG/run")/data"
 }
 
 session_call() {
@@ -61,6 +63,7 @@ start)
     echo "$run" >"$RIG/run"
     # the session user cannot read root's home, where the build is
     install -o "$USER_NAME" -m 755 "$build/neo-messaging" "$build/neo-messaging-sms" "$HERE/mock-modem.py" "$RIG/"
+    glib-compile-schemas --targetdir "$RIG" "$HERE/../data"
     cat >"$RIG/bus.conf" <<EOF
 <busconfig><type>session</type><listen>unix:dir=$RIG</listen><auth>EXTERNAL</auth>
 <policy context="default"><allow send_destination="*" eavesdrop="true"/><allow eavesdrop="true"/>

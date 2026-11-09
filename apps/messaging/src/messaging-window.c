@@ -1,10 +1,13 @@
 /* Messaging's window (messaging-window.h). */
 #include "messaging-window.h"
+#include "blocked-contacts.h"
 #include "contact-picker.h"
 #include "contacts.h"
 #include "conversation-list.h"
 #include "conversation-view.h"
 #include "msg-navigator.h"
+#include "msg-settings.h"
+#include "people-options.h"
 #include "sms-client.h"
 
 #include <glib/gi18n.h>
@@ -186,6 +189,50 @@ on_show_archived (GtkWidget *list, gpointer data)
 }
 
 static void
+on_show_blocked (GtkWidget *list, gpointer data)
+{
+  Shell *shell = data;
+  GtkWidget *page = blocked_contacts_new (shell->client, shell->contacts);
+
+  g_signal_connect (page, "closed", G_CALLBACK (on_page_closed), shell);
+  msg_navigator_push (MSG_NAVIGATOR (shell->navigator), page);
+}
+
+static void
+on_show_settings (GtkWidget *list, gpointer data)
+{
+  Shell *shell = data;
+  GtkWidget *page = msg_settings_new ();
+
+  g_signal_connect (page, "closed", G_CALLBACK (on_page_closed), shell);
+  msg_navigator_push (MSG_NAVIGATOR (shell->navigator), page);
+}
+
+/* the person blocked from People & options: the page and its conversation both close */
+static void
+on_options_blocked (GtkWidget *page, gpointer data)
+{
+  Shell *shell = data;
+
+  if (msg_navigator_get_top (MSG_NAVIGATOR (shell->navigator)) != page)
+    return;
+  msg_navigator_pop (MSG_NAVIGATOR (shell->navigator));
+  if (MSG_IS_CONVERSATION_VIEW (msg_navigator_get_top (MSG_NAVIGATOR (shell->navigator))))
+    msg_navigator_pop (MSG_NAVIGATOR (shell->navigator));
+}
+
+static void
+on_show_options (ConversationView *view, gpointer data)
+{
+  Shell *shell = data;
+  GtkWidget *page = people_options_new (shell->client, shell->contacts, conversation_view_get_id (view));
+
+  g_signal_connect (page, "closed", G_CALLBACK (on_page_closed), shell);
+  g_signal_connect (page, "blocked", G_CALLBACK (on_options_blocked), shell);
+  msg_navigator_push (MSG_NAVIGATOR (shell->navigator), page);
+}
+
+static void
 open_conversation (Shell *shell, gint64 id, const char *draft, gboolean replace)
 {
   GtkWidget *top = msg_navigator_get_top (MSG_NAVIGATOR (shell->navigator));
@@ -201,6 +248,7 @@ open_conversation (Shell *shell, gint64 id, const char *draft, gboolean replace)
   if (draft)
     conversation_view_set_text (MSG_CONVERSATION_VIEW (view), draft);
   g_signal_connect (view, "closed", G_CALLBACK (on_page_closed), shell);
+  g_signal_connect (view, "show-options", G_CALLBACK (on_show_options), shell);
   if (replace)
     msg_navigator_replace (MSG_NAVIGATOR (shell->navigator), view);
   else
@@ -261,6 +309,8 @@ messaging_window_new (GtkApplication *app)
   shell->list = make_list (shell, FALSE);
   g_signal_connect (shell->list, "start-chat", G_CALLBACK (on_start_chat), shell);
   g_signal_connect (shell->list, "show-archived", G_CALLBACK (on_show_archived), shell);
+  g_signal_connect (shell->list, "show-blocked", G_CALLBACK (on_show_blocked), shell);
+  g_signal_connect (shell->list, "show-settings", G_CALLBACK (on_show_settings), shell);
   msg_navigator_push (MSG_NAVIGATOR (shell->navigator), shell->list);
   g_signal_connect (shell->navigator, "top-changed", G_CALLBACK (on_top_changed), shell);
   neo_window_set_content (GTK_WINDOW (window), shell->navigator);

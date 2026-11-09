@@ -13,11 +13,12 @@ G_BEGIN_DECLS
 #define MSG_TYPE_SWIPE (msg_swipe_get_type ())
 G_DECLARE_FINAL_TYPE (MsgSwipe, msg_swipe, MSG, SWIPE, GtkWidget)
 
-/* @row: what is swiped; @icon: the icon uncovered at both sides */
-GtkWidget *msg_swipe_new (GtkWidget *row, const char *icon);
+/* @row: what is swiped; @start_icon: what a swipe to the right uncovers at the start, @end_icon: what a swipe to the
+ * left uncovers at the end (Bugle's left and right image views) */
+GtkWidget *msg_swipe_new (GtkWidget *row, const char *start_icon, const char *end_icon);
 /* off in the archived list and in select mode */
 void       msg_swipe_set_enabled (MsgSwipe *self, gboolean enabled);
 
-/* Signals: "swiped" (): the row went off the side, after its animation */
+/* Signals: "swiped" (gboolean right): the row went off the side, after its animation; @right: to the right */
 
 G_END_DECLS

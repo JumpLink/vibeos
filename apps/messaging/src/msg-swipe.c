@@ -17,6 +17,7 @@
 struct _MsgSwipe {
   GtkWidget parent;
   GtkWidget *background, *row;
+  GtkWidget *start_icon, *end_icon;
   NeoAnim *settle;
   double dx;
   gboolean enabled, swiping, committing;
@@ -35,6 +36,9 @@ set_dx (MsgSwipe *self, double dx)
 {
   self->dx = dx;
   gtk_widget_set_child_visible (self->background, dx != 0);
+  /* only the icon the row uncovers: the start one going right, the end one going left */
+  gtk_widget_set_visible (self->start_icon, dx > 0);
+  gtk_widget_set_visible (self->end_icon, dx < 0);
   gtk_widget_queue_allocate (GTK_WIDGET (self));
 }
 
@@ -47,7 +51,7 @@ on_settle (NeoAnim *anim, double value, gpointer data)
   if (!neo_anim_is_running (anim) && self->committing)
     {
       self->committing = FALSE;
-      g_signal_emit (self, signals[SWIPED], 0);
+      g_signal_emit (self, signals[SWIPED], 0, self->dx > 0);
     }
 }
 
@@ -185,7 +189,7 @@ msg_swipe_class_init (MsgSwipeClass *klass)
   widget_class->size_allocate = msg_swipe_size_allocate;
   gtk_widget_class_set_css_name (widget_class, "msg-swipe");
   signals[SWIPED] = g_signal_new ("swiped", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL, NULL,
-                                  G_TYPE_NONE, 0);
+                                  G_TYPE_NONE, 1, G_TYPE_BOOLEAN);
 }
 
 static void
@@ -214,10 +218,10 @@ icon (const char *name)
 }
 
 GtkWidget *
-msg_swipe_new (GtkWidget *row, const char *icon_name)
+msg_swipe_new (GtkWidget *row, const char *start_icon, const char *end_icon)
 {
   MsgSwipe *self = g_object_new (MSG_TYPE_SWIPE, NULL);
-  GtkWidget *start = icon (icon_name), *end = icon (icon_name);
+  GtkWidget *start = icon (start_icon), *end = icon (end_icon);
 
   /* crossSwipeBackground: window_background, 16 dp in, the icon at each end */
   self->background = gtk_center_box_new ();
@@ -228,6 +232,8 @@ msg_swipe_new (GtkWidget *row, const char *icon_name)
   gtk_widget_add_css_class (self->background, "msg-swipe-background");
   gtk_widget_set_parent (self->background, GTK_WIDGET (self));
   gtk_widget_set_child_visible (self->background, FALSE);
+  self->start_icon = start;
+  self->end_icon = end;
   self->row = row;
   gtk_widget_set_parent (row, GTK_WIDGET (self));
   return GTK_WIDGET (self);

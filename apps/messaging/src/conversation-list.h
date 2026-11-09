@@ -22,7 +22,7 @@ gboolean   conversation_list_is_at_top (ConversationList *self);
 /* leaves select mode; FALSE when it was not in it (Back then closes the screen) */
 gboolean   conversation_list_back (ConversationList *self);
 
-/* Signals: "open-conversation" (gint64), "start-chat" (), "show-archived" (), "closed" () (the up arrow),
- * "at-top-changed" () */
+/* Signals: "open-conversation" (gint64), "start-chat" (), "show-archived" (), "show-blocked" () (the overflow's
+ * "Blocked contacts"), "show-settings" (), "closed" () (the up arrow), "at-top-changed" () */
 
 G_END_DECLS

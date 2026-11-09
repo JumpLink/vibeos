@@ -25,6 +25,7 @@ void       conversation_view_set_text (ConversationView *self, const char *text)
 /* leaves select mode; FALSE when it was not in it (Back then closes the conversation) */
 gboolean   conversation_view_back (ConversationView *self);
 
-/* Signals: "closed" (): the up arrow, the title, or the conversation deleted */
+/* Signals: "closed" (): the up arrow, the title, or the conversation deleted; "show-options" (): the overflow's
+ * "People & options" */
 
 G_END_DECLS

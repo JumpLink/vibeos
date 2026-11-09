@@ -1,5 +1,6 @@
 /* The conversation list (conversation-list.h). */
 #include "conversation-list.h"
+#include "blocked-numbers.h"
 #include "msg-action-bar.h"
 #include "msg-avatar.h"
 #include "msg-dates.h"
@@ -29,6 +30,7 @@
 typedef struct {
   gint64 id;
   gboolean archived;
+  char *destination;            /* the one other participant as stored, for Block; NULL in a group */
   GtkWidget *row, *swipe, *content, *avatar;
 } Row;
 
@@ -36,11 +38,12 @@ struct _ConversationList {
   GtkWidget parent;
   SmsClient *client;
   Contacts *contacts;
+  GSettings *settings;          /* de.yesman.Messaging: Swipe to delete */
   gboolean archived;
 
   GtkWidget *box;               /* the page: bar over the content */
   GtkWidget *bar, *select_bar;
-  GtkWidget *archive_action, *unarchive_action;
+  GtkWidget *archive_action, *unarchive_action, *block_action;
   GtkWidget *scroll, *list, *empty, *fab;
   NeoSnackbar *snackbar;
   GHashTable *rows;             /* id -> Row */
@@ -51,10 +54,35 @@ struct _ConversationList {
 
 G_DEFINE_FINAL_TYPE (ConversationList, conversation_list, GTK_TYPE_WIDGET)
 
-enum { OPEN_CONVERSATION, START_CHAT, SHOW_ARCHIVED, CLOSED, AT_TOP_CHANGED, N_SIGNALS };
+enum { OPEN_CONVERSATION, START_CHAT, SHOW_ARCHIVED, SHOW_BLOCKED, SHOW_SETTINGS, CLOSED, AT_TOP_CHANGED, N_SIGNALS };
 static guint signals[N_SIGNALS];
 
 static void reload (ConversationList *self);
+
+static const char *
+country (ConversationList *self)
+{
+  return sms_client_get_country (self->client);
+}
+
+/* the one conversation selected, when it is with one person who is not blocked yet: what Block acts on */
+static Row *
+blockable (ConversationList *self)
+{
+  GHashTableIter iter;
+  gpointer key;
+  Row *row;
+
+  if (g_hash_table_size (self->selected) != 1)
+    return NULL;
+  g_hash_table_iter_init (&iter, self->selected);
+  g_hash_table_iter_next (&iter, &key, NULL);
+  row = g_hash_table_lookup (self->rows, key);
+  if (!row || !row->destination
+      || blocked_numbers_contains (blocked_numbers_get_default (), row->destination, country (self)))
+    return NULL;
+  return row;
+}
 
 /* --- select mode (§1.11) */
 
@@ -90,6 +118,7 @@ sync_select (ConversationList *self)
   gtk_widget_set_visible (self->bar, !selecting (self));
   gtk_widget_set_visible (self->archive_action, any_unarchived);
   gtk_widget_set_visible (self->unarchive_action, any_archived);
+  gtk_widget_set_visible (self->block_action, blockable (self) != NULL);
   if (self->fab)
     /* the FAB slides away to the right while selecting (300 ms) */
     gtk_widget_set_visible (self->fab, !selecting (self));
@@ -215,6 +244,91 @@ on_delete (ConversationList *self)
   neo_dialog_present (dialog, GTK_WIDGET (self));
 }
 
+/* Block: the number goes on the blocked list (the Phone's too) and the conversation is archived; the service then
+ * keeps what it sends without a notification. Undo takes both back. */
+
+typedef struct {
+  ConversationList *self;
+  gint64 id;
+  char *destination;
+} Block;
+
+static void
+block_free (gpointer data)
+{
+  Block *block = data;
+
+  g_object_unref (block->self);
+  g_free (block->destination);
+  g_free (block);
+}
+
+static void
+on_block_undo (gpointer data)
+{
+  Block *block = data;
+  g_autoptr(GError) error = NULL;
+
+  if (!blocked_numbers_remove (blocked_numbers_get_default (), block->destination, country (block->self), &error))
+    {
+      g_warning ("messaging: %s", error->message);
+      return;
+    }
+  sms_client_set_archived (block->self->client, block->id, FALSE);
+  msg_snackbar_show (block->self->snackbar, _("Contact unblocked & unarchived"), NULL, NULL, NULL);
+}
+
+static void
+on_block_response (NeoDialog *dialog, int response, gpointer data)
+{
+  ConversationList *self = data;
+  Block *block = g_object_steal_data (G_OBJECT (dialog), "block");
+  g_autoptr(GError) error = NULL;
+
+  if (response != NEO_RESPONSE_OK)
+    {
+      block_free (block);
+      return;
+    }
+  if (!blocked_numbers_add (blocked_numbers_get_default (), block->destination, country (self), &error))
+    {
+      g_warning ("messaging: %s", error->message);
+      block_free (block);
+      return;
+    }
+  sms_client_set_archived (self->client, block->id, TRUE);
+  /* the undo lives as long as the snackbar might call it */
+  g_object_set_data_full (G_OBJECT (self->snackbar), "msg-undo", block, block_free);
+  msg_snackbar_show (self->snackbar, _("Contact blocked & archived"), _("Undo"), on_block_undo, block);
+}
+
+static void
+on_block (ConversationList *self)
+{
+  Row *row = blockable (self);
+  Block *block;
+  g_autofree char *title = NULL;
+  NeoDialog *dialog;
+
+  if (!row)
+    return;
+  block = g_new0 (Block, 1);
+  block->self = g_object_ref (self);
+  block->id = row->id;
+  block->destination = g_strdup (row->destination);
+  g_array_unref (take_selected (self));
+  /* Bugle names the number as stored, not the contact */
+  title = g_strdup_printf (_("Block %s?"), block->destination);
+  dialog = neo_dialog_new (title);
+  neo_dialog_set_message (dialog, _("You'll continue to receive messages from this number but won't be notified "
+                                    "anymore. This conversation will be archived."));
+  msg_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
+  msg_dialog_add_button (dialog, _("OK"), NEO_RESPONSE_OK);
+  g_object_set_data (G_OBJECT (dialog), "block", block);
+  g_signal_connect (dialog, "response", G_CALLBACK (on_block_response), self);
+  neo_dialog_present (dialog, GTK_WIDGET (self));
+}
+
 /* --- rows (§1.4, §1.5) */
 
 static void
@@ -272,13 +386,21 @@ row_time (const SmsConversation *conversation, gboolean *failed, gint64 now)
 }
 
 /* swiped away: archived, with Undo ("1 archived") */
+/* archived, with Undo; or with "Swipe to delete" on, a swipe to the right deletes it, with no Undo and no question
+ * (ConversationListItemView.onSwipeComplete) */
 static void
-on_swiped (GtkWidget *swipe, gpointer data)
+on_swiped (GtkWidget *swipe, gboolean right, gpointer data)
 {
   ConversationList *self = data;
   g_autoptr(GArray) ids = g_array_new (FALSE, FALSE, sizeof (gint64));
   gint64 id = *(gint64 *) g_object_get_data (G_OBJECT (swipe), "id");
 
+  if (right && g_settings_get_boolean (self->settings, "swipe-right-deletes"))
+    {
+      sms_client_delete_conversation (self->client, id);
+      msg_snackbar_show (self->snackbar, _("Conversation deleted"), NULL, NULL, NULL);
+      return;
+    }
   g_array_append_val (ids, id);
   set_archived (self, ids, TRUE);
 }
@@ -376,6 +498,8 @@ make_row (ConversationList *self, const SmsConversation *conversation, gint64 no
   gtk_widget_add_css_class (pressable, "msg-row");
   row->id = conversation->id;
   row->archived = conversation->archived;
+  if (g_strv_length (conversation->destinations) == 1)
+    row->destination = g_strdup (conversation->destinations[0]);
   row->row = pressable;
   row->content = content;
   row->avatar = avatar;
@@ -385,7 +509,10 @@ make_row (ConversationList *self, const SmsConversation *conversation, gint64 no
   g_signal_connect (pressable, "long-pressed", G_CALLBACK (on_row_long_pressed), NULL);
   g_hash_table_insert (self->rows, g_memdup2 (&row->id, sizeof row->id), row);
   gtk_accessible_update_property (GTK_ACCESSIBLE (pressable), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);
-  row->swipe = msg_swipe_new (pressable, "messaging-archive-symbolic");
+  row->swipe = msg_swipe_new (pressable,
+                              g_settings_get_boolean (self->settings, "swipe-right-deletes")
+                              ? "messaging-delete-symbolic" : "messaging-archive-symbolic",
+                              "messaging-archive-symbolic");
   g_object_set_data_full (G_OBJECT (row->swipe), "id", g_memdup2 (&row->id, sizeof row->id), g_free);
   g_signal_connect (row->swipe, "swiped", G_CALLBACK (on_swiped), self);
   return row->swipe;
@@ -394,7 +521,10 @@ make_row (ConversationList *self, const SmsConversation *conversation, gint64 no
 static void
 row_free (gpointer data)
 {
-  g_free (data);
+  Row *row = data;
+
+  g_free (row->destination);
+  g_free (row);
 }
 
 static void
@@ -463,14 +593,29 @@ show_archived (gpointer data)
 }
 
 static void
+show_blocked (gpointer data)
+{
+  g_signal_emit (data, signals[SHOW_BLOCKED], 0);
+}
+
+static void
+show_settings (gpointer data)
+{
+  g_signal_emit (data, signals[SHOW_SETTINGS], 0);
+}
+
+static void
 on_overflow (GtkWidget *button, gpointer data)
 {
   ConversationList *self = data;
   DialerPopupMenu *menu = dialer_popup_menu_new ();
+  g_auto(GStrv) blocked = blocked_numbers_list (blocked_numbers_get_default ());
 
-  /* "Blocked contacts" only shows with a blocked contact, and nothing blocks yet; Settings is not here yet, its
-   * switches having nothing behind them (the send sound, swipe to delete, delivery reports) */
   dialer_popup_menu_append (menu, _("Archived"), show_archived, self);
+  /* only with a blocked contact */
+  if (blocked[0])
+    dialer_popup_menu_append (menu, _("Blocked contacts"), show_blocked, self);
+  dialer_popup_menu_append (menu, _("Settings"), show_settings, self);
   dialer_popup_menu_present (menu, button, POPUP_MENU_END);
 }
 
@@ -567,6 +712,10 @@ conversation_list_dispose (GObject *object)
     g_signal_handlers_disconnect_by_data (self->client, self);
   if (self->contacts)
     g_signal_handlers_disconnect_by_data (self->contacts, self);
+  g_signal_handlers_disconnect_by_data (blocked_numbers_get_default (), self);
+  if (self->settings)
+    g_signal_handlers_disconnect_by_data (self->settings, self);
+  g_clear_object (&self->settings);
   g_clear_object (&self->client);
   g_clear_object (&self->contacts);
   g_clear_pointer (&self->box, gtk_widget_unparent);
@@ -588,6 +737,10 @@ conversation_list_class_init (ConversationListClass *klass)
   signals[START_CHAT] = g_signal_new ("start-chat", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
                                       NULL, G_TYPE_NONE, 0);
   signals[SHOW_ARCHIVED] = g_signal_new ("show-archived", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL,
+                                         NULL, NULL, G_TYPE_NONE, 0);
+  signals[SHOW_BLOCKED] = g_signal_new ("show-blocked", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL,
+                                        NULL, NULL, G_TYPE_NONE, 0);
+  signals[SHOW_SETTINGS] = g_signal_new ("show-settings", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL,
                                          NULL, NULL, G_TYPE_NONE, 0);
   signals[CLOSED] = g_signal_new ("closed", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL, NULL,
                                   G_TYPE_NONE, 0);
@@ -614,6 +767,7 @@ conversation_list_new (SmsClient *client, Contacts *contacts, gboolean archived)
 
   self->client = g_object_ref (client);
   self->contacts = g_object_ref (contacts);
+  self->settings = g_settings_new ("de.yesman.Messaging");
   self->archived = archived;
   self->box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_parent (self->box, GTK_WIDGET (self));
@@ -626,7 +780,7 @@ conversation_list_new (SmsClient *client, Contacts *contacts, gboolean archived)
   else
     g_signal_connect (msg_action_bar_add_overflow (self->bar), "clicked", G_CALLBACK (on_overflow), self);
   gtk_box_append (GTK_BOX (self->box), self->bar);
-  /* select mode: the X, no title, Archive or Unarchive and Delete */
+  /* select mode: the X, no title, Archive or Unarchive, Delete, and Block for one person */
   self->select_bar = msg_action_bar_new (FALSE, "");
   cancel = msg_action_bar_add_close (self->select_bar, _("Done"));
   g_signal_connect_swapped (cancel, "clicked", G_CALLBACK (conversation_list_back), self);
@@ -635,8 +789,12 @@ conversation_list_new (SmsClient *client, Contacts *contacts, gboolean archived)
                                                       _("Unarchive"));
   g_signal_connect_swapped (msg_action_bar_add_action (self->select_bar, "messaging-delete-symbolic", _("Delete")),
                             "clicked", G_CALLBACK (on_delete), self);
+  self->block_action = msg_action_bar_add_action (self->select_bar, "messaging-block-symbolic", _("Block"));
   g_signal_connect_swapped (self->archive_action, "clicked", G_CALLBACK (on_archive), self);
   g_signal_connect_swapped (self->unarchive_action, "clicked", G_CALLBACK (on_unarchive), self);
+  g_signal_connect_swapped (self->block_action, "clicked", G_CALLBACK (on_block), self);
+  /* blocked here or in the Phone: Block goes away for that person */
+  g_signal_connect_swapped (blocked_numbers_get_default (), "changed", G_CALLBACK (sync_select), self);
   gtk_widget_set_visible (self->select_bar, FALSE);
   gtk_box_append (GTK_BOX (self->box), self->select_bar);
 

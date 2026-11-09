@@ -66,6 +66,22 @@
   color: #f05a24;
 }
 
+/* --- Blocked contacts (§4.2): the name 18 sp #bfbfbf, "UNBLOCK" 14 sp in the accent */
+
+.msg-blocked-name {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #bfbfbf;
+}
+
+.msg-blocked-unblock {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #b8ebf3;
+}
+
 /* the FAB: "START CHAT", literal colours (forceDark off) */
 .msg-fab-label {
   font-family: "Neo Roboto", Roboto, sans-serif;
@@ -322,4 +338,49 @@
   font-weight: 800;
   color: #eeff41;
   padding: 0 24px;
+}
+
+/* --- People & options (§4.1): headers 16 sp grey, option and name 18 sp #bfbfbf, number 14 sp #999999 */
+
+.msg-options-header {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #9b9b9b;
+}
+
+.msg-options-divider {
+  min-height: 1px;
+  background-color: #424242;
+}
+
+.msg-options-title,
+.msg-person-name {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #bfbfbf;
+}
+
+.msg-person-number {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #999999;
+}
+
+/* --- Settings (§4.6): androidx preference rows, white at 87 % and 54 % */
+
+.msg-pref-title {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.87);
+}
+
+.msg-pref-summary {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.54);
 }
