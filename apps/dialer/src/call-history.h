@@ -23,6 +23,7 @@ G_DECLARE_FINAL_TYPE (CallHistory, call_history, CALL, HISTORY, GtkWidget)
 GtkWidget *call_history_new (Contacts *contacts, NeoSnackbar *snackbar);
 
 /* Signals: "closed" (): Up, Back or Escape, the window takes the screen away; "edit-number" (s number): the
- * context menu's "Edit number before call", the main screen's dialpad with the number in it */
+ * context menu's "Edit number before call", the main screen's dialpad with the number in it; "show-details"
+ * (s number, i presentation, GArray ids): an entry's "Call details", which opens over this screen */
 
 G_END_DECLS

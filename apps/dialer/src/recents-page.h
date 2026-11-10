@@ -27,6 +27,7 @@ void       recents_page_reset (RecentsPage *self);
 gboolean   recents_page_has_calls (RecentsPage *self);
 
 /* Signals: "open-dialpad" (): "Make a call" on the empty list; "edit-number" (s number): the context menu's "Edit
- * number before call", the dialpad with the number in it; "loaded" (): the log was read again */
+ * number before call", the dialpad with the number in it; "loaded" (): the log was read again; "show-details"
+ * (s number, i presentation, GArray ids): an entry's "Call details", the screen of its calls (call-details.h) */
 
 G_END_DECLS

@@ -324,7 +324,7 @@ on_menu_info (gpointer data)
 {
   MenuTarget *target = data;
 
-  contacts_app_open (target->page->snackbar);
+  contacts_app_view (GTK_WIDGET (target->page), target->uid, target->page->snackbar);
 }
 
 /* ContextMenu: "<kind> <number>" (dimmed), Voice Call and Message for the default voice channel, Remove, Contact

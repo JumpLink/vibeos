@@ -311,6 +311,7 @@ struct _ContactsPage
   char *anchored_section;
   ContactsRow *hidden[2];       /* the rows whose letter the pinned one stands for */
   gboolean picker;
+  gboolean empty_creates;       /* the empty view has "Create new contact" */
   gboolean dragging;            /* the fast scroller's thumb is held */
   PangoLayout *bubble;          /* its letter while it is */
 };
@@ -577,26 +578,53 @@ on_contacts_changed (ContactsPage *self)
   load (self);
 }
 
-/* a tap on a contact: its card in the Contacts app, or in a picker the contact picked */
+/* a tap on a contact: its card in the Contacts app (QuickContact), or in a picker the contact picked */
 static void
 page_open_contact (ContactsPage *self, const Entry *entry)
 {
   if (self->picker)
     g_signal_emit (self, signals[PICKED], 0, entry->uid);
   else
-    contacts_app_open (self->snackbar);
+    contacts_app_view (GTK_WIDGET (self), entry->uid, self->snackbar);
 }
 
+/* "Create new contact": the Contacts app's editor for a new contact (Intent.ACTION_INSERT) */
 static void
 on_add_clicked (ContactsPage *self)
 {
-  contacts_app_open (self->snackbar);
+  contacts_app_insert (GTK_WIDGET (self), NULL);
 }
 
 static void
 on_create (gpointer data)
 {
-  contacts_app_open (CONTACTS_PAGE (data)->snackbar);
+  contacts_app_insert (GTK_WIDGET (data), NULL);
+}
+
+/* "Create new contact", on top of the list and under the empty view's line, only where the Contacts app is there to
+ * make one: looked at again each time the page shows, as an app can come or go meanwhile */
+static void
+update_create (ContactsPage *self)
+{
+  gboolean can_create = !self->picker && contacts_app_installed ();
+  GtkWidget *empty;
+
+  gtk_widget_set_visible (self->add, can_create);
+  if (self->empty && can_create == self->empty_creates)
+    return;
+  /* ContactsFragment's empty view: the contacts picture, the line, "Create new contact" */
+  empty = empty_view_new ("/de/yesman/Dialer/images/empty-contacts.png", _("You don't have any contacts yet"),
+                          can_create ? _("Create new contact") : NULL, on_create, self);
+  gtk_stack_add_child (GTK_STACK (self->stack), empty);
+  if (self->empty)
+    {
+      if (gtk_stack_get_visible_child (GTK_STACK (self->stack)) == self->empty)
+        gtk_stack_set_visible_child (GTK_STACK (self->stack), empty);
+      gtk_stack_remove (GTK_STACK (self->stack), self->empty);
+    }
+  self->empty = empty;
+  self->empty_creates = can_create;
+  update_anchored (self);
 }
 
 /* add_contact_row.xml: 8 dp down, 56 dp in from the start, 16 from the end; the person-add icon in a 40 dp box and
@@ -707,10 +735,8 @@ contacts_page_new (Contacts *contacts, NeoSnackbar *snackbar)
 
   self->contacts = g_object_ref (contacts);
   self->snackbar = snackbar;
-  /* ContactsFragment's empty view: the contacts picture, the line, "Create new contact" */
-  self->empty = empty_view_new ("/de/yesman/Dialer/images/empty-contacts.png", _("You don't have any contacts yet"),
-                                _("Create new contact"), on_create, self);
-  gtk_stack_add_child (GTK_STACK (self->stack), self->empty);
+  update_create (self);
+  g_signal_connect (self, "map", G_CALLBACK (update_create), NULL);
   g_signal_connect_swapped (contacts, "changed", G_CALLBACK (on_contacts_changed), self);
   load (self);
   return GTK_WIDGET (self);

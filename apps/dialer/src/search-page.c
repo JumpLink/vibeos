@@ -6,6 +6,7 @@
 #include "avatar.h"
 #include "calls-client.h"
 #include "call-types.h"
+#include "contacts-app.h"
 #include "phone.h"
 #include "phone-number.h"
 
@@ -612,6 +613,20 @@ on_sms_action (GtkWidget *row, SearchPage *self)
     g_warning ("search: %s: %s", uri, error->message);
 }
 
+/* "Create new contact" (IntentUtil.getNewContactIntent) and "Add to a contact" (getAddToExistingContactIntent): the
+ * dialpad's digits as they were typed, to the Contacts app */
+static void
+on_create_contact_action (GtkWidget *row, SearchPage *self)
+{
+  contacts_app_insert (GTK_WIDGET (self), self->query);
+}
+
+static void
+on_add_to_contact_action (GtkWidget *row, SearchPage *self)
+{
+  contacts_app_insert_or_edit (GTK_WIDGET (self), self->query);
+}
+
 static GtkWidget *
 action_row (SearchPage *self, const char *icon_name, const char *text, GCallback callback)
 {
@@ -643,8 +658,8 @@ action_row (SearchPage *self, const char *icon_name, const char *text, GCallback
 }
 
 /* NewSearchFragment.getActions: nothing for 0 or 1 characters; for a number typed in the search bar, call it or
- * text it; for dialpad digits, text them. (Android's "Create new contact" and "Add to a contact" hand the number
- * to the Contacts app, which GNOME Contacts cannot take; and there is no video calling.) */
+ * text it; for dialpad digits, make a contact of them or add them to one (where the Contacts app is there to take
+ * them), or text them. There is no video calling. */
 static void
 add_actions (SearchPage *self)
 {
@@ -652,6 +667,13 @@ add_actions (SearchPage *self)
 
   if (g_utf8_strlen (self->query, -1) < 2)
     return;
+  if (self->dialpad && contacts_app_installed ())
+    {
+      gtk_box_append (GTK_BOX (self->list), action_row (self, "dialer-person-add-symbolic", _("Create new contact"),
+                                                         G_CALLBACK (on_create_contact_action)));
+      gtk_box_append (GTK_BOX (self->list), action_row (self, "dialer-person-add-symbolic", _("Add to a contact"),
+                                                         G_CALLBACK (on_add_to_contact_action)));
+    }
   if (!self->dialpad)
     {
       g_autofree char *call = NULL;

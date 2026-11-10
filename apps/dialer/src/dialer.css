@@ -274,3 +274,29 @@ history-tabs {
   font-weight: 700;
   color: #e1e1e1;
 }
+
+/* Call details (call-details.c): DialerToolbar's title, config_headlineFontFamilyMedium 20 sp (500 drawn as 800) in
+ * textColorPrimary; the large call-type icons in their colour filters, untouched by force dark; a missed call's
+ * time in dialer_red as text */
+.dialer-toolbar-title {
+  font-family: "Google Sans Flex", "Neo Roboto", sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  color: #f6f7fb;
+}
+
+.details-incoming {
+  color: #00a8ff;
+}
+
+.details-outgoing {
+  color: #00c853;
+}
+
+.details-missed {
+  color: #c53929;
+}
+
+.dialer-secondary-text.details-missed-text {
+  color: #fb6a51;
+}

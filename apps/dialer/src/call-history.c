@@ -164,7 +164,7 @@ struct _CallHistory
 
 G_DEFINE_FINAL_TYPE (CallHistory, call_history, GTK_TYPE_WIDGET)
 
-enum { CLOSED, EDIT_NUMBER, N_SIGNALS };
+enum { CLOSED, EDIT_NUMBER, SHOW_DETAILS, N_SIGNALS };
 static guint signals[N_SIGNALS];
 
 static void
@@ -260,6 +260,12 @@ on_edit_number (CallHistory *self, const char *number)
 }
 
 static void
+on_show_details (CallHistory *self, const char *number, int presentation, GArray *ids)
+{
+  g_signal_emit (self, signals[SHOW_DETAILS], 0, number, presentation, ids);
+}
+
+static void
 call_history_dispose (GObject *object)
 {
   CallHistory *self = CALL_HISTORY (object);
@@ -280,6 +286,8 @@ call_history_class_init (CallHistoryClass *klass)
                                   G_TYPE_NONE, 0);
   signals[EDIT_NUMBER] = g_signal_new ("edit-number", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
                                        NULL, G_TYPE_NONE, 1, G_TYPE_STRING);
+  signals[SHOW_DETAILS] = g_signal_new ("show-details", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
+                                        NULL, G_TYPE_NONE, 3, G_TYPE_STRING, G_TYPE_INT, G_TYPE_ARRAY);
 }
 
 static void
@@ -347,6 +355,7 @@ call_history_new (Contacts *contacts, NeoSnackbar *snackbar)
     {
       self->pages[i] = recents_page_new_history (contacts, snackbar, i == PAGE_MISSED);
       g_signal_connect_swapped (self->pages[i], "edit-number", G_CALLBACK (on_edit_number), self);
+      g_signal_connect_swapped (self->pages[i], "show-details", G_CALLBACK (on_show_details), self);
       gtk_stack_add_child (GTK_STACK (self->stack), self->pages[i]);
     }
   g_signal_connect_swapped (self->pages[PAGE_ALL], "loaded", G_CALLBACK (on_all_loaded), self);

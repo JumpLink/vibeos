@@ -2,6 +2,7 @@
 #include "call-dates.h"
 
 #include <glib/gi18n.h>
+#include <neo.h>
 
 #define MINUTE_MS (60 * G_GINT64_CONSTANT (1000))
 #define HOUR_MS   (60 * MINUTE_MS)
@@ -85,4 +86,28 @@ call_dates_relative (gint64 date_ms, gint64 now_ms)
     return g_date_time_format (date, C_("call date", "%B %-d"));
   /* TRANSLATORS: a call's date in another year: "October 28, 2025" */
   return g_date_time_format (date, C_("call date", "%B %-d, %Y"));
+}
+
+char *
+call_dates_details (gint64 date_ms)
+{
+  g_autoptr(GDateTime) date = g_date_time_new_from_unix_local_usec (date_ms * 1000);
+
+  if (!date)
+    return g_strdup ("");
+  /* TRANSLATORS: a call's date and time in Call details, ICU's "EEEE, MMMM d, y 'at' HH:mm" with the 24-hour
+   * clock, as strftime: "Wednesday, November 4, 2026 at 04:36" */
+  return g_date_time_format (date, neo_clock_uses_24h () ? C_("call details date", "%A, %B %-d, %Y at %H:%M")
+                                   /* TRANSLATORS: the same with the 12-hour clock: "…, 2026 at 4:36 AM" */
+                                                         : C_("call details date", "%A, %B %-d, %Y at %-l:%M %p"));
+}
+
+char *
+call_dates_duration (gint64 seconds)
+{
+  if (seconds >= 60)
+    /* TRANSLATORS: call_duration_format_pattern with the abbreviations: "2m 15s" */
+    return g_strdup_printf (C_("call duration", "%dm %ds"), (int) (seconds / 60), (int) (seconds % 60));
+  /* TRANSLATORS: call_duration_short_format_pattern: "12s" */
+  return g_strdup_printf (C_("call duration", "%ds"), (int) seconds);
 }

@@ -25,10 +25,11 @@ gtk = dependency('gtk4', version: '>= 4.14')
 resources = gnome.compile_resources('dialer-resources', 'src/dialer.gresource.xml', source_dir: ['src', 'data'])
 executable('neo-dialer', 'src/dialer-main.c', 'src/dialer-window.c', 'src/dialpad-sheet.c', 'src/dialpad.c',
            'src/search-bar.c', 'src/search-page.c', 'src/nav-bar.c', 'src/favorites-page.c', 'src/recents-page.c',
-           'src/contacts-page.c', 'src/contacts-app.c', 'src/call-history.c', 'src/dialer-settings.c',
-           'src/popup-menu.c', 'src/empty-view.c', 'src/call-dates.c', 'src/text.c', 'src/incall-window.c',
-           'src/incall-view.c', 'src/incall-button.c', 'src/answer-view.c', 'src/avatar.c', 'src/caller.c',
-           'src/calls-client.c', 'src/phone.c', resources, link_with: common, install: true,
+           'src/contacts-page.c', 'src/contacts-app.c', 'src/app-action.c', 'src/call-history.c',
+           'src/call-details.c', 'src/dialer-settings.c', 'src/popup-menu.c', 'src/empty-view.c', 'src/call-dates.c',
+           'src/text.c', 'src/incall-window.c', 'src/incall-view.c', 'src/incall-button.c', 'src/answer-view.c',
+           'src/avatar.c', 'src/caller.c', 'src/calls-client.c', 'src/phone.c', resources, link_with: common,
+           install: true,
            dependencies: [gio, ebook, m, gtk, dependency('neo-1'), dependency('spongy-gtk-1')])
 
 unit = configuration_data({'bindir': bindir})

@@ -23,6 +23,7 @@
     <file alias="icons/scalable/actions/dialer-copy-symbolic.svg">icons/dialer-copy-symbolic.svg</file>
     <file alias="icons/scalable/actions/dialer-delete-symbolic.svg">icons/dialer-delete-symbolic.svg</file>
     <file alias="icons/scalable/actions/dialer-dialpad-symbolic.svg">icons/dialer-dialpad-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dialer-edit-symbolic.svg">icons/dialer-edit-symbolic.svg</file>
     <file alias="icons/scalable/actions/dialer-empty-call-log-symbolic.svg">icons/dialer-empty-call-log-symbolic.svg</file>
     <file alias="icons/scalable/actions/dialer-end-answer-symbolic.svg">icons/dialer-end-answer-symbolic.svg</file>
     <file alias="icons/scalable/actions/dialer-group-symbolic.svg">icons/dialer-group-symbolic.svg</file>

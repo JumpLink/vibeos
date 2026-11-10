@@ -13,5 +13,7 @@ GtkWidget *dialer_window_new          (GtkApplication *app, GSettings *settings)
 void       dialer_window_show_recents (GtkWidget *window);
 /* the dialpad, with @number typed in (a tel: link) or as it was (NULL: Add call) */
 void       dialer_window_show_dialpad (GtkWidget *window, const char *number);
+/* the window's snackbar with @message: why a call another app asked for did not go out */
+void       dialer_window_show_message (GtkWidget *window, const char *message);
 
 G_END_DECLS

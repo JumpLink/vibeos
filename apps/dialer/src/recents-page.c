@@ -8,6 +8,7 @@
 #include "call-log.h"
 #include "call-types.h"
 #include "calls-client.h"
+#include "contacts-app.h"
 #include "empty-view.h"
 #include "phone.h"
 #include "phone-number.h"
@@ -414,6 +415,9 @@ static void recents_row_set_expanded (RecentsRow *self, gboolean expanded, gbool
 static void page_row_clicked (RecentsPage *page, RecentsRow *row);
 static void page_row_menu (RecentsPage *page, RecentsRow *row);
 static void page_call (RecentsPage *page, const char *number);
+static void page_block (RecentsPage *page, RecentsRow *row, gboolean block);
+static void page_show_details (RecentsPage *page, RecentsRow *row);
+static gboolean page_is_blocked (RecentsPage *page, const char *number);
 
 static double
 header_height (RecentsRow *self)
@@ -522,6 +526,37 @@ on_send_message (RecentsRow *self)
     g_warning ("recents: %s: %s", uri, error->message);
 }
 
+/* IntentProvider.getAddContactIntentProvider: the number to a new contact, or to one picked in the Contacts app */
+static void
+on_create_contact (RecentsRow *self)
+{
+  contacts_app_insert (GTK_WIDGET (self), self->group->number);
+}
+
+static void
+on_add_to_contact (RecentsRow *self)
+{
+  contacts_app_insert_or_edit (GTK_WIDGET (self), self->group->number);
+}
+
+static void
+on_block (RecentsRow *self)
+{
+  page_block (self->page, self, TRUE);
+}
+
+static void
+on_unblock (RecentsRow *self)
+{
+  page_block (self->page, self, FALSE);
+}
+
+static void
+on_details (RecentsRow *self)
+{
+  page_show_details (self->page, self);
+}
+
 static GtkWidget *
 action_row (RecentsRow *self, const char *icon_name, const char *text, GCallback callback)
 {
@@ -549,21 +584,62 @@ action_row (RecentsRow *self, const char *icon_name, const char *text, GCallback
   return row;
 }
 
-/* bindActionButtons, for what this phone can back: the Dialer's other rows (create or add to a contact, block,
- * call details) wait for something that does them */
+/* bindActionButtons (spec §5.4), for what this phone can back: no video calls, no call subjects, no voicemail.
+ * An emergency number has "Call details" alone; a number that is not a contact can become one (or be added to
+ * one) where the Contacts app is there to take it; a number can be texted and blocked or unblocked unless it is
+ * blocked (texting) or withheld; "Call details" always */
 static void
 make_actions (RecentsRow *self)
 {
+  const Group *group = self->group;
   GtkWidget *divider = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   g_autoptr(GAppInfo) sms = g_app_info_get_default_for_uri_scheme ("sms");
+  gboolean emergency = group->callable && phone_number_is_emergency (group->number);
+  gboolean blocked = group->callable && page_is_blocked (self->page, group->number);
 
   self->actions = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (divider, "recents-divider");
   gtk_box_append (GTK_BOX (self->actions), divider);
-  if (self->group->callable && sms)
-    gtk_box_append (GTK_BOX (self->actions),
-                    action_row (self, "dialer-message-symbolic", _("Send a message"), G_CALLBACK (on_send_message)));
+  if (!emergency)
+    {
+      if (group->callable && !group->is_contact && !blocked && contacts_app_installed ())
+        {
+          gtk_box_append (GTK_BOX (self->actions), action_row (self, "dialer-person-add-symbolic",
+                                                               _("Create new contact"),
+                                                               G_CALLBACK (on_create_contact)));
+          gtk_box_append (GTK_BOX (self->actions), action_row (self, "dialer-person-symbolic", _("Add to a contact"),
+                                                               G_CALLBACK (on_add_to_contact)));
+        }
+      if (group->callable && !blocked && sms)
+        gtk_box_append (GTK_BOX (self->actions), action_row (self, "dialer-message-symbolic", _("Send a message"),
+                                                             G_CALLBACK (on_send_message)));
+      if (group->callable)
+        gtk_box_append (GTK_BOX (self->actions),
+                        blocked ? action_row (self, "dialer-unblock-symbolic", _("Unblock number"),
+                                              G_CALLBACK (on_unblock))
+                                : action_row (self, "dialer-block-symbolic", _("Block number"), G_CALLBACK (on_block)));
+    }
+  {
+    GtkWidget *details = action_row (self, "dialer-info-symbolic", _("Call details"), G_CALLBACK (on_details));
+    g_autofree char *description = g_strdup_printf (_("Call details for %s"), group->name);
+
+    gtk_accessible_update_property (GTK_ACCESSIBLE (details), GTK_ACCESSIBLE_PROPERTY_LABEL, description, -1);
+    gtk_box_append (GTK_BOX (self->actions), details);
+  }
   gtk_widget_set_parent (self->actions, GTK_WIDGET (self));
+  gtk_widget_set_child_visible (self->actions, self->expanded && !neo_anim_is_running (self->anim));
+}
+
+/* the number was blocked or unblocked, or the Contacts app came or went: an open entry's actions are made again */
+static void
+recents_row_remake_actions (RecentsRow *self)
+{
+  if (!self->actions)
+    return;
+  g_clear_pointer (&self->actions, gtk_widget_unparent);
+  if (self->expanded)
+    make_actions (self);
+  gtk_widget_queue_resize (GTK_WIDGET (self));
 }
 
 static void
@@ -603,9 +679,17 @@ recents_row_set_expanded (RecentsRow *self, gboolean expanded, gboolean animate)
     }
 }
 
+/* a tap on a contact's picture is the QuickContactBadge's: the contact's card; anywhere else on the entry opens it */
 static void
 on_primary_clicked (RecentsRow *self)
 {
+  if (self->group->is_contact && contacts_app_installed ()
+      && self->press_x >= ROW_PAD && self->press_x < ROW_PAD + PHOTO
+      && self->press_y >= ROW_PAD && self->press_y < ROW_PAD + PHOTO)
+    {
+      contacts_app_view (GTK_WIDGET (self), self->group->uid, NULL);
+      return;
+    }
   page_row_clicked (self->page, self);
 }
 
@@ -659,9 +743,9 @@ recents_row_set_group (RecentsRow *self, Group *group)
       gtk_accessible_update_property (GTK_ACCESSIBLE (content->call), GTK_ACCESSIBLE_PROPERTY_LABEL, description,
                                       -1);
     }
-  /* the actions depend on the number: made again on the next expand */
-  if (self->actions && !self->expanded)
-    g_clear_pointer (&self->actions, gtk_widget_unparent);
+  /* the actions depend on the number, and on whether it is a contact or blocked: made again (an open entry's at
+   * once, the others' on their next expand) */
+  recents_row_remake_actions (self);
   gtk_widget_queue_resize (GTK_WIDGET (content));
   gtk_widget_queue_resize (GTK_WIDGET (self));
 }
@@ -743,7 +827,7 @@ struct _RecentsPage
 
 G_DEFINE_FINAL_TYPE (RecentsPage, recents_page, GTK_TYPE_WIDGET)
 
-enum { OPEN_DIALPAD, EDIT_NUMBER, LOADED, N_SIGNALS };
+enum { OPEN_DIALPAD, EDIT_NUMBER, LOADED, SHOW_DETAILS, N_SIGNALS };
 static guint signals[N_SIGNALS];
 
 static void load (RecentsPage *self);
@@ -1012,6 +1096,34 @@ on_menu_unblock (gpointer data)
   neo_dialog_present (dialog, GTK_WIDGET (target->page));
 }
 
+static gboolean
+page_is_blocked (RecentsPage *self, const char *number)
+{
+  return blocked_numbers_contains (blocked_numbers_get_default (), number, menu_country ());
+}
+
+/* the expanded entry's "Block number" and "Unblock number": the context menu's dialogs */
+static void
+page_block (RecentsPage *self, RecentsRow *row, gboolean block)
+{
+  MenuTarget *target = g_new0 (MenuTarget, 1);
+
+  target->page = g_object_ref (self);
+  target->number = g_strdup (row->group->number);
+  target->ids = g_array_ref (row->group->ids);
+  if (block)
+    on_menu_block (target);
+  else
+    on_menu_unblock (target);
+  menu_target_free (target);
+}
+
+static void
+page_show_details (RecentsPage *self, RecentsRow *row)
+{
+  g_signal_emit (self, signals[SHOW_DETAILS], 0, row->group->number, (int) row->group->presentation, row->group->ids);
+}
+
 /* the number as a header, then Copy number, Edit number before call, Block or Unblock number and Delete
  * (CallLogListItemViewHolder.onCreateContextMenu, spec §5.7.1) */
 static void
@@ -1100,6 +1212,7 @@ recents_page_dispose (GObject *object)
   g_clear_object (&self->loading);
   g_clear_handle_id (&self->build_id, g_source_remove);
   g_signal_handlers_disconnect_by_data (calls_client_get (), self);
+  g_signal_handlers_disconnect_by_data (blocked_numbers_get_default (), self);
   if (self->contacts)
     g_signal_handlers_disconnect_by_data (self->contacts, self);
   g_clear_object (&self->contacts);
@@ -1122,6 +1235,8 @@ recents_page_class_init (RecentsPageClass *klass)
                                        NULL, G_TYPE_NONE, 1, G_TYPE_STRING);
   signals[LOADED] = g_signal_new ("loaded", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL, NULL,
                                   G_TYPE_NONE, 0);
+  signals[SHOW_DETAILS] = g_signal_new ("show-details", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
+                                        NULL, G_TYPE_NONE, 3, G_TYPE_STRING, G_TYPE_INT, G_TYPE_ARRAY);
 }
 
 static void
@@ -1158,6 +1273,8 @@ page_new (Contacts *contacts, NeoSnackbar *snackbar, gboolean missed_only, gbool
   gtk_stack_add_child (GTK_STACK (self->stack), self->empty);
   g_signal_connect_swapped (calls_client_get (), "call-log-changed", G_CALLBACK (on_log_changed), self);
   g_signal_connect_swapped (contacts, "changed", G_CALLBACK (on_log_changed), self);
+  /* a number blocked or unblocked, here or in Messaging: the entries' actions and "Blocked" again */
+  g_signal_connect_swapped (blocked_numbers_get_default (), "changed", G_CALLBACK (on_log_changed), self);
   load (self);
   return GTK_WIDGET (self);
 }

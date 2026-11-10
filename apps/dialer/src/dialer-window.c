@@ -1,6 +1,7 @@
 /* The Phone app's window: see dialer-window.h. The rules are OldMainActivityPeer's (the tabs, the FAB, the missed
  * calls marked seen) and MainSearchController's (search and the dialpad over the tabs); spec §2. */
 #include "dialer-window.h"
+#include "call-details.h"
 #include "call-history.h"
 #include "calls-client.h"
 #include "contacts-page.h"
@@ -31,7 +32,7 @@ typedef struct
   GtkWidget *toolbar;           /* a revealer: the toolbar slides up out of the way under the dialpad */
   GtkWidget *search_bar, *stack, *pages[N_TABS], *search, *fab, *nav;
   GtkWidget *sheet;
-  GtkWidget *screen;            /* Call history or Settings over it all, or NULL */
+  GPtrArray *screens;           /* Call history, Call details, Settings over it all, the top one last */
   gboolean searching;           /* the search UI is up (regular or the dialpad's) */
   gboolean fab_shown;
   NeoSnackbar *snackbar;
@@ -45,6 +46,7 @@ shell_free (gpointer data)
   Shell *shell = data;
 
   g_signal_handlers_disconnect_by_data (calls_client_get (), shell);
+  g_clear_pointer (&shell->screens, g_ptr_array_unref);
   g_clear_object (&shell->contacts);
   g_clear_object (&shell->settings);
   g_free (shell);
@@ -273,34 +275,70 @@ on_search_touched (Shell *shell)
     dialer_search_bar_hide_keyboard (DIALER_SEARCH_BAR (shell->search_bar));
 }
 
-/* ---- the ⋮ menu (MainToolbarMenu, spec §2.3): Call history and Settings ----------------------------------- */
+/* ---- the ⋮ menu (MainToolbarMenu, spec §2.3) and the screens it opens -------------------------------------- */
 
+static void
+remove_screen (Shell *shell, GtkWidget *screen)
+{
+  g_signal_handlers_disconnect_by_data (screen, shell);
+  gtk_overlay_remove_overlay (neo_window_get_overlay (shell->window), screen);
+  g_ptr_array_remove (shell->screens, screen);
+  if (shell->screens->len)
+    gtk_widget_grab_focus (g_ptr_array_index (shell->screens, shell->screens->len - 1));
+}
+
+/* the top screen goes (Back, Up, ✕): the one under it shows again */
 static void
 close_screen (Shell *shell)
 {
-  if (!shell->screen)
-    return;
-  gtk_overlay_remove_overlay (neo_window_get_overlay (shell->window), g_steal_pointer (&shell->screen));
+  if (shell->screens->len)
+    remove_screen (shell, g_ptr_array_index (shell->screens, shell->screens->len - 1));
+}
+
+static void
+close_screens (Shell *shell)
+{
+  while (shell->screens->len)
+    close_screen (shell);
+}
+
+/* a screen that closes itself: it, and anything opened over it, go */
+static void
+on_screen_closed (GtkWidget *screen, Shell *shell)
+{
+  while (shell->screens->len && g_ptr_array_find (shell->screens, screen, NULL))
+    close_screen (shell);
 }
 
 static void
 on_history_edit_number (Shell *shell, const char *number)
 {
   /* the dialpad comes up in the main screen (ACTION_DIAL to the single-task main activity, which clears Call
-   * history off the top) */
-  close_screen (shell);
+   * history and Call details off the top) */
+  close_screens (shell);
   dialpad_sheet_show (DIALPAD_SHEET (shell->sheet), number);
 }
 
-/* a screen of its own over the main one and its dialpad, under the snackbar, which a call that fails from it uses */
+/* a screen of its own over the main one, its dialpad and the screens under it, under the snackbar, which a call
+ * that fails from it uses */
 static void
-show_screen (Shell *shell, GtkWidget *screen)
+push_screen (Shell *shell, GtkWidget *screen)
 {
-  close_screen (shell);
-  shell->screen = screen;
-  g_signal_connect_swapped (screen, "closed", G_CALLBACK (close_screen), shell);
+  g_ptr_array_add (shell->screens, screen);
+  g_signal_connect (screen, "closed", G_CALLBACK (on_screen_closed), shell);
   gtk_widget_insert_before (screen, GTK_WIDGET (neo_window_get_overlay (shell->window)), GTK_WIDGET (shell->snackbar));
   gtk_widget_grab_focus (screen);
+}
+
+/* an entry's "Call details", from Recents or from Call history (over it, so Back goes back to it) */
+static void
+on_show_details (Shell *shell, const char *number, int presentation, GArray *ids)
+{
+  GtkWidget *details = call_details_new (shell->contacts, shell->snackbar, number, presentation,
+                                         (const gint64 *) ids->data, ids->len);
+
+  g_signal_connect_swapped (details, "edit-number", G_CALLBACK (on_history_edit_number), shell);
+  push_screen (shell, details);
 }
 
 static void
@@ -310,7 +348,9 @@ on_call_history (gpointer data)
   GtkWidget *history = call_history_new (shell->contacts, shell->snackbar);
 
   g_signal_connect_swapped (history, "edit-number", G_CALLBACK (on_history_edit_number), shell);
-  show_screen (shell, history);
+  g_signal_connect_swapped (history, "show-details", G_CALLBACK (on_show_details), shell);
+  close_screens (shell);
+  push_screen (shell, history);
 }
 
 static void
@@ -318,7 +358,8 @@ on_settings (gpointer data)
 {
   Shell *shell = data;
 
-  show_screen (shell, dialer_settings_new (shell->settings));
+  close_screens (shell);
+  push_screen (shell, dialer_settings_new (shell->settings));
 }
 
 /* Helplines is a screen still to be written (its list is Lineage's, by country); Clear frequents never shows,
@@ -339,7 +380,7 @@ on_menu_clicked (Shell *shell)
 static gboolean
 on_close_request (GtkWindow *window, Shell *shell)
 {
-  if (shell->screen)
+  if (shell->screens->len)
     {
       close_screen (shell);
       return TRUE;
@@ -391,6 +432,7 @@ dialer_window_new (GtkApplication *app, GSettings *settings)
   GtkOverlay *overlay;
 
   shell->window = window;
+  shell->screens = g_ptr_array_new ();
   shell->settings = g_object_ref (settings);
   shell->contacts = contacts_new ();
   g_object_set_data_full (G_OBJECT (window), "dialer-shell", shell, shell_free);
@@ -427,6 +469,7 @@ dialer_window_new (GtkApplication *app, GSettings *settings)
   gtk_stack_add_child (GTK_STACK (shell->stack), shell->search);
   g_signal_connect_swapped (shell->pages[TAB_RECENTS], "open-dialpad", G_CALLBACK (on_open_dialpad), shell);
   g_signal_connect_swapped (shell->pages[TAB_RECENTS], "edit-number", G_CALLBACK (on_edit_number), shell);
+  g_signal_connect_swapped (shell->pages[TAB_RECENTS], "show-details", G_CALLBACK (on_show_details), shell);
   g_signal_connect_swapped (shell->search, "call-placed", G_CALLBACK (on_search_call_placed), shell);
   g_signal_connect_swapped (shell->search, "touched", G_CALLBACK (on_search_touched), shell);
   gtk_overlay_set_child (GTK_OVERLAY (content), shell->stack);
@@ -472,7 +515,7 @@ dialer_window_show_recents (GtkWidget *window)
 {
   Shell *shell = shell_of (window);
 
-  close_screen (shell);
+  close_screens (shell);
   close_search (shell);
   recents_page_reset (RECENTS_PAGE (shell->pages[TAB_RECENTS]));
   show_tab (shell, TAB_RECENTS);
@@ -483,6 +526,12 @@ dialer_window_show_dialpad (GtkWidget *window, const char *number)
 {
   Shell *shell = shell_of (window);
 
-  close_screen (shell);
+  close_screens (shell);
   dialpad_sheet_show (DIALPAD_SHEET (shell->sheet), number);
+}
+
+void
+dialer_window_show_message (GtkWidget *window, const char *message)
+{
+  neo_snackbar_show (shell_of (window)->snackbar, message, NULL, NULL, NULL, NEO_SNACKBAR_LONG);
 }
