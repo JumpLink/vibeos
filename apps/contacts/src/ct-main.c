@@ -107,6 +107,56 @@ on_open (GApplication *app, GFile **files, int n_files, const char *hint, gpoint
     }
 }
 
+/* --- a contact another app names: when the app has just been started for it, the address books are still being
+ * read, so its screen waits until they have been (or the contact would "not exist") */
+
+typedef void (*ContactScreen) (GtkWidget *window, const char *uid);
+
+typedef struct {
+  GtkWidget *window;
+  ContactScreen show;
+  char *uid;
+} Pending;
+
+static void
+on_store_ready (CtStore *ready, gpointer data)
+{
+  Pending *pending = data;
+
+  g_signal_handlers_disconnect_by_data (ready, pending);
+  pending->show (pending->window, pending->uid);
+  g_object_unref (pending->window);
+  g_free (pending->uid);
+  g_free (pending);
+}
+
+static void
+when_ready (GtkWidget *window, ContactScreen show, const char *uid)
+{
+  Pending *pending;
+
+  if (ct_store_is_ready (store))
+    {
+      show (window, uid);
+      return;
+    }
+  pending = g_new0 (Pending, 1);
+  pending->window = g_object_ref (window);
+  pending->show = show;
+  pending->uid = g_strdup (uid);
+  g_signal_connect (store, "ready", G_CALLBACK (on_store_ready), pending);
+}
+
+/* ContactEditorActivity with a contact that is not there: "Failed to open editor." and nothing more */
+static void
+edit_contact (GtkWidget *window, const char *uid)
+{
+  if (!g_str_equal (uid, CT_PROFILE_UID) && !ct_store_lookup (store, uid))
+    ct_window_toast (window, _("Failed to open editor."));
+  else
+    ct_window_edit_contact (window, uid);
+}
+
 /* --- the actions */
 
 static void
@@ -115,7 +165,7 @@ on_view_contact (GSimpleAction *action, GVariant *parameter, gpointer app)
   GtkWidget *window = contacts_window (app);
 
   gtk_window_present (GTK_WINDOW (window));
-  ct_window_show_contact (window, g_variant_get_string (parameter, NULL));
+  when_ready (window, ct_window_show_contact, g_variant_get_string (parameter, NULL));
 }
 
 static void
@@ -124,7 +174,7 @@ on_edit_contact (GSimpleAction *action, GVariant *parameter, gpointer app)
   GtkWidget *window = contacts_window (app);
 
   gtk_window_present (GTK_WINDOW (window));
-  ct_window_edit_contact (window, g_variant_get_string (parameter, NULL));
+  when_ready (window, edit_contact, g_variant_get_string (parameter, NULL));
 }
 
 /* the fields another app sends: a name, a number, an email address (Intents.Insert.NAME, PHONE, EMAIL) */
@@ -267,26 +317,17 @@ on_pick_contact (GSimpleAction *action, GVariant *parameter, gpointer app)
   GtkWidget *window = contacts_window (app);
   PickRequest *request = g_new0 (PickRequest, 1);
   const char *need;
-  g_autoptr(GPtrArray) exclude = g_ptr_array_new_with_free_func (g_free);
-  g_autoptr(GPtrArray) entries = ct_store_dup_entries (store);
   GtkWidget *picker;
 
   g_variant_get (parameter, "(ss&s)", &request->app_id, &request->action, &need);
-  /* Phone.CONTENT_TYPE / Email.CONTENT_TYPE: only the contacts that have one */
-  for (guint i = 0; i < entries->len; i++)
-    {
-      CtEntry *entry = entries->pdata[i];
-      CtKind kind = g_str_equal (need, "email") ? CT_KIND_EMAIL : CT_KIND_PHONE;
-      g_autoptr(GPtrArray) items = NULL;
-
-      if (!*need)
-        break;
-      items = ct_contact_get_items (entry->contact, kind);
-      if (!items->len)
-        g_ptr_array_add (exclude, g_strdup (entry->uid));
-    }
-  picker = ct_picker_new (window, _("Choose a contact"), exclude, FALSE, on_contact_picked, request);
+  picker = ct_picker_new (window, _("Choose a contact"), NULL, FALSE, on_contact_picked, request);
   g_object_set_data_full (G_OBJECT (picker), "ct-request", request, pick_request_free);
+  /* Phone.CONTENT_TYPE / Email.CONTENT_TYPE: only the contacts that have one (the store may still be loading,
+   * so the picker checks each contact as it comes) */
+  if (g_str_equal (need, "phone"))
+    ct_picker_require (picker, CT_KIND_PHONE);
+  else if (g_str_equal (need, "email"))
+    ct_picker_require (picker, CT_KIND_EMAIL);
   gtk_window_present (GTK_WINDOW (window));
   ct_window_push (window, picker);
 }

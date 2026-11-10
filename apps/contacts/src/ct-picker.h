@@ -5,6 +5,8 @@
  * drawer or the FAB. */
 #pragma once
 
+#include "ct-contact.h"
+
 #include <gtk/gtk.h>
 
 G_BEGIN_DECLS
@@ -20,5 +22,9 @@ GtkWidget *ct_picker_new (GtkWidget *window, const char *title, GPtrArray *exclu
  * picker and runs @create */
 typedef void (*CtPickerCreate) (gpointer data);
 void       ct_picker_offer_new (GtkWidget *picker, CtPickerCreate create, gpointer data);
+
+/* only the contacts that have a row of @kind (a phone number or an email address: Phone.CONTENT_TYPE,
+ * Email.CONTENT_TYPE), checked again whenever the contacts change */
+void       ct_picker_require (GtkWidget *picker, CtKind kind);
 
 G_END_DECLS

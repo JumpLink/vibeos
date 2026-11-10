@@ -644,16 +644,25 @@ text.ct-ed-text {
   color: #e1e1e1;
 }
 
+/* SystemUI's text_toast.xml: drawn by SystemUI in the system's own colours, not the app's (as the Calendar's) */
 .ct-toast {
-  border-radius: 24px;
-  padding: 8px 16px;
-  background-color: #323232;
+  margin: 0 16px 48px 16px;             /* toast_y_offset */
+  padding: 0 16px;
+  min-height: 48px;
+  border-radius: 28px;
+  background-color: @neo_surface_container_high;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.ct-toast-icon {
+  margin: 10px 10px 10px 0;
 }
 
 .ct-toast-text {
+  padding: 12px 0;
   font-size: 14px;
   font-weight: 700;
-  color: #e6e6e6;
+  color: @neo_on_surface;
 }
 
 .ct-snackbar {

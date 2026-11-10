@@ -19,6 +19,8 @@ typedef struct {
   CtStore *store;
   GSettings *settings;
   GHashTable *exclude;          /* uids not offered */
+  gboolean require;             /* only the contacts with a row of need */
+  CtKind need;
   gboolean multiple;
   CtPicked picked;
   gpointer data;
@@ -44,7 +46,21 @@ picker_free (gpointer data)
   g_free (picker);
 }
 
-/* the contacts shown (Settings' "Contacts to display") less the excluded ones, by the search */
+/* whether @entry is one the picker leaves out */
+static gboolean
+left_out (Picker *picker, CtEntry *entry)
+{
+  g_autoptr(GPtrArray) items = NULL;
+
+  if (g_hash_table_contains (picker->exclude, entry->uid))
+    return TRUE;
+  if (!picker->require)
+    return FALSE;
+  items = ct_contact_get_items (entry->contact, picker->need);
+  return items->len == 0;
+}
+
+/* the contacts shown (Settings' "Contacts to display") less the ones left out, by the search */
 static void
 refresh (Picker *picker, gboolean to_top)
 {
@@ -53,7 +69,7 @@ refresh (Picker *picker, gboolean to_top)
   CtRows *rows;
 
   for (guint i = entries->len; i > 0; i--)
-    if (g_hash_table_contains (picker->exclude, ((CtEntry *) entries->pdata[i - 1])->uid))
+    if (left_out (picker, entries->pdata[i - 1]))
       g_ptr_array_remove_index_fast (entries, i - 1);
   rows = ct_rows_new (entries, ct_display_order (picker->settings), ct_sort_order (picker->settings), query, FALSE);
   ct_list_set_search (CT_LIST (picker->list), query && *query);
@@ -345,6 +361,16 @@ ct_picker_offer_new (GtkWidget *page, CtPickerCreate create, gpointer data)
   /* under the toolbar, over the list */
   gtk_box_insert_child_after (GTK_BOX (page), picker->create_row, gtk_widget_get_first_child (page));
   refresh (picker, FALSE);
+}
+
+void
+ct_picker_require (GtkWidget *page, CtKind kind)
+{
+  Picker *picker = g_object_get_data (G_OBJECT (page), "ct-picker");
+
+  picker->require = TRUE;
+  picker->need = kind;
+  refresh (picker, TRUE);
 }
 
 GtkWidget *
