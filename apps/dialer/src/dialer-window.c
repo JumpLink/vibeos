@@ -341,6 +341,14 @@ on_show_details (Shell *shell, const char *number, int presentation, GArray *ids
   push_screen (shell, details);
 }
 
+/* a number's statistics, from Call history's Statistics, over it */
+static void
+on_show_screen (Shell *shell, GtkWidget *screen)
+{
+  g_signal_connect_swapped (screen, "edit-number", G_CALLBACK (on_history_edit_number), shell);
+  push_screen (shell, screen);
+}
+
 static void
 on_call_history (gpointer data)
 {
@@ -349,6 +357,7 @@ on_call_history (gpointer data)
 
   g_signal_connect_swapped (history, "edit-number", G_CALLBACK (on_history_edit_number), shell);
   g_signal_connect_swapped (history, "show-details", G_CALLBACK (on_show_details), shell);
+  g_signal_connect_swapped (history, "show-screen", G_CALLBACK (on_show_screen), shell);
   close_screens (shell);
   push_screen (shell, history);
 }

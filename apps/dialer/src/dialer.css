@@ -300,3 +300,53 @@ history-tabs {
 .dialer-secondary-text.details-missed-text {
   color: #fb6a51;
 }
+
+/* Call statistics (call-stats.c): the total over the list, DirectoryHeaderStyle (config_headlineFontFamilyMedium
+ * 14 sp, 500 drawn as 800) in textColorSecondary; a row's number in 12 sp */
+.stats-header {
+  font-family: "Google Sans Flex", "Neo Roboto", sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  color: #a3a7ac;
+}
+
+.dialer-secondary-text.stats-number {
+  font-size: 12px;
+}
+
+/* CallStatsCardStyle: cardBackgroundColor (neutral1_50) made dark, 28 dp corners, no elevation; its title
+ * TextAppearance.CallStatsCategoryTitle, bold on headline-medium (800, 900 with Bold text), 0.009375 em spacing */
+.stats-card {
+  background-color: #242727;
+  border-radius: 28px;
+}
+
+.stats-card-title {
+  font-family: "Google Sans Flex", "Neo Roboto", sans-serif;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.15px;
+  color: #f6f7fb;
+}
+
+/* the detail lines' 12 dp call-type icons, as the Recents ones render (spec §5.3) */
+.stats-incoming {
+  color: #007fc6;
+}
+
+.stats-outgoing {
+  color: #009740;
+}
+
+.stats-missed {
+  color: #922b20;
+}
+
+.stats-blocked {
+  color: #f6f7f8;
+}
+
+/* the separator over Copy number: #12000000 */
+.stats-separator {
+  background-color: rgba(0, 0, 0, 0.07);
+}

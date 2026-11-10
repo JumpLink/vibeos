@@ -2,6 +2,7 @@
  * ViewPagerTabStrip's (dialer/contacts/common/list); the geometry is measured on still:dialer-call-history and
  * still:dialer-call-history-menu (spec §5.6). */
 #include "call-history.h"
+#include "call-stats.h"
 #include "calls-client.h"
 #include "popup-menu.h"
 #include "recents-page.h"
@@ -21,7 +22,7 @@
 #define PAGE_MS         200     /* ViewPager.setCurrentItem(smooth) to the next page at rest: (1 + 1) × 100 ms */
 #define FLING_VELOCITY  400     /* ViewPager's MIN_FLING_VELOCITY, dp/s */
 
-enum { PAGE_ALL, PAGE_MISSED, N_PAGES };
+enum { PAGE_ALL, PAGE_MISSED, PAGE_STATS, N_PAGES };
 
 /* ---- the tab strip: the tabs, and the underline under the selected one -------------------------------------- */
 
@@ -127,7 +128,7 @@ history_tabs_class_init (HistoryTabsClass *klass)
 static void
 history_tabs_init (HistoryTabs *self)
 {
-  const char *titles[N_PAGES] = { _("All"), _("Missed") };
+  const char *titles[N_PAGES] = { _("All"), _("Missed"), _("Statistics") };
 
   gtk_widget_set_size_request (GTK_WIDGET (self), -1, TAB_HEIGHT);
   self->anim = neo_anim_new (GTK_WIDGET (self), on_tabs_anim, self);
@@ -164,8 +165,10 @@ struct _CallHistory
 
 G_DEFINE_FINAL_TYPE (CallHistory, call_history, GTK_TYPE_WIDGET)
 
-enum { CLOSED, EDIT_NUMBER, SHOW_DETAILS, N_SIGNALS };
+enum { CLOSED, EDIT_NUMBER, SHOW_DETAILS, SHOW_SCREEN, N_SIGNALS };
 static guint signals[N_SIGNALS];
+
+static void update_overflow (CallHistory *self);
 
 static void
 show_page (CallHistory *self, int page)
@@ -173,13 +176,15 @@ show_page (CallHistory *self, int page)
   if (page < 0 || page >= N_PAGES || page == self->page)
     return;
   /* onPageSelected: going to All or Missed marks the missed calls seen and takes their notification away (only a
-   * change of page does; opening the screen does not) */
-  calls_client_mark_missed_read (calls_client_get ());
+   * change of page does; opening the screen does not); going to Statistics does not */
+  if (page != PAGE_STATS)
+    calls_client_mark_missed_read (calls_client_get ());
   gtk_stack_set_transition_type (GTK_STACK (self->stack), page > self->page ? GTK_STACK_TRANSITION_TYPE_SLIDE_LEFT
                                                                             : GTK_STACK_TRANSITION_TYPE_SLIDE_RIGHT);
   self->page = page;
   gtk_stack_set_visible_child (GTK_STACK (self->stack), self->pages[page]);
   history_tabs_select (self->tabs, page);
+  update_overflow (self);
 }
 
 static void
@@ -236,21 +241,42 @@ on_clear (gpointer data)
   neo_dialog_present (dialog, GTK_WIDGET (self));
 }
 
-/* call_log_options: the one item, on either page */
+static void
+on_sort (gpointer data)
+{
+  CallHistory *self = data;
+  CallStats *stats = CALL_STATS (self->pages[PAGE_STATS]);
+
+  call_stats_set_sort_by_duration (stats, !call_stats_get_sort_by_duration (stats));
+}
+
+static gboolean
+has_calls (CallHistory *self)
+{
+  return recents_page_has_calls (RECENTS_PAGE (self->pages[PAGE_ALL]));
+}
+
+/* call_log_options, and on Statistics call_stats_options before it (its items come first, orderInCategory 0 to
+ * 1): the sort it is not sorted by. "Adjust time range" and "Reset time range" are left out (no time range) */
 static void
 on_overflow (CallHistory *self)
 {
   DialerPopupMenu *menu = dialer_popup_menu_new ();
 
-  dialer_popup_menu_append (menu, _("Clear call history"), on_clear, self);
+  if (self->page == PAGE_STATS)
+    dialer_popup_menu_append (menu, call_stats_get_sort_by_duration (CALL_STATS (self->pages[PAGE_STATS]))
+                                      ? _("Sort by call count") : _("Sort by call duration"), on_sort, self);
+  if (has_calls (self))
+    dialer_popup_menu_append (menu, _("Clear call history"), on_clear, self);
   dialer_popup_menu_present (menu, self->overflow, POPUP_MENU_END);
 }
 
-/* "Clear call history" only while the log has calls (onPrepareOptionsMenu); with no item there is no overflow */
+/* "Clear call history" only while the log has calls (onPrepareOptionsMenu); Statistics always has its sort; with no
+ * item there is no overflow */
 static void
-on_all_loaded (CallHistory *self)
+update_overflow (CallHistory *self)
 {
-  gtk_widget_set_visible (self->overflow, recents_page_has_calls (RECENTS_PAGE (self->pages[PAGE_ALL])));
+  gtk_widget_set_visible (self->overflow, self->page == PAGE_STATS || has_calls (self));
 }
 
 static void
@@ -263,6 +289,12 @@ static void
 on_show_details (CallHistory *self, const char *number, int presentation, GArray *ids)
 {
   g_signal_emit (self, signals[SHOW_DETAILS], 0, number, presentation, ids);
+}
+
+static void
+on_show_screen (CallHistory *self, GtkWidget *screen)
+{
+  g_signal_emit (self, signals[SHOW_SCREEN], 0, screen);
 }
 
 static void
@@ -288,6 +320,8 @@ call_history_class_init (CallHistoryClass *klass)
                                        NULL, G_TYPE_NONE, 1, G_TYPE_STRING);
   signals[SHOW_DETAILS] = g_signal_new ("show-details", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
                                         NULL, G_TYPE_NONE, 3, G_TYPE_STRING, G_TYPE_INT, G_TYPE_ARRAY);
+  signals[SHOW_SCREEN] = g_signal_new ("show-screen", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
+                                       NULL, G_TYPE_NONE, 1, GTK_TYPE_WIDGET);
 }
 
 static void
@@ -353,12 +387,20 @@ call_history_new (Contacts *contacts, NeoSnackbar *snackbar)
   gtk_widget_set_vexpand (self->stack, TRUE);
   for (int i = 0; i < N_PAGES; i++)
     {
-      self->pages[i] = recents_page_new_history (contacts, snackbar, i == PAGE_MISSED);
+      if (i == PAGE_STATS)
+        {
+          self->pages[i] = call_stats_new (contacts, snackbar);
+          g_signal_connect_swapped (self->pages[i], "show-screen", G_CALLBACK (on_show_screen), self);
+        }
+      else
+        {
+          self->pages[i] = recents_page_new_history (contacts, snackbar, i == PAGE_MISSED);
+          g_signal_connect_swapped (self->pages[i], "show-details", G_CALLBACK (on_show_details), self);
+        }
       g_signal_connect_swapped (self->pages[i], "edit-number", G_CALLBACK (on_edit_number), self);
-      g_signal_connect_swapped (self->pages[i], "show-details", G_CALLBACK (on_show_details), self);
       gtk_stack_add_child (GTK_STACK (self->stack), self->pages[i]);
     }
-  g_signal_connect_swapped (self->pages[PAGE_ALL], "loaded", G_CALLBACK (on_all_loaded), self);
+  g_signal_connect_swapped (self->pages[PAGE_ALL], "loaded", G_CALLBACK (update_overflow), self);
   gtk_box_append (GTK_BOX (self->box), self->stack);
   self->page = PAGE_ALL;
 
