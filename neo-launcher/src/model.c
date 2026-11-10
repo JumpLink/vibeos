@@ -15,6 +15,8 @@ static const char *replaced[][2] = {
   { "sm.puri.Chatty.desktop", "de.yesman.Messaging.desktop" },
   { "org.gnome.Calculator.desktop", "de.yesman.Calculator.desktop" },
   { "org.gnome.Calendar.desktop", "de.yesman.Calendar.desktop" },
+  /* GNOME's video player since 49 */
+  { "org.gnome.Totem.desktop", "org.gnome.Showtime.desktop" },
 };
 
 static char *
