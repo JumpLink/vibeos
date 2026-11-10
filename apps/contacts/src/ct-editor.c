@@ -1237,14 +1237,34 @@ photo_area (Editor *editor)
 
 /* ===== the account header (§4.7) =============================================================================== */
 
+static GPtrArray *writable_books (Editor *editor);
+
+/* the chooser: a new contact, not the profile, and more than one writable address book (§4.7.2) */
+static gboolean
+has_chooser (Editor *editor)
+{
+  g_autoptr(GPtrArray) books = writable_books (editor);
+
+  return editor->is_new && !editor->profile && books->len > 1;
+}
+
 static void
 update_account (Editor *editor)
 {
-  CtBook *book = ct_store_get_book (editor->store, editor->book_uid);
+  CtBook *book;
   g_autofree char *description = NULL;
-  const char *name = editor->profile ? _("My local profile") : book ? ct_book_label (book) : _("Device");
+  const char *name;
+  gboolean chooser = has_chooser (editor);
 
+  /* Opened by another app (the call log's "Create new contact") the editor can come before the address books have
+   * been listed, with no default book to take yet: it takes it once they are, or it saved into nothing */
+  if (!editor->book_uid && !editor->profile)
+    editor->book_uid = g_strdup (ct_store_default_book (editor->store));
+  book = ct_store_get_book (editor->store, editor->book_uid);
+  name = editor->profile ? _("My local profile") : book ? ct_book_label (book) : _("Device");
   gtk_label_set_label (GTK_LABEL (editor->account_name), name);
+  gtk_widget_set_visible (editor->account_expander, chooser);
+  gtk_widget_set_can_target (editor->account_header, chooser);
   ct_tinted_icon_set (editor->account_icon, !book || book->is_local ? "ct-smartphone-symbolic"
                                                                     : "ct-account-circle-symbolic",
                       CT_C_ED_ACCOUNT_ICON);
@@ -1298,8 +1318,6 @@ account_header (Editor *editor)
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *lines = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *header = neo_pressable_new (box);
-  g_autoptr(GPtrArray) books = writable_books (editor);
-  gboolean chooser = editor->is_new && !editor->profile && books->len > 1;
   GdkRGBA ripple = ct_rgba (CT_RIPPLE_APPCOMPAT);
 
   editor->account_icon = ct_tinted_icon_new ("ct-smartphone-symbolic", 24, CT_C_ED_ACCOUNT_ICON);
@@ -1316,15 +1334,14 @@ account_header (Editor *editor)
   editor->account_expander = ct_tinted_icon_new ("ct-expand-more-symbolic", 24, CT_C_ED_CHEVRON);
   gtk_widget_add_css_class (editor->account_expander, "ct-ed-account-expander");
   gtk_widget_set_valign (editor->account_expander, GTK_ALIGN_CENTER);
-  gtk_widget_set_visible (editor->account_expander, chooser);
   gtk_box_append (GTK_BOX (box), editor->account_expander);
   gtk_widget_add_css_class (header, "ct-ed-account");
-  gtk_widget_set_can_target (header, chooser);
   neo_pressable_set_ripple (NEO_PRESSABLE (header), NEO_RIPPLE_BOUNDED, 0);
   neo_pressable_set_ripple_color (NEO_PRESSABLE (header), &ripple);
   g_signal_connect (header, "clicked", G_CALLBACK (on_account_header), editor);
   editor->account_header = header;
   update_account (editor);
+  g_signal_connect_swapped (editor->store, "books-changed", G_CALLBACK (update_account), editor);
   return header;
 }
 
@@ -1681,6 +1698,8 @@ save (Editor *editor)
       ct_store_save_profile (editor->store, contact, on_saved, editor);
       return;
     }
+  if (!editor->book_uid)
+    editor->book_uid = g_strdup (ct_store_default_book (editor->store));
   ct_store_save (editor->store, editor->book_uid, contact, editor->is_new, on_saved, editor);
 }
 
@@ -1737,6 +1756,7 @@ editor_free (gpointer data)
   g_free (editor->book_uid);
   g_free (editor->initial_state);
   g_free (editor->saved_name);
+  g_signal_handlers_disconnect_by_data (editor->store, editor);
   g_object_unref (editor->store);
   g_object_unref (editor->settings);
   g_free (editor);
