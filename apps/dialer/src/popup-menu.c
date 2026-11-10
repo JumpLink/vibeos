@@ -58,8 +58,17 @@ dialer_popup_menu_size_allocate (GtkWidget *widget, int width, int height, int b
     x = width - w;
   if (x < EDGE)
     x = 0;
-  /* overlapAnchor: its top on the anchor's; one that would run off the foot goes up as far as it must */
-  y = MIN (a->origin.y, height - h);
+  if (self->gravity == POPUP_MENU_BELOW)
+    {
+      /* under the anchor; with no room there, over it (PopupWindow.findDropDownPosition) */
+      y = a->origin.y + a->size.height;
+      if (y + h > height && a->origin.y - h >= 0)
+        y = a->origin.y - h;
+      y = MIN (y, height - h);
+    }
+  else
+    /* overlapAnchor: its top on the anchor's; one that would run off the foot goes up as far as it must */
+    y = MIN (a->origin.y, height - h);
   y = MAX (y, 0);
   gtk_widget_allocate (self->card, w, h, -1, gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (x, y)));
 }

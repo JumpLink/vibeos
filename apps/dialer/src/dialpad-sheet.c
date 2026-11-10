@@ -6,9 +6,11 @@
 #include "calls-client.h"
 #include "dialpad.h"
 #include "phone.h"
+#include "popup-menu.h"
 
 #include <glib/gi18n.h>
 #include <math.h>
+#include <string.h>
 
 #define DIAL_SIZE       56      /* the dial FAB */
 #define DIAL_MARGIN     16      /* above the bottom */
@@ -261,6 +263,46 @@ on_key_up (DialerDialpad *dialpad, int c, DialpadSheet *self)
   calls_client_stop_tone (calls_client_get ());
 }
 
+/* ---- ⋮ (spec §3.6) --------------------------------------------------------------------------------------------- */
+
+/* DialpadFragment.updateDialString: "," or ";" where the cursor is, which here is always the end of the digits, if
+ * canAddDigit lets it: never first, and no wait next to a wait. The call service sends what follows them once the
+ * call is up (calls.c, post-dial) */
+static void
+add_special (DialpadSheet *self, char c)
+{
+  const char *digits = dialer_dialpad_get_digits (DIALER_DIALPAD (self->dialpad));
+  size_t n = strlen (digits);
+
+  if (n == 0 || (c == ';' && digits[n - 1] == ';'))
+    return;
+  dialer_dialpad_append (DIALER_DIALPAD (self->dialpad), c);
+}
+
+static void
+add_pause (gpointer data)
+{
+  add_special (data, ',');
+}
+
+static void
+add_wait (gpointer data)
+{
+  add_special (data, ';');
+}
+
+/* dialpad_options.xml: "Call via" and "Call with a note" stay hidden (one account; no call subject over a modem) */
+static void
+on_overflow (DialerDialpad *dialpad, GtkWidget *anchor, DialpadSheet *self)
+{
+  DialerPopupMenu *menu = dialer_popup_menu_new ();
+  gboolean enable = *dialer_dialpad_get_digits (dialpad) != '\0';
+
+  dialer_popup_menu_append (menu, _("Add 2-sec pause"), enable ? add_pause : NULL, self);
+  dialer_popup_menu_append (menu, _("Add wait"), enable ? add_wait : NULL, self);
+  dialer_popup_menu_present (menu, anchor, POPUP_MENU_BELOW);
+}
+
 static void
 dialpad_sheet_init (DialpadSheet *self)
 {
@@ -273,6 +315,7 @@ dialpad_sheet_init (DialpadSheet *self)
   g_signal_connect_swapped (self->dialpad, "digits-changed", G_CALLBACK (on_digits_changed), self);
   g_signal_connect (self->dialpad, "key-down", G_CALLBACK (on_key_down), self);
   g_signal_connect (self->dialpad, "key-up", G_CALLBACK (on_key_up), self);
+  g_signal_connect (self->dialpad, "overflow", G_CALLBACK (on_overflow), self);
 
   /* dialpad_floating_action_button: #3ee0a0 with the black handset, elevation 8 dp */
   gtk_image_set_pixel_size (GTK_IMAGE (icon), 24);

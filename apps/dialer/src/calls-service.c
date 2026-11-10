@@ -44,6 +44,9 @@ static const char introspection[] =
   "      <arg name='held' type='b' direction='in'/></method>"
   "    <method name='SendDtmf'><arg name='id' type='u' direction='in'/>"
   "      <arg name='tones' type='s' direction='in'/></method>"
+  /* "Send the following tones?" answered: the rest of the number's tones, or not */
+  "    <method name='ContinuePostDial'><arg name='id' type='u' direction='in'/>"
+  "      <arg name='proceed' type='b' direction='in'/></method>"
   "    <method name='SetMuted'><arg name='muted' type='b' direction='in'/></method>"
   "    <method name='SetSpeaker'><arg name='speaker' type='b' direction='in'/></method>"
   "    <method name='SilenceRinger'/>"
@@ -226,6 +229,11 @@ on_method_call (GDBusConnection *bus, const char *sender, const char *path, cons
 
       g_variant_get (parameters, "(u&s)", &id, &tones);
       done = calls_send_dtmf (self->calls, id, tones, &error);
+    }
+  else if (g_str_equal (method, "ContinuePostDial"))
+    {
+      g_variant_get (parameters, "(ub)", &id, &flag);
+      done = calls_continue_post_dial (self->calls, id, flag, &error);
     }
   else if (g_str_equal (method, "SetMuted"))
     {

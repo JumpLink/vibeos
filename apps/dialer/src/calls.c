@@ -10,11 +10,13 @@
 
 #include <glib/gi18n.h>
 #include <glib/gstdio.h>
+#include <string.h>
 
 #define CALL_INTERFACE "org.freedesktop.ModemManager1.Call"
 #define MM_NAME "org.freedesktop.ModemManager1"
 #define CALLAUDIO_NAME "org.mobian_project.CallAudio"
 #define CALLAUDIO_PATH "/org/mobian_project/CallAudio"
+#define POST_DIAL_PAUSE_MS 3000 /* GsmCdmaConnection.PAUSE_DELAY_MILLIS_GSM: the dialpad's "2-sec pause" lasts 3 s */
 
 /* ModemManager's MMCallState and MMCallStateReason */
 enum {
@@ -58,6 +60,12 @@ typedef struct {
   gint64 connected;             /* Unix ms: when it was first up, 0 before */
   gboolean hangup_requested;    /* we asked for the hang-up, so it ended here (LOCAL, CANCELED or REJECTED) */
   gboolean multiparty;
+  /* Telecom's post-dial: what came after the number (tones, "," a pause, ";" a wait), sent once the call is up */
+  char *post_dial;
+  guint post_dial_at;           /* the next character of it */
+  guint post_dial_id;           /* a pause running */
+  gboolean post_dial_sending;   /* tones on their way to the modem */
+  gboolean post_dial_waiting;   /* at a wait: the in-call screen asks "Send the following tones?" */
   gboolean announced;           /* it rang and its screen was asked for */
   gboolean blocked;             /* from a blocked number: declined unseen, logged as "Blocked call" */
   AnswerAfter answer_after;     /* answered, the other calls going first */
@@ -110,8 +118,10 @@ call_free (Call *call)
   g_clear_object (&call->proxy);
   g_clear_object (&call->cancellable);
   g_clear_handle_id (&call->remove_id, g_source_remove);
+  g_clear_handle_id (&call->post_dial_id, g_source_remove);
   g_free (call->path);
   g_free (call->number);
+  g_free (call->post_dial);
   g_free (call);
 }
 
@@ -505,8 +515,10 @@ log_call (Calls *self, Call *call)
 {
   gint64 now = g_get_real_time () / 1000;
   const char *country = calls_get_country (self);
+  /* the number as it was dialled, its pauses and tones too (CallLogManager.getLogNumber) */
+  g_autofree char *dialled = call->post_dial ? g_strconcat (call->number, call->post_dial, NULL) : NULL;
   CallLogEntry entry = {
-    .number = call->number,
+    .number = dialled ? dialled : call->number,
     .date = call->created,
     .duration = call->connected ? (now - call->connected + 500) / 1000 : 0,
     .presentation = call->presentation,
@@ -602,6 +614,89 @@ block_call (Calls *self, Call *call)
   sync_calls (self);
 }
 
+/* --- post-dial: the tones after the number (Telecom's Connection.onPostDialContinue; GsmCdmaConnection
+ * .processNextPostDialChar). Once the call is up they go out in order: a run of tones in one SendDtmf, a "," as a
+ * pause of 3 s, a ";" as a wait that the in-call screen turns into "Send the following tones?" (Yes goes on, No
+ * drops the rest). A call on hold waits until it is up again. */
+
+static void post_dial_next (Call *call);
+
+static gboolean
+on_post_dial_pause (gpointer data)
+{
+  Call *call = data;
+
+  call->post_dial_id = 0;
+  post_dial_next (call);
+  return G_SOURCE_REMOVE;
+}
+
+static void
+on_post_dial_sent (GObject *source, GAsyncResult *result, gpointer data)
+{
+  g_autoptr(GError) error = NULL;
+  g_autoptr(GVariant) reply = g_dbus_connection_call_finish (G_DBUS_CONNECTION (source), result, &error);
+  Call *call = data;
+  Calls *self;
+
+  if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
+    return;                     /* the call is gone, and @call with it */
+  self = call->owner;
+  call->post_dial_sending = FALSE;
+  if (!reply)
+    {
+      g_warning ("calls: cannot send the tones after the number: %s", error->message);
+      if (modem_error_is_unsupported (error) && !self->dtmf_unsupported)
+        {
+          learn_dtmf_unsupported (self);
+          self->callbacks.changed (self->data);
+        }
+      /* the rest would fare no better */
+      call->post_dial_at = strlen (call->post_dial);
+      return;
+    }
+  post_dial_next (call);
+}
+
+static void
+post_dial_next (Call *call)
+{
+  Calls *self = call->owner;
+  g_autofree char *tones = NULL;
+  const char *rest;
+  size_t run;
+
+  if (!call->post_dial || call->post_dial_id || call->post_dial_sending || call->post_dial_waiting)
+    return;
+  if (call->state != CALL_STATE_ACTIVE || !call->path || call->hangup_requested)
+    return;
+  rest = call->post_dial + call->post_dial_at;
+  if (!*rest)
+    return;
+  if (*rest == ',')
+    {
+      call->post_dial_at++;
+      call->post_dial_id = g_timeout_add (POST_DIAL_PAUSE_MS, on_post_dial_pause, call);
+      return;
+    }
+  if (*rest == ';')
+    {
+      call->post_dial_at++;
+      if (call->post_dial[call->post_dial_at])
+        {
+          call->post_dial_waiting = TRUE;
+          sync_calls (self);
+        }
+      return;
+    }
+  run = strcspn (rest, ",;");
+  tones = g_strndup (rest, run);
+  call->post_dial_sending = TRUE;
+  call->post_dial_at += run;
+  g_dbus_connection_call (self->system, MM_NAME, call->path, CALL_INTERFACE, "SendDtmf", g_variant_new ("(s)", tones),
+                          NULL, G_DBUS_CALL_FLAGS_NONE, -1, call->cancellable, on_post_dial_sent, call);
+}
+
 /* --- following ModemManager's call */
 
 static void
@@ -667,6 +762,8 @@ update_from_modem (Calls *self, Call *call)
     call->connected = g_get_real_time () / 1000;
   call->state = next;
   sync_calls (self);
+  /* up: the tones after the number go out (or go on, after a hold) */
+  post_dial_next (call);
 }
 
 static void
@@ -861,10 +958,32 @@ check_ready (Calls *self, GError **error)
   return FALSE;
 }
 
+/* what follows the number, from its first "," or ";": tones, pauses and waits (the dialpad's "Add 2-sec pause"
+ * and "Add wait"), or NULL */
+static char *
+post_dial_of (const char *number)
+{
+  const char *start = strpbrk (number, ",;");
+  GString *out;
+
+  if (!start)
+    return NULL;
+  out = g_string_new (NULL);
+  for (const char *c = start; *c; c++)
+    if (g_ascii_isdigit (*c) || strchr ("*#,;", *c))
+      g_string_append_c (out, *c);
+  return g_string_free (out, FALSE);
+}
+
 guint
 calls_dial (Calls *self, const char *number, GError **error)
 {
-  g_autofree char *digits = phone_number_normalize (number);
+  /* the network part goes to the modem; the rest is post-dial (a modem's ATD would take a "," as its own pause, a
+   * QMI or MBIM one would refuse it) */
+  g_autofree char *post_dial = post_dial_of (number ? number : "");
+  const char *start = post_dial ? strpbrk (number, ",;") : NULL;
+  g_autofree char *network = start ? g_strndup (number, start - number) : g_strdup (number);
+  g_autofree char *digits = phone_number_normalize (network);
   Call *call;
 
   if (!check_ready (self, error))
@@ -881,6 +1000,8 @@ calls_dial (Calls *self, const char *number, GError **error)
       return 0;
     }
   call = new_call (self, CALL_DIRECTION_OUTGOING, digits);
+  if (post_dial && *post_dial)
+    call->post_dial = g_steal_pointer (&post_dial);
   g_message ("calls: dialling (call %u)", call->id);
   modem_create_call (self->modem, digits, call->cancellable, on_created, call);
   sync_calls (self);
@@ -1139,6 +1260,27 @@ calls_send_dtmf (Calls *self, guint id, const char *tones, GError **error)
   return TRUE;
 }
 
+gboolean
+calls_continue_post_dial (Calls *self, guint id, gboolean proceed, GError **error)
+{
+  Call *call = live_call (self, id, error);
+
+  if (!call)
+    return FALSE;
+  if (!call->post_dial_waiting)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Call %u is not waiting to send tones", id);
+      return FALSE;
+    }
+  call->post_dial_waiting = FALSE;
+  /* No: the rest is not sent (Connection.cancelPostDial) */
+  if (!proceed)
+    call->post_dial_at = strlen (call->post_dial);
+  sync_calls (self);
+  post_dial_next (call);
+  return TRUE;
+}
+
 void
 calls_set_muted (Calls *self, gboolean muted)
 {
@@ -1265,6 +1407,9 @@ calls_get_calls (Calls *self)
       g_variant_builder_add (&dict, "{sv}", "created", g_variant_new_int64 (call->created));
       g_variant_builder_add (&dict, "{sv}", "connected", g_variant_new_int64 (call->connected));
       g_variant_builder_add (&dict, "{sv}", "multiparty", g_variant_new_boolean (call->multiparty));
+      g_variant_builder_add (&dict, "{sv}", "post-dial-wait",
+                             g_variant_new_string (call->post_dial_waiting ? call->post_dial + call->post_dial_at
+                                                                           : ""));
       g_variant_builder_add (&calls, "a{sv}", &dict);
     }
   return g_variant_builder_end (&calls);

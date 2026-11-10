@@ -22,6 +22,7 @@ static struct
   gboolean volume_keys;         /* the shell passes the volume keys on to us */
   gboolean locked;
   guint locked_signal;
+  guint post_dial_call;         /* the call whose "Send the following tones?" is up */
 } incall;
 
 static gboolean
@@ -85,6 +86,46 @@ incall_window_volume_key (int direction)
 
 /* ---- the calls ------------------------------------------------------------------------------------------------ */
 
+/* PostCharDialogFragment: a call at a wait in its number asks before the tones after it go out. Yes sends them, No
+ * (or Back, or a tap beside) drops them */
+static void
+on_post_dial_response (NeoDialog *dialog, int response, gpointer data)
+{
+  guint id = GPOINTER_TO_UINT (data);
+  CallInfo *call = calls_client_find (calls_client_get (), id);
+
+  if (incall.post_dial_call == id)
+    incall.post_dial_call = 0;
+  /* the call may have ended, or moved on, meanwhile */
+  if (call && *call->post_dial_wait)
+    calls_client_continue_post_dial (calls_client_get (), id, response == NEO_RESPONSE_OK);
+}
+
+static void
+sync_post_dial (void)
+{
+  GPtrArray *calls = calls_client_get_calls (calls_client_get ());
+
+  for (guint i = 0; i < calls->len; i++)
+    {
+      CallInfo *call = calls->pdata[i];
+      g_autofree char *message = NULL;
+      NeoDialog *dialog;
+
+      if (!*call->post_dial_wait || call->id == incall.post_dial_call)
+        continue;
+      incall.post_dial_call = call->id;
+      message = g_strconcat (_("Send the following tones?\n"), call->post_dial_wait, NULL);
+      dialog = neo_dialog_new (NULL);
+      neo_dialog_set_message (dialog, message);
+      neo_dialog_add_button (dialog, _("No"), NEO_RESPONSE_CANCEL);
+      neo_dialog_add_button (dialog, _("Yes"), NEO_RESPONSE_OK);
+      g_signal_connect (dialog, "response", G_CALLBACK (on_post_dial_response), GUINT_TO_POINTER (call->id));
+      neo_dialog_present (dialog, incall.stack);
+      break;
+    }
+}
+
 static void
 sync_calls (void)
 {
@@ -128,6 +169,7 @@ sync_calls (void)
       incall_view_set_calls (INCALL_VIEW (incall.incall), primary, caller, secondary, secondary_caller);
       gtk_stack_set_visible_child (GTK_STACK (incall.stack), incall.incall);
     }
+  sync_post_dial ();
   sync_window_state ();
 }
 

@@ -24,6 +24,7 @@ typedef struct
   gint64 created;               /* Unix ms */
   gint64 connected;             /* Unix ms when it was first up; 0 before */
   gboolean multiparty;
+  char *post_dial_wait;         /* at a wait in the number dialled: the tones after it, to ask about; else "" */
 } CallInfo;
 
 #define CALLS_TYPE_CLIENT (calls_client_get_type ())
@@ -61,6 +62,8 @@ void calls_client_decline (CallsClient *self, guint id);
 void calls_client_hangup (CallsClient *self, guint id);
 void calls_client_set_held (CallsClient *self, guint id, gboolean held);
 void calls_client_send_dtmf (CallsClient *self, guint id, const char *tones);
+/* "Send the following tones?" answered: Yes (@proceed) sends the rest of the number's tones, No drops them */
+void calls_client_continue_post_dial (CallsClient *self, guint id, gboolean proceed);
 void calls_client_set_muted (CallsClient *self, gboolean muted);
 void calls_client_set_speaker (CallsClient *self, gboolean speaker);
 void calls_client_silence_ringer (CallsClient *self);

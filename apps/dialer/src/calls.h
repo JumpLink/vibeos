@@ -31,7 +31,8 @@ void        calls_free (Calls *self);
 
 /* the calls as the service hands them out: aa{sv}, oldest first. Each has "id" (u), "number" (s), "presentation"
  * (u, Presentation), "direction" (u, CallDirection), "state" (u, CallState), "end" (u, CallEnd), "created" and
- * "connected" (x, Unix ms; connected is 0 until the call is first up) and "multiparty" (b) */
+ * "connected" (x, Unix ms; connected is 0 until the call is first up), "multiparty" (b) and "post-dial-wait" (s: the
+ * tones after a wait in the number dialled, "Send the following tones?"; "" when it is not waiting) */
 GVariant   *calls_get_calls (Calls *self);
 gboolean    calls_get_muted (Calls *self);
 gboolean    calls_get_speaker (Calls *self);
@@ -54,6 +55,8 @@ gboolean    calls_decline (Calls *self, guint id, GError **error);
 gboolean    calls_hangup (Calls *self, guint id, GError **error);
 gboolean    calls_set_held (Calls *self, guint id, gboolean held, GError **error);
 gboolean    calls_send_dtmf (Calls *self, guint id, const char *tones, GError **error);
+/* the answer to "Send the following tones?": the rest of the number's tones go out, or not */
+gboolean    calls_continue_post_dial (Calls *self, guint id, gboolean proceed, GError **error);
 void        calls_set_muted (Calls *self, gboolean muted);
 void        calls_set_speaker (Calls *self, gboolean speaker);
 /* the ringing stops, the call goes on ringing silently (a volume key, Android's "silence ringer") */

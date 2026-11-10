@@ -36,6 +36,7 @@ static void
 call_info_free (CallInfo *call)
 {
   g_free (call->number);
+  g_free (call->post_dial_wait);
   g_free (call);
 }
 
@@ -56,6 +57,8 @@ call_from_variant (GVariant *dict)
   g_variant_lookup (dict, "created", "x", &call->created);
   g_variant_lookup (dict, "connected", "x", &call->connected);
   g_variant_lookup (dict, "multiparty", "b", &call->multiparty);
+  if (!g_variant_lookup (dict, "post-dial-wait", "s", &call->post_dial_wait))
+    call->post_dial_wait = g_strdup ("");
   return call;
 }
 
@@ -423,6 +426,12 @@ void
 calls_client_send_dtmf (CallsClient *self, guint id, const char *tones)
 {
   call (self, "SendDtmf", id, g_variant_new ("(us)", id, tones));
+}
+
+void
+calls_client_continue_post_dial (CallsClient *self, guint id, gboolean proceed)
+{
+  call (self, "ContinuePostDial", id, g_variant_new ("(ub)", id, proceed));
 }
 
 void

@@ -230,6 +230,44 @@ def run(t):
     check('no +CHLD was tried', not t.logged('HoldAndAccept') and not t.logged('HangupAndAccept'))
     t.service('Hangup', (second,), '(u)')
 
+    # --- post-dial: "0301234,5;67" dials 0301234 alone; once the call is up, a 3 s pause, the 5, then a wait with
+    # the rest, which goes out on Yes (the dialpad's "Add 2-sec pause" and "Add wait")
+    t.wait('the last call has gone', lambda: not t.calls())
+    t.phone('SetDtmf', (True,), '(b)')
+    t.phone('Clear')
+    call_id = t.service('Dial', ('0301234,5;67',), '(s)')[0]
+    t.wait('the number alone goes to the modem', lambda: ['CreateCall', '0301234'] in t.logged('CreateCall'))
+    path = t.wait('the call is there', lambda: next((p for p, c in t.report()['calls'].items()
+                                                     if c[2] == '0301234'), None))
+    t.wait('"Calling…" (DIALING)', lambda: t.call(call_id)['state'] == DIALING)
+    check('no tones before the call is up', not t.logged('SendDtmf'))
+    t.phone('RemoteAnswer', (path,), '(o)')
+    t.wait('answered: ACTIVE', lambda: t.call(call_id)['state'] == ACTIVE)
+    t.settle(1.5)
+    check('no tones during the pause', not t.logged('SendDtmf'), t.logged('SendDtmf'))
+    t.wait('after the pause, the 5', lambda: ['SendDtmf', path, '5'] in t.logged('SendDtmf'))
+    t.wait('then it waits, with the rest to ask about', lambda: t.call(call_id)['post-dial-wait'] == '67')
+    t.service('ContinuePostDial', (call_id, True), '(ub)')
+    t.wait('Yes: the rest goes out', lambda: ['SendDtmf', path, '67'] in t.logged('SendDtmf'))
+    check('and it no longer waits', t.call(call_id)['post-dial-wait'] == '')
+    t.service('Hangup', (call_id,), '(u)')
+    t.wait('logged as it was dialled', lambda: t.call_log()[0]['number'] == '0301234,5;67')
+
+    # --- a wait answered No: nothing more is sent
+    t.wait('the last call has gone', lambda: not t.calls())
+    t.phone('Clear')
+    call_id = t.service('Dial', ('0301234;89',), '(s)')[0]
+    path = t.wait('the call is there', lambda: next((p for p, c in t.report()['calls'].items()
+                                                     if c[2] == '0301234'), None))
+    t.wait('dialling', lambda: t.call(call_id)['state'] == DIALING)
+    t.phone('RemoteAnswer', (path,), '(o)')
+    t.wait('it waits at once', lambda: t.call(call_id)['post-dial-wait'] == '89')
+    t.service('ContinuePostDial', (call_id, False), '(ub)')
+    t.wait('No: it no longer waits', lambda: t.call(call_id)['post-dial-wait'] == '')
+    t.settle(0.5)
+    check('and nothing was sent', not t.logged('SendDtmf'), t.logged('SendDtmf'))
+    t.service('Hangup', (call_id,), '(u)')
+
     # --- the call log's own changes, once the last call is in it (a call is logged before it goes from Calls)
     t.wait('the last call has gone', lambda: not t.calls())
     ids = [e['_id'] for e in t.call_log()]

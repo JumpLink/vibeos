@@ -3,7 +3,8 @@
  *
  * A card of 48 dp text rows, at least 196 dp wide (abc_popup_menu_item_layout's minWidth), floating 16 dp up over
  * the app inside the app's own window. It overlaps its anchor: its top on the anchor's top, its end on the
- * anchor's end (DialerPopupMenu's END) or its start on the anchor's start (START), kept inside the window. A tap on
+ * anchor's end (DialerPopupMenu's END) or its start on the anchor's start (START), kept inside the window; or it drops
+ * below the anchor without overlapping it (BELOW, PopupMenu without overlapAnchor). A tap on
  * a row runs the row's action and closes the menu; a tap outside, Back or Escape just closes it. */
 #pragma once
 
@@ -19,6 +20,7 @@ typedef void (*PopupMenuAction) (gpointer data);
 typedef enum {
   POPUP_MENU_START,
   POPUP_MENU_END,
+  POPUP_MENU_BELOW,             /* a drop-down: under the anchor, its start on the anchor's (the dialpad's ⋮) */
 } PopupMenuGravity;
 
 DialerPopupMenu *dialer_popup_menu_new (void);
