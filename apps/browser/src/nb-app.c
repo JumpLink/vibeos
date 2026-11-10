@@ -186,6 +186,7 @@ setup_engine (void)
                                                              WEBKIT_USER_STYLE_LEVEL_USER, NULL, NULL);
   webkit_user_content_manager_add_style_sheet (nb->ucm, sheet);
   webkit_user_style_sheet_unref (sheet);
+  nb_refresh_setup ();
   g_autofree char *filters = g_build_filename (nb->data_dir, "filters", NULL);
   nb->filters = webkit_user_content_filter_store_new (filters);
   if (nb_store_adblock (nb->store))

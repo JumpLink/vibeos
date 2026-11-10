@@ -564,6 +564,7 @@ on_progress (WebKitWebView *v, GParamSpec *pspec, NbTab *t)
 {
   nb_urlbar_progress (t);
   nb_tab_sync_back (t);
+  nb_refresh_progress (t);
 }
 
 static void
@@ -785,7 +786,7 @@ make_view (NbTab *t)
   WebKitFindController *fc = webkit_web_view_get_find_controller (v);
   g_signal_connect (fc, "counted-matches", G_CALLBACK (on_counted), t);
   g_signal_connect (fc, "failed-to-find-text", G_CALLBACK (on_not_found), t);
-  gtk_box_append (GTK_BOX (t->view_holder), GTK_WIDGET (v));
+  gtk_overlay_set_child (GTK_OVERLAY (t->view_overlay), GTK_WIDGET (v));
   /* the page has the focus, not the URL field (see nb_tab_new) */
   if (!t->editing)
     gtk_window_set_focus (GTK_WINDOW (t->win), GTK_WIDGET (v));
@@ -910,6 +911,12 @@ nb_tab_new (const char *url, gboolean incognito, gboolean desktop, const char *s
   gtk_widget_set_vexpand (t->view_holder, TRUE);
   gtk_widget_add_css_class (t->view_holder, "nb-view");
   gtk_box_append (GTK_BOX (t->column), t->view_holder);
+  t->view_overlay = gtk_overlay_new ();
+  gtk_widget_set_vexpand (t->view_overlay, TRUE);
+  gtk_box_append (GTK_BOX (t->view_holder), t->view_overlay);
+  t->refresh = nb_refresh_new (t);
+  gtk_overlay_add_overlay (GTK_OVERLAY (t->view_overlay), t->refresh);
+  gtk_overlay_set_clip_overlay (GTK_OVERLAY (t->view_overlay), t->refresh, TRUE);
   /* the focus starts on the page's place, not on the URL field (GTK gives a window shown without one to its first
    * focusable widget: the field, whose focus is editing, and brings the keyboard up); the view takes it once made */
   gtk_widget_set_focusable (t->view_holder, TRUE);

@@ -9,6 +9,7 @@
  *   nb-settings.c   Settings
  *   nb-widgets.c    dialogs, sheets, switches … in Jelly's AppCompat look
  *   nb-navigator.c  the activity transitions between a tab's pages
+ *   nb-refresh.c    pull to refresh
  *   store.c         history, favourites, prefs (JSON, the old browser's files) */
 #pragma once
 
@@ -66,6 +67,8 @@ struct _NbTab {
   GtkWidget     *page;            /* the browser page (an overlay: the suggestions drop over it) */
   GtkWidget     *column;          /* the bar and the view, top to bottom (reach mode: the other way) */
   GtkWidget     *view_holder;
+  GtkWidget     *view_overlay;    /* in view_holder: the view, the pull-to-refresh circle over it */
+  GtkWidget     *refresh;
   WebKitWebView *view;            /* made when the window is first active */
   WebKitWebView *related;         /* a popup's opener, until then */
   char          *url;             /* what the view loads when it is made */
@@ -154,6 +157,11 @@ void        nb_menu_close         (NbTab *t);
 void        nb_link_sheet         (NbTab *t, const char *url, gboolean image);
 void        nb_send_to            (NbTab *t, const char *url);
 void        nb_shortcut_sheet     (NbTab *t);
+
+/* nb-refresh.c */
+void        nb_refresh_setup      (void);          /* the page script and its message handler, on nb->ucm */
+GtkWidget  *nb_refresh_new        (NbTab *t);
+void        nb_refresh_progress   (NbTab *t);      /* the view's load state changed */
 
 /* nb-pages.c, nb-settings.c */
 GtkWidget  *nb_history_page_new   (NbTab *t);
