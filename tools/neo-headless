@@ -22,11 +22,19 @@
 # One display per name: NEO_HEADLESS=other in the environment gives a second one (its own bus, state and Wayland
 # socket) beside a display someone else is using; every command then takes the same NEO_HEADLESS.
 #
+# NEO_HEADLESS_RUNTIME=DIR keeps the display's socket and state in DIR instead of /run/user/UID, and runs the apps
+# with XDG_RUNTIME_DIR=DIR: what a rig on a private bus must do (see RUNTIME below). Every command takes the same.
+#
 # Run it as root on the phone; it does the rest as the session user.
 set -e
 
 USER_NAME=${NEO_USER:-user}
-RUNTIME=/run/user/$(id -u "$USER_NAME")
+# The display's runtime directory (its Wayland socket, its state): NEO_HEADLESS_RUNTIME, else the session's. A rig
+# that runs apps on a bus of its own must give one of its own (made by it, the session user's, mode 700): whatever
+# such an app activates on its bus (xdg-document-portal on $XDG_RUNTIME_DIR/doc, the a11y bus on .../at-spi) takes
+# over the session's own when it shares the session's directory (11-10: the session's document portal died of it).
+SESSION_RUNTIME=/run/user/$(id -u "$USER_NAME")
+RUNTIME=${NEO_HEADLESS_RUNTIME:-$SESSION_RUNTIME}
 NAME=${NEO_HEADLESS:-neo-headless}
 STATE=$RUNTIME/$NAME.d          # beside the Wayland socket, $RUNTIME/$NAME
 SHOT=$STATE/shot.png
@@ -95,7 +103,7 @@ start)
 run)
     shift
     rm -f "$SHOT"
-    as_user_daemon app env DBUS_SESSION_BUS_ADDRESS="unix:path=$RUNTIME/bus" WAYLAND_DISPLAY="$NAME" \
+    as_user_daemon app env DBUS_SESSION_BUS_ADDRESS="unix:path=$SESSION_RUNTIME/bus" WAYLAND_DISPLAY="$NAME" \
         GDK_BACKEND=wayland GSK_RENDERER=${GSK_RENDERER:-gl} NEO_SHOT="$SHOT" NEO_SHOT_SCALE=3 "$@"
     # the app's first picture comes a second after its window shows
     for _ in $(seq 100); do [ -f "$SHOT" ] && exit 0; sleep 0.1; done
