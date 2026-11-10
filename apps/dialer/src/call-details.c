@@ -12,6 +12,7 @@
 #include "phone-number.h"
 
 #include <glib/gi18n.h>
+#include <math.h>
 #include <spongy-gtk.h>
 
 #define BAR_HEIGHT      56      /* ?actionBarSize */
@@ -39,6 +40,8 @@
 #define ACTION_PAD      28      /* paddingStart/End and drawablePadding */
 #define ACTION_PAD_V    16
 #define ACTION_ICON     24
+#define TEXT_BOX        1.42    /* a Dialer.TextAppearance TextView's height over its text size: Google Sans Flex with
+                                 * its font padding (still:dialer-call-details: 68 px at 16 sp, 60 px at 14 sp) */
 
 struct _CallDetails
 {
@@ -247,6 +250,17 @@ call_type (CallType type, const char **icon, const char **css_class, const char 
     }
 }
 
+/* a one-line TextView's height, which the font here (Roboto's metrics) falls short of: the room left goes under
+ * the text, which keeps its place at the top */
+static void
+set_text_box (GtkWidget *label, double size)
+{
+  int box = (int) round (size * TEXT_BOX);
+
+  gtk_widget_set_size_request (label, -1, box - gtk_widget_get_margin_top (label)
+                                         - gtk_widget_get_margin_bottom (label));
+}
+
 /* CallTypeHelper.isMissedCallType: anything but a call that was talked on (or a voicemail) */
 static gboolean
 is_missed_type (CallType type)
@@ -261,7 +275,7 @@ make_entry (const CallLogEntry *entry)
   const char *icon_name, *icon_class, *type_text;
   g_autofree char *when = call_dates_details (entry->date);
   GtkWidget *row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  GtkWidget *icon, *texts, *type, *time;
+  GtkWidget *icon, *texts, *line, *type, *time;
 
   call_type (entry->type, &icon_name, &icon_class, &type_text);
   gtk_widget_set_margin_top (row, ENTRY_PAD_TOP);
@@ -275,30 +289,40 @@ make_entry (const CallLogEntry *entry)
   gtk_widget_add_css_class (icon, icon_class);
   gtk_box_append (GTK_BOX (row), icon);
 
+  /* call_entry's RelativeLayout: the type up to 16 dp before the duration at the end; the time under the type, as
+   * wide as the row less 16 dp, on more lines if it must */
   texts = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_hexpand (texts, TRUE);
   gtk_widget_set_margin_start (texts, ENTRY_TEXT - ENTRY_ICON_START - ENTRY_ICON);
   gtk_widget_set_margin_end (texts, ENTRY_END);
+  line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   type = text_label (type_text, "dialer-primary-text", 16);
-  gtk_box_append (GTK_BOX (texts), type);
-  /* the time in textColorSecondary, or dialer_red for a missed call */
-  time = text_label (when, "dialer-secondary-text", 14);
-  if (entry->type == CALL_TYPE_MISSED || (entry->type > CALL_TYPE_ANSWERED_EXTERNALLY))
-    gtk_widget_add_css_class (time, "details-missed-text");
-  gtk_box_append (GTK_BOX (texts), time);
-  gtk_box_append (GTK_BOX (row), texts);
-
-  /* the duration at the end of the type's line; none for a call that was not talked on */
+  gtk_widget_set_hexpand (type, TRUE);
+  set_text_box (type, 16);
+  gtk_box_append (GTK_BOX (line), type);
+  /* the duration; none for a call that was not talked on */
   if (!is_missed_type (entry->type))
     {
       g_autofree char *duration = call_dates_duration (entry->duration);
       GtkWidget *label = text_label (duration, "dialer-primary-text", 16);
 
       gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_NONE);
-      gtk_widget_set_valign (label, GTK_ALIGN_START);
-      gtk_widget_set_margin_end (label, ENTRY_END);
-      gtk_box_append (GTK_BOX (row), label);
+      gtk_widget_set_margin_start (label, ENTRY_END);
+      set_text_box (label, 16);
+      gtk_box_append (GTK_BOX (line), label);
     }
+  gtk_box_append (GTK_BOX (texts), line);
+  /* the time in textColorSecondary, or dialer_red for a missed call */
+  time = text_label (when, "dialer-secondary-text", 14);
+  gtk_label_set_single_line_mode (GTK_LABEL (time), FALSE);
+  gtk_label_set_ellipsize (GTK_LABEL (time), PANGO_ELLIPSIZE_NONE);
+  gtk_label_set_wrap (GTK_LABEL (time), TRUE);
+  gtk_label_set_wrap_mode (GTK_LABEL (time), PANGO_WRAP_WORD_CHAR);
+  set_text_box (time, 14);
+  if (entry->type == CALL_TYPE_MISSED || (entry->type > CALL_TYPE_ANSWERED_EXTERNALLY))
+    gtk_widget_add_css_class (time, "details-missed-text");
+  gtk_box_append (GTK_BOX (texts), time);
+  gtk_box_append (GTK_BOX (row), texts);
   return row;
 }
 
