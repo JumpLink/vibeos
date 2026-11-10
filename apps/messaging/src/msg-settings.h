@@ -5,7 +5,8 @@
  * Left out, as each would claim what the phone does not do: "Default SMS app" (no default to change here; the
  * session's sms: handler is set apart from the app), "Notifications" (the system's notification settings for the
  * app: this phone has no such page), and "Advanced" (the SIM's MMS settings and delivery reports: the service sends
- * no MMS and asks for no delivery reports yet). */
+ * no MMS and asks for no delivery reports yet). The overflow's "Open source licenses" (LicenseActivity's
+ * licenses.html) too: the project ships no licence text to show. */
 #pragma once
 
 #include <gtk/gtk.h>

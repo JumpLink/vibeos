@@ -78,7 +78,7 @@ make_row (ContactPicker *self, const Contact *contact, const char *number, const
   GtkWidget *column = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   g_autofree char *formatted = phone_number_format (number, country (self));
-  GtkWidget *row;
+  GtkWidget *detail, *row;
 
   if (letter)
     {
@@ -105,7 +105,10 @@ make_row (ContactPicker *self, const Contact *contact, const char *number, const
       gtk_widget_set_margin_bottom (name, NAME_PAD_BOTTOM);
       gtk_box_append (GTK_BOX (column), name);
     }
-  gtk_box_append (GTK_BOX (line), text_label (formatted, "msg-picker-number"));
+  /* contact_details takes the width (layout_weight 1), so the type sits at the row's end */
+  detail = text_label (formatted, "msg-picker-number");
+  gtk_widget_set_hexpand (detail, TRUE);
+  gtk_box_append (GTK_BOX (line), detail);
   if (label)
     {
       GtkWidget *type = text_label (label, "msg-picker-type");

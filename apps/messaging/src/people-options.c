@@ -321,6 +321,7 @@ people_options_new (SmsClient *client, Contacts *contacts, gint64 conversation)
   self->list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), self->list);
   gtk_overlay_set_child (GTK_OVERLAY (content), scroll);
+  gtk_widget_add_css_class (content, "msg-people-options");
   self->snackbar = msg_snackbar_new ();
   gtk_overlay_add_overlay (GTK_OVERLAY (content), GTK_WIDGET (self->snackbar));
   gtk_widget_set_vexpand (content, TRUE);

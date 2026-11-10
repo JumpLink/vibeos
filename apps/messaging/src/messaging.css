@@ -238,10 +238,13 @@
   color: #b8ebf3;
 }
 
+/* a row's TextViews are 1.73 × their size tall, as in People & options: on still:sms-new-conversation a name sits
+ * 29 dp over its number, and a number 49 dp over the next row's (58 dp rows without a name) */
 .msg-picker-name {
   font-family: "Neo Roboto", Roboto, sans-serif;
   font-size: 16px;
   font-weight: 700;
+  line-height: 27.67px;
   color: #bfbfbf;
 }
 
@@ -249,6 +252,7 @@
   font-family: "Neo Roboto", Roboto, sans-serif;
   font-size: 14px;
   font-weight: 700;
+  line-height: 24.2px;
   color: #999999;
 }
 
@@ -256,6 +260,7 @@
   font-family: "Neo Roboto", Roboto, sans-serif;
   font-size: 14px;
   font-weight: 700;
+  line-height: 24.2px;
   color: rgba(255, 255, 255, 0.541);
 }
 
@@ -350,12 +355,20 @@
   padding: 0 24px;
 }
 
-/* --- People & options (§4.1): headers 16 sp grey, option and name 18 sp #bfbfbf, number 14 sp #999999 */
+/* --- People & options (§4.1): headers 16 sp grey, option and name 18 sp #bfbfbf, number 14 sp #999999. Its
+ * fragment has Theme.MaterialComponents.Light.DarkActionBar: colorBackground, white, is #1b1b1b at night. Each
+ * TextView there is 1.73 × its text size tall (still:sms-people-options: 83 px at 16 sp, 93 px at 18 sp), so a
+ * header is 16 + 27.67 + 16 dp */
+
+.msg-people-options {
+  background-color: #1b1b1b;
+}
 
 .msg-options-header {
   font-family: "Neo Roboto", Roboto, sans-serif;
   font-size: 16px;
   font-weight: 700;
+  line-height: 27.67px;
   color: #9b9b9b;
 }
 
@@ -369,6 +382,7 @@
   font-family: "Neo Roboto", Roboto, sans-serif;
   font-size: 18px;
   font-weight: 700;
+  line-height: 31px;
   color: #bfbfbf;
 }
 
@@ -376,23 +390,29 @@
   font-family: "Neo Roboto", Roboto, sans-serif;
   font-size: 14px;
   font-weight: 700;
+  line-height: 24.2px;
   color: #999999;
 }
 
-/* --- Settings (§4.6): androidx preference rows, white at 87 % and 54 % */
+/* --- Settings (§4.6): androidx preference rows. Measured on still:sms-settings, against the spec: the summary is
+ * 16 sp like the title (both cap heights 35 px), at white 60 % (#a3a4a5 on #181c1d), not 14 sp at 54 %. A TextView
+ * there is 1.73 × its size tall on one line (83 px at 16 sp) and 1.17 × more per further line (+57 px): the title
+ * gets the one, the summary its 18.75 px lines plus 4.4 dp over and under them (msg-settings.c) */
 
 .msg-pref-title {
   font-family: "Neo Roboto", Roboto, sans-serif;
   font-size: 16px;
   font-weight: 700;
+  line-height: 27.67px;
   color: rgba(255, 255, 255, 0.87);
 }
 
 .msg-pref-summary {
   font-family: "Neo Roboto", Roboto, sans-serif;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.54);
+  line-height: 18.75px;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 /* "Add to Contacts?" (add_contacts_confirmation_dialog_body.xml): the number in a plain TextView, the theme's

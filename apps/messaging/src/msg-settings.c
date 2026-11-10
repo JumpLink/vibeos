@@ -11,6 +11,8 @@
 #define PAD 16          /* the row's start and end, the text block's top and bottom, the widget frame's start */
 #define TITLE_START 72
 #define SUMMARY_LINES 10
+#define SUMMARY_OVER 4  /* the summary TextView's 8.9 dp more than its lines, over and under them (measured) */
+#define SUMMARY_UNDER 5
 
 struct _MsgSettings {
   GtkWidget parent;
@@ -61,6 +63,8 @@ switch_row (MsgSettings *self, const char *title, const char *summary, const cha
 
       gtk_label_set_lines (GTK_LABEL (label), SUMMARY_LINES);
       gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
+      gtk_widget_set_margin_top (label, SUMMARY_OVER);
+      gtk_widget_set_margin_bottom (label, SUMMARY_UNDER);
       gtk_box_append (GTK_BOX (text), label);
     }
   gtk_widget_set_hexpand (text, TRUE);
