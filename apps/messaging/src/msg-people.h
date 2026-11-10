@@ -15,6 +15,7 @@ typedef struct {
 } MsgPerson;
 
 MsgPerson *msg_person_new (Contacts *contacts, const char *destination, const char *country);
+MsgPerson *msg_person_copy (const MsgPerson *person);
 void       msg_person_free (MsgPerson *person);
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (MsgPerson, msg_person_free)
 

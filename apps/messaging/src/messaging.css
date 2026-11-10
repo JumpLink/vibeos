@@ -390,3 +390,12 @@
   font-weight: 700;
   color: rgba(255, 255, 255, 0.54);
 }
+
+/* "Add to Contacts?" (add_contacts_confirmation_dialog_body.xml): the number in a plain TextView, the theme's
+ * textAppearanceSmall, 14 sp textColorSecondary (#8a000000 made light) */
+.msg-add-contact-name {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.54);
+}

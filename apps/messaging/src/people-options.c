@@ -1,7 +1,7 @@
 /* People & options (people-options.h). */
 #include "people-options.h"
 #include "blocked-numbers.h"
-#include "contacts-app.h"
+#include "msg-add-contact.h"
 #include "msg-action-bar.h"
 #include "msg-avatar.h"
 #include "msg-dialog.h"
@@ -152,8 +152,8 @@ on_person_clicked (GtkWidget *row, gpointer data)
 {
   PeopleOptions *self = data;
 
-  /* Bugle opens the contact's card, or adds one; the Contacts app here opens at its list */
-  contacts_app_open (self->snackbar);
+  /* PersonItemView: the contact's card, or "Add to Contacts?" (ContactUtil.showOrAddContact) */
+  msg_contact_show_or_add (row, g_object_get_data (G_OBJECT (row), "person"), self->snackbar);
 }
 
 static void
@@ -214,6 +214,7 @@ person_row (PeopleOptions *self, MsgPerson *person)
 
   row = neo_pressable_new (content);
   g_object_set_data_full (G_OBJECT (row), "number", g_strdup (number), g_free);
+  g_object_set_data_full (G_OBJECT (row), "person", msg_person_copy (person), (GDestroyNotify) msg_person_free);
   gtk_accessible_update_property (GTK_ACCESSIBLE (row), GTK_ACCESSIBLE_PROPERTY_LABEL, person->name, -1);
   g_signal_connect (row, "clicked", G_CALLBACK (on_person_clicked), self);
   g_signal_connect (row, "long-pressed", G_CALLBACK (on_person_long_pressed), self);

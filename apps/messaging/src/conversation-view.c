@@ -1,6 +1,8 @@
 /* A conversation (conversation-view.h). */
 #include "conversation-view.h"
+#include "app-action.h"
 #include "msg-action-bar.h"
+#include "msg-add-contact.h"
 #include "msg-avatar.h"
 #include "msg-bubble.h"
 #include "msg-dates.h"
@@ -166,6 +168,17 @@ on_bubble_long_pressed (GtkWidget *pressable, gpointer data)
   select_message (self, *(gint64 *) g_object_get_data (G_OBJECT (pressable), "id"));
 }
 
+/* the sender's avatar (ContactIconView): their card, or "Add to Contacts?"; a long press is the message's */
+static void
+on_avatar_clicked (GtkWidget *pressable, gpointer data)
+{
+  ConversationView *self = g_object_get_data (G_OBJECT (pressable), "view");
+  const char *sender = g_object_get_data (G_OBJECT (pressable), "sender");
+  g_autoptr(MsgPerson) person = msg_person_new (self->contacts, sender, sms_client_get_country (self->client));
+
+  msg_contact_show_or_add (pressable, person, self->snackbar);
+}
+
 static GtkWidget *
 make_message (ConversationView *self, const SmsMessage *message, gboolean clustered_above,
               gboolean clustered_below)
@@ -188,6 +201,18 @@ make_message (ConversationView *self, const SmsMessage *message, gboolean cluste
     msg_avatar_set_person (MSG_AVATAR (avatar), NULL, incoming ? message->sender : _("Me"), NULL);
   gtk_widget_set_opacity (avatar, clustered_above ? 0 : 1);
   gtk_widget_set_valign (avatar, GTK_ALIGN_START);
+  /* an incoming message's, when it shows */
+  if (incoming && !clustered_above && message->sender && *message->sender)
+    {
+      avatar = neo_pressable_new (avatar);
+      neo_pressable_set_ripple (NEO_PRESSABLE (avatar), NEO_RIPPLE_NONE, 0);
+      gtk_widget_set_valign (avatar, GTK_ALIGN_START);
+      g_object_set_data (G_OBJECT (avatar), "view", self);
+      g_object_set_data_full (G_OBJECT (avatar), "sender", g_strdup (message->sender), g_free);
+      g_object_set_data_full (G_OBJECT (avatar), "id", g_memdup2 (&message->id, sizeof message->id), g_free);
+      g_signal_connect (avatar, "clicked", G_CALLBACK (on_avatar_clicked), NULL);
+      g_signal_connect (avatar, "long-pressed", G_CALLBACK (on_bubble_long_pressed), NULL);
+    }
 
   gtk_label_set_wrap (GTK_LABEL (text), TRUE);
   gtk_label_set_wrap_mode (GTK_LABEL (text), PANGO_WRAP_WORD_CHAR);
@@ -678,14 +703,27 @@ on_up (ConversationView *self)
   g_signal_emit (self, signals[CLOSED], 0);
 }
 
+/* Make a call (launchPhoneCallActivity, Intent.ACTION_CALL): the Phone app calls the number at once (its "call"
+ * action); another phone's app gets the tel: link. An emergency number is not handed over (ConversationFragment
+ * says so instead). */
 static void
 on_call (ConversationView *self)
 {
   MsgPerson *only = self->people && self->people->len == 1 ? self->people->pdata[0] : NULL;
-  g_autofree char *uri = only ? g_strconcat ("tel:", only->destination, NULL) : NULL;
+  g_autofree char *uri = NULL;
   g_autoptr(GError) error = NULL;
 
-  if (uri && !g_app_info_launch_default_for_uri (uri, NULL, &error))
+  if (!only)
+    return;
+  if (phone_number_is_emergency (only->destination))
+    {
+      msg_snackbar_show (self->snackbar, _("Can't make a voice call to emergency services here."), NULL, NULL, NULL);
+      return;
+    }
+  if (app_action_activate (GTK_WIDGET (self), "de.yesman.Dialer", "call", g_variant_new_string (only->destination)))
+    return;
+  uri = g_strconcat ("tel:", only->destination, NULL);
+  if (!g_app_info_launch_default_for_uri (uri, NULL, &error))
     g_warning ("cannot call: %s", error->message);
 }
 
@@ -721,6 +759,22 @@ delete_conversation (gpointer data)
   neo_dialog_present (dialog, GTK_WIDGET (self));
 }
 
+static MsgPerson *
+only_person (ConversationView *self)
+{
+  return self->people && self->people->len == 1 ? self->people->pdata[0] : NULL;
+}
+
+static void
+add_contact (gpointer data)
+{
+  ConversationView *self = data;
+  MsgPerson *only = only_person (self);
+
+  if (only)
+    msg_contact_confirm_add (GTK_WIDGET (self), only);
+}
+
 static void
 show_options (gpointer data)
 {
@@ -735,7 +789,9 @@ on_overflow (GtkWidget *button, gpointer data)
 
   if (!self->conversation)
     return;
-  /* "Add contact" is not here yet */
+  /* the other one of a 1:1, when they are not a contact (ConversationFragment.onCreateOptionsMenu) */
+  if (msg_contact_can_add (only_person (self)))
+    dialer_popup_menu_append (menu, _("Add contact"), add_contact, self);
   dialer_popup_menu_append (menu, _("People & options"), show_options, self);
   dialer_popup_menu_append (menu, self->conversation->archived ? _("Unarchive") : _("Archive"), archive, self);
   dialer_popup_menu_append (menu, _("Delete"), delete_conversation, self);

@@ -26,6 +26,19 @@ msg_person_new (Contacts *contacts, const char *destination, const char *country
   return person;
 }
 
+MsgPerson *
+msg_person_copy (const MsgPerson *person)
+{
+  MsgPerson *copy = g_new0 (MsgPerson, 1);
+
+  copy->destination = g_strdup (person->destination);
+  copy->name = g_strdup (person->name);
+  copy->identifier = g_strdup (person->identifier);
+  copy->photo = person->photo ? g_bytes_ref (person->photo) : NULL;
+  copy->is_contact = person->is_contact;
+  return copy;
+}
+
 void
 msg_person_free (MsgPerson *person)
 {

@@ -1,6 +1,7 @@
 /* The conversation list (conversation-list.h). */
 #include "conversation-list.h"
 #include "blocked-numbers.h"
+#include "msg-add-contact.h"
 #include "msg-action-bar.h"
 #include "msg-avatar.h"
 #include "msg-dates.h"
@@ -31,6 +32,7 @@ typedef struct {
   gint64 id;
   gboolean archived;
   char *destination;            /* the one other participant as stored, for Block; NULL in a group */
+  MsgPerson *person;            /* that participant, for Add contact and their avatar; NULL in a group */
   GtkWidget *row, *swipe, *content, *avatar;
 } Row;
 
@@ -44,7 +46,7 @@ struct _ConversationList {
 
   GtkWidget *box;               /* the page: bar over the content */
   GtkWidget *bar, *select_bar;
-  GtkWidget *archive_action, *unarchive_action, *block_action;
+  GtkWidget *archive_action, *unarchive_action, *add_contact_action, *block_action;
   GtkWidget *scroll, *list, *empty, *fab;
   NeoSnackbar *snackbar;
   GHashTable *rows;             /* id -> Row */
@@ -85,6 +87,23 @@ blockable (ConversationList *self)
   return row;
 }
 
+/* the one conversation selected, when it is with one person who is not a contact: what Add contact acts on
+ * (MultiSelectActionModeCallback: one selected, not a group, no lookup key) */
+static Row *
+addable (ConversationList *self)
+{
+  GHashTableIter iter;
+  gpointer key;
+  Row *row;
+
+  if (g_hash_table_size (self->selected) != 1)
+    return NULL;
+  g_hash_table_iter_init (&iter, self->selected);
+  g_hash_table_iter_next (&iter, &key, NULL);
+  row = g_hash_table_lookup (self->rows, key);
+  return row && msg_contact_can_add (row->person) ? row : NULL;
+}
+
 /* --- select mode (§1.11) */
 
 static gboolean
@@ -119,6 +138,7 @@ sync_select (ConversationList *self)
   gtk_widget_set_visible (self->bar, !self->forward && !selecting (self));
   gtk_widget_set_visible (self->archive_action, any_unarchived);
   gtk_widget_set_visible (self->unarchive_action, any_archived);
+  gtk_widget_set_visible (self->add_contact_action, addable (self) != NULL);
   gtk_widget_set_visible (self->block_action, blockable (self) != NULL);
   if (self->fab)
     /* the FAB slides away to the right while selecting (300 ms) */
@@ -330,6 +350,19 @@ on_block (ConversationList *self)
   neo_dialog_present (dialog, GTK_WIDGET (self));
 }
 
+/* Add contact: "Add to Contacts?" for the person, and select mode left
+ * (AbstractConversationListActivity.onActionBarAddContact) */
+static void
+on_add_contact (ConversationList *self)
+{
+  Row *row = addable (self);
+
+  if (!row)
+    return;
+  msg_contact_confirm_add (GTK_WIDGET (self), row->person);
+  g_array_unref (take_selected (self));
+}
+
 /* --- rows (§1.4, §1.5) */
 
 static void
@@ -355,6 +388,21 @@ on_row_long_pressed (GtkWidget *pressable, gpointer data)
     g_signal_emit (self, signals[OPEN_CONVERSATION], 0, id);
   else
     toggle_selected (self, id);
+}
+
+/* the avatar (ContactIconView): while selecting, a tap on it is the row's; else the person's card, or "Add to
+ * Contacts?"; a group's takes the tap and does nothing. A long press is the row's. */
+static void
+on_avatar_clicked (GtkWidget *pressable, gpointer data)
+{
+  ConversationList *self = g_object_get_data (G_OBJECT (pressable), "list");
+  gint64 id = *(gint64 *) g_object_get_data (G_OBJECT (pressable), "id");
+  Row *row = g_hash_table_lookup (self->rows, &id);
+
+  if (selecting (self))
+    toggle_selected (self, id);
+  else if (row && row->person)
+    msg_contact_show_or_add (pressable, row->person, self->snackbar);
 }
 
 static GtkWidget *
@@ -425,7 +473,7 @@ make_row (ConversationList *self, const SmsConversation *conversation, gint64 no
   GtkWidget *avatar_box = gtk_overlay_new ();
   GtkWidget *avatar = msg_avatar_new (AVATAR);
   GtkWidget *column = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  GtkWidget *name_label, *snippet, *time_label, *pressable;
+  GtkWidget *name_label, *snippet, *time_label, *pressable, *avatar_pressable;
   Row *row = g_new0 (Row, 1);
 
   /* the avatar: the person's, or the group's (up to four) */
@@ -463,8 +511,10 @@ make_row (ConversationList *self, const SmsConversation *conversation, gint64 no
       gtk_widget_set_valign (badge, GTK_ALIGN_END);
       gtk_overlay_add_overlay (GTK_OVERLAY (avatar_box), badge);
     }
-  gtk_widget_set_valign (avatar_box, GTK_ALIGN_START);
-  gtk_box_append (GTK_BOX (content), avatar_box);
+  avatar_pressable = neo_pressable_new (avatar_box);
+  neo_pressable_set_ripple (NEO_PRESSABLE (avatar_pressable), NEO_RIPPLE_NONE, 0);
+  gtk_widget_set_valign (avatar_pressable, GTK_ALIGN_START);
+  gtk_box_append (GTK_BOX (content), avatar_pressable);
 
   name_label = text_label (name, "msg-row-name");
   snippet = text_label (conversation->show_draft ? conversation->draft : conversation->snippet, "msg-row-snippet");
@@ -506,6 +556,8 @@ make_row (ConversationList *self, const SmsConversation *conversation, gint64 no
   row->archived = conversation->archived;
   if (g_strv_length (conversation->destinations) == 1)
     row->destination = g_strdup (conversation->destinations[0]);
+  if (people->len == 1)
+    row->person = msg_person_copy (people->pdata[0]);
   row->row = pressable;
   row->content = content;
   row->avatar = avatar;
@@ -513,6 +565,10 @@ make_row (ConversationList *self, const SmsConversation *conversation, gint64 no
   g_object_set_data_full (G_OBJECT (pressable), "id", g_memdup2 (&row->id, sizeof row->id), g_free);
   g_signal_connect (pressable, "clicked", G_CALLBACK (on_row_clicked), NULL);
   g_signal_connect (pressable, "long-pressed", G_CALLBACK (on_row_long_pressed), NULL);
+  g_object_set_data (G_OBJECT (avatar_pressable), "list", self);
+  g_object_set_data_full (G_OBJECT (avatar_pressable), "id", g_memdup2 (&row->id, sizeof row->id), g_free);
+  g_signal_connect (avatar_pressable, "clicked", G_CALLBACK (on_avatar_clicked), NULL);
+  g_signal_connect (avatar_pressable, "long-pressed", G_CALLBACK (on_row_long_pressed), NULL);
   g_hash_table_insert (self->rows, g_memdup2 (&row->id, sizeof row->id), row);
   gtk_accessible_update_property (GTK_ACCESSIBLE (pressable), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);
   row->swipe = msg_swipe_new (pressable,
@@ -530,6 +586,7 @@ row_free (gpointer data)
   Row *row = data;
 
   g_free (row->destination);
+  msg_person_free (row->person);
   g_free (row);
 }
 
@@ -796,6 +853,9 @@ build (SmsClient *client, Contacts *contacts, gboolean archived, gboolean forwar
                                                       _("Unarchive"));
   g_signal_connect_swapped (msg_action_bar_add_action (self->select_bar, "messaging-delete-symbolic", _("Delete")),
                             "clicked", G_CALLBACK (on_delete), self);
+  self->add_contact_action = msg_action_bar_add_action (self->select_bar, "messaging-people-add-symbolic",
+                                                        _("Add contact"));
+  g_signal_connect_swapped (self->add_contact_action, "clicked", G_CALLBACK (on_add_contact), self);
   self->block_action = msg_action_bar_add_action (self->select_bar, "messaging-block-symbolic", _("Block"));
   g_signal_connect_swapped (self->archive_action, "clicked", G_CALLBACK (on_archive), self);
   g_signal_connect_swapped (self->unarchive_action, "clicked", G_CALLBACK (on_unarchive), self);
