@@ -1,10 +1,11 @@
-/* The time picker of Etar's editor: Material 3's MaterialTimePicker in 24-hour clock mode (EditEventView:1714;
- * still:cal-dlg-time). libneo's NeoTimePicker is the platform TimePickerDialog, which Etar does not use.
+/* The time picker of Etar's editor: Material 3's MaterialTimePicker (EditEventView:1714; still:cal-dlg-time), its
+ * clock 24- or 12-hour as the phone's (DateFormat.is24HourFormat). libneo's NeoTimePicker is the platform
+ * TimePickerDialog, which Etar does not use.
  *
  * "Select time"; the hour and the minute in two boxes, the one being chosen in primaryContainer; a 256 dp clock
- * face: 0–11 outside and 12–23 inside for the hour, 00–55 for the minute; Cancel, OK.
- *
- * Left out: the keyboard button (the text input mode) at the bottom left: not built.
+ * face: 0–11 outside and 12–23 inside for the hour (a 12-hour clock: one ring, 12 1 … 11, and an AM/PM toggle),
+ * 00–55 for the minute; the keyboard button, Cancel, OK. The keyboard button switches to the text input mode: two
+ * fields, Hour and Minute (and AM/PM), typed from the keyboard; the clock button switches back.
  *
  * A libneo candidate, next to NeoTimePicker. */
 #pragma once

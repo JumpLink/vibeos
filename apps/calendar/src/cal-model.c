@@ -1,6 +1,7 @@
 /* The calendar's data and the rules the views share (cal-model.h). */
 #include "cal-model.h"
 
+#include <glib/gi18n.h>
 #include <math.h>
 #include <string.h>
 
@@ -10,7 +11,16 @@ cal_calendar_free (CalCalendar *calendar)
   g_free (calendar->uid);
   g_free (calendar->name);
   g_free (calendar->account);
+  g_free (calendar->email);
   g_free (calendar);
+}
+
+void
+cal_attendee_free (CalAttendee *attendee)
+{
+  g_free (attendee->email);
+  g_free (attendee->name);
+  g_free (attendee);
 }
 
 CalEvent *
@@ -20,6 +30,7 @@ cal_event_new (void)
 
   event->ref = 1;
   event->reminders = g_array_new (FALSE, FALSE, sizeof (CalReminder));
+  event->attendees = g_ptr_array_new_with_free_func ((GDestroyNotify) cal_attendee_free);
   event->max_columns = 1;
   return event;
 }
@@ -29,6 +40,98 @@ cal_event_ref (CalEvent *event)
 {
   event->ref++;
   return event;
+}
+
+CalAttendee *
+cal_attendee_copy (const CalAttendee *attendee)
+{
+  CalAttendee *copy = g_memdup2 (attendee, sizeof *attendee);
+
+  copy->email = g_strdup (attendee->email);
+  copy->name = g_strdup (attendee->name);
+  return copy;
+}
+
+/* addIfEmailable: an address, not the owner's, nor a machine-made one (Utils.MACHINE_GENERATED_ADDRESS) */
+static void
+add_if_mailable (GPtrArray *list, const char *email, const char *me)
+{
+  if (!email || !strchr (email, '@') || g_str_has_suffix (email, "calendar.google.com")
+      || (me && g_ascii_strcasecmp (email, me) == 0))
+    return;
+  g_ptr_array_add (list, (gpointer) email);
+}
+
+char *
+cal_event_mail_uri (const CalEvent *event, const char *me, const char *body)
+{
+  g_autoptr(GPtrArray) to = g_ptr_array_new (), cc = g_ptr_array_new ();
+  g_autoptr(GString) uri = g_string_new ("mailto:");
+  g_autofree char *subject = NULL;
+  GPtrArray *list;
+  gboolean query = FALSE;
+
+  for (guint i = 0; i < event->attendees->len; i++)
+    {
+      const CalAttendee *guest = event->attendees->pdata[i];
+
+      add_if_mailable (guest->status == CAL_STATUS_DECLINED ? cc : to, guest->email, me);
+    }
+  if (to->len == 0 && cc->len == 0)
+    add_if_mailable (to, event->organizer, me);
+  if (to->len == 0 && cc->len == 0)
+    return NULL;
+  /* no one to write to but declined guests: they are written to instead */
+  list = to->len > 0 ? to : cc;
+#define ADD(key, value) G_STMT_START { \
+    g_autofree char *escaped = g_uri_escape_string ((value), NULL, FALSE); \
+    g_string_append_printf (uri, "%s%s=%s", query ? "&" : "?", (key), escaped); \
+    query = TRUE; } G_STMT_END
+  {
+    g_autofree char *first = g_uri_escape_string (list->pdata[0], "@", FALSE);
+
+    g_string_append (uri, first);
+  }
+  for (guint i = 1; i < list->len; i++)
+    ADD ("to", (const char *) list->pdata[i]);
+  subject = g_strconcat ("Re: ", event->title && *event->title ? event->title : _("(No title)"), NULL);
+  ADD ("subject", subject);
+  if (body)
+    ADD ("body", body);
+  if (list == to)
+    for (guint i = 0; i < cc->len; i++)
+      ADD ("cc", (const char *) cc->pdata[i]);
+#undef ADD
+  return g_string_free (g_steal_pointer (&uri), FALSE);
+}
+
+CalEvent *
+cal_event_copy (const CalEvent *event)
+{
+  CalEvent *copy = cal_event_new ();
+  GArray *reminders = copy->reminders;
+  GPtrArray *attendees = copy->attendees;
+
+  *copy = *event;
+  copy->ref = 1;
+  copy->calendar = g_strdup (event->calendar);
+  copy->uid = g_strdup (event->uid);
+  copy->rid = g_strdup (event->rid);
+  copy->title = g_strdup (event->title);
+  copy->location = g_strdup (event->location);
+  copy->description = g_strdup (event->description);
+  copy->url = g_strdup (event->url);
+  copy->rrule = g_strdup (event->rrule);
+  copy->tzid = g_strdup (event->tzid);
+  copy->organizer = g_strdup (event->organizer);
+  copy->reminders = reminders;
+  g_array_append_vals (reminders, event->reminders->data, event->reminders->len);
+  copy->attendees = attendees;
+  for (guint i = 0; i < event->attendees->len; i++)
+    g_ptr_array_add (attendees, cal_attendee_copy (event->attendees->pdata[i]));
+  copy->column = 0;
+  copy->max_columns = 1;
+  return copy;
 }
 
 void
@@ -46,6 +149,8 @@ cal_event_unref (CalEvent *event)
   g_free (event->rrule);
   g_free (event->tzid);
   g_array_unref (event->reminders);
+  g_ptr_array_unref (event->attendees);
+  g_free (event->organizer);
   g_free (event);
 }
 
@@ -97,6 +202,31 @@ guint32
 cal_event_display_color (const CalEvent *event)
 {
   return cal_display_color (event->color, real_event_colors);
+}
+
+guint32
+cal_declined_color (guint32 rgb)
+{
+  /* as Etar's integer arithmetic: each channel (c × 0x66 + 0xff × 0x99) >> 8 */
+  guint32 out = 0xff000000;
+
+  for (int shift = 0; shift <= 16; shift += 8)
+    out |= ((((rgb >> shift) & 0xff) * 0x66 + 0xff * (0xff - 0x66)) >> 8) << shift;
+  return out;
+}
+
+guint32
+cal_adaptive_text_color (guint32 argb, guint32 event_rgb)
+{
+  double r = (event_rgb >> 16) & 0xff, g = (event_rgb >> 8) & 0xff, b = event_rgb & 0xff;
+  int brightness = (int) sqrt (r * r * .299 + g * g * .587 + b * b * .114);
+  double alpha = (argb >> 24) & 0xff;
+
+  if (!real_event_colors)
+    return argb;
+  if (brightness > 130)
+    return ((guint32) lround (alpha * 0.7f) << 24) | 0x000000;
+  return ((guint32) lround (alpha * 0.9f) << 24) | 0xffffff;
 }
 
 guint32
@@ -242,7 +372,192 @@ layout_group (GPtrArray *group, gboolean all_day, gint64 min_seconds)
       max_columns = MAX (max_columns, column + 1);
     }
   for (guint i = 0; i < group->len; i++)
-    ((CalEvent *) group->pdata[i])->max_columns = max_columns;
+    {
+      ((CalEvent *) group->pdata[i])->max_columns = max_columns;
+      ((CalEvent *) group->pdata[i])->text_offset = 0;
+      ((CalEvent *) group->pdata[i])->staggered = FALSE;
+    }
+}
+
+/* getUnobscuredDurationOffset: from the start of @event, where a stretch of @min_seconds begins that no event of a
+ * higher column covers; -1 if there is none */
+static gint64
+unobscured_offset (CalEvent *event, GPtrArray *group, gint64 min_seconds)
+{
+  gint64 start = event->start;
+  gint64 end = MAX (event->end, event->start + min_seconds);
+
+  for (guint i = 0; i < group->len; i++)
+    {
+      CalEvent *other = group->pdata[i];
+
+      if (other == event || other->column <= event->column)
+        continue;
+      if (other->start >= end)
+        break;
+      if (other->start - start >= min_seconds)
+        return start - event->start;
+      start = MAX (start, MAX (other->end, other->start + min_seconds));
+    }
+  return end - start >= min_seconds ? start - event->start : -1;
+}
+
+/* computeEventColAndTextOffsetStaggered: the column for @event, moving others up when one is inserted; the new mask,
+ * or 0 with *failed when it fits nowhere */
+static guint64
+stagger_one (CalEvent *event, GPtrArray *active, GPtrArray *group, guint64 mask, int max_columns, gint64 min_seconds,
+             gboolean *failed)
+{
+  for (int column = 0; column < 64; column++)
+    {
+      gboolean obscures = FALSE;
+
+      event->column = column;
+      /* does it wholly cover an event of the column below? */
+      for (guint i = 0; i < active->len; i++)
+        {
+          CalEvent *other = active->pdata[i];
+          gint64 offset;
+
+          if (other == event || other->column != column - 1)
+            continue;
+          offset = unobscured_offset (other, group, min_seconds);
+          if (offset == -1)
+            {
+              obscures = TRUE;
+              break;
+            }
+          other->text_offset = offset;
+        }
+      if (obscures)
+        {
+          gint64 offset;
+          guint64 low, high;
+
+          /* a column between column - 2 and column - 1, if the event is not itself covered there */
+          event->column = column - 2;
+          offset = unobscured_offset (event, group, min_seconds);
+          if (offset == -1)
+            {
+              *failed = TRUE;
+              return 0;
+            }
+          event->column = column - 1;
+          event->text_offset = offset;
+          for (guint i = 0; i < active->len; i++)
+            {
+              CalEvent *other = active->pdata[i];
+              gint64 other_offset;
+
+              if (other == event || other->column != column - 1 || other->text_offset == 0)
+                continue;
+              other_offset = unobscured_offset (other, group, min_seconds);
+              if (other_offset == -1)
+                {
+                  *failed = TRUE;
+                  return 0;
+                }
+              other->text_offset = other_offset;
+            }
+          for (guint i = 0; i < group->len; i++)
+            {
+              CalEvent *other = group->pdata[i];
+
+              if (other != event && other->column >= column - 1)
+                other->column++;
+            }
+          low = mask & ((G_GUINT64_CONSTANT (1) << column) - 1);
+          high = column < 63 ? (mask >> column) << (column + 1) : 0;
+          mask = low | high;
+          break;
+        }
+      else if (mask & (G_GUINT64_CONSTANT (1) << column))
+        continue;
+      else if (column >= max_columns)
+        {
+          event->text_offset = 0;
+          break;
+        }
+      else
+        {
+          gint64 offset = unobscured_offset (event, group, min_seconds);
+
+          if (offset != -1)
+            {
+              event->text_offset = offset;
+              break;
+            }
+        }
+    }
+  return mask | (G_GUINT64_CONSTANT (1) << event->column);
+}
+
+static void
+stagger_group (GPtrArray *group, gint64 min_seconds)
+{
+  g_autoptr(GPtrArray) active = g_ptr_array_new ();
+  guint64 mask = 0;
+  int max_columns = 0;
+
+  /* as Etar's freshly loaded Events: an event not placed yet sits in column 0 */
+  for (guint i = 0; i < group->len; i++)
+    {
+      ((CalEvent *) group->pdata[i])->column = 0;
+      ((CalEvent *) group->pdata[i])->text_offset = 0;
+    }
+  for (guint i = 0; i < group->len; i++)
+    {
+      CalEvent *event = group->pdata[i];
+      gboolean failed = FALSE;
+
+      mask = remove_inactive (event, active, FALSE, min_seconds, mask);
+      g_ptr_array_add (active, event);
+      mask = stagger_one (event, active, group, mask, max_columns, min_seconds, &failed);
+      if (failed)
+        {
+          /* no valid column: the group is laid out side by side instead */
+          for (guint j = 0; j < group->len; j++)
+            {
+              ((CalEvent *) group->pdata[j])->text_offset = 0;
+              ((CalEvent *) group->pdata[j])->staggered = FALSE;
+            }
+          layout_group (group, FALSE, min_seconds);
+          return;
+        }
+      max_columns = MAX (max_columns, event->column + 1);
+    }
+  /* an inserted column moves events up past the max_columns Etar keeps, which then draws them beyond their day
+   * (EventGeometry's right edge); the group's columns counted after the moves keep them in it */
+  for (guint i = 0; i < group->len; i++)
+    max_columns = MAX (max_columns, ((CalEvent *) group->pdata[i])->column + 1);
+  for (guint i = 0; i < group->len; i++)
+    {
+      ((CalEvent *) group->pdata[i])->max_columns = max_columns;
+      ((CalEvent *) group->pdata[i])->staggered = TRUE;
+    }
+}
+
+void
+cal_layout_events_staggered (GPtrArray *events, gint64 min_seconds)
+{
+  g_autoptr(GPtrArray) group = g_ptr_array_new ();
+  gint64 group_end = G_MININT64;
+
+  min_seconds = MAX (min_seconds, 0);
+  for (guint i = 0; i < events->len; i++)
+    {
+      CalEvent *event = events->pdata[i];
+
+      if (group->len > 0 && event->start >= group_end)
+        {
+          stagger_group (group, min_seconds);
+          g_ptr_array_set_size (group, 0);
+          group_end = G_MININT64;
+        }
+      g_ptr_array_add (group, event);
+      group_end = MAX (group_end, event->end);
+    }
+  stagger_group (group, min_seconds);
 }
 
 void

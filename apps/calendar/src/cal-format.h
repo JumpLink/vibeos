@@ -46,4 +46,15 @@ char *cal_format_rrule (const char *rrule, gint64 start);
 /* the first day of the week, 0 Sunday … 6 Saturday: @setting ("Week starts on": -1 the locale's, 7 Saturday,
  * 1 Sunday, 2 Monday, as Etar's preferences_week_start_day values), else the locale's (glibc's LC_TIME) */
 int cal_week_start (int setting);
+/* Utils.getWeekNumberFromTime: the ISO 8601 number of the week holding @day, a week that starts on @week_start
+ * (0 Sunday … 6 Saturday) numbered by its Thursday */
+int cal_week_number (int day, int week_start);
+/* "Week 46" (plurals weekN) */
+char *cal_format_week_number (int week);
+
+/* Use home time zone (Utils.setTimeZone): the zone the process shows times in is @tzid (the TZ variable, which GLib
+ * and libical read), or the phone's again for NULL. cal_phone_zone is the phone's own zone ("Europe/Berlin"),
+ * whatever the home one; it is read the first time either is called, so call one before the other zone is set. */
+void        cal_set_home_zone (const char *tzid);
+const char *cal_phone_zone    (void);
 G_END_DECLS

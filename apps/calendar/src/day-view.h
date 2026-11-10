@@ -24,12 +24,17 @@ G_DECLARE_FINAL_TYPE (CalDayView, cal_day_view, CAL, DAY_VIEW, GtkWidget)
 
 GtkWidget *cal_day_view_new            (int num_days);
 int        cal_day_view_get_num_days   (CalDayView *self);
+/* Days per week: the Week view's days (2 … 7); the view keeps its first day */
+void       cal_day_view_set_num_days   (CalDayView *self, int num_days);
 /* the first day shown (a day number, cal_day_number); the selection moves to @selected (a day in the period) */
 void       cal_day_view_set_first_day  (CalDayView *self, int first_day);
 int        cal_day_view_get_first_day  (CalDayView *self);
 /* the events of the shown period and the periods either side (for a swipe), sorted by cal_event_compare */
 void       cal_day_view_set_events     (CalDayView *self, GPtrArray *events);
 void       cal_day_view_set_cell_height (CalDayView *self, double cell_height);
+/* Staggered display: overlapping timed events overlap, each later column narrower and shadowed, its title where it
+ * shows (Event.computePositions with drawStaggered, EventGeometry) */
+void       cal_day_view_set_staggered  (CalDayView *self, gboolean staggered);
 /* scroll so that @hour shows a little below the top (DayView.initFirstHour: hour − visible hours / 5) */
 void       cal_day_view_scroll_to_hour (CalDayView *self, int hour);
 /* the hour a new event from the FAB starts at: the selected slot, if any */

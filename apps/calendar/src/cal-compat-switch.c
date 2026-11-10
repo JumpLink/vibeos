@@ -19,8 +19,8 @@
 #define THUMB_ON (TRACK_END - TRACK_HEIGHT / 2)
 #define TRACK_START (THUMB_OFF - TRACK_HEIGHT / 2)
 #define SLIDE_MS 250
-#define THUMB_OFF_COLOR 0xffb9b9b9
-#define TRACK_OFF_COLOR 0xff5b5a5e
+#define THUMB_OFF_COLOR (cal_palette->switch_thumb_off)
+#define TRACK_OFF_COLOR (cal_palette->switch_track_off)
 
 struct _CalCompatSwitch {
   GtkWidget parent;

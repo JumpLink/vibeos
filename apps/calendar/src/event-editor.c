@@ -1,13 +1,18 @@
 /* The event editor (event-editor.h; spec/calendar.md §7). */
 #include "event-editor.h"
+#include "cal-material-switch.h"
+#include "cal-outlined-field.h"
 #include "cal-colors.h"
+#include "cal-color-picker.h"
 #include "cal-date-picker.h"
 #include "cal-dialogs.h"
 #include "cal-format.h"
 #include "cal-page.h"
 #include "cal-popup.h"
+#include "cal-recurrence-picker.h"
 #include "cal-reminders.h"
 #include "cal-time-picker.h"
+#include "cal-tz-picker.h"
 #include "cal-window.h"
 
 #include <glib/gi18n.h>
@@ -28,10 +33,16 @@ typedef struct {
   int start_minute, end_minute; /* the times shown, minutes into the day */
   gboolean all_day;
   char *rrule;
+  char *tzid;                   /* the zone the times are in (the event's, else the app's) */
+  gboolean tz_changed;          /* chosen in the picker: the event takes it */
+  guint32 color;                /* the event's colour: its own when own_color, else its calendar's */
+  gboolean own_color;
 
   GtkWidget *title, *calendar_row, *calendar_name, *calendar_account, *calendar_color;
   GtkWidget *all_day_switch, *start_date, *start_time, *end_date, *end_time;
+  GtkWidget *color_button, *tz_row, *tz_button, *guests;
   GtkWidget *location, *description, *url, *repeat_row, *repeat, *reminders, *add_reminder;
+  GtkWidget *availability, *access;
   GtkWidget *scroll;
   gboolean saving;
 } Editor;
@@ -45,49 +56,79 @@ editor_free (gpointer data)
   g_clear_pointer (&editor->source, cal_event_unref);
   g_free (editor->calendar);
   g_free (editor->rrule);
+  g_free (editor->tzid);
   g_object_unref (editor->store);
   g_object_unref (editor->settings);
   g_free (editor);
 }
 
-/* --- times: day numbers and minutes into the day, the phone's zone */
+/* --- times: day numbers and minutes into the day, in the event's zone (EditEventView shows the times in
+ * mTimezone; choosing another zone keeps them on the clock and moves the moment) */
+
+static GTimeZone *
+editor_zone (Editor *editor)
+{
+  GTimeZone *zone = editor->tzid ? g_time_zone_new_identifier (editor->tzid) : NULL;
+
+  return zone ? zone : g_time_zone_new_local ();
+}
 
 static gint64
-local_time (int day, int minute)
+local_time (Editor *editor, int day, int minute)
 {
   GDate date;
+  g_autoptr(GTimeZone) zone = editor_zone (editor);
   g_autoptr(GDateTime) time = NULL;
 
   g_date_clear (&date, 1);
   g_date_set_julian (&date, day);
-  time = g_date_time_new_local (g_date_get_year (&date), g_date_get_month (&date), g_date_get_day (&date),
-                                minute / 60, minute % 60, 0);
+  time = g_date_time_new (zone, g_date_get_year (&date), g_date_get_month (&date), g_date_get_day (&date),
+                          minute / 60, minute % 60, 0);
   return g_date_time_to_unix (time);
 }
 
 static void
-split_time (gint64 time, int *day, int *minute)
+split_time (Editor *editor, gint64 time, int *day, int *minute)
 {
-  *day = cal_day_number (time);
-  *minute = cal_minute_of_day (time);
+  g_autoptr(GTimeZone) zone = editor_zone (editor);
+  g_autoptr(GDateTime) utc = g_date_time_new_from_unix_utc (time);
+  g_autoptr(GDateTime) there = g_date_time_to_timezone (utc, zone);
+  GDate date;
+
+  g_date_clear (&date, 1);
+  g_date_set_dmy (&date, g_date_time_get_day_of_month (there), g_date_time_get_month (there),
+                  g_date_time_get_year (there));
+  *day = (int) g_date_get_julian (&date);
+  *minute = g_date_time_get_hour (there) * 60 + g_date_time_get_minute (there);
 }
 
 static gint64
 start_time (Editor *editor)
 {
-  return editor->all_day ? cal_day_start (editor->start_day) : local_time (editor->start_day, editor->start_minute);
+  return editor->all_day ? cal_day_start (editor->start_day)
+                         : local_time (editor, editor->start_day, editor->start_minute);
 }
 
 static gint64
 end_time (Editor *editor)
 {
-  return editor->all_day ? cal_day_start (editor->end_day + 1) : local_time (editor->end_day, editor->end_minute);
+  return editor->all_day ? cal_day_start (editor->end_day + 1)
+                         : local_time (editor, editor->end_day, editor->end_minute);
 }
 
 static char *
 format_minute (int minute)
 {
-  return cal_format_time (local_time (cal_day_number (g_get_real_time () / G_USEC_PER_SEC), minute));
+  GDate date;
+  g_autoptr(GDateTime) time = NULL;
+  int today = cal_day_number (g_get_real_time () / G_USEC_PER_SEC);
+
+  /* the clock time itself, whatever the zone */
+  g_date_clear (&date, 1);
+  g_date_set_julian (&date, today);
+  time = g_date_time_new_local (g_date_get_year (&date), g_date_get_month (&date), g_date_get_day (&date),
+                                minute / 60, minute % 60, 0);
+  return cal_format_time (g_date_time_to_unix (time));
 }
 
 /* --- showing the values */
@@ -112,6 +153,15 @@ show_times (Editor *editor)
   set_button_text (editor->end_time, end);
   gtk_widget_set_visible (editor->start_time, !editor->all_day);
   gtk_widget_set_visible (editor->end_time, !editor->all_day);
+  /* the time zone: hidden with All day (an all-day event has none) */
+  if (editor->tz_row)
+    {
+      /* the GMT part in #888888 (the TZ button's grey text), the sun of summer time in #BFBFBF */
+      g_autofree char *zone = cal_tz_label_markup (editor->tzid, start_time (editor), TRUE);
+
+      gtk_widget_set_visible (editor->tz_row, !editor->all_day);
+      gtk_label_set_markup (GTK_LABEL (neo_pressable_get_child (NEO_PRESSABLE (editor->tz_button))), zone ? zone : "");
+    }
 }
 
 static void
@@ -119,8 +169,12 @@ show_repeat (Editor *editor)
 {
   g_autofree char *text = editor->rrule ? cal_format_rrule (editor->rrule, start_time (editor)) : NULL;
 
-  /* a rule without words (made elsewhere) still repeats: say so rather than "One-time event" */
-  set_button_text (editor->repeat, text ? text : editor->rrule ? _("Custom repeat") : _("One-time event"));
+  /* EditEventView.populateRepeats: a rule without words is "Custom (can't customize on phone)" and the button is off,
+   * as it is for one the dialog cannot show (canHandleRecurrenceRule); either stays as it is, made elsewhere */
+  set_button_text (editor->repeat, text ? text : editor->rrule ? _("Custom (can't customize on phone)")
+                                                               : _("One-time event"));
+  gtk_widget_set_sensitive (editor->repeat, !editor->rrule
+                                            || (text && cal_recurrence_picker_can_handle (editor->rrule)));
 }
 
 static void
@@ -132,7 +186,8 @@ show_calendar (Editor *editor)
   gtk_label_set_label (GTK_LABEL (editor->calendar_name), calendar ? calendar->name : "");
   gtk_label_set_label (GTK_LABEL (editor->calendar_account), calendar ? calendar->account : "");
   gtk_widget_set_visible (editor->calendar_account, calendar && calendar->account && *calendar->account);
-  color = cal_argb (0xff000000 | (calendar ? calendar->color : 0x3f51b5));
+  /* the square shows the event's colour when it has its own, else the calendar's (setSpinnerBackgroundColor) */
+  color = cal_argb (0xff000000 | (editor->own_color ? editor->color : calendar ? calendar->color : 0x3f51b5));
   g_object_set_data_full (G_OBJECT (editor->calendar_color), "cal-color", g_memdup2 (&color, sizeof color), g_free);
   gtk_widget_queue_draw (editor->calendar_color);
 }
@@ -155,6 +210,39 @@ description_text (Editor *editor)
   return g_strstrip (gtk_text_buffer_get_text (buffer, &a, &b, FALSE));
 }
 
+/* the guests typed (RecipientEditTextView's text): addresses split at commas, semicolons and spaces, each once */
+static char **
+typed_guests (Editor *editor)
+{
+  const char *text = gtk_editable_get_text (GTK_EDITABLE (editor->guests));
+  g_auto(GStrv) parts = g_regex_split_simple ("[,;\\s]+", text, 0, 0);
+  g_autoptr(GPtrArray) out = g_ptr_array_new ();
+
+  for (char **p = parts; *p; p++)
+    {
+      gboolean seen = FALSE;
+
+      if (!**p || !strchr (*p, '@'))
+        continue;
+      for (guint i = 0; i < out->len && !seen; i++)
+        seen = g_ascii_strcasecmp (out->pdata[i], *p) == 0;
+      if (!seen)
+        g_ptr_array_add (out, g_strdup (*p));
+    }
+  g_ptr_array_add (out, NULL);
+  return (char **) g_ptr_array_free (g_steal_pointer (&out), FALSE);
+}
+
+/* a guest the field lists: not the organizer, not the calendar's owner (EditEventHelper leaves both out) */
+static gboolean
+listed_guest (Editor *editor, const CalAttendee *guest)
+{
+  const CalCalendar *calendar = cal_store_find_calendar (editor->store, editor->calendar);
+
+  return !guest->organizer
+         && !(calendar && calendar->email && g_ascii_strcasecmp (guest->email, calendar->email) == 0);
+}
+
 static CalEvent *
 edited_event (Editor *editor)
 {
@@ -171,10 +259,52 @@ edited_event (Editor *editor)
   event->all_day = editor->all_day;
   event->start = start_time (editor);
   event->end = MAX (end_time (editor), event->start);
-  event->rrule = g_strdup (editor->rrule);
+  /* a rule chosen here, or All day switched under one: its end of the kind the start now is (a rule left alone
+   * keeps its text, as another client wrote it) */
+  event->rrule = !source || source->all_day != editor->all_day || g_strcmp0 (source->rrule, editor->rrule) != 0
+                 ? cal_recurrence_fit_until (editor->rrule, event->start, editor->all_day ? NULL : editor->tzid)
+                 : g_strdup (editor->rrule);
   event->recurring = editor->rrule != NULL;
-  event->color = source ? source->color : 0;
-  event->tzid = g_strdup (source ? source->tzid : NULL);
+  event->color = editor->color;
+  event->own_color = editor->own_color;
+  /* the zone: the one chosen, else the event's own (a UTC or floating time stays so) */
+  event->tzid = editor->all_day ? NULL : g_strdup (editor->tz_changed || !source ? editor->tzid : source->tzid);
+  event->availability = cal_spinner_get_selected (CAL_SPINNER (editor->availability)) == 1 ? CAL_AVAILABILITY_FREE
+                                                                                            : CAL_AVAILABILITY_BUSY;
+  event->access = (CalAccess) MAX (0, cal_spinner_get_selected (CAL_SPINNER (editor->access)));
+  if (source)
+    {
+      event->organizer = g_strdup (source->organizer);
+      event->self_status = source->self_status;
+    }
+  /* the guests: the organizer and the owner as they were, those still typed as they were (their answers kept),
+   * the new ones not answered yet */
+  {
+    g_auto(GStrv) typed = typed_guests (editor);
+
+    for (guint i = 0; source && i < source->attendees->len; i++)
+      {
+        const CalAttendee *guest = source->attendees->pdata[i];
+
+        if (!listed_guest (editor, guest) || g_strv_contains ((const char *const *) typed, guest->email))
+          g_ptr_array_add (event->attendees, cal_attendee_copy (guest));
+      }
+    for (char **t = typed; *t; t++)
+      {
+        gboolean known = FALSE;
+
+        for (guint i = 0; i < event->attendees->len && !known; i++)
+          known = g_ascii_strcasecmp (((CalAttendee *) event->attendees->pdata[i])->email, *t) == 0;
+        if (!known)
+          {
+            CalAttendee *guest = g_new0 (CalAttendee, 1);
+
+            guest->email = g_strdup (*t);
+            guest->status = CAL_STATUS_INVITED;
+            g_ptr_array_add (event->attendees, guest);
+          }
+      }
+  }
   g_array_unref (event->reminders);
   event->reminders = cal_reminders_get (CAL_REMINDERS (editor->reminders));
   return event;
@@ -196,8 +326,16 @@ changed (Editor *editor)
     {
       /* a new event: anything typed counts, the times and the default reminder do not */
       return (now->title && *now->title) || (now->location && *now->location)
-             || (now->description && *now->description) || (now->url && *now->url);
+             || (now->description && *now->description) || (now->url && *now->url) || now->attendees->len > 0;
     }
+  if (now->own_color != before->own_color || (now->own_color && now->color != before->color)
+      || now->availability != before->availability || now->access != before->access
+      || g_strcmp0 (now->tzid, before->tzid) != 0 || now->attendees->len != before->attendees->len)
+    return TRUE;
+  for (guint i = 0; i < now->attendees->len; i++)
+    if (g_ascii_strcasecmp (((CalAttendee *) now->attendees->pdata[i])->email,
+                            ((CalAttendee *) before->attendees->pdata[i])->email) != 0)
+      return TRUE;
   if (!text_equal (now->title, before->title) || !text_equal (now->location, before->location)
       || !text_equal (now->description, before->description) || !text_equal (now->url, before->url)
       || !text_equal (now->rrule, before->rrule) || now->all_day != before->all_day || now->start != before->start
@@ -236,7 +374,7 @@ done (Editor *editor)
 
   /* EditEventFragment.onActionBarItemSelected: a new event with nothing in it is not made */
   if (is_new && !(edited->title && *edited->title) && !(edited->location && *edited->location)
-      && !(edited->description && *edited->description))
+      && !(edited->description && *edited->description) && edited->attendees->len == 0)
     {
       cal_window_toast (editor->window, _("Empty event not created."));
       cal_window_pop (editor->window);
@@ -349,7 +487,7 @@ draw_calendar_color (GtkDrawingArea *area, cairo_t *cr, int width, int height, g
 static void
 on_all_day (GObject *object, GParamSpec *pspec, Editor *editor)
 {
-  gboolean all_day = neo_switch_get_active (NEO_SWITCH (object));
+  gboolean all_day = cal_material_switch_get_active (CAL_MATERIAL_SWITCH (object));
 
   if (all_day == editor->all_day)
     return;
@@ -401,13 +539,13 @@ static void
 on_start_minute (int hour, int minute, gpointer data)
 {
   Editor *editor = data;
-  gint64 duration = local_time (editor->end_day, editor->end_minute)
-                    - local_time (editor->start_day, editor->start_minute);
+  gint64 duration = local_time (editor, editor->end_day, editor->end_minute)
+                    - local_time (editor, editor->start_day, editor->start_minute);
   gint64 end;
 
   editor->start_minute = hour * 60 + minute;
-  end = local_time (editor->start_day, editor->start_minute) + duration;
-  split_time (end, &editor->end_day, &editor->end_minute);
+  end = local_time (editor, editor->start_day, editor->start_minute) + duration;
+  split_time (editor, end, &editor->end_day, &editor->end_minute);
   show_times (editor);
 }
 
@@ -456,60 +594,25 @@ on_end_time_clicked (NeoPressable *button, Editor *editor)
   cal_time_picker_show (editor->page, editor->end_minute / 60, editor->end_minute % 60, on_end_minute, editor);
 }
 
-/* --- repeat */
-
-static const char *byday[] = { "SU", "MO", "TU", "WE", "TH", "FR", "SA" };
-
-typedef struct {
-  Editor *editor;
-  GPtrArray *rules;             /* the rule each choice sets (NULL: one-time) */
-} RepeatChoice;
+/* --- repeat (RecurrencePickerDialog) */
 
 static void
-on_repeat_chosen (int index, gpointer data)
+on_repeat_chosen (const char *rrule, gpointer data)
 {
-  RepeatChoice *choice = data;
-  Editor *editor = choice->editor;
+  Editor *editor = data;
 
-  if (index >= 0)
-    {
-      g_free (editor->rrule);
-      editor->rrule = g_strdup (choice->rules->pdata[index]);
-      show_repeat (editor);
-    }
-  g_ptr_array_unref (choice->rules);
-  g_free (choice);
+  /* onRecurrenceSet: the rule, or none ("does not repeat") */
+  g_free (editor->rrule);
+  editor->rrule = g_strdup (rrule);
+  show_repeat (editor);
 }
 
 static void
 on_repeat (NeoPressable *button, Editor *editor)
 {
-  RepeatChoice *choice = g_new0 (RepeatChoice, 1);
-  g_autoptr(GPtrArray) labels = g_ptr_array_new_with_free_func (g_free);
-  gint64 start = start_time (editor);
-  const char *rules[] = { NULL, "FREQ=DAILY", NULL, "FREQ=MONTHLY", "FREQ=YEARLY" };
-  g_autofree char *weekly = g_strdup_printf ("FREQ=WEEKLY;BYDAY=%s", byday[cal_day_of_week (editor->start_day)]);
-  gboolean common = editor->rrule == NULL;
-
-  choice->editor = editor;
-  choice->rules = g_ptr_array_new_with_free_func (g_free);
-  rules[2] = weekly;
-  for (guint i = 0; i < G_N_ELEMENTS (rules); i++)
-    {
-      g_ptr_array_add (choice->rules, g_strdup (rules[i]));
-      g_ptr_array_add (labels, rules[i] ? cal_format_rrule (rules[i], start) : g_strdup (_("One-time event")));
-      common = common || g_strcmp0 (editor->rrule, rules[i]) == 0;
-    }
-  /* a rule made elsewhere: offered first, as it is */
-  if (!common)
-    {
-      g_autofree char *text = cal_format_rrule (editor->rrule, start);
-
-      g_ptr_array_insert (choice->rules, 0, g_strdup (editor->rrule));
-      g_ptr_array_insert (labels, 0, g_strdup (text ? text : _("Custom repeat")));
-    }
-  cal_choice_dialog (editor->page, _("Repeat"), (const char *const *) labels->pdata, (int) labels->len,
-                     on_repeat_chosen, choice);
+  /* EditEventView.onClick: the start, its zone (an all-day event's dates have none) and the rule */
+  cal_recurrence_picker_show (editor->page, editor->rrule, start_time (editor), editor->all_day ? NULL : editor->tzid,
+                              on_repeat_chosen, editor);
 }
 
 /* --- reminders */
@@ -530,11 +633,49 @@ on_add_reminder (NeoPressable *button, Editor *editor)
 
 /* --- building it */
 
-/* the description's hint shows while it is empty */
+/* the event's colour (change_color → EventColorPickerDialog): Etar's palette, as for an account without one of
+ * its own; "Set to default calendar color" goes back to following the calendar */
 static void
-on_description_changed (GtkTextBuffer *buffer, GtkWidget *hint)
+on_color_chosen (guint32 rgb, gpointer data)
 {
-  gtk_widget_set_visible (hint, gtk_text_buffer_get_char_count (buffer) == 0);
+  Editor *editor = data;
+  const CalCalendar *calendar = cal_store_find_calendar (editor->store, editor->calendar);
+
+  editor->color = rgb;
+  editor->own_color = !calendar || rgb != calendar->color;
+  show_calendar (editor);
+}
+
+static void
+on_color (NeoPressable *button, Editor *editor)
+{
+  const CalCalendar *calendar = cal_store_find_calendar (editor->store, editor->calendar);
+  guint32 calendar_color = calendar ? calendar->color : 0x3f51b5;
+  int n_colors;
+  const guint32 *colors = cal_color_picker_default_colors (&n_colors);
+
+  cal_event_color_picker_show (editor->window, colors, n_colors, editor->own_color ? editor->color : calendar_color,
+                               calendar_color, on_color_chosen, editor);
+}
+
+/* the time zone (TimeZonePickerDialog): the times stay on the clock, in the zone chosen */
+static void
+on_tz_chosen (const char *tzid, gpointer data)
+{
+  Editor *editor = data;
+
+  if (!tzid || g_strcmp0 (tzid, editor->tzid) == 0)
+    return;
+  g_free (editor->tzid);
+  editor->tzid = g_strdup (tzid);
+  editor->tz_changed = TRUE;
+  show_times (editor);
+}
+
+static void
+on_tz (NeoPressable *button, Editor *editor)
+{
+  cal_tz_picker_show (editor->window, editor->tzid, start_time (editor), on_tz_chosen, editor);
 }
 
 static GtkWidget *
@@ -571,6 +712,9 @@ outlined_button (const char *name, GCallback callback, gpointer data)
   GtkWidget *button = neo_pressable_new (label);
 
   gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
+  /* centred as a TextView with includeFontPadding is (the font's bounding box, not its line) */
+  neo_label_set_font_padding (label, 14);
+  gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
   gtk_widget_add_css_class (button, "cal-outlined");
   neo_pressable_set_ripple (NEO_PRESSABLE (button), NEO_RIPPLE_BOUNDED, 20);
   gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_DESCRIPTION, name, -1);
@@ -579,16 +723,44 @@ outlined_button (const char *name, GCallback callback, gpointer data)
   return button;
 }
 
-/* an M3 outlined text field with its hint */
+/* an M3 outlined text field (a TextInputLayout's OutlinedBox) with @hint as its label, its text in *@text_widget
+ * (a GtkText, or a GtkTextView for lines that wrap). The padding is 15 dp on every side: EditEventView gives every
+ * field it edits the location's. Guests (RecipientEditTextView) and Location (AutoCompleteTextView) are 18 sp, the
+ * others (EditText under the box's theme overlay) bodyLarge, 16 sp with 0.5 sp letter spacing: the stills' boxes
+ * are 163 and 155 px tall. */
 static GtkWidget *
-text_field (const char *hint, const char *text)
+text_field (const char *hint, const char *text, gboolean body, gboolean wrap, GtkWidget **text_widget)
 {
-  GtkWidget *entry = gtk_entry_new ();
+  GtkWidget *child;
 
-  gtk_entry_set_placeholder_text (GTK_ENTRY (entry), hint);
-  gtk_editable_set_text (GTK_EDITABLE (entry), text ? text : "");
-  gtk_widget_add_css_class (entry, "cal-text-field");
-  return entry;
+  if (wrap)
+    {
+      child = gtk_text_view_new ();
+      gtk_text_view_set_wrap_mode (GTK_TEXT_VIEW (child), GTK_WRAP_WORD_CHAR);
+      gtk_text_view_set_accepts_tab (GTK_TEXT_VIEW (child), FALSE);
+      gtk_text_buffer_set_text (gtk_text_view_get_buffer (GTK_TEXT_VIEW (child)), text ? text : "", -1);
+    }
+  else
+    {
+      child = gtk_text_new ();
+      gtk_editable_set_text (GTK_EDITABLE (child), text ? text : "");
+    }
+  gtk_widget_add_css_class (child, body ? "cal-field-body" : "cal-field-text");
+  *text_widget = child;
+  return cal_outlined_field_new (child, hint, body ? 16 : 18, body ? 0.5 : 0, 15);
+}
+
+/* a field's row: the icon 14 dp over the box's bottom, the box from 48 dp to 24 dp from the end */
+static GtkWidget *
+field_row (const char *icon_name, GtkWidget *field)
+{
+  GtkWidget *line = row (icon_name, field);
+  GtkWidget *icon = gtk_widget_get_first_child (line);
+
+  gtk_widget_set_valign (icon, GTK_ALIGN_END);
+  gtk_widget_add_css_class (icon, "cal-edit-field-icon");
+  gtk_widget_add_css_class (field, "cal-edit-field");
+  return line;
 }
 
 static GtkWidget *
@@ -615,16 +787,19 @@ action_button (const char *icon_name, const char *label, GCallback callback, Edi
 static GtkWidget *
 title_bar (Editor *editor)
 {
-  GtkWidget *bar = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+  GtkWidget *bar = gtk_center_box_new ();
   GtkWidget *divider = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *overlay = gtk_overlay_new ();
   GtkWidget *back = neo_icon_button_new ("cal-back-symbolic");
 
-  /* edit_event_custom_actionbar.xml: "✕ CANCEL" and "✓ DONE" in two halves, a divider between */
-  gtk_box_append (GTK_BOX (bar), action_button ("cal-cancel-symbolic", _("CANCEL"), G_CALLBACK (on_cancel), editor));
+  /* edit_event_custom_actionbar.xml: "✕ CANCEL" and "✓ DONE" in two equal halves (weightSum 2) of the toolbar
+   * after its 16 dp content inset, the divider between (measured: at x 562, the halves centred at 305 and 822) */
+  gtk_center_box_set_start_widget (GTK_CENTER_BOX (bar),
+                                   action_button ("cal-cancel-symbolic", _("CANCEL"), G_CALLBACK (on_cancel), editor));
   gtk_widget_add_css_class (divider, "cal-edit-action-divider");
-  gtk_box_append (GTK_BOX (bar), divider);
-  gtk_box_append (GTK_BOX (bar), action_button ("cal-done-symbolic", _("DONE"), G_CALLBACK (on_done), editor));
+  gtk_center_box_set_center_widget (GTK_CENTER_BOX (bar), divider);
+  gtk_center_box_set_end_widget (GTK_CENTER_BOX (bar),
+                                 action_button ("cal-done-symbolic", _("DONE"), G_CALLBACK (on_done), editor));
   gtk_widget_add_css_class (bar, "cal-edit-bar");
   gtk_overlay_set_child (GTK_OVERLAY (overlay), bar);
   /* An invisible "Back" for the shell's back gesture, which presses the button of that name in the top band (Etar's
@@ -643,7 +818,7 @@ static void
 build (Editor *editor)
 {
   GtkWidget *page = editor->page, *content = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  GtkWidget *box, *label, *calendar_text, *dates, *line, *description_frame;
+  GtkWidget *box, *label, *calendar_text, *dates, *line, *field;
   CalEvent *source = editor->source;
   gboolean new_event = editor->original == NULL;
 
@@ -696,6 +871,20 @@ build (Editor *editor)
     gtk_widget_add_css_class (box, "cal-edit-row");
     gtk_widget_add_css_class (box, "cal-edit-calendar");
   }
+  {
+    /* change_color: outline_color_lens drawn twice its size (scaleX/Y 2) in a 48 dp button, 20 dp from the end;
+     * a writable calendar takes an event colour (the editor only opens on one) */
+    GtkWidget *lens = gtk_image_new_from_icon_name ("cal-color-symbolic");
+
+    gtk_image_set_pixel_size (GTK_IMAGE (lens), 48);
+    editor->color_button = neo_pressable_new (lens);
+    gtk_widget_add_css_class (editor->color_button, "cal-edit-color");
+    gtk_widget_set_valign (editor->color_button, GTK_ALIGN_CENTER);
+    neo_pressable_set_ripple (NEO_PRESSABLE (editor->color_button), NEO_RIPPLE_CIRCLE, 24);
+    gtk_accessible_update_property (GTK_ACCESSIBLE (editor->color_button), GTK_ACCESSIBLE_PROPERTY_LABEL,
+                                    _("Choose event color"), -1);
+    g_signal_connect (editor->color_button, "clicked", G_CALLBACK (on_color), editor);
+  }
   if (new_event)
     {
       editor->calendar_row = neo_pressable_new (box);
@@ -706,7 +895,15 @@ build (Editor *editor)
     }
   else
     editor->calendar_row = box;
-  gtk_box_append (GTK_BOX (content), editor->calendar_row);
+  {
+    /* the colour button sits over the row's end, outside the calendar's pressable area */
+    GtkWidget *overlay = gtk_overlay_new ();
+
+    gtk_overlay_set_child (GTK_OVERLAY (overlay), editor->calendar_row);
+    gtk_widget_set_halign (editor->color_button, GTK_ALIGN_END);
+    gtk_overlay_add_overlay (GTK_OVERLAY (overlay), editor->color_button);
+    gtk_box_append (GTK_BOX (content), overlay);
+  }
   gtk_box_append (GTK_BOX (content), separator ());
 
   /* All day, and the dates and times */
@@ -716,9 +913,8 @@ build (Editor *editor)
   gtk_widget_set_hexpand (label, TRUE);
   gtk_widget_add_css_class (label, "cal-edit-label");
   gtk_box_append (GTK_BOX (box), label);
-  editor->all_day_switch = neo_switch_new ();
-  neo_switch_set_thumb_icons (NEO_SWITCH (editor->all_day_switch), FALSE);
-  neo_switch_set_active (NEO_SWITCH (editor->all_day_switch), editor->all_day);
+  editor->all_day_switch = cal_material_switch_new ();
+  cal_material_switch_set_active (CAL_MATERIAL_SWITCH (editor->all_day_switch), editor->all_day);
   gtk_accessible_update_property (GTK_ACCESSIBLE (editor->all_day_switch), GTK_ACCESSIBLE_PROPERTY_LABEL,
                                   _("All day event"), -1);
   g_signal_connect (editor->all_day_switch, "notify::active", G_CALLBACK (on_all_day), editor);
@@ -749,35 +945,68 @@ build (Editor *editor)
   gtk_grid_attach (GTK_GRID (dates), editor->end_date, 0, 1, 1, 1);
   gtk_grid_attach (GTK_GRID (dates), editor->end_time, 1, 1, 1, 1);
   gtk_box_append (GTK_BOX (content), dates);
-  gtk_box_append (GTK_BOX (content), separator ());
 
-  /* location, description, URL */
-  editor->location = text_field (_("Location"), source ? source->location : NULL);
-  gtk_box_append (GTK_BOX (content), row ("cal-place-symbolic", editor->location));
-  editor->description = gtk_text_view_new ();
-  gtk_text_view_set_wrap_mode (GTK_TEXT_VIEW (editor->description), GTK_WRAP_WORD_CHAR);
-  gtk_text_buffer_set_text (gtk_text_view_get_buffer (GTK_TEXT_VIEW (editor->description)),
-                            source && source->description ? source->description : "", -1);
-  gtk_widget_add_css_class (editor->description, "cal-text-area");
-  description_frame = gtk_overlay_new ();
-  gtk_overlay_set_child (GTK_OVERLAY (description_frame), editor->description);
+  /* the time zone: an outlined button over the row's width, the name and its GMT offset (timezone_button) */
+  editor->tz_button = outlined_button (_("Time zone"), G_CALLBACK (on_tz), editor);
   {
-    /* GtkTextView has no hint: the label shows while it is empty */
-    GtkWidget *hint = gtk_label_new (_("Description"));
-    GtkTextBuffer *buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (editor->description));
+    GtkWidget *tz_label = neo_pressable_get_child (NEO_PRESSABLE (editor->tz_button));
 
-    gtk_label_set_xalign (GTK_LABEL (hint), 0);
-    gtk_widget_set_can_target (hint, FALSE);
-    gtk_widget_set_valign (hint, GTK_ALIGN_START);
-    gtk_widget_add_css_class (hint, "cal-text-hint");
-    g_signal_connect_object (buffer, "changed", G_CALLBACK (on_description_changed), hint, 0);
-    gtk_overlay_add_overlay (GTK_OVERLAY (description_frame), hint);
-    on_description_changed (buffer, hint);
+    /* its lines are spaced by the stylesheet's line height instead (lineSpacingExtra) */
+    gtk_widget_set_margin_top (tz_label, 0);
+    gtk_widget_set_margin_bottom (tz_label, 0);
+    gtk_label_set_ellipsize (GTK_LABEL (tz_label), PANGO_ELLIPSIZE_NONE);
+    gtk_label_set_wrap (GTK_LABEL (tz_label), TRUE);
+    gtk_label_set_xalign (GTK_LABEL (tz_label), 0);
   }
-  gtk_widget_add_css_class (description_frame, "cal-text-field");
-  gtk_box_append (GTK_BOX (content), row ("cal-notes-symbolic", description_frame));
-  editor->url = text_field (_("URL"), source ? source->url : NULL);
-  gtk_box_append (GTK_BOX (content), row ("cal-link-symbolic", editor->url));
+  gtk_widget_set_halign (editor->tz_button, GTK_ALIGN_FILL);
+  gtk_widget_add_css_class (editor->tz_button, "cal-edit-tz");
+  editor->tz_row = row ("cal-public-symbolic", editor->tz_button);
+  gtk_box_append (GTK_BOX (content), editor->tz_row);
+  /* view2, 8 dp under the button (view7, the response and organizer rows above it are a new event's GONE ones) */
+  line = separator ();
+  gtk_widget_add_css_class (line, "cal-edit-separator-tz");
+  gtk_box_append (GTK_BOX (content), line);
+
+  /* guests (RecipientEditTextView, "Guests"): their addresses are kept with the event. Nothing invites them: the
+   * guests go in with SCHEDULE-AGENT=CLIENT and no ORGANIZER, so no server mails them either, and the field says
+   * so under it. */
+  {
+    GString *text = g_string_new (NULL);
+    GtkWidget *helper = gtk_label_new (_("Guests are not sent an invitation"));
+
+    for (guint i = 0; source && i < source->attendees->len; i++)
+      {
+        const CalAttendee *guest = source->attendees->pdata[i];
+
+        if (listed_guest (editor, guest))
+          g_string_append_printf (text, "%s%s", text->len ? ", " : "", guest->email);
+      }
+    field = text_field (_("Guests"), text->str, FALSE, FALSE, &editor->guests);
+    g_string_free (text, TRUE);
+    gtk_text_set_input_purpose (GTK_TEXT (editor->guests), GTK_INPUT_PURPOSE_EMAIL);
+    line = field_row ("cal-person-add-symbolic", field);
+    /* add_attendees_row: 10 dp under the separator's top */
+    gtk_widget_add_css_class (line, "cal-edit-guests");
+    gtk_box_append (GTK_BOX (content), line);
+    /* the helper text under the box (IndicatorViewController): at the text's start, 4 dp under the box */
+    gtk_label_set_xalign (GTK_LABEL (helper), 0);
+    gtk_label_set_wrap (GTK_LABEL (helper), TRUE);
+    neo_label_set_font_padding (helper, 12);
+    gtk_widget_add_css_class (helper, "cal-text-helper");
+    gtk_box_append (GTK_BOX (content), helper);
+  }
+
+  /* location, description, URL (one under the other, no space between the boxes' layouts) */
+  field = text_field (_("Location"), source ? source->location : NULL, FALSE, FALSE, &editor->location);
+  gtk_box_append (GTK_BOX (content), field_row ("cal-place-symbolic", field));
+  field = text_field (_("Description"), source ? source->description : NULL, TRUE, TRUE, &editor->description);
+  gtk_box_append (GTK_BOX (content), field_row ("cal-notes-symbolic", field));
+  field = text_field (_("URL"), source ? source->url : NULL, TRUE, FALSE, &editor->url);
+  gtk_text_set_input_purpose (GTK_TEXT (editor->url), GTK_INPUT_PURPOSE_URL);
+  line = field_row ("cal-link-symbolic", field);
+  /* view3 12 dp under it */
+  gtk_widget_add_css_class (line, "cal-edit-url");
+  gtk_box_append (GTK_BOX (content), line);
   gtk_box_append (GTK_BOX (content), separator ());
 
   /* repeat: not for one occurrence of a series (it is an exception, it repeats nothing) */
@@ -785,7 +1014,11 @@ build (Editor *editor)
   gtk_widget_set_hexpand (editor->repeat, TRUE);
   gtk_widget_set_halign (editor->repeat, GTK_ALIGN_FILL);
   editor->repeat_row = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  gtk_box_append (GTK_BOX (editor->repeat_row), row ("cal-repeat-symbolic", editor->repeat));
+  /* rrule_icon 20 dp under view3 and over view4, the button (marginEnd 24 dp) centred on it */
+  gtk_widget_add_css_class (editor->repeat, "cal-edit-repeat-button");
+  line = row ("cal-repeat-symbolic", editor->repeat);
+  gtk_widget_add_css_class (line, "cal-edit-repeat");
+  gtk_box_append (GTK_BOX (editor->repeat_row), line);
   gtk_box_append (GTK_BOX (editor->repeat_row), separator ());
   gtk_widget_set_visible (editor->repeat_row, !(editor->original && editor->scope == CAL_SCOPE_THIS
                                                 && editor->original->recurring));
@@ -806,6 +1039,38 @@ build (Editor *editor)
   line = row ("cal-notifications-symbolic", box);
   gtk_widget_add_css_class (line, "cal-edit-reminders");
   gtk_box_append (GTK_BOX (content), line);
+  gtk_box_append (GTK_BOX (content), separator ());
+
+  /* Show me as (availability: TRANSP): Busy, Available; Tentative is left out as a calendar's
+   * ALLOWED_AVAILABILITY leaves it out, iCalendar's TRANSP having only those two */
+  {
+    const char *labels[] = { _("Busy"), _("Available") };
+
+    editor->availability = cal_spinner_new ();
+    cal_spinner_set_items (CAL_SPINNER (editor->availability), labels, G_N_ELEMENTS (labels));
+    cal_spinner_set_selected (CAL_SPINNER (editor->availability),
+                              source && source->availability == CAL_AVAILABILITY_FREE ? 1 : 0);
+    gtk_accessible_update_property (GTK_ACCESSIBLE (editor->availability), GTK_ACCESSIBLE_PROPERTY_LABEL,
+                                    _("Show me as"), -1);
+    line = row ("cal-business-symbolic", editor->availability);
+    gtk_widget_add_css_class (line, "cal-edit-spinner-row");
+    gtk_box_append (GTK_BOX (content), line);
+    gtk_box_append (GTK_BOX (content), separator ());
+  }
+  /* Privacy (CLASS): Default (none), Confidential, Private, Public */
+  {
+    const char *labels[] = { _("Default"), _("Confidential"), _("Private"), _("Public") };
+
+    editor->access = cal_spinner_new ();
+    cal_spinner_set_items (CAL_SPINNER (editor->access), labels, G_N_ELEMENTS (labels));
+    cal_spinner_set_selected (CAL_SPINNER (editor->access), source ? (int) source->access : 0);
+    gtk_accessible_update_property (GTK_ACCESSIBLE (editor->access), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Privacy"),
+                                    -1);
+    line = row ("cal-lock-symbolic", editor->access);
+    gtk_widget_add_css_class (line, "cal-edit-spinner-row");
+    gtk_widget_add_css_class (line, "cal-edit-last");
+    gtk_box_append (GTK_BOX (content), line);
+  }
 
   editor->scroll = spongy_scroll_view_new ();
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (editor->scroll), content);
@@ -840,13 +1105,29 @@ editor_page (GtkWidget *window, CalEvent *original, CalEvent *source, gint64 sta
   cal_page_set_back_handler (CAL_PAGE (page), on_back, editor);
   gtk_widget_add_css_class (page, "cal-editor");
 
+  /* the zone: the event's, else the app's (the home time zone when it is used: Utils.getTimeZone) */
+  if (source && source->tzid && !source->all_day)
+    editor->tzid = g_strdup (source->tzid);
+  else if (g_settings_get_boolean (settings, "home-tz-enabled"))
+    {
+      g_autofree char *home = g_settings_get_string (settings, "home-tz");
+
+      editor->tzid = g_strdup (*home ? home : cal_phone_zone ());
+    }
+  else
+    editor->tzid = g_strdup (cal_phone_zone ());
+  if (source)
+    {
+      editor->color = source->color;
+      editor->own_color = source->own_color;
+    }
   if (source)
     {
       const CalCalendar *calendar = cal_store_find_calendar (editor->store, source->calendar);
 
       editor->all_day = source->all_day;
-      split_time (source->start, &editor->start_day, &editor->start_minute);
-      split_time (source->end, &editor->end_day, &editor->end_minute);
+      split_time (editor, source->start, &editor->start_day, &editor->start_minute);
+      split_time (editor, source->end, &editor->end_day, &editor->end_minute);
       if (source->all_day)
         editor->end_day = MAX (editor->start_day, cal_event_last_day (source));
       editor->rrule = g_strdup (source->rrule);
@@ -859,8 +1140,8 @@ editor_page (GtkWidget *window, CalEvent *original, CalEvent *source, gint64 sta
       gint64 end = start + (all_day ? 24 * 3600 : g_settings_get_int (settings, "default-event-duration") * 60);
 
       editor->all_day = all_day;
-      split_time (start, &editor->start_day, &editor->start_minute);
-      split_time (end, &editor->end_day, &editor->end_minute);
+      split_time (editor, start, &editor->start_day, &editor->start_minute);
+      split_time (editor, end, &editor->end_day, &editor->end_minute);
       if (all_day)
         editor->end_day = editor->start_day;
     }

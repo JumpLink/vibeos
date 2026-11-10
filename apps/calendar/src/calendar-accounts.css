@@ -1,0 +1,157 @@
+/* calendar-accounts.css: loaded after calendar.css, at its priority (cal-main.c) */
+
+/* --- the colour picker (color_picker_dialog.xml, SIZE_SMALL): the palette 28 dp in, 4 dp around each 48 dp swatch */
+
+.cal-palette-scroll {
+  padding: 28px;
+}
+
+.cal-palette .cal-swatch {
+  margin: 4px;
+}
+
+/* the neutral button at the start of the bar (AlertDialog's button3) */
+.cal-dialog-neutral {
+  margin-left: -12px;
+}
+
+/* --- a text field (Widget.Material3.TextInputLayout.OutlinedBox): the box 56 dp under the floating hint's half
+ * line, 1 dp outline in colorOutline, 4 dp corners, 2 dp in colorPrimary with focus, colorError with an error */
+
+@define-color cal_error #f2b8b5;          /* M3 dark colorError (light: #b3261e) */
+
+.cal-field-outline {
+  margin-top: 8px;
+  min-height: 56px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px @neo_outline;
+  transition: box-shadow 150ms;
+}
+
+.cal-field.focused .cal-field-outline {
+  box-shadow: inset 0 0 0 2px @neo_primary;
+}
+
+.cal-field.error .cal-field-outline {
+  box-shadow: inset 0 0 0 1px @cal_error;
+}
+
+.cal-field.error.focused .cal-field-outline {
+  box-shadow: inset 0 0 0 2px @cal_error;
+}
+
+.cal-field-text {
+  padding: 0 16px;
+  min-height: 24px;
+  font-size: 16px;
+  color: @neo_on_surface;
+  caret-color: @neo_primary;
+  background: none;
+}
+
+.cal-field-error-icon {
+  margin-right: 12px;
+  color: @cal_error;
+}
+
+/* the hint: resting in the middle of the box (16 sp, its 24 dp line from 8 + 16 dp), floating to the top outline
+ * (12 sp, its 16 dp line centred on it), 4 dp of the background on each side cutting the outline */
+.cal-field-hint {
+  margin: 24px 16px 0 16px;
+  padding: 0;
+  min-height: 24px;
+  font-size: 16px;
+  color: @neo_on_surface_variant;
+  transition: margin 150ms, font-size 150ms, min-height 150ms, padding 150ms, color 150ms;
+}
+
+.cal-field.floating .cal-field-hint {
+  margin: 0 12px;
+  padding: 0 4px;
+  min-height: 16px;
+  font-size: 12px;
+  background-color: @neo_surface_container_highest;   /* the dialog card */
+}
+
+.cal-field.focused .cal-field-hint {
+  color: @neo_primary;
+}
+
+.cal-field.error .cal-field-hint {
+  color: @cal_error;
+}
+
+.cal-field-error {
+  margin: 4px 16px 0 16px;
+  font-size: 12px;
+  color: @cal_error;
+}
+
+/* --- Add offline calendar (add_offline_calendar_dialog.xml): the field 16 dp inside the dialog's custom panel, which
+ * spans the card (out over the card's own 24 dp padding) */
+
+.cal-offline-frame {
+  margin: 0 -24px;
+  padding: 16px;
+}
+
+.cal-offline-dialog .neo-dialog-buttons {
+  margin-top: 2px;
+}
+
+/* --- Add CalDAV calendar (DAVx⁵'s "Login with URL and user name") */
+
+.cal-caldav {
+  padding: 16px 16px 24px 16px;
+}
+
+.cal-caldav .cal-field.floating .cal-field-hint {
+  background-color: @neo_surface;                    /* the page */
+}
+
+.cal-caldav-intro {
+  margin: 8px 0 16px 0;
+  font-size: 22px;
+  color: @neo_on_surface;
+}
+
+.cal-caldav-field {
+  margin-bottom: 8px;
+}
+
+.cal-caldav-status {
+  margin: 8px 0;
+  font-size: 14px;
+  color: @neo_on_surface_variant;
+}
+
+.cal-caldav .cal-pref-category {
+  margin: 8px -16px 0 -16px;
+}
+
+.cal-caldav .cal-pref {
+  margin: 0 -16px;
+}
+
+/* Widget.Material3.Button: 40 dp, a full corner, 24 dp in, labelLarge in colorOnPrimary over colorPrimary */
+.cal-filled-button {
+  margin-top: 16px;
+  min-height: 40px;
+  border-radius: 20px;
+  padding: 0 24px;
+  background-color: @neo_primary;
+}
+
+.cal-filled-button label {
+  font-size: 14px;
+  font-weight: 500;
+  color: @neo_on_primary;
+}
+
+.cal-filled-button:disabled {
+  background-color: alpha(@neo_on_surface, 0.12);
+}
+
+.cal-filled-button:disabled label {
+  color: alpha(@neo_on_surface, 0.38);
+}

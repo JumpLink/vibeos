@@ -21,4 +21,9 @@ void cal_list_dialog   (GtkWidget *parent, const char *title, const char *const 
 /* a message with Cancel and @ok; @done gets 0 for @ok, −1 else */
 void cal_confirm_dialog (GtkWidget *parent, const char *message, const char *ok, CalChoiceDone done, gpointer data);
 
+/* EditTextPreference's dialog: a title over a text field holding @text, Cancel and OK; @done gets the text on OK, NULL
+ * on cancel */
+typedef void (*CalTextDone) (const char *text, gpointer data);
+void cal_text_dialog (GtkWidget *parent, const char *title, const char *text, CalTextDone done, gpointer data);
+
 G_END_DECLS

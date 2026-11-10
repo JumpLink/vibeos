@@ -175,3 +175,48 @@ cal_confirm_dialog (GtkWidget *parent, const char *message, const char *ok, CalC
   g_signal_connect_data (dialog, "response", G_CALLBACK (on_response), choice, choice_free, 0);
   neo_dialog_present (dialog, parent);
 }
+
+typedef struct {
+  CalTextDone done;
+  gpointer data;
+  GtkWidget *entry;
+} TextAsk;
+
+static void
+text_ask_free (gpointer data, GClosure *closure)
+{
+  g_free (data);
+}
+
+static void
+on_text_response (NeoDialog *dialog, int response, TextAsk *ask)
+{
+  ask->done (response == NEO_RESPONSE_OK ? gtk_editable_get_text (GTK_EDITABLE (ask->entry)) : NULL, ask->data);
+}
+
+static void
+on_text_activate (GtkEntry *entry, NeoDialog *dialog)
+{
+  neo_dialog_respond (dialog, NEO_RESPONSE_OK);
+}
+
+void
+cal_text_dialog (GtkWidget *parent, const char *title, const char *text, CalTextDone done, gpointer data)
+{
+  NeoDialog *dialog = neo_dialog_new (title);
+  TextAsk *ask = g_new0 (TextAsk, 1);
+
+  ask->done = done;
+  ask->data = data;
+  /* preference_dialog_edittext: the field under the title, 24 dp in, its line in colorControlActivated */
+  ask->entry = gtk_entry_new ();
+  gtk_editable_set_text (GTK_EDITABLE (ask->entry), text ? text : "");
+  gtk_widget_add_css_class (ask->entry, "cal-dialog-entry");
+  g_signal_connect (ask->entry, "activate", G_CALLBACK (on_text_activate), dialog);
+  neo_dialog_set_content (dialog, ask->entry);
+  neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
+  neo_dialog_add_button (dialog, _("OK"), NEO_RESPONSE_OK);
+  g_signal_connect_data (dialog, "response", G_CALLBACK (on_text_response), ask, text_ask_free, 0);
+  neo_dialog_present (dialog, parent);
+  gtk_widget_grab_focus (ask->entry);
+}

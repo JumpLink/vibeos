@@ -24,6 +24,7 @@
 #define EVENT_TEXT_VERTICAL_MARGIN 2.0
 #define EVENT_TEXT_HORIZONTAL_MARGIN 4.0
 #define EVENT_RECT_TOP_MARGIN 1.0
+#define STAGGERED_EVENT_SHADOW_WIDTH 4.0        /* a staggered event's shadow, dp */
 #define EVENT_RECT_LEFT_MARGIN 1.0
 #define ALL_DAY_EVENT_RECT_BOTTOM_MARGIN 1.0
 #define SINGLE_ALLDAY_HEIGHT 34.0
@@ -58,6 +59,7 @@ struct _CalDayView {
   GPtrArray *events;            /* every event given, sorted */
   GPtrArray *timed;             /* those drawn in the grid, laid out together */
   GPtrArray *all_day;           /* those drawn in the all-day area, laid out together */
+  gboolean staggered;           /* Staggered display */
 
   double cell_height;           /* one hour, dp, without the gap */
   double view_start_y;          /* the grid's scroll, dp */
@@ -83,7 +85,7 @@ struct _CalDayView {
   double page_from, page_to;
   double pinch_cell_height, pinch_focus;
 
-  double hours_width;           /* measured from the hour labels */
+  double hours_text_width;      /* the widest hour label, unrounded (dp) */
   PangoLayout *hour_layouts[24];
   gboolean hours_24;
   guint minute_timer;
@@ -175,7 +177,9 @@ measure_page (CalDayView *self, int first_day, Metrics *m)
   m->width = gtk_widget_get_width (GTK_WIDGET (self));
   m->height = gtk_widget_get_height (GTK_WIDGET (self));
   m->header_height = self->num_days > 1 ? MULTI_DAY_HEADER_HEIGHT : 0;
-  m->hours_width = self->hours_width;
+  /* computeMaxStringWidth rounds the widest label to a whole device pixel: 127 px measured, where a width rounded
+   * up to a whole dp made it 129 */
+  m->hours_width = HOURS_LEFT_MARGIN + round (self->hours_text_width * MAX (scale, 1)) * m->px + HOURS_RIGHT_MARGIN;
   m->pitch = self->cell_height + m->px;
   m->event_text_size = self->num_days > 1 ? WEEK_EVENT_TEXT_SIZE : DAY_EVENT_TEXT_SIZE;
   /* MIN_EVENT_HEIGHT: a line of event text and its margins (E/DayView.java:753) */
@@ -237,12 +241,12 @@ update_hour_labels (CalDayView *self)
   for (guint i = 0; i < G_N_ELEMENTS (wide); i++)
     {
       g_autoptr(PangoLayout) layout = make_layout (self, wide[i], HOURS_TEXT_SIZE, PANGO_WEIGHT_NORMAL);
-      int w;
+      PangoRectangle logical;
 
-      pango_layout_get_pixel_size (layout, &w, NULL);
-      widest = MAX (widest, w);
+      pango_layout_get_extents (layout, NULL, &logical);
+      widest = MAX (widest, (double) logical.width / PANGO_SCALE);
     }
-  self->hours_width = HOURS_LEFT_MARGIN + widest + HOURS_RIGHT_MARGIN;
+  self->hours_text_width = widest;
 }
 
 /* --- drawing */
@@ -276,7 +280,16 @@ draw_event_text (CalDayView *self, GtkSnapshot *snapshot, const Metrics *m, CalE
 {
   g_autofree char *title = g_markup_escape_text (event->title && *event->title ? event->title : _("(No title)"), -1);
   g_autofree char *place = event->location ? g_markup_escape_text (event->location, -1) : NULL;
-  g_autofree char *markup = g_strdup_printf ("<b>%s</b>%s%s", title, place ? " " : "", place ? place : "");
+  /* a cancelled event's title struck through (setStrikeThruText; the place too, as the paint draws both) */
+  g_autofree char *markup = g_strdup_printf ("%s<b>%s</b>%s%s%s", event->cancelled ? "<s>" : "", title,
+                                             place ? " " : "", place ? place : "", event->cancelled ? "</s>" : "");
+  guint32 display = 0xff000000 | cal_event_display_color (event);
+  /* the text: an unanswered invitation's in the event's colour, any other adaptive (white, or with real event
+   * colours black or white by the colour's brightness); a declined event's alpha Etar sets is undone by the
+   * setColor after it */
+  guint32 text = event->self_status == CAL_STATUS_INVITED
+                 ? (cal_adaptive_text_color (0xffffffff, display) & 0xff000000) | (display & 0xffffff)
+                 : cal_adaptive_text_color (0xffffffff, display);
   g_autoptr(PangoLayout) layout = NULL;
   PangoLayoutIter *iter;
   double width = right - left, height = bottom - top, fits = 0;
@@ -314,7 +327,9 @@ draw_event_text (CalDayView *self, GtkSnapshot *snapshot, const Metrics *m, CalE
   gtk_snapshot_save (snapshot);
   gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (left, top + (center ? (height - fits) / 2 : 0), width, fits));
   gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (left, top + (center ? (height - fits) / 2 : 0)));
-  gtk_snapshot_append_layout (snapshot, layout, &(GdkRGBA) { 1, 1, 1, 1 });
+  gtk_snapshot_append_layout (snapshot, layout, &(GdkRGBA) { ((text >> 16) & 0xff) / 255.f,
+                                                             ((text >> 8) & 0xff) / 255.f, (text & 0xff) / 255.f,
+                                                             (text >> 24) / 255.f });
   gtk_snapshot_pop (snapshot);
   gtk_snapshot_restore (snapshot);
 }
@@ -346,51 +361,137 @@ event_rect (CalDayView *self, const Metrics *m, CalEvent *event, int day_number,
   /* drawEvents: the day's cell, then its share for the event's column */
   left = day_left (m, self->num_days, index) + m->px;
   cell_width = day_left (m, self->num_days, index + 1) - left - m->px;
+  if (event->staggered)
+    {
+      /* each column starts an offset further right and ends one further left than the one above it; column 0 has
+       * the whole width */
+      double offset, right;
+
+      col_width = cell_width - 2 * m->px;
+      offset = col_width / (event->max_columns * 2 + 4);
+      left += m->px;
+      right = event->column == 0 ? left + col_width
+                                 : left + col_width - (event->max_columns - 1 - event->column) * offset;
+      left += event->column * offset;
+      *rect = GRAPHENE_RECT_INIT (left, top, right - left, bottom - top);
+      return TRUE;
+    }
   col_width = (cell_width - (event->max_columns + 1) * m->px) / event->max_columns;
   left += event->column * (col_width + m->px);
   *rect = GRAPHENE_RECT_INIT (left, top, col_width, bottom - top);
   return TRUE;
 }
 
+/* the top of an event's text: textTop, where its unobscured part begins (0 unless staggered) */
+static double
+event_text_top (CalDayView *self, CalEvent *event, const graphene_rect_t *rect)
+{
+  return rect->origin.y + (int) (event->text_offset / 60.0 * self->cell_height / 60);
+}
+
+/* drawEventRect's colour: the clicked colour, else the event's, faded when declined */
 static guint32
 event_color (CalDayView *self, CalEvent *event)
 {
   if (event == self->clicked)
     return CAL_CLICKED;
+  if (event->self_status == CAL_STATUS_DECLINED)
+    return cal_declined_color (cal_event_display_color (event));
   return 0xff000000 | cal_event_display_color (event);
+}
+
+/* drawEventRect: filled; an invitation not answered yet (ATTENDEE_STATUS_INVITED) as a 2 dp frame (Style.STROKE
+ * on the rect moved in by half the stroke: the frame's outside is the filled rect's) */
+static void
+draw_event_rect (CalDayView *self, GtkSnapshot *snapshot, CalEvent *event, double left, double top, double right,
+                 double bottom)
+{
+  guint32 color = event_color (self, event);
+  double w = right - left, h = bottom - top, stroke = EVENT_RECT_STROKE_WIDTH;
+
+  if (event->self_status != CAL_STATUS_INVITED || event == self->clicked)
+    {
+      fill (snapshot, color, left, top, w, h);
+      return;
+    }
+  fill (snapshot, color, left, top, w, MIN (stroke, h));
+  fill (snapshot, color, left, MAX (top, bottom - stroke), w, MIN (stroke, h));
+  if (h > 2 * stroke)
+    {
+      fill (snapshot, color, left, top + stroke, MIN (stroke, w), h - 2 * stroke);
+      fill (snapshot, color, MAX (left, right - stroke), top + stroke, MIN (stroke, w), h - 2 * stroke);
+    }
+}
+
+/* the highest column a timed event of the page takes: staggered events draw column by column, the higher ones over
+ * the lower (drawEvents sorts the visible ones by column), and a tap finds the highest first */
+static int
+max_column (CalDayView *self)
+{
+  int columns = 0;
+
+  if (!self->staggered)
+    return 0;
+  for (guint i = 0; i < self->timed->len; i++)
+    columns = MAX (columns, ((CalEvent *) self->timed->pdata[i])->column);
+  return columns;
+}
+
+static void
+draw_timed_event (CalDayView *self, GtkSnapshot *snapshot, const Metrics *m, CalEvent *event,
+                  const graphene_rect_t *r)
+{
+  double top, bottom, left, right;
+
+  /* drawEventRect: 1 dp from the top and the left */
+  top = r->origin.y + EVENT_RECT_TOP_MARGIN;
+  bottom = r->origin.y + r->size.height;
+  left = r->origin.x + EVENT_RECT_LEFT_MARGIN;
+  right = r->origin.x + r->size.width;
+  if (event->staggered && event->column > 0)
+    {
+      /* setShadowLayer(4 dp, staggered_event_shadow_color): Skia's blur sigma 0.57735 r + 0.5 px, a CSS blur
+       * radius twice the sigma */
+      GskRoundedRect box;
+      GdkRGBA shadow = cal_argb (CAL_STAGGERED_SHADOW);
+
+      gsk_rounded_rect_init_from_rect (&box, &GRAPHENE_RECT_INIT (left, top, right - left, bottom - top), 0);
+      gtk_snapshot_append_outset_shadow (snapshot, &box, &shadow, 0, 0, 0,
+                                         2 * (0.57735 * STAGGERED_EVENT_SHADOW_WIDTH + 0.5 * m->px));
+    }
+  draw_event_rect (self, snapshot, event, left, top, right, bottom);
+  /* getEventTextRect: the text from textTop down */
+  top = event_text_top (self, event, r) + EVENT_RECT_TOP_MARGIN;
+  /* setupTextRect: the text margins when there is room for them */
+  if (bottom - top > 2 * EVENT_TEXT_VERTICAL_MARGIN)
+    {
+      top += EVENT_TEXT_VERTICAL_MARGIN;
+      bottom -= EVENT_TEXT_VERTICAL_MARGIN;
+    }
+  if (right - left > 2 * EVENT_TEXT_HORIZONTAL_MARGIN)
+    {
+      left += EVENT_TEXT_HORIZONTAL_MARGIN;
+      right -= EVENT_TEXT_HORIZONTAL_MARGIN;
+    }
+  draw_event_text (self, snapshot, m, event, left, top, right, bottom, FALSE);
 }
 
 static void
 draw_timed_events (CalDayView *self, GtkSnapshot *snapshot, const Metrics *m, int first_day)
 {
-  for (int index = 0; index < self->num_days; index++)
-    for (guint i = 0; i < self->timed->len; i++)
-      {
-        CalEvent *event = self->timed->pdata[i];
-        graphene_rect_t r;
-        double top, bottom, left, right;
+  int columns = max_column (self);
 
-        if (!event_rect (self, m, event, first_day + index, index, &r))
-          continue;
-        /* drawEventRect: 1 dp from the top and the left */
-        top = r.origin.y + EVENT_RECT_TOP_MARGIN;
-        bottom = r.origin.y + r.size.height;
-        left = r.origin.x + EVENT_RECT_LEFT_MARGIN;
-        right = r.origin.x + r.size.width;
-        fill (snapshot, event_color (self, event), left, top, right - left, bottom - top);
-        /* setupTextRect: the text margins when there is room for them */
-        if (bottom - top > 2 * EVENT_TEXT_VERTICAL_MARGIN)
-          {
-            top += EVENT_TEXT_VERTICAL_MARGIN;
-            bottom -= EVENT_TEXT_VERTICAL_MARGIN;
-          }
-        if (right - left > 2 * EVENT_TEXT_HORIZONTAL_MARGIN)
-          {
-            left += EVENT_TEXT_HORIZONTAL_MARGIN;
-            right -= EVENT_TEXT_HORIZONTAL_MARGIN;
-          }
-        draw_event_text (self, snapshot, m, event, left, top, right, bottom, FALSE);
-      }
+  for (int index = 0; index < self->num_days; index++)
+    for (int column = 0; column <= columns; column++)
+      for (guint i = 0; i < self->timed->len; i++)
+        {
+          CalEvent *event = self->timed->pdata[i];
+          graphene_rect_t r;
+
+          if ((self->staggered && event->column != column) || !event_rect (self, m, event, first_day + index, index, &r))
+            continue;
+          draw_timed_event (self, snapshot, m, event, &r);
+        }
 }
 
 /* the all-day events of a page (drawAllDayEvents), with "□ +N" for those that do not fit unexpanded; @skipped is
@@ -447,8 +548,8 @@ draw_all_day_events (CalDayView *self, GtkSnapshot *snapshot, const Metrics *m, 
           if (bottom > clip)
             bottom = clip;
         }
-      fill (snapshot, event_color (self, event), left + EVENT_RECT_LEFT_MARGIN, top + EVENT_RECT_TOP_MARGIN,
-            right - left - EVENT_RECT_LEFT_MARGIN, bottom - top - EVENT_RECT_TOP_MARGIN);
+      draw_event_rect (self, snapshot, event, left + EVENT_RECT_LEFT_MARGIN, top + EVENT_RECT_TOP_MARGIN, right,
+                       bottom);
       /* getAllDayEventTextRect */
       top += EVENT_RECT_TOP_MARGIN;
       left += EVENT_RECT_LEFT_MARGIN;
@@ -681,6 +782,10 @@ cal_day_view_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   CalDayView *self = CAL_DAY_VIEW (widget);
   double width = gtk_widget_get_width (widget), height = gtk_widget_get_height (widget);
 
+  /* day_activity.xml: the FrameLayout around the ViewSwitcher has paddingTop 1dip on day_past_background_color, a
+   * 1 dp strip above the header (measured: #2E2D32 at y 308…310, the view from 311). It is calendar.css's 1 px
+   * padding on cal-day-view, painted here. */
+  fill (snapshot, CAL_PAST_BG, 0, -1, width, 1);
   gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (0, 0, width, height));
   /* a horizontal drag: this period moved aside, the next or previous one beside it (DayView.onDraw's nextView) */
   gtk_snapshot_save (snapshot);
@@ -937,16 +1042,19 @@ event_at (CalDayView *self, const Metrics *m, double x, double y)
     {
       double grid_y = y - m->first_cell + self->view_start_y;
 
-      for (int index = 0; index < self->num_days; index++)
-        for (guint i = 0; i < self->timed->len; i++)
-          {
-            CalEvent *event = self->timed->pdata[i];
-            graphene_rect_t r;
+      /* staggered: the highest column first, the one drawn on top */
+      for (int column = max_column (self); column >= 0; column--)
+        for (int index = 0; index < self->num_days; index++)
+          for (guint i = 0; i < self->timed->len; i++)
+            {
+              CalEvent *event = self->timed->pdata[i];
+              graphene_rect_t r;
 
-            if (event_rect (self, m, event, self->first_day + index, index, &r)
-                && graphene_rect_contains_point (&r, &GRAPHENE_POINT_INIT (x, grid_y)))
-              return event;
-          }
+              if ((!self->staggered || event->column == column)
+                  && event_rect (self, m, event, self->first_day + index, index, &r)
+                  && graphene_rect_contains_point (&r, &GRAPHENE_POINT_INIT (x, grid_y)))
+                return event;
+            }
       return NULL;
     }
   if (y >= m->header_height && m->max_all_day > 0)
@@ -1131,6 +1239,7 @@ cal_day_view_class_init (CalDayViewClass *klass)
   widget_class->snapshot = cal_day_view_snapshot;
   widget_class->size_allocate = cal_day_view_size_allocate;
   widget_class->css_changed = cal_day_view_css_changed;
+  gtk_widget_class_set_css_name (widget_class, "cal-day-view");
   gtk_widget_class_set_accessible_role (widget_class, GTK_ACCESSIBLE_ROLE_GRID);
 
   signals[EVENT_ACTIVATED] = g_signal_new ("event-activated", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL,
@@ -1203,6 +1312,17 @@ cal_day_view_get_num_days (CalDayView *self)
 }
 
 void
+cal_day_view_set_num_days (CalDayView *self, int num_days)
+{
+  num_days = CLAMP (num_days, 1, 7);
+  if (num_days == self->num_days)
+    return;
+  self->num_days = num_days;
+  gtk_widget_queue_resize (GTK_WIDGET (self));
+  gtk_widget_queue_draw (GTK_WIDGET (self));
+}
+
+void
 cal_day_view_set_first_day (CalDayView *self, int first_day)
 {
   if (neo_anim_is_running (self->page_anim))
@@ -1220,12 +1340,35 @@ cal_day_view_get_first_day (CalDayView *self)
   return self->first_day;
 }
 
-void
-cal_day_view_set_events (CalDayView *self, GPtrArray *events)
+/* Event.computePositions: an event shorter than the minimum height takes that height's time in the layout */
+static void
+layout_events (CalDayView *self)
 {
   Metrics m;
   gint64 min_seconds;
 
+  measure_page (self, self->first_day, &m);
+  min_seconds = (gint64) (m.min_unexpanded * 60 / (self->cell_height / 60));
+  if (self->staggered)
+    cal_layout_events_staggered (self->timed, min_seconds);
+  else
+    cal_layout_events (self->timed, FALSE, min_seconds);
+  cal_layout_events (self->all_day, TRUE, 0);
+}
+
+void
+cal_day_view_set_staggered (CalDayView *self, gboolean staggered)
+{
+  if (self->staggered == !!staggered)
+    return;
+  self->staggered = !!staggered;
+  layout_events (self);
+  gtk_widget_queue_draw (GTK_WIDGET (self));
+}
+
+void
+cal_day_view_set_events (CalDayView *self, GPtrArray *events)
+{
   g_ptr_array_set_size (self->events, 0);
   g_ptr_array_set_size (self->timed, 0);
   g_ptr_array_set_size (self->all_day, 0);
@@ -1236,11 +1379,7 @@ cal_day_view_set_events (CalDayView *self, GPtrArray *events)
       g_ptr_array_add (self->events, cal_event_ref (event));
       g_ptr_array_add (cal_event_draws_as_all_day (event) ? self->all_day : self->timed, event);
     }
-  /* Event.computePositions: an event shorter than the minimum height takes that height's time in the layout */
-  measure_page (self, self->first_day, &m);
-  min_seconds = (gint64) (m.min_unexpanded * 60 / (self->cell_height / 60));
-  cal_layout_events (self->timed, FALSE, min_seconds);
-  cal_layout_events (self->all_day, TRUE, 0);
+  layout_events (self);
   clamp_scroll (self);
   gtk_widget_queue_draw (GTK_WIDGET (self));
 }

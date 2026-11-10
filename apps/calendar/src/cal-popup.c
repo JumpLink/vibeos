@@ -83,6 +83,8 @@ cal_popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, int 
 
       gtk_label_set_xalign (GTK_LABEL (text), 0);
       gtk_label_set_ellipsize (GTK_LABEL (text), PANGO_ELLIPSIZE_END);
+      neo_label_set_font_padding (text, 16);
+      gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
       gtk_widget_add_css_class (row, "cal-menu-item");
       if (i == selected)
         gtk_widget_add_css_class (row, "selected");
@@ -95,6 +97,9 @@ cal_popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, int 
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), list);
   card = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (card, "cal-menu");
+  /* a popup menu at the bar's end (no selection) is an overflow menu: its items' letter spacing (calendar.css) */
+  if (end && selected < 0)
+    gtk_widget_add_css_class (card, "cal-overflow-menu-items");
   gtk_widget_set_overflow (card, GTK_OVERFLOW_HIDDEN);
   gtk_box_append (GTK_BOX (card), scroll);
 

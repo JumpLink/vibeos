@@ -3,7 +3,8 @@
  *
  * The header (the title, the chosen date large), the month with ‹ › and a swipe between months, a tap on
  * "November 2026 ▾" for a list of years, the days in 40 dp circles (today ringed, the choice filled), Cancel and OK.
- * Left out: the pencil that switches to typing the date (MaterialDatePicker's text input mode): not built. */
+ * The pencil in the header switches to typing the date (the text input mode: an outlined "Date" field in the
+ * locale's short pattern, its errors under it), the calendar icon back. */
 #pragma once
 
 #include <gtk/gtk.h>

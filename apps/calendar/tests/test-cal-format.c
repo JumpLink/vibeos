@@ -16,6 +16,9 @@ test_rrule (void)
     { "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", "Every weekday (Mon–Fri)" },
     { "FREQ=YEARLY", "Yearly" },
     { "FREQ=DAILY;COUNT=5", "Daily; for 5 times" },
+    /* the end on the local date the UTC time falls on (Berlin: 00:59:59 on December 1), a DATE as written */
+    { "FREQ=DAILY;UNTIL=20261130T235959Z", "Daily; until 12/1/2026" },
+    { "FREQ=DAILY;UNTIL=20261130", "Daily; until 11/30/2026" },
   };
 
   for (guint i = 0; i < G_N_ELEMENTS (cases); i++)

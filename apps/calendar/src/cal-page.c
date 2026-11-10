@@ -91,6 +91,9 @@ cal_page_toolbar (CalPage *self, const char *title, GtkWidget **actions)
       gtk_label_set_xalign (GTK_LABEL (label), 0);
       gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
       gtk_widget_add_css_class (label, "cal-toolbar-title");
+      /* centred as the toolbar's TextView is, its line the font's bounding box (measured: the still's title 4 px
+       * lower than a plain label's) */
+      neo_label_set_font_padding (label, 22);
       gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
       gtk_widget_set_hexpand (label, TRUE);
       gtk_box_append (GTK_BOX (bar), label);

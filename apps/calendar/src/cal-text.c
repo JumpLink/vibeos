@@ -64,6 +64,17 @@ cal_text_ellipsize (PangoLayout *layout, double width)
 }
 
 void
+cal_text_strike (PangoLayout *layout)
+{
+  PangoAttrList *attrs = pango_layout_get_attributes (layout) ? pango_attr_list_copy (pango_layout_get_attributes (layout))
+                                                              : pango_attr_list_new ();
+
+  pango_attr_list_insert (attrs, pango_attr_strikethrough_new (TRUE));
+  pango_layout_set_attributes (layout, attrs);
+  pango_attr_list_unref (attrs);
+}
+
+void
 cal_fill_rect (GtkSnapshot *snapshot, int scale, double x, double y, double w, double h, const GdkRGBA *color)
 {
   double x0 = round (x * scale) / scale, y0 = round (y * scale) / scale;

@@ -27,6 +27,8 @@ void         cal_text_draw   (GtkSnapshot *snapshot, PangoLayout *layout, double
                               const GdkRGBA *color);
 /* a one-line layout cut to @width with an ellipsis at the end (TextUtils.ellipsize, TruncateAt.END) */
 void         cal_text_ellipsize (PangoLayout *layout, double width);
+/* Paint.STRIKE_THRU_TEXT_FLAG over the whole text (a cancelled event's title) */
+void         cal_text_strike (PangoLayout *layout);
 
 /* a device-pixel-exact rectangle: [x, x + w) × [y, y + h) rounded to device pixels */
 void         cal_fill_rect   (GtkSnapshot *snapshot, int scale, double x, double y, double w, double h,

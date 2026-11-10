@@ -6,6 +6,7 @@
 #include "cal-format.h"
 #include "cal-page.h"
 #include "cal-popup.h"
+#include "cal-search.h"
 #include "cal-settings.h"
 #include "day-view.h"
 #include "event-editor.h"
@@ -23,7 +24,6 @@ static const char *view_names[N_VIEWS] = { "day", "week", "month", "agenda" };
 #define DRAWER_MS 250                   /* DrawerLayout's settle, at most */
 #define VIEW_FADE_MS 150                /* FragmentTransaction.TRANSIT_FRAGMENT_FADE */
 #define PAGE_MS 300                     /* an activity opening over the main one */
-#define MENU_WIDTH 196.0                /* the overflow menu, measured 588 px */
 
 typedef struct {
   GtkWidget *window;
@@ -52,6 +52,7 @@ typedef struct {
 
   ViewType view, previous_view;
   gboolean back_to_previous;            /* Back returns to the view before (Month → a day) */
+  gboolean landscape;                   /* the window wider than tall: the Month view's landscape layout */
   int selected_day;
   GCancellable *query;
   guint midnight;
@@ -112,6 +113,11 @@ update_title (Shell *shell)
       break;
     case VIEW_WEEK:
       title = cal_format_month_year (cal_day_view_get_first_day (CAL_DAY_VIEW (shell->view_widgets[VIEW_WEEK])));
+      /* "Show week number": "Week 46" under it (buildWeekNum, from the selected time) */
+      if (g_settings_get_boolean (shell->settings, "show-week-number"))
+        subtitle = cal_format_week_number (cal_week_number (cal_day_view_get_first_day (
+                                                              CAL_DAY_VIEW (shell->view_widgets[VIEW_WEEK])),
+                                                            week_start (shell)));
       break;
     case VIEW_MONTH:
     default:
@@ -134,6 +140,11 @@ on_events (GPtrArray *events, gpointer data)
 
   if (!events)
     return;             /* cancelled: a newer query is on its way */
+  /* Hide declined events: the provider's query leaves out selfAttendeeStatus = DECLINED */
+  if (g_settings_get_boolean (shell->settings, "hide-declined"))
+    for (guint i = events->len; i-- > 0;)
+      if (((CalEvent *) events->pdata[i])->self_status == CAL_STATUS_DECLINED)
+        g_ptr_array_remove_index (events, i);
   view = shell->view_widgets[shell->view];
   switch (shell->view)
     {
@@ -214,7 +225,9 @@ show_view (Shell *shell, ViewType view, int day)
       cal_day_view_set_first_day (CAL_DAY_VIEW (widget), day);
       break;
     case VIEW_WEEK:
-      cal_day_view_set_first_day (CAL_DAY_VIEW (widget), week_of (shell, day));
+      /* DayView.setSelected: a seven-day view starts on the week's first day, a shorter one on the day itself */
+      cal_day_view_set_first_day (CAL_DAY_VIEW (widget), cal_day_view_get_num_days (CAL_DAY_VIEW (widget)) == 7
+                                                         ? week_of (shell, day) : day);
       break;
     case VIEW_MONTH:
       cal_month_view_go_to (CAL_MONTH_VIEW (widget), day);
@@ -663,6 +676,50 @@ on_menu_refresh (NeoPressable *item, Shell *shell)
 }
 
 static void
+on_menu_view_settings (NeoPressable *item, Shell *shell)
+{
+  close_menu (shell);
+  cal_window_push (shell->window, cal_display_options_page_new (shell->window));
+}
+
+static void
+on_menu_search (NeoPressable *item, Shell *shell)
+{
+  close_menu (shell);
+  cal_search_open (shell->window);
+}
+
+static void
+on_import_chosen (GObject *dialog, GAsyncResult *result, gpointer data)
+{
+  GtkWidget *window = data;
+  g_autoptr(GFile) file = gtk_file_dialog_open_finish (GTK_FILE_DIALOG (dialog), result, NULL);
+
+  if (file)
+    cal_window_import (window, file);
+  g_object_unref (window);
+}
+
+/* Import event: Etar asks for a text/calendar document (ACTION_GET_CONTENT) and opens ImportActivity with it; here
+ * the file chooser (the portal's when there is one) and then the same import as opening an .ics with the app */
+static void
+on_menu_import (NeoPressable *item, Shell *shell)
+{
+  g_autoptr(GtkFileDialog) dialog = gtk_file_dialog_new ();
+  g_autoptr(GtkFileFilter) filter = gtk_file_filter_new ();
+  g_autoptr(GListStore) filters = g_list_store_new (GTK_TYPE_FILE_FILTER);
+
+  close_menu (shell);
+  gtk_file_filter_set_name (filter, _("Calendar files"));
+  gtk_file_filter_add_mime_type (filter, "text/calendar");
+  gtk_file_filter_add_suffix (filter, "ics");
+  g_list_store_append (filters, filter);
+  gtk_file_dialog_set_filters (dialog, G_LIST_MODEL (filters));
+  gtk_file_dialog_set_default_filter (dialog, filter);
+  gtk_file_dialog_open (dialog, GTK_WINDOW (shell->window), NULL, on_import_chosen, g_object_ref (shell->window));
+}
+
+static void
 on_menu_scrim (GtkGestureClick *gesture, int n, double x, double y, Shell *shell)
 {
   close_menu (shell);
@@ -684,6 +741,9 @@ menu_item (Shell *shell, const char *label, GCallback callback)
   GtkWidget *item = neo_pressable_new (text);
 
   gtk_label_set_xalign (GTK_LABEL (text), 0);
+  /* TextView's font padding: the title sits where ListMenuItemView puts it (measured: 2 px lower than without) */
+  neo_label_set_font_padding (text, 16);
+  gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
   gtk_widget_add_css_class (item, "cal-menu-item");
   neo_pressable_set_ripple (NEO_PRESSABLE (item), NEO_RIPPLE_BOUNDED, 0);
   g_signal_connect (item, "clicked", callback, shell);
@@ -704,15 +764,16 @@ on_more (NeoPressable *button, Shell *shell)
   gtk_overlay_set_child (GTK_OVERLAY (layer), scrim);
   gtk_widget_add_css_class (menu, "cal-menu");
   gtk_widget_add_css_class (menu, "cal-overflow-menu");
-  gtk_widget_set_size_request (menu, (int) MENU_WIDTH, -1);
   gtk_widget_set_halign (menu, GTK_ALIGN_END);
   gtk_widget_set_valign (menu, GTK_ALIGN_START);
   gtk_accessible_update_property (GTK_ACCESSIBLE (menu), GTK_ACCESSIBLE_PROPERTY_LABEL, _("More options"), -1);
   gtk_box_append (GTK_BOX (menu), menu_item (shell, _("Go to…"), G_CALLBACK (on_menu_go_to)));
   gtk_box_append (GTK_BOX (menu), menu_item (shell, _("Refresh"), G_CALLBACK (on_menu_refresh)));
-  /* Search, Import event and View settings are left out: there is no search screen yet (Etar's SearchActivity),
-   * importing works by opening an .ics file with the app (cal_window_import), and Month's view settings are not
-   * built */
+  gtk_box_append (GTK_BOX (menu), menu_item (shell, _("Search"), G_CALLBACK (on_menu_search)));
+  gtk_box_append (GTK_BOX (menu), menu_item (shell, _("Import event"), G_CALLBACK (on_menu_import)));
+  /* updateViewSettingsVisiblility: the Month view only */
+  if (shell->view == VIEW_MONTH)
+    gtk_box_append (GTK_BOX (menu), menu_item (shell, _("View settings"), G_CALLBACK (on_menu_view_settings)));
   gtk_overlay_add_overlay (GTK_OVERLAY (layer), menu);
   shell->menu = layer;
   gtk_overlay_add_overlay (neo_window_get_overlay (shell->window), layer);
@@ -1121,8 +1182,58 @@ shell_free (gpointer data)
 }
 
 static void
+apply_home_zone (Shell *shell)
+{
+  g_autofree char *tzid = g_settings_get_string (shell->settings, "home-tz");
+
+  cal_set_home_zone (g_settings_get_boolean (shell->settings, "home-tz-enabled") ? tzid : NULL);
+  if (shell->store)
+    cal_store_zone_changed (shell->store);
+  gtk_widget_queue_draw (shell->window);
+}
+
+/* Display options (ViewDetailsPreferences.getPreferences): the Month view's layout for the orientation */
+static void
+apply_month_details (Shell *shell)
+{
+  const char *side = shell->landscape ? "landscape" : "portrait";
+  g_autofree char *lines = g_strconcat ("month-lines-", side, NULL);
+  g_autofree char *time = g_strconcat ("month-time-", side, NULL);
+  g_autofree char *location = g_strconcat ("month-location-", side, NULL);
+
+  if (shell->view_widgets[VIEW_MONTH])
+    cal_month_view_set_details (CAL_MONTH_VIEW (shell->view_widgets[VIEW_MONTH]),
+                                g_settings_get_int (shell->settings, lines), g_settings_get_int (shell->settings, time),
+                                g_settings_get_boolean (shell->settings, location));
+}
+
+/* the window turned: the other orientation's Display options */
+static void
+on_surface_layout (GdkSurface *surface, int width, int height, Shell *shell)
+{
+  gboolean landscape = width > height;
+
+  if (landscape == shell->landscape)
+    return;
+  shell->landscape = landscape;
+  apply_month_details (shell);
+}
+
+static void
+on_window_realize (GtkWidget *window, Shell *shell)
+{
+  g_signal_connect (gtk_native_get_surface (GTK_NATIVE (window)), "layout", G_CALLBACK (on_surface_layout), shell);
+}
+
+static void
 on_settings_changed (GSettings *settings, const char *key, Shell *shell)
 {
+  if (g_str_has_prefix (key, "month-lines-") || g_str_has_prefix (key, "month-time-")
+      || g_str_has_prefix (key, "month-location-"))
+    {
+      apply_month_details (shell);
+      return;
+    }
   if (g_str_equal (key, "week-start"))
     {
       cal_month_view_set_week_start (CAL_MONTH_VIEW (shell->view_widgets[VIEW_MONTH]), week_start (shell));
@@ -1132,6 +1243,32 @@ on_settings_changed (GSettings *settings, const char *key, Shell *shell)
     {
       cal_set_real_event_colors (g_settings_get_boolean (settings, key));
       refresh (shell);
+    }
+  else if (g_str_equal (key, "days-per-week"))
+    {
+      cal_day_view_set_num_days (CAL_DAY_VIEW (shell->view_widgets[VIEW_WEEK]), g_settings_get_int (settings, key));
+      if (shell->view == VIEW_WEEK)
+        show_view (shell, shell->view, shell->selected_day);
+    }
+  else if (g_str_equal (key, "show-week-number"))
+    {
+      cal_month_view_set_show_week_number (CAL_MONTH_VIEW (shell->view_widgets[VIEW_MONTH]),
+                                           g_settings_get_boolean (settings, key));
+      update_title (shell);
+    }
+  else if (g_str_equal (key, "hide-declined"))
+    refresh (shell);
+  else if (g_str_equal (key, "staggered"))
+    {
+      cal_day_view_set_staggered (CAL_DAY_VIEW (shell->view_widgets[VIEW_DAY]), g_settings_get_boolean (settings, key));
+      cal_day_view_set_staggered (CAL_DAY_VIEW (shell->view_widgets[VIEW_WEEK]),
+                                  g_settings_get_boolean (settings, key));
+    }
+  else if (g_str_equal (key, "home-tz-enabled") || g_str_equal (key, "home-tz"))
+    {
+      /* Utils.setTimeZone: every time the app shows is in the new zone */
+      apply_home_zone (shell);
+      show_view (shell, shell->view, today ());
     }
 }
 
@@ -1155,8 +1292,10 @@ cal_window_new (GtkApplication *app, CalStore *store, GSettings *settings)
 
   cal_set_real_event_colors (g_settings_get_boolean (settings, "real-event-colors"));
   shell->window = window;
-  shell->store = g_object_ref (store);
   shell->settings = g_object_ref (settings);
+  shell->store = g_object_ref (store);
+  /* before anything is shown: the store reads floating and all-day times in the home zone too */
+  apply_home_zone (shell);
   shell->pushed = g_ptr_array_new ();
   shell->drawer_anim = neo_anim_new (window, on_drawer_anim, shell);
   g_object_set_data_full (G_OBJECT (window), "cal-shell", shell, shell_free);
@@ -1174,8 +1313,9 @@ cal_window_new (GtkApplication *app, CalStore *store, GSettings *settings)
 
       if (i == VIEW_DAY || i == VIEW_WEEK)
         {
-          widget = cal_day_view_new (i == VIEW_DAY ? 1 : 7);
+          widget = cal_day_view_new (i == VIEW_DAY ? 1 : g_settings_get_int (settings, "days-per-week"));
           cal_day_view_set_cell_height (CAL_DAY_VIEW (widget), g_settings_get_double (settings, "cell-height"));
+          cal_day_view_set_staggered (CAL_DAY_VIEW (widget), g_settings_get_boolean (settings, "staggered"));
           g_signal_connect (widget, "page", G_CALLBACK (on_page), shell);
           g_signal_connect (widget, "day-activated", G_CALLBACK (on_day_activated), shell);
           g_signal_connect (widget, "create-event", G_CALLBACK (on_create_event), shell);
@@ -1185,7 +1325,10 @@ cal_window_new (GtkApplication *app, CalStore *store, GSettings *settings)
         {
           widget = cal_month_view_new ();
           cal_month_view_set_week_start (CAL_MONTH_VIEW (widget), week_start (shell));
+          cal_month_view_set_show_week_number (CAL_MONTH_VIEW (widget),
+                                               g_settings_get_boolean (settings, "show-week-number"));
           g_signal_connect (widget, "day-activated", G_CALLBACK (on_month_day), shell);
+          g_signal_connect (window, "realize", G_CALLBACK (on_window_realize), shell);
           g_signal_connect (widget, "moved", G_CALLBACK (on_month_moved), shell);
         }
       else
@@ -1202,6 +1345,7 @@ cal_window_new (GtkApplication *app, CalStore *store, GSettings *settings)
       if (view_name && g_str_equal (view_name, view_names[i]))
         view = i;
     }
+  apply_month_details (shell);
 
   gtk_box_append (GTK_BOX (main), make_toolbar (shell));
   gtk_box_append (GTK_BOX (main), shell->views);

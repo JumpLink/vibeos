@@ -1,5 +1,6 @@
 /* The calendar's dates and times as text (cal-format.h). */
 #include "cal-format.h"
+#include <time.h>
 #include "cal-model.h"
 
 #include <gio/gio.h>
@@ -370,9 +371,19 @@ cal_format_rrule (const char *rrule, gint64 start)
   /* the end: "; until 12/31/2026" (FORMAT_NUMERIC_DATE), "; for 5 times" */
   if (until)
     {
-      int y = 0, m = 0, d = 0;
-      g_autoptr(GDateTime) date = sscanf (until, "%4d%2d%2d", &y, &m, &d) == 3
-                                  ? g_date_time_new_local (y, m, d, 12, 0, 0) : NULL;
+      int y = 0, m = 0, d = 0, h = 0, mi = 0, sec = 0;
+      g_autoptr(GDateTime) date = NULL;
+
+      /* Time.parse, then formatDateTime in the shown zone: a UTC end ("…T225959Z") is the local date it falls on */
+      if (strlen (until) == 16 && until[15] == 'Z'
+          && sscanf (until, "%4d%2d%2dT%2d%2d%2d", &y, &m, &d, &h, &mi, &sec) == 6)
+        {
+          g_autoptr(GDateTime) utc = g_date_time_new_utc (y, m, d, h, mi, sec);
+
+          date = utc ? g_date_time_to_local (utc) : NULL;
+        }
+      else if (sscanf (until, "%4d%2d%2d", &y, &m, &d) == 3)
+        date = g_date_time_new_local (y, m, d, 12, 0, 0);
 
       if (date)
         {
@@ -440,4 +451,58 @@ cal_format_rrule (const char *rrule, gint64 start)
     g_free (text);
     return full;
   }
+}
+
+/* --- the home time zone */
+
+static char *phone_zone, *phone_tz_env;
+static gboolean phone_read;
+
+static void
+read_phone_zone (void)
+{
+  g_autoptr(GTimeZone) local = NULL;
+
+  if (phone_read)
+    return;
+  phone_read = TRUE;
+  phone_tz_env = g_strdup (g_getenv ("TZ"));
+  local = g_time_zone_new_local ();
+  phone_zone = g_strdup (g_time_zone_get_identifier (local));
+}
+
+const char *
+cal_phone_zone (void)
+{
+  read_phone_zone ();
+  return phone_zone;
+}
+
+void
+cal_set_home_zone (const char *tzid)
+{
+  read_phone_zone ();
+  if (tzid && *tzid)
+    g_setenv ("TZ", tzid, TRUE);
+  else if (phone_tz_env)
+    g_setenv ("TZ", phone_tz_env, TRUE);
+  else
+    g_unsetenv ("TZ");
+  tzset ();
+}
+
+int
+cal_week_number (int day, int week_start)
+{
+  int first = day - (cal_day_of_week (day) - week_start + 7) % 7;
+  int thursday = first + (4 - week_start + 7) % 7;
+  g_autoptr(GDateTime) time = g_date_time_new_from_unix_local (cal_day_start (thursday) + 12 * 3600);
+
+  return g_date_time_get_week_of_year (time);
+}
+
+char *
+cal_format_week_number (int week)
+{
+  return g_strdup_printf (g_dngettext (GETTEXT_PACKAGE, "Week %d", "Week %d", week), week);
 }

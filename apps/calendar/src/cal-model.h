@@ -20,6 +20,9 @@ typedef struct {
   gboolean readonly;    /* the backend refuses writes (a holiday or subscribed calendar) */
   gboolean visible;     /* shown in the views (ESourceSelectable:selected) */
   gboolean alarms;      /* its reminders ring (ESourceAlarms:include-me) */
+  char *email;          /* its owner's address (the backend's cal-email-address), to find "me" among the guests;
+                         * NULL for a calendar without one (a local calendar) */
+  gboolean local;       /* "On This Computer" (backend "local"): only these take guests' status from the app */
 } CalCalendar;
 
 void cal_calendar_free (CalCalendar *calendar);
@@ -39,6 +42,31 @@ typedef struct {
   CalMethod method;
 } CalReminder;
 
+/* --- guests (Etar's Attendees rows; ATTENDEE properties) */
+
+typedef enum {
+  CAL_STATUS_NONE,              /* Attendees.ATTENDEE_STATUS_NONE: no PARTSTAT, or no ATTENDEE for the owner */
+  CAL_STATUS_ACCEPTED,          /* PARTSTAT=ACCEPTED */
+  CAL_STATUS_DECLINED,          /* PARTSTAT=DECLINED */
+  CAL_STATUS_INVITED,           /* PARTSTAT=NEEDS-ACTION (the default) */
+  CAL_STATUS_TENTATIVE,         /* PARTSTAT=TENTATIVE */
+} CalStatus;
+
+typedef struct {
+  char *email;          /* the address, without "mailto:" */
+  char *name;           /* CN, or NULL */
+  CalStatus status;
+  gboolean organizer;   /* the ORGANIZER, listed as Etar lists it among the guests */
+} CalAttendee;
+
+void         cal_attendee_free (CalAttendee *attendee);
+CalAttendee *cal_attendee_copy (const CalAttendee *attendee);
+
+/* Events.AVAILABILITY: TRANSP (OPAQUE busy, the default; TRANSPARENT free) */
+typedef enum { CAL_AVAILABILITY_BUSY, CAL_AVAILABILITY_FREE } CalAvailability;
+/* Events.ACCESS_LEVEL: CLASS (none: the calendar's default) */
+typedef enum { CAL_ACCESS_DEFAULT, CAL_ACCESS_CONFIDENTIAL, CAL_ACCESS_PRIVATE, CAL_ACCESS_PUBLIC } CalAccess;
+
 /* --- events (one occurrence) */
 
 typedef struct {
@@ -55,13 +83,29 @@ typedef struct {
   char *tzid;           /* the zone of DTSTART ("Europe/Berlin"), or NULL for UTC, floating and all-day */
   GArray *reminders;    /* CalReminder, in the event's order */
   gboolean readonly;    /* its calendar is read-only */
+  gboolean own_color;   /* the colour is the event's COLOR, not its calendar's */
+  CalAvailability availability;
+  CalAccess access;
+  GPtrArray *attendees; /* CalAttendee: the guests, the organizer first when there is one */
+  char *organizer;      /* ORGANIZER's address, or NULL */
+  CalStatus self_status;  /* the calendar owner's PARTSTAT (Instances.SELF_ATTENDEE_STATUS) */
+  gboolean cancelled;   /* STATUS:CANCELLED (Events.STATUS_CANCELED): the views strike its title through */
 
-  /* the layout of the views, filled by cal_layout_day (Etar's Event.column, maxColumns) */
+  /* the layout of the views, filled by cal_layout_events (Etar's Event.column, maxColumns, textOffsetMillis,
+   * drawStaggered) */
   int column, max_columns;
+  gint64 text_offset;   /* staggered: seconds from the start to where the title shows (unobscured) */
+  gboolean staggered;
 } CalEvent;
 
 CalEvent *cal_event_new   (void);
 CalEvent *cal_event_ref   (CalEvent *event);
+/* a new event with all of @event's fields (the layout's reset) */
+CalEvent *cal_event_copy  (const CalEvent *event);
+/* "Email guests" (AlertReceiver.createEmailIntent, Utils.createEmailAttendeesIntent): a mailto: URI to the guests
+ * other than @me (the declined ones on cc), else to the organizer; "Re: <title>" and @body; NULL when there is no
+ * one to write to */
+char     *cal_event_mail_uri (const CalEvent *event, const char *me, const char *body);
 void      cal_event_unref (CalEvent *event);
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (CalEvent, cal_event_unref)
 
@@ -83,6 +127,12 @@ guint32 cal_display_color (guint32 rgb, gboolean real_colors);
  * sets once for all views (Etar reads the preference in Utils.getDisplayColorFromColor) */
 guint32 cal_event_display_color   (const CalEvent *event);
 void    cal_set_real_event_colors (gboolean real);
+/* Utils.getDeclinedColorFromColor: a declined event's colour, @rgb at 0x66 over white */
+guint32 cal_declined_color (guint32 rgb);
+/* Utils.getAdaptiveTextColor with getAdaptiveTextAlpha: with real event colours, an event's text is black at 70 %
+ * on a bright colour (brightness over 130) and white at 90 % on a dark one; @argb (the views' text colour)
+ * otherwise */
+guint32 cal_adaptive_text_color (guint32 argb, guint32 event_rgb);
 
 /* --- days: a local calendar day as one number, as Etar's Julian days */
 
@@ -95,5 +145,10 @@ int     cal_minute_of_day (gint64 time);        /* 0 … 1439, local */
  * of a span of days) sorted by cal_event_compare, each event's column and the columns of its overlap group.
  * @min_seconds is the shortest duration an event takes up on screen (its minimum height in time). */
 void cal_layout_events (GPtrArray *events, gboolean all_day, gint64 min_seconds);
+/* "Staggered display" (computeGroupLayout with drawStaggered, timed events only): an event goes in the lowest column
+ * where neither it nor any event below it is wholly covered by later columns for @min_seconds, a column inserted
+ * where needed; each event's text_offset is where its uncovered part begins. A group it cannot stagger falls back to
+ * cal_layout_events' columns. */
+void cal_layout_events_staggered (GPtrArray *events, gint64 min_seconds);
 
 G_END_DECLS

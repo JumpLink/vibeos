@@ -1,14 +1,30 @@
-/* MaterialDatePicker (cal-date-picker.h; spec/calendar.md §8.1). Sizes are the still's, in dp. */
+/* MaterialDatePicker (cal-date-picker.h; spec/calendar.md §8.1). Sizes are the still's, in dp.
+ *
+ * The text input mode (SingleDateSelector.onCreateTextInputView, mtrl_picker_text_input_date.xml): the pencil
+ * swaps the month and its days for an outlined "Date" field 16 dp under the header, 12 dp in from the sides, with
+ * the locale's short date as its pattern (UtcDates.getDefaultTextInputFormat: "M/d/yy" → "MM/dd/yyyy") and that
+ * pattern in the abbreviations as its placeholder ("mm/dd/yyyy", "tt.mm.jjjj"). Typing forward adds the pattern's
+ * next separator (DateFormatTextWatcher.afterTextChanged); every change clears the choice (the header "Selected
+ * date", OK off) until the text is as long as the pattern and parses strictly to a day from 1900 to 2100; a second
+ * after typing stops, a text that does not parse shows "Invalid format." with the pattern and today as an example,
+ * a day outside the range "Out of range: …", both in colorError under the field, with the error icon in it. The
+ * calendar icon goes back to the days, at the month of the day typed. */
 #include "cal-date-picker.h"
 #include "cal-colors.h"
 #include "cal-format.h"
 #include "cal-model.h"
+#include "cal-outlined-field.h"
 #include "cal-text.h"
 
 #include <glib/gi18n.h>
 #include <math.h>
 #include <neo.h>
 #include <spongy-gtk.h>
+#include <string.h>
+#include <unicode/udat.h>
+#include <unicode/udatpg.h>
+#include <unicode/uloc.h>
+#include <unicode/ustring.h>
 
 #define CARD_WIDTH 328.0
 #define CELL 40.0                       /* a day's cell; 4 dp between columns */
@@ -19,15 +35,36 @@
 #define YEAR_FIRST 1900
 #define YEAR_LAST 2100
 #define SWIPE_SLOP 8.0
+#define NO_DAY 0                        /* no day chosen (a day number is 1 or more) */
+#define FIELD_HEIGHT 56.0               /* the M3 outlined text field */
+#define FIELD_PADDING 16.0
+#define FIELD_CORNER 4.0
+#define FIELD_TEXT_SIZE 16.0            /* bodyLarge */
+#define LABEL_SIZE 12.0                 /* bodySmall: the label on the outline */
+#define LABEL_CUTOUT 4.0                /* mtrl_textinput_box_label_cutout_padding */
+#define LABEL_MS 167                    /* CollapsingTextHelper's animation */
+#define ERROR_ICON 24.0
+#define ERROR_ICON_END 12.0
+#define VALIDATION_MS 1000              /* DateFormatTextWatcher.VALIDATION_DELAY */
+#define ERROR_ICON_PATH "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"
 
 typedef struct {
   NeoDialog *dialog;
   CalDateChosen chosen;
   gpointer data;
-  int selected;                 /* the chosen day */
+  int selected;                 /* the chosen day, or NO_DAY */
   int month;                    /* the month shown: year · 12 + month − 1 */
   int week_start;
   GtkWidget *selection, *month_label, *stack, *grid, *years, *prev, *next;
+  /* the text input mode */
+  gboolean text_mode;
+  GtkWidget *toggle, *nav, *input, *field, *error, *ok;
+  char *pattern;                /* the input format ("MM/dd/yyyy") */
+  char *hint;                   /* its placeholder ("mm/dd/yyyy") */
+  guint validation;             /* the error a second after typing stops */
+  char *pending_error;
+  int last_length;
+  gboolean setting_text;
 } Picker;
 
 /* --- months */
@@ -228,14 +265,19 @@ cal_day_grid_init (CalDayGrid *self)
 static void
 update (Picker *picker)
 {
-  g_autofree char *selection = cal_format_picker_date (picker->selected);
+  /* with nothing chosen (a date being typed) the header says so and OK is off (isSelectionComplete) */
+  g_autofree char *selection = picker->selected != NO_DAY ? cal_format_picker_date (picker->selected)
+                                                          : g_strdup (_("Selected date"));
   g_autofree char *month = cal_format_month_year (month_start (picker->month));
-  g_autofree char *current = g_strdup_printf (_("Current selection: %s"), selection);
+  g_autofree char *current = picker->selected != NO_DAY ? g_strdup_printf (_("Current selection: %s"), selection)
+                                                        : g_strdup (_("None"));
 
   gtk_label_set_label (GTK_LABEL (picker->selection), selection);
   gtk_accessible_update_property (GTK_ACCESSIBLE (picker->selection), GTK_ACCESSIBLE_PROPERTY_LABEL, current, -1);
   gtk_label_set_label (GTK_LABEL (picker->month_label), month);
   gtk_widget_queue_draw (picker->grid);
+  if (picker->ok)
+    gtk_widget_set_sensitive (picker->ok, picker->selected != NO_DAY);
 }
 
 static void
@@ -291,7 +333,8 @@ on_month_toggle (NeoPressable *button, Picker *picker)
 static void
 on_response (NeoDialog *dialog, int response, Picker *picker)
 {
-  if (response == NEO_RESPONSE_OK)
+  g_clear_handle_id (&picker->validation, g_source_remove);
+  if (response == NEO_RESPONSE_OK && picker->selected != NO_DAY)
     picker->chosen (picker->selected, picker->data);
 }
 
@@ -332,7 +375,7 @@ years_list (Picker *picker)
       gtk_widget_add_css_class (button, "cal-year");
       gtk_widget_set_halign (button, GTK_ALIGN_CENTER);
       /* YearGridAdapter: the year of the chosen day filled, this year outlined */
-      if (year == month_of (picker->selected) / 12)
+      if (picker->selected != NO_DAY && year == month_of (picker->selected) / 12)
         gtk_widget_add_css_class (button, "selected");
       else if (year == this_year)
         gtk_widget_add_css_class (button, "today");
@@ -352,10 +395,537 @@ years_list (Picker *picker)
   }
 }
 
+/* --- the text input mode: the outlined field (TextInputLayout.OutlinedBox under Material 3) */
+
+#define CAL_TYPE_DATE_FIELD (cal_date_field_get_type ())
+G_DECLARE_FINAL_TYPE (CalDateField, cal_date_field, CAL, DATE_FIELD, GtkWidget)
+
+struct _CalDateField {
+  GtkWidget parent;
+  GtkWidget *text;
+  char *label;
+  char *placeholder;
+  gboolean error;
+  double floated;               /* the label: 0 in the field at 16 sp, 1 on the outline at 12 sp */
+  NeoAnim *float_anim;
+  GskPath *error_icon;
+};
+
+G_DEFINE_FINAL_TYPE (CalDateField, cal_date_field, GTK_TYPE_WIDGET)
+
+static void
+cal_date_field_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, int *min, int *nat,
+                        int *min_baseline, int *nat_baseline)
+{
+  *min = *nat = orientation == GTK_ORIENTATION_VERTICAL ? (int) FIELD_HEIGHT : 0;
+}
+
+static void
+cal_date_field_allocate (GtkWidget *widget, int width, int height, int baseline)
+{
+  CalDateField *self = CAL_DATE_FIELD (widget);
+  /* the end icon's 48 dp take the text's end padding while the error shows */
+  int end = self->error ? (int) (ERROR_ICON + 2 * ERROR_ICON_END) : (int) FIELD_PADDING, text_height, ignored;
+
+  gtk_widget_measure (self->text, GTK_ORIENTATION_VERTICAL, -1, &ignored, &text_height, NULL, NULL);
+  gtk_widget_size_allocate (self->text,
+                            &(GtkAllocation) { (int) FIELD_PADDING, (height - text_height) / 2,
+                                               MAX (0, width - (int) FIELD_PADDING - end), text_height }, -1);
+}
+
+static void
+cal_date_field_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
+{
+  CalDateField *self = CAL_DATE_FIELD (widget);
+  double width = gtk_widget_get_width (widget), f = self->floated;
+  int scale = neo_device_scale (widget);
+  gboolean focused = gtk_widget_has_focus (self->text);
+  double stroke = focused ? 2 : 1, inset = stroke / 2, size = FIELD_TEXT_SIZE + (LABEL_SIZE - FIELD_TEXT_SIZE) * f;
+  double baseline, line, label_width = 0;
+  g_autoptr(PangoLayout) label = cal_text_layout (widget, self->label, size, 700);
+  g_autoptr(PangoLayout) collapsed = cal_text_layout (widget, self->label, LABEL_SIZE, 700);
+  g_autoptr(GskPath) path = NULL;
+  g_autoptr(GskStroke) pen = gsk_stroke_new ((float) stroke);
+  GdkRGBA error, outline, label_color;
+  PangoRectangle logical;
+
+  /* the error colour is the field's CSS colour (.cal-date-field.error) */
+  gtk_widget_get_color (widget, &error);
+  outline = self->error ? error : cal_argb (focused ? CAL_PRIMARY : CAL_OUTLINE);
+  label_color = self->error ? error : cal_argb (focused ? CAL_PRIMARY : CAL_ON_SURFACE_VARIANT);
+
+  pango_layout_get_extents (collapsed, NULL, &logical);
+  if (f > 0)
+    label_width = logical.width / (double) PANGO_SCALE;
+  path = cal_outline_path (inset, inset, width - stroke, FIELD_HEIGHT - stroke, FIELD_CORNER,
+                       f > 0 ? FIELD_PADDING - LABEL_CUTOUT : 0, f > 0 ? FIELD_PADDING + label_width + LABEL_CUTOUT : 0);
+  gtk_snapshot_append_stroke (snapshot, path, pen, &outline);
+
+  /* the label, from the middle of the field to the middle of the top edge */
+  cal_text_line (size, scale, &baseline, &line);
+  cal_text_draw (snapshot, label, FIELD_PADDING, (FIELD_HEIGHT / 2) * (1 - f) - line / 2 + baseline, 0, &label_color);
+
+  if (self->error)
+    {
+      gtk_snapshot_save (snapshot);
+      gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT ((float) (width - ERROR_ICON_END - ERROR_ICON),
+                                                              (float) ((FIELD_HEIGHT - ERROR_ICON) / 2)));
+      gtk_snapshot_append_fill (snapshot, self->error_icon, GSK_FILL_RULE_WINDING, &error);
+      gtk_snapshot_restore (snapshot);
+    }
+  gtk_widget_snapshot_child (widget, self->text, snapshot);
+}
+
+static void
+on_float (NeoAnim *anim, double value, gpointer data)
+{
+  CAL_DATE_FIELD (data)->floated = value;
+  gtk_widget_queue_draw (GTK_WIDGET (data));
+}
+
+/* the label floats with the focus or a text; the placeholder shows only then, under it (TextInputLayout) */
+static void
+field_restate (CalDateField *self, gboolean animate)
+{
+  gboolean focused = gtk_widget_has_focus (self->text);
+  gboolean up = focused || *gtk_editable_get_text (GTK_EDITABLE (self->text));
+
+  gtk_text_set_placeholder_text (GTK_TEXT (self->text), focused ? self->placeholder : NULL);
+  if (animate && (up ? 1.0 : 0.0) != self->floated)
+    neo_anim_start (self->float_anim, self->floated, up ? 1 : 0, LABEL_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
+  else if (!animate)
+    {
+      neo_anim_stop (self->float_anim);
+      self->floated = up ? 1 : 0;
+    }
+  gtk_widget_queue_draw (GTK_WIDGET (self));
+}
+
+static void
+on_field_focus (GtkEventControllerFocus *focus, CalDateField *self)
+{
+  field_restate (self, TRUE);
+}
+
+static void
+cal_date_field_dispose (GObject *object)
+{
+  CalDateField *self = CAL_DATE_FIELD (object);
+
+  g_clear_pointer (&self->text, gtk_widget_unparent);
+  g_clear_pointer (&self->float_anim, neo_anim_free);
+  g_clear_pointer (&self->error_icon, gsk_path_unref);
+  g_clear_pointer (&self->label, g_free);
+  g_clear_pointer (&self->placeholder, g_free);
+  G_OBJECT_CLASS (cal_date_field_parent_class)->dispose (object);
+}
+
+static void
+cal_date_field_class_init (CalDateFieldClass *klass)
+{
+  GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
+
+  G_OBJECT_CLASS (klass)->dispose = cal_date_field_dispose;
+  widget_class->measure = cal_date_field_measure;
+  widget_class->size_allocate = cal_date_field_allocate;
+  widget_class->snapshot = cal_date_field_snapshot;
+}
+
+static void
+cal_date_field_init (CalDateField *self)
+{
+  GtkEventController *focus = gtk_event_controller_focus_new ();
+
+  gtk_widget_add_css_class (GTK_WIDGET (self), "cal-date-field");
+  self->label = g_strdup (_("Date"));
+  self->error_icon = gsk_path_parse (ERROR_ICON_PATH);
+  self->float_anim = neo_anim_new (GTK_WIDGET (self), on_float, self);
+  self->text = gtk_text_new ();
+  /* inputType date: the digits and the separators */
+  gtk_text_set_input_purpose (GTK_TEXT (self->text), GTK_INPUT_PURPOSE_NUMBER);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (self->text), GTK_ACCESSIBLE_PROPERTY_LABEL, self->label, -1);
+  gtk_widget_set_parent (self->text, GTK_WIDGET (self));
+  g_signal_connect (focus, "enter", G_CALLBACK (on_field_focus), self);
+  g_signal_connect (focus, "leave", G_CALLBACK (on_field_focus), self);
+  gtk_widget_add_controller (self->text, focus);
+}
+
+static void
+field_set_error (CalDateField *self, gboolean error)
+{
+  if (self->error == error)
+    return;
+  self->error = error;
+  if (error)
+    gtk_widget_add_css_class (GTK_WIDGET (self), "error");
+  else
+    gtk_widget_remove_css_class (GTK_WIDGET (self), "error");
+  gtk_widget_queue_allocate (GTK_WIDGET (self));
+  gtk_widget_queue_draw (GTK_WIDGET (self));
+}
+
+/* --- the input format (UtcDates) */
+
+static char *
+utf8 (const UChar *text, int32_t length)
+{
+  UErrorCode status = U_ZERO_ERROR;
+  int32_t size = 0;
+  char *out;
+
+  u_strToUTF8 (NULL, 0, &size, text, length, &status);
+  if (status != U_BUFFER_OVERFLOW_ERROR && U_FAILURE (status))
+    return NULL;
+  status = U_ZERO_ERROR;
+  out = g_malloc (size + 1);
+  u_strToUTF8 (out, size + 1, NULL, text, length, &status);
+  if (U_FAILURE (status))
+    g_clear_pointer (&out, g_free);
+  return out;
+}
+
+static char *
+regex_replace (const char *text, const char *pattern, const char *replacement)
+{
+  g_autoptr(GRegex) regex = g_regex_new (pattern, 0, 0, NULL);
+
+  return g_regex_replace_literal (regex, text, -1, 0, replacement, 0, NULL);
+}
+
+/* getDefaultTextInputFormat → getDatePatternAsInputFormat: the locale's SHORT date as digits only */
+static char *
+input_pattern (void)
+{
+  UErrorCode status = U_ZERO_ERROR;
+  UDateFormat *format = udat_open (UDAT_NONE, UDAT_SHORT, uloc_getDefault (), NULL, 0, NULL, 0, &status);
+  UChar pattern[64];
+  int32_t length;
+  g_autofree char *text = NULL;
+  char *steps[6];
+
+  if (U_FAILURE (status))
+    return g_strdup ("MM/dd/yyyy");
+  length = udat_toPattern (format, FALSE, pattern, G_N_ELEMENTS (pattern), &status);
+  udat_close (format);
+  text = U_SUCCESS (status) ? utf8 (pattern, length) : NULL;
+  if (!text)
+    return g_strdup ("MM/dd/yyyy");
+  steps[0] = regex_replace (text, "[^dMy/\\-.]", "");
+  steps[1] = regex_replace (steps[0], "d{1,2}", "dd");
+  steps[2] = regex_replace (steps[1], "M{1,2}", "MM");
+  steps[3] = regex_replace (steps[2], "y{1,4}", "yyyy");
+  steps[4] = regex_replace (steps[3], "\\.$", "");
+  steps[5] = regex_replace (steps[4], "My", "M/y");
+  for (int i = 0; i < 5; i++)
+    g_free (steps[i]);
+  return steps[5];
+}
+
+/* getDefaultTextInputHint: the pattern in the abbreviations mtrl_picker_text_input_{day,month,year}_abbr */
+static char *
+input_hint (const char *pattern)
+{
+  GString *hint = g_string_new (NULL);
+
+  for (const char *p = pattern; *p; p++)
+    if (*p == 'd')
+      g_string_append (hint, C_("date input: day", "d"));
+    else if (*p == 'M')
+      g_string_append (hint, C_("date input: month", "m"));
+    else if (*p == 'y')
+      g_string_append (hint, C_("date input: year", "y"));
+    else
+      g_string_append_c (hint, *p);
+  return g_string_free (hint, FALSE);
+}
+
+static UDateFormat *
+pattern_format (const char *pattern)
+{
+  UErrorCode status = U_ZERO_ERROR;
+  UChar text[64], utc[] = { 'U', 'T', 'C', 0 };
+  UDateFormat *format;
+
+  if (strlen (pattern) >= G_N_ELEMENTS (text))
+    return NULL;
+  u_uastrcpy (text, pattern);
+  format = udat_open (UDAT_PATTERN, UDAT_PATTERN, uloc_getDefault (), utc, -1, text, -1, &status);
+  if (U_FAILURE (status))
+    return NULL;
+  udat_setLenient (format, FALSE);
+  return format;
+}
+
+/* a day number as text in @format (UTC midnight) */
+static char *
+format_day (UDateFormat *format, int day)
+{
+  GDate date, epoch;
+  UChar text[64];
+  UErrorCode status = U_ZERO_ERROR;
+  int32_t length;
+
+  g_date_clear (&date, 1);
+  g_date_set_julian (&date, day);
+  g_date_clear (&epoch, 1);
+  g_date_set_dmy (&epoch, 1, 1, 1970);
+  length = udat_format (format, (UDate) g_date_days_between (&epoch, &date) * 86400000.0, text,
+                        G_N_ELEMENTS (text), NULL, &status);
+  return U_SUCCESS (status) ? utf8 (text, length) : NULL;
+}
+
+/* DateStrings.getYearMonthDay's skeleton yMMMd, for a day before year 1 that the header's format cannot show */
+static char *
+format_far_day (UDate ms)
+{
+  UErrorCode status = U_ZERO_ERROR;
+  UDateTimePatternGenerator *generator = udatpg_open (uloc_getDefault (), &status);
+  UChar skeleton[] = { 'y', 'M', 'M', 'M', 'd', 0 }, pattern[64], text[64], utc[] = { 'U', 'T', 'C', 0 };
+  UDateFormat *format;
+  int32_t length;
+  char *out = NULL;
+
+  if (U_FAILURE (status))
+    return NULL;
+  length = udatpg_getBestPattern (generator, skeleton, -1, pattern, G_N_ELEMENTS (pattern), &status);
+  udatpg_close (generator);
+  if (U_FAILURE (status))
+    return NULL;
+  format = udat_open (UDAT_PATTERN, UDAT_PATTERN, uloc_getDefault (), utc, -1, pattern, length, &status);
+  if (U_FAILURE (status))
+    return NULL;
+  length = udat_format (format, ms, text, G_N_ELEMENTS (text), NULL, &status);
+  if (U_SUCCESS (status))
+    out = utf8 (text, length);
+  udat_close (format);
+  return out;
+}
+
+/* sanitizeDateString: no line break inside a date */
+static char *
+no_break (const char *text)
+{
+  g_auto(GStrv) parts = g_strsplit (text ? text : "", " ", -1);
+
+  return g_strjoinv ("\u00a0", parts);
+}
+
+static void
+set_error (Picker *picker, const char *error)
+{
+  gtk_label_set_label (GTK_LABEL (picker->error), error ? error : "");
+  gtk_widget_set_visible (picker->error, error != NULL);
+  field_set_error (CAL_DATE_FIELD (picker->field), error != NULL);
+}
+
+static gboolean
+on_validation (gpointer data)
+{
+  Picker *picker = data;
+
+  picker->validation = 0;
+  set_error (picker, picker->pending_error);
+  return G_SOURCE_REMOVE;
+}
+
+/* DateFormatTextWatcher.onTextChanged: the choice cleared, then the text parsed once it is as long as the hint */
+static void
+validate (Picker *picker, const char *text)
+{
+  UDateFormat *format;
+  UErrorCode status = U_ZERO_ERROR;
+  UChar input[64];
+  int32_t position = 0;
+  UDate ms;
+  GDate first, last, epoch, day;
+
+  g_clear_handle_id (&picker->validation, g_source_remove);
+  g_clear_pointer (&picker->pending_error, g_free);
+  set_error (picker, NULL);
+  picker->selected = NO_DAY;
+  update (picker);
+  if (!*text || g_utf8_strlen (text, -1) < g_utf8_strlen (picker->hint, -1) || strlen (text) >= G_N_ELEMENTS (input))
+    return;
+  format = pattern_format (picker->pattern);
+  if (!format)
+    return;
+  u_uastrcpy (input, text);
+  ms = udat_parse (format, input, -1, &position, &status);
+  if (U_FAILURE (status))
+    {
+      g_autofree char *today = NULL, *use = NULL, *example = NULL, *hint = no_break (picker->hint);
+      g_autofree char *use_line = NULL, *example_line = NULL;
+
+      today = format_day (format, cal_day_number (g_get_real_time () / G_USEC_PER_SEC));
+      example = no_break (today);
+      use_line = g_strdup_printf (_("Use: %s"), hint);
+      example_line = g_strdup_printf (_("Example: %s"), example);
+      picker->pending_error = g_strconcat (_("Invalid format."), "\n", use_line, "\n", example_line, NULL);
+    }
+  else
+    {
+      gint64 days = (gint64) floor (ms / 86400000.0), first_days, last_days;
+
+      g_date_clear (&epoch, 1);
+      g_date_set_dmy (&epoch, 1, 1, 1970);
+      g_date_clear (&first, 1);
+      g_date_set_dmy (&first, 1, 1, YEAR_FIRST);
+      g_date_clear (&last, 1);
+      g_date_set_dmy (&last, 31, 12, YEAR_LAST);
+      first_days = g_date_days_between (&epoch, &first);
+      last_days = g_date_days_between (&epoch, &last);
+      if (days >= first_days && days <= last_days)
+        {
+          /* CalendarConstraints' default 1900 … 2100, the calendar's years: the day is chosen */
+          day = first;
+          g_date_add_days (&day, (guint) (days - first_days));
+          picker->selected = (int) g_date_get_julian (&day);
+          picker->month = month_of (picker->selected);
+          update (picker);
+        }
+      else
+        {
+          /* the day as the header would show it; ICU's yMMMd for one GDate cannot hold (before year 1) */
+          gint64 julian = (gint64) g_date_get_julian (&epoch) + days;
+          g_autofree char *far = julian >= 1 && julian <= G_MAXINT32 / 2
+                                 ? cal_format_picker_date ((int) julian) : format_far_day ((UDate) days * 86400000.0);
+          g_autofree char *date = no_break (far);
+
+          picker->pending_error = g_strdup_printf (_("Out of range: %s"), date);
+        }
+    }
+  udat_close (format);
+  if (picker->pending_error)
+    picker->validation = g_timeout_add (VALIDATION_MS, on_validation, picker);
+}
+
+static void
+on_date_changed (GtkEditable *editable, Picker *picker)
+{
+  const char *text = gtk_editable_get_text (editable);
+  int length = (int) g_utf8_strlen (text, -1), hint_length = (int) g_utf8_strlen (picker->hint, -1);
+
+  if (picker->setting_text)
+    return;
+  /* afterTextChanged: typing forward, the pattern's next character when it is a separator */
+  if (length > 0 && length < hint_length && length > picker->last_length)
+    {
+      gunichar next = g_utf8_get_char (g_utf8_offset_to_pointer (picker->hint, length));
+
+      if (!g_unichar_isalnum (next))
+        {
+          char separator[7] = { 0 };
+          g_autofree char *longer = NULL;
+
+          g_unichar_to_utf8 (next, separator);
+          longer = g_strconcat (text, separator, NULL);
+          picker->setting_text = TRUE;
+          gtk_editable_set_text (editable, longer);
+          gtk_editable_set_position (editable, -1);
+          picker->setting_text = FALSE;
+          text = gtk_editable_get_text (editable);
+          length++;
+        }
+    }
+  picker->last_length = length;
+  field_restate (CAL_DATE_FIELD (picker->field), TRUE);
+  validate (picker, text);
+}
+
+/* DateKeyListener: digits and the separators a date may have */
+static void
+on_date_insert (GtkEditable *editable, const char *text, int length, int *position, Picker *picker)
+{
+  for (const char *p = text; length < 0 ? *p : p < text + length; p++)
+    if (!g_ascii_isdigit (*p) && !strchr ("/-.", *p))
+      {
+        g_signal_stop_emission_by_name (editable, "insert-text");
+        return;
+      }
+}
+
+/* mtrl_picker_text_input_date: the field 16 dp under the header, 12 dp in from the sides, the error under it */
+static GtkWidget *
+text_input (Picker *picker)
+{
+  GtkWidget *pane = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  CalDateField *field = g_object_new (CAL_TYPE_DATE_FIELD, NULL);
+
+  gtk_widget_add_css_class (pane, "cal-date-input");
+  field->placeholder = g_strdup (picker->hint);
+  picker->field = GTK_WIDGET (field);
+  g_signal_connect (field->text, "changed", G_CALLBACK (on_date_changed), picker);
+  g_signal_connect (field->text, "insert-text", G_CALLBACK (on_date_insert), picker);
+  gtk_box_append (GTK_BOX (pane), picker->field);
+  picker->error = gtk_label_new (NULL);
+  gtk_label_set_xalign (GTK_LABEL (picker->error), 0);
+  gtk_label_set_wrap (GTK_LABEL (picker->error), TRUE);
+  gtk_label_set_wrap_mode (GTK_LABEL (picker->error), PANGO_WRAP_WORD_CHAR);
+  gtk_widget_add_css_class (picker->error, "cal-date-error");
+  gtk_widget_set_visible (picker->error, FALSE);
+  gtk_box_append (GTK_BOX (pane), picker->error);
+  gtk_widget_set_visible (pane, FALSE);
+  return pane;
+}
+
+/* the pencil and the calendar icon (MaterialDatePicker.toggleInputMode) */
+static void
+on_mode_toggle (NeoPressable *button, Picker *picker)
+{
+  GtkWidget *image = neo_pressable_get_child (button);
+
+  picker->text_mode = !picker->text_mode;
+  gtk_widget_set_visible (picker->nav, !picker->text_mode);
+  gtk_widget_set_visible (picker->stack, !picker->text_mode);
+  gtk_widget_set_visible (picker->input, picker->text_mode);
+  gtk_image_set_from_icon_name (GTK_IMAGE (image), picker->text_mode ? "cal-calendar-symbolic" : "cal-pencil-symbolic");
+  gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL,
+                                  picker->text_mode ? _("Switch to calendar input mode")
+                                                    : _("Switch to text input mode"), -1);
+  if (picker->text_mode)
+    {
+      CalDateField *field = CAL_DATE_FIELD (picker->field);
+      g_autofree char *text = NULL;
+      UDateFormat *format = pattern_format (picker->pattern);
+
+      /* the chosen day in the input format, the cursor after it, the keyboard up */
+      if (format && picker->selected != NO_DAY)
+        text = format_day (format, picker->selected);
+      if (format)
+        udat_close (format);
+      g_clear_handle_id (&picker->validation, g_source_remove);
+      set_error (picker, NULL);
+      picker->setting_text = TRUE;
+      gtk_editable_set_text (GTK_EDITABLE (field->text), text ? text : "");
+      picker->setting_text = FALSE;
+      picker->last_length = (int) g_utf8_strlen (text ? text : "", -1);
+      gtk_widget_grab_focus (field->text);
+      gtk_editable_set_position (GTK_EDITABLE (field->text), -1);
+      field_restate (field, FALSE);
+    }
+  else
+    {
+      g_clear_handle_id (&picker->validation, g_source_remove);
+      gtk_stack_set_visible_child_name (GTK_STACK (picker->stack), "days");
+      gtk_widget_set_visible (picker->prev, TRUE);
+      gtk_widget_set_visible (picker->next, TRUE);
+      if (picker->selected != NO_DAY)
+        picker->month = month_of (picker->selected);
+      gtk_widget_grab_focus (GTK_WIDGET (button));
+      update (picker);
+    }
+}
+
 static void
 picker_free (gpointer data, GClosure *closure)
 {
-  g_free (data);
+  Picker *picker = data;
+
+  g_clear_handle_id (&picker->validation, g_source_remove);
+  g_free (picker->pending_error);
+  g_free (picker->pattern);
+  g_free (picker->hint);
+  g_free (picker);
 }
 
 void
@@ -379,8 +949,11 @@ cal_date_picker_show (GtkWidget *parent, const char *title, int day, int week_st
   picker->selected = day;
   picker->month = month_of (day);
   picker->week_start = week_start;
+  picker->pattern = input_pattern ();
+  picker->hint = input_hint (picker->pattern);
 
-  /* the header: the title, then the chosen date large. The pencil (text input mode) is left out: not built. */
+  /* the header: the title, then the chosen date large, the pencil at its end (mtrl_picker_header_toggle: 48 dp,
+   * 12 dp from the card's end, 8 dp over the header's end) */
   gtk_widget_add_css_class (header, "cal-date-header");
   gtk_label_set_xalign (GTK_LABEL (title_label), 0);
   gtk_widget_add_css_class (title_label, "cal-date-title");
@@ -392,11 +965,19 @@ cal_date_picker_show (GtkWidget *parent, const char *title, int day, int week_st
   gtk_widget_set_vexpand (selection_row, TRUE);
   gtk_widget_add_css_class (picker->selection, "cal-date-selection");
   gtk_box_append (GTK_BOX (selection_row), picker->selection);
+  picker->toggle = neo_icon_button_new ("cal-pencil-symbolic");
+  gtk_widget_add_css_class (picker->toggle, "cal-date-toggle");
+  gtk_widget_set_valign (picker->toggle, GTK_ALIGN_END);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (picker->toggle), GTK_ACCESSIBLE_PROPERTY_LABEL,
+                                  _("Switch to text input mode"), -1);
+  g_signal_connect (picker->toggle, "clicked", G_CALLBACK (on_mode_toggle), picker);
+  gtk_box_append (GTK_BOX (selection_row), picker->toggle);
   gtk_box_append (GTK_BOX (header), selection_row);
   /* no divider under it: MaterialDatePicker draws one in its fullscreen mode only (none on still:cal-dlg-date) */
   gtk_box_append (GTK_BOX (content), header);
 
   /* the month: "November 2026 ▾" (the year list), ‹ › */
+  picker->nav = nav;
   gtk_widget_add_css_class (nav, "cal-date-nav");
   picker->month_label = gtk_label_new (NULL);
   gtk_widget_add_css_class (picker->month_label, "cal-date-month");
@@ -441,6 +1022,8 @@ cal_date_picker_show (GtkWidget *parent, const char *title, int day, int week_st
   gtk_stack_add_named (GTK_STACK (picker->stack), years_list (picker), "years");
   gtk_widget_add_css_class (picker->stack, "cal-date-days");
   gtk_box_append (GTK_BOX (content), picker->stack);
+  picker->input = text_input (picker);
+  gtk_box_append (GTK_BOX (content), picker->input);
 
   gtk_widget_set_size_request (content, (int) CARD_WIDTH, -1);
   gtk_widget_add_css_class (content, "cal-date-picker");
@@ -449,7 +1032,7 @@ cal_date_picker_show (GtkWidget *parent, const char *title, int day, int week_st
   /* the card is the content's parent: its own class takes the M3 picker's colour and button band */
   gtk_widget_add_css_class (gtk_widget_get_parent (content), "cal-date-card");
   neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  neo_dialog_add_button (dialog, _("OK"), NEO_RESPONSE_OK);
+  picker->ok = neo_dialog_add_button (dialog, _("OK"), NEO_RESPONSE_OK);
   g_signal_connect_data (dialog, "response", G_CALLBACK (on_response), picker, picker_free, 0);
   update (picker);
   neo_dialog_present (dialog, parent);

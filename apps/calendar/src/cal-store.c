@@ -17,6 +17,7 @@ typedef struct {
   ECalClientView *view;
   GCancellable *cancellable;
   gboolean done;                        /* connected or failed */
+  char *email;                          /* the backend's cal-email-address, once it has answered */
 } Connection;
 
 struct _CalStore {
@@ -73,7 +74,32 @@ calendar_copy (const CalCalendar *calendar)
   copy->uid = g_strdup (calendar->uid);
   copy->name = g_strdup (calendar->name);
   copy->account = g_strdup (calendar->account);
+  copy->email = g_strdup (calendar->email);
   return copy;
+}
+
+/* the zone the app shows times in: the home time zone when it is used (cal_set_home_zone sets TZ), else this
+ * phone's. EDS's own system zone reads /etc/localtime and never TZ, so it cannot stand for it. */
+static ICalTimezone *
+app_zone (void)
+{
+  const char *tz = g_getenv ("TZ");
+  ICalTimezone *zone = tz && *tz ? i_cal_timezone_get_builtin_timezone (tz[0] == ':' ? tz + 1 : tz) : NULL;
+
+  return zone ? zone : e_cal_util_get_system_timezone ();
+}
+
+void
+cal_store_zone_changed (CalStore *self)
+{
+  GHashTableIter iter;
+  gpointer value;
+
+  g_hash_table_iter_init (&iter, self->connections);
+  while (g_hash_table_iter_next (&iter, NULL, &value))
+    if (((Connection *) value)->client)
+      e_cal_client_set_default_timezone (((Connection *) value)->client, app_zone ());
+  g_signal_emit (self, signals[CHANGED], 0);
 }
 
 gint64
@@ -151,6 +177,69 @@ read_reminders (ECalComponent *comp, GArray *reminders)
   g_slist_free_full (alarms, e_cal_component_alarm_free);
 }
 
+static CalStatus
+status_of (ICalParameterPartstat partstat)
+{
+  switch (partstat)
+    {
+    case I_CAL_PARTSTAT_ACCEPTED: return CAL_STATUS_ACCEPTED;
+    case I_CAL_PARTSTAT_DECLINED: return CAL_STATUS_DECLINED;
+    case I_CAL_PARTSTAT_TENTATIVE: return CAL_STATUS_TENTATIVE;
+    case I_CAL_PARTSTAT_NEEDSACTION: return CAL_STATUS_INVITED;
+    default: return CAL_STATUS_NONE;
+    }
+}
+
+/* "mailto:a@b" -> "a@b" */
+static char *
+address_of (const char *value)
+{
+  if (!value || !*value)
+    return NULL;
+  return g_strdup (g_ascii_strncasecmp (value, "mailto:", 7) == 0 ? value + 7 : value);
+}
+
+/* the guests (ATTENDEE, the ORGANIZER first as Etar's attendee list has it), and the owner's own status: Etar's
+ * Instances.SELF_ATTENDEE_STATUS, which the provider takes from the attendee row with the calendar's owner address */
+static void
+read_attendees (ECalComponent *comp, const CalCalendar *calendar, CalEvent *event)
+{
+  GSList *attendees = e_cal_component_get_attendees (comp);
+  ECalComponentOrganizer *organizer = e_cal_component_has_organizer (comp) ? e_cal_component_get_organizer (comp)
+                                                                           : NULL;
+  const char *me = calendar->email;
+
+  event->self_status = CAL_STATUS_NONE;
+  if (organizer)
+    event->organizer = address_of (e_cal_component_organizer_get_value (organizer));
+  for (GSList *l = attendees; l; l = l->next)
+    {
+      ECalComponentAttendee *a = l->data;
+      CalAttendee *attendee = g_new0 (CalAttendee, 1);
+      const char *name = e_cal_component_attendee_get_cn (a);
+
+      attendee->email = address_of (e_cal_component_attendee_get_value (a));
+      attendee->name = name && *name ? g_strdup (name) : NULL;
+      attendee->status = status_of (e_cal_component_attendee_get_partstat (a));
+      attendee->organizer = event->organizer && attendee->email
+                            && g_ascii_strcasecmp (attendee->email, event->organizer) == 0;
+      if (me && attendee->email && g_ascii_strcasecmp (attendee->email, me) == 0)
+        event->self_status = attendee->status;
+      if (!attendee->email)
+        cal_attendee_free (attendee);
+      else if (attendee->organizer)
+        g_ptr_array_insert (event->attendees, 0, attendee);
+      else
+        g_ptr_array_add (event->attendees, attendee);
+    }
+  /* the organizer without an ATTENDEE of their own: the owner organizing is "accepted" to the provider */
+  if (event->organizer && me && g_ascii_strcasecmp (event->organizer, me) == 0
+      && event->self_status == CAL_STATUS_NONE && attendees)
+    event->self_status = CAL_STATUS_ACCEPTED;
+  g_slist_free_full (attendees, e_cal_component_attendee_free);
+  g_clear_pointer (&organizer, e_cal_component_organizer_free);
+}
+
 CalEvent *
 cal_event_from_component (ECalComponent *comp, const CalCalendar *calendar, ICalTime *start, ICalTime *end)
 {
@@ -186,9 +275,21 @@ cal_event_from_component (ECalComponent *comp, const CalCalendar *calendar, ICal
     }
   if (dtstart && !event->all_day && e_cal_component_datetime_get_tzid (dtstart))
     event->tzid = g_strdup (e_cal_component_datetime_get_tzid (dtstart));
-  event->color = color && parse_color (i_cal_property_get_color (color), &rgb) ? rgb : calendar->color;
+  event->own_color = color && parse_color (i_cal_property_get_color (color), &rgb);
+  event->color = event->own_color ? rgb : calendar->color;
   event->readonly = calendar->readonly;
   read_reminders (comp, event->reminders);
+  read_attendees (comp, calendar, event);
+  event->availability = e_cal_component_get_transparency (comp) == E_CAL_COMPONENT_TRANSP_TRANSPARENT
+                        ? CAL_AVAILABILITY_FREE : CAL_AVAILABILITY_BUSY;
+  event->cancelled = e_cal_component_get_status (comp) == I_CAL_STATUS_CANCELLED;
+  switch (e_cal_component_get_classification (comp))
+    {
+    case E_CAL_COMPONENT_CLASS_PUBLIC: event->access = CAL_ACCESS_PUBLIC; break;
+    case E_CAL_COMPONENT_CLASS_PRIVATE: event->access = CAL_ACCESS_PRIVATE; break;
+    case E_CAL_COMPONENT_CLASS_CONFIDENTIAL: event->access = CAL_ACCESS_CONFIDENTIAL; break;
+    default: event->access = CAL_ACCESS_DEFAULT; break;
+    }
 
   g_clear_pointer (&summary, e_cal_component_text_free);
   g_slist_free_full (descriptions, e_cal_component_text_free);
@@ -212,6 +313,7 @@ connection_free (Connection *connection)
   g_clear_object (&connection->client);
   g_clear_object (&connection->source);
   g_free (connection->uid);
+  g_free (connection->email);
   g_free (connection);
 }
 
@@ -271,6 +373,24 @@ on_readonly (GObject *client, GParamSpec *pspec, Connection *connection)
   rebuild (connection->store);
 }
 
+/* the owner's address: guests' status is read against it */
+static void
+on_email (GObject *client, GAsyncResult *result, gpointer data)
+{
+  Connection *connection = data;
+  g_autofree char *email = NULL;
+
+  if (!e_client_get_backend_property_finish (E_CLIENT (client), result, &email, NULL))
+    return;
+  g_free (connection->email);
+  connection->email = email && *email ? g_steal_pointer (&email) : NULL;
+  if (connection->email)
+    {
+      rebuild (connection->store);
+      schedule_changed (connection->store);
+    }
+}
+
 static void
 on_connected (GObject *source, GAsyncResult *result, gpointer data)
 {
@@ -289,10 +409,12 @@ on_connected (GObject *source, GAsyncResult *result, gpointer data)
     }
   connection->client = E_CAL_CLIENT (client);
   connection->done = TRUE;
-  /* floating times and all-day dates are this phone's */
-  e_cal_client_set_default_timezone (connection->client, e_cal_util_get_system_timezone ());
+  /* floating times and all-day dates are the app's zone's */
+  e_cal_client_set_default_timezone (connection->client, app_zone ());
   g_signal_connect (client, "notify::readonly", G_CALLBACK (on_readonly), connection);
   e_cal_client_get_view (connection->client, "#t", connection->cancellable, on_view, connection);
+  e_client_get_backend_property (client, E_CAL_BACKEND_PROPERTY_CAL_EMAIL_ADDRESS, connection->cancellable,
+                                 on_email, connection);
   rebuild (connection->store);
   schedule_changed (connection->store);
 }
@@ -357,6 +479,9 @@ do_rebuild (gpointer data)
       connection = g_hash_table_lookup (self->connections, calendar->uid);
       /* until it answers, nothing may be written to it */
       calendar->readonly = !connection || !connection->client || e_client_is_readonly (E_CLIENT (connection->client));
+      calendar->email = connection ? g_strdup (connection->email) : NULL;
+      calendar->local = e_source_has_extension (source, E_SOURCE_EXTENSION_CALENDAR)
+                        && g_strcmp0 (e_source_backend_get_backend_name (E_SOURCE_BACKEND (selectable)), "local") == 0;
       g_ptr_array_add (self->calendars, calendar);
 
       if (calendar->visible || self->hidden_too)
@@ -539,6 +664,12 @@ cal_store_set_visible (CalStore *self, const char *uid, gboolean visible)
   e_source_selectable_set_selected (selectable, visible);
   e_source_write (source, NULL, on_source_written, NULL);
   rebuild (self);
+}
+
+ESourceRegistry *
+cal_store_get_registry (CalStore *self)
+{
+  return self->registry;
 }
 
 gboolean
@@ -792,10 +923,14 @@ set_text (ECalComponent *comp, void (*setter) (ECalComponent *, const ECalCompon
 /* DTSTART and DTEND: an all-day event's as DATEs (the end the day after its last), a timed one's in this phone's
  * zone, which goes into the calendar too (a TZID needs its VTIMEZONE) */
 static gboolean
-set_times (ECalComponent *comp, ECalClient *client, gint64 start, gint64 end, gboolean all_day,
+set_times (ECalComponent *comp, ECalClient *client, gint64 start, gint64 end, gboolean all_day, const char *tzid,
            GCancellable *cancellable, GError **error)
 {
-  ICalTimezone *zone = e_cal_util_get_system_timezone ();
+  /* the editor's time zone (EditEventView's), else the app's */
+  ICalTimezone *zone = tzid && *tzid ? i_cal_timezone_get_builtin_timezone (tzid) : NULL;
+
+  if (!zone)
+    zone = app_zone ();
   g_autoptr(ICalTime) a = NULL, b = NULL;
   ECalComponentDateTime *dt;
 
@@ -912,14 +1047,81 @@ set_color (ECalComponent *comp, CalEvent *original, CalEvent *edited)
   g_autoptr(ICalProperty) prop = i_cal_component_get_first_property (icomp, I_CAL_COLOR_PROPERTY);
   char text[8];
 
-  /* only a colour the editor changed is the event's own; else it keeps following its calendar's */
-  if (original ? edited->color == original->color : !edited->color)
+  /* only a colour chosen is the event's own; else it keeps following its calendar's. "Set to default calendar
+   * color" (own_color off) takes the event's own away (EditEventHelper: EVENT_COLOR_KEY NO_EVENT_COLOR) */
+  if (original ? edited->own_color == original->own_color && (!edited->own_color || edited->color == original->color)
+               : !edited->own_color)
     return;
+  if (!edited->own_color)
+    {
+      if (prop)
+        i_cal_component_remove_property (icomp, prop);
+      return;
+    }
   g_snprintf (text, sizeof text, "#%06x", edited->color & 0xffffff);
   if (prop)
     i_cal_property_set_color (prop, text);
   else
     i_cal_component_take_property (icomp, i_cal_property_new_color (text));
+}
+
+static gboolean
+same_guests (GPtrArray *a, GPtrArray *b)
+{
+  guint na = a ? a->len : 0, nb = b ? b->len : 0;
+
+  if (na != nb)
+    return FALSE;
+  for (guint i = 0; i < na; i++)
+    if (g_ascii_strcasecmp (((CalAttendee *) a->pdata[i])->email, ((CalAttendee *) b->pdata[i])->email) != 0)
+      return FALSE;
+  return TRUE;
+}
+
+/* The guests as the editor left them. Etar writes Attendees rows and its sync adapter invites them; nothing here
+ * invites anyone, and nothing may: each ATTENDEE says SCHEDULE-AGENT=CLIENT (RFC 6638: a CalDAV server sends no
+ * invitation for it, the client would) and no ORGANIZER is added, which is what server-side scheduling starts
+ * from. Guests already there keep their properties (their status, their name). */
+static void
+set_attendees (ECalComponent *comp, CalEvent *edited)
+{
+  GSList *old = e_cal_component_get_attendees (comp), *list = NULL;
+
+  for (guint i = 0; i < edited->attendees->len; i++)
+    {
+      CalAttendee *guest = edited->attendees->pdata[i];
+      g_autofree char *value = g_strconcat ("mailto:", guest->email, NULL);
+      ECalComponentAttendee *attendee = NULL;
+      ICalParameter *agent;
+
+      /* (an organizer in the list is one with an ATTENDEE line of its own: kept like any other) */
+      for (GSList *l = old; l && !attendee; l = l->next)
+        {
+          const char *v = e_cal_component_attendee_get_value (l->data);
+
+          if (v && g_ascii_strcasecmp (g_ascii_strncasecmp (v, "mailto:", 7) == 0 ? v + 7 : v, guest->email) == 0)
+            attendee = e_cal_component_attendee_copy (l->data);
+        }
+      if (!attendee)
+        {
+          attendee = e_cal_component_attendee_new ();
+          e_cal_component_attendee_set_value (attendee, value);
+          e_cal_component_attendee_set_cutype (attendee, I_CAL_CUTYPE_INDIVIDUAL);
+          e_cal_component_attendee_set_role (attendee, I_CAL_ROLE_REQPARTICIPANT);
+          e_cal_component_attendee_set_partstat (attendee, I_CAL_PARTSTAT_NEEDSACTION);
+          if (guest->name)
+            e_cal_component_attendee_set_cn (attendee, guest->name);
+        }
+      e_cal_component_parameter_bag_remove_by_kind (e_cal_component_attendee_get_parameter_bag (attendee),
+                                                    I_CAL_SCHEDULEAGENT_PARAMETER, TRUE);
+      agent = i_cal_parameter_new_scheduleagent (I_CAL_SCHEDULEAGENT_CLIENT);
+      e_cal_component_parameter_bag_take (e_cal_component_attendee_get_parameter_bag (attendee), agent);
+      list = g_slist_prepend (list, attendee);
+    }
+  list = g_slist_reverse (list);
+  e_cal_component_set_attendees (comp, list);
+  g_slist_free_full (list, e_cal_component_attendee_free);
+  g_slist_free_full (old, e_cal_component_attendee_free);
 }
 
 static gboolean
@@ -943,7 +1145,20 @@ apply_edit (ECalComponent *comp, ECalClient *client, CalEvent *original, CalEven
   if (!original || !same_reminders (original->reminders, edited->reminders))
     set_reminders (comp, edited);
   set_color (comp, original, edited);
-  if (with_times && !set_times (comp, client, edited->start, edited->end, edited->all_day, cancellable, error))
+  /* availability, privacy and guests, each only when the editor changed it (or on a new event) */
+  if (!original || original->availability != edited->availability)
+    e_cal_component_set_transparency (comp, edited->availability == CAL_AVAILABILITY_FREE
+                                            ? E_CAL_COMPONENT_TRANSP_TRANSPARENT : E_CAL_COMPONENT_TRANSP_OPAQUE);
+  if (!original || original->access != edited->access)
+    e_cal_component_set_classification (comp, edited->access == CAL_ACCESS_PUBLIC ? E_CAL_COMPONENT_CLASS_PUBLIC
+                                              : edited->access == CAL_ACCESS_PRIVATE ? E_CAL_COMPONENT_CLASS_PRIVATE
+                                              : edited->access == CAL_ACCESS_CONFIDENTIAL
+                                                ? E_CAL_COMPONENT_CLASS_CONFIDENTIAL
+                                              : E_CAL_COMPONENT_CLASS_NONE);
+  if (original ? !same_guests (original->attendees, edited->attendees) : edited->attendees->len > 0)
+    set_attendees (comp, edited);
+  if (with_times && !set_times (comp, client, edited->start, edited->end, edited->all_day, edited->tzid,
+                                cancellable, error))
     return FALSE;
   return TRUE;
 }
@@ -982,7 +1197,8 @@ save_thread (GTask *task, gpointer source, gpointer data, GCancellable *cancella
     }
 
   times_changed = original->start != edited->start || original->end != edited->end
-                  || original->all_day != edited->all_day;
+                  || original->all_day != edited->all_day
+                  || (!edited->all_day && g_strcmp0 (original->tzid, edited->tzid) != 0);
 
   if (!original->recurring || w->scope == CAL_SCOPE_ALL)
     {
@@ -1005,7 +1221,8 @@ save_thread (GTask *task, gpointer source, gpointer data, GCancellable *cancella
           g_clear_pointer (&dtstart, e_cal_component_datetime_free);
           shifted.start = master + (edited->start - original->start);
           shifted.end = shifted.start + (edited->end - edited->start);
-          if (!set_times (comp, w->client, shifted.start, shifted.end, edited->all_day, cancellable, &error))
+          if (!set_times (comp, w->client, shifted.start, shifted.end, edited->all_day, edited->tzid, cancellable,
+                          &error))
             {
               ok = FALSE;
               goto done;

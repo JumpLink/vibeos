@@ -48,6 +48,10 @@ const CalCalendar *cal_store_default_calendar (CalStore *self, const char *last_
 /* "Display calendar" (Etar's CalendarPreferences, Calendars.VISIBLE): ESourceSelectable:selected, written to the
  * source as GNOME Calendar does; "calendars-changed" follows once the registry has it */
 void               cal_store_set_visible   (CalStore *self, const char *uid, gboolean visible);
+/* EDS's registry (adding, changing and removing calendars), NULL until it has answered */
+ESourceRegistry   *cal_store_get_registry  (CalStore *self);
+/* after cal_set_home_zone: floating times and all-day dates are read in the new zone, and "changed" says so */
+void               cal_store_zone_changed  (CalStore *self);
 /* the registry has answered and every calendar has connected or failed */
 gboolean           cal_store_is_ready      (CalStore *self);
 

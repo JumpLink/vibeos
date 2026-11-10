@@ -1,16 +1,17 @@
 /* The event editor: Etar's EditEventActivity (EditEventFragment, EditEventView; spec/calendar.md §7).
  *
- * "✕ CANCEL │ ✓ DONE" at the top; the title; the calendar (chosen for a new event, shown for an existing one);
- * All day; the start and end dates and times; location, description, URL; the repeat rule; the reminders.
+ * "✕ CANCEL │ ✓ DONE" at the top; the title; the calendar (chosen for a new event, shown for an existing one) and
+ * the event's colour (EventColorPickerDialog); All day; the start and end dates and times; the time zone
+ * (cal-tz-picker); guests, location, description and URL in Material 3 outlined fields (cal-outlined-field); the
+ * repeat rule; the reminders; Show me as (TRANSP) and Privacy (CLASS).
  *
+ * Guests are kept with the event and never invited: they go in with SCHEDULE-AGENT=CLIENT and no ORGANIZER, so no
+ * server mails them either, and a helper line under the field says so (Etar has none: its provider invites).
  * Left out, each because nothing behind it would do what it shows:
- *  - Guests: Etar hides them for a calendar without attendee support, and inviting needs a mail account the phone
- *    does not have.
- *  - Time zone: events are written in the phone's zone; there is no zone picker.
- *  - Event colour: no event-colour palette on EDS calendars (Etar shows it only for accounts with one).
- *  - Availability and visibility (TRANSP, CLASS): not read or written by the store yet.
- * The repeat button offers Etar's common rules (one-time, daily, weekly on the start's weekday, monthly, yearly)
- * rather than the full RecurrencePickerDialog; a rule made elsewhere is kept as it is unless another is chosen. */
+ *  - the reminders' method spinner (cal-reminders.h);
+ *  - "Tentative" in Show me as: iCalendar's TRANSP has only OPAQUE (Busy) and TRANSPARENT (Available).
+ * The repeat button opens RecurrencePickerDialog (cal-recurrence-picker.h); it is off for a rule the dialog cannot
+ * show or has no words for, as Etar's is, and a rule made elsewhere is kept as it is unless another is chosen. */
 #pragma once
 
 #include "cal-model.h"

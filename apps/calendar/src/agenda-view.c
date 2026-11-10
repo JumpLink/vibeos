@@ -28,14 +28,15 @@
 #define CHIP_RIGHT 8.0
 #define CHIP_HEIGHT 24.0                /* color_chip_height */
 #define CHIP_ALL_DAY_HEIGHT 48.0        /* color_chip_all_day_height */
+#define CHIP_BORDER_WIDTH 4             /* ColorChipView.DEF_BORDER_WIDTH, device pixels */
 #define ITEM_RIGHT_MARGIN 4.0           /* agenda_item_right_margin */
 #define TITLE_SIZE 18.0
 #define WHEN_SIZE 14.0
 #define WHERE_TOP -3.0
 
-#define DAY_TEXT_COLOR 0xffcac4d0       /* measured (agenda_day_item_text_color_dark is #E0E0E0) */
-#define ITEM_TITLE_COLOR 0xffffffff     /* agenda_item_standard_color_dark */
-#define ITEM_WHEN_COLOR 0xfff5f5f5      /* agenda_item_where_text_color_dark */
+#define DAY_TEXT_COLOR CAL_AGENDA_DAY_TEXT
+#define ITEM_TITLE_COLOR CAL_AGENDA_TITLE   /* agenda_item_standard_color */
+#define ITEM_WHEN_COLOR CAL_AGENDA_WHEN     /* agenda_item_where_text_color */
 
 /* AgendaWindowAdapter loads a window of days and more as the list nears an end */
 #define WINDOW_BEFORE 30
@@ -159,8 +160,15 @@ draw_event (GtkWidget *widget, GtkSnapshot *snapshot, int scale, const Row *row,
   CalEvent *event = row->event;
   double px = 1.0 / scale, title_baseline, title_height, when_baseline, when_height, block, text_top;
   double text_x = CHIP_LEFT + CHIP_WIDTH + CHIP_RIGHT, text_width = width - text_x - ITEM_RIGHT_MARGIN;
-  GdkRGBA separator = cal_argb (CAL_AGENDA_SEPARATOR), chip = cal_argb (0xff000000 | cal_event_display_color (event));
-  GdkRGBA title_color = cal_argb (ITEM_TITLE_COLOR), when_color = cal_argb (ITEM_WHEN_COLOR);
+  /* AgendaAdapter.bindView: a declined event's text in the declined colours and its chip faded (DRAW_FADED); an
+   * unanswered invitation's chip a frame (DRAW_BORDER) */
+  gboolean declined = event->self_status == CAL_STATUS_DECLINED;
+  guint32 chip_rgb = cal_event_display_color (event);
+  GdkRGBA separator = cal_argb (CAL_AGENDA_SEPARATOR);
+  GdkRGBA chip = cal_argb (declined ? cal_declined_color (chip_rgb) : 0xff000000 | chip_rgb);
+  GdkRGBA title_color = cal_argb (declined ? CAL_AGENDA_DECLINED_TITLE : ITEM_TITLE_COLOR);
+  GdkRGBA when_color = cal_argb (declined ? CAL_AGENDA_DECLINED_WHEN : ITEM_WHEN_COLOR);
+  double chip_height = cal_event_draws_as_all_day (event) ? CHIP_ALL_DAY_HEIGHT : CHIP_HEIGHT;
   gboolean has_where = event->location && *event->location;
   /* AgendaByDayAdapter: an event in the past or already started has its title in the regular face */
   gboolean started = event->all_day ? row->day <= today () : event->start <= g_get_real_time () / G_USEC_PER_SEC;
@@ -170,11 +178,24 @@ draw_event (GtkWidget *widget, GtkSnapshot *snapshot, int scale, const Row *row,
                                                   TITLE_SIZE, started ? 700 : 900);
   g_autoptr(PangoLayout) when_layout = cal_text_layout (widget, when, WHEN_SIZE, 700);
 
+  if (event->cancelled)
+    cal_text_strike (title);
+
   cal_fill_rect (snapshot, scale, 0, y, width, px, &separator);
   y += px;
-  /* the colour chip, 24 dp wide, 48 dp tall for an all-day event and 24 dp for a timed one (DRAW_FULL) */
-  cal_fill_rect (snapshot, scale, CHIP_LEFT, y + CHIP_TOP, CHIP_WIDTH,
-                 cal_event_draws_as_all_day (event) ? CHIP_ALL_DAY_HEIGHT : CHIP_HEIGHT, &chip);
+  if (event->self_status == CAL_STATUS_INVITED)
+    {
+      /* ColorChipView.DRAW_BORDER: 4 px lines (DEF_BORDER_WIDTH, unscaled) inside its width and height less 1 px */
+      double border = CHIP_BORDER_WIDTH * px, w = CHIP_WIDTH - px, h = chip_height - px;
+
+      cal_fill_rect (snapshot, scale, CHIP_LEFT, y + CHIP_TOP, w, border, &chip);
+      cal_fill_rect (snapshot, scale, CHIP_LEFT, y + CHIP_TOP + h - border, w, border, &chip);
+      cal_fill_rect (snapshot, scale, CHIP_LEFT, y + CHIP_TOP, border, h, &chip);
+      cal_fill_rect (snapshot, scale, CHIP_LEFT + w - border, y + CHIP_TOP, border, h, &chip);
+    }
+  else
+    /* the colour chip, 24 dp wide, 48 dp tall for an all-day event and 24 dp for a timed one (DRAW_FULL) */
+    cal_fill_rect (snapshot, scale, CHIP_LEFT, y + CHIP_TOP, CHIP_WIDTH, chip_height, &chip);
   /* the title, when and where, one line each, centred in the row */
   cal_text_line (TITLE_SIZE, scale, &title_baseline, &title_height);
   cal_text_line (WHEN_SIZE, scale, &when_baseline, &when_height);
@@ -202,7 +223,7 @@ cal_agenda_list_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   int scale = neo_device_scale (widget);
   double width = gtk_widget_get_width (widget), page = gtk_widget_get_height (GTK_WIDGET (view));
   double offset = offset_of (view);
-  GdkRGBA ripple = neo_ripple_default_color ();
+  GdkRGBA ripple = cal_ripple_color ();
 
   /* the rows a screen above and below what shows: scrolling within them needs no new drawing */
   self->drawn_from = offset - page;

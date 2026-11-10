@@ -22,10 +22,13 @@ resources = gnome.compile_resources('calendar-resources', 'src/calendar.gresourc
 executable('neo-calendar', 'src/cal-main.c', 'src/cal-window.c', 'src/cal-text.c', 'src/day-view.c',
            'src/month-view.c', 'src/agenda-view.c', 'src/cal-popup.c', 'src/cal-dialogs.c', 'src/cal-page.c',
            'src/cal-date-picker.c', 'src/cal-reminders.c', 'src/event-info.c', 'src/event-editor.c',
-           'src/cal-settings.c', 'src/cal-compat-switch.c', 'src/cal-time-picker.c', resources,
+           'src/cal-settings.c', 'src/cal-compat-switch.c', 'src/cal-time-picker.c', 'src/cal-colors.c',
+           'src/cal-prefs.c', 'src/cal-tz-picker.c', 'src/cal-search.c', 'src/cal-accounts.c',
+           'src/cal-color-picker.c', 'src/cal-material-switch.c', 'src/cal-recurrence-picker.c',
+           'src/cal-alert-page.c', 'src/cal-outlined-field.c', resources,
            link_with: core, install: true, c_args: gettext_args,
            dependencies: [gio, ecal, m, dependency('gtk4', version: '>= 4.14'), dependency('neo-1'),
-                          dependency('spongy-gtk-1')])
+                          dependency('spongy-gtk-1'), dependency('icu-i18n'), dependency('icu-uc')])
 
 # the reminder service: notifies at each reminder, and wakes the phone for it, with the app closed
 executable('neo-calendar-reminders', 'src/reminders-main.c', link_with: core, install: true, c_args: gettext_args,
@@ -50,3 +53,7 @@ foreach name : ['cal-model', 'cal-format', 'cal-alerts']
   test(name, executable('test-' + name, 'tests/test-' + name + '.c', link_with: core, c_args: gettext_args,
                         dependencies: [gio, ecal, m]))
 endforeach
+# the repeat dialog's rules: cal-recurrence-picker.c without its dialog
+test('cal-recurrence', executable('test-cal-recurrence', 'tests/test-cal-recurrence.c', 'src/cal-recurrence-picker.c',
+                                  c_args: gettext_args + ['-DCAL_RECURRENCE_NO_UI'],
+                                  dependencies: [gio, m, dependency('gtk4')]))

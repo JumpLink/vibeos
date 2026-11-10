@@ -4,6 +4,14 @@
 <gresources>
   <gresource prefix="/de/yesman/Calendar">
     <file>calendar.css</file>
+    <file>calendar-black.css</file>
+    <file>calendar-light.css</file>
+    <file>calendar-pickers.css</file>
+    <file>calendar-search.css</file>
+    <file>calendar-accounts.css</file>
+    <file>calendar-recurrence.css</file>
+    <file>calendar-alerts.css</file>
+    <file>contact-picture.png</file>
     <file alias="icons/scalable/actions/cal-account-symbolic.svg">icons/cal-account-symbolic.svg</file>
     <file alias="icons/scalable/actions/cal-add-symbolic.svg">icons/cal-add-symbolic.svg</file>
     <file alias="icons/scalable/actions/cal-back-symbolic.svg">icons/cal-back-symbolic.svg</file>
@@ -22,6 +30,7 @@
     <file alias="icons/scalable/actions/cal-drop-down-symbolic.svg">icons/cal-drop-down-symbolic.svg</file>
     <file alias="icons/scalable/actions/cal-duplicate-symbolic.svg">icons/cal-duplicate-symbolic.svg</file>
     <file alias="icons/scalable/actions/cal-edit-symbolic.svg">icons/cal-edit-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cal-email-symbolic.svg">icons/cal-email-symbolic.svg</file>
     <file alias="icons/scalable/actions/cal-expand-symbolic.svg">icons/cal-expand-symbolic.svg</file>
     <file alias="icons/scalable/actions/cal-export-symbolic.svg">icons/cal-export-symbolic.svg</file>
     <file alias="icons/scalable/actions/cal-info-symbolic.svg">icons/cal-info-symbolic.svg</file>
