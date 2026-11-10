@@ -1,4 +1,4 @@
-project('gnome-phone', 'c', version: '0.1.0', meson_version: '>= 1.0',
+project('gnome-phone', 'c', version: '0.1.0', license: 'MIT', license_files: 'LICENSE', meson_version: '>= 1.1',
         default_options: ['warning_level=2', 'c_std=gnu11', 'buildtype=release'])
 
 add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers', language: 'c')
