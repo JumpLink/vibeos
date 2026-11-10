@@ -468,7 +468,9 @@ make_frequents_empty (void)
   gtk_box_append (GTK_BOX (box), image);
   gtk_label_set_wrap (GTK_LABEL (text), TRUE);
   gtk_label_set_justify (GTK_LABEL (text), GTK_JUSTIFY_CENTER);
-  gtk_widget_set_margin_top (text, 20);
+  /* 20 dp under the picture, and the TextView's 4 dp over and under its lines (as the list's) */
+  gtk_widget_set_margin_top (text, 20 + 4);
+  gtk_widget_set_margin_bottom (text, 4);
   gtk_widget_set_margin_start (text, 60);
   gtk_widget_set_margin_end (text, 60);
   gtk_widget_add_css_class (text, "msg-empty-text");

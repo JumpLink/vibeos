@@ -29,12 +29,21 @@ msg_sized_paintable_get_intrinsic_height (GdkPaintable *paintable)
   return MSG_SIZED_PAINTABLE (paintable)->height;
 }
 
+/* none: with its own, GtkPicture would scale it to any width it is measured for, and a vertical box measures each
+ * child for the box's whole width (the empty lists' 198 dp picture came out 360 dp wide, cut off at the side) */
+static double
+msg_sized_paintable_get_intrinsic_aspect_ratio (GdkPaintable *paintable)
+{
+  return 0;
+}
+
 static void
 msg_sized_paintable_iface_init (GdkPaintableInterface *iface)
 {
   iface->snapshot = msg_sized_paintable_snapshot;
   iface->get_intrinsic_width = msg_sized_paintable_get_intrinsic_width;
   iface->get_intrinsic_height = msg_sized_paintable_get_intrinsic_height;
+  iface->get_intrinsic_aspect_ratio = msg_sized_paintable_get_intrinsic_aspect_ratio;
 }
 
 G_DEFINE_FINAL_TYPE_WITH_CODE (MsgSizedPaintable, msg_sized_paintable, G_TYPE_OBJECT,

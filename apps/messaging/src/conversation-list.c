@@ -25,6 +25,8 @@
 #define FAB_MARGIN 16
 #define EMPTY_TEXT_TOP 20
 #define EMPTY_TEXT_SIDE 60
+#define EMPTY_TEXT_PAD 4         /* the TextView's 7.9 dp more than its lines, over and under them (still:sms-archived:
+                                 * 73 px for one 14 sp line) */
 #define REFRESH_MS (60 * 1000)  /* "Just now" becomes "1 min" */
 /* ConversationListSwipeHelper */
 
@@ -754,7 +756,8 @@ make_empty (gboolean archived)
   gtk_box_append (GTK_BOX (box), image);
   gtk_label_set_wrap (GTK_LABEL (text), TRUE);
   gtk_label_set_justify (GTK_LABEL (text), GTK_JUSTIFY_CENTER);
-  gtk_widget_set_margin_top (text, EMPTY_TEXT_TOP);
+  gtk_widget_set_margin_top (text, EMPTY_TEXT_TOP + EMPTY_TEXT_PAD);
+  gtk_widget_set_margin_bottom (text, EMPTY_TEXT_PAD);
   gtk_widget_set_margin_start (text, EMPTY_TEXT_SIDE);
   gtk_widget_set_margin_end (text, EMPTY_TEXT_SIDE);
   gtk_widget_add_css_class (text, "msg-empty-text");
