@@ -432,6 +432,7 @@ fm_properties_dialog (GtkWidget *parent, GPtrArray *items)
 
 typedef struct {
   GSettings *settings;
+  GtkWidget *types[2];          /* List, Grid */
   GtkWidget *sorts[FM_SORT_TYPE_DOWN + 1];
   GtkWidget *hidden, *thumbnails;
 } View;
@@ -456,10 +457,38 @@ on_sort_toggled (GtkWidget *check, GParamSpec *pspec, View *view)
 }
 
 static void
+on_type_toggled (GtkWidget *check, GParamSpec *pspec, View *view)
+{
+  if (!fm_check_get_active (check))
+    return;
+  for (guint i = 0; i < G_N_ELEMENTS (view->types); i++)
+    if (fm_check_row_get_check (view->types[i]) != check)
+      fm_check_set_active (fm_check_row_get_check (view->types[i]), FALSE);
+}
+
+/* a radio row with the theme's view-list or view-grid glyph between the radio and the label (preference_view_type) */
+static GtkWidget *
+view_type_row (const char *label, const char *icon_name, const char *description, gboolean active)
+{
+  GtkWidget *row = fm_check_row (label, TRUE, active);
+  GtkWidget *image = gtk_image_new_from_icon_name (icon_name);
+
+  gtk_image_set_pixel_size (GTK_IMAGE (image), 20);
+  gtk_widget_add_css_class (image, "fm-view-type-icon");
+  gtk_widget_set_valign (image, GTK_ALIGN_CENTER);
+  gtk_box_insert_child_after (GTK_BOX (neo_pressable_get_child (NEO_PRESSABLE (row))), image,
+                              fm_check_row_get_check (row));
+  gtk_accessible_update_property (GTK_ACCESSIBLE (row), GTK_ACCESSIBLE_PROPERTY_LABEL, description, -1);
+  return row;
+}
+
+static void
 on_view_response (NeoDialog *dialog, int response, View *view)
 {
   if (response != NEO_RESPONSE_OK)
     return;
+  g_settings_set_string (view->settings, "view-type",
+                         fm_check_get_active (fm_check_row_get_check (view->types[1])) ? "grid" : "list");
   for (int i = FM_SORT_NAME_UP; i <= FM_SORT_TYPE_DOWN; i++)
     if (fm_check_get_active (fm_check_row_get_check (view->sorts[i])))
       g_settings_set_string (view->settings, "sort-order", fm_sort_to_string (i));
@@ -478,11 +507,25 @@ fm_view_dialog (GtkWidget *parent, GSettings *settings)
   GtkWidget *content;
   NeoDialog *dialog = fm_dialog_new (_("View"), &content);
   View *view = g_new0 (View, 1);
-  GtkWidget *grid = gtk_grid_new ();
+  GtkWidget *grid = gtk_grid_new (), *types = gtk_grid_new ();
   g_autofree char *current = g_settings_get_string (settings, "sort-order");
+  g_autofree char *type = g_settings_get_string (settings, "view-type");
+  gboolean tiles = !g_strcmp0 (type, "grid");
   FmSort sort = fm_sort_from_string (current);
 
   view->settings = g_object_ref (settings);
+  /* File Manager+'s view_type: the radios side by side, each with its glyph */
+  view->types[0] = view_type_row (_("List"), "view-list-symbolic", _("List view"), !tiles);
+  view->types[1] = view_type_row (_("Grid"), "view-grid-symbolic", _("Grid view"), tiles);
+  gtk_grid_set_column_homogeneous (GTK_GRID (types), TRUE);
+  for (guint i = 0; i < G_N_ELEMENTS (view->types); i++)
+    {
+      g_signal_connect (fm_check_row_get_check (view->types[i]), "notify::active", G_CALLBACK (on_type_toggled),
+                        view);
+      gtk_grid_attach (GTK_GRID (types), view->types[i], (int) i, 0, 1, 1);
+    }
+  gtk_widget_add_css_class (types, "fm-view-types");
+  gtk_box_append (GTK_BOX (content), types);
   gtk_box_append (GTK_BOX (content), fm_label (_("Sort By"), "fm-dialog-subtitle", 14, FALSE));
   gtk_grid_set_column_homogeneous (GTK_GRID (grid), TRUE);
   for (int i = FM_SORT_NAME_UP; i <= FM_SORT_TYPE_DOWN; i++)

@@ -60,6 +60,28 @@ test_whole_uri (void)
   fm_remote_set_address (remote, "[fe80::1]/x");
   g_assert_cmpstr (remote->host, ==, "fe80::1");
   g_assert_cmpstr (remote->path, ==, "x");
+  /* every scheme the Remote page connects to, typed whole in any server dialog's Host; a password is no remote's */
+  fm_remote_set_address (remote, "sftp://carol:secret@files.example:2222/home/carol");
+  g_assert_cmpint (remote->proto, ==, FM_PROTO_SFTP);
+  g_assert_cmpstr (remote->host, ==, "files.example");
+  g_assert_cmpint (remote->port, ==, 2222);
+  g_assert_cmpstr (remote->path, ==, "home/carol");
+  g_assert_cmpstr (remote->user, ==, "carol");
+  fm_remote_set_address (remote, "ftps://ftp.example/pub");
+  g_assert_cmpint (remote->proto, ==, FM_PROTO_FTPS);
+  fm_remote_set_address (remote, "ftp://ftp.example/");
+  g_assert_cmpint (remote->proto, ==, FM_PROTO_FTP);
+  fm_remote_set_address (remote, "davs://cloud.example/remote.php/webdav/");
+  g_assert_cmpint (remote->proto, ==, FM_PROTO_DAVS);
+  g_assert_cmpstr (remote->path, ==, "remote.php/webdav");
+  fm_remote_set_address (remote, "dav://192.168.1.5:8080/dav");
+  g_assert_cmpint (remote->proto, ==, FM_PROTO_DAV);
+  g_assert_cmpint (remote->port, ==, 8080);
+  fm_remote_set_address (remote, "https://cloud.example/webdav");
+  g_assert_cmpint (remote->proto, ==, FM_PROTO_DAVS);
+  fm_remote_set_address (remote, "smb://192.168.1.5/share");
+  g_assert_cmpint (remote->proto, ==, FM_PROTO_SMB);
+  g_assert_cmpstr (remote->path, ==, "share");
 }
 
 static void

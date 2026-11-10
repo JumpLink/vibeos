@@ -11,7 +11,7 @@
 
 G_BEGIN_DECLS
 
-/* the drawings of fm-icon.c */
+/* the places' and file kinds' icons: each stands for a theme icon (fm_glyph_get_icon in fm-icon.c) */
 typedef enum {
   FM_GLYPH_FOLDER,
   FM_GLYPH_HOME,
@@ -21,14 +21,14 @@ typedef enum {
   FM_GLYPH_SYSTEM,
   FM_GLYPH_TRASH,
   FM_GLYPH_RECENT,
-  FM_GLYPH_NETWORK,             /* Local Network: the remote folder with a monitor badge */
-  FM_GLYPH_REMOTE,              /* the Remote page */
+  FM_GLYPH_NETWORK,             /* Local Network (network-workgroup) */
+  FM_GLYPH_REMOTE,              /* the Remote page; it and the remotes are folder-remote */
   FM_GLYPH_REMOTE_SMB,
   FM_GLYPH_REMOTE_FTP,
   FM_GLYPH_REMOTE_FTPS,
   FM_GLYPH_REMOTE_SFTP,
   FM_GLYPH_REMOTE_DAV,
-  FM_GLYPH_SERVER,              /* a computer found on the network */
+  FM_GLYPH_SERVER,              /* a computer found on the network (network-server) */
   FM_GLYPH_DOWNLOADS,
   FM_GLYPH_PICTURES,
   FM_GLYPH_MUSIC,

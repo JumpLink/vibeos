@@ -1,68 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- the stylesheet and the icons (data/icons: Material Symbols, Apache-2.0, and our own), where GtkApplication
-     looks for icons: the resource base path + /icons -->
+<!-- the stylesheet and the app's own icon, where GtkApplication looks for icons: the resource base path + /icons.
+     Every other icon comes from the user's icon theme; the Material Symbols in data/icons are no longer bundled. -->
 <gresources>
   <gresource prefix="/de/yesman/Files">
     <file>files.css</file>
     <file alias="icons/scalable/apps/de.yesman.Files.svg">de.yesman.Files.svg</file>
-    <file alias="icons/scalable/actions/fm-add-symbolic.svg">icons/fm-add-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-android-symbolic.svg">icons/fm-android-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-arrow-back-symbolic.svg">icons/fm-arrow-back-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-arrow-range-symbolic.svg">icons/fm-arrow-range-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-article-symbolic.svg">icons/fm-article-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-bookmark-symbolic.svg">icons/fm-bookmark-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-check-box-fill-symbolic.svg">icons/fm-check-box-fill-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-check-box-outline-blank-symbolic.svg">icons/fm-check-box-outline-blank-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-check-box-symbolic.svg">icons/fm-check-box-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-check-symbolic.svg">icons/fm-check-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-chevron-right-symbolic.svg">icons/fm-chevron-right-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-close-symbolic.svg">icons/fm-close-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-code-symbolic.svg">icons/fm-code-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-content-copy-symbolic.svg">icons/fm-content-copy-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-content-cut-symbolic.svg">icons/fm-content-cut-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-content-paste-symbolic.svg">icons/fm-content-paste-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-create-new-folder-symbolic.svg">icons/fm-create-new-folder-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-delete-forever-symbolic.svg">icons/fm-delete-forever-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-delete-symbolic.svg">icons/fm-delete-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-description-symbolic.svg">icons/fm-description-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-desktop-windows-symbolic.svg">icons/fm-desktop-windows-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-draft-symbolic.svg">icons/fm-draft-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-download-symbolic.svg">icons/fm-download-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-drag-handle-symbolic.svg">icons/fm-drag-handle-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-drive-file-rename-outline-symbolic.svg">icons/fm-drive-file-rename-outline-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-edit-symbolic.svg">icons/fm-edit-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-eject-symbolic.svg">icons/fm-eject-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-folder-fill-symbolic.svg">icons/fm-folder-fill-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-folder-symbolic.svg">icons/fm-folder-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-folder-zip-symbolic.svg">icons/fm-folder-zip-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-hard-drive-symbolic.svg">icons/fm-hard-drive-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-history-symbolic.svg">icons/fm-history-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-image-symbolic.svg">icons/fm-image-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-info-symbolic.svg">icons/fm-info-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-lan-symbolic.svg">icons/fm-lan-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-menu-symbolic.svg">icons/fm-menu-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-more-vert-symbolic.svg">icons/fm-more-vert-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-movie-symbolic.svg">icons/fm-movie-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-music-note-symbolic.svg">icons/fm-music-note-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-open-in-new-symbolic.svg">icons/fm-open-in-new-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-picture-as-pdf-symbolic.svg">icons/fm-picture-as-pdf-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-push-pin-symbolic.svg">icons/fm-push-pin-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-radio-button-checked-symbolic.svg">icons/fm-radio-button-checked-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-radio-button-unchecked-symbolic.svg">icons/fm-radio-button-unchecked-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-recycling-symbolic.svg">icons/fm-recycling-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-refresh-symbolic.svg">icons/fm-refresh-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-restore-from-trash-symbolic.svg">icons/fm-restore-from-trash-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-schedule-symbolic.svg">icons/fm-schedule-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-sd-card-symbolic.svg">icons/fm-sd-card-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-search-symbolic.svg">icons/fm-search-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-select-all-symbolic.svg">icons/fm-select-all-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-settings-symbolic.svg">icons/fm-settings-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-share-symbolic.svg">icons/fm-share-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-star-fill-symbolic.svg">icons/fm-star-fill-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-star-symbolic.svg">icons/fm-star-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-tune-symbolic.svg">icons/fm-tune-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-up-symbolic.svg">icons/fm-up-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-usb-symbolic.svg">icons/fm-usb-symbolic.svg</file>
-    <file alias="icons/scalable/actions/fm-web-symbolic.svg">icons/fm-web-symbolic.svg</file>
   </gresource>
 </gresources>

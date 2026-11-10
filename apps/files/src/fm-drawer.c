@@ -535,7 +535,7 @@ build_locations (FmDrawer *drawer)
       GtkWidget *text = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
       GtkWidget *icon = fm_icon_new (where->glyph, 32);
       /* a smaller ⋮ than the toolbar's: 12 dp of dots, centred 254 dp in (fmplus-5) */
-      GtkWidget *more = fm_icon_button_sized ("fm-more-vert-symbolic", _("More options"), 48, 48, 18);
+      GtkWidget *more = fm_icon_button_sized ("view-more-symbolic", _("More options"), 48, 48, 12);
       GtkWidget *name_line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
       GtkWidget *name = fm_label (where->kind == FM_PLACE_REMOTE ? where->name : entry->name, "fm-nav-name", 16,
                                   FALSE);
@@ -548,9 +548,9 @@ build_locations (FmDrawer *drawer)
       /* a pinned one stays whatever else is visited: a pin after its name */
       if (entry->pinned)
         {
-          GtkWidget *pin = gtk_image_new_from_icon_name ("fm-push-pin-symbolic");
+          GtkWidget *pin = gtk_image_new_from_icon_name ("view-pin-symbolic");
 
-          gtk_image_set_pixel_size (GTK_IMAGE (pin), 14);
+          gtk_image_set_pixel_size (GTK_IMAGE (pin), 12);
           gtk_widget_add_css_class (pin, "fm-nav-pin");
           gtk_box_append (GTK_BOX (name_line), pin);
         }
@@ -694,7 +694,7 @@ build_bookmarks (FmDrawer *drawer)
       gtk_box_append (GTK_BOX (line_box), text);
       if (drawer->editing_bookmarks)
         {
-          GtkWidget *remove = fm_icon_button ("fm-close-symbolic", _("Remove"), 48, 48);
+          GtkWidget *remove = fm_icon_button ("window-close-symbolic", _("Remove"), 48, 48);
 
           g_object_set_data (G_OBJECT (remove), "fm-index", GUINT_TO_POINTER (i));
           g_signal_connect (remove, "clicked", G_CALLBACK (on_bookmark_remove), drawer);
@@ -852,7 +852,7 @@ fm_drawer_refresh (FmDrawer *drawer)
 FmDrawer *
 fm_drawer_new (FmShell *shell)
 {
-  static const char *const icons[] = { "fm-folder-fill-symbolic", "fm-star-fill-symbolic", "fm-schedule-symbolic" };
+  static const char *const icons[] = { "folder-symbolic", "starred-symbolic", "document-open-recent-symbolic" };
   const char *names[] = { _("Locations"), _("Bookmarks"), _("History") };
   FmDrawer *drawer = g_new0 (FmDrawer, 1);
   FmDrawerLayer *layer = g_object_new (FM_TYPE_DRAWER_LAYER, NULL);
@@ -874,14 +874,15 @@ fm_drawer_new (FmShell *shell)
   gtk_widget_add_controller (drawer->scrim, GTK_EVENT_CONTROLLER (press));
   gtk_widget_set_parent (drawer->scrim, drawer->layer);
 
-  /* the tab bar: three equal tabs of a 24 dp glyph, the line and indicator drawn under them */
+  /* the tab bar: three equal tabs of a 20 dp glyph (the theme's draw to their edges), the line and indicator drawn
+   * under them */
   gtk_box_set_homogeneous (GTK_BOX (tabs), TRUE);
   for (int i = 0; i < N_TABS; i++)
     {
       GtkWidget *image = gtk_image_new_from_icon_name (icons[i]);
       GdkRGBA ripple = fm_rgba (FM_C_RIPPLE);
 
-      gtk_image_set_pixel_size (GTK_IMAGE (image), 24);
+      gtk_image_set_pixel_size (GTK_IMAGE (image), 20);
       drawer->tabs[i] = neo_pressable_new (image);
       gtk_widget_add_css_class (drawer->tabs[i], "fm-nav-tab");
       neo_pressable_set_ripple (NEO_PRESSABLE (drawer->tabs[i]), NEO_RIPPLE_BOUNDED, 0);

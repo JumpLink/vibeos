@@ -90,6 +90,34 @@ test_paths (void)
   g_assert_nonnull (strstr (safe, "dir x"));
 }
 
+static GFileInfo *
+info_new (const char *name, GFileType type)
+{
+  GFileInfo *info = g_file_info_new ();
+
+  g_file_info_set_name (info, name);
+  g_file_info_set_display_name (info, name);
+  g_file_info_set_file_type (info, type);
+  return info;
+}
+
+static void
+test_hidden (void)
+{
+  g_autoptr(GFileInfo) dot = info_new (".config", G_FILE_TYPE_DIRECTORY);
+  g_autoptr(GFileInfo) plain = info_new ("Music", G_FILE_TYPE_DIRECTORY);
+  g_autoptr(GFileInfo) ipc = info_new ("IPC$", G_FILE_TYPE_MOUNTABLE);
+  g_autoptr(GFileInfo) share = info_new ("share", G_FILE_TYPE_MOUNTABLE);
+  g_autoptr(GFileInfo) money = info_new ("price$", G_FILE_TYPE_REGULAR);
+
+  g_assert_true (fm_info_is_hidden (dot));
+  g_assert_false (fm_info_is_hidden (plain));
+  /* a server's '$' shares are hidden, a file's '$' is only a character */
+  g_assert_true (fm_info_is_hidden (ipc));
+  g_assert_false (fm_info_is_hidden (share));
+  g_assert_false (fm_info_is_hidden (money));
+}
+
 int
 main (int argc, char **argv)
 {
@@ -97,5 +125,6 @@ main (int argc, char **argv)
   g_test_add_func ("/util/names", test_names);
   g_test_add_func ("/util/formats", test_formats);
   g_test_add_func ("/util/paths", test_paths);
+  g_test_add_func ("/util/hidden", test_hidden);
   return g_test_run ();
 }

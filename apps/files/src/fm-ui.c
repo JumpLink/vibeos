@@ -62,7 +62,7 @@ fm_icon_button_sized (const char *icon_name, const char *name, int width, int he
 GtkWidget *
 fm_icon_button (const char *icon_name, const char *name, int width, int height)
 {
-  return fm_icon_button_sized (icon_name, name, width, height, 24);
+  return fm_icon_button_sized (icon_name, name, width, height, 20);
 }
 
 GtkWidget *

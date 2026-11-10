@@ -9,14 +9,18 @@
 #include <neo.h>
 #include <spongy-gtk.h>
 
-#define THUMB_PX       132      /* 44 dp at the phone's 3 px per dp */
+#define THUMB_PX       132      /* a list row's 44 dp at the phone's 3 px per dp (decoded at twice that: a tile's 64) */
 #define THUMB_MAX_SIZE (40 * 1000 * 1000)
 
 struct _FmList {
   GtkWidget parent;
-  GtkWidget *overlay, *scroll, *view, *message;
+  GtkWidget *overlay, *scroll, *message;
+  GtkWidget *view;              /* the one of the two that shows */
+  GtkWidget *list_view, *grid_view;
+  gboolean grid;
   GListStore *store;
   GtkFilterListModel *filtered;
+  GtkSelectionModel *selection;
   GtkCustomFilter *filter;
   char *needle;                 /* the filter, case-folded */
   gboolean selecting, thumbnails;
@@ -41,6 +45,29 @@ typedef struct {
   gulong changed;
   FmList *list;
 } Row;
+
+/* a file's icon: its content type's in the theme, unless the type says nothing (then the name's glyph) */
+static GIcon *
+content_icon (const char *content_type)
+{
+  static GHashTable *icons;
+  GIcon *icon;
+
+  if (!content_type || g_content_type_is_unknown (content_type))
+    return NULL;
+  if (!icons)
+    icons = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_object_unref);
+  if (!(icon = g_hash_table_lookup (icons, content_type)))
+    g_hash_table_insert (icons, g_strdup (content_type), icon = g_content_type_get_icon (content_type));
+  return icon;
+}
+
+static void
+set_text (GtkWidget *label, const char *text)
+{
+  if (label)
+    gtk_label_set_text (GTK_LABEL (label), text ? text : "");
+}
 
 static void
 row_fill (Row *row)
@@ -71,18 +98,21 @@ row_fill (Row *row)
       count = fm_format_size (item->size);
     }
   fm_icon_set_glyph (FM_ICON (row->icon), glyph);
+  if (!folder)
+    fm_icon_set_gicon (FM_ICON (row->icon), content_icon (item->content_type));
   fm_icon_set_texture (FM_ICON (row->icon), row->list->thumbnails ? thumb : NULL);
   fm_icon_set_dimmed (FM_ICON (row->icon), item->hidden);
   if (row->list->thumbnails && glyph == FM_GLYPH_IMAGE && !thumb)
     thumb_request (row->list, item);
-  gtk_label_set_text (GTK_LABEL (row->name), item->name);
-  gtk_label_set_text (GTK_LABEL (row->count), count);
+  set_text (row->name, item->name);
+  set_text (row->count, count);
   /* the Recycle Bin dates its rows by the deletion */
   if (item->deleted || item->mtime)
     date = fm_format_date (item->deleted ? item->deleted : item->mtime);
-  gtk_label_set_text (GTK_LABEL (row->date), date ? date : "");
-  gtk_label_set_text (GTK_LABEL (row->where), item->where ? item->where : "");
-  gtk_widget_set_visible (row->where, item->where != NULL);
+  set_text (row->date, date);
+  set_text (row->where, item->where);
+  if (row->where)
+    gtk_widget_set_visible (row->where, item->where != NULL);
   gtk_widget_set_visible (row->check, row->list->selecting);
   fm_check_set_active (row->check, item->selected);
   if (item->selected && row->list->selecting)
@@ -178,6 +208,47 @@ on_setup (GtkSignalListItemFactory *factory, GtkListItem *list_item, FmList *sel
   gtk_box_append (GTK_BOX (box), row->check);
   row->pressable = neo_pressable_new (box);
   gtk_widget_add_css_class (row->pressable, "fm-row");
+  neo_pressable_set_ripple (NEO_PRESSABLE (row->pressable), NEO_RIPPLE_BOUNDED, 0);
+  neo_pressable_set_ripple_color (NEO_PRESSABLE (row->pressable), &ripple);
+  g_signal_connect (row->pressable, "clicked", G_CALLBACK (on_row_clicked), row);
+  g_signal_connect (row->pressable, "long-pressed", G_CALLBACK (on_row_long_pressed), row);
+  g_object_set_data_full (G_OBJECT (row->pressable), "fm-row", row, row_free);
+  gtk_list_item_set_child (list_item, row->pressable);
+  gtk_list_item_set_activatable (list_item, FALSE);
+  gtk_list_item_set_selectable (list_item, FALSE);
+  gtk_list_item_set_focusable (list_item, FALSE);
+}
+
+/* a grid tile (filegrid_item): the 64 dp icon centred 2 dp down, the name under it in 14 sp, centred, at most two
+ * lines; the check box over the icon's top end while selecting */
+static void
+on_setup_tile (GtkSignalListItemFactory *factory, GtkListItem *list_item, FmList *self)
+{
+  Row *row = g_new0 (Row, 1);
+  GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  GtkWidget *frame = gtk_overlay_new ();
+  GdkRGBA ripple = fm_rgba (FM_C_RIPPLE);
+
+  row->list = self;
+  row->icon = fm_icon_new (FM_GLYPH_FOLDER, 64);
+  gtk_widget_add_css_class (row->icon, "fm-grid-tile-icon");
+  gtk_widget_set_halign (row->icon, GTK_ALIGN_CENTER);
+  gtk_overlay_set_child (GTK_OVERLAY (frame), row->icon);
+  row->check = fm_check_new (FALSE);
+  gtk_widget_add_css_class (row->check, "fm-grid-tile-check");
+  gtk_widget_set_halign (row->check, GTK_ALIGN_END);
+  gtk_widget_set_valign (row->check, GTK_ALIGN_START);
+  gtk_overlay_add_overlay (GTK_OVERLAY (frame), row->check);
+  row->name = fm_label (NULL, "fm-grid-tile-name", 14, TRUE);
+  gtk_label_set_lines (GTK_LABEL (row->name), 2);
+  gtk_label_set_ellipsize (GTK_LABEL (row->name), PANGO_ELLIPSIZE_END);
+  gtk_label_set_xalign (GTK_LABEL (row->name), 0.5f);
+  gtk_label_set_justify (GTK_LABEL (row->name), GTK_JUSTIFY_CENTER);
+  gtk_widget_set_valign (row->name, GTK_ALIGN_START);
+  gtk_box_append (GTK_BOX (box), frame);
+  gtk_box_append (GTK_BOX (box), row->name);
+  row->pressable = neo_pressable_new (box);
+  gtk_widget_add_css_class (row->pressable, "fm-grid-tile");
   neo_pressable_set_ripple (NEO_PRESSABLE (row->pressable), NEO_RIPPLE_BOUNDED, 0);
   neo_pressable_set_ripple_color (NEO_PRESSABLE (row->pressable), &ripple);
   g_signal_connect (row->pressable, "clicked", G_CALLBACK (on_row_clicked), row);
@@ -352,6 +423,9 @@ fm_list_dispose (GObject *object)
     }
   g_clear_object (&self->thumb_cancel);
   g_clear_pointer (&self->overlay, gtk_widget_unparent);
+  g_clear_object (&self->list_view);
+  g_clear_object (&self->grid_view);
+  g_clear_object (&self->selection);
   g_clear_object (&self->store);
   g_clear_object (&self->filtered);
   g_clear_pointer (&self->needle, g_free);
@@ -374,24 +448,38 @@ fm_list_class_init (FmListClass *klass)
                                              NULL, NULL, NULL, G_TYPE_NONE, 0);
 }
 
+static GtkListItemFactory *
+factory_new (GCallback setup, FmList *self)
+{
+  GtkListItemFactory *factory = gtk_signal_list_item_factory_new ();
+
+  g_signal_connect (factory, "setup", setup, self);
+  g_signal_connect (factory, "bind", G_CALLBACK (on_bind), self);
+  g_signal_connect (factory, "unbind", G_CALLBACK (on_unbind), self);
+  return factory;
+}
+
 static void
 fm_list_init (FmList *self)
 {
-  GtkListItemFactory *factory = gtk_signal_list_item_factory_new ();
-  GtkNoSelection *selection;
-
   self->thumb_queue = g_queue_new ();
   self->thumb_cancel = g_cancellable_new ();
   self->thumbnails = TRUE;
   self->store = g_list_store_new (FM_TYPE_ITEM);
   self->filter = gtk_custom_filter_new (filter_func, self, NULL);
   self->filtered = gtk_filter_list_model_new (G_LIST_MODEL (g_object_ref (self->store)), GTK_FILTER (self->filter));
-  selection = gtk_no_selection_new (G_LIST_MODEL (g_object_ref (self->filtered)));
-  g_signal_connect (factory, "setup", G_CALLBACK (on_setup), self);
-  g_signal_connect (factory, "bind", G_CALLBACK (on_bind), self);
-  g_signal_connect (factory, "unbind", G_CALLBACK (on_unbind), self);
-  self->view = gtk_list_view_new (GTK_SELECTION_MODEL (selection), factory);
-  gtk_widget_add_css_class (self->view, "fm-list-view");
+  self->selection = GTK_SELECTION_MODEL (gtk_no_selection_new (G_LIST_MODEL (g_object_ref (self->filtered))));
+  /* both views are kept (the scroll view drops the one it stops showing); the one not shown has no model, so no
+   * rows bound */
+  self->list_view = g_object_ref_sink (gtk_list_view_new (g_object_ref (self->selection),
+                                                          factory_new (G_CALLBACK (on_setup), self)));
+  gtk_widget_add_css_class (self->list_view, "fm-list-view");
+  self->grid_view = g_object_ref_sink (gtk_grid_view_new (NULL, factory_new (G_CALLBACK (on_setup_tile), self)));
+  gtk_grid_view_set_max_columns (GTK_GRID_VIEW (self->grid_view), 16);
+  /* the columns counted by the tiles' minimum width (the icon's), not their natural one (a long name's) */
+  gtk_scrollable_set_hscroll_policy (GTK_SCROLLABLE (self->grid_view), GTK_SCROLL_MINIMUM);
+  gtk_widget_add_css_class (self->grid_view, "fm-grid-view");
+  self->view = self->list_view;
   self->scroll = spongy_scroll_view_new ();
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->scroll), self->view);
   self->message = fm_label (NULL, "fm-list-message", 18, TRUE);
@@ -410,6 +498,33 @@ GtkWidget *
 fm_list_new (void)
 {
   return g_object_new (FM_TYPE_LIST, NULL);
+}
+
+void
+fm_list_set_grid (FmList *self, gboolean grid)
+{
+  if (self->grid == !!grid)
+    return;
+  self->grid = !!grid;
+  if (grid)
+    {
+      gtk_list_view_set_model (GTK_LIST_VIEW (self->list_view), NULL);
+      gtk_grid_view_set_model (GTK_GRID_VIEW (self->grid_view), self->selection);
+      self->view = self->grid_view;
+    }
+  else
+    {
+      gtk_grid_view_set_model (GTK_GRID_VIEW (self->grid_view), NULL);
+      gtk_list_view_set_model (GTK_LIST_VIEW (self->list_view), self->selection);
+      self->view = self->list_view;
+    }
+  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->scroll), self->view);
+}
+
+gboolean
+fm_list_get_grid (FmList *self)
+{
+  return self->grid;
 }
 
 void
@@ -598,7 +713,10 @@ fm_list_scroll_to (FmList *self, FmItem *item)
 
       if (shown == item)
         {
-          gtk_list_view_scroll_to (GTK_LIST_VIEW (self->view), i, GTK_LIST_SCROLL_NONE, NULL);
+          if (self->grid)
+            gtk_grid_view_scroll_to (GTK_GRID_VIEW (self->view), i, GTK_LIST_SCROLL_NONE, NULL);
+          else
+            gtk_list_view_scroll_to (GTK_LIST_VIEW (self->view), i, GTK_LIST_SCROLL_NONE, NULL);
           return;
         }
     }

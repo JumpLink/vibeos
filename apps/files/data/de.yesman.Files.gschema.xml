@@ -11,6 +11,14 @@
       <default>'NameUp'</default>
       <summary>Sort by</summary>
     </key>
+    <key name="view-type" type="s">
+      <choices>
+        <choice value="list"/><choice value="grid"/>
+      </choices>
+      <default>'list'</default>
+      <summary>View</summary>
+      <description>The folders as a list or as a grid of tiles (the View dialog's List and Grid); one for every folder.</description>
+    </key>
     <key name="show-hidden" type="b">
       <default>false</default>
       <summary>Show hidden files</summary>

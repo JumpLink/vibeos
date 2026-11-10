@@ -139,6 +139,9 @@ on_ask_password (GMountOperation *op, const char *message, const char *default_u
       return;
     }
 
+  /* the dialog answers later: GMountOperation's own handler, after this one, would answer "unhandled" at once (in
+   * an idle), and GVfs would give up on the password before it is typed */
+  g_signal_stop_emission_by_name (op, "ask-password");
   title = server_name (mount->location);
   dialog = fm_dialog_new (title, &content);
   ask = g_new0 (Ask, 1);
@@ -209,6 +212,8 @@ on_ask_question (GMountOperation *op, const char *message, const char **choices,
   NeoDialog *dialog;
   int n = choices ? (int) g_strv_length ((char **) choices) : 0;
 
+  /* answered later, as the password is */
+  g_signal_stop_emission_by_name (op, "ask-question");
   /* GVfs's first line is the title, the rest the body */
   dialog = fm_dialog_new (lines[0] && lines[1] ? lines[0] : NULL, &content);
   gtk_box_append (GTK_BOX (content), fm_label (lines[0] && lines[1] ? lines[1] : message, "fm-dialog-message", 14,

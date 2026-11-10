@@ -86,6 +86,10 @@ window.fm-window,
   margin-left: 2px;                     /* home ink 14.3 dp in, its chevron 54.3 (fmplus-4) */
 }
 
+.fm-crumb-chevron {
+  color: #888888;
+}
+
 .fm-crumb-text {
   font-size: 18px;
   font-weight: 700;
@@ -162,6 +166,44 @@ window.fm-window,
 
 .fm-row-check {
   margin: 0 4px;                        /* the 40 dp checkbox column */
+}
+
+/* the grid (filegrid_item in a GridView with a 6 dp padding, columns 2 dp apart): 5 dp around the grid and 1 dp
+ * around each tile */
+.fm-grid-view,
+.fm-grid-view > child {
+  margin: 0;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  background: none;
+  min-height: 0;
+}
+
+.fm-grid-view {
+  background-color: #121212;
+  padding: 5px;
+}
+
+.fm-grid-view > child {
+  padding: 1px;
+}
+
+.fm-grid-tile {
+  min-width: 64px;
+  padding: 2px 0;
+  border-radius: 2px;
+}
+
+.fm-grid-tile.selected {
+  background-color: #00796b;
+}
+
+.fm-grid-tile-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #dbdbdb;
+  margin: 0 2px;
 }
 
 .fm-list-message {
@@ -420,6 +462,16 @@ fm-drawer > .fm-drawer-scrim {
   font-weight: 700;
   color: #ffffff;
   margin-left: 8px;
+}
+
+/* the View dialog's List and Grid: the radio, the view's glyph, its name */
+.fm-view-type-icon {
+  color: #ffffff;
+  margin-left: 8px;
+}
+
+.fm-view-types {
+  margin-bottom: 4px;
 }
 
 .fm-entry,

@@ -30,8 +30,9 @@ GdkRGBA    fm_rgba (guint32 argb);
  * unless @wrap (word, then character) */
 GtkWidget *fm_label (const char *text, const char *css_class, double size, gboolean wrap);
 
-/* a toolbar icon button: @width x @height, the 24 dp glyph centred, a borderless ripple; @name for assistive
- * technology ("Back" is what the shell's back gesture presses) */
+/* a toolbar icon button: @width x @height, the icon theme's glyph centred at 20 dp (a 16-unit symbolic icon drawn
+ * to its edges), a borderless ripple; @name for assistive technology ("Back" is what the shell's back gesture
+ * presses) */
 GtkWidget *fm_icon_button (const char *icon_name, const char *name, int width, int height);
 /* the same with the glyph @glyph_size dp (the path bar's up arrow) */
 GtkWidget *fm_icon_button_sized (const char *icon_name, const char *name, int width, int height, int glyph_size);

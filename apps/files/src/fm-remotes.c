@@ -123,7 +123,9 @@ fm_remote_set_address (FmRemote *remote, const char *text)
   g_autoptr(GUri) uri = NULL;
   const char *slash;
 
-  if (strstr (trimmed, "://") && (uri = g_uri_parse (trimmed, G_URI_FLAGS_NONE, NULL)))
+  /* a password in the URI ("user:secret@") is split off and dropped: it is never a remote's (the dialog hands it to
+   * GVfs) */
+  if (strstr (trimmed, "://") && (uri = g_uri_parse (trimmed, G_URI_FLAGS_HAS_PASSWORD, NULL)))
     {
       FmProto proto;
       g_autofree char *path = NULL;

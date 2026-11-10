@@ -1035,7 +1035,7 @@ bottom_item (FmShell *shell, BottomItem item, const char *icon, const char *labe
   GtkWidget *button;
   GdkRGBA ripple = fm_rgba (FM_C_RIPPLE);
 
-  gtk_image_set_pixel_size (GTK_IMAGE (image), 28);
+  gtk_image_set_pixel_size (GTK_IMAGE (image), 24);
   gtk_widget_add_css_class (image, "fm-bottom-icon");
   gtk_label_set_xalign (GTK_LABEL (text), 0.5f);
   gtk_box_append (GTK_BOX (box), image);
@@ -1079,23 +1079,23 @@ update_bottom (FmShell *shell, gboolean selecting, guint selected)
     return;
   if (selecting && trash)
     {
-      bottom_item (shell, BOTTOM_RESTORE, "fm-restore-from-trash-symbolic", _("Restore"), TRUE);
-      bottom_item (shell, BOTTOM_DELETE, "fm-delete-forever-symbolic", _("Delete"), TRUE);
+      bottom_item (shell, BOTTOM_RESTORE, "edit-undo-symbolic", _("Restore"), TRUE);
+      bottom_item (shell, BOTTOM_DELETE, "edit-delete-symbolic", _("Delete"), TRUE);
     }
   else if (selecting)
     {
-      bottom_item (shell, BOTTOM_COPY, "fm-content-copy-symbolic", _("Copy"), TRUE);
-      bottom_item (shell, BOTTOM_CUT, "fm-content-cut-symbolic", _("Cut"), TRUE);
-      bottom_item (shell, BOTTOM_DELETE, "fm-delete-symbolic", _("Delete"), TRUE);
+      bottom_item (shell, BOTTOM_COPY, "edit-copy-symbolic", _("Copy"), TRUE);
+      bottom_item (shell, BOTTOM_CUT, "edit-cut-symbolic", _("Cut"), TRUE);
+      bottom_item (shell, BOTTOM_DELETE, "user-trash-symbolic", _("Delete"), TRUE);
       if (selected == 1)
-        bottom_item (shell, BOTTOM_RENAME, "fm-drive-file-rename-outline-symbolic", _("Rename"), TRUE);
-      bottom_item (shell, BOTTOM_MORE, "fm-more-vert-symbolic", _("More"), TRUE);
+        bottom_item (shell, BOTTOM_RENAME, "document-edit-symbolic", _("Rename"), TRUE);
+      bottom_item (shell, BOTTOM_MORE, "view-more-symbolic", _("More"), TRUE);
     }
   else
     {
-      bottom_item (shell, BOTTOM_CANCEL, "fm-close-symbolic", _("Cancel"), TRUE);
-      bottom_item (shell, BOTTOM_NEW_FOLDER, "fm-create-new-folder-symbolic", _("New folder"), can_paste);
-      bottom_item (shell, BOTTOM_PASTE, "fm-content-paste-symbolic", _("Paste"), can_paste);
+      bottom_item (shell, BOTTOM_CANCEL, "window-close-symbolic", _("Cancel"), TRUE);
+      bottom_item (shell, BOTTOM_NEW_FOLDER, "folder-new-symbolic", _("New folder"), can_paste);
+      bottom_item (shell, BOTTOM_PASTE, "edit-paste-symbolic", _("Paste"), can_paste);
     }
 }
 
@@ -1161,11 +1161,14 @@ fm_shell_update_bars (FmShell *shell)
 
   gtk_widget_set_visible (s->search, browsing && !trash && !network);
   gtk_widget_set_visible (s->view, browsing && !trash);
+  /* the View button shows how the folder is shown: rows or tiles */
+  gtk_image_set_from_icon_name (GTK_IMAGE (neo_pressable_get_child (NEO_PRESSABLE (s->view))),
+                                fm_list_get_grid (list) ? "view-grid-symbolic" : "view-list-symbolic");
   gtk_widget_set_visible (s->empty, trash);
   gtk_widget_set_visible (s->edit, shell->page == FM_PAGE_REMOTE && shell->remotes->len > 0);
   gtk_image_set_from_icon_name (GTK_IMAGE (neo_pressable_get_child (NEO_PRESSABLE (s->edit))),
-                                fm_remote_page_is_editing (shell->remote_page) ? "fm-check-symbolic"
-                                                                               : "fm-edit-symbolic");
+                                fm_remote_page_is_editing (shell->remote_page) ? "object-select-symbolic"
+                                                                               : "document-edit-symbolic");
   gtk_widget_set_visible (s->add, shell->page == FM_PAGE_REMOTE);
   gtk_widget_set_visible (s->overflow, shell->page == FM_PAGE_HOME || browsing);
 
@@ -1278,8 +1281,11 @@ on_mount_removed (GVolumeMonitor *monitor, GMount *mount, FmShell *shell)
 static void
 on_settings_changed (GSettings *settings, const char *key, FmShell *shell)
 {
-  if (!g_strcmp0 (key, "show-hidden") || !g_strcmp0 (key, "sort-order") || !g_strcmp0 (key, "show-thumbnails"))
+  if (!g_strcmp0 (key, "show-hidden") || !g_strcmp0 (key, "sort-order") || !g_strcmp0 (key, "show-thumbnails")
+      || !g_strcmp0 (key, "view-type"))
     fm_browser_settings_changed (shell->browser);
+  if (!g_strcmp0 (key, "view-type"))
+    fm_shell_update_bars (shell);
   else if (!g_strcmp0 (key, "show-system"))
     fm_drawer_refresh (shell->drawer);
 }
@@ -1343,24 +1349,24 @@ toolbar_new (Shell *s)
   gtk_stack_set_vhomogeneous (GTK_STACK (stack), TRUE);
 
   /* normal: ☰, the title at 72 dp, the actions (48 dp; the overflow 36 dp and 4 dp in) */
-  shell->nav = fm_icon_button ("fm-menu-symbolic", _("Navigation menu"), 56, 56);
+  shell->nav = fm_icon_button ("open-menu-symbolic", _("Navigation menu"), 56, 56);
   g_signal_connect (shell->nav, "clicked", G_CALLBACK (on_nav), shell);
   gtk_box_append (GTK_BOX (normal), shell->nav);
   shell->title = title_label (_("Files"));
   gtk_box_append (GTK_BOX (normal), shell->title);
   shell->actions = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  s->search = fm_icon_button ("fm-search-symbolic", _("Search"), 48, 56);
+  s->search = fm_icon_button ("system-search-symbolic", _("Search"), 48, 56);
   g_signal_connect (s->search, "clicked", G_CALLBACK (on_search), shell);
-  s->view = fm_icon_button ("fm-tune-symbolic", _("View"), 48, 56);
+  s->view = fm_icon_button ("view-list-symbolic", _("View"), 48, 56);
   g_signal_connect (s->view, "clicked", G_CALLBACK (on_view), shell);
-  s->empty = fm_icon_button ("fm-delete-forever-symbolic", _("Empty Recycle Bin"), 48, 56);
+  s->empty = fm_icon_button ("edit-delete-symbolic", _("Empty Recycle Bin"), 48, 56);
   g_signal_connect (s->empty, "clicked", G_CALLBACK (on_empty), shell);
-  s->edit = fm_icon_button ("fm-edit-symbolic", _("Edit"), 48, 56);
+  s->edit = fm_icon_button ("document-edit-symbolic", _("Edit"), 48, 56);
   g_signal_connect (s->edit, "clicked", G_CALLBACK (on_edit), shell);
-  /* File Manager+'s + is 17.3 dp of ink (fmplus-1): Material's add at 30 */
-  s->add = fm_icon_button_sized ("fm-add-symbolic", _("New location"), 48, 56, 30);
+  /* File Manager+'s + is 17.3 dp of ink (fmplus-1): the theme's list-add (14 of its 16) at 20 */
+  s->add = fm_icon_button_sized ("list-add-symbolic", _("New location"), 48, 56, 20);
   g_signal_connect (s->add, "clicked", G_CALLBACK (on_add), shell);
-  s->overflow = fm_icon_button ("fm-more-vert-symbolic", _("More options"), 36, 56);
+  s->overflow = fm_icon_button ("view-more-symbolic", _("More options"), 36, 56);
   gtk_widget_set_margin_end (s->overflow, 4);
   g_signal_connect (s->overflow, "clicked", G_CALLBACK (on_overflow), shell);
   gtk_box_append (GTK_BOX (shell->actions), s->search);
@@ -1373,14 +1379,14 @@ toolbar_new (Shell *s)
   gtk_stack_add_named (GTK_STACK (stack), normal, "normal");
 
   /* Settings: ← and the title */
-  button = fm_icon_button ("fm-arrow-back-symbolic", _("Back"), 56, 56);
+  button = fm_icon_button ("go-previous-symbolic", _("Back"), 56, 56);
   g_signal_connect (button, "clicked", G_CALLBACK (on_back_button), shell);
   gtk_box_append (GTK_BOX (settings), button);
   gtk_box_append (GTK_BOX (settings), title_label (_("Settings")));
   gtk_stack_add_named (GTK_STACK (stack), settings, "settings");
 
   /* search (view_search): ←, the field with its hint, the spinner while the folders are searched */
-  button = fm_icon_button ("fm-arrow-back-symbolic", _("Back"), 56, 56);
+  button = fm_icon_button ("go-previous-symbolic", _("Back"), 56, 56);
   g_signal_connect (button, "clicked", G_CALLBACK (on_back_button), shell);
   gtk_box_append (GTK_BOX (search), button);
   shell->search_entry = gtk_entry_new ();
@@ -1399,16 +1405,16 @@ toolbar_new (Shell *s)
   gtk_stack_add_named (GTK_STACK (stack), search, "search");
 
   /* selection (action_mode_file_list): ✕, "N selected", Select All, Select a range */
-  button = fm_icon_button ("fm-close-symbolic", _("Done"), 56, 56);
+  button = fm_icon_button ("window-close-symbolic", _("Done"), 56, 56);
   g_signal_connect (button, "clicked", G_CALLBACK (on_select_close), shell);
   gtk_box_append (GTK_BOX (select), button);
   shell->select_title = title_label (NULL);
   gtk_box_append (GTK_BOX (select), shell->select_title);
   shell->select_actions = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  button = fm_icon_button ("fm-select-all-symbolic", _("Select All"), 48, 56);
+  button = fm_icon_button ("edit-select-all-symbolic", _("Select All"), 48, 56);
   g_signal_connect (button, "clicked", G_CALLBACK (on_select_all), shell);
   gtk_box_append (GTK_BOX (shell->select_actions), button);
-  button = fm_icon_button ("fm-arrow-range-symbolic", _("Select a range"), 48, 56);
+  button = fm_icon_button ("selection-mode-symbolic", _("Select a range"), 48, 56);
   g_signal_connect (button, "clicked", G_CALLBACK (on_select_range), shell);
   gtk_box_append (GTK_BOX (shell->select_actions), button);
   gtk_box_append (GTK_BOX (select), shell->select_actions);

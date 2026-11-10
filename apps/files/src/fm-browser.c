@@ -3,11 +3,13 @@
 #include "fm-drawer.h"
 #include "fm-icon.h"
 #include "fm-mount.h"
+#include "fm-scan.h"
 #include "fm-ui.h"
 #include "fm-util.h"
 
 #include <glib/gi18n.h>
 #include <neo.h>
+#include <string.h>
 
 #define BATCH          200      /* rows asked of the backend at a time */
 #define RELOAD_DELAY   500      /* ms after the last change the monitor saw */
@@ -20,7 +22,7 @@ struct _FmBrowser {
   FmList *list;
   GFile *location;
   FmPlace *place;
-  GCancellable *load_cancel, *count_cancel, *search_cancel, *free_cancel;
+  GCancellable *load_cancel, *count_cancel, *search_cancel, *free_cancel, *scan_cancel;
   GPtrArray *pending;           /* the rows being listed */
   GFileMonitor *monitor;
   guint reload_source;
@@ -28,6 +30,7 @@ struct _FmBrowser {
   char *select_name;
   GHashTable *names;            /* a folder's URI -> the name it was listed under (the crumbs) */
   gboolean searching, search_shown, search_busy;
+  gboolean scanning;            /* the Local Network's subnet scan is running */
 };
 
 static void load_start (FmBrowser *b, gboolean keep_offset);
@@ -92,30 +95,16 @@ on_up (NeoPressable *up, FmBrowser *b)
     fm_shell_open_location (b->shell, b->place->root);
 }
 
-static void
-draw_chevron (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer data)
-{
-  /* ic_pathbar_devider: a chevron 7 x 12 dp in #888888 */
-  double x = (width - 7) / 2.0, y = (height - 12) / 2.0;
-
-  cairo_set_source_rgb (cr, 0x88 / 255.0, 0x88 / 255.0, 0x88 / 255.0);
-  cairo_set_line_width (cr, 1.8);
-  cairo_set_line_cap (cr, CAIRO_LINE_CAP_SQUARE);
-  cairo_move_to (cr, x + 1, y + 1);
-  cairo_line_to (cr, x + 6, y + 6);
-  cairo_line_to (cr, x + 1, y + 11);
-  cairo_stroke (cr);
-}
-
+/* ic_pathbar_devider's place (a 7 x 12 dp chevron): the theme's go-next at 12 dp */
 static GtkWidget *
 chevron (void)
 {
-  GtkWidget *area = gtk_drawing_area_new ();
+  GtkWidget *image = gtk_image_new_from_icon_name ("go-next-symbolic");
 
-  gtk_drawing_area_set_content_width (GTK_DRAWING_AREA (area), 8);
-  gtk_drawing_area_set_draw_func (GTK_DRAWING_AREA (area), draw_chevron, NULL, NULL);
-  gtk_widget_add_css_class (area, "fm-crumb-chevron");
-  return area;
+  gtk_image_set_pixel_size (GTK_IMAGE (image), 12);
+  gtk_widget_set_valign (image, GTK_ALIGN_CENTER);
+  gtk_widget_add_css_class (image, "fm-crumb-chevron");
+  return image;
 }
 
 static GtkWidget *
@@ -219,7 +208,7 @@ pathbar_new (FmBrowser *b)
   b->free_label = fm_label (NULL, "fm-free", 14, FALSE);
   gtk_label_set_ellipsize (GTK_LABEL (b->free_label), PANGO_ELLIPSIZE_NONE);
   gtk_widget_set_valign (b->free_label, GTK_ALIGN_CENTER);
-  b->up = fm_icon_button_sized ("fm-up-symbolic", _("Up"), 44, 44, 30);
+  b->up = fm_icon_button_sized ("go-up-symbolic", _("Up"), 44, 44, 22);
   gtk_widget_add_css_class (b->up, "fm-up");
   g_signal_connect (b->up, "clicked", G_CALLBACK (on_up), b);
   gtk_box_append (GTK_BOX (bar), b->crumb_scroll);
@@ -426,11 +415,91 @@ list_message (FmBrowser *b)
     fm_list_set_message (b->list, NULL);
   else if (b->search_shown && !g_list_model_get_n_items (items))
     fm_list_set_message (b->list, _("No results"));
+  else if (b->scanning && !g_list_model_get_n_items (items))
+    fm_list_set_message (b->list, NULL);
   else if (!g_list_model_get_n_items (items))
     fm_list_set_message (b->list, b->place && b->place->kind == FM_PLACE_TRASH ? _("The Recycle Bin is empty")
                                                                                : _("Empty folder"));
   else
     fm_list_set_message (b->list, NULL);
+}
+
+/* ---- the Local Network's hosts (§6.3) ------------------------------------------------------------------------------ */
+
+/* whether a listed host is @address or is called @name (GVfs's network:/// rows target smb://NAME/ or smb://host.local/) */
+static gboolean
+host_listed (FmBrowser *b, const char *address, const char *name)
+{
+  GListModel *items = fm_list_get_items (b->list);
+  guint n = g_list_model_get_n_items (items);
+
+  for (guint i = 0; i < n; i++)
+    {
+      g_autoptr(FmItem) item = g_list_model_get_item (items, i);
+      g_autoptr(GUri) uri = item->target_uri ? g_uri_parse (item->target_uri, G_URI_FLAGS_NONE, NULL) : NULL;
+      const char *host = uri ? g_uri_get_host (uri) : NULL;
+      g_autofree char *label = NULL;
+
+      if (!host)
+        continue;
+      label = g_strndup (host, strcspn (host, "."));
+      if (!g_ascii_strcasecmp (host, address) || !g_ascii_strcasecmp (label, name)
+          || !g_ascii_strcasecmp (item->name, name))
+        return TRUE;
+    }
+  return FALSE;
+}
+
+/* a file server the subnet scan found, unless network:/// lists it already: its shares are at smb://address/ */
+static void
+on_lan_host (const char *address, const char *name, gpointer data)
+{
+  FmBrowser *b = data;
+  g_autofree char *uri = NULL;
+  g_autoptr(GFile) file = NULL;
+  g_autoptr(GPtrArray) items = NULL;
+  GListModel *listed;
+  FmItem *item;
+
+  if (host_listed (b, address, name))
+    return;
+  uri = g_uri_join (G_URI_FLAGS_NONE, "smb", NULL, address, -1, "/", NULL, NULL);
+  file = g_file_new_for_uri (uri);
+  item = fm_item_new_for_file (file, name, G_FILE_TYPE_MOUNTABLE);
+  item->target_uri = g_steal_pointer (&uri);
+  item->count = FM_COUNT_UNKNOWN;
+  item->can_write = item->can_delete = item->can_trash = item->can_rename = FALSE;
+  /* in the folder's order with the rest */
+  listed = fm_list_get_items (b->list);
+  items = g_ptr_array_new_with_free_func (g_object_unref);
+  for (guint i = 0; i < g_list_model_get_n_items (listed); i++)
+    g_ptr_array_add (items, g_list_model_get_item (listed, i));
+  g_ptr_array_add (items, item);
+  fm_items_sort (items, sort_order (b));
+  fm_list_set_items (b->list, items, TRUE);
+  list_message (b);
+}
+
+static void
+on_lan_done (gpointer data)
+{
+  FmBrowser *b = data;
+
+  b->scanning = FALSE;
+  loading (b, FALSE);
+  list_message (b);
+}
+
+/* File Manager+ does not wait for announcements (the phone may run no avahi-daemon or wsdd): it knocks on the
+ * addresses of its networks. fm_scan_start calls nothing once scan_cancel is cancelled, so it is given the browser. */
+static void
+lan_scan_start (FmBrowser *b)
+{
+  cancel (&b->scan_cancel);
+  b->scan_cancel = new_cancellable (b);
+  b->scanning = TRUE;
+  loading (b, TRUE);
+  fm_scan_start (b->scan_cancel, on_lan_host, on_lan_done, b);
 }
 
 static void
@@ -483,6 +552,8 @@ load_finish (FmBrowser *b)
                                           b->free_cancel, on_free_space, g_object_ref (b->free_cancel));
     }
   g_ptr_array_unref (items);
+  if (b->place->kind == FM_PLACE_NETWORK && g_file_equal (b->location, b->place->root))
+    lan_scan_start (b);
   fm_shell_update_bars (b->shell);
 }
 
@@ -494,6 +565,12 @@ load_failed (FmBrowser *b, const GError *error)
   fm_list_set_message (b->list, error->message);
   loading (b, FALSE);
   pathbar_build (b);
+  /* without GVfs's network backend the Local Network is still the scan's */
+  if (b->place && b->place->kind == FM_PLACE_NETWORK && g_file_equal (b->location, b->place->root))
+    {
+      fm_list_set_message (b->list, NULL);
+      lan_scan_start (b);
+    }
   fm_shell_update_bars (b->shell);
 }
 
@@ -620,8 +697,10 @@ cancel_all (FmBrowser *b)
   cancel (&b->count_cancel);
   cancel (&b->free_cancel);
   cancel (&b->search_cancel);
+  cancel (&b->scan_cancel);
   g_clear_handle_id (&b->reload_source, g_source_remove);
   b->search_busy = FALSE;
+  b->scanning = FALSE;
 }
 
 static void
@@ -957,7 +1036,10 @@ fm_browser_search_busy (FmBrowser *b)
 void
 fm_browser_settings_changed (FmBrowser *b)
 {
+  g_autofree char *type = g_settings_get_string (b->shell->settings, "view-type");
+
   fm_list_set_show_thumbnails (b->list, g_settings_get_boolean (b->shell->settings, "show-thumbnails"));
+  fm_list_set_grid (b->list, !g_strcmp0 (type, "grid"));
   if (b->location && !b->search_shown)
     load_start (b, TRUE);
 }
@@ -1029,6 +1111,11 @@ fm_browser_new (FmShell *shell)
   gtk_box_append (GTK_BOX (b->box), pathbar_new (b));
   b->list = FM_LIST (fm_list_new ());
   fm_list_set_show_thumbnails (b->list, g_settings_get_boolean (shell->settings, "show-thumbnails"));
+  {
+    g_autofree char *type = g_settings_get_string (shell->settings, "view-type");
+
+    fm_list_set_grid (b->list, !g_strcmp0 (type, "grid"));
+  }
   gtk_widget_set_vexpand (GTK_WIDGET (b->list), TRUE);
   g_signal_connect (b->list, "activate", G_CALLBACK (on_activate), b);
   g_signal_connect (b->list, "long-press", G_CALLBACK (on_long_press), b);

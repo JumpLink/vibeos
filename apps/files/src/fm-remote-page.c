@@ -4,6 +4,7 @@
 #include "fm-icon.h"
 #include "fm-mount.h"
 #include "fm-places.h"
+#include "fm-scan.h"
 #include "fm-ui.h"
 #include "fm-util.h"
 
@@ -105,6 +106,19 @@ on_server_mounted (gboolean ok, const GError *error, gpointer data)
   g_free (opening);
 }
 
+/* a field's text into *@value, unless the field is empty and *@value is not (a URI typed in Host gave it) */
+static void
+take_field (char **value, GtkWidget *entry)
+{
+  g_autofree char *text = g_strstrip (g_strdup (gtk_editable_get_text (GTK_EDITABLE (entry))));
+
+  if (*text || !*value || !**value)
+    {
+      g_free (*value);
+      *value = g_steal_pointer (&text);
+    }
+}
+
 static void
 on_server_response (NeoDialog *dialog, int response, Server *server)
 {
@@ -126,20 +140,29 @@ on_server_response (NeoDialog *dialog, int response, Server *server)
     remote->port = atoi (port);
   if (remote->port == fm_proto_default_port (remote->proto))
     remote->port = 0;
-  g_free (remote->user);
-  remote->user = g_strstrip (g_strdup (gtk_editable_get_text (GTK_EDITABLE (server->user))));
+  /* the fields win over what a whole URI typed in Host says, when they say anything */
+  take_field (&remote->user, server->user);
   if (server->domain)
-    {
-      g_free (remote->domain);
-      remote->domain = g_strstrip (g_strdup (gtk_editable_get_text (GTK_EDITABLE (server->domain))));
-    }
+    take_field (&remote->domain, server->domain);
   remote->anonymous = server->anonymous && fm_check_get_active (fm_check_row_get_check (server->anonymous));
   g_free (remote->name);
   remote->name = g_strstrip (g_strdup (gtk_editable_get_text (GTK_EDITABLE (server->name))));
   g_free (remote->id);
   remote->id = old ? g_strdup (old->id) : fm_remotes_new_id (shell->remotes);
-  /* the password goes to GVfs with the mount, and from there to the keyring: never into the remote */
+  /* the password goes to GVfs with the mount, and from there to the keyring: never into the remote (a URI's own,
+   * "smb://user:secret@host/share", when the field is empty) */
   password = g_strdup (gtk_editable_get_text (GTK_EDITABLE (server->password)));
+  if (!*password)
+    {
+      g_autoptr(GUri) uri = g_uri_parse (gtk_editable_get_text (GTK_EDITABLE (server->host)), G_URI_FLAGS_HAS_PASSWORD,
+                                         NULL);
+
+      if (uri && g_uri_get_password (uri))
+        {
+          g_free (password);
+          password = g_uri_unescape_string (g_uri_get_password (uri), NULL);
+        }
+    }
   if (old)
     {
       for (guint i = 0; i < shell->remotes->len; i++)
@@ -274,7 +297,11 @@ server_dialog (FmRemotePage *page, FmProto proto, const FmRemote *editing, const
   neo_dialog_present (dialog, page->shell->window);
 }
 
-/* ---- the Local Network scan (dialog_choose_smb, §6.3) ------------------------------------------------------------- */
+/* ---- the Local Network scan (dialog_choose_smb, §6.3) ------------------------------------------------------------- *
+ * Two sources, one list: the subnet scan (fm-scan.h), which finds the file servers whether they announce themselves
+ * or not, and network:/// (the workgroup's browse list, DNS-SD and WS-Discovery, when the system has them). A host
+ * both of them find shows once: network:///'s names are resolved and the rows are keyed by address. A tap browses
+ * the host's shares (smb://host/); a share mounts with the password dialog, anonymously if the server lets it. */
 
 typedef struct {
   FmRemotePage *page;
@@ -282,9 +309,9 @@ typedef struct {
   GtkWidget *list, *progress, *empty;
   GFileMonitor *monitor;
   GCancellable *cancellable;
-  GHashTable *hosts;            /* host -> its row */
+  GHashTable *rows;             /* an address (or an unresolved host name) -> its row, not held */
   guint linger;
-  gboolean scanning;
+  gboolean network_busy, subnet_busy;
 } Scan;
 
 static void
@@ -301,49 +328,44 @@ scan_free (gpointer data)
       g_object_unref (scan->monitor);
     }
   g_clear_handle_id (&scan->linger, g_source_remove);
-  g_hash_table_unref (scan->hosts);
+  g_hash_table_unref (scan->rows);
   g_free (scan);
 }
 
 static void
 scan_update (Scan *scan)
 {
-  gboolean any = g_hash_table_size (scan->hosts) > 0;
+  gboolean scanning = scan->network_busy || scan->subnet_busy;
+  gboolean any = gtk_widget_get_first_child (scan->list) != NULL;
 
-  fm_progress_set_fraction (scan->progress, scan->scanning ? -1 : 0);
-  gtk_widget_set_visible (scan->progress, scan->scanning);
-  gtk_widget_set_visible (scan->empty, !scan->scanning && !any);
+  fm_progress_set_fraction (scan->progress, scanning ? -1 : 0);
+  gtk_widget_set_visible (scan->progress, scanning);
+  gtk_widget_set_visible (scan->empty, !scanning && !any);
 }
 
 static void
 on_scan_row (NeoPressable *row, Scan *scan)
 {
-  g_autofree char *host = g_strdup (g_object_get_data (G_OBJECT (row), "fm-host"));
+  const char *host = g_object_get_data (G_OBJECT (row), "fm-host");
+  /* the host's shares: GVfs lists them (smb-browse), and a tap on one mounts it */
+  g_autofree char *uri = g_uri_join (G_URI_FLAGS_NONE, "smb", NULL, host, -1, "/", NULL, NULL);
+  g_autoptr(GFile) server = g_file_new_for_uri (uri);
   FmRemotePage *page = scan->page;
 
   neo_dialog_respond (scan->dialog, NEO_RESPONSE_OK);
-  server_dialog (page, FM_PROTO_SMB, NULL, host);
+  fm_shell_open_location (page->shell, server);
 }
 
-/* a host from network:///: its name, and the host of its smb:// target */
-static void
-scan_add (Scan *scan, GFileInfo *info)
+/* a host's row: the server icon and its name; @host is what smb:// is given (an address, or a name) */
+static GtkWidget *
+scan_row_add (Scan *scan, const char *name, const char *host)
 {
-  const char *target = g_file_info_get_attribute_string (info, G_FILE_ATTRIBUTE_STANDARD_TARGET_URI);
-  const char *name = g_file_info_get_display_name (info);
-  g_autoptr(GUri) uri = target ? g_uri_parse (target, G_URI_FLAGS_NONE, NULL) : NULL;
-  GtkWidget *line, *row, *label;
+  GtkWidget *line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+  GtkWidget *row, *label;
   GdkRGBA ripple = fm_rgba (FM_C_RIPPLE_CARD);
-  const char *host;
 
-  /* SMB servers only, as File Manager+ lists (the workgroup's, WS-Discovery's and DNS-SD's _smb._tcp) */
-  if (!uri || g_strcmp0 (g_uri_get_scheme (uri), "smb") || !(host = g_uri_get_host (uri)) || !*host)
-    return;
-  if (g_hash_table_contains (scan->hosts, host))
-    return;
-  line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_box_append (GTK_BOX (line), fm_icon_new (FM_GLYPH_SERVER, 40));
-  label = fm_label (name ? name : host, "fm-scan-name", 18, FALSE);
+  label = fm_label (name, "fm-scan-name", 18, FALSE);
   gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
   gtk_widget_set_hexpand (label, TRUE);
   gtk_box_append (GTK_BOX (line), label);
@@ -354,9 +376,99 @@ scan_add (Scan *scan, GFileInfo *info)
   neo_pressable_set_ripple_color (NEO_PRESSABLE (row), &ripple);
   g_object_set_data_full (G_OBJECT (row), "fm-host", g_strdup (host), g_free);
   g_signal_connect (row, "clicked", G_CALLBACK (on_scan_row), scan);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (row), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);
   gtk_box_append (GTK_BOX (scan->list), row);
-  g_hash_table_insert (scan->hosts, g_strdup (host), row);
   scan_update (scan);
+  return row;
+}
+
+/* the callbacks hold the scan's cancellable, not the scan: a closed dialog has freed the scan and cancelled it */
+static Scan *
+scan_of (GCancellable *cancellable)
+{
+  return g_cancellable_is_cancelled (cancellable) ? NULL : g_object_get_data (G_OBJECT (cancellable), "fm-scan");
+}
+
+/* the subnet scan's hosts (fm_scan_start calls nothing once the cancellable is cancelled, so the scan is there) */
+static void
+on_subnet_found (const char *address, const char *name, gpointer data)
+{
+  Scan *scan = data;
+
+  if (!g_hash_table_contains (scan->rows, address))
+    g_hash_table_insert (scan->rows, g_strdup (address), scan_row_add (scan, name, address));
+}
+
+static void
+on_subnet_done (gpointer data)
+{
+  Scan *scan = data;
+
+  scan->subnet_busy = FALSE;
+  scan_update (scan);
+}
+
+/* a host of network:///, resolved: one row for its addresses, unless the subnet scan has one for them */
+typedef struct {
+  GCancellable *cancellable;
+  char *name, *host;
+} Announced;
+
+static void
+announced_free (Announced *announced)
+{
+  g_object_unref (announced->cancellable);
+  g_free (announced->name);
+  g_free (announced->host);
+  g_free (announced);
+}
+
+static void
+on_announced_resolved (GObject *source, GAsyncResult *result, gpointer data)
+{
+  Announced *announced = data;
+  GList *addresses = g_resolver_lookup_by_name_finish (G_RESOLVER (source), result, NULL);
+  Scan *scan = scan_of (announced->cancellable);
+  g_autoptr(GPtrArray) keys = g_ptr_array_new_with_free_func (g_free);
+
+  for (GList *l = addresses; l; l = l->next)
+    g_ptr_array_add (keys, g_inet_address_to_string (l->data));
+  g_resolver_free_addresses (addresses);
+  if (!keys->len)
+    g_ptr_array_add (keys, g_strdup (announced->host));
+  for (guint i = 0; scan && i < keys->len; i++)
+    if (g_hash_table_contains (scan->rows, keys->pdata[i]))
+      scan = NULL;
+  if (scan)
+    {
+      GtkWidget *row = scan_row_add (scan, announced->name, announced->host);
+
+      for (guint i = 0; i < keys->len; i++)
+        g_hash_table_insert (scan->rows, g_strdup (keys->pdata[i]), row);
+    }
+  announced_free (announced);
+}
+
+/* a host from network:///: its name, and the host of its smb:// target */
+static void
+scan_add (Scan *scan, GFileInfo *info)
+{
+  const char *target = g_file_info_get_attribute_string (info, G_FILE_ATTRIBUTE_STANDARD_TARGET_URI);
+  const char *name = g_file_info_get_display_name (info);
+  g_autoptr(GUri) uri = target ? g_uri_parse (target, G_URI_FLAGS_NONE, NULL) : NULL;
+  Announced *announced;
+  const char *host;
+
+  /* SMB servers only, as File Manager+ lists (the workgroup's, WS-Discovery's and DNS-SD's _smb._tcp) */
+  if (!uri || g_strcmp0 (g_uri_get_scheme (uri), "smb") || !(host = g_uri_get_host (uri)) || !*host
+      || g_hash_table_contains (scan->rows, host))
+    return;
+  announced = g_new0 (Announced, 1);
+  announced->cancellable = g_object_ref (scan->cancellable);
+  announced->name = g_strdup (name ? name : host);
+  announced->host = g_strdup (host);
+  g_resolver_lookup_by_name_async (g_resolver_get_default (), host, scan->cancellable, on_announced_resolved,
+                                   announced);
 }
 
 static gboolean
@@ -365,16 +477,9 @@ on_linger_done (gpointer data)
   Scan *scan = data;
 
   scan->linger = 0;
-  scan->scanning = FALSE;
+  scan->network_busy = FALSE;
   scan_update (scan);
   return G_SOURCE_REMOVE;
-}
-
-/* the callbacks hold the scan's cancellable, not the scan: a closed dialog has freed the scan and cancelled it */
-static Scan *
-scan_of (GCancellable *cancellable)
-{
-  return g_cancellable_is_cancelled (cancellable) ? NULL : g_object_get_data (G_OBJECT (cancellable), "fm-scan");
 }
 
 static void
@@ -443,8 +548,9 @@ on_network_listed (GObject *source, GAsyncResult *result, gpointer data)
     }
   if (!enumerator)
     {
-      g_warning ("network:///: %s", error->message);
-      scan->scanning = FALSE;
+      /* no network:/// (no gvfs-backends): the subnet scan alone */
+      g_debug ("network:///: %s", error->message);
+      scan->network_busy = FALSE;
       scan_update (scan);
       g_object_unref (cancellable);
       return;
@@ -471,8 +577,8 @@ local_network_dialog (FmRemotePage *page)
   scan->page = page;
   scan->cancellable = g_cancellable_new ();
   g_object_set_data (G_OBJECT (scan->cancellable), "fm-scan", scan);
-  scan->hosts = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
-  scan->scanning = TRUE;
+  scan->rows = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+  scan->network_busy = scan->subnet_busy = TRUE;
   scan->dialog = fm_dialog_new (_("Local Network"), &content);
   gtk_widget_add_css_class (content, "fm-scan-dialog");
   scan->list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
@@ -495,6 +601,8 @@ local_network_dialog (FmRemotePage *page)
   g_object_set_data_full (G_OBJECT (scan->dialog), "fm-scan", scan, scan_free);
   g_signal_connect (scan->dialog, "response", G_CALLBACK (on_scan_response), scan);
   scan_update (scan);
+  /* every address of the networks the device is on, as File Manager+ does */
+  fm_scan_start (scan->cancellable, on_subnet_found, on_subnet_done, scan);
   /* network:/// merges the workgroup's browse list, DNS-SD and WS-Discovery; the monitor brings the late ones */
   scan->monitor = g_file_monitor_directory (network, G_FILE_MONITOR_NONE, NULL, NULL);
   if (scan->monitor)
@@ -674,9 +782,9 @@ fm_remote_page_refresh (FmRemotePage *page)
       gtk_box_append (GTK_BOX (box), text);
       if (page->editing)
         {
-          GtkWidget *more = gtk_image_new_from_icon_name ("fm-more-vert-symbolic");
+          GtkWidget *more = gtk_image_new_from_icon_name ("view-more-symbolic");
 
-          gtk_image_set_pixel_size (GTK_IMAGE (more), 24);
+          gtk_image_set_pixel_size (GTK_IMAGE (more), 16);
           gtk_widget_add_css_class (more, "fm-remote-more");
           gtk_box_append (GTK_BOX (box), more);
         }
@@ -694,13 +802,14 @@ fm_remote_page_refresh (FmRemotePage *page)
                                       -1);
       gtk_box_append (GTK_BOX (page->box), row);
     }
-  /* network_list_footer: 64 dp over a 1 dp line, "+ Add a remote location" centred: a 24 dp + (14 dp of ink) */
+  /* network_list_footer: 64 dp over a 1 dp line, "+ Add a remote location" centred: the theme's + at 16 dp (14 dp
+   * of ink) */
   line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 4);
   {
-    GtkWidget *plus = gtk_image_new_from_icon_name ("fm-add-symbolic");
+    GtkWidget *plus = gtk_image_new_from_icon_name ("list-add-symbolic");
     GtkWidget *label = fm_label (_("Add a remote location"), "fm-footer-text", 18, FALSE);
 
-    gtk_image_set_pixel_size (GTK_IMAGE (plus), 24);
+    gtk_image_set_pixel_size (GTK_IMAGE (plus), 16);
     gtk_widget_add_css_class (plus, "fm-footer-plus");
     gtk_widget_set_valign (plus, GTK_ALIGN_CENTER);
     gtk_widget_set_valign (label, GTK_ALIGN_CENTER);

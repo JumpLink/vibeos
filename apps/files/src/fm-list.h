@@ -1,10 +1,13 @@
-/* FmList: the file list (spec §3): a GtkListView of FmItem rows in a SpongyScrollView, the filter of the search
- * bar, selection mode with its check column, thumbnails decoded in a worker, and the message that takes the list's
- * place ("Empty folder", "No results", an error).
+/* FmList: the file list (spec §3): a GtkListView of FmItem rows, or a GtkGridView of tiles (the View dialog's
+ * Grid), in a SpongyScrollView, the filter of the search bar, selection mode with its check column, thumbnails
+ * decoded in a worker, and the message that takes the list's place ("Empty folder", "No results", an error).
  *
  * A row: the 44 dp icon 8 dp in, the name (18 sp #dbdbdb, wrapping) from 60 dp, under it the count or size (left)
  * and the date (right) in 14 sp #a7a7a7, and for a search result or a Recycle Bin item the folder it is (or was) in.
- * A 1 dp #272727 line under each. */
+ * A 1 dp #272727 line under each.
+ *
+ * A tile (File Manager+'s filegrid_item): the 64 dp icon and under it the name, 14 sp, centred, at most two lines;
+ * the columns at least 66 dp + 2 dp apart, as many as fit (five on a 360 dp phone), stretched to the width. */
 #pragma once
 
 #include <gtk/gtk.h>
@@ -27,6 +30,9 @@ void        fm_list_set_filter         (FmList *self, const char *text);
 /* a message in the list's place, or NULL for the list */
 void        fm_list_set_message        (FmList *self, const char *message);
 void        fm_list_set_show_thumbnails (FmList *self, gboolean show);
+/* tiles (TRUE) or rows */
+void        fm_list_set_grid           (FmList *self, gboolean grid);
+gboolean    fm_list_get_grid           (FmList *self);
 
 void        fm_list_set_selecting      (FmList *self, gboolean selecting);
 gboolean    fm_list_get_selecting      (FmList *self);

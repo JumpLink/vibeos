@@ -279,8 +279,14 @@ gboolean
 fm_info_is_hidden (GFileInfo *info)
 {
   const char *name = g_file_info_get_name (info);
+  const char *shown = g_file_info_get_attribute_string (info, G_FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME);
+  GFileType type = g_file_info_get_attribute_uint32 (info, G_FILE_ATTRIBUTE_STANDARD_TYPE);
 
   /* the attribute getters, not g_file_info_get_is_hidden, which is critical about a flag the backend left out */
-  return g_file_info_get_attribute_boolean (info, G_FILE_ATTRIBUTE_STANDARD_IS_HIDDEN) ||
-         g_file_info_get_attribute_boolean (info, G_FILE_ATTRIBUTE_STANDARD_IS_BACKUP) || (name && name[0] == '.');
+  if (g_file_info_get_attribute_boolean (info, G_FILE_ATTRIBUTE_STANDARD_IS_HIDDEN) ||
+      g_file_info_get_attribute_boolean (info, G_FILE_ATTRIBUTE_STANDARD_IS_BACKUP) || (name && name[0] == '.'))
+    return TRUE;
+  /* a server's hidden shares (IPC$, C$, ADMIN$): Windows' own convention, a '$' at the end */
+  return (type == G_FILE_TYPE_MOUNTABLE || type == G_FILE_TYPE_SHORTCUT)
+         && ((shown && g_str_has_suffix (shown, "$")) || (name && g_str_has_suffix (name, "$")));
 }

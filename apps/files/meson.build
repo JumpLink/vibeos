@@ -15,7 +15,7 @@ src = include_directories('src')
 
 # the listings, the remotes, the locations and what the app remembers: no GTK, so the tests link them alone
 core = static_library('files-core', 'src/fm-item.c', 'src/fm-remotes.c', 'src/fm-state.c', 'src/fm-util.c',
-                      'src/fm-places.c', dependencies: [gio])
+                      'src/fm-places.c', 'src/fm-scan.c', dependencies: [gio])
 
 # a removed remote's password goes from the keyring too (the only keyring call the app makes); without libsecret
 # GVfs's saved password stays behind
@@ -41,7 +41,7 @@ install_data('data/de.yesman.Files.svg', install_dir: datadir / 'icons/hicolor/s
 install_data('data/de.yesman.Files.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
 gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
 
-foreach name : ['fm-item', 'fm-remotes', 'fm-state', 'fm-util', 'fm-places']
+foreach name : ['fm-item', 'fm-remotes', 'fm-state', 'fm-util', 'fm-places', 'fm-scan']
   test(name, executable('test-' + name, 'tests/test-' + name + '.c', include_directories: src, link_with: core,
                         dependencies: [gio]))
 endforeach
