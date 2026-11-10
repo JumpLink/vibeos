@@ -2,8 +2,9 @@
  *
  * One program, two applications, as the Clock has them:
  *  - de.yesman.Dialer, the app with its tabs (Favorites, Recents, Contacts) and the dialpad. It is D-Bus
- *    activatable: the launcher starts it, a tel: link opens it at the dialpad with the number, and the call service
- *    opens it at the call log ("show-call-log", a tap on a missed call) or to add a call ("add-call").
+ *    activatable: the launcher starts it, a tel: link opens it at the dialpad with the number, another app has a
+ *    number called at once ("call", below), and the call service opens it at the call log ("show-call-log", a tap
+ *    on a missed call) or to add a call ("add-call").
  *  - de.yesman.Dialer.InCall ("neo-dialer --incall"), the screen of a call: the answer screen while it rings, the
  *    in-call screen once it is up. The call service has the shell start it for a ringing call; it has a desktop
  *    file of its own so the shell lets it over the lock screen (InCallActivity's showWhenLocked).
@@ -11,8 +12,11 @@
  * The calls themselves are not here: the call service (neo-dialer-calls) has them, rings, keeps the call log and
  * posts the notifications, whether or not this app runs. */
 #include "call-types.h"
+#include "calls-client.h"
 #include "dialer-window.h"
 #include "incall-window.h"
+#include "phone.h"
+#include "phone-number.h"
 
 #include <glib/gi18n.h>
 #include <locale.h>
@@ -74,6 +78,65 @@ on_open (GApplication *app, GFile **files, int n_files, const char *hint, gpoint
       break;
     }
   gtk_window_present (GTK_WINDOW (window));
+}
+
+/* "call" (s): another app's call to a number (Intent.ACTION_CALL; the Contacts app's call button), activated with
+ * org.freedesktop.Application.ActivateAction on de.yesman.Dialer, or `gapplication action de.yesman.Dialer call
+ * "'+49…'"`. The number may come as a tel: URI. The call goes out at once and the in-call screen comes up, no window
+ * of the Dialer's in between. Telecom's rules for another app's call hold (NewOutgoingCallIntentBroadcaster):
+ *  - an emergency number is not called this way: the dialpad opens with it, to be called with the dial button
+ *    (ACTION_CALL to one becomes ACTION_DIAL);
+ *  - no number: the dialpad, empty;
+ *  - a call the call service refuses: the dialpad with the number, and why in the snackbar. */
+typedef struct {
+  GApplication *app;
+  char *number;
+} CallRequest;
+
+static void
+on_called (guint id, const GError *error, gpointer data)
+{
+  CallRequest *request = data;
+
+  if (error)
+    {
+      GtkWidget *window = dialer_window (GTK_APPLICATION (request->app));
+
+      dialer_window_show_dialpad (window, request->number);
+      gtk_window_present (GTK_WINDOW (window));
+      dialer_window_show_message (window, error->message);
+    }
+  else
+    phone_start_app (INCALL_APP_ID);
+  g_application_release (request->app);
+  g_free (request->number);
+  g_free (request);
+}
+
+static void
+on_call (GSimpleAction *action, GVariant *parameter, gpointer data)
+{
+  GApplication *app = data;
+  const char *given = g_variant_get_string (parameter, NULL);
+  g_autofree char *number = g_str_has_prefix (given, "tel:") ? g_uri_unescape_string (given + strlen ("tel:"), NULL)
+                                                             : g_strdup (given);
+  CallRequest *request;
+
+  g_strstrip (number);
+  if (!*number || phone_number_is_emergency (number))
+    {
+      GtkWidget *window = dialer_window (GTK_APPLICATION (app));
+
+      dialer_window_show_dialpad (window, number);
+      gtk_window_present (GTK_WINDOW (window));
+      return;
+    }
+  /* kept running until the call service has answered, though no window of ours is open */
+  request = g_new0 (CallRequest, 1);
+  request->app = app;
+  request->number = g_steal_pointer (&number);
+  g_application_hold (app);
+  calls_client_dial (calls_client_get (), request->number, on_called, request);
 }
 
 /* the call service's "open the call log" (a tap on the missed-call notification) */
@@ -153,6 +216,7 @@ main (int argc, char **argv)
       static const GActionEntry actions[] = {
         { .name = "show-call-log", .activate = on_show_call_log },
         { .name = "add-call", .activate = on_add_call },
+        { .name = "call", .activate = on_call, .parameter_type = "s" },
       };
 
       g_action_map_add_action_entries (G_ACTION_MAP (app), actions, G_N_ELEMENTS (actions), app);
