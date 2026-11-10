@@ -795,7 +795,8 @@ on_overflow (GtkWidget *button, gpointer data)
   dialer_popup_menu_append (menu, _("People & options"), show_options, self);
   dialer_popup_menu_append (menu, self->conversation->archived ? _("Unarchive") : _("Archive"), archive, self);
   dialer_popup_menu_append (menu, _("Delete"), delete_conversation, self);
-  dialer_popup_menu_present (menu, button, POPUP_MENU_END);
+  dialer_popup_menu_set_corner (menu, 4);
+  dialer_popup_menu_present (menu, button, POPUP_MENU_OVERFLOW);
 }
 
 /* --- the page */

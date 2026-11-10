@@ -679,7 +679,8 @@ on_overflow (GtkWidget *button, gpointer data)
   if (blocked[0])
     dialer_popup_menu_append (menu, _("Blocked contacts"), show_blocked, self);
   dialer_popup_menu_append (menu, _("Settings"), show_settings, self);
-  dialer_popup_menu_present (menu, button, POPUP_MENU_END);
+  dialer_popup_menu_set_corner (menu, 4);
+  dialer_popup_menu_present (menu, button, POPUP_MENU_OVERFLOW);
 }
 
 /* the FAB rides up over the snackbar while it shows */

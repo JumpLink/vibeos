@@ -259,18 +259,22 @@
   color: rgba(255, 255, 255, 0.541);
 }
 
-/* --- the pop-up menus (the Phone's popup-menu.c, §1.3: the same card) */
+/* --- the pop-up menus (the Phone's popup-menu.c, §1.3): mtrl_popupmenu_background, colorSurface #1b1b1b with 4 dp
+ * corners and 8 dp over and under the rows; the rows TextAppearance.Material.Menu at #DEffffff, letter-spacing
+ * 0.009375 em (still:sms-conv-menu, still:sms-menu) */
 
 .popup-menu {
-  background-color: #181c1d;
-  border-radius: 2px;
+  background-color: #1b1b1b;
+  border-radius: 4px;
+  padding: 8px 0;
 }
 
 .popup-menu-text {
   font-family: "Neo Roboto", Roboto, sans-serif;
   font-size: 16px;
   font-weight: 700;
-  color: #f6f7fb;
+  letter-spacing: 0.15px;
+  color: rgba(255, 255, 255, 0.871);
 }
 
 .popup-menu-text.disabled {

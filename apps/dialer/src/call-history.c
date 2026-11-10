@@ -268,7 +268,7 @@ on_overflow (CallHistory *self)
                                       ? _("Sort by call count") : _("Sort by call duration"), on_sort, self);
   if (has_calls (self))
     dialer_popup_menu_append (menu, _("Clear call history"), on_clear, self);
-  dialer_popup_menu_present (menu, self->overflow, POPUP_MENU_END);
+  dialer_popup_menu_present (menu, self->overflow, POPUP_MENU_OVERFLOW);
 }
 
 /* "Clear call history" only while the log has calls (onPrepareOptionsMenu); Statistics always has its sort; with no

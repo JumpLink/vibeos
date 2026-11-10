@@ -9,6 +9,9 @@
 #define ROW_HEIGHT      48      /* listPreferredItemHeightSmall */
 #define TEXT_PAD        16      /* listPreferredItemPaddingStart / End */
 #define CORNER          2       /* measured on the card's bottom-left corner */
+#define OVERFLOW_INSET  4       /* Widget.*.PopupMenu.Overflow: dropDownHorizontalOffset -4dp (still:dialer-call-history-
+                                 * menu and still:sms-conv-menu: the card's end 12 px in from the screen's) */
+#define OVERFLOW_HALF   24      /* half the overflow button's 48 dp: the card's top 4 dp down a 56 dp action bar */
 #define EDGE            8       /* closer than this to the window's edge, it is flush with it (measured) */
 #define ENTER_MS        250     /* popup_window_enter: EpicenterTranslateClipReveal + fade */
 #define EXIT_MS         150
@@ -26,6 +29,7 @@ struct _DialerPopupMenu
   GtkWidget *card;
   GArray *rows;                 /* Row, by the rows' order */
   PopupMenuGravity gravity;
+  int corner;
   graphene_rect_t anchor_bounds;
   NeoAnim *anim;
   double shown;                 /* 0 … 1 */
@@ -53,6 +57,14 @@ dialer_popup_menu_size_allocate (GtkWidget *widget, int width, int height, int b
   w = MIN (MAX (nat, MIN_WIDTH), width);
   gtk_widget_measure (self->card, GTK_ORIENTATION_VERTICAL, w, &min, &nat, NULL, NULL);
   h = MIN (nat, height);
+  if (self->gravity == POPUP_MENU_OVERFLOW)
+    {
+      /* PopupWindow keeps it on the screen, and no more: its end stays 4 dp in from the window's */
+      x = CLAMP (a->origin.x + a->size.width - OVERFLOW_INSET - w, 0, width - w);
+      y = MIN (a->origin.y + a->size.height / 2 - OVERFLOW_HALF, height - h);
+      gtk_widget_allocate (self->card, w, h, -1, gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (x, MAX (y, 0))));
+      return;
+    }
   x = self->gravity == POPUP_MENU_END ? a->origin.x + a->size.width - w : a->origin.x;
   if (x + w > width - EDGE)
     x = width - w;
@@ -85,7 +97,7 @@ dialer_popup_menu_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
     return;
   gtk_snapshot_push_opacity (snapshot, self->closing ? self->shown : MIN (1, self->shown * 2));
   /* floating_window_z, 16 dp: a soft shadow under the card */
-  gsk_rounded_rect_init_from_rect (&shape, &card, CORNER);
+  gsk_rounded_rect_init_from_rect (&shape, &card, self->corner);
   gtk_snapshot_append_outset_shadow (snapshot, &shape, &(GdkRGBA) { 0, 0, 0, 0.3f }, 0, 8, 2, 16);
   gtk_snapshot_append_outset_shadow (snapshot, &shape, &(GdkRGBA) { 0, 0, 0, 0.2f }, 0, 2, 0, 4);
   /* the clip reveal: from the top edge down */
@@ -185,6 +197,7 @@ dialer_popup_menu_init (DialerPopupMenu *self)
   GtkEventController *keys = gtk_event_controller_key_new ();
 
   self->rows = g_array_new (FALSE, FALSE, sizeof (Row));
+  self->corner = CORNER;
   self->card = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (self->card, "popup-menu");
   gtk_widget_set_overflow (self->card, GTK_OVERFLOW_HIDDEN);
@@ -250,6 +263,13 @@ dialer_popup_menu_set_header (DialerPopupMenu *self, const char *header)
   gtk_widget_set_margin_end (text, TEXT_PAD);
   gtk_widget_add_css_class (text, "popup-menu-header");
   gtk_box_prepend (GTK_BOX (self->card), text);
+}
+
+void
+dialer_popup_menu_set_corner (DialerPopupMenu *self, int radius)
+{
+  self->corner = radius;
+  gtk_widget_queue_draw (GTK_WIDGET (self));
 }
 
 static void

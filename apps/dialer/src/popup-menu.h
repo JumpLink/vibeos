@@ -4,7 +4,8 @@
  * A card of 48 dp text rows, at least 196 dp wide (abc_popup_menu_item_layout's minWidth), floating 16 dp up over
  * the app inside the app's own window. It overlaps its anchor: its top on the anchor's top, its end on the
  * anchor's end (DialerPopupMenu's END) or its start on the anchor's start (START), kept inside the window; or it drops
- * below the anchor without overlapping it (BELOW, PopupMenu without overlapAnchor). A tap on
+ * below the anchor without overlapping it (BELOW, PopupMenu without overlapAnchor); or it is an action bar's
+ * overflow menu (OVERFLOW, ActionMenuPresenter's OverflowPopup). A tap on
  * a row runs the row's action and closes the menu; a tap outside, Back or Escape just closes it. */
 #pragma once
 
@@ -21,6 +22,9 @@ typedef enum {
   POPUP_MENU_START,
   POPUP_MENU_END,
   POPUP_MENU_BELOW,             /* a drop-down: under the anchor, its start on the anchor's (the dialpad's ⋮) */
+  POPUP_MENU_OVERFLOW,          /* an action bar's ⋮: its end 4 dp in from the anchor's (dropDownHorizontalOffset
+                                 * -4dp), its top on the top of the platform's 48 dp overflow button, centred on the
+                                 * anchor (overlapAnchor) */
 } PopupMenuGravity;
 
 DialerPopupMenu *dialer_popup_menu_new (void);
@@ -30,6 +34,9 @@ void             dialer_popup_menu_append (DialerPopupMenu *self, const char *la
 /* a floating context menu (View.showContextMenu): its header row, the platform's popup_menu_header_item_layout,
  * and the colorBackgroundFloating card */
 void             dialer_popup_menu_set_header (DialerPopupMenu *self, const char *header);
+/* the card's corner radius, which its shadow follows (the app's CSS draws the card itself): 2 dp, the framework's
+ * popup background, unless set; Messaging's Material Components card (mtrl_popupmenu_background) has 4 */
+void             dialer_popup_menu_set_corner (DialerPopupMenu *self, int radius);
 /* shows it over @anchor's window (one made by neo_window_new); it destroys itself once closed */
 void             dialer_popup_menu_present (DialerPopupMenu *self, GtkWidget *anchor, PopupMenuGravity gravity);
 /* shows it with its top-left corner at (x, y) in @widget, kept inside the window: a context menu at the touch */
