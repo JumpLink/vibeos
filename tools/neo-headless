@@ -8,7 +8,8 @@
 # scale); touches go in through mutter's RemoteDesktop API (neo-headless-input), which also keeps a keyboard
 # plugged in, so its windows are active as on the phone.
 #
-#   neo-headless start                  the display: 360 x 721 dp, the phone's app area under its status bar
+#   neo-headless start                  the display: the phone's app area under its status bar, in dp: 360 x 721
+#                                       on the Galaxy S10e, 360 x 761 on the POCO X3 (NEO_HEADLESS_SIZE=WxH to choose)
 #   neo-headless run APP [ARGS...]      an app on it (as the session user), on GL; GSK_RENDERER=cairo in the
 #                                       environment to compare with the software renderer
 #   neo-headless shot OUT.png           what the app shows now
@@ -39,6 +40,12 @@ NAME=${NEO_HEADLESS:-neo-headless}
 STATE=$RUNTIME/$NAME.d          # beside the Wayland socket, $RUNTIME/$NAME
 SHOT=$STATE/shot.png
 HERE=$(dirname "$(readlink -f "$0")")
+# the app area: the panel in dp (scale 3) less the 39 dp status bar
+case "$(tr -d '\0' < /proc/device-tree/compatible 2>/dev/null)" in
+*surya*) AREA=360x761 ;;      # 1080 x 2400
+*)       AREA=360x721 ;;      # 1080 x 2280, the Galaxy S10e
+esac
+AREA=${NEO_HEADLESS_SIZE:-$AREA}
 
 as_user() {
     sudo -u "$USER_NAME" env XDG_RUNTIME_DIR="$RUNTIME" "$@"
@@ -76,7 +83,7 @@ start)
     tail -1 "$STATE/bus.tmp" >"$STATE/bus.pid"
     rm -f "$STATE/bus.tmp"
     as_user_daemon mutter env DBUS_SESSION_BUS_ADDRESS="$(cat "$STATE/bus")" mutter --headless --wayland --no-x11 \
-        --wayland-display="$NAME" --virtual-monitor 360x721
+        --wayland-display="$NAME" --virtual-monitor "$AREA"
     # ready once its Wayland socket is there
     for _ in $(seq 50); do [ -S "$RUNTIME/$NAME" ] && break; sleep 0.1; done
     if [ ! -S "$RUNTIME/$NAME" ]; then
