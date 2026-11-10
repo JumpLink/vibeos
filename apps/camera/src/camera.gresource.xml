@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- the stylesheet and the icons (data/icons: Aperture's vector drawables and Material Symbols, as SVG), where
+     GtkApplication looks for icons: the resource base path + /icons; the app icon for the toast -->
+<gresources>
+  <gresource prefix="/de/yesman/Camera">
+    <file>camera.css</file>
+    <file alias="icons/scalable/actions/cam-4k-symbolic.svg">icons/cam-4k-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-aspect-ratio-symbolic.svg">icons/cam-aspect-ratio-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-back-symbolic.svg">icons/cam-back-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-battery-1-bar-symbolic.svg">icons/cam-battery-1-bar-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-battery-charging-20-symbolic.svg">icons/cam-battery-charging-20-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-book-symbolic.svg">icons/cam-book-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-broken-image-symbolic.svg">icons/cam-broken-image-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-calendar-add-on-symbolic.svg">icons/cam-calendar-add-on-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-check-symbolic.svg">icons/cam-check-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-close-symbolic.svg">icons/cam-close-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-contact-phone-symbolic.svg">icons/cam-contact-phone-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-content-copy-symbolic.svg">icons/cam-content-copy-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-directions-car-symbolic.svg">icons/cam-directions-car-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-email-symbolic.svg">icons/cam-email-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-flash-off-symbolic.svg">icons/cam-flash-off-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-flash-on-symbolic.svg">icons/cam-flash-on-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-flash-screen-symbolic.svg">icons/cam-flash-screen-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-flashlight-on-symbolic.svg">icons/cam-flashlight-on-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-full-hd-symbolic.svg">icons/cam-full-hd-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-grid-3x3-off-symbolic.svg">icons/cam-grid-3x3-off-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-grid-3x3-symbolic.svg">icons/cam-grid-3x3-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-grid-4x4-symbolic.svg">icons/cam-grid-4x4-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-grid-goldenratio-symbolic.svg">icons/cam-grid-goldenratio-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-hd-symbolic.svg">icons/cam-hd-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-hdr-off-symbolic.svg">icons/cam-hdr-off-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-image-symbolic.svg">icons/cam-image-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-info-symbolic.svg">icons/cam-info-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-location-on-symbolic.svg">icons/cam-location-on-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-lock-symbolic.svg">icons/cam-lock-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-mic-off-symbolic.svg">icons/cam-mic-off-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-mic-on-symbolic.svg">icons/cam-mic-on-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-network-wifi-symbolic.svg">icons/cam-network-wifi-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-open-in-browser-symbolic.svg">icons/cam-open-in-browser-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-phone-symbolic.svg">icons/cam-phone-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-pro-button-symbolic.svg">icons/cam-pro-button-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-qhd-symbolic.svg">icons/cam-qhd-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-radio-off-symbolic.svg">icons/cam-radio-off-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-radio-on-symbolic.svg">icons/cam-radio-on-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-sd-symbolic.svg">icons/cam-sd-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-settings-symbolic.svg">icons/cam-settings-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-share-symbolic.svg">icons/cam-share-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-shopping-cart-symbolic.svg">icons/cam-shopping-cart-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-sms-symbolic.svg">icons/cam-sms-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-text-snippet-symbolic.svg">icons/cam-text-snippet-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-thermostat-symbolic.svg">icons/cam-thermostat-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-timer-10-alt-1-symbolic.svg">icons/cam-timer-10-alt-1-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-timer-3-alt-1-symbolic.svg">icons/cam-timer-3-alt-1-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-timer-off-symbolic.svg">icons/cam-timer-off-symbolic.svg</file>
+    <file alias="icons/scalable/actions/cam-video-frame-rate-symbolic.svg">icons/cam-video-frame-rate-symbolic.svg</file>
+    <file alias="icons/scalable/apps/de.yesman.Camera.svg">de.yesman.Camera.svg</file>
+  </gresource>
+</gresources>

@@ -1,0 +1,215 @@
+/* The Camera's styles, over libneo's (neo.css). The camera screen draws itself (cam-widgets.c); this styles its
+ * labels, the pro row, the toast and snackbar, the dialogs and the Settings page (spec/camera.md §0.4, §0.5). */
+
+window.neo.cam-window {
+  background-color: #000000;
+}
+
+/* --- the mode selector (§3): Droid Sans Mono 14 sp, "bold" (synthetic), #444444, the chosen one white */
+.cam-mode-label {
+  font-family: "Droid Sans Mono", "Noto Mono", monospace;
+  font-size: 14px;
+  font-weight: bold;
+  color: #444444;
+}
+
+.cam-mode-label.selected {
+  color: #ffffff;
+}
+
+/* the recording's duration: a disabled MaterialButton in rec_red, 14 sp sans-serif-medium + Bold text = 800 */
+.cam-duration {
+  background-color: #e95950;
+  border-radius: 20px;
+  color: #ffffff;
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+/* --- the pro row (§7): black 60 %, labels 12 sp Droid Sans Mono bold, #444444 when disabled */
+.cam-pro-row {
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+.cam-pro-label {
+  font-family: "Droid Sans Mono", "Noto Mono", monospace;
+  font-size: 12px;
+  font-weight: bold;
+  color: #ffffff;
+  margin-top: 10px;
+  padding: 0 4px;
+}
+
+.cam-pro-label:disabled {
+  color: #444444;
+}
+
+/* --- the toast (Android 16's text toast, still:camera-toast-in-use-over-lens): a pill 20 dp from the sides,
+ * the app icon 16 dp in, the text after a 10 dp gap */
+.cam-toast {
+  background-color: #181c1d;
+  border-radius: 31px;
+  padding: 13px 16px;
+}
+
+.cam-toast-icon {
+  margin-right: 10px;
+}
+
+.cam-toast-text {
+  color: #f0f0f0;
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+/* --- the snackbar (§19.4, still:camera-snackbar-torch-help): inverse surface, inverse primary action */
+neo-snackbar-host.cam-snackbar .neo-snackbar {
+  background-color: @neo_inverse_surface;
+}
+
+neo-snackbar-host.cam-snackbar .neo-snackbar-text {
+  color: #1c2627;
+  font-weight: 700;
+}
+
+neo-snackbar-host.cam-snackbar .neo-text-button {
+  color: @neo_inverse_primary;
+}
+
+/* --- the screen flash (§12.2) */
+.cam-screen-flash {
+  background-color: #ffffff;
+}
+
+/* --- the QR sheet (§15.2) */
+.cam-qr-sheet {
+  background-color: @neo_surface_container_low;
+  border-radius: 28px 28px 0 0;
+}
+
+.cam-qr-handle {
+  background-color: @neo_on_surface;
+  border-radius: 2px;
+}
+
+.cam-qr-card {
+  background-color: @neo_surface_container_highest;
+  border-radius: 12px;
+}
+
+.cam-qr-icon,
+.cam-qr-copy {
+  color: @neo_on_surface;
+}
+
+.cam-qr-title {
+  color: @neo_on_surface;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.cam-qr-data {
+  color: @neo_on_surface_variant;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* --- the dialogs (themes_settingslib: AlertDialogs in colorSurface, 16 dp corners) */
+neo-dialog-scrim.cam-settings-dialog > .neo-dialog,
+neo-dialog-scrim.cam-location > .neo-dialog {
+  background-color: @neo_surface;
+  border-radius: 16px;
+}
+
+.cam-dialog-scroll {
+  margin: 0 -24px;
+}
+
+.cam-dialog-item {
+  min-height: 48px;
+  padding: 0 24px 0 20px;
+  font-size: 16px;
+  font-weight: 700;
+  color: @neo_on_surface_variant;
+}
+
+.cam-radio {
+  color: @neo_on_surface_variant;
+  margin-left: 4px;
+  margin-right: 24px;
+}
+
+.cam-radio.checked {
+  color: @neo_secondary;
+}
+
+.cam-location-title {
+  color: @neo_on_surface;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.cam-location-body {
+  color: @neo_on_surface;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.cam-location-button {
+  color: @neo_secondary;
+}
+
+/* --- Settings (§20.1) */
+.cam-settings {
+  background-color: @neo_surface;
+}
+
+.cam-settings-toolbar {
+  background-color: @neo_surface;
+  transition: background-color 150ms;
+}
+
+.cam-settings-toolbar.lifted {
+  background-color: @neo_surface_container;
+}
+
+.cam-settings-toolbar image {
+  color: @neo_on_surface_variant;
+}
+
+.cam-settings-large-title {
+  color: @neo_on_surface;
+  font-size: 36px;
+  font-weight: 700;
+}
+
+.cam-settings-collapsed-title {
+  color: @neo_on_surface;
+  font-size: 22px;
+  font-weight: 700;
+  transition: opacity 150ms;
+}
+
+.cam-settings-category {
+  color: @neo_secondary;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.cam-settings-title {
+  color: @neo_on_surface;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.cam-settings-summary {
+  color: @neo_on_surface_variant;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.cam-settings-row:disabled {
+  opacity: 0.38;
+}
