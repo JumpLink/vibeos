@@ -60,6 +60,18 @@ on_activate (GApplication *app, gpointer data)
   gtk_window_present (GTK_WINDOW (dialer_window (GTK_APPLICATION (app))));
 }
 
+/* The number in a tel: URI. A link opened through GIO comes as its GFile's URI, tel:///+49… for tel:+49… (an
+ * empty authority), and the slashes are no part of the number. */
+static char *
+tel_number (const char *uri)
+{
+  const char *number = uri + strlen ("tel:");
+
+  while (*number == '/')
+    number++;
+  return g_uri_unescape_string (number, NULL);
+}
+
 /* a tel: link: the dialpad opens with the number in it, to be called with the dial button (Intent.ACTION_DIAL) */
 static void
 on_open (GApplication *app, GFile **files, int n_files, const char *hint, gpointer data)
@@ -73,7 +85,7 @@ on_open (GApplication *app, GFile **files, int n_files, const char *hint, gpoint
 
       if (!g_str_has_prefix (uri, "tel:"))
         continue;
-      number = g_uri_unescape_string (uri + strlen ("tel:"), NULL);
+      number = tel_number (uri);
       dialer_window_show_dialpad (window, number);
       break;
     }
@@ -118,8 +130,7 @@ on_call (GSimpleAction *action, GVariant *parameter, gpointer data)
 {
   GApplication *app = data;
   const char *given = g_variant_get_string (parameter, NULL);
-  g_autofree char *number = g_str_has_prefix (given, "tel:") ? g_uri_unescape_string (given + strlen ("tel:"), NULL)
-                                                             : g_strdup (given);
+  g_autofree char *number = g_str_has_prefix (given, "tel:") ? tel_number (given) : g_strdup (given);
   CallRequest *request;
 
   g_strstrip (number);
