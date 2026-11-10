@@ -199,12 +199,23 @@ on_show_blocked (GtkWidget *list, gpointer data)
 }
 
 static void
+on_show_advanced_settings (GtkWidget *settings, gpointer data)
+{
+  Shell *shell = data;
+  GtkWidget *page = msg_settings_new_advanced ();
+
+  g_signal_connect (page, "closed", G_CALLBACK (on_page_closed), shell);
+  msg_navigator_push (MSG_NAVIGATOR (shell->navigator), page);
+}
+
+static void
 on_show_settings (GtkWidget *list, gpointer data)
 {
   Shell *shell = data;
   GtkWidget *page = msg_settings_new ();
 
   g_signal_connect (page, "closed", G_CALLBACK (on_page_closed), shell);
+  g_signal_connect (page, "show-advanced", G_CALLBACK (on_show_advanced_settings), shell);
   msg_navigator_push (MSG_NAVIGATOR (shell->navigator), page);
 }
 

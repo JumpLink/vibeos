@@ -415,6 +415,16 @@
   color: rgba(255, 255, 255, 0.6);
 }
 
+/* a PreferenceCategory's title, measured on still:sms-settings-adv: as wide as the same word in a row's title
+ * (16 sp, not the spec's 14), a little heavier (medium), its TextView as tall (83 px), in colorAccent #b8ebf3 */
+.msg-pref-category {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 27.67px;
+  color: #b8ebf3;
+}
+
 /* "Add to Contacts?" (add_contacts_confirmation_dialog_body.xml): the number in a plain TextView, the theme's
  * textAppearanceSmall, 14 sp textColorSecondary (#8a000000 made light) */
 .msg-add-contact-name {

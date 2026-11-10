@@ -21,7 +21,7 @@ BUS_CONFIG = '''<busconfig><type>session</type><listen>unix:tmpdir=%s</listen><a
 
 NAME, PATH, IFACE = 'de.yesman.Messaging.Sms', '/de/yesman/Messaging/Sms', 'de.yesman.Messaging.Sms'
 # sms-store.h
-COMPLETE, YET_TO_SEND, SENDING, RESENDING, AWAITING_RETRY, FAILED, INCOMING = 1, 4, 5, 6, 7, 8, 100
+COMPLETE, DELIVERED, YET_TO_SEND, SENDING, RESENDING, AWAITING_RETRY, FAILED, INCOMING = 1, 2, 4, 5, 6, 7, 8, 100
 UNKNOWN_ERROR = 'org.freedesktop.ModemManager1.Error.MessageError.Unknown'
 NO_NETWORK = 'org.freedesktop.ModemManager1.Error.MobileEquipment.NoNetwork'
 ANNA, BOB = '+491701234567', '+491709999999'
@@ -57,8 +57,20 @@ def block(data_home, number):
     db.close()
 
 
+def write_settings(config_home, **keys):
+    # the app's settings as its Settings page leaves them, in the keyfile backend's file, which the service follows
+    # (GSETTINGS_BACKEND=keyfile); written whole and renamed in, so its monitor sees one change
+    path = os.path.join(config_home, 'glib-2.0', 'settings', 'keyfile')
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path + '.new', 'w') as f:
+        f.write('[de/yesman/Messaging]\n' + ''.join('%s=%s\n' % (k.replace('_', '-'), 'true' if v else 'false')
+                                                     for k, v in keys.items()))
+    os.replace(path + '.new', path)
+
+
 class Test:
-    def __init__(self, session_address, store):
+    def __init__(self, session_address, store, config_home):
+        self.config_home = config_home
         self.bus = Gio.DBusConnection.new_for_address_sync(
             session_address, Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT |
             Gio.DBusConnectionFlags.MESSAGE_BUS_CONNECTION, None, None)
@@ -140,6 +152,17 @@ class Test:
     def status(self, message):
         rows = self.query('SELECT message_status FROM messages WHERE _id = ?', message)
         return rows[0][0] if rows else None
+
+    def raw_status(self, message):
+        rows = self.query('SELECT raw_status FROM messages WHERE _id = ?', message)
+        return rows[0][0] if rows else None
+
+    def settings(self, **keys):
+        write_settings(self.config_home, **keys)
+        self.settle(1.0)
+
+    def delivery_report(self, number, reference, state):
+        return self.modem('DeliveryReport', (number, reference, state), '(suu)')[0]
 
     def conversation_of(self, number):
         rows = self.query('SELECT cp.conversation_id FROM conversation_participants cp JOIN participants p'
@@ -291,6 +314,57 @@ def run(t):
     t.wait('the modem back, available', lambda: t.prop('Available'))
     t.wait('and the message goes at once', lambda: t.status(message) == COMPLETE, timeout=2)
 
+    # --- delivery reports (Settings > Advanced > "SMS delivery reports"; ProcessDeliveryReportAction)
+    creates = t.logged('Create')
+    check('off by default: no report is asked for', creates and all(len(e[1]) == 2 for e in creates), creates)
+    t.settings(delivery_reports=True)
+    t.modem('Clear')
+    message = t.service('Send', (anna, 'Did you get this?'), '(xs)')[0]
+    t.wait('on: a message is sent', lambda: t.status(message) == COMPLETE)
+    check('asking for a report', ['Create', [ANNA, 'Did you get this?', True]] in t.report()['log'], t.report()['log'])
+    t.wait('and deleted off the modem after', lambda: not t.report()['messages'])
+    reference = t.logged('Send')[-1][3]
+    t.delivery_report(BOB, reference, 0)
+    t.wait('a report for another number is deleted off the modem', lambda: not t.report()['messages'])
+    check('and is not this message\'s', t.status(message) == COMPLETE, t.status(message))
+    t.delivery_report(ANNA, reference, 0x21)
+    t.wait('"the recipient is busy, still trying" is deleted off the modem', lambda: not t.report()['messages'])
+    check('and the message is still only sent', t.status(message) == COMPLETE, t.status(message))
+    # the number as the network may give it, nationally
+    t.changed.clear()
+    t.delivery_report('01701234567', reference, 0)
+    t.wait('"received": the message is delivered', lambda: t.status(message) == DELIVERED)
+    t.wait('and the report is deleted off the modem', lambda: not t.report()['messages'])
+    t.wait('Changed names its conversation', lambda: anna in t.changed)
+    t.delivery_report(ANNA, reference, 0x41)
+    t.wait('a second report for it is deleted off the modem', lambda: not t.report()['messages'])
+    check('and changes nothing: a report comes once', t.status(message) == DELIVERED, t.status(message))
+
+    message = t.service('Send', (anna, 'Wrong number?'), '(xs)')[0]
+    t.wait('another message is sent', lambda: t.status(message) == COMPLETE)
+    t.delivery_report(ANNA, t.logged('Send')[-1][3], 0x41)
+    t.wait('"incompatible destination": the message failed', lambda: t.status(message) == FAILED)
+    check('keeping the report\'s state as its raw status', t.raw_status(message) == 0x41, t.raw_status(message))
+    t.settle()
+    check('without a notification, as in Messaging', t.notification('Message not sent') is None,
+          t.report()['notifications'])
+    t.modem('Clear')
+    t.service('Resend', (message,), '(x)')
+    t.wait('tried again, it is sent again', lambda: t.status(message) == COMPLETE)
+    check('asking for a report again', ['Create', [ANNA, 'Wrong number?', True]] in t.report()['log'],
+          t.report()['log'])
+    t.delivery_report(ANNA, t.logged('Send')[-1][3], 0)
+    t.wait('and delivered this time', lambda: t.status(message) == DELIVERED)
+
+    t.settings(delivery_reports=False)
+    t.modem('Clear')
+    message = t.service('Send', (anna, 'Quietly'), '(xs)')[0]
+    t.wait('off again, a message is sent', lambda: t.status(message) == COMPLETE)
+    check('asking for no report', ['Create', [ANNA, 'Quietly']] in t.report()['log'], t.report()['log'])
+    t.delivery_report(ANNA, t.logged('Send')[-1][3], 0)
+    t.wait('and a report for it is deleted off the modem', lambda: not t.report()['messages'])
+    check('without making it delivered', t.status(message) == COMPLETE, t.status(message))
+
     # --- the conversation's state
     t.service('SetDraft', (bob, 'Half-written'), '(xs)')
     check('a draft is kept', t.query('SELECT show_draft, draft_snippet_text FROM conversations WHERE _id = ?', bob)
@@ -331,9 +405,13 @@ def main():
         system, system_address = start_bus(tmp, 'system')
         session, session_address = start_bus(tmp, 'session')
         procs += [system, session]
+        # the app's settings: its schema compiled here, its values in a keyfile the test writes (write_settings)
+        subprocess.run(['glib-compile-schemas', '--targetdir', tmp, os.path.join(source, 'data')], check=True)
+        config_home = os.path.join(tmp, 'config')
+        write_settings(config_home, delivery_reports=False)
         env = dict(os.environ, DBUS_SESSION_BUS_ADDRESS=session_address, NEO_MESSAGING_SYSTEM_BUS=system_address,
-                   XDG_DATA_HOME=os.path.join(tmp, 'data'), XDG_CONFIG_HOME=os.path.join(tmp, 'config'),
-                   GSETTINGS_BACKEND='memory', LANG='C.UTF-8', LC_ALL='C.UTF-8')
+                   XDG_DATA_HOME=os.path.join(tmp, 'data'), XDG_CONFIG_HOME=config_home,
+                   GSETTINGS_BACKEND='keyfile', GSETTINGS_SCHEMA_DIR=tmp, LANG='C.UTF-8', LC_ALL='C.UTF-8')
         mock = subprocess.Popen([sys.executable, os.path.join(source, 'tests', 'mock-modem.py'), system_address,
                                  '--waiting'], env=env, stdout=subprocess.PIPE, text=True)
         procs.append(mock)
@@ -341,7 +419,7 @@ def main():
             print('FAIL the mock modem did not start')
             return 1
         procs.append(subprocess.Popen([os.path.join(build, 'neo-messaging-sms')], env=env))
-        run(Test(session_address, os.path.join(tmp, 'data', 'neo-messaging', 'bugle_db')))
+        run(Test(session_address, os.path.join(tmp, 'data', 'neo-messaging', 'bugle_db'), config_home))
     finally:
         for p in reversed(procs):
             p.terminate()

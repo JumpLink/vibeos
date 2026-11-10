@@ -7,6 +7,7 @@
 #include "msg-bubble.h"
 #include "msg-dates.h"
 #include "msg-dialog.h"
+#include "msg-image.h"
 #include "msg-people.h"
 #include "msg-sound.h"
 #include "phone-number.h"
@@ -27,6 +28,9 @@
 #define GAP 18                  /* before a message */
 #define GAP_CLUSTERED 2         /* before one clustered with the one above */
 #define META_TOP 4
+#define DELIVERED_START 4       /* SmsDeliverdBadge's margin; ic_sms_delivery_ok is 36 × 26 px, 12 × 8.7 dp */
+#define DELIVERED_WIDTH 12
+#define DELIVERED_HEIGHT 9
 #define CLUSTER_MS (60 * 1000)  /* ConversationMessageData.canClusterWithMessage */
 /* compose_message_view.xml */
 #define COMPOSE_TOP 16
@@ -185,6 +189,8 @@ make_message (ConversationView *self, const SmsMessage *message, gboolean cluste
 {
   gboolean incoming = MESSAGE_STATUS_IS_INCOMING (message->status);
   gboolean selected = message->id == self->selected, failed;
+  /* the delivered badge after the time, or alone where a cluster hides the time (ConversationMessageView) */
+  gboolean delivered = message->status == MESSAGE_STATUS_OUTGOING_DELIVERED;
   g_autofree char *status = status_text (self, message, !clustered_below, &failed);
   MsgPerson *sender = incoming ? person_for (self, message->sender) : NULL;
   GtkWidget *row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
@@ -220,16 +226,35 @@ make_message (ConversationView *self, const SmsMessage *message, gboolean cluste
   gtk_label_set_selectable (GTK_LABEL (text), FALSE);
   gtk_widget_add_css_class (text, "msg-message-text");
   gtk_box_append (GTK_BOX (content), text);
-  if (status)
+  if (status || delivered)
     {
-      GtkWidget *meta = gtk_label_new (status);
+      GtkWidget *meta = NULL;
 
-      gtk_label_set_wrap (GTK_LABEL (meta), TRUE);
-      gtk_label_set_xalign (GTK_LABEL (meta), 0);
+      if (status)
+        {
+          meta = gtk_label_new (status);
+          gtk_label_set_wrap (GTK_LABEL (meta), TRUE);
+          gtk_label_set_xalign (GTK_LABEL (meta), 0);
+          gtk_widget_add_css_class (meta, "msg-message-status");
+          if (failed)
+            gtk_widget_add_css_class (meta, "failed");
+        }
+      if (delivered)
+        {
+          /* message_metadata: the status (the time), then the badge centred on its line */
+          GtkWidget *line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+          GtkWidget *badge = msg_image_new ("/de/yesman/Messaging/images/ic_sms_delivery_ok.png", DELIVERED_WIDTH,
+                                            DELIVERED_HEIGHT);
+
+          gtk_widget_set_margin_start (badge, DELIVERED_START);
+          gtk_widget_set_valign (badge, GTK_ALIGN_CENTER);
+          gtk_widget_set_halign (line, GTK_ALIGN_START);
+          if (meta)
+            gtk_box_append (GTK_BOX (line), meta);
+          gtk_box_append (GTK_BOX (line), badge);
+          meta = line;
+        }
       gtk_widget_set_margin_top (meta, META_TOP);
-      gtk_widget_add_css_class (meta, "msg-message-status");
-      if (failed)
-        gtk_widget_add_css_class (meta, "failed");
       gtk_box_append (GTK_BOX (content), meta);
     }
   gtk_widget_set_margin_start (content, TEXT_PAD_SIDE);
@@ -257,8 +282,9 @@ make_message (ConversationView *self, const SmsMessage *message, gboolean cluste
   g_object_set_data (G_OBJECT (pressable), "view", self);
   /* read out as the text and what its line under it says */
   {
-    g_autofree char *spoken = status ? g_strdup_printf ("%s, %s", message->text ? message->text : "", status)
-                                     : g_strdup (message->text ? message->text : "");
+    g_autofree char *said = status ? g_strdup_printf ("%s, %s", message->text ? message->text : "", status)
+                                   : g_strdup (message->text ? message->text : "");
+    g_autofree char *spoken = delivered ? g_strdup_printf ("%s, %s", said, _("Delivered")) : g_steal_pointer (&said);
 
     gtk_accessible_update_property (GTK_ACCESSIBLE (pressable), GTK_ACCESSIBLE_PROPERTY_LABEL, spoken, -1);
   }

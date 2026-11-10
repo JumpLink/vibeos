@@ -5,7 +5,9 @@
 # On the "system" bus (a bus of its own, NEO_MESSAGING_SYSTEM_BUS): ModemManager with one modem and its Messaging
 # interface, behaving as ModemManager 1.24 does: a message that comes is announced (Added, received TRUE) while its
 # parts are still RECEIVING and turns RECEIVED when the last one is in; one made by Create is announced with
-# received FALSE; a deleted one is gone. And gsm2sipd, whose Enabled is gateway mode.
+# received FALSE, and once sent carries the network's message reference; a deleted one is gone. A delivery report is
+# a message of its own (a STATUS_REPORT carrying the reference of the one it reports on), as ModemManager does not
+# tie it to the message it reports on. And gsm2sipd, whose Enabled is gateway mode.
 #
 # On the session bus: a notification server, and the Messaging app's org.freedesktop.Application (what a tap on a
 # notification opens).
@@ -53,6 +55,8 @@ SMS_XML = '''<node><interface name="org.freedesktop.ModemManager1.Sms">
 <property name="State" type="u" access="read"/><property name="PduType" type="u" access="read"/>
 <property name="Number" type="s" access="read"/><property name="Text" type="s" access="read"/>
 <property name="Timestamp" type="s" access="read"/><property name="Data" type="ay" access="read"/>
+<property name="MessageReference" type="u" access="read"/><property name="DeliveryState" type="u" access="read"/>
+<property name="DeliveryReportRequest" type="b" access="read"/>
 </interface></node>'''
 
 GATEWAY_XML = '''<node><interface name="com.callagent.Gsm2sipd1">
@@ -76,6 +80,9 @@ SESSION_XML = '''<node>
 <method name="Incoming"><arg name="number" type="s" direction="in"/><arg name="parts" type="as" direction="in"/>
 <arg name="timestamp" type="s" direction="in"/><arg type="o" direction="out"/></method>
 <method name="StatusReport"><arg type="o" direction="out"/></method>
+<method name="DeliveryReport"><arg name="number" type="s" direction="in"/>
+<arg name="reference" type="u" direction="in"/><arg name="state" type="u" direction="in"/>
+<arg type="o" direction="out"/></method>
 <method name="IncomingBinary"><arg name="number" type="s" direction="in"/><arg type="o" direction="out"/></method>
 <method name="SetModem"><arg name="present" type="b" direction="in"/></method>
 <method name="Take"><arg name="sms" type="o" direction="in"/></method>
@@ -95,12 +102,18 @@ class Sms:
         self.path = '%s/SMS/%d' % (MM_PATH, modem.next_sms)
         self.number, self.text, self.state, self.pdu_type, self.timestamp = number, text, state, pdu_type, timestamp
         self.data = data                # a binary message's bytes (an MMS notification), with no text
+        self.reference = 0              # TP-MR: a sent one's, or the one a delivery report reports on
+        self.delivery_state = 0x100     # a delivery report's (MMSmsDeliveryState); UNKNOWN for any other message
+        self.report_request = False     # Create's "delivery-report-request"
         self.ids = []
 
     def props(self):
         return {'State': GLib.Variant('u', self.state), 'PduType': GLib.Variant('u', self.pdu_type),
                 'Number': GLib.Variant('s', self.number), 'Text': GLib.Variant('s', self.text),
-                'Timestamp': GLib.Variant('s', self.timestamp), 'Data': GLib.Variant('ay', self.data)}
+                'Timestamp': GLib.Variant('s', self.timestamp), 'Data': GLib.Variant('ay', self.data),
+                'MessageReference': GLib.Variant('u', self.reference),
+                'DeliveryState': GLib.Variant('u', self.delivery_state),
+                'DeliveryReportRequest': GLib.Variant('b', self.report_request)}
 
 
 class Modem:
@@ -108,6 +121,7 @@ class Modem:
         self.system, self.session = system, session
         self.messages = {}
         self.next_sms = 0
+        self.next_reference = 7         # the modem's TP-MR counter, a byte
         self.log = []                   # [method, args...] as the service called them
         self.notifications = {}         # id -> {title, body, actions, no-peek}
         self.next_notification = 0
@@ -170,12 +184,16 @@ class Modem:
 
     def modem_call(self, conn, sender, path, iface, method, params, inv):
         args = params.unpack()
+        # Create's properties: [number, text], and the report request when it is there at all
         self.log.append([method] + [a for a in args if not isinstance(a, dict)] +
-                        [[a.get('number'), a.get('text')] for a in args if isinstance(a, dict)])
+                        [[a.get('number'), a.get('text')] + ([a['delivery-report-request']]
+                                                             if 'delivery-report-request' in a else [])
+                         for a in args if isinstance(a, dict)])
         if method == 'List':
             return inv.return_value(GLib.Variant('(ao)', (list(self.messages),)))
         if method == 'Create':
             sms = Sms(self, args[0]['number'], args[0]['text'], STORED, SUBMIT)
+            sms.report_request = args[0].get('delivery-report-request', False)
             self.add(sms, False)
             return inv.return_value(GLib.Variant('(o)', (sms.path,)))
         if method == 'Delete':
@@ -192,9 +210,13 @@ class Modem:
 
     def sms_call(self, conn, sender, path, iface, method, params, inv):
         sms = self.messages.get(path)
-        self.log.append([method, path, sms.number if sms else None])
         if self.send_error:
+            self.log.append([method, path, sms.number if sms else None])
             return inv.return_dbus_error(self.send_error, 'Send failed (mock)')
+        # sent: the network's reference for it, set before the reply as ModemManager does
+        sms.reference = self.next_reference
+        self.next_reference = (self.next_reference + 1) % 256
+        self.log.append([method, path, sms.number if sms else None, sms.reference])
         self.set_state(sms, SENT)
         inv.return_value(None)
 
@@ -276,6 +298,13 @@ class Modem:
             return inv.return_value(GLib.Variant('(o)', (sms.path,)))
         if method == 'StatusReport':
             sms = Sms(self, '+491701234567', '', RECEIVED, STATUS_REPORT)
+            self.add(sms, True)
+            return inv.return_value(GLib.Variant('(o)', (sms.path,)))
+        if method == 'DeliveryReport':
+            # what the network says became of a message sent with a report asked for (TP-ST as MMSmsDeliveryState)
+            number, reference, state = args
+            sms = Sms(self, number, '', RECEIVED, STATUS_REPORT)
+            sms.reference, sms.delivery_state = reference, state
             self.add(sms, True)
             return inv.return_value(GLib.Variant('(o)', (sms.path,)))
         if method == 'IncomingBinary':

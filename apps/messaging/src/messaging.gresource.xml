@@ -7,6 +7,7 @@
     <file alias="images/ic_failed_status_red.png">images/ic_failed_status_red.png</file>
     <file alias="images/ic_oobe_conv_list.png">images/ic_oobe_conv_list.png</file>
     <file alias="images/ic_oobe_freq_list.png">images/ic_oobe_freq_list.png</file>
+    <file alias="images/ic_sms_delivery_ok.png">images/ic_sms_delivery_ok.png</file>
     <file alias="icons/scalable/actions/messaging-archive-symbolic.svg">icons/messaging-archive-symbolic.svg</file>
     <file alias="icons/scalable/actions/messaging-arrow-back-symbolic.svg">icons/messaging-arrow-back-symbolic.svg</file>
     <file alias="icons/scalable/actions/messaging-attachment-symbolic.svg">icons/messaging-attachment-symbolic.svg</file>

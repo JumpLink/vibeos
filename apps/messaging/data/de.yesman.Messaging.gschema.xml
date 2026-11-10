@@ -14,5 +14,13 @@
       <summary>Swipe to delete</summary>
       <description>Swipe to the right to delete a conversation</description>
     </key>
+
+    <!-- Bugle keeps it per SIM (preferences_per_subscription.xml, buglesub_delivery_reports); this phone has one
+         modem, so it is the app's. The service (neo-messaging-sms) reads it for each message it sends -->
+    <key name="delivery-reports" type="b">
+      <default>false</default>  <!-- delivery_reports_pref_default, constants.xml -->
+      <summary>SMS delivery reports</summary>
+      <description>Request a delivery report for each SMS you send</description>
+    </key>
   </schema>
 </schemalist>

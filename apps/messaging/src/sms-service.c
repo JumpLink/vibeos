@@ -67,6 +67,14 @@ static const char introspection[] =
   "  </interface>"
   "</node>";
 
+/* a message sent with a delivery report asked for, until its report comes: what the reference (TP-MR) the report
+ * will carry stands for. Held in memory, as Android's SMSDispatcher holds its delivery-pending trackers: a report
+ * that comes after the service restarted is let go */
+typedef struct {
+  gint64 message;
+  char *destination;            /* whom this one went to (a group's message goes once to each) */
+} Report;
+
 typedef struct {
   gint64 start;                 /* when it was first tried, monotonic µs */
   guint delay;                  /* the next wait, ms */
@@ -95,6 +103,9 @@ typedef struct {
   GQueue outbox;                /* message ids to send now, in order */
   gint64 sending;               /* the one going, or 0 */
   GHashTable *retries;          /* message id -> Retry, while it is still to go */
+  GHashTable *reports;          /* reference -> Report: the delivery reports waited for (256 at most: a TP-MR is a
+                                 * byte) */
+  GSettings *settings;          /* the app's (de.yesman.Messaging), for "delivery-reports"; NULL without its schema */
 
   gint64 visible;               /* SetVisible's */
   char *visible_sender;
@@ -463,7 +474,24 @@ static void send_to_next_destination (Service *self, SmsMessage *message, Retry 
 typedef struct {
   Service *self;
   SmsMessage *message;
+  char *destination;
 } Sending;
+
+static void
+report_free (gpointer data)
+{
+  Report *report = data;
+
+  g_free (report->destination);
+  g_free (report);
+}
+
+/* Messaging's "SMS delivery reports" (MmsUtils.isDeliveryReportRequired): off unless set */
+static gboolean
+delivery_reports (Service *self)
+{
+  return self->settings && g_settings_get_boolean (self->settings, "delivery-reports");
+}
 
 static void
 on_sent (GObject *source, GAsyncResult *result, gpointer data)
@@ -471,8 +499,10 @@ on_sent (GObject *source, GAsyncResult *result, gpointer data)
   Sending *sending = data;
   Service *self = sending->self;
   g_autoptr(SmsMessage) message = sending->message;
+  g_autofree char *destination = sending->destination;
   g_autoptr(GError) error = NULL;
   Retry *retry = g_hash_table_lookup (self->retries, &message->id);
+  int reference;
 
   g_free (sending);
   if (!retry)
@@ -482,8 +512,17 @@ on_sent (GObject *source, GAsyncResult *result, gpointer data)
       send_next (self);
       return;
     }
-  if (sms_modem_send_finish (NULL, result, &error))
+  if (sms_modem_send_finish (NULL, result, &reference, &error))
     {
+      if (reference >= 0)
+        {
+          Report *report = g_new0 (Report, 1);
+
+          report->message = message->id;
+          report->destination = g_steal_pointer (&destination);
+          /* a reference used again (256 sent since) stands for the newer message */
+          g_hash_table_replace (self->reports, GUINT_TO_POINTER (reference), report);
+        }
       retry->sent_to++;
       send_to_next_destination (self, g_steal_pointer (&message), retry);
       return;
@@ -538,8 +577,9 @@ send_to_next_destination (Service *self, SmsMessage *message, Retry *retry)
   sending = g_new0 (Sending, 1);
   sending->self = self;
   sending->message = message;
+  sending->destination = g_strdup (conversation->destinations[retry->sent_to]);
   if (self->modem)
-    sms_modem_send (self->modem, conversation->destinations[retry->sent_to], message->text ? message->text : "",
+    sms_modem_send (self->modem, sending->destination, message->text ? message->text : "", delivery_reports (self),
                     NULL, on_sent, sending);
   else
     {
@@ -596,6 +636,85 @@ send_waiting (Service *self)
   send_next (self);
 }
 
+/* --- delivery reports (ProcessDeliveryReportAction) */
+
+/* what a report's delivery state makes of the message, as SendStatusReceiver and SyncMessageBatch
+ * .bugleStatusForSms read a report's TP-Status: 0 (received) delivered; 0x40 and up failed (the service centre gave
+ * up; the CDMA permanent errors 0x2xx too); anything else (forwarded unconfirmed, replaced, the centre still trying)
+ * sent, no more. @final: no other report is to come for it (Android keeps a tracker only while the centre is still
+ * trying, 0x20-0x3f). UNKNOWN for no news (ModemManager's 0x100, no state at all) */
+static MessageStatus
+report_status (guint state, gboolean *final)
+{
+  *final = TRUE;
+  if (state == 0x00)
+    return MESSAGE_STATUS_OUTGOING_DELIVERED;
+  if ((state >= 0x40 && state < 0x100) || (state >= 0x200 && state < 0x300))
+    return MESSAGE_STATUS_OUTGOING_FAILED;
+  if (state < 0x20)
+    return MESSAGE_STATUS_OUTGOING_COMPLETE;
+  *final = FALSE;
+  return state < 0x40 || state >= 0x300 ? MESSAGE_STATUS_OUTGOING_COMPLETE : MESSAGE_STATUS_UNKNOWN;
+}
+
+static void
+on_status_report (const char *number, guint reference, guint state, gpointer data)
+{
+  Service *self = data;
+  Report *report = g_hash_table_lookup (self->reports, GUINT_TO_POINTER (reference));
+  g_autoptr(SmsMessage) message = NULL;
+  MessageStatus status;
+  gboolean final;
+
+  /* one of ours, to the number it went to (a report carries the recipient; a reference alone is a byte, used again
+   * after 256 messages) */
+  if (!report || (*number && !phone_number_equal (number, report->destination, country (self))))
+    {
+      g_message ("sms: a delivery report (reference %u, to %s) for no message waiting for one", reference,
+                 *number ? number : "no number");
+      return;
+    }
+  status = report_status (state, &final);
+  message = sms_store_get_message (self->store, report->message);
+  if (final)
+    g_hash_table_remove (self->reports, GUINT_TO_POINTER (reference));
+  if (status == MESSAGE_STATUS_UNKNOWN || !message)
+    return;
+  /* only a message that went: not one still going to the rest of a group (its last one's report will tell), not
+   * one tried again since, nor one that could not go to all of them */
+  if (g_hash_table_contains (self->retries, &message->id)
+      || (message->status != MESSAGE_STATUS_OUTGOING_COMPLETE && message->status != MESSAGE_STATUS_OUTGOING_DELIVERED))
+    {
+      g_message ("sms: message %" G_GINT64_FORMAT "'s delivery report (0x%x) left: it is %d now", message->id, state,
+                 message->status);
+      return;
+    }
+  g_message ("sms: message %" G_GINT64_FORMAT " %s (delivery report 0x%x)", message->id,
+             status == MESSAGE_STATUS_OUTGOING_DELIVERED ? "delivered"
+             : status == MESSAGE_STATUS_OUTGOING_FAILED ? "not delivered" : "not delivered yet", state);
+  /* the newest report says, as in Android (a group's: each member's in turn), but a failure stays: the message did
+   * not reach one of them. It keeps the report's state as its raw telephony status, and shows "Not sent. Tap to try
+   * again.", as in Messaging, without a notification */
+  if (status != message->status)
+    set_status (self, message, status, status == MESSAGE_STATUS_OUTGOING_FAILED ? (int) state : 0, 0);
+}
+
+/* the app's settings, when its schema with the key is installed: a service started without it (an old schema, a
+ * test bus) asks for no reports rather than aborting in g_settings_new */
+static GSettings *
+app_settings (void)
+{
+  GSettingsSchemaSource *source = g_settings_schema_source_get_default ();
+  g_autoptr(GSettingsSchema) schema = source ? g_settings_schema_source_lookup (source, MESSAGING_APP_ID, TRUE) : NULL;
+
+  if (!schema || !g_settings_schema_has_key (schema, "delivery-reports"))
+    {
+      g_warning ("no %s schema with \"delivery-reports\": no delivery reports are asked for", MESSAGING_APP_ID);
+      return NULL;
+    }
+  return g_settings_new_full (schema, NULL, NULL);
+}
+
 /* --- messages coming */
 
 static void
@@ -645,7 +764,7 @@ static void
 start_modem (Service *self)
 {
   static const SmsModemCallbacks callbacks = { .available_changed = on_available_changed,
-                                               .received = on_received };
+                                               .received = on_received, .status_report = on_status_report };
 
   if (!self->modem)
     self->modem = sms_modem_new (self->system, &callbacks, self);
@@ -999,6 +1118,8 @@ main (int argc, char **argv)
   service.notifier = notifier_new (on_notification_action, on_notifications_restart, &service);
   service.failed = g_hash_table_new_full (g_int64_hash, g_int64_equal, g_free, g_free);
   service.retries = g_hash_table_new_full (g_int64_hash, g_int64_equal, g_free, retry_free);
+  service.reports = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, report_free);
+  service.settings = app_settings ();
   g_queue_init (&service.outbox);
 
   node = g_dbus_node_info_new_for_xml (introspection, NULL);
@@ -1033,6 +1154,8 @@ main (int argc, char **argv)
   g_clear_pointer (&service.modem, sms_modem_free);
   g_queue_clear (&service.outbox);
   g_hash_table_unref (service.retries);
+  g_hash_table_unref (service.reports);
+  g_clear_object (&service.settings);
   g_hash_table_unref (service.failed);
   notifier_free (service.notifier);
   g_signal_handlers_disconnect_by_data (service.contacts, &service);

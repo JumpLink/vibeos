@@ -113,8 +113,9 @@ unwatch (SmsModem *self, const char *path)
   g_hash_table_remove (self->watched, path);
 }
 
-/* a message is handed over once it is RECEIVED; a delivery report is let go (none is asked for), anything else
- * (a message being sent, a draft someone stored) is not ours */
+/* a message is handed over once it is RECEIVED, and so is a delivery report, which is then deleted (it is no
+ * message: it says what became of one sent from here); anything else (a message being sent, a draft someone
+ * stored) is not ours */
 static void
 check (SmsModem *self, GDBusProxy *proxy)
 {
@@ -124,11 +125,22 @@ check (SmsModem *self, GDBusProxy *proxy)
 
   if (state == SMS_STATE_RECEIVING)
     return;                     /* the other parts are still to come */
+  if (state == SMS_STATE_RECEIVED && type == PDU_STATUS_REPORT)
+    {
+      number = string_property (proxy, "Number");
+      g_hash_table_add (self->handed, g_strdup (path));
+      g_message ("sms: %s is a delivery report (reference %u, state 0x%x)", path,
+                 uint_property (proxy, "MessageReference"), uint_property (proxy, "DeliveryState"));
+      if (self->callbacks.status_report)
+        self->callbacks.status_report (number ? number : "", uint_property (proxy, "MessageReference"),
+                                       uint_property (proxy, "DeliveryState"), self->data);
+      unwatch (self, path);
+      sms_modem_delete (self, path);
+      return;
+    }
   if (state != SMS_STATE_RECEIVED || (type != PDU_DELIVER && type != PDU_CDMA_DELIVER))
     {
       unwatch (self, path);
-      if (state == SMS_STATE_RECEIVED && type == PDU_STATUS_REPORT)
-        sms_modem_delete (self, path);
       return;
     }
   if (is_binary (proxy))
@@ -424,20 +436,71 @@ sms_modem_delete (SmsModem *self, const char *path)
                      NULL);
 }
 
+/* a send's: the Sms object made for it, and whether a report was asked for */
+typedef struct
+{
+  char *path;
+  gboolean delivery_report;
+} Send;
+
+static void
+send_free (gpointer data)
+{
+  Send *send = data;
+
+  g_free (send->path);
+  g_free (send);
+}
+
+/* the message is out, and the reference its report will carry is read before the Sms object goes */
+static void
+on_reference (GObject *source, GAsyncResult *result, gpointer data)
+{
+  g_autoptr(GTask) task = data;
+  SmsModem *self = g_object_get_data (G_OBJECT (task), "modem");
+  Send *send = g_task_get_task_data (task);
+  g_autoptr(GError) error = NULL;
+  g_autoptr(GVariant) reply = g_dbus_connection_call_finish (G_DBUS_CONNECTION (source), result, &error);
+  g_autoptr(GVariant) value = NULL;
+  gssize reference = -1;
+
+  sms_modem_delete (self, send->path);
+  if (reply)
+    {
+      g_variant_get (reply, "(v)", &value);
+      if (g_variant_is_of_type (value, G_VARIANT_TYPE_UINT32))
+        reference = g_variant_get_uint32 (value);
+    }
+  if (reference < 0)
+    g_warning ("sms: %s was sent, but its reference is unknown (%s): its delivery report will not be matched",
+               send->path, error ? error->message : "not a number");
+  /* sent, whatever became of the reference */
+  g_task_return_int (task, reference);
+}
+
 static void
 on_sent (GObject *source, GAsyncResult *result, gpointer data)
 {
   g_autoptr(GTask) task = data;
   SmsModem *self = g_object_get_data (G_OBJECT (task), "modem");
+  Send *send = g_task_get_task_data (task);
   g_autoptr(GError) error = NULL;
   g_autoptr(GVariant) reply = g_dbus_connection_call_finish (G_DBUS_CONNECTION (source), result, &error);
 
+  if (reply && send->delivery_report)
+    {
+      /* ModemManager set it before it answered Send (the network's TP-MR for the last part) */
+      g_dbus_connection_call (self->system, MM_NAME, send->path, "org.freedesktop.DBus.Properties", "Get",
+                              g_variant_new ("(ss)", SMS_INTERFACE, "MessageReference"), G_VARIANT_TYPE ("(v)"),
+                              G_DBUS_CALL_FLAGS_NONE, -1, NULL, on_reference, g_steal_pointer (&task));
+      return;
+    }
   /* kept in the store, not on the modem, either way (a no-op once the modem went) */
-  sms_modem_delete (self, g_task_get_task_data (task));
+  sms_modem_delete (self, send->path);
   if (!reply)
     g_task_return_error (task, g_steal_pointer (&error));
   else
-    g_task_return_boolean (task, TRUE);
+    g_task_return_int (task, -1);
 }
 
 static void
@@ -445,6 +508,7 @@ on_created (GObject *source, GAsyncResult *result, gpointer data)
 {
   g_autoptr(GTask) task = data;
   SmsModem *self = g_object_get_data (G_OBJECT (task), "modem");
+  Send *send = g_task_get_task_data (task);
   g_autoptr(GError) error = NULL;
   g_autoptr(GVariant) reply = g_dbus_proxy_call_finish (G_DBUS_PROXY (source), result, &error);
   GCancellable *cancellable;
@@ -456,18 +520,19 @@ on_created (GObject *source, GAsyncResult *result, gpointer data)
       return;
     }
   g_variant_get (reply, "(&o)", &path);
-  g_task_set_task_data (task, g_strdup (path), g_free);
+  send->path = g_strdup (path);
   cancellable = g_task_get_cancellable (task);
   g_dbus_connection_call (self->system, MM_NAME, path, SMS_INTERFACE, "Send", NULL, NULL, G_DBUS_CALL_FLAGS_NONE,
                           SEND_TIMEOUT_MS, cancellable, on_sent, g_steal_pointer (&task));
 }
 
 void
-sms_modem_send (SmsModem *self, const char *number, const char *text, GCancellable *cancellable,
-                GAsyncReadyCallback callback, gpointer data)
+sms_modem_send (SmsModem *self, const char *number, const char *text, gboolean delivery_report,
+                GCancellable *cancellable, GAsyncReadyCallback callback, gpointer data)
 {
   GTask *task;
   GVariantBuilder properties;
+  Send *send;
 
   /* the modem's own: freeing it stops the send */
   if (!cancellable)
@@ -476,6 +541,9 @@ sms_modem_send (SmsModem *self, const char *number, const char *text, GCancellab
   g_task_set_source_tag (task, sms_modem_send);
   /* the modem is not a GObject, so not the task's source object */
   g_object_set_data_full (G_OBJECT (task), "modem", sms_modem_ref (self), (GDestroyNotify) sms_modem_unref);
+  send = g_new0 (Send, 1);
+  send->delivery_report = delivery_report;
+  g_task_set_task_data (task, send, send_free);
   if (!self->messaging)
     {
       g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_NOT_CONNECTED, "No modem");
@@ -485,12 +553,25 @@ sms_modem_send (SmsModem *self, const char *number, const char *text, GCancellab
   g_variant_builder_init (&properties, G_VARIANT_TYPE ("a{sv}"));
   g_variant_builder_add (&properties, "{sv}", "number", g_variant_new_string (number));
   g_variant_builder_add (&properties, "{sv}", "text", g_variant_new_string (text));
+  /* only when asked: ModemManager's default is none, and a message without it is made as it always was */
+  if (delivery_report)
+    g_variant_builder_add (&properties, "{sv}", "delivery-report-request", g_variant_new_boolean (TRUE));
   g_dbus_proxy_call (self->messaging, "Create", g_variant_new ("(a{sv})", &properties), G_DBUS_CALL_FLAGS_NONE, -1,
                      cancellable, on_created, task);
 }
 
 gboolean
-sms_modem_send_finish (SmsModem *self, GAsyncResult *result, GError **error)
+sms_modem_send_finish (SmsModem *self, GAsyncResult *result, int *reference, GError **error)
 {
-  return g_task_propagate_boolean (G_TASK (result), error);
+  GError *failure = NULL;
+  gssize value = g_task_propagate_int (G_TASK (result), &failure);
+
+  if (reference)
+    *reference = failure ? -1 : (int) value;
+  if (failure)
+    {
+      g_propagate_error (error, failure);
+      return FALSE;
+    }
+  return TRUE;
 }
