@@ -6,14 +6,19 @@
 #define HISTORY_MAX 2000
 #define SAVE_DELAY_MS 800        /* writes are batched: a page load touches history several times */
 
+void
+nb_entry_free (NbEntry *e)
+{
+  g_free (e->url);
+  g_free (e->title);
+  g_free (e->color);
+  g_free (e);
+}
+
 static void
 entry_free (gpointer p)
 {
-  NbEntry *e = p;
-
-  g_free (e->url);
-  g_free (e->title);
-  g_free (e);
+  nb_entry_free (p);
 }
 
 static NbEntry *
@@ -103,6 +108,8 @@ entries_node (GPtrArray *entries, gboolean visits)
     json_object_set_double_member (o, "time", e->time);
     if (visits)
       json_object_set_int_member (o, "visits", e->visits);
+    if (e->color)
+      json_object_set_string_member (o, "color", e->color);
     json_array_add_object_element (array, o);
   }
   JsonNode *node = json_node_new (JSON_NODE_ARRAY);
@@ -126,9 +133,12 @@ entries_from (JsonNode *node)
     const char *url = json_object_get_string_member_with_default (o, "url", NULL);
     if (!url || !*url)
       continue;
-    g_ptr_array_add (out, entry_new (url, json_object_get_string_member_with_default (o, "title", ""),
-                                     json_object_get_double_member_with_default (o, "time", 0),
-                                     (int) json_object_get_int_member_with_default (o, "visits", 1)));
+    NbEntry *e = entry_new (url, json_object_get_string_member_with_default (o, "title", ""),
+                            json_object_get_double_member_with_default (o, "time", 0),
+                            (int) json_object_get_int_member_with_default (o, "visits", 1));
+    const char *color = json_object_get_string_member_with_default (o, "color", NULL);
+    e->color = color && *color ? g_strdup (color) : NULL;
+    g_ptr_array_add (out, e);
   }
   return out;
 }
@@ -437,5 +447,160 @@ void
 nb_store_set_filter_time (NbStore *store, double t)
 {
   json_object_set_double_member (store->prefs, "filterTime", t);
+  save (store, "prefs.json");
+}
+
+/* ---- favourites (Jelly) ---- */
+
+void
+nb_store_add_favorite (NbStore *store, const char *url, const char *title, const char *color)
+{
+  int at = find_url (store->bookmarks, url);
+
+  if (at >= 0) {
+    NbEntry *e = store->bookmarks->pdata[at];
+    g_free (e->title);
+    e->title = g_strdup (title ? title : "");
+    if (color) {
+      g_free (e->color);
+      e->color = g_strdup (color);
+    }
+  } else {
+    NbEntry *e = entry_new (url, title, now_s (), 0);
+    e->color = g_strdup (color);
+    g_ptr_array_insert (store->bookmarks, 0, e);
+  }
+  save (store, "bookmarks.json");
+}
+
+void
+nb_store_edit_favorite (NbStore *store, const char *old_url, const char *url, const char *title)
+{
+  int at = find_url (store->bookmarks, old_url);
+
+  if (at < 0)
+    return;
+  NbEntry *e = store->bookmarks->pdata[at];
+  g_free (e->url);
+  e->url = g_strdup (url);
+  g_free (e->title);
+  e->title = g_strdup (title ? title : "");
+  save (store, "bookmarks.json");
+}
+
+void
+nb_store_remove_favorite (NbStore *store, const char *url)
+{
+  int at = find_url (store->bookmarks, url);
+
+  if (at >= 0) {
+    g_ptr_array_remove_index (store->bookmarks, at);
+    save (store, "bookmarks.json");
+  }
+}
+
+NbEntry *
+nb_store_take_history (NbStore *store, guint index)
+{
+  if (index >= store->history->len)
+    return NULL;
+  NbEntry *e = g_ptr_array_steal_index (store->history, index);
+  save (store, "history.json");
+  return e;
+}
+
+void
+nb_store_put_history (NbStore *store, guint index, NbEntry *entry)
+{
+  /* a page visited meanwhile may have brought the same URL back: the newer one stays */
+  if (find_url (store->history, entry->url) >= 0) {
+    nb_entry_free (entry);
+    return;
+  }
+  g_ptr_array_insert (store->history, MIN (index, store->history->len), entry);
+  save (store, "history.json");
+}
+
+/* ---- Jelly's settings ---- */
+
+gboolean
+nb_store_get_bool (NbStore *store, const char *key, gboolean fallback)
+{
+  return json_object_get_boolean_member_with_default (store->prefs, key, fallback);
+}
+
+void
+nb_store_set_bool (NbStore *store, const char *key, gboolean value)
+{
+  json_object_set_boolean_member (store->prefs, key, value);
+  save (store, "prefs.json");
+}
+
+int
+nb_store_get_origin (NbStore *store, const char *key, const char *origin)
+{
+  JsonNode *n = json_object_get_member (store->prefs, key);
+  if (!n || !JSON_NODE_HOLDS_OBJECT (n))
+    return -1;
+  JsonNode *v = json_object_get_member (json_node_get_object (n), origin);
+  if (!v || json_node_get_value_type (v) != G_TYPE_BOOLEAN)
+    return -1;
+  return json_node_get_boolean (v);
+}
+
+void
+nb_store_set_origin (NbStore *store, const char *key, const char *origin, gboolean value)
+{
+  JsonNode *n = json_object_get_member (store->prefs, key);
+  JsonObject *o;
+  if (n && JSON_NODE_HOLDS_OBJECT (n)) {
+    o = json_node_get_object (n);
+  } else {
+    o = json_object_new ();
+    json_object_set_object_member (store->prefs, key, o);
+  }
+  json_object_set_boolean_member (o, origin, value);
+  save (store, "prefs.json");
+}
+
+const char *
+nb_store_get_string (NbStore *store, const char *key, const char *fallback)
+{
+  const char *v = json_object_get_string_member_with_default (store->prefs, key, NULL);
+  return v ? v : fallback;
+}
+
+void
+nb_store_set_string (NbStore *store, const char *key, const char *value)
+{
+  json_object_set_string_member (store->prefs, key, value);
+  save (store, "prefs.json");
+}
+
+GStrv
+nb_store_get_strv (NbStore *store, const char *key)
+{
+  g_autoptr (GStrvBuilder) b = g_strv_builder_new ();
+  JsonNode *n = json_object_get_member (store->prefs, key);
+
+  if (n && JSON_NODE_HOLDS_ARRAY (n)) {
+    JsonArray *a = json_node_get_array (n);
+    for (guint i = 0; i < json_array_get_length (a); i++) {
+      JsonNode *e = json_array_get_element (a, i);
+      if (JSON_NODE_HOLDS_VALUE (e) && json_node_get_value_type (e) == G_TYPE_STRING)
+        g_strv_builder_add (b, json_node_get_string (e));
+    }
+  }
+  return g_strv_builder_end (b);
+}
+
+void
+nb_store_set_strv (NbStore *store, const char *key, const char *const *value)
+{
+  JsonArray *a = json_array_new ();
+
+  for (int i = 0; value && value[i]; i++)
+    json_array_add_string_element (a, value[i]);
+  json_object_set_array_member (store->prefs, key, a);
   save (store, "prefs.json");
 }

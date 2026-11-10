@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- the stylesheet and Jelly's drawables (data/jelly-icons, made by tools/vd2svg.py) where GtkApplication looks for
+     icons: the resource base path + /icons -->
+<gresources>
+  <gresource prefix="/de/yesman/NeoBrowser">
+    <file>browser.css</file>
+    <file alias="icons/scalable/actions/jelly-apps-symbolic.svg">jelly-apps-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-back-symbolic.svg">jelly-back-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-cancel-symbolic.svg">jelly-cancel-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-check-symbolic.svg">jelly-check-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-clear-symbolic.svg">jelly-clear-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-delete-action-symbolic.svg">jelly-delete-action-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-delete-symbolic.svg">jelly-delete-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-desktop-symbolic.svg">jelly-desktop-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-download-symbolic.svg">jelly-download-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-external-symbolic.svg">jelly-external-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-favorite-empty.svg">jelly-favorite-empty.svg</file>
+    <file alias="icons/scalable/actions/jelly-favorite-symbolic.svg">jelly-favorite-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-file-download-symbolic.svg">jelly-file-download-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-find-in-page-symbolic.svg">jelly-find-in-page-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-forward-symbolic.svg">jelly-forward-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-heart-plus-symbolic.svg">jelly-heart-plus-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-history-symbolic.svg">jelly-history-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-incognito-symbolic.svg">jelly-incognito-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-lock-symbolic.svg">jelly-lock-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-menu-symbolic.svg">jelly-menu-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-new-private-tab-symbolic.svg">jelly-new-private-tab-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-new-tab-symbolic.svg">jelly-new-tab-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-next-symbolic.svg">jelly-next-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-prev-symbolic.svg">jelly-prev-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-print-symbolic.svg">jelly-print-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-refresh-symbolic.svg">jelly-refresh-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-search-symbolic.svg">jelly-search-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-settings-symbolic.svg">jelly-settings-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-share-symbolic.svg">jelly-share-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-warning-symbolic.svg">jelly-warning-symbolic.svg</file>
+  </gresource>
+</gresources>

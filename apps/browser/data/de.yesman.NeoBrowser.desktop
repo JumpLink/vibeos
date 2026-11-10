@@ -11,3 +11,8 @@ MimeType=text/html;x-scheme-handler/http;x-scheme-handler/https;
 StartupNotify=false
 StartupWMClass=de.yesman.NeoBrowser
 X-Purism-FormFactor=Workstation;Mobile;
+Actions=new-incognito-tab;
+
+[Desktop Action new-incognito-tab]
+Name=New incognito tab
+Exec=neo-browser --incognito
