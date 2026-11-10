@@ -34,11 +34,18 @@ empty_view_new (const char *icon_name, const char *message, const char *action, 
   gtk_widget_add_css_class (box, "dialer-empty");
   if (icon_name[0] == '/')
     {
-      /* a bitmap (empty_speed_dial, empty_contacts): drawn as it is, fitted into the 108 dp height */
-      image = gtk_picture_new_for_resource (icon_name);
-      gtk_picture_set_content_fit (GTK_PICTURE (image), GTK_CONTENT_FIT_CONTAIN);
-      gtk_picture_set_can_shrink (GTK_PICTURE (image), TRUE);
-      gtk_widget_set_size_request (image, -1, IMAGE_SIZE);
+      /* a bitmap (empty_speed_dial, empty_contacts) in a match_parent × 108 dp ImageView, FIT_CENTER. The picture
+       * floats over a 108 dp space and leaves the measuring to it: measured itself, it would ask for the height
+       * its aspect ratio gives at the whole width (231 dp for empty_speed_dial, not 108) */
+      GtkWidget *picture = gtk_picture_new_for_resource (icon_name);
+      GtkWidget *space = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+
+      gtk_picture_set_content_fit (GTK_PICTURE (picture), GTK_CONTENT_FIT_CONTAIN);
+      gtk_picture_set_can_shrink (GTK_PICTURE (picture), TRUE);
+      gtk_widget_set_size_request (space, -1, IMAGE_SIZE);
+      image = gtk_overlay_new ();
+      gtk_overlay_set_child (GTK_OVERLAY (image), space);
+      gtk_overlay_add_overlay (GTK_OVERLAY (image), picture);
     }
   else
     {
