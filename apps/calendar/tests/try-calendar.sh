@@ -18,14 +18,36 @@
 #
 # Run it as root on the phone (or as the session user on a desktop, HEADLESS pointing at a neo-headless that works
 # there); it does the rest as the session user.
+#
+# Nothing in the rig uses the session's runtime directory (/run/user/UID): the rig, its display and everything on
+# its bus get one of their own, CAL_RIG_RUNTIME (/tmp/try-calendar-rt), made 700 for the session user. A GTK app on a
+# private bus activates xdg-desktop-portal there, which brings up a second xdg-document-portal; in the session's
+# directory that one takes over $XDG_RUNTIME_DIR/doc and the session's own portal dies (11-10), and an a11y bus
+# started there would take .../at-spi the same way. The display needs a neo-headless that knows
+# NEO_HEADLESS_RUNTIME (tools/neo-headless).
 set -e
 
 USER_NAME=${NEO_USER:-user}
-RUNTIME=/run/user/$(id -u "$USER_NAME")
+RUNTIME=${CAL_RIG_RUNTIME:-/tmp/try-calendar-rt}
 RIG=$RUNTIME/try-calendar.d
 HERE=$(dirname "$(readlink -f "$0")")
 HEADLESS=${HEADLESS:-/root/neo-tools/neo-headless}
 export NEO_HEADLESS=${NEO_HEADLESS:-cal}
+export NEO_HEADLESS_RUNTIME=$RUNTIME
+if [ "$RUNTIME" = "/run/user/$(id -u "$USER_NAME")" ]; then
+    echo "try-calendar: CAL_RIG_RUNTIME must not be the session's runtime directory" >&2
+    exit 1
+fi
+if ! grep -q NEO_HEADLESS_RUNTIME "$HEADLESS" 2>/dev/null; then
+    echo "try-calendar: $HEADLESS does not know NEO_HEADLESS_RUNTIME; HEADLESS=a newer tools/neo-headless" >&2
+    exit 1
+fi
+# the session user's, 700, as a runtime directory must be (made when missing, kept when there)
+if [ "$(id -un)" = "$USER_NAME" ]; then
+    install -d -m 700 "$RUNTIME"
+else
+    install -d -m 700 -o "$USER_NAME" -g "$(id -gn "$USER_NAME")" "$RUNTIME"
+fi
 
 as_user() {
     if [ "$(id -un)" = "$USER_NAME" ]; then
@@ -42,13 +64,13 @@ as_user_daemon() {
     as_user setsid -f sh -c 'echo $$ >"$0"; exec "$@"' "$RIG/$name.pid" "$@" </dev/null >"$RIG/$name.log" 2>&1
 }
 
-# what everything in the rig runs with: its bus, its directories (EDS keeps its sources and events there), its
-# settings in memory, with the app's schema
+# what everything in the rig runs with: its bus, its runtime and other directories (EDS keeps its sources and events
+# there), its settings in a keyfile of its own ($run/config/glib-2.0/settings/keyfile), with the app's schema
 rig_env() {
     run=$(cat "$RIG/run")
-    echo CAL_RIG_DIR="$run" DBUS_SESSION_BUS_ADDRESS="$(cat "$run/bus")" XDG_CONFIG_HOME="$run/config" \
-        XDG_DATA_HOME="$run/data" XDG_CACHE_HOME="$run/cache" XDG_STATE_HOME="$run/state" \
-        GSETTINGS_BACKEND=memory GSETTINGS_SCHEMA_DIR="$run/schemas"
+    echo CAL_RIG_DIR="$run" DBUS_SESSION_BUS_ADDRESS="$(cat "$run/bus")" XDG_RUNTIME_DIR="$RUNTIME" \
+        XDG_CONFIG_HOME="$run/config" XDG_DATA_HOME="$run/data" XDG_CACHE_HOME="$run/cache" \
+        XDG_STATE_HOME="$run/state" GSETTINGS_BACKEND=keyfile GSETTINGS_SCHEMA_DIR="$run/schemas"
 }
 
 case $1 in
@@ -73,7 +95,7 @@ start)
     # The bus. Services it activates (evolution-source-registry, evolution-calendar-factory) inherit its
     # environment, so they keep everything under $run.
     as_user env CAL_RIG_DIR="$run" XDG_CONFIG_HOME="$run/config" XDG_DATA_HOME="$run/data" \
-        XDG_CACHE_HOME="$run/cache" XDG_STATE_HOME="$run/state" GSETTINGS_BACKEND=memory \
+        XDG_CACHE_HOME="$run/cache" XDG_STATE_HOME="$run/state" GSETTINGS_BACKEND=keyfile \
         GSETTINGS_SCHEMA_DIR="$run/schemas" \
         dbus-daemon --session --fork --print-address=1 --print-pid=1 </dev/null >"$run/bus.tmp" 2>"$run/bus.log"
     head -1 "$run/bus.tmp" | as_user tee "$run/bus" >/dev/null
@@ -137,6 +159,10 @@ stop)
             [ -n "$pid" ] && [ "$pid" != "$$" ] && kill "$pid" 2>/dev/null || true
         done
         kill "$(cat "$run/bus.pid")" 2>/dev/null || true
+    fi
+    # a document portal the rig's bus started leaves its FUSE mount behind when it is killed
+    if grep -q " $RUNTIME/doc " /proc/mounts 2>/dev/null; then
+        as_user fusermount3 -u -z "$RUNTIME/doc" 2>/dev/null || umount -l "$RUNTIME/doc" 2>/dev/null || true
     fi
     ;;
 *)
