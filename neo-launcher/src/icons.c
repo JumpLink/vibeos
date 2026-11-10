@@ -15,13 +15,57 @@ static const char *distinct[][2] = {
   { "waydroid.com.android.settings.desktop", "flatdroid" },
 };
 
-/* apps that took over a GNOME app's job wear its pack icon (a pack maps only the apps it knew): new id -> old id */
-static const char *took_over[][2] = {
-  { "de.yesman.Dialer.desktop", "org.gnome.Calls.desktop" },
-  { "de.yesman.Messaging.desktop", "sm.puri.Chatty.desktop" },
-  { "de.yesman.Calculator.desktop", "org.gnome.Calculator.desktop" },
-  { "de.yesman.Calendar.desktop", "org.gnome.Calendar.desktop" },
+/* Our apps. A pack maps only the apps it knew, so one without an entry of its own for ours dresses them in the icon it
+ * gives the GNOME app they took over, else in the one it gives the Android app they copy (the AOSP/LineageOS original
+ * first, then Google's and the vendors'). With no pack, or a pack that has neither, they keep their own icons. */
+static const struct {
+  const char *id, *gnome;
+  const char *android[6];
+} ours[] = {
+  { "de.yesman.Dialer.desktop", "org.gnome.Calls.desktop",
+    { "com.android.dialer", "com.google.android.dialer", "com.samsung.android.dialer", "com.oneplus.dialer" } },
+  { "de.yesman.Messaging.desktop", "sm.puri.Chatty.desktop",
+    { "com.android.messaging", "com.google.android.apps.messaging", "com.samsung.android.messaging",
+      "com.oneplus.mms" } },
+  { "de.yesman.Contacts.desktop", "org.gnome.Contacts.desktop",
+    { "com.android.contacts", "com.google.android.contacts", "com.samsung.android.contacts",
+      "com.oneplus.contacts" } },
+  { "de.yesman.Clock.desktop", "org.gnome.clocks.desktop",
+    { "com.android.deskclock", "com.google.android.deskclock", "com.sec.android.app.clockpackage",
+      "com.oneplus.deskclock" } },
+  { "de.yesman.Calendar.desktop", "org.gnome.Calendar.desktop",
+    { "org.lineageos.etar", "com.android.calendar", "com.google.android.calendar", "com.samsung.android.calendar",
+      "com.oneplus.calendar" } },
+  { "de.yesman.Calculator.desktop", "org.gnome.Calculator.desktop",
+    { "com.android.calculator2", "com.google.android.calculator", "com.sec.android.app.popupcalculator",
+      "com.oneplus.calculator" } },
+  { "de.yesman.Camera.desktop", "org.gnome.Snapshot.desktop",
+    { "org.lineageos.aperture", "com.android.camera2", "com.android.camera", "com.google.android.GoogleCamera",
+      "com.sec.android.app.camera", "com.oneplus.camera" } },
+  { "de.yesman.Files.desktop", "org.gnome.Nautilus.desktop",
+    { "com.alphainventor.filemanager", "com.android.documentsui", "com.google.android.apps.nbu.files",
+      "com.sec.android.app.myfiles", "com.oneplus.filemanager" } },
+  { "de.yesman.NeoBrowser.desktop", "org.gnome.Epiphany.desktop",
+    { "org.lineageos.jelly", "com.android.browser", "com.sec.android.app.sbrowser" } },
+  { "de.yesman.NeoSettings.desktop", "org.gnome.Settings.desktop", { "com.android.settings" } },
+  { "de.yesman.NeoWeather.desktop", "org.gnome.Weather.desktop",
+    { "com.google.android.apps.weather", "net.oneplus.weather", "com.sec.android.daemonapp" } },
+  { "de.yesman.Compass.desktop", NULL,
+    { "com.vincentlee.compass", "com.coloros.compass", "com.oneplus.compass", "com.google.android.apps.compass" } },
 };
+
+/* the pack's drawable for one of our apps, or NULL; filter: the pack's appfilter.json (Android package -> drawable) */
+static const char *
+our_drawable (GHashTable *map, JsonObject *filter, guint i)
+{
+  const char *drawable = ours[i].gnome ? g_hash_table_lookup (map, ours[i].gnome) : NULL;
+  for (guint a = 0; !drawable && filter && a < G_N_ELEMENTS (ours[i].android) && ours[i].android[a]; a++) {
+    JsonNode *v = json_object_get_member (filter, ours[i].android[a]);
+    if (v && JSON_NODE_HOLDS_VALUE (v) && json_node_get_value_type (v) == G_TYPE_STRING)
+      drawable = json_node_get_string (v);
+  }
+  return drawable;
+}
 
 typedef struct {
   char       *dir;
@@ -186,6 +230,15 @@ current_pack (Icons *self)
   g_autofree char *map_path = g_build_filename (p->dir, "gnome-map.json", NULL);
   g_autofree char *filter_path = g_build_filename (p->dir, "appfilter.json", NULL);
   map_from (p->map, map_path, NULL, FALSE);
+  /* our apps, before the Android mapping below adds waydroid.* keys (and distinct[] swaps Android's settings) */
+  JsonNode *filter = read_json (filter_path);
+  JsonObject *filter_o = filter && JSON_NODE_HOLDS_OBJECT (filter) ? json_node_get_object (filter) : NULL;
+  for (guint i = 0; i < G_N_ELEMENTS (ours); i++) {
+    const char *drawable = g_hash_table_contains (p->map, ours[i].id) ? NULL : our_drawable (p->map, filter_o, i);
+    if (drawable)
+      g_hash_table_insert (p->map, g_strdup (ours[i].id), g_strdup (drawable));
+  }
+  g_clear_pointer (&filter, json_node_unref);
   /* Android apps (Waydroid's waydroid.<package>.desktop): the pack's own Android mapping. A GNOME entry wins. */
   map_from (p->map, filter_path, "waydroid.", TRUE);
   /* Android's settings are not GNOME's: the robot, not the same gear twice (when the pack has it) */
@@ -194,11 +247,6 @@ current_pack (Icons *self)
     g_autofree char *path = g_build_filename (p->dir, "icons", png, NULL);
     if (g_file_test (path, G_FILE_TEST_EXISTS))
       g_hash_table_replace (p->map, g_strdup (distinct[i][0]), g_strdup (distinct[i][1]));
-  }
-  for (guint i = 0; i < G_N_ELEMENTS (took_over); i++) {
-    const char *drawable = g_hash_table_lookup (p->map, took_over[i][1]);
-    if (drawable && !g_hash_table_contains (p->map, took_over[i][0]))
-      g_hash_table_insert (p->map, g_strdup (took_over[i][0]), g_strdup (drawable));
   }
   g_autofree char *meta_path = g_build_filename (p->dir, "pack.json", NULL);
   JsonNode *meta = read_json (meta_path);
@@ -378,6 +426,9 @@ cache_key (Icons *self, GAppInfo *info, int px)
   const char *id = g_app_info_get_id (info);
   /* 'b' marks Android icons drawn since they take the pack's appfilter */
   const char *android = g_str_has_prefix (id, "waydroid.") ? "b" : "";
+  /* 'y': our apps drawn since they take the pack's GNOME/Android twin's icon (ours[]) */
+  if (g_str_has_prefix (id, "de.yesman."))
+    android = "y";
   g_autofree char *safe = g_strdup (id);
   for (char *c = safe; *c; c++)
     if (!g_ascii_isalnum (*c) && *c != '.' && *c != '_' && *c != '-')
