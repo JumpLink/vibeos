@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=de.yesman.Files
+Exec=@bindir@/neo-files --gapplication-service

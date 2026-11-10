@@ -1,0 +1,713 @@
+/* The Files styles, over libneo's (neo.css): File Manager+'s dark theme (spec, "Colours"), AppCompat's dark dialogs and
+ * popups. Sizes are dp (1 dp = 1 px here); most of the geometry is set in C next to the spec's numbers, so this file
+ * is mainly colours, fonts and paddings. The weights are Bold text's: regular 700, medium 800. */
+
+window.fm-window,
+.fm-home,
+.fm-browser,
+.fm-remote-page,
+.fm-settings {
+  background-color: #121212;            /* main_background_dark */
+}
+
+/* ---- the toolbar (§1.1, §1.2, §7) ---- */
+
+.fm-toolbar {
+  min-height: 56px;
+  background-color: #1f1f1f;            /* primary (night) */
+}
+
+/* the action mode bar: Holo's cab_background_top, a 2.67 dp line at its bottom */
+.fm-toolbar.fm-cab {
+  background-color: #002e3e;
+  box-shadow: inset 0 -2.67px #33b5e5;
+}
+
+.fm-title {
+  font-size: 18px;                      /* toolbarTitleSize, Medium */
+  font-weight: 800;
+  color: #ffffff;
+  margin-top: 1px;                      /* the cap 22 dp down, as measured */
+}
+
+.fm-icon-button image {
+  color: #ffffff;
+}
+
+.fm-icon-button:disabled image {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.fm-search-entry {
+  background: none;
+  border: none;
+  box-shadow: none;
+  outline: none;
+  min-height: 40px;
+  padding: 0;
+  margin-left: 16px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  caret-color: #80cbc4;
+}
+
+.fm-search-entry placeholder,
+.fm-search-entry text placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.fm-search-entry selection {
+  background-color: rgba(128, 203, 196, 0.4);
+}
+
+.fm-search-spinner {
+  color: #80cbc4;
+  margin: 0 13px;
+}
+
+/* ---- the path bar (§2) ---- */
+
+.fm-pathbar {
+  min-height: 44px;
+  background-color: #1f1f1f;
+}
+
+.fm-crumbs {
+  padding: 0 4px;
+}
+
+.fm-crumb {
+  min-height: 44px;
+  padding: 0 8px;
+}
+
+.fm-crumb-home {
+  margin-left: 2px;                     /* home ink 14.3 dp in, its chevron 54.3 (fmplus-4) */
+}
+
+.fm-crumb-text {
+  font-size: 18px;
+  font-weight: 700;
+  color: #a0a0a0;                       /* pathbar_text_normal */
+}
+
+.fm-crumb.last .fm-crumb-text {
+  color: #eeeeee;                       /* pathbar_text_selected */
+}
+
+.fm-free {
+  font-size: 14px;
+  font-weight: 700;
+  color: #eeeeee;
+  padding: 0 9px 0 10px;
+}
+
+.fm-up {
+  margin-right: 5px;                    /* the arrow's ink ends 16.3 dp from the edge (fmplus-4) */
+}
+
+.fm-up image {
+  color: #cccccc;                       /* pathbar_icon */
+}
+
+/* ---- the file list (§3) ---- */
+
+/* GtkListView's own row padding and focus off: the rows are File Manager+'s, edge to edge */
+.fm-list-view,
+.fm-list-view > row {
+  padding: 0;
+  margin: 0;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  background: none;
+  min-height: 0;
+}
+
+.fm-list-view {
+  background-color: #121212;
+}
+
+.fm-row {
+  min-height: 56px;
+  padding: 0 4px;
+  border-bottom: 1px solid #272727;     /* file_list_divider */
+}
+
+.fm-row.selected {
+  background-color: #00796b;            /* accent_background (night) */
+}
+
+.fm-row-icon {
+  margin: 0 4px;                        /* the 48 dp box (2 dp padding) and its 2 dp margins */
+}
+
+.fm-row-text {
+  margin: 1px 4px 0 4px;                /* the name's cap 12.7 dp down in a 56 dp row, as measured */
+}
+
+.fm-row-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: #dbdbdb;                       /* main_primary_text */
+}
+
+.fm-row-sub,
+.fm-row-where {
+  font-size: 14px;
+  font-weight: 700;
+  color: #a7a7a7;                       /* main_secondary_text */
+}
+
+.fm-row-check {
+  margin: 0 4px;                        /* the 40 dp checkbox column */
+}
+
+.fm-list-message {
+  font-size: 18px;
+  font-weight: 700;
+  color: #dbdbdb;
+  margin: 0 24px;
+}
+
+/* ---- the selection and paste bar (§1.2, §1.3) ---- */
+
+.fm-bottom {
+  background-color: #002e3e;            /* cab_background_bottom */
+  box-shadow: inset 0 2.67px #33b5e5;
+}
+
+.fm-bottom-items {
+  min-height: 50px;                     /* 60 dp with the padding */
+  padding: 5px 0;
+}
+
+.fm-bottom-icon {
+  color: #ffffff;
+}
+
+.fm-bottom-text {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.fm-bottom-item:disabled {
+  opacity: 0.4;
+}
+
+/* ---- Home (§5) ---- */
+
+.fm-home-grid {
+  padding: 8px;
+}
+
+.fm-tile {
+  padding: 5px;
+}
+
+.fm-tile-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #dbdbdb;
+}
+
+.fm-tile-info {
+  font-size: 12px;
+  font-weight: 700;
+  color: #a7a7a7;
+}
+
+/* ---- the Remote page (§6.1) ---- */
+
+.fm-remote-footer {
+  min-height: 64px;                     /* listPreferredItemHeight */
+  border-bottom: 1px solid #313131;     /* fmplus-1/2: a 1 dp line under it only */
+}
+
+.fm-footer-text {
+  font-size: 18px;
+  font-weight: 700;
+  color: #dbdbdb;
+}
+
+.fm-footer-plus {
+  color: #dbdbdb;
+}
+
+.fm-remote-more image {
+  color: #a7a7a7;
+}
+
+/* ---- the drawer (§4) ---- */
+
+fm-drawer > .fm-drawer-scrim {
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+.fm-drawer-sheet {
+  background-color: #222222;            /* nav_background */
+}
+
+.fm-nav-tabs {
+  min-height: 56px;
+  background-color: #282828;            /* nav_tab_background */
+}
+
+.fm-nav-tab image {
+  color: #555555;                       /* nav_primary_text_disabled */
+}
+
+.fm-nav-tab.selected image {
+  color: #e5e5e5;                       /* nav_primary_text_default */
+}
+
+.fm-nav-fixed {
+  min-height: 48px;                     /* 52 dp with the padding */
+  padding: 2px;
+}
+
+.fm-nav-icon {
+  margin: 4px;
+}
+
+.fm-nav-text {
+  margin: 0 6px 0 4px;
+}
+
+.fm-nav-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #e4e4e4;
+}
+
+.fm-nav-description,
+.fm-nav-path,
+.fm-nav-path-main {
+  font-size: 14px;
+  font-weight: 700;
+  color: #808080;                       /* nav_secondary_text */
+}
+
+.fm-nav-location {
+  font-size: 12px;
+  font-weight: 700;
+  color: #808080;
+}
+
+.fm-nav-storage .fm-nav-text {
+  margin-top: 7px;
+}
+
+.fm-nav-bar {
+  margin-top: 8px;                      /* its bar 38.67 dp under the row's top (fmplus-5) */
+}
+
+.fm-nav-fixed .fm-nav-description {
+  margin-top: 1px;
+}
+
+.fm-nav-gap {
+  min-height: 1px;
+}
+
+.fm-nav-divider {
+  min-height: 1px;
+  background-color: #3b3b3b;            /* nav_list_divider */
+}
+
+.fm-nav-separator {
+  min-height: 3px;
+  background-color: #444444;            /* nav_list_separator */
+}
+
+.fm-nav-separator-2 {
+  min-height: 2px;
+  background-color: #444444;
+}
+
+.fm-nav-opened {
+  min-height: 49px;                     /* 53 dp with the padding */
+  padding: 2px 0 2px 2px;
+}
+
+.fm-nav-opened-text {
+  margin-left: 4px;
+}
+
+.fm-nav-pin {
+  color: #808080;
+  margin-left: 4px;
+}
+
+.fm-nav-more {
+  margin-right: 2px;
+}
+
+.fm-nav-more image {
+  color: #a0a0a0;
+}
+
+.fm-nav-bookmark {
+  min-height: 48px;
+  padding: 4px 0 4px 2px;
+}
+
+.fm-nav-bookmark .fm-nav-name {
+  margin-left: 4px;
+}
+
+.fm-nav-bookmark .fm-nav-location {
+  margin-left: 4px;
+}
+
+.fm-nav-band {
+  background-color: #303030;
+  padding: 3px 6px;
+}
+
+.fm-nav-band-text {
+  font-size: 12px;
+  font-weight: 700;
+  color: #e4e4e4;
+  margin-left: 6px;
+}
+
+.fm-nav-history-line {
+  padding: 2px 2px;
+}
+
+.fm-nav-history-line .fm-nav-path-main {
+  margin-left: 4px;
+}
+
+.fm-nav-empty {
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(228, 228, 228, 0.6);
+  margin: 32px 0;
+}
+
+.fm-nav-button {
+  margin: 0 8px;
+}
+
+/* ---- AppCompat's buttons, checks and fields ---- */
+
+.fm-text-button {
+  min-width: 64px;
+  min-height: 48px;
+  padding: 0 8px;
+}
+
+.fm-text-button label {
+  font-size: 14px;
+  font-weight: 800;
+  color: #80cbc4;                       /* accent_color */
+}
+
+.fm-text-button:disabled label {
+  color: rgba(128, 203, 196, 0.4);
+}
+
+.fm-check-row {
+  min-height: 48px;
+}
+
+.fm-check-text {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-left: 8px;
+}
+
+.fm-entry,
+.neo-entry.fm-entry {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  caret-color: #80cbc4;
+  min-height: 40px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.7);
+}
+
+.neo-entry.fm-entry:focus-within {
+  border-bottom-color: #80cbc4;
+}
+
+.neo-entry.fm-entry placeholder,
+.neo-entry.fm-entry text placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.neo-entry.fm-entry selection {
+  background-color: rgba(128, 203, 196, 0.4);
+}
+
+.fm-field-error {
+  font-size: 12px;
+  font-weight: 700;
+  color: #ef5350;
+  margin-top: 4px;
+}
+
+/* ---- the dialogs (§8): AppCompat's dark alert dialog ---- */
+
+.fm-window .neo-dialog {
+  background-color: #424242;            /* background_floating_material_dark */
+  border-radius: 2px;
+  padding: 0;
+  margin: 0 1px;                        /* 310 dp: the window less 25 dp a side */
+}
+
+.fm-window .neo-dialog-buttons {
+  margin: 0;
+  padding: 4px 18px 7px 12px;           /* fmplus-2: the last button's caps end 24.3 dp from the card's right, and
+                                           all buttons' caps 25.3 dp above its bottom */
+  border-spacing: 0;
+}
+
+.fm-window .neo-dialog .neo-text-button {
+  min-width: 64px;
+  min-height: 48px;
+  padding: 0 5px;                       /* two buttons' caps 25.3 dp apart (fmplus-2) */
+  color: #80cbc4;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.fm-dialog-content {
+  padding: 17px 24px 0 24px;            /* abc_dialog_padding_top_material, abc_dialog_padding_material */
+}
+
+.fm-dialog-content.untitled {
+  padding-top: 24px;
+}
+
+.fm-dialog-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 12px;
+}
+
+.fm-dialog-message {
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 8px;
+}
+
+.fm-dialog-count {
+  font-size: 14px;
+  font-weight: 700;
+  color: #a7a7a7;
+  margin-bottom: 8px;
+}
+
+.fm-dialog-subtitle {
+  font-size: 14px;
+  font-weight: 800;
+  color: #80cbc4;
+  margin: 4px 0;
+}
+
+.fm-form-row {
+  min-height: 48px;
+  margin-left: 2px;
+}
+
+.fm-form-label {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.fm-form-check {
+  margin-left: 79px;
+}
+
+/* a list to pick from: the rows reach the card's edges, the icon at 24 dp and the text at 68 dp, 8 dp under */
+.fm-dialog-content.fm-list-dialog {
+  padding: 17px 0 8px 0;
+}
+
+.fm-list-dialog .fm-dialog-title {
+  margin: 0 24px 8px 24px;              /* the first row 53 dp under the card's top (fmplus-1) */
+}
+
+.fm-list-dialog-row {
+  min-height: 48px;
+  padding: 0 24px;
+}
+
+.fm-list-dialog-text {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-left: 12px;
+}
+
+/* the Local Network scan (dialog_choose_smb) */
+.fm-dialog-content.fm-scan-dialog {
+  padding: 17px 0 0 0;
+}
+
+.fm-scan-dialog .fm-dialog-title {
+  margin: 0 24px 0 24px;
+}
+
+.fm-scan-area {
+  min-height: 203px;                    /* 63 dp under the card's top, the card 324.7 dp tall (fmplus-2) */
+  margin-top: 18px;
+}
+
+.fm-scan-progress {
+  margin: 0 24px;
+}
+
+.fm-scan-row {
+  min-height: 48px;
+}
+
+.fm-scan-line {
+  margin: 0 24px;
+  box-shadow: inset 0 -1px #595959;
+}
+
+.fm-scan-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: #e2e2e2;
+  margin-left: 9px;
+}
+
+.fm-scan-empty {
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Properties (dialog_file_properties) */
+.fm-property-label,
+.fm-property-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #a7a7a7;
+}
+
+.fm-properties {
+  padding-bottom: 8px;
+}
+
+/* the progress of a job (dialog_file_progress) */
+.fm-progress-head .fm-dialog-title {
+  margin-bottom: 8px;
+}
+
+.fm-progress-percent {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.fm-progress-text {
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.fm-progress-bar {
+  margin: 8px 0;
+}
+
+/* Overwrite / Rename / Skip: full-width coloured buttons */
+.fm-conflict-button {
+  background-color: #80cbc4;
+  border-radius: 2px;
+  min-height: 40px;
+  margin: 4px 0;
+}
+
+.fm-conflict-button label {
+  color: #00332e;
+}
+
+/* ---- the popup menu ---- */
+
+.fm-popup {
+  background-color: #424242;
+  border-radius: 2px;
+  padding: 8px 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.fm-popup-item {
+  min-height: 48px;
+  padding: 0 16px;
+}
+
+.fm-popup-text {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* ---- Settings (§11) ---- */
+
+.fm-pref-category {
+  font-size: 14px;
+  font-weight: 800;
+  color: #80cbc4;
+  padding: 16px 16px 8px 16px;
+}
+
+.fm-pref-row {
+  min-height: 72px;
+  padding: 0 16px;
+}
+
+.fm-pref-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* ---- the snackbar and the toast ---- */
+
+.fm-snackbar .neo-snackbar {
+  background-color: #2f2f2f;            /* snackbar_background_color */
+  border-radius: 0;
+}
+
+.fm-snackbar .neo-snackbar-text {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.fm-snackbar .neo-text-button {
+  color: #80cbc4;
+}
+
+/* SystemUI's text_toast.xml: the system's colours, not the app's */
+.fm-toast {
+  margin: 0 16px 48px 16px;
+  padding: 0 16px;
+  min-height: 48px;
+  border-radius: 28px;
+  background-color: @neo_surface_container_high;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.fm-toast-icon {
+  margin: 10px 10px 10px 0;
+}
+
+.fm-toast-text {
+  padding: 12px 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: @neo_on_surface;
+}
