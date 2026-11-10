@@ -275,6 +275,46 @@ history-tabs {
   color: #e1e1e1;
 }
 
+/* a ListPreference's dialog (spec §9.8, still:dialer-dlg-sortby): AppCompat's AlertDialogTheme window, 342 dp wide
+ * (9 dp in from the screen's sides, where NeoDialog keeps 24: the negative margin widens the card past its
+ * allocation, evenly), 16 dp corners, #1b1b1b. The title 18 dp down and 24 dp in, 27 dp tall, 8 dp over the rows; the
+ * rows edge to edge; "CANCEL" in a 62 dp bar, its 54 dp button 12 dp in from the end */
+.settings-dialog .neo-dialog {
+  background-color: #1b1b1b;
+  border-radius: 16px;
+  padding: 18px 0 0 0;
+  margin: 0 -15px;
+}
+
+.settings-dialog .neo-dialog-title {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 27px;
+  color: #f6f7fb;
+  margin: 1px 24px 7px 24px;     /* its font padding: the text 1 dp under the box's middle */
+}
+
+.settings-dialog .neo-dialog-buttons {
+  margin: 4px 12px 4px 12px;
+}
+
+.settings-dialog .neo-text-button {
+  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  color: #81b5bc;
+  min-height: 54px;
+  padding: 0 12px;
+}
+
+/* select_dialog_singlechoice_material's text: textAppearanceMedium, 18 sp (cap height 39 px on the still), its font
+ * padding putting it 1 dp under the row's middle */
+.settings-dialog .settings-choice {
+  font-size: 18px;
+  margin-top: 2px;
+}
+
 /* Call details (call-details.c): DialerToolbar's title, config_headlineFontFamilyMedium 20 sp (500 drawn as 800) in
  * textColorPrimary; the large call-type icons in their colour filters, untouched by force dark; a missed call's
  * time in dialer_red as text */

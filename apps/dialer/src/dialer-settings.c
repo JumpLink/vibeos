@@ -41,6 +41,8 @@
 #define RADIO_DOT       10
 #define CHOICE_HEIGHT   48      /* select_dialog_singlechoice_material, measured */
 #define CHOICE_TEXT     47      /* measured: the text's start past the radio's */
+#define CHOICE_RADIO    26      /* measured: the radio's ring in from the dialog window's edge; its text then
+                                 * 1 dp nearer than CHOICE_TEXT at 18 sp (ink at 73 dp from the edge) */
 #define RINGTONES_DIR   "sounds/android/ringtones"
 #define DEFAULT_TITLE   "Orion" /* LineageOS's ro.config.ringtone (ringer.c) */
 
@@ -423,6 +425,7 @@ show_choice (DialerSettings *self, const char *title, const char * const *entrie
   NeoDialog *dialog = neo_dialog_new (title);
   GtkWidget *list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   Choice *choice = g_new0 (Choice, 1);
+  g_autofree char *cancel = g_utf8_strup (_("Cancel"), -1);
 
   choice->self = self;
   choice->dialog = dialog;
@@ -437,11 +440,13 @@ show_choice (DialerSettings *self, const char *title, const char * const *entrie
 
       gtk_widget_set_size_request (row, -1, CHOICE_HEIGHT);
       gtk_widget_set_valign (radio, GTK_ALIGN_CENTER);
+      gtk_widget_set_margin_start (radio, CHOICE_RADIO);
       gtk_box_append (GTK_BOX (row), radio);
       gtk_label_set_xalign (GTK_LABEL (label), 0);
       gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
       gtk_widget_set_hexpand (label, TRUE);
-      gtk_widget_set_margin_start (label, CHOICE_TEXT - RADIO);
+      gtk_widget_set_margin_start (label, CHOICE_TEXT - 1 - RADIO);
+      gtk_widget_set_margin_end (label, CHOICE_RADIO);
       gtk_widget_add_css_class (label, "settings-choice");
       gtk_box_append (GTK_BOX (row), label);
       pressable = neo_pressable_new (row);
@@ -450,8 +455,10 @@ show_choice (DialerSettings *self, const char *title, const char * const *entrie
       g_signal_connect (pressable, "clicked", G_CALLBACK (on_choice_clicked), choice);
       gtk_box_append (GTK_BOX (list), pressable);
     }
+  /* AppCompat's AlertDialog (dialer.css .settings-dialog): the rows edge to edge, its button in capitals */
+  gtk_widget_add_css_class (GTK_WIDGET (dialog), "settings-dialog");
   neo_dialog_set_content (dialog, list);
-  neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
+  neo_dialog_add_button (dialog, cancel, NEO_RESPONSE_CANCEL);
   neo_dialog_present (dialog, GTK_WIDGET (self));
 }
 
