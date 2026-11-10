@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- the app's stylesheet, pictures and icons (data/icons, from the APK's vector drawables), where GtkApplication
+     looks for icons: the resource base path + /icons -->
+<gresources>
+  <gresource prefix="/de/yesman/Contacts">
+    <file>contacts.css</file>
+    <file alias="images/accounts_empty.png">images/accounts_empty.png</file>
+    <file alias="images/home_empty.png">images/home_empty.png</file>
+    <file alias="images/ic_person_avatar.png">images/ic_person_avatar.png</file>
+    <file alias="images/label_empty.png">images/label_empty.png</file>
+    <file alias="images/person_white_540dp.png">images/person_white_540dp.png</file>
+    <file alias="icons/scalable/apps/de.yesman.Contacts.svg">de.yesman.Contacts.svg</file>
+    <file alias="icons/scalable/actions/ct-account-circle-symbolic.svg">icons/ct-account-circle-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-add-symbolic.svg">icons/ct-add-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-arrow-back-symbolic.svg">icons/ct-arrow-back-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-business-symbolic.svg">icons/ct-business-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-camera-alt-symbolic.svg">icons/ct-camera-alt-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-circles-ext-symbolic.svg">icons/ct-circles-ext-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-close-symbolic.svg">icons/ct-close-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-create-symbolic.svg">icons/ct-create-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-delete-symbolic.svg">icons/ct-delete-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-dialer-sip-symbolic.svg">icons/ct-dialer-sip-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-drop-down-symbolic.svg">icons/ct-drop-down-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-email-symbolic.svg">icons/ct-email-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-event-symbolic.svg">icons/ct-event-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-expand-less-symbolic.svg">icons/ct-expand-less-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-expand-more-symbolic.svg">icons/ct-expand-more-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-insert-comment-symbolic.svg">icons/ct-insert-comment-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-label-symbolic.svg">icons/ct-label-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-menu-symbolic.svg">icons/ct-menu-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-message-symbolic.svg">icons/ct-message-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-more-vert-symbolic.svg">icons/ct-more-vert-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-my-info.svg">icons/ct-my-info.svg</file>
+    <file alias="icons/scalable/actions/ct-person-add-symbolic.svg">icons/ct-person-add-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-person-symbolic.svg">icons/ct-person-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-phone-symbolic.svg">icons/ct-phone-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-place-symbolic.svg">icons/ct-place-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-public-symbolic.svg">icons/ct-public-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-radio-off-symbolic.svg">icons/ct-radio-off-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-radio-on-symbolic.svg">icons/ct-radio-on-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-search-symbolic.svg">icons/ct-search-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-settings-symbolic.svg">icons/ct-settings-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-share-symbolic.svg">icons/ct-share-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-smartphone-symbolic.svg">icons/ct-smartphone-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-star-border-symbolic.svg">icons/ct-star-border-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-star-symbolic.svg">icons/ct-star-symbolic.svg</file>
+    <file alias="icons/scalable/actions/ct-videocam-symbolic.svg">icons/ct-videocam-symbolic.svg</file>
+  </gresource>
+</gresources>

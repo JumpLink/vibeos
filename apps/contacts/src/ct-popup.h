@@ -1,0 +1,37 @@
+/* A popup menu over the window: android.widget.ListPopupWindow / the toolbar's overflow menu as the framework draws
+ * it in dark mode (spec §7.7): a #1f1f1f card with 2 dp corners and a 16 dp shadow, 48 dp rows of 16 sp text
+ * (#e2e2e2, weight 700) 16 dp in, as wide as the widest row but at least 196 dp. A tap outside, Back or Escape
+ * closes it; a tap on a row closes it and then runs the choice (which may open a dialog where the menu was).
+ *
+ * The Dialer's popup-menu.c draws the same thing, but its menus close only by their own key handler; the Contacts
+ * window must be able to close the one showing when the back gesture comes (ct_popup_dismiss). */
+#pragma once
+
+#include <gtk/gtk.h>
+
+G_BEGIN_DECLS
+
+typedef void (*CtPopupChosen) (int index, gpointer data);
+
+typedef enum {
+  CT_POPUP_OVER_END,            /* an overflow menu: over its ⋮, the right edge 4 dp in from the anchor's end */
+  CT_POPUP_BELOW,               /* a spinner's drop-down: under the anchor, its left edge on the anchor's */
+  CT_POPUP_AT,                  /* a context menu: its top-left at (x, y) in the anchor, kept inside the window */
+  CT_POPUP_SPINNER,             /* a Spinner's dropdown (Widget.Material.DropDownItem.Spinner): over the anchor, its
+                                 * top-left on the anchor's, at least as wide, the rows' text 8 dp in */
+} CtPopupPlace;
+
+/* @width 0: the rows' own width (196 dp at least); the menu is kept inside the window */
+void     ct_popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, CtPopupPlace place, double x,
+                        double y, double width, CtPopupChosen chosen, gpointer data);
+/* ListPopupWindow in CHOICE_MODE_MULTIPLE under @anchor and as wide (the editor's labels, §4.17): the first
+ * @n_checks rows have a check box at their end that a tap toggles, the menu staying open (@toggled gets the row and
+ * its new state); a tap on a row after them closes the menu and chooses it (@chosen) */
+typedef void (*CtPopupToggled) (int index, gboolean checked, gpointer data);
+void     ct_popup_show_checks (GtkWidget *anchor, const char *const *labels, int n_labels, const gboolean *checked,
+                               int n_checks, CtPopupToggled toggled, CtPopupChosen chosen, gpointer data);
+
+/* closes the menu of @widget's window if one shows; TRUE when it did (the window's Back does this first) */
+gboolean ct_popup_dismiss (GtkWidget *widget);
+
+G_END_DECLS

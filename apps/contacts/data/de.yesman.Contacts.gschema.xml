@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The Contacts settings: ContactsPreferences (spec §10.6, defaults from donottranslate_config.xml) and what
+     Android keeps in its own databases that EDS has no place for. -->
+<schemalist gettext-domain="neo-contacts">
+  <schema id="de.yesman.Contacts" path="/de/yesman/Contacts/">
+    <key name="sort-order" type="s">
+      <choices><choice value="first-name"/><choice value="last-name"/></choices>
+      <default>'first-name'</default>
+      <summary>Sort by</summary>
+    </key>
+    <key name="display-order" type="s">
+      <choices><choice value="first-name-first"/><choice value="last-name-first"/></choices>
+      <default>'first-name-first'</default>
+      <summary>Name format</summary>
+    </key>
+    <key name="phonetic-name" type="s">
+      <choices><choice value="always"/><choice value="hide-if-empty"/></choices>
+      <default>'hide-if-empty'</default>
+      <summary>Phonetic name</summary>
+    </key>
+    <key name="default-account" type="s">
+      <default>''</default>
+      <summary>Default account for new contacts</summary>
+      <description>The UID of the EDS address book new contacts go to; empty for EDS's default address book.</description>
+    </key>
+    <key name="labels" type="as">
+      <default>[]</default>
+      <summary>Labels made here</summary>
+      <description>Labels are vCard CATEGORIES; a label nobody has yet is kept here, as Android keeps an empty group.</description>
+    </key>
+    <key name="contacts-to-display" type="s">
+      <choices><choice value="all"/><choice value="custom"/></choices>
+      <default>'all'</default>
+      <summary>Contacts to display</summary>
+    </key>
+    <key name="hidden-books" type="as">
+      <default>[]</default>
+      <summary>Address books left out of the list</summary>
+      <description>With contacts-to-display "custom": the UIDs of the address books "Customize view" unticked.</description>
+    </key>
+  </schema>
+</schemalist>
