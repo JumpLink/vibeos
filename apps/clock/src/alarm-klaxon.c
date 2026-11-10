@@ -23,7 +23,12 @@ static const struct {
   [ALARM_KLAXON_ALARM] = { "default-alarm-ringtone", "alarm-crescendo-duration", "sounds/android/alarms/Hassium.ogg" },
   /* DeskClock's R.raw.timer_expire, "Timer Expired" */
   [ALARM_KLAXON_TIMER] = { "timer-ringtone", "timer-crescendo-duration", "neo-clock/sounds/timer_expire.ogg" },
+  /* a preview names its sound; without one it is the default alarm sound */
+  [ALARM_KLAXON_PREVIEW] = { "default-alarm-ringtone", NULL, "sounds/android/alarms/Hassium.ogg" },
 };
+
+/* every klaxon, so that an alarm or a timer can take the speaker over from a preview */
+static GSList *klaxons;
 
 struct _AlarmKlaxon {
   GSettings *settings;
@@ -230,7 +235,8 @@ make_player (AlarmKlaxon *self)
 static void
 play (AlarmKlaxon *self, const char *uri)
 {
-  int crescendo = g_settings_get_int (self->settings, kinds[self->kind].crescendo_key);
+  const char *key = kinds[self->kind].crescendo_key;
+  int crescendo = key ? g_settings_get_int (self->settings, key) : 0;
 
   if (!self->player)
     self->player = make_player (self);
@@ -290,13 +296,66 @@ silence (AlarmKlaxon *self)
   g_clear_handle_id (&self->vibrate_id, g_source_remove);
 }
 
+gboolean
+alarm_klaxon_any_ringing (void)
+{
+  for (GSList *l = klaxons; l; l = l->next)
+    {
+      AlarmKlaxon *klaxon = l->data;
+
+      if (klaxon->kind != ALARM_KLAXON_PREVIEW && klaxon->ringing)
+        return TRUE;
+    }
+  return FALSE;
+}
+
+char *
+alarm_klaxon_default_sound (AlarmKlaxonKind kind)
+{
+  return alarm_klaxon_find_sound (kinds[kind].default_sound);
+}
+
+/* an alarm or a timer starting stops a preview, taking over what the speaker had before it, so that the volume goes
+ * back to that once, at the end */
+static void
+stop_previews (AlarmKlaxon *self)
+{
+  for (GSList *l = klaxons; l; l = l->next)
+    {
+      AlarmKlaxon *preview = l->data;
+
+      if (preview->kind != ALARM_KLAXON_PREVIEW || !preview->ringing)
+        continue;
+      if (preview->saved && !self->saved)
+        {
+          self->saved_volume = preview->saved_volume;
+          self->saved_mute = preview->saved_mute;
+          self->saved = TRUE;
+        }
+      preview->saved = FALSE;
+      alarm_klaxon_stop (preview);
+    }
+}
+
 void
 alarm_klaxon_start (AlarmKlaxon *self, const char *ringtone, gboolean vibrate)
 {
+  if (self->kind == ALARM_KLAXON_PREVIEW && alarm_klaxon_any_ringing ())
+    return;
+  if (self->kind != ALARM_KLAXON_PREVIEW)
+    stop_previews (self);
   /* one alarm after another: the speaker stays at the alarm volume, to go back once to what it was before both */
   silence (self);
   self->ringing = TRUE;
 
+  if (!ringtone)
+    {
+      /* the default sound may be none: "Silent" picked as the default ("silent", clock-format.h's CLOCK_SILENT) */
+      g_autofree char *setting = g_settings_get_string (self->settings, kinds[self->kind].ringtone_key);
+
+      if (g_str_equal (setting, "silent"))
+        ringtone = "";
+    }
   if (!ringtone || *ringtone)
     {
       g_autofree char *setting = g_settings_get_string (self->settings, kinds[self->kind].ringtone_key);
@@ -342,12 +401,14 @@ alarm_klaxon_new (GSettings *settings, AlarmKlaxonKind kind)
   self->settings = g_object_ref (settings);
   self->kind = kind;
   self->pa_loop = pa_glib_mainloop_new (NULL);
+  klaxons = g_slist_prepend (klaxons, self);
   return self;
 }
 
 void
 alarm_klaxon_free (AlarmKlaxon *self)
 {
+  klaxons = g_slist_remove (klaxons, self);
   alarm_klaxon_stop (self);
   if (self->player)
     {

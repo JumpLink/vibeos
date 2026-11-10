@@ -1,6 +1,9 @@
 /* ClockPage: the Clock tab (DeskClock's ClockFragment, L/main_clock_frame.xml; spec/clock.md §6.1).
  *
- * The time, large; under it the date and, when an alarm is set, when the next one rings. */
+ * The time, large; under it the date and, when an alarm is set, when the next one rings.
+ *
+ * Signals: "show-cities" (): for the cities picker; "show-screensaver" (): a long press on the tab, which starts the
+ * screen saver. */
 #pragma once
 
 #include <gtk/gtk.h>

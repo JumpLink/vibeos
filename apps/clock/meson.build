@@ -18,14 +18,20 @@ executable('neo-clock-alarms', 'src/clock-service.c', 'src/alarm-service.c', 'sr
            'src/phone.c', link_with: models, install: true,
            dependencies: [gio, m, dependency('gstreamer-1.0'), dependency('libpulse-mainloop-glib')])
 
+# the cities and their time zones (cities-data.h is made by tools/cities.py from DeskClock's cities.xml): the app's
+# world clocks, the home clock and the cities picker, and the tests
+cities = static_library('cities', 'src/cities.c', dependencies: gio)
+
 # the app: its tabs, and the full-screen ringing alarm and expired timers (neo-clock --ringing)
 resources = gnome.compile_resources('clock-resources', 'src/clock.gresource.xml', source_dir: ['src', 'data'])
 executable('neo-clock', 'src/clock-main.c', 'src/clock-window.c', 'src/alarm-page.c', 'src/alarm-card.c',
            'src/clock-page.c', 'src/ringing-window.c', 'src/alarms-client.c', 'src/clock-format.c',
            'src/clock-tab.c', 'src/clock-draw.c', 'src/timers-client.c', 'src/stopwatch-client.c',
            'src/timer-page.c', 'src/timer-card.c', 'src/timer-setup.c', 'src/stopwatch-page.c',
-           'src/expired-window.c', resources,
-           link_with: models, install: true,
+           'src/expired-window.c', 'src/clock-navigator.c', 'src/clock-bar.c', 'src/clock-popup-menu.c',
+           'src/clock-dialogs.c', 'src/analog-clock.c', 'src/city-picker.c', 'src/settings-page.c',
+           'src/volume-slider.c', 'src/ringtone-picker.c', 'src/screensaver.c', resources,
+           link_with: [models, cities], install: true,
            c_args: ['-DGETTEXT_PACKAGE="neo-clock"', '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir'))],
            dependencies: [gio, m, dependency('gtk4', version: '>= 4.14'), dependency('neo-1'),
                           dependency('spongy-gtk-1')])
@@ -47,3 +53,4 @@ gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, upda
 foreach name : ['alarm-model', 'alarm-engine', 'timer-model']
   test(name, executable('test-' + name, 'tests/test-' + name + '.c', link_with: models, dependencies: gio))
 endforeach
+test('cities', executable('test-cities', 'tests/test-cities.c', link_with: cities, dependencies: gio))

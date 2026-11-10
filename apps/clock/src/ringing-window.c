@@ -721,6 +721,66 @@ ringing_view_init (RingingView *self)
   gtk_widget_set_vexpand (GTK_WIDGET (self), TRUE);
 }
 
+/* ---- the volume keys (AlarmActivity.dispatchKeyEvent and the "Volume buttons" setting) ------------------------ */
+
+/* "Snooze" or "Dismiss" makes the volume keys do that while the alarm is on screen; "Control volume" leaves them
+ * alone. The keys are the shell's: it passes them on as the app's "volume-key" action to the app in front that asked
+ * for them (TakeVolumeKeys), so the window asks while it has the focus and the setting wants them, and gives them
+ * back otherwise. */
+static void
+set_volume_keys (GtkWidget *window, gboolean take)
+{
+  GApplication *app = G_APPLICATION (gtk_window_get_application (GTK_WINDOW (window)));
+  GDBusConnection *bus = app ? g_application_get_dbus_connection (app) : NULL;
+
+  if (!bus || take == GPOINTER_TO_INT (g_object_get_data (G_OBJECT (window), "volume-keys")))
+    return;
+  g_object_set_data (G_OBJECT (window), "volume-keys", GINT_TO_POINTER (take));
+  g_dbus_connection_call (bus, "de.yesman.GnomePhone", "/de/yesman/GnomePhone", "de.yesman.GnomePhone",
+                          "TakeVolumeKeys", g_variant_new ("(sb)", g_application_get_application_id (app), take),
+                          NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
+}
+
+static void
+update_volume_keys (GtkWidget *window)
+{
+  RingingView *view = g_object_get_data (G_OBJECT (window), "ringing-view");
+
+  set_volume_keys (window, gtk_window_is_active (GTK_WINDOW (window))
+                           && g_settings_get_enum (view->settings, "volume-buttons") != 0);
+}
+
+static void
+on_active (GtkWidget *window, GParamSpec *pspec, gpointer data)
+{
+  update_volume_keys (window);
+}
+
+static void
+on_volume_buttons (GSettings *settings, const char *key, GtkWidget *window)
+{
+  update_volume_keys (window);
+}
+
+gboolean
+ringing_window_volume_key (GtkWidget *window)
+{
+  RingingView *view = g_object_get_data (G_OBJECT (window), "ringing-view");
+  int action = g_settings_get_enum (view->settings, "volume-buttons");
+
+  if (!gtk_window_is_active (GTK_WINDOW (window)) || action == 0)
+    return FALSE;
+  /* once the alarm is handled the keys do nothing more, but are still taken (mAlarmHandled) */
+  if (!view->handled)
+    {
+      if (action == 1)
+        snooze (view);
+      else
+        dismiss (view);
+    }
+  return TRUE;
+}
+
 /* ---- the window ----------------------------------------------------------------------------------------------- */
 
 /* Back does not dismiss (onBackPressed); the window closes only by itself */
@@ -735,6 +795,12 @@ on_destroy (GtkWidget *window, gpointer data)
 {
   GtkApplication *app = gtk_window_get_application (GTK_WINDOW (window));
   guint cookie = GPOINTER_TO_UINT (g_object_get_data (G_OBJECT (window), "inhibit"));
+  RingingView *view = g_object_get_data (G_OBJECT (window), "ringing-view");
+
+  /* the keys go back to the shell with the window */
+  if (view)
+    g_signal_handlers_disconnect_by_data (view->settings, window);
+  set_volume_keys (window, FALSE);
 
   if (app && cookie)
     gtk_application_uninhibit (app, cookie);
@@ -765,5 +831,8 @@ ringing_window_new (GtkApplication *app, GSettings *settings)
   cookie = gtk_application_inhibit (app, GTK_WINDOW (window), GTK_APPLICATION_INHIBIT_IDLE, _("An alarm is ringing"));
   g_object_set_data (G_OBJECT (window), "inhibit", GUINT_TO_POINTER (cookie));
   g_signal_connect (window, "destroy", G_CALLBACK (on_destroy), NULL);
+  g_object_set_data (G_OBJECT (window), "ringing-view", view);
+  g_signal_connect (window, "notify::is-active", G_CALLBACK (on_active), NULL);
+  g_signal_connect (settings, "changed::volume-buttons", G_CALLBACK (on_volume_buttons), window);
   return window;
 }

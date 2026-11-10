@@ -8,6 +8,7 @@
  * They are one process under one bus name (still de.yesman.Clock.Alarms, the name the alarms began with), so that
  * there is one thing to start and to restart, and so that what they share is in one place, below: whether the app
  * is in front, and when the wall clock was set. */
+#include "alarm-klaxon.h"
 #include "alarm-service.h"
 #include "elapsed.h"
 #include "stopwatch-service.h"
@@ -31,6 +32,14 @@ static const char introspection[] =
    * stopwatch itself, so their notifications are not shown (DeskClock's NotificationModel.isApplicationInForeground).
    * An app that quits or crashes in front counts as gone */
   "    <method name='SetForeground'><arg name='foreground' type='b' direction='in'/></method>"
+  /* a sound tried out at the alarm volume, looping, for @milliseconds or (0) until StopSound or the caller goes:
+   * the ringtone picker's preview and the alarm volume slider's (RingtonePreviewKlaxon). @sound is a file URI, ""
+   * for the default alarm sound, or "timer" for the default timer sound. Nothing plays while an alarm or a timer
+   * rings, and one starting stops it */
+  "    <method name='PlaySound'>"
+  "      <arg name='sound' type='s' direction='in'/><arg name='milliseconds' type='u' direction='in'/>"
+  "    </method>"
+  "    <method name='StopSound'/>"
   "  </interface>"
   "</node>";
 
@@ -42,6 +51,8 @@ typedef struct {
   StopwatchService *stopwatch;
 
   GHashTable *in_front;         /* the bus names of the apps in front -> their name watch */
+  AlarmKlaxon *preview;         /* PlaySound's */
+  guint preview_watch, preview_stop;
   int clock_fd;                 /* CLOCK_REALTIME, never due: cancelled when the clock is set */
   gint64 clock_offset;          /* the wall clock less the elapsed one */
 } Clock;
@@ -66,6 +77,50 @@ on_app_vanished (GDBusConnection *bus, const char *name, gpointer data)
   foreground_changed (self);
 }
 
+/* --- sounds tried out */
+
+static void
+stop_sound (Clock *self)
+{
+  g_clear_handle_id (&self->preview_stop, g_source_remove);
+  if (self->preview_watch)
+    g_bus_unwatch_name (self->preview_watch);
+  self->preview_watch = 0;
+  alarm_klaxon_stop (self->preview);
+}
+
+static gboolean
+on_sound_time (gpointer data)
+{
+  Clock *self = data;
+
+  self->preview_stop = 0;
+  stop_sound (self);
+  return G_SOURCE_REMOVE;
+}
+
+static void
+on_listener_vanished (GDBusConnection *bus, const char *name, gpointer data)
+{
+  /* an app that quits or crashes mid-preview does not leave the sound looping */
+  stop_sound (data);
+}
+
+static void
+play_sound (Clock *self, GDBusConnection *bus, const char *sender, const char *sound, guint milliseconds)
+{
+  g_autofree char *timer = NULL;
+
+  stop_sound (self);
+  if (g_str_equal (sound, "timer") && !(timer = alarm_klaxon_default_sound (ALARM_KLAXON_TIMER)))
+    return;
+  alarm_klaxon_start (self->preview, timer ? timer : *sound ? sound : NULL, FALSE);
+  self->preview_watch = g_bus_watch_name_on_connection (bus, sender, G_BUS_NAME_WATCHER_FLAGS_NONE, NULL,
+                                                        on_listener_vanished, self, NULL);
+  if (milliseconds)
+    self->preview_stop = g_timeout_add (milliseconds, on_sound_time, self);
+}
+
 static void
 on_method_call (GDBusConnection *bus, const char *sender, const char *path, const char *interface,
                 const char *method, GVariant *parameters, GDBusMethodInvocation *invocation, gpointer data)
@@ -73,6 +128,22 @@ on_method_call (GDBusConnection *bus, const char *sender, const char *path, cons
   Clock *self = data;
   gboolean foreground;
 
+  if (g_str_equal (method, "PlaySound"))
+    {
+      const char *sound;
+      guint milliseconds;
+
+      g_variant_get (parameters, "(&su)", &sound, &milliseconds);
+      play_sound (self, bus, sender, sound, milliseconds);
+      g_dbus_method_invocation_return_value (invocation, NULL);
+      return;
+    }
+  if (g_str_equal (method, "StopSound"))
+    {
+      stop_sound (self);
+      g_dbus_method_invocation_return_value (invocation, NULL);
+      return;
+    }
   g_variant_get (parameters, "(b)", &foreground);
   if (foreground && !g_hash_table_contains (self->in_front, sender))
     g_hash_table_insert (self->in_front, g_strdup (sender),
@@ -166,6 +237,7 @@ main (int argc, char **argv)
     g_error ("cannot serve the Clock: %s", error->message);
 
   self->in_front = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, unwatch);
+  self->preview = alarm_klaxon_new (settings, ALARM_KLAXON_PREVIEW);
   node = g_dbus_node_info_new_for_xml (introspection, NULL);
   if (!g_dbus_connection_register_object (self->session, OBJECT_PATH, node->interfaces[0], &vtable, self, NULL,
                                           &error))

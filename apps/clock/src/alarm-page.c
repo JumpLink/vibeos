@@ -106,6 +106,15 @@ undo_delete (gpointer data)
   alarms_client_add (alarms_client_get (), alarm, NULL, NULL);
 }
 
+enum { PICK_RINGTONE, N_SIGNALS };
+static guint signals[N_SIGNALS];
+
+static void
+on_pick_ringtone (AlarmCard *card, AlarmPage *self)
+{
+  g_signal_emit (self, signals[PICK_RINGTONE], 0, alarm_card_get_id (card));
+}
+
 static void
 on_deleted (AlarmCard *card, ClockAlarm *alarm, AlarmPage *self)
 {
@@ -189,6 +198,7 @@ on_changed (AlarmsClient *client, AlarmPage *self)
           g_signal_connect (card, "toggle-expanded", G_CALLBACK (on_toggle_expanded), self);
           g_signal_connect (card, "message", G_CALLBACK (on_message), self);
           g_signal_connect (card, "deleted", G_CALLBACK (on_deleted), self);
+          g_signal_connect (card, "pick-ringtone", G_CALLBACK (on_pick_ringtone), self);
           gtk_box_append (GTK_BOX (self->list), GTK_WIDGET (card));
           if (self->loaded)
             alarm_card_appear (card);
@@ -310,6 +320,8 @@ alarm_page_class_init (AlarmPageClass *klass)
   G_OBJECT_CLASS (klass)->dispose = alarm_page_dispose;
   gtk_widget_class_set_layout_manager_type (GTK_WIDGET_CLASS (klass), GTK_TYPE_BIN_LAYOUT);
   gtk_widget_class_set_css_name (GTK_WIDGET_CLASS (klass), "alarm-page");
+  signals[PICK_RINGTONE] = g_signal_new ("pick-ringtone", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL,
+                                         NULL, NULL, G_TYPE_NONE, 1, G_TYPE_UINT);
 }
 
 static void

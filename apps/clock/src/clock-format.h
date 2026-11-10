@@ -21,7 +21,19 @@ char *clock_alarm_set_text (gint64 seconds_until);
 /* the one-letter name of a weekday, Monday 0 .. Sunday 6 ("ccccc": M T W T F S S) */
 char *clock_weekday_letter (int index);
 
+/* "default-alarm-ringtone" and "timer-ringtone" hold a sound's URI, "" for the default sound, or this for none
+ * (an alarm's own ringtone is "" for none and NULL for the default) */
+#define CLOCK_SILENT "silent"
+
 /* what the ringtone row says: "Silent", a sound's name, or "Default (Hassium)" for the default sound */
 char *clock_ringtone_title (const char *ringtone, GSettings *settings);
+/* what "Timer sound" says: "Timer Expired", "Silent" or the sound's name */
+char *clock_timer_sound_title (GSettings *settings);
+/* a sound file's name, as the media scanner titles it: its TITLE tag (Ogg files), else its basename without the
+ * extension */
+char *clock_sound_name (const char *uri);
+
+/* whether the phone can vibrate: DeskClock hides "Vibrate" and "Timer vibrate" when it cannot */
+gboolean clock_has_vibrator (void);
 
 G_END_DECLS

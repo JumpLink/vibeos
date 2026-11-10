@@ -17,6 +17,16 @@
     <value nick="timer" value="2"/>
     <value nick="stopwatch" value="3"/>
   </enum>
+  <enum id="de.yesman.Clock.CitySort">
+    <value nick="name" value="0"/>      <!-- DataModel.CitySort -->
+    <value nick="offset" value="1"/>
+  </enum>
+  <enum id="de.yesman.Clock.SaverColor">
+    <value nick="white" value="16777215"/> <!-- clock_color_values, the colour as 0xRRGGBB -->
+    <value nick="red" value="16711680"/>
+    <value nick="green" value="65280"/>
+    <value nick="blue" value="255"/>
+  </enum>
   <enum id="de.yesman.Clock.WeekStart">
     <value nick="locale" value="0"/>    <!-- not set: the locale's first day -->
     <value nick="saturday" value="7"/>  <!-- Calendar.SATURDAY ... -->
@@ -48,11 +58,18 @@
     <key name="home-time-zone" type="s">
       <default>''</default>
       <summary>Home time zone</summary>
-      <description>An IANA zone; empty for the zone the phone was in when the clock was first set up</description>
+      <description>One of the setting's IANA zones; empty until one is picked, or until the phone is first seen in
+        one of them (SettingsDAO.getHomeTimeZone)</description>
     </key>
-    <key name="world-clocks" type="as">
+    <!-- the world clocks (CityDAO): ids from DeskClock's city list, src/cities-data.h -->
+    <key name="selected-cities" type="as">
       <default>[]</default>
-      <summary>The cities on the Clock tab, as IANA zones</summary>
+      <summary>The cities on the Clock tab</summary>
+      <description>City ids, such as "C61" for Berlin</description>
+    </key>
+    <key name="city-sort" enum="de.yesman.Clock.CitySort">
+      <default>'name'</default>
+      <summary>How the cities picker sorts the cities: by name or by time</summary>
     </key>
 
     <!-- Alarms -->
@@ -98,7 +115,7 @@
     <key name="default-alarm-ringtone" type="s">
       <default>''</default>
       <summary>Default alarm sound</summary>
-      <description>A sound file's URI; empty for Hassium, as on LineageOS</description>
+      <description>A sound file's URI; empty for Hassium, as on LineageOS; "silent" for none</description>
     </key>
     <key name="custom-ringtones" type="as">
       <default>[]</default>
@@ -109,7 +126,7 @@
     <key name="timer-ringtone" type="s">
       <default>''</default>
       <summary>Timer sound</summary>
-      <description>A sound file's URI; empty for "Timer Expired", DeskClock's own</description>
+      <description>A sound file's URI; empty for "Timer Expired", DeskClock's own; "silent" for none</description>
     </key>
     <key name="timer-crescendo-duration" type="i">
       <range min="0" max="60"/>
@@ -119,6 +136,41 @@
     <key name="timer-vibrate" type="b">
       <default>false</default>
       <summary>Timer vibrate</summary>
+    </key>
+
+    <!-- Screen saver (res/xml/screensaver_settings.xml): the Preview's clock -->
+    <key name="screensaver-clock-style" enum="de.yesman.Clock.ClockStyle">
+      <default>'digital'</default>
+      <summary>Screen saver style</summary>
+    </key>
+    <key name="screensaver-clock-color" enum="de.yesman.Clock.SaverColor">
+      <default>'white'</default>
+      <summary>Screen saver color</summary>
+    </key>
+    <key name="screensaver-bold-text" type="b">
+      <default>false</default>
+      <summary>Bold clock text (12-hour time only)</summary>
+    </key>
+    <key name="screensaver-show-ampm" type="b">
+      <default>true</default>
+      <summary>Show AM/PM indicator (12-hour time only)</summary>
+    </key>
+    <key name="screensaver-night-mode" type="b">
+      <default>true</default>
+      <summary>Night mode: very dim display (for dark rooms)</summary>
+    </key>
+    <key name="screensaver-night-mode-dnd" type="b">
+      <default>false</default>
+      <summary>Night mode follows Do Not Disturb state</summary>
+    </key>
+    <key name="screensaver-night-mode-color" enum="de.yesman.Clock.SaverColor">
+      <default>'white'</default>
+      <summary>Night mode color</summary>
+    </key>
+    <key name="screensaver-night-mode-brightness" type="i">
+      <range min="0" max="100"/>
+      <default>40</default>
+      <summary>Night mode brightness (percent)</summary>
     </key>
   </schema>
 </schemalist>

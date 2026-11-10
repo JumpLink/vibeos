@@ -16,6 +16,10 @@ typedef struct _AlarmKlaxon AlarmKlaxon;
 typedef enum {
   ALARM_KLAXON_ALARM,
   ALARM_KLAXON_TIMER,
+  /* a sound tried out: the ringtone picker's and the alarm volume slider's (RingtonePreviewKlaxon), at the alarm
+   * volume, without a crescendo. It gives way to an alarm or a timer: one starting stops it, and it does not start
+   * while one rings */
+  ALARM_KLAXON_PREVIEW,
 } AlarmKlaxonKind;
 
 /* reads @kind's settings from @settings (de.yesman.Clock) each time it starts */
@@ -25,6 +29,11 @@ void         alarm_klaxon_free (AlarmKlaxon *klaxon);
 /* @ringtone: a sound file's URI; NULL for the default sound of its kind; "" for none (vibration only) */
 void         alarm_klaxon_start (AlarmKlaxon *klaxon, const char *ringtone, gboolean vibrate);
 void         alarm_klaxon_stop (AlarmKlaxon *klaxon);
+
+/* whether any alarm or timer klaxon is ringing */
+gboolean     alarm_klaxon_any_ringing (void);
+/* @kind's default sound as a URI (Hassium, "Timer Expired"), or NULL if it is not installed */
+char        *alarm_klaxon_default_sound (AlarmKlaxonKind kind);
 
 /* the file of a sound found in the data dirs ("sounds/android/alarms/Hassium.ogg"), as a URI, or NULL */
 char        *alarm_klaxon_find_sound (const char *relative_path);

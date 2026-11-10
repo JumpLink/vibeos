@@ -177,3 +177,274 @@ timer-setup {
   font-feature-settings: "tnum" 1;
   color: white;
 }
+
+/* --- the cities picker's overflow menu (clock-popup-menu.c): Material 3's menu, as still:calc-menu measured it */
+.clock-popup-menu {
+  background-color: @neo_surface_container;
+  border-radius: 4px;
+  padding: 8px 0;
+}
+
+.clock-popup-menu-text {
+  font-size: 16px;
+  font-weight: 700;              /* bodyLarge: 400 */
+  color: @neo_on_surface;
+}
+
+/* --- the Clock tab's cities (§6.1, L/world_clock_item.xml) */
+
+/* PrimaryLabelTextAppearance and SecondaryLabelTextAppearance: 14 sp sans-serif-medium, white and colorSecondary */
+.primary-label {
+  font-size: 14px;
+  font-weight: 800;
+  color: white;
+}
+
+.secondary-label {
+  font-size: 14px;
+  font-weight: 800;
+  color: @neo_secondary;
+}
+
+/* a city's card: alarm_background (colorSurfaceVariant, 28 dp corners), 24 dp over and under and 16 dp in;
+ * MaterialCardViewStyle's 8 dp over it and 16 dp either side */
+.world-card {
+  background-color: @neo_surface_container_highest;
+  border-radius: 28px;
+  padding: 24px 16px;
+  margin: 8px 16px 0 16px;
+}
+
+/* world_clock_time: 48 sp sans-serif-light, white */
+.world-clock-time {
+  font-size: 48px;
+  font-weight: 600;
+  font-feature-settings: "tnum" 1;
+  color: white;
+}
+
+/* the app bar's gear (the menu's Settings item): white like the tab title */
+.clock-settings-button {
+  color: white;
+}
+
+/* --- second-level pages' bars (clock-bar.c): Up and the action icons, then the title (Toolbar title, 20 sp) */
+.clock-bar {
+  background-color: @neo_surface;
+}
+
+.clock-bar-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: @neo_on_surface;
+}
+
+/* the cities picker's icons are colorControlNormal at the bar's alpha: #899192 measured on still:clock-cities */
+.clock-bar.cities .clock-bar-icon {
+  color: #899192;
+}
+
+/* Settings and the sound picker: icons in onSurface; the bar takes surfaceContainer once the list scrolls under it
+ * (liftOnScroll), fading over the 150 ms of the AppBarLayout's lift */
+.clock-bar.settings .clock-bar-icon {
+  color: @neo_on_surface;
+}
+
+.clock-bar.settings {
+  transition: background-color 150ms ease-out;
+}
+
+.clock-bar.settings.lifted {
+  background-color: @neo_surface_container;
+}
+
+/* --- the cities picker (§6.2, L/city_list_item.xml, L/cities_activity.xml) */
+
+/* the index: bold white, 24 sp for a letter, 14 sp for a GMT offset (CitySelectionActivity's two text sizes) */
+.city-index {
+  font-weight: 900;
+  color: white;
+}
+
+.city-index.letter {
+  font-size: 24px;
+}
+
+.city-index.offset {
+  font-size: 14px;
+}
+
+/* MaterialCheckBox: an 18 dp square with a 2 dp outline in onSurfaceVariant and 2 dp corners; checked, filled with
+ * colorPrimary round a check in onPrimary */
+.city-check {
+  min-width: 14px;
+  min-height: 14px;
+  border: 2px solid @neo_on_surface_variant;
+  border-radius: 2px;
+}
+
+.city-check image {
+  color: transparent;
+}
+
+.city-check.checked {
+  background-color: @neo_primary;
+  border-color: @neo_primary;
+}
+
+.city-check.checked image {
+  color: @neo_on_primary;
+}
+
+/* "Selected Cities": 20 sp white, 24 dp over it and 8 dp under, 20 dp in */
+.city-header {
+  font-size: 20px;
+  font-weight: 700;
+  color: white;
+  min-height: 32px;
+  margin-top: 24px;
+  margin-bottom: 8px;
+  padding-left: 20px;
+}
+
+/* the fast scroller: its track and the thumb, measured on still:clock-cities */
+.city-fast-track {
+  background-color: #2C3333;
+}
+
+.city-fast-thumb {
+  background-color: @neo_on_surface_variant;
+}
+
+/* DropShadowController's shadow under the bar: 8 dp, black at 30 % fading out */
+.city-drop-shadow {
+  min-height: 8px;
+  background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.3), transparent);
+}
+
+/* the expanded SearchView: its query in onSurface, the hint in onSurfaceVariant */
+.city-search {
+  font-size: 16px;
+  font-weight: 700;
+  color: @neo_on_surface;
+  caret-color: @neo_primary;
+}
+
+.city-search > placeholder {
+  color: @neo_on_surface_variant;
+}
+
+/* --- Settings (§10, X/settings.xml in androidx.preference's Material 3 look) */
+
+/* the line over each category after the first, 1 dp in divider colour (still:clock-settings) */
+.settings-divider {
+  background-color: #24292A;
+  min-height: 1px;
+}
+
+/* category: 14 sp Medium in colorSecondary */
+.settings-category {
+  font-size: 14px;
+  font-weight: 800;
+  color: @neo_secondary;
+}
+
+/* title 16 sp Normal in onSurface, summary 14 sp Normal in onSurfaceVariant */
+.settings-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: @neo_on_surface;
+}
+
+.settings-summary {
+  font-size: 14px;
+  font-weight: 700;
+  color: @neo_on_surface_variant;
+}
+
+/* a row that can't be used now (Home time zone with Automatic home clock off): Preference's 38 % */
+.settings-row:disabled {
+  opacity: 0.38;
+}
+
+.settings-volume-icon {
+  color: white;
+}
+
+/* --- the list dialogs (clock-dialogs.c): MaterialAlertDialog's single-choice items, edge to edge of the card. The
+ * scroller takes the card's 24 dp back, not the list inside it, which the scroller would clip */
+.clock-dialog-scroll {
+  margin: 0 -24px;
+}
+
+.clock-dialog-item {
+  min-height: 48px;
+  padding: 0 24px 0 20px;
+  font-size: 16px;
+  font-weight: 700;
+  color: @neo_on_surface;
+}
+
+/* the radio: onSurfaceVariant off, colorSecondary on, 20 dp before its text (drawablePadding) */
+.clock-radio {
+  color: @neo_on_surface_variant;
+  margin-right: 20px;
+}
+
+.clock-radio.checked {
+  color: @neo_secondary;
+}
+
+/* --- the sound picker (§3, L/ringtone_item_header.xml, L/ringtone_item_sound.xml) */
+
+/* a header: 15 sp in colorAccent, 16 dp over and under, 15 dp either side */
+.ringtone-header {
+  font-size: 15px;
+  font-weight: 700;
+  color: @neo_secondary;
+  padding: 16px 15px;
+}
+
+/* the selected sound: white at 8 % behind it (white_08p) */
+.ringtone-row.selected {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* a sound's icon (ic_ringtone, white), its name (16 sp textColorPrimary), the check (colorAccent) and ⋮ (onSurface) */
+.ringtone-icon {
+  color: white;
+}
+
+.ringtone-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: @neo_on_surface;
+}
+
+.ringtone-check {
+  color: @neo_secondary;
+}
+
+.ringtone-more {
+  color: @neo_on_surface;
+}
+
+/* "Add new": ic_add_24dp (black) on bg_circle_white tinted colorPrimary */
+.ringtone-add {
+  color: black;
+  background-color: @neo_primary;
+  border-radius: 50%;
+}
+
+/* --- the screen saver (§10.7, L/desk_clock_saver.xml): white on black, which screensaver.c then multiplies by the
+ * clock or night-mode colour */
+window.neo.clock-screensaver {
+  background-color: black;
+}
+
+/* digital_clock: big_thin (sans-serif-thin, 400 with Bold text) at main_clock_font_size, 80 sp on sw360dp */
+.saver-time {
+  font-size: 80px;
+  font-weight: 400;
+  color: white;
+}

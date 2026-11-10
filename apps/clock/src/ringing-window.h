@@ -17,5 +17,8 @@ G_BEGIN_DECLS
 
 /* the window for the alarm ringing now, or NULL when none is */
 GtkWidget *ringing_window_new (GtkApplication *app, GSettings *settings);
+/* a volume key the shell passed on: snoozes or dismisses the alarm if the "Volume buttons" setting says so and the
+ * window is in front; TRUE when the window took it */
+gboolean   ringing_window_volume_key (GtkWidget *window);
 
 G_END_DECLS

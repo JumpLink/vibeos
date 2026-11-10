@@ -33,6 +33,7 @@ gboolean   alarm_card_get_expanded (AlarmCard *self);
 void       alarm_card_appear       (AlarmCard *self);
 void       alarm_card_disappear    (AlarmCard *self, GCallback gone, gpointer data);
 
-/* Signals: "toggle-expanded" (), "message" (const char *text), "deleted" (gpointer ClockAlarm) */
+/* Signals: "toggle-expanded" (), "message" (const char *text), "deleted" (gpointer ClockAlarm), "pick-ringtone" ()
+ * (the ringtone row was tapped) */
 
 G_END_DECLS

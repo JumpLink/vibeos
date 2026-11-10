@@ -3,6 +3,7 @@
 
 #include <glib/gi18n.h>
 #include <langinfo.h>
+#include <stdio.h>
 #include <string.h>
 
 GDateWeekday
@@ -104,16 +105,96 @@ clock_weekday_letter (int index)
 }
 
 /* a sound file's name without its folder and extension, as the media scanner titles it */
+/* An Ogg file's TITLE, from its comment header (Vorbis "\x03vorbis", Opus "OpusTags"): a 32-bit little-endian
+ * length and the vendor string, a count, then that many length-prefixed "KEY=value" comments. The header is the
+ * second packet, on the page after the first, so the file's first 64 KiB hold it. NULL if there is none. */
+static char *
+ogg_title (const char *path)
+{
+  static const char *const magics[] = { "\x03vorbis", "OpusTags" };
+  g_autofree guint8 *data = g_malloc (65536);
+  FILE *stream = fopen (path, "rb");
+  size_t length = stream ? fread (data, 1, 65536, stream) : 0;
+  const guint8 *end = data + length, *p = NULL;
+  guint32 count;
+
+  if (stream)
+    fclose (stream);
+  for (guint i = 0; i < G_N_ELEMENTS (magics) && !p; i++)
+    {
+      size_t size = strlen (magics[i]);
+
+      for (const guint8 *at = data; !p && at + size <= end; at++)
+        if (memcmp (at, magics[i], size) == 0)
+          p = at + size;
+    }
+#define READ_U32(v) (end - p < 4 ? FALSE : ((v) = p[0] | p[1] << 8 | p[2] << 16 | (guint32) p[3] << 24, p += 4, TRUE))
+  if (!p || !READ_U32 (count) || (guint32) (end - p) < count)
+    return NULL;
+  p += count;                   /* the vendor string */
+  if (!READ_U32 (count))
+    return NULL;
+  for (guint32 i = 0; i < count; i++)
+    {
+      guint32 size;
+
+      if (!READ_U32 (size) || (guint32) (end - p) < size)
+        return NULL;
+      if (size > 6 && g_ascii_strncasecmp ((const char *) p, "TITLE=", 6) == 0
+          && g_utf8_validate ((const char *) p + 6, size - 6, NULL))
+        return g_strndup ((const char *) p + 6, size - 6);
+      p += size;
+    }
+#undef READ_U32
+  return NULL;
+}
+
+/* A sound's name as Android's media store titles it: the file's own title, or its name without the extension. The
+ * titles are kept, since the sound picker names every alarm sound each time it redraws. */
 static char *
 sound_name (const char *uri)
 {
+  static GHashTable *titles;
   g_autoptr(GFile) file = g_file_new_for_uri (uri);
   g_autofree char *base = g_file_get_basename (file);
-  char *dot = base ? strrchr (base, '.') : NULL;
+  g_autofree char *path = g_file_get_path (file);
+  char *title, *dot;
 
-  if (dot)
-    *dot = '\0';
-  return g_strdup (base ? base : uri);
+  if (!titles)
+    titles = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+  title = g_hash_table_lookup (titles, uri);
+  if (title)
+    return g_strdup (title);
+  title = path ? ogg_title (path) : NULL;
+  if (!title)
+    {
+      dot = base ? strrchr (base, '.') : NULL;
+      if (dot)
+        *dot = '\0';
+      title = g_strdup (base ? base : uri);
+    }
+  g_hash_table_insert (titles, g_strdup (uri), title);
+  return g_strdup (title);
+}
+
+/* the sound the service rings when no alarm sound is chosen (alarm-klaxon.c): Android's Hassium where the Android
+ * sounds are installed, else the Clock's own alarm_expire ("Beep-Beep-Beep Alarm"), so that a phone without them is
+ * not told it rings Hassium */
+static char *
+default_alarm_sound (void)
+{
+  static const char *const sounds[] = { "sounds/android/alarms/Hassium.ogg", "neo-clock/sounds/alarm_expire.ogg" };
+  const char *const *dirs = g_get_system_data_dirs ();
+
+  for (guint s = 0; s < G_N_ELEMENTS (sounds); s++)
+    for (guint i = 0; dirs[i]; i++)
+      {
+        g_autofree char *path = g_build_filename (dirs[i], sounds[s], NULL);
+
+        if (g_file_test (path, G_FILE_TEST_IS_REGULAR))
+          return g_filename_to_uri (path, NULL, NULL);
+      }
+  return NULL;
 }
 
 char *
@@ -127,6 +208,56 @@ clock_ringtone_title (const char *ringtone, GSettings *settings)
     return sound_name (ringtone);
   /* the default: Android titles content://settings/system/alarm_alert "Default (Hassium)" */
   default_sound = g_settings_get_string (settings, "default-alarm-ringtone");
-  name = *default_sound ? sound_name (default_sound) : g_strdup ("Hassium");
+  if (g_str_equal (default_sound, CLOCK_SILENT))
+    return g_strdup (_("Silent"));
+  if (!*default_sound)
+    {
+      g_free (default_sound);
+      default_sound = default_alarm_sound ();
+    }
+  name = default_sound ? sound_name (default_sound) : g_strdup ("Hassium");
   return g_strdup_printf (_("Default (%s)"), name);
+}
+
+char *
+clock_timer_sound_title (GSettings *settings)
+{
+  g_autofree char *sound = g_settings_get_string (settings, "timer-ringtone");
+
+  if (!*sound)
+    return g_strdup (_("Timer Expired"));
+  if (g_str_equal (sound, CLOCK_SILENT))
+    return g_strdup (_("Silent"));
+  return sound_name (sound);
+}
+
+char *
+clock_sound_name (const char *uri)
+{
+  return sound_name (uri);
+}
+
+gboolean
+clock_has_vibrator (void)
+{
+  static int found = -1;
+  g_autoptr(GDir) dir = NULL;
+  const char *name;
+
+  /* Vibrator.hasVibrator. feedbackd, which plays the vibration, has no way to say whether there is anything to
+   * play it on (org.sigxcpu.Feedback.Haptic only vibrates), so this asks the kernel's input class: a vibrator is
+   * an input device that can play force feedback, whatever the phone or its driver */
+  if (found >= 0)
+    return found;
+  found = FALSE;
+  dir = g_dir_open ("/sys/class/input", 0, NULL);
+  while (dir && !found && (name = g_dir_read_name (dir)))
+    {
+      g_autofree char *path = g_build_filename ("/sys/class/input", name, "capabilities/ff", NULL);
+      g_autofree char *ff = NULL;
+
+      found = g_str_has_prefix (name, "input") && g_file_get_contents (path, &ff, NULL, NULL)
+              && !g_str_equal (g_strstrip (ff), "0");
+    }
+  return found;
 }

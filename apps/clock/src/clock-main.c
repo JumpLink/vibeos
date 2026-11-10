@@ -93,9 +93,13 @@ on_show_stopwatch (GSimpleAction *action, GVariant *parameter, gpointer data)
 /* --- the ringing alarm and the timers that ran out */
 
 /* a volume key, which the shell passes on while the expired timers' screen is in front (expired-window.c) */
+/* a volume key from the shell, to whichever ringing window took the keys: the alarm's if it is in front and its
+ * setting wants them, else the expired timers' */
 static void
 on_volume_key (GSimpleAction *action, GVariant *parameter, gpointer data)
 {
+  if (alarm_window && ringing_window_volume_key (alarm_window))
+    return;
   expired_window_volume_key ();
 }
 

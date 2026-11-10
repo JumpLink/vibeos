@@ -213,7 +213,7 @@ struct _AlarmCard
 
 G_DEFINE_FINAL_TYPE (AlarmCard, alarm_card, GTK_TYPE_WIDGET)
 
-enum { TOGGLE_EXPANDED, MESSAGE, DELETED, N_SIGNALS };
+enum { TOGGLE_EXPANDED, MESSAGE, DELETED, PICK_RINGTONE, N_SIGNALS };
 static guint signals[N_SIGNALS];
 
 static gboolean
@@ -464,7 +464,8 @@ alarm_card_size_allocate (GtkWidget *widget, int width, int height, int baseline
       place (self->days[i], x, top + days_e, ROW, ROW, extra);
     }
   place (self->ringtone, START, top + sound_e, width - 2 * START, ROW, extra);
-  place (self->vibrate, START, top + vibrate_e, width - 2 * START, ROW, extra);
+  /* ExpandedAlarmViewHolder.bindVibrator: INVISIBLE, not GONE, without a vibrator, so the card keeps its height */
+  place (self->vibrate, START, top + vibrate_e, width - 2 * START, ROW, extra && clock_has_vibrator ());
   place (self->delete, START, top + delete_e, -1, ROW, extra);
 }
 
@@ -768,6 +769,13 @@ body_label (const char *css)
 }
 
 /* a 48 dp row: an icon at 4 dp, its text 16 dp after it, in a pressable with the plain ripple */
+/* the ringtone row opens the ringtone picker for this alarm (AlarmTimeClickHandler.onRingtoneClicked) */
+static void
+on_ringtone (NeoPressable *row, AlarmCard *self)
+{
+  g_signal_emit (self, signals[PICK_RINGTONE], 0);
+}
+
 static GtkWidget *
 icon_row (const char *icon_name, GtkWidget **icon, GtkWidget **text)
 {
@@ -798,6 +806,8 @@ alarm_card_dispose (GObject *object)
   while ((child = gtk_widget_get_first_child (GTK_WIDGET (self))))
     gtk_widget_unparent (child);
   g_clear_pointer (&self->alarm, clock_alarm_free);
+  if (self->settings)
+    g_signal_handlers_disconnect_by_data (self->settings, self);
   g_clear_object (&self->settings);
   G_OBJECT_CLASS (alarm_card_parent_class)->dispose (object);
 }
@@ -820,6 +830,8 @@ alarm_card_class_init (AlarmCardClass *klass)
                                    NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_STRING);
   signals[DELETED] = g_signal_new ("deleted", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0,
                                    NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_POINTER);
+  signals[PICK_RINGTONE] = g_signal_new ("pick-ringtone", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0,
+                                         NULL, NULL, NULL, G_TYPE_NONE, 0);
 }
 
 static void
@@ -878,6 +890,7 @@ alarm_card_init (AlarmCard *self)
 
   self->ringtone = icon_row ("clock-ringtone-symbolic", &self->ringtone_icon, &self->ringtone_text);
   gtk_widget_add_css_class (self->ringtone, "ringtone");
+  g_signal_connect (self->ringtone, "clicked", G_CALLBACK (on_ringtone), self);
   gtk_widget_set_parent (self->ringtone, widget);
 
   /* Vibrate: ic_vibrate, the word, and the round check at the end (a CheckBox with drawableEnd) */
@@ -918,6 +931,9 @@ alarm_card_new (const ClockAlarm *alarm, GSettings *settings)
 
   self->settings = g_object_ref (settings);
   self->alarm = copy_alarm (alarm);
+  /* the days follow "Start week on", and "Default (…)" follows the default sound */
+  g_signal_connect_swapped (settings, "changed::week-start", G_CALLBACK (show_alarm), self);
+  g_signal_connect_swapped (settings, "changed::default-alarm-ringtone", G_CALLBACK (show_alarm), self);
   show_alarm (self);
   return GTK_WIDGET (self);
 }

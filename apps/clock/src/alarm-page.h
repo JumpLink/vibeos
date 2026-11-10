@@ -1,7 +1,10 @@
 /* AlarmPage: the Alarm tab (DeskClock's AlarmClockFragment, L/alarm_clock.xml; spec/clock.md §2.1).
  *
  * The alarms as cards in a list that scrolls the Android way, at most one of them expanded, or "No Alarms" when
- * there are none. It shows its snackbars ("Alarm set for ...", "Alarm deleted" with undo) on the window's. */
+ * there are none. It shows its snackbars ("Alarm set for ...", "Alarm deleted" with undo) on the window's.
+ *
+ * Signals: "pick-ringtone" (guint alarm id): an alarm's ringtone row was tapped, for the window to open the ringtone
+ * picker. */
 #pragma once
 
 #include <gtk/gtk.h>
