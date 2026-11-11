@@ -8,8 +8,10 @@
 #include <pulse/pulseaudio.h>
 #include <string.h>
 
-/* LineageOS's ro.config.ringtone */
+/* LineageOS's ro.config.ringtone; without the Android sounds, the freedesktop sound theme's ring
+ * (sound-theme-freedesktop), so a call never comes in silent */
 #define DEFAULT_RINGTONE "sounds/android/ringtones/Orion.ogg"
+#define FALLBACK_RINGTONE "sounds/freedesktop/stereo/phone-incoming-call.oga"
 /* Ringer's default pattern, {0, 1000, 1000}: a second on, a second off */
 #define VIBRATE_ON_MS 1000
 #define VIBRATE_PERIOD_MS 2000
@@ -78,6 +80,15 @@ find_sound (const char *relative_path)
         return g_filename_to_uri (path, NULL, NULL);
     }
   return NULL;
+}
+
+/* the default ringtone's file, as a URI, or NULL */
+static char *
+default_ringtone (void)
+{
+  char *uri = find_sound (DEFAULT_RINGTONE);
+
+  return uri ? uri : find_sound (FALLBACK_RINGTONE);
 }
 
 /* --- the speaker's volume */
@@ -180,7 +191,7 @@ on_player_message (GstBus *bus, GstMessage *message, gpointer data)
       return G_SOURCE_CONTINUE;
     }
   /* a ringtone that went missing (Telecom falls back to the default one): Orion, once */
-  fallback = find_sound (DEFAULT_RINGTONE);
+  fallback = default_ringtone ();
   if (fallback && g_strcmp0 (fallback, self->uri) != 0)
     {
       gst_element_set_state (self->player, GST_STATE_NULL);
@@ -229,7 +240,7 @@ play_ringtone (Ringer *self)
     ringer_preview (self, NULL);
   g_free (self->uri);
   self->uri = *setting && !g_str_equal (setting, RINGER_DEFAULT) ? g_steal_pointer (&setting)
-                                                                  : find_sound (DEFAULT_RINGTONE);
+                                                                  : default_ringtone ();
   if (!self->uri)
     {
       g_warning ("ringer: no ringtone installed");
@@ -256,7 +267,7 @@ ringer_preview (Ringer *self, const char *uri)
     }
   if (!uri || !*uri || self->ringing || ringer_mode (self) != RINGER_MODE_NORMAL)
     return;
-  if (g_str_equal (uri, RINGER_DEFAULT) && !(file = find_sound (DEFAULT_RINGTONE)))
+  if (g_str_equal (uri, RINGER_DEFAULT) && !(file = default_ringtone ()))
     return;
   if (!self->player)
     self->player = make_player (self);

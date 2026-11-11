@@ -72,11 +72,12 @@ alarm_instance_free (AlarmInstance *instance)
 
 /* --- times */
 
-/* the local time zone as it is now: a new one each time, so a change of zone is seen (g_time_zone_new_local caches) */
+/* the local time zone as it is now: a new one each time, so a change of zone is seen (g_time_zone_new_local caches).
+ * TZ first, as g_time_zone_new_local has it: a NULL identifier reads /etc/localtime only */
 static GTimeZone *
 local_zone (void)
 {
-  return g_time_zone_new_identifier (NULL);
+  return g_time_zone_new_identifier (g_getenv ("TZ"));
 }
 
 static GDateTime *

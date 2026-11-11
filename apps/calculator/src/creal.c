@@ -932,7 +932,11 @@ creal_ln (CReal *x)
 
   mpz_init (rough_appr);
   creal_get_appr (x, low_prec, rough_appr);   /* in sixteenths */
-  if (mpz_sgn (rough_appr) < 0) {
+  if (calc_failed ()) {
+    /* cancelled or timed out: rough_appr is 0 then, which reads as x <= 1/2: inverting and recursing on would
+     * never end (the stack ran out) */
+    result = creal_from_long (0);
+  } else if (mpz_sgn (rough_appr) < 0) {
     calc_fail (CALC_DOMAIN_ERROR);   /* "ln(negative)" */
     result = creal_from_long (0);
   } else if (mpz_cmp_ui (rough_appr, 8) <= 0) {   /* low_ln_limit: x <= 1/2 */

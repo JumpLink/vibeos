@@ -45,6 +45,7 @@
                                  * 1 dp nearer than CHOICE_TEXT at 18 sp (ink at 73 dp from the edge) */
 #define RINGTONES_DIR   "sounds/android/ringtones"
 #define DEFAULT_TITLE   "Orion" /* LineageOS's ro.config.ringtone (ringer.c) */
+#define DEFAULT_FILE    RINGTONES_DIR "/" DEFAULT_TITLE ".ogg"
 
 /* the rendered colours (spec §9.9) */
 #define TRACK_ON        0x81b5bc
@@ -592,6 +593,23 @@ list_ringtones (void)
   return ringtones;
 }
 
+/* Orion is installed (the Android sounds are not in the packages): else the default ringtone is the sound theme's
+ * ring (ringer.c), which the picker lists as "Default" */
+static gboolean
+have_default_title (void)
+{
+  const char * const *dirs = g_get_system_data_dirs ();
+
+  for (guint i = 0; dirs[i]; i++)
+    {
+      g_autofree char *path = g_build_filename (dirs[i], DEFAULT_FILE, NULL);
+
+      if (g_file_test (path, G_FILE_TEST_IS_REGULAR))
+        return TRUE;
+    }
+  return FALSE;
+}
+
 /* what the "Phone ringtone" row says: the ringtone's title, or "None" */
 static char *
 ringtone_title (DialerSettings *self)
@@ -601,7 +619,7 @@ ringtone_title (DialerSettings *self)
   if (g_str_equal (setting, RINGER_SILENT))
     return g_strdup (_("None"));
   if (!*setting || g_str_equal (setting, RINGER_DEFAULT))
-    return g_strdup (DEFAULT_TITLE);
+    return g_strdup (have_default_title () ? DEFAULT_TITLE : _("Default"));
   return title_of (setting);
 }
 
@@ -614,6 +632,8 @@ is_current (DialerSettings *self, const char *uri)
 
   if (!uri)
     return g_str_equal (setting, RINGER_SILENT);
+  if (g_str_equal (uri, RINGER_DEFAULT))
+    return !*setting || g_str_equal (setting, RINGER_DEFAULT);
   if (!*setting || g_str_equal (setting, RINGER_DEFAULT))
     {
       title = title_of (uri);
@@ -677,6 +697,8 @@ on_ringtone (DialerSettings *self)
   g_autoptr(GPtrArray) ringtones = list_ringtones ();
 
   add_ringtone_row (self, page, _("None"), NULL);
+  if (!have_default_title ())
+    add_ringtone_row (self, page, _("Default"), RINGER_DEFAULT);
   for (guint i = 0; i < ringtones->len; i++)
     {
       Ringtone *ringtone = ringtones->pdata[i];
