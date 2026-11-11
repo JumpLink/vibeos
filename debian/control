@@ -1,0 +1,353 @@
+Source: gnome-phone
+Section: gnome
+Priority: optional
+Maintainer: pulpoff <pashkovsky@gmail.com>
+Build-Depends: debhelper-compat (= 13),
+               dh-sequence-gir,
+               meson (>= 1.0),
+               pkgconf,
+               gobject-introspection,
+               gir1.2-glib-2.0-dev,
+               libglib2.0-dev (>= 2.76),
+               libgtk-4-dev (>= 4.14),
+               gir1.2-gtk-4.0-dev,
+               libadwaita-1-dev (>= 1.5),
+               libvulkan-dev,
+               libwayland-dev,
+               wayland-protocols,
+               libgdk-pixbuf-2.0-dev,
+               librsvg2-dev,
+               libcairo2-dev,
+               libfreetype-dev,
+               libharfbuzz-dev,
+               libfontconfig-dev,
+               libjson-glib-dev,
+               libpam0g-dev,
+               libgmp-dev,
+               libsqlite3-dev,
+               libecal2.0-dev (>= 3.46),
+               libebook1.2-dev,
+               libgstreamer1.0-dev,
+               libpulse-dev,
+               libwebkitgtk-6.0-dev (>= 2.46),
+               libsoup-3.0-dev,
+               dbus-daemon <!nocheck>,
+               python3 <!nocheck>,
+               python3-gi <!nocheck>,
+               gir1.2-glib-2.0 <!nocheck>,
+               tzdata <!nocheck>,
+Standards-Version: 4.7.2
+Rules-Requires-Root: no
+Homepage: https://github.com/pulpoff/gnome-phone
+
+Package: gnome-phone
+Architecture: all
+Section: metapackages
+Depends: gnome-shell-extension-gnome-phone (= ${source:Version}),
+         neo-launcher (>= ${source:Version}),
+         gnome-phone-daemons (>= ${source:Version}),
+         ${misc:Depends},
+Recommends: gnome-phone-session (= ${source:Version}),
+            sim-apn (= ${source:Version}),
+            neo-dialer (>= ${source:Version}),
+            neo-messaging (>= ${source:Version}),
+            neo-clock (>= ${source:Version}),
+            neo-calendar (>= ${source:Version}),
+            neo-calculator (>= ${source:Version}),
+            neo-compass (>= ${source:Version}),
+            neo-contacts (>= ${source:Version}),
+            neo-browser (>= ${source:Version}),
+            feedbackd,
+            iio-sensor-proxy,
+            modemmanager,
+            callaudiod,
+            mesa-vulkan-drivers,
+Description: GNOME as a phone (metapackage)
+ GNOME Phone turns a stock GNOME Shell into a phone shell: the Neo launcher as
+ the home screen, Android-style gesture navigation, recents, the status bar,
+ the notification shade with quick settings, the lock screen and the always-on
+ display, and a set of phone apps.
+ .
+ This metapackage installs the shell extension, the launcher and the system
+ helpers, and recommends the session and the apps.
+
+Package: gnome-shell-extension-gnome-phone
+Architecture: all
+Depends: gnome-shell (>= 51~),
+         gnome-shell (<< 52~),
+         neo-launcher (>= ${source:Version}),
+         gnome-phone-daemons (>= ${source:Version}),
+         python3,
+         gir1.2-gnomebluetooth-3.0,
+         gir1.2-gnomedesktop-4.0,
+         gir1.2-gudev-1.0,
+         gir1.2-nm-1.0,
+         ${misc:Depends},
+Recommends: feedbackd,
+            iio-sensor-proxy,
+            gir1.2-manette-0.2,
+Suggests: gnome-phone-session,
+Description: GNOME Shell extension that makes the shell a phone
+ The gnome-phone@yesman.de extension replaces GNOME Shell's top panel,
+ overview and lock screen with a phone's: Android-style gesture navigation
+ (home, back, recents), the status bar, the notification shade with quick
+ settings, heads-up notifications, the volume panel, the power menu, the
+ lock screen with PIN or pattern, and the always-on display. The Neo launcher
+ is started as the home screen.
+ .
+ The extension is for GNOME Shell 51. It is not turned on for the regular
+ GNOME session; the gnome-phone-session package provides a "GNOME Phone"
+ session that always runs it.
+
+Package: gnome-phone-session
+Architecture: all
+Depends: gnome-session (>= 51~),
+         gnome-shell-extension-gnome-phone (= ${source:Version}),
+         ${misc:Depends},
+Suggests: gdm3,
+Description: GNOME Phone session
+ A "GNOME Phone" session for display managers: GNOME's own session with GNOME
+ Shell in the gnome-phone mode, which always runs the gnome-phone extension.
+ .
+ Also systemd units for a phone without a display manager (gnome-phone.service
+ starts the session on tty7 as one user), and neo-dock, which switches to the
+ regular GNOME desktop while an external display is connected. None of these
+ units is enabled on installation; see README.Debian.
+
+Package: gnome-phone-daemons
+Architecture: any
+Section: admin
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+Description: GNOME Phone system helpers
+ Small system programs used by the GNOME Phone shell and apps:
+  * gp-auth checks the lock screen's PIN or pattern through PAM (the PIN or
+    pattern is the user's own password);
+  * neo-wakeup wakes the phone from suspend at the times apps ask for (alarm
+    clocks, calendar reminders), over D-Bus (de.yesman.Wakeup), and publishes
+    the next alarm clock;
+  * input-boost raises the GPU's (and optionally the CPUs') clock floor while
+    the touchscreen is touched. It is not enabled by default: its floor must
+    be tuned for the device.
+
+Package: sim-apn
+Architecture: all
+Section: net
+Depends: python3,
+         python3-gi,
+         gir1.2-nm-1.0,
+         mobile-broadband-provider-info,
+         ${misc:Depends},
+Recommends: modemmanager,
+            network-manager,
+Description: mobile data profile for every new SIM
+ sim-apn watches ModemManager for SIMs that no NetworkManager connection
+ applies to, and adds one for each: named after the operator, its APN from
+ mobile-broadband-provider-info, pinned to that SIM, with roaming off. A
+ connection made by hand, and a SIM that already has one, are left alone.
+
+Package: neo-launcher
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+Recommends: mesa-vulkan-drivers,
+Description: Neo, a phone home screen in Vulkan
+ Neo is the home screen of GNOME Phone: pages with a dock, an app drawer that
+ follows the finger, widgets, icon packs and icon shapes, and parallax
+ wallpapers. It is a Wayland client drawn with Vulkan 1.0 and scrolls with
+ libspongy's Android physics.
+ .
+ It is started by the gnome-phone GNOME Shell extension, which makes its
+ window the desktop.
+
+Package: libspongy-1-0
+Architecture: any
+Multi-Arch: same
+Section: libs
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+Description: Android scroll physics (stretch overscroll, fling, springs)
+ libspongy reimplements Android's scrolling physics in C: the stretch
+ overscroll (EdgeEffect), the fling (OverScroller), velocity tracking,
+ spring animations and the interpolators, to the numbers of Android's own.
+ .
+ This package contains the shared library.
+
+Package: libspongy-gtk-1-0
+Architecture: any
+Multi-Arch: same
+Section: libs
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+Description: GTK 4 scroll view with Android's stretch overscroll
+ SpongyScrollView is a GTK 4 scrolled window that flings and stretches the
+ way Android's lists do, on libspongy's physics.
+ .
+ This package contains the shared library.
+
+Package: gir1.2-spongy-1
+Architecture: any
+Multi-Arch: same
+Section: introspection
+Depends: ${gir:Depends},
+         ${shlibs:Depends},
+         ${misc:Depends},
+Description: GTK 4 scroll view with Android's stretch overscroll - introspection
+ SpongyScrollView is a GTK 4 scrolled window that flings and stretches the
+ way Android's lists do, on libspongy's physics.
+ .
+ This package contains the introspection data, for GJS and Python.
+
+Package: libspongy-dev
+Architecture: any
+Multi-Arch: same
+Section: libdevel
+Depends: libspongy-1-0 (= ${binary:Version}),
+         libspongy-gtk-1-0 (= ${binary:Version}),
+         gir1.2-spongy-1 (= ${binary:Version}),
+         libgtk-4-dev (>= 4.14),
+         ${gir:Depends},
+         ${misc:Depends},
+Description: Android scroll physics (stretch overscroll, fling) - development files
+ libspongy reimplements Android's scrolling physics in C; libspongy-gtk wraps
+ it in a GTK 4 scroll view.
+ .
+ This package contains the headers, the pkg-config files and the GIR XML.
+
+Package: libneo-1-0
+Architecture: any
+Multi-Arch: same
+Section: libs
+Depends: fonts-neo-roboto (= ${source:Version}),
+         ${shlibs:Depends},
+         ${misc:Depends},
+Description: Material 3 widgets of the Neo phone apps
+ libneo holds what the Neo apps share: their Material 3 look the way
+ LineageOS draws it, ripples, pressable surfaces, switches, the navigation
+ bar, snackbars, dialogs and the time picker, on GTK 4 and libspongy.
+ .
+ This package contains the shared library.
+
+Package: libneo-dev
+Architecture: any
+Multi-Arch: same
+Section: libdevel
+Depends: libneo-1-0 (= ${binary:Version}),
+         libspongy-dev (= ${binary:Version}),
+         libgtk-4-dev (>= 4.14),
+         ${misc:Depends},
+Description: Material 3 widgets of the Neo phone apps - development files
+ libneo holds what the Neo apps share: their Material 3 look, ripples,
+ pressable surfaces, switches, the navigation bar, snackbars, dialogs and the
+ time picker, on GTK 4 and libspongy.
+ .
+ This package contains the headers and the pkg-config file.
+
+Package: fonts-neo-roboto
+Architecture: all
+Multi-Arch: foreign
+Section: fonts
+Depends: ${misc:Depends},
+Description: Roboto variable font as Android ships it, for the Neo apps
+ Roboto 3 as a variable font (weight 100-900, width 75-100), as Android
+ ships it, under the family name "Neo Roboto" so that a static Roboto
+ installed on the system never stands in for it. libneo draws the Neo apps'
+ text with it.
+
+Package: neo-calculator
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+Description: Calculator for GNOME Phone
+ The LineageOS/AOSP ExactCalculator rebuilt in GTK 4: exact real arithmetic
+ that keeps every digit you scroll to, the formula and result display,
+ history, and the advanced pad.
+
+Package: neo-calendar
+Architecture: any
+Depends: evolution-data-server,
+         ${shlibs:Depends},
+         ${misc:Depends},
+Recommends: gnome-phone-daemons,
+Description: Calendar for GNOME Phone
+ The LineageOS Etar calendar rebuilt in GTK 4 on evolution-data-server: day,
+ month and agenda views, the event editor, and reminders that notify with the
+ app closed (neo-calendar-reminders, a user service). With neo-wakeup
+ (gnome-phone-daemons) a reminder wakes the phone from suspend.
+
+Package: neo-clock
+Architecture: any
+Depends: sound-theme-freedesktop,
+         tzdata,
+         gstreamer1.0-plugins-base,
+         ${shlibs:Depends},
+         ${misc:Depends},
+Recommends: gnome-phone-daemons,
+            feedbackd,
+            gstreamer1.0-plugins-good,
+Description: Clock for GNOME Phone
+ The LineageOS DeskClock rebuilt in GTK 4: alarms, world clocks, timers, the
+ stopwatch and the screen saver. Alarms and timers ring with the app closed
+ (neo-clock-alarms, a user service). With neo-wakeup (gnome-phone-daemons) an
+ alarm wakes the phone from suspend.
+
+Package: neo-compass
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+Recommends: iio-sensor-proxy,
+            geoclue-2.0,
+Description: Compass for GNOME Phone
+ A compass with the heading from iio-sensor-proxy's compass and the position
+ from GeoClue.
+
+Package: neo-contacts
+Architecture: any
+Depends: evolution-data-server,
+         ${shlibs:Depends},
+         ${misc:Depends},
+Description: Contacts app for GNOME Phone
+ The LineageOS Contacts app rebuilt in GTK 4 on evolution-data-server's
+ address books: the contact list, a contact's details, the editor and the
+ contact picker other apps open.
+
+Package: neo-dialer
+Architecture: any
+Depends: gstreamer1.0-plugins-base,
+         sound-theme-freedesktop,
+         ${shlibs:Depends},
+         ${misc:Depends},
+Recommends: modemmanager,
+            callaudiod,
+            feedbackd,
+            evolution-data-server,
+            gstreamer1.0-plugins-good,
+Description: Phone app for GNOME Phone
+ The LineageOS Dialer rebuilt in GTK 4: favorites, recents and contacts, the
+ dialpad, the call log, blocked numbers, and the in-call and incoming-call
+ screens. Calls go through ModemManager and callaudiod; contacts come from
+ evolution-data-server. Calls ring with the app closed (neo-dialer-calls, a
+ user service).
+
+Package: neo-messaging
+Architecture: any
+Depends: gstreamer1.0-plugins-base,
+         sound-theme-freedesktop,
+         ${shlibs:Depends},
+         ${misc:Depends},
+Recommends: modemmanager,
+            feedbackd,
+            evolution-data-server,
+Description: Messaging app for GNOME Phone
+ The LineageOS Messaging app rebuilt in GTK 4 for SMS through ModemManager:
+ conversations, the composer, forwarding, archiving and blocked contacts.
+ Messages are taken off the modem and notified with the app closed
+ (neo-messaging-sms, a user service).
+
+Package: neo-browser
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+Description: web browser for GNOME Phone
+ Neo Browser has the phone UI of Chrome for Android (tabs grid, bottom
+ toolbar, incognito) on WebKitGTK 6.

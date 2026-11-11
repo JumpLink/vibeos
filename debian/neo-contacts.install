@@ -1,0 +1,5 @@
+usr/bin/neo-contacts
+usr/share/applications/de.yesman.Contacts.desktop
+usr/share/dbus-1/services/de.yesman.Contacts.service
+usr/share/glib-2.0/schemas/de.yesman.Contacts.gschema.xml
+usr/share/icons/hicolor/scalable/apps/de.yesman.Contacts.svg

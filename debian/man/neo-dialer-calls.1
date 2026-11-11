@@ -1,0 +1,9 @@
+.TH NEO-DIALER-CALLS 1 "2026-11-10" "gnome-phone 0.1.0" "GNOME Phone"
+.SH NAME
+neo-dialer-calls \- call service of the GNOME Phone dialer
+.SH SYNOPSIS
+.B neo-dialer-calls
+.SH DESCRIPTION
+Handles calls with the phone app closed: rings for incoming calls through ModemManager, routes the call audio through callaudiod, plays the ringtone and vibration (feedbackd), and keeps the call log. It runs as the systemd user service neo-dialer-calls.service and owns de.yesman.Dialer.Calls on the session bus.
+.SH SEE ALSO
+neo-dialer(1), ModemManager(8), callaudiod(1)

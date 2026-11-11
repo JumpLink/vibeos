@@ -1,0 +1,9 @@
+.TH NEO-WAKEUP 8 "2026-11-10" "gnome-phone 0.1.0" "GNOME Phone"
+.SH NAME
+neo-wakeup \- wake the phone at the times apps ask for
+.SH SYNOPSIS
+.B neo-wakeup
+.SH DESCRIPTION
+Holds one CLOCK_REALTIME_ALARM timer for all apps, as Android's AlarmManager does for RTC_WAKEUP alarms: at the earliest time any app asked for, the kernel wakes the phone from suspend, and neo-wakeup holds it awake for a moment (a logind sleep inhibitor) so the app's own timer fires. It owns de.yesman.Wakeup on the system bus, at /de/yesman/Wakeup: Set(s name, x time, a{sv} options) sets or (with time 0) removes a wake-up; the option "alarm-clock" (b) marks an alarm the user set, "app" (s) the app that shows it. The read-only property NextAlarmClock (xs) is the earliest alarm clock. Nothing is stored: apps set their wake-ups again when the name appears.
+.SH SEE ALSO
+busctl(1), systemd-inhibit(1)

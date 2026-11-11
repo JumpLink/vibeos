@@ -1,0 +1,22 @@
+.TH INPUT-BOOST 8 "2026-11-10" "gnome-phone 0.1.0" "GNOME Phone"
+.SH NAME
+input-boost \- GPU clock floor while the touchscreen is touched
+.SH SYNOPSIS
+.B input-boost
+.SH DESCRIPTION
+Reads the input devices (without grabbing them) and, while a finger is on the touchscreen and for a moment after, raises the minimum frequency of the GPU's devfreq (and optionally of CPU frequency policies), as Android's input boost does. It runs as input-boost.service, which is not enabled on installation: the floor must suit the device.
+.SH ENVIRONMENT
+.TP
+.B INPUT_BOOST_GPU
+The GPU's devfreq directory (default: the first /sys/class/devfreq/*.gpu).
+.TP
+.B INPUT_BOOST_GPU_HZ
+Its floor while boosted, in Hz (default 572000000).
+.TP
+.B INPUT_BOOST_CPU
+CPU floors while boosted, as "policy0=1300000 policy4=1066000" (kHz; default none).
+.TP
+.B INPUT_BOOST_HOLD_MS
+How long the boost outlasts the last event (default 1200).
+.SH SEE ALSO
+systemd.exec(5)

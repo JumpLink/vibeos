@@ -1,0 +1,9 @@
+usr/lib/systemd/system/gnome-phone.service
+usr/lib/systemd/system/gnome-desktop.service
+usr/lib/systemd/system/neo-dock.service
+usr/sbin/neo-dock
+usr/share/gnome-phone-session/71-neo-dock.rules
+usr/share/gnome-shell/modes/gnome-phone.json
+usr/share/gnome-session/sessions/gnome-phone.session
+usr/lib/systemd/user/gnome-session@gnome-phone.target.d
+usr/share/wayland-sessions/gnome-phone.desktop

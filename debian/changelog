@@ -1,0 +1,8 @@
+gnome-phone (0.1.0) unstable; urgency=medium
+
+  * First packaging: libspongy, libneo, the Neo launcher, the gnome-phone
+    GNOME Shell extension, its session and daemons, sim-apn and the Neo apps
+    (Calculator, Calendar, Clock, Compass, Contacts, Phone, Messaging,
+    Browser).
+
+ -- pulpoff <pashkovsky@gmail.com>  Tue, 10 Nov 2026 04:59:44 +0100

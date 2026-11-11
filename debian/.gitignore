@@ -1,0 +1,10 @@
+/.debhelper/
+/debhelper-build-stamp
+/files
+/tmp/
+/*.debhelper
+/*.debhelper.log
+/*.substvars
+/*/
+!/man/
+!/source/

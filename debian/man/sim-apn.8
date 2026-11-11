@@ -1,0 +1,9 @@
+.TH SIM-APN 8 "2026-11-10" "gnome-phone 0.1.0" "GNOME Phone"
+.SH NAME
+sim-apn \- mobile data profile for every new SIM
+.SH SYNOPSIS
+.B sim-apn
+.SH DESCRIPTION
+Watches ModemManager for SIMs that no NetworkManager connection applies to and adds one for each: named after the operator, with the APN from mobile-broadband-provider-info, pinned to that SIM (gsm.sim-id), autoconnecting, with roaming off. A connection made by hand, and a SIM that already has one, are left alone. It runs as sim-apn.service.
+.SH SEE ALSO
+ModemManager(8), NetworkManager(8)

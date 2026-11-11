@@ -1,0 +1,6 @@
+usr/include/spongy-1
+usr/lib/*/libspongy-1.so
+usr/lib/*/libspongy-gtk-1.so
+usr/lib/*/pkgconfig/spongy-1.pc
+usr/lib/*/pkgconfig/spongy-gtk-1.pc
+usr/share/gir-1.0/Spongy-1.gir

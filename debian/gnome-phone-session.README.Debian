@@ -1,0 +1,57 @@
+GNOME Phone session
+===================
+
+Installing this package changes nothing on its own: no unit is enabled, the
+regular GNOME session is untouched, and the gnome-phone extension does not run
+in it. You pick the phone session in one of two ways.
+
+With a display manager (GDM)
+----------------------------
+
+Choose "GNOME Phone" in the session menu at the login screen. It is GNOME's
+own session with GNOME Shell started in the gnome-phone mode
+(/usr/share/gnome-shell/modes/gnome-phone.json), which always runs the
+gnome-phone@yesman.de extension. To make it the default for automatic login,
+set it as the user's session:
+
+  busctl call org.freedesktop.Accounts /org/freedesktop/Accounts/User$(id -u USER) \
+      org.freedesktop.Accounts.User SetSession s gnome-phone
+
+Without a display manager
+-------------------------
+
+gnome-phone.service starts gnome-session on tty7 as one user, logged in by
+systemd (PAM service "login"), with no display manager at all. It ships with
+User=user; set your own user first, then switch over:
+
+  systemctl edit gnome-phone.service       # [Service] / User=<your user>
+  systemctl disable gdm.service            # or phosh.service, or whatever ran
+  systemctl enable gnome-phone.service
+
+The extension must then be enabled for that user, as for any extension
+(gnome-extensions enable gnome-phone@yesman.de), or the unit given
+"ExecStart=" / "ExecStart=/usr/bin/gnome-session --session=gnome-phone" in the
+same drop-in, which runs the extension through the session mode as GDM's
+"GNOME Phone" does.
+
+Docking
+-------
+
+neo-dock switches between gnome-phone.service and gnome-desktop.service (the
+same session, laid out as GNOME's desktop) when an external display is
+plugged in or out. It is started by a udev rule that is not active by
+default, because on a plug or unplug it starts a session. To use it:
+
+  ln -s /usr/share/gnome-phone-session/71-neo-dock.rules /etc/udev/rules.d/
+  udevadm control --reload
+
+Device hooks for a plug or unplug go in /etc/neo-dock.d/ (each is run with
+"connected" or "disconnected").
+
+Lock screen
+-----------
+
+The lock screen's PIN or pattern is the user's own password, checked by
+/usr/libexec/gp-auth through the PAM service /etc/pam.d/gnome-phone (from
+gnome-phone-daemons). A pattern is the digits 1-9 of its dots in the order
+they are joined.

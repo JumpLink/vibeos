@@ -1,0 +1,55 @@
+#!/usr/bin/make -f
+# gnome-phone is several meson projects: the top level (libspongy, neo-launcher, input-boost, gp-auth, neo-wakeup),
+# libneo, the extension, the session files and one per app. libneo and the apps find libspongy and libneo through
+# the -uninstalled.pc files meson writes into each build directory, so the projects are configured and built one
+# after the other, in this order.
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+APPS := calculator calendar clock compass contacts dialer messaging browser
+# build directory:source directory
+PROJECTS := top:. libneo:libneo extension:extension session:session $(foreach a,$(APPS),$(a):apps/$(a))
+BUILDDIRS := $(foreach p,$(PROJECTS),obj-$(firstword $(subst :, ,$(p))))
+
+# the libraries being built come before anything installed (a hand-built libspongy or libneo in /usr/local)
+export PKG_CONFIG_PATH := $(CURDIR)/obj-top/meson-uninstalled:$(CURDIR)/obj-libneo/meson-uninstalled
+TEST_LIBS := $(CURDIR)/obj-top/libspongy:$(CURDIR)/obj-libneo
+
+%:
+	dh $@
+
+# each project is configured right before it is built (it needs the ones before it built)
+override_dh_auto_configure:
+
+override_dh_auto_build:
+	set -e; for p in $(PROJECTS); do \
+		b=obj-$${p%%:*}; s=$${p#*:}; \
+		dh_auto_configure --sourcedirectory=$$s --builddirectory=$$b; \
+		dh_auto_build --sourcedirectory=$$s --builddirectory=$$b; \
+	done
+
+override_dh_auto_test:
+ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
+	set -e; for p in $(PROJECTS); do \
+		b=obj-$${p%%:*}; s=$${p#*:}; \
+		LD_LIBRARY_PATH=$(TEST_LIBS) dh_auto_test --sourcedirectory=$$s --builddirectory=$$b; \
+	done
+endif
+
+override_dh_auto_install:
+	set -e; for p in $(PROJECTS); do \
+		b=obj-$${p%%:*}; s=$${p#*:}; \
+		dh_auto_install --sourcedirectory=$$s --builddirectory=$$b --destdir=debian/tmp; \
+	done
+
+override_dh_auto_clean:
+	rm -rf $(BUILDDIRS)
+
+# Nothing that would take over a desktop is enabled: the phone session without a display manager, the docked desktop
+# and the dock switcher are the user's choice (README.Debian), and input-boost's clock floor is the device's to tune.
+# neo-wakeup and sim-apn run from boot.
+override_dh_installsystemd:
+	dh_installsystemd -pgnome-phone-session --no-enable --no-start
+	dh_installsystemd -pgnome-phone-daemons --no-enable --no-start input-boost.service
+	dh_installsystemd -pgnome-phone-daemons neo-wakeup.service
+	dh_installsystemd -psim-apn

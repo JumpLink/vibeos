@@ -1,0 +1,9 @@
+usr/bin/neo-clock
+usr/bin/neo-clock-alarms
+usr/lib/systemd/user/neo-clock-alarms.service
+usr/share/applications/de.yesman.Clock.desktop
+usr/share/applications/de.yesman.Clock.Ringing.desktop
+usr/share/dbus-1/services/de.yesman.Clock.service
+usr/share/dbus-1/services/de.yesman.Clock.Alarms.service
+usr/share/glib-2.0/schemas/de.yesman.Clock.gschema.xml
+usr/share/icons/hicolor/scalable/apps/de.yesman.Clock.svg
