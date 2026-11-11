@@ -6,6 +6,8 @@
 #include <linux/input-event-codes.h>
 #include <locale.h>
 #include <math.h>
+#include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 #include "image.h"
@@ -17,6 +19,7 @@
 #define BLUR_MAX_DP        30         /* max_depth_blur_radius_enhanced */
 #define BLUR_FULL_DEPTH    0.3f
 #define HOLD_MS            375        /* a long press: the menu, measured on the S10e */
+#define APPS_SETTLE_MS     300        /* an install writes several files: the app list is read once they are in */
 #define DRAG_SLOP_DP       16         /* a held finger moving this far leaves the menu */
 
 void drawer_prepare (void);
@@ -33,8 +36,11 @@ static struct {
   int         vk_w, vk_h;
   GMainLoop  *loop;
   Parallax   *par;
+  bool        suspended;    /* the compositor's: an app covers the launcher */
   GSettings  *bg, *iface;         /* GNOME's wallpaper, and the style that picks its light or dark picture */
   guint       wallpaper_id;       /* a reload, once the keys that changed together are all in */
+  GAppInfoMonitor *apps_monitor;  /* apps installed and removed */
+  guint       apps_id;            /* the app list's read, once they settle and no tile is held */
   GfxTex     *home_target, *bg_target;
 
   int         touch;              /* the finger being followed, or -1 */
@@ -131,6 +137,83 @@ target (GfxTex **t, int w, int h)
 
 /* ---- frames --------------------------------------------------------------------------------------------------- */
 
+/* A GNOME slideshow (an .xml: Debian's default wallpaper, desktop-base's desktop-background.xml, is one) as one
+ * picture: its first slide's, and of the sizes that lists, the one nearest the screen's shape */
+typedef struct {
+  GString *text;
+  char    *best;
+  double   best_d, aspect;
+  int      w, h;
+  gboolean in_file, done;
+} Slides;
+
+static void
+slides_start (GMarkupParseContext *ctx, const char *name, const char **names, const char **values, gpointer data,
+              GError **error)
+{
+  Slides *s = data;
+  if (s->done || (strcmp (name, "file") && strcmp (name, "size")))
+    return;
+  s->in_file = TRUE;
+  g_string_truncate (s->text, 0);
+  s->w = s->h = 0;
+  for (int i = 0; names[i]; i++) {
+    if (!strcmp (names[i], "width"))
+      s->w = atoi (values[i]);
+    else if (!strcmp (names[i], "height"))
+      s->h = atoi (values[i]);
+  }
+}
+
+static void
+slides_text (GMarkupParseContext *ctx, const char *text, gsize len, gpointer data, GError **error)
+{
+  Slides *s = data;
+  if (s->in_file && !s->done)
+    g_string_append_len (s->text, text, len);
+}
+
+static void
+slides_end (GMarkupParseContext *ctx, const char *name, gpointer data, GError **error)
+{
+  Slides *s = data;
+  gboolean size = !strcmp (name, "size"), file = !strcmp (name, "file");
+  if (s->done || (!size && !file))
+    return;
+  g_strstrip (s->text->str);
+  s->text->len = strlen (s->text->str);
+  if (s->text->len && (size || !s->best)) {
+    double d = s->w > 0 && s->h > 0 ? fabs (log ((double) s->w / s->h / s->aspect)) : G_MAXDOUBLE / 2;
+    if (!s->best || d < s->best_d) {
+      g_free (s->best);
+      s->best = g_strdup (s->text->str);
+      s->best_d = d;
+    }
+  }
+  g_string_truncate (s->text, 0);
+  if (file) {
+    s->in_file = FALSE;
+    s->done = s->best != NULL;
+  }
+}
+
+static char *
+slideshow_picture (const char *xml, int w, int h)
+{
+  static const GMarkupParser parser = { slides_start, slides_end, slides_text, NULL, NULL };
+  g_autofree char *contents = NULL;
+  gsize len;
+  if (!g_file_get_contents (xml, &contents, &len, NULL))
+    return NULL;
+  Slides s = { g_string_new (NULL), NULL, 0, w > 0 && h > 0 ? (double) w / h : 0.5, 0, 0, FALSE, FALSE };
+  GMarkupParseContext *ctx = g_markup_parse_context_new (&parser, 0, &s, NULL);
+  if (!g_markup_parse_context_parse (ctx, contents, len, NULL))
+    g_clear_pointer (&s.best, g_free);
+  g_markup_parse_context_free (ctx);
+  g_string_free (s.text, TRUE);
+  return s.best;
+}
+
 /* The wallpaper is GNOME's (org.gnome.desktop.background, its dark picture under the dark style), which Settings'
  * Background panel sets: a picture in a folder with a parallax.json is that parallax set (its picture is the set at
  * rest, for the panel and the lock screen), any other picture a still one. NEO_PARALLAX names a set instead; with no
@@ -147,6 +230,11 @@ wallpaper_load (void)
     uri = g_settings_get_string (A.bg, "picture-uri");
   }
   g_autofree char *file = g_filename_from_uri (uri, NULL, NULL);
+  if (file && g_str_has_suffix (file, ".xml")) {
+    char *picture = slideshow_picture (file, N.W, N.H);
+    g_free (file);
+    file = picture;
+  }
   g_autofree char *dir = file ? g_path_get_dirname (file) : NULL;
   g_autofree char *json = dir ? g_build_filename (dir, "parallax.json", NULL) : NULL;
   g_autofree char *set = g_settings_get_string (N.settings, "wallpaper-parallax");
@@ -163,7 +251,7 @@ wallpaper_load (void)
   A.par = p;
   if (p) {
     parallax_resize (p, N.W, N.H, N.dp);
-    parallax_run (p, true);
+    parallax_run (p, !A.suspended);
   }
   wl_schedule (N.wl);
 }
@@ -183,6 +271,51 @@ wallpaper_changed (GSettings *settings, const char *key, gpointer data)
     A.wallpaper_id = g_idle_add (wallpaper_reload, NULL);
 }
 
+/* An app installed or removed (a package, a Flatpak, an Android app in Waydroid) comes or goes at once. The tiles wait
+ * while one may be held: under a finger, pressed, launching, in a popup or a drag. */
+static gboolean
+apps_sync (gpointer data)
+{
+  if (A.touch >= 0 || N.press.tile || N.launch_t0 || popup_showing () || drag_holding () || drag_busy ())
+    return G_SOURCE_CONTINUE;
+  A.apps_id = 0;
+  A.down_tile = NULL;
+  if (tiles_sync ()) {
+    home_layout ();
+    drawer_layout ();
+    wl_schedule (N.wl);
+  }
+  return G_SOURCE_REMOVE;
+}
+
+static void
+apps_changed (GAppInfoMonitor *monitor, gpointer data)
+{
+  if (A.apps_id)
+    g_source_remove (A.apps_id);
+  A.apps_id = g_timeout_add (APPS_SETTLE_MS, apps_sync, NULL);
+}
+
+/* Settings' Home screen changed how icons look: drawn again once the changes settle (a pack and a shape picked one
+ * after the other make one pass, not two) */
+static guint icons_id;
+
+static gboolean
+icons_reload (gpointer data)
+{
+  icons_id = 0;
+  tiles_reload_icons ();
+  return G_SOURCE_REMOVE;
+}
+
+static void
+icon_settings_changed (GSettings *s, const char *key, gpointer data)
+{
+  if (icons_id)
+    g_source_remove (icons_id);
+  icons_id = g_timeout_add (300, icons_reload, NULL);
+}
+
 static bool
 init_gpu (void)
 {
@@ -194,6 +327,12 @@ init_gpu (void)
   g_signal_connect (A.bg, "changed", G_CALLBACK (wallpaper_changed), NULL);
   g_signal_connect (A.iface, "changed::color-scheme", G_CALLBACK (wallpaper_changed), NULL);
   tiles_load ();
+  static const char *const icon_keys[] = { "changed::icon-pack", "changed::icon-shape", "changed::icon-wrap-unthemed",
+                                           "changed::icon-shape-legacy" };
+  for (guint i = 0; i < G_N_ELEMENTS (icon_keys); i++)
+    g_signal_connect (N.settings, icon_keys[i], G_CALLBACK (icon_settings_changed), NULL);
+  A.apps_monitor = g_app_info_monitor_get ();
+  g_signal_connect (A.apps_monitor, "changed", G_CALLBACK (apps_changed), NULL);
   home_layout ();
   drawer_layout ();
   nav_init ();
@@ -572,6 +711,24 @@ on_close (gpointer data)
   g_main_loop_quit (A.loop);
 }
 
+static void
+on_shown (gpointer data, guint64 frame)
+{
+  nav_shown (frame);
+}
+
+/* an app over the launcher (Launcher3 is stopped then): the wallpaper stops following the phone, its sensor polls
+ * and its frames with it, until the launcher shows again */
+static void
+on_suspended (gpointer data, bool suspended)
+{
+  g_message ("%s", suspended ? "suspended: the parallax stops" : "shown again: the parallax follows the phone");
+  A.suspended = suspended;
+  parallax_run (A.par, !suspended);
+  if (!suspended)
+    wl_schedule (N.wl);
+}
+
 static gboolean
 on_signal (gpointer data)
 {
@@ -583,7 +740,7 @@ int
 main (int argc, char **argv)
 {
   setlocale (LC_ALL, "");
-  static const WlCallbacks cb = { on_resize, on_frame, on_touch, on_key, on_close };
+  static const WlCallbacks cb = { on_resize, on_frame, on_touch, on_key, on_close, on_shown, on_suspended };
   A.loop = g_main_loop_new (NULL, FALSE);
   N.settings = g_settings_new ("de.yesman.neo");
   A.bg = g_settings_new ("org.gnome.desktop.background");

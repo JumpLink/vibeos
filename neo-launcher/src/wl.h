@@ -23,6 +23,11 @@ typedef struct {
   void (*touch)  (gpointer data, WlTouchType type, int id, double x, double y, guint32 time_ms);
   void (*key)    (gpointer data, guint32 evdev_code, bool pressed);
   void (*close)  (gpointer data);
+  /* frame `frame` (see wl_frames) is on screen: its frame callback came */
+  void (*shown)  (gpointer data, guint64 frame);
+  /* the compositor suspended the window (xdg_toplevel's suspended state: nothing of it shows, an app covers it) or
+   * let it be again */
+  void (*suspended) (gpointer data, bool suspended);
 } WlCallbacks;
 
 typedef struct Wl Wl;
@@ -35,6 +40,7 @@ void               wl_get_size         (Wl *wl, int *width, int *height, double 
 /* Ask for a frame callback. Call before presenting (the present commits it). Nothing to draw: don't, and no more
  * frames come until wl_schedule. */
 void               wl_frame_requested  (Wl *wl);
+guint64            wl_frames           (Wl *wl);      /* frames committed so far; the next one is this + 1 */
 void               wl_schedule         (Wl *wl);      /* a frame is wanted: one comes at the next vsync */
 gint64             wl_refresh_ns       (Wl *wl);
 void               wl_close            (Wl *wl);

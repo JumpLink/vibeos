@@ -15,6 +15,7 @@ static const char *replaced[][2] = {
   { "sm.puri.Chatty.desktop", "de.yesman.Messaging.desktop" },
   { "org.gnome.Calculator.desktop", "de.yesman.Calculator.desktop" },
   { "org.gnome.Calendar.desktop", "de.yesman.Calendar.desktop" },
+  { "org.gnome.Snapshot.desktop", "de.yesman.Camera.desktop" },
   /* GNOME's video player since 49 */
   { "org.gnome.Totem.desktop", "org.gnome.Showtime.desktop" },
 };
@@ -221,11 +222,12 @@ json_ids (JsonArray *arr)
 static void
 fresh (Model *self, GHashTable *apps)
 {
+  /* the dock starts with GNOME's favourites (the ones the shell's dash shows) */
   g_auto (GStrv) favs = NULL;
-  GSettingsSchema *schema = g_settings_schema_source_lookup (g_settings_schema_source_get_default (), "sm.puri.phosh", TRUE);
+  GSettingsSchema *schema = g_settings_schema_source_lookup (g_settings_schema_source_get_default (), "org.gnome.shell", TRUE);
   if (schema) {
-    g_autoptr (GSettings) phosh = g_settings_new ("sm.puri.phosh");
-    favs = g_settings_get_strv (phosh, "favorites");
+    g_autoptr (GSettings) shell = g_settings_new ("org.gnome.shell");
+    favs = g_settings_get_strv (shell, "favorite-apps");
     g_settings_schema_unref (schema);
   }
   g_ptr_array_set_size (self->dock, 0);

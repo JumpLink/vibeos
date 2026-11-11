@@ -55,11 +55,15 @@ icon_ready (gpointer data)
 }
 
 /* Every icon in order (the dock and the first page first): the cached or stock one at once, then the pack's
- * drawing where it still has to be made. Only this thread touches the icon theme and the pack. */
+ * drawing where it still has to be made. Only this thread touches the icon theme and the pack, one at a time: an app
+ * installed while the first one draws waits for it. */
+static GMutex icon_lock;
+
 static gpointer
 icon_thread (gpointer data)
 {
   GPtrArray *jobs = data;
+  g_mutex_lock (&icon_lock);
   g_autoptr (GSettings) settings = g_settings_new ("de.yesman.neo");
   Icons *icons = icons_new (settings);
   int px = (int) lroundf (dp (ICON_DP));
@@ -102,6 +106,7 @@ icon_thread (gpointer data)
   g_ptr_array_unref (splash);
   g_ptr_array_unref (jobs);
   icons_free (icons);
+  g_mutex_unlock (&icon_lock);
   return NULL;
 }
 
@@ -150,34 +155,45 @@ queue_icon (GPtrArray *jobs, GHashTable *queued, const char *id)
   g_ptr_array_add (jobs, j);
 }
 
-void
-tiles_load (void)
+static void
+tile_label (Tile *t)
 {
-  g_autoptr (GHashTable) apps = apps_installed ();
-  N.tiles = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, (GDestroyNotify) tile_free);
-  N.sorted = g_ptr_array_new ();
-  N.label_font = text_font_axes ("Google Sans Flex", 700, dp (LABEL_SP), "opsz=72,ROND=100");
+  const char *name = app_name (t->info);
+  text_layout_free (t->label);
+  text_layout_free (t->dlabel);
+  t->label = text_layout (N.label_font, name, dp (LABEL_HOME_MAX_DP), 1, TEXT_CENTER);
+  t->dlabel = text_layout (N.label_font, name, dp (LABEL_DRAWER_MAX_DP), 1, TEXT_CENTER);
+}
 
-  GList *infos = g_list_sort (g_hash_table_get_values (apps), app_compare);
-  for (GList *l = infos; l; l = l->next) {
-    Tile *t = g_new0 (Tile, 1);
-    t->info = g_object_ref (l->data);
-    t->id = g_strdup (g_app_info_get_id (t->info));
-    const char *name = app_name (t->info);
-    t->label = text_layout (N.label_font, name, dp (LABEL_HOME_MAX_DP), 1, TEXT_CENTER);
-    t->dlabel = text_layout (N.label_font, name, dp (LABEL_DRAWER_MAX_DP), 1, TEXT_CENTER);
-    g_hash_table_insert (N.tiles, t->id, t);
-    g_ptr_array_add (N.sorted, t);
-  }
-  g_list_free (infos);
+static Tile *
+tile_new (GAppInfo *info)
+{
+  Tile *t = g_new0 (Tile, 1);
+  t->info = g_object_ref (info);
+  t->id = g_strdup (g_app_info_get_id (info));
+  tile_label (t);
+  g_hash_table_insert (N.tiles, t->id, t);
+  g_ptr_array_add (N.sorted, t);
+  return t;
+}
 
-  N.model = model_new (GRID_COLS, GRID_ROWS, GRID_COLS);
-  g_auto (GStrv) hidden = g_settings_get_strv (N.settings, "hidden-from-home");
-  model_set_hidden (N.model, hidden);
-  model_load (N.model, apps);
-  model_set_reserved (N.model, GRID_COLS);            /* the clock widget's row on the first page */
+static gint
+tile_compare (gconstpointer a, gconstpointer b)
+{
+  return app_compare ((*(Tile *const *) a)->info, (*(Tile *const *) b)->info);
+}
 
-  /* the icons the first frame shows go first */
+static char *
+icon_string (GAppInfo *info)
+{
+  GIcon *icon = g_app_info_get_icon (info);
+  return icon ? g_icon_to_string (icon) : NULL;
+}
+
+/* every tile's icon to draw, the ones the first frame shows first: the dock, the home pages, then the drawer */
+static GPtrArray *
+all_icon_jobs (void)
+{
   GPtrArray *jobs = g_ptr_array_new ();
   g_autoptr (GHashTable) queued = g_hash_table_new (g_str_hash, g_str_equal);
   for (guint i = 0; i < N.model->dock->len; i++)
@@ -189,7 +205,97 @@ tiles_load (void)
   }
   for (guint i = 0; i < N.sorted->len; i++)
     queue_icon (jobs, queued, ((Tile *) N.sorted->pdata[i])->id);
-  g_thread_unref (g_thread_new ("neo-icons", icon_thread, jobs));
+  return jobs;
+}
+
+void
+tiles_load (void)
+{
+  g_autoptr (GHashTable) apps = apps_installed ();
+  N.tiles = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, (GDestroyNotify) tile_free);
+  N.sorted = g_ptr_array_new ();
+  N.label_font = text_font_axes ("Google Sans Flex", 700, dp (LABEL_SP), "opsz=72,ROND=100");
+
+  GList *infos = g_list_sort (g_hash_table_get_values (apps), app_compare);
+  for (GList *l = infos; l; l = l->next)
+    tile_new (l->data);
+  g_list_free (infos);
+
+  N.model = model_new (GRID_COLS, GRID_ROWS, GRID_COLS);
+  g_auto (GStrv) hidden = g_settings_get_strv (N.settings, "hidden-from-home");
+  model_set_hidden (N.model, hidden);
+  model_load (N.model, apps);
+  model_set_reserved (N.model, GRID_COLS);            /* the clock widget's row on the first page */
+  g_thread_unref (g_thread_new ("neo-icons", icon_thread, all_icon_jobs ()));
+}
+
+/* The icon settings changed (Settings' Home screen: the pack, the shape, wrapping, legacy icons): every icon is
+ * drawn again, in the same order as at start. The thread reads the settings afresh (icons_new), and the icon cache's
+ * key covers them, so a look used before comes from its cache at once; one not drawn yet shows the stock icon
+ * until it is (icon_ready swaps each tile's texture, as at start). */
+void
+tiles_reload_icons (void)
+{
+  g_thread_unref (g_thread_new ("neo-icons", icon_thread, all_icon_jobs ()));
+}
+
+/* The installed apps again, as Launcher3 follows the package manager: a new app gets a tile (its icon from the thread)
+ * and the first free home cell, a removed one's tile goes and leaves its cells empty, a changed one takes its new
+ * entry (relabelled, its icon drawn again if that changed), and the drawer is sorted again. The caller makes sure
+ * no tile is held (under a finger, pressed, launching, in a popup or a drag). Whether anything changed. */
+bool
+tiles_sync (void)
+{
+  g_autoptr (GHashTable) apps = apps_installed ();
+  GPtrArray *jobs = g_ptr_array_new ();
+  g_autoptr (GHashTable) queued = g_hash_table_new (g_str_hash, g_str_equal);
+  bool changed = false;
+
+  GHashTableIter it;
+  gpointer key, value;
+  g_hash_table_iter_init (&it, N.tiles);
+  while (g_hash_table_iter_next (&it, &key, &value)) {
+    if (g_hash_table_contains (apps, key))
+      continue;
+    g_ptr_array_remove (N.sorted, value);
+    g_hash_table_iter_remove (&it);
+    changed = true;
+  }
+
+  g_hash_table_iter_init (&it, apps);
+  while (g_hash_table_iter_next (&it, &key, &value)) {
+    GAppInfo *info = value;
+    Tile *t = tiles_get (key);
+    if (!t) {
+      queue_icon (jobs, queued, tile_new (info)->id);
+      changed = true;
+      continue;
+    }
+    bool renamed = g_strcmp0 (app_name (t->info), app_name (info));
+    g_autofree char *was = icon_string (t->info), *icon = icon_string (info);
+    g_set_object (&t->info, info);
+    if (renamed)
+      tile_label (t);
+    if (g_strcmp0 (was, icon))
+      queue_icon (jobs, queued, t->id);
+    changed |= renamed;
+  }
+  if (changed)
+    g_ptr_array_sort (N.sorted, tile_compare);
+
+  if (model_reconcile (N.model, apps)) {
+    model_tidy (N.model);
+    model_save (N.model);
+    changed = true;
+  }
+
+  if (jobs->len) {
+    g_thread_unref (g_thread_new ("neo-icons", icon_thread, jobs));
+    changed = true;
+  } else {
+    g_ptr_array_unref (jobs);
+  }
+  return changed;
 }
 
 /* the icon, or its place-holder circle until the thread has drawn it */

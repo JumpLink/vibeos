@@ -1,7 +1,10 @@
-/* The parallax wallpaper (see parallax.h). The filter is the GTK 3 launcher's, tuned there on this phone. */
+/* The parallax wallpaper (see parallax.h). The filter is the GTK 3 launcher's, tuned there on this phone. The
+ * accelerometer is IIO's, or on the POCO X3 NFC the ADSP sensor hub's, through libssc. */
 #include "parallax.h"
 
+#include <dlfcn.h>
 #include <fcntl.h>
+#include <gio/gio.h>
 #include <glib.h>
 #include <json-glib/json-glib.h>
 #include <math.h>
@@ -43,6 +46,15 @@ struct Parallax {
   bool        running;
   char       *accel[3];
   char       *rate;
+  bool        use_ssc;      /* no IIO accelerometer: the sensor hub's, through libssc */
+  GObject    *ssc;          /* its sensor, while the parallax runs */
+  guint       ssc_gen;      /* a creation or opening for an older one is dropped */
+  guint       ssc_retry;
+  int         ssc_tries;
+  bool        ssc_have;
+  bool        ssc_opened;
+  gint64      ssc_last;     /* monotonic µs of the last measurement (or of the opening) */
+  double      ssc_g[3];     /* its last measurement, m/s² */
   double      g[3], rest[3], settled[3];
   int         calm;
   bool        have_g;
@@ -52,6 +64,162 @@ struct Parallax {
   void      (*wake) (void *data);
   void       *wake_data;
 };
+
+/* ---- the POCO X3 NFC's accelerometer: the ADSP sensor hub's (SSC), reached through libssc, not IIO ----
+ * libssc is loaded at run time (only that phone has it). A sensor lives only while the parallax runs: the hub's
+ * protection domain restarts at every screen-on there (surya-sleep-resume), and a sensor opened before that talks
+ * to nothing. It measures ~23 Hz in m/s² on Android's axes; step() uses only the direction. */
+typedef void (*SscNew) (GCancellable *, GAsyncReadyCallback, gpointer);
+typedef GObject *(*SscNewFinish) (GAsyncResult *, GError **);
+typedef void (*SscOpen) (GObject *, GCancellable *, GAsyncReadyCallback, gpointer);
+typedef gboolean (*SscOpenFinish) (GObject *, GAsyncResult *, GError **);
+static struct {
+  bool          tried, ok;
+  SscNew        create;
+  SscNewFinish  create_finish;
+  SscOpen       open, close;
+  SscOpenFinish open_finish;
+} ssc;
+static Parallax *ssc_owner;  /* the running parallax that has the sensor */
+static guint ssc_serial;     /* every start and stop takes a new one: a callback for an older one is stale */
+
+#define SSC_TRIES 20         /* one a second: the hub's domain takes a few seconds to come back after a screen-on */
+#define SSC_QUIET_US 3000000 /* no measurement for this long while open: the hub restarted under it, open anew */
+
+static bool
+ssc_load (void)
+{
+  if (ssc.tried)
+    return ssc.ok;
+  ssc.tried = true;
+  void *h = dlopen ("libssc.so.2", RTLD_NOW | RTLD_LOCAL);
+  if (!h)
+    return false;
+  ssc.create = (SscNew) dlsym (h, "ssc_sensor_accelerometer_new");
+  ssc.create_finish = (SscNewFinish) dlsym (h, "ssc_sensor_accelerometer_new_finish");
+  ssc.open = (SscOpen) dlsym (h, "ssc_sensor_accelerometer_open");
+  ssc.open_finish = (SscOpenFinish) dlsym (h, "ssc_sensor_accelerometer_open_finish");
+  ssc.close = (SscOpen) dlsym (h, "ssc_sensor_accelerometer_close");
+  ssc.ok = ssc.create && ssc.create_finish && ssc.open && ssc.open_finish && ssc.close;
+  return ssc.ok;
+}
+
+static void ssc_start (Parallax *p);
+
+static gboolean
+ssc_retry (gpointer data)
+{
+  Parallax *p = data;
+  p->ssc_retry = 0;
+  ssc_start (p);
+  return G_SOURCE_REMOVE;
+}
+
+static void
+ssc_drop (Parallax *p)
+{
+  if (p->ssc) {
+    g_signal_handlers_disconnect_by_data (p->ssc, p);
+    ssc.close (p->ssc, NULL, NULL, NULL);     /* its task keeps it until the hub answers */
+    g_clear_object (&p->ssc);
+  }
+  p->ssc_have = false;
+  p->ssc_opened = false;
+}
+
+static void
+ssc_failed (Parallax *p, const char *what, GError *err)
+{
+  ssc_drop (p);
+  if (++p->ssc_tries == 1 || p->ssc_tries == SSC_TRIES)
+    g_message ("parallax: the sensor hub's accelerometer: %s%s%s%s", what, err ? ": " : "", err ? err->message : "",
+               p->ssc_tries == SSC_TRIES ? " (giving up until the next screen-on)" : ", trying again");
+  if (p->ssc_tries < SSC_TRIES && p->running)
+    p->ssc_retry = g_timeout_add_seconds (1, ssc_retry, p);
+}
+
+static void
+ssc_measured (GObject *sensor, gfloat x, gfloat y, gfloat z, gpointer data)
+{
+  Parallax *p = data;
+  p->ssc_g[0] = x;
+  p->ssc_g[1] = y;
+  p->ssc_g[2] = z;
+  p->ssc_have = true;
+  p->ssc_last = g_get_monotonic_time ();
+  if (p->ssc_tries) {       /* it works: a later failure gets its retries again */
+    g_message ("parallax: the sensor hub's accelerometer measures");
+    p->ssc_tries = 0;
+  }
+}
+
+/* the parallax a callback was for, if it still wants that sensor */
+static Parallax *
+ssc_current (gpointer gen)
+{
+  return ssc_owner && ssc_owner->ssc_gen == GPOINTER_TO_UINT (gen) ? ssc_owner : NULL;
+}
+
+static void
+ssc_opened (GObject *src, GAsyncResult *res, gpointer gen)
+{
+  g_autoptr (GError) err = NULL;
+  gboolean ok = ssc.open_finish (src, res, &err);
+  Parallax *p = ssc_current (gen);
+  if (!p)
+    return;                 /* stopped meanwhile: ssc_drop closed it */
+  if (!ok) {
+    ssc_failed (p, "open", err);
+    return;
+  }
+  p->ssc_opened = true;
+  p->ssc_last = g_get_monotonic_time ();
+}
+
+static void
+ssc_created (GObject *src, GAsyncResult *res, gpointer gen)
+{
+  g_autoptr (GError) err = NULL;
+  GObject *sensor = ssc.create_finish (res, &err);
+  Parallax *p = ssc_current (gen);
+  if (!p) {
+    g_clear_object (&sensor);
+    return;
+  }
+  if (!sensor) {
+    ssc_failed (p, "connect", err);
+    return;
+  }
+  p->ssc = sensor;
+  g_signal_connect (sensor, "measurement", G_CALLBACK (ssc_measured), p);
+  ssc.open (sensor, NULL, ssc_opened, gen);
+}
+
+static void
+ssc_start (Parallax *p)
+{
+  if (!p->use_ssc || p->ssc || !p->running)
+    return;
+  if (ssc_owner && ssc_owner != p)
+    return;                 /* one sensor: the other parallax has it */
+  ssc_owner = p;
+  p->ssc_gen = ++ssc_serial;
+  ssc.create (NULL, ssc_created, GUINT_TO_POINTER (p->ssc_gen));
+}
+
+static void
+ssc_stop (Parallax *p)
+{
+  p->ssc_gen = ++ssc_serial;
+  if (p->ssc_retry) {
+    g_source_remove (p->ssc_retry);
+    p->ssc_retry = 0;
+  }
+  p->ssc_tries = 0;
+  ssc_drop (p);
+  if (ssc_owner == p)
+    ssc_owner = NULL;
+}
 
 static void
 find_accel (Parallax *p)
@@ -68,6 +236,11 @@ find_accel (Parallax *p)
       p->accel[i] = g_build_filename (ACCEL_DIR, name, f, NULL);
     }
     p->rate = g_build_filename (ACCEL_DIR, name, "in_accel_sampling_frequency", NULL);
+    return;
+  }
+  if (ssc_load ()) {
+    p->use_ssc = true;
+    g_message ("parallax: the sensor hub's accelerometer (libssc)");
     return;
   }
   g_message ("parallax: no accelerometer, the wallpaper stays still");
@@ -89,6 +262,16 @@ set_rate (Parallax *p, int hz)
 static bool
 read_accel (Parallax *p, double g[3])
 {
+  if (p->use_ssc) {
+    if (p->ssc_opened && !p->ssc_retry && g_get_monotonic_time () - p->ssc_last > SSC_QUIET_US) {
+      ssc_failed (p, "no measurements", NULL);
+      return false;
+    }
+    if (!p->ssc_have)
+      return false;
+    memcpy (g, p->ssc_g, sizeof p->ssc_g);
+    return true;
+  }
   for (int i = 0; i < 3; i++) {
     char buf[32];
     if (!p->accel[i])
@@ -248,6 +431,7 @@ parallax_free (Parallax *p)
     return;
   if (p->idle)
     g_source_remove (p->idle);
+  ssc_stop (p);
   set_rate (p, RATE_IDLE);
   g_ptr_array_unref (p->layers);
   for (int i = 0; i < 3; i++)
@@ -282,11 +466,15 @@ parallax_resize (Parallax *p, int w, int h, double scale)
 void
 parallax_run (Parallax *p, bool run)
 {
-  if (!p || p->running == run || !p->accel[0])
+  if (!p || p->running == run || (!p->accel[0] && !p->use_ssc))
     return;                 /* a still picture has no sensor to follow */
   p->running = run;
   p->still = 0;
   set_rate (p, run ? RATE_RUN : RATE_IDLE);
+  if (run)
+    ssc_start (p);
+  else
+    ssc_stop (p);
   if (!run && p->idle) {
     g_source_remove (p->idle);
     p->idle = 0;

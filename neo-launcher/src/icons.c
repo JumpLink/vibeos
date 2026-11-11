@@ -106,13 +106,19 @@ read_json (const char *path)
   return root ? json_node_copy (root) : NULL;
 }
 
+/* neo-launcher/iconpacks in the user's data dir, then in each system data dir ($XDG_DATA_DIRS: /usr/local/share
+ * for a local build, /usr/share for the package) */
 static char **
 pack_dirs (void)
 {
-  char **dirs = g_new0 (char *, 3);
-  dirs[0] = g_build_filename (g_get_user_data_dir (), "neo-launcher", "iconpacks", NULL);
-  dirs[1] = g_strdup ("/usr/share/neo-launcher/iconpacks");
-  return dirs;
+  const char *const *system = g_get_system_data_dirs ();
+  GStrvBuilder *dirs = g_strv_builder_new ();
+  g_strv_builder_take (dirs, g_build_filename (g_get_user_data_dir (), "neo-launcher", "iconpacks", NULL));
+  for (int i = 0; system[i]; i++)
+    g_strv_builder_take (dirs, g_build_filename (system[i], "neo-launcher", "iconpacks", NULL));
+  char **out = g_strv_builder_end (dirs);
+  g_strv_builder_unref (dirs);
+  return out;
 }
 
 static void

@@ -42,3 +42,8 @@ executable('neo-launcher',
   include_directories: include_directories('src', 'shaders'),
   dependencies: deps,
   install: true)
+
+# the launcher's settings (de.yesman.neo), which the gnome-phone extension and Neo Settings read too
+install_data('data/de.yesman.neo.gschema.xml', install_dir: get_option('datadir') / 'glib-2.0' / 'schemas')
+gnome = import('gnome')
+gnome.post_install(glib_compile_schemas: true)

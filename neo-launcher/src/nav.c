@@ -51,7 +51,13 @@ static struct {
   int      drawer;          /* the drawer as the shell last heard of it: -1 never told, 0 closed, 1 open */
   guint    owner_id, watch_id, icons_id;
   bool     shell;           /* the shell's service is on the bus */
+  GSList  *show_waits;      /* ShowIcon calls waiting for their frame (ShowWait) */
 } V;
+
+typedef struct {
+  GDBusMethodInvocation *inv;
+  guint64                frame;
+} ShowWait;
 
 /* ---- curves --------------------------------------------------------------------------------------------------- */
 
@@ -259,6 +265,17 @@ push_icons (gpointer data)
 
 /* the icons on the page or the dock moved: tell the shell, once things settle */
 void
+nav_shown (guint64 frame)
+{
+  while (V.show_waits && ((ShowWait *) V.show_waits->data)->frame <= frame) {
+    ShowWait *w = V.show_waits->data;
+    V.show_waits = g_slist_delete_link (V.show_waits, V.show_waits);
+    g_dbus_method_invocation_return_value (w->inv, NULL);
+    g_free (w);
+  }
+}
+
+void
 nav_icons_changed (void)
 {
   if (V.icons_id)
@@ -349,7 +366,16 @@ method_call (GDBusConnection *bus, const char *sender, const char *path, const c
     }
     wl_schedule (N.wl);
   } else if (!g_strcmp0 (method, "ShowIcon")) {
-    show_icon ();
+    if (V.hidden) {
+      show_icon ();
+      /* answered once the next frame, the first with the icon, is on screen: the shell keeps its flying icon over
+       * this one until then, so that no frame has neither */
+      ShowWait *w = g_new (ShowWait, 1);
+      w->inv = inv;
+      w->frame = wl_frames (N.wl) + 1;
+      V.show_waits = g_slist_append (V.show_waits, w);
+      return;
+    }
   } else if (!g_strcmp0 (method, "Back")) {
     if (drag_holding ())
       touch_drop ();                /* back drops the drag (a held icon too) */

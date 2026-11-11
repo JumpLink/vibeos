@@ -94,6 +94,8 @@ static inline float dp (double v) { return (float) (v * N.dp); }
 
 /* tiles.c */
 void   tiles_load        (void);                       /* the apps, their labels, and the icon thread */
+bool   tiles_sync        (void);                       /* the apps again: installed, removed, changed */
+void   tiles_reload_icons (void);                      /* every icon again, for new icon settings */
 Tile  *tiles_get         (const char *id);
 GHashTable *tiles_apps   (void);                       /* id -> GAppInfo, as model_reconcile takes them */
 void   tile_draw_icon    (Tile *t, float x, float y, float size, float alpha);
@@ -156,6 +158,7 @@ float  nav_scrim_alpha   (void);                         /* back's scrim over it
 float  nav_scrim_blur    (void);                         /* … over a blur of this radius (px) */
 void   nav_drawer        (bool open);                    /* tell the shell the drawer opened or closed */
 void   nav_icons_changed (void);                         /* the page or the dock's icons moved */
+void   nav_shown         (guint64 frame);                /* that frame is on screen (wl's shown) */
 
 /* drawer.c */
 void   drawer_layout     (void);
@@ -189,6 +192,7 @@ void   touch_drop        (void);
 void   popup_open_icon   (Tile *t, ModelPos pos, bool from_drawer, float ix, float iy, float isz);
 void   popup_open_options (float x, float y);
 bool   popup_is_open     (void);                         /* open, not closing: a touch goes to it */
+bool   popup_showing     (void);                         /* open or closing: its icon's tile is in use */
 void   popup_close       (void);
 void   popup_close_now   (void);
 bool   popup_frame       (void);

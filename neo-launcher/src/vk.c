@@ -18,24 +18,33 @@ pick_device (Vk *vk)
   VkPhysicalDevice devs[8];
   n = MIN (n, 8);
   vkEnumeratePhysicalDevices (vk->inst, &n, devs);
-  for (uint32_t i = 0; i < n; i++) {
-    uint32_t nq = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties (devs[i], &nq, NULL);
-    VkQueueFamilyProperties qp[16];
-    nq = MIN (nq, 16);
-    vkGetPhysicalDeviceQueueFamilyProperties (devs[i], &nq, qp);
-    for (uint32_t q = 0; q < nq; q++) {
-      VkBool32 present = VK_FALSE;
-      vkGetPhysicalDeviceSurfaceSupportKHR (devs[i], q, vk->surface, &present);
-      if ((qp[q].queueFlags & VK_QUEUE_GRAPHICS_BIT) && present) {
-        vk->phys = devs[i];
-        vk->qfam = q;
-        vkGetPhysicalDeviceProperties (devs[i], &vk->props);
-        vkGetPhysicalDeviceMemoryProperties (devs[i], &vk->memp);
-        g_message ("vulkan: %s (%s), api %u.%u", vk->props.deviceName,
-                   vk->props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU ? "integrated" : "other",
-                   VK_VERSION_MAJOR (vk->props.apiVersion), VK_VERSION_MINOR (vk->props.apiVersion));
-        return true;
+  /* a GPU first: with every installed ICD enumerated (no VK_DRIVER_FILES), the software rasterizer (lavapipe) can
+   * come before the phone's GPU; it is only taken when nothing else can present */
+  for (int cpu = 0; cpu < 2; cpu++) {
+    for (uint32_t i = 0; i < n; i++) {
+      VkPhysicalDeviceProperties props;
+      vkGetPhysicalDeviceProperties (devs[i], &props);
+      if ((props.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU) != cpu)
+        continue;
+      uint32_t nq = 0;
+      vkGetPhysicalDeviceQueueFamilyProperties (devs[i], &nq, NULL);
+      VkQueueFamilyProperties qp[16];
+      nq = MIN (nq, 16);
+      vkGetPhysicalDeviceQueueFamilyProperties (devs[i], &nq, qp);
+      for (uint32_t q = 0; q < nq; q++) {
+        VkBool32 present = VK_FALSE;
+        vkGetPhysicalDeviceSurfaceSupportKHR (devs[i], q, vk->surface, &present);
+        if ((qp[q].queueFlags & VK_QUEUE_GRAPHICS_BIT) && present) {
+          vk->phys = devs[i];
+          vk->qfam = q;
+          vk->props = props;
+          vkGetPhysicalDeviceMemoryProperties (devs[i], &vk->memp);
+          g_message ("vulkan: %s (%s), api %u.%u", props.deviceName,
+                     props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU ? "integrated"
+                     : props.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU ? "cpu" : "other",
+                     VK_VERSION_MAJOR (props.apiVersion), VK_VERSION_MINOR (props.apiVersion));
+          return true;
+        }
       }
     }
   }

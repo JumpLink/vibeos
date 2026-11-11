@@ -42,6 +42,7 @@ struct Wl {
 
   int                logical_w, logical_h;     /* from the last configure */
   int                pending_w, pending_h;
+  bool               pending_suspended, suspended;
   double             scale;                    /* fractional (n/120) or the integer buffer scale */
   int                buffer_scale;
   int                width, height;            /* pixels */
@@ -49,6 +50,8 @@ struct Wl {
 
   /* the frame clock */
   struct wl_callback *frame_cb;
+  guint64            frames;                   /* committed so far */
+  guint64            cb_frame;                 /* the one frame_cb is for */
   bool               wanted;
   guint              idle_id;
   gint64             last_presented;           /* ns, CLOCK_MONOTONIC */
@@ -164,6 +167,12 @@ toplevel_configure (void *data, struct xdg_toplevel *t, int32_t w, int32_t h, st
   Wl *wl = data;
   wl->pending_w = w;
   wl->pending_h = h;
+  wl->pending_suspended = false;
+  uint32_t *state;
+  wl_array_for_each (state, states) {
+    if (*state == XDG_TOPLEVEL_STATE_SUSPENDED)
+      wl->pending_suspended = true;
+  }
 }
 
 static void
@@ -195,6 +204,11 @@ xdg_configure (void *data, struct xdg_surface *s, uint32_t serial)
   }
   wl->configured = true;
   apply_size (wl);
+  if (wl->pending_suspended != wl->suspended) {
+    wl->suspended = wl->pending_suspended;
+    if (wl->cb->suspended)
+      wl->cb->suspended (wl->data, wl->suspended);
+  }
 }
 
 static const struct xdg_surface_listener xdg_surface_listener = { xdg_configure };
@@ -231,6 +245,8 @@ frame_done (void *data, struct wl_callback *cb, uint32_t time)
   Wl *wl = data;
   wl_callback_destroy (cb);
   wl->frame_cb = NULL;
+  if (wl->cb->shown)
+    wl->cb->shown (wl->data, wl->cb_frame);
   if (wl->wanted)
     draw (wl);
 }
@@ -240,9 +256,11 @@ static const struct wl_callback_listener frame_listener = { frame_done };
 void
 wl_frame_requested (Wl *wl)
 {
+  wl->frames++;
   if (!wl->frame_cb) {
     wl->frame_cb = wl_surface_frame (wl->surface);
     wl_callback_add_listener (wl->frame_cb, &frame_listener, wl);
+    wl->cb_frame = wl->frames;
   }
   if (wl->presentation) {
     struct wp_presentation_feedback *f = wp_presentation_feedback (wl->presentation, wl->surface);
@@ -276,6 +294,12 @@ wl_schedule (Wl *wl)
    * so start it now */
   if (!wl->frame_cb && !wl->idle_id && wl->configured)
     wl->idle_id = g_idle_add_full (G_PRIORITY_HIGH_IDLE, draw_idle, wl, NULL);
+}
+
+guint64
+wl_frames (Wl *wl)
+{
+  return wl->frames;
 }
 
 gint64
@@ -464,7 +488,7 @@ registry_global (void *data, struct wl_registry *r, uint32_t name, const char *i
     wl->compositor_version = MIN (version, 6);
     wl->compositor = wl_registry_bind (r, name, &wl_compositor_interface, wl->compositor_version);
   } else if (!strcmp (iface, xdg_wm_base_interface.name)) {
-    wl->wm_base = wl_registry_bind (r, name, &xdg_wm_base_interface, MIN (version, 5));
+    wl->wm_base = wl_registry_bind (r, name, &xdg_wm_base_interface, MIN (version, 6));   /* 6: suspended */
     xdg_wm_base_add_listener (wl->wm_base, &wm_listener, wl);
   } else if (!strcmp (iface, wl_seat_interface.name) && !wl->seat) {
     wl->seat = wl_registry_bind (r, name, &wl_seat_interface, MIN (version, 8));
