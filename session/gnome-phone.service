@@ -1,12 +1,10 @@
 # The phone's session: GNOME Shell (mobile, /opt/gnome-mobile) with the gnome-phone extension, no display manager.
-# Phosh's place; gnome-desktop.service (the docked desktop) and phosh.service exclude it.
+# gnome-desktop.service (the docked desktop) excludes it.
 [Unit]
 Description=GNOME Phone session
-Conflicts=phosh.service gnome-desktop.service
-After=phosh.service gnome-desktop.service systemd-user-sessions.service plymouth-quit-wait.service dbus.socket s10e-gpu-load.service
+Conflicts=gnome-desktop.service
+After=gnome-desktop.service systemd-user-sessions.service plymouth-quit-wait.service dbus.socket s10e-gpu-load.service
 Wants=dbus.socket s10e-gpu-load.service
-# while the shell is young: a session that dies falls back to Phosh
-OnFailure=phosh.service
 ConditionPathExists=/dev/tty0
 
 [Service]
@@ -22,6 +20,12 @@ PAMName=login
 WorkingDirectory=~
 TimeoutStartSec=30
 TimeoutStopSec=10s
+# a session that ends by itself comes back. gnome-session exits 0 when its D-Bus goes away under it: the session
+# neo-dock swaps out restarts the user's D-Bus as it ends (gnome-session-restart-dbus.service), and one started a moment
+# too early went with it (11-06), as a session does when the shell aborts. OnFailure saw neither, and the phone was
+# left with no session at all: a black screen and a dead power key. A stop (a swap, shutdown) stays a stop
+Restart=always
+RestartSec=1
 
 TTYPath=/dev/tty7
 TTYReset=yes

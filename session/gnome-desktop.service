@@ -1,0 +1,37 @@
+# The desktop while docked to a display: the same gnome-session and shell as gnome-phone.service, which the extension
+# tells apart by this unit (dock.js) and turns into GNOME's own desktop on the display. neo-dock starts it on a plug and
+# gnome-phone.service on an unplug; they conflict.
+[Unit]
+Description=GNOME desktop while docked to an external display
+After=systemd-user-sessions.service plymouth-quit-wait.service dbus.socket s10e-gpu-load.service
+Wants=dbus.socket s10e-gpu-load.service
+# a session that keeps dying (five starts in 10 s) gives the phone its own session back
+OnFailure=gnome-phone.service
+ConditionPathExists=/dev/tty0
+
+[Service]
+Environment=LANG=C.UTF-8
+Environment=XDG_CURRENT_DESKTOP=GNOME
+Environment=XDG_SESSION_DESKTOP=gnome
+Environment=XDG_SESSION_TYPE=wayland
+EnvironmentFile=-/run/s10e-gpu.env
+ExecStart=/usr/bin/gnome-session
+ExecStartPost=+chvt 7
+User=user
+PAMName=login
+WorkingDirectory=~
+TimeoutStartSec=30
+TimeoutStopSec=10s
+# a session that ends by itself comes back, as gnome-phone.service's does (why there)
+Restart=always
+RestartSec=1
+
+TTYPath=/dev/tty7
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+StandardInput=tty-fail
+StandardOutput=journal
+StandardError=journal
+UtmpIdentifier=tty7
+UtmpMode=user

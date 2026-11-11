@@ -1,5 +1,5 @@
 # The GPU's clock floor raised while a finger is on the screen and for a moment after: Android's input boost
-# (boost/input-boost.c). Not part of the session: the lock screen and Phosh want it too.
+# (boost/input-boost.c). Not part of the session: the lock screen wants it too.
 [Unit]
 Description=Input boost: GPU clock floor while touching
 # the GPU's devfreq appears once panfrost is loaded

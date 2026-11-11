@@ -1,0 +1,10 @@
+# neo-dock on a display plugged in or out (71-neo-dock.rules), and once at boot
+[Unit]
+Description=Switch between the phone's session and the GNOME desktop on dock/undock
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/neo-dock
+
+[Install]
+WantedBy=graphical.target
