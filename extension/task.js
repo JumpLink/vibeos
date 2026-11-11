@@ -2,8 +2,8 @@
 // a window flying home (FloatingIconView), DynamicAnimation's spring, Launcher3's curves, and the frame clock the
 // animations run on.
 //
-// Every length here is in the S10e's device pixels (1080 × 2280, 3 px/dp), the spec's own numbers; actors are
-// placed in stage units (÷ the monitor scale).
+// Every length here is in device pixels, the spec's own numbers from the S10e (1080 × 2280, 3 px/dp); the screen's
+// size is the panel's (units.js). Actors are placed in stage units (÷ the monitor scale).
 import Clutter from 'gi://Clutter';
 import Cogl from 'gi://Cogl';
 import GdkPixbuf from 'gi://GdkPixbuf';
@@ -16,12 +16,18 @@ import {capture, capturing} from './capture.js';
 import {CropEffect, PathInterpolator, cubic} from './launch.js';
 import {Animator} from './motion.js';
 import {overWindows} from './scanout.js';
+import {SCREEN_H, SCREEN_W} from './units.js';
 
-export const SCREEN_W = 1080, SCREEN_H = 2280;
+export {SCREEN_H, SCREEN_W};
 export const NAV_GESTURE_H = 96;               // the bottom strip a swipe starts in, 32 dp
-export const TASK = [198, 296, 882, 1740];     // the recents card, 684 × 1444
+// the recents card: 684 × 1444 at [198, 296, 882, 1740] on the 1080 × 2280 reference; on another panel the panel's
+// shape, as wide and as high up for its size
+const TASK_REF_W = 684, TASK_REF_CY = 1018;
+const taskW = TASK_REF_W * SCREEN_W / 1080, taskH = taskW * SCREEN_H / SCREEN_W, taskCY = TASK_REF_CY * SCREEN_H / 2280;
+export const TASK = [(SCREEN_W - taskW) / 2, taskCY - taskH / 2, (SCREEN_W + taskW) / 2, taskCY + taskH / 2];
 export const TASK_W = TASK[2] - TASK[0];
-export const TASK_PIVOT = [540, 807.27];       // where the screen scales about onto the card
+// where the screen scales about onto the card: [540, 807.27] on the reference
+export const TASK_PIVOT = [TASK[0] / (1 - TASK_W / SCREEN_W), TASK[1] / (1 - TASK_W / SCREEN_W)];
 export const TASK_FULL_SCALE = SCREEN_W / TASK_W;
 export const TASK_CORNER_R = 84;               // 28 dp
 export const FRAME_MS = 1000 / 60;
@@ -145,6 +151,13 @@ const black = () => new Cogl.Color({red: 0, green: 0, blue: 0, alpha: 255});
 // A view's offscreen buffer is what it costs: a new crop effect allocates a screen-sized one on its first paint,
 // 15-50 ms of the shell's frame on the S10e, at the start of every back gesture and for every recents card. So
 // the roots, each with its effect and buffer, are kept for the next views.
+//
+// The effect sits on `inner`, which never moves; the view moves and scales `root`, its parent. Clutter redraws an
+// effect's buffer when the actor it is on is redrawn, and moving an actor redraws it, but moving its parent does
+// not: so a card that only slides (a recents scroll, a fling) is drawn from the buffer it already has, and the
+// window is drawn into it again only when the window itself changes. With the effect on the moving actor, every
+// frame drew each card's window into a screen-sized buffer first: three of those a frame took the POCO's 120 Hz
+// recents scroll to 13 % missed frames, against 1 % now (2026-11-10, the same scripted swipes).
 const VIEWS_KEPT = 3;
 const keptViews = [];
 
@@ -153,15 +166,18 @@ function takeView() {
     const kept = keptViews.pop();
     if (kept) {
         kept.root.set({x: m.x, y: m.y, width: m.width, height: m.height, visible: true, scale_x: 1, scale_y: 1,
-            translation_x: 0, translation_y: 0, background_color: black()});
+            translation_x: 0, translation_y: 0});
+        kept.inner.background_color = black();
         return kept;
     }
     const view = {
-        root: new Clutter.Actor({x: m.x, y: m.y, width: m.width, height: m.height, background_color: black()}),
+        root: new Clutter.Actor({x: m.x, y: m.y, width: m.width, height: m.height}),
+        inner: new Clutter.Actor({width: m.width, height: m.height, background_color: black()}),
         effect: new CropEffect(),
         gone: false,
     };
-    view.root.add_effect(view.effect);
+    view.root.add_child(view.inner);
+    view.inner.add_effect(view.effect);
     view.root.connect('destroy', () => (view.gone = true));
     overWindows(view.root);
     return view;
@@ -220,7 +236,7 @@ export class TaskView {
         this._view = takeView();
         this.root = this._view.root;
         this._clone = new Clutter.Clone({source: this.actor, x: this.actor.x - m.x, y: this.actor.y - m.y});
-        this.root.add_child(this._clone);
+        this._view.inner.add_child(this._clone);
         this._effect = this._view.effect;
         this._effect.setAlpha(1);
         this._effect.setHole(0, 0, 0, 0, 0);
@@ -249,7 +265,7 @@ export class TaskView {
         this.root.scale_x = this.root.scale_y = s;
         this.root.translation_x = rect[0] / sc - this.root.x;
         this.root.translation_y = (rect[1] - top * s) / sc - this.root.y;
-        this._effect.setGeometry(this.root, [0, top / sc, SCREEN_W / sc, (top + cropH) / sc],
+        this._effect.setGeometry(this._view.inner, [0, top / sc, SCREEN_W / sc, (top + cropH) / sc],
             r / (s * sc), 1 / (s * sc));
         this._effect.setAlpha(alpha);
     }
@@ -311,7 +327,7 @@ export class FloatingIcon {
         this.root = this._view.root;
         this._size = Math.round(SPLASH_ICON_DP * 3 / scale);
         this._icon = new St.Icon({gicon: appGicon(app, path), icon_size: this._size, style: 'padding: 0;'});
-        this.root.add_child(this._icon);
+        this._view.inner.add_child(this._icon);
         this._effect = this._view.effect;
         this._effect.setHole(0, 0, 0, 0, 0);
         below.get_parent().insert_child_below(this.root, below);
@@ -324,15 +340,24 @@ export class FloatingIcon {
         const w = x1 - x0, h = y1 - y0;
         const plate = 1 - clamp((p - HOME_SHAPE_START) / (1 - HOME_SHAPE_START), 0, 1);
         const [red, green, blue] = this._colour ?? [0, 0, 0];
-        this.root.background_color = new Cogl.Color({red, green, blue,
+        this._view.inner.background_color = new Cogl.Color({red, green, blue,
             alpha: this._colour ? Math.round(255 * plate) : 0});
         // the art grows with the footprint's short side, never below the icon's own size
         const size = Math.max(HOME_ICON_PX / sc, Math.min(w, h));
         this._icon.set_pivot_point(0, 0);
         this._icon.scale_x = this._icon.scale_y = size / this._size;
         this._icon.set_position(x0 + (w - size) / 2, y0 + (h - size) / 2);
-        this._effect.setGeometry(this.root, [x0, y0, x1, y1], r / sc, 1 / sc);
+        this._effect.setGeometry(this._view.inner, [x0, y0, x1, y1], r / sc, 1 / sc);
         this._effect.setAlpha(clamp(p / HOME_ICON_ALPHA_END, 0, 1));
+    }
+
+    // out of the layer it flew in, which goes when the flight ends, into the shell's UI just above the windows,
+    // where it stays put
+    lift() {
+        const [x, y] = this.root.get_transformed_position();
+        this.root.get_parent()?.remove_child(this.root);
+        Main.layoutManager.uiGroup.insert_child_above(this.root, global.window_group);
+        this.root.set_position(x, y);
     }
 
     destroy() {

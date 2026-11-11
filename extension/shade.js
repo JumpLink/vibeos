@@ -17,10 +17,10 @@ import {animate, Animator, clamp, FAST_OUT_SLOW_IN, fling, lerp, MIN_FLING_VELOC
 import {NotificationStack} from './notifications.js';
 import {Color, rgba, SHADE_PANEL} from './palette.js';
 import {QQS_HEIGHT, QSPanel} from './qs.js';
-import {px, SCALE} from './units.js';
+import {wholeFrames} from './redraws.js';
+import {px, SCALE, SCREEN_H} from './units.js';
 
 // --- spec §2, screen px
-const SCREEN_H = 2280;
 const H = 2190;                         // the height the finger tracks over (measured)
 const QS_TRAVEL = 1680;                 // the stack's way from the QQS (644) to below the screen, q 0 -> 1
 const OVERSHOOT = 48;                   // 16 dp, at 4500 px/s and above; 20 % of it at rest
@@ -77,7 +77,8 @@ export const Shade = GObject.registerClass({
         });
         this._statusBar = statusBar;
 
-        // behind: the blurred screen, then the shade panel tint (α 0.723 · f)
+        // behind: the blurred screen, then the shade panel tint (α 0.723 · f); drawn in whole frames while it shows
+        // (redraws.js)
         this._blurLayer = new St.Widget({width: this.width, height: this.height});
         this._blur = new Shell.BlurEffect({mode: Shell.BlurMode.BACKGROUND, radius: 0, brightness: 1});
         this._blur.enabled = false;
@@ -599,6 +600,7 @@ export const Shade = GObject.registerClass({
         const blur = f > 0 ? Math.trunc(radius) : 0;
 
         this._blur.enabled = blur > 0;
+        wholeFrames(this, blur > 0);
         if (blur > 0 && this._blur.radius !== blur)
             this._blur.radius = blur;
 
@@ -607,13 +609,19 @@ export const Shade = GObject.registerClass({
         const group = global.window_group;
         if (zoom === 1) {
             group.set_scale(1, 1);
+            group.set_translation(0, 0, 0);
         } else {
-            group.set_pivot_point(0.5, 0.5);
+            // about the panel's centre: a stock shell's window group has no size of its own, so a relative pivot
+            // would be its top left corner
+            const m = Main.layoutManager.primaryMonitor;
+            group.set_pivot_point(0, 0);
             group.set_scale(zoom, zoom);
+            group.set_translation((m.x + m.width / 2) * (1 - zoom), (m.y + m.height / 2) * (1 - zoom), 0);
         }
     }
 
     _onDestroy() {
+        wholeFrames(this, false);
         this._stopAnimation();
         this._blurAnim?.stop();
         this._mirrorAnim?.stop();
@@ -622,5 +630,6 @@ export const Shade = GObject.registerClass({
         this._ungrab();
         this._statusBar?.remove_action(this._pull);
         global.window_group.set_scale(1, 1);
+        global.window_group.set_translation(0, 0, 0);
     }
 });

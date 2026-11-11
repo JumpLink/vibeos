@@ -21,21 +21,27 @@ import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
+import {TICK, vibrate} from './haptics.js';
 import {ICONS} from './icondata.js';
-import {VectorIcon} from './icons.js';
+import {Canvas, VectorIcon} from './icons.js';
 import {ICONS as L3_ICONS} from './l3icondata.js';
+import {PathInterpolator} from './launch.js';
 import {VelocityTracker} from './motion.js';
-import {Color, cogl} from './palette.js';
+import {Color, cogl, setSource} from './palette.js';
 import {overWindows} from './scanout.js';
+import {openAppInfo, settingsApp} from './settings.js';
 import {
     ACCELERATE_2, ACCELERATE_DECELERATE, DECELERATE, DECELERATE_3, FAST_OUT_SLOW_IN, LINEAR, NAV_GESTURE_H,
     OVERSHOOT_1_2, SCREEN_H, SCREEN_W, SCROLL, Spring, TASK, TASK_CORNER_R, TASK_PIVOT, TASK_W, TOUCH_RESPONSE,
     TaskView, animate, appGicon, clamp, clampToProgress, lerp, scaleRect, springCurve,
 } from './task.js';
 import {AndroidText} from './text.js';
+import {screenPixels} from './units.js';
 
 Object.assign(ICONS, L3_ICONS);
 
+// TEXTURE_TICK at twice its amplitude (see _scrollOver)
+const SCROLL_TICK = TICK.map(([amplitude, ms]) => [amplitude * 2, ms]);
 const PITCH = 732;                      // the card, 684, and the page spacing, 16 dp
 const TOUCH_SLOP = 24;                  // 8 dp
 const CARD_H = TASK[3] - TASK[1];
@@ -56,11 +62,33 @@ const ATTACH_MS = 390;
 const DETACH_MS = 300;
 const CHIP_FADE_MS = 185;
 
-// the app chip (IconAppChipView, collapsed): a pill 36 px into the card
-const CHIP = {inset: 36, w: 464, h: 108, icon: 72, iconX: 18, textX: 114, textW: 254, arrow: 72, arrowX: 368};
-const CHIP_COLOUR = [34, 44, 45];
-// the actions row (OverviewActionsView): the Screenshot pill; Clear all is the same button style
+// the app chip (IconAppChipView, collapsed): a pill over the card's top-left, inset 36 px (4 dp + its background's
+// 8 dp), with the icon, the app's name, then (the owner's) its memory use, and the menu's chevron 8 dp from the end.
+// Launcher3's is 156 dp wide whatever the name; this one is no narrower and grows to fit the name and the memory, up
+// to the card's width less the insets.
+const CHIP = {inset: 36, minW: 464, h: 108, icon: 72, iconX: 18, textX: 114, memGap: 24, arrow: 72, arrowEnd: 24};
+const CHIP_COLOUR = [34, 44, 45];       // materialColorSurfaceBright, measured
+const CHIP_RADIUS = 84;                 // app_chip_round_corner_radius 28 dp: a pill, collapsed or expanded
+// expanded (revealAnim, for the menu): the background 8 dp out at the top and start, 52 dp tall and at least 216 dp
+// wide; the icon 32 dp; the name's start moves by the icon's growth over two, the chevron to the new end, upside down
+const CHIP_OPEN = {out: 24, h: 156, minW: 648, icon: 96};
+// the menu (TaskMenuView, enableOverviewIconMenu): 216 dp wide, 4 dp from the card's start and 2 dp under the
+// expanded chip; it opens from 6 dp higher (menuToCollapsedChipGap) and 8 dp further in, its outline from the
+// collapsed chip's width and 0.8 of its height, the rows inside from 0.8 scale. One row an option, 52 dp: the icon
+// 20 dp at 16 dp, the label 14 sp 18 dp after it (all as measured on the S10e)
+const MENU = {x: 12, y: 174, w: 648, fromX: 36, fromY: 156, fromW: 468, from: 0.8, r: 84, rowH: 156, icon: 60,
+    iconX: 48, textX: 162};
+const MENU_OPEN_MS = 417, MENU_CLOSE_MS = 333;
+const MENU_DIM = 0.4;                   // the card under it: TaskThumbnailView's MAX_SCRIM_ALPHA
+const PRESSED_ALPHA = 0.15;             // app_chip_menu_item_color_fg: onSurface
+const EMPHASIZED = new PathInterpolator('M0,0 C0.05,0 0.133333,0.06 0.166666,0.4 C0.208333,0.82 0.25,1 1,1');
+// the panel's alpha and the rows', on EMPHASIZED's progress
+const MENU_ALPHA = clampToProgress(LINEAR, 0.48, 0.74), ROWS_ALPHA = clampToProgress(LINEAR, 0.75, 1);
+// the actions row (OverviewActionsView): the Screenshot pill; Clear all is the same button style. Launcher3 has it
+// at y 1812, 72 px under the card; here the memory map (RamMap) sits between them, MAP_MARGIN from each, and the row
+// goes down by the map's height (Recents._actions)
 const ACTIONS = [329, 1812, 750, 1956];
+const MAP_MARGIN = 42;                  // 14 dp
 const BUTTON_COLOUR = [31, 41, 42];
 const BUTTON_H = 144, BUTTON_PAD = 48, BUTTON_ICON = 60, BUTTON_ICON_GAP = 24;
 const DISABLED_ALPHA = 0.29;
@@ -159,46 +187,364 @@ function dismissScale(f) {
 // measured on the chip and the Screenshot button
 const BASELINE_BELOW_CENTRE = 0.357;
 
-// The app chip: the icon, the app's name and the menu's chevron on a pill over the card's top-left
+// The app chip over a card's top-left: the icon, the name, the memory and the chevron on a pill (see CHIP). Its
+// origin is the collapsed pill's top-left; expand() opens it out for the menu (IconAppChipView.revealAnim).
 class Chip {
     constructor(app, path, scale, parent) {
         const u = v => v / scale;
         this._scale = scale;
-        this.root = new St.Widget({
-            width: u(CHIP.w), height: u(CHIP.h), opacity: 0,
-            style: `background-color: rgb(${CHIP_COLOUR}); border-radius: ${u(CHIP.h / 2)}px;`,
-            offscreen_redirect: Clutter.OffscreenRedirect.AUTOMATIC_FOR_OPACITY,
+        this._open = 0;
+        this.root = new Clutter.Actor({
+            opacity: 0, offscreen_redirect: Clutter.OffscreenRedirect.AUTOMATIC_FOR_OPACITY,
         });
+        // St keeps the radius to half the height: a pill at either height
+        this._pill = new St.Widget({
+            style: `background-color: rgb(${CHIP_COLOUR}); border-radius: ${u(CHIP_RADIUS)}px;`,
+        });
+        this.root.add_child(this._pill);
+        // app_chip_fg: pressed, onSurface at 0.15 over it
+        this._press = new St.Widget({
+            style: `background-color: rgba(${Color.onSurface}, ${PRESSED_ALPHA}); border-radius: ${u(CHIP_RADIUS)}px;`,
+            opacity: 0,
+        });
+        this.root.add_child(this._press);
         const gicon = appGicon(app, path);
         if (gicon) {
-            const icon = new St.Icon({gicon, icon_size: Math.round(u(CHIP.icon)), style: 'padding: 0;'});
-            icon.set_position(u(CHIP.iconX), u((CHIP.h - CHIP.icon) / 2));
-            this.root.add_child(icon);
+            this._icon = new St.Icon({gicon, icon_size: Math.round(u(CHIP.icon)), style: 'padding: 0;'});
+            this._icon.set_pivot_point(0.5, 0.5);
+            this._icon.set_position(u(CHIP.iconX), u((CHIP.h - CHIP.icon) / 2));
+            this.root.add_child(this._icon);
         }
         // IconAppChipMenuTextStyle: google-sans-text-medium 14 sp, letterSpacing 0.025, made bold by the phone
-        const name = new AndroidText(app?.get_name() ?? '', 14, 500, {colour: Color.onSurface, embolden: true,
+        this._name = new AndroidText(app?.get_name() ?? '', 14, 500, {colour: Color.onSurface, embolden: true,
             letterSpacing: 0.025});
-        const clip = new Clutter.Actor({x: u(CHIP.textX), width: u(CHIP.textW), height: u(CHIP.h),
-            clip_to_allocation: true});
-        name.set_position(u(-name.inset),
-            u(CHIP.h / 2 + BASELINE_BELOW_CENTRE * 42 - name.baseline - name.inset));
-        clip.add_child(name);
-        this.root.add_child(clip);
-        const arrow = new VectorIcon('ic_chevron_down', u(CHIP.arrow), Color.onSurface);
-        arrow.set_position(u(CHIP.arrowX), u((CHIP.h - CHIP.arrow) / 2));
-        this.root.add_child(arrow);
+        this._nameClip = new Clutter.Actor({height: u(CHIP.h), clip_to_allocation: true});
+        this._name.set_position(u(-this._name.inset), u(this._labelTop(this._name)));
+        this._nameClip.add_child(this._name);
+        this.root.add_child(this._nameClip);
+        // the memory: the same 14 sp, not bold, in the secondary text colour; empty until it has been read
+        this._memory = new AndroidText('', 14, 500, {colour: Color.onSurfaceVariant});
+        this.root.add_child(this._memory);
+        this._arrow = new VectorIcon('ic_chevron_down', u(CHIP.arrow), Color.onSurface);
+        this._arrow.set_pivot_point(0.5, 0.5);
+        this.root.add_child(this._arrow);
+        this._maxW = TASK_W - 2 * CHIP.inset;
+        this._fit();
         parent.add_child(this.root);
     }
 
-    // at the card's top-left, scaled with it
+    setMemory(bytes) {
+        this._memory.setText(formatBytes(bytes));
+        this._fit();
+    }
+
+    // a label's top, screen px, for its baseline to sit where the chip's name does
+    _labelTop(text) {
+        return CHIP.h / 2 + BASELINE_BELOW_CENTRE * 42 - text.baseline - text.inset;
+    }
+
+    // the collapsed pill's width for the name and the memory; the name gives way
+    _fit() {
+        const mem = this._memory.textWidth ? CHIP.memGap + this._memory.textWidth : 0;
+        const fixed = CHIP.textX + mem + CHIP.arrow + CHIP.arrowEnd;
+        this._nameW = Math.max(0, Math.min(this._name.textWidth, this._maxW - fixed));
+        this.width = Math.max(CHIP.minW, fixed + this._nameW);
+        this._openW = Math.max(CHIP_OPEN.minW, this.width + 2 * CHIP_OPEN.out);
+        this._layout();
+    }
+
+    _layout() {
+        const u = v => v / this._scale;
+        const e = this._open;
+        const out = CHIP_OPEN.out * e, h = lerp(CHIP.h, CHIP_OPEN.h, e);
+        const w = lerp(this.width, this._openW, e);
+        this._pill.set_position(u(-out), u(-out));
+        this._pill.set_size(u(w), u(h));
+        this._press.set_position(u(-out), u(-out));
+        this._press.set_size(u(w), u(h));
+        if (this._icon)
+            this._icon.scale_x = this._icon.scale_y = lerp(1, CHIP_OPEN.icon / CHIP.icon, e);
+        const dx = (CHIP_OPEN.icon - CHIP.icon) / 2 * e;
+        this._nameClip.set_position(u(CHIP.textX + dx), 0);
+        this._nameClip.width = u(this._nameW);
+        this._memory.set_position(u(CHIP.textX + dx + this._nameW + CHIP.memGap - this._memory.inset),
+            u(this._labelTop(this._memory)));
+        // the chevron keeps its distance from the background's end, and turns over (scaleY 1 -> -1)
+        this._arrow.set_position(u(w - out - CHIP.arrowEnd - CHIP.arrow), u((CHIP.h - CHIP.arrow) / 2));
+        this._arrow.scale_y = 1 - 2 * e;
+    }
+
+    // e: 0 collapsed … 1 open
+    expand(e) {
+        if (e === this._open)
+            return;
+        this._open = e;
+        this._layout();
+    }
+
+    pressed(on) {
+        this._press.opacity = on ? 255 : 0;
+    }
+
+    // at the card's top-left, scaled with it; rect: where it takes a touch (the view's: from the card's corner
+    // 4 dp in, 52 dp tall)
     place(rect, s, alpha) {
+        this.root.visible = alpha > 0;
+        if (!alpha) {
+            this.rect = null;
+            return;
+        }
+        const sc = this._scale;
+        const x = rect[0] + CHIP.inset * s, y = rect[1] + CHIP.inset * s;
+        this.root.set_pivot_point(0, 0);
+        this.root.scale_x = this.root.scale_y = s;
+        this.root.set_position(x / sc, y / sc);
+        this.root.opacity = Math.round(255 * alpha);
+        const out = CHIP_OPEN.out * s;
+        this.rect = [x - out, y - out, x + this.width * s, y + (CHIP_OPEN.h - CHIP_OPEN.out) * s];
+    }
+
+    destroy() {
+        this.root.destroy();
+    }
+}
+
+// The chip's menu (TaskMenuView): a panel of the chip's colour, one row an option (see MENU). items: {icon, label,
+// run}
+class TaskMenu {
+    constructor(items, scale, parent) {
+        const u = v => v / scale;
+        this._scale = scale;
+        this.items = items;
+        this.height = items.length * MENU.rowH;
+        this.root = new St.Widget({
+            style: `background-color: rgb(${CHIP_COLOUR}); border-radius: ${u(MENU.r)}px;`,
+            clip_to_allocation: true, opacity: 0,
+            offscreen_redirect: Clutter.OffscreenRedirect.AUTOMATIC_FOR_OPACITY,
+        });
+        this._rows = new Clutter.Actor({width: u(MENU.w), height: u(this.height)});
+        this._rows.set_pivot_point(0, 0);
+        this.root.add_child(this._rows);
+        this._pressed = items.map((item, i) => {
+            const top = i * MENU.rowH;
+            // app_chip_menu_item_bg pressed: a pill of onSurface at 0.15, .5 dp in at the sides
+            const press = new St.Widget({
+                style: `background-color: rgba(${Color.onSurface}, ${PRESSED_ALPHA}); ` +
+                    `border-radius: ${u(CHIP_RADIUS)}px;`,
+                x: u(1.5), y: u(top), width: u(MENU.w - 3), height: u(MENU.rowH), opacity: 0,
+            });
+            this._rows.add_child(press);
+            const icon = new VectorIcon(item.icon, u(MENU.icon), Color.onSurface);
+            icon.set_position(u(MENU.iconX), u(top + (MENU.rowH - MENU.icon) / 2));
+            this._rows.add_child(icon);
+            // the label: 14 sp in the default sans (BaseIcon), bold on the phone: 600 has its widths, made bold; its
+            // baseline where the chip's would be in a row this tall
+            const text = new AndroidText(item.label, 14, 600, {colour: Color.onSurface, embolden: true});
+            text.set_position(u(MENU.textX - text.inset),
+                u(top + MENU.rowH / 2 + BASELINE_BELOW_CENTRE * 42 - text.baseline - text.inset));
+            this._rows.add_child(text);
+            return press;
+        });
+        parent.add_child(this.root);
+    }
+
+    // card: the card's rect; s its scale; p 0 … 1 the reveal; alpha the panel's, rowsAlpha the rows'
+    place(card, s, p, alpha, rowsAlpha) {
+        const u = v => v / this._scale;
+        const x = card[0] + lerp(MENU.fromX, MENU.x, p) * s, y = card[1] + lerp(MENU.fromY, MENU.y, p) * s;
+        const w = lerp(MENU.fromW, MENU.w, p) * s, h = lerp(MENU.from, 1, p) * this.height * s;
+        this.root.set_position(u(x), u(y));
+        this.root.set_size(u(w), u(h));
+        this.root.opacity = Math.round(255 * alpha);
+        this._rows.scale_x = this._rows.scale_y = lerp(MENU.from, 1, p) * s;
+        this._rows.opacity = Math.round(255 * rowsAlpha);
+        this.rect = [x, y, x + w, y + h];
+    }
+
+    // the option under (x, y), screen px, or -1
+    itemAt(x, y) {
+        const r = this.rect;
+        if (!r || x < r[0] || x >= r[2] || y < r[1] || y >= r[3])
+            return -1;
+        return clamp(Math.floor((y - r[1]) / ((r[3] - r[1]) / this.items.length)), 0, this.items.length - 1);
+    }
+
+    press(i) {
+        this._pressed.forEach((p, k) => (p.opacity = k === i ? 255 : 0));
+    }
+
+    destroy() {
+        this.root.destroy();
+    }
+}
+
+// ---- memory -----------------------------------------------------------------------------------------------------
+//
+// Each app's memory beside its name, and the phone's memory as a coloured map above the Screenshot button: the GJS
+// launcher's recents (its RamBar), same design.
+
+const RAM_COLOURS = {used: [0xef, 0x53, 0x50], cache: [0xff, 0xb7, 0x4d], free: [0x66, 0xbb, 0x6a]};
+const RAM = {barH: 30, gap: 18, legendGap: 42, lineGap: 6, badgePadX: 24, badgePadY: 3, badgeBorder: 3};
+const APPMEM_TIMEOUT_S = 3;
+
+// the GJS launcher's formatBytes: binary units, whole megabytes, gigabytes to one place
+function formatBytes(n) {
+    return n >= 1024 ** 3 ? `${(n / 1024 ** 3).toFixed(1)} GB` : `${Math.round(n / 1024 ** 2)} MB`;
+}
+
+// /proc/meminfo in bytes, by key: the kernel's own file, read in place (it never blocks)
+function meminfo() {
+    const out = {};
+    const [, data] = GLib.file_get_contents('/proc/meminfo');
+    for (const line of new TextDecoder().decode(data).split('\n')) {
+        const m = line.match(/^(\w+):\s+(\d+)/);
+        if (m)
+            out[m[1]] = Number(m[2]) * 1024;
+    }
+    return out;
+}
+
+// what appmem.py measures a window by: its process, or an Android app's package (Waydroid's window belongs to its
+// bridge process, the same for every app)
+function memoryKey(win, app) {
+    const id = app?.get_id() ?? '';
+    return id.startsWith('waydroid.') ? id.replace(/\.desktop$/, '') : `${win.get_pid()}`;
+}
+
+// Runs appmem.py for @keys in a process of its own, under a timeout (see its header); @done gets {key: bytes}
+function measureApps(keys, done) {
+    const helper = GLib.build_filenamev([GLib.path_get_dirname(import.meta.url.replace('file://', '')),
+        'appmem.py']);
+    let proc;
+    try {
+        proc = Gio.Subprocess.new(['timeout', '-s', 'KILL', `${APPMEM_TIMEOUT_S}`, 'python3', helper, ...keys],
+            Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_SILENCE);
+    } catch (e) {
+        logError(e, 'gnome-phone: appmem');
+        return;
+    }
+    proc.communicate_utf8_async(null, null, (pr, res) => {
+        try {
+            done(JSON.parse(pr.communicate_utf8_finish(res)[1] || '{}'));
+        } catch {
+            // killed by the timeout, or nothing printed: no figures this time
+        }
+    });
+}
+
+// The phone's memory: a bar of used (apps, the kernel, GPU buffers: what cannot be dropped), cache (file pages the
+// kernel can drop at once) and free, and under it a legend, centred: the whole memory as a badge on the left (no
+// colour of its own, it is not a part of the bar), the three parts on the right, one per line. Shared memory counts
+// as used, not cache: here that is mostly GPU buffers, which the kernel cannot reclaim.
+class RamMap {
+    constructor(scale, parent) {
+        const u = v => v / scale;
+        this._scale = scale;
+        this.root = new Clutter.Actor({opacity: 0, offscreen_redirect: Clutter.OffscreenRedirect.AUTOMATIC_FOR_OPACITY});
+
+        this._bar = new Canvas({width: u(TASK_W), height: u(RAM.barH)});
+        this._bar.draw = cr => this._paintBar(cr);
+        this.root.add_child(this._bar);
+
+        // the legend's texts: 12 sp, the badge bold and white, the parts at 85 % white with their colour's dot
+        this._badge = new St.Widget({
+            style: `border: ${u(RAM.badgeBorder)}px solid rgba(255, 255, 255, 0.6); border-radius: 999px;`,
+        });
+        this._total = new AndroidText('', 12, 700, {colour: Color.white});
+        this._badge.add_child(this._total);
+        this.root.add_child(this._badge);
+        this._parts = ['used', 'cache', 'free'].map(key => {
+            const dot = new AndroidText('●', 12, 400, {colour: RAM_COLOURS[key]});
+            const label = new AndroidText('', 12, 400, {colour: Color.white, alpha: 0.85});
+            this.root.add_child(dot);
+            this.root.add_child(label);
+            return {key, dot, label};
+        });
+        this._m = null;
+        parent.add_child(this.root);
+        this.refresh();
+    }
+
+    // the map's height, screen px: the bar, the gap, the legend's three lines
+    get height() {
+        const line = this._parts[0].label.textHeight;
+        return RAM.barH + RAM.gap + 3 * line + 2 * RAM.lineGap;
+    }
+
+    refresh() {
+        let mi;
+        try {
+            mi = meminfo();
+        } catch (e) {
+            logError(e, 'gnome-phone: meminfo');
+            return;
+        }
+        const total = mi.MemTotal || 0;
+        if (!total)
+            return;
+        const free = mi.MemFree || 0;
+        const cache = Math.max(0, (mi.Buffers || 0) + (mi.Cached || 0) + (mi.SReclaimable || 0) - (mi.Shmem || 0));
+        const used = Math.max(0, total - free - cache);
+        this._m = {total, used, cache, free};
+        this._total.setText(formatBytes(total));
+        const names = {used: 'Used', cache: 'Cache', free: 'Free'};
+        for (const part of this._parts)
+            part.label.setText(` ${names[part.key]} ${formatBytes(this._m[part.key])}`);
+        this._layout();
+        this._bar.queue_repaint();
+    }
+
+    // the legend centred under the bar: the badge, 14 dp, the parts' column; the badge centred on the column
+    _layout() {
+        const u = v => v / this._scale;
+        const line = this._parts[0].label.textHeight;
+        const top = RAM.barH + RAM.gap;
+        const columnH = 3 * line + 2 * RAM.lineGap;
+        const badgeW = this._total.textWidth + 2 * (RAM.badgePadX + RAM.badgeBorder);
+        const badgeH = this._total.textHeight + 2 * (RAM.badgePadY + RAM.badgeBorder);
+        const dotW = this._parts[0].dot.textWidth;
+        const columnW = dotW + Math.max(...this._parts.map(p => p.label.textWidth));
+        const x0 = (TASK_W - (badgeW + RAM.legendGap + columnW)) / 2;
+
+        this._badge.set_position(u(x0), u(top + (columnH - badgeH) / 2));
+        this._badge.set_size(u(badgeW), u(badgeH));
+        this._total.set_position(u(RAM.badgePadX + RAM.badgeBorder - this._total.inset),
+            u(RAM.badgePadY + RAM.badgeBorder - this._total.inset));
+        const x1 = x0 + badgeW + RAM.legendGap;
+        this._parts.forEach(({dot, label}, i) => {
+            const y = top + i * (line + RAM.lineGap);
+            dot.set_position(u(x1 - dot.inset), u(y - dot.inset));
+            label.set_position(u(x1 + dotW - label.inset), u(y - label.inset));
+        });
+    }
+
+    // the three parts in one rounded track
+    _paintBar(cr) {
+        if (!this._m)
+            return;
+        screenPixels(cr);
+        const {total} = this._m, h = RAM.barH, r = h / 2;
+        cr.newPath();
+        cr.arc(r, r, r, 0.5 * Math.PI, 1.5 * Math.PI);
+        cr.arc(TASK_W - r, r, r, 1.5 * Math.PI, 0.5 * Math.PI);
+        cr.closePath();
+        cr.clip();
+        let x = 0;
+        for (const key of ['used', 'cache', 'free']) {
+            const w = TASK_W * this._m[key] / total;
+            setSource(cr, RAM_COLOURS[key]);
+            cr.rectangle(x, 0, w + 0.5, h);
+            cr.fill();
+            x += w;
+        }
+    }
+
+    // top: the bar's top edge, screen px; the map is a card wide, at the resting card's x
+    place(top, alpha) {
         this.root.visible = alpha > 0;
         if (!alpha)
             return;
-        const sc = this._scale;
-        this.root.set_pivot_point(0, 0);
-        this.root.scale_x = this.root.scale_y = s;
-        this.root.set_position((rect[0] + CHIP.inset * s) / sc, (rect[1] + CHIP.inset * s) / sc);
+        this.root.set_position(TASK[0] / this._scale, top / this._scale);
         this.root.opacity = Math.round(255 * alpha);
     }
 
@@ -267,6 +613,43 @@ export function warmUp() {
 
 // ---- the overview -------------------------------------------------------------------------------------------------
 
+// A swiped-away app gets ActivityManager's treatment: asked to close, and its process killed when it hasn't after
+// KILL_MS (a game ignoring the request, an app stuck). Its window, if it goes, takes the kill with it. A SIGKILL, not
+// mutter's kill: for a Wayland client that is a protocol error, which a stuck client never reads.
+const KILL_MS = 5000;
+const closing = new Map();      // window -> the kill's timeout
+
+function closeApp(win) {
+    if (closing.has(win))
+        return;
+    const id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, KILL_MS, () => {
+        closing.delete(win);
+        win.disconnectObject(closing);
+        const pid = win.get_pid();
+        if (pid > 1 && pid !== new Gio.Credentials().get_unix_pid()) {
+            log(`gnome-phone: ${win.get_wm_class()} (pid ${pid}) did not close, killing it`);
+            Gio.Subprocess.new(['kill', '-KILL', `${pid}`], Gio.SubprocessFlags.NONE);
+        }
+        return GLib.SOURCE_REMOVE;
+    });
+    closing.set(win, id);
+    win.connectObject('unmanaged', () => {
+        GLib.source_remove(closing.get(win));
+        closing.delete(win);
+        win.disconnectObject(closing);
+    }, closing);
+    win.delete(global.get_current_time());
+}
+
+// the extension going away: no app killed after it
+export function forgetClosing() {
+    for (const [win, id] of closing) {
+        GLib.source_remove(id);
+        win.disconnectObject(closing);
+    }
+    closing.clear();
+}
+
 export class Recents {
     // nav: the gesture navigation (the launcher, its icons, the home); running: the app the swipe started over, or
     // null from the home screen
@@ -301,6 +684,25 @@ export class Recents {
         this._clearAll = new Button('Clear all', null, this._scale, this.layer);
         this._screenshot = new Button('Screenshot', 'ic_screenshot', this._scale, this.layer);
 
+        // the phone's memory between the cards and the Screenshot pill, which moves down to make room
+        this._ram = new RamMap(this._scale, this.layer);
+        this._ramTop = TASK[3] + MAP_MARGIN;
+        const down = this._ramTop + this._ram.height + MAP_MARGIN - ACTIONS[1];
+        this._actions = [ACTIONS[0], ACTIONS[1] + down, ACTIONS[2], ACTIONS[3] + down];
+
+        // each app's memory beside its name, measured once per opening
+        const keys = this._tasks.map(task => (task.memoryKey = memoryKey(task.win, task.app)));
+        if (keys.length) {
+            measureApps([...new Set(keys)], memory => {
+                if (this._destroyed)
+                    return;
+                for (const task of this._tasks) {
+                    if (memory[task.memoryKey])
+                        task.chip.setMemory(memory[task.memoryKey]);
+                }
+            });
+        }
+
         this._runningTask = running ? this._tasks[0] : null;
         // where the running card is (TaskViewSimulator); from home, where card 0 rests
         this._frame = running ? [0, 0, SCREEN_W, SCREEN_H] : TASK.slice();
@@ -318,6 +720,8 @@ export class Recents {
         this._chipAlpha = 0;
         this._actionsAlpha = 0;
         this._scrolling = false;
+        this._overPage = 0;                         // the page nearest the middle, for its tick
+        this._overTick = 0;                         // µs, monotonic
         this._pager = null;                         // the swipe's horizontal travel, screen px
         this._restWaiters = [];
         this._runningTaken = false;
@@ -433,6 +837,33 @@ export class Recents {
         return [...this._tasks.map((_t, i) => PITCH * i), this._maxScroll()];
     }
 
+    // the page (a card, or Clear all) nearest the middle of the screen
+    _nearestPage() {
+        const pages = this._pageScrolls();
+        let page = 0;
+        pages.forEach((p, k) => {
+            if (Math.abs(p - this._scroll) < Math.abs(pages[page] - this._scroll))
+                page = k;
+        });
+        return page;
+    }
+
+    // PagedView.onScrollChanged -> RecentsView.onScrollOverPageChanged: as another page comes nearest the middle (a
+    // card crosses halfway) under the finger or a fling, vibrateForScroll: PRIMITIVE_LOW_TICK, or on a vibrator
+    // without primitives (the S10e's) EFFECT_TEXTURE_TICK, no sooner than 20 ms after the last
+    // (recentsScrollHapticMinGapMillis). At twice Android's amplitude: the owner found it too subtle (2026-11-09).
+    _scrollOver() {
+        const page = this._nearestPage();
+        if (page === this._overPage)
+            return;
+        this._overPage = page;
+        const now = GLib.get_monotonic_time();
+        if (now - this._overTick < 20000)
+            return;
+        this._overTick = now;
+        vibrate(SCROLL_TICK);
+    }
+
     layout() {
         if (this._destroyed)
             return;
@@ -473,9 +904,12 @@ export class Recents {
         this._clearAll.place(place([cx + this._exitTx, CARD_CENTER_Y - BUTTON_H / 2, cx + w + this._exitTx,
             CARD_CENTER_Y + BUTTON_H / 2]), ca * this._actionsAlpha * this._content);
         // the actions hide with no tasks
-        this._screenshot.place(ACTIONS, this._tasks.length ? this._actionsAlpha * (1 - ca) : 0, !this._scrolling);
+        this._screenshot.place(this._actions, this._tasks.length ? this._actionsAlpha * (1 - ca) : 0, !this._scrolling);
+        this._ram.place(this._ramTop, this._actionsAlpha);
         if (this._empty)
             this._empty.opacity = Math.round(255 * this._content);
+        if (this._menu)
+            this._placeMenu();
     }
 
     // ---- driven by the swipe up ---------------------------------------------------------------------------------
@@ -591,8 +1025,12 @@ export class Recents {
         const inside = r => r && x >= r[0] && x < r[2] && y >= r[1] && y < r[3];
         if (this._clearAllAlpha() >= 1 && inside(this._clearAll.rect))
             return {kind: 'clear-all'};
-        if (this._screenshot.root.visible && this._clearAllAlpha() < 1 && inside(ACTIONS))
+        if (this._screenshot.root.visible && this._clearAllAlpha() < 1 && inside(this._actions))
             return {kind: 'screenshot'};
+        // the chip opens the menu once the chips are in (a card's own touch otherwise)
+        const chip = this._chipAlpha >= 1 && this._tasks.find(t => !t.dismissed && inside(t.chip.rect));
+        if (chip)
+            return {kind: 'chip', task: chip};
         const task = this._tasks.find(t => t.view.root.visible && inside(t.view.rect));
         return task ? {kind: 'card', task} : {kind: 'empty'};
     }
@@ -607,11 +1045,27 @@ export class Recents {
         if (type === Clutter.EventType.TOUCH_BEGIN) {
             if (this._touch)
                 return Clutter.EVENT_STOP;
+            // the menu open (AbstractFloatingView): a touch on an option is its tap; one anywhere else closes it
+            // and is spent, but for a swipe from the navigation bar
+            if (this._menu) {
+                const item = this._menu.closing ? -1 : this._menu.menu.itemAt(x, y);
+                if (item >= 0 || this._hit(x, y).kind !== 'bar') {
+                    this._touch = {seq, x0: x, y0: y, x, y, mode: 'menu', item, hit: {kind: 'menu'}};
+                    if (item >= 0)
+                        this._menu.menu.press(item);
+                    else
+                        this._closeMenu();
+                    return Clutter.EVENT_STOP;
+                }
+                this._closeMenu();
+            }
             // a touch stops a fling; that touch scrolls, it does not tap
             const caught = this._motions.has('scroll');
             this._stop('scroll');
             this._stop('edge');
             this._touch = {seq, x0: x, y0: y, x, y, mode: caught ? 'scroll' : null, hit: this._hit(x, y)};
+            if (this._touch.hit.kind === 'chip')
+                this._touch.hit.task.chip.pressed(true);
             this._tracker.clear();
             this._tracker.add(time, x, y);
             if (caught) {
@@ -626,6 +1080,13 @@ export class Recents {
         if (!touch || seq !== touch.seq)
             return Clutter.EVENT_STOP;
         if (type === Clutter.EventType.TOUCH_UPDATE) {
+            if (touch.mode === 'menu') {
+                if (touch.item >= 0 && Math.hypot(x - touch.x0, y - touch.y0) >= TOUCH_SLOP) {
+                    touch.item = -1;
+                    this._menu?.menu.press(-1);
+                }
+                return Clutter.EVENT_STOP;
+            }
             this._tracker.add(time, x, y);
             const dx = x - touch.x, dy = y - touch.y;
             touch.x = x;
@@ -634,11 +1095,13 @@ export class Recents {
                 const tx = x - touch.x0, ty = y - touch.y0;
                 if (Math.hypot(tx, ty) < TOUCH_SLOP)
                     return Clutter.EVENT_PROPAGATE;
+                if (touch.hit.kind === 'chip')
+                    touch.hit.task.chip.pressed(false);
                 if (touch.hit.kind === 'bar')
                     touch.mode = ty < 0 ? 'home' : 'none';
                 else if (Math.abs(tx) > Math.abs(ty))
                     touch.mode = 'scroll';
-                else if (touch.hit.kind === 'card')
+                else if (touch.hit.kind === 'card' || touch.hit.kind === 'chip')
                     touch.mode = 'dismiss';
                 else
                     touch.mode = 'none';
@@ -659,6 +1122,15 @@ export class Recents {
         if (type === Clutter.EventType.TOUCH_END || type === Clutter.EventType.TOUCH_CANCEL) {
             this._touch = null;
             const cancelled = type === Clutter.EventType.TOUCH_CANCEL;
+            if (touch.hit.kind === 'chip')
+                touch.hit.task.chip.pressed(false);
+            if (touch.mode === 'menu') {
+                const menu = this._menu;
+                menu?.menu.press(-1);
+                if (menu && !menu.closing && touch.item >= 0 && !cancelled)
+                    menu.menu.items[touch.item].run();
+                return Clutter.EVENT_STOP;
+            }
             const vx = this._tracker.velocityX, vy = this._tracker.velocityY;
             switch (touch.mode) {
             case 'scroll':
@@ -682,7 +1154,10 @@ export class Recents {
     _onKey(event) {
         if (this._busy)
             return Clutter.EVENT_STOP;
-        if (event.get_key_symbol() === Clutter.KEY_Escape)
+        const key = event.get_key_symbol();
+        // Escape, and the Bixby key again (keys.js AppSwitchKey), its repeats while held dropped
+        if (key === Clutter.KEY_Escape ||
+            (key === Clutter.KEY_AppSelect && !(event.get_flags() & Clutter.EventFlags.FLAG_REPEATED)))
             this.back();
         return Clutter.EVENT_STOP;
     }
@@ -692,6 +1167,11 @@ export class Recents {
     back() {
         if (this._busy)
             return;
+        if (this._menu) {
+            if (!this._menu.closing)
+                this._closeMenu();
+            return;
+        }
         const task = this._runningTask;
         if (!this._tasks.includes(task) || task.dismissed)
             this.goHome();
@@ -703,6 +1183,9 @@ export class Recents {
 
     _tap(hit) {
         switch (hit.kind) {
+        case 'chip':
+            this._openMenu(hit.task);
+            break;
         case 'card':
             this._launch(hit.task);
             break;
@@ -741,6 +1224,7 @@ export class Recents {
             s = max;
         }
         this._scroll = s;
+        this._scrollOver();
     }
 
     // the finger left at v px/s: the stretch recedes; the scroll coasts on the spline to the nearest page, in no
@@ -766,7 +1250,10 @@ export class Recents {
             return;
         }
         this._scrolling = true;
-        this._tween('scroll', ms, t => (this._scroll = lerp(start, end, curve(t))), () => {
+        this._tween('scroll', ms, t => {
+            this._scroll = lerp(start, end, curve(t));
+            this._scrollOver();
+        }, () => {
             this._scrolling = false;
             done?.();
         });
@@ -963,9 +1450,24 @@ export class Recents {
                 fly.done = true;
         }, () => {
             task.alpha = 0;
-            task.win.delete(global.get_current_time());
+            this._close(task);
             if (!flowing)
                 this._reflow(task, 0);
+        });
+    }
+
+    // a card swiped or cleared away: its app goes whether or not its fly-off ran to the end (a lone card's reflow
+    // has nothing to move and removes it at once, ending the fly-off before its close)
+    _close(task) {
+        if (task.closed)
+            return;
+        task.closed = true;
+        closeApp(task.win);
+        // the app's memory comes back once it has gone: read the map again a moment later
+        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1500, () => {
+            if (!this._destroyed)
+                this._ram.refresh();
+            return GLib.SOURCE_REMOVE;
         });
     }
 
@@ -1005,6 +1507,8 @@ export class Recents {
             return;
         // the fly-off is done by now; end it if not
         this._stop(`dy${task.id}`);
+        if (task.dismissed && !task.lost)
+            this._close(task);
         this._reflowing = false;
         this._tasks.splice(i, 1);
         task.win.disconnectObject(this);
@@ -1018,6 +1522,8 @@ export class Recents {
         if (newerMoved)
             this._scroll = Math.max(0, this._scroll - PITCH);
         this._scroll = Math.min(this._scroll, this._maxScroll());
+        // the pages moved, not the strip: no tick
+        this._overPage = this._nearestPage();
         if (!this._tasks.length && !this._busy)
             this.goHome();
         else
@@ -1026,6 +1532,9 @@ export class Recents {
 
     // the window closed by itself
     _lost(task) {
+        task.lost = true;
+        if (this._menu?.task === task)
+            this._dropMenu();
         if (task.dismissed)
             return;
         task.dismissed = true;
@@ -1037,7 +1546,7 @@ export class Recents {
         let left = 0;
         this._tasks.forEach(task => {
             if (!task.view.root.visible) {
-                task.win.delete(global.get_current_time());
+                this._close(task);
                 return;
             }
             left++;
@@ -1049,7 +1558,7 @@ export class Recents {
                     fly.done = true;
             }, () => {
                 task.alpha = 0;
-                task.win.delete(global.get_current_time());
+                this._close(task);
                 if (--left === 0)
                     this.goHome('home', true);
             });
@@ -1150,12 +1659,108 @@ export class Recents {
         this.destroy();
     }
 
+    // ---- the chip's menu -------------------------------------------------------------------------------------
+
+    // TaskOverlayFactory.getEnabledShortcuts, as LineageOS 23.2 lists them, less what this shell cannot do: App
+    // info; Split screen (no split screen here); Pin and Freeform (off on Android too until turned on); Screenshot;
+    // Clear (TaskViewShortFactory's remove task)
+    _menuItems(task) {
+        const items = [];
+        const id = task.app && !task.app.is_window_backed() ? task.app.get_id() : null;
+        if (id) {
+            // the app's page in Settings, over the home screen (where back from it leads on Android)
+            // (info_24px: SystemShortcut.AppInfo's with the visual refresh, which the phone has)
+            items.push({icon: 'info_24px', label: 'App info', run: () => {
+                this._closeMenu();
+                this.goHome();
+                const settings = settingsApp();
+                if (settings)
+                    this._nav.expectWindow?.(settings);
+                openAppInfo(id);
+            }});
+        }
+        items.push({icon: 'ic_screenshot', label: 'Screenshot', run: () => {
+            this._closeMenu();
+            this._takeScreenshot(task);
+        }});
+        items.push({icon: 'ic_remove_task_option', label: 'Clear', run: () => {
+            this._closeMenu();
+            this._dismiss(task, -DIS_V_MIN);
+        }});
+        return items;
+    }
+
+    // TaskMenuView.showForTask with the icon menu: the chip opens out, the menu grows from under it and the card
+    // dims, 417 ms on EMPHASIZED (the dim on time). The menu stays where it opened; the chip and the dim go with the
+    // card.
+    _openMenu(task) {
+        if (this._menu || this._busy || task.dismissed || !task.view.rect)
+            return;
+        const menu = new TaskMenu(this._menuItems(task), this._scale, this.layer);
+        const dim = new St.Widget({
+            style: `background-color: black; border-radius: ${TASK_CORNER_R / this._scale}px;`, opacity: 0,
+        });
+        this.layer.insert_child_above(dim, task.view.root);
+        // the chip over the menu (bringToFront)
+        this.layer.set_child_above_sibling(task.chip.root, menu.root);
+        const card = task.view.rect.slice();
+        const m = this._menu = {task, menu, dim, card, s: (card[2] - card[0]) / TASK_W, p: 0, alpha: 0, rowsAlpha: 0,
+            dimP: 0, closing: false};
+        this._tween('menu', MENU_OPEN_MS, t => {
+            const q = EMPHASIZED.get(t);
+            m.p = q;
+            m.alpha = MENU_ALPHA(q);
+            m.rowsAlpha = ROWS_ALPHA(q);
+            m.dimP = t;
+        });
+    }
+
+    // closing: 333 ms on EMPHASIZED from wherever the opening got to
+    _closeMenu() {
+        const m = this._menu;
+        if (!m || m.closing)
+            return;
+        m.closing = true;
+        const {p, alpha, rowsAlpha, dimP} = m;
+        this._tween('menu', MENU_CLOSE_MS, t => {
+            const q = EMPHASIZED.get(t);
+            m.p = p * (1 - q);
+            m.alpha = alpha * (1 - MENU_ALPHA(q));
+            m.rowsAlpha = rowsAlpha * (1 - ROWS_ALPHA(q));
+            m.dimP = dimP * (1 - t);
+        }, () => this._dropMenu());
+    }
+
+    _dropMenu() {
+        const m = this._menu;
+        if (!m)
+            return;
+        this._stop('menu');
+        this._menu = null;
+        m.menu.destroy();
+        m.dim.destroy();
+        m.task.chip.expand(0);
+    }
+
+    _placeMenu() {
+        const m = this._menu, task = m.task;
+        m.menu.place(m.card, m.s, m.p, m.alpha, m.rowsAlpha);
+        task.chip.expand(m.p);
+        const rect = task.view.rect;
+        m.dim.visible = !!rect && task.view.root.visible && m.dimP > 0;
+        if (!m.dim.visible)
+            return;
+        const sc = this._scale;
+        m.dim.set_position(rect[0] / sc, rect[1] / sc);
+        m.dim.set_size((rect[2] - rect[0]) / sc, (rect[3] - rect[1]) / sc);
+        m.dim.opacity = Math.round(255 * MENU_DIM * m.dimP * task.alpha);
+    }
+
     // ---- Screenshot ---------------------------------------------------------------------------------------------
 
     // OverviewActionsView's Screenshot: the current card's app, as it is, into ~/Pictures/Screenshots as
     // Screenshot_<yyyyMMdd-HHmmss>_<app>.png
-    async _takeScreenshot() {
-        const task = this._tasks[this._page()];
+    async _takeScreenshot(task = this._tasks[this._page()]) {
         const actor = task?.win.get_compositor_private();
         if (!actor)
             return;
@@ -1219,6 +1824,7 @@ export class Recents {
         if (this._destroyed)
             return;
         this._destroyed = true;
+        this._menu = null;
         this._ticker?.stop();
         this._ticker = null;
         this._motions.clear();
@@ -1228,6 +1834,8 @@ export class Recents {
         this._grab = null;
         global.display.disconnectObject(this);
         for (const task of this._tasks) {
+            if (task.dismissed && !task.lost)
+                this._close(task);
             task.win.disconnectObject(this);
             task.view.destroy();
             task.chip.destroy();

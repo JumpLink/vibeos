@@ -17,7 +17,7 @@ import {animate, animateSpring, clamp, lerp, Spring} from './motion.js';
 import {Color, cogl, font, mix, rgba, setSource, SurfaceEffect} from './palette.js';
 import {openSettings} from './settings.js';
 import {inkBox, SystemIcons} from './statusbar.js';
-import {px, screenPixels, SCALE} from './units.js';
+import {px, screenPixels, SCALE, SCREEN_H, SCREEN_W} from './units.js';
 
 // --- geometry, screen px (spec §3)
 export const QQS_HEIGHT = 644;          // the stack's top padding: 116 + 2 x 216 + 24 + 72
@@ -34,8 +34,7 @@ const ICON = 96;                        // 32 dp
 const LARGE_ICON = 84;                  // 28 dp, centred in a 56 dp target after 8 dp padding
 const LARGE_ICON_CX = 108;
 const LARGE_TEXT_X = 210;               // 8 + 56 + 6 dp
-const ACTIVE_RADIUS = 72;               // 24 dp
-const INACTIVE_RADIUS = 150;            // 50 dp: a pill
+const TILE_RADIUS = 72;                 // 24 dp, on or off: Android's off tile is a pill, this phone's a squircle too
 const CONTENT_FADE_FROM = 0.43;         // QS content fades in over q 0.43..1, the footer over 0.9..1
 const FOOTER_FADE_FROM = 0.9;
 
@@ -98,7 +97,7 @@ const MOBILE_ICONS = ['ic_signal_cellular_0_4_bar', 'ic_signal_cellular_1_4_bar'
     'ic_signal_cellular_3_4_bar', 'ic_signal_cellular_4_4_bar'];
 
 
-// The tiles of this phone (no torch LED, no power-profiles-daemon: battery saver shows unavailable)
+// The tiles of this phone, in AOSP's default order (no power-profiles-daemon: battery saver shows unavailable)
 // state: 'active' | 'inactive' | 'unavailable'
 const TILES = [
     {
@@ -114,6 +113,12 @@ const TILES = [
             : s.bluetooth.connected ? 'qs_bluetooth_icon_on' : 'qs_bluetooth_icon_disconnected',
         state: s => !s.bluetooth.available ? 'unavailable' : s.bluetooth.powered ? 'active' : 'inactive',
         toggle: s => s.setBluetooth(!s.bluetooth.powered),
+    },
+    {
+        id: 'flashlight', label: 'Flashlight',
+        icon: s => s.torch ? 'qs_flashlight_icon_on' : 'qs_flashlight_icon_off',
+        state: s => s.torch === null ? 'unavailable' : s.torch ? 'active' : 'inactive',
+        toggle: s => s.setTorch(!s.torch),
     },
     {
         id: 'dnd', label: 'Do Not Disturb', panel: 'notifications',
@@ -244,9 +249,8 @@ class Tile extends St.Button {
             this.add_action(longPress);
         }
 
-        // the corner and colours spring between inactive (0) and active (1) (Tile.kt:586-600)
+        // the colours spring between inactive and active (Tile.kt:586-600); the corner stays
         this._mode = spec.state(state);
-        this._shape = this._mode === 'active' ? 1 : 0;
         this._from = TILE_COLORS[this._mode];
         this._to = TILE_COLORS[this._mode];
         this._colorT = 1;
@@ -276,10 +280,8 @@ class Tile extends St.Button {
         this._colorT = 0;
         this._spring?.stop();
         const spring = new Spring({stiffness: 1500, dampingRatio: 1, value: 0, target: 1});
-        const shapeFrom = this._shape, shapeTo = mode === 'active' ? 1 : 0;
         this._spring = animateSpring(this, spring, v => {
             this._colorT = v;
-            this._shape = lerp(shapeFrom, shapeTo, v);
             this._applyStyle();
         }, () => {
             this._spring = null;
@@ -295,10 +297,9 @@ class Tile extends St.Button {
 
     _applyStyle() {
         const {bg, fg} = this._colors();
-        const radius = lerp(INACTIVE_RADIUS, ACTIVE_RADIUS, this._shape);
-        this.style = `background-color: ${colorStyle(bg)}; border-radius: ${px(radius).toFixed(2)}px;`;
+        this.style = `background-color: ${colorStyle(bg)}; border-radius: ${px(TILE_RADIUS).toFixed(2)}px;`;
         this._highlight.style = `background-color: ${rgba(Color.onSurface, 0.15)}; ` +
-            `border-radius: ${px(radius).toFixed(2)}px;`;
+            `border-radius: ${px(TILE_RADIUS).toFixed(2)}px;`;
         this._icon.setColor(fg[0], fg[1]);
         if (this.wide) {
             this._label.color = cogl(fg[0], fg[1]);
@@ -347,7 +348,7 @@ class Tile extends St.Button {
 const BrightnessSlider = GObject.registerClass(
 class BrightnessSlider extends St.Widget {
     constructor(state, shade) {
-        super({width: px(1080), height: px(THUMB_H), reactive: false});
+        super({width: px(SCREEN_W), height: px(THUMB_H), reactive: false});
         this._state = state;
         this._shade = shade;
 
@@ -550,7 +551,7 @@ class FooterButton extends St.Button {
 const ShadeHeader = GObject.registerClass(
 class ShadeHeader extends St.Widget {
     constructor(state) {
-        super({width: px(1080), height: px(260)});
+        super({width: px(SCREEN_W), height: px(260)});
         this._state = state;
 
         this._clock = new Clutter.Text({font_name: CLOCK_FONT, color: cogl(Color.white)});
@@ -606,14 +607,15 @@ class ShadeHeader extends St.Widget {
         }
 
         // date and icons: fade out by 14 %, back in from 58 %, displaced 0.1066 on the way out
+        // the spring overshoots q past 1 (and under 0): alpha is kept to 0..1, or opacity 256 throws mid-layout
         const keyed = ([sx, sy], [ex, ey]) => {
             if (q <= HEADER_FADE_OUT) {
                 const t = q / HEADER_FADE_OUT;
-                return {x: sx, y: sy + t * HEADER_DISPLACEMENT * (ey - sy), alpha: 1 - t};
+                return {x: sx, y: sy + t * HEADER_DISPLACEMENT * (ey - sy), alpha: Math.min(1, 1 - t)};
             }
             if (q < HEADER_FADE_IN)
                 return {x: ex, y: lerp(sy, ey, q), alpha: 0};
-            return {x: ex, y: lerp(sy, ey, q), alpha: (q - HEADER_FADE_IN) / (1 - HEADER_FADE_IN)};
+            return {x: ex, y: lerp(sy, ey, q), alpha: Math.min(1, (q - HEADER_FADE_IN) / (1 - HEADER_FADE_IN))};
         };
         const date = keyed(DATE_QQS, DATE_QS);
         this._date.set_position(px(date.x) - this._dateInk.x, px(date.y) - this._dateInk.y);
@@ -635,7 +637,7 @@ class ShadeHeader extends St.Widget {
 export const QSPanel = GObject.registerClass(
 class QSPanel extends St.Widget {
     constructor(state, shade) {
-        super({width: px(1080), height: px(2280), clip_to_allocation: false});
+        super({width: px(SCREEN_W), height: px(SCREEN_H), clip_to_allocation: false});
         this._state = state;
         this._shade = shade;
 
@@ -666,10 +668,12 @@ class QSPanel extends St.Widget {
             }
         }
 
-        // the build row: the OS's name where Android shows its build number (tap copies it, as Android does)
+        // the build row: the OS's name where Android shows its build number (tap copies it, as Android does). Not
+        // selectable: a Clutter.Text is by default, and a swipe closing the shade from this row painted the selection
+        // over it, a pale box.
         const build = GLib.get_os_info('PRETTY_NAME') ?? 'GNOME';
         this._build = new Clutter.Text({font_name: BUILD_FONT, color: cogl(Color.onSurface), text: build,
-            reactive: true});
+            reactive: true, selectable: false});
         const copy = new Clutter.ClickGesture();
         copy.connect('recognize', () => {
             St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, build);
@@ -677,7 +681,7 @@ class QSPanel extends St.Widget {
         this._build.add_action(copy);
         this.add_child(this._build);
 
-        this._footer = new St.Widget({width: px(1080), height: px(FOOTER_BUTTON)});
+        this._footer = new St.Widget({width: px(SCREEN_W), height: px(FOOTER_BUTTON)});
         const settings = new FooterButton('ic_qs_footer_settings', SurfaceEffect[1], Color.onSurface, SETTINGS_X,
             'Settings');
         settings.connect('clicked', () => {

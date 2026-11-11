@@ -21,11 +21,9 @@ import {RoundRect} from './roundrect.js';
 import {Color, cogl, font, rgba, SurfaceEffect} from './palette.js';
 import {openSettings} from './settings.js';
 import {symbolicIcon} from './statusbar.js';
-import {px, SCALE} from './units.js';
+import {px, SCALE, SCREEN_H, SCREEN_W} from './units.js';
 
 // --- the stack, screen px (spec §4.1)
-const SCREEN_W = 1080;
-const SCREEN_H = 2280;
 export const SIDE = 48;                 // 16 dp each side
 export const ROW_W = 984;
 const GAP = 6;                          // 2 dp between rows: the scrim shows through

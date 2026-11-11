@@ -12,12 +12,13 @@ import Pango from 'gi://Pango';
 import PangoCairo from 'gi://PangoCairo';
 import St from 'gi://St';
 
+import {click, DOT_TICK, vibrateRaw} from './haptics.js';
 import {Canvas, paintIcon} from './icons.js';
 import {Animator, animate, bezier, clamp, FAST_OUT_LINEAR_IN, FAST_OUT_SLOW_IN, lerp, LINEAR,
     LINEAR_OUT_SLOW_IN} from './motion.js';
 import {Color, setSource, SurfaceEffect} from './palette.js';
 import {AndroidText} from './text.js';
-import {px, SCALE, screenPixels} from './units.js';
+import {px, SCALE, SCREEN_H, SCREEN_W, screenPixels} from './units.js';
 
 const STANDARD = bezier(0.2, 0, 0, 1);
 const STANDARD_DECELERATE = bezier(0, 0, 0, 1);
@@ -429,7 +430,7 @@ export const PinView = GObject.registerClass({
     Signals: {'submit': {param_types: [GObject.TYPE_STRING]}},
 }, class PinView extends St.Widget {
     constructor() {
-        super({width: px(1080), height: px(2280)});
+        super({width: px(SCREEN_W), height: px(SCREEN_H)});
         this.kind = 'pin';
         this._digits = [];
         this._dots = [];
@@ -466,11 +467,15 @@ export const PinView = GObject.registerClass({
         pressable(key, () => {
             if (key.hidden)
                 return;
+            // NumPadKey / NumPadButton: doHapticKeyClick (VIRTUAL_KEY) as the finger lands, the digits', delete's and
+            // enter's alike
+            click();
             key.animatePress(true);
             if (key.name === 'delete') {
                 longPress = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
                     longPress = 0;
                     this.reset(true);
+                    click();            // the delete key's long click, as KeyguardPinBasedInputView's
                     return GLib.SOURCE_REMOVE;
                 });
             }
@@ -739,7 +744,7 @@ export const PatternView = GObject.registerClass({
     Signals: {'submit': {param_types: [GObject.TYPE_STRING]}},
 }, class PatternView extends St.Widget {
     constructor() {
-        super({width: px(1080), height: px(2280)});
+        super({width: px(SCREEN_W), height: px(SCREEN_H)});
         this.kind = 'pattern';
         this._messages = new Messages(this);
         this._enabled = true;
@@ -749,9 +754,9 @@ export const PatternView = GObject.registerClass({
         this._clearId = 0;
 
         // the grid, so it can rise as one
-        this._grid = new St.Widget({width: px(1080), height: px(2280)});
+        this._grid = new St.Widget({width: px(SCREEN_W), height: px(SCREEN_H)});
         this.add_child(this._grid);
-        this._lines = new St.Widget({width: px(1080), height: px(2280)});
+        this._lines = new St.Widget({width: px(SCREEN_W), height: px(SCREEN_H)});
         this._grid.add_child(this._lines);
         this._cells = [];
         for (let i = 0; i < 9; i++) {
@@ -888,8 +893,12 @@ export const PatternView = GObject.registerClass({
 
     _move(x, y) {
         const i = this._hit(x, y);
-        if (i >= 0)
+        // LockPatternView.detectAndAddHit: VIRTUAL_KEY once per hit, a dot passed over on the way included; twice the
+        // click's strength (haptics.js)
+        if (i >= 0) {
             this._join(i);
+            vibrateRaw(DOT_TICK);
+        }
         // the line from the last dot to the finger, fading in as it leaves the dot
         const last = this._pattern.at(-1);
         if (last === undefined) {

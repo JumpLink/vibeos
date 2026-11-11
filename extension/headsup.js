@@ -20,11 +20,9 @@ import {Color} from './palette.js';
 import {QQS_HEIGHT} from './qs.js';
 import {contentAlpha} from './shade.js';
 import {BAR_HEIGHT} from './statusbar.js';
-import {px, SCALE, screenPixels} from './units.js';
+import {px, SCALE, SCREEN_H, SCREEN_W, screenPixels} from './units.js';
 
 // --- screen px
-const SCREEN_W = 1080;
-const SCREEN_H = 2280;
 const PINNED_Y = BAR_HEIGHT + 24;       // under the status bar + heads_up_status_bar_padding, 8 dp
 const ABOVE_SCREEN_Y = -96;             // heads_up_appear_y_above_screen: it comes from, and goes back to, 32 dp up
 const CYCLING_PADDING = 24;             // heads_up_cycling_padding, 8 dp

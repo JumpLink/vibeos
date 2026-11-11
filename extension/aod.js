@@ -41,6 +41,7 @@ const DIAL_QUARTER_IN = 204;
 const DIAL_DOT = 9;
 // the frame with the dial reaches the panel before its clock starts over it
 const CLOCK_DELAY_MS = 300;
+const CLOCK_TRIES = 3;                  // failed starts in a row before the time stays for good
 const MAX_ICONS = 6;
 // the battery line's centre: the lock screen's charging line (keyguard.js INDICATION_INK_TOP 2083, half its cap
 // height of 32 below), screen px
@@ -134,6 +135,12 @@ export class Panel {
         return this._write(this._clock, `analog ${x} ${y} ${utcOffset} 24`);
     }
 
+    // the hands' image goes to the panel again at the next start
+    reloadClock() {
+        if (this._clock)
+            this._write(this._clock, 'reload');
+    }
+
     wakeGesture(on) {
         if (on === this._gesture)
             return;
@@ -188,11 +195,13 @@ class Aod extends St.BoxLayout {
         this._panel = panel;
         this._state = state;
         this._useClock = panel.hasClock;
+        this._clockFailures = 0;        // in a row
         this._running = false;          // the panel took its clock
         this._utcOffset = 0;
         this._startId = 0;
         this._step = 0;
-        this._replace = false;          // the dial moved: the hands follow once it is laid out
+        this._replace = false;          // the dial moved: the hands are checked once it is laid out
+        this._placed = null;            // where the panel's hands are centred, in panel pixels
 
         // the clock near the top, under the camera hole, the date and the app icons under it; the battery at the
         // bottom (sizes in screen px: they were set as logical px at scale 2.5)
@@ -254,6 +263,15 @@ class Aod extends St.BoxLayout {
 
     // what it shows, brought up to date as the screen goes off
     prepare() {
+        // a start the panel refused gets another go each time the screen goes off: the first AOD after a boot
+        // timed out on its DSI command after the hands' upload (2026-11-09), and without the clock the AOD stayed
+        // the time, outside the panel's low power mode and so brighter, until the shell restarted. The hands go up
+        // again too: the image from that start came out as noise (the panel driver's upload after a boot, again)
+        if (!this._useClock && this._panel.hasClock && this._clockFailures < CLOCK_TRIES) {
+            this._panel.reloadClock();
+            this._useClock = true;
+            this._showPanelClock(true);
+        }
         this._tick();
         this._syncBattery();
         this._syncIcons();
@@ -280,7 +298,25 @@ class Aod extends St.BoxLayout {
     _drift() {
         const now = Math.floor(GLib.get_real_time() / 1e6);
         const [dx, dy] = RING[Math.floor(now / DRIFT_PERIOD) % RING.length];
-        if (this._shift(dx * DRIFT, dy * DRIFT))
+        this._moveTo(dx * DRIFT, dy * DRIFT);
+    }
+
+    // The content to (dx, dy), with the panel's hands. The hands go first and the dial follows in the next frame: the
+    // other way round, the frame with the moved dial reached the panel long before the hands did, and they sat off
+    // the dial's centre for a moment (2026-11-08)
+    async _moveTo(dx, dy) {
+        const fromX = this._box.margin_left - SHIFT, fromY = this._box.margin_top - SHIFT;
+        if (fromX === dx && fromY === dy)
+            return;
+        const centre = this._running && this._dialCentre();
+        if (centre) {
+            const scale = global.stage.peek_stage_views()[0].get_scale();
+            const placed = await this._placeClock(centre[0] + Math.round((dx - fromX) * scale),
+                centre[1] + Math.round((dy - fromY) * scale));
+            if (!placed && this._running)
+                this._clockFailed();
+        }
+        if (this._shift(dx, dy))
             this._replace = true;
     }
 
@@ -302,7 +338,7 @@ class Aod extends St.BoxLayout {
         this._batteryIcon.icon_name = battery.icon;
         // plugged in, how fast it charges, as the lock screen says it
         this._batteryLabel.text = battery.plugged && battery.level < 100
-            ? `${battery.level}% • ${chargingText(battery.speed)}` : `${battery.level}%`;
+            ? `${battery.level}% • ${chargingText(battery.speed, battery.amps)}` : `${battery.level}%`;
         this._battery.visible = battery.present;
     }
 
@@ -313,7 +349,7 @@ class Aod extends St.BoxLayout {
         this._syncIcons();
     }
 
-    // one icon per app with notifications
+    // one icon per app with notifications, of the apps allowed on the lock screen (as keyguard.js's pill)
     _syncIcons() {
         this._icons.destroy_all_children();
         const seen = new Set();
@@ -321,7 +357,7 @@ class Aod extends St.BoxLayout {
             if (seen.size >= MAX_ICONS)
                 break;
             const key = source.icon?.to_string();
-            if (!source.notifications.length || !key || seen.has(key))
+            if (!source.notifications.length || !source.policy.showInLockScreen || !key || seen.has(key))
                 continue;
             seen.add(key);
             const icon = notificationIcon(source, 24);
@@ -381,18 +417,26 @@ class Aod extends St.BoxLayout {
         }
         this._utcOffset = localUtcOffset();
         this._running = true;
-        if (!await this._panel.startClock(...centre, this._utcOffset))
+        if (await this._placeClock(...centre))
+            this._clockFailures = 0;
+        else
             this._clockFailed();
     }
 
-    // the dial is laid out somewhere new: the panel's hands go there too
+    _placeClock(x, y) {
+        this._placed = [x, y];
+        return this._panel.startClock(x, y, this._utcOffset);
+    }
+
+    // the dial is laid out somewhere new: if it landed a pixel away from where the hands went ahead, they follow
     _onMoved() {
         if (!this._replace || !this._running)
             return;
         this._replace = false;
         // after this layout, when the dial's position is its new one
         GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
-            if (this._running)
+            const centre = this._running && this._dialCentre();
+            if (centre && (centre[0] !== this._placed?.[0] || centre[1] !== this._placed?.[1]))
                 this._startClock();
             return GLib.SOURCE_REMOVE;
         });
@@ -404,10 +448,11 @@ class Aod extends St.BoxLayout {
             return;
         this._clearStart();
         this._useClock = false;
+        this._clockFailures++;
         this._running = false;
         this._showPanelClock(false);
         this._shift(0, 0);
-        log("gnome-phone: the panel's clock is off, showing the time");
+        log(`gnome-phone: the panel's clock is off, showing the time (${this._clockFailures} of ${CLOCK_TRIES})`);
     }
 
     destroy() {

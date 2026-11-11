@@ -11,6 +11,7 @@
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import GnomeBG from 'gi://GnomeBG?version=4.0';
 import GnomeDesktop from 'gi://GnomeDesktop';
 import GObject from 'gi://GObject';
 import Shell from 'gi://Shell';
@@ -27,7 +28,8 @@ import {Color, rgba, SHADE_PANEL} from './palette.js';
 import {chargingText} from './state.js';
 import {notificationIcon, SystemIcons} from './statusbar.js';
 import {AndroidText} from './text.js';
-import {px, screenPixels, SCALE} from './units.js';
+import {wholeFrames} from './redraws.js';
+import {px, screenPixels, SCALE, SCREEN_H, SCREEN_W} from './units.js';
 
 Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
 Gio._promisify(Gio.File.prototype, 'load_contents_async');
@@ -75,7 +77,7 @@ const GONE_MS = 500;
 const SURFACE_DELAY_MS = 67;
 const SURFACE_MS = 300;
 const SURFACE_SCALE = 0.95;
-const SURFACE_SHIFT = 114;              // 5 % of 2280
+const SURFACE_SHIFT = Math.round(SCREEN_H * 0.05);   // 5 % of the screen's height: 114 on 2280
 const SURFACE_PIVOT_Y = 0.66;
 // swipe (no secret): dismissing past 0.3 unlocks; the content fades out by 0.18 and rises up to 180 dp
 const SWIPE_FINISH = 0.3;
@@ -136,6 +138,24 @@ class LockIcon extends Canvas {
     }
 });
 
+
+// GNOME's wallpaper as a picture St can draw. A slideshow (an .xml: Debian's default, desktop-base's
+// desktop-background.xml, is one) is its picture for now at the panel's size, as the shell's own background takes it;
+// St would try to load the XML as an image on every frame.
+function pictureUri(uri) {
+    if (!uri?.toLowerCase().endsWith('.xml'))
+        return uri;
+    try {
+        const show = new GnomeBG.BGSlideShow({file: Gio.File.new_for_uri(uri)});
+        show.load();
+        const [, , , file] = show.get_current_slide(SCREEN_W, SCREEN_H);
+        return file ? Gio.File.new_for_path(file).get_uri() : '';
+    } catch (e) {
+        logError(e, `gnome-phone: the wallpaper slideshow ${uri}`);
+        return '';
+    }
+}
+
 export class Keyguard extends Signals.EventEmitter {
     // @state: the SystemState (carrier, battery, the status icons)
     constructor(state) {
@@ -146,6 +166,8 @@ export class Keyguard extends Signals.EventEmitter {
         // own unlock dialog has it: Settings' Background panel no longer sets the screensaver's picture
         this._background = new Gio.Settings({schema_id: 'org.gnome.desktop.background'});
         this._interface = new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
+        // Settings' "Show on the lock screen" (Notifications), for the pill's icons
+        this._notificationSettings = new Gio.Settings({schema_id: 'org.gnome.desktop.notifications'});
         this.showing = false;
         this.bouncerShowing = false;
         this._bouncerActive = false;
@@ -171,6 +193,7 @@ export class Keyguard extends Signals.EventEmitter {
         this._interface.connectObject('changed::clock-format', () => this._syncClock(),
             'changed::color-scheme', () => this._syncWallpaper(), this);
         this._background.connectObject('changed', () => this._syncWallpaper(), this);
+        this._notificationSettings.connectObject('changed::show-in-lock-screen', () => this._syncPill(), this);
         state.connectObject('changed', () => this._syncState(), this);
         // another lock type: the next lock builds its bouncer
         this._neo?.connectObject('changed::lock-type', () => {
@@ -222,7 +245,8 @@ export class Keyguard extends Signals.EventEmitter {
         this._wallpaper = new St.Widget({width: monitor.width, height: monitor.height});
         this.actor.add_child(this._wallpaper);
 
-        // the bouncer's backdrop: the wallpaper blurred, under the shade panel's tint
+        // the bouncer's backdrop: the wallpaper blurred, under the shade panel's tint; in the unlock, the screen coming
+        // up behind. Drawn in whole frames while it shows (redraws.js).
         this._blurLayer = new St.Widget({width: monitor.width, height: monitor.height});
         this._blur = new Shell.BlurEffect({mode: Shell.BlurMode.BACKGROUND, radius: 0, brightness: 1});
         this._blur.enabled = false;
@@ -268,9 +292,9 @@ export class Keyguard extends Signals.EventEmitter {
 
     _syncWallpaper() {
         const dark = this._interface.get_string('color-scheme') === 'prefer-dark';
-        const uri = (dark && this._background.get_string('picture-uri-dark')) ||
-            this._background.get_string('picture-uri');
-        const style = uri ? `background-image: url("${uri}"); background-size: cover; background-position: center;`
+        const uri = pictureUri((dark && this._background.get_string('picture-uri-dark')) ||
+            this._background.get_string('picture-uri'));
+        const style = uri ? `background-image: url("${uri}"); background-size: cover;`
             : 'background-color: black;';
         this._wallpaper.style = style;
         this._wallpaperStyle = style;
@@ -301,7 +325,8 @@ export class Keyguard extends Signals.EventEmitter {
         // KeyguardIndicationController's power line, with how fast (SystemState's speed; One UI's names)
         let indication = '';
         if (battery.present && battery.plugged)
-            indication = battery.level >= 100 ? 'Charged' : `${battery.level}% • ${chargingText(battery.speed)}`;
+            indication = battery.level >= 100 ? 'Charged'
+                : `${battery.level}% • ${chargingText(battery.speed, battery.amps)}`;
         if (indication !== this._indicationText) {
             this._indicationText = indication;
             this._indication.setText(indication);
@@ -318,10 +343,13 @@ export class Keyguard extends Signals.EventEmitter {
     }
 
     // the notification icons in their pill (keyguard-extras §B): one per app, three and the overflow dot at most;
-    // none after a lockdown
+    // none after a lockdown. Only the apps allowed on the lock screen: a source's policy says it for the setting and
+    // the app's own switch together (show-in-lock-screen, both), as for Shell's own lock screen (unlockDialog.js).
+    // An app's switch is read again at each lock (lock() syncs the pill), the setting at once.
     _syncPill() {
         this._pill.destroy_all_children();
-        const sources = this._lockedDown ? [] : Main.messageTray.getSources().filter(s => s.notifications.length);
+        const sources = this._lockedDown ? []
+            : Main.messageTray.getSources().filter(s => s.notifications.length && s.policy.showInLockScreen);
         const n = Math.min(sources.length, PILL.max + 1);
         this._pill.visible = n > 0;
         if (!n)
@@ -457,7 +485,7 @@ export class Keyguard extends Signals.EventEmitter {
                 return Clutter.EVENT_STOP;
             const [x, y] = this._local(event);
             // a touch stopped here cancels the back gesture before it can recognize
-            if (this.bouncerShowing && isTouch && (x < BACK_EDGE || x > 1080 - BACK_EDGE))
+            if (this.bouncerShowing && isTouch && (x < BACK_EDGE || x > SCREEN_W - BACK_EDGE))
                 return Clutter.EVENT_PROPAGATE;
             this._settle?.stop();
             this._settle = null;
@@ -577,6 +605,7 @@ export class Keyguard extends Signals.EventEmitter {
     _setBackdrop(p) {
         const blur = Math.trunc(lerp(0, BLUR_MAX, p));
         this._blur.enabled = blur > 0;
+        wholeFrames(this, blur > 0);
         if (blur > 0 && this._blur.radius !== blur)
             this._blur.radius = blur;
         this._scrim.opacity = Math.round(255 * p);
@@ -903,6 +932,7 @@ export class Keyguard extends Signals.EventEmitter {
                 this._bouncerBox.opacity = Math.round(255 * box * (1 - short));
                 const radius = Math.trunc(blur * (1 - short));
                 this._blur.enabled = radius > 0;
+                wholeFrames(this, radius > 0);
                 if (radius > 0)
                     this._blur.radius = radius;
                 this._scrim.opacity = Math.round(255 * scrim * (1 - EMPHASIZED_ACCELERATE(clamp(ms / GONE_MS))));
@@ -944,6 +974,7 @@ export class Keyguard extends Signals.EventEmitter {
     destroy() {
         this._settle?.stop();
         this._unlocking?.stop();
+        wholeFrames(this, false);
         if (this._prerenderId)
             global.stage.disconnect(this._prerenderId);
         this._prerenderId = 0;
@@ -953,6 +984,7 @@ export class Keyguard extends Signals.EventEmitter {
         this._wallClock.disconnectObject(this);
         this._interface.disconnectObject(this);
         this._background.disconnectObject(this);
+        this._notificationSettings.disconnectObject(this);
         this._state.disconnectObject(this);
         Main.messageTray.disconnectObject(this);
         for (const source of Main.messageTray.getSources())

@@ -283,10 +283,15 @@ export class Power extends Signals.EventEmitter {
         // the idle watch counts from the last input: a screen woken without one (a call) long after it gets its whole
         // timeout from now
         const idle = this._idleMonitor.get_idletime();
-        this._idleWatch = this._idleMonitor.add_idle_watch(idle > ms - 1000 ? idle + ms : ms, () => {
-            this._idleWatch = 0;
+        // an idle watch stays after it fires (mutter removes only user-active ones): one left behind slept the phone
+        // 10 s into every idle spell, unlocked, ever after the lock screen had once timed out
+        const id = this._idleMonitor.add_idle_watch(idle > ms - 1000 ? idle + ms : ms, () => {
+            this._idleMonitor.remove_watch(id);
+            if (this._idleWatch === id)
+                this._idleWatch = 0;
             this.goToSleep('timeout');
         });
+        this._idleWatch = id;
     }
 
     _watchInhibitors() {

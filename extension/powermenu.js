@@ -9,7 +9,8 @@
 // The items are config_globalActionsList's that this phone can back: Lockdown, shown only with a PIN or a pattern
 // set (the lock screen at once, its notifications kept off it until the next unlock), Power off and Restart
 // (logind's: gnome-session 51 has only its dialog's Shutdown and Reboot, no RequestShutdown/RequestReboot any more).
-// Emergency is left out: nothing here can place an emergency call.
+// Emergency is left out: nothing here can place an emergency call. Between them, this phone's own: Android, a restart
+// into the LineageOS it dual-boots with (the kernel's syscon-reboot-mode "android"; a plain restart comes back here).
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Shell from 'gi://Shell';
@@ -21,13 +22,11 @@ import {VectorIcon} from './icons.js';
 import {animate, bezier, LINEAR} from './motion.js';
 import {Color, cogl, rgba} from './palette.js';
 import {AndroidText} from './text.js';
-import {px} from './units.js';
+import {px, SCREEN_H, SCREEN_W} from './units.js';
 
 Gio._promisify(Gio.DBusConnection.prototype, 'call');
 
 // screen px (1 dp = 3 px)
-const SCREEN_W = 1080;
-const SCREEN_H = 2280;
 const PAD = 72;                 // global_actions_lite_padding: around the grid and between its cells
 const BUTTON = 288;             // global_actions_button_size
 const ICON = 60;                // the button less 2 × global_actions_button_padding (38 dp)
@@ -51,12 +50,18 @@ function shapeStyle(color, radius) {
     return `background-color: ${rgba(color)}; border-radius: ${px(radius).toFixed(2)}px;`;
 }
 
-// PowerOff or Reboot; the shell's session may (polkit says yes without asking)
-async function logind(method) {
+function login1(method, params) {
+    return Gio.DBus.system.call('org.freedesktop.login1', '/org/freedesktop/login1',
+        'org.freedesktop.login1.Manager', method, params, null, Gio.DBusCallFlags.NONE, -1, null);
+}
+
+// PowerOff or Reboot, a reboot with the kernel's reboot mode `mode` ('' for the default: this system again); the
+// shell's session may (polkit says yes without asking)
+async function logind(method, mode = '') {
     try {
-        await Gio.DBus.system.call('org.freedesktop.login1', '/org/freedesktop/login1',
-            'org.freedesktop.login1.Manager', method, new GLib.Variant('(b)', [false]), null,
-            Gio.DBusCallFlags.NONE, -1, null);
+        if (method === 'Reboot')
+            await login1('SetRebootParameter', new GLib.Variant('(s)', [mode]));
+        await login1(method, new GLib.Variant('(b)', [false]));
     } catch (e) {
         log(`gnome-phone: ${method}: ${e.message}`);
     }
@@ -140,6 +145,7 @@ export class PowerMenu {
         if (this._secure())
             items.push(['Lockdown', 'ic_lock_lockdown_round', () => this._lockdown()]);
         items.push(['Power off', 'ic_lock_power_off_round', () => logind('PowerOff')]);
+        items.push(['Android', 'ic_android', () => logind('Reboot', 'android')]);
         items.push(['Restart', 'ic_restart_round', () => logind('Reboot')]);
 
         const labels = items.map(([label]) =>

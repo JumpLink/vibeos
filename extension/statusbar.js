@@ -15,7 +15,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {Canvas, paintIcon} from './icons.js';
 import {Color, cogl, font, setSource, Type} from './palette.js';
-import {px, screenPixels, SCALE} from './units.js';
+import {px, screenPixels, SCALE, SCREEN_W} from './units.js';
 
 // --- geometry, screen px of the 1080x2280 reference (spec §1)
 export const BAR_HEIGHT = 116;
@@ -30,6 +30,17 @@ const NOTIF_ALPHA = 0.9;
 const DOT_RADIUS = 6;                   // 2 sp
 const CENTER_Y = 57.5;
 const SYSTEM_END = 889;                 // the battery's right edge, the cutout begins here
+const CUTOUT_GAP = 931 - SYSTEM_END;    // from there to the hole (cutout.js), on whichever side it is
+// Turned (measured at ROTATION_90, hole at the start): the bar is 28 dp and its content 16 px higher. The clock
+// starts PAD_START past the hole; at an end without one the battery stops OPEN_END short of the edge, in any rotation
+// (StatusBarContentInsetsProvider: the hole's depth, else ongoing_appops_dot_min_padding 20 dp, plus the bar's
+// 25 px padding)
+const LAND_BAR_HEIGHT = 84;
+const LAND_RAISE = 16;
+const PAD_START = 25;
+const OPEN_END = 85;
+const SYSTEM_SPAN = 300;                // signal, Wi-Fi and the widest battery (228) end to end, and room
+const ICONS_TAIL = 2;                   // the battery's antialiased edge past its end
 const ICON_GAP = 19;                    // between signal, Wi-Fi and battery
 const ICON_H = 36;                      // signal and Wi-Fi are 12 sp tall
 const SIGNAL_W = 51;                    // 17 sp: 4 bars, 2 sp apart, 6 sp + 2 sp per level tall
@@ -273,21 +284,44 @@ function systemIconsKey({wifi, mobile, battery, powerSave}) {
 
 export const SystemIcons = GObject.registerClass(
 class SystemIcons extends Canvas {
-    // @end, @centerY in screen px of the area
-    constructor(state, {end = SYSTEM_END, centerY = CENTER_Y, height = BAR_HEIGHT} = {}) {
-        super({x: 0, y: 0, width: px(1080), height: px(height)});
+    // @end, @centerY in screen px of the area. With @span the canvas is only the @span px left of @end, not the whole
+    // area from 0: a landscape bar is 2280 px, and the repaint costs by the width
+    constructor(state, {end = SYSTEM_END, centerY = CENTER_Y, height = BAR_HEIGHT, span = 0} = {}) {
+        super({x: 0, y: 0, width: px(SCREEN_W), height: px(height)});
         this._state = state;
-        this._end = end;
+        this._span = span;
+        this._left = 0;
         this._centerY = centerY;
         this._drawn = null;
+        this.setEnd(end);
         state.connectObject('changed', () => {
             if (systemIconsKey(state) !== this._drawn)
                 this.queue_repaint();
         }, this);
     }
 
+    // the icons' vertical centre, screen px of the area
+    setCenterY(centerY) {
+        if (centerY === this._centerY)
+            return;
+        this._centerY = centerY;
+        this.queue_repaint();
+    }
+
+    // where the icons end, screen px of the area
+    setEnd(end) {
+        this._end = end;
+        if (this._span) {
+            this._left = Math.max(0, end - this._span);
+            this.set_position(px(this._left), 0);
+            this.set_width(px(end + ICONS_TAIL - this._left));
+        }
+        this.queue_repaint();
+    }
+
     draw(cr) {
         screenPixels(cr);
+        cr.translate(-this._left, 0);
         paintSystemIcons(cr, this._state, this._end, this._centerY);
         this._drawn = systemIconsKey(this._state);
     }
@@ -295,7 +329,7 @@ class SystemIcons extends Canvas {
 
 export const StatusBar = GObject.registerClass(
 class StatusBar extends St.Widget {
-    constructor(state, home) {
+    constructor(state, home, cutout) {
         const monitor = Main.layoutManager.primaryMonitor;
         super({
             name: 'gnomePhoneStatusBar',
@@ -309,6 +343,9 @@ class StatusBar extends St.Widget {
         });
         this._state = state;
         this._home = home;
+        this._cutout = cutout;
+        this._clockInkX = CLOCK_INK_X;
+        this._raise = 0;                // how much higher than upright the content sits (turned: LAND_RAISE)
 
         // black over apps, nothing over the launcher
         this._background = new St.Widget({
@@ -326,13 +363,21 @@ class StatusBar extends St.Widget {
         this.add_child(this._clock);
         this._wallClock = new GnomeDesktop.WallClock({time_only: true});
         this._wallClock.connectObject('notify::clock', () => this._syncClock(), this);
+        // Settings' "24-hour time" (Date and time), as the lock screen follows it
+        this._interface = new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
+        this._interface.connectObject('changed::clock-format', () => this._syncClock(), this);
         this._syncClock();
 
         this._notifications = new St.Widget({x: 0, y: 0});
         this.add_child(this._notifications);
 
-        this._system = new SystemIcons(state);
+        this._system = new SystemIcons(state, {span: SYSTEM_SPAN});
         this.add_child(this._system);
+
+        // turned with the panel: across its whole width, the clock after the hole when it is at the bar's start
+        cutout.connectObject('changed', () => this._relayout(), this);
+        Main.layoutManager.connectObject('monitors-changed', () => this._relayout(), this);
+        this._relayout();
 
         this._sources = new Set();
         Main.messageTray.connectObject(
@@ -357,15 +402,46 @@ class StatusBar extends St.Widget {
         this._syncMode();
     }
 
-    // the time in the reference's format, 24 h with a leading zero ("05:09")
+    // the time in the reference's format: 24 h with a leading zero ("05:09"), or 12 h as Android's status bar has
+    // it, without a leading zero or AM/PM ("5:09")
     _syncClock() {
         const now = GLib.DateTime.new_now_local();
-        this._clock.text = now.format('%H:%M');
+        const h24 = this._interface.get_string('clock-format') === '24h';
+        this._clock.text = now.format(h24 ? '%H:%M' : '%-I:%M');
         // place the digits' ink, not the text box: digit tops at y 40, the first glyph at x 26
         const ink = inkBox(this._clock);
-        this._clock.set_position(px(CLOCK_INK_X) - ink.x, px(CLOCK_INK_TOP) - ink.y);
-        this._clockInkRight = CLOCK_INK_X + ink.width * SCALE;
+        this._clock.set_position(px(this._clockInkX) - ink.x, px(CLOCK_INK_TOP - this._raise) - ink.y);
+        this._clockInkRight = this._clockInkX + ink.width * SCALE;
         this._layoutNotifications();
+    }
+
+    // Upright the hole is at the bar's end (the battery ends CUTOUT_GAP before it). Turned the bar is lower and runs
+    // the panel's whole length, the hole at its start (the clock clears it), at its end (as upright) or on an edge
+    // the bar is not on
+    _relayout() {
+        const m = Main.layoutManager.primaryMonitor;
+        if (!m)
+            return;
+        const turned = m.width > m.height;
+        const height = turned ? LAND_BAR_HEIGHT : BAR_HEIGHT;
+        this._raise = turned ? LAND_RAISE : 0;
+        this.set_position(m.x, m.y);
+        this.set_size(m.width, Math.ceil(px(height)));
+        this._background.set_size(m.width, this.height);
+        const [holeX, holeY, holeW, holeH] = this._cutout.rect;
+        const inBar = holeH > 0 && holeY < height;
+        const W = m.width * SCALE;
+        const atStart = inBar && holeX + holeW < W / 2;
+        const atEnd = inBar && !atStart;
+        this._clockInkX = atStart ? holeX + holeW + PAD_START : CLOCK_INK_X;
+        this._system.setEnd(atEnd ? holeX - CUTOUT_GAP : W - OPEN_END);
+        this._system.setCenterY(CENTER_Y - this._raise);
+        this._syncClock();
+    }
+
+    // the bar's height in screen px: 116 upright, 84 turned
+    get barHeight() {
+        return this._raise ? LAND_BAR_HEIGHT : BAR_HEIGHT;
     }
 
     // For gestures that move windows (the home gesture): true or false overrides whether the bar draws as over an
@@ -429,12 +505,13 @@ class StatusBar extends St.Widget {
         if (!this._notifications)
             return;
         let x = this._clockInkRight + NOTIF_GAP;
+        const centerY = CENTER_Y - this._raise;
         for (const child of this._notifications) {
             if (child instanceof St.Icon) {
-                child.set_position(px(x + (NOTIF_ICON - NOTIF_GLYPH) / 2), px(CENTER_Y - NOTIF_GLYPH / 2));
+                child.set_position(px(x + (NOTIF_ICON - NOTIF_GLYPH) / 2), px(centerY - NOTIF_GLYPH / 2));
                 x += NOTIF_PITCH;
             } else {
-                child.set_position(px(x), px(CENTER_Y - DOT_RADIUS));
+                child.set_position(px(x), px(centerY - DOT_RADIUS));
                 x += DOT_RADIUS * 2;
             }
         }
@@ -477,10 +554,13 @@ class StatusBar extends St.Widget {
             source.disconnectObject(this);
         this._sources.clear();
         Main.messageTray.disconnectObject(this);
+        Main.layoutManager.disconnectObject(this);
+        this._cutout.disconnectObject(this);
         global.display.disconnectObject(this);
         global.window_manager.disconnectObject(this);
         this._wallClock.disconnectObject(this);
         this._wallClock = null;
+        this._interface.disconnectObject(this);
         super.destroy();
     }
 });

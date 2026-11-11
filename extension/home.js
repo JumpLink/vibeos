@@ -67,11 +67,10 @@ export class Home {
     }
 
     _spawn() {
+        // the launcher gets the shell's environment: a GPU whose Vulkan driver needs a variable (panvk's
+        // PAN_I_WANT_A_BROKEN_VULKAN_DRIVER on a Mali) has it set for the session, in environment.d, by its device
+        // package; the launcher picks a GPU over a software rasterizer itself
         const launcher = new Gio.SubprocessLauncher({flags: Gio.SubprocessFlags.NONE});
-        // panvk (Mali-G76) is not a conformant Vulkan yet, and the image's environment points at the POCO's
-        // freedreno
-        launcher.setenv('PAN_I_WANT_A_BROKEN_VULKAN_DRIVER', '1', true);
-        launcher.setenv('VK_DRIVER_FILES', '/usr/share/vulkan/icd.d/panfrost_icd.json', true);
         try {
             this._client = Meta.WaylandClient.new_subprocess(global.context, launcher, LAUNCHER);
         } catch (e) {

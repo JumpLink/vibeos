@@ -15,6 +15,9 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {BroadbandModem} from 'resource:///org/gnome/shell/misc/modemManager.js';
 import {getRfkillManager} from 'resource:///org/gnome/shell/ui/status/rfkill.js';
 
+import {Brightness} from './brightness.js';
+import {setUserOrientationLock, userOrientationLock} from './rotation.js';
+
 Gio._promisify(NM.Client, 'new_async');
 
 const UPOWER_BUS = 'org.freedesktop.UPower';
@@ -23,6 +26,28 @@ const DISPLAY_DEVICE = '/org/freedesktop/UPower/devices/DisplayDevice';
 const UPOWER_DEVICE = 'org.freedesktop.UPower.Device';
 const PPD_BUS = 'net.hadess.PowerProfiles';
 const PPD_PATH = '/net/hadess/PowerProfiles';
+// The torch is the LED the kernel names for the job (devicename:colour:function, the function "torch" or "flash"),
+// found as gmobile and Phosh find it, so any phone with a flash LED driver has one. The tile lights it at a quarter
+// of its range: the S10e's stock torch default, 60 mA of its 240 (3 of leds-s2mpb02's 12), and never below what
+// gmobile's hwdb says still shows (GM_TORCH_MIN_BRIGHTNESS).
+const TORCH_FUNCTIONS = ['torch', 'flash'];
+const TORCH_SHARE = 0.25;
+
+// the torch LED as {name, level}, or null for a phone without one
+function findTorch() {
+    const leds = new GUdev.Client({subsystems: ['leds']}).query_by_subsystem('leds');
+    for (const fn of TORCH_FUNCTIONS) {
+        const led = leds.find(d => d.get_name().split(':').at(-1) === fn);
+        if (!led)
+            continue;
+        const max = led.get_sysfs_attr_as_int('max_brightness');
+        if (max <= 0)
+            continue;
+        const min = parseInt(led.get_property('GM_TORCH_MIN_BRIGHTNESS') ?? '1') || 1;
+        return {name: led.get_name(), level: Math.min(max, Math.max(min, Math.round(max * TORCH_SHARE)))};
+    }
+    return null;
+}
 
 // UPower device states that mean "plugged in", until UPower's OnBattery is known: on a charger that gives about what
 // the phone takes (the S10e's 500 mA with the screen on), the battery's state flips between charging and discharging
@@ -52,9 +77,31 @@ function readSysfs(path) {
 }
 
 // what the lock screen and the AOD say after the percentage: AOSP's "Charging slowly" and "Charging", One UI's
-// "Fast charging" and "Super fast charging"
-export function chargingText(speed) {
-    return {slow: 'Charging slowly', fast: 'Fast charging', superfast: 'Super fast charging'}[speed] ?? 'Charging';
+// "Fast charging" and "Super fast charging"; then, while the battery takes some, how much (the owner asked, 11-08)
+export function chargingText(speed, amps = null) {
+    const text = {slow: 'Charging slowly', fast: 'Fast charging', superfast: 'Super fast charging'}[speed] ?? 'Charging';
+    return amps >= 0.05 ? `${text} • ${amps.toFixed(1)} A` : text;
+}
+
+// the current into the battery in A: its fuel gauge's current_now, positive while it charges (the S10e's max170xx),
+// or null. Not the charger's input limit, which is only a cap.
+function readChargeCurrent() {
+    let dir;
+    try {
+        dir = GLib.Dir.open(POWER_SUPPLY, 0);
+    } catch (e) {
+        return null;
+    }
+    let amps = null;
+    for (let name; amps === null && (name = dir.read_name()) !== null;) {
+        if (readSysfs(`${POWER_SUPPLY}/${name}/type`) !== 'Battery')
+            continue;
+        const ua = parseInt(readSysfs(`${POWER_SUPPLY}/${name}/current_now`) ?? '');
+        if (!isNaN(ua))
+            amps = ua / 1e6;
+    }
+    dir.close();
+    return amps;
 }
 
 // 'slow', 'normal', 'fast', 'superfast', or null when nothing is plugged in (or the supply says too little to tell)
@@ -120,10 +167,13 @@ export const SystemState = GObject.registerClass({
         super();
         this.wifi = {available: false, enabled: false, connected: false, level: 0, name: ''};
         this.mobile = {present: false, level: 0, operator: '', tech: '', dataConnected: false, dataEnabled: false};
-        this.battery = {present: false, level: 0, plugged: false, speed: null, icon: 'battery-missing-symbolic'};
+        this.battery = {present: false, level: 0, plugged: false, speed: null, amps: null,
+            icon: 'battery-missing-symbolic'};
         this.powerSave = null;          // null: no power-profiles-daemon
         this.bluetooth = {available: false, powered: false, connected: false, name: ''};
         this.airplane = false;
+        this.torch = null;              // null: no torch LED
+        this._torch = findTorch();
 
         this._cancellable = new Gio.Cancellable();
         this._changedId = 0;
@@ -141,11 +191,14 @@ export const SystemState = GObject.registerClass({
         // no brightness pop-up, as on Android: the shade's slider is the only one. The shell's manager shows its OSD
         // for every change it is asked for, the slider's included (BrightnessManager._sync)
         Main.brightnessManager._showOSD = () => {};
+        // saving that works without an EDID, a slider with room at the dark end, auto from the lux
+        this._brightness = new Brightness();
 
         this._initNetwork();
         this._initBattery();
         this._initBluetooth();
         this._initRfkill();
+        this._syncTorch();
     }
 
     // coalesce bursts of property changes into one 'changed' before the next frame
@@ -327,7 +380,8 @@ export const SystemState = GObject.registerClass({
             this._chargeSpeedId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, CHARGE_SETTLE_MS, () => {
                 this._chargeSpeedId = 0;
                 const speed = readChargeSpeed();
-                if (speed !== this._chargeSpeed) {
+                // a new contract or limit: the speed, and while plugged in the battery's current, read again
+                if (speed !== this._chargeSpeed || this.battery.plugged) {
                     this._chargeSpeed = speed;
                     this._syncBattery();
                 }
@@ -378,6 +432,8 @@ export const SystemState = GObject.registerClass({
             level: Math.round(prop('Percentage') ?? 0),
             plugged,
             speed: plugged ? this._chargeSpeed : null,
+            // read at UPower's every refresh of the battery
+            amps: plugged ? readChargeCurrent() : null,
             icon: prop('IconName') || 'battery-missing-symbolic',
         };
         this._changed();
@@ -396,6 +452,47 @@ export const SystemState = GObject.registerClass({
             new GLib.Variant('(ssv)', [PPD_BUS, 'ActiveProfile',
                 new GLib.Variant('s', enabled ? 'power-saver' : 'balanced')]),
             Gio.DBusCallFlags.NONE, -1, null, null);
+    }
+
+    // --- the torch
+
+    // what the LED is at, read back from sysfs: the tile shows that, not what was asked for
+    _syncTorch() {
+        if (!this._torch)
+            return;
+        Gio.File.new_for_path(`/sys/class/leds/${this._torch.name}/brightness`).load_contents_async(this._cancellable,
+            (file, res) => {
+                try {
+                    const [, bytes] = file.load_contents_finish(res);
+                    this.torch = parseInt(new TextDecoder().decode(bytes)) > 0;
+                } catch (e) {
+                    if (e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
+                        return;
+                    this.torch = null;
+                }
+                this._changed();
+            });
+    }
+
+    // logind lets the active session set its seat's LEDs, so no udev rule is needed
+    setTorch(on) {
+        if (this.torch === null)
+            return;
+        this.torch = on;
+        this._changed();
+        Gio.DBus.system.call('org.freedesktop.login1', '/org/freedesktop/login1/session/auto',
+            'org.freedesktop.login1.Session', 'SetBrightness',
+            new GLib.Variant('(ssu)', ['leds', this._torch.name, on ? this._torch.level : 0]),
+            null, Gio.DBusCallFlags.NONE, -1, this._cancellable, (bus, res) => {
+                try {
+                    bus.call_finish(res);
+                } catch (e) {
+                    if (e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
+                        return;
+                    console.warn(`gnome-phone: torch: ${e.message}`);
+                }
+                this._syncTorch();
+            });
     }
 
     // --- Bluetooth, rfkill
@@ -488,13 +585,15 @@ export const SystemState = GObject.registerClass({
         this._location.set_boolean('enabled', v);
     }
 
-    // Android's auto-rotate is the inverse of GNOME's orientation lock
+    // Android's auto-rotate is the inverse of GNOME's orientation lock, as the user set it (rotation.js may hold the
+    // lock for the lock screen and home)
     get autoRotate() {
-        return !this._touchscreen.get_boolean('orientation-lock');
+        return !userOrientationLock(this._touchscreen);
     }
 
     set autoRotate(v) {
-        this._touchscreen.set_boolean('orientation-lock', !v);
+        setUserOrientationLock(this._touchscreen, !v);
+        this._changed();
     }
 
     get nightLight() {
@@ -534,6 +633,7 @@ export const SystemState = GObject.registerClass({
         this._udev = null;
         Main.brightnessManager.globalScale?.disconnectObject(this);
         delete Main.brightnessManager._showOSD;
+        this._brightness.destroy();
         for (const obj of [this._notifications, this._interface, this._location, this._touchscreen, this._power,
             this._color, this._client, this._wifiDevice, this._accessPoint, this._modemDevice, this._modem, this._upower,
             this._upowerDaemon, this._ppd, this._bt, this._rfkill])

@@ -14,16 +14,16 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as Volume from 'resource:///org/gnome/shell/ui/status/volume.js';
 
 import {raiseToTop} from './endmark.js';
+import {vibrate} from './haptics.js';
 import {Canvas, paintIcon, VectorIcon} from './icons.js';
 import {animate, animateSpring, bezier, clamp, EMPHASIZED_DECELERATE, lerp, Spring} from './motion.js';
 import {Color, rgba, setSource} from './palette.js';
 import {openSettings} from './settings.js';
-import {px, SCALE, screenPixels} from './units.js';
+import {px, SCALE, SCREEN_H, screenPixels} from './units.js';
 
 // --- geometry, screen px (spec §5.3); the window runs from the status bar's bottom to the screen's
 const ROOT_W = 528;                     // 176 dp: how far the panel slides
 const WINDOW_TOP = 116;
-const SCREEN_H = 2280;
 const SLIDER_H = 762;                   // 254 dp, centred in the window
 const S = (WINDOW_TOP + SCREEN_H) / 2 - SLIDER_H / 2;      // the slider's top: 817
 const PILL_X = 24;                      // 8 dp from the edge, 60 dp wide
@@ -96,18 +96,10 @@ const FEEDBACKD_SCHEMA = 'org.sigxcpu.feedbackd';
 const DRAG_THRESHOLD = 0.02;            // deltaProgressForDragThreshold
 const LOWER_BOOKEND = 0.01;             // SeekableSliderTrackerConfig
 const UPPER_BOOKEND = 0.99;
-// the HAL writes amplitude a as intensity a x 10000, which Samsung's driver puts on a PWM duty between 50 % (still)
-// and max_duty 27551 of 37741 ns (sec_haptic.c:63); max77693-haptic spans 50..100 % for feedbackd's magnitude
-const DUTY_MATCH = (27551 - 37741 / 2) / (37741 / 2);
 const DRAG_TEXTURE = [[0.04, 10], [0.12, 20], [0.2, 20], [0.04, 10]];      // DRAG_INDICATOR_CONTINUOUS
 const LIMIT_TICK = [[0.5, 5]];          // DRAG_THRESHOLD_INDICATOR_LIMIT: Prebaked TICK, MEDIUM = 0.5 for 5 ms
-
-function vibrate(pattern) {
-    const steps = pattern.map(([amplitude, ms]) => [amplitude * DUTY_MATCH, ms]);
-    Gio.DBus.session.call('org.sigxcpu.Feedback', '/org/sigxcpu/Feedback', 'org.sigxcpu.Feedback.Haptic',
-        'Vibrate', new GLib.Variant('(sa(du))', ['de.yesman.GnomePhone', steps]),
-        null, Gio.DBusCallFlags.NO_AUTO_START, -1, null, null);
-}
+// both at twice Android's amplitude: the owner found them too subtle, as the pattern's dots (2026-11-09)
+const twice = pattern => pattern.map(([amplitude, ms]) => [Math.min(1, amplitude * 2), ms]);
 
 // a texture each time the progress has moved 2 % since the last one, a tick once on reaching either end
 export class SliderHaptics {
@@ -121,13 +113,13 @@ export class SliderHaptics {
         if (p <= LOWER_BOOKEND || p >= UPPER_BOOKEND) {
             const upper = p >= UPPER_BOOKEND;
             if (!(upper ? this._atUpper : this._atLower))
-                vibrate(LIMIT_TICK);
+                vibrate(twice(LIMIT_TICK));
             this._atUpper = upper;
             this._atLower = !upper;
             return;
         }
         if (Math.abs(p - this._last) >= DRAG_THRESHOLD) {
-            vibrate(DRAG_TEXTURE);
+            vibrate(twice(DRAG_TEXTURE));
             this._last = p;
         }
         this._atUpper = this._atLower = false;
@@ -347,7 +339,7 @@ class VolumeDialog extends St.Widget {
             return;
         this._dbus = dbus;
         this._volumeActions = new Map();       // accelerator action -> +1 / -1
-        this._takenKeys = new Set();           // ... handed to the app that took the keys, until let go
+        this._takenKeys = new Set();           // ... handed to the app that took the keys, or dropped, until let go
         const activated = dbus._emitAcceleratorActivated;
         const deactivated = dbus._emitAcceleratorDeactivated;
         this._restoreKeys = () => {
@@ -371,6 +363,11 @@ class VolumeDialog extends St.Widget {
                 this._takenKeys.add(action);
                 if (!repeat)
                     taker(direction);
+                return;
+            }
+            // the screen off, the AOD or black: the keys do nothing, neither the volume nor the screen changes
+            if (this.screenOff?.()) {
+                this._takenKeys.add(action);
                 return;
             }
             // volume down waits for the power key: the two are a screenshot (chord.js)

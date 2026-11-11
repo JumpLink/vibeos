@@ -57,9 +57,42 @@ export class SingleStack {
         if (this._home.isHome(win) || win.is_override_redirect())
             return;
         const tracker = Main.wm.workspaceTracker;
-        tracker?._maximizeInSingleWindowWorkspace?.(win);
+        if (tracker?._maximizeInSingleWindowWorkspace)
+            tracker._maximizeInSingleWindowWorkspace(win);
+        else
+            this._maximize(win);
         if (win.get_window_type() === Meta.WindowType.NORMAL && !win.get_transient_for())
             win.set_can_grab?.(false);
+    }
+
+    // A stock shell maximizes nothing by itself (the mobile shell's tracker above does): an app's window is maximized
+    // as it comes, and again whenever it lets go (a double click on its header bar)
+    _maximize(win) {
+        if (win.get_window_type() !== Meta.WindowType.NORMAL || win.get_transient_for())
+            return;
+        const maximize = () => {
+            if (!win.is_maximized() && !win.fullscreen && win.can_maximize())
+                win.maximize();
+        };
+        maximize();
+        // not from inside mutter's own change of the state: once it is done
+        let laterId = 0;
+        const again = () => {
+            if (!laterId) {
+                laterId = global.compositor.get_laters().add(Meta.LaterType.BEFORE_REDRAW, () => {
+                    laterId = 0;
+                    maximize();
+                    return GLib.SOURCE_REMOVE;
+                });
+            }
+        };
+        win.connectObject('notify::maximized-horizontally', again, 'notify::maximized-vertically', again,
+            'unmanaged', () => {
+                if (laterId)
+                    global.compositor.get_laters().remove(laterId);
+                laterId = 0;
+                win.disconnectObject(this);
+            }, this);
     }
 
     destroy() {
@@ -72,7 +105,9 @@ export class SingleStack {
             else
                 settings.reset(key);
         }
-        for (const actor of global.get_window_actors())
+        for (const actor of global.get_window_actors()) {
+            actor.meta_window.disconnectObject(this);
             actor.meta_window.set_can_grab?.(true);
+        }
     }
 }

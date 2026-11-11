@@ -50,6 +50,7 @@ export class Service {
         this._launch = new LaunchTransition();
         this._nav = new Navigation(home);
         this._nav.onGestureBegin = () => this._launch.cancelSplash();
+        this._nav.expectWindow = app => this._launch.expect(app);
         this._volumeKeys = new Map();   // app id -> {sender, watch}: who took the volume keys
         this._impl = Gio.DBusExportedObject.wrapJSObject(IFACE, this);
         this._impl.export(Gio.DBus.session, '/de/yesman/GnomePhone');
@@ -130,6 +131,11 @@ export class Service {
         return direction => Gio.DBus.session.call(taker.sender, path, 'org.freedesktop.Application',
             'ActivateAction', new GLib.Variant('(sava{sv})', ['volume-key', [new GLib.Variant('i', direction)], {}]),
             null, Gio.DBusCallFlags.NONE, -1, null, null);
+    }
+
+    // the Bixby key (keys.js AppSwitchKey)
+    toggleRecents() {
+        this._nav.toggleRecents();
     }
 
     destroy() {

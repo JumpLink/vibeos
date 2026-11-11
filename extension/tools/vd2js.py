@@ -3,7 +3,7 @@
 #
 #   python3 tools/vd2js.py [-o icondata.js] [--fwb DIR]
 #
-# Reads frameworks/base (default $FWB, else /media/pulp/VP5/S10e/gnome-phone/ref/fwb). Files missing from
+# Reads frameworks/base (default $FWB, else ref/fwb under the current directory). Files missing from
 # that sparse checkout are read with `git show HEAD:<path>`. The module goes to stdout or -o FILE; notes
 # (wrappers followed, approximations, icons not found) go to stderr. Python 3 stdlib only.
 #
@@ -30,7 +30,7 @@ import xml.etree.ElementTree as ET
 A = '{http://schemas.android.com/apk/res/android}'
 AAPT = '{http://schemas.android.com/aapt}'
 
-FWB = os.environ.get('FWB', '/media/pulp/VP5/S10e/gnome-phone/ref/fwb')
+FWB = os.environ.get('FWB', 'ref/fwb')
 FLAG = 'flag(com.android.systemui.icon_refresh_2025)'
 SYSUI, SLIB, CORE = 'packages/SystemUI/res', 'packages/SettingsLib/res', 'core/res/res'
 FLAG_DRAWABLES = f'{SYSUI}/{FLAG}/drawable'
@@ -774,6 +774,7 @@ CORE_ICONS = [
     'stat_notify_call_mute', 'stat_notify_disabled_data', 'stat_notify_wifi_in_range',
     'ic_lock_power_off', 'ic_restart',
     'ic_lock_power_off_round', 'ic_restart_round', 'ic_lock_lockdown_round',   # the power menu's buttons
+    'ic_android',                                       # ... and this phone's own: restart into Android
 ] + [f'ic_signal_cellular_{i}_4_bar' for i in range(5)]
 KEYGUARD = 'packages/SystemUI/res-keyguard'
 # the lock screen's, named keyguard_*: SystemUI has another ic_lock

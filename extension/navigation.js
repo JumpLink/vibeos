@@ -20,9 +20,10 @@ import Shell from 'gi://Shell';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {EdgeBack} from './back.js';
+import {SidewaysGestures, sideways} from './sideways.js';
 import {capturing} from './capture.js';
 import {VelocityTracker} from './motion.js';
-import {HINT_SCRIM, PAGER_SNAP_MS, Recents, SETTLE_MS, warmUp} from './recents.js';
+import {forgetClosing, HINT_SCRIM, PAGER_SNAP_MS, Recents, SETTLE_MS, warmUp} from './recents.js';
 import {
     ACCELERATE, DECELERATE, DECELERATE_3, FRAME_MS, FloatingIcon, HOME_ICON_PX, LINEAR, NAV_GESTURE_H,
     OVERSHOOT_1_2, SCALE_REVEAL, SCREEN_H, SCREEN_W, SCROLL, SCROLL_CUBIC, Spring, TASK, TASK_CORNER_R, TASK_PIVOT,
@@ -54,7 +55,8 @@ const HOME_VX = [300, 500];             // px/s: the least start velocity, and w
 const HOME_VY = [2000, 5000];
 const HOME_V_FALLOFF = 1.4;
 const HOME_WIN_ALPHA_END = 0.85;        // window alpha 1 − (p/0.85)³
-const HOME_DEFAULT_CENTER = [540, 1780];    // no icon: availH 2092 − the hotseat's 312
+const HOME_DEFAULT_CENTER = [SCREEN_W / 2, SCREEN_H - 500];    // no icon: availH 2092 − the hotseat's 312
+const SHOW_ICON_WAIT_MS = 250;              // a launcher that never draws its icon again: the flying one goes anyway
 const DOCK_TOP = SCREEN_H - 312;
 const REVEAL_SCALE_FROM = 0.85;
 const REVEAL_MS = 1000;
@@ -182,15 +184,19 @@ export class Navigation {
             this);
         global.stage.add_action_full('gnome-phone-swipe-up', Clutter.EventPhase.CAPTURE, this._gesture);
 
-        // the mobile shell's own swipe up (to its overview), and its home bar
+        // the mobile shell's own swipe up (to its overview), and its home bar; stock GNOME Shell has neither
         this._edgeDrag = Main.overview._singleFingerOverviewEdgeDrag;
         if (this._edgeDrag)
             this._edgeDrag.enabled = false;
-        const bar = Main.layoutManager.bottomPanelBox;
-        Main.layoutManager.untrackChrome(bar);
-        bar.hide();
+        this._homeBar = Main.layoutManager.bottomPanelBox ?? null;
+        if (this._homeBar) {
+            Main.layoutManager.untrackChrome(this._homeBar);
+            this._homeBar.hide();
+        }
 
         this._back = new EdgeBack(this);
+        // the panel sideways (an app in landscape): sideways.js's swipes, not these
+        this._sideways = new SidewaysGestures(this);
 
         this._warmId = GLib.idle_add(GLib.PRIORITY_LOW, () => {
             this._warmId = 0;
@@ -266,6 +272,38 @@ export class Navigation {
         this._recents?.back();
     }
 
+    // KEYCODE_APP_SWITCH (OverviewCommandHelper's TYPE_TOGGLE), from the Bixby key: an app settles into its card as
+    // a paused swipe lets it, the home screen goes HINT → OVERVIEW as after a pause, and in recents it's back again
+    toggleRecents() {
+        if (this._recents?.shown) {
+            this._recents.back();
+            return;
+        }
+        if (this._g || this._anim || this._recents || this._back.busy || Main.actionMode !== Shell.ActionMode.NORMAL ||
+            this.shadeOpen() || this._keyguard?.showing)
+            return;
+        const win = this._appWindow();
+        if (win) {
+            this.onGestureBegin?.();
+            this.launcherState('background');
+            this.statusBarOverApp(false);
+            const recents = this._recents = new Recents(this, win);
+            this._g = {win, recents, shift: 0, rect: [0, 0, SCREEN_W, SCREEN_H], r: 0, x: 0};
+            recents.attach();
+            this._settle(1, null, OVERSHOOT_1_2, () => {
+                this._g = null;
+                recents.show();
+            }, SETTLE_MS, t => recents.setScrim(LINEAR(t)));
+        } else if (this._atHome()) {
+            this.onGestureBegin?.();
+            const recents = this._recents = new Recents(this, null);
+            // let go already: the overview is up as soon as the cards are in
+            this._g = {home: true, recents, p: 0, x: SCREEN_W / 2, y: SCREEN_H, entering: false, reached: false,
+                released: true, anim: null};
+            this._homeToOverview();
+        }
+    }
+
     // the actor whose grab keeps touches from the stage (recents), or null: back watches its touches
     watchBack(actor) {
         this._back.watch(actor);
@@ -297,11 +335,26 @@ export class Navigation {
             !win.get_transient_for();
     }
 
+    // The app on screen: the focused task; with the launcher focused (or nothing), the topmost task stacked over it.
+    // A window shorter than the app area leaves a strip of the launcher bare at the bottom (Waydroid's display was
+    // 753 px under a 761 px app area on the POCO), and a touch there focuses the launcher before the swipe up sees
+    // it: the swipe then took the at-home path and the app sprang back.
     _appWindow() {
-        const win = global.display.focus_window;
-        if (!win || win.minimized || !this.isTask(win))
-            return null;
-        return win;
+        const focus = global.display.focus_window;
+        if (focus && !this.home.isHome(focus))
+            return !focus.minimized && this.isTask(focus) ? focus : null;
+        const ws = global.workspace_manager.get_active_workspace();
+        const stack = global.display.sort_windows_by_stacking(ws.list_windows());
+        for (let i = stack.length - 1; i >= 0; i--) {
+            const w = stack[i];
+            if (w.minimized || w.is_hidden())
+                continue;
+            if (this.home.isHome(w))
+                return null;
+            if (this.isTask(w))
+                return w;
+        }
+        return null;
     }
 
     recentsClosed(recents) {
@@ -311,6 +364,8 @@ export class Navigation {
 
     _shouldHandle(event) {
         if (event.type() !== Clutter.EventType.TOUCH_BEGIN || this._g || this._anim || this._recents)
+            return false;
+        if (sideways() || this._sideways?.busy)
             return false;
         if (this._back.busy)
             return false;
@@ -604,10 +659,22 @@ export class Navigation {
             return !(X.done && Y.done && P.done);
         }, () => {
             this._anim = null;
-            floating?.destroy();
+            floating?.lift();
             done();
-            this.launcher('ShowIcon', null);
+            this._showIcon(floating);
         });
+    }
+
+    // The launcher's icon back. The flying one stays over it until the launcher's first frame with it is on screen
+    // (it answers then): dropped at once, a frame or two had neither, and the icon blinked.
+    _showIcon(floating) {
+        Gio.DBus.session.call('de.yesman.NeoLauncher', '/de/yesman/NeoLauncher', 'de.yesman.NeoLauncher', 'ShowIcon',
+            null, null, Gio.DBusCallFlags.NO_AUTO_START, SHOW_ICON_WAIT_MS, null, (bus, res) => {
+                try {
+                    bus.call_finish(res);
+                } catch {}
+                floating?.destroy();
+            });
     }
 
     // ---- from the home screen --------------------------------------------------------------------------------------
@@ -754,19 +821,23 @@ export class Navigation {
         this._g = null;
         this._recents?.destroy();
         this._recents = null;
+        forgetClosing();
         if (this._keyguardId)
             this._keyguard.disconnect(this._keyguardId);
         this._keyguard = null;
         this._pause.destroy();
         this._back.destroy();
+        this._sideways.destroy();
         dropKeptViews();
         this._keyboard?.run_dispose();
         global.stage.remove_action(this._gesture);
         this._gesture.disconnectObject(this);
         if (this._edgeDrag)
             this._edgeDrag.enabled = true;
-        const bar = Main.layoutManager.bottomPanelBox;
-        bar.show();
-        Main.layoutManager.trackChrome(bar, {affectsStruts: true, trackFullscreen: true});
+        if (this._homeBar) {
+            this._homeBar.show();
+            Main.layoutManager.trackChrome(this._homeBar, {affectsStruts: true, trackFullscreen: true});
+        }
+        this._homeBar = null;
     }
 }

@@ -24,6 +24,7 @@ import {cubic} from './launch.js';
 import {Animator} from './motion.js';
 import {overWindows} from './scanout.js';
 import {NAV_GESTURE_H, SCREEN_H, SCREEN_W, Spring, TaskView, clamp, lerp} from './task.js';
+import {sideways} from './sideways.js';
 
 const EDGE_W = 30 * 3;                  // config_backGestureInset
 const SLOP = 8 * 3 * 0.75;              // touch slop × 0.75
@@ -233,12 +234,12 @@ export class EdgeBack {
         return {kind: 'probe', win: focus};
     }
 
-    _shouldHandle(event) {
-        if (event.type() !== Clutter.EventType.TOUCH_BEGIN)
-            return false;
-        // any touch may change what back means in the app: ask again once it has
-        this._prefetch();
+    // a touch that may start a back: on an edge strip, with nothing else under way
+    _mayStart(event) {
         if (this._g || this._postCommit)
+            return false;
+        // sideways the strips are sideways.js's
+        if (sideways())
             return false;
         const nav = this._nav;
         if (nav.busy || nav.shadeOpen())
@@ -246,8 +247,22 @@ export class EdgeBack {
         if (!nav.recentsShown && !nav.bouncerShown && Main.actionMode !== Shell.ActionMode.NORMAL)
             return false;
         const [x, y] = event.get_coords().map(v => v * this._scale);
-        if (y >= SCREEN_H - NAV_GESTURE_H || (x >= EDGE_W && x <= SCREEN_W - EDGE_W))
+        return y < SCREEN_H - NAV_GESTURE_H && (x < EDGE_W || x > SCREEN_W - EDGE_W);
+    }
+
+    _shouldHandle(event) {
+        if (event.type() !== Clutter.EventType.TOUCH_BEGIN)
             return false;
+        // any touch may change what back means in the app: ask again once it has
+        this._prefetch();
+        if (!this._mayStart(event)) {
+            // The app's touch, and a tap on a row opens a page under it: what the app said before no longer holds. A
+            // back right after waits for its answer rather than act on the old one, which went home from a page with
+            // somewhere to go back to, or started the window toward home and snapped it back (the screen blinked)
+            this._forget();
+            return false;
+        }
+        const [x, y] = event.get_coords().map(v => v * this._scale);
         const target = this._target();
         const t = event.get_time();
         const g = this._g = {x0: x, y0: y, left: x < EDGE_W, target, mode: null, probe: null, started: false,
@@ -324,7 +339,10 @@ export class EdgeBack {
         g.home = new BackToHome(this._nav, g.target.win, g.left);
         const wait = g.downAt + HOME_START_MS - GLib.get_monotonic_time() / 1000;
         if (wait <= 0) {
-            g.home.progress(BACK_GESTURE(this._spring.x / 100), g.y - g.y0);
+            // late (the app answered after the window was due to follow): from whole on the spring, as from the
+            // timer below, rather than a jump to where the finger already is
+            Object.assign(this._spring, {x: 0, v: 0, target: 0, done: true});
+            this._progressTo(this._rawProgress());
             return;
         }
         // whole until then, and then from 0
@@ -413,9 +431,10 @@ export class EdgeBack {
         if (!g)
             return;
         if (!g.started) {
-            // never a back: the touch is the app's
+            // never a back: the touch is the app's, and what it said before no longer holds (as any touch of its)
             this._panel.onCancel();
             this._g = null;
+            this._forget();
             return;
         }
         g.released = true;
