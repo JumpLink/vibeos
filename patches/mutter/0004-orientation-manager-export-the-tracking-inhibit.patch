@@ -1,0 +1,24 @@
+From: pulpoff <pashkovsky@gmail.com>
+Subject: [PATCH] orientation-manager: Export the tracking inhibit
+
+meta_orientation_manager_inhibit_tracking() and _uninhibit_tracking()
+are in the public header, so they are in the typelib, but without
+META_EXPORT they are not in libmutter's exported symbols: a call from
+the shell fails with "undefined symbol". gnome-phone holds the panel
+upright for the lock screen with them, as Android keeps its lock screen
+portrait on a phone.
+
+For mutter-mobile 51.1.mobile.22 (/usr/src/gnome-mobile/mutter on the
+S10e, built into /opt/gnome-mobile by build51.sh).
+---
+--- a/src/meta/meta-orientation-manager.h
++++ b/src/meta/meta-orientation-manager.h
+@@ -52,6 +52,8 @@
+ META_EXPORT
+ MtkMonitorTransform meta_orientation_to_transform (MetaOrientation orientation);
+ 
++META_EXPORT
+ void meta_orientation_manager_inhibit_tracking (MetaOrientationManager *self);
+ 
++META_EXPORT
+ void meta_orientation_manager_uninhibit_tracking (MetaOrientationManager *self);
