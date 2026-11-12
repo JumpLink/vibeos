@@ -85,6 +85,7 @@ struct _CamView {
   gboolean   force_torch;
   CamLed     led;                       /* what the LED was last set to */
   int        orientation;
+  int        display_rotation;          /* the turn the shell laid the screen out for (cam-sensors.h) */
 
   /* the stream */
   gboolean   running;
@@ -502,6 +503,35 @@ on_pinch_end (CamViewfinder *viewfinder, CamView *self)
 
 /* ---- the lens buttons (§6.2) ----------------------------------------------------------------------------------- */
 
+/* the phone's turn the UI still makes up for: its own, less the turn the shell gave the screen. 0 while the screen
+ * follows the phone (a landscape layout), the phone's turn while the screen stays upright (Aperture's way) */
+static int
+ui_turn (CamView *self)
+{
+  return ((self->orientation - self->display_rotation) % 360 + 360) % 360;
+}
+
+/* the preview's clockwise turn in the window: the sensor's own on an upright screen. With the screen turned with
+ * the phone, a back camera's picture turns with the screen's turn and a front camera's against it, as the photo's
+ * turn does (capture_rotation): the front camera looks the other way. (Both the same way left a turned selfie
+ * preview upside down.) */
+static int
+preview_turn (CamView *self)
+{
+  int sensor = self->camera->orientation, screen = self->display_rotation;
+
+  return ((is_front (self) ? sensor - screen : sensor + screen) % 360 + 360) % 360;
+}
+
+/* the leveler's roll, against the window rather than the panel */
+static double
+ui_tilt (CamView *self)
+{
+  double tilt = cam_sensors_get_tilt (self->sensors);
+
+  return isnan (tilt) ? tilt : fmod (tilt - self->display_rotation + 720, 360);
+}
+
 static void
 on_lens_clicked (CamLens *lens, CamView *self)
 {
@@ -526,7 +556,7 @@ update_lenses (CamView *self)
     GtkWidget *lens = cam_lens_new ("1×", TRUE);
     GtkWidget *rot = rotator (self, lens);
 
-    cam_rotator_set_angle (CAM_ROTATOR (rot), CAM_COMPENSATION (self->orientation), FALSE);
+    cam_rotator_set_angle (CAM_ROTATOR (rot), CAM_COMPENSATION (ui_turn (self)), FALSE);
     g_signal_connect (lens, "clicked", G_CALLBACK (on_lens_clicked), self);
     gtk_box_append (GTK_BOX (self->lenses), rot);
   }
@@ -774,13 +804,13 @@ on_pro (NeoPressable *button, CamView *self)
 static void
 apply_orientation (CamView *self, gboolean animate)
 {
-  double angle = CAM_COMPENSATION (self->orientation);
+  double angle = CAM_COMPENSATION (ui_turn (self));
 
   for (guint i = 0; i < self->rotators->len; i++)
     cam_rotator_set_angle (self->rotators->pdata[i], angle, animate);
   cam_countdown_set_angle (CAM_COUNTDOWN (self->countdown), angle, animate);
   cam_zoom_slider_set_angle (CAM_ZOOM_SLIDER (self->zoom_slider), angle);
-  cam_island_set_orientation (CAM_ISLAND (self->island), self->orientation);
+  cam_island_set_orientation (CAM_ISLAND (self->island), ui_turn (self));
   gtk_widget_queue_allocate (GTK_WIDGET (self));
 }
 
@@ -789,6 +819,29 @@ on_orientation (CamSensors *sensors, GParamSpec *pspec, CamView *self)
 {
   self->orientation = cam_sensors_get_orientation (sensors);
   apply_orientation (self, TRUE);
+}
+
+static gboolean preview_cover (CamView *self);
+
+/* the shell turned the screen (the phone turned with auto-rotate on, or back upright): the layout follows the
+ * window's new size by itself; the icons, the preview and the leveler are put right here, without the 300 ms turn
+ * (the whole screen has just turned) */
+static void
+on_display_rotation (CamSensors *sensors, GParamSpec *pspec, CamView *self)
+{
+  int width, height;
+
+  self->display_rotation = cam_sensors_get_display_rotation (sensors);
+  apply_orientation (self, FALSE);
+  cam_viewfinder_set_leveler (CAM_VIEWFINDER (self->viewfinder), g_settings_get_boolean (self->settings, "leveler")
+                                                                   && cam_sensors_has_tilt (self->sensors),
+                              ui_tilt (self));
+  if (self->camera && cam_pipeline_is_streaming (self->pipeline))
+    {
+      cam_pipeline_get_size (self->pipeline, &width, &height);
+      cam_viewfinder_set_geometry (CAM_VIEWFINDER (self->viewfinder), preview_turn (self), is_front (self),
+                                   preview_cover (self), width, height);
+    }
 }
 
 /* ---- state ----------------------------------------------------------------------------------------------------- */
@@ -924,7 +977,7 @@ bind_camera (CamView *self)
   if (!g_strcmp0 (self->bound_id, self->camera->id) && self->bound_w == width && self->bound_h == height
       && cam_pipeline_is_streaming (self->pipeline))
     {
-      cam_viewfinder_set_geometry (CAM_VIEWFINDER (self->viewfinder), self->camera->orientation, is_front (self),
+      cam_viewfinder_set_geometry (CAM_VIEWFINDER (self->viewfinder), preview_turn (self), is_front (self),
                                    preview_cover (self), width, height);
       return;
     }
@@ -949,7 +1002,7 @@ on_streaming (CamPipeline *pipeline, CamView *self)
   int width, height;
 
   cam_pipeline_get_size (pipeline, &width, &height);
-  cam_viewfinder_set_geometry (CAM_VIEWFINDER (self->viewfinder), self->camera->orientation, is_front (self),
+  cam_viewfinder_set_geometry (CAM_VIEWFINDER (self->viewfinder), preview_turn (self), is_front (self),
                                preview_cover (self), width, height);
   cam_viewfinder_thaw (CAM_VIEWFINDER (self->viewfinder));
   cam_pipeline_set_zoom (pipeline, self->zoom);
@@ -1474,7 +1527,7 @@ static void
 on_tilt (CamSensors *sensors, GParamSpec *pspec, CamView *self)
 {
   cam_viewfinder_set_leveler (CAM_VIEWFINDER (self->viewfinder), g_settings_get_boolean (self->settings, "leveler"),
-                              cam_sensors_get_tilt (sensors));
+                              ui_tilt (self));
 }
 
 static void
@@ -1493,7 +1546,7 @@ sync_sensors (CamView *self)
   cam_sensors_set_active (self->sensors, self->running);
   cam_sensors_set_locating (self->sensors, g_str_equal (location, "on"));
   cam_sensors_set_leveling (self->sensors, leveler && self->running);
-  cam_viewfinder_set_leveler (CAM_VIEWFINDER (self->viewfinder), leveler, cam_sensors_get_tilt (self->sensors));
+  cam_viewfinder_set_leveler (CAM_VIEWFINDER (self->viewfinder), leveler, ui_tilt (self));
 }
 
 static void
@@ -1617,6 +1670,20 @@ viewfinder_height (int height)
   return height - CAM_MODE_SELECTOR_H - CAM_PRIMARY_BAR_H - CAM_SECONDARY_BAR_H;
 }
 
+/* wider than tall (the shell turned the screen with the phone): the bars stand as columns right of the preview, in
+ * the order they lie under it upright: the secondary bar, the primary bar, the modes at the edge */
+static gboolean
+is_landscape (int width, int height)
+{
+  return width > height;
+}
+
+static int
+viewfinder_width (int width)
+{
+  return width - CAM_SECONDARY_BAR_H - CAM_PRIMARY_BAR_H - CAM_MODE_COLUMN_W;
+}
+
 static void
 place (GtkWidget *child, double x, double y, int w, int h)
 {
@@ -1643,6 +1710,61 @@ place_island (CamView *self, int vf_w, int vf_h)
   gtk_widget_allocate (self->island, w, h, -1, t);
 }
 
+/* the landscape layout: what the portrait one puts left to right in a bar goes top to bottom in its column, the
+ * end buttons the same distances in from the top and the bottom (flash and flip at the top, pro and the gallery at
+ * the bottom), the shutter in the middle 16 dp from the preview as it is 16 dp under it upright */
+static void
+allocate_landscape (CamView *self, int width, int height)
+{
+  int vf_w = viewfinder_width (width), w, h;
+  double col2 = vf_w, col1 = vf_w + CAM_SECONDARY_BAR_H, col0 = col1 + CAM_PRIMARY_BAR_H;
+  double pro_h = CAM_PRO_ROW_H, shutter_x = col1 + CAM_PRIMARY_BAR_PAD;
+  graphene_rect_t picture;
+
+  if (gtk_widget_get_visible (self->settings_page))
+    place (self->settings_page, 0, 0, width, height);
+  place (self->viewfinder, 0, 0, vf_w, height);
+  cam_viewfinder_get_picture (CAM_VIEWFINDER (self->viewfinder), &picture);
+  if (picture.size.width <= 0)
+    picture = GRAPHENE_RECT_INIT (0, 0, vf_w, height);
+  place (self->countdown, picture.origin.x, picture.origin.y, (int) picture.size.width, (int) picture.size.height);
+  if (gtk_widget_get_visible (self->island))
+    place_island (self, vf_w, height);
+  if (gtk_widget_get_visible (self->zoom_slider))
+    place (self->zoom_slider, (vf_w - CAM_ZOOM_SLIDER_W) / 2.0, height - CAM_ZOOM_SLIDER_H, CAM_ZOOM_SLIDER_W,
+           CAM_ZOOM_SLIDER_H);
+  /* the pro row along the preview's bottom, sliding down off it as it hides */
+  if (gtk_widget_get_visible (self->pro_row))
+    gtk_widget_allocate (self->pro_row, vf_w, (int) ceil (pro_h), -1,
+                         gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (0, height - pro_h
+                                                                                 + (1 - self->pro_shown) * pro_h)));
+  place (self->snackbar, 0, 0, vf_w, height);
+
+  /* the secondary column: the flash 40 dp from the top, the lenses in the middle, pro 40 dp from the bottom */
+  if (gtk_widget_get_visible (self->flash_button))
+    place (self->flash_button, col2 + (CAM_SECONDARY_BAR_H - CAM_BAR_BUTTON) / 2, CAM_BAR_BUTTON_MARGIN,
+           CAM_BAR_BUTTON, CAM_BAR_BUTTON);
+  gtk_widget_measure (self->lenses, GTK_ORIENTATION_HORIZONTAL, -1, NULL, &w, NULL, NULL);
+  gtk_widget_measure (self->lenses, GTK_ORIENTATION_VERTICAL, w, NULL, &h, NULL, NULL);
+  place (self->lenses, col2 + (CAM_SECONDARY_BAR_H - CAM_DIVIDER_H - w) / 2.0 + 0.5, (height - h) / 2.0, w, h);
+  if (gtk_widget_get_visible (self->pro_button))
+    place (self->pro_button, col2 + (CAM_SECONDARY_BAR_H - CAM_BAR_BUTTON) / 2,
+           height - CAM_BAR_BUTTON_MARGIN - CAM_BAR_BUTTON, CAM_BAR_BUTTON, CAM_BAR_BUTTON);
+
+  /* the primary column: the flip 32 dp from the top, the shutter in the middle, the gallery 32 dp from the bottom */
+  if (gtk_widget_get_visible (self->flip))
+    place (self->flip, shutter_x + (CAM_SHUTTER_VIEW - CAM_FLIP_SIZE) / 2.0, CAM_GALLERY_MARGIN, CAM_FLIP_SIZE,
+           CAM_FLIP_SIZE);
+  if (gtk_widget_get_visible (self->pause))
+    place (self->pause, shutter_x + (CAM_SHUTTER_VIEW - CAM_PAUSE_SIZE) / 2.0,
+           CAM_GALLERY_MARGIN + (CAM_FLIP_SIZE - CAM_PAUSE_SIZE) / 2.0, CAM_PAUSE_SIZE, CAM_PAUSE_SIZE);
+  if (gtk_widget_get_visible (self->shutter))
+    place (self->shutter, shutter_x, (height - CAM_SHUTTER_VIEW) / 2.0, CAM_SHUTTER_VIEW, CAM_SHUTTER_VIEW);
+  place (self->gallery, shutter_x + (CAM_SHUTTER_VIEW - CAM_GALLERY_SIZE) / 2.0,
+         height - CAM_GALLERY_MARGIN - CAM_GALLERY_SIZE, CAM_GALLERY_SIZE, CAM_GALLERY_SIZE);
+  place (self->modes, col0, 0, CAM_MODE_COLUMN_W, height);
+}
+
 static void
 cam_view_size_allocate (GtkWidget *widget, int width, int height, int baseline)
 {
@@ -1655,6 +1777,13 @@ cam_view_size_allocate (GtkWidget *widget, int width, int height, int baseline)
 
   if (!self->viewfinder)
     return;
+  /* the selector is laid out by the place() below, at its new size */
+  cam_mode_selector_set_vertical (CAM_MODE_SELECTOR (self->modes), is_landscape (width, height));
+  if (is_landscape (width, height))
+    {
+      allocate_landscape (self, width, height);
+      return;
+    }
   if (gtk_widget_get_visible (self->settings_page))
     place (self->settings_page, 0, 0, width, height);
   place (self->viewfinder, 0, 0, width, vf_h);
@@ -1725,10 +1854,24 @@ cam_view_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gtk_widget_snapshot_child (widget, self->island, snapshot);
   gtk_widget_snapshot_child (widget, self->zoom_slider, snapshot);
   gtk_widget_snapshot_child (widget, self->pro_row, snapshot);
-  /* the bars are opaque over the pro row sliding down behind them */
-  gtk_snapshot_append_color (snapshot, &black, &GRAPHENE_RECT_INIT (0, vf_h, width, height - vf_h));
-  gtk_snapshot_append_color (snapshot, &divider, &GRAPHENE_RECT_INIT (0, vf_h + CAM_SECONDARY_BAR_H - CAM_DIVIDER_H,
-                                                                      width, CAM_DIVIDER_H));
+  if (is_landscape (width, height))
+    {
+      int vf_w = viewfinder_width (width);
+
+      /* the columns, the divider between the secondary and the primary one */
+      gtk_snapshot_append_color (snapshot, &black, &GRAPHENE_RECT_INIT (vf_w, 0, width - vf_w, height));
+      gtk_snapshot_append_color (snapshot, &divider,
+                                 &GRAPHENE_RECT_INIT (vf_w + CAM_SECONDARY_BAR_H - CAM_DIVIDER_H, 0, CAM_DIVIDER_H,
+                                                      height));
+    }
+  else
+    {
+      /* the bars are opaque over the pro row sliding down behind them */
+      gtk_snapshot_append_color (snapshot, &black, &GRAPHENE_RECT_INIT (0, vf_h, width, height - vf_h));
+      gtk_snapshot_append_color (snapshot, &divider,
+                                 &GRAPHENE_RECT_INIT (0, vf_h + CAM_SECONDARY_BAR_H - CAM_DIVIDER_H, width,
+                                                      CAM_DIVIDER_H));
+    }
   gtk_widget_snapshot_child (widget, self->pro_button, snapshot);
   gtk_widget_snapshot_child (widget, self->lenses, snapshot);
   gtk_widget_snapshot_child (widget, self->flash_button, snapshot);
@@ -2096,12 +2239,14 @@ cam_window_new (GtkApplication *app)
     }
   build (self);
   restore (self);
+  self->display_rotation = cam_sensors_get_display_rotation (self->sensors);
   apply_orientation (self, FALSE);
   g_signal_connect (self->pipeline, "streaming", G_CALLBACK (on_streaming), self);
   g_signal_connect (self->pipeline, "error", G_CALLBACK (on_pipeline_error), self);
   g_signal_connect (self->pipeline, "barcode", G_CALLBACK (on_barcode_found), self);
   g_signal_connect (self->pipeline, "focused", G_CALLBACK (on_focused), self);
   g_signal_connect (self->sensors, "notify::orientation", G_CALLBACK (on_orientation), self);
+  g_signal_connect (self->sensors, "notify::display-rotation", G_CALLBACK (on_display_rotation), self);
   g_signal_connect (self->sensors, "notify::thermal", G_CALLBACK (on_thermal), self);
   g_signal_connect (self->sensors, "notify::battery", G_CALLBACK (on_battery), self);
   g_signal_connect (self->sensors, "notify::tilt", G_CALLBACK (on_tilt), self);

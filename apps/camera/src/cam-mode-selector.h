@@ -29,6 +29,9 @@ void       cam_mode_selector_set_duration  (CamModeSelector *self, gint64 micros
 /* a mode this phone cannot back (SCAN without GStreamer's zxing) has no button; the others centre as a group */
 void       cam_mode_selector_set_available (CamModeSelector *self, CamMode mode, gboolean available);
 gboolean   cam_mode_selector_is_available  (CamModeSelector *self, CamMode mode);
+/* a column (CAM_MODE_COLUMN_W wide) beside a landscape preview instead of the bar under a portrait one; it takes
+ * effect at the selector's next allocation, which the caller makes */
+void       cam_mode_selector_set_vertical  (CamModeSelector *self, gboolean vertical);
 
 /* Signals: "mode-chosen" (int CamMode) */
 

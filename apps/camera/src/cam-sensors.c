@@ -19,6 +19,10 @@ struct _CamSensors {
   gboolean      claimed;
   int           orientation;
 
+  GDBusConnection *session;
+  guint         display_signal;
+  int           display_rotation;
+
   char         *tilt_dir;       /* the raw IIO accelerometer, if readable */
   double        tilt_scale;
   double        matrix[9];
@@ -40,7 +44,7 @@ struct _CamSensors {
 
 G_DEFINE_FINAL_TYPE (CamSensors, cam_sensors, G_TYPE_OBJECT)
 
-enum { PROP_0, PROP_ORIENTATION, PROP_TILT, PROP_BATTERY, PROP_THERMAL, N_PROPS };
+enum { PROP_0, PROP_ORIENTATION, PROP_DISPLAY_ROTATION, PROP_TILT, PROP_BATTERY, PROP_THERMAL, N_PROPS };
 static GParamSpec *props[N_PROPS];
 
 enum { SIG_LOCATION_REFUSED, N_SIGNALS };
@@ -109,6 +113,61 @@ on_accel_proxy (GObject *object, GAsyncResult *result, gpointer data)
   g_signal_connect (proxy, "g-properties-changed", G_CALLBACK (on_accel_changed), self);
   if (self->active)
     claim (self, TRUE);
+}
+
+/* ---- the screen's turn (Mutter's DisplayConfig) ---------------------------------------------------------------- */
+
+/* GetCurrentState's logical monitors: (x, y, scale, transform, primary, monitors, properties). The transform is
+ * Mutter's (wl_output's): 1 is a 90° turn, given to a phone with its left edge up (meta_orientation_to_transform),
+ * so a quarter of it is the clockwise turn of the phone the screen is laid out for, the orientation's own unit.
+ * The flipped transforms (4…7) count as their turn. GNOME Shell and Phosh both serve DisplayConfig; elsewhere the
+ * screen is taken as upright. */
+static void
+on_display_state (GObject *object, GAsyncResult *result, gpointer data)
+{
+  g_autoptr(GError) error = NULL;
+  g_autoptr(GVariant) reply = g_dbus_connection_call_finish (G_DBUS_CONNECTION (object), result, &error);
+  g_autoptr(GVariant) logical = NULL;
+  CamSensors *self;
+  GVariantIter iter;
+  guint32 transform, chosen = 0;
+  gboolean primary, found = FALSE;
+  int rotation;
+
+  if (!reply)
+    return;
+  self = data;
+  logical = g_variant_get_child_value (reply, 2);
+  g_variant_iter_init (&iter, logical);
+  while (g_variant_iter_next (&iter, "(iiduba(ssss)@a{sv})", NULL, NULL, NULL, &transform, &primary, NULL, NULL))
+    if (!found || primary)
+      {
+        chosen = transform;
+        if (primary)
+          break;
+        found = TRUE;
+      }
+  rotation = (int) (chosen % 4) * 90;
+  if (rotation != self->display_rotation)
+    {
+      self->display_rotation = rotation;
+      g_object_notify_by_pspec (G_OBJECT (self), props[PROP_DISPLAY_ROTATION]);
+    }
+}
+
+static void
+read_display (CamSensors *self)
+{
+  g_dbus_connection_call (self->session, "org.gnome.Mutter.DisplayConfig", "/org/gnome/Mutter/DisplayConfig",
+                          "org.gnome.Mutter.DisplayConfig", "GetCurrentState", NULL, NULL, G_DBUS_CALL_FLAGS_NONE,
+                          -1, self->cancel, on_display_state, self);
+}
+
+static void
+on_monitors_changed (GDBusConnection *connection, const char *sender, const char *path, const char *interface,
+                     const char *signal, GVariant *parameters, gpointer data)
+{
+  read_display (data);
 }
 
 /* ---- tilt (a raw IIO accelerometer) ---------------------------------------------------------------------------- */
@@ -480,6 +539,10 @@ cam_sensors_dispose (GObject *object)
   cam_sensors_set_active (self, FALSE);
   g_cancellable_cancel (self->cancel);
   g_clear_object (&self->cancel);
+  if (self->display_signal)
+    g_dbus_connection_signal_unsubscribe (self->session, self->display_signal);
+  self->display_signal = 0;
+  g_clear_object (&self->session);
   g_clear_object (&self->accel);
   g_clear_object (&self->battery);
   g_clear_object (&self->system);
@@ -496,6 +559,9 @@ cam_sensors_get_property (GObject *object, guint id, GValue *value, GParamSpec *
     {
     case PROP_ORIENTATION:
       g_value_set_int (value, cam_sensors_get_orientation (self));
+      break;
+    case PROP_DISPLAY_ROTATION:
+      g_value_set_int (value, cam_sensors_get_display_rotation (self));
       break;
     case PROP_TILT:
       g_value_set_double (value, cam_sensors_get_tilt (self));
@@ -519,6 +585,7 @@ cam_sensors_class_init (CamSensorsClass *klass)
   object_class->dispose = cam_sensors_dispose;
   object_class->get_property = cam_sensors_get_property;
   props[PROP_ORIENTATION] = g_param_spec_int ("orientation", NULL, NULL, 0, 270, 0, G_PARAM_READABLE);
+  props[PROP_DISPLAY_ROTATION] = g_param_spec_int ("display-rotation", NULL, NULL, 0, 270, 0, G_PARAM_READABLE);
   props[PROP_TILT] = g_param_spec_double ("tilt", NULL, NULL, -1, 360, 0, G_PARAM_READABLE);
   props[PROP_BATTERY] = g_param_spec_boolean ("battery", NULL, NULL, FALSE, G_PARAM_READABLE);
   props[PROP_THERMAL] = g_param_spec_int ("thermal", NULL, NULL, 0, CAM_THERMAL_SHUTDOWN, 0, G_PARAM_READABLE);
@@ -540,6 +607,16 @@ cam_sensors_init (CamSensors *self)
                             "/org/freedesktop/UPower/devices/DisplayDevice", "org.freedesktop.UPower.Device",
                             self->cancel, on_battery_proxy, self);
   find_tilt_sensor (self);
+  self->session = g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, NULL);
+  if (self->session)
+    {
+      self->display_signal = g_dbus_connection_signal_subscribe (self->session, NULL,
+                                                                 "org.gnome.Mutter.DisplayConfig", "MonitorsChanged",
+                                                                 "/org/gnome/Mutter/DisplayConfig", NULL,
+                                                                 G_DBUS_SIGNAL_FLAGS_NONE, on_monitors_changed, self,
+                                                                 NULL);
+      read_display (self);
+    }
 }
 
 CamSensors *
@@ -586,6 +663,12 @@ int
 cam_sensors_get_orientation (CamSensors *self)
 {
   return self->orientation;
+}
+
+int
+cam_sensors_get_display_rotation (CamSensors *self)
+{
+  return self->display_rotation;
 }
 
 gboolean

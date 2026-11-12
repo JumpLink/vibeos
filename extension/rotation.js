@@ -3,11 +3,11 @@
 // (Android's auto-rotate) off, the panel follows the phone only while an app is in front; locked, at home or in the app
 // drawer it is upright, and an app going away turns it back. An app can also have an orientation of its own, as an
 // Android app's manifest gives it: X-Phone-Orientation=landscape in its desktop file (a game) keeps the panel sideways
-// while it is in front, however the phone is held, or lies on the table; X-Phone-Orientation=portrait (the camera)
-// keeps it upright. Mutter's orientation manager turns the panel with the accelerometer; while the panel is to stay
-// upright or sideways its tracking is held and the panel set with a temporary monitor config, as mutter applies the
-// sensor's own. The shell's UI is laid out for an upright panel too, so a shell started sideways turns before it is
-// built (whenUpright). Docked (another monitor on) nothing is turned.
+// while it is in front, however the phone is held, or lies on the table; X-Phone-Orientation=portrait keeps it
+// upright (an app laid out for portrait only). Mutter's orientation manager turns the panel with the accelerometer;
+// while the panel is to stay upright or sideways its tracking is held and the panel set with a temporary monitor
+// config, as mutter applies the sensor's own. The shell's UI is laid out for an upright panel too, so a shell started
+// sideways turns before it is built (whenUpright). Docked (another monitor on) nothing is turned.
 //
 // Holding the tracking needs meta_orientation_manager_inhibit_tracking(), which a stock mutter has in its typelib but
 // does not export (gnome-phone's mutter patch 0004 does). GJS calling it there does not throw: it aborts the shell (an
@@ -170,8 +170,8 @@ export class Rotation {
         return global.display.sort_windows_by_stacking(windows).at(-1) ?? null;
     }
 
-    // X-Phone-Orientation in the window's app's desktop file: landscape (a game), portrait (the camera, which turns
-    // its icons itself, as Aperture's nosensor activity does), or null to follow the phone
+    // X-Phone-Orientation in the window's app's desktop file: landscape (a game), portrait (an app laid out for
+    // portrait only, turning its icons itself as Aperture's nosensor activity does), or null to follow the phone
     _wantedOrientation(win) {
         const info = this._tracker.get_window_app(win)?.get_app_info();
         return info?.get_string('X-Phone-Orientation') ?? null;

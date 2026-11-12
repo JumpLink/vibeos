@@ -2,6 +2,8 @@
  *
  *   orientation  iio-sensor-proxy's AccelerometerOrientation, as Aperture's OrientationEventListener quantised to
  *                0 / 90 / 180 / 270 (the clockwise turn of the phone: 90 is its left edge up)        §17
+ *   display-rotation  the turn of the phone the screen is laid out for, in the same unit: 0 while the shell keeps
+ *                it upright, the orientation while it follows the phone (Mutter's DisplayConfig)
  *   tilt         the continuous roll angle for the leveler, from a raw IIO accelerometer if the session may read
  *                one (NaN otherwise, and the Leveler setting is left out)                             §14
  *   battery      UPower's display device: low (≤ 15 %) and charging                                   §13
@@ -44,6 +46,7 @@ void        cam_sensors_set_locating     (CamSensors *self, gboolean locating);
 void        cam_sensors_set_leveling     (CamSensors *self, gboolean leveling);
 
 int         cam_sensors_get_orientation  (CamSensors *self);
+int         cam_sensors_get_display_rotation (CamSensors *self);
 gboolean    cam_sensors_has_tilt         (CamSensors *self);
 double      cam_sensors_get_tilt         (CamSensors *self);
 gboolean    cam_sensors_get_battery_low  (CamSensors *self);
@@ -54,7 +57,7 @@ gboolean    cam_sensors_can_locate       (CamSensors *self);
 /* the last fix, if there is one */
 CamLocation cam_sensors_get_location     (CamSensors *self);
 
-/* Properties (notify): "orientation", "tilt", "battery", "thermal"
+/* Properties (notify): "orientation", "display-rotation", "tilt", "battery", "thermal"
  * Signals: "location-refused" (): GeoClue would not locate the app (no agent's yes, or no service) */
 
 G_END_DECLS

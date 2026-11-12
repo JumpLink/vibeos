@@ -1,3 +1,21 @@
+gnome-phone (0.1.6) unstable; urgency=medium
+
+  * neo-camera: a landscape layout. The shell turns the camera with the
+    phone like any other app (the desktop file no longer asks for portrait):
+    on its side the viewfinder is on the left and the controls stand in
+    columns on the right, with the modes listed top to bottom. The preview
+    keeps the picture upright for the back and the front camera whichever
+    way the screen is turned; the camera reads the screen's rotation from
+    Mutter's DisplayConfig.
+  * extension: rotation.js's comments no longer name the camera as the app
+    that stays portrait.
+  * neo-settings: picking PIN as the screen lock type asks for a new PIN, as
+    picking Pattern asks for a pattern; the type changes once the PIN is set.
+    It kept the password there was, which the lock screen's PIN pad cannot
+    type if it has a letter in it.
+
+ -- pulpoff <pashkovsky@gmail.com>  Thu, 12 Nov 2026 17:05:33 +0100
+
 gnome-phone (0.1.5) unstable; urgency=medium
 
   * neo-weather: scrolls at the panel's rate (8.6 ms a frame on a 120 Hz

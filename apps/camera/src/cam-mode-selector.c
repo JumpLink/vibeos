@@ -13,7 +13,9 @@ struct _CamModeSelector {
   CamMode    mode;
   gboolean   available[CAM_N_MODES];
   gboolean   recording;
-  double     pill_x, pill_w;    /* the highlight, in the band's coordinates; pill_x < 0 until laid out */
+  gboolean   vertical;          /* a column beside a landscape preview, the buttons stacked */
+  double     pill_x, pill_w;    /* the highlight along the band (x, or y in a column) and its length there;
+                                 * pill_x < 0 until laid out */
   NeoAnim   *x_anim, *w_anim;
   gboolean   pending;           /* the pill moves once the buttons have their places */
 };
@@ -37,10 +39,18 @@ static void
 cam_mode_selector_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, int *min, int *nat,
                            int *min_base, int *nat_base)
 {
-  *min = *nat = orientation == GTK_ORIENTATION_HORIZONTAL ? n_available (CAM_MODE_SELECTOR (widget)) * CAM_MODE_BUTTON_W
-                                                          : CAM_MODE_SELECTOR_H;
+  CamModeSelector *self = CAM_MODE_SELECTOR (widget);
+
+  if (self->vertical)
+    *min = *nat = orientation == GTK_ORIENTATION_HORIZONTAL ? CAM_MODE_COLUMN_W
+                                                            : n_available (self) * CAM_MODE_BUTTON_H;
+  else
+    *min = *nat = orientation == GTK_ORIENTATION_HORIZONTAL ? n_available (self) * CAM_MODE_BUTTON_W
+                                                            : CAM_MODE_SELECTOR_H;
 }
 
+/* where a mode's pill starts along the band: its x in the bar, its y in the column (the 48 dp buttons stacked,
+ * centred, each pill 4 dp into its button as in the bar) */
 static double
 button_x (GtkWidget *widget, CamMode mode)
 {
@@ -49,7 +59,17 @@ button_x (GtkWidget *widget, CamMode mode)
 
   for (int i = 0; i < (int) mode; i++)
     before += self->available[i];
+  if (self->vertical)
+    return (gtk_widget_get_height (widget) - n_available (self) * CAM_MODE_BUTTON_H) / 2 + before * CAM_MODE_BUTTON_H
+           + (CAM_MODE_BUTTON_H - CAM_MODE_PILL_H) / 2;
   return (gtk_widget_get_width (widget) - n_available (self) * CAM_MODE_BUTTON_W) / 2 + before * CAM_MODE_BUTTON_W;
+}
+
+/* the pill's length along the band */
+static double
+pill_length (CamModeSelector *self)
+{
+  return self->vertical ? CAM_MODE_PILL_H : CAM_MODE_BUTTON_W;
 }
 
 static void
@@ -58,18 +78,21 @@ cam_mode_selector_size_allocate (GtkWidget *widget, int width, int height, int b
   CamModeSelector *self = CAM_MODE_SELECTOR (widget);
   /* MaterialButton's 4 dp insets: the 48 dp button draws (and ripples) in its middle 40 dp */
   int y = CAM_MODE_PAD + (CAM_MODE_BUTTON_H - CAM_MODE_PILL_H) / 2;
+  int x = (width - CAM_MODE_BUTTON_W) / 2;
 
   for (int i = 0; i < CAM_N_MODES; i++)
     gtk_widget_size_allocate (self->buttons[i],
-                              &(GtkAllocation) { (int) button_x (widget, i), y, CAM_MODE_BUTTON_W, CAM_MODE_PILL_H },
+                              self->vertical
+                                ? &(GtkAllocation) { x, (int) button_x (widget, i), CAM_MODE_BUTTON_W, CAM_MODE_PILL_H }
+                                : &(GtkAllocation) { (int) button_x (widget, i), y, CAM_MODE_BUTTON_W, CAM_MODE_PILL_H },
                               -1);
-  gtk_widget_size_allocate (self->duration, &(GtkAllocation) { (width - CAM_MODE_BUTTON_W) / 2, y, CAM_MODE_BUTTON_W,
-                                                                CAM_MODE_PILL_H }, -1);
+  gtk_widget_size_allocate (self->duration, &(GtkAllocation) { x, self->vertical ? (height - CAM_MODE_PILL_H) / 2 : y,
+                                                                CAM_MODE_BUTTON_W, CAM_MODE_PILL_H }, -1);
   if (self->pill_x < 0 || self->pending)
     {
       self->pending = FALSE;
       self->pill_x = button_x (widget, self->mode);
-      self->pill_w = CAM_MODE_BUTTON_W;
+      self->pill_w = pill_length (self);
     }
 }
 
@@ -83,8 +106,14 @@ cam_mode_selector_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
       GskRoundedRect pill;
       GdkRGBA fill = neo_color (NEO_SECONDARY_CONTAINER);
 
-      gsk_rounded_rect_init_from_rect (&pill, &GRAPHENE_RECT_INIT (self->pill_x, CAM_MODE_PAD + 4, self->pill_w,
-                                                                   CAM_MODE_PILL_H), CAM_MODE_PILL_H / 2.0);
+      if (self->vertical)
+        gsk_rounded_rect_init_from_rect (&pill, &GRAPHENE_RECT_INIT ((gtk_widget_get_width (widget)
+                                                                      - CAM_MODE_BUTTON_W) / 2, self->pill_x,
+                                                                     CAM_MODE_BUTTON_W, self->pill_w),
+                                         CAM_MODE_PILL_H / 2.0);
+      else
+        gsk_rounded_rect_init_from_rect (&pill, &GRAPHENE_RECT_INIT (self->pill_x, CAM_MODE_PAD + 4, self->pill_w,
+                                                                     CAM_MODE_PILL_H), CAM_MODE_PILL_H / 2.0);
       gtk_snapshot_push_rounded_clip (snapshot, &pill);
       gtk_snapshot_append_color (snapshot, &fill, &pill.bounds);
       gtk_snapshot_pop (snapshot);
@@ -193,7 +222,7 @@ cam_mode_selector_set_mode (CamModeSelector *self, CamMode mode, gboolean animat
       /* two ValueAnimators, 300 ms AD */
       neo_anim_start (self->x_anim, self->pill_x, button_x (widget, mode), CAM_MS_DEFAULT, 0,
                       SPONGY_ACCELERATE_DECELERATE);
-      neo_anim_start (self->w_anim, self->pill_w, CAM_MODE_BUTTON_W, CAM_MS_DEFAULT, 0, SPONGY_ACCELERATE_DECELERATE);
+      neo_anim_start (self->w_anim, self->pill_w, pill_length (self), CAM_MS_DEFAULT, 0, SPONGY_ACCELERATE_DECELERATE);
     }
   else
     {
@@ -242,4 +271,16 @@ gboolean
 cam_mode_selector_is_available (CamModeSelector *self, CamMode mode)
 {
   return self->available[mode];
+}
+
+void
+cam_mode_selector_set_vertical (CamModeSelector *self, gboolean vertical)
+{
+  if (vertical == self->vertical)
+    return;
+  self->vertical = vertical;
+  neo_anim_stop (self->x_anim);
+  neo_anim_stop (self->w_anim);
+  /* no resize queued: the parent sets this while it allocates, and allocates the selector at its new size next */
+  self->pending = TRUE;
 }

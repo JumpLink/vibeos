@@ -7,6 +7,7 @@
 #define CAM_MODE_PAD               16
 #define CAM_MODE_BUTTON_W          88
 #define CAM_MODE_BUTTON_H          48
+#define CAM_MODE_COLUMN_W          104      /* landscape: the 88 dp buttons and 8 dp each side            */
 #define CAM_MODE_PILL_H            40       /* 4 dp insets top and bottom                    §3     */
 #define CAM_PRIMARY_BAR_H          91       /* 16 padding + 75                               §2     */
 #define CAM_PRIMARY_BAR_PAD        16
