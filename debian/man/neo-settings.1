@@ -1,0 +1,28 @@
+.TH NEO-SETTINGS 1 "2026-11-12" "gnome-phone 0.1.1" "GNOME Phone"
+.SH NAME
+neo-settings \- settings app for GNOME Phone
+.SH SYNOPSIS
+.B neo-settings
+.RB [ \-\-page
+.IR name ]
+.RB [ \-\-app
+.IR desktop-id ]
+.SH DESCRIPTION
+Neo Settings is the phone's Settings app: connections, sounds, notifications, display, battery, wallpaper, the home
+screen, the lock screen, location, accounts, apps, language, date and time, accessibility and the phone's details.
+It answers GNOME Settings' "launch-panel" action under its own name, so GNOME Phone opens it wherever GNOME would open
+a Settings panel.
+.SH OPTIONS
+.TP
+.BI \-\-page " name"
+Opens one page: for example home, wallpaper, wifi, bluetooth, mobile, sound, notifications, display, battery,
+lockscreen, location, accounts, apps, language, datetime, accessibility or about. GNOME Settings' panel names work too.
+.TP
+.BI \-\-app " desktop-id"
+Opens one app's page (its notifications, permissions and default handlers).
+.SH FILES
+.TP
+.I /usr/libexec/neo-keyring-rekey
+Gives the login keyring the new lock-screen password when the PIN, pattern or password changes.
+.SH SEE ALSO
+neo-launcher(1)

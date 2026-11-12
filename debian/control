@@ -23,6 +23,9 @@ Build-Depends: debhelper-compat (= 13),
                libfontconfig-dev,
                libjson-glib-dev,
                libpam0g-dev,
+               libgoa-backend-1.0-dev,
+               libnm-dev,
+               libdrm-dev,
                libgmp-dev,
                libsqlite3-dev,
                libecal2.0-dev (>= 3.46),
@@ -57,6 +60,8 @@ Recommends: gnome-phone-session (= ${source:Version}),
             neo-compass (>= ${source:Version}),
             neo-contacts (>= ${source:Version}),
             neo-browser (>= ${source:Version}),
+            neo-settings (>= ${source:Version}),
+            neo-weather (>= ${source:Version}),
             feedbackd,
             iio-sensor-proxy,
             modemmanager,
@@ -351,3 +356,34 @@ Depends: ${shlibs:Depends},
 Description: web browser for GNOME Phone
  Neo Browser has the phone UI of Chrome for Android (tabs grid, bottom
  toolbar, incognito) on WebKitGTK 6.
+
+Package: neo-settings
+Architecture: any
+Depends: python3,
+         python3-gi,
+         gir1.2-glib-2.0,
+         ${shlibs:Depends},
+         ${misc:Depends},
+Recommends: accountsservice,
+            network-manager,
+            gnome-keyring,
+            pkexec,
+Description: settings app for GNOME Phone
+ Neo Settings is One UI's Settings for GNOME Phone: connections (Wi-Fi,
+ Bluetooth, mobile network, hotspot), sounds, notifications, display, battery,
+ wallpaper and parallax sets, the home screen's icon pack and shapes, the lock
+ screen (PIN, pattern, password), location, accounts, apps, language, date and
+ time, accessibility and the phone's details. GNOME Phone opens it wherever
+ GNOME opens a Settings panel.
+
+Package: neo-weather
+Architecture: any
+Depends: curl,
+         ${shlibs:Depends},
+         ${misc:Depends},
+Recommends: geoclue-2.0,
+Description: weather app for GNOME Phone
+ Neo Weather shows the weather where the phone is: the next 24 hours, today
+ against yesterday, the week and the details. The forecast is Open-Meteo's,
+ the place GeoClue's (or GNOME Weather's first city), named by OpenStreetMap's
+ Nominatim.

@@ -1,4 +1,6 @@
-/* The home layout. The first start fills the dock from Phosh's favourites and the pages with every other app, A→Z;
+/* The home layout. The first start takes the default layout the system ships (neo-launcher/layout.json in /etc/xdg
+ * or /usr/share) and, without one, fills the dock from GNOME's favourites and the pages with every other app: the
+ * phone's own apps (de.yesman.*) on the first page, then GNOME's and the rest from the second page on, each A→Z;
  * apps installed later go to the first free cell. A cell may be empty, as on Launcher3's grid: an icon removed or
  * uninstalled leaves its cell empty, and a drag can drop an icon on any cell. The GJS Neo's file, plus null for an
  * empty cell. */
@@ -7,18 +9,6 @@
 
 #include <gio/gio.h>
 #include <json-glib/json-glib.h>
-
-/* desktop ids that another app took over */
-static const char *replaced[][2] = {
-  { "de.yesman.Browser.desktop", "de.yesman.NeoBrowser.desktop" },
-  { "org.gnome.Calls.desktop", "de.yesman.Dialer.desktop" },
-  { "sm.puri.Chatty.desktop", "de.yesman.Messaging.desktop" },
-  { "org.gnome.Calculator.desktop", "de.yesman.Calculator.desktop" },
-  { "org.gnome.Calendar.desktop", "de.yesman.Calendar.desktop" },
-  { "org.gnome.Snapshot.desktop", "de.yesman.Camera.desktop" },
-  /* GNOME's video player since 49 */
-  { "org.gnome.Totem.desktop", "org.gnome.Showtime.desktop" },
-};
 
 static char *
 layout_file (void)
@@ -173,11 +163,11 @@ model_on_home (Model *self, const char *id)
   return FALSE;
 }
 
-/* `id` in the first empty cell, on a new page when every page is full */
+/* `id` in the first empty cell from page `first` on, on a new page when every page from there is full */
 static void
-place (Model *self, const char *id)
+place_from (Model *self, const char *id, guint first)
 {
-  for (guint p = 0; p < self->pages->len; p++) {
+  for (guint p = first; p < self->pages->len; p++) {
     GPtrArray *page = self->pages->pdata[p];
     for (guint i = 0; i < page->len; i++)
       if (!page->pdata[i]) {
@@ -192,6 +182,19 @@ place (Model *self, const char *id)
   GPtrArray *page = page_new ();
   g_ptr_array_add (page, g_strdup (id));
   g_ptr_array_add (self->pages, page);
+}
+
+/* `id` in the first empty cell, on a new page when every page is full */
+static void
+place (Model *self, const char *id)
+{
+  place_from (self, id, 0);
+}
+
+static gboolean
+ours (const char *id)
+{
+  return g_str_has_prefix (id, "de.yesman.");
 }
 
 static void
@@ -219,6 +222,30 @@ json_ids (JsonArray *arr)
   return list;
 }
 
+/* Every installed app the layout does not have yet, A→Z: the phone's own apps (de.yesman.*) from the first free cell
+ * on, then the others from the page after theirs, so GNOME's many apps do not crowd them. */
+static void
+place_rest (Model *self, GHashTable *apps)
+{
+  GList *rest = NULL;
+  GHashTableIter it;
+  gpointer key, value;
+  g_hash_table_iter_init (&it, apps);
+  while (g_hash_table_iter_next (&it, &key, &value))
+    if (!model_on_home (self, key) && !g_hash_table_contains (self->hidden, key))
+      rest = g_list_prepend (rest, value);
+  rest = g_list_sort (rest, app_compare);
+
+  for (GList *l = rest; l; l = l->next)
+    if (ours (g_app_info_get_id (l->data)))
+      place (self, g_app_info_get_id (l->data));
+  guint others = self->pages->len;
+  for (GList *l = rest; l; l = l->next)
+    if (!ours (g_app_info_get_id (l->data)))
+      place_from (self, g_app_info_get_id (l->data), others);
+  g_list_free (rest);
+}
+
 static void
 fresh (Model *self, GHashTable *apps)
 {
@@ -235,49 +262,68 @@ fresh (Model *self, GHashTable *apps)
     if (g_hash_table_contains (apps, *f))
       g_ptr_array_add (self->dock, g_strdup (*f));
 
-  GList *rest = NULL;
-  GHashTableIter it;
-  gpointer key, value;
-  g_hash_table_iter_init (&it, apps);
-  while (g_hash_table_iter_next (&it, &key, &value))
-    if (!list_has (self->dock, key))
-      rest = g_list_prepend (rest, value);
-  rest = g_list_sort (rest, app_compare);
-
   g_ptr_array_set_size (self->pages, 0);
-  for (GList *l = rest; l; l = l->next)
-    place (self, g_app_info_get_id (l->data));
-  g_list_free (rest);
+  place_rest (self, apps);
   if (!self->pages->len)
     g_ptr_array_add (self->pages, page_new ());
+}
+
+/* the dock and the pages from a layout file; FALSE when it is missing or not a layout */
+static gboolean
+read_layout (Model *self, const char *file)
+{
+  g_autoptr (JsonParser) parser = json_parser_new ();
+  if (!json_parser_load_from_file (parser, file, NULL))
+    return FALSE;
+  JsonNode *root = json_parser_get_root (parser);
+  JsonObject *obj = root && JSON_NODE_HOLDS_OBJECT (root) ? json_node_get_object (root) : NULL;
+  if (!obj || !json_object_has_member (obj, "dock") || !json_object_has_member (obj, "pages"))
+    return FALSE;
+  g_ptr_array_unref (self->dock);
+  self->dock = json_ids (json_object_get_array_member (obj, "dock"));
+  g_ptr_array_set_size (self->pages, 0);
+  JsonArray *pages = json_object_get_array_member (obj, "pages");
+  for (guint p = 0; pages && p < json_array_get_length (pages); p++) {
+    JsonNode *n = json_array_get_element (pages, p);
+    g_ptr_array_add (self->pages, json_ids (JSON_NODE_HOLDS_ARRAY (n) ? json_node_get_array (n) : NULL));
+  }
+  return TRUE;
+}
+
+/* The first start's layout: neo-launcher/layout.json in the system config dirs (/etc/xdg, for a device or a
+ * distribution), then in the data dirs (/usr/share, which neo-launcher ships). */
+static gboolean
+read_default_layout (Model *self)
+{
+  const char *const *config = g_get_system_config_dirs ();
+  const char *const *data = g_get_system_data_dirs ();
+  const char *const *dirs[] = { config, data };
+  for (guint d = 0; d < G_N_ELEMENTS (dirs); d++)
+    for (const char *const *dir = dirs[d]; dir && *dir; dir++) {
+      g_autofree char *file = g_build_filename (*dir, "neo-launcher", "layout.json", NULL);
+      if (read_layout (self, file))
+        return TRUE;
+    }
+  return FALSE;
 }
 
 void
 model_load (Model *self, GHashTable *apps)
 {
   g_autofree char *file = layout_file ();
-  g_autoptr (JsonParser) parser = json_parser_new ();
-  gboolean loaded = FALSE;
+  gboolean first = !read_layout (self, file);
 
-  if (json_parser_load_from_file (parser, file, NULL)) {
-    JsonNode *root = json_parser_get_root (parser);
-    JsonObject *obj = root && JSON_NODE_HOLDS_OBJECT (root) ? json_node_get_object (root) : NULL;
-    if (obj && json_object_has_member (obj, "dock") && json_object_has_member (obj, "pages")) {
-      g_ptr_array_unref (self->dock);
-      self->dock = json_ids (json_object_get_array_member (obj, "dock"));
-      g_ptr_array_set_size (self->pages, 0);
-      JsonArray *pages = json_object_get_array_member (obj, "pages");
-      for (guint p = 0; pages && p < json_array_get_length (pages); p++) {
-        JsonNode *n = json_array_get_element (pages, p);
-        g_ptr_array_add (self->pages, json_ids (JSON_NODE_HOLDS_ARRAY (n) ? json_node_get_array (n) : NULL));
-      }
-      loaded = TRUE;
-    }
+  if (first) {
+    if (read_default_layout (self))
+      place_rest (self, apps); /* the installed apps the default does not name; its missing ones leave empty cells */
+    else
+      fresh (self, apps);
   }
-  if (!loaded)
-    fresh (self, apps);
-  model_reconcile (self, apps);
+  gboolean saved = model_reconcile (self, apps);
   model_tidy (self);
+  /* the user's own from now on: a later default does not move their icons */
+  if (first && !saved)
+    model_save (self);
 }
 
 gboolean
@@ -286,8 +332,8 @@ model_reconcile (Model *self, GHashTable *apps)
   gboolean changed = FALSE;
 
   /* an app that was replaced by another keeps its places (the dock slot, the home cells) */
-  for (guint r = 0; r < G_N_ELEMENTS (replaced); r++) {
-    const char *from = replaced[r][0], *to = replaced[r][1];
+  for (guint r = 0; r < apps_n_replaced; r++) {
+    const char *from = apps_replaced[r][0], *to = apps_replaced[r][1];
     if (!model_on_home (self, from) || g_hash_table_contains (apps, from) || !g_hash_table_contains (apps, to))
       continue;
     /* the new app's own icon (put on a free cell when it was installed) gives way to the old one's places */

@@ -69,7 +69,9 @@
       <summary>Search field at the top of the app drawer</summary>
     </key>
     <key name="hidden-from-home" type="as">
-      <default>[]</default>
+      <!-- the default layout (data/layout.json) leaves the clock and the compass in the drawer: the home screen's
+           clock widget opens the clock -->
+      <default>['de.yesman.Clock.desktop', 'de.yesman.Compass.desktop']</default>
       <summary>Apps removed from the home screen (still in the drawer)</summary>
     </key>
     <key name="wallpaper-parallax" type="s">

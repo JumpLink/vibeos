@@ -889,6 +889,15 @@ export class Keyguard extends Signals.EventEmitter {
 
     // --- the unlock: the keyguard goes, the screen behind comes up from 95 % (keyguard-extras §D.3-D.5)
 
+    // The shell's "unlock-dialog" mode, left: only while it is still the current one. GNOME's own screen shield,
+    // locking alongside on a suspend or a logind Lock, pops the same mode when it unlocks; popping it a second time
+    // threw, the unlock stopped half way and the right PIN left a black screen.
+    _leaveLockMode() {
+        if (this._modeLocked && Main.sessionMode.currentMode === 'unlock-dialog')
+            Main.sessionMode.popMode('unlock-dialog');
+        this._modeLocked = false;
+    }
+
     _goingAway() {
         if (this._unlockingNow || !this.showing)
             return;
@@ -916,10 +925,7 @@ export class Keyguard extends Signals.EventEmitter {
             group.translation_y = px(SURFACE_SHIFT * (1 - a));
         };
         surface(0);
-        if (this._modeLocked) {
-            Main.sessionMode.popMode('unlock-dialog');
-            this._modeLocked = false;
-        }
+        this._leaveLockMode();
 
         const content = this._content.opacity / 255, box = this._bouncerBox.opacity / 255;
         const blur = this._blur.enabled ? this._blur.radius : 0, scrim = this._scrim.opacity / 255;
@@ -993,9 +999,7 @@ export class Keyguard extends Signals.EventEmitter {
             Main.popModal(this._grab);
         this._grab = null;
         this._showHiddenWindows();
-        if (this._modeLocked)
-            Main.sessionMode.popMode('unlock-dialog');
-        this._modeLocked = false;
+        this._leaveLockMode();
         const group = global.window_group;
         group.opacity = 255;
         group.scale_x = group.scale_y = 1;

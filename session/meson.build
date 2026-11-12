@@ -36,3 +36,5 @@ install_data('gdm/gnome-phone.json', install_dir: datadir / 'gnome-shell' / 'mod
 install_data('gdm/gnome-phone.session', install_dir: datadir / 'gnome-session' / 'sessions')
 install_data('gdm/gnome-phone.session.conf', install_dir: systemd_user / 'gnome-session@gnome-phone.target.d')
 install_data('gdm/gnome-phone.desktop', install_dir: datadir / 'wayland-sessions')
+# GNOME's own screen lock off: the keyguard is the lock screen (see the file)
+install_data('90_gnome-phone.gschema.override', install_dir: datadir / 'glib-2.0' / 'schemas')

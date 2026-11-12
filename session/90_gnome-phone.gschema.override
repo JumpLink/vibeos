@@ -1,0 +1,9 @@
+# GNOME Phone: the extension's lock screen (keyguard.js) is the only one. GNOME's own screen shield locking too (on
+# suspend, on idle, on logind's Lock) took the shell's "unlock-dialog" mode away under the keyguard, so the right PIN
+# left a black screen. The phone sleeps and locks through the extension (power.js), with or without this.
+[org.gnome.desktop.screensaver]
+lock-enabled=false
+
+# dark by default: the phone's apps, GNOME's apps and the shell follow it (Settings → Display can switch it back)
+[org.gnome.desktop.interface]
+color-scheme='prefer-dark'

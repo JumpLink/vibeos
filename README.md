@@ -20,6 +20,8 @@ brought up on a POCO X3 NFC.
 | `neo-dialer`, `neo-messaging`, `neo-contacts` | LineageOS's Dialer and Messaging rebuilt in GTK 4 (calls and SMS through ModemManager, ringing with the app closed); contacts on evolution-data-server |
 | `neo-clock`, `neo-calendar`, `neo-calculator`, `neo-compass` | Alarms, timers and world clock; calendar; calculator; compass |
 | `neo-browser` | A browser with Chrome for Android's phone UI (tab grid, bottom toolbar, incognito) on WebKitGTK 6 |
+| `neo-settings` | The Settings app: connections, sounds, notifications, display, battery, wallpaper and parallax, the home screen, the lock screen, location, accounts, apps, language, accessibility. GNOME Phone opens it wherever GNOME opens a Settings panel |
+| `neo-weather` | The weather where the phone is (GeoClue, or GNOME Weather's first city), from Open-Meteo |
 | `sim-apn` | Sets up a mobile data profile for every new SIM |
 | `libneo-1-0`, `libspongy-1-0`, `libspongy-gtk-1-0`, `gir1.2-spongy-1`, `fonts-neo-roboto` | The apps' Material 3 widgets, Android-style scroll physics and Roboto |
 
@@ -61,11 +63,10 @@ To run without a display manager, see `/usr/share/doc/gnome-phone-session/README
 - **Device support.** Kernel, firmware, modem and sensor setup, the camera hole's position, and audio routing belong
   in a per-device package. The camera hole is read from libgmobile's display-panel data, or from
   `/etc/gmobile/display-panels/<compatible>.json`.
-- **Icon packs and parallax wallpaper sets.** Neo uses the GTK icon theme and the GNOME default background. Icon
-  packs can be installed per user in `~/.local/share/neo-launcher/iconpacks`.
+- **Icon packs and parallax wallpaper sets.** Neo uses the GTK icon theme and the GNOME default background. Neo
+  finds icon packs in `neo-launcher/iconpacks` and parallax sets in `neo-launcher/parallax`, in
+  `~/.local/share` or any system data directory (`/usr/share`), and Neo Settings lists both.
 - **Android's ringtones.** The dialer falls back to the freedesktop sound theme's ringtone.
-- **Settings and weather apps.** Neo Settings and Neo Weather live elsewhere for now. Until then the extension opens
-  GNOME Settings.
 
 ## Build from source
 

@@ -320,6 +320,14 @@ export class Power extends Signals.EventEmitter {
     // --- org.gnome.ScreenSaver: active while the screen is asleep
 
     _exportScreenSaver() {
+        // Debian's GNOME Shell exports its screen shield's own object here (shellDBus.js ScreenSaverDBus), and a
+        // second export fails: the extension stopped half built, with no keyboard and its sleep half running. The
+        // phone's sleep is ours, so the shell's object steps aside while the extension runs and comes back after.
+        const shell = Main.screenShield?._screenSaverDBus?._dbusImpl ?? null;
+        if (shell?.get_object_path?.()) {
+            shell.unexport();
+            this._shellScreenSaver = shell;
+        }
         this._dbus = Gio.DBusExportedObject.wrapJSObject(SCREENSAVER_IFACE, this);
         this._dbus.export(Gio.DBus.session, '/org/gnome/ScreenSaver');
         this._nameId = Gio.bus_own_name_on_connection(Gio.DBus.session, 'org.gnome.ScreenSaver',
@@ -369,6 +377,8 @@ export class Power extends Signals.EventEmitter {
             Gio.bus_unown_name(this._nameId);
         this._dbus?.unexport();
         this._dbus = null;
+        this._shellScreenSaver?.export(Gio.DBus.session, '/org/gnome/ScreenSaver');
+        this._shellScreenSaver = null;
         this._panel.wakeGesture(false);
         this._panel.lowPower(false);
         this._aod.destroy();

@@ -14,6 +14,20 @@ static const char *android_builtin[] = {
 
 #define ANDROID_SETTINGS "waydroid.com.android.settings.desktop"
 
+const char *const apps_replaced[][2] = {
+  { "de.yesman.Browser.desktop", "de.yesman.NeoBrowser.desktop" },
+  { "org.gnome.Calls.desktop", "de.yesman.Dialer.desktop" },
+  { "sm.puri.Chatty.desktop", "de.yesman.Messaging.desktop" },
+  { "org.gnome.Calculator.desktop", "de.yesman.Calculator.desktop" },
+  { "org.gnome.Calendar.desktop", "de.yesman.Calendar.desktop" },
+  { "org.gnome.Snapshot.desktop", "de.yesman.Camera.desktop" },
+  { "org.gnome.Settings.desktop", "de.yesman.NeoSettings.desktop" },
+  { "org.gnome.Weather.desktop", "de.yesman.NeoWeather.desktop" },
+  /* GNOME's video player since 49 */
+  { "org.gnome.Totem.desktop", "org.gnome.Showtime.desktop" },
+};
+const guint apps_n_replaced = G_N_ELEMENTS (apps_replaced);
+
 static gboolean
 is_android_builtin (const char *id)
 {
@@ -47,6 +61,11 @@ apps_installed (void)
     g_hash_table_replace (apps, g_strdup (id), g_object_ref (info));
   }
   g_list_free_full (all, g_object_unref);
+  /* one app per job: GNOME's Settings, Calculator, Calendar... give way to the phone's own once it is installed
+   * (they stay installed, and other apps can still open them) */
+  for (guint r = 0; r < apps_n_replaced; r++)
+    if (g_hash_table_contains (apps, apps_replaced[r][1]))
+      g_hash_table_remove (apps, apps_replaced[r][0]);
   return apps;
 }
 

@@ -7,3 +7,4 @@ usr/share/gnome-shell/modes/gnome-phone.json
 usr/share/gnome-session/sessions/gnome-phone.session
 usr/lib/systemd/user/gnome-session@gnome-phone.target.d
 usr/share/wayland-sessions/gnome-phone.desktop
+usr/share/glib-2.0/schemas/90_gnome-phone.gschema.override

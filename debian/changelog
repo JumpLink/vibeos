@@ -1,3 +1,48 @@
+gnome-phone (0.1.3) unstable; urgency=medium
+
+  * neo-launcher: a default home screen. The first start takes
+    neo-launcher/layout.json from /etc/xdg or /usr/share, and neo-launcher
+    ships one: Phone, Contacts, Console and Messaging in the dock; Camera,
+    Browser, Image Viewer, Calendar and Software on the first page; Document
+    Viewer, Weather, Calculator and Settings on the second. An installed app
+    it does not name goes where a fresh layout would put it (the phone's own
+    apps on the first page, the others after); an app it names that is not
+    installed leaves its cell empty. The clock and the compass stay in the
+    drawer (hidden-from-home); the clock widget opens the clock. Yesman, when
+    installed, sits between Calculator and Settings on the second page.
+  * gnome-phone-session: the dark style by default (color-scheme
+    prefer-dark).
+
+ -- pulpoff <pashkovsky@gmail.com>  Thu, 12 Nov 2026 05:00:00 +0100
+
+gnome-phone (0.1.2) unstable; urgency=medium
+
+  * extension: on Debian's GNOME Shell the screen shield already exports
+    org.gnome.ScreenSaver; the extension's own export failed and the
+    extension stopped half built (no keyboard, the screen going off every few
+    seconds). The shell's object now steps aside while the extension runs.
+  * neo-launcher: the first layout puts the phone's own apps on the first
+    page and GNOME's and the rest from the second page on.
+  * gnome-phone-session: GNOME's own screen lock off (lock-enabled=false).
+    Locking too, it took the shell's unlock-dialog mode away under the
+    extension's lock screen, and the right PIN left a black screen.
+
+ -- pulpoff <pashkovsky@gmail.com>  Thu, 12 Nov 2026 04:00:00 +0100
+
+gnome-phone (0.1.1) unstable; urgency=medium
+
+  * New packages: neo-settings (the Settings app, with neo-keyring-rekey for
+    the lock screen's password) and neo-weather. The metapackage recommends
+    both.
+  * neo-weather finds its own place: GNOME Weather's first city, or GeoClue
+    at city accuracy named by Nominatim (it used to read the old launcher's
+    weather widget, which Neo does not have).
+  * neo-launcher: GNOME's Settings, Weather, Calculator, Calendar, Calls and
+    Chatty leave the app drawer while the phone's own app for the job is
+    installed; their home screen places go to it.
+
+ -- pulpoff <pashkovsky@gmail.com>  Thu, 12 Nov 2026 03:00:00 +0100
+
 gnome-phone (0.1.0) unstable; urgency=medium
 
   * First packaging: libspongy, libneo, the Neo launcher, the gnome-phone
