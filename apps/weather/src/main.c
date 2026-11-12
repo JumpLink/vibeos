@@ -1,6 +1,7 @@
 /* Neo Weather: the page behind the home screen's weather widget, laid out like One UI's Weather: the place and the
  * temperature over the sky, the next 24 hours as a curve, today against yesterday, the week, and the details.
- * GTK4, so scrolling is the GPU moving what is already drawn.
+ * GTK4, so scrolling is the GPU moving what is already drawn; the page scrolls in libspongy's view (Android's fling
+ * and the stretch at the ends), like the other GNOME Phone apps, where it is installed.
  *
  * Where: the first city in GNOME Weather, if it has one; otherwise where the phone is, from GeoClue at city accuracy,
  * named by OpenStreetMap's Nominatim. The place is kept in ~/.cache/neo-launcher/weather.json (lat, lon, place), so
@@ -10,6 +11,9 @@
 #include <adwaita.h>
 #include <json-glib/json-glib.h>
 #include <math.h>
+#ifdef HAVE_SPONGY
+#include <spongy-gtk.h>
+#endif
 
 #define STALE_S (15 * 60)
 #define UA "neo-weather/1.0 (GNOME Phone)"
@@ -17,7 +21,7 @@
 #define COL_W 66              /* px, one hour in the hourly strip */
 
 typedef struct {
-  GtkWidget       *win, *body, *spinner;
+  GtkWidget       *win, *sky, *body, *spinner;
   double           lat, lon;
   char            *place;
   gboolean         have_place;
@@ -66,23 +70,66 @@ wx_name (int code)
   return "Cloudy";
 }
 
-/* the sky: a class on the window, its gradient is in style.css */
+/* The sky behind the page, top to bottom: four colours and where each sits (0..1).
+ *
+ * It is a texture, not a CSS linear-gradient on the window. Scrolling redraws the whole window every frame, and on the
+ * POCO X3 (Adreno 618, 1080x2400 at 120 Hz) GTK's gradient over the full window took a frame every ~24 ms, a third
+ * of the refresh rate, where a flat background or a texture keeps every 8.3 ms vblank (measured 2026-11-12). The
+ * texture is one pixel wide and 256 tall, made once per sky, and stretched over the window with linear filtering. */
+typedef struct {
+  const char *name;
+  guint32     rgb[4];
+  float       at[4];
+} Sky;
+
+static const Sky skies[] = {
+  { "cloudy", { 0x56637f, 0x7f8ca8, 0x3a4670, 0x26305a }, { 0, .30f, .55f, 1 } },
+  { "fog",    { 0x4a5578, 0x93a0bc, 0x3c4878, 0x29336a }, { 0, .30f, .55f, 1 } },
+  { "clear",  { 0x2f6fd0, 0x6fb0ee, 0x2c5aa8, 0x1d3c7a }, { 0, .32f, .58f, 1 } },
+  { "night",  { 0x0c1230, 0x1f2a5c, 0x141c44, 0x0c1230 }, { 0, .32f, .60f, 1 } },
+  { "rain",   { 0x35415a, 0x5d6b86, 0x2c3654, 0x1c2440 }, { 0, .30f, .58f, 1 } },
+  { "snow",   { 0x7d8ea8, 0xb8c6da, 0x5a6b8c, 0x34436a }, { 0, .30f, .58f, 1 } },
+  { "storm",  { 0x22263a, 0x474b66, 0x24283e, 0x14172a }, { 0, .30f, .58f, 1 } },
+};
+
+#define SKY_H 256
+
+static GdkTexture *
+sky_texture (const Sky *s)
+{
+  guint8 *px = g_malloc (SKY_H * 3);
+  for (int y = 0; y < SKY_H; y++) {
+    float t = y / (float) (SKY_H - 1);
+    int i = 0;
+    while (i < 2 && t > s->at[i + 1])
+      i++;
+    float f = CLAMP ((t - s->at[i]) / MAX (s->at[i + 1] - s->at[i], 1e-6f), 0, 1);
+    for (int c = 0; c < 3; c++) {
+      int shift = 16 - 8 * c;
+      float a = (s->rgb[i] >> shift) & 0xff, b = (s->rgb[i + 1] >> shift) & 0xff;
+      px[y * 3 + c] = (guint8) lroundf (a + (b - a) * f);
+    }
+  }
+  g_autoptr (GBytes) bytes = g_bytes_new_take (px, SKY_H * 3);
+  return gdk_memory_texture_new (1, SKY_H, GDK_MEMORY_R8G8B8, bytes, 3);
+}
+
 static const char *
 wx_sky (int code, gboolean day)
 {
   if (!day)
-    return "wx-night";
+    return "night";
   if (code <= 1)
-    return "wx-clear";
+    return "clear";
   if (code == 45 || code == 48)
-    return "wx-fog";
+    return "fog";
   if (code >= 95)
-    return "wx-storm";
+    return "storm";
   if ((code >= 71 && code <= 77) || code == 85 || code == 86)
-    return "wx-snow";
+    return "snow";
   if (code >= 51)
-    return "wx-rain";
-  return "wx-cloudy";
+    return "rain";
+  return "cloudy";
 }
 
 /* the sun yellow, the moon pale, everything else white (style.css) */
@@ -345,10 +392,14 @@ detail (const char *title, const char *value, const char *sub)
 static void
 set_sky (Page *p, const char *sky)
 {
-  const char *skies[] = { "wx-night", "wx-clear", "wx-fog", "wx-storm", "wx-snow", "wx-rain", "wx-cloudy" };
+  static GdkTexture *made[G_N_ELEMENTS (skies)];
   for (guint i = 0; i < G_N_ELEMENTS (skies); i++)
-    gtk_widget_remove_css_class (p->win, skies[i]);
-  gtk_widget_add_css_class (p->win, sky);
+    if (!strcmp (skies[i].name, sky)) {
+      if (!made[i])
+        made[i] = sky_texture (&skies[i]);
+      gtk_picture_set_paintable (GTK_PICTURE (p->sky), GDK_PAINTABLE (made[i]));
+      return;
+    }
 }
 
 static void
@@ -903,16 +954,26 @@ activate (GtkApplication *app, gpointer data)
   gtk_window_set_default_size (GTK_WINDOW (win), 360, 720);
   gtk_widget_add_css_class (win, "wx");
   add_back (win);
-  set_sky (p, "wx-cloudy");
 
+  /* the sky under everything, the page scrolling over it */
   GtkWidget *overlay = gtk_overlay_new ();
-  GtkWidget *sc = gtk_scrolled_window_new ();
-  gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (sc), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
-  gtk_widget_set_vexpand (sc, TRUE);
+  p->sky = gtk_picture_new ();
+  gtk_picture_set_content_fit (GTK_PICTURE (p->sky), GTK_CONTENT_FIT_FILL);
+  gtk_picture_set_can_shrink (GTK_PICTURE (p->sky), TRUE);
+  gtk_overlay_set_child (GTK_OVERLAY (overlay), p->sky);
+  set_sky (p, "cloudy");
   p->body = gtk_box_new (GTK_ORIENTATION_VERTICAL, 12);
   gtk_widget_add_css_class (p->body, "wx-body");
+#ifdef HAVE_SPONGY
+  GtkWidget *sc = spongy_scroll_view_new ();
+  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (sc), p->body);
+#else
+  GtkWidget *sc = gtk_scrolled_window_new ();
+  gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (sc), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
   gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (sc), p->body);
-  gtk_overlay_set_child (GTK_OVERLAY (overlay), sc);
+#endif
+  gtk_widget_set_vexpand (sc, TRUE);
+  gtk_overlay_add_overlay (GTK_OVERLAY (overlay), sc);
 
   /* reload floats over the sky, top right; back is the system's (the swipe, or closing the app) */
   GtkWidget *bar = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);

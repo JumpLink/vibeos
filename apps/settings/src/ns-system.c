@@ -79,6 +79,15 @@ lang_free (Lang *l)
 }
 
 static void
+lang_set (GObject *src, GAsyncResult *res, gpointer what)
+{
+  g_autoptr (GError) error = NULL;
+  g_autoptr (GVariant) v = g_dbus_connection_call_finish (G_DBUS_CONNECTION (src), res, &error);
+  if (!v)
+    g_warning ("%s: %s", (const char *) what, error->message);
+}
+
+static void
 lang_picked (GtkWidget *row, guint i, gpointer data)
 {
   Lang *l = data;
@@ -89,13 +98,10 @@ lang_picked (GtkWidget *row, guint i, gpointer data)
   if (l->path)
     g_dbus_connection_call (sys, "org.freedesktop.Accounts", l->path, "org.freedesktop.Accounts.User", "SetLanguage",
                             g_variant_new ("(s)", loc), NULL, G_DBUS_CALL_FLAGS_ALLOW_INTERACTIVE_AUTHORIZATION, -1,
-                            NULL, NULL, NULL);
-  /* the system's too, as Mobile Settings does: the lock screen and the console follow */
-  g_autofree char *lang = g_strconcat ("LANG=", loc, NULL);
-  const char *env[] = { lang, NULL };
-  g_dbus_connection_call (sys, "org.freedesktop.locale1", "/org/freedesktop/locale1", "org.freedesktop.locale1",
-                          "SetLocale", g_variant_new ("(^asb)", env, TRUE), NULL,
-                          G_DBUS_CALL_FLAGS_ALLOW_INTERACTIVE_AUTHORIZATION, 60000, NULL, NULL, NULL);
+                            NULL, lang_set, (gpointer) "AccountsService SetLanguage");
+  /* The language is the user's (AccountsService), as GNOME Settings sets it on Debian: the session takes it at the
+   * next log in. Not the system's: Debian's systemd keeps localed read-only (org.freedesktop.locale1.read-only.conf
+   * denies SetLocale to everyone, root too), so the SetLocale this page used to send was refused every time. */
   gtk_widget_set_visible (l->logout, TRUE);
 }
 

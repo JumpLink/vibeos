@@ -30,6 +30,27 @@ Comment:
  converted from AOSP and LineageOS sources (frameworks/base SystemUI,
  Launcher3, DeskClock, Dialer, Messaging, ExactCalculator).
 
+Files: neo-launcher/iconpacks/round/icons/*
+       tools/iconpack-round/glyphs/*
+Copyright: Google LLC (Material Symbols)
+           2026 pulpoff <pashkovsky@gmail.com>
+License: Apache-2.0
+Comment:
+ The Round pack's icons are Material Symbols Rounded glyphs on gradient discs,
+ made by tools/iconpack-round/make-round-pack.py.
+
+Files: neo-launcher/parallax/solar-system/*
+Copyright: NASA (the Sun, Earth, Moon, Mars, Saturn and Jupiter images)
+           2026 pulpoff <pashkovsky@gmail.com> (the drawn star field, glows and orbits, the composition)
+License: public-domain and Expat
+Comment:
+ The planet, Moon and Sun images are NASA's (images.nasa.gov and the JPL
+ Photojournal: GSFC_20171208_Archive_e002069, as17-148-22727,
+ GSFC_20171208_Archive_e000868, PIA00407, PIA06193, PIA04866). Works of the US
+ federal government are not subject to copyright (17 U.S.C. 105); see NASA's
+ media usage guidelines. The set's README lists each source with its credit.
+ The rest is drawn by tools/parallax-solar-system/build_solar_system.py.
+
 Files: apps/calculator/src/creal.c
        apps/calculator/src/creal.h
 Copyright: 1999, Silicon Graphics, Inc.
@@ -173,3 +194,7 @@ License: OFL-1.1
  DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
  OTHER DEALINGS IN THE FONT SOFTWARE.
+
+License: public-domain
+ Works of the United States federal government, including NASA's images, are
+ not subject to copyright in the United States (17 U.S.C. 105).

@@ -1,5 +1,6 @@
 /* Neo Launcher 2: what the home screen, the dock and the app drawer share. Everything is laid out in device pixels
- * from Android's dp values (Launcher3 on the S10e: 5 × 5 "Large Phone" grid, 56 dp icons, 1 dp = 3 px there). */
+ * from Android's dp values (Launcher3 on the S10e: 5 × 5 "Large Phone" grid, 56 dp icons, 1 dp = 3 px there). The
+ * grid, the icons' size, the home labels and the drawer's search pill are settings (de.yesman.neo; main.c). */
 #pragma once
 
 #include <gio/gdesktopappinfo.h>
@@ -15,16 +16,18 @@
 
 #define STATUS_BAR_DP            (116 / 3.0)   /* the shell's status bar: the cutout sets it, not the 24 dp default */
 #define NAV_GESTURE_DP           32            /* the bottom strip the shell's swipe up starts in */
-#define GRID_COLS                5
-#define GRID_ROWS                5
-#define ICON_DP                  56
+#define DOCK_SLOTS               5             /* the dock's cells, whatever the pages' grid */
+#define ICON_DP                  56            /* × desktop-icon-scale / drawer-icon-scale */
 #define WS_SIDE_DP               8             /* cell box x: 8 dp in from each side */
 #define WS_TOP_DP                (32 / 3.0)    /* cell box y: below the status bar */
 #define WS_CONTENT_DP            85            /* icon + gap + label box: (cell − this)/2 is the icon's top in a cell */
 #define LABEL_BASELINE_DP        74.5          /* below the icon's top */
 #define LABEL_SP                 12
+/* the labels' room in a column of the 5-column grid on a 360 dp phone; another grid's columns add or take what their
+ * width differs by (home_label_width, drawer_label_width) */
 #define LABEL_HOME_MAX_DP        52            /* "Play St…" fits, "Play Sto…" does not */
 #define LABEL_DRAWER_MAX_DP      54.6          /* "Calculat…" fits, "Messagi…" does not */
+#define LABEL_REF_COLS           5
 #define HOTSEAT_DP               104           /* the dock: icon + 48 dp below */
 #define HOTSEAT_CELL_DP          63
 #define PAGE_IND_DP              24
@@ -42,8 +45,9 @@
 #define SEARCH_TOP_DP            34            /* 8 dp margin + 26 dp overlap */
 #define SEARCH_H_DP              52
 #define SEARCH_SIDE_DP           4.5
-#define SEARCH_TEXT_SP           20
+#define SEARCH_TEXT_SP           16            /* the hint and the query: AOSP's search_container_all_apps textSize */
 #define LIST_TOP_DP              90            /* the list's window starts here (y 386 on the S10e) */
+                                               /* … or at SEARCH_TOP_DP without the search pill */
 #define LIST_ICON_TOP_DP         (77 / 3.0)    /* first icon below the list's top */
 #define LIST_ROW_DP              120           /* 104 dp cell + 16 dp border space */
 #define LIST_LABEL_BASELINE_DP   (231.5 / 3.0)
@@ -77,8 +81,13 @@ typedef struct {
   double       now;               /* ms, the frame being drawn */
   GHashTable  *tiles;             /* id -> Tile* */
   GPtrArray   *sorted;            /* Tile*, the drawer's A→Z order */
-  Model       *model;
+  Model       *model;               /* the home pages' grid is the model's (cols × rows) */
   GSettings   *settings;
+  /* the rest of Settings' Home screen layout (main.c layout_read) */
+  int          drawer_cols;
+  float        icon_dp, drawer_icon_dp;   /* ICON_DP × the scale keys; home.c and drawer.c fit them to their cells */
+  bool         labels;            /* the app names under the home screen's icons */
+  bool         search;            /* the drawer's search pill */
   TextFont    *label_font;
   Press        press;
   GDBusConnection *bus;
@@ -93,9 +102,11 @@ extern Neo N;
 static inline float dp (double v) { return (float) (v * N.dp); }
 
 /* tiles.c */
-void   tiles_load        (void);                       /* the apps, their labels, and the icon thread */
+void   tiles_load        (int cols, int rows);         /* the apps, their labels, the home layout, the icon thread */
 bool   tiles_sync        (void);                       /* the apps again: installed, removed, changed */
 void   tiles_reload_icons (void);                      /* every icon again, for new icon settings */
+void   tiles_relabel     (void);                       /* every label again, for another grid */
+int    tiles_icon_px     (void);                       /* the size the icons are drawn at */
 Tile  *tiles_get         (const char *id);
 GHashTable *tiles_apps   (void);                       /* id -> GAppInfo, as model_reconcile takes them */
 void   tile_draw_icon    (Tile *t, float x, float y, float size, float alpha);
@@ -129,7 +140,8 @@ bool   home_icon_rect    (const char *id, float r[4]);
 void   home_to_screen    (float x, float y, float *sx, float *sy);
 void   home_from_screen  (float sx, float sy, float *x, float *y);
 float  home_spring_scale (void);
-float  home_icon_size    (void);
+float  home_icon_size    (void);                         /* px, the pages' and the dock's icons */
+float  home_label_width  (void);                         /* px */
 int    home_n_pages      (void);                         /* with the extra page */
 int    home_page         (void);
 bool   home_snapping     (void);
@@ -179,6 +191,15 @@ void   drawer_close_for_drag (void);
 /* the tile under a finger held still on the list (a long press), and its icon box; NULL when it scrolled */
 Tile  *drawer_hold_tile  (float x, float y, float *ix, float *iy);
 bool   drawer_dragging   (void);
+float  drawer_icon_size  (void);                         /* px */
+float  drawer_label_width (void);                        /* px */
+/* the search pill (Launcher3's all-apps search): text typed into it from the on-screen keyboard (text-input-v3's
+ * commit and delete, in bytes) or a hardware keyboard (a key with its xkb keysym and text) */
+bool   drawer_search_key (guint32 keysym, const char *utf8);   /* true: the field took the key */
+void   drawer_search_text (const char *utf8);
+void   drawer_search_erase (int before, int after);
+void   drawer_search_submit (void);                       /* Enter: the first app found opens */
+bool   drawer_search_back (void);                         /* back leaves a search first: true when it did */
 /* the swipe up from the bar while the drawer is open: home (false from down: not the drawer's) */
 bool   drawer_home_down  (float x, float y, double t);
 void   drawer_home_move  (float x, float y, double t);

@@ -20,9 +20,18 @@
 typedef struct {
   char      *id;
   GAppInfo  *info;
+  int        px;                   /* the size to draw it at (tiles_icon_px when it was queued) */
   GdkPixbuf *pb;
   char      *splash;
 } IconJob;
+
+/* the icons are drawn at the larger of the home's and the drawer's sizes (Settings' icon sizes), so that neither
+ * scales one up */
+int
+tiles_icon_px (void)
+{
+  return (int) lroundf (dp (MAX (N.icon_dp, N.drawer_icon_dp)));
+}
 
 static void
 icon_job_free (IconJob *j)
@@ -66,10 +75,10 @@ icon_thread (gpointer data)
   g_mutex_lock (&icon_lock);
   g_autoptr (GSettings) settings = g_settings_new ("de.yesman.neo");
   Icons *icons = icons_new (settings);
-  int px = (int) lroundf (dp (ICON_DP));
   GPtrArray *pending = g_ptr_array_new (), *splash = g_ptr_array_new ();
   for (guint i = 0; i < jobs->len; i++) {
     IconJob *j = jobs->pdata[i];
+    int px = j->px;
     IconJob *s = g_new0 (IconJob, 1);
     s->id = g_strdup (j->id);
     s->info = g_object_ref (j->info);
@@ -80,13 +89,14 @@ icon_thread (gpointer data)
     if (again) {
       again->id = g_strdup (j->id);
       again->info = g_object_ref (j->info);
+      again->px = px;
       g_ptr_array_add (pending, again);
     }
     g_idle_add_full (G_PRIORITY_DEFAULT, icon_ready, j, NULL);
   }
   for (guint i = 0; i < pending->len; i++) {
     IconJob *j = pending->pdata[i];
-    j->pb = icons_render (icons, j->info, px);
+    j->pb = icons_render (icons, j->info, j->px);
     g_idle_add_full (G_PRIORITY_DEFAULT_IDLE, icon_ready, j, NULL);
   }
   g_ptr_array_unref (pending);
@@ -152,8 +162,12 @@ queue_icon (GPtrArray *jobs, GHashTable *queued, const char *id)
   IconJob *j = g_new0 (IconJob, 1);
   j->id = g_strdup (t->id);
   j->info = g_object_ref (t->info);
+  j->px = tiles_icon_px ();
   g_ptr_array_add (jobs, j);
 }
+
+/* the widths the labels were laid out at: another grid's columns give them more or less room */
+static float label_w, dlabel_w;
 
 static void
 tile_label (Tile *t)
@@ -161,8 +175,30 @@ tile_label (Tile *t)
   const char *name = app_name (t->info);
   text_layout_free (t->label);
   text_layout_free (t->dlabel);
-  t->label = text_layout (N.label_font, name, dp (LABEL_HOME_MAX_DP), 1, TEXT_CENTER);
-  t->dlabel = text_layout (N.label_font, name, dp (LABEL_DRAWER_MAX_DP), 1, TEXT_CENTER);
+  t->label = text_layout (N.label_font, name, label_w, 1, TEXT_CENTER);
+  t->dlabel = text_layout (N.label_font, name, dlabel_w, 1, TEXT_CENTER);
+}
+
+static bool
+label_widths (void)
+{
+  float w = home_label_width (), dw = drawer_label_width ();
+  bool changed = w != label_w || dw != dlabel_w;
+  label_w = w;
+  dlabel_w = dw;
+  return changed;
+}
+
+void
+tiles_relabel (void)
+{
+  if (!label_widths ())
+    return;
+  GHashTableIter it;
+  gpointer key, value;
+  g_hash_table_iter_init (&it, N.tiles);
+  while (g_hash_table_iter_next (&it, &key, &value))
+    tile_label (value);
 }
 
 static Tile *
@@ -208,24 +244,27 @@ all_icon_jobs (void)
   return jobs;
 }
 
+/* the apps and the home layout on the grid Settings picked (cols × rows) */
 void
-tiles_load (void)
+tiles_load (int cols, int rows)
 {
   g_autoptr (GHashTable) apps = apps_installed ();
   N.tiles = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, (GDestroyNotify) tile_free);
   N.sorted = g_ptr_array_new ();
   N.label_font = text_font_axes ("Google Sans Flex", 700, dp (LABEL_SP), "opsz=72,ROND=100");
 
+  N.model = model_new (cols, rows, DOCK_SLOTS);
+  model_set_reserved (N.model, cols);                 /* the clock widget's row on the first page */
+  label_widths ();
   GList *infos = g_list_sort (g_hash_table_get_values (apps), app_compare);
   for (GList *l = infos; l; l = l->next)
     tile_new (l->data);
   g_list_free (infos);
 
-  N.model = model_new (GRID_COLS, GRID_ROWS, GRID_COLS);
   g_auto (GStrv) hidden = g_settings_get_strv (N.settings, "hidden-from-home");
   model_set_hidden (N.model, hidden);
   model_load (N.model, apps);
-  model_set_reserved (N.model, GRID_COLS);            /* the clock widget's row on the first page */
+  model_set_reserved (N.model, N.model->cols);
   g_thread_unref (g_thread_new ("neo-icons", icon_thread, all_icon_jobs ()));
 }
 

@@ -1,4 +1,5 @@
-/* nb-urlbar: Jelly's UrlBarLayout (spec/jelly.md §2, §2.1, §4): the URL card and the menu button, the search group
+/* nb-urlbar: Jelly's UrlBarLayout (spec/jelly.md §2, §2.1, §4): the URL card, the tab count (Chrome's: the number of
+ * open tabs in a rounded square; a tap opens the tab switcher, nb-switcher.c) and the menu button, the search group
  * that replaces them for find in page, the 2 dp progress line, and the suggestions dropping from the card. */
 #include "nb.h"
 #include "nb-suggest.h"
@@ -373,6 +374,44 @@ on_find_cancel (NbTab *t)
   nb_urlbar_set_finding (t, FALSE);
 }
 
+/* ---- the tab count ---- */
+
+void
+nb_urlbar_sync_count (NbTab *t)
+{
+  if (!t->count_label)
+    return;
+  guint n = nb->tabs->len;
+  /* Chrome's: the number up to 99, then a smile */
+  g_autofree char *text = n > 99 ? g_strdup (":D") : g_strdup_printf ("%u", n);
+  g_autofree char *name = g_strdup_printf (n == 1 ? "Switch tabs, %u open tab" : "Switch tabs, %u open tabs", n);
+  gtk_label_set_text (GTK_LABEL (t->count_label), text);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (t->count), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);
+}
+
+static void
+on_count (NbTab *t)
+{
+  nb_urlbar_stop_editing (t);
+  nb_switcher_open ();
+}
+
+static GtkWidget *
+count_button (NbTab *t)
+{
+  t->count_label = gtk_label_new ("1");
+  gtk_widget_add_css_class (t->count_label, "nb-tab-count");
+  gtk_widget_set_halign (t->count_label, GTK_ALIGN_CENTER);
+  gtk_widget_set_valign (t->count_label, GTK_ALIGN_CENTER);
+  t->count = neo_pressable_new (t->count_label);
+  neo_pressable_set_ripple (NEO_PRESSABLE (t->count), NEO_RIPPLE_CIRCLE, 20);
+  gtk_widget_add_css_class (t->count, "nb-bar-icon");
+  gtk_widget_set_size_request (t->count, 48, 48);
+  gtk_widget_set_valign (t->count, GTK_ALIGN_CENTER);
+  g_signal_connect_swapped (t->count, "clicked", G_CALLBACK (on_count), t);
+  return t->count;
+}
+
 /* ---- building ---- */
 
 static GtkWidget *
@@ -443,6 +482,7 @@ url_group (NbTab *t)
   gtk_box_append (GTK_BOX (card), text);
   gtk_box_append (GTK_BOX (row), card);
 
+  gtk_box_append (GTK_BOX (row), count_button (t));
   t->more = bar_icon_button ("jelly-menu-symbolic", "More", "nb-bar-icon");
   gtk_widget_set_margin_end (t->more, 4);
   g_signal_connect_swapped (t->more, "clicked", G_CALLBACK (nb_menu_open), t);
@@ -525,7 +565,8 @@ nb_urlbar_new (NbTab *t)
   gtk_widget_add_css_class (t->dropdown, "nb-dropdown");
   gtk_widget_set_valign (t->dropdown, GTK_ALIGN_START);
   gtk_widget_set_margin_start (t->dropdown, 16);
-  gtk_widget_set_margin_end (t->dropdown, 56);
+  /* the card ends before the tab count and the menu button (48 dp each, 4 + 4 dp around) */
+  gtk_widget_set_margin_end (t->dropdown, 104);
   gtk_widget_set_margin_top (t->dropdown, 56);
   t->dropdown_rows = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_box_append (GTK_BOX (t->dropdown), t->dropdown_rows);

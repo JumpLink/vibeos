@@ -3,7 +3,7 @@
  *
  *  - a call comes: it rings (ringer.h), shows the answer screen over the lock screen, or a heads-up with Answer and
  *    Decline when the phone is in use (call-notifications.h);
- *  - a call is up: the call audio is switched in (exynos-callaudiod), the ongoing-call notification counts on;
+ *  - a call is up: the call audio is switched in (callaudiod), the ongoing-call notification counts on;
  *  - a call ends: it stays a moment as "Call ended", goes into the call log (call-log.h), and a missed one gets its
  *    notification.
  *

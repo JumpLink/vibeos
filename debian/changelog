@@ -1,3 +1,70 @@
+gnome-phone (0.1.5) unstable; urgency=medium
+
+  * neo-weather: scrolls at the panel's rate (8.6 ms a frame on a 120 Hz
+    phone, was 25 ms). The sky was a CSS gradient over the whole window,
+    drawn again on every frame; it is a small texture stretched under the
+    page now. The page scrolls with libspongy's fling and stretch, like the
+    other apps.
+  * neo-iconpack-round: the Round icon pack (Material Symbols glyphs on
+    gradient discs, Apache-2.0), the launcher's default icons.
+  * neo-browser: tabs live in one window. The URL line has a tab count that
+    opens a switcher (a grid of the open tabs with thumbnails, close buttons,
+    new tab and new incognito tab). New tab, target=_blank links and
+    window.open open tabs in the same window; a tab's web view is made when
+    the tab is first shown.
+  * neo-weather, neo-settings: their own icons. They showed GNOME Weather's
+    and GNOME Settings' icons, so with GNOME Weather removed (and with no
+    icon pack) Weather had none.
+  * neo-parallax-solar-system: a parallax wallpaper made from NASA's
+    public-domain images (the Sun, Earth, the Moon, Mars, Saturn, Jupiter),
+    the default wallpaper.
+  * neo-camera: the cameras run only while the window is in focus. Recents
+    shows windows live, so a camera left in the background opened its
+    sensor every time recents opened (the focus motor clicked).
+  * neo-dialer: comments name callaudiod's API, not one phone's daemon.
+  * extension: a button tapped while the keyboard is up gets its tap. The
+    keyboard closed (and the window grew back) as the finger came down, so
+    the button moved away before it lifted: a dialog's Cancel or Rename did
+    nothing and the dialog seemed to open again. The keyboard now closes
+    once the finger lifts.
+  * extension: the power key turns a panel without a low power mode (an
+    LCD) off. It went black but stayed lit until the phone suspended.
+  * neo-settings: a PIN, the current one and a new one, is typed on the
+    lock screen's PIN pad, not the keyboard; a current password that is not
+    digits has "Use password". A pattern is drawn as before.
+  * neo-settings: Lock screen has an Always On Display switch on phones
+    whose panel has a low power mode (OLED).
+  * neo-settings: Language no longer asks localed for the system language,
+    which Debian keeps read-only (the call was refused every time); the
+    user's language is set as before and applies at the next log in.
+  * neo-launcher: the home screen's grid is a setting: 4x5, 4x6, 5x5 (as
+    before) or 5x6, with the icons' size (80 to 110 %) and their names on or
+    off; the app drawer has 4 or 5 columns and an icon size of its own. A
+    smaller grid moves the icons it has no cell for to the next free cells,
+    on a new page if need be, and going back to a grid brings back its
+    layout as it was. The screen follows a change at once. Values the GTK
+    Neo left in these settings (4 columns, no search bar) are reset once,
+    so nothing changes until Settings is used.
+  * neo-launcher: the app drawer's search works. A tap on "Search apps"
+    opens the keyboard and typing narrows the list to the apps whose name,
+    generic name or keywords have a word starting with it; Back clears it.
+    The hint is 16 sp, Launcher3's size (it was 20). With the search bar
+    switched off the list starts where it was.
+  * neo-settings: Home screen has a Layout group for the grid, the icon
+    sizes, the app names, the app drawer's columns and its search bar.
+
+ -- pulpoff <pashkovsky@gmail.com>  Thu, 12 Nov 2026 07:00:00 +0100
+
+gnome-phone (0.1.4) unstable; urgency=medium
+
+  * neo-camera: the camera (LineageOS's Aperture on libcamera and GStreamer),
+    packaged. It takes GNOME Snapshot's place on the home screen.
+  * neo-files: the file manager (File Manager+ on GIO and GVfs), packaged.
+    It takes Nautilus's place on the home screen.
+  * neo-launcher: the default layout has the camera where Snapshot was.
+
+ -- pulpoff <pashkovsky@gmail.com>  Thu, 12 Nov 2026 06:00:00 +0100
+
 gnome-phone (0.1.3) unstable; urgency=medium
 
   * neo-launcher: a default home screen. The first start takes

@@ -4,14 +4,17 @@
 #include <linux/input-event-codes.h>
 #include <math.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <time.h>
 #include <unistd.h>
 #include <wayland-client.h>
+#include <xkbcommon/xkbcommon.h>
 
 #include "xdg-shell-client-protocol.h"
 #include "viewporter-client-protocol.h"
 #include "presentation-time-client-protocol.h"
 #include "fractional-scale-v1-client-protocol.h"
+#include "text-input-unstable-v3-client-protocol.h"
 
 #define POINTER_ID 1000
 
@@ -31,6 +34,8 @@ struct Wl {
   struct wp_viewporter *viewporter;
   struct wp_fractional_scale_manager_v1 *frac_mgr;
   struct wp_presentation *presentation;
+  struct zwp_text_input_manager_v3 *ti_manager;
+  guint32            ti_version;
   int                output_scale;             /* the outputs' integer scale: a guess until the surface is shown */
   bool               frac_known;
 
@@ -60,6 +65,22 @@ struct Wl {
   /* the pointer, as a touch */
   double             px, py;
   bool               pressed;
+
+  /* keys: the compositor's keymap and its state (the modifiers) */
+  struct xkb_context *xkb;
+  struct xkb_keymap  *keymap;
+  struct xkb_state   *xkb_state;
+
+  /* the text input: wanted on or off by the app, on with the compositor (it needs the keyboard focus) */
+  struct zwp_text_input_v3 *ti;
+  bool               ti_focus, ti_want, ti_on;
+  char              *ti_text;
+  int                ti_cursor;
+  int                ti_rect[4];               /* surface coordinates */
+  /* what the next done applies */
+  char              *ti_commit;
+  guint32            ti_before, ti_after;
+  bool               ti_submit;
 
   GSource           *source;
 };
@@ -405,7 +426,24 @@ static const struct wl_pointer_listener pointer_listener = {
 static void
 keyboard_keymap (void *data, struct wl_keyboard *k, uint32_t format, int32_t fd, uint32_t size)
 {
+  Wl *wl = data;
+  if (format != WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1 || !wl->xkb) {
+    close (fd);
+    return;
+  }
+  char *map = mmap (NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
   close (fd);
+  if (map == MAP_FAILED)
+    return;
+  struct xkb_keymap *keymap = xkb_keymap_new_from_string (wl->xkb, map, XKB_KEYMAP_FORMAT_TEXT_V1,
+                                                          XKB_KEYMAP_COMPILE_NO_FLAGS);
+  munmap (map, size);
+  if (!keymap)
+    return;
+  g_clear_pointer (&wl->xkb_state, xkb_state_unref);
+  g_clear_pointer (&wl->keymap, xkb_keymap_unref);
+  wl->keymap = keymap;
+  wl->xkb_state = xkb_state_new (keymap);
 }
 
 static void keyboard_enter (void *data, struct wl_keyboard *k, uint32_t serial, struct wl_surface *s,
@@ -416,12 +454,26 @@ static void
 keyboard_key (void *data, struct wl_keyboard *k, uint32_t serial, uint32_t time, uint32_t key, uint32_t state)
 {
   Wl *wl = data;
+  bool pressed = state == WL_KEYBOARD_KEY_STATE_PRESSED;
+  guint32 sym = 0;
+  char text[64] = "";
+  if (wl->xkb_state) {
+    sym = xkb_state_key_get_one_sym (wl->xkb_state, key + 8);   /* xkb's keycodes are evdev's + 8 */
+    if (pressed)
+      xkb_state_key_get_utf8 (wl->xkb_state, key + 8, text, sizeof text);
+  }
   if (wl->cb->key)
-    wl->cb->key (wl->data, key, state == WL_KEYBOARD_KEY_STATE_PRESSED);
+    wl->cb->key (wl->data, key, sym, pressed ? text : NULL, pressed);
 }
 
-static void keyboard_modifiers (void *data, struct wl_keyboard *k, uint32_t serial, uint32_t dep, uint32_t lat,
-                                uint32_t lock, uint32_t group) {}
+static void
+keyboard_modifiers (void *data, struct wl_keyboard *k, uint32_t serial, uint32_t dep, uint32_t lat, uint32_t lock,
+                    uint32_t group)
+{
+  Wl *wl = data;
+  if (wl->xkb_state)
+    xkb_state_update_mask (wl->xkb_state, dep, lat, lock, 0, 0, group);
+}
 static void keyboard_repeat (void *data, struct wl_keyboard *k, int32_t rate, int32_t delay) {}
 
 static const struct wl_keyboard_listener keyboard_listener = {
@@ -478,6 +530,154 @@ static const struct wl_output_listener output_listener = {
   output_geometry, output_mode, output_done, output_scale, output_name, output_description,
 };
 
+/* ---- the text input ----------------------------------------------------------------------------------------- */
+
+/* the field's state for the input method: what it holds, where the cursor and the field are */
+static void
+ti_state (Wl *wl)
+{
+  zwp_text_input_v3_set_surrounding_text (wl->ti, wl->ti_text ? wl->ti_text : "", wl->ti_cursor, wl->ti_cursor);
+  zwp_text_input_v3_set_cursor_rectangle (wl->ti, wl->ti_rect[0], wl->ti_rect[1], wl->ti_rect[2], wl->ti_rect[3]);
+}
+
+/* on: enabled (which resets the input method's state, so the whole state follows), or the state alone while it is
+ * on already; off: disabled. Only with the keyboard focus: the compositor ignores the requests without it. */
+static void
+ti_apply (Wl *wl)
+{
+  if (!wl->ti || !wl->ti_focus)
+    return;
+  if (wl->ti_want) {
+    if (!wl->ti_on) {
+      zwp_text_input_v3_enable (wl->ti);
+      zwp_text_input_v3_set_content_type (wl->ti, ZWP_TEXT_INPUT_V3_CONTENT_HINT_NONE,
+                                          ZWP_TEXT_INPUT_V3_CONTENT_PURPOSE_NORMAL);
+#ifdef ZWP_TEXT_INPUT_V3_SET_AVAILABLE_ACTIONS_SINCE_VERSION
+      if (wl->ti_version >= ZWP_TEXT_INPUT_V3_SET_AVAILABLE_ACTIONS_SINCE_VERSION) {
+        struct wl_array actions;
+        wl_array_init (&actions);
+        uint32_t *a = wl_array_add (&actions, sizeof *a);
+        *a = ZWP_TEXT_INPUT_V3_ACTION_SUBMIT;
+        zwp_text_input_v3_set_available_actions (wl->ti, &actions);
+        wl_array_release (&actions);
+      }
+#endif
+    }
+    ti_state (wl);
+  } else if (wl->ti_on) {
+    zwp_text_input_v3_disable (wl->ti);
+  } else {
+    return;
+  }
+  zwp_text_input_v3_commit (wl->ti);
+  wl->ti_on = wl->ti_want;
+}
+
+void
+wl_text_input (Wl *wl, bool on, const char *text, int cursor, float x, float y, float w, float h)
+{
+  g_free (wl->ti_text);
+  wl->ti_text = g_strdup (text);
+  wl->ti_cursor = cursor;
+  double s = wl->scale > 0 ? wl->scale : 1;
+  wl->ti_rect[0] = (int) floor (x / s);
+  wl->ti_rect[1] = (int) floor (y / s);
+  wl->ti_rect[2] = (int) ceil (w / s);
+  wl->ti_rect[3] = (int) ceil (h / s);
+  wl->ti_want = on;
+  ti_apply (wl);
+}
+
+void
+wl_text_input_show (Wl *wl)
+{
+  if (!wl->ti || !wl->ti_on)
+    return;
+#ifdef ZWP_TEXT_INPUT_V3_SHOW_INPUT_PANEL_SINCE_VERSION
+  if (wl->ti_version >= ZWP_TEXT_INPUT_V3_SHOW_INPUT_PANEL_SINCE_VERSION) {
+    zwp_text_input_v3_show_input_panel (wl->ti);
+    zwp_text_input_v3_commit (wl->ti);
+    return;
+  }
+#endif
+  /* version 1: mutter shows the keyboard when a focused field is enabled again */
+  zwp_text_input_v3_enable (wl->ti);
+  ti_state (wl);
+  zwp_text_input_v3_commit (wl->ti);
+}
+
+static void
+ti_enter (void *data, struct zwp_text_input_v3 *ti, struct wl_surface *s)
+{
+  Wl *wl = data;
+  wl->ti_focus = true;
+  wl->ti_on = false;
+  ti_apply (wl);
+}
+
+static void
+ti_leave (void *data, struct zwp_text_input_v3 *ti, struct wl_surface *s)
+{
+  Wl *wl = data;
+  wl->ti_focus = false;
+  wl->ti_on = false;
+}
+
+static void ti_preedit (void *data, struct zwp_text_input_v3 *ti, const char *text, int32_t begin, int32_t end) {}
+
+static void
+ti_commit_string (void *data, struct zwp_text_input_v3 *ti, const char *text)
+{
+  Wl *wl = data;
+  g_free (wl->ti_commit);
+  wl->ti_commit = g_strdup (text);
+}
+
+static void
+ti_delete (void *data, struct zwp_text_input_v3 *ti, uint32_t before, uint32_t after)
+{
+  Wl *wl = data;
+  wl->ti_before = before;
+  wl->ti_after = after;
+}
+
+static void
+ti_done (void *data, struct zwp_text_input_v3 *ti, uint32_t serial)
+{
+  Wl *wl = data;
+  g_autofree char *commit = g_steal_pointer (&wl->ti_commit);
+  guint32 before = wl->ti_before, after = wl->ti_after;
+  bool submit = wl->ti_submit;
+  wl->ti_before = wl->ti_after = 0;
+  wl->ti_submit = false;
+  if ((before || after) && wl->cb->erase)
+    wl->cb->erase (wl->data, before, after);
+  if (commit && wl->cb->text)
+    wl->cb->text (wl->data, commit);
+  if (submit && wl->cb->submit)
+    wl->cb->submit (wl->data);
+}
+
+#ifdef ZWP_TEXT_INPUT_V3_ACTION_SINCE_VERSION
+static void
+ti_action (void *data, struct zwp_text_input_v3 *ti, uint32_t action, uint32_t serial)
+{
+  Wl *wl = data;
+  wl->ti_submit = action == ZWP_TEXT_INPUT_V3_ACTION_SUBMIT;
+}
+
+static void ti_language (void *data, struct zwp_text_input_v3 *ti, const char *language) {}
+static void ti_preedit_hint (void *data, struct zwp_text_input_v3 *ti, uint32_t start, uint32_t end,
+                             uint32_t hint) {}
+#endif
+
+static const struct zwp_text_input_v3_listener ti_listener = {
+  ti_enter, ti_leave, ti_preedit, ti_commit_string, ti_delete, ti_done,
+#ifdef ZWP_TEXT_INPUT_V3_ACTION_SINCE_VERSION
+  ti_action, ti_language, ti_preedit_hint,
+#endif
+};
+
 /* ---- the registry --------------------------------------------------------------------------------------------- */
 
 static void
@@ -502,6 +702,10 @@ registry_global (void *data, struct wl_registry *r, uint32_t name, const char *i
     wl_output_add_listener (o, &output_listener, wl);
   } else if (!strcmp (iface, wp_presentation_interface.name)) {
     wl->presentation = wl_registry_bind (r, name, &wp_presentation_interface, 1);
+  } else if (!strcmp (iface, zwp_text_input_manager_v3_interface.name)) {
+    /* version 2 (show_input_panel, the submit action) where both sides have it */
+    wl->ti_version = MIN (version, (guint32) zwp_text_input_v3_interface.version);
+    wl->ti_manager = wl_registry_bind (r, name, &zwp_text_input_manager_v3_interface, wl->ti_version);
   }
 }
 
@@ -584,6 +788,7 @@ wl_open (const char *app_id, const WlCallbacks *cb, gpointer data)
   wl->scale = 1;
   wl->buffer_scale = 1;
   wl->refresh = 16666667;
+  wl->xkb = xkb_context_new (XKB_CONTEXT_NO_FLAGS);
   wl->display = wl_display_connect (NULL);
   if (!wl->display) {
     g_warning ("wayland: no compositor");
@@ -598,6 +803,10 @@ wl_open (const char *app_id, const WlCallbacks *cb, gpointer data)
     return NULL;
   }
   wl_display_roundtrip (wl->display);        /* the seat's capabilities, the outputs' scale */
+  if (wl->ti_manager && wl->seat) {
+    wl->ti = zwp_text_input_manager_v3_get_text_input (wl->ti_manager, wl->seat);
+    zwp_text_input_v3_add_listener (wl->ti, &ti_listener, wl);
+  }
 
   wl->surface = wl_compositor_create_surface (wl->compositor);
   wl_surface_add_listener (wl->surface, &surface_listener, wl);
@@ -658,6 +867,15 @@ wl_close (Wl *wl)
   }
   if (wl->frame_cb)
     wl_callback_destroy (wl->frame_cb);
+  if (wl->ti)
+    zwp_text_input_v3_destroy (wl->ti);
+  if (wl->ti_manager)
+    zwp_text_input_manager_v3_destroy (wl->ti_manager);
+  g_free (wl->ti_text);
+  g_free (wl->ti_commit);
+  g_clear_pointer (&wl->xkb_state, xkb_state_unref);
+  g_clear_pointer (&wl->keymap, xkb_keymap_unref);
+  g_clear_pointer (&wl->xkb, xkb_context_unref);
   if (wl->frac)
     wp_fractional_scale_v1_destroy (wl->frac);
   if (wl->viewport)

@@ -41,6 +41,9 @@ const LONG_PRESS_MS = 500;
 const MIN_AWAKE_MS = 300;
 // gnome-session's inhibitor flag for idle (video playback, a presentation)
 const INHIBIT_IDLE = 8;
+// org.gnome.Mutter.DisplayConfig's PowerSaveMode (META_POWER_SAVE_ON, META_POWER_SAVE_OFF)
+const POWER_SAVE_ON = 0;
+const POWER_SAVE_OFF = 3;
 
 const SCREENSAVER_IFACE = `<node>
   <interface name="org.gnome.ScreenSaver">
@@ -199,10 +202,12 @@ export class Power extends Signals.EventEmitter {
         this._showLayer();
         this._fade(255, SLEEP_MS, LINEAR, () => {
             // all black or all AOD on the panel: its low power mode, and with it the clock
-            if (this._state === State.DOZING)
+            if (this._state === State.DOZING) {
                 this._aod.shown();
-            else
+            } else {
                 this._panel.lowPower(true);
+                this._outputsOff(true);
+            }
             this._panel.wakeGesture(this._neo?.get_boolean('double-tap-wake') !== false);
         });
         this._syncTimeout();
@@ -217,7 +222,8 @@ export class Power extends Signals.EventEmitter {
         const from = this._state;
         this._state = State.AWAKE;
         this._wokeAt = GLib.get_monotonic_time();
-        // out of the low power mode before anything shows through
+        // out of the low power mode (or off) before anything shows through
+        this._outputsOff(false);
         this._panel.wakeGesture(false);
         this._aod.hidden();
         this._panel.lowPower(false);
@@ -335,6 +341,29 @@ export class Power extends Signals.EventEmitter {
         this._active = false;
     }
 
+    // Black on a panel without a low power mode (the POCO's) is still a lit panel: it glowed until the phone suspended
+    // a few seconds later (owner, 2026-11-12: "closes the screen but does not switch it off ... glows black"). There
+    // the outputs go off for real once the black is up, as gnome-settings-daemon would have them: power_save_blocked
+    // comes off for that, and back on before they are turned on again (an "on" goes through it anyway). A panel with
+    // a low power mode (the S10e's, whose DSI link does not come back from off) stays on, at its lowest brightness.
+    _outputsOff(off) {
+        if (this._panel.hasLowPower || off === (this._outputsAreOff ?? false))
+            return;
+        this._outputsAreOff = off;
+        this._monitors.power_save_blocked = !off;
+        Gio.DBus.session.call('org.gnome.Mutter.DisplayConfig', '/org/gnome/Mutter/DisplayConfig',
+            'org.freedesktop.DBus.Properties', 'Set',
+            new GLib.Variant('(ssv)', ['org.gnome.Mutter.DisplayConfig', 'PowerSaveMode',
+                new GLib.Variant('i', off ? POWER_SAVE_OFF : POWER_SAVE_ON)]),
+            null, Gio.DBusCallFlags.NONE, -1, null, (bus, res) => {
+                try {
+                    bus.call_finish(res);
+                } catch (e) {
+                    log(`gnome-phone: outputs ${off ? 'off' : 'on'}: ${e.message}`);
+                }
+            });
+    }
+
     _setActive(active) {
         if (active === this._active)
             return;
@@ -381,6 +410,7 @@ export class Power extends Signals.EventEmitter {
         this._shellScreenSaver = null;
         this._panel.wakeGesture(false);
         this._panel.lowPower(false);
+        this._outputsOff(false);
         this._aod.destroy();
         this._hideLayer();
         this.layer.destroy();

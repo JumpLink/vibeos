@@ -249,7 +249,7 @@ probe_modem (Calls *self)
   modem_voice_method (self->modem, "HoldAndAccept", on_hold_probe, self);
 }
 
-/* --- the call audio (exynos-callaudiod: org.mobian_project.CallAudio) */
+/* --- the call audio: callaudiod's org.mobian_project.CallAudio (Debian's callaudiod, or any daemon with its API) */
 
 static void
 call_audio (Calls *self, const char *method, GVariant *parameters)

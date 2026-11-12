@@ -1519,8 +1519,13 @@ on_location_answer (gboolean turn_on, gpointer data)
 static void
 sync_running (CamView *self)
 {
+  /* The cameras run only while the window is shown AND in focus (owner, 2026-11-12: "if camera is not in focus -
+   * stop the cameras"). Shown alone is not enough: recents (like GNOME's overview) shows every window live, which
+   * wakes a suspended one, so a camera left in the background opened its sensor each time recents opened (the
+   * focus motor clicked). Recents, the shade or another app over the camera take the focus and stop it too. */
   gboolean run = !self->closing && !self->in_settings && self->camera && self->window
-                 && gtk_widget_get_mapped (GTK_WIDGET (self)) && !gtk_window_is_suspended (self->window);
+                 && gtk_widget_get_mapped (GTK_WIDGET (self)) && !gtk_window_is_suspended (self->window)
+                 && gtk_window_is_active (self->window);
 
   if (run == self->running)
     {

@@ -12,13 +12,15 @@
       (phosh 0.58.0-1+neo1 or later) reads this key; Mobile Settings shows it on the device page.</description>
     </key>
     <key name="desktop-grid-columns" type="i">
-      <range min="3" max="8"/>
-      <default>4</default>
+      <range min="3" max="6"/>
+      <default>5</default>
       <summary>Home screen columns</summary>
+      <description>The home screen grid's columns. Neo Settings offers 4 × 5, 4 × 6, 5 × 5 and 5 × 6 (columns ×
+      rows; Launcher3's 5 × 5 is the default); icons a smaller grid has no cell for move to the next free one.</description>
     </key>
     <key name="desktop-grid-rows" type="i">
-      <range min="3" max="8"/>
-      <default>6</default>
+      <range min="4" max="7"/>
+      <default>5</default>
       <summary>Home screen rows</summary>
     </key>
     <key name="dock-num-icons" type="i">
@@ -27,9 +29,22 @@
       <summary>Dock icons</summary>
     </key>
     <key name="drawer-grid-columns" type="i">
-      <range min="3" max="8"/>
-      <default>4</default>
+      <range min="3" max="6"/>
+      <default>5</default>
       <summary>App drawer columns</summary>
+    </key>
+    <key name="desktop-icon-scale" type="d">
+      <range min="0.5" max="1.5"/>
+      <default>1.0</default>
+      <summary>Home screen icon size</summary>
+      <description>The home screen's and the dock's icons, as a share of Launcher3's 56 dp; never larger than their
+      cells leave room for.</description>
+    </key>
+    <key name="drawer-icon-scale" type="d">
+      <range min="0.5" max="1.5"/>
+      <default>1.0</default>
+      <summary>App drawer icon size</summary>
+      <description>The app drawer's icons, as a share of 56 dp; never larger than its columns leave room for.</description>
     </key>
     <key name="home-widgets" type="b">
       <default>true</default>
@@ -65,8 +80,9 @@
       <summary>Draw icons without pack art on a shaped background</summary>
     </key>
     <key name="search-drawer-enabled" type="b">
-      <default>false</default>
+      <default>true</default>
       <summary>Search field at the top of the app drawer</summary>
+      <description>Off: no search pill, and the app list starts where it was.</description>
     </key>
     <key name="hidden-from-home" type="as">
       <!-- the default layout (data/layout.json) leaves the clock and the compass in the drawer: the home screen's

@@ -381,7 +381,7 @@ method_call (GDBusConnection *bus, const char *sender, const char *path, const c
       touch_drop ();                /* back drops the drag (a held icon too) */
     else if (popup_is_open ())
       popup_close ();
-    else
+    else if (!drawer_search_back ())  /* a search ends first, then the drawer closes */
       drawer_back ();
   } else if (!g_strcmp0 (method, "Cancel")) {
     touch_drop ();

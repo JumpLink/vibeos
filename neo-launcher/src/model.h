@@ -3,6 +3,11 @@
 
 #include <glib.h>
 
+/* the grid a layout file without "columns" and "rows" was made for: Launcher3's 5 × 5, the only one before the
+ * grid was a setting (and the one the shipped default layout is laid out on) */
+#define MODEL_LEGACY_COLS 5
+#define MODEL_LEGACY_ROWS 5
+
 /* one icon's place: dock >= 0 for a dock slot, else page/index on the home pages */
 typedef struct {
   int dock;
@@ -13,7 +18,7 @@ typedef struct {
 #define MODEL_POS_NONE ((ModelPos) { -1, -1, -1 })
 
 typedef struct {
-  int        cols, rows, dock_size;
+  int        cols, rows, dock_size;   /* the pages' grid: a page's index i is row i / cols, column i % cols */
   int        reserved;    /* slots at the top of the first page that widgets take */
   GPtrArray *dock;        /* char* desktop ids, NULL for an empty slot; none empty at the end */
   GPtrArray *pages;       /* GPtrArray* of char* desktop ids, the same way (page 0's cells start after `reserved`) */
@@ -25,8 +30,12 @@ void      model_free       (Model *self);
 int       model_per_page   (Model *self);
 int       model_capacity   (Model *self, int page);   /* the first page less the widgets' slots */
 void      model_set_reserved (Model *self, int slots);
+/* Another grid (Settings' Home screen grid): the pages are laid out on it again, Launcher3's way (model.c) */
+void      model_set_grid   (Model *self, int cols, int rows);
 void      model_set_hidden (Model *self, char **hidden);
 void      model_load       (Model *self, GHashTable *apps);
+/* the user's layout file is there, from before the grid was a setting (no "columns" in it) */
+gboolean  model_layout_predates_grid (void);
 gboolean  model_reconcile  (Model *self, GHashTable *apps);
 gboolean  model_on_home    (Model *self, const char *id);
 gboolean  model_remove_one (Model *self, const char *id, ModelPos from);

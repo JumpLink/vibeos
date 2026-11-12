@@ -1,5 +1,6 @@
-/* nb-tab: one tab, which is one window (spec/jelly.md §1): the navigator with the browser page at its root, the
- * WebView and what it asks for (§5), back (§11). */
+/* nb-tab: one tab, a page of the browser's one window (nb-switcher.c; Jelly's tabs were windows of their own,
+ * spec/jelly.md §1): the navigator with the browser page at its root, the WebView and what it asks for (§5),
+ * back (§11). */
 #include "nb.h"
 #include "nb-navigator.h"
 #include "nb-widgets.h"
@@ -549,6 +550,7 @@ on_title (WebKitWebView *v, GParamSpec *pspec, NbTab *t)
   if (!t->incognito && title && *title)
     nb_store_retitle (nb->store, webkit_web_view_get_uri (v), title);
   sync_title (t);
+  nb_tabs_changed ();
   nb_save_session ();
 }
 
@@ -618,7 +620,8 @@ on_create (WebKitWebView *v, WebKitNavigationAction *action, NbTab *t)
 static void
 on_close_view (WebKitWebView *v, NbTab *t)
 {
-  gtk_window_close (GTK_WINDOW (t->win));
+  /* the page's window.close (): its tab goes */
+  nb_tab_close (t);
 }
 
 static void
@@ -787,8 +790,8 @@ make_view (NbTab *t)
   g_signal_connect (fc, "counted-matches", G_CALLBACK (on_counted), t);
   g_signal_connect (fc, "failed-to-find-text", G_CALLBACK (on_not_found), t);
   gtk_overlay_set_child (GTK_OVERLAY (t->view_overlay), GTK_WIDGET (v));
-  /* the page has the focus, not the URL field (see nb_tab_new) */
-  if (!t->editing)
+  /* the page has the focus, not the URL field (see nb_tab_new); a tab behind the one shown takes nothing */
+  if (!t->editing && nb_tab_is_shown (t))
     gtk_window_set_focus (GTK_WINDOW (t->win), GTK_WIDGET (v));
 }
 
@@ -827,43 +830,35 @@ nb_tab_load (NbTab *t, const char *text)
   nb_urlbar_sync (t);
 }
 
-/* ---- the window ---- */
+/* ---- the tab in the window ---- */
+
+gboolean
+nb_tab_is_shown (NbTab *t)
+{
+  return t && t == nb->last_active && !t->closing && !nb->switcher_open;
+}
 
 static void
 sync_title (NbTab *t)
 {
+  if (t != nb->last_active)
+    return;
   const char *title = nb_tab_title (t);
   gtk_window_set_title (GTK_WINDOW (t->win), *title ? title : "Browser");
 }
 
-static void
-on_active (GtkWindow *win, GParamSpec *pspec, NbTab *t)
-{
-  if (!gtk_window_is_active (win) || t->closing)
-    return;
-  nb->last_active = t;
-  nb_tab_ensure_view (t);
-  nb_save_session ();
-}
-
 static gboolean
-on_close_request (GtkWindow *win, NbTab *t)
+free_tab (gpointer data)
 {
-  /* a card swiped away in Recents: the tab is gone, at once (the shell kills the pid of a window that stays) */
-  t->closing = TRUE;
-  nb_tab_forget (t);
-  if (t->view)
-    webkit_web_view_terminate_web_process (t->view);
-  return FALSE;
-}
-
-static void
-on_destroy (GtkWidget *win, NbTab *t)
-{
+  NbTab *t = data;
   /* a suggestion fetch in flight must not come back to a tab that is gone */
   if (t->suggest_cancel)
     g_cancellable_cancel (t->suggest_cancel);
   g_clear_object (&t->suggest_cancel);
+  if (t->thumb_cancel)
+    g_cancellable_cancel (t->thumb_cancel);
+  g_clear_object (&t->thumb_cancel);
+  g_clear_object (&t->thumb);
   g_clear_object (&t->cert);
   g_clear_object (&t->related);
   g_free (t->url);
@@ -871,6 +866,22 @@ on_destroy (GtkWidget *win, NbTab *t)
   g_free (t->shortcut_id);
   g_free (t->find_text);
   g_free (t);
+  return G_SOURCE_REMOVE;
+}
+
+static void
+on_destroy (GtkWidget *holder, NbTab *t)
+{
+  /* the tab's widgets go now; the tab itself once they are all gone (their handlers hold it). The window going
+   * takes every tab with it: none is listed any more (the session was written before) */
+  g_ptr_array_remove (nb->tabs, t);
+  if (nb->last_active == t)
+    nb->last_active = NULL;
+  if (t->suggest_cancel)
+    g_cancellable_cancel (t->suggest_cancel);
+  if (t->thumb_cancel)
+    g_cancellable_cancel (t->thumb_cancel);
+  g_idle_add (free_tab, t);
 }
 
 static void
@@ -882,7 +893,7 @@ on_top_changed (NbNavigator *nav, NbTab *t)
   nb_tab_sync_back (t);
   /* and the page has the focus again: the navigator's grab_focus on the page box gives it to its first focusable
    * child, the URL field, which selects its text */
-  if (!t->editing)
+  if (!t->editing && nb_tab_is_shown (t))
     gtk_window_set_focus (GTK_WINDOW (t->win), t->view ? GTK_WIDGET (t->view) : t->view_holder);
 }
 
@@ -897,8 +908,7 @@ nb_tab_new (const char *url, gboolean incognito, gboolean desktop, const char *s
   t->shortcut_id = g_strdup (shortcut_id);
   t->related = related ? g_object_ref (related) : NULL;
   t->pwa_fullscreen = shortcut_id && nb_store_get_bool (nb->store, "fullscreenShortcuts", FALSE);
-  t->win = neo_window_new (nb->gapp);
-  gtk_widget_add_css_class (t->win, "nb");
+  t->win = nb_window_get ();
 
   t->page = gtk_overlay_new ();
   gtk_widget_add_css_class (t->page, "nb-browser");
@@ -939,17 +949,16 @@ nb_tab_new (const char *url, gboolean incognito, gboolean desktop, const char *s
   t->nav = nb_navigator_new ();
   nb_navigator_push (NB_NAVIGATOR (t->nav), t->page);
   g_signal_connect (t->nav, "top-changed", G_CALLBACK (on_top_changed), t);
-  neo_window_set_content (GTK_WINDOW (t->win), t->nav);
-  gtk_window_set_focus (GTK_WINDOW (t->win), t->view_holder);
-  /* the snackbar over whichever page shows: History's "Entry deleted" is shown over History */
+  /* the tab in the window's stack: its navigator, and the snackbar over whichever of its pages shows (History's
+   * "Entry deleted" is shown over History) */
+  t->holder = gtk_overlay_new ();
+  gtk_overlay_set_child (GTK_OVERLAY (t->holder), t->nav);
   t->snackbar = neo_snackbar_new ();
-  GtkOverlay *root = neo_window_get_overlay (t->win);
-  gtk_overlay_add_overlay (root, t->snackbar);
-  gtk_overlay_set_measure_overlay (root, t->snackbar, FALSE);
+  gtk_overlay_add_overlay (GTK_OVERLAY (t->holder), t->snackbar);
+  gtk_overlay_set_measure_overlay (GTK_OVERLAY (t->holder), t->snackbar, FALSE);
+  g_signal_connect (t->holder, "destroy", G_CALLBACK (on_destroy), t);
+  gtk_stack_add_child (GTK_STACK (nb->tab_stack), t->holder);
 
-  g_signal_connect (t->win, "notify::is-active", G_CALLBACK (on_active), t);
-  g_signal_connect (t->win, "close-request", G_CALLBACK (on_close_request), t);
-  g_signal_connect (t->win, "destroy", G_CALLBACK (on_destroy), t);
   g_ptr_array_add (nb->tabs, t);
   nb_tab_apply_reach (t);
   /* a popup's view is made now: WebKit needs it back from "create" */
@@ -963,5 +972,56 @@ nb_tab_new (const char *url, gboolean incognito, gboolean desktop, const char *s
 void
 nb_tab_present (NbTab *t)
 {
+  NbTab *left = nb->last_active;
+
+  if (t->closing)
+    return;
+  /* the tab left behind keeps a picture of its page for the switcher */
+  if (left && left != t && !left->closing && !nb->switcher_open)
+    nb_tab_take_thumb (left);
+  if (left && left != t && left->menu)
+    nb_menu_close (left);
+  nb->last_active = t;
+  /* no focus while the stacks switch: GtkStack would hand a focus it takes from the child it hides to the first
+   * focusable widget of the one it shows, the URL field, which then edits (selects its text, brings the keyboard) */
+  gtk_window_set_focus (GTK_WINDOW (t->win), NULL);
+  gtk_stack_set_visible_child (GTK_STACK (nb->tab_stack), t->holder);
+  nb_switcher_close ();
+  nb_tab_ensure_view (t);
+  sync_title (t);
+  if (!t->editing)
+    gtk_window_set_focus (GTK_WINDOW (t->win), t->view ? GTK_WIDGET (t->view) : t->view_holder);
+  nb_tab_sync_back (t);
+  nb_tabs_changed ();
+  nb_save_session ();
   gtk_window_present (GTK_WINDOW (t->win));
+}
+
+void
+nb_tab_close (NbTab *t)
+{
+  if (t->closing)
+    return;
+  gboolean shown = t == nb->last_active;
+  if (t->menu)
+    nb_menu_close (t);
+  t->closing = TRUE;
+  nb_tab_forget (t);
+  if (t->view) {
+    /* its page says nothing more to a tab that is gone */
+    g_signal_handlers_disconnect_by_data (t->view, t);
+    g_signal_handlers_disconnect_by_data (webkit_web_view_get_find_controller (t->view), t);
+    webkit_web_view_terminate_web_process (t->view);
+  }
+  gtk_stack_remove (GTK_STACK (nb->tab_stack), t->holder);
+  if (nb->switcher_open) {
+    nb_tabs_changed ();
+  } else if (shown && nb->last_active) {
+    nb_tab_present (nb->last_active);
+  } else if (!nb->tabs->len) {
+    /* the last tab closed by its own page: the browser goes, as Jelly's task did */
+    gtk_window_close (GTK_WINDOW (nb->win));
+  } else {
+    nb_tabs_changed ();
+  }
 }

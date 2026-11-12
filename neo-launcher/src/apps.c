@@ -21,6 +21,7 @@ const char *const apps_replaced[][2] = {
   { "org.gnome.Calculator.desktop", "de.yesman.Calculator.desktop" },
   { "org.gnome.Calendar.desktop", "de.yesman.Calendar.desktop" },
   { "org.gnome.Snapshot.desktop", "de.yesman.Camera.desktop" },
+  { "org.gnome.Nautilus.desktop", "de.yesman.Files.desktop" },
   { "org.gnome.Settings.desktop", "de.yesman.NeoSettings.desktop" },
   { "org.gnome.Weather.desktop", "de.yesman.NeoWeather.desktop" },
   /* GNOME's video player since 49 */

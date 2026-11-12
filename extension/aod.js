@@ -97,6 +97,11 @@ export class Panel {
         return this._clock !== null;
     }
 
+    // a panel with no low power mode can only be lit or off
+    get hasLowPower() {
+        return this._lpm !== null;
+    }
+
     // resolves to whether the panel took it
     _write(path, value) {
         this._queue = this._queue.then(async () => {

@@ -16,6 +16,6 @@ resources = gnome.compile_resources('browser-resources', 'src/browser.gresource.
                                     source_dir: ['src', 'data/jelly-icons'])
 executable('neo-browser', 'src/main.c', 'src/nb-app.c', 'src/nb-tab.c', 'src/nb-urlbar.c', 'src/nb-suggest.c',
            'src/nb-menu.c', 'src/nb-pages.c', 'src/nb-settings.c', 'src/nb-widgets.c', 'src/nb-navigator.c',
-           'src/nb-refresh.c', 'src/store.c', resources, dependencies: deps, install: true)
+           'src/nb-refresh.c', 'src/nb-switcher.c', 'src/store.c', resources, dependencies: deps, install: true)
 install_data('data/de.yesman.NeoBrowser.desktop', install_dir: get_option('datadir') / 'applications')
 install_data('data/de.yesman.Browser.svg', install_dir: get_option('datadir') / 'icons/hicolor/scalable/apps')

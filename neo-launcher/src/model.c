@@ -3,7 +3,12 @@
  * phone's own apps (de.yesman.*) on the first page, then GNOME's and the rest from the second page on, each A→Z;
  * apps installed later go to the first free cell. A cell may be empty, as on Launcher3's grid: an icon removed or
  * uninstalled leaves its cell empty, and a drag can drop an icon on any cell. The GJS Neo's file, plus null for an
- * empty cell. */
+ * empty cell, plus the grid its cells are on ("columns", "rows"; 5 × 5 without them).
+ *
+ * The grid is a setting. On another one the icons keep their cells where the new grid has them, and the rest move to
+ * the first free cells, from their own page on (model_set_grid). Like Launcher3, which keeps a database per grid, each
+ * grid's layout is kept (layout-COLSxROWS.json) when the grid changes, and going back to a grid gives its layout
+ * back, less the icons taken off the home screen meanwhile and plus the ones put on it. */
 #include "model.h"
 #include "apps.h"
 
@@ -14,6 +19,14 @@ static char *
 layout_file (void)
 {
   return g_build_filename (g_get_user_config_dir (), "neo-launcher", "layout.json", NULL);
+}
+
+/* a grid's own layout, kept while another grid is in use */
+static char *
+grid_file (int cols, int rows)
+{
+  g_autofree char *name = g_strdup_printf ("layout-%dx%d.json", cols, rows);
+  return g_build_filename (g_get_user_config_dir (), "neo-launcher", name, NULL);
 }
 
 static GPtrArray *
@@ -281,6 +294,10 @@ read_layout (Model *self, const char *file)
     return FALSE;
   g_ptr_array_unref (self->dock);
   self->dock = json_ids (json_object_get_array_member (obj, "dock"));
+  int cols = json_object_get_int_member_with_default (obj, "columns", MODEL_LEGACY_COLS);
+  int rows = json_object_get_int_member_with_default (obj, "rows", MODEL_LEGACY_ROWS);
+  self->cols = CLAMP (cols, 1, 16);
+  self->rows = CLAMP (rows, 1, 16);
   g_ptr_array_set_size (self->pages, 0);
   JsonArray *pages = json_object_get_array_member (obj, "pages");
   for (guint p = 0; pages && p < json_array_get_length (pages); p++) {
@@ -307,22 +324,43 @@ read_default_layout (Model *self)
   return FALSE;
 }
 
+gboolean
+model_layout_predates_grid (void)
+{
+  g_autofree char *file = layout_file ();
+  g_autoptr (JsonParser) parser = json_parser_new ();
+  if (!json_parser_load_from_file (parser, file, NULL))
+    return FALSE;
+  JsonNode *root = json_parser_get_root (parser);
+  JsonObject *obj = root && JSON_NODE_HOLDS_OBJECT (root) ? json_node_get_object (root) : NULL;
+  return obj && json_object_has_member (obj, "pages") && !json_object_has_member (obj, "columns");
+}
+
+/* The layout on the grid model_new was given: the file's (or the default's) is read on the grid it was made for, then
+ * laid out on that one */
 void
 model_load (Model *self, GHashTable *apps)
 {
   g_autofree char *file = layout_file ();
+  int cols = self->cols, rows = self->rows, top = self->reserved / self->cols;
+  gboolean old = model_layout_predates_grid ();
   gboolean first = !read_layout (self, file);
 
   if (first) {
-    if (read_default_layout (self))
+    if (read_default_layout (self)) {
+      self->reserved = top * self->cols;
       place_rest (self, apps); /* the installed apps the default does not name; its missing ones leave empty cells */
-    else
+    } else {
       fresh (self, apps);
+    }
   }
+  self->reserved = top * self->cols;
+  model_set_grid (self, cols, rows);
   gboolean saved = model_reconcile (self, apps);
   model_tidy (self);
-  /* the user's own from now on: a later default does not move their icons */
-  if (first && !saved)
+  /* the user's own from now on: a later default does not move their icons; and a file from before the grid was a
+   * setting says its grid from now on */
+  if ((first || old) && !saved)
     model_save (self);
 }
 
@@ -486,11 +524,15 @@ add_ids (JsonBuilder *b, GPtrArray *list)
   json_builder_end_array (b);
 }
 
-void
-model_save (Model *self)
+static void
+write_layout (Model *self, const char *file)
 {
   g_autoptr (JsonBuilder) b = json_builder_new ();
   json_builder_begin_object (b);
+  json_builder_set_member_name (b, "columns");
+  json_builder_add_int_value (b, self->cols);
+  json_builder_set_member_name (b, "rows");
+  json_builder_add_int_value (b, self->rows);
   json_builder_set_member_name (b, "dock");
   add_ids (b, self->dock);
   json_builder_set_member_name (b, "pages");
@@ -506,10 +548,134 @@ model_save (Model *self)
   json_generator_set_pretty (gen, TRUE);
   json_generator_set_indent (gen, 1);
   g_autofree char *data = json_generator_to_data (gen, NULL);
-  g_autofree char *file = layout_file ();
   g_autofree char *dir = g_path_get_dirname (file);
   g_autoptr (GError) err = NULL;
   g_mkdir_with_parents (dir, 0755);
   if (!g_file_set_contents (file, data, -1, &err))
     g_warning ("saving the layout: %s", err->message);
+}
+
+void
+model_save (Model *self)
+{
+  g_autofree char *file = layout_file ();
+  write_layout (self, file);
+}
+
+/* ---- another grid --------------------------------------------------------------------------------------------- */
+
+/* the pages laid out on cols × rows: every icon keeps its column and row when the new grid has them; the others, in
+ * reading order, take the first free cells from their own page on, then new pages after the last (an icon is never
+ * lost). The widgets keep their rows at the top of the first page. */
+static void
+regrid (Model *self, int cols, int rows)
+{
+  int top = self->reserved / self->cols, reserved = top * cols;
+  GPtrArray *pages = g_ptr_array_new_with_free_func ((GDestroyNotify) g_ptr_array_unref);
+  GQueue left = G_QUEUE_INIT;      /* ids off the new grid, owned */
+  for (guint p = 0; p < self->pages->len || !g_queue_is_empty (&left); p++) {
+    GPtrArray *old = p < self->pages->len ? self->pages->pdata[p] : NULL;
+    int from = p == 0 ? self->reserved : 0, to = p == 0 ? reserved : 0;
+    int cap = MAX (1, cols * rows - to);
+    GPtrArray *page = page_new ();
+    g_ptr_array_set_size (page, cap);
+    for (guint i = 0; old && i < old->len; i++) {
+      if (!old->pdata[i])
+        continue;
+      int slot = (int) i + from, col = slot % self->cols, row = slot / self->cols, k = row * cols + col - to;
+      if (col < cols && row < rows && k >= 0 && k < cap)
+        page->pdata[k] = g_strdup (old->pdata[i]);
+      else
+        g_queue_push_tail (&left, g_strdup (old->pdata[i]));
+    }
+    for (int k = 0; k < cap && !g_queue_is_empty (&left); k++)
+      if (!page->pdata[k])
+        page->pdata[k] = g_queue_pop_head (&left);
+    trim (page);
+    g_ptr_array_add (pages, page);
+  }
+  g_ptr_array_unref (self->pages);
+  self->pages = pages;
+  self->cols = cols;
+  self->rows = rows;
+  self->reserved = reserved;
+}
+
+/* how many icons of each app the pages hold (an app may sit in several cells) */
+static GHashTable *
+page_counts (Model *self)
+{
+  GHashTable *n = g_hash_table_new (g_str_hash, g_str_equal);
+  for (guint p = 0; p < self->pages->len; p++) {
+    GPtrArray *page = self->pages->pdata[p];
+    for (guint i = 0; i < page->len; i++)
+      if (page->pdata[i])
+        g_hash_table_insert (n, page->pdata[i],
+                             GINT_TO_POINTER (GPOINTER_TO_INT (g_hash_table_lookup (n, page->pdata[i])) + 1));
+  }
+  return n;
+}
+
+static gboolean
+count_take (GHashTable *n, const char *id)
+{
+  int c = GPOINTER_TO_INT (g_hash_table_lookup (n, id));
+  if (c > 0)
+    g_hash_table_insert (n, (gpointer) id, GINT_TO_POINTER (c - 1));
+  return c > 0;
+}
+
+/* The grid's own layout from when it was last used, brought up to date (Launcher3's migration into an existing grid
+ * database): its icons that the pages no longer hold go, and the ones the pages hold beyond it take the first free
+ * cells, in the pages' reading order. FALSE when there is none. */
+static gboolean
+restore (Model *self, int cols, int rows)
+{
+  g_autofree char *file = grid_file (cols, rows);
+  Model *kept = model_new (cols, rows, self->dock_size);
+  if (!read_layout (kept, file) || kept->cols != cols || kept->rows != rows) {
+    model_free (kept);
+    return FALSE;
+  }
+  kept->reserved = self->reserved / self->cols * cols;
+  g_autoptr (GHashTable) now = page_counts (self);
+  for (guint p = 0; p < kept->pages->len; p++) {
+    GPtrArray *page = kept->pages->pdata[p];
+    for (guint i = 0; i < page->len; i++)
+      if (page->pdata[i] && !count_take (now, page->pdata[i]))
+        g_clear_pointer (&page->pdata[i], g_free);
+    trim (page);
+  }
+  for (guint p = 0; p < self->pages->len; p++) {
+    GPtrArray *page = self->pages->pdata[p];
+    for (guint i = 0; i < page->len; i++)
+      if (page->pdata[i] && count_take (now, page->pdata[i]))
+        place (kept, page->pdata[i]);
+  }
+  GPtrArray *pages = kept->pages;
+  kept->pages = self->pages;
+  self->pages = pages;
+  self->cols = cols;
+  self->rows = rows;
+  self->reserved = kept->reserved;
+  model_free (kept);
+  drop_empty_pages (self);
+  if (!self->pages->len)
+    g_ptr_array_add (self->pages, page_new ());
+  return TRUE;
+}
+
+void
+model_set_grid (Model *self, int cols, int rows)
+{
+  if (cols < 1 || rows < 1 || (cols == self->cols && rows == self->rows))
+    return;
+  /* this grid's layout, for when it comes back */
+  g_autofree char *file = grid_file (self->cols, self->rows);
+  write_layout (self, file);
+  if (!restore (self, cols, rows))
+    regrid (self, cols, rows);
+  /* a page with no icon left is dropped, as after a drag (never the first) */
+  drop_empty_pages (self);
+  model_save (self);
 }

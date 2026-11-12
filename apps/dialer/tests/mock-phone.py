@@ -6,7 +6,7 @@
 # and its calls, behaving as ModemManager 1.24 does: a call it makes is UNKNOWN until started, a terminated one stays
 # until deleted, every state change comes as StateChanged and as a property change.
 #
-# On the session bus: exynos-callaudiod's CallAudio, a notification server, and the shell's LaunchFullScreen.
+# On the session bus: callaudiod's CallAudio, a notification server, and the shell's LaunchFullScreen.
 #
 # de.yesman.Test.Phone on the session bus drives it: a call comes in, the other side answers or hangs up; and it
 # tells what the service did (the method calls it got, the notifications it holds).

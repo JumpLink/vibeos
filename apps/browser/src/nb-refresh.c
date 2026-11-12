@@ -381,13 +381,8 @@ static NbTab *
 touched_tab (void)
 {
   /* the script's messages do not say which view sent them (one content manager serves every tab), but only the
-   * window in front takes touches */
-  for (guint i = 0; i < nb->tabs->len; i++) {
-    NbTab *t = nb->tabs->pdata[i];
-    if (gtk_window_is_active (GTK_WINDOW (t->win)))
-      return t;
-  }
-  return nb->last_active;
+   * tab shown takes touches */
+  return nb_tab_is_shown (nb->last_active) ? nb->last_active : NULL;
 }
 
 static void

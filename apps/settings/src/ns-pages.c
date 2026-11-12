@@ -1099,15 +1099,140 @@ icon_packs (void)
   return packs;
 }
 
-/* The home screen is neo-launcher. It reads de.yesman.neo's icon keys (icons.c) and draws its icons again when one
- * of them changes (tiles.c tiles_reload_icons).
+/* ---- Home screen: the layout ---- */
+
+/* the grids One UI offers (columns × rows); Launcher3's 5 × 5 is the default. On a 360 dp phone these are what fit
+ * the launcher's 56 dp icons with their labels: 6 columns would leave a 57 dp cell, 7 rows an 83 dp one under the
+ * 85 dp an icon and its label take. */
+static const int grid_sizes[][2] = { { 4, 5 }, { 4, 6 }, { 5, 5 }, { 5, 6 } };
+static const char *const grid_labels[] = { "4 × 5", "4 × 6", "5 × 5", "5 × 6", NULL };
+static const int drawer_sizes[] = { 4, 5 };
+static const char *const drawer_labels[] = { "4 columns", "5 columns", NULL };
+/* the icons' size, of Launcher3's 56 dp: 110 % is the most a 5-column cell holds (the press grows it by 10 %) */
+static const double icon_scales[] = { 0.8, 0.9, 1.0, 1.1 };
+static const char *const icon_labels[] = { "80%", "90%", "100%", "110%", NULL };
+
+typedef struct {
+  GSettings *neo;
+  GtkWidget *grid, *drawer, *icons, *drawer_icons;
+} Layout;
+
+static void
+layout_free (Layout *l)
+{
+  g_signal_handlers_disconnect_by_data (l->neo, l);
+  g_object_unref (l->neo);
+  g_free (l);
+}
+
+/* a pick row's choice, or `other` (a value set elsewhere, not one of the choices) as its subtitle */
+static void
+pick_show (GtkWidget *row, guint i, guint n, const char *other)
+{
+  ns_row_pick_select (row, i);
+  if (i >= n)
+    ns_row_set_subtitle (row, other);
+}
+
+static guint
+scale_index (double v)
+{
+  for (guint i = 0; i < G_N_ELEMENTS (icon_scales); i++)
+    if (fabs (icon_scales[i] - v) < 0.005)
+      return i;
+  return G_N_ELEMENTS (icon_scales);
+}
+
+static void
+layout_show (Layout *l)
+{
+  int cols = g_settings_get_int (l->neo, "desktop-grid-columns"), rows = g_settings_get_int (l->neo, "desktop-grid-rows");
+  guint i = 0;
+  while (i < G_N_ELEMENTS (grid_sizes) && (grid_sizes[i][0] != cols || grid_sizes[i][1] != rows))
+    i++;
+  g_autofree char *grid = g_strdup_printf ("%d × %d", cols, rows);
+  pick_show (l->grid, i, G_N_ELEMENTS (grid_sizes), grid);
+
+  int dcols = g_settings_get_int (l->neo, "drawer-grid-columns");
+  for (i = 0; i < G_N_ELEMENTS (drawer_sizes) && drawer_sizes[i] != dcols; i++)
+    ;
+  g_autofree char *drawer = g_strdup_printf ("%d columns", dcols);
+  pick_show (l->drawer, i, G_N_ELEMENTS (drawer_sizes), drawer);
+
+  GtkWidget *sizes[] = { l->icons, l->drawer_icons };
+  const char *keys[] = { "desktop-icon-scale", "drawer-icon-scale" };
+  for (guint k = 0; k < G_N_ELEMENTS (keys); k++) {
+    if (!sizes[k])
+      continue;
+    double v = g_settings_get_double (l->neo, keys[k]);
+    g_autofree char *pct = g_strdup_printf ("%.0f%%", v * 100);
+    pick_show (sizes[k], scale_index (v), G_N_ELEMENTS (icon_scales), pct);
+  }
+}
+
+static void
+grid_picked (GtkWidget *row, guint i, gpointer data)
+{
+  /* columns and rows in one change, so that the launcher lays its pages out once (a separate object: delay-apply
+   * mode stays on the object it is set on) */
+  g_autoptr (GSettings) s = g_settings_new ("de.yesman.neo");
+  g_settings_delay (s);
+  g_settings_set_int (s, "desktop-grid-columns", grid_sizes[i][0]);
+  g_settings_set_int (s, "desktop-grid-rows", grid_sizes[i][1]);
+  g_settings_apply (s);
+}
+
+static void
+drawer_picked (GtkWidget *row, guint i, gpointer data)
+{
+  Layout *l = data;
+  g_settings_set_int (l->neo, "drawer-grid-columns", drawer_sizes[i]);
+}
+
+static void
+icons_picked (GtkWidget *row, guint i, gpointer data)
+{
+  Layout *l = data;
+  g_settings_set_double (l->neo, row == l->icons ? "desktop-icon-scale" : "drawer-icon-scale", icon_scales[i]);
+}
+
+/* the Layout card: the home screen's grid, icon size and app names, the drawer's grid, icon size and search pill */
+static void
+layout_group (AdwNavigationPage *page, GtkWidget *c, GSettings *neo)
+{
+  Layout *l = g_new0 (Layout, 1);
+  l->neo = g_object_ref (neo);
+  g_object_set_data_full (G_OBJECT (page), "ns-layout", l, (GDestroyNotify) layout_free);
+  gboolean sizes = ns_has_key (neo, "desktop-icon-scale") && ns_has_key (neo, "drawer-icon-scale");
+
+  GtkWidget *g = ns_group (c, "Layout");
+  l->grid = ns_row_pick (g, "Home screen grid", grid_labels, 0, grid_picked, l);
+  if (sizes)
+    l->icons = ns_row_pick (g, "Home screen icon size", icon_labels, 0, icons_picked, l);
+  GtkWidget *names = ns_row_switch (g, "App names", "Under the home screen's icons", NULL, NULL);
+  g_settings_bind (neo, "desktop-hide-app-labels", ns_row_get_switch (names), "active",
+                   G_SETTINGS_BIND_DEFAULT | G_SETTINGS_BIND_INVERT_BOOLEAN);
+  l->drawer = ns_row_pick (g, "App drawer grid", drawer_labels, 0, drawer_picked, l);
+  if (sizes)
+    l->drawer_icons = ns_row_pick (g, "App drawer icon size", icon_labels, 0, icons_picked, l);
+  ns_row_switch (g, "Search bar in the app drawer", NULL, neo, "search-drawer-enabled");
+
+  static const char *const keys[] = { "changed::desktop-grid-columns", "changed::desktop-grid-rows",
+                                      "changed::drawer-grid-columns", "changed::desktop-icon-scale",
+                                      "changed::drawer-icon-scale" };
+  for (guint i = 0; i < G_N_ELEMENTS (keys); i++)
+    g_signal_connect_swapped (neo, keys[i], G_CALLBACK (layout_show), l);
+  layout_show (l);
+}
+
+/* The home screen is neo-launcher. It follows de.yesman.neo live: the layout keys (main.c layout_read: the grid,
+ * the icons' sizes, app names, the drawer's columns and search pill) lay it out again, a smaller grid moving the icons
+ * it has no cell for to the next free one (model.c model_set_grid), and the icon keys (icons.c) draw its icons again
+ * (tiles.c tiles_reload_icons).
  *
- * Not on this page, and why: the grid's columns and rows, the dock's icons and the drawer's columns
- * (desktop-grid-*, dock-num-icons, drawer-grid-columns), the clock widget (home-widgets), app names
- * (desktop-hide-app-labels), the drawer's search (search-drawer-enabled) and "Home gesture opens" (launcher).
- * The launcher is Launcher3's fixed grid (GRID_COLS and GRID_ROWS in neo-launcher's neo.h, the clock widget always
- * on the first page, the search pill always in the drawer) and gnome-phone's home gesture always shows it; none of
- * those keys is read by anything. */
+ * Not on this page, and why: the dock's icons (dock-num-icons: the dock keeps Launcher3's 5 cells whatever the grid),
+ * the clock widget (home-widgets: always on the first page) and "Home gesture opens" (launcher: gnome-phone's home
+ * gesture always shows Neo); the launcher reads none of them. */
 void
 ns_page_home (GtkWidget *row, gpointer data)
 {
@@ -1133,6 +1258,7 @@ ns_page_home (GtkWidget *row, gpointer data)
   g_strv_builder_unref (lb);
   g_object_set_data_full (G_OBJECT (page), "packs", values, (GDestroyNotify) g_strfreev);
   g_object_set_data_full (G_OBJECT (page), "pack-labels", labels, (GDestroyNotify) g_strfreev);
+  layout_group (page, c, neo);
   GtkWidget *g = ns_group (c, "Icons");
   ns_row_choice (g, "Icon pack", neo, "icon-pack", (const char *const *) values, (const char *const *) labels);
   ns_row_choice (g, "Icon shape", neo, "icon-shape", shape_values, shape_labels);

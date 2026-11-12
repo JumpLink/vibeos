@@ -263,6 +263,9 @@ nb_smart_url (const char *text)
 static void
 write_session (void)
 {
+  /* the window is going: its last write kept every tab, which go one by one after it */
+  if (nb->quitting)
+    return;
   JsonArray *tabs = json_array_new ();
   int current = 0, n = 0;
 
@@ -301,8 +304,15 @@ on_session_timeout (gpointer data)
 void
 nb_save_session (void)
 {
-  if (!nb->session_id)
+  if (!nb->session_id && !nb->quitting)
     nb->session_id = g_timeout_add_full (G_PRIORITY_LOW, 500, on_session_timeout, NULL, NULL);
+}
+
+void
+nb_save_session_now (void)
+{
+  g_clear_handle_id (&nb->session_id, g_source_remove);
+  write_session ();
 }
 
 static gboolean
@@ -329,12 +339,10 @@ restore_session (void)
     NbTab *t = nb_tab_new (url, FALSE, json_object_get_boolean_member_with_default (o, "desktop", FALSE), NULL, NULL);
     g_free (t->title);
     t->title = g_strdup (json_object_get_string_member_with_default (o, "title", ""));
-    if (i == current)
+    if (i == current || !top)
       top = t;
-    else
-      nb_tab_present (t);
   }
-  /* the one used last goes on top */
+  /* the one used last is shown; the others load when they are picked in the switcher */
   if (top)
     nb_tab_present (top);
   return nb->tabs->len > 0;
@@ -344,8 +352,11 @@ void
 nb_app_activate (void)
 {
   if (nb->tabs->len) {
-    NbTab *t = nb->last_active ? nb->last_active : nb->tabs->pdata[nb->tabs->len - 1];
-    gtk_window_present (GTK_WINDOW (t->win));
+    /* the browser as it was left: the tab, or the switcher over the tabs */
+    if (nb->switcher_open)
+      gtk_window_present (GTK_WINDOW (nb_window_get ()));
+    else
+      nb_tab_present (nb->last_active ? nb->last_active : nb->tabs->pdata[nb->tabs->len - 1]);
     return;
   }
   if (!restore_session ())
@@ -392,9 +403,8 @@ nb_tab_forget (NbTab *t)
   /* nothing of the incognito tabs is kept once the last one is gone */
   if (!incognito_left)
     g_clear_object (&nb->incog_session);
-  /* the last window: write now, the process is about to end */
-  g_clear_handle_id (&nb->session_id, g_source_remove);
-  write_session ();
+  /* now: the last tab closed by its page ends the process */
+  nb_save_session_now ();
 }
 
 /* ---- downloads (§5.5): to ~/Downloads, a notification when done ---- */

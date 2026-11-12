@@ -4,7 +4,15 @@ add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers'
 gnome = import('gnome')
 deps = [dependency('gtk4', version: '>= 4.12'), dependency('libadwaita-1', version: '>= 1.5'),
         dependency('json-glib-1.0'), meson.get_compiler('c').find_library('m')]
+# the page scrolls the way the launcher's drawer does (gnome-phone's libspongy: the fling, the stretch at the ends),
+# where it is installed
+spongy = dependency('spongy-gtk-1', required: false)
+if spongy.found()
+  deps += spongy
+  add_project_arguments('-DHAVE_SPONGY', language: 'c')
+endif
 resources = gnome.compile_resources('wx-resources', 'src/neo-weather.gresource.xml', source_dir: 'src')
 
 executable('neo-weather', 'src/main.c', resources, dependencies: deps, install: true)
 install_data('data/de.yesman.NeoWeather.desktop', install_dir: get_option('datadir') / 'applications')
+install_data('data/de.yesman.NeoWeather.svg', install_dir: get_option('datadir') / 'icons' / 'hicolor' / 'scalable' / 'apps')

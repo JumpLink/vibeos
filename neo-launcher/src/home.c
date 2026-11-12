@@ -1,5 +1,5 @@
-/* The home screen: Launcher3's workspace (5 × 5 cells, the clock widget across the first page's top row), the dock
- * and the page dots, with PagedView's paging: 1:1 drag after the paging slop, fling or snap with the quintic
+/* The home screen: Launcher3's workspace (cols × rows cells, 5 × 5 unless Settings picked another grid; the clock
+ * widget across the first page's top row), the dock (5 cells whatever the grid) and the page dots, with PagedView's paging: 1:1 drag after the paging slop, fling or snap with the quintic
  * scroller, and the edge stretch past the first and last page. Pages sit 10.77 dp apart.
  *
  * While an icon is dragged (drag.c) the workspace is SPRING_LOADED: every page, its CellLayout bounds included,
@@ -41,6 +41,8 @@
 static struct {
   /* geometry */
   float cell_x0, cell_w, cell_y0, cell_h, icon, icon_top, dock_top, dock_icon_top, dots_y;
+  float dock_w;                    /* a dock cell's width */
+  float label_y;                   /* the label's baseline below the icon's top */
 
   /* paging */
   float       pitch;               /* px from one page to the next: W and the page spacing */
@@ -75,16 +77,31 @@ page_cells (int p)
   return p >= 0 && p < (int) N.model->pages->len ? N.model->pages->pdata[p] : NULL;
 }
 
+/* the label's room: LABEL_HOME_MAX_DP in a column of the 5-column grid, and what this grid's columns are wider */
+float
+home_label_width (void)
+{
+  float span = N.W - 2 * dp (WS_SIDE_DP);
+  return dp (LABEL_HOME_MAX_DP) + span / N.model->cols - span / LABEL_REF_COLS;
+}
+
 void
 home_layout (void)
 {
   H.cell_x0 = dp (WS_SIDE_DP);
-  H.cell_w = (N.W - 2 * H.cell_x0) / GRID_COLS;
+  H.cell_w = (N.W - 2 * H.cell_x0) / N.model->cols;
+  H.dock_w = (N.W - 2 * H.cell_x0) / N.model->dock_size;
   H.cell_y0 = roundf (dp (STATUS_BAR_DP + WS_TOP_DP));
   float bottom = N.H - dp (HOTSEAT_DP) - dp (PAGE_IND_DP);
-  H.cell_h = floorf ((bottom - H.cell_y0) / GRID_ROWS);
-  H.icon = roundf (dp (ICON_DP));
-  H.icon_top = floorf ((H.cell_h - dp (WS_CONTENT_DP)) / 2);
+  H.cell_h = floorf ((bottom - H.cell_y0) / N.model->rows);
+  /* the icon at its set size, as long as it fits its cells (its label under it, the press's 1.1 at its sides) and
+   * the dock's */
+  float label = dp (WS_CONTENT_DP - ICON_DP);
+  float fit = MIN (MIN (H.cell_w, H.dock_w) / 1.1f, H.cell_h - (N.labels ? label : 0));
+  H.icon = roundf (MIN (dp (N.icon_dp), fit));
+  H.label_y = H.icon + dp (LABEL_BASELINE_DP - ICON_DP);
+  /* icon, gap and label centred in the cell; without labels, the icon alone */
+  H.icon_top = floorf ((H.cell_h - H.icon - (N.labels ? label : 0)) / 2);
   H.dock_top = N.H - dp (HOTSEAT_DP);
   H.dock_icon_top = H.dock_top + floorf ((dp (HOTSEAT_CELL_DP) - H.icon) / 2);
   H.dots_y = bottom + dp (PAGE_IND_DP) / 2;
@@ -121,7 +138,7 @@ slot_rect (int page, int slot, float *x, float *y)
 {
   if (page == 0)
     slot += N.model->reserved;
-  int col = slot % GRID_COLS, row = slot / GRID_COLS;
+  int col = slot % N.model->cols, row = slot / N.model->cols;
   *x = roundf (page * H.pitch + H.cell_x0 + col * H.cell_w + (H.cell_w - H.icon) / 2);
   *y = roundf (H.cell_y0 + row * H.cell_h + H.icon_top);
 }
@@ -129,7 +146,7 @@ slot_rect (int page, int slot, float *x, float *y)
 static void
 dock_rect (int slot, float *x, float *y)
 {
-  *x = roundf (H.cell_x0 + slot * H.cell_w + (H.cell_w - H.icon) / 2);
+  *x = roundf (H.cell_x0 + slot * H.dock_w + (H.dock_w - H.icon) / 2);
   *y = roundf (H.dock_icon_top);
 }
 
@@ -139,7 +156,7 @@ home_tile_at (float x, float y, float *ix, float *iy, ModelPos *pos)
   for (guint i = 0; i < N.model->dock->len; i++) {
     float rx, ry;
     dock_rect (i, &rx, &ry);
-    if (x >= rx - (H.cell_w - H.icon) / 2 && x < rx + H.icon + (H.cell_w - H.icon) / 2 && y >= H.dock_top &&
+    if (x >= rx - (H.dock_w - H.icon) / 2 && x < rx + H.icon + (H.dock_w - H.icon) / 2 && y >= H.dock_top &&
         y < H.dock_top + dp (HOTSEAT_CELL_DP)) {
       *ix = rx;
       *iy = ry;
@@ -154,7 +171,8 @@ home_tile_at (float x, float y, float *ix, float *iy, ModelPos *pos)
     slot_rect (page, i, &rx, &ry);
     rx -= H.scroll;
     /* the icon and its label, Launcher3's BubbleTextView box */
-    if (x >= rx - dp (8) && x < rx + H.icon + dp (8) && y >= ry - dp (8) && y < ry + dp (LABEL_BASELINE_DP + 8)) {
+    float h = N.labels ? H.label_y : H.icon;
+    if (x >= rx - dp (8) && x < rx + H.icon + dp (8) && y >= ry - dp (8) && y < ry + h + dp (8)) {
       *ix = rx;
       *iy = ry;
       *pos = (ModelPos) { -1, page, i };
@@ -203,9 +221,9 @@ draw_icon_and_label (Tile *t, float x, float y, bool label)
   if (!t)
     return;
   tile_draw_icon (t, x, y, H.icon, 1);
-  if (label) {
-    float lw = dp (LABEL_HOME_MAX_DP);
-    label_draw (t->label, x + H.icon / 2 - lw / 2, y + dp (LABEL_BASELINE_DP) - text_ascent (N.label_font),
+  if (label && N.labels) {
+    float lw = home_label_width ();
+    label_draw (t->label, x + H.icon / 2 - lw / 2, y + H.label_y - text_ascent (N.label_font),
                 (GfxColor) { 1, 1, 1, 1 }, true);
   }
 }
@@ -244,7 +262,7 @@ card_rect (int page, float r[4])
   r[0] = page * H.pitch;
   r[1] = H.cell_y0 - dp (CARD_PAD_TOP_DP);
   r[2] = N.W;
-  r[3] = GRID_ROWS * H.cell_h + dp (CARD_PAD_TOP_DP + CARD_PAD_BOTTOM_DP);
+  r[3] = N.model->rows * H.cell_h + dp (CARD_PAD_TOP_DP + CARD_PAD_BOTTOM_DP);
 }
 
 /* the spring-loaded transform now: the strip scaled by S about the workspace's centre, then moved TY down */
@@ -403,8 +421,8 @@ void
 home_cell_grid (int page, int index, int *col, int *row)
 {
   int slot = page < 0 ? index : index + (page == 0 ? N.model->reserved : 0);
-  *col = page < 0 ? slot : slot % GRID_COLS;
-  *row = page < 0 ? 0 : slot / GRID_COLS;
+  *col = page < 0 ? slot : slot % N.model->cols;
+  *row = page < 0 ? 0 : slot / N.model->cols;
 }
 
 void
@@ -413,9 +431,9 @@ home_cell_box (int page, int index, float r[4])
   int col, row;
   home_cell_grid (page, index, &col, &row);
   if (page < 0) {
-    r[0] = H.cell_x0 + col * H.cell_w;
+    r[0] = H.cell_x0 + col * H.dock_w;
     r[1] = H.dock_top;
-    r[2] = H.cell_w;
+    r[2] = H.dock_w;
     r[3] = dp (HOTSEAT_CELL_DP);
     return;
   }
@@ -438,10 +456,10 @@ int
 home_cell_nearest (int page, float x, float y)
 {
   /* on the first page the clock's row is never one: the row under it is nearest */
-  int top = page == 0 ? N.model->reserved / GRID_COLS : 0;
-  int col = CLAMP ((int) floorf ((x - page * H.pitch - H.cell_x0) / H.cell_w), 0, GRID_COLS - 1);
-  int row = CLAMP ((int) floorf ((y - H.cell_y0) / H.cell_h), top, GRID_ROWS - 1);
-  int slot = row * GRID_COLS + col, reserved = page == 0 ? N.model->reserved : 0;
+  int cols = N.model->cols, top = page == 0 ? N.model->reserved / cols : 0;
+  int col = CLAMP ((int) floorf ((x - page * H.pitch - H.cell_x0) / H.cell_w), 0, cols - 1);
+  int row = CLAMP ((int) floorf ((y - H.cell_y0) / H.cell_h), top, N.model->rows - 1);
+  int slot = row * cols + col, reserved = page == 0 ? N.model->reserved : 0;
   return slot < reserved ? -1 : slot - reserved;
 }
 
@@ -454,7 +472,7 @@ home_in_dock (float sx, float sy)
 int
 home_dock_nearest (float sx)
 {
-  return CLAMP ((int) floorf ((sx - H.cell_x0) / H.cell_w), 0, N.model->dock_size - 1);
+  return CLAMP ((int) floorf ((sx - H.cell_x0) / H.dock_w), 0, N.model->dock_size - 1);
 }
 
 /* the drag is over: the extra page goes, and so does any page it emptied, the one on show staying on show */

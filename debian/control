@@ -14,6 +14,7 @@ Build-Depends: debhelper-compat (= 13),
                libadwaita-1-dev (>= 1.5),
                libvulkan-dev,
                libwayland-dev,
+               libxkbcommon-dev,
                wayland-protocols,
                libgdk-pixbuf-2.0-dev,
                librsvg2-dev,
@@ -31,6 +32,8 @@ Build-Depends: debhelper-compat (= 13),
                libecal2.0-dev (>= 3.46),
                libebook1.2-dev,
                libgstreamer1.0-dev,
+               libgstreamer-plugins-base1.0-dev,
+               libsecret-1-dev,
                libpulse-dev,
                libwebkitgtk-6.0-dev (>= 2.46),
                libsoup-3.0-dev,
@@ -62,6 +65,10 @@ Recommends: gnome-phone-session (= ${source:Version}),
             neo-browser (>= ${source:Version}),
             neo-settings (>= ${source:Version}),
             neo-weather (>= ${source:Version}),
+            neo-camera (>= ${source:Version}),
+            neo-files (>= ${source:Version}),
+            neo-iconpack-round (>= ${source:Version}),
+            neo-parallax-solar-system (>= ${source:Version}),
             feedbackd,
             iio-sensor-proxy,
             modemmanager,
@@ -387,3 +394,55 @@ Description: weather app for GNOME Phone
  against yesterday, the week and the details. The forecast is Open-Meteo's,
  the place GeoClue's (or GNOME Weather's first city), named by OpenStreetMap's
  Nominatim.
+
+Package: neo-camera
+Architecture: any
+Depends: gstreamer1.0-libcamera,
+         gstreamer1.0-plugins-base,
+         gstreamer1.0-plugins-good,
+         gstreamer1.0-gtk4,
+         ${shlibs:Depends},
+         ${misc:Depends},
+Recommends: gstreamer1.0-plugins-bad,
+            gstreamer1.0-plugins-ugly,
+            gstreamer1.0-libav,
+            gstreamer1.0-pulseaudio,
+Description: camera app for GNOME Phone
+ Neo Camera is LineageOS's Aperture rebuilt in GTK 4 on libcamera and
+ GStreamer: photos (JPEG with EXIF in ~/Pictures/Camera), videos (H.264 and
+ AAC in ~/Videos/Camera) and barcode scanning, with the front and rear
+ cameras, flash, timer, grid and level. It runs on any phone libcamera
+ supports; the video encoder is the fastest one that works (V4L2, VA-API,
+ openh264 or x264).
+
+Package: neo-files
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+Recommends: gvfs-backends,
+            gvfs-fuse,
+            xdg-desktop-portal-gnome,
+Description: file manager for GNOME Phone
+ Neo Files is File Manager+ rebuilt in GTK 4 on GIO and GVfs: the phone's
+ storage, removable media, the recycle bin, recent files, the local network
+ and saved remotes over SMB, SFTP, FTP/FTPS and WebDAV.
+
+Package: neo-iconpack-round
+Architecture: all
+Depends: ${misc:Depends},
+Recommends: neo-launcher,
+Description: Round icon pack for the Neo launcher
+ Round, colourful icons for GNOME Phone's apps and the GNOME apps it keeps:
+ a white Material Symbols glyph on a gradient disc in each app's colour.
+ Installing it makes it the launcher's icon pack; Neo Settings' Home screen
+ switches packs.
+
+Package: neo-parallax-solar-system
+Architecture: all
+Depends: ${misc:Depends},
+Recommends: neo-launcher,
+Description: NASA solar-system parallax wallpaper for the Neo launcher
+ A layered wallpaper that moves with the phone's tilt on GNOME Phone's Neo
+ launcher: the Sun, Earth, the Moon, Mars, Saturn and Jupiter from NASA's
+ public-domain images over a drawn star field. Installing it makes it the
+ default wallpaper; GNOME Settings' Background panel lists it too.

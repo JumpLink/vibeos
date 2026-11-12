@@ -610,3 +610,53 @@ window.nb .neo-snackbar .neo-text-button {
   margin-top: 16px;
   padding: 8px 16px;
 }
+
+/* ==== the tab count and the tab switcher (nb-switcher.c) ==== */
+
+/* Chrome's tab count: the number in a 2 dp rounded square, the bar's icon colour */
+.nb-tab-count {
+  border: 2px solid currentColor;
+  border-radius: 5px;
+  min-width: 18px;
+  min-height: 18px;
+  padding: 0 2px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.nb-switcher-grid {
+  padding: 12px;
+}
+
+/* a card: the tab's line over its page, 16 dp corners; the tab shown is outlined in primary */
+.nb-tab-card {
+  background-color: @neo_surface_container_high;
+  border: 2px solid transparent;
+  border-radius: 16px;
+}
+
+.nb-tab-card.current {
+  border-color: @neo_primary;
+}
+
+.nb-tab-card-head {
+  min-height: 36px;
+  padding: 2px 2px 2px 10px;
+}
+
+.nb-tab-card-title {
+  color: @neo_on_surface;
+}
+
+.nb-tab-card-icon,
+.nb-tab-card-close {
+  color: @neo_on_surface_variant;
+}
+
+.nb-tab-card-thumb {
+  background-color: #ffffff;
+}
+
+.nb-tab-card-blank {
+  background-color: @neo_surface_container_highest;
+}

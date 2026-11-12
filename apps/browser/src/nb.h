@@ -2,8 +2,10 @@
  *
  *   nb-app.c        the engine (one WebKit network session, the incognito one, the ad filter), the session file,
  *                   downloads, shortcuts, the settings that reach WebKit
- *   nb-tab.c        a tab: its own window (Jelly's tabs are Android tasks), the WebView, back, dialogs
- *   nb-urlbar.c     the URL bar, its suggestions, find in page
+ *   nb-tab.c        a tab: a page of the one window, the WebView, back, dialogs
+ *   nb-switcher.c   the window (the tabs, one shown at a time) and the tab switcher the URL bar's tab count opens:
+ *                   Jelly's tabs were Android tasks, one window each; here they live in the browser, as Chrome's do
+ *   nb-urlbar.c     the URL bar, its tab count, its suggestions, find in page
  *   nb-menu.c       the popup menu, the link sheet, Send to, the shortcut sheet
  *   nb-pages.c      History, Favorites, Downloads, Desktop shortcuts
  *   nb-settings.c   Settings
@@ -53,7 +55,11 @@ typedef struct {
   WebKitUserContentFilterStore *filters;
   WebKitUserContentFilter      *filter;
   GPtrArray                    *tabs;          /* NbTab, oldest first */
-  NbTab                        *last_active;
+  NbTab                        *last_active;   /* the tab shown (or shown last, under the switcher) */
+  /* the one window (nb-switcher.c): the tabs' stack and the switcher, one of them shown */
+  GtkWidget                    *win, *root, *tab_stack;
+  GtkWidget                    *switcher, *switcher_grid, *switcher_title, *switcher_empty;
+  gboolean                      switcher_open, quitting;
   GPtrArray                    *downloads;     /* NbDownload, newest first */
   GHashTable                   *dl_seen;
   guint                         session_id;
@@ -62,7 +68,8 @@ typedef struct {
 extern NbApp *nb;
 
 struct _NbTab {
-  GtkWidget     *win;
+  GtkWidget     *win;             /* nb->win: every tab's */
+  GtkWidget     *holder;          /* the tab in nb->tab_stack: the navigator, the snackbar over it */
   GtkWidget     *nav;             /* NbNavigator: the browser page, then History … over it */
   GtkWidget     *page;            /* the browser page (an overlay: the suggestions drop over it) */
   GtkWidget     *column;          /* the bar and the view, top to bottom (reach mode: the other way) */
@@ -77,7 +84,7 @@ struct _NbTab {
   char          *shortcut_id;
   gboolean       closing;
   /* the URL bar (nb-urlbar.c) */
-  GtkWidget     *bar, *bar_stack, *incog_icon, *lock, *entry, *more, *progress;
+  GtkWidget     *bar, *bar_stack, *incog_icon, *lock, *entry, *count, *count_label, *more, *progress;
   GtkWidget     *find_entry, *find_count, *find_clear, *find_prev, *find_next;
   GtkWidget     *dropdown, *dropdown_rows;
   GCancellable  *suggest_cancel;
@@ -94,6 +101,9 @@ struct _NbTab {
   GtkWidget     *snackbar;
   GtkWidget     *back_probe;
   GtkWidget     *downloads_page;  /* weak, while it is open */
+  /* the switcher's card: the page as it was last left, scaled down (nb-switcher.c) */
+  GdkTexture    *thumb;
+  GCancellable  *thumb_cancel;
 };
 
 /* nb-app.c */
@@ -103,11 +113,12 @@ void        nb_app_shutdown       (void);
 void        nb_app_activate       (void);
 /* the command line's tabs (an Intent's data): one new tab per URL, or one with the home page when there is none */
 void        nb_app_open           (const char *const *urls, gboolean incognito, const char *shortcut_id);
-/* a new tab in a window of its own (TabUtils.openInNewTab): `url` NULL for the home page */
+/* a new tab, shown (TabUtils.openInNewTab): `url` NULL for the home page */
 NbTab      *nb_open_tab           (const char *url, gboolean incognito, const char *shortcut_id,
                                    WebKitWebView *related);
 void        nb_tab_forget         (NbTab *t);
-void        nb_save_session       (void);
+void        nb_save_session       (void);          /* soon */
+void        nb_save_session_now   (void);
 WebKitNetworkSession *nb_session_for (gboolean incognito);
 char       *nb_smart_url          (const char *text);
 const char *nb_home_page          (void);
@@ -125,7 +136,11 @@ void        nb_shortcut_free      (NbShortcut *s);
 /* nb-tab.c */
 NbTab      *nb_tab_new            (const char *url, gboolean incognito, gboolean desktop, const char *shortcut_id,
                                    WebKitWebView *related);
+/* shows `t` (the switcher closes) and brings the window up */
 void        nb_tab_present        (NbTab *t);
+/* closes `t` for good: the switcher's ×, the page's window.close () */
+void        nb_tab_close          (NbTab *t);
+gboolean    nb_tab_is_shown       (NbTab *t);
 void        nb_tab_ensure_view    (NbTab *t);
 void        nb_tab_load           (NbTab *t, const char *text);    /* through smartUrlFilter */
 const char *nb_tab_uri            (NbTab *t);
@@ -143,9 +158,17 @@ void        nb_tab_apply_reach    (NbTab *t);
 void        nb_tab_print          (NbTab *t);
 GdkTexture *nb_tab_favicon        (NbTab *t);
 
+/* nb-switcher.c */
+GtkWidget  *nb_window_get         (void);      /* the window, made on first use */
+void        nb_switcher_open      (void);
+void        nb_switcher_close     (void);
+void        nb_tabs_changed       (void);      /* a tab opened, closed or renamed: the counts, the switcher */
+void        nb_tab_take_thumb     (NbTab *t);  /* the switcher's picture of the page, made now (async) */
+
 /* nb-urlbar.c */
 GtkWidget  *nb_urlbar_new         (NbTab *t);
 void        nb_urlbar_sync        (NbTab *t);
+void        nb_urlbar_sync_count  (NbTab *t);
 void        nb_urlbar_progress    (NbTab *t);
 void        nb_urlbar_set_finding (NbTab *t, gboolean finding);
 void        nb_urlbar_stop_editing (NbTab *t);

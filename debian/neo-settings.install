@@ -2,3 +2,4 @@ usr/bin/neo-settings
 usr/libexec/neo-keyring-rekey
 usr/share/applications/de.yesman.NeoSettings.desktop
 usr/share/dbus-1/services/de.yesman.NeoSettings.service
+usr/share/icons/hicolor/scalable/apps/de.yesman.NeoSettings.svg

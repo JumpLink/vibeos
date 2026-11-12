@@ -316,6 +316,78 @@ icon_settings_changed (GSettings *s, const char *key, gpointer data)
   icons_id = g_timeout_add (300, icons_reload, NULL);
 }
 
+/* ---- Settings' Home screen layout ------------------------------------------------------------------------------ */
+
+#define LAYOUT_SETTLE_MS 150      /* the grid's columns and rows come as two changes: one new layout for both */
+
+static guint layout_id;
+
+static float
+icon_scale (const char *key)
+{
+  return CLAMP (g_settings_get_double (N.settings, key), 0.5, 1.5);
+}
+
+/* the layout keys (de.yesman.neo) into N; the home grid's columns and rows for the model */
+static void
+layout_read (int *cols, int *rows)
+{
+  *cols = CLAMP (g_settings_get_int (N.settings, "desktop-grid-columns"), 3, 8);
+  *rows = CLAMP (g_settings_get_int (N.settings, "desktop-grid-rows"), 3, 8);
+  N.drawer_cols = CLAMP (g_settings_get_int (N.settings, "drawer-grid-columns"), 3, 8);
+  N.icon_dp = ICON_DP * icon_scale ("desktop-icon-scale");
+  N.drawer_icon_dp = ICON_DP * icon_scale ("drawer-icon-scale");
+  N.labels = !g_settings_get_boolean (N.settings, "desktop-hide-app-labels");
+  N.search = g_settings_get_boolean (N.settings, "search-drawer-enabled");
+}
+
+/* The layout keys are older than this launcher's reading them: the GTK Neo read them, the launcher after it did not,
+ * so a phone may keep values from back then that its screen does not show (the S10e had 4 columns and no search
+ * pill). The first start that finds a layout from before the grid was a setting puts them back to their defaults, so
+ * that nothing on the screen changes; from then on they are Settings'. */
+static void
+layout_forget_old (void)
+{
+  static const char *const keys[] = { "desktop-grid-columns", "desktop-grid-rows", "drawer-grid-columns",
+                                      "desktop-icon-scale", "drawer-icon-scale", "desktop-hide-app-labels",
+                                      "search-drawer-enabled" };
+  if (!model_layout_predates_grid ())
+    return;
+  for (guint i = 0; i < G_N_ELEMENTS (keys); i++)
+    g_settings_reset (N.settings, keys[i]);
+}
+
+/* A layout setting changed: the pages on the new grid (model_set_grid: icons the new grid has no cell for move to the
+ * next free one), the labels at their new width, the icons drawn at their new size. Not while a finger, a menu or a
+ * drag holds an icon: their cells would move under them. */
+static gboolean
+layout_apply (gpointer data)
+{
+  if (A.touch >= 0 || N.launch_t0 || popup_showing () || drag_holding () || drag_busy ())
+    return G_SOURCE_CONTINUE;
+  layout_id = 0;
+  int px = tiles_icon_px (), cols, rows;
+  layout_read (&cols, &rows);
+  model_set_grid (N.model, cols, rows);
+  model_set_reserved (N.model, N.model->cols);
+  tiles_relabel ();
+  home_layout ();
+  drawer_layout ();
+  home_model_changed ();
+  if (tiles_icon_px () != px)
+    tiles_reload_icons ();
+  wl_schedule (N.wl);
+  return G_SOURCE_REMOVE;
+}
+
+static void
+layout_changed (GSettings *s, const char *key, gpointer data)
+{
+  if (layout_id)
+    g_source_remove (layout_id);
+  layout_id = g_timeout_add (LAYOUT_SETTLE_MS, layout_apply, NULL);
+}
+
 static bool
 init_gpu (void)
 {
@@ -326,7 +398,16 @@ init_gpu (void)
   wallpaper_load ();
   g_signal_connect (A.bg, "changed", G_CALLBACK (wallpaper_changed), NULL);
   g_signal_connect (A.iface, "changed::color-scheme", G_CALLBACK (wallpaper_changed), NULL);
-  tiles_load ();
+  int cols, rows;
+  layout_forget_old ();
+  layout_read (&cols, &rows);
+  tiles_load (cols, rows);
+  static const char *const layout_keys[] = { "changed::desktop-grid-columns", "changed::desktop-grid-rows",
+                                             "changed::drawer-grid-columns", "changed::desktop-icon-scale",
+                                             "changed::drawer-icon-scale", "changed::desktop-hide-app-labels",
+                                             "changed::search-drawer-enabled" };
+  for (guint i = 0; i < G_N_ELEMENTS (layout_keys); i++)
+    g_signal_connect (N.settings, layout_keys[i], G_CALLBACK (layout_changed), NULL);
   static const char *const icon_keys[] = { "changed::icon-pack", "changed::icon-shape", "changed::icon-wrap-unthemed",
                                            "changed::icon-shape-legacy" };
   for (guint i = 0; i < G_N_ELEMENTS (icon_keys); i++)
@@ -416,6 +497,7 @@ on_frame (gpointer data, gint64 time)
     A.vk_h = N.H;
     if (A.par)
       parallax_resize (A.par, N.W, N.H, N.dp);
+    tiles_relabel ();               /* the columns' widths changed */
     home_layout ();
     drawer_layout ();
     nav_icons_changed ();
@@ -512,7 +594,7 @@ on_hold (gpointer data)
   if (A.touch < 0 || A.moved)
     return G_SOURCE_REMOVE;
   N.now = MAX (N.now, mono_ns () / 1e6);
-  float isz = roundf (dp (ICON_DP));
+  float isz = A.owner == OWNER_DRAWER ? drawer_icon_size () : home_icon_size ();
   if (A.owner == OWNER_HOME) {
     if (nav_home_alpha () < 1 || launch_content_scale () != 1)
       return G_SOURCE_REMOVE;
@@ -651,7 +733,7 @@ on_touch (gpointer data, WlTouchType type, int id, double x, double y, guint32 t
       home_touch_up (x, y, t);
       press_up ();
       if (!A.moved && A.down_tile)
-        tile_launch (A.down_tile, A.down_ix, A.down_iy, roundf (dp (ICON_DP)), false);
+        tile_launch (A.down_tile, A.down_ix, A.down_iy, home_icon_size (), false);
     } else if (A.owner == OWNER_DRAWER) {
       drawer_touch_up (x, y, t);
     }
@@ -687,10 +769,34 @@ touch_drop (void)
 }
 
 static void
-on_key (gpointer data, guint32 key, bool pressed)
+on_key (gpointer data, guint32 key, guint32 keysym, const char *utf8, bool pressed)
 {
+  /* the drawer's search field takes the typing while it has it */
+  if (pressed && drawer_search_key (keysym, utf8)) {
+    wl_schedule (N.wl);
+    return;
+  }
   if (pressed && key == KEY_Q)
     g_main_loop_quit (A.loop);
+}
+
+/* the input method's (the on-screen keyboard's) text for the search field */
+static void
+on_text (gpointer data, const char *utf8)
+{
+  drawer_search_text (utf8);
+}
+
+static void
+on_erase (gpointer data, int before, int after)
+{
+  drawer_search_erase (before, after);
+}
+
+static void
+on_submit (gpointer data)
+{
+  drawer_search_submit ();
 }
 
 static void
@@ -740,7 +846,8 @@ int
 main (int argc, char **argv)
 {
   setlocale (LC_ALL, "");
-  static const WlCallbacks cb = { on_resize, on_frame, on_touch, on_key, on_close, on_shown, on_suspended };
+  static const WlCallbacks cb = { on_resize, on_frame,  on_touch, on_key,   on_close,
+                                  on_shown,  on_suspended, on_text, on_erase, on_submit };
   A.loop = g_main_loop_new (NULL, FALSE);
   N.settings = g_settings_new ("de.yesman.neo");
   A.bg = g_settings_new ("org.gnome.desktop.background");

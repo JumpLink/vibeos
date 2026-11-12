@@ -289,9 +289,9 @@ cell_step (int c, int i, int dx, int dy)
   row += dy;
   if (c == DOCK)
     return row == 0 && col >= 0 && col < home_cells (DOCK) ? col : -1;
-  if (col < 0 || col >= GRID_COLS || row < 0 || row >= GRID_ROWS)
+  if (col < 0 || col >= N.model->cols || row < 0 || row >= N.model->rows)
     return -1;
-  int k = row * GRID_COLS + col - (c == 0 ? N.model->reserved : 0);
+  int k = row * N.model->cols + col - (c == 0 ? N.model->reserved : 0);
   return k >= 0 && k < home_cells (c) ? k : -1;
 }
 
@@ -946,8 +946,9 @@ over_clock (float x, float y)
     return false;
   float r[4];
   home_cell_box (0, 0, r);
-  float top = r[1] - r[3] * (N.model->reserved / GRID_COLS), left = r[0] - r[2] * (N.model->reserved % GRID_COLS);
-  return x >= left && x < left + GRID_COLS * r[2] && y >= top && y < r[1];
+  int cols = N.model->cols;
+  float top = r[1] - r[3] * (N.model->reserved / cols), left = r[0] - r[2] * (N.model->reserved % cols);
+  return x >= left && x < left + cols * r[2] && y >= top && y < r[1];
 }
 
 /* setDropLayoutForDragObject: the hotseat under the finger, else a neighbour the finger or the centre is over
