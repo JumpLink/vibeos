@@ -150,6 +150,27 @@ dock_rect (int slot, float *x, float *y)
   *y = roundf (H.dock_icon_top);
 }
 
+/* The clock widget takes the first page's top row: a tap anywhere on that row opens the Clock app */
+#define CLOCK_APP "neo.Clock.desktop"
+
+bool
+home_clock_at (float x, float y)
+{
+  return floorf ((x + H.scroll) / H.pitch) == 0 && x + H.scroll < N.W && y >= H.cell_y0 && y < H.cell_y0 + H.cell_h;
+}
+
+void
+home_open_clock (void)
+{
+  Tile *t = tiles_get (CLOCK_APP);
+  if (!t)
+    return;
+  /* the window grows out of an icon-sized square in the middle of the time */
+  float size = home_icon_size ();
+  float cy = H.cell_y0 + dp (CLOCK_TIME_BASELINE_DP) - dp (CLOCK_TIME_DP) / 2;
+  tile_launch (t, N.W / 2 - H.scroll - size / 2, cy - size / 2, size, false);
+}
+
 Tile *
 home_tile_at (float x, float y, float *ix, float *iy, ModelPos *pos)
 {

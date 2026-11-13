@@ -52,6 +52,7 @@ static struct {
   bool        moved;
   bool        debug_touch;        /* NEO_DEBUG_TOUCH or ~/.config/neo-launcher/debug-touch */
   Tile       *down_tile;
+  bool        down_clock;         /* the touch began on the clock widget */
   float       down_ix, down_iy;
   ModelPos    down_pos;
   guint       hold_id;            /* the long press's timeout */
@@ -658,6 +659,7 @@ on_touch (gpointer data, WlTouchType type, int id, double x, double y, guint32 t
     A.down_y = A.last_y = y;
     A.moved = false;
     A.down_tile = NULL;
+    A.down_clock = false;
     hold_cancel ();
     if (bar && drawer_home_down (x, y, t)) {
       A.owner = OWNER_BAR;
@@ -678,6 +680,8 @@ on_touch (gpointer data, WlTouchType type, int id, double x, double y, guint32 t
     A.down_tile = home_tile_at (x, y, &A.down_ix, &A.down_iy, &A.down_pos);
     if (A.down_tile)
       press_down (A.down_tile);
+    else
+      A.down_clock = home_clock_at (x, y);
     break;
   }
   case WL_TOUCH_MOTION:
@@ -735,6 +739,8 @@ on_touch (gpointer data, WlTouchType type, int id, double x, double y, guint32 t
       press_up ();
       if (!A.moved && A.down_tile)
         tile_launch (A.down_tile, A.down_ix, A.down_iy, home_icon_size (), false);
+      else if (!A.moved && A.down_clock)
+        home_open_clock ();
     } else if (A.owner == OWNER_DRAWER) {
       drawer_touch_up (x, y, t);
     }

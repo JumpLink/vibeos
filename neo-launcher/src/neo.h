@@ -131,6 +131,8 @@ void   home_touch_up     (float x, float y, double t);
 void   home_touch_cancel (double t);
 float  home_stretch      (void);                         /* the horizontal edge stretch amount */
 Tile  *home_tile_at      (float x, float y, float *ix, float *iy, ModelPos *pos);
+bool   home_clock_at     (float x, float y);              /* on the clock widget, where it is on screen now */
+void   home_open_clock   (void);                          /* the Clock app, grown out of the clock widget */
 void   home_model_changed (void);                        /* icons added or taken away: the pages reflowed */
 void   home_clock_tick   (void);
 bool   home_icon_rect    (const char *id, float r[4]);
