@@ -16,6 +16,10 @@
 // 2026-11-12). On Android a button takes no focus in touch mode and the keyboard goes once the tap is done. So while a
 // finger is down, Keyboard.close only marks the keyboard to close; the last finger lifting closes it, unless a field
 // took the focus meanwhile (open).
+//
+// And a window over its whole screen is no popover. The shell takes every skip-taskbar window for one and, with the
+// keyboard up, moves popovers up until their bottom clears it: the launcher (full screen, skip-taskbar) went up by the
+// keyboard's height, its drawer's search field under the status bar, and the next tap hit an app (2026-11-13).
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 
@@ -34,6 +38,7 @@ export class TouchFocusKeyboard {
         this._touches = 0;
         this._closeId = 0;
         this._holdClose();
+        this._noFullScreenPopovers();
         global.stage.connectObject('captured-event', (_stage, event) => this._onEvent(event), this);
     }
 
@@ -69,6 +74,28 @@ export class TouchFocusKeyboard {
                 keyboard.__gnomePhoneCloseHeld = false;
                 close.call(keyboard);
             }
+        };
+    }
+
+    // Keyboard._animatePopovers, wrapped: windows over their whole monitor leave the keyboard's popovers first (moved
+    // back if they were moved). Its handler for a new popover was bound when the keyboard was made, so the check is
+    // made where the popovers are moved, which the keyboard looks up on every call.
+    _noFullScreenPopovers() {
+        const proto = KeyboardUI.Keyboard?.prototype;
+        if (!proto?._animatePopovers || !proto?._onFocusPopoverRemoved)
+            return;
+        const animatePopovers = proto._animatePopovers;
+        proto._animatePopovers = function (...args) {
+            for (const win of [...(this._focusPopovers ?? [])]) {
+                const rect = win.get_frame_rect();
+                const monitor = global.display.get_monitor_geometry(win.get_monitor());
+                if (win.is_fullscreen() || (rect.width >= monitor.width && rect.height >= monitor.height))
+                    this._onFocusPopoverRemoved(null, win);
+            }
+            return animatePopovers.apply(this, args);
+        };
+        this._unwrapPopovers = () => {
+            proto._animatePopovers = animatePopovers;
         };
     }
 
@@ -143,5 +170,6 @@ export class TouchFocusKeyboard {
         this._closeId = 0;
         this._closeHeld?.();
         this._unholdClose?.();
+        this._unwrapPopovers?.();
     }
 }
