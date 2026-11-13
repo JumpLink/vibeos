@@ -1,3 +1,56 @@
+gnome-phone (0.1.7) unstable; urgency=medium
+
+  * Every ID is neo.* now: the apps (neo.Dialer, neo.Messaging, neo.Clock,
+    neo.Calendar, neo.Contacts, neo.Calculator, neo.Camera, neo.Files,
+    neo.Compass) with their services and windows, neo.Browser, neo.Weather,
+    neo.Settings and neo.Launcher, the shared phone settings (neo.Phone at
+    /neo/Phone/), the extension's D-Bus name (neo.GnomePhone) and UUID
+    (gnome-phone@neo), neo-wakeup's system bus name (neo.Wakeup), the
+    GSettings paths, the GResource prefixes, the desktop files and the
+    icons. Device overrides must name [neo.Phone] and the new desktop ids.
+  * A separate product's app is no longer part of the default home layout,
+    and the Round icon pack no longer has an icon for it.
+  * gnome-phone-daemons: gnome-phone-migrate-ids carries each user over
+    once, from a systemd user unit before the session starts (the launcher
+    runs it too when it finds no stamp): GSettings values are copied to the
+    new paths, a device's old-schema overrides that no longer apply are
+    kept as the user's values, the apps' own directories (alarms, the
+    browser's profile, the calculator's history) move to the new names
+    with a symlink left behind, the browser's home screen shortcuts,
+    default apps, favourites, notification settings and the enabled
+    extension follow. Nothing old is deleted; what was done is listed in
+    ~/.local/state/gnome-phone/ids-migrated. Depends on dconf-cli.
+  * neo-launcher: reads old desktop ids in a home layout (the user's or a
+    ROM's in /etc/xdg) and in hidden-from-home as the new ones once the
+    renamed app is installed, and an icon pack's map made for 0.1.6 still
+    dresses the renamed apps. A tap on the home screen's clock opens the
+    Clock.
+  * The home layout survives an upgrade from 0.1.6 made with the phone in
+    use: the 0.1.6 launcher still running takes each renamed app for a new
+    one and rearranges the icons. The app packages' preinst saves every
+    user's layout to /var/lib/neo-launcher/before-0.1.7/ before the first
+    app is renamed, and gnome-phone-migrate-ids puts it back once at the
+    next login (the rearranged one is kept as layout-upgrade-0.1.7.json).
+  * gnome-shell-extension-gnome-phone: the status bar no longer vanishes
+    from the home screen after hours of use. Mutter's unredirect count,
+    which keeps the launcher's fullscreen window off the display while the
+    bar is up, could be left one short by any part of the shell; while
+    the extension has anything on screen, the count can no longer reach
+    zero.
+  * neo-dialer: a key's tone plays when the key is pressed, and only that
+    key's tone. The tone stream opens with the keypad and keeps running,
+    with a 50 ms buffer, and the dialer makes the two sines itself, 10 ms
+    at a time, from the key held at that moment; the stream used to be
+    started and stopped on every key behind a 200 ms buffer, so a tone
+    came late and began with what was left of the key before.
+  * Comments say what the code does: the ones that only said which
+    Android or Material size, font or colour a value copies now say what
+    the value is for, or are gone; references to the design notes are
+    gone; Android class and method names give way to what the code does,
+    and lengths are in GTK or screen pixels. No code changed.
+
+ -- pulpoff <pashkovsky@gmail.com>  Fri, 13 Nov 2026 22:29:13 +0100
+
 gnome-phone (0.1.6) unstable; urgency=medium
 
   * neo-camera: a landscape layout. The shell turns the camera with the
