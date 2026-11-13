@@ -27,11 +27,11 @@ executable('neo-calculator', 'src/calc-main.c', 'src/calc-window.c', 'src/calc-d
            link_with: engine, install: true,
            dependencies: engine_deps + [gtk, dependency('neo-1'), dependency('spongy-gtk-1')])
 
-configure_file(input: 'data/de.yesman.Calculator.service.in', output: 'de.yesman.Calculator.service',
+configure_file(input: 'data/neo.Calculator.service.in', output: 'neo.Calculator.service',
                configuration: configuration_data({'bindir': bindir}), install_dir: datadir / 'dbus-1/services')
-install_data('data/de.yesman.Calculator.desktop', install_dir: datadir / 'applications')
-install_data('data/de.yesman.Calculator.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
-install_data('data/de.yesman.Calculator.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
+install_data('data/neo.Calculator.desktop', install_dir: datadir / 'applications')
+install_data('data/neo.Calculator.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
+install_data('data/neo.Calculator.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
 gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
 
 foreach name : ['creal', 'engine', 'evaluator']

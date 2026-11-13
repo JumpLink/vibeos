@@ -5,7 +5,7 @@
 #include <glib/gi18n.h>
 #include <string.h>
 
-#define CONTACTS_APP_ID "de.yesman.Contacts"
+#define CONTACTS_APP_ID "neo.Contacts"
 #define OTHER_APP_ID    "org.gnome.Contacts"    /* another Mobian phone's: it opens at its list */
 
 gboolean

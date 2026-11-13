@@ -4,4 +4,4 @@ usr/sbin/input-boost
 usr/sbin/neo-wakeup
 usr/lib/systemd/system/input-boost.service
 usr/lib/systemd/system/neo-wakeup.service
-usr/share/dbus-1/system.d/de.yesman.Wakeup.conf
+usr/share/dbus-1/system.d/neo.Wakeup.conf

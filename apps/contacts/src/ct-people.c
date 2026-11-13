@@ -1530,15 +1530,15 @@ ct_people_new (GtkWidget *window)
 
   /* the pictures' sizes: home_empty 150 dp tall (a square), accounts_empty 96 dp, label_empty 150 dp tall and as
    * wide as its 696 x 540 aspect makes it */
-  people->empty = empty_view ("/de/yesman/Contacts/images/home_empty.png", CT_EMPTY_IMAGE_H_DP, CT_EMPTY_IMAGE_H_DP,
+  people->empty = empty_view ("/neo/Contacts/images/home_empty.png", CT_EMPTY_IMAGE_H_DP, CT_EMPTY_IMAGE_H_DP,
                               _("Your contacts list is empty"), _("Add contact"), G_CALLBACK (on_add_contact), people);
   gtk_overlay_add_overlay (GTK_OVERLAY (content), people->empty);
-  people->account_empty = empty_view ("/de/yesman/Contacts/images/accounts_empty.png", CT_EMPTY_ACCOUNT_IMAGE_DP,
+  people->account_empty = empty_view ("/neo/Contacts/images/accounts_empty.png", CT_EMPTY_ACCOUNT_IMAGE_DP,
                                       CT_EMPTY_ACCOUNT_IMAGE_DP, _("No contacts in this account"), _("Add contact"),
                                       G_CALLBACK (on_add_contact), people);
   gtk_widget_add_css_class (people->account_empty, "account");
   gtk_overlay_add_overlay (GTK_OVERLAY (content), people->account_empty);
-  people->label_empty = empty_view ("/de/yesman/Contacts/images/label_empty.png", CT_EMPTY_IMAGE_H_DP * 696 / 540,
+  people->label_empty = empty_view ("/neo/Contacts/images/label_empty.png", CT_EMPTY_IMAGE_H_DP * 696 / 540,
                                     CT_EMPTY_IMAGE_H_DP, _("No contacts with this label"), _("Add contacts"),
                                     G_CALLBACK (on_add_contacts_button), people);
   gtk_widget_add_css_class (people->label_empty, "label");

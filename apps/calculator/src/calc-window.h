@@ -6,7 +6,7 @@
 
 G_BEGIN_DECLS
 
-/* `settings`: de.yesman.Calculator (the evaluator's degree mode, memory and clipboard entries) */
+/* `settings`: neo.Calculator (the evaluator's degree mode, memory and clipboard entries) */
 GtkWidget *calc_window_new (GtkApplication *app, GSettings *settings);
 
 G_END_DECLS

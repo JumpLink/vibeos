@@ -1,10 +1,10 @@
 /* neo-contacts: the Contacts app, LineageOS's Contacts (com.android.contacts) rebuilt in GTK 4 (spec/contacts.md),
  * over evolution-data-server's address books.
  *
- * de.yesman.Contacts is D-Bus activatable. The launcher starts it at the list; a .vcf file opened with it is
+ * neo.Contacts is D-Bus activatable. The launcher starts it at the list; a .vcf file opened with it is
  * imported after "Import contacts from vCard?". Other apps reach its screens through its actions, which they
- * activate with org.freedesktop.Application.ActivateAction on de.yesman.Contacts (/de/yesman/Contacts), or with
- * `gapplication action de.yesman.Contacts <action> <parameter>`:
+ * activate with org.freedesktop.Application.ActivateAction on neo.Contacts (/neo/Contacts), or with
+ * `gapplication action neo.Contacts <action> <parameter>`:
  *
  *   view-contact    (s)       the card of the contact with that vCard UID, as EDS has it (ACTION_VIEW)
  *   edit-contact    (s)       the editor for that contact (ACTION_EDIT)
@@ -31,7 +31,7 @@
 #include <locale.h>
 #include <neo.h>
 
-#define CT_APP_ID "de.yesman.Contacts"
+#define CT_APP_ID "neo.Contacts"
 
 static CtStore *store;
 static GSettings *settings;
@@ -41,7 +41,7 @@ load_style (void)
 {
   GtkCssProvider *provider = gtk_css_provider_new ();
 
-  gtk_css_provider_load_from_resource (provider, "/de/yesman/Contacts/contacts.css");
+  gtk_css_provider_load_from_resource (provider, "/neo/Contacts/contacts.css");
   /* over libneo's, which is at APPLICATION priority too: the later provider wins at equal priority */
   gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (provider),
                                               GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
@@ -350,7 +350,7 @@ main (int argc, char **argv)
   textdomain (GETTEXT_PACKAGE);
 
   app = gtk_application_new (CT_APP_ID, G_APPLICATION_HANDLES_OPEN);
-  g_application_set_resource_base_path (G_APPLICATION (app), "/de/yesman/Contacts");
+  g_application_set_resource_base_path (G_APPLICATION (app), "/neo/Contacts");
   g_action_map_add_action_entries (G_ACTION_MAP (app), actions, G_N_ELEMENTS (actions), app);
   g_signal_connect (app, "startup", G_CALLBACK (on_startup), NULL);
   g_signal_connect (app, "shutdown", G_CALLBACK (on_shutdown), NULL);

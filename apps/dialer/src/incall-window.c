@@ -51,7 +51,7 @@ take_volume_keys (gboolean take)
     return;
   incall.volume_keys = take;
   if (bus)
-    g_dbus_connection_call (bus, "de.yesman.GnomePhone", "/de/yesman/GnomePhone", "de.yesman.GnomePhone",
+    g_dbus_connection_call (bus, "neo.GnomePhone", "/neo/GnomePhone", "neo.GnomePhone",
                             "TakeVolumeKeys", g_variant_new ("(sb)", g_application_get_application_id (app), take),
                             NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 }

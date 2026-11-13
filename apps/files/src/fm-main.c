@@ -2,7 +2,7 @@
  * (spec/files.md), on GIO and GVfs: local storage, removable media, the Recycle Bin, Recent files, the Local Network
  * and saved remotes over SMB, SFTP, FTP/FTPS and WebDAV.
  *
- * de.yesman.Files is D-Bus activatable. A folder's URI opened with it (`neo-files URI`, or Open over D-Bus from
+ * neo.Files is D-Bus activatable. A folder's URI opened with it (`neo-files URI`, or Open over D-Bus from
  * another app) browses that folder; a file's URI browses the folder it is in. */
 #include "fm-share.h"
 #include "fm-window.h"
@@ -11,7 +11,7 @@
 #include <locale.h>
 #include <neo.h>
 
-#define FM_APP_ID "de.yesman.Files"
+#define FM_APP_ID "neo.Files"
 
 static GSettings *settings;
 
@@ -20,7 +20,7 @@ load_style (void)
 {
   GtkCssProvider *provider = gtk_css_provider_new ();
 
-  gtk_css_provider_load_from_resource (provider, "/de/yesman/Files/files.css");
+  gtk_css_provider_load_from_resource (provider, "/neo/Files/files.css");
   /* over libneo's, which is at APPLICATION priority too */
   gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (provider),
                                               GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);

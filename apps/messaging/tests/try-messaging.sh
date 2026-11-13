@@ -76,7 +76,7 @@ EOF
         tail -1 "$RIG/$bus.tmp" >"$RIG/$bus.bus-pid"
         rm -f "$RIG/$bus.tmp"
     done
-    # --no-app: the real app is de.yesman.Messaging on this bus
+    # --no-app: the real app is neo.Messaging on this bus
     # shellcheck disable=SC2046
     as_user_daemon mock env $(rig_env) python3 "$RIG/mock-modem.py" "$(cat "$RIG/system")" --no-app
     sleep 1
@@ -93,16 +93,16 @@ modem)
     shift
     method=$1
     shift
-    session_call de.yesman.Test.Modem /de/yesman/Test/Modem "de.yesman.Test.Modem.$method" "$@"
+    session_call neo.Test.Modem /neo/Test/Modem "neo.Test.Modem.$method" "$@"
     ;;
 sms)
     shift
     method=$1
     shift
-    session_call de.yesman.Messaging.Sms /de/yesman/Messaging/Sms "de.yesman.Messaging.Sms.$method" "$@"
+    session_call neo.Messaging.Sms /neo/Messaging/Sms "neo.Messaging.Sms.$method" "$@"
     ;;
 open)
-    session_call de.yesman.Messaging /de/yesman/Messaging org.freedesktop.Application.ActivateAction \
+    session_call neo.Messaging /neo/Messaging org.freedesktop.Application.ActivateAction \
         open-conversation "[<int64 $2>]" "{}"
     ;;
 shot | tap | swipe)

@@ -49,7 +49,7 @@ start)
     fi
     as_user mkdir -p "$RIG/data/applications" "$RIG/config" "$RIG/cache" "$RIG/schemas"
     # the app's schema, compiled where GSETTINGS_SCHEMA_DIR points (the system's stay on the path too)
-    as_user cp "$HERE/../data/de.yesman.Contacts.gschema.xml" "$RIG/schemas/"
+    as_user cp "$HERE/../data/neo.Contacts.gschema.xml" "$RIG/schemas/"
     as_user glib-compile-schemas "$RIG/schemas"
     # the stand-in for the apps that take links: it only writes down what it was given
     as_user sh -c "cat >'$RIG/links.sh'" <<EOF
@@ -104,7 +104,7 @@ app)
     ;;
 action)
     shift
-    rig gapplication action de.yesman.Contacts "$@"
+    rig gapplication action neo.Contacts "$@"
     ;;
 stop)
     sh "$HEADLESS" stop || true

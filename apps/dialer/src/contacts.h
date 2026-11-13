@@ -30,7 +30,7 @@ typedef struct {
 G_DECLARE_FINAL_TYPE (Contacts, contacts, NEO_DIALER, CONTACTS, GObject)
 
 /* the contacts, the address books read in the background; "changed" is emitted as they come and change, and when
- * the Phone's Display options do (de.yesman.Dialer's sort-order and display-order) */
+ * the Phone's Display options do (neo.Dialer's sort-order and display-order) */
 Contacts      *contacts_new (void);
 
 /* every contact with a number, sorted by sort_name: Contact, owned by the model (valid until the next "changed") */

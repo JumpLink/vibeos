@@ -535,7 +535,7 @@ nb_sheet_row (const char *icon_name, GdkPaintable *icon, const char *text)
 #define TOAST_LONG_MS 3500
 #define TOAST_IN_MS   333
 #define TOAST_OUT_MS  250
-#define TOAST_ICON    "de.yesman.Browser"
+#define TOAST_ICON    "neo.Browser"
 
 typedef struct {
   GtkWidget   *pill;

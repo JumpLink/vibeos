@@ -736,7 +736,7 @@ set_volume_keys (GtkWidget *window, gboolean take)
   if (!bus || take == GPOINTER_TO_INT (g_object_get_data (G_OBJECT (window), "volume-keys")))
     return;
   g_object_set_data (G_OBJECT (window), "volume-keys", GINT_TO_POINTER (take));
-  g_dbus_connection_call (bus, "de.yesman.GnomePhone", "/de/yesman/GnomePhone", "de.yesman.GnomePhone",
+  g_dbus_connection_call (bus, "neo.GnomePhone", "/neo/GnomePhone", "neo.GnomePhone",
                           "TakeVolumeKeys", g_variant_new ("(sb)", g_application_get_application_id (app), take),
                           NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 }

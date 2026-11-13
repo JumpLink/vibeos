@@ -5,7 +5,7 @@ When the keyboard comes up, _animateWindow unmaximizes the focus window
 and moves it to the top of the work area at the height left above the
 keyboard. Mutter applies the unmaximize only once the client acks it,
 and that restores the window's floating size and position, centred in
-the work area: on the S10e the Yesman window came back 360 wide at x 36,
+the work area: on the S10e a chat app's window came back 360 wide at x 36,
 and a chat's composer sat under the keys, out of reach.
 
 Fit the window, full width from the top of the work area down to the

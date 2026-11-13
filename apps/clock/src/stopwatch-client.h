@@ -1,4 +1,4 @@
-/* The app's side of the stopwatch (de.yesman.Clock.Stopwatch in the Clock's service, stopwatch-service.c): as
+/* The app's side of the stopwatch (neo.Clock.Stopwatch in the Clock's service, stopwatch-service.c): as
  * timers-client.h, for the one stopwatch. */
 #pragma once
 

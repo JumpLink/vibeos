@@ -705,7 +705,7 @@ buzz (void)
   g_variant_builder_init (&pattern, G_VARIANT_TYPE ("a(du)"));
   g_variant_builder_add (&pattern, "(du)", 1.0, 300);
   g_dbus_connection_call (bus, "org.sigxcpu.Feedback", "/org/sigxcpu/Feedback", "org.sigxcpu.Feedback.Haptic",
-                          "Vibrate", g_variant_new ("(sa(du))", "de.yesman.Clock", &pattern), NULL,
+                          "Vibrate", g_variant_new ("(sa(du))", "neo.Clock", &pattern), NULL,
                           G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 }
 

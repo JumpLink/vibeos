@@ -1,8 +1,8 @@
 usr/bin/neo-messaging
 usr/bin/neo-messaging-sms
 usr/lib/systemd/user/neo-messaging-sms.service
-usr/share/applications/de.yesman.Messaging.desktop
-usr/share/dbus-1/services/de.yesman.Messaging.service
-usr/share/dbus-1/services/de.yesman.Messaging.Sms.service
-usr/share/glib-2.0/schemas/de.yesman.Messaging.gschema.xml
-usr/share/icons/hicolor/scalable/apps/de.yesman.Messaging.svg
+usr/share/applications/neo.Messaging.desktop
+usr/share/dbus-1/services/neo.Messaging.service
+usr/share/dbus-1/services/neo.Messaging.Sms.service
+usr/share/glib-2.0/schemas/neo.Messaging.gschema.xml
+usr/share/icons/hicolor/scalable/apps/neo.Messaging.svg

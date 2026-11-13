@@ -17,7 +17,7 @@ G_BEGIN_DECLS
 #define DIALER_TYPE_SETTINGS (dialer_settings_get_type ())
 G_DECLARE_FINAL_TYPE (DialerSettings, dialer_settings, DIALER, SETTINGS, GtkWidget)
 
-/* @settings: de.yesman.Dialer */
+/* @settings: neo.Dialer */
 GtkWidget *dialer_settings_new (GSettings *settings);
 
 /* Signals: "closed" (): Up or Back on the top list, the window takes the screen away */

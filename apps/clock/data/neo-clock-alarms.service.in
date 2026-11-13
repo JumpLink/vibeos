@@ -6,7 +6,7 @@ After=graphical-session.target
 
 [Service]
 Type=dbus
-BusName=de.yesman.Clock.Alarms
+BusName=neo.Clock.Alarms
 ExecStart=@bindir@/neo-clock-alarms
 # a crash must not cost an alarm: it comes back and rings on what is due (alarm_engine_fix)
 Restart=on-failure

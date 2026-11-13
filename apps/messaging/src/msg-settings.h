@@ -1,7 +1,7 @@
 /* Settings (spec §4.3-4.5): with one SIM, SettingsActivity opens ApplicationSettingsActivity straight away, titled
  * "Settings". Its rows that this app acts on: "Outgoing message sounds", "Swipe to delete" and "Advanced", which
  * opens the SIM's settings (PerSubscriptionSettingsActivity, "Advanced settings") with its "Advanced" category's
- * "SMS delivery reports". All are GSettings de.yesman.Messaging; the service reads "delivery-reports".
+ * "SMS delivery reports". All are GSettings neo.Messaging; the service reads "delivery-reports".
  *
  * Left out, as each would claim what the phone does not do: "Default SMS app" (no default to change here; the
  * session's sms: handler is set apart from the app), "Notifications" (the system's notification settings for the

@@ -23,7 +23,7 @@ export function openAppInfo(id) {
 // that mutter takes, from Neo Settings' own or one passed to it): whoever opens it raises it (LaunchTransition.expect).
 export function settingsApp() {
     const apps = Shell.AppSystem.get_default();
-    return apps.lookup_app(GLib.find_program_in_path('neo-settings') ? 'de.yesman.NeoSettings.desktop'
+    return apps.lookup_app(GLib.find_program_in_path('neo-settings') ? 'neo.Settings.desktop'
         : 'org.gnome.Settings.desktop');
 }
 

@@ -17,7 +17,7 @@ store = static_library('store', 'src/sms-store.c', dependencies: [gio, sqlite])
 phone = static_library('phone', '../dialer/src/phone-number.c', '../dialer/src/contacts.c', '../dialer/src/phone.c',
                        '../dialer/src/notifier.c', '../dialer/src/blocked-numbers.c', include_directories: dialer,
                        dependencies: [gio, ebook, sqlite],
-                       c_args: ['-DNOTIFIER_APP_ID="de.yesman.Messaging"', '-DNOTIFIER_APP_NAME="Messaging"'])
+                       c_args: ['-DNOTIFIER_APP_ID="neo.Messaging"', '-DNOTIFIER_APP_NAME="Messaging"'])
 
 # the service: the messages with the app closed, taking them off the modem, sending, the notifications
 executable('neo-messaging-sms', 'src/sms-service.c', 'src/sms-modem.c', link_with: [store, phone],
@@ -42,13 +42,13 @@ executable('neo-messaging', 'src/messaging-main.c', 'src/messaging-window.c', 's
 unit = configuration_data({'bindir': bindir})
 configure_file(input: 'data/neo-messaging-sms.service.in', output: 'neo-messaging-sms.service',
                configuration: unit, install_dir: get_option('prefix') / 'lib/systemd/user')
-configure_file(input: 'data/de.yesman.Messaging.Sms.service.in', output: 'de.yesman.Messaging.Sms.service',
+configure_file(input: 'data/neo.Messaging.Sms.service.in', output: 'neo.Messaging.Sms.service',
                configuration: unit, install_dir: datadir / 'dbus-1/services')
-configure_file(input: 'data/de.yesman.Messaging.service.in', output: 'de.yesman.Messaging.service',
+configure_file(input: 'data/neo.Messaging.service.in', output: 'neo.Messaging.service',
                configuration: unit, install_dir: datadir / 'dbus-1/services')
-install_data('data/de.yesman.Messaging.desktop', install_dir: datadir / 'applications')
-install_data('data/de.yesman.Messaging.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
-install_data('data/de.yesman.Messaging.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
+install_data('data/neo.Messaging.desktop', install_dir: datadir / 'applications')
+install_data('data/neo.Messaging.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
+install_data('data/neo.Messaging.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
 install_data('data/sounds/message_sent.wav', install_dir: datadir / 'neo-messaging/sounds')
 gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
 

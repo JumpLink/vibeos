@@ -100,7 +100,7 @@ Recommends: feedbackd,
             gir1.2-manette-0.2,
 Suggests: gnome-phone-session,
 Description: GNOME Shell extension that makes the shell a phone
- The gnome-phone@yesman.de extension replaces GNOME Shell's top panel,
+ The gnome-phone@neo extension replaces GNOME Shell's top panel,
  overview and lock screen with a phone's: Android-style gesture navigation
  (home, back, recents), the status bar, the notification shade with quick
  settings, heads-up notifications, the volume panel, the power menu, the
@@ -136,7 +136,7 @@ Description: GNOME Phone system helpers
   * gp-auth checks the lock screen's PIN or pattern through PAM (the PIN or
     pattern is the user's own password);
   * neo-wakeup wakes the phone from suspend at the times apps ask for (alarm
-    clocks, calendar reminders), over D-Bus (de.yesman.Wakeup), and publishes
+    clocks, calendar reminders), over D-Bus (neo.Wakeup), and publishes
     the next alarm clock;
   * input-boost raises the GPU's (and optionally the CPUs') clock floor while
     the touchscreen is touched. It is not enabled by default: its floor must

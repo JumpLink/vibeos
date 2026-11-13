@@ -166,7 +166,7 @@ card_new (NbTab *t, int width)
     gtk_picture_set_content_fit (GTK_PICTURE (icon), GTK_CONTENT_FIT_CONTAIN);
     gtk_picture_set_can_shrink (GTK_PICTURE (icon), TRUE);
   } else {
-    icon = gtk_image_new_from_icon_name ("de.yesman.Browser");
+    icon = gtk_image_new_from_icon_name ("neo.Browser");
     gtk_image_set_pixel_size (GTK_IMAGE (icon), 16);
   }
   gtk_widget_set_size_request (icon, 16, 16);

@@ -704,7 +704,7 @@ wall_apply (const char *path, const char *dark)
   g_settings_set_string (bg, "picture-uri", uri);
   g_settings_set_string (bg, "picture-uri-dark", duri);
   /* a picture chosen here replaces the parallax one, which would hide it */
-  g_autoptr (GSettings) neo = ns_settings ("de.yesman.neo");
+  g_autoptr (GSettings) neo = ns_settings ("neo.Phone");
   if (neo && ns_has_key (neo, "wallpaper-parallax"))
     g_settings_set_string (neo, "wallpaper-parallax", "");
 }

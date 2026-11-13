@@ -1,8 +1,8 @@
 usr/bin/neo-calendar
 usr/bin/neo-calendar-reminders
 usr/lib/systemd/user/neo-calendar-reminders.service
-usr/share/applications/de.yesman.Calendar.desktop
-usr/share/dbus-1/services/de.yesman.Calendar.service
-usr/share/dbus-1/services/de.yesman.Calendar.Reminders.service
-usr/share/glib-2.0/schemas/de.yesman.Calendar.gschema.xml
-usr/share/icons/hicolor/scalable/apps/de.yesman.Calendar.svg
+usr/share/applications/neo.Calendar.desktop
+usr/share/dbus-1/services/neo.Calendar.service
+usr/share/dbus-1/services/neo.Calendar.Reminders.service
+usr/share/glib-2.0/schemas/neo.Calendar.gschema.xml
+usr/share/icons/hicolor/scalable/apps/neo.Calendar.svg

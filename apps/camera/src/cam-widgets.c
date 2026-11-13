@@ -1393,7 +1393,7 @@ cam_toast_class_init (CamToastClass *klass)
 static void
 cam_toast_init (CamToast *self)
 {
-  GtkWidget *icon = gtk_image_new_from_icon_name ("de.yesman.Camera");
+  GtkWidget *icon = gtk_image_new_from_icon_name ("neo.Camera");
 
   self->box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_widget_add_css_class (self->box, "cam-toast");

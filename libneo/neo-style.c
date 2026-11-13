@@ -78,7 +78,7 @@ neo_init (void)
   GString *css = g_string_new (NULL);
   for (int i = 0; i < NEO_N_COLORS; i++)
     g_string_append_printf (css, "@define-color %s #%06x;\n", palette[i].css, palette[i].rgb);
-  GBytes *sheet = g_resources_lookup_data ("/de/yesman/neo/neo.css", 0, NULL);
+  GBytes *sheet = g_resources_lookup_data ("/neo/libneo/neo.css", 0, NULL);
   g_string_append_len (css, g_bytes_get_data (sheet, NULL), g_bytes_get_size (sheet));
   g_bytes_unref (sheet);
 

@@ -1,7 +1,7 @@
 // The always-on display, and the panel's low power mode under it: Phosh's AOD (Neo's aod.c) as the owner signed it
 // off, moved into the shell.
 //
-// While the screen is "off" with de.yesman.neo aod on, power.js's black layer shows this: the date, one icon per app
+// While the screen is "off" with neo.Phone aod on, power.js's black layer shows this: the date, one icon per app
 // with notifications, and the battery at the bottom where the lock screen says it charges, dim grey on black, which costs next to nothing on OLED. With a panel that
 // keeps a clock of its own (the S10e's S6E3FA7: a `self_clock` attribute next to `lpm`), the AOD is Samsung's: once
 // it shows, the panel goes into its low power mode and draws analog hands over the dial drawn here, ticking by itself

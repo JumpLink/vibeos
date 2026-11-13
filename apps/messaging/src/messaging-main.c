@@ -1,6 +1,6 @@
 /* neo-messaging: the Messaging app, LineageOS's Messaging (Bugle) rebuilt in GTK 4 (spec/messaging.md).
  *
- * de.yesman.Messaging, D-Bus activatable: the launcher starts it, an sms: or smsto: link opens the conversation with
+ * neo.Messaging, D-Bus activatable: the launcher starts it, an sms: or smsto: link opens the conversation with
  * that number (and the link's body in its field), and the SMS service's notifications open it at a conversation
  * ("open-conversation", its id) or at the list ("show-conversations").
  *
@@ -20,7 +20,7 @@ load_style (void)
 {
   GtkCssProvider *provider = gtk_css_provider_new ();
 
-  gtk_css_provider_load_from_resource (provider, "/de/yesman/Messaging/messaging.css");
+  gtk_css_provider_load_from_resource (provider, "/neo/Messaging/messaging.css");
   /* over libneo's, which is at APPLICATION priority too: the later provider wins at equal priority */
   gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (provider),
                                               GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);

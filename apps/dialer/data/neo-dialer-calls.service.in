@@ -6,7 +6,7 @@ After=graphical-session.target
 
 [Service]
 Type=dbus
-BusName=de.yesman.Dialer.Calls
+BusName=neo.Dialer.Calls
 ExecStart=@bindir@/neo-dialer-calls
 # a crash must not leave the phone deaf to calls: it comes back and picks up the calls the modem has (ListCalls)
 Restart=on-failure

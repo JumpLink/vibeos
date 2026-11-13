@@ -1,6 +1,6 @@
 /* neo-calendar: the Calendar app, Etar rebuilt in GTK 4 over evolution-data-server (spec/calendar.md).
  *
- * de.yesman.Calendar, D-Bus activatable: the launcher starts it; the reminder service (neo-calendar-reminders)
+ * neo.Calendar, D-Bus activatable: the launcher starts it; the reminder service (neo-calendar-reminders)
  * opens an event's info with the "open-event" action when its notification is tapped, the reminders page with
  * "show-alerts" (Pop-up notification), the Snooze delay dialog with "snooze-delay" (Ask for reminder snooze delay)
  * and the quick responses with "email-guests" (a notification's Email guests), all in cal-alert-page.c; an .ics
@@ -17,7 +17,7 @@
 #include <locale.h>
 #include <neo.h>
 
-#define APP_ID "de.yesman.Calendar"
+#define APP_ID "neo.Calendar"
 
 static GSettings *settings;
 static GSettings *interface;            /* org.gnome.desktop.interface, where installed: "System default" */
@@ -33,7 +33,7 @@ load_style (void)
   for (guint i = 0; i < G_N_ELEMENTS (sheets); i++)
     {
       GtkCssProvider *provider = gtk_css_provider_new ();
-      g_autofree char *path = g_strconcat ("/de/yesman/Calendar/", sheets[i], NULL);
+      g_autofree char *path = g_strconcat ("/neo/Calendar/", sheets[i], NULL);
 
       gtk_css_provider_load_from_resource (provider, path);
       /* over libneo's, which is at APPLICATION priority too: the later provider wins at equal priority */
@@ -208,7 +208,7 @@ main (int argc, char **argv)
 
   settings = g_settings_new (APP_ID);
   app = gtk_application_new (APP_ID, G_APPLICATION_HANDLES_OPEN);
-  g_application_set_resource_base_path (G_APPLICATION (app), "/de/yesman/Calendar");
+  g_application_set_resource_base_path (G_APPLICATION (app), "/neo/Calendar");
   g_action_map_add_action_entries (G_ACTION_MAP (app), actions, G_N_ELEMENTS (actions), app);
   g_signal_connect (app, "startup", G_CALLBACK (on_startup), NULL);
   g_signal_connect (app, "shutdown", G_CALLBACK (on_shutdown), NULL);

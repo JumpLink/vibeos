@@ -650,7 +650,7 @@ nb_add_shortcut (const char *name, const char *url, GdkTexture *favicon, GError 
   g_autofree char *file = g_build_filename (apps, file_name, NULL);
   g_autofree char *q_id = exec_quote (id);
   g_autofree char *q_url = exec_quote (url);
-  const char *icon_value = "de.yesman.Browser";
+  const char *icon_value = "neo.Browser";
 
   g_mkdir_with_parents (icons, 0700);
   g_mkdir_with_parents (apps, 0755);

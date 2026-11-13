@@ -1,11 +1,11 @@
 /* neo-dialer: the Phone app, LineageOS's Dialer rebuilt in GTK 4 (spec/dialer.md).
  *
  * One program, two applications, as the Clock has them:
- *  - de.yesman.Dialer, the app with its tabs (Favorites, Recents, Contacts) and the dialpad. It is D-Bus
+ *  - neo.Dialer, the app with its tabs (Favorites, Recents, Contacts) and the dialpad. It is D-Bus
  *    activatable: the launcher starts it, a tel: link opens it at the dialpad with the number, another app has a
  *    number called at once ("call", below), and the call service opens it at the call log ("show-call-log", a tap
  *    on a missed call) or to add a call ("add-call").
- *  - de.yesman.Dialer.InCall ("neo-dialer --incall"), the screen of a call: the answer screen while it rings, the
+ *  - neo.Dialer.InCall ("neo-dialer --incall"), the screen of a call: the answer screen while it rings, the
  *    in-call screen once it is up. The call service has the shell start it for a ringing call; it has a desktop
  *    file of its own so the shell lets it over the lock screen (InCallActivity's showWhenLocked).
  *
@@ -30,7 +30,7 @@ load_style (void)
 {
   GtkCssProvider *provider = gtk_css_provider_new ();
 
-  gtk_css_provider_load_from_resource (provider, "/de/yesman/Dialer/dialer.css");
+  gtk_css_provider_load_from_resource (provider, "/neo/Dialer/dialer.css");
   /* over libneo's, which is at APPLICATION priority too: the later provider wins at equal priority */
   gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (provider),
                                               GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
@@ -93,7 +93,7 @@ on_open (GApplication *app, GFile **files, int n_files, const char *hint, gpoint
 }
 
 /* "call" (s): another app's call to a number (Intent.ACTION_CALL; the Contacts app's call button), activated with
- * org.freedesktop.Application.ActivateAction on de.yesman.Dialer, or `gapplication action de.yesman.Dialer call
+ * org.freedesktop.Application.ActivateAction on neo.Dialer, or `gapplication action neo.Dialer call
  * "'+49…'"`. The number may come as a tel: URI. The call goes out at once and the in-call screen comes up, no window
  * of the Dialer's in between. Telecom's rules for another app's call hold (NewOutgoingCallIntentBroadcaster):
  *  - an emergency number is not called this way: the dialpad opens with it, to be called with the dial button
@@ -211,7 +211,7 @@ main (int argc, char **argv)
   app = gtk_application_new (in_call ? INCALL_APP_ID : DIALER_APP_ID,
                              in_call ? G_APPLICATION_DEFAULT_FLAGS : G_APPLICATION_HANDLES_OPEN);
   /* both find the icons and the style under the app's path (otherwise the InCall one would look in .../InCall) */
-  g_application_set_resource_base_path (G_APPLICATION (app), "/de/yesman/Dialer");
+  g_application_set_resource_base_path (G_APPLICATION (app), "/neo/Dialer");
   g_signal_connect (app, "startup", G_CALLBACK (on_startup), NULL);
   if (in_call)
     {

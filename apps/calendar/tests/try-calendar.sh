@@ -90,7 +90,7 @@ start)
         chmod 755 "$run/bin/$f"
     done
     as_user tee "$run/bin/fake-notify.py" <"$HERE/fake-notify.py" >/dev/null
-    as_user tee "$run/schemas/de.yesman.Calendar.gschema.xml" <"$HERE/../data/de.yesman.Calendar.gschema.xml" >/dev/null
+    as_user tee "$run/schemas/neo.Calendar.gschema.xml" <"$HERE/../data/neo.Calendar.gschema.xml" >/dev/null
     as_user glib-compile-schemas "$run/schemas"
     # The bus. Services it activates (evolution-source-registry, evolution-calendar-factory) inherit its
     # environment, so they keep everything under $run.
@@ -146,7 +146,7 @@ stop)
         [ -f "$f" ] && : >"$f"
     done
     # the rig service's wake-up, if it left one
-    as_user busctl --system call de.yesman.Wakeup /de/yesman/Wakeup de.yesman.Wakeup Set 'sxa{sv}' \
+    as_user busctl --system call neo.Wakeup /neo/Wakeup neo.Wakeup Set 'sxa{sv}' \
         calendar-reminder-rig 0 0 2>/dev/null || true
     if [ -f "$RIG/run" ] && [ -f "$(cat "$RIG/run")/bus" ]; then
         run=$(cat "$RIG/run")

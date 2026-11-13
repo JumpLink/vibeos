@@ -96,7 +96,7 @@ UsePAM no
 StrictModes no
 Subsystem sftp /usr/lib/openssh/sftp-server
 EOF
-    as_user cp "$HERE/../data/de.yesman.Files.gschema.xml" "$RIG/schemas/"
+    as_user cp "$HERE/../data/neo.Files.gschema.xml" "$RIG/schemas/"
     as_user glib-compile-schemas "$RIG/schemas"
     ;;
 start)

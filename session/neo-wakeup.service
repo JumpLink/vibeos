@@ -3,7 +3,7 @@ Description=Wakes the phone at the times apps ask for (alarm clocks)
 
 [Service]
 Type=dbus
-BusName=de.yesman.Wakeup
+BusName=neo.Wakeup
 ExecStart=/usr/local/sbin/neo-wakeup
 Restart=on-failure
 # root for the system bus name, but with no capability other than the one its timer needs

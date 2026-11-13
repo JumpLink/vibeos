@@ -613,7 +613,7 @@ update_create (ContactsPage *self)
   if (self->empty && can_create == self->empty_creates)
     return;
   /* ContactsFragment's empty view: the contacts picture, the line, "Create new contact" */
-  empty = empty_view_new ("/de/yesman/Dialer/images/empty-contacts.png", _("You don't have any contacts yet"),
+  empty = empty_view_new ("/neo/Dialer/images/empty-contacts.png", _("You don't have any contacts yet"),
                           can_create ? _("Create new contact") : NULL, on_create, self);
   gtk_stack_add_child (GTK_STACK (self->stack), empty);
   if (self->empty)
@@ -751,7 +751,7 @@ contacts_page_new_picker (Contacts *contacts, NeoSnackbar *snackbar)
   gtk_widget_set_visible (self->add, FALSE);
   self->contacts = g_object_ref (contacts);
   self->snackbar = snackbar;
-  self->empty = empty_view_new ("/de/yesman/Dialer/images/empty-contacts.png", _("You don't have any contacts yet"),
+  self->empty = empty_view_new ("/neo/Dialer/images/empty-contacts.png", _("You don't have any contacts yet"),
                                 NULL, NULL, NULL);
   gtk_stack_add_child (GTK_STACK (self->stack), self->empty);
   g_signal_connect_swapped (contacts, "changed", G_CALLBACK (on_contacts_changed), self);

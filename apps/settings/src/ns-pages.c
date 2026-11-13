@@ -657,7 +657,7 @@ ns_page_display (GtkWidget *row, gpointer data)
     GtkWidget *r = ns_row_switch (g, "Auto rotate", "Turn the screen with the phone", NULL, NULL);
     g_settings_bind (touch, "orientation-lock", ns_row_get_switch (r), "active", G_SETTINGS_BIND_INVERT_BOOLEAN);
   }
-  GSettings *neo = ns_page_settings (page, "de.yesman.neo");
+  GSettings *neo = ns_page_settings (page, "neo.Phone");
   if (neo) {
     g = ns_group (c, NULL);
     ns_row_switch (g, "Always On Display", "The time, battery and notifications on a black screen while it is off",
@@ -1012,7 +1012,7 @@ ns_page_wallpaper (GtkWidget *row, gpointer data)
   GSettings *bg = ns_page_settings (page, "org.gnome.desktop.background");
   GSettings *iface = ns_page_settings (page, "org.gnome.desktop.interface");
 
-  GSettings *neo = ns_page_settings (page, "de.yesman.neo");
+  GSettings *neo = ns_page_settings (page, "neo.Phone");
   if (neo) {
     GtkWidget *g = ns_group (c, "Parallax wallpaper");
     GtkWidget *hint = gtk_label_new ("Layers that move as you tilt the phone. Off picks a still picture instead.");
@@ -1175,7 +1175,7 @@ grid_picked (GtkWidget *row, guint i, gpointer data)
 {
   /* columns and rows in one change, so that the launcher lays its pages out once (a separate object: delay-apply
    * mode stays on the object it is set on) */
-  g_autoptr (GSettings) s = g_settings_new ("de.yesman.neo");
+  g_autoptr (GSettings) s = g_settings_new ("neo.Phone");
   g_settings_delay (s);
   g_settings_set_int (s, "desktop-grid-columns", grid_sizes[i][0]);
   g_settings_set_int (s, "desktop-grid-rows", grid_sizes[i][1]);
@@ -1225,7 +1225,7 @@ layout_group (AdwNavigationPage *page, GtkWidget *c, GSettings *neo)
   layout_show (l);
 }
 
-/* The home screen is neo-launcher. It follows de.yesman.neo live: the layout keys (main.c layout_read: the grid,
+/* The home screen is neo-launcher. It follows neo.Phone live: the layout keys (main.c layout_read: the grid,
  * the icons' sizes, app names, the drawer's columns and search pill) lay it out again, a smaller grid moving the icons
  * it has no cell for to the next free one (model.c model_set_grid), and the icon keys (icons.c) draw its icons again
  * (tiles.c tiles_reload_icons).
@@ -1236,7 +1236,7 @@ layout_group (AdwNavigationPage *page, GtkWidget *c, GSettings *neo)
 void
 ns_page_home (GtkWidget *row, gpointer data)
 {
-  GSettings *neo = ns_settings ("de.yesman.neo");
+  GSettings *neo = ns_settings ("neo.Phone");
   if (!neo)
     return;
   GtkWidget *c;

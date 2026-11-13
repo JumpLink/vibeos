@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=neo.Files
+Exec=@bindir@/neo-files --gapplication-service

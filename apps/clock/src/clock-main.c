@@ -1,10 +1,10 @@
 /* neo-clock: the Clock app, DeskClock rebuilt in GTK 4 (spec/clock.md).
  *
  * One program, two applications:
- *  - de.yesman.Clock, the app with its tabs. It is D-Bus activatable: the launcher starts it, and the clock
+ *  - neo.Clock, the app with its tabs. It is D-Bus activatable: the launcher starts it, and the clock
  *    service opens it at an alarm, a timer or the stopwatch with its "show-alarm", "show-timer" and
  *    "show-stopwatch" actions (a tap on their notifications).
- *  - de.yesman.Clock.Ringing ("neo-clock --ringing"), the full-screen ringing alarm and the timers that ran out.
+ *  - neo.Clock.Ringing ("neo-clock --ringing"), the full-screen ringing alarm and the timers that ran out.
  *    The clock service has the shell start it when an alarm rings while the phone sleeps or is locked, and when a
  *    timer runs out; it has a desktop file of its own so the shell lets it over the lock screen.
  *
@@ -19,8 +19,8 @@
 #include <string.h>
 #include <neo.h>
 
-#define APP_ID        "de.yesman.Clock"
-#define RINGING_ID    "de.yesman.Clock.Ringing"
+#define APP_ID        "neo.Clock"
+#define RINGING_ID    "neo.Clock.Ringing"
 
 static GSettings *settings;
 static GtkWidget *alarm_window;         /* the Ringing app's ringing alarm, while it is open */
@@ -30,7 +30,7 @@ load_style (void)
 {
   GtkCssProvider *provider = gtk_css_provider_new ();
 
-  gtk_css_provider_load_from_resource (provider, "/de/yesman/Clock/clock.css");
+  gtk_css_provider_load_from_resource (provider, "/neo/Clock/clock.css");
   /* over libneo's, which is at APPLICATION priority too: the later provider wins at equal priority */
   gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (provider),
                                               GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
@@ -143,7 +143,7 @@ main (int argc, char **argv)
   settings = g_settings_new (APP_ID);
   app = gtk_application_new (ringing ? RINGING_ID : APP_ID, G_APPLICATION_DEFAULT_FLAGS);
   /* both find the icons and the style under the app's path (otherwise the Ringing one would look in .../Ringing) */
-  g_application_set_resource_base_path (G_APPLICATION (app), "/de/yesman/Clock");
+  g_application_set_resource_base_path (G_APPLICATION (app), "/neo/Clock");
   g_signal_connect (app, "startup", G_CALLBACK (on_startup), NULL);
   if (ringing)
     {

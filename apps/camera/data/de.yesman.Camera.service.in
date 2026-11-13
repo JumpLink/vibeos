@@ -1,3 +1,0 @@
-[D-BUS Service]
-Name=de.yesman.Camera
-Exec=@bindir@/neo-camera --gapplication-service

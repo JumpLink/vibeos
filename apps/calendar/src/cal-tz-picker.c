@@ -661,7 +661,7 @@ static GSettings *
 recent_settings (void)
 {
   GSettingsSchemaSource *source = g_settings_schema_source_get_default ();
-  g_autoptr(GSettingsSchema) schema = source ? g_settings_schema_source_lookup (source, "de.yesman.Calendar", TRUE)
+  g_autoptr(GSettingsSchema) schema = source ? g_settings_schema_source_lookup (source, "neo.Calendar", TRUE)
                                              : NULL;
 
   if (!schema || !g_settings_schema_has_key (schema, "recent-timezones"))

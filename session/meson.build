@@ -28,7 +28,7 @@ install_data('71-neo-dock.rules', install_dir: datadir / 'gnome-phone-session')
 # the lock screen's PAM service (gp-auth)
 install_data('pam.d/gnome-phone', install_dir: get_option('sysconfdir') / 'pam.d')
 # neo-wakeup's bus name
-install_data('de.yesman.Wakeup.conf', install_dir: datadir / 'dbus-1' / 'system.d')
+install_data('neo.Wakeup.conf', install_dir: datadir / 'dbus-1' / 'system.d')
 
 # GNOME Phone as a session a display manager offers (gdm/): GNOME's own session with the shell in the gnome-phone
 # mode, whose only difference is the extension, always on

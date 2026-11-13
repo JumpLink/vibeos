@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The Files settings: File Manager+'s settings.xml and its View dialog (spec §11), with its defaults. -->
+<schemalist gettext-domain="neo-files">
+  <schema id="neo.Files" path="/neo/Files/">
+    <key name="sort-order" type="s">
+      <choices>
+        <choice value="None"/><choice value="NameUp"/><choice value="NameDown"/><choice value="SizeUp"/>
+        <choice value="SizeDown"/><choice value="DateUp"/><choice value="DateDown"/><choice value="TypeUp"/>
+        <choice value="TypeDown"/>
+      </choices>
+      <default>'NameUp'</default>
+      <summary>Sort by</summary>
+    </key>
+    <key name="view-type" type="s">
+      <choices>
+        <choice value="list"/><choice value="grid"/>
+      </choices>
+      <default>'list'</default>
+      <summary>View</summary>
+      <description>The folders as a list or as a grid of tiles (the View dialog's List and Grid); one for every folder.</description>
+    </key>
+    <key name="show-hidden" type="b">
+      <default>false</default>
+      <summary>Show hidden files</summary>
+    </key>
+    <key name="show-thumbnails" type="b">
+      <default>true</default>
+      <summary>Show thumbnails</summary>
+    </key>
+    <key name="use-recycle-bin" type="b">
+      <default>true</default>
+      <summary>Use Recycle bin by default</summary>
+    </key>
+    <key name="recycle-confirmation" type="b">
+      <default>true</default>
+      <summary>Show recycle confirmation</summary>
+      <description>Asks before files go to the Recycle Bin; a permanent delete always asks.</description>
+    </key>
+    <key name="show-history" type="b">
+      <default>true</default>
+      <summary>Show history</summary>
+      <description>Records the folders visited in the drawer's History tab.</description>
+    </key>
+    <key name="show-system" type="b">
+      <default>false</default>
+      <summary>Show system storage</summary>
+      <description>Lists the root filesystem (/) in the drawer.</description>
+    </key>
+  </schema>
+</schemalist>

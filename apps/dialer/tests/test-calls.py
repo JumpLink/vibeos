@@ -19,7 +19,7 @@ BUS_CONFIG = '''<busconfig><type>session</type><listen>unix:tmpdir=%s</listen><a
 <policy context="default"><allow send_destination="*" eavesdrop="true"/><allow eavesdrop="true"/>
 <allow own="*"/></policy></busconfig>'''
 
-NAME, PATH, IFACE = 'de.yesman.Dialer.Calls', '/de/yesman/Dialer/Calls', 'de.yesman.Dialer.Calls'
+NAME, PATH, IFACE = 'neo.Dialer.Calls', '/neo/Dialer/Calls', 'neo.Dialer.Calls'
 # call-types.h
 CONNECTING, DIALING, INCOMING, CALL_WAITING, ACTIVE, ONHOLD, DISCONNECTING, DISCONNECTED = range(8)
 END_NONE, END_LOCAL, END_REMOTE, END_MISSED, END_REJECTED, END_CANCELED, END_BUSY, END_ERROR = range(8)
@@ -107,7 +107,7 @@ class Test:
         return next(c for c in self.calls() if c['id'] == call_id)
 
     def phone(self, method, args=None, signature=None):
-        reply = self.bus.call_sync('de.yesman.Test.Phone', '/de/yesman/Test/Phone', 'de.yesman.Test.Phone', method,
+        reply = self.bus.call_sync('neo.Test.Phone', '/neo/Test/Phone', 'neo.Test.Phone', method,
                                    GLib.Variant(signature, args) if signature else None, None,
                                    Gio.DBusCallFlags.NONE, 5000, None)
         return reply.unpack() if reply else None
@@ -171,7 +171,7 @@ def run(t):
     t.phone('Clear')
     path = t.phone('Incoming', ('+491701234567',), '(s)')[0]
     t.wait('the answer screen is asked for over the lock screen',
-           lambda: ['LaunchFullScreen', 'de.yesman.Dialer.InCall'] in t.logged('LaunchFullScreen'))
+           lambda: ['LaunchFullScreen', 'neo.Dialer.InCall'] in t.logged('LaunchFullScreen'))
     call_id = t.wait('INCOMING', lambda: next((c['id'] for c in t.calls() if c['state'] == INCOMING), 0))
     t.wait('its notification does not peek over the answer screen',
            lambda: (t.notification(body='Incoming call') or (0, {}))[1].get('no-peek'))

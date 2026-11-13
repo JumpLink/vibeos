@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=neo.Camera
+Exec=@bindir@/neo-camera --gapplication-service

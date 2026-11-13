@@ -1,11 +1,11 @@
 /* neo-clock-alarms: the Clock's service, for everything of the Clock that must go on with the app closed. It runs in
  * the session from login (neo-clock-alarms.service) and holds three parts, each serving the app over D-Bus:
  *
- *  - the alarms (alarm-service.c, de.yesman.Clock.Alarms);
- *  - the timers (timer-service.c, de.yesman.Clock.Timers);
- *  - the stopwatch (stopwatch-service.c, de.yesman.Clock.Stopwatch).
+ *  - the alarms (alarm-service.c, neo.Clock.Alarms);
+ *  - the timers (timer-service.c, neo.Clock.Timers);
+ *  - the stopwatch (stopwatch-service.c, neo.Clock.Stopwatch).
  *
- * They are one process under one bus name (still de.yesman.Clock.Alarms, the name the alarms began with), so that
+ * They are one process under one bus name (still neo.Clock.Alarms, the name the alarms began with), so that
  * there is one thing to start and to restart, and so that what they share is in one place, below: whether the app
  * is in front, and when the wall clock was set. */
 #include "alarm-klaxon.h"
@@ -21,13 +21,13 @@
 #include <sys/timerfd.h>
 #include <unistd.h>
 
-#define BUS_NAME "de.yesman.Clock.Alarms"
-#define APP_ID "de.yesman.Clock"
-#define OBJECT_PATH "/de/yesman/Clock/App"
+#define BUS_NAME "neo.Clock.Alarms"
+#define APP_ID "neo.Clock"
+#define OBJECT_PATH "/neo/Clock/App"
 
 static const char introspection[] =
   "<node>"
-  "  <interface name='de.yesman.Clock.App'>"
+  "  <interface name='neo.Clock.App'>"
   /* the Clock app's window came to the front, or left it. While it is in front the app shows the timers and the
    * stopwatch itself, so their notifications are not shown (DeskClock's NotificationModel.isApplicationInForeground).
    * An app that quits or crashes in front counts as gone */

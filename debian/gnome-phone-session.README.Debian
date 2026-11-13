@@ -11,7 +11,7 @@ With a display manager (GDM)
 Choose "GNOME Phone" in the session menu at the login screen. It is GNOME's
 own session with GNOME Shell started in the gnome-phone mode
 (/usr/share/gnome-shell/modes/gnome-phone.json), which always runs the
-gnome-phone@yesman.de extension. To make it the default for automatic login,
+gnome-phone@neo extension. To make it the default for automatic login,
 set it as the user's session:
 
   busctl call org.freedesktop.Accounts /org/freedesktop/Accounts/User$(id -u USER) \
@@ -29,7 +29,7 @@ User=user; set your own user first, then switch over:
   systemctl enable gnome-phone.service
 
 The extension must then be enabled for that user, as for any extension
-(gnome-extensions enable gnome-phone@yesman.de), or the unit given
+(gnome-extensions enable gnome-phone@neo), or the unit given
 "ExecStart=" / "ExecStart=/usr/bin/gnome-session --session=gnome-phone" in the
 same drop-in, which runs the extension through the session mode as GDM's
 "GNOME Phone" does.

@@ -30,11 +30,11 @@ executable('neo-contacts', 'src/ct-main.c', 'src/ct-window.c', 'src/ct-page.c', 
            dependencies: [gio, ebook, m, gtk, dependency('neo-1'), dependency('spongy-gtk-1')])
 
 unit = configuration_data({'bindir': bindir})
-configure_file(input: 'data/de.yesman.Contacts.service.in', output: 'de.yesman.Contacts.service',
+configure_file(input: 'data/neo.Contacts.service.in', output: 'neo.Contacts.service',
                configuration: unit, install_dir: datadir / 'dbus-1/services')
-install_data('data/de.yesman.Contacts.desktop', install_dir: datadir / 'applications')
-install_data('data/de.yesman.Contacts.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
-install_data('data/de.yesman.Contacts.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
+install_data('data/neo.Contacts.desktop', install_dir: datadir / 'applications')
+install_data('data/neo.Contacts.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
+install_data('data/neo.Contacts.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
 gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
 
 foreach name : ['ct-contact', 'ct-vcard', 'ct-rows']

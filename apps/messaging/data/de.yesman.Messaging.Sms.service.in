@@ -1,4 +1,0 @@
-[D-BUS Service]
-Name=de.yesman.Messaging.Sms
-Exec=@bindir@/neo-messaging-sms
-SystemdService=neo-messaging-sms.service

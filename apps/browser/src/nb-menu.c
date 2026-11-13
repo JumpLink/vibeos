@@ -655,7 +655,7 @@ nb_shortcut_sheet (NbTab *t)
     icon = gtk_image_new_from_paintable (GDK_PAINTABLE (favicon));
     gtk_widget_add_css_class (icon, "nb-pin-favicon");
   } else {
-    icon = gtk_image_new_from_icon_name ("de.yesman.Browser");
+    icon = gtk_image_new_from_icon_name ("neo.Browser");
   }
   gtk_image_set_pixel_size (GTK_IMAGE (icon), 56);
   gtk_widget_set_halign (icon, GTK_ALIGN_CENTER);

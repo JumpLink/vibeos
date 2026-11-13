@@ -471,7 +471,7 @@ on_geo_client (GObject *object, GAsyncResult *result, gpointer data)
                                                          "org.freedesktop.GeoClue2.Client", "LocationUpdated",
                                                          self->geo_client, NULL, G_DBUS_SIGNAL_FLAGS_NONE,
                                                          on_location, self, NULL);
-  set_client_property (self, "DesktopId", g_variant_new_string ("de.yesman.Camera"));
+  set_client_property (self, "DesktopId", g_variant_new_string ("neo.Camera"));
   /* GCLUE_ACCURACY_LEVEL_EXACT; updates every metre or second, as Aperture's location request */
   set_client_property (self, "RequestedAccuracyLevel", g_variant_new_uint32 (8));
   set_client_property (self, "DistanceThreshold", g_variant_new_uint32 (1));

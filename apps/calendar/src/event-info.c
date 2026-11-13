@@ -454,7 +454,7 @@ can_share (void)
   gboolean other = FALSE;
 
   for (GList *l = apps; l && !other; l = l->next)
-    other = g_strcmp0 (g_app_info_get_id (l->data), "de.yesman.Calendar.desktop") != 0;
+    other = g_strcmp0 (g_app_info_get_id (l->data), "neo.Calendar.desktop") != 0;
   g_list_free_full (apps, g_object_unref);
   return other;
 }
@@ -474,7 +474,7 @@ on_share (NeoPressable *button, Info *info)
 {
   g_autoptr(GError) error = NULL;
   g_autofree char *ics = cal_store_export_sync (info->store, info->event, &error);
-  g_autofree char *dir = g_build_filename (g_get_user_cache_dir (), "de.yesman.Calendar", "share", NULL);
+  g_autofree char *dir = g_build_filename (g_get_user_cache_dir (), "neo.Calendar", "share", NULL);
   g_autofree char *name = NULL, *path = NULL;
   g_autoptr(GFile) file = NULL;
   g_autoptr(GtkFileLauncher) launcher = NULL;
@@ -559,7 +559,7 @@ guest_row (const CalAttendee *guest)
   GtkWidget *row = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *name = gtk_label_new (guest->name ? guest->name : guest->email);
-  GtkWidget *badge = gtk_picture_new_for_resource ("/de/yesman/Calendar/contact-picture.png");
+  GtkWidget *badge = gtk_picture_new_for_resource ("/neo/Calendar/contact-picture.png");
   GtkWidget *separator = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
 
   gtk_widget_add_css_class (row, "cal-guest");

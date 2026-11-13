@@ -827,7 +827,7 @@ on_geo_client (GObject *src, GAsyncResult *res, gpointer data)
     return;
   }
   g_variant_get (ret, "(o)", &p->geo_client);
-  if (!geo_set (p, "DesktopId", g_variant_new_string ("de.yesman.NeoWeather"), &error) ||
+  if (!geo_set (p, "DesktopId", g_variant_new_string ("neo.Weather"), &error) ||
       !geo_set (p, "RequestedAccuracyLevel", g_variant_new_uint32 (GEO_CITY), &error)) {
     geo_failed (p, "client setup", error);
     return;
@@ -942,7 +942,7 @@ activate (GtkApplication *app, gpointer data)
     return;
   }
   GtkCssProvider *css = gtk_css_provider_new ();
-  gtk_css_provider_load_from_resource (css, "/de/yesman/NeoWeather/style.css");
+  gtk_css_provider_load_from_resource (css, "/neo/Weather/style.css");
   gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (css),
                                               GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
   g_object_unref (css);
@@ -1003,7 +1003,7 @@ activate (GtkApplication *app, gpointer data)
 int
 main (int argc, char **argv)
 {
-  g_autoptr (AdwApplication) app = adw_application_new ("de.yesman.NeoWeather", G_APPLICATION_DEFAULT_FLAGS);
+  g_autoptr (AdwApplication) app = adw_application_new ("neo.Weather", G_APPLICATION_DEFAULT_FLAGS);
   g_signal_connect (app, "activate", G_CALLBACK (activate), NULL);
   return g_application_run (G_APPLICATION (app), argc, argv);
 }

@@ -15,7 +15,7 @@
 #define ARROW_X        83.5   /* px */
 #define ICON_Y         95.5   /* px */
 #define BUTTON         48
-#define PAGE           "/de/yesman/Calculator/licenses.html"
+#define PAGE           "/neo/Calculator/licenses.html"
 
 struct _CalcLicenses {
   GtkWidget    parent;

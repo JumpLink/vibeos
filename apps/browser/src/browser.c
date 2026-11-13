@@ -1,9 +1,9 @@
-/* Neo Browser: Chrome for Android's phone UI (dark) over WebKitGTK 6, in C. The port of the GJS de.yesman.NeoBrowser
- * (yesman gnome/neobrowser), same pages, same data:
+/* Neo Browser: Chrome for Android's phone UI (dark) over WebKitGTK 6, in C. The port of the GJS browser it
+ * replaced, same pages, same data:
  * toolbar (home, address pill, tab count, menu) • tab switcher grid • menu sheet • address entry with suggestions •
  * new-tab page • history / bookmarks / downloads pages • find in page • long-press link sheet • ad blocking.
  *
- * Session, history and bookmarks are JSON under ~/.local/share/de.yesman.NeoBrowser (store.c); downloads go to
+ * Session, history and bookmarks are JSON under ~/.local/share/neo.Browser (store.c); downloads go to
  * ~/Downloads. Lists scroll with libspongy's stretch when it is there.
  *
  * The phone's back swipe (gnome-phone's a11y.js) clicks a showing "Back" button when the app has one, and otherwise
@@ -22,7 +22,7 @@
 
 #include "store.h"
 
-#define APP_ID "de.yesman.NeoBrowser"
+#define APP_ID "neo.Browser"
 /* The engine is WebKit, so the page is told so: an iPhone's Safari gets every site's mobile layout and no "your
  * browser is not supported" for a Chrome name over a WebKit engine. Desktop mode is Safari on a Mac. */
 #define MOBILE_UA "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) " \

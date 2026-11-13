@@ -1,7 +1,7 @@
 // Gesture navigation: Android 16's swipe up from the bottom edge (Launcher3 quickstep; spec
 // gestures-recents-back.md §1). The app follows the finger, shrinking toward its recents card. Let go and it flies
 // home into its icon on RectFSpringAnim's three springs while the launcher scales the home back in (the launcher
-// does its half itself, told over de.yesman.NeoLauncher), or it settles back to full screen; hold it first and the
+// does its half itself, told over neo.Launcher), or it settles back to full screen; hold it first and the
 // other tasks spring in beside it, and letting go settles it into recents (recents.js). Along the bar the tasks
 // come in at once and page under the finger: quick switch (§3).
 //
@@ -213,7 +213,7 @@ export class Navigation {
     }
 
     launcher(method, params) {
-        Gio.DBus.session.call('de.yesman.NeoLauncher', '/de/yesman/NeoLauncher', 'de.yesman.NeoLauncher', method,
+        Gio.DBus.session.call('neo.Launcher', '/neo/Launcher', 'neo.Launcher', method,
             params, null, Gio.DBusCallFlags.NO_AUTO_START, 1000, null, null);
     }
 
@@ -312,7 +312,7 @@ export class Navigation {
     // HapticFeedbackConstants.GESTURE_THRESHOLD_(DE)ACTIVATE: feedbackd's shortest tick
     haptic() {
         Gio.DBus.session.call('org.sigxcpu.Feedback', '/org/sigxcpu/Feedback', 'org.sigxcpu.Feedback',
-            'TriggerFeedback', new GLib.Variant('(ssa{sv}i)', ['de.yesman.GnomePhone', 'button-released', {}, -1]),
+            'TriggerFeedback', new GLib.Variant('(ssa{sv}i)', ['neo.GnomePhone', 'button-released', {}, -1]),
             null, Gio.DBusCallFlags.NO_AUTO_START, -1, null, null);
     }
 
@@ -668,7 +668,7 @@ export class Navigation {
     // The launcher's icon back. The flying one stays over it until the launcher's first frame with it is on screen
     // (it answers then): dropped at once, a frame or two had neither, and the icon blinked.
     _showIcon(floating) {
-        Gio.DBus.session.call('de.yesman.NeoLauncher', '/de/yesman/NeoLauncher', 'de.yesman.NeoLauncher', 'ShowIcon',
+        Gio.DBus.session.call('neo.Launcher', '/neo/Launcher', 'neo.Launcher', 'ShowIcon',
             null, null, Gio.DBusCallFlags.NO_AUTO_START, SHOW_ICON_WAIT_MS, null, (bus, res) => {
                 try {
                     bus.call_finish(res);

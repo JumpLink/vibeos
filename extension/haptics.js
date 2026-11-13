@@ -3,7 +3,7 @@
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 
-const APP = 'de.yesman.GnomePhone';
+const APP = 'neo.GnomePhone';
 
 // HapticFeedbackConstants.VIRTUAL_KEY / KEYBOARD_TAP (EFFECT_CLICK): feedbackd's shortest event, through its profile
 // as the on-screen keyboard's and the back gesture's ticks

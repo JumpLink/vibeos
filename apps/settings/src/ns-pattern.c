@@ -566,7 +566,7 @@ pad_click (void)
   g_autoptr (GDBusConnection) session = g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, NULL);
   if (session)
     g_dbus_connection_call (session, "org.sigxcpu.Feedback", "/org/sigxcpu/Feedback", "org.sigxcpu.Feedback",
-                            "TriggerFeedback", g_variant_new ("(ssa{sv}i)", "de.yesman.NeoSettings",
+                            "TriggerFeedback", g_variant_new ("(ssa{sv}i)", "neo.Settings",
                                                               "button-released", NULL, -1),
                             NULL, G_DBUS_CALL_FLAGS_NO_AUTO_START, -1, NULL, NULL, NULL);
 }
@@ -799,7 +799,7 @@ ns_pattern_dialog_present (GtkWidget *parent, gboolean pin, NsPatternDone callba
   {
     /* what unlocks the phone now: the dot grid for a pattern, a text field for a PIN or a password */
     GSettingsSchema *schema = g_settings_schema_source_lookup (g_settings_schema_source_get_default (),
-                                                               "de.yesman.neo", TRUE);
+                                                               "neo.Phone", TRUE);
     if (schema) {
       /* made from the schema just found: g_settings_new () on a schema that is not installed aborts the app */
       g_autoptr (GSettings) neo = g_settings_new_full (schema, NULL, NULL);

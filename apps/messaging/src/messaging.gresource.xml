@@ -2,7 +2,7 @@
 <!-- the app's stylesheet, its images and its icons (data/icons, from the Messaging's vector drawables),
      where GtkApplication looks for icons: the resource base path + /icons -->
 <gresources>
-  <gresource prefix="/de/yesman/Messaging">
+  <gresource prefix="/neo/Messaging">
     <file>messaging.css</file>
     <file alias="images/ic_failed_status_red.png">images/ic_failed_status_red.png</file>
     <file alias="images/ic_oobe_conv_list.png">images/ic_oobe_conv_list.png</file>

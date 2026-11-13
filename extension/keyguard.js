@@ -3,7 +3,7 @@
 //
 // Locked, the shell is in the 'unlock-dialog' session mode, as GNOME's own screen shield puts it: windows hidden,
 // gestures, heads-ups and keybindings off, and this view holds a modal grab. It locks when the screen goes off
-// (power.js) and when the session starts. de.yesman.neo lock-type picks the bouncer: the PIN pad, the pattern, or none
+// (power.js) and when the session starts. neo.Phone lock-type picks the bouncer: the PIN pad, the pattern, or none
 // (swipe). The secret is the user's password, checked by gp-auth through PAM; wrong attempts are throttled as the
 // AOSP gatekeeper does, kept across restarts in ~/.local/state/gnome-phone/keyguard.json. That file also keeps the
 // length of the last PIN that unlocked, for Android 14's auto-confirm: a PIN of 6 or more digits unlocks as its last
@@ -106,7 +106,7 @@ function lockoutSeconds(n) {
 }
 
 function neoSettings() {
-    const schema = Gio.SettingsSchemaSource.get_default()?.lookup('de.yesman.neo', true);
+    const schema = Gio.SettingsSchemaSource.get_default()?.lookup('neo.Phone', true);
     return schema ? new Gio.Settings({settings_schema: schema}) : null;
 }
 

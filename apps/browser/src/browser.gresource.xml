@@ -2,7 +2,7 @@
 <!-- the stylesheet and Jelly's drawables (data/jelly-icons, made by tools/vd2svg.py) where GtkApplication looks for
      icons: the resource base path + /icons -->
 <gresources>
-  <gresource prefix="/de/yesman/NeoBrowser">
+  <gresource prefix="/neo/Browser">
     <file>browser.css</file>
     <file alias="icons/scalable/actions/jelly-apps-symbolic.svg">jelly-apps-symbolic.svg</file>
     <file alias="icons/scalable/actions/jelly-back-symbolic.svg">jelly-back-symbolic.svg</file>

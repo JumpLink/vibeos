@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=neo.Clock.Alarms
+Exec=@bindir@/neo-clock-alarms
+SystemdService=neo-clock-alarms.service

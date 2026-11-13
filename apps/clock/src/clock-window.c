@@ -342,7 +342,7 @@ on_active (GtkWindow *window, GParamSpec *pspec, Shell *shell)
   GDBusConnection *bus = g_application_get_dbus_connection (g_application_get_default ());
 
   if (bus)
-    g_dbus_connection_call (bus, "de.yesman.Clock.Alarms", "/de/yesman/Clock/App", "de.yesman.Clock.App",
+    g_dbus_connection_call (bus, "neo.Clock.Alarms", "/neo/Clock/App", "neo.Clock.App",
                             "SetForeground", g_variant_new ("(b)", gtk_window_is_active (window)), NULL,
                             G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 }

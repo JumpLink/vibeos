@@ -1,9 +1,9 @@
 /* The stopwatch's client: see stopwatch-client.h. */
 #include "stopwatch-client.h"
 
-#define SERVICE   "de.yesman.Clock.Alarms"
-#define PATH      "/de/yesman/Clock/Stopwatch"
-#define INTERFACE "de.yesman.Clock.Stopwatch"
+#define SERVICE   "neo.Clock.Alarms"
+#define PATH      "/neo/Clock/Stopwatch"
+#define INTERFACE "neo.Clock.Stopwatch"
 
 struct _StopwatchClient
 {

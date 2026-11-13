@@ -6,7 +6,7 @@
 #include "ns-pages.h"
 #include "ns-ui.h"
 
-#define AGENT_PATH "/de/yesman/NeoSettings/agent"
+#define AGENT_PATH "/neo/Settings/agent"
 
 static GDBusObjectManager *bluez;
 static GPtrArray *waiting;

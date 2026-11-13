@@ -19,7 +19,7 @@
 #define SHORT_MS      2000    /* LENGTH_SHORT */
 #define IN_MS         333
 #define OUT_MS        250
-#define APP_ICON      "de.yesman.Calculator"
+#define APP_ICON      "neo.Calculator"
 
 #define CALC_TYPE_TOAST (calc_toast_get_type ())
 G_DECLARE_FINAL_TYPE (CalcToast, calc_toast, CALC, TOAST, GtkWidget)

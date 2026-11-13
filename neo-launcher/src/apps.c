@@ -15,15 +15,14 @@ static const char *android_builtin[] = {
 #define ANDROID_SETTINGS "waydroid.com.android.settings.desktop"
 
 const char *const apps_replaced[][2] = {
-  { "de.yesman.Browser.desktop", "de.yesman.NeoBrowser.desktop" },
-  { "org.gnome.Calls.desktop", "de.yesman.Dialer.desktop" },
-  { "sm.puri.Chatty.desktop", "de.yesman.Messaging.desktop" },
-  { "org.gnome.Calculator.desktop", "de.yesman.Calculator.desktop" },
-  { "org.gnome.Calendar.desktop", "de.yesman.Calendar.desktop" },
-  { "org.gnome.Snapshot.desktop", "de.yesman.Camera.desktop" },
-  { "org.gnome.Nautilus.desktop", "de.yesman.Files.desktop" },
-  { "org.gnome.Settings.desktop", "de.yesman.NeoSettings.desktop" },
-  { "org.gnome.Weather.desktop", "de.yesman.NeoWeather.desktop" },
+  { "org.gnome.Calls.desktop", "neo.Dialer.desktop" },
+  { "sm.puri.Chatty.desktop", "neo.Messaging.desktop" },
+  { "org.gnome.Calculator.desktop", "neo.Calculator.desktop" },
+  { "org.gnome.Calendar.desktop", "neo.Calendar.desktop" },
+  { "org.gnome.Snapshot.desktop", "neo.Camera.desktop" },
+  { "org.gnome.Nautilus.desktop", "neo.Files.desktop" },
+  { "org.gnome.Settings.desktop", "neo.Settings.desktop" },
+  { "org.gnome.Weather.desktop", "neo.Weather.desktop" },
   /* GNOME's video player since 49 */
   { "org.gnome.Totem.desktop", "org.gnome.Showtime.desktop" },
 };
@@ -52,7 +51,7 @@ apps_installed (void)
     /* Waydroid writes its Settings entry NoDisplay; Neo shows it as Android Settings */
     if (!g_app_info_should_show (info) && g_strcmp0 (id, ANDROID_SETTINGS))
       continue;
-    if (is_android_builtin (id) || g_str_has_prefix (id, "de.yesman.NeoLauncher"))
+    if (is_android_builtin (id) || g_str_has_prefix (id, "neo.Launcher"))
       continue;
     /* a phone shows phone apps: nothing that runs in a terminal (htop, nvtop), and not Waydroid's whole-screen
      * Android session (its apps come one by one, as windows of their own) */

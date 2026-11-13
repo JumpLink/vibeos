@@ -1,7 +1,7 @@
 /* The reminder screens Etar opens from a notification, in the app: AlertActivity (the reminders page: the
  * reminders fired and not dismissed), SnoozeDelayActivity (how long Snooze waits) and QuickResponseActivity (Email
  * guests). The reminder service (reminders-main.c) asks for them through the app's actions (cal-main.c), and they
- * answer through its de.yesman.Calendar.Reminders interface, whose state file stays the only record of what is
+ * answer through its neo.Calendar.Reminders interface, whose state file stays the only record of what is
  * fired. */
 #pragma once
 

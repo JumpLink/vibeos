@@ -3,7 +3,7 @@
 # tools/ (vd2js.py, l3icons.py: they read an Android source tree) and Python's caches.
 project('gnome-shell-extension-gnome-phone', version: '0.1.0', meson_version: '>= 1.0')
 
-uuid = 'gnome-phone@yesman.de'
+uuid = 'gnome-phone@neo'
 extdir = get_option('datadir') / 'gnome-shell' / 'extensions' / uuid
 bindir = get_option('prefix') / get_option('bindir')
 

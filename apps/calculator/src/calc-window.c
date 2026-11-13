@@ -1895,7 +1895,7 @@ static CalcMain *
 calc_main_new (GSettings *settings)
 {
   CalcMain *self = g_object_new (CALC_TYPE_MAIN, NULL);
-  g_autofree char *db = g_build_filename (g_get_user_data_dir (), "de.yesman.Calculator", "history.db", NULL);
+  g_autofree char *db = g_build_filename (g_get_user_data_dir (), "neo.Calculator", "history.db", NULL);
 
   self->evaluator = evaluator_new (db, settings);
   evaluator_set_callback (self->evaluator, &evaluator_callback, self);

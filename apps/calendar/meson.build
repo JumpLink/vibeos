@@ -37,13 +37,13 @@ executable('neo-calendar-reminders', 'src/reminders-main.c', link_with: core, in
 unit = configuration_data({'bindir': bindir})
 configure_file(input: 'data/neo-calendar-reminders.service.in', output: 'neo-calendar-reminders.service',
                configuration: unit, install_dir: get_option('prefix') / 'lib/systemd/user')
-configure_file(input: 'data/de.yesman.Calendar.Reminders.service.in', output: 'de.yesman.Calendar.Reminders.service',
+configure_file(input: 'data/neo.Calendar.Reminders.service.in', output: 'neo.Calendar.Reminders.service',
                configuration: unit, install_dir: datadir / 'dbus-1/services')
-configure_file(input: 'data/de.yesman.Calendar.service.in', output: 'de.yesman.Calendar.service',
+configure_file(input: 'data/neo.Calendar.service.in', output: 'neo.Calendar.service',
                configuration: unit, install_dir: datadir / 'dbus-1/services')
-install_data('data/de.yesman.Calendar.desktop', install_dir: datadir / 'applications')
-install_data('data/de.yesman.Calendar.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
-install_data('data/de.yesman.Calendar.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
+install_data('data/neo.Calendar.desktop', install_dir: datadir / 'applications')
+install_data('data/neo.Calendar.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
+install_data('data/neo.Calendar.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
 gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
 
 # the test rig's events (tests/try-calendar.sh): refuses to run outside the rig

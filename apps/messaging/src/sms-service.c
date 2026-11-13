@@ -3,7 +3,7 @@
  * (neo-messaging-sms.service): a message that comes is kept in bugle_db, taken off the modem and notified; one
  * written is sent, tried again while there is no network, and notified when it is given up.
  *
- * This file is its face on D-Bus (de.yesman.Messaging.Sms) and its notifications. It is bugle_db's only writer: the
+ * This file is its face on D-Bus (neo.Messaging.Sms) and its notifications. It is bugle_db's only writer: the
  * app reads the store itself, read-only, and is told by Changed what to read again.
  *
  * It stands aside while gsm2sip is in gateway mode, as the Phone's service does: then gsm2sipd takes the modem's
@@ -105,7 +105,7 @@ typedef struct {
   GHashTable *retries;          /* message id -> Retry, while it is still to go */
   GHashTable *reports;          /* reference -> Report: the delivery reports waited for (256 at most: a TP-MR is a
                                  * byte) */
-  GSettings *settings;          /* the app's (de.yesman.Messaging), for "delivery-reports"; NULL without its schema */
+  GSettings *settings;          /* the app's (neo.Messaging), for "delivery-reports"; NULL without its schema */
 
   gint64 visible;               /* SetVisible's */
   char *visible_sender;

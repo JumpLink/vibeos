@@ -22,35 +22,35 @@ static const struct {
   const char *id, *gnome;
   const char *android[6];
 } ours[] = {
-  { "de.yesman.Dialer.desktop", "org.gnome.Calls.desktop",
+  { "neo.Dialer.desktop", "org.gnome.Calls.desktop",
     { "com.android.dialer", "com.google.android.dialer", "com.samsung.android.dialer", "com.oneplus.dialer" } },
-  { "de.yesman.Messaging.desktop", "sm.puri.Chatty.desktop",
+  { "neo.Messaging.desktop", "sm.puri.Chatty.desktop",
     { "com.android.messaging", "com.google.android.apps.messaging", "com.samsung.android.messaging",
       "com.oneplus.mms" } },
-  { "de.yesman.Contacts.desktop", "org.gnome.Contacts.desktop",
+  { "neo.Contacts.desktop", "org.gnome.Contacts.desktop",
     { "com.android.contacts", "com.google.android.contacts", "com.samsung.android.contacts",
       "com.oneplus.contacts" } },
-  { "de.yesman.Clock.desktop", "org.gnome.clocks.desktop",
+  { "neo.Clock.desktop", "org.gnome.clocks.desktop",
     { "com.android.deskclock", "com.google.android.deskclock", "com.sec.android.app.clockpackage",
       "com.oneplus.deskclock" } },
-  { "de.yesman.Calendar.desktop", "org.gnome.Calendar.desktop",
+  { "neo.Calendar.desktop", "org.gnome.Calendar.desktop",
     { "org.lineageos.etar", "com.android.calendar", "com.google.android.calendar", "com.samsung.android.calendar",
       "com.oneplus.calendar" } },
-  { "de.yesman.Calculator.desktop", "org.gnome.Calculator.desktop",
+  { "neo.Calculator.desktop", "org.gnome.Calculator.desktop",
     { "com.android.calculator2", "com.google.android.calculator", "com.sec.android.app.popupcalculator",
       "com.oneplus.calculator" } },
-  { "de.yesman.Camera.desktop", "org.gnome.Snapshot.desktop",
+  { "neo.Camera.desktop", "org.gnome.Snapshot.desktop",
     { "org.lineageos.aperture", "com.android.camera2", "com.android.camera", "com.google.android.GoogleCamera",
       "com.sec.android.app.camera", "com.oneplus.camera" } },
-  { "de.yesman.Files.desktop", "org.gnome.Nautilus.desktop",
+  { "neo.Files.desktop", "org.gnome.Nautilus.desktop",
     { "com.alphainventor.filemanager", "com.android.documentsui", "com.google.android.apps.nbu.files",
       "com.sec.android.app.myfiles", "com.oneplus.filemanager" } },
-  { "de.yesman.NeoBrowser.desktop", "org.gnome.Epiphany.desktop",
+  { "neo.Browser.desktop", "org.gnome.Epiphany.desktop",
     { "org.lineageos.jelly", "com.android.browser", "com.sec.android.app.sbrowser" } },
-  { "de.yesman.NeoSettings.desktop", "org.gnome.Settings.desktop", { "com.android.settings" } },
-  { "de.yesman.NeoWeather.desktop", "org.gnome.Weather.desktop",
+  { "neo.Settings.desktop", "org.gnome.Settings.desktop", { "com.android.settings" } },
+  { "neo.Weather.desktop", "org.gnome.Weather.desktop",
     { "com.google.android.apps.weather", "net.oneplus.weather", "com.sec.android.daemonapp" } },
-  { "de.yesman.Compass.desktop", NULL,
+  { "neo.Compass.desktop", NULL,
     { "com.vincentlee.compass", "com.coloros.compass", "com.oneplus.compass", "com.google.android.apps.compass" } },
 };
 
@@ -433,7 +433,7 @@ cache_key (Icons *self, GAppInfo *info, int px)
   /* 'b' marks Android icons drawn since they take the pack's appfilter */
   const char *android = g_str_has_prefix (id, "waydroid.") ? "b" : "";
   /* 'y': our apps drawn since they take the pack's GNOME/Android twin's icon (ours[]) */
-  if (g_str_has_prefix (id, "de.yesman."))
+  if (g_str_has_prefix (id, "neo."))
     android = "y";
   g_autofree char *safe = g_strdup (id);
   for (char *c = safe; *c; c++)

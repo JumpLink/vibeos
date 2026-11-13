@@ -13,10 +13,10 @@
 #include <sys/timerfd.h>
 #include <unistd.h>
 
-#define INTERFACE "de.yesman.Clock.Timers"
-#define OBJECT_PATH "/de/yesman/Clock/Timers"
-#define APP_ID "de.yesman.Clock"
-#define RINGING_APP_ID "de.yesman.Clock.Ringing"
+#define INTERFACE "neo.Clock.Timers"
+#define OBJECT_PATH "/neo/Clock/Timers"
+#define APP_ID "neo.Clock"
+#define RINGING_APP_ID "neo.Clock.Ringing"
 #define MAX_LENGTH ((99 * 3600 + 99 * 60 + 99) * 1000LL)        /* TimerSetupView's 99h 99m 99s */
 
 /* sets of timer states, for timers_in */
@@ -25,7 +25,7 @@
 
 static const char introspection[] =
   "<node>"
-  "  <interface name='de.yesman.Clock.Timers'>"
+  "  <interface name='neo.Clock.Timers'>"
   /* every timer, the newest first: id u, state u (TimerState: 1 running, 2 paused, 3 expired, 4 reset, 5 missed),
    * length x, total-length x, last-start x, remaining x, label s, delete-after-use b. Times in ms; last-start is on
    * the elapsed clock (CLOCK_BOOTTIME), the same in every process: the time left now is remaining - (now -
@@ -621,7 +621,7 @@ timer_service_new (GDBusConnection *session, GDBusConnection *system, GSettings 
   self->expiry_fd = timerfd_create (CLOCK_BOOTTIME, TFD_NONBLOCK | TFD_CLOEXEC);
   g_unix_fd_add (self->expiry_fd, G_IO_IN, on_expiry, self);
   if (system)
-    self->wakeup_watch = g_bus_watch_name_on_connection (system, "de.yesman.Wakeup", G_BUS_NAME_WATCHER_FLAGS_NONE,
+    self->wakeup_watch = g_bus_watch_name_on_connection (system, "neo.Wakeup", G_BUS_NAME_WATCHER_FLAGS_NONE,
                                                          on_wakeup_appeared, NULL, self, NULL);
 
   /* what came due while nothing ran rings now; the timerfd, set in the past, fires at once */

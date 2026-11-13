@@ -1373,9 +1373,9 @@ first_day_of_week (void)
 {
   /* Utils.getFirstDayOfWeek: the "Week starts on" setting */
   GSettingsSchemaSource *source = g_settings_schema_source_get_default ();
-  g_autoptr(GSettingsSchema) schema = source ? g_settings_schema_source_lookup (source, "de.yesman.Calendar", TRUE)
+  g_autoptr(GSettingsSchema) schema = source ? g_settings_schema_source_lookup (source, "neo.Calendar", TRUE)
                                              : NULL;
-  g_autoptr(GSettings) settings = schema ? g_settings_new ("de.yesman.Calendar") : NULL;
+  g_autoptr(GSettings) settings = schema ? g_settings_new ("neo.Calendar") : NULL;
 
   return cal_week_start (settings ? g_settings_get_int (settings, "week-start") : -1);
 }

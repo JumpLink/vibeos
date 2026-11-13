@@ -41,8 +41,8 @@
 #include <spongy-gtk.h>
 #include <string.h>
 
-#define SERVICE         "de.yesman.Calendar.Reminders"
-#define SERVICE_PATH    "/de/yesman/Calendar/Reminders"
+#define SERVICE         "neo.Calendar.Reminders"
+#define SERVICE_PATH    "/neo/Calendar/Reminders"
 
 /* --- the reminder service */
 

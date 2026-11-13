@@ -42,7 +42,7 @@ struct _ConversationList {
   GtkWidget parent;
   SmsClient *client;
   Contacts *contacts;
-  GSettings *settings;          /* de.yesman.Messaging: Swipe to delete */
+  GSettings *settings;          /* neo.Messaging: Swipe to delete */
   gboolean archived;
   gboolean forward;             /* ForwardMessageActivity's list: no bars, no FAB, no swipe, no select */
 
@@ -506,7 +506,7 @@ make_row (ConversationList *self, const SmsConversation *conversation, gint64 no
   if (failed && people->len == 1)
     {
       /* ic_failed_status_red at the avatar's bottom end, 1:1 only */
-      GtkWidget *badge = msg_image_new ("/de/yesman/Messaging/images/ic_failed_status_red.png", FAILED_BADGE,
+      GtkWidget *badge = msg_image_new ("/neo/Messaging/images/ic_failed_status_red.png", FAILED_BADGE,
                                         FAILED_BADGE);
 
       gtk_widget_set_halign (badge, GTK_ALIGN_END);
@@ -747,7 +747,7 @@ static GtkWidget *
 make_empty (gboolean archived)
 {
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  GtkWidget *image = msg_image_new ("/de/yesman/Messaging/images/ic_oobe_conv_list.png", 198, 103);
+  GtkWidget *image = msg_image_new ("/neo/Messaging/images/ic_oobe_conv_list.png", 198, 103);
   GtkWidget *text = gtk_label_new (archived ? _("Archived conversations appear here")
                                             : _("Once you start a new conversation, you’ll see it listed here"));
 
@@ -834,7 +834,7 @@ build (SmsClient *client, Contacts *contacts, gboolean archived, gboolean forwar
 
   self->client = g_object_ref (client);
   self->contacts = g_object_ref (contacts);
-  self->settings = g_settings_new ("de.yesman.Messaging");
+  self->settings = g_settings_new ("neo.Messaging");
   self->archived = archived;
   self->forward = forward;
   self->box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);

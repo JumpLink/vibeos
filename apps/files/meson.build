@@ -34,11 +34,11 @@ executable('neo-files', 'src/fm-main.c', 'src/fm-window.c', 'src/fm-ui.c', 'src/
                           dependency('spongy-gtk-1')])
 
 unit = configuration_data({'bindir': bindir})
-configure_file(input: 'data/de.yesman.Files.service.in', output: 'de.yesman.Files.service',
+configure_file(input: 'data/neo.Files.service.in', output: 'neo.Files.service',
                configuration: unit, install_dir: datadir / 'dbus-1/services')
-install_data('data/de.yesman.Files.desktop', install_dir: datadir / 'applications')
-install_data('data/de.yesman.Files.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
-install_data('data/de.yesman.Files.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
+install_data('data/neo.Files.desktop', install_dir: datadir / 'applications')
+install_data('data/neo.Files.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
+install_data('data/neo.Files.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
 gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
 
 foreach name : ['fm-item', 'fm-remotes', 'fm-state', 'fm-util', 'fm-places', 'fm-scan']

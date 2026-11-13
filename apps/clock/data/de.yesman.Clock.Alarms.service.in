@@ -1,4 +1,0 @@
-[D-BUS Service]
-Name=de.yesman.Clock.Alarms
-Exec=@bindir@/neo-clock-alarms
-SystemdService=neo-clock-alarms.service

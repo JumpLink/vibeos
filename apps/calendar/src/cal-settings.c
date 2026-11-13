@@ -597,7 +597,7 @@ GtkWidget *
 cal_about_page_new (GtkWidget *window)
 {
   GtkWidget *list, *page = cal_pref_page (window, _("About Calendar"), &list);
-  GtkWidget *icon = gtk_image_new_from_icon_name ("de.yesman.Calendar");
+  GtkWidget *icon = gtk_image_new_from_icon_name ("neo.Calendar");
   CalPref pref;
 
   gtk_image_set_pixel_size (GTK_IMAGE (icon), 120);

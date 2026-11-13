@@ -14,5 +14,5 @@ endif
 resources = gnome.compile_resources('wx-resources', 'src/neo-weather.gresource.xml', source_dir: 'src')
 
 executable('neo-weather', 'src/main.c', resources, dependencies: deps, install: true)
-install_data('data/de.yesman.NeoWeather.desktop', install_dir: get_option('datadir') / 'applications')
-install_data('data/de.yesman.NeoWeather.svg', install_dir: get_option('datadir') / 'icons' / 'hicolor' / 'scalable' / 'apps')
+install_data('data/neo.Weather.desktop', install_dir: get_option('datadir') / 'applications')
+install_data('data/neo.Weather.svg', install_dir: get_option('datadir') / 'icons' / 'hicolor' / 'scalable' / 'apps')

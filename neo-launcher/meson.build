@@ -45,8 +45,8 @@ executable('neo-launcher',
   dependencies: deps,
   install: true)
 
-# the launcher's settings (de.yesman.neo), which the gnome-phone extension and Neo Settings read too
-install_data('data/de.yesman.neo.gschema.xml', install_dir: get_option('datadir') / 'glib-2.0' / 'schemas')
+# the launcher's settings (neo.Phone), which the gnome-phone extension and Neo Settings read too
+install_data('data/neo.Phone.gschema.xml', install_dir: get_option('datadir') / 'glib-2.0' / 'schemas')
 # the first start's home screen (model.c); a device or distribution can put its own in /etc/xdg/neo-launcher
 install_data('data/layout.json', install_dir: get_option('datadir') / 'neo-launcher')
 # the Round icon pack (tools/iconpack-round makes it), packaged apart as neo-iconpack-round with its default

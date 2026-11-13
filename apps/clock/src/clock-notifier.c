@@ -29,7 +29,7 @@ clock_notifier_notify (ClockNotifier *self, guint32 replaces, const char *title,
 
   g_variant_builder_init (&hints, G_VARIANT_TYPE_VARDICT);
   /* the Clock's: its name and icon */
-  g_variant_builder_add (&hints, "{sv}", "desktop-entry", g_variant_new_string ("de.yesman.Clock"));
+  g_variant_builder_add (&hints, "{sv}", "desktop-entry", g_variant_new_string ("neo.Clock"));
   g_variant_builder_add (&hints, "{sv}", "resident", g_variant_new_boolean (TRUE));
   g_variant_builder_add (&hints, "{sv}", "x-gnome-privacy-scope", g_variant_new_string ("system"));
   g_variant_builder_add (&hints, "{sv}", "urgency", g_variant_new_byte (urgency));

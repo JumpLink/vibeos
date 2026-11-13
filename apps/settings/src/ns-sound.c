@@ -3,8 +3,8 @@
  * vibration strength are feedbackd's settings, which the volume panel, the Phone and the Clock all follow.
  *
  * Ringtones are the apps' own: nothing on the phone plays a sound theme's event sounds. The Phone app (its ringer,
- * apps/dialer/src/ringer.c) plays de.yesman.Dialer ringtone at ring-volume, the Clock (alarm-klaxon.c) plays
- * de.yesman.Clock default-alarm-ringtone at alarm-volume; both set the speaker to that volume while they ring. The
+ * apps/dialer/src/ringer.c) plays neo.Dialer ringtone at ring-volume, the Clock (alarm-klaxon.c) plays
+ * neo.Clock default-alarm-ringtone at alarm-volume; both set the speaker to that volume while they ring. The
  * sounds to pick from are the ones those apps list: sounds/android/ringtones and sounds/android/alarms in the
  * system data dirs. */
 #include "ns-pages.h"
@@ -58,7 +58,7 @@ ns_sound_init (void)
 {
   pa_glib_mainloop *ml = pa_glib_mainloop_new (NULL);
   pa_proplist *p = pa_proplist_new ();
-  pa_proplist_sets (p, PA_PROP_APPLICATION_ID, "de.yesman.NeoSettings");
+  pa_proplist_sets (p, PA_PROP_APPLICATION_ID, "neo.Settings");
   ctx = pa_context_new_with_proplist (pa_glib_mainloop_get_api (ml), "Settings", p);
   pa_proplist_free (p);
   pa_context_set_state_callback (ctx, state, NULL);
@@ -466,8 +466,8 @@ ns_page_sound (GtkWidget *row, gpointer data)
   g_signal_connect (page, "destroy", G_CALLBACK (preview_page_left), NULL);
 
   GSettings *fb = ns_page_settings (page, "org.sigxcpu.feedbackd");
-  GSettings *phone = ns_page_settings (page, "de.yesman.Dialer");
-  GSettings *clock = ns_page_settings (page, "de.yesman.Clock");
+  GSettings *phone = ns_page_settings (page, "neo.Dialer");
+  GSettings *clock = ns_page_settings (page, "neo.Clock");
   GtkWidget *g;
   if (fb) {
     g = ns_group (c, NULL);

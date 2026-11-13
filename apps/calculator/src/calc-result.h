@@ -83,6 +83,6 @@ void        calc_result_memory_subtract  (CalcResult *self);
 gboolean    calc_result_copy             (CalcResult *self);
 
 /* the MIME type the clipboard carries the result's saved name in, next to its text (ClipData's URI) */
-#define CALC_CLIPBOARD_TAG_MIME "application/x-de-yesman-calculator-tag"
+#define CALC_CLIPBOARD_TAG_MIME "application/x-neo-calculator-tag"
 
 G_END_DECLS

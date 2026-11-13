@@ -1,9 +1,9 @@
 usr/bin/neo-dialer
 usr/bin/neo-dialer-calls
 usr/lib/systemd/user/neo-dialer-calls.service
-usr/share/applications/de.yesman.Dialer.desktop
-usr/share/applications/de.yesman.Dialer.InCall.desktop
-usr/share/dbus-1/services/de.yesman.Dialer.service
-usr/share/dbus-1/services/de.yesman.Dialer.Calls.service
-usr/share/glib-2.0/schemas/de.yesman.Dialer.gschema.xml
-usr/share/icons/hicolor/scalable/apps/de.yesman.Dialer.svg
+usr/share/applications/neo.Dialer.desktop
+usr/share/applications/neo.Dialer.InCall.desktop
+usr/share/dbus-1/services/neo.Dialer.service
+usr/share/dbus-1/services/neo.Dialer.Calls.service
+usr/share/glib-2.0/schemas/neo.Dialer.gschema.xml
+usr/share/icons/hicolor/scalable/apps/neo.Dialer.svg

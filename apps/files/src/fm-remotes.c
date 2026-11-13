@@ -325,7 +325,7 @@ fm_remotes_save (GPtrArray *remotes, const char *path, GError **error)
   g_autofree char *dir = g_path_get_dirname (path);
 
   g_key_file_set_comment (file, NULL, NULL,
-                          " The remotes of neo-files (de.yesman.Files). Passwords are not here: GVfs keeps them in "
+                          " The remotes of neo-files (neo.Files). Passwords are not here: GVfs keeps them in "
                           "the keyring.", NULL);
   for (guint i = 0; i < remotes->len; i++)
     {

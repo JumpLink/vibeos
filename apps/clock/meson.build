@@ -39,14 +39,14 @@ executable('neo-clock', 'src/clock-main.c', 'src/clock-window.c', 'src/alarm-pag
 unit = configuration_data({'bindir': bindir})
 configure_file(input: 'data/neo-clock-alarms.service.in', output: 'neo-clock-alarms.service',
                configuration: unit, install_dir: get_option('prefix') / 'lib/systemd/user')
-configure_file(input: 'data/de.yesman.Clock.Alarms.service.in', output: 'de.yesman.Clock.Alarms.service',
+configure_file(input: 'data/neo.Clock.Alarms.service.in', output: 'neo.Clock.Alarms.service',
                configuration: unit, install_dir: datadir / 'dbus-1/services')
-configure_file(input: 'data/de.yesman.Clock.service.in', output: 'de.yesman.Clock.service',
+configure_file(input: 'data/neo.Clock.service.in', output: 'neo.Clock.service',
                configuration: unit, install_dir: datadir / 'dbus-1/services')
-install_data('data/de.yesman.Clock.desktop', 'data/de.yesman.Clock.Ringing.desktop',
+install_data('data/neo.Clock.desktop', 'data/neo.Clock.Ringing.desktop',
              install_dir: datadir / 'applications')
-install_data('data/de.yesman.Clock.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
-install_data('data/de.yesman.Clock.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
+install_data('data/neo.Clock.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
+install_data('data/neo.Clock.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
 install_data('data/sounds/alarm_expire.ogg', 'data/sounds/timer_expire.ogg', install_dir: datadir / 'neo-clock/sounds')
 gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
 

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Messaging's settings: Bugle's application preferences (res/xml/preferences_application.xml) that this app can
+     act on. The app's Settings page writes them; the app reads them. -->
+<schemalist>
+  <schema id="neo.Messaging" path="/neo/Messaging/">
+    <key name="send-sound" type="b">
+      <default>true</default>   <!-- send_sound_pref_default -->
+      <summary>Outgoing message sounds</summary>
+      <description>A sound as a message is sent (message_sent.wav)</description>
+    </key>
+
+    <key name="swipe-right-deletes" type="b">
+      <default>false</default>  <!-- swipe_right_deletes_conversation_default, lineage_constants.xml -->
+      <summary>Swipe to delete</summary>
+      <description>Swipe to the right to delete a conversation</description>
+    </key>
+
+    <!-- Bugle keeps it per SIM (preferences_per_subscription.xml, buglesub_delivery_reports); this phone has one
+         modem, so it is the app's. The service (neo-messaging-sms) reads it for each message it sends -->
+    <key name="delivery-reports" type="b">
+      <default>false</default>  <!-- delivery_reports_pref_default, constants.xml -->
+      <summary>SMS delivery reports</summary>
+      <description>Request a delivery report for each SMS you send</description>
+    </key>
+  </schema>
+</schemalist>

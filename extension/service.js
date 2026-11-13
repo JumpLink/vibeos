@@ -1,4 +1,4 @@
-// de.yesman.GnomePhone on the session bus: what the launcher asks of the shell.
+// neo.GnomePhone on the session bus: what the launcher asks of the shell.
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Shell from 'gi://Shell';
@@ -7,7 +7,7 @@ import {LaunchTransition} from './launch.js';
 import {Navigation} from './navigation.js';
 
 const IFACE = `<node>
-  <interface name="de.yesman.GnomePhone">
+  <interface name="neo.GnomePhone">
     <!-- start an app; from = the icon's rectangle on screen, in pixels, the window grows out of it; icon = the
          launcher's picture of the icon (a PNG, for the splash), or '' for the app's themed icon -->
     <method name="Launch">
@@ -53,8 +53,8 @@ export class Service {
         this._nav.expectWindow = app => this._launch.expect(app);
         this._volumeKeys = new Map();   // app id -> {sender, watch}: who took the volume keys
         this._impl = Gio.DBusExportedObject.wrapJSObject(IFACE, this);
-        this._impl.export(Gio.DBus.session, '/de/yesman/GnomePhone');
-        this._nameId = Gio.bus_own_name(Gio.BusType.SESSION, 'de.yesman.GnomePhone',
+        this._impl.export(Gio.DBus.session, '/neo/GnomePhone');
+        this._nameId = Gio.bus_own_name(Gio.BusType.SESSION, 'neo.GnomePhone',
             Gio.BusNameOwnerFlags.REPLACE, null, null, null);
     }
 
@@ -88,7 +88,7 @@ export class Service {
     LaunchFullScreen(appId) {
         if (this._power?.interactive && !this._keyguard?.showing)
             return false;
-        // an app id ("de.yesman.Clock.Ringing") or a desktop id ("de.yesman.Clock.Ringing.desktop")
+        // an app id ("neo.Clock.Ringing") or a desktop id ("neo.Clock.Ringing.desktop")
         const appSystem = Shell.AppSystem.get_default();
         const app = appSystem.lookup_app(appId) ?? appSystem.lookup_app(`${appId}.desktop`);
         if (!app) {
@@ -126,7 +126,7 @@ export class Service {
         const taker = appId && this._volumeKeys.get(appId);
         if (!taker)
             return null;
-        // the GApplication's object path: its id as a path, de.yesman.Clock.Ringing at /de/yesman/Clock/Ringing
+        // the GApplication's object path: its id as a path, neo.Clock.Ringing at /neo/Clock/Ringing
         const path = `/${appId.replaceAll('.', '/')}`;
         return direction => Gio.DBus.session.call(taker.sender, path, 'org.freedesktop.Application',
             'ActivateAction', new GLib.Variant('(sava{sv})', ['volume-key', [new GLib.Variant('i', direction)], {}]),

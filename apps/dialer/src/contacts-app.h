@@ -1,4 +1,4 @@
-/* What the Dialer and Messaging leave to the Contacts app (de.yesman.Contacts): a contact's card (QuickContact),
+/* What the Dialer and Messaging leave to the Contacts app (neo.Contacts): a contact's card (QuickContact),
  * a new contact with a number in it (ACTION_INSERT, "Create new contact"), and a number added to a contact the user
  * picks there (ACTION_INSERT_OR_EDIT, "Add to a contact"). They are its actions (apps/contacts, ct-main.c), activated
  * over D-Bus with org.freedesktop.Application.ActivateAction, so the app starts if it is not running.
@@ -12,7 +12,7 @@
 
 G_BEGIN_DECLS
 
-/* de.yesman.Contacts is installed: "Create new contact" and "Add to a contact" can be offered */
+/* neo.Contacts is installed: "Create new contact" and "Add to a contact" can be offered */
 gboolean contacts_app_installed (void);
 
 /* the Contacts app at its list; @snackbar says so when there is none */

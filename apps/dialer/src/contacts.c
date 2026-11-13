@@ -453,7 +453,7 @@ static void
 contacts_init (Contacts *self)
 {
   GSettingsSchemaSource *schemas = g_settings_schema_source_get_default ();
-  g_autoptr(GSettingsSchema) schema = schemas ? g_settings_schema_source_lookup (schemas, "de.yesman.Dialer", TRUE)
+  g_autoptr(GSettingsSchema) schema = schemas ? g_settings_schema_source_lookup (schemas, "neo.Dialer", TRUE)
                                               : NULL;
 
   self->cancellable = g_cancellable_new ();
@@ -462,7 +462,7 @@ contacts_init (Contacts *self)
   /* the app and the service (a missed call's name) alike */
   if (schema)
     {
-      self->settings = g_settings_new ("de.yesman.Dialer");
+      self->settings = g_settings_new ("neo.Dialer");
       g_signal_connect_swapped (self->settings, "changed::sort-order", G_CALLBACK (on_order_changed), self);
       g_signal_connect_swapped (self->settings, "changed::display-order", G_CALLBACK (on_order_changed), self);
       read_order (self);

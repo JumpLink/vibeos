@@ -9,7 +9,7 @@ G_BEGIN_DECLS
 
 typedef void (*EmptyAction) (gpointer data);
 
-/* @icon_name: a symbolic icon, or a resource path ("/de/yesman/Dialer/images/…") for a bitmap.
+/* @icon_name: a symbolic icon, or a resource path ("/neo/Dialer/images/…") for a bitmap.
  * @action NULL: no button; a tap on the button calls @callback with @data */
 GtkWidget *empty_view_new (const char *icon_name, const char *message, const char *action, EmptyAction callback,
                            gpointer data);

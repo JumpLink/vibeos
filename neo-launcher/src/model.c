@@ -1,6 +1,6 @@
 /* The home layout. The first start takes the default layout the system ships (neo-launcher/layout.json in /etc/xdg
  * or /usr/share) and, without one, fills the dock from GNOME's favourites and the pages with every other app: the
- * phone's own apps (de.yesman.*) on the first page, then GNOME's and the rest from the second page on, each A→Z;
+ * phone's own apps (neo.*) on the first page, then GNOME's and the rest from the second page on, each A→Z;
  * apps installed later go to the first free cell. A cell may be empty, as on Launcher3's grid: an icon removed or
  * uninstalled leaves its cell empty, and a drag can drop an icon on any cell. The GJS Neo's file, plus null for an
  * empty cell, plus the grid its cells are on ("columns", "rows"; 5 × 5 without them).
@@ -207,7 +207,7 @@ place (Model *self, const char *id)
 static gboolean
 ours (const char *id)
 {
-  return g_str_has_prefix (id, "de.yesman.");
+  return g_str_has_prefix (id, "neo.");
 }
 
 static void
@@ -235,7 +235,7 @@ json_ids (JsonArray *arr)
   return list;
 }
 
-/* Every installed app the layout does not have yet, A→Z: the phone's own apps (de.yesman.*) from the first free cell
+/* Every installed app the layout does not have yet, A→Z: the phone's own apps (neo.*) from the first free cell
  * on, then the others from the page after theirs, so GNOME's many apps do not crowd them. */
 static void
 place_rest (Model *self, GHashTable *apps)

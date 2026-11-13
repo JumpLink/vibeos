@@ -7,7 +7,7 @@ After=graphical-session.target
 
 [Service]
 Type=dbus
-BusName=de.yesman.Calendar.Reminders
+BusName=neo.Calendar.Reminders
 ExecStart=@bindir@/neo-calendar-reminders
 # a crash must not cost a reminder: it comes back and notifies what is due and missed
 Restart=on-failure

@@ -638,7 +638,7 @@ favorites_page_init (FavoritesPage *self)
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->scroller), list);
   gtk_stack_add_child (GTK_STACK (self->stack), self->scroller);
   /* SpeedDialFragment's empty view: the speed-dial picture, the line, "Add favorite" */
-  self->empty = empty_view_new ("/de/yesman/Dialer/images/empty-speed-dial.png",
+  self->empty = empty_view_new ("/neo/Dialer/images/empty-speed-dial.png",
                                 _("You haven't added any favorites yet"), _("Add favorite"), on_add_favorite, self);
   gtk_stack_add_child (GTK_STACK (self->stack), self->empty);
 }

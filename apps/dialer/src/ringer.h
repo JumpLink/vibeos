@@ -17,7 +17,7 @@ typedef struct _Ringer Ringer;
 #define RINGER_DEFAULT "default"
 #define RINGER_SILENT  "none"
 
-/* reads its settings from @settings (de.yesman.Dialer) each time it starts */
+/* reads its settings from @settings (neo.Dialer) each time it starts */
 Ringer  *ringer_new (GSettings *settings);
 void     ringer_free (Ringer *ringer);
 

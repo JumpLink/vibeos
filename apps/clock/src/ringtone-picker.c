@@ -42,7 +42,7 @@ call_service (const char *method, GVariant *parameters)
   GDBusConnection *bus = g_application_get_dbus_connection (g_application_get_default ());
 
   if (bus)
-    g_dbus_connection_call (bus, "de.yesman.Clock.Alarms", "/de/yesman/Clock/App", "de.yesman.Clock.App", method,
+    g_dbus_connection_call (bus, "neo.Clock.Alarms", "/neo/Clock/App", "neo.Clock.App", method,
                             parameters, NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
   else if (parameters)
     g_variant_unref (g_variant_ref_sink (parameters));

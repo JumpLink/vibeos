@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
-  <gresource prefix="/de/yesman/neo">
+  <gresource prefix="/neo/libneo">
     <file>neo.css</file>
   </gresource>
 </gresources>

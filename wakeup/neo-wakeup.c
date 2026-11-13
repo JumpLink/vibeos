@@ -17,7 +17,7 @@
  * Nothing is stored. After a reboot, or a restart of this service, apps set their wake-ups again: they watch for the
  * bus name to appear, as Android apps register their alarms again at boot.
  *
- * D-Bus, system bus: de.yesman.Wakeup at /de/yesman/Wakeup, interface de.yesman.Wakeup
+ * D-Bus, system bus: neo.Wakeup at /neo/Wakeup, interface neo.Wakeup
  *   Set (s name, x time, a{sv} options)
  *       wake the phone at @time (Unix seconds); a time of 0 removes the wake-up. @name is the caller's own key: a later
  *       Set with the same name from the same user replaces it. Options:
@@ -26,7 +26,7 @@
  *   NextAlarmClock (xs), read-only
  *       the earliest alarm clock's time and app, (0, "") when there is none
  *
- * Try it:  busctl call de.yesman.Wakeup /de/yesman/Wakeup de.yesman.Wakeup Set 'sxa{sv}' test $(($(date +%s) + 60)) 0
+ * Try it:  busctl call neo.Wakeup /neo/Wakeup neo.Wakeup Set 'sxa{sv}' test $(($(date +%s) + 60)) 0
  */
 #include <errno.h>
 #include <string.h>
@@ -38,9 +38,9 @@
 #include <gio/gunixfdlist.h>
 #include <glib-unix.h>
 
-#define BUS_NAME        "de.yesman.Wakeup"
-#define OBJECT_PATH     "/de/yesman/Wakeup"
-#define INTERFACE       "de.yesman.Wakeup"
+#define BUS_NAME        "neo.Wakeup"
+#define OBJECT_PATH     "/neo/Wakeup"
+#define INTERFACE       "neo.Wakeup"
 #define HOLD_SECONDS    30      /* how long the phone stays up after a wake-up, for the app to take over */
 #define MAX_PER_USER    64      /* a runaway app cannot fill the table */
 

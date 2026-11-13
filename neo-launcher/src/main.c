@@ -217,7 +217,7 @@ slideshow_picture (const char *xml, int w, int h)
 /* The wallpaper is GNOME's (org.gnome.desktop.background, its dark picture under the dark style), which Settings'
  * Background panel sets: a picture in a folder with a parallax.json is that parallax set (its picture is the set at
  * rest, for the panel and the lock screen), any other picture a still one. NEO_PARALLAX names a set instead; with no
- * picture at all, the old de.yesman.neo wallpaper-parallax. */
+ * picture at all, the old neo.Phone wallpaper-parallax. */
 static void
 wallpaper_load (void)
 {
@@ -328,7 +328,7 @@ icon_scale (const char *key)
   return CLAMP (g_settings_get_double (N.settings, key), 0.5, 1.5);
 }
 
-/* the layout keys (de.yesman.neo) into N; the home grid's columns and rows for the model */
+/* the layout keys (neo.Phone) into N; the home grid's columns and rows for the model */
 static void
 layout_read (int *cols, int *rows)
 {
@@ -849,12 +849,12 @@ main (int argc, char **argv)
   static const WlCallbacks cb = { on_resize, on_frame,  on_touch, on_key,   on_close,
                                   on_shown,  on_suspended, on_text, on_erase, on_submit };
   A.loop = g_main_loop_new (NULL, FALSE);
-  N.settings = g_settings_new ("de.yesman.neo");
+  N.settings = g_settings_new ("neo.Phone");
   A.bg = g_settings_new ("org.gnome.desktop.background");
   A.iface = g_settings_new ("org.gnome.desktop.interface");
   g_autofree char *flag = g_build_filename (g_get_user_config_dir (), "neo-launcher", "debug-touch", NULL);
   A.debug_touch = g_getenv ("NEO_DEBUG_TOUCH") || g_file_test (flag, G_FILE_TEST_EXISTS);
-  N.wl = wl_open ("de.yesman.NeoLauncher", &cb, NULL);
+  N.wl = wl_open ("neo.Launcher", &cb, NULL);
   if (!N.wl)
     return 1;
   g_unix_signal_add (SIGTERM, on_signal, NULL);

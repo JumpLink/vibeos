@@ -1111,7 +1111,7 @@ static GtkWidget *
 make_toast (Shell *shell)
 {
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  GtkWidget *icon = gtk_image_new_from_icon_name ("de.yesman.Calendar");
+  GtkWidget *icon = gtk_image_new_from_icon_name ("neo.Calendar");
 
   gtk_image_set_pixel_size (GTK_IMAGE (icon), 24);
   gtk_widget_add_css_class (icon, "cal-toast-icon");

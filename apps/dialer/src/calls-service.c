@@ -2,7 +2,7 @@
  * the session from login (neo-dialer-calls.service), as Telecom and InCallUI's service do on Android: a call that
  * comes rings and shows its screen whether or not the Phone app is open.
  *
- * This file is its face on D-Bus (de.yesman.Dialer.Calls): the apps ask it to dial, answer and hang up, and read
+ * This file is its face on D-Bus (neo.Dialer.Calls): the apps ask it to dial, answer and hang up, and read
  * the calls and the call log from it. What it does about calls is in calls.c.
  *
  * It also stands aside while gsm2sip is in gateway mode: then gsm2sipd answers the modem's calls and bridges them

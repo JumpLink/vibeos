@@ -20,7 +20,7 @@
 #include <math.h>
 #include <neo.h>
 
-#define APP_ID            "de.yesman.Camera"
+#define APP_ID            "neo.Camera"
 #define ZOOM_MAX          8.0      /* digital: a crop of the frame (§23); CameraX's maxZoomRatio of a camera */
 #define BAR_ICON          40       /* the 24 dp drawable, fitCenter in the 48 dp button less its 4 dp padding */
 #define FLASH_SETTLE_MS   1000     /* the torch on before the frame is taken: the exposure follows it */
@@ -221,7 +221,7 @@ take_volume_keys (CamView *self, gboolean take)
   if (take == self->volume_keys || !bus)
     return;
   self->volume_keys = take;
-  g_dbus_connection_call (bus, "de.yesman.GnomePhone", "/de/yesman/GnomePhone", "de.yesman.GnomePhone",
+  g_dbus_connection_call (bus, "neo.GnomePhone", "/neo/GnomePhone", "neo.GnomePhone",
                           "TakeVolumeKeys", g_variant_new ("(sb)", APP_ID, take), NULL, G_DBUS_CALL_FLAGS_NONE, -1,
                           NULL, NULL, NULL);
 }
@@ -236,7 +236,7 @@ shell_has (CamView *self, const char *method)
 
   if (!bus)
     return FALSE;
-  reply = g_dbus_connection_call_sync (bus, "de.yesman.GnomePhone", "/de/yesman/GnomePhone",
+  reply = g_dbus_connection_call_sync (bus, "neo.GnomePhone", "/neo/GnomePhone",
                                        "org.freedesktop.DBus.Introspectable", "Introspect", NULL,
                                        G_VARIANT_TYPE ("(s)"), G_DBUS_CALL_FLAGS_NONE, 1000, NULL, NULL);
   if (!reply)
@@ -259,7 +259,7 @@ keep_bright (CamView *self, gboolean on)
   if (!self->bright_hook || !bus || on == self->bright_on)
     return;
   self->bright_on = on;
-  g_dbus_connection_call (bus, "de.yesman.GnomePhone", "/de/yesman/GnomePhone", "de.yesman.GnomePhone",
+  g_dbus_connection_call (bus, "neo.GnomePhone", "/neo/GnomePhone", "neo.GnomePhone",
                           "KeepScreenBright", g_variant_new ("(sb)", APP_ID, on), NULL, G_DBUS_CALL_FLAGS_NONE, -1,
                           NULL, NULL, NULL);
 }

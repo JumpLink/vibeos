@@ -22,7 +22,7 @@ typedef enum {
   ALARM_KLAXON_PREVIEW,
 } AlarmKlaxonKind;
 
-/* reads @kind's settings from @settings (de.yesman.Clock) each time it starts */
+/* reads @kind's settings from @settings (neo.Clock) each time it starts */
 AlarmKlaxon *alarm_klaxon_new (GSettings *settings, AlarmKlaxonKind kind);
 void         alarm_klaxon_free (AlarmKlaxon *klaxon);
 

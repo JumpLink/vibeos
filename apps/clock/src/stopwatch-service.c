@@ -8,13 +8,13 @@
 #include <glib/gi18n.h>
 #include <glib/gstdio.h>
 
-#define INTERFACE "de.yesman.Clock.Stopwatch"
-#define OBJECT_PATH "/de/yesman/Clock/Stopwatch"
-#define APP_ID "de.yesman.Clock"
+#define INTERFACE "neo.Clock.Stopwatch"
+#define OBJECT_PATH "/neo/Clock/Stopwatch"
+#define APP_ID "neo.Clock"
 
 static const char introspection[] =
   "<node>"
-  "  <interface name='de.yesman.Clock.Stopwatch'>"
+  "  <interface name='neo.Clock.Stopwatch'>"
   /* state u (0 reset, 1 running, 2 paused), last-start x, accumulated x, laps ax. Times in ms; last-start is on the
    * elapsed clock (CLOCK_BOOTTIME): the time on it now is accumulated + (now - last-start) while running, and
    * accumulated otherwise. laps: the time on it at the end of each lap, the first lap first */

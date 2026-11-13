@@ -1,5 +1,5 @@
 usr/bin/neo-settings
 usr/libexec/neo-keyring-rekey
-usr/share/applications/de.yesman.NeoSettings.desktop
-usr/share/dbus-1/services/de.yesman.NeoSettings.service
-usr/share/icons/hicolor/scalable/apps/de.yesman.NeoSettings.svg
+usr/share/applications/neo.Settings.desktop
+usr/share/dbus-1/services/neo.Settings.service
+usr/share/icons/hicolor/scalable/apps/neo.Settings.svg

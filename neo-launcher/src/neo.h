@@ -1,6 +1,6 @@
 /* Neo Launcher 2: what the home screen, the dock and the app drawer share. Everything is laid out in device pixels
  * from Android's dp values (Launcher3 on the S10e: 5 × 5 "Large Phone" grid, 56 dp icons, 1 dp = 3 px there). The
- * grid, the icons' size, the home labels and the drawer's search pill are settings (de.yesman.neo; main.c). */
+ * grid, the icons' size, the home labels and the drawer's search pill are settings (neo.Phone; main.c). */
 #pragma once
 
 #include <gio/gdesktopappinfo.h>

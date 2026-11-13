@@ -1,7 +1,7 @@
 /* neo-calendar-reminders: the Calendar's reminders, as Etar's AlertService and Android's AlarmManager ring them
  * (spec/calendar.md §10).
  *
- * It runs from login, whether or not the app is open (a systemd user service, de.yesman.Calendar.Reminders on the
+ * It runs from login, whether or not the app is open (a systemd user service, neo.Calendar.Reminders on the
  * session bus). It reads the shown calendars' events of the coming weeks from evolution-data-server (CalStore),
  * and at each reminder's time posts a notification: the event's title, its time and place (AlertUtils
  * .formatTimeLocation), a tap opening the event in the app. The phone may be asleep then: neo-wakeup wakes it at
@@ -44,10 +44,10 @@
 #include <sys/timerfd.h>
 #include <unistd.h>
 
-#define BUS_NAME        "de.yesman.Calendar.Reminders"
-#define OBJECT_PATH     "/de/yesman/Calendar/Reminders"
-#define APP_ID          "de.yesman.Calendar"
-#define APP_PATH        "/de/yesman/Calendar"
+#define BUS_NAME        "neo.Calendar.Reminders"
+#define OBJECT_PATH     "/neo/Calendar/Reminders"
+#define APP_ID          "neo.Calendar"
+#define APP_PATH        "/neo/Calendar"
 #define NOTIFICATIONS   "org.freedesktop.Notifications"
 #define NOTIFICATIONS_PATH "/org/freedesktop/Notifications"
 #define LOOK_BACK       (24 * 3600)             /* missed reminders of events still going on */
@@ -553,7 +553,7 @@ on_closed (GDBusConnection *bus, const char *sender, const char *path, const cha
 
 static const char introspection[] =
   "<node>"
-  "  <interface name='de.yesman.Calendar.Reminders'>"
+  "  <interface name='neo.Calendar.Reminders'>"
   /* the fired reminders not dismissed, by start and title (CalendarAlerts.DEFAULT_SORT_ORDER): each its occurrence
    * key and calendar, uid, rid, start, end, all-day, title, location, color (the calendar's, 0xRRGGBB, as
    * CalendarAlerts.CALENDAR_COLOR), recurring (it has a repeat rule, CalendarAlerts.RRULE: AlertAdapter's repeat
@@ -758,7 +758,7 @@ tell_wakeup (Service *self, gint64 time)
   self->sent_wakeup = time;
   g_variant_builder_init (&options, G_VARIANT_TYPE_VARDICT);
   g_variant_builder_add (&options, "{sv}", "app", g_variant_new_string (APP_ID));
-  g_dbus_connection_call (self->system, "de.yesman.Wakeup", "/de/yesman/Wakeup", "de.yesman.Wakeup", "Set",
+  g_dbus_connection_call (self->system, "neo.Wakeup", "/neo/Wakeup", "neo.Wakeup", "Set",
                           g_variant_new ("(sxa{sv})", self->wakeup_name, time, &options), NULL,
                           G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 }
@@ -967,7 +967,7 @@ main (int argc, char **argv)
                                                             "NotificationClosed", NOTIFICATIONS_PATH, NULL,
                                                             G_DBUS_SIGNAL_FLAGS_NONE, on_closed, self, NULL);
   if (self->system)
-    self->wakeup_watch = g_bus_watch_name_on_connection (self->system, "de.yesman.Wakeup",
+    self->wakeup_watch = g_bus_watch_name_on_connection (self->system, "neo.Wakeup",
                                                          G_BUS_NAME_WATCHER_FLAGS_NONE, on_wakeup_appeared, NULL,
                                                          self, NULL);
   {

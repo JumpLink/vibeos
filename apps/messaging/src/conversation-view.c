@@ -243,7 +243,7 @@ make_message (ConversationView *self, const SmsMessage *message, gboolean cluste
         {
           /* message_metadata: the status (the time), then the badge centred on its line */
           GtkWidget *line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-          GtkWidget *badge = msg_image_new ("/de/yesman/Messaging/images/ic_sms_delivery_ok.png", DELIVERED_WIDTH,
+          GtkWidget *badge = msg_image_new ("/neo/Messaging/images/ic_sms_delivery_ok.png", DELIVERED_WIDTH,
                                             DELIVERED_HEIGHT);
 
           gtk_widget_set_margin_start (badge, DELIVERED_START);
@@ -746,7 +746,7 @@ on_call (ConversationView *self)
       msg_snackbar_show (self->snackbar, _("Can't make a voice call to emergency services here."), NULL, NULL, NULL);
       return;
     }
-  if (app_action_activate (GTK_WIDGET (self), "de.yesman.Dialer", "call", g_variant_new_string (only->destination)))
+  if (app_action_activate (GTK_WIDGET (self), "neo.Dialer", "call", g_variant_new_string (only->destination)))
     return;
   uri = g_strconcat ("tel:", only->destination, NULL);
   if (!g_app_info_launch_default_for_uri (uri, NULL, &error))

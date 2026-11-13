@@ -1,5 +1,5 @@
 /* The timers in the Clock's service (DeskClock's TimerModel and TimerService): it keeps them (the store,
- * ~/.local/share/de.yesman.Clock/timers.ini), serves them to the app over D-Bus (de.yesman.Clock.Timers, in
+ * ~/.local/share/neo.Clock/timers.ini), serves them to the app over D-Bus (neo.Clock.Timers, in
  * timer-service.c), and rings them.
  *
  * A running timer costs nothing until it runs out: one timerfd waits for the first to end, on the elapsed clock

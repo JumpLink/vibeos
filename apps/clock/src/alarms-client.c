@@ -1,9 +1,9 @@
 /* The alarm service's client: see alarms-client.h. */
 #include "alarms-client.h"
 
-#define SERVICE   "de.yesman.Clock.Alarms"
-#define PATH      "/de/yesman/Clock/Alarms"
-#define INTERFACE "de.yesman.Clock.Alarms"
+#define SERVICE   "neo.Clock.Alarms"
+#define PATH      "/neo/Clock/Alarms"
+#define INTERFACE "neo.Clock.Alarms"
 
 struct _AlarmsClient
 {

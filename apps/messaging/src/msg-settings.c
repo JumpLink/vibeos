@@ -172,7 +172,7 @@ settings_page (const char *title, GtkWidget **list)
   GtkWidget *scroll = spongy_scroll_view_new ();
 
   *list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  self->settings = g_settings_new ("de.yesman.Messaging");
+  self->settings = g_settings_new ("neo.Messaging");
   self->box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_parent (self->box, GTK_WIDGET (self));
   gtk_widget_add_css_class (self->box, "msg-page");

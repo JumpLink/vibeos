@@ -353,7 +353,7 @@ on_volume_released (VolumeSlider *slider, SettingsPage *self)
 
   /* onStopTrackingTouch: the default alarm sound for two seconds, at the new volume, by the service */
   if (bus)
-    g_dbus_connection_call (bus, "de.yesman.Clock.Alarms", "/de/yesman/Clock/App", "de.yesman.Clock.App",
+    g_dbus_connection_call (bus, "neo.Clock.Alarms", "/neo/Clock/App", "neo.Clock.App",
                             "PlaySound", g_variant_new ("(su)", "", PREVIEW_MS), NULL, G_DBUS_CALL_FLAGS_NONE, -1,
                             NULL, NULL, NULL);
 }
@@ -462,7 +462,7 @@ on_date_time (NeoPressable *row, SettingsPage *self)
   GDBusConnection *bus = g_application_get_dbus_connection (g_application_get_default ());
 
   if (bus)
-    g_dbus_connection_call (bus, "de.yesman.NeoSettings", "/de/yesman/NeoSettings", "org.freedesktop.Application",
+    g_dbus_connection_call (bus, "neo.Settings", "/neo/Settings", "org.freedesktop.Application",
                             "ActivateAction", g_variant_new_parsed ("('launch-panel', [<('datetime', @av [])>], "
                                                                     "@a{sv} {})"),
                             NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, on_date_time_done, NULL);

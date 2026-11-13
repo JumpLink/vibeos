@@ -6,14 +6,14 @@
 #pragma once
 
 /* the service: its name on the session bus, and its one object */
-#define CALLS_BUS_NAME "de.yesman.Dialer.Calls"
-#define CALLS_PATH "/de/yesman/Dialer/Calls"
-#define CALLS_INTERFACE "de.yesman.Dialer.Calls"
+#define CALLS_BUS_NAME "neo.Dialer.Calls"
+#define CALLS_PATH "/neo/Dialer/Calls"
+#define CALLS_INTERFACE "neo.Dialer.Calls"
 
 /* the apps: the Phone app with its tabs, and the in-call screen, which may show over the lock screen and so is an
  * app of its own (Android's InCallActivity is an activity of its own, showWhenLocked) */
-#define DIALER_APP_ID "de.yesman.Dialer"
-#define INCALL_APP_ID "de.yesman.Dialer.InCall"
+#define DIALER_APP_ID "neo.Dialer"
+#define INCALL_APP_ID "neo.Dialer.InCall"
 
 /* DialerCallState, in the order InCallUI's screens care about */
 typedef enum {

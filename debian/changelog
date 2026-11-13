@@ -93,8 +93,7 @@ gnome-phone (0.1.3) unstable; urgency=medium
     it does not name goes where a fresh layout would put it (the phone's own
     apps on the first page, the others after); an app it names that is not
     installed leaves its cell empty. The clock and the compass stay in the
-    drawer (hidden-from-home); the clock widget opens the clock. Yesman, when
-    installed, sits between Calculator and Settings on the second page.
+    drawer (hidden-from-home); the clock widget opens the clock.
   * gnome-phone-session: the dark style by default (color-scheme
     prefer-dark).
 

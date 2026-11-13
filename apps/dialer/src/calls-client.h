@@ -1,4 +1,4 @@
-/* The app's side of the call service (neo-dialer-calls, de.yesman.Dialer.Calls on the session bus).
+/* The app's side of the call service (neo-dialer-calls, neo.Dialer.Calls on the session bus).
  *
  * The service has the calls; the app only shows them and asks for things. CallsClient keeps the service's call
  * list (its Calls property) and emits "changed" when it changes, the way InCallUI's CallList tells its presenters.

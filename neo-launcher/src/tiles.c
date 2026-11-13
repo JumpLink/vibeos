@@ -73,7 +73,7 @@ icon_thread (gpointer data)
 {
   GPtrArray *jobs = data;
   g_mutex_lock (&icon_lock);
-  g_autoptr (GSettings) settings = g_settings_new ("de.yesman.neo");
+  g_autoptr (GSettings) settings = g_settings_new ("neo.Phone");
   Icons *icons = icons_new (settings);
   GPtrArray *pending = g_ptr_array_new (), *splash = g_ptr_array_new ();
   for (guint i = 0; i < jobs->len; i++) {
@@ -432,7 +432,7 @@ haptic (const char *event)
     return;
   g_dbus_connection_call (N.bus, "org.sigxcpu.Feedback", "/org/sigxcpu/Feedback", "org.sigxcpu.Feedback",
                           "TriggerFeedback",
-                          g_variant_new ("(ss@a{sv}i)", "de.yesman.NeoLauncher", event,
+                          g_variant_new ("(ss@a{sv}i)", "neo.Launcher", event,
                                          g_variant_new_array (G_VARIANT_TYPE ("{sv}"), NULL, 0), -1),
                           NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 }
@@ -446,7 +446,7 @@ tile_launch (Tile *t, float x, float y, float size, bool from_drawer)
     N.bus = g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, NULL);
   if (!N.bus)
     return;
-  g_dbus_connection_call (N.bus, "de.yesman.GnomePhone", "/de/yesman/GnomePhone", "de.yesman.GnomePhone", "Launch",
+  g_dbus_connection_call (N.bus, "neo.GnomePhone", "/neo/GnomePhone", "neo.GnomePhone", "Launch",
                           g_variant_new ("(s(dddd)s)", t->id, (double) x, (double) y, (double) size, (double) size,
                                          t->splash_icon ? t->splash_icon : ""),
                           NULL, G_DBUS_CALL_FLAGS_NONE, 2000, NULL, NULL, NULL);

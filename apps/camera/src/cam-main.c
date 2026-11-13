@@ -3,7 +3,7 @@
  * Photos are the live stream's current frame (about 2 MP, the sizes libcamera lists), saved as JPEG with EXIF to
  * ~/Pictures/Camera; videos are H.264 + AAC MP4 in ~/Videos/Camera; SCAN reads barcodes with zxing. Nothing here
  * knows a phone: the cameras, their facing and rotation come from libcamera, the flash from the LED class, the
- * encoder from a measurement (cam-encoder.h). The app's settings are GSettings de.yesman.Camera.
+ * encoder from a measurement (cam-encoder.h). The app's settings are GSettings neo.Camera.
  *
  * `neo-camera --probe-encoder ELEMENT` is the encoder measurement's child process (cam-encoder.h). */
 #include "cam-encoder.h"
@@ -17,7 +17,7 @@
 #include <pango/pangocairo.h>
 #include <spongy.h>
 
-#define APP_ID "de.yesman.Camera"
+#define APP_ID "neo.Camera"
 
 static const char *
 data_dir (void)
@@ -32,7 +32,7 @@ load_style (void)
 {
   GtkCssProvider *provider = gtk_css_provider_new ();
 
-  gtk_css_provider_load_from_resource (provider, "/de/yesman/Camera/camera.css");
+  gtk_css_provider_load_from_resource (provider, "/neo/Camera/camera.css");
   /* over libneo's, which is at APPLICATION priority too */
   gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (provider),
                                               GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);

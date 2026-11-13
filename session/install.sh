@@ -13,7 +13,7 @@ install -m 755 neo-dock sim-apn /usr/local/sbin/
 install -m 644 71-neo-dock.rules /etc/udev/rules.d/
 install -m 644 pam.d/gnome-phone /etc/pam.d/
 install -m 644 environment.d/60-spongy.conf /etc/environment.d/
-install -m 644 de.yesman.Wakeup.conf /etc/dbus-1/system.d/
+install -m 644 neo.Wakeup.conf /etc/dbus-1/system.d/
 install -d /etc/systemd/user/org.gnome.Shell@.service.d
 install -m 644 org.gnome.Shell@.service.d/50-mobile.conf /etc/systemd/user/org.gnome.Shell@.service.d/
 systemctl reload dbus

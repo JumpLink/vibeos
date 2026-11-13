@@ -1,5 +1,5 @@
 usr/bin/neo-calculator
-usr/share/applications/de.yesman.Calculator.desktop
-usr/share/dbus-1/services/de.yesman.Calculator.service
-usr/share/glib-2.0/schemas/de.yesman.Calculator.gschema.xml
-usr/share/icons/hicolor/scalable/apps/de.yesman.Calculator.svg
+usr/share/applications/neo.Calculator.desktop
+usr/share/dbus-1/services/neo.Calculator.service
+usr/share/glib-2.0/schemas/neo.Calculator.gschema.xml
+usr/share/icons/hicolor/scalable/apps/neo.Calculator.svg

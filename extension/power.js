@@ -2,7 +2,7 @@
 // the always-on display, and the session's org.gnome.ScreenSaver.
 //
 // Awake, the screen shows the shell. Asleep, the lock screen is up behind a black layer over everything, and the
-// panel is in its low power mode; with the AOD on (de.yesman.neo aod), that layer shows the AOD (aod.js) and the
+// panel is in its low power mode; with the AOD on (neo.Phone aod), that layer shows the AOD (aod.js) and the
 // panel ticks a clock of its own. The display is never turned off: the S10e's DSI link cannot be brought back up
 // once it went down, so mutter keeps the outputs on whatever gnome-settings-daemon asks of them
 // (power-save-blocked, patches/mutter/0002) and "off" is a black frame at the panel's lowest brightness.
@@ -59,12 +59,12 @@ const SCREENSAVER_IFACE = `<node>
 // feedbackd's shortest tick, as the back gesture's
 function haptic() {
     Gio.DBus.session.call('org.sigxcpu.Feedback', '/org/sigxcpu/Feedback', 'org.sigxcpu.Feedback',
-        'TriggerFeedback', new GLib.Variant('(ssa{sv}i)', ['de.yesman.GnomePhone', 'button-released', {}, -1]),
+        'TriggerFeedback', new GLib.Variant('(ssa{sv}i)', ['neo.GnomePhone', 'button-released', {}, -1]),
         null, Gio.DBusCallFlags.NONE, -1, null, null);
 }
 
 function neoSettings() {
-    const schema = Gio.SettingsSchemaSource.get_default()?.lookup('de.yesman.neo', true);
+    const schema = Gio.SettingsSchemaSource.get_default()?.lookup('neo.Phone', true);
     return schema ? new Gio.Settings({settings_schema: schema}) : null;
 }
 

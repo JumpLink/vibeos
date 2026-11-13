@@ -1,3 +1,0 @@
-[D-BUS Service]
-Name=de.yesman.Contacts
-Exec=@bindir@/neo-contacts --gapplication-service

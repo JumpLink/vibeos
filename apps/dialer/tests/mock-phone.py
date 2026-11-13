@@ -8,7 +8,7 @@
 #
 # On the session bus: callaudiod's CallAudio, a notification server, and the shell's LaunchFullScreen.
 #
-# de.yesman.Test.Phone on the session bus drives it: a call comes in, the other side answers or hangs up; and it
+# neo.Test.Phone on the session bus drives it: a call comes in, the other side answers or hangs up; and it
 # tells what the service did (the method calls it got, the notifications it holds).
 import json
 import sys
@@ -71,10 +71,10 @@ SESSION_XML = '''<node>
 <signal name="ActionInvoked"><arg type="u"/><arg type="s"/></signal>
 <signal name="NotificationClosed"><arg type="u"/><arg type="u"/></signal>
 </interface>
-<interface name="de.yesman.GnomePhone">
+<interface name="neo.GnomePhone">
 <method name="LaunchFullScreen"><arg type="s" direction="in"/><arg type="b" direction="out"/></method>
 </interface>
-<interface name="de.yesman.Test.Phone">
+<interface name="neo.Test.Phone">
 <method name="Incoming"><arg name="number" type="s" direction="in"/><arg type="o" direction="out"/></method>
 <method name="RemoteAnswer"><arg type="o" direction="in"/></method>
 <method name="RemoteHangup"><arg type="o" direction="in"/><arg name="reason" type="i" direction="in"/></method>
@@ -127,8 +127,8 @@ class Phone:
         for iface in Gio.DBusNodeInfo.new_for_xml(SESSION_XML).interfaces:
             session.register_object('/org/mobian_project/CallAudio' if 'CallAudio' in iface.name else
                                     '/org/freedesktop/Notifications' if 'Notifications' in iface.name else
-                                    '/de/yesman/GnomePhone' if 'GnomePhone' in iface.name else
-                                    '/de/yesman/Test/Phone', iface, self.session_call, None, None)
+                                    '/neo/GnomePhone' if 'GnomePhone' in iface.name else
+                                    '/neo/Test/Phone', iface, self.session_call, None, None)
 
     # --- ModemManager
     def modem_props(self, name):
@@ -239,7 +239,7 @@ class Phone:
     # --- the session's services and the test's controls
     def session_call(self, conn, sender, path, iface, method, params, inv):
         args = params.unpack()
-        if iface == 'de.yesman.Test.Phone':
+        if iface == 'neo.Test.Phone':
             return self.control(method, args, inv)
         self.log.append([method] + [a for a in args if not isinstance(a, dict)])
         if method == 'Notify':
@@ -324,7 +324,7 @@ def main():
     session = Gio.bus_get_sync(Gio.BusType.SESSION, None)
     phone = Phone(system, session)
     names = [(system, MM)] + [(session, n) for n in ('org.mobian_project.CallAudio', 'org.freedesktop.Notifications',
-                                                     'de.yesman.GnomePhone', 'de.yesman.Test.Phone')]
+                                                     'neo.GnomePhone', 'neo.Test.Phone')]
     for conn, name in names:
         conn.call_sync('org.freedesktop.DBus', '/org/freedesktop/DBus', 'org.freedesktop.DBus', 'RequestName',
                        GLib.Variant('(su)', (name, 4)), None, Gio.DBusCallFlags.NONE, -1, None)

@@ -6,5 +6,5 @@ deps = [dependency('gtk4', version: '>= 4.14'), dependency('libadwaita-1', versi
         meson.get_compiler('c').find_library('m')]
 
 executable('neo-compass', 'main.c', dependencies: deps, install: true)
-install_data('data/de.yesman.Compass.desktop', install_dir: get_option('datadir') / 'applications')
-install_data('data/de.yesman.Compass.svg', install_dir: get_option('datadir') / 'icons/hicolor/scalable/apps')
+install_data('data/neo.Compass.desktop', install_dir: get_option('datadir') / 'applications')
+install_data('data/neo.Compass.svg', install_dir: get_option('datadir') / 'icons/hicolor/scalable/apps')

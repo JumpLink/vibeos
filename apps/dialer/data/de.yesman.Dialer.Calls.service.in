@@ -1,4 +1,0 @@
-[D-BUS Service]
-Name=de.yesman.Dialer.Calls
-Exec=@bindir@/neo-dialer-calls
-SystemdService=neo-dialer-calls.service

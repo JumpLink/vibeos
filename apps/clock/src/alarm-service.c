@@ -1,14 +1,14 @@
 /* The alarms in the Clock's service (DeskClock's AlarmService and the AlarmManager calls of its
  * AlarmStateManager). From login, whether or not the Clock app is open, it:
  *
- *  - keeps the alarms (the store, ~/.local/share/de.yesman.Clock/alarms.ini) and takes each instance through its
+ *  - keeps the alarms (the store, ~/.local/share/neo.Clock/alarms.ini) and takes each instance through its
  *    states (alarm-engine.c) when they are due;
  *  - wakes the phone for them: neo-wakeup arms the RTC for the next change, and for the next alarm, which it also
  *    shows in the status bar (its NextAlarmClock);
  *  - rings: the sound and vibration (alarm-klaxon.c), the notification with Snooze and Dismiss, and the ringing
- *    screen (the app as de.yesman.Clock.Ringing), full screen over the lock screen when the phone was asleep or
+ *    screen (the app as neo.Clock.Ringing), full screen over the lock screen when the phone was asleep or
  *    locked, as Android's full-screen intent;
- *  - serves the Clock app and the ringing screen over D-Bus (de.yesman.Clock.Alarms, below): the app never writes
+ *  - serves the Clock app and the ringing screen over D-Bus (neo.Clock.Alarms, below): the app never writes
  *    the store itself. */
 #include "alarm-service.h"
 #include "alarm-engine.h"
@@ -24,14 +24,14 @@
 #include <sys/timerfd.h>
 #include <unistd.h>
 
-#define INTERFACE "de.yesman.Clock.Alarms"
-#define OBJECT_PATH "/de/yesman/Clock/Alarms"
-#define APP_ID "de.yesman.Clock"
-#define RINGING_APP_ID "de.yesman.Clock.Ringing"
+#define INTERFACE "neo.Clock.Alarms"
+#define OBJECT_PATH "/neo/Clock/Alarms"
+#define APP_ID "neo.Clock"
+#define RINGING_APP_ID "neo.Clock.Ringing"
 
 static const char introspection[] =
   "<node>"
-  "  <interface name='de.yesman.Clock.Alarms'>"
+  "  <interface name='neo.Clock.Alarms'>"
   /* every alarm, with its coming instance if it has one: id u, hour i, minute i, days u (Monday bit 0), enabled b,
    * vibrate b, label s, ringtone s (absent: the default sound; empty: silent), delete-after-use b; instance u,
    * instance-state i (AlarmState), instance-time x (Unix) */
@@ -568,7 +568,7 @@ alarm_service_new (GDBusConnection *session, GDBusConnection *system, GSettings 
   if (self->zone_monitor)
     g_signal_connect (self->zone_monitor, "changed", G_CALLBACK (on_zone_changed), self);
   if (self->system)
-    self->wakeup_watch = g_bus_watch_name_on_connection (self->system, "de.yesman.Wakeup",
+    self->wakeup_watch = g_bus_watch_name_on_connection (self->system, "neo.Wakeup",
                                                          G_BUS_NAME_WATCHER_FLAGS_NONE, on_wakeup_appeared, NULL,
                                                          self, NULL);
 

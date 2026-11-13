@@ -221,7 +221,7 @@ make_player (AlarmKlaxon *self)
   if (sink)
     {
       g_autoptr(GstStructure) props = gst_structure_new ("props", "media.role", G_TYPE_STRING, "alarm",
-                                                         "application.id", G_TYPE_STRING, "de.yesman.Clock", NULL);
+                                                         "application.id", G_TYPE_STRING, "neo.Clock", NULL);
 
       g_object_set (sink, "stream-properties", props, NULL);
       g_object_set (player, "audio-sink", sink, NULL);
@@ -273,7 +273,7 @@ vibrate_once (AlarmKlaxon *self)
   g_variant_builder_add (&pattern, "(du)", 0.0, 500);
   g_variant_builder_add (&pattern, "(du)", 1.0, 500);
   g_dbus_connection_call (bus, "org.sigxcpu.Feedback", "/org/sigxcpu/Feedback", "org.sigxcpu.Feedback.Haptic",
-                          "Vibrate", g_variant_new ("(sa(du))", "de.yesman.Clock", &pattern), NULL,
+                          "Vibrate", g_variant_new ("(sa(du))", "neo.Clock", &pattern), NULL,
                           G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 }
 

@@ -461,7 +461,7 @@ make_frequents_empty (void)
 {
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   /* ic_oobe_freq_list (506 × 311 px), with the text under it as the conversation list's empty view has it */
-  GtkWidget *image = msg_image_new ("/de/yesman/Messaging/images/ic_oobe_freq_list.png", 169, 104);
+  GtkWidget *image = msg_image_new ("/neo/Messaging/images/ic_oobe_freq_list.png", 169, 104);
   GtkWidget *text = gtk_label_new (_("Enter a contact name or phone number to start a new message"));
 
   gtk_widget_set_halign (image, GTK_ALIGN_CENTER);

@@ -1,4 +1,4 @@
-/* The app's side of the SMS service (sms-service.c, de.yesman.Messaging.Sms): what it asks the service to do, and
+/* The app's side of the SMS service (sms-service.c, neo.Messaging.Sms): what it asks the service to do, and
  * bugle_db opened read-only, which the service tells it to read again with Changed.
  *
  * Asking goes over D-Bus, which starts the service when it does not run; reading goes to the store directly, as

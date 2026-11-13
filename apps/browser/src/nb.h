@@ -22,8 +22,8 @@
 
 G_BEGIN_DECLS
 
-#define NB_APP_ID "de.yesman.NeoBrowser"
-#define NB_RESOURCE_ICONS "/de/yesman/NeoBrowser/icons/scalable/actions/"
+#define NB_APP_ID "neo.Browser"
+#define NB_RESOURCE_ICONS "/neo/Browser/icons/scalable/actions/"
 #define NB_DEFAULT_HOME "https://google.com"
 #define NB_DEFAULT_ENGINE "https://google.com/search?ie=UTF-8&source=android-browser&q={searchTerms}"
 

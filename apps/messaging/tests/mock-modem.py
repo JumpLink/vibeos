@@ -12,7 +12,7 @@
 # On the session bus: a notification server, and the Messaging app's org.freedesktop.Application (what a tap on a
 # notification opens).
 #
-# de.yesman.Test.Modem on the session bus drives it: a message comes, sending fails, the modem goes; and it tells
+# neo.Test.Modem on the session bus drives it: a message comes, sending fails, the modem goes; and it tells
 # what the service did (the method calls it got, the notifications it holds, the messages still on the modem).
 import json
 import sys
@@ -76,7 +76,7 @@ SESSION_XML = '''<node>
 <method name="ActivateAction"><arg type="s" direction="in"/><arg type="av" direction="in"/>
 <arg type="a{sv}" direction="in"/></method>
 </interface>
-<interface name="de.yesman.Test.Modem">
+<interface name="neo.Test.Modem">
 <method name="Incoming"><arg name="number" type="s" direction="in"/><arg name="parts" type="as" direction="in"/>
 <arg name="timestamp" type="s" direction="in"/><arg type="o" direction="out"/></method>
 <method name="StatusReport"><arg type="o" direction="out"/></method>
@@ -144,8 +144,8 @@ class Modem:
                                lambda *a: None, lambda *a: GLib.Variant('b', self.gateway), None)
         for iface in Gio.DBusNodeInfo.new_for_xml(SESSION_XML).interfaces:
             session.register_object('/org/freedesktop/Notifications' if 'Notifications' in iface.name else
-                                    '/de/yesman/Messaging' if 'Application' in iface.name else
-                                    '/de/yesman/Test/Modem', iface, self.session_call, None, None)
+                                    '/neo/Messaging' if 'Application' in iface.name else
+                                    '/neo/Test/Modem', iface, self.session_call, None, None)
         # what came while the service was not running: on the modem when it starts
         if waiting:
             self.add(Sms(self, '+491709999999', 'While you were away', RECEIVED, DELIVER, '2026-11-08T01:00:00+01'),
@@ -270,7 +270,7 @@ class Modem:
     # --- the session's services and the test's controls
     def session_call(self, conn, sender, path, iface, method, params, inv):
         args = params.unpack()
-        if iface == 'de.yesman.Test.Modem':
+        if iface == 'neo.Test.Modem':
             return self.control(method, args, inv)
         self.log.append([method] + [a for a in args if not isinstance(a, dict)])
         if method == 'Notify':
@@ -355,10 +355,10 @@ def main():
         Gio.DBusConnectionFlags.MESSAGE_BUS_CONNECTION, None, None)
     session = Gio.bus_get_sync(Gio.BusType.SESSION, None)
     Modem(system, session, '--waiting' in sys.argv)
-    # --no-app: the real app runs on the session bus and is de.yesman.Messaging itself (to try the UI against it)
-    app = [] if '--no-app' in sys.argv else ['de.yesman.Messaging']
+    # --no-app: the real app runs on the session bus and is neo.Messaging itself (to try the UI against it)
+    app = [] if '--no-app' in sys.argv else ['neo.Messaging']
     names = [(system, MM), (system, GATEWAY)] + [(session, n) for n in ['org.freedesktop.Notifications'] + app +
-                                                 ['de.yesman.Test.Modem']]
+                                                 ['neo.Test.Modem']]
     for conn, name in names:
         conn.call_sync('org.freedesktop.DBus', '/org/freedesktop/DBus', 'org.freedesktop.DBus', 'RequestName',
                        GLib.Variant('(su)', (name, 4)), None, Gio.DBusCallFlags.NONE, -1, None)

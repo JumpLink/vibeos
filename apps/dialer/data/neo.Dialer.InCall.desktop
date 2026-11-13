@@ -1,0 +1,12 @@
+[Desktop Entry]
+# The in-call screen: the answer screen of a ringing call and the screen of a call that is up (InCallUI's
+# InCallActivity). Not in the app list: the call service has the shell start it, and this file says it may show
+# over the lock screen (showWhenLocked).
+Type=Application
+Name=Phone
+Exec=neo-dialer --incall
+Icon=neo.Dialer
+Terminal=false
+NoDisplay=true
+StartupNotify=false
+X-GnomePhone-ShowWhenLocked=true

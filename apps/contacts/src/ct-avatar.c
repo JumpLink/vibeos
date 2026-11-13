@@ -7,7 +7,7 @@
 
 #include <math.h>
 
-#define RESOURCE "/de/yesman/Contacts/images/"
+#define RESOURCE "/neo/Contacts/images/"
 
 static GdkTexture *
 image (const char *name)

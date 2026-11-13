@@ -19,7 +19,7 @@ BUS_CONFIG = '''<busconfig><type>session</type><listen>unix:tmpdir=%s</listen><a
 <policy context="default"><allow send_destination="*" eavesdrop="true"/><allow eavesdrop="true"/>
 <allow own="*"/></policy></busconfig>'''
 
-NAME, PATH, IFACE = 'de.yesman.Messaging.Sms', '/de/yesman/Messaging/Sms', 'de.yesman.Messaging.Sms'
+NAME, PATH, IFACE = 'neo.Messaging.Sms', '/neo/Messaging/Sms', 'neo.Messaging.Sms'
 # sms-store.h
 COMPLETE, DELIVERED, YET_TO_SEND, SENDING, RESENDING, AWAITING_RETRY, FAILED, INCOMING = 1, 2, 4, 5, 6, 7, 8, 100
 UNKNOWN_ERROR = 'org.freedesktop.ModemManager1.Error.MessageError.Unknown'
@@ -63,7 +63,7 @@ def write_settings(config_home, **keys):
     path = os.path.join(config_home, 'glib-2.0', 'settings', 'keyfile')
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path + '.new', 'w') as f:
-        f.write('[de/yesman/Messaging]\n' + ''.join('%s=%s\n' % (k.replace('_', '-'), 'true' if v else 'false')
+        f.write('[neo/Messaging]\n' + ''.join('%s=%s\n' % (k.replace('_', '-'), 'true' if v else 'false')
                                                      for k, v in keys.items()))
     os.replace(path + '.new', path)
 
@@ -116,7 +116,7 @@ class Test:
         return reply.unpack()[0]
 
     def modem(self, method, args=None, signature=None):
-        reply = self.bus.call_sync('de.yesman.Test.Modem', '/de/yesman/Test/Modem', 'de.yesman.Test.Modem', method,
+        reply = self.bus.call_sync('neo.Test.Modem', '/neo/Test/Modem', 'neo.Test.Modem', method,
                                    GLib.Variant(signature, args) if signature else None, None,
                                    Gio.DBusCallFlags.NONE, 5000, None)
         return reply.unpack() if reply else None
@@ -182,7 +182,7 @@ def run(t):
           rows and rows[0][5] == 1794096000000, rows)
     n = t.wait('and notified, by its sender', lambda: t.notification('0170 9999999'))
     if n:
-        check('as the Messaging\'s', n[1]['app'] == 'Messaging' and n[1]['desktop-entry'] == 'de.yesman.Messaging',
+        check('as the Messaging\'s', n[1]['app'] == 'Messaging' and n[1]['desktop-entry'] == 'neo.Messaging',
               n)
 
     # a long message in parts: one message once all are in

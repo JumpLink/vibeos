@@ -1,4 +1,4 @@
-/* The app's side of the alarm service (neo-clock-alarms, de.yesman.Clock.Alarms on the session bus).
+/* The app's side of the alarm service (neo-clock-alarms, neo.Clock.Alarms on the session bus).
  *
  * The service owns the alarms and rings them; the app only shows them and asks for changes. AlarmsClient keeps
  * the service's list (GetAlarms, fetched again on every Changed signal) and emits "changed" when it has a new one.

@@ -2,8 +2,8 @@
 <!-- the stylesheet and the app's own icon, where GtkApplication looks for icons: the resource base path + /icons.
      Every other icon comes from the user's icon theme; the Material Symbols in data/icons are no longer bundled. -->
 <gresources>
-  <gresource prefix="/de/yesman/Files">
+  <gresource prefix="/neo/Files">
     <file>files.css</file>
-    <file alias="icons/scalable/apps/de.yesman.Files.svg">de.yesman.Files.svg</file>
+    <file alias="icons/scalable/apps/neo.Files.svg">neo.Files.svg</file>
   </gresource>
 </gresources>

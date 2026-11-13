@@ -1,6 +1,6 @@
 /* Lock screen and Keyboard: what the shell itself follows.
  *
- * The lock screen is gnome-phone's keyguard (extension/keyguard.js). It reads de.yesman.neo lock-type at every lock
+ * The lock screen is gnome-phone's keyguard (extension/keyguard.js). It reads neo.Phone lock-type at every lock
  * to pick its bouncer: none (swipe), the pattern or the PIN pad. Pattern and PIN are both the user's own password,
  * checked by gp-auth through PAM; ns-pattern.c sets it. The keyguard's notification icons follow GNOME's
  * show-in-lock-screen, globally and per app (Notifications).
@@ -131,7 +131,7 @@ panel_is_oled (void)
 void
 ns_page_lock_screen (GtkWidget *row, gpointer data)
 {
-  GSettings *neo = ns_settings ("de.yesman.neo");
+  GSettings *neo = ns_settings ("neo.Phone");
   if (!neo || !ns_has_key (neo, "lock-type")) {
     g_clear_object (&neo);
     return;

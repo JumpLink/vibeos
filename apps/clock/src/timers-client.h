@@ -1,4 +1,4 @@
-/* The app's side of the timers (de.yesman.Clock.Timers in the Clock's service, timer-service.c).
+/* The app's side of the timers (neo.Clock.Timers in the Clock's service, timer-service.c).
  *
  * As with the alarms (alarms-client.h), the service owns the timers and rings them; the app shows them and asks for
  * changes, and its list comes back through "changed". The timers are timer-model.h's: a running one is worked out

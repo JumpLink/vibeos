@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=neo.Settings
+Exec=@bindir@/neo-settings --gapplication-service

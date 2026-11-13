@@ -1,7 +1,7 @@
 /* Settings (Etar's SettingsActivity: MainListPreferences, GeneralPreferences, CalendarPreferences) and About
  * (AboutActivity); spec/calendar.md §9, measured still:cal-settings and still:cal-settings-general.
  *
- * Every setting is one the app or its reminder service acts on, kept in GSettings (de.yesman.Calendar): Theme and
+ * Every setting is one the app or its reminder service acts on, kept in GSettings (neo.Calendar): Theme and
  * Pure black (cal-main's apply_look), Use real event colors, Default view, Display options (the Month view),
  * Hide declined events, Staggered display (DayView), Show week number, Week starts on, Days per week, Default event
  * duration, Use home time zone / Home time zone (cal_set_home_zone), Clear search history; Notifications (its own

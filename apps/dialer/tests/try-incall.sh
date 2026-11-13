@@ -80,8 +80,8 @@ EOF
     # HOLD=1: a modem that holds calls (the service finds out once, as it starts); DTMF=1: one that sends tones
     for feature in Hold:$HOLD Dtmf:$DTMF; do
         if [ -n "${feature#*:}" ]; then
-            as_user gdbus call --address "$(cat "$RIG/session")" --dest de.yesman.Test.Phone \
-                --object-path /de/yesman/Test/Phone --method "de.yesman.Test.Phone.Set${feature%%:*}" true >/dev/null
+            as_user gdbus call --address "$(cat "$RIG/session")" --dest neo.Test.Phone \
+                --object-path /neo/Test/Phone --method "neo.Test.Phone.Set${feature%%:*}" true >/dev/null
         fi
     done
     # shellcheck disable=SC2046
@@ -100,15 +100,15 @@ phone)
     shift
     method=$1
     shift
-    as_user gdbus call --address "$(cat "$RIG/session")" --dest de.yesman.Test.Phone \
-        --object-path /de/yesman/Test/Phone --method "de.yesman.Test.Phone.$method" "$@"
+    as_user gdbus call --address "$(cat "$RIG/session")" --dest neo.Test.Phone \
+        --object-path /neo/Test/Phone --method "neo.Test.Phone.$method" "$@"
     ;;
 calls)
     shift
     method=$1
     shift
-    as_user gdbus call --address "$(cat "$RIG/session")" --dest de.yesman.Dialer.Calls \
-        --object-path /de/yesman/Dialer/Calls --method "de.yesman.Dialer.Calls.$method" "$@"
+    as_user gdbus call --address "$(cat "$RIG/session")" --dest neo.Dialer.Calls \
+        --object-path /neo/Dialer/Calls --method "neo.Dialer.Calls.$method" "$@"
     ;;
 shot | tap | swipe)
     sh "$HEADLESS" "$@"

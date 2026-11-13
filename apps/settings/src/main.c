@@ -37,9 +37,9 @@ static const Entry entries[] = {
     "background accent dark theme", ns_page_wallpaper },
   { "view-app-grid-symbolic", "pink", "Home screen", "Grid • Icon size • Icon pack",
     "launcher neo grid columns rows layout icon size pack shape app names labels drawer search", ns_page_home, NULL,
-    "de.yesman.neo" },
+    "neo.Phone" },
   { "system-lock-screen-symbolic", "blue", "Lock screen", "Screen lock type • Notifications",
-    "pattern pin swipe password unlock", ns_page_lock_screen, NULL, "de.yesman.neo" },
+    "pattern pin swipe password unlock", ns_page_lock_screen, NULL, "neo.Phone" },
   { NULL },
   { "security-high-symbolic", "purple", "Security and privacy", "Screen lock • Permissions • Usage",
     "password pin camera microphone history trash", ns_page_privacy },
@@ -230,7 +230,7 @@ activate (GtkApplication *app, gpointer data)
     return;
   }
   GtkCssProvider *css = gtk_css_provider_new ();
-  gtk_css_provider_load_from_resource (css, "/de/yesman/NeoSettings/style.css");
+  gtk_css_provider_load_from_resource (css, "/neo/Settings/style.css");
   gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (css),
                                               GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
   g_object_unref (css);
@@ -358,7 +358,7 @@ command_line (GApplication *app, GApplicationCommandLine *cl, gpointer data)
 int
 main (int argc, char **argv)
 {
-  g_autoptr (AdwApplication) app = adw_application_new ("de.yesman.NeoSettings", G_APPLICATION_HANDLES_COMMAND_LINE);
+  g_autoptr (AdwApplication) app = adw_application_new ("neo.Settings", G_APPLICATION_HANDLES_COMMAND_LINE);
   const GOptionEntry options[] = {
     { "page", 0, 0, G_OPTION_ARG_STRING, NULL, "Open a page: home, wallpaper, wifi, hotspot, bluetooth, power…", "PAGE" },
     { "app", 0, 0, G_OPTION_ARG_STRING, NULL, "Open an app's page (its desktop file id)", "ID" },

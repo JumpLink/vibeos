@@ -1,6 +1,6 @@
 /* Gesture navigation, the launcher's half. The shell runs the gestures and moves the windows; it tells the launcher
- * what to look like behind them (de.yesman.NeoLauncher.State), and the launcher tells the shell where its icons are
- * (de.yesman.GnomePhone.Icons), so a window going home can fly into its own icon.
+ * what to look like behind them (neo.Launcher.State), and the launcher tells the shell where its icons are
+ * (neo.GnomePhone.Icons), so a window going home can fly into its own icon.
  *
  *   background  an app is being dragged: Launcher3's BACKGROUND_APP, depth 0.7 (wallpaper blurred to 30 dp and
  *               zoomed out), no workspace
@@ -258,7 +258,7 @@ push_icons (gpointer data)
     g_variant_builder_add (&b, "(s(dddd)s)", t->id, (double) r[0], (double) r[1], (double) r[2], (double) r[3],
                            t->splash_icon ? t->splash_icon : "");
   }
-  g_dbus_connection_call (N.bus, "de.yesman.GnomePhone", "/de/yesman/GnomePhone", "de.yesman.GnomePhone", "Icons",
+  g_dbus_connection_call (N.bus, "neo.GnomePhone", "/neo/GnomePhone", "neo.GnomePhone", "Icons",
                           g_variant_new ("(a(s(dddd)s))", &b), NULL, G_DBUS_CALL_FLAGS_NONE, 2000, NULL, NULL, NULL);
   return G_SOURCE_REMOVE;
 }
@@ -290,15 +290,15 @@ nav_drawer (bool open)
   if (!V.shell || !N.bus || V.drawer == (int) open)
     return;
   V.drawer = open;
-  g_dbus_connection_call (N.bus, "de.yesman.GnomePhone", "/de/yesman/GnomePhone", "de.yesman.GnomePhone", "Drawer",
+  g_dbus_connection_call (N.bus, "neo.GnomePhone", "/neo/GnomePhone", "neo.GnomePhone", "Drawer",
                           g_variant_new ("(b)", open), NULL, G_DBUS_CALL_FLAGS_NONE, 2000, NULL, NULL, NULL);
 }
 
-/* ---- de.yesman.NeoLauncher ------------------------------------------------------------------------------------- */
+/* ---- neo.Launcher ------------------------------------------------------------------------------------- */
 
 static const char IFACE[] =
   "<node>"
-  "  <interface name='de.yesman.NeoLauncher'>"
+  "  <interface name='neo.Launcher'>"
   /* state: normal | background | reveal | home | home-reveal | back | back-reveal; t0: when it starts (µs,
    * CLOCK_MONOTONIC); app_id (reveal, back, back-reveal): the icon a window is flying into, hidden until ShowIcon */
   "    <method name='State'>"
@@ -439,10 +439,10 @@ nav_init (void)
   if (!N.bus)
     return;
   g_autoptr (GDBusNodeInfo) info = g_dbus_node_info_new_for_xml (IFACE, NULL);
-  g_dbus_connection_register_object (N.bus, "/de/yesman/NeoLauncher", info->interfaces[0], &vtable, NULL, NULL,
+  g_dbus_connection_register_object (N.bus, "/neo/Launcher", info->interfaces[0], &vtable, NULL, NULL,
                                      NULL);
-  V.owner_id = g_bus_own_name_on_connection (N.bus, "de.yesman.NeoLauncher", G_BUS_NAME_OWNER_FLAGS_REPLACE,
+  V.owner_id = g_bus_own_name_on_connection (N.bus, "neo.Launcher", G_BUS_NAME_OWNER_FLAGS_REPLACE,
                                              NULL, NULL, NULL, NULL);
-  V.watch_id = g_bus_watch_name_on_connection (N.bus, "de.yesman.GnomePhone", G_BUS_NAME_WATCHER_FLAGS_NONE,
+  V.watch_id = g_bus_watch_name_on_connection (N.bus, "neo.GnomePhone", G_BUS_NAME_WATCHER_FLAGS_NONE,
                                                shell_appeared, shell_vanished, NULL, NULL);
 }

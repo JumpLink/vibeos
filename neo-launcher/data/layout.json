@@ -1,10 +1,10 @@
 {
  "dock": [
-  "de.yesman.Dialer.desktop",
-  "de.yesman.Contacts.desktop",
+  "neo.Dialer.desktop",
+  "neo.Contacts.desktop",
   null,
   "org.gnome.Console.desktop",
-  "de.yesman.Messaging.desktop"
+  "neo.Messaging.desktop"
  ],
  "pages": [
   [
@@ -23,10 +23,10 @@
    null,
    null,
    null,
-   "de.yesman.Camera.desktop",
-   "de.yesman.NeoBrowser.desktop",
+   "neo.Camera.desktop",
+   "neo.Browser.desktop",
    "org.gnome.Loupe.desktop",
-   "de.yesman.Calendar.desktop",
+   "neo.Calendar.desktop",
    "org.gnome.Software.desktop"
   ],
   [
@@ -50,11 +50,11 @@
    null,
    null,
    null,
-   "de.yesman.NeoWeather.desktop",
-   "de.yesman.Calculator.desktop",
-   "de.yesman.app.desktop",
+   "neo.Weather.desktop",
+   "neo.Calculator.desktop",
    null,
-   "de.yesman.NeoSettings.desktop"
+   null,
+   "neo.Settings.desktop"
   ]
  ]
 }

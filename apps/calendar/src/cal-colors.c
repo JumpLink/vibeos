@@ -127,8 +127,8 @@ cal_palette_set (CalLook look)
 {
   static const char *sheets[] = {
     [CAL_LOOK_DARK] = NULL,
-    [CAL_LOOK_BLACK] = "/de/yesman/Calendar/calendar-black.css",
-    [CAL_LOOK_LIGHT] = "/de/yesman/Calendar/calendar-light.css",
+    [CAL_LOOK_BLACK] = "/neo/Calendar/calendar-black.css",
+    [CAL_LOOK_LIGHT] = "/neo/Calendar/calendar-light.css",
   };
   GdkDisplay *display = gdk_display_get_default ();
 
