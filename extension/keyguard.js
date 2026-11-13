@@ -236,12 +236,16 @@ export class Keyguard extends Signals.EventEmitter {
             y: monitor.y,
             width: monitor.width,
             height: monitor.height,
-            style: 'background-color: black;',
         });
-        // Plain actors first and last: what shows and hides between them (the bouncer, the wallpaper) never changes
-        // the first or last visible child. St restyles a child that gains or loses :first-child or :last-child, and a
-        // restyle redraws every canvas under it: the bouncer showing restyled all its keys, mid-swipe.
-        this.actor.add_child(new Clutter.Actor());
+        // The same children first and last, always shown: what shows and hides between them (the bouncer, the
+        // wallpaper) never changes the first or last visible child. St restyles a child that gains or loses
+        // :first-child or :last-child, and a restyle redraws every canvas under it: the bouncer showing restyled all
+        // its keys, mid-swipe.
+        // First, black under the wallpaper. The unlock takes it away (opacity: no restyle) with the wallpaper, and
+        // the screen behind shows through: as the keyguard's own background it stayed over the launcher coming up,
+        // and every unlock went black for half a second (2026-11-13).
+        this._black = new St.Widget({width: monitor.width, height: monitor.height, style: 'background-color: black;'});
+        this.actor.add_child(this._black);
         this._wallpaper = new St.Widget({width: monitor.width, height: monitor.height});
         this.actor.add_child(this._wallpaper);
 
@@ -914,6 +918,7 @@ export class Keyguard extends Signals.EventEmitter {
             style: this._wallpaperStyle});
         Main.layoutManager.uiGroup.insert_child_below(under, global.window_group);
         this._wallpaper.hide();
+        this._black.opacity = 0;
 
         const group = global.window_group;
         const redirect = group.offscreen_redirect;
@@ -962,6 +967,7 @@ export class Keyguard extends Signals.EventEmitter {
         this._f = 1;
         this.actor.hide();
         this._wallpaper.show();
+        this._black.opacity = 255;
         if (this._grab)
             Main.popModal(this._grab);
         this._grab = null;
