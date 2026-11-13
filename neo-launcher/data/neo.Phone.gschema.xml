@@ -80,7 +80,8 @@
       <summary>Draw icons without pack art on a shaped background</summary>
     </key>
     <key name="search-drawer-enabled" type="b">
-      <default>true</default>
+      <!-- off by default: Settings > Home screen > Layout turns it on -->
+      <default>false</default>
       <summary>Search field at the top of the app drawer</summary>
       <description>Off: no search pill, and the app list starts where it was.</description>
     </key>
