@@ -18,7 +18,8 @@ common = static_library('common', 'src/phone-number.c', 'src/call-log.c', 'src/c
 # the service: the calls with the app closed, ringing, the call log, the notifications
 executable('neo-dialer-calls', 'src/calls-service.c', 'src/calls.c', 'src/modem.c', 'src/ringer.c',
            'src/call-notifications.c', 'src/notifier.c', 'src/phone.c', link_with: common, install: true,
-           dependencies: [gio, ebook, m, dependency('gstreamer-1.0'), dependency('libpulse-mainloop-glib')])
+           dependencies: [gio, ebook, m, dependency('gstreamer-1.0'), dependency('gstreamer-app-1.0'),
+                          dependency('libpulse-mainloop-glib')])
 
 # the app: its tabs and dialpad, and the in-call screen (neo-dialer --incall)
 gtk = dependency('gtk4', version: '>= 4.14')

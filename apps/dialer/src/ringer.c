@@ -1,7 +1,8 @@
-/* The ringer (ringer.h): GStreamer for the ringtone, PulseAudio's API (PipeWire's pulse server) for the speaker's
- * volume, feedbackd for the vibration and for the ringer mode. */
+/* The ringer (ringer.h): GStreamer for the ringtone and the keypad tones, PulseAudio's API (PipeWire's pulse server)
+ * for the speaker's volume, feedbackd for the vibration and for the ringer mode. */
 #include "ringer.h"
 
+#include <gst/app/gstappsrc.h>
 #include <gst/gst.h>
 #include <math.h>
 #include <pulse/glib-mainloop.h>
@@ -25,6 +26,13 @@
  * the tone sound two or three keys late), and the size of each piece it is handed */
 #define TONE_BUFFER_US 50000
 #define TONE_LATENCY_US 10000
+/* the tones are made here, a piece at a time as the sound server takes them: 10 ms pieces at 48 kHz */
+#define TONE_RATE 48000
+#define TONE_PIECE 480
+/* a tone fades in and out over 3 ms, as a sine switched on or off at full strength clicks */
+#define TONE_RAMP (TONE_RATE * 3 / 1000)
+/* a tap shorter than this still sounds this long: one between two pieces would otherwise not sound at all */
+#define TONE_MIN (TONE_RATE * 60 / 1000)
 
 /* playbin's GstPlayFlags: audio, with its own volume */
 #define PLAY_FLAG_AUDIO 0x02
@@ -46,10 +54,19 @@ struct _Ringer {
   gboolean previewing;          /* the player plays a ringtone once, for Settings */
   guint vibrate_id;
 
-  GstElement *tone;             /* the keypad tones: two sines into the speaker */
-  GstElement *tone_low, *tone_high;
-  GstElement *tone_gate;        /* a volume: 1 while a key is held, 0 between keys, the stream running all along */
+  GstElement *tone;             /* the keypad tones: the key's two sines, made by tone_need_data, into the speaker */
   guint tone_idle_id;
+  /* the key, from the main thread to the one making the tones */
+  GMutex tone_lock;
+  double tone_low, tone_high;   /* Hz, of the key held or last held */
+  gboolean tone_on;             /* a key is held */
+  guint tone_presses;           /* keys pressed so far */
+  /* the tone maker's own, in the streaming thread */
+  guint tone_presses_seen;
+  guint tone_min_left;          /* samples the last press sounds for at least */
+  double tone_level;            /* 0…1, following tone_on along the ramp */
+  double tone_phase_low, tone_phase_high; /* radians: a tone goes on unbroken from one piece to the next */
+  guint64 tone_samples;         /* made since the stream opened, for the pieces' timestamps */
 
   /* the speaker's volume, kept while ringing */
   pa_glib_mainloop *pa_loop;
@@ -305,13 +322,87 @@ dtmf_pair (char key, guint *low, guint *high)
   return TRUE;
 }
 
+/* The next piece of the tones, made as the sound server takes the last one: silence between keys, the key's two
+ * sines while it is held. Its pitch and whether it is held are read together, so a press sounds its own key from its
+ * first sample. (Two sine sources and a gate after them began every press with 40-60 ms of the last key's tone, and a
+ * short tap played only that: by the time the gate opened, that much was already made at the old pitch.) */
+static void
+tone_need_data (GstAppSrc *src, guint length, gpointer data)
+{
+  Ringer *self = data;
+  GstBuffer *piece = gst_buffer_new_allocate (NULL, TONE_PIECE * sizeof (gint16), NULL);
+  GstMapInfo map;
+  gint16 *out;
+  double low, high, step_low, step_high;
+  gboolean on;
+  guint presses;
+
+  g_mutex_lock (&self->tone_lock);
+  low = self->tone_low;
+  high = self->tone_high;
+  on = self->tone_on;
+  presses = self->tone_presses;
+  g_mutex_unlock (&self->tone_lock);
+  if (presses != self->tone_presses_seen)
+    {
+      self->tone_presses_seen = presses;
+      self->tone_min_left = TONE_MIN;
+    }
+  step_low = 2 * G_PI * low / TONE_RATE;
+  step_high = 2 * G_PI * high / TONE_RATE;
+
+  gst_buffer_map (piece, &map, GST_MAP_WRITE);
+  out = (gint16 *) map.data;
+  for (guint i = 0; i < TONE_PIECE; i++)
+    {
+      double want = on || self->tone_min_left > 0 ? 1 : 0;
+
+      if (self->tone_min_left > 0)
+        self->tone_min_left--;
+      if (self->tone_level < want)
+        self->tone_level = MIN (want, self->tone_level + 1.0 / TONE_RAMP);
+      else if (self->tone_level > want)
+        self->tone_level = MAX (want, self->tone_level - 1.0 / TONE_RAMP);
+      if (self->tone_level == 0)
+        {
+          /* the next tone starts from 0, rising */
+          self->tone_phase_low = self->tone_phase_high = 0;
+          out[i] = 0;
+          continue;
+        }
+      out[i] = (gint16) lrint (G_MAXINT16 * TONE_VOLUME / 2 * self->tone_level
+                               * (sin (self->tone_phase_low) + sin (self->tone_phase_high)));
+      self->tone_phase_low = fmod (self->tone_phase_low + step_low, 2 * G_PI);
+      self->tone_phase_high = fmod (self->tone_phase_high + step_high, 2 * G_PI);
+    }
+  gst_buffer_unmap (piece, &map);
+  GST_BUFFER_PTS (piece) = gst_util_uint64_scale_int (self->tone_samples, GST_SECOND, TONE_RATE);
+  GST_BUFFER_DURATION (piece) = gst_util_uint64_scale_int (TONE_PIECE, GST_SECOND, TONE_RATE);
+  self->tone_samples += TONE_PIECE;
+  gst_app_src_push_buffer (src, piece);
+}
+
+/* the stream stopped, and the tone maker back at the start for the next one (its thread has ended) */
+static void
+tone_stop_stream (Ringer *self)
+{
+  gst_element_set_state (self->tone, GST_STATE_NULL);
+  g_mutex_lock (&self->tone_lock);
+  self->tone_on = FALSE;
+  self->tone_presses_seen = self->tone_presses;
+  g_mutex_unlock (&self->tone_lock);
+  self->tone_min_left = 0;
+  self->tone_level = self->tone_phase_low = self->tone_phase_high = 0;
+  self->tone_samples = 0;
+}
+
 static gboolean
 tone_idle (gpointer data)
 {
   Ringer *self = data;
 
   self->tone_idle_id = 0;
-  gst_element_set_state (self->tone, GST_STATE_NULL);
+  tone_stop_stream (self);
   return G_SOURCE_REMOVE;
 }
 
@@ -321,33 +412,31 @@ make_tone (Ringer *self)
   g_autoptr(GError) error = NULL;
   g_autoptr(GstStructure) props = gst_structure_new ("props", "media.role", G_TYPE_STRING, "phone",
                                                      "application.id", G_TYPE_STRING, "neo.Dialer", NULL);
-  GstElement *tone, *sink;
+  g_autoptr(GstCaps) caps = NULL;
+  GstAppSrcCallbacks callbacks = { .need_data = tone_need_data };
+  GstElement *tone, *src, *sink;
 
   gst_init (NULL, NULL);
-  /* the stream runs from the dialpad's opening to its closing and the gate switches the tone: a stream started or
-   * resumed for each key woke the speaker every time (the tone came late) and first played out what the last key
-   * had left in its buffer (garbled) */
-  tone = gst_parse_launch ("audiomixer name=mix ! volume name=gate volume=0 ! audioconvert ! pulsesink name=sink "
-                           "audiotestsrc name=low wave=sine is-live=true ! mix. "
-                           "audiotestsrc name=high wave=sine is-live=true ! mix.", &error);
+  /* the stream runs from the dialpad's opening to its closing, silent between keys: a stream started or resumed for
+   * each key woke the speaker every time (the tone came late) and first played out what the last key had left in
+   * its buffer (garbled). The source holds one piece at most, so each is made just before the sound server needs it */
+  tone = gst_parse_launch ("appsrc name=src format=time ! audioconvert ! audioresample ! pulsesink name=sink", &error);
   if (!tone)
     {
       g_warning ("ringer: no keypad tones: %s", error->message);
       return NULL;
     }
+  caps = gst_caps_new_simple ("audio/x-raw", "format", G_TYPE_STRING,
+                              G_BYTE_ORDER == G_LITTLE_ENDIAN ? "S16LE" : "S16BE", "layout", G_TYPE_STRING,
+                              "interleaved", "rate", G_TYPE_INT, TONE_RATE, "channels", G_TYPE_INT, 1, NULL);
+  src = gst_bin_get_by_name (GST_BIN (tone), "src");
+  g_object_set (src, "caps", caps, "max-bytes", (guint64) (TONE_PIECE * sizeof (gint16)), NULL);
+  gst_app_src_set_callbacks (GST_APP_SRC (src), &callbacks, self, NULL);
+  gst_object_unref (src);
   sink = gst_bin_get_by_name (GST_BIN (tone), "sink");
   g_object_set (sink, "stream-properties", props, "buffer-time", (gint64) TONE_BUFFER_US,
                 "latency-time", (gint64) TONE_LATENCY_US, NULL);
   gst_object_unref (sink);
-  /* owned by the bin */
-  self->tone_low = gst_bin_get_by_name (GST_BIN (tone), "low");
-  self->tone_high = gst_bin_get_by_name (GST_BIN (tone), "high");
-  self->tone_gate = gst_bin_get_by_name (GST_BIN (tone), "gate");
-  gst_object_unref (self->tone_low);
-  gst_object_unref (self->tone_high);
-  gst_object_unref (self->tone_gate);
-  g_object_set (self->tone_low, "volume", TONE_VOLUME / 2, NULL);
-  g_object_set (self->tone_high, "volume", TONE_VOLUME / 2, NULL);
   return tone;
 }
 
@@ -385,26 +474,28 @@ ringer_play_tone (Ringer *self, char key)
 
   if (!dtmf_pair (key, &low, &high) || !tones_wanted (self) || !tone_running (self))
     return;
-  g_object_set (self->tone_low, "freq", (double) low, NULL);
-  g_object_set (self->tone_high, "freq", (double) high, NULL);
-  g_object_set (self->tone_gate, "volume", 1.0, NULL);
+  g_mutex_lock (&self->tone_lock);
+  self->tone_low = low;
+  self->tone_high = high;
+  self->tone_on = TRUE;
+  self->tone_presses++;
+  g_mutex_unlock (&self->tone_lock);
 }
 
 void
 ringer_stop_tone (Ringer *self)
 {
-  if (self->tone)
-    g_object_set (self->tone_gate, "volume", 0.0, NULL);
+  g_mutex_lock (&self->tone_lock);
+  self->tone_on = FALSE;
+  g_mutex_unlock (&self->tone_lock);
 }
 
 void
 ringer_release_tones (Ringer *self)
 {
   g_clear_handle_id (&self->tone_idle_id, g_source_remove);
-  if (!self->tone)
-    return;
-  g_object_set (self->tone_gate, "volume", 0.0, NULL);
-  gst_element_set_state (self->tone, GST_STATE_NULL);
+  if (self->tone)
+    tone_stop_stream (self);
 }
 
 /* --- the vibration */
@@ -498,6 +589,7 @@ ringer_new (GSettings *settings)
   if (feedback)
     self->feedback = g_settings_new ("org.sigxcpu.feedbackd");
   self->pa_loop = pa_glib_mainloop_new (NULL);
+  g_mutex_init (&self->tone_lock);
   return self;
 }
 
@@ -527,5 +619,6 @@ ringer_free (Ringer *self)
   g_clear_object (&self->feedback);
   g_object_unref (self->settings);
   g_free (self->uri);
+  g_mutex_clear (&self->tone_lock);
   g_free (self);
 }
