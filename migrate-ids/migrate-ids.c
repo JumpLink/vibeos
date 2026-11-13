@@ -22,7 +22,8 @@
  *  - per-app notification settings (org.gnome.desktop.notifications.application) are copied to the new id, which
  *    joins application-children.
  * The home layout is the launcher's: it reads old desktop ids in any layout.json (a ROM's in /etc/xdg too) and in
- * hidden-from-home as the new ones (neo-launcher/src/apps.c). */
+ * hidden-from-home as the new ones (neo-launcher/src/apps.c). What a 0.1.6 launcher made of the user's layout while
+ * the packages were upgraded is undone here, from the copy saved before (restore_layout). */
 #include "legacy-ids.h"
 
 #include <errno.h>
@@ -155,6 +156,47 @@ move_app_dirs (void)
     for (guint b = 0; b < G_N_ELEMENTS (bases); b++)
       move_dir (bases[b], old, legacy_ids[i].now);
   }
+}
+
+/* ---- the home layout -------------------------------------------------------------------------------------------- */
+
+/* A 0.1.6 launcher still running while the packages are upgraded watches every app's desktop file go and the renamed
+ * one come, an app it has never seen: it empties the old one's cells, puts the new one on the first free cell (A→Z)
+ * and saves that over the user's layout. The first renamed package to be unpacked saved each user's layout as it was
+ * before (debian/layouts-before-0.1.7.sh), and it goes back in place here, before the new launcher reads it; the one
+ * that launcher made stays beside it. */
+static void
+restore_layout (void)
+{
+  g_autofree char *saved = g_strconcat (SAVED_LAYOUTS, "/", g_get_user_name (), ".json", NULL);
+  /* once: a run that left something else undone comes back at the next start, when the user may have moved icons */
+  g_autofree char *mark = g_build_filename (g_get_user_state_dir (), "gnome-phone", "layout-restored", NULL);
+  g_autofree char *before = NULL, *now = NULL;
+  gsize len;
+  if (g_file_test (mark, G_FILE_TEST_EXISTS) || !g_file_get_contents (saved, &before, &len, NULL))
+    return;
+  g_autofree char *file = g_build_filename (g_get_user_config_dir (), "neo-launcher", "layout.json", NULL);
+  g_autofree char *aside = g_build_filename (g_get_user_config_dir (), "neo-launcher", "layout-upgrade-0.1.7.json",
+                                             NULL);
+  g_autoptr (GError) error = NULL;
+  if (g_file_get_contents (file, &now, NULL, NULL) && !strcmp (now, before)) {
+    /* upgraded with no launcher running: nothing to undo */
+  } else if (now && g_rename (file, aside)) {
+    note ("could not move %s aside: %s", home (file), g_strerror (errno));
+    failed = TRUE;
+    return;
+  } else if (!g_file_set_contents (file, before, len, &error)) {
+    note ("could not put the home layout back: %s", error->message);
+    failed = TRUE;
+    return;
+  } else if (now) {
+    note ("home layout: back as it was before the upgrade; the one the old launcher made during it is %s",
+          home (aside));
+  } else {
+    note ("home layout: back as it was before the upgrade");
+  }
+  if (!g_file_set_contents (mark, "", 0, &error))
+    g_printerr ("gnome-phone-migrate-ids: %s\n", error->message);
 }
 
 /* ---- the browser's shortcuts ------------------------------------------------------------------------------------ */
@@ -622,6 +664,7 @@ main (int argc, char **argv)
   g_setenv ("GIO_USE_VFS", "local", TRUE);
   report = g_string_new (NULL);
   move_app_dirs ();
+  restore_layout ();
   move_shortcuts ();
   map_all_mimeapps ();
   copy_settings ();

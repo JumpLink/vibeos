@@ -7,7 +7,10 @@ legacy_ids_dep = declare_dependency(
   include_directories: include_directories('.'),
   dependencies: glib)
 
+# where the app packages' preinst (debian/layouts-before-0.1.7.sh) saves each user's home layout before the upgrade
+saved_layouts = get_option('prefix') / get_option('localstatedir') / 'lib' / 'neo-launcher' / 'before-0.1.7'
 executable('gnome-phone-migrate-ids', 'migrate-ids.c', dependencies: [legacy_ids_dep, dependency('gio-2.0')],
+           c_args: ['-DSAVED_LAYOUTS="@0@"'.format(saved_layouts)],
            install: true, install_dir: get_option('libexecdir'))
 migrate_ids_path = get_option('prefix') / get_option('libexecdir') / 'gnome-phone-migrate-ids'
 
