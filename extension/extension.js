@@ -18,7 +18,7 @@ import {Keyguard} from './keyguard.js';
 import {NoWindowMipmaps} from './mipmaps.js';
 import {AndroidKeyboard} from './osk.js';
 import {TouchFocusKeyboard} from './oskfocus.js';
-import {overWindows} from './scanout.js';
+import {overWindows, restoreUnredirect} from './scanout.js';
 import {Power} from './power.js';
 import {PowerMenu} from './powermenu.js';
 import {Rotation} from './rotation.js';
@@ -224,5 +224,7 @@ export default class GnomePhoneExtension extends Extension {
         this._gc = null;
         this._rotation?.destroy();
         this._rotation = null;
+        // every actor that held the display composited is gone by now
+        restoreUnredirect();
     }
 }
