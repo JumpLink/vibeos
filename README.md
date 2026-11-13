@@ -20,7 +20,7 @@ brought up on a POCO X3 NFC.
 | `gnome-phone` | Metapackage: the extension, the session and the apps |
 | `gnome-shell-extension-gnome-phone` | The GNOME Shell extension: gestures, recents, status bar, shade, lock screen, AOD, rotation |
 | `gnome-phone-session` | The "GNOME Phone" session (GDM, or a systemd unit with no display manager) |
-| `gnome-phone-daemons` | System helpers: the lock screen's PIN check (PAM), waking from suspend for alarms and reminders, a GPU clock boost while touched |
+| `gnome-phone-daemons` | System helpers: the lock screen's PIN check (PAM), waking from suspend for alarms and reminders, a GPU clock boost while touched, and carrying a user's settings over to the IDs renamed in 0.1.7 |
 | `neo-launcher` | Neo, the home screen: pages, dock, app drawer, widgets, icon packs and shapes, parallax wallpaper (a Wayland client drawn with Vulkan) |
 | `neo-dialer`, `neo-messaging`, `neo-contacts` | LineageOS's Dialer and Messaging rebuilt in GTK 4 (calls and SMS through ModemManager, ringing with the app closed); contacts on evolution-data-server |
 | `neo-clock`, `neo-calendar`, `neo-calculator`, `neo-compass` | Alarms, timers and world clock; calendar; calculator; compass |
@@ -75,6 +75,18 @@ busctl call org.freedesktop.Accounts /org/freedesktop/Accounts/User$(id -u) \
 ```
 
 To run without a display manager, see `/usr/share/doc/gnome-phone-session/README.Debian`.
+
+### Upgrading from 0.1.6 or older
+
+0.1.7 renamed every ID to `neo.*`: the apps are `neo.Dialer`, `neo.Clock`, `neo.Browser`, `neo.Settings` and so on,
+the shared phone settings are the `neo.Phone` schema, and the extension's UUID is `gnome-phone@neo`. Log out or
+restart after the upgrade: until then the running shell, launcher and services still use the old names. At the next
+session start `gnome-phone-migrate-ids` (in `gnome-phone-daemons`) copies each user's settings to the new schemas,
+moves the apps' files (alarms, the browser's profile, the calculator's history) to the new names, and carries the
+default apps, favourites, notification settings and the enabled extension across; the launcher reads old app ids in
+the home layout as the new ones. It records what it did in `~/.local/state/gnome-phone/ids-migrated`. Old settings
+are left where they were. A device's own GSettings overrides must name the new schema (`[neo.Phone]`, not the old
+one) and the new app ids.
 
 ## Not in these packages
 

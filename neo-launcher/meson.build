@@ -14,6 +14,7 @@ deps = [
   dependency('threads'),
   libm,
   spongy_dep,
+  legacy_ids_dep,
 ]
 
 # Wayland protocols: xdg-shell for the window, viewporter + fractional scale for the exact pixel size, presentation
@@ -42,6 +43,7 @@ executable('neo-launcher',
   'src/popup.c', 'src/drag.c',
   proto_src,
   include_directories: include_directories('src', 'shaders'),
+  c_args: '-DMIGRATE_IDS="@0@"'.format(migrate_ids_path),
   dependencies: deps,
   install: true)
 
@@ -58,5 +60,11 @@ install_subdir('parallax/solar-system', install_dir: get_option('datadir') / 'ne
 install_data('parallax/95_neo-parallax-solar-system.gschema.override',
              install_dir: get_option('datadir') / 'glib-2.0' / 'schemas')
 install_data('parallax/neo-parallax-solar-system.xml', install_dir: get_option('datadir') / 'gnome-background-properties')
+
+# the 0.1.7 renaming as the launcher sees it: old desktop ids in layouts and in hidden-from-home read as the new ones
+test('legacy-ids', executable('test-legacy-ids', 'tests/test-legacy-ids.c', 'src/model.c', 'src/apps.c',
+                              include_directories: include_directories('src'),
+                              dependencies: [dependency('gio-unix-2.0'), dependency('json-glib-1.0'), legacy_ids_dep]))
+
 gnome = import('gnome')
 gnome.post_install(glib_compile_schemas: true)

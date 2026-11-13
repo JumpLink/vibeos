@@ -129,7 +129,8 @@ Description: GNOME Phone session
 Package: gnome-phone-daemons
 Architecture: any
 Section: admin
-Depends: ${shlibs:Depends},
+Depends: dconf-cli,
+         ${shlibs:Depends},
          ${misc:Depends},
 Description: GNOME Phone system helpers
  Small system programs used by the GNOME Phone shell and apps:
@@ -140,7 +141,10 @@ Description: GNOME Phone system helpers
     the next alarm clock;
   * input-boost raises the GPU's (and optionally the CPUs') clock floor while
     the touchscreen is touched. It is not enabled by default: its floor must
-    be tuned for the device.
+    be tuned for the device;
+  * gnome-phone-migrate-ids carries each user's settings, files and home
+    screen over from the IDs GNOME Phone had up to 0.1.6 to the neo.* ones,
+    once, as the user's session starts (a systemd user unit).
 
 Package: sim-apn
 Architecture: all

@@ -6,6 +6,7 @@ cc = meson.get_compiler('c')
 libm = cc.find_library('m')
 
 subdir('libspongy')
+subdir('migrate-ids')
 subdir('neo-launcher')
 subdir('boost')
 subdir('auth')
