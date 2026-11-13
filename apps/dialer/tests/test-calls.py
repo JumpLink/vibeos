@@ -172,7 +172,9 @@ def run(t):
     path = t.phone('Incoming', ('+491701234567',), '(s)')[0]
     t.wait('the answer screen is asked for over the lock screen',
            lambda: ['LaunchFullScreen', 'neo.Dialer.InCall'] in t.logged('LaunchFullScreen'))
-    call_id = t.wait('INCOMING', lambda: next((c['id'] for c in t.calls() if c['state'] == INCOMING), 0))
+    # the first ring starts GStreamer, which in a package build's empty HOME scans every plugin first: seconds under
+    # emulation, with the service answering nothing meanwhile
+    call_id = t.wait('INCOMING', lambda: next((c['id'] for c in t.calls() if c['state'] == INCOMING), 0), timeout=30)
     t.wait('its notification does not peek over the answer screen',
            lambda: (t.notification(body='Incoming call') or (0, {}))[1].get('no-peek'))
     check('the call audio stays out while it rings', not t.logged('SelectMode'))
