@@ -1,7 +1,5 @@
-/* TimerCard: see timer-card.h. Measured on the reference phone with a running timer (px, 3 px/dp): the card
- * 48…1031 × 307…1068, the label's text from x 144, the close circle 882…941 × 397…456, the ring 105…612 × 498…1005,
- * "+ 1:00" 671…983 × 535…759, play/pause 671…983 × 808…1008, the reset icon centred on 358, 883. On the expired
- * screen (no label, no close): the card 862…1508, the ring's dot at 358, 951. */
+/* TimerCard: see timer-card.h. The label and the close button on top; under them the ring with the time in it,
+ * and "+ 1:00" over play/pause to its right. On the expired screen it has no label and no close button. */
 #include "timer-card.h"
 #include "clock-draw.h"
 #include "timers-client.h"
@@ -11,20 +9,20 @@
 #include <neo.h>
 
 #define PADDING         16      /* the card's padding */
-#define CORNER          28      /* alarm_background */
-#define LABEL_MARGIN    8       /* the label's layout_margin, and its padding on either side */
-#define LABEL_HEIGHT    27      /* one 20 sp line with the font's padding (81 px) */
-#define ICON_BUTTON     48      /* materialIconButtonStyle: close and reset */
+#define CORNER          28      /* as round as an alarm's card */
+#define LABEL_MARGIN    8       /* the label's margin, and its padding on either side */
+#define LABEL_HEIGHT    27      /* one line of the label, with the font's padding */
+#define ICON_BUTTON     48      /* close and reset */
 #define ICON_SIZE       20      /* ... and their icons */
-#define STROKE          6       /* circletimer_circle_size: the ring, and twice the dot's radius */
-#define MAX_CIRCLE      240     /* max_timer_circle_size */
-#define CIRCLE_MARGIN   8       /* the ring's box: marginTop under the label, marginEnd before "+ 1:00" twice that */
-#define SPACE           8       /* the Spaces over and under "+ 1:00" */
-#define INSET           4       /* MaterialButton's insetTop and insetBottom */
-#define ADD_HEIGHT      75      /* "+ 1:00": the 20 sp line and 24 dp padding over and under it */
-#define PLAY_HEIGHT     67      /* play/pause: an 18 dp icon and its padding (measured) */
+#define STROKE          6       /* the ring, and twice the dot's radius */
+#define MAX_CIRCLE      240
+#define CIRCLE_MARGIN   8       /* the ring's box: this much under the label, twice that before "+ 1:00" */
+#define SPACE           8       /* the space over and under "+ 1:00" */
+#define INSET           4       /* over and under each filled button, inside its box */
+#define ADD_HEIGHT      75      /* "+ 1:00": its line and the padding over and under it */
+#define PLAY_HEIGHT     67      /* play/pause: its icon and the padding */
 #define BUTTON_PADDING  24      /* both buttons' padding at the sides */
-#define TIME_SIZE       40      /* timer_time_text, at most: it shrinks to fit (AutoSizingTextView) */
+#define TIME_SIZE       40      /* at most: it shrinks to fit */
 #define TIME_PADDING    24      /* ... and its padding either side */
 
 #define HOUR (60 * 60 * 1000)
@@ -35,7 +33,7 @@ struct _TimerCard
   guint id;
   gboolean ringing;
 
-  TimerState state;             /* as last shown (mLastState); 0 before the first update */
+  TimerState state;             /* as last shown; 0 before the first update */
   double elapsed;               /* how much of the length has gone, 0..1, for the ring */
   gboolean ring_hidden;         /* an expired timer's ring blinking off */
   char *label;                  /* the timer's, as shown */
@@ -54,7 +52,7 @@ timer_card_get_id (TimerCard *self)
   return self->id;
 }
 
-/* --- the time (TimerTextController) */
+/* --- the time */
 
 /* the time left rounded up to the next second, "1:02:03", "2:03" or "3"; in overtime counting on behind a minus
  * sign, rounded down */
@@ -108,7 +106,7 @@ on_refit (gpointer data)
   return G_SOURCE_REMOVE;
 }
 
-/* --- the buttons (TimerViewHolder) */
+/* --- the buttons */
 
 static void
 on_label_response (NeoDialog *dialog, int response, TimerCard *self)
@@ -126,7 +124,7 @@ on_label_activate (GtkEntry *entry, NeoDialog *dialog)
   neo_dialog_respond (dialog, NEO_RESPONSE_OK);
 }
 
-/* LabelDialogFragment, as for an alarm: "Label" over one line of text, Cancel and OK; the text starts selected */
+/* the label dialog, as for an alarm: "Label" over one line of text, Cancel and OK; the text starts selected */
 static void
 on_label (NeoPressable *button, TimerCard *self)
 {
@@ -155,7 +153,7 @@ on_close (NeoPressable *button, TimerCard *self)
   timers_client_delete (timers_client_get (), self->id);
 }
 
-/* resetOrDeleteTimer: the service deletes a timer another app asked to have gone once it rang */
+/* reset: the service deletes a timer another app asked to have gone once it rang */
 static void
 on_reset (NeoPressable *button, TimerCard *self)
 {
@@ -196,7 +194,7 @@ describe (GtkWidget *widget, const char *description)
   gtk_accessible_update_property (GTK_ACCESSIBLE (widget), GTK_ACCESSIBLE_PROPERTY_LABEL, description, -1);
 }
 
-/* --- updating (TimerItem.update) */
+/* --- updating */
 
 static void
 show_label (TimerCard *self, const char *label)
@@ -286,9 +284,9 @@ typedef struct
   double height;
 } Layout;
 
-/* timer_item.xml's constraints for a card `width` wide. The right column is anchored at the bottom: play/pause,
+/* the layout of a card `width` wide. The right column is anchored at the bottom: play/pause,
  * a Space, "+ 1:00", a Space, the close button. The ring's box is square, as wide as the room left of "+ 1:00"
- * (at most 240 dp), and centred in the height under the label. The card is as tall as the taller column. */
+ * (at most MAX_CIRCLE), and centred in the height under the label. The card is as tall as the taller column. */
 static void
 compute_layout (TimerCard *self, int width, Layout *layout)
 {
@@ -372,8 +370,8 @@ timer_card_size_allocate (GtkWidget *widget, int width, int height, int baseline
   place (self->add, &layout.add);
   place (self->play, &layout.play);
 
-  /* the time in the middle of the ring (includeFontPadding off: the label's own line), the reset button at its
-   * foot, an eighth of the ring's inner diameter up (CircleButtonsLayout) */
+  /* the time in the middle of the ring (without font padding: the label's own line), the reset button at its foot, an
+   * eighth of the ring's inner diameter up */
   if (layout.ring.size.width != self->fitted && !self->refit)
     self->refit = g_idle_add (on_refit, self);
   self->fitted = layout.ring.size.width;
@@ -391,14 +389,14 @@ timer_card_size_allocate (GtkWidget *widget, int width, int height, int baseline
 
 /* --- drawing */
 
-/* TimerCircleView. A reset timer: the whole ring in primary. Running or paused: what is left in primary clockwise
- * from 12 o'clock, what has gone in the background colour the other way, the dot between them. Expired: the
- * whole ring in the background colour, the dot at the top. */
+/* the ring. A reset timer: the whole ring in primary. Running or paused: what is left in primary clockwise from 12
+ * o'clock, what has gone in the background colour the other way, the dot between them. Expired: the whole ring in the
+ * background colour, the dot at the top. */
 static void
 snapshot_ring (TimerCard *self, GtkSnapshot *snapshot)
 {
   int scale = neo_device_scale (GTK_WIDGET (self));
-  /* Android's centre is in whole pixels (getWidth () / 2) */
+  /* the centre in whole device pixels */
   double half = floor (self->ring.size.width * scale / 2) / scale;
   double cx = self->ring.origin.x + half, cy = self->ring.origin.y + half;
   double radius = half - STROKE, gone;
@@ -464,7 +462,7 @@ timer_card_class_init (TimerCardClass *klass)
   gtk_widget_class_set_css_name (widget_class, "timer-card");
 }
 
-/* a filled pill (a MaterialButton): its corners fully round, the ripple bounded by them */
+/* a filled pill: its corners fully round, the ripple bounded by them */
 static GtkWidget *
 pill_new (GtkWidget *child, NeoColor fill, int height)
 {
@@ -481,7 +479,7 @@ timer_card_init (TimerCard *self)
 {
   GtkWidget *add_text, *close_icon;
 
-  /* the label: 20 sp in colorSecondary, cut at the start when long; a tap edits it */
+  /* the label: cut at the start when long; a tap edits it */
   self->label_text = gtk_label_new (NULL);
   gtk_widget_add_css_class (self->label_text, "timer-label");
   gtk_label_set_ellipsize (GTK_LABEL (self->label_text), PANGO_ELLIPSIZE_START);
@@ -496,7 +494,7 @@ timer_card_init (TimerCard *self)
   g_signal_connect (self->label_button, "clicked", G_CALLBACK (on_label), self);
   gtk_widget_set_parent (self->label_button, GTK_WIDGET (self));
 
-  /* close: ic_close_circle, a white cross on a disc in colorOutline, 20 dp */
+  /* close: a white cross on a disc */
   close_icon = gtk_image_new_from_icon_name ("clock-close-circle-cross-symbolic");
   gtk_image_set_pixel_size (GTK_IMAGE (close_icon), ICON_SIZE);
   gtk_widget_set_halign (close_icon, GTK_ALIGN_CENTER);
@@ -508,12 +506,12 @@ timer_card_init (TimerCard *self)
   g_signal_connect (self->close, "clicked", G_CALLBACK (on_close), self);
   gtk_widget_set_parent (self->close, GTK_WIDGET (self));
 
-  /* the time, display_time at 40 sp */
+  /* the time */
   self->time = gtk_label_new ("");
   gtk_widget_add_css_class (self->time, "timer-time");
   gtk_widget_set_parent (self->time, GTK_WIDGET (self));
 
-  /* reset: ic_reset in primary, 20 dp */
+  /* reset */
   self->reset = neo_icon_button_new ("clock-reset-symbolic");
   gtk_image_set_pixel_size (GTK_IMAGE (neo_pressable_get_child (NEO_PRESSABLE (self->reset))), ICON_SIZE);
   gtk_widget_add_css_class (self->reset, "timer-reset");
@@ -521,7 +519,7 @@ timer_card_init (TimerCard *self)
   g_signal_connect (self->reset, "clicked", G_CALLBACK (on_reset), self);
   gtk_widget_set_parent (self->reset, GTK_WIDGET (self));
 
-  /* "+ 1:00" in colorTertiary, and play/pause in primary under it, as wide as it */
+  /* "+ 1:00" in the tertiary colour, and play/pause in primary under it, as wide as it */
   add_text = gtk_label_new (_("+ 1:00"));
   gtk_widget_add_css_class (add_text, "timer-add");
   neo_label_set_font_padding (add_text, 20);
@@ -550,7 +548,7 @@ timer_card_new (guint id, gboolean ringing)
   self->ringing = ringing;
   if (ringing)
     {
-      /* ExpiredTimersActivity.addTimer: no close, no reset, no hint */
+      /* on the expired-timers screen: no close, no reset, no hint */
       gtk_widget_set_visible (self->close, FALSE);
       gtk_widget_set_visible (self->reset, FALSE);
       gtk_widget_set_visible (self->label_button, FALSE);

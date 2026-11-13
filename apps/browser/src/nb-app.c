@@ -1,4 +1,4 @@
-/* nb-app: the engine, the session, downloads and shortcuts (spec/jelly.md §1, §5.5, §7.2, §12, §15). */
+/* nb-app: the engine, the session, downloads and shortcuts. */
 #include "nb.h"
 
 #include <glib/gstdio.h>
@@ -8,14 +8,14 @@
 
 /* Ad blocking: EasyList in WebKit's content-blocker format, compiled once into WebKit's filter store (the network
  * process then blocks without asking us), fetched again once a week. A copy beside the app covers the first start.
- * Not a Jelly feature: the old browser's, kept (§12). */
+ * Not from Jelly: the old browser's, kept. */
 #define FILTER_URL "https://easylist-downloads.adblockplus.org/easylist_min_content_blocker.json"
 #define FILTER_ID "easylist"
 #define FILTER_MAX_AGE (7 * 24 * 3600)
 #define MEMORY_LIMIT_MB 768
 #define SHORTCUT_PREFIX NB_APP_ID ".shortcut-"
 
-/* Android's scrollbar: a thin rounded thumb over the page, no track and no arrow buttons */
+/* a phone's scrollbar: a thin rounded thumb over the page, no track and no arrow buttons */
 static const char SCROLLBAR_CSS[] =
   "::-webkit-scrollbar{width:5px!important;height:5px!important;background:transparent!important}"
   "::-webkit-scrollbar-track,::-webkit-scrollbar-corner{background:transparent!important}"
@@ -141,7 +141,7 @@ on_download_started (WebKitNetworkSession *s, WebKitDownload *d, gpointer data)
 static void
 cookie_policy (WebKitNetworkSession *s, gboolean incognito)
 {
-  /* MainActivity: CookieManager.setAcceptCookie (!incognito && cookiesEnabled) */
+  /* cookies: on unless incognito or turned off in Settings */
   gboolean on = !incognito && nb_store_get_bool (nb->store, "cookies", TRUE);
   webkit_cookie_manager_set_accept_policy (webkit_network_session_get_cookie_manager (s),
                                            on ? WEBKIT_COOKIE_POLICY_ACCEPT_NO_THIRD_PARTY
@@ -215,7 +215,7 @@ on_cookies_cleared (GObject *src, GAsyncResult *res, gpointer data)
 void
 nb_clear_cookies (void)
 {
-  /* CookieManager.removeAllCookies: every cookie, of every site */
+  /* every cookie, of every site */
   webkit_website_data_manager_clear (webkit_network_session_get_website_data_manager (nb->session),
                                      WEBKIT_WEBSITE_DATA_COOKIES, 0, NULL, on_cookies_cleared, NULL);
 }
@@ -234,8 +234,8 @@ nb_home_autoload (void)
   return nb_store_get_bool (nb->store, "homePageAutoload", TRUE);
 }
 
-/* UrlUtils.smartUrlFilter: a scheme → as it is; one word that looks like a web address → https://…; anything else
- * → the search engine (spec §2.2) */
+/* what the user typed as a URL: a scheme → as it is; one word that looks like a web address → https://…; anything else
+ * → the search engine */
 char *
 nb_smart_url (const char *text)
 {
@@ -366,7 +366,7 @@ nb_app_activate (void)
 void
 nb_app_open (const char *const *urls, gboolean incognito, const char *shortcut_id)
 {
-  /* a cold start brings the saved tabs back first (Android keeps its tasks), the new one goes on top */
+  /* a cold start brings the saved tabs back first, the new one goes on top */
   if (!nb->tabs->len)
     restore_session ();
   if (!urls || !urls[0]) {
@@ -382,7 +382,7 @@ nb_open_tab (const char *url, gboolean incognito, const char *shortcut_id, WebKi
 {
   g_auto (GStrv) desktop_ids = nb_store_get_strv (nb->store, "desktopShortcuts");
   gboolean desktop = shortcut_id && g_strv_contains ((const char *const *) desktop_ids, shortcut_id);
-  /* MainActivity: the intent's URL, else the home page when it autoloads, else nothing */
+  /* the URL asked for, else the home page when it autoloads, else nothing */
   const char *load = url && *url ? url : related ? NULL : nb_home_autoload () ? nb_home_page () : NULL;
   NbTab *t = nb_tab_new (load, incognito, desktop, shortcut_id, related);
 
@@ -407,7 +407,7 @@ nb_tab_forget (NbTab *t)
   nb_save_session_now ();
 }
 
-/* ---- downloads (§5.5): to ~/Downloads, a notification when done ---- */
+/* ---- downloads: to ~/Downloads, a notification when done ---- */
 
 static NbDownload *
 download_of (WebKitDownload *d)
@@ -482,7 +482,7 @@ on_download_finished (WebKitDownload *d, gpointer data)
   nb_downloads_changed ();
   if (e->failed || !e->path)
     return;
-  /* DownloadManager's VISIBILITY_VISIBLE_NOTIFY_COMPLETED: the file's name, "Download complete"; a tap opens it */
+  /* a finished download's notification: the file's name, "Download complete"; a tap opens it */
   g_autoptr (GNotification) n = g_notification_new (e->name);
   g_notification_set_body (n, "Download complete");
   g_notification_set_default_action_and_target (n, "app.open-file", "s", e->path);
@@ -574,7 +574,7 @@ nb_scan_downloads (void)
     g_ptr_array_add (nb->downloads, found->pdata[i]);
 }
 
-/* ---- shortcuts (§7.2): a desktop entry the launcher puts on the home screen ---- */
+/* ---- shortcuts: a desktop entry the launcher puts on the home screen ---- */
 
 void
 nb_shortcut_free (NbShortcut *s)
@@ -592,7 +592,8 @@ applications_dir (void)
   return g_build_filename (g_get_user_data_dir (), "applications", NULL);
 }
 
-/* a desktop entry's Exec argument: quoted, with the characters the spec reserves escaped, and %% for % */
+/* a desktop entry's Exec argument: quoted, with the characters the Desktop Entry Specification reserves escaped,
+ * and %% for % */
 static char *
 exec_quote (const char *arg)
 {
@@ -608,7 +609,7 @@ exec_quote (const char *arg)
   return g_string_free (s, FALSE);
 }
 
-/* UiUtils.getShortcutIcon: the favicon drawn in the middle of a white circle, 192 px */
+/* a shortcut's icon: the favicon drawn in the middle of a white circle, 192 px */
 static gboolean
 write_icon (GdkTexture *favicon, const char *path)
 {
@@ -654,7 +655,7 @@ nb_add_shortcut (const char *name, const char *url, GdkTexture *favicon, GError 
 
   g_mkdir_with_parents (icons, 0700);
   g_mkdir_with_parents (apps, 0755);
-  /* without a favicon: the app's own icon (Icon.createWithResource (ic_launcher)) */
+  /* without a favicon: the app's own icon */
   if (favicon && write_icon (favicon, icon))
     icon_value = icon;
   g_autoptr (GKeyFile) kf = g_key_file_new ();

@@ -1,5 +1,5 @@
 /* ct-vcard: reading .vcf files (Android's 2.1 export, 3.0, several cards, a nested card) and the round trip
- * through export and import (spec §5.4, §10.8). */
+ * through export and import. */
 #include "ct-contact.h"
 #include "ct-vcard.h"
 

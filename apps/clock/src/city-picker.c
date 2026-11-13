@@ -1,6 +1,4 @@
-/* CityPicker: see city-picker.h. Measured on still:clock-cities: the bar y 116…308 px with Up 0…168, the search icon
- * 816…960 and ⋮ 960…1080; rows of 168 px, 0…1056 wide; the index 0…222, the check box 222…366 (an 18 dp square, 2
- * dp outline), the name from 366, the time ending at 1032; the fast-scroll track at 1056…1080. */
+/* CityPicker: see city-picker.h. */
 #include "city-picker.h"
 #include "cities.h"
 #include "clock-bar.h"
@@ -11,12 +9,12 @@
 #include <neo.h>
 #include <spongy-gtk.h>
 
-#define ROW_HEIGHT    56        /* cities_list_item_height */
-#define INDEX_WIDTH   74        /* the index TextView: 74 dip */
-#define CHECK_SIZE    48        /* the CheckBox's touch box */
-#define SCROLLBAR     8         /* the fast-scroll track, inside the list (scrollbarStyle insideInset) */
+#define ROW_HEIGHT    56
+#define INDEX_WIDTH   74        /* the index column: a letter or a GMT offset */
+#define CHECK_SIZE    48        /* the check box's touch box */
+#define SCROLLBAR     8         /* the fast-scroll track, inside the list */
 #define THUMB         48        /* the fast-scroll thumb's height */
-#define SHADOW_MS     200       /* DropShadowController */
+#define SHADOW_MS     200       /* the bar's shadow fading in or out */
 
 typedef struct
 {
@@ -33,7 +31,7 @@ struct _CityPicker
   NeoAnim *shadow_anim;
   gboolean shadow_shown;
   GHashTable *rows;             /* City * → Row * */
-  GPtrArray *original;          /* the cities chosen when the page opened, by name (getSelectedCities at onResume) */
+  GPtrArray *original;          /* the cities chosen when the page opened, by name */
   GPtrArray *checked;           /* the choice as it is being made, in the order it was made */
   char *query;                  /* the search, upper-cased without " -.'"; "" when not searching */
   guint tick;
@@ -58,7 +56,7 @@ filtering (CityPicker *self)
 
 /* --- the rows */
 
-/* "Hm" or "hma" in the city's zone (getTimeCharSequence) */
+/* "Hm" or "hma" in the city's zone */
 static void
 show_time (Row *row)
 {
@@ -87,7 +85,7 @@ show_checked (CityPicker *self, Row *row)
                                checked ? GTK_ACCESSIBLE_TRISTATE_TRUE : GTK_ACCESSIBLE_TRISTATE_FALSE, -1);
 }
 
-/* the row toggles its check box (CityAdapter.onClick); the box itself is not clickable */
+/* the row toggles its check box; the box itself is not clickable */
 static void
 on_row (NeoPressable *widget, CityPicker *self)
 {
@@ -116,9 +114,9 @@ make_row (CityPicker *self, City *city)
   GtkWidget *tick = gtk_image_new_from_icon_name ("clock-check-symbolic");
 
   row->city = city;
-  /* the index: 74 dp wide, centred both ways, bold white; its text and size are set by the sort. A GMT offset wider
-   * than that ("GMT -10:00") wraps onto two lines as the TextView's does: the label asks for no width of its own
-   * (max-width-chars 1), so the 74 dp it is given is the width it wraps to */
+  /* the index: INDEX_WIDTH wide, centred both ways; its text and size are set by the sort. A GMT offset wider than
+   * that ("GMT -10:00") wraps onto two lines: the label asks for no width of its own (max-width-chars 1), so the
+   * width it is given is the width it wraps to */
   row->index = gtk_label_new (NULL);
   gtk_widget_set_size_request (row->index, INDEX_WIDTH, -1);
   gtk_label_set_wrap (GTK_LABEL (row->index), TRUE);
@@ -127,15 +125,14 @@ make_row (CityPicker *self, City *city)
   gtk_widget_add_css_class (row->index, "city-index");
   gtk_box_append (GTK_BOX (box), row->index);
 
-  /* the check box: an 18 dp square in its 48 dp box, outlined in colorControlNormal, or filled with colorPrimary
-   * round a check in colorOnPrimary (MaterialCheckBox) */
+  /* the check box: a small outlined square in its touch box, filled round a check once checked */
   row->mark = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_widget_add_css_class (row->mark, "city-check");
   gtk_widget_set_halign (row->mark, GTK_ALIGN_CENTER);
   gtk_widget_set_valign (row->mark, GTK_ALIGN_CENTER);
   gtk_image_set_pixel_size (GTK_IMAGE (tick), 14);
   gtk_box_append (GTK_BOX (row->mark), tick);
-  /* the 48 dp box keeps its width: a child that expands would make it expand too (GTK passes hexpand up), and the
+  /* the touch box keeps its width: a child that expands would make it expand too (GTK passes hexpand up), and the
    * row's spare width would then go to it as well as to the name */
   row->check = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_widget_set_size_request (row->check, CHECK_SIZE, CHECK_SIZE);
@@ -145,7 +142,7 @@ make_row (CityPicker *self, City *city)
   gtk_box_append (GTK_BOX (row->check), row->mark);
   gtk_box_append (GTK_BOX (box), row->check);
 
-  /* the name: PrimaryLabelTextAppearance, 16 dp in, 10 dp before the time, one line */
+  /* the name, on one line, before the time */
   gtk_label_set_xalign (GTK_LABEL (name), 0);
   gtk_label_set_ellipsize (GTK_LABEL (name), PANGO_ELLIPSIZE_END);
   gtk_label_set_single_line_mode (GTK_LABEL (name), TRUE);
@@ -157,7 +154,7 @@ make_row (CityPicker *self, City *city)
   neo_label_set_font_padding (name, 14);
   gtk_box_append (GTK_BOX (box), name);
 
-  /* the time: SecondaryLabelTextAppearance, 8 dp from the end */
+  /* the time, at the end */
   row->time = gtk_label_new (NULL);
   gtk_widget_set_valign (row->time, GTK_ALIGN_CENTER);
   gtk_widget_set_margin_end (row->time, 8);
@@ -189,9 +186,9 @@ get_row (CityPicker *self, City *city)
   return row;
 }
 
-/* --- the list (CityAdapter) */
+/* --- the list */
 
-/* the index of a row (getView): the section's letter at 24 sp by name, its GMT offset at 14 sp by time */
+/* the index of a row: the section's letter when sorted by name, its GMT offset when sorted by time */
 static void
 show_index (Row *row, CitySort sort, gboolean shown)
 {
@@ -211,8 +208,8 @@ show_index (Row *row, CitySort sort, gboolean shown)
     text = clock_zone_gmt_label (row->city->tz, g_get_real_time () / G_USEC_PER_SEC);
   gtk_label_set_text (GTK_LABEL (row->index), text);
   gtk_widget_add_css_class (row->index, sort == CITY_SORT_NAME ? "letter" : "offset");
-  /* Android centres the text with its font padding (the font's yMax and yMin), which sits it lower than GTK's
-   * ascent-and-descent box does: 2 dp at 24 sp on still:clock-cities, so about 1 dp at 14 sp */
+  /* the text is centred with its font padding (the font's yMax and yMin), which sits it lower than GTK's
+   * ascent-and-descent box does; the margin makes up for it, less for the smaller offset text */
   gtk_widget_set_margin_top (row->index, sort == CITY_SORT_NAME ? 4 : 2);
 }
 
@@ -253,7 +250,7 @@ show_list (CityPicker *self)
   for (guint i = 0; i < others->len; i++)
     {
       Row *row = get_row (self, others->pdata[i]);
-      /* getShowIndex: the first one after the chosen ones, then each that sorts apart from the one before it */
+      /* an index on the first one after the chosen ones, then each that sorts apart from the one before it */
       gboolean index = !filtering (self) && (!prior || cities_compare_index (prior, row->city, sort) != 0);
 
       show_index (row, sort, index);
@@ -261,11 +258,11 @@ show_list (CityPicker *self)
       gtk_box_append (GTK_BOX (self->list), row->widget);
       prior = row->city;
     }
-  /* updateFastScrolling: no fast scroll while searching */
+  /* no fast scroll while searching */
   gtk_widget_set_visible (self->track, !filtering (self));
 }
 
-/* onResume: the choice as saved, and the list from it */
+/* the choice as saved, and the list from it */
 static void
 refresh (CityPicker *self)
 {
@@ -279,12 +276,12 @@ refresh (CityPicker *self)
       g_ptr_array_add (self->original, selected->pdata[i]);
       g_ptr_array_add (self->checked, selected->pdata[i]);
     }
-  /* CityModel.getAllCities: the chosen ones by name */
+  /* the chosen ones by name */
   cities_sort (self->original, CITY_SORT_NAME);
   show_list (self);
 }
 
-/* onPause: the choice is saved, in the order it was made */
+/* the choice is saved, in the order it was made */
 static void
 save (CityPicker *self)
 {
@@ -327,14 +324,14 @@ on_tick (gpointer data)
   return G_SOURCE_REMOVE;
 }
 
-/* --- searching (SearchMenuItemController: a SearchView in the bar) */
+/* --- searching (a search field in the bar) */
 
 static void
 on_query (GtkEditable *entry, CityPicker *self)
 {
   g_autofree char *trimmed = g_strstrip (g_strdup (gtk_editable_get_text (entry)));
 
-  /* isFiltering: the trimmed query; filter: the query upper-cased without " -.'" */
+  /* searching while the trimmed query is not empty; the key is the query upper-cased without " -.'" */
   g_free (self->query);
   self->query = *trimmed ? cities_search_key (gtk_editable_get_text (entry)) : g_strdup ("");
   gtk_widget_set_visible (self->clear, *gtk_editable_get_text (entry) != '\0');
@@ -350,7 +347,7 @@ on_search (NeoPressable *button, CityPicker *self)
   gtk_widget_grab_focus (self->entry);
 }
 
-/* the SearchView's close button: clears the query, or with none closes the field */
+/* the search field's close button: clears the query, or with none closes the field */
 static void
 on_clear (NeoPressable *button, CityPicker *self)
 {
@@ -371,7 +368,7 @@ on_sort (gpointer data)
 {
   CityPicker *self = data;
 
-  /* SortOrderMenuItemController: the other order, remembered */
+  /* the other order, remembered */
   g_settings_set_enum (self->settings, "city-sort", get_sort (self) == CITY_SORT_NAME ? 1 : 0);
   show_list (self);
 }
@@ -387,7 +384,7 @@ on_overflow (NeoPressable *button, CityPicker *self)
 {
   ClockPopupMenu *menu = clock_popup_menu_new ();
 
-  /* onPrepareOptionsItem: the item names the order it switches to */
+  /* the item names the order it switches to */
   clock_popup_menu_append (menu, get_sort (self) == CITY_SORT_NAME ? _("Sort by time") : _("Sort by name"), on_sort,
                            self);
   clock_popup_menu_append (menu, _("Settings"), on_settings, self);
@@ -418,7 +415,7 @@ on_scrolled (GtkAdjustment *adjustment, CityPicker *self)
   gboolean shown = value > 0;
   int height = gtk_widget_get_height (self->track);
 
-  /* DropShadowController: in once the list leaves its top, out when it is back */
+  /* the bar's shadow: in once the list leaves its top, out when it is back */
   if (shown != self->shadow_shown)
     {
       self->shadow_shown = shown;
@@ -466,7 +463,7 @@ city_picker_map (GtkWidget *widget)
   CityPicker *self = CLOCK_CITY_PICKER (widget);
 
   GTK_WIDGET_CLASS (city_picker_parent_class)->map (widget);
-  /* onResume */
+  /* shown again: the choice as saved */
   refresh (self);
   schedule_tick (self);
 }
@@ -476,7 +473,7 @@ city_picker_unmap (GtkWidget *widget)
 {
   CityPicker *self = CLOCK_CITY_PICKER (widget);
 
-  /* onPause: covered by Settings, closed, or the app gone */
+  /* hidden: covered by Settings, closed, or the app gone */
   g_clear_handle_id (&self->tick, g_source_remove);
   save (self);
   GTK_WIDGET_CLASS (city_picker_parent_class)->unmap (widget);
@@ -539,21 +536,20 @@ city_picker_init (CityPicker *self)
   gtk_widget_add_css_class (self->box, "city-picker");
   gtk_widget_set_parent (self->box, GTK_WIDGET (self));
 
-  /* the action bar: Up, no title, then the search and ⋮ (48 and 40 dp, still:clock-cities) */
+  /* the action bar: Up, no title, then the search and ⋮ */
   self->bar = clock_bar_new (NULL);
   gtk_widget_add_css_class (self->bar, "cities");
-  /* this activity's bar centres its Up arrow on the 64 dp (y 72…119 px on still:clock-cities, where Settings has it
-   * at 60…107) */
+  /* this page's bar centres its Up arrow, where Settings' bar has it higher */
   gtk_widget_set_valign (clock_bar_get_up (self->bar), GTK_ALIGN_CENTER);
   g_signal_connect (clock_bar_get_up (self->bar), "clicked", G_CALLBACK (on_up), self);
   self->search_button = clock_bar_add_icon (self->bar, "clock-search-symbolic", 48, _("Search"));
   g_signal_connect (self->search_button, "clicked", G_CALLBACK (on_search), self);
-  /* the overflow button: 36 dp (abc_action_button_min_width_overflow_material), 4 dp from the edge */
+  /* the overflow button: narrower than the search, a little in from the edge */
   more = clock_bar_add_icon (self->bar, "clock-more-symbolic", 36, _("More options"));
   gtk_widget_set_margin_end (more, 4);
   g_signal_connect (more, "clicked", G_CALLBACK (on_overflow), self);
 
-  /* the SearchView, expanded: the query field (capital words, as CapWords asks) and its close button */
+  /* the search field, open: the query (each word capitalised) and its close button */
   self->search = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   self->entry = gtk_text_new ();
   gtk_text_set_placeholder_text (GTK_TEXT (self->entry), _("Search…"));

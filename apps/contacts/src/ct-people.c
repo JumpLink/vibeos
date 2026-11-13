@@ -1,9 +1,9 @@
 /* The contact list screen (ct-people.h).
  *
  * Its parts, top to bottom: the toolbar frame, which holds three bars in one place (the normal toolbar, the search
- * box and the selection bar, faded in and out over 195 ms as ActionBarAdapter does); the content (the list, or an
- * empty state), with the FAB over it; the drawer over everything. The label view (§5.1) is this screen too, as it
- * is PeopleActivity on Android: a label's members, its own toolbar colour and menu. */
+ * box and the selection bar, faded in and out over 195 ms); the content (the list, or an
+ * empty state), with the FAB over it; the drawer over everything. The label view is this screen too: a label's
+ * members, its own toolbar colour and menu. */
 #include "ct-people.h"
 #include "ct-avatar.h"
 #include "ct-dialogs.h"
@@ -22,7 +22,7 @@
 
 typedef enum {
   VIEW_ALL,                     /* Contacts */
-  VIEW_LABEL,                   /* a label's members (GroupMembersFragment) */
+  VIEW_LABEL,                   /* a label's members */
   VIEW_ACCOUNT,                 /* one address book (the drawer's Accounts) */
 } View;
 
@@ -103,7 +103,7 @@ query_of (People *people)
   return people->searching ? gtk_editable_get_text (GTK_EDITABLE (people->search_entry)) : "";
 }
 
-/* FloatingActionButtonController.scaleIn / scaleOut: 186 ms EASE_IN (0, 0, 0.2, 1) in, 175 ms (0.4, 0, 1, 1) out */
+/* the FAB scales in over 186 ms (0, 0, 0.2, 1) and out over 175 ms (0.4, 0, 1, 1) */
 static void
 on_fab_anim (NeoAnim *anim, double value, gpointer data)
 {
@@ -127,7 +127,7 @@ show_fab (People *people, gboolean show)
 }
 
 /* the FAB shows in the plain list and an account's list, not in a label's, a search or selection mode
- * (PeopleActivity.showFabWithAnimation; the label view hides it) */
+ * (the label view hides it) */
 static void
 update_fab (People *people)
 {
@@ -172,7 +172,7 @@ refresh (People *people, gboolean to_top)
     }
 
   ct_list_set_search (CT_LIST (people->list), search);
-  /* the list's 7 dp at the top go under the account header, and under the empty-query search box (§2.1) */
+  /* the list's top padding goes under the account header, and under the empty-query search box */
   ct_list_set_top_padding (CT_LIST (people->list), header || (people->searching && !search) ? 0
                                                                                               : CT_LIST_PAD_TOP_DP);
   ct_list_set_rows (CT_LIST (people->list), rows, to_top);
@@ -185,8 +185,8 @@ refresh (People *people, gboolean to_top)
       g_autofree char *text = ct_contacts_count (n, book && !book->is_local ? ct_book_label (book) : NULL);
 
       gtk_label_set_label (GTK_LABEL (people->header_text), text);
-      /* the account's icon 16 dp in; a label is in no one account, so it has none. The text starts 64 dp in
-       * either way (GroupMembersFragment :690-704). */
+      /* the account's icon; a label is in no one account, so it has none. The text starts at the same place either
+       * way. */
       gtk_widget_set_visible (people->header_icon, book != NULL);
       gtk_widget_set_margin_start (people->header_text, book ? CT_HEADER_TEXT_X_DP - CT_HEADER_ICON_X_DP - 24
                                                              : CT_HEADER_TEXT_X_DP);
@@ -195,7 +195,7 @@ refresh (People *people, gboolean to_top)
                                       book->is_local ? "ct-smartphone-symbolic" : "ct-account-circle-symbolic");
     }
 
-  /* the empty states: all contacts', an account's, a label's (§1.9, §5.1.4); a search with no results says so.
+  /* the empty states: all contacts', an account's, a label's; a search with no results says so.
    * Before the address books have answered, the list is not empty but unknown, so it shows nothing. */
   gtk_widget_set_visible (people->empty, n == 0 && !people->searching && people->view == VIEW_ALL
                                          && ct_store_is_ready (people->store));
@@ -204,7 +204,7 @@ refresh (People *people, gboolean to_top)
   gtk_widget_set_visible (people->label_empty, n == 0 && !people->searching && people->view == VIEW_LABEL);
   gtk_widget_set_visible (people->no_results, search && n == 0);
 
-  /* slide_and_fade_in_layout_animation: once, when the list first has rows */
+  /* the rows' fade-in: once, when the list first has rows */
   if (!people->animated_load && n > 0)
     {
       people->animated_load = TRUE;
@@ -239,7 +239,7 @@ on_settings_changed (GSettings *settings, const char *key, People *people)
   refresh (people, FALSE);
 }
 
-/* ===== search (§2) ============================================================================================= */
+/* ===== search ================================================================================================== */
 
 static void
 on_search_anim (NeoAnim *anim, double value, gpointer data)
@@ -309,7 +309,7 @@ on_search_clear (NeoPressable *button, People *people)
   gtk_widget_grab_focus (people->search_entry);
 }
 
-/* typing in the list starts a search with what was typed (PeopleActivity.onKeyDown) */
+/* typing in the list starts a search with what was typed */
 static gboolean
 on_key (GtkEventControllerKey *controller, guint keyval, guint keycode, GdkModifierType state, People *people)
 {
@@ -324,7 +324,7 @@ on_key (GtkEventControllerKey *controller, guint keyval, guint keycode, GdkModif
   return TRUE;
 }
 
-/* ===== selection mode (§1.10, §5.1.5) ========================================================================= */
+/* ===== selection mode ========================================================================================= */
 
 static void
 on_selection_anim (NeoAnim *anim, double value, gpointer data)
@@ -417,7 +417,7 @@ on_row_long_pressed (CtList *list, guint index, People *people)
 {
   CtEntry *entry = ct_list_get_entry (list, index);
 
-  /* a long press in edit mode is ignored (GroupMembersFragment :802-807) */
+  /* a long press in edit mode is ignored */
   if (!entry || people->editing)
     return;
   if (people->selecting)
@@ -435,8 +435,8 @@ on_selection_close (NeoPressable *button, People *people)
   stop_selection (people);
 }
 
-/* Share: Android hands a vCard of the selection to another app through its share sheet. This phone has no share
- * sheet, so the vCard is written where the person chooses (the file chooser), from where it can go anywhere. */
+/* Share: this phone has no share sheet to hand a vCard of the selection to another app, so the vCard is written where
+ * the person chooses (the file chooser), from where it can go anywhere. */
 static void
 on_share (NeoPressable *button, People *people)
 {
@@ -481,7 +481,7 @@ on_delete_confirmed (int response, gpointer data)
   ct_store_delete (deletion->people->store, deletion->uids, on_deleted, deletion);
 }
 
-/* ContactMultiDeletionInteraction: "Delete selected contacts?" (every address book here is writable, so neither
+/* deleting several: "Delete selected contacts?" (every address book here is writable, so neither
  * read-only variant applies) */
 static void
 on_delete (NeoPressable *button, People *people)
@@ -493,7 +493,7 @@ on_delete (NeoPressable *button, People *people)
   ct_confirm_dialog (people->page, NULL, _("Delete selected contacts?"), _("Delete"), on_delete_confirmed, deletion);
 }
 
-/* ===== the label view (§5.1) ================================================================================== */
+/* ===== the label view ========================================================================================= */
 
 static void
 show_view (People *people, View view, const char *name)
@@ -524,7 +524,7 @@ on_members_added (GPtrArray *uids, gpointer data)
   ct_window_toast (people->window, _("Added to label"));
 }
 
-/* "Add contact": the picker, without the label's members (§5.1.6) */
+/* "Add contact": the picker, without the label's members */
 static void
 add_members (People *people)
 {
@@ -546,8 +546,8 @@ on_add_contacts_button (NeoPressable *button, People *people)
   add_members (people);
 }
 
-/* the members' (or the selection's) first email address or number each, to one mailto: or smsto: (sendToGroup).
- * Android asks which one for a person with several and no default; here it is the default, else the first. */
+/* the members' (or the selection's) first email address or number each, to one mailto: or smsto: link. For a
+ * person with several it is the default, else the first. */
 static void
 send_to (People *people, CtKind kind)
 {
@@ -633,7 +633,7 @@ on_undo_delete (gpointer data)
   forget_undo (people);
 }
 
-/* ContactSaveService's group deletion, then the snackbar with UNDO (§5.1.8). The snackbar cannot say when it has
+/* the label's deletion, then the snackbar with UNDO. The snackbar cannot say when it has
  * gone without its action being taken, so the undo is kept here until the next deletion replaces it. */
 static void
 delete_label (People *people)
@@ -658,7 +658,7 @@ on_delete_label (People *people)
   g_autoptr(GPtrArray) members = ct_store_label_members (people->store, people->label);
   g_autofree char *message = NULL;
 
-  /* an empty label goes at once (GroupMembersFragment :593-603) */
+  /* an empty label goes at once */
   if (!members->len)
     {
       g_autofree char *gone = g_strdup (people->label);
@@ -727,7 +727,7 @@ on_menu_chosen (int index, gpointer data)
     }
 }
 
-/* view_group.xml, by GroupMembersFragment's rules (§5.1.3). Send email shows only when something takes mailto:
+/* a label's menu. Send email shows only when something takes mailto:
  * links, which this phone may not have. */
 static void
 on_overflow (NeoPressable *button, People *people)
@@ -778,7 +778,7 @@ update_toolbar (People *people)
   gboolean label = people->view == VIEW_LABEL;
   guint count = people->selected ? g_hash_table_size (people->selected) : 0;
 
-  /* a label's toolbar is neutral grey, not the app's teal (group_primary_color, §5.1.2) */
+  /* a label's toolbar is neutral grey, not the app's teal */
   if (label)
     gtk_widget_add_css_class (people->frame, "label-view");
   else
@@ -831,7 +831,7 @@ make_toolbar (People *people)
   people->frame = frame;
   gtk_widget_add_css_class (frame, "ct-people-toolbar");
 
-  /* the toolbar: the drawer button (a 56 dp target), the title 72 dp in, the actions at the end (§1.2) */
+  /* the toolbar: the drawer button, the title, the actions at the end */
   gtk_widget_add_css_class (bar, "ct-toolbar");
   people->nav = ct_icon_button ("ct-menu-symbolic", _("Open navigation drawer"), CT_TOOLBAR_NAV_W_DP,
                                 CT_TOOLBAR_H_DP, CT_RIPPLE_APPCOMPAT);
@@ -843,7 +843,7 @@ make_toolbar (People *people)
   gtk_widget_set_valign (people->title, GTK_ALIGN_CENTER);
   gtk_widget_set_hexpand (people->title, TRUE);
   gtk_box_append (GTK_BOX (bar), people->title);
-  /* the action buttons: 56 dp wide (16 dp padding around the icon), 48 dp tall, centred in the bar */
+  /* the action buttons, centred in the bar */
   people->search_action = ct_icon_button ("ct-search-symbolic", _("Search contacts"), 56, 48, CT_RIPPLE_APPCOMPAT);
   people->add_member = ct_icon_button ("ct-person-add-symbolic", _("Add contact"), 56, 48, CT_RIPPLE_APPCOMPAT);
   people->overflow = ct_icon_button ("ct-more-vert-symbolic", _("More options"), 40, 48, CT_RIPPLE_APPCOMPAT);
@@ -860,7 +860,7 @@ make_toolbar (People *people)
   gtk_overlay_set_child (GTK_OVERLAY (frame), bar);
   people->bar = bar;
 
-  /* the search box (search_bar_expanded.xml): #1b1b1b, the back arrow, the field, the clear ✕ */
+  /* the search box: the back arrow, the field, the clear ✕ */
   gtk_widget_add_css_class (search, "ct-search-bar");
   back = ct_icon_button ("ct-arrow-back-symbolic", _("stop searching"), CT_SEARCH_ICON_DP, CT_TOOLBAR_H_DP,
                          CT_RIPPLE_APPCOMPAT);
@@ -885,7 +885,7 @@ make_toolbar (People *people)
   gtk_overlay_add_overlay (GTK_OVERLAY (frame), search);
   people->search_bar = search;
 
-  /* the selection bar (selection_bar.xml): #222222, ✕, the count 72 dp in, the actions */
+  /* the selection bar: ✕, the count, the actions */
   gtk_widget_add_css_class (selection, "ct-selection-bar");
   people->selection_close = ct_icon_button ("ct-close-symbolic", _("close"), CT_SELECTION_CLOSE_DP,
                                             CT_TOOLBAR_H_DP, CT_RIPPLE_APPCOMPAT);
@@ -923,7 +923,7 @@ make_toolbar (People *people)
   return frame;
 }
 
-/* ===== the empty states (§1.9, §5.1.4) ========================================================================= */
+/* ===== the empty states ======================================================================================== */
 
 static void
 on_add_contact (NeoPressable *button, People *people)
@@ -931,7 +931,7 @@ on_add_contact (NeoPressable *button, People *people)
   ct_window_new_contact (people->window, NULL);
 }
 
-/* an illustration, a line under it and a borderless button, centred on #272727; the picture's top is placed in
+/* an illustration, a line under it and a borderless button, centred; the picture's top is placed in
  * proportion to the screen's height (place_empty_pictures) */
 static GtkWidget *
 empty_view (const char *image, double image_width, double image_height, const char *text, const char *button_label,
@@ -962,9 +962,8 @@ empty_view (const char *image, double image_width, double image_height, const ch
   return box;
 }
 
-/* The illustrations' tops, from the top of the empty view, as fractions of heightPixels (the screen: this window
- * and the status bar above it): home_empty at h / 2 − 210 dp, accounts_empty at h / 4 + 30 dp, label_empty at
- * h / 6 (DefaultContactBrowseListFragment :452-492, GroupMembersFragment :756-782) */
+/* The illustrations' tops, from the top of the empty view, by the screen's height h (this window and the status
+ * bar above it): home_empty at h / 2 − 210 px, accounts_empty at h / 4 + 30 px, label_empty at h / 6 */
 static void
 place_empty_pictures (People *people)
 {
@@ -984,7 +983,7 @@ on_page_resized (CtPage *page, int width, int height, People *people)
   place_empty_pictures (people);
 }
 
-/* ===== the drawer (§1.7) ======================================================================================= */
+/* ===== the drawer ============================================================================================== */
 
 #define DRAWER_W CT_DRAWER_W_DP
 
@@ -992,7 +991,7 @@ static void
 place_drawer (People *people)
 {
   gtk_widget_set_visible (people->drawer, people->drawer_open > 0);
-  /* the scrim darkens with the sheet's way in (DrawerLayout's scrim × the slide offset) */
+  /* the scrim darkens with the sheet's way in */
   gtk_widget_set_opacity (people->drawer_scrim, people->drawer_open);
   /* the sheet slides in from the start edge: CtDrawer places it by this offset */
   g_object_set_data (G_OBJECT (people->drawer_sheet), "ct-offset",
@@ -1010,7 +1009,7 @@ on_drawer_anim (NeoAnim *anim, double value, gpointer data)
   place_drawer (people);
 }
 
-/* ViewDragHelper's settle: (fraction to go + 1) x 256 ms, at most 600, quintic out */
+/* the drawer settles in (fraction to go + 1) x 256 ms, at most 600, quintic out */
 static void
 open_drawer (People *people, gboolean open)
 {
@@ -1094,8 +1093,8 @@ on_drawer_item (NeoPressable *row, People *people)
     }
 }
 
-/* drawer_item / drawer_primary_item: 48 dp, the 32 dp icon box 16 dp in, the title 32 dp after it (14 sp medium
- * bold); the row of the view that shows is activated (#2c2c2c, the title #81b5bc, the icon #edf9fb) */
+/* a drawer row: the icon, then the title; the row of the view that shows is activated (highlighted, the title and
+ * icon in the accent colours) */
 static GtkWidget *
 drawer_item (People *people, ItemKind kind, const char *icon, const char *title, const char *name, gboolean active,
              gboolean primary)
@@ -1134,14 +1133,14 @@ drawer_divider (void)
   GtkWidget *line = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
 
   gtk_widget_add_css_class (frame, "ct-drawer-divider");
-  /* the 1 dp line in the middle of the 16 dp frame, by its margins (not vexpand, which would hand the drawer's
-   * spare height to every divider) */
+  /* the line in the middle of its frame, by its margins (not vexpand, which would hand the drawer's spare height to
+   * every divider) */
   gtk_widget_add_css_class (line, "ct-drawer-divider-line");
   gtk_box_append (GTK_BOX (frame), line);
   return frame;
 }
 
-/* drawer_header: a divider, then the heading (14 sp medium #979797, 12 dp above and below) */
+/* a drawer section: a divider, then the heading */
 static void
 drawer_header (GtkWidget *items, const char *title)
 {
@@ -1166,7 +1165,7 @@ my_info_item (People *people)
   EContactPhoto *photo = profile ? e_contact_get (profile, E_CONTACT_PHOTO) : NULL;
   GdkRGBA ripple = ct_rgba (CT_RIPPLE_DRAWER);
 
-  /* the profile's photo fit in the 32 dp box, else quantum_ic_drawer_my_info_32 */
+  /* the profile's photo fit in the icon box, else the generic "my info" icon */
   if (photo && photo->type == E_CONTACT_PHOTO_TYPE_INLINED && photo->data.inlined.length)
     {
       g_autoptr(GBytes) bytes = g_bytes_new (photo->data.inlined.data, photo->data.inlined.length);
@@ -1203,7 +1202,7 @@ my_info_item (People *people)
   return row;
 }
 
-/* DrawerAdapter's order (§1.7): My info, Contacts, the labels and Create label, the accounts, Settings. Emergency
+/* the drawer, in order: My info, Contacts, the labels and Create label, the accounts, Settings. Emergency
  * information and Help & feedback are not here: nothing on this phone backs them. "Accounts" lists the address
  * books when there is more than one to choose from. Every EDS address book takes categories, so "Labels" and
  * "Create label" always show. */
@@ -1385,7 +1384,7 @@ make_drawer (People *people)
   return layer;
 }
 
-/* an edge swipe from the start opens it (DrawerLayout's 20 dp edge), only on the list itself */
+/* an edge swipe from the start opens it (within CT_DRAWER_EDGE_DP of the edge), only on the list itself */
 static void
 on_edge_drag_begin (GtkGestureDrag *gesture, double x, double y, People *people)
 {
@@ -1505,7 +1504,7 @@ ct_people_new (GtkWidget *window)
 
   gtk_box_append (GTK_BOX (main), make_toolbar (people));
 
-  /* the account / label header: "N contacts", 48 dp (account_filter_header.xml) */
+  /* the account / label header: "N contacts" */
   header_box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_widget_add_css_class (header_box, "ct-list-header");
   people->header_icon = gtk_image_new ();
@@ -1528,8 +1527,7 @@ ct_people_new (GtkWidget *window)
   gtk_box_append (GTK_BOX (column), people->list);
   gtk_overlay_set_child (GTK_OVERLAY (content), column);
 
-  /* the pictures' sizes: home_empty 150 dp tall (a square), accounts_empty 96 dp, label_empty 150 dp tall and as
-   * wide as its 696 x 540 aspect makes it */
+  /* the illustrations, each at its own size; label_empty as wide as its aspect makes it */
   people->empty = empty_view ("/neo/Contacts/images/home_empty.png", CT_EMPTY_IMAGE_H_DP, CT_EMPTY_IMAGE_H_DP,
                               _("Your contacts list is empty"), _("Add contact"), G_CALLBACK (on_add_contact), people);
   gtk_overlay_add_overlay (GTK_OVERLAY (content), people->empty);
@@ -1550,13 +1548,13 @@ ct_people_new (GtkWidget *window)
   gtk_widget_set_visible (people->no_results, FALSE);
   gtk_overlay_add_overlay (GTK_OVERLAY (content), people->no_results);
 
-  /* the toolbar's 2 dp shadow, over the top of the content */
+  /* the toolbar's shadow, over the top of the content */
   gtk_widget_add_css_class (shadow, "ct-toolbar-shadow");
   gtk_widget_set_valign (shadow, GTK_ALIGN_START);
   gtk_widget_set_can_target (shadow, FALSE);
   gtk_overlay_add_overlay (GTK_OVERLAY (content), shadow);
 
-  /* the FAB: 56 dp, #00383e, the white plus, 16 dp from the end and the bottom (§1.6) */
+  /* the FAB: the white plus, in the bottom end corner */
   gtk_image_set_pixel_size (GTK_IMAGE (plus), 24);
   people->fab = neo_pressable_new (plus);
   gtk_widget_add_css_class (people->fab, "ct-fab");

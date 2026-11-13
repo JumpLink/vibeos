@@ -1,4 +1,4 @@
-/* The folder page (spec §2, §3, §7): the path bar over the file list, for any location GIO can list (a local
+/* The folder page: the path bar over the file list, for any location GIO can list (a local
  * folder, a server's share, the Recycle Bin, Recent files, the Local Network). It lists in batches without blocking,
  * mounts what is not mounted yet, counts the folders' items in a worker, follows changes with a GFileMonitor,
  * filters by the search bar and searches the folders under it. */

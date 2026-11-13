@@ -8,8 +8,8 @@
 # Android icon's tint does. Otherwise the drawable's own colours are kept (theme references such as ?colorPrimary
 # cannot be resolved here and become black, with a note on stderr).
 #
-# The SVG is as large as the drawable in dp (1 dp is 1 GTK px on the phone, at scale 3) and its viewBox is the
-# viewport. Groups keep their transforms (Android's order: scale and rotate about the pivot, then translate),
+# The SVG is as large as the drawable's width and height (in GTK px: 3 screen px each at scale 3) and its viewBox is
+# the viewport. Groups keep their transforms (Android's order: scale and rotate about the pivot, then translate),
 # clip-paths become clipPaths. Fill and stroke follow VectorDrawable.cpp; stroked paths in a symbolic icon are kept
 # as strokes, which GTK recolours too. Python 3 stdlib only.
 

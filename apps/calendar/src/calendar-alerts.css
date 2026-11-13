@@ -1,15 +1,14 @@
-/* calendar-alerts.css: the reminders page (cal-alert-page.c, Etar's AlertActivity), loaded after calendar.css at
- * its priority (cal-main.c). Theme.Holo.Dialog keeps its dark look in every app theme, so nothing here follows the
- * palette or the light and black sheets. 1 px is 1 dp. */
+/* calendar-alerts.css: the reminders page (cal-alert-page.c), loaded after calendar.css at
+ * its priority (cal-main.c). The page keeps its dark look in every app theme, so nothing here follows the palette or
+ * the light and black sheets. */
 
-/* dialog_full_holo_dark: its #282828 fill, nearly square corners (the nine-patch's shadow edge is left out) */
+/* the dialog: nearly square corners, no shadow */
 neo-dialog-scrim.cal-alerts > .neo-dialog.flush {
   background-color: #282828;
   border-radius: 2px;
 }
 
-/* dialog_title_holo: DialogWindowTitle.Holo, 22 sp holo_blue_light, one line, 64 dp tall (alert_dialog_title_height)
- * 16 dp from both sides; a 2 dp holo_blue_light line under it */
+/* the title, one line, in blue, a line in the same blue under it */
 .cal-alerts-title {
   font-size: 22px;
   color: #33b5e5;
@@ -22,13 +21,13 @@ neo-dialog-scrim.cal-alerts > .neo-dialog.flush {
   background-color: #33b5e5;
 }
 
-/* ?android:attr/dividerHorizontal and the list's divider (list_divider_holo_dark): a hairline of its grey */
+/* between the rows and above the buttons: a grey hairline */
 .cal-alerts-divider {
   min-height: 1px;
   background-color: rgba(255, 255, 255, 0.12);
 }
 
-/* --- alert_item.xml: 16 dp above and below, 64 dp at least (listPreferredItemHeight) */
+/* --- a reminder's row */
 .cal-alert-row {
   min-height: 64px;
 }
@@ -39,7 +38,7 @@ neo-dialog-scrim.cal-alerts > .neo-dialog.flush {
 
 .cal-alert-title {
   font-size: 18px;
-  color: #ffffff;                       /* alert_event_title */
+  color: #ffffff;
 }
 
 .cal-alert-line,
@@ -50,31 +49,31 @@ neo-dialog-scrim.cal-alerts > .neo-dialog.flush {
 .cal-alert-when,
 .cal-alert-where {
   font-size: 14px;
-  color: #999999;                       /* alert_event_other */
+  color: #999999;
 }
 
-.cal-alert-repeat {                     /* ic_repeat_dark, 5 dp after the time */
+.cal-alert-repeat {                     /* the repeat icon, after the time */
   margin-left: 5px;
   color: #999999;
 }
 
-/* the event ended: alert_past_event for the title, the time and the place */
+/* the event ended: the title, the time and the place dimmed */
 .cal-alert-row.past .cal-alert-title,
 .cal-alert-row.past .cal-alert-when,
 .cal-alert-row.past .cal-alert-where,
 .cal-alert-row.past .cal-alert-repeat {
-  color: rgba(153, 153, 153, 0.561);    /* #8F999999 */
+  color: rgba(153, 153, 153, 0.561);
 }
 
-/* --- the button bar: Widget.Holo.Button.Borderless.Small, 14 sp in the dark theme's primary text, 48 dp tall */
+/* --- the button bar */
 .cal-alerts-button {
   min-height: 48px;
   font-size: 14px;
-  color: #f3f3f3;                       /* bright_foreground_holo_dark */
+  color: #f3f3f3;
 }
 
-/* --- the Snooze delay dialog: TimePickerDialog with a title. The picker dialog is flush (no card padding), so the
- * title takes a titled dialog's own: dialogPreferredPadding at the sides, as libneo's other dialog titles */
+/* --- the Snooze delay dialog: a time picker with a title. The picker dialog is flush (no card padding), so the
+ * title takes a titled dialog's own margins, as libneo's other dialog titles */
 .cal-snooze-dialog .neo-dialog.flush .neo-dialog-title {
   margin: 24px 24px 16px 24px;
 }

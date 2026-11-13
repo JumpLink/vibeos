@@ -1,4 +1,4 @@
-/* unified-real: the calculator's numbers, ExactCalculator's UnifiedReal (UnifiedReal.java).
+/* unified-real: the calculator's numbers; ported from ExactCalculator's UnifiedReal.
  *
  * A number is the product of an exact fraction (bounded-rational.h) and a constructive real
  * (creal.h). Whenever possible the constructive real is one of a few known constants: 1, pi, e,

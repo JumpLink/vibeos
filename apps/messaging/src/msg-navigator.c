@@ -3,9 +3,9 @@
 
 #include <neo.h>
 
-/* activity_open_enter / _exit and activity_close_enter / _exit (frameworks/base core/res/res/anim) */
-#define SLIDE 96                /* dp */
-#define SLIDE_MS 450            /* fast_out_extra_slow_in: Material's emphasized curve */
+/* a page opening or closing: it slides and fades */
+#define SLIDE 96                /* px */
+#define SLIDE_MS 450            /* on the emphasized (fast-out-extra-slow-in) curve */
 #define FADE_MS 83
 #define OPEN_FADE_DELAY 50
 #define CLOSE_FADE_DELAY 35

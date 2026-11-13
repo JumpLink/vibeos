@@ -1,5 +1,4 @@
-/* The Clock's window: see clock-window.h. Measured on still:clock-alarm: the app bar y 116…308 px, the title
- * 72…252 × 168…256, the FAB 408…672 × 1728…1992, the navigation bar y 2040…2280. */
+/* The Clock's window: see clock-window.h. */
 #include "clock-window.h"
 #include "alarm-page.h"
 #include "city-picker.h"
@@ -15,9 +14,9 @@
 #include <glib/gi18n.h>
 #include <neo.h>
 
-#define FAB_ROW       120       /* the FAB container: 88 dp and a 16 dp margin over and under it */
-#define SIDE_BUTTON   56        /* the left and right buttons: default-size FABs */
-#define LEFT_BIAS     0.6       /* where each sits in the space beside the FAB (L/desk_clock.xml) */
+#define FAB_ROW       120       /* the row the FAB sits in, with a margin over and under it */
+#define SIDE_BUTTON   56        /* the left and right buttons, smaller than the FAB */
+#define LEFT_BIAS     0.6       /* where each sits in the space beside the FAB */
 #define RIGHT_BIAS    0.4
 #define SCALE_MS      200       /* SHORT: the buttons' scale animations */
 
@@ -42,7 +41,7 @@ typedef struct
   Button buttons[CLOCK_N_BUTTONS];
 } Shell;
 
-/* bottom_navigation_menu.xml */
+/* the bottom navigation bar's tabs */
 static const struct
 {
   const char *name, *icon;
@@ -53,9 +52,9 @@ static const struct
   [TAB_STOPWATCH] = { N_("Stopwatch"), "clock-tab-stopwatch-symbolic" },
 };
 
-/* --- the row of buttons (DeskClock's FabContainer) */
+/* --- the row of buttons */
 
-/* the selected tab's buttons as they are now, on the row (onUpdateFab, onUpdateFabButtons) */
+/* the selected tab's buttons as they are now, on the row */
 static void
 apply (Shell *shell, gboolean fab, gboolean sides)
 {
@@ -90,8 +89,8 @@ on_scale (NeoAnim *anim, double value, gpointer data)
   if (neo_anim_is_running (anim) || value > 0)
     return;
 
-  /* shrunk to nothing: its new state goes on now, at the end of the shrink (hideFabAnimation's and
-   * leftHideAnimation's listeners), and it grows back if this was the first half */
+  /* shrunk to nothing: its new state goes on now, at the end of the shrink, and it grows back if this was the first
+   * half */
   if (button == &shell->buttons[CLOCK_FAB])
     apply (shell, TRUE, FALSE);
   else if (button == &shell->buttons[CLOCK_LEFT])
@@ -111,7 +110,7 @@ scale (Button *button, double to, gboolean grow_back)
                   SPONGY_ACCELERATE_DECELERATE);
 }
 
-/* FabContainer.updateFab */
+/* the row brought up to date with the tab, as @how says */
 static void
 update_buttons (Shell *shell, ClockUpdate how)
 {
@@ -165,8 +164,8 @@ select_tab (Shell *shell, Tab tab)
   gtk_stack_set_visible_child (GTK_STACK (shell->stack), shell->pages[tab]);
   gtk_label_set_text (GTK_LABEL (shell->title), _(tabs[tab].name));
 
-  /* (the navigation listener and TabChangeWatcher) A FAB coming or going takes all three buttons with it, scaling
-   * over 200 ms; going, the new tab's buttons go on once they have shrunk. Otherwise the icons change at once. */
+  /* A FAB coming or going takes all three buttons with it, scaling over 200 ms; going, the new tab's buttons go on once
+   * they have shrunk. Otherwise the icons change at once. */
   if (had && !has)
     update_buttons (shell, CLOCK_ALL_SHRINK);
   else
@@ -183,8 +182,7 @@ on_nav (NeoNavBar *nav, int index, Shell *shell)
   select_tab (shell, index);
 }
 
-/* keys go to the tab on screen first (DeskClock.onKeyDown): the timer's keypad takes digits. Not while a page is
- * open over the tabs */
+/* keys go to the tab on screen first: the timer's keypad takes digits. Not while a page is open over the tabs */
 static gboolean
 on_key (GtkEventControllerKey *controller, guint keyval, guint keycode, GdkModifierType state, Shell *shell)
 {
@@ -193,7 +191,7 @@ on_key (GtkEventControllerKey *controller, guint keyval, guint keycode, GdkModif
   return clock_tab_key_pressed (CLOCK_TAB (shell->pages[shell->tab]), keyval);
 }
 
-/* --- the pages over the tabs (the other activities) */
+/* --- the pages over the tabs */
 
 static void
 close_page (GtkWidget *page, Shell *shell)
@@ -222,14 +220,14 @@ on_pick_ringtone (AlarmPage *page, guint alarm_id, Shell *shell)
   show_ringtone_picker (shell, ringtone_picker_new_for_alarm (shell->settings, alarm_id));
 }
 
-/* Settings ▸ Screen saver ▸ Preview, or a long press on the Clock tab (ClockFragment's StartScreenSaverListener) */
+/* Settings ▸ Screen saver ▸ Preview, or a long press on the Clock tab */
 static void
 on_show_screensaver (GtkWidget *page, Shell *shell)
 {
   screensaver_present (gtk_window_get_application (GTK_WINDOW (shell->window)), shell->settings);
 }
 
-/* Settings ▸ Screen saver ▸ Settings: ScreensaverSettingsActivity, over Settings */
+/* Settings ▸ Screen saver ▸ Settings: the screen saver's settings, over Settings */
 static void
 on_screensaver_settings (GtkWidget *settings_page, Shell *shell)
 {
@@ -239,7 +237,7 @@ on_screensaver_settings (GtkWidget *settings_page, Shell *shell)
   clock_navigator_push (CLOCK_NAVIGATOR (shell->navigator), page);
 }
 
-/* SettingsMenuItemController: the gear, or the cities picker's menu */
+/* Settings, from the gear or the cities picker's menu */
 static void
 show_settings (Shell *shell)
 {
@@ -297,10 +295,9 @@ show_tab (Shell *shell, Tab tab)
 
 /* --- layout */
 
-/* The FAB is centred in a 120 dp row at the bottom of the content, raised by the snackbar while it shows
- * (SnackbarSlidingBehavior); the side buttons are centred on the same line, each placed in the space beside the
- * FAB by its bias. They are placed on their own, not in a full-width box, so that touches between them still reach
- * the list under them. */
+/* The FAB is centred in a FAB_ROW-tall row at the bottom of the content, raised by the snackbar while it shows; the
+ * side buttons are centred on the same line, each placed in the space beside the FAB by its bias. They are placed on
+ * their own, not in a full-width box, so that touches between them still reach the list under them. */
 static gboolean
 on_child_position (GtkOverlay *overlay, GtkWidget *child, GdkRectangle *rect, Shell *shell)
 {
@@ -333,9 +330,8 @@ on_lift (NeoSnackbar *snackbar, GParamSpec *pspec, Shell *shell)
 
 /* --- in front */
 
-/* The service shows no timer or stopwatch notification while the app is in front, as the tabs show them
- * (NotificationModel.isApplicationInForeground). The window being the active one is in front: the lock screen,
- * the launcher or another app takes that from it. */
+/* The service shows no timer or stopwatch notification while the app is in front, as the tabs show them. The window
+ * being the active one is in front: the lock screen, the launcher or another app takes that from it. */
 static void
 on_active (GtkWindow *window, GParamSpec *pspec, Shell *shell)
 {
@@ -374,7 +370,7 @@ clock_window_new (GtkApplication *app, GSettings *settings)
   g_object_set_data_full (G_OBJECT (window), "clock-shell", shell, shell_free);
   gtk_window_set_title (GTK_WINDOW (window), _("Clock"));
 
-  /* the app bar: the tab's name 24 dp in, no lift, no shadow */
+  /* the app bar: the tab's name, no lift, no shadow */
   gtk_widget_add_css_class (bar, "neo-app-bar");
   shell->title = gtk_label_new (NULL);
   gtk_widget_add_css_class (shell->title, "neo-app-bar-title");
@@ -383,7 +379,7 @@ clock_window_new (GtkApplication *app, GSettings *settings)
   gtk_label_set_xalign (GTK_LABEL (shell->title), 0);
   neo_label_set_font_padding (shell->title, 22);
   gtk_box_append (GTK_BOX (bar), shell->title);
-  /* the Settings action, a white gear in a 48 dp button flush with the end (still:clock-main: 936…1080 px) */
+  /* the Settings action, a white gear in a button flush with the end */
   gtk_image_set_pixel_size (GTK_IMAGE (gear), 24);
   settings_button = neo_pressable_new (gear);
   gtk_widget_set_size_request (settings_button, 48, 48);
@@ -417,7 +413,7 @@ clock_window_new (GtkApplication *app, GSettings *settings)
   gtk_widget_set_vexpand (shell->content, TRUE);
   gtk_overlay_set_child (GTK_OVERLAY (shell->content), shell->stack);
 
-  /* the FAB (88 dp, primary) and the side buttons (56 dp, secondary); hidden until a tab sets them */
+  /* the FAB and the smaller side buttons, in their own colours; hidden until a tab sets them */
   for (int i = 0; i < CLOCK_N_BUTTONS; i++)
     {
       Button *button = &shell->buttons[i];
@@ -452,7 +448,7 @@ clock_window_new (GtkApplication *app, GSettings *settings)
   key = gtk_event_controller_key_new ();
   g_signal_connect (key, "key-pressed", G_CALLBACK (on_key), shell);
   gtk_widget_add_controller (window, key);
-  /* the tab it was left on (UiDataModel.getSelectedTab) */
+  /* the tab it was left on */
   shell->tab = g_settings_get_enum (settings, "selected-tab");
   neo_nav_bar_set_selected (NEO_NAV_BAR (shell->nav), shell->tab);
   select_tab (shell, shell->tab);

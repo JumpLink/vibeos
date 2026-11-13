@@ -1,28 +1,26 @@
 /* calc-window: see calc-window.h.
  *
- * CalcMain is the activity's content, DisplayMotionLayout: the history frame, the display, the advanced pad and
- * the input pad, placed by the transition's progress between its two ConstraintSets (activity_calculator_scene.xml):
+ * CalcMain is the window's content: the history frame, the display, the advanced pad and the input pad, placed by
+ * the transition's progress between two layouts:
  *  - start: the display at the top (30 % of the height; 40 % in landscape), the pads under it, the history frame
  *    0 high above the window;
  *  - end: the pads' bottom on the bottom of the animation helper (70 % of a height below the window; 60 %), the
  *    display on top of them, the history frame filling the window above the display.
- * Every edge goes from its start to its end place in step with the progress, rounded to the device pixel, as
- * MotionLayout lays the views out. The progress follows a drag down from the display (OnSwipe dragDown, anchored
- * at the display's bottom: one display travel is the whole transition), and after the finger lifts runs on to 0
- * or 1 by MotionLayout's StopLogic; the menu's History and Back run it over the transition's 1000 ms,
- * accelerate-decelerate. The history is created when the transition starts and destroyed when it is back at the
- * start (Calculator's TransitionListener, showHistoryFragment, removeHistoryFragment).
+ * Every edge goes from its start to its end place in step with the progress, rounded to the device pixel. The
+ * progress follows a drag down from the display (anchored at the display's bottom: one display travel is the whole
+ * transition), and after the finger lifts runs on to 0 or 1 under a speed and acceleration limit (StopLogic); the
+ * menu's History and Back run it over the transition's 1000 ms, accelerate-decelerate. The history is created when
+ * the transition starts and destroyed when it is back at the start.
  *
- * The rest is Calculator.java, function by function: the display's states (INPUT, EVALUATE, INIT, INIT_FOR_RESULT,
- * RESULT, ERROR), the buttons, the keys, pasting, the result taking the formula's place, the menus and dialogs.
+ * The rest: the display's states (INPUT, EVALUATE, INIT, INIT_FOR_RESULT, RESULT, ERROR), the buttons, the keys,
+ * pasting, the result taking the formula's place, the menus and dialogs.
  *
- * Kept from Android: Back at the app's root leaves it running (the shell minimizes the window, as moveTaskToBack),
- * so the display is as it was when the app comes back; a new start has an empty display and the history, memory
- * and angle mode of before, as a new activity has. A rotation builds the layout again from the saved state, as an
- * activity is recreated (onSaveInstanceState, restoreInstanceState, restoreDisplay).
+ * Back at the app's root leaves it running (the shell minimizes the window), so the display is as it was when the
+ * app comes back; a new start has an empty display and the history, memory and angle mode of before. A rotation
+ * builds the layout again from the saved state.
  *
- * Left out: haptics (no vibrator API here), accessibility announcements ("cleared", the result read out), and the
- * system clipboard overlay Android 13 shows after a copy (the app's own "Text copied" toast is here). */
+ * Left out: haptics (no vibrator API here), accessibility announcements ("cleared", the result read out), and a
+ * system clipboard overlay after a copy (the app's own "Text copied" toast is here). */
 #include "calc-window.h"
 #include "calc-button.h"
 #include "calc-display.h"
@@ -39,15 +37,15 @@
 #include <string.h>
 #include <neo.h>
 
-#define DURATION          1.0       /* s: the transition's motion:duration */
-#define MAX_ACCELERATION  1.2       /* OnSwipe's defaults: progress / s² */
+#define DURATION          1.0       /* s: the transition's duration */
+#define MAX_ACCELERATION  1.2       /* progress / s²: the settle after a drag */
 #define MAX_VELOCITY      4.0       /* progress / s */
-#define TOUCH_SLOP        8         /* dp: ViewConfiguration's */
-#define ERROR_COLOR       0xB00020  /* MDC design_default_color_error */
+#define TOUCH_SLOP        8         /* px: the move that starts a drag */
+#define ERROR_COLOR       0xB00020  /* the formula and the result after an error */
 #define N_INVERTIBLE      6
 
 typedef enum {
-  STATE_NONE = -1,        /* before the first setState (Java's null) */
+  STATE_NONE = -1,        /* before the first set_state */
   STATE_INPUT,
   STATE_EVALUATE,
   STATE_INIT,
@@ -68,12 +66,12 @@ enum {
 
 typedef enum {
   MOTION_NONE,
-  MOTION_TIMED,           /* transitionToEnd / transitionToStart */
+  MOTION_TIMED,           /* to the end or the start, over DURATION */
   MOTION_STOP_LOGIC,      /* after a drag */
 } MotionKind;
 
-/* MotionLayout's StopLogic (StopLogicEngine): from where the finger left it, at its speed, to 0 or 1 with at most
- * MAX_ACCELERATION and MAX_VELOCITY, in up to three stages of constant acceleration */
+/* the settle after a drag: from where the finger left it, at its speed, to 0 or 1 with at most MAX_ACCELERATION
+ * and MAX_VELOCITY, in up to three stages of constant acceleration */
 typedef struct {
   double   start;
   gboolean backwards;
@@ -83,7 +81,7 @@ typedef struct {
   double   e1, e2, e3;    /* the distance done at the end of each */
 } StopLogic;
 
-/* what onSaveInstanceState keeps */
+/* what a rebuild keeps */
 typedef struct {
   CalcState state;
   char     *unprocessed;
@@ -97,9 +95,9 @@ G_DECLARE_FINAL_TYPE (CalcMain, calc_main, CALC, MAIN, GtkWidget)
 struct _CalcMain {
   GtkWidget          parent;
   Evaluator         *evaluator;
-  gboolean           one_line;          /* landscape: display_one_line.xml and the -land pads */
+  gboolean           one_line;          /* landscape: the one-line display and pads */
   /* the owner of the listener the evaluator calls back: a new one for each layout, so that what was asked for
-   * an old layout does not reach the new one (an old activity's listener) */
+   * an old layout does not reach the new one */
   GObject           *generation;
   EvaluationListener listener;
 
@@ -115,14 +113,14 @@ struct _CalcMain {
   GtkWidget         *inverse[N_INVERTIBLE];
 
   CalcState          state;
-  char              *unprocessed;       /* mUnprocessedChars */
+  char              *unprocessed;       /* typed characters that are no key, shown in red */
   gboolean           inverse_mode;
 
   /* the transition */
   double             progress;
-  double             travel;            /* dp the display moves from start to end */
-  graphene_rect_t    display_box;       /* where the display is now, dp */
-  double             history_height;    /* dp */
+  double             travel;            /* px the display moves from start to end */
+  graphene_rect_t    display_box;       /* where the display is now, px */
+  double             history_height;    /* px */
   MotionKind         motion;
   guint              tick;
   gint64             motion_start;
@@ -144,7 +142,7 @@ struct _CalcMain {
   char              *paste_tag;
   GtkWidget         *licenses;
   guint              rebuild_idle;
-  guint              key_down;          /* the key whose release is the app's (onKeyUp) */
+  guint              key_down;          /* the key whose release is the app's */
 };
 
 G_DEFINE_FINAL_TYPE (CalcMain, calc_main, GTK_TYPE_WIDGET)
@@ -176,7 +174,7 @@ rgb (guint32 rgb)
 }
 
 /* ------------------------------------------------------------------------------------------------------------ */
-/* dialogs (AlertDialogFragment.showMessageDialog): an optional title, the message, Dismiss and maybe one more */
+/* dialogs: an optional title, the message, Dismiss and maybe one more */
 
 typedef void (*DialogAction) (CalcMain *self);
 
@@ -195,9 +193,9 @@ message_dialog (CalcMain *self, const char *title, const char *message, const ch
   NeoDialog *dialog = neo_dialog_new (title && *title ? title : NULL);
   GtkWidget *label = gtk_label_new (message);
 
-  /* the message is the dialog's custom view, dialog_message.xml: textAppearanceMedium (18 sp, textColorPrimary)
-   * with 20 dp of padding all round, the custom panel itself having none (calculator.css). Its textIsSelectable
-   * is left out: a selectable GtkLabel selects all of itself when the dialog gives it the focus. */
+  /* the message is the dialog's content with its own padding, the content area itself having none
+   * (calculator.css). It is not selectable: a selectable GtkLabel selects all of itself when the dialog gives it
+   * the focus. */
   gtk_label_set_wrap (GTK_LABEL (label), TRUE);
   gtk_label_set_wrap_mode (GTK_LABEL (label), PANGO_WRAP_WORD_CHAR);
   gtk_label_set_xalign (GTK_LABEL (label), 0);
@@ -214,7 +212,7 @@ message_dialog (CalcMain *self, const char *title, const char *message, const ch
 }
 
 /* ------------------------------------------------------------------------------------------------------------ */
-/* the floating toolbar (the action modes of CalculatorFormula and CalculatorResult) */
+/* the floating toolbar over the formula or a result */
 
 static gboolean
 stop_action_mode (CalcMain *self)
@@ -230,7 +228,7 @@ on_toolbar_closed (CalcTextToolbar *toolbar, CalcMain *self)
 {
   if (toolbar != self->toolbar)
     return;
-  /* onDestroyActionMode: unhighlightResult */
+  /* the result it was about loses its highlight */
   if (self->toolbar_result) {
     calc_result_set_highlight (self->toolbar_result, FALSE);
     g_object_remove_weak_pointer (G_OBJECT (self->toolbar_result), (gpointer *) &self->toolbar_result);
@@ -256,7 +254,7 @@ new_toolbar (CalcMain *self, CalcResult *about)
   return toolbar;
 }
 
-/* CalculatorResult.onMenuItemClick */
+/* the result toolbar's memory buttons */
 static gboolean
 action_memory_store (gpointer data)
 {
@@ -343,7 +341,7 @@ clear_if_not_input_state (CalcMain *self)
   }
 }
 
-/* OnFormulaContextMenuClickListener.onMemoryRecall */
+/* the formula toolbar's MR */
 static gboolean
 action_memory_recall (gpointer data)
 {
@@ -358,7 +356,7 @@ action_memory_recall (gpointer data)
   return TRUE;
 }
 
-/* onPaste: a result copied from here (its tag is the last one saved) comes back as itself, with all its digits;
+/* Paste: a result copied from here (its tag is the last one saved) comes back as itself, with all its digits;
  * anything else as typed characters */
 static gboolean
 action_paste (gpointer data)
@@ -392,9 +390,9 @@ show_formula_toolbar (CalcMain *self)
     calc_text_toolbar_append (toolbar, "MR", action_memory_recall, self);
   if (paste)
     calc_text_toolbar_append (toolbar, _("Paste"), action_paste, self);
-  /* onActionModeStarted: the formula scrolls to its end */
+  /* the formula scrolls to its end */
   calc_formula_scroll_to_end (self->formula);
-  /* onGetContentRect: inside the padding (16/8/16/16 dp; 8/28 landscape), over its rightmost 10 % */
+  /* the toolbar points at the formula inside its padding, over its rightmost 10 % */
   w = gtk_widget_get_width (GTK_WIDGET (self->formula));
   h = gtk_widget_get_height (GTK_WIDGET (self->formula));
   top = self->one_line ? 8 : 16;
@@ -406,7 +404,7 @@ show_formula_toolbar (CalcMain *self)
 }
 
 /* the clipboard is read before the toolbar shows: whether there is text to paste decides whether Paste is on it
- * (isPasteEnabled), and the tag of a result copied from here comes with it */
+ * and the tag of a result copied from here comes with it */
 typedef struct {
   CalcMain *self;
   guint     serial;
@@ -505,11 +503,10 @@ redisplay_formula (CalcMain *self)
 {
   g_autofree char *text = calc_expr_to_string (main_expr (self));
 
-  /* the characters that could not be taken in, after it in red (mUnprocessedColorSpan) */
+  /* the characters that could not be taken in, after it in red */
   calc_formula_set_text (self->formula, text, self->unprocessed);
 }
 
-/* restoreDisplayPositions */
 static void
 restore_display_positions (CalcMain *self)
 {
@@ -517,7 +514,7 @@ restore_display_positions (CalcMain *self)
   calc_display_restore_positions (CALC_DISPLAY (self->display));
 }
 
-/* setState: the colours, and the one-line display's visibilities */
+/* the colours, and the one-line display's visibilities */
 static void
 set_state (CalcMain *self, CalcState state)
 {
@@ -544,7 +541,7 @@ set_state (CalcMain *self, CalcState state)
     calc_formula_set_color (self->formula, &error);
     calc_result_set_color (self->result, &error);
   } else if (state != STATE_RESULT) {
-    /* display_formula_text_color, display_result_text_color (values-night-v34) */
+    /* the normal colours */
     calc_formula_set_color (self->formula, &formula_color);
     calc_result_set_color (self->result, &result_color);
   }
@@ -583,7 +580,7 @@ on_mode_changed (CalcMain *self, gboolean degree_mode)
   calc_button_set_label (CALC_BUTTON (self->mode_toggle), degree_mode ? "RAD" : "DEG");
 }
 
-/* switchToInput: from RESULT, an operator goes on after the result, anything else starts again */
+/* from RESULT, an operator goes on after the result, anything else starts again */
 static void
 switch_to_input (CalcMain *self, CalcKey key)
 {
@@ -708,7 +705,7 @@ on_clear (CalcMain *self)
   on_clear_end (self);
 }
 
-/* onResult: the result takes the formula's place, at the size the formula would show it (its smallest for one
+/* the result takes the formula's place, at the size the formula would show it (its smallest for one
  * that scrolls), in the formula's colour, and goes to the history */
 static void
 on_result (CalcMain *self, gboolean preserved)
@@ -727,7 +724,7 @@ on_result (CalcMain *self, gboolean preserved)
   set_state (self, STATE_RESULT);
 }
 
-/* addChars: characters typed or pasted, as the keys they stand for. A pasted number may carry an exponent
+/* characters typed or pasted, as the keys they stand for. A pasted number may carry an exponent
  * ("1.5E-7"), and does not run on into a number before it (a × goes between). Characters that are no key stay
  * at the end, unprocessed, in red, until deleted. */
 static void
@@ -809,7 +806,6 @@ add_chars (CalcMain *self, const char *more, gboolean explicit)
   redisplay_after_formula_change (self);
 }
 
-/* onButtonClick */
 static void
 on_button_click (CalcMain *self, int id)
 {
@@ -883,7 +879,7 @@ on_text_size_changed (CalcFormula *formula, double old_size, CalcMain *self)
 }
 
 /* ------------------------------------------------------------------------------------------------------------ */
-/* the main result's listener (the activity is Evaluator.EvaluationListener for MAIN_INDEX) */
+/* the main result's listener: what the evaluator reports for EVALUATOR_MAIN_INDEX */
 
 static void
 listener_on_evaluate (gpointer data, long index, int init_prec_offset, int msd_index, int lsd_offset,
@@ -1056,7 +1052,7 @@ stop_logic_duration (const StopLogic *s)
   return s->t1 + (s->stages > 1 ? s->t2 : 0) + (s->stages > 2 ? s->t3 : 0);
 }
 
-/* calcY: the distance done after t seconds */
+/* the distance done after t seconds */
 static double
 stop_logic_distance (const StopLogic *s, double t)
 {
@@ -1083,7 +1079,7 @@ stop_logic_position (const StopLogic *s, double t)
   return s->backwards ? s->start - y : s->start + y;
 }
 
-/* prepareForHistory: what is being computed for "=" is cancelled; while a restored result is being computed
+/* before the history opens: what is being computed for "=" is cancelled; while a restored result is being computed
  * again (INIT) the history does not open */
 static gboolean
 prepare_for_history (CalcMain *self)
@@ -1113,7 +1109,7 @@ clear_history (CalcMain *self)
 static void
 menu_clear (gpointer data)
 {
-  /* HistoryFragment's Clear: the message, no title */
+  /* the history's Clear: the message, no title */
   message_dialog (data, NULL, _("Clear history and memory?"), _("Clear"), clear_history);
 }
 
@@ -1126,7 +1122,7 @@ on_history_menu (CalcHistory *history, CalcMain *self)
   calc_popup_menu_present (menu, calc_history_get_overflow (history));
 }
 
-/* showHistoryFragment, when the transition starts */
+/* the history is made when the transition starts */
 static void
 show_history (CalcMain *self)
 {
@@ -1141,7 +1137,7 @@ show_history (CalcMain *self)
   gtk_widget_insert_after (self->history, GTK_WIDGET (self), NULL);
 }
 
-/* removeHistoryFragment, when it is back at the start */
+/* and dropped when it is back at the start */
 static void
 remove_history (CalcMain *self)
 {
@@ -1158,7 +1154,7 @@ set_progress (CalcMain *self, double progress)
   progress = CLAMP (progress, 0, 1);
   if (progress == self->progress)
     return;
-  /* onTransitionStarted */
+  /* the transition starts */
   if (progress > 0 && !self->history)
     show_history (self);
   self->progress = progress;
@@ -1175,7 +1171,7 @@ stop_motion (CalcMain *self)
   self->motion = MOTION_NONE;
 }
 
-/* onTransitionCompleted */
+/* the transition has stopped */
 static void
 settle (CalcMain *self)
 {
@@ -1228,7 +1224,7 @@ start_motion (CalcMain *self, MotionKind kind)
   self->tick = gtk_widget_add_tick_callback (GTK_WIDGET (self), motion_tick, NULL, NULL);
 }
 
-/* transitionToEnd / transitionToStart: over the transition's duration, accelerate-decelerate, from where it is */
+/* to the end or the start: over the transition's duration, accelerate-decelerate, from where it is */
 static void
 transition_to (CalcMain *self, double goal)
 {
@@ -1242,7 +1238,7 @@ transition_to (CalcMain *self, double goal)
   start_motion (self, MOTION_TIMED);
 }
 
-/* TouchResponse on ACTION_UP: a third of a second at the finger's speed decides where it goes */
+/* the finger lifts: a third of a second at its speed decides where it goes */
 static void
 release_drag (CalcMain *self, double velocity_y)
 {
@@ -1264,7 +1260,7 @@ at_end_state (CalcMain *self)
   return self->progress >= 1 && self->motion == MOTION_NONE && !self->dragging;
 }
 
-/* onBackPressed, inside the app: the toolbar closes, or the history goes up. FALSE: nothing to go back to here */
+/* Back inside the app: the toolbar closes, or the history goes up. FALSE: nothing to go back to here */
 static gboolean
 on_back_pressed (CalcMain *self)
 {
@@ -1278,8 +1274,8 @@ on_back_pressed (CalcMain *self)
 }
 
 /* ------------------------------------------------------------------------------------------------------------ */
-/* touch: DisplayMotionLayout intercepts a move down or up of more than the touch slop that started on the display;
- * any touch first closes the toolbar (Calculator.dispatchTouchEvent) */
+/* touch: a move down or up of more than the touch slop that started on the display drags the transition;
+ * any touch first closes the toolbar */
 
 static void
 on_drag_begin (GtkGestureDrag *drag, double x, double y, CalcMain *self)
@@ -1309,7 +1305,7 @@ on_drag_update (GtkGestureDrag *drag, double dx, double dy, CalcMain *self)
     stop_motion (self);
     self->drag_progress = self->progress;
   }
-  /* the whole move from the touch down, as TouchResponse counts it once the drag has started */
+  /* the whole move from the touch down counts, once the drag has started */
   set_progress (self, self->drag_progress + (self->travel > 0 ? dy / self->travel : 0));
 }
 
@@ -1391,7 +1387,7 @@ menu_licenses (gpointer data)
   gtk_widget_grab_focus (self->licenses);
 }
 
-/* the ⋮: History; with a result, its leading digits, and its fraction when it is rational (onPrepareOptionsMenu) */
+/* the ⋮: History; with a result, its leading digits, and its fraction when it is rational */
 static void
 on_overflow_clicked (GtkWidget *button, CalcMain *self)
 {
@@ -1408,7 +1404,7 @@ on_overflow_clicked (GtkWidget *button, CalcMain *self)
 }
 
 /* ------------------------------------------------------------------------------------------------------------ */
-/* building it (onCreate) */
+/* building it */
 
 typedef struct {
   int             id;
@@ -1419,7 +1415,7 @@ typedef struct {
   int             invertible, inverse;      /* the index in the INV groups, or -1 */
 } Key;
 
-/* advanced_pad.xml: the labels from strings.xml (inv and the modes in capitals: textAllCaps) */
+/* the advanced pad (inv and the modes in capitals) */
 static const Key advanced_keys[] = {
   { CALC_KEY_OP_SQRT,    "√",                  CALC_BUTTON_ADVANCED, 0, 0, 1, 0, 5, -1 },
   { CALC_KEY_OP_SQR,     "x²",            CALC_BUTTON_ADVANCED, 0, 0, 1, 0, -1, 5 },
@@ -1441,7 +1437,7 @@ static const Key advanced_keys[] = {
   { CALC_KEY_FUN_10POW,  "10ˣ",           CALC_BUTTON_ADVANCED, 3, 2, 2, 3, -1, 4 },
 };
 
-/* input_pad.xml */
+/* the input pad */
 static const Key input_keys[] = {
   { BTN_CLR,             "AC",       CALC_BUTTON_ACTION,   0, 0, 4, 3, -1, -1 },
   { BTN_PAREN,           "( )",      CALC_BUTTON_OPERATOR, 1, 0, 4, 2, -1, -1 },
@@ -1471,7 +1467,7 @@ on_key_button_clicked (GtkWidget *button, CalcMain *self)
   on_button_click (self, GPOINTER_TO_INT (g_object_get_data (G_OBJECT (button), "calc-id")));
 }
 
-/* the delete key held: everything goes (onLongClick) */
+/* the delete key held: everything goes */
 static gboolean
 on_delete_long_pressed (GtkWidget *button, CalcMain *self)
 {
@@ -1494,7 +1490,7 @@ make_pad (CalcMain *self, const Key *keys, int n_keys, gboolean advanced)
   if (advanced) {
     pad = land ? calc_pad_new (land_advanced_columns, 3, land_advanced_rows, 4)
                : calc_pad_new (portrait_advanced_columns, 4, portrait_advanced_rows, 3);
-    /* PadLayoutStyle.Advanced; button_small_horizontal_margin (2 dp, 0 in landscape) */
+    /* the advanced pad's padding, and the keys' margin (none in landscape) */
     if (land)
       calc_pad_set_padding (CALC_PAD (pad), 8, 8, 8, 4);
     else
@@ -1503,7 +1499,7 @@ make_pad (CalcMain *self, const Key *keys, int n_keys, gboolean advanced)
   } else {
     pad = land ? calc_pad_new (land_input_columns, 5, land_input_rows, 4)
                : calc_pad_new (portrait_input_columns, 4, portrait_input_rows, 5);
-    /* PadLayoutStyle; button_horizontal_margin */
+    /* the input pad's padding, and the keys' margin */
     if (land)
       calc_pad_set_padding (CALC_PAD (pad), 8, 8, 4, 8);
     else
@@ -1516,7 +1512,7 @@ make_pad (CalcMain *self, const Key *keys, int n_keys, gboolean advanced)
     GtkWidget *button;
 
     if (key->id == BTN_DEL) {
-      /* button_iconsize: 48 dp, 22 in landscape */
+      /* the icon smaller in landscape, where the keys are shorter */
       button = calc_button_new_icon ("calc-del-symbolic", land ? 22 : 48, key->theme);
       gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, _("delete"), -1);
       g_signal_connect (button, "long-pressed", G_CALLBACK (on_delete_long_pressed), self);
@@ -1606,7 +1602,7 @@ restore_instance_state (CalcMain *self, SavedState *saved)
   on_inverse_toggled (self, saved->inverse);
 }
 
-/* restoreDisplay: a result or an error comes back by being computed again */
+/* a result or an error comes back by being computed again */
 static void
 restore_display (CalcMain *self)
 {
@@ -1621,7 +1617,7 @@ restore_display (CalcMain *self)
   }
 }
 
-/* a rotation: the activity is made again (display_one_line.xml and the -land pads) from its saved state */
+/* a rotation: the layout is made again (the one-line display and pads in landscape) from its saved state */
 static gboolean
 rebuild_idle (gpointer data)
 {
@@ -1648,7 +1644,7 @@ typedef struct {
   double x, y, w, h;      /* device px */
 } Box;
 
-/* a percent dimension or guideline (ConstraintLayout) */
+/* a percent dimension or guideline, rounded to the device pixel */
 static int
 percent (double fraction, int length)
 {
@@ -1749,9 +1745,9 @@ calc_main_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   CalcMain *self = CALC_MAIN (widget);
   double w = gtk_widget_get_width (widget), h = gtk_widget_get_height (widget);
-  /* activity_background: a sweep from display_background_color to colorSurface, both system_surface_dark */
+  /* one flat colour: the original's gradient runs between two colours that are the same in the dark theme */
   GdkRGBA background = neo_color (NEO_SURFACE);
-  GdkRGBA history = neo_color (NEO_SURFACE_CONTAINER);   /* history_frame's history_background_color */
+  GdkRGBA history = neo_color (NEO_SURFACE_CONTAINER);   /* behind the history */
 
   gtk_snapshot_append_color (snapshot, &background, &GRAPHENE_RECT_INIT (0, 0, w, h));
   if (self->history_height > 0)
@@ -1766,7 +1762,7 @@ calc_main_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 }
 
 /* ------------------------------------------------------------------------------------------------------------ */
-/* keys (onKeyUp) */
+/* keys */
 
 static gboolean
 on_key_pressed (GtkEventControllerKey *keys, guint keyval, guint keycode, GdkModifierType state, CalcMain *self)
@@ -1900,7 +1896,7 @@ calc_main_new (GSettings *settings)
   self->evaluator = evaluator_new (db, settings);
   evaluator_set_callback (self->evaluator, &evaluator_callback, self);
   build (self, FALSE);
-  /* a new start: an empty display (onCreate without saved state) */
+  /* a new start: an empty display */
   set_state (self, STATE_INPUT);
   evaluator_clear_main (self->evaluator);
   on_inverse_toggled (self, FALSE);

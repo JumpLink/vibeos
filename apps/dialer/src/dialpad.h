@@ -1,4 +1,4 @@
-/* The dialpad: the twelve keys under a row with the digits typed (DialpadView, spec §3 and §8.11).
+/* The dialpad: the twelve keys under a row with the digits typed.
  *
  * Two kinds, as the Dialer has them:
  *  - DIALPAD_DIALER, the main screen's: the digits can be edited (a key adds one, backspace takes one off, a long

@@ -1,34 +1,34 @@
-/* The Phone's styles, over libneo's (neo.css). The Dialer is a light theme made dark by force dark (spec §0.2):
- * these are the colours it renders, not a palette's. The InCallUI screens draw themselves (answer-view.c,
- * incall-view.c); only the icons inside their buttons are styled here. */
+/* The Phone's styles, over libneo's (neo.css). The colours are the ones the dark Phone renders, so they are plain
+ * values, not a palette. Weights sit 300 over the design's (400 as 700, 500 as 800): the phone's Bold text setting
+ * is on. The in-call screens draw themselves (answer-view.c, incall-view.c); only the icons inside their buttons
+ * are styled here. */
 
 window.neo.dialer,
 .dialer-page {
-  background-color: #181c1d;            /* dialer_background_color, neutral1_900 */
+  background-color: #181c1d;            /* the page behind the lists */
 }
 
-/* the dialpad opts out of force dark: its icons are raw dialer_theme_color_light */
+/* the dialpad's ✕, ⋮ and ⌫: the dialpad is not darkened with the rest, so they keep the light teal */
 .dialpad-icon {
   color: #b8ebf3;
 }
 
-/* the dial button's handset (dialer_call_icon_color) and the in-call end button's (incall_end_call_icon_color) */
+/* the handset on the dial button and on the in-call end button */
 .dial-icon,
 .end-call-icon {
   color: #000000;
 }
 
-/* ?colorIcon, inverted: the action and toolbar icons */
+/* the action and toolbar icons */
 .dialer-icon {
   color: #eff0f2;
 }
 
-/* searchbar_icon_color, made light */
 .search-bar-icon {
   color: #fefefe;
 }
 
-/* Dialer.TextAppearance.Primary: Google Sans Flex 16 sp, 400 drawn as 700 ("Bold text") */
+/* a row's main line (name, number, call type) */
 .dialer-primary-text {
   font-family: "Google Sans Flex", "Neo Roboto", sans-serif;
   font-size: 16px;
@@ -36,14 +36,12 @@ window.neo.dialer,
   color: #f6f7fb;
 }
 
-/* dialer_divider_line_color, rendered */
 .recents-divider {
   min-height: 1px;
   background-color: #383838;
 }
 
-/* the expanded search field opts out of force dark: textColorSecondary, textColorHint and colorPrimary raw;
- * no fontFamily, so the platform's Roboto */
+/* the expanded search bar's field: it is not darkened with the rest, so its text stays the light theme's grey */
 .dialer-search-field {
   font-family: "Neo Roboto", Roboto, sans-serif;
   font-size: 16px;
@@ -58,8 +56,7 @@ window.neo.dialer,
   opacity: 1;
 }
 
-/* EmptyContentView: the picture in colorIconSecondary, the line in textColorSecondary (16 sp, the TextView's
- * Roboto), the button in white TextAppearance.Material.Button (Roboto medium, 500 drawn as 800) */
+/* an empty list's placeholder: a picture, a line of text and an action button */
 .dialer-empty-image {
   color: #bdc1c6;
 }
@@ -79,7 +76,7 @@ window.neo.dialer,
   color: #ffffff;
 }
 
-/* the pop-up menus (popup-menu.c): the measured card, TextAppearance.Material.Menu (Roboto 16 sp, 400 drawn as 700) */
+/* the pop-up menus (popup-menu.c) */
 .popup-menu {
   background-color: #181c1d;
   border-radius: 2px;
@@ -96,7 +93,7 @@ window.neo.dialer,
   opacity: 0.38;
 }
 
-/* Dialer.TextAppearance.Secondary: Google Sans Flex 14 sp, 700, textColorSecondary */
+/* a row's second line (number, label, time) */
 .dialer-secondary-text {
   font-family: "Google Sans Flex", "Neo Roboto", sans-serif;
   font-size: 14px;
@@ -104,11 +101,11 @@ window.neo.dialer,
   color: #a3a7ac;
 }
 
-/* Favorites (favorite_item_layout, speed_dial_header_layout) */
+/* Favorites: a tile's name and number type, and the header over the list */
 .favorite-name {
   font-family: "Google Sans Flex", "Neo Roboto", sans-serif;
   font-size: 14px;
-  font-weight: 800;               /* config_headlineFontFamilyMedium */
+  font-weight: 800;
   color: #f6f7fb;
 }
 
@@ -126,7 +123,7 @@ window.neo.dialer,
   color: #a3a7ac;
 }
 
-/* Widget.AppCompat.Button.Borderless in colorAccent: TextAppearance.AppCompat.Button, no caps */
+/* the header's borderless Add button, in the accent colour */
 .favorites-add {
   font-family: "Neo Roboto", Roboto, sans-serif;
   font-size: 14px;
@@ -134,7 +131,7 @@ window.neo.dialer,
   color: #81b5bc;
 }
 
-/* Choose call type (disambig_dialog_layout): the strips in colorBackgroundFloating, the title in Header2 */
+/* the Choose call type dialog: its strips, title and "Remember this choice" */
 .disambig {
   background-color: #1b1b1b;
 }
@@ -168,8 +165,7 @@ window.neo.dialer,
   color: #f6f7fb;
 }
 
-/* a floating context menu: popup_background_material in colorBackgroundFloating, the header in the platform's
- * TextAppearance.Material.Widget.PopupMenu.Header */
+/* a context menu (a pop-up with a header line), a shade lighter than the plain pop-ups */
 .popup-menu.context {
   background-color: #2c3132;
 }
@@ -181,7 +177,7 @@ window.neo.dialer,
   color: #a3a7ac;
 }
 
-/* Call history (call-history.c): the action bar and the tab strip both colorPrimary, with no seam between them */
+/* Call history (call-history.c): the action bar and the tab strip share one colour, with no seam between them */
 .dialer-history {
   background-color: #181c1d;
 }
@@ -191,7 +187,6 @@ history-tabs {
   background-color: #1f2728;
 }
 
-/* TextAppearance.AppCompat.Widget.ActionBar.Title: Roboto medium 20 sp (500 drawn as 800), measured #f6f7fb */
 .dialer-history-title {
   font-family: "Neo Roboto", Roboto, sans-serif;
   font-size: 20px;
@@ -199,13 +194,12 @@ history-tabs {
   color: #f6f7fb;
 }
 
-/* the Up arrow and the overflow, measured */
+/* the Up arrow and the overflow */
 .dialer-history-icon {
   color: #fdfdfd;
 }
 
-/* DialtactsActionBarTabTextStyle less its fontFamily (ViewPagerTabs copies only the size, style and colour):
- * Roboto 14 sp, 400 drawn as 700; tab_text in dialer_theme_color when selected */
+/* the tab labels; the selected one in the accent colour */
 .history-tab {
   font-family: "Neo Roboto", Roboto, sans-serif;
   font-size: 14px;
@@ -217,8 +211,8 @@ history-tabs {
   color: #81b5bc;
 }
 
-/* Settings (dialer-settings.c): the bar is Call history's; the rows are preference_material's, Roboto at 16 and
- * 14 sp (400 drawn as 700), a category's title in colorAccent, a choice's text as measured in the Sort by dialog */
+/* Settings (dialer-settings.c): the bar is Call history's; a row's title and summary, a category's heading in the
+ * accent colour, a choice in a list dialog */
 .dialer-settings {
   background-color: #181c1d;
 }
@@ -244,7 +238,7 @@ history-tabs {
   color: #81b5bc;
 }
 
-/* Blocked numbers: Telecom's page, its own theme (measured on still:dialer-set-blocked) */
+/* Blocked numbers: a page with its own theme, hence greys unlike the Phone's */
 .blocked-numbers {
   background-color: #24292a;
 }
@@ -275,10 +269,8 @@ history-tabs {
   color: #e1e1e1;
 }
 
-/* a ListPreference's dialog (spec §9.8, still:dialer-dlg-sortby): AppCompat's AlertDialogTheme window, 342 dp wide
- * (9 dp in from the screen's sides, where NeoDialog keeps 24: the negative margin widens the card past its
- * allocation, evenly), 16 dp corners, #1b1b1b. The title 18 dp down and 24 dp in, 27 dp tall, 8 dp over the rows; the
- * rows edge to edge; "CANCEL" in a 62 dp bar, its 54 dp button 12 dp in from the end */
+/* a list setting's dialog (Sort by, Name format): wider than a NeoDialog, the negative margin widening the card
+ * past its allocation, evenly; the rows run edge to edge, CANCEL alone in the button bar */
 .settings-dialog .neo-dialog {
   background-color: #1b1b1b;
   border-radius: 16px;
@@ -292,7 +284,7 @@ history-tabs {
   font-weight: 800;
   line-height: 27px;
   color: #f6f7fb;
-  margin: 1px 24px 7px 24px;     /* its font padding: the text 1 dp under the box's middle */
+  margin: 1px 24px 7px 24px;     /* the extra pixel on top keeps the text just under the box's middle */
 }
 
 .settings-dialog .neo-dialog-buttons {
@@ -308,16 +300,14 @@ history-tabs {
   padding: 0 12px;
 }
 
-/* select_dialog_singlechoice_material's text: textAppearanceMedium, 18 sp (cap height 39 px on the still), its font
- * padding putting it 1 dp under the row's middle */
+/* a choice in the dialog: larger than a settings row's, a pixel under the row's middle */
 .settings-dialog .settings-choice {
   font-size: 18px;
   margin-top: 2px;
 }
 
-/* Call details (call-details.c): DialerToolbar's title, config_headlineFontFamilyMedium 20 sp (500 drawn as 800) in
- * textColorPrimary; the large call-type icons in their colour filters, untouched by force dark; a missed call's
- * time in dialer_red as text */
+/* Call details (call-details.c): the toolbar's title; the large call-type icons, in their own colours and not
+ * darkened; a missed call's time in red */
 .dialer-toolbar-title {
   font-family: "Google Sans Flex", "Neo Roboto", sans-serif;
   font-size: 20px;
@@ -341,8 +331,7 @@ history-tabs {
   color: #fb6a51;
 }
 
-/* Call statistics (call-stats.c): the total over the list, DirectoryHeaderStyle (config_headlineFontFamilyMedium
- * 14 sp, 500 drawn as 800) in textColorSecondary; a row's number in 12 sp */
+/* Call statistics (call-stats.c): the total over the list; a row's number, smaller than its name */
 .stats-header {
   font-family: "Google Sans Flex", "Neo Roboto", sans-serif;
   font-size: 14px;
@@ -354,8 +343,7 @@ history-tabs {
   font-size: 12px;
 }
 
-/* CallStatsCardStyle: cardBackgroundColor (neutral1_50) made dark, 28 dp corners, no elevation; its title
- * TextAppearance.CallStatsCategoryTitle, bold on headline-medium (800, 900 with Bold text), 0.009375 em spacing */
+/* a statistics card (flat, no shadow) and its category title */
 .stats-card {
   background-color: #242727;
   border-radius: 28px;
@@ -369,7 +357,7 @@ history-tabs {
   color: #f6f7fb;
 }
 
-/* the detail lines' 12 dp call-type icons, as the Recents ones render (spec §5.3) */
+/* the small call-type icons on a card's detail lines, in Recents' colours */
 .stats-incoming {
   color: #007fc6;
 }
@@ -386,7 +374,7 @@ history-tabs {
   color: #f6f7f8;
 }
 
-/* the separator over Copy number: #12000000 */
+/* the separator over Copy number */
 .stats-separator {
   background-color: rgba(0, 0, 0, 0.07);
 }

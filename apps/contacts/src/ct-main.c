@@ -1,4 +1,4 @@
-/* neo-contacts: the Contacts app, LineageOS's Contacts (com.android.contacts) rebuilt in GTK 4 (spec/contacts.md),
+/* neo-contacts: the Contacts app, LineageOS's Contacts rebuilt in GTK 4,
  * over evolution-data-server's address books.
  *
  * neo.Contacts is D-Bus activatable. The launcher starts it at the list; a .vcf file opened with it is
@@ -6,13 +6,13 @@
  * activate with org.freedesktop.Application.ActivateAction on neo.Contacts (/neo/Contacts), or with
  * `gapplication action neo.Contacts <action> <parameter>`:
  *
- *   view-contact    (s)       the card of the contact with that vCard UID, as EDS has it (ACTION_VIEW)
- *   edit-contact    (s)       the editor for that contact (ACTION_EDIT)
- *   insert          (a{sv})   the editor for a new contact with these fields filled in (ACTION_INSERT):
+ *   view-contact    (s)       the card of the contact with that vCard UID, as EDS has it
+ *   edit-contact    (s)       the editor for that contact
+ *   insert          (a{sv})   the editor for a new contact with these fields filled in:
  *                             "name" (s), "phone" (s), "email" (s); the Dialer's "Create new contact"
  *   insert-or-edit  (a{sv})   the same fields, added to a contact chosen from the list, or to a new one through
- *                             the list's "Create new contact" row (ACTION_INSERT_OR_EDIT; "Add to a contact")
- *   pick-contact    (sss)     the list to pick one contact from (ACTION_PICK): the caller's application id, the
+ *                             the list's "Create new contact" row ("Add to a contact")
+ *   pick-contact    (sss)     the list to pick one contact from: the caller's application id, the
  *                             action of the caller's to activate with the answer, and what the contact must have
  *                             ("" anything, "phone" or "email"). The answer is that action, activated on the
  *                             caller the same way, with (ss): the contact's UID and its vCard, or ("", "") when
@@ -79,7 +79,7 @@ on_activate (GApplication *app, gpointer data)
   gtk_window_present (GTK_WINDOW (contacts_window (app)));
 }
 
-/* --- a .vcf file: "Import contacts from vCard?" (ImportVCardDialogFragment), then the import */
+/* --- a .vcf file: "Import contacts from vCard?", then the import */
 
 static void
 on_import_confirmed (int response, gpointer data)
@@ -147,7 +147,7 @@ when_ready (GtkWidget *window, ContactScreen show, const char *uid)
   g_signal_connect (store, "ready", G_CALLBACK (on_store_ready), pending);
 }
 
-/* ContactEditorActivity with a contact that is not there: "Failed to open editor." and nothing more */
+/* the editor asked for a contact that is not there: "Failed to open editor." and nothing more */
 static void
 edit_contact (GtkWidget *window, const char *uid)
 {
@@ -177,7 +177,7 @@ on_edit_contact (GSimpleAction *action, GVariant *parameter, gpointer app)
   when_ready (window, edit_contact, g_variant_get_string (parameter, NULL));
 }
 
-/* the fields another app sends: a name, a number, an email address (Intents.Insert.NAME, PHONE, EMAIL) */
+/* the fields another app sends: a name, a number, an email address ("name", "phone", "email") */
 static EContact *
 prefill_from (GVariant *fields)
 {
@@ -243,7 +243,7 @@ on_insert_new (gpointer data)
   ct_window_new_contact (g_object_get_data (G_OBJECT (prefill), "ct-window"), prefill);
 }
 
-/* ContactSelectionActivity for INSERT_OR_EDIT: "Choose a contact" with "Create new contact" first */
+/* insert-or-edit: "Choose a contact" with "Create new contact" first */
 static void
 on_insert_or_edit (GSimpleAction *action, GVariant *parameter, gpointer app)
 {
@@ -292,7 +292,7 @@ pick_request_free (gpointer data)
 {
   PickRequest *request = data;
 
-  /* the picker went without a pick (Back, the ✕): RESULT_CANCELED */
+  /* the picker went without a pick (Back, the ✕): it answers with nothing */
   if (!request->answered)
     answer (request, "", "");
   g_free (request->app_id);
@@ -322,7 +322,7 @@ on_pick_contact (GSimpleAction *action, GVariant *parameter, gpointer app)
   g_variant_get (parameter, "(ss&s)", &request->app_id, &request->action, &need);
   picker = ct_picker_new (window, _("Choose a contact"), NULL, FALSE, on_contact_picked, request);
   g_object_set_data_full (G_OBJECT (picker), "ct-request", request, pick_request_free);
-  /* Phone.CONTENT_TYPE / Email.CONTENT_TYPE: only the contacts that have one (the store may still be loading,
+  /* a phone number or an email address: only the contacts that have one (the store may still be loading,
    * so the picker checks each contact as it comes) */
   if (g_str_equal (need, "phone"))
     ct_picker_require (picker, CT_KIND_PHONE);

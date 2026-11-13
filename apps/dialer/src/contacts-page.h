@@ -1,11 +1,10 @@
-/* The Contacts tab (dialer/contactsfragment: ContactsFragment with Header.ADD_CONTACT; spec §7).
+/* The Contacts tab.
  *
- * "Create new contact" on top, then every contact by name, each a 56 dp row with its 40 dp picture. The first row of
- * each letter has the letter beside it, in the accent colour; while the rows of one letter scroll past, that letter
+ * "Create new contact" on top, then every contact by name, each a row with its picture. The first row of each
+ * letter has the letter beside it, in the accent colour; while the rows of one letter scroll past, that letter
  * stays pinned at the top (the anchored header) until the next one pushes in.
  *
- * Android lists contacts without a number too; this phone's contacts (contacts.h) are the ones with a number, which
- * are all the Phone can do anything with. */
+ * The contacts listed (contacts.h) are the ones with a number, which are all the Phone can do anything with. */
 #pragma once
 
 #include <gtk/gtk.h>

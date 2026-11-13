@@ -1,9 +1,9 @@
 /* Text as the Dialer draws it: see text.h. */
 #include "text.h"
 
-/* includeFontPadding: the box above the ascent and below the descent, as fractions of the size. Roboto's head
+/* font padding: the box above the ascent and below the descent, as fractions of the size. Roboto's head
  * yMax/yMin are 2163/-555 against its hhea 1900/-500 of 2048 units; Google Sans Flex's 2210/-605 against
- * 1932/-572 of 2000 (answer-view.c measured both against the stills) */
+ * 1932/-572 of 2000 */
 static double
 pad_top (TextStyle style)
 {

@@ -38,7 +38,7 @@ missed_free (Missed *missed)
 static void
 post_call (CallNotifications *self)
 {
-  /* StatusBarNotifier.getContentString and getActions */
+  /* the call notification's text and actions */
   const char *incoming_actions[] = { "default", "", "decline", _("Decline"), "answer", _("Answer"), NULL };
   const char *speaker_on[] = { "default", "", "hangup", _("Hang up"), "speaker-on", _("Turn speaker on"), NULL };
   const char *speaker_off[] = { "default", "", "hangup", _("Hang up"), "speaker-off", _("Turn speaker off"), NULL };
@@ -56,7 +56,7 @@ post_call (CallNotifications *self)
       urgency = NOTIFIER_URGENCY_CRITICAL;
       break;
     case CALL_NOTIFICATION_INCOMING_QUIET:
-      /* INCOMING_CALL_QUIET: the answer screen is up, so on the ongoing channel, which does not peek */
+      /* quiet: the answer screen is up, so on the ongoing channel, which does not peek */
       text = _("Incoming call");
       actions = incoming_actions;
       hints = notifier_header_hints (0, NULL, TRUE);
@@ -72,7 +72,7 @@ post_call (CallNotifications *self)
     case CALL_NOTIFICATION_ONGOING:
     default:
       text = _("Ongoing call");
-      /* the chronometer counts from when it was connected (setWhen + setUsesChronometer) */
+      /* the chronometer counts from when it was connected */
       hints = notifier_header_hints (self->connected, NULL, TRUE);
       break;
     }
@@ -88,7 +88,7 @@ call_notifications_show_call (CallNotifications *self, guint call_id, CallNotifi
   if (self->call_notification && self->call_id == call_id && self->kind == kind && self->connected == connected
       && self->speaker == speaker && g_strcmp0 (self->title, title) == 0)
     return;
-  /* another kind is another channel: Android posts it anew, and so it may peek */
+  /* another kind is another channel: it is posted anew, and so it may peek */
   if (self->call_notification && (self->call_id != call_id || self->kind != kind))
     {
       notifier_close (self->notifier, self->call_notification);
@@ -181,7 +181,7 @@ on_action (guint32 id, const char *action, gpointer data)
     {
       if (g_str_equal (action, "closed") || g_str_equal (action, "gone"))
         {
-          /* an ongoing call's cannot really be swiped away on Android; here it went, so it is gone */
+          /* an ongoing call's notification should not be swiped away; here it went, so it is gone */
           self->call_notification = 0;
           return;
         }
@@ -201,8 +201,7 @@ on_action (guint32 id, const char *action, gpointer data)
           missed->id = 0;
           return;
         }
-      /* tapped or swiped away, it is seen and goes (setAutoCancel); Call back leaves it as it is, as Android's
-       * action does until the call log is opened */
+      /* tapped or swiped away, it is seen and goes; Call back leaves it as it is until the call log is opened */
       if (!g_str_equal (action, "call-back"))
         g_hash_table_iter_remove (&iter);
       if (g_str_equal (action, "default"))

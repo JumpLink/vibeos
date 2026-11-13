@@ -52,7 +52,7 @@ fm_icon_button_sized (const char *icon_name, const char *name, int width, int he
   gtk_image_set_pixel_size (GTK_IMAGE (image), glyph_size);
   gtk_widget_set_size_request (button, width, height);
   gtk_widget_add_css_class (button, "fm-icon-button");
-  /* ?selectableItemBackgroundBorderless: a circle of the button's half diagonal, at most 20 dp past the glyph */
+  /* a borderless ripple: a circle of the button's half diagonal, capped to stay near the glyph */
   neo_pressable_set_ripple (NEO_PRESSABLE (button), NEO_RIPPLE_CIRCLE, MIN (hypot (width, height) / 2, 24));
   neo_pressable_set_ripple_color (NEO_PRESSABLE (button), &ripple);
   gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);
@@ -118,7 +118,7 @@ fm_check_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 
   if (self->radio)
     {
-      /* abc_btn_radio_material: a 2 dp ring of 20 dp (r 9 to the middle of the line), a 10 dp dot when on */
+      /* the radio: a ring (r 9 to the middle of the line), a dot inside it when on */
       gsk_path_builder_add_circle (builder, &GRAPHENE_POINT_INIT (x + 16, y + 16), 9);
       path = gsk_path_builder_free_to_path (g_steal_pointer (&builder));
       gtk_snapshot_append_stroke (snapshot, path, stroke, &color);
@@ -133,8 +133,7 @@ fm_check_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
         }
       return;
     }
-  /* abc_btn_check_material: an 18 dp square with 2 dp corners from (7, 7); outlined off, filled on with the mark
-   * cut out (drawn in the card's colour) */
+  /* the check box: a rounded square, outlined off, filled on with the mark cut out (drawn in the card's colour) */
   if (self->active)
     {
       GskRoundedRect box;
@@ -308,7 +307,7 @@ fm_progress_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
       segment (snapshot, width, self->height, 0, self->fraction, &accent);
       return;
     }
-  /* Material's indeterminate line: two segments chase across in 2 s, the first long, the second short */
+  /* the indeterminate line: two segments chase across in 2 s, the first long, the second short */
   {
     double t = fmod ((g_get_monotonic_time () - self->start) / 2000000.0, 1.0);
     double head1 = spongy_curve (SPONGY_FAST_OUT_SLOW_IN, CLAMP (t / 0.75, 0, 1)) * 1.4;
@@ -413,7 +412,7 @@ popup_close (Popup *popup)
     return;
   popup->closing = TRUE;
   gtk_widget_set_can_target (popup->layer, FALSE);
-  /* popup_exit: a fade */
+  /* closing: a fade */
   neo_anim_start (popup->anim, gtk_widget_get_opacity (popup->layer), 0, 150, 0, SPONGY_LINEAR);
 }
 
@@ -492,7 +491,7 @@ fm_popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, FmPop
 
       pango_layout_get_pixel_size (layout, &w, NULL);
       g_object_unref (layout);
-      /* measured in the label's own font only once it is styled: the CSS sets 16 sp, the default is 14 */
+      /* measured in the label's own font only once it is styled: the CSS sets 16 px, the default is 14 */
       widest = MAX (widest, w * 16.0 / 14.0);
       gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
       gtk_widget_add_css_class (row, "fm-popup-item");

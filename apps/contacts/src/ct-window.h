@@ -1,9 +1,9 @@
-/* The Contacts window: Android's task of activities as a stack of pages (ct-page.h), the contact list at the
- * bottom. A page pushed on top slides in as activity_open_enter does and the one under it slides away
- * (activity_open_exit); Back slides them the other way (activity_close_*), spec §7.5. QuickContact is translucent:
+/* The Contacts window: a stack of pages (ct-page.h), the contact list at the bottom. A page pushed on top slides in
+ * from 96 px to the right while it fades in, and the one under it slides 96 px to the left; Back slides them the
+ * other way. QuickContact is translucent:
  * it covers the page under it with its own scrim and animates itself.
  *
- * The window also has what outlives a page: the toast (drawn by SystemUI on Android) and the snackbar. */
+ * The window also has what outlives a page: the toast and the snackbar. */
 #pragma once
 
 #include "ct-store.h"
@@ -24,9 +24,9 @@ void       ct_window_pop           (GtkWidget *window, GtkWidget *page);
 /* the page on top */
 GtkWidget *ct_window_top           (GtkWidget *window);
 
-/* "Text copied", "Contact saved" (Toast.LENGTH_SHORT) */
+/* "Text copied", "Contact saved" (a short toast) */
 void       ct_window_toast         (GtkWidget *window, const char *text);
-/* the full-width snackbar ("Label deleted" UNDO), Snackbar.LENGTH_LONG */
+/* the full-width snackbar ("Label deleted" UNDO), shown long */
 void       ct_window_snackbar      (GtkWidget *window, const char *text, const char *action,
                                     NeoSnackbarAction callback, gpointer data);
 NeoSnackbar *ct_window_get_snackbar (GtkWidget *window);

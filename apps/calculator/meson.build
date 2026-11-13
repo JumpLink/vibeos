@@ -8,8 +8,7 @@ gio = dependency('gio-2.0', version: '>= 2.76')
 m = meson.get_compiler('c').find_library('m')
 engine_deps = [gio, m, dependency('gmp'), dependency('sqlite3')]
 
-# the arithmetic and the evaluator (ExactCalculator's CR, BoundedRational, UnifiedReal, CalculatorExpr,
-# Evaluator, ExpressionDB): no GTK, shared by the app and the tests
+# the arithmetic and the evaluator, ported from ExactCalculator: no GTK, shared by the app and the tests
 engine = static_library('engine', 'src/calc-failure.c', 'src/creal.c', 'src/bounded-rational.c',
                         'src/unified-real.c', 'src/calc-keys.c', 'src/calc-expr.c', 'src/calc-format.c',
                         'src/expression-db.c', 'src/evaluator.c', dependencies: engine_deps)

@@ -1,5 +1,5 @@
-/* calc-keys: the calculator's keys and how they are written, ExactCalculator's KeyMaps
- * (KeyMaps.java) and StringUtils.
+/* calc-keys: the calculator's keys and how they are written; ported from ExactCalculator's KeyMaps
+ * and StringUtils.
  *
  * A key is what a button (or a typed or pasted character) adds to the expression. The expression
  * stores keys; this module says how each is shown in the formula, how it is saved (one byte, the

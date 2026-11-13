@@ -1,7 +1,7 @@
-/* CalCompatSwitch: androidx SwitchCompat, the switch Etar's settings screens draw (SwitchPreferenceCompat;
- * still:cal-settings-general), which is not the Material 3 switch of its editor (NeoSwitch).
+/* CalCompatSwitch: the settings screens' switch, a thin track under a bigger thumb (cal-compat-switch.c); not the
+ * editor's switch (CalMaterialSwitch).
  *
- * A libneo candidate: any app rebuilding an androidx preference screen needs it. */
+ * A libneo candidate: any settings screen of this style needs it. */
 #pragma once
 
 #include <gtk/gtk.h>

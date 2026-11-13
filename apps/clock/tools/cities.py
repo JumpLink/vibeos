@@ -4,9 +4,9 @@
 #
 #   python3 tools/cities.py DESKCLOCK/res/values/cities.xml DESKCLOCK/res/values/strings.xml > src/cities-data.h
 #
-# Each city string reads "INDEX=NAME|ZONE" (CityDAO.createCity): the section letter the picker files it under, the
-# English name, and its IANA time zone. The table keeps the city_ids array's order and ids (C1 ... C348; some numbers
-# are unused), which is what the selected cities are stored as. Python 3 stdlib only.
+# Each city string reads "INDEX=NAME|ZONE": the section letter the picker files it under, the English name, and its
+# IANA time zone. The table keeps the city_ids array's order and ids (C1 ... C348; some numbers are unused), which
+# is what the selected cities are stored as. Python 3 stdlib only.
 import sys
 import xml.etree.ElementTree as ET
 
@@ -34,7 +34,7 @@ for cid in ids:
     print(f'  {{ "{cid}", "{c(index)}", "{c(name)}", "{zone}" }},')
 print('};')
 
-# The "Home time zone" setting's choices (SettingsDAO.getTimeZones): 85 zones, each with an English place name;
+# The "Home time zone" setting's choices: 85 zones, each with an English place name;
 # the settings page puts the offset in front, "(GMT+1:00) Amsterdam, Berlin", and sorts them by it.
 res = ET.parse(sys.argv[2]).getroot()
 array = lambda name: [text(item) for item in res.find(f"string-array[@name='{name}']")]

@@ -1,4 +1,4 @@
-/* The alarm engine: DeskClock's AlarmStateManager, the rules that take each alarm instance through its life.
+/* The alarm engine: the rules that take each alarm instance through its life.
  *
  *   SILENT ── 2 h before ──> LOW_NOTIFICATION ── 30 min before ──> HIGH_NOTIFICATION ── its time ──> FIRED
  *                                  │ swiped away                                                    │
@@ -24,7 +24,7 @@
 #define ALARM_TYPE_ENGINE (alarm_engine_get_type ())
 G_DECLARE_FINAL_TYPE (AlarmEngine, alarm_engine, ALARM, ENGINE, GObject)
 
-/* DeskClock's settings that the engine needs */
+/* the settings that the engine needs */
 typedef struct {
   int snooze_minutes;           /* "Snooze length", 10 */
   int auto_silence_minutes;     /* "Silence after", 10; -1 never: it rings until it is answered */
@@ -37,7 +37,7 @@ void         alarm_engine_set_settings (AlarmEngine *engine, const AlarmEngineSe
 /* what the engine takes as "now"; NULL for the real clock */
 void         alarm_engine_set_clock (AlarmEngine *engine, GDateTime *(*now) (gpointer data), gpointer data);
 
-/* the user's changes (AlarmUpdateHandler): each makes the alarm's instance anew */
+/* the user's changes: each makes the alarm's instance anew */
 guint        alarm_engine_add_alarm (AlarmEngine *engine, const Alarm *alarm);
 gboolean     alarm_engine_update_alarm (AlarmEngine *engine, const Alarm *alarm);
 gboolean     alarm_engine_delete_alarm (AlarmEngine *engine, guint alarm_id);
@@ -49,7 +49,7 @@ gboolean     alarm_engine_dismiss (AlarmEngine *engine, guint instance_id);
 /* the "Upcoming alarm" notification was swiped away */
 gboolean     alarm_engine_hide_notification (AlarmEngine *engine, guint instance_id);
 
-/* every instance looked at anew, as after a reboot or a change of time or time zone (fixAlarmInstances) */
+/* every instance looked at anew, as after a reboot or a change of time or time zone */
 void         alarm_engine_fix (AlarmEngine *engine);
 /* the changes due by now */
 void         alarm_engine_tick (AlarmEngine *engine);

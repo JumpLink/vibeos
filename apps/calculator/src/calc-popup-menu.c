@@ -1,6 +1,5 @@
 /* CalcPopupMenu: see calc-popup-menu.h. The motion and the way it covers the window come from the Dialer's
- * popup-menu.c; the sizes and colours are the calculator's own (still:calc-menu, its view bounds: the card
- * [365,141][1068,765] px, the list [365,165][1068,741], rows of 144 px, the text's 65 px box at x 413). */
+ * popup-menu.c; the sizes and colours are the calculator's own. */
 #include "calc-popup-menu.h"
 #include "calc-text.h"
 
@@ -11,10 +10,10 @@
 #define LIST_PAD        8
 #define TEXT_PAD        16
 #define TEXT_SIZE       16
-#define LETTER_SPACING  0.03125 /* Material 3's bodyLarge, 0.5 sp: still:calc-menu's lines are 39 px wider than unspaced */
-#define CORNER          4       /* measured: the corner's 12 px */
-#define END_MARGIN      4       /* measured: the card ends 12 px from the window's end */
-#define TOP_OFFSET      1       /* px under the anchor's top, measured */
+#define LETTER_SPACING  0.03125 /* em, between the letters of a row's text */
+#define CORNER          4       /* the card's corners */
+#define END_MARGIN      4       /* between the card and the window's sides */
+#define TOP_OFFSET      1       /* device px: the card's top under the anchor's */
 #define ENTER_MS        250
 #define EXIT_MS         150
 
@@ -83,7 +82,7 @@ calc_popup_menu_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 
   gtk_snapshot_push_opacity (snapshot, self->closing ? self->shown : MIN (1, self->shown * 2));
   gsk_rounded_rect_init_from_rect (&shape, &self->card, CORNER);
-  /* elevation level 2: a faint shadow, as on the still (the background 1 darker around the card) */
+  /* a faint shadow, just enough to lift the card off the background */
   gtk_snapshot_append_outset_shadow (snapshot, &shape, &(GdkRGBA) { 0, 0, 0, 0.3f }, 0, 2, 0, 6);
   gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (self->card.origin.x, self->card.origin.y,
                                                          self->card.size.width, self->card.size.height * reveal));

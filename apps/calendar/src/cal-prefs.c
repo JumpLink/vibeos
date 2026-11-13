@@ -8,8 +8,8 @@
 #include <spongy-gtk.h>
 #include <stdlib.h>
 
-/* --- rows (androidx.preference's preference_material.xml as Material 3 lays it out: a 24 dp icon 16 dp in, the
- * title 16 sp from 72 dp, the summary 14 sp under it, 16 dp above and below) */
+/* --- rows: an icon (its space kept without one), the title, the summary under it, an optional widget at the
+ * end */
 
 GtkWidget *
 cal_pref_icon (const char *icon_name, guint32 color)
@@ -20,7 +20,7 @@ cal_pref_icon (const char *icon_name, guint32 color)
   gtk_widget_add_css_class (icon, "cal-pref-icon");
   if (color)
     {
-      /* a calendar's circle: its own colour (setColorFilter SRC_IN) */
+      /* a calendar's circle in its own colour */
       g_autofree char *css = g_strdup_printf ("#%06x", color & 0xffffff);
       GtkCssProvider *provider = gtk_css_provider_new ();
       g_autofree char *rule = g_strdup_printf ("image { color: %s; }", css);
@@ -57,7 +57,7 @@ cal_pref_row (const char *icon_name, guint32 color, const char *title, const cha
   GtkWidget *texts = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   CalPref pref = { 0 };
 
-  /* the icon frame keeps its space without an icon (isIconSpaceReserved) */
+  /* the icon frame keeps its space without an icon */
   gtk_widget_add_css_class (frame, "cal-pref-icon-frame");
   if (icon_name)
     gtk_box_append (GTK_BOX (frame), cal_pref_icon (icon_name, color));
@@ -106,8 +106,8 @@ cal_pref_set_summary_markup (GtkWidget *summary, const char *markup)
   show_summary (summary, markup && *markup);
 }
 
-/* PreferenceCategory: its title 14 sp in colorPrimary, 24 dp above, 8 dp below; an account's with its icon. One
- * after other rows has a 1 dp divider at the top of that space; the first on a page ("first") has none. */
+/* a category: its title in the primary colour; an account's with its icon. One after other rows has a
+ * divider at the top of the space above it; the first on a page ("first") has none. */
 GtkWidget *
 cal_pref_category (const char *icon_name, const char *title)
 {
@@ -127,8 +127,8 @@ cal_pref_category (const char *icon_name, const char *title)
   gtk_accessible_update_property (GTK_ACCESSIBLE (box), GTK_ACCESSIBLE_PROPERTY_LABEL, title, -1);
   if (icon_name)
     {
-      /* The 24 dp icon is taller than the 19 dp title and adds nothing to the category's height (the title 8 dp
-       * from both ends, 35 dp in all): over the row, 8 dp above the title's top and 7 px under its bottom. */
+      /* The icon is taller than the title and adds nothing to the category's height: an overlay over the row,
+       * reaching above the title's top and below its bottom. */
       GtkWidget *overlay = gtk_overlay_new ();
       GtkWidget *icon = cal_pref_icon (icon_name, 0);
 
@@ -157,7 +157,7 @@ cal_pref_page (GtkWidget *window, const char *title, GtkWidget **list)
   return page;
 }
 
-/* --- a switch preference: the row toggles it, as a tap on SwitchPreference does */
+/* --- a switch row: a tap anywhere on the row toggles it */
 
 void
 cal_pref_toggle_row (NeoPressable *row, CalCompatSwitch *toggle)
@@ -180,7 +180,7 @@ cal_pref_switch (GSettings *settings, const char *key, const char *title)
   return pref.row;
 }
 
-/* --- a list preference: the entry as the summary, a dialog of the entries (ListPreference) */
+/* --- a list row: the entry as the summary, a dialog of the entries */
 
 struct _CalListPref {
   GSettings *settings;
@@ -288,7 +288,7 @@ cal_list_pref_widget (CalListPref *list)
   return pref.row;
 }
 
-/* EventViewUtils.constructReminderLabel: "None" below 0 */
+/* a reminder time's label: "None" below 0 */
 char *
 cal_pref_minutes_label (int minutes)
 {

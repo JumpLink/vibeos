@@ -1,5 +1,4 @@
-/* RingtonePicker: see ringtone-picker.h. No still shows it: the sizes are DeskClock's layouts (L/ringtone_item_*.xml),
- * the bar is Settings' (still:clock-settings). */
+/* RingtonePicker: see ringtone-picker.h. Its bar is Settings'. */
 #include "ringtone-picker.h"
 #include "alarms-client.h"
 #include "clock-bar.h"
@@ -14,7 +13,7 @@
 #define DEFAULT "@default"
 #define SILENT  "@silent"
 
-#define DIMMED  0.63            /* a sound not selected: its icon and name (RingtoneViewHolder) */
+#define DIMMED  0.63            /* a sound not selected: its icon and name */
 
 struct _RingtonePicker
 {
@@ -34,7 +33,7 @@ static guint signals[N_SIGNALS];
 
 static void show_list (RingtonePicker *self);
 
-/* --- the preview, by the service at the alarm volume (RingtonePreviewKlaxon) */
+/* --- the preview, by the service at the alarm volume */
 
 static void
 call_service (const char *method, GVariant *parameters)
@@ -82,8 +81,7 @@ compare_titles (gconstpointer a, gconstpointer b)
   return g_utf8_collate (key_a, key_b);
 }
 
-/* every alarm sound of the system (RingtoneManager.TYPE_ALARM): the files in sounds/android/alarms of the data dirs,
- * by title */
+/* every alarm sound of the system: the files in sounds/android/alarms of the data dirs, by title */
 static GPtrArray *
 system_sounds (void)
 {
@@ -112,7 +110,7 @@ system_sounds (void)
   return uris;
 }
 
-/* ringtone_item_header: 15 sp in colorAccent, 16 dp over and under, 15 dp in */
+/* a section's header: "Your sounds" or "Device sounds" */
 static void
 add_header (RingtonePicker *self, const char *text)
 {
@@ -224,8 +222,7 @@ on_overflow (NeoPressable *button, RingtonePicker *self)
   clock_popup_menu_present (menu, GTK_WIDGET (button));
 }
 
-/* ringtone_item_sound: 12 dp over and under; the icon 48 dp at 24 dp in, the name (16 sp) 16 dp either side, then
- * the check (selected) and a ⋮ (the user's own sounds) */
+/* a sound's row: the icon, the name, then the check (selected) and a ⋮ (the user's own sounds) */
 static void
 add_sound (RingtonePicker *self, const char *sound, const char *name, const char *icon_name, gboolean custom)
 {
@@ -260,7 +257,7 @@ add_sound (RingtonePicker *self, const char *sound, const char *name, const char
       gtk_widget_set_opacity (icon, DIMMED);
       gtk_widget_set_opacity (label, DIMMED);
     }
-  /* the check: shown on the selected row only, in colorAccent */
+  /* the check: shown on the selected row only */
   gtk_image_set_pixel_size (GTK_IMAGE (check), 24);
   gtk_widget_set_size_request (check, 48, 48);
   gtk_widget_add_css_class (check, "ringtone-check");
@@ -346,7 +343,7 @@ on_add (NeoPressable *row, RingtonePicker *self)
   gtk_file_dialog_open (self->chooser, GTK_WINDOW (root), NULL, on_chosen, g_object_ref (self));
 }
 
-/* "Add new": ic_add_24dp on a circle in colorPrimary, its name dimmed, no check */
+/* "Add new": a + on a filled circle, its name dimmed, no check */
 static void
 add_add_new (RingtonePicker *self)
 {
@@ -378,7 +375,7 @@ add_add_new (RingtonePicker *self)
   gtk_box_append (GTK_BOX (self->list), row);
 }
 
-/* RingtoneLoader: the rows, in order */
+/* the rows, in order */
 static void
 show_list (RingtonePicker *self)
 {
@@ -431,7 +428,7 @@ load (RingtonePicker *self)
   self->selected = g_strdup (!*value ? DEFAULT : g_str_equal (value, CLOCK_SILENT) ? SILENT : value);
 }
 
-/* onPause: an alarm's sound and the default for new alarms; or the timer sound */
+/* saved: an alarm's sound and the default for new alarms; or the timer sound */
 static void
 save (RingtonePicker *self)
 {
@@ -483,7 +480,7 @@ ringtone_picker_unmap (GtkWidget *widget)
 {
   RingtonePicker *self = CLOCK_RINGTONE_PICKER (widget);
 
-  /* onPause saves, onStop stops the preview */
+  /* hidden: the choice saved, the preview stopped */
   save (self);
   stop_preview (self);
   GTK_WIDGET_CLASS (ringtone_picker_parent_class)->unmap (widget);

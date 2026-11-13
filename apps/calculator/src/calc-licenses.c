@@ -1,5 +1,4 @@
-/* CalcLicenses: see calc-licenses.h. The toolbar is the history's (calc-history.c): the arrow centred 83.5 px in
- * and 95.5 px down, the 22 sp title's pen at 60 dp with its box centred in the 64 dp bar. */
+/* CalcLicenses: see calc-licenses.h. The toolbar is the history's (calc-history.c). */
 #include "calc-licenses.h"
 #include "calc-text.h"
 
@@ -12,8 +11,8 @@
 #define TOOLBAR        64
 #define TITLE_SIZE     22
 #define TITLE_X        60
-#define ARROW_X        83.5   /* px */
-#define ICON_Y         95.5   /* px */
+#define ARROW_X        83.5   /* device px: the arrow's centre from the start */
+#define ICON_Y         95.5   /* device px: the arrow's centre from the top */
 #define BUTTON         48
 #define PAGE           "/neo/Calculator/licenses.html"
 
@@ -196,7 +195,7 @@ calc_licenses_new (void)
   self->back = neo_icon_button_new ("calc-back-symbolic");
   gtk_widget_add_css_class (self->back, "calc-toolbar-icon");
   gtk_accessible_update_property (GTK_ACCESSIBLE (self->back), GTK_ACCESSIBLE_PROPERTY_LABEL,
-                                  /* the shell's back gesture clicks a button named Back (Android: desc_navigate_up) */
+                                  /* the shell's back gesture clicks a button named Back */
                                   _("Back"), -1);
   g_signal_connect (self->back, "clicked", G_CALLBACK (on_back), self);
   gtk_widget_set_parent (self->back, GTK_WIDGET (self));

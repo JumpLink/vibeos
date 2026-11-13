@@ -50,7 +50,7 @@ alarm_from_variant (GVariant *dict)
   return alarm;
 }
 
-/* Alarm.java's sort order: hour ASC, minutes ASC, _id DESC */
+/* by hour, then minute, then the newest (highest id) first */
 static int
 by_time (gconstpointer a, gconstpointer b)
 {

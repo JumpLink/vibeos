@@ -1,7 +1,4 @@
-/* The search results: see search-page.h. The rules are SearchContactsCursorLoader's (regular search, CP2's phone
- * filter), SmartDialNameMatcher's and DialerDatabaseHelper's (smart dial), QueryBoldingUtil's (what is bold) and
- * NewSearchFragment's (the action rows); the geometry is search_contact_row.xml's, header_layout.xml's and
- * search_action_layout.xml's, measured on still:dialer-search-ma and still:dialer-dialpad-typed (spec §4). */
+/* The search results: see search-page.h. Regular search, smart dial, what is bold, and the action rows. */
 #include "search-page.h"
 #include "avatar.h"
 #include "calls-client.h"
@@ -14,20 +11,20 @@
 #include <spongy-gtk.h>
 #include <string.h>
 
-#define DEBOUNCE_MS     300     /* NETWORK_SEARCH_DELAY_MILLIS */
-#define SMART_DIAL_MAX  20      /* MAX_ENTRIES */
+#define DEBOUNCE_MS     300     /* the wait after typing before a search */
+#define SMART_DIAL_MAX  20      /* the most smart-dial results */
 #define HEADER_HEIGHT   48
 #define HEADER_SIDE     16
 #define HEADER_BOTTOM   2
-#define ROW_HEIGHT      56      /* search_row_height */
-#define PHOTO           40      /* the 56 dp badge less its 8 dp padding */
+#define ROW_HEIGHT      56
+#define PHOTO           40
 #define PHOTO_START     8
-#define TEXT_START      64      /* past the badge, and the column's 8 dp margin */
+#define TEXT_START      64      /* past the badge and a margin */
 #define ACTION_HEIGHT   48
 #define ACTION_ICON_BOX 48
 #define ACTION_START    8
 #define ACTION_TEXT     72
-#define BOLD            1000    /* StyleSpan(BOLD) on GSF 700: capped */
+#define BOLD            1000    /* what matched: bold on top of Bold text, as heavy as the font goes */
 
 /* ---- text: folding, and the keypad's letters ---------------------------------------------------------------- */
 
@@ -70,7 +67,7 @@ fold (const char *text)
   return g_string_free (out, FALSE);
 }
 
-/* DialpadCharMappings: the Latin keypad, and the locale's second alphabet for Bulgarian, Russian and Ukrainian */
+/* the keys' letters: the Latin keypad, and the locale's second alphabet for Bulgarian, Russian and Ukrainian */
 static gboolean
 second_alphabet (void)
 {
@@ -146,8 +143,8 @@ word_start (const char *text, const char *p)
   return p == text || g_unichar_isspace (g_utf8_get_char (g_utf8_prev_char (p)));
 }
 
-/* CP2's filter: each word of the query starts a word of the name. Bold: the first match of the whole query at
- * the start of a word (QueryBoldingUtil.getNameWithQueryBolded) */
+/* regular search: each word of the query starts a word of the name. Bold: the first match of the whole query at
+ * the start of a word */
 static gboolean
 name_matches (const char *name, const char *query, Span *bold)
 {
@@ -213,7 +210,7 @@ number_matches (const char *number, const char *query_digits, Span *bold)
   return TRUE;
 }
 
-/* PhoneNumberUtils.isGlobalPhoneNumber: "[\+]?[0-9.-]+" */
+/* a number someone typed: "[\+]?[0-9.-]+" */
 static gboolean
 is_global_number (const char *text)
 {
@@ -273,7 +270,7 @@ tokens_free (GArray *tokens)
   g_array_unref (tokens);
 }
 
-/* SmartDialNameMatcher.matchesCombination: the digits from the start of a word, on into the start of a later word
+/* smart dial: the digits from the start of a word, on into the start of a later word
  * once at least one letter of this one matched (so "57" is John Smith's initials, "37337" Fred Smith).
  * @used[t] counts the letters matched in word t */
 static gboolean
@@ -613,8 +610,7 @@ on_sms_action (GtkWidget *row, SearchPage *self)
     g_warning ("search: %s: %s", uri, error->message);
 }
 
-/* "Create new contact" (IntentUtil.getNewContactIntent) and "Add to a contact" (getAddToExistingContactIntent): the
- * dialpad's digits as they were typed, to the Contacts app */
+/* "Create new contact" and "Add to a contact": the dialpad's digits as they were typed, to the Contacts app */
 static void
 on_create_contact_action (GtkWidget *row, SearchPage *self)
 {
@@ -657,7 +653,7 @@ action_row (SearchPage *self, const char *icon_name, const char *text, GCallback
   return row;
 }
 
-/* NewSearchFragment.getActions: nothing for 0 or 1 characters; for a number typed in the search bar, call it or
+/* the action rows: nothing for 0 or 1 characters; for a number typed in the search bar, call it or
  * text it; for dialpad digits, make a contact of them or add them to one (where the Contacts app is there to take
  * them), or text them. There is no video calling. */
 static void
@@ -742,7 +738,7 @@ on_contacts_changed (SearchPage *self)
     run_search (self);
 }
 
-/* onSearchListTouch: the window decides (the dialpad goes, or the keyboard); the touch still reaches the list */
+/* a touch on the list: the window decides (the dialpad goes, or the keyboard); the touch still reaches the list */
 static void
 on_pressed (GtkGestureClick *click, int n_press, double x, double y, SearchPage *self)
 {

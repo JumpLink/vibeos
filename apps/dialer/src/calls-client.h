@@ -1,7 +1,7 @@
 /* The app's side of the call service (neo-dialer-calls, neo.Dialer.Calls on the session bus).
  *
  * The service has the calls; the app only shows them and asks for things. CallsClient keeps the service's call
- * list (its Calls property) and emits "changed" when it changes, the way InCallUI's CallList tells its presenters.
+ * list (its Calls property) and emits "changed" when it changes.
  * An ask changes nothing here: the new state comes back through "changed", so the screen shows what the modem
  * does, not what the user hoped for. Asking starts the service if it is not running (D-Bus activation). */
 #pragma once
@@ -36,10 +36,10 @@ CallsClient *calls_client_get (void);
 /* CallInfo, oldest first, owned by the client (valid until the next "changed") */
 GPtrArray  *calls_client_get_calls (CallsClient *self);
 CallInfo   *calls_client_find (CallsClient *self, guint id);
-/* the call the screen is about (InCallPresenter.getCallToDisplay): ringing, then outgoing, then up, then hanging
+/* the call the screen is about: ringing, then outgoing, then up, then hanging
  * up, then ended, then held. NULL with no calls */
 CallInfo   *calls_client_get_primary (CallsClient *self);
-/* the other call that is still going (CallCardPresenter's secondary), or NULL */
+/* the other call that is still going, or NULL */
 CallInfo   *calls_client_get_secondary (CallsClient *self, const CallInfo *primary);
 
 gboolean    calls_client_get_muted (CallsClient *self);

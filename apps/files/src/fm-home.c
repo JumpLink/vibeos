@@ -111,7 +111,7 @@ measure (FmHome *home, GtkWidget *info, GFile *file, gboolean size)
   g_task_run_in_thread (task, measure_thread);
 }
 
-/* desktop_item: the 64 dp icon, the name (16 sp) and the info line (12 sp), centred, 5 dp padding */
+/* a Home tile: the icon, the name and the info line, centred */
 static GtkWidget *
 tile (FmHome *home, FmGlyph glyph, const char *name, GFile *location, GtkWidget **info_out)
 {
@@ -224,7 +224,7 @@ fm_home_new (FmShell *shell)
   home->grid = gtk_flow_box_new ();
   gtk_flow_box_set_selection_mode (GTK_FLOW_BOX (home->grid), GTK_SELECTION_NONE);
   gtk_flow_box_set_homogeneous (GTK_FLOW_BOX (home->grid), TRUE);
-  /* desktop_grid_column_width 96 dp, stretched: three columns on a 360 dp phone */
+  /* the original's column width fits three on a phone; a wider window gets more, stretched */
   gtk_flow_box_set_min_children_per_line (GTK_FLOW_BOX (home->grid), 3);
   gtk_flow_box_set_max_children_per_line (GTK_FLOW_BOX (home->grid), 8);
   gtk_flow_box_set_column_spacing (GTK_FLOW_BOX (home->grid), 4);

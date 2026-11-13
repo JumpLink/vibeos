@@ -1,15 +1,12 @@
-/* The answer screen: see answer-view.h. No still shows this screen (no call was placed on the reference phone);
- * every number is from the source, under incallui/answer/impl/: AnswerFragment.java, res/layout/
- * fragment_incoming_call.xml, answermethod/FlingUpDownMethod.java and FlingUpDownTouchHandler.java,
- * answermethod/res/layout/swipe_up_down_method.xml, affordance/SwipeButtonHelper.java and SwipeButtonView.java.
+/* The answer screen: see answer-view.h.
  *
  * The view draws everything itself, as one surface: the puck's animations move its parts independently of any
  * layout (the hint text, the disc, the icon on it, the text under it), and the swipe fades and shrinks the
  * contact grid above them.
  *
- * The animations are FlingUpDownMethod's AnimatorSets, played by a small tween engine below: each tween is one
- * ObjectAnimator (a value, from → to, a start delay, a duration and a curve). An animator given only an end value
- * starts from wherever its value is when it starts, as Android's do. Its states are the method's: ENTRY (the puck
+ * The animations are played by a small tween engine below: each tween is one value animated (from → to, a start
+ * delay, a duration and a curve). A tween given only an end value starts from wherever its value is when it starts.
+ * The puck's states: ENTRY (the puck
  * flies in), BOUNCE (it hops every 3 s, while the call rings), SWIPE (it follows the finger), SETTLE (100 ms back
  * to rest), HINT (one high jump with "Swipe down to reject" shown, after a tap) and COMPLETED (answered or declined:
  * the puck is gone). */
@@ -20,63 +17,64 @@
 #include <math.h>
 #include <neo.h>
 
-/* the contact grid (fragment_incoming_call.xml, values-h300dp and -h540dp) */
+/* the contact grid: the status line, the caller's name (and photo), the line under it */
 #define GRID_TOP        24
 #define GRID_SIDE       24
 #define ROW_GAP         8
-#define STATUS_SIZE     18      /* Dialer.Incall.TextAppearance */
-#define NAME_SIZE       54      /* .Large on the answer screen */
+#define STATUS_SIZE     18      /* the status and bottom lines */
+#define NAME_SIZE       54      /* the name, shrunk as far as NAME_MIN_SIZE to fit */
 #define NAME_MIN_SIZE   32
 #define AVATAR          172     /* only for a contact with a photo */
 #define SPACER          220     /* under the column, over the puck */
-#define ENTRY_MS        1000    /* answer_animate_entry_millis */
+#define ENTRY_MS        1000    /* the screen's fade and slide in */
 
-/* the puck (swipe_up_down_method.xml) */
-#define METHOD_SIDE     50      /* answer_swipe_dead_zone_sides */
-#define HINT_SIZE       14      /* Dialer.Incall.TextAppearance.Hint, italic */
+/* the puck, with "Swipe up to answer" over it and "Swipe down to reject" under it */
+#define METHOD_SIDE     50      /* the hints' inset; a touch this close to a side starts no swipe */
+#define HINT_SIZE       14      /* the hints, italic */
 #define SPACE_HOLDER    50
 #define ANSWER_GAP      18
-#define PUCK_BOX        88      /* answer_contact_puck_size_photo: the container */
+#define PUCK_BOX        88      /* the box the disc sits in */
 #define PUCK_GAP        10
-#define PUCK            72      /* answer_contact_puck_size_no_photo: the white disc */
+#define PUCK            72      /* the white disc */
 #define PUCK_ICON       30
 #define REJECT_GAP      20
 
-/* FlingUpDownTouchHandler, FlingAnimationUtils */
-#define DEAD_ZONE_TOP   150     /* max(answer_swipe_dead_zone_top, ACCEPT_THRESHOLD_DP) */
-#define THRESHOLD       150     /* ACCEPT_THRESHOLD_DP, REJECT_THRESHOLD_DP */
-#define FALSING         40      /* FALSING_THRESHOLD_DP */
-#define TOUCH_SLOP      8       /* ViewConfiguration */
-#define MIN_FLING       250     /* dp/s; twice that for a fling down */
-#define HINT_MOVE       0.1     /* HINT_MOVE_THRESHOLD_RATIO */
-#define FLING_RECENTER  0.1     /* PROGRESS_FLING_RECENTER */
-#define SWIPE_RECENTER  0.8     /* PROGRESS_SWIPE_RECENTER */
+/* the swipe */
+#define DEAD_ZONE_TOP   150     /* a touch this near the top starts no swipe */
+#define THRESHOLD       150     /* the drag, either way, that answers or rejects */
+#define FALSING         40      /* a drag shorter than this is not counted as a swipe */
+#define TOUCH_SLOP      8       /* the movement before a touch becomes a drag */
+#define MIN_FLING       250     /* px/s; twice that for a fling down */
+#define HINT_MOVE       0.1     /* progress past which a touch is a swipe, not a tap */
+#define FLING_RECENTER  0.1     /* a fling against the drag past this snaps the puck home */
+#define SWIPE_RECENTER  0.8     /* a slow release past this still commits */
 
-/* the answer-and-release affordance (bottom|end, 56 dp; affordance/res/values/dimens.xml) */
+/* the answer-and-release affordance, in the bottom end corner */
 #define SIDE_BOX        56
-#define SIDE_ICON       32      /* ic_end_answer_32 */
-#define SIDE_TOUCH      120     /* answer_affordance_touch_target_size */
-#define SIDE_TRIGGER    110     /* answer_min_swipe_amount */
-#define SIDE_MIN_RADIUS 30      /* answer_affordance_min_background_radius */
-#define SIDE_HINT_GROW  60      /* hint_grow_amount_sideways */
-#define SIDE_ALPHA      0.87    /* SWIPE_RESTING_ALPHA_AMOUNT */
-#define SIDE_MIN_FLING  50      /* ViewConfiguration's minimum fling velocity, dp/s */
-#define SIDE_HINT_MS    5000    /* SWIPE_HINT_TIMEOUT_MS: the puck's hint says how to use the icon this long */
+#define SIDE_ICON       32
+#define SIDE_TOUCH      120     /* its touch target, well over the icon */
+#define SIDE_TRIGGER    110     /* the drag that triggers it */
+#define SIDE_MIN_RADIUS 30      /* the circle behind the icon at its smallest, once a drag starts */
+#define SIDE_HINT_GROW  60      /* how far the circle pulses out on a tap */
+#define SIDE_ALPHA      0.87    /* the icon's opacity at rest */
+#define SIDE_MIN_FLING  50      /* the slowest fling that counts, px/s */
+#define SIDE_HINT_MS    5000    /* the puck's hint says how to use the icon this long */
 
-/* includeFontPadding: Android's line box is the font's bounding box (head yMax/yMin), not its ascent/descent.
- * Roboto: 2163/-555 against 1900/-500 of 2048; Google Sans Flex: 2210/-605 against 1932/-572 of 2000 */
+/* font padding: a line's box is the font's bounding box (head yMax/yMin), not its ascent/descent; the pads are
+ * the difference, in font units. Roboto: 2163/-555 against 1900/-500 of 2048; Google Sans Flex: 2210/-605 against
+ * 1932/-572 of 2000 */
 #define ROBOTO_PAD_TOP(size)    ((size) * 263 / 2048.0)
 #define ROBOTO_PAD_BOTTOM(size) ((size) * 55 / 2048.0)
 #define GSF_PAD_TOP(size)       ((size) * 278 / 2000.0)
 #define GSF_PAD_BOTTOM(size)    ((size) * 33 / 2000.0)
 
-/* colours: the InCallUI theme is dark and is drawn raw (no force dark; spec §8.1) */
-#define BACKGROUND      0x181c1d        /* incall_background_gradient_*, night */
-#define TEXT_SECONDARY  (0xdd / 255.0)  /* textColorSecondary #DDFFFFFF: white at this alpha */
-#define CALL_GREEN      0x3ee0a0        /* dialer_call_green, night: the icon until the first touch */
-#define ANSWER_ICON     0x00c853        /* incoming_answer_icon */
-#define ACCEPT_COLOR    0x00c853        /* call_accept_background */
-#define HANGUP_COLOR    0xdf0000        /* call_hangup_background */
+/* colours */
+#define BACKGROUND      0x181c1d
+#define TEXT_SECONDARY  (0xdd / 255.0)  /* the status and bottom lines: white at this alpha */
+#define CALL_GREEN      0x3ee0a0        /* the puck's icon until the first touch */
+#define ANSWER_ICON     0x00c853        /* the puck's icon once touched, fading out as the swipe goes on */
+#define ACCEPT_COLOR    0x00c853        /* the disc's tint, swiped up */
+#define HANGUP_COLOR    0xdf0000        /* the disc's tint, swiped down */
 
 /* ---- the tween engine ----------------------------------------------------------------------------------------- */
 
@@ -86,19 +84,19 @@ typedef enum
   EASE_FAST_OUT_SLOW_IN,
   EASE_LINEAR_OUT_SLOW_IN,
   EASE_FAST_OUT_LINEAR_IN,
-  EASE_ACCELERATE_DECELERATE,   /* an ObjectAnimator's default */
+  EASE_ACCELERATE_DECELERATE,   /* the default curve */
   EASE_DECELERATE,
   EASE_ACCELERATE,
-  EASE_PATH_0001,               /* PathInterpolator(0, 0, 0, 1) */
-  EASE_PATH_4001,               /* PathInterpolator(0.4, 0, 0, 1) */
+  EASE_PATH_0001,               /* cubic Bézier (0, 0, 0, 1) */
+  EASE_PATH_4001,               /* cubic Bézier (0.4, 0, 0, 1) */
   EASE_BOUNCE,
 } Ease;
 
 typedef enum
 {
-  GROUP_METHOD,                 /* the method's AnimatorSets: endAnimation cancels them */
-  GROUP_PROPERTY,               /* view.animate(): only a newer animation of the same value stops them */
-  GROUP_FRAGMENT,               /* AnswerFragment's own: the contact grid's entry */
+  GROUP_METHOD,                 /* the puck's state animations: end_animation cancels them */
+  GROUP_PROPERTY,               /* one-off animations: only a newer animation of the same value stops them */
+  GROUP_FRAGMENT,               /* the screen's own: the contact grid's entry */
 } Group;
 
 typedef struct
@@ -136,10 +134,10 @@ struct _AnswerView
   PangoLayout *status, *name, *bottom, *answer_text, *reject_text;
   double name_size;
   GdkTexture *photo;
-  char *hint;                   /* the puck's hint (setHintText); NULL: "Swipe up to answer" */
+  char *hint;                   /* the puck's hint; NULL: "Swipe up to answer" */
   guint hint_restore;           /* the side icon's hint going back to it */
 
-  /* what the animations move (dp, alpha 0…1, degrees) */
+  /* what the animations move (px, alpha 0…1, degrees) */
   double text_y, text_alpha, reject_y, reject_alpha;
   double puck_x, puck_y, puck_sx, puck_sy, puck_alpha, bg_scale, icon_rotation, icon_alpha;
   GdkRGBA icon_tint;
@@ -150,14 +148,14 @@ struct _AnswerView
 
   /* the state machine */
   AnimState state, after_settle, phase;
-  gint64 phase_end;             /* µs: when the running AnimatorSet ends; 0: none runs */
-  gint64 vibration_start;       /* the puck's ±1 dp shiver, 0 for none */
+  gint64 phase_end;             /* µs: when the running state animation ends; 0: none runs */
+  gint64 vibration_start;       /* the puck's ±1 px shiver, 0 for none */
   Tween tweens[MAX_TWEENS];
   guint n_tweens;
   guint tick;
   gboolean answer_clicked, reject_clicked;
 
-  /* FlingUpDownTouchHandler */
+  /* the puck's touch */
   gboolean touch_enabled, tracking, slop_exceeded, above_falsing, hint_distance_exceeded;
   double initial_y, zero_y, last_y;
   double accept_line, reject_line;  /* where a swipe from here has gone all the way: up to answer, down to decline */
@@ -168,7 +166,7 @@ struct _AnswerView
   gint64 fling_start, fling_duration;
   Ease fling_ease;
 
-  /* the side icon (SwipeButtonHelper / SwipeButtonView) */
+  /* the side icon */
   gboolean side_touch, side_slop, side_finishing, side_done;
   double side_down_x, side_down_y, side_translation, side_translation_on_down;
   double side_radius, side_icon_alpha, side_icon_scale;
@@ -189,7 +187,7 @@ rgb (guint32 value, double alpha)
   return (GdkRGBA) { ((value >> 16) & 0xff) / 255.0, ((value >> 8) & 0xff) / 255.0, (value & 0xff) / 255.0, alpha };
 }
 
-/* android.view.animation.BounceInterpolator */
+/* the bounce curve: it reaches the end, then bounces off it three times, each bounce lower */
 static double
 bounce (double t)
 {
@@ -252,7 +250,7 @@ now_us (AnswerView *self)
 
 static void ensure_tick (AnswerView *self);
 
-/* an ObjectAnimator: @value from @from (NAN: from wherever it is then) to @to, @delay ms from now */
+/* a tween: @value from @from (NAN: from wherever it is then) to @to, @delay ms from now */
 static void
 tween (AnswerView *self, double *value, double from, double to, guint delay, guint duration, Ease e, Group group)
 {
@@ -279,7 +277,7 @@ cancel_group (AnswerView *self, Group group)
   self->n_tweens = n;
 }
 
-/* view.animate().cancel() for the values given */
+/* the one-off animations of the values given stop */
 static void
 cancel_values (AnswerView *self, double *a, double *b)
 {
@@ -381,8 +379,8 @@ single_line (PangoLayout *layout, double width)
   pango_layout_set_alignment (layout, PANGO_ALIGN_CENTER);
 }
 
-/* AutoResizeTextView: the largest size from 54 sp down to 32 sp at which the name fits on one line; below that it
- * is ellipsized */
+/* the largest size from NAME_SIZE down to NAME_MIN_SIZE at which the name fits on one line; below that it is
+ * ellipsized */
 static void
 fit_name (AnswerView *self, double width)
 {
@@ -404,7 +402,7 @@ fit_name (AnswerView *self, double width)
   self->name_size = size;
 }
 
-/* the hints may take two lines in the method view's width */
+/* the hints may take two lines in the puck's area's width */
 static void
 hint_lines (PangoLayout *layout, double width)
 {
@@ -428,7 +426,7 @@ draw_layout (GtkSnapshot *snapshot, PangoLayout *layout, double x, double y, dou
 
 typedef struct
 {
-  /* the contact grid's rows, top to bottom, each its top edge (dp, before the entry slide) */
+  /* the contact grid's rows, top to bottom, each its top edge (px, before the entry slide) */
   double status_y, name_y, bottom_y, data_y, data_bottom;
   /* the puck's resting places */
   double answer_y, puck_cy, reject_y;
@@ -448,7 +446,7 @@ measure_geometry (AnswerView *self, Geometry *g)
   g->data_y = g->bottom_y + roboto_box (self->bottom, STATUS_SIZE);
   g->data_bottom = height - SPACER;
 
-  /* the method's column is anchored at the foot: reject hint, puck, answer hint, from the bottom up */
+  /* the puck's column is anchored at the foot: reject hint, puck, answer hint, from the bottom up */
   g->reject_y = height - REJECT_GAP - hint_box;
   g->puck_cy = g->reject_y - PUCK_GAP - PUCK_BOX / 2.0;
   g->answer_y = g->puck_cy - PUCK_BOX / 2.0 - ANSWER_GAP - roboto_box (self->answer_text, HINT_SIZE);
@@ -457,18 +455,18 @@ measure_geometry (AnswerView *self, Geometry *g)
   g->side_y = height - SIDE_BOX / 2.0;
 }
 
-/* ---- the method's states (FlingUpDownMethod) ------------------------------------------------------------------ */
+/* ---- the puck's states ---------------------------------------------------------------------------------------- */
 
 static void set_state (AnswerView *self, AnimState state);
 static void side_reset (AnswerView *self, gboolean animate);
 static void side_hide (AnswerView *self);
 static void restore_hint (AnswerView *self);
 
-/* endAnimation: every AnimatorSet of the method stops where it is; the shiver ends at rest */
+/* every state animation stops where it is; the shiver ends at rest */
 static void
 end_animation (AnswerView *self)
 {
-  /* a settle cut short does not lead anywhere (its onAnimationCancel) */
+  /* a settle cut short does not lead anywhere */
   if (self->phase == STATE_SETTLE && self->phase_end)
     self->after_settle = STATE_NONE;
   cancel_group (self, GROUP_METHOD);
@@ -486,7 +484,7 @@ start_phase (AnswerView *self, AnimState phase, guint duration)
   ensure_tick (self);
 }
 
-/* resetAnswerProgress: the side icon back to rest, the window's colour back */
+/* the side icon back to rest, the window's colour back */
 static void
 reset_answer_progress (AnswerView *self)
 {
@@ -494,7 +492,7 @@ reset_answer_progress (AnswerView *self)
   self->background = 0;
 }
 
-/* resetTouchState: the puck's colours back, everything it touched animating home */
+/* the puck's colours back, everything it touched animating home */
 static void
 reset_touch_state (AnswerView *self)
 {
@@ -515,24 +513,24 @@ static void
 start_entry (AnswerView *self)
 {
   end_animation (self);
-  /* textUp, which a slip in the source gives FastOutSlowIn, and textDown, left on the default curve */
+  /* the text up, fast-out-slow-in, and down on the default curve */
   tween (self, &self->text_y, 192, -20, 0, 1333, EASE_FAST_OUT_SLOW_IN, GROUP_METHOD);
   tween (self, &self->text_y, -20, 0, 1500, 1333, EASE_ACCELERATE_DECELERATE, GROUP_METHOD);
-  /* rejectTextShow, after puckUp and 333 ms */
+  /* the reject hint shows, 333 ms after the puck is up */
   self->reject_alpha = 0;
   tween (self, &self->reject_alpha, NAN, 1, 1833, 667, EASE_FAST_OUT_LINEAR_IN, GROUP_METHOD);
   tween (self, &self->reject_y, -8, 0, 1833, 667, EASE_FAST_OUT_LINEAR_IN, GROUP_METHOD);
-  /* puckUp, puckDown */
+  /* the puck up, then down */
   tween (self, &self->puck_y, 400, -12, 0, 1500, EASE_PATH_0001, GROUP_METHOD);
   tween (self, &self->puck_y, -12, 0, 1500, 1333, EASE_FAST_OUT_SLOW_IN, GROUP_METHOD);
-  /* puckScaleUp, puckScaleDown */
+  /* the disc swells, then shrinks back */
   tween (self, &self->bg_scale, 0.33, 1.1, 0, 1333, EASE_PATH_4001, GROUP_METHOD);
   tween (self, &self->bg_scale, 1.1, 1, 1500, 1333, EASE_FAST_OUT_SLOW_IN, GROUP_METHOD);
   self->vibration_start = now_us (self);
   start_phase (self, STATE_ENTRY, 1500 + 1333);
 }
 
-/* BOUNCE, one 3 s breath (createBreatheAnimation): the puck and its text hop 42 dp and back, the disc swells, the
+/* BOUNCE, one 3 s breath: the puck and its text hop 42 px and back, the disc swells, the
  * reject hint fades out and back in. It starts again when it ends, for as long as the state lasts. */
 static void
 start_bounce (AnswerView *self)
@@ -544,7 +542,7 @@ start_bounce (AnswerView *self)
   tween (self, &self->reject_y, 0, -8, 167, 1333, EASE_FAST_OUT_SLOW_IN, GROUP_METHOD);
   tween (self, &self->puck_y, NAN, -42, 167, 1500, EASE_PATH_4001, GROUP_METHOD);
   tween (self, &self->bg_scale, 1, 1.0625, 167, 1333, EASE_PATH_4001, GROUP_METHOD);
-  /* down, after puckUp */
+  /* down, once the puck is up */
   tween (self, &self->puck_y, NAN, 0, 1667, 1333, EASE_FAST_OUT_SLOW_IN, GROUP_METHOD);
   tween (self, &self->text_y, -42, 0, 1667, 1333, EASE_FAST_OUT_SLOW_IN, GROUP_METHOD);
   tween (self, &self->bg_scale, 1.0625, 1, 1667, 1333, EASE_FAST_OUT_SLOW_IN, GROUP_METHOD);
@@ -569,7 +567,7 @@ start_settle (AnswerView *self)
   start_phase (self, STATE_SETTLE, 100);
 }
 
-/* HINT, after a tap: the puck squashes, jumps 60 dp and bounces back, and "Swipe down to reject" shows for 2 s */
+/* HINT, after a tap: the puck squashes, jumps 60 px and bounces back, and "Swipe down to reject" shows for 2 s */
 static void
 start_hint (AnswerView *self)
 {
@@ -577,7 +575,7 @@ start_hint (AnswerView *self)
 
   end_animation (self);
   reset_touch_state (self);
-  /* puckAnticipate (REVERSE once, pivot at the foot), puckResetTranslation */
+  /* the puck squashes and springs back (pivot at the foot), and goes back to its place */
   tween (self, &self->puck_sy, NAN, 0.95, 0, 100, EASE_DECELERATE, GROUP_METHOD);
   tween (self, &self->puck_sy, 0.95, 1, 100, 100, EASE_ACCELERATE, GROUP_METHOD);
   tween (self, &self->puck_sx, NAN, 1.05, 0, 100, EASE_DECELERATE, GROUP_METHOD);
@@ -585,23 +583,23 @@ start_hint (AnswerView *self)
   self->pivot_bottom_until = now_us (self) + 200 * 1000;
   tween (self, &self->puck_y, NAN, 0, 0, 100, EASE_ACCELERATE_DECELERATE, GROUP_METHOD);
   tween (self, &self->puck_x, NAN, 0, 0, 100, EASE_ACCELERATE_DECELERATE, GROUP_METHOD);
-  /* up, after the anticipation (config_shortAnimTime 200 ms) */
+  /* up, after the squash (200 ms) */
   tween (self, &self->text_y, NAN, -text_offset, 200, 200, EASE_LINEAR_OUT_SLOW_IN, GROUP_METHOD);
   tween (self, &self->puck_y, NAN, -60, 200, 200, EASE_LINEAR_OUT_SLOW_IN, GROUP_METHOD);
   tween (self, &self->bg_scale, 1, 1.15, 200, 200, EASE_LINEAR_OUT_SLOW_IN, GROUP_METHOD);
   tween (self, &self->reject_y, NAN, 8, 200, 200, EASE_LINEAR_OUT_SLOW_IN, GROUP_METHOD);
   tween (self, &self->reject_alpha, NAN, 1, 200, 200, EASE_ACCELERATE_DECELERATE, GROUP_METHOD);
-  /* down, after puckUp (config_mediumAnimTime 400 ms; the puck with BounceInterpolator) */
+  /* down, once the puck is up (400 ms; the puck on the bounce curve) */
   tween (self, &self->text_y, NAN, 0, 400, 400, EASE_LINEAR_OUT_SLOW_IN, GROUP_METHOD);
   tween (self, &self->puck_y, NAN, 0, 400, 400, EASE_BOUNCE, GROUP_METHOD);
   tween (self, &self->bg_scale, 1.15, 1, 400, 200, EASE_LINEAR_OUT_SLOW_IN, GROUP_METHOD);
   tween (self, &self->reject_y, NAN, 0, 400, 400, EASE_LINEAR_OUT_SLOW_IN, GROUP_METHOD);
-  /* rejectHintHide, after HINT_REJECT_SHOW_DURATION_MILLIS */
+  /* the reject hint hides after 2 s */
   tween (self, &self->reject_alpha, NAN, 0, 2000, 300, EASE_ACCELERATE_DECELERATE, GROUP_METHOD);
   start_phase (self, STATE_HINT, 2000 + 300);
 }
 
-/* setAnimationState: HINT and BOUNCE out of a swipe go through SETTLE first; nothing follows COMPLETED */
+/* HINT and BOUNCE out of a swipe go through SETTLE first; nothing follows COMPLETED */
 static void
 set_state (AnswerView *self, AnimState state)
 {
@@ -624,7 +622,7 @@ set_state (AnswerView *self, AnimState state)
       start_bounce (self);
       break;
     case STATE_SWIPE:
-      /* startSwipeToAnswerSwipeAnimation */
+      /* the swipe follows the finger */
       reset_touch_state (self);
       end_animation (self);
       break;
@@ -644,7 +642,7 @@ set_state (AnswerView *self, AnimState state)
   gtk_widget_queue_draw (GTK_WIDGET (self));
 }
 
-/* an AnimatorSet ran to its end */
+/* a state animation ran to its end */
 static void
 on_phase_end (AnswerView *self)
 {
@@ -659,7 +657,7 @@ on_phase_end (AnswerView *self)
         set_state (self, STATE_BOUNCE);
       break;
     case STATE_BOUNCE:
-      /* AnimatorSet does not repeat: a new breath once the last has ended */
+      /* a new breath once the last has ended */
       if (self->state == STATE_BOUNCE)
         start_bounce (self);
       break;
@@ -678,7 +676,7 @@ on_phase_end (AnswerView *self)
     }
 }
 
-/* VibrateInterpolator: a ±1 dp shiver sideways, ramping up at 583 ms, full until 1583 ms, gone by 1833 ms. Its
+/* the shiver: ±1 px sideways, ramping up at 583 ms, full until 1583 ms, gone by 1833 ms. Its
  * sine runs at 80 radians a millisecond, far above the frame rate, so what shows is a jitter. */
 static double
 vibration (double ms)
@@ -702,7 +700,7 @@ lerp (double a, double b, double t)
   return a + (b - a) * t;
 }
 
-/* AnswerFragment.onAnswerProgressUpdate: the window fades on a decline, the contact grid fades and shrinks from a
+/* as the swipe goes on, the window fades on a decline, the contact grid fades and shrinks from a
  * quarter of the way on, and the side icon goes */
 static void
 on_answer_progress (AnswerView *self, double p)
@@ -719,7 +717,7 @@ on_answer_progress (AnswerView *self, double p)
     }
 }
 
-/* updateSwipeTextAndPuckForTouch: each value moves halfway toward where the progress puts it */
+/* each value moves halfway toward where the progress puts it */
 static void
 update_swipe (AnswerView *self)
 {
@@ -750,7 +748,7 @@ set_progress (AnswerView *self, double progress)
     update_swipe (self);
 }
 
-/* performAccept / performReject: the puck goes, the call is answered or declined (once) */
+/* answer or decline: the puck goes, the call is answered or declined (once) */
 static void
 perform (AnswerView *self, gboolean accept)
 {
@@ -767,7 +765,7 @@ perform (AnswerView *self, gboolean accept)
     }
 }
 
-/* onMoveReset / onMoveFinish */
+/* the finger let go: the puck commits or goes home */
 static void
 on_move_ended (AnswerView *self)
 {
@@ -802,7 +800,7 @@ fling_target (AnswerView *self, double y, double velocity)
   gboolean same_direction;
 
   if (velocity > 0)
-    min *= 2;                   /* REJECT_FLING_THRESHOLD_MODIFIER */
+    min *= 2;                   /* a reject needs a firmer fling */
   if (fabs (velocity) < min)
     {
       if (fabs (progress) > SWIPE_RECENTER)
@@ -815,7 +813,7 @@ fling_target (AnswerView *self, double y, double velocity)
   return velocity < 0 ? TARGET_ACCEPT : TARGET_REJECT;
 }
 
-/* the progress animated to its target. FlingAnimationUtils measures this distance in progress against a speed in
+/* the progress animated to its target. The distance is measured in progress against a speed in
  * pixels a second, so a real fling takes a frame; a release without speed takes 350 ms */
 static void
 fling (AnswerView *self, double velocity, FlingTarget target, gboolean falsing)
@@ -868,7 +866,7 @@ side_visible (AnswerView *self)
   return self->other_call && !self->side_done;
 }
 
-/* SwipeButtonView's circle animated to @radius */
+/* the side icon's circle animated to @radius */
 static void
 side_animate (AnswerView *self, double radius, guint delay, guint duration, Ease e)
 {
@@ -881,7 +879,7 @@ side_animate (AnswerView *self, double radius, guint delay, guint duration, Ease
   ensure_tick (self);
 }
 
-/* setCircleRadius: the circle comes in over 80 ms and goes over up to 200 ms; in between it follows at once */
+/* the circle comes in over 80 ms and goes over up to 200 ms; in between it follows at once */
 static void
 side_set_radius (AnswerView *self, double radius)
 {
@@ -896,7 +894,7 @@ side_set_radius (AnswerView *self, double radius)
     self->side_to = radius;
 }
 
-/* updateIconAlpha / getScale: the icon grows and brightens as the swipe goes on */
+/* the icon grows and brightens as the swipe goes on */
 static void
 side_set_icon (AnswerView *self, double alpha)
 {
@@ -939,7 +937,7 @@ side_reset (AnswerView *self, gboolean animate)
   side_set_icon (self, SIDE_ALPHA);
 }
 
-/* animateHideLeftRightIcon: a swipe of the puck has begun */
+/* a swipe of the puck has begun: the side icon goes */
 static void
 side_hide (AnswerView *self)
 {
@@ -950,7 +948,7 @@ side_hide (AnswerView *self)
   side_set_icon (self, 0);
 }
 
-/* finishAnimation: the circle covers the screen, the icon fades, then the call is answered and the other ended */
+/* the commit: the circle covers the screen, the icon fades, then the call is answered and the other ended */
 static void
 side_commit (AnswerView *self)
 {
@@ -975,7 +973,7 @@ on_hint_restore (gpointer data)
   return G_SOURCE_REMOVE;
 }
 
-/* onIconClicked: the circle pulses out to 60 dp and back, and the puck's hint says what the icon does */
+/* a tap on the icon: the circle pulses out to 60 px and back, and the puck's hint says what the icon does */
 static void
 side_hint (AnswerView *self)
 {
@@ -1000,7 +998,7 @@ side_frame (AnswerView *self, gint64 now)
   self->side_radius = lerp (self->side_from, self->side_to, ease (self->side_ease, f));
   if (self->side_hint_phase)
     {
-      /* getAnimatorToRadius: the icon follows the circle as if it were being swiped */
+      /* the icon follows the circle as if it were being swiped */
       double translation = self->side_radius > SIDE_MIN_RADIUS ? (self->side_radius - SIDE_MIN_RADIUS) / 0.25 + TOUCH_SLOP
                                                                : 0;
       double alpha = translation / SIDE_TRIGGER;
@@ -1012,7 +1010,7 @@ side_frame (AnswerView *self, gint64 now)
   self->side_anim = FALSE;
   if (self->side_hint_phase == 1)
     {
-      /* HINT_CIRCLE_OPEN_DURATION held, then HINT_PHASE2_DURATION back */
+      /* held open 500 ms, then back over 350 ms */
       self->side_hint_phase = 2;
       side_animate (self, 0, 500, 350, EASE_FAST_OUT_LINEAR_IN);
     }
@@ -1032,7 +1030,7 @@ side_frame (AnswerView *self, gint64 now)
     }
 }
 
-/* flingWithCurrentVelocity: past 110 dp it commits, unless flicked back; otherwise it snaps home */
+/* a release: past 110 px it commits, unless flicked back; otherwise it snaps home */
 static void
 side_end (AnswerView *self, double x, double y, double t_ms, gboolean cancel)
 {
@@ -1057,7 +1055,7 @@ side_end (AnswerView *self, double x, double y, double t_ms, gboolean cancel)
   gtk_widget_queue_draw (GTK_WIDGET (self));
 }
 
-/* restoreSwipeHintTexts: what the puck's hint says while another call is up */
+/* what the puck's hint says while another call is up */
 static void
 restore_hint (AnswerView *self)
 {
@@ -1094,7 +1092,7 @@ on_drag_begin (GtkGestureDrag *gesture, double x, double y, AnswerView *self)
       gtk_gesture_set_state (GTK_GESTURE (gesture), GTK_EVENT_SEQUENCE_DENIED);
       return;
     }
-  /* AffordanceHolderLayout takes a touch on the side icon before the puck's view sees it */
+  /* a touch on the side icon is taken before the puck sees it */
   if (side_visible (self) && !self->side_finishing && hypot (x - g.side_x, y - g.side_y) <= SIDE_TOUCH / 2.0)
     {
       gtk_gesture_set_state (GTK_GESTURE (gesture), GTK_EVENT_SEQUENCE_CLAIMED);
@@ -1109,14 +1107,14 @@ on_drag_begin (GtkGestureDrag *gesture, double x, double y, AnswerView *self)
       spongy_velocity_add (&self->side_velocity, event_ms (GTK_GESTURE (gesture)), x, y);
       return;
     }
-  /* the method view: inside its side margins, below the dead zone at the top */
+  /* the puck's area: inside its side margins, below the dead zone at the top */
   if (x < METHOD_SIDE || x > width - METHOD_SIDE || y < DEAD_ZONE_TOP)
     {
       gtk_gesture_set_state (GTK_GESTURE (gesture), GTK_EVENT_SEQUENCE_DENIED);
       return;
     }
   gtk_gesture_set_state (GTK_GESTURE (gesture), GTK_EVENT_SEQUENCE_CLAIMED);
-  /* startMotion */
+  /* the drag starts */
   self->initial_y = self->last_y = y;
   self->hint_distance_exceeded = FALSE;
   if (self->progress <= 0.25)
@@ -1256,7 +1254,7 @@ draw_centered (GtkSnapshot *snapshot, PangoLayout *layout, double width, double 
 static void
 draw_grid (AnswerView *self, GtkSnapshot *snapshot, const Geometry *g, double width, double height)
 {
-  /* createTranslation: each row slides up from half its offset in the column */
+  /* each row slides up from half its offset in the column */
   double slide = 1 - self->entry;
   double alpha = self->grid_alpha * self->entry_alpha;
   double cy = GRID_TOP + (height - GRID_TOP) / 2;
@@ -1303,7 +1301,7 @@ draw_puck (AnswerView *self, GtkSnapshot *snapshot, const Geometry *g, double wi
   gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, -pivot));
   gtk_snapshot_push_opacity (snapshot, self->puck_alpha);
 
-  /* the disc at elevation 8 dp, 12 while the finger is on it (activated_button_elevation) */
+  /* the disc's shadow, deeper while the finger is on it */
   gsk_rounded_rect_init_from_rect (&shape, &box, r);
   gtk_snapshot_append_outset_shadow (snapshot, &shape, &(GdkRGBA) { 0, 0, 0, 0.18 }, 0, self->tracking ? 6 : 4, 1,
                                      self->tracking ? 12 : 8);
@@ -1324,7 +1322,7 @@ draw_puck (AnswerView *self, GtkSnapshot *snapshot, const Geometry *g, double wi
   gtk_snapshot_restore (snapshot);
 }
 
-/* ArgbEvaluator: the channels mixed in linear light (gamma 2.2) */
+/* a colour between two: the channels mixed in linear light (gamma 2.2) */
 static GdkRGBA
 argb_evaluate (const GdkRGBA *a, const GdkRGBA *b, double t)
 {
@@ -1343,7 +1341,7 @@ draw_side (AnswerView *self, GtkSnapshot *snapshot, const Geometry *g)
     return;
   if (self->side_radius > 0)
     {
-      /* updateCircleColor: half-white at the smallest circle, opaque from 1.5 times that */
+      /* the circle's colour: half-white at the smallest circle, opaque from 1.5 times that */
       double fraction = 0.5 + 0.5 * CLAMP ((self->side_radius - SIDE_MIN_RADIUS) / (0.5 * SIDE_MIN_RADIUS), 0, 1);
       graphene_rect_t box = GRAPHENE_RECT_INIT (g->side_x - self->side_radius, g->side_y - self->side_radius,
                                                 2 * self->side_radius, 2 * self->side_radius);
@@ -1354,7 +1352,7 @@ draw_side (AnswerView *self, GtkSnapshot *snapshot, const Geometry *g)
       gtk_snapshot_append_color (snapshot, &(GdkRGBA) { 1, 1, 1, fraction }, &box);
       gtk_snapshot_pop (snapshot);
     }
-  /* updateIconColor: white to black as the circle grows to its smallest size */
+  /* the icon's colour: white to black as the circle grows to its smallest size */
   icon = argb_evaluate (&white, &black, MIN (1, self->side_radius / SIDE_MIN_RADIUS));
   icon.alpha = self->side_icon_alpha;
   if (icon.alpha > 0)
@@ -1372,7 +1370,7 @@ answer_view_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   Geometry g;
 
   measure_geometry (self, &g);
-  /* updateWindowBackgroundColor: blendARGB toward #66000000, alpha too, over what is behind (here black) */
+  /* the window's background: blended toward #66000000, alpha too, over what is behind (here black) */
   if (self->background > 0)
     {
       double t = self->background;
@@ -1412,7 +1410,7 @@ answer_view_size_allocate (GtkWidget *widget, int width, int height, int baselin
 static void
 on_entry (AnswerView *self)
 {
-  /* animateEntry: the grid fades in (its alpha on the default curve) as its rows slide up (LinearOutSlowIn) */
+  /* the entry: the grid fades in (its alpha on the default curve) as its rows slide up (linear-out-slow-in) */
   self->entry = 0;
   self->entry_alpha = 0;
   tween (self, &self->entry, 0, 1, 0, ENTRY_MS, EASE_LINEAR_OUT_SLOW_IN, GROUP_FRAGMENT);
@@ -1457,7 +1455,7 @@ answer_view_set_call (AnswerView *self, const CallInfo *call, const Caller *call
 
   self->call = call->id;
   self->waiting = call->state == CALL_STATE_CALL_WAITING;
-  /* TopRow: "Call from"; BottomRow: the number's kind and the number, for a contact */
+  /* the top row: "Call from"; the bottom row: the number's kind and the number, for a contact */
   pango_layout_set_text (self->status, _("Call from"), -1);
   pango_layout_set_text (self->name, caller->name, -1);
   pango_layout_set_text (self->bottom, bottom ? bottom : "", -1);
@@ -1501,7 +1499,7 @@ answer_view_map (GtkWidget *widget)
   AnswerView *self = ANSWER_VIEW (widget);
 
   GTK_WIDGET_CLASS (answer_view_parent_class)->map (widget);
-  /* onViewCreated / onStart: the entry, or the puck back at rest after a swipe the screen lost */
+  /* shown: the entry, or the puck back at rest after a swipe the screen lost */
   if (self->state == STATE_NONE)
     {
       on_entry (self);
@@ -1562,8 +1560,7 @@ answer_view_init (AnswerView *self)
 {
   GtkGesture *drag = gtk_gesture_drag_new ();
 
-  /* the status and bottom rows in Roboto at 18 sp, the name in Google Sans Flex at 54 sp, the hints at 14 sp
-   * italic: all at 400, which Bold text makes 700 */
+  /* 700, not 400: the phone's Bold text setting is on */
   self->status = new_layout (self, "Neo Roboto", STATUS_SIZE, 700, FALSE);
   self->name = new_layout (self, "Google Sans Flex, Neo Roboto", NAME_SIZE, 700, FALSE);
   self->bottom = new_layout (self, "Neo Roboto", STATUS_SIZE, 700, FALSE);

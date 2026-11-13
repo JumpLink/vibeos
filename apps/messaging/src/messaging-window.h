@@ -1,4 +1,4 @@
-/* Messaging's window: its activities as pages over one another (msg-navigator.h), the conversation list first.
+/* Messaging's window: its screens as pages over one another (msg-navigator.h), the conversation list first.
  *
  * It tells the SMS service what is on screen (SetVisible), so that a message coming into the conversation being
  * looked at is read at once and makes no notification, and one coming while the list is open at its top is seen. */

@@ -1,10 +1,9 @@
-/* CalcLicenses: "Open source licenses", ExactCalculator's Licenses activity (activity_license.xml): a toolbar with
- * the back arrow and the title over a WebView of assets/licenses.html.
+/* CalcLicenses: "Open source licenses": a toolbar with the back arrow and the title over ExactCalculator's
+ * licenses.html.
  *
- * There is no WebView here: the page is laid out by GTK from the same file (its one heading, its list item and its
- * <pre>), with Chrome's default styles for them (16 px sans-serif text, an 18.72 px bold h3, 13 px monospace in
- * the <pre> on #eeeeee with 1em of padding, 8 px of body margin) on the page's white. NOT MEASURED against a still.
- * It opens and closes without the activity transition, as the Dialer's screens do.
+ * There is no web view here: the page is laid out by GTK from that file (its one heading, its list item and its
+ * <pre>), with a browser's default styles for them, on the page's white.
+ * It opens and closes without a transition, as the Dialer's screens do.
  *
  * Signals: "closed" () when its back arrow is tapped (the window removes it). */
 #pragma once

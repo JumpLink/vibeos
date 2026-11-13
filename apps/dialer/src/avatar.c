@@ -1,16 +1,15 @@
-/* The avatar: see avatar.h. The numbers are LetterTileDrawable's (dialer/lettertile/LetterTileDrawable.java and
- * its res/values). */
+/* The avatar: see avatar.h. */
 #include "avatar.h"
 
 #include <neo.h>
 
-/* letter_tile_colors: accent1, accent2 and accent3 at 300, 400, 500 and 600, the phone's dynamic palette */
+/* the tile colours: accent1, accent2 and accent3 at 300, 400, 500 and 600, the phone's dynamic palette */
 static const guint32 tile_colors[] = {
   0x81b4bb, 0x96b0b4, 0x8dafd1, 0x6799a0, 0x7c9599, 0x7394b5,
   0x4d7f86, 0x627b7f, 0x597a9a, 0x33666d, 0x4a6366, 0x406180,
 };
-#define DEFAULT_COLOR   0xcccccc        /* letter_tile_default_color: no identifier */
-#define LETTER_RATIO    0.67            /* letter_to_tile_ratio */
+#define DEFAULT_COLOR   0xcccccc        /* a tile with no identifier to pick a colour by */
+#define LETTER_RATIO    0.67            /* the letter's size against the tile's */
 #define ICON_RATIO      0.7             /* the person glyph's scale */
 
 static GdkRGBA
@@ -38,12 +37,12 @@ tile_color (const char *identifier)
 
   if (!identifier || !*identifier)
     return rgb (DEFAULT_COLOR);
-  /* Math.abs: the one hash it cannot make positive is rare enough to fold in with the rest */
+  /* the absolute value: the one hash it cannot make positive is rare enough to fold in with the rest */
   hash = java_hash (identifier);
   return rgb (tile_colors[(hash < 0 ? -(gint64) hash : hash) % G_N_ELEMENTS (tile_colors)]);
 }
 
-/* the first character of the name, upper-cased, if it is a letter (Character.isLetter); else none */
+/* the first character of the name, upper-cased, if it is a letter; else none */
 static gboolean
 first_letter (const char *name, char out[8])
 {
@@ -65,7 +64,8 @@ snapshot_letter (GtkSnapshot *snapshot, GtkWidget *widget, double cx, double cy,
   g_autoptr(PangoFontDescription) font = pango_font_description_from_string ("Neo Roboto");
   PangoRectangle ink;
 
-  /* Roboto 400 (Paint text gets no bold-text weight), centred on the glyph's own ink */
+  /* 400, not 700: the letter is painted, and the Bold text setting does not reach painted text; centred on the
+   * glyph's own ink */
   pango_font_description_set_absolute_size (font, diameter * LETTER_RATIO * PANGO_SCALE);
   pango_font_description_set_weight (font, PANGO_WEIGHT_NORMAL);
   pango_layout_set_font_description (layout, font);
@@ -106,7 +106,7 @@ avatar_snapshot (GtkSnapshot *snapshot, GtkWidget *widget, double cx, double cy,
         snapshot_letter (snapshot, widget, cx, cy, diameter, letter);
       else
         {
-          /* quantum_ic_person, loaded without a theme: its tint does not resolve and it stays white */
+          /* the person glyph, white */
           double size = diameter * ICON_RATIO;
 
           neo_snapshot_icon (snapshot, widget, "dialer-person-symbolic", cx - size / 2, cy - size / 2, size,

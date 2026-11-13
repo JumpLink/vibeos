@@ -1,7 +1,6 @@
-// Heads-up notifications, Android 16's (HeadsUpManagerImpl, AvalancheController and the stack's heads-up path, with
-// physical_notification_movement, notification_appear_nonlinear and notification_avalanche_throttle_hun on, as they
-// are on the reference phone: spec/aflags-lineage-23.2.txt). A notification that asks for a banner pops in under the
-// status bar as its shade row, collapsed, on an opaque card that casts the 16 dp shadow of a pinned row. It stays 5 s
+// Heads-up notifications, as the reference phone shows them (with the physical movement, the nonlinear appear and
+// the throttling of a burst all on). A notification that asks for a banner pops in under the
+// status bar as its shade row, collapsed, on an opaque card that casts the shadow of a pinned row. It stays 5 s
 // from when it has slid in, or 1 s when another one waits, which then cycles in in its place. Tapped it opens, swiped
 // sideways it is dismissed, pushed up it goes and its app peeks no more for a minute, and pulled down it opens the
 // shade and moves along into the stack. GNOME's own banners stay blocked meanwhile: this takes their requests.
@@ -23,38 +22,36 @@ import {BAR_HEIGHT} from './statusbar.js';
 import {px, SCALE, SCREEN_H, SCREEN_W, screenPixels} from './units.js';
 
 // --- screen px
-const PINNED_Y = BAR_HEIGHT + 24;       // under the status bar + heads_up_status_bar_padding, 8 dp
-const ABOVE_SCREEN_Y = -96;             // heads_up_appear_y_above_screen: it comes from, and goes back to, 32 dp up
-const CYCLING_PADDING = 24;             // heads_up_cycling_padding, 8 dp
+const PINNED_Y = BAR_HEIGHT + 24;       // just under the status bar
+const ABOVE_SCREEN_Y = -96;             // it comes from, and goes back to, this far above the screen
+const CYCLING_PADDING = 24;             // how far one cycling in or out moves
 const TOUCH_SLOP = 24;
 const APPEAR_END = QQS_HEIGHT + 48 + MIN_H;     // the shade's height that shows the stack's first row whole
 
 // --- motion
-const REVEAL_MS = 400;                  // ANIMATION_DURATION_HEADS_UP_APPEAR, _DISAPPEAR and _CYCLING
-const ALPHA_START = 0.55;               // ALPHA_APPEAR_START_FRACTION: the content shows from here to the end
+const REVEAL_MS = 400;                  // coming in, going away and cycling to the next
+const ALPHA_START = 0.55;               // of the reveal: the content fades in from here to the end
 const FAST_OUT_SLOW_IN_REVERSE = bezier(0.8, 0, 0.6, 1);
-const Y_STIFFNESS = 380;                // PhysicsPropertyAnimator.createDefaultSpring moves it, not the 400 ms curve
+const Y_STIFFNESS = 380;                // a spring moves it, not the 400 ms curve
 const Y_DAMPING = 0.68;
-const Y_THRESHOLD = 0.75;               // DynamicAnimation: 1 px of visible change x 0.75
+const Y_THRESHOLD = 0.75;               // px: the spring is done within 1 px of visible change x 0.75
 const EXPAND_MS = 360;
 
-// --- time, ms (SystemUI config.xml)
-const DECAY_MS = 5000;                  // heads_up_notification_decay
-const POST_DELAY_MS = 700;              // touch_acceptance_delay: the post time is when it has slid in, taps before it
-                                        // are swallowed (shouldSwallowClick)
-const MIN_SHOWN_MS = 500;               // heads_up_notification_minimum_time_with_throttling
-const NEXT_SAME_MS = 1000;              // AvalancheController: one of the same urgency waiting cuts it to 1 s,
+// --- time, ms
+const DECAY_MS = 5000;                  // how long one stays up
+const POST_DELAY_MS = 700;              // the post time, when it has slid in: taps before it are swallowed
+const MIN_SHOWN_MS = 500;               // the least one stays up when another is waiting
+const NEXT_SAME_MS = 1000;              // one of the same urgency waiting cuts it to 1 s,
 const NEXT_HIGHER_MS = 500;             // ... a more urgent one to 0.5 s
-const SNOOZE_MS = 60000;                // heads_up_default_snooze_length_ms
+const SNOOZE_MS = 60000;                // pushed away, its app's next ones wait this long
 
 const now = () => GLib.get_monotonic_time() / 1000;
 
-// --- the shadow of a pinned row, z 16 dp under hwui's light at (540, 0, 600 dp), radius 800 dp. The ambient part
-// (α 0.039) blurs over z / 2; the spot part (α 0.19) over 800 · 16 / (600 - 16) dp, 2.7 % larger than the card and
-// 7 px lower, where the heads-up is pinned. Each is a Gaussian-blurred rounded rect, x0..x1 and its ends that far
-// from the card's (screen px).
+// --- the shadow of a pinned row, cast from a light above the screen: a faint ambient part, blurred a
+// little, and a stronger spot part, blurred more, larger than the card and lower, where the heads-up is pinned. Each
+// is a Gaussian-blurred rounded rect, x0..x1 and its ends that far from the card's (screen px).
 const SHADOW_PAD = 72;                  // how far out it reaches
-const SHADOW_END = 96;                  // the part of either end that holds a 28 dp corner
+const SHADOW_END = 96;                  // the part of either end that holds the rounded corner
 const SHADOW_LAYERS = [
     {alpha: 0.039, sigma: 6, x0: 0, x1: ROW_W, top: 0, bottom: 0, radius: 84},
     {alpha: 0.19, sigma: 16, x0: -13.5, x1: ROW_W + 13.5, top: 3.8, bottom: 9.8, radius: 86},
@@ -205,11 +202,11 @@ class Entry {
         this._interpolator = FAST_OUT_SLOW_IN;
         this._alpha = 1;
         this._dragY = 0;
-        // CYCLING_IN starts 8 dp above its place, HEADS_UP_APPEAR above the screen
+        // cycling in it starts CYCLING_PADDING above its place, a new one above the screen
         this.y = cycling ? PINNED_Y - CYCLING_PADDING : ABOVE_SCREEN_Y;
         this._moveTo(PINNED_Y);
 
-        // dragged up or down (HeadsUpTouchHelper): down pulls the shade, up pushes it away
+        // dragged up or down: down pulls the shade, up pushes it away
         this._velocity = new VelocityTracker();
         const pan = new Clutter.PanGesture({
             pan_axis: Clutter.PanAxis.Y,
@@ -258,7 +255,7 @@ class Entry {
     }
 
     // A new target keeps the spring's speed. It may overshoot once: when it swings back, the bounce goes (critically
-    // damped), and a spring that heads away again is put at its end (PhysicsPropertyAnimator's double overshoot)
+    // damped), and a spring that heads away again is put at its end (no double overshoot)
     _moveTo(target) {
         if (this._ySpring?.target === target)
             return;
@@ -341,8 +338,8 @@ class Entry {
         this._kick();
     }
 
-    // Away: up off the screen, cut from the bottom (HEADS_UP_DISAPPEAR); or, cycling out for one @nextHeight tall,
-    // down by what that one is taller and 8 dp, cut from the top (HEADS_UP_CYCLING_OUT)
+    // Away: up off the screen, cut from the bottom; or, cycling out for one @nextHeight tall, down by what that one
+    // is taller and CYCLING_PADDING, cut from the top
     leave({cycling = false, nextHeight = 0} = {}, onDone = null) {
         this._leaving = true;
         this._expand = null;
@@ -491,7 +488,7 @@ export class HeadsUp {
             this);
     }
 
-    // MessageTray's rules for a banner, and SystemUI's for a peek: not over the shade, nor locked, nor snoozed
+    // MessageTray's rules for a banner, and ours for a peek: not over the shade, nor locked, nor snoozed
     _onRequestBanner(notification) {
         if (notification.acknowledged || notification.urgency === MessageTray.Urgency.LOW)
             return;
@@ -655,7 +652,7 @@ export class HeadsUp {
         this._reschedule();
     }
 
-    // all of them, at once, with no animation (HeadsUpManager.releaseAllImmediately): the lock screen covers them,
+    // all of them, at once, with no animation: the lock screen covers them,
     // and one left pinned under it would still be there, its time run out, after the unlock
     _releaseAll() {
         this._queue = [];
@@ -703,7 +700,7 @@ export class HeadsUp {
         action.activate();
     }
 
-    // expanded it stays; collapsed, it goes no sooner than the minimum from now (HeadsUpEntry.setExpanded)
+    // expanded it stays; collapsed, it goes no sooner than the minimum from now
     toggleExpanded(row) {
         const e = this._pinned(row);
         if (!e)

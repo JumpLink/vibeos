@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- The Contacts settings: ContactsPreferences (spec §10.6, defaults from donottranslate_config.xml) and what
-     Android keeps in its own databases that EDS has no place for. -->
+<!-- The Contacts settings, and what the app keeps that EDS has no place for. -->
 <schemalist gettext-domain="neo-contacts">
   <schema id="neo.Contacts" path="/neo/Contacts/">
     <key name="sort-order" type="s">

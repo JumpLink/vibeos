@@ -1,9 +1,7 @@
-/* ClockPopupMenu: the overflow ⋮ menu of the cities picker (an AppCompat action bar's overflow under
- * Theme.Material3Expressive), shown inside the app's own window. A copy of the Dialer's popup-menu.c with the
- * Material 3 measurements the Calculator took for the same menu (calc-popup-menu.h, still:calc-menu): a card in
- * surfaceContainer with 4 dp corners, its end 4 dp in from the window's end and its top on the ⋮'s top, as wide as
- * its longest item, 16 dp either side of 16 sp text, 48 dp rows, 8 dp above and below them. A tap on a row runs the
- * row's action and closes the menu; a tap outside, Back or Escape just closes it. */
+/* ClockPopupMenu: the overflow ⋮ menu of the cities picker, shown inside the app's own window. A copy of the
+ * Dialer's popup-menu.c, shaped as the Calculator's menu (calc-popup-menu.h): a rounded card, its end a little in
+ * from the window's end and its top on the ⋮'s top, as wide as its longest item. A tap on a row runs the row's
+ * action and closes the menu; a tap outside, Back or Escape just closes it. */
 #pragma once
 
 #include <gtk/gtk.h>

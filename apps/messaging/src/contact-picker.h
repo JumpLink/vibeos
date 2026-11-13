@@ -1,8 +1,8 @@
-/* The new conversation's contact picker (spec §3): ContactPickerFragment in its first state.
+/* The new conversation's contact picker, for its first person.
  *
  * The "To" field in the action bar, and under it the Frequents and All contacts tabs; once something is typed, the
  * contacts that match it instead, the typed number first. A tap on a contact (or Enter on a typed number) picks it,
- * which opens the conversation with that number, as Bugle's first pick does. Group conversations (the chips and
+ * which opens the conversation with that number. Group conversations (the chips and
  * "add people") are not here yet. */
 #pragma once
 

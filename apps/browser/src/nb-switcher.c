@@ -1,12 +1,11 @@
 /* nb-switcher: the browser's one window, and its tab switcher.
  *
- * Jelly opened every tab as an Android task, a window of its own switched in Recents (spec/jelly.md §1); a phone
- * without Android's task list then showed "New tab" as a second browser window and nothing to switch with. Here the
- * tabs live in the browser, as Chrome's do on a phone: the window shows one tab at a time (nb->tab_stack), and the
- * tab count on the URL line opens the switcher over them: a grid of cards, two across, each with the tab's favicon,
- * its title, a × that closes it and a picture of its page; a tap on a card shows that tab. The toolbar's + opens a
- * new tab, the incognito one an incognito tab; its up arrow (named "Back" for the shell's gesture) goes back to the
- * tab that was shown.
+ * Jelly opened every tab as a window of its own, switched in the system's recent apps; on this phone that showed
+ * "New tab" as a second browser window and nothing to switch with. Here the tabs live in the browser: the window
+ * shows one tab at a time (nb->tab_stack), and the tab count on the URL line opens the switcher over them: a grid
+ * of cards, two across, each with the tab's favicon, its title, a × that closes it and a picture of its page; a tap
+ * on a card shows that tab. The toolbar's + opens a new tab, the incognito one an incognito tab; its up arrow
+ * (named "Back" for the shell's gesture) goes back to the tab that was shown.
  *
  * A card's picture is the page as it was when its tab was last left (or the switcher last opened over it), scaled
  * down to the card once, on the GPU: a tab in the background is not drawn again, and a picture costs about a
@@ -20,7 +19,7 @@
 
 #define THUMB_WIDTH  480        /* px: a card is about half the screen, at the phone's scale */
 #define THUMB_ASPECT 1.2        /* a card's picture: height / width, the top of the page */
-#define GRID_SPACING 12         /* dp around and between the cards */
+#define GRID_SPACING 12         /* px around and between the cards */
 
 static guint rebuild_id;
 static GtkWidget *switcher_scroll;

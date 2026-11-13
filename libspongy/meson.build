@@ -1,4 +1,4 @@
-# libspongy: Android's scrolling physics (the stretch overscroll, the fling, springs, interpolators) for any app
+# libspongy: scrolling physics modelled on Android's (the stretch overscroll, the fling, springs, curves) for any app
 pkg = import('pkgconfig')
 spongy_lib = shared_library('spongy-1', 'spongy.c',
   dependencies: libm,

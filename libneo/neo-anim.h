@@ -1,4 +1,4 @@
-/* neo-anim: one number animated on a widget's frame clock, Android's ValueAnimator.
+/* neo-anim: one number animated on a widget's frame clock, along an easing curve.
  *
  *   self->expand = neo_anim_new (widget, on_expand, self);
  *   neo_anim_start (self->expand, 0, 1, 150, 0, SPONGY_FAST_OUT_SLOW_IN);
@@ -21,7 +21,7 @@ void     neo_anim_free       (NeoAnim *anim);
 
 /* From `from` to `to` along one of Android's curves. A widget that is not on screen jumps to the end. */
 void     neo_anim_start      (NeoAnim *anim, double from, double to, guint duration, guint delay, SpongyCurve curve);
-/* the same along any cubic-bezier (x1, y1, x2, y2), as PathInterpolator */
+/* the same along any cubic-bezier (x1, y1, x2, y2) */
 void     neo_anim_start_cubic (NeoAnim *anim, double from, double to, guint duration, guint delay,
                                float x1, float y1, float x2, float y2);
 /* stops where it is, without the last callback */

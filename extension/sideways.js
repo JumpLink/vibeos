@@ -3,9 +3,9 @@
 // at its bottom and its sides, 1080 x 2280 device px), and sideways neither could start: the screen was a trap,
 // Quake's above all, which takes no Escape as a way out. Here the same two swipes, plainly:
 //
-//   up from the bottom edge (the gesture bar's 32 dp): home. The app goes to recents (minimized) and the launcher is
+//   up from the bottom edge (the gesture bar): home. The app goes to recents (minimized) and the launcher is
 //     in front, which turns the panel upright again.
-//   in from the left or the right edge (30 dp): back, which is Escape to the app (an unreadable app's back in
+//   in from the left or the right edge (EDGE_W): back, which is Escape to the app (an unreadable app's back in
 //     back.js too).
 //
 // An app whose desktop file says X-Phone-Leave=close is closed by either swipe instead. Quake: its Escape is its own
@@ -23,7 +23,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {NAV_GESTURE_H} from './task.js';
 
-const EDGE_W = 30 * 3;                  // config_backGestureInset, device px
+const EDGE_W = 30 * 3;                  // device px, the same edge strip as back.js
 const SLOP = 8 * 3 * 0.75;              // touch slop × 0.75, as back.js
 const LONG_PRESS_MS = 250;
 const COMMIT_DP = 56;                   // released this far in: home / back

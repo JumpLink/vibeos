@@ -1,7 +1,6 @@
-/* How many text messages a text goes out as, and how much room the last one has left (Android's
- * SmsMessage.calculateLength): in the GSM 7-bit alphabet 160 characters, or 153 each when it takes several, the
- * extension table's characters ({ } [ ] ~ \ | ^ €) counting two; anything outside it makes the whole text UCS-2,
- * 70 UTF-16 units, or 67 each. The compose bar's counter shows it (spec §2.6). */
+/* How many text messages a text goes out as, and how much room the last one has left: in the GSM 7-bit alphabet 160
+ * characters, or 153 each when it takes several, the extension table's characters ({ } [ ] ~ \ | ^ €) counting two;
+ * anything outside it makes the whole text UCS-2, 70 UTF-16 units, or 67 each. The compose bar's counter shows it. */
 #pragma once
 
 #include <glib.h>

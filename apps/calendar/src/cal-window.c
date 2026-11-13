@@ -1,4 +1,4 @@
-/* The Calendar's window (cal-window.h): AllInOneActivity, its toolbar, views, FAB and drawer (spec/calendar.md §2). */
+/* The Calendar's window (cal-window.h): its toolbar, views, FAB and drawer. */
 #include "cal-window.h"
 #include "agenda-view.h"
 #include "cal-colors.h"
@@ -20,10 +20,10 @@ typedef enum { VIEW_DAY, VIEW_WEEK, VIEW_MONTH, VIEW_AGENDA, N_VIEWS } ViewType;
 
 static const char *view_names[N_VIEWS] = { "day", "week", "month", "agenda" };
 
-#define DRAWER_WIDTH 296.0              /* measured 888 px */
-#define DRAWER_MS 250                   /* DrawerLayout's settle, at most */
-#define VIEW_FADE_MS 150                /* FragmentTransaction.TRANSIT_FRAGMENT_FADE */
-#define PAGE_MS 300                     /* an activity opening over the main one */
+#define DRAWER_WIDTH 296.0
+#define DRAWER_MS 250                   /* the drawer opening or closing, at most */
+#define VIEW_FADE_MS 150                /* one view fading into another */
+#define PAGE_MS 300                     /* a page opening over the main one */
 
 typedef struct {
   GtkWidget *window;
@@ -113,7 +113,7 @@ update_title (Shell *shell)
       break;
     case VIEW_WEEK:
       title = cal_format_month_year (cal_day_view_get_first_day (CAL_DAY_VIEW (shell->view_widgets[VIEW_WEEK])));
-      /* "Show week number": "Week 46" under it (buildWeekNum, from the selected time) */
+      /* "Show week number": "Week 46" under it (from the selected time) */
       if (g_settings_get_boolean (shell->settings, "show-week-number"))
         subtitle = cal_format_week_number (cal_week_number (cal_day_view_get_first_day (
                                                               CAL_DAY_VIEW (shell->view_widgets[VIEW_WEEK])),
@@ -140,7 +140,7 @@ on_events (GPtrArray *events, gpointer data)
 
   if (!events)
     return;             /* cancelled: a newer query is on its way */
-  /* Hide declined events: the provider's query leaves out selfAttendeeStatus = DECLINED */
+  /* Hide declined events: the events you declined are left out */
   if (g_settings_get_boolean (shell->settings, "hide-declined"))
     for (guint i = events->len; i-- > 0;)
       if (((CalEvent *) events->pdata[i])->self_status == CAL_STATUS_DECLINED)
@@ -225,7 +225,7 @@ show_view (Shell *shell, ViewType view, int day)
       cal_day_view_set_first_day (CAL_DAY_VIEW (widget), day);
       break;
     case VIEW_WEEK:
-      /* DayView.setSelected: a seven-day view starts on the week's first day, a shorter one on the day itself */
+      /* a seven-day view starts on the week's first day, a shorter one on the day itself */
       cal_day_view_set_first_day (CAL_DAY_VIEW (widget), cal_day_view_get_num_days (CAL_DAY_VIEW (widget)) == 7
                                                          ? week_of (shell, day) : day);
       break;
@@ -241,7 +241,7 @@ show_view (Shell *shell, ViewType view, int day)
   select_drawer_item (shell);
   update_title (shell);
   refresh (shell);
-  /* "Previously used view" (Etar's default start view) */
+  /* for "Previously used view" (the Default view setting's default) */
   g_settings_set_string (shell->settings, "view", view_names[view]);
 }
 
@@ -279,7 +279,7 @@ on_page (CalDayView *view, int delta, Shell *shell)
 static void
 on_day_activated (GtkWidget *view, int day, Shell *shell)
 {
-  /* a date in the week's header, or a day in Month: that day's Day view; Back returns (mBackToPreviousView) */
+  /* a date in the week's header, or a day in Month: that day's Day view; Back returns */
   shell->previous_view = shell->view;
   shell->back_to_previous = shell->view == VIEW_MONTH;
   show_view (shell, VIEW_DAY, day);
@@ -288,7 +288,7 @@ on_day_activated (GtkWidget *view, int day, Shell *shell)
 static void
 on_month_day (CalMonthView *view, int day, gboolean has_events, Shell *shell)
 {
-  /* MonthWeekEventsView.onTouchEvent: a day with events opens its Day view, an empty one a new event */
+  /* a day with events opens its Day view, an empty one a new event */
   if (has_events)
     on_day_activated (GTK_WIDGET (view), day, shell);
   else
@@ -335,7 +335,7 @@ static void
 on_cell_height (CalDayView *view, double height, Shell *shell)
 {
   g_settings_set_double (shell->settings, "cell-height", height);
-  /* the other one follows (DayView keeps one preferred cell height) */
+  /* the other one follows (the Day and Week views share one hour height) */
   for (int i = VIEW_DAY; i <= VIEW_WEEK; i++)
     if (shell->view_widgets[i] != GTK_WIDGET (view))
       cal_day_view_set_cell_height (CAL_DAY_VIEW (shell->view_widgets[i]), height);
@@ -359,7 +359,7 @@ on_fab (NeoPressable *fab, Shell *shell)
       int minute = g_date_time_get_minute (now);
       int day = shell->selected_day;
 
-      /* AllInOneActivity's FAB: the shown day, the time now rounded up to the half hour */
+      /* the FAB: the shown day, the time now rounded up to the half hour */
       start = cal_day_start (day) + g_date_time_get_hour (now) * 3600 + (minute <= 30 ? 30 : 60) * 60;
       if (minute == 0)
         start -= 30 * 60;
@@ -480,7 +480,7 @@ on_scrim_pressed (GtkGestureClick *gesture, int n, double x, double y, Shell *sh
   open_drawer (shell, FALSE);
 }
 
-/* A drag on the sheet moves it once it is past the touch slop (8 dp); a tap is its item's, and must not set the
+/* A drag on the sheet moves it once it is past the touch slop; a tap is its item's, and must not set the
  * sheet back where it was: an item's tap closes the drawer, and letting go would open it again. */
 static void
 on_sheet_drag_update (GtkGestureDrag *gesture, double dx, double dy, Shell *shell)
@@ -529,7 +529,7 @@ drawer_item (Shell *shell, const char *icon, const char *label, GCallback callba
   gtk_box_append (GTK_BOX (row), image);
   gtk_box_append (GTK_BOX (row), text);
   gtk_widget_add_css_class (item, "cal-drawer-item");
-  /* the item's pill: a full radius, 12 dp in from the sheet's edges (36 px measured) */
+  /* the ripple keeps to the item's pill: a full radius */
   neo_pressable_set_ripple (NEO_PRESSABLE (item), NEO_RIPPLE_BOUNDED, 24);
   g_object_set_data (G_OBJECT (item), "view", GINT_TO_POINTER (view));
   g_signal_connect (item, "clicked", callback, shell);
@@ -593,7 +593,7 @@ make_drawer (Shell *shell)
   return overlay;
 }
 
-/* an edge swipe from the left opens it (DrawerLayout's 20 dp edge) */
+/* an edge swipe from the left opens it: a drag that starts within 20 px of the edge */
 static void
 on_edge_drag_begin (GtkGestureDrag *gesture, double x, double y, Shell *shell)
 {
@@ -622,7 +622,7 @@ on_edge_drag_end (GtkGestureDrag *gesture, double dx, double dy, Shell *shell)
     open_drawer (shell, shell->drawer_open > 0.3);
 }
 
-/* --- the overflow menu (all_in_one_title_bar.xml) */
+/* --- the overflow menu */
 
 static void close_menu (Shell *shell);
 
@@ -663,8 +663,7 @@ on_menu_refresh (NeoPressable *item, Shell *shell)
   GPtrArray *calendars = cal_store_get_calendars (shell->store);
 
   close_menu (shell);
-  /* Etar's Refresh asks every account to sync (ContentResolver.requestSync); EDS's is e_client_refresh, which a
-   * local calendar does not support */
+  /* Refresh asks every calendar that can to sync (e_client_refresh; a local calendar cannot) */
   for (guint i = 0; i < calendars->len; i++)
     {
       ECalClient *client = cal_store_get_client (shell->store, ((CalCalendar *) calendars->pdata[i])->uid);
@@ -700,8 +699,8 @@ on_import_chosen (GObject *dialog, GAsyncResult *result, gpointer data)
   g_object_unref (window);
 }
 
-/* Import event: Etar asks for a text/calendar document (ACTION_GET_CONTENT) and opens ImportActivity with it; here
- * the file chooser (the portal's when there is one) and then the same import as opening an .ics with the app */
+/* Import event: the file chooser (the portal's when there is one), then the same import as opening an .ics with
+ * the app */
 static void
 on_menu_import (NeoPressable *item, Shell *shell)
 {
@@ -741,7 +740,7 @@ menu_item (Shell *shell, const char *label, GCallback callback)
   GtkWidget *item = neo_pressable_new (text);
 
   gtk_label_set_xalign (GTK_LABEL (text), 0);
-  /* TextView's font padding: the title sits where ListMenuItemView puts it (measured: 2 px lower than without) */
+  /* font padding: the title sits a little lower than without */
   neo_label_set_font_padding (text, 16);
   gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
   gtk_widget_add_css_class (item, "cal-menu-item");
@@ -771,7 +770,7 @@ on_more (NeoPressable *button, Shell *shell)
   gtk_box_append (GTK_BOX (menu), menu_item (shell, _("Refresh"), G_CALLBACK (on_menu_refresh)));
   gtk_box_append (GTK_BOX (menu), menu_item (shell, _("Search"), G_CALLBACK (on_menu_search)));
   gtk_box_append (GTK_BOX (menu), menu_item (shell, _("Import event"), G_CALLBACK (on_menu_import)));
-  /* updateViewSettingsVisiblility: the Month view only */
+  /* View settings: the Month view only */
   if (shell->view == VIEW_MONTH)
     gtk_box_append (GTK_BOX (menu), menu_item (shell, _("View settings"), G_CALLBACK (on_menu_view_settings)));
   gtk_overlay_add_overlay (GTK_OVERLAY (layer), menu);
@@ -779,7 +778,7 @@ on_more (NeoPressable *button, Shell *shell)
   gtk_overlay_add_overlay (neo_window_get_overlay (shell->window), layer);
 }
 
-/* --- the Today button: a calendar with today's date in it (DayOfMonthDrawable) */
+/* --- the Today button: a calendar with today's date in it */
 
 typedef struct {
   GtkWidget parent;
@@ -795,7 +794,7 @@ static void
 cal_today_icon_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   GdkRGBA color = cal_argb (CAL_ON_SURFACE_VARIANT);
-  double size = 28;     /* ic_baseline_calendar_dayofmonth */
+  double size = 28;     /* the calendar icon */
   double x = (gtk_widget_get_width (widget) - size) / 2, y = (gtk_widget_get_height (widget) - size) / 2 - 2;
   g_autoptr(GDateTime) now = g_date_time_new_now_local ();
   g_autofree char *number = g_strdup_printf ("%d", g_date_time_get_day_of_month (now));
@@ -803,7 +802,7 @@ cal_today_icon_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   PangoFontDescription *font = pango_font_description_from_string ("Neo Roboto, Roboto");
   int w, h;
 
-  /* today_icon.xml: the outline, 4 dp off the bottom; the date bold 12 sp in it, at (bottom + height + 1) / 1.75 */
+  /* the Today icon: its outline with the day's date in bold inside, the baseline at (bottom + height + 1) / 1.75 */
   neo_snapshot_icon (snapshot, widget, "cal-today-symbolic", x, y, size, &color);
   pango_font_description_set_absolute_size (font, 12 * PANGO_SCALE);
   pango_font_description_set_weight (font, PANGO_WEIGHT_BOLD);
@@ -873,7 +872,7 @@ make_toolbar (Shell *shell)
   gtk_label_set_xalign (GTK_LABEL (shell->subtitle), 0);
   gtk_label_set_ellipsize (GTK_LABEL (shell->title), PANGO_ELLIPSIZE_END);
   gtk_label_set_ellipsize (GTK_LABEL (shell->subtitle), PANGO_ELLIPSIZE_END);
-  /* TextView's font padding: the two lines 88 and 65 px tall, as measured (still:cal-agenda) */
+  /* font padding on both lines */
   neo_label_set_font_padding (shell->title, 22);
   neo_label_set_font_padding (shell->subtitle, 16);
   gtk_box_append (GTK_BOX (titles), shell->title);
@@ -948,8 +947,8 @@ cal_window_push (GtkWidget *window, GtkWidget *page)
   g_autofree char *name = g_strdup_printf ("page-%u", ++shell->page_serial);
 
   close_menu (shell);
-  /* A page opens with nothing focused, as an Android activity does unless it asks: with the focus still in the
-   * stack, GtkStack would hand it to the new page's first entry, which selects its text and calls up the keyboard. */
+  /* A page opens with nothing focused: with the focus still in the stack, GtkStack would hand it to the new page's
+   * first entry, which selects its text and calls up the keyboard. */
   gtk_window_set_focus (GTK_WINDOW (window), NULL);
   gtk_stack_add_named (GTK_STACK (shell->pages), page, name);
   g_ptr_array_add (shell->pushed, page);
@@ -1070,9 +1069,9 @@ cal_window_import (GtkWidget *window, GFile *file)
   event_editor_import (window, file);
 }
 
-/* --- toasts: "Event created.", "Event saved." (Toast.LENGTH_SHORT) */
+/* --- toasts: "Event created.", "Event saved." */
 
-#define TOAST_MS 2000                   /* Toast.LENGTH_SHORT */
+#define TOAST_MS 2000                   /* a toast's time on screen */
 #define TOAST_FADE_MS 250
 
 static void
@@ -1094,8 +1093,8 @@ on_toast_timeout (gpointer data)
   return G_SOURCE_REMOVE;
 }
 
-/* SystemUI's text toast (text_toast.xml): the app's icon and the text in a 28 dp pill, 48 dp above the bottom
- * (toast_y_offset), 300 dp wide at most. It outlives the page that showed it, so it belongs to the window. */
+/* a toast: the app's icon and up to two lines of text in a pill above the bottom edge. It outlives the page that
+ * showed it, so it belongs to the window. */
 void
 cal_window_toast (GtkWidget *window, const char *text)
 {
@@ -1192,7 +1191,7 @@ apply_home_zone (Shell *shell)
   gtk_widget_queue_draw (shell->window);
 }
 
-/* Display options (ViewDetailsPreferences.getPreferences): the Month view's layout for the orientation */
+/* Display options: the Month view's layout for the orientation */
 static void
 apply_month_details (Shell *shell)
 {
@@ -1266,7 +1265,7 @@ on_settings_changed (GSettings *settings, const char *key, Shell *shell)
     }
   else if (g_str_equal (key, "home-tz-enabled") || g_str_equal (key, "home-tz"))
     {
-      /* Utils.setTimeZone: every time the app shows is in the new zone */
+      /* a new home time zone: every time the app shows is in the new zone */
       apply_home_zone (shell);
       show_view (shell, shell->view, today ());
     }
@@ -1284,7 +1283,7 @@ cal_window_new (GtkApplication *app, CalStore *store, GSettings *settings)
   GtkEventController *shortcuts = gtk_shortcut_controller_new ();
   GtkGesture *edge = gtk_gesture_drag_new ();
   g_autofree char *default_view = g_settings_get_string (settings, "default-view");
-  /* "Default view": "Previously used view" is the one shown last (AllInOneActivity's KEY_START_VIEW) */
+  /* "Default view": "Previously used view" is the one shown last */
   g_autofree char *view_name = g_str_equal (default_view, "previous") ? g_settings_get_string (settings, "view")
                                                                       : g_strdup (default_view);
   GdkRGBA fab_fill = cal_argb (CAL_PRIMARY);
@@ -1337,7 +1336,7 @@ cal_window_new (GtkApplication *app, CalStore *store, GSettings *settings)
           g_signal_connect (widget, "range-changed", G_CALLBACK (on_agenda_range), shell);
           g_signal_connect (widget, "top-day-changed", G_CALLBACK (on_agenda_top_day), shell);
         }
-      /* the month view has no events to tap: a tap on a day opens the day (MonthWeekEventsView) */
+      /* the month view has no events to tap: a tap on a day opens the day */
       if (i != VIEW_MONTH)
         g_signal_connect (widget, "event-activated", G_CALLBACK (on_event_activated), shell);
       shell->view_widgets[i] = widget;
@@ -1351,7 +1350,7 @@ cal_window_new (GtkApplication *app, CalStore *store, GSettings *settings)
   gtk_box_append (GTK_BOX (main), shell->views);
   gtk_overlay_set_child (GTK_OVERLAY (content), main);
 
-  /* the FAB: an M3 FAB, a 16 dp corner (measured a rounded square), colorAccent, the white plus */
+  /* the FAB: a rounded square with a white plus, for a new event */
   gtk_image_set_pixel_size (GTK_IMAGE (image), 24);
   shell->fab = neo_pressable_new (image);
   gtk_widget_add_css_class (shell->fab, "cal-fab");

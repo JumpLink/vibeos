@@ -1,12 +1,13 @@
-/* Messaging's look (spec §0.3, the palette force dark makes of the light theme): window #181c1d, action bars in
- * primary_color #33666d, Roboto at the weights Bold text makes (regular 400 is drawn 700, medium 500 800, bold 900). */
+/* Messaging's look. The colours are the ones the dark app renders, so they are plain values, not a
+ * palette. Weights sit 300 over the design's (400 as 700, 500 as 800, bold as 900): the phone's Bold text setting
+ * is on. */
 
 .msg-window,
 .msg-page {
   background-color: #181c1d;
 }
 
-/* --- the action bar (§1.2, §2.2) */
+/* --- the action bar */
 
 .msg-action-bar {
   background-color: #33666d;
@@ -24,9 +25,9 @@
   color: #ffffff;
 }
 
-/* --- the conversation list (§1.4, §1.5) */
+/* --- the conversation list */
 
-/* opaque, to cover the swipe background (§1.8) as it moves over it */
+/* opaque, to cover the swipe background as it moves over it */
 .msg-row {
   background-color: #181c1d;
 }
@@ -66,7 +67,7 @@
   color: #f05a24;
 }
 
-/* --- Blocked contacts (§4.2): the name 18 sp #bfbfbf, "UNBLOCK" 14 sp in the accent */
+/* --- Blocked contacts: a name, and "UNBLOCK" in the accent */
 
 .msg-blocked-name {
   font-family: "Neo Roboto", Roboto, sans-serif;
@@ -82,7 +83,7 @@
   color: #b8ebf3;
 }
 
-/* the FAB: "START CHAT", literal colours (forceDark off) */
+/* the "START CHAT" button: black on its light fill, as it is not darkened with the rest */
 .msg-fab-label {
   font-family: "Neo Roboto", Roboto, sans-serif;
   font-size: 14px;
@@ -102,7 +103,7 @@
   color: #9b9b9b;
 }
 
-/* --- a conversation (§2.3, §2.4) */
+/* --- a conversation */
 
 .msg-message-text {
   font-family: "Neo Roboto", Roboto, sans-serif;
@@ -116,7 +117,7 @@
   font-weight: 700;
 }
 
-/* the bubble's subtree is out of force dark: outgoing is dark grey on white */
+/* a bubble is not darkened with the rest: an outgoing one is dark grey on white */
 .outgoing .msg-message-text {
   color: #323232;
 }
@@ -142,14 +143,14 @@
   color: #ffffff;
 }
 
-/* the 4 dp shadow over the list's foot while the newest message is out of sight */
+/* a shadow over the list's foot while the newest message is out of sight */
 .msg-compose-shadow {
   min-height: 4px;
   margin-top: -4px;
   background-image: linear-gradient(to top, rgba(0, 0, 0, 0.267), transparent);
 }
 
-/* --- the compose bar (§2.6) */
+/* --- the compose bar */
 
 .msg-compose-field {
   background-color: #5a5f60;
@@ -195,7 +196,7 @@
   color: #b5b5b5;
 }
 
-/* --- the contact picker (§3) */
+/* --- the contact picker */
 
 .msg-picker-field {
   font-family: "Neo Roboto", Roboto, sans-serif;
@@ -238,8 +239,7 @@
   color: #b8ebf3;
 }
 
-/* a row's TextViews are 1.73 × their size tall, as in People & options: on still:sms-new-conversation a name sits
- * 29 dp over its number, and a number 49 dp over the next row's (58 dp rows without a name) */
+/* a row's lines are 1.73 × their text size tall, as in People & options */
 .msg-picker-name {
   font-family: "Neo Roboto", Roboto, sans-serif;
   font-size: 16px;
@@ -264,9 +264,8 @@
   color: rgba(255, 255, 255, 0.541);
 }
 
-/* --- the pop-up menus (the Phone's popup-menu.c, §1.3): mtrl_popupmenu_background, colorSurface #1b1b1b with 4 dp
- * corners and 8 dp over and under the rows; the rows TextAppearance.Material.Menu at #DEffffff, letter-spacing
- * 0.009375 em (still:sms-conv-menu, still:sms-menu) */
+/* --- the pop-up menus (the Phone's popup-menu.c): rounder than the Phone's, with room over and under the
+ * rows */
 
 .popup-menu {
   background-color: #1b1b1b;
@@ -286,8 +285,7 @@
   opacity: 0.38;
 }
 
-/* --- the alert dialogs (§7.4): AppCompat's, not Material 3's. Panel #1b1b1b under #181c1d content, 28 dp corners;
- * title 20 sp medium, message 16 sp, both #DEffffff; buttons #81b5bc in capitals, 12 dp in from the sides */
+/* --- the alert dialogs: the title over the message, the buttons in capitals */
 
 .msg-window .neo-dialog {
   background-color: #181c1d;
@@ -314,8 +312,7 @@
   margin: 12px 12px 0 12px;
 }
 
-/* Forward message (§2.5): a dialog activity's window title (abc_dialog_title_material: 24 dp in from the sides,
- * 18 dp from the top, nothing under it) over the conversation list, edge to edge */
+/* Forward message: the title with nothing under it, then the conversation list, edge to edge */
 .msg-window .msg-forward-dialog .neo-dialog-title {
   margin-bottom: 0;
 }
@@ -330,7 +327,7 @@
   min-width: 64px;
 }
 
-/* --- the snackbar (§1.13): edge to edge, #323232; text 24 dp in and 18 dp over and under; the action #EEFF41 */
+/* --- the snackbar: edge to edge and square, the action in yellow */
 
 .msg-window .neo-snackbar {
   background-color: #323232;
@@ -355,10 +352,8 @@
   padding: 0 24px;
 }
 
-/* --- People & options (§4.1): headers 16 sp grey, option and name 18 sp #bfbfbf, number 14 sp #999999. Its
- * fragment has Theme.MaterialComponents.Light.DarkActionBar: colorBackground, white, is #1b1b1b at night. Each
- * TextView there is 1.73 × its text size tall (still:sms-people-options: 83 px at 16 sp, 93 px at 18 sp), so a
- * header is 16 + 27.67 + 16 dp */
+/* --- People & options: a page with a theme of its own, hence its lighter background. Each line there is
+ * 1.73 × its text size tall, so a header is 16 + 27.67 + 16 */
 
 .msg-people-options {
   background-color: #1b1b1b;
@@ -394,10 +389,9 @@
   color: #999999;
 }
 
-/* --- Settings (§4.6): androidx preference rows. Measured on still:sms-settings, against the spec: the summary is
- * 16 sp like the title (both cap heights 35 px), at white 60 % (#a3a4a5 on #181c1d), not 14 sp at 54 %. A TextView
- * there is 1.73 × its size tall on one line (83 px at 16 sp) and 1.17 × more per further line (+57 px): the title
- * gets the one, the summary its 18.75 px lines plus 4.4 dp over and under them (msg-settings.c) */
+/* --- Settings: a summary is as large as its title, only fainter. A line of text is 1.73 × its size tall on
+ * its own and 1.17 × for each further line: the title gets the one, the summary its 1.17 × lines plus padding over
+ * and under them (msg-settings.c) */
 
 .msg-pref-title {
   font-family: "Neo Roboto", Roboto, sans-serif;
@@ -415,8 +409,7 @@
   color: rgba(255, 255, 255, 0.6);
 }
 
-/* a PreferenceCategory's title, measured on still:sms-settings-adv: as wide as the same word in a row's title
- * (16 sp, not the spec's 14), a little heavier (medium), its TextView as tall (83 px), in colorAccent #b8ebf3 */
+/* a category's title: a row title's size and height, a little heavier, in the accent colour */
 .msg-pref-category {
   font-family: "Neo Roboto", Roboto, sans-serif;
   font-size: 16px;
@@ -425,8 +418,7 @@
   color: #b8ebf3;
 }
 
-/* "Add to Contacts?" (add_contacts_confirmation_dialog_body.xml): the number in a plain TextView, the theme's
- * textAppearanceSmall, 14 sp textColorSecondary (#8a000000 made light) */
+/* "Add to Contacts?": the number beside the avatar, fainter than the question */
 .msg-add-contact-name {
   font-family: "Neo Roboto", Roboto, sans-serif;
   font-size: 14px;

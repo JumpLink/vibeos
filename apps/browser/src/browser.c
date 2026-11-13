@@ -1,5 +1,5 @@
-/* Neo Browser: Chrome for Android's phone UI (dark) over WebKitGTK 6, in C. The port of the GJS browser it
- * replaced, same pages, same data:
+/* Neo Browser: a phone browser UI in the style of Chrome's (dark) over WebKitGTK 6, in C. The port of the GJS
+ * browser it replaced, same pages, same data:
  * toolbar (home, address pill, tab count, menu) • tab switcher grid • menu sheet • address entry with suggestions •
  * new-tab page • history / bookmarks / downloads pages • find in page • long-press link sheet • ad blocking.
  *
@@ -37,7 +37,7 @@
 #define FILTER_MAX_AGE (7 * 24 * 3600)
 #define MEMORY_LIMIT_MB 768
 
-/* Android's scrollbar: a thin rounded thumb over the page, no track and no arrow buttons */
+/* a phone's scrollbar: a thin rounded thumb over the page, no track and no arrow buttons */
 static const char SCROLLBAR_CSS[] =
   "::-webkit-scrollbar{width:5px!important;height:5px!important;background:transparent!important}"
   "::-webkit-scrollbar-track,::-webkit-scrollbar-corner{background:transparent!important}"

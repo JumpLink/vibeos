@@ -40,7 +40,7 @@ NAME=${NEO_HEADLESS:-neo-headless}
 STATE=$RUNTIME/$NAME.d          # beside the Wayland socket, $RUNTIME/$NAME
 SHOT=$STATE/shot.png
 HERE=$(dirname "$(readlink -f "$0")")
-# the app area: the panel in dp (scale 3) less the 39 dp status bar
+# the app area: the panel in GTK px (scale 3) less the 39 px status bar
 case "$(tr -d '\0' < /proc/device-tree/compatible 2>/dev/null)" in
 *surya*) AREA=360x761 ;;      # 1080 x 2400
 *)       AREA=360x721 ;;      # 1080 x 2280, the Galaxy S10e

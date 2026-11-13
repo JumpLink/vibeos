@@ -397,7 +397,7 @@ ns_page_datetime (GtkWidget *row, gpointer data)
   GSettings *iface = ns_page_settings (page, "org.gnome.desktop.interface");
   g = ns_group (c, "Clock");
   /* clock-format is read by the status bar and the lock screen (statusbar.js, keyguard.js) and by the apps.
-   * No weekday, date or seconds switches (clock-show-*): the status bar shows the time alone, as Android's does. */
+   * No weekday, date or seconds switches (clock-show-*): the status bar shows the time alone. */
   GtkWidget *r = ns_row_switch (g, "24-hour time", "13:00 rather than 1:00 PM", NULL, NULL);
   g_settings_bind_with_mapping (iface, "clock-format", ns_row_get_switch (r), "active", G_SETTINGS_BIND_DEFAULT,
                                 h24_get, h24_set, NULL, NULL);

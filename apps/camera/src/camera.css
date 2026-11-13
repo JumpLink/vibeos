@@ -1,11 +1,11 @@
 /* The Camera's styles, over libneo's (neo.css). The camera screen draws itself (cam-widgets.c); this styles its
- * labels, the pro row, the toast and snackbar, the dialogs and the Settings page (spec/camera.md §0.4, §0.5). */
+ * labels, the pro row, the toast and snackbar, the dialogs and the Settings page. */
 
 window.neo.cam-window {
   background-color: #000000;
 }
 
-/* --- the mode selector (§3): Droid Sans Mono 14 sp, "bold" (synthetic), #444444, the chosen one white */
+/* --- the mode selector: the labels dimmed, the chosen one white */
 .cam-mode-label {
   font-family: "Droid Sans Mono", "Noto Mono", monospace;
   font-size: 14px;
@@ -17,7 +17,7 @@ window.neo.cam-window {
   color: #ffffff;
 }
 
-/* the recording's duration: a disabled MaterialButton in rec_red, 14 sp sans-serif-medium + Bold text = 800 */
+/* the recording's duration: a red pill */
 .cam-duration {
   background-color: #e95950;
   border-radius: 20px;
@@ -27,7 +27,7 @@ window.neo.cam-window {
   font-weight: 800;
 }
 
-/* --- the pro row (§7): black 60 %, labels 12 sp Droid Sans Mono bold, #444444 when disabled */
+/* --- the pro row: a translucent black band; a disabled button's label dimmed */
 .cam-pro-row {
   background-color: rgba(0, 0, 0, 0.6);
 }
@@ -45,8 +45,7 @@ window.neo.cam-window {
   color: #444444;
 }
 
-/* --- the toast (Android 16's text toast, still:camera-toast-in-use-over-lens): a pill 20 dp from the sides,
- * the app icon 16 dp in, the text after a 10 dp gap */
+/* --- the toast: a pill with the app icon, then the text */
 .cam-toast {
   background-color: #181c1d;
   border-radius: 31px;
@@ -64,7 +63,7 @@ window.neo.cam-window {
   font-weight: 500;
 }
 
-/* --- the snackbar (§19.4, still:camera-snackbar-torch-help): inverse surface, inverse primary action */
+/* --- the snackbar, in the inverse colours */
 neo-snackbar-host.cam-snackbar .neo-snackbar {
   background-color: @neo_inverse_surface;
 }
@@ -78,12 +77,12 @@ neo-snackbar-host.cam-snackbar .neo-text-button {
   color: @neo_inverse_primary;
 }
 
-/* --- the screen flash (§12.2) */
+/* --- the screen flash */
 .cam-screen-flash {
   background-color: #ffffff;
 }
 
-/* --- the QR sheet (§15.2) */
+/* --- the QR sheet */
 .cam-qr-sheet {
   background-color: @neo_surface_container_low;
   border-radius: 28px 28px 0 0;
@@ -116,7 +115,7 @@ neo-snackbar-host.cam-snackbar .neo-text-button {
   font-weight: 700;
 }
 
-/* --- the dialogs (themes_settingslib: AlertDialogs in colorSurface, 16 dp corners) */
+/* --- the dialogs */
 neo-dialog-scrim.cam-settings-dialog > .neo-dialog,
 neo-dialog-scrim.cam-location > .neo-dialog {
   background-color: @neo_surface;
@@ -161,7 +160,7 @@ neo-dialog-scrim.cam-location > .neo-dialog {
   color: @neo_secondary;
 }
 
-/* --- Settings (§20.1) */
+/* --- Settings */
 .cam-settings {
   background-color: @neo_surface;
 }

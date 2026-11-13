@@ -1,14 +1,14 @@
 /* cam-sensors: what the camera screen reads from the phone besides the camera.
  *
- *   orientation  iio-sensor-proxy's AccelerometerOrientation, as Aperture's OrientationEventListener quantised to
- *                0 / 90 / 180 / 270 (the clockwise turn of the phone: 90 is its left edge up)        §17
+ *   orientation  iio-sensor-proxy's AccelerometerOrientation, as 0 / 90 / 180 / 270 (the clockwise turn of the
+ *                phone: 90 is its left edge up)
  *   display-rotation  the turn of the phone the screen is laid out for, in the same unit: 0 while the shell keeps
  *                it upright, the orientation while it follows the phone (Mutter's DisplayConfig)
  *   tilt         the continuous roll angle for the leveler, from a raw IIO accelerometer if the session may read
- *                one (NaN otherwise, and the Leveler setting is left out)                             §14
- *   battery      UPower's display device: low (≤ 15 %) and charging                                   §13
- *   thermal      the worst of the thermal zones, each against its own trip points                     §13, §19.4
- *   location     GeoClue2, while "Save location data" is on                                           §21.3
+ *                one (NaN otherwise, and the Leveler setting is left out)
+ *   battery      UPower's display device: low (≤ 15 %) and charging
+ *   thermal      the worst of the thermal zones, each against its own trip points
+ *   location     GeoClue2, while "Save location data" is on
  *
  * All of it is plain D-Bus and sysfs, nothing that knows a phone. Each part is quiet where its service is missing. */
 #pragma once
@@ -17,7 +17,7 @@
 
 G_BEGIN_DECLS
 
-/* Android's PowerManager thermal status, which the island and the snackbars follow */
+/* how hot the phone is, in the steps the island and the snackbars follow */
 typedef enum {
   CAM_THERMAL_NONE,
   CAM_THERMAL_LIGHT,

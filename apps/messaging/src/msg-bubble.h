@@ -1,5 +1,5 @@
-/* MsgBubble: a message's bubble (spec §2.3, MessageBubbleBackground): its child on a rectangle with 28 dp corners in
- * the bubble's colour, as wide as the text needs rounded up to a multiple of 20 dp, never wider than @max_width. */
+/* MsgBubble: a message's bubble: its child on a round-cornered rectangle in the
+ * bubble's colour, as wide as the text needs rounded up to a multiple of 20, never wider than @max_width. */
 #pragma once
 
 #include <gtk/gtk.h>

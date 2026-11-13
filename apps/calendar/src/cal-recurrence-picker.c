@@ -1,22 +1,18 @@
-/* Etar's RecurrencePickerDialog, WeekButton, LinearLayoutWithMaxWidth and EventRecurrence (cal-recurrence-picker.h;
- * the recurrencepicker package, calendarcommon2/EventRecurrence.java, layout/recurrencepicker*.xml).
+/* The repeat dialog, and the RRULE parser and writer behind it (cal-recurrence-picker.h).
  *
  * Built without CAL_RECURRENCE_NO_UI it is the dialog; with it, only the rule and the model, for the tests.
  *
  * Left out, each at its place below too:
- *  - the switch's own thumb colours (app:thumbTint preference_material_switch_color: white on, darker grey off):
- *    CalMaterialSwitch draws Material 3's, and has no way to take others;
- *  - a pressed day showing filled before it toggles (recurrence_bubble_fill's state_pressed): NeoPressable keeps its
- *    pressed state to itself;
- *  - the toast of the rule (doToast): Etar never calls it;
- *  - keeping the dialog's state across a rotation (onSaveInstanceState): a GTK window keeps its widgets. */
+ *  - the switch's own thumb colours (white on, darker grey off):
+ *    CalMaterialSwitch draws its own, and has no way to take others;
+ *  - a pressed day showing filled before it toggles: NeoPressable keeps its pressed state to itself. */
 #include "cal-recurrence-picker.h"
 
 #include <glib/gi18n.h>
 #include <stdlib.h>
 #include <string.h>
 
-/* --- EventRecurrence */
+/* --- the rule (CalRecurrence) */
 
 static const char *const day_codes[] = { "SU", "MO", "TU", "WE", "TH", "FR", "SA" };
 static const char *const freq_names[] = {
@@ -61,7 +57,7 @@ cal_recurrence_new (int wkst)
   return er;
 }
 
-/* PartParser.parseIntRange: an int (a leading '+' allowed), within [min, max], 0 only when allowed */
+/* an int (a leading '+' allowed), within [min, max], 0 only when allowed */
 static gboolean
 parse_int_range (const char *str, gint64 min, gint64 max, gboolean allow_zero, int *out)
 {
@@ -75,7 +71,7 @@ parse_int_range (const char *str, gint64 min, gint64 max, gboolean allow_zero, i
   if (!g_ascii_isdigit (*digits))
     return FALSE;
   value = g_ascii_strtoll (str, &end, 10);
-  /* Integer.parseInt: digits to the end, within an int */
+  /* digits to the end, within an int */
   if (*end || value < G_MININT32 || value > G_MAXINT32)
     return FALSE;
   if (value < min || value > max || (value == 0 && !allow_zero))
@@ -84,7 +80,7 @@ parse_int_range (const char *str, gint64 min, gint64 max, gboolean allow_zero, i
   return TRUE;
 }
 
-/* String.split (","), which drops empty strings at the end only */
+/* split at the commas; only empty strings at the end are dropped */
 static GStrv
 split_list (const char *text)
 {
@@ -99,7 +95,7 @@ split_list (const char *text)
   return items;
 }
 
-/* PartParser.parseNumberList */
+/* a comma-separated list of such ints */
 static gboolean
 parse_number_list (const char *text, gint64 min, gint64 max, gboolean allow_zero, CalRecurList *list)
 {
@@ -125,7 +121,7 @@ weekday_of (const char *code)
   return -1;
 }
 
-/* ParseByDay: "1SU,-1SU" into weekdays and their numbers */
+/* "1SU,-1SU" into weekdays and their numbers */
 static gboolean
 parse_byday (const char *value, CalRecurrence *er)
 {
@@ -145,7 +141,7 @@ parse_byday (const char *value, CalRecurrence *er)
       const char *item = items[i];
       int start = (int) strlen (item) - 2;
 
-      /* parseWday: a number before the weekday's two letters */
+      /* a number before the weekday's two letters */
       if (start > 0)
         {
           g_autofree char *number = g_strndup (item, start);
@@ -176,7 +172,7 @@ parse_part (const char *name, const char *value, CalRecurrence *er)
     }
   if (g_str_equal (name, "UNTIL"))
     {
-      /* VALIDATE_UNTIL is off: kept as written */
+      /* UNTIL is not checked: kept as written */
       g_free (er->until);
       er->until = g_strdup (value);
       return PARSED_UNTIL;
@@ -230,7 +226,7 @@ cal_recurrence_parse (const char *rrule)
 
   if (!rrule)
     return NULL;
-  /* ALLOW_LOWER_CASE: the whole rule upper-cased */
+  /* lower case allowed: the whole rule upper-cased */
   upper = g_ascii_strup (rrule, -1);
   parts = g_strsplit (upper, ";", -1);
   for (int i = 0; parts[i]; i++)
@@ -255,7 +251,7 @@ cal_recurrence_parse (const char *rrule)
     er->wkst = 1;                       /* "If not specified, week starts on Monday" */
   if (!(parsed & PARSED_FREQ))
     return NULL;
-  /* both UNTIL and COUNT: ONLY_ONE_UNTIL_COUNT is off, so Etar only warns (canHandleRecurrenceRule refuses it) */
+  /* both UNTIL and COUNT parse (cal_recurrence_picker_can_handle refuses the rule) */
   return g_steal_pointer (&er);
 }
 
@@ -286,8 +282,6 @@ cal_recurrence_to_string (const CalRecurrence *er)
     g_string_append_printf (s, ";WKST=%s", day_codes[er->wkst]);
   append_numbers (s, ";BYSECOND=", &er->bysecond);
   append_numbers (s, ";BYMINUTE=", &er->byminute);
-  /* Etar labels the hours ";BYSECOND=" too (a slip: BYHOUR=9 would come back as a second BYSECOND, a rule its own
-   * parser refuses); written as what they are */
   append_numbers (s, ";BYHOUR=", &er->byhour);
   for (int i = 0; i < er->byday_count; i++)
     {
@@ -304,7 +298,7 @@ cal_recurrence_to_string (const CalRecurrence *er)
   return g_string_free (s, FALSE);
 }
 
-/* --- RecurrencePickerDialog's rule logic */
+/* --- the dialog's rule logic */
 
 #define FIFTH_WEEK_IN_A_MONTH 5
 #define LAST_NTH_DAY_OF_WEEK  (-1)
@@ -316,7 +310,7 @@ is_supported_monthly_by_nth_day_of_week (int num)
   return (num > 0 && num <= FIFTH_WEEK_IN_A_MONTH) || num == LAST_NTH_DAY_OF_WEEK;
 }
 
-/* canHandleRecurrenceRule */
+/* a rule the dialog can show */
 static gboolean
 can_handle_recurrence (const CalRecurrence *er)
 {
@@ -373,7 +367,7 @@ day_number_of (int year, int month, int day)
   return (int) g_date_get_julian (&date);
 }
 
-/* the event's start (mTime): its day, time of day, weekday and day of the month, in its zone */
+/* the event's start: its day, time of day, weekday and day of the month, in its zone */
 typedef struct {
   int day, second, weekday, month_day;
 } Moment;
@@ -405,7 +399,7 @@ time_at (int day, int second, const char *tzid)
                           second / 3600, second / 60 % 60, second % 60);
 }
 
-/* Time.setMonth (month + n).normalize (): a day past the month's end runs into the next (Jan 31 + 1 → Mar 3) */
+/* @months months on: a day past the month's end runs into the next (Jan 31 + 1 → Mar 3) */
 static int
 add_months (int day, int months)
 {
@@ -418,8 +412,8 @@ add_months (int day, int months)
   return day_number_of (g_date_get_year (&date) + total / 12, total % 12 + 1, 1) + g_date_get_day (&date) - 1;
 }
 
-/* Time.parse: "YYYYMMDD" (a date: @second −1), "YYYYMMDDTHHMMSS" (in the event's zone) or that with "Z" (UTC);
- * FALSE for anything else (TimeFormatException) */
+/* "YYYYMMDD" (a date: @second −1), "YYYYMMDDTHHMMSS" (in the event's zone) or that with "Z" (UTC);
+ * FALSE for anything else */
 static gboolean
 parse_until (const char *until, const char *tzid, int *day, int *second)
 {
@@ -490,7 +484,7 @@ cal_recurrence_fit_until (const char *rrule, gint64 start, const char *tzid)
   return g_strdup (rrule);
 }
 
-/* copyEventRecurrenceToModel; FALSE where it throws IllegalStateException */
+/* the rule's parts into the model; FALSE for a rule the dialog cannot show */
 static gboolean
 copy_recurrence_to_model (const CalRecurrence *er, CalRecurrenceModel *model, const char *tzid)
 {
@@ -511,13 +505,13 @@ copy_recurrence_to_model (const CalRecurrence *er, CalRecurrenceModel *model, co
   model->end_count = er->count;
   if (model->end_count > 0)
     model->end = CAL_REPEAT_END_BY_COUNT;
-  /* … or by date (one Time.parse cannot read is none: the default end date is used) */
+  /* … or by date (one that does not parse is none: the default end date is used) */
   if (er->until && *er->until)
     {
       gboolean parsed = parse_until (er->until, tzid, &model->end_day, &model->end_second);
 
       if (model->end == CAL_REPEAT_END_BY_COUNT && parsed)
-        return FALSE;                   /* "The UI can only handle END_BY_DATE or END_BY_COUNT" */
+        return FALSE;                   /* the dialog shows one end only */
       if (!parsed)
         model->end_day = 0;
       model->end = CAL_REPEAT_END_BY_DATE;
@@ -550,8 +544,8 @@ copy_recurrence_to_model (const CalRecurrence *er, CalRecurrenceModel *model, co
           model->monthly_repeat = CAL_REPEAT_MONTHLY_BY_DATE;
         }
       else if (er->bymonth.n > 1)
-        return FALSE;                   /* Etar tests BYMONTH's count here, meaning BYMONTHDAY's: kept, so a
-                                         * monthly rule in two months is refused as Etar's dialog refuses it */
+        return FALSE;                   /* BYMONTH's count, not BYMONTHDAY's: a
+                                         * monthly rule in two months is refused */
     }
   return TRUE;
 }
@@ -587,7 +581,7 @@ cal_recurrence_model_init (CalRecurrenceModel *model, const CalRecurrence *er, g
     }
   else if (model->end_second < 0)
     model->end_second = first.second;
-  /* updateDialog: "on every [nth] [weekday]" of the start, the fifth one being the last */
+  /* "on every [nth] [weekday]" of the start, the fifth one being the last */
   if (model->monthly_by_nth_day_of_week == 0)
     {
       model->monthly_by_nth_day_of_week = (first.month_day + 6) / 7;
@@ -608,7 +602,7 @@ until_string (const CalRecurrenceModel *model, const char *tzid)
    * fall on the day before, and libical would end the rule a day early) */
   if (!tzid)
     return g_date_time_format (local, "%Y%m%d");
-  /* switchTimezone (UTC), format2445 */
+  /* else a UTC date-time */
   utc = g_date_time_to_utc (local);
   return g_date_time_format (utc, "%Y%m%dT%H%M%SZ");
 }
@@ -703,7 +697,7 @@ cal_recurrence_picker_can_handle (const char *rrule)
   g_autoptr(CalRecurrence) er = NULL;
   CalRecurrenceModel model;
 
-  /* EditEventView.populateRepeats: no rule, the button is on */
+  /* no rule: the editor's button is on */
   if (!rrule || !*rrule)
     return TRUE;
   er = cal_recurrence_parse (rrule);
@@ -726,13 +720,13 @@ cal_recurrence_picker_can_handle (const char *rrule)
 
 #define MIN_SCREEN_WIDTH_FOR_SINGLE_ROW_WEEK 450
 #define INTERVAL_DEFAULT 1
-#define BUBBLE_TEXT_NORMAL   0xff737373    /* recurrence_bubble_text_normal (not themed: the same in every look) */
-#define BUBBLE_TEXT_DISABLED 0xffcccccc    /* done_text_color_disabled */
-#define BUBBLE_DISABLED      0xff979696    /* ic_recurrence_bubble_*_disabled */
+#define BUBBLE_TEXT_NORMAL   0xff737373    /* a day's letter, not themed: the same in every look */
+#define BUBBLE_TEXT_DISABLED 0xffcccccc    /* a disabled day's letter */
+#define BUBBLE_DISABLED      0xff979696    /* a disabled day's ring */
 #define BUBBLE_RADIUS 11.6998              /* the bubbles' circle, in their 24 × 24 viewport */
 #define BUBBLE_STROKE 0.600365
 
-/* repeat_by_nth_sun … _sat: "on every [first … fourth, last] [weekday]", one string each for the languages whose
+/* "on every [first … fourth, last] [weekday]", one string each for the languages whose
  * words change with the weekday's gender */
 static const char *const repeat_by_nth[7][5] = {
   { N_("on every first Sunday"), N_("on every second Sunday"), N_("on every third Sunday"),
@@ -757,11 +751,11 @@ typedef struct {
   gpointer data;
 
   char *rrule;                          /* the rule it opened with */
-  CalRecurrence *er;                    /* mRecurrence */
-  CalRecurrenceModel model, initial;    /* mModel, and as it opened */
+  CalRecurrence *er;                    /* the rule's parts */
+  CalRecurrenceModel model, initial;    /* the model, and as it opened */
   char *tzid;
   int updating;                         /* text set by the dialog, not typed */
-  gboolean hide_post_end_count;         /* mHidePostEndCount */
+  gboolean hide_post_end_count;         /* no text after the count */
 
   GtkWidget *freq, *repeat_switch, *options;
   GtkWidget *interval_pre, *interval, *interval_post;
@@ -838,7 +832,7 @@ set_number (Picker *picker, GtkWidget *text, int value)
 {
   g_autofree char *string = g_strdup_printf ("%d", value);
 
-  /* checked first, as Etar does, so the cursor stays where it is */
+  /* checked first, so the cursor stays where it is */
   if (g_str_equal (string, gtk_editable_get_text (GTK_EDITABLE (text))))
     return;
   picker->updating++;
@@ -846,7 +840,7 @@ set_number (Picker *picker, GtkWidget *text, int value)
   picker->updating--;
 }
 
-/* updateIntervalText: "Every" [n] "weeks" */
+/* the interval's text: "Every" [n] "weeks" */
 static void
 update_interval_text (Picker *picker)
 {
@@ -859,18 +853,18 @@ update_interval_text (Picker *picker)
     }
 }
 
-/* updateEndCountText: [n] "events" */
+/* the count's text: [n] "events" */
 static void
 update_end_count_text (Picker *picker)
 {
   g_autofree char *before = NULL, *after = NULL;
 
-  /* a translation with nothing before the count: Etar logs it and leaves the text */
+  /* a translation with nothing before the count leaves the text as it is */
   if (split_marker (end_count_string (picker->model.end_count), "%d", &before, &after) && *before)
     gtk_label_set_label (GTK_LABEL (picker->post_end_count), after);
 }
 
-/* the end spinner's own text (EndSpinnerAdapter.getView): "Forever", "Until", "For" */
+/* the end spinner's own text: "Forever", "Until", "For" */
 static void
 update_end_label (Picker *picker)
 {
@@ -878,7 +872,7 @@ update_end_label (Picker *picker)
   const char *date = _("Until %s");
   gboolean form;
 
-  /* mUseFormStrings: a translation that puts nothing before the date or the count shows the whole labels */
+  /* a translation that puts nothing before the date or the count shows the whole labels */
   form = !split_marker (date, "%s", &before, NULL) || !*before;
   g_clear_pointer (&before, g_free);
   form = form || !split_marker (end_count_string (1), "%d", &before, NULL) || !*before;
@@ -911,7 +905,7 @@ update_end_label (Picker *picker)
     }
 }
 
-/* updateDoneButtonState */
+/* Done: off while a shown number field is empty */
 static void
 update_done_state (Picker *picker)
 {
@@ -933,7 +927,7 @@ update_done_state (Picker *picker)
   gtk_widget_set_sensitive (picker->done_button, enabled);
 }
 
-/* togglePickerOptions: with the switch off everything but it is greyed */
+/* with the switch off everything but it is greyed */
 static void
 toggle_picker_options (Picker *picker)
 {
@@ -994,7 +988,7 @@ update_dialog (Picker *picker)
   if (model->end == CAL_REPEAT_END_BY_DATE)
     {
       g_autoptr(GDateTime) date = time_at (model->end_day, 12 * 3600, NULL);
-      /* FORMAT_NUMERIC_DATE, as the editor's "; until 12/31/2026" */
+      /* a numeric date, as the editor's "; until 12/31/2026" */
       g_autofree char *text = g_date_time_format (date, C_("date", "%-m/%-d/%Y"));
 
       gtk_label_set_label (GTK_LABEL (picker->end_date), text);
@@ -1020,7 +1014,7 @@ on_freq (CalSpinner *spinner, Picker *picker)
   update_dialog (picker);
 }
 
-/* minMaxTextWatcher: the number typed, @def for none, held within [min, max] (the text set to the bound) */
+/* the number typed, @def for none, held within [min, max] (the text set to the bound) */
 static int
 watch_number (Picker *picker, GtkWidget *text, int min, int def, int max)
 {
@@ -1065,7 +1059,7 @@ on_count_changed (GtkEditable *text, Picker *picker)
     }
 }
 
-/* onItemSelected for the end spinner */
+/* an end chosen in the end spinner */
 static void
 on_end_chosen (int index, gpointer data)
 {
@@ -1083,7 +1077,7 @@ on_end_chosen (int index, gpointer data)
 static void
 on_end_spinner (NeoPressable *pressable, Picker *picker)
 {
-  /* the drop-down's rows are the long forms (getDropDownView), as wide as the widest */
+  /* the drop-down's rows are the long forms, as wide as the widest */
   const char *labels[] = { _("Forever"), _("Until a date"), _("For a number of events") };
   double width = gtk_widget_get_width (GTK_WIDGET (pressable));
 
@@ -1093,7 +1087,7 @@ on_end_spinner (NeoPressable *pressable, Picker *picker)
       int text_width;
 
       pango_layout_get_pixel_size (layout, &text_width, NULL);
-      /* the popup's 16 sp rows, 16 dp in at each side, from this 15 sp text */
+      /* as wide as the popup's rows: their text 16 px to this one's 15, padded 16 px at each side */
       width = MAX (width, text_width * 16.0 / 15.0 + 2 * 16 + 1);
     }
   cal_popup_show (GTK_WIDGET (pressable), labels, G_N_ELEMENTS (labels), picker->model.end, width, FALSE,
@@ -1105,7 +1099,7 @@ on_end_date_chosen (int day, gpointer data)
 {
   Picker *picker = data;
 
-  /* onDateSet: the day changes, the time of day stays */
+  /* a date picked: the day changes, the time of day stays */
   picker->model.end_day = day;
   update_dialog (picker);
 }
@@ -1116,8 +1110,7 @@ on_end_date_pressed (GtkGestureClick *click, int n_press, double x, double y, Pi
   if (!gtk_widget_is_sensitive (picker->end_date))
     return;
   gtk_gesture_set_state (GTK_GESTURE (click), GTK_EVENT_SEQUENCE_CLAIMED);
-  /* Etar's DatePickerDialog is the platform one, without a title; this app's date dialog is MaterialDatePicker,
-   * whose own title is "Select date" */
+  /* the date dialog, under its own title, "Select date" */
   cal_date_picker_show (picker->end_date, _("Select date"), picker->model.end_day, cal_week_start (-1),
                         on_end_date_chosen, picker);
 }
@@ -1146,14 +1139,14 @@ on_done (NeoPressable *button, Picker *picker)
 
   if (!gtk_widget_is_sensitive (picker->done_button))
     return;
-  /* the rule as it opened, untouched: answered as it was written, rather than rewritten as Etar would (which
-   * drops X- parts, a daily rule's BYDAY, a negative BYMONTHDAY …) */
+  /* the rule as it opened, untouched: answered as it was written, not rewritten (which
+   * would drop X- parts, a daily rule's BYDAY, a negative BYMONTHDAY …) */
   if (cal_recurrence_model_equal (&picker->model, &picker->initial))
     rrule = g_strdup (picker->model.repeats ? picker->rrule : NULL);
   else
     rrule = cal_recurrence_model_store (&picker->model, picker->er, picker->tzid);
   if (picker->model.repeats && !rrule)
-    return;                             /* Etar throws here; Done stays */
+    return;                             /* no rule could be written: Done stays */
   picker->done (rrule, picker->data);
   neo_dialog_respond (picker->dialog, NEO_RESPONSE_OK);
 }
@@ -1161,10 +1154,10 @@ on_done (NeoPressable *button, Picker *picker)
 static void
 on_response (NeoDialog *dialog, int response, Picker *picker)
 {
-  /* Done answers itself (on_done); a tap outside, Back: nothing set (onRecurrenceSet is not called) */
+  /* Done answers itself (on_done); a tap outside, Back: nothing set */
 }
 
-/* digits only (inputType number) */
+/* digits only */
 static void
 on_insert_digits (GtkEditable *editable, const char *text, int length, int *position, gpointer data)
 {
@@ -1192,11 +1185,11 @@ select_all (gpointer data)
 static void
 on_number_focus (GtkEventControllerFocus *focus, gpointer data)
 {
-  /* selectAllOnFocus: after the tap that focused it has placed the cursor */
+  /* all selected on focus, after the tap that focused it has placed the cursor */
   g_idle_add (select_all, g_object_ref (gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (focus))));
 }
 
-/* an EditText for a number (ems, maxLength): the text over an underline, @text_out the text itself */
+/* a number field of @max_length digits: the text over an underline, @text_out the text itself */
 static GtkWidget *
 number_field (int max_length, const char *css_class, GtkWidget **text_out)
 {
@@ -1231,8 +1224,8 @@ text_label (const char *text)
   return label;
 }
 
-/* WeekButton: a weekday's ToggleButton, its circle (recurrence_bubble_fill) stretched to the button as Android
- * stretches a background: filled in colorPrimary when checked, a thin ring otherwise, grey when disabled */
+/* a weekday's toggle, its circle stretched to the button: filled in the primary colour when checked, a thin ring
+ * otherwise, grey when disabled */
 static void
 draw_day (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer data)
 {
@@ -1257,11 +1250,11 @@ draw_day (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer dat
     cairo_fill (cr);
   else
     {
-      /* the vector's stroke, scaled as VectorDrawable scales it (by the smaller of its two scales) */
+      /* the stroke, scaled by the smaller of the two scales */
       cairo_set_line_width (cr, BUBBLE_STROKE * MIN (width, height) / 24.0);
       cairo_stroke (cr);
     }
-  pango_layout_set_width (layout, MAX (width - 8, 1) * PANGO_SCALE);  /* 4 dp padding at each side */
+  pango_layout_set_width (layout, MAX (width - 8, 1) * PANGO_SCALE);  /* padding at each side */
   pango_layout_set_ellipsize (layout, PANGO_ELLIPSIZE_END);
   pango_layout_set_alignment (layout, PANGO_ALIGN_CENTER);
   pango_layout_get_pixel_size (layout, &text_width, &text_height);
@@ -1275,7 +1268,7 @@ day_button (Picker *picker, int weekday)
 {
   GtkWidget *area = g_object_new (GTK_TYPE_DRAWING_AREA, "accessible-role", GTK_ACCESSIBLE_ROLE_TOGGLE_BUTTON, NULL);
   GtkWidget *button = neo_pressable_new (area);
-  /* DateFormatSymbols.getShortWeekdays, textAllCaps: "SUN" … (2023-01-01 was a Sunday) */
+  /* the short weekday name in capitals: "SUN" … (2023-01-01 was a Sunday) */
   g_autoptr(GDateTime) date = g_date_time_new_local (2023, 1, 1 + weekday, 12, 0, 0);
   g_autofree char *name = g_date_time_format (date, "%a");
   g_autofree char *full = g_date_time_format (date, "%A");
@@ -1288,7 +1281,7 @@ day_button (Picker *picker, int weekday)
   gtk_widget_set_vexpand (area, TRUE);
   gtk_widget_add_css_class (area, "cal-recur-day-face");
   gtk_accessible_update_property (GTK_ACCESSIBLE (area), GTK_ACCESSIBLE_PROPERTY_LABEL, full, -1);
-  /* a ToggleButton has no ripple: its background is the bubble */
+  /* no ripple: the bubble is its background */
   neo_pressable_set_ripple (NEO_PRESSABLE (button), NEO_RIPPLE_NONE, 0);
   gtk_widget_add_css_class (button, "cal-recur-day");
   gtk_widget_set_hexpand (button, TRUE);
@@ -1297,7 +1290,7 @@ day_button (Picker *picker, int weekday)
   return button;
 }
 
-/* a RadioButton of the monthly group: the radio, then its text (15 sp) */
+/* a radio button of the monthly group: the radio, then its text */
 static GtkWidget *
 radio_row (Picker *picker, const char *text)
 {
@@ -1309,7 +1302,7 @@ radio_row (Picker *picker, const char *text)
   gtk_image_set_pixel_size (GTK_IMAGE (mark), 24);
   gtk_widget_add_css_class (mark, "cal-recur-radio-mark");
   gtk_label_set_xalign (GTK_LABEL (label), 0);
-  /* wrap_content: one line when it fits, wrapped when it does not */
+  /* one line when it fits, wrapped when it does not */
   gtk_label_set_wrap (GTK_LABEL (label), TRUE);
   gtk_label_set_max_width_chars (GTK_LABEL (label), 200);
   gtk_box_append (GTK_BOX (box), mark);
@@ -1323,7 +1316,7 @@ radio_row (Picker *picker, const char *text)
   return row;
 }
 
-/* the layout's fixed size (recurrence_picker_width, _height): its child gets that, its scroll view what is left */
+/* the layout's fixed size: its child gets that, its scroll view what is left */
 static void
 fixed_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, int *minimum, int *natural,
                int *minimum_baseline, int *natural_baseline)
@@ -1339,8 +1332,8 @@ fixed_allocate (GtkWidget *widget, int width, int height, int baseline)
     gtk_widget_allocate (child, width, height, -1, NULL);
 }
 
-/* the screen's size class: the dialog's size (recurrence_picker_width/_height of values, -land, -sw600dp,
- * -sw600dp-land), the card's least width, and whether the week fits in one row */
+/* the screen's size class: the dialog's size (a phone or a tablet, upright or on its side), the card's least
+ * width, and whether the week fits in one row */
 static void
 dialog_geometry (GtkWidget *parent, int *width, int *height, int *card_width, gboolean *one_row)
 {
@@ -1361,9 +1354,8 @@ dialog_geometry (GtkWidget *parent, int *width, int *height, int *card_width, gb
       *width = landscape ? 500 : 300;
       *height = landscape ? 281 : 340;
     }
-  /* the dialog window's least width (ThemeOverlay.AppCompat.Dialog's windowMinWidthMinor 95 % of the screen held
-   * upright, windowMinWidthMajor 65 % on its side) less its 16 dp insets: the layout sits at its start, the window
-   * background (the card's colour here) fills the rest */
+  /* the dialog window's least width (95 % of the screen held upright, 65 % on its side) less its insets: the
+   * layout sits at its start, the window background (the card's colour here) fills the rest */
   *card_width = MAX (*width, (int) ((landscape ? 0.65 : 0.95) * w) - 2 * 16);
   *one_row = w > MIN_SCREEN_WIDTH_FOR_SINGLE_ROW_WEEK;
 }
@@ -1371,7 +1363,7 @@ dialog_geometry (GtkWidget *parent, int *width, int *height, int *card_width, gb
 static int
 first_day_of_week (void)
 {
-  /* Utils.getFirstDayOfWeek: the "Week starts on" setting */
+  /* the "Week starts on" setting */
   GSettingsSchemaSource *source = g_settings_schema_source_get_default ();
   g_autoptr(GSettingsSchema) schema = source ? g_settings_schema_source_lookup (source, "neo.Calendar", TRUE)
                                              : NULL;
@@ -1397,7 +1389,7 @@ cal_recurrence_picker_show (GtkWidget *parent, const char *rrule, gint64 start, 
   picker->data = data;
   picker->tzid = g_strdup (tzid);
   picker->rrule = rrule && *rrule ? g_strdup (rrule) : NULL;
-  /* onCreateView: the rule's parts, else a new one with the week's start as WKST */
+  /* the rule's parts, else a new one with the week's start as WKST */
   picker->er = picker->rrule ? cal_recurrence_parse (picker->rrule) : NULL;
   if (!picker->er || !cal_recurrence_model_init (&picker->model, picker->er, start, tzid))
     {
@@ -1414,7 +1406,7 @@ cal_recurrence_picker_show (GtkWidget *parent, const char *rrule, gint64 start, 
     }
   dialog_geometry (parent, &width, &height, &card_width, &one_row);
 
-  /* the top row: the frequency, the switch 4 dp after it */
+  /* the top row: the frequency, then the switch */
   top = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_widget_add_css_class (top, "cal-recur-top");
   picker->freq = cal_spinner_new ();
@@ -1422,7 +1414,7 @@ cal_recurrence_picker_show (GtkWidget *parent, const char *rrule, gint64 start, 
   gtk_widget_set_hexpand (picker->freq, TRUE);
   gtk_widget_add_css_class (picker->freq, "cal-recur-freq");
   gtk_box_append (GTK_BOX (top), picker->freq);
-  /* app:thumbTint (white on, darker grey off) left out: CalMaterialSwitch draws Material 3's thumb */
+  /* the switch's own thumb colours (white on, darker grey off) left out: CalMaterialSwitch draws its own */
   picker->repeat_switch = cal_material_switch_new ();
   gtk_widget_set_valign (picker->repeat_switch, GTK_ALIGN_CENTER);
   gtk_widget_add_css_class (picker->repeat_switch, "cal-recur-switch");
@@ -1444,7 +1436,7 @@ cal_recurrence_picker_show (GtkWidget *parent, const char *rrule, gint64 start, 
   gtk_box_append (GTK_BOX (picker->options), interval_group);
 
   /* the weekdays from the week's start: all seven in a row on a wide screen, else four over three with an
-   * invisible fourth keeping the columns (LinearLayoutWithMaxWidth shares the row out) */
+   * invisible fourth keeping the columns */
   picker->week_group = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   picker->week_group2 = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_box_set_homogeneous (GTK_BOX (picker->week_group), TRUE);
@@ -1489,7 +1481,7 @@ cal_recurrence_picker_show (GtkWidget *parent, const char *rrule, gint64 start, 
   gtk_widget_add_css_class (arrow, "cal-spinner-arrow");
   gtk_box_append (GTK_BOX (box), picker->end_label);
   gtk_box_append (GTK_BOX (box), arrow);
-  /* not a CalSpinner: Etar's shows a short form ("Until") of the row chosen ("Until a date") */
+  /* not a CalSpinner: it shows a short form ("Until") of the row chosen ("Until a date") */
   picker->end_spinner = neo_pressable_new (box);
   neo_pressable_set_ripple (NEO_PRESSABLE (picker->end_spinner), NEO_RIPPLE_BOUNDED, 4);
   gtk_widget_add_css_class (picker->end_spinner, "cal-recur-end-spinner");
@@ -1517,7 +1509,7 @@ cal_recurrence_picker_show (GtkWidget *parent, const char *rrule, gint64 start, 
   gtk_box_append (GTK_BOX (end_group), picker->end_date);
   gtk_box_append (GTK_BOX (picker->options), end_group);
 
-  /* focusable before its children (descendantFocusability beforeDescendants): the dialog opens with no field
+  /* focusable before its children: the dialog opens with no field
    * focused, and no keyboard */
   body = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_focusable (body, TRUE);
@@ -1558,7 +1550,7 @@ cal_recurrence_picker_show (GtkWidget *parent, const char *rrule, gint64 start, 
   update_end_count_text (picker);
   update_dialog (picker);
   toggle_picker_options (picker);
-  /* the fields hold at most 2 and 3 digits (maxLength): a longer number in the rule shows cut, as Etar's does; the
+  /* the fields hold at most 2 and 3 digits: a longer number in the rule shows cut; the
    * count is then held to 730 (its watcher runs on the text set) */
   if (picker->model.interval > CAL_REPEAT_INTERVAL_MAX)
     picker->model.interval = text_value (picker->interval);
@@ -1575,7 +1567,7 @@ cal_recurrence_picker_show (GtkWidget *parent, const char *rrule, gint64 start, 
   g_signal_connect (picker->interval, "changed", G_CALLBACK (on_interval_changed), picker);
   g_signal_connect (picker->end_count, "changed", G_CALLBACK (on_count_changed), picker);
 
-  /* no title (FEATURE_NO_TITLE), no buttons of the dialog's own */
+  /* no title, no buttons of the dialog's own */
   picker->dialog = neo_dialog_new (NULL);
   neo_dialog_set_flush (picker->dialog, TRUE);
   neo_dialog_set_content (picker->dialog, card);

@@ -2,25 +2,25 @@
  * what to look like behind them (neo.Launcher.State), and the launcher tells the shell where its icons are
  * (neo.GnomePhone.Icons), so a window going home can fly into its own icon.
  *
- *   background  an app is being dragged: Launcher3's BACKGROUND_APP, depth 0.7 (wallpaper blurred to 30 dp and
+ *   background  an app is being dragged: depth 0.7 (wallpaper blurred to BLUR_MAX_DP and
  *               zoomed out), no workspace
- *   reveal      the app went home: ScalingWorkspaceRevealAnim from t0, the workspace and dock 0.85 → 1 over
+ *   reveal      the app went home: from t0, the workspace and dock 0.85 → 1 over
  *               1000 ms on SCALE_REVEAL, their alpha 0 → 1 over the first 200 ms, depth 0.7 → 0 on the same curve
  *               with the blur dropped in the first frame; the app's icon stays hidden until the shell says
- *   home        recents went home (OVERVIEW → NORMAL): the workspace 0.92 → 1 on DECELERATE and its alpha on
+ *   home        recents went home: the workspace 0.92 → 1 on DECELERATE and its alpha on
  *               ACCELERATE over 250 ms, depth 0.7 → 0 LINEAR, the blur following the depth
- *   home-reveal recents went home on a swipe up from the bar: WorkspaceRevealAnim, 0.88 → 1 and alpha 0 → 1, and
- *               the depth, all on DECELERATED_EASE over 350 ms
- *   back        the back swipe from an app at its root (LauncherBackAnimationController): the workspace and dock
+ *   home-reveal recents went home on a swipe up from the bar: 0.88 → 1 and alpha 0 → 1, and
+ *               the depth, all on decelerated_ease () over 350 ms
+ *   back        the back swipe from an app at its root: the workspace and dock
  *               set to 0.85, depth 0.7 with its blur paused, the app's icon hidden, and the scrim over it all:
  *               black at 0.8 with a blur of 90 px, which the shell then moves with the progress (Scrim)
  *   back-reveal the back swipe committed: the reveal's scale and depth on SCALE_REVEAL over 1000 ms, but no alpha
- *               (playAlphaReveal = false) and still no depth blur; the scrim's alpha and blur from where the shell
+ *               and still no depth blur; the scrim's alpha and blur from where the shell
  *               left them to 0 over 233 ms LINEAR; the icon stays hidden until the shell says
  *   normal      at rest
  *
- * Pose: the shell drives the workspace frame by frame (the swipe up from the bar on the home screen: HINT_STATE
- * under the finger, then OVERVIEW or back to NORMAL), its scale, alpha, depth and offset; it stays until a State. */
+ * Pose: the shell drives the workspace frame by frame (the swipe up from the bar on the home screen: the hint pose
+ * under the finger, then recents or back to rest), its scale, alpha, depth and offset; it stays until a State. */
 #include <math.h>
 
 #include "neo.h"
@@ -35,7 +35,7 @@
 #define HOME_REVEAL_MS     350.0
 #define HOME_REVEAL_FROM   0.88f
 #define BACK_SCRIM_ALPHA   0.8f           /* the dark theme's */
-#define BACK_SCRIM_BLUR    90.0f          /* px: max_depth_blur_radius_enhanced */
+#define BACK_SCRIM_BLUR    90.0f          /* px: the deepest blur */
 #define BACK_SCRIM_FADE_MS 233.0
 
 typedef enum {
@@ -68,7 +68,7 @@ bezier (float t, float a, float b, float c, float d)
   return u * u * u * a + 3 * u * u * t * b + 3 * u * t * t * c + t * t * t * d;
 }
 
-/* PathInterpolator over cubic segments {x0,y0, x1,y1, x2,y2, x3,y3} */
+/* an easing curve made of cubic segments {x0,y0, x1,y1, x2,y2, x3,y3}: y at x */
 static float
 path (const float (*seg)[8], int n, float x)
 {
@@ -91,7 +91,7 @@ path (const float (*seg)[8], int n, float x)
   return bezier ((lo + hi) / 2, s[1], s[3], s[5], s[7]);
 }
 
-/* ScalingWorkspaceRevealAnim.SCALE_REVEAL */
+/* the reveal's scale curve: quick, then a long settle */
 static float
 scale_reveal (float x)
 {
@@ -102,7 +102,7 @@ scale_reveal (float x)
   return path (seg, 2, x);
 }
 
-/* Interpolators.DECELERATED_EASE */
+/* (0, 0, 0.2, 1) */
 static float
 decelerated_ease (float x)
 {
@@ -314,9 +314,9 @@ static const char IFACE[] =
   "    </method>"
   /* back, as the launcher takes it: the drawer closes */
   "    <method name='Back'/>"
-  /* a back swipe began over the launcher: the finger is the shell's from now on (Android pilfers it) */
+  /* a back swipe began over the launcher: the finger is the shell's from now on */
   "    <method name='Cancel'/>"
-  /* the lock screen came up: Launcher3 goes to NORMAL as the screen goes off, so no menu and no drawer are left
+  /* the lock screen came up: the launcher goes back to rest, so no menu and no drawer are left
    * behind it */
   "    <method name='Locked'/>"
   /* the workspace and dock now: scale (about the screen's centre), alpha, depth, and px down */

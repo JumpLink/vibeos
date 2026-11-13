@@ -1,4 +1,4 @@
-/* The messages (sms-store.h). The schema is DatabaseHelper's, less the columns for MMS, SIMs and contacts: the app
+/* The messages (sms-store.h). The schema is Bugle's, less the columns for MMS, SIMs and contacts: the app
  * looks a participant up in the address books as it shows it, so a renamed contact never shows its old name. */
 #include "sms-store.h"
 
@@ -7,7 +7,7 @@
 #include <string.h>
 
 #define SCHEMA_VERSION 1
-#define OTHER_SUB_ID   -2       /* ParticipantData.OTHER_THAN_SELF_SUB_ID */
+#define OTHER_SUB_ID   -2       /* the sub_id of anyone but this phone */
 
 struct _SmsStore {
   sqlite3 *db;
@@ -229,7 +229,7 @@ by_id (gconstpointer a, gconstpointer b)
   return x < y ? -1 : x > y;
 }
 
-/* the conversation of exactly these participants (BugleDatabaseOperations.getExistingConversation), or 0 */
+/* the conversation of exactly these participants, or 0 */
 static gint64
 find_conversation (SmsStore *self, GArray *ids)
 {
@@ -315,8 +315,8 @@ sms_store_get_conversation (SmsStore *self, const char * const *destinations)
   return id;
 }
 
-/* the conversation's newest message is its latest_message_id, snippet and sort time
- * (BugleDatabaseOperations.refreshConversationMetadataInTransaction); a draft shown sorts by when it was typed */
+/* the conversation's newest message is its latest_message_id, snippet and sort time; a draft shown sorts by when it was
+ * typed */
 static void
 refresh_conversation (SmsStore *self, gint64 conversation_id)
 {
@@ -389,7 +389,7 @@ sms_store_add_incoming (SmsStore *self, const char *sender, const char *text, gi
   if ((conversation_id = get_conversation (self, destinations)) && (sender_id = participant_id (self, sender)))
     id = add_message (self, conversation_id, sender_id, text, sent, received, MESSAGE_STATUS_INCOMING_COMPLETE,
                       FALSE, sms_uri);
-  /* ReceiveSmsMessageAction: a new message brings an archived conversation back */
+  /* a message received brings an archived conversation back */
   if (id && (unarchive = prepare (self, "UPDATE conversations SET archive_status = 0 WHERE _id = ?")))
     {
       sqlite3_bind_int64 (unarchive, 1, conversation_id);
@@ -406,7 +406,7 @@ sms_store_add_outgoing (SmsStore *self, gint64 conversation_id, const char *text
   gint64 id;
 
   exec (self, "BEGIN", NULL);
-  /* the draft is what was sent: it goes (InsertNewMessageAction) */
+  /* the draft is what was sent: it goes */
   if ((draft = prepare (self, "UPDATE conversations SET show_draft = 0, draft_snippet_text = NULL WHERE _id = ?")))
     {
       sqlite3_bind_int64 (draft, 1, conversation_id);
@@ -461,7 +461,7 @@ mark (SmsStore *self, const char *sql, gint64 conversation_id)
 guint
 sms_store_mark_read (SmsStore *self, gint64 conversation_id)
 {
-  /* MarkAsReadAction: read and seen both */
+  /* read and seen both */
   return mark (self, "UPDATE messages SET read = 1, seen = 1 WHERE conversation_id = ? AND (read = 0 OR seen = 0)",
                conversation_id);
 }
@@ -469,7 +469,7 @@ sms_store_mark_read (SmsStore *self, gint64 conversation_id)
 guint
 sms_store_mark_seen (SmsStore *self, gint64 conversation_id)
 {
-  /* MarkAsSeenAction: 0 for every conversation (the notification went) */
+  /* 0 for every conversation (the notification went) */
   if (!conversation_id)
     return mark (self, "UPDATE messages SET seen = 1 WHERE seen = 0 AND ? = 0", 0);
   return mark (self, "UPDATE messages SET seen = 1 WHERE conversation_id = ? AND seen = 0", conversation_id);
@@ -528,7 +528,7 @@ sms_store_delete_message (SmsStore *self, gint64 message_id)
     return 0;
   exec (self, "BEGIN", NULL);
   mark (self, "DELETE FROM messages WHERE _id = ?", message_id);
-  /* DeleteMessageAction: the conversation goes with its last message, unless a draft keeps it */
+  /* the conversation goes with its last message, unless a draft keeps it */
   if ((left = prepare (self, "SELECT COUNT(*) FROM messages WHERE conversation_id = ?")))
     {
       sqlite3_bind_int64 (left, 1, conversation_id);

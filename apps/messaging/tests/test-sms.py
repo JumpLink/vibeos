@@ -1,6 +1,6 @@
 #!/usr/bin/python3
-# neo-messaging-sms against a mock modem (mock-modem.py): Messaging's receive and send flows (spec §10.2) and its
-# notifications (§5), end to end over D-Bus, with no modem and no real message. Two buses of its own, so nothing
+# neo-messaging-sms against a mock modem (mock-modem.py): Messaging's receive and send flows and its
+# notifications, end to end over D-Bus, with no modem and no real message. Two buses of its own, so nothing
 # reaches the phone's real ModemManager or notifications; the store is read as the app reads it.
 #
 # usage: test-sms.py BUILD_DIR SOURCE_DIR
@@ -314,7 +314,7 @@ def run(t):
     t.wait('the modem back, available', lambda: t.prop('Available'))
     t.wait('and the message goes at once', lambda: t.status(message) == COMPLETE, timeout=2)
 
-    # --- delivery reports (Settings > Advanced > "SMS delivery reports"; ProcessDeliveryReportAction)
+    # --- delivery reports (Settings > Advanced > "SMS delivery reports")
     creates = t.logged('Create')
     check('off by default: no report is asked for', creates and all(len(e[1]) == 2 for e in creates), creates)
     t.settings(delivery_reports=True)

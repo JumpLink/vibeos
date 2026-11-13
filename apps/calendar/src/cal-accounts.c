@@ -1,12 +1,12 @@
 /* Adding calendars and a calendar's page (cal-accounts.h).
  *
- * Etar keeps calendars in Android's CalendarContract; here they are evolution-data-server's ESources, written
- * through its registry as GNOME Calendar and Evolution write them:
- *  - an offline calendar is a "local" calendar under "local-stub" (AddOfflineCalendarDialogFragment),
+ * Calendars are evolution-data-server's ESources, written through its registry as GNOME Calendar and Evolution
+ * write them:
+ *  - an offline calendar is a "local" calendar under "local-stub",
  *  - a CalDAV account is a "webdav" collection (Evolution's collection account): EDS's webdav collection backend
  *    discovers its calendars, keeps the list in step with the server and syncs them; the password is kept by
- *    e_source_store_password (the Secret Service). Etar hands this to DAVx⁵; its login screen ("Login with URL and
- *    user name", then "Create account") is what the page here follows,
+ *    e_source_store_password (the Secret Service). The page asks as a CalDAV login does ("Login with
+ *    URL and user name", then "Create account"),
  *  - a calendar's colour, name and visibility are ESourceSelectable's colour, the display name and :selected.
  */
 #ifndef _GNU_SOURCE
@@ -27,11 +27,10 @@
 #include <spongy-gtk.h>
 #include <dlfcn.h>
 
-/* --- a text field: Material 3's TextInputLayout as Etar's dialog has it (Theme.Material3's textInputStyle,
- * Widget.Material3.TextInputLayout.OutlinedBox): a 56 dp box with a 1 dp outline, 4 dp corners, 2 dp in primary with
- * focus; the text 16 sp 16 dp in; the hint resting where the text goes and floating, at 12 sp, into a gap in the top
- * outline when the field has focus or text; an error in the error colour, 12 sp under the box with the error icon at
- * its end. The text stays in the middle of the box (outlined fields do not move it down). */
+/* --- a text field, outlined: the outline thicker and in the primary colour with focus; the hint resting where the
+ * text goes and floating, smaller, into a gap in the top outline when the field has focus or text; an error in the
+ * error colour under the box, with the error icon at the box's end. The text stays in the middle of the box
+ * (outlined fields do not move it down). */
 
 typedef struct {
   GtkWidget *box, *field, *hint, *text, *error, *error_icon;
@@ -67,7 +66,7 @@ field_set_error (Field *field, const char *error)
 static void
 on_field_changed (GtkEditable *editable, Field *field)
 {
-  /* typing clears the error (Etar's TextWatcher sets error = null) */
+  /* typing clears the error */
   field_set_error (field, NULL);
   field_update (field, gtk_widget_has_focus (field->text));
 }
@@ -84,7 +83,7 @@ on_field_leave (GtkEventControllerFocus *focus, Field *field)
   field_update (field, FALSE);
 }
 
-/* mtrl_ic_error: a disc with an exclamation mark cut out of it, 24 dp, in the CSS colour */
+/* the error icon: a disc with an exclamation mark cut out of it, in the CSS colour */
 static void
 draw_error_icon (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer data)
 {
@@ -158,9 +157,8 @@ field_get (Field *field)
   return g_strstrip (g_strdup (gtk_editable_get_text (GTK_EDITABLE (field->text))));
 }
 
-/* the dialog's own buttons (AlertDialog's button bar: the negative one, then the positive one, at the end), for a
- * dialog that stays open when its positive button finds something wrong (AddOfflineCalendarDialogFragment sets its
- * listener in onResume for that) */
+/* the dialog's own buttons (the negative one, then the positive one, at the end), for a dialog that stays open when
+ * its positive button finds something wrong */
 static GtkWidget *
 dialog_buttons (GtkWidget **negative, const char *negative_label, GtkWidget **positive, const char *positive_label)
 {
@@ -188,7 +186,7 @@ registry_of (GtkWidget *window)
   return cal_store_get_registry (cal_window_get_store (window));
 }
 
-/* --- Add offline calendar (AddOfflineCalendarDialogFragment) */
+/* --- Add offline calendar */
 
 typedef struct {
   GtkWidget *window;
@@ -214,7 +212,7 @@ static void
 on_offline_add (NeoPressable *button, Offline *offline)
 {
   ESourceRegistry *registry = registry_of (offline->window);
-  /* nameEditText.text as typed: only an empty one is refused (displayName.isEmpty()) */
+  /* the name as typed: only an empty one is refused */
   g_autofree char *name = g_strdup (gtk_editable_get_text (GTK_EDITABLE (offline->name->text)));
   g_autofree char *color = NULL;
   g_autoptr(ESource) source = NULL;
@@ -231,8 +229,7 @@ on_offline_add (NeoPressable *button, Offline *offline)
       neo_dialog_respond (offline->dialog, NEO_RESPONSE_CANCEL);
       return;
     }
-  /* CalendarDataSource.buildLocalCalendarContentValues: visible, the colour of key "1"; GNOME Calendar's local
-   * calendar: backend "local" under "local-stub" */
+  /* visible, the offline default colour; as GNOME Calendar's local calendar: backend "local" under "local-stub" */
   e_source_set_display_name (source, name);
   e_source_set_parent (source, "local-stub");
   calendar = e_source_get_extension (source, E_SOURCE_EXTENSION_CALENDAR);
@@ -267,7 +264,7 @@ cal_accounts_add_offline (GtkWidget *window)
   offline->dialog = neo_dialog_new (_("Add offline calendar"));
   neo_dialog_set_message (offline->dialog,
                           _("Offline calendars are NOT synchronized to a cloud service and only available on your phone."));
-  /* add_offline_calendar_dialog.xml: the field in a 16 dp padded frame */
+  /* the field in a padded frame */
   offline->name = field_new (_("Name"), FALSE, GTK_INPUT_PURPOSE_FREE_FORM);
   gtk_text_set_input_hints (GTK_TEXT (offline->name->text), GTK_INPUT_HINT_UPPERCASE_SENTENCES);
   g_signal_connect (offline->name->text, "activate", G_CALLBACK (on_offline_activate), offline);
@@ -715,7 +712,7 @@ cal_accounts_add_caldav (GtkWidget *window)
   gtk_widget_grab_focus (caldav->url->text);
 }
 
-/* --- a calendar's page (CalendarPreferences) */
+/* --- a calendar's page */
 
 typedef struct {
   GtkWidget *window, *page, *list, *title;
@@ -805,15 +802,15 @@ synchronized (CalendarPage *page)
 static void
 on_color (NeoPressable *row, CalendarPage *page)
 {
-  /* CalendarColorPickerDialogX.useDefaultColors: an account without colours of its own gets the default ones,
-   * after a warning that a sync may undo the change (its DAVx⁵ paragraph has nothing to say here) */
+  /* an account without colours of its own gets the default ones, after a warning that a sync may undo the
+   * change */
   if (!page->local && synchronized (page))
     {
       NeoDialog *dialog = neo_dialog_new (_("Warning"));
 
       neo_dialog_set_message (dialog, _("Changing the color may be reverted when the calendar is synchronized again."));
       neo_dialog_add_button (dialog, _("I understand"), NEO_RESPONSE_OK);
-      /* both at once, the warning over the palette (the picker fragment shows it as its colours load) */
+      /* both at once, the warning over the palette */
       show_color_picker (page);
       neo_dialog_present (dialog, page->window);
       return;
@@ -829,7 +826,7 @@ on_name_done (const char *text, gpointer data)
 
   if (!text || !(source = page_source (page)))
     return;
-  /* EditTextPreference keeps what was typed; activity?.title = newValue */
+  /* the name as typed, and the page's title with it */
   e_source_set_display_name (source, text);
   e_source_write (source, NULL, on_source_written, NULL);
   if (page->title)
@@ -869,7 +866,7 @@ on_delete_confirmed (int index, gpointer data)
   if (index < 0 || !(source = page_source (page)) || !e_source_get_removable (source))
     return;
   e_source_remove (source, NULL, on_removed, g_object_ref (window));
-  /* popBackStackImmediate: back to the list */
+  /* back to the list */
   cal_window_pop (window);
 }
 
@@ -897,7 +894,7 @@ on_calendars_changed (CalStore *store, CalendarPage *page)
   g_signal_handlers_block_matched (page->toggle, G_SIGNAL_MATCH_FUNC, 0, 0, NULL, on_visible, NULL);
   cal_compat_switch_set_active (CAL_COMPAT_SWITCH (page->toggle), calendar->visible);
   g_signal_handlers_unblock_matched (page->toggle, G_SIGNAL_MATCH_FUNC, 0, 0, NULL, on_visible, NULL);
-  /* the colour row's circle in the calendar's colour (getColorIcon) */
+  /* the colour row's circle in the calendar's colour */
   icon = cal_pref_icon ("cal-circle-symbolic", 0xff000000 | calendar->color);
   {
     GtkWidget *frame = g_object_get_data (G_OBJECT (page->color_row), "cal-icon-frame");
@@ -962,7 +959,7 @@ on_connected (GObject *source, GAsyncResult *result, gpointer data)
   count_events (page, page->client);
 }
 
-/* the account's label for "%s account": what kind of account EDS keeps it in (Etar: the sync adapter's label) */
+/* the account's label for "%s account": what kind of account EDS keeps it in */
 static char *
 account_label (CalendarPage *page, const CalCalendar *calendar)
 {
@@ -990,7 +987,7 @@ account_label (CalendarPage *page, const CalCalendar *calendar)
 }
 
 /* "Configure calendar in %s": an account from GNOME Online Accounts opens its settings panel, when the system has
- * one (Etar opens the sync adapter's app); none for any other */
+ * one; none for any other */
 static GDesktopAppInfo *
 configure_app (CalendarPage *page)
 {
@@ -1007,7 +1004,7 @@ info_row (const char *title, GtkWidget **label)
 {
   CalPref pref = cal_pref_row (NULL, 0, title, NULL, NULL);
 
-  /* isSelectable = false: no ripple, no tap */
+  /* not selectable: no ripple, no tap */
   gtk_widget_set_can_target (pref.row, FALSE);
   if (label)
     *label = pref.title;
@@ -1030,7 +1027,7 @@ cal_calendar_page_new (GtkWidget *window, const CalCalendar *calendar)
   data->uid = g_strdup (calendar->uid);
   data->store = g_object_ref (cal_window_get_store (window));
   data->cancellable = g_cancellable_new ();
-  /* the toolbar's title, which "Change name" updates (activity?.title) */
+  /* the toolbar's title, which "Change name" updates */
   for (GtkWidget *child = gtk_widget_get_first_child (gtk_widget_get_first_child (page)); child;
        child = gtk_widget_get_next_sibling (child))
     if (gtk_widget_has_css_class (child, "cal-toolbar-title"))
@@ -1052,8 +1049,8 @@ cal_calendar_page_new (GtkWidget *window, const CalCalendar *calendar)
   g_signal_connect (pref.row, "clicked", G_CALLBACK (cal_pref_toggle_row), data->toggle);
   gtk_box_append (GTK_BOX (list), pref.row);
 
-  /* "Manage notifications" is left out: it opens Android's settings page of the calendar's notification channel,
-   * and reminders here are one notification source for the whole app, with no per-calendar settings to open */
+  /* no "Manage notifications": reminders are one notification source for the whole app, with no per-calendar
+   * settings to open */
 
   /* Color: a circle in the calendar's colour */
   pref = cal_pref_row ("cal-circle-symbolic", 0xff000000 | calendar->color, _("Color"), NULL, NULL);

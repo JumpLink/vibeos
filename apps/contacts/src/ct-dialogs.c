@@ -107,7 +107,7 @@ ct_confirm_dialog (GtkWidget *parent, const char *title, const char *message, co
   GtkWidget *text = ct_label (message, "ct-dialog-message", 16);
 
   gtk_label_set_wrap (GTK_LABEL (text), TRUE);
-  /* without a title the message has the title's 18 dp above it (textSpacerNoTitle) */
+  /* without a title the message keeps the room above it that the title would take */
   if (!title)
     gtk_widget_add_css_class (text, "no-title");
   gtk_box_append (GTK_BOX (box), text);
@@ -145,7 +145,7 @@ ct_list_dialog (GtkWidget *parent, CtDialogWidth width, const char *title, const
   GtkWidget *box = dialog_card (parent, neo, width, title);
   GtkWidget *list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
 
-  /* titleDividerNoCustom: 8 dp under the title */
+  /* a gap under the title */
   gtk_widget_add_css_class (list, "ct-dialog-list");
   for (int i = 0; i < n_labels; i++)
     {
@@ -181,7 +181,7 @@ ct_radio_dialog (GtkWidget *parent, const char *title, const char *const *labels
                                                                      : "ct-radio-off-symbolic");
       GtkWidget *text = ct_label (labels[i], "ct-dialog-choice-text", 18);
 
-      /* btn_radio_material_anim is 32 dp with the 20 dp circle in it */
+      /* the radio icon has a margin round its circle */
       gtk_image_set_pixel_size (GTK_IMAGE (radio), 24);
       gtk_widget_add_css_class (radio, i == selected ? "ct-radio-on" : "ct-radio-off");
       gtk_widget_set_valign (radio, GTK_ALIGN_CENTER);
@@ -240,7 +240,7 @@ ct_text_dialog (GtkWidget *parent, const char *title, const char *text, const ch
   g_object_set_data (G_OBJECT (dialog->entry), "ct-dialog", dialog);
   g_signal_connect (dialog->entry, "changed", G_CALLBACK (on_text_changed), dialog);
   g_signal_connect (dialog->entry, "activate", G_CALLBACK (on_text_activate), neo);
-  /* TextInputLayout: the field, then its error line (12 sp, the error colour) */
+  /* the field, then its error line in the error colour */
   dialog->error = ct_label ("", "ct-dialog-error", 12);
   gtk_widget_set_visible (dialog->error, FALSE);
   gtk_widget_add_css_class (field, "ct-dialog-field");
@@ -255,8 +255,8 @@ ct_text_dialog (GtkWidget *parent, const char *title, const char *text, const ch
 
 /* ===== the date dialog ========================================================================================= */
 
-/* CtWheel: one framework NumberPicker, drawn: three rows of values with the chosen one in the middle between two
- * 2 dp dividers 48 dp apart; a vertical drag turns it (snapping to a value when let go), a tap above or below the
+/* CtWheel: one number wheel, drawn: three rows of values with the chosen one in the middle between two
+ * dividers; a vertical drag turns it (snapping to a value when let go), a tap above or below the
  * middle steps it by one. The month and the day wrap round; the year does not. */
 #define CT_TYPE_WHEEL (ct_wheel_get_type ())
 G_DECLARE_FINAL_TYPE (CtWheel, ct_wheel, CT, WHEEL, GtkWidget)
@@ -276,8 +276,8 @@ struct _CtWheel {
 
 G_DEFINE_FINAL_TYPE (CtWheel, ct_wheel, GTK_TYPE_WIDGET)
 
-#define WHEEL_ROW 60.0          /* NumberPicker's 180 dp at most, for three rows */
-#define WHEEL_DIVIDERS 48.0     /* UNSCALED_DEFAULT_SELECTION_DIVIDERS_DISTANCE */
+#define WHEEL_ROW 60.0          /* a third of the picker's height */
+#define WHEEL_DIVIDERS 48.0     /* the distance between the two dividers */
 
 static int
 wheel_step (CtWheel *self, int value, int by)
@@ -425,7 +425,7 @@ wheel_new (int min, int max, int value, gboolean wrap, CtWheelFormat format, dou
   return GTK_WIDGET (self);
 }
 
-/* DateFormatSymbols.getShortMonths () */
+/* the month's short name */
 static char *
 format_month (int month)
 {
@@ -459,7 +459,7 @@ days_in_month (int year, int month)
   return g_date_get_days_in_month ((GDateMonth) month, (GDateYear) (year > 0 ? year : 2000));
 }
 
-/* the title: DateFormat FULL ("Saturday, November 7, 2026"), or the date without its year ("November 7") */
+/* the title: the full date ("Saturday, November 7, 2026"), or the date without its year ("November 7") */
 static void
 date_update (DateDialog *dialog)
 {
@@ -475,7 +475,7 @@ date_update (DateDialog *dialog)
     day->value = day->max;
   gtk_widget_queue_draw (dialog->day);
   date = g_date_time_new_local (year, month, day->value, 0, 0, 0);
-  /* Translators: the date picker's title, DateFormat.FULL (strftime; %-d is the day without a leading zero) */
+  /* Translators: the date picker's title, the full date (strftime; %-d is the day without a leading zero) */
   text = g_date_time_format (date, dialog->include_year ? _("%A, %B %-d, %Y") : _("%B %-d"));
   gtk_label_set_label (GTK_LABEL (dialog->title), text);
 }
@@ -556,7 +556,7 @@ ct_date_dialog (GtkWidget *parent, int year, int month, int day, gboolean year_o
   gtk_box_append (GTK_BOX (column), wheels);
   if (year_optional)
     {
-      /* the "Include year" check box (22 sp, 5 dp of padding) */
+      /* the "Include year" check box */
       GtkWidget *line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
       GtkWidget *check = ct_check_new (CT_C_CHECK_ON, CT_C_CHECK_OFF);
       GtkWidget *label = ct_label (_("Include year"), "ct-date-include", 22);

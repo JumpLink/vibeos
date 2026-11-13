@@ -1,8 +1,8 @@
 /* What a call is to the Dialer, shared by its service (neo-dialer-calls) and its app (neo-dialer).
  *
- * The service watches ModemManager's calls and turns them into InCallUI's DialerCall states and end causes (spec
- * §8.19), so that the app, the notifications and the call log all read the same thing. They travel over D-Bus as
- * plain numbers: these enums are the one place their meanings are written down. */
+ * The service watches ModemManager's calls and turns them into the call states and end causes below, so that the app,
+ * the notifications and the call log all read the same thing. They travel over D-Bus as plain numbers: these enums are
+ * the one place their meanings are written down. */
 #pragma once
 
 /* the service: its name on the session bus, and its one object */
@@ -11,14 +11,14 @@
 #define CALLS_INTERFACE "neo.Dialer.Calls"
 
 /* the apps: the Phone app with its tabs, and the in-call screen, which may show over the lock screen and so is an
- * app of its own (Android's InCallActivity is an activity of its own, showWhenLocked) */
+ * app of its own */
 #define DIALER_APP_ID "neo.Dialer"
 #define INCALL_APP_ID "neo.Dialer.InCall"
 
-/* DialerCallState, in the order InCallUI's screens care about */
+/* a call's state, in the order the in-call screens care about */
 typedef enum {
   CALL_STATE_CONNECTING = 0,    /* asked for, the modem not dialling yet: "Calling…" */
-  CALL_STATE_DIALING,           /* ModemManager's DIALING and RINGING_OUT: still "Calling…" (Telecom has no "alerting") */
+  CALL_STATE_DIALING,           /* ModemManager's DIALING and RINGING_OUT: still "Calling…" (no "alerting" state) */
   CALL_STATE_INCOMING,          /* RINGING_IN: the answer screen */
   CALL_STATE_CALL_WAITING,      /* WAITING: ringing while another call is up */
   CALL_STATE_ACTIVE,
@@ -27,7 +27,7 @@ typedef enum {
   CALL_STATE_DISCONNECTED,      /* over; the service keeps it a moment so that "Call ended" can show */
 } CallState;
 
-/* DisconnectCause's codes, which also say how long an ended call stays (CallList.getDelayForDisconnect) */
+/* why a call ended, which also says how long an ended call stays */
 typedef enum {
   CALL_END_NONE = 0,
   CALL_END_LOCAL,               /* we hung up */

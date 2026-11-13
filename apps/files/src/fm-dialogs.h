@@ -1,5 +1,5 @@
-/* The dialogs (spec §8), AppCompat's dark alert dialog on libneo's NeoDialog: a #424242 card 310 dp wide with
- * 2 dp corners, the title 20 sp Medium 24 dp in, the content 24 dp in, CANCEL / OK in the accent at the end. */
+/* The dialogs, a dark alert dialog on libneo's NeoDialog: a card with the title, the content,
+ * and CANCEL / OK in the accent at the end. */
 #pragma once
 
 #include <gtk/gtk.h>
@@ -13,9 +13,9 @@ G_BEGIN_DECLS
 NeoDialog  *fm_dialog_new         (const char *title, GtkWidget **content);
 /* a button, its label upper-cased */
 GtkWidget  *fm_dialog_add_button  (NeoDialog *dialog, const char *label, int response);
-/* the underlined text field (16 sp) */
+/* the underlined text field */
 GtkWidget  *fm_entry_new          (const char *text);
-/* a form row: the label (weight 3) and the field (weight 7), as dialog_server and dialog_file_properties have */
+/* a form row: the label (weight 3) and the field (weight 7), as the server and Properties dialogs have */
 GtkWidget  *fm_form_row           (const char *label, GtkWidget *field);
 
 /* the name field: Create Folder, Rename, a bookmark's or a remote's name. @check gives the message to show under

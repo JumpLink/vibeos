@@ -1,5 +1,5 @@
-// The keyguard's bouncers, Android 16's legacy View ones as the reference phone shows them: the PIN pad
-// (spec/keyguard-pin.md) and the 3x3 pattern (systemui.md §6.4-6.5, keyguard-extras.md §D.2, §F). Each is a full-screen
+// The keyguard's bouncers, as the reference phone shows them: the PIN pad
+// and the 3x3 pattern. Each is a full-screen
 // actor in screen px of the 1080x2280 reference that takes the touches on its keys or grid, shows the messages, and
 // emits 'submit' with the secret: the PIN's digits, or the pattern's dots 1-9 in the order they were joined (what
 // gp-auth checks, as Phosh's pattern lock had it). keyguard.js checks it and calls back wrong(), lockout() or the
@@ -24,10 +24,10 @@ const STANDARD = bezier(0.2, 0, 0, 1);
 const STANDARD_DECELERATE = bezier(0, 0, 0, 1);
 const ACCELERATE_DECELERATE = t => 0.5 - 0.5 * Math.cos(Math.PI * t);
 
-// materialColorPrimaryContainer (tone 30 of the primary's hue), not measured: the pressed key
+// the pressed key: a dark tone of the primary's hue
 const PRIMARY_CONTAINER = [16, 78, 86];
 
-// --- the messages (keyguard-pin.md §1.1, §4; systemui.md §6.5): primary 18 sp, secondary 14 sp, centred
+// --- the messages: a primary line and a secondary one, centred
 const MESSAGE_BASELINE = 288;
 const SECONDARY_BASELINE = 390;
 const SECONDARY_LINE = 56;
@@ -51,7 +51,7 @@ export function tryAgainIn(seconds) {
     return seconds === 1 ? 'Try again in 1 second.' : `Try again in ${seconds} seconds.`;
 }
 
-// ArgbEvaluator: RGB in linear light, alpha linear
+// a colour between two: RGB mixed in linear light, alpha linearly
 function mixColour([c0, a0], [c1, a1], t) {
     const lin = v => (v / 255) ** 2.2;
     const out = c => Math.round(255 * c ** (1 / 2.2));
@@ -144,15 +144,15 @@ function pressable(actor, onDown, onUp) {
 // =====================================================================================================================
 // The PIN pad
 
-const KEY = 252;                                        // 84 dp
+const KEY = 252;
 const KEY_COLUMNS = [228, 540, 852];
 const KEY_ROWS = [852, 1140, 1428, 1716];
 const DIGIT_SIZE = 32;                                  // dp, not sp
-const ICON = 120;                                       // 40 dp
-const DOT_CELL = 90;                                    // 30 dp
+const ICON = 120;
+const DOT_CELL = 90;
 const DOT_Y = 574;
 const FIELD = [108, 972];
-const ROW_SHIFT = [360, 390, 420, 450, 480];            // appear: (120 + 10 i) dp
+const ROW_SHIFT = [360, 390, 420, 450, 480];            // appear: each row rises from a little further down
 const APPEAR_MS = 650;
 
 // The keys are squircles, the owner's choice over Android's circles (which square off to h/4 corners pressed):
@@ -321,7 +321,7 @@ class PinKey extends St.Widget {
             this._face.press = v;
     }
 
-    // NumPadAnimator: down runs from its start values in 33 ms LINEAR, up back in 300 ms STANDARD
+    // a key's press: down runs from its start values in 33 ms, linear; up back in 300 ms on the standard curve
     animatePress(down) {
         this._anim?.stop();
         const from = down ? 0 : 1, to = down ? 1 : 0;
@@ -347,7 +347,7 @@ class PinKey extends St.Widget {
     }
 });
 
-// The PIN's shapes (bouncer_shape_1..6, keyguard-pin.md App. A): each pops in at its own shape and relaxes into a
+// The PIN's shapes: each pops in at its own shape and relaxes into a
 // circle. [base, peak] paths, M and 8 C in the 36-unit viewport around (0, 0); the y offset that centres it
 const SHAPES = [
     ['M-8.34 -3.45 C-7.46,-5.58 -5.58,-7.46 -3.45,-8.34 C-1.33,-9.22 1.33,-9.22 3.45,-8.34 C5.58,-7.46 7.46,-5.58 8.34,-3.45 C9.22,-1.33 9.22,1.33 8.34,3.45 C7.46,5.58 5.58,7.46 3.45,8.34 C1.33,9.22 -1.33,9.22 -3.45,8.34 C-5.58,7.46 -7.46,5.58 -8.34,3.45 C-9.22,1.33 -9.22,-1.33 -8.34,-3.45',
@@ -371,7 +371,7 @@ const SHAPE_GROUP_SCALE = bezier(0.001, 0, 0.5, 1);
 const SHAPE_TO_PEAK = bezier(0.167, 0.167, 0.833, 0.833);
 const SHAPE_TO_BASE = bezier(0.7, 0, 0.6, 1);
 
-// One entered digit, in a 30 dp cell
+// One entered digit, in a DOT_CELL
 const PinDot = GObject.registerClass(
 class PinDot extends Canvas {
     constructor(shape) {
@@ -467,15 +467,14 @@ export const PinView = GObject.registerClass({
         pressable(key, () => {
             if (key.hidden)
                 return;
-            // NumPadKey / NumPadButton: doHapticKeyClick (VIRTUAL_KEY) as the finger lands, the digits', delete's and
-            // enter's alike
+            // a click as the finger lands, the digits', delete's and enter's alike
             click();
             key.animatePress(true);
             if (key.name === 'delete') {
                 longPress = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
                     longPress = 0;
                     this.reset(true);
-                    click();            // the delete key's long click, as KeyguardPinBasedInputView's
+                    click();            // held, delete clears the PIN, with a second click
                     return GLib.SOURCE_REMOVE;
                 });
             }
@@ -518,7 +517,7 @@ export const PinView = GObject.registerClass({
         this.emit('submit', pin);
     }
 
-    // Android 14's auto-confirm (LockSettings' PIN length, KeyguardPinViewController): with the PIN's length known and
+    // Auto-confirm: with the PIN's length known and
     // 6 or more, the PIN goes as its last digit is typed, and the enter key is not shown. 0 turns it off
     set autoConfirm(length) {
         this._autoLength = length;
@@ -637,7 +636,7 @@ export const PinView = GObject.registerClass({
         });
     }
 
-    // KeyguardPINView.startAppearAnimation: rows fade and rise over 650 ms
+    // the PIN pad comes in: rows fade and rise over 650 ms
     appear() {
         this._appearAnim?.stop();
         const apply = t => {
@@ -660,7 +659,7 @@ export const PinView = GObject.registerClass({
             }});
     }
 
-    // on the right PIN: the whole view fades and rises 50 dp in 200 ms
+    // on the right PIN: the whole view fades and rises 150 px in 200 ms
     disappear(onDone) {
         this._disappearAnim = animate(this, {from: 0, to: 1, duration: 200, interpolator: FAST_OUT_LINEAR_IN,
             onUpdate: v => {
@@ -718,9 +717,9 @@ export const PinView = GObject.registerClass({
 const CELL_X = [192, 540, 888];
 const CELL_Y = [972, 1320, 1668];
 const PITCH = 348;
-const DOT = 48;                     // 16 dp
-const DOT_ACTIVE = 72;              // 24 dp
-const LINE = 96;                    // 32 dp
+const DOT = 48;
+const DOT_ACTIVE = 72;
+const LINE = 96;
 const HIT_RADIUS = PITCH * 0.6 / 2;
 const MIN_PATTERN = 4;              // dots: fewer is not an attempt
 const CLEAR_MS = 2000;
@@ -893,8 +892,7 @@ export const PatternView = GObject.registerClass({
 
     _move(x, y) {
         const i = this._hit(x, y);
-        // LockPatternView.detectAndAddHit: VIRTUAL_KEY once per hit, a dot passed over on the way included; twice the
-        // click's strength (haptics.js)
+        // a click once per dot hit, a dot passed over on the way included; twice the click's strength (haptics.js)
         if (i >= 0) {
             this._join(i);
             vibrateRaw(DOT_TICK);
@@ -976,7 +974,7 @@ export const PatternView = GObject.registerClass({
         this._clear();
     }
 
-    // DisplayMode.Wrong: with the revamped bouncer its colour is 0, the path and the dots go opaque black; cleared
+    // a wrong pattern: its colour is 0, so the path and the dots go opaque black; cleared
     // after 2 s
     wrong() {
         this._wrong = true;
@@ -993,8 +991,8 @@ export const PatternView = GObject.registerClass({
         });
     }
 
-    // KeyguardPatternView.startAppearAnimation: the view rises 48 dp in 500 ms LOSI; each dot grows and rises in
-    // 220 ms LOSI, staggered diagonally
+    // the pattern comes in: the grid rises 144 px in 500 ms, linear-out-slow-in; each dot grows and rises in
+    // 220 ms on the same curve, staggered diagonally
     appear() {
         this._appearAnim?.stop();
         const delay = (r, c) => (r * 40 + c * (r ** 0.4 + 0.4) * 20) * 2;
@@ -1013,7 +1011,7 @@ export const PatternView = GObject.registerClass({
             }});
     }
 
-    // KeyguardPatternView.startDisappearAnimation: the view rises 38.4 dp in 300 ms; the dots fade in 125 ms as they
+    // the pattern goes: the grid rises 115.2 px in 300 ms; the dots fade in 125 ms as they
     // rise, the top row furthest; done when the last dot is (≈217 ms)
     disappear(onDone) {
         const delay = (r, c) => (r * 60 + c * (r ** 0.4 + 0.4) * 10) * 0.6;

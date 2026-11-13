@@ -101,8 +101,8 @@ cam_devices_enumerate (void)
       camera->model = g_strdup (model);
       camera->facing = !g_strcmp0 (location, "CameraLocationFront") ? CAM_FACING_FRONT
                      : !g_strcmp0 (location, "CameraLocationExternal") ? CAM_FACING_EXTERNAL : CAM_FACING_BACK;
-      /* libcamera counts its Rotation anticlockwise; Android's sensor orientation is the clockwise turn that makes
-       * the frame upright (libcamera's own Android HAL: orientation_ = (360 - rotation) % 360) */
+      /* libcamera counts its Rotation anticlockwise; the orientation kept here is the clockwise turn that makes
+       * the frame upright (as libcamera's own Android HAL converts it: orientation_ = (360 - rotation) % 360) */
       rotation = prop_int (props, "api.libcamera.Rotation", 0);
       camera->orientation = ((360 - rotation) % 360 + 360) % 360;
       prop_size (props, "api.libcamera.PixelArraySize", &camera->pixels_w, &camera->pixels_h);
@@ -443,7 +443,7 @@ read_names (void)
   /* no vendor: the model's first word ("Xiaomi POCO X3 NFC") */
   if (!make && model)
     make = g_strndup (model, strcspn (model, " "));
-  /* a vendor id in lower case ("xiaomi") as Android's Build.MANUFACTURER spells it ("Xiaomi") */
+  /* a vendor id in lower case ("xiaomi") gets a capital, as the maker spells its name ("Xiaomi") */
   if (make && g_ascii_islower (make[0]))
     make[0] = g_ascii_toupper (make[0]);
   if (!make)

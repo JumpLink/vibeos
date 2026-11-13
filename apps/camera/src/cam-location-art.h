@@ -1,13 +1,13 @@
-/* The location dialog's header (R/drawable/location_permissions_dialog_footer.xml, LineageOS, Apache-2.0): contour
- * lines in outlineVariant and a location pin in colorAccent, on a 320 x 96 viewport. Generated from the vector's
- * pathData, unchanged. */
+/* The location dialog's header (Aperture's location_permissions_dialog_footer, LineageOS, Apache-2.0): contour
+ * lines in the outline colour and a location pin in the accent colour, on a 320 x 96 viewport. Generated from the
+ * vector's path data, unchanged. */
 #pragma once
 
 typedef struct {
   const char *path;
   double      stroke;     /* 0: filled */
   gboolean    round_cap;
-  gboolean    accent;     /* colorAccent, else colorOutlineVariant */
+  gboolean    accent;     /* the accent colour (the pin), else the outline colour (the contours) */
 } CamArtPath;
 
 #define CAM_ART_W 320

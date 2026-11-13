@@ -1,7 +1,5 @@
-/* Call details: see call-details.h. The rules are CallDetailsActivityCommon's, CallDetailsHeaderViewHolder's,
- * CallDetailsEntryViewHolder's and CallDetailsFooterViewHolder's (dialer/calldetails); the geometry is
- * dialer_toolbar.xml's, contact_container.xml's, call_details_entry.xml's and call_details_footer.xml's, measured on
- * still:dialer-call-details (spec §5.5). */
+/* Call details: see call-details.h. The toolbar, a header for the caller, a row for each call, and the actions
+ * under them. */
 #include "call-details.h"
 #include "avatar.h"
 #include "call-dates.h"
@@ -15,33 +13,32 @@
 #include <math.h>
 #include <spongy-gtk.h>
 
-#define BAR_HEIGHT      56      /* ?actionBarSize */
-#define NAV_SIZE        56      /* the Toolbar's navigation button */
-#define TITLE_START     72      /* contentInsetStartWithNavigation */
-/* contact_container.xml */
+#define BAR_HEIGHT      56
+#define NAV_SIZE        56      /* the toolbar's ✕ */
+#define TITLE_START     72      /* the title's start, past the ✕ */
+/* the caller's header */
 #define HEADER_TOP      6
 #define HEADER_PAD_TOP  12
 #define HEADER_PAD_START 12
 #define HEADER_PAD_BOTTOM 8
 #define HEADER_PAD_END  8
-#define BADGE           48      /* call_details_contact_photo_size */
-#define BADGE_PAD       4       /* call_details_contact_photo_padding: the picture is 40 dp */
+#define BADGE           48
+#define BADGE_PAD       4       /* the picture is BADGE less this on both sides */
 #define TEXT_START      12
-#define BUTTON          48      /* call_back_button_size */
-/* call_details_entry.xml */
-#define ENTRY_PAD_TOP   16      /* call_entry_padding */
-#define ENTRY_PAD_BOTTOM 14     /* call_entry_bottom_padding */
+#define BUTTON          48      /* the call button */
+/* a call's row */
+#define ENTRY_PAD_TOP   16
+#define ENTRY_PAD_BOTTOM 14
 #define ENTRY_ICON_START 16
-#define ENTRY_ICON      24      /* CallTypeIconsView's large icons */
-#define ENTRY_TEXT      72      /* call_entry_text_left_margin */
+#define ENTRY_ICON      24      /* the call-type arrow */
+#define ENTRY_TEXT      72      /* the texts' start */
 #define ENTRY_END       16
-/* call_details_footer.xml, CallDetailsActionItemStyle */
+/* the actions under the calls */
 #define DIVIDER_MARGIN  8
-#define ACTION_PAD      28      /* paddingStart/End and drawablePadding */
+#define ACTION_PAD      28      /* before and after the icon */
 #define ACTION_PAD_V    16
 #define ACTION_ICON     24
-#define TEXT_BOX        1.42    /* a Dialer.TextAppearance TextView's height over its text size: Google Sans Flex with
-                                 * its font padding (still:dialer-call-details: 68 px at 16 sp, 60 px at 14 sp) */
+#define TEXT_BOX        1.42    /* a text line's height over its text size, font padding included */
 
 struct _CallDetails
 {
@@ -89,7 +86,7 @@ close_screen (CallDetails *self)
   g_signal_emit (self, signals[CLOSED], 0);
 }
 
-/* ---- the header (CallDetailsHeaderViewHolder.updateContactInfo) --------------------------------------------- */
+/* ---- the header --------------------------------------------------------------------------------------------- */
 
 static void
 on_dialed (guint id, const GError *error, gpointer data)
@@ -103,14 +100,14 @@ on_dialed (guint id, const GError *error, gpointer data)
   g_object_unref (self);
 }
 
-/* the call-back button: a voice call at once (PreCall, CALL_DETAILS) */
+/* the call-back button: a voice call at once */
 static void
 on_call (CallDetails *self)
 {
   calls_client_dial (calls_client_get (), self->number, on_dialed, g_object_ref (self));
 }
 
-/* QuickContactBadge: a contact's card */
+/* the photo: a contact's card */
 static void
 on_photo (CallDetails *self)
 {
@@ -151,7 +148,7 @@ make_header (CallDetails *self)
   gtk_widget_set_margin_bottom (header, HEADER_PAD_BOTTOM);
   gtk_widget_set_margin_end (header, HEADER_PAD_END);
 
-  /* the badge: 48 dp with 4 dp padding, so a 40 dp picture; its own colours (forceDarkAllowed false) */
+  /* the badge: the picture inside its padding, in its own colours */
   dialer_avatar_set (DIALER_AVATAR (avatar), is_contact ? contact->uid : name, is_contact ? contact->name : NULL,
                      is_contact ? contact->photo : NULL);
   gtk_widget_set_margin_start (avatar, BADGE_PAD);
@@ -187,7 +184,7 @@ make_header (CallDetails *self)
     }
   gtk_box_append (GTK_BOX (header), texts);
 
-  /* CallbackAction.VOICE: quantum_ic_call in ?colorIcon; NONE for a number that cannot be called */
+  /* the call-back button, in the icon colour; none for a number that cannot be called */
   if (!withheld && *self->number)
     {
       GtkWidget *call = neo_icon_button_new ("dialer-call-symbolic");
@@ -203,9 +200,9 @@ make_header (CallDetails *self)
   return header;
 }
 
-/* ---- the calls (CallDetailsEntryViewHolder) ---------------------------------------------------------------- */
+/* ---- the calls --------------------------------------------------------------------------------------------- */
 
-/* CallTypeIconsView's large icon and CallTypeHelper's text for a call of this type */
+/* the large icon and the text for a call of this type */
 static void
 call_type (CallType type, const char **icon, const char **css_class, const char **text)
 {
@@ -250,7 +247,7 @@ call_type (CallType type, const char **icon, const char **css_class, const char 
     }
 }
 
-/* a one-line TextView's height, which the font here (Roboto's metrics) falls short of: the room left goes under
+/* a one-line text's TEXT_BOX height, which the font here (Roboto's metrics) falls short of: the room left goes under
  * the text, which keeps its place at the top */
 static void
 set_text_box (GtkWidget *label, double size)
@@ -261,7 +258,7 @@ set_text_box (GtkWidget *label, double size)
                                          - gtk_widget_get_margin_bottom (label));
 }
 
-/* CallTypeHelper.isMissedCallType: anything but a call that was talked on (or a voicemail) */
+/* missed: anything but a call that was talked on (or a voicemail) */
 static gboolean
 is_missed_type (CallType type)
 {
@@ -281,7 +278,7 @@ make_entry (const CallLogEntry *entry)
   gtk_widget_set_margin_top (row, ENTRY_PAD_TOP);
   gtk_widget_set_margin_bottom (row, ENTRY_PAD_BOTTOM);
 
-  /* one 24 dp arrow, its colour through the colour filter, at the top beside the type */
+  /* the call-type arrow, coloured by its kind, at the top beside the type */
   icon = gtk_image_new_from_icon_name (icon_name);
   gtk_image_set_pixel_size (GTK_IMAGE (icon), ENTRY_ICON);
   gtk_widget_set_valign (icon, GTK_ALIGN_START);
@@ -289,8 +286,7 @@ make_entry (const CallLogEntry *entry)
   gtk_widget_add_css_class (icon, icon_class);
   gtk_box_append (GTK_BOX (row), icon);
 
-  /* call_entry's RelativeLayout: the type up to 16 dp before the duration at the end; the time under the type, as
-   * wide as the row less 16 dp, on more lines if it must */
+  /* the type up to ENTRY_END before the duration at the end; the time under the type, on more lines if it must */
   texts = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_hexpand (texts, TRUE);
   gtk_widget_set_margin_start (texts, ENTRY_TEXT - ENTRY_ICON_START - ENTRY_ICON);
@@ -312,7 +308,7 @@ make_entry (const CallLogEntry *entry)
       gtk_box_append (GTK_BOX (line), label);
     }
   gtk_box_append (GTK_BOX (texts), line);
-  /* the time in textColorSecondary, or dialer_red for a missed call */
+  /* the time, in red for a missed call */
   time = text_label (when, "dialer-secondary-text", 14);
   gtk_label_set_single_line_mode (GTK_LABEL (time), FALSE);
   gtk_label_set_ellipsize (GTK_LABEL (time), PANGO_ELLIPSIZE_NONE);
@@ -326,7 +322,7 @@ make_entry (const CallLogEntry *entry)
   return row;
 }
 
-/* ---- the footer (CallDetailsFooterViewHolder) -------------------------------------------------------------- */
+/* ---- the footer -------------------------------------------------------------------------------------------- */
 
 static GtkWidget *
 action_row (CallDetails *self, const char *icon_name, const char *text, GCallback callback)
@@ -353,7 +349,7 @@ action_row (CallDetails *self, const char *icon_name, const char *text, GCallbac
   return row;
 }
 
-/* ClipboardUtils.copyText with its toast */
+/* the number to the clipboard, with a toast */
 static void
 on_copy (CallDetails *self)
 {
@@ -361,14 +357,14 @@ on_copy (CallDetails *self)
   neo_snackbar_show (self->snackbar, _("Text copied"), NULL, NULL, NULL, NEO_SNACKBAR_SHORT);
 }
 
-/* ACTION_DIAL: the dialpad with the number, in the main screen */
+/* the dialpad with the number, in the main screen */
 static void
 on_edit (CallDetails *self)
 {
   g_signal_emit (self, signals[EDIT_NUMBER], 0, self->number);
 }
 
-/* every call of the entry, no confirmation; then the screen goes (RESULT_OK) */
+/* every call of the entry, no confirmation; then the screen goes */
 static void
 on_delete (CallDetails *self)
 {
@@ -475,7 +471,7 @@ on_key (GtkEventControllerKey *keys, guint keyval, guint keycode, GdkModifierTyp
   return TRUE;
 }
 
-/* DialerToolbar: ✕ (finish) and the title, colorPrimary, no elevation */
+/* the toolbar: ✕ (close) and the title, flat */
 static GtkWidget *
 make_bar (CallDetails *self)
 {
@@ -488,7 +484,7 @@ make_bar (CallDetails *self)
   gtk_widget_set_size_request (close, NAV_SIZE, NAV_SIZE);
   gtk_widget_set_valign (close, GTK_ALIGN_CENTER);
   gtk_widget_add_css_class (close, "dialer-icon");
-  /* Android names it "Close"; here its name is the one the shell's back gesture clicks */
+  /* named "Back", the button the shell's back gesture clicks; "Close" is its description */
   gtk_accessible_update_property (GTK_ACCESSIBLE (close), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Back"),
                                   GTK_ACCESSIBLE_PROPERTY_DESCRIPTION, _("Close"), -1);
   g_signal_connect_swapped (close, "clicked", G_CALLBACK (close_screen), self);
@@ -562,7 +558,7 @@ call_details_new (Contacts *contacts, NeoSnackbar *snackbar, const char *number,
   gtk_widget_set_parent (self->box, GTK_WIDGET (self));
   gtk_box_append (GTK_BOX (self->box), make_bar (self));
 
-  /* the RecyclerView: the header, the calls, the footer; no dividers between the calls */
+  /* the list: the header, the calls, the footer; no dividers between the calls */
   self->list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_valign (self->list, GTK_ALIGN_START);
   self->header = make_header (self);

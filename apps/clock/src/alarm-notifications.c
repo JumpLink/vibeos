@@ -34,14 +34,14 @@ alarm_format_time (GDateTime *time)
   return g_date_time_format (time, "%a %-l:%M %p");
 }
 
-/* AlarmInstance.getLabelOrDefault */
+/* the label, or "Alarm" */
 static const char *
 label_or_default (const AlarmInstance *instance)
 {
   return instance->label && *instance->label ? instance->label : _("Alarm");
 }
 
-/* AlarmUtils.getAlarmText: the time, and " - label" if it has one */
+/* the time, and " - label" if it has one */
 static char *
 alarm_text (const AlarmInstance *instance, gboolean include_label)
 {
@@ -65,8 +65,8 @@ alarm_notifications_show (AlarmNotifications *self, const AlarmInstance *instanc
   const char * const *actions;
   ClockUrgency urgency;
 
-  /* Android's channels are "Upcoming" and "Snoozing" at default importance: in the list, no heads-up. Here a
-   * normal notification peeks, so these are low ones (under "Silent" in the shade) */
+  /* the upcoming and snoozing ones belong in the list, with no heads-up. A normal notification peeks, so these are low
+   * ones (under "Silent" in the shade) */
   switch (instance->state)
     {
     case ALARM_STATE_LOW_NOTIFICATION:

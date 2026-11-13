@@ -34,12 +34,12 @@ test_next_time (void)
 
   /* a weekday alarm on Friday after its time: Monday */
   check_next (weekdays, 7, 30, berlin (2026, 11, 6, 8, 0, 0), "Mon 2026-11-09 07:30 CET");
-  /* once, a second before: today; at the very minute: tomorrow (Android's <=) */
+  /* once, a second before: today; at the very minute: tomorrow */
   check_next (0, 7, 30, berlin (2026, 11, 7, 7, 29, 59), "Sat 2026-11-07 07:30 CET");
   check_next (0, 7, 30, berlin (2026, 11, 7, 7, 30, 0), "Sun 2026-11-08 07:30 CET");
   /* Sundays only, from a Sunday after it: a week on */
   check_next (ALARM_SUNDAY, 7, 30, berlin (2026, 11, 8, 7, 31, 0), "Sun 2026-11-15 07:30 CET");
-  /* 02:30 does not exist on the spring-forward night: an hour later, as Android's lenient Calendar */
+  /* 02:30 does not exist on the spring-forward night: an hour later */
   check_next (0, 2, 30, berlin (2026, 3, 28, 23, 0, 0), "Sun 2026-03-29 03:30 CEST");
   /* the hour and minute hold across the change: 07:30 CEST on the Monday after */
   check_next (ALARM_MONDAY, 7, 30, berlin (2026, 3, 27, 9, 0, 0), "Mon 2026-03-30 07:30 CEST");
@@ -75,7 +75,7 @@ test_store_round_trip (void)
   Alarm *first;
   g_autoptr(GDateTime) now = berlin (2026, 11, 7, 6, 0, 0);
 
-  /* a new store: DeskClock's two first alarms, both off */
+  /* a new store: the two first alarms, both off */
   g_assert_nonnull (store);
   g_assert_cmpuint (store->alarms->len, ==, 2);
   first = g_ptr_array_index (store->alarms, 0);

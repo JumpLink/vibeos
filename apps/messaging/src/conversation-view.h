@@ -1,4 +1,4 @@
-/* A conversation (spec §2): ConversationActivity with its ConversationFragment.
+/* A conversation's page.
  *
  * The messages, oldest at the top and the newest at the bottom, where it opens: bubbles in the sender's colour
  * (white for those sent from here), clustered when one person writes several in a row, each cluster's time under
@@ -19,7 +19,7 @@ G_DECLARE_FINAL_TYPE (ConversationView, conversation_view, MSG, CONVERSATION_VIE
 
 GtkWidget *conversation_view_new (SmsClient *client, Contacts *contacts, gint64 conversation);
 gint64     conversation_view_get_id (ConversationView *self);
-/* keeps what is typed and not sent as the conversation's draft (the fragment's onPause) */
+/* keeps what is typed and not sent as the conversation's draft */
 void       conversation_view_save_draft (ConversationView *self);
 /* puts @text in the compose field (an sms: link's body) */
 void       conversation_view_set_text (ConversationView *self, const char *text);

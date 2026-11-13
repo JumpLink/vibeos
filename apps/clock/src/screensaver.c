@@ -1,5 +1,5 @@
-/* The screen saver: see screensaver.h. Laid out as L/desk_clock_saver.xml; no still shows it, so the sizes are the
- * layout's and the motion is MoveScreensaverRunnable's. */
+/* The screen saver: see screensaver.h. The motion: at the end of each minute the clock fades out and comes back
+ * somewhere else. */
 #include "screensaver.h"
 #include "alarms-client.h"
 #include "analog-clock.h"
@@ -8,11 +8,11 @@
 #include <glib/gi18n.h>
 #include <neo.h>
 
-#define FADE_MS       3000      /* MoveScreensaverRunnable.FADE_TIME */
-#define START_DELAY   5         /* START_DELAY: before every fade-in */
+#define FADE_MS       3000      /* each fade, out or in */
+#define START_DELAY   5         /* ms before every fade-in */
 #define SHRUNK        0.85      /* the scale it fades out to, and back in from */
-#define TIME_SIZE     80        /* main_clock_font_size (values-sw360dp) */
-#define ANALOG_SIZE   294       /* analog_clock_size, the dial's own size (wrap_content) */
+#define TIME_SIZE     80
+#define ANALOG_SIZE   294       /* the dial's own size */
 
 typedef enum {
   FIRST_IN,                     /* the first fade-in, where it opened */
@@ -40,10 +40,10 @@ G_DEFINE_FINAL_TYPE (SaverView, saver_view, GTK_TYPE_WIDGET)
 
 /* --- what it shows */
 
-/* Utils.setScreensaverTimeFormat. 24-hour: "Hm", as it is. 12-hour: "hma" with a hair space before the AM/PM,
- * which is 0.4 of the size in plain sans-serif (Roboto, the app's own face), or left out ("Show AM/PM indicator");
- * "Bold clock text" makes all of it bold. The weights are the ones with the phone's bold text on, as everywhere in
- * the app: sans-serif-thin's 100 becomes 400, the AM/PM's 400 becomes 700, and bold is as bold as Roboto goes. */
+/* the time. 24-hour: "Hm", as it is. 12-hour: "hma" with a hair space before the AM/PM, which is 0.4 of the size in
+ * plain sans-serif (Roboto, the app's own face), or left out ("Show AM/PM indicator"); "Bold clock text" makes all of
+ * it bold. The weights are the ones with the phone's bold text on, as everywhere in the app: the thin face's 100
+ * becomes 400, the AM/PM's 400 becomes 700, and bold is as bold as Roboto goes. */
 static char *
 time_markup (SaverView *self, GDateTime *now)
 {
@@ -60,7 +60,7 @@ time_markup (SaverView *self, GDateTime *now)
                           minute, ampm ? ampm : "");
 }
 
-/* the time, then the date and the next alarm as the Clock tab writes them (L/date_and_next_alarm_time.xml) */
+/* the time, then the date and the next alarm as the Clock tab writes them */
 static void
 show_time (SaverView *self)
 {
@@ -100,10 +100,10 @@ dnd_on (void)
   return !g_settings_get_boolean (notifications, "show-banners");
 }
 
-/* Utils.dimClockView and getClockColorFilter: the clock, drawn in white, is multiplied by a colour. Dimmed (night
- * mode): the night colour at alpha 16 + 176 × brightness / 100, so 40 % is 0x56. Not dimmed: the clock colour at
- * 0xC0. With "Follow DND state" on, Do Not Disturb alone decides, night mode or not, as in DeskClock. The Preview
- * starts dimmed (ScreensaverActivity), but every fade-in applies this again, the first one 5 ms in. */
+/* the clock, drawn in white, is multiplied by a colour. Dimmed (night mode): the night colour at alpha 16 + 176 ×
+ * brightness / 100, so 40 % is 0x56. Not dimmed: the clock colour at 0xC0. With "Follow DND state" on, Do Not Disturb
+ * alone decides, night mode or not. The Preview starts dimmed, but every fade-in applies this again, the first one 5 ms
+ * in. */
 static void
 dim (SaverView *self)
 {
@@ -123,9 +123,9 @@ dim (SaverView *self)
   gtk_widget_queue_draw (GTK_WIDGET (self));
 }
 
-/* --- the motion (MoveScreensaverRunnable) */
+/* --- the motion */
 
-/* getRandomPoint: a whole number from 0 up to @maximum, not including it */
+/* a whole number from 0 up to @maximum, not including it */
 static double
 random_point (double maximum)
 {
@@ -142,7 +142,7 @@ block_size (SaverView *self, int *width, int *height)
   *height = size.height;
 }
 
-/* milliseconds until @offset ms from the next minute (UiDataModel.addMinuteCallback), never 0 */
+/* milliseconds until @offset ms from the next minute, never 0 */
 static guint
 until_minute (int offset)
 {
@@ -161,9 +161,8 @@ fade_in_elsewhere (SaverView *self)
 {
   int width, height;
 
-  /* anywhere it fits in the window. DeskClock picks the place as the fade-out starts, with the old time's width; it
-   * is picked here as the fade-in starts, with the new time's, so that a wider time ("10:00" after "9:59") cannot
-   * run off the edge */
+  /* anywhere it fits in the window. It is picked as the fade-in starts, with the new time's width, so that a wider time
+   * ("10:00" after "9:59") cannot run off the edge */
   block_size (self, &width, &height);
   self->x = random_point (gtk_widget_get_width (GTK_WIDGET (self)) - width);
   self->y = random_point (gtk_widget_get_height (GTK_WIDGET (self)) - height);
@@ -210,8 +209,7 @@ on_anim (NeoAnim *anim, double value, gpointer data)
     g_idle_add_full (G_PRIORITY_DEFAULT, fade_in_later, g_object_ref (self), g_object_unref);
 }
 
-/* 3 s before each minute: fade out and shrink (AccelerateInterpolator), so that the new time comes in with the
- * clock's new place */
+/* 3 s before each minute: fade out and shrink, speeding up, so that the new time comes in with the clock's new place */
 static gboolean
 on_move (gpointer data)
 {
@@ -233,8 +231,8 @@ on_tick (gpointer data)
   return G_SOURCE_REMOVE;
 }
 
-/* the first place: inside the largest square the window holds, whichever way the phone is turned, then a fade-in
- * (DecelerateInterpolator); after that, a move every minute */
+/* the first place: inside the largest square the window holds, whichever way the phone is turned, then a fade-in that
+ * slows down; after that, a move every minute */
 static gboolean
 on_start (gpointer data)
 {
@@ -340,8 +338,7 @@ saver_view_init (SaverView *self)
 {
 }
 
-/* main_clock: the analog clock (no second hand) or the digital time, then the date and the next alarm, which keep
- * to the start as a LinearLayout's children do */
+/* the analog clock (no second hand) or the digital time, then the date and the next alarm, which keep to the start */
 static void
 build (SaverView *self)
 {
@@ -351,7 +348,7 @@ build (SaverView *self)
   self->block = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_parent (self->block, GTK_WIDGET (self));
 
-  /* bottom_text_spacing_analog: 14 dp under the dial */
+  /* the analog dial, with a gap under it before the date */
   self->analog = analog_clock_new (ANALOG_SIZE);
   analog_clock_set_seconds (CLOCK_ANALOG_CLOCK (self->analog), FALSE);
   gtk_widget_set_size_request (self->analog, ANALOG_SIZE, -1);
@@ -360,7 +357,7 @@ build (SaverView *self)
   gtk_widget_set_visible (self->analog, analog);
   gtk_box_append (GTK_BOX (self->block), self->analog);
 
-  /* big_thin at 80 sp, centred; bottom_text_spacing_digital pulls the date 8 dp up under it */
+  /* the digital time, centred; a negative margin pulls the date up under it */
   self->time = gtk_label_new (NULL);
   gtk_widget_add_css_class (self->time, "saver-time");
   gtk_widget_set_halign (self->time, GTK_ALIGN_CENTER);
@@ -386,7 +383,7 @@ build (SaverView *self)
   gtk_box_append (GTK_BOX (line), self->alarm);
   gtk_box_append (GTK_BOX (self->block), line);
   show_time (self);
-  /* mAlarmChangedReceiver */
+  /* the next alarm, whenever it changes */
   g_signal_connect_object (alarms_client_get (), "next-alarm-changed", G_CALLBACK (show_time), self,
                            G_CONNECT_SWAPPED);
 }
@@ -421,7 +418,7 @@ on_destroy (GtkWidget *window, gpointer data)
     gtk_application_uninhibit (app, cookie);
 }
 
-/* onUserInteraction: any touch or key ends it */
+/* any touch or key ends it */
 static void
 on_pressed (GtkGestureClick *click, int n_press, double x, double y, GtkWindow *window)
 {
@@ -455,8 +452,7 @@ screensaver_present (GtkApplication *app, GSettings *settings)
   g_signal_connect (keys, "key-pressed", G_CALLBACK (on_key), window);
   gtk_widget_add_controller (window, keys);
 
-  /* KEEP_SCREEN_ON while on a charger (ScreensaverActivity's plugged-in flags); on battery the screen times out as
-   * it always does */
+  /* the screen kept on while on a charger; on battery the screen times out as it always does */
   if (!on_battery ())
     g_object_set_data (G_OBJECT (window), "inhibit",
                        GUINT_TO_POINTER (gtk_application_inhibit (app, GTK_WINDOW (window),

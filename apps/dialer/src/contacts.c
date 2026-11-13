@@ -47,7 +47,7 @@ contact_free (Contact *contact)
   g_free (contact);
 }
 
-/* ContactsContract.CommonDataKinds.Phone.getTypeLabel, from a vCard TEL's TYPE parameters */
+/* the number's kind ("Mobile", "Work" …), from a vCard TEL's TYPE parameters */
 static char *
 number_label (EVCardAttribute *tel)
 {
@@ -104,7 +104,7 @@ has_text (const char *s)
   return s && *s;
 }
 
-/* the two orders of the name, NameSplitter.join's for a Western name: the given names, the middle ones and the
+/* the two orders of the name, joined the Western way: the given names, the middle ones and the
  * family name; or the family name, a comma, then the given and middle ones */
 static void
 contact_set_names (Contact *contact, EContact *econtact)
@@ -281,7 +281,7 @@ on_client (GObject *source, GAsyncResult *result, gpointer data)
       return;
     }
   self = data;
-  /* the contacts with a phone number: the only ones a dialler has any use for (HAS_PHONE_NUMBER) */
+  /* the contacts with a phone number: the only ones a dialler has any use for */
   query = e_book_query_to_string (e_book_query_field_exists (E_CONTACT_TEL));
   e_book_client_get_view (E_BOOK_CLIENT (client), query, self->cancellable, on_view, self);
 }

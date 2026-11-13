@@ -1,5 +1,5 @@
-/* unified-real: see unified-real.h. A port of UnifiedReal.java, method for method; the comments name
- * the Java methods. */
+/* unified-real: see unified-real.h. A port of ExactCalculator's UnifiedReal, method for method; the
+ * comments name the Java methods. */
 #include "unified-real.h"
 #include "calc-failure.h"
 

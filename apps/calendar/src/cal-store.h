@@ -1,9 +1,9 @@
-/* CalStore: the phone's calendars, from evolution-data-server (spec/calendar.md §12).
+/* CalStore: the phone's calendars, from evolution-data-server.
  *
- * It keeps the ESourceRegistry's calendars (Etar's Calendars rows) and an ECalClient for each one shown, reads the
- * events of a time range as occurrences (CalEvent, Etar's Instances rows), tells when anything changed (an
- * ECalClientView per calendar, as Etar's ContentObserver), and writes events: create, change, delete, each with
- * Etar's "only this event / this and future events / all events" for a recurring one.
+ * It keeps the ESourceRegistry's calendars and an ECalClient for each one shown, reads the events of a time range
+ * as occurrences (CalEvent), tells when anything changed (an ECalClientView per calendar), and writes events:
+ * create, change, delete, each with "only this event / this and future events / all events" for a recurring
+ * one.
  *
  * Everything that waits on EDS runs off the main loop (GTask threads around libecal's sync calls); the results and
  * the signals come back on the main loop. GLib, GIO and libecal only: the reminder service uses it too. */
@@ -28,7 +28,7 @@ G_DEFINE_AUTOPTR_CLEANUP_FUNC (ECalComponent, g_object_unref)
 #define CAL_TYPE_STORE (cal_store_get_type ())
 G_DECLARE_FINAL_TYPE (CalStore, cal_store, CAL, STORE, GObject)
 
-/* which occurrences of a recurring event a change or a delete takes (Etar's three choices) */
+/* which occurrences of a recurring event a change or a delete takes */
 typedef enum {
   CAL_SCOPE_THIS,               /* "Only this event": E_CAL_OBJ_MOD_THIS with its RECURRENCE-ID */
   CAL_SCOPE_THIS_AND_FUTURE,    /* "This and future events" */
@@ -36,16 +36,16 @@ typedef enum {
 } CalScope;
 
 /* @hidden_too: connect the calendars that are not shown as well (the reminder service: a calendar's reminders ring
- * whether or not the app shows it, as on Android) */
+ * whether or not the app shows it) */
 CalStore *cal_store_new (gboolean hidden_too);
 
 /* the calendars (CalCalendar), by account and name; "calendars-changed" when any comes, goes or changes */
 GPtrArray         *cal_store_get_calendars (CalStore *self);
 const CalCalendar *cal_store_find_calendar (CalStore *self, const char *uid);
 ECalClient        *cal_store_get_client    (CalStore *self, const char *uid);   /* connected, or NULL */
-/* the calendar a new event goes to: the first writable shown one (Etar: the last used, else the first) */
+/* the calendar a new event goes to: @last_used if it is writable and shown, else the first such */
 const CalCalendar *cal_store_default_calendar (CalStore *self, const char *last_used);
-/* "Display calendar" (Etar's CalendarPreferences, Calendars.VISIBLE): ESourceSelectable:selected, written to the
+/* "Display calendar" (a calendar's page): ESourceSelectable:selected, written to the
  * source as GNOME Calendar does; "calendars-changed" follows once the registry has it */
 void               cal_store_set_visible   (CalStore *self, const char *uid, gboolean visible);
 /* EDS's registry (adding, changing and removing calendars), NULL until it has answered */

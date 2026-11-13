@@ -1,16 +1,16 @@
-// Predictive back, Android 16's (spec gestures-recents-back.md §4): a swipe in from either edge. SystemUI's arrow
+// Predictive back: a swipe in from either edge. An arrow
 // follows the finger (backpanel.js); what back does was asked of the app when the finger came down (a11y.js):
 //
 //   an app with somewhere to go back to (a Back button showing): the arrow alone, and on release the app goes back
 //     itself (the button is clicked; libadwaita slides its own page away)
-//   an app at its root: LauncherBackAnimationController. The window shrinks toward the far edge to 0.75 under the
-//     finger (BACK_GESTURE of the progress spring), its corners rounding to 40 dp, over the launcher at 0.85 behind a
+//   an app at its root: the window shrinks toward the far edge to 0.75 under the
+//     finger (BACK_GESTURE of the progress spring), its corners rounding to 120 px, over the launcher at 0.85 behind a
 //     black 0.8 scrim blurred 90 → 10 px; on release it flies into its icon from rest, the scrim fading in 233 ms
 //   a dialog, or an app the probe cannot read (Waydroid's: Android takes Escape as BACK): Escape
 //   recents: as its own Escape; the launcher's drawer: closed
 //
-// EdgeBackGestureHandler: the strip is 30 dp wide on either side above the 32 dp gesture bar; the swipe starts when
-// it is more across than along past 6 dp, and gives the touch back to the app after 250 ms without that.
+// The gesture: a strip EDGE_W wide on either side above the gesture bar; the swipe starts when it is more
+// across than along past SLOP, and gives the touch back to the app after 250 ms without that.
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
@@ -26,27 +26,27 @@ import {overWindows} from './scanout.js';
 import {NAV_GESTURE_H, SCREEN_H, SCREEN_W, Spring, TaskView, clamp, lerp} from './task.js';
 import {sideways} from './sideways.js';
 
-const EDGE_W = 30 * 3;                  // config_backGestureInset
+const EDGE_W = 30 * 3;                  // the edge strip a back swipe starts in
 const SLOP = 8 * 3 * 0.75;              // touch slop × 0.75
 const LONG_PRESS_MS = 250;              // min(back_timeout, the long press timeout)
-const MAX_DISTANCE = SCREEN_W;          // progress = dx / the display's width (linear: 412 dp > 1080 px)
-const PROGRESS_SPRING = [1500, 1];      // BackProgressAnimator: STIFFNESS_MEDIUM, DAMPING_RATIO_NO_BOUNCY, ×100
+const MAX_DISTANCE = SCREEN_W;          // progress = dx / the display's width, linear
+const PROGRESS_SPRING = [1500, 1];      // the progress follows the finger on a medium, unbouncy spring
 const PROBE_WAIT_MS = 600;              // released before the app answered: how long to wait for it
-// The window first follows the finger 150 ms after it came down (§5.2: the launcher is started first, and the
+// The window first follows the finger 150 ms after it came down (the launcher is started first, and the
 // progress until then never reaches it), its spring starting from 0 then; a fling released sooner flies from the
-// whole window (§5.4). The setup is done at once, unseen, so that its first frames are not the window's first moves.
+// whole window. The setup is done at once, unseen, so that its first frames are not the window's first moves.
 const HOME_START_MS = 150;
 // The walk takes ~200 ms with the shell idle, three times that under a gesture's frames: the focused app is asked
 // ahead, when it gets the focus and once a touch in it has had time to change its page, and the answer is used at
 // once while the touch's own probe checks it
 const PREFETCH_MS = 700;
 
-// LauncherBackAnimationController
+// the window going back to the home screen
 const MIN_WINDOW_SCALE = 0.75;
 const WINDOW_MARGIN = 10 * 3;
 const END_CORNER_R = 40 * 3;
 const SCRIM_ALPHA = 0.8;                // dark theme
-const MAX_BLUR = 30 * 3;                // max_depth_blur_radius_enhanced
+const MAX_BLUR = 30 * 3;                // the launcher's blur at the start of the gesture
 const MIN_BLUR_PRE_COMMIT = 10;
 
 const BACK_GESTURE = (() => {
@@ -67,7 +67,7 @@ class BackToHome {
         this.layer = new Clutter.Actor({name: 'gnomePhoneBack', x: m.x, y: m.y, width: m.width, height: m.height});
         Main.layoutManager.uiGroup.insert_child_above(this.layer, global.window_group);
         overWindows(this.layer);
-        // The scrim over the launcher, Android's colour layer with a background blur, is the launcher's to draw: the
+        // The scrim over the launcher, a colour layer with a background blur, is the launcher's to draw: the
         // shell's own blur reads the framebuffer at logical coordinates on a scaled monitor, and rebuilds its buffers
         // whenever the radius changes (17 fps here). The back state starts it at 0.8 over 90 px.
         this._task = new TaskView(win, this._scale, this.layer);
@@ -78,7 +78,7 @@ class BackToHome {
         this.r = 0;
 
         const app = Shell.WindowTracker.get_default().get_window_app(win);
-        // the workspace at 0.85 at once, the depth at BACKGROUND_APP with its blur held, the app's icon hidden
+        // the workspace at 0.85 at once, the depth of an app in front with its blur held, the app's icon hidden
         nav.launcherState('back', 0, app?.get_id() ?? '');
         nav.statusBarOverApp(false);
     }
@@ -370,7 +370,7 @@ export class EdgeBack {
         if (!g)
             return;
         const [x, y, t] = this._point();
-        // BackTouchTracker: a back cancelled and swiped out again starts counting from where it turned
+        // a back cancelled and swiped out again starts counting from where it turned
         if ((g.left && x < g.thresholdX) || (!g.left && x > g.thresholdX)) {
             g.thresholdX = x;
             if ((g.left && g.thresholdX < g.initX) || (!g.left && g.thresholdX > g.initX))
@@ -400,7 +400,7 @@ export class EdgeBack {
         g.trigger = trigger;
     }
 
-    // BackProgressAnimator: the progress ×100 on its spring, the window following every frame
+    // the progress ×100 on its spring, the window following every frame
     _progressTo(raw, done = null) {
         this._spring.animateTo(raw * 100);
         this._springDone = done;

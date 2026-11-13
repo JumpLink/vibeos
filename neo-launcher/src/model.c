@@ -1,12 +1,12 @@
 /* The home layout. The first start takes the default layout the system ships (neo-launcher/layout.json in /etc/xdg
  * or /usr/share) and, without one, fills the dock from GNOME's favourites and the pages with every other app: the
  * phone's own apps (neo.*) on the first page, then GNOME's and the rest from the second page on, each A→Z;
- * apps installed later go to the first free cell. A cell may be empty, as on Launcher3's grid: an icon removed or
+ * apps installed later go to the first free cell. A cell may be empty: an icon removed or
  * uninstalled leaves its cell empty, and a drag can drop an icon on any cell. The GJS Neo's file, plus null for an
  * empty cell, plus the grid its cells are on ("columns", "rows"; 5 × 5 without them).
  *
  * The grid is a setting. On another one the icons keep their cells where the new grid has them, and the rest move to
- * the first free cells, from their own page on (model_set_grid). Like Launcher3, which keeps a database per grid, each
+ * the first free cells, from their own page on (model_set_grid). Each
  * grid's layout is kept (layout-COLSxROWS.json) when the grid changes, and going back to a grid gives its layout
  * back, less the icons taken off the home screen meanwhile and plus the ones put on it. */
 #include "model.h"
@@ -629,9 +629,9 @@ count_take (GHashTable *n, const char *id)
   return c > 0;
 }
 
-/* The grid's own layout from when it was last used, brought up to date (Launcher3's migration into an existing grid
- * database): its icons that the pages no longer hold go, and the ones the pages hold beyond it take the first free
- * cells, in the pages' reading order. FALSE when there is none. */
+/* The grid's own layout from when it was last used, brought up to date: its icons that the pages no longer hold go, and
+ * the ones the pages hold beyond it take the first free cells, in the pages' reading order. FALSE when there is none.
+ * */
 static gboolean
 restore (Model *self, int cols, int rows)
 {

@@ -1,5 +1,5 @@
-/* The calls: the heart of the Phone's service. It keeps the list of calls the modem has, in InCallUI's states,
- * and does what each change of a call asks for, as Telecom and InCallUI do on Android:
+/* The calls: the heart of the Phone's service. It keeps the list of calls the modem has, in the states of
+ * call-types.h, and does what each change of a call asks for:
  *
  *  - a call comes: it rings (ringer.h), shows the answer screen over the lock screen, or a heads-up with Answer and
  *    Decline when the phone is in use (call-notifications.h);
@@ -59,7 +59,7 @@ gboolean    calls_send_dtmf (Calls *self, guint id, const char *tones, GError **
 gboolean    calls_continue_post_dial (Calls *self, guint id, gboolean proceed, GError **error);
 void        calls_set_muted (Calls *self, gboolean muted);
 void        calls_set_speaker (Calls *self, gboolean speaker);
-/* the ringing stops, the call goes on ringing silently (a volume key, Android's "silence ringer") */
+/* the ringing stops, the call goes on ringing silently (a volume key) */
 void        calls_silence_ringer (Calls *self);
 /* Settings' ringtone preview (NULL stops it) and the main dialpad's keypad tones (ringer.h); none while there is a
  * call, whose sound has the speaker */

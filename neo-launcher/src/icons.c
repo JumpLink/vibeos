@@ -796,7 +796,7 @@ icons_render (Icons *self, GAppInfo *info, int px)
         paint_pixbuf (cr, back, px, 0, 0);
       int inner = (int) round (px * pack->scale);
       paint_pixbuf (cr, src, inner, round ((px - inner) / 2.0), round ((px - inner) / 2.0));
-      /* iconmask: opaque mask pixels are cut away (PorterDuff DST_OUT) */
+      /* iconmask: opaque mask pixels are cut away */
       g_autoptr (GdkPixbuf) mask = pack_pixbuf (pack, pick (pack->iconmask, id), px);
       if (mask) {
         cairo_set_operator (cr, CAIRO_OPERATOR_DEST_OUT);

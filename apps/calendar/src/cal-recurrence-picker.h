@@ -1,16 +1,15 @@
-/* Etar's RecurrencePickerDialog (com.android.calendar.recurrencepicker): the editor's "Repeat".
+/* The repeat dialog: the editor's "Repeat", ported from Etar's recurrence picker.
  *
- * A dialog with no title (300 × 340 dp on a phone held upright, 500 × 281 dp on its side; 480 × 300 and 600 × 300
- * on a tablet): "REPEAT WEEKLY ▾" (the frequency) and the repeat switch on top, then "Every [1] week", the weekdays
- * as round toggles (WeekButton; four over three on a narrow screen), for a monthly rule "on the same day each month"
- * or "on every second Tuesday", and the end: "Forever ▾", "Until ▾ 12/10/2026" (a tap on the date picks another)
+ * A dialog with no title, its size set by the screen's (a phone or a tablet, upright or on its side): "REPEAT
+ * WEEKLY ▾" (the frequency) and the repeat switch on top, then "Every [1] week", the weekdays as round toggles
+ * (four over three on a narrow screen), for a monthly rule "on the same day each month" or "on every
+ * second Tuesday", and the end: "Forever ▾", "Until ▾ 12/10/2026" (a tap on the date picks another)
  * or "For ▾ [5] events". A line, then DONE across the bottom. With the switch off everything but the switch is
  * greyed, and Done means "does not repeat". A tap outside or Back closes it unchanged.
  *
- * The rule is parsed and written as Etar's EventRecurrence does it (calendarcommon2), so what it writes is what
- * Etar would: "FREQ=WEEKLY;WKST=MO;BYDAY=TU,TH", "FREQ=MONTHLY;UNTIL=20261231T090000Z;WKST=SU;BYDAY=-1FR". The
- * parts of a rule the dialog has no control for (BYMONTH, BYSETPOS, BYHOUR …) are kept; BYDAY and BYMONTHDAY are
- * rewritten from what it shows, as Etar's are. */
+ * The rule is parsed into its parts and written back in a fixed order: "FREQ=WEEKLY;WKST=MO;BYDAY=TU,TH",
+ * "FREQ=MONTHLY;UNTIL=20261231T090000Z;WKST=SU;BYDAY=-1FR". The parts of a rule the dialog has no control for
+ * (BYMONTH, BYSETPOS, BYHOUR …) are kept; BYDAY and BYMONTHDAY are rewritten from what it shows. */
 #pragma once
 
 #include <gtk/gtk.h>
@@ -20,8 +19,8 @@ G_BEGIN_DECLS
 /* @rrule the rule chosen ("FREQ=WEEKLY;BYDAY=MO"), NULL for "does not repeat"; not called when dismissed */
 typedef void (*CalRecurrenceSet) (const char *rrule, gpointer data);
 
-/* RecurrencePickerDialog.canHandleRecurrenceRule: a rule the dialog can show (else the editor's button is off).
- * TRUE for none (NULL); FALSE for a rule Etar's parser refuses, and for the ones its dialog would throw on. */
+/* a rule the dialog can show (else the editor's button is off). TRUE for none (NULL); FALSE for a rule
+ * cal_recurrence_parse refuses, and for one cal_recurrence_model_init refuses. */
 gboolean cal_recurrence_picker_can_handle (const char *rrule);
 
 /* the dialog over @parent for @rrule (NULL: none yet), the event starting at @start in @tzid; @tzid NULL is an
@@ -39,7 +38,7 @@ char    *cal_recurrence_fit_until         (const char *rrule, gint64 start, cons
 
 /* --- what the dialog works on, for its tests */
 
-/* EventRecurrence's frequencies (its constants) */
+/* the rule's frequencies */
 typedef enum {
   CAL_RECUR_SECONDLY = 1,
   CAL_RECUR_MINUTELY,
@@ -55,7 +54,7 @@ typedef struct {
   int *values;
 } CalRecurList;
 
-/* EventRecurrence: an RRULE in parts. Weekdays are 0 Sunday … 6 Saturday (Time's). */
+/* an RRULE in parts. Weekdays are 0 Sunday … 6 Saturday. */
 typedef struct {
   CalRecurFreq freq;
   char *until;                  /* as written: "20261231T225959Z", "20261231T235959" (floating), "20261231"; or NULL */
@@ -68,18 +67,18 @@ typedef struct {
   CalRecurList bysecond, byminute, byhour, bymonthday, byyearday, byweekno, bymonth, bysetpos;
 } CalRecurrence;
 
-/* EventRecurrence.parse: NULL for a rule it throws InvalidFormatException on (no FREQ, an unknown part, a part
- * twice, a number out of range …). X- parts are dropped, as Etar drops them. */
+/* NULL for a malformed rule (no FREQ, an unknown part, a part twice, a number out of range …). X- parts are
+ * dropped. */
 CalRecurrence *cal_recurrence_parse     (const char *rrule);
 /* a rule with no parts but WKST @wkst: the one the dialog starts a new rule from */
 CalRecurrence *cal_recurrence_new       (int wkst);
-/* EventRecurrence.toString: FREQ, UNTIL, COUNT, INTERVAL, WKST, BYSECOND, BYMINUTE, BYHOUR, BYDAY, BYMONTHDAY,
+/* the rule as text: FREQ, UNTIL, COUNT, INTERVAL, WKST, BYSECOND, BYMINUTE, BYHOUR, BYDAY, BYMONTHDAY,
  * BYYEARDAY, BYWEEKNO, BYMONTH, BYSETPOS, in that order */
 char          *cal_recurrence_to_string (const CalRecurrence *er);
 void           cal_recurrence_free      (CalRecurrence *er);
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (CalRecurrence, cal_recurrence_free)
 
-/* RecurrenceModel */
+/* what the dialog shows */
 typedef enum { CAL_REPEAT_DAILY, CAL_REPEAT_WEEKLY, CAL_REPEAT_MONTHLY, CAL_REPEAT_YEARLY } CalRepeatFreq;
 typedef enum { CAL_REPEAT_END_NEVER, CAL_REPEAT_END_BY_DATE, CAL_REPEAT_END_BY_COUNT } CalRepeatEnd;
 typedef enum { CAL_REPEAT_MONTHLY_BY_DATE, CAL_REPEAT_MONTHLY_BY_NTH_DAY_OF_WEEK } CalRepeatMonthly;
@@ -89,7 +88,7 @@ typedef enum { CAL_REPEAT_MONTHLY_BY_DATE, CAL_REPEAT_MONTHLY_BY_NTH_DAY_OF_WEEK
 #define CAL_REPEAT_COUNT_DEFAULT 5
 
 typedef struct {
-  gboolean repeats;             /* the switch (recurrenceState) */
+  gboolean repeats;             /* the switch */
   CalRepeatFreq freq;
   int interval;                 /* every n days, weeks … */
   CalRepeatEnd end;
@@ -103,13 +102,12 @@ typedef struct {
   int monthly_by_nth_day_of_week; /* … and which (1 … 5, −1 last) */
 } CalRecurrenceModel;
 
-/* onCreateView: the model for @er (its parts become the model's, copyEventRecurrenceToModel; NULL or a rule without
- * FREQ: a new rule, not repeating) on an event starting at @start in @tzid (NULL: all-day). FALSE where Etar's
- * dialog would throw (a monthly rule's BYDAY without a supported nth, …): it is not shown. */
+/* the model for @er (its parts become the model's; NULL or a rule without FREQ: a new rule, not repeating) on an
+ * event starting at @start in @tzid (NULL: all-day). FALSE for a rule the dialog cannot show (a monthly rule's
+ * BYDAY without a supported nth, …). */
 gboolean cal_recurrence_model_init  (CalRecurrenceModel *model, const CalRecurrence *er, gint64 start,
                                      const char *tzid);
-/* copyModelToEventRecurrence and toString: the rule @model makes of @er (whose other parts stay), NULL when it does
- * not repeat. @er is changed as Etar's is. */
+/* the rule @model makes of @er (whose other parts stay), NULL when it does not repeat. @er is changed to match. */
 char    *cal_recurrence_model_store (const CalRecurrenceModel *model, CalRecurrence *er, const char *tzid);
 gboolean cal_recurrence_model_equal (const CalRecurrenceModel *a, const CalRecurrenceModel *b);
 

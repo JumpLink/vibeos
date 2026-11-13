@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
-/* AlarmInstance.java's offsets from the moment an instance rings */
+/* offsets from the moment an instance rings */
 #define LOW_NOTIFICATION_HOURS      -2      /* "Upcoming alarm" shows */
 #define HIGH_NOTIFICATION_MINUTES  -30      /* ... and again, higher up */
 #define MISSED_TTL_HOURS            12      /* a missed alarm's notification stays this long */
@@ -14,7 +14,7 @@ alarm_new (void)
 {
   Alarm *alarm = g_new0 (Alarm, 1);
 
-  /* DeskClock's new alarm: on, vibrating, the default sound, no label */
+  /* a new alarm: on, vibrating, the default sound, no label */
   alarm->enabled = TRUE;
   alarm->vibrate = TRUE;
   alarm->label = g_strdup ("");
@@ -93,8 +93,8 @@ wall_time (int year, int month, int day, int hour, int minute)
     return g_steal_pointer (&time);
 
   /* a wall time that summer time skips (02:30 on the spring-forward night). GLib moves it to the start of the new
-   * hour (03:00); Android's lenient Calendar reads it with the UTC offset from before the jump, so it comes out the
-   * skipped hour later (03:30). As Android: the offset of a day before */
+   * hour (03:00); it is read here with the UTC offset from before the jump, the offset of a day before, so it comes
+   * out the skipped hour later (03:30) */
   day_before = g_date_time_add_days (time, -1);
   utc = g_date_time_new_utc (year, month, day, hour, minute, 0);
   moment = g_date_time_add (utc, -g_date_time_get_utc_offset (day_before));
@@ -126,7 +126,7 @@ alarm_next_time (const Alarm *alarm, GDateTime *after)
   if (g_date_time_compare (today, local) <= 0)
     g_date_add_days (&date, 1);
 
-  /* then on to the first day it repeats on (Weekdays.getDistanceToNextDay) */
+  /* then on to the first day it repeats on */
   if (alarm->days)
     {
       for (int i = 0; i < 7 && !(alarm->days & (1u << weekday_index (&date))); i++)
@@ -206,7 +206,7 @@ alarm_days_text (guint days, GDateWeekday first_day)
 
   if ((days & ALARM_EVERY_DAY) == ALARM_EVERY_DAY)
     return g_strdup (g_dgettext ("neo-clock", "Every day"));
-  /* one day is named in full (Weekdays.toString: "Monday"), several by their short names */
+  /* one day is named in full ("Monday"), several by their short names */
   if (days && !(days & (days - 1)))
     {
       g_autoptr(GDateTime) day = g_date_time_add_days (monday, __builtin_ctz (days));
@@ -280,7 +280,7 @@ read_instance (GKeyFile *file, const char *group, guint id)
   return instance;
 }
 
-/* a new store's alarms, as ClockDatabaseHelper makes them: off, vibrating, no label, the default sound */
+/* a new store's alarms: off, vibrating, no label, the default sound */
 static void
 add_first_alarm (AlarmStore *store, int hour, int minute, guint days)
 {
@@ -308,7 +308,7 @@ alarm_store_load (const char *path, GError **error)
 
   if (!g_key_file_load_from_file (file, path, G_KEY_FILE_KEEP_COMMENTS, &local_error))
     {
-      /* no store yet: a new one has DeskClock's two first alarms, 08:30 on weekdays and 09:00 at weekends */
+      /* no store yet: a new one has two alarms, 08:30 on weekdays and 09:00 at weekends */
       if (g_error_matches (local_error, G_FILE_ERROR, G_FILE_ERROR_NOENT))
         {
           add_first_alarm (store, 8, 30, ALARM_MONDAY | ALARM_TUESDAY | ALARM_WEDNESDAY | ALARM_THURSDAY

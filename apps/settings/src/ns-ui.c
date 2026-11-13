@@ -42,24 +42,22 @@ ns_scroller_new (GtkWidget *child)
 
 /* ---- the page's title: big in the page, small in the bar ----
  *
- * Android's Settings pages (SettingsLib's CollapsingToolbarBaseActivity: Material's CollapsingToolbarLayout with
- * titleCollapseMode "fade", scroll|exitUntilCollapsed|snap) open with the title big, above the first card, and
- * only the back arrow in the bar. Scrolled, the big title goes up with the cards and fades out; once it is under
- * the bar, the bar's own small title fades in. Measured frame by frame on the Galaxy S10e, over the 168 dp it
- * takes the big title's block to go under the bar:
+ * A page opens with the title big, above the first card, and only the back arrow in the bar. Scrolled, the big
+ * title goes up with the cards and fades out; once it is under the bar, the bar's own small title fades in. The
+ * timing was measured frame by frame on a Galaxy S10e's Settings, over the 168 px it takes the big title's block
+ * to go under the bar:
  *   the big title   fully there until a quarter of the way, gone at 62.5 %
  *   the small title  appears at 62.5 %, fully there at the end
- * (Material's fade mode: the big title fades from fadeModeStartFraction, here 0.25, to halfway between that and
- * the end; the small title over the rest.) The bar keeps its colour all along.
+ * (the big title fades from a quarter of the way to halfway between that and the end; the small title over the
+ * rest.) The bar keeps its colour all along.
  *
  * Here the big title is the first thing in the scrolled column, so it moves with the content for nothing; only
  * the two opacities follow the scroll offset, which redraws but lays nothing out again. It comes back only with
- * the top of the page, as Android's does. A finger let go with the block part way under the bar finishes the
- * move (Android's "snap"): to the closer end, once the scrolling has stopped.
+ * the top of the page. A finger let go with the block part way under the bar finishes the move (a snap): to the
+ * closer end, once the scrolling has stopped.
  *
  * Every page can scroll its title all the way under the bar, however short it is: the page below the title is
- * made at least as tall as the scroller's view, as Android's content view is as tall as the screen below the
- * collapsed bar (ScrollingViewBehavior). Without that, a page of a few rows (Software information) ran out of
+ * made at least as tall as the scroller's view. Without that, a page of a few rows (Software information) ran out of
  * scrolling with the block a quarter of the way still to go, and the bar's title stayed a third faded in. */
 
 #define TITLE_FADE_START   0.25
@@ -132,7 +130,7 @@ title_snap (gpointer data)
   if (t->touches || range <= 0 || at <= 0 || at >= range)
     return G_SOURCE_REMOVE;
   double to = at < range / 2 ? 0 : range;
-  /* AppBarLayout's timing: 150 ms, and up to 150 more for a longer way; slowing down at the end */
+  /* the snap: 150 ms, and up to 150 more for a longer way; slowing down at the end */
   guint ms = (guint) (150 * (1 + fabs (to - at) / range));
   if (t->snap)
     adw_animation_pause (t->snap);

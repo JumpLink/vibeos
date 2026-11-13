@@ -1,8 +1,6 @@
-// Text as the reference phone draws it. Its Android has Bold text on (font weight adjustment +300): wherever the
-// family has no instance that heavy, minikin takes its heaviest and Skia emboldens it, stroking each glyph's outline
-// on top of the fill (SkScalerContext, kEmbolden_Flag). Measured on the recents chip ("Phone": text-medium 500 +
-// fake bold, ink 1817 against 1759 modelled) and the Screenshot button (600 → 700 + fake bold, ink 3858 against
-// 3857). Pango lays the text out; cairo fills and strokes its path the same way.
+// Text as the reference phone draws it. It has Bold text on (font weight +300): wherever the family has no instance
+// that heavy, its heaviest is taken and emboldened, each glyph's outline stroked on top of the fill. Pango lays the
+// text out; cairo fills and strokes its path the same way.
 import GObject from 'gi://GObject';
 import Pango from 'gi://Pango';
 import PangoCairo from 'gi://PangoCairo';

@@ -1,8 +1,8 @@
-/* Settings (DialerSettingsActivity; spec §9): the Phone's settings on a screen of its own, over the main one.
+/* Settings: the Phone's settings on a screen of its own, over the main one.
  *
  * The top list has what this phone can back: Display options (how contacts are sorted and their names written) and
- * Sounds and vibration (the ringtone, vibrating for calls, the keypad tones and InCallUI's in-call vibrations).
- * Android's other rows open other apps' pages or need what the phone does not have yet, and are left out: Quick
+ * Sounds and vibration (the ringtone, vibrating for calls, the keypad tones and the in-call vibrations).
+ * The Dialer's other rows open other apps' pages or need what the phone does not have yet, and are left out: Quick
  * responses (no text messages yet), Phone number lookup (no lookup providers), Calling accounts, Blocked numbers
  * (no blocking), Voicemail and Accessibility (TTY): see the comment in dialer-settings.c.
  *

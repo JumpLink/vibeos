@@ -1,12 +1,11 @@
-// Windows over the lock screen: Android's showWhenLocked. An app whose desktop file says
-// X-GnomePhone-ShowWhenLocked=true (Android declares android:showWhenLocked in the manifest) may show a window over
-// the lock screen: the ringing alarm, an incoming call. While such a window is the top one, the keyguard is occluded
-// (KeyguardViewMediator.setOccluded): its view and its grab step aside for that window, and only for it. The phone stays
+// Windows over the lock screen. An app whose desktop file says X-GnomePhone-ShowWhenLocked=true may show a window over
+// the lock screen: the ringing alarm, an incoming call. While such a window is the top one, the keyguard is occluded:
+// its view and its grab step aside for that window, and only for it. The phone stays
 // locked meanwhile: the other windows stay hidden, and home, recents and the shade stay shut (navigation.js, shade.js
 // ask keyguard.showing). When the window closes, or goes behind another, the lock screen is back.
 //
 // An app gets on the lock screen this way only by putting its window up while the phone is locked (an alarm that
-// rings, a call coming in), or by having it on top when the phone locks (a call under way), as on Android.
+// rings, a call coming in), or by having it on top when the phone locks (a call under way).
 import Gio from 'gi://Gio';
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';

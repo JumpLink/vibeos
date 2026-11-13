@@ -1,8 +1,8 @@
-/* NeoDialog: an Android alert dialog, drawn inside the app's own window (neo_window_new) over a 60 % black scrim.
+/* NeoDialog: an alert dialog, drawn inside the app's own window (neo_window_new) over a black scrim.
  *
- * A 28 dp-cornered card in surfaceContainerHighest: an optional title, a message or any content, and text buttons
- * at the bottom end. It comes in with Android's Animation.Material.Dialog (alpha 0 -> 1 while rising 20 dp, 220 ms,
- * the standard curve) and leaves the same way (alpha 1 -> 0 while rising 10 dp, 150 ms, standard-accelerate).
+ * A rounded card: an optional title, a message or any content, and text buttons at the bottom end. It comes in
+ * fading in while rising 20 px (220 ms, the standard curve) and leaves the same way (fading out while rising 10 px,
+ * 150 ms, standard-accelerate).
  *
  *   NeoDialog *d = neo_dialog_new ("Label");
  *   neo_dialog_set_content (d, entry);

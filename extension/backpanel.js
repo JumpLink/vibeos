@@ -1,10 +1,10 @@
-// The back arrow: SystemUI's BackPanel and BackPanelController (Android 16, navigationbar/gestural), ported line for
-// line. A pill on the edge the swipe came from, its every dimension on a spring of its own; the state machine moves
-// the springs' resting positions (ENTRY → ACTIVE → COMMITTED, or back to INACTIVE, FLUNG, CANCELLED) and the finger
-// stretches them between those and the fully stretched shape. Lengths are the S10e's device pixels (3 px per dp).
+// The back arrow, ported from Android 16's gesture-navigation back panel. A pill on the edge the swipe came from,
+// its every dimension on a spring of its own; the state machine moves the springs' resting positions (ENTRY → ACTIVE
+// → COMMITTED, or back to INACTIVE, FLUNG, CANCELLED) and the finger stretches them between those and the fully
+// stretched shape. Lengths are the S10e's device pixels.
 //
-// One quirk of the source is kept as it is: deactivationTriggerThreshold's getter negates its field, so the arrow
-// lets go of ACTIVE only after the finger has come back 32 dp toward the edge (which is what the recordings show),
+// One quirk of the original is kept: the deactivation threshold is negative (DEACTIVATION), so the arrow
+// lets go of ACTIVE only after the finger has come back 96 px toward the edge (which is what the recordings show),
 // and the range "reactivation..deactivation" is empty.
 import Clutter from 'gi://Clutter';
 import Cogl from 'gi://Cogl';
@@ -25,14 +25,13 @@ const curve = (...p) => {
     return t => c.get(t);
 };
 
-// the panel's window, 105 × 268 dp, centred 64 dp above the finger and no higher than 64 dp
+// the panel's window, centred FINGER_OFFSET above the finger and no higher than MIN_ARROW_Y
 export const PANEL_W = 105 * DP, PANEL_H = 268 * DP;
 const FINGER_OFFSET = 64 * DP, MIN_ARROW_Y = 64 * DP;
 const ARROW_THICKNESS = 4 * DP;
-// measured on the S10e (dark theme): materialColorSecondaryContainer and OnSecondaryContainer
 const BACKGROUND = [38, 62, 66], ARROW = [168, 195, 198];
 
-// ViewConfiguration: edge slop 12 dp, touch slop 8 dp, minimum fling 50 dp/s
+// the touch slops and the shortest, slowest fling
 const EDGE_SLOP = 12 * DP, TOUCH_SLOP = 8 * DP, MIN_FLING_DISTANCE = TOUCH_SLOP * 3, MIN_FLING_V = 50 * DP;
 const STATIC_THRESHOLD = 16 * DP, REACTIVATION = 32 * DP, DEACTIVATION = -32 * DP;
 const FULLY_STRETCHED = Math.min(SCREEN_W, 412 * DP);
@@ -54,7 +53,7 @@ const POP_ON_FLING_V = 2, POP_ON_COMMITTED_V = 3;
 const POP_ON_ENTRY_TO_ACTIVE_V = 4.5, POP_ON_INACTIVE_TO_ACTIVE_V = 4.7, POP_ON_INACTIVE_V = -1.5;
 const FAILSAFE_MS = 350;
 
-// DynamicAnimation's minimum visible changes
+// the smallest change worth a frame, per kind of value: a spring closer than this to rest is done
 const PIXELS = 1, ROTATION = 0.1, ALPHA = 1 / 256, SCALE_CHANGE = 1 / 500;
 
 export const State = {
@@ -62,7 +61,7 @@ export const State = {
     CANCELLED: 'cancelled',
 };
 
-// ---- EdgePanelParams ------------------------------------------------------------------------------------------------
+// ---- the panel's look in each state --------------------------------------------------------------------------------
 
 const entryWidth = curve(0.19, 1.27, 0.71, 0.86);
 const entryWidthTowardsEdge = curve(1, -3, 1, 1.2);
@@ -154,7 +153,7 @@ P.stretched = {
     bg: {alpha: 1, width: 60 * DP, height: 48 * DP, edge: 24 * DP, far: 24 * DP},
 };
 
-// ---- BackPanel.AnimatedFloat: a value at rest somewhere, on a SpringAnimation ------------------------------------------
+// ---- AnimatedFloat: a value at rest somewhere, moved there by a spring ----------------------------------------------
 
 class AnimatedFloat {
     constructor(panel, {minVisible = PIXELS, min = -Infinity, max = Infinity} = {}) {
@@ -162,7 +161,7 @@ class AnimatedFloat {
         this._min = min;
         this._max = max;
         this.resting = 0;
-        // SpringForce's defaults until a state sets its own: STIFFNESS_MEDIUM, DAMPING_RATIO_MEDIUM_BOUNCY
+        // a medium spring with a bounce until a state sets its own
         this._spring = new Spring([1500, 0.5], 0, 0, 0, minVisible);
         this._spring.done = true;
         this._ends = [];
@@ -176,7 +175,7 @@ class AnimatedFloat {
         return !this._spring.done;
     }
 
-    // the setter cancels what is running (the velocity stays, as DynamicAnimation's does)
+    // the setter cancels what is running (the velocity stays, so the next spring starts from it)
     set spring([k, zeta]) {
         this.cancel();
         this._spring.k = k;
@@ -258,7 +257,7 @@ class AnimatedFloat {
 
 // ---- BackPanel: the drawing --------------------------------------------------------------------------------------
 
-// BackPanel.onDraw on the GPU: drawn with Cairo, the panel's texture went up again every frame and the stall halved
+// The panel is drawn on the GPU: drawn with Cairo, its texture went up again every frame and the stall halved
 // the frame rate. The pill and the chevron are distances in the panel's own pixels, under its translation and its
 // scale about the pivot; the right edge's panel is the left's mirrored.
 const rgb = c => c.map(v => (v / 255).toFixed(4)).join(', ');
@@ -453,7 +452,7 @@ class BackPanel {
         set(this.verticalTranslation, s.verticalTranslation);
     }
 
-    // BackPanel.onDraw: the springs' values to the shader
+    // the springs' values to the shader
     _draw() {
         const edge = this.backgroundEdgeCornerRadius.pos, far = this.backgroundFarCornerRadius.pos;
         const half = this.backgroundHeight.pos / 2, w = this.backgroundWidth.pos;
@@ -549,7 +548,7 @@ export class BackPanelController {
         this._posted.delete(tag);
     }
 
-    // DelayedOnAnimationEndListener on a value: posted when its animation ends (not when it is cancelled), or run
+    // a callback on a value: posted when its animation ends (not when it is cancelled), or run
     // now when nothing runs
     _addEnd(value, listener) {
         if (!value.running) {
@@ -611,7 +610,7 @@ export class BackPanelController {
     }
 
     onUp(x, _y, t) {
-        // VelocityTracker on ACTION_UP: nothing new, unless the finger had stopped
+        // on the release: no new velocity, unless the finger had stopped (40 ms without a move)
         if (t - this._lastT > 40)
             this._velocity.clear();
         switch (this.state) {

@@ -1,6 +1,5 @@
-/* What an empty list shows (dialer/widget/EmptyContentView.java, empty_content_view.xml; spec §5.4): a 108 dp
- * picture, a line of text under it and, if there is something to do about it, a filled button ("Make a call"),
- * the whole block centred in the page. */
+/* What an empty list shows: a picture, a line of text under it and, if there is something to do about
+ * it, a filled button ("Make a call"), the whole block centred in the page. */
 #pragma once
 
 #include <gtk/gtk.h>

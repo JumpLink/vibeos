@@ -1,6 +1,5 @@
-/* ClockPage: see clock-page.h. Measured on still:clock-main: the time 72…1008 × 308…696 px, the date
- * 72…286 × 696…753 px (the frame's 24 dp margins, the time's 24 dp paddingTop). No still shows a city card or the
- * analog clock; their sizes are DeskClock's (L/world_clock_item.xml, L/main_clock_frame.xml). */
+/* ClockPage: see clock-page.h. The main clock, digital or analog, with the date and the next alarm under it, then
+ * a card for each city chosen. */
 #include "clock-page.h"
 #include "alarms-client.h"
 #include "analog-clock.h"
@@ -12,12 +11,10 @@
 #include <neo.h>
 #include <spongy-gtk.h>
 
-#define FAB_HEIGHT       88     /* the list's paddingBottom (fab_height), so the last card scrolls out from under the
-                                 * FAB */
-#define ANALOG_SIZE      294    /* analog_clock_size. The layout's constraintWidth_percent (0.5) does nothing here:
-                                 * ConstraintLayout applies it only to a 0dp (match-constraint) width, and the clock is
-                                 * wrap_content, so it is the drawables' own size (V-land gives 168dp) */
-#define CITY_ANALOG      56     /* world_clock_analog_size 80 dp less its 24 dp paddingStart, as fitCenter draws it */
+#define FAB_HEIGHT       88     /* the list's bottom padding, so the last card scrolls out from under the button */
+#define ANALOG_SIZE      294    /* the main analog clock: a fixed size, not the half of the width its layout seems to
+                                 * ask for (that applies only to a stretched width, and the clock keeps its own) */
+#define CITY_ANALOG      56     /* a city card's analog clock: its square less the padding at its start */
 
 /* one world clock: a city's card, or Home's */
 typedef struct
@@ -59,7 +56,7 @@ show_next_alarm (ClockPage *self)
   gint64 next = alarms_client_get_next_alarm (alarms_client_get ());
   gboolean shown = next > 0;
 
-  /* Utils.refreshAlarm: hidden, icon and all, when no alarm is set */
+  /* the next alarm: hidden, icon and all, when no alarm is set */
   gtk_widget_set_visible (self->alarm_icon, shown);
   gtk_widget_set_visible (self->alarm, shown);
   if (shown)
@@ -79,7 +76,7 @@ show_main_time (ClockPage *self, GDateTime *now, gboolean seconds)
   g_autofree char *time = NULL, *date = NULL, *upper = NULL;
   int hour = g_date_time_get_hour (now), minute = g_date_time_get_minute (now);
 
-  /* "Hm" / "Hms", or "hma" / "hmsa" with the AM/PM at 0.4 of the size, bold (Utils.setClockStyle) */
+  /* "Hm" / "Hms", or "hma" / "hmsa" with the AM/PM at 0.4 of the size, bold */
   if (seconds && use_24h)
     time = g_strdup_printf ("%02d:%02d:%02d", hour, minute, g_date_time_get_second (now));
   else if (seconds)
@@ -95,8 +92,8 @@ show_main_time (ClockPage *self, GDateTime *now, gboolean seconds)
   gtk_label_set_text (GTK_LABEL (self->date), upper);
 }
 
-/* Utils.setClockStyle and updateDateGravity: the digital time left-aligned with the date under it, or the analog
- * clock centred with the date centred under it; the seconds go to the one shown (setClockSecondsEnabled) */
+/* the digital time left-aligned with the date under it, or the analog clock centred with the date centred under it; the
+ * seconds go to the one shown */
 static void
 show_style (ClockPage *self)
 {
@@ -111,8 +108,8 @@ show_style (ClockPage *self)
 
 /* --- the world clocks */
 
-/* Utils.createHoursDifferentString and CityViewHolder.bind: "6 hours ahead", "5 hr 30 min behind", "30 minutes
- * ahead", with "Tomorrow, " or "Yesterday, " in front when the day there is another; NULL when the time is the same */
+/* "6 hours ahead", "5 hr 30 min behind", "30 minutes ahead", with "Tomorrow, " or "Yesterday, " in front when the day
+ * there is another; NULL when the time is the same */
 static char *
 hours_text (GTimeZone *tz, GDateTime *local)
 {
@@ -172,8 +169,8 @@ card_free (gpointer data)
   g_free (card);
 }
 
-/* L/world_clock_item.xml: on the alarm cards' background, the name over the difference at the start, the time (48
- * sp light, AM/PM at 0.3) or an analog clock without its second hand at the end */
+/* a city's card: the name over the difference at the start, the time (its AM/PM smaller) or an analog clock
+ * without its second hand at the end */
 static Card *
 make_card (ClockPage *self, const char *name, GTimeZone *tz)
 {
@@ -186,7 +183,7 @@ make_card (ClockPage *self, const char *name, GTimeZone *tz)
   card->widget = row;
   gtk_widget_add_css_class (row, "world-card");
 
-  /* world_clock_city_container: weight 1; the name one line, the difference (3 dp under it) up to two */
+  /* the name on one line, the difference under it on up to two */
   gtk_widget_set_hexpand (column, TRUE);
   gtk_widget_set_valign (column, GTK_ALIGN_CENTER);
   gtk_label_set_xalign (GTK_LABEL (label), 0);
@@ -210,7 +207,7 @@ make_card (ClockPage *self, const char *name, GTimeZone *tz)
     {
       GtkWidget *analog = analog_clock_new (CITY_ANALOG);
 
-      /* 80 dp square less its 24 dp paddingStart, 6 dp over the card's bottom padding */
+      /* its square less the padding at its start, a little over the card's bottom padding */
       analog_clock_set_time_zone (CLOCK_ANALOG_CLOCK (analog), tz);
       gtk_widget_set_size_request (analog, CITY_ANALOG, 80);
       gtk_widget_set_margin_start (analog, 24);
@@ -230,7 +227,7 @@ make_card (ClockPage *self, const char *name, GTimeZone *tz)
   return card;
 }
 
-/* SelectedCitiesAdapter: the main clock, Home if it shows, then the chosen cities by time */
+/* the main clock, Home if it shows, then the chosen cities by time */
 static void
 show_cards (ClockPage *self)
 {
@@ -387,8 +384,8 @@ clock_page_class_init (ClockPageClass *klass)
                                             NULL, NULL, NULL, G_TYPE_NONE, 0);
 }
 
-/* StartScreenSaverListener and CityListOnLongClickListener: a long press anywhere on the tab, the main clock or the
- * cities, starts the screen saver. Moving the finger first is a scroll, which takes the touch from it */
+/* a long press anywhere on the tab, the main clock or the cities, starts the screen saver. Moving the finger first is a
+ * scroll, which takes the touch from it */
 static void
 on_long_press (GtkGestureLongPress *gesture, double x, double y, ClockPage *self)
 {
@@ -402,43 +399,43 @@ clock_page_init (ClockPage *self)
   GtkGesture *long_press = gtk_gesture_long_press_new ();
 
   self->cards = g_ptr_array_new_with_free_func (card_free);
-  /* ViewConfiguration's long-press timeout, 400 ms, against GTK's 500 */
+  /* a long press of 400 ms, against GTK's 500 */
   gtk_gesture_long_press_set_delay_factor (GTK_GESTURE_LONG_PRESS (long_press), 0.8);
   gtk_event_controller_set_propagation_phase (GTK_EVENT_CONTROLLER (long_press), GTK_PHASE_CAPTURE);
   g_signal_connect (long_press, "pressed", G_CALLBACK (on_long_press), self);
   gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (long_press));
 
-  /* the list (L/clock_fragment.xml): the main clock, then the cards, 88 dp of room under the last */
+  /* the list: the main clock, then the cards, room under the last */
   self->list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_margin_bottom (self->list, FAB_HEIGHT);
   self->scroller = spongy_scroll_view_new ();
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->scroller), self->list);
   gtk_widget_set_parent (self->scroller, GTK_WIDGET (self));
 
-  /* main_clock_frame: 24 dp from the sides, 14 dp under it */
+  /* the main clock's frame */
   self->frame = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_margin_start (self->frame, 24);
   gtk_widget_set_margin_end (self->frame, 24);
   gtk_widget_set_margin_bottom (self->frame, 14);
   gtk_box_append (GTK_BOX (self->list), self->frame);
 
-  /* the time: 24 dp paddingTop, includeFontPadding off, left-aligned for the digital style */
+  /* the time: no font padding, left-aligned for the digital style */
   self->time = gtk_label_new (NULL);
   gtk_label_set_xalign (GTK_LABEL (self->time), 0);
   gtk_widget_set_margin_top (self->time, 24);
-  /* GTK rounds the line up to 106 dp (90 px × 2400/2048 = 105.5); Android's is 316 px, 105.3 dp, so the date
-   * would sit 2 device pixels low */
+  /* GTK rounds the line up to 106 px (90 px × 2400/2048 = 105.5), where the line is meant to be 316 device pixels
+   * (105.3 px), so the date would sit 2 device pixels low */
   gtk_widget_set_margin_bottom (self->time, -1);
   gtk_widget_add_css_class (self->time, "main-clock");
   gtk_box_append (GTK_BOX (self->frame), self->time);
 
-  /* or the analog clock, centred, 16 dp down (circle_margin_top) */
+  /* or the analog clock, centred */
   self->analog = analog_clock_new (ANALOG_SIZE);
   gtk_widget_set_halign (self->analog, GTK_ALIGN_CENTER);
   gtk_widget_set_margin_top (self->analog, 16);
   gtk_box_append (GTK_BOX (self->frame), self->analog);
 
-  /* the date, and the next alarm with the alarm glyph 6 dp either side of it */
+  /* the date, then the alarm glyph and the next alarm */
   self->line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   self->date = gtk_label_new (NULL);
   gtk_widget_add_css_class (self->date, "body");

@@ -1,4 +1,4 @@
-/* The contact picker (ct-picker.h, spec §5.1.6): ContactSelectionActivity with GroupMemberPickerFragment's rules.
+/* The contact picker (ct-picker.h).
  *
  * The toolbar is the back arrow, "Select", search, and the ⋮ with "Select contacts" when several may be picked;
  * the search box and the selection bar (✕, the count, ADD) come over it as on the list. A tap on a row picks that
@@ -75,7 +75,7 @@ refresh (Picker *picker, gboolean to_top)
   ct_list_set_search (CT_LIST (picker->list), query && *query);
   ct_list_set_rows (CT_LIST (picker->list), rows, to_top);
   gtk_widget_set_visible (picker->empty, rows->rows->len == 0);
-  /* "Select contacts" only when there is someone to select (GroupMemberPickerFragment.onPrepareOptionsMenu) */
+  /* "Select contacts" only when there is someone to select */
   gtk_widget_set_visible (picker->overflow, picker->multiple && entries->len > 0 && !picker->searching
                                             && !picker->selecting);
   gtk_widget_set_visible (picker->search_action, !picker->searching && !picker->selecting);
@@ -301,7 +301,7 @@ make_toolbar (Picker *picker, const char *title)
   gtk_widget_set_visible (picker->search_bar, FALSE);
   gtk_overlay_add_overlay (GTK_OVERLAY (frame), picker->search_bar);
 
-  /* the selection bar: ✕, the count ("Select contacts" at 0), ADD (selection_bar.xml's add_contacts) */
+  /* the selection bar: ✕, the count ("Select contacts" at 0), ADD */
   picker->selection_bar = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_widget_add_css_class (picker->selection_bar, "ct-selection-bar");
   back = ct_icon_button ("ct-close-symbolic", _("close"), CT_SELECTION_CLOSE_DP, CT_TOOLBAR_H_DP,
@@ -402,7 +402,7 @@ ct_picker_new (GtkWidget *window, const char *title, GPtrArray *exclude, gboolea
   gtk_widget_set_vexpand (picker->list, TRUE);
   g_signal_connect (picker->list, "row-activated", G_CALLBACK (on_row_activated), picker);
   gtk_overlay_set_child (GTK_OVERLAY (overlay), picker->list);
-  /* nobody left to offer: the list's own "No contacts" (contact_list_empty) */
+  /* nobody left to offer: the list's own "No contacts" */
   picker->empty = ct_label (_("No contacts"), "ct-picker-empty", 18);
   gtk_widget_set_halign (picker->empty, GTK_ALIGN_CENTER);
   gtk_widget_set_valign (picker->empty, GTK_ALIGN_START);

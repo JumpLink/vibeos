@@ -22,7 +22,7 @@ ct_icon_button (const char *icon_name, const char *name, double width, double he
   gtk_image_set_pixel_size (GTK_IMAGE (image), 24);
   gtk_widget_set_size_request (button, (int) width, (int) height);
   gtk_widget_add_css_class (button, "ct-icon-button");
-  /* unbounded: a circle of half the button's diagonal around its centre (RippleDrawable's MASK_UNKNOWN radius) */
+  /* unbounded: a circle of half the button's diagonal around its centre */
   neo_pressable_set_ripple (NEO_PRESSABLE (button), NEO_RIPPLE_CIRCLE, hypot (width, height) / 2);
   neo_pressable_set_ripple_color (NEO_PRESSABLE (button), &color);
   gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);
@@ -131,8 +131,8 @@ ct_text_button (const char *label, const char *css_class)
   return button;
 }
 
-/* abc_btn_check_to_on_mtrl_015 / _000 at rest: in a 32 dp box, an 18 dp square from (7, 7), 2 dp outline and
- * corners; checked, the square is filled and the mark (a path from the vector) cut out of it */
+/* the checkbox at rest, without its animation: unchecked, a rounded square's outline; checked, the square
+ * filled and the mark drawn over it */
 void
 ct_snapshot_checkbox (GtkSnapshot *snapshot, double x, double y, gboolean checked, guint32 on, guint32 off)
 {
@@ -153,13 +153,13 @@ ct_snapshot_checkbox (GtkSnapshot *snapshot, double x, double y, gboolean checke
   gtk_snapshot_append_color (snapshot, &color, &box);
   gtk_snapshot_pop (snapshot);
   {
-    /* the check: M 9.6 14.2 L 12.4 17 L 18.4 11 in the 24 dp vector's units, drawn white (the knocked-out mark
-     * shows the list's background, which is near enough to the window colour) */
+    /* the check mark, stroked in the window's colour rather than cut out: a cut-out would show the list's
+     * background, which is near enough to it */
     g_autoptr(GskPathBuilder) builder = gsk_path_builder_new ();
     g_autoptr(GskPath) path = NULL;
     g_autoptr(GskStroke) stroke = gsk_stroke_new (2);
     GdkRGBA mark = ct_rgba (CT_C_WINDOW_BG);
-    double ox = x + 4, oy = y + 4;     /* the 24 dp vector centred in the 32 dp box */
+    double ox = x + 4, oy = y + 4;     /* the vector centred in the box */
 
     gsk_path_builder_move_to (builder, (float) (ox + 6.6), (float) (oy + 12.2));
     gsk_path_builder_line_to (builder, (float) (ox + 10.0), (float) (oy + 15.6));
@@ -305,7 +305,7 @@ ct_shown_entries (CtStore *store, GSettings *settings)
 char *
 ct_contacts_count (guint count, const char *account)
 {
-  /* contacts_count / contacts_count_with_account (§5.1.2) */
+  /* "3 contacts", or with the account's name */
   if (account)
     return g_strdup_printf (g_dngettext (NULL, "%u contact · %s", "%u contacts · %s", count), count, account);
   return g_strdup_printf (g_dngettext (NULL, "%u contact", "%u contacts", count), count);

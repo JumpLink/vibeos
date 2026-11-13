@@ -7,9 +7,9 @@
 #include <pulse/glib-mainloop.h>
 #include <pulse/pulseaudio.h>
 
-#define FALLBACK_SOUND "neo-clock/sounds/alarm_expire.ogg"     /* DeskClock's R.raw.alarm_expire */
+#define FALLBACK_SOUND "neo-clock/sounds/alarm_expire.ogg"     /* the Clock's own "Beep-Beep-Beep Alarm" */
 #define CRESCENDO_STEP_MS 50
-#define VIBRATE_PERIOD_MS 1000                                  /* AlarmKlaxon.VIBRATE_PATTERN: 500 off, 500 on */
+#define VIBRATE_PERIOD_MS 1000                                  /* 500 ms off, 500 on */
 
 /* playbin's GstPlayFlags: audio, with its own volume */
 #define PLAY_FLAG_AUDIO 0x02
@@ -19,9 +19,9 @@
 static const struct {
   const char *ringtone_key, *crescendo_key, *default_sound;
 } kinds[] = {
-  /* LineageOS's ro.config.alarm_alert */
+  /* Hassium, LineageOS's default alarm sound */
   [ALARM_KLAXON_ALARM] = { "default-alarm-ringtone", "alarm-crescendo-duration", "sounds/android/alarms/Hassium.ogg" },
-  /* DeskClock's R.raw.timer_expire, "Timer Expired" */
+  /* the Clock's own "Timer Expired" */
   [ALARM_KLAXON_TIMER] = { "timer-ringtone", "timer-crescendo-duration", "neo-clock/sounds/timer_expire.ogg" },
   /* a preview names its sound; without one it is the default alarm sound */
   [ALARM_KLAXON_PREVIEW] = { "default-alarm-ringtone", NULL, "sounds/android/alarms/Hassium.ogg" },
@@ -42,7 +42,7 @@ struct _AlarmKlaxon {
 
   guint vibrate_id;
 
-  /* the speaker's volume: Android's alarm stream, kept while ringing */
+  /* the speaker's volume: the alarm volume, kept while ringing */
   pa_glib_mainloop *pa_loop;
   pa_context *pa;
   gboolean ringing;
@@ -156,7 +156,7 @@ set_player_volume (AlarmKlaxon *self, double volume)
   g_object_set (self->player, "volume", volume, NULL);
 }
 
-/* AsyncRingtonePlayer.computeVolume: a straight rise in decibels, from -40 dB to full */
+/* a straight rise in decibels, from -40 dB to full */
 static gboolean
 crescendo_step (gpointer data)
 {
@@ -175,7 +175,7 @@ crescendo_step (gpointer data)
   return G_SOURCE_CONTINUE;
 }
 
-/* near the end of the sound: the same again, without a gap (Ringtone.setLooping) */
+/* near the end of the sound: the same again, without a gap */
 static void
 on_about_to_finish (GstElement *player, gpointer data)
 {
@@ -263,7 +263,7 @@ play (AlarmKlaxon *self, const char *uri)
 static void
 vibrate_once (AlarmKlaxon *self)
 {
-  /* feedbackd's haptic pattern, (strength, ms) pairs: one period of Android's {500, 500} */
+  /* feedbackd's haptic pattern, (strength, ms) pairs: one period, 500 ms off and 500 on */
   g_autoptr(GDBusConnection) bus = g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, NULL);
   GVariantBuilder pattern;
 

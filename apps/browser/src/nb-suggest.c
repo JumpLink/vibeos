@@ -1,4 +1,4 @@
-/* nb-suggest: see nb-suggest.h. The URLs and the parsing are SuggestionProvider.kt's. */
+/* nb-suggest: see nb-suggest.h. The URLs and the parsing are Jelly's. */
 #include "nb-suggest.h"
 
 #include <json-glib/json-glib.h>
@@ -27,7 +27,7 @@ suggestion_new (const char *title, const char *url)
   return s;
 }
 
-/* Locale.getDefault ().language, "en" without one */
+/* the user's language code, "en" without one */
 static char *
 language (void)
 {
@@ -173,7 +173,7 @@ nb_suggest_fetch (NbStore *store, const char *provider, const char *query, GCanc
     return;
   }
   if (g_str_equal (provider, "HISTORY")) {
-    /* HistoryDao.search: title or URL LIKE %q%, newest first, LIMIT 5 */
+    /* title or URL LIKE %q%, newest first, LIMIT 5 */
     g_autoptr (GPtrArray) out = g_ptr_array_new_with_free_func ((GDestroyNotify) nb_suggestion_free);
     for (guint i = 0; i < store->history->len && out->len < NB_SUGGEST_LIMIT; i++) {
       NbEntry *e = store->history->pdata[i];

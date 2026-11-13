@@ -4,7 +4,7 @@
 #include <math.h>
 
 #define RADIUS 28               /* message_bubble_*_no_arrow */
-#define SNAP 20                 /* message_bubble_width_snap */
+#define SNAP 20                 /* a bubble's width is a multiple of this */
 #define MIN_HEIGHT 48
 
 struct _MsgBubble {
@@ -43,7 +43,7 @@ msg_bubble_measure (GtkWidget *widget, GtkOrientation orientation, int for_size,
       int child_min, child_nat;
 
       gtk_widget_measure (self->child, orientation, for_size, &child_min, &child_nat, NULL, NULL);
-      /* MessageBubbleBackground.onMeasure: the width rounded up to the snap, within the most it may take */
+      /* the width rounded up to the snap, within the most it may take */
       child_nat = (int) ceil (child_nat / (double) SNAP) * SNAP;
       if (self->max_width > 0)
         child_nat = MIN (child_nat, self->max_width);

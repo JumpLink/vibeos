@@ -77,7 +77,7 @@ fm_name_check_message (FmNameCheck check)
     case FM_NAME_EMPTY:
       return _("File name cannot be empty.");
     case FM_NAME_BAD_CHARACTER:
-      /* only '/' is forbidden on Linux; File Manager+'s list of characters is Android's FAT rule */
+      /* only '/' is forbidden on Linux; File Manager+'s longer list of characters is the FAT file system's rule */
       return _("A filename cannot contain the character /");
     case FM_NAME_OK:
     default:

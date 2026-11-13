@@ -1,6 +1,6 @@
-/* Pull to refresh (owner 11-10: "when on top of page and pulling down - page reload"). Jelly has none; this is
- * androidx SwipeRefreshLayout, the one Android's apps share: its circle, arrow and numbers (dp), and Chrome's rule for
- * a web page, that the pull starts only at the page's top and only from a touch the page leaves to scrolling.
+/* Pull to refresh: pulling a page down from its top reloads it. Jelly has none; the circle, its arrow and their
+ * motion follow androidx's SwipeRefreshLayout, and the rule for a web page is Chrome's: the pull starts only at the
+ * page's top and only from a touch the page leaves to scrolling.
  *
  * WebKit runs the page's touches in its web process, so a script there watches them, in a world of its own (the page
  * neither sees it nor can post to it). It arms a pull when one finger lands with the page scrolled to its top,
@@ -16,23 +16,23 @@
 
 #define WORLD "nbpull"
 
-/* SwipeRefreshLayout and CircularProgressDrawable (DEFAULT style) */
-#define CIRCLE_D        40.0    /* CIRCLE_DIAMETER */
-#define SPINNER_END     64.0    /* DEFAULT_CIRCLE_TARGET: the drag that triggers, and the slingshot */
+/* the circle and its ring, px */
+#define CIRCLE_D        40.0
+#define SPINNER_END     64.0    /* the drag that triggers, and the slingshot */
 #define DRAG_RATE       0.5     /* the circle moves half the finger's travel */
-#define TOUCH_SLOP      8.0     /* ViewConfiguration's touch slop, dp */
+#define TOUCH_SLOP      8.0     /* px the finger moves before a pull starts */
 #define RING_RADIUS     7.5
 #define RING_STROKE     2.5
 #define ARROW_W         10.0
 #define ARROW_H         5.0
-#define MAX_ARC         0.8     /* MAX_PROGRESS_ARC */
+#define MAX_ARC         0.8     /* the longest arc, of a turn */
 #define MIN_ARC         0.01
 #define ALPHA_START     (76 / 255.0)
-#define TO_START_MS     200     /* ANIMATE_TO_START_DURATION */
-#define TO_TRIGGER_MS   200     /* ANIMATE_TO_TRIGGER_DURATION */
-#define SCALE_DOWN_MS   150     /* SCALE_DOWN_DURATION */
-#define ALPHA_MS        300     /* ALPHA_ANIMATION_DURATION */
-#define SPIN_MS         1332.0  /* CircularProgressDrawable's ANIMATION_DURATION */
+#define TO_START_MS     200     /* the circle going back up */
+#define TO_TRIGGER_MS   200     /* the circle going to where it rests while the page loads */
+#define SCALE_DOWN_MS   150     /* the circle scaling away */
+#define ALPHA_MS        300     /* the ring's fade */
+#define SPIN_MS         1332.0  /* one cycle of the spinning ring */
 
 typedef enum { IDLE, PULL, TO_START, TO_TRIGGER, SPIN, SCALE_DOWN } State;
 
@@ -40,7 +40,7 @@ typedef struct _NbRefresh {
   GtkWidget parent;
   NbTab    *tab;
   State     state;
-  /* the circle: its top (dp from the view's top, -CIRCLE_D = hidden above it) and scale */
+  /* the circle: its top (px from the view's top, -CIRCLE_D = hidden above it) and scale */
   double    top, scale, pull;
   /* the ring: its trims and rotations in turns, the arrow's scale, the alpha */
   double    start_trim, end_trim, rotation, group_rotation, arrow, alpha, alpha_from, alpha_to;
@@ -61,7 +61,7 @@ typedef struct { GtkWidgetClass parent_class; } NbRefreshClass;
 G_DEFINE_TYPE (NbRefresh, nb_refresh, GTK_TYPE_WIDGET)
 
 static double
-decelerate (double t)                       /* DecelerateInterpolator(2): SwipeRefreshLayout's */
+decelerate (double t)                       /* a decelerating curve, factor 2 */
 {
   return 1 - pow (1 - CLAMP (t, 0, 1), 4);
 }
@@ -81,7 +81,7 @@ reset (NbRefresh *self)
   gtk_widget_set_visible (GTK_WIDGET (self), FALSE);
 }
 
-/* SwipeRefreshLayout.moveSpinner: `pull` is the overscroll, the finger's travel past the slop times DRAG_RATE */
+/* the circle follows the pull: `pull` is the overscroll, the finger's travel past the slop times DRAG_RATE */
 static void
 move_spinner (NbRefresh *self, double pull)
 {
@@ -122,14 +122,14 @@ ms_since (gint64 t0)
   return (g_get_monotonic_time () - t0) / 1000.0;
 }
 
-/* CircularProgressDrawable's indeterminate ring: the arc grows to 0.8 of a turn and shrinks back over each 1332 ms
- * cycle, while the whole drawable turns 216 degrees a cycle */
+/* the indeterminate ring: the arc grows to 0.8 of a turn and shrinks back over each 1332 ms cycle, while the
+ * whole ring turns 216 degrees a cycle */
 static void
 spin (NbRefresh *self)
 {
   double t = ms_since (self->spin_t0) / SPIN_MS;
   while (t >= 1) {
-    /* Ring.storeOriginals at the repeat: the next cycle starts where this one's end left off */
+    /* at the repeat: the next cycle starts where this one's end left off */
     self->spin_start += MAX_ARC - MIN_ARC;
     self->spin_rotation += 1 - MAX_ARC;
     self->spin_count = (self->spin_count + 1) % 5;
@@ -177,7 +177,7 @@ on_tick (GtkWidget *widget, GdkFrameClock *clock, gpointer data)
       reset (self);
     break;
   case TO_TRIGGER:
-    /* animateOffsetToCorrectPosition: to SPINNER_END - CIRCLE_D, where the circle rests while the page loads */
+    /* to SPINNER_END - CIRCLE_D, where the circle rests while the page loads */
     self->top = self->from + (SPINNER_END - CIRCLE_D - self->from) * decelerate (ms / TO_TRIGGER_MS);
     if (ms >= TO_TRIGGER_MS)
       start_spin (self);
@@ -221,7 +221,7 @@ animate (NbRefresh *self, State state)
     self->tick = gtk_widget_add_tick_callback (GTK_WIDGET (self), on_tick, NULL, NULL);
 }
 
-/* the reload is over: the circle scales away (SwipeRefreshLayout.setRefreshing(false)) */
+/* the reload is over: the circle scales away */
 static void
 finish (NbRefresh *self)
 {
@@ -244,7 +244,7 @@ nb_refresh_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (cx, cy));
   gtk_snapshot_scale (snapshot, self->scale, self->scale);
 
-  /* CircleImageView: the disc at SHADOW_ELEVATION 4 dp */
+  /* the disc, raised over the page by its shadow */
   GskRoundedRect disc;
   gsk_rounded_rect_init_from_rect (&disc, &GRAPHENE_RECT_INIT (-r, -r, 2 * r, 2 * r), r);
   gtk_snapshot_append_outset_shadow (snapshot, &disc, &(GdkRGBA) { 0, 0, 0, 0.28 }, 0, 1.75, 0, 3.5);
@@ -253,7 +253,7 @@ nb_refresh_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gtk_snapshot_append_color (snapshot, &bg, &disc.bounds);
   gtk_snapshot_pop (snapshot);
 
-  /* the ring: Android's angles start at 3 o'clock and grow clockwise, as GTK's (y down) do */
+  /* the ring: angles start at 3 o'clock and grow clockwise (y down) */
   double sweep = (self->end_trim - self->start_trim) * 360;
   if (sweep > 0.1) {
     GdkRGBA color = neo_color_alpha (NEO_PRIMARY, self->alpha);
@@ -269,7 +269,7 @@ nb_refresh_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
     gsk_stroke_set_line_cap (stroke, GSK_LINE_CAP_SQUARE);
     gtk_snapshot_append_stroke (snapshot, ring, stroke, &color);
 
-    /* the arrow (Ring.drawTriangle): a triangle across the ring at its end, pointing on clockwise */
+    /* the arrow: a triangle across the ring at its end, pointing on clockwise */
     if (self->arrow > 0) {
       double aw = ARROW_W * self->arrow, ah = ARROW_H * self->arrow;
       gtk_snapshot_save (snapshot);
@@ -409,7 +409,7 @@ on_message (WebKitUserContentManager *ucm, JSCValue *value, gpointer data)
     if (!self->tick)
       self->tick = gtk_widget_add_tick_callback (GTK_WIDGET (self), on_tick, NULL, NULL);
   } else if (self->state == PULL) {
-    /* finishSpinner: past the mark it refreshes, short of it the circle goes back */
+    /* the finger lifts: past the mark it refreshes, short of it the circle goes back */
     gboolean go = g_strcmp0 (kind, "end") == 0 && self->pull > SPINNER_END;
     if (go) {
       self->saw_loading = FALSE;

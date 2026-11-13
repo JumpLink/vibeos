@@ -1,4 +1,4 @@
-/* TimerPage: the Timer tab (DeskClock's TimerFragment, L/timer_fragment.xml; spec/clock.md §7.1–7.3).
+/* TimerPage: the Timer tab.
  *
  * Either the keypad for a new timer (timer-setup.h) or the timers as cards, the newest first (timer-card.h). It
  * opens on the keypad when there are no timers and on the list when there are; "+" goes to the keypad, Start and

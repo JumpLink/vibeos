@@ -1,8 +1,7 @@
-// The notification shade, Android 16's legacy NotificationPanelViewController on a phone (spec §2). Pulled from the
-// status bar it tracks the finger 1:1 over H = 2190 px; on release it flings open with FlingAnimationUtils and a
-// 16 dp overshoot that springs back, or flings closed. Behind it the screen blurs and zooms out (depth controller);
-// in front, the QQS and the notifications scrim, whose top (stackY) is also the QS clip edge. Dragged down once open,
-// the QS expands; dragged up, the shade closes.
+// The notification shade. Pulled from the status bar it tracks the finger 1:1 over H = 2190 px; on release it flings
+// open (motion.js's fling) with an overshoot that springs back, or flings closed. Behind it the screen blurs and zooms
+// out (depth controller); in front, the QQS and the notifications scrim, whose top (stackY) is also the QS clip edge.
+// Dragged down once open, the QS expands; dragged up, the shade closes.
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
@@ -20,21 +19,21 @@ import {QQS_HEIGHT, QSPanel} from './qs.js';
 import {wholeFrames} from './redraws.js';
 import {px, SCALE, SCREEN_H} from './units.js';
 
-// --- spec §2, screen px
-const H = 2190;                         // the height the finger tracks over (measured)
+// --- the shade's geometry and motion, screen px
+const H = 2190;                         // the height the finger tracks over
 const QS_TRAVEL = 1680;                 // the stack's way from the QQS (644) to below the screen, q 0 -> 1
-const OVERSHOOT = 48;                   // 16 dp, at 4500 px/s and above; 20 % of it at rest
+const OVERSHOOT = 48;                   // at 4500 px/s and above; 20 % of it at rest
 const OVERSHOOT_FULL_VELOCITY = 4500;
 const SPRING_BACK_MS = 400;
 const OPEN_NO_VELOCITY_MS = 350;
 const QS_OPPOSITE_MS = 350;
-const TOUCH_SLOP = 24;                  // 8 dp
+const TOUCH_SLOP = 24;
 const CUTOFF = 0.5;
 const STACK_START_FRACTION = 0.5;
-const SCRIM_TOP_PADDING = 48;           // the stack's first row sits 16 dp under the scrim top
-const SCRIM_RADIUS = 96;                // 32 dp
+const SCRIM_TOP_PADDING = 48;           // between the scrim top and the stack's first row
+const SCRIM_RADIUS = 96;                // the scrim's top corners
 const BLUR_MIN = 1;
-const BLUR_MAX = 102;                   // 34 dp, SurfaceFlinger units
+const BLUR_MAX = 102;                   // the blur radius with the shade open
 const BLUR_INTERACTION = 0.8;           // the rest is the spring
 const BLUR_SPRING_STIFFNESS = 200;
 const BLUR_VELOCITY_SCALE = 100;
@@ -43,7 +42,7 @@ const ZOOM_LAUNCHER = 0.05;
 const ZOOM_APP = 0.025;
 const MIRROR_MS = 150;                  // the shade fading away around the brightness slider
 
-// ShadeInterpolation.kt: 0 below f 0.417, 0.164 at 0.5, 0.837 at 0.7
+// the content's alpha over the expansion f: 0 below f 0.417, 0.164 at 0.5, 0.837 at 0.7
 export function contentAlpha(f) {
     return ease(clamp((f - 0.3) / 0.7));
 }
@@ -95,7 +94,7 @@ export const Shade = GObject.registerClass({
         this._qs = new QSPanel(state, this);
         this.add_child(this._qs);
 
-        // the notifications scrim: from stackY down, 32 dp top corners, accent1_800 α 0.5 · f
+        // the notifications scrim: from stackY down, rounded at the top, half opaque, faded in with f
         const r = px(SCRIM_RADIUS).toFixed(2);
         this._scrim = new St.Widget({
             width: this.width,
@@ -117,7 +116,7 @@ export const Shade = GObject.registerClass({
         this._tracking = false;
         this._velocity = new VelocityTracker();
 
-        // the depth controller's spring and its bookkeeping (NotificationShadeDepthController.kt:555-680)
+        // the blur's spring (the part of the blur BLUR_INTERACTION leaves it) and its bookkeeping
         this._blurSpring = new Spring({stiffness: BLUR_SPRING_STIFFNESS, dampingRatio: 1, threshold: 0.5});
         this._isBlurred = false;
         this._isClosed = true;
@@ -192,7 +191,7 @@ export const Shade = GObject.registerClass({
     }
 
     // A pull from a heads-up notification: the shade starts as far open as the notification reaches down
-    // (HeadsUpTouchHelper: startExpand(startHeight)), and the drag goes on from there
+    // (@startHeight), and the drag goes on from there
     beginPull(gesture, startHeight) {
         this._beginDrag(gesture, false, startHeight);
     }
@@ -364,7 +363,7 @@ export const Shade = GObject.registerClass({
         });
     }
 
-    // QuickSettingsControllerImpl.flingQs: FAU 0.4 s; against the velocity 350 ms
+    // QS open or shut on the release: a fling capped at 0.4 s; against the velocity, 350 ms
     _flingQs(expand, v) {
         this._stopAnimation();
         const cur = this._q * QS_TRAVEL, target = expand ? QS_TRAVEL : 0;
@@ -514,7 +513,7 @@ export const Shade = GObject.registerClass({
         this._stackY = stackY;
         const content = contentAlpha(f);
 
-        // the tiles squish with the stack's expansion fraction without the shelf (StackScrollAlgorithm.java:606)
+        // the tiles squish with the stack's expansion fraction, not counting the shelf
         const end = SCREEN_H - QQS_HEIGHT;
         const squish = clamp((lerp(STACK_START_FRACTION, 1, f) * end - SCRIM_TOP_PADDING) /
             (end - SCRIM_TOP_PADDING));
@@ -531,7 +530,7 @@ export const Shade = GObject.registerClass({
         this.emit('expansion-changed');
     }
 
-    // NotificationShadeDepthController.updateShadeAnimationBlur: the spring part of the blur
+    // the spring part of the blur
     _updateDepth(f) {
         const now = GLib.get_monotonic_time() / 1e6;
         const dt = this._prevDepthTime < 0 ? 1 : clamp(now - this._prevDepthTime, 0.00001, 1);

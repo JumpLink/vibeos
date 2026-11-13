@@ -4,13 +4,13 @@
 #include <math.h>
 #include <neo.h>
 
-#define SLOP 8                  /* ViewConfiguration's paging touch slop, dp */
+#define SLOP 8                  /* the movement before a touch becomes a swipe, px */
 #define CANCEL_RATIO 1.2        /* a drag with |dy| > 1.2 |dx| is the list's */
 #define COMMIT 0.4              /* of the width */
 #define FLING_DISTANCE 0.05     /* of the width, before a fling counts */
-#define FLING_MIN 50            /* dp/s: ViewConfiguration.MINIMUM_FLING_VELOCITY */
-#define FLING_MAX 4000          /* px/s, max_swipe_velocity_px_per_second, at 3 px per dp */
-#define DURATION_MS 300         /* swipe_duration_ms */
+#define FLING_MIN 50            /* px/s: the slowest fling that counts */
+#define FLING_MAX 4000          /* the fastest a fling is taken to be, in device px/s */
+#define DURATION_MS 300         /* the row sliding away or back, at most */
 #define ICON_PADDING 16
 #define VELOCITY_WINDOW_US (100 * 1000)
 
@@ -223,7 +223,7 @@ msg_swipe_new (GtkWidget *row, const char *start_icon, const char *end_icon)
   MsgSwipe *self = g_object_new (MSG_TYPE_SWIPE, NULL);
   GtkWidget *start = icon (start_icon), *end = icon (end_icon);
 
-  /* crossSwipeBackground: window_background, 16 dp in, the icon at each end */
+  /* behind the row: an icon at each end, ICON_PADDING in, on the page's colour */
   self->background = gtk_center_box_new ();
   gtk_center_box_set_start_widget (GTK_CENTER_BOX (self->background), start);
   gtk_center_box_set_end_widget (GTK_CENTER_BOX (self->background), end);

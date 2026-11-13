@@ -1,9 +1,8 @@
-// What gesture navigation and recents share: an app drawn as its recents card (TaskView), the launcher's icon under
-// a window flying home (FloatingIconView), DynamicAnimation's spring, Launcher3's curves, and the frame clock the
-// animations run on.
+// What gesture navigation and recents share: an app drawn as its recents card, the launcher's icon under a window
+// flying home, the spring, the launcher's curves, and the frame clock the animations run on.
 //
-// Every length here is in device pixels, the spec's own numbers from the S10e (1080 × 2280, 3 px/dp); the screen's
-// size is the panel's (units.js). Actors are placed in stage units (÷ the monitor scale).
+// Every length here is in the S10e's screen pixels (1080 × 2280); the screen's size is the panel's (units.js).
+// Actors are placed in stage units (÷ the monitor scale).
 import Clutter from 'gi://Clutter';
 import Cogl from 'gi://Cogl';
 import GdkPixbuf from 'gi://GdkPixbuf';
@@ -19,7 +18,7 @@ import {overWindows} from './scanout.js';
 import {SCREEN_H, SCREEN_W} from './units.js';
 
 export {SCREEN_H, SCREEN_W};
-export const NAV_GESTURE_H = 96;               // the bottom strip a swipe starts in, 32 dp
+export const NAV_GESTURE_H = 96;               // the bottom strip a swipe starts in
 // the recents card: 684 × 1444 at [198, 296, 882, 1740] on the 1080 × 2280 reference; on another panel the panel's
 // shape, as wide and as high up for its size
 const TASK_REF_W = 684, TASK_REF_CY = 1018;
@@ -29,12 +28,12 @@ export const TASK_W = TASK[2] - TASK[0];
 // where the screen scales about onto the card: [540, 807.27] on the reference
 export const TASK_PIVOT = [TASK[0] / (1 - TASK_W / SCREEN_W), TASK[1] / (1 - TASK_W / SCREEN_W)];
 export const TASK_FULL_SCALE = SCREEN_W / TASK_W;
-export const TASK_CORNER_R = 84;               // 28 dp
+export const TASK_CORNER_R = 84;               // the card's corners
 export const FRAME_MS = 1000 / 60;
 
 export const HOME_ICON_ALPHA_END = 0.9;        // floating icon alpha p/0.9
 export const HOME_SHAPE_START = 0.9;           // the icon's background becomes its shape over p 0.9 … 1
-export const HOME_ICON_PX = 168;               // the launcher's icon box, 56 dp
+export const HOME_ICON_PX = 168;               // the launcher's icon box
 export const SPLASH_ICON_DP = 160;             // the launcher's icon files are drawn at this size
 
 export const lerp = (a, b, t) => a + (b - a) * t;
@@ -44,7 +43,7 @@ export const lerpRect = (a, b, t) => a.map((v, i) => lerp(v, b[i], t));
 export const scaleRect = (r, s, [px, py]) => [px + (r[0] - px) * s, py + (r[1] - py) * s, px + (r[2] - px) * s,
     py + (r[3] - py) * s];
 
-// Launcher3's interpolators (spec §0)
+// the launcher's easing curves
 export const LINEAR = t => t;
 export const DECELERATE = t => 1 - (1 - t) * (1 - t);
 export const DECELERATE_3 = t => 1 - Math.pow(1 - t, 6);
@@ -75,7 +74,7 @@ export function animate(actor, name, onFrame, onDone) {
     }, onDone);
 }
 
-// ---- DynamicAnimation's spring: exact closed-form steps, and its own end test --------------------------------------
+// ---- the spring: exact closed-form steps, done when within a visible change of rest -------------------------------
 
 export class Spring {
     constructor([k, zeta], x, v, target, minVisible = 1, max = Infinity) {
@@ -127,7 +126,7 @@ export class Spring {
     }
 }
 
-// SpringAnimationBuilder's curve: the spring from 1 to 0 at rest, sampled over its own settle time (threshold
+// A spring as an easing curve: from 1 to 0 at rest, sampled over its own settle time (threshold
 // multiplier 0.65), so it can be stretched over any duration. Returns f(t) for t in [0, 1], 1 → 0.
 export function springCurve([k, zeta], minVisible) {
     const w = Math.sqrt(k), wd = w * Math.sqrt(1 - zeta * zeta), a = zeta * w;
@@ -280,8 +279,8 @@ export class TaskView {
     }
 }
 
-// The plate an icon file sits on: its edge colour, as Launcher3 fills a window's footprint with the adaptive
-// icon's background
+// The plate an icon file sits on: its edge colour, filling a window's footprint as an adaptive icon's background
+// would
 const plates = new Map();
 
 function plateColour(path) {
@@ -311,12 +310,12 @@ function plateColour(path) {
     return colour;
 }
 
-// An app's icon: the launcher's own picture of it (its icon theme, at 160 dp) when it sent one, else the app's
+// An app's icon: the launcher's own picture of it (its icon theme, at SPLASH_ICON_DP) when it sent one, else the app's
 export function appGicon(app, path) {
     return path ? new Gio.FileIcon({file: Gio.File.new_for_path(path)}) : app?.get_icon() ?? null;
 }
 
-// FloatingIconView: the launcher's icon under the flying window, filling its footprint, then becoming the icon
+// The launcher's icon under the flying window, filling its footprint, then becoming the icon
 export class FloatingIcon {
     constructor(app, path, scale, below) {
         this._scale = scale;

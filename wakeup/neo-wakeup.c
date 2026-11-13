@@ -1,4 +1,4 @@
-/* neo-wakeup: wakes the phone at the times apps ask for, as Android's AlarmManager does for its RTC_WAKEUP alarms.
+/* neo-wakeup: wakes the phone from suspend at the times apps ask for.
  *
  * A sleeping phone runs no code, so an app's own timer cannot ring an alarm at 7:00: something has to bring the phone
  * out of suspend first. The kernel does that for a timer on CLOCK_REALTIME_ALARM: as the phone suspends it programs
@@ -12,10 +12,10 @@
  * clock takes an inhibitor of its own while it rings.
  *
  * Wake-ups an app marks "alarm-clock" are alarms the user set. The earliest of them is the NextAlarmClock property,
- * which the status bar's alarm icon and the lock screen show, as SystemUI shows AlarmManager.getNextAlarmClock().
+ * which the status bar's alarm icon and the lock screen show.
  *
  * Nothing is stored. After a reboot, or a restart of this service, apps set their wake-ups again: they watch for the
- * bus name to appear, as Android apps register their alarms again at boot.
+ * bus name to appear.
  *
  * D-Bus, system bus: neo.Wakeup at /neo/Wakeup, interface neo.Wakeup
  *   Set (s name, x time, a{sv} options)

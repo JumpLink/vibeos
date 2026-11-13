@@ -1,4 +1,4 @@
-/* phone-number against PhoneNumberUtils and CallerInfoUtils: formatting by country, matching, the network's words
+/* phone-number: formatting by country, matching, the network's words
  * for a withheld number */
 #include "../src/phone-number.h"
 

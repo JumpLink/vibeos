@@ -1,6 +1,5 @@
-/* StopwatchPage: see stopwatch-page.h. Measured on still:clock-stopwatch: the ring's box 108…972 × 562…1426 px
- * (288 dp between the guidelines, centred over the FAB row), "0" 307…530 × 868…1121, "00" 530…773 × 951…1099; on
- * the reference phone with laps, the ring at the top of the tab and a lap row every 81 px under it. */
+/* StopwatchPage: see stopwatch-page.h. Without laps the ring is centred over the buttons; with laps it sits at the
+ * top of the tab, the laps under it. */
 #include "stopwatch-page.h"
 #include "clock-draw.h"
 #include "clock-tab.h"
@@ -13,16 +12,16 @@
 #include <spongy-gtk.h>
 
 #define GUIDELINE       0.1     /* the ring between vertical guidelines at 10 % and 90 % of the width */
-#define MAX_CIRCLE      320     /* max_stopwatch_circle_size */
-#define STROKE          12      /* stopwatch_circle_size: the ring's width, and twice the dot's radius */
-#define FAB_ROW         120     /* fab_container_height: the tab's bottom padding, the list's, and its fade */
-#define TIME_SIZE       72      /* stopwatch_time_text, at most: it shrinks to fit (AutoSizingTextView) */
-#define TIME_OUTER      30      /* the time's paddingStart and the hundredths' paddingEnd */
-#define TIME_INNER      3       /* the time's paddingEnd and the hundredths' paddingStart */
-#define ROW_HEIGHT      27      /* a lap: 4 dp over and under a 14 sp line of 57 px */
-#define RUNNING_PERIOD  25      /* REDRAW_PERIOD_RUNNING */
-#define PAUSED_PERIOD   500     /* REDRAW_PERIOD_PAUSED */
-#define TRANSITION_MS   300     /* AutoTransition: each of its steps, one after the other */
+#define MAX_CIRCLE      320
+#define STROKE          12      /* the ring's width, and twice the dot's radius */
+#define FAB_ROW         120     /* the buttons' row: the tab's bottom padding, the list's, and its fade */
+#define TIME_SIZE       72      /* at most: it shrinks to fit */
+#define TIME_OUTER      30      /* before the time and after the hundredths */
+#define TIME_INNER      3       /* after the time and before the hundredths */
+#define ROW_HEIGHT      27      /* a lap: its line, with 4 over and under it */
+#define RUNNING_PERIOD  25      /* ms between redraws while it runs */
+#define PAUSED_PERIOD   500     /* … and while it is paused (the blink) */
+#define TRANSITION_MS   300     /* each step of the laps' transition, one after the other */
 
 #define TEN_MINUTES   (10 * 60 * 1000)
 #define HOUR          (60 * 60 * 1000)
@@ -40,16 +39,16 @@ struct _StopwatchPage
   GtkWidget *scroller, *laps;                   /* the laps, a row each, the one running first */
   graphene_rect_t ring;                         /* the time's box (stopwatch_time_wrapper) */
 
-  guint update;                 /* the next update of the time (TimeUpdateRunnable) */
+  guint update;                 /* the next update of the time */
   guint refit;                  /* the time fitted again to a new ring size */
   double fitted;                /* the ring size it was fitted to */
-  gint64 shown_time;            /* the time last written (mLastTime) */
-  int lap_length, total_length; /* how long the laps' columns were written (mLastFormatted...Length) */
+  gint64 shown_time;            /* the time last written */
+  int lap_length, total_length; /* how long the laps' columns were written */
   guint rows;
-  gboolean pressed;             /* the ring held down: the time in colorAccent */
+  gboolean pressed;             /* the ring held down: the time accented */
   guint inhibit;                /* the screen kept on while it runs */
 
-  /* the laps coming and going (TransitionManager.beginDelayedTransition): the ring moving between the middle and
+  /* the laps coming and going: the ring moving between the middle and
    * the top, the list fading */
   gboolean laps_shown;
   NeoAnim *transition;
@@ -71,7 +70,7 @@ stopwatch (StopwatchPage *self)
 
 /* --- the time */
 
-/* Utils.getTimeString: "1:02:03", "2:03" or "3" */
+/* "1:02:03", "2:03" or "3" */
 static char *
 time_string (gint64 time)
 {
@@ -84,7 +83,7 @@ time_string (gint64 time)
   return g_strdup_printf ("%d", seconds);
 }
 
-/* the time shrinks to fit beside the hundredths in the ring ("1:00:00" does not, at 72 sp) */
+/* the time shrinks to fit beside the hundredths in the ring ("1:00:00" does not, at TIME_SIZE) */
 static void
 fit_main_text (StopwatchPage *self)
 {
@@ -104,7 +103,7 @@ on_refit (gpointer data)
   return G_SOURCE_REMOVE;
 }
 
-/* StopwatchTextController.setTimeString: the hundredths every time they change, the rest every second */
+/* the hundredths every time they change, the rest every second */
 static void
 show_time (StopwatchPage *self, gint64 total)
 {
@@ -124,9 +123,9 @@ show_time (StopwatchPage *self, gint64 total)
   self->shown_time = total;
 }
 
-/* --- the laps (LapsAdapter) */
+/* --- the laps */
 
-/* LapsAdapter.formatTime: hours and minutes as wide as `max` needs, then seconds and hundredths */
+/* hours and minutes as wide as `max` needs, then seconds and hundredths */
 static char *
 format_time (gint64 max, gint64 time, const char *separator)
 {
@@ -177,14 +176,14 @@ lap_label (const char *css_class, int margin_end)
 
   gtk_widget_add_css_class (label, css_class);
   neo_label_set_font_padding (label, 14);
-  /* the row's 4 dp paddingTop over the font's own: the baseline 19 dp down the row, where Android draws it */
+  /* the row's padding of 4 on top of the font's own */
   gtk_widget_set_margin_top (label, gtk_widget_get_margin_top (label) + 4);
   gtk_widget_set_valign (label, GTK_ALIGN_START);
   gtk_widget_set_margin_end (label, margin_end);
   return label;
 }
 
-/* lap_view.xml: the number, the lap's own time, the total at its end, centred as a group */
+/* a lap: the number, the lap's own time, the total at its end, centred as a group */
 static GtkWidget *
 lap_row_new (void)
 {
@@ -212,8 +211,8 @@ set_row (GtkWidget *row, const char *number, const char *lap_time, const char *t
 
 static void refresh_rows (StopwatchPage *self);
 
-/* LapsAdapter.updateCurrentLap: the top row follows the stopwatch; when that makes a column wider, every row is
- * written again in the new format (notifyDataSetChanged) */
+/* the top row follows the stopwatch; when that makes a column wider, every row is written again in the new
+ * format */
 static void
 update_current_lap (StopwatchPage *self, gint64 total)
 {
@@ -237,7 +236,7 @@ update_current_lap (StopwatchPage *self, gint64 total)
   set_row (gtk_widget_get_first_child (self->laps), NULL, lap_time, total_text);
 }
 
-/* onBindViewHolder for every row: "# 7" while there are fewer than ten, "# 07" from ten */
+/* every row: "# 7" while there are fewer than ten, "# 07" from ten */
 static void
 refresh_rows (StopwatchPage *self)
 {
@@ -290,7 +289,7 @@ apply_transition (StopwatchPage *self)
   gtk_widget_queue_allocate (GTK_WIDGET (self));
 }
 
-/* AutoTransition, in order: what goes fades out, everything moves, what comes fades in, 300 ms each on the default
+/* the transition, in order: what goes fades out, everything moves, what comes fades in, 300 ms each on the default
  * curve. Laps coming have nothing to fade out, so the ring rises and then they fade in; going, they fade out and
  * then the ring sinks back. */
 static void
@@ -313,7 +312,7 @@ on_transition (NeoAnim *anim, double value, gpointer data)
   apply_transition (self);
 }
 
-/* StopwatchFragment.showOrHideLaps */
+/* the laps shown while there are any */
 static void
 show_or_hide_laps (StopwatchPage *self, gboolean shown)
 {
@@ -329,17 +328,16 @@ show_or_hide_laps (StopwatchPage *self, gboolean shown)
   neo_anim_start (self->transition, 0, total, total, 0, SPONGY_LINEAR);
 }
 
-/* --- the ring (StopwatchCircleView) */
+/* --- the ring */
 
-/* The plain ring in surfaceVariant; with laps, the first lap is the measure: the part of it the running lap has
- * covered in primary, the rest in surfaceVariant, a 2 dp white mark where the last lap ended, and a dot where this
- * one is. */
+/* The plain ring; with laps, the first lap is the measure: the part of it the running lap has covered in the
+ * accent, the rest plain, a white mark where the last lap ended, and a dot where this one is. */
 static void
 snapshot_ring (StopwatchPage *self, GtkSnapshot *snapshot)
 {
   const Stopwatch *sw = stopwatch (self);
   int scale = neo_device_scale (GTK_WIDGET (self));
-  /* Android's centre is in whole pixels (getWidth () / 2) */
+  /* the centre in whole device pixels */
   double half = floor (self->ring.size.width * scale / 2) / scale;
   double cx = self->ring.origin.x + half, cy = self->ring.origin.y + half;
   double radius = half - STROKE;
@@ -397,14 +395,13 @@ on_update (gpointer data)
   StopwatchPage *self = data;
   const Stopwatch *sw = stopwatch (self);
   gint64 start = elapsed_now ();
-  /* paused, the time blinks: hidden for the first half of every second. DeskClock skips that while "pressed", but
-   * asks the ring, which a press on the time never reaches, so in fact it always blinks. */
+  /* paused, the time blinks: hidden for the first half of every second, pressed or not */
   gboolean blink = sw->state == STOPWATCH_PAUSED && start % 1000 < 500;
 
   self->update = 0;
   update_time (self);
   set_time_opacity (self, blink ? 0 : 1);
-  /* the ring moves with the lap running, redrawn with the time (StopwatchCircleView.update), not every frame: a
+  /* the ring moves with the lap running, redrawn with the time, not every frame: a
    * frame costs this phone's GL driver more than the drawing in it */
   gtk_widget_queue_draw (GTK_WIDGET (self));
   if (sw->state != STOPWATCH_RESET)
@@ -416,7 +413,7 @@ on_update (gpointer data)
   return G_SOURCE_REMOVE;
 }
 
-/* the screen stays on while it runs in front (adjustWakeLock: FLAG_KEEP_SCREEN_ON) */
+/* the screen stays on while it runs in front */
 static void
 adjust_wake_lock (StopwatchPage *self)
 {
@@ -434,7 +431,7 @@ adjust_wake_lock (StopwatchPage *self)
     }
 }
 
-/* StopwatchFragment.updateUI */
+/* the wake lock, the time, the ring and the laps for the stopwatch's state */
 static void
 update_ui (StopwatchPage *self)
 {
@@ -463,13 +460,13 @@ on_changed (StopwatchClient *client, StopwatchPage *self)
   if (self->rows > rows)
     spongy_scroll_view_scroll_to (SPONGY_SCROLL_VIEW (self->scroller), 0);
   update_ui (self);
-  /* the FAB's icon changes at once (DeskClock morphs it, an animated vector this app does not have) */
+  /* the FAB's icon changes at once, without a morph */
   clock_tab_update_buttons (CLOCK_TAB (self), CLOCK_ALL_IMMEDIATE);
 }
 
 /* --- a tap on the time */
 
-/* CircleTouchListener: only a touch inside the ring's circle is a tap on the time */
+/* only a touch inside the ring's circle is a tap on the time */
 static void
 on_pressed (GtkGestureClick *gesture, int n_press, double x, double y, StopwatchPage *self)
 {
@@ -520,7 +517,7 @@ on_stopped (GtkGesture *gesture, StopwatchPage *self)
 
 /* --- sharing */
 
-/* LapsAdapter.getShareText. Android hands it to a share sheet; this phone has none, so it goes on the clipboard. */
+/* the times as text, on the clipboard: there is no share sheet */
 static void
 share (StopwatchPage *self)
 {
@@ -549,7 +546,7 @@ share (StopwatchPage *self)
   neo_snackbar_show (self->snackbar, _("Copied to clipboard"), NULL, NULL, NULL, NEO_SNACKBAR_SHORT);
 }
 
-/* --- the buttons (onUpdateFab, onUpdateFabButtons) */
+/* --- the buttons */
 
 static void
 stopwatch_page_get_buttons (ClockTab *tab, ClockButton *buttons)
@@ -594,14 +591,13 @@ stopwatch_page_tab_init (ClockTabInterface *iface)
 
 /* --- GtkWidget */
 
-/* stopwatch_fragment.xml: the ring's box is square, between the guidelines and at most 320 dp. With no laps it is
- * centred over the FAB row (the tab's 120 dp bottom padding); with laps it is at the top and the list fills the
- * rest. */
-/* The time and the hundredths in the ring as stopwatch_time.xml's LinearLayout lays them out, in whole device
- * pixels: each text view as wide as its text rounded up, plus its padding; the two side by side, centred, left to
- * right whatever the language; on one baseline at the larger ascent, the row centred by that ascent and the larger
- * descent, each rounded as Paint.getFontMetricsInt rounds them. A GtkBox would align them in whole dp, and
- * GtkLabel cuts its baseline to a whole dp: 1 dp low and 2 px to the left. */
+/* the ring's box is square, between the guidelines and at most MAX_CIRCLE. With no laps it is centred over the
+ * buttons' row (the tab's FAB_ROW bottom padding); with laps it is at the top and the list fills the rest. */
+/* The time and the hundredths laid out in the ring in whole device pixels: each text view as wide as its text
+ * rounded up, plus its padding; the two side by side, centred, left to right whatever the language; on one
+ * baseline at the larger ascent, the row centred by that ascent and the larger descent, each rounded to the nearest
+ * device pixel. A GtkBox would align them in whole px, and GtkLabel cuts its baseline to a whole px: 1 px low and 2
+ * device pixels to the left. */
 static void
 place_time (StopwatchPage *self, int scale)
 {
@@ -645,8 +641,8 @@ stopwatch_page_size_allocate (GtkWidget *widget, int width, int height, int base
   double size = MIN (MIN (right - left, MAX_CIRCLE), height);
   double middle;
 
-  /* in whole device pixels, as ConstraintLayout places them, where GTK's own allocation would round to whole dp
-   * (up to 4 px off): the ring centred over the button row, or at the top with laps */
+  /* in whole device pixels, where GTK's own allocation would round to whole px
+   * (up to 4 device pixels off): the ring centred over the button row, or at the top with laps */
   middle = MAX (floor (scale * (height - FAB_ROW - size) / 2 + 0.5) / scale, 0);
   self->ring = GRAPHENE_RECT_INIT (left + (right - left - size) / 2,
                                    floor (scale * middle * (1 - self->move) + 0.5) / scale, size, size);
@@ -666,8 +662,8 @@ stopwatch_page_measure (GtkWidget *widget, GtkOrientation orientation, int for_s
   *minimum = *natural = 0;
 }
 
-/* the ring, the time, the laps, and over the laps' last 120 dp a fade into the background (GradientItemDecoration:
- * 0 % to 50 % over the first quarter, to 100 % by nine tenths) */
+/* the ring, the time, the laps, and over the laps' last FAB_ROW a fade into the background (0 % to 50 % over the
+ * first quarter, to 100 % by nine tenths) */
 static void
 stopwatch_page_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
@@ -697,7 +693,7 @@ stopwatch_page_map (GtkWidget *widget)
   StopwatchPage *self = STOPWATCH_PAGE (widget);
 
   GTK_WIDGET_CLASS (stopwatch_page_parent_class)->map (widget);
-  /* (onStart) the laps may have changed while the tab was away */
+  /* shown again: the laps may have changed while the tab was away */
   self->lap_length = self->total_length = 0;
   refresh_rows (self);
   update_ui (self);
@@ -708,7 +704,7 @@ stopwatch_page_unmap (GtkWidget *widget)
 {
   StopwatchPage *self = STOPWATCH_PAGE (widget);
 
-  /* (onStop) nothing updates while the tab is away */
+  /* hidden: nothing updates while the tab is away */
   g_clear_handle_id (&self->update, g_source_remove);
   GTK_WIDGET_CLASS (stopwatch_page_parent_class)->unmap (widget);
   adjust_wake_lock (self);
@@ -754,8 +750,8 @@ stopwatch_page_init (StopwatchPage *self)
 
   self->shown_time = G_MININT64;
 
-  /* stopwatch_time.xml: the time at 72 sp and the hundredths at 42 sp, includeFontPadding off, so a label's own
-   * line is right; place_time puts them on one baseline */
+  /* the time and the smaller hundredths, without font padding, so a label's own line is right; place_time puts
+   * them on one baseline */
   self->main_text = gtk_label_new ("0");
   gtk_widget_add_css_class (self->main_text, "stopwatch-main");
   self->hundredths = gtk_label_new ("00");
@@ -768,7 +764,7 @@ stopwatch_page_init (StopwatchPage *self)
   gtk_widget_set_parent (self->main_text, GTK_WIDGET (self));
   gtk_widget_set_parent (self->hundredths, GTK_WIDGET (self));
 
-  /* the laps, with room under the last for the FAB row (paddingBottom, clipToPadding off) */
+  /* the laps, with room under the last for the FAB row */
   self->laps = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_margin_bottom (self->laps, FAB_ROW);
   gtk_widget_set_valign (self->laps, GTK_ALIGN_START);

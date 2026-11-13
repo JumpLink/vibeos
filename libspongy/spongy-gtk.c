@@ -12,8 +12,8 @@
 
 #include <math.h>
 
-/* android.view.ViewConfiguration: a touch in a scrolling list shows its press only after TAP_TIMEOUT without
- * scrolling (View.isInScrollingContainer); a tap quicker than that flashes it for PRESSED_STATE_DURATION */
+/* A touch in a scrolling list shows its press only after TAP_TIMEOUT without scrolling, so a finger about to scroll
+ * does not flash the row it began on; a tap quicker than that flashes it for PRESSED_STATE_DURATION */
 #define TAP_TIMEOUT_MS            100
 #define PRESSED_STATE_DURATION_MS 64
 
@@ -63,8 +63,8 @@ device_scale (SpongyScrollView *self)
   return surface ? gdk_surface_get_scale (surface) : 1.0;
 }
 
-/* Android's dp in this surface's logical pixels: SPONGY_DENSITY (screen px per dp), or the monitor's dots per inch
- * over 160 */
+/* The physics' unit length in this surface's logical pixels: SPONGY_DENSITY (screen px per unit), or the monitor's
+ * dots per inch over 160 */
 static void
 update_density (SpongyScrollView *self)
 {
@@ -411,7 +411,7 @@ size_allocate (GtkWidget *widget, int width, int height, int baseline)
 
 /* ---- drawing ---- */
 
-/* ---- the stretch: the child's render nodes placed again where hwui's shader would sample them ----
+/* ---- the stretch: the child's render nodes placed again where the stretch shader would sample them ----
  *
  * The child's node tree is rebuilt in this widget's coordinates with every leaf (a background, an icon, a line)
  * moved and scaled so its top and bottom edges land exactly where the stretch puts them, clips the same, and text

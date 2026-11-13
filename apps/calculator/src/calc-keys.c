@@ -21,7 +21,7 @@ static const KeyInfo keys[] = {
   { CALC_KEY_OP_SQRT, "√", 'r' },
   { CALC_KEY_OP_FACT, "!", '!' },
   { CALC_KEY_OP_PCT, "%", '%' },
-  { CALC_KEY_OP_SQR, "²", '2' },   /* R.string.squared: the button's "x²" would not do */
+  { CALC_KEY_OP_SQR, "²", '2' },   /* in the formula: the button's "x²" would not do */
   { CALC_KEY_FUN_SIN, "sin(", 's' },
   { CALC_KEY_FUN_COS, "cos(", 'c' },
   { CALC_KEY_FUN_TAN, "tan(", 't' },
@@ -30,7 +30,7 @@ static const KeyInfo keys[] = {
   { CALC_KEY_FUN_ARCTAN, "tan⁻¹(", 'T' },
   { CALC_KEY_FUN_LN, "ln(", 'l' },
   { CALC_KEY_FUN_LOG, "log(", 'L' },
-  { CALC_KEY_FUN_EXP, "exp(", 'E' },    /* R.string.exponential: the button's "eˣ" would not do */
+  { CALC_KEY_FUN_EXP, "exp(", 'E' },    /* in the formula: the button's "eˣ" would not do */
   { CALC_KEY_FUN_10POW, "", 0 },
   { CALC_KEY_LPAREN, "(", '(' },
   { CALC_KEY_RPAREN, ")", ')' },

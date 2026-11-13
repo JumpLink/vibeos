@@ -1,5 +1,4 @@
-/* The timers that ran out, full screen (DeskClock's ExpiredTimersActivity, L/expired_timers_activity.xml;
- * spec/clock.md §7.7).
+/* The timers that ran out, full screen.
  *
  * The ringing timers as cards (timer-card.h, without the close and reset buttons, the label only if there is one): a
  * single one in the middle of the screen, more from the top. Each card's Stop resets its timer and "+ 1:00" sets it
@@ -19,7 +18,7 @@ G_BEGIN_DECLS
  * timer that starts ringing opens or raises it the same way. */
 void expired_window_show (GtkApplication *app);
 
-/* every ringing timer stopped: what a volume key does on the screen (resetExpiredTimers) */
+/* every ringing timer stopped: what a volume key does on the screen */
 void expired_window_stop_all (void);
 /* a volume key the shell passed on while the window was in front: the same, if the window is still there */
 void expired_window_volume_key (void);

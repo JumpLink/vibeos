@@ -1,5 +1,5 @@
-/* The call log: every call the phone made or took, kept in SQLite (spec §14.1). It stands in for Android's
- * CallLog.Calls provider, with that table's column names, so that what the Dialer reads from it maps one to one.
+/* The call log: every call the phone made or took, kept in SQLite. Its columns are named as in
+ * Android's call log, so that what the Dialer reads from it maps one to one.
  *
  * Only the service writes it (a call ends, the user deletes rows); the app asks the service for the rows over
  * D-Bus. One writer keeps it simple: no locking between processes, and one place that says "the log changed". */

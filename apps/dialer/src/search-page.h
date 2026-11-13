@@ -1,4 +1,4 @@
-/* The search results over the tabs (dialer/searchfragment: NewSearchFragment, SearchAdapter; spec §4.2–§4.6).
+/* The search results over the tabs.
  *
  * Two modes. Regular search, from the search bar, finds the contacts whose name has a word starting with the
  * query, or whose number has its digits. Dialpad search, from the dialpad's digits, is smart dial: a contact whose

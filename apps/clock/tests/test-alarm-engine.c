@@ -1,4 +1,4 @@
-/* alarm-engine's state changes against DeskClock's AlarmStateManager, on a clock the test sets (Berlin) */
+/* alarm-engine's state changes against DeskClock's, on a clock the test sets (Berlin) */
 #include "../src/alarm-engine.h"
 
 typedef struct {
@@ -229,7 +229,7 @@ test_dismiss_now (Fixture *fixture, gconstpointer data)
   assert_next_alarm (fixture, "Tue 07:30 SILENT");
   assert_next_change (fixture, "Mon 2026-11-09 07:30:00");
   run_to_next_change (fixture);
-  /* its going makes Tuesday's instance again, which takes the place of the one there (AlarmInstance.addInstance) */
+  /* its going makes Tuesday's instance again, which takes the place of the one there */
   assert_log (fixture, "2:gone 3:SILENT");
   g_assert_null (alarm_engine_ringing (fixture->engine));
   g_assert_cmpuint (alarm_engine_get_store (fixture->engine)->instances->len, ==, 1);

@@ -1,6 +1,5 @@
-/* The Contacts tab: see contacts-page.h. The rules are ContactsAdapter's and ContactsFragment's (the anchored
- * header); the geometry is contact_row.xml's, add_contact_row.xml's and header.xml's, measured on
- * still:dialer-contacts (spec §7.1, §7.2). */
+/* The Contacts tab: see contacts-page.h. A list of contacts under "Create new contact", each section's letter
+ * anchored at the top while its rows scroll, and a fast scroller at the end. */
 #include "contacts-page.h"
 #include "avatar.h"
 #include "contacts-app.h"
@@ -11,32 +10,32 @@
 #include <math.h>
 #include <spongy-gtk.h>
 
-#define LIST_PAD_BOTTOM 88      /* floating_action_button_list_bottom_padding */
-#define ROW_HEIGHT      56      /* contact_row_height */
+#define LIST_PAD_BOTTOM 88      /* room at the foot, so the dialpad button covers no row */
+#define ROW_HEIGHT      56
 #define HEADER_WIDTH    56      /* the section letter's square */
-#define TARGET_END      16      /* click_target's marginEnd */
-#define TARGET_PAD      8       /* its paddingTop/Bottom */
-#define TARGET_START    16      /* its paddingStart */
-#define PHOTO           40      /* QuickContactBadge */
-#define NAME_START      16      /* the name's paddingStart and paddingEnd */
+#define TARGET_END      16      /* the row's touch area, in from the end */
+#define TARGET_PAD      8       /* its padding above and below */
+#define TARGET_START    16      /* its padding at the start */
+#define PHOTO           40
+#define NAME_START      16      /* the name's padding at both ends */
 #define NAME_END        8
-#define ADD_TOP         8       /* add_contact_row: marginTop */
+#define ADD_TOP         8       /* over the "Create new contact" row */
 #define FIRST_ROWS      20      /* rows made at once; the rest come in chunks while idle */
 #define CHUNK_ROWS      40
 
-#define THUMB_WIDTH     4       /* fast_scroller_scroll_bar */
+#define THUMB_WIDTH     4       /* the fast scroller's thumb */
 #define THUMB_HEIGHT    32
-#define THUMB_END       16      /* its paddingEnd */
+#define THUMB_END       16      /* in from the end */
 #define SCROLLER_MARGIN 8       /* the fast scroller's top and bottom margins */
-#define TOUCH_WIDTH     20      /* fast_scroller_touch_target_width */
-#define BUBBLE          88
-#define THUMB_IDLE      0xa3a7ac        /* textColorSecondary */
-#define THUMB_DRAGGED   0x1f2728        /* colorPrimary as a background, made dark */
-#define BUBBLE_TEXT     0xdadce0        /* textColorPrimaryInverse */
+#define TOUCH_WIDTH     20      /* the strip at the end that takes the fast scroller's drags */
+#define BUBBLE          88      /* the letter shown beside the thumb while it is dragged */
+#define THUMB_IDLE      0xa3a7ac
+#define THUMB_DRAGGED   0x1f2728
+#define BUBBLE_TEXT     0xdadce0
 
-#define NAME_STYLE      ((TextStyle) { TEXT_GSF, 16, 700 })     /* config_bodyFontFamily, 16 sp */
+#define NAME_STYLE      ((TextStyle) { TEXT_GSF, 16, 700 })
 #define BUBBLE_STYLE    ((TextStyle) { TEXT_GSF, 48, 700 })
-#define HEADER_STYLE    ((TextStyle) { TEXT_GSF, 16, 1000 })    /* Header2 + textStyle bold, capped */
+#define HEADER_STYLE    ((TextStyle) { TEXT_GSF, 16, 1000 })    /* a section's letter, as heavy as it goes */
 
 /* ---- an entry: what a row needs of a contact, which outlives the model's next "changed" --------------------- */
 
@@ -60,7 +59,7 @@ entry_free (Entry *entry)
   g_free (entry);
 }
 
-/* the address-book index the way CP2 makes it for a Latin locale: a name's first letter without its accents, "#"
+/* the address-book index for a Latin locale: a name's first letter without its accents, "#"
  * for a digit, and the underflow bucket "…" for anything else (a symbol, an emoji). ICU's AlphabeticIndex would
  * also fold some letters of other scripts together; the base letter is what it gives for these */
 static char *
@@ -135,7 +134,7 @@ contacts_content_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
     }
   avatar_snapshot (snapshot, widget, TARGET_START + PHOTO / 2.0, height / 2.0, PHOTO, entry->uid, entry->name,
                    photo);
-  /* the name is centred in the row (gravity center_vertical) */
+  /* the name is centred in the row */
   text_draw (snapshot, self->name, NAME_STYLE, x, (height - text_box_height (self->name, NAME_STYLE)) / 2, &color);
 }
 
@@ -169,7 +168,7 @@ struct _ContactsRow
   GtkWidget parent;
   ContactsPage *page;
   Entry *entry;
-  gboolean first;               /* the first row of its section (showHeader) */
+  gboolean first;               /* the first row of its section */
   gboolean header_hidden;       /* the anchored header shows its letter instead */
   PangoLayout *header;
   GtkWidget *target;            /* a NeoPressable around the content */
@@ -202,7 +201,7 @@ draw_section (GtkSnapshot *snapshot, PangoLayout *layout, double top)
   GdkRGBA color = text_rgb (COLOR_ACCENT_TEXT);
   PangoRectangle ink, logical;
 
-  /* centred in the 56 dp square, by its line box as the TextView centres it */
+  /* centred in its square, by its line box */
   pango_layout_get_pixel_extents (layout, &ink, &logical);
   text_draw (snapshot, layout, HEADER_STYLE, (HEADER_WIDTH - logical.width) / 2.0 - logical.x,
              top + (ROW_HEIGHT - text_box_height (layout, HEADER_STYLE)) / 2, &color);
@@ -279,7 +278,7 @@ contacts_row_init (ContactsRow *self)
 {
   self->content = g_object_new (CONTACTS_TYPE_CONTENT, NULL);
   self->target = neo_pressable_new (GTK_WIDGET (self->content));
-  /* ?selectableItemBackground over the click target only, white 12 % under force dark */
+  /* the press ripple, over the touch area only */
   neo_pressable_set_ripple (NEO_PRESSABLE (self->target), NEO_RIPPLE_BOUNDED, 0);
   neo_pressable_set_ripple_color (NEO_PRESSABLE (self->target), &(GdkRGBA) { 1, 1, 1, 0.06 });
   gtk_widget_set_parent (self->target, GTK_WIDGET (self));
@@ -321,7 +320,7 @@ G_DEFINE_FINAL_TYPE (ContactsPage, contacts_page, GTK_TYPE_WIDGET)
 enum { PICKED, N_SIGNALS };
 static guint signals[N_SIGNALS];
 
-/* The anchored header (ContactsFragment.onScrolled): when the first visible row and the first completely visible
+/* The anchored header: when the first visible row and the first completely visible
  * one are in the same section, the letter is pinned at the top and those rows' own letters hide; otherwise the
  * rows show theirs, so the next letter pushes the last one out. The "Create new contact" row does not count. */
 static ContactsRow *
@@ -337,7 +336,7 @@ row_at (ContactsPage *self, int index)
 static void
 update_anchored (ContactsPage *self)
 {
-  /* the rows are all 56 dp, under the add row and its 8 dp margin (a picker has none) */
+  /* the rows are all ROW_HEIGHT, under the add row and its ADD_TOP margin (a picker has none) */
   double y = spongy_scroll_view_get_offset (SPONGY_SCROLL_VIEW (self->scroller))
              - (gtk_widget_get_visible (self->add) ? ADD_TOP + ROW_HEIGHT : 0);
   ContactsRow *visible = NULL, *complete = NULL;
@@ -369,7 +368,7 @@ update_anchored (ContactsPage *self)
   gtk_widget_queue_draw (GTK_WIDGET (self));
 }
 
-/* ---- the fast scroller (FastScroller.java) ----------------------------------------------------------------- */
+/* ---- the fast scroller ------------------------------------------------------------------------------------- */
 
 static GtkAdjustment *
 vadjustment (ContactsPage *self)
@@ -377,7 +376,7 @@ vadjustment (ContactsPage *self)
   return spongy_scroll_view_get_vadjustment (SPONGY_SCROLL_VIEW (self->scroller));
 }
 
-/* the thumb's top: down the track as far as the list is scrolled (setThumbPosition) */
+/* the thumb's top: down the track as far as the list is scrolled */
 static double
 thumb_top (ContactsPage *self)
 {
@@ -412,7 +411,7 @@ draw_fast_scroller (ContactsPage *self, GtkSnapshot *snapshot)
   gtk_snapshot_append_color (snapshot, &color, &thumb);
   gtk_snapshot_pop (snapshot);
 
-  /* the bubble: an 88 dp teardrop pointing at the thumb, left of it, its foot level with the thumb's centre */
+  /* the bubble: a teardrop pointing at the thumb, left of it, its foot level with the thumb's centre */
   if (self->dragging && self->bubble)
     {
       graphene_rect_t box = GRAPHENE_RECT_INIT (thumb.origin.x - BUBBLE, top + THUMB_HEIGHT / 2.0 - BUBBLE, BUBBLE,
@@ -432,7 +431,7 @@ draw_fast_scroller (ContactsPage *self, GtkSnapshot *snapshot)
     }
 }
 
-/* the row under @y of the track, as setRecyclerViewPosition maps it: the list scrolls to put it on top */
+/* the row under @y of the track: the list scrolls to put it on top */
 static void
 drag_to (ContactsPage *self, double y)
 {
@@ -588,7 +587,7 @@ page_open_contact (ContactsPage *self, const Entry *entry)
     contacts_app_view (GTK_WIDGET (self), entry->uid, self->snackbar);
 }
 
-/* "Create new contact": the Contacts app's editor for a new contact (Intent.ACTION_INSERT) */
+/* "Create new contact": the Contacts app's editor for a new contact */
 static void
 on_add_clicked (ContactsPage *self)
 {
@@ -612,7 +611,7 @@ update_create (ContactsPage *self)
   gtk_widget_set_visible (self->add, can_create);
   if (self->empty && can_create == self->empty_creates)
     return;
-  /* ContactsFragment's empty view: the contacts picture, the line, "Create new contact" */
+  /* the empty view: the contacts picture, the line, "Create new contact" */
   empty = empty_view_new ("/neo/Dialer/images/empty-contacts.png", _("You don't have any contacts yet"),
                           can_create ? _("Create new contact") : NULL, on_create, self);
   gtk_stack_add_child (GTK_STACK (self->stack), empty);
@@ -627,8 +626,7 @@ update_create (ContactsPage *self)
   update_anchored (self);
 }
 
-/* add_contact_row.xml: 8 dp down, 56 dp in from the start, 16 from the end; the person-add icon in a 40 dp box and
- * "Create new contact" in Primary */
+/* the "Create new contact" row at the top, its icon lined up with the contacts' photos */
 static GtkWidget *
 add_contact_row (ContactsPage *self)
 {
@@ -707,7 +705,7 @@ contacts_page_init (ContactsPage *self)
   self->stack = gtk_stack_new ();
   gtk_widget_set_parent (self->stack, GTK_WIDGET (self));
 
-  /* the RecyclerView: no side padding, 88 dp of room at the foot */
+  /* the list: no side padding, room at the foot */
   self->list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_margin_bottom (self->list, LIST_PAD_BOTTOM);
   gtk_widget_set_valign (self->list, GTK_ALIGN_START);
@@ -719,7 +717,7 @@ contacts_page_init (ContactsPage *self)
   g_signal_connect_swapped (spongy_scroll_view_get_vadjustment (SPONGY_SCROLL_VIEW (self->scroller)),
                             "value-changed", G_CALLBACK (on_scrolled), self);
 
-  /* the fast scroller's 20 dp strip at the end: it takes the touch before the list can */
+  /* the fast scroller's strip at the end: it takes the touch before the list can */
   drag = gtk_gesture_drag_new ();
   gtk_event_controller_set_propagation_phase (GTK_EVENT_CONTROLLER (drag), GTK_PHASE_CAPTURE);
   g_signal_connect (drag, "drag-begin", G_CALLBACK (on_drag_begin), self);

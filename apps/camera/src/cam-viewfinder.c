@@ -5,7 +5,7 @@
 #include <math.h>
 #include <neo.h>
 
-#define TOUCH_SLOP 8            /* dp, ViewConfiguration */
+#define TOUCH_SLOP 8            /* px a finger may move before a touch is a drag */
 
 struct _CamViewfinder {
   GtkWidget     parent;
@@ -57,7 +57,7 @@ cam_viewfinder_get_picture (CamViewfinder *self, graphene_rect_t *rect)
                                              gtk_widget_get_height (GTK_WIDGET (self)));
 
   picture_rect (self, rect, NULL);
-  /* the visible part (GridView: the surface's size, coerced into the PreviewView's) */
+  /* the visible part: the picture's rectangle, clipped to the widget */
   graphene_rect_intersection (rect, &full, rect);
 }
 
@@ -114,7 +114,7 @@ draw_grid (CamViewfinder *self, GtkSnapshot *snapshot)
   int size = self->grid == CAM_GRID_4X4 ? 4 : 3;
   double unit = self->grid == CAM_GRID_GOLDEN ? 2 + CAM_GOLDEN_RATIO : size;
   GdkRGBA color = CAM_CA (CAM_C_GRID);
-  /* Paint strokeWidth 2: device pixels */
+  /* lines 2 device pixels wide */
   double px = 2.0 / neo_device_scale (GTK_WIDGET (self));
 
   if (self->grid == CAM_GRID_OFF)
@@ -167,7 +167,7 @@ cam_viewfinder_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gtk_snapshot_push_clip (snapshot, &box);
   if (self->frozen)
     {
-      /* RenderEffect.createBlurEffect (25 px) */
+      /* the last picture, blurred while the camera is reconfigured */
       gtk_snapshot_push_blur (snapshot, CAM_BLUR_RADIUS);
       gtk_snapshot_append_node (snapshot, self->frozen);
       gtk_snapshot_pop (snapshot);
@@ -187,14 +187,14 @@ cam_viewfinder_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
       g_autoptr(GskStroke) stroke = gsk_stroke_new (1);
       GdkRGBA white = CAM_C (0xFFFFFF);
 
-      /* camera_focus_circle: a 1 dp white oval stroke inside the 75 dp view, less its padding */
+      /* the focus ring: a thin white circle inside its view, less its padding */
       gsk_path_builder_add_circle (builder, &GRAPHENE_POINT_INIT (self->focus_x, self->focus_y), r - 0.5);
       path = gsk_path_builder_to_path (builder);
       gtk_snapshot_append_stroke (snapshot, path, stroke, &white);
     }
   if (self->blink > 0 && self->blink < 1)
     {
-      /* ValueAnimator.ofInt (0, 255, 0): up and down over the one 300 ms AD run */
+      /* black up to opaque and back down over one 300 ms accelerate-decelerate run */
       GdkRGBA shade = CAM_C (0);
 
       shade.alpha = 1 - fabs (2 * self->blink - 1);
@@ -224,7 +224,8 @@ on_drag_update (GtkGestureDrag *drag, double dx, double dy, CamViewfinder *self)
 static void
 on_swipe (GtkGestureSwipe *swipe, double vx, double vy, CamViewfinder *self)
 {
-  /* GestureDetector.onFling, then Aperture's |dx| > 75 dp; a pinch blocks it (the guard is the window's) */
+  /* a fast enough fling, more than 75 px and more sideways than up or down; never during a pinch (the window
+   * also ignores one just after a pinch) */
   if (self->pinching || fabs (vx) < CAM_FLING_MIN_VELOCITY || fabs (self->drag_dx) <= CAM_FLING_MIN
       || fabs (self->drag_dx) < fabs (self->drag_dy))
     return;
@@ -426,7 +427,7 @@ cam_viewfinder_focus (CamViewfinder *self, double x, double y)
   self->focus_x = x;
   self->focus_y = y;
   self->focusing = TRUE;
-  /* padding 0 → 8 dp, 300 ms AD */
+  /* the ring's padding 0 → 8 px, 300 ms accelerate-decelerate */
   neo_anim_start (self->focus_anim, 0, CAM_FOCUS_RING_INSET, CAM_MS_DEFAULT, 0, SPONGY_ACCELERATE_DECELERATE);
 }
 

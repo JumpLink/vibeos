@@ -1,5 +1,5 @@
-/* nb-pages: the activities a tab opens over its browser page (spec/jelly.md §1): History (§6), Favorites (§7.1),
- * Downloads (§14: in place of DocumentsUI) and Desktop shortcuts (§7.5). Each is a MaterialToolbar over a list, in a
+/* nb-pages: the pages a tab opens over its browser page: History, Favorites,
+ * Downloads (the browser's own list) and Desktop shortcuts. Each is a toolbar over a list, in a
  * page pushed on the tab's navigator; the up arrow (named "Back" for the shell's gesture) closes it. */
 #include "nb.h"
 #include "nb-widgets.h"
@@ -9,9 +9,9 @@
 #include <spongy-gtk.h>
 #include <string.h>
 
-#define DEFAULT_FAVORITE_COLOR "#4d7f86"   /* material_dynamic_primary50 (nb-tab.c) */
-#define COLOR_DELETE           "#F44336"   /* V/colors.xml colorDelete */
-#define DELETE_MARGIN          12          /* V/dimens.xml delete_margin */
+#define DEFAULT_FAVORITE_COLOR "#4d7f86"   /* a favourite without a colour of its own, as nb-tab.c's */
+#define COLOR_DELETE           "#F44336"   /* behind a row being swiped away */
+#define DELETE_MARGIN          12          /* the delete icon, in from the row's end */
 
 /* ==== the frame shared by every page ============================================================================= */
 
@@ -26,7 +26,7 @@ on_up (Frame *f)
   nb_tab_pop_page (f->t);
 }
 
-/* the toolbar lifts once the list has scrolled (HistoryActivity's scroll listener: toolbar_elevation) */
+/* the toolbar lifts once the list has scrolled */
 static void
 on_scrolled (GtkAdjustment *adj, Frame *f)
 {
@@ -38,8 +38,8 @@ on_scrolled (GtkAdjustment *adj, Frame *f)
   gtk_widget_set_visible (f->shadow, lifted);
 }
 
-/* a page: the toolbar, then `list` in a scroll view with the scroll bar (android:scrollbars="vertical" when
- * `indicator`), and `empty` in its place while there is nothing */
+/* a page: the toolbar, then `list` in a scroll view (with the scroll bar when `indicator`), and `empty` in its place
+ * while there is nothing */
 static Frame *
 frame_new (NbTab *t, const char *title, const char *css, GtkWidget *actions, GtkWidget *list, GtkWidget *empty,
            gboolean indicator)
@@ -88,7 +88,7 @@ frame_set_empty (Frame *f, gboolean empty)
     gtk_widget_set_visible (f->empty, empty);
 }
 
-/* Theme.Jelly.EmptyLayout: the image over the text (14 sp, onSurface, 64 dp either side, 19 dp above), centred */
+/* an empty page: the image over the text, centred */
 static GtkWidget *
 empty_layout (GtkWidget *image, const char *text)
 {
@@ -107,21 +107,21 @@ empty_layout (GtkWidget *image, const char *text)
   return box;
 }
 
-/* ==== History (§6) ================================================================================================ */
+/* ==== History ===================================================================================================== */
 
 typedef struct _History History;
 
-/* a row the finger can swipe away to the left (ItemTouchHelper + HistoryCallBack): colorDelete opens behind it with
- * ic_delete_action 12 dp from the end; let go past half the width (or flung left faster than 120 dp/s) it leaves,
- * else it settles back; once gone the gap closes over 250 ms, still red (HistoryAnimationDecorator) */
+/* a row the finger can swipe away to the left: red opens behind it with the delete icon at its end; let go past
+ * half the width (or flung left faster than 120 px/s) it leaves, else it settles back; once gone the gap closes
+ * over 250 ms, still red */
 
 #define NB_TYPE_SWIPE_ROW (nb_swipe_row_get_type ())
 G_DECLARE_FINAL_TYPE (NbSwipeRow, nb_swipe_row, NB, SWIPE_ROW, GtkWidget)
 
-#define SWIPE_SLOP        8          /* ViewConfiguration's touch slop */
-#define SWIPE_ESCAPE      120        /* ItemTouchHelper's swipe escape velocity, dp/s */
-#define SWIPE_MS          250        /* DEFAULT_SWIPE_ANIMATION_DURATION */
-#define MOVE_MS           250        /* DefaultItemAnimator's move duration */
+#define SWIPE_SLOP        8          /* px the finger moves before the row follows it */
+#define SWIPE_ESCAPE      120        /* px/s: the slowest fling that takes the row away */
+#define SWIPE_MS          250        /* the row going out or settling back */
+#define MOVE_MS           250        /* the gap closing */
 
 typedef enum { ANIM_NONE, ANIM_SETTLE, ANIM_OUT, ANIM_COLLAPSE } SwipeAnim;
 
@@ -222,7 +222,7 @@ on_swipe_anim (NeoAnim *anim, double value, gpointer data)
   SwipeAnim done = self->kind;
   self->kind = ANIM_NONE;
   if (done == ANIM_OUT) {
-    /* onSwiped: the entry goes, the gap closes */
+    /* swiped away: the entry goes, the gap closes */
     self->gone = TRUE;
     history_row_deleted (self->history, self);
     self->kind = ANIM_COLLAPSE;
@@ -274,7 +274,7 @@ on_drag_update (GtkGestureDrag *drag, double ox, double oy, NbSwipeRow *self)
     self->dragging = TRUE;
     gtk_gesture_set_state (GTK_GESTURE (drag), GTK_EVENT_SEQUENCE_CLAIMED);
   }
-  /* SimpleCallback (0, LEFT): only to the left */
+  /* only to the left */
   self->dx = MIN (0, self->start_x + ox);
   gtk_widget_queue_allocate (GTK_WIDGET (self));
   gtk_widget_queue_draw (GTK_WIDGET (self));
@@ -352,7 +352,7 @@ nb_swipe_row_init (NbSwipeRow *self)
   gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (drag));
 }
 
-/* "Saturday November 07 2026, 04:41" (history_date_format: EEEE MMMM dd yyyy, HH:mm) */
+/* "Saturday November 07 2026, 04:41" */
 static char *
 history_date (double time)
 {
@@ -360,7 +360,7 @@ history_date (double time)
   return dt ? g_date_time_format (dt, "%A %B %d %Y, %H:%M") : g_strdup ("");
 }
 
-/* HistoryAdapter: an empty title shows the URL's third '/' piece, the host */
+/* an empty title shows the URL's third '/' piece, the host */
 static char *
 history_title (const char *url, const char *title)
 {
@@ -373,7 +373,7 @@ history_title (const char *url, const char *title)
 static void
 on_history_row (GtkWidget *pressable, NbSwipeRow *row)
 {
-  /* a row opens its page in a new tab (an Intent to MainActivity: a new document) */
+  /* a row opens its page in a new tab */
   nb_open_tab (row->url, FALSE, NULL, NULL);
 }
 
@@ -442,7 +442,7 @@ on_undo (gpointer data)
 static void
 history_row_deleted (History *h, NbSwipeRow *row)
 {
-  /* model.delete (id), and the snackbar: "Entry deleted" with Undo, LENGTH_LONG */
+  /* the entry goes, and the snackbar: "Entry deleted" with Undo, for a long time */
   for (guint i = 0; i < nb->store->history->len; i++) {
     NbEntry *e = nb->store->history->pdata[i];
     if (!g_strcmp0 (e->url, row->url)) {
@@ -487,10 +487,9 @@ history_free (gpointer data)
   g_free (h);
 }
 
-/* the deleting dialog's ProgressBar: the platform's indeterminate circle (vector_drawable_progress_indeterminate_
- * material: a 4 dp ring of radius 19 in a 48 dp box, in colorControlActivated = primary; the group turns 0 → 720°
- * in 4444 ms, the trim's end runs 0 → 0.75 and its start follows, on trim_end / trim_start_interpolator, and the
- * offset 0 → 0.25, every 1333 ms) */
+/* the deleting dialog's spinner: an indeterminate circle (a ring in the primary colour; the whole turns 0 → 720° in
+ * 4444 ms, the arc's end runs 0 → 0.75 and its start follows, on the two curves below, and the offset 0 → 0.25,
+ * every 1333 ms) */
 static void
 draw_spinner (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
 {
@@ -542,7 +541,7 @@ on_clear_response (NbDialog *d, int response, History *h)
 {
   if (response != NB_RESPONSE_OK)
     return;
-  /* deleteAll: "Clear history" over a spinner and "Clearing history…", not cancelable, gone 200 ms after */
+  /* "Clear history" over a spinner and "Clearing history…", not cancelable, gone 200 ms after */
   NbDialog *busy = nb_dialog_new ("Clear history");
   GtkWidget *row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_widget_add_css_class (row, "nb-deleting");
@@ -553,7 +552,7 @@ on_clear_response (NbDialog *d, int response, History *h)
   gtk_widget_add_tick_callback (spin, spinner_tick, NULL, NULL);
   GtkWidget *label = nb_label ("Clearing history…", 14, "nb-dialog-message", FALSE);
   gtk_label_set_xalign (GTK_LABEL (label), 0.5);
-  /* layout_weight 1 : 4 */
+  /* the spinner at the start, then the message */
   GtkWidget *left = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_box_set_homogeneous (GTK_BOX (row), FALSE);
   gtk_widget_set_hexpand (left, TRUE);
@@ -630,7 +629,7 @@ nb_history_page_new (NbTab *t)
   return h->f->page;
 }
 
-/* ==== Favorites (§7.1) ============================================================================================ */
+/* ==== Favorites =================================================================================================== */
 
 typedef struct {
   Frame     *f;
@@ -646,7 +645,7 @@ typedef struct {
 
 static void favorites_fill (Favorites *fav);
 
-/* a resource SVG shown at a fixed size in dp, rendered at the window's scale (a GtkPicture would show the texture
+/* a resource SVG shown at a fixed size in px, rendered at the window's scale (a GtkPicture would show the texture
  * at its pixel size) */
 #define NB_TYPE_SVG_VIEW (nb_svg_view_get_type ())
 G_DECLARE_FINAL_TYPE (NbSvgView, nb_svg_view, NB, SVG_VIEW, GtkWidget)
@@ -720,7 +719,7 @@ nb_svg_view_new (const char *resource, int w, int h)
   return GTK_WIDGET (self);
 }
 
-/* ColorUtils.calculateLuminance > 0.5 */
+/* relative luminance > 0.5 */
 static gboolean
 is_light (const GdkRGBA *c)
 {
@@ -739,7 +738,7 @@ fav_edit_free (gpointer data)
   g_free (e);
 }
 
-/* the URL field's TextWatcher: "Insert a valid URL" while there is no "http" in it */
+/* the URL field: "Insert a valid URL" while there is no "http" in it */
 static void
 on_fav_url_changed (GtkEditable *editable, FavEdit *e)
 {
@@ -756,7 +755,7 @@ on_fav_edit_response (NbDialog *d, int response, FavEdit *e)
     const char *url = gtk_editable_get_text (GTK_EDITABLE (nb_field_get_entry (e->url_field)));
     const char *title = gtk_editable_get_text (GTK_EDITABLE (nb_field_get_entry (e->title_field)));
     /* Jelly saves whatever is there; a favourite that cannot open is kept from being made instead: the dialog
-     * stays with its error (§14) */
+     * stays with its error */
     if (!strstr (url, "http")) {
       nb_field_set_error (e->url_field, "Insert a valid URL");
       gtk_widget_grab_focus (GTK_WIDGET (nb_field_get_entry (e->url_field)));
@@ -781,7 +780,7 @@ on_fav_long_press (GtkWidget *card, Favorites *fav)
   e->fav = fav;
   e->url = g_strdup (g_object_get_data (G_OBJECT (card), "nb-url"));
   e->title = g_strdup (g_object_get_data (G_OBJECT (card), "nb-title"));
-  /* dialog_favorite_edit.xml: 24 / 16 / 24 / 8 dp around two outlined fields, 8 dp between them */
+  /* two outlined fields, the title over the URL */
   gtk_widget_add_css_class (box, "nb-fav-edit");
   e->title_field = nb_field_new ("Title", FALSE);
   e->url_field = nb_field_new ("URL", FALSE);
@@ -808,8 +807,7 @@ on_fav_click (GtkWidget *card, Favorites *fav)
   nb_open_tab (g_object_get_data (G_OBJECT (card), "nb-url"), FALSE, NULL, NULL);
 }
 
-/* item_favorite.xml: a CardView (4 dp margin, 8 dp content padding, 2 dp corners and elevation) in the favourite's
- * colour, the title 18 sp centred in up to two lines, 12 dp above and below it, black or white for contrast */
+/* a raised card in the favourite's colour, the title centred in up to two lines, black or white for contrast */
 static GtkWidget *
 favorite_card (Favorites *fav, const NbEntry *e)
 {
@@ -844,7 +842,7 @@ favorites_fill (Favorites *fav)
   GtkWidget *c;
   while ((c = gtk_widget_get_first_child (fav->grid)))
     gtk_grid_remove (GTK_GRID (fav->grid), c);
-  /* GridLayoutManager (2): two columns, a row as tall as its taller card */
+  /* two columns, a row as tall as its taller card */
   guint n = nb->store->bookmarks->len;
   for (guint i = 0; i < n; i++)
     gtk_grid_attach (GTK_GRID (fav->grid), favorite_card (fav, nb->store->bookmarks->pdata[i]), i % 2, i / 2, 1, 1);
@@ -868,7 +866,7 @@ nb_favorites_page_new (NbTab *t)
   gtk_grid_set_column_homogeneous (GTK_GRID (fav->grid), TRUE);
   gtk_widget_add_css_class (fav->grid, "nb-fav-grid");
   gtk_widget_set_valign (fav->grid, GTK_ALIGN_START);
-  /* ic_favorite_empty: 192 × 96 dp in its own colours, 8 dp padding */
+  /* the empty page's picture, in its own colours */
   gtk_widget_add_css_class (image, "nb-fav-empty-image");
   fav->f = frame_new (t, "Favorites", "nb-favorites", NULL, fav->grid,
                       empty_layout (image, "There's nothing here, add a favorite link to see it here"), TRUE);
@@ -877,7 +875,7 @@ nb_favorites_page_new (NbTab *t)
   return fav->f->page;
 }
 
-/* ==== Downloads (§14): DocumentsUI's Downloads root, as still:downloads lists it ==================================== */
+/* ==== Downloads: the browser's downloads, newest first ============================================================ */
 
 typedef struct {
   Frame     *f;
@@ -885,7 +883,7 @@ typedef struct {
   guint      refresh_id;
 } Downloads;
 
-/* Formatter.formatFileSize: SI units, two decimals under 100 */
+/* SI units, two decimals under 100 */
 static char *
 format_size (guint64 bytes)
 {
@@ -901,7 +899,7 @@ format_size (guint64 bytes)
   return g_strdup_printf (v < 100 ? "%.2f %s" : "%.0f %s", v, units[u]);
 }
 
-/* DateUtils as DocumentsUI uses it: the time today, "Nov 4" this year, else with the year */
+/* the time today, "Nov 4" this year, else with the year */
 static char *
 format_day (gint64 time)
 {
@@ -929,8 +927,7 @@ on_download_row (GtkWidget *row, gpointer data)
   gtk_file_launcher_launch (launcher, GTK_WINDOW (t->win), NULL, NULL, NULL);
 }
 
-/* a DocumentsUI list row: 56 dp, 8 dp in from the sides; the 32 dp icon 16 dp in, the type's glyph 24 dp inside
- * it; 12 dp on, the name (16 sp) over "date, size, type" (14 sp, onSurfaceVariant) */
+/* a download's row: the type's glyph on its tile, then the name over "date, size, type" */
 static GtkWidget *
 download_row (Downloads *dl, NbDownload *e)
 {
@@ -947,7 +944,7 @@ download_row (Downloads *dl, NbDownload *e)
   gtk_widget_set_hexpand (glyph, TRUE);
   gtk_widget_add_css_class (icon_box, "nb-download-icon");
   gtk_widget_set_valign (icon_box, GTK_ALIGN_CENTER);
-  /* the tile stays 32 dp square: the glyph's expand (to centre it) must not widen it in the row */
+  /* the tile stays square: the glyph's expand (to centre it) must not widen it in the row */
   gtk_widget_set_hexpand (icon_box, FALSE);
   gtk_box_append (GTK_BOX (icon_box), glyph);
   gtk_box_append (GTK_BOX (box), icon_box);
@@ -1038,7 +1035,7 @@ nb_downloads_page_new (NbTab *t)
   return dl->f->page;
 }
 
-/* ==== Desktop shortcuts (§7.5) ==================================================================================== */
+/* ==== Desktop shortcuts =========================================================================================== */
 
 typedef struct {
   Frame      *f;
@@ -1059,7 +1056,7 @@ shortcuts_free (gpointer data)
 static void
 on_shortcut_row (GtkWidget *row, Shortcuts *s)
 {
-  /* onLayoutClick: toggles */
+  /* a tap toggles the row */
   const char *id = g_object_get_data (G_OBJECT (row), "nb-id");
   NbMark *mark = g_object_get_data (G_OBJECT (row), "nb-mark");
   gboolean on = !g_hash_table_contains (s->selected, id);
@@ -1085,7 +1082,7 @@ on_shortcuts_save (GtkWidget *button, Shortcuts *s)
   nb_tab_pop_page (s->t);
 }
 
-/* item_background_shortcut.xml: 72 dp, 15 dp either side; the checkbox, then the name (18 sp) 15 dp on */
+/* a shortcut's row: the checkbox, then the name */
 static GtkWidget *
 shortcut_row (Shortcuts *s, NbShortcut *sc)
 {

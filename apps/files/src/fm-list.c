@@ -9,7 +9,7 @@
 #include <neo.h>
 #include <spongy-gtk.h>
 
-#define THUMB_PX       132      /* a list row's 44 dp at the phone's 3 px per dp (decoded at twice that: a tile's 64) */
+#define THUMB_PX       132      /* device px, a list row's icon on the phone (a tile's decodes at twice this) */
 #define THUMB_MAX_SIZE (40 * 1000 * 1000)
 
 struct _FmList {
@@ -219,8 +219,8 @@ on_setup (GtkSignalListItemFactory *factory, GtkListItem *list_item, FmList *sel
   gtk_list_item_set_focusable (list_item, FALSE);
 }
 
-/* a grid tile (filegrid_item): the 64 dp icon centred 2 dp down, the name under it in 14 sp, centred, at most two
- * lines; the check box over the icon's top end while selecting */
+/* a grid tile: the icon, the name under it, centred, at most two lines; the check box over the icon's top end
+ * while selecting */
 static void
 on_setup_tile (GtkSignalListItemFactory *factory, GtkListItem *list_item, FmList *self)
 {

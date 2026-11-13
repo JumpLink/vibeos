@@ -1,12 +1,12 @@
-/* Small pieces every Files screen uses (spec §1, §8): colours, Roboto labels in Android's line boxes, the toolbar's
- * icon buttons, AppCompat's dialog buttons, check box and radio button, the thin progress bar, and the popup menu. */
+/* Small pieces every Files screen uses: colours, Roboto labels with font padding, the toolbar's icon buttons, the
+ * dialog buttons, check box and radio button, the thin progress bar, and the popup menu. */
 #pragma once
 
 #include <gtk/gtk.h>
 
 G_BEGIN_DECLS
 
-/* the colours of the spec's table (night values, as measured) */
+/* the app's colours (its dark theme) */
 #define FM_C_WINDOW          0xff121212
 #define FM_C_BAR             0xff1f1f1f
 #define FM_C_DIVIDER         0xff272727
@@ -26,22 +26,21 @@ G_BEGIN_DECLS
 /* an ARGB constant (0xAARRGGBB) as a GdkRGBA */
 GdkRGBA    fm_rgba (guint32 argb);
 
-/* a label in one of the app's CSS text styles, Android's font padding added; single line, ellipsized at the end
+/* a label in one of the app's CSS text styles, font padding added; single line, ellipsized at the end
  * unless @wrap (word, then character) */
 GtkWidget *fm_label (const char *text, const char *css_class, double size, gboolean wrap);
 
-/* a toolbar icon button: @width x @height, the icon theme's glyph centred at 20 dp (a 16-unit symbolic icon drawn
- * to its edges), a borderless ripple; @name for assistive technology ("Back" is what the shell's back gesture
- * presses) */
+/* a toolbar icon button: @width x @height, the icon theme's glyph centred (smaller than the original's box, as a
+ * symbolic icon is drawn to its edges), a borderless ripple; @name for assistive technology ("Back" is what the
+ * shell's back gesture presses) */
 GtkWidget *fm_icon_button (const char *icon_name, const char *name, int width, int height);
-/* the same with the glyph @glyph_size dp (the path bar's up arrow) */
+/* the same with the glyph @glyph_size px (the path bar's up arrow) */
 GtkWidget *fm_icon_button_sized (const char *icon_name, const char *name, int width, int height, int glyph_size);
 
-/* AppCompat's borderless dialog button: 14 sp Medium caps in the accent, 48 dp tall */
+/* a borderless dialog button: caps in the accent */
 GtkWidget *fm_text_button (const char *label);
 
-/* AppCompat's check box and radio button (abc_btn_check_material, abc_btn_radio_material): a 32 dp box, white 70 %
- * when off, the accent when on */
+/* a check box or a radio button: dim white when off, the accent when on */
 GtkWidget *fm_check_new        (gboolean radio);
 void       fm_check_set_active (GtkWidget *check, gboolean active);
 gboolean   fm_check_get_active (GtkWidget *check);
@@ -50,13 +49,13 @@ GtkWidget *fm_check_row        (const char *label, gboolean radio, gboolean acti
 GtkWidget *fm_check_row_get_check (GtkWidget *row);
 
 /* a thin progress bar: a fraction 0..1, or a fraction < 0 for the moving segments of an indeterminate one
- * (RefreshProgressBar); @height dp tall */
+ * @height px tall */
 GtkWidget *fm_progress_new          (double height);
 void       fm_progress_set_fraction (GtkWidget *progress, double fraction);
 
-/* the popup menu over the window (the overflow ⋮, a row's ⋮, a long press): #424242, 2 dp corners, 48 dp rows of
- * 16 sp white text 16 dp in, at least 196 dp wide. A tap outside, Back or Escape closes it; a tap on a row closes it
- * and then runs the choice (-1 is never given). */
+/* the popup menu over the window (the overflow ⋮, a row's ⋮, a long press): a card of one-line rows, as wide as
+ * the widest. A tap outside, Back or Escape closes it; a tap on a row closes it and then runs the choice (-1 is never
+ * given). */
 typedef void (*FmPopupChosen) (int index, gpointer data);
 typedef enum {
   FM_POPUP_OVER_END,            /* an overflow menu: its top on the anchor's, its end on the anchor's end */
@@ -67,7 +66,7 @@ void       fm_popup_show    (GtkWidget *anchor, const char *const *labels, int n
 /* closes the menu of @widget's window if one shows; TRUE when it did */
 gboolean   fm_popup_dismiss (GtkWidget *widget);
 
-/* the plain upper-cased form of a label (allCaps) */
+/* the plain upper-cased form of a label */
 char      *fm_caps (const char *label);
 
 G_END_DECLS

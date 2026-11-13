@@ -385,7 +385,7 @@ text_layout (GtkWidget *w, const char *text, double size, gboolean bold, PangoRe
   return layout;
 }
 
-/* centred on x, its ink's baseline-ish bottom at y (as cairo's showText at y) */
+/* centred on x, its ink's baseline-ish bottom at y (as cairo_show_text at y) */
 static void
 centred (cairo_t *cr, GtkWidget *w, const char *text, double size, gboolean bold, double x, double y)
 {
@@ -432,7 +432,7 @@ draw (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
 {
   Compass *c = data;
   GtkWidget *wd = GTK_WIDGET (area);
-  double R = MIN (w, h) / 2.0 * 0.86, cx = w / 2.0, cy = h / 2.0;   /* a margin round the dial, as on Android */
+  double R = MIN (w, h) / 2.0 * 0.86, cx = w / 2.0, cy = h / 2.0;   /* a margin round the dial */
   double rim = R * 0.80;                                           /* where the ticks start */
 
   /* body: a dark disc with a lighter rim band */

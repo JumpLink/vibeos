@@ -1,5 +1,4 @@
-/* The answer screen: a ringing call, full screen (InCallUI's AnswerFragment with the FlingUpDownMethod puck;
- * spec §8.3–8.5).
+/* The answer screen: a ringing call, full screen.
  *
  * At the top "Call from", the caller's name and the kind of their number; at the foot a white disc with a phone in
  * it that bounces. Swiping it up answers, swiping it down declines; a tap on it only shows the hints. While
@@ -25,7 +24,7 @@ GtkWidget *answer_view_new (void);
  * only updates what it says */
 void       answer_view_set_call (AnswerView *self, const CallInfo *call, const Caller *caller);
 guint      answer_view_get_call (AnswerView *self);
-/* AnswerFragment's allowAnswerAndRelease (another call is up) and what the hint then says: whether the modem
+/* whether another call is up (answering can end it) and what the hint then says: whether the modem
  * can hold, and whether a call is on hold already */
 void       answer_view_set_other_call (AnswerView *self, gboolean other_call, gboolean can_hold, gboolean held_call);
 /* an ask the service refused (calls-client "failed"): the puck comes back so the user can try again */

@@ -34,7 +34,7 @@ G_DECLARE_FINAL_TYPE (AlarmsClient, alarms_client, ALARMS, CLIENT, GObject)
 /* the one client of the process */
 AlarmsClient *alarms_client_get (void);
 
-/* ClockAlarm, in DeskClock's order: by time of day, the newest first among equal times */
+/* ClockAlarm, by time of day, the newest first among equal times */
 GPtrArray  *alarms_client_get_alarms (AlarmsClient *self);
 ClockAlarm *alarms_client_find (AlarmsClient *self, guint id);
 /* when the next alarm rings (Unix), 0 for none */
@@ -45,7 +45,7 @@ gboolean    alarms_client_get_ringing (AlarmsClient *self, guint *instance, guin
 
 typedef void (*AlarmsAdded) (guint id, gpointer data);
 
-/* a new alarm like `alarm` (its id and instance fields aside): DeskClock's "+", or an undone delete; `added` gets
+/* a new alarm like `alarm` (its id and instance fields aside): the "+", or an undone delete; `added` gets
  * the new alarm's id */
 void alarms_client_add (AlarmsClient *self, const ClockAlarm *alarm, AlarmsAdded added, gpointer data);
 /* the alarm's fields listed (a GVariant a{sv}, floating, of the service's keys) change */

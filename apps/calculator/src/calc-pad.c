@@ -32,7 +32,7 @@ calc_pad_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, i
   *minimum = *natural = 0;
 }
 
-/* a guideline's position in device pixels: its percent of the content box, rounded (ConstraintLayout) */
+/* a guideline's position in device pixels: its percent of the content box, rounded */
 static int
 guide_px (double fraction, int start, int length)
 {
@@ -51,7 +51,7 @@ calc_pad_size_allocate (GtkWidget *widget, int width, int height, int baseline)
   int left = self->start * scale, top = self->top * scale;
   int content_w = W - (self->start + self->end) * scale, content_h = H - (self->top + self->bottom) * scale;
 
-  /* always left to right, whatever the language (Theme.Calculator: layoutDirection ltr) */
+  /* always left to right, whatever the language */
   for (guint i = 0; i < self->cells->len; i++) {
     Cell *cell = &g_array_index (self->cells, Cell, i);
     int x0 = guide_px (self->columns[cell->column], left, content_w);

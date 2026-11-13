@@ -1,4 +1,4 @@
-// The notification stack in the shade (spec §4): Main.messageTray's notifications as Android 16's 2025 rows, the
+// The notification stack in the shade: Main.messageTray's notifications as rounded rows, the
 // low-urgency ones under a "Silent" header, the footer with Clear all, and "No notifications" when there is nothing.
 // The shade places the stack once per frame (its top, its expansion ratio, the content alpha); rows expand and
 // collapse, swipe away and close the gaps they leave on animations of their own.
@@ -23,96 +23,96 @@ import {openSettings} from './settings.js';
 import {symbolicIcon} from './statusbar.js';
 import {px, SCALE, SCREEN_H, SCREEN_W} from './units.js';
 
-// --- the stack, screen px (spec §4.1)
-export const SIDE = 48;                 // 16 dp each side
+// --- the stack, screen px
+export const SIDE = 48;                 // the margin on each side
 export const ROW_W = 984;
-const GAP = 6;                          // 2 dp between rows: the scrim shows through
-const SECTION_GAP = 48;                 // 16 dp before a new section
-const TOP_PADDING = 48;                 // the first row sits 16 dp under the scrim top
+const GAP = 6;                          // between rows: the scrim shows through
+const SECTION_GAP = 48;                 // before a new section
+const TOP_PADDING = 48;                 // between the scrim top and the first row
 const DISMISS_X = 1032;                 // a dismissed row leaves to ±(W − side padding)
-const BOTTOM_INSET = 48;                // the stack scrolls to end above the 16 dp navigation handle
-const MAX_FLING_VELOCITY = 24000;       // 8000 dp/s
+const BOTTOM_INSET = 48;                // the stack scrolls to end above the navigation handle
+const MAX_FLING_VELOCITY = 24000;       // px/s
 
-// --- a row (spec §4.3, the 2025 templates); y relative to the row's top
-export const MIN_H = 216;               // 72 dp, collapsed
-const RADIUS = 84;                      // 28 dp at a section's ends
-const RADIUS_SMALL = 12;                // 4 dp elsewhere
+// --- a row (the 2025 templates); y relative to the row's top
+export const MIN_H = 216;               // a collapsed row
+const RADIUS = 84;                      // the corners at a section's ends
+const RADIUS_SMALL = 12;                // the corners between rows
 const ICON_POS = 48;
-const ICON = 120;                       // the 40 dp circle; its glyph is 24 dp
+const ICON = 120;                       // the app's circle; GLYPH is the symbol in it
 const GLYPH = 72;
-const CONTENT_X = 216;                  // 72 dp
-const COLLAPSED_END = 820;              // the collapsed text column ends 60 dp before the row's end (x 868)
-const EXPANDED_END = 936;               // ... the expanded one 16 dp before it
-const DOT_MARGIN = 6;                   // the "•" separator's 2 dp margins
+const CONTENT_X = 216;                  // the text column, past the icon
+const COLLAPSED_END = 820;              // the collapsed text column ends short of the expand pill
+const EXPANDED_END = 936;               // ... the expanded one a margin from the row's end
+const DOT_MARGIN = 6;                   // either side of the "•" separator
 const ONE_LINE_BASELINE = 125;          // collapsed, a title only
 const TITLE_BASELINE = 95;              // collapsed, a title and a text line
 const TEXT_BASELINE = 154;
 const HEADER_BASELINE = 88;             // expanded: app name • time
 const BIG_TITLE_BASELINE = 160;
 const BIG_TEXT_BASELINE = 245;
-const LINE = 60;                        // 20 sp
+const LINE = 60;                        // the body's line pitch
 const MAX_LINES = 8;
 const MAX_ACTIONS = 3;
-const ACTIONS_TOP = 12;                 // the 48 dp action band starts under the last text line
+const ACTIONS_TOP = 12;                 // the action band starts under the last text line
 const ACTIONS_H = 144;
 const ACTION_BASELINE = 90;
-const ACTION_PAD = 36;                  // 4 dp inset + 8 dp padding on each side of a label
-const ACTION_MARGIN = 12;               // 4 dp between buttons
-const BOTTOM_WITH_ACTIONS = 175;        // the row's end below its last baseline (measured 420 px for one text line)
-const BOTTOM_NO_ACTIONS = 61;           // the text's descent + the action list's 10 dp minimum + 6 dp
-const HEADS_UP_ACTIONS_Y = 156;         // a heads-up's actions: under the collapsed layout, 20 dp up into it,
-const HEADS_UP_ACTIONS_H = 318;         // ... 72 - 20 + 48 + 6 dp in all (notification_2025_template_heads_up_base)
-const PILL_X = 858;                     // the expand pill: 26 x 18 dp, 16 dp in from the top right corner
+const ACTION_PAD = 36;                  // each side of a label: the button's inset and padding
+const ACTION_MARGIN = 12;               // between buttons
+const BOTTOM_WITH_ACTIONS = 175;        // the row's end below its last baseline, the actions included
+const BOTTOM_NO_ACTIONS = 61;           // the text's descent and the empty action list's minimum height
+const HEADS_UP_ACTIONS_Y = 156;         // a heads-up's actions: under the collapsed layout, a little up into it,
+const HEADS_UP_ACTIONS_H = 318;         // ... and the whole heads-up with them
+const PILL_X = 858;                     // the expand pill, in the row's top right corner
 const PILL_Y = 48;
 const PILL_W = 78;
 const PILL_H = 54;
-const PILL_ICON = 48;                   // 16 sp
-const PILL_TOUCH = 48;                  // the button's 16 dp padding around the pill
-const PILL_FILL = [41, 53, 55];         // surface_effect_3 flattened on the card (measured)
-const GLYPH_COLOR = [13, 26, 27];       // a circle's glyph is punched out in the card's colour (measured)
+const PILL_ICON = 48;
+const PILL_TOUCH = 48;                  // the touch area around the pill
+const PILL_FILL = [41, 53, 55];         // a translucent fill, pre-blended onto the card
+const GLYPH_COLOR = [13, 26, 27];       // a circle's glyph is punched out in the card's colour
 const PRESS_ALPHA = 0.1;
 
-// --- the "Silent" header and the footer (spec §4.5, §4.6)
-const HEADER_H = 144;                   // 48 dp
-const HEADER_LABEL_X = 96;              // 16 + 4 + 12 dp
-const FOOTER_H = 180;                   // 12 dp padding + the 48 dp buttons
-const FOOTER_PILL_Y = 48;               // + the buttons' 4 dp inset
+// --- the "Silent" header and the footer
+const HEADER_H = 144;
+const HEADER_LABEL_X = 96;
+const FOOTER_H = 180;                   // padding above the buttons, and the buttons
+const FOOTER_PILL_Y = 48;               // that padding and the buttons' inset
 const FOOTER_PILL_H = 120;
 const HISTORY_X = 48;
-const ICON_BUTTON_W = 180;              // 20 + 20 + 20 dp
+const ICON_BUTTON_W = 180;              // the icon with its own width of padding either side
 const CLEAR_X = 252;
 const CLEAR_W = 576;
 const SETTINGS_X = 852;
-const FOOTER_ICON = 60;                 // 20 dp
+const FOOTER_ICON = 60;
 
-// --- motion (spec §4.7-§4.9)
+// --- motion
 const STANDARD_MS = 360;                // expand/collapse, rows closing a gap, rows coming and going
 const ROUNDNESS_MS = 200;
 const ESCAPE_MS = 200;                  // a slow release's dismiss, and each of Clear all's slides
 const MAX_ESCAPE_MS = 400;
-const ESCAPE_VELOCITY = 1500;           // 500 dp/s
-const MIN_DISMISS_VELOCITY = 6000;      // 2000 dp/s: a row that let go of its neighbours leaves at least this fast
-const MAX_VELOCITY = 12000;             // 4000 dp/s
+const ESCAPE_VELOCITY = 1500;           // px/s
+const MIN_DISMISS_VELOCITY = 6000;      // px/s: a row that let go of its neighbours leaves at least this fast
+const MAX_VELOCITY = 12000;             // px/s
 const FAR_ENOUGH = 0.6;                 // of the row's width: where the content has faded out
-const SWIPE_SLOP = 48;                  // the paging touch slop, 16 dp
-const SNAP_STIFFNESS = 550;             // the magnetic snap back (SwipeHelper)
+const SWIPE_SLOP = 48;                  // the paging touch slop
+const SNAP_STIFFNESS = 550;             // the magnetic snap back of a row let go short of a dismiss
 const SNAP_DAMPING = 0.52;
 const CLEAR_DELAY = 60;                 // Clear all starts the rows bottom-up at 0, 60, 115, 165, ... ms
 const CLEAR_DELAY_STEP = 5;
 const CLEAR_DELAY_MIN = 30;
-const ALPHA_IN = bezier(0.4, 0, 1, 1);  // CrossFadeHelper: what only one layout has fades in its half
+const ALPHA_IN = bezier(0.4, 0, 1, 1);  // collapsed <-> expanded: what only one layout has fades in its half
 const ALPHA_OUT = bezier(0, 0, 0.8, 1);
 
-// fonts (spec §4.4)
-const TITLE_FONT = font(14, 600);       // variable-title-small-emphasized
-const TEXT_FONT = font(14, 400);        // variable-body-medium
-const INFO_FONT = font(12, 400);        // variable-body-small: the app name, "•", the time
+// fonts
+const TITLE_FONT = font(14, 600);
+const TEXT_FONT = font(14, 400);
+const INFO_FONT = font(12, 400);        // the app name, "•", the time
 const ACTION_FONT = font(14, 600);
 const SECTION_FONT = font(14, 600);
-const CLEAR_ALL_FONT = font(16, 600);   // variable-title-medium-emphasized
-const EMPTY_FONT = font(16, 600);       // TextAppearance.NotificationShadeText
+const CLEAR_ALL_FONT = font(16, 600);
+const EMPTY_FONT = font(16, 600);
 
-const CAP_HEIGHT = 0.73;                // of the em (spec §4)
+const CAP_HEIGHT = 0.73;                // of the em
 
 const fadeIn = p => ALPHA_IN(clamp((p - 0.5) / 0.5));
 const fadeOut = p => 1 - ALPHA_OUT(clamp(p / 0.5));
@@ -133,7 +133,7 @@ function placeBaseline(text, x, baseline) {
     text.set_position(px(x), px(baseline) - b);
 }
 
-// The Pango line-height factor that puts the body's lines 20 sp apart
+// The Pango line-height factor that puts the body's lines LINE apart
 let lineFactor = 0;
 function bodyLineFactor(text) {
     if (!lineFactor) {
@@ -154,7 +154,7 @@ function countLines(text, markup, width) {
     return layout.get_line_count();
 }
 
-// DateTimeView's short relative time
+// the short relative time a row's header shows (now, 5m, 2h, 3d, ...)
 function shortTime(datetime) {
     if (!datetime)
         return '';
@@ -170,7 +170,7 @@ function shortTime(datetime) {
     return `${Math.floor(s / (365 * 86400))}y`;
 }
 
-// Chronometer.updateText: whole seconds since @base (Unix ms), or left until it, as DateUtils.formatElapsedTime;
+// a running chronometer's text: whole seconds since @base (Unix ms), or left until it, as MM:SS or H:MM:SS;
 // a count-down gone past zero gets a minus
 function chronometer(base, countDown) {
     const now = GLib.get_real_time() / 1000;
@@ -192,7 +192,7 @@ function headerInfo(n) {
     return parts.length ? parts.join(' \u2022 ') : shortTime(n.datetime);
 }
 
-// Android's header extras (setUsesChronometer, setChronometerCountDown, setSubText), which
+// The header's extras (a chronometer, counting up or down, and a sub text), which
 // org.freedesktop.Notifications has no place for: the Clock sends them as hints (apps/clock/src/clock-notifier.h),
 // and the shell's daemon keeps only the hints it knows. Its Notify unpacks the hints in place and then hands the notification to its source, so
 // the source's processNotification can still read them, before a row is made for a new notification and before an
@@ -260,7 +260,7 @@ class Row extends St.Widget {
         this.tx = 0;                    // the swipe's translation, px
         this._fadeTx = 0;               // ... the part the content fades by: the row's own swipe, not a neighbour's
         this.dismissing = false;
-        this._roundness = [0, 0];       // top, bottom: 0 is 4 dp, 1 is 28 dp
+        this._roundness = [0, 0];       // top, bottom: 0 is RADIUS_SMALL, 1 is RADIUS
         this._baseRound = [0, 0];       // ... the row's own (a section's ends are round)
         this._swipeRound = [0, 0];      // ... what a swipe asks for; the larger of the two shows
         this._visibleTop = 0;
@@ -305,7 +305,7 @@ class Row extends St.Widget {
         this._actionButtons = [];
         this._content.add_child(this._actions);
 
-        // the expand pill and its 16 dp of touch padding; the chevron swaps without animation
+        // the expand pill and its touch padding; the chevron swaps without animation
         this._pill = new St.Button({
             can_focus: true,
             button_mask: St.ButtonMask.PRIMARY,
@@ -326,7 +326,7 @@ class Row extends St.Widget {
         this._pill.connect('clicked', () => this._stack.toggleExpanded(this));
         this._content.add_child(this._pill);
 
-        // swiped sideways it goes (SwipeHelper, the magnetic path: magnetic.js)
+        // swiped sideways it goes, pulling its neighbours along (magnetic.js)
         const swipe = new Clutter.PanGesture({
             pan_axis: Clutter.PanAxis.X,
             max_n_points: 1,
@@ -476,7 +476,7 @@ class Row extends St.Widget {
         }
     }
 
-    // borderless buttons from x 56 dp, labels in primary
+    // borderless buttons, the first label in line with the text, labels in the primary colour
     _updateActions() {
         const actions = this.notification.actions.slice(0, MAX_ACTIONS);
         const labels = actions.map(a => a.label).join('\n');
@@ -534,7 +534,7 @@ class Row extends St.Widget {
     }
 
     // Collapsed and expanded layouts cross-transform with the height: the title, the text and "• time" move in
-    // place, the app name, the actions and a longer text fade in (ViewTransformationHelper, TransformState)
+    // place, the app name, the actions and a longer text fade in
     _layoutContent() {
         if (this._timeW === undefined)
             return;
@@ -600,7 +600,7 @@ class Row extends St.Widget {
         this._content.set_clip(0, px(top), px(ROW_W), px(bottom - top));
     }
 
-    // the content's alpha in a heads-up's appear animation (ActivatableNotificationView.setContentAlpha)
+    // the content's alpha in a heads-up's appear animation
     setContentAlpha(alpha) {
         this._contentAlpha = alpha;
         this._applyContentAlpha();
@@ -612,7 +612,7 @@ class Row extends St.Widget {
         this._syncRoundness(animated);
     }
 
-    // the corners a swipe asks for (NotificationRoundnessManager's DISMISS_ANIMATION source); 0, 0 lets go
+    // the corners a swipe asks for, rounder as the row comes loose; 0, 0 lets go
     setSwipeRoundness(top, bottom, animated = false) {
         this._swipeRound = [top, bottom];
         this._syncRoundness(animated);
@@ -703,7 +703,7 @@ class Row extends St.Widget {
             return;
         const v = cancelled ? 0 : clamp(this._velocity.velocityX, -MAX_VELOCITY, MAX_VELOCITY);
         if (!cancelled && magnetic.isDismissible(this, v)) {
-            // SwipeHelper.dismissChild: one that let go leaves the way it went, at 2000 dp/s at least
+            // one that let go leaves the way it went, at MIN_DISMISS_VELOCITY at least
             const fast = Math.abs(v) > ESCAPE_VELOCITY && (v > 0) === (this.tx > 0);
             const direction = magnetic.detachDirection(this);
             const out = direction !== 0 ? direction * Math.max(MIN_DISMISS_VELOCITY, Math.abs(v)) : v;
@@ -718,7 +718,7 @@ class Row extends St.Widget {
         }
     }
 
-    // --- the magnetic swipe's listener (ExpandableView.mMagneticRowListener)
+    // --- what magnetic.js calls on a row it moves
 
     get canBeDismissed() {
         return !this.dismissing;
@@ -740,7 +740,7 @@ class Row extends St.Widget {
     triggerMagneticForce(t, {stiffness, dampingRatio}, v = 0) {
         this.cancelTranslationAnimations();
         this._magneticAnim?.stop();
-        // SpringForce's thresholds for a translation: 0.75 px, 46.9 px/s
+        // the spring is done within 0.75 px and 46.9 px/s: a translation's settle thresholds
         this._magneticSpring = new Spring({stiffness, dampingRatio, value: this.tx, velocity: v, target: t,
             threshold: 0.75});
         const follow = x => this.setTranslation(x, this._swiping);
@@ -759,8 +759,8 @@ class Row extends St.Widget {
         this._swipeAnim = null;
     }
 
-    // the content fades as the row goes, the card does not (SwipeHelper.updateSwipeProgressFromOffset); not for a
-    // neighbour a swipe pulls along (@fade false), which SwipeHelper never touches
+    // the content fades as the row goes, the card does not; not for a neighbour a swipe pulls along (@fade false),
+    // which only moves
     setTranslation(tx, fade = true) {
         this.tx = tx;
         this.translation_x = px(tx);
@@ -775,7 +775,7 @@ class Row extends St.Widget {
             (1 - clamp(Math.abs(this._fadeTx) / ROW_W / FAR_ENOUGH)));
     }
 
-    // SwipeHelper.dismissChild: a slow release accelerates out, a fling keeps its speed
+    // off the screen: a slow release accelerates out, a fling keeps its speed
     dismiss(v, accelerate, {delay = 0, onDone = null} = {}) {
         this.dismissing = true;
         const target = (Math.abs(v) > ESCAPE_VELOCITY && v < 0) || this.tx < 0 ? -DISMISS_X : DISMISS_X;
@@ -849,7 +849,7 @@ class SectionHeader extends St.Widget {
         super({width: px(SCREEN_W), height: px(HEADER_H)});
         this._label = makeText(SECTION_FONT, Color.onSurface, {text: 'Silent'});
         this.add_child(this._label);
-        // the cap height centred in the 48 dp
+        // the cap height centred in the header
         placeBaseline(this._label, HEADER_LABEL_X, HEADER_H / 2 + CAP_HEIGHT * 14 * 3 / 2);
     }
 
@@ -858,7 +858,7 @@ class SectionHeader extends St.Widget {
     }
 });
 
-// --- history, Clear all, settings (NotifRedesignFooter)
+// --- the footer: history, Clear all, settings
 
 const Footer = GObject.registerClass(
 class Footer extends St.Widget {
@@ -878,7 +878,7 @@ class Footer extends St.Widget {
         clear.connect('clicked', () => stack.clearAll());
     }
 
-    // 40 dp pills, surface_effect_1 with blur
+    // translucent pills
     _button(x, w, name, child) {
         const button = new St.Button({
             x: px(x), y: px(FOOTER_PILL_Y), width: px(w), height: px(FOOTER_PILL_H),
@@ -983,7 +983,7 @@ class NotificationStack extends St.Widget {
         this._setScroll(this._scrollStart - dy);
     }
 
-    // OverScroller.fling with the finger's velocity; it stops at the ends
+    // a spline fling with the finger's velocity; it stops at the ends
     flingScroll(velocity) {
         const {distance, duration, position} = splineFling(-clamp(velocity, -MAX_FLING_VELOCITY, MAX_FLING_VELOCITY));
         const from = this._scroll, max = this._maxScroll;
@@ -1167,7 +1167,7 @@ class NotificationStack extends St.Widget {
                 if (state.h === 0)
                     state.h = h;
             }
-            // Clear all hides the footer (FooterViewState.hideContent)
+            // Clear all hides the footer while the rows go
             const alpha = item === this._footer && this._clearing ? 0 : 1;
             Object.assign(state, {toOffset: y, toH: h, toAlpha: alpha});
             y += h + GAP;
@@ -1241,7 +1241,7 @@ class NotificationStack extends St.Widget {
             actor.setVisibleHeight(state.h * this._ratio);
             actor.opacity = Math.round(255 * state.alpha);
         }
-        // "No notifications", centred in the space under the QQS (StackScrollAlgorithm: EmptyShadeView)
+        // "No notifications", centred in the space under the QQS
         const emptyAlpha = this._emptyAlpha.now;
         this._empty.visible = emptyAlpha > 0;
         if (emptyAlpha > 0) {
@@ -1253,7 +1253,7 @@ class NotificationStack extends St.Widget {
 
     // --- swipes
 
-    // the rows a swipe pulls along: the swiped one's section, in order (NotificationTargetsHelper)
+    // the rows a swipe pulls along: the swiped one's section, in order
     magneticRows(row) {
         const section = this._sections.find(rows => rows.includes(row)) ?? [row];
         return section.filter(r => r === row || !r.dismissing);

@@ -1,6 +1,6 @@
 // Frame capture for checking animations against the Android recordings (development only).
 // With ~/.config/gnome-phone/capture present, an animation can save the stage as it draws: one PNG at a time to
-// /tmp/gp-cap/<name>-<ms>.png, labelled with the animation's own clock, so frames line up with a spec's timeline
+// /tmp/gp-cap/<name>-<ms>.png, labelled with the animation's own clock, so frames line up with a recording's timeline
 // whatever the capture costs (run it with the shell's slow-down factor raised).
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';

@@ -1,4 +1,4 @@
-/* evaluator: see evaluator.h. A port of Evaluator.java; the comments name its methods. */
+/* evaluator: see evaluator.h. A port of ExactCalculator's Evaluator; names in parentheses are its methods'. */
 #include "evaluator.h"
 #include "expression-db.h"
 
@@ -50,8 +50,8 @@ typedef struct {
 } EvaluatorLink;
 
 typedef enum {
-  JOB_EVALUATE,     /* AsyncEvaluator: the value and its first digits */
-  JOB_REEVALUATE,   /* AsyncReevaluator: more digits of a known value */
+  JOB_EVALUATE,     /* the value and its first digits */
+  JOB_REEVALUATE,   /* more digits of a known value */
 } JobKind;
 
 /* a copy of an expression the job may need */
@@ -215,7 +215,7 @@ is_mutable_index (long index)
   return index == EVALUATOR_MAIN_INDEX || index == EVALUATOR_HISTORY_MAIN_INDEX;
 }
 
-/* --- settings (Java's SharedPreferences) */
+/* --- settings (GSettings) */
 
 static void
 set_memory_index (Evaluator *self, long index)
@@ -453,7 +453,7 @@ is_too_big (Job *job, UnifiedReal *res)
   return real_approx_whole_number_bits_greater_than (res, max_bits);
 }
 
-/* AsyncEvaluator.doInBackground */
+/* on the worker thread: the value and its first digits */
 static void
 run_evaluate (Job *job)
 {
@@ -507,7 +507,7 @@ run_evaluate (Job *job)
   job->init_display_offset = init_display_offset;
 }
 
-/* AsyncReevaluator.doInBackground */
+/* on the worker thread: more digits of a known value */
 static void
 run_reevaluate (Job *job)
 {
@@ -551,7 +551,7 @@ show_timeout (Evaluator *self, gboolean long_timeout)
     self->callback->show_timeout (self->callback_data, long_timeout);
 }
 
-/* AsyncEvaluator.onCancelled */
+/* back on the main thread: an evaluation was cancelled */
 static void
 evaluate_cancelled (Evaluator *self, Job *job)
 {
@@ -561,7 +561,7 @@ evaluate_cancelled (Evaluator *self, Job *job)
     job->listener.funcs->on_cancelled (job->listener.data, job->index);
 }
 
-/* AsyncEvaluator.onPostExecute */
+/* back on the main thread: an evaluation is done */
 static void
 evaluate_done (Evaluator *self, Job *job, ExprInfo *ei)
 {
@@ -615,7 +615,7 @@ evaluate_done (Evaluator *self, Job *job, ExprInfo *ei)
                                       least_dig_offset, truncated_whole_part);
 }
 
-/* AsyncReevaluator.onPostExecute */
+/* back on the main thread: more digits are done */
 static void
 reevaluate_done (Evaluator *self, Job *job, ExprInfo *ei)
 {
@@ -629,7 +629,7 @@ reevaluate_done (Evaluator *self, Job *job, ExprInfo *ei)
   }
   if (!ei->result_string || ei->result_string == ERRONEOUS_RESULT
       || job->result_string_offset < ei->result_string_offset)
-    return;   /* the cache changed meanwhile ("Unexpected onPostExecute timing") */
+    return;   /* the cache changed meanwhile */
   expr_info_set_result_string (ei, calc_unflip_zeroes (ei->result_string, ei->result_string_offset,
                                                        job->result_string, job->result_string_offset));
   ei->result_string_offset = job->result_string_offset;
@@ -668,7 +668,7 @@ job_done (gpointer data)
   return G_SOURCE_REMOVE;
 }
 
-/* AsyncEvaluator.handleTimeout */
+/* an evaluation ran out of time */
 static gboolean
 job_timed_out (gpointer data)
 {
@@ -743,7 +743,7 @@ clear_main_cache (Evaluator *self)
   self->main_expr->msd_index = CALC_INVALID_MSD;
 }
 
-/* evaluateResult */
+/* starts evaluating the expression at index on the worker thread */
 static void
 evaluate_result (Evaluator *self, long index, const EvaluationListener *listener, CharMetricsFunc metrics,
                  gpointer metrics_data, gboolean required)
@@ -761,7 +761,7 @@ evaluate_result (Evaluator *self, long index, const EvaluationListener *listener
   (metrics ? metrics : dummy_metrics) (metrics_data, &job->metrics);
   job_snapshot (self, job, index);
 
-  /* onPreExecute */
+  /* its timeout, then off to the worker */
   guint timeout = required ? (ei->long_timeout ? TIMEOUT_LONG : TIMEOUT_SHORT) : QUICK_TIMEOUT;
   if (index != EVALUATOR_MAIN_INDEX)
     timeout = NON_MAIN_TIMEOUT;   /* it was evaluated before: it should not time out */
@@ -783,7 +783,7 @@ notify_immediately (Evaluator *self, long index, ExprInfo *ei, const EvaluationL
   int msd_index;
   CalcCharMetrics m;
 
-  /* getMsdIndex */
+  /* the most significant digit's index */
   if (ei->msd_index != CALC_INVALID_MSD) {
     /* 0.100000... can change to 0.0999999...: correct once by one digit */
     if (ei->result_string[ei->msd_index] == '0')
@@ -979,7 +979,7 @@ evaluator_get_string (Evaluator *self, long index, int *prec_offset, int max_pre
     return g_strdup (" ");
   int start_index = MAX (end_index + deficit - max_digs, 0);
 
-  /* getMsdIndex */
+  /* the most significant digit's index */
   int msd;
   if (ei->msd_index != CALC_INVALID_MSD) {
     if (ei->result_string[ei->msd_index] == '0')
@@ -1304,7 +1304,7 @@ evaluator_capture (Evaluator *self, long index)
 {
   ExprInfo *ei = lookup (self, index);
 
-  /* copyToSaved */
+  /* kept as the saved expression, the one the clipboard refers to */
   if (!ei || !ei->result_string || ei->result_string == ERRONEOUS_RESULT)
     return NULL;
   set_saved_index (self, is_mutable_index (index) ? evaluator_preserve (self, index, FALSE) : index);

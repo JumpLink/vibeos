@@ -1,7 +1,7 @@
 /* Neo Weather: the page behind the home screen's weather widget, laid out like One UI's Weather: the place and the
  * temperature over the sky, the next 24 hours as a curve, today against yesterday, the week, and the details.
- * GTK4, so scrolling is the GPU moving what is already drawn; the page scrolls in libspongy's view (Android's fling
- * and the stretch at the ends), like the other GNOME Phone apps, where it is installed.
+ * GTK4, so scrolling is the GPU moving what is already drawn; the page scrolls in libspongy's view (a fling, and
+ * a stretch at the ends), like the other GNOME Phone apps, where it is installed.
  *
  * Where: the first city in GNOME Weather, if it has one; otherwise where the phone is, from GeoClue at city accuracy,
  * named by OpenStreetMap's Nominatim. The place is kept in ~/.cache/neo-launcher/weather.json (lat, lon, place), so

@@ -3,7 +3,7 @@
 
 #include <sqlite3.h>
 
-/* ExpressionDB.ExpressionEntry's flags */
+/* the flags column's bits */
 #define DEGREE_MODE  2
 #define LONG_TIMEOUT 1
 

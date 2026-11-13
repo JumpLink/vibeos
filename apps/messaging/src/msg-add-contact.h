@@ -1,9 +1,8 @@
-/* Adding someone to the contacts, and their card (spec §1.11, §2.2, §4.1, §6.2): Bugle's ContactUtil.showOrAddContact
- * and AddContactsConfirmationDialog, over the Contacts app (contacts-app.h).
+/* Adding someone to the contacts, and their card, through the Contacts app (contacts-app.h).
  *
  * A tap on a person's avatar (in the list, beside a message) or on a person in People & options opens the contact's
  * card if they are a contact, and otherwise asks "Add to Contacts?" with their avatar and number; "Add contact"
- * hands the number to the Contacts app to add to a contact picked there or to a new one (ACTION_INSERT_OR_EDIT).
+ * hands the number to the Contacts app to add to a contact picked there or to a new one ("insert-or-edit").
  * The asking needs the Contacts app: without it a tap on someone who is not a contact does nothing. */
 #pragma once
 

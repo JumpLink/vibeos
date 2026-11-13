@@ -1,8 +1,7 @@
-// A text field that a tap gives focus opens the keyboard, as on Android (InputMethodManager.showSoftInput from the
-// view the finger touched). GTK asks for the keyboard itself when its own text widget is tapped
-// (gtk_im_context_activate_osk), but a WebKit page's fields never ask (a site's password box stayed without keys), and
-// neither does a field an app focuses in answer to a tap elsewhere (the browser's address bar opened by its pill):
-// their text input is enabled without show_input_panel, so mutter keeps the keyboard closed.
+// A text field that a tap gives focus opens the keyboard, as a phone's does. GTK asks for the keyboard itself when its
+// own text widget is tapped (gtk_im_context_activate_osk), but a WebKit page's fields never ask (a site's password box
+// stayed without keys), and neither does a field an app focuses in answer to a tap elsewhere (the browser's address bar
+// opened by its pill): their text input is enabled without show_input_panel, so mutter keeps the keyboard closed.
 //
 // So: a finger comes down while no client text field has the input focus; within FOCUS_WAIT_MS of it lifting, one
 // does → the keyboard opens, on that window's monitor. The input method's focus is polled for that short while only

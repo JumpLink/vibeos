@@ -1,7 +1,6 @@
-/* neo-messaging-sms: the Messaging's service, for everything about text messages that must go on with the app
- * closed, as Android's Messaging does from its receivers and actions (spec §10.2). It runs in the session from login
- * (neo-messaging-sms.service): a message that comes is kept in bugle_db, taken off the modem and notified; one
- * written is sent, tried again while there is no network, and notified when it is given up.
+/* neo-messaging-sms: the Messaging's service, for everything about text messages that must go on with the app closed.
+ * It runs in the session from login (neo-messaging-sms.service): a message that comes is kept in bugle_db, taken off
+ * the modem and notified; one written is sent, tried again while there is no network, and notified when it is given up.
  *
  * This file is its face on D-Bus (neo.Messaging.Sms) and its notifications. It is bugle_db's only writer: the
  * app reads the store itself, read-only, and is told by Changed what to read again.
@@ -26,12 +25,12 @@
 #define GATEWAY_PATH "/com/callagent/Gsm2sipd"
 #define GATEWAY_INTERFACE "com.callagent.Gsm2sipd1"
 
-/* BugleGservicesKeys: a message that cannot go is tried again 5 s on, then twice as long each time up to 2 h, and
+/* a message that cannot go is tried again 5 s on, then twice as long each time up to 2 h, and
  * given up 20 min after it was first tried */
 #define RETRY_INITIAL_MS 5000
 #define RETRY_MAX_MS (2 * 60 * 60 * 1000)
 #define RETRY_TIMEOUT_MS (20 * 60 * 1000)
-/* MessageNotificationState: a conversation's notification shows its last 7 messages; a group's name, in the
+/* a conversation's notification shows its last 7 messages; a group's name, in the
  * notification for several conversations, its first 30 characters */
 #define NOTIFICATION_LINES 7
 #define GROUP_NAME_CHARS 30
@@ -68,7 +67,7 @@ static const char introspection[] =
   "</node>";
 
 /* a message sent with a delivery report asked for, until its report comes: what the reference (TP-MR) the report
- * will carry stands for. Held in memory, as Android's SMSDispatcher holds its delivery-pending trackers: a report
+ * will carry stands for. Held in memory only: a report
  * that comes after the service restarted is let go */
 typedef struct {
   gint64 message;
@@ -174,7 +173,7 @@ first_chars (const char *text, glong chars)
   return g_utf8_strlen (text, -1) > chars ? g_utf8_substring (text, 0, chars) : g_strdup (text);
 }
 
-/* --- the notifications (spec §5) */
+/* --- the notifications */
 
 /* the new messages' notification, from the messages not yet seen: one conversation's (its last messages), or one
  * for several (a line for each, newest first). @alert: a message came; otherwise it is updated without a heads-up */
@@ -337,14 +336,14 @@ on_notification_action (guint32 id, const char *action, gpointer data)
     {
       if (g_str_equal (action, "default"))
         {
-          /* it goes when tapped (FLAG_AUTO_CANCEL); the app marks what it shows read */
+          /* it goes when tapped; the app marks what it shows read */
           notifier_close (self->notifier, id);
           self->notification = 0;
           open_app (self, self->notification_conversation);
         }
       else if (g_str_equal (action, "closed"))
         {
-          /* swiped away: its messages are seen (the delete intent's MarkAsSeenAction) */
+          /* swiped away: its messages are seen */
           self->notification = 0;
           sms_store_mark_seen (self->store, 0);
         }
@@ -486,7 +485,7 @@ report_free (gpointer data)
   g_free (report);
 }
 
-/* Messaging's "SMS delivery reports" (MmsUtils.isDeliveryReportRequired): off unless set */
+/* Messaging's "SMS delivery reports": off unless set */
 static gboolean
 delivery_reports (Service *self)
 {
@@ -554,7 +553,7 @@ on_sent (GObject *source, GAsyncResult *result, gpointer data)
   send_next (self);
 }
 
-/* a group's message goes to each of them in turn, as Android sends a group SMS: one message each */
+/* a group's message goes to each of them in turn: one message each */
 static void
 send_to_next_destination (Service *self, SmsMessage *message, Retry *retry)
 {
@@ -614,7 +613,7 @@ send_next (Service *self)
     }
 }
 
-/* the network may be back: every message waiting goes now (PendingMessagesAction on a service state change) */
+/* the network may be back: every message waiting goes now */
 static void
 send_waiting (Service *self)
 {
@@ -636,13 +635,12 @@ send_waiting (Service *self)
   send_next (self);
 }
 
-/* --- delivery reports (ProcessDeliveryReportAction) */
+/* --- delivery reports */
 
-/* what a report's delivery state makes of the message, as SendStatusReceiver and SyncMessageBatch
- * .bugleStatusForSms read a report's TP-Status: 0 (received) delivered; 0x40 and up failed (the service centre gave
- * up; the CDMA permanent errors 0x2xx too); anything else (forwarded unconfirmed, replaced, the centre still trying)
- * sent, no more. @final: no other report is to come for it (Android keeps a tracker only while the centre is still
- * trying, 0x20-0x3f). UNKNOWN for no news (ModemManager's 0x100, no state at all) */
+/* what a report's delivery state makes of the message, from the report's TP-Status: 0 (received) delivered; 0x40 and up
+ * failed (the service centre gave up; the CDMA permanent errors 0x2xx too); anything else (forwarded unconfirmed,
+ * replaced, the centre still trying) sent, no more. @final: no other report is to come for it (more come only while the
+ * centre is still trying, 0x20-0x3f). UNKNOWN for no news (ModemManager's 0x100, no state at all) */
 static MessageStatus
 report_status (guint state, gboolean *final)
 {
@@ -692,9 +690,9 @@ on_status_report (const char *number, guint reference, guint state, gpointer dat
   g_message ("sms: message %" G_GINT64_FORMAT " %s (delivery report 0x%x)", message->id,
              status == MESSAGE_STATUS_OUTGOING_DELIVERED ? "delivered"
              : status == MESSAGE_STATUS_OUTGOING_FAILED ? "not delivered" : "not delivered yet", state);
-  /* the newest report says, as in Android (a group's: each member's in turn), but a failure stays: the message did
-   * not reach one of them. It keeps the report's state as its raw telephony status, and shows "Not sent. Tap to try
-   * again.", as in Messaging, without a notification */
+  /* the newest report says (a group's: each member's in turn), but a failure stays: the message did not reach one of
+   * them. It keeps the report's state as its raw telephony status, and shows "Not sent. Tap to try again.", without a
+   * notification */
   if (status != message->status)
     set_status (self, message, status, status == MESSAGE_STATUS_OUTGOING_FAILED ? (int) state : 0, 0);
 }
@@ -731,9 +729,9 @@ on_received (const char *path, const char *number, const char *text, gint64 time
     return;                     /* left on the modem: the next start hands it over again */
   sms_modem_delete (self->modem, path);
   message = sms_store_get_message (self->store, id);
-  /* from a blocked number: kept, but seen (never notified) and its conversation archived, as Messaging's block
+  /* from a blocked number: kept, but seen (never notified) and its conversation archived, as the block
    * dialog says ("You'll continue to receive messages from this number but won't be notified anymore. This
-   * conversation will be archived."; ReceiveSmsMessageAction) */
+   * conversation will be archived.") */
   if (blocked_numbers_contains (self->blocked, sender, country (self)))
     {
       sms_store_mark_seen (self->store, message->conversation_id);
@@ -868,7 +866,7 @@ set_visible (Service *self, const char *sender, gint64 conversation)
     }
   else if (self->visible == 0)
     {
-      /* ConversationListData: scrolled to the newest conversation, everything is seen */
+      /* the list scrolled to the newest conversation: everything is seen */
       if (sms_store_mark_seen (self->store, 0))
         update_notification (self, FALSE);
       failures_seen (self, 0);
@@ -938,7 +936,7 @@ on_method_call (GDBusConnection *bus, const char *sender, const char *path, cons
           g_dbus_method_invocation_return_error (invocation, G_DBUS_ERROR, G_DBUS_ERROR_FAILED, "Not kept");
           return;
         }
-      /* written in it: the conversation is read, and back from the archive (InsertNewMessageAction) */
+      /* written in it: the conversation is read, and back from the archive */
       sms_store_mark_read (self->store, id);
       sms_store_set_archived (self->store, id, FALSE);
       emit_changed (self, id);

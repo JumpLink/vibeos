@@ -1,4 +1,4 @@
-/* Home (spec §5): the grid of locations: Main storage and the media with their free space, the XDG folders,
+/* Home: the grid of locations: Main storage and the media with their free space, the XDG folders,
  * Recent files, the Recycle Bin, Remote and the Local Network. */
 #pragma once
 

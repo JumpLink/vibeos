@@ -1,5 +1,4 @@
-/* AlarmCard: one alarm in the Alarm tab, collapsed or expanded (DeskClock's alarm_time_collapsed.xml,
- * alarm_time_expanded.xml and their view holders; spec/clock.md §2.2-2.7).
+/* AlarmCard: one alarm in the Alarm tab, collapsed or expanded.
  *
  * Collapsed: the label (if any), the time, the repeat days and the on/off switch. Expanded, in addition: the label
  * row (with "Add label"), the seven day buttons, the sound, Vibrate and Delete. Between the two the card's bounds
@@ -28,8 +27,8 @@ const ClockAlarm *alarm_card_get_alarm (AlarmCard *self);
 void       alarm_card_set_expanded (AlarmCard *self, gboolean expanded, gboolean animate);
 gboolean   alarm_card_get_expanded (AlarmCard *self);
 
-/* the list's item animations (ItemAnimator): a new card opens its space (150 ms) then fades in (120 ms); a
- * removed one fades out (120 ms) then closes its space (150 ms) and calls `gone` */
+/* the list's item animations: a new card opens its space (150 ms) then fades in (120 ms); a removed one fades out (120
+ * ms) then closes its space (150 ms) and calls `gone` */
 void       alarm_card_appear       (AlarmCard *self);
 void       alarm_card_disappear    (AlarmCard *self, GCallback gone, gpointer data);
 

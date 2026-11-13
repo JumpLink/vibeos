@@ -1,4 +1,4 @@
-/* The window (spec §1): the toolbar (normal, search or selection), the page that shows (Home, Remote, a folder,
+/* The window: the toolbar (normal, search or selection), the page that shows (Home, Remote, a folder,
  * Settings), the bottom bar (selection or paste), the drawer over them, and the snackbar.
  *
  * FmShell is what every screen of the window shares: the settings, the remotes, what the app remembers, and the
@@ -50,7 +50,7 @@ struct _FmShell {
   /* the bottom bar: "select" or "paste" */
   GtkWidget *bottom, *bottom_items;
   GtkWidget *snackbar;
-  GtkWidget *job_line;          /* a hidden job's 2 dp progress line */
+  GtkWidget *job_line;          /* a hidden job's thin progress line */
 
   /* paste mode: what Copy or Cut took */
   GPtrArray *clip;              /* GFile */

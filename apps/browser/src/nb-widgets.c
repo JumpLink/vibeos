@@ -1,4 +1,4 @@
-/* nb-widgets: see nb-widgets.h. Numbers are dp (1 GTK px on the phone) and come from spec/jelly.md. */
+/* nb-widgets: see nb-widgets.h. Sizes are GTK px. */
 #include "nb-widgets.h"
 
 #include <math.h>
@@ -7,10 +7,8 @@
 
 /* ==== NbDialog ===================================================================================================
  *
- * still:dlg-engine: the window is 95 % of the screen's width ([27..1053] of 1080, AppCompat's
- * windowMinWidthMinor), the card inside it 16 dp in ([75,192]..[1005,2203]: MaterialAlertDialog's background
- * insets), colorSurface with 16 dp corners (Theme.Jelly.AlertDialog), the dim 32 % black (#0a0f10 → #070a0b).
- * The motion is the platform dialog's, as NeoDialog's: alpha 0 → 1 rising 20 dp in 220 ms, out 150 ms. */
+ * The window takes most of the screen's width, the card is inset in it, with rounded corners, over a light dim.
+ * The motion is NeoDialog's: alpha 0 → 1 rising 20 px in 220 ms, out 150 ms. */
 
 #define DLG_WIDTH_FRACTION 0.95
 #define DLG_INSET     16
@@ -137,8 +135,7 @@ nb_dialog_present (NbDialog *self, GtkWidget *parent)
   gtk_overlay_set_measure_overlay (overlay, GTK_WIDGET (self), FALSE);
   gtk_overlay_set_clip_overlay (overlay, GTK_WIDGET (self), TRUE);
   neo_anim_start_cubic (self->anim, 0, 1, ENTER_MS, 0, 0.2f, 0, 0, 1);
-  /* the dialog itself, for Escape: a field waits for a tap before the keyboard comes up, as an AlertDialog's
-   * EditText does (SOFT_INPUT_STATE_UNSPECIFIED) */
+  /* the dialog itself, for Escape: a field waits for a tap before the keyboard comes up */
   gtk_widget_grab_focus (GTK_WIDGET (self));
 }
 
@@ -317,7 +314,7 @@ nb_list_dialog_present (GtkWidget *parent, const char *title, const char *const 
   pick->data = data;
   pick->dialog = d;
   g_object_set_data_full (G_OBJECT (d), "nb-pick", pick, g_free);
-  /* select_dialog_singlechoice_material: 48 dp rows, the radio at 26 dp, the text at 72 dp (measured) */
+  /* one row a choice: the radio, then the text */
   for (int i = 0; items[i]; i++) {
     GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
     GtkWidget *mark = nb_mark_new (NB_MARK_RADIO);
@@ -335,7 +332,7 @@ nb_list_dialog_present (GtkWidget *parent, const char *title, const char *const 
     gtk_box_append (GTK_BOX (rows), row);
   }
   gtk_widget_add_css_class (rows, "nb-list");
-  /* the RecycleListView: as tall as the rows, scrolled when the window is shorter */
+  /* the list: as tall as the rows, scrolled when the window is shorter */
   GtkWidget *scroll = spongy_scroll_view_new ();
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), rows);
   gtk_widget_set_vexpand (scroll, TRUE);
@@ -347,8 +344,8 @@ nb_list_dialog_present (GtkWidget *parent, const char *title, const char *const 
 
 /* ==== NbSheet ====================================================================================================
  *
- * BottomSheetDialog: the content at the bottom, full width, sliding up from below its own height while the 32 %
- * dim fades in (design_bottom_sheet_slide_in: 150 ms, linear_out_slow_in; out the reverse, fast_out_linear_in). */
+ * A bottom sheet: the content at the bottom, full width, sliding up from below its own height while the 32 % dim
+ * fades in (150 ms, linear out slow in; out the reverse, fast out linear in). */
 
 #define SHEET_IN_MS  150
 #define SHEET_OUT_MS 150
@@ -528,9 +525,9 @@ nb_sheet_row (const char *icon_name, GdkPaintable *icon, const char *text)
 
 /* ==== the toast ===================================================================================================
  *
- * As Calculator's CalcToast (SystemUI's text_toast.xml and ToastDefaultAnimation): a 48 dp pill 48 dp above the
- * bottom, the app's icon and 14 sp text; it scales up from 0.9 over 333 ms while fading in, stays 3.5 s
- * (LENGTH_LONG: "Cleared all the cookies" is Toast.LENGTH_LONG) and goes the reverse way in 250 ms. */
+ * As Calculator's CalcToast: a pill above the bottom, the app's icon and the text; it scales up from 0.9 over 333 ms
+ * while fading in, stays 3.5 s (a long toast: "Cleared all the cookies" is one) and goes the reverse way in
+ * 250 ms. */
 
 #define TOAST_LONG_MS 3500
 #define TOAST_IN_MS   333
@@ -621,10 +618,8 @@ nb_toast_show (GtkWidget *widget, const char *text)
 
 /* ==== NbSwitch ===================================================================================================
  *
- * Theme.Jelly.Settings.Switch: the platform Switch with settingslib_switch_track (28 dp tall, radius 35, stretched
- * to the switch's width: 2 × the 28 dp thumb drawable = 56 dp) and settingslib_switch_thumb (a 20 dp oval inset
- * 4 dp). Off: track surfaceVariant, thumb outline; on: track primary, thumb onPrimary (still:settings). The thumb
- * slides in 250 ms (Switch's THUMB_ANIMATION_DURATION); the colours change at once (colour state lists). */
+ * The settings screen's switch: a pill-shaped track with a round thumb inset in it, the track filled in the primary
+ * colour when on. The thumb slides in 250 ms; the colours change at once. */
 
 #define SW_W 56
 #define SW_H 28
@@ -763,11 +758,10 @@ nb_switch_new (void)
   return g_object_new (NB_TYPE_SWITCH, NULL);
 }
 
-/* ==== NbMark: Material 3 checkbox and radio button ================================================================
+/* ==== NbMark: a checkbox and a radio button =======================================================================
  *
- * Checkbox: an 18 dp box, 2 dp corners; off a 2 dp onSurfaceVariant border, on primary filled with an onPrimary
- * check. Radio: a 20 dp ring, 2 dp; off onSurfaceVariant, on secondary with a 10 dp dot (still:dlg-engine:
- * #a2adaf / #b1cbcf). Both in a 48 dp square target. */
+ * Checkbox: a small square box, outlined off, filled with a check on. Radio: a ring, with a dot in it on. Both in a
+ * thumb-sized square target. */
 
 struct _NbMark {
   GtkWidget  parent;
@@ -819,7 +813,7 @@ nb_mark_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gtk_snapshot_push_rounded_clip (snapshot, &r);
   gtk_snapshot_append_color (snapshot, &fill, &r.bounds);
   gtk_snapshot_pop (snapshot);
-  /* the check: M3's ic_mtrl_checked_circle path, as two strokes */
+  /* the check, as two strokes */
   GskPathBuilder *b = gsk_path_builder_new ();
   gsk_path_builder_move_to (b, x + 4, y + 9.5);
   gsk_path_builder_line_to (b, x + 7.5, y + 13);
@@ -873,8 +867,7 @@ nb_mark_set_active (NbMark *self, gboolean active)
 
 /* ==== the toolbar ================================================================================================
  *
- * still:history: the up button [0,128]..[168,296] (56 dp square, 4 dp down), its arrow onSurfaceVariant; the
- * title from x 180 (60 dp), 22 sp; an action [936,140]..[1080,284] (48 dp at the end). */
+ * The up button, the title after it, the actions at the end. */
 
 GtkWidget *
 nb_icon (const char *icon_name, int size)
@@ -895,9 +888,9 @@ nb_label (const char *text, double size, const char *css, gboolean ellipsize)
   gtk_label_set_attributes (GTK_LABEL (label), attrs);
   pango_attr_list_unref (attrs);
   gtk_label_set_xalign (GTK_LABEL (label), 0);
-  /* a TextView's includeFontPadding: Roboto's yMax / yMin above and below the line */
+  /* font padding: the font's yMax / yMin above and below the line */
   neo_label_set_font_padding (label, size);
-  /* centred across a row taller than it (a row's gravity center_vertical); a caller places it otherwise */
+  /* centred across a row taller than it; a caller places it otherwise */
   gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
   if (ellipsize) {
     gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
@@ -952,8 +945,8 @@ nb_toolbar_get_title (GtkWidget *toolbar)
 
 /* ==== the outlined text field =====================================================================================
  *
- * TextInputLayout.OutlinedBox (Material 3's default textInputStyle): 56 dp, a 1 dp outline with 4 dp corners (2 dp
- * primary while focused), the hint inside until there is text or focus, then a 12 sp label on the outline. */
+ * An outline, thicker and in the primary colour while focused, the hint inside until
+ * there is text or focus, then a small label on the outline. */
 
 static void
 sync_field (GtkWidget *field)
@@ -1033,9 +1026,8 @@ nb_field_set_error (GtkWidget *field, const char *error)
 
 /* ==== the scroll indicator ========================================================================================
  *
- * A View's vertical scrollbar (still:menu x 1019..1031: 4 dp, #596163): the thumb is the visible fraction of the
- * content, it shows while the view scrolls and for 300 ms after (ViewConfiguration's scroll bar fade delay), then
- * fades over 250 ms; when the view appears it shows for 4 × 300 ms (awakenScrollBars on attach). */
+ * A vertical scrollbar: the thumb is the visible fraction of the content, it shows while the view scrolls and for
+ * 300 ms after, then fades over 250 ms; when the view appears it shows for 4 × 300 ms. */
 
 #define IND_W         4
 #define IND_DELAY     300

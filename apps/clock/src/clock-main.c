@@ -1,4 +1,4 @@
-/* neo-clock: the Clock app, DeskClock rebuilt in GTK 4 (spec/clock.md).
+/* neo-clock: the Clock app, DeskClock rebuilt in GTK 4.
  *
  * One program, two applications:
  *  - neo.Clock, the app with its tabs. It is D-Bus activatable: the launcher starts it, and the clock

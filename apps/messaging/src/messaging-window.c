@@ -52,7 +52,7 @@ update_visible (Shell *shell)
   GtkWidget *top = msg_navigator_get_top (MSG_NAVIGATOR (shell->navigator));
   gint64 visible = -1;
 
-  /* only while the window is in front and seen (onResume): a message that comes to a window behind another, or under
+  /* only while the window is in front and seen: a message that comes to a window behind another, or under
    * the lock screen (the compositor suspends it), is still news */
   if (!gtk_window_is_active (GTK_WINDOW (shell->window)) || !gtk_widget_get_mapped (shell->window)
       || gtk_window_is_suspended (GTK_WINDOW (shell->window)))
@@ -94,7 +94,7 @@ on_active (GtkWindow *window, GParamSpec *pspec, gpointer data)
 {
   Shell *shell = data;
 
-  /* onPause: the draft is saved when the window goes behind another */
+  /* the draft is saved when the window goes behind another */
   if (!gtk_window_is_active (window))
     keep_draft (shell);
   update_visible (shell);
@@ -147,7 +147,7 @@ on_picked (ContactPicker *picker, const char *number, gpointer data)
   const char *numbers[] = { number, NULL };
   gint64 id = sms_client_get_conversation (shell->client, numbers);
 
-  /* the picker becomes the conversation (ConversationActivity swaps its fragment) */
+  /* the picker becomes the conversation, in its place */
   if (id > 0)
     open_conversation (shell, id, NULL, TRUE);
 }
@@ -243,8 +243,7 @@ on_show_options (ConversationView *view, gpointer data)
   msg_navigator_push (MSG_NAVIGATOR (shell->navigator), page);
 }
 
-/* --- Forward (§2.5): ForwardMessageActivity, a dialog over the conversation (BugleTheme.DialogActivity: the window's
- * #181c1d under 28 dp corners, titled "Forward message"; no still of it, so the card is the app's alert dialog's) */
+/* --- Forward: a dialog over the conversation, titled "Forward message", on the app's alert dialog card */
 
 typedef struct
 {
@@ -276,8 +275,8 @@ on_forward_picked (GtkWidget *list, gint64 id, gpointer data)
     return;
   forward->picked = TRUE;
   neo_dialog_respond (forward->dialog, NEO_RESPONSE_OK);
-  /* launchConversationActivity with FLAG_ACTIVITY_CLEAR_TOP: the conversation picked, with the text as its draft,
-   * takes the place of the one it came from, so Back goes to the list */
+  /* the conversation picked, with the text as its draft, takes the place of the one it came from, so Back goes to the
+   * list */
   open_conversation (shell, id, text, MSG_IS_CONVERSATION_VIEW (top));
 }
 
@@ -329,7 +328,7 @@ messaging_window_open_conversation (GtkWidget *window, gint64 conversation, cons
 {
   Shell *shell = shell_of (window);
 
-  /* a notification's tap: the conversation, over the list (the back stack Bugle builds for it) */
+  /* a notification's tap: the conversation, over the list */
   if (msg_navigator_get_depth (MSG_NAVIGATOR (shell->navigator)) > 1)
     {
       GtkWidget *top = msg_navigator_get_top (MSG_NAVIGATOR (shell->navigator));

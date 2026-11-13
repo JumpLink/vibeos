@@ -1,6 +1,5 @@
-/* The Settings list dialog (ListPreferenceDialogFragmentCompat; spec/clock.md §10.5): the row's title, the choices
- * as a radio list with the current one checked, and Cancel. A choice answers at once; there is no OK. A copy of the
- * Calendar's cal_list_dialog. */
+/* The Settings list dialog: the row's title, the choices as a radio list with the current one checked, and Cancel. A
+ * choice answers at once; there is no OK. A copy of the Calendar's cal_list_dialog. */
 #pragma once
 
 #include <gtk/gtk.h>

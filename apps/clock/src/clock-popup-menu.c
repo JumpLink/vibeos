@@ -1,14 +1,14 @@
-/* The overflow menu: see clock-popup-menu.h. The motion is the framework's popup_window_enter / _exit
- * transitions, as the Dialer's: the card's clip grows down from the anchor while it fades in. */
+/* The overflow menu: see clock-popup-menu.h. The motion is the Dialer's: the card's clip grows down from the
+ * anchor while it fades in. */
 #include "clock-popup-menu.h"
 
 #include <neo.h>
 
-#define ROW_HEIGHT      48      /* listPreferredItemHeightSmall */
-#define TEXT_PAD        16      /* listPreferredItemPaddingStart / End */
-#define CORNER          4       /* Material 3's menu shape (still:calc-menu) */
-#define END_MARGIN      4       /* the card's end, 4 dp in from the window's (still:calc-menu) */
-#define ENTER_MS        250     /* popup_window_enter: EpicenterTranslateClipReveal + fade */
+#define ROW_HEIGHT      48
+#define TEXT_PAD        16      /* the text's inset at both ends */
+#define CORNER          4
+#define END_MARGIN      4       /* the card's end, this far in from the window's */
+#define ENTER_MS        250     /* the clip reveal and the fade in */
 #define EXIT_MS         150
 
 typedef struct
@@ -51,7 +51,7 @@ clock_popup_menu_size_allocate (GtkWidget *widget, int width, int height, int ba
   h = MIN (nat, height);
   x = MIN (a->origin.x + a->size.width, width - END_MARGIN) - w;
   x = MAX (x, 0);
-  /* overlapAnchor: its top on the anchor's; one that would run off the foot goes up as far as it must */
+  /* over the anchor: its top on the anchor's; one that would run off the foot goes up as far as it must */
   y = MIN (a->origin.y, height - h);
   y = MAX (y, 0);
   gtk_widget_allocate (self->card, w, h, -1, gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (x, y)));
@@ -192,7 +192,7 @@ clock_popup_menu_append (ClockPopupMenu *self, const char *label, ClockMenuActio
   Row row = { action, data };
   GtkWidget *item;
 
-  /* bodyLarge: 16 sp, 16 dp in from both sides, one line */
+  /* one line, ellipsized */
   gtk_label_set_xalign (GTK_LABEL (text), 0);
   gtk_label_set_ellipsize (GTK_LABEL (text), PANGO_ELLIPSIZE_END);
   gtk_label_set_max_width_chars (GTK_LABEL (text), 40);

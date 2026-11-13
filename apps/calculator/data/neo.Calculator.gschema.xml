@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- The Calculator's preferences: what ExactCalculator's Evaluator keeps in its SharedPreferences
-     (Evaluator.java: KEY_PREF_DEGREE_MODE, KEY_PREF_MEMORY_INDEX, KEY_PREF_SAVED_INDEX, KEY_PREF_SAVED_NAME).
+<!-- The Calculator's preferences: the angle mode, and which saved expressions the memory and the clipboard hold.
      The history itself is in a database under the user's data directory (expression-db.c). -->
 <schemalist>
   <schema id="neo.Calculator" path="/neo/Calculator/">

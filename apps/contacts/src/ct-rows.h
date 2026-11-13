@@ -1,9 +1,9 @@
 /* The rows of a contact list, worked out from the contacts (no drawing here, so that the tests can check them):
  * which contacts show, in what order, and which row starts a section and so shows its letter.
  *
- * The main list (§1.3, §1.4): the favourites first, under a star, in their own section with no label (so that the
- * fast scroller shows no letter for them, ContactsSectionIndexer); then everyone, the favourites again among them,
- * by the sort key, each section's first row showing its letter. A search (§2.3): only the contacts that match, by
+ * The main list: the favourites first, under a star, in their own section with no label (so that the
+ * fast scroller shows no letter for them); then everyone, the favourites again among them,
+ * by the sort key, each section's first row showing its letter. A search: only the contacts that match, by
  * the sort key, with no sections and no favourites block. */
 #pragma once
 

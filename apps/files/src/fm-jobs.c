@@ -113,7 +113,7 @@ fail (Job *job, const char *message)
     job->error = g_strdup (message);
 }
 
-/* ---- the conflict question (dialog_overwrite_file) ----------------------------------------------------------------- */
+/* ---- the conflict question --------------------------------------------------------------------------------------- */
 
 static void
 on_conflict_answer (NeoPressable *button, NeoDialog *dialog)
@@ -252,7 +252,7 @@ copy_tree (Job *job, GFile *source, GFile *target)
               fail (job, error->message);
               return FALSE;
             }
-          /* a folder onto a folder merges (msg_merge_folder); onto a file it is a conflict */
+          /* a folder onto a folder merges; onto a file it is a conflict */
           if (g_file_query_file_type (target, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, job->cancellable)
               != G_FILE_TYPE_DIRECTORY)
             {
@@ -484,7 +484,7 @@ run_copy (Job *job)
       gboolean same_folder = parent && g_file_equal (parent, job->dest);
       gboolean ok;
 
-      /* into itself (msg_is_same_file, msg_subfolder_of_source) */
+      /* into itself, or into a folder under itself */
       if (g_file_equal (source, job->dest) || fm_file_is_under (job->dest, source))
         {
           fail (job, _("Target is the same as the source."));
@@ -726,7 +726,7 @@ job_thread (GTask *task, gpointer source, gpointer data, GCancellable *cancellab
   g_task_return_boolean (task, TRUE);
 }
 
-/* ---- the progress dialog (dialog_file_progress) ------------------------------------------------------------------ */
+/* ---- the progress dialog ----------------------------------------------------------------------------------------- */
 
 static const char *
 job_title (JobKind kind)

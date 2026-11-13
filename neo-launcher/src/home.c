@@ -1,18 +1,18 @@
-/* The home screen: Launcher3's workspace (cols × rows cells, 5 × 5 unless Settings picked another grid; the clock
- * widget across the first page's top row), the dock (5 cells whatever the grid) and the page dots, with PagedView's paging: 1:1 drag after the paging slop, fling or snap with the quintic
- * scroller, and the edge stretch past the first and last page. Pages sit 10.77 dp apart.
+/* The home screen: the workspace (cols × rows cells, 5 × 5 unless Settings picked another grid; the clock widget
+ * across the first page's top row), the dock (5 cells whatever the grid) and the page dots, with paging: 1:1 drag
+ * after the paging slop, fling or snap with the quintic
+ * scroller, and the edge stretch past the first and last page. Pages sit PAGE_SPACING_DP apart.
  *
- * While an icon is dragged (drag.c) the workspace is SPRING_LOADED: every page, its CellLayout bounds included,
- * shrinks to fit between the drop bar's room (status bar + 104 dp) and 76 dp above the hotseat, about the
- * workspace's centre, and each shows its card: accent1_100 at 0.35, 28 dp corners, a 2 dp outline of the same on
- * the page under the drag. The hotseat stays as it is. */
+ * While an icon is dragged (drag.c) the workspace is zoomed out to take the drop: every page, its cell area included,
+ * shrinks to fit between the drop bar's room and the hotseat, about the workspace's centre, and each shows its card: a
+ * translucent rounded fill, outlined on the page under the drag. The hotseat stays as it is. */
 #include <math.h>
 
 #include "neo.h"
 
-#define PAGING_SLOP_DP        16          /* 2 × the 8 dp touch slop */
+#define PAGING_SLOP_DP        16          /* 2 × the touch slop */
 #define TOUCH_SLOP_DP         8
-#define FLING_PX_S_DP         500         /* dp/s */
+#define FLING_PX_S_DP         500         /* logical px/s: a slower release is no fling */
 #define MIN_FLING_DP          250
 #define MIN_SNAP_DP           1500
 #define SIGNIFICANT_MOVE      0.4f
@@ -26,17 +26,17 @@
 #define CLOCK_DATE_BASELINE_DP (247 / 3.0)
 #define CLOCK_TIME_RGB        0xE0E0E0      /* a soft grey-white, the owner's choice over the accent (0xA9EEF8) */
 
-#define PAGE_SPACING_DP       10.77         /* Workspace: max(10.77 dp, its padding + 1) */
-#define CARD_PAD_TOP_DP       12.7          /* the CellLayout's bounds around its cells, measured shrunk */
+#define PAGE_SPACING_DP       10.77         /* between pages */
+#define CARD_PAD_TOP_DP       12.7          /* the card's room around its cells */
 #define CARD_PAD_BOTTOM_DP    11.3
 #define SPRING_TOP_DP         (32 + 56 + 16)  /* below the status bar: the drop bar and its margins */
 #define SPRING_BOTTOM_DP      76            /* above the hotseat */
 #define SPRING_SIDE_DP        48            /* the shrunk page leaves at least this at each side */
-#define CARD_RADIUS_DP        28            /* dialogCornerRadius */
+#define CARD_RADIUS_DP        28
 #define CARD_STROKE_DP        2
 #define CARD_FILL_ALPHA       0.35f
-#define CARD_RGB              0xB8EBF3      /* system_accent1_100 */
-#define DOTS_SPRING_DP        36            /* the page dots above the hotseat while shrunk, measured */
+#define CARD_RGB              0xB8EBF3
+#define DOTS_SPRING_DP        36            /* the page dots above the hotseat while shrunk */
 
 static struct {
   /* geometry */
@@ -170,7 +170,7 @@ home_tile_at (float x, float y, float *ix, float *iy, ModelPos *pos)
     float rx, ry;
     slot_rect (page, i, &rx, &ry);
     rx -= H.scroll;
-    /* the icon and its label, Launcher3's BubbleTextView box */
+    /* the icon and its label, with a margin around them for the finger */
     float h = N.labels ? H.label_y : H.icon;
     if (x >= rx - dp (8) && x < rx + H.icon + dp (8) && y >= ry - dp (8) && y < ry + h + dp (8)) {
       *ix = rx;
@@ -255,7 +255,7 @@ draw_dots (float spring)
   gfx_rect (x0 + at * pitch, y - d / 2, d, d, d / 2, (GfxColor) { 1, 1, 1, 1 });
 }
 
-/* the CellLayout's bounds: its cells and its padding */
+/* a page's cell area: its cells and its padding */
 static void
 card_rect (int page, float r[4])
 {

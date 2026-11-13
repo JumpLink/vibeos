@@ -1,10 +1,9 @@
-/* cam-settings: the Settings screen (§20; SettingsActivity.kt, R/xml/root_preferences.xml,
- * gestures_preferences.xml), a page of the camera's own window.
+/* cam-settings: the Settings screen, a page of the camera's own window.
  *
- * Only the rows this build can back (§20.3): Bright screen (if the shell can hold the brightness), Save location
+ * Only the rows this build can back: Bright screen (if the shell can hold the brightness), Save location
  * data (if GeoClue is there), Shutter sound, Leveler (if the phone has a raw accelerometer), Gestures (if the shell
  * hands the app its volume keys), Mirror front camera (if there is a front camera), Enable video mirroring (if a
- * video can be recorded). The rest of Aperture's rows are left out, not shown disabled. */
+ * video can be recorded). Rows nothing here can back are left out, not shown disabled. */
 #pragma once
 
 #include <gtk/gtk.h>

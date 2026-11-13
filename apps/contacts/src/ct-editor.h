@@ -1,4 +1,4 @@
-/* The contact editor (spec §4): ContactEditorActivity for a new contact or an existing one. */
+/* The contact editor, for a new contact or an existing one. */
 #pragma once
 
 #include <gtk/gtk.h>

@@ -1,4 +1,4 @@
-/* Share (spec §10): the files go to the Email portal (org.freedesktop.portal.Email.ComposeEmail) as attachments,
+/* Share: the files go to the Email portal (org.freedesktop.portal.Email.ComposeEmail) as attachments,
  * the one "send to" the portal backends on Mobian have. Share shows only when the portal has that interface and
  * every file has a local path (a server's file has one through GVfs's FUSE mount). */
 #pragma once

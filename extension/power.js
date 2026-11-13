@@ -1,4 +1,4 @@
-// The screen on and off, as Android's PowerManager and doze do it: the power key, the double tap, the screen timeout,
+// The screen on and off: the power key, the double tap, the screen timeout,
 // the always-on display, and the session's org.gnome.ScreenSaver.
 //
 // Awake, the screen shows the shell. Asleep, the lock screen is up behind a black layer over everything, and the
@@ -26,16 +26,14 @@ Gio._promisify(Gio.DBusProxy.prototype, 'call');
 export const State = {AWAKE: 'awake', DOZING: 'dozing', ASLEEP: 'asleep'};
 
 // going to sleep, the AOD (or black) fades in over the screen; waking from the AOD it fades out the same way, and from
-// black the wake-up scrim fades over ANIMATION_DURATION_WAKEUP_SCRIM with a DecelerateInterpolator(1) (ScrimState.java)
+// black the wake-up scrim fades out over WAKE_FROM_OFF_MS, decelerating
 const SLEEP_MS = 500;
 const WAKE_FROM_AOD_MS = 500;
 const WAKE_FROM_OFF_MS = 667;
 const DECELERATE = t => 1 - (1 - t) * (1 - t);
-// the lock screen's and the bouncer's own screen timeout (config_lockScreenDisplayTimeout,
-// KeyguardViewMediator.AWAKE_INTERVAL_BOUNCER_MS)
+// the lock screen's and the bouncer's own screen timeout: shorter than the session's, nobody is using the phone
 const KEYGUARD_TIMEOUT_MS = 10000;
-// a press of the power key held this long is a long press (the power menu): ViewConfiguration's
-// getDeviceGlobalActionKeyTimeout
+// a press of the power key held this long is a long press (the power menu)
 const LONG_PRESS_MS = 500;
 // a sleep this soon after waking is taken as a bounce of the key
 const MIN_AWAKE_MS = 300;
@@ -143,11 +141,11 @@ export class Power extends Signals.EventEmitter {
             this._chord?.powerDown(this.interactive);
             // a press with the menu up closes it; the key then does what it would have
             this._menu?.closeNow();
-            // Android wakes on the key's down (PhoneWindowManager.interceptPowerKeyDown)
+            // the key wakes the screen as it goes down, not on its release
             this._wokeByPress = !this.interactive;
             if (this._wokeByPress)
                 this.wakeUp('power');
-            // ... and held, opens the power menu (MSG_POWER_LONG_PRESS), with LONG_PRESS_POWER_BUTTON's tick
+            // ... and held, opens the power menu, with a long-press tick
             this._cancelLongPress();
             this._longPressId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, LONG_PRESS_MS, () => {
                 this._longPressId = 0;

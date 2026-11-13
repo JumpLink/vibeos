@@ -1,7 +1,7 @@
-/* The file operations (spec §9): copy, move, to the Recycle Bin, delete, restore and empty the Recycle Bin. Each runs
+/* The file operations: copy, move, to the Recycle Bin, delete, restore and empty the Recycle Bin. Each runs
  * in a GTask thread with a GCancellable; the window never waits on I/O. A job that takes over 500 ms shows the
- * progress dialog (HIDE leaves a 2 dp line at the window's bottom); an existing target asks Overwrite / Rename /
- * Skip; the end says what was done in a snackbar (with UNDO after a recycle) and lists the folder again. */
+ * progress dialog (HIDE leaves a thin progress line at the window's bottom); an existing target asks Overwrite /
+ * Rename / Skip; the end says what was done in a snackbar (with UNDO after a recycle) and lists the folder again. */
 #pragma once
 
 #include <gio/gio.h>

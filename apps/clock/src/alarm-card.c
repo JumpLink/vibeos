@@ -1,5 +1,4 @@
-/* AlarmCard: see alarm-card.h. Sizes in dp, measured on still:clock-alarm and still:clock-alarm-expanded (a 328 dp
- * wide card on the 360 dp screen); the source line for each is in spec/clock.md §2. */
+/* AlarmCard: see alarm-card.h. Sizes are in px. */
 #include "alarm-card.h"
 #include "alarm-model.h"
 #include "clock-format.h"
@@ -7,22 +6,22 @@
 #include <glib/gi18n.h>
 #include <neo.h>
 
-#define CARD_RADIUS     28        /* alarm_background */
-#define CARD_TOP        8         /* MaterialCardViewStyle: the margin above every card */
+#define CARD_RADIUS     28
+#define CARD_TOP        8         /* the margin above every card */
 #define ROW             48        /* a row of the card */
-#define TIME_SIZE       56        /* display_time */
-#define TIME_ROW        74.67     /* the time view, font padding included: 224 px */
-#define START           16        /* start_guide_thin */
-#define TEXT_PAD        4         /* the rows' paddingStart */
-#define ICON_GAP        16        /* drawablePadding */
-#define CARET_END       4         /* end_guide_extreme_thin */
-#define SWITCH_END      22        /* end_guide_thin 16 + marginEnd 6 */
-#define DAYS_INSET      12        /* start_guide_very_thin 8 + marginHorizontal 4 */
-#define DAY_CIRCLE      32        /* bg_day_selected inset 8 dp in the 48 dp button */
-#define DISABLED_ALPHA  0.69      /* AlarmItemViewHolder.CLOCK_DISABLED_ALPHA */
+#define TIME_SIZE       56
+#define TIME_ROW        74.67     /* the time's row, font padding included: a whole 224 px at 3x */
+#define START           16        /* the content's inset from the card's start */
+#define TEXT_PAD        4         /* the rows' own start padding */
+#define ICON_GAP        16        /* between a row's icon and its text */
+#define CARET_END       4         /* the expand arrow's inset from the end */
+#define SWITCH_END      22        /* the switch's inset from the end: 16, and its own 6 */
+#define DAYS_INSET      12        /* the day buttons' inset from the start: 8, and their own 4 */
+#define DAY_CIRCLE      32        /* inside its ROW-sized button */
+#define DISABLED_ALPHA  0.69      /* the card's content while the alarm is off */
 #define CHANGE_MS       150       /* the list's change duration */
 
-/* --- a day button: a 32 dp circle with the day's letter (DayButtonStyle: no ripple, a tap swaps the circle) */
+/* --- a day button: a circle with the day's letter (no ripple: a tap swaps the circle) */
 
 #define ALARM_TYPE_DAY (alarm_day_get_type ())
 G_DECLARE_FINAL_TYPE (AlarmDay, alarm_day, ALARM, DAY, GtkWidget)
@@ -49,7 +48,7 @@ alarm_day_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gsk_rounded_rect_init_from_rect (&circle, &box, DAY_CIRCLE / 2.0);
   if (self->checked)
     {
-      /* bg_day_selected: a disc in colorPrimary, the letter in the window background colour */
+      /* chosen: a filled disc, the letter in the background's colour */
       GdkRGBA fill = neo_color (NEO_PRIMARY);
 
       gtk_snapshot_push_rounded_clip (snapshot, &circle);
@@ -59,7 +58,7 @@ alarm_day_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
     }
   else
     {
-      /* bg_day_unselected: a 1 dp ring in colorSecondary, the letter white */
+      /* not chosen: a thin ring, the letter white */
       GdkRGBA ring = neo_color (NEO_SECONDARY);
       float widths[4] = { 1, 1, 1, 1 };
       GdkRGBA colors[4] = { ring, ring, ring, ring };
@@ -112,7 +111,7 @@ alarm_day_new (int index)
   g_autofree char *letter = clock_weekday_letter (index);
   PangoFontDescription *font = pango_font_description_from_string ("Neo Roboto");
 
-  /* day_button_font_size: 18 sp on this screen (values-h420dp), weight 400 + 300 */
+  /* 700, not 400: the phone's Bold text setting is on */
   pango_font_description_set_weight (font, 700);
   pango_font_description_set_absolute_size (font, 18 * PANGO_SCALE);
   self->letter = gtk_widget_create_pango_layout (GTK_WIDGET (self), letter);
@@ -121,7 +120,7 @@ alarm_day_new (int index)
   return GTK_WIDGET (self);
 }
 
-/* --- the expand arrow: ic_caret_down / ic_caret_up, a 20 dp disc in colorOutline with a white chevron */
+/* --- the expand arrow: a small disc with a white chevron, pointing down or up */
 
 #define ALARM_TYPE_CARET (alarm_caret_get_type ())
 G_DECLARE_FINAL_TYPE (AlarmCaret, alarm_caret, ALARM, CARET, GtkWidget)
@@ -134,8 +133,7 @@ struct _AlarmCaret
 
 G_DEFINE_FINAL_TYPE (AlarmCaret, alarm_caret, GTK_TYPE_WIDGET)
 
-/* one bar of the chevron, through the drawable's groups in their order: a 2 x 8 rect, moved by caret_*_pivot and
- * caret_*_rect_position, rotated by caret_l / caret_r */
+/* one bar of the chevron: a 2 x 8 rect, moved by `pivot_y` and `position_y`, rotated by `rotation` */
 static void
 caret_bar (GtkSnapshot *snapshot, float rotation, float pivot_y, float position_y, const GdkRGBA *white)
 {
@@ -159,7 +157,7 @@ alarm_caret_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gtk_snapshot_append_color (snapshot, &disc, &circle.bounds);
   gtk_snapshot_pop (snapshot);
 
-  /* the vector is 32 viewport units over 32 dp (24 dp inset -6 dp on every side), centred on the disc */
+  /* the chevron is drawn in a 32-unit box, a unit a pixel, centred on the disc */
   gtk_snapshot_save (snapshot);
   gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (cx - 16, cy - 16));
   gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (16, self->up ? 13 : 19));
@@ -222,7 +220,7 @@ has_label (AlarmCard *self)
   return self->alarm->label && *self->alarm->label;
 }
 
-/* Alarm.canPreemptivelyDismiss: an instance that is coming soon or snoozed can be dismissed from the list */
+/* an instance that is coming soon or snoozed can be dismissed from the list */
 static gboolean
 can_dismiss (AlarmCard *self)
 {
@@ -241,11 +239,11 @@ collapsed_height (AlarmCard *self)
 static double
 expanded_height (AlarmCard *self)
 {
-  /* label, time, repeat, days, sound, vibrate, (dismiss), Delete and its 8 dp bottom margin */
+  /* label, time, repeat, days, sound, vibrate, (dismiss), Delete and its bottom margin */
   return ROW + TIME_ROW + 4 * ROW + (can_dismiss (self) ? ROW : 0) + ROW + 8;
 }
 
-/* --- the expand and collapse timeline (spec/clock.md §2.7) */
+/* --- the expand and collapse timeline */
 
 /* the rows that fade, in the expand's order; the collapse runs them backwards */
 enum { FADE_DAYS, FADE_SOUND, FADE_LABEL, FADE_DISMISS, FADE_DELETE, N_FADES };
@@ -256,9 +254,9 @@ clamp01 (double v)
   return v < 0 ? 0 : v > 1 ? 1 : v;
 }
 
-/* how far row `which` has faded in (1) or out (0) at `elapsed` ms (ExpandedAlarmViewHolder.getExpansionAnimator,
- * getCollapseAnimator): expanding, each fades in over 100 ms (2/3 of the change) from 25 ms (1/6) on, a twelfth of
- * the change spread over the rows; collapsing, each fades out over 37.5 ms (1/4), Delete first, 7/12 spread */
+/* how far row `which` has faded in (1) or out (0) at `elapsed` ms: expanding, each fades in over 100 ms (2/3 of the
+ * change) from 25 ms (1/6) on, a twelfth of the change spread over the rows; collapsing, each fades out over 37.5 ms
+ * (1/4), Delete first, 7/12 spread */
 static double
 fade (AlarmCard *self, int which)
 {
@@ -285,7 +283,7 @@ set_alphas (AlarmCard *self)
   double label = fade (self, FADE_LABEL);
 
   /* a labelled card shows its label collapsed too: the expanded label fades out with the others, then the
-   * collapsed one fades in over the last 25 ms (CollapsedAlarmViewHolder.getCollapseAnimator) */
+   * collapsed one fades in over the last 25 ms */
   if (!self->expanded && has_label (self))
     label = self->elapsed < 0 ? 1 : self->elapsed < 125 ? label : clamp01 ((self->elapsed - 125) / 25);
   gtk_widget_set_opacity (self->label_row, state * label);
@@ -464,7 +462,7 @@ alarm_card_size_allocate (GtkWidget *widget, int width, int height, int baseline
       place (self->days[i], x, top + days_e, ROW, ROW, extra);
     }
   place (self->ringtone, START, top + sound_e, width - 2 * START, ROW, extra);
-  /* ExpandedAlarmViewHolder.bindVibrator: INVISIBLE, not GONE, without a vibrator, so the card keeps its height */
+  /* without a vibrator the row is hidden but keeps its place, so the card keeps its height */
   place (self->vibrate, START, top + vibrate_e, width - 2 * START, ROW, extra && clock_has_vibrator ());
   place (self->delete, START, top + delete_e, -1, ROW, extra);
 }
@@ -516,7 +514,7 @@ show_alarm (AlarmCard *self)
     repeat = alarm_days_text (alarm->days, first);
   else
     {
-      /* Alarm.isTomorrow: a one-time alarm whose time of day has passed rings tomorrow */
+      /* a one-time alarm whose time of day has passed rings tomorrow */
       g_autoptr(GDateTime) now = g_date_time_new_now_local ();
       int now_minutes = g_date_time_get_hour (now) * 60 + g_date_time_get_minute (now);
 
@@ -582,7 +580,7 @@ update (AlarmCard *self, GVariant *changes)
   alarms_client_update (alarms_client_get (), self->alarm->id, changes);
 }
 
-/* the "Alarm set for ..." snackbar, for the alarm as it now is (AlarmUtils.popAlarmSetSnackbar) */
+/* the "Alarm set for ..." snackbar, for the alarm as it now is */
 static void
 tell_alarm_set (AlarmCard *self, int hour, int minute, guint days)
 {
@@ -616,7 +614,7 @@ on_time_chosen (int hour, int minute, gpointer data)
 {
   AlarmCard *self = data;
 
-  /* AlarmTimeClickHandler.onTimeSet: the new time, and the alarm switched on */
+  /* the new time, and the alarm switched on */
   update (self, g_variant_new_parsed ("{'hour': <%i>, 'minute': <%i>, 'enabled': <true>}", hour, minute));
   tell_alarm_set (self, hour, minute, self->alarm->days);
 }
@@ -643,7 +641,7 @@ on_day (AlarmDay *day, AlarmCard *self)
   day->checked = !day->checked;
   gtk_widget_queue_draw (GTK_WIDGET (day));
   update (self, g_variant_new_parsed ("{'days': <%u>}", days));
-  /* the snackbar only when the next ring moved (AlarmTimeClickHandler.setDayOfWeekEnabled) */
+  /* the snackbar only when the next ring moved */
   before->hour = after->hour = self->alarm->hour;
   before->minute = after->minute = self->alarm->minute;
   before->days = self->alarm->days;
@@ -673,7 +671,7 @@ on_label_activate (GtkEntry *entry, NeoDialog *dialog)
 static void
 on_label (NeoPressable *row, AlarmCard *self)
 {
-  /* LabelDialogFragment: "Label" over one line of text, Cancel and OK; the text starts selected */
+  /* the label dialog: "Label" over one line of text, Cancel and OK; the text starts selected */
   NeoDialog *dialog = neo_dialog_new (NULL);
   GtkWidget *entry = gtk_entry_new ();
 
@@ -693,7 +691,7 @@ on_label (NeoPressable *row, AlarmCard *self)
   gtk_editable_select_region (GTK_EDITABLE (entry), 0, -1);
 }
 
-/* a short buzz as a preview of the vibration (AlarmTimeClickHandler.setAlarmVibrationEnabled: 300 ms) */
+/* a short buzz as a preview of the vibration, 300 ms */
 static void
 buzz (void)
 {
@@ -759,7 +757,7 @@ body_label (const char *css)
   gtk_label_set_xalign (GTK_LABEL (label), 0);
   gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
   gtk_label_set_single_line_mode (GTK_LABEL (label), TRUE);
-  /* a 14 sp text view centred in its 48 dp row */
+  /* centred in its row */
   neo_label_set_font_padding (label, 14);
   gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
   gtk_widget_add_css_class (label, "body");
@@ -768,8 +766,8 @@ body_label (const char *css)
   return label;
 }
 
-/* a 48 dp row: an icon at 4 dp, its text 16 dp after it, in a pressable with the plain ripple */
-/* the ringtone row opens the ringtone picker for this alarm (AlarmTimeClickHandler.onRingtoneClicked) */
+/* a row: an icon, its text after it, in a pressable with the plain ripple */
+/* the ringtone row opens the ringtone picker for this alarm */
 static void
 on_ringtone (NeoPressable *row, AlarmCard *self)
 {
@@ -893,7 +891,7 @@ alarm_card_init (AlarmCard *self)
   g_signal_connect (self->ringtone, "clicked", G_CALLBACK (on_ringtone), self);
   gtk_widget_set_parent (self->ringtone, widget);
 
-  /* Vibrate: ic_vibrate, the word, and the round check at the end (a CheckBox with drawableEnd) */
+  /* Vibrate: the vibrate icon, the word, and the round check at the end */
   self->vibrate = icon_row ("clock-vibrate-symbolic", &icon, &text);
   gtk_label_set_text (GTK_LABEL (text), _("Vibrate"));
   gtk_widget_add_css_class (text, "vibrate-text");

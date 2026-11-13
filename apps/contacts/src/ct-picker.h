@@ -1,4 +1,4 @@
-/* Picking contacts from the list (ContactSelectionActivity, spec §5.1.6): the label's "Add contact", which
+/* Picking contacts from the list: the label's "Add contact", which
  * returns one contact on a tap or several through "Select contacts", and another app's "pick a contact".
  *
  * It is the list with its toolbar ("Select" and the back arrow, search, the ⋮ menu), without the favourites, the
@@ -18,13 +18,13 @@ typedef void (*CtPicked) (GPtrArray *uids, gpointer data);
 GtkWidget *ct_picker_new (GtkWidget *window, const char *title, GPtrArray *exclude, gboolean multiple,
                           CtPicked picked, gpointer data);
 
-/* insert-or-edit's first row, "Create new contact" (ContactPickerFragment's create-new header): a tap closes the
+/* insert-or-edit's first row, "Create new contact": a tap closes the
  * picker and runs @create */
 typedef void (*CtPickerCreate) (gpointer data);
 void       ct_picker_offer_new (GtkWidget *picker, CtPickerCreate create, gpointer data);
 
-/* only the contacts that have a row of @kind (a phone number or an email address: Phone.CONTENT_TYPE,
- * Email.CONTENT_TYPE), checked again whenever the contacts change */
+/* only the contacts that have a row of @kind (a phone number or an email address), checked again whenever the contacts
+ * change */
 void       ct_picker_require (GtkWidget *picker, CtKind kind);
 
 G_END_DECLS

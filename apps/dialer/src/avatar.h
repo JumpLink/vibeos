@@ -1,7 +1,7 @@
-/* A contact's round picture: the photo cut to a circle, or the Dialer's letter tile (LetterTileDrawable, spec §10).
+/* A contact's round picture: the photo cut to a circle, or the Dialer's letter tile.
  *
- * The tile is a disc in one of twelve colours, chosen from the contact's lookup key the way Android does
- * (String.hashCode), so a contact keeps its colour on every screen. A contact's tile shows the first letter of
+ * The tile is a disc in one of twelve colours, chosen from a hash of the contact's key
+ * (Java's String.hashCode), so a contact keeps its colour on every screen. A contact's tile shows the first letter of
  * the name; someone who is not a contact gets the person glyph instead, on a colour chosen from the number. */
 #pragma once
 

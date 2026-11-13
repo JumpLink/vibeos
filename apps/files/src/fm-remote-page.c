@@ -22,7 +22,7 @@ struct _FmRemotePage {
   gboolean editing;
 };
 
-/* ---- the server dialog (dialog_server, §6.4) ---------------------------------------------------------------------- */
+/* ---- the server dialog ------------------------------------------------------------------------------------------- */
 
 typedef struct {
   FmRemotePage *page;
@@ -250,7 +250,7 @@ server_dialog (FmRemotePage *page, FmProto proto, const FmRemote *editing, const
   server->host = field (address, hint);
   gtk_entry_set_input_purpose (GTK_ENTRY (server->host), GTK_INPUT_PURPOSE_URL);
   gtk_box_append (GTK_BOX (form), fm_form_row (_("Host"), server->host));
-  /* WebDAV's http / https, https first (spec §6.4) */
+  /* WebDAV's http / https, https first */
   if (base == FM_PROTO_DAV)
     gtk_box_append (GTK_BOX (form), radio_pair (server, "", "http", "https", proto != FM_PROTO_DAV || !editing));
   default_port = g_strdup_printf ("%d", fm_proto_default_port (proto == FM_PROTO_DAV && !editing ? FM_PROTO_DAVS
@@ -297,7 +297,7 @@ server_dialog (FmRemotePage *page, FmProto proto, const FmRemote *editing, const
   neo_dialog_present (dialog, page->shell->window);
 }
 
-/* ---- the Local Network scan (dialog_choose_smb, §6.3) ------------------------------------------------------------- *
+/* ---- the Local Network scan --------------------------------------------------------------------------------------- *
  * Two sources, one list: the subnet scan (fm-scan.h), which finds the file servers whether they announce themselves
  * or not, and network:/// (the workgroup's browse list, DNS-SD and WS-Discovery, when the system has them). A host
  * both of them find shows once: network:///'s names are resolved and the rows are keyed by address. A tap browses
@@ -613,7 +613,7 @@ local_network_dialog (FmRemotePage *page)
   neo_dialog_present (scan->dialog, page->shell->window);
 }
 
-/* ---- Add Remote (§6.2) --------------------------------------------------------------------------------------------- */
+/* ---- Add Remote ---------------------------------------------------------------------------------------------------- */
 
 static void
 on_add_chosen (int index, gpointer data)
@@ -802,8 +802,7 @@ fm_remote_page_refresh (FmRemotePage *page)
                                       -1);
       gtk_box_append (GTK_BOX (page->box), row);
     }
-  /* network_list_footer: 64 dp over a 1 dp line, "+ Add a remote location" centred: the theme's + at 16 dp (14 dp
-   * of ink) */
+  /* the footer over a line: "+ Add a remote location", centred */
   line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 4);
   {
     GtkWidget *plus = gtk_image_new_from_icon_name ("list-add-symbolic");

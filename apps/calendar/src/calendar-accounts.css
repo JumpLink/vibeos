@@ -1,6 +1,6 @@
 /* calendar-accounts.css: loaded after calendar.css, at its priority (cal-main.c) */
 
-/* --- the colour picker (color_picker_dialog.xml, SIZE_SMALL): the palette 28 dp in, 4 dp around each 48 dp swatch */
+/* --- the colour picker */
 
 .cal-palette-scroll {
   padding: 28px;
@@ -10,15 +10,15 @@
   margin: 4px;
 }
 
-/* the neutral button at the start of the bar (AlertDialog's button3) */
+/* the neutral button at the start of the bar */
 .cal-dialog-neutral {
   margin-left: -12px;
 }
 
-/* --- a text field (Widget.Material3.TextInputLayout.OutlinedBox): the box 56 dp under the floating hint's half
- * line, 1 dp outline in colorOutline, 4 dp corners, 2 dp in colorPrimary with focus, colorError with an error */
+/* --- an outlined text field: the outline thicker and in the primary colour with focus, in the error colour with an
+ * error */
 
-@define-color cal_error #f2b8b5;          /* M3 dark colorError (light: #b3261e) */
+@define-color cal_error #f2b8b5;          /* the dark theme's; calendar-light.css has the light one */
 
 .cal-field-outline {
   margin-top: 8px;
@@ -54,8 +54,8 @@
   color: @cal_error;
 }
 
-/* the hint: resting in the middle of the box (16 sp, its 24 dp line from 8 + 16 dp), floating to the top outline
- * (12 sp, its 16 dp line centred on it), 4 dp of the background on each side cutting the outline */
+/* the hint: resting in the middle of the box, floating up onto the top outline, smaller, a strip of the background
+ * on each side cutting the outline */
 .cal-field-hint {
   margin: 24px 16px 0 16px;
   padding: 0;
@@ -87,8 +87,8 @@
   color: @cal_error;
 }
 
-/* --- Add offline calendar (add_offline_calendar_dialog.xml): the field 16 dp inside the dialog's custom panel, which
- * spans the card (out over the card's own 24 dp padding) */
+/* --- Add offline calendar: the field inside the dialog's custom panel, which spans the card (out over the card's
+ * own padding) */
 
 .cal-offline-frame {
   margin: 0 -24px;
@@ -133,7 +133,7 @@
   margin: 0 -16px;
 }
 
-/* Widget.Material3.Button: 40 dp, a full corner, 24 dp in, labelLarge in colorOnPrimary over colorPrimary */
+/* the CalDAV page's filled pill buttons */
 .cal-filled-button {
   margin-top: 16px;
   min-height: 40px;

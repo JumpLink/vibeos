@@ -1,6 +1,5 @@
 /* The Phone service's notifications in the shade, over org.freedesktop.Notifications: the incoming call with Answer
- * and Decline, the ongoing call with Hang up, and the missed calls (InCallUI's StatusBarNotifier and the Dialer's
- * MissedCallNotifier).
+ * and Decline, the ongoing call with Hang up, and the missed calls.
  *
  * The same as the Clock's clock-notifier (apps/clock/src/clock-notifier.h), which says why it is not GNotification:
  * that one never says when the user swiped a notification away, and a missed-call notification answers that (the
@@ -36,9 +35,9 @@ guint32 notifier_notify (Notifier *self, guint32 replaces, const char *title, co
                          const char * const *actions, NotifierUrgency urgency, GVariant *hints);
 void    notifier_close (Notifier *self, guint32 id);
 
-/* Android's extras in a notification's header, as hints for notifier_notify: a chronometer (setUsesChronometer),
+/* extras in a notification's header, as hints for notifier_notify: a chronometer,
  * which the shell shows as "Phone • 04:59" and counts on by itself, from @chronometer, the wall-clock time (Unix ms)
- * at which it reads zero, 0 for none, counting up from it; the sub-text (setSubText), or NULL; and @no_peek, for a
+ * at which it reads zero, 0 for none, counting up from it; the sub-text, or NULL; and @no_peek, for a
  * notification on a channel of default importance (the ongoing call): in the list, but no heads-up. The shell
  * renders them (extension/notifications.js); other notification servers leave them out. */
 GVariant *notifier_header_hints (gint64 chronometer, const char *subtext, gboolean no_peek);

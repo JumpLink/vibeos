@@ -1,20 +1,20 @@
-/* Etar's three looks (cal-colors.h). */
+/* The Calendar's three looks (cal-colors.h). */
 #include "cal-colors.h"
 
 #include <gtk/gtk.h>
 #include <neo.h>
 
-/* the `_dark` colours over the baseline dark roles (measured on the phone, spec/calendar.md §1) */
+/* dark */
 static const CalPalette dark = {
   .surface = 0xff141218, .surface_container_low = 0xff1d1b20, .surface_container = 0xff211f26,
   .surface_container_high = 0xff2b2930, .surface_container_highest = 0xff36343b,
   .on_surface = 0xffe6e0e9, .on_surface_variant = 0xffcac4d0, .outline = 0xff938f99,
   .primary = 0xff4d7f86, .on_primary = 0xff381e72, .primary_container = 0xff4f378b,
   .on_primary_container = 0xffeaddff,
-  .secondary_container = 0xff00363c,           /* night-v31: system_accent1_800 */
+  .secondary_container = 0xff00363c,
   .on_secondary_container = 0xffe8def8,
   .hour_bg = 0xff141414, .future_bg = 0xff141414,
-  .past_bg = 0xff2e2d32,                        /* #22DDDDDD over the window's #141218 */
+  .past_bg = 0xff2e2d32,                        /* a faint light wash over the window */
   .grid_line = 0xff6a6a6a, .hour_label = 0xb2ffffff, .day_label = 0xb2ffffff, .weekend_label = 0xfffafafa,
   .week_today = 0xff90caf9, .now_line = 0xffff0000, .grid_selected = 0xe633b5e5, .clicked = 0x8033b5e5,
   .new_event_hint = 0xffffffff, .more_events = 0xff666666, .expand_icon = 0xff797979,
@@ -24,15 +24,15 @@ static const CalPalette dark = {
   .month_weekend_names = 0xfff5f5f5, .month_week_number = 0xff4d7f86, .month_event_text = 0xffffffff,
   .month_event_extra = 0xffffffff, .month_grid_line = 0xff6a6a6a,
   .agenda_separator = 0xffbbbbbb, .agenda_past_present = 0xb2ff0000,
-  .agenda_day_text = 0xffcac4d0,                /* measured (agenda_day_item_text_color_dark is #E0E0E0) */
+  .agenda_day_text = 0xffcac4d0,
   .agenda_title = 0xffffffff, .agenda_when = 0xfff5f5f5,
   .agenda_declined_title = 0xff616161, .agenda_declined_when = 0x7fffffff,
   .selected_number = 0xff141218, .switch_thumb_off = 0xffb9b9b9, .switch_track_off = 0xff5b5a5e,
   .dark = TRUE,
 };
 
-/* Pure black night mode: colorBackground #000000 (styles-color.xml colorBackgroundBlack) and the `_black` colours;
- * the dialogs and menus keep their surface containers */
+/* Pure black night mode: a black window and the black look's colours; the dialogs and menus keep their surface
+ * containers */
 static const CalPalette black = {
   .surface = 0xff000000, .surface_container_low = 0xff1d1b20, .surface_container = 0xff211f26,
   .surface_container_high = 0xff2b2930, .surface_container_highest = 0xff36343b,
@@ -40,7 +40,7 @@ static const CalPalette black = {
   .primary = 0xff4d7f86, .on_primary = 0xff381e72, .primary_container = 0xff4f378b,
   .on_primary_container = 0xffeaddff, .secondary_container = 0xff00363c, .on_secondary_container = 0xffe8def8,
   .hour_bg = 0xff000000, .future_bg = 0xff000000,
-  .past_bg = 0xff1d1d1d,                        /* #22DDDDDD over black */
+  .past_bg = 0xff1d1d1d,                        /* a faint light wash over black */
   .grid_line = 0xff303030, .hour_label = 0xffffffff, .day_label = 0xffffffff, .weekend_label = 0xfffafafa,
   .week_today = 0xff90caf9, .now_line = 0xffff0000, .grid_selected = 0xe633b5e5, .clicked = 0x8033b5e5,
   .new_event_hint = 0xffffffff, .more_events = 0xff666666, .expand_icon = 0xff797979,
@@ -56,8 +56,7 @@ static const CalPalette black = {
   .dark = TRUE,
 };
 
-/* the plain colours over Material 3's baseline light roles; colorPrimary is system_accent1_500 in both modes, the
- * secondary container system_accent1_200 (values-v31) */
+/* light; the primary colour is the same as in the dark looks */
 static const CalPalette light = {
   .surface = 0xfffef7ff, .surface_container_low = 0xfff7f2fa, .surface_container = 0xfff3edf7,
   .surface_container_high = 0xffece6f0, .surface_container_highest = 0xffe6e0e9,
@@ -66,7 +65,7 @@ static const CalPalette light = {
   .on_primary_container = 0xff21005d,
   .secondary_container = 0xffa0cfd6, .on_secondary_container = 0xff1d192b,
   .hour_bg = 0xffeeeeee, .future_bg = 0xffffffff,
-  .past_bg = 0xfffaf3fa,                        /* #22DDDDDD over the window's #FEF7FF */
+  .past_bg = 0xfffaf3fa,                        /* a faint wash over the window */
   .grid_line = 0xffcccccc, .hour_label = 0xff666666, .day_label = 0xff666666, .weekend_label = 0x80333333,
   .week_today = 0x802979ff, .now_line = 0xffff0000, .grid_selected = 0xe633b5e5, .clicked = 0x8033b5e5,
   .new_event_hint = 0xffffffff, .more_events = 0xff666666, .expand_icon = 0xff666666,

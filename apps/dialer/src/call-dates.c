@@ -1,4 +1,4 @@
-/* When a call was: see call-dates.h. The rules are libcore's RelativeDateTimeFormatter, which DateUtils calls. */
+/* When a call was: see call-dates.h. */
 #include "call-dates.h"
 
 #include <glib/gi18n.h>
@@ -9,7 +9,7 @@
 #define DAY_MS    (24 * HOUR_MS)
 #define WEEK_MS   (7 * DAY_MS)
 
-/* the number of local calendar days between the two (DateUtils.getDayDifference, dayDistance) */
+/* the number of local calendar days between the two */
 static int
 day_distance (gint64 date_ms, gint64 now_ms)
 {
@@ -54,7 +54,7 @@ call_dates_relative (gint64 date_ms, gint64 now_ms)
   g_autoptr(GDateTime) date = NULL, now = NULL;
   int count;
 
-  /* minResolution is a minute: no seconds, so a call under a minute ago is "0 min. ago" */
+  /* to the minute: no seconds, so a call under a minute ago is "0 min. ago" */
   if (duration < HOUR_MS)
     {
       count = duration / MINUTE_MS;
@@ -78,7 +78,7 @@ call_dates_relative (gint64 date_ms, gint64 now_ms)
       return g_strdup_printf (now_ms >= date_ms ? g_dngettext (NULL, "%d day ago", "%d days ago", count)
                                                 : g_dngettext (NULL, "In %d day", "In %d days", count), count);
     }
-  /* a week or more: the date, with the year only when it is not this one (FORMAT_NO_YEAR / FORMAT_SHOW_YEAR) */
+  /* a week or more: the date, with the year only when it is not this one */
   date = g_date_time_new_from_unix_local_usec (date_ms * 1000);
   now = g_date_time_new_from_unix_local_usec (now_ms * 1000);
   if (g_date_time_get_year (date) == g_date_time_get_year (now))
@@ -106,8 +106,8 @@ char *
 call_dates_duration (gint64 seconds)
 {
   if (seconds >= 60)
-    /* TRANSLATORS: call_duration_format_pattern with the abbreviations: "2m 15s" */
+    /* TRANSLATORS: a call's duration with the abbreviations: "2m 15s" */
     return g_strdup_printf (C_("call duration", "%dm %ds"), (int) (seconds / 60), (int) (seconds % 60));
-  /* TRANSLATORS: call_duration_short_format_pattern: "12s" */
+  /* TRANSLATORS: a call's duration under a minute: "12s" */
   return g_strdup_printf (C_("call duration", "%ds"), (int) seconds);
 }

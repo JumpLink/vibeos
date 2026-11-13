@@ -10,7 +10,7 @@
 #define MESSAGING_INTERFACE "org.freedesktop.ModemManager1.Modem.Messaging"
 #define SMS_INTERFACE "org.freedesktop.ModemManager1.Sms"
 #define GPP_INTERFACE "org.freedesktop.ModemManager1.Modem.Modem3gpp"
-#define SEND_TIMEOUT_MS (5 * 60 * 1000) /* BugleGservicesKeys' SMS send timeout */
+#define SEND_TIMEOUT_MS (5 * 60 * 1000) /* the most Send may take */
 
 /* MMSmsState and MMSmsPduType */
 enum { SMS_STATE_RECEIVING = 2, SMS_STATE_RECEIVED = 3 };

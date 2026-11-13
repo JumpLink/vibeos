@@ -1,14 +1,10 @@
 /* The colour picker (cal-color-picker.h).
  *
- * ColorPickerDialog at SIZE_SMALL (a phone): a MaterialAlertDialog with the title over a ScrollView holding the
- * palette 28 dp in from every side (color_picker_dialog.xml), a TableLayout of 4 columns (NUM_COLUMNS) of 48 dp
- * swatches with 4 dp margins (color_swatch_small, color_swatch_margins_small): 56 dp a cell. Every second row runs
- * right to left (ColorPickerPalette.addSwatchToRow) and a short last row is filled with blank cells.
+ * At its small size (a phone): a dialog with the title over the scrolled palette, a table of 4 columns (NUM_COLUMNS)
+ * of round swatches. Every second row runs right to left and a short last row is filled with blank cells.
  *
- * A swatch (ColorPickerSwatch) is an oval in its colour; pressed, its value drops to 70 % (ColorStateDrawable,
- * PRESSED_STATE_MULTIPLIER), without a ripple. The checked one carries ic_colorpicker_swatch_selected (measured off
- * the xhdpi PNG: a 31 dp disc of black at 15 % with a white check from (18.5, 23) over (21.5, 29.5) to (30.5, 18.5)
- * of the 48 dp, about 3.5 dp thick). A tap chooses and dismisses (ColorPickerDialog.onColorSelected). */
+ * A swatch is an oval in its colour; pressed, its value drops to 70 %, without a ripple. The checked one carries a
+ * faint black disc with a white check in it. A tap chooses and dismisses. */
 #include "cal-color-picker.h"
 #include "cal-colors.h"
 #include "cal-model.h"
@@ -37,7 +33,7 @@ cal_color_picker_default_colors (int *n_colors)
   return default_colors;
 }
 
-/* --- android.graphics.Color's HSV */
+/* --- HSV */
 
 static void
 to_hsv (guint32 rgb, float *h, float *s, float *v)
@@ -80,7 +76,7 @@ typedef struct {
   guint32 raw, display;
 } Color;
 
-/* HsvColorComparator: by hue, then saturation, then value, each the higher first */
+/* by hue, then saturation, then value, each the higher first */
 static int
 compare_hsv (gconstpointer a, gconstpointer b)
 {
@@ -110,6 +106,7 @@ struct _CalSwatch {
 
 G_DEFINE_FINAL_TYPE (CalSwatch, cal_swatch, GTK_TYPE_WIDGET)
 
+/* the check mark on the chosen swatch, in the coordinates of a SWATCH-wide one */
 static GskPath *
 check_path (void)
 {
@@ -252,7 +249,7 @@ real_colors (GtkWidget *parent)
 {
   GtkRoot *root = gtk_widget_get_root (parent);
 
-  /* outside the app's window (a test) there are no settings: Etar's default, off */
+  /* outside the app's window (a test) there are no settings: the default, off */
   return root && g_object_get_data (G_OBJECT (root), "cal-shell")
          && g_settings_get_boolean (cal_window_get_settings (parent), "real-event-colors");
 }
@@ -267,7 +264,7 @@ cell (Picker *picker, int index, guint32 current_display)
 
   if (index < 0)
     {
-      /* createBlankSpace */
+      /* a blank cell */
       GtkWidget *blank = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
 
       gtk_widget_set_size_request (blank, (int) SWATCH, (int) SWATCH);
@@ -289,7 +286,7 @@ cell (Picker *picker, int index, guint32 current_display)
   gtk_widget_add_css_class (pressable, "cal-swatch");
   g_object_set_data (G_OBJECT (pressable), "cal-index", GINT_TO_POINTER (index));
   g_signal_connect (pressable, "clicked", G_CALLBACK (on_swatch), picker);
-  /* color_swatch_description(_selected), numbered in reading order */
+  /* each swatch's accessible name, numbered in reading order */
   name = CAL_SWATCH (swatch)->checked ? g_strdup_printf (_("Color %d selected"), index + 1)
                                       : g_strdup_printf (_("Color %d"), index + 1);
   gtk_accessible_update_property (GTK_ACCESSIBLE (pressable), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);

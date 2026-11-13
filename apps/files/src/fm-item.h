@@ -1,5 +1,5 @@
 /* FmItem: one row of a listing (a file, a folder, a share on a server, a host on the network), as GIO describes it,
- * and the orders File Manager+ sorts a folder in (spec §3). No GTK: the tests link it alone. */
+ * and the orders File Manager+ sorts a folder in. No GTK: the tests link it alone. */
 #pragma once
 
 #include <gio/gio.h>
@@ -70,7 +70,7 @@ const char *fm_item_extension     (FmItem *item);
 int         fm_item_compare       (FmItem *a, FmItem *b, FmSort sort);
 void        fm_items_sort         (GPtrArray *items, FmSort sort);
 
-/* GSettings' sort-order string ("NameUp", ...: File Manager+'s settings_sort_method_values) and back */
+/* GSettings' sort-order string ("NameUp", ...: File Manager+'s own values) and back */
 FmSort      fm_sort_from_string   (const char *value);
 const char *fm_sort_to_string     (FmSort sort);
 

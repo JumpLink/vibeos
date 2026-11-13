@@ -1,9 +1,9 @@
-/* QuickContact (ct-quick.h, spec §3).
+/* QuickContact (ct-quick.h).
  *
- * How it is built. Android's MultiShrinkScroller moves three things with one gesture: the transparent space above
- * the sheet, the header's height (from a square as wide as the screen down to the 56 dp toolbar), and the cards'
+ * How it is built. One gesture moves three things: the transparent space above
+ * the sheet, the header's height (from a square as wide as the screen down to the toolbar's), and the cards'
  * own scroll. Opened from the list it starts fully expanded, so there is no transparent space, and what is left is
- * a header that shrinks while the cards rise under it, then stays 56 dp tall while the cards scroll on beneath.
+ * a header that shrinks while the cards rise under it, then stays toolbar-tall while the cards scroll on beneath.
  *
  * That is one scroll view here (SpongyScrollView, the fling and the stretch of every other list), whose content
  * (QcContent) is the cards below a header-sized gap, with the header (QcHeader) kept at the top of the view and as
@@ -11,16 +11,16 @@
  * before them, so the cards pass under it; a drag that starts on the header still scrolls, because the scroll
  * view takes drags in the capture phase.
  *
- * The page is translucent (Theme.QuickContact): the list stays drawn under the 0xC8 scrim, and the sheet animates
- * itself, rising from the bottom in 300 ms (linear_out_slow_in) and falling off it in 250 ms on Back.
+ * The page is translucent: the list stays drawn under a dark scrim, and the sheet animates
+ * itself, rising from the bottom in 300 ms (linear-out-slow-in) and falling off it in 250 ms on Back.
  *
  * Left out, for want of anything on this phone to back them:
  *   - the menu's Link and View linked contacts (EDS does not aggregate contacts, ct-store.h), Create shortcut (the
  *     launcher takes no pinned shortcuts) and Set ringtone (no per-contact ringtones in the Dialer);
  *   - a phone entry's third button (call with a note, video call) and an address's Directions (no navigation app);
  *   - tapping an event (the Calendar has no "show this day" entry point) or a relation (a contact search by name);
- *   - the Palette swatch of a photo: a photo contact takes the default #607d8b, as a photo without a vibrant
- *     swatch does on Android (§3.4, the measured contacts-card);
+ *   - the Palette swatch of a photo: a photo contact takes the default tint, the one a photo without a vibrant
+ *     swatch gets;
  *   - pulling the sheet down to dismiss it, and the landscape two-panel layout. Back closes it. */
 #include "ct-quick.h"
 #include "ct-avatar.h"
@@ -98,7 +98,7 @@ qc_header_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, 
   *minimum = *natural = 0;
 }
 
-/* the toolbar: its buttons at the end of the 56 dp bar at the top */
+/* the toolbar: its buttons at the end of the bar at the top */
 static void
 qc_header_size_allocate (GtkWidget *widget, int width, int height, int baseline)
 {
@@ -119,7 +119,7 @@ qc_header_contains (GtkWidget *widget, double x, double y)
   return x >= 0 && x < gtk_widget_get_width (widget) && y >= 0 && y < header_height (quick);
 }
 
-/* MultiShrinkScroller.updatePhotoTintAndDropShadow for a photo (§3.4): below half the maximum height the photo
+/* a photo's tint: below half the maximum height the photo
  * loses its saturation, washes towards white and takes the tint by a multiply, all by r^1.5 */
 static void
 push_photo_tint (GtkSnapshot *snapshot, Quick *quick, double height)
@@ -129,7 +129,7 @@ push_photo_tint (GtkSnapshot *snapshot, Quick *quick, double height)
   double alpha = 1 - MIN (pow (r, 1.5) * 2, 1);
   double tint = MIN (pow (r, 1.5) * 3, 1);
   GdkRGBA t = ct_rgba (quick->header_tint);
-  /* ColorMatrix.setSaturation's luminance weights */
+  /* the luminance weights of a saturation matrix */
   double lr = 0.213 * (1 - alpha), lg = 0.715 * (1 - alpha), lb = 0.072 * (1 - alpha);
   double k[3] = { 1 - tint + tint * t.red, 1 - tint + tint * t.green, 1 - tint + tint * t.blue };
   double s[3][3] = {
@@ -202,7 +202,7 @@ qc_header_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   GdkRGBA white = ct_rgba (0xFFFFFFFFu);
   double box, block, b, scale, bottom, top, alpha;
 
-  /* the toolbar's 4.5 dp elevation once the header is down to its least (drawn under it, over the cards) */
+  /* the toolbar's shadow once the header is down to its least (drawn under it, over the cards) */
   if (height <= quick->min_h + 0.5)
     {
       GdkRGBA shade = { 0, 0, 0, 0.3f }, clear = { 0, 0, 0, 0 };
@@ -236,9 +236,8 @@ qc_header_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
       gtk_snapshot_pop (snapshot);
     }
 
-  /* the title (32 dp) and the phonetic name (28 dp) under it, scaled down to the toolbar title's 20 dp along
-   * (0.16, 0.4, 0.2, 1), their start edge 16 dp in; full size, their bottom is 16 dp above the header's, and at
-   * the least they are centred in the 56 dp bar (updateHeaderTextSizeAndMargin) */
+  /* the title and the phonetic name under it, scaled down to the toolbar title's size along (0.16, 0.4, 0.2, 1);
+   * full size, they sit just above the header's bottom, and at the least they are centred in the bar */
   title = text_layout (widget, title_style, quick->name, width - 2 * CT_QC_TITLE_MARGIN_H_DP);
   box = text_box_height (title, title_style);
   block = box;
@@ -314,7 +313,7 @@ struct _QcContent {
 G_DEFINE_FINAL_TYPE (QcContent, qc_content, GTK_TYPE_WIDGET)
 
 /* the maximum height: the header is square with the screen's width, the status bar's inset included
- * (mMaximumHeaderHeight = the photo container's width); the window here starts under the status bar */
+ * (the photo container's width); the window here starts under the status bar */
 static double
 max_header_height (double width)
 {
@@ -333,7 +332,7 @@ qc_content_measure (GtkWidget *widget, GtkOrientation orientation, int for_size,
       return;
     }
   /* the cards are at least as tall as the view under the collapsed header, so the header can always shrink all
-   * the way (getMaximumScrollUpwards) */
+   * the way */
   {
     int cards_min, cards_nat;
     double view = quick->view_h;
@@ -458,15 +457,15 @@ typedef struct {
   gboolean icon_shown;          /* only the first entry of a kind shows it (the others keep its space) */
   const char *header, *sub, *text;
   char *uri;                    /* what a tap opens, NULL for nothing */
-  const char *alt_icon;         /* the 48 dp button at the end (a number's SMS) */
+  const char *alt_icon;         /* the button at the end (a number's SMS) */
   char *alt_uri, *alt_name;
   char *copy;                   /* what a long press copies */
   CtKind kind;                  /* for Set default: the kind and the row's index */
   int index;
   int n_of_kind;
   gboolean add;                 /* "Add phone number" / "Add email": grey, opens the editor */
-  gboolean first_in_untitled;   /* the first entry of a card without a title: 2 dp more above */
-  gboolean later_of_kind;       /* a later entry of the same kind: 6 dp above instead of 13 */
+  gboolean first_in_untitled;   /* the first entry of a card without a title: more room above */
+  gboolean later_of_kind;       /* a later entry of the same kind: less room above */
 } Entry;
 
 static void
@@ -553,7 +552,7 @@ on_context_chosen (int index, gpointer data)
     }
 }
 
-/* the context menu (§3.7) at the finger: Copy to clipboard, and for a number or an address of several of its kind,
+/* the context menu at the finger: Copy to clipboard, and for a number or an address of several of its kind,
  * Set default or Clear default ("Call via" needs several calling accounts, which this phone does not have) */
 static void
 on_entry_long_pressed (NeoPressable *row, Quick *quick)
@@ -600,9 +599,8 @@ entry_label (const char *text, const char *css_class, double size)
   return label;
 }
 
-/* expanding_entry_card_item.xml: the kind icon (24 dp, 12 dp down, 27 dp before the text), the header (16 sp), the
- * sub-header and the text (14 sp), the 48 dp button at the end; 20 dp in, 8 dp from the end, 13 dp above (6 for a
- * later entry of the same kind) and 16 dp below */
+/* one entry of a card: the kind's icon, the header, the sub-header and the text, and the button at the end; a later
+ * entry of the same kind sits closer to the one above */
 static GtkWidget *
 entry_row (Quick *quick, const Entry *entry, gboolean card_has_icons)
 {
@@ -636,7 +634,7 @@ entry_row (Quick *quick, const Entry *entry, gboolean card_has_icons)
       gtk_box_append (GTK_BOX (box), icon);
     }
   label = entry_label (entry->header, "ct-qc-entry-header", CT_QC_HEADER_SP);
-  /* a header-only entry sits 6 dp lower (expanding_entry_card_item's header-only margins) */
+  /* a header-only entry sits lower */
   if (header_only)
     gtk_widget_set_margin_top (label, (int) CT_QC_NO_ICON_MARGIN_TOP_DP);
   gtk_box_append (GTK_BOX (lines), label);
@@ -682,7 +680,7 @@ entry_row (Quick *quick, const Entry *entry, gboolean card_has_icons)
   return row;
 }
 
-/* a card (CardView: 28 dp corners, #1b1b1b, 8 dp from the sides, 12 dp below) */
+/* a card: rounded, inset from the sides */
 static GtkWidget *
 card_new (Quick *quick, const char *title)
 {
@@ -708,7 +706,7 @@ card_new (Quick *quick, const char *title)
   return card;
 }
 
-/* the 1 dp separator between kinds (transparent: divider_line_color_light) */
+/* the separator between kinds: transparent, so it is only a gap */
 static void
 card_separator (GtkWidget *card)
 {
@@ -718,7 +716,7 @@ card_separator (GtkWidget *card)
   gtk_box_append (GTK_BOX (card), line);
 }
 
-/* the rows of @kind, the default (PREF) one first, as QuickContact sorts super-primary first; each item keeps its
+/* the rows of @kind, the default (PREF) one first; each item keeps its
  * vCard index for Set default */
 static GPtrArray *
 sorted_items (EContact *contact, CtKind kind, GArray **indexes)
@@ -754,7 +752,7 @@ escaped (const char *value)
   return g_uri_escape_string (value, "+@,", TRUE);
 }
 
-/* the communication card (§3.7): numbers, SIP addresses, email addresses, postal addresses, in that order */
+/* the communication card: numbers, SIP addresses, email addresses, postal addresses, in that order */
 static GtkWidget *
 contact_card (Quick *quick)
 {
@@ -822,7 +820,7 @@ contact_card (Quick *quick)
   if (any)
     return card;
 
-  /* no number and no address: "Add phone number" and "Add email", grey, into the editor (no_contact_data_card) */
+  /* no number and no address: "Add phone number" and "Add email", grey, into the editor */
   {
     Entry phone = { .icon = "ct-phone-symbolic", .icon_shown = TRUE, .header = _("Add phone number"), .add = TRUE,
                     .first_in_untitled = TRUE };
@@ -854,7 +852,7 @@ about_entry (Quick *quick, GtkWidget *card, gboolean *first, const char *header,
   *first = FALSE;
 }
 
-/* the About card (§3.7): nickname, website, organization, events, relations, IM, note, without icons; its title
+/* the About card: nickname, website, organization, events, relations, IM, note, without icons; its title
  * "About" and the given name. NULL when there is nothing to put in it. */
 static GtkWidget *
 about_card (Quick *quick)
@@ -885,7 +883,7 @@ about_card (Quick *quick)
     }
   g_ptr_array_unref (items);
 
-  /* organization_entry_two_field / _all_field: "Company • Title", "Company • Department • Title" */
+  /* the organization: "Company • Title", "Company • Department • Title" */
   items = ct_contact_get_items (quick->contact, CT_KIND_ORGANIZATION);
   for (guint i = 0; i < items->len; i++)
     {
@@ -1021,7 +1019,7 @@ on_menu_chosen (int index, gpointer data)
     }
 }
 
-/* quickcontact.xml (§3.8): Delete (not for "My info") and Share; the rest is left out (the top comment) */
+/* the menu: Delete (not for "My info") and Share; the rest is left out (the top comment) */
 static void
 on_overflow (NeoPressable *button, Quick *quick)
 {
@@ -1035,7 +1033,7 @@ on_overflow (NeoPressable *button, Quick *quick)
   ct_popup_show (GTK_WIDGET (button), labels, n, CT_POPUP_OVER_END, 0, 0, 0, on_menu_chosen, quick);
 }
 
-/* the star and the pencil 48 dp, ⋮ 40 dp, white, with the #a0ffffff ripple of a dark action bar */
+/* the star, the pencil and ⋮, white, with the ripple of a dark action bar */
 static GtkWidget *
 make_actions (Quick *quick)
 {
@@ -1184,8 +1182,8 @@ on_scrim (NeoAnim *anim, double value, gpointer data)
   gtk_widget_set_opacity (quick->scrim, value);
 }
 
-/* scrollUpForEntranceAnimation: from below the bottom straight to fully expanded, 300 ms linear_out_slow_in; the
- * scrim from 0 to 0xC8 in config_shortAnimTime */
+/* the way in: from below the bottom straight to fully expanded, 300 ms linear-out-slow-in; the scrim from 0 to
+ * 0xC8 in CT_QC_SCRIM_FADE_MS */
 static void
 on_map (GtkWidget *stage, Quick *quick)
 {
@@ -1195,7 +1193,7 @@ on_map (GtkWidget *stage, Quick *quick)
   neo_anim_start (quick->scrim_anim, 0, 1, CT_QC_SCRIM_FADE_MS, 0, SPONGY_LINEAR);
 }
 
-/* scrollOffBottom: 250 ms, accelerating from the drag's speed (none, for Back: t²), then finish() without an
+/* scrolling off the bottom: 250 ms, accelerating from the drag's speed (none, for Back: t²), then closed without an
  * animation */
 static void
 quick_close (Quick *quick)
@@ -1215,7 +1213,7 @@ on_back (CtPage *page, gpointer data)
   return TRUE;
 }
 
-/* a tap on the header below its full height: back to the full height and the cards' top (expandHeader, 300 ms) */
+/* a tap on the header below its full height: back to the full height and the cards' top (300 ms) */
 static void
 on_expand (NeoAnim *anim, double value, gpointer data)
 {

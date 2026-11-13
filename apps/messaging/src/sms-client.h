@@ -1,8 +1,8 @@
 /* The app's side of the SMS service (sms-service.c, neo.Messaging.Sms): what it asks the service to do, and
  * bugle_db opened read-only, which the service tells it to read again with Changed.
  *
- * Asking goes over D-Bus, which starts the service when it does not run; reading goes to the store directly, as
- * Messaging's UI reads bugle_db through its own cursors rather than asking the actions for rows. */
+ * Asking goes over D-Bus, which starts the service when it does not run; reading goes to the store directly rather than
+ * asking the service for rows. */
 #pragma once
 
 #include <gio/gio.h>

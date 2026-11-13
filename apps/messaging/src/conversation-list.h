@@ -1,4 +1,4 @@
-/* The conversation list (spec §1): ConversationListActivity, and with @archived ArchivedConversationListActivity.
+/* The conversation list, and with @archived the archived conversations.
  *
  * A row for each conversation, newest first: its avatar, its people, the newest message (or the draft) and when it
  * was. A tap opens it; a long press selects it, and the action bar then archives or deletes the selected ones. A
@@ -17,7 +17,7 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE (ConversationList, conversation_list, MSG, CONVERSATION_LIST, GtkWidget)
 
 GtkWidget *conversation_list_new (SmsClient *client, Contacts *contacts, gboolean archived);
-/* ForwardMessageActivity's list (§2.5 Forward): the conversations that are not archived, without the action bar, the
+/* Forward message's list: the conversations that are not archived, without the action bar, the
  * FAB, swiping or select mode; a tap or a long press picks one ("open-conversation") */
 GtkWidget *conversation_list_new_forward (SmsClient *client, Contacts *contacts);
 /* scrolled to its top, with nothing selected: what comes is then seen (SetVisible 0) */

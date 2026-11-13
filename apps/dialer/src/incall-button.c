@@ -1,18 +1,16 @@
-/* The in-call grid's button: see incall-button.h. The numbers are CheckableLabeledButton.java's and its
- * resources' (incall/impl/res/values/dimens.xml, values-w260dp-h580dp, res/drawable/incall_button_background*,
- * commontheme/res/color). */
+/* The in-call grid's button: see incall-button.h. */
 #include "incall-button.h"
 
 #include <math.h>
 #include <neo.h>
 
-#define PADDING         4       /* incall_labeled_button_padding */
-#define ICON_VIEW       64      /* incall_labeled_button_size */
-#define ICON_PADDING    14      /* the drawable inside is 36 dp: the 24 dp vectors are scaled up */
+#define PADDING         4
+#define ICON_VIEW       64      /* the round button */
+#define ICON_PADDING    14      /* around the icon, which is scaled up to fill the rest */
 #define LABEL_GAP       8
-#define LABEL_SIZE      12      /* Dialer.Incall.TextAppearance.Label */
+#define LABEL_SIZE      12      /* the label under the button */
 #define LABEL_MAX_EMS   9
-#define WIDTH           104     /* a column of the grid on a 360 dp screen */
+#define WIDTH           104     /* a column of the grid: three to a phone's width */
 #define DISABLED_ALPHA  0.3
 
 #define PAD_TOP(size)    ((size) * 263 / 2048.0)
@@ -61,7 +59,7 @@ incall_button_size_allocate (GtkWidget *widget, int width, int height, int basel
 {
   InCallButton *self = INCALL_BUTTON (widget);
 
-  /* singleLine, maxEms 9, ellipsized at the end */
+  /* one line, at most 9 ems, ellipsized at the end */
   pango_layout_set_width (self->label, (int) (MIN (width - 2 * PADDING, LABEL_MAX_EMS * LABEL_SIZE) * PANGO_SCALE));
 }
 
@@ -73,8 +71,7 @@ incall_button_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   graphene_rect_t box = GRAPHENE_RECT_INIT (cx - ICON_VIEW / 2.0, PADDING, ICON_VIEW, ICON_VIEW);
   GskRoundedRect oval;
   PangoRectangle logical;
-  /* incall_button_icon: black on the light disc, white without it; the ripple #80888888 or #80ffffff, halved as
-   * RippleDrawable halves it */
+  /* the icon: black on the light disc, white without it; the ripple faint grey on the disc, faint white off it */
   GdkRGBA icon = self->checked ? (GdkRGBA) { 0, 0, 0, 1 } : (GdkRGBA) { 1, 1, 1, 1 };
   GdkRGBA ripple = self->checked ? (GdkRGBA) { 0x88 / 255.0, 0x88 / 255.0, 0x88 / 255.0, 0.25 }
                                  : (GdkRGBA) { 1, 1, 1, 0.25 };
@@ -84,7 +81,7 @@ incall_button_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gsk_rounded_rect_init_from_rect (&oval, &box, ICON_VIEW / 2.0);
   if (self->checked)
     {
-      /* incall_button_background_color, neutral1_50; raised 4 dp when checked, 8 dp while pressed */
+      /* a checked button: a light disc, its shadow deeper while pressed; dimmed when disabled */
       GdkRGBA disc = { 0xed / 255.0, 0xf1 / 255.0, 0xf2 / 255.0, gtk_widget_is_sensitive (widget) ? 1 : 0.6 };
 
       gtk_snapshot_append_outset_shadow (snapshot, &oval, &(GdkRGBA) { 0, 0, 0, 0.2 }, 0, self->pressed ? 4 : 2, 0,
@@ -131,7 +128,7 @@ on_pressed (GtkGestureClick *gesture, int n_press, double x, double y, InCallBut
   double cx = gtk_widget_get_width (GTK_WIDGET (self)) / 2;
 
   self->pressed = TRUE;
-  /* the icon view takes the parent's pressed state (duplicateParentState): its ripple starts where the finger is */
+  /* the icon view takes the parent's pressed state: its ripple starts where the finger is */
   neo_ripple_press (&self->ripple, x - (cx - ICON_VIEW / 2.0), y - PADDING);
   gtk_widget_queue_draw (GTK_WIDGET (self));
 }
@@ -189,7 +186,7 @@ incall_button_init (InCallButton *self)
 
   neo_ripple_init (&self->ripple, GTK_WIDGET (self));
   self->label = gtk_widget_create_pango_layout (GTK_WIDGET (self), NULL);
-  /* Roboto at 400, which Bold text makes 700 */
+  /* 700, not 400: the phone's Bold text setting is on */
   pango_font_description_set_absolute_size (font, LABEL_SIZE * PANGO_SCALE);
   pango_font_description_set_weight (font, 700);
   pango_layout_set_font_description (self->label, font);

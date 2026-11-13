@@ -1,4 +1,4 @@
-/* neo-dialer: the Phone app, LineageOS's Dialer rebuilt in GTK 4 (spec/dialer.md).
+/* neo-dialer: the Phone app, LineageOS's Dialer rebuilt in GTK 4.
  *
  * One program, two applications, as the Clock has them:
  *  - neo.Dialer, the app with its tabs (Favorites, Recents, Contacts) and the dialpad. It is D-Bus
@@ -7,7 +7,7 @@
  *    on a missed call) or to add a call ("add-call").
  *  - neo.Dialer.InCall ("neo-dialer --incall"), the screen of a call: the answer screen while it rings, the
  *    in-call screen once it is up. The call service has the shell start it for a ringing call; it has a desktop
- *    file of its own so the shell lets it over the lock screen (InCallActivity's showWhenLocked).
+ *    file of its own so the shell lets it over the lock screen.
  *
  * The calls themselves are not here: the call service (neo-dialer-calls) has them, rings, keeps the call log and
  * posts the notifications, whether or not this app runs. */
@@ -72,7 +72,7 @@ tel_number (const char *uri)
   return g_uri_unescape_string (number, NULL);
 }
 
-/* a tel: link: the dialpad opens with the number in it, to be called with the dial button (Intent.ACTION_DIAL) */
+/* a tel: link: the dialpad opens with the number in it, to be called with the dial button */
 static void
 on_open (GApplication *app, GFile **files, int n_files, const char *hint, gpointer data)
 {
@@ -92,12 +92,11 @@ on_open (GApplication *app, GFile **files, int n_files, const char *hint, gpoint
   gtk_window_present (GTK_WINDOW (window));
 }
 
-/* "call" (s): another app's call to a number (Intent.ACTION_CALL; the Contacts app's call button), activated with
+/* "call" (s): another app's call to a number (the Contacts app's call button), activated with
  * org.freedesktop.Application.ActivateAction on neo.Dialer, or `gapplication action neo.Dialer call
  * "'+49…'"`. The number may come as a tel: URI. The call goes out at once and the in-call screen comes up, no window
- * of the Dialer's in between. Telecom's rules for another app's call hold (NewOutgoingCallIntentBroadcaster):
- *  - an emergency number is not called this way: the dialpad opens with it, to be called with the dial button
- *    (ACTION_CALL to one becomes ACTION_DIAL);
+ * of the Dialer's in between. Except:
+ *  - an emergency number is not called this way: the dialpad opens with it, to be called with the dial button;
  *  - no number: the dialpad, empty;
  *  - a call the call service refuses: the dialpad with the number, and why in the snackbar. */
 typedef struct {

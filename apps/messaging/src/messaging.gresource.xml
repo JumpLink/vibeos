@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- the app's stylesheet, its images and its icons (data/icons, from the Messaging's vector drawables),
+<!-- the app's stylesheet, its images and its icons (data/icons, from Bugle's vector drawables),
      where GtkApplication looks for icons: the resource base path + /icons -->
 <gresources>
   <gresource prefix="/neo/Messaging">

@@ -81,7 +81,7 @@ clock_alarm_set_text (gint64 seconds_until)
   d = g_strdup_printf (ngettext ("1 day", "%" G_GINT64_FORMAT " days", days), days);
   h = g_strdup_printf (ngettext ("1 hour", "%" G_GINT64_FORMAT " hours", hours), hours);
   m = g_strdup_printf (ngettext ("1 minute", "%" G_GINT64_FORMAT " minutes", minutes), minutes);
-  /* the alarm_set sentences of strings.xml, picked by which of days, hours and minutes are there */
+  /* the "Alarm set for …" sentences, picked by which of days, hours and minutes are there */
   switch ((days > 0) | (hours > 0) << 1 | (minutes > 0) << 2)
     {
     case 1: return g_strdup_printf (_("Alarm set for %s from now."), d);
@@ -97,7 +97,7 @@ clock_alarm_set_text (gint64 seconds_until)
 char *
 clock_weekday_letter (int index)
 {
-  /* 2024-01-01 was a Monday; the first character of the short name stands for Android's narrow one */
+  /* 2024-01-01 was a Monday; the first character of the short name stands for the narrow one */
   g_autoptr(GDateTime) day = g_date_time_new_utc (2024, 1, 1 + index, 12, 0, 0);
   g_autofree char *name = g_date_time_format (day, "%a");
 
@@ -149,7 +149,7 @@ ogg_title (const char *path)
   return NULL;
 }
 
-/* A sound's name as Android's media store titles it: the file's own title, or its name without the extension. The
+/* A sound's name: the file's own title, or its name without the extension. The
  * titles are kept, since the sound picker names every alarm sound each time it redraws. */
 static char *
 sound_name (const char *uri)
@@ -177,9 +177,9 @@ sound_name (const char *uri)
   return g_strdup (title);
 }
 
-/* the sound the service rings when no alarm sound is chosen (alarm-klaxon.c): Android's Hassium where the Android
- * sounds are installed, else the Clock's own alarm_expire ("Beep-Beep-Beep Alarm"), so that a phone without them is
- * not told it rings Hassium */
+/* the sound the service rings when no alarm sound is chosen (alarm-klaxon.c): Hassium where the Android alarm sounds
+ * are installed, else the Clock's own alarm_expire ("Beep-Beep-Beep Alarm"), so that a phone without them is not told
+ * it rings Hassium */
 static char *
 default_alarm_sound (void)
 {
@@ -206,7 +206,7 @@ clock_ringtone_title (const char *ringtone, GSettings *settings)
     return g_strdup (_("Silent"));
   if (ringtone)
     return sound_name (ringtone);
-  /* the default: Android titles content://settings/system/alarm_alert "Default (Hassium)" */
+  /* the default: "Default (Hassium)", with the default sound's name */
   default_sound = g_settings_get_string (settings, "default-alarm-ringtone");
   if (g_str_equal (default_sound, CLOCK_SILENT))
     return g_strdup (_("Silent"));
@@ -244,7 +244,7 @@ clock_has_vibrator (void)
   g_autoptr(GDir) dir = NULL;
   const char *name;
 
-  /* Vibrator.hasVibrator. feedbackd, which plays the vibration, has no way to say whether there is anything to
+  /* whether there is a vibrator. feedbackd, which plays the vibration, has no way to say whether there is anything to
    * play it on (org.sigxcpu.Feedback.Haptic only vibrates), so this asks the kernel's input class: a vibrator is
    * an input device that can play force feedback, whatever the phone or its driver */
   if (found >= 0)

@@ -1,5 +1,5 @@
-/* Settings (ContactsPreferenceActivity, spec §5.2), with its sub-screens: About Contacts, "Contacts to display"
- * (§5.3), and the import and export dialogs (§5.4). */
+/* Settings, with its sub-screens: About Contacts, "Contacts to display"
+ *, and the import and export dialogs. */
 #pragma once
 
 #include <gtk/gtk.h>

@@ -1,4 +1,4 @@
-/* When reminders are due (cal-alerts.c): Etar's AlertService rules. */
+/* When reminders are due (cal-alerts.c). */
 #include "../src/cal-alerts.h"
 
 static CalEvent *

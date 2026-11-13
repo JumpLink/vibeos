@@ -6,8 +6,7 @@
 
 #include <glib/gi18n.h>
 
-/* add_contacts_confirmation_dialog_body.xml: 20 dp around; the 56 dp avatar; the name 12 dp after it, 24 dp before
- * the end (AddContactConfirmationTextStyle) */
+/* the dialog's body: the avatar, then the number beside it */
 #define BODY_PAD 20
 #define AVATAR 56
 #define NAME_PAD_START 12
@@ -37,7 +36,7 @@ msg_contact_confirm_add (GtkWidget *from, const MsgPerson *person)
   msg_avatar_set_person (MSG_AVATAR (avatar), person->name, person->identifier, person->photo);
   gtk_widget_set_valign (avatar, GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (body), avatar);
-  /* the destination as it is stored (getNormalizedDestination), on one line */
+  /* the destination as it is stored, on one line */
   gtk_label_set_xalign (GTK_LABEL (name), 0);
   gtk_label_set_ellipsize (GTK_LABEL (name), PANGO_ELLIPSIZE_END);
   gtk_label_set_single_line_mode (GTK_LABEL (name), TRUE);

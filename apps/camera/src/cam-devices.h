@@ -6,10 +6,9 @@
  * sizes are what libcamera lists. A wrong value there is the kernel's (the sensor's devicetree "orientation" and
  * "rotation") to fix, not the app's.
  *
- * Aperture shows the main camera of each facing, and the others only with the device overlay's
- * config_enableAuxCameras, and then by their zoom ratio from the lens' focal length. libcamera reports no focal
- * length, so there is no honest ratio to give a second back camera: this build shows the main camera of each facing
- * (the one with the most pixels), as Aperture does without the overlay. */
+ * Another camera of the same facing would be offered by its zoom ratio, from the lens' focal length. libcamera
+ * reports no focal length, so there is no honest ratio to give a second back camera: this build shows the main
+ * camera of each facing (the one with the most pixels). */
 #pragma once
 
 #include <gst/gst.h>
@@ -26,8 +25,8 @@ typedef struct {
   char      *id;                /* libcamera's camera id: libcamerasrc's camera-name */
   char      *model;             /* properties::Model, or NULL */
   CamFacing  facing;            /* properties::Location */
-  int        orientation;       /* clockwise degrees that turn a frame upright on the phone held upright: Android's
-                                 * SENSOR_ORIENTATION, from properties::Rotation (anticlockwise) */
+  int        orientation;       /* clockwise degrees that turn a frame upright on the phone held upright,
+                                 * from properties::Rotation (anticlockwise) */
   int        pixels_w, pixels_h;/* properties::PixelArraySize, 0 if not reported */
   GstCaps   *caps;              /* the stream formats */
   gboolean   flash;             /* a flash LED to light for it (back-facing, and the phone has one) */
@@ -35,7 +34,7 @@ typedef struct {
 
 /* All cameras libcamera reports, in its order (CamCamera *, owned by the array). Never NULL; empty if none. */
 GPtrArray *cam_devices_enumerate   (void);
-/* The camera Aperture would take for the facing: the one with the largest pixel array; NULL if none faces so */
+/* The main camera for the facing: the one with the largest pixel array; NULL if none faces so */
 CamCamera *cam_devices_main_for    (GPtrArray *cameras, CamFacing facing);
 
 /* A stream size of aspect aw:ah (4:3, 16:9) near `pixels` pixels among the sizes the camera lists (exact sizes

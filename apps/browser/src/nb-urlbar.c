@@ -1,6 +1,6 @@
-/* nb-urlbar: Jelly's UrlBarLayout (spec/jelly.md §2, §2.1, §4): the URL card, the tab count (Chrome's: the number of
- * open tabs in a rounded square; a tap opens the tab switcher, nb-switcher.c) and the menu button, the search group
- * that replaces them for find in page, the 2 dp progress line, and the suggestions dropping from the card. */
+/* nb-urlbar: the URL bar: the URL card, the tab count (the number of open tabs in a rounded square; a tap opens
+ * the tab switcher, nb-switcher.c) and the menu button, the search group that replaces them for find in page, the
+ * progress line, and the suggestions dropping from the card. */
 #include "nb.h"
 #include "nb-suggest.h"
 #include "nb-widgets.h"
@@ -8,7 +8,7 @@
 #include <neo.h>
 #include <string.h>
 
-#define FADE_LENGTH 12          /* ViewConfiguration's fading edge, dp */
+#define FADE_LENGTH 12          /* the fading edge's length, px */
 
 /* ---- the URL text ---- */
 
@@ -18,8 +18,8 @@ is_https (const char *url)
   return url && g_str_has_prefix (url, "https://");
 }
 
-/* the end of a URL too long for the card fades out (fadingEdge): the card's colour over its last 12 dp, only while
- * the text is not being edited and does not fit */
+/* the end of a URL too long for the card fades out: the card's colour over its last FADE_LENGTH, only
+ * while the text is not being edited and does not fit */
 static void
 draw_fade (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer data)
 {
@@ -56,7 +56,7 @@ set_text (NbTab *t, const char *text)
   sync_fade (t);
 }
 
-/* UrlBarLayout.url: the whole URL; the lock only for https (§2) */
+/* the whole URL; the lock only for https */
 void
 nb_urlbar_sync (NbTab *t)
 {
@@ -68,8 +68,8 @@ nb_urlbar_sync (NbTab *t)
     set_text (t, url);
   gtk_widget_set_visible (t->incog_icon, t->incognito);
   gtk_widget_set_visible (t->lock, is_https (url));
-  /* 12 dp after the incognito icon, 14 dp into the card without it (goneMarginStart); a gone lock collapses to a
-   * point where it would start, with no margin, and the text is 12 dp after that */
+  /* a little further into the card without the incognito icon before it; a gone lock collapses to a point where
+   * it would start, with no margin, and the text keeps its gap after that */
   gtk_widget_set_margin_start (t->lock, t->incognito ? 12 : 14);
   gtk_image_set_from_icon_name (GTK_IMAGE (g_object_get_data (G_OBJECT (t->lock), "nb-image")),
                                 t->tls_failed ? "jelly-warning-symbolic" : "jelly-lock-symbolic");
@@ -87,7 +87,7 @@ draw_progress (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointe
   gdk_cairo_set_source_rgba (cr, &track);
   cairo_paint (cr);
   gdk_cairo_set_source_rgba (cr, &bar);
-  /* LinearProgressIndicator.setProgress (int): whole percents, no animation */
+  /* whole percents, no animation */
   cairo_rectangle (cr, 0, 0, round (p * 100) / 100 * width, height);
   cairo_fill (cr);
 }
@@ -99,7 +99,7 @@ nb_urlbar_progress (NbTab *t)
   gtk_widget_queue_draw (t->progress);
 }
 
-/* ---- suggestions (§2.1) ---- */
+/* ---- suggestions ---- */
 
 static void
 hide_dropdown (NbTab *t)
@@ -111,7 +111,7 @@ hide_dropdown (NbTab *t)
   gtk_widget_set_visible (t->dropdown, FALSE);
 }
 
-/* the query's matches in bold (SuggestionsAdapter.getSpannable) */
+/* the query's matches in bold */
 static char *
 bold_matches (const char *text, const char *query)
 {
@@ -147,7 +147,7 @@ on_suggestion (NeoPressable *row, NbTab *t)
   const char *target = g_object_get_data (G_OBJECT (row), "nb-target");
   g_autofree char *text = g_strdup (target);
 
-  /* UiUtils.hideKeyboard, clearFocus, then load */
+  /* the keyboard goes, the field lets go of the focus, then the page loads */
   nb_urlbar_stop_editing (t);
   nb_tab_load (t, text);
 }
@@ -166,7 +166,7 @@ suggestion_row (NbTab *t, NbSuggestion *s, const char *query)
   gtk_widget_add_css_class (icon, "nb-suggest-icon");
   gtk_box_append (GTK_BOX (line), icon);
   gtk_box_append (GTK_BOX (line), title);
-  /* the lines centred in the row's 60 dp, together (gravity center_vertical) */
+  /* the lines centred in the row, together */
   GtkWidget *lines = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_valign (lines, GTK_ALIGN_CENTER);
   gtk_widget_set_vexpand (lines, TRUE);
@@ -180,7 +180,7 @@ suggestion_row (NbTab *t, NbSuggestion *s, const char *query)
   gtk_box_append (GTK_BOX (box), lines);
   gtk_widget_add_css_class (box, "nb-suggest-row");
   GtkWidget *row = neo_pressable_new (box);
-  /* SuggestItem.toString: the URL, else the title */
+  /* the URL, else the title */
   g_object_set_data_full (G_OBJECT (row), "nb-target", g_strdup (s->url ? s->url : s->title), g_free);
   g_signal_connect (row, "clicked", G_CALLBACK (on_suggestion), t);
   return row;
@@ -212,7 +212,7 @@ on_entry_changed (GtkEditable *e, NbTab *t)
   if (t->suggest_cancel)
     g_cancellable_cancel (t->suggest_cancel);
   g_clear_object (&t->suggest_cancel);
-  /* completionThreshold 1; a blank text gives nothing (ItemFilter) */
+  /* from the first character; a blank text gives nothing */
   g_autofree char *stripped = g_strstrip (g_strdup (text));
   if (!*stripped) {
     hide_dropdown (t);
@@ -243,7 +243,7 @@ on_url_focus (GtkEventControllerFocus *focus, GParamSpec *pspec, NbTab *t)
     return;
   t->editing = in;
   if (in) {
-    /* selectAllOnFocus */
+    /* the whole text is selected when the field takes the focus */
     g_idle_add (select_all, t);
     sync_fade (t);
   } else {
@@ -275,7 +275,7 @@ on_url_activate (GtkEntry *entry, NbTab *t)
   nb_tab_load (t, text);
 }
 
-/* ---- find in page (§4) ---- */
+/* ---- find in page ---- */
 
 static void
 sync_find (NbTab *t)
@@ -320,7 +320,7 @@ on_find_activate (GtkEntry *entry, NbTab *t)
     clear_search (t);
     return;
   }
-  /* WebView.findAllAsync: every match counted, the first one current; no wrapping (§4) */
+  /* every match counted, the first one current; no wrapping */
   WebKitFindController *fc = webkit_web_view_get_find_controller (t->view);
   t->find_i = 0;
   t->find_n = 0;
@@ -382,7 +382,7 @@ nb_urlbar_sync_count (NbTab *t)
   if (!t->count_label)
     return;
   guint n = nb->tabs->len;
-  /* Chrome's: the number up to 99, then a smile */
+  /* the number up to 99, then a smile */
   g_autofree char *text = n > 99 ? g_strdup (":D") : g_strdup_printf ("%u", n);
   g_autofree char *name = g_strdup_printf (n == 1 ? "Switch tabs, %u open tab" : "Switch tabs, %u open tabs", n);
   gtk_label_set_text (GTK_LABEL (t->count_label), text);
@@ -444,7 +444,7 @@ url_group (NbTab *t)
   gtk_widget_set_valign (t->incog_icon, GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (card), t->incog_icon);
 
-  /* the lock: a 20 dp button with a borderless ripple; a tap shows the certificate (§7.6) */
+  /* the lock: a small button with a borderless ripple; a tap shows the certificate */
   GtkWidget *lock_image = nb_icon ("jelly-lock-symbolic", 20);
   t->lock = neo_pressable_new (lock_image);
   neo_pressable_set_ripple (NEO_PRESSABLE (t->lock), NEO_RIPPLE_CIRCLE, 20);
@@ -471,7 +471,7 @@ url_group (NbTab *t)
   gtk_widget_add_controller (t->entry, focus);
   gtk_overlay_set_child (GTK_OVERLAY (text), t->entry);
   gtk_widget_set_hexpand (text, TRUE);
-  /* the fading edge: the card's colour over the last 12 dp of a URL that does not fit */
+  /* the fading edge: the card's colour over the end of a URL that does not fit */
   gtk_drawing_area_set_draw_func (GTK_DRAWING_AREA (fade), draw_fade, t, NULL);
   gtk_widget_set_size_request (fade, FADE_LENGTH, -1);
   gtk_widget_set_halign (fade, GTK_ALIGN_END);
@@ -560,12 +560,12 @@ nb_urlbar_new (NbTab *t)
   gtk_widget_set_visible (t->progress, FALSE);
   gtk_overlay_add_overlay (GTK_OVERLAY (bar), t->progress);
 
-  /* the dropdown: as wide as the card, from its bottom edge (dropDownAnchor, offset 0), colorSurface, flat */
+  /* the dropdown: as wide as the card, from its bottom edge, flat */
   t->dropdown = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (t->dropdown, "nb-dropdown");
   gtk_widget_set_valign (t->dropdown, GTK_ALIGN_START);
   gtk_widget_set_margin_start (t->dropdown, 16);
-  /* the card ends before the tab count and the menu button (48 dp each, 4 + 4 dp around) */
+  /* the card ends before the tab count and the menu button */
   gtk_widget_set_margin_end (t->dropdown, 104);
   gtk_widget_set_margin_top (t->dropdown, 56);
   t->dropdown_rows = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);

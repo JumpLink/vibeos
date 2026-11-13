@@ -1,5 +1,5 @@
-/* expression-db: the saved expressions, ExactCalculator's ExpressionDB (ExpressionDB.java): one
- * SQLite table with the same columns.
+/* expression-db: the saved expressions, as ExactCalculator's ExpressionDB keeps them: one SQLite
+ * table with the same columns.
  *
  * Positive indices (1, 2, ...) are the history, oldest first. Negative indices from -11 down are
  * expressions kept for the memory and the clipboard, never shown. Index 0 is the main expression,
@@ -10,7 +10,7 @@
 
 #include <glib.h>
 
-/* the largest index a hidden expression may have (MAXIMUM_MIN_INDEX) */
+/* the largest index a hidden expression may have */
 #define EXPRESSION_DB_MAXIMUM_MIN_INDEX -10
 
 typedef struct _ExpressionDB ExpressionDB;

@@ -6,14 +6,14 @@
 #include <neo.h>
 #include <spongy-gtk.h>
 
-/* androidx.preference 1.3 (§4.6): the icon's space is kept, so the title starts at 72 dp */
+/* the rows: an icon's space is kept at the start, so a title starts at TITLE_START */
 #define ROW_MIN_HEIGHT 48
 #define PAD 16          /* the row's start and end, the text block's top and bottom, the widget frame's start */
 #define TITLE_START 72
 #define SUMMARY_LINES 10
-#define SUMMARY_OVER 4  /* the summary TextView's 8.9 dp more than its lines, over and under them (measured) */
+#define SUMMARY_OVER 4  /* over the summary's lines; SUMMARY_UNDER under them */
 #define SUMMARY_UNDER 5
-#define CATEGORY_TOP 16 /* a PreferenceCategory's margin over it; its title 8 dp in from its top and bottom */
+#define CATEGORY_TOP 16 /* over a category; its title CATEGORY_PAD in from its top and bottom */
 #define CATEGORY_PAD 8
 
 struct _MsgSettings {
@@ -40,7 +40,7 @@ text_label (const char *text, const char *css_class)
   return label;
 }
 
-/* a tap anywhere on the row flips its switch, as a SwitchPreference does */
+/* a tap anywhere on the row flips its switch */
 static void
 on_row_clicked (GtkWidget *row, gpointer data)
 {
@@ -49,7 +49,7 @@ on_row_clicked (GtkWidget *row, gpointer data)
   neo_switch_set_active (toggle, !neo_switch_get_active (toggle));
 }
 
-/* a Preference: the title (and its summary) in the text block, then @widget at the end, if any; the row takes the
+/* a settings row: the title (and its summary) in the text block, then @widget at the end, if any; the row takes the
  * taps */
 static GtkWidget *
 pref_row (const char *title, const char *summary, GtkWidget *widget)
@@ -87,14 +87,14 @@ pref_row (const char *title, const char *summary, GtkWidget *widget)
   return row;
 }
 
-/* a SwitchPreferenceCompat: the title (and its summary) in the text block, the switch at the end */
+/* a switch row: the title (and its summary) in the text block, the switch at the end */
 static GtkWidget *
 switch_row (MsgSettings *self, const char *title, const char *summary, const char *key)
 {
   GtkWidget *toggle = neo_switch_new ();
   GtkWidget *row;
 
-  /* MaterialSwitch without icons, bound to the setting both ways */
+  /* a switch without thumb icons, bound to the setting both ways */
   neo_switch_set_thumb_icons (NEO_SWITCH (toggle), FALSE);
   g_settings_bind (self->settings, key, toggle, "active", G_SETTINGS_BIND_DEFAULT);
   gtk_widget_set_valign (toggle, GTK_ALIGN_CENTER);
@@ -114,7 +114,7 @@ on_advanced_clicked (GtkWidget *row, gpointer data)
   g_signal_emit (data, signals[SHOW_ADVANCED], 0);
 }
 
-/* a PreferenceCategory's title (preference_category_material.xml): the accent colour, at the titles' start */
+/* a category's title: the accent colour, at the titles' start */
 static GtkWidget *
 category (const char *title)
 {
@@ -190,12 +190,12 @@ msg_settings_new (void)
   GtkWidget *list, *advanced;
   MsgSettings *self = settings_page (_("Settings"), &list);
 
-  /* preferences_application.xml's order, less what msg-settings.h leaves out */
+  /* Bugle's order, less what msg-settings.h leaves out */
   gtk_box_append (GTK_BOX (list), switch_row (self, _("Outgoing message sounds"), NULL, "send-sound"));
   gtk_box_append (GTK_BOX (list), switch_row (self, _("Swipe to delete"),
                                               _("Swipe to the right to delete a conversation"),
                                               "swipe-right-deletes"));
-  /* the top level's PreferenceScreen: the SIM's settings */
+  /* the top level's sub-page: the SIM's settings */
   advanced = pref_row (_("Advanced"), NULL, NULL);
   g_signal_connect (advanced, "clicked", G_CALLBACK (on_advanced_clicked), self);
   gtk_box_append (GTK_BOX (list), advanced);
@@ -208,7 +208,7 @@ msg_settings_new_advanced (void)
   GtkWidget *list;
   MsgSettings *self = settings_page (_("Advanced settings"), &list);
 
-  /* preferences_per_subscription.xml, less its MMS category (msg-settings.h) */
+  /* the SIM's settings, less their MMS category (msg-settings.h) */
   gtk_box_append (GTK_BOX (list), category (_("Advanced")));
   gtk_box_append (GTK_BOX (list), switch_row (self, _("SMS delivery reports"),
                                               _("Request a delivery report for each SMS you send"),

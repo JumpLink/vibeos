@@ -1,4 +1,4 @@
-/* CtPage: one of the Contacts screens, an activity of Android's (the list, QuickContact, the editor, Settings…),
+/* CtPage: one of the Contacts screens (the list, QuickContact, the editor, Settings…),
  * pushed onto the window's pages (ct-window.h).
  *
  * Back on a page asks its back handler first (the editor's "Discard changes?", the list leaving search), and the
@@ -25,14 +25,14 @@ void       ct_page_set_back_handler  (CtPage *self, CtPageBack back, gpointer da
 /* Back, as Escape and the toolbar's arrow do: the handler, else the page goes */
 void       ct_page_back              (CtPage *self);
 
-/* A page drawn over the one under it instead of in its place (QuickContact, Theme.QuickContact's translucent
- * window with windowAnimationStyle @null): no slide when it comes or goes; it animates itself */
+/* A page drawn over the one under it instead of in its place (QuickContact): no slide when it comes or goes; it
+ * animates itself */
 void       ct_page_set_translucent   (CtPage *self, gboolean translucent);
 gboolean   ct_page_get_translucent   (CtPage *self);
 
-/* The toolbar of a page that has one (Settings, "Contacts to display", the picker): 56 dp in the CSS class's
- * colour, the navigation button (a 56 dp target with a borderless ripple; @nav_name "Back" for the Up arrow), the
- * title 72 dp in (20 dp medium white), and a box at the end for the actions, which it returns in @actions. */
+/* The toolbar of a page that has one (Settings, "Contacts to display", the picker): in the CSS class's colour, the
+ * navigation button (a borderless ripple; @nav_name "Back" for the Up arrow), the title, and a box at the end for
+ * the actions, which it returns in @actions. */
 GtkWidget *ct_page_toolbar           (CtPage *self, const char *css_class, const char *nav_icon, const char *nav_name,
                                       const char *title, GtkWidget **actions, GtkWidget **title_label);
 

@@ -8,17 +8,17 @@
 #include <pulse/pulseaudio.h>
 #include <string.h>
 
-/* LineageOS's ro.config.ringtone; without the Android sounds, the freedesktop sound theme's ring
+/* the default ringtone, Orion; without it installed, the freedesktop sound theme's ring
  * (sound-theme-freedesktop), so a call never comes in silent */
 #define DEFAULT_RINGTONE "sounds/android/ringtones/Orion.ogg"
 #define FALLBACK_RINGTONE "sounds/freedesktop/stereo/phone-incoming-call.oga"
-/* Ringer's default pattern, {0, 1000, 1000}: a second on, a second off */
+/* the default pattern: a second on, a second off */
 #define VIBRATE_ON_MS 1000
 #define VIBRATE_PERIOD_MS 2000
 
-/* ToneGenerator at DialpadFragment's TONE_RELATIVE_VOLUME (80 of 100), the two sines sharing it */
+/* the keypad tone at 80 of 100, the two sines sharing it */
 #define TONE_VOLUME 0.4
-/* DialpadFragment lets the ToneGenerator go when it is paused; here when the keys have been still a while */
+/* the tone player is let go when the keys have been still a while */
 #define TONE_IDLE_MS 5000
 
 /* playbin's GstPlayFlags: audio, with its own volume */
@@ -45,7 +45,7 @@ struct _Ringer {
   GstElement *tone_low, *tone_high;
   guint tone_idle_id;
 
-  /* the speaker's volume: Android's ring stream, kept while ringing */
+  /* the speaker's volume, kept while ringing */
   pa_glib_mainloop *pa_loop;
   pa_context *pa;
   gboolean saved;               /* saved_volume and saved_mute hold what the speaker had before */
@@ -166,7 +166,7 @@ on_about_to_finish (GstElement *player, gpointer data)
 {
   Ringer *self = data;
 
-  /* a preview plays once (RingtonePickerActivity's Ringtone.play) */
+  /* a preview plays once */
   if (!self->previewing)
     g_object_set (player, "uri", self->uri, NULL);
 }
@@ -190,7 +190,7 @@ on_player_message (GstBus *bus, GstMessage *message, gpointer data)
       ringer_preview (self, NULL);
       return G_SOURCE_CONTINUE;
     }
-  /* a ringtone that went missing (Telecom falls back to the default one): Orion, once */
+  /* a ringtone that went missing: the default one, Orion, once */
   fallback = default_ringtone ();
   if (fallback && g_strcmp0 (fallback, self->uri) != 0)
     {
@@ -283,7 +283,7 @@ ringer_preview (Ringer *self, const char *uri)
 
 /* --- the keypad tones */
 
-/* the DTMF pairs (ToneGenerator's TONE_DTMF_0…D): the row's low tone and the column's high one, Hz */
+/* the DTMF pairs, 0…D: the row's low tone and the column's high one, Hz */
 static gboolean
 dtmf_pair (char key, guint *low, guint *high)
 {
@@ -344,7 +344,7 @@ ringer_play_tone (Ringer *self, char key)
 {
   guint low, high;
 
-  /* DialpadFragment.playTone: only with "Keypad tones" on, and not in Vibrate or Mute */
+  /* a keypad tone: only with "Keypad tones" on, and not in Vibrate or Mute */
   if (!dtmf_pair (key, &low, &high) || !g_settings_get_boolean (self->settings, "dtmf-tone-when-dialing")
       || ringer_mode (self) != RINGER_MODE_NORMAL || self->ringing)
     return;

@@ -5,13 +5,13 @@
 #include <math.h>
 #include <neo.h>
 
-#define HEIGHT          48      /* floating_toolbar_height */
+#define HEIGHT          48      /* the bar's height */
 #define BUTTON_PAD      16      /* each side of a button's text */
-#define MIN_BUTTON      48      /* floating_toolbar_menu_button_minimum_width */
+#define MIN_BUTTON      48      /* a button's least width */
 #define TEXT_SIZE       14
-#define CORNER          8       /* floating_popup_background: 8 dp corners */
-#define MARGIN_V        8       /* floating_toolbar_vertical_margin */
-#define MARGIN_H        16      /* floating_toolbar_horizontal_margin */
+#define CORNER          8       /* the bar's corners */
+#define MARGIN_V        8       /* between the bar and the text it is about */
+#define MARGIN_H        16      /* the bar keeps this far inside the window */
 #define ENTER_MS        150     /* the toolbar fades in */
 #define EXIT_MS         100
 
@@ -177,7 +177,7 @@ on_released (GtkGestureClick *click, int n_press, double x, double y, CalcTextTo
     CalcToolbarAction action = item->action;
     gpointer data = item->data;
 
-    /* onActionItemClicked: the action, then mode.finish () if it was done */
+    /* the action, then the toolbar goes if it was done */
     g_object_ref (self);
     if (action (data))
       calc_text_toolbar_dismiss (self);

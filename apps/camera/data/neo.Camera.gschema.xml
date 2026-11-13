@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- The Camera's preferences: Aperture's SharedPreferences (src/repositories/PreferencesRepository.kt), the keys this
-     build can back (spec/camera.md §21.6, §20.3). Enums are strings, as the other apps keep them. -->
+<!-- The Camera's preferences that this build can back. Enums are strings, as the other apps keep them. -->
 <schemalist>
   <schema id="neo.Camera" path="/neo/Camera/">
-    <!-- last used (PreferencesRepository: last_camera_facing, last_camera_mode, last_grid_mode, last_mic_mode) -->
+    <!-- last used: the camera's facing, the mode, the grid and the microphone -->
     <key name="last-camera-facing" type="s">
       <default>'back'</default>
       <summary>The facing last used: back, front or external</summary>
@@ -20,7 +19,7 @@
       <default>true</default>
       <summary>Record sound with videos (MIC ON)</summary>
     </key>
-    <!-- photo_flash_mode is AUTO in Aperture; without metering there is no AUTO here (owner, 11-10), and ON would
+    <!-- without metering there is no AUTO flash here (owner, 11-10), and ON would
          light the LED for every shot, so a new install starts with the flash off -->
     <key name="photo-flash-mode" type="s">
       <default>'off'</default>
@@ -46,7 +45,7 @@
       <default>false</default>
       <summary>The flash button's long press was explained (or used)</summary>
     </key>
-    <!-- Settings (res/xml/root_preferences.xml, gestures_preferences.xml) -->
+    <!-- Settings -->
     <key name="bright-screen" type="b">
       <default>false</default>
       <summary>Bright screen: locks brightness to 100 %</summary>

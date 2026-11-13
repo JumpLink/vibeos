@@ -1,33 +1,33 @@
-/* The Files styles, over libneo's (neo.css): File Manager+'s dark theme (spec, "Colours"), AppCompat's dark dialogs and
- * popups. Sizes are dp (1 dp = 1 px here); most of the geometry is set in C next to the spec's numbers, so this file
- * is mainly colours, fonts and paddings. The weights are Bold text's: regular 700, medium 800. */
+/* The Files styles, over libneo's (neo.css): File Manager+'s dark theme, its dark dialogs and popups. Sizes are GTK
+ * px; most of the geometry is set in C, so this file is mainly colours, fonts and paddings. The weights are Bold
+ * text's: regular 700, medium 800. */
 
 window.fm-window,
 .fm-home,
 .fm-browser,
 .fm-remote-page,
 .fm-settings {
-  background-color: #121212;            /* main_background_dark */
+  background-color: #121212;
 }
 
-/* ---- the toolbar (§1.1, §1.2, §7) ---- */
+/* ---- the toolbar ---- */
 
 .fm-toolbar {
   min-height: 56px;
-  background-color: #1f1f1f;            /* primary (night) */
+  background-color: #1f1f1f;
 }
 
-/* the action mode bar: Holo's cab_background_top, a 2.67 dp line at its bottom */
+/* the action mode bar, with a line at its bottom */
 .fm-toolbar.fm-cab {
   background-color: #002e3e;
   box-shadow: inset 0 -2.67px #33b5e5;
 }
 
 .fm-title {
-  font-size: 18px;                      /* toolbarTitleSize, Medium */
+  font-size: 18px;
   font-weight: 800;
   color: #ffffff;
-  margin-top: 1px;                      /* the cap 22 dp down, as measured */
+  margin-top: 1px;
 }
 
 .fm-icon-button image {
@@ -66,7 +66,7 @@ window.fm-window,
   margin: 0 13px;
 }
 
-/* ---- the path bar (§2) ---- */
+/* ---- the path bar ---- */
 
 .fm-pathbar {
   min-height: 44px;
@@ -83,7 +83,7 @@ window.fm-window,
 }
 
 .fm-crumb-home {
-  margin-left: 2px;                     /* home ink 14.3 dp in, its chevron 54.3 (fmplus-4) */
+  margin-left: 2px;
 }
 
 .fm-crumb-chevron {
@@ -93,11 +93,11 @@ window.fm-window,
 .fm-crumb-text {
   font-size: 18px;
   font-weight: 700;
-  color: #a0a0a0;                       /* pathbar_text_normal */
+  color: #a0a0a0;
 }
 
 .fm-crumb.last .fm-crumb-text {
-  color: #eeeeee;                       /* pathbar_text_selected */
+  color: #eeeeee;
 }
 
 .fm-free {
@@ -108,14 +108,14 @@ window.fm-window,
 }
 
 .fm-up {
-  margin-right: 5px;                    /* the arrow's ink ends 16.3 dp from the edge (fmplus-4) */
+  margin-right: 5px;
 }
 
 .fm-up image {
-  color: #cccccc;                       /* pathbar_icon */
+  color: #cccccc;
 }
 
-/* ---- the file list (§3) ---- */
+/* ---- the file list ---- */
 
 /* GtkListView's own row padding and focus off: the rows are File Manager+'s, edge to edge */
 .fm-list-view,
@@ -136,40 +136,40 @@ window.fm-window,
 .fm-row {
   min-height: 56px;
   padding: 0 4px;
-  border-bottom: 1px solid #272727;     /* file_list_divider */
+  border-bottom: 1px solid #272727;
 }
 
 .fm-row.selected {
-  background-color: #00796b;            /* accent_background (night) */
+  background-color: #00796b;
 }
 
 .fm-row-icon {
-  margin: 0 4px;                        /* the 48 dp box (2 dp padding) and its 2 dp margins */
+  margin: 0 4px;
 }
 
 .fm-row-text {
-  margin: 1px 4px 0 4px;                /* the name's cap 12.7 dp down in a 56 dp row, as measured */
+  margin: 1px 4px 0 4px;
 }
 
 .fm-row-name {
   font-size: 18px;
   font-weight: 700;
-  color: #dbdbdb;                       /* main_primary_text */
+  color: #dbdbdb;
 }
 
 .fm-row-sub,
 .fm-row-where {
   font-size: 14px;
   font-weight: 700;
-  color: #a7a7a7;                       /* main_secondary_text */
+  color: #a7a7a7;
 }
 
 .fm-row-check {
-  margin: 0 4px;                        /* the 40 dp checkbox column */
+  margin: 0 4px;
 }
 
-/* the grid (filegrid_item in a GridView with a 6 dp padding, columns 2 dp apart): 5 dp around the grid and 1 dp
- * around each tile */
+/* the grid: the original's grid padding and column gap, split between a margin round the grid and one round each
+ * tile */
 .fm-grid-view,
 .fm-grid-view > child {
   margin: 0;
@@ -213,15 +213,15 @@ window.fm-window,
   margin: 0 24px;
 }
 
-/* ---- the selection and paste bar (§1.2, §1.3) ---- */
+/* ---- the selection and paste bar ---- */
 
 .fm-bottom {
-  background-color: #002e3e;            /* cab_background_bottom */
+  background-color: #002e3e;
   box-shadow: inset 0 2.67px #33b5e5;
 }
 
 .fm-bottom-items {
-  min-height: 50px;                     /* 60 dp with the padding */
+  min-height: 50px;
   padding: 5px 0;
 }
 
@@ -239,7 +239,7 @@ window.fm-window,
   opacity: 0.4;
 }
 
-/* ---- Home (§5) ---- */
+/* ---- Home ---- */
 
 .fm-home-grid {
   padding: 8px;
@@ -261,11 +261,11 @@ window.fm-window,
   color: #a7a7a7;
 }
 
-/* ---- the Remote page (§6.1) ---- */
+/* ---- the Remote page ---- */
 
 .fm-remote-footer {
-  min-height: 64px;                     /* listPreferredItemHeight */
-  border-bottom: 1px solid #313131;     /* fmplus-1/2: a 1 dp line under it only */
+  min-height: 64px;
+  border-bottom: 1px solid #313131;     /* a line under it only */
 }
 
 .fm-footer-text {
@@ -282,31 +282,31 @@ window.fm-window,
   color: #a7a7a7;
 }
 
-/* ---- the drawer (§4) ---- */
+/* ---- the drawer ---- */
 
 fm-drawer > .fm-drawer-scrim {
   background-color: rgba(0, 0, 0, 0.6);
 }
 
 .fm-drawer-sheet {
-  background-color: #222222;            /* nav_background */
+  background-color: #222222;
 }
 
 .fm-nav-tabs {
   min-height: 56px;
-  background-color: #282828;            /* nav_tab_background */
+  background-color: #282828;
 }
 
 .fm-nav-tab image {
-  color: #555555;                       /* nav_primary_text_disabled */
+  color: #555555;
 }
 
 .fm-nav-tab.selected image {
-  color: #e5e5e5;                       /* nav_primary_text_default */
+  color: #e5e5e5;
 }
 
 .fm-nav-fixed {
-  min-height: 48px;                     /* 52 dp with the padding */
+  min-height: 48px;
   padding: 2px;
 }
 
@@ -329,7 +329,7 @@ fm-drawer > .fm-drawer-scrim {
 .fm-nav-path-main {
   font-size: 14px;
   font-weight: 700;
-  color: #808080;                       /* nav_secondary_text */
+  color: #808080;
 }
 
 .fm-nav-location {
@@ -343,7 +343,7 @@ fm-drawer > .fm-drawer-scrim {
 }
 
 .fm-nav-bar {
-  margin-top: 8px;                      /* its bar 38.67 dp under the row's top (fmplus-5) */
+  margin-top: 8px;
 }
 
 .fm-nav-fixed .fm-nav-description {
@@ -356,12 +356,12 @@ fm-drawer > .fm-drawer-scrim {
 
 .fm-nav-divider {
   min-height: 1px;
-  background-color: #3b3b3b;            /* nav_list_divider */
+  background-color: #3b3b3b;
 }
 
 .fm-nav-separator {
   min-height: 3px;
-  background-color: #444444;            /* nav_list_separator */
+  background-color: #444444;
 }
 
 .fm-nav-separator-2 {
@@ -370,7 +370,7 @@ fm-drawer > .fm-drawer-scrim {
 }
 
 .fm-nav-opened {
-  min-height: 49px;                     /* 53 dp with the padding */
+  min-height: 49px;
   padding: 2px 0 2px 2px;
 }
 
@@ -435,7 +435,7 @@ fm-drawer > .fm-drawer-scrim {
   margin: 0 8px;
 }
 
-/* ---- AppCompat's buttons, checks and fields ---- */
+/* ---- buttons, checks and fields ---- */
 
 .fm-text-button {
   min-width: 64px;
@@ -446,7 +446,7 @@ fm-drawer > .fm-drawer-scrim {
 .fm-text-button label {
   font-size: 14px;
   font-weight: 800;
-  color: #80cbc4;                       /* accent_color */
+  color: #80cbc4;
 }
 
 .fm-text-button:disabled label {
@@ -504,33 +504,32 @@ fm-drawer > .fm-drawer-scrim {
   margin-top: 4px;
 }
 
-/* ---- the dialogs (§8): AppCompat's dark alert dialog ---- */
+/* ---- the dialogs: a dark alert dialog ---- */
 
 .fm-window .neo-dialog {
-  background-color: #424242;            /* background_floating_material_dark */
+  background-color: #424242;
   border-radius: 2px;
   padding: 0;
-  margin: 0 1px;                        /* 310 dp: the window less 25 dp a side */
+  margin: 0 1px;
 }
 
 .fm-window .neo-dialog-buttons {
   margin: 0;
-  padding: 4px 18px 7px 12px;           /* fmplus-2: the last button's caps end 24.3 dp from the card's right, and
-                                           all buttons' caps 25.3 dp above its bottom */
+  padding: 4px 18px 7px 12px;
   border-spacing: 0;
 }
 
 .fm-window .neo-dialog .neo-text-button {
   min-width: 64px;
   min-height: 48px;
-  padding: 0 5px;                       /* two buttons' caps 25.3 dp apart (fmplus-2) */
+  padding: 0 5px;
   color: #80cbc4;
   font-size: 14px;
   font-weight: 800;
 }
 
 .fm-dialog-content {
-  padding: 17px 24px 0 24px;            /* abc_dialog_padding_top_material, abc_dialog_padding_material */
+  padding: 17px 24px 0 24px;
 }
 
 .fm-dialog-content.untitled {
@@ -580,13 +579,13 @@ fm-drawer > .fm-drawer-scrim {
   margin-left: 79px;
 }
 
-/* a list to pick from: the rows reach the card's edges, the icon at 24 dp and the text at 68 dp, 8 dp under */
+/* a list to pick from: the rows reach the card's edges */
 .fm-dialog-content.fm-list-dialog {
   padding: 17px 0 8px 0;
 }
 
 .fm-list-dialog .fm-dialog-title {
-  margin: 0 24px 8px 24px;              /* the first row 53 dp under the card's top (fmplus-1) */
+  margin: 0 24px 8px 24px;
 }
 
 .fm-list-dialog-row {
@@ -601,7 +600,7 @@ fm-drawer > .fm-drawer-scrim {
   margin-left: 12px;
 }
 
-/* the Local Network scan (dialog_choose_smb) */
+/* the Local Network scan */
 .fm-dialog-content.fm-scan-dialog {
   padding: 17px 0 0 0;
 }
@@ -611,7 +610,7 @@ fm-drawer > .fm-drawer-scrim {
 }
 
 .fm-scan-area {
-  min-height: 203px;                    /* 63 dp under the card's top, the card 324.7 dp tall (fmplus-2) */
+  min-height: 203px;
   margin-top: 18px;
 }
 
@@ -641,7 +640,7 @@ fm-drawer > .fm-drawer-scrim {
   color: rgba(255, 255, 255, 0.6);
 }
 
-/* Properties (dialog_file_properties) */
+/* Properties */
 .fm-property-label,
 .fm-property-value {
   font-size: 14px;
@@ -653,7 +652,7 @@ fm-drawer > .fm-drawer-scrim {
   padding-bottom: 8px;
 }
 
-/* the progress of a job (dialog_file_progress) */
+/* the progress of a job */
 .fm-progress-head .fm-dialog-title {
   margin-bottom: 8px;
 }
@@ -706,7 +705,7 @@ fm-drawer > .fm-drawer-scrim {
   color: #ffffff;
 }
 
-/* ---- Settings (§11) ---- */
+/* ---- Settings ---- */
 
 .fm-pref-category {
   font-size: 14px;
@@ -729,7 +728,7 @@ fm-drawer > .fm-drawer-scrim {
 /* ---- the snackbar and the toast ---- */
 
 .fm-snackbar .neo-snackbar {
-  background-color: #2f2f2f;            /* snackbar_background_color */
+  background-color: #2f2f2f;
   border-radius: 0;
 }
 
@@ -743,7 +742,7 @@ fm-drawer > .fm-drawer-scrim {
   color: #80cbc4;
 }
 
-/* SystemUI's text_toast.xml: the system's colours, not the app's */
+/* the toast: the system's colours, not the app's */
 .fm-toast {
   margin: 0 16px 48px 16px;
   padding: 0 16px;

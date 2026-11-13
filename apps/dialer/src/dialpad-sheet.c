@@ -1,5 +1,4 @@
-/* The main screen's dialpad: see dialpad-sheet.h. The numbers are dialer/dialpadview's DialpadFragment.java and
- * res/layout/dialpad_fragment.xml, and the motion measured on the reference phone (spec §3.1, §3.5, §3.7). */
+/* The main screen's dialpad: see dialpad-sheet.h. */
 #include "dialpad-sheet.h"
 #include "call-log.h"
 #include "call-types.h"
@@ -14,9 +13,9 @@
 
 #define DIAL_SIZE       56      /* the dial FAB */
 #define DIAL_MARGIN     16      /* above the bottom */
-#define SLIDE_MS        400     /* dialpad_slide_in_bottom / _out_bottom */
-#define FAB_MS          250     /* FloatingActionButtonController */
-#define DIAL_GREEN      0x3ee0a0        /* dialer_call_green: the dialpad opts out of force dark */
+#define SLIDE_MS        400     /* the sheet sliding in and out */
+#define FAB_MS          250     /* the dial button growing in and shrinking out */
+#define DIAL_GREEN      0x3ee0a0        /* the dialpad is not darkened, nor is its dial button */
 
 struct _DialpadSheet
 {
@@ -69,7 +68,7 @@ on_slide (NeoAnim *anim, double value, gpointer data)
   gtk_widget_queue_allocate (GTK_WIDGET (self));
 }
 
-/* DialpadFragment.onHiddenChanged: slide up 100 %p → 0 over 400 ms (0, 0, 0.2, 1) */
+/* slide up from its full height below to 0 over 400 ms (0, 0, 0.2, 1) */
 void
 dialpad_sheet_show (DialpadSheet *self, const char *number)
 {
@@ -83,7 +82,7 @@ dialpad_sheet_show (DialpadSheet *self, const char *number)
   g_signal_emit (self, signals[SHOWN_CHANGED], 0);
 }
 
-/* hideDialpad: the dial button scales out as the dialpad slides down, 0 → 100 %p over 400 ms (0.4, 0, 1, 1) */
+/* hiding: the dial button scales out as the dialpad slides down, 0 → 100 %p over 400 ms (0.4, 0, 1, 1) */
 void
 dialpad_sheet_hide (DialpadSheet *self)
 {
@@ -126,7 +125,7 @@ on_dialed (guint id, const GError *error, gpointer data)
     neo_snackbar_show (self->snackbar, error->message, NULL, NULL, NULL, NEO_SNACKBAR_LONG);
   else
     {
-      /* the call is the service's now: its screen comes up, and the dialpad goes away empty (hideAndClearDialpad) */
+      /* the call is the service's now: its screen comes up, and the dialpad goes away empty */
       phone_start_app (INCALL_APP_ID);
       dialer_dialpad_set_digits (DIALER_DIALPAD (self->dialpad), "");
       dialpad_sheet_hide (self);
@@ -134,7 +133,7 @@ on_dialed (guint id, const GError *error, gpointer data)
   g_object_unref (self);
 }
 
-/* handleDialButtonPressed with no digits: the last number called comes back into the field */
+/* the dial button with no digits: the last number called comes back into the field */
 static void
 on_call_log (GObject *source, GAsyncResult *result, gpointer data)
 {
@@ -178,7 +177,7 @@ on_digits_changed (DialpadSheet *self)
   g_signal_emit (self, signals[DIGITS_CHANGED], 0);
 }
 
-/* the clear space over the dialpad: a touch there puts it away (onSearchListTouch) */
+/* the clear space over the dialpad: a touch there puts it away */
 static void
 on_space_pressed (GtkGestureClick *gesture, int n_press, double x, double y, DialpadSheet *self)
 {
@@ -200,7 +199,7 @@ dialpad_sheet_size_allocate (GtkWidget *widget, int width, int height, int basel
   double slide = round ((1 - self->progress) * height);
   int min, nat;
 
-  /* the dialpad at its own height at the foot; the dial button 16 dp above the foot, in front of it */
+  /* the dialpad at its own height at the foot; the dial button DIAL_MARGIN above the foot, in front of it */
   gtk_widget_measure (self->dialpad, GTK_ORIENTATION_VERTICAL, width, &min, &nat, NULL, NULL);
   gtk_widget_allocate (self->dialpad, width, nat, -1,
                        gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (0, height - nat + slide)));
@@ -250,7 +249,7 @@ dialpad_sheet_class_init (DialpadSheetClass *klass)
                                           NULL, NULL, G_TYPE_NONE, 0);
 }
 
-/* DialpadFragment.onPressed: a key's tone sounds while it is held; the service knows whether "Keypad tones" is on */
+/* a key's tone sounds while it is held; the service knows whether "Keypad tones" is on */
 static void
 on_key_down (DialerDialpad *dialpad, int c, DialpadSheet *self)
 {
@@ -263,11 +262,10 @@ on_key_up (DialerDialpad *dialpad, int c, DialpadSheet *self)
   calls_client_stop_tone (calls_client_get ());
 }
 
-/* ---- ⋮ (spec §3.6) --------------------------------------------------------------------------------------------- */
+/* ---- ⋮ --------------------------------------------------------------------------------------------------------- */
 
-/* DialpadFragment.updateDialString: "," or ";" where the cursor is, which here is always the end of the digits, if
- * canAddDigit lets it: never first, and no wait next to a wait. The call service sends what follows them once the
- * call is up (calls.c, post-dial) */
+/* "," or ";" where the cursor is, which here is always the end of the digits, where one may go: never first, and no
+ * wait next to a wait. The call service sends what follows them once the call is up (calls.c, post-dial) */
 static void
 add_special (DialpadSheet *self, char c)
 {
@@ -291,7 +289,7 @@ add_wait (gpointer data)
   add_special (data, ';');
 }
 
-/* dialpad_options.xml: "Call via" and "Call with a note" stay hidden (one account; no call subject over a modem) */
+/* the dialpad's ⋮: "Call via" and "Call with a note" stay hidden (one account; no call subject over a modem) */
 static void
 on_overflow (DialerDialpad *dialpad, GtkWidget *anchor, DialpadSheet *self)
 {
@@ -317,7 +315,7 @@ dialpad_sheet_init (DialpadSheet *self)
   g_signal_connect (self->dialpad, "key-up", G_CALLBACK (on_key_up), self);
   g_signal_connect (self->dialpad, "overflow", G_CALLBACK (on_overflow), self);
 
-  /* dialpad_floating_action_button: #3ee0a0 with the black handset, elevation 8 dp */
+  /* the dial button: green with a black handset, its shadow under it */
   gtk_image_set_pixel_size (GTK_IMAGE (icon), 24);
   gtk_widget_add_css_class (icon, "dial-icon");
   self->dial = neo_pressable_new (icon);

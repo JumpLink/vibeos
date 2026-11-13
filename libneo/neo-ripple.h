@@ -1,12 +1,10 @@
-/* neo-ripple: Android's touch ripple (RippleDrawable with RippleShader, Android 12 and later), for any widget to
- * draw.
+/* neo-ripple: the touch ripple, a soft-edged disc that grows from the finger, for any widget to draw.
  *
  * A widget keeps a NeoRipple, calls neo_ripple_press () where the finger lands and neo_ripple_release () when it
  * lifts or the touch is taken away, and draws it from its snapshot with neo_ripple_snapshot (), clipped to its own
  * shape. NeoPressable does all of this for a widget that is just "a thing you tap".
  *
- * The motion, from frameworks/base graphics/java/android/graphics/drawable/RippleAnimationSession.java and
- * RippleShader.java:
+ * The motion:
  *
  *   progress p   0 -> 0.5 over 450 ms, fast-out-slow-in, from the press;
  *                0.5 -> 1 over 375 ms, linear, from the release, but never before the 450 ms are over
@@ -47,8 +45,8 @@ gboolean neo_ripple_is_active (NeoRipple *ripple);
 void     neo_ripple_snapshot (NeoRipple *ripple, GtkSnapshot *snapshot, const graphene_rect_t *bounds,
                               const GdkRGBA *color);
 
-/* The default ripple colour: colorControlHighlight, white at 20 % (AppCompat's ripple_material_dark), halved the
- * way RippleDrawable halves it so that ripple and background together reach the full alpha. */
+/* The default ripple colour: a translucent white, halved so that ripple and
+ * background together reach the full alpha. */
 GdkRGBA  neo_ripple_default_color (void);
 
 G_END_DECLS

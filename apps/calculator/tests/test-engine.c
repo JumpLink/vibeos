@@ -183,7 +183,7 @@ test_exact (void)
   assert_rational ("5!", 120, 1);
   assert_rational ("1÷7×7−1", 0, 1);
   /* ExactCalculator says 0 here, not "Can't divide by 0": BoundedRational.pow returns 0 for
-   * any power of 0 before it looks at the sign (BoundedRational.java:453) */
+   * any power of 0 before it looks at the sign */
   assert_rational ("0^−1", 0, 1);
 }
 
@@ -266,7 +266,7 @@ test_errors (void)
   assert_failure ("ln(0)", CALC_DOMAIN_ERROR);
   assert_failure ("ln(−1)", CALC_DOMAIN_ERROR);
   assert_failure ("asin(2)", CALC_DOMAIN_ERROR);
-  /* tan is sin÷cos (CalculatorExpr.java:814) */
+  /* tan is sin÷cos */
   assert_failure ("tan(π÷2)", CALC_DIVIDE_BY_ZERO);
   assert_failure ("(−1)!", CALC_DOMAIN_ERROR);
   assert_failure ("0.5!", CALC_DOMAIN_ERROR);

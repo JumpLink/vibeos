@@ -1,11 +1,10 @@
 /* What the Dialer and Messaging leave to the Contacts app (neo.Contacts): a contact's card (QuickContact),
- * a new contact with a number in it (ACTION_INSERT, "Create new contact"), and a number added to a contact the user
- * picks there (ACTION_INSERT_OR_EDIT, "Add to a contact"). They are its actions (apps/contacts, ct-main.c), activated
+ * a new contact with a number in it ("insert", "Create new contact"), and a number added to a contact the user
+ * picks there ("insert-or-edit", "Add to a contact"). They are its actions (apps/contacts, ct-main.c), activated
  * over D-Bus with org.freedesktop.Application.ActivateAction, so the app starts if it is not running.
  *
  * Without the Contacts app installed the rows that would open it are not shown (contacts_app_installed); a contact
- * tapped then opens GNOME Contacts at its list if that is there, else "No contacts app available", as the Dialer's
- * DialerUtils.startActivityWithErrorToast says it. */
+ * tapped then opens GNOME Contacts at its list if that is there, else "No contacts app available". */
 #pragma once
 
 #include <neo.h>

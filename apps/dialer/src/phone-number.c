@@ -118,7 +118,7 @@ phone_number_canonical (const char *number, const char *country)
   parsed = e_phone_number_from_string (normalized, country ? country : phone_number_locale_country (), NULL);
   if (!parsed)
     return g_steal_pointer (&normalized);
-  /* formatNumberToE164 takes only a valid number. EPhoneNumber cannot say whether one is, but one that fits none of
+  /* only a valid number is made E.164. EPhoneNumber cannot say whether one is, but one that fits none of
    * its country's patterns comes back as bare digits (as in phone_number_format) */
   national = e_phone_number_to_string (parsed, E_PHONE_NUMBER_FORMAT_NATIONAL);
   if (!national || strspn (national, "0123456789") == strlen (national))
@@ -149,7 +149,7 @@ phone_number_format (const char *number, const char *country)
                                                 ? E_PHONE_NUMBER_FORMAT_NATIONAL
                                                 : E_PHONE_NUMBER_FORMAT_INTERNATIONAL);
   /* A number that fits none of its country's patterns (too short, too long) comes back bare, without even the
-   * trunk prefix: "+4917012345" as "17012345". Shown as it came instead, as formatInOriginalFormat does */
+   * trunk prefix: "+4917012345" as "17012345". Shown as it came instead */
   if (!formatted || strspn (formatted, "0123456789") == strlen (formatted))
     return g_strdup (number);
   return g_steal_pointer (&formatted);
@@ -209,7 +209,7 @@ phone_number_presentation_name (Presentation presentation)
 }
 
 /* the numbers that reach the emergency services everywhere, which a phone dials even without a SIM
- * (PhoneNumberUtils' defaults when the SIM gives no list) */
+ * (the list used when the SIM gives none) */
 static const char * const emergency_numbers[] = { "112", "911", "999", "000", "08", "110", "118", "119", NULL };
 
 gboolean

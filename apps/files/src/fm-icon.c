@@ -165,7 +165,7 @@ fm_icon_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, in
 static void
 snapshot_texture (FmIcon *self, GtkSnapshot *snapshot, double x, double y, double size)
 {
-  /* a thumbnail fills the square, cropped to it, with 2 dp corners */
+  /* a thumbnail fills the square, cropped to it, with slightly rounded corners */
   double tw = gdk_texture_get_width (self->texture), th = gdk_texture_get_height (self->texture);
   double scale = MAX (size / tw, size / th);
   GskRoundedRect clip;

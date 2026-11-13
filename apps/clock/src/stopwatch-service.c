@@ -40,9 +40,9 @@ struct _StopwatchService {
   guint32 notification;         /* the server's id for ours, or 0 */
 };
 
-/* --- the notification (StopwatchNotificationBuilder) */
+/* --- the notification */
 
-/* StopwatchModel.updateNotification: none while it is reset or the app is in front */
+/* none while it is reset or the app is in front */
 static void
 update_notification (StopwatchService *self)
 {
@@ -75,7 +75,7 @@ update_notification (StopwatchService *self)
       body = clock_notifier_format_elapsed (total / 1000);
       hints = clock_notifier_header_hints (0, FALSE, _("Paused"));
     }
-  /* Android's channel is "Stopwatch" at default importance: in the list, no heads-up (alarm-notifications.c) */
+  /* low urgency: in the list, no heads-up (alarm-notifications.c) */
   self->notification = clock_notifier_notify (self->notifier, self->notification, _("Stopwatch"), body,
                                               stopwatch->state == STOPWATCH_RUNNING ? running_actions : paused_actions,
                                               CLOCK_URGENCY_LOW, hints);
@@ -106,7 +106,7 @@ on_notification (guint32 id, const char *action, gpointer data)
   if (g_str_equal (action, "closed") || g_str_equal (action, "gone"))
     {
       self->notification = 0;
-      /* swiped away: it comes back, as Android's is ongoing */
+      /* swiped away: it comes back, as it is ongoing */
       if (g_str_equal (action, "closed"))
         update_notification (self);
       return;
@@ -238,7 +238,7 @@ stopwatch_service_new (GDBusConnection *session, const char *store_path, GError 
     return NULL;
 
   /* saved in another boot: the elapsed clock started again, the wall clock says for how long it was off, and a
-   * running stopwatch counts that time (StopwatchModel's updateAfterReboot) */
+   * running stopwatch counts that time */
   if (*self->stopwatch->boot_id && *boot && !g_str_equal (self->stopwatch->boot_id, boot))
     stopwatch_update_after_reboot (self->stopwatch, elapsed_now (), elapsed_wall_now ());
   g_free (self->stopwatch->boot_id);

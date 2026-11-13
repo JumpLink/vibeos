@@ -1,4 +1,4 @@
-/* An M3 outlined text field (cal-outlined-field.h). */
+/* An outlined text field (cal-outlined-field.h). */
 #include "cal-outlined-field.h"
 
 #include <math.h>
@@ -7,12 +7,12 @@
 #include "cal-colors.h"
 #include "cal-text.h"
 
-#define LABEL_SIZE 12.0                 /* bodySmall, the label on the edge */
-#define LABEL_SPACING 0.4               /* bodySmall's letterSpacing, 0.0333 em */
-#define LABEL_CUTOUT 4.0                /* mtrl_textinput_box_label_cutout_padding */
-#define CORNER 4.0                      /* shapeAppearanceCornerExtraSmall */
-#define LABEL_MS 167                    /* CollapsingTextHelper's animation */
-#define ASCENT (1900 / 2048.0)          /* Paint.ascent() of Roboto, per px of size */
+#define LABEL_SIZE 12.0                 /* the label on the edge */
+#define LABEL_SPACING 0.4               /* the label's letter spacing, 0.0333 em */
+#define LABEL_CUTOUT 4.0                /* the outline's gap at each side of the label */
+#define CORNER 4.0                      /* the box's corner radius */
+#define LABEL_MS 167                    /* the label moving */
+#define ASCENT (1900 / 2048.0)          /* Roboto's ascent, per px of size */
 
 struct _CalOutlinedField {
   GtkWidget parent;
@@ -20,8 +20,8 @@ struct _CalOutlinedField {
   char *label;
   double text_size, letter_spacing, padding;
   double box_height;            /* as allocated */
-  double floated;               /* the label: 0 in the box at the text's size, 1 on the edge at 12 sp */
-  gboolean up;                  /* where it goes: on the edge (the cutout opens at once, as openCutout does) */
+  double floated;               /* the label: 0 in the box at the text's size, 1 on the edge, smaller */
+  gboolean up;                  /* where it goes: on the edge (the cutout opens at once) */
   gboolean focused;             /* the text has the focus (as the focus controller tells: in its "enter" the
                                  * widget's has-focus is not set yet) */
   NeoAnim *anim;
@@ -29,7 +29,7 @@ struct _CalOutlinedField {
 
 G_DEFINE_FINAL_TYPE (CalOutlinedField, cal_outlined_field, GTK_TYPE_WIDGET)
 
-/* calculateLabelMarginTop: half the 12 sp label's ascent, in whole device pixels */
+/* the box's top: half the small label's ascent, in whole device pixels */
 static double
 label_margin (int scale)
 {
@@ -48,7 +48,7 @@ child_line (CalOutlinedField *self, double *ascent, double *height)
   *height = logical.height / (double) PANGO_SCALE;
 }
 
-/* the EditText's height for the child's lines: the first and last with includeFontPadding, those between at the
+/* the box's height for the child's lines: the first and last with font padding, those between at the
  * font's spacing */
 static double
 box_height (CalOutlinedField *self, int child_height, int scale)
@@ -105,7 +105,7 @@ cal_outlined_field_allocate (GtkWidget *widget, int width, int height, int basel
 
   gtk_widget_measure (self->child, GTK_ORIENTATION_VERTICAL, child_width, &child_min, &child_height, NULL, NULL);
   self->box_height = box_height (self, child_height, scale);
-  /* the child's first baseline on the EditText's, which is the font's top under the padding */
+  /* the child's first baseline on the box's, which is the font's top under the padding */
   child_line (self, &ascent, &line);
   cal_text_line (self->text_size, scale, &text_baseline, NULL);
   y = label_margin (scale) + self->padding + text_baseline - ascent;
@@ -190,7 +190,7 @@ cal_outlined_field_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
                            gap_start, gap_end);
   gtk_snapshot_append_stroke (snapshot, path, pen, &outline);
 
-  /* from the text's baseline to the edge's label's (its top the layout's, labelMarginTop over the box) */
+  /* from the text's baseline to the edge's label's (its top the widget's, the label margin over the box) */
   cal_text_line (self->text_size, scale, &expanded_baseline, NULL);
   expanded_baseline += top + self->padding;
   cal_text_draw (snapshot, label, self->padding,
@@ -247,7 +247,7 @@ on_changed (CalOutlinedField *self)
   restate (self, TRUE);
 }
 
-/* a tap on the box's padding is the EditText's: it focuses the text */
+/* a tap on the box's padding focuses the text */
 static void
 on_released (GtkGestureClick *click, int n_press, double x, double y, CalOutlinedField *self)
 {

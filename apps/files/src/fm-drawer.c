@@ -11,9 +11,9 @@
 #include <spongy-gtk.h>
 
 #define DRAWER_W        280
-#define EDGE_W          20      /* DrawerLayout's edge size */
+#define EDGE_W          20      /* the band at the left edge a swipe opens it from */
 #define TOUCH_SLOP      8
-#define SETTLE_BASE_MS  256     /* ViewDragHelper: (fraction + 1) x 256 ms */
+#define SETTLE_BASE_MS  256     /* a settle takes (fraction + 1) x 256 ms */
 #define SETTLE_MAX_MS   600
 
 typedef enum { TAB_LOCATIONS, TAB_BOOKMARKS, TAB_HISTORY, N_TABS } Tab;
@@ -270,7 +270,7 @@ draw_storage_bar (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpoi
 {
   double used = *(double *) data;
 
-  /* the used part #3c87ee on #474f58: 1.33 dp (4 px) at the foot of its 2 dp, 38.67 dp under the row's top */
+  /* the used part over the rest: a bar 4 device px tall at the foot of its allocation */
   double bar = MIN (height, 4 / 3.0);
 
   cairo_set_source_rgb (cr, 0x47 / 255.0, 0x4f / 255.0, 0x58 / 255.0);
@@ -304,8 +304,7 @@ on_storage_info (GObject *source, GAsyncResult *result, gpointer data)
   g_object_unref (row);
 }
 
-/* a fixed row (nav_fixed_list_item): the 32 dp icon, the name and the description at its end, and for a storage the
- * bar under them */
+/* a fixed row: the icon, the name and the description at its end, and for a storage the bar under them */
 static GtkWidget *
 fixed_row (FmDrawer *drawer, FmGlyph glyph, const char *name, GFile *location, gboolean storage)
 {
@@ -321,14 +320,14 @@ fixed_row (FmDrawer *drawer, FmGlyph glyph, const char *name, GFile *location, g
   gtk_widget_set_valign (icon, GTK_ALIGN_CENTER);
   gtk_widget_set_hexpand (label, TRUE);
   gtk_label_set_xalign (GTK_LABEL (description), 1);
-  /* the description's digits 1 dp under the name's capitals, on its baseline (fmplus-5) */
+  /* the description at the top, beside the name */
   gtk_widget_set_valign (description, GTK_ALIGN_START);
   gtk_box_append (GTK_BOX (top), label);
   gtk_box_append (GTK_BOX (top), description);
   gtk_box_append (GTK_BOX (text), top);
   gtk_widget_add_css_class (text, "fm-nav-text");
   gtk_widget_set_hexpand (text, TRUE);
-  /* the name centred; a storage's name stands 9 dp down with its bar 38.7 dp down (fmplus-5) */
+  /* the name centred; a storage's name at the top, to leave room for its bar */
   gtk_widget_set_valign (text, storage ? GTK_ALIGN_START : GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (box), icon);
   gtk_box_append (GTK_BOX (box), text);
@@ -384,7 +383,7 @@ on_trash_size (GObject *source, GAsyncResult *result, gpointer data)
   g_object_unref (description);
 }
 
-/* ---- ⋮ on a last-visited row (context_lastvisited) and a medium's Eject ----------------------------------------------- */
+/* ---- ⋮ on a last-visited row and a medium's Eject ---------------------------------------------------------------- */
 
 typedef struct {
   FmDrawer *drawer;
@@ -522,10 +521,10 @@ build_locations (FmDrawer *drawer)
 
   if (!visited->len)
     return;
-  /* the last fixed row keeps its divider's 1 dp, unpainted */
+  /* the last fixed row keeps its divider's space, unpainted */
   gtk_box_append (GTK_BOX (box), line ("fm-nav-gap"));
   gtk_box_append (GTK_BOX (box), line ("fm-nav-separator"));
-  /* the last-visited locations (nav_opened_list_item) */
+  /* the last-visited locations */
   for (guint i = 0; i < visited->len; i++)
     {
       FmVisited *entry = visited->pdata[i];
@@ -534,7 +533,7 @@ build_locations (FmDrawer *drawer)
       GtkWidget *line_box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
       GtkWidget *text = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
       GtkWidget *icon = fm_icon_new (where->glyph, 32);
-      /* a smaller ⋮ than the toolbar's: 12 dp of dots, centred 254 dp in (fmplus-5) */
+      /* a smaller ⋮ than the toolbar's */
       GtkWidget *more = fm_icon_button_sized ("view-more-symbolic", _("More options"), 48, 48, 12);
       GtkWidget *name_line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
       GtkWidget *name = fm_label (where->kind == FM_PLACE_REMOTE ? where->name : entry->name, "fm-nav-name", 16,
@@ -675,7 +674,7 @@ build_bookmarks (FmDrawer *drawer)
       GtkWidget *row;
 
       gtk_overlay_set_child (GTK_OVERLAY (icons), icon);
-      /* a remote's bookmark wears its location's 16 dp icon */
+      /* a remote's bookmark wears its location's small icon */
       if (where->kind != FM_PLACE_STORAGE)
         {
           GtkWidget *sub = fm_icon_new (where->glyph, 16);
@@ -752,7 +751,7 @@ build_history (FmDrawer *drawer)
       GtkWidget *icon = fm_icon_new (fm_glyph_for_folder (location), 32);
       GtkWidget *row;
 
-      /* the location's band: its 16 dp icon and name on #303030 */
+      /* the location's band: its icon and name */
       gtk_box_append (GTK_BOX (band), fm_icon_new (where->glyph, 16));
       gtk_box_append (GTK_BOX (band), fm_label (*entry->root_name ? entry->root_name : where->name,
                                                 "fm-nav-band-text", 12, FALSE));
@@ -785,7 +784,7 @@ draw_tab_line (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointe
   FmDrawer *drawer = data;
   double w = width / (double) N_TABS;
 
-  /* nav_tab_separator: 1 dp #666666 at the bottom; the 4 dp accent indicator over it, under the selected tab */
+  /* a grey line at the bottom; the accent indicator over it, under the selected tab */
   cairo_set_source_rgb (cr, 0x66 / 255.0, 0x66 / 255.0, 0x66 / 255.0);
   cairo_rectangle (cr, 0, height - 1, width, 1);
   cairo_fill (cr);
@@ -874,8 +873,7 @@ fm_drawer_new (FmShell *shell)
   gtk_widget_add_controller (drawer->scrim, GTK_EVENT_CONTROLLER (press));
   gtk_widget_set_parent (drawer->scrim, drawer->layer);
 
-  /* the tab bar: three equal tabs of a 20 dp glyph (the theme's draw to their edges), the line and indicator drawn
-   * under them */
+  /* the tab bar: three equal tabs of a glyph each, the line and indicator drawn under them */
   gtk_box_set_homogeneous (GTK_BOX (tabs), TRUE);
   for (int i = 0; i < N_TABS; i++)
     {

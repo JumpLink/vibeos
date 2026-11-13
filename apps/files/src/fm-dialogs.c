@@ -17,7 +17,7 @@ fm_dialog_new (const char *title, GtkWidget **content)
   gtk_widget_add_css_class (box, "fm-dialog-content");
   if (title)
     {
-      /* abc_alert_dialog_title_material: 18 dp above, 20 sp Medium, 24 dp in */
+      /* the title, over the content */
       GtkWidget *label = fm_label (title, "fm-dialog-title", 20, FALSE);
 
       gtk_box_append (GTK_BOX (box), label);
@@ -57,7 +57,7 @@ fm_form_row (const char *label, GtkWidget *field)
   GtkWidget *text = fm_label (label, "fm-form-label", 16, TRUE);
 
   gtk_widget_add_css_class (row, "fm-form-row");
-  /* weight 3 of 10 of the 262 dp the card's padding leaves */
+  /* the label's share of the row (weight 3 of 10), as a fixed width */
   gtk_widget_set_size_request (text, 79, -1);
   gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
   gtk_widget_set_hexpand (field, TRUE);
@@ -466,7 +466,7 @@ on_type_toggled (GtkWidget *check, GParamSpec *pspec, View *view)
       fm_check_set_active (fm_check_row_get_check (view->types[i]), FALSE);
 }
 
-/* a radio row with the theme's view-list or view-grid glyph between the radio and the label (preference_view_type) */
+/* a radio row with the theme's view-list or view-grid glyph between the radio and the label */
 static GtkWidget *
 view_type_row (const char *label, const char *icon_name, const char *description, gboolean active)
 {
@@ -514,7 +514,7 @@ fm_view_dialog (GtkWidget *parent, GSettings *settings)
   FmSort sort = fm_sort_from_string (current);
 
   view->settings = g_object_ref (settings);
-  /* File Manager+'s view_type: the radios side by side, each with its glyph */
+  /* the view type: the radios side by side, each with its glyph */
   view->types[0] = view_type_row (_("List"), "view-list-symbolic", _("List view"), !tiles);
   view->types[1] = view_type_row (_("Grid"), "view-grid-symbolic", _("Grid view"), tiles);
   gtk_grid_set_column_homogeneous (GTK_GRID (types), TRUE);

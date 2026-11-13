@@ -1,5 +1,5 @@
-// The on-screen keyboard's keys tick under the finger, as Gboard's do (HapticFeedbackConstants.KEYBOARD_TAP on the
-// key's down): feedbackd's shortest effect, the one the back gesture uses.
+// The on-screen keyboard's keys tick under the finger as it lands, as Gboard's do: feedbackd's shortest effect, the
+// one the back gesture uses.
 //
 // The shell's Key class is not exported, so its press() is patched on the prototype of the first key a layout gets:
 // Keyboard._addRowKeys builds every layout's keys (letters, shift, backspace, enter, the space bar), and a keyboard

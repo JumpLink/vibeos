@@ -1,6 +1,6 @@
-/* Neo Launcher 2: the home screen as a Vulkan Wayland client. Launcher3 on Android 16, 1:1: the parallax
- * wallpaper zoomed ×1.10, the workspace and dock, and the app drawer sheet whose depth zooms the wallpaper out,
- * shrinks the home to 0.97 and blurs both behind it. */
+/* Neo Launcher 2: the home screen as a Vulkan Wayland client: the parallax wallpaper zoomed ×1.10, the workspace
+ * and dock, and the app drawer sheet whose depth zooms the wallpaper out, shrinks the home to 0.97 and blurs both
+ * behind it. */
 #include <glib.h>
 #include <glib-unix.h>
 #include <linux/input-event-codes.h>
@@ -15,9 +15,10 @@
 #include "neo.h"
 #include "parallax.h"
 
-#define DRAWER_DEPTH       0.33f      /* bottomSheetDepth */
-#define SPRING_DEPTH       0.15f      /* SPRING_LOADED's: the wallpaper zooms out and blurs behind a sharp workspace */
-#define BLUR_MAX_DP        30         /* max_depth_blur_radius_enhanced */
+/* depth: how far the home is pushed back, 0 not at all; it zooms the wallpaper out and blurs what is behind */
+#define DRAWER_DEPTH       0.33f      /* the drawer fully open */
+#define SPRING_DEPTH       0.15f      /* an icon dragged: the wallpaper zooms out and blurs behind a sharp workspace */
+#define BLUR_MAX_DP        30         /* the blur radius from BLUR_FULL_DEPTH on; shallower depths blur less */
 #define BLUR_FULL_DEPTH    0.3f
 #define HOLD_MS            375        /* a long press: the menu, measured on the S10e */
 #define APPS_SETTLE_MS     300        /* an install writes several files: the app list is read once they are in */
@@ -512,10 +513,9 @@ on_frame (gpointer data, gint64 time)
   more |= nav_frame ();
   more |= N.launch_t0 != 0;
 
-  /* the drawer's depth, or an app's over the launcher: the wallpaper zooms out, the home shrinks, both blur
-   * (BaseDepthController) */
+  /* the drawer's depth, or an app's over the launcher: the wallpaper zooms out, the home shrinks, both blur */
   float f = drawer_progress ();
-  float de = spongy_curve (SPONGY_LINEAR_OUT_SLOW_IN, f);           /* DECELERATED_EASE (0, 0, 0.2, 1) */
+  float de = spongy_curve (SPONGY_LINEAR_OUT_SLOW_IN, f);           /* (0, 0, 0.2, 1) */
   float sdepth = SPRING_DEPTH * drag_spring ();
   bool sharp_home = sdepth > 0;      /* a drag: only the wallpaper blurs, the workspace stays sharp over the scrim */
   float depth = floorf (MAX (MAX (DRAWER_DEPTH * de, nav_depth ()), sdepth) * 256) / 256;
@@ -537,7 +537,7 @@ on_frame (gpointer data, gint64 time)
   }
   GfxTex *blurred = NULL;
   if (radius >= 1) {
-    /* the wallpaper and home at half size, blurred to hwui's σ = 0.57735·r + 0.5 */
+    /* the wallpaper and home at half size, blurred with σ = 0.57735·r + 0.5, as the reference blurs a radius r */
     gfx_pass_begin (target (&A.bg_target, N.W / 2, N.H / 2), (GfxColor) { 0, 0, 0, 1 });
     gfx_scale (0.5f, 0.5f, 0, 0);
     if (A.par)
@@ -805,8 +805,8 @@ on_resize (gpointer data, int w, int h, double scale)
 {
   N.W = w;
   N.H = h;
-  /* a dp is a logical pixel of the compositor's, which picks the scale from the panel's DPI (3 on the S10e, Android's
-   * own density there); NEO_DENSITY overrides it */
+  /* dp () counts in the compositor's logical pixels; it picks the scale from the panel's DPI (3 on the S10e, the
+   * reference's own density there); NEO_DENSITY overrides it */
   const char *d = g_getenv ("NEO_DENSITY");
   N.dp = d ? g_ascii_strtod (d, NULL) : scale > 0 ? scale : 3.0;
   spongy_set_density (N.dp);
@@ -824,7 +824,7 @@ on_shown (gpointer data, guint64 frame)
   nav_shown (frame);
 }
 
-/* an app over the launcher (Launcher3 is stopped then): the wallpaper stops following the phone, its sensor polls
+/* an app over the launcher (the launcher is not seen then): the wallpaper stops following the phone, its sensor polls
  * and its frames with it, until the launcher shows again */
 static void
 on_suspended (gpointer data, bool suspended)

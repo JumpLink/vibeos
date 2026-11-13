@@ -1,8 +1,8 @@
-/* The Calendar's look: Etar on the reference phone (spec/calendar.md; sizes in dp, measured from the stills).
+/* The Calendar's look.
  *
- * Etar's Material 3 theme is the library baseline with only colorPrimary taken from the wallpaper (spec §1), so
- * the M3 roles libneo's stylesheet uses are redefined here with Etar's values; this provider is above libneo's, and
- * named colours resolve through the cascade. cal-colors.h holds the same values for what is drawn in C.
+ * The colour roles libneo's stylesheet uses are redefined here with the Calendar's own values; this provider is
+ * above libneo's, and named colours resolve through the cascade. cal-colors.h holds the same values for what is
+ * drawn in C.
  *
  * Weights are the effective ones with "Bold text" on (+300; neo.css). */
 
@@ -21,16 +21,16 @@
 @define-color neo_on_surface_variant #cac4d0;
 @define-color neo_outline #938f99;
 
-@define-color cal_separator #555555;     /* edit_event_separator */
-@define-color cal_divider #312f34;       /* event info's dividers, the editor's CANCEL | DONE divider (measured) */
-@define-color cal_hint #928d96;          /* the editor's hints (measured) */
+@define-color cal_separator #555555;     /* the editor's section separators */
+@define-color cal_divider #312f34;       /* event info's dividers, the editor's CANCEL | DONE divider */
+@define-color cal_hint #928d96;          /* the editor's hints */
 
 window.neo.cal-window {
   background-color: @neo_surface;
   color: @neo_on_surface;
 }
 
-/* --- the toolbars: 64 dp on the surface (all_in_one_material.xml, the activities' MaterialToolbar) */
+/* --- the toolbars */
 
 .cal-toolbar {
   min-height: 64px;
@@ -39,15 +39,14 @@ window.neo.cal-window {
 
 .cal-toolbar-nav,
 .cal-toolbar-back,
-.cal-action.cal-toolbar-back {           /* the navigation button: 56 dp, its icon centred 28 dp in (a page's too:
-                                          * its back button is also a .cal-action, 48 dp below) */
+.cal-action.cal-toolbar-back {           /* the navigation button (a page's too: its back
+                                          * button is also a .cal-action, which this outweighs) */
   min-width: 56px;
   min-height: 56px;
   color: @neo_on_surface_variant;
 }
 
-/* the title and the subtitle 4 dp after the 56 dp button, at 180 px (measured: "November" from 184, "Today," from
- * 181, each glyph's own side bearing) */
+/* the title and the subtitle, just after the navigation button */
 .cal-toolbar-titles,
 .cal-toolbar > .cal-toolbar-title {
   margin-left: 4px;
@@ -55,41 +54,39 @@ window.neo.cal-window {
 
 .cal-toolbar-title {
   font-size: 22px;
-  font-weight: 700;                      /* measured Roboto 700 */
+  font-weight: 700;
   color: @neo_on_surface;
 }
 
-.cal-toolbar-subtitle {                  /* measured: 16 sp Medium, onSurface (the M3 toolbar's subtitle) */
+.cal-toolbar-subtitle {
   font-size: 16px;
   font-weight: 800;
   color: @neo_on_surface;
 }
 
-.cal-toolbar-more {                      /* the overflow button: 40 dp wide (measured 960…1080) */
+.cal-toolbar-more {                      /* the overflow button, narrower than the others */
   min-width: 40px;
   color: @neo_on_surface_variant;
 }
 
-/* its icon 6 dp in from the start, 10 dp from the end (abc_action_bar_overflow_padding_start/end_material; measured:
- * the dots centred at x 1013.5, not the button's 1020), the ripple still on the whole button */
+/* its icon nearer the start than the end, the ripple still on the whole button */
 .cal-toolbar-more > image {
   margin-left: 6px;
   margin-right: 10px;
 }
 
-/* the Week and Day views: 1 dp above the header in day_past_background_color (day_activity.xml's paddingTop; the
- * view paints it) */
+/* the Week and Day views: a strip above the header, which the view paints in its past-day colour */
 cal-day-view {
   padding-top: 1px;
 }
 
-.cal-action {                            /* event info's actions: 48 dp */
+.cal-action {                            /* event info's action buttons */
   min-width: 48px;
   min-height: 48px;
   color: @neo_on_surface_variant;
 }
 
-/* --- the FAB: M3, 56 dp, a 16 dp corner, colorAccent, the white plus, 16 dp from the edges */
+/* --- the floating add button, in the bottom corner */
 
 .cal-fab {
   min-width: 56px;
@@ -99,7 +96,7 @@ cal-day-view {
   color: white;
 }
 
-/* --- the drawer (calendar_view.xml as NavigationView draws it; still:cal-drawer) */
+/* --- the drawer */
 
 .cal-drawer {
   background-color: @neo_surface_container_low;
@@ -107,7 +104,7 @@ cal-day-view {
   padding-top: 8px;
 }
 
-.cal-drawer-item {                       /* the pill: 12 dp in from the sheet's edges, 48 dp, a full radius */
+.cal-drawer-item {                       /* an item's pill, inset from the sheet's edges */
   margin: 0 12px;
   min-height: 48px;
   border-radius: 24px;
@@ -117,8 +114,6 @@ cal-day-view {
   background-color: @neo_secondary_container;
 }
 
-/* the icon at 28 dp: itemHorizontalPadding 16 dp in the pill inset 12 dp (measured: its glyphs from x 90, 84 px and
- * the icons' own 2 dp) */
 .cal-drawer-row {
   padding-left: 16px;
 }
@@ -127,8 +122,7 @@ cal-day-view {
   color: @neo_on_surface_variant;
 }
 
-.cal-drawer-label {                      /* labelLarge (14 sp Medium, 0.1 sp apart), at 64 dp: itemIconPadding 12 dp
-                                          * after the icon */
+.cal-drawer-label {                      /* the item's name, after its icon */
   margin-left: 12px;
   font-size: 14px;
   font-weight: 800;
@@ -141,28 +135,27 @@ cal-day-view {
   color: @neo_on_secondary_container;
 }
 
-.cal-drawer-divider {                    /* 1 dp, #938F99, 28 dp in from both sides, 8 dp gaps (measured) */
+.cal-drawer-divider {
   min-height: 1px;
   margin: 8px 28px;
   background-color: @neo_outline;
 }
 
-/* --- menus and spinner dropdowns (M3 ListPopupWindow; still:cal-menu) */
+/* --- menus and spinner dropdowns */
 
 .cal-menu {
   background-color: @neo_surface_container;
   border-radius: 4px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-  padding: 8px 0;                        /* the list's 8 dp above and below */
+  padding: 8px 0;
 }
 
-.cal-overflow-menu {                     /* 4 dp from the screen's end, 8 dp from its top (measured 12 px, 25 px) */
+.cal-overflow-menu {                     /* the toolbar's menu, near the screen's top end */
   margin: 8px 4px 0 0;
-  min-width: 196px;                      /* abc_popup_menu_item_layout's minWidth (measured 588 px) */
+  min-width: 196px;
 }
 
-/* a popup menu's items: textAppearanceBodyLarge, 16 sp with 0.5 sp letter spacing (measured: "Import event" 289 px
- * wide, 272 without) */
+/* a popup menu's items */
 .cal-overflow-menu .cal-menu-item label,
 .cal-overflow-menu-items .cal-menu-item label {
   letter-spacing: 0.5px;
@@ -196,10 +189,10 @@ cal-spinner {
   color: @neo_on_surface_variant;
 }
 
-/* --- toasts (SystemUI's text_toast.xml) */
+/* --- toasts */
 
 .cal-toast {
-  margin: 0 16px 48px 16px;              /* toast_y_offset */
+  margin: 0 16px 48px 16px;              /* lifted off the screen's bottom edge */
   padding: 0 16px;
   min-height: 48px;
   border-radius: 28px;
@@ -217,7 +210,7 @@ cal-spinner {
   color: @neo_on_surface;
 }
 
-/* --- dialogs: M3 AlertDialog on surfaceContainerHigh */
+/* --- dialogs */
 
 .neo-dialog {
   background-color: @neo_surface_container_high;
@@ -247,7 +240,7 @@ cal-spinner {
   color: @neo_on_surface_variant;
 }
 
-/* --- the date dialog (MaterialDatePicker; still:cal-dlg-date, measured) */
+/* --- the date dialog */
 
 .neo-dialog.cal-date-card {
   background-color: @neo_surface_container_high;
@@ -257,7 +250,7 @@ cal-spinner {
   margin: 2px 8px 2px 8px;
 }
 
-.cal-date-card .neo-text-button {        /* M3 text buttons are 64 dp at least (Cancel 588…792, OK 816…1008) */
+.cal-date-card .neo-text-button {
   min-width: 40px;
 }
 
@@ -273,7 +266,7 @@ cal-spinner {
   color: @neo_on_surface_variant;
 }
 
-.cal-date-selection {                    /* its baseline 20 dp over the header's end (measured) */
+.cal-date-selection {                    /* the chosen date, under the title */
   margin-bottom: 12px;
   font-size: 32px;
   font-weight: 700;
@@ -303,17 +296,17 @@ cal-spinner {
   color: @neo_on_surface_variant;
 }
 
-.cal-date-days {                          /* 8 dp between the six weeks and the buttons */
+.cal-date-days {                          /* a gap between the weeks and the buttons */
   margin-bottom: 8px;
 }
 
-/* the time picker (MaterialTimePicker, 24-hour clock; still:cal-dlg-time) */
+/* the time picker (24-hour clock) */
 
 .neo-dialog.cal-time-card {
   background-color: @neo_surface_container_high;
 }
 
-.cal-time-card .neo-dialog-buttons {      /* on the card's bottom edge, 8 dp from its end */
+.cal-time-card .neo-dialog-buttons {      /* on the card's bottom edge */
   margin: 0 8px 0 8px;
 }
 
@@ -325,15 +318,15 @@ cal-spinner {
   padding-bottom: 26px;                   /* the face's end to the buttons */
 }
 
-.cal-time-title {                         /* labelMedium at (24, 16), its TextView 16.3 dp (includeFontPadding; the
-                                           * label's font padding is a widget margin, on top of this one) */
+.cal-time-title {                         /* the dialog's title; the label's font padding is a
+                                           * widget margin, on top of this one */
   margin: 16px 24px 0 24px;
   font-size: 12px;
   font-weight: 800;
   color: @neo_on_surface_variant;
 }
 
-.cal-time-display {                       /* the boxes 52 dp from the card's top (the title ends at 33 here) */
+.cal-time-display {                       /* the hour and minute boxes */
   margin-top: 19px;
 }
 
@@ -349,7 +342,7 @@ cal-spinner {
 }
 
 .cal-time-text,
-.cal-time-colon {                         /* displayLarge, 57 sp */
+.cal-time-colon {
   font-size: 57px;
   font-weight: 700;
 }
@@ -358,11 +351,11 @@ cal-spinner {
   color: @neo_on_surface;
 }
 
-.cal-time-face {                          /* the face 168 dp from the card's top */
+.cal-time-face {                          /* the clock face, under the boxes */
   margin-top: 36px;
 }
 
-.cal-year {                               /* mtrl_calendar_year: a 72 × 36 dp pill in a 52 dp row */
+.cal-year {                               /* a year in the year list, a pill */
   min-width: 72px;
   min-height: 36px;
   margin: 8px 0;
@@ -371,7 +364,7 @@ cal-spinner {
   color: @neo_on_surface_variant;
 }
 
-.cal-year.today {                         /* a 1 dp ring, inside the pill */
+.cal-year.today {                         /* this year: a ring, inside the pill */
   box-shadow: inset 0 0 0 1px @neo_primary;
   color: @neo_primary;
 }
@@ -387,7 +380,7 @@ cal-spinner {
   background-color: @neo_surface;
 }
 
-/* event info (event_info_headline.xml, event_info.xml; still:cal-event) */
+/* event info */
 
 /* the headline's colour is drawn on its content box (CalColorBox), so the spacing is the labels' own */
 .cal-info-headline > label {
@@ -441,47 +434,46 @@ cal-spinner {
   color: @neo_on_surface;
 }
 
-.cal-list-separator {                    /* listSeparatorTextViewStyle: 14 sp bold caps, 8 dp in */
-  min-height: 30px;                      /* 32 dp with the padding: TextView centres its font-padded box, 2 dp */
-  margin: 4px 8px 0 8px;                 /* lower than GTK centres a label's */
+.cal-list-separator {                    /* a heading in caps, a line under it */
+  min-height: 30px;                      /* the padding puts the text 2 px lower than GTK centres a label: */
+  margin: 4px 8px 0 8px;                 /* centred with its font padding */
   padding: 2px 8px 0 8px;
   font-size: 14px;
   font-weight: 900;
   color: @neo_on_surface_variant;
-  /* the 9-patch's line: 2 dp along the bottom, inside the 32 dp, the text centred over the whole height (measured:
-   * the view 604…700, the line 694…699, the caps 637…668) */
+  /* the line along the bottom, inside the height; the text is centred over the whole height */
   box-shadow: inset 0 -2px @cal_divider;
 }
 
-/* the guests (AttendeesView): event_info_label dividers, contact_item rows */
-.cal-guest-divider {                     /* 32 dp, 8 dp in and 8 dp padding, no space above */
+/* the guests: a heading per response (yes, no, maybe, no response), a row per guest */
+.cal-guest-divider {                     /* no space above */
   margin-top: 0;
 }
 
-.cal-guest {                             /* 7 dp in, 4 dp padding */
+.cal-guest {
   margin-left: 7px;
   padding-left: 4px;
 }
 
-.cal-guest-line {                        /* 48 dp, 8 dp from the end */
+.cal-guest-line {
   min-height: 48px;
   margin-right: 8px;
 }
 
-.cal-guest-name {                        /* EditEvent_Value: 16 sp, 12 dp margins, 12 dp padding */
+.cal-guest-name {
   margin: 0 12px;
   padding-left: 12px;
   font-size: 16px;
   color: @neo_on_surface;
 }
 
-.cal-guest-separator {                   /* listDivider, 1 px, 8 dp in */
+.cal-guest-separator {                   /* between two guests in a group */
   min-height: 1px;
   margin: 0 8px;
   background-color: @cal_divider;
 }
 
-.cal-email-guests {                      /* 50 dp, 6 dp in, 8 dp from the end; 16 sp */
+.cal-email-guests {                      /* the email-guests button */
   min-height: 50px;
   margin: 0 8px 0 6px;
   font-size: 16px;
@@ -492,7 +484,7 @@ cal-spinner {
   font-size: 16px;
 }
 
-.cal-add-reminder {                      /* 18 sp, 12 dp margins, 12 dp below; the text 8 dp into the button */
+.cal-add-reminder {                      /* the add-reminder button */
   margin: 4px 12px 12px 12px;
   padding: 12px 8px 12px 8px;
   font-size: 18px;
@@ -516,15 +508,15 @@ cal-spinner {
   color: @neo_on_surface_variant;
 }
 
-/* the editor (edit_event_custom_actionbar.xml, edit_event_all.xml; still:cal-new-event) */
+/* the event editor */
 
 .cal-edit-bar {
   min-height: 64px;
-  padding-left: 16px;                    /* the toolbar's contentInsetStart */
+  padding-left: 16px;
   background-color: @neo_surface;
 }
 
-.cal-edit-action-icon {                  /* ic_menu_cancel, ic_menu_done: onSurfaceVariant (measured #CAC4D0) */
+.cal-edit-action-icon {                  /* the CANCEL and DONE icons */
   margin-right: 5px;
   color: @neo_on_surface_variant;
 }
@@ -535,13 +527,13 @@ cal-spinner {
   color: @neo_on_surface;
 }
 
-.cal-edit-action-divider {               /* dividerVertical with dividerPadding 4 dp on the 44 dp row: 36 dp tall */
+.cal-edit-action-divider {               /* the line between CANCEL and DONE */
   min-width: 1px;
   margin: 14px 0;
   background-color: @cal_divider;
 }
 
-.cal-edit-title {                        /* from 48 dp, 40 dp tall, 20 sp */
+.cal-edit-title {                        /* the event's title, in line with the rows' text */
   margin: 4px 32px 0 48px;
   min-height: 40px;
   padding: 0;
@@ -558,7 +550,7 @@ cal-spinner {
   color: @cal_hint;
 }
 
-.cal-edit-separator {                    /* 2 dp, 12 dp in from both sides */
+.cal-edit-separator {                    /* between the editor's sections */
   min-height: 2px;
   margin: 4px 12px;
   background-color: @cal_separator;
@@ -578,13 +570,13 @@ cal-spinner {
   color: @neo_on_surface_variant;
 }
 
-.cal-edit-calendar {                     /* the icon 20 dp under the separator, the next 16 dp under it: 60 dp */
-  min-height: 0;                         /* (measured: the separators at 336 and 522; the spinner and the palette */
-  padding-top: 7px;                      /* centred on the icon at y 438) */
+.cal-edit-calendar {                     /* the calendar row: the spinner and the colour */
+  min-height: 0;                         /* button centred on the icon */
+  padding-top: 7px;
   padding-bottom: 2px;
 }
 
-.cal-edit-calendar-icon {                /* calendar_selector_group_background: 12 dp at the icon's end, 2 dp under */
+.cal-edit-calendar-icon {
   margin-right: 12px;
   margin-top: 2px;                       /* the icon's centre on the spinner's, below the box's middle */
 }
@@ -600,7 +592,7 @@ cal-spinner {
   padding-bottom: 8px;
 }
 
-.cal-edit-all-day-switch {               /* NeoSwitch is the 32 dp track in a 48 dp target: 8 dp over the line */
+.cal-edit-all-day-switch {               /* NeoSwitch is the track inside a taller touch target */
   margin-top: 1px;
   margin-right: 24px;
 }
@@ -624,7 +616,7 @@ cal-spinner {
   margin-left: 48px;
 }
 
-.cal-outlined {                          /* an M3 outlined button: a 40 dp pill in a 48 dp target, 12 dp in */
+.cal-outlined {                          /* an outlined pill button, its margins making a taller touch target */
   min-height: 38px;
   margin: 4px 16px 4px 0;
   padding: 0 12px;
@@ -640,11 +632,11 @@ cal-spinner {
   font-weight: 800;
 }
 
-.cal-edit-field {                        /* the TextInputLayouts: from 48 dp to 24 dp from the end */
+.cal-edit-field {                        /* the outlined text fields */
   margin-right: 24px;
 }
 
-.cal-edit-field-icon {                   /* the icons: 14 dp over the box's bottom */
+.cal-edit-field-icon {
   margin-bottom: 14px;
 }
 
@@ -657,7 +649,7 @@ cal-spinner {
   caret-color: @neo_primary;
 }
 
-.cal-field-body {                        /* bodyLarge */
+.cal-field-body {
   font-size: 16px;
   letter-spacing: 0.5px;
 }
@@ -666,11 +658,11 @@ cal-spinner {
   background: none;
 }
 
-.cal-edit-guests {                       /* add_attendees_row: 10 dp under the separator's top */
+.cal-edit-guests {                       /* the guests field */
   margin-top: 4px;
 }
 
-.cal-edit-url {                          /* view3: 12 dp under the URL's box */
+.cal-edit-url {                          /* the URL field */
   margin-bottom: 8px;
 }
 
@@ -687,33 +679,33 @@ cal-spinner {
   padding-top: 8px;
 }
 
-.cal-edit-color {                        /* change_color: 48 dp, 20 dp from the end (still:cal-new-event) */
+.cal-edit-color {                        /* the colour button */
   min-width: 48px;
   min-height: 48px;
   margin-right: 20px;
-  margin-top: 3px;                       /* centred on the spinner (measured 377…498), not the row */
+  margin-top: 3px;                       /* centred on the spinner, not the row */
   color: @neo_on_surface_variant;
 }
 
-.cal-edit-tz {                           /* timezone_button: the row's width less 24 dp, two lines 4 dp apart */
+.cal-edit-tz {                           /* the time zone button: two lines */
   margin-right: 24px;
-  padding-top: 5px;                      /* 6 dp less the border, which Android strokes inside the padding */
-  padding-bottom: 3px;                   /* and less the last line's half leading: a 51 dp pill */
+  padding-top: 5px;                      /* less the border, which GTK adds outside the padding */
+  padding-bottom: 3px;                   /* and less the last line's half leading */
 }
 
 .cal-edit-tz label {
   font-weight: 800;
-  line-height: 20.4px;                   /* Roboto's 16.4 dp line and lineSpacingExtra 4 dp, baseline to baseline */
+  line-height: 20.4px;                   /* the font's line and 4 px between the lines */
 }
 
-.cal-text-helper {                       /* TextInputLayout's helper text: bodySmall, onSurfaceVariant, at the */
-  margin: 4px 24px 0 63px;               /* text's start (48 + 15 dp), 4 dp under the box */
+.cal-text-helper {                       /* a text field's helper text, under the box, in */
+  margin: 4px 24px 0 63px;               /* line with the field's text */
   font-size: 12px;
   letter-spacing: 0.4px;
   color: @neo_on_surface_variant;
 }
 
-.cal-edit-spinner-row {                  /* availability, visibility: the icon 20 dp under the separator */
+.cal-edit-spinner-row {                  /* availability, visibility */
   padding-top: 16px;
   padding-right: 16px;
 }
@@ -722,16 +714,16 @@ cal-spinner {
   padding-bottom: 20px;
 }
 
-/* settings (androidx.preference with Material 3; still:cal-settings, cal-settings-general) */
+/* settings */
 
-.cal-pref {                               /* 48 dp at least, 16 dp at the end */
+.cal-pref {                               /* a settings row */
   min-height: 48px;
   padding: 0 16px 0 0;
 }
 
-.cal-pref-texts {                         /* 16 dp above and below the text (not the icon, the switch): 53.7 dp for a
-                                            title, 72.7 dp with a summary (161 px, 218 px measured); a dp more
-                                            under a title alone, its line rounding down to 21 dp here */
+.cal-pref-texts {                         /* the row's height comes from the text's padding, not
+                                            the icon's or the switch's; a pixel more under a title alone, its
+                                            line rounding down here */
   padding: 16px 0 17px 0;
 }
 
@@ -740,7 +732,7 @@ cal-spinner {
 }
 
 .cal-pref-icon-frame {
-  min-width: 72px;                       /* the icon 16 dp in, the title from 72 dp */
+  min-width: 72px;                       /* kept without an icon too: the titles line up */
 }
 
 .cal-pref-icon {
@@ -748,18 +740,16 @@ cal-spinner {
   color: @neo_on_surface_variant;
 }
 
-.cal-pref-title {                         /* letterSpacing 0.15 sp, as titleMedium (measured: 12 px over 21 letters) */
+.cal-pref-title {
   font-size: 16px;
   letter-spacing: 0.15px;
   color: @neo_on_surface;
 }
 
-.cal-pref-summary {                       /* bodyMedium: its lines 20 sp apart (a MaterialTextView takes the
-                                            appearance's lineHeight), the first one's baseline 15 dp down as with
-                                            includeFontPadding */
+.cal-pref-summary {                       /* the summary under a title */
   font-size: 14px;
   line-height: 20px;
-  letter-spacing: 0.25px;                /* measured: 15 px over 20 letters */
+  letter-spacing: 0.25px;
   color: @neo_on_surface_variant;
 }
 
@@ -767,7 +757,7 @@ cal-spinner {
   margin-left: 16px;
 }
 
-.cal-pref-category {                      /* the divider at the top of the 16 dp gap, then 8 dp, the title, 8 dp */
+.cal-pref-category {                      /* a section's heading, the divider at the top of the gap */
   border-top: 1px solid @cal_divider;
   padding: 23px 16px 8px 0;
 }
@@ -791,7 +781,7 @@ cal-spinner {
   margin: 16px;
 }
 
-/* EditTextPreference's field in its dialog (Quick response) */
+/* the text field in a settings dialog (a quick response) */
 .cal-dialog-entry {
   margin: 0 24px 8px 24px;
   min-height: 48px;

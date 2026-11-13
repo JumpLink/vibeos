@@ -1,6 +1,6 @@
-/* Neo Launcher 2: what the home screen, the dock and the app drawer share. Everything is laid out in device pixels
- * from Android's dp values (Launcher3 on the S10e: 5 × 5 "Large Phone" grid, 56 dp icons, 1 dp = 3 px there). The
- * grid, the icons' size, the home labels and the drawer's search pill are settings (neo.Phone; main.c). */
+/* Neo Launcher 2: what the home screen, the dock and the app drawer share. Everything is laid out in device pixels from
+ * logical ones (dp (): 1 logical px = 3 device px on the S10e). The grid, the icons' size, the home labels and the
+ * drawer's search pill are settings (neo.Phone; main.c). */
 #pragma once
 
 #include <gio/gdesktopappinfo.h>
@@ -14,21 +14,21 @@
 
 /* ---- geometry (dp unless named _PX) ----------------------------------------------------------------------------- */
 
-#define STATUS_BAR_DP            (116 / 3.0)   /* the shell's status bar: the cutout sets it, not the 24 dp default */
+#define STATUS_BAR_DP            (116 / 3.0)   /* the shell's status bar, as tall as the cutout makes it */
 #define NAV_GESTURE_DP           32            /* the bottom strip the shell's swipe up starts in */
 #define DOCK_SLOTS               5             /* the dock's cells, whatever the pages' grid */
 #define ICON_DP                  56            /* × desktop-icon-scale / drawer-icon-scale */
-#define WS_SIDE_DP               8             /* cell box x: 8 dp in from each side */
+#define WS_SIDE_DP               8             /* cell box x: in from each side */
 #define WS_TOP_DP                (32 / 3.0)    /* cell box y: below the status bar */
 #define WS_CONTENT_DP            85            /* icon + gap + label box: (cell − this)/2 is the icon's top in a cell */
 #define LABEL_BASELINE_DP        74.5          /* below the icon's top */
 #define LABEL_SP                 12
-/* the labels' room in a column of the 5-column grid on a 360 dp phone; another grid's columns add or take what their
- * width differs by (home_label_width, drawer_label_width) */
+/* the labels' room in a column of the 5-column grid on a 360 px wide phone; another grid's columns add or take what
+ * their width differs by (home_label_width, drawer_label_width) */
 #define LABEL_HOME_MAX_DP        52            /* "Play St…" fits, "Play Sto…" does not */
 #define LABEL_DRAWER_MAX_DP      54.6          /* "Calculat…" fits, "Messagi…" does not */
 #define LABEL_REF_COLS           5
-#define HOTSEAT_DP               104           /* the dock: icon + 48 dp below */
+#define HOTSEAT_DP               104           /* the dock: the icon and the room below it */
 #define HOTSEAT_CELL_DP          63
 #define PAGE_IND_DP              24
 #define PAGE_DOT_DP              6
@@ -37,19 +37,19 @@
 #define WALLPAPER_ZOOM           1.10f         /* the wallpaper at home, about the screen centre */
 #define CONTENT_SCALE            0.97f         /* workspace + dock behind the drawer and behind a launch */
 
-/* the drawer sheet, its handle, search pill and list (px from the sheet's top, measured on the S10e, as dp) */
+/* the drawer sheet, its handle, search pill and list (from the sheet's top) */
 #define SHEET_RADIUS_DP          28
 #define HANDLE_W_DP              32
 #define HANDLE_H_DP              4
 #define HANDLE_TOP_DP            16
-#define SEARCH_TOP_DP            34            /* 8 dp margin + 26 dp overlap */
+#define SEARCH_TOP_DP            34
 #define SEARCH_H_DP              52
 #define SEARCH_SIDE_DP           4.5
-#define SEARCH_TEXT_SP           16            /* the hint and the query: AOSP's search_container_all_apps textSize */
-#define LIST_TOP_DP              90            /* the list's window starts here (y 386 on the S10e) */
+#define SEARCH_TEXT_SP           16            /* the hint and the query */
+#define LIST_TOP_DP              90            /* the list's window starts here */
                                                /* … or at SEARCH_TOP_DP without the search pill */
 #define LIST_ICON_TOP_DP         (77 / 3.0)    /* first icon below the list's top */
-#define LIST_ROW_DP              120           /* 104 dp cell + 16 dp border space */
+#define LIST_ROW_DP              120           /* a cell and the space between rows */
 #define LIST_LABEL_BASELINE_DP   (231.5 / 3.0)
 #define FASTSCROLL_W_DP          (20 / 3.0)
 #define FASTSCROLL_H_DP          52
@@ -60,10 +60,10 @@ typedef struct {
   char        *id;
   GAppInfo    *info;
   GfxTex      *icon;              /* NULL until the icon thread drew it */
-  TextLayout  *label;             /* the home label (52 dp) */
-  TextLayout  *dlabel;            /* the drawer label (54.6 dp) */
+  TextLayout  *label;             /* the home label */
+  TextLayout  *dlabel;            /* the drawer label */
   bool         hidden;            /* its window is growing out of it */
-  char        *splash_icon;       /* the icon drawn at the splash's 160 dp (a cached PNG), or NULL: the theme's */
+  char        *splash_icon;       /* the icon drawn at the splash's size (a cached PNG), or NULL: the theme's */
 } Tile;
 
 /* the icon pressed under a finger: 1 → 1.1 in 200 ms (t²) on down, back with 1 − (1 − t)² */
@@ -148,7 +148,7 @@ bool   home_snapping     (void);
 void   home_snap         (int page, double ms);          /* ms 0: the scroller's 750 */
 void   home_set_extra_page (bool on);
 int    home_page_at      (float x);
-void   home_card         (int page, float r[4]);         /* the page's CellLayout bounds */
+void   home_card         (int page, float r[4]);         /* the page's cell area */
 int    home_cells        (int page);
 void   home_cell_grid    (int page, int index, int *col, int *row);
 void   home_cell_box     (int page, int index, float r[4]);
@@ -193,7 +193,7 @@ Tile  *drawer_hold_tile  (float x, float y, float *ix, float *iy);
 bool   drawer_dragging   (void);
 float  drawer_icon_size  (void);                         /* px */
 float  drawer_label_width (void);                        /* px */
-/* the search pill (Launcher3's all-apps search): text typed into it from the on-screen keyboard (text-input-v3's
+/* the drawer's search pill: text typed into it from the on-screen keyboard (text-input-v3's
  * commit and delete, in bytes) or a hardware keyboard (a key with its xkb keysym and text) */
 bool   drawer_search_key (guint32 keysym, const char *utf8);   /* true: the field took the key */
 void   drawer_search_text (const char *utf8);
@@ -226,7 +226,7 @@ GfxTex *svg_texture      (const char *svg, int px);
 void   home_remove_icon  (const char *id, ModelPos pos);   /* Remove: this copy, or the app off the home screen */
 void   home_unhide       (const char *id);
 
-/* drag.c: moving an icon (Launcher3's drag and drop) */
+/* drag.c: moving an icon (drag and drop) */
 void   drag_hold         (Tile *t, ModelPos from, bool from_drawer, float ix, float iy, float down_x, float down_y);
 bool   drag_holding      (void);                         /* a held icon, or a drag: the finger is the drag's */
 void   drag_move         (float x, float y);
@@ -235,7 +235,7 @@ void   drag_cancel       (bool now);                     /* now: no 500 ms befor
 bool   drag_busy         (void);                         /* landing or the workspace coming back: touches wait */
 void   drag_hurry        (void);
 bool   drag_frame        (void);
-float  drag_spring       (void);                         /* 0 normal .. 1 SPRING_LOADED, eased */
+float  drag_spring       (void);                         /* 0 normal .. 1 zoomed out for the drop, eased */
 int    drag_over_page    (void);                         /* the page under the drag, or -1 */
 bool   drag_hides        (int page, int index);
 void   drag_offset       (int page, int index, float *dx, float *dy);

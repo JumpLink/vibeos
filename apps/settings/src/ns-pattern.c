@@ -1,14 +1,14 @@
 /*
  * "Set pattern" / "Set PIN" (Lock screen): draw an unlock pattern, draw it again to confirm, and it becomes
  * the user's password: the dots joined in order as digits ("1478"), which gnome-phone's lock screen (keyguard.js,
- * bouncer.js) hands gp-auth, and gp-auth to PAM, when the same pattern is drawn there. As on Android the current pattern (or PIN/password) comes first,
- * checked through PAM like the lock screen does; the password is then set through AccountsService (a polkit rule
- * of ours lets the active local user do that without polkit's own text prompt, which wanted the pattern typed
- * as digits). The login keyring then gets the same password (neo-keyring-rekey), so that unlocking the lock
- * screen unlocks it too (pam_gnome_keyring) and apps find their secrets. A PIN (or a password) goes the same
- * way, typed instead of drawn: on the lock screen's PIN pad, not the keyboard (owner, 2026-11-12: the current PIN
- * and a new one are typed on "the same numeric keyboard like on lock screen", the phone's first password being a
- * PIN). A current password that is not digits still has a text field, behind "Use password".
+ * bouncer.js) hands gp-auth, and gp-auth to PAM, when the same pattern is drawn there. The current pattern (or
+ * PIN/password) comes first, checked through PAM like the lock screen does; the password is then set through
+ * AccountsService (a polkit rule of ours lets the active local user do that without polkit's own text prompt, which
+ * wanted the pattern typed as digits). The login keyring then gets the same password (neo-keyring-rekey), so that
+ * unlocking the lock screen unlocks it too (pam_gnome_keyring) and apps find their secrets. A PIN (or a password)
+ * goes the same way, typed instead of drawn: on the lock screen's PIN pad, not the keyboard (owner, 2026-11-12: the
+ * current PIN and a new one are typed on "the same numeric keyboard like on lock screen", the phone's first password
+ * being a PIN). A current password that is not digits still has a text field, behind "Use password".
  *
  * Taken from the Mobile Settings plugin (gnome/neo-phosh/ms-plugin-surya). libcrypt is opened at run time: the
  * phone has the library but not its header.
@@ -31,7 +31,7 @@
 #define MIN_DOTS 4
 #define MIN_PIN 4
 
-/* the lock screen's PIN pad (extension/bouncer.js), in dp: 3 x 4 squircle keys (|x|^4 + |y|^4, squarer pressed) */
+/* the lock screen's PIN pad (extension/bouncer.js), in px: 3 x 4 squircle keys (|x|^4 + |y|^4, squarer pressed) */
 #define PAD_KEY 68.0
 #define PAD_COLUMN 96.0
 #define PAD_ROW 82.0
@@ -138,7 +138,7 @@ append_dot (PatternDialog *pd, guint dot)
 }
 
 
-/* as on the lock screen (and Android): a dot passed over on the way joins the pattern first */
+/* as on the lock screen: a dot passed over on the way joins the pattern first */
 static void
 hit (PatternDialog *pd, double x, double y)
 {

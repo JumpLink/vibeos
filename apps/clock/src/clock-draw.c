@@ -54,7 +54,7 @@ ring_texture (double cx, double cy, double radius, double width, int *x, int *y,
 
 /* --- the colours on it */
 
-/* Canvas degrees as a fraction of the circle clockwise from 12 o'clock, in [0, 1) */
+/* a ClockArc's degrees as a fraction of the circle clockwise from 12 o'clock, in [0, 1) */
 static double
 fraction (double degrees)
 {

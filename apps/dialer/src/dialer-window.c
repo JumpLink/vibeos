@@ -1,5 +1,5 @@
-/* The Phone app's window: see dialer-window.h. The rules are OldMainActivityPeer's (the tabs, the FAB, the missed
- * calls marked seen) and MainSearchController's (search and the dialpad over the tabs); spec §2. */
+/* The Phone app's window: see dialer-window.h. The tabs, the FAB, the missed calls marked seen, and search and the
+ * dialpad over the tabs. */
 #include "dialer-window.h"
 #include "call-details.h"
 #include "call-history.h"
@@ -17,10 +17,10 @@
 #include <glib/gi18n.h>
 #include <neo.h>
 
-#define FAB_SIZE        56      /* a normal Material FAB */
+#define FAB_SIZE        56      /* the round dialpad button over the page's corner */
 #define FAB_MARGIN      16
-#define FAB_COLOR       0xb8ebf3        /* dialer_theme_color_light: the FAB opts out of force dark */
-#define SEEN_AFTER_MS   3000    /* viewedCallLogTabPastTimeThreshold */
+#define FAB_COLOR       0xb8ebf3        /* light: the button is not darkened with the rest of the app */
+#define SEEN_AFTER_MS   3000    /* on Recents this long, the missed calls are seen */
 
 enum { TAB_FAVORITES, TAB_RECENTS, TAB_CONTACTS, N_TABS };
 
@@ -37,7 +37,7 @@ typedef struct
   gboolean fab_shown;
   NeoSnackbar *snackbar;
   int tab;
-  gint64 tab_since;             /* when the tab was shown (timeSelected), or 0 while the window is away */
+  gint64 tab_since;             /* when the tab was shown, or 0 while the window is away */
 } Shell;
 
 static void
@@ -74,15 +74,15 @@ mark_seen (Shell *shell)
     calls_client_mark_missed_read (calls_client_get ());
 }
 
-/* timeSelected: when the tab was shown, again each time the window comes back */
+/* when the tab was shown, again each time the window comes back */
 static void
 start_tab_timer (Shell *shell)
 {
   shell->tab_since = g_get_monotonic_time ();
 }
 
-/* the window going behind another (home, the in-call screen) is the activity stopping: after more than 3 s on
- * Recents the missed calls are seen (onActivityStop); coming back restarts the clock (onActivityResume) */
+/* the window going behind another (home, the in-call screen): after more than 3 s on Recents the missed calls are
+ * seen; coming back restarts the clock */
 static void
 on_active (GtkWindow *window, GParamSpec *pspec, Shell *shell)
 {
@@ -119,12 +119,12 @@ on_tab_selected (DialerNavBar *nav, int index, Shell *shell)
   show_tab (shell, index);
 }
 
-/* ---- search and the dialpad over the tabs (MainSearchController) -------------------------------------------- */
+/* ---- search and the dialpad over the tabs ------------------------------------------------------------------- */
 
 static void
 set_fab_shown (Shell *shell, gboolean shown)
 {
-  /* Material hide() and show(): measured gone and back within a frame, no scale motion */
+  /* hidden and shown at once, with no scale motion */
   shell->fab_shown = shown;
   neo_pressable_set_scale (NEO_PRESSABLE (shell->fab), shown ? 1 : 0);
 }
@@ -149,7 +149,7 @@ on_search_clicked (Shell *shell)
   show_search (shell, TRUE);
 }
 
-/* closeSearch: the dialpad goes too, and is emptied so a number is not kept for next time */
+/* closing the search: the dialpad goes too, and is emptied so a number is not kept for next time */
 static void
 close_search (Shell *shell)
 {
@@ -183,7 +183,7 @@ on_query_changed (Shell *shell)
 static void
 on_voice_clicked (Shell *shell)
 {
-  /* RecognizerIntent: no recogniser on this phone */
+  /* voice search: no recogniser on this phone */
   neo_snackbar_show (shell->snackbar, _("Voice search not available"), NULL, NULL, NULL, NEO_SNACKBAR_SHORT);
 }
 
@@ -202,7 +202,7 @@ on_sheet_shown (Shell *shell)
 
   if (dialpad_sheet_get_shown (DIALPAD_SHEET (shell->sheet)))
     {
-      /* showDialpad: the FAB goes, the toolbar slides up out of the way expanded but unfocused, and the search
+      /* the dialpad shown: the FAB goes, the toolbar slides up out of the way expanded but unfocused, and the search
        * comes up under the dialpad in dialpad mode */
       set_fab_shown (shell, FALSE);
       gtk_revealer_set_reveal_child (GTK_REVEALER (shell->toolbar), FALSE);
@@ -212,9 +212,9 @@ on_sheet_shown (Shell *shell)
       return;
     }
   if (!shell->searching)
-    return;                     /* closeSearch put it away */
+    return;                     /* closing the search put it away */
   /* the dialpad was put away (Back, a tap above it, the list touched). With nothing typed that closes the search
-   * as well; with digits, hideDialpad: the toolbar slides back with the digits as its query and the results stay */
+   * as well; with digits it is hidden: the toolbar slides back with the digits as its query and the results stay */
   if (!*digits)
     {
       close_search (shell);
@@ -225,7 +225,7 @@ on_sheet_shown (Shell *shell)
   shell->fab_shown = TRUE;
 }
 
-/* the sheet has slid away: the FAB is back (measured at the end of the slide) */
+/* the sheet has slid away: the FAB is back, only now, at the end of the slide */
 static void
 on_sheet_visible (GtkWidget *sheet, GParamSpec *pspec, Shell *shell)
 {
@@ -251,14 +251,14 @@ on_edit_number (Shell *shell, const char *number)
   dialpad_sheet_show (DIALPAD_SHEET (shell->sheet), number);
 }
 
-/* a call placed from the results closes search (onCallPlacedFromSearch) */
+/* a call placed from the results closes search */
 static void
 on_search_call_placed (Shell *shell)
 {
   close_search (shell);
 }
 
-/* onSearchListTouch: an empty query closes the search; otherwise the dialpad goes (keeping the results), or in
+/* a touch on the results: an empty query closes the search; otherwise the dialpad goes (keeping the results), or in
  * regular search the keyboard */
 static void
 on_search_touched (Shell *shell)
@@ -275,7 +275,7 @@ on_search_touched (Shell *shell)
     dialer_search_bar_hide_keyboard (DIALER_SEARCH_BAR (shell->search_bar));
 }
 
-/* ---- the ⋮ menu (MainToolbarMenu, spec §2.3) and the screens it opens -------------------------------------- */
+/* ---- the ⋮ menu and the screens it opens -------------------------------------------------------- */
 
 static void
 remove_screen (Shell *shell, GtkWidget *screen)
@@ -313,8 +313,7 @@ on_screen_closed (GtkWidget *screen, Shell *shell)
 static void
 on_history_edit_number (Shell *shell, const char *number)
 {
-  /* the dialpad comes up in the main screen (ACTION_DIAL to the single-task main activity, which clears Call
-   * history and Call details off the top) */
+  /* the dialpad comes up in the main screen, which clears Call history and Call details off the top */
   close_screens (shell);
   dialpad_sheet_show (DIALPAD_SHEET (shell->sheet), number);
 }
@@ -372,7 +371,7 @@ on_settings (gpointer data)
 }
 
 /* Helplines is a screen still to be written (its list is Lineage's, by country); Clear frequents never shows,
- * Favorites keeping no frequents (§6.6) */
+ * Favorites keeping no frequents */
 static void
 on_menu_clicked (Shell *shell)
 {
@@ -384,7 +383,7 @@ on_menu_clicked (Shell *shell)
                              POPUP_MENU_END);
 }
 
-/* onBackPressed: Call history or Settings goes first, then the dialpad with digits; otherwise the search closes,
+/* Back: Call history or Settings goes first, then the dialpad with digits; otherwise the search closes,
  * dialpad and all */
 static gboolean
 on_close_request (GtkWindow *window, Shell *shell)
@@ -415,7 +414,6 @@ make_fab (Shell *shell)
                    1 };
   GtkWidget *fab;
 
-  /* dialer_fab_icon_color, black */
   gtk_image_set_pixel_size (GTK_IMAGE (icon), 24);
   gtk_widget_add_css_class (icon, "dial-icon");
   fab = neo_pressable_new (icon);
@@ -454,7 +452,7 @@ dialer_window_new (GtkApplication *app, GSettings *settings)
 
   /* top to bottom: the search bar, the tab's page with the FAB over its corner, the bottom navigation */
   shell->search_bar = dialer_search_bar_new ();
-  /* MainToolbar.slideUp/slideDown: 64 dp up, the content following, over 300 ms */
+  /* the search bar slides up out of the way, the content following, over 300 ms */
   shell->toolbar = gtk_revealer_new ();
   gtk_revealer_set_transition_type (GTK_REVEALER (shell->toolbar), GTK_REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
   gtk_revealer_set_transition_duration (GTK_REVEALER (shell->toolbar), 300);
@@ -497,7 +495,7 @@ dialer_window_new (GtkApplication *app, GSettings *settings)
   gtk_box_append (GTK_BOX (page), shell->nav);
   g_signal_connect (shell->nav, "selected", G_CALLBACK (on_tab_selected), shell);
 
-  /* the dialpad over everything but the snackbar (elevation 10 dp) */
+  /* the dialpad over everything but the snackbar */
   shell->sheet = dialpad_sheet_new (shell->snackbar);
   gtk_overlay_add_overlay (overlay, shell->sheet);
   gtk_overlay_add_overlay (overlay, GTK_WIDGET (shell->snackbar));

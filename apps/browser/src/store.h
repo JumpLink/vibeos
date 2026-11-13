@@ -1,6 +1,6 @@
 /* The browser's JSON store: history (newest first, one entry per URL), favourites (bookmarks.json, newest first),
  * preferences and the session, in ~/.local/share/neo.Browser: the same files the GJS and the Chrome-style
- * browsers kept, in the same formats, so nothing is lost in the switch (spec/jelly.md §15). Favourites may carry a
+ * browsers kept, in the same formats, so nothing is lost in the switch. Favourites may carry a
  * "color" (Jelly's card colour); preferences keep every member they had, known or not. */
 #pragma once
 
@@ -12,7 +12,7 @@ typedef struct {
   char  *title;
   double time;      /* seconds since the epoch */
   int    visits;    /* history only */
-  char  *color;     /* favourites: "#rrggbb", or NULL (drawn in Jelly's default) */
+  char  *color;     /* favourites: "#rrggbb", or NULL (drawn in the default colour) */
 } NbEntry;
 
 typedef struct {
@@ -37,7 +37,7 @@ GPtrArray  *nb_store_suggest      (NbStore *store, const char *text, guint limit
 GPtrArray  *nb_store_top_sites    (NbStore *store, guint limit);                     /* borrowed NbEntry */
 gboolean    nb_store_is_bookmarked(NbStore *store, const char *url);
 void        nb_store_toggle_bookmark (NbStore *store, const char *url, const char *title);
-/* FavoriteProvider.addOrUpdateItem: a URL there already gets the new title (and colour), else it goes first */
+/* a URL there already gets the new title (and colour), else it goes first */
 void        nb_store_add_favorite (NbStore *store, const char *url, const char *title, const char *color);
 /* the favourite `old_url` becomes `url` / `title` (Edit favorite) */
 void        nb_store_edit_favorite (NbStore *store, const char *old_url, const char *url, const char *title);

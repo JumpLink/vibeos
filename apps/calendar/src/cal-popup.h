@@ -1,7 +1,6 @@
-/* A popup list of choices over the window: Android's ListPopupWindow, as a Spinner's dropdown and the toolbar's
- * overflow menu show it (M3: surfaceContainer #211F26, 4 dp corners, 48 dp rows with 16 sp text 16 dp in; measured
- * still:cal-menu). A tap outside closes it, as Back does. CalSpinner: a Spinner, its value and a drop-down arrow,
- * that opens one. Both are libneo candidates. */
+/* A popup list of choices over the window, as a spinner's dropdown and the toolbar's overflow menu show it. A tap
+ * outside closes it, as Back does. CalSpinner: its value and a drop-down arrow, that opens one. Both are libneo
+ * candidates. */
 #pragma once
 
 #include <gtk/gtk.h>

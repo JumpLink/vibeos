@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- the app's stylesheet, ExactCalculator's licenses page (assets/licenses.html) and its icons (data/icons: the
+<!-- the app's stylesheet, ExactCalculator's licenses page and its icons (data/icons: the
      delete key and the history from its vector drawables by tools/vd2svg.py; ⋮ and the back arrow are Material
      Symbols', as the Dialer's), where GtkApplication looks for icons: the resource base path + /icons -->
 <gresources>

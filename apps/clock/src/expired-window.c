@@ -1,5 +1,4 @@
-/* The expired-timers window: see expired-window.h. There is only ever one (the activity is singleInstance), so its
- * state is the file's. */
+/* The expired-timers window: see expired-window.h. There is only ever one, so its state is the file's. */
 #include "expired-window.h"
 #include "elapsed.h"
 #include "timer-card.h"
@@ -11,7 +10,7 @@
 
 #define CARD_MARGIN  16
 #define CARD_GAP     8
-#define UPDATE_MS    100        /* ExpiredTimersActivity's TimeUpdateRunnable */
+#define UPDATE_MS    100        /* between updates of the time */
 #define LOAD_MS      10000      /* how long to wait for the service before giving up */
 
 static struct {
@@ -68,7 +67,7 @@ on_update (gpointer data)
   return G_SOURCE_REMOVE;
 }
 
-/* dispatchKeyEvent: volume, mute and camera stop every ringing timer, on the key's release; the press is taken too */
+/* volume, mute and camera stop every ringing timer, on the key's release; the press is taken too */
 static gboolean
 stops_timers (guint keyval)
 {
@@ -89,9 +88,8 @@ on_key_released (GtkEventControllerKey *keys, guint keyval, guint keycode, GdkMo
     expired_window_stop_all ();
 }
 
-/* The volume keys are the shell's: it passes them on as the "volume-key" action to the app in front that asked
- * for them (extension/service.js TakeVolumeKeys), so the window asks while it has the focus, as an activity gets
- * the keys while it is in front. */
+/* The volume keys are the shell's: it passes them on as the "volume-key" action to the app in front that asked for them
+ * (extension/service.js TakeVolumeKeys), so the window asks while it has the focus. */
 static void
 take_volume_keys (gboolean take)
 {
@@ -144,8 +142,7 @@ open_window (void)
   on_update (NULL);
 }
 
-/* the cards for the ringing timers, the ones there kept; a single one in the middle of the screen
- * (centerFirstTimer), more from the top (uncenterFirstTimer) */
+/* the cards for the ringing timers, the ones there kept; a single one in the middle of the screen, more from the top */
 static void
 sync_cards (GPtrArray *ringing)
 {
@@ -178,9 +175,8 @@ sync_cards (GPtrArray *ringing)
     }
 }
 
-/* the window as the timers are now: gone with the last ringing one (the activity finishes), opened or raised for
- * one that started ringing. `asked`: the app was activated (the "Time's up" notification tapped, say), which opens
- * a window closed with Back. */
+/* the window as the timers are now: gone with the last ringing one, opened or raised for one that started ringing.
+ * `asked`: the app was activated (the "Time's up" notification tapped, say), which opens a window closed with Back. */
 static void
 update_window (gboolean asked)
 {

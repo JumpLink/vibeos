@@ -1,12 +1,10 @@
-// The power menu: Android 16's GlobalActionsDialogLite as LineageOS 23.2 builds it (GlobalActionsDialogLite.java,
-// global_actions_grid_lite.xml, global_actions_grid_item_lite.xml). A black dim at 0.6 over everything, and a
-// SurfaceContainerLow panel with 28 dp corners and 24 dp of padding holding two columns of 96 dp SurfaceContainerHighest
-// circles 24 dp apart, each with its 20 dp icon and a 14 sp label 8 dp under it; a short last row is packed in the
-// middle. It comes in over 220 ms (STANDARD), sliding 20 dp in from the power key's side as it fades in with the dim,
-// and goes in 150 ms (STANDARD_ACCELERATE), 10 dp the other way. A pressed button shrinks to 0.97 in 50 ms and comes
-// back in 250 (control_state_list_animator). A tap outside the panel closes it.
+// The power menu, as LineageOS 23.2 has it: a black dim over everything, and a panel holding two columns of round
+// buttons, each with its icon and a label under it; a short last row is packed in the middle. It comes in over 220 ms
+// on the standard curve, sliding 60 px in from the power key's side as it fades in with the dim, and goes in 150 ms
+// (standard-accelerate), 30 px the other way. A pressed button shrinks to 0.97 in 50 ms and comes back in 250. A tap
+// outside the panel closes it.
 //
-// The items are config_globalActionsList's that this phone can back: Lockdown, shown only with a PIN or a pattern
+// The items are the reference's that this phone can back: Lockdown, shown only with a PIN or a pattern
 // set (the lock screen at once, its notifications kept off it until the next unlock), Power off and Restart
 // (logind's: gnome-session 51 has only its dialog's Shutdown and Reboot, no RequestShutdown/RequestReboot any more).
 // Emergency is left out: nothing here can place an emergency call. Between them, this phone's own: Android, a restart
@@ -26,20 +24,20 @@ import {px, SCREEN_H, SCREEN_W} from './units.js';
 
 Gio._promisify(Gio.DBusConnection.prototype, 'call');
 
-// screen px (1 dp = 3 px)
-const PAD = 72;                 // global_actions_lite_padding: around the grid and between its cells
-const BUTTON = 288;             // global_actions_button_size
-const ICON = 60;                // the button less 2 × global_actions_button_padding (38 dp)
-const LABEL_GAP = 24;           // global_actions_grid_container_bottom_margin
-const CORNER = 84;              // global_actions_corner_radius
-const COLUMNS = 2;              // the Flow's maxElementsWrap
+// screen px
+const PAD = 72;                 // around the grid and between its cells
+const BUTTON = 288;
+const ICON = 60;
+const LABEL_GAP = 24;           // between a button and its label
+const CORNER = 84;              // the panel's corners
+const COLUMNS = 2;
 const LABEL_SP = 14;
-const LABEL_WGHT = 700;         // textAppearanceSmall's 400, and the phone's bold text (+300)
-const DIM = 0.6;                // the dark dialog theme's backgroundDimAmount (Theme.Material)
-const ENTER_MS = 220;           // config_activityDefaultDur
-const EXIT_MS = 150;            // config_activityShortDur
-const ENTER_DX = 60;            // popup_enter_animation_from_y_delta, along x with the power key on the right
-const EXIT_DX = -30;            // popup_exit_animation_to_y_delta
+const LABEL_WGHT = 700;
+const DIM = 0.6;                // the black dim behind the panel
+const ENTER_MS = 220;           // the standard duration of a window coming in
+const EXIT_MS = 150;            // and the short one, going
+const ENTER_DX = 60;            // a popup's rise, turned to run along x: the power key is on the right
+const EXIT_DX = -30;            // and its fall, going
 const STANDARD = bezier(0.2, 0, 0, 1);
 const STANDARD_ACCELERATE = bezier(0.3, 0, 1, 1);
 const PRESSED_SCALE = 0.97;

@@ -1,14 +1,14 @@
-/* evaluator: the expressions, their results and the digits computed so far, ExactCalculator's
- * Evaluator (Evaluator.java).
+/* evaluator: the expressions, their results and the digits computed so far; ported from
+ * ExactCalculator's Evaluator.
  *
  * It keeps a table of expressions by index: 0 is the main expression (the formula), -1 a copy of it
  * that the history shows, 1, 2, ... the history, and -11 and below hidden ones (for the memory and
  * the clipboard). Saved ones live in expression-db.
  *
- * Evaluation happens on one worker thread, one computation at a time, as Android's AsyncTasks did
- * (their default executor is serial). A computation gets copies of everything it needs and gives
- * back its results to the main thread, where all the evaluator's state lives: nothing here is
- * touched by two threads. Results come back through an EvaluationListener, on the main thread.
+ * Evaluation happens on one worker thread, one computation at a time. A computation gets copies of
+ * everything it needs and gives back its results to the main thread, where all the evaluator's
+ * state lives: nothing here is touched by two threads. Results come back through an
+ * EvaluationListener, on the main thread.
  *
  * For each result it caches a string of digits ("0.33333333333333333333333333333") with the number
  * of decimals in it; evaluator_get_string cuts the part the display shows out of it, and asks for

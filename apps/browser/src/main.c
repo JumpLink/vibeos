@@ -1,9 +1,9 @@
-/* neo-browser: the Browser, LineageOS's Jelly rebuilt over WebKitGTK (spec/jelly.md).
+/* neo-browser: the Browser, LineageOS's Jelly rebuilt over WebKitGTK.
  *
  *   neo-browser                 the most recent tab (the launcher's tap), or the saved ones on a cold start
- *   neo-browser URL…            each URL in a new tab (a link from another app: an Intent's data)
+ *   neo-browser URL…            each URL in a new tab (a link from another app)
  *   neo-browser --incognito     a new incognito tab (the launcher's long-press "New incognito tab")
- *   neo-browser --shortcut=ID URL   a home-screen shortcut (Add shortcut, §7.2)
+ *   neo-browser --shortcut=ID URL   a home-screen shortcut (Add shortcut)
  *
  * One process holds every tab; a second start hands its command line to it. */
 #include "nb.h"
@@ -43,7 +43,7 @@ on_activate (GApplication *app, gpointer data)
   nb_app_activate ();
 }
 
-/* an argument as a URL: a URI as it is, a file that exists as its file: URI, anything else through smartUrlFilter */
+/* an argument as a URL: a URI as it is, a file that exists as its file: URI, anything else through nb_smart_url */
 static char *
 arg_to_url (GApplicationCommandLine *cmd, const char *arg)
 {

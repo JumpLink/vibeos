@@ -1,9 +1,9 @@
-/* The Dialer's bottom navigation (dialer/main/impl/bottomnav: BottomNavBar, BottomNavItem; spec §2.4).
+/* The Dialer's bottom navigation.
  *
- * Not Material's BottomNavigationView, so not NeoNavBar: the Dialer lays its own items out. 89 dp tall on
- * #2c3132, three equal columns. The selected item has a 64 x 32 dp pill behind its icon, which widens from 40 % as it
- * fades in over 400 ms while the old one narrows and fades out; its icon swaps to the filled one at once. An item
- * can carry a badge with a count over the pill's top-right corner: the Recents tab's new missed calls. */
+ * Not libneo's NeoNavBar: the Dialer lays its own items out, in three equal
+ * columns. The selected item has a pill behind its icon, which widens from 40 % as it fades in over 400 ms while
+ * the old one narrows and fades out; its icon swaps to the filled one at once. An item can carry a badge with a
+ * count over the pill's top-right corner: the Recents tab's new missed calls. */
 #pragma once
 
 #include <gtk/gtk.h>

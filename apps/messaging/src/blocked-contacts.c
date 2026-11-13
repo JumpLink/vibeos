@@ -9,7 +9,7 @@
 #include <neo.h>
 #include <spongy-gtk.h>
 
-/* blocked_participant_list_item_view.xml */
+/* a blocked contact's row */
 #define ROW_PADDING 16
 #define AVATAR 42
 #define TEXT_PADDING 16
@@ -62,7 +62,7 @@ make_row (BlockedContacts *self, const char *number)
   gtk_label_set_xalign (GTK_LABEL (name), 0);
   gtk_label_set_ellipsize (GTK_LABEL (name), PANGO_ELLIPSIZE_END);
   gtk_widget_set_hexpand (name, TRUE);
-  /* both texts have a 16 dp padding all round, which makes the row (and its touch area) 88 dp tall */
+  /* both texts are padded all round: the padding, not a fixed height, makes the row (and its touch area) tall */
   gtk_widget_set_margin_start (name, TEXT_PADDING);
   gtk_widget_set_margin_end (name, TEXT_PADDING);
   gtk_widget_set_margin_top (name, TEXT_PADDING);
@@ -156,7 +156,7 @@ blocked_contacts_new (SmsClient *client, Contacts *contacts)
   g_signal_connect_swapped (msg_action_bar_get_up (bar), "clicked", G_CALLBACK (on_up), self);
   gtk_box_append (GTK_BOX (self->box), bar);
 
-  /* a ListView with no dividers */
+  /* a list with no dividers */
   self->list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), self->list);
   gtk_widget_set_vexpand (scroll, TRUE);

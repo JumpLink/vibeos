@@ -8,8 +8,8 @@
 #include <glib/gi18n.h>
 #include <spongy-gtk.h>
 
-#define FAB_HEIGHT    88        /* the list's paddingBottom, so the last card can scroll out from under the FAB */
-#define EMPTY_FADE_MS 300       /* EmptyViewController: Fade out, then Fade in */
+#define FAB_HEIGHT    88        /* the list's room at the bottom, so the last card can scroll out from under the FAB */
+#define EMPTY_FADE_MS 300       /* "No Alarms" and the list: one fades out, then the other in */
 
 struct _AlarmPage
 {
@@ -49,8 +49,8 @@ scroll_to_card (gpointer data)
   GtkWidget *scroller = gtk_widget_get_ancestor (GTK_WIDGET (card), SPONGY_TYPE_SCROLL_VIEW);
   graphene_point_t top;
 
-  /* scrollToPositionWithOffset (position, 0): the card's top (with its 8 dp margin) at the top of the list, as far
-   * as the list can scroll */
+  /* the card's top (with its margin) at the top of the list, as far as
+   * the list can scroll */
   if (scroller && gtk_widget_compute_point (GTK_WIDGET (card), gtk_widget_get_parent (GTK_WIDGET (card)),
                                             &GRAPHENE_POINT_INIT (0, 0), &top))
     {
@@ -68,7 +68,7 @@ expand (AlarmPage *self, AlarmCard *card)
 {
   AlarmCard *old = self->expanded ? find_card (self, self->expanded) : NULL;
 
-  /* one card open at a time: the old one closes as the new one opens (onItemChanged) */
+  /* one card open at a time: the old one closes as the new one opens */
   if (old && old != card)
     alarm_card_set_expanded (old, FALSE, TRUE);
   alarm_card_set_expanded (card, TRUE, TRUE);
@@ -102,7 +102,7 @@ undo_delete (gpointer data)
 {
   ClockAlarm *alarm = data;
 
-  /* the same alarm again, under a new id (AlarmUpdateHandler.asyncDeleteAlarm's undo) */
+  /* the same alarm again, under a new id: the delete undone */
   alarms_client_add (alarms_client_get (), alarm, NULL, NULL);
 }
 
@@ -171,7 +171,7 @@ on_changed (AlarmsClient *client, AlarmPage *self)
   GPtrArray *alarms = alarms_client_get_alarms (client);
   GtkWidget *child, *next, *previous = NULL;
 
-  /* cards whose alarm is gone fade out and close up (ItemAnimator's remove) */
+  /* cards whose alarm is gone fade out and close up */
   for (child = gtk_widget_get_first_child (self->list); child; child = next)
     {
       next = gtk_widget_get_next_sibling (child);
@@ -242,7 +242,7 @@ on_added (guint id, gpointer data)
 {
   AlarmPage *self = data;
 
-  /* opened and scrolled to as soon as the list has it (setSmoothScrollStableId) */
+  /* opened and scrolled to as soon as the list has it */
   if (find_card (self, id))
     alarm_page_show_alarm (self, id);
   else
@@ -276,7 +276,7 @@ alarm_page_add_alarm (AlarmPage *self)
                           g_object_ref (self), g_object_unref);
 }
 
-/* --- the buttons: the FAB adds an alarm (AlarmClockFragment.onUpdateFab) */
+/* --- the buttons: the FAB adds an alarm */
 
 static void
 alarm_page_get_buttons (ClockTab *tab, ClockButton *buttons)
@@ -329,7 +329,7 @@ alarm_page_init (AlarmPage *self)
 {
   GtkWidget *icon, *text;
 
-  /* the list: cards 16 dp from the sides, room for the FAB under the last one */
+  /* the list: cards in from the sides, room for the FAB under the last one */
   self->list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_margin_start (self->list, 16);
   gtk_widget_set_margin_end (self->list, 16);
@@ -339,7 +339,7 @@ alarm_page_init (AlarmPage *self)
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->scroller), self->list);
   gtk_widget_set_parent (self->scroller, GTK_WIDGET (self));
 
-  /* the empty state: ic_noalarms, 120 dp, over "No Alarms", both in white at 30 % */
+  /* the empty state: the picture over "No Alarms", both faint */
   self->empty = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_valign (self->empty, GTK_ALIGN_CENTER);
   gtk_widget_set_halign (self->empty, GTK_ALIGN_CENTER);

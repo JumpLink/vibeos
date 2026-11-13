@@ -1,4 +1,4 @@
-/* cam-sounds: the capture sounds (§12.3), Android's MediaActionSound files: camera_click.ogg on a photo,
+/* cam-sounds: the capture sounds: camera_click.ogg on a photo,
  * VideoRecord.ogg / VideoStop.ogg around a recording (AOSP frameworks/base data/sounds, Apache-2.0).
  *
  * Played as event sounds (PulseAudio's media.role "event"), when the "Shutter sound" setting is on and the phone is

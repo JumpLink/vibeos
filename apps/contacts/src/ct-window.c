@@ -17,7 +17,7 @@ G_DECLARE_FINAL_TYPE (CtPager, ct_pager, CT, PAGER, GtkWidget)
 
 typedef struct {
   GtkWidget *page;
-  double x;                     /* the slide, dp */
+  double x;                     /* the slide, px */
   double alpha;
 } Placed;
 
@@ -115,7 +115,7 @@ ct_pager_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
     }
 }
 
-/* activity_open_* / activity_close_* (§7.5): 450 ms of FOESI for the slides, the fades linear in their windows */
+/* a page opening or closing: 450 ms of the emphasized curve for the slides, the fades linear in their windows */
 static void
 on_slide (NeoAnim *anim, double t, gpointer data)
 {
@@ -355,8 +355,7 @@ ct_window_new_contact (GtkWidget *window, EContact *prefill)
   ct_window_push (window, ct_editor_new (window, NULL, prefill));
 }
 
-/* --- the toast: SystemUI's text toast (text_toast.xml), the app's icon and the text in a pill 48 dp above the
- * bottom, 300 dp wide at most (§7.8) */
+/* --- the toast: the app's icon and the text in a pill near the bottom */
 
 #define TOAST_FADE_MS 250
 
@@ -477,7 +476,7 @@ ct_window_new (GtkApplication *app, CtStore *store, GSettings *settings)
 
   shell->pager = g_object_new (CT_TYPE_PAGER, NULL);
   gtk_overlay_set_child (GTK_OVERLAY (root), GTK_WIDGET (shell->pager));
-  /* the snackbar is edge to edge: the legacy design_layout_snackbar on a phone (§7.8) */
+  /* the snackbar is edge to edge on a phone */
   shell->snackbar = neo_snackbar_new ();
   neo_snackbar_set_margin (NEO_SNACKBAR (shell->snackbar), 0);
   gtk_widget_add_css_class (shell->snackbar, "ct-snackbar");

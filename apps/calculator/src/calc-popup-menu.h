@@ -1,13 +1,11 @@
-/* CalcPopupMenu: the calculator's pop-up menus, the toolbar's overflow menu and the history's (Material 3's
- * PopupMenu as Theme.Material3Expressive draws it), shown inside the app's own window.
+/* CalcPopupMenu: the calculator's pop-up menus, the toolbar's overflow menu and the history's, shown inside the
+ * app's own window.
  *
- * Measured on still:calc-menu: a card in surfaceContainer with 4 dp corners, its end 4 dp in from the window's end
- * and its top 1 px under the ⋮'s top; as wide as its longest item (703 px for "Answer with leading digits"): 16 dp
- * of padding either side of 16 sp text, 48 dp rows, 8 dp above and below the rows. A tap on a row closes the menu
- * and runs the row's action; a tap outside, Back or Escape just closes it. It comes in growing down from its top
- * while fading in (250 ms) and fades out (150 ms), as the Dialer's.
+ * A card at the window's end, its top just under the ⋮'s top, as wide as its longest item (up to the window's
+ * width). A tap on a row closes the menu and runs the row's action; a tap outside, Back or Escape just closes it.
+ * It comes in growing down from its top while fading in (250 ms) and fades out (150 ms), as the Dialer's.
  *
- * A libneo candidate: the Dialer has its own (popup-menu.c) with other measurements. */
+ * A libneo candidate: the Dialer has its own (popup-menu.c), sized differently. */
 #pragma once
 
 #include <gtk/gtk.h>

@@ -1,6 +1,6 @@
-/* CalcResult: see calc-result.h. A port of CalculatorResult.java: the names follow it, positions are in device
- * pixels as there (a gesture's logical pixels are multiplied up), and a scroll changes the text a whole character
- * at a time, as computeScroll does. */
+/* CalcResult: see calc-result.h. Ported from ExactCalculator's CalculatorResult, whose names it keeps: positions
+ * are in device pixels (a gesture's logical pixels are multiplied up), and a scroll changes the text a whole
+ * character at a time. */
 #include "calc-result.h"
 #include "calc-format.h"
 #include "calc-keys.h"
@@ -34,7 +34,7 @@ struct _CalcResult {
   double             size, pad_top, pad_bottom, pad_start, pad_end, exact_height;
   char              *text;              /* as shown */
   int                exp_index;         /* the exponent's first character, coloured; -1: none */
-  double             text_scale;        /* an error message too wide is drawn smaller (onError) */
+  double             text_scale;        /* an error message too wide is drawn smaller */
   gboolean           highlight;
   GdkRGBA            color, exponent_color;
   PangoLayout       *layout;
@@ -102,7 +102,7 @@ calc_result_get_listener (CalcResult *self)
   return &self->own_listener;
 }
 
-/* --- measuring (onMeasure) */
+/* --- measuring */
 
 static double
 string_width (CalcResult *self, PangoLayout *probe, const char *s)
@@ -126,7 +126,7 @@ measure_chars (CalcResult *self, int width_px)
   float decimal_width = string_width (self, probe, calc_decimal_point ());
   float minus_extra = MAX (string_width (self, probe, CALC_MINUS_SIGN) - char_width, 0);
   float ellipsis_extra = MAX (string_width (self, probe, CALC_ELLIPSIS) - char_width, 0);
-  /* KeyMaps.translateResult ("e") drops a trailing 'e', so the Java measures the exponent marker as nothing */
+  /* calc_translate_result ("e") drops a trailing 'e', so the exponent marker measures as nothing */
   float exp_extra = 0;
   float type1_extra = 2 * minus_extra + exp_extra + decimal_width;
   float type2_extra = ellipsis_extra + exp_extra + minus_extra;
@@ -189,7 +189,7 @@ ensure_layout (CalcResult *self)
 
     pango_attr_list_insert (attrs, pango_attr_font_features_new ("tnum, cv03, cv04"));
     if (self->exp_index >= 0) {
-      /* the exponent, when it only says where the digits are: in display_result_exponent_text_color */
+      /* the exponent, when it only says where the digits are: in exponent_color */
       PangoAttribute *exp = pango_attr_foreground_new (self->exponent_color.red * 65535,
                                                        self->exponent_color.green * 65535,
                                                        self->exponent_color.blue * 65535);
@@ -203,7 +203,7 @@ ensure_layout (CalcResult *self)
   self->layout_dirty = FALSE;
 }
 
-/* the text's left edge and baseline, dp */
+/* the text's left edge and baseline, px */
 static void
 text_position (CalcResult *self, double *x, double *baseline, double *width)
 {
@@ -230,7 +230,7 @@ calc_result_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
     return;
   text_position (self, &x, &baseline, &width);
   if (self->highlight) {
-    /* textColorHighlight; not measured (no still with the toolbar open): Material 3's, primary at 40 % */
+    /* the highlight behind the result while its copy toolbar is open */
     GdkRGBA color = neo_color_alpha (NEO_PRIMARY, 0.4f);
     double size = self->size * self->text_scale;
 
@@ -247,12 +247,12 @@ calc_result_get_text_bounds (CalcResult *self, graphene_rect_t *bounds)
   double w = gtk_widget_get_width (GTK_WIDGET (self));
 
   text_position (self, &x, &baseline, &width);
-  /* onGetContentRect: the view less its padding, narrowed to the text from the end */
+  /* the view less its padding, narrowed to the text from the end */
   graphene_rect_init (bounds, MAX (self->pad_start, x), self->pad_top, MIN (width, w - self->pad_start - self->pad_end),
                       view_height (self) - self->pad_top - self->pad_bottom);
 }
 
-/* --- layout: measuring, and the evaluation onLayout starts */
+/* --- layout: measuring, and the evaluation a layout starts */
 
 static void
 calc_result_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, int *minimum, int *natural,
@@ -303,7 +303,7 @@ calc_result_size_allocate (GtkWidget *widget, int width, int height, int baselin
 
   if (width_px != self->measured_width || self->size != self->measured_size) {
     measure_chars (self, width_px);
-    /* a new width is a new layout: Android lays the view out again, and onLayout evaluates */
+    /* a new width is a new layout, and a new layout evaluates */
     self->evaluate_pending = TRUE;
   }
   if (self->evaluate_pending)
@@ -349,7 +349,7 @@ calc_result_on_error (CalcResult *self, long index, CalcFailure failure)
   self->store_requested = FALSE;
   self->valid = FALSE;
   self->l.scrollable = FALSE;
-  /* a message too wide is shrunk to fit (RelativeSizeSpan) */
+  /* a message too wide is shrunk to fit */
   if (self->width_constraint > 0 && measured > self->width_constraint)
     set_text (self, msg, -1, 0.99 * self->width_constraint / measured);
   else
@@ -516,7 +516,7 @@ calc_result_copy (CalcResult *self)
   return TRUE;
 }
 
-/* --- scrolling (the GestureDetector's onScroll and onFling, computeScroll) */
+/* --- scrolling: drags and flings */
 
 static double
 now_ms (void)
@@ -549,7 +549,7 @@ on_fling_tick (GtkWidget *widget, GdkFrameClock *clock, gpointer data)
   return G_SOURCE_CONTINUE;
 }
 
-/* forceFinished: a fling stops where it was going */
+/* a fling stops where it was going */
 static void
 stop_fling (CalcResult *self)
 {
@@ -602,8 +602,8 @@ on_drag_update (GtkGestureDrag *drag, double dx, double dy, CalcResult *self)
   if (!self->dragging) {
     if (hypot (dx, dy) <= slop)
       return;
-    /* past the slop: no long press. Sideways, the result keeps the touch (requestDisallowInterceptTouchEvent);
-     * a vertical one is the window's, to pull the history down */
+    /* past the slop: no long press. Sideways, the result keeps the touch; a vertical one is the window's, to
+     * pull the history down */
     stop_long_press (self);
     if (fabs (dx) <= slop || fabs (dx) <= fabs (dy))
       return;
@@ -612,7 +612,7 @@ on_drag_update (GtkGestureDrag *drag, double dx, double dy, CalcResult *self)
     stop_fling (self);
     self->drag_start_pos = self->l.current_pos;
     g_signal_emit (self, signals[SCROLL_STARTED], 0);
-    /* the first onScroll moves by the whole distance from the touch down */
+    /* the first move goes the whole distance from the touch down */
   }
   if (!self->l.scrollable)
     return;
@@ -635,7 +635,7 @@ on_drag_end (GtkGestureDrag *drag, double dx, double dy, CalcResult *self)
   vx = CLAMP (vx, -max_fling, max_fling);
   if (!self->l.scrollable || fabs (vx) < min_fling)
     return;
-  /* OverScroller.fling from the position between minPos and maxPos, in dp for the spline */
+  /* a fling from the position between min_pos and max_pos, in px for the spline */
   spongy_fling_start (&self->fling, (float) self->l.current_pos / scale, -vx, (float) self->l.min_pos / scale,
                       (float) self->l.max_pos / scale, now_ms ());
   self->fling_tick = gtk_widget_add_tick_callback (GTK_WIDGET (self), on_fling_tick, NULL, NULL);
@@ -703,8 +703,8 @@ calc_result_init (CalcResult *self)
   self->text_scale = 1;
   self->l.char_width = 1;
   self->l.last_pos = SCROLL_INVALID;
-  self->color = neo_color (NEO_TERTIARY);            /* display_result_text_color: system_tertiary_dark */
-  self->exponent_color = neo_color (NEO_TERTIARY);   /* display_result_exponent_text_color */
+  self->color = neo_color (NEO_TERTIARY);            /* the result's colour */
+  self->exponent_color = neo_color (NEO_TERTIARY);   /* the exponent's, the same here */
   g_signal_connect (drag, "drag-begin", G_CALLBACK (on_drag_begin), self);
   g_signal_connect (drag, "drag-update", G_CALLBACK (on_drag_update), self);
   g_signal_connect (drag, "drag-end", G_CALLBACK (on_drag_end), self);
@@ -746,7 +746,7 @@ calc_result_set_evaluator (CalcResult *self, Evaluator *evaluator, long index)
 {
   self->evaluator = evaluator;
   self->index = index;
-  /* requestLayout: the next layout evaluates */
+  /* the next layout evaluates */
   self->evaluate_pending = TRUE;
   gtk_widget_queue_allocate (GTK_WIDGET (self));
 }

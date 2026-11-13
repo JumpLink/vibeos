@@ -1,15 +1,15 @@
-/* The app drawer: Launcher3's all-apps bottom sheet. Its open fraction f follows the finger 1:1 after the slop
- * (AbstractStateChangeTouchController); a release flings (> 1 dp/ms) or commits at f = 0.4 opening / 0.6 closing and
+/* The app drawer: a bottom sheet of all the apps. Its open fraction f follows the finger 1:1 after the slop; a
+ * release flings (> 1 logical px/ms) or commits at f = 0.4 opening / 0.6 closing and
  * settles in max(100, 1200/max(2, |v|/2)·max(0.2, rest)) ms, quintic for fast flings, cubic otherwise. Every settle
  * into the open sheet starts with a stretch bump of the whole container; the list inside scrolls and stretches the
- * RecyclerView way (libspongy). A swipe up from the bar while it is open goes home (NavBarToHomeTouchController):
- * the sheet shrinks towards 0.9 on DECELERATE_3 of the swipe over the screen's height, and the release closes it
+ * libspongy's way. A swipe up from the bar while it is open goes home:
+ * the sheet shrinks towards 0.9 on 1 - (1 - x)^6 of the swipe over the screen's height, and the release closes it
  * past half of that or on an upward fling, else it grows back in 80 ms. A tile opens on a tap only: a finger that
  * moved past the slop, or that stopped a fling, opens nothing.
  *
- * The search pill (Settings can take it away; the list then starts where it was) is Launcher3's all-apps search box:
+ * The search pill (Settings can take it away; the list then starts where it was) searches the apps:
  * a tap gives it the typing and brings the keyboard up (text-input-v3, wl.c), and the list shows the apps whose name
- * has a word starting with each word typed (DefaultAppSearchAlgorithm), then the ones whose generic name or keywords
+ * has a word starting with each word typed, then the ones whose generic name or keywords
  * do. Enter opens the first; scrolling the list puts the keyboard away; back, or the sheet closing, ends the search. */
 #include <librsvg/rsvg.h>
 #include <math.h>
@@ -20,7 +20,7 @@
 #include "neo.h"
 
 #define SLOP_DP              8
-#define FLING_PX_MS_DP       1.0          /* 1 dp/ms */
+#define FLING_PX_MS_DP       1.0
 #define FAST_FLING_PX_MS_DP  (10 / 3.0)
 #define OPEN_THRESHOLD       0.4f
 #define SETTLE_BASE_MS       1200.0
@@ -31,18 +31,18 @@
 #define MIN_ABSORB           1000
 #define INTERP_COEFF         1.7f
 #define PROG_CLOSE_MS        200.0        /* back, a launch: ACCELERATE */
-#define HOME_MIN_SCALE       0.9f         /* PREDICTIVE_BACK_MIN_SCALE */
-#define HOME_SUCCESS         0.5f         /* SUCCESS_TRANSITION_PROGRESS, of DECELERATE_3 */
+#define HOME_MIN_SCALE       0.9f         /* the sheet's scale at the end of the swipe home */
+#define HOME_SUCCESS         0.5f         /* past this (decelerate3 of the swipe) the release goes home */
 #define HOME_REVERT_MS       80.0
 
-#define SHEET_RGB            0x082D31     /* over the blur at 0.54, measured (18, 38, 42) on the S10e */
+#define SHEET_RGB            0x082D31     /* at SHEET_ALPHA over the blur */
 #define SHEET_ALPHA          0.54f
 #define HANDLE_RGB           0xDDE7E9
 #define SEARCH_RGB           0x121F21
 #define HINT_RGB             0xA2ADAF
 #define LABEL_RGB            0xDDE7E9
 #define THUMB_RGB            0xB8EBF3      /* also the caret */
-#define CARET_BLINK_MS       500           /* Android's Editor BLINK */
+#define CARET_BLINK_MS       500           /* the caret's half period */
 #define CARET_DP             2
 
 /* Material "search" (Apache 2.0), 24 × 24 */
@@ -481,7 +481,7 @@ drawer_back (void)
   wl_schedule (N.wl);
 }
 
-/* a drag took an icon out: the sheet slides away in 150 ms (DECELERATE_1_7 in Launcher3, 1.5 here) */
+/* a drag took an icon out: the sheet slides away in 150 ms, decelerating (1 - (1 - t)^3) */
 void
 drawer_close_for_drag (void)
 {
@@ -547,13 +547,13 @@ drawer_frame (void)
 static void
 drag_to (float y, double t)
 {
-  /* past the slop the displacement counts from the slop's edge (BaseSwipeDetector), 1:1 with the finger */
+  /* past the slop the displacement counts from the slop's edge, 1:1 with the finger, so the sheet does not jump */
   float disp = y - D.down_y;
   if (!D.catch_anim)
     disp += D.opening ? dp (SLOP_DP) : -dp (SLOP_DP);
   float f = D.f_start - disp / N.H;
   if (f > 1) {
-    /* over-drag past open: Launcher3 feeds the whole overshoot × 0.02 to the bottom edge on every move */
+    /* over-drag past open: the whole overshoot × 0.02 goes to the bottom edge's stretch on every move */
     spongy_edge_pull (&D.bump, PULL_MULTIPLIER * (f - 1), t);
     D.overshot = true;
     f = 1;
@@ -644,7 +644,7 @@ drawer_touch_move (float x, float y, double t)
   if (D.list_touch) {
     if (spongy_list_move (&D.list, y, t)) {
       D.decided = true;
-      search_blur ();              /* a scroll puts the keyboard away (Launcher3's AllAppsRecyclerView) */
+      search_blur ();              /* a scroll puts the keyboard away */
     }
     wl_schedule (N.wl);
   }
@@ -744,7 +744,7 @@ drawer_home_move (float x, float y, double t)
   spongy_velocity_add (&D.vel, t, x, y);
   float up = D.home_y0 - y;
   if (!D.home_dragging) {
-    /* SingleAxisSwipeDetector, up only: along past the slop and past the across */
+    /* a swipe up only: further up than the slop, and than it went across */
     if (up < MAX (dp (SLOP_DP), fabsf (x - D.home_x0)))
       return;
     D.home_dragging = true;

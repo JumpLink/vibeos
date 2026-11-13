@@ -1,25 +1,22 @@
-/* CalcDisplay: see calc-display.h. Positions in device pixels, as measured on still:calc-main, still:calc-typed
- * and still:land-calc (its view bounds): toolbar 192 px; the mode label at x 48, its 65 px box centred in the
- * toolbar (includeFontPadding); the ⋮ button 120 x 144 px at the end, 24 px down, its dots centred 66.5 px in
- * from the end and 95.5 px down; formula 198 px and result 199 px in portrait (LinearLayout gives the first
- * weighted child the share rounded down), the handle's 60 px under them. */
+/* CalcDisplay: see calc-display.h. In portrait the formula and the result split the height between the toolbar
+ * and the handle in device pixels, the formula taking the share rounded down and the result the rest. */
 #include "calc-display.h"
 #include "calc-text.h"
 
 #include <math.h>
 #include <neo.h>
 
-#define TOOLBAR           64      /* ?actionBarSize, dp */
-#define HANDLE_WIDTH      24      /* drag_handle.xml */
+#define TOOLBAR           64      /* the toolbar's height */
+#define HANDLE_WIDTH      24      /* the drag handle, a pill under the result */
 #define HANDLE_HEIGHT     4
 #define HANDLE_RADIUS     2
-#define HANDLE_MARGIN     8       /* drag_handle_margin */
-#define CORNER            16      /* display_corner_radius */
-#define MODE_START        16      /* the toolbar's contentInsetStart */
-#define MODE_SIZE         16      /* sp */
-#define OVERFLOW_X        66.5    /* px from the end to the dots' centre (measured) */
-#define OVERFLOW_Y        95.5    /* px down from the toolbar's top (measured) */
-#define BUTTON            48      /* the icon button's target, dp */
+#define HANDLE_MARGIN     8       /* above and below the handle */
+#define CORNER            16      /* the display's bottom corners */
+#define MODE_START        16      /* the mode label's inset from the start */
+#define MODE_SIZE         16      /* the mode label's text size */
+#define OVERFLOW_X        66.5    /* device px from the end to the ⋮'s dots */
+#define OVERFLOW_Y        95.5    /* device px down from the toolbar's top to the ⋮'s dots */
+#define BUTTON            48      /* the ⋮ button's touch target */
 
 struct _CalcDisplay {
   GtkWidget    parent;
@@ -31,10 +28,10 @@ struct _CalcDisplay {
   PangoLayout *mode_layout;
   double       exact_width, exact_height;
 
-  /* onResult */
+  /* the result in the formula's place, after "=" */
   gboolean     showing_result;
   double       result_scale;
-  /* where the formula and the result are, dp: for onResult's translations */
+  /* where the formula and the result are, px: for the move after "=" */
   double       formula_y, formula_h, result_y, result_h;
 };
 
@@ -88,7 +85,7 @@ calc_display_size_allocate (GtkWidget *widget, int width, int height, int baseli
     double result_pad_bottom, result_pad_end;
 
     calc_result_get_padding (CALC_RESULT (self->result), &result_pad_bottom, &result_pad_end);
-    /* the formula's bottom padding is 8 dp (portrait), 28 (landscape): DisplayTextStyle.Formula */
+    /* the formula's bottom padding: 8 in portrait, 28 in landscape */
     result_ty = (formula_bottom - result_bottom) - ((self->one_line ? 28 : 8) - result_pad_bottom);
     formula_ty = self->one_line ? -((double) toolbar / scale + formula_bottom) : -formula_bottom;
   }
@@ -100,7 +97,7 @@ calc_display_size_allocate (GtkWidget *widget, int width, int height, int baseli
   calc_result_set_exact_height (CALC_RESULT (self->result), self->result_h);
   t = gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (0, self->result_y + result_ty));
   if (self->showing_result && self->result_scale != 1) {
-    /* about the bottom end, less the padding (setPivotX/Y) */
+    /* about the bottom end, less the padding */
     double pad_bottom, pad_end;
 
     calc_result_get_padding (CALC_RESULT (self->result), &pad_bottom, &pad_end);
@@ -111,7 +108,7 @@ calc_display_size_allocate (GtkWidget *widget, int width, int height, int baseli
   }
   gtk_widget_allocate (self->result, (int) ceil (w - 0.001), (int) ceil (self->result_h - 0.001), -1, t);
 
-  /* the ⋮: a 48 dp icon button centred on the dots */
+  /* the ⋮: an icon button centred on the dots */
   gtk_widget_allocate (self->overflow, BUTTON, BUTTON, -1,
                        gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT ((W - OVERFLOW_X) / scale - BUTTON / 2.0,
                                                                             OVERFLOW_Y / scale - BUTTON / 2.0)));
@@ -123,18 +120,18 @@ calc_display_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   CalcDisplay *self = CALC_DISPLAY (widget);
   int scale = neo_device_scale (widget);
   double w = display_width (self), h = display_height (self);
-  GdkRGBA surface = neo_color (NEO_SURFACE);   /* display_background_color: system_surface_dark */
+  GdkRGBA surface = neo_color (NEO_SURFACE);
   GdkRGBA secondary = neo_color (NEO_ON_SURFACE_VARIANT);
   GskRoundedRect shape;
 
-  /* rounded_bottom */
+  /* the bottom corners rounded */
   gsk_rounded_rect_init (&shape, &GRAPHENE_RECT_INIT (0, 0, w, h), &GRAPHENE_SIZE_INIT (0, 0),
                          &GRAPHENE_SIZE_INIT (0, 0), &GRAPHENE_SIZE_INIT (CORNER, CORNER),
                          &GRAPHENE_SIZE_INIT (CORNER, CORNER));
   gtk_snapshot_push_rounded_clip (snapshot, &shape);
   gtk_snapshot_append_color (snapshot, &surface, &GRAPHENE_RECT_INIT (0, 0, w, h));
 
-  /* the mode: 16 sp sans-serif-medium, all caps; its box (yMax to yMin, rounded out) centred in the toolbar */
+  /* the mode, all caps; its box (yMax to yMin, rounded out) centred in the toolbar */
   if (self->mode) {
     double px = MODE_SIZE * scale;
     double top = floor (-CALC_TOP * px), bottom = ceil (CALC_BOTTOM * px);
@@ -146,14 +143,14 @@ calc_display_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
     calc_text_draw (snapshot, self->mode_layout, MODE_START, (box_top - top) / scale, &secondary);
   }
 
-  /* the children: clipped to the display, as a ViewGroup clips them (the formula leaves at the top) */
+  /* the children: clipped to the display (the formula leaves at the top) */
   gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (0, 0, w, h));
   gtk_widget_snapshot_child (widget, self->formula, snapshot);
   gtk_widget_snapshot_child (widget, self->result, snapshot);
   gtk_snapshot_pop (snapshot);
   gtk_widget_snapshot_child (widget, self->overflow, snapshot);
 
-  /* the drag handle, textColorSecondary */
+  /* the drag handle */
   {
     double hx = round ((w * scale - HANDLE_WIDTH * scale) / 2) / scale;
     double hy = h - HANDLE_MARGIN - HANDLE_HEIGHT;
@@ -213,12 +210,12 @@ calc_display_new (gboolean one_line)
 
   self->one_line = one_line;
   if (one_line) {
-    /* values-land/dimens.xml */
+    /* landscape: larger text, more padding below */
     self->formula = calc_formula_new (42, 56, 8);
     calc_formula_set_padding (CALC_FORMULA (self->formula), 8, 28, 16, 16);
     self->result = calc_result_new (42);
     calc_result_set_padding (CALC_RESULT (self->result), 8, 28, 16, 16);
-    /* the result starts invisible (display_one_line.xml) */
+    /* the result starts invisible */
     gtk_widget_set_child_visible (self->result, FALSE);
   } else {
     self->formula = calc_formula_new (32, 48, 8);

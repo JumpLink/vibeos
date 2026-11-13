@@ -1,31 +1,30 @@
-/* The Dialer's bottom navigation: see nav-bar.h. The geometry is bottom_nav_item.xml's, measured on
- * still:dialer-recents (the bar y 2013…2280 px, the pill 192 x 96 px at y 2061, the label box at y 2181). */
+/* The Dialer's bottom navigation: see nav-bar.h. */
 #include "nav-bar.h"
 #include "text.h"
 
 #include <glib/gi18n.h>
 #include <neo.h>
 
-#define BAR_HEIGHT      89      /* 16 + the 32 dp indicator frame + 8 + the 17 dp label + 16 */
+#define BAR_HEIGHT      89      /* 16 + the 32 pill + 8 + the 17 label + 16 */
 #define PILL_TOP        16
 #define PILL_WIDTH      64
 #define PILL_HEIGHT     32
 #define ICON            24
 #define LABEL_TOP       (PILL_TOP + PILL_HEIGHT + 8)
-#define INDICATOR_MS    400     /* BottomNavItem's ValueAnimator, FAST_OUT_SLOW_IN */
+#define INDICATOR_MS    400     /* the pill, fast-out-slow-in */
 #define BADGE_TOP       2
 #define BADGE_MIN       20
 #define BADGE_PAD_X     6
 #define BADGE_PAD_BOTTOM 1
 #define BADGE_STROKE    2
 
-#define BACKGROUND      0x2c3132        /* rounded_dialpad_bg_color */
-#define PILL            0x324b4e        /* dialer_pill_color, night */
-#define ICON_SELECTED   0xfdfdfd        /* textColorPrimary as an icon tint, inverted */
-#define BADGE_FILL      0x1f2728        /* colorPrimary as a background */
-#define BADGE_TEXT      0xdadce0        /* textColorPrimaryInverse */
+#define BACKGROUND      0x2c3132        /* the bar, and the ring round a badge */
+#define PILL            0x324b4e        /* the selected tab's indicator */
+#define ICON_SELECTED   0xfdfdfd
+#define BADGE_FILL      0x1f2728
+#define BADGE_TEXT      0xdadce0
 
-#define LABEL_STYLE     ((TextStyle) { TEXT_GSF, 12, 800 })     /* OVERLINE at 12 sp */
+#define LABEL_STYLE     ((TextStyle) { TEXT_GSF, 12, 800 })     /* the tabs' labels and a badge's count */
 
 typedef struct
 {
@@ -71,8 +70,8 @@ column (DialerNavBar *self)
 
 /* ---- drawing -------------------------------------------------------------------------------------------------- */
 
-/* notification_badge: a 20 dp-radius pill in colorPrimary with a 2 dp ring of the bar's colour, the count in
- * the middle; top|end of the indicator's frame, so its right edge is the pill's */
+/* a tab's badge: a pill with a ring of the bar's colour round it, the count in the middle; at the top end of the
+ * indicator, so its right edge is the pill's */
 static void
 snapshot_badge (DialerNavBar *self, Item *item, GtkSnapshot *snapshot, double pill_right)
 {
@@ -92,7 +91,7 @@ snapshot_badge (DialerNavBar *self, Item *item, GtkSnapshot *snapshot, double pi
   gtk_snapshot_push_rounded_clip (snapshot, &rounded);
   gtk_snapshot_append_color (snapshot, &fill, &inner);
   gtk_snapshot_pop (snapshot);
-  /* gravity center inside the padding (6 dp each side, 1 dp below) */
+  /* the count centred inside the padding */
   text_draw (snapshot, item->badge, style, outer.origin.x + (w - text_w) / 2,
              outer.origin.y + (h - BADGE_PAD_BOTTOM - text_h) / 2, &color);
 }
@@ -113,7 +112,7 @@ dialer_nav_bar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
       GdkRGBA icon = text_rgb (selected ? ICON_SELECTED : COLOR_ICON);
       GdkRGBA label = text_rgb (selected ? COLOR_TEXT_PRIMARY : COLOR_TEXT_SECONDARY);
 
-      /* ActiveIndicatorTransform: scaleX 0.4 → 1 and alpha 0 → 1 with the progress */
+      /* the active indicator: its width scaled 0.4 → 1 and alpha 0 → 1 with the progress */
       if (item->progress > 0)
         {
           double scale = 0.4 + 0.6 * item->progress, w = PILL_WIDTH * scale;
@@ -121,7 +120,7 @@ dialer_nav_bar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
           graphene_size_t corner = GRAPHENE_SIZE_INIT (PILL_HEIGHT / 2.0 * scale, PILL_HEIGHT / 2.0);
           GskRoundedRect rounded;
 
-          /* pill.xml's round ends, drawn at 64 dp and squeezed by the view's scaleX: they go elliptical */
+          /* the round ends are squeezed with the pill while it grows: they go elliptical */
           gsk_rounded_rect_init (&rounded, &rect, &corner, &corner, &corner, &corner);
           pill.alpha = item->progress;
           gtk_snapshot_push_rounded_clip (snapshot, &rounded);
@@ -154,7 +153,7 @@ on_indicator (NeoAnim *anim, double value, gpointer data)
   gtk_widget_queue_draw (GTK_WIDGET (item->bar));
 }
 
-/* setSelected on every item: the new pill grows in, the old one shrinks out, both from where they are */
+/* every item updated: the new pill grows in, the old one shrinks out, both from where they are */
 static void
 select_item (DialerNavBar *self, int index, gboolean animate)
 {

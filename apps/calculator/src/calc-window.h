@@ -1,5 +1,5 @@
-/* calc-window: the calculator's window, ExactCalculator's Calculator activity (Calculator.java) with its
- * DisplayMotionLayout (activity_calculator.xml, activity_calculator_scene.xml). */
+/* calc-window: the calculator's window: the display, the two pads and the history that a drag down from the
+ * display pulls over them. Ported from ExactCalculator's main screen. */
 #pragma once
 
 #include <gtk/gtk.h>

@@ -1,5 +1,5 @@
-// The keyguard: Android 16's lock screen over everything while the phone is locked, its bouncer, and the unlock
-// (systemui.md §6, keyguard-pin.md, keyguard-extras.md; screen px of the 1080x2280 reference).
+// The keyguard: the lock screen over everything while the phone is locked, its bouncer, and the unlock
+// (in screen px of the 1080x2280 reference).
 //
 // Locked, the shell is in the 'unlock-dialog' session mode, as GNOME's own screen shield puts it: windows hidden,
 // gestures, heads-ups and keybindings off, and this view holds a modal grab. It locks when the screen goes off
@@ -37,41 +37,41 @@ Gio._promisify(Gio.File.prototype, 'replace_contents_async');
 
 const GP_AUTH = ['/usr/local/libexec/gp-auth', '/usr/libexec/gp-auth'];
 
-// --- the lock screen (§6.1-6.3)
+// --- the lock screen
 const CLOCK_SIZE = 86 * 0.98;           // dp, the small Flex clock
-const CLOCK_WGHT = 550;                 // matched to the reference's ink: 582 px for "05:12"
+const CLOCK_WGHT = 550;
 // a soft grey-white, the owner's choice for the launcher's clock (2026-11-04), not the accent
 const CLOCK_COLOUR = [224, 224, 224];
-const CLOCK_LEFT = 84;                  // 28 dp
+const CLOCK_LEFT = 84;
 const CLOCK_INK_TOP = 246;
 const DATE_SIZE = 16;
-const DATE_WGHT = 630;                  // ink 262 px for "Wed, Nov 4"
+const DATE_WGHT = 630;
 const DATE_INK_TOP = 541.5;
 const CARRIER_LEFT = 48;
 const CARRIER_INK_TOP = 42;
-const SYSTEM_END = 880;                 // 9 px left of the home status bar's (keyguard-extras §C.3)
+const SYSTEM_END = 880;                 // 9 px left of the home status bar's
 const PILL = {x: 48, y: 664, h: 144, pad: 39, slot: 66, icon: 45, max: 3};
 const PILL_COLOUR = [19, 27, 28];
 const PILL_ICON = [221, 231, 233];
 const LOCK_ICON = {cx: 540, cy: 1950, size: 65 * 2.54};
 const INDICATION_SIZE = 14;
-const INDICATION_WGHT = 700;            // body 400 + Bold text's 300: stems 6-7 px, cap height 32 at opsz 16
+const INDICATION_WGHT = 700;
 const INDICATION_INK_TOP = 2083;
 
-// --- the swipe up (§6.4): f is the panel's expansion, 1 at rest; f = 1 - (d + 142) / 1590 for a drag of d px
+// --- the swipe up: f is the panel's expansion, 1 at rest; f = 1 - (d + 142) / 1590 for a drag of d px
 const SLOP = 24;
 const F_OFFSET = 142;
 const F_RANGE = 1590;
-const BOUNCER_SHIFT = 240;              // keyguard_host_view_translation_y 80 dp
-const BLUR_MAX = 102;                   // 34 dp
+const BOUNCER_SHIFT = 240;              // how far below its place the bouncer starts as it comes in
+const BLUR_MAX = 102;
 const SETTLE_MS = 300;
 const CANCEL_MS = 100;
-const DISMISS_SWIPE = 30;               // a bouncer dragged down 10 dp goes on release
-const BACK_EDGE = 90;                   // config_backGestureInset 30 dp: the bouncer leaves these touches to back
+const DISMISS_SWIPE = 30;               // a bouncer dragged down this far goes on release
+const BACK_EDGE = 90;                   // the back gesture's edge: the bouncer leaves these touches to back
 const BOUNCER_TO_LOCK_MS = 450;
 const LOCK_ALPHA_BACK_MS = 250;
 
-// --- the unlock (keyguard-extras §D)
+// --- the unlock
 const GONE_SHORT_MS = 200;
 const GONE_MS = 500;
 const SURFACE_DELAY_MS = 67;
@@ -79,17 +79,17 @@ const SURFACE_MS = 300;
 const SURFACE_SCALE = 0.95;
 const SURFACE_SHIFT = Math.round(SCREEN_H * 0.05);   // 5 % of the screen's height: 114 on 2280
 const SURFACE_PIVOT_Y = 0.66;
-// swipe (no secret): dismissing past 0.3 unlocks; the content fades out by 0.18 and rises up to 180 dp
+// swipe (no secret): dismissing past 0.3 unlocks; the content fades out by 0.18 and rises up to SWIPE_RISE
 const SWIPE_FINISH = 0.3;
 const SWIPE_RISE = 540;
 
-// auto-confirm: AOSP's MIN_AUTO_PIN_REQUIREMENT_LENGTH
+// auto-confirm: the shortest PIN it is offered for
 const MIN_AUTO_CONFIRM = 6;
 // frames the bouncer is painted at opacity 1/255 when it is built, so its canvases are drawn and uploaded then
 const PRERENDER_FRAMES = 3;
 
 const showBouncerProgress = f => f >= 0.9 ? 1 : f < 0.6 ? 0 : (f - 0.6) / 0.3;
-// LockscreenToPrimaryBouncer: progress over f 1 -> 0.88, the lock screen gone by half of it
+// lock screen -> bouncer: progress over f 1 -> 0.88, the lock screen gone by half of it
 const toBouncerProgress = f => 1 - clamp((f - 0.88) / 0.12);
 
 // the AOSP gatekeeper's retry timeout after n failures, s
@@ -311,8 +311,8 @@ export class Keyguard extends Signals.EventEmitter {
 
     _syncState() {
         const {mobile, wifi, battery} = this._state;
-        // the mobile network, then (the owner's addition to Android's carrier text) the Wi-Fi network, joined as
-        // CarrierTextManager joins two SIMs' names
+        // the mobile network, then (the owner's addition) the Wi-Fi network, joined with " | " as two SIMs' names
+        // are
         const names = [mobile.present ? mobile.operator || 'Emergency calls only' : 'No SIM'];
         if (wifi.connected && wifi.name)
             names.push(wifi.name);
@@ -322,7 +322,7 @@ export class Keyguard extends Signals.EventEmitter {
             this._carrier.setText(carrier);
             placeText(this._carrier, {left: CARRIER_LEFT, inkTop: CARRIER_INK_TOP});
         }
-        // KeyguardIndicationController's power line, with how fast (SystemState's speed; One UI's names)
+        // the charging line, with how fast (One UI's names for the speeds)
         let indication = '';
         if (battery.present && battery.plugged)
             indication = battery.level >= 100 ? 'Charged'
@@ -342,7 +342,7 @@ export class Keyguard extends Signals.EventEmitter {
         this._syncPill();
     }
 
-    // the notification icons in their pill (keyguard-extras §B): one per app, three and the overflow dot at most;
+    // the notification icons in their pill: one per app, three and the overflow dot at most;
     // none after a lockdown. Only the apps allowed on the lock screen: a source's policy says it for the setting and
     // the app's own switch together (show-in-lock-screen, both), as for Shell's own lock screen (unlockDialog.js).
     // An app's switch is read again at each lock (lock() syncs the pill), the setting at once.
@@ -405,7 +405,7 @@ export class Keyguard extends Signals.EventEmitter {
         this._syncPill();
     }
 
-    // --- occluded: an app's window over the lock screen (whenlocked.js; KeyguardViewMediator.setOccluded)
+    // --- occluded: an app's window over the lock screen (whenlocked.js)
 
     // @win: the window that shows over the lock screen, or null for the lock screen itself. Only the keyguard's view
     // and its grab step aside for it: every other window stays hidden, and the phone stays locked (showing stays
@@ -712,7 +712,7 @@ export class Keyguard extends Signals.EventEmitter {
             this._hideBouncer(true);
     }
 
-    // PRIMARY_BOUNCER -> LOCKSCREEN: the bouncer fades, the lock screen comes back in 250 ms, the blur clears in 450
+    // bouncer -> lock screen: the bouncer fades, the lock screen comes back in 250 ms, the blur clears in 450
     _hideBouncer(animated) {
         this._settle?.stop();
         this._settle = null;
@@ -887,7 +887,7 @@ export class Keyguard extends Signals.EventEmitter {
         }
     }
 
-    // --- the unlock: the keyguard goes, the screen behind comes up from 95 % (keyguard-extras §D.3-D.5)
+    // --- the unlock: the keyguard goes, the screen behind comes up from 95 %
 
     // The shell's "unlock-dialog" mode, left: only while it is still the current one. GNOME's own screen shield,
     // locking alongside on a suspend or a logind Lock, pops the same mode when it unlocks; popping it a second time

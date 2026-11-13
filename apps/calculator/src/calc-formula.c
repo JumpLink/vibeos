@@ -5,9 +5,9 @@
 #include <math.h>
 #include <neo.h>
 
-#define LONG_PRESS_MS      400          /* ViewConfiguration.getLongPressTimeout () */
-#define SIZE_CHANGE_MS     400          /* config_mediumAnimTime */
-#define UNPROCESSED_COLOR  0xff0000     /* Color.RED */
+#define LONG_PRESS_MS      400          /* held this long, a press is a long press */
+#define SIZE_CHANGE_MS     400          /* the text size change's animation */
+#define UNPROCESSED_COLOR  0xff0000     /* red */
 
 struct _CalcFormula {
   GtkWidget       parent;
@@ -134,8 +134,7 @@ calc_formula_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (0, 0, w, gtk_widget_get_height (widget)));
   gtk_snapshot_save (snapshot);
   if (self->anim_scale != 1) {
-    /* about the text view's bottom end, less its padding: where Calculator.onTextSizeChanged's scale and
-     * translation leave a point fixed */
+    /* about the text's bottom end, less its padding: the point the scale and the translation leave fixed */
     graphene_point_t pivot = GRAPHENE_POINT_INIT (tv_left + tv_width - self->pad_end, h - self->pad_bottom);
 
     gtk_snapshot_translate (snapshot, &pivot);
@@ -168,7 +167,7 @@ calc_formula_measure (GtkWidget *widget, GtkOrientation orientation, int for_siz
 
   *minimum = *natural = 0;
   if (orientation == GTK_ORIENTATION_VERTICAL) {
-    /* a history row's: wrap_content */
+    /* a history row's: as tall as its line */
     double height = calc_text_view_height (self->pad_top, self->pad_bottom, self->size, neo_device_scale (widget));
 
     *minimum = *natural = (int) ceil (height - 0.001);
@@ -182,7 +181,7 @@ calc_formula_size_allocate (GtkWidget *widget, int width, int height, int baseli
   double constraint = width - self->pad_start - self->pad_end;
 
   if (constraint != self->width_constraint) {
-    /* onMeasure: the size follows the width, without telling anyone */
+    /* the size follows the width, without telling anyone */
     self->width_constraint = constraint;
     self->size = calc_formula_get_variable_text_size (self, self->text);
   }
@@ -266,7 +265,7 @@ on_drag_update (GtkGestureDrag *drag, double dx, double dy, CalcFormula *self)
   if (fabs (dx) > slop || fabs (dy) > slop)
     stop_long_press (self);
   if (!self->dragging) {
-    /* HorizontalScrollView: a drag past the slop sideways scrolls it, and keeps the window from taking it */
+    /* a drag past the slop sideways scrolls it, and keeps the window from taking it */
     if (fabs (dx) <= slop || fabs (dx) <= fabs (dy) || max_scroll (self) <= 0)
       return;
     self->dragging = TRUE;
@@ -393,7 +392,7 @@ calc_formula_new (double min_size, double max_size, double step)
   self->min_size = min_size;
   self->max_size = max_size;
   self->step = step > 0 ? step : (max_size - min_size) / 3;
-  /* the first measure starts from the largest size (onMeasure: !isLaidOut) */
+  /* the first measure starts from the largest size */
   self->size = max_size;
   return GTK_WIDGET (self);
 }
@@ -437,7 +436,7 @@ calc_formula_set_text (CalcFormula *self, const char *text, const char *unproces
   self->processed_len = strlen (text ? text : "");
   self->layout_dirty = TRUE;
   gtk_accessible_update_property (GTK_ACCESSIBLE (self), GTK_ACCESSIBLE_PROPERTY_LABEL, self->text, -1);
-  /* onTextChanged: setTextSize (getVariableTextSize (text)), which tells the listener */
+  /* a new text: the size it fits at, and "text-size-changed" when that is new */
   size = calc_formula_get_variable_text_size (self, self->text);
   if (size != old_size) {
     self->size = size;

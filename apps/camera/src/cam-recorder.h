@@ -1,4 +1,4 @@
-/* cam-recorder: one video recording, H.264 + AAC in MP4, as Aperture's files are (§11, §24.7).
+/* cam-recorder: one video recording, H.264 + AAC in MP4.
  *
  *   appsrc (the stream's frames, from cam_pipeline_set_recording) ! <H.264 encoder> ! taginject ! mp4mux
  *   pulsesrc ! audioconvert ! audioresample ! volume ! <AAC encoder>                         ! mp4mux
@@ -6,7 +6,7 @@
  *
  * Both pipelines run on the same clock, so a frame's capture time becomes the recording's time exactly, and the
  * microphone's samples line up with it. A pause drops frames and samples alike and takes the paused time out of
- * both (CameraX's recording does not count paused time either). The picture is not turned: the file carries the
+ * both. The picture is not turned: the file carries the
  * turn as its track matrix (the image-orientation tag), as a phone's recordings do. */
 #pragma once
 

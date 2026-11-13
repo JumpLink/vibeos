@@ -1,4 +1,4 @@
-/* Search: Etar's SearchActivity, pushed over the views from the overflow menu's "Search". */
+/* Search: the search page, pushed over the views from the overflow menu's "Search". */
 #pragma once
 
 #include <gtk/gtk.h>

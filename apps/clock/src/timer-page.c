@@ -1,5 +1,4 @@
-/* TimerPage: see timer-page.h. Measured on the reference phone: a card 16 dp in from the sides and 8 dp under the
- * top of the tab. */
+/* TimerPage: see timer-page.h. */
 #include "timer-page.h"
 #include "clock-tab.h"
 #include "elapsed.h"
@@ -11,10 +10,10 @@
 #include <neo.h>
 #include <spongy-gtk.h>
 
-#define CARD_MARGIN  16         /* MaterialCardViewStyle: marginStart and marginEnd */
-#define CARD_GAP     8          /* ... marginTop, and timer_item's marginBottom */
-#define UPDATE_MS    20         /* TimeUpdateRunnable */
-#define CHANGE_MS    400        /* MEDIUM: the slide; each fade takes half of it */
+#define CARD_MARGIN  16         /* a card, in from the sides */
+#define CARD_GAP     8          /* ... and over and under it */
+#define UPDATE_MS    20         /* between updates of the time */
+#define CHANGE_MS    400        /* the slide; each fade takes half of it */
 
 struct _TimerPage
 {
@@ -24,12 +23,12 @@ struct _TimerPage
   GtkWidget *setup, *scroller, *list;
   GtkWidget *probe;             /* a card never shown, to know how tall a card's ring is before there is a card */
   GArray *ids;                  /* the timers the cards show, in their order */
-  gboolean loaded;              /* the timers came: the tab knows which view to open on (onStart) */
+  gboolean loaded;              /* the timers came: the tab knows which view to open on */
   gboolean list_when_loaded;    /* a notification asked for the list before that */
-  gboolean on_list;             /* the view on screen is the list (mCurrentView == mTimersView) */
+  gboolean on_list;             /* the view on screen is the list */
   guint update;
 
-  /* the change of view (animateToView) */
+  /* the change of view */
   NeoAnim *change;
   gboolean to_list, switched;
   double distance;              /* how far the old view slides; the new one comes from as far the other way */
@@ -66,8 +65,8 @@ on_update (gpointer data)
       timer_card_update (TIMER_CARD (card), timer, start);
       running |= timer->state == TIMER_RUNNING || timer->state == TIMER_EXPIRED || timer->state == TIMER_MISSED;
     }
-  /* every 20 ms while a timer counts or blinks (DeskClock goes on with paused ones too, which never change; any
-   * change of state comes through "changed") */
+  /* every 20 ms while a timer counts or blinks (not for paused ones, which never change; any change of state comes
+   * through "changed") */
   if (running)
     self->update = g_timeout_add (MAX (0, start + UPDATE_MS - elapsed_now ()), on_update, self);
   return G_SOURCE_REMOVE;
@@ -87,8 +86,8 @@ start_updating (TimerPage *self)
     on_update (self);
 }
 
-/* the cards in the client's order: the ones still there kept, new ones made, the others gone. `added` and
- * `removed` say whether any came or went (timerAdded, timerRemoved). */
+/* the cards in the client's order: the ones still there kept, new ones made, the others gone. `added` and `removed` say
+ * whether any came or went. */
 static void
 sync_cards (TimerPage *self, GPtrArray *timers, gboolean *added, gboolean *removed)
 {
@@ -146,7 +145,7 @@ apply_offsets (TimerPage *self)
   gtk_widget_queue_allocate (GTK_WIDGET (self));
 }
 
-/* one view or the other at once (showTimersView, showCreateTimerView) */
+/* one view or the other at once */
 static void
 show_view (TimerPage *self, gboolean list)
 {
@@ -202,7 +201,7 @@ on_change (NeoAnim *anim, double value, gpointer data)
   apply_offsets (self);
 }
 
-/* animateToView: `down` for "+" and Start, up for Cancel and the last timer going */
+/* the views change places: `down` for "+" and Start, up for Cancel and the last timer going */
 static void
 change_view (TimerPage *self, gboolean to_list, gboolean down)
 {
@@ -241,14 +240,14 @@ on_changed (TimersClient *client, TimerPage *self)
   sync_cards (self, timers, &added, &removed);
   if (!self->loaded)
     {
-      /* onStart: the keypad when there are no timers, the list when there are */
+      /* first: the keypad when there are no timers, the list when there are */
       self->loaded = TRUE;
       show_view (self, self->list_when_loaded || has_timers (self));
       clock_tab_update_buttons (CLOCK_TAB (self), CLOCK_ALL_IMMEDIATE);
       return;
     }
-  /* (TimerWatcher) a timer coming or going may change Cancel; not in the middle of a change of view, whose end sets
-   * the buttons anyway. The list with its last timer gone gives way to the keypad. */
+  /* a timer coming or going may change Cancel; not in the middle of a change of view, whose end sets the buttons
+   * anyway. The list with its last timer gone gives way to the keypad. */
   if ((added || removed) && !changing (self))
     clock_tab_update_buttons (CLOCK_TAB (self), CLOCK_ALL_IMMEDIATE);
   if (removed && self->on_list && !has_timers (self))
@@ -282,8 +281,7 @@ on_added (guint id, gpointer data)
   timers_client_start (timers_client_get (), id);
 }
 
-/* onUpdateFab, onUpdateFabButtons: on the list "+"; on the keypad Start once something is typed, and Cancel when
- * there are timers to go back to */
+/* on the list "+"; on the keypad Start once something is typed, and Cancel when there are timers to go back to */
 static void
 timer_page_get_buttons (ClockTab *tab, ClockButton *buttons)
 {
@@ -302,7 +300,7 @@ timer_page_get_buttons (ClockTab *tab, ClockButton *buttons)
     buttons[CLOCK_LEFT] = (ClockButton) { "clock-delete-symbolic", _("Cancel") };
 }
 
-/* getFabTargetVisibility: the keypad counts as having a FAB when it has input or there are timers */
+/* the keypad counts as having a FAB when it has input or there are timers */
 static gboolean
 timer_page_has_fab (ClockTab *tab)
 {

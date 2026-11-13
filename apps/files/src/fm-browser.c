@@ -67,7 +67,7 @@ browser_of (GCancellable *cancellable)
   return g_object_get_data (G_OBJECT (cancellable), "fm-browser");
 }
 
-/* ---- the path bar (§2) ------------------------------------------------------------------------------------------- */
+/* ---- the path bar ------------------------------------------------------------------------------------------------ */
 
 static void
 on_home_crumb (NeoPressable *crumb, FmBrowser *b)
@@ -95,7 +95,7 @@ on_up (NeoPressable *up, FmBrowser *b)
     fm_shell_open_location (b->shell, b->place->root);
 }
 
-/* ic_pathbar_devider's place (a 7 x 12 dp chevron): the theme's go-next at 12 dp */
+/* the path bar's separator: the theme's go-next icon, in place of the original's chevron */
 static GtkWidget *
 chevron (void)
 {
@@ -217,7 +217,7 @@ pathbar_new (FmBrowser *b)
   return bar;
 }
 
-/* ---- counting the folders' items (§3) ---------------------------------------------------------------------------- */
+/* ---- counting the folders' items --------------------------------------------------------------------------------- */
 
 typedef struct {
   GPtrArray *items;             /* FmItem */
@@ -424,7 +424,7 @@ list_message (FmBrowser *b)
     fm_list_set_message (b->list, NULL);
 }
 
-/* ---- the Local Network's hosts (§6.3) ------------------------------------------------------------------------------ */
+/* ---- the Local Network's hosts ------------------------------------------------------------------------------------- */
 
 /* whether a listed host is @address or is called @name (GVfs's network:/// rows target smb://NAME/ or smb://host.local/) */
 static gboolean
@@ -542,7 +542,7 @@ load_finish (FmBrowser *b)
     record_visit (b);
   b->record = FALSE;
   pathbar_build (b);
-  /* the free space of the filesystem below a location's root (§2) */
+  /* the free space of the filesystem below a location's root */
   if (!g_file_equal (b->location, b->place->root) && b->place->kind != FM_PLACE_TRASH
       && b->place->kind != FM_PLACE_RECENT && b->place->kind != FM_PLACE_NETWORK)
     {
@@ -772,7 +772,7 @@ on_activate (FmList *list, FmItem *item, FmBrowser *b)
   fm_shell_open_item_location (b->shell, location, fm_item_is_folder (item));
 }
 
-/* a search result's long press (context_search): Open, Open location */
+/* a search result's long press: Open, Open location */
 static void
 on_result_menu (int index, gpointer data)
 {
@@ -832,7 +832,7 @@ on_selection_changed (FmList *list, FmBrowser *b)
   fm_shell_update_bars (b->shell);
 }
 
-/* ---- search (§7) --------------------------------------------------------------------------------------------------- */
+/* ---- search -------------------------------------------------------------------------------------------------------- */
 
 typedef struct {
   GFile *from, *root;
@@ -1121,7 +1121,7 @@ fm_browser_new (FmShell *shell)
   g_signal_connect (b->list, "long-press", G_CALLBACK (on_long_press), b);
   g_signal_connect (b->list, "selection-changed", G_CALLBACK (on_selection_changed), b);
   gtk_overlay_set_child (GTK_OVERLAY (list_box), GTK_WIDGET (b->list));
-  /* the RefreshProgressBar under the path bar while a folder is being listed */
+  /* the thin progress bar under the path bar while a folder is being listed */
   b->loading = fm_progress_new (2.67);
   gtk_widget_set_valign (b->loading, GTK_ALIGN_START);
   gtk_widget_set_visible (b->loading, FALSE);

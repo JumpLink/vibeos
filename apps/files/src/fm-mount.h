@@ -1,4 +1,4 @@
-/* Mounting a server's share (spec §6.4): g_file_mount_enclosing_volume with a GMountOperation whose questions are
+/* Mounting a server's share: g_file_mount_enclosing_volume with a GMountOperation whose questions are
  * the app's dialogs. The password goes to GVfs only, with G_PASSWORD_SAVE_PERMANENTLY when it is to be remembered:
  * GVfs keeps it in the Secret Service, and the app writes it nowhere. */
 #pragma once

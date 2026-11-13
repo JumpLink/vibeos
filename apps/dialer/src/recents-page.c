@@ -1,6 +1,4 @@
-/* The Recents tab: see recents-page.h. The rules are CallLogAdapter's, CallLogGroupBuilder's,
- * CallLogListItemViewHolder's and PhoneCallDetailsHelper's (dialer/app/calllog); the geometry is
- * call_log_list_item.xml's, measured on still:dialer-recents and still:dialer-recents-expanded (spec §5.2–§5.4). */
+/* The Recents tab: see recents-page.h. Calls are grouped and described by the rules of Lineage's call log. */
 #include "recents-page.h"
 #include "avatar.h"
 #include "blocked-numbers.h"
@@ -18,39 +16,39 @@
 #include <glib/gi18n.h>
 #include <spongy-gtk.h>
 
-#define LIST_PAD_X      8       /* the RecyclerView's paddingStart/End */
-#define LIST_PAD_BOTTOM 88      /* floating_action_button_list_bottom_padding: room under the FAB */
-#define HEADER_START    8       /* call_log_start_margin */
-#define HEADER_PAD_TOP  15      /* call_log_day_group_padding_top */
+#define LIST_PAD_X      8
+#define LIST_PAD_BOTTOM 88      /* room at the foot, so the dialpad button covers no row */
+#define HEADER_START    8
+#define HEADER_PAD_TOP  15      /* above a day's header (Today, Yesterday) */
 #define HEADER_PAD_BOTTOM 9
-#define CARD_MARGIN     4       /* CallLogCardStyle */
+#define CARD_MARGIN     4
 #define CARD_RADIUS     28
-#define ROW_PAD         8       /* call_log_vertical_padding, call_log_start_margin, call_log_outer_margin */
-#define PHOTO           48      /* contact_photo_size */
-#define PHOTO_PAD_TOP   2       /* the badge's paddingTop: the picture is 46 dp, 2 dp down */
-#define INFO_START      16      /* call_log_list_item_info_margin_start */
-#define NAME_GAP        2       /* call_log_name_margin_bottom */
-#define ICON_MARGIN     2       /* call_log_icon_margin */
-#define TYPE_ICON       12      /* call_type_icon_size */
-#define BUTTON          48      /* call_log_list_item_primary_action_dimen */
-#define ACTION_HEIGHT   48      /* call_log_action_height */
+#define ROW_PAD         8       /* round a row's contents */
+#define PHOTO           48
+#define PHOTO_PAD_TOP   2       /* the picture is PHOTO less this, this far down */
+#define INFO_START      16
+#define NAME_GAP        2       /* under the name */
+#define ICON_MARGIN     2       /* after each call-type arrow */
+#define TYPE_ICON       12
+#define BUTTON          48      /* the call button */
+#define ACTION_HEIGHT   48      /* a row of the expanded actions */
 #define ACTION_ICON     24
 #define ACTION_ICON_START 16
-#define ACTION_TEXT_PAD 24      /* call_log_action_horizontal_padding */
-#define EXPAND_MS       200     /* animateActions */
-#define MAX_TYPE_ICONS  3       /* PhoneCallDetailsHelper.MAX_CALL_TYPE_ICONS */
+#define ACTION_TEXT_PAD 24
+#define EXPAND_MS       200     /* the actions opening and closing */
+#define MAX_TYPE_ICONS  3       /* call-type arrows on a line; more calls add a count */
 #define FIRST_ROWS      20      /* rows made at once; the rest come in chunks while idle */
 #define CHUNK_ROWS      30
 
-/* rendered colours (spec §5.3, §5.4) */
-#define CARD_EXPANDED   0x242727        /* cardBackgroundColor, neutral1_50 made dark */
-#define TYPE_INCOMING   0x007fc6        /* answered_incoming_call × the vector's own #BDC1C6 tint */
+/* the expanded row's card and the call-type arrows */
+#define CARD_EXPANDED   0x242727
+#define TYPE_INCOMING   0x007fc6
 #define TYPE_OUTGOING   0x009740
 #define TYPE_MISSED     0x922b20
-#define TYPE_PLAIN      0xf6f7f8        /* colorIcon × #BDC1C6, inverted */
+#define TYPE_PLAIN      0xf6f7f8
 
 #define HEADER_STYLE    TEXT_OVERLINE
-#define NAME_STYLE(bold)  ((TextStyle) { TEXT_ROBOTO, 16, (bold) ? 900 : 700 })  /* Typeface.DEFAULT / _BOLD */
+#define NAME_STYLE(bold)  ((TextStyle) { TEXT_ROBOTO, 16, (bold) ? 900 : 700 })  /* bold: an unseen missed call */
 #define DATE_STYLE(bold)  ((TextStyle) { TEXT_ROBOTO, 14, (bold) ? 900 : 700 })
 
 /* ---- an entry: calls in a row with the same number --------------------------------------------------------- */
@@ -102,7 +100,7 @@ group_id (const Group *group)
 static gboolean
 same_line (const CallLogEntry *a, const CallLogEntry *b, const char *country)
 {
-  /* CallLogGroupBuilder.equalNumbers: numbers with * # , ; only group when they are the same characters */
+  /* numbers with * # , ; only group when they are the same characters */
   if (strpbrk (a->number, "*#,;") || strpbrk (b->number, "*#,;"))
     return g_str_equal (a->number, b->number);
   if (!*a->number || !*b->number)
@@ -110,7 +108,7 @@ same_line (const CallLogEntry *a, const CallLogEntry *b, const char *country)
   return phone_number_equal (a->number, b->number, country);
 }
 
-/* the conditions under which a call joins the entry above it (addGroups): the same number, never voicemail,
+/* the conditions under which a call joins the entry above it: the same number, never voicemail,
  * blocked calls only with blocked ones */
 static gboolean
 joins (const CallLogEntry *group, const CallLogEntry *call, const char *country)
@@ -122,7 +120,7 @@ joins (const CallLogEntry *group, const CallLogEntry *call, const char *country)
   return same_line (group, call, country);
 }
 
-/* PhoneCallDetailsHelper.getCallTypeOrLocation and setNameView: for a contact, the kind of the number (or the
+/* the line under the name: for a contact, the kind of the number (or the
  * number, when it has no kind); for anyone else, where the number is from, which needs a geocoder this phone does
  * not have (libphonenumber's offline one), so nothing */
 static void
@@ -156,7 +154,7 @@ group_resolve (Group *group, Contacts *contacts, const char *country)
     }
 }
 
-/* CallLogGroupBuilder.addGroups over the log, newest first */
+/* the entries: calls in a row with the same number grouped, over the log, newest first */
 static GPtrArray *
 make_groups (GPtrArray *entries, Contacts *contacts, const char *country)
 {
@@ -180,7 +178,7 @@ make_groups (GPtrArray *entries, Contacts *contacts, const char *country)
           group->day = call_dates_day_group (entry->date, now);
           group->header = (int) group->day != last_day;
           last_day = group->day;
-          /* only a missed call is ever bold (details.isRead) */
+          /* only a missed call is ever bold */
           group->unread = entry->type == CALL_TYPE_MISSED && !entry->is_read;
           g_ptr_array_add (groups, group);
           first = entry;
@@ -224,7 +222,7 @@ type_icon (CallType type, const char **icon, guint32 *color)
     }
 }
 
-/* ---- what an entry shows: primary_action_view --------------------------------------------------------------- */
+/* ---- what an entry shows ------------------------------------------------------------------------------------ */
 
 #define RECENTS_TYPE_CONTENT (recents_content_get_type ())
 G_DECLARE_FINAL_TYPE (RecentsContent, recents_content, RECENTS, CONTENT, GtkWidget)
@@ -244,7 +242,7 @@ G_DEFINE_FINAL_TYPE (RecentsContent, recents_content, GTK_TYPE_WIDGET)
 static double
 icons_width (const Group *group)
 {
-  /* CallTypeIconsView: each 12 dp arrow is square, with 2 dp after it */
+  /* each arrow is square, with ICON_MARGIN after it */
   return group->n_types * (TYPE_ICON + ICON_MARGIN);
 }
 
@@ -269,7 +267,7 @@ lay_out (RecentsContent *self, double width)
   self->laid_out = width;
   g_clear_object (&self->name);
   g_clear_object (&self->date);
-  /* the name in Roboto (Typeface.DEFAULT), bold while a missed call is unseen; ellipsized */
+  /* the name, bold while a missed call is unseen; ellipsized */
   self->name = text_layout (GTK_WIDGET (self), NAME_STYLE (group->unread), group->name, column - ICON_MARGIN);
   /* "[(N) ]<kind or place>, <when>": the count only past the three arrows. The style the XML asks for never
    * applies (it lacks "@style/"), so the line wraps instead of ellipsizing */
@@ -287,7 +285,7 @@ lay_out (RecentsContent *self, double width)
 static double
 content_height (RecentsContent *self)
 {
-  /* the picture, the text and the button side by side, the row 8 dp around them */
+  /* the picture, the text and the button side by side, ROW_PAD around them */
   return ROW_PAD + MAX (MAX (PHOTO, self->text_height), self->call ? BUTTON : 0) + ROW_PAD;
 }
 
@@ -336,7 +334,7 @@ recents_content_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   GdkTexture *photo = group->photo ? avatar_photo (widget, group->uid, group->photo) : NULL;
 
   lay_out (self, gtk_widget_get_width (widget));
-  /* the badge sits at the top (layout_gravity top), its picture 46 dp under a 2 dp padding */
+  /* the badge sits at the top, its picture under PHOTO_PAD_TOP of padding */
   avatar_snapshot (snapshot, widget, ROW_PAD + PHOTO / 2.0, ROW_PAD + PHOTO_PAD_TOP + (PHOTO - PHOTO_PAD_TOP) / 2.0,
                    PHOTO - PHOTO_PAD_TOP, group->identifier, group->is_contact ? group->name : NULL, photo);
 
@@ -498,7 +496,7 @@ recents_row_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 
       text_draw (snapshot, self->header, HEADER_STYLE, HEADER_START, HEADER_PAD_TOP, &color);
     }
-  /* the CardView clips what it holds to its outline: the actions go under its rounded foot as it shrinks */
+  /* the card clips what it holds to its outline: the actions go under its rounded foot as it shrinks */
   gsk_rounded_rect_init_from_rect (&outline, &card, CARD_RADIUS);
   gtk_snapshot_push_rounded_clip (snapshot, &outline);
   if (self->color_progress > 0)
@@ -526,7 +524,7 @@ on_send_message (RecentsRow *self)
     g_warning ("recents: %s: %s", uri, error->message);
 }
 
-/* IntentProvider.getAddContactIntentProvider: the number to a new contact, or to one picked in the Contacts app */
+/* "Add contact": the number to a new contact, or to one picked in the Contacts app */
 static void
 on_create_contact (RecentsRow *self)
 {
@@ -584,7 +582,7 @@ action_row (RecentsRow *self, const char *icon_name, const char *text, GCallback
   return row;
 }
 
-/* bindActionButtons (spec §5.4), for what this phone can back: no video calls, no call subjects, no voicemail.
+/* the action buttons, for what this phone can back: no video calls, no call subjects, no voicemail.
  * An emergency number has "Call details" alone; a number that is not a contact can become one (or be added to
  * one) where the Contacts app is there to take it; a number can be texted and blocked or unblocked unless it is
  * blocked (texting) or withheld; "Call details" always */
@@ -647,8 +645,8 @@ on_anim (NeoAnim *anim, double value, gpointer data)
 {
   RecentsRow *self = data;
 
-  /* expanding: the height and the colour along ACCEL_DECEL; collapsing: the height DECEL, the colour the
-   * ValueAnimator default, ACCEL_DECEL too */
+  /* expanding: the height and the colour accelerate-decelerate; collapsing: the height decelerating, the colour
+   * accelerate-decelerate too */
   self->height_progress = self->expanded ? spongy_curve (SPONGY_ACCELERATE_DECELERATE, value)
                                          : 1 - spongy_curve (SPONGY_DECELERATE, value);
   self->color_progress = self->expanded ? spongy_curve (SPONGY_ACCELERATE_DECELERATE, value)
@@ -679,7 +677,7 @@ recents_row_set_expanded (RecentsRow *self, gboolean expanded, gboolean animate)
     }
 }
 
-/* a tap on a contact's picture is the QuickContactBadge's: the contact's card; anywhere else on the entry opens it */
+/* a tap on a contact's picture opens the contact's card; anywhere else on the entry opens it */
 static void
 on_primary_clicked (RecentsRow *self)
 {
@@ -727,7 +725,7 @@ recents_row_set_group (RecentsRow *self, Group *group)
     self->header = text_layout (GTK_WIDGET (self), HEADER_STYLE, call_dates_day_group_name (group->day), 0);
   if (group->callable && !content->call)
     {
-      /* quantum_ic_call in a 48 dp borderless button, ?colorIcon */
+      /* the call button, borderless */
       content->call = neo_icon_button_new ("dialer-call-symbolic");
       gtk_widget_add_css_class (content->call, "dialer-icon");
       neo_pressable_set_ripple_color (NEO_PRESSABLE (content->call), &(GdkRGBA) { 1, 1, 1, 0.06 });
@@ -783,7 +781,7 @@ recents_row_init (RecentsRow *self)
 
   self->content = g_object_new (RECENTS_TYPE_CONTENT, NULL);
   self->primary = neo_pressable_new (GTK_WIDGET (self->content));
-  /* ?selectableItemBackground, white 12 % under force dark, inside the card's corners */
+  /* the press ripple, inside the card's corners */
   neo_pressable_set_ripple (NEO_PRESSABLE (self->primary), NEO_RIPPLE_BOUNDED, CARD_RADIUS);
   neo_pressable_set_ripple_color (NEO_PRESSABLE (self->primary), &(GdkRGBA) { 1, 1, 1, 0.06 });
   gtk_widget_set_parent (self->primary, GTK_WIDGET (self));
@@ -912,7 +910,7 @@ on_loaded (GObject *source, GAsyncResult *result, gpointer data)
   else
     {
       self->has_calls = entries->len > 0;
-      /* CallLogQueryHandler's TYPE = MISSED_TYPE: the missed calls alone, grouped among themselves */
+      /* the missed calls alone, grouped among themselves */
       for (guint i = entries->len; self->missed_only && i-- > 0;)
         if (((CallLogEntry *) entries->pdata[i])->type != CALL_TYPE_MISSED)
           g_ptr_array_remove_index (entries, i);
@@ -943,7 +941,7 @@ on_log_changed (RecentsPage *self)
   load (self);
 }
 
-/* a tap on an entry: it opens and the one open before closes (CallLogAdapter's expandCollapseListener) */
+/* a tap on an entry: it opens and the one open before closes */
 static void
 page_row_clicked (RecentsPage *self, RecentsRow *row)
 {
@@ -958,14 +956,14 @@ page_row_clicked (RecentsPage *self, RecentsRow *row)
   for (GtkWidget *child = gtk_widget_get_first_child (self->list); child; child = gtk_widget_get_next_sibling (child))
     if (RECENTS_ROW (child)->expanded)
       recents_row_set_expanded (RECENTS_ROW (child), FALSE, TRUE);
-  /* opening a missed call marks it seen (markCallAsRead) */
+  /* opening a missed call marks it seen */
   if (row->group->types[0] == CALL_TYPE_MISSED && row->group->unread)
     calls_client_mark_calls_read (calls_client_get (), (gint64 *) row->group->ids->data, row->group->ids->len);
   recents_row_set_expanded (row, TRUE, TRUE);
   self->expanded_id = id;
 }
 
-/* ---- the context menu (CallLogListItemViewHolder.onCreateContextMenu) ------------------------------------------ */
+/* ---- the context menu ------------------------------------------------------------------------------------------ */
 
 typedef struct
 {
@@ -1059,7 +1057,7 @@ on_unblock_response (NeoDialog *dialog, int response, gpointer data)
     }
 }
 
-/* BlockReportSpamDialogs (spec §5.8.1): "Block %s?", and the platform's own filtering, which takes texts too */
+/* "Block %s?": into the list the Messaging shares, so it takes texts too */
 static void
 on_menu_block (gpointer data)
 {
@@ -1078,7 +1076,7 @@ on_menu_block (gpointer data)
   neo_dialog_present (dialog, GTK_WIDGET (target->page));
 }
 
-/* §5.8.3: no title, the question is the message */
+/* "Unblock …?": no title, the question is the message */
 static void
 on_menu_unblock (gpointer data)
 {
@@ -1124,8 +1122,7 @@ page_show_details (RecentsPage *self, RecentsRow *row)
   g_signal_emit (self, signals[SHOW_DETAILS], 0, row->group->number, (int) row->group->presentation, row->group->ids);
 }
 
-/* the number as a header, then Copy number, Edit number before call, Block or Unblock number and Delete
- * (CallLogListItemViewHolder.onCreateContextMenu, spec §5.7.1) */
+/* the number as a header, then Copy number, Edit number before call, Block or Unblock number and Delete */
 static void
 page_row_menu (RecentsPage *self, RecentsRow *row)
 {
@@ -1170,7 +1167,7 @@ on_dialed (guint id, const GError *error, gpointer data)
   g_object_unref (self);
 }
 
-/* the call-back button: the call goes out at once (PreCall), the in-call screen comes up */
+/* the call-back button: the call goes out at once, the in-call screen comes up */
 static void
 page_call (RecentsPage *self, const char *number)
 {
@@ -1245,7 +1242,7 @@ recents_page_init (RecentsPage *self)
   self->stack = gtk_stack_new ();
   gtk_widget_set_parent (self->stack, GTK_WIDGET (self));
 
-  /* the RecyclerView: 8 dp in from the sides, 88 dp of room at the foot, no scroll bar */
+  /* the list: in from the sides, room at the foot, no scroll bar */
   self->list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_margin_start (self->list, LIST_PAD_X);
   gtk_widget_set_margin_end (self->list, LIST_PAD_X);
@@ -1265,8 +1262,8 @@ page_new (Contacts *contacts, NeoSnackbar *snackbar, gboolean missed_only, gbool
   self->contacts = g_object_ref (contacts);
   self->snackbar = snackbar;
   self->missed_only = missed_only;
-  /* CallLogFragment's empty view: the clock picture, the line, and in the Recents tab "Make a call" (the dialpad);
-   * Call history's pages have no action (spec §5.6.3) */
+  /* the empty view: the clock picture, the line, and in the Recents tab "Make a call" (the dialpad);
+   * Call history's pages have no action */
   self->empty = empty_view_new ("dialer-empty-call-log-symbolic",
                                 missed_only ? _("You have no missed calls.") : _("Your call history is empty"),
                                 can_call ? _("Make a call") : NULL, on_make_call, self);

@@ -1,13 +1,11 @@
-/* MaterialDatePicker (cal-date-picker.h; spec/calendar.md §8.1). Sizes are the still's, in dp.
+/* The date dialog (cal-date-picker.h).
  *
- * The text input mode (SingleDateSelector.onCreateTextInputView, mtrl_picker_text_input_date.xml): the pencil
- * swaps the month and its days for an outlined "Date" field 16 dp under the header, 12 dp in from the sides, with
- * the locale's short date as its pattern (UtcDates.getDefaultTextInputFormat: "M/d/yy" → "MM/dd/yyyy") and that
- * pattern in the abbreviations as its placeholder ("mm/dd/yyyy", "tt.mm.jjjj"). Typing forward adds the pattern's
- * next separator (DateFormatTextWatcher.afterTextChanged); every change clears the choice (the header "Selected
+ * The text input mode: the pencil swaps the month and its days for an outlined "Date" field with the locale's short
+ * date as its pattern ("M/d/yy" → "MM/dd/yyyy") and that pattern in the abbreviations as its placeholder ("mm/dd/yyyy",
+ * "tt.mm.jjjj"). Typing forward adds the pattern's next separator; every change clears the choice (the header "Selected
  * date", OK off) until the text is as long as the pattern and parses strictly to a day from 1900 to 2100; a second
- * after typing stops, a text that does not parse shows "Invalid format." with the pattern and today as an example,
- * a day outside the range "Out of range: …", both in colorError under the field, with the error icon in it. The
+ * after typing stops, a text that does not parse shows "Invalid format." with the pattern and today as an example, a
+ * day outside the range "Out of range: …", both in the error colour under the field, with the error icon in it. The
  * calendar icon goes back to the days, at the month of the day typed. */
 #include "cal-date-picker.h"
 #include "cal-colors.h"
@@ -27,25 +25,25 @@
 #include <unicode/ustring.h>
 
 #define CARD_WIDTH 328.0
-#define CELL 40.0                       /* a day's cell; 4 dp between columns */
+#define CELL 40.0                       /* a day's cell */
 #define COLUMN_GAP 4.0
-#define DAY_CIRCLE 36.0                 /* the selection and today's ring: the cell inset 2 dp */
+#define DAY_CIRCLE 36.0                 /* the selection and today's ring, inside the cell */
 #define DAY_TEXT_SIZE 16.0
 #define GRID_ROWS 6
 #define YEAR_FIRST 1900
 #define YEAR_LAST 2100
 #define SWIPE_SLOP 8.0
 #define NO_DAY 0                        /* no day chosen (a day number is 1 or more) */
-#define FIELD_HEIGHT 56.0               /* the M3 outlined text field */
+#define FIELD_HEIGHT 56.0               /* the outlined text field */
 #define FIELD_PADDING 16.0
 #define FIELD_CORNER 4.0
-#define FIELD_TEXT_SIZE 16.0            /* bodyLarge */
-#define LABEL_SIZE 12.0                 /* bodySmall: the label on the outline */
-#define LABEL_CUTOUT 4.0                /* mtrl_textinput_box_label_cutout_padding */
-#define LABEL_MS 167                    /* CollapsingTextHelper's animation */
+#define FIELD_TEXT_SIZE 16.0
+#define LABEL_SIZE 12.0                 /* the label on the outline */
+#define LABEL_CUTOUT 4.0                /* the outline's gap at each side of the label */
+#define LABEL_MS 167                    /* the label floating up or down */
 #define ERROR_ICON 24.0
 #define ERROR_ICON_END 12.0
-#define VALIDATION_MS 1000              /* DateFormatTextWatcher.VALIDATION_DELAY */
+#define VALIDATION_MS 1000              /* the wait after typing before an error shows */
 #define ERROR_ICON_PATH "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"
 
 typedef struct {
@@ -155,7 +153,7 @@ cal_day_grid_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
       gsk_rounded_rect_init_from_rect (&round, &circle, DAY_CIRCLE / 2);
       if (day == picker->selected)
         {
-          /* the choice: filled colorPrimary, its number onPrimary */
+          /* the choice: filled in the primary colour */
           gtk_snapshot_push_rounded_clip (snapshot, &round);
           gtk_snapshot_append_color (snapshot, &primary, &circle);
           gtk_snapshot_pop (snapshot);
@@ -163,7 +161,7 @@ cal_day_grid_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
         }
       else if (day == today)
         {
-          /* today: a 1 dp ring and its number in colorPrimary */
+          /* today: a ring and its number in the primary colour */
           float widths[4] = { 1, 1, 1, 1 };
           GdkRGBA colors[4] = { primary, primary, primary, primary };
 
@@ -228,7 +226,7 @@ on_grid_drag_update (GtkGestureDrag *gesture, double dx, double dy, CalDayGrid *
 static void
 on_grid_drag_end (GtkGestureDrag *gesture, double dx, double dy, CalDayGrid *self)
 {
-  /* the months page (ViewPager2): a swipe past a third of the width goes to the next or previous one */
+  /* the months: a swipe past a third of the width goes to the next or previous one */
   if (self->swiping && fabs (dx) > gtk_widget_get_width (GTK_WIDGET (self)) / 3)
     show_month (self->picker, self->picker->month + (dx < 0 ? 1 : -1));
   self->drag_x = 0;
@@ -265,7 +263,7 @@ cal_day_grid_init (CalDayGrid *self)
 static void
 update (Picker *picker)
 {
-  /* with nothing chosen (a date being typed) the header says so and OK is off (isSelectionComplete) */
+  /* with nothing chosen (a date being typed) the header says so and OK is off */
   g_autofree char *selection = picker->selected != NO_DAY ? cal_format_picker_date (picker->selected)
                                                           : g_strdup (_("Selected date"));
   g_autofree char *month = cal_format_month_year (month_start (picker->month));
@@ -304,7 +302,7 @@ on_year (NeoPressable *button, Picker *picker)
   gtk_widget_set_visible (picker->next, TRUE);
 }
 
-/* the year shown in view, rows of three, 52 dp each: once the list has its size (scrolled before it is laid out,
+/* the year shown in view, rows of three: once the list has its size (scrolled before it is laid out,
  * the view clamps the offset to the top) */
 static gboolean
 scroll_to_year (GtkWidget *years, GdkFrameClock *clock, gpointer data)
@@ -374,7 +372,7 @@ years_list (Picker *picker)
 
       gtk_widget_add_css_class (button, "cal-year");
       gtk_widget_set_halign (button, GTK_ALIGN_CENTER);
-      /* YearGridAdapter: the year of the chosen day filled, this year outlined */
+      /* the year of the chosen day filled, this year outlined */
       if (picker->selected != NO_DAY && year == month_of (picker->selected) / 12)
         gtk_widget_add_css_class (button, "selected");
       else if (year == this_year)
@@ -395,7 +393,7 @@ years_list (Picker *picker)
   }
 }
 
-/* --- the text input mode: the outlined field (TextInputLayout.OutlinedBox under Material 3) */
+/* --- the text input mode: the outlined field */
 
 #define CAL_TYPE_DATE_FIELD (cal_date_field_get_type ())
 G_DECLARE_FINAL_TYPE (CalDateField, cal_date_field, CAL, DATE_FIELD, GtkWidget)
@@ -406,7 +404,7 @@ struct _CalDateField {
   char *label;
   char *placeholder;
   gboolean error;
-  double floated;               /* the label: 0 in the field at 16 sp, 1 on the outline at 12 sp */
+  double floated;               /* the label: 0 in the field, 1 on the outline, smaller */
   NeoAnim *float_anim;
   GskPath *error_icon;
 };
@@ -424,7 +422,7 @@ static void
 cal_date_field_allocate (GtkWidget *widget, int width, int height, int baseline)
 {
   CalDateField *self = CAL_DATE_FIELD (widget);
-  /* the end icon's 48 dp take the text's end padding while the error shows */
+  /* the error icon and its margins take the text's end padding while the error shows */
   int end = self->error ? (int) (ERROR_ICON + 2 * ERROR_ICON_END) : (int) FIELD_PADDING, text_height, ignored;
 
   gtk_widget_measure (self->text, GTK_ORIENTATION_VERTICAL, -1, &ignored, &text_height, NULL, NULL);
@@ -483,7 +481,7 @@ on_float (NeoAnim *anim, double value, gpointer data)
   gtk_widget_queue_draw (GTK_WIDGET (data));
 }
 
-/* the label floats with the focus or a text; the placeholder shows only then, under it (TextInputLayout) */
+/* the label floats with the focus or a text; the placeholder shows only then, under it */
 static void
 field_restate (CalDateField *self, gboolean animate)
 {
@@ -541,7 +539,7 @@ cal_date_field_init (CalDateField *self)
   self->error_icon = gsk_path_parse (ERROR_ICON_PATH);
   self->float_anim = neo_anim_new (GTK_WIDGET (self), on_float, self);
   self->text = gtk_text_new ();
-  /* inputType date: the digits and the separators */
+  /* a date: the digits and the separators */
   gtk_text_set_input_purpose (GTK_TEXT (self->text), GTK_INPUT_PURPOSE_NUMBER);
   gtk_accessible_update_property (GTK_ACCESSIBLE (self->text), GTK_ACCESSIBLE_PROPERTY_LABEL, self->label, -1);
   gtk_widget_set_parent (self->text, GTK_WIDGET (self));
@@ -564,7 +562,7 @@ field_set_error (CalDateField *self, gboolean error)
   gtk_widget_queue_draw (GTK_WIDGET (self));
 }
 
-/* --- the input format (UtcDates) */
+/* --- the input format */
 
 static char *
 utf8 (const UChar *text, int32_t length)
@@ -592,7 +590,7 @@ regex_replace (const char *text, const char *pattern, const char *replacement)
   return g_regex_replace_literal (regex, text, -1, 0, replacement, 0, NULL);
 }
 
-/* getDefaultTextInputFormat → getDatePatternAsInputFormat: the locale's SHORT date as digits only */
+/* the locale's SHORT date as digits only */
 static char *
 input_pattern (void)
 {
@@ -621,7 +619,7 @@ input_pattern (void)
   return steps[5];
 }
 
-/* getDefaultTextInputHint: the pattern in the abbreviations mtrl_picker_text_input_{day,month,year}_abbr */
+/* the pattern in the translated abbreviations of day, month and year */
 static char *
 input_hint (const char *pattern)
 {
@@ -674,7 +672,7 @@ format_day (UDateFormat *format, int day)
   return U_SUCCESS (status) ? utf8 (text, length) : NULL;
 }
 
-/* DateStrings.getYearMonthDay's skeleton yMMMd, for a day before year 1 that the header's format cannot show */
+/* ICU's skeleton yMMMd, for a day before year 1 that the header's format cannot show */
 static char *
 format_far_day (UDate ms)
 {
@@ -701,7 +699,7 @@ format_far_day (UDate ms)
   return out;
 }
 
-/* sanitizeDateString: no line break inside a date */
+/* no line break inside a date */
 static char *
 no_break (const char *text)
 {
@@ -728,7 +726,7 @@ on_validation (gpointer data)
   return G_SOURCE_REMOVE;
 }
 
-/* DateFormatTextWatcher.onTextChanged: the choice cleared, then the text parsed once it is as long as the hint */
+/* a change: the choice cleared, then the text parsed once it is as long as the hint */
 static void
 validate (Picker *picker, const char *text)
 {
@@ -807,7 +805,7 @@ on_date_changed (GtkEditable *editable, Picker *picker)
 
   if (picker->setting_text)
     return;
-  /* afterTextChanged: typing forward, the pattern's next character when it is a separator */
+  /* typing forward, the pattern's next character when it is a separator */
   if (length > 0 && length < hint_length && length > picker->last_length)
     {
       gunichar next = g_utf8_get_char (g_utf8_offset_to_pointer (picker->hint, length));
@@ -832,7 +830,7 @@ on_date_changed (GtkEditable *editable, Picker *picker)
   validate (picker, text);
 }
 
-/* DateKeyListener: digits and the separators a date may have */
+/* digits and the separators a date may have */
 static void
 on_date_insert (GtkEditable *editable, const char *text, int length, int *position, Picker *picker)
 {
@@ -844,7 +842,7 @@ on_date_insert (GtkEditable *editable, const char *text, int length, int *positi
       }
 }
 
-/* mtrl_picker_text_input_date: the field 16 dp under the header, 12 dp in from the sides, the error under it */
+/* the text input: the field under the header, the error under it */
 static GtkWidget *
 text_input (Picker *picker)
 {
@@ -868,7 +866,7 @@ text_input (Picker *picker)
   return pane;
 }
 
-/* the pencil and the calendar icon (MaterialDatePicker.toggleInputMode) */
+/* the pencil and the calendar icon */
 static void
 on_mode_toggle (NeoPressable *button, Picker *picker)
 {
@@ -952,8 +950,7 @@ cal_date_picker_show (GtkWidget *parent, const char *title, int day, int week_st
   picker->pattern = input_pattern ();
   picker->hint = input_hint (picker->pattern);
 
-  /* the header: the title, then the chosen date large, the pencil at its end (mtrl_picker_header_toggle: 48 dp,
-   * 12 dp from the card's end, 8 dp over the header's end) */
+  /* the header: the title, then the chosen date large, the pencil at its end */
   gtk_widget_add_css_class (header, "cal-date-header");
   gtk_label_set_xalign (GTK_LABEL (title_label), 0);
   gtk_widget_add_css_class (title_label, "cal-date-title");
@@ -973,7 +970,7 @@ cal_date_picker_show (GtkWidget *parent, const char *title, int day, int week_st
   g_signal_connect (picker->toggle, "clicked", G_CALLBACK (on_mode_toggle), picker);
   gtk_box_append (GTK_BOX (selection_row), picker->toggle);
   gtk_box_append (GTK_BOX (header), selection_row);
-  /* no divider under it: MaterialDatePicker draws one in its fullscreen mode only (none on still:cal-dlg-date) */
+  /* no divider under it */
   gtk_box_append (GTK_BOX (content), header);
 
   /* the month: "November 2026 ▾" (the year list), ‹ › */
@@ -1029,7 +1026,7 @@ cal_date_picker_show (GtkWidget *parent, const char *title, int day, int week_st
   gtk_widget_add_css_class (content, "cal-date-picker");
   neo_dialog_set_flush (dialog, TRUE);
   neo_dialog_set_content (dialog, content);
-  /* the card is the content's parent: its own class takes the M3 picker's colour and button band */
+  /* the card is the content's parent: its own class takes the picker's colour and button band */
   gtk_widget_add_css_class (gtk_widget_get_parent (content), "cal-date-card");
   neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
   picker->ok = neo_dialog_add_button (dialog, _("OK"), NEO_RESPONSE_OK);

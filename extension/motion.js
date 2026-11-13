@@ -1,11 +1,11 @@
-// Android's motion, run on Clutter's frame clock: the interpolators, FlingAnimationUtils, the AndroidX springs, the
-// velocity tracker, and an animator that calls back once per frame.
+// The shell's motion, run on Clutter's frame clock: easing curves, fling durations, springs, a velocity tracker,
+// and an animator that calls back once per frame.
 import Clutter from 'gi://Clutter';
 
 export const lerp = (a, b, t) => a + (b - a) * t;
 export const clamp = (v, lo = 0, hi = 1) => Math.min(Math.max(v, lo), hi);
 
-// cubic-bezier(x1, y1, x2, y2) as a function of x in [0, 1] (PathInterpolator)
+// cubic-bezier(x1, y1, x2, y2) as a function of x in [0, 1]
 export function bezier(x1, y1, x2, y2) {
     const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx;
     const cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
@@ -44,7 +44,7 @@ export function bezier(x1, y1, x2, y2) {
     };
 }
 
-// Interpolators.java
+// the standard easing curves
 export const FAST_OUT_SLOW_IN = bezier(0.4, 0, 0.2, 1);
 export const LINEAR_OUT_SLOW_IN = bezier(0, 0, 0.2, 1);
 export const FAST_OUT_LINEAR_IN = bezier(0.4, 0, 1, 1);
@@ -54,11 +54,12 @@ export const EMPHASIZED_DECELERATE = bezier(0.05, 0.7, 0.1, 1);
 export const EMPHASIZED_ACCELERATE = bezier(0.3, 0, 0.8, 0.15);
 export const LINEAR = x => x;
 
-// The fling threshold and the speed above which FAU treats a fling as fast, screen px/s
+// The fling threshold and the speed above which a fling counts as fast, screen px/s
 export const MIN_FLING_VELOCITY = 750;
-const HIGH_VELOCITY = 3000;     // the dp/s constant FAU compares with px/s (a bug kept on purpose, spec §2.4)
+const HIGH_VELOCITY = 3000;     // low for a 3x screen, which makes most flings fast; kept, the motion is tuned to it
 
-// FlingAnimationUtils.apply: the duration (ms) and interpolator to move from @cur to @end at @velocity (px/s)
+// A fling: the duration (ms) and interpolator to move from @cur to @end at @velocity (px/s), the curve starting at
+// the finger's speed
 // maxLength in s; maxDistance in px (the cap scales with sqrt(diff / maxDistance))
 export function fling(cur, end, velocity, {maxLength = 0.6, speedUpFactor = 0, maxDistance} = {}) {
     const diff = Math.abs(end - cur);
@@ -89,7 +90,7 @@ export function fling(cur, end, velocity, {maxLength = 0.6, speedUpFactor = 0, m
     return {duration: duration * 1000, interpolator};
 }
 
-// FlingAnimationUtils.applyDismissing (FAU:294-339): the notification dismiss fling
+// The notification dismiss fling: as fling(), capped by how far the row still has to go
 export function flingDismissing(cur, end, velocity, rowWidth, {maxLength = 0.4} = {}) {
     const diff = Math.abs(end - cur);
     const v = Math.abs(velocity);
@@ -101,8 +102,8 @@ export function flingDismissing(cur, end, velocity, rowWidth, {maxLength = 0.4} 
     return {duration: duration * 1000, interpolator};
 }
 
-// OverScroller's fling (SplineOverScroller): how far and how long a scroll flung at @velocity (px/s) runs, and its
-// position curve; @density is px per dp
+// A flung scroll: how far and how long it runs at @velocity (px/s), and its position curve, a spline that slows
+// down as friction would; @density is the display's scale (screen px per unit)
 const INFLEXION = 0.35;
 const DECELERATION_RATE = Math.log(0.78) / Math.log(0.9);
 const SPLINE_SAMPLES = 100;
@@ -132,7 +133,7 @@ const SPLINE_POSITION = (() => {
 
 export function splineFling(velocity, density = 3) {
     const physicalCoeff = 9.80665 * 39.37 * density * 160 * 0.84;
-    const friction = 0.015 * physicalCoeff;             // ViewConfiguration.getScrollFriction()
+    const friction = 0.015 * physicalCoeff;             // the scroll friction
     const v = Math.abs(velocity);
     if (v === 0)
         return {distance: 0, duration: 0, position: () => 1};
@@ -150,7 +151,7 @@ export function splineFling(velocity, density = 3) {
     return {distance, duration, position};
 }
 
-// AndroidX SpringForce: F = -k x - 2 zeta sqrt(k) v, mass 1. Steps exactly (closed form) over any dt.
+// A damped spring: F = -k x - 2 zeta sqrt(k) v, mass 1. Steps exactly (closed form) over any dt.
 export class Spring {
     constructor({stiffness = 1500, dampingRatio = 1, value = 0, velocity = 0, target = 0, threshold = 0.001} = {}) {
         this.stiffness = stiffness;
@@ -199,14 +200,14 @@ export class Spring {
     }
 }
 
-// VelocityTracker, the LSQ2 strategy: a quadratic least-squares fit of the last 100 ms of positions; px/s.
+// The pointer's velocity: a quadratic least-squares fit of the last 100 ms of positions; px/s.
 //
-// Android's tracker sees every sample a touch made (a MotionEvent carries the ones batched since the last as its
-// history), and so takes a 40 ms gap between two for a pointer that stopped. Clutter merges the moves that queue up
-// while the shell is busy into the last of them: after a stall of 60-80 ms as the shade showed, a fast pull came as
-// two samples 96 ms and 940 px apart, read as a stop, and the shade fell shut (2026-11-04). Here a pointer stopped
-// only if it is also where it was; and the sample before the newest is kept past 100 ms, for a longer stall.
-const STOPPED_SLOP = 24;            // screen px, 8 dp
+// A tracker that sees every sample a touch made can take a 40 ms gap between two for a pointer that stopped.
+// Clutter merges the moves that queue up while the shell is busy into the last of them: after a stall of 60-80 ms
+// as the shade showed, a fast pull came as two samples 96 ms and 940 px apart, read as a stop, and the shade fell
+// shut (2026-11-04). Here a pointer stopped only if it is also where it was; and the sample before the newest is
+// kept past 100 ms, for a longer stall.
+const STOPPED_SLOP = 24;            // screen px
 
 export class VelocityTracker {
     constructor() {
@@ -220,7 +221,7 @@ export class VelocityTracker {
     // t in ms, x and y in screen px
     add(t, x, y) {
         const last = this._samples.at(-1);
-        // a pause of 40 ms means the pointer stopped (VelocityTracker::ASSUME_POINTER_STOPPED_TIME)
+        // a pause of 40 ms means the pointer stopped
         if (last && t - last.t > 40 && Math.hypot(x - last.x, y - last.y) < STOPPED_SLOP)
             this._samples = [];
         this._samples.push({t, x, y});

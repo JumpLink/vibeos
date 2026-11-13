@@ -1,25 +1,24 @@
-/* The Browser's look: LineageOS Jelly on the reference phone (spec/jelly.md §10). Sizes are dp (1 CSS px at scale
- * 3), colours the Material 3 roles libneo defines (@neo_*). Weights are the effective ones with Bold text on:
- * Regular 700, Medium 800. Label sizes are set in code (nb_label), with the font padding of a TextView. */
+/* The Browser's look, LineageOS Jelly's. Sizes are GTK px, colours the roles libneo defines (@neo_*). Weights are
+ * Bold text's heavier ones: regular 700, medium 800. Label sizes are set in code (nb_label), with font padding. */
 
 window.nb {
   background-color: @neo_surface;
 }
 
-/* ==== the browser page (§2) ==== */
+/* ==== the browser page ==== */
 
 .nb-browser,
 .nb-view {
   background-color: @neo_surface;
 }
 
-/* the app bar: 64 dp of colorSurface */
+/* the app bar */
 .nb-bar {
   background-color: @neo_surface;
   min-height: 64px;
 }
 
-/* urlCardView: 16 / 8 / 4 / 8 dp around it, 48 dp tall, a full pill of colorSurfaceVariant */
+/* the address card: a pill */
 .nb-url-card {
   background-color: @neo_surface_container_highest;
   border-radius: 32px;
@@ -27,7 +26,7 @@ window.nb {
   min-height: 48px;
 }
 
-/* the search group's card: 4 / 8 dp (§4) */
+/* the find-in-page card */
 .nb-find-card {
   background-color: @neo_surface_container_highest;
   border-radius: 32px;
@@ -43,7 +42,7 @@ window.nb {
   color: @neo_on_surface_variant;
 }
 
-/* an ImageButton's tint has no disabled state: previous / next are not dimmed (§4); GTK's theme halves a disabled
+/* the icon buttons' tint has no disabled state: previous / next are not dimmed; GTK's theme halves a disabled
  * image (-gtk-icon-filter) */
 .nb-bar-icon:disabled,
 .nb-bar-icon:disabled image {
@@ -68,7 +67,7 @@ entry.nb-find-entry {
 /* the colour as it is: GTK's theme draws a placeholder at 0.55 opacity */
 entry.nb-url-entry > text > placeholder,
 entry.nb-find-entry > text > placeholder {
-  color: #919b9c;                /* textColorHint, measured (§4.3) */
+  color: #919b9c;
   opacity: 1;
 }
 
@@ -83,7 +82,7 @@ entry.nb-field-entry selection {
   color: @neo_on_surface;
 }
 
-/* the suggestions: colorSurface, flat, as wide as the card (§2.1) */
+/* the suggestions: flat, as wide as the card */
 .nb-dropdown {
   background-color: @neo_surface;
 }
@@ -103,7 +102,7 @@ entry.nb-field-entry selection {
   margin-left: 40px;
 }
 
-/* the invisible "Back" the shell's gesture clicks (§11): there, showing, never seen */
+/* the invisible "Back" the shell's gesture clicks: there, showing, never seen */
 .nb-back-probe {
   opacity: 0;
   min-width: 48px;
@@ -114,9 +113,9 @@ entry.nb-field-entry selection {
   box-shadow: none;
 }
 
-/* ==== the menu (§3) ==== */
+/* ==== the menu ==== */
 
-/* the two androidx CardViews: cardElevation 2 dp */
+/* the menu's two cards, slightly raised */
 .nb-menu-top,
 .nb-menu-card {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
@@ -125,7 +124,7 @@ entry.nb-field-entry selection {
 .nb-menu-top {
   background-color: @neo_surface_container_highest;
   border-radius: 28px;
-  padding: 12px 16px;            /* 4 dp + the icons' 12 dp margins */
+  padding: 12px 16px;            /* the card's padding and the icons' margins */
 }
 
 .nb-menu-top-icon {
@@ -141,12 +140,12 @@ entry.nb-field-entry selection {
   padding: 8px 0;
 }
 
-/* MenuItem 12 dp either side, MenuItemTitle 12 dp above and below: 48 dp rows */
+/* the padding makes each row a thumb's height */
 .nb-menu-item {
   padding: 12px;
 }
 
-/* the Desktop site row: the switch's 48 dp sets its height */
+/* the Desktop site row: the switch sets its height */
 .nb-menu-item.nb-menu-switch-item {
   padding: 0 12px;
 }
@@ -162,13 +161,12 @@ entry.nb-field-entry selection {
   background-color: @neo_surface_container_highest;
 }
 
-/* ==== sheets (§5.1, §5.3, §7.2) ==== */
+/* ==== sheets ==== */
 
 .nb-sheet-box {
   background-color: @neo_surface;
 }
 
-/* Theme.Jelly.BottomSheetLayout: 60 dp, 16 dp padding, colorSurface */
 .nb-sheet-row {
   min-height: 28px;
   padding: 16px;
@@ -189,8 +187,8 @@ entry.nb-field-entry selection {
   padding: 16px 16px 8px 16px;
 }
 
-/* Launcher3's add-item sheet: surfaceContainer, 28 dp top corners, 24 dp above the title, 11 dp in; the actions'
- * 8 dp padding is all there is under the pills (measured: their bottom 8 dp above the screen's) */
+/* the add-to-home sheet, as the launcher's add-item sheet: rounded at the top; the actions' padding is all there is
+ * under the pills */
 .nb-pin-sheet {
   background-color: @neo_surface_container;
   border-radius: 28px 28px 0 0;
@@ -202,13 +200,12 @@ entry.nb-field-entry selection {
   margin: 0 11px;
 }
 
-/* textColorSecondary of Launcher3's theme at alpha 0.7: #bec8c9 measured under the alpha */
 .nb-pin-hint {
   color: alpha(#bec8c9, 0.7);
   margin: 8px 11px 0 11px;
 }
 
-/* the preview: widgets_surface_background, 16 dp around it; the cell 16 dp in at the top */
+/* the preview: a card around the shortcut's cell */
 .nb-pin-card {
   background-color: @neo_surface_bright;
   border-radius: 28px;
@@ -234,8 +231,8 @@ entry.nb-field-entry selection {
   padding: 8px 0;
 }
 
-/* Button.FullRounded.Colored: 48 dp pills, 16 dp in, at least 88 dp wide (Widget.Material.Button's minWidth, which
- * counts the padding: GTK's min-width does not) */
+/* filled pills, never too narrow to hit: GTK's min-width leaves the padding out, so this min-width and the padding
+ * add up to the minimum */
 .nb-pin-button {
   background-color: #b8ebf3;
   border-radius: 24px;
@@ -249,7 +246,7 @@ entry.nb-field-entry selection {
   font-weight: 800;
 }
 
-/* ==== dialogs (Theme.Jelly.AlertDialog) ==== */
+/* ==== dialogs ==== */
 
 .nb-dialog {
   background-color: @neo_surface;
@@ -258,7 +255,7 @@ entry.nb-field-entry selection {
 
 .nb-dialog-title {
   font-size: 24px;
-  font-weight: 700;              /* headlineSmall 400 */
+  font-weight: 700;
   color: @neo_on_surface;
   margin: 18px 24px 0 24px;
 }
@@ -273,7 +270,7 @@ entry.nb-field-entry selection {
   color: @neo_on_surface_variant;
 }
 
-/* buttonBar: 14 dp above and below, 24 dp at the end, the neutral one 12 dp from the start */
+/* the button bar: less room at the start, where the neutral button sits */
 .nb-dialog-buttons {
   padding: 14px 24px 14px 12px;
 }
@@ -286,7 +283,7 @@ entry.nb-field-entry selection {
   padding: 16px 24px 0 24px;
 }
 
-/* ListPreference's list: 48 dp rows, the radio 26 dp in, the text at 72 dp */
+/* a single-choice list: a radio, then the text */
 .nb-list {
   margin-top: 16px;
 }
@@ -314,12 +311,12 @@ entry.nb-field-entry selection {
   color: @neo_on_surface_variant;
 }
 
-/* the deleting dialog: 20 dp padding, the spinner and the message 1 : 4 */
+/* the deleting dialog: a spinner beside the message */
 .nb-deleting {
   padding: 20px;
 }
 
-/* the outlined text field (TextInputLayout.OutlinedBox) */
+/* the outlined text field */
 .nb-field {
   margin-top: 8px;
 }
@@ -403,7 +400,7 @@ entry.nb-field-entry > text > placeholder {
   color: @neo_on_surface;
 }
 
-/* the toast (as Calculator's): surfaceContainerHigh, 28 dp corners, 48 dp tall */
+/* the toast, as Calculator's */
 .nb-toast {
   background-color: @neo_surface_container_high;
   border-radius: 28px;
@@ -415,7 +412,7 @@ entry.nb-field-entry > text > placeholder {
   color: @neo_on_surface;
 }
 
-/* the Material 3 snackbar: inverse colours */
+/* the snackbar: inverse colours */
 window.nb .neo-snackbar {
   background-color: @neo_inverse_surface;
 }
@@ -428,14 +425,13 @@ window.nb .neo-snackbar .neo-text-button {
   color: @neo_inverse_primary;
 }
 
-/* ==== the pages (§6, §7) ==== */
+/* ==== the pages ==== */
 
 .nb-page {
   background-color: @neo_surface;
 }
 
-/* MaterialToolbar: 64 dp, the up arrow onSurfaceVariant, the title onSurface (22 sp, set in code), actions
- * onSurface */
+/* the pages' toolbar: the up arrow, the title (its size set in code), the actions */
 .nb-toolbar {
   min-height: 64px;
   background-color: @neo_surface;
@@ -453,7 +449,7 @@ window.nb .neo-snackbar .neo-text-button {
   color: @neo_on_surface;
 }
 
-/* toolbar_elevation once the list scrolls */
+/* the toolbar's shadow once the list scrolls */
 .nb-toolbar-shadow {
   min-height: 6px;
   background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0));
@@ -473,8 +469,7 @@ window.nb .neo-snackbar .neo-text-button {
   padding: 19px 64px 0 64px;
 }
 
-/* History: 60 dp rows, 16 dp either side */
-/* the row is 60 dp at least, its two lines centred in it (gravity center_vertical) */
+/* History: a row's two lines centred in it */
 .nb-history-row {
   padding: 0 16px;
 }
@@ -492,12 +487,12 @@ window.nb .neo-snackbar .neo-text-button {
   color: @neo_on_surface_variant;
 }
 
-/* Favorites: the grid 12 dp in, cards 4 dp apart with 8 dp inside, the title 12 dp above and below */
+/* Favorites: a grid of cards */
 .nb-fav-grid {
   padding: 0 12px;
 }
 
-/* the card's 8 dp contentPadding is the title's margin: a pressable's fill covers its content box only */
+/* the card's inner padding is the title's margin: a pressable's fill covers its content box only */
 .nb-fav-card {
   margin: 4px;
   border-radius: 2px;
@@ -517,7 +512,7 @@ window.nb .neo-snackbar .neo-text-button {
   color: #ffffff;
 }
 
-/* Downloads, as DocumentsUI's list: surfaceBright, 56 dp rows 8 dp in, a black 32 dp icon tile */
+/* Downloads: each file's type on a black tile */
 .nb-downloads,
 .nb-downloads .nb-toolbar {
   background-color: @neo_surface_bright;
@@ -539,7 +534,7 @@ window.nb .neo-snackbar .neo-text-button {
   min-height: 32px;
 }
 
-/* the type's glyph, one colour as DocumentsUI's: a theme's full-colour fallback is not taken */
+/* the type's glyph, in one colour: a theme's full-colour fallback is not taken */
 .nb-download-glyph {
   color: #737373;
   -gtk-icon-style: symbolic;
@@ -553,7 +548,7 @@ window.nb .neo-snackbar .neo-text-button {
   color: @neo_on_surface_variant;
 }
 
-/* Desktop shortcuts: 72 dp rows, 15 dp in, the name 15 dp after the checkbox */
+/* Desktop shortcuts: a checkbox, then the name */
 .nb-shortcut-row {
   min-height: 72px;
   padding: 0 15px;
@@ -564,7 +559,7 @@ window.nb .neo-snackbar .neo-text-button {
   margin: 0 15px 5px 15px;
 }
 
-/* ==== Settings (§8) ==== */
+/* ==== Settings ==== */
 
 .nb-settings-header {
   background-color: @neo_surface;
@@ -600,7 +595,7 @@ window.nb .neo-snackbar .neo-text-button {
   color: @neo_on_surface_variant;
 }
 
-/* PreferenceCategory: 16 dp over it, the title 8 dp in a 14 sp line, secondary */
+/* a preference category's title, in the secondary colour */
 .nb-pref-category {
   color: @neo_secondary;
   font-weight: 800;
@@ -613,7 +608,7 @@ window.nb .neo-snackbar .neo-text-button {
 
 /* ==== the tab count and the tab switcher (nb-switcher.c) ==== */
 
-/* Chrome's tab count: the number in a 2 dp rounded square, the bar's icon colour */
+/* the tab count: the number in a rounded square, in the bar's icon colour */
 .nb-tab-count {
   border: 2px solid currentColor;
   border-radius: 5px;
@@ -628,7 +623,7 @@ window.nb .neo-snackbar .neo-text-button {
   padding: 12px;
 }
 
-/* a card: the tab's line over its page, 16 dp corners; the tab shown is outlined in primary */
+/* a card: the tab's line over its page; the tab shown is outlined */
 .nb-tab-card {
   background-color: @neo_surface_container_high;
   border: 2px solid transparent;

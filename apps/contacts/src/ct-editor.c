@@ -1,14 +1,13 @@
-/* The contact editor (ct-editor.h, spec §4).
+/* The contact editor (ct-editor.h).
  *
  * The screen top to bottom: the toolbar (✕, "Create new contact" / "Edit contact", SAVE), the photo (width / 1.96),
- * the account header ("Saving to"), then the sections in RawContactEditorView's order: name, nickname, company,
+ * the account header ("Saving to"), then the sections in this order: name, nickname, company,
  * phone, email, address, website, event, relation, note, labels; "More fields" while any of them is hidden; and the
  * read-only IM and SIP rows ("Can't update this info").
  *
- * A section is the kind's icon in a 68 dp column and its rows; a row is its fields (54 dp each, an underline 4 dp in
- * from both sides), the type spinner under them for the typed kinds, and a 56 dp column at the end with the
- * delete ✕ (or the name's chevron). Every section keeps exactly one empty row at its bottom, which is how a new
- * number or address is added (KindSectionView.updateEmptyNonNameEditors).
+ * A section is the kind's icon in a column of its own and its rows; a row is its fields (each underlined), the type
+ * spinner under them for the typed kinds, and a column at the end with the delete ✕ (or the name's chevron). Every
+ * section keeps exactly one empty row at its bottom, which is how a new number or address is added.
  *
  * Saving builds the vCard over the one that was loaded: a row that was not edited keeps its original property with
  * every parameter (ct-contact.h), so nothing the editor does not show is lost.
@@ -16,7 +15,7 @@
  * Left out, for want of anything to back them: Take photo (no app here returns a camera picture) and the crop step
  * after choosing one (the picture is cut to its centre square); join suggestions, the linked-contacts picker and
  * the read-only "View only" mode (EDS does not aggregate, and every address book here is writable); typing-time
- * phone number formatting (PhoneNumberFormattingTextWatcher); deleting a read-only IM or SIP row; and the rows'
+ * phone number formatting; deleting a read-only IM or SIP row; and the rows'
  * slide animations: rows fade in and out, the rows under them move at once. */
 #include "ct-editor.h"
 #include "ct-avatar.h"
@@ -46,7 +45,7 @@ typedef enum {
   N_SECTIONS
 } SectionId;
 
-/* what each section is (§4.9) */
+/* what each section is */
 typedef struct {
   CtKind kind;
   const char *icon;             /* NULL: the nickname's empty icon slot */
@@ -59,7 +58,7 @@ typedef struct {
   gboolean shown_empty;         /* Phone and Email: shown before "More fields" even when empty */
   GtkInputPurpose purpose;
   GtkInputHints input_hints;
-  /* the primary types a new row takes, the first one not used yet (RawContactModifier.getBestValidType) */
+  /* the primary types a new row takes, the first one not used yet */
   int new_types[16];
 } SectionKind;
 
@@ -176,7 +175,7 @@ on_text_view_changed (GtkTextBuffer *buffer, GtkWidget *placeholder)
 
 /* A finger on a field that does not have the focus is the scroll view's: GtkText claims a touch the moment it
  * lands (to place the cursor or select), and a claim cancels the scroll view's drag, so a page full of fields could
- * not be scrolled by them as Android's ScrollView is. Until the field has the focus its touches stop here, after
+ * not be scrolled by them. Until the field has the focus its touches stop here, after
  * the scroll view (an ancestor) has seen them in the capture phase; a touch that ends where it began focuses the
  * field with the cursor at the end of its text. Once focused, the field has its touches (cursor, selection). */
 static gboolean
@@ -212,8 +211,8 @@ on_field_touch (GtkEventControllerLegacy *controller, GdkEvent *event, GtkWidget
   return GDK_EVENT_STOP;
 }
 
-/* A framework EditText: 54 dp tall, the text 4 dp in from the column and the underline under it (1 dp #737373,
- * 2 dp #33666d when focused, 8 dp above the bottom: edit_text_material's insets). @changed runs on every edit. */
+/* A text field: the text with the underline under it, thicker and in the accent colour when focused.
+ * @changed runs on every edit. */
 static GtkWidget *
 field_new (const char *hint, const char *text, gboolean multiline, GtkInputPurpose purpose, GtkInputHints hints,
            GCallback changed, gpointer data, GtkWidget **editable)
@@ -314,7 +313,7 @@ row_type_label (Row *row)
                                                    : _(ct_type_label (row->section->kind->kind, row->type, row->label));
 }
 
-/* the spinner's label: #dbdbdb, or the hint colour while the row is empty (EditTypeAdapter.getView) */
+/* the spinner's label: the text colour, or the hint colour while the row is empty */
 static void
 update_spinner (Row *row)
 {
@@ -327,7 +326,7 @@ update_spinner (Row *row)
     gtk_widget_remove_css_class (row->spinner, "empty");
 }
 
-/* the ✕: invisible while the row is empty (LabeledEditorView :239-243) */
+/* the ✕: invisible while the row is empty */
 static void
 update_delete (Row *row)
 {
@@ -343,7 +342,7 @@ on_row_changed (Row *row)
 
   update_delete (row);
   update_spinner (row);
-  /* FIELD_TURNED_EMPTY / _NON_EMPTY: keep one empty row at the bottom */
+  /* a field turned empty or not: keep one empty row at the bottom */
   if (empty != row->was_empty)
     {
       row->was_empty = empty;
@@ -382,7 +381,7 @@ fade_free (gpointer data)
   g_free (fade);
 }
 
-/* EditorAnimator: a row going fades out over 200 ms; a new one fades in over 200 ms after 200 ms */
+/* a row going fades out over 200 ms; a new one fades in over 200 ms after 200 ms */
 static void
 fade_row (Row *row, gboolean in)
 {
@@ -409,7 +408,7 @@ fade_row (Row *row, gboolean in)
     }
 }
 
-/* onDeleteRequested: the only row of a section is cleared, not removed */
+/* delete: the only row of a section is cleared, not removed */
 static void
 on_delete (NeoPressable *button, Row *row)
 {
@@ -440,7 +439,7 @@ on_delete (NeoPressable *button, Row *row)
     else
       gtk_editable_set_text (GTK_EDITABLE (row->fields[i]), "");
   g_clear_pointer (&row->date, g_free);
-  /* an event's birthday that goes leaves the empty row a Birthday again (restoreBirthday) */
+  /* an event's birthday that goes leaves the empty row a Birthday again */
   if (section->id == S_EVENT)
     for (guint i = 0; i < section->row_list->len; i++)
       {
@@ -506,7 +505,7 @@ on_custom_label (const char *text, gpointer data)
     gtk_widget_grab_focus (row->fields[0]);
 }
 
-/* an event whose type needs a year (all but Birthday) gets this year when its date has none (onLabelRebuilt) */
+/* an event whose type needs a year (all but Birthday) gets this year when its date has none */
 static void
 event_require_year (Row *row)
 {
@@ -547,7 +546,7 @@ on_type_chosen (int index, gpointer data)
   event_require_year (row);
 }
 
-/* the spinner's list (getValidTypes): the custom label first if the row has one, then every type of the Device
+/* the spinner's list: the custom label first if the row has one, then every type of the Device
  * account's list, less a Birthday another row has */
 static void
 on_spinner (NeoPressable *spinner, Row *row)
@@ -576,8 +575,8 @@ on_spinner (NeoPressable *spinner, Row *row)
   ct_popup_show (GTK_WIDGET (spinner), labels, menu.n, CT_POPUP_SPINNER, 0, 0, 0, on_type_chosen, &menu);
 }
 
-/* Widget.Material.Spinner.Underlined (§4.11): the label, the ▾ 12 dp from the end, the underline; as wide as the
- * widest label + 56 dp */
+/* an underlined spinner: the label, the ▾ near the end, the underline; as wide as the widest label and
+ * room for the ▾ (CT_ED_SPINNER_EXTRA_DP) */
 static GtkWidget *
 spinner_new (Row *row)
 {
@@ -637,7 +636,7 @@ on_date_button (NeoPressable *button, Row *row)
   ct_date_dialog (row->section->editor->page, year, month, day, row->type == 3, on_date_chosen, row);
 }
 
-/* SpinnerButtonStyle: the date (or "Date" in the hint colour) and the ▾ at the far end of the column */
+/* a spinner button: the date (or "Date" in the hint colour) and the ▾ at the far end of the column */
 static GtkWidget *
 date_button_new (Row *row)
 {
@@ -665,7 +664,7 @@ date_button_new (Row *row)
   return button;
 }
 
-/* the 56 dp end column's ✕ (#61000000 SRC_ATOP: #9e9e9e), centred on the whole row */
+/* the end column's ✕, centred on the whole row */
 static GtkWidget *
 delete_button_new (Row *row)
 {
@@ -732,7 +731,7 @@ add_row (Section *section, CtItem *item, gboolean animate)
   return row;
 }
 
-/* KindSectionView.updateEmptyNonNameEditors: exactly one empty row at the bottom (none more once a single-row kind
+/* exactly one empty row at the bottom (none more once a single-row kind
  * has its row); empty rows without the focus go when there are more of them */
 static void
 update_empty_rows (Section *section)
@@ -783,7 +782,7 @@ update_section (Section *section)
   update_more_fields (section->editor);
 }
 
-/* item_kind_section: the kind's icon (24 dp, 16 dp in, 14 dp down, ≈#e5e5e5) in a 68 dp column, then the rows */
+/* a section: the kind's icon in its column, then the rows */
 static GtkWidget *
 section_new (Editor *editor, SectionId id)
 {
@@ -824,7 +823,7 @@ on_name_changed (Editor *editor)
 }
 
 /* the name's fields: First and Last name, or with the chevron open Prefix, First, Middle, Last, Suffix (given
- * before family: config_editor_field_order_primary) */
+ * before family) */
 static void
 build_name_fields (Editor *editor)
 {
@@ -855,7 +854,7 @@ build_name_fields (Editor *editor)
   for (int i = 0; i < 5; i++)
     {
       editor->name_fields[i] = NULL;
-      /* the optional ones only when open, or when they have something (mHideOptional && empty) */
+      /* the optional ones only when open, or when they have something */
       if ((i == 0 || i == 2 || i == 4) && !editor->name_expanded && !*values[i])
         continue;
       gtk_box_append (GTK_BOX (column), field_new (_(hints[i]), values[i], FALSE, GTK_INPUT_PURPOSE_NAME,
@@ -917,7 +916,7 @@ name_section (Editor *editor)
   g_object_set_data (G_OBJECT (row), "ct-column", column);
   gtk_box_append (GTK_BOX (row), column);
   editor->name_row = row;
-  /* the chevron: 56 dp, beside the first field (gravity top), #eaeaea */
+  /* the chevron, beside the first field (gravity top) */
   editor->chevron = ct_icon_button ("ct-expand-more-symbolic", _("Show more name fields"), CT_ED_END_COLUMN_DP,
                                     CT_ED_MIN_LINE_DP, CT_RIPPLE_APPCOMPAT);
   gtk_widget_add_css_class (editor->chevron, "ct-ed-chevron");
@@ -936,7 +935,7 @@ name_section (Editor *editor)
                                GTK_INPUT_HINT_NONE, G_CALLBACK (on_name_changed), editor,
                                &editor->phonetic_fields[i]));
   gtk_box_append (GTK_BOX (phonetic), phonetic_column);
-  /* no chevron and no ✕: an empty 56 dp */
+  /* no chevron and no ✕: the end column left empty */
   gtk_widget_set_size_request (spacer, (int) CT_ED_END_COLUMN_DP, -1);
   gtk_box_append (GTK_BOX (phonetic), spacer);
   gtk_box_append (GTK_BOX (rows), phonetic);
@@ -945,7 +944,7 @@ name_section (Editor *editor)
   return section;
 }
 
-/* ===== labels (§4.17) ========================================================================================== */
+/* ===== labels ================================================================================================== */
 
 static void
 update_labels_button (Editor *editor)
@@ -1062,7 +1061,7 @@ labels_section (Editor *editor)
   return section;
 }
 
-/* ===== the photo (§4.6) ======================================================================================== */
+/* ===== the photo =============================================================================================== */
 
 #define ED_TYPE_PHOTO (ed_photo_get_type ())
 G_DECLARE_FINAL_TYPE (EdPhoto, ed_photo, ED, PHOTO, GtkWidget)
@@ -1078,7 +1077,7 @@ static void
 ed_photo_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, int *minimum, int *natural,
                   int *minimum_baseline, int *natural_baseline)
 {
-  /* as wide as the screen, width / 1.96 tall (editor_portrait_photo_ratio) */
+  /* as wide as the screen, width / 1.96 tall */
   if (orientation == GTK_ORIENTATION_VERTICAL)
     *minimum = *natural = (int) round ((for_size > 0 ? for_size : 360) / CT_ED_PHOTO_RATIO);
   else
@@ -1100,7 +1099,7 @@ ed_photo_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   GdkRGBA white = ct_rgba (0xFFFFFFFFu);
 
   ct_avatar_header_snapshot (snapshot, &bounds, editor->photo_tint, editor->photo_texture);
-  /* the camera badge: 24 dp, white, 16 dp from the bottom and the end */
+  /* the camera badge, white, in the bottom end corner */
   neo_snapshot_icon (snapshot, widget, "ct-camera-alt-symbolic", width - CT_ED_PHOTO_BADGE_MARGIN_DP - 24,
                      height - CT_ED_PHOTO_BADGE_MARGIN_DP - 24, 24, &white);
 }
@@ -1206,7 +1205,7 @@ on_photo_action (int response, gpointer data)
     choose_photo (editor);
 }
 
-/* PhotoSourceDialogFragment: "Change photo", Remove photo / Choose photo (Take photo is left out) */
+/* "Change photo": Remove photo / Choose photo (Take photo is left out) */
 static void
 on_photo_tapped (NeoPressable *button, Editor *editor)
 {
@@ -1235,11 +1234,11 @@ photo_area (Editor *editor)
   return button;
 }
 
-/* ===== the account header (§4.7) =============================================================================== */
+/* ===== the account header ====================================================================================== */
 
 static GPtrArray *writable_books (Editor *editor);
 
-/* the chooser: a new contact, not the profile, and more than one writable address book (§4.7.2) */
+/* the chooser: a new contact, not the profile, and more than one writable address book */
 static gboolean
 has_chooser (Editor *editor)
 {
@@ -1298,7 +1297,7 @@ on_account_chosen (int index, gpointer data)
   update_account (editor);
 }
 
-/* the account chooser: a new contact, not the profile, and more than one writable address book (§4.7.2) */
+/* the account chooser: a new contact, not the profile, and more than one writable address book */
 static void
 on_account_header (NeoPressable *header, Editor *editor)
 {
@@ -1360,7 +1359,7 @@ update_more_fields (Editor *editor)
   gtk_widget_set_visible (editor->more_fields, hidden);
 }
 
-/* showAllFields: every section shows with an empty row, and the button goes */
+/* "More fields": every section shows with an empty row, and the button goes */
 static void
 on_more_fields (NeoPressable *button, Editor *editor)
 {
@@ -1379,7 +1378,7 @@ on_legacy_long_pressed (NeoPressable *row, Editor *editor)
   ct_window_toast (editor->window, _("Text copied"));
 }
 
-/* "Can't update this info": the IM and SIP rows, which the editor shows but cannot change (§4.18) */
+/* "Can't update this info": the IM and SIP rows, which the editor shows but cannot change */
 static GtkWidget *
 legacy_section (Editor *editor)
 {
@@ -1430,7 +1429,7 @@ legacy_section (Editor *editor)
 /* ===== loading, saving, leaving ================================================================================ */
 
 /* what the screen says now, as one string: comparing it with the loaded one tells whether anything changed
- * (RawContactModifier.hasChanges); empty rows, which do not count, leave nothing in it */
+ * (empty rows, which do not count, leave nothing in it */
 static char *
 editor_state (Editor *editor)
 {
@@ -1666,7 +1665,7 @@ on_saved (const char *uid, const GError *error, gpointer data)
       return;
     }
   name = g_strdup (editor->saved_name);
-  /* contactSavedNamedToast "%s saved", or "Contact saved" without a name */
+  /* "%s saved", or "Contact saved" without a name */
   text = name && *name ? g_strdup_printf (_("%s saved"), name) : g_strdup (_("Contact saved"));
   ct_window_toast (editor->window, text);
   close_editor (editor, uid);
@@ -1718,7 +1717,7 @@ on_discard (int response, gpointer data)
     close_editor (editor, NULL);
 }
 
-/* ✕, Back: away at once without changes, else "Discard changes?" (CancelEditDialogFragment) */
+/* ✕, Back: away at once without changes, else "Discard changes?" */
 static gboolean
 on_back (CtPage *page, gpointer data)
 {
@@ -1848,7 +1847,7 @@ ct_editor_new (GtkWidget *window, const char *uid, EContact *prefill)
       if (picture)
         e_contact_photo_free (picture);
     }
-  /* the photo's background: the card's own colour (it was opened from QuickContact) or #607d8b */
+  /* the photo's background: the card's own colour (it was opened from QuickContact) or the default tint */
   editor->photo_tint = !editor->is_new ? ct_avatar_header_color (editor->profile ? CT_PROFILE_UID : uid)
                                        : CT_C_QC_DEFAULT_TINT;
   editor->name = ct_contact_get_name (prefill && editor->is_new ? prefill : editor->original);
@@ -1861,7 +1860,7 @@ ct_editor_new (GtkWidget *window, const char *uid, EContact *prefill)
   ct_page_set_back_handler (CT_PAGE (page), on_back, editor);
   gtk_widget_add_css_class (page, "ct-editor");
 
-  /* the toolbar: ✕ "Cancel", the title 72 dp in, SAVE flush with the end (§4.5) */
+  /* the toolbar: ✕ "Cancel", the title, SAVE flush with the end */
   toolbar = ct_page_toolbar (CT_PAGE (page), "ct-editor-toolbar", "ct-close-symbolic", _("Cancel"),
                              editor->is_new ? _("Create new contact") : _("Edit contact"), &actions, &title);
   editor->save = ct_text_button (_("Save"), "ct-editor-save");
@@ -1885,7 +1884,7 @@ ct_editor_new (GtkWidget *window, const char *uid, EContact *prefill)
   load_rows (editor, editor->is_new && prefill ? prefill : editor->original,
              !editor->is_new ? prefill : NULL);
 
-  /* "More fields": 54 dp, 72 dp in, 16 sp #81b5bc */
+  /* "More fields", in line with the fields */
   more_label = ct_label (_("More fields"), "ct-ed-more-text", 16);
   gtk_widget_set_valign (more_label, GTK_ALIGN_CENTER);
   editor->more_fields = neo_pressable_new (more_label);
@@ -1904,7 +1903,7 @@ ct_editor_new (GtkWidget *window, const char *uid, EContact *prefill)
   gtk_widget_set_vexpand (editor->scroll, TRUE);
   frame = gtk_overlay_new ();
   gtk_overlay_set_child (GTK_OVERLAY (frame), editor->scroll);
-  /* the toolbar's 4 dp elevation over the content */
+  /* the toolbar's shadow over the content */
   shadow = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (shadow, "ct-ed-toolbar-shadow");
   gtk_widget_set_valign (shadow, GTK_ALIGN_START);

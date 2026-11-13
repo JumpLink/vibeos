@@ -1,5 +1,5 @@
 /* creal: constructive real numbers, a C port of the com.hp.creals library (Hans-J. Boehm's "CR")
- * that ExactCalculator is built on (ExactCalculator/libs/com/hp/crcalc/1.0/crcalc-1.0.jar).
+ * that ExactCalculator is built on.
  *
  * A constructive real is not a number held to some precision: it is a recipe that can produce the
  * number to ANY precision asked for. creal_get_appr (x, p, out) gives an integer n with

@@ -1,7 +1,7 @@
-/* CalAgendaView: Etar's Agenda (agenda-view.h; spec/calendar.md §5).
+/* CalAgendaView: the Agenda view (agenda-view.h).
  *
- * Every row has a fixed height (a day's header 48 dp, an event 64 dp, each with its 1 px separator: the stills
- * measure exactly those, the text never needing more), so the list is drawn rather than built of widgets: a
+ * Every row has a fixed height (a day's header or an event, each with its 1 px separator; the text never needs
+ * more), so the list is drawn rather than built of widgets: a
  * SpongyScrollView scrolls one tall drawing of the rows near the screen, and the pinned header is drawn over it. */
 #include "agenda-view.h"
 #include "cal-colors.h"
@@ -13,7 +13,7 @@
 #include <neo.h>
 #include <spongy-gtk.h>
 
-/* --- dimensions, dp (L/agenda_day.xml, L/agenda_item.xml, V/integers.xml; measured still:cal-agenda) */
+/* --- dimensions, px */
 #define DAY_MIN_HEIGHT 48.0
 #define DAY_LEFT 16.0
 #define DAY_LINE_TOP 4.0
@@ -26,19 +26,19 @@
 #define CHIP_WIDTH 24.0
 #define CHIP_TOP 8.0
 #define CHIP_RIGHT 8.0
-#define CHIP_HEIGHT 24.0                /* color_chip_height */
-#define CHIP_ALL_DAY_HEIGHT 48.0        /* color_chip_all_day_height */
-#define CHIP_BORDER_WIDTH 4             /* ColorChipView.DEF_BORDER_WIDTH, device pixels */
-#define ITEM_RIGHT_MARGIN 4.0           /* agenda_item_right_margin */
+#define CHIP_HEIGHT 24.0
+#define CHIP_ALL_DAY_HEIGHT 48.0
+#define CHIP_BORDER_WIDTH 4             /* device pixels, not scaled */
+#define ITEM_RIGHT_MARGIN 4.0
 #define TITLE_SIZE 18.0
 #define WHEN_SIZE 14.0
 #define WHERE_TOP -3.0
 
 #define DAY_TEXT_COLOR CAL_AGENDA_DAY_TEXT
-#define ITEM_TITLE_COLOR CAL_AGENDA_TITLE   /* agenda_item_standard_color */
-#define ITEM_WHEN_COLOR CAL_AGENDA_WHEN     /* agenda_item_where_text_color */
+#define ITEM_TITLE_COLOR CAL_AGENDA_TITLE
+#define ITEM_WHEN_COLOR CAL_AGENDA_WHEN
 
-/* AgendaWindowAdapter loads a window of days and more as the list nears an end */
+/* the list loads a window of days, and more as it nears an end */
 #define WINDOW_BEFORE 30
 #define WINDOW_AFTER 60
 #define WINDOW_GROW 60
@@ -116,7 +116,7 @@ day_text (int day)
 {
   g_autofree char *text = cal_format_relative_weekday (day, today ());
 
-  /* Utils.getDayOfWeekString, shown in capitals ("TODAY, SATURDAY") */
+  /* shown in capitals ("TODAY, SATURDAY") */
   return g_utf8_strup (text, -1);
 }
 
@@ -126,7 +126,7 @@ date_text (int day)
   g_autoptr(GDateTime) a = g_date_time_new_from_unix_local (cal_day_start (day));
   g_autoptr(GDateTime) b = g_date_time_new_now_local ();
 
-  /* FORMAT_SHOW_DATE: "November 7", with the year when it is not this one */
+  /* the date: "November 7", with the year when it is not this one */
   if (g_date_time_get_year (a) == g_date_time_get_year (b))
     return cal_format_month_day (day);
   return cal_format_full_date (day);
@@ -142,7 +142,7 @@ draw_day (GtkWidget *widget, GtkSnapshot *snapshot, int scale, const Row *row, d
   g_autoptr(PangoLayout) day_layout = cal_text_layout (widget, day, DAY_LINE_SIZE, 700);
   g_autoptr(PangoLayout) date_layout = cal_text_layout (widget, date, DATE_LINE_SIZE, 700);
 
-  /* the 1 px separator, or the 2 dp red past/present line in its place */
+  /* the 1 px separator, or the thicker red past/present line in its place */
   top = row->past_present ? PAST_PRESENT_HEIGHT : px;
   cal_fill_rect (snapshot, scale, 0, y, width, top, &separator);
   cal_text_line (DAY_LINE_SIZE, scale, &day_baseline, &day_height);
@@ -160,8 +160,7 @@ draw_event (GtkWidget *widget, GtkSnapshot *snapshot, int scale, const Row *row,
   CalEvent *event = row->event;
   double px = 1.0 / scale, title_baseline, title_height, when_baseline, when_height, block, text_top;
   double text_x = CHIP_LEFT + CHIP_WIDTH + CHIP_RIGHT, text_width = width - text_x - ITEM_RIGHT_MARGIN;
-  /* AgendaAdapter.bindView: a declined event's text in the declined colours and its chip faded (DRAW_FADED); an
-   * unanswered invitation's chip a frame (DRAW_BORDER) */
+  /* a declined event's text in the declined colours and its chip faded; an unanswered invitation's chip a frame */
   gboolean declined = event->self_status == CAL_STATUS_DECLINED;
   guint32 chip_rgb = cal_event_display_color (event);
   GdkRGBA separator = cal_argb (CAL_AGENDA_SEPARATOR);
@@ -170,7 +169,7 @@ draw_event (GtkWidget *widget, GtkSnapshot *snapshot, int scale, const Row *row,
   GdkRGBA when_color = cal_argb (declined ? CAL_AGENDA_DECLINED_WHEN : ITEM_WHEN_COLOR);
   double chip_height = cal_event_draws_as_all_day (event) ? CHIP_ALL_DAY_HEIGHT : CHIP_HEIGHT;
   gboolean has_where = event->location && *event->location;
-  /* AgendaByDayAdapter: an event in the past or already started has its title in the regular face */
+  /* an event in the past or already started has its title in the regular face */
   gboolean started = event->all_day ? row->day <= today () : event->start <= g_get_real_time () / G_USEC_PER_SEC;
   g_autofree char *when = cal_format_agenda_when (event->start, event->end, event->all_day);
   g_autoptr(PangoLayout) title = cal_text_layout (widget, event->title && *event->title ? event->title
@@ -185,7 +184,7 @@ draw_event (GtkWidget *widget, GtkSnapshot *snapshot, int scale, const Row *row,
   y += px;
   if (event->self_status == CAL_STATUS_INVITED)
     {
-      /* ColorChipView.DRAW_BORDER: 4 px lines (DEF_BORDER_WIDTH, unscaled) inside its width and height less 1 px */
+      /* the chip as a frame: unscaled lines inside its width and height less 1 px */
       double border = CHIP_BORDER_WIDTH * px, w = CHIP_WIDTH - px, h = chip_height - px;
 
       cal_fill_rect (snapshot, scale, CHIP_LEFT, y + CHIP_TOP, w, border, &chip);
@@ -194,7 +193,7 @@ draw_event (GtkWidget *widget, GtkSnapshot *snapshot, int scale, const Row *row,
       cal_fill_rect (snapshot, scale, CHIP_LEFT + w - border, y + CHIP_TOP, border, h, &chip);
     }
   else
-    /* the colour chip, 24 dp wide, 48 dp tall for an all-day event and 24 dp for a timed one (DRAW_FULL) */
+    /* the colour chip, twice as tall for an all-day event as for a timed one */
     cal_fill_rect (snapshot, scale, CHIP_LEFT, y + CHIP_TOP, CHIP_WIDTH, chip_height, &chip);
   /* the title, when and where, one line each, centred in the row */
   cal_text_line (TITLE_SIZE, scale, &title_baseline, &title_height);
@@ -491,7 +490,7 @@ cal_agenda_view_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gtk_snapshot_append_color (snapshot, &surface, &GRAPHENE_RECT_INIT (0, 0, (float) width,
                                                                       (float) gtk_widget_get_height (widget)));
   gtk_widget_snapshot_child (widget, self->scroll, snapshot);
-  /* StickyHeaderListView: the header of the day at the top, over the list, pushed up by the next one */
+  /* the header of the day at the top, pinned over the list, pushed up by the next one */
   section = section_of (self, offset, &next);
   if (section >= 0 && offset > 0)
     {
@@ -516,7 +515,7 @@ check_window (CalAgendaView *self)
 
   if (!self->rows->len || page <= 0 || self->anchor_pending || self->growing_before || self->growing_after)
     return;
-  /* AgendaWindowAdapter: near an end, the window takes in more days that way */
+  /* near an end, the window takes in more days that way */
   if (offset < page && !self->done_before)
     {
       self->first -= WINDOW_GROW;

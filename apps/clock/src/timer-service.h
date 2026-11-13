@@ -1,6 +1,5 @@
-/* The timers in the Clock's service (DeskClock's TimerModel and TimerService): it keeps them (the store,
- * ~/.local/share/neo.Clock/timers.ini), serves them to the app over D-Bus (neo.Clock.Timers, in
- * timer-service.c), and rings them.
+/* The timers in the Clock's service: it keeps them (the store, ~/.local/share/neo.Clock/timers.ini), serves them to the
+ * app over D-Bus (neo.Clock.Timers, in timer-service.c), and rings them.
  *
  * A running timer costs nothing until it runs out: one timerfd waits for the first to end, on the elapsed clock
  * (elapsed.h), which counts the time the phone sleeps; neo-wakeup wakes the phone for it. Then the timer rings (the
@@ -19,5 +18,5 @@ TimerService *timer_service_new (GDBusConnection *session, GDBusConnection *syst
 
 /* the Clock app is in front (or not): its timers then show in it, not in notifications */
 void          timer_service_set_foreground (TimerService *self, gboolean foreground);
-/* the wall clock was set: only the record of when each timer started on it changes (updateAfterTimeSet) */
+/* the wall clock was set: only the record of when each timer started on it changes */
 void          timer_service_time_set (TimerService *self);

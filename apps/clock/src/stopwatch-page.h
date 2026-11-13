@@ -1,4 +1,4 @@
-/* StopwatchPage: the Stopwatch tab (DeskClock's StopwatchFragment, L/stopwatch_fragment.xml; spec/clock.md §8).
+/* StopwatchPage: the Stopwatch tab.
  *
  * The time in a ring, with the laps under it once there are any: newest first, the one still running on top. The
  * ring then measures the lap running against the first one. A tap in the ring starts or pauses the stopwatch, as

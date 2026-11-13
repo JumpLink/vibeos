@@ -6,7 +6,7 @@
 static void
 test_display_color (void)
 {
-  /* Utils.getDisplayColorFromColor, checked on the still: #16A765 is drawn #008649 */
+  /* the display colour: #16A765 is drawn #008649 */
   g_assert_cmphex (cal_display_color (0x16a765, FALSE), ==, 0x008649);
   g_assert_cmphex (cal_display_color (0x16a765, TRUE), ==, 0x16a765);
 }

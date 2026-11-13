@@ -1,13 +1,12 @@
-/* The ringing alarm: see ringing-window.h. No still shows this screen; every number is from the source
- * (src/alarms/AlarmActivity.java, L/alarm_activity.xml, V/dimens.xml and V-sw360dp/dimens.xml).
+/* The ringing alarm: see ringing-window.h.
  *
- * The layout is AlarmActivity's 3 × 3 GridLayout: the clock and the label each span a row; the third row takes the
- * rest of the height and holds, in three equal columns, Snooze, the handle and Dismiss, with the pulse centred on the
- * handle and the hint at its foot. Snooze is always on the left (the layout is forced left-to-right). The view draws
- * all of it itself, as one surface, because the animations below run across all of its parts.
+ * The layout is a 3 × 3 grid: the clock and the label each span a row; the third row takes the rest of the height and
+ * holds, in three equal columns, Snooze, the handle and Dismiss, with the pulse centred on the handle and the hint at
+ * its foot. Snooze is always on the left (the layout is forced left-to-right). The view draws all of it itself, as one
+ * surface, because the animations below run across all of its parts.
  *
- * The three button animations are AlarmActivity's ObjectAnimators driven by hand: each has a fraction 0…1 that the
- * pointer sets, and the value it shows is that fraction through the animators' default AccelerateDecelerate curve. */
+ * The three button animations are driven by hand: each has a fraction 0…1 that the pointer sets, and the value it
+ * shows is that fraction through an accelerate-decelerate curve. */
 #include "ringing-window.h"
 #include "alarms-client.h"
 #include "clock-draw.h"
@@ -17,30 +16,30 @@
 #include <math.h>
 #include <neo.h>
 
-#define CLOCK_TOP       64      /* the clock's marginTop, ?actionBarSize */
-#define CLOCK_SIZE      70      /* big_font_size on sw360dp */
+#define CLOCK_TOP       64      /* over the clock: an action bar's height */
+#define CLOCK_SIZE      70
 #define TITLE_SIZE      20
-#define HINT_SIZE       16      /* bottom_text_size */
-#define HINT_BOTTOM     40      /* alarm_lockscreen_bottom_margin */
-#define ALERT_SIZE      36      /* alarm_info_font_size */
-#define BUTTON          80      /* ic_snooze and ic_dismiss, on bg_circle_white */
-#define HANDLE          56      /* ic_fab_alarm (fab_alarm_size) */
-#define HANDLE_PAD_X    16      /* alarm_lockscreen_alarm_horizontal_padding */
-#define HANDLE_PAD_Y    48      /* alarm_lockscreen_alarm_vertical_padding */
-#define PULSE_RADIUS    128     /* alarm_lockscreen_pulse_radius */
-#define BUTTON_SCALE    0.7     /* BUTTON_SCALE_DEFAULT */
-#define ICON_ALPHA      165     /* BUTTON_DRAWABLE_ALPHA_DEFAULT, of 255 */
+#define HINT_SIZE       16      /* "Swipe right to dismiss" */
+#define HINT_BOTTOM     40      /* the hint, up from the bottom */
+#define ALERT_SIZE      36      /* "Snoozed" or "Alarm off", once the alarm is handled */
+#define BUTTON          80      /* Snooze and Dismiss, on white discs */
+#define HANDLE          56      /* the alarm handle */
+#define HANDLE_PAD_X    16      /* the handle's touch area, past it at the sides */
+#define HANDLE_PAD_Y    48      /* ... and above and below */
+#define PULSE_RADIUS    128     /* how far the pulse round the handle grows */
+#define BUTTON_SCALE    0.7     /* Snooze and Dismiss's scale at rest */
+#define ICON_ALPHA      165     /* their icons' opacity at rest, of 255 */
 #define TOUCH_SLOP      8       /* how far a tap may stray off a button and still count */
 
 #define PULSE_MS        1000
 #define BOUNCE_MS       500
-#define HINT_FADE_MS    300     /* ObjectAnimator's default duration */
+#define HINT_FADE_MS    300     /* the hint fading in or out */
 #define REVERSE_MS      300     /* the same, for the button animators run back */
 #define REVEAL_MS       500
 #define ALERT_FADE_MS   500
 #define CLOSE_DELAY_MS  2000
 
-/* includeFontPadding: Android's line box adds Roboto's head yMax/yMin beyond hhea (neo_label_set_font_padding) */
+/* font padding: the line box adds Roboto's head yMax/yMin beyond hhea (neo_label_set_font_padding) */
 #define PAD_TOP(size)    ((size) * 263 / 2048.0)
 #define PAD_BOTTOM(size) ((size) * 55 / 2048.0)
 
@@ -127,21 +126,21 @@ measure_geometry (RingingView *self, Geometry *g)
   g->hint_y = height - HINT_BOTTOM - PAD_BOTTOM (HINT_SIZE) - layout_height (self->hint);
 }
 
-/* AccelerateDecelerateInterpolator, the default of an ObjectAnimator */
+/* accelerate-decelerate: the animations' default curve */
 static double
 accel_decel (double t)
 {
   return spongy_curve (SPONGY_ACCELERATE_DECELERATE, t);
 }
 
-/* AnimatorUtils.DECELERATE_ACCELERATE_INTERPOLATOR */
+/* decelerate-accelerate: 0.5 + 4 (t − 0.5)³ */
 static double
 decel_accel (double t)
 {
   return 0.5 + 4 * pow (t - 0.5, 3);
 }
 
-/* ArgbEvaluator: the channels are mixed in linear light (gamma 2.2), alpha as it is */
+/* colours: the channels are mixed in linear light (gamma 2.2), alpha as it is */
 static GdkRGBA
 argb_evaluate (const GdkRGBA *a, const GdkRGBA *b, double t)
 {
@@ -156,7 +155,7 @@ fraction (double x0, double x1, double x)
   return CLAMP ((x - x0) / (x1 - x0), 0, 1);
 }
 
-/* setAnimatedFractions: the handle shrinks by whichever button is nearer to being reached */
+/* the handle shrinks by whichever button is nearer to being reached */
 static void
 set_fractions (RingingView *self, double snooze, double dismiss)
 {
@@ -181,7 +180,7 @@ new_layout (RingingView *self, double size, int weight)
 
 static gboolean on_minute (gpointer data);
 
-/* the TextClock: "h:mm" with a small AM/PM, or "HH:mm" (Utils.setTimeFormat), each minute */
+/* the clock: "h:mm" with a small AM/PM, or "HH:mm", each minute */
 static void
 show_time (RingingView *self)
 {
@@ -215,7 +214,7 @@ on_pulse (NeoAnim *anim, double value, gpointer data)
 
   self->pulse_value = value;
   gtk_widget_queue_draw (GTK_WIDGET (self));
-  /* repeatCount INFINITE */
+  /* the pulse repeats */
   if (!neo_anim_is_running (anim) && self->pulse_repeat && gtk_widget_get_mapped (GTK_WIDGET (self)))
     {
       self->pulses++;
@@ -234,7 +233,7 @@ start_pulse (RingingView *self)
     }
 }
 
-/* on a touch, setRepeatCount(0): the first pulse runs to its end, but a later one is past its last iteration
+/* on a touch the pulse stops repeating: the first pulse runs to its end, but a later one is past its last iteration
  * already and ends at once, where it is invisible */
 static void
 stop_pulse (RingingView *self)
@@ -267,7 +266,7 @@ on_hint_fade (NeoAnim *anim, double value, gpointer data)
   gtk_widget_queue_draw (GTK_WIDGET (self));
 }
 
-/* hintSnooze / hintDismiss: the handle travels the gap between its glyph and the button, and back */
+/* the hint for Snooze or Dismiss: the handle travels the gap between its glyph and the button, and back */
 static void
 hint (RingingView *self, Target button)
 {
@@ -331,7 +330,7 @@ on_reveal (NeoAnim *anim, double value, gpointer data)
     }
 }
 
-/* getAlertAnimator: a #444444 circle centred on the button grows from its half-size to the farthest corner */
+/* the alert: a #444444 circle centred on the button grows from its half-size to the farthest corner */
 static void
 reveal (RingingView *self, Target button, const char *title, const char *info)
 {
@@ -380,7 +379,7 @@ on_reverse (NeoAnim *anim, double value, gpointer data)
 {
   RingingView *self = data;
 
-  /* AnimatorUtils.reverse: each animator plays back from where it is, at its own speed */
+  /* reversed: each animation plays back from where it is, at its own speed */
   set_fractions (self, self->snooze > 0 ? value : 0, self->dismiss > 0 ? value : 0);
 }
 
@@ -493,7 +492,7 @@ on_drag_end (GtkGestureDrag *gesture, double dx, double dy, RingingView *self)
 static void
 on_drag_cancel (GtkGesture *gesture, GdkEventSequence *sequence, RingingView *self)
 {
-  /* ACTION_CANCEL: resetAnimations */
+  /* a cancelled touch: the animations reset */
   if (self->target == TARGET_HANDLE && !self->handled)
     {
       set_fractions (self, 0, 0);
@@ -523,7 +522,7 @@ draw_button (RingingView *self, GtkSnapshot *snapshot, double x, double y, doubl
 
   if (button == TARGET_SNOOZE)
     {
-      disc = neo_color_alpha (NEO_SECONDARY, v);         /* backgroundTint ?colorAccent, #B1CBCF */
+      disc = neo_color_alpha (NEO_SECONDARY, v);
       glyph = white;
     }
   else
@@ -554,7 +553,7 @@ draw_content (RingingView *self, GtkSnapshot *snapshot, const Geometry *g, doubl
   draw_text (snapshot, self->clock, width, g->clock_y, 1);
   draw_text (snapshot, self->title, width, g->title_y, 1);
 
-  /* the pulse: radius 0 → 128 dp, white fading to nothing */
+  /* the pulse: a white circle growing from nothing to a radius of 128 px, fading as it grows */
   if (self->pulse_value > 0 && self->pulse_value < 1)
     clock_snapshot_dot (snapshot, g->handle_x, g->cy, PULSE_RADIUS * self->pulse_value,
                         &(GdkRGBA) { 1, 1, 1, 1 - self->pulse_value });
@@ -582,7 +581,7 @@ ringing_view_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   RingingView *self = RINGING_VIEW (widget);
   double width = gtk_widget_get_width (widget), height = gtk_widget_get_height (widget);
-  GdkRGBA background = neo_color (NEO_SURFACE);       /* windowBackground, #0A0F10 */
+  GdkRGBA background = neo_color (NEO_SURFACE);       /* the window's background, #0A0F10 */
   Geometry g;
 
   measure_geometry (self, &g);
@@ -617,7 +616,7 @@ load (RingingView *self)
   if (!alarms_client_get_ringing (alarms_client_get (), &instance, &alarm, &label, &time))
     return FALSE;
   self->instance = instance;
-  /* getLabelOrDefault */
+  /* the label, or "Alarm" */
   pango_layout_set_text (self->title, label && *label ? label : _("Alarm"), -1);
   gtk_widget_queue_draw (GTK_WIDGET (self));
   return TRUE;
@@ -695,8 +694,8 @@ ringing_view_init (RingingView *self)
 {
   GtkGesture *drag = gtk_gesture_drag_new ();
 
-  /* display_time at 70 sp (700 with Bold text), body at 20 sp (800), the hint at 16 sp (700), the alert in
-   * alarm_lockscreen_thin at 36 sp (400) and its bold second line (700) */
+  /* each 300 over the design's weight, as the phone's Bold text setting is on: the alert's thin first line comes
+   * out 400 */
   self->clock = new_layout (self, CLOCK_SIZE, 700);
   self->title = new_layout (self, TITLE_SIZE, 800);
   self->hint = new_layout (self, HINT_SIZE, 700);
@@ -721,7 +720,7 @@ ringing_view_init (RingingView *self)
   gtk_widget_set_vexpand (GTK_WIDGET (self), TRUE);
 }
 
-/* ---- the volume keys (AlarmActivity.dispatchKeyEvent and the "Volume buttons" setting) ------------------------ */
+/* ---- the volume keys (the "Volume buttons" setting) ----------------------------------------------------------- */
 
 /* "Snooze" or "Dismiss" makes the volume keys do that while the alarm is on screen; "Control volume" leaves them
  * alone. The keys are the shell's: it passes them on as the app's "volume-key" action to the app in front that asked
@@ -770,7 +769,7 @@ ringing_window_volume_key (GtkWidget *window)
 
   if (!gtk_window_is_active (GTK_WINDOW (window)) || action == 0)
     return FALSE;
-  /* once the alarm is handled the keys do nothing more, but are still taken (mAlarmHandled) */
+  /* once the alarm is handled the keys do nothing more, but are still taken */
   if (!view->handled)
     {
       if (action == 1)
@@ -783,7 +782,7 @@ ringing_window_volume_key (GtkWidget *window)
 
 /* ---- the window ----------------------------------------------------------------------------------------------- */
 
-/* Back does not dismiss (onBackPressed); the window closes only by itself */
+/* Back does not dismiss; the window closes only by itself */
 static gboolean
 on_close_request (GtkWindow *window, gpointer data)
 {

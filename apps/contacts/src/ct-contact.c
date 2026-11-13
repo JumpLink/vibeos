@@ -200,7 +200,7 @@ ct_contact_set_name (EContact *contact, const CtName *name)
   set_x (contact, "X-PHONETIC-LAST-NAME", name->phonetic_family);
 }
 
-/* NameSplitter.join, Western style (spec §10.5): "Prefix Given Middle Family, Suffix" given-first (PRIMARY), and
+/* the name joined, Western style: "Prefix Given Middle Family, Suffix" given-first (PRIMARY), and
  * "Family, Prefix Given Middle, Suffix" family-first (ALTERNATIVE). Empty parts and their separators are left out. */
 static void
 append_words (GString *out, const char *const *parts, int n)
@@ -251,9 +251,8 @@ first_value (EContact *contact, const char *attr_name)
   return value ? g_strstrip (value) : NULL;
 }
 
-/* A card that has only FN (made by some other program): Android would split it into a structured name
- * (NameSplitter.split); this splits it the simple Western way, the last word being the family name, so that the
- * family-first form and the sort by last name still work. */
+/* A card that has only FN (made by some other program) is split into a structured name the simple Western way, the last
+ * word being the family name, so that the family-first form and the sort by last name still work. */
 static CtName *
 name_from_full_name (const char *full)
 {
@@ -306,7 +305,7 @@ ct_contact_display_name (EContact *contact, CtNameOrder order)
   if (*value)
     return value;
   g_free (value);
-  /* the next source in DISPLAY_NAME_SOURCE's order: FN of a card without N (a name all the same, so before the
+  /* the next source in the display name's order: FN of a card without N (a name all the same, so before the
    * phonetic name), then phonetic name, nickname, organization, phone, email */
   if ((value = first_value (contact, EVC_FN)))
     {
@@ -376,8 +375,8 @@ base_char (gunichar c)
   return n > 0 ? decomposed[0] : c;
 }
 
-/* Greek and Cyrillic have buckets of their own: ContactLocaleUtils adds the Greek, Ukrainian and Serbian alphabets
- * to every index */
+/* Greek and Cyrillic have buckets of their own: the Greek, Ukrainian and Serbian alphabets are added to every
+ * index */
 static gboolean
 has_own_buckets (gunichar c)
 {
@@ -386,11 +385,11 @@ has_own_buckets (gunichar c)
   return script == G_UNICODE_SCRIPT_GREEK || script == G_UNICODE_SCRIPT_CYRILLIC;
 }
 
-/* ContactLocaleUtils.getBucketIndex: a name whose first character after spaces and + ( ) . - # is a digit goes to
- * the number bucket "#"; otherwise ICU's AlphabeticIndex decides: a Latin letter is its letter's bucket, a symbol,
+/* a name whose first character after spaces and + ( ) . - # is a digit goes to
+ * the number bucket "#"; otherwise the alphabetic index decides: a Latin letter is its letter's bucket, a symbol,
  * an emoji or punctuation sorts before every letter and so lands in the underflow bucket "…", a letter of a script
  * the index has no labels for in the overflow bucket "…" at the very end. The number bucket goes just before the
- * overflow one (mNumberBucketIndex). */
+ * overflow one. */
 static int
 bucket_of (const char *sort_name, gunichar *letter)
 {
@@ -409,7 +408,7 @@ bucket_of (const char *sort_name, gunichar *letter)
   while (*sort_name && g_unichar_isspace (g_utf8_get_char (sort_name)))
     sort_name = g_utf8_next_char (sort_name);
   if (!*sort_name)
-    return CT_BUCKET_UNDERFLOW;            /* no name: BLANK_HEADER_STRING, which is "…" too */
+    return CT_BUCKET_UNDERFLOW;            /* no name: the blank header, which is "…" too */
   {
     gunichar c = g_utf8_get_char (sort_name);
     gunichar base = g_unichar_toupper (base_char (c));
@@ -457,7 +456,7 @@ ct_sort_key (const char *sort_name)
   g_autofree char *folded = g_utf8_casefold (sort_name ? sort_name : "", -1);
   g_autofree char *collated = g_utf8_collate_key (folded, -1);
 
-  /* the bucket first, as CP2 orders by phonebook_bucket before the sort key: "…" symbols before A, "#" after the
+  /* the bucket first, then the sort key: "…" symbols before A, "#" after the
    * alphabets, whatever the collation says about them */
   return g_strdup_printf ("%07d%s", ct_section_rank (sort_name), collated);
 }
@@ -646,7 +645,7 @@ ct_tile_letter (const char *display_name)
   if (!display_name || !*display_name)
     return 0;
   c = g_utf8_get_char (display_name);
-  /* LetterTileDrawable: a char (UTF-16 unit) that Character.isLetter; one outside the BMP is a surrogate there */
+  /* a letter in the BMP; a character outside it gets no letter */
   if (c > 0xffff || !g_unichar_isalpha (c))
     return 0;
   return g_unichar_toupper (c);
@@ -655,7 +654,7 @@ ct_tile_letter (const char *display_name)
 /* --- types */
 
 static const CtType phone_types[] = {
-  /* the Device account's spinner (FallbackAccountType.addDataKindPhone, §4.10.1) */
+  /* the Device account's spinner */
   { 2, N_("Mobile"), TRUE },
   { 3, N_("Work"), TRUE },
   { 1, N_("Home"), TRUE },
@@ -665,7 +664,7 @@ static const CtType phone_types[] = {
   { 6, N_("Pager"), TRUE },
   { 7, N_("Other"), TRUE },
   { CT_TYPE_CUSTOM, N_("Custom"), TRUE },
-  /* the rest of BaseAccountType's list: shown on the card, kept when the row is not edited */
+  /* the rest of the Device account's list: shown on the card, kept when the row is not edited */
   { 8, N_("Callback"), FALSE },
   { 9, N_("Car"), FALSE },
   { 10, N_("Company Main"), FALSE },
@@ -767,12 +766,12 @@ ct_kind_default_type (CtKind kind)
 {
   switch (kind)
     {
-    case CT_KIND_PHONE: return 2;           /* Mobile: the first unused primary type, §4.13 */
+    case CT_KIND_PHONE: return 2;           /* Mobile: the first unused primary type */
     case CT_KIND_EMAIL: return 1;           /* Home */
     case CT_KIND_ADDRESS: return 1;
     case CT_KIND_EVENT: return 3;           /* Birthday */
     case CT_KIND_RELATION: return 14;       /* Spouse */
-    case CT_KIND_WEBSITE: return 7;         /* Website.TYPE_OTHER */
+    case CT_KIND_WEBSITE: return 7;         /* Other */
     default: return 0;
     }
 }
@@ -835,7 +834,7 @@ ct_item_is_empty (const CtItem *item)
   return is_blank (item->value) && is_blank (item->value2) && is_blank (item->value3);
 }
 
-/* the Android TYPE of a TEL's TYPE tokens (§10.3), and whether PREF made it the default number */
+/* the Android TYPE of a TEL's TYPE tokens, and whether PREF made it the default number */
 static int
 phone_type_of (GPtrArray *tokens, char **custom, gboolean *primary)
 {
@@ -895,14 +894,14 @@ phone_type_of (GPtrArray *tokens, char **custom, gboolean *primary)
     return 1;
   if (HAS ("X-MAIN") || HAS ("MAIN"))
     return 12;
-  /* a bare PREF is Main (EDS's E_CONTACT_PHONE_PRIMARY slot, AOSP's TYPE_MAIN) */
+  /* a bare PREF is Main (EDS's E_CONTACT_PHONE_PRIMARY slot) */
   if (pref)
     return 12;
 #undef HAS
   return 7;
 }
 
-/* the TYPE tokens a phone type is written with (§10.3, EDS's slots where it has one) */
+/* the TYPE tokens a phone type is written with (EDS's slots where it has one) */
 static const char *const *
 phone_type_tokens (int type)
 {
@@ -942,7 +941,7 @@ phone_type_tokens (int type)
     }
 }
 
-/* Email and postal types (§10.4): HOME 1, WORK 2, OTHER 3 (also no TYPE at all), CELL 4 for email */
+/* Email and postal types: HOME 1, WORK 2, OTHER 3 (also no TYPE at all), CELL 4 for email */
 static int
 simple_type_of (GPtrArray *tokens, gboolean email, char **custom, gboolean *primary)
 {
@@ -981,7 +980,7 @@ simple_type_token (int type, gboolean email)
     }
 }
 
-/* the IM properties: Android's, EDS's and the few EDS adds (§10.2 Im) */
+/* the IM properties: Android's, EDS's and the few EDS adds */
 static const struct { const char *property; const char *protocol; } im_properties[] = {
   { "X-AIM", N_("AIM") },
   { "X-MSN", N_("Windows Live") },
@@ -1010,7 +1009,7 @@ nth_value (EVCardAttribute *attr, guint n)
   return trimmed (l ? l->data : NULL);
 }
 
-/* the formatted address of an ADR (CP2 formats one it did not write: street, PO box and neighbourhood on their
+/* the formatted address of an ADR (one written elsewhere: street, PO box and neighbourhood on their
  * lines, then "City Region Postcode", then the country); the editor's own rows have all of it in the street */
 static char *
 format_address (EVCardAttribute *attr)
@@ -1094,7 +1093,7 @@ item_from_attribute (CtKind kind, EVCardAttribute *attr)
         return NULL;
       item = ct_item_new (kind, 0, NULL);
       replace (&item->value, nth_value (attr, 0));
-      /* the sip: prefix is stripped (VCardBuilder.appendSipAddresses) */
+      /* the sip: prefix is stripped */
       if (g_ascii_strncasecmp (item->value, "sip:", 4) == 0)
         replace (&item->value, g_strdup (item->value + 4));
       break;
@@ -1133,7 +1132,7 @@ item_from_attribute (CtKind kind, EVCardAttribute *attr)
       G_GNUC_FALLTHROUGH;
     case CT_KIND_RELATION:
       {
-        /* X-ANDROID-CUSTOM:<mime type>;data1;data2 (TYPE);data3 (LABEL);… (VCardBuilder.appendAndroidSpecificProperty) */
+        /* X-ANDROID-CUSTOM:<mime type>;data1;data2 (TYPE);data3 (LABEL);… */
         g_autofree char *mime = NULL, *type = NULL;
 
         if (g_ascii_strcasecmp (name, ANDROID_CUSTOM) != 0)
@@ -1285,8 +1284,7 @@ attribute_from_item (const CtItem *item, gboolean first_of_type)
         e_vcard_attribute_add_value (attr, value);
       else
         {
-          /* the editor's one formatted field goes into the street, as CP2's PostalSplitter does for a
-           * non-CJK locale: ";;<text>;;;;" */
+          /* the editor's one formatted field goes into the street, as for a non-CJK locale: ";;<text>;;;;" */
           e_vcard_attribute_add_values (attr, "", "", value, "", "", "", "", NULL);
         }
       break;
@@ -1307,7 +1305,7 @@ attribute_from_item (const CtItem *item, gboolean first_of_type)
       break;
 
     case CT_KIND_EVENT:
-      /* the birthday is BDAY (a year-less --MM-DD kept as the raw string, §10.8.2), one anniversary EDS's own
+      /* the birthday is BDAY (a year-less --MM-DD kept as the raw string), one anniversary EDS's own
        * property, every other date Android's X-ANDROID-CUSTOM line */
       if (item->type == 3 && first_of_type)
         {
@@ -1485,7 +1483,7 @@ ct_date_format_display (const char *value)
   if (!ct_date_parse (value, &year, &month, &day))
     return g_strdup (value ? value : "");
   date = g_date_time_new_utc (year > 0 ? year : 2000, month, day, 0, 0, 0);
-  /* DateUtils.formatDateTime(FORMAT_SHOW_DATE, with FORMAT_SHOW_YEAR only when there is one) */
+  /* the date in full, with the year only when there is one */
   if (german)
     return g_date_time_format (date, year > 0 ? "%-d. %B %Y" : "%-d. %B");
   return g_date_time_format (date, year > 0 ? "%B %-d, %Y" : "%B %-d");
@@ -1493,7 +1491,7 @@ ct_date_format_display (const char *value)
 
 /* --- search */
 
-/* Character.isLetterOrDigit */
+/* a letter or a digit */
 static gboolean
 is_word_char (gunichar c)
 {
@@ -1626,7 +1624,7 @@ number_matches (const char *number, const char *query_digits)
   return FALSE;
 }
 
-/* SearchUtil's snippetize: a line longer than 30 characters is cut to whole words around the match, with "…" where
+/* the snippet: a line longer than 30 characters is cut to whole words around the match, with "…" where
  * text was left out */
 static char *
 snippetize (const char *line, const char *word)
@@ -1714,7 +1712,7 @@ ct_contact_match (EContact *contact, const char *display_name, const char *query
   if (!*clean)
     return TRUE;
 
-  /* TextHighlighter.applyPrefixHighlight drops what is not a letter or digit from the front of the prefix */
+  /* what is not a letter or digit is dropped from the front of the prefix */
   while (*highlight && !is_word_char (g_utf8_get_char (highlight)))
     highlight = g_utf8_next_char (highlight);
 

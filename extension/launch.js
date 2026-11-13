@@ -1,8 +1,7 @@
-// App launch from a launcher icon, 1:1 with Launcher3's QuickstepTransitionManager on Android 16: the window grows
-// out of the icon's box in 500 ms, its crop opening from a 160 dp square to the whole window, its corners from round
-// to square, x on APP_OPEN_X and the rest on EMPHASIZED. A cold start shows a splash meanwhile (the app's icon on a
-// flat background, the Android 12 starting window) that leaves with a radial vanish from the top centre while the
-// window slides up 20 dp under it.
+// App launch from a launcher icon: the window grows out of the icon's box in 500 ms, its crop opening from a square
+// around the icon (CROP_START_DP) to the whole window, its corners from round to square, x on APP_OPEN_X and the
+// rest on EMPHASIZED. A cold start shows a splash meanwhile (the app's icon on a flat background) that leaves with a
+// radial vanish from the top centre while the window slides up (SPLASH_SHIFT_DP) under it.
 import Clutter from 'gi://Clutter';
 import Cogl from 'gi://Cogl';
 import Gio from 'gi://Gio';
@@ -19,7 +18,7 @@ import {capture, capturing} from './capture.js';
 
 const LAUNCH_MS = 500;
 const START_DELAY_MS = 16;
-const CROP_START_DP = 160;              // starting_surface_icon_size
+const CROP_START_DP = 160;              // the square around the icon the crop opens from
 const ICON_ALPHA_DELAY_MS = 25;         // the floating icon of a warm launch fades out in 25..75 ms
 const ICON_ALPHA_MS = 50;
 
@@ -32,14 +31,14 @@ const ATTENTION_MS = 10000;             // how long a launched app's windows are
 const INTENT_MS = 3000;                 // a window asking within this of a tap or key was asked for by the user
 const SPLASH_SOLID = 0.8;               // the vanish gradient is opaque to 0.8 R
 const SPLASH_TIMEOUT_MS = 15000;        // no window by then: the splash goes
-const SPLASH_RGB = [47, 47, 47];        // dark theme starting window, measured
+const SPLASH_RGB = [47, 47, 47];        // the splash's flat background
 const FAIL_FADE_MS = 150;               // the splash of an app that cannot start
 
-const ANDROID_DENSITY = 3;              // px per dp on the S10e
+const ANDROID_DENSITY = 3;              // screen px per DP unit, the S10e's scale
 
 // ---- curves -------------------------------------------------------------------------------------------------------
 
-// android.view.animation.PathInterpolator for a path of cubic segments ("M0,0 C… …")
+// an easing curve given as a path of cubic segments ("M0,0 C… …"), y as a function of x
 export class PathInterpolator {
     constructor(path) {
         const n = path.match(/-?[\d.]+/g).map(Number);
@@ -112,7 +111,7 @@ if (hole.z > 0.0 && p.y >= hole_top) {
 cogl_color_out *= cov * alpha;
 `;
 
-// The window (or splash) through a rounded crop: what Android's SurfaceControl crop + corner radius do
+// The window (or splash) through a rounded crop: a rectangle cut out of it, with round corners
 export const CropEffect = GObject.registerClass(
 class CropEffect extends Clutter.ShaderEffect {
     vfunc_get_static_snippet() {
@@ -458,8 +457,8 @@ export class LaunchTransition {
             this._finish();
     }
 
-    // The splash exit (WM Shell's SplashScreenExitAnimation, type 0): the icon fades, a hole opens from the top
-    // centre, the window slides up from 20 dp below
+    // The splash exit: the icon fades, a hole opens from the top
+    // centre, the window slides up from SPLASH_SHIFT_DP below
     _maybeExit(run) {
         if (!run.grown || !run.drawn || run.exiting)
             return;

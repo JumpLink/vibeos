@@ -1,4 +1,4 @@
-/* The clock's timers, as DeskClock keeps them (data/Timer.java, and the rules of data/TimerModel.java).
+/* The clock's timers, as DeskClock keeps them.
  *
  * A running timer does not tick. It keeps when it last started (on the elapsed clock, elapsed.h) and how much was
  * left then; the time left now is worked out from those two whenever someone asks, so the service only has to wake
@@ -6,8 +6,8 @@
  * expires and rings, and goes on counting into overtime until it is stopped. One that ran out more than a minute
  * before the phone came back on is "missed" instead: it does not ring.
  *
- * The transitions below are Timer.java's, each changing the timer in place; where Timer.java returns `this` (a
- * paused timer asked to pause, say) they leave it as it is. Every time is in milliseconds, `now` on the elapsed
+ * The transitions below each change the timer in place; one that does not apply (a paused timer asked to pause,
+ * say) leaves it as it is. Every time is in milliseconds, `now` on the elapsed
  * clock and `wall` on the wall clock.
  *
  * Both the clock service and the app use this file; only the service writes the store. */
@@ -15,7 +15,7 @@
 
 #include <glib.h>
 
-/* Timer.State, with Android's numbers */
+/* a Timer's states, by the numbers the store keeps */
 typedef enum {
   TIMER_RUNNING = 1,
   TIMER_PAUSED = 2,
@@ -24,8 +24,8 @@ typedef enum {
   TIMER_MISSED = 5,             /* ran out while the phone was off */
 } TimerState;
 
-#define TIMER_MIN_LENGTH 1000                   /* Timer.MIN_LENGTH */
-#define TIMER_MISSED_THRESHOLD (-60 * 1000)     /* TimerModel.MISSED_THRESHOLD: over a minute gone at boot */
+#define TIMER_MIN_LENGTH 1000                   /* the shortest timer, in ms */
+#define TIMER_MISSED_THRESHOLD (-60 * 1000)     /* over a minute gone at boot: missed */
 
 typedef struct {
   guint id;
@@ -45,13 +45,13 @@ Timer *timer_copy (const Timer *timer);
 void   timer_free (Timer *timer);
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (Timer, timer_free)
 
-/* the time left (negative in overtime): getRemainingTime() */
+/* the time left (negative in overtime) */
 gint64   timer_remaining (const Timer *timer, gint64 now);
-/* how much of the total has gone: getElapsedTime() */
+/* how much of the total has gone */
 gint64   timer_elapsed (const Timer *timer, gint64 now);
 /* when it runs (or ran) out, on the elapsed clock; for running, expired and missed timers */
 gint64   timer_expiration (const Timer *timer);
-/* the length it counts down from now: getTotalLength() */
+/* the length it counts down from now */
 gint64   timer_total_length (const Timer *timer);
 
 void timer_start (Timer *timer, gint64 now, gint64 wall);
@@ -68,14 +68,13 @@ void timer_set_label (Timer *timer, const char *label);
 void timer_update_after_reboot (Timer *timer, gint64 now, gint64 wall);
 void timer_update_after_time_set (Timer *timer, gint64 now, gint64 wall);
 
-/* DeskClock's order by expiry: missed, expired, running, paused, reset, each the soonest first
- * (EXPIRY_COMPARATOR) */
+/* the order by expiry: missed, expired, running, paused, reset, each the soonest first */
 int  timer_compare_expiry (const Timer *a, const Timer *b, gint64 now);
 
 /* --- the store: one key file, a group [timer N] for each */
 
 typedef struct {
-  GPtrArray *timers;            /* Timer, the newest first, as the list shows them (ID_COMPARATOR) */
+  GPtrArray *timers;            /* Timer, the newest first, as the list shows them */
   guint next_id;
   char *boot_id;                /* the boot its times were saved in (elapsed_boot_id) */
 } TimerStore;

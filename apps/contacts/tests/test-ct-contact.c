@@ -1,5 +1,5 @@
 /* ct-contact: names, sections and sorting, favourites and labels, the tile, data rows and their types, dates,
- * and search matching (spec §1.3-§1.4, §2.4, §6.2, §10). */
+ * and search matching. */
 #include "ct-contact.h"
 
 #include <locale.h>
@@ -353,7 +353,7 @@ test_search (void)
   ct_match_clear (&match);
 
   g_assert_true (ct_contact_match (contact, name, "jo sm", &match));
-  g_assert_cmpint (match.name_start, ==, -1);        /* indexOfWordPrefix finds no single word for it */
+  g_assert_cmpint (match.name_start, ==, -1);        /* no single word starts with it */
   ct_match_clear (&match);
 
   g_assert_true (ct_contact_match (contact, name, "0170", &match));   /* the national form */

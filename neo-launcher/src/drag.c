@@ -1,18 +1,17 @@
-/* Moving an icon: Launcher3's drag and drop on Android 16, read from its source (the numbers and where they come
- * from are in launcher3-a16-capture/drag-spec-source.md).
+/* Moving an icon: drag and drop on the home screen, the dock and from the drawer. Lengths are logical px (dp ()).
  *
  *   hold     the long press opens the icon's menu and lifts the icon: the drag view (the icon alone, at the press's
  *            1.10, settling at 1.065 in 150 ms) follows the finger while the icon's own cell shows nothing. Let go
- *            before the finger has gone 16 dp and it flies back into its cell, the menu staying open.
- *   drag     past 16 dp the menu closes and the workspace goes SPRING_LOADED in 150 ms (ZOOM_OUT): the pages
+ *            before the finger has gone START_DP and it flies back into its cell, the menu staying open.
+ *   drag     past START_DP the menu closes and the workspace zooms out to take the drop in 150 ms: the pages
  *            shrink under the drop bar, each on its card, with an empty page after the last (unless the icon is the
  *            last page's only one); the wallpaper's depth goes to 0.15 (zoomed out, blurred to 45 px) under a
  *            neutral scrim at 0.2, and the drop bar fades in over 175 ms. An icon from the drawer slides the sheet
  *            away in 150 ms, and is a copy.
- *   targets  the bar's Remove (Cancel from the drawer) under the finger once the drag has gone 30 dp; else the
- *            hotseat under the finger; else a neighbouring page when the finger or the drag view's centre is over
- *            the strip of it that shows, the page under the finger otherwise (none over the clock, or off every
- *            page). A neighbour scrolls in after 500 ms.
+ *   targets  the bar's Remove (Cancel from the drawer) under the finger once the drag has gone BAR_MIN_PATH_DP;
+ *            else the hotseat under the finger; else a neighbouring page when the finger or the drag view's centre
+ *            is over the strip of it that shows, the page under the finger otherwise (none over the clock, or off
+ *            every page). A neighbour scrolls in after 500 ms.
  *   cells    the cell nearest the drag view's centre. An empty one takes the drop preview (a ring fading in over
  *            500 ms, the last ones fading out) and anything pushed aside goes back. On an occupied one, with the
  *            centre inside the circle round its icon, that icon leans toward where it would go, and 650 ms later
@@ -31,11 +30,11 @@
 
 #define START_DP          16          /* the finger's path that turns a hold into a drag */
 #define VIEW_SCALE        1.10f       /* the press's */
-#define VIEW_SCALE_TO     1.065f      /* measured: where it settles */
+#define VIEW_SCALE_TO     1.065f      /* where it settles */
 #define VIEW_SCALE_MS     150.0
 #define SPRING_MS         150.0
 #define EXIT_DELAY_MS     500.0
-#define SCRIM_RGB         0x191C1D    /* system_neutral1_900 */
+#define SCRIM_RGB         0x191C1D
 #define SCRIM_ALPHA       0.2f
 
 #define BAR_FADE_MS       175.0
@@ -50,8 +49,8 @@
 #define BAR_MIN_PATH_DP   30
 #define CAP_HEIGHT        0.716f      /* Google Sans Flex */
 #define HOVER_ALPHA       0.65f
-#define ACCENT_RGB        0xB8EBF3    /* system_accent1_100: workspaceAccentColor on a dark wallpaper */
-#define ON_ACCENT_RGB     0x001F23    /* system_accent1_900: dropTargetHoverTextColor */
+#define ACCENT_RGB        0xB8EBF3    /* the drop bar's ink and the drop preview */
+#define ON_ACCENT_RGB     0x001F23    /* the ink over a hovered drop target's fill */
 #define REMOVE_MS         285.0
 #define REMOVE_SCALE      0.1f
 #define REMOVE_ALPHA      0.3f
@@ -62,11 +61,11 @@
 #define PREVIEW_FADE_MS   500.0
 #define N_PREVIEWS        4
 
-#define REORDER_MS        650.0       /* REORDER_TIMEOUT, and the hint's lean */
-#define MOVE_MS           150.0       /* REORDER_ANIMATION_DURATION */
-#define BOUNCE_MS         300.0       /* PREVIEW_DURATION */
+#define REORDER_MS        650.0       /* held over an icon this long, the icons make room; the hint's lean too */
+#define MOVE_MS           150.0       /* the icons moving to make room */
+#define BOUNCE_MS         300.0       /* one swing of a moved icon */
 #define BOUNCE_DELAY_MS   60
-#define BOUNCE_AMP        0.12f       /* REORDER_PREVIEW_MAGNITUDE × the icon */
+#define BOUNCE_AMP        0.12f       /* the swing, × the icon's size */
 #define PAGE_ALARM_MS     500.0
 #define PAGE_SCROLL_MS    750.0
 #define NEIGHBOUR_DROP_MS 300.0
@@ -79,7 +78,7 @@
 typedef enum { PHASE_NONE, PHASE_HOLD, PHASE_ACTIVE, PHASE_DONE } Phase;
 typedef enum { LAND_NONE, LAND_CELL, LAND_HOME, LAND_REMOVE } Land;
 
-/* ReorderPreviewAnimation: an icon's lean (a hint, once) or swing (back and forth), from idx/idy to fdx/fdy */
+/* An icon's lean (a hint, once) or swing (back and forth), from idx/idy to fdx/fdy */
 typedef struct {
   float  fdx, fdy, idx, idy;
   double t0, ms;                      /* t0 0: none */
@@ -115,7 +114,7 @@ static struct {
   float     size;
   double    t_hold;
 
-  /* SPRING_LOADED, 0 → 1: ZOOM_OUT for the workspace, linear for the scrim */
+  /* the zoomed-out workspace, 0 → 1: the zoom-out curve for the workspace, linear for the scrim */
   bool      sprung;
   float     sp_from, sp_to;
   double    sp_t0;                    /* 0: at sp_to */
@@ -126,8 +125,8 @@ static struct {
 
   /* the target */
   int       tc, ti;                   /* the drop layout and the cell under the drag view's centre (-1: none) */
-  int       last_i;                   /* the last cell a reorder was asked for (mLastReorderX) */
-  bool      reordered;                /* DRAG_MODE_REORDER: the icons made room at ti */
+  int       last_i;                   /* the last cell a reorder was asked for */
+  bool      reordered;                /* the icons made room at ti */
   double    alarm_at;                 /* the reorder's, 0: none */
   int       page_c;
   double    page_at;                  /* the neighbouring page's, 0: none */

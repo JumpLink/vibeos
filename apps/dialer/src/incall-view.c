@@ -1,8 +1,4 @@
-/* The in-call screen: see incall-view.h. No still shows this screen (no call was placed on the reference phone);
- * the numbers are from the source, under incallui/: incall/impl/InCallFragment.java and res/layout/
- * frag_incall_voice.xml, incall/impl/ButtonChooser*.java and InCallButtonGridFragment.java, CallButtonPresenter.java,
- * contactgrid/ContactGridManager.java with TopRow.java and BottomRow.java, hold/res/layout/
- * incall_on_hold_banner.xml, and the resource buckets a 360 × 700 dp screen picks (h600dp, h650dp, w300dp-h620dp).
+/* The in-call screen: see incall-view.h.
  *
  * The contact grid and the hold banner are drawn here; the buttons, the end-call button and the keypad are
  * children, in that order, so the keypad covers the buttons and the end-call button stays in front of it. */
@@ -15,27 +11,27 @@
 #include <math.h>
 #include <neo.h>
 
-/* the contact grid (frag_incall_voice.xml, values-h600dp) */
+/* the contact grid: the status line, the photo and name, the label or timer under them */
 #define GRID_TOP        12
-#define GRID_SIDE       24      /* incall_window_margin_horizontal */
+#define GRID_SIDE       24
 #define AVATAR          88
 #define AVATAR_GAP      8
-#define STATUS_SIZE     18      /* Dialer.Incall.TextAppearance */
-#define NAME_SIZE       36      /* .Large in the call */
+#define STATUS_SIZE     18      /* the status and bottom lines, and the hold banner */
+#define NAME_SIZE       36      /* the name, shrunk as far as NAME_MIN_SIZE to fit */
 #define NAME_MIN_SIZE   28
 #define NAME_GAP        4
-#define BOTTOM_GAP      2       /* the ViewAnimator's margin under the label or the timer */
+#define BOTTOM_GAP      2       /* under the label or the timer */
 
-/* the button grid (incall_button_grid.xml) and the end-call button */
+/* the button grid and the end-call button */
 #define GRID_MARGIN     24
-#define ROW_GAP         32      /* incall_button_vertical_padding, w300dp-h620dp */
-#define END_SIZE        64      /* incall_end_call_button_size, w260dp-h520dp */
+#define ROW_GAP         32
+#define END_SIZE        64
 #define END_MARGIN      36
-#define END_ICON        48      /* the 36 dp vector, FIT_CENTER in 64 less 2 × 8 padding */
-#define DIALPAD_GAP     8       /* the keypad's container: under the contact grid (h650dp) */
+#define END_ICON        48      /* the handset, scaled up to fill the button less its padding */
+#define DIALPAD_GAP     8       /* between the contact grid and the keypad under it */
 #define DIALPAD_MS      400
 
-/* the hold banner (incall_on_hold_banner.xml) */
+/* the hold banner over the screen: an icon, the held caller's name and "On hold" */
 #define BANNER_PAD_X    24
 #define BANNER_PAD_Y    16
 #define BANNER_ICON     18
@@ -47,9 +43,9 @@
 #define GSF_PAD_TOP(size)       ((size) * 278 / 2000.0)
 #define GSF_PAD_BOTTOM(size)    ((size) * 33 / 2000.0)
 
-#define BACKGROUND      0x181c1d        /* incall_background_gradient_*, night: a flat colour */
-#define TEXT_SECONDARY  (0xdd / 255.0)  /* textColorSecondary #DDFFFFFF */
-#define END_COLOR       0xe46962        /* dialer_end_call_button_color, night */
+#define BACKGROUND      0x181c1d
+#define TEXT_SECONDARY  (0xdd / 255.0)  /* the status and bottom lines: white at this alpha */
+#define END_COLOR       0xe46962
 #define BANNER_COLOR    0x212121        /* at 0xCC */
 
 /* the buttons this phone has; the GSM chooser's others (Record, which Germany forbids, Merge, Manage, Video call,
@@ -59,14 +55,14 @@ typedef enum
   BUTTON_MUTE,
   BUTTON_KEYPAD,
   BUTTON_SPEAKER,
-  BUTTON_SWAP,                  /* SWITCH_TO_SECONDARY */
+  BUTTON_SWAP,                  /* to the held call */
   BUTTON_ADD_CALL,
   BUTTON_HOLD,
   N_BUTTONS,
   NO_BUTTON = -1,
 } ButtonId;
 
-#define GRID_POSITIONS 6        /* incall_num_rows 2 (h480dp) × 3 */
+#define GRID_POSITIONS 6        /* 2 rows × 3 */
 
 struct _InCallView
 {
@@ -156,8 +152,7 @@ roboto_box (PangoLayout *layout)
   return ROBOTO_PAD_TOP (STATUS_SIZE) + layout_height (layout) + ROBOTO_PAD_BOTTOM (STATUS_SIZE);
 }
 
-/* AutoResizeTextView: the largest size from 36 sp down to 28 sp at which the name fits; below that it is
- * ellipsized */
+/* the largest size from NAME_SIZE down to NAME_MIN_SIZE at which the name fits; below that it is ellipsized */
 static void
 fit_name (InCallView *self, double width)
 {
@@ -199,7 +194,7 @@ draw_centered (GtkSnapshot *snapshot, PangoLayout *layout, double width, double 
 
 /* ---- the contact grid ----------------------------------------------------------------------------------------- */
 
-/* DateUtils.formatElapsedTime: "MM:SS", from an hour "H:MM:SS" */
+/* the time since the call came up: "MM:SS", from an hour "H:MM:SS" */
 static char *
 format_elapsed (gint64 seconds)
 {
@@ -211,8 +206,8 @@ format_elapsed (gint64 seconds)
 
 static gboolean on_timer (gpointer data);
 
-/* BottomRow: while the call is up the timer takes the label's place (the Chronometer counts from when it was
- * first up, so a call that was held keeps its time) */
+/* the bottom row: while the call is up the timer takes the label's place (it counts from when it was first up, so a
+ * call that was held keeps its time) */
 static void
 update_bottom (InCallView *self)
 {
@@ -243,7 +238,7 @@ on_timer (gpointer data)
   return G_SOURCE_REMOVE;
 }
 
-/* TopRow: "Calling…" while the call is being made; otherwise the connection label, which a single-SIM phone off
+/* the top row: "Calling…" while the call is being made; otherwise the connection label, which a single-SIM phone off
  * Wi-Fi does not have (the row stays, empty) */
 static const char *
 status_text (InCallView *self)
@@ -261,7 +256,7 @@ status_text (InCallView *self)
     }
 }
 
-/* BottomRow: "Hanging up", what ended it, or the kind of number and the number */
+/* the bottom row: "Hanging up", what ended it, or the kind of number and the number */
 static char *
 bottom_label (InCallView *self, const Caller *caller)
 {
@@ -270,7 +265,7 @@ bottom_label (InCallView *self, const Caller *caller)
     case CALL_STATE_DISCONNECTING:
       return g_strdup (_("Hanging up"));
     case CALL_STATE_DISCONNECTED:
-      /* DisconnectCause's label: Telephony names busy (callFailed_userBusy); the others end with "Call ended" */
+      /* what ended the call: busy is named; the others end with "Call ended" */
       return g_strdup (self->end == CALL_END_BUSY ? _("Line busy") : _("Call ended"));
     default:
       return caller_label_and_number (caller);
@@ -279,8 +274,8 @@ bottom_label (InCallView *self, const Caller *caller)
 
 /* ---- the buttons ---------------------------------------------------------------------------------------------- */
 
-/* ButtonChooserFactory.newGsmButtonChooser's slots, each with its buttons in slotOrder; slot 3 (Record) and the
- * buttons never allowed here are left out */
+/* the button slots for a GSM call, each with its buttons in order of preference; the Record slot and the buttons
+ * never allowed here are left out */
 static const ButtonId slots[][2] = {
   { BUTTON_MUTE, NO_BUTTON },
   { BUTTON_KEYPAD, NO_BUTTON },
@@ -289,7 +284,7 @@ static const ButtonId slots[][2] = {
   { BUTTON_HOLD, NO_BUTTON },
 };
 
-/* ButtonChooser.getButtonPlacement: each slot takes its first allowed button, in order and without gaps; the
+/* each slot takes its first allowed button, in order and without gaps; the
  * buttons it passed over then fill what is left, if they are allowed and enabled */
 static void
 choose_buttons (InCallView *self, const gboolean allowed[N_BUTTONS], const gboolean enabled[N_BUTTONS])
@@ -313,7 +308,7 @@ choose_buttons (InCallView *self, const gboolean allowed[N_BUTTONS], const gbool
     self->placed[n] = NO_BUTTON;
 }
 
-/* CallButtonPresenter.updateButtonsState, for a GSM call through ModemManager */
+/* which buttons are allowed and on, for a GSM call through ModemManager */
 static void
 update_buttons (InCallView *self)
 {
@@ -375,7 +370,7 @@ on_keypad (InCallView *self)
   incall_view_show_dialpad (self, !self->dialpad_shown);
 }
 
-/* SWITCH_TO_SECONDARY: holding the call that is up brings back the held one (GSM swaps them) */
+/* swap: holding the call that is up brings back the held one (GSM swaps them) */
 static void
 on_swap (InCallView *self)
 {
@@ -421,7 +416,7 @@ incall_view_get_dialpad_shown (InCallView *self)
   return self->dialpad_shown;
 }
 
-/* InCallActivity.showDialpadFragment: it slides up from below over 400 ms and back down; it starts empty */
+/* the keypad slides up from below over 400 ms and back down; it starts empty */
 void
 incall_view_show_dialpad (InCallView *self, gboolean shown)
 {
@@ -439,7 +434,7 @@ incall_view_show_dialpad (InCallView *self, gboolean shown)
   incall_button_set_checked (INCALL_BUTTON (self->buttons[BUTTON_KEYPAD]), shown);
 }
 
-/* DialpadPresenter.processDtmf: the key shows in the field and its tone goes to the call. The modem plays each tone
+/* a key: it shows in the field and its tone goes to the call. The modem plays each tone
  * for its own fixed time, so a key held down does not make a longer one */
 static void
 on_dialpad_key (DialerDialpad *dialpad, int c, InCallView *self)
@@ -466,8 +461,7 @@ on_audio_changed (CallsClient *client, InCallView *self)
   update_buttons (self);
 }
 
-/* the modem may show it cannot send tones only when it is first asked to: the keypad then closes, and says why
- * (Android's keypad never meets a modem that cannot) */
+/* the modem may show it cannot send tones only when it is first asked to: the keypad then closes, and says why */
 static void
 on_status_changed (CallsClient *client, InCallView *self)
 {
@@ -494,7 +488,7 @@ incall_view_set_calls (InCallView *self, const CallInfo *primary, const Caller *
   self->connected = primary->connected;
   self->secondary = secondary != NULL;
 
-  /* the avatar: the contact's photo or letter, else the person glyph (showAnonymousAvatar) */
+  /* the avatar: the contact's photo or letter, else the person glyph */
   g_free (self->identifier);
   self->identifier = g_strdup (caller->identifier);
   g_free (self->letter_from);
@@ -508,7 +502,7 @@ incall_view_set_calls (InCallView *self, const CallInfo *primary, const Caller *
   self->label = bottom_label (self, caller);
   update_bottom (self);
 
-  /* OnHoldFragment: the other call's name */
+  /* the held call's banner: the other call's name */
   pango_layout_set_text (self->banner_name, secondary_caller ? secondary_caller->name : "", -1);
 
   update_buttons (self);
@@ -611,7 +605,7 @@ draw_grid (InCallView *self, GtkSnapshot *snapshot, double width)
   draw_centered (snapshot, self->bottom, width, y + ROBOTO_PAD_TOP (STATUS_SIZE), TEXT_SECONDARY);
 }
 
-/* OnHoldFragment: across the top, over the contact grid */
+/* the held call's banner: across the top, over the contact grid */
 static void
 draw_banner (InCallView *self, GtkSnapshot *snapshot, double width)
 {

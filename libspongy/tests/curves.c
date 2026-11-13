@@ -1,4 +1,4 @@
-/* the spec's reference curves (SPEC.md 4.2) and a few sanity checks */
+/* the stock curves against reference values, and a few sanity checks */
 #include <math.h>
 #include <stdio.h>
 #include "spongy.h"

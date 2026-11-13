@@ -19,8 +19,8 @@ G_DEFINE_FINAL_TYPE (BlockedNumbers, blocked_numbers, G_TYPE_OBJECT)
 enum { CHANGED, N_SIGNALS };
 static guint signals[N_SIGNALS];
 
-/* BlockedNumberContract.BlockedNumbers: the number as it was blocked, and its E.164 form when it has one. The E.164
- * column is kept for what reads the list as Android does; matching goes through libphonenumber either way. */
+/* the number as it was blocked, and its E.164 form when it has one. The E.164 column is kept for readers that look a
+ * number up by it; matching goes through libphonenumber either way. */
 static const char schema[] =
   "CREATE TABLE IF NOT EXISTS blocked ("
   "  _id INTEGER PRIMARY KEY AUTOINCREMENT,"

@@ -1,5 +1,5 @@
-/* NeoTimePicker: see neo-time-picker.h. Sizes from frameworks/base core/res/res/values/dimens_material.xml:146-166
- * (spec/clock.md §2.8); behaviour from RadialTimePickerView.java and TimePickerClockDelegate.java. */
+/* NeoTimePicker: see neo-time-picker.h. One widget draws the header and the dial; the dial cross-fades between hours
+ * and minutes. */
 #include "neo-time-picker.h"
 #include "neo-anim.h"
 #include "neo-dialog.h"
@@ -7,23 +7,23 @@
 
 #include <math.h>
 
-#define HEADER_H        100     /* timepicker_header_height */
-#define TIME_SIZE       60      /* timepicker_time_label_size */
-#define AMPM_SIZE       16      /* timepicker_ampm_label_size */
-#define AMPM_PADDING    16      /* timepicker_ampm_horizontal_padding */
-#define SEPARATOR_PAD   2       /* timepicker_separator_padding */
-#define DIAL            296     /* timepicker_radial_picker_dimen */
-#define DIAL_TOP        16      /* timepicker_radial_picker_top_margin */
-#define DIAL_SIDE       16      /* timepicker_radial_picker_horizontal_margin */
-#define SELECTOR_R      20      /* timepicker_selector_radius */
-#define SELECTOR_STROKE 2       /* timepicker_selector_stroke */
-#define CENTER_DOT_R    3       /* timepicker_center_dot_radius */
-#define SELECTOR_DOT_R  2       /* timepicker_selector_dot_radius */
-#define INSET_OUTER     22      /* timepicker_text_inset_normal */
-#define INSET_INNER     58      /* timepicker_text_inset_inner */
-#define TEXT_OUTER      16      /* timepicker_text_size_normal */
-#define TEXT_INNER      12      /* timepicker_text_size_inner */
-#define FADE_MS         500     /* RadialTimePickerView: the hours <-> minutes animation */
+#define HEADER_H        100
+#define TIME_SIZE       60      /* the header's hours and minutes */
+#define AMPM_SIZE       16
+#define AMPM_PADDING    16
+#define SEPARATOR_PAD   2       /* either side of the ':' */
+#define DIAL            296
+#define DIAL_TOP        16
+#define DIAL_SIDE       16
+#define SELECTOR_R      20
+#define SELECTOR_STROKE 2       /* the line from the centre to the selector */
+#define CENTER_DOT_R    3
+#define SELECTOR_DOT_R  2       /* in the selector on a minute between the numbers */
+#define INSET_OUTER     22      /* the outer ring of numbers, in from the dial's edge */
+#define INSET_INNER     58      /* the inner ring (24-hour mode) */
+#define TEXT_OUTER      16      /* the outer ring's numbers */
+#define TEXT_INNER      12      /* the inner ring's */
+#define FADE_MS         500     /* the hours <-> minutes cross-fade */
 
 #define WIDTH  (DIAL + 2 * DIAL_SIDE)
 #define HEIGHT (HEADER_H + DIAL_TOP + DIAL)
@@ -70,7 +70,6 @@ make_layout (NeoTimePicker *self, const char *text, int size)
 {
   PangoLayout *layout = gtk_widget_create_pango_layout (GTK_WIDGET (self), text);
   PangoFontDescription *font = pango_font_description_from_string ("Neo Roboto");
-  /* TextAppearance.Material: Roboto Regular 400, which "Bold text" makes 700 */
   pango_font_description_set_weight (font, 700);
   pango_font_description_set_absolute_size (font, size * PANGO_SCALE);
   pango_layout_set_font_description (layout, font);
@@ -166,7 +165,7 @@ draw_dial (NeoTimePicker *self, GtkSnapshot *snapshot, int which, float alpha)
   GdkRGBA selector = neo_color_alpha (NEO_SECONDARY, alpha);
 
   /* the numbers, then the selector over them, then the numbers again inside the selector in the dark colour
-   * (RadialTimePickerView.drawHours: drawHoursClipped, clipPath (mSelectorPath), drawHoursClipped activated) */
+   * (clipped to the selector), so a number half under it is drawn half in each colour */
   draw_numbers (self, snapshot, which, FALSE, alpha);
 
   GskRoundedRect circle;
@@ -301,11 +300,11 @@ show_dial (NeoTimePicker *self, int which)
   if (self->showing == which)
     return;
   self->showing = which;
-  /* ObjectAnimator's default curve: accelerate-decelerate */
+  /* accelerate-decelerate */
   neo_anim_start (self->fade, self->to_minutes, which == MINUTES, FADE_MS, 0, SPONGY_ACCELERATE_DECELERATE);
 }
 
-/* RadialTimePickerView.getDegreesFromXY and the snapping after it: the value under (x, y), or FALSE when a
+/* The value under (x, y), snapped to the nearest hour or minute, or FALSE when a
  * touch-down lands off the numbers (force: a drag already under way takes any point) */
 static gboolean
 pick (NeoTimePicker *self, double x, double y, gboolean force)
@@ -380,7 +379,7 @@ on_drag_end (GtkGestureDrag *drag, double dx, double dy, NeoTimePicker *self)
   if (!self->dragging)
     return;
   self->dragging = FALSE;
-  /* TimePickerClockDelegate.onValueSelected: an hour picked by touch moves on to the minutes */
+  /* an hour picked by touch moves on to the minutes */
   if (self->showing == HOURS)
     show_dial (self, MINUTES);
 }
@@ -436,7 +435,7 @@ neo_time_picker_new (int hour, int minute, gboolean use_24h)
   self->minute = CLAMP (minute, 0, 59);
   self->use_24h = use_24h;
 
-  /* RadialTimePickerView's number tables: HOURS_NUMBERS, HOURS_NUMBERS_24, MINUTES_NUMBERS */
+  /* the numbers on the dial: hours 12, 1-11; the 24-hour inner ring 00, 13-23; minutes 00, 05, ... 55 */
   for (int i = 0; i < 12; i++) {
     char text[4];
     g_snprintf (text, sizeof text, "%d", i ? i : 12);
@@ -495,7 +494,7 @@ neo_time_picker_dialog (GtkWidget *parent, int hour, int minute, NeoTimeChosen c
                         GDestroyNotify destroy)
 {
   NeoDialog *dialog = neo_dialog_new (NULL);
-  /* the platform dialog: the picker reaches the card's edges, the card is colorSurface */
+  /* the picker reaches the card's edges, on the plain surface colour */
   neo_dialog_set_flush (dialog, TRUE);
   GtkWidget *picker = neo_time_picker_new (hour, minute, neo_clock_uses_24h ());
   neo_dialog_set_content (dialog, picker);

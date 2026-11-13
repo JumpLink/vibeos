@@ -1,4 +1,4 @@
-/* The event's info screen (event-info.h; spec/calendar.md §6). */
+/* The event's info screen (event-info.h). */
 #include "event-info.h"
 #include "cal-alert-page.h"
 #include "cal-colors.h"
@@ -105,8 +105,8 @@ set_label (GtkWidget *label, const char *text)
   gtk_widget_set_visible (label, text && *text);
 }
 
-/* the headline's text over the event's colour: with real event colours black or white by its brightness
- * (EventInfoFragment.updateAdaptiveTextAndIconColors), else the stylesheet's */
+/* the headline's text over the event's colour: with real event colours black or white by its brightness,
+ * else the stylesheet's */
 static void
 tint (GtkWidget *label, guint32 rgb, guint32 base)
 {
@@ -126,8 +126,8 @@ tint (GtkWidget *label, guint32 rgb, guint32 base)
   pango_attr_list_unref (attrs);
 }
 
-/* mIsOrganizer: the calendar's owner is the ORGANIZER; an event without one is the owner's own (the provider
- * writes the owner as the organizer of an event made on the phone) */
+/* the user organizes the event: the calendar's owner is the ORGANIZER; an event without one is the owner's
+ * own */
 static gboolean
 is_organizer (const CalEvent *event, const CalCalendar *calendar)
 {
@@ -155,13 +155,13 @@ show_event (Info *info)
   set_label (info->when, when);
   set_label (info->repeat, repeat);
   set_label (info->where, event->location);
-  /* event_info_headline_color is white; the repeat rule's is white at 70 % (the stylesheet's) */
+  /* the headline's text is white; the repeat rule's white at 70 % (the stylesheet's) */
   tint (info->title, display, 0xffffffff);
   tint (info->when, display, 0xffffffff);
   tint (info->where, display, 0xffffffff);
   tint (info->repeat, display, 0xffffffff);
 
-  /* "Calendar: <name>" (calendar_container shows when the calendar is known) */
+  /* "Calendar: <name>" (shown when the calendar is known) */
   gtk_widget_set_visible (info->calendar_row, calendar != NULL);
   if (calendar)
     gtk_label_set_label (GTK_LABEL (info->calendar_name), calendar->name);
@@ -207,8 +207,8 @@ show_event (Info *info)
    * Export */
   update_actions (info);
 
-  /* The reminders: Etar keeps them in its own table, so even a read-only calendar's events have them. Here they are
-   * the event's VALARMs, which only a writable calendar can store: a read-only one shows none, and no "Add". */
+  /* The reminders are the event's VALARMs, which only a writable calendar can store: a read-only one shows none, and no
+   * "Add". */
   g_clear_pointer (&info->saved_reminders, g_array_unref);
   info->saved_reminders = g_array_copy (event->reminders);
   cal_reminders_set (CAL_REMINDERS (info->reminders), event->reminders);
@@ -264,7 +264,7 @@ on_store_changed (CalStore *store, Info *info)
                         info->cancellable, on_found, info);
 }
 
-/* --- the reminders: saved on the way back (EventInfoFragment.saveReminders, onStop) */
+/* --- the reminders: saved on the way back */
 
 static void
 on_reminders_saved (GObject *source, GAsyncResult *result, gpointer data)
@@ -283,7 +283,7 @@ save_reminders (Info *info)
 
   if (info->event->readonly || reminders_equal (now, info->saved_reminders))
     return;
-  /* the reminders are the series' (Etar's Reminders rows belong to the event, not an instance) */
+  /* the reminders are the series', not this instance's */
   edited = cal_event_copy (info->event);
   g_array_unref (edited->reminders);
   edited->reminders = g_array_ref (now);
@@ -309,7 +309,7 @@ on_reminders_changed (CalReminders *reminders, Info *info)
 static void
 on_add_reminder (NeoPressable *button, Info *info)
 {
-  /* EventInfoFragment.addReminder: the default reminder time, else 10 minutes */
+  /* a new reminder: the default reminder time, else 10 minutes */
   int minutes = g_settings_get_int (cal_window_get_settings (info->window), "default-reminder");
 
   cal_reminders_add (CAL_REMINDERS (info->reminders), minutes >= 0 ? minutes : 10);
@@ -323,7 +323,7 @@ on_edit (NeoPressable *button, Info *info)
   g_autoptr(CalEvent) event = cal_event_ref (info->event);
   GtkWidget *window = info->window;
 
-  /* doEdit, then the info screen finishes: the editor takes its place */
+  /* Edit: the info screen goes, the editor takes its place */
   save_reminders (info);
   cal_window_pop (window);
   cal_window_edit_event (window, event, FALSE);
@@ -367,7 +367,7 @@ on_delete_answer (int index, gpointer data)
       CalScope scope = deleting->event->recurring ? scopes[index] : CAL_SCOPE_ALL;
 
       cal_store_delete (deleting->store, deleting->event, scope, on_deleted, NULL);
-      /* exitWhenDone: back to the views */
+      /* deleted: back to the views */
       cal_window_pop (deleting->window);
     }
   g_object_unref (deleting->store);
@@ -435,7 +435,7 @@ on_export (NeoPressable *button, Info *info)
       g_warning ("export: %s", error->message);
       return;
     }
-  /* shareEvent(EXPORT_SAF): the system's "save as", the file named after the event */
+  /* Export event: the system's "save as", the file named after the event */
   name = g_strdup_printf ("%s.ics", info->event->title && *info->event->title ? info->event->title : "event");
   g_strdelimit (name, "/", '_');
   dialog = gtk_file_dialog_new ();
@@ -444,9 +444,9 @@ on_export (NeoPressable *button, Info *info)
   gtk_file_dialog_save (dialog, GTK_WINDOW (info->window), NULL, on_export_chosen, ics);
 }
 
-/* Share (shareEvent(INTENT)): the event as an .ics in the cache, handed to an app the user picks, as Android's
- * share sheet offers the apps that take text/calendar; the portal's "open with" chooser (OpenFile, ask) is that
- * sheet here. It shows only when an app besides this one opens text/calendar. */
+/* Share: the event as an .ics in the cache, handed to an app the user picks among those that take text/calendar,
+ * in the portal's "open with" chooser (OpenFile, ask). It shows only when an app besides this one opens
+ * text/calendar. */
 static gboolean
 can_share (void)
 {
@@ -498,9 +498,8 @@ on_share (NeoPressable *button, Info *info)
   gtk_file_launcher_launch (launcher, GTK_WINDOW (info->window), NULL, on_shared, NULL);
 }
 
-/* Choose event color (EventColorPickerDialog): Etar's palette for an account without one of its own, the event's
- * COLOR written to the whole series as saveEventColor writes the event row; "Set to default calendar color" takes
- * the event's own colour away */
+/* Choose event color: the app's palette for an account without one of its own, the event's COLOR written to the
+ * whole series; "Set to default calendar color" takes the event's own colour away */
 static void
 on_color_saved (GObject *source, GAsyncResult *result, gpointer data)
 {
@@ -538,8 +537,8 @@ on_change_color (NeoPressable *button, Info *info)
                                calendar ? calendar->color : info->event->color, on_color_chosen, info);
 }
 
-/* Email guests (QuickResponseActivity): a quick response (sorted, as Etar lists them) or "Write your own…", then
- * the mail app with it, as from a reminder's notification */
+/* Email guests: a quick response (sorted) or "Write your own…", then the mail app with it, as from a reminder's
+ * notification */
 static void
 on_email (NeoPressable *button, Info *info)
 {
@@ -549,7 +548,7 @@ on_email (NeoPressable *button, Info *info)
                           calendar ? calendar->email : NULL);
 }
 
-/* --- the guests (AttendeesView, not editable): under "Yes", "No", "Maybe" and "No response" with their counts,
+/* --- the guests (not editable): under "Yes", "No", "Maybe" and "No response" with their counts,
  * each a name (else the address) and the default contact picture, faded for one who has not responded. A guest's
  * own photo from the address book is left out: the app reads no contacts. */
 
@@ -574,7 +573,7 @@ guest_row (const CalAttendee *guest)
   gtk_picture_set_can_shrink (GTK_PICTURE (badge), TRUE);
   gtk_widget_set_size_request (badge, 48, 48);
   gtk_widget_set_valign (badge, GTK_ALIGN_CENTER);
-  /* noresponse_attendee_photo_alpha_level 64; a declined guest's is greyscale, as the picture already is */
+  /* alpha 64 for a guest who has not responded; a declined guest's is greyscale, as the picture already is */
   gtk_widget_set_opacity (badge, guest->status == CAL_STATUS_NONE ? 64 / 255.0 : 1);
   gtk_box_append (GTK_BOX (line), badge);
   gtk_box_append (GTK_BOX (row), line);
@@ -635,9 +634,8 @@ fill_guests (Info *info)
   gtk_widget_set_visible (info->guests, gtk_widget_get_first_child (info->guests) != NULL);
 }
 
-/* --- the toolbar's actions (event_info_title_bar.xml, all showAsAction ifRoom): as many as ActionBarPolicy allows
- * for the window's width (3 on a phone held upright, 5 from 600 dp), one fewer and "More options" when the rest go
- * into the overflow menu */
+/* --- the toolbar's actions: as many as the window's width allows (3 on a phone held upright, 5 when it is 600 px
+ * wide or more), one fewer and "More options" when the rest go into the overflow menu */
 
 typedef struct {
   const char *icon, *label;
@@ -754,7 +752,7 @@ update_actions (Info *info)
     {
       GtkWidget *more = cal_page_action ("cal-more-symbolic", _("More options"));
 
-      /* the ActionMenuView's overflow button, as the main toolbar's: 40 dp, not an action's 48 */
+      /* the overflow button, narrower than an action, as the main toolbar's */
       gtk_widget_remove_css_class (more, "cal-action");
       gtk_widget_add_css_class (more, "cal-toolbar-more");
 
@@ -795,19 +793,19 @@ event_info_new (GtkWidget *window, CalEvent *event)
   g_object_set_data_full (G_OBJECT (page), "cal-info", info, info_free);
   cal_page_set_back_handler (CAL_PAGE (page), on_back, info);
 
-  /* MN/event_info_title_bar.xml (update_actions fills it) */
+  /* the toolbar (update_actions fills it) */
   gtk_box_append (GTK_BOX (page), cal_page_toolbar (CAL_PAGE (page), NULL, &info->actions));
 
   content = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
 
-  /* L/event_info_headline.xml */
+  /* the headline */
   info->headline = g_object_new (CAL_TYPE_COLOR_BOX, NULL);
   gtk_widget_add_css_class (info->headline, "cal-info-headline");
   info->title = text ("cal-info-title", TRUE);
   info->when = text ("cal-info-when", TRUE);
   info->repeat = text ("cal-info-repeat", TRUE);
   info->where = text ("cal-info-where", TRUE);
-  /* TextView's font padding (still:cal-event: the title 97 px, the time 57 px) */
+  /* font padding */
   neo_label_set_font_padding (info->title, 24);
   neo_label_set_font_padding (info->when, 14);
   neo_label_set_font_padding (info->repeat, 14);
@@ -818,7 +816,7 @@ event_info_new (GtkWidget *window, CalEvent *event)
   gtk_box_append (GTK_BOX (info->headline), info->where);
   gtk_box_append (GTK_BOX (content), info->headline);
 
-  /* L/event_info.xml: the calendar, the description, the URL */
+  /* the body: the calendar, the description, the URL */
   body = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (body, "cal-info-body");
   info->calendar_row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
@@ -853,7 +851,7 @@ event_info_new (GtkWidget *window, CalEvent *event)
   gtk_box_append (GTK_BOX (body), info->url);
   gtk_box_append (GTK_BOX (content), body);
 
-  /* EMAIL GUESTS: a divider and a 50 dp button, the mail icon 8 dp before 16 sp text */
+  /* EMAIL GUESTS: a divider and a button, the mail icon before the text */
   info->email_row = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   label = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_widget_add_css_class (label, "cal-guest-separator");
@@ -874,7 +872,7 @@ event_info_new (GtkWidget *window, CalEvent *event)
   info->guests = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_box_append (GTK_BOX (content), info->guests);
 
-  /* REMINDERS (listSeparatorTextViewStyle), the rows, "Add reminder" */
+  /* REMINDERS as a list separator, the rows, "Add reminder" */
   info->reminders_header = text ("cal-list-separator", FALSE);
   gtk_label_set_label (GTK_LABEL (info->reminders_header), _("REMINDERS"));
   gtk_box_append (GTK_BOX (content), info->reminders_header);

@@ -1,16 +1,16 @@
-/* The Clock's own styles, over libneo's (neo.css). Weights are the effective ones with Bold text on (neo.css says
- * how); the numbers and colours are from spec/clock.md, the section in each comment. */
+/* The Clock's own styles, over libneo's (neo.css). Weights sit 300 over the nominal ones (400 as 700, 500 as 800):
+ * the phone's Bold text setting is on (neo.css says how). */
 
-/* body (V/styles.xml:38-42): 14 sp Medium, white. Most of the app's text. */
+/* most of the app's text */
 .body {
   font-size: 14px;
   font-weight: 800;
   color: white;
 }
 
-/* --- the Alarm tab (§2); alarm-card.c draws the card itself */
+/* --- the Alarm tab; alarm-card.c draws the card itself */
 
-/* display_time at 56 sp, tabular digits: Typeface.BOLD (900) when the alarm is on, NORMAL (700) when it is off */
+/* an alarm's time, bold while the alarm is on */
 .alarm-time {
   font-size: 56px;
   font-weight: 700;
@@ -22,7 +22,7 @@
   font-weight: 900;
 }
 
-/* the label row's icon, colorControlNormal; the "Add label" hint, the theme's hint colour (onSurface at 60 %) */
+/* the label row's icon, and the "Add label" hint */
 .label-icon {
   color: @neo_on_surface_variant;
 }
@@ -31,8 +31,7 @@
   color: alpha(@neo_on_surface, 0.6);
 }
 
-/* the ringtone row: icon and name in white; the vibrate row: its text in onSurface, its check in colorAccent, or
- * an unchecked ring in colorControlNormal */
+/* the ringtone row; the vibrate row, its check accented once ticked */
 .ringtone image {
   color: white;
 }
@@ -49,14 +48,14 @@
   color: @neo_secondary;
 }
 
-/* Delete and Dismiss: borderless body-styled buttons in colorPrimary, paddingStart 4 dp, paddingEnd 12 dp */
+/* Delete and Dismiss: borderless buttons with the body text's look */
 .neo-text-button.alarm-text-button {
   font-size: 14px;
   font-weight: 800;
   padding: 0 12px 0 4px;
 }
 
-/* the empty list: ic_noalarms at 120 dp over "No Alarms" at 16 sp, both in no_alarms (#4CFFFFFF) */
+/* the empty list: the picture over "No Alarms", both faint */
 .no-alarms {
   color: alpha(white, 0.3);
 }
@@ -66,9 +65,9 @@
   font-weight: 700;
 }
 
-/* --- the Clock tab (§6.1) */
+/* --- the Clock tab */
 
-/* display_time at 90 sp, tabular digits, white */
+/* the big digital clock */
 .main-clock {
   font-size: 90px;
   font-weight: 700;
@@ -80,15 +79,15 @@
   color: white;
 }
 
-/* --- the Timer tab (§7.2, §7.4) */
+/* --- the Timer tab */
 
-/* the keypad's time ("00h 00m 00s"), which timer-setup.c lays out and sizes itself: sans-serif, Normal */
+/* the keypad's time ("00h 00m 00s"), which timer-setup.c lays out and sizes itself */
 timer-setup {
   font-weight: 700;
   color: @neo_on_surface;
 }
 
-/* a digit key: the tonal button's label at 36 sp, Medium, onSurface; ⌫ in onTertiaryContainer */
+/* a digit key's label, and ⌫ */
 .timer-digit {
   font-size: 36px;
   font-weight: 800;
@@ -99,7 +98,7 @@ timer-setup {
   color: @neo_on_tertiary_container;
 }
 
-/* a card's label, TimerLabelTextAppearance: 20 sp Medium in colorSecondary; the "Label" hint at onSurface 60 % */
+/* a timer card's label, and its "Label" hint */
 .timer-label {
   font-size: 20px;
   font-weight: 800;
@@ -110,14 +109,14 @@ timer-setup {
   color: alpha(@neo_on_surface, 0.6);
 }
 
-/* ic_close_circle: a white cross on a disc in colorOutline */
+/* the close button: a white cross on a disc */
 .timer-close {
   background-color: @neo_outline;
   border-radius: 50%;
   color: white;
 }
 
-/* display_time at 40 sp, Normal, tabular digits */
+/* a timer card's time */
 .timer-time {
   font-size: 40px;
   font-weight: 700;
@@ -125,12 +124,11 @@ timer-setup {
   color: @neo_on_surface;
 }
 
-/* ic_reset tinted colorPrimary */
 .timer-reset {
   color: @neo_primary;
 }
 
-/* "+ 1:00", 20 sp sans-serif-medium on colorTertiary; play/pause tinted onPrimary on colorPrimary */
+/* "+ 1:00" and play/pause, on their filled buttons */
 .timer-add {
   font-size: 20px;
   font-weight: 800;
@@ -141,9 +139,9 @@ timer-setup {
   color: @neo_on_primary;
 }
 
-/* --- the Stopwatch tab (§8) */
+/* --- the Stopwatch tab */
 
-/* the time at 72 sp and the hundredths at 42 sp, Normal, tabular digits; colorAccent while the ring is held */
+/* the time and its smaller hundredths; accented while the ring is held */
 .stopwatch-main {
   font-size: 72px;
   font-weight: 700;
@@ -163,7 +161,7 @@ timer-setup {
   color: @neo_secondary;
 }
 
-/* a lap row: the number in colorAccent, the lap and total times in white, all body (14 sp Medium) */
+/* a lap row: the number accented, the lap and total times in white */
 .lap-number {
   font-size: 14px;
   font-weight: 800;
@@ -178,7 +176,7 @@ timer-setup {
   color: white;
 }
 
-/* --- the cities picker's overflow menu (clock-popup-menu.c): Material 3's menu, as still:calc-menu measured it */
+/* --- the cities picker's overflow menu (clock-popup-menu.c) */
 .clock-popup-menu {
   background-color: @neo_surface_container;
   border-radius: 4px;
@@ -187,13 +185,13 @@ timer-setup {
 
 .clock-popup-menu-text {
   font-size: 16px;
-  font-weight: 700;              /* bodyLarge: 400 */
+  font-weight: 700;
   color: @neo_on_surface;
 }
 
-/* --- the Clock tab's cities (§6.1, L/world_clock_item.xml) */
+/* --- the Clock tab's cities */
 
-/* PrimaryLabelTextAppearance and SecondaryLabelTextAppearance: 14 sp sans-serif-medium, white and colorSecondary */
+/* a city's name, and the line with its time or its hours ahead or behind */
 .primary-label {
   font-size: 14px;
   font-weight: 800;
@@ -206,8 +204,7 @@ timer-setup {
   color: @neo_secondary;
 }
 
-/* a city's card: alarm_background (colorSurfaceVariant, 28 dp corners), 24 dp over and under and 16 dp in;
- * MaterialCardViewStyle's 8 dp over it and 16 dp either side */
+/* a city's card, as round as an alarm's */
 .world-card {
   background-color: @neo_surface_container_highest;
   border-radius: 28px;
@@ -215,7 +212,7 @@ timer-setup {
   margin: 8px 16px 0 16px;
 }
 
-/* world_clock_time: 48 sp sans-serif-light, white */
+/* a city's time, in the light weight */
 .world-clock-time {
   font-size: 48px;
   font-weight: 600;
@@ -228,7 +225,7 @@ timer-setup {
   color: white;
 }
 
-/* --- second-level pages' bars (clock-bar.c): Up and the action icons, then the title (Toolbar title, 20 sp) */
+/* --- second-level pages' bars (clock-bar.c): Up and the action icons, then the title */
 .clock-bar {
   background-color: @neo_surface;
 }
@@ -239,13 +236,13 @@ timer-setup {
   color: @neo_on_surface;
 }
 
-/* the cities picker's icons are colorControlNormal at the bar's alpha: #899192 measured on still:clock-cities */
+/* the cities picker's icons are dimmer than the other bars' */
 .clock-bar.cities .clock-bar-icon {
   color: #899192;
 }
 
-/* Settings and the sound picker: icons in onSurface; the bar takes surfaceContainer once the list scrolls under it
- * (liftOnScroll), fading over the 150 ms of the AppBarLayout's lift */
+/* Settings and the sound picker: the bar turns a shade lighter once the list scrolls under it, fading over
+ * 150 ms */
 .clock-bar.settings .clock-bar-icon {
   color: @neo_on_surface;
 }
@@ -258,9 +255,9 @@ timer-setup {
   background-color: @neo_surface_container;
 }
 
-/* --- the cities picker (§6.2, L/city_list_item.xml, L/cities_activity.xml) */
+/* --- the cities picker */
 
-/* the index: bold white, 24 sp for a letter, 14 sp for a GMT offset (CitySelectionActivity's two text sizes) */
+/* the index: larger for a letter than for a GMT offset */
 .city-index {
   font-weight: 900;
   color: white;
@@ -274,8 +271,7 @@ timer-setup {
   font-size: 14px;
 }
 
-/* MaterialCheckBox: an 18 dp square with a 2 dp outline in onSurfaceVariant and 2 dp corners; checked, filled with
- * colorPrimary round a check in onPrimary */
+/* a city's check box: an outlined square; checked, filled round a check */
 .city-check {
   min-width: 14px;
   min-height: 14px;
@@ -296,7 +292,7 @@ timer-setup {
   color: @neo_on_primary;
 }
 
-/* "Selected Cities": 20 sp white, 24 dp over it and 8 dp under, 20 dp in */
+/* the "Selected Cities" header */
 .city-header {
   font-size: 20px;
   font-weight: 700;
@@ -307,7 +303,7 @@ timer-setup {
   padding-left: 20px;
 }
 
-/* the fast scroller: its track and the thumb, measured on still:clock-cities */
+/* the fast scroller: its track and the thumb */
 .city-fast-track {
   background-color: #2C3333;
 }
@@ -316,13 +312,13 @@ timer-setup {
   background-color: @neo_on_surface_variant;
 }
 
-/* DropShadowController's shadow under the bar: 8 dp, black at 30 % fading out */
+/* the shadow under the bar, shown once the list scrolls */
 .city-drop-shadow {
   min-height: 8px;
   background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.3), transparent);
 }
 
-/* the expanded SearchView: its query in onSurface, the hint in onSurfaceVariant */
+/* the expanded search field, and its hint */
 .city-search {
   font-size: 16px;
   font-weight: 700;
@@ -334,22 +330,22 @@ timer-setup {
   color: @neo_on_surface_variant;
 }
 
-/* --- Settings (§10, X/settings.xml in androidx.preference's Material 3 look) */
+/* --- Settings */
 
-/* the line over each category after the first, 1 dp in divider colour (still:clock-settings) */
+/* the line over each category after the first */
 .settings-divider {
   background-color: #24292A;
   min-height: 1px;
 }
 
-/* category: 14 sp Medium in colorSecondary */
+/* a category's title */
 .settings-category {
   font-size: 14px;
   font-weight: 800;
   color: @neo_secondary;
 }
 
-/* title 16 sp Normal in onSurface, summary 14 sp Normal in onSurfaceVariant */
+/* a row's title and summary */
 .settings-title {
   font-size: 16px;
   font-weight: 700;
@@ -362,7 +358,7 @@ timer-setup {
   color: @neo_on_surface_variant;
 }
 
-/* a row that can't be used now (Home time zone with Automatic home clock off): Preference's 38 % */
+/* a row that can't be used now (Home time zone with Automatic home clock off) */
 .settings-row:disabled {
   opacity: 0.38;
 }
@@ -371,8 +367,8 @@ timer-setup {
   color: white;
 }
 
-/* --- the list dialogs (clock-dialogs.c): MaterialAlertDialog's single-choice items, edge to edge of the card. The
- * scroller takes the card's 24 dp back, not the list inside it, which the scroller would clip */
+/* --- the list dialogs (clock-dialogs.c): single-choice items, edge to edge of the card. The scroller takes back
+ * the card's padding, not the list inside it, which the scroller would clip */
 .clock-dialog-scroll {
   margin: 0 -24px;
 }
@@ -385,7 +381,7 @@ timer-setup {
   color: @neo_on_surface;
 }
 
-/* the radio: onSurfaceVariant off, colorSecondary on, 20 dp before its text (drawablePadding) */
+/* the radio, accented when on */
 .clock-radio {
   color: @neo_on_surface_variant;
   margin-right: 20px;
@@ -395,9 +391,9 @@ timer-setup {
   color: @neo_secondary;
 }
 
-/* --- the sound picker (§3, L/ringtone_item_header.xml, L/ringtone_item_sound.xml) */
+/* --- the sound picker */
 
-/* a header: 15 sp in colorAccent, 16 dp over and under, 15 dp either side */
+/* a section's header, accented */
 .ringtone-header {
   font-size: 15px;
   font-weight: 700;
@@ -405,12 +401,12 @@ timer-setup {
   padding: 16px 15px;
 }
 
-/* the selected sound: white at 8 % behind it (white_08p) */
+/* the selected sound: a faint white behind it */
 .ringtone-row.selected {
   background-color: rgba(255, 255, 255, 0.08);
 }
 
-/* a sound's icon (ic_ringtone, white), its name (16 sp textColorPrimary), the check (colorAccent) and ⋮ (onSurface) */
+/* a sound's row: its icon, its name, the check and ⋮ */
 .ringtone-icon {
   color: white;
 }
@@ -429,20 +425,20 @@ timer-setup {
   color: @neo_on_surface;
 }
 
-/* "Add new": ic_add_24dp (black) on bg_circle_white tinted colorPrimary */
+/* "Add new": a black + on a filled circle */
 .ringtone-add {
   color: black;
   background-color: @neo_primary;
   border-radius: 50%;
 }
 
-/* --- the screen saver (§10.7, L/desk_clock_saver.xml): white on black, which screensaver.c then multiplies by the
- * clock or night-mode colour */
+/* --- the screen saver: white on black, which screensaver.c then multiplies by the clock or night-mode
+ * colour */
 window.neo.clock-screensaver {
   background-color: black;
 }
 
-/* digital_clock: big_thin (sans-serif-thin, 400 with Bold text) at main_clock_font_size, 80 sp on sw360dp */
+/* the screen saver's clock: the thin weight, which Bold text makes 400 */
 .saver-time {
   font-size: 80px;
   font-weight: 400;

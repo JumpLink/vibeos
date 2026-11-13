@@ -3,8 +3,7 @@
  *
  * A message that comes is handed over once it is all there (ModemManager puts the parts of a long one together:
  * RECEIVING until the last part, then RECEIVED); messages that came while nobody listened are handed over when the
- * modem comes. The service keeps them and then deletes them off the modem, as Android's SmsDeliverReceiver takes
- * them off the SIM. Sending is Messaging.Create then Sms.Send.
+ * modem comes. The service keeps them and then deletes them off the modem. Sending is Messaging.Create then Sms.Send.
  *
  * Plain GDBus rather than libmm-glib, as the Phone's modem.c: a handful of calls and properties. */
 #pragma once
@@ -39,10 +38,9 @@ const char *sms_modem_get_country (SmsModem *self);
  * of its own, a STATUS_REPORT carrying the sent one's reference (callbacks.status_report) */
 void        sms_modem_send (SmsModem *self, const char *number, const char *text, gboolean delivery_report,
                             GCancellable *cancellable, GAsyncReadyCallback callback, gpointer data);
-/* the error as ModemManager sent it (g_dbus_error_get_remote_error names it); G_IO_ERROR_NOT_CONNECTED without a
- * modem, G_IO_ERROR_CANCELLED when the modem was freed meanwhile. @reference: with a delivery report asked for, the
- * sent message's reference (Sms.MessageReference: the last part's TP-MR, the part a report is waited for, as
- * Android's SmsSender asks for one on the last part only), else -1 */
+/* the error as ModemManager sent it (g_dbus_error_get_remote_error names it); G_IO_ERROR_NOT_CONNECTED without a modem,
+ * G_IO_ERROR_CANCELLED when the modem was freed meanwhile. @reference: with a delivery report asked for, the sent
+ * message's reference (Sms.MessageReference: the last part's TP-MR, the part a report is waited for), else -1 */
 gboolean    sms_modem_send_finish (SmsModem *self, GAsyncResult *result, int *reference, GError **error);
 /* Messaging.Delete: a received message the store has now */
 void        sms_modem_delete (SmsModem *self, const char *path);

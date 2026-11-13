@@ -1,17 +1,14 @@
-/* SettingsPage: see settings-page.h. Measured on still:clock-settings…-5: the list x 36…1044 px (DeskClock pads it
- * by 36 px), text from x 84 to 996; a category's text 24 dp under its top (the divider's line, for all but the
- * first) and 8 dp over its bottom; rows 16 dp over and under their text, the switch's 52 dp ending at x 996.
+/* SettingsPage: see settings-page.h.
  *
  * Left out, because the phone cannot do what they say ("the UI must not claim what the code can't back"):
  *  - "Device flip action" and "Device shake action". They need the accelerometer's readings as they come, and
  *    iio-sensor-proxy gives only the screen's orientation. DeskClock itself hides both on a phone without an
- *    accelerometer (SettingsActivity.refresh), which is what a GNOME phone is to an app.
- *  - "Select/enable screen saver" (Screen saver's third row). It opens Android's Daydream settings, and GNOME has
- *    no Daydream: nothing starts a screen saver app when the phone docks or charges. "Preview" (screensaver.c) and
- *    the screen saver's own settings are here; the owner chose to keep only those (spec/clock.md B5).
+ *    accelerometer, which is what a GNOME phone is to an app.
+ *  - "Select/enable screen saver" (Screen saver's third row). It opens the system's screen saver settings, and GNOME
+ *    has none: nothing starts a screen saver app when the phone docks or charges. "Preview" (screensaver.c) and
+ *    the screen saver's own settings are here; the owner chose to keep only those.
  *
- * The same widget is the screen saver's settings page (ScreensaverSettingsActivity, X/screensaver_settings.xml):
- * settings_page_new_screensaver. */
+ * The same widget is the screen saver's settings page: settings_page_new_screensaver. */
 #include "settings-page.h"
 #include "cities.h"
 #include "clock-bar.h"
@@ -25,10 +22,10 @@
 #include <spongy-gtk.h>
 #include <stdlib.h>
 
-/* Android's STREAM_ALARM steps, 1 … 7 (the slider's 0 … 6), as DeskClock shows them. Here they are only the slider's
- * stops: "alarm-volume" is their fraction of the sound server's full volume, which any phone has */
+/* the alarm volume's steps, 1 … 7 (the slider's 0 … 6). They are only the slider's stops: "alarm-volume" is their
+ * fraction of the sound server's full volume, which any phone has */
 #define VOLUME_STEPS     7
-#define PREVIEW_MS       2000   /* AlarmVolumePreference: the default alarm sound, two seconds */
+#define PREVIEW_MS       2000   /* the default alarm sound, two seconds */
 
 /* a list row: its choices and what each stores */
 typedef struct
@@ -57,9 +54,10 @@ G_DEFINE_FINAL_TYPE (SettingsPage, settings_page, GTK_TYPE_WIDGET)
 enum { CLOSED, PICK_TIMER_SOUND, SHOW_SCREENSAVER, SCREENSAVER_SETTINGS, N_SIGNALS };
 static guint signals[N_SIGNALS];
 
-/* --- the rows (androidx.preference's layouts, as measured) */
+/* --- the rows */
 
-/* a category: its divider (1 dp in onSurface at 12 %, not over the first), its title in colorAccent */
+/* a category: a divider over all but the first, then its accented title, 24 down from the top either way (the
+ * divider's line counts) */
 static void
 add_category (SettingsPage *self, const char *title)
 {
@@ -88,8 +86,8 @@ add_category (SettingsPage *self, const char *title)
   gtk_box_append (GTK_BOX (self->list), box);
 }
 
-/* a row: the title (16 sp) over a summary (14 sp, wrapping, hidden when empty), and @end after them; the whole row
- * is the touch target */
+/* a row: the title over a summary (wrapping, hidden when empty), and @end after them; the whole row is the touch
+ * target */
 static GtkWidget *
 add_row (SettingsPage *self, const char *title, GtkWidget **summary, GtkWidget *end)
 {
@@ -102,9 +100,9 @@ add_row (SettingsPage *self, const char *title, GtkWidget **summary, GtkWidget *
   gtk_widget_set_margin_end (box, 16);
   gtk_widget_set_hexpand (column, TRUE);
   gtk_widget_set_valign (column, GTK_ALIGN_CENTER);
-  /* 16 dp over and under the text, and 1 dp more under it: Android's text boxes are about ⅔ dp taller than ours
-   * (FontMetricsInt rounds the font's bottom padding up to a whole pixel, which libneo's dp margins cannot), and a
-   * row of two lines drifted 4 px from the still, a row of one 2 px */
+  /* one more under the text than over it: the text's box should be about ⅔ px taller than libneo's (its bottom
+   * padding rounded up to a whole pixel, which libneo's margins cannot do), and without it the rows came out a
+   * little short */
   gtk_widget_set_margin_top (column, 16);
   gtk_widget_set_margin_bottom (column, 17);
   gtk_label_set_xalign (GTK_LABEL (label), 0);
@@ -124,7 +122,7 @@ add_row (SettingsPage *self, const char *title, GtkWidget **summary, GtkWidget *
   gtk_box_append (GTK_BOX (box), column);
   if (end)
     {
-      /* the widget frame: 16 dp from the text, centred on the row */
+      /* the switch or value at the end, centred on the row */
       gtk_widget_set_margin_start (end, 16);
       gtk_widget_set_valign (end, GTK_ALIGN_CENTER);
       gtk_box_append (GTK_BOX (box), end);
@@ -187,7 +185,7 @@ list_index (SettingsPage *self, ListRow *list)
   return -1;
 }
 
-/* ListPreference's "%s" summary: the chosen entry, or none */
+/* the row's summary: the chosen entry, or none */
 static void
 show_list (SettingsPage *self, ListRow *list)
 {
@@ -253,7 +251,7 @@ add_choice (ListRow *list, char *label, char *value)
   g_ptr_array_add (list->values, value);
 }
 
-/* the "Home time zone" choices (SettingsDAO.getTimeZones): "(GMT+1:00) Amsterdam, Berlin", by the offset now */
+/* the "Home time zone" choices: "(GMT+1:00) Amsterdam, Berlin", by the offset now */
 static int
 by_offset (gconstpointer a, gconstpointer b, gpointer data)
 {
@@ -316,7 +314,7 @@ add_switch (SettingsPage *self, const char *title, const char *summary, const ch
 
   if (summary)
     set_summary (label, summary);
-  /* the switch is not clickable itself (preference_widget_switch_compat): the row is */
+  /* the switch is not clickable itself: the row is */
   gtk_widget_set_can_target (toggle, FALSE);
   g_object_set_data (G_OBJECT (toggle), "key", (gpointer) key);
   g_object_set_data (G_OBJECT (row), "toggle", toggle);
@@ -337,12 +335,12 @@ show_switch (SettingsPage *self, GtkWidget *row)
                                                               : GTK_ACCESSIBLE_TRISTATE_FALSE, -1);
 }
 
-/* --- the alarm volume (AlarmVolumePreference) */
+/* --- the alarm volume */
 
 static void
 on_volume (VolumeSlider *slider, int value, SettingsPage *self)
 {
-  /* onProgressChanged (fromUser): the volume at once */
+  /* as the slider moves: the volume at once */
   g_settings_set_double (self->settings, "alarm-volume", (value + 1) / (double) VOLUME_STEPS);
 }
 
@@ -351,15 +349,14 @@ on_volume_released (VolumeSlider *slider, SettingsPage *self)
 {
   GDBusConnection *bus = g_application_get_dbus_connection (g_application_get_default ());
 
-  /* onStopTrackingTouch: the default alarm sound for two seconds, at the new volume, by the service */
+  /* let go: the default alarm sound for two seconds, at the new volume, by the service */
   if (bus)
     g_dbus_connection_call (bus, "neo.Clock.Alarms", "/neo/Clock/App", "neo.Clock.App",
                             "PlaySound", g_variant_new ("(su)", "", PREVIEW_MS), NULL, G_DBUS_CALL_FLAGS_NONE, -1,
                             NULL, NULL, NULL);
 }
 
-/* L/alarm_volume_preference.xml: ic_alarm_small in a 44 dp frame, then the title over the slider, 8 dp over and
- * under them */
+/* Alarm volume: the alarm icon, then the title over the slider */
 static void
 add_volume (SettingsPage *self)
 {
@@ -370,7 +367,7 @@ add_volume (SettingsPage *self)
 
   gtk_widget_set_margin_start (box, 16);
   gtk_widget_set_margin_end (box, 16);
-  /* the icon at the start of its 44 dp frame (still:clock-settings-3: x 84…156 px), not centred in it */
+  /* the icon at the start of its frame, not centred in it: the margin after it makes up the rest */
   gtk_image_set_pixel_size (GTK_IMAGE (icon), 24);
   gtk_widget_set_size_request (icon, 24, -1);
   gtk_widget_set_margin_end (icon, 20);
@@ -397,8 +394,8 @@ add_volume (SettingsPage *self)
   gtk_box_append (GTK_BOX (self->list), box);
 }
 
-/* --- the night mode's brightness (SeekBarPreference 0 … 100, updatesContinuously): the title and its "40%" over
- * the slider, which writes the setting as it moves */
+/* --- the night mode's brightness, 0 … 100: the title and its "40%" over the slider, which writes the setting as
+ * it moves */
 
 static void
 on_brightness (VolumeSlider *slider, int value, SettingsPage *self)
@@ -425,7 +422,7 @@ add_brightness (SettingsPage *self)
   gtk_widget_add_css_class (self->brightness_summary, "settings-summary");
   neo_label_set_font_padding (self->brightness_summary, 14);
   gtk_box_append (GTK_BOX (column), self->brightness_summary);
-  /* the slider's own 14 dp inset puts its track's ends under the text's (the 16 dp beside them taken back) */
+  /* negative margins take back the slider's own inset, so its track's ends line up with the text */
   self->brightness = volume_slider_new (100);
   gtk_widget_set_margin_start (self->brightness, -14);
   gtk_widget_set_margin_end (self->brightness, -14);
@@ -500,9 +497,8 @@ add_plain (SettingsPage *self, const char *title, const char *text, GCallback cl
 
 /* --- everything from the settings (refresh) */
 
-/* ScreensaverSettingsActivity.refresh and setVisibility: "Bold clock text" and "Show AM/PM indicator" only for the
- * digital clock, the AM/PM greyed with 24-hour time, and the night mode's rows greyed with it off
- * (android:dependency) */
+/* "Bold clock text" and "Show AM/PM indicator" only for the digital clock, the AM/PM greyed with 24-hour time, and
+ * the night mode's rows greyed with it off */
 static void
 refresh_screensaver (SettingsPage *self)
 {
@@ -561,7 +557,7 @@ on_settings (GSettings *settings, const char *key, SettingsPage *self)
   refresh (self);
 }
 
-/* the bar lifts (colorSurfaceContainer) once the list leaves its top (AppBarLayout's liftOnScroll) */
+/* the bar lifts (a shade lighter) once the list leaves its top */
 static void
 on_scrolled (GtkAdjustment *adjustment, SettingsPage *self)
 {
@@ -625,7 +621,7 @@ settings_page_init (SettingsPage *self)
   self->box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_parent (self->box, GTK_WIDGET (self));
 
-  /* the list, 12 dp in from the sides (36 px: settings_padding's 4 dp, scaled twice) */
+  /* the list, in from the sides */
   self->list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_margin_start (self->list, 12);
   gtk_widget_set_margin_end (self->list, 12);
@@ -637,7 +633,7 @@ settings_page_init (SettingsPage *self)
   gtk_box_append (GTK_BOX (self->box), self->scroller);
 }
 
-/* the rows, in X/settings.xml's order */
+/* the rows, top to bottom */
 static void
 build (SettingsPage *self)
 {
@@ -699,11 +695,11 @@ build (SettingsPage *self)
     add_choice (list, s ? g_strdup_printf (ngettext ("%d second", "%d seconds", s), s) : g_strdup (_("Off")),
                 g_strdup_printf ("%d", s));
   self->timer_vibrate = add_switch (self, _("Timer vibrate"), NULL, "timer-vibrate");
-  /* hidden on a device without a vibrator (SettingsActivity.refresh) */
+  /* hidden on a device without a vibrator */
   gtk_widget_set_visible (self->timer_vibrate, clock_has_vibrator ());
 }
 
-/* X/screensaver_settings.xml's rows */
+/* the screen saver page's rows */
 static void
 build_screensaver (SettingsPage *self)
 {
@@ -739,7 +735,7 @@ make (GSettings *settings, gboolean saver)
 
   self->settings = g_object_ref (settings);
   self->saver = saver;
-  /* the screen saver's page is titled by its activity's label */
+  /* the screen saver's page has a title of its own */
   self->bar = clock_bar_new (saver ? _("Screen saver settings") : _("Settings"));
   gtk_widget_add_css_class (self->bar, "settings");
   g_signal_connect (clock_bar_get_up (self->bar), "clicked", G_CALLBACK (on_up), self);

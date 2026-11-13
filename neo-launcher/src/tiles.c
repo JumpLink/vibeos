@@ -278,7 +278,7 @@ tiles_reload_icons (void)
   g_thread_unref (g_thread_new ("neo-icons", icon_thread, all_icon_jobs ()));
 }
 
-/* The installed apps again, as Launcher3 follows the package manager: a new app gets a tile (its icon from the thread)
+/* The installed apps again: a new app gets a tile (its icon from the thread)
  * and the first free home cell, a removed one's tile goes and leaves its cells empty, a changed one takes its new
  * entry (relabelled, its icon drawn again if that changed), and the drawer is sorted again. The caller makes sure
  * no tile is held (under a finger, pressed, launching, in a popup or a drag). Whether anything changed. */
@@ -438,7 +438,7 @@ haptic (const char *event)
 }
 
 /* The shell starts the app and grows its window (or splash) out of the icon's box; the icon hides meanwhile and
- * the home content behind shrinks to 0.97 (Launcher3's QuickstepTransitionManager). */
+ * the home content behind shrinks to 0.97. */
 void
 tile_launch (Tile *t, float x, float y, float size, bool from_drawer)
 {
@@ -465,12 +465,12 @@ launch_content_scale (void)
   if (!N.launch_t0)
     return 1;
   float t = CLAMP ((N.now - N.launch_t0 - LAUNCH_SCALE_DELAY_MS) / LAUNCH_SCALE_MS, 0, 1);
-  float e = 1 - powf (1 - t, 3);    /* DECELERATE_1_5 */
+  float e = 1 - powf (1 - t, 3);    /* decelerate */
   return 1 + (CONTENT_SCALE - 1) * e;
 }
 
-/* A label; on the wallpaper with Launcher3's two shadows (ambient #40000000 blur 1.5 dp, key #89000000 blur
- * 0.5 dp offset 0.5 dp), the blur stood in for by a ring of faint copies. */
+/* A label; on the wallpaper with two shadows under it, a soft ambient one and a darker, tighter key one, the blur
+ * stood in for by a ring of faint copies. */
 void
 label_draw (TextLayout *l, float x, float y, GfxColor c, bool shadow)
 {

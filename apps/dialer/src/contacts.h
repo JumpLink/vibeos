@@ -1,5 +1,5 @@
-/* The contacts with a phone number, from Evolution Data Server's address books (spec §14.2), which stand in for
- * Android's contacts provider: who a number belongs to, and the list the Contacts tab and the search show.
+/* The contacts with a phone number, from Evolution Data Server's address books: who a number belongs to, and the list
+ * the Contacts tab and the search show.
  *
  * It reads every enabled address book through a live view, so a contact added or changed elsewhere (GNOME Contacts,
  * a synced account) shows here as it changes. */
@@ -14,12 +14,12 @@ typedef struct {
 
 typedef struct {
   char *uid;                    /* the contact's lookup key: its letter tile's colour comes from it */
-  /* the name the way Settings' Display options say (spec §9.3): one of the two below, not owned */
+  /* the name the way Settings' Display options say: one of the two below, not owned */
   char *name;                   /* Name format: what every screen shows */
   char *sort_name;              /* Sort by: what the list is ordered by and its letters come from */
   char *sort_key;               /* sort_name as the locale sorts it */
-  char *name_primary;           /* first name first (DISPLAY_NAME): FN, else the name's parts, "Anna Schmidt" */
-  char *name_alternative;       /* last name first (DISPLAY_NAME_ALTERNATIVE): "Schmidt, Anna"; with no family
+  char *name_primary;           /* first name first: FN, else the name's parts, "Anna Schmidt" */
+  char *name_alternative;       /* last name first: "Schmidt, Anna"; with no family
                                  * name the same as the other */
   char *sort_key_primary, *sort_key_alternative;
   GPtrArray *numbers;           /* ContactNumber */

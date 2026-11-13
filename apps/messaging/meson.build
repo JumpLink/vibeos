@@ -10,8 +10,8 @@ sqlite = dependency('sqlite3')
 bindir = get_option('prefix') / get_option('bindir')
 datadir = get_option('prefix') / get_option('datadir')
 
-# the Phone's numbers, contacts, notifications and app opening are the Messaging's too (Android's Messaging and
-# Dialer share them through the platform): built from its sources, not copied
+# the Phone's numbers, contacts, notifications and app opening are the Messaging's too, built from the Phone's
+# sources, not copied
 dialer = include_directories('../dialer/src')
 store = static_library('store', 'src/sms-store.c', dependencies: [gio, sqlite])
 phone = static_library('phone', '../dialer/src/phone-number.c', '../dialer/src/contacts.c', '../dialer/src/phone.c',

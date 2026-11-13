@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- The Phone's settings: the Dialer's "Sounds and vibration" (res/xml/sound_settings.xml) with Android's system
-     settings that page writes, and what the app remembers. The service reads the ringing and in-call ones as calls
+<!-- The Phone's settings: "Display options", "Sounds and vibration" with the system settings that page writes,
+     and what the app remembers. The service reads the ringing and in-call ones as calls
      come and go; the app's Settings page writes them. -->
 <schemalist>
   <enum id="neo.Dialer.Tab">
-    <value nick="favorites" value="0"/>   <!-- OldMainActivityPeer's tabs, in their order -->
+    <value nick="favorites" value="0"/>   <!-- the tabs, in their order -->
     <value nick="recents" value="1"/>
     <value nick="contacts" value="2"/>
   </enum>
 
-  <!-- Display options (ContactsPreferences): android.contacts.SORT_ORDER and DISPLAY_ORDER's values -->
+  <!-- Display options: "Sort by" and "Name format" -->
   <enum id="neo.Dialer.SortOrder">
-    <value nick="given-name" value="0"/>        <!-- sort_by_given_name -->
-    <value nick="family-name" value="1"/>       <!-- sort_by_family_name -->
+    <value nick="given-name" value="0"/>        <!-- First name -->
+    <value nick="family-name" value="1"/>       <!-- Last name -->
   </enum>
   <enum id="neo.Dialer.DisplayOrder">
-    <value nick="given-name-first" value="0"/>  <!-- view_given_name_first -->
-    <value nick="family-name-first" value="1"/> <!-- view_given_name_last -->
+    <value nick="given-name-first" value="0"/>  <!-- First name first -->
+    <value nick="family-name-first" value="1"/> <!-- Last name first -->
   </enum>
 
   <schema id="neo.Dialer" path="/neo/Dialer/">
@@ -57,7 +57,7 @@
         'default' for the default ringtone (Orion)</description>
     </key>
     <key name="ring-volume" type="d">
-      <!-- AudioService's default ring stream index, 5 of 7 -->
+      <!-- 5 of 7 steps -->
       <range min="0" max="1"/>
       <default>0.714</default>
       <summary>Ring volume</summary>
@@ -71,7 +71,7 @@
       <summary>Keypad tones</summary>
     </key>
 
-    <!-- In-call (LineageOS's InCallVibrationHandler) -->
+    <!-- In-call vibrations -->
     <key name="incall-vibrate-outgoing" type="b">
       <default>false</default>
       <summary>Vibrate on answer</summary>

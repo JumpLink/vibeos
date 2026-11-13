@@ -1,4 +1,4 @@
-/* The Phone's notifications (InCallUI's StatusBarNotifier and the Dialer's MissedCallNotifier, spec §8.16):
+/* The Phone's notifications:
  *
  *  - the call in front, one at a time: "Incoming call" with Decline and Answer, which peeks and stays while it
  *    rings; "Dialing", "Ongoing call" counting on, "On hold", each with Hang up and the speaker;

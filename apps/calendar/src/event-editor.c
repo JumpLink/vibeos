@@ -1,4 +1,4 @@
-/* The event editor (event-editor.h; spec/calendar.md §7). */
+/* The event editor (event-editor.h). */
 #include "event-editor.h"
 #include "cal-material-switch.h"
 #include "cal-outlined-field.h"
@@ -62,8 +62,8 @@ editor_free (gpointer data)
   g_free (editor);
 }
 
-/* --- times: day numbers and minutes into the day, in the event's zone (EditEventView shows the times in
- * mTimezone; choosing another zone keeps them on the clock and moves the moment) */
+/* --- times: day numbers and minutes into the day, in the event's zone (choosing another zone keeps them on the
+ * clock and moves the moment) */
 
 static GTimeZone *
 editor_zone (Editor *editor)
@@ -156,7 +156,7 @@ show_times (Editor *editor)
   /* the time zone: hidden with All day (an all-day event has none) */
   if (editor->tz_row)
     {
-      /* the GMT part in #888888 (the TZ button's grey text), the sun of summer time in #BFBFBF */
+      /* the GMT part in grey, the sun of summer time in a lighter grey */
       g_autofree char *zone = cal_tz_label_markup (editor->tzid, start_time (editor), TRUE);
 
       gtk_widget_set_visible (editor->tz_row, !editor->all_day);
@@ -169,8 +169,8 @@ show_repeat (Editor *editor)
 {
   g_autofree char *text = editor->rrule ? cal_format_rrule (editor->rrule, start_time (editor)) : NULL;
 
-  /* EditEventView.populateRepeats: a rule without words is "Custom (can't customize on phone)" and the button is off,
-   * as it is for one the dialog cannot show (canHandleRecurrenceRule); either stays as it is, made elsewhere */
+  /* a rule without words is "Custom (can't customize on phone)" and the button is off,
+   * as it is for one the dialog cannot show; either stays as it is, made elsewhere */
   set_button_text (editor->repeat, text ? text : editor->rrule ? _("Custom (can't customize on phone)")
                                                                : _("One-time event"));
   gtk_widget_set_sensitive (editor->repeat, !editor->rrule
@@ -186,13 +186,13 @@ show_calendar (Editor *editor)
   gtk_label_set_label (GTK_LABEL (editor->calendar_name), calendar ? calendar->name : "");
   gtk_label_set_label (GTK_LABEL (editor->calendar_account), calendar ? calendar->account : "");
   gtk_widget_set_visible (editor->calendar_account, calendar && calendar->account && *calendar->account);
-  /* the square shows the event's colour when it has its own, else the calendar's (setSpinnerBackgroundColor) */
+  /* the square shows the event's colour when it has its own, else the calendar's */
   color = cal_argb (0xff000000 | (editor->own_color ? editor->color : calendar ? calendar->color : 0x3f51b5));
   g_object_set_data_full (G_OBJECT (editor->calendar_color), "cal-color", g_memdup2 (&color, sizeof color), g_free);
   gtk_widget_queue_draw (editor->calendar_color);
 }
 
-/* --- the values the user changed (EditEventFragment.isModelChanged) */
+/* --- the values the user changed */
 
 static char *
 entry_text (GtkWidget *entry)
@@ -210,7 +210,7 @@ description_text (Editor *editor)
   return g_strstrip (gtk_text_buffer_get_text (buffer, &a, &b, FALSE));
 }
 
-/* the guests typed (RecipientEditTextView's text): addresses split at commas, semicolons and spaces, each once */
+/* the guests typed: addresses split at commas, semicolons and spaces, each once */
 static char **
 typed_guests (Editor *editor)
 {
@@ -233,7 +233,7 @@ typed_guests (Editor *editor)
   return (char **) g_ptr_array_free (g_steal_pointer (&out), FALSE);
 }
 
-/* a guest the field lists: not the organizer, not the calendar's owner (EditEventHelper leaves both out) */
+/* a guest the field lists: not the organizer, not the calendar's owner */
 static gboolean
 listed_guest (Editor *editor, const CalAttendee *guest)
 {
@@ -372,7 +372,7 @@ done (Editor *editor)
   g_autoptr(CalEvent) edited = edited_event (editor);
   gboolean is_new = editor->original == NULL;
 
-  /* EditEventFragment.onActionBarItemSelected: a new event with nothing in it is not made */
+  /* Done: a new event with nothing in it is not made */
   if (is_new && !(edited->title && *edited->title) && !(edited->location && *edited->location)
       && !(edited->description && *edited->description) && edited->attendees->len == 0)
     {
@@ -453,7 +453,7 @@ on_calendar (NeoPressable *row, Editor *editor)
   g_autoptr(GPtrArray) labels = g_ptr_array_new_with_free_func (g_free);
   int selected = -1;
 
-  /* the writable calendars, as Etar's calendars spinner lists them (name, then account) */
+  /* the writable calendars, each as its name, then its account */
   for (guint i = 0; i < calendars->len; i++)
     {
       CalCalendar *calendar = calendars->pdata[i];
@@ -482,7 +482,7 @@ draw_calendar_color (GtkDrawingArea *area, cairo_t *cr, int width, int height, g
   cairo_fill (cr);
 }
 
-/* --- dates and times (EditEventView.DateListener, TimeListener) */
+/* --- dates and times */
 
 static void
 on_all_day (GObject *object, GParamSpec *pspec, Editor *editor)
@@ -564,11 +564,11 @@ on_end_minute (int hour, int minute, gpointer data)
 static int
 week_start (Editor *editor)
 {
-  /* MaterialDatePicker starts the week on the locale's first day */
+  /* the date picker starts the week on the locale's first day */
   return cal_week_start (-1);
 }
 
-/* EditEventView titles its date pickers "Go to…" as well (R.string.goto_date, :1681) */
+/* the editor's date pickers are titled "Go to…" as well */
 static void
 on_start_date_clicked (NeoPressable *button, Editor *editor)
 {
@@ -594,14 +594,14 @@ on_end_time_clicked (NeoPressable *button, Editor *editor)
   cal_time_picker_show (editor->page, editor->end_minute / 60, editor->end_minute % 60, on_end_minute, editor);
 }
 
-/* --- repeat (RecurrencePickerDialog) */
+/* --- repeat (cal-recurrence-picker) */
 
 static void
 on_repeat_chosen (const char *rrule, gpointer data)
 {
   Editor *editor = data;
 
-  /* onRecurrenceSet: the rule, or none ("does not repeat") */
+  /* the rule chosen, or none ("does not repeat") */
   g_free (editor->rrule);
   editor->rrule = g_strdup (rrule);
   show_repeat (editor);
@@ -610,7 +610,7 @@ on_repeat_chosen (const char *rrule, gpointer data)
 static void
 on_repeat (NeoPressable *button, Editor *editor)
 {
-  /* EditEventView.onClick: the start, its zone (an all-day event's dates have none) and the rule */
+  /* the picker gets the start, its zone (an all-day event's dates have none) and the rule */
   cal_recurrence_picker_show (editor->page, editor->rrule, start_time (editor), editor->all_day ? NULL : editor->tzid,
                               on_repeat_chosen, editor);
 }
@@ -633,8 +633,8 @@ on_add_reminder (NeoPressable *button, Editor *editor)
 
 /* --- building it */
 
-/* the event's colour (change_color → EventColorPickerDialog): Etar's palette, as for an account without one of
- * its own; "Set to default calendar color" goes back to following the calendar */
+/* the event's colour: the app's palette, as for an account without one of its own; "Set to default calendar color" goes
+ * back to following the calendar */
 static void
 on_color_chosen (guint32 rgb, gpointer data)
 {
@@ -687,7 +687,7 @@ separator (void)
   return line;
 }
 
-/* a row: the 24 dp icon 12 dp in, its content from 48 dp */
+/* a row: an icon, then its content, in line with every other row's */
 static GtkWidget *
 row (const char *icon_name, GtkWidget *content)
 {
@@ -704,7 +704,7 @@ row (const char *icon_name, GtkWidget *content)
   return box;
 }
 
-/* an M3 outlined button: a pill, its text in colorPrimary */
+/* an outlined pill button */
 static GtkWidget *
 outlined_button (const char *name, GCallback callback, gpointer data)
 {
@@ -712,7 +712,7 @@ outlined_button (const char *name, GCallback callback, gpointer data)
   GtkWidget *button = neo_pressable_new (label);
 
   gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
-  /* centred as a TextView with includeFontPadding is (the font's bounding box, not its line) */
+  /* centred with font padding (the font's bounding box, not its line) */
   neo_label_set_font_padding (label, 14);
   gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
   gtk_widget_add_css_class (button, "cal-outlined");
@@ -723,11 +723,9 @@ outlined_button (const char *name, GCallback callback, gpointer data)
   return button;
 }
 
-/* an M3 outlined text field (a TextInputLayout's OutlinedBox) with @hint as its label, its text in *@text_widget
- * (a GtkText, or a GtkTextView for lines that wrap). The padding is 15 dp on every side: EditEventView gives every
- * field it edits the location's. Guests (RecipientEditTextView) and Location (AutoCompleteTextView) are 18 sp, the
- * others (EditText under the box's theme overlay) bodyLarge, 16 sp with 0.5 sp letter spacing: the stills' boxes
- * are 163 and 155 px tall. */
+/* an outlined text field with @hint as its label, its text in *@text_widget (a GtkText, or a GtkTextView for
+ * lines that wrap). Every field has the location field's padding, the same on every side. Guests and Location have
+ * larger text than the others (@body), which are spaced a little wider. */
 static GtkWidget *
 text_field (const char *hint, const char *text, gboolean body, gboolean wrap, GtkWidget **text_widget)
 {
@@ -750,7 +748,7 @@ text_field (const char *hint, const char *text, gboolean body, gboolean wrap, Gt
   return cal_outlined_field_new (child, hint, body ? 16 : 18, body ? 0.5 : 0, 15);
 }
 
-/* a field's row: the icon 14 dp over the box's bottom, the box from 48 dp to 24 dp from the end */
+/* a field's row: the icon level with the box, not centred on the whole row */
 static GtkWidget *
 field_row (const char *icon_name, GtkWidget *field)
 {
@@ -771,7 +769,7 @@ action_button (const char *icon_name, const char *label, GCallback callback, Edi
   GtkWidget *text = gtk_label_new (label);
   GtkWidget *button;
 
-  gtk_image_set_pixel_size (GTK_IMAGE (icon), 36);     /* ic_menu_cancel, ic_menu_done: 36 dp */
+  gtk_image_set_pixel_size (GTK_IMAGE (icon), 36);
   gtk_widget_add_css_class (icon, "cal-edit-action-icon");
   gtk_widget_add_css_class (text, "cal-edit-action-text");
   gtk_box_append (GTK_BOX (box), icon);
@@ -792,8 +790,7 @@ title_bar (Editor *editor)
   GtkWidget *overlay = gtk_overlay_new ();
   GtkWidget *back = neo_icon_button_new ("cal-back-symbolic");
 
-  /* edit_event_custom_actionbar.xml: "✕ CANCEL" and "✓ DONE" in two equal halves (weightSum 2) of the toolbar
-   * after its 16 dp content inset, the divider between (measured: at x 562, the halves centred at 305 and 822) */
+  /* "✕ CANCEL" and "✓ DONE" in two equal halves of the toolbar, the divider between */
   gtk_center_box_set_start_widget (GTK_CENTER_BOX (bar),
                                    action_button ("cal-cancel-symbolic", _("CANCEL"), G_CALLBACK (on_cancel), editor));
   gtk_widget_add_css_class (divider, "cal-edit-action-divider");
@@ -802,8 +799,8 @@ title_bar (Editor *editor)
                                  action_button ("cal-done-symbolic", _("DONE"), G_CALLBACK (on_done), editor));
   gtk_widget_add_css_class (bar, "cal-edit-bar");
   gtk_overlay_set_child (GTK_OVERLAY (overlay), bar);
-  /* An invisible "Back" for the shell's back gesture, which presses the button of that name in the top band (Etar's
-   * Back here is Cancel's: ask before throwing changes away). Not drawn: the bar has no arrow. */
+  /* An invisible "Back" for the shell's back gesture, which presses the button of that name in the top band (it does
+   * what Cancel does: ask before throwing changes away). Not drawn: the bar has no arrow. */
   gtk_accessible_update_property (GTK_ACCESSIBLE (back), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Back"), -1);
   gtk_widget_set_opacity (back, 0);
   gtk_widget_set_halign (back, GTK_ALIGN_START);
@@ -824,7 +821,7 @@ build (Editor *editor)
 
   gtk_box_append (GTK_BOX (page), title_bar (editor));
 
-  /* the title: "Event name", 20 sp, from 48 dp */
+  /* the title: "Event name" */
   editor->title = gtk_entry_new ();
   gtk_entry_set_placeholder_text (GTK_ENTRY (editor->title), _("Event name"));
   gtk_editable_set_text (GTK_EDITABLE (editor->title), source && source->title ? source->title : "");
@@ -832,7 +829,7 @@ build (Editor *editor)
   gtk_box_append (GTK_BOX (content), editor->title);
   gtk_box_append (GTK_BOX (content), separator ());
 
-  /* the calendar: chosen for a new event; an existing one stays in its calendar (Etar shows it as text) */
+  /* the calendar: chosen for a new event; an existing one stays in its calendar, shown as text */
   calendar_text = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   editor->calendar_name = gtk_label_new (NULL);
   gtk_label_set_xalign (GTK_LABEL (editor->calendar_name), 0);
@@ -842,7 +839,7 @@ build (Editor *editor)
   gtk_label_set_xalign (GTK_LABEL (editor->calendar_account), 0);
   gtk_label_set_ellipsize (GTK_LABEL (editor->calendar_account), PANGO_ELLIPSIZE_END);
   gtk_widget_add_css_class (editor->calendar_account, "cal-edit-calendar-account");
-  /* textAppearanceMedium over textAppearanceSmall: 24.3 dp and 19 dp with the font padding, 43 dp in all */
+  /* the name over the account, each with its font padding */
   neo_label_set_font_padding (editor->calendar_name, 18);
   neo_label_set_font_padding (editor->calendar_account, 14);
   gtk_box_append (GTK_BOX (calendar_text), editor->calendar_name);
@@ -854,7 +851,7 @@ build (Editor *editor)
     gtk_image_set_pixel_size (GTK_IMAGE (icon), 24);
     gtk_widget_add_css_class (icon, "cal-edit-icon");
     gtk_overlay_set_child (GTK_OVERLAY (icon_box), icon);
-    /* calendar_selector_group_background: the calendar's colour in a 12 dp square at the icon's corner */
+    /* the calendar's colour in a small square at the icon's corner */
     editor->calendar_color = gtk_drawing_area_new ();
     gtk_drawing_area_set_draw_func (GTK_DRAWING_AREA (editor->calendar_color), draw_calendar_color, NULL, NULL);
     gtk_widget_set_size_request (editor->calendar_color, 12, 12);
@@ -872,8 +869,8 @@ build (Editor *editor)
     gtk_widget_add_css_class (box, "cal-edit-calendar");
   }
   {
-    /* change_color: outline_color_lens drawn twice its size (scaleX/Y 2) in a 48 dp button, 20 dp from the end;
-     * a writable calendar takes an event colour (the editor only opens on one) */
+    /* the colour button, its lens drawn at twice the icon's size; a writable calendar takes an event colour (the
+     * editor only opens on one) */
     GtkWidget *lens = gtk_image_new_from_icon_name ("cal-color-symbolic");
 
     gtk_image_set_pixel_size (GTK_IMAGE (lens), 48);
@@ -919,8 +916,8 @@ build (Editor *editor)
                                   _("All day event"), -1);
   g_signal_connect (editor->all_day_switch, "notify::active", G_CALLBACK (on_all_day), editor);
   {
-    /* The row is the icon's 24 dp line (16 dp under the separator, the buttons 8 dp under it); the 32 dp switch
-     * overhangs it, centred a dp under the line's middle, 24 dp from the end. An overlay, so it adds no height. */
+    /* The row is the icon's line; the taller switch overhangs it, at the row's end. An overlay, so it adds no
+     * height. */
     GtkWidget *overlay = gtk_overlay_new ();
 
     neo_label_set_font_padding (label, 18);
@@ -946,12 +943,12 @@ build (Editor *editor)
   gtk_grid_attach (GTK_GRID (dates), editor->end_time, 1, 1, 1, 1);
   gtk_box_append (GTK_BOX (content), dates);
 
-  /* the time zone: an outlined button over the row's width, the name and its GMT offset (timezone_button) */
+  /* the time zone: an outlined button over the row's width, the name and its GMT offset */
   editor->tz_button = outlined_button (_("Time zone"), G_CALLBACK (on_tz), editor);
   {
     GtkWidget *tz_label = neo_pressable_get_child (NEO_PRESSABLE (editor->tz_button));
 
-    /* its lines are spaced by the stylesheet's line height instead (lineSpacingExtra) */
+    /* its lines are spaced by the stylesheet's line height instead */
     gtk_widget_set_margin_top (tz_label, 0);
     gtk_widget_set_margin_bottom (tz_label, 0);
     gtk_label_set_ellipsize (GTK_LABEL (tz_label), PANGO_ELLIPSIZE_NONE);
@@ -962,12 +959,12 @@ build (Editor *editor)
   gtk_widget_add_css_class (editor->tz_button, "cal-edit-tz");
   editor->tz_row = row ("cal-public-symbolic", editor->tz_button);
   gtk_box_append (GTK_BOX (content), editor->tz_row);
-  /* view2, 8 dp under the button (view7, the response and organizer rows above it are a new event's GONE ones) */
+  /* the separator under the time zone (the response and organizer rows before it are gone for a new event) */
   line = separator ();
   gtk_widget_add_css_class (line, "cal-edit-separator-tz");
   gtk_box_append (GTK_BOX (content), line);
 
-  /* guests (RecipientEditTextView, "Guests"): their addresses are kept with the event. Nothing invites them: the
+  /* guests ("Guests"): their addresses are kept with the event. Nothing invites them: the
    * guests go in with SCHEDULE-AGENT=CLIENT and no ORGANIZER, so no server mails them either, and the field says
    * so under it. */
   {
@@ -985,10 +982,9 @@ build (Editor *editor)
     g_string_free (text, TRUE);
     gtk_text_set_input_purpose (GTK_TEXT (editor->guests), GTK_INPUT_PURPOSE_EMAIL);
     line = field_row ("cal-person-add-symbolic", field);
-    /* add_attendees_row: 10 dp under the separator's top */
     gtk_widget_add_css_class (line, "cal-edit-guests");
     gtk_box_append (GTK_BOX (content), line);
-    /* the helper text under the box (IndicatorViewController): at the text's start, 4 dp under the box */
+    /* the helper text under the box, in line with the field's text */
     gtk_label_set_xalign (GTK_LABEL (helper), 0);
     gtk_label_set_wrap (GTK_LABEL (helper), TRUE);
     neo_label_set_font_padding (helper, 12);
@@ -1004,7 +1000,6 @@ build (Editor *editor)
   field = text_field (_("URL"), source ? source->url : NULL, TRUE, FALSE, &editor->url);
   gtk_text_set_input_purpose (GTK_TEXT (editor->url), GTK_INPUT_PURPOSE_URL);
   line = field_row ("cal-link-symbolic", field);
-  /* view3 12 dp under it */
   gtk_widget_add_css_class (line, "cal-edit-url");
   gtk_box_append (GTK_BOX (content), line);
   gtk_box_append (GTK_BOX (content), separator ());
@@ -1014,7 +1009,7 @@ build (Editor *editor)
   gtk_widget_set_hexpand (editor->repeat, TRUE);
   gtk_widget_set_halign (editor->repeat, GTK_ALIGN_FILL);
   editor->repeat_row = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  /* rrule_icon 20 dp under view3 and over view4, the button (marginEnd 24 dp) centred on it */
+  /* the repeat button, centred on its icon */
   gtk_widget_add_css_class (editor->repeat, "cal-edit-repeat-button");
   line = row ("cal-repeat-symbolic", editor->repeat);
   gtk_widget_add_css_class (line, "cal-edit-repeat");
@@ -1041,8 +1036,8 @@ build (Editor *editor)
   gtk_box_append (GTK_BOX (content), line);
   gtk_box_append (GTK_BOX (content), separator ());
 
-  /* Show me as (availability: TRANSP): Busy, Available; Tentative is left out as a calendar's
-   * ALLOWED_AVAILABILITY leaves it out, iCalendar's TRANSP having only those two */
+  /* Show me as (availability: TRANSP): Busy, Available; no Tentative:
+   * iCalendar's TRANSP has only those two */
   {
     const char *labels[] = { _("Busy"), _("Available") };
 
@@ -1078,7 +1073,7 @@ build (Editor *editor)
   gtk_box_append (GTK_BOX (page), editor->scroll);
 }
 
-/* the cursor at the title's end, nothing selected (an EditText's focus selects nothing; GtkText's selects all) */
+/* the cursor at the title's end, nothing selected (GtkText's focus would select all) */
 static void
 focus_title (GtkWidget *title)
 {
@@ -1105,7 +1100,7 @@ editor_page (GtkWidget *window, CalEvent *original, CalEvent *source, gint64 sta
   cal_page_set_back_handler (CAL_PAGE (page), on_back, editor);
   gtk_widget_add_css_class (page, "cal-editor");
 
-  /* the zone: the event's, else the app's (the home time zone when it is used: Utils.getTimeZone) */
+  /* the zone: the event's, else the app's (the home time zone when it is used) */
   if (source && source->tzid && !source->all_day)
     editor->tzid = g_strdup (source->tzid);
   else if (g_settings_get_boolean (settings, "home-tz-enabled"))
@@ -1136,7 +1131,7 @@ editor_page (GtkWidget *window, CalEvent *original, CalEvent *source, gint64 sta
     }
   else
     {
-      /* resetToDefaultDuration: the default length from the start */
+      /* the default length from the start */
       gint64 end = start + (all_day ? 24 * 3600 : g_settings_get_int (settings, "default-event-duration") * 60);
 
       editor->all_day = all_day;
@@ -1174,7 +1169,7 @@ editor_page (GtkWidget *window, CalEvent *original, CalEvent *source, gint64 sta
   show_calendar (editor);
   show_times (editor);
   show_repeat (editor);
-  /* Etar focuses the title of a new event only (an existing one opens with nothing focused: cal_window_push) */
+  /* only a new event's title is focused (an existing one opens with nothing focused: cal_window_push) */
   if (!original)
     g_signal_connect_object (page, "map", G_CALLBACK (focus_title), editor->title, G_CONNECT_SWAPPED);
   return page;
@@ -1191,7 +1186,7 @@ static void
 on_which (int index, gpointer data)
 {
   Which *which = data;
-  /* EditEventFragment: modify_event, modify_all_following, modify_all */
+  /* "This event", "This and future events", "All events" */
   CalScope scopes[] = { CAL_SCOPE_THIS, CAL_SCOPE_THIS_AND_FUTURE, CAL_SCOPE_ALL };
   GtkWidget *window = which->window;
 
@@ -1214,7 +1209,7 @@ ask_which (GtkWidget *window, CalEvent *event)
   Which *which = g_new0 (Which, 1);
   GtkWidget *placeholder = cal_page_new (window);
 
-  /* displayEditWhichDialog: asked before the editor shows anything */
+  /* which events: asked before the editor shows anything */
   which->window = window;
   which->placeholder = g_object_ref (placeholder);
   which->event = cal_event_ref (event);
@@ -1255,7 +1250,7 @@ event_editor_import (GtkWidget *window, GFile *file)
     vevent = i_cal_component_get_first_component (root, I_CAL_VEVENT_COMPONENT);
   if (!vevent)
     {
-      /* ImportActivity's "no events" */
+      /* no event in the file */
       cal_window_toast (window, _("Invalid iCalendar file"));
       return;
     }

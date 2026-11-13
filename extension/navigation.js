@@ -1,16 +1,14 @@
-// Gesture navigation: Android 16's swipe up from the bottom edge (Launcher3 quickstep; spec
-// gestures-recents-back.md §1). The app follows the finger, shrinking toward its recents card. Let go and it flies
-// home into its icon on RectFSpringAnim's three springs while the launcher scales the home back in (the launcher
-// does its half itself, told over neo.Launcher), or it settles back to full screen; hold it first and the
-// other tasks spring in beside it, and letting go settles it into recents (recents.js). Along the bar the tasks
-// come in at once and page under the finger: quick switch (§3).
+// Gesture navigation: the swipe up from the bottom edge. The app follows the finger, shrinking toward its recents
+// card. Let go and it flies home into its icon on three springs (x, y and size) while the launcher scales the home
+// back in (the launcher does its half itself, told over neo.Launcher), or it settles back to full screen; hold it
+// first and the other tasks spring in beside it, and letting go settles it into recents (recents.js). Along the bar
+// the tasks come in at once and page under the finger: quick switch.
 //
-// On the home screen the same swipe is NoButtonNavbarToOverviewTouchController's: the workspace shrinks toward
-// HINT_STATE under the finger; a pause takes it on to OVERVIEW, the cards coming in from the side; let go before one
-// and it springs back.
+// On the home screen the same swipe shrinks the workspace toward its hint pose under the finger; a pause takes it
+// on to recents, the cards coming in from the side; let go before one and it springs back.
 //
-// Every length here is in the S10e's device pixels (1080 × 2280, 3 px/dp), the spec's own numbers; actors are
-// placed in stage units (÷ the monitor scale).
+// Every length here is in the S10e's screen pixels (1080 × 2280); actors are placed in stage units (÷ the monitor
+// scale).
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
@@ -30,24 +28,24 @@ import {
     TASK_W, animate, clamp, dropKeptViews, lerp, lerpRect, warmViews,
 } from './task.js';
 
-const TOUCH_SLOP = 34;                  // 8 dp × √2, on the hypotenuse
+const TOUCH_SLOP = 34;                  // the touch slop × √2, on the hypotenuse
 const QUICKSWITCH_DEG = 15;
-const PAUSE_MIN_UP = 108;               // 36 dp of travel before a pause counts
+const PAUSE_MIN_UP = 108;               // the travel before a pause counts
 const DRAG_LENGTH = 540;                // H − the recents card's bottom
 const MAX_SHIFT = SCREEN_H / DRAG_LENGTH;
-const FLING_PX_MS = 1.5;                // 0.5 dp/ms
+const FLING_PX_MS = 1.5;
 const MAX_SWIPE_MS = 350;
 const DURATION_MULT = 1 / 0.7;
 const RESIST_TRANS_END = -551.6;
 
-// MotionPauseDetector (px/ms)
+// what counts as a pause in the swipe (px/ms)
 const MP_VERY_SLOW = 0.0855;
 const MP_SOMEWHAT_FAST = 0.855;
 const MP_FAST = 4.2;
 const MP_RAPID_DECEL = 0.6;
 const MP_FORCE_PAUSE_MS = 300;
 
-// the flight home (RectFSpringAnim)
+// the flight home: the springs of x, y and size (stiffness, damping ratio)
 const HOME_X = [450, 0.965];
 const HOME_Y = [400, 0.95];
 const HOME_P = [500, 0.99];
@@ -62,15 +60,15 @@ const REVEAL_SCALE_FROM = 0.85;
 const REVEAL_MS = 1000;
 const REVEAL_PIVOT = [SCREEN_W / 2, SCREEN_H / 2];
 
-// from the home screen (NoButtonNavbarToOverviewTouchController, HintState, OverviewState)
-const HINT_SCALE = 0.92;                // HintState's workspace
+// the swipe from the home screen: the hint pose, then recents
+const HINT_SCALE = 0.92;                // the workspace's scale in the hint pose
 const HINT_DEPTH = 0.05;
 const HINT_MS = 80;                     // its transition, the rest of the way after a fling
-const HINT_SPRING = [200, 0.7];         // HINT → NORMAL: hint_scale_stiffness, _damping_ratio …
-const HINT_SPRING_V = 0.9;              // … and _velocity_dp_per_s, 0.3 dp (as scale per second)
+const HINT_SPRING = [200, 0.7];         // hint → home: stiffness and damping ratio …
+const HINT_SPRING_V = 0.9;              // … and its start velocity, scale per second
 const HOME_PAUSE_MIN_UP = 24;           // the touch slop
-const HOME_FLING = 3;                   // px/ms, 1 dp/ms
-const OVERVIEW_IN_MS = 380;             // OVERVIEW_SLIDE_IN_DURATION
+const HOME_FLING = 3;                   // px/ms
+const OVERVIEW_IN_MS = 380;             // the cards sliding in from the side
 const OVERVIEW_WS_SCALE = TASK_W / 1032;    // the workspace down to a card's width (the cell layout is 1032)
 const OVERVIEW_WS_TY = -(312 - 36) / 2; // up by half the default swipe height (all-apps cell − its label)
 const OVERVIEW_DEPTH = 0.7;
@@ -78,7 +76,8 @@ const OVERVIEW_MOVEMENT = 0.25;         // the cards follow the finger this much
 
 const Target = {HOME: 'home', RECENTS: 'recents', NEW_TASK: 'new-task', LAST_TASK: 'last-task'};
 
-// RectFSpringAnim's start velocity: at least `min`, and past `softMax` only the 1/1.4th power of the rest
+// The flight's start velocity: at least `min`, and past `softMax` only the 1/1.4th power of the rest, so a hard
+// fling does not overshoot
 function adjustVelocity(v, [min, softMax]) {
     const a = Math.abs(v), sign = Math.sign(v);
     if (a < min)
@@ -88,7 +87,7 @@ function adjustVelocity(v, [min, softMax]) {
     return (softMax + Math.pow(a - softMax, 1 / HOME_V_FALLOFF)) * sign;
 }
 
-// ---- MotionPauseDetector ------------------------------------------------------------------------------------------
+// ---- pause detection --------------------------------------------------------------------------------------------
 
 class MotionPause {
     constructor(onFirstPause) {
@@ -221,7 +220,7 @@ export class Navigation {
         this.launcher('State', new GLib.Variant('(sxs)', [state, t0, app]));
     }
 
-    // SystemUI's status bar: clear over a window being dragged (Android's bar has no background of its own)
+    // the status bar: clear over a window being dragged (the bar has no background of its own)
     statusBarOverApp(value) {
         Main.layoutManager.uiGroup.get_children().find(a => a.name === 'gnomePhoneStatusBar')?.setOverApp?.(value);
     }
@@ -248,8 +247,8 @@ export class Navigation {
         let locked = keyguard.showing;
         this._keyguardId = keyguard.connect('changed', () => {
             this.watchBack(keyguard.showing ? keyguard.actor : null);
-            // locked: the launcher closes its menus and its drawer, as Launcher3 goes to NORMAL when the screen goes
-            // off, so nothing of them is waiting after the unlock
+            // locked: the launcher closes its menus and its drawer as the screen goes off, so nothing of them is
+            // waiting after the unlock
             if (keyguard.showing && !locked)
                 this.launcher('Locked', null);
             locked = keyguard.showing;
@@ -272,7 +271,7 @@ export class Navigation {
         this._recents?.back();
     }
 
-    // KEYCODE_APP_SWITCH (OverviewCommandHelper's TYPE_TOGGLE), from the Bixby key: an app settles into its card as
+    // The recents key (the Bixby key, keys.js) toggles recents: an app settles into its card as
     // a paused swipe lets it, the home screen goes HINT → OVERVIEW as after a pause, and in recents it's back again
     toggleRecents() {
         if (this._recents?.shown) {
@@ -309,7 +308,7 @@ export class Navigation {
         this._back.watch(actor);
     }
 
-    // HapticFeedbackConstants.GESTURE_THRESHOLD_(DE)ACTIVATE: feedbackd's shortest tick
+    // the tick as the swipe crosses into recents or back out: feedbackd's shortest
     haptic() {
         Gio.DBus.session.call('org.sigxcpu.Feedback', '/org/sigxcpu/Feedback', 'org.sigxcpu.Feedback',
             'TriggerFeedback', new GLib.Variant('(ssa{sv}i)', ['neo.GnomePhone', 'button-released', {}, -1]),
@@ -431,13 +430,13 @@ export class Navigation {
             g.recents.attach();
         else
             g.recents.detach();
-        // RecentsView pages under the horizontal motion, the whole swipe long
+        // the recents pager follows the horizontal motion, the whole swipe long
         g.recents.pagerMove(x - g.x, (g.rect[2] - g.rect[0]) / TASK_W);
         g.x = x;
         this._apply(clamp((-dy - TOUCH_SLOP) / DRAG_LENGTH, 0, MAX_SHIFT));
     }
 
-    // TaskViewSimulator: the screen lerps into the recents card with shift, the corners to 84 px; past the card the
+    // The window as a card: the screen lerps into the recents card with shift, the corners to 84 px; past the card the
     // overview resistance shrinks it further and lifts it, the corners staying 84 px on screen
     _apply(shift) {
         const g = this._g;
@@ -475,7 +474,7 @@ export class Navigation {
         const g = this._g;
         if (!g)
             return;
-        // VelocityTracker on ACTION_UP: a lift-off 40 ms after the last move means the finger had stopped
+        // a lift-off 40 ms after the last move means the finger had stopped: no fling
         const t = Clutter.get_current_event_time();
         if (t && t - this._lastT > 40)
             this._tracker.clear();
@@ -487,7 +486,7 @@ export class Navigation {
         const paused = this._pause.paused;
         this._pause.reset();
         const {recents} = g;
-        // RecentsView has the ACTION_UP first: the page it snaps to decides as much as the swipe does
+        // the pager hears the release first: the page it snaps to decides as much as the swipe does
         const slop = recents.pagerDragged, centred = recents.centredPage();
         let page = recents.pagerRelease(cancelled ? 0 : v.x * 1000);
         if (cancelled) {
@@ -549,7 +548,7 @@ export class Navigation {
         }
     }
 
-    // AbsSwipeUpHandler's shift animation to `end`
+    // the swipe's shift animated on to `end` after the release
     _settle(end, v, interpolator, done, fixedMs = 0, onProgress = null) {
         const g = this._g;
         let start = g.shift, ms;
@@ -583,8 +582,8 @@ export class Navigation {
         this.statusBarOverApp(null);
     }
 
-    // RectFSpringAnim from the window's rect into its icon (or the icon-sized square above the dock when it has
-    // none), with ScalingWorkspaceRevealAnim on the launcher from the same moment
+    // The springs from the window's rect into its icon (or the icon-sized square above the dock when it has none),
+    // with the launcher scaling the home screen back in from the same moment
     _flyHome(v) {
         const g = this._g;
         const task = g.recents.takeRunning();
@@ -594,8 +593,8 @@ export class Navigation {
         });
     }
 
-    // The window, shown by task (a TaskView) at start with corners r on screen, flies into its icon (or the
-    // icon-sized square above the dock when it has none) on RectFSpringAnim's springs from velocity v (px/ms), the
+    // The window, shown by task (its recents card) at start with corners r on screen, flies into its icon (or the
+    // icon-sized square above the dock when it has none) on the flight's springs from velocity v (px/ms), the
     // launcher playing `state` from the same moment. cropTop: the window keeps its top as it narrows (predictive
     // back), not its middle.
     flight(win, task, start, r, v, {state, cropTop = false}, done) {
@@ -690,7 +689,7 @@ export class Navigation {
         this.launcher('Pose', new GLib.Variant('(dddd)', [scale, alpha, depth, ty]));
     }
 
-    // NORMAL → HINT_STATE, linear in p: the workspace 1 → 0.92, the depth 0 → 0.05, the scrim up to HintState's
+    // home → the hint pose, linear in p: the workspace 1 → 0.92, the depth 0 → 0.05, the scrim up to the hint's
     _hint(p) {
         this._g.p = p;
         this._pose(lerp(1, HINT_SCALE, p), 1, HINT_DEPTH * p);
@@ -759,7 +758,7 @@ export class Navigation {
         if (!g.entering) {
             this._hintRelease(vy);
         } else if (!paused || cancelled) {
-            // moving again when let go: OverviewToHomeAnim
+            // moving again when let go: back home
             g.anim?.stop();
             this._g = null;
             g.recents.goHome(vy < 0 ? 'home-reveal' : 'home');

@@ -1,12 +1,9 @@
 /* CalcHistory: see calc-history.h.
  *
- * Geometry in device pixels, from history_item.xml and checked on still:calc-history (one row, today's): a row is
- * paddingTop 42, the divider (42 + 3 + 42, or nothing for the oldest row, or blank space when the row has no date),
- * the date (14 dp text with font padding: 57), the expression and the result (139 each: calc_text_view_height);
- * the list keeps 42 under the newest row (paddingBottom). The date's "T" ends on row 1298, the expression's "1" on
- * 1402, the result's on 1541, as the model puts them. The toolbar: the arrow centred 83.5 px in and 95.5 px down,
- * the title's pen at 60 dp (contentInsetStartWithNavigation 0, titleMarginStart 4 after the 56 dp navigation
- * button), its 88 px box centred: baseline 122. */
+ * A row is its top padding, the divider with padding around it (nothing for the oldest row, blank space when the
+ * row has no date), the date, the expression and the result; the list keeps some padding under the newest row.
+ * Row heights are worked out in whole device pixels. The toolbar: the back arrow, then the title with its box
+ * centred in the bar. */
 #include "calc-history.h"
 #include "calc-formula.h"
 #include "calc-text.h"
@@ -17,17 +14,17 @@
 #include <spongy-gtk.h>
 
 #define TOOLBAR        64
-#define DIVIDER_PAD    14     /* history_divider_padding */
-#define DIVIDER        1      /* ?android:listDivider: list_divider_material, 1 dp */
-#define TEXT_SIZE      32     /* result_textsize */
+#define DIVIDER_PAD    14     /* above and below a row's divider */
+#define DIVIDER        1      /* the divider line */
+#define TEXT_SIZE      32     /* the expression and the result */
 #define DATE_SIZE      14
-#define TITLE_SIZE     22     /* textAppearanceTitleLarge */
+#define TITLE_SIZE     22     /* the toolbar's title */
 #define TITLE_X        60
-#define ARROW_X        83.5   /* px */
-#define ICON_Y         95.5   /* px */
+#define ARROW_X        83.5   /* device px: the arrow's centre from the start */
+#define ICON_Y         95.5   /* device px: the icons' centres from the top */
 #define OVERFLOW_X     66.5   /* px from the end */
 #define BUTTON         48
-#define EMPTY_SIZE     20     /* empty_history_view: 20 sp */
+#define EMPTY_SIZE     20     /* the empty history's text */
 #define EMPTY_ICON     24
 
 /* ------------------------------------------------------------------------------------------------------------ */
@@ -43,7 +40,7 @@ calc_history_date_string (gint64 time_ms, gint64 now_ms)
   if (!time || !now)
     return g_strdup ("");
   if (duration < 7 * 24 * 3600 * (gint64) 1000) {
-    /* the days between the two dates, in local time (RelativeDateTimeFormatter.dayDistance) */
+    /* the days between the two dates, in local time */
     GDate a, b;
     int days;
 
@@ -102,7 +99,7 @@ date_px (int scale)
 {
   double px = DATE_SIZE * scale;
 
-  /* includeFontPadding: FontMetricsInt's top (floored) to bottom (rounded up) */
+  /* with font padding: the font's yMax (floored) to yMin (rounded up) */
   return (int) (ceil (CALC_BOTTOM * px) - floor (-CALC_TOP * px));
 }
 
@@ -150,7 +147,7 @@ calc_history_row_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   double y = DIVIDER_PAD;
 
   if (self->divider == DIVIDER_VISIBLE) {
-    /* list_divider_material: #1f000000 tinted with colorForeground, white */
+    /* a faint white line */
     GdkRGBA divider = { 1, 1, 1, 0x1f / 255.0 };
 
     gtk_snapshot_append_color (snapshot, &divider, &GRAPHENE_RECT_INIT (0, y + DIVIDER_PAD, w, DIVIDER));
@@ -162,7 +159,7 @@ calc_history_row_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 
     if (!self->date_layout)
       self->date_layout = calc_text_layout (widget, self->date, DATE_SIZE, CALC_WEIGHT_MEDIUM);
-    /* paddingStart result_padding_start, 16 dp */
+    /* in line with the expression and the result */
     calc_text_draw (snapshot, self->date_layout, 16, y - top / scale, &color);
   }
   gtk_widget_snapshot_child (widget, self->formula, snapshot);
@@ -174,7 +171,7 @@ calc_history_row_dispose (GObject *object)
 {
   CalcHistoryRow *self = CALC_HISTORY_ROW (object);
 
-  /* onViewRecycled: the row's computation is not needed any more */
+  /* the row's computation is not needed any more */
   if (self->evaluator && self->result)
     evaluator_cancel (self->evaluator, self->index, TRUE);
   g_clear_pointer (&self->formula, gtk_widget_unparent);
@@ -218,7 +215,7 @@ calc_history_row_new (Evaluator *evaluator, long index, const char *date, Divide
   self->index = index;
   self->date = g_strdup (date);
   self->divider = divider;
-  /* HistoryItemTextStyle: 32 dp, padding 8 top, 16 bottom, 16 at the sides */
+  /* one fixed size: a history row does not shrink its text to fit, as the display does */
   self->formula = calc_formula_new (TEXT_SIZE, TEXT_SIZE, 0);
   calc_formula_set_padding (CALC_FORMULA (self->formula), 8, 16, 16, 16);
   calc_formula_set_scroll_to_end (CALC_FORMULA (self->formula), FALSE);
@@ -254,7 +251,7 @@ struct _CalcHistoryList {
   int            scale;         /* the device scale the heights are for; 0: not worked out yet */
   GHashTable    *rows;          /* position -> CalcHistoryRow */
   GtkAdjustment *vadjustment, *hadjustment;
-  double         from_end;      /* how far it is scrolled up from its end, dp */
+  double         from_end;      /* how far it is scrolled up from its end, px */
   gboolean       configuring;
 };
 
@@ -281,7 +278,7 @@ on_row_long_pressed (CalcResult *result, CalcHistoryList *self)
 static void
 ensure_metrics (CalcHistoryList *self, int scale)
 {
-  int offset = DIVIDER_PAD * scale;   /* the list's paddingBottom */
+  int offset = DIVIDER_PAD * scale;   /* the list's bottom padding */
 
   if (self->scale == scale)
     return;
@@ -368,7 +365,7 @@ calc_history_list_measure (GtkWidget *widget, GtkOrientation orientation, int fo
 static void
 calc_history_list_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
-  /* clipToPadding false: the rows draw into the bottom padding, but not past the list */
+  /* the rows draw into the bottom padding, but not past the list */
   gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (0, 0, gtk_widget_get_width (widget),
                                                          gtk_widget_get_height (widget)));
   for (GtkWidget *child = gtk_widget_get_first_child (widget); child; child = gtk_widget_get_next_sibling (child))
@@ -499,7 +496,7 @@ same_day (gint64 a_ms, gint64 b_ms)
          && g_date_time_get_day_of_year (a) == g_date_time_get_day_of_year (b);
 }
 
-/* onViewCreated: one row per history entry, newest first; which ones start a day (shouldShowHeader) */
+/* one row per history entry, newest first; which ones start a day */
 static GtkWidget *
 calc_history_list_new (Evaluator *evaluator)
 {
@@ -578,7 +575,7 @@ calc_history_size_allocate (GtkWidget *widget, int width, int height, int baseli
                                                                             - BUTTON / 2.0,
                                                                             ICON_Y / scale - BUTTON / 2.0)));
   if (self->scroll) {
-    /* the list: match_parent under the toolbar, as tall as the frame leaves it (the frame grows as the history
+    /* the list: under the toolbar, as tall as the frame leaves it (the frame grows as the history
      * comes down; the list keeps its end at the bottom) */
     double list_h = MAX (0, h - TOOLBAR);
 
@@ -593,7 +590,7 @@ calc_history_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   CalcHistory *self = CALC_HISTORY (widget);
   int scale = neo_device_scale (widget);
   double w = history_width (self), h = history_height (self);
-  GdkRGBA background = neo_color (NEO_SURFACE_CONTAINER);   /* history_background_color */
+  GdkRGBA background = neo_color (NEO_SURFACE_CONTAINER);   /* the history's background */
   GdkRGBA on_surface = neo_color (NEO_ON_SURFACE);
 
   gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (0, 0, w, h));
@@ -601,8 +598,7 @@ calc_history_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   if (self->scroll) {
     gtk_widget_snapshot_child (widget, self->scroll, snapshot);
   } else {
-    /* empty_history_view: the icon (drawableTop, colorControlNormal) over the text, centred in the list (its
-     * height less the bottom padding). Not measured: the reference phone had a history. */
+    /* no history yet: the icon over the text, centred in the list (its height less the bottom padding) */
     double list_top = TOOLBAR, list_h = MAX (0, h - TOOLBAR - DIVIDER_PAD);
     double px = EMPTY_SIZE * scale;
     double text_h = (ceil (CALC_BOTTOM * px) - floor (-CALC_TOP * px)) / scale;
@@ -661,7 +657,7 @@ calc_history_dispose (GObject *object)
   g_clear_pointer (&self->scroll, gtk_widget_unparent);
   g_clear_object (&self->title);
   g_clear_object (&self->empty);
-  /* onDestroy: the rows' computations go */
+  /* the rows' computations go */
   if (self->evaluator)
     evaluator_cancel_non_main (self->evaluator);
   self->evaluator = NULL;
@@ -700,7 +696,7 @@ calc_history_new (Evaluator *evaluator)
   self->back = neo_icon_button_new ("calc-back-symbolic");
   gtk_widget_add_css_class (self->back, "calc-toolbar-icon");
   gtk_accessible_update_property (GTK_ACCESSIBLE (self->back), GTK_ACCESSIBLE_PROPERTY_LABEL,
-                                  /* the shell's back gesture clicks a button named Back (Android: desc_navigate_up) */
+                                  /* the shell's back gesture clicks a button named Back */
                                   _("Back"), -1);
   g_signal_connect (self->back, "clicked", G_CALLBACK (on_back), self);
   gtk_widget_set_parent (self->back, GTK_WIDGET (self));

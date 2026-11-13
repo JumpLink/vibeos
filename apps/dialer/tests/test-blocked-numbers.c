@@ -1,4 +1,4 @@
-/* blocked-numbers against what BlockedNumberContract does: a number blocked in one form is blocked in all of them,
+/* blocked-numbers: a number blocked in one form is blocked in all of them,
  * unblocking takes whatever form it was put on in, and a second process sees the change */
 #include "../src/blocked-numbers.h"
 

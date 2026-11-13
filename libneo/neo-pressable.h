@@ -1,13 +1,11 @@
-/* NeoPressable: one child made tappable the Android way, with the ripple (neo-ripple.h) behind it.
+/* NeoPressable: one child made tappable, with the ripple (neo-ripple.h) behind it.
  *
- * It is what a View with a click listener and ?selectableItemBackground is: a list row, a text button, an icon
- * button, a FAB. It emits "clicked" on a tap and "long-pressed" after 400 ms held still (ViewConfiguration's long
- * press timeout); a press it loses to a scroll (a drag past the slop, a scroll view taking the touch) does neither,
- * and its ripple just fades.
+ * It is anything tapped that shows a ripple: a list row, a text button, an icon button, a FAB. It emits "clicked" on a
+ * tap and "long-pressed" after 400 ms held still; a press it loses to a scroll (a drag past the slop, a scroll view
+ * taking the touch) does neither, and its ripple just fades.
  *
- * Inside a scroll view the ripple waits 100 ms before it starts (ViewConfiguration.TAP_TIMEOUT), as Android
- * delays the pressed state there, so a finger that is about to scroll does not flash the row it began on. A tap
- * shorter than that still shows the whole ripple.
+ * Inside a scroll view the ripple waits 100 ms before it starts, so a finger that is about to scroll does not flash the
+ * row it began on. A tap shorter than that still shows the whole ripple.
  *
  * A press on a child that takes taps itself (another NeoPressable, a NeoSwitch, or any widget with the object data
  * "neo-tappable" set) is left to that child.
@@ -36,7 +34,7 @@ void       neo_pressable_set_ripple   (NeoPressable *self, NeoRippleShape shape,
 /* the default is neo_ripple_default_color () */
 void       neo_pressable_set_ripple_color (NeoPressable *self, const GdkRGBA *color);
 
-/* A fill in the widget's shape (and a Material 3 level-3 shadow under it when `elevated`): what a FAB's background
+/* A fill in the widget's shape (and a raised button's shadow under it when `elevated`): what a FAB's background
  * tint is. Unlike a CSS background it scales with neo_pressable_set_scale. */
 void       neo_pressable_set_fill     (NeoPressable *self, const GdkRGBA *fill, gboolean elevated);
 
@@ -47,12 +45,11 @@ double     neo_pressable_get_scale    (NeoPressable *self);
 
 /* A text button (Delete, the dialog buttons, a snackbar action): a label in a pressable with .neo-text-button */
 GtkWidget *neo_text_button_new        (const char *label);
-/* An icon button: a 24 dp symbolic icon centred in a 48 dp target, a 20 dp circular ripple (M3 icon button) */
+/* An icon button: a symbolic icon centred in a thumb-sized target, with a circular ripple */
 GtkWidget *neo_icon_button_new        (const char *icon_name);
 
-/* A floating action button: an 88 dp circle in primary with the icon in onPrimary (`large`, DeskClock's
- * fabCustomSize), or a 56 dp one in secondary with the icon in onSecondary (its side buttons). Both float at
- * Material 3's level 3. */
+/* A floating action button: a large circle in the primary colour (`large`, the screen's main action), or a smaller
+ * one in the secondary colour (the actions beside it). Both are raised, with a shadow. */
 GtkWidget *neo_fab_new                (const char *icon_name, gboolean large);
 void       neo_fab_set_icon           (NeoPressable *fab, const char *icon_name);
 

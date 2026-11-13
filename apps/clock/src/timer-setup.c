@@ -1,6 +1,5 @@
-/* TimerSetup: see timer-setup.h. Measured on still:clock-timer: the time's box 172…908 × 308…651 px (as wide as
- * the pad, a quarter of the height above the FAB row), its digits 51 sp (shrunk from 72 to fit); the pad
- * 172…908 × 651…1632, its keys 233 px circles in 245 px cells, the "1" 36 sp. */
+/* TimerSetup: see timer-setup.h. The time over the keypad, in a box as wide as the pad; its digits shrink to fit
+ * the box. */
 #include "timer-setup.h"
 
 #include <glib/gi18n.h>
@@ -8,16 +7,16 @@
 #include <neo.h>
 #include <string.h>
 
-#define FAB_ROW         120     /* the view's paddingBottom (fab_container_height) */
+#define FAB_ROW         120     /* the view's bottom padding, for the buttons' row */
 #define TIME_FRACTION   0.25    /* the time between guidelines at the top and a quarter of the height */
-#define TIME_SIZE       72      /* timer_setup_digit_font_size, at most: it shrinks to fit (AutoSizingTextView) */
-#define SUFFIX_SCALE    0.5f    /* h, m and s at half the size (RelativeSizeSpan) */
-#define PAD_MAX_WIDTH   315     /* the pad: 3:4, at most 315 × 420 dp */
+#define TIME_SIZE       72      /* at most: it shrinks to fit */
+#define SUFFIX_SCALE    0.5f    /* h, m and s at half the size */
+#define PAD_MAX_WIDTH   315     /* the pad: 3:4, at most this wide and PAD_MAX_HEIGHT tall */
 #define PAD_MAX_HEIGHT  420
-#define PAD_MARGIN      16      /* ... with 16 dp under it */
-#define KEY_MARGIN      2       /* Widget.Button.TimerSetupDigit: layout_margin */
+#define PAD_MARGIN      16      /* ... with this much under it */
+#define KEY_MARGIN      2       /* a key, in from its cell's edges */
 #define DIGIT_SIZE      36      /* ... its text */
-#define DELETE_ICON     40      /* the delete key's iconSize */
+#define DELETE_ICON     40      /* the delete key's icon */
 #define DIGITS          6
 
 /* the keys in the pad's order: 1 to 9, then 00, 0 and delete */
@@ -26,8 +25,8 @@ enum { KEY_00 = 9, KEY_0 = 10, KEY_DELETE = 11, N_KEYS = 12 };
 struct _TimerSetup
 {
   GtkWidget parent;
-  int input[DIGITS];            /* the digits typed, the last one first (mInput) */
-  int pointer;                  /* the index of the first one typed; -1 for none (mInputPointer) */
+  int input[DIGITS];            /* the digits typed, the last one first */
+  int pointer;                  /* the index of the first one typed; -1 for none */
   GtkWidget *keys[N_KEYS];
   PangoLayout *time;            /* "00h 00m 00s", drawn by the view itself as its size changes with the width */
   graphene_rect_t time_box;
@@ -60,7 +59,7 @@ append_size (PangoAttrList *attributes, double size, guint start, guint end)
 }
 
 /* the template "^1^4 ^2^5 ^3^6" at `size`: each group of two digits, its letter at half the size; from the first
- * group that is not zero to the end in colorPrimary. Like DeskClock, the groups start at characters 0, 4 and 8. */
+ * group that is not zero to the end in the accent colour. The groups start at characters 0, 4 and 8. */
 static void
 set_time (TimerSetup *self, double size)
 {
@@ -98,11 +97,10 @@ set_time (TimerSetup *self, double size)
   pango_layout_set_attributes (self->time, attributes);
 }
 
-/* TextSizeHelper.adjustTextSize: the largest whole-pixel size up to 72 sp at which the time fits the box's width,
- * found the same way, by halving. The box is a whole number of pixels, as ConstraintLayout makes the keypad
- * (735.75 px at 3:4 becomes 736). Android's own Roboto lays this line out a fraction of a pixel narrower than the
- * Roboto we ship (at 150 px: ≤ 736 there, 736.41 here), and DeskClock lands on exactly that size on the reference
- * phone, so half a pixel over still counts as fitting. */
+/* the largest size in whole device pixels, up to TIME_SIZE, at which the time fits the box's width, found by
+ * halving. The box is a whole number of device pixels (735.75 at 3:4 becomes 736). At 150 device pixels the Roboto
+ * we ship lays this line out 736.41 wide, a fraction over, so half a pixel over still counts as fitting: else the
+ * time comes out a size smaller than it should. */
 #define FIT_SLACK 0.5
 
 static void
@@ -263,7 +261,7 @@ timer_setup_get_length (TimerSetup *self)
 
 /* --- GtkWidget */
 
-/* a guideline at `fraction` of `size`, on a whole screen pixel as ConstraintLayout puts it */
+/* a guideline at `fraction` of `size`, on a whole device pixel */
 static double
 guideline (double size, double fraction, int scale)
 {
@@ -293,7 +291,7 @@ timer_setup_size_allocate (GtkWidget *widget, int width, int height, int baselin
   if (pad_width != old_width)
     fit_time (self);
 
-  /* the keys in cells between the pad's guidelines, square, 2 dp in from the cell's edges */
+  /* the keys in cells between the pad's guidelines, square, KEY_MARGIN in from the cell's edges */
   columns[0] = rows[0] = 0;
   columns[1] = guideline (pad_width, 0.3333, scale);
   columns[2] = guideline (pad_width, 0.6666, scale);
@@ -322,7 +320,7 @@ timer_setup_measure (GtkWidget *widget, GtkOrientation orientation, int for_size
   *minimum = *natural = 0;
 }
 
-/* the time centred in its box the way a TextView with its font padding centres it: the baseline 0.39 of the size
+/* the time centred in its box with its font padding: the baseline 0.39 of the size
  * under the middle (the padding is Roboto's yMax 2163 over yMin -555 of 2048 units) */
 static void
 timer_setup_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
@@ -391,8 +389,7 @@ timer_setup_init (TimerSetup *self)
   self->time_size = TIME_SIZE;
   set_time (self, TIME_SIZE);
 
-  /* round tonal keys in surfaceVariant with the digits in onSurface; delete in tertiaryContainer with ic_backspace
-   * at 40 dp in onTertiaryContainer. The pad is left to right in every language. */
+  /* round keys, delete in a colour of its own. The pad is left to right in every language. */
   gtk_widget_set_direction (GTK_WIDGET (self), GTK_TEXT_DIR_LTR);
   for (int i = 0; i < N_KEYS; i++)
     {

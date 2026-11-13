@@ -3,7 +3,7 @@
 
 #include <glib.h>
 
-/* the grid a layout file without "columns" and "rows" was made for: Launcher3's 5 × 5, the only one before the
+/* the grid a layout file without "columns" and "rows" was made for: 5 × 5, the only one before the
  * grid was a setting (and the one the shipped default layout is laid out on) */
 #define MODEL_LEGACY_COLS 5
 #define MODEL_LEGACY_ROWS 5
@@ -30,7 +30,7 @@ void      model_free       (Model *self);
 int       model_per_page   (Model *self);
 int       model_capacity   (Model *self, int page);   /* the first page less the widgets' slots */
 void      model_set_reserved (Model *self, int slots);
-/* Another grid (Settings' Home screen grid): the pages are laid out on it again, Launcher3's way (model.c) */
+/* Another grid (Settings' Home screen grid): the pages are laid out on it again (model.c) */
 void      model_set_grid   (Model *self, int cols, int rows);
 void      model_set_hidden (Model *self, char **hidden);
 void      model_load       (Model *self, GHashTable *apps);

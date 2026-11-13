@@ -52,7 +52,7 @@ cal_attendee_copy (const CalAttendee *attendee)
   return copy;
 }
 
-/* addIfEmailable: an address, not the owner's, nor a machine-made one (Utils.MACHINE_GENERATED_ADDRESS) */
+/* an address, not the owner's, nor a machine-made one (calendar.google.com) */
 static void
 add_if_mailable (GPtrArray *list, const char *email, const char *me)
 {
@@ -157,7 +157,7 @@ cal_event_unref (CalEvent *event)
 gboolean
 cal_event_draws_as_all_day (const CalEvent *event)
 {
-  /* Event.drawAsAllday: allDay || duration >= DateUtils.DAY_IN_MILLIS */
+  /* all-day, or a day long or more */
   return event->all_day || event->end - event->start >= 24 * 3600;
 }
 
@@ -207,7 +207,7 @@ cal_event_display_color (const CalEvent *event)
 guint32
 cal_declined_color (guint32 rgb)
 {
-  /* as Etar's integer arithmetic: each channel (c × 0x66 + 0xff × 0x99) >> 8 */
+  /* in integers: each channel (c × 0x66 + 0xff × 0x99) >> 8 */
   guint32 out = 0xff000000;
 
   for (int shift = 0; shift <= 16; shift += 8)
@@ -238,7 +238,7 @@ cal_display_color (guint32 rgb, gboolean real_colors)
 
   if (real_colors)
     return rgb & 0xffffff;
-  /* Utils.getDisplayColorFromColor: Color.colorToHSV, s × 1.3 (max 1), v × 0.8, Color.HSVToColor */
+  /* in HSV: s × 1.3 (max 1), v × 0.8 */
   if (max > min)
     {
       if (max == r)
@@ -254,7 +254,7 @@ cal_display_color (guint32 rgb, gboolean real_colors)
   s = MIN (1.0, s * 1.3);
   v = v * 0.8;
 
-  /* HSV back to RGB, as android.graphics.Color does (rounding each channel) */
+  /* HSV back to RGB, rounding each channel */
   {
     double c = v * s, x = c * (1 - fabs (fmod (h / 60, 2) - 1)), m = v - c, rr, gg, bb;
     int sector = (int) (h / 60) % 6;
@@ -307,7 +307,7 @@ cal_day_of_week (int day)
 
   g_date_clear (&date, 1);
   g_date_set_julian (&date, day);
-  /* GDateWeekday is Monday 1 … Sunday 7; Android's Time.weekDay is Sunday 0 … Saturday 6 */
+  /* GDateWeekday is Monday 1 … Sunday 7; the app counts Sunday 0 … Saturday 6 */
   return g_date_get_weekday (&date) % 7;
 }
 
@@ -321,7 +321,7 @@ cal_minute_of_day (gint64 time)
 
 /* --- layout */
 
-/* removeNonAlldayActiveEvents / removeAlldayActiveEvents: the events of the active list that ended before @event
+/* the events of the active list that ended before @event
  * starts free their columns */
 static guint64
 remove_inactive (CalEvent *event, GPtrArray *active, gboolean all_day, gint64 min_seconds, guint64 mask)
@@ -346,7 +346,7 @@ remove_inactive (CalEvent *event, GPtrArray *active, gboolean all_day, gint64 mi
   return mask;
 }
 
-/* computeGroupLayout, non-staggered: each event takes the lowest free column; the group shares the widest count */
+/* non-staggered: each event takes the lowest free column; the group shares the widest count */
 static void
 layout_group (GPtrArray *group, gboolean all_day, gint64 min_seconds)
 {
@@ -363,7 +363,7 @@ layout_group (GPtrArray *group, gboolean all_day, gint64 min_seconds)
       g_ptr_array_add (active, event);
       for (column = 0; column < 64 && (mask & (G_GUINT64_CONSTANT (1) << column)); column++)
         ;
-      /* "No column available. What do we do now? Use last column" (Event.java:572-576) */
+      /* no column free: the last one */
       if (column == 64)
         column = 63;
       else
@@ -379,7 +379,7 @@ layout_group (GPtrArray *group, gboolean all_day, gint64 min_seconds)
     }
 }
 
-/* getUnobscuredDurationOffset: from the start of @event, where a stretch of @min_seconds begins that no event of a
+/* from the start of @event, where a stretch of @min_seconds begins that no event of a
  * higher column covers; -1 if there is none */
 static gint64
 unobscured_offset (CalEvent *event, GPtrArray *group, gint64 min_seconds)
@@ -402,7 +402,7 @@ unobscured_offset (CalEvent *event, GPtrArray *group, gint64 min_seconds)
   return end - start >= min_seconds ? start - event->start : -1;
 }
 
-/* computeEventColAndTextOffsetStaggered: the column for @event, moving others up when one is inserted; the new mask,
+/* the column for @event, moving others up when one is inserted; the new mask,
  * or 0 with *failed when it fits nowhere */
 static guint64
 stagger_one (CalEvent *event, GPtrArray *active, GPtrArray *group, guint64 mask, int max_columns, gint64 min_seconds,
@@ -499,7 +499,7 @@ stagger_group (GPtrArray *group, gint64 min_seconds)
   guint64 mask = 0;
   int max_columns = 0;
 
-  /* as Etar's freshly loaded Events: an event not placed yet sits in column 0 */
+  /* an event not placed yet sits in column 0 */
   for (guint i = 0; i < group->len; i++)
     {
       ((CalEvent *) group->pdata[i])->column = 0;
@@ -526,8 +526,8 @@ stagger_group (GPtrArray *group, gint64 min_seconds)
         }
       max_columns = MAX (max_columns, event->column + 1);
     }
-  /* an inserted column moves events up past the max_columns Etar keeps, which then draws them beyond their day
-   * (EventGeometry's right edge); the group's columns counted after the moves keep them in it */
+  /* an inserted column moves events up past max_columns, which would draw them beyond their day; the group's
+   * columns counted after the moves keep them in it */
   for (guint i = 0; i < group->len; i++)
     max_columns = MAX (max_columns, ((CalEvent *) group->pdata[i])->column + 1);
   for (guint i = 0; i < group->len; i++)
@@ -567,7 +567,7 @@ cal_layout_events (GPtrArray *events, gboolean all_day, gint64 min_seconds)
   gint64 group_end = G_MININT64;
   int group_last_day = G_MININT;
 
-  /* doComputePositions: events are grouped while they overlap the group so far */
+  /* events are grouped while they overlap the group so far */
   for (guint i = 0; i < events->len; i++)
     {
       CalEvent *event = events->pdata[i];

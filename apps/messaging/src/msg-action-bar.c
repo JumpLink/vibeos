@@ -4,11 +4,11 @@
 #include <glib/gi18n.h>
 #include <neo.h>
 
-#define HEIGHT 56               /* action_bar_height */
-#define UP_WIDTH 56             /* the up button's min-width */
-#define INSET 16                /* abc_action_bar_content_inset_material */
-#define ACTION_WIDTH 48         /* Widget.Material.ActionButton */
-#define OVERFLOW_WIDTH 36       /* Widget.Material.ActionButton.Overflow */
+#define HEIGHT 56
+#define UP_WIDTH 56             /* the up button's least width */
+#define INSET 16                /* the title's, after the up arrow or from the start */
+#define ACTION_WIDTH 48
+#define OVERFLOW_WIDTH 36       /* narrower than an action icon */
 
 static GtkWidget *
 icon_button (const char *icon, int width, const char *label)
@@ -19,7 +19,7 @@ icon_button (const char *icon, int width, const char *label)
   gtk_image_set_pixel_size (GTK_IMAGE (image), 24);
   button = neo_pressable_new (image);
   gtk_widget_set_size_request (button, width, HEIGHT);
-  /* selectableItemBackgroundBorderless: a circle around the icon */
+  /* the ripple: a circle around the icon, not the whole button */
   neo_pressable_set_ripple (NEO_PRESSABLE (button), NEO_RIPPLE_CIRCLE, 20);
   gtk_widget_add_css_class (button, "msg-action-icon");
   gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, label, -1);
@@ -39,13 +39,13 @@ msg_action_bar_new (gboolean up, const char *title)
     {
       GtkWidget *button = icon_button ("messaging-back-symbolic", UP_WIDTH, _("Back"));
 
-      /* the shell's back gesture presses a button called "Back"; "Navigate up" is what Android says */
+      /* named "Back", the button the shell's back gesture clicks; "Navigate up" is its description */
       gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_DESCRIPTION,
                                       _("Navigate up"), -1);
       gtk_box_append (GTK_BOX (bar), button);
       g_object_set_data (G_OBJECT (bar), "up", button);
     }
-  /* 72 dp with the up arrow (its 56 plus 16), else 16 */
+  /* the title's start: UP_WIDTH plus INSET with the up arrow, else INSET */
   gtk_widget_set_margin_start (label, INSET);
   gtk_widget_set_hexpand (label, TRUE);
   gtk_label_set_xalign (GTK_LABEL (label), 0);

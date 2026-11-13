@@ -1,10 +1,8 @@
 /* CalCompatSwitch (cal-compat-switch.h).
  *
- * Measured on still:cal-settings-general (switch_widget [892,719][1032,800], 3 px a dp): the widget 46.7 × 27 dp;
- * a 14 dp track with round ends, its end 35 dp in; a 20 dp thumb, its centre 13.3 dp in when off. Off, the thumb is
- * #B9B9B9 over a #5B5A5E track. On is not on the stills: SwitchCompat tints both with colorControlActivated, the
- * track at the 30 % its colour state list gives it, which here is colorPrimary. The thumb slides in 250 ms
- * (THUMB_ANIMATION_DURATION) on the default AccelerateDecelerate curve; the colours follow its position. */
+ * A thin track with round ends under a bigger round thumb. Off, a light grey thumb over a dark grey track; on, both
+ * in the primary colour, the track at 30 %. The thumb slides in 250 ms on an accelerate-decelerate curve; the
+ * colours follow its position. */
 #include "cal-compat-switch.h"
 #include "cal-colors.h"
 
@@ -50,7 +48,7 @@ cal_compat_switch_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   double y = gtk_widget_get_height (widget) / 2, x0 = (gtk_widget_get_width (widget) - WIDTH) / 2;
   double centre = x0 + THUMB_OFF + (THUMB_ON - THUMB_OFF) * self->position;
   GskRoundedRect track, thumb;
-  /* the on track is colorPrimary at 30 %: the off one's grey turns into it as the thumb goes */
+  /* the on track is the primary colour at 30 %: the off one's grey turns into it as the thumb goes */
   GdkRGBA track_color = mix (TRACK_OFF_COLOR, CAL_PRIMARY & 0x4dffffff, self->position);
   GdkRGBA thumb_color = mix (THUMB_OFF_COLOR, CAL_PRIMARY, self->position);
   gsk_rounded_rect_init_from_rect (&track, &GRAPHENE_RECT_INIT (x0 + TRACK_START, y - TRACK_HEIGHT / 2,

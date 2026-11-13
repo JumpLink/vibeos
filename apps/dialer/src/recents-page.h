@@ -1,4 +1,4 @@
-/* The Recents tab: the call log (CallLogFragment in the main activity; spec §5.1–§5.4).
+/* The Recents tab: the call log.
  *
  * Calls in a row with the same number make one entry, with up to three arrows for what they were and "(4)" when
  * there are more; the entries fall under "Today", "Yesterday" and "Older". Each shows who (a contact's name and
@@ -18,7 +18,7 @@ G_DECLARE_FINAL_TYPE (RecentsPage, recents_page, RECENTS, PAGE, GtkWidget)
 
 /* @snackbar: where a call that could not be made says why */
 GtkWidget *recents_page_new (Contacts *contacts, NeoSnackbar *snackbar);
-/* Call history's All and Missed pages (spec §5.6.3): the same list, with @missed_only the missed calls alone, and
+/* Call history's All and Missed pages: the same list, with @missed_only the missed calls alone, and
  * nothing to do on an empty one */
 GtkWidget *recents_page_new_history (Contacts *contacts, NeoSnackbar *snackbar, gboolean missed_only);
 /* the top of the list, the entries closed (the tab is shown afresh) */

@@ -1,10 +1,10 @@
-/* The blocked numbers: one list for calls and texts, as Android's BlockedNumberContract is (spec: dialer §5.8.5,
- * messaging §4.1-4.2). The Phone and the Messaging both read and change it, and both their services act on it: a call
- * from a blocked number is declined before it rings and logged as "Blocked call"; a text from one is kept, archived,
- * and not notified ("You'll continue to receive messages from this number but won't be notified anymore").
+/* The blocked numbers: one list for calls and texts. The Phone and the Messaging both read and change it, and both
+ * their services act on it: a call from a blocked number is declined before it rings and logged as "Blocked call"; a
+ * text from one is kept, archived, and not notified ("You'll continue to receive messages from this number but won't be
+ * notified anymore").
  *
  * It is a small SQLite database, $XDG_DATA_HOME/neo-phone/blocked_numbers.db, with the columns of Android's
- * BlockedNumbers table. Every process that uses it opens it itself; a change made by one comes to the others through
+ * blocked-numbers table. Every process that uses it opens it itself; a change made by one comes to the others through
  * a file monitor, as "changed". */
 #pragma once
 

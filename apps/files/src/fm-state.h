@@ -1,4 +1,4 @@
-/* What the app remembers besides its settings (spec §4.2, §4.3, §4.1, §12): the bookmarks
+/* What the app remembers besides its settings: the bookmarks
  * ($XDG_CONFIG_HOME/neo-files/bookmarks.ini), and the folders visited and the last-visited locations
  * ($XDG_STATE_HOME/neo-files/state.ini). Every change is written at once. No GTK: the tests link it alone. */
 #pragma once

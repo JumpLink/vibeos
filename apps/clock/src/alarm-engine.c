@@ -1,8 +1,7 @@
-/* The alarm engine (alarm-engine.h): DeskClock's AlarmStateManager, function for function where it can be. */
+/* The alarm engine (alarm-engine.h): ported from DeskClock's, function for function where it can be. */
 #include "alarm-engine.h"
 
-/* AlarmStateManager.ALARM_FIRE_BUFFER: an instance found a little after its time (a time change landed on it) still
- * rings; later than this it was missed */
+/* an instance found a little after its time (a time change landed on it) still rings; later than this it was missed */
 #define FIRE_BUFFER_SECONDS 15
 
 struct _AlarmEngine {
@@ -47,7 +46,7 @@ static void register_instance (AlarmEngine *self, AlarmInstance *instance);
 
 /* --- instances */
 
-/* the moment an instance rings out unanswered, or NULL if it rings until answered (AlarmInstance.getTimeout) */
+/* the moment an instance rings out unanswered, or NULL if it rings until answered */
 static GDateTime *
 instance_timeout (AlarmEngine *self, AlarmInstance *instance)
 {
@@ -75,9 +74,9 @@ same_time (const AlarmInstance *a, const AlarmInstance *b)
          && a->minute == b->minute;
 }
 
-/* AlarmInstance.addInstance: one instance per alarm and time. One at the same time as an existing instance of its
- * alarm takes that one's place: the existing instance gets the new one's settings and state, and keeps its id (and
- * its address, which a caller may hold) */
+/* one instance per alarm and time. One at the same time as an existing instance of its alarm takes that one's place:
+ * the existing instance gets the new one's settings and state, and keeps its id (and its address, which a caller may
+ * hold) */
 static AlarmInstance *
 add_instance (AlarmEngine *self, AlarmInstance *instance)
 {
@@ -101,7 +100,7 @@ add_instance (AlarmEngine *self, AlarmInstance *instance)
   return instance;
 }
 
-/* the previous time the alarm went off before @time, for a repeating alarm (Alarm.getPreviousAlarmTime) */
+/* the previous time the alarm went off before @time, for a repeating alarm */
 static GDateTime *
 previous_alarm_time (const Alarm *alarm, GDateTime *time)
 {
@@ -123,8 +122,8 @@ previous_alarm_time (const Alarm *alarm, GDateTime *time)
     }
 }
 
-/* the alarm after one of its instances is over or missed (updateParentAlarm): a repeating alarm makes its next
- * instance, one that rings once switches off, or goes if it was made to be used once */
+/* the alarm after one of its instances is over or missed: a repeating alarm makes its next instance, one that rings
+ * once switches off, or goes if it was made to be used once */
 static void
 update_parent_alarm (AlarmEngine *self, AlarmInstance *instance)
 {
@@ -168,7 +167,7 @@ update_parent_alarm (AlarmEngine *self, AlarmInstance *instance)
   register_instance (self, next);
 }
 
-/* deleteInstanceAndUpdateParent */
+/* the instance goes, and its alarm moves on (update_parent_alarm) */
 static void
 delete_instance_and_update_parent (AlarmEngine *self, AlarmInstance *instance)
 {
@@ -180,7 +179,7 @@ delete_instance_and_update_parent (AlarmEngine *self, AlarmInstance *instance)
   store_changed (self);
 }
 
-/* --- the states (AlarmStateManager.set*State) */
+/* --- the states */
 
 static void
 set_state (AlarmEngine *self, AlarmInstance *instance, AlarmState state)
@@ -202,7 +201,7 @@ set_missed_state (AlarmEngine *self, AlarmInstance *instance)
 static void
 set_fired_state (AlarmEngine *self, AlarmInstance *instance)
 {
-  /* one alarm rings at a time: one still ringing is missed (AlarmService.startAlarm) */
+  /* one alarm rings at a time: one still ringing is missed */
   for (guint i = 0; i < self->store->instances->len; i++)
     {
       AlarmInstance *other = g_ptr_array_index (self->store->instances, i);
@@ -237,7 +236,7 @@ set_predismiss_state (AlarmEngine *self, AlarmInstance *instance)
     update_parent_alarm (self, instance);
 }
 
-/* registerInstance: the right state for an instance now, from its times; after a reboot or a time change too */
+/* the right state for an instance now, from its times; after a reboot or a time change too */
 static void
 register_instance (AlarmEngine *self, AlarmInstance *instance)
 {
@@ -316,7 +315,7 @@ register_instance (AlarmEngine *self, AlarmInstance *instance)
 
 /* --- the schedule */
 
-/* when the instance changes state next, and to what (the scheduleInstanceStateChange calls of the set*State) */
+/* when the instance changes state next, and to what */
 static GDateTime *
 next_change (AlarmEngine *self, AlarmInstance *instance, AlarmState *to)
 {
@@ -491,7 +490,7 @@ alarm_engine_next_alarm (AlarmEngine *self)
   AlarmInstance *next = NULL;
   g_autoptr(GDateTime) next_time = NULL;
 
-  /* the instances still to ring: up to snoozed (getNextFiringAlarm) */
+  /* the instances still to ring: up to snoozed */
   for (guint i = 0; i < self->store->instances->len; i++)
     {
       AlarmInstance *instance = g_ptr_array_index (self->store->instances, i);
@@ -523,9 +522,9 @@ alarm_engine_ringing (AlarmEngine *self)
   return NULL;
 }
 
-/* --- the user's changes (AlarmUpdateHandler) */
+/* --- the user's changes */
 
-/* the alarm's instances go, and an enabled alarm gets a new one (deleteAllInstances, setupAlarmInstance) */
+/* the alarm's instances go, and an enabled alarm gets a new one */
 static void
 renew_instances (AlarmEngine *self, Alarm *alarm)
 {
@@ -600,7 +599,7 @@ alarm_engine_snooze (AlarmEngine *self, guint instance_id)
 
   if (!instance || instance->state != ALARM_STATE_FIRED)
     return FALSE;
-  /* it rings again the snooze length from now: the instance's time moves there (setSnoozeState) */
+  /* it rings again the snooze length from now: the instance's time moves there */
   time = g_date_time_add_minutes (current, self->settings.snooze_minutes);
   alarm_instance_set_time (instance, time);
   set_state (self, instance, ALARM_STATE_SNOOZE);

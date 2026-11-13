@@ -1,5 +1,4 @@
-/* CalMonthView: Etar's Month view (month-view.h; spec/calendar.md §4). It draws itself in device pixels, as
- * MonthWeekEventsView draws its canvas. */
+/* CalMonthView: the Month view (month-view.h). It draws itself in device pixels. */
 #include "month-view.h"
 #include "cal-colors.h"
 #include "cal-format.h"
@@ -11,43 +10,43 @@
 #include <neo.h>
 #include <spongy.h>
 
-/* --- dimensions, dp (E/month/MonthWeekEventsView.java:76-108, L/full_month_header.xml, V/integers.xml) */
-#define HEADER_ROW 16.0                 /* full_month_header: 16 dp tall … */
-#define HEADER_MARGIN 10.0              /* … with 10 dp under it */
-#define HEADER_TOP_PADDING 1.0          /* full_month_by_week's paddingTop */
-#define DAY_NAME_SIZE 11.0              /* day_label_text_size */
+/* --- dimensions, px */
+#define HEADER_ROW 16.0                 /* the weekday names' row … */
+#define HEADER_MARGIN 10.0              /* … and the gap under it */
+#define HEADER_TOP_PADDING 1.0          /* above the names */
+#define DAY_NAME_SIZE 11.0              /* a weekday name's text */
 #define DAY_NAME_END_MARGIN 6.0
 #define WEEKS_SHOWN 6
-#define MONTH_NUMBER_SIZE 20.0          /* text_size_month_number */
-#define MONTH_NUMBER_TOP 3.0            /* mTopPaddingMonthNumber */
-#define MONTH_NUMBER_SIDE 4.0           /* month_day_number_margin */
-#define SEPARATOR_WIDTH 1.0             /* mDaySeparatorInnerWidth */
-#define EVENT_TITLE_SIZE 10.0           /* text_size_event_title */
-#define EXTRAS_SIZE 12.0                /* mTextSizeEvent: the "+N" */
-#define EVENT_Y_OFFSET 2.0              /* mEventYOffsetPortrait */
+#define MONTH_NUMBER_SIZE 20.0          /* a day's number */
+#define MONTH_NUMBER_TOP 3.0            /* above a day's number */
+#define MONTH_NUMBER_SIDE 4.0           /* a day's number from the column's end */
+#define SEPARATOR_WIDTH 1.0             /* the lines between the days */
+#define EVENT_TITLE_SIZE 10.0           /* an event's title */
+#define EXTRAS_SIZE 12.0                /* the times and the "+N" */
+#define EVENT_Y_OFFSET 2.0              /* the events' top, with the day's number */
 #define EVENT_SQUARE_WIDTH 3.0
 #define EVENT_SQUARE_HEIGHT 10.0
 #define EVENT_LINE_PADDING 2.0
 #define EVENT_RIGHT_PADDING 4.0
-#define EVENT_SQUARE_BORDER 0.0         /* mEventSquareBorder */
-#define EVENT_BOTTOM_PADDING 1.0        /* mEventBottomPadding: under "+N" and the last event */
+#define EVENT_SQUARE_BORDER 0.0
+#define EVENT_BOTTOM_PADDING 1.0        /* under "+N" and the last event */
 #define CLICKED_ALPHA (128 / 255.0)
-#define WEEK_NUMBER_SIZE 9.0            /* mTextSizeWeekNum */
-#define WEEK_NUMBER_TOP 4.0             /* mTopPaddingWeekNumber */
-#define WEEK_NUMBER_SIDE 12.0           /* mSidePaddingWeekNumber: the number's right edge */
+#define WEEK_NUMBER_SIZE 9.0            /* the week's number */
+#define WEEK_NUMBER_TOP 4.0             /* above the week's number */
+#define WEEK_NUMBER_SIDE 12.0           /* the week number's right edge */
 
-/* MonthListView: below 1500 dp/s the list flings freely; above, it snaps to the start of a month, one month below
- * 2000 dp/s and one more per 500 dp/s above that, in 1000 ms */
+/* a fling: below 1500 px/s the list flings freely; above, it snaps to the start of a month, one month below
+ * 2000 px/s and one more per 500 px/s above that, in 1000 ms */
 #define MIN_VELOCITY_FOR_FLING 1500.0
 #define MULTIPLE_MONTH_VELOCITY_THRESHOLD 2000.0
 #define FLING_VELOCITY_DIVIDER 500.0
 #define FLING_TIME 1000
 #define TOUCH_SLOP 8.0
 
-/* Display options (ViewDetailsPreferences.Preferences) */
+/* the Display options settings */
 #define MAX_LINES 7
 typedef struct {
-  int time;                     /* TimeVisibility: 0 none, 1 start, 2 start and end, 3 start and duration, 4 below */
+  int time;                     /* the time: 0 none, 1 start, 2 start and end, 3 start and duration, 4 below */
   gboolean location;
   int max_lines;                /* 1 … 7 */
 } Details;
@@ -131,7 +130,7 @@ list_top (CalMonthView *self)
   return HEADER_TOP_PADDING + HEADER_ROW + HEADER_MARGIN + 1.0 / scale_of (self);
 }
 
-/* each week is a sixth of the list, in whole device pixels (MonthByWeekAdapter: list height / 6) */
+/* each week is a sixth of the list, in whole device pixels */
 static double
 row_height (CalMonthView *self)
 {
@@ -141,7 +140,7 @@ row_height (CalMonthView *self)
   return MAX (1.0, floor (list * scale / WEEKS_SHOWN) / scale);
 }
 
-/* the x where day column @i starts (computeDayLeftPosition: i · width / 7, in whole device pixels) */
+/* the x where day column @i starts (i · width / 7, in whole device pixels) */
 static double
 day_left (CalMonthView *self, int i)
 {
@@ -176,20 +175,19 @@ set_top_week (CalMonthView *self, double top_week)
 static void
 draw_header (CalMonthView *self, GtkSnapshot *snapshot, int scale, double width)
 {
-  /* the 1 px View under the names (L/full_month_by_week.xml): @color/calendar_grid_line_inner_vertical_color from the
-   * layout, so the plain #CCCCCC in every look (DynamicTheme only reaches colours read in code); the land-cal-month
-   * still has it */
+  /* the 1 px line under the names: the same light grey in every look (the theme only reaches colours read in
+   * code) */
   GdkRGBA line = cal_argb (0xffcccccc);
   double baseline;
 
-  /* the weekday names (TextViews: Regular + 300 = 700), uppercase, at the end of each column less 6 dp */
+  /* the weekday names (700: regular with Bold text on), uppercase, at the end of each column less a margin */
   cal_text_line (DAY_NAME_SIZE, scale, &baseline, NULL);
   for (int i = 0; i < 7; i++)
     {
       int weekday = (self->week_start + i) % 7;
       g_autofree char *name = NULL, *upper = NULL;
       g_autoptr(PangoLayout) layout = NULL;
-      /* Sunday and Saturday: month_sunday_dark / month_saturday_dark */
+      /* Sunday and Saturday in their own colour */
       GdkRGBA color = cal_argb (weekday == 0 || weekday == 6 ? CAL_MONTH_WEEKEND_NAMES : CAL_MONTH_DAY_NAMES);
       /* any week's day with that weekday: the base is a week's first day */
       int day = self->base + i;
@@ -207,26 +205,24 @@ draw_header (CalMonthView *self, GtkSnapshot *snapshot, int scale, double width)
   cal_fill_rect (snapshot, scale, 0, list_top (self) - 1.0 / scale, width, 1.0 / scale, &line);
 }
 
-/* --- events: MonthWeekEventsView.drawEvents (E/month/MonthWeekEventsView.java:700-1735). WeekEventFormatter gives
- * each day its events and each event its format (lines, days spanned); DayEventSorter orders a day's events so that
- * a bar keeps its line over its days; DayEventFormatter fits a day's events in its box (fewer lines per event, then
- * fewer events and "+N"); then each FormattedEvent draws itself. All of it in whole device pixels, as on the canvas
- * (Px), with the class and method names in the comments. Not ported: drawDNA, the busy-time strands Etar draws in
- * place of events where show_details_in_month is false (it is true in every configuration Etar ships), and the
- * TalkBack hover text (onHoverEvent; the view is a GTK_ACCESSIBLE_ROLE_GRID without per-day children). */
+/* --- events. The week gives each day its events and each event its format (lines, days spanned); a day's events
+ * are sorted so that a bar keeps its line over its days; then fitted in the day's box (fewer lines per event, then
+ * fewer events and "+N"); then each event draws itself. All of it in whole device pixels (Px). Events always show
+ * as events (no busy-time strands in their place), and a day has no hover text of its own (the view is a
+ * GTK_ACCESSIBLE_ROLE_GRID without per-day children). */
 
-/* ViewDetailsPreferences.TimeVisibility */
+/* Details.time */
 enum { TIME_NONE, TIME_START, TIME_START_END, TIME_START_DURATION, TIME_BELOW };
 
-/* the box's dimensions in device pixels: the dp values times the density, truncated as Etar's static ints */
+/* the box's dimensions in device pixels: the sizes above times the scale, in whole pixels */
 typedef struct {
   int scale;
-  int height;                   /* the week's (mHeight) */
-  int x_width;                  /* a day's box, mWidth / mNumDays (DayBoxBoundaries.mXWidth) */
-  int top;                      /* the first event's top: mEventYOffsetPortrait + mMonthNumHeight + top padding */
-  int event_height, event_ascent;       /* mEventHeight, mEventAscentHeight (the title's paint) */
-  int extras_height, extras_descent;    /* mExtrasHeight, mExtrasDescent (the times' and "+N"'s paint) */
-  int border_space;             /* mBorderSpace: mEventSquareBorder (0) + 1 */
+  int height;                   /* the week's */
+  int x_width;                  /* a day's box: the width / 7 */
+  int top;                      /* the first event's top: the offset, the day number's line, the gap above it */
+  int event_height, event_ascent;       /* a title line's height and ascent */
+  int extras_height, extras_descent;    /* a line of the times or "+N": height, descent */
+  int border_space;             /* the square's border (0) + 1 */
   int line_padding, square_width, square_height, right_padding, bottom_padding;
 } Px;
 
@@ -254,7 +250,7 @@ px_init (Px *px, int scale, double width, double height)
   px->bottom_padding = (int) (EVENT_BOTTOM_PADDING * scale);
 }
 
-/* DayBoxBoundaries: where the next event of the day goes */
+/* a day's box: where the next event of the day goes */
 typedef struct {
   int x, y, y_offset, right_edge, x_width;
 } Box;
@@ -285,8 +281,8 @@ box_right (const Box *box, int span)
   return span * box->x_width + box->right_edge;
 }
 
-/* the BoundariesSetters: a bar (AllDay: a 1 px border inside the fill), a timed event's square (Regular), and a
- * timed event squeezed to one line beside a bar (FixedHeightRegular: the bar's border, the square's text offset) */
+/* how an event sits in its box: a bar (ALL_DAY: a 1 px border inside the fill), a timed event's square (REGULAR),
+ * and a timed event squeezed to one line beside a bar (FIXED: the bar's border, the square's text offset) */
 typedef enum { BOUNDS_ALL_DAY, BOUNDS_REGULAR, BOUNDS_FIXED } Bounds;
 
 static int
@@ -303,7 +299,7 @@ bounds_x_padding (const Px *px, Bounds bounds)
   return px->square_width + px->right_padding - bounds_border (px, bounds);
 }
 
-/* EventFormat: the event's lines and, per day of the week, how many days the bar drawn from that day covers */
+/* an event's format: its lines and, per day of the week, how many days the bar drawn from that day covers */
 typedef struct {
   int lines;
   int span[7];
@@ -384,12 +380,12 @@ format_extend (Format *format, int day)
       }
 }
 
-/* a FormattedEvent (or, with no event, the NullFormattedEvent that holds a line free under a bar) */
+/* an event as the week formats it (or, with no event, a placeholder that holds a line free under a bar) */
 typedef struct {
   CalEvent *event;
   Format *format;               /* shared by a bar's days */
   Bounds bounds;
-  GArray *starts;               /* mTextLayout: the first byte of each line of its text; NULL until laid out */
+  GArray *starts;               /* the first byte of each line of its text; NULL until laid out */
 } Formatted;
 
 static void
@@ -405,14 +401,14 @@ formatted_bordered (const Px *px, const Formatted *formatted)
   return bounds_border (px, formatted->bounds) > 0;
 }
 
-/* isTimeInNextLine: "Start and end time below" on an event without a border */
+/* the time on a line of its own: "Start and end time below" on an event without a border */
 static gboolean
 time_in_next_line (const Px *px, const Formatted *formatted, const Details *details)
 {
   return formatted->event && details->time == TIME_BELOW && !formatted_bordered (px, formatted);
 }
 
-/* FormattedEventBase.getHeight */
+/* an event's height: its lines, its borders, the gap under it, the times below */
 static int
 formatted_height (const Px *px, const Formatted *formatted, const Details *details)
 {
@@ -429,8 +425,8 @@ typedef struct {
   int hidden[7];                /* "+N" */
   GPtrArray *owned;             /* the Formatted */
   GPtrArray *formats;
-  Format placeholder_format;    /* DayEventSorter.virtualFormat */
-  Formatted placeholder;        /* DayEventSorter.mVirtualEvent */
+  Format placeholder_format;    /* the placeholder's format */
+  Formatted placeholder;        /* holds a line free under a bar */
 } Week;
 
 static void
@@ -443,7 +439,7 @@ week_free (Week *week)
   g_free (week);
 }
 
-/* --- the text: getBaseText, getFormattedTime */
+/* --- the text */
 
 static gboolean
 on_the_hour (gint64 time)
@@ -453,7 +449,7 @@ on_the_hour (gint64 time)
   return g_date_time_get_minute (local) == 0 && g_date_time_get_second (local) == 0;
 }
 
-/* FORMAT_SHOW_TIME | FORMAT_ABBREV_ALL: "09:00"; on the 12-hour clock "9 AM" on the hour, else "9:30 AM" */
+/* the time: "09:00"; on the 12-hour clock "9 AM" on the hour, else "9:30 AM" */
 static char *
 abbreviated_time (CalMonthView *self, gint64 time)
 {
@@ -482,7 +478,7 @@ formatted_time (CalMonthView *self, const CalEvent *event, const Details *detail
       g_string_append (time, " – ");
       if (cal_event_first_day (event) != cal_event_last_day (event))
         {
-          /* FORMAT_SHOW_DATE | FORMAT_ABBREV_ALL: "Nov 9", with the year when it is not this one */
+          /* the date: "Nov 9", with the year when it is not this one */
           g_autoptr(GDateTime) local = g_date_time_new_from_unix_local (event->end);
           g_autoptr(GDateTime) now = g_date_time_new_now_local ();
           g_autofree char *date = g_date_time_format (local, g_date_time_get_year (local) == g_date_time_get_year (now)
@@ -494,7 +490,7 @@ formatted_time (CalMonthView *self, const CalEvent *event, const Details *detail
     }
   if (details->time == TIME_START_DURATION)
     {
-      /* DateUtils.formatElapsedTime: "1:30:00", or "45:00" under an hour */
+      /* the duration: "1:30:00", or "45:00" under an hour */
       gint64 seconds = MAX (0, event->end - event->start);
 
       if (time->len)
@@ -508,7 +504,7 @@ formatted_time (CalMonthView *self, const CalEvent *event, const Details *detail
   return g_string_free (time, FALSE);
 }
 
-/* getBaseText: the time inline unless it goes below (never an all-day event's), the title, "@ location" on a line of
+/* the text: the time inline unless it goes below (never an all-day event's), the title, "@ location" on a line of
  * its own */
 static char *
 base_text (CalMonthView *self, const Px *px, const Formatted *formatted, const Details *details)
@@ -528,7 +524,7 @@ base_text (CalMonthView *self, const Px *px, const Formatted *formatted, const D
   return g_string_free (text, FALSE);
 }
 
-/* getAvailableSpaceForText: from the text's left (after the square, or the bar's border) to the box's right less the
+/* the width for the text: from the text's left (after the square, or the bar's border) to the box's right less the
  * border, over @span days */
 static int
 text_width (const Px *px, Bounds bounds, int span)
@@ -538,7 +534,7 @@ text_width (const Px *px, Bounds bounds, int span)
   return span * px->x_width - 2 - 2 * border - bounds_x_padding (px, bounds);
 }
 
-/* preFormatText: a DynamicLayout of the text in the title's paint, broken into lines at the width */
+/* the text in the title's font, broken into lines at the width */
 static void
 pre_format (CalMonthView *self, const Px *px, Formatted *formatted, const Details *details, int span)
 {
@@ -557,7 +553,7 @@ pre_format (CalMonthView *self, const Px *px, Formatted *formatted, const Detail
     g_array_append_val (formatted->starts, ((PangoLayoutLine *) lines->data)->start_index);
 }
 
-/* FormattedEvent.initialPreFormatText: a one-day event takes as many lines as its text needs, up to the maximum */
+/* a one-day event takes as many lines as its text needs, up to the maximum */
 static void
 initial_pre_format (CalMonthView *self, const Px *px, Formatted *formatted, const Details *details)
 {
@@ -571,7 +567,7 @@ initial_pre_format (CalMonthView *self, const Px *px, Formatted *formatted, cons
     formatted->format->lines = MIN ((int) formatted->starts->len, details->max_lines);
 }
 
-/* --- WeekEventFormatter */
+/* --- the week's events and their formats */
 
 static Formatted *
 week_add (Week *week, CalEvent *event, Format *format, Bounds bounds)
@@ -585,7 +581,7 @@ week_add (Week *week, CalEvent *event, Format *format, Bounds bounds)
   return formatted;
 }
 
-/* getFormatByEvent */
+/* @event's format on @day, if it is there */
 static Format *
 format_on_day (Week *week, CalEvent *event, int day)
 {
@@ -597,7 +593,7 @@ format_on_day (Week *week, CalEvent *event, int day)
   return NULL;
 }
 
-/* prepareFormattedEventDay: a bar continues the previous day's format; a timed event over midnight shows on its
+/* a day's events: a bar continues the previous day's format; a timed event over midnight shows on its
  * first day of the week only */
 static void
 prepare_day (CalMonthView *self, Week *week, int first_day, int d)
@@ -630,7 +626,7 @@ prepare_day (CalMonthView *self, Week *week, int first_day, int d)
     }
 }
 
-/* --- DayEventSorter: a bar keeps its line (y-index) from the day before; the others fill the free lines, the
+/* --- a day's order: a bar keeps its line (y-index) from the day before; the others fill the free lines, the
  * longest bars first; a line left free under a bar holds a placeholder */
 
 static void
@@ -648,7 +644,7 @@ sorted_add_remaining (GPtrArray *remaining, Formatted *formatted)
   g_ptr_array_add (remaining, formatted);
 }
 
-/* getNextIndex: one line at a time above the last placed bar, then by the lines of the event placed */
+/* the next line: one at a time above the last placed bar, then by the lines of the event placed */
 static int
 next_index (Formatted **indexed, int index, int min_items)
 {
@@ -719,7 +715,7 @@ sort_day (Week *week, const Px *px, GPtrArray *events)
   return sorted;
 }
 
-/* --- DayEventFormatter: if a day's events are taller than its box, they lose lines (the tallest first) while one line
+/* --- a day's events in its box: if they are taller than the box, they lose lines (the tallest first) while one line
  * each still fits; else they are cut to one line each and the last ones go, "+N" taking their place */
 
 typedef struct {
@@ -770,7 +766,7 @@ more_lines_shown (const DayFormatter *f)
   return f->by_height[0]->len > 0;
 }
 
-/* getOverheadHeight: "+N", the bars' borders, the gaps between events */
+/* the height besides the lines: "+N", the bars' borders, the gaps between events */
 static int
 overhead_height (const DayFormatter *f, const Px *px)
 {
@@ -812,7 +808,7 @@ highest_events (const DayFormatter *f)
   return f->by_height[f->max_lines]->len;
 }
 
-/* reduceNumberOfLines: the tallest events lose a line */
+/* the tallest events lose a line */
 static void
 reduce_number_of_lines (DayFormatter *f)
 {
@@ -831,7 +827,7 @@ reduce_number_of_lines (DayFormatter *f)
   g_ptr_array_set_size (f->by_height[index], 0);
 }
 
-/* reduceHeightOfEvents: the last @count of the tallest lose a line */
+/* the last @count of the tallest lose a line */
 static void
 reduce_height_of_events (DayFormatter *f, int count)
 {
@@ -850,7 +846,7 @@ reduce_height_of_events (DayFormatter *f, int count)
   g_ptr_array_set_size (highest, keep);
 }
 
-/* fitAllItemsOnScrean */
+/* all the events kept: the tallest lose lines until they fit */
 static void
 fit_all (DayFormatter *f, const Px *px, int available)
 {
@@ -864,8 +860,8 @@ fit_all (DayFormatter *f, const Px *px, int available)
   reduce_height_of_events (f, lines - max);
 }
 
-/* reduceNumberOfEventsToFit: one line each, then the last events hidden until the rest and "+N" fit. As in Etar a
- * placeholder line (no event) counts as one of the "+N" when it has to go too. */
+/* one line each, then the last events hidden until the rest and "+N" fit. A placeholder line (no event) counts
+ * as one of the "+N" when it has to go too. */
 static void
 reduce_to_fit (DayFormatter *f, const Px *px, int available)
 {
@@ -899,11 +895,11 @@ reduce_to_fit (DayFormatter *f, const Px *px, int available)
     }
 }
 
-/* formatDay */
+/* a day's events fitted in @available */
 static void
 format_day (DayFormatter *f, const Px *px, int available)
 {
-  /* hideTimeRangeIfNeeded: the times below go first */
+  /* the times below go first */
   if (f->details.time == TIME_BELOW && max_number_of_lines (f, px, available) < f->visible)
     f->details.time = TIME_NONE;
   if (events_height (f, px) <= available)
@@ -914,12 +910,12 @@ format_day (DayFormatter *f, const Px *px, int available)
     reduce_to_fit (f, px, available);
 }
 
-/* prepareFormattedEvents */
+/* the week's events, sorted and fitted day by day */
 static Week *
 week_format (CalMonthView *self, const Px *px, int first_day)
 {
   Week *week = g_new0 (Week, 1);
-  int available = px->height - px->top - px->bottom_padding;     /* DayBoxBoundaries.getAvailableYSpace */
+  int available = px->height - px->top - px->bottom_padding;     /* the height for events */
 
   week->owned = g_ptr_array_new_with_free_func ((GDestroyNotify) formatted_free);
   week->formats = g_ptr_array_new_with_free_func (g_free);
@@ -951,7 +947,7 @@ week_format (CalMonthView *self, const Px *px, int first_day)
   return week;
 }
 
-/* --- FormattedEvent.draw */
+/* --- drawing an event */
 
 static void
 fill_px (GtkSnapshot *snapshot, const Px *px, int left, int top, int right, int bottom, guint32 argb)
@@ -962,8 +958,8 @@ fill_px (GtkSnapshot *snapshot, const Px *px, int left, int top, int right, int 
   cal_fill_rect (snapshot, px->scale, left / s, top / s, (right - left) / s, (bottom - top) / s, &color);
 }
 
-/* drawEventRectangle: filled (Style.FILL_AND_STROKE at stroke width 0 is a fill), or for an invitation not yet
- * answered a hairline frame (Style.STROKE at width 0: the pixels of both edges) */
+/* the event's rectangle: filled, or for an invitation not yet answered a hairline frame (the pixels of both
+ * edges) */
 static void
 draw_rectangle (GtkSnapshot *snapshot, const Px *px, const Box *box, const Formatted *formatted, int day)
 {
@@ -976,14 +972,14 @@ draw_rectangle (GtkSnapshot *snapshot, const Px *px, const Box *box, const Forma
   left = box->x;
   if (formatted->bounds == BOUNDS_ALL_DAY)
     {
-      /* AllDayBoundariesSetter.setRectangle */
+      /* a bar */
       right = box_right (box, span);
       top = box_y (box);
       bottom = box_y (box) + px->event_height * lines + px->border_space * 2;
     }
   else
     {
-      /* RegularBoundariesSetter.setRectangle: the square beside the first line, as tall as the lines */
+      /* a timed event: the square beside the first line, as tall as the lines */
       right = box->x + px->square_width;
       top = box_y (box) + px->event_ascent - px->square_height;
       bottom = box_y (box) + px->event_ascent + (lines - 1) * px->event_height;
@@ -999,7 +995,7 @@ draw_rectangle (GtkSnapshot *snapshot, const Px *px, const Box *box, const Forma
     fill_px (snapshot, px, left, top, right, bottom, color);
 }
 
-/* getTextPaint */
+/* the text's colour */
 static guint32
 text_color (const Formatted *formatted)
 {
@@ -1032,7 +1028,7 @@ draw_line (CalMonthView *self, GtkSnapshot *snapshot, const Px *px, const char *
   cal_text_draw (snapshot, layout, x / (double) px->scale, baseline / (double) px->scale, 0, &color);
 }
 
-/* a line as canvas.drawText draws it: a line break inside it takes no room */
+/* one line of text: a line break inside it takes no room */
 static char *
 one_line (const char *text, gsize length)
 {
@@ -1046,7 +1042,7 @@ one_line (const char *text, gsize length)
   return g_string_free (line, FALSE);
 }
 
-/* drawText: each line of the layout, the last one with the rest of the text, ellipsized */
+/* the text: each line of the layout, the last one with the rest of the text, ellipsized */
 static void
 draw_text (CalMonthView *self, GtkSnapshot *snapshot, const Px *px, Box *box, Formatted *formatted,
            const Details *details, int day)
@@ -1078,7 +1074,7 @@ draw_text (CalMonthView *self, GtkSnapshot *snapshot, const Px *px, Box *box, Fo
     }
 }
 
-/* drawTimes: under the title in the times' paint (12 sp Regular), cut to one day's width */
+/* the times: under the title in their own font, cut to one day's width */
 static void
 draw_times (CalMonthView *self, GtkSnapshot *snapshot, const Px *px, Box *box, const Formatted *formatted,
             const Details *details)
@@ -1093,7 +1089,7 @@ draw_times (CalMonthView *self, GtkSnapshot *snapshot, const Px *px, Box *box, c
   box->y_offset += px->extras_height;
 }
 
-/* DayEventFormatter.drawDay: each event drawn on the day its bar starts, passed over (its height kept) on the others;
+/* a day: each event drawn on the day its bar starts, passed over (its height kept) on the others;
  * "+N" at the bottom */
 static void
 draw_day (CalMonthView *self, GtkSnapshot *snapshot, const Px *px, Box *box, Week *week, int day)
@@ -1124,7 +1120,7 @@ draw_day (CalMonthView *self, GtkSnapshot *snapshot, const Px *px, Box *box, Wee
     }
   if (week->hidden[day] > 0)
     {
-      /* drawMoreEvents: "+N", 12 sp fake bold, in month_event_extra_color */
+      /* "+N", in fake bold */
       int n = week->hidden[day];
       g_autofree char *text = g_strdup_printf (g_dngettext (NULL, "+%d", "+%d", n), n);
 
@@ -1156,7 +1152,7 @@ week_for (CalMonthView *self, const Px *px, int first_day)
   return week;
 }
 
-/* drawEvents */
+/* the week's events */
 static void
 draw_events (CalMonthView *self, GtkSnapshot *snapshot, int scale, int first_day, double height)
 {
@@ -1188,8 +1184,8 @@ draw_week (CalMonthView *self, GtkSnapshot *snapshot, int scale, int first_day, 
   gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (0, (float) y0, (float) width, (float) height));
   gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, (float) y0));
 
-  /* drawBackground: the month in focus #212121; other months alternate black and the list's #141414 by the parity
-   * of their month (mOddMonth); today month_today_bgcolor over it, or colorPrimary at alpha 72 when the Theme
+  /* the background: the month in focus lighter; other months alternate between two darker colours by the parity
+   * of their month; today its own colour over it, or the primary colour at alpha 72 when the Theme
    * setting is exactly "light" (not "system" in a light look) */
   for (int i = 0; i < 7; i++)
     {
@@ -1216,7 +1212,7 @@ draw_week (CalMonthView *self, GtkSnapshot *snapshot, int scale, int first_day, 
         }
     }
 
-  /* drawWeekNums: the day numbers, 20 sp Regular (bold for today), right-aligned 4 dp in from the column's end */
+  /* the day numbers (bold for today), right-aligned near the column's end */
   for (int i = 0; i < 7; i++)
     {
       int day = first_day + i;
@@ -1234,8 +1230,8 @@ draw_week (CalMonthView *self, GtkSnapshot *snapshot, int scale, int first_day, 
                      &color);
     }
 
-  /* drawWeekNums with mShowWeekNum: the week's number, 9 sp, right-aligned 12 dp in, over the first day (the days
-   * keep their columns); SimpleWeekView numbers a week by its Monday */
+  /* with Show week number on: the week's number, small, right-aligned over the first day (the days keep their
+   * columns); a week is numbered by its Monday */
   if (self->show_week_number)
     {
       double ascent, line_height;
@@ -1249,7 +1245,7 @@ draw_week (CalMonthView *self, GtkSnapshot *snapshot, int scale, int first_day, 
       cal_text_draw (snapshot, layout, WEEK_NUMBER_SIDE, ascent + WEEK_NUMBER_TOP, 1, &color);
     }
 
-  /* drawDaySeparators: 1 dp lines, the horizontal one along the top, centred on y 0 and x of each column (the
+  /* the separators: thin lines, the horizontal one along the top, centred on y 0 and x of each column (the
    * first only half shows) */
   cal_fill_rect (snapshot, scale, 0, 0, width, ceil (SEPARATOR_WIDTH * scale / 2.0) * px, &line);
   for (int i = 0; i < 7; i++)
@@ -1261,10 +1257,10 @@ draw_week (CalMonthView *self, GtkSnapshot *snapshot, int scale, int first_day, 
                                                                    : SEPARATOR_WIDTH, height, &line);
     }
 
-  /* drawEvents */
+  /* the events */
   draw_events (self, snapshot, scale, first_day, height);
 
-  /* drawClick: the tapped day in #33B5E5 at half alpha */
+  /* the tapped day in blue at half alpha */
   if (self->clicked_day >= first_day && self->clicked_day < first_day + 7)
     {
       int i = self->clicked_day - first_day;
@@ -1285,7 +1281,7 @@ cal_month_view_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   int scale = scale_of (self);
   double width = gtk_widget_get_width (widget), height = gtk_widget_get_height (widget);
   double top = list_top (self), row = row_height (self);
-  GdkRGBA bg = cal_argb (CAL_FUTURE_BG);         /* month_bgcolor_dark: bg_dark */
+  GdkRGBA bg = cal_argb (CAL_FUTURE_BG);
   GdkRGBA surface = cal_argb (CAL_SURFACE);
   int first_week = (int) floor (self->top_week);
   double offset = (self->top_week - first_week) * row;
@@ -1311,7 +1307,7 @@ cal_month_view_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 static double
 viscous_fluid (double x)
 {
-  /* Scroller.ViscousFluidInterpolator, the curve of AbsListView.smoothScrollBy */
+  /* a viscous-fluid curve: an exponential ease-in over the first eighth, then an exponential ease-out */
   x *= 8;
   if (x < 1)
     return x - (1 - exp (-x));
@@ -1366,19 +1362,19 @@ stop_motion (CalMonthView *self)
   neo_anim_stop (self->snap);
 }
 
-/* MonthListView.doFling: a fast fling goes to the first week of the next (or this, scrolling back) month, or
+/* a fast fling goes to the first week of the next (or this, scrolling back) month, or
  * further the faster it is */
 static void
 fling (CalMonthView *self, double velocity)
 {
   int scale = scale_of (self);
-  double speed = velocity;      /* dp/s, positive toward later weeks */
+  double speed = velocity;      /* px/s, positive toward later weeks */
   GdkFrameClock *clock = gtk_widget_get_frame_clock (GTK_WIDGET (self));
 
   if (fabs (speed) > MIN_VELOCITY_FOR_FLING)
     {
       int jump, upper_right = week_first_day (self, (int) floor (self->top_week)) + 6;
-      /* Android's velocityY is negative toward later weeks */
+      /* the thresholds below take later weeks as negative */
       double v = -speed;
 
       if (fabs (v) < MULTIPLE_MONTH_VELOCITY_THRESHOLD)
@@ -1600,7 +1596,7 @@ cal_month_view_go_to (CalMonthView *self, int day)
   int month = month_of (day);
 
   stop_motion (self);
-  /* LIST_TOP_OFFSET −1: the week of the 1st at the top */
+  /* the week of the 1st at the top */
   self->top_week = week_of (self, month_start (month));
   if (month != self->focus_month)
     {

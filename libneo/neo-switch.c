@@ -1,4 +1,4 @@
-/* NeoSwitch: see neo-switch.h. Geometry measured on still:clock-alarm and still:clock-settings (spec/clock.md §2.4). */
+/* NeoSwitch: see neo-switch.h. */
 #include "neo-switch.h"
 #include "neo-anim.h"
 #include "neo-style.h"
@@ -9,15 +9,15 @@
 #define THUMB          24
 #define THUMB_INSET    4       /* from the track's edge to the thumb's */
 #define ICON           16
-#define THUMB_PLAIN    16      /* without an icon, off: MaterialSwitch's unchecked thumb */
-#define TARGET_H       48      /* minHeight 48dp */
+#define THUMB_PLAIN    16      /* without an icon, off: a smaller thumb */
+#define TARGET_H       48      /* the touch target, tall enough for a thumb */
 #define TOGGLE_MS      250
 
 struct _NeoSwitch {
   GtkWidget  parent;
   gboolean   active;
   double     position;           /* the thumb: 0 at the start (off) .. 1 at the end (on) */
-  gboolean   plain;              /* no icons: a 16 dp thumb off */
+  gboolean   plain;              /* no icons: a smaller thumb off */
   NeoAnim   *slide;
 };
 
@@ -46,7 +46,7 @@ neo_switch_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   double x = (w - TRACK_W) / 2, y = (h - TRACK_H) / 2;
   float t = self->position;
 
-  /* every colour blends with the thumb's position, as MaterialSwitch tints its drawables */
+  /* every colour blends with the thumb's position, so they change as it slides */
   GdkRGBA track_off = neo_color (NEO_SURFACE_CONTAINER_HIGHEST), track_on = neo_color (NEO_PRIMARY);
   GdkRGBA outline_off = neo_color (NEO_OUTLINE), outline_on = neo_color_alpha (NEO_PRIMARY, 0);
   GdkRGBA thumb_off = neo_color (NEO_OUTLINE), thumb_on = neo_color (NEO_ON_PRIMARY);
@@ -67,7 +67,7 @@ neo_switch_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
     gtk_snapshot_append_border (snapshot, &rect, widths, colors);
   }
 
-  /* the thumb's centre slides between the centres of its 24 dp places; without icons it grows from 16 dp to 24 */
+  /* the thumb's centre slides between the centres of its two places; without icons it grows as it goes */
   double size = self->plain ? THUMB_PLAIN + (THUMB - THUMB_PLAIN) * t : THUMB;
   double travel = TRACK_W - 2 * THUMB_INSET - THUMB;
   double cx = x + THUMB_INSET + THUMB / 2.0 + travel * t, cy = y + TRACK_H / 2.0;
@@ -178,7 +178,7 @@ neo_switch_set_active (NeoSwitch *self, gboolean active)
   if (active == self->active)
     return;
   self->active = active;
-  /* SwitchCompat animates from where the thumb is, with ObjectAnimator's default accelerate-decelerate curve */
+  /* from where the thumb is, so a second tap mid-slide turns it round; accelerate-decelerate */
   neo_anim_start (self->slide, self->position, active, TOGGLE_MS, 0, SPONGY_ACCELERATE_DECELERATE);
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_ACTIVE]);
 }

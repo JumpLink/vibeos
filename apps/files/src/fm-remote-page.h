@@ -1,4 +1,4 @@
-/* The Remote page and adding a remote (spec §6): the saved remotes, the footer "+ Add a remote location", the Add
+/* The Remote page and adding a remote: the saved remotes, the footer "+ Add a remote location", the Add
  * Remote dialog, the Local Network scan of network:///, and the server dialog for SMB, FTP/FTPS, SFTP and WebDAV. */
 #pragma once
 

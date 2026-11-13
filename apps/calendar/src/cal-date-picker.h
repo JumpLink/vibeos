@@ -1,8 +1,7 @@
-/* The date dialog: Material 3's MaterialDatePicker as Etar shows it for "Go to…" and the editor's dates
- * (spec/calendar.md §8.1; measured still:cal-dlg-date). A libneo candidate.
+/* The date dialog, for "Go to…" and the editor's dates. A libneo candidate.
  *
  * The header (the title, the chosen date large), the month with ‹ › and a swipe between months, a tap on
- * "November 2026 ▾" for a list of years, the days in 40 dp circles (today ringed, the choice filled), Cancel and OK.
+ * "November 2026 ▾" for a list of years, the days in circles (today ringed, the choice filled), Cancel and OK.
  * The pencil in the header switches to typing the date (the text input mode: an outlined "Date" field in the
  * locale's short pattern, its errors under it), the calendar icon back. */
 #pragma once

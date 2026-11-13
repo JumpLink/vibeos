@@ -1,16 +1,16 @@
-/* The browser: LineageOS's Jelly over WebKitGTK (spec/jelly.md). What every part shares.
+/* The browser: LineageOS's Jelly over WebKitGTK. What every part shares.
  *
  *   nb-app.c        the engine (one WebKit network session, the incognito one, the ad filter), the session file,
  *                   downloads, shortcuts, the settings that reach WebKit
- *   nb-tab.c        a tab: a page of the one window, the WebView, back, dialogs
+ *   nb-tab.c        a tab: a page of the one window, the web view, back, dialogs
  *   nb-switcher.c   the window (the tabs, one shown at a time) and the tab switcher the URL bar's tab count opens:
- *                   Jelly's tabs were Android tasks, one window each; here they live in the browser, as Chrome's do
+ *                   the tabs live in the browser, not one window each
  *   nb-urlbar.c     the URL bar, its tab count, its suggestions, find in page
  *   nb-menu.c       the popup menu, the link sheet, Send to, the shortcut sheet
  *   nb-pages.c      History, Favorites, Downloads, Desktop shortcuts
  *   nb-settings.c   Settings
- *   nb-widgets.c    dialogs, sheets, switches … in Jelly's AppCompat look
- *   nb-navigator.c  the activity transitions between a tab's pages
+ *   nb-widgets.c    dialogs, sheets, switches … in Jelly's look
+ *   nb-navigator.c  the transitions between a tab's pages
  *   nb-refresh.c    pull to refresh
  *   store.c         history, favourites, prefs (JSON, the old browser's files) */
 #pragma once
@@ -111,9 +111,9 @@ void        nb_app_startup        (GtkApplication *app);
 void        nb_app_shutdown       (void);
 /* restores the session (or opens the home page) when there is no window, else raises the most recent one */
 void        nb_app_activate       (void);
-/* the command line's tabs (an Intent's data): one new tab per URL, or one with the home page when there is none */
+/* the command line's tabs: one new tab per URL, or one with the home page when there is none */
 void        nb_app_open           (const char *const *urls, gboolean incognito, const char *shortcut_id);
-/* a new tab, shown (TabUtils.openInNewTab): `url` NULL for the home page */
+/* a new tab, shown: `url` NULL for the home page */
 NbTab      *nb_open_tab           (const char *url, gboolean incognito, const char *shortcut_id,
                                    WebKitWebView *related);
 void        nb_tab_forget         (NbTab *t);
@@ -142,7 +142,7 @@ void        nb_tab_present        (NbTab *t);
 void        nb_tab_close          (NbTab *t);
 gboolean    nb_tab_is_shown       (NbTab *t);
 void        nb_tab_ensure_view    (NbTab *t);
-void        nb_tab_load           (NbTab *t, const char *text);    /* through smartUrlFilter */
+void        nb_tab_load           (NbTab *t, const char *text);    /* through nb_smart_url */
 const char *nb_tab_uri            (NbTab *t);
 const char *nb_tab_title          (NbTab *t);
 void        nb_tab_sync_back      (NbTab *t);
@@ -194,7 +194,7 @@ void        nb_downloads_page_refresh (GtkWidget *page);
 GtkWidget  *nb_desktop_shortcuts_page_new (NbTab *t);
 GtkWidget  *nb_settings_page_new  (NbTab *t);
 
-/* the search engines (V/search_engines.xml) */
+/* the search engines, in the settings list's order */
 extern const char *const nb_engine_names[];
 extern const char *const nb_engine_urls[];
 

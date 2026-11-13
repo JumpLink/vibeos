@@ -1,4 +1,4 @@
-/* What the QR sheet makes of a code (cam_qr_classify): zxing's ResultParsers, as QrTextClassifier uses them. */
+/* What the QR sheet makes of a code (cam_qr_classify), by zxing's ResultParser rules. */
 #include "cam-qr-sheet.h"
 
 typedef struct {

@@ -1,5 +1,5 @@
 /* neo-files: the Files app, File Manager+ (com.alphainventor.filemanager 3.3.6) rebuilt in GTK 4 for any Mobian phone
- * (spec/files.md), on GIO and GVfs: local storage, removable media, the Recycle Bin, Recent files, the Local Network
+ *, on GIO and GVfs: local storage, removable media, the Recycle Bin, Recent files, the Local Network
  * and saved remotes over SMB, SFTP, FTP/FTPS and WebDAV.
  *
  * neo.Files is D-Bus activatable. A folder's URI opened with it (`neo-files URI`, or Open over D-Bus from

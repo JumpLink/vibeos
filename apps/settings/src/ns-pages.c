@@ -267,7 +267,7 @@ night_show (Night *n)
   night_time_show (n, n->end, "night-light-schedule-to");
   gtk_list_box_invalidate_headers (GTK_LIST_BOX (gtk_widget_get_parent (n->start)));
 
-  /* the slider: right is warmer, as Android's Intensity; greyed out while night light is off, as Android's */
+  /* the slider: right is warmer; greyed out while night light is off */
   double k = g_settings_get_uint (n->color, "night-light-temperature");
   n->syncing = TRUE;
   gtk_range_set_value (GTK_RANGE (n->scale),
@@ -435,7 +435,7 @@ night_row (GtkWidget *g, GSettings *color, GSettings *iface)
  * The slider stands where the shell's does: gnome-phone's brightness.js maps its slider to the backlight on the
  * power GAMMA (1.9), so that the levels comfortable indoors are not all in the first fifth. The two must agree, or
  * one slider would jump when the other moves. Adaptive brightness (brightness.js too) keeps a level set here as
- * its offset from the light's level, as Android does. */
+ * its offset from the light's level. */
 
 #define BRIGHTNESS_GAMMA 1.9
 
@@ -934,9 +934,9 @@ ns_page_battery (GtkWidget *row, gpointer data)
                             g_variant_new ("(s)", "org.freedesktop.UPower.Device"), G_VARIANT_TYPE ("(a{sv})"),
                             G_DBUS_CALL_FLAGS_NONE, 3000, NULL, charge_got, g_object_ref (page));
 
-  /* No "Show battery percentage" (org.gnome.desktop.interface show-battery-percentage): the status bar draws
-   * Android 16's battery (statusbar.js paintBattery), which has no number in it yet. It needs the level drawn into
-   * the battery's body, as Android's BatteryWithPercent does, when the key is on. */
+  /* No "Show battery percentage" (org.gnome.desktop.interface show-battery-percentage): the status bar's battery
+   * (statusbar.js paintBattery) has no number in it yet. It needs the level drawn into the battery's body when the
+   * key is on. */
   g = ns_group (c, NULL);
   page_row (g, NULL, NULL, "Battery information", "Health • Temperature • Capacity", ns_page_battery_info);
   page_row (g, NULL, NULL, "Power and screen blank",
@@ -1101,14 +1101,14 @@ icon_packs (void)
 
 /* ---- Home screen: the layout ---- */
 
-/* the grids One UI offers (columns × rows); Launcher3's 5 × 5 is the default. On a 360 dp phone these are what fit
- * the launcher's 56 dp icons with their labels: 6 columns would leave a 57 dp cell, 7 rows an 83 dp one under the
- * 85 dp an icon and its label take. */
+/* the grids One UI offers (columns × rows); 5 × 5 is the default. On a phone 360 px wide these are what fit the
+ * launcher's 56 px icons with their labels: 6 columns would leave a 57 px cell, 7 rows an 83 px one under the 85 px
+ * an icon and its label take. */
 static const int grid_sizes[][2] = { { 4, 5 }, { 4, 6 }, { 5, 5 }, { 5, 6 } };
 static const char *const grid_labels[] = { "4 × 5", "4 × 6", "5 × 5", "5 × 6", NULL };
 static const int drawer_sizes[] = { 4, 5 };
 static const char *const drawer_labels[] = { "4 columns", "5 columns", NULL };
-/* the icons' size, of Launcher3's 56 dp: 110 % is the most a 5-column cell holds (the press grows it by 10 %) */
+/* the icons' size, of the launcher's 56 px: 110 % is the most a 5-column cell holds (the press grows it by 10 %) */
 static const double icon_scales[] = { 0.8, 0.9, 1.0, 1.1 };
 static const char *const icon_labels[] = { "80%", "90%", "100%", "110%", NULL };
 
@@ -1230,7 +1230,7 @@ layout_group (AdwNavigationPage *page, GtkWidget *c, GSettings *neo)
  * it has no cell for to the next free one (model.c model_set_grid), and the icon keys (icons.c) draw its icons again
  * (tiles.c tiles_reload_icons).
  *
- * Not on this page, and why: the dock's icons (dock-num-icons: the dock keeps Launcher3's 5 cells whatever the grid),
+ * Not on this page, and why: the dock's icons (dock-num-icons: the dock keeps 5 cells whatever the grid),
  * the clock widget (home-widgets: always on the first page) and "Home gesture opens" (launcher: gnome-phone's home
  * gesture always shows Neo); the launcher reads none of them. */
 void

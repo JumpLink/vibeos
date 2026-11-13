@@ -1,23 +1,19 @@
-/* Time zones (cal-tz-picker.h): com.android.timezonepicker as Etar ships it — TimeZoneData, TimeZoneInfo,
- * TimeZonePickerView, TimeZoneResultAdapter, TimeZoneFilterTypeAdapter, TimeZonePickerUtils — on ICU (ucal, uloc)
- * and the system's zone.tab.
+/* Time zones (cal-tz-picker.h): the time zone dialog, on ICU (ucal, uloc) and the system's zone.tab.
  *
- * The zones (TimeZoneData): zone.tab's, grouped by country (uloc_getDisplayCountry; PS is "Palestine"), a zone left
- * out when its country already has one with the same rules (hasSameRules: the same raw offset, and for a zone with
- * daylight saving time the same transitions, here since 1970); the zone being edited goes in at its zone.tab line
- * (an old id found through ICU's IANA id, as the library's "backward" file does) ahead of an identical one; then the
- * Etc/GMT zones, which have no country. Sorted by the offset now (east first), the country (none last), the
- * standard name. Each row: the name at the event's time (or one of the library's renames, "Mountain Standard -
- * Arizona"), the time now in the zone with its offset and the sun of a zone with DST, the country.
+ * The zones: zone.tab's, grouped by country (uloc_getDisplayCountry; PS is "Palestine"), a zone left out when its
+ * country already has one with the same rules (the same raw offset, and for a zone with daylight saving time the
+ * same transitions, here since 1970); the zone being edited goes in at its zone.tab line (an old id found through
+ * ICU's IANA id) ahead of an identical one; then the Etc/GMT zones, which have no country. Sorted by the offset now
+ * (east first), the country (none last), the standard name. Each row: the name at the event's time (or one of the
+ * picker's own renames, "Mountain Standard - Arizona"), the time now in the zone with its offset and the sun of a
+ * zone with DST, the country.
  *
- * The dialog (TimeZonePickerDialog, timezonepickerview.xml): 310 dp wide (the AppCompat dialog's 95 % of the
- * screen less its 16 dp insets), colorSurfaceContainer, 2 dp corners, as tall as its rows up to the window. On top
- * the search field (an AutoCompleteTextView: 18 sp, the hint "   " with a search icon 1.25 × the text size, then
- * "Type country name"; an underline, 2 dp colorPrimary while focused; a clear button), under it the rows. With no
- * search the list is the zone being edited, then the three zones chosen last (newest first). Typing offers
- * countries and offsets in a drop-down under the field (TimeZoneFilterTypeAdapter: "+5", "gmt-3", a country's
- * start, a word in it, its initials, "usa"); one chosen lists that country's zones or that hour's. A search with
- * nothing to offer lists "No results found". A row chosen is the zone, and the dialog closes. */
+ * The dialog: nearly the screen's width, as tall as its rows up to the window. On top the search field (the hint a
+ * search icon, then "Type country name"; an underline, thicker while focused; a clear button), under it the rows. With
+ * no search the list is the zone being edited, then the three zones chosen last (newest first). Typing offers countries
+ * and offsets in a drop-down under the field ("+5", "gmt-3", a country's start, a word in it, its initials, "usa"); one
+ * chosen lists that country's zones or that hour's. A search with nothing to offer lists "No results found". A row
+ * chosen is the zone, and the dialog closes. */
 #include "cal-tz-picker.h"
 #include "cal-colors.h"
 #include "cal-format.h"
@@ -32,31 +28,31 @@
 #include <unicode/uloc.h>
 #include <unicode/ustring.h>
 
-#define DIALOG_WIDTH 310                /* ThemeOverlay.AppCompat.Dialog: 95 % of 360 dp less 2 × 16 dp */
-#define FIELD_HEIGHT 54.0               /* the AppCompat EditText at 18 sp (the editor's, measured) */
-#define FIELD_TEXT_TOP 14.0             /* the text line's top: abc_edit_text_inset_top_material and the field's pad */
-#define FIELD_INSET 4.0                 /* abc_edit_text_inset_horizontal_material */
-#define FIELD_UNDERLINE_BOTTOM 7.0      /* abc_edit_text_inset_bottom_material */
-#define FIELD_PADDING_END 30.0          /* the search box's paddingEnd */
+#define DIALOG_WIDTH 310                /* 95 % of a 360 px screen, less the insets */
+#define FIELD_HEIGHT 54.0
+#define FIELD_TEXT_TOP 14.0             /* the text line's top: the field's inset and padding */
+#define FIELD_INSET 4.0                 /* the underline's inset at the sides */
+#define FIELD_UNDERLINE_BOTTOM 7.0      /* the underline's distance from the bottom */
+#define FIELD_PADDING_END 30.0          /* the search box's padding at the end */
 #define FIELD_TEXT_SIZE 18.0
-#define HINT_ICON_SCALE 1.25            /* HINT_ICON_SIZE_ADJUSTMENT */
-#define CLEAR_SIZE 40                   /* the clear button: a 24 dp icon, padding 8 */
+#define HINT_ICON_SCALE 1.25            /* the hint's search icon, to the text's size */
+#define CLEAR_SIZE 40                   /* the clear button: its icon and padding */
 #define CLEAR_MARGIN_END 8
 #define DROPDOWN_MARGIN 8               /* the drop-down stops short of the window's bottom */
-#define GMT_COLOR "#888888"             /* TimePickerUtils.GMT_TEXT_COLOR, the same in every theme */
-#define DST_COLOR "#BFBFBF"             /* DST_SYMBOL_COLOR */
-/* ☀ (U+2600) as Android draws it: from its colour emoji font, so the still shows a yellow sun that DST_COLOR's span
- * cannot tint; VS16 asks Pango for the same emoji presentation (else a grey text glyph) */
+#define GMT_COLOR "#888888"             /* the offset's grey, the same in every theme */
+#define DST_COLOR "#BFBFBF"             /* the sun's span */
+/* ☀ (U+2600) from the colour emoji font, a yellow sun that DST_COLOR's span cannot tint; VS16 asks Pango for the
+ * emoji presentation (else a grey text glyph) */
 #define DST_SYMBOL "\u2600\ufe0f"
-#define MAX_RECENTS 3                   /* TimeZoneResultAdapter.MAX_RECENT_TIMEZONES */
-#define OFFSET_BASE 20                  /* TimeZoneData.OFFSET_ARRAY_OFFSET: hours −20 … +19 */
+#define MAX_RECENTS 3                   /* the recent zones kept */
+#define OFFSET_BASE 20                  /* the offset slots: hours −20 … +19 */
 #define OFFSET_SLOTS 40
 #define HOUR_MS 3600000
 #define MONTH_MS (30.44 * 24 * HOUR_MS)
-#define SINCE_MS 0.0                    /* hasSameRules compares the transitions from 1970 … */
+#define SINCE_MS 0.0                    /* same_rules compares the transitions from 1970 … */
 #define UNTIL_MS 2145916800000.0        /* … to 2038, the span zic writes out */
 
-/* the search icon, ic_search (24 dp viewport) */
+/* the search icon, in a 24 × 24 viewport */
 #define SEARCH_PATH "M15.5,14h-0.79l-0.28,-0.27C15.41,12.59 16,11.11 16,9.5 16,5.91 13.09,3 9.5,3S3,5.91 3,9.5 " \
                     "5.91,16 9.5,16c1.61,0 3.09,-0.59 4.23,-1.57l0.27,0.28v0.79l5,4.99L20.49,19l-4.99,-5z" \
                     "M9.5,14C7.01,14 5,11.99 5,9.5S7.01,5 9.5,5 14,7.01 14,9.5 11.99,14 9.5,14z"
@@ -138,7 +134,7 @@ year_start_ms (void)
   return (UDate) g_date_time_to_unix (start) * 1000;
 }
 
-/* TimeZone.useDaylightTime: daylight time this year or next */
+/* daylight time this year or next */
 static gboolean
 uses_daylight (UCalendar *calendar, UDate year_start)
 {
@@ -153,7 +149,7 @@ uses_daylight (UCalendar *calendar, UDate year_start)
   return FALSE;
 }
 
-/* TimeZone.getDisplayName(daylight, LONG, the default locale) */
+/* the zone's long name, standard or daylight, in the default locale */
 static char *
 display_name (UCalendar *calendar, gboolean dst)
 {
@@ -191,7 +187,7 @@ normalize_id (const char *tzid)
   return U_SUCCESS (status) && length > 0 ? utf8 (iana, length) : g_strdup (tzid);
 }
 
-/* the library's renames (timezone_rename_ids, timezone_rename_labels): names ICU gives several zones alike */
+/* the picker's own renames: names ICU gives several zones alike */
 static const struct {
   const char *id, *label;
 } renames[] = {
@@ -229,7 +225,7 @@ renamed (const char *id)
   return NULL;
 }
 
-/* TimeZonePickerUtils.appendGmtOffset: "GMT+1", "GMT-3:30", "GMT+0" */
+/* "GMT+1", "GMT-3:30", "GMT+0" */
 static void
 append_gmt_offset (GString *text, int offset)
 {
@@ -240,7 +236,7 @@ append_gmt_offset (GString *text, int offset)
     g_string_append_printf (text, ":%02d", minutes);
 }
 
-/* TimeZonePickerUtils.getGmtDisplayName */
+/* the name, two spaces, the offset and the sun (cal_tz_label) */
 static char *
 gmt_display_name (const char *tzid, gint64 at, gboolean markup, gboolean gray_gmt)
 {
@@ -297,12 +293,12 @@ cal_tz_label_markup (const char *tzid, gint64 at, gboolean gray_gmt)
 typedef struct {
   char *id;
   char *country;                /* NULL: an Etc/GMT zone */
-  int raw;                      /* getRawOffset */
-  int offset;                   /* getNowOffsetMillis */
-  gboolean dst;                 /* useDaylightTime */
+  int raw;                      /* the standard offset */
+  int offset;                   /* the offset now */
+  gboolean dst;                 /* has daylight saving time */
   GArray *transitions;          /* since 1970: the time and the offset after it; a DST zone's, when asked for */
-  char *sort_name;              /* getDisplayName(Locale): the standard name, the sort's last key */
-  char *name;                   /* mDisplayName */
+  char *sort_name;              /* the standard name, the sort's last key */
+  char *name;                   /* the name the row shows */
 } Zone;
 
 static void
@@ -321,8 +317,8 @@ zone_free (gpointer data)
 typedef struct {
   UCalendar *calendar;
   GPtrArray *zones;             /* Zone, sorted */
-  char *current_id;             /* mDefaultTimeZoneId */
-  Zone *current;                /* mDefaultTimeZoneInfo, or NULL */
+  char *current_id;             /* the zone being edited */
+  Zone *current;                /* its Zone, or NULL */
   int current_index;
   GPtrArray *countries;         /* the countries in list order (the zones' strings) */
   GHashTable *by_country;       /* country → GArray of indices */
@@ -360,7 +356,7 @@ zone_new (Zones *zones, const char *id, const char *country, UDate now, UDate ye
   return zone;
 }
 
-/* ZoneInfo's transitions, as far as the list needs them: each change of offset from 1970 to 2038 */
+/* the zone's transitions, as far as the list needs them: each change of offset from 1970 to 2038 */
 static GArray *
 transitions (Zones *zones, Zone *zone)
 {
@@ -387,7 +383,7 @@ transitions (Zones *zones, Zone *zone)
   return zone->transitions;
 }
 
-/* TimeZoneInfo.hasSameRules (ZoneInfo.hasSameRules) */
+/* the same raw offset and the same transitions */
 static gboolean
 same_rules (Zones *zones, Zone *a, Zone *b)
 {
@@ -402,7 +398,7 @@ same_rules (Zones *zones, Zone *a, Zone *b)
   return ta->len == tb->len && memcmp (ta->data, tb->data, ta->len * sizeof (double)) == 0;
 }
 
-/* getIdenticalTimeZoneInTheCountry */
+/* a zone of the same country with the same rules, or -1 */
 static int
 identical_in_country (Zones *zones, Zone *zone)
 {
@@ -416,7 +412,7 @@ identical_in_country (Zones *zones, Zone *zone)
   return -1;
 }
 
-/* getCountryNames: the country in the default locale; Palestine by the library's own name */
+/* the country in the default locale; Palestine by the library's own name */
 static const char *
 country_name (const char *code)
 {
@@ -446,7 +442,7 @@ country_name (const char *code)
 
 typedef struct {
   Zones *zones;
-  GHashTable *done;             /* processedTimeZones */
+  GHashTable *done;             /* the zones listed so far */
   const char *current, *current_iana;
   UDate now, year_start;
 } Loader;
@@ -518,7 +514,7 @@ load_locations (Loader *loader)
     }
 }
 
-/* TimeZoneInfo.compareTo */
+/* the list's order: the offset now (east first), the country (none last), the name */
 static int
 zone_compare (gconstpointer pa, gconstpointer pb)
 {
@@ -688,7 +684,7 @@ recent_zones (void)
   }
 }
 
-/* saveRecentTimezone: the zone last, once; the oldest go past three */
+/* the recent zones: the zone last, once; the oldest go past three */
 static void
 save_recent (const char *id)
 {
@@ -749,7 +745,7 @@ suggest (GPtrArray *found, int type, char *text, int hours)
   g_ptr_array_add (found, suggestion);
 }
 
-/* parseNum: [+-]?d{1,2} from @start, else G_MININT */
+/* [+-]?d{1,2} from @start, else G_MININT */
 static int
 parse_num (const char *text, gsize start)
 {
@@ -776,7 +772,7 @@ parse_num (const char *text, gsize start)
   return i == length ? sign * number : G_MININT;
 }
 
-/* handleSearchByGmt: "1" offers GMT+19 … GMT+10 as well, "-1" GMT-10 … GMT-19 */
+/* an offset typed: "1" offers GMT+19 … GMT+10 as well, "-1" GMT-10 … GMT-19 */
 static void
 search_by_gmt (Zones *zones, GPtrArray *found, int number, gboolean positive_only)
 {
@@ -801,7 +797,7 @@ search_by_gmt (Zones *zones, GPtrArray *found, int number, gboolean positive_onl
     }
 }
 
-/* isStartingInitialsFor: "ua" for "united arab emirates", "us" for "u.s. virgin islands" */
+/* initials: "ua" for "united arab emirates", "us" for "u.s. virgin islands" */
 static gboolean
 starting_initials (const char *prefix, const char *text)
 {
@@ -855,7 +851,7 @@ compare_strings (gconstpointer a, gconstpointer b)
   return strcmp (*(const char **) a, *(const char **) b);
 }
 
-/* performFiltering */
+/* what the typed text offers */
 static GPtrArray *
 search (Zones *zones, const char *text)
 {
@@ -889,7 +885,7 @@ search (Zones *zones, const char *text)
   return found;
 }
 
-/* --- the search field: the AutoCompleteTextView with its underline and hint, the clear button over its end */
+/* --- the search field: the text with its underline and hint, the clear button over its end */
 
 #define CAL_TYPE_TZ_FIELD (cal_tz_field_get_type ())
 G_DECLARE_FINAL_TYPE (CalTzField, cal_tz_field, CAL, TZ_FIELD, GtkWidget)
@@ -906,7 +902,7 @@ static void
 cal_tz_field_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, int *min, int *nat,
                       int *min_baseline, int *nat_baseline)
 {
-  /* the width is the dialog's; the height the EditText's */
+  /* the width is the dialog's; the height the field's */
   *min = *nat = orientation == GTK_ORIENTATION_VERTICAL ? (int) FIELD_HEIGHT : 0;
 }
 
@@ -915,7 +911,7 @@ cal_tz_field_allocate (GtkWidget *widget, int width, int height, int baseline)
 {
   CalTzField *self = CAL_TZ_FIELD (widget);
   int text_height, ignored;
-  /* GtkText's line is the font's ascent and descent; Android's starts 0.128 of the size higher (font padding) */
+  /* GtkText's line is the font's ascent and descent; with font padding it starts 0.128 of the size higher */
   double top = FIELD_TEXT_TOP + 0.128 * FIELD_TEXT_SIZE;
 
   gtk_widget_measure (self->text, GTK_ORIENTATION_VERTICAL, -1, &ignored, &text_height, NULL, NULL);
@@ -937,8 +933,7 @@ cal_tz_field_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   double line = focused ? 2 : 1;
   GdkRGBA underline = cal_argb (focused ? CAL_PRIMARY : CAL_ON_SURFACE_VARIANT);
 
-  /* abc_edit_text_material: the line 4 dp in from the sides, 7 dp over the bottom, colorControlActivated when
-   * focused, colorControlNormal else */
+  /* the underline, in from the sides and over the bottom, in the primary colour when focused */
   cal_fill_rect (snapshot, scale, FIELD_INSET, FIELD_HEIGHT - FIELD_UNDERLINE_BOTTOM - line, width - 2 * FIELD_INSET,
                  line, &underline);
 
@@ -1099,7 +1094,7 @@ row_label (const char *css, double size, gboolean wrap, int lines)
   return label;
 }
 
-/* TimeZoneInfo.getGmtDisplayName: the time now in the zone, its offset in grey, the sun of a zone with DST */
+/* the row's second line: the time now in the zone, its offset in grey, the sun of a zone with DST */
 static char *
 row_offset_markup (Picker *picker, Zone *zone)
 {
@@ -1117,7 +1112,7 @@ row_offset_markup (Picker *picker, Zone *zone)
   return g_string_free (text, FALSE);
 }
 
-/* time_zone_item: the name (two lines at most), the time and offset, the country (kept in place when none) */
+/* a row: the name (two lines at most), the time and offset, the country (kept in place when none) */
 static GtkWidget *
 zone_item (const char *name, const char *offset_markup, const char *country)
 {
@@ -1141,7 +1136,7 @@ zone_item (const char *name, const char *offset_markup, const char *country)
 
 static void hide_dropdown (Picker *picker);
 
-/* onItemClick → onTimeZoneSet: the zone, kept among the recent ones, and the dialog closes */
+/* a row chosen: the zone, kept among the recent ones, and the dialog closes */
 static void
 on_zone_row (NeoPressable *row, Picker *picker)
 {
@@ -1170,7 +1165,7 @@ add_zone_row (Picker *picker, int index)
   gtk_box_append (GTK_BOX (picker->rows), row);
 }
 
-/* empty_time_zone_item: "No results found" over an invisible row, 20 dp all round */
+/* "No results found" over an invisible row, so it is as tall as one */
 static void
 add_empty_row (Picker *picker)
 {
@@ -1190,7 +1185,7 @@ add_empty_row (Picker *picker)
   gtk_box_append (GTK_BOX (picker->rows), overlay);
 }
 
-/* TimeZoneResultAdapter.onSetFilter */
+/* the rows for a filter: the zone being edited and the recent ones, an offset's zones, or a country's */
 static void
 show_results (Picker *picker, int type, const char *text, int hours)
 {
@@ -1238,7 +1233,7 @@ show_results (Picker *picker, int type, const char *text, int hours)
   spongy_scroll_view_scroll_to (SPONGY_SCROLL_VIEW (picker->scroll), 0);
 }
 
-/* --- the drop-down (the AutoCompleteTextView's ListPopupWindow, as wide as the field, under it) */
+/* --- the drop-down (as wide as the field, under it) */
 
 static GtkWidget *
 field_text (Picker *picker)
@@ -1297,7 +1292,7 @@ on_suggestion (NeoPressable *row, Picker *picker)
   gtk_editable_set_position (GTK_EDITABLE (entry), -1);
   picker->setting_text = FALSE;
   hide_dropdown (picker);
-  /* hideSoftInputFromWindow, clearFocus: the focus to the dialog, where Back still reaches it */
+  /* the keyboard down: the focus to the dialog, where Back still reaches it */
   gtk_widget_grab_focus (picker->content);
   show_results (picker, type, text, hours);
 }
@@ -1339,7 +1334,7 @@ show_dropdown (Picker *picker, GPtrArray *found)
       GtkWidget *label = gtk_label_new (suggestion->text);
       GtkWidget *row;
 
-      /* time_zone_filter_item: 18 sp, two lines at most, 8 dp round a 32 dp line */
+      /* two lines at most */
       gtk_label_set_xalign (GTK_LABEL (label), 0);
       gtk_label_set_wrap (GTK_LABEL (label), TRUE);
       gtk_label_set_lines (GTK_LABEL (label), 2);
@@ -1359,7 +1354,7 @@ show_dropdown (Picker *picker, GPtrArray *found)
 }
 
 /* the filter's results: offered in the drop-down; none lists "No results found", or with the field empty the
- * zone being edited and the recent ones again (publishResults) */
+ * zone being edited and the recent ones again */
 static void
 run_search (Picker *picker)
 {
@@ -1394,7 +1389,7 @@ on_clear (NeoPressable *button, Picker *picker)
 }
 
 /* a touch: outside the field it closes the drop-down (and goes on to what it touched); on the field, with no
- * drop-down showing, it searches again (TimeZonePickerView.onClick) */
+ * drop-down showing, it searches again */
 static void
 on_content_pressed (GtkGestureClick *click, int n, double x, double y, Picker *picker)
 {
@@ -1416,7 +1411,7 @@ on_content_pressed (GtkGestureClick *click, int n, double x, double y, Picker *p
     }
 }
 
-/* Back with the drop-down showing closes the drop-down only (AutoCompleteTextView.onKeyPreIme) */
+/* Back with the drop-down showing closes the drop-down only */
 static gboolean
 on_content_key (GtkEventControllerKey *keys, guint keyval, guint keycode, GdkModifierType state, Picker *picker)
 {

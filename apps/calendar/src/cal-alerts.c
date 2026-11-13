@@ -83,7 +83,7 @@ cal_alerts_compute (GPtrArray *events, GHashTable *fired, gint64 now, GPtrArray 
               continue;
             }
           key = cal_alert_key (event, reminder->minutes);
-          /* notified already; or too late, the event is over (AlertService drops those) */
+          /* notified already; or too late: the event is over */
           if (g_hash_table_contains (fired, key) || MAX (event->end, event->start) <= now)
             continue;
           {
@@ -117,9 +117,8 @@ cal_alerts_compute (GPtrArray *events, GHashTable *fired, gint64 now, GPtrArray 
 
 /* --- the notification's buttons */
 
-/* Linkify's WEB_URLS and EMAIL_ADDRESSES, near enough: a scheme or "www." and what follows, a host with a dotted
- * top-level name of letters, a mail address. (Patterns.AUTOLINK_WEB_URL also knows every top-level domain by name;
- * two letters or more stands in for that list.) */
+/* web and mail addresses, near enough: a scheme or "www." and what follows, a host with a dotted top-level name of
+ * letters (two or more: no list of the top-level domains), a mail address */
 #define WEB_PATTERN   "(?i)(?:\\b(?:https?|rtsp)://|\\bwww\\.)[^\\s]+" \
                       "|\\b[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*" \
                       "\\.[a-z]{2,}\\b(?:/[^\\s]*)?"
@@ -130,9 +129,9 @@ cal_alerts_compute (GPtrArray *events, GHashTable *fired, gint64 now, GPtrArray 
 #define COORD_LON_DEG "(?:[-+EeWw]\\s*)?1?[0-9]?[0-9]" COORD_DMS "(?:\\s*[EeWw])?"
 #define COORD_PATTERN COORD_LAT_DEG "\\s*,\\s*" COORD_LON_DEG \
                       "|[+-]?[1-9]?[0-9]\\.[0-9]+°?\\s*,\\s*[+-]?1?[0-9]?[0-9]\\.[0-9]+°?"
-/* Linkify's PHONE_NUMBERS outside the US is libphonenumber's findNumbers with POSSIBLE leniency for the region; a
- * run of digits and the separators people write ("+49 (30) 123 45-67", "030/1234567") with 6 to 15 digits stands
- * in for it here: shorter than that is a house number or a postcode, longer is no phone number anywhere (E.164) */
+/* a phone number outside the US: a run of digits and the separators people write ("+49 (30) 123 45-67",
+ * "030/1234567") with 6 to 15 digits; shorter than that is a house number or a postcode, longer is no phone number
+ * anywhere (E.164) */
 #define PHONE_PATTERN "(?:\\+|\\b)[0-9][0-9 ()./-]*[0-9]\\b"
 #define PHONE_MIN_DIGITS 6
 #define PHONE_MAX_DIGITS 15
@@ -198,7 +197,7 @@ count_digits (const char *text, int start, int end)
   return digits;
 }
 
-/* Utils.findNanpMatchEnd: from @start (not a space), the end of a North American number, or −1 */
+/* from @start (not a space), the end of a North American number, or −1 */
 static int
 nanp_match_end (const char *text, int start)
 {
@@ -363,7 +362,7 @@ when_date (int day, gboolean weekday, int this_year)
   {
     g_autofree char *name = cal_format_weekday (day);
 
-    /* TRANSLATORS: DateUtils' weekday and date, "Sunday, November 8" */
+    /* TRANSLATORS: the weekday and the date, "Sunday, November 8" */
     return g_strdup_printf (C_("alert", "%s, %s"), name, date);
   }
 }
@@ -404,7 +403,7 @@ cal_alert_when (gint64 start, gint64 end, gboolean all_day, gint64 now)
       to = when_date (last, FALSE, this_year);
       text = g_strdup_printf ("%s, %s – %s, %s", from, t0, to, t1);
     }
-  /* shown in the home time zone (not the phone's): its short name, as AlertAdapter appends it */
+  /* shown in the home time zone (not the phone's): its short name after it */
   {
     const char *tz = g_getenv ("TZ");
 

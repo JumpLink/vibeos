@@ -1,16 +1,16 @@
-/* libspongy: Android's scrolling physics, 1:1, for anything that scrolls.
+/* libspongy: scrolling physics modelled on Android's, for anything that scrolls.
  *
- *   SpongyEdge      android.widget.EdgeEffect, TYPE_STRETCH: the "spongy" overscroll (state, spring, the shader amount)
- *   SpongyFling     android.widget.OverScroller's spline fling
- *   SpongyVelocity  the input VelocityTracker (LSQ2: a least-squares quadratic over the last 100 ms)
- *   SpongySpring    androidx.dynamicanimation SpringAnimation / SpringForce
- *   SpongyInterp    android.view.animation.PathInterpolator (any cubic path) and the stock Android curves
- *   SpongyList      a vertical list wired the way androidx RecyclerView wires all of the above
+ *   SpongyEdge      the stretch overscroll: pulled past an end, the content stretches like a sponge and springs back
+ *                   (its state, its spring, the stretch amount)
+ *   SpongyFling     the spline fling: how far and how long a flung list runs
+ *   SpongyVelocity  the pointer's velocity: a least-squares quadratic over the last 100 ms
+ *   SpongySpring    a damped spring, stepped exactly
+ *   SpongyInterp    easing curves: any cubic path, and the stock ones
+ *   SpongyList      a vertical list wired to all of the above
  *
  * Plain C, no allocation, no clock of its own: every call takes the frame or event time in milliseconds. Distances
- * are pixels. The stretch itself is drawn by whoever renders (see spongy_stretch_map and the GLSL in
- * stretch.glsl); spongy-gtk.h is a GTK 4 widget that does all of it. Numbers and line references are in
- * SPEC.md. */
+ * are pixels. The stretch itself is drawn by whoever renders (see spongy_stretch_map); spongy-gtk.h is a GTK 4
+ * widget that does all of it. */
 #pragma once
 
 #include <stdbool.h>
@@ -54,10 +54,11 @@ void   spongy_edge_absorb         (SpongyEdge *e, int velocity_px_s, double now_
 /* One frame: steps the spring and returns the shader's overscroll amount (signed, |a| <= 0.032; negative for the
  * far edge, bottom/right). *animating: another frame is wanted. */
 float  spongy_edge_frame          (SpongyEdge *e, double now_ms, bool far_edge, bool *animating);
-float  spongy_edge_damp           (float distance);                                 /* dampStretchVector */
+float  spongy_edge_damp           (float distance);                                 /* a pull's distance, damped */
 
-/* Where an output pixel of the stretched picture samples its source, along one axis: hwui's shader on the CPU
- * (hit-testing, tests, renderers without shaders). amount from spongy_edge_frame, size = the picture's extent. */
+/* Where an output pixel of the stretched picture samples its source, along one axis: the stretch shader's mapping on
+ * the CPU (hit-testing, tests, renderers without shaders). amount from spongy_edge_frame, size = the picture's extent.
+ * */
 float  spongy_stretch_map         (float pos, float amount, float size);
 /* The inverse: where a source pixel ends up (to find what a touch under a stretch hits) */
 float  spongy_stretch_unmap       (float pos, float amount, float size);
@@ -140,11 +141,11 @@ typedef struct {
 } SpongyInterp;
 
 void   spongy_interp_cubic        (SpongyInterp *i, float x1, float y1, float x2, float y2);
-/* an SVG path of M/C commands in the unit square, as PathInterpolator takes it ("M 0,0 C …") */
+/* an SVG path of M/C commands in the unit square ("M 0,0 C …"), from (0, 0) to (1, 1) */
 bool   spongy_interp_path         (SpongyInterp *i, const char *path);
 float  spongy_interp_get          (const SpongyInterp *i, float t);
 
-/* The Android curves: android.R.interpolator / Material 3 easing / Launcher3 Interpolators */
+/* The stock curves: the platform's, Material 3's easing and the launcher's */
 typedef enum {
   SPONGY_LINEAR,
   SPONGY_FAST_OUT_SLOW_IN,         /* (0.4, 0, 0.2, 1) */
@@ -157,7 +158,7 @@ typedef enum {
   SPONGY_STANDARD_ACCELERATE,      /* (0.3, 0, 1, 1) */
   SPONGY_STANDARD_DECELERATE,      /* (0, 0, 0, 1) */
   SPONGY_DECELERATE_QUINT,         /* 1 - (1 - t)^5 */
-  SPONGY_DECELERATE_CUBIC,         /* 1 - (1 - t)^3 (DecelerateInterpolator 1.5) */
+  SPONGY_DECELERATE_CUBIC,         /* 1 - (1 - t)^3 */
   SPONGY_DECELERATE,               /* 1 - (1 - t)^2 */
   SPONGY_ACCELERATE,               /* t^2 */
   SPONGY_ACCELERATE_DECELERATE,    /* cos((t + 1)π)/2 + 0.5 */
@@ -168,7 +169,7 @@ float  spongy_curve               (SpongyCurve c, float t);
 
 /* ---- a list ---------------------------------------------------------------------------------------------------- */
 
-/* A vertical list the way RecyclerView drives it: drag with touch slop, the stretch at both ends (pulling,
+/* A vertical list: drag with touch slop, the stretch at both ends (pulling,
  * catching a receding stretch, a drag back shrinking it), the fling with a stretch absorbing its leftover speed at
  * the end, and flinging out of a stretch. offset 0 is the top; max = content height - view height. */
 typedef struct {

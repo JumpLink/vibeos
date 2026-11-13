@@ -1,10 +1,9 @@
-/* nb-settings: Settings (spec/jelly.md §8; SettingsActivity, activity_settings.xml, xml/settings.xml).
+/* nb-settings: the Settings page.
  *
- * still:settings: a CollapsingToolbarLayout 179 dp tall over the list, "Settings" 36 sp 24 dp in with its baseline
- * 31 dp over the bar's foot; scrolled, the bar leaves until its 64 dp toolbar is left, where "Settings" (20 sp, 60 dp
- * in) fades in as the big title fades out (titleCollapseMode fade) and the bar takes surfaceContainer. The list is
- * 8 dp in; a row is 16 dp padded, the title 16 sp over the summary 14 sp (onSurfaceVariant, 20 sp lines), a switch
- * 16 dp after the text. No dividers. Advanced share, Web debugging and LookLock are left out (§14). */
+ * A collapsing toolbar over the list with a big "Settings" in it; scrolled, the bar leaves until only its toolbar is
+ * left, where a small "Settings" fades in as the big title fades out and the bar takes a lifted colour. A row is the
+ * title over the summary, a switch after the text. No dividers. Advanced share, Web debugging and LookLock are left
+ * out. */
 #include "nb.h"
 #include "nb-suggest.h"
 #include "nb-widgets.h"
@@ -32,7 +31,7 @@ summary_label (const char *text)
   GtkWidget *label = nb_label (text, 14, "nb-pref-summary", FALSE);
   PangoAttrList *attrs = pango_attr_list_copy (gtk_label_get_attributes (GTK_LABEL (label)));
 
-  /* textAppearanceBodyMedium's 20 sp lines (the last line keeps the font's own height, as StaticLayout's) */
+  /* a fixed line pitch (the last line keeps the font's own height) */
   pango_attr_list_insert (attrs, pango_attr_line_height_new_absolute (20 * PANGO_SCALE));
   gtk_label_set_attributes (GTK_LABEL (label), attrs);
   pango_attr_list_unref (attrs);
@@ -43,7 +42,7 @@ summary_label (const char *text)
   return label;
 }
 
-/* a Preference: the title over the summary (or alone), `end` (a switch) in the widget frame 16 dp after them */
+/* a settings row: the title over the summary (or alone), `end` (a switch) after them */
 static GtkWidget *
 pref_row (const char *title, const char *summary, GtkWidget *end, GtkWidget **summary_out)
 {
@@ -71,7 +70,7 @@ pref_row (const char *title, const char *summary, GtkWidget *end, GtkWidget **su
   return row;
 }
 
-/* a SwitchPreference for the prefs.json key `key` */
+/* a switch row for the prefs.json key `key` */
 
 typedef struct {
   const char *key;
@@ -163,7 +162,7 @@ on_provider (GtkWidget *row, Settings *s)
                           s);
 }
 
-/* ---- the home page (editHomePage) ---- */
+/* ---- the home page ---- */
 
 static void
 sync_home_summary (Settings *s)
@@ -181,7 +180,7 @@ on_home_check (GtkWidget *row, HomeEdit *h)
 {
   gboolean on = !nb_mark_get_active (NB_MARK (h->mark));
   nb_mark_set_active (NB_MARK (h->mark), on);
-  /* homepageUrlEditText.isEnabled = checked */
+  /* the URL field only while the switch is on */
   gtk_widget_set_sensitive (h->field, on);
 }
 
@@ -208,8 +207,8 @@ on_home (GtkWidget *row, Settings *s)
 
   h->s = s;
   nb_dialog_set_message (d, "Write the home page URL");
-  /* dialog_homepage_edit.xml: ?dialogPreferredPadding either side; the MaterialCheckBox "Enabled", then the
-   * outlined URL field (hint "Home page"), enabled only while the box is checked */
+  /* the checkbox "Enabled", then the outlined URL field (hint "Home page"), enabled only while the box is
+   * checked */
   gtk_widget_add_css_class (box, "nb-home-edit");
   GtkWidget *check = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_widget_add_css_class (check, "nb-check-row");
@@ -243,7 +242,7 @@ g_signal_connect (d, "response", G_CALLBACK (on_home_response), h);
 static void
 on_clear_cookies (GtkWidget *row, Settings *s)
 {
-  /* CookieManager.removeAllCookies, then a LENGTH_LONG toast */
+  /* every cookie goes, then a long toast */
   nb_clear_cookies ();
   nb_toast_show (s->t->win, "Cleared all the cookies");
 }
@@ -262,11 +261,10 @@ on_scrolled (GtkAdjustment *adj, Settings *s)
   double range = BAR_EXPANDED - BAR_COLLAPSED;
   double f = CLAMP (gtk_adjustment_get_value (adj) / range, 0, 1);
 
-  /* CollapsingTextHelper in fade mode: the expanded title is gone by half way, the collapsed one comes in over
-   * the second half */
+  /* the big title is gone by half way, the small one comes in over the second half */
   gtk_widget_set_opacity (s->big_title, CLAMP (1 - f * 2, 0, 1));
   gtk_widget_set_opacity (s->small_title, CLAMP (f * 2 - 1, 0, 1));
-  /* the bar's contentScrim / liftOnScroll: surfaceContainer once collapsed */
+  /* the bar takes its lifted colour once collapsed */
   if (f >= 1)
     gtk_widget_add_css_class (s->bar, "collapsed");
   else
@@ -296,7 +294,7 @@ nb_settings_page_new (NbTab *t)
   GtkWidget *content = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_valign (content, GTK_ALIGN_START);
 
-  /* the expanded bar: scrolls away with the list down to its collapsed 64 dp */
+  /* the expanded bar: scrolls away with the list down to its collapsed height */
   s->header = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (s->header, "nb-settings-header");
   gtk_widget_set_size_request (s->header, -1, BAR_EXPANDED);
@@ -305,7 +303,7 @@ nb_settings_page_new (NbTab *t)
   gtk_widget_set_valign (s->big_title, GTK_ALIGN_END);
   gtk_widget_set_margin_start (s->big_title, TITLE_START);
   gtk_widget_set_margin_end (s->big_title, TITLE_START);
-  /* the baseline 31 dp over the foot: the line's descent (Roboto 500 / 2048 em) below it */
+  /* the baseline TITLE_BASELINE over the foot: the line's descent (the font's 500 / 2048 em) below it */
   gtk_widget_set_margin_top (s->big_title, 0);
   gtk_widget_set_margin_bottom (s->big_title, (int) round (TITLE_BASELINE - 36 * 500 / 2048.0));
   gtk_box_append (GTK_BOX (s->header), s->big_title);

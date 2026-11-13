@@ -1,24 +1,21 @@
-/* The klaxon: an alarm's or a timer's sound and vibration while it rings (DeskClock's AlarmKlaxon, TimerKlaxon and
- * AsyncRingtonePlayer).
+/* The klaxon: an alarm's or a timer's sound and vibration while it rings.
  *
- * The sound loops until stopped, optionally rising from near silence over the "Gradually increase volume" time.
- * Android rings alarms on their own volume (STREAM_ALARM), loud even with the media volume down or muted; this phone
- * has one speaker and no volume per kind of sound, so while an alarm rings the speaker is unmuted and set to the
- * "Alarm volume", and put back as it was after. The vibration is feedbackd's alarm-clock-elapsed event. */
+ * The sound loops until stopped, optionally rising from near silence over the "Gradually increase volume" time. An
+ * alarm rings loud even with the media volume down or muted. This phone has one speaker and no volume per kind of
+ * sound, so while an alarm rings the speaker is unmuted and set to the "Alarm volume", and put back as it was after.
+ * The vibration is feedbackd's alarm-clock-elapsed event. */
 #pragma once
 
 #include <gio/gio.h>
 
 typedef struct _AlarmKlaxon AlarmKlaxon;
 
-/* what it rings for: each has its own default sound and "Gradually increase volume"; both ring at the alarm volume,
- * as Android rings timers on the alarm stream too */
+/* what it rings for: each has its own default sound and "Gradually increase volume"; both ring at the alarm volume */
 typedef enum {
   ALARM_KLAXON_ALARM,
   ALARM_KLAXON_TIMER,
-  /* a sound tried out: the ringtone picker's and the alarm volume slider's (RingtonePreviewKlaxon), at the alarm
-   * volume, without a crescendo. It gives way to an alarm or a timer: one starting stops it, and it does not start
-   * while one rings */
+  /* a sound tried out: the ringtone picker's and the alarm volume slider's, at the alarm volume, without a crescendo.
+   * It gives way to an alarm or a timer: one starting stops it, and it does not start while one rings */
   ALARM_KLAXON_PREVIEW,
 } AlarmKlaxonKind;
 

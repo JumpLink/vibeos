@@ -9,7 +9,7 @@
 #include <neo.h>
 #include <spongy-gtk.h>
 
-/* contact_list_item_view.xml, dimens.xml */
+/* a contact's row, and the tabs */
 #define ROW_PAD_VERTICAL 8
 #define ROW_PAD_START 16
 #define HEADER_WIDTH 56         /* the alphabet header's column (All contacts) */
@@ -44,7 +44,7 @@ country (ContactPicker *self)
   return sms_client_get_country (self->client);
 }
 
-/* --- rows (§3.3) */
+/* --- rows */
 
 static void
 on_row_clicked (GtkWidget *row, gpointer data)
@@ -105,7 +105,7 @@ make_row (ContactPicker *self, const Contact *contact, const char *number, const
       gtk_widget_set_margin_bottom (name, NAME_PAD_BOTTOM);
       gtk_box_append (GTK_BOX (column), name);
     }
-  /* contact_details takes the width (layout_weight 1), so the type sits at the row's end */
+  /* the number takes the width, so the type sits at the row's end */
   detail = text_label (formatted, "msg-picker-number");
   gtk_widget_set_hexpand (detail, TRUE);
   gtk_box_append (GTK_BOX (line), detail);
@@ -176,7 +176,7 @@ first_letter (const Contact *contact)
   gunichar c = name ? g_unichar_toupper (g_utf8_get_char (name)) : 0;
   char letter[8] = "";
 
-  /* ContactsContract's address book index: a letter, else "#" */
+  /* the address book index: a letter, else "#" */
   if (!g_unichar_isalpha (c))
     return g_strdup ("#");
   letter[g_unichar_to_utf8 (c, letter)] = '\0';
@@ -202,8 +202,7 @@ fill_all (ContactPicker *self)
     }
 }
 
-/* the contacts written with most (Bugle's are the contacts provider's "frequently contacted"; here the messages say
- * who they are) */
+/* the contacts written with most, counted from the messages */
 static void
 fill_frequents (ContactPicker *self)
 {
@@ -302,7 +301,7 @@ fill_results (ContactPicker *self, const char *query)
     }
 }
 
-/* --- the tabs (§3.2) */
+/* --- the tabs */
 
 static void
 select_tab (ContactPicker *self, guint tab)
@@ -327,8 +326,8 @@ on_tab_clicked (GtkWidget *tab, gpointer data)
   select_tab (self, GPOINTER_TO_UINT (g_object_get_data (G_OBJECT (tab), "tab")));
 }
 
-/* the two tabs, the selected one's 2 dp white underline under it (the strip's indicator, which follows the pager
- * as it is swiped; the pages here only change by a tap) */
+/* the two tabs, the selected one's underline under it (the strip's indicator, which follows the pager as it is
+ * swiped; the pages here only change by a tap) */
 static GtkWidget *
 make_tabs (ContactPicker *self)
 {
@@ -367,7 +366,7 @@ make_tabs (ContactPicker *self)
   return row;
 }
 
-/* --- the field (§3.1) */
+/* --- the field */
 
 static void
 update_field_actions (ContactPicker *self)
@@ -409,7 +408,7 @@ on_field_activate (GtkText *field, gpointer data)
 static void
 on_dialpad_toggle (ContactPicker *self)
 {
-  /* the IME between letters and the phone pad (TYPE_CLASS_TEXT / TYPE_CLASS_PHONE) */
+  /* the on-screen keyboard between letters and the phone pad */
   self->phone_input = !self->phone_input;
   gtk_text_set_input_purpose (GTK_TEXT (self->field), self->phone_input ? GTK_INPUT_PURPOSE_PHONE
                                                                         : GTK_INPUT_PURPOSE_FREE_FORM);
@@ -460,7 +459,8 @@ static GtkWidget *
 make_frequents_empty (void)
 {
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  /* ic_oobe_freq_list (506 × 311 px), with the text under it as the conversation list's empty view has it */
+  /* the picture at a third of its pixel size (msg-image.h), with the text under it as the conversation list's
+   * empty view has it */
   GtkWidget *image = msg_image_new ("/neo/Messaging/images/ic_oobe_freq_list.png", 169, 104);
   GtkWidget *text = gtk_label_new (_("Enter a contact name or phone number to start a new message"));
 
@@ -468,7 +468,7 @@ make_frequents_empty (void)
   gtk_box_append (GTK_BOX (box), image);
   gtk_label_set_wrap (GTK_LABEL (text), TRUE);
   gtk_label_set_justify (GTK_LABEL (text), GTK_JUSTIFY_CENTER);
-  /* 20 dp under the picture, and the TextView's 4 dp over and under its lines (as the list's) */
+  /* a gap under the picture, plus 4 over and under the text's lines, as the list's */
   gtk_widget_set_margin_top (text, 20 + 4);
   gtk_widget_set_margin_bottom (text, 4);
   gtk_widget_set_margin_start (text, 60);
@@ -532,14 +532,14 @@ contact_picker_new (SmsClient *client, Contacts *contacts)
   gtk_widget_set_parent (self->box, GTK_WIDGET (self));
   gtk_widget_add_css_class (self->box, "msg-page");
 
-  /* the Toolbar: the back arrow, "To", the dialpad toggle or the X */
+  /* the action bar: the back arrow, "To", the dialpad toggle or the X */
   self->bar = msg_action_bar_new (TRUE, "");
   g_signal_connect_swapped (msg_action_bar_get_up (self->bar), "clicked", G_CALLBACK (on_back), self);
   self->field = gtk_text_new ();
   gtk_text_set_placeholder_text (GTK_TEXT (self->field), _("To"));
   gtk_text_set_input_hints (GTK_TEXT (self->field), GTK_INPUT_HINT_NO_SPELLCHECK);
   gtk_widget_set_valign (self->field, GTK_ALIGN_CENTER);
-  /* the text at the Toolbar's 72 dp inset: 56 for the arrow, 12 here and the field's own 4 */
+  /* the text lined up with the titles' inset: 56 for the arrow, 12 here and the field's own 4 */
   gtk_widget_set_margin_start (self->field, 12);
   gtk_widget_add_css_class (self->field, "msg-picker-field");
   gtk_accessible_update_property (GTK_ACCESSIBLE (self->field), GTK_ACCESSIBLE_PROPERTY_LABEL, _("To"), -1);

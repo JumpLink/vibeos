@@ -3,11 +3,11 @@
 
 #include <neo.h>
 
-#define IMAGE_SIZE      108     /* the ImageView's height; the 24 dp vector fits it */
-#define BUTTON_MIN_W    88      /* Widget.Material.Button */
+#define IMAGE_SIZE      108     /* the picture's height; an icon is scaled up to it */
+#define BUTTON_MIN_W    88
 #define BUTTON_HEIGHT   48
-#define BUTTON_PADDING  16      /* button_horizontal_padding */
-#define BUTTON_COLOR    0x33666d        /* colorAccent: a background force dark leaves as it is */
+#define BUTTON_PADDING  16
+#define BUTTON_COLOR    0x33666d
 
 typedef struct
 {
@@ -34,9 +34,9 @@ empty_view_new (const char *icon_name, const char *message, const char *action, 
   gtk_widget_add_css_class (box, "dialer-empty");
   if (icon_name[0] == '/')
     {
-      /* a bitmap (empty_speed_dial, empty_contacts) in a match_parent × 108 dp ImageView, FIT_CENTER. The picture
-       * floats over a 108 dp space and leaves the measuring to it: measured itself, it would ask for the height
-       * its aspect ratio gives at the whole width (231 dp for empty_speed_dial, not 108) */
+      /* a bitmap, fitted into a full-width box IMAGE_SIZE tall. The picture floats over a space of that height and
+       * leaves the measuring to it: measured itself, it would ask for the height its aspect ratio gives at the
+       * whole width (over twice IMAGE_SIZE for the speed-dial picture) */
       GtkWidget *picture = gtk_picture_new_for_resource (icon_name);
       GtkWidget *space = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
 
@@ -49,14 +49,14 @@ empty_view_new (const char *icon_name, const char *message, const char *action, 
     }
   else
     {
-      /* a vector, tinted colorIconSecondary */
+      /* a symbolic icon, tinted by dialer.css */
       image = gtk_image_new_from_icon_name (icon_name);
       gtk_image_set_pixel_size (GTK_IMAGE (image), IMAGE_SIZE);
       gtk_widget_add_css_class (image, "dialer-empty-image");
     }
   gtk_box_append (GTK_BOX (box), image);
 
-  /* 16 sp in textColorSecondary, 8 dp above and below, 16 dp at the sides */
+  /* the message, wrapped and centred */
   gtk_label_set_wrap (GTK_LABEL (text), TRUE);
   gtk_label_set_justify (GTK_LABEL (text), GTK_JUSTIFY_CENTER);
   gtk_widget_add_css_class (text, "dialer-empty-text");
@@ -65,8 +65,7 @@ empty_view_new (const char *icon_name, const char *message, const char *action, 
 
   if (action)
     {
-      /* DialerPrimaryFlatButtonStyle: a 28 dp-cornered pill in colorAccent with white Button text (all caps, as
-       * Widget.Material.Button has it); a plain selector, so no ripple */
+      /* the action: a filled pill, its text in capitals; a press shows no ripple */
       g_autofree char *caps = g_utf8_strup (action, -1);
       GtkWidget *label = gtk_label_new (caps);
       GtkWidget *button;

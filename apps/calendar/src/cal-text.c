@@ -1,4 +1,4 @@
-/* Etar's text and rectangles in device pixels (cal-text.h). */
+/* Text and rectangles in device pixels (cal-text.h). */
 #include "cal-text.h"
 
 #include <math.h>
@@ -9,7 +9,7 @@ cal_text_line (double size, int scale, double *baseline, double *height)
   double px = size * scale;
   double top = ceil (px * 2163 / 2048 - 0.001), bottom = ceil (px * 555 / 2048 - 0.001);
 
-  /* FontMetricsInt rounds the box outward: 18 sp at 3x is 58 + 15 = 73 px, as the stills measure */
+  /* the box rounded outward: 18 px text at scale 3 is 58 + 15 = 73 device pixels */
   if (baseline)
     *baseline = top / scale;
   if (height)

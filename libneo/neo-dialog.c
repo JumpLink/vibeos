@@ -1,12 +1,12 @@
-/* NeoDialog: see neo-dialog.h. The motion is frameworks/base core/res/res/anim/popup_enter_material.xml and
- * popup_exit_material.xml; the scrim is the Material themes' backgroundDimAmount, 0.6 (spec/clock.md §12.5). */
+/* NeoDialog: see neo-dialog.h. The card is laid out by hand over the scrim, and moves on one NeoAnim: in, 0 -> 1;
+ * out, 1 -> 0. */
 #include "neo-dialog.h"
 #include "neo-anim.h"
 #include "neo-pressable.h"
 #include "neo-style.h"
 
-#define SIDE_INSET   24       /* MaterialAlertDialog's background insets: the card is the screen minus 2 x 24 dp */
-#define MAX_WIDTH    560      /* M3 dialogs stop growing there */
+#define SIDE_INSET   24       /* the card keeps this far from the window's edges */
+#define MAX_WIDTH    560      /* and grows no wider on a wide window */
 #define ENTER_MS     220
 #define ENTER_RISE   20
 #define EXIT_MS      150
@@ -48,9 +48,9 @@ neo_dialog_size_allocate (GtkWidget *widget, int width, int height, int baseline
   NeoDialog *self = NEO_DIALOG (widget);
   int min_w, nat_w, h, min_h;
   gtk_widget_measure (self->card, GTK_ORIENTATION_HORIZONTAL, -1, &min_w, &nat_w, NULL, NULL);
-  /* an alert dialog spans the window less its insets; one that holds a picker wraps it (TimePickerDialog) */
+  /* an alert dialog spans the window less its insets; one that holds a picker wraps it (the time picker's) */
   int w = self->flush ? MIN (nat_w, width) : MAX (card_width (width), min_w);
-  /* its content's natural height (a list wraps its rows, as a dialog's WRAP_CONTENT window does), up to the window
+  /* its content's natural height (a list wraps its rows), up to the window
    * less its insets: a scrolled list then scrolls */
   gtk_widget_measure (self->card, GTK_ORIENTATION_VERTICAL, w, &min_h, &h, NULL, NULL);
   h = MAX (MIN (h, height - 2 * SIDE_INSET), MIN (min_h, height - 2 * SIDE_INSET));
@@ -63,7 +63,7 @@ neo_dialog_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   NeoDialog *self = NEO_DIALOG (widget);
   GdkRGBA scrim = { 0, 0, 0, 0.6f };
-  /* the dim fades with the window (WindowManager animates the dim layer with the dialog's alpha) */
+  /* the dim fades with the card */
   gtk_snapshot_push_opacity (snapshot, self->shown);
   gtk_snapshot_append_color (snapshot, &scrim,
                              &GRAPHENE_RECT_INIT (0, 0, gtk_widget_get_width (widget), gtk_widget_get_height (widget)));
@@ -98,7 +98,7 @@ neo_dialog_respond (NeoDialog *self, int response)
   self->closing = TRUE;
   g_object_ref (self);
   g_signal_emit (self, signals[RESPONSE], 0, response);
-  /* popup_exit_material: alpha 1 -> 0 and translateY 0 -> -10 dp over 150 ms, standard_accelerate */
+  /* out: alpha 1 -> 0 and up 0 -> -10 px over 150 ms, standard-accelerate */
   neo_anim_start_cubic (self->anim, 1, 0, EXIT_MS, 0, 0.3f, 0, 1, 1);
   g_object_unref (self);
 }
@@ -112,7 +112,7 @@ neo_dialog_present (NeoDialog *self, GtkWidget *parent)
   /* the scrim covers the whole window and takes every touch outside the card */
   gtk_overlay_set_measure_overlay (overlay, GTK_WIDGET (self), FALSE);
   gtk_overlay_set_clip_overlay (overlay, GTK_WIDGET (self), TRUE);
-  /* popup_enter_material: alpha 0 -> 1 and translateY 20 dp -> 0 over 220 ms, standard (0.2, 0, 0, 1) */
+  /* in: alpha 0 -> 1 and up 20 px -> 0 over 220 ms, standard (0.2, 0, 0, 1) */
   neo_anim_start_cubic (self->anim, 0, 1, ENTER_MS, 0, 0.2f, 0, 0, 1);
   /* the first field takes the keyboard focus (and on the phone opens the keyboard), as the label dialog's does */
   gtk_widget_child_focus (self->card, GTK_DIR_TAB_FORWARD);

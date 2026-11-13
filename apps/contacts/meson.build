@@ -12,7 +12,7 @@ m = meson.get_compiler('c').find_library('m')
 bindir = get_option('prefix') / get_option('bindir')
 datadir = get_option('prefix') / get_option('datadir')
 
-# the Dialer's Roboto text boxes, phone number formatting and letter tiles, used as they are (read-only)
+# the Dialer's text boxes, phone number formatting and letter tiles, used as they are (read-only)
 dialer = include_directories('../dialer/src')
 src = include_directories('src')
 

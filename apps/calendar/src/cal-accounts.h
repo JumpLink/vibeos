@@ -1,5 +1,5 @@
-/* Calendars as Settings manages them: "Add offline calendar", "Add CalDAV calendar" (SettingsActivity's main list)
- * and a calendar's own page (CalendarPreferences: Display events, Color, Display name, Delete). */
+/* Calendars as Settings manages them: "Add offline calendar", "Add CalDAV calendar" (Settings' main list) and a
+ * calendar's own page (Display events, Color, Display name, Delete). */
 #pragma once
 
 #include "cal-model.h"

@@ -1,4 +1,4 @@
-/* neo-camera: the Camera, LineageOS 23.2's Aperture rebuilt in GTK 4 on libcamera and GStreamer (spec/camera.md).
+/* neo-camera: the Camera, LineageOS 23.2's Aperture rebuilt in GTK 4 on libcamera and GStreamer.
  *
  * Photos are the live stream's current frame (about 2 MP, the sizes libcamera lists), saved as JPEG with EXIF to
  * ~/Pictures/Camera; videos are H.264 + AAC MP4 in ~/Videos/Camera; SCAN reads barcodes with zxing. Nothing here
@@ -39,7 +39,7 @@ load_style (void)
   g_object_unref (provider);
 }
 
-/* Droid Sans Mono, Android's "monospace" (§0.4): shipped with the app (Apache-2.0), not in Debian */
+/* Droid Sans Mono, the mode and pro-row labels' font: shipped with the app (Apache-2.0), not in Debian */
 static void
 load_font (void)
 {

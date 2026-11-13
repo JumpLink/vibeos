@@ -2,9 +2,9 @@
 // panel data for the device (the device tree's compatibles, as Phosh reads them), or, for a panel gmobile has not
 // built in, from a description a device package installs as display-panels/<compatible>.json under /etc/gmobile or
 // gmobile/ in the data dirs (gmobile 0.7.5 reads only its built-in ones, but parses such a file the same way). No
-// data: no hole. On the S10e (beyond0lte) it is Android's config_mainBuiltInDisplayCutout, "M 0,0 H -49.67 V 38.67 H 0 V 0 Z
+// data: no hole. On the S10e (beyond0lte) it is the path LineageOS describes it with, "M 0,0 H -49.67 V 38.67 H 0 V 0 Z
 // @dp @right": a 149 x 116 px box in the top right corner of the upright panel. Upright, the status bar is over it.
-// Turned, it is on a short edge, and Android keeps apps clear of it (layoutInDisplayCutoutMode DEFAULT): a black band
+// Turned, it is on a short edge, and apps are kept clear of it: a black band
 // along that edge, which CutoutBand reserves as a strut, and a status bar whose content starts after the hole when
 // the hole is at its end.
 import Gio from 'gi://Gio';

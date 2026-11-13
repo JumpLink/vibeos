@@ -1,9 +1,9 @@
 /* calc-failure: how the calculator's arithmetic reports that it failed.
  *
  * ExactCalculator's arithmetic (Evaluator, CalculatorExpr, UnifiedReal, BoundedRational and the
- * com.hp.creals library) reports trouble with Java exceptions, and Evaluator.AsyncEvaluator turns
- * each kind into one message (Evaluator.java:603-618). C has no exceptions, so the arithmetic here
- * records the first failure in a per-thread "failure" and keeps going: every loop that could run long
+ * com.hp.creals library) reports trouble with Java exceptions, and its Evaluator turns each kind
+ * into one message. C has no exceptions, so the arithmetic here records the first failure in a
+ * per-thread "failure" and keeps going: every loop that could run long
  * checks calc_failed() and stops, and approximations made after a failure are thrown away (never
  * cached). Whoever started the computation looks at calc_failure() at the end, the way the Java code
  * catches the exception at the end. Only the first failure counts, like the first exception thrown.

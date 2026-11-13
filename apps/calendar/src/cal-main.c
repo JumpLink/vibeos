@@ -1,10 +1,10 @@
-/* neo-calendar: the Calendar app, Etar rebuilt in GTK 4 over evolution-data-server (spec/calendar.md).
+/* neo-calendar: the Calendar app, ported from Etar to GTK 4 over evolution-data-server.
  *
  * neo.Calendar, D-Bus activatable: the launcher starts it; the reminder service (neo-calendar-reminders)
  * opens an event's info with the "open-event" action when its notification is tapped, the reminders page with
  * "show-alerts" (Pop-up notification), the Snooze delay dialog with "snooze-delay" (Ask for reminder snooze delay)
  * and the quick responses with "email-guests" (a notification's Email guests), all in cal-alert-page.c; an .ics
- * file opened with it goes into the editor as a new event (Etar's ImportActivity).
+ * file opened with it goes into the editor as a new event.
  *
  * The reminders are not here: the reminder service notifies for them, and wakes the phone for them, whether or not
  * this app runs. */
@@ -43,9 +43,9 @@ load_style (void)
     }
 }
 
-/* Theme (DynamicTheme.applyTheme): light, dark, or the system's, read where GNOME keeps it (color-scheme
- * "prefer-dark"; "default" and "prefer-light" are light, as Android's day mode); Pure black night mode makes a dark
- * look the black one. Etar recreates its activities on a change; here every window is redrawn in the new colours. */
+/* Theme: light, dark, or the system's, read where GNOME keeps it (color-scheme "prefer-dark"; "default" and
+ * "prefer-light" are light); Pure black night mode makes a dark look the black one. On a change every window is
+ * redrawn in the new colours. */
 static void
 apply_look (GApplication *app)
 {
@@ -139,7 +139,7 @@ on_open_event (GSimpleAction *action, GVariant *parameter, gpointer data)
   cal_window_open_reminder (window, calendar, uid, rid, start);
 }
 
-/* the reminder service's AlertActivity (Pop-up notification): the reminders page over the window */
+/* the reminder service's Pop-up notification: the reminders page over the window */
 static void
 on_show_alerts (GSimpleAction *action, GVariant *parameter, gpointer data)
 {
@@ -149,7 +149,7 @@ on_show_alerts (GSimpleAction *action, GVariant *parameter, gpointer data)
   cal_alert_page_show (window);
 }
 
-/* its SnoozeDelayActivity: (occurrence key, the default snooze delay in minutes) */
+/* its snooze delay dialog: (occurrence key, the default snooze delay in minutes) */
 static void
 on_snooze_delay (GSimpleAction *action, GVariant *parameter, gpointer data)
 {
@@ -162,7 +162,7 @@ on_snooze_delay (GSimpleAction *action, GVariant *parameter, gpointer data)
   cal_alert_snooze_delay (window, occurrence, minutes);
 }
 
-/* its QuickResponseActivity: (title, organizer, the calendar owner's address, [(address, name, status)]), what
+/* its Email guests: (title, organizer, the calendar owner's address, [(address, name, status)]), what
  * the mail to the guests is made of */
 static void
 on_email_guests (GSimpleAction *action, GVariant *parameter, gpointer data)

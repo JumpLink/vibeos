@@ -1,12 +1,10 @@
-/* Settings: see dialer-settings.h. The rows are AndroidX Preference's (preference_material, the switch in
- * widget_switch_compat), measured on still:dialer-settings, dialer-set-display, dialer-set-sounds and
- * dialer-dlg-sortby (spec §9.1–§9.4, §9.8, §9.9).
+/* Settings: see dialer-settings.h.
  *
  * Left out of the top list, and why:
  *   Quick responses      the incoming call's "Reply" sends a text message: the phone has no messages app yet
  *   Phone number lookup  Lineage's lookup providers are web services this phone has no client for
- *   Calling accounts     Telecom's page for SIP and other accounts: calls here only go over the modem
- *   Voicemail            its rows open Telecom's and the carrier's pages; the phone has no visual voicemail
+ *   Calling accounts     SIP and other accounts: calls here only go over the modem
+ *   Voicemail            its rows open the carrier's pages; the phone has no visual voicemail
  *   Accessibility        TTY mode: the modem's TTY setting, which ModemManager does not reach
  * In Sounds and vibration, "Enable Do Not Disturb during calls" and Call recording are left out too: the phone has
  * no do-not-disturb to turn on, and nothing records calls. */
@@ -24,30 +22,30 @@
 
 #define BAR_HEIGHT      56
 #define UP_SIZE         56
-#define TITLE_START     72      /* measured: the title's x */
-#define ROW_PAD_X       16      /* listPreferredItemPaddingStart/End */
+#define TITLE_START     72      /* the title's start, past the Up button */
+#define ROW_PAD_X       16
 #define ROW_PAD_Y       16      /* the text block's padding */
-#define WIDGET_GAP      16      /* the widget_frame: 16 dp, then the 56 dp switch */
-#define CATEGORY_GAP    16      /* measured over a category */
+#define WIDGET_GAP      16      /* between a row's text and its switch */
+#define CATEGORY_GAP    16      /* above a category's title */
 #define CATEGORY_PAD    8
-#define SWITCH_WIDTH    56      /* SwitchCompat: max(switchMinWidth 52, 2 × 28 dp thumb) */
-#define SWITCH_HEIGHT   48      /* touch_target_min_size */
+#define SWITCH_WIDTH    56      /* the track: two thumb boxes wide */
+#define SWITCH_HEIGHT   48      /* the touch target */
 #define TRACK_HEIGHT    28
-#define THUMB           20      /* switch_thumb: a 20 dp dot inset 4 dp in a 28 dp box */
+#define THUMB           20      /* the dot, THUMB_INSET in from its TRACK_HEIGHT box */
 #define THUMB_INSET     4
-#define SWITCH_MS       250     /* SwitchCompat's THUMB_ANIMATION_DURATION */
-#define RADIO           20      /* the radio's ring, measured */
+#define SWITCH_MS       250     /* the thumb's slide */
+#define RADIO           20      /* the radio's ring */
 #define RADIO_STROKE    2
 #define RADIO_DOT       10
-#define CHOICE_HEIGHT   48      /* select_dialog_singlechoice_material, measured */
-#define CHOICE_TEXT     47      /* measured: the text's start past the radio's */
-#define CHOICE_RADIO    26      /* measured: the radio's ring in from the dialog window's edge; its text then
-                                 * 1 dp nearer than CHOICE_TEXT at 18 sp (ink at 73 dp from the edge) */
+#define CHOICE_HEIGHT   48      /* a choice in a list dialog */
+#define CHOICE_TEXT     47      /* the text's start past the radio's */
+#define CHOICE_RADIO    26      /* the radio's ring in from the dialog's edge; in a dialog the larger text sits 1
+                                 * nearer than CHOICE_TEXT */
 #define RINGTONES_DIR   "sounds/android/ringtones"
-#define DEFAULT_TITLE   "Orion" /* LineageOS's ro.config.ringtone (ringer.c) */
+#define DEFAULT_TITLE   "Orion" /* the default ringtone (ringer.c) */
 #define DEFAULT_FILE    RINGTONES_DIR "/" DEFAULT_TITLE ".ogg"
 
-/* the rendered colours (spec §9.9) */
+/* the switch's and the radio's colours */
 #define TRACK_ON        0x81b5bc
 #define TRACK_OFF       0x889395
 #define THUMB_COLOR     0xfaffff
@@ -247,7 +245,7 @@ level_free (Level *level)
   g_free (level);
 }
 
-/* onPreferenceStartFragment: the page replaces the list (no transition) and the bar takes its title */
+/* a row's page replaces the list (no transition) and the bar takes its title */
 static void
 push_page (DialerSettings *self, GtkWidget *page, const char *title)
 {
@@ -261,8 +259,7 @@ push_page (DialerSettings *self, GtkWidget *page, const char *title)
   gtk_label_set_label (GTK_LABEL (self->title), title);
 }
 
-/* Back pops the page; on the top list the screen goes. Android's Up always went to the main screen, but here Up is
- * what the back gesture clicks, so it does what Back does */
+/* Back pops the page; on the top list the screen goes. Up does the same: it is what the back gesture clicks */
 static void
 go_back (DialerSettings *self)
 {
@@ -295,7 +292,7 @@ on_key (GtkEventControllerKey *keys, guint keyval, guint keycode, GdkModifierTyp
 
 /* ---- rows ---------------------------------------------------------------------------------------------------- */
 
-/* a page: its rows in a list that scrolls (the PreferenceFragment's RecyclerView) */
+/* a page: its rows in a list that scrolls */
 static GtkWidget *
 page_new (void)
 {
@@ -357,7 +354,7 @@ add_row (GtkWidget *page, const char *title, const char *summary, GtkWidget *wid
       gtk_widget_set_valign (widget, GTK_ALIGN_CENTER);
       gtk_box_append (GTK_BOX (row), widget);
     }
-  /* selectableItemBackground over the whole row */
+  /* a bounded ripple over the whole row */
   pressable = neo_pressable_new (row);
   neo_pressable_set_ripple (NEO_PRESSABLE (pressable), NEO_RIPPLE_BOUNDED, 0);
   gtk_accessible_update_property (GTK_ACCESSIBLE (pressable), GTK_ACCESSIBLE_PROPERTY_LABEL, title, -1);
@@ -365,7 +362,7 @@ add_row (GtkWidget *page, const char *title, const char *summary, GtkWidget *wid
   return pressable;
 }
 
-/* a PreferenceCategory: the accent title over its rows, 16 dp under the rows before */
+/* a category: the accent title over its rows, CATEGORY_GAP under the rows before */
 static void
 add_category (GtkWidget *page, const char *title)
 {
@@ -379,7 +376,7 @@ add_category (GtkWidget *page, const char *title)
   gtk_box_append (GTK_BOX (page_list (page)), label);
 }
 
-/* a SwitchPreferenceCompat on a boolean key: a tap anywhere on the row flips it */
+/* a switch row on a boolean key: a tap anywhere on the row flips it */
 static void
 on_switch_row_clicked (GtkWidget *row, DialerSettings *self)
 {
@@ -401,7 +398,7 @@ add_switch_row (DialerSettings *self, GtkWidget *page, const char *title, const 
   g_signal_connect (row, "clicked", G_CALLBACK (on_switch_row_clicked), self);
 }
 
-/* ---- a ListPreference's dialog: its entries with a radio each, and Cancel (§9.8) ----------------------------- */
+/* ---- a list setting's dialog: its entries with a radio each, and Cancel -------------------------------------- */
 
 typedef void (*ChoiceFunc) (DialerSettings *self, int index);
 
@@ -456,14 +453,14 @@ show_choice (DialerSettings *self, const char *title, const char * const *entrie
       g_signal_connect (pressable, "clicked", G_CALLBACK (on_choice_clicked), choice);
       gtk_box_append (GTK_BOX (list), pressable);
     }
-  /* AppCompat's AlertDialog (dialer.css .settings-dialog): the rows edge to edge, its button in capitals */
+  /* a list dialog (dialer.css .settings-dialog): the rows edge to edge, its button in capitals */
   gtk_widget_add_css_class (GTK_WIDGET (dialog), "settings-dialog");
   neo_dialog_set_content (dialog, list);
   neo_dialog_add_button (dialog, cancel, NEO_RESPONSE_CANCEL);
   neo_dialog_present (dialog, GTK_WIDGET (self));
 }
 
-/* ---- Display options (§9.3) ---------------------------------------------------------------------------------- */
+/* ---- Display options ----------------------------------------------------------------------------------------- */
 
 static void
 sync_display_summaries (DialerSettings *self)
@@ -519,8 +516,8 @@ on_display_options (DialerSettings *self)
   push_page (self, page, _("Display options"));
 }
 
-/* ---- the ringtone picker: the phone's ringtones, "None" first (RingtonePickerActivity, EXTRA_RINGTONE_SHOW_SILENT;
- * the default is not offered, as this row sets it) ----------------------------------------------------------- */
+/* ---- the ringtone picker: the phone's ringtones, "None" first (the default is not offered, as this row sets it)
+ * ------------------------------------------------------------------------------------------------------------- */
 
 typedef struct
 {
@@ -709,7 +706,7 @@ on_ringtone (DialerSettings *self)
   push_page (self, page, _("Phone ringtone"));
 }
 
-/* ---- Sounds and vibration (§9.4) ----------------------------------------------------------------------------- */
+/* ---- Sounds and vibration ------------------------------------------------------------------------------------ */
 
 static void
 on_sounds (DialerSettings *self)
@@ -731,16 +728,16 @@ on_sounds (DialerSettings *self)
   push_page (self, page, _("Sounds and vibration"));
 }
 
-/* ---- Blocked numbers (§9.7): Telecom's BlockedNumbersActivity, another app with its own theme ----------------
+/* ---- Blocked numbers: a page with a theme of its own ----------------------------------------------------------
  *
- * Measured on still:dialer-set-blocked (an empty list): the explanation, then "Add a number"; each blocked number is
- * a row with an X that unblocks it (blocked_number_item). Left out: the "Unknown / Block calls from unidentified
+ * The explanation, then "Add a number"; each blocked number is a row with an X that unblocks it. Left out: the
+ * "Unknown / Block calls from unidentified
  * callers" switch. A caller's number can come a moment after the call starts ringing, so "no number yet" is not
  * "unidentified", and blocking on it would turn away callers who are not withheld at all. */
 
 #define BLOCKED_ROW_HEIGHT  56
 #define BLOCKED_BODY_PAD    16
-#define BLOCKED_ADD_HEIGHT  52      /* measured: 51.67 dp */
+#define BLOCKED_ADD_HEIGHT  52
 #define BLOCKED_X_SIZE      48
 
 static const char *
@@ -798,7 +795,7 @@ fill_blocked (GtkWidget *rows)
 
       gtk_widget_set_size_request (row, -1, BLOCKED_ROW_HEIGHT);
       gtk_widget_set_margin_start (row, ROW_PAD_X);
-      /* the X's 24 dp glyph ends at the 16 dp padding; its 48 dp touch area reaches past it */
+      /* the X's glyph ends at the row's padding; its larger touch area reaches past it */
       gtk_widget_set_margin_end (row, ROW_PAD_X - (BLOCKED_X_SIZE - 24) / 2);
       gtk_widget_set_hexpand (label, TRUE);
       gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
@@ -825,7 +822,7 @@ on_add_response (NeoDialog *dialog, int response, gpointer data)
 
   if (response != NEO_RESPONSE_OK || !*number)
     return;
-  /* Telecom refuses to block an emergency number */
+  /* an emergency number cannot be blocked */
   if (phone_number_is_emergency (number))
     return;
   if (!blocked_numbers_add (blocked_numbers_get_default (), number, blocked_country (), &error))
@@ -875,8 +872,8 @@ on_blocked (DialerSettings *self)
   gtk_widget_set_margin_bottom (body, BLOCKED_BODY_PAD);
   gtk_box_append (GTK_BOX (list), body);
 
-  /* a link, not a full-width row: the measured touch area is the text's (x 16 dp, 52 dp tall). One line: a
-   * wrapping label asks for its narrowest width, and a link sized to it broke "Add a number" in two */
+  /* a link, not a full-width row: the touch area is the text's. One line: a wrapping label asks for its narrowest
+   * width, and a link sized to it broke "Add a number" in two */
   gtk_label_set_wrap (GTK_LABEL (add), FALSE);
   gtk_widget_set_valign (add, GTK_ALIGN_CENTER);
   add_pressable = neo_pressable_new (add);

@@ -1,37 +1,35 @@
-/* The dialpad: see dialpad.h. The numbers are dialer/dialpadview's (DialpadView.java, DialpadTextView.java,
- * res/layout/dialpad*.xml, res/values/dimens.xml, theme/res/values/dimens.xml) and, for the in-call keypad,
- * incallui's (DialpadFragment.java, theme/res/values/styles.xml InCallDialpad); spec §3 has the measurements. */
+/* The dialpad: see dialpad.h. It is both the Phone tab's dialpad and the in-call keypad. */
 #include "dialpad.h"
 
 #include <glib/gi18n.h>
 #include <math.h>
 #include <neo.h>
 
-#define DIGITS_HEIGHT   60      /* dialpad_digits_height */
-#define DIGITS_SIZE     34      /* dialpad_digits_text_size */
-#define DIGITS_MIN_SIZE 24      /* dialpad_digits_text_min_size */
-#define SPACE_ABOVE     (1 + 14)        /* the 1 dp view and dialpad_space_above_keys */
-#define KEY_HEIGHT      64      /* dialpad_key_height: the rows' minimum; they share what is left over */
-#define SPACE_BELOW     8       /* dialpad_space_below_keys */
-#define END_SPACE       80      /* dialpad_bottom_space_height: under the keys, for the dial button */
-#define INCALL_END_SPACE 116    /* incall_end_call_spacing: for the end-call button */
-#define CORNER          28      /* rounded_dialpad_bg's top corners */
-#define BUTTON_MARGIN   8       /* dialpad_overflow_margin */
-#define MENU_PADDING    10      /* dialpad_digits_menu_left/right_padding: ✕ and ⋮ */
-#define DELETE_PADDING  16      /* dialpad_digits_padding: ⌫ */
-#define NUMBER_SIZE     36      /* dialpad_key_numbers_default_size: in dp, not sp */
-#define NUMBER_GAP      3       /* dialpad_key_number_default_margin_bottom */
+#define DIGITS_HEIGHT   60      /* the field with the typed number */
+#define DIGITS_SIZE     34      /* the typed number, shrunk as far as DIGITS_MIN_SIZE to fit */
+#define DIGITS_MIN_SIZE 24
+#define SPACE_ABOVE     (1 + 14)        /* a one-pixel spacer, then the gap over the keys */
+#define KEY_HEIGHT      64      /* the rows' minimum; they share what is left over */
+#define SPACE_BELOW     8
+#define END_SPACE       80      /* under the keys, for the dial button */
+#define INCALL_END_SPACE 116    /* the same in a call, for the end-call button */
+#define CORNER          28      /* the sheet's top corners */
+#define BUTTON_MARGIN   8
+#define MENU_PADDING    10      /* round ✕ and ⋮ */
+#define DELETE_PADDING  16      /* round ⌫ */
+#define NUMBER_SIZE     36      /* a key's digit */
+#define NUMBER_GAP      3       /* between a key's digit and its letters */
 #define LETTERS_SIZE    12
 #define STAR_SIZE       36
 #define POUND_SIZE      23
-#define SYMBOL_GAP      13      /* dialpad_symbol_margin_bottom */
-#define VOICEMAIL_SIZE  18      /* dialpad_voicemail_icon_size */
+#define SYMBOL_GAP      13      /* room left under * and #, which lifts them */
+#define VOICEMAIL_SIZE  18      /* the voicemail glyph under the 1 */
 #define LONG_PRESS_MS   400
 
-/* raw colours: the dialpad opts out of force dark (spec §3) */
-#define BACKGROUND      0x2c3132        /* rounded_dialpad_bg_color, neutral1_800 */
-#define PRIMARY         0xb8ebf3        /* dialpad_text_color_primary, accent1_100 */
-#define SECONDARY       0x5f6368        /* dialpad_text_color_secondary, google_grey_700 */
+/* colours: the dialpad is not darkened with the rest of the app */
+#define BACKGROUND      0x2c3132        /* the sheet */
+#define PRIMARY         0xb8ebf3        /* the digits and the icons */
+#define SECONDARY       0x5f6368        /* the letters, * and # */
 
 static GdkRGBA
 rgb (guint32 value, double alpha)
@@ -45,7 +43,7 @@ gsf_layout (GtkWidget *widget, const char *text, double size)
   PangoLayout *layout = gtk_widget_create_pango_layout (widget, text);
   g_autoptr(PangoFontDescription) font = pango_font_description_from_string ("Google Sans Flex, Neo Roboto");
 
-  /* config_bodyFontFamily at 400, which Bold text makes 700 */
+  /* 700, not 400: the phone's Bold text setting is on */
   pango_font_description_set_absolute_size (font, size * PANGO_SCALE);
   pango_font_description_set_weight (font, 700);
   pango_layout_set_font_description (layout, font);
@@ -77,7 +75,7 @@ static void pad_key_down (DialerDialpad *self, char c);
 static void pad_key_up (DialerDialpad *self, char c);
 static void pad_key_long_pressed (DialerDialpad *self, char c);
 
-/* DialpadCharMappings, Latin */
+/* the keys' letters, Latin */
 static const char *
 key_letters (char c)
 {
@@ -86,7 +84,7 @@ key_letters (char c)
   return c >= '0' && c <= '9' ? letters[c - '0'] : NULL;
 }
 
-/* DialpadTextView: a view exactly as big as its glyphs' ink, so the key centres what is drawn, not the line box */
+/* a key's text: exactly as big as its glyphs' ink, so the key centres what is drawn, not the line box */
 typedef struct
 {
   double x, y, width, height;
@@ -121,7 +119,7 @@ dialpad_key_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   Ink number = ink_of (self->number), letters = { 0 };
   double group, top;
 
-  /* btn_dialpad_key: ?colorControlHighlight, black at 12 % (the dialpad opts out of dark), halved */
+  /* a key's ripple, faint black: the dialpad is not darkened, so neither is its ripple */
   if (neo_ripple_is_active (&self->ripple))
     {
       gtk_snapshot_push_clip (snapshot, &box);
@@ -131,7 +129,7 @@ dialpad_key_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 
   if (self->c == '*' || self->c == '#')
     {
-      /* DialpadKeyStarStyle / PoundStyle: secondary colour at 0.8, 13 dp under them */
+      /* * and #: the secondary colour, a little faded, lifted by SYMBOL_GAP */
       GdkRGBA symbol = rgb (SECONDARY, 0.8);
 
       top = round ((height - (number.height + SYMBOL_GAP)) / 2);
@@ -149,7 +147,7 @@ dialpad_key_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   draw_ink (snapshot, self->number, &number, cx, top, &primary);
   top += number.height + NUMBER_GAP;
   if (self->c == '1')
-    /* the voicemail glyph, under a 1 dp spacer that lines it up with the letters of the keys beside it */
+    /* the voicemail glyph, under a 1 px spacer that lines it up with the letters of the keys beside it */
     neo_snapshot_icon (snapshot, widget, "dialer-voicemail-symbolic", cx - VOICEMAIL_SIZE / 2.0, top + 1,
                        VOICEMAIL_SIZE, &secondary);
   else
@@ -184,7 +182,7 @@ on_long_press (gpointer data)
   return G_SOURCE_REMOVE;
 }
 
-/* onPressed: the tone starts as the key goes down and lasts until it comes up */
+/* pressed: the tone starts as the key goes down and lasts until it comes up */
 static void
 on_key_pressed (GtkGestureClick *gesture, int n_press, double x, double y, DialpadKey *self)
 {
@@ -359,7 +357,7 @@ dialer_dialpad_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   GdkRGBA background = rgb (BACKGROUND, 1), primary = rgb (PRIMARY, 1);
   int text_width, text_height;
 
-  /* rounded_dialpad_bg, at elevation 10 dp */
+  /* the sheet: round top corners and a shadow over the page above it */
   gsk_rounded_rect_init (&shape, &box, &GRAPHENE_SIZE_INIT (CORNER, CORNER), &GRAPHENE_SIZE_INIT (CORNER, CORNER),
                          &GRAPHENE_SIZE_INIT (0, 0), &GRAPHENE_SIZE_INIT (0, 0));
   gtk_snapshot_append_outset_shadow (snapshot, &shape, &(GdkRGBA) { 0, 0, 0, 0.25 }, 0, -2, 0, 10);
@@ -367,8 +365,8 @@ dialer_dialpad_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gtk_snapshot_append_color (snapshot, &background, &box);
   gtk_snapshot_pop (snapshot);
 
-  /* the digits: centred in their field; too wide, the size shrinks with the width down to 24 sp
-   * (ViewUtil.resizeText), and past that the field shows the end of them */
+  /* the digits: centred in their field; too wide, the size shrinks with the width down to DIGITS_MIN_SIZE, and
+   * past that the field shows the end of them */
   digits_field (self, width, &x0, &x1);
   pango_layout_set_text (self->digits_layout, self->digits->str, -1);
   {
@@ -413,13 +411,13 @@ on_overflow_fade (NeoAnim *anim, double value, gpointer data)
   DialerDialpad *self = data;
 
   self->overflow_alpha = value;
-  /* AnimUtils.fadeOut: gone at the end */
+  /* faded out: gone at the end */
   if (!neo_anim_is_running (anim) && value == 0)
     gtk_widget_set_visible (self->overflow, FALSE);
   gtk_widget_queue_draw (GTK_WIDGET (self));
 }
 
-/* updateMenuOverflowButton: ⋮ fades in with the first digit and out with the last, over 300 ms */
+/* ⋮ fades in with the first digit and out with the last, over 300 ms */
 static void
 update_overflow (DialerDialpad *self)
 {
@@ -517,7 +515,7 @@ on_overflow (NeoPressable *button, DialerDialpad *self)
   g_signal_emit (self, signals[OVERFLOW], 0, button);
 }
 
-/* ✕, ⋮, ⌫: a 24 dp icon in #b8ebf3 on the keys' ripple */
+/* ✕, ⋮, ⌫: an icon with the keys' ripple */
 static GtkWidget *
 row_button (DialerDialpad *self, const char *icon_name, const char *description)
 {
@@ -601,7 +599,7 @@ dialer_dialpad_new (DialpadMode mode)
   g_signal_connect (self->overflow, "clicked", G_CALLBACK (on_overflow), self);
   g_signal_connect (self->backspace, "clicked", G_CALLBACK (on_backspace), self);
   g_signal_connect (self->backspace, "long-pressed", G_CALLBACK (on_backspace_long), self);
-  /* the in-call keypad: ✕ shown, ⋮ gone, ⌫ invisible but keeping its room (setCanDigitsBeEdited (false)) */
+  /* the in-call keypad: ✕ shown, ⋮ gone, ⌫ invisible but keeping its room */
   gtk_widget_set_visible (self->close, mode == DIALPAD_INCALL);
   gtk_widget_set_visible (self->overflow, FALSE);
   gtk_widget_set_visible (self->backspace, mode == DIALPAD_DIALER);

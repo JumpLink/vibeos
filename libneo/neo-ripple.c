@@ -5,8 +5,8 @@
 #include <string.h>
 #include <spongy.h>
 
-#define ENTER_MS 450.0          /* RippleAnimationSession.ENTER_ANIM_DURATION */
-#define EXIT_MS  375.0          /* EXIT_ANIM_DURATION */
+#define ENTER_MS 450.0          /* the press: p 0 -> 0.5 */
+#define EXIT_MS  375.0          /* the release: p 0.5 -> 1 */
 
 static double
 clamp01 (double v)
@@ -22,7 +22,7 @@ wave_progress (const NeoRippleWave *wave, gint64 now)
   double enter = 0.5 * spongy_curve (SPONGY_FAST_OUT_SLOW_IN, clamp01 (since_press / ENTER_MS));
   if (!wave->released_us)
     return enter;
-  /* the exit waits for the enter to finish (RippleAnimationSession.computeDelay) */
+  /* the exit waits for the enter to finish */
   gint64 exit_start = MAX (wave->released_us, wave->pressed_us + (gint64) (ENTER_MS * 1000));
   if (now < exit_start)
     return enter;
@@ -77,7 +77,7 @@ frame_time (NeoRipple *ripple)
 void
 neo_ripple_press (NeoRipple *ripple, double x, double y)
 {
-  /* a new finger lets go of the old wave and starts its own (RippleDrawable.tryRippleEnter) */
+  /* a new finger lets go of the old wave and starts its own */
   neo_ripple_release (ripple);
   NeoRippleWave *slot = &ripple->waves[0];
   for (int i = 0; i < NEO_RIPPLE_WAVES; i++) {
@@ -112,7 +112,7 @@ neo_ripple_is_active (NeoRipple *ripple)
   return FALSE;
 }
 
-/* RippleShader's softCircle (blur 1): 1 - smoothstep (0.5, 1.5, d / r), as gradient stops from the centre to 1.5 r */
+/* the soft edge: 1 - smoothstep (0.5, 1.5, d / r), as gradient stops from the centre to 1.5 r */
 #define EDGE_STOPS 9
 
 void
@@ -122,7 +122,7 @@ neo_ripple_snapshot (NeoRipple *ripple, GtkSnapshot *snapshot, const graphene_re
     return;
   gint64 now = frame_time (ripple);
   double w = bounds->size.width, h = bounds->size.height;
-  double max_radius = sqrt (w * w / 4 + h * h / 4) * 2.3;   /* RippleShader.setRadius: radius * 2.3f */
+  double max_radius = sqrt (w * w / 4 + h * h / 4) * 2.3;   /* 2.3 x half the diagonal */
   double cx = bounds->origin.x + w / 2, cy = bounds->origin.y + h / 2;
 
   for (int i = 0; i < NEO_RIPPLE_WAVES; i++) {

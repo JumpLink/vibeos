@@ -1,4 +1,4 @@
-/* cam-widgets: see cam-widgets.h. Geometry and timing are spec/camera.md's (cam-constants.h). */
+/* cam-widgets: see cam-widgets.h. Geometry and timing are in cam-constants.h. */
 #include "cam-widgets.h"
 #include "cam-constants.h"
 
@@ -269,9 +269,9 @@ cam_icon_set_color (CamIcon *self, const GdkRGBA *color)
 struct _CamShutter {
   GtkWidget  parent;
   double     cap_scale;         /* the capture disc: 1 photo, 0.3125 video's dot, 0.0625 recording */
-  double     cap_white;         /* its colour, secondaryContainer 0 … white 1 */
+  double     cap_white;         /* its colour, the container colour 0 … white 1 */
   double     cap_alpha;
-  double     square;            /* the record disc, circle 0 … 18 dp square 1 */
+  double     square;            /* the record disc, circle 0 … rounded square 1 */
   double     pulse;             /* photo capture, 0 … 1 */
   NeoAnim   *scale_anim, *white_anim, *alpha_anim, *square_anim, *pulse_anim;
 };
@@ -292,7 +292,7 @@ cam_shutter_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   CamShutter *self = CAM_SHUTTER (widget);
   double cx = gtk_widget_get_width (widget) / 2.0, cy = gtk_widget_get_height (widget) / 2.0;
-  /* avd_photo_capture: both discs to 0.625 and back */
+  /* a photo's pulse: both discs to 0.625 and back */
   double pulse = 1 - (1 - CAM_PHOTO_PULSE_SCALE) * self->pulse;
   GdkRGBA white = CAM_C (0xFFFFFF), backplate = CAM_C (CAM_C_GRAY_10), red = CAM_C (CAM_C_REC_RED);
   GdkRGBA container = neo_color (NEO_SECONDARY_CONTAINER);
@@ -300,10 +300,10 @@ cam_shutter_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   double half = (32 + (9 - 32) * self->square) * pulse, radius = 32 * (1 - self->square) * pulse;
   GskRoundedRect record;
 
-  /* ic_shutter_base: the backplate's 4-unit white stroke around its gray_10 fill (r 32 … 36), the vector unscaled */
+  /* the base: the backplate's 4-unit white stroke around its gray_10 fill (r 32 … 36), the vector unscaled */
   fill_circle (snapshot, cx, cy, 36, &white);
   fill_circle (snapshot, cx, cy, 32, &backplate);
-  /* the record disc, morphing into the 18 × 18 square of avd_video_start */
+  /* the record disc, morphing into an 18 × 18 square when a recording starts */
   gsk_rounded_rect_init_from_rect (&record, &GRAPHENE_RECT_INIT (cx - half, cy - half, 2 * half, 2 * half), radius);
   gtk_snapshot_push_rounded_clip (snapshot, &record);
   gtk_snapshot_append_color (snapshot, &red, &record.bounds);
@@ -326,7 +326,7 @@ SHUTTER_SETTER (square)
 static void
 on_shutter_pulse (NeoAnim *anim, double value, gpointer data)
 {
-  /* 100 ms out, then the same 100 ms reversed (repeatMode reverse plays the curve backwards) */
+  /* 100 ms out, then the same 100 ms reversed (the reverse plays the curve backwards) */
   CAM_SHUTTER (data)->pulse = spongy_curve (SPONGY_FAST_OUT_SLOW_IN, value <= 1 ? value : 2 - value);
   gtk_widget_queue_draw (GTK_WIDGET (data));
 }
@@ -396,7 +396,7 @@ cam_shutter_set_video (CamShutter *self, gboolean video, gboolean animate)
 {
   GtkWidget *w = GTK_WIDGET (self);
 
-  /* avd_mode_photo_video: scale 300 ms FOSI, colour 300 ms AD */
+  /* photo ↔ video: scale 300 ms fast-out-slow-in, colour 300 ms accelerate-decelerate */
   shutter_to (self->scale_anim, &self->cap_scale, video ? CAM_VIDEO_DOT_SCALE : 1, CAM_MS_SHUTTER_MORPH,
               SPONGY_FAST_OUT_SLOW_IN, animate, w);
   shutter_to (self->white_anim, &self->cap_white, video ? 1 : 0, CAM_MS_SHUTTER_MORPH, SPONGY_ACCELERATE_DECELERATE,
@@ -410,7 +410,7 @@ cam_shutter_set_recording (CamShutter *self, gboolean recording, gboolean animat
 {
   GtkWidget *w = GTK_WIDGET (self);
 
-  /* avd_video_start / avd_video_end: 300 ms FOSI each */
+  /* a recording's start or end: 300 ms fast-out-slow-in each */
   shutter_to (self->scale_anim, &self->cap_scale, recording ? CAM_VIDEO_DOT_END_SCALE : CAM_VIDEO_DOT_SCALE,
               CAM_MS_SHUTTER_MORPH, SPONGY_FAST_OUT_SLOW_IN, animate, w);
   shutter_to (self->alpha_anim, &self->cap_alpha, recording ? 0 : 1, CAM_MS_SHUTTER_MORPH, SPONGY_FAST_OUT_SLOW_IN,
@@ -427,7 +427,7 @@ cam_shutter_pulse (CamShutter *self)
 
 /* ---- CamFlip --------------------------------------------------------------------------------------------------- */
 
-/* R/drawable/ic_flip_camera.xml, viewport 32 */
+/* the flip arrows, on a 32 × 32 viewport */
 static const char flip_arrow_1[] =
   "M0 16C0 15.3278 0.0423017 14.6599 0.125431 14C0.567068 10.494 2.16104 7.21154 4.68629 4.68629C7.21155 2.16104 "
   "10.494 0.567068 14 0.125431C14.6599 0.0423017 15.3278 0 16 0H24L16 8V2.01934C12.2921 2.01934 8.73606 3.4923 "
@@ -465,7 +465,7 @@ cam_flip_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   GdkRGBA white = CAM_C (0xFFFFFF), primary = neo_color (NEO_PRIMARY);
   g_autoptr(GskStroke) stroke = gsk_stroke_new (2);
 
-  /* scaleType center: the 32 dp drawable unscaled in the 60 dp button; the group turns about (16, 16) */
+  /* the icon unscaled, centred in the button; the group turns about its centre (16, 16) */
   gtk_snapshot_save (snapshot);
   gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (gtk_widget_get_width (widget) / 2.0,
                                                           gtk_widget_get_height (widget) / 2.0));
@@ -557,7 +557,7 @@ cam_pause_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, 
   *min = *nat = CAM_PAUSE_SIZE;
 }
 
-/* a group of the AVD: scaled about (16, 16), then moved by `dx` (VectorDrawable's order) */
+/* one glyph: scaled about (16, 16), then moved by `dx` */
 static void
 pause_glyph (GtkSnapshot *snapshot, GskPath *path, double presence, double dx, const GdkRGBA *color)
 {
@@ -667,8 +667,8 @@ cam_pause_set_paused (CamPause *self, gboolean paused, gboolean animate)
       gtk_widget_queue_draw (GTK_WIDGET (self));
       return;
     }
-  /* avd_video_recording_pause / _resume: the fill 200 ms LIN after 100 ms, the glyph going 200 ms ACC, the glyph
-   * coming 200 ms DEC after 100 ms */
+  /* pause / resume: the fill 200 ms linear after 100 ms, the glyph going 200 ms accelerating, the glyph coming
+   * 200 ms decelerating after 100 ms */
   neo_anim_start (self->fill_anim, self->fill, paused, CAM_MS_PAUSE_MORPH, 100, SPONGY_LINEAR);
   neo_anim_start (out, *out_v, 0, CAM_MS_PAUSE_MORPH, 0, SPONGY_ACCELERATE);
   neo_anim_start (in, *in_v, 1, CAM_MS_PAUSE_MORPH, 100, SPONGY_DECELERATE);
@@ -703,12 +703,12 @@ gallery_layer (GtkSnapshot *snapshot, GtkWidget *widget, GdkTexture *texture, do
     return;
   gtk_snapshot_push_opacity (snapshot, alpha);
   if (texture)
-    /* centerCrop: the thumbnail is square already */
+    /* cropped to fill: the thumbnail is square already */
     gtk_snapshot_append_scaled_texture (snapshot, texture, GSK_SCALING_FILTER_TRILINEAR, &box);
   else
     {
       GdkRGBA tint = neo_color (NEO_ON_SECONDARY_CONTAINER);
-      /* the 60 dp ImageView at scale 0.5 */
+      /* the placeholder icon, half the button's size */
       neo_snapshot_icon (snapshot, widget, "cam-image-symbolic", (box.size.width - CAM_GALLERY_ICON) / 2,
                          (box.size.height - CAM_GALLERY_ICON) / 2, CAM_GALLERY_ICON, &tint);
     }
@@ -817,7 +817,7 @@ static void
 cam_lens_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, int *min, int *nat, int *min_base,
                   int *nat_base)
 {
-  /* 32 dp and LensSelectorLayout's 5 px margins: 35⅓, rounded up; the pill is drawn centred at its exact size */
+  /* the button and its px margins, rounded up; the pill is drawn centred at its exact size */
   *min = *nat = (int) ceil (CAM_LENS_BUTTON + 2 * CAM_LENS_MARGIN);
 }
 
@@ -915,7 +915,7 @@ cam_countdown_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   if (!self->showing || self->t >= 1)
     return;
   text = g_strdup_printf ("%d", self->remaining);
-  /* 125 sp sans-serif, 400 + Bold text = 700 */
+  /* regular, made heavier by Bold text */
   layout = make_layout (widget, text, CAM_SP_COUNTDOWN, 700);
   pango_layout_get_extents (layout, NULL, &logical);
   white.alpha = 1 - self->t;
@@ -924,7 +924,7 @@ cam_countdown_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
                                                           gtk_widget_get_height (widget) / 2.0));
   gtk_snapshot_rotate (snapshot, self->angle);
   gtk_snapshot_scale (snapshot, scale, scale);
-  /* the TextView's box has Roboto's font padding (yMax over the ascent on top, yMin under the descent below, as
+  /* the digit's box has Roboto's font padding (yMax over the ascent on top, yMin under the descent below, as
    * neo_label_set_font_padding): centring that box puts the digit 0.05 em lower than centring Pango's */
   gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (-logical.width / (2.0 * PANGO_SCALE),
                                                           -logical.height / (2.0 * PANGO_SCALE)
@@ -952,7 +952,7 @@ static void
 show_digit (CamCountdown *self)
 {
   self->showing = TRUE;
-  /* scale 1 → 2.5 and alpha 1 → 0, 800 ms AD; the next second 1000 ms on, so a 200 ms gap */
+  /* scale 1 → 2.5 and alpha 1 → 0, 800 ms accelerate-decelerate; the next second 1000 ms on, so a 200 ms gap */
   neo_anim_start (self->anim, 0, 1, CAM_MS_COUNTDOWN_FADE, 0, SPONGY_ACCELERATE_DECELERATE);
 }
 
@@ -1071,7 +1071,7 @@ cam_zoom_slider_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   CamZoomSlider *self = CAM_ZOOM_SLIDER (widget);
   double w = gtk_widget_get_width (widget), h = gtk_widget_get_height (widget);
-  /* HorizontalSlider: a track h/5 tall from h/2 to w − h/2, rounded; the thumb r = h/2.15 */
+  /* the slider: a track h/5 tall from h/2 to w − h/2, rounded; the thumb r = h/2.15 */
   double th = h / 5, left = h / 2, right = w - h / 2, r = h / 2.15;
   double cx = left + (right - left) * self->progress, cy = h / 2;
   GskRoundedRect track, thumb;
@@ -1080,7 +1080,7 @@ cam_zoom_slider_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   PangoRectangle ink;
 
   gsk_rounded_rect_init_from_rect (&track, &GRAPHENE_RECT_INIT (left, (h - th) / 2, right - left, th), th / 2);
-  /* setShadowLayer (1 px, black) */
+  /* a shadow under the track (1 px, black) */
   gtk_snapshot_append_outset_shadow (snapshot, &track, &black, 0, 0, 0, 1 / 3.0);
   gtk_snapshot_push_rounded_clip (snapshot, &track);
   gtk_snapshot_append_color (snapshot, &track_color, &track.bounds);
@@ -1097,7 +1097,7 @@ cam_zoom_slider_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gtk_snapshot_pop (snapshot);
   if (self->text)
     {
-      /* Paint text, not a TextView: 400, no Bold-text boost; centred on its ink (getTextBounds) */
+      /* weight 400, not made bolder by a bold-text setting; centred on its ink */
       layout = make_layout (widget, self->text, CAM_DP_SLIDER_TEXT, 400);
       pango_layout_get_pixel_extents (layout, &ink, NULL);
       gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (-ink.x - ink.width / 2.0, -ink.y - ink.height / 2.0));
@@ -1111,7 +1111,7 @@ zoom_slider_touch (CamZoomSlider *self, double x)
 {
   double w = gtk_widget_get_width (GTK_WIDGET (self));
 
-  /* Slider.onTouchEvent: x over the whole width, not the track */
+  /* x over the whole width, not the track */
   self->progress = CLAMP (x, 0, w) / MAX (w, 1);
   gtk_widget_queue_draw (GTK_WIDGET (self));
   g_signal_emit (self, zoom_changed, 0, self->progress);
@@ -1212,7 +1212,7 @@ cam_island_measure (GtkWidget *widget, GtkOrientation orientation, int for_size,
 {
   CamIsland *self = CAM_ISLAND (widget);
 
-  /* 8 dp either side, a 28 dp cell per icon (24 + 2 + 2), at least 36 dp; 36 dp tall */
+  /* padding either side and a cell per icon, at least as wide as it is tall */
   *min = *nat = orientation == GTK_ORIENTATION_HORIZONTAL ? MAX (CAM_ISLAND_H, 16 + 28 * island_count (self->items))
                                                           : CAM_ISLAND_H;
 }
@@ -1238,7 +1238,7 @@ cam_island_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   for (int i = 0; i < 5; i++)
     if (self->items & (1u << i))
       {
-        /* thermal "moderate/severe" in onSurface, everything worse and the battery in colorError */
+        /* thermal "moderate/severe" in the text colour, everything worse and the battery in the error colour */
         const GdkRGBA *tint = i == CAM_ISLAND_THERMAL || i == CAM_ISLAND_MIC_OFF ? &on : &error;
 
         neo_snapshot_icon (snapshot, widget, icons[i], x, (CAM_ISLAND_H - 24) / 2.0, 24, tint);
@@ -1337,7 +1337,7 @@ cam_toast_size_allocate (GtkWidget *widget, int width, int height, int baseline)
   int min, nat, h;
   int w;
 
-  /* centred, 20 dp from either side at most, its bottom 48 dp over the screen's (still:camera-toast-…) */
+  /* centred, kept off the sides, a little above the screen's bottom */
   gtk_widget_measure (self->box, GTK_ORIENTATION_HORIZONTAL, -1, &min, &nat, NULL, NULL);
   w = MIN (nat, width - 40);
   w = MAX (w, min);
@@ -1403,7 +1403,7 @@ cam_toast_init (CamToast *self)
   gtk_box_append (GTK_BOX (self->box), icon);
   self->label = gtk_label_new (NULL);
   gtk_label_set_wrap (GTK_LABEL (self->label), TRUE);
-  /* a TextView's width: the text on one line, wrapped only where the toast's widest is too narrow for it */
+  /* the text on one line, wrapped only where the toast's widest is too narrow for it */
   gtk_label_set_natural_wrap_mode (GTK_LABEL (self->label), GTK_NATURAL_WRAP_NONE);
   gtk_widget_set_hexpand (self->label, TRUE);
   gtk_label_set_xalign (GTK_LABEL (self->label), 0);
@@ -1429,6 +1429,6 @@ cam_toast_show (CamToast *self, const char *text)
   gtk_widget_set_visible (GTK_WIDGET (self), TRUE);
   neo_anim_start (self->fade, gtk_widget_get_opacity (self->box), 1, 250, 0, SPONGY_ACCELERATE_DECELERATE);
   g_clear_handle_id (&self->timer, g_source_remove);
-  /* Toast.LENGTH_SHORT */
+  /* a short toast */
   self->timer = g_timeout_add (CAM_MS_TOAST, on_toast_timeout, self);
 }

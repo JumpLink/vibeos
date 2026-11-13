@@ -17,7 +17,7 @@
 
 #define BACK_MAX        100
 #define TOAST_FADE_MS   250
-#define TOAST_SHORT_MS  2000    /* Toast.LENGTH_SHORT */
+#define TOAST_SHORT_MS  2000    /* how long a toast stays */
 
 typedef struct {
   FmPageKind page;
@@ -688,7 +688,7 @@ typedef enum {
   MORE_PROPERTIES,
 } MoreChoice;
 
-/* More (more_single, more_multi): Share, Add Bookmark (a folder), Open with (a file), Properties. The popup's scrim
+/* More: Share, Add Bookmark (a folder), Open with (a file), Properties. The popup's scrim
  * keeps the selection as it is while it shows, so the choice is found again from it. */
 static int
 more_choices (FmShell *shell, GPtrArray *items, MoreChoice *choices, const char **labels)
@@ -762,8 +762,8 @@ show_more (FmShell *shell, GtkWidget *anchor)
   if (!items->len)
     return;
   n = more_choices (shell, items, choices, labels);
-  /* above the bar, its bottom on the bar's top and its end at the item's (PopupMenu over an anchor at the bottom);
-   * the menu is 48 dp a row and 8 dp at each end */
+  /* above the bar, its bottom on the bar's top and its end at the item's; the menu is 48 px a row and 8 px at each
+   * end */
   fm_popup_show (anchor, labels, n, FM_POPUP_AT, gtk_widget_get_width (anchor) - 196, -(double) (n * 48 + 16),
                  on_more, shell);
 }
@@ -909,7 +909,7 @@ on_overflow_chosen (int index, gpointer data)
   OverflowChoice choices[3];
   int n = 0;
 
-  /* the same list show_overflow made */
+  /* the same list on_overflow made */
   if (shell->page == FM_PAGE_BROWSER && !fm_browser_is_virtual (shell->browser))
     choices[n++] = OVERFLOW_NEW_FOLDER;
   choices[n++] = OVERFLOW_REFRESH;
@@ -1025,7 +1025,7 @@ on_bottom_item (NeoPressable *button, FmShell *shell)
     }
 }
 
-/* item_bottom_menu: the 28 dp glyph over the 14 sp label, white */
+/* a bottom bar item: the glyph over the label */
 static GtkWidget *
 bottom_item (FmShell *shell, BottomItem item, const char *icon, const char *label, gboolean sensitive)
 {
@@ -1348,7 +1348,7 @@ toolbar_new (Shell *s)
   gtk_stack_set_hhomogeneous (GTK_STACK (stack), TRUE);
   gtk_stack_set_vhomogeneous (GTK_STACK (stack), TRUE);
 
-  /* normal: ☰, the title at 72 dp, the actions (48 dp; the overflow 36 dp and 4 dp in) */
+  /* normal: ☰, the title, the actions and the overflow */
   shell->nav = fm_icon_button ("open-menu-symbolic", _("Navigation menu"), 56, 56);
   g_signal_connect (shell->nav, "clicked", G_CALLBACK (on_nav), shell);
   gtk_box_append (GTK_BOX (normal), shell->nav);
@@ -1363,7 +1363,7 @@ toolbar_new (Shell *s)
   g_signal_connect (s->empty, "clicked", G_CALLBACK (on_empty), shell);
   s->edit = fm_icon_button ("document-edit-symbolic", _("Edit"), 48, 56);
   g_signal_connect (s->edit, "clicked", G_CALLBACK (on_edit), shell);
-  /* File Manager+'s + is 17.3 dp of ink (fmplus-1): the theme's list-add (14 of its 16) at 20 */
+  /* the theme's list-add drawn larger than the other glyphs, as its + fills less of its box */
   s->add = fm_icon_button_sized ("list-add-symbolic", _("New location"), 48, 56, 20);
   g_signal_connect (s->add, "clicked", G_CALLBACK (on_add), shell);
   s->overflow = fm_icon_button ("view-more-symbolic", _("More options"), 36, 56);
@@ -1385,7 +1385,7 @@ toolbar_new (Shell *s)
   gtk_box_append (GTK_BOX (settings), title_label (_("Settings")));
   gtk_stack_add_named (GTK_STACK (stack), settings, "settings");
 
-  /* search (view_search): ←, the field with its hint, the spinner while the folders are searched */
+  /* search: ←, the field with its hint, the spinner while the folders are searched */
   button = fm_icon_button ("go-previous-symbolic", _("Back"), 56, 56);
   g_signal_connect (button, "clicked", G_CALLBACK (on_back_button), shell);
   gtk_box_append (GTK_BOX (search), button);
@@ -1404,7 +1404,7 @@ toolbar_new (Shell *s)
   gtk_box_append (GTK_BOX (search), shell->search_spinner);
   gtk_stack_add_named (GTK_STACK (stack), search, "search");
 
-  /* selection (action_mode_file_list): ✕, "N selected", Select All, Select a range */
+  /* selection: ✕, "N selected", Select All, Select a range */
   button = fm_icon_button ("window-close-symbolic", _("Done"), 56, 56);
   g_signal_connect (button, "clicked", G_CALLBACK (on_select_close), shell);
   gtk_box_append (GTK_BOX (select), button);
@@ -1460,7 +1460,7 @@ fm_window_new (GtkApplication *app, GSettings *settings)
   gtk_stack_add_named (GTK_STACK (shell->pages), fm_browser_get_widget (shell->browser), "browser");
   gtk_stack_add_named (GTK_STACK (shell->pages), shell->settings_page, "settings");
   gtk_overlay_set_child (GTK_OVERLAY (content), shell->pages);
-  /* a hidden job's 2 dp line, at the bottom of the content */
+  /* a hidden job's thin progress line, at the bottom of the content */
   shell->job_line = fm_progress_new (2);
   gtk_widget_set_valign (shell->job_line, GTK_ALIGN_END);
   gtk_widget_set_visible (shell->job_line, FALSE);
@@ -1469,7 +1469,7 @@ fm_window_new (GtkApplication *app, GSettings *settings)
   gtk_widget_set_vexpand (content, TRUE);
   gtk_box_append (GTK_BOX (main), content);
 
-  /* the selection or paste bar: the items in equal columns (its 2.67 dp line on top is drawn by CSS) */
+  /* the selection or paste bar: the items in equal columns (its line on top is drawn by CSS) */
   shell->bottom = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (shell->bottom, "fm-bottom");
   shell->bottom_items = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);

@@ -1,8 +1,8 @@
-/* CalDayView: Etar's DayView, the Week (7 days) and Day (1 day) views (spec/calendar.md §3).
+/* CalDayView: the Week (7 days) and Day (1 day) views, ported from Etar's.
  *
  * The hours run down the left; each day is a column of hour cells scrolled together, with the timed events laid
  * out in them, the all-day events in an area above, and in the week a header of weekday and date. It draws itself
- * the way DayView draws its canvas: in device pixels where Etar does (the 1 px hour and day gaps), dp otherwise.
+ * in px, but in device pixels where a px is too coarse (the hour and day gaps, one device pixel each).
  *
  * Signals:
  *   "event-activated" (CalEvent *)          a tap on an event (after its clicked flash)
@@ -33,9 +33,9 @@ int        cal_day_view_get_first_day  (CalDayView *self);
 void       cal_day_view_set_events     (CalDayView *self, GPtrArray *events);
 void       cal_day_view_set_cell_height (CalDayView *self, double cell_height);
 /* Staggered display: overlapping timed events overlap, each later column narrower and shadowed, its title where it
- * shows (Event.computePositions with drawStaggered, EventGeometry) */
+ * shows */
 void       cal_day_view_set_staggered  (CalDayView *self, gboolean staggered);
-/* scroll so that @hour shows a little below the top (DayView.initFirstHour: hour − visible hours / 5) */
+/* scroll so that @hour shows a little below the top (hour − visible hours / 5) */
 void       cal_day_view_scroll_to_hour (CalDayView *self, int hour);
 /* the hour a new event from the FAB starts at: the selected slot, if any */
 gboolean   cal_day_view_get_selection  (CalDayView *self, gint64 *start, gboolean *all_day);

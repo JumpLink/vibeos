@@ -6,9 +6,9 @@
 #include <string.h>
 #include <unistd.h>
 
-#define TILT_POLL_MS     66       /* SENSOR_DELAY_UI */
+#define TILT_POLL_MS     66       /* about 15 readings a second */
 #define THERMAL_POLL_S   5
-#define LOW_BATTERY      15.0     /* % (Aperture's BatteryManager check) */
+#define LOW_BATTERY      15.0     /* %: at or below it the battery is low */
 
 struct _CamSensors {
   GObject       parent;
@@ -60,7 +60,7 @@ read_orientation (CamSensors *self)
   const char *name = value ? g_variant_get_string (value, NULL) : NULL;
   int orientation = self->orientation;
 
-  /* the clockwise turn of the phone, as OrientationEventListener (90: the left edge up) */
+  /* the clockwise turn of the phone (90: the left edge up) */
   if (!g_strcmp0 (name, "normal"))
     orientation = 0;
   else if (!g_strcmp0 (name, "left-up"))
@@ -232,7 +232,7 @@ on_tilt_poll (gpointer data)
   raw[2] = read_number (self->tilt_dir, "in_accel_z_raw", 0) * self->tilt_scale;
   for (int i = 0; i < 3; i++)
     v[i] = self->matrix[i * 3] * raw[0] + self->matrix[i * 3 + 1] * raw[1] + self->matrix[i * 3 + 2] * raw[2];
-  /* OrientationEventListener: X = -x, Y = -y; flat on a table (z dominating) gives no angle */
+  /* X = -x, Y = -y; flat on a table (z dominating) gives no angle */
   double X = -v[0], Y = -v[1], Z = -v[2];
   if ((X * X + Y * Y) * 4 >= Z * Z)
     {
@@ -302,7 +302,7 @@ on_battery_proxy (GObject *object, GAsyncResult *result, gpointer data)
 
 /* One zone against its own trip points: the first passive one is where the kernel starts throttling (moderate),
  * the last passive or the hot one where it throttles hard (severe), ten degrees short of critical is critical, and
- * critical itself is an emergency. Android asks the thermal HAL the same question; this is the kernel's answer. */
+ * critical itself is an emergency. */
 static CamThermal
 zone_status (const char *zone)
 {
@@ -443,7 +443,7 @@ on_geo_started (GObject *object, GAsyncResult *result, gpointer data)
 
   if (reply || g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
     return;
-  /* the agent (the shell's location prompt) or the configuration said no: Aperture's refused permission */
+  /* the agent (the shell's location prompt) or the configuration said no: location is refused */
   g_message ("location: %s", error->message);
   drop_client (self);
   g_signal_emit (self, signals[SIG_LOCATION_REFUSED], 0);
@@ -472,7 +472,7 @@ on_geo_client (GObject *object, GAsyncResult *result, gpointer data)
                                                          self->geo_client, NULL, G_DBUS_SIGNAL_FLAGS_NONE,
                                                          on_location, self, NULL);
   set_client_property (self, "DesktopId", g_variant_new_string ("neo.Camera"));
-  /* GCLUE_ACCURACY_LEVEL_EXACT; updates every metre or second, as Aperture's location request */
+  /* GCLUE_ACCURACY_LEVEL_EXACT; updates every metre or second */
   set_client_property (self, "RequestedAccuracyLevel", g_variant_new_uint32 (8));
   set_client_property (self, "DistanceThreshold", g_variant_new_uint32 (1));
   set_client_property (self, "TimeThreshold", g_variant_new_uint32 (1));

@@ -1,8 +1,4 @@
-/* Call statistics: see call-stats.h. The rules are CallStatsFragment's, CallStatsAdapter's, CallStatsDetails',
- * CallStatsQueryHandler's, CallStatsListItemViewHolder's and CallStatsDetailActivity's (dialer/callstats); the
- * geometry is call_stats_fragment.xml's, call_stats_list_item.xml's, call_stats_detail.xml's,
- * call_stats_detail_info.xml's and call_stats_detail_line.xml's, with the styles of callstats/res/values/styles.xml
- * (spec §5.9). Lineage's Statistics tab was never captured (spec S10): what is here is read from the code. */
+/* Call statistics: see call-stats.h. */
 #include "call-stats.h"
 #include "avatar.h"
 #include "call-log.h"
@@ -18,45 +14,43 @@
 #include <spongy-gtk.h>
 #include <string.h>
 
-/* call_stats_fragment.xml */
-#define BAND_HEIGHT     48      /* the two filter Spinners, listPreferredItemHeightSmall: empty in this build */
-#define OUTER_MARGIN    8       /* call_log_outer_margin */
-#define LIST_PAD_X      8       /* call_log_horizontal_margin */
-/* call_stats_list_item.xml */
+/* the list */
+#define BAND_HEIGHT     48      /* the band for the two filters, empty in this build */
+#define OUTER_MARGIN    8
+#define LIST_PAD_X      8
+/* a row */
 #define ROW_PAD         12
-#define PHOTO           48      /* contact_photo_size */
-#define PHOTO_PAD_TOP   2       /* the badge's paddingTop: the picture is 46 dp, 2 dp down, centred across */
-#define INFO_START      16      /* call_log_list_item_info_margin_start */
+#define PHOTO           48
+#define PHOTO_PAD_TOP   2       /* the picture is PHOTO less this, this far down the badge, centred across */
+#define INFO_START      16
 #define LABEL_END       8
-#define BAR             4       /* CallStatsBarStyle */
+#define BAR             4       /* the row's bar of call types */
 #define BAR_MARGIN      6
-/* call_stats_detail.xml (the caller, as Call details' header), call_stats_detail_info.xml */
-#define BAR_HEIGHT      56      /* DialerToolbar */
+/* the detail page: the caller, as in Call details' header, then the cards */
+#define BAR_HEIGHT      56      /* the toolbar */
 #define NAV_SIZE        56
 #define TITLE_START     72
-#define CALLER_TOP      6       /* call_details_top_margin */
-#define CALLER_PAD_TOP_START 12 /* contact_container_padding_top_start */
-#define CALLER_PAD_BOTTOM_END 8 /* contact_container_padding_bottom_end */
-#define CALLER_TEXT     12      /* photo_text_margin */
-#define BUTTON          48      /* call_back_button_size */
-#define INFO_PAD_X      16      /* call_log_list_item_info_margin_start */
-#define INFO_PAD_Y      8       /* call_log_outer_margin */
+#define CALLER_TOP      6
+#define CALLER_PAD_TOP_START 12
+#define CALLER_PAD_BOTTOM_END 8
+#define CALLER_TEXT     12      /* between the photo and the name */
+#define BUTTON          48      /* the call button */
+#define INFO_PAD_X      16
+#define INFO_PAD_Y      8
 #define CARD_PAD        16
-#define CARD_GAP        16      /* the Spaces between the cards */
+#define CARD_GAP        16      /* between the cards */
 #define CARD_TITLE_GAP  16
-#define DETAIL_BAR      6       /* CallStatsDetailBarStyle */
+#define DETAIL_BAR      6       /* a card's bar of call types */
 #define DETAIL_BAR_MARGIN 8
 #define LINES_TOP       8
-#define ICON_MARGIN     2       /* call_log_icon_margin: under each line, after the icon, before the percent */
-#define TYPE_ICON       12      /* call_type_icon_size */
-#define DIVIDER_MARGIN  8       /* ec_divider_top_bottom_margin */
-#define ACTION_PAD      28      /* CallDetailsActionItemStyle */
+#define ICON_MARGIN     2       /* under each line, after the icon, before the percent */
+#define TYPE_ICON       12
+#define DIVIDER_MARGIN  8       /* above and below the separator over the actions */
+#define ACTION_PAD      28      /* an action row's icon, in from the start */
 #define ACTION_PAD_V    16
 #define ACTION_ICON     24
 
-/* LinearColorBar's paints as rendered: answered_incoming_call and answered_outgoing_call as they are, missed_call
- * made light by force dark, blocked_call (dialer_secondary_text_color) as the secondary text; the rest
- * call_stats_bar_background #88888888 (spec §5.9.2) */
+/* the bars' colours: incoming, outgoing, missed and blocked calls, then the rest of the bar */
 #define BAR_INCOMING    0xff00a8ff
 #define BAR_OUTGOING    0xff00c853
 #define BAR_MISSED      0xfffb6a51
@@ -84,7 +78,7 @@ text_label (const char *text, const char *css_class, double size)
   return label;
 }
 
-/* ---- a number's calls (CallStatsDetails) -------------------------------------------------------------------- */
+/* ---- a number's calls --------------------------------------------------------------------------------------- */
 
 typedef struct
 {
@@ -124,7 +118,7 @@ stat_count (const Stat *stat)
   return stat->in_count + stat->out_count + stat->missed_count + stat->blocked_count;
 }
 
-/* addTimeOrMissed: what is counted is an incoming, an outgoing, a missed or a blocked call; a declined call, a
+/* what is counted is an incoming, an outgoing, a missed or a blocked call; a declined call, a
  * voicemail or one answered on another device counts for nothing */
 static void
 stat_add (Stat *stat, CallType type, gint64 duration)
@@ -161,7 +155,7 @@ stat_merge (Stat *into, const Stat *other)
   into->blocked_count += other->blocked_count;
 }
 
-/* the number is shown as a name and can be called (PhoneNumberHelper.canPlaceCallsTo) */
+/* the number is shown as a name and can be called */
 static gboolean
 stat_callable (const Stat *stat)
 {
@@ -169,14 +163,14 @@ stat_callable (const Stat *stat)
                                                                                       stat->presentation));
 }
 
-/* getRequestedDuration / getRequestedCount with no call-type filter */
+/* the duration or the count, with no call-type filter */
 static double
 stat_value (const Stat *stat, gboolean by_duration)
 {
   return by_duration ? (double) stat_duration (stat) : (double) stat_count (stat);
 }
 
-/* ---- the words (CallStatsListItemViewHolder.getCallCountString, getDurationString) -------------------------- */
+/* ---- the words: counts and durations ------------------------------------------------------------------------ */
 
 static char *
 count_string (guint count)
@@ -184,7 +178,7 @@ count_string (guint count)
   return g_strdup_printf (ngettext ("%d call", "%d calls", count), (int) count);
 }
 
-/* "1 hr 5 mins 3 secs", the parts that are not 0; without the seconds, rounded to the minute. As Lineage rounds,
+/* "1 hr 5 mins 3 secs", the parts that are not 0; without the seconds, rounded to the minute. So
  * 59 min 30 s comes out as "1 hr 60 mins": the hour goes up and the minutes stay */
 static char *
 duration_string (gint64 duration, gboolean with_seconds)
@@ -206,7 +200,7 @@ duration_string (gint64 duration, gboolean with_seconds)
   show_hours = hours > 0;
   show_minutes = minutes > 0 || (!with_seconds && hours == 0);
   show_seconds = with_seconds && (seconds > 0 || (hours == 0 && minutes == 0));
-  /* call_stats_duration: the parts in that order, a space between */
+  /* a duration: the parts in that order, a space between */
   if (show_hours)
     g_string_append_printf (text, ngettext ("%d hr", "%d hrs", hours), hours);
   if (show_minutes)
@@ -224,14 +218,14 @@ duration_string (gint64 duration, gboolean with_seconds)
   return g_string_free (text, FALSE);
 }
 
-/* Math.round on a float: halves go up */
+/* rounded as a float: halves go up */
 static int
 round_half_up (double value)
 {
   return (int) floor (value + 0.5);
 }
 
-/* ---- LinearColorBar ------------------------------------------------------------------------------------------ */
+/* ---- the colour bar ------------------------------------------------------------------------------------------ */
 
 #define STATS_TYPE_BAR (stats_bar_get_type ())
 G_DECLARE_FINAL_TYPE (StatsBar, stats_bar, STATS, BAR, GtkWidget)
@@ -253,7 +247,7 @@ rgba_from (guint32 argb, GdkRGBA *rgba)
   rgba->alpha = ((argb >> 24) & 0xff) / 255.0;
 }
 
-/* LinearColorBar.onDraw: the four parts from the start, each end cut to the whole pixel, then the rest of the
+/* the bar: the four parts from the start, each end cut to the whole pixel, then the rest of the
  * width in the background colour, all inside a pill (the clip path's radius is half the height) */
 static void
 stats_bar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
@@ -312,7 +306,7 @@ stats_bar_new (int height, int margin, double incoming, double outgoing, double 
   return GTK_WIDGET (self);
 }
 
-/* ---- a number's statistics (CallStatsDetailActivity) -------------------------------------------------------- */
+/* ---- a number's statistics ---------------------------------------------------------------------------------- */
 
 #define STATS_TYPE_DETAIL (stats_detail_get_type ())
 G_DECLARE_FINAL_TYPE (StatsDetail, stats_detail, STATS, DETAIL, GtkWidget)
@@ -351,14 +345,14 @@ on_detail_dialed (guint id, const GError *error, gpointer data)
   g_object_unref (self);
 }
 
-/* the call button: a voice call at once (CallIntentBuilder, CALL_LOG) */
+/* the call button: a voice call at once */
 static void
 on_detail_call (StatsDetail *self)
 {
   calls_client_dial (calls_client_get (), self->stat->number, on_detail_dialed, g_object_ref (self));
 }
 
-/* QuickContactBadge: a contact's card */
+/* the picture: a contact's card */
 static void
 on_detail_photo (StatsDetail *self)
 {
@@ -366,7 +360,7 @@ on_detail_photo (StatsDetail *self)
     contacts_app_view (GTK_WIDGET (self), self->uid, self->snackbar);
 }
 
-/* the picture, the name and the number, the call button (updateData's first half) */
+/* the picture, the name and the number, the call button */
 static GtkWidget *
 make_caller (StatsDetail *self)
 {
@@ -397,7 +391,7 @@ make_caller (StatsDetail *self)
   gtk_widget_set_margin_bottom (caller, CALLER_PAD_BOTTOM_END);
   gtk_widget_set_margin_end (caller, CALLER_PAD_BOTTOM_END);
 
-  /* the badge: 48 dp, no padding; only a contact's opens anything */
+  /* the badge: the photo, no padding; only a contact's opens anything */
   dialer_avatar_set (DIALER_AVATAR (avatar), is_contact ? contact->uid : shown, is_contact ? contact->name : NULL,
                      is_contact ? contact->photo : NULL);
   badge = neo_pressable_new (avatar);
@@ -421,7 +415,7 @@ make_caller (StatsDetail *self)
     gtk_box_append (GTK_BOX (texts), text_label (secondary, "dialer-secondary-text", 14));
   gtk_box_append (GTK_BOX (caller), texts);
 
-  /* quantum_ic_call, tinted textColorSecondary, for a number that can be called */
+  /* a call button, for a number that can be called */
   if (stat_callable (stat))
     {
       GtkWidget *call = neo_icon_button_new ("dialer-call-symbolic");
@@ -437,7 +431,7 @@ make_caller (StatsDetail *self)
   return caller;
 }
 
-/* a line of a card (call_stats_detail_line.xml): the call type's small icon, "Incoming: 1 min", the percent */
+/* a line of a card: the call type's small icon, "Incoming: 1 min", the percent */
 static GtkWidget *
 detail_line (CallType type, const char *value, int percent)
 {
@@ -457,7 +451,7 @@ detail_line (CallType type, const char *value, int percent)
   text = g_strdup_printf (_(kinds[i].format), value);
   gtk_widget_set_margin_bottom (line, ICON_MARGIN);
 
-  /* CallTypeIconsView: the 12 dp icon and its 2 dp margin, centred on the line */
+  /* the call-type icon, centred on the line */
   icon = gtk_image_new_from_icon_name (kinds[i].icon);
   gtk_image_set_pixel_size (GTK_IMAGE (icon), TYPE_ICON);
   gtk_widget_set_valign (icon, GTK_ALIGN_CENTER);
@@ -483,7 +477,7 @@ detail_line (CallType type, const char *value, int percent)
   return line;
 }
 
-/* DetailLine.updateFromDurations: none for a type never talked on */
+/* a duration line: none for a type never talked on */
 static void
 add_duration_line (GtkWidget *lines, CallType type, gint64 duration, gint64 total)
 {
@@ -495,7 +489,7 @@ add_duration_line (GtkWidget *lines, CallType type, gint64 duration, gint64 tota
   gtk_box_append (GTK_BOX (lines), detail_line (type, value, round_half_up (100.0 * duration / total)));
 }
 
-/* DetailLine.updateFromCounts */
+/* a count line */
 static void
 add_count_line (GtkWidget *lines, CallType type, guint count, guint total)
 {
@@ -507,7 +501,7 @@ add_count_line (GtkWidget *lines, CallType type, guint count, guint total)
   gtk_box_append (GTK_BOX (lines), detail_line (type, value, total ? round_half_up (100.0 * count / total) : 0));
 }
 
-/* DetailLine.updateAsAverage: no percent */
+/* the average line: no percent */
 static void
 add_average_line (GtkWidget *lines, CallType type, gint64 duration, guint count)
 {
@@ -536,7 +530,7 @@ total_line (const char *title, const char *value)
   return line;
 }
 
-/* a CardView in CallStatsCardStyle, its 16 dp padding, and the title (TextAppearance.CallStatsCategoryTitle) */
+/* a card: its padding and its title */
 static GtkWidget *
 make_card (const char *title, GtkWidget **content)
 {
@@ -566,7 +560,7 @@ card_gap (void)
   return gap;
 }
 
-/* updateData's second half: the three cards */
+/* then the three cards */
 static GtkWidget *
 make_cards (StatsDetail *self)
 {
@@ -667,7 +661,7 @@ action_row (StatsDetail *self, const char *icon_name, const char *text, GCallbac
   return row;
 }
 
-/* ClipboardUtils.copyText with its toast */
+/* the number to the clipboard, with a toast */
 static void
 on_detail_copy (StatsDetail *self)
 {
@@ -675,7 +669,7 @@ on_detail_copy (StatsDetail *self)
   neo_snackbar_show (self->snackbar, _("Text copied"), NULL, NULL, NULL, NEO_SNACKBAR_SHORT);
 }
 
-/* ACTION_DIAL: the dialpad with the number, in the main screen */
+/* the dialpad with the number, in the main screen */
 static void
 on_detail_edit (StatsDetail *self)
 {
@@ -704,7 +698,7 @@ add_actions (StatsDetail *self, GtkWidget *list)
                                                 G_CALLBACK (on_detail_edit)));
 }
 
-/* a contact added or changed: the caller again (UpdateContactTask) */
+/* a contact added or changed: the caller again */
 static void
 on_detail_contacts_changed (StatsDetail *self)
 {
@@ -724,7 +718,7 @@ on_detail_key (GtkEventControllerKey *keys, guint keyval, guint keycode, GdkModi
   return TRUE;
 }
 
-/* DialerToolbar: ✕ (finish) and "Contact statistics details" */
+/* the toolbar: ✕ (close) and "Contact statistics details" */
 static GtkWidget *
 make_detail_bar (StatsDetail *self)
 {
@@ -737,7 +731,7 @@ make_detail_bar (StatsDetail *self)
   gtk_widget_set_size_request (close, NAV_SIZE, NAV_SIZE);
   gtk_widget_set_valign (close, GTK_ALIGN_CENTER);
   gtk_widget_add_css_class (close, "dialer-icon");
-  /* Android names it "Close"; here its name is the one the shell's back gesture clicks */
+  /* named "Back", the button the shell's back gesture clicks; "Close" is its description */
   gtk_accessible_update_property (GTK_ACCESSIBLE (close), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Back"),
                                   GTK_ACCESSIBLE_PROPERTY_DESCRIPTION, _("Close"), -1);
   g_signal_connect_swapped (close, "clicked", G_CALLBACK (detail_close), self);
@@ -787,7 +781,7 @@ stats_detail_init (StatsDetail *self)
 {
 }
 
-/* the caller stays put; the cards and the rows under them scroll (the ScrollView) */
+/* the caller stays put; the cards and the rows under them scroll */
 static GtkWidget *
 stats_detail_new (Contacts *contacts, NeoSnackbar *snackbar, const Stat *stat, const Stat *total)
 {
@@ -832,7 +826,7 @@ struct _CallStats
   Contacts *contacts;
   NeoSnackbar *snackbar;
   GPtrArray *stats;             /* Stat: every number in the log, the newest first */
-  Stat total;                   /* all of them together (mTotalItem) */
+  Stat total;                   /* all of them together */
   GCancellable *loading;
   gboolean loaded, by_duration;
 };
@@ -908,7 +902,7 @@ on_menu_edit (gpointer data)
   g_signal_emit (target->page, signals[EDIT_NUMBER], 0, target->number);
 }
 
-/* CallStatsAdapter's context menu: the number as it is, Copy number and, for a number that can be called and is no
+/* a row's context menu: the number as it is, Copy number and, for a number that can be called and is no
  * SIP address, Edit number before call; a number the network did not send has none */
 static void
 on_row_long_pressed (GtkWidget *row, RowData *data)
@@ -946,7 +940,7 @@ on_row_photo (GtkWidget *badge, const char *uid)
     contacts_app_view (badge, uid, self->snackbar);
 }
 
-/* CallStatsListItemViewHolder.setDetails: @first is the top row's, for the bar's length */
+/* a row: @first is the top row's, for the bar's length */
 static GtkWidget *
 make_row (CallStats *self, const Stat *stat, const Stat *first)
 {
@@ -975,7 +969,7 @@ make_row (CallStats *self, const Stat *stat, const Stat *first)
   gtk_widget_set_margin_top (box, ROW_PAD);
   gtk_widget_set_margin_bottom (box, ROW_PAD);
 
-  /* the 48 dp badge with its 2 dp paddingTop: a 46 dp picture, 2 dp down and 1 dp in */
+  /* the badge's picture, PHOTO_PAD_TOP smaller: that far down, centred across */
   dialer_avatar_set (DIALER_AVATAR (avatar), is_contact ? contact->uid : shown, is_contact ? contact->name : NULL,
                      is_contact ? contact->photo : NULL);
   gtk_widget_set_margin_top (avatar, PHOTO_PAD_TOP);
@@ -1014,8 +1008,8 @@ make_row (CallStats *self, const Stat *stat, const Stat *first)
   /* by duration incoming and outgoing; by count missed and blocked too */
   gtk_box_append (GTK_BOX (texts), stats_bar_new (BAR, BAR_MARGIN, in, out, missed, blocked));
 
-  /* a contact's number: its kind and the number (12 sp). Anyone else's: the place, which there is none of (no
-   * geocoder), so an empty line that keeps its height */
+  /* a contact's number: its kind and the number. Anyone else's: the place, which there is none of (no geocoder),
+   * so an empty line that keeps its height */
   line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   if (is_contact && kind && *kind)
     {
@@ -1033,7 +1027,7 @@ make_row (CallStats *self, const Stat *stat, const Stat *first)
   gtk_box_append (GTK_BOX (texts), line);
   gtk_box_append (GTK_BOX (box), texts);
 
-  /* selectableItemBackground; a tap the number's statistics, a long press the context menu */
+  /* a bounded ripple; a tap the number's statistics, a long press the context menu */
   row = neo_pressable_new (box);
   neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
   neo_pressable_set_ripple_color (NEO_PRESSABLE (row), &(GdkRGBA) { 1, 1, 1, 0.06 });
@@ -1060,8 +1054,8 @@ compare_stats (gconstpointer a, gconstpointer b, gpointer by_duration)
   return va < vb ? 1 : va > vb ? -1 : 0;
 }
 
-/* updateDisplayedData, updateHeader, updateEmptyVisibilityAndMessage: the rows with anything to show (by duration a
- * number talked to, by count any), most first, under "Total: 12 calls, 1 hr 5 mins" */
+/* the rows with anything to show (by duration a number talked to, by count any), most first, under
+ * "Total: 12 calls, 1 hr 5 mins" */
 static void
 show (CallStats *self)
 {
@@ -1086,7 +1080,7 @@ show (CallStats *self)
   gtk_stack_set_visible_child (GTK_STACK (self->stack), self->loaded && !shown->len ? self->empty : self->scroller);
 }
 
-/* CallStatsQueryHandler.processData and mergeItemsByNumber: one item per number, the same line in another format
+/* one item per number, the same line in another format
  * being the same number; every withheld call is one item ("" is "") */
 static void
 on_loaded (GObject *source, GAsyncResult *result, gpointer data)
@@ -1205,8 +1199,8 @@ call_stats_init (CallStats *self)
   self->by_duration = TRUE;
 }
 
-/* the AppBarLayout (the filter band, the total) scrolls away with the list here, and comes back only at the top:
- * Lineage's scroll|enterAlways brings it back on any scroll up */
+/* the band over the list (the filter band, the total) scrolls away with the list, and comes back only at the top,
+ * not on any scroll up */
 GtkWidget *
 call_stats_new (Contacts *contacts, NeoSnackbar *snackbar)
 {
@@ -1222,8 +1216,7 @@ call_stats_new (Contacts *contacts, NeoSnackbar *snackbar)
   gtk_widget_set_valign (content, GTK_ALIGN_START);
   gtk_widget_set_size_request (band, -1, BAND_HEIGHT);
   gtk_box_append (GTK_BOX (content), band);
-  /* sum_header: ContactListSeparatorTextViewStyle with 8 dp margins and 8 dp above and below; at 35 dp it is over
-   * the style's 32 dp minimum */
+  /* the total over the list */
   self->header = text_label ("", "stats-header", 14);
   gtk_widget_set_margin_start (self->header, OUTER_MARGIN + OUTER_MARGIN);
   gtk_widget_set_margin_end (self->header, OUTER_MARGIN);

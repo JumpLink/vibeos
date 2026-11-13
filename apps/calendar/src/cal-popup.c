@@ -103,7 +103,7 @@ cal_popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, int 
   gtk_widget_set_overflow (card, GTK_OVERFLOW_HIDDEN);
   gtk_box_append (GTK_BOX (card), scroll);
 
-  /* ListPopupWindow: as tall as the rows (and the card's 8 dp padding), within the window; over the anchor, moved
+  /* as tall as the rows (and the card's padding), within the window; over the anchor, moved
    * up if it would run off the bottom */
   height = MIN (n_labels * ROW_HEIGHT + 16, window_height - 2 * EDGE);
   top = CLAMP (at.y, EDGE, window_height - EDGE - height);

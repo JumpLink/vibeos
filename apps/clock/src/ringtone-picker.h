@@ -1,10 +1,9 @@
-/* RingtonePicker: the alarm and timer sound picker (DeskClock's RingtonePickerActivity, L/ringtone_picker.xml;
- * spec/clock.md §3), opened from an alarm's ringtone row or Settings ▸ Timer sound.
+/* RingtonePicker: the alarm and timer sound picker, opened from an alarm's ringtone row or Settings ▸ Timer sound.
  *
  * "Your sounds" (the files the user added, and "Add new"), then "Device sounds": Silent, the default sound, and every
  * alarm sound the system has. Tapping a sound selects it and plays it at the alarm volume; tapping the selected one
- * stops or plays it again. The choice is saved as the page goes (onPause): for an alarm, as that alarm's sound and
- * the default for new alarms; for timers, as the timer sound.
+ * stops or plays it again. The choice is saved as the page goes: for an alarm, as that alarm's sound and the default
+ * for new alarms; for timers, as the timer sound.
  *
  * Signals: "closed" (): Up was pressed. */
 #pragma once

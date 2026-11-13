@@ -1,17 +1,16 @@
-/* The contacts, from evolution-data-server (spec §10.1): every enabled address book is an "account", each vCard a
+/* The contacts, from evolution-data-server: every enabled address book is an "account", each vCard a
  * contact. CtStore keeps a live view of all of them and writes through to them.
  *
- * Android's ContactsProvider joins the raw contacts of several accounts into one person; EDS has no such
- * aggregation, so each vCard is a contact of its own here, and the Link / Unlink / "View linked contacts" features
- * that rest on aggregation are left out (see ct-quick.c, ct-people.c).
+ * EDS does not join the cards of several accounts into one person, so each vCard is a contact of its own here, and the
+ * Link / Unlink / "View linked contacts" features that rest on aggregation are left out (see ct-quick.c, ct-people.c).
  *
  * Labels are vCard CATEGORIES, so they belong to no single account: one label "Family" covers the Family contacts
  * of every address book. A label with no members has nothing in any vCard to keep it, so the names of the labels
- * made here are kept in GSettings ("labels") until they are deleted, as CP2 keeps an empty group.
+ * made here are kept in GSettings ("labels") until they are deleted.
  *
  * "My info" (the profile) is EDS's self contact: the vCard e_book_client_set_self names (in the GSettings key
  * org.gnome.evolution-data-server.addressbook self-contact-uid, which Evolution and GNOME Contacts read too). A new
- * one goes to EDS's own personal address book. Android keeps the profile out of the list, and so does the store:
+ * one goes to EDS's own personal address book. The profile is kept out of the list:
  * the self contact is not among the entries, ct_store_get_profile has it, and the screens name it CT_PROFILE_UID. */
 #pragma once
 
@@ -25,7 +24,7 @@ G_BEGIN_DECLS
 /* --- a contact as the screens see it */
 
 typedef struct {
-  char *uid;                    /* the vCard UID (Android's lookup key) */
+  char *uid;                    /* the vCard UID */
   char *book_uid;               /* the address book (ESource UID) it is in */
   EContact *contact;
   char *name[3];                /* the display name by CtNameOrder (index 1 primary, 2 alternative) */

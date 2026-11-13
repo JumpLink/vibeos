@@ -208,7 +208,7 @@ cal_text_dialog (GtkWidget *parent, const char *title, const char *text, CalText
 
   ask->done = done;
   ask->data = data;
-  /* preference_dialog_edittext: the field under the title, 24 dp in, its line in colorControlActivated */
+  /* the field under the title, underlined in the primary colour */
   ask->entry = gtk_entry_new ();
   gtk_editable_set_text (GTK_EDITABLE (ask->entry), text ? text : "");
   gtk_widget_add_css_class (ask->entry, "cal-dialog-entry");

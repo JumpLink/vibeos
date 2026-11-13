@@ -1,4 +1,4 @@
-/* calc-expr: see calc-expr.h. A port of CalculatorExpr.java. */
+/* calc-expr: see calc-expr.h. A port of ExactCalculator's CalculatorExpr. */
 #include "calc-expr.h"
 #include "calc-failure.h"
 

@@ -1,5 +1,5 @@
-/* calc-expr: an expression as the user builds it, and its evaluation, ExactCalculator's
- * CalculatorExpr (CalculatorExpr.java).
+/* calc-expr: an expression as the user builds it, and its evaluation; ported from ExactCalculator's
+ * CalculatorExpr.
  *
  * An expression is a list of tokens:
  *  - a constant: the digits typed so far ("12.5", "3E-7" after a paste);

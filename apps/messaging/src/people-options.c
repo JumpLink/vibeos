@@ -12,7 +12,7 @@
 #include <neo.h>
 #include <spongy-gtk.h>
 
-/* people_options_item_view.xml, people_list_item_view.xml, person_item_view.xml, dimens.xml */
+/* an option's row and a person's */
 #define OPTION_HEIGHT 56
 #define PAD 16
 #define PERSON_PAD_VERTICAL 8
@@ -53,7 +53,7 @@ text_label (const char *text, const char *css_class)
   return label;
 }
 
-/* a section's header: 16 sp grey with 16 dp all round; the second has a 1 dp line above it */
+/* a section's header, padded all round; the second has a hairline above it */
 static GtkWidget *
 header (const char *text, gboolean divider)
 {
@@ -152,7 +152,7 @@ on_person_clicked (GtkWidget *row, gpointer data)
 {
   PeopleOptions *self = data;
 
-  /* PersonItemView: the contact's card, or "Add to Contacts?" (ContactUtil.showOrAddContact) */
+  /* a person's row: the contact's card, or "Add to Contacts?" */
   msg_contact_show_or_add (row, g_object_get_data (G_OBJECT (row), "person"), self->snackbar);
 }
 
@@ -317,7 +317,7 @@ people_options_new (SmsClient *client, Contacts *contacts, gint64 conversation)
   g_signal_connect_swapped (msg_action_bar_get_up (bar), "clicked", G_CALLBACK (on_up), self);
   gtk_box_append (GTK_BOX (self->box), bar);
 
-  /* a ListView with no dividers but the one over the people */
+  /* a list with no dividers but the one over the people */
   self->list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), self->list);
   gtk_overlay_set_child (GTK_OVERLAY (content), scroll);

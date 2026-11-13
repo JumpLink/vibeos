@@ -1,36 +1,29 @@
-/* The reminder screens (cal-alert-page.h): Etar's AlertActivity, SnoozeDelayActivity and QuickResponseActivity.
+/* The reminder screens (cal-alert-page.h): the reminders page, the snooze delay and Email guests.
  *
- * AlertActivity is a Theme.Holo.Dialog activity, and on Android 16 it still looks it, whatever the app's theme:
- * the dialog_title_holo window title ("Calendar notifications", 22 sp holo_blue_light, 64 dp tall, 16 dp in, a 2 dp
- * holo_blue_light line under it) on dialog_full_holo_dark, as wide as windowMinWidthMinor/Major (95 % of a portrait
- * screen, 65 % of a landscape one), over the 60 % dim. Its alert_activity.xml is the list (alert_item.xml rows,
- * dividers between them) over a divider and a button bar with one borderless button, "Dismiss all". A row
- * (AlertAdapter): a 12 dp square in the calendar's display colour 6 dp down, 16 dp in and 16 dp before the title
- * (18 sp, two lines at most); under it, 44 dp in, the time (14 sp, one line; AlertAdapter.updateView's text, which
- * cal_alert_when makes) with the repeat icon after it for an event with a repeat rule, and the place (14 sp, one
- * line, none when there is none). The title is #FFFFFF and the rest #999999, all three #8F999999 once the event has
- * ended (alert_past_event). The rows are 16 dp from the top and the bottom, 64 dp at least
- * (listPreferredItemHeight).
+ * The reminders page is an old-style dark dialog, whatever the app's theme: a blue window title ("Calendar
+ * notifications") with a blue line under it, on a dark dialog 95 % as wide as a portrait screen (65 % of a
+ * landscape one), over the 60 % dim. The list (dividers between its rows) is over a divider and a button bar with
+ * one borderless button, "Dismiss all". A row: a square in the calendar's display colour before the title (two
+ * lines at most); under it, the time (one line, as cal_alert_when makes it) with the repeat icon after it for an
+ * event with a repeat rule, and the place (one line, none when there is none). The title is white and the rest
+ * grey, all three dimmed once the event has ended.
  *
- * As AlertActivity, the list is the reminders the service holds as fired (CalendarAlerts.STATE_FIRED, its
- * GetFired()), by start then title, scrolled to the last one. A tap on a row dismisses that reminder, opens its
- * event and closes the page; "Dismiss all" dismisses them all (their notifications go too) and closes it. The
- * page follows the service's FiredChanged() as AlertActivity's cursor follows the provider. Not as Etar: an emptied
- * list closes the page, where Etar leaves an empty dialog up, and the page does not open when nothing is fired (a
- * notification swiped before the app came up).
+ * The list is the reminders the service holds as fired (its GetFired()), by start then title, scrolled to the last
+ * one. A tap on a row dismisses that reminder, opens its event and closes the page; "Dismiss all" dismisses them
+ * all (their notifications go too) and closes it. The page follows the service's FiredChanged(). An emptied list
+ * closes the page, and the page does not open when nothing is fired (a notification swiped before the app came
+ * up).
  *
- * What is approximated: the Holo nine-patches (the dialog background, the list and bar dividers) are flat colours
- * of their look; a row's press is the app's ripple, not list_selector_holo_dark's blue; the repeat icon is the app's
- * Material one at ic_repeat_dark's 14 dp.
+ * The dialog background and the dividers are flat colours; a row's press is the app's ripple; the repeat icon is
+ * the app's own.
  *
- * SnoozeDelayActivity is TimePickerDialog(…, 24-hour), titled "Set snooze delay", at the default snooze delay as
- * hours and minutes; OK snoozes the reminder that long through the service's Snooze(), Cancel does nothing. The
- * picker is libneo's NeoTimePicker, the platform dialog's (not the editor's MaterialTimePicker), always 24-hour.
+ * The snooze delay: a time picker titled "Set snooze delay", at the default snooze delay as hours and minutes; OK
+ * snoozes the reminder that long through the service's Snooze(), Cancel does nothing. The picker is libneo's
+ * NeoTimePicker (not the editor's CalTimePicker), always 24-hour.
  *
- * QuickResponseActivity: the app's dialog style (getDialogStyle), "Choose quick response" over the quick responses
- * in Arrays.sort order and "Write your own…"; a tap opens the mail app (AlertReceiver.createEmailIntent: the guests
- * but the calendar's owner, "Re: <title>", the response as the body). Etar's "Failed to find an email program"
- * toast is never shown (it lacks .show()), so none is here either. */
+ * Email guests: a dialog in the app's dialog style, "Choose quick response" over the quick responses sorted and
+ * "Write your own…"; a tap opens the mail app (the guests but the calendar's owner, "Re: <title>", the response as
+ * the body). No message is shown when there is no mail app. */
 #include "cal-alert-page.h"
 #include "cal-alerts.h"
 #include "cal-dialogs.h"
@@ -66,7 +59,7 @@ service_call (const char *method, GVariant *parameters)
     g_variant_unref (g_variant_ref_sink (parameters));
 }
 
-/* --- AlertActivity */
+/* --- the reminders page */
 
 typedef struct {
   char *occurrence, *calendar, *uid, *rid;
@@ -82,7 +75,7 @@ typedef struct {
   GCancellable *cancellable;    /* the GetFired call in flight */
 } Page;
 
-static Page *page;              /* singleInstance: one at a time */
+static Page *page;              /* one at a time */
 
 static void refresh (Page *self);
 
@@ -112,7 +105,7 @@ page_free (Page *self)
   g_free (self);
 }
 
-/* windowMinWidthMinor 95 % (a portrait screen), windowMinWidthMajor 65 % (a landscape one): the dialog window's
+/* 95 % of a portrait screen's width, 65 % of a landscape one's: the dialog window's
  * width, its content's ellipsizing within it */
 static void
 holo_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, int *minimum, int *natural,
@@ -148,7 +141,7 @@ on_row (NeoPressable *row, Page *self)
   Item *item = g_object_get_data (G_OBJECT (row), "cal-item");
   const char *occurrences[] = { item->occurrence, NULL };
 
-  /* dismissAlarm, then EventInfoActivity over the views, then finish() */
+  /* dismissed, its event's info over the views, the page closed */
   service_call ("Dismiss", g_variant_new ("(^as)", occurrences));
   cal_window_open_reminder (self->window, item->calendar, item->uid, item->rid, item->start);
   neo_dialog_respond (self->dialog, NEO_RESPONSE_CANCEL);
@@ -157,7 +150,7 @@ on_row (NeoPressable *row, Page *self)
 static void
 on_dismiss_all (NeoPressable *button, Page *self)
 {
-  /* nm.cancelAll(), dismissFiredAlarms(), finish() */
+  /* every notification and fired reminder dismissed, the page closed */
   service_call ("DismissAll", NULL);
   neo_dialog_respond (self->dialog, NEO_RESPONSE_CANCEL);
 }
@@ -191,7 +184,7 @@ draw_square (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer 
 }
 
 
-/* alert_item.xml, filled as AlertAdapter.bindView and updateView fill it */
+/* a reminder's row */
 static GtkWidget *
 alert_row (Page *self, const char *occurrence, GVariant *fields)
 {
@@ -219,10 +212,10 @@ alert_row (Page *self, const char *occurrence, GVariant *fields)
   g_variant_lookup (fields, "recurring", "b", &recurring);
   g_variant_lookup (fields, "color", "u", &color);
 
-  /* the colour square: Utils.getDisplayColorFromColor of the calendar's colour */
+  /* the colour square: the calendar's colour as events show it */
   color = cal_display_color (color, g_settings_get_boolean (settings, "real-event-colors"));
   gtk_drawing_area_set_draw_func (GTK_DRAWING_AREA (square), draw_square, GUINT_TO_POINTER (color), NULL);
-  /* 12 dp, 6 dp down, 16 dp on each side; in widget margins, as a size request in GTK 4 includes the CSS ones */
+  /* widget margins, not CSS ones: a size request in GTK 4 includes the CSS ones */
   gtk_widget_set_size_request (square, 12, 12);
   gtk_widget_set_margin_top (square, 6);
   gtk_widget_set_margin_start (square, 16);
@@ -250,7 +243,7 @@ alert_row (Page *self, const char *occurrence, GVariant *fields)
   gtk_widget_set_valign (box, GTK_ALIGN_CENTER);
   row = neo_pressable_new (box);
   gtk_widget_add_css_class (row, "cal-alert-row");
-  /* endMillis < now: alert_past_event for all three */
+  /* an event that has ended: all three dimmed */
   if (end < g_get_real_time () / G_USEC_PER_SEC)
     gtk_widget_add_css_class (row, "past");
   neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
@@ -264,7 +257,7 @@ alert_row (Page *self, const char *occurrence, GVariant *fields)
   return row;
 }
 
-/* mListView.setSelection(cursor.getCount() - 1): the last one in sight, once the list is laid out */
+/* the last one in sight, once the list is laid out */
 static gboolean
 to_last (GtkWidget *scroll, GdkFrameClock *clock, gpointer data)
 {
@@ -286,7 +279,7 @@ divider (const char *css_class)
   return line;
 }
 
-/* the dialog around the list: the window title, alert_activity.xml */
+/* the dialog around the list: the window title, the list, the button bar */
 static void
 build (Page *self)
 {
@@ -406,16 +399,16 @@ cal_alert_page_show (GtkWidget *window)
   refresh (self);
 }
 
-/* --- SnoozeDelayActivity */
+/* --- the snooze delay */
 
-static char *snoozing;          /* the reminder the picker is open for (singleInstance: one at a time) */
+static char *snoozing;          /* the reminder the picker is open for (one at a time) */
 
 static void
 on_snooze_delay (NeoDialog *dialog, int response, NeoTimePicker *picker)
 {
   int hour, minute;
 
-  /* onTimeSet: SnoozeAlarmsService with that delay; a cancel leaves the reminder as it was */
+  /* OK: snoozed with that delay; a cancel leaves the reminder as it was */
   neo_time_picker_get_time (picker, &hour, &minute);
   if (response == NEO_RESPONSE_OK && snoozing)
     service_call ("Snooze", g_variant_new ("(si)", snoozing, hour * 60 + minute));
@@ -428,13 +421,13 @@ cal_alert_snooze_delay (GtkWidget *window, const char *occurrence, int minutes)
   NeoDialog *dialog;
   GtkWidget *picker;
 
-  /* onPrepareDialog: the default delay, SNOOZE_DELAY_DEFAULT_TIME when it is none */
+  /* the default delay, 5 minutes when it is none */
   if (minutes < 0)
     minutes = 5;
   g_free (snoozing);
   snoozing = g_strdup (occurrence);
-  /* the platform TimePickerDialog (not the editor's MaterialTimePicker), titled, its clock always 24-hour as
-   * TimePickerDialog(…, true) makes it: hours and minutes of delay, not a time of day */
+  /* libneo's time picker (not the editor's), titled, its clock always 24-hour: hours and minutes of delay, not a
+   * time of day */
   dialog = neo_dialog_new (_("Set snooze delay"));
   neo_dialog_set_flush (dialog, TRUE);
   gtk_widget_add_css_class (GTK_WIDGET (dialog), "cal-snooze-dialog");
@@ -446,7 +439,7 @@ cal_alert_snooze_delay (GtkWidget *window, const char *occurrence, int minutes)
   neo_dialog_present (dialog, window);
 }
 
-/* --- QuickResponseActivity */
+/* --- Email guests */
 
 typedef struct {
   GtkWidget *window;
@@ -480,7 +473,7 @@ on_quick_response (int index, gpointer data)
 static int
 compare_responses (gconstpointer a, gconstpointer b)
 {
-  /* Arrays.sort: String.compareTo, code unit by code unit (UTF-8 bytes order the same but for the astral planes) */
+  /* by UTF-16 code unit (UTF-8 bytes order the same but for the astral planes) */
   return strcmp (*(const char *const *) a, *(const char *const *) b);
 }
 

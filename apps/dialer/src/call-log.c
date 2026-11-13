@@ -10,7 +10,7 @@ struct _CallLog {
   sqlite3 *db;
 };
 
-/* CallLog.Calls' columns that the Dialer reads (CallLogQuery), less the cached contact fields: the app looks the
+/* the call log's columns that the Dialer reads, less the cached contact fields: the app looks the
  * contact up as it shows a row, so a renamed contact never shows its old name here */
 static const char schema[] =
   "CREATE TABLE IF NOT EXISTS calls ("
@@ -179,7 +179,7 @@ call_log_add (CallLog *self, const CallLogEntry *entry)
   else
     sqlite3_bind_null (insert, 6);
   sqlite3_bind_int (insert, 7, entry->is_read);
-  /* only a missed call is news (CallLogNotificationsQueryHelper reads type = MISSED and new = 1) */
+  /* only a missed call is news (type = MISSED and new = 1) */
   sqlite3_bind_int (insert, 8, !entry->is_read);
   if (sqlite3_step (insert) == SQLITE_DONE)
     id = sqlite3_last_insert_rowid (self->db);

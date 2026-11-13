@@ -1,7 +1,7 @@
-/* One button of the in-call screen's grid: InCallUI's CheckableLabeledButton (spec §8.8).
+/* One button of the in-call screen's grid.
  *
- * A 64 dp circle with a 36 dp icon in it and a 12 sp label under it. Checked (Mute on, Speaker on, the keypad
- * open, the call on hold) the circle fills light and the icon turns black; insensitive, the button shows at 30 %.
+ * A circle with an icon in it and a label under it. Checked (Mute on, Speaker on, the keypad open, the call on
+ * hold) the circle fills light and the icon turns black; insensitive, the button shows at 30 %.
  * The ripple fills the circle wherever on the button the finger lands. */
 #pragma once
 

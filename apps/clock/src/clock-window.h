@@ -1,6 +1,6 @@
-/* The Clock's window (DeskClock's DeskClock activity, L/desk_clock.xml; spec/clock.md §1).
+/* The Clock's window.
  *
- * Top to bottom: a 64 dp app bar with the tab's name; the tab's page, with the row of buttons over its bottom (the
+ * Top to bottom: an app bar with the tab's name; the tab's page, with the row of buttons over its bottom (the
  * floating action button and one either side, each tab's own: clock-tab.h) and the snackbar under that; the bottom
  * navigation bar with the four tabs. Tabs change at once, with no animation. */
 #pragma once

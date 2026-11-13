@@ -1,13 +1,13 @@
-/* Settings (ct-settings.h, spec §5.2 to §5.4).
+/* Settings (ct-settings.h).
  *
- * The rows, in preference_display_options.xml's order: My info, Accounts, Default account for new contacts,
- * Contacts to display, Sort by, Name format, Phonetic name, Import, Export, About Contacts. Each is a framework
- * preference row: 16 dp in, 16 dp above and below the text, the title 16 sp #dbdbdb and the summary 14 sp #959595.
- * About Contacts takes the screen's place under the same toolbar (a fragment of the same activity); "Contacts to
- * display" and "Customize view" are activities of their own, so pages here.
+ * The rows, in order: My info, Accounts, Default account for new contacts,
+ * Contacts to display, Sort by, Name format, Phonetic name, Import, Export, About Contacts. Each is a
+ * preference row: a title and, under it, a summary of the current choice when there is one.
+ * About Contacts takes the screen's place under the same toolbar; "Contacts to display"
+ * and "Customize view" are pages of their own.
  *
  * Left out, for want of anything to back them:
- *  - Blocked numbers: the screen is the Dialer's (TelecomManager's MANAGE_BLOCKED_NUMBERS) and the Dialer has no
+ *  - Blocked numbers: the screen is the Dialer's and the Dialer has no
  *    action that opens it yet.
  *  - Import from SIM: a SIM's contacts are an address book of EDS's when EDS has one for it, and then they are
  *    in the list already; the import dialog offers only the .vcf file.
@@ -32,7 +32,7 @@
 #define CT_VERSION "1.0"
 #endif
 
-/* ===== a preference row (preference_material.xml) =============================================================== */
+/* ===== a preference row ========================================================================================= */
 
 static GtkWidget *
 pref_row (const char *title, const char *summary, GtkWidget **summary_label, GCallback clicked, gpointer data)
@@ -106,7 +106,7 @@ static void
 update (Settings *s)
 {
   EContact *profile = ct_store_get_profile (s->store);
-  /* the default account's name only once one has been chosen (Android's is null until then) */
+  /* the default account's name only once one has been chosen */
   g_autofree char *chosen = g_settings_get_string (s->settings, "default-account");
   CtBook *book = *chosen ? ct_store_get_book (s->store, chosen) : NULL;
   g_autofree char *filter = g_settings_get_string (s->settings, "contacts-to-display");
@@ -127,7 +127,7 @@ update (Settings *s)
   set_summary (s->format_summary, ct_display_order (s->settings) == CT_ORDER_PRIMARY ? _("First name first")
                                                                                     : _("Last name first"));
   set_summary (s->phonetic_summary, g_str_equal (phonetic, "always") ? _("Always show") : _("Hide if empty"));
-  /* Export is removed when there are no contacts to export (removeUnsupportedPreferences) */
+  /* Export is removed when there are no contacts to export */
   gtk_widget_set_visible (s->export_row, ct_store_count (s->store) > 0);
 }
 
@@ -187,7 +187,7 @@ on_default_chosen (int response, gpointer data)
     g_settings_set_string (s->settings, "default-account", ((CtBook *) books->pdata[response])->uid);
 }
 
-/* Android hands this to the system's account picker; here it is the same radio list over EDS's writable books */
+/* a radio list over EDS's writable books */
 static void
 on_default_account (NeoPressable *row, Settings *s)
 {
@@ -225,7 +225,7 @@ on_choice (int response, gpointer data)
   g_free (choice);
 }
 
-/* ListPreference: the title, two radio rows, a tap commits */
+/* the title, two radio rows, a tap commits */
 static void
 choose (Settings *s, const char *title, const char *key, const char *value0, const char *label0,
         const char *value1, const char *label1)
@@ -260,7 +260,7 @@ on_phonetic (NeoPressable *row, Settings *s)
   choose (s, _("Phonetic name"), "phonetic-name", "always", _("Always show"), "hide-if-empty", _("Hide if empty"));
 }
 
-/* --- import (§5.4.1, §5.4.2, §5.4.4) */
+/* --- import */
 
 typedef struct {
   GtkWidget *window;
@@ -285,7 +285,7 @@ on_import_files (GObject *source, GAsyncResult *result, gpointer data)
   g_free (target);
 }
 
-/* ACTION_OPEN_DOCUMENT, text/x-vcard, several at once: the file chooser (the portal's, where there is one) */
+/* Import: text/x-vcard, several at once: the file chooser (the portal's, where there is one) */
 static void
 pick_vcf_files (GtkWidget *window, const char *book_uid)
 {
@@ -323,7 +323,7 @@ on_import_source (int response, gpointer data)
 
   if (response != 0)
     return;
-  /* more than one writable account: "Save imported contacts to:" first (SelectAccountDialogFragment) */
+  /* more than one writable account: "Save imported contacts to:" first */
   if (books->len > 1)
     {
       const char *labels[32];
@@ -346,7 +346,7 @@ on_import (NeoPressable *row, Settings *s)
   ct_list_dialog (s->page, CT_DIALOG_FRAMEWORK, _("Import contacts from"), labels, 1, TRUE, on_import_source, s);
 }
 
-/* --- export (§5.4.5) */
+/* --- export */
 
 static void
 on_export_chosen (int response, gpointer data)
@@ -371,7 +371,7 @@ on_export (NeoPressable *row, Settings *s)
   ct_list_dialog (s->page, CT_DIALOG_APPCOMPAT, _("Export contacts"), labels, 1, FALSE, on_export_chosen, s);
 }
 
-/* --- About Contacts: the rows in the screen's place, the title "About Contacts" (showAboutFragment) */
+/* --- About Contacts: the rows in the screen's place, the title "About Contacts" */
 
 static void
 show_about (Settings *s, gboolean about)
@@ -462,9 +462,9 @@ ct_settings_new (GtkWidget *window)
   return page;
 }
 
-/* ===== "Contacts to display" (AccountFilterActivity, §5.3.1) and "Customize view" (§5.3.2) ====================== */
+/* ===== "Contacts to display" and "Customize view" ====================== */
 
-/* a filter row: the text 16 dp in (#e2e3e3), a radio or a checkbox at the end 16 dp in */
+/* a filter row: the text, and a radio or a checkbox at the end */
 static GtkWidget *
 filter_row (const char *text, GtkWidget *mark, GCallback clicked, gpointer data)
 {
@@ -583,7 +583,7 @@ on_customize_back (CtPage *page, gpointer data)
 }
 
 /* one row per address book with its checkbox: EDS has no groups inside a book, so a book is shown or not as a
- * whole (an account's "All contacts" row of Android's) */
+ * whole */
 static GtkWidget *
 customize_new (GtkWidget *window, GtkWidget *filter_page)
 {
@@ -672,7 +672,7 @@ on_filter (NeoPressable *row, Settings *s)
   gtk_box_append (GTK_BOX (page), rows);
   gtk_widget_set_vexpand (spacer, TRUE);
   gtk_box_append (GTK_BOX (page), spacer);
-  /* the list's bottom divider (contact_list_filter.xml) */
+  /* the list's bottom divider */
   gtk_widget_add_css_class (divider, "ct-filter-divider");
   gtk_box_append (GTK_BOX (page), divider);
   ct_window_push (s->window, page);
@@ -693,7 +693,7 @@ job_free (Job *job)
   g_free (job);
 }
 
-/* "Finished importing vCard %s": a notification on Android, and here (GNotification, to whatever shows them) */
+/* "Finished importing vCard %s": a notification (GNotification, to whatever shows them) */
 static void
 notify (const char *id, const char *title)
 {
@@ -762,7 +762,7 @@ ct_import_file (GtkWidget *window, GFile *file)
 
   job->window = g_object_ref (window);
   job->name = g_file_get_basename (file);
-  /* vcard_import_will_start_message, Toast.LENGTH_LONG */
+  /* a long toast */
   message = g_strdup_printf (_("%s will be imported shortly."), job->name);
   ct_window_toast (window, message);
   g_file_load_contents_async (file, NULL, on_loaded, job);
@@ -813,7 +813,7 @@ on_export_file (GObject *source, GAsyncResult *result, gpointer data)
                                  on_written, export);
 }
 
-/* ACTION_CREATE_DOCUMENT: the file chooser saves the vCards; "<name>.vcf" for one, contacts.vcf for several */
+/* Export: the file chooser saves the vCards; "<name>.vcf" for one, contacts.vcf for several */
 void
 ct_export_contacts (GtkWidget *window, GPtrArray *uids, const char *title)
 {

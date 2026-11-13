@@ -76,8 +76,8 @@ test_alternative_order (void)
   g_autoptr(GPtrArray) entries = people ();
   g_autoptr(CtRows) rows = ct_rows_new (entries, CT_ORDER_ALTERNATIVE, CT_ORDER_ALTERNATIVE, NULL, FALSE);
 
-  /* by family name: Adams, Baker, Brown, shown family name first; a name-only card is split as CP2's NameSplitter
-   * splits one, so "$ Money" is Money's */
+  /* by family name: Adams, Baker, Brown, shown family name first; a name-only card is split the Western way,
+   * so "$ Money" is Money's */
   g_assert_cmpstr (name_at (rows, 0), ==, "?");
   g_assert_cmpstr (name_at (rows, 1), ==, "Adams, Anna");
   g_assert_cmpstr (name_at (rows, 2), ==, "Baker, Bob");

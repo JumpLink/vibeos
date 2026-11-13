@@ -1,4 +1,4 @@
-/* cam-window: see cam-window.h. "A/" is CameraActivity.kt, "VM/" CameraViewModel.kt (spec/camera.md's notation). */
+/* cam-window: see cam-window.h. */
 #include "cam-window.h"
 #include "cam-constants.h"
 #include "cam-devices.h"
@@ -21,13 +21,13 @@
 #include <neo.h>
 
 #define APP_ID            "neo.Camera"
-#define ZOOM_MAX          8.0      /* digital: a crop of the frame (§23); CameraX's maxZoomRatio of a camera */
-#define BAR_ICON          40       /* the 24 dp drawable, fitCenter in the 48 dp button less its 4 dp padding */
+#define ZOOM_MAX          8.0      /* digital: a crop of the frame */
+#define BAR_ICON          40       /* the icon scaled to the button less its padding */
 #define FLASH_SETTLE_MS   1000     /* the torch on before the frame is taken: the exposure follows it */
 #define SCREEN_FLASH_MS   500      /* the white screen up before the frame is taken */
-#define BITRATE_1080      16000000 /* the live app's 1080p files, ≈ 16 Mbit/s (§11.1) */
+#define BITRATE_1080      16000000 /* the live app's 1080p files, ≈ 16 Mbit/s */
 #define BITRATE_720       8000000
-#define INDEFINITE        G_MAXINT /* Snackbar.LENGTH_INDEFINITE */
+#define INDEFINITE        G_MAXINT /* a snackbar that stays */
 
 typedef enum {
   ST_IDLE,
@@ -67,12 +67,12 @@ struct _CamView {
   GtkWidget *viewfinder, *island, *countdown, *zoom_slider, *pro_row, *snackbar;
   GtkWidget *pro_button, *lenses, *flash_button, *flash_icon;
   GtkWidget *gallery, *shutter, *flip, *pause, *modes;
-  GPtrArray *rotators;                  /* what turns with the phone (§17) */
+  GPtrArray *rotators;                  /* what turns with the phone */
   ProButton  p_aspect, p_quality, p_fps, p_hdr, p_mic, p_timer, p_grid, p_settings;
   /* over the whole window */
   GtkWidget *settings_page, *toast, *white;
 
-  /* state (§21.6) */
+  /* state */
   CamMode    mode;
   CamState   state;
   CamFacing  facing;
@@ -94,13 +94,13 @@ struct _CamView {
   gboolean   in_settings, closing;
   guint      close_timer;
 
-  /* zoom (§8) */
+  /* zoom */
   double     zoom, pinch_base;
   gint64     pinch_end;
   NeoAnim   *zoom_anim;
   guint      slider_hide;
 
-  /* the pro row (§7) */
+  /* the pro row */
   double     pro_shown;
   gboolean   pro_open;
   NeoAnim   *pro_anim;
@@ -145,7 +145,7 @@ on_close_timeout (gpointer data)
   return G_SOURCE_REMOVE;
 }
 
-/* an error toast, then the app closes as Aperture's activity finishes */
+/* an error toast, then the app closes */
 static void
 fail (CamView *self, const char *text)
 {
@@ -166,7 +166,7 @@ rotator (CamView *self, GtkWidget *child)
   return rot;
 }
 
-/* a 48 dp bar button with a 40 dp icon that turns with the phone, and the borderless ripple (§6.1) */
+/* a bar button with an icon that turns with the phone, and the borderless ripple */
 static GtkWidget *
 bar_button (CamView *self, const char *icon_name, GtkWidget **icon)
 {
@@ -188,7 +188,7 @@ facing_name (CamFacing facing)
 static double
 zoom_progress (double ratio)
 {
-  /* CameraX's linear zoom: the crop width moves linearly from 1/min to 1/max */
+  /* the linear zoom: the crop width moves linearly from 1/min to 1/max */
   return CLAMP ((1 - 1 / ratio) / (1 - 1 / ZOOM_MAX), 0, 1);
 }
 
@@ -212,7 +212,7 @@ session_bus (CamView *self)
   return g_application_get_dbus_connection (G_APPLICATION (self->app));
 }
 
-/* volume keys as the shutter (§18): the shell hands them to the app in front that asks (extension/service.js) */
+/* volume keys as the shutter: the shell hands them to the app in front that asks (extension/service.js) */
 static void
 take_volume_keys (CamView *self, gboolean take)
 {
@@ -249,7 +249,7 @@ shell_has (CamView *self, const char *method)
   return FALSE;
 }
 
-/* Bright screen and the screen flash (§1, §12.2): the window's brightness at 100 %. The shell owns the backlight,
+/* Bright screen and the screen flash: the window's brightness at 100 %. The shell owns the backlight,
  * so this needs its KeepScreenBright (not there yet: the row is left out without it) */
 static void
 keep_bright (CamView *self, gboolean on)
@@ -275,7 +275,7 @@ sync_shell (CamView *self)
   keep_bright (self, front && g_settings_get_boolean (self->settings, "bright-screen"));
 }
 
-/* ---- the flash (§6.1) ------------------------------------------------------------------------------------------ */
+/* ---- the flash ------------------------------------------------------------------------------------------------- */
 
 static gboolean
 has_led (CamView *self)
@@ -331,7 +331,7 @@ set_led (CamView *self, CamLed led)
 static void
 sync_torch (CamView *self)
 {
-  /* a torch mode lights the LED while the camera runs (CameraControl.enableTorch) */
+  /* a torch mode lights the LED while the camera runs */
   set_led (self, self->running && current_flash (self) == FLASH_TORCH ? CAM_LED_TORCH : CAM_LED_OFF);
 }
 
@@ -388,7 +388,7 @@ on_flash_clicked (NeoPressable *button, CamView *self)
       update_flash (self);
       return;
     }
-  /* the next supported one, in FlashMode's order */
+  /* the next supported one, in the flash modes' order */
   for (int i = 1; i <= 4; i++)
     {
       CamFlash next = (current_flash (self) + i) % 4;
@@ -419,7 +419,7 @@ on_flash_long_pressed (NeoPressable *button, CamView *self)
   update_flash (self);
 }
 
-/* ---- zoom (§8) ------------------------------------------------------------------------------------------------- */
+/* ---- zoom ------------------------------------------------------------------------------------------------------ */
 
 static gboolean
 on_slider_hide (gpointer data)
@@ -459,7 +459,7 @@ on_zoom_anim (NeoAnim *anim, double value, gpointer data)
 static void
 smooth_zoom (CamView *self, double ratio)
 {
-  /* a ValueAnimator from the current ratio, 300 ms AD */
+  /* from the current ratio, 300 ms accelerate-decelerate */
   neo_anim_start (self->zoom_anim, self->zoom, CLAMP (ratio, 1, ZOOM_MAX), CAM_MS_DEFAULT, 0,
                   SPONGY_ACCELERATE_DECELERATE);
 }
@@ -501,10 +501,10 @@ on_pinch_end (CamViewfinder *viewfinder, CamView *self)
   self->pinch_end = g_get_monotonic_time ();
 }
 
-/* ---- the lens buttons (§6.2) ----------------------------------------------------------------------------------- */
+/* ---- the lens buttons ------------------------------------------------------------------------------------------ */
 
 /* the phone's turn the UI still makes up for: its own, less the turn the shell gave the screen. 0 while the screen
- * follows the phone (a landscape layout), the phone's turn while the screen stays upright (Aperture's way) */
+ * follows the phone (a landscape layout), the phone's turn while the screen stays upright */
 static int
 ui_turn (CamView *self)
 {
@@ -562,7 +562,7 @@ update_lenses (CamView *self)
   }
 }
 
-/* ---- the pro row (§7) ------------------------------------------------------------------------------------------ */
+/* ---- the pro row ----------------------------------------------------------------------------------------------- */
 
 static void
 on_pro_anim (NeoAnim *anim, double value, gpointer data)
@@ -581,7 +581,7 @@ slide_pro (CamView *self, gboolean open)
   if (open == self->pro_open)
     return;
   self->pro_open = open;
-  /* slide up 250 ms, down 200 ms, both AD, with the alpha */
+  /* slide up 250 ms, down 200 ms, both accelerate-decelerate, with the alpha */
   neo_anim_start (self->pro_anim, self->pro_shown, open ? 1 : 0, open ? CAM_MS_SLIDE_UP : CAM_MS_SLIDE_DOWN, 0,
                   SPONGY_ACCELERATE_DECELERATE);
 }
@@ -615,7 +615,7 @@ pro_button (CamView *self, ProButton *pro, GtkWidget *row, GCallback clicked)
   gtk_widget_set_size_request (box, CAM_PRO_BUTTON_W, -1);
   pro->rotator = rotator (self, box);
   pro->button = neo_pressable_new (pro->rotator);
-  /* borderless: half the 96 × 68⅓ dp button's diagonal */
+  /* borderless: half the 96 × 68⅓ px button's diagonal */
   neo_pressable_set_ripple (NEO_PRESSABLE (pro->button), NEO_RIPPLE_CIRCLE,
                             hypot (CAM_PRO_BUTTON_W, CAM_PRO_ROW_H - 2 * CAM_PRO_ROW_PAD_V) / 2);
   gtk_widget_set_valign (pro->button, GTK_ALIGN_START);
@@ -665,7 +665,7 @@ update_pro_row (CamView *self)
   pro_set (&self->p_aspect, "cam-aspect-ratio-symbolic", self->wide ? "16:9" : "4:3");
   pro_set (&self->p_quality, self->quality == 720 ? "cam-hd-symbolic" : "cam-full-hd-symbolic",
            self->quality == 720 ? "720p" : "1080p");
-  /* the camera's own rate: there is no other to choose, so AUTO and disabled, as Aperture shows a single option */
+  /* the camera's own rate: there is no other to choose, so AUTO and disabled, as a single option is shown */
   pro_set (&self->p_fps, "cam-video-frame-rate-symbolic", _("AUTO FPS"));
   pro_set (&self->p_hdr, "cam-hdr-off-symbolic", "SDR");
   pro_set (&self->p_mic, self->mic ? "cam-mic-on-symbolic" : "cam-mic-off-symbolic",
@@ -799,7 +799,7 @@ on_pro (NeoPressable *button, CamView *self)
   slide_pro (self, !self->pro_open);
 }
 
-/* ---- rotation (§17) -------------------------------------------------------------------------------------------- */
+/* ---- rotation -------------------------------------------------------------------------------------------------- */
 
 static void
 apply_orientation (CamView *self, gboolean animate)
@@ -880,7 +880,7 @@ set_state (CamView *self, CamState state)
   update_controls (self);
 }
 
-/* ---- the gallery thumbnail (§5.1) ------------------------------------------------------------------------------ */
+/* ---- the gallery thumbnail ------------------------------------------------------------------------------------- */
 
 static void
 on_thumbnail (GObject *object, GAsyncResult *result, gpointer data)
@@ -958,7 +958,7 @@ stream_size (CamView *self, int *width, int *height)
 static gboolean
 preview_cover (CamView *self)
 {
-  /* PreviewView's fitCenter as the live app shows it: 4:3 whole, 16:9 and video filling the viewfinder */
+  /* a 4:3 photo shows whole; 16:9 and video fill the viewfinder */
   return self->mode == CAM_MODE_VIDEO || (self->mode == CAM_MODE_PHOTO && self->wide);
 }
 
@@ -981,14 +981,14 @@ bind_camera (CamView *self)
                                    preview_cover (self), width, height);
       return;
     }
-  /* the last frame stays, blurred, until the new stream runs (PreviewBlurView) */
+  /* the last frame stays, blurred, until the new stream runs */
   if (cam_pipeline_is_streaming (self->pipeline))
     cam_viewfinder_freeze (CAM_VIEWFINDER (self->viewfinder));
   g_free (self->bound_id);
   self->bound_id = g_strdup (self->camera->id);
   self->bound_w = width;
   self->bound_h = height;
-  /* a new binding starts at 1× (CameraX's zoom state is the camera's) */
+  /* a new binding starts at 1× (the zoom belongs to the camera bound) */
   neo_anim_stop (self->zoom_anim);
   apply_zoom (self, 1, FALSE);
   cam_pipeline_set_scanning (self->pipeline, FALSE);
@@ -1074,7 +1074,7 @@ on_flip (CamFlip *flip, CamView *self)
   bind_camera (self);
 }
 
-/* ---- modes (§3) ------------------------------------------------------------------------------------------------ */
+/* ---- modes ----------------------------------------------------------------------------------------------------- */
 
 static void
 set_mode (CamView *self, CamMode mode, gboolean animate)
@@ -1130,7 +1130,7 @@ on_fling (CamViewfinder *viewfinder, int direction, CamView *self)
     set_mode (self, next, TRUE);
 }
 
-/* ---- focus (§9) ------------------------------------------------------------------------------------------------ */
+/* ---- focus ----------------------------------------------------------------------------------------------------- */
 
 static void
 on_tapped (CamViewfinder *viewfinder, double x, double y, CamView *self)
@@ -1150,12 +1150,12 @@ on_focused (CamPipeline *pipeline, CamView *self)
   cam_viewfinder_focus_done (CAM_VIEWFINDER (self->viewfinder));
 }
 
-/* ---- photos (§4.4, §12, §21) ----------------------------------------------------------------------------------- */
+/* ---- photos ---------------------------------------------------------------------------------------------------- */
 
 static int
 capture_rotation (CamView *self)
 {
-  /* the frame's turn to upright for the phone as it is held: Android's JPEG orientation */
+  /* the frame's turn to upright for the phone as it is held: the JPEG's orientation */
   int sensor = self->camera->orientation, device = self->orientation;
 
   return is_front (self) ? (sensor - device + 360) % 360 : (sensor + device) % 360;
@@ -1248,7 +1248,7 @@ take_photo (CamView *self)
     }
   else if (flash == FLASH_SCREEN)
     {
-      /* ScreenFlashView: the window white (and at full brightness where the shell lets it) for the shot */
+      /* the screen flash: the window white (and at full brightness where the shell lets it) for the shot */
       gtk_widget_set_visible (self->white, TRUE);
       keep_bright (self, TRUE);
       self->flash_timer = g_timeout_add (SCREEN_FLASH_MS, on_flash_ready, self);
@@ -1257,7 +1257,7 @@ take_photo (CamView *self)
     cam_pipeline_grab (self->pipeline, on_grabbed, self);
 }
 
-/* ---- the countdown (§10) --------------------------------------------------------------------------------------- */
+/* ---- the countdown --------------------------------------------------------------------------------------------- */
 
 static void
 on_countdown_finished (CamCountdown *countdown, CamView *self)
@@ -1284,7 +1284,7 @@ start_timer_and_run (CamView *self)
     start_video (self);
 }
 
-/* ---- video (§11) ----------------------------------------------------------------------------------------------- */
+/* ---- video ----------------------------------------------------------------------------------------------------- */
 
 static gboolean
 on_duration_tick (gpointer data)
@@ -1402,7 +1402,7 @@ on_pause (CamPause *pause, CamView *self)
     }
 }
 
-/* ---- the shutter (§4.4) ---------------------------------------------------------------------------------------- */
+/* ---- the shutter ----------------------------------------------------------------------------------------------- */
 
 static void
 shutter (CamView *self)
@@ -1444,7 +1444,7 @@ on_shutter (CamShutter *button, CamView *self)
   shutter (self);
 }
 
-/* ---- the volume keys (§18) ------------------------------------------------------------------------------------- */
+/* ---- the volume keys ------------------------------------------------------------------------------------------- */
 
 static void
 volume_key (CamView *self, int direction)
@@ -1588,14 +1588,14 @@ sync_running (CamView *self)
   self->running = run;
   if (run)
     {
-      /* keepScreenOn */
+      /* the screen kept on */
       self->inhibit = gtk_application_inhibit (self->app, self->window, GTK_APPLICATION_INHIBIT_IDLE,
                                                _("Camera"));
       bind_camera (self);
     }
   else
     {
-      /* a recording ends with the screen (onPause), a countdown is dropped */
+      /* a recording ends when the screen goes, a countdown is dropped */
       if (self->state == ST_COUNTDOWN)
         {
           cam_countdown_cancel (CAM_COUNTDOWN (self->countdown));
@@ -1654,7 +1654,7 @@ on_encoder (gpointer data)
   g_object_unref (self);
 }
 
-/* ---- layout (§2) ----------------------------------------------------------------------------------------------- */
+/* ---- layout ---------------------------------------------------------------------------------------------------- */
 
 static void
 cam_view_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, int *min, int *nat, int *min_base,
@@ -1699,7 +1699,7 @@ place_island (CamView *self, int vf_w, int vf_h)
 
   gtk_widget_measure (self->island, GTK_ORIENTATION_HORIZONTAL, -1, NULL, &w, NULL, NULL);
   h = CAM_ISLAND_H;
-  /* the corner that is top-left for the user, the card turned to read upright (IslandView.kt:161-200) */
+  /* the corner that is top-left for the user, the card turned to read upright */
   fw = o % 180 ? h : w;
   fh = o % 180 ? w : h;
   x = o == 0 || o == 90 ? CAM_ISLAND_MARGIN : vf_w - CAM_ISLAND_MARGIN - fw;
@@ -1712,7 +1712,7 @@ place_island (CamView *self, int vf_w, int vf_h)
 
 /* the landscape layout: what the portrait one puts left to right in a bar goes top to bottom in its column, the
  * end buttons the same distances in from the top and the bottom (flash and flip at the top, pro and the gallery at
- * the bottom), the shutter in the middle 16 dp from the preview as it is 16 dp under it upright */
+ * the bottom), the shutter in the middle, as far from the preview as it is under it upright */
 static void
 allocate_landscape (CamView *self, int width, int height)
 {
@@ -1740,7 +1740,7 @@ allocate_landscape (CamView *self, int width, int height)
                                                                                  + (1 - self->pro_shown) * pro_h)));
   place (self->snackbar, 0, 0, vf_w, height);
 
-  /* the secondary column: the flash 40 dp from the top, the lenses in the middle, pro 40 dp from the bottom */
+  /* the secondary column: the flash near the top, the lenses in the middle, pro near the bottom */
   if (gtk_widget_get_visible (self->flash_button))
     place (self->flash_button, col2 + (CAM_SECONDARY_BAR_H - CAM_BAR_BUTTON) / 2, CAM_BAR_BUTTON_MARGIN,
            CAM_BAR_BUTTON, CAM_BAR_BUTTON);
@@ -1751,7 +1751,7 @@ allocate_landscape (CamView *self, int width, int height)
     place (self->pro_button, col2 + (CAM_SECONDARY_BAR_H - CAM_BAR_BUTTON) / 2,
            height - CAM_BAR_BUTTON_MARGIN - CAM_BAR_BUTTON, CAM_BAR_BUTTON, CAM_BAR_BUTTON);
 
-  /* the primary column: the flip 32 dp from the top, the shutter in the middle, the gallery 32 dp from the bottom */
+  /* the primary column: the flip near the top, the shutter in the middle, the gallery near the bottom */
   if (gtk_widget_get_visible (self->flip))
     place (self->flip, shutter_x + (CAM_SHUTTER_VIEW - CAM_FLIP_SIZE) / 2.0, CAM_GALLERY_MARGIN, CAM_FLIP_SIZE,
            CAM_FLIP_SIZE);
@@ -1804,7 +1804,7 @@ cam_view_size_allocate (GtkWidget *widget, int width, int height, int baseline)
                                                                                  + (1 - self->pro_shown) * pro_h)));
   place (self->snackbar, 0, 0, width, vf_h);
 
-  /* the secondary bar: pro 40 dp in, the lenses centred, the flash 40 dp from the end, all 12 dp down */
+  /* the secondary bar: pro at the start, the lenses centred, the flash at the end, all centred in the bar */
   if (gtk_widget_get_visible (self->pro_button))
     place (self->pro_button, CAM_BAR_BUTTON_MARGIN, bar2 + (CAM_SECONDARY_BAR_H - CAM_BAR_BUTTON) / 2,
            CAM_BAR_BUTTON, CAM_BAR_BUTTON);
@@ -1815,7 +1815,7 @@ cam_view_size_allocate (GtkWidget *widget, int width, int height, int baseline)
     place (self->flash_button, width - CAM_BAR_BUTTON_MARGIN - CAM_BAR_BUTTON,
            bar2 + (CAM_SECONDARY_BAR_H - CAM_BAR_BUTTON) / 2, CAM_BAR_BUTTON, CAM_BAR_BUTTON);
 
-  /* the primary bar: 16 dp padding over the 75 dp row; the gallery 32 dp in, the flip 32 dp from the end */
+  /* the primary bar: padding over the shutter's row; the gallery at the start, the flip at the end */
   place (self->gallery, CAM_GALLERY_MARGIN, bar1 + CAM_PRIMARY_BAR_PAD + (CAM_SHUTTER_VIEW - CAM_GALLERY_SIZE) / 2.0,
          CAM_GALLERY_SIZE, CAM_GALLERY_SIZE);
   if (gtk_widget_get_visible (self->shutter))
@@ -2005,7 +2005,7 @@ build (CamView *self)
   gtk_widget_set_parent (self->zoom_slider, widget);
   g_signal_connect (self->zoom_slider, "changed", G_CALLBACK (on_slider_changed), self);
 
-  /* the pro row: 16 dp spacers, 96 dp buttons, 8 dp over and under, scrolling sideways without a scrollbar */
+  /* the pro row: spaced buttons, scrolling sideways without a scrollbar */
   gtk_widget_set_margin_top (row, CAM_PRO_ROW_PAD_V);
   gtk_widget_set_margin_bottom (row, CAM_PRO_ROW_PAD_V);
   spacer = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
@@ -2067,7 +2067,7 @@ build (CamView *self)
   gtk_widget_set_parent (self->modes, widget);
   g_signal_connect (self->modes, "mode-chosen", G_CALLBACK (on_mode_chosen), self);
 
-  /* the snackbar over the viewfinder's bottom, above the secondary bar (§19.4) */
+  /* the snackbar over the viewfinder's bottom, above the secondary bar */
   self->snackbar = neo_snackbar_new ();
   gtk_widget_add_css_class (self->snackbar, "cam-snackbar");
   gtk_widget_set_parent (self->snackbar, widget);
@@ -2177,7 +2177,7 @@ on_window_destroy (GtkWidget *window, CamView *self)
   sync_running (self);
 }
 
-/* first start with GeoClue there: "Add photo and video locations" (§19.2) */
+/* first start with GeoClue there: "Add photo and video locations" */
 static gboolean
 on_ask_location (gpointer data)
 {

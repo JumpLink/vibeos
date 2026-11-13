@@ -111,7 +111,7 @@ ct_page_toolbar (CtPage *self, const char *css_class, const char *nav_icon, cons
     gtk_widget_add_css_class (bar, css_class);
   if (nav_icon)
     {
-      /* the navigation button: 56 x 56 dp, a borderless ripple of half its diagonal (#1fffffff, §1.2) */
+      /* the navigation button: a borderless ripple of half its diagonal */
       GtkWidget *nav = ct_icon_button (nav_icon, nav_name, CT_TOOLBAR_NAV_W_DP, CT_TOOLBAR_H_DP,
                                        CT_RIPPLE_APPCOMPAT);
 
@@ -119,7 +119,7 @@ ct_page_toolbar (CtPage *self, const char *css_class, const char *nav_icon, cons
       g_signal_connect (nav, "clicked", G_CALLBACK (on_nav), self);
       gtk_box_append (GTK_BOX (bar), nav);
     }
-  /* contentInsetStartWithNavigation: the title starts 72 dp in, 16 dp after the 56 dp button */
+  /* the title starts a gap after the navigation button */
   label = ct_label (title ? title : "", "ct-toolbar-title", CT_TOOLBAR_TITLE_SP);
   gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
   gtk_widget_set_valign (label, GTK_ALIGN_CENTER);

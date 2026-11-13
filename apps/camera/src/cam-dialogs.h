@@ -1,9 +1,8 @@
 /* cam-dialogs: the two dialogs of the Camera.
  *
- *   cam_list_dialog       Settings' list preference (an AlertDialog's single-choice list and Cancel; §20.1): the
- *                         choice answers at once, as ListPreferenceDialogFragmentCompat does
- *   cam_location_dialog   "Add photo and video locations" (§19.2, L/location_permissions_dialog.xml): asked once,
- *                         when "Save location data" was never set and the phone can locate at all */
+ *   cam_list_dialog       a Settings choice: a single-choice list and Cancel; a tap on a choice answers at once
+ *   cam_location_dialog   "Add photo and video locations": asked once, when "Save location data" was never set
+ *                         and the phone can locate at all */
 #pragma once
 
 #include <gtk/gtk.h>

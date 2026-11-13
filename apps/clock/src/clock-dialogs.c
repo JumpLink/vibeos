@@ -30,9 +30,7 @@ on_item (NeoPressable *row, NeoDialog *dialog)
   neo_dialog_respond (dialog, 100 + GPOINTER_TO_INT (g_object_get_data (G_OBJECT (row), "clock-index")));
 }
 
-/* select_dialog_singlechoice_material: 48 dp tall, 20 dp in; the radio (listChoiceIndicatorSingle, its 20 dp ring
- * in a 32 dp drawable), 20 dp, then the text, 24 dp from the end (measured on still:camera-settings-list-dialog, the
- * same AlertDialog list in another LineageOS app: ring at x 153…212 px, text from 292, from a card edge at 75) */
+/* a choice of a list dialog: the radio, then the text */
 static GtkWidget *
 item_row (const char *label, int index, gboolean checked)
 {

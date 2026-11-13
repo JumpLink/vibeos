@@ -1,15 +1,13 @@
-/* the recurrence picker (RecurrencePickerDialog: recurrencepicker.xml, recurrencepicker_freq_item.xml,
- * recurrencepicker_end_text.xml, styles.xml's RecurrencePickerStyle and RecurrenceDayOfWeekStyle); fork D's.
+/* the repeat dialog (cal-recurrence-picker.c).
  * Loaded after calendar.css at its priority (cal-main.c); the looks' named colours come from calendar-black.css and
- * calendar-light.css over both. Text is 15 sp Regular (700 with "Bold text" on); disabled, onSurface at 38 %. */
+ * calendar-light.css over both. Text is regular weight, 700 with "Bold text" on. */
 
-.neo-dialog.cal-recur-card {             /* the dialog window: colorSurfaceContainer (the layout's own background), the
-                                          * AppCompat dialog's 2 dp corners */
+.neo-dialog.cal-recur-card {             /* the dialog window */
   background-color: @neo_surface_container;
   border-radius: 2px;
 }
 
-.cal-recur-top {                         /* the frequency and the switch: 12 dp in, 4 dp under */
+.cal-recur-top {                         /* the frequency and the switch */
   padding: 12px 12px 4px 12px;
 }
 
@@ -18,18 +16,18 @@
 }
 
 .cal-recur cal-spinner,
-.cal-recur-end-spinner {                 /* AppCompat's Spinner: 48 dp at least (dropdownListPreferredItemHeight) */
+.cal-recur-end-spinner {
   min-height: 48px;
 }
 
-.cal-recur .cal-spinner-text {           /* recurrencepicker_freq_item: 12 dp in all round */
+.cal-recur .cal-spinner-text {
   padding: 12px;
   font-size: 15px;
   font-weight: 700;
   color: @neo_on_surface;
 }
 
-.cal-recur-end-spinner .cal-spinner-text {   /* recurrencepicker_end_text: 8 dp under */
+.cal-recur-end-spinner .cal-spinner-text {
   padding: 12px 12px 8px 12px;
 }
 
@@ -39,11 +37,11 @@
   color: alpha(@neo_on_surface, 0.38);
 }
 
-.cal-recur-options {                     /* 12 dp at the sides, 4 dp under */
+.cal-recur-options {
   padding: 0 12px 4px 12px;
 }
 
-.cal-recur-interval {                    /* "Every [1] week": 4 dp in */
+.cal-recur-interval {                    /* "Every [1] week" */
   padding: 0 4px;
 }
 
@@ -53,8 +51,8 @@
   color: @neo_on_surface;
 }
 
-/* the EditTexts (15 sp): AppCompat's field, 4 dp in at the sides and over the top, the text 14 dp down, its line
- * (1 dp colorControlNormal, 2 dp colorControlActivated with the focus) 7 dp over the field's bottom */
+/* the number fields: an underline a little above the field's bottom, thicker and in the primary colour with the
+ * focus */
 .cal-recur-number {
   margin: 4px 4px 7px 4px;
   padding: 10px 0 11px 0;
@@ -87,15 +85,15 @@
   background-color: alpha(@neo_primary, 0.4);
 }
 
-.cal-recur-interval-field {              /* ems 2 and 4 dp at each side: 43 dp, its line 35 */
+.cal-recur-interval-field {              /* room for two digits */
   min-width: 35px;
 }
 
-.cal-recur-count-field {                 /* ems 3 and the field's own 8 dp at each side: 69 dp, its line 61 */
+.cal-recur-count-field {                 /* room for three digits */
   min-width: 61px;
 }
 
-/* the weekdays (LinearLayoutWithMaxWidth of WeekButtons): rows 4 dp in, the first 8 dp under the interval */
+/* the weekday buttons' rows, the first under the interval */
 .cal-recur-week {
   margin: 8px 4px 0 4px;
 }
@@ -104,18 +102,17 @@
   margin: 0 4px;
 }
 
-.cal-recur-day {                         /* RecurrenceDayOfWeekStyle: 8 dp apart at the sides, 4 dp over and under;
-                                          * the platform ToggleButton's 48 dp least height */
+.cal-recur-day {                         /* a weekday's toggle */
   margin: 4px 8px;
   min-height: 48px;
 }
 
-.cal-recur-day-face {                    /* 12 sp, bold (900 with "Bold text"), all caps */
+.cal-recur-day-face {                    /* bold (900 with "Bold text" on), in caps */
   font-size: 12px;
   font-weight: 900;
 }
 
-/* the monthly RadioButtons: 48 dp, the radio in 32 dp, then the text */
+/* the monthly choices: a radio mark, then the text */
 .cal-recur-radio {
   min-height: 48px;
 }
@@ -134,7 +131,7 @@
   color: alpha(@neo_on_surface, 0.38);
 }
 
-/* the end: the spinner 8 dp left of the options' edge, 8 dp before the count or the date */
+/* the end: the spinner, then the count or the date */
 .cal-recur-end {
   margin-left: -8px;
 }
@@ -143,7 +140,7 @@
   margin-right: 8px;
 }
 
-.cal-recur-end-date {                    /* 15 sp #757575 (in every look), 80 dp at least, 12 dp in, 8 dp under */
+.cal-recur-end-date {                    /* the same grey in every look */
   min-width: 80px;
   margin-top: 3px;
   padding: 0 0 8px 12px;
@@ -152,7 +149,7 @@
   color: #757575;
 }
 
-/* the line (listDivider) 8 dp under the options, then Done (buttonBarButtonStyle) across the bar */
+/* a line under the options, then Done across the bar */
 .cal-recur-divider {
   min-height: 1px;
   margin-top: 8px;
@@ -177,7 +174,7 @@
   color: alpha(@neo_on_surface, 0.38);
 }
 
-/* the editor's Repeat button off (a rule the dialog cannot show): M3's disabled outlined button */
+/* the editor's Repeat button off (a rule the dialog cannot show) */
 .cal-outlined:disabled {
   color: alpha(@neo_on_surface, 0.38);
   border-color: alpha(@neo_on_surface, 0.12);

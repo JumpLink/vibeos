@@ -9,7 +9,7 @@
 /* --- time zones */
 
 /* tzdata's links, "L TARGET NAME" lines in tzdata.zi: the old names ("Asia/Calcutta" → "Asia/Kolkata"). Debian ships
- * them as files only in tzdata-legacy, which the phone does not have, but DeskClock's list (like ICU) still uses
+ * them as files only in tzdata-legacy, which the phone does not have, but the city list (like ICU) still uses
  * them, so we follow them ourselves. Read once. */
 static GHashTable *
 links (void)
@@ -58,8 +58,8 @@ clock_zone_offset (GTimeZone *tz, gint64 time)
   return g_time_zone_get_offset (tz, g_time_zone_find_interval (tz, G_TIME_TYPE_UNIVERSAL, time));
 }
 
-/* TimeZone.getRawOffset: the offset without daylight saving time. GLib has no such call, so this looks for an
- * interval without DST now or half a year either side of now (Europe's summer is Australia's winter). */
+/* the offset without daylight saving time. GLib has no call for it, so this looks for an interval without DST now or
+ * half a year either side of now (Europe's summer is Australia's winter). */
 static int
 raw_offset (GTimeZone *tz, gint64 time)
 {
@@ -87,7 +87,7 @@ clock_zone_gmt_label (GTimeZone *tz, gint64 time)
 
 /* --- the cities */
 
-/* City.removeSpecialCharacters: the regex [ -.'] is the range from space to '.' (" !\"#$%&'()*+,-.") plus "'" */
+/* without [ -.']: the range from space to '.' (" !\"#$%&'()*+,-.") plus "'" */
 static char *
 search_key (const char *text)
 {
@@ -126,7 +126,7 @@ cities_get_all (void)
       GTimeZone *tz = clock_zone_new (data->zone);
       City *city;
 
-      /* CityDAO.createCity: a zone the system does not know (Java gives GMT for it) drops the city */
+      /* a zone the system does not know drops the city */
       if (!tz)
         {
           g_debug ("no time zone %s for %s", data->zone, data->name);
@@ -167,13 +167,13 @@ cities_compare_index (const City *a, const City *b, CitySort sort)
 {
   if (sort == CITY_SORT_OFFSET)
     {
-      /* UtcOffsetIndexComparator: the offset now, DST included */
+      /* by time: the offset now, DST included */
       gint64 now = sort_time ? sort_time : g_get_real_time () / G_USEC_PER_SEC;
       int offset_a = clock_zone_offset (a->tz, now), offset_b = clock_zone_offset (b->tz, now);
 
       return (offset_a > offset_b) - (offset_a < offset_b);
     }
-  /* NameIndexComparator: a number in the index first, then the index letters in the locale's collation */
+  /* by name: a number in the index first, then the index letters in the locale's collation */
   if (a->number != b->number)
     return a->number < b->number ? -1 : 1;
   return g_utf8_collate (a->data->index, b->data->index);
@@ -188,7 +188,7 @@ cities_compare (gconstpointer pa, gconstpointer pb, gpointer data)
 
   result = cities_compare_index (a, b, sort);
   if (result == 0 && sort == CITY_SORT_OFFSET)
-    /* UtcOffsetComparator: then by name, which is NameComparator */
+    /* by time, then by name */
     result = cities_compare_index (a, b, CITY_SORT_NAME);
   if (result == 0)
     result = g_utf8_collate (a->data->name, b->data->name);

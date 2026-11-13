@@ -1,6 +1,5 @@
-/* The in-call window: see incall-window.h. The rules are InCallActivity.java's: which screen shows
- * (showMainInCallFragment), what Back does (onBackPressed), and the window flags (showWhenLocked, which the desktop
- * file asks of the shell, and keepScreenOn on the answer screen, fragment_incoming_call.xml). */
+/* The in-call window: see incall-window.h. Which screen shows, what Back does, and the window's needs: over the lock
+ * screen (which the desktop file asks of the shell), and the screen kept on while the answer screen shows. */
 #include "incall-window.h"
 #include "answer-view.h"
 #include "call-types.h"
@@ -56,7 +55,7 @@ take_volume_keys (gboolean take)
                             NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 }
 
-/* the answer screen keeps the screen on (keepScreenOn) and takes the volume keys while it is in front; the window
+/* the answer screen keeps the screen on and takes the volume keys while it is in front; the window
  * in front tells the service, which keeps a ringing call's heads-up from peeking over it */
 static void
 sync_window_state (void)
@@ -79,14 +78,14 @@ sync_window_state (void)
 void
 incall_window_volume_key (int direction)
 {
-  /* AnswerFragment: a volume key while it rings silences it; the call goes on ringing on the screen */
+  /* a volume key while it rings silences it; the call goes on ringing on the screen */
   if (answer_shown ())
     calls_client_silence_ringer (calls_client_get ());
 }
 
 /* ---- the calls ------------------------------------------------------------------------------------------------ */
 
-/* PostCharDialogFragment: a call at a wait in its number asks before the tones after it go out. Yes sends them, No
+/* a call at a wait in its number asks before the tones after it go out. Yes sends them, No
  * (or Back, or a tap beside) drops them */
 static void
 on_post_dial_response (NeoDialog *dialog, int response, gpointer data)
@@ -136,7 +135,7 @@ sync_calls (void)
 
   if (!incall.window)
     return;
-  /* no call left (the last one ended and its "Call ended" has been shown): InCallActivity finishes */
+  /* no call left (the last one ended and its "Call ended" has been shown): the window goes */
   if (!primary)
     {
       gtk_window_destroy (GTK_WINDOW (incall.window));
@@ -148,7 +147,7 @@ sync_calls (void)
       GPtrArray *calls = calls_client_get_calls (client);
       gboolean active = FALSE, held = FALSE;
 
-      /* allowAnswerAndRelease: another call is up; the hint then says what answering does to it */
+      /* another call is up; the hint then says what answering does to it */
       for (guint i = 0; i < calls->len; i++)
         {
           CallInfo *call = calls->pdata[i];
@@ -266,7 +265,7 @@ on_notice (InCallView *view, const char *text, gpointer data)
   neo_snackbar_show (NEO_SNACKBAR (incall.snackbar), text, NULL, NULL, NULL, NEO_SNACKBAR_LONG);
 }
 
-/* onBackPressed: Back closes the keypad first; a ringing call ignores it; otherwise the screen goes, the call stays */
+/* Back closes the keypad first; a ringing call ignores it; otherwise the screen goes, the call stays */
 static gboolean
 on_close_request (GtkWindow *window, gpointer data)
 {

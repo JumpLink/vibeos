@@ -6,8 +6,7 @@
 #include <signal.h>
 #include <stdlib.h>
 
-/* The reference phone's dark palette (andrec/phone-apps/overlay-dynamic.txt, the system_*_dark values). The CSS
- * name of each role is its enum name in lower case: NEO_ON_SURFACE is @neo_on_surface. */
+/* The dark palette. The CSS name of each role is its enum name in lower case: NEO_ON_SURFACE is @neo_on_surface. */
 static const struct {
   const char *css;
   guint32     rgb;
@@ -167,7 +166,7 @@ neo_window_new (GtkApplication *app)
   static gboolean shots;
   GtkWidget *window = gtk_application_window_new (app);
   gtk_widget_add_css_class (window, "neo");
-  /* no title bar: the app draws its own 64 dp app bar, and on the phone the shell shows every window full screen */
+  /* no title bar: the app draws its own app bar, and on the phone the shell shows every window full screen */
   gtk_window_set_decorated (GTK_WINDOW (window), FALSE);
   gtk_window_set_default_size (GTK_WINDOW (window), 360, 760);
   if (g_getenv ("NEO_SHOT"))

@@ -1,6 +1,4 @@
-/* Call history: see call-history.h. The rules are CallLogActivity's; the tabs are ViewPagerTabs' and
- * ViewPagerTabStrip's (dialer/contacts/common/list); the geometry is measured on still:dialer-call-history and
- * still:dialer-call-history-menu (spec §5.6). */
+/* Call history: see call-history.h. */
 #include "call-history.h"
 #include "call-stats.h"
 #include "calls-client.h"
@@ -10,17 +8,17 @@
 #include <glib/gi18n.h>
 #include <math.h>
 
-#define BAR_HEIGHT      56      /* the AppCompat action bar */
-#define UP_SIZE         56      /* measured: the Up button, at the start */
-#define TITLE_START     72      /* measured: the title's x */
-#define OVERFLOW_WIDTH  40      /* measured: the overflow's ImageView, flush with the end */
+#define BAR_HEIGHT      56      /* the action bar */
+#define UP_SIZE         56      /* the Up button, at the start */
+#define TITLE_START     72      /* the title's start, past Up */
+#define OVERFLOW_WIDTH  40      /* the ⋮, flush with the end */
 #define OVERFLOW_HEIGHT 48
-#define TAB_HEIGHT      48      /* tab_height */
-#define TAB_PAD         10      /* the tab TextViews' side padding */
-#define UNDERLINE       2       /* tab_selected_underline_height */
-#define UNDERLINE_COLOR 0x33666d        /* colorAccent, measured */
-#define PAGE_MS         200     /* ViewPager.setCurrentItem(smooth) to the next page at rest: (1 + 1) × 100 ms */
-#define FLING_VELOCITY  400     /* ViewPager's MIN_FLING_VELOCITY, dp/s */
+#define TAB_HEIGHT      48
+#define TAB_PAD         10      /* a tab label's side padding */
+#define UNDERLINE       2       /* under the selected tab */
+#define UNDERLINE_COLOR 0x33666d
+#define PAGE_MS         200     /* to the next page, from rest: (1 + 1) × 100 ms */
+#define FLING_VELOCITY  400     /* the slowest fling that turns the page, px/s */
 
 enum { PAGE_ALL, PAGE_MISSED, PAGE_STATS, N_PAGES };
 
@@ -42,7 +40,7 @@ G_DEFINE_FINAL_TYPE (HistoryTabs, history_tabs, GTK_TYPE_WIDGET)
 enum { TABS_SELECTED, N_TABS_SIGNALS };
 static guint tabs_signals[N_TABS_SIGNALS];
 
-/* ViewPagerTabStrip.onDraw: the underline spans the selected tab, both its ends moving toward the next tab's
+/* the underline spans the selected tab, both its ends moving toward the next tab's
  * while the pager scrolls */
 static void
 history_tabs_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
@@ -75,8 +73,7 @@ on_tabs_anim (NeoAnim *anim, double value, gpointer data)
   gtk_widget_queue_draw (GTK_WIDGET (self));
 }
 
-/* the selected tab's text in dialer_theme_color at once (tab_text's selected state); the underline follows the
- * page as it slides */
+/* the selected tab's text takes the accent colour at once; the underline follows the page as it slides */
 static void
 history_tabs_select (HistoryTabs *self, int page)
 {
@@ -116,7 +113,7 @@ history_tabs_class_init (HistoryTabsClass *klass)
 
   G_OBJECT_CLASS (klass)->dispose = history_tabs_dispose;
   widget_class->snapshot = history_tabs_snapshot;
-  /* the tabs are WRAP_CONTENT with weight 1: each its text and padding, plus an equal share of what is left over
+  /* the tabs: each its text and padding, plus an equal share of what is left over
    * (so they are not equally wide), which is how a box shares out room among children that expand */
   gtk_widget_class_set_layout_manager_type (widget_class, GTK_TYPE_BOX_LAYOUT);
   gtk_widget_class_set_css_name (widget_class, "history-tabs");
@@ -139,7 +136,7 @@ history_tabs_init (HistoryTabs *self)
       gtk_widget_add_css_class (label, "history-tab");
       gtk_widget_set_margin_start (label, TAB_PAD);
       gtk_widget_set_margin_end (label, TAB_PAD);
-      /* selectableItemBackground on each tab */
+      /* a bounded ripple on each tab */
       self->tabs[i] = neo_pressable_new (label);
       neo_pressable_set_ripple (NEO_PRESSABLE (self->tabs[i]), NEO_RIPPLE_BOUNDED, 0);
       gtk_widget_set_hexpand (self->tabs[i], TRUE);
@@ -175,7 +172,7 @@ show_page (CallHistory *self, int page)
 {
   if (page < 0 || page >= N_PAGES || page == self->page)
     return;
-  /* onPageSelected: going to All or Missed marks the missed calls seen and takes their notification away (only a
+  /* a page picked: going to All or Missed marks the missed calls seen and takes their notification away (only a
    * change of page does; opening the screen does not); going to Statistics does not */
   if (page != PAGE_STATS)
     calls_client_mark_missed_read (calls_client_get ());
@@ -202,7 +199,7 @@ on_swipe (GtkGestureSwipe *swipe, double vx, double vy, CallHistory *self)
   show_page (self, self->page + (vx < 0 ? 1 : -1));
 }
 
-/* Up starts the main screen again (FLAG_ACTIVITY_CLEAR_TOP): this one goes */
+/* Up starts the main screen again: this one goes */
 static void
 on_up (CallHistory *self)
 {
@@ -227,7 +224,7 @@ on_clear_response (NeoDialog *dialog, int response, gpointer data)
     calls_client_clear_call_log (calls_client_get ());
 }
 
-/* ClearCallLogDialog (spec §5.7.3) */
+/* "Clear call history?" */
 static void
 on_clear (gpointer data)
 {
@@ -256,8 +253,8 @@ has_calls (CallHistory *self)
   return recents_page_has_calls (RECENTS_PAGE (self->pages[PAGE_ALL]));
 }
 
-/* call_log_options, and on Statistics call_stats_options before it (its items come first, orderInCategory 0 to
- * 1): the sort it is not sorted by. "Adjust time range" and "Reset time range" are left out (no time range) */
+/* the ⋮ menu: on Statistics first the sort it is not sorted by, then "Clear call history" while there are calls.
+ * "Adjust time range" and "Reset time range" are left out (no time range) */
 static void
 on_overflow (CallHistory *self)
 {
@@ -271,7 +268,7 @@ on_overflow (CallHistory *self)
   dialer_popup_menu_present (menu, self->overflow, POPUP_MENU_OVERFLOW);
 }
 
-/* "Clear call history" only while the log has calls (onPrepareOptionsMenu); Statistics always has its sort; with no
+/* "Clear call history" only while the log has calls; Statistics always has its sort; with no
  * item there is no overflow */
 static void
 update_overflow (CallHistory *self)
@@ -341,7 +338,7 @@ make_bar (CallHistory *self)
   gtk_widget_set_size_request (up, UP_SIZE, UP_SIZE);
   gtk_widget_set_valign (up, GTK_ALIGN_CENTER);
   gtk_widget_add_css_class (up, "dialer-history-icon");
-  /* Android names it "Navigate up"; here its name is the one the shell's back gesture clicks */
+  /* named "Back", the button the shell's back gesture clicks; "Navigate up" is its description */
   gtk_accessible_update_property (GTK_ACCESSIBLE (up), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Back"),
                                   GTK_ACCESSIBLE_PROPERTY_DESCRIPTION, _("Navigate up"), -1);
   g_signal_connect_swapped (up, "clicked", G_CALLBACK (on_up), self);

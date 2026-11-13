@@ -1,10 +1,9 @@
-/* cam-window: the camera screen (CameraActivity and CameraViewModel, spec/camera.md §1-§19) and its Settings page.
+/* cam-window: the camera screen and its Settings page.
  *
- * The window is full screen and black; the screen is chained bottom-up from the window's bottom edge (§2): the mode
- * selector (80 dp), the primary bar (gallery, shutter, flip or pause; 91 dp), the secondary bar (pro button, lens
- * buttons, flash; 72 dp with its divider) and the viewfinder over the rest, with the pro row sliding up over the
- * viewfinder's bottom. One camera stream runs while the screen shows; it stops when the window is hidden or
- * Settings is open. */
+ * The window is full screen and black; the screen is chained bottom-up from the window's bottom edge: the mode
+ * selector, the primary bar (gallery, shutter, flip or pause), the secondary bar (pro button, lens buttons, flash,
+ * with its divider) and the viewfinder over the rest, with the pro row sliding up over the viewfinder's bottom. One
+ * camera stream runs while the screen shows; it stops when the window is hidden or Settings is open. */
 #pragma once
 
 #include <gtk/gtk.h>

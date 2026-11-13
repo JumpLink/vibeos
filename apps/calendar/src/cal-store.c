@@ -141,8 +141,8 @@ empty_to_null (char *text)
   return text;
 }
 
-/* the event's VALARMs as Etar's reminders: those relative to the start; an absolute or end-relative one has no
- * place in Etar's reminder rows and is left as it is in the event */
+/* the event's VALARMs as reminders: those relative to the start; an absolute or end-relative one is not shown and
+ * is left as it is in the event */
 static void
 read_reminders (ECalComponent *comp, GArray *reminders)
 {
@@ -170,7 +170,7 @@ read_reminders (ECalComponent *comp, GArray *reminders)
         default:
           continue;
         }
-      /* the trigger is "-PT10M": negative before the start; Etar's minutes count before it */
+      /* the trigger is "-PT10M": negative before the start; a reminder's minutes count before it */
       reminder.minutes = -i_cal_duration_as_int (e_cal_component_alarm_trigger_get_duration (trigger)) / 60;
       g_array_append_val (reminders, reminder);
     }
@@ -199,8 +199,8 @@ address_of (const char *value)
   return g_strdup (g_ascii_strncasecmp (value, "mailto:", 7) == 0 ? value + 7 : value);
 }
 
-/* the guests (ATTENDEE, the ORGANIZER first as Etar's attendee list has it), and the owner's own status: Etar's
- * Instances.SELF_ATTENDEE_STATUS, which the provider takes from the attendee row with the calendar's owner address */
+/* the guests (ATTENDEE, the ORGANIZER first), and the owner's own status: that of the attendee with the calendar's
+ * owner address */
 static void
 read_attendees (ECalComponent *comp, const CalCalendar *calendar, CalEvent *event)
 {
@@ -232,7 +232,7 @@ read_attendees (ECalComponent *comp, const CalCalendar *calendar, CalEvent *even
       else
         g_ptr_array_add (event->attendees, attendee);
     }
-  /* the organizer without an ATTENDEE of their own: the owner organizing is "accepted" to the provider */
+  /* the organizer without an ATTENDEE of their own: the owner organizing counts as "accepted" */
   if (event->organizer && me && g_ascii_strcasecmp (event->organizer, me) == 0
       && event->self_status == CAL_STATUS_NONE && attendees)
     event->self_status = CAL_STATUS_ACCEPTED;
@@ -471,7 +471,7 @@ do_rebuild (gpointer data)
       calendar->name = e_source_dup_display_name (source);
       calendar->account = parent ? e_source_dup_display_name (parent) : g_strdup ("");
       if (!parse_color (e_source_selectable_get_color (selectable), &calendar->color))
-        calendar->color = 0x3f51b5;     /* Etar's default calendar colour */
+        calendar->color = 0x3f51b5;     /* a calendar without a colour gets the default one */
       calendar->visible = e_source_selectable_get_selected (selectable);
       calendar->alarms = !e_source_has_extension (source, E_SOURCE_EXTENSION_ALARMS)
                          || e_source_alarms_get_include_me (e_source_get_extension (source,
@@ -926,7 +926,7 @@ static gboolean
 set_times (ECalComponent *comp, ECalClient *client, gint64 start, gint64 end, gboolean all_day, const char *tzid,
            GCancellable *cancellable, GError **error)
 {
-  /* the editor's time zone (EditEventView's), else the app's */
+  /* the editor's time zone, else the app's */
   ICalTimezone *zone = tzid && *tzid ? i_cal_timezone_get_builtin_timezone (tzid) : NULL;
 
   if (!zone)
@@ -966,11 +966,11 @@ set_times (ECalComponent *comp, ECalClient *client, gint64 start, gint64 end, gb
   return TRUE;
 }
 
-/* the reminders anew: Etar deletes an event's Reminders rows and writes the editor's (EditEventHelper.saveReminders) */
+/* the reminders anew: the event's start-relative alarms go, the editor's are written */
 static void
 set_reminders (ECalComponent *comp, CalEvent *edited)
 {
-  /* the alarms Etar does not show (absolute, relative to the end) stay */
+  /* the alarms the app does not show (absolute, relative to the end) stay */
   GSList *uids = e_cal_component_get_alarm_uids (comp);
 
   for (GSList *l = uids; l; l = l->next)
@@ -1048,7 +1048,7 @@ set_color (ECalComponent *comp, CalEvent *original, CalEvent *edited)
   char text[8];
 
   /* only a colour chosen is the event's own; else it keeps following its calendar's. "Set to default calendar
-   * color" (own_color off) takes the event's own away (EditEventHelper: EVENT_COLOR_KEY NO_EVENT_COLOR) */
+   * color" (own_color off) takes the event's own away */
   if (original ? edited->own_color == original->own_color && (!edited->own_color || edited->color == original->color)
                : !edited->own_color)
     return;
@@ -1078,10 +1078,10 @@ same_guests (GPtrArray *a, GPtrArray *b)
   return TRUE;
 }
 
-/* The guests as the editor left them. Etar writes Attendees rows and its sync adapter invites them; nothing here
- * invites anyone, and nothing may: each ATTENDEE says SCHEDULE-AGENT=CLIENT (RFC 6638: a CalDAV server sends no
- * invitation for it, the client would) and no ORGANIZER is added, which is what server-side scheduling starts
- * from. Guests already there keep their properties (their status, their name). */
+/* The guests as the editor left them. Nothing here invites anyone, and nothing may: each ATTENDEE says
+ * SCHEDULE-AGENT=CLIENT (RFC 6638: a CalDAV server sends no invitation for it, the client would) and no ORGANIZER is
+ * added, which is what server-side scheduling starts from. Guests already there keep their properties (their status,
+ * their name). */
 static void
 set_attendees (ECalComponent *comp, CalEvent *edited)
 {
@@ -1211,8 +1211,8 @@ save_thread (GTask *task, gpointer source, gpointer data, GCancellable *cancella
       comp = e_cal_component_new_from_icalcomponent (icomp);
       if (original->recurring && times_changed)
         {
-          /* the series moves as the occurrence moved: by the same amount, to the new length (EditEventHelper:
-           * "the user changed the time of an occurrence and chose all events") */
+          /* the series moves as the occurrence moved: by the same amount, to the new length (the user
+           * changed the time of an occurrence and chose all events) */
           ECalComponentDateTime *dtstart = e_cal_component_get_dtstart (comp);
           gint64 master = dtstart ? cal_ical_time_to_unix (e_cal_component_datetime_get_value (dtstart))
                                   : original->start;
@@ -1260,8 +1260,8 @@ save_thread (GTask *task, gpointer source, gpointer data, GCancellable *cancella
     }
   else
     {
-      /* "this and future": the series ends before this occurrence, a new one starts from it with the changes, as
-       * Android's CalendarProvider splits a series */
+      /* "this and future": the series ends before this occurrence, a new one starts from it with the
+       * changes */
       ICalProperty *prop;
 
       if (!e_cal_client_get_object_sync (w->client, original->uid, NULL, &icomp, cancellable, &error))

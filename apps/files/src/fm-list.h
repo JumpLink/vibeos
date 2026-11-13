@@ -1,13 +1,12 @@
-/* FmList: the file list (spec §3): a GtkListView of FmItem rows, or a GtkGridView of tiles (the View dialog's
+/* FmList: the file list: a GtkListView of FmItem rows, or a GtkGridView of tiles (the View dialog's
  * Grid), in a SpongyScrollView, the filter of the search bar, selection mode with its check column, thumbnails
  * decoded in a worker, and the message that takes the list's place ("Empty folder", "No results", an error).
  *
- * A row: the 44 dp icon 8 dp in, the name (18 sp #dbdbdb, wrapping) from 60 dp, under it the count or size (left)
- * and the date (right) in 14 sp #a7a7a7, and for a search result or a Recycle Bin item the folder it is (or was) in.
- * A 1 dp #272727 line under each.
+ * A row: the icon, the name (wrapping), under it the count or size (left) and the date (right), and for a search
+ * result or a Recycle Bin item the folder it is (or was) in. A line under each.
  *
- * A tile (File Manager+'s filegrid_item): the 64 dp icon and under it the name, 14 sp, centred, at most two lines;
- * the columns at least 66 dp + 2 dp apart, as many as fit (five on a 360 dp phone), stretched to the width. */
+ * A tile: the icon and under it the name, centred, at most two lines; as many
+ * columns as fit, stretched to the width. */
 #pragma once
 
 #include <gtk/gtk.h>

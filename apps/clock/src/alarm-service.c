@@ -1,13 +1,11 @@
-/* The alarms in the Clock's service (DeskClock's AlarmService and the AlarmManager calls of its
- * AlarmStateManager). From login, whether or not the Clock app is open, it:
+/* The alarms in the Clock's service. From login, whether or not the Clock app is open, it:
  *
  *  - keeps the alarms (the store, ~/.local/share/neo.Clock/alarms.ini) and takes each instance through its
  *    states (alarm-engine.c) when they are due;
  *  - wakes the phone for them: neo-wakeup arms the RTC for the next change, and for the next alarm, which it also
  *    shows in the status bar (its NextAlarmClock);
  *  - rings: the sound and vibration (alarm-klaxon.c), the notification with Snooze and Dismiss, and the ringing
- *    screen (the app as neo.Clock.Ringing), full screen over the lock screen when the phone was asleep or
- *    locked, as Android's full-screen intent;
+ *    screen (the app as neo.Clock.Ringing), full screen over the lock screen when the phone was asleep or locked;
  *  - serves the Clock app and the ringing screen over D-Bus (neo.Clock.Alarms, below): the app never writes
  *    the store itself. */
 #include "alarm-service.h"
@@ -175,8 +173,8 @@ start_ringing (Service *self, AlarmInstance *instance)
   if (self->sleep_inhibitor < 0)
     self->sleep_inhibitor = phone_inhibit_sleep (self->system, "An alarm is ringing");
   alarm_klaxon_start (self->klaxon, instance->ringtone, instance->vibrate);
-  /* the full-screen intent: the ringing screen over the lock screen if the phone is asleep or locked; in use, the
-   * notification's heads-up is the alarm, as on Android */
+  /* full screen: the ringing screen over the lock screen if the phone is asleep or locked; in use, the notification's
+   * heads-up is the alarm */
   phone_show_full_screen (self->session, RINGING_APP_ID);
 }
 
@@ -242,7 +240,7 @@ on_notification (guint instance_id, const char *action, gpointer data)
           /* a missed one tapped is seen: over (SHOW_AND_DISMISS_ALARM_ACTION) */
           if (instance->state == ALARM_STATE_MISSED)
             alarm_engine_dismiss (self->engine, instance_id);
-          /* the Clock on its Alarm tab, at the alarm (Android's createViewAlarmIntent) */
+          /* the Clock on its Alarm tab, at the alarm */
           phone_open_app (self->session, APP_ID, "show-alarm", g_variant_new_uint32 (alarm_id));
         }
     }

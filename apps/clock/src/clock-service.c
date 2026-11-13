@@ -29,13 +29,11 @@ static const char introspection[] =
   "<node>"
   "  <interface name='neo.Clock.App'>"
   /* the Clock app's window came to the front, or left it. While it is in front the app shows the timers and the
-   * stopwatch itself, so their notifications are not shown (DeskClock's NotificationModel.isApplicationInForeground).
-   * An app that quits or crashes in front counts as gone */
+   * stopwatch itself, so their notifications are not shown. An app that quits or crashes in front counts as gone */
   "    <method name='SetForeground'><arg name='foreground' type='b' direction='in'/></method>"
-  /* a sound tried out at the alarm volume, looping, for @milliseconds or (0) until StopSound or the caller goes:
-   * the ringtone picker's preview and the alarm volume slider's (RingtonePreviewKlaxon). @sound is a file URI, ""
-   * for the default alarm sound, or "timer" for the default timer sound. Nothing plays while an alarm or a timer
-   * rings, and one starting stops it */
+  /* a sound tried out at the alarm volume, looping, for @milliseconds or (0) until StopSound or the caller goes: the
+   * ringtone picker's preview and the alarm volume slider's. @sound is a file URI, "" for the default alarm sound, or
+   * "timer" for the default timer sound. Nothing plays while an alarm or a timer rings, and one starting stops it */
   "    <method name='PlaySound'>"
   "      <arg name='sound' type='s' direction='in'/><arg name='milliseconds' type='u' direction='in'/>"
   "    </method>"

@@ -1,12 +1,10 @@
-/* VolumeSlider: see volume-slider.h. Measured on still:clock-settings-3 (value 5 of 0…6): the slider view
- * 216…996 px, its track 258…953 × 1136…1183, the handle 816…827 × 1094…1225, the dots at x 281.5 + 108·n. Drawn with
- * colour nodes under rounded clips. */
+/* VolumeSlider: see volume-slider.h. Drawn with colour nodes under rounded clips. */
 #include "volume-slider.h"
 
 #include <math.h>
 #include <neo.h>
 
-#define INSET       14          /* the track's ends, in from the view's (42 and 43 px) */
+#define INSET       14          /* the track's ends, in from the view's */
 #define TRACK       16          /* its height; the outer ends fully round */
 #define INNER       2           /* the corners beside the handle */
 #define HANDLE_W    4
@@ -83,7 +81,7 @@ static void
 volume_slider_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, int *min, int *nat,
                        int *min_baseline, int *nat_baseline)
 {
-  /* 48 dp tall (the Slider's minHeight); as wide as it is given */
+  /* a thumb-sized touch target tall; as wide as it is given */
   *min = orientation == GTK_ORIENTATION_VERTICAL ? 48 : 2 * INSET + TRACK;
   *nat = *min;
 }
@@ -103,8 +101,8 @@ move_to (VolumeSlider *self, double x)
   g_signal_emit (self, signals[CHANGED], 0, value);
 }
 
-/* In a scrolling list the Slider waits to see which way a finger goes (isInScrollingContainer): sideways past the
- * touch slop it is the slider's, and a tap moves it too; a vertical move is left to the list. */
+/* In a scrolling list the slider waits to see which way a finger goes: sideways past the touch slop it is the slider's,
+ * and a tap moves it too; a vertical move is left to the list. */
 #define TOUCH_SLOP 8
 
 static gboolean
@@ -163,7 +161,7 @@ on_drag_end (GtkGestureDrag *drag, double dx, double dy, VolumeSlider *self)
       gtk_gesture_drag_get_start_point (drag, &x, &y);
       move_to (self, x);
     }
-  /* onStopTrackingTouch: the preview */
+  /* let go: the preview */
   g_signal_emit (self, signals[RELEASED], 0);
 }
 

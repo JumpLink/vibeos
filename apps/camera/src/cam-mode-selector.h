@@ -1,10 +1,8 @@
-/* cam-mode-selector: PHOTO VIDEO SCAN, or the recording's duration (§3, §11; CameraModeSelectorLayout.kt,
- * L/camera_mode_selector_layout.xml).
+/* cam-mode-selector: PHOTO VIDEO SCAN, or the recording's duration.
  *
- * Three 88 × 48 dp buttons centred as a group, 16 dp under the band's top; the highlight pill (secondaryContainer,
- * 40 dp tall, fully rounded) slides to the chosen one in 300 ms AD; the chosen one's label is white and it cannot
- * be tapped, the others are #444444. While recording the buttons and the pill go invisible and the red duration pill
- * shows in the middle. */
+ * Three buttons centred as a group near the band's top; the highlight pill slides to the chosen one in 300 ms
+ * (accelerate-decelerate); the chosen one's label is white and it cannot be tapped, the others are dimmed. While
+ * recording the buttons and the pill go invisible and the red duration pill shows in the middle. */
 #pragma once
 
 #include <gtk/gtk.h>

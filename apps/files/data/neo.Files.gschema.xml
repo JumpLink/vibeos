@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- The Files settings: File Manager+'s settings.xml and its View dialog (spec §11), with its defaults. -->
+<!-- The Files settings: File Manager+'s settings and its View dialog, with their defaults. -->
 <schemalist gettext-domain="neo-files">
   <schema id="neo.Files" path="/neo/Files/">
     <key name="sort-order" type="s">

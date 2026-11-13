@@ -1,4 +1,4 @@
-/* The Phone app's window: the Dialer's main screen (OldMainActivityPeer, main_activity.xml; spec §2).
+/* The Phone app's window: the Dialer's main screen.
  *
  * Top to bottom: the search bar; the tab's page (Favorites, Recents or Contacts) with the button that opens the
  * dialpad over its corner; the bottom navigation with the three tabs. The dialpad slides up over all of it. */

@@ -33,8 +33,7 @@ on_item (NeoPressable *row, NeoDialog *dialog)
   neo_dialog_respond (dialog, RESPONSE_ITEM + GPOINTER_TO_INT (g_object_get_data (G_OBJECT (row), "cam-index")));
 }
 
-/* select_dialog_singlechoice_material: 48 dp tall; the radio (a 20 dp ring in a 32 dp drawable) 20 dp in, 20 dp
- * to the text (still:camera-settings-list-dialog: ring x 153…212 px, text from 292, card edge 75) */
+/* one row a choice: the radio, then the text */
 static GtkWidget *
 item_row (const char *label, int index, gboolean checked)
 {
@@ -43,7 +42,7 @@ item_row (const char *label, int index, gboolean checked)
   GtkWidget *text = gtk_label_new (label);
   GtkWidget *row;
 
-  /* the 24 dp icon (a 20 dp ring) 4 dp into the 32 dp drawable: margins in camera.css */
+  /* the radio; its margins (camera.css) pad it out to the original icon's box */
   gtk_image_set_pixel_size (GTK_IMAGE (mark), 24);
   gtk_widget_add_css_class (mark, "cam-radio");
   if (checked)
@@ -92,7 +91,7 @@ cam_list_dialog (GtkWidget *parent, const char *title, const char *const *labels
 
 /* ---- the location prompt --------------------------------------------------------------------------------------- */
 
-/* the header: an ImageView with a 0 dp width and wrap_content height, so the 320 × 96 vector at the card's width */
+/* the header: the vector scaled to the card's width, its height following */
 #define CAM_TYPE_LOCATION_ART (cam_location_art_get_type ())
 G_DECLARE_FINAL_TYPE (CamLocationArt, cam_location_art, CAM, LOCATION_ART, GtkWidget)
 
@@ -196,14 +195,14 @@ cam_location_dialog (GtkWidget *parent, CamLocationDone done, gpointer data)
   GtkWidget *turn_on = neo_text_button_new (_("Turn on"));
   Answer *answer = g_new0 (Answer, 1);
 
-  /* the layout's 320 dp, the background a 16 dp-radius rect in colorSurface (camera.css) */
+  /* a card of fixed width; its background is in camera.css */
   gtk_widget_set_size_request (card, 320, -1);
   gtk_box_append (GTK_BOX (card), art);
   gtk_widget_set_margin_start (texts, 24);
   gtk_widget_set_margin_end (texts, 24);
   gtk_widget_set_margin_top (texts, 24);
   gtk_widget_set_margin_bottom (texts, 24);
-  /* the labels wrap to the card, never widen it: its natural width is the layout's 320 dp */
+  /* the labels wrap to the card, never widen it: its width is fixed */
   gtk_label_set_wrap (GTK_LABEL (title), TRUE);
   gtk_label_set_max_width_chars (GTK_LABEL (title), 1);
   gtk_label_set_justify (GTK_LABEL (title), GTK_JUSTIFY_CENTER);

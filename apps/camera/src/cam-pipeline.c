@@ -412,7 +412,7 @@ on_note (gpointer data)
     case NOTE_BARCODE:
       if (self->scanning && !self->scan_hold)
         {
-          /* one result, then nothing until the sheet is gone (QrImageAnalyzer) */
+          /* one result, then nothing until the sheet is gone */
           self->scan_hold = TRUE;
           g_object_set (self->scan_valve, "drop", TRUE, NULL);
           g_signal_emit (self, signals[SIG_BARCODE], 0, note->text);

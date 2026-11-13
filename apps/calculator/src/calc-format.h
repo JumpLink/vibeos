@@ -1,6 +1,6 @@
-/* calc-format: how a result's digits are chosen and laid out, the pure parts of ExactCalculator's
- * Evaluator (getPreferredPrec, getShortString, getMsdIndexOf, getLsdOffset, unflipZeroes,
- * exponentEnd) and CalculatorResult (initPositions, formatResult, expLen).
+/* calc-format: how a result's digits are chosen and laid out; ported from the pure parts of
+ * ExactCalculator's Evaluator (getPreferredPrec, getShortString, getMsdIndexOf, getLsdOffset,
+ * unflipZeroes, exponentEnd) and CalculatorResult (initPositions, formatResult, expLen).
  *
  * The result line shows a window onto an infinite decimal string. Positions are counted in
  * characters from the decimal point ("offsets": 1 is the first decimal, -1 the units digit; the
@@ -22,8 +22,7 @@
 #define CALC_INIT_PREC            50        /* Evaluator.INIT_PREC */
 #define CALC_QUICK_MAX_RESULT_BITS 150000
 
-/* what the result line can hold, in digit widths (Evaluator.CharMetricsInfo, as measured by
- * CalculatorResult.onMeasure) */
+/* what the result line can hold, in digit widths, as calc-result.c measures it */
 typedef struct {
   int   max_chars;
   float grouping_separator_width_ratio;   /* a ',' in digit widths */

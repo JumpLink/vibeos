@@ -236,7 +236,7 @@ vk_init (Vk *vk, struct wl_display *display, struct wl_surface *surface, uint32_
   VK_CHECK (vkCreateDevice (vk->phys, &dci, NULL, &vk->dev));
   vkGetDeviceQueue (vk->dev, vk->qfam, 0, &vk->queue);
 
-  /* UNORM, not sRGB: Android (and GTK) blend in gamma space, and so must we to look the same */
+  /* UNORM, not sRGB: the reference phone (and GTK) blend in gamma space, and so must we to look the same */
   uint32_t nf = 0;
   vkGetPhysicalDeviceSurfaceFormatsKHR (vk->phys, vk->surface, &nf, NULL);
   VkSurfaceFormatKHR fmts[32];

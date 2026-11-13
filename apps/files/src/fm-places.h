@@ -1,4 +1,4 @@
-/* Locations: which root a folder is under, what it is called and which icon it has (spec §2, §4.1, §5).
+/* Locations: which root a folder is under, what it is called and which icon it has.
  *
  * A root is what the path bar shows as its first crumb and the drawer lists: Main storage ($HOME), a removable
  * medium (a GMount of GVolumeMonitor), System (/), the Recycle Bin, Recent files, the Local Network, a saved remote

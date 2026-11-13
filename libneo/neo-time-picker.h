@@ -1,15 +1,13 @@
-/* NeoTimePicker: Android's clock-face time picker (android.widget.TimePicker in its material mode:
- * TimePickerClockDelegate and RadialTimePickerView), and the dialog that holds it (TimePickerDialog).
+/* NeoTimePicker: a clock-face time picker, and the dialog that holds it.
  *
- *   header  100 dp: the hours and minutes, 60 dp, the selected one bright; AM and PM beside them in 12-hour mode.
+ *   header  the hours and minutes, the selected one bright; AM and PM beside them in 12-hour mode.
  *           Tapping the hours or the minutes shows that dial.
- *   dial    a 296 dp disc. Hours on a ring 22 dp inside its edge (in 24-hour mode 1-12 there and 00, 13-23 on an
- *           inner ring 58 dp in); minutes every five. A 20 dp selector circle on a 2 dp line from a 3 dp centre dot
- *           marks the value, and the number under it shows through in the dark colour.
+ *   dial    a disc. Hours on a ring just inside its edge (in 24-hour mode 1-12 there and 00, 13-23 on an inner
+ *           ring); minutes every five. A selector circle on a line from a centre dot marks the value, and the number
+ *           under it shows through in the dark colour.
  *
  * Dragging on the dial picks a value (hours snap to the hour, minutes to the minute); lifting the finger off the
- * hours goes on to the minutes, cross-fading the dials over 500 ms. Colours are DeskClock's Widget.TimePicker:
- * header and dial surfaceVariant on colorSurface, the selector colorAccent. */
+ * hours goes on to the minutes, cross-fading the dials over 500 ms. */
 #pragma once
 
 #include <gtk/gtk.h>

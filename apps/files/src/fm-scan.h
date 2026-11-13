@@ -1,4 +1,4 @@
-/* The Local Network scan (spec §6.2): File Manager+ does not wait for announcements, it knocks on every address of
+/* The Local Network scan: File Manager+ does not wait for announcements, it knocks on every address of
  * the networks the device is on. So does this, for the IPv4 networks of its interfaces (not the loopback, a USB
  * gadget link to a computer, a link-local address or a virtual bridge without hardware under it), at most the /24
  * around the address: TCP 445 on every address at once (a capped number in flight, each given up after a short

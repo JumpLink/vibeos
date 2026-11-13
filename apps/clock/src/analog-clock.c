@@ -4,10 +4,10 @@
 
 #include <neo.h>
 
-#define VIEWPORT 1176.0         /* the drawables' viewportWidth and viewportHeight */
+#define VIEWPORT 1176.0         /* the face's drawing, in units across and down */
 #define CENTRE   588.0
 
-/* clock_analog_dial.xml: a ring between radius 483.1 (588 − 104.9) and 509.1 (588 − 78.9) */
+/* the dial: a ring between radius 483.1 (588 − 104.9) and 509.1 (588 − 78.9) */
 #define DIAL_OUTER 509.1
 #define DIAL_WIDTH 26.0
 
@@ -17,9 +17,9 @@ typedef struct
   double top, bottom, width;
 } Hand;
 
-static const Hand hour_hand = { 376.2, 648.2, 16 };      /* clock_analog_hour.xml */
-static const Hand minute_hand = { 183.9, 647.9, 16 };    /* clock_analog_minute.xml */
-static const Hand second_hand = { 187.3, 739.3, 8 };     /* clock_analog_second.xml */
+static const Hand hour_hand = { 376.2, 648.2, 16 };
+static const Hand minute_hand = { 183.9, 647.9, 16 };
+static const Hand second_hand = { 187.3, 739.3, 8 };
 
 struct _AnalogClock
 {
@@ -35,8 +35,7 @@ G_DEFINE_FINAL_TYPE (AnalogClock, analog_clock, GTK_TYPE_WIDGET)
 
 static gboolean on_tick (gpointer data);
 
-/* onTimeChanged, and the next tick: on the next second (mClockTick) or, without seconds, on the next minute (the
- * TIME_TICK broadcast) */
+/* the time now, and the next tick: on the next second or, without seconds, on the next minute */
 static void
 update (AnalogClock *self)
 {
@@ -118,7 +117,7 @@ analog_clock_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   if (side <= 0)
     return;
   gtk_snapshot_save (snapshot);
-  /* fitCenter: the largest square, in the middle */
+  /* the largest square, in the middle */
   gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT ((width - side) / 2, (height - side) / 2));
   gtk_snapshot_scale (snapshot, scale, scale);
 
@@ -126,7 +125,7 @@ analog_clock_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
                                                                2 * DIAL_OUTER, 2 * DIAL_OUTER), DIAL_OUTER);
   gtk_snapshot_append_border (snapshot, &ring, widths, colors);
 
-  /* the views in FrameLayout order: hour, minute, then second on top */
+  /* the hands from the bottom up: hour, minute, then second on top */
   draw_hand (snapshot, &hour_hand, self->hour * 30.0, &white);
   draw_hand (snapshot, &minute_hand, self->minute * 6.0, &white);
   if (self->seconds)
@@ -161,7 +160,7 @@ static void
 analog_clock_map (GtkWidget *widget)
 {
   GTK_WIDGET_CLASS (analog_clock_parent_class)->map (widget);
-  /* onAttachedToWindow: the time now, and ticking */
+  /* shown: the time now, and ticking */
   update (CLOCK_ANALOG_CLOCK (widget));
 }
 

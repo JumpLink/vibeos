@@ -1,9 +1,9 @@
-/* Contact pictures (spec §6): the round photo or LetterTileDrawable in the list rows, and the square header of
+/* Contact pictures: the round photo or letter tile in the list rows, and the square header of
  * QuickContact and the editor (the photo, or the big person silhouette on the tint colour).
  *
- * The tile's colour comes from the vCard UID the way Android's comes from the lookup key (Java's String.hashCode,
- * ct_tile_color_index), so a contact keeps its colour on every screen; it cannot be the colour the same person had
- * on an Android phone, which hashed a lookup key EDS does not have (§6.5). */
+ * The tile's colour comes from a hash of the vCard UID (Java's String.hashCode, ct_tile_color_index), so a contact
+ * keeps its colour on every screen. It cannot be the colour the same person had on an Android phone, which hashed a
+ * lookup key EDS does not have. */
 #pragma once
 
 #include <gtk/gtk.h>
@@ -23,11 +23,11 @@ void        ct_avatar_snapshot (GtkSnapshot *snapshot, GtkWidget *widget, double
 
 /* the colour index of a contact's tile and QuickContact's header (−1 for the default grey) */
 int         ct_avatar_color_index (const char *uid);
-/* QuickContact's header colour for @uid in dark mode (makeDark of the hue-mapped primary, §3.4) */
+/* QuickContact's header colour for @uid in dark mode (the darkened colour nearest the tile's hue) */
 guint32     ct_avatar_header_color (const char *uid);
 
-/* QuickContact's and the editor's square picture over @bounds: @photo cropped to fill (centerCrop), else the
- * person_white_540dp silhouette, which force dark draws black, centred on @tint */
+/* QuickContact's and the editor's square picture over @bounds: @photo cropped to fill, else the
+ * big person silhouette in black, centred on @tint */
 void        ct_avatar_header_snapshot (GtkSnapshot *snapshot, const graphene_rect_t *bounds, guint32 tint,
                                        GdkTexture *photo);
 

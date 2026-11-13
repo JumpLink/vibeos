@@ -5,13 +5,13 @@
 #include <neo.h>
 #include <string.h>
 
-#define SHEET_MAX_W      640      /* M3 bottom sheet's maxWidth */
+#define SHEET_MAX_W      640      /* the widest the sheet gets */
 #define SHEET_RADIUS     28
 #define SCRIM_ALPHA      0.32f
-#define ENTER_MS         250      /* BottomSheetBehavior's settle, standard curve */
+#define ENTER_MS         250      /* the sheet settling, standard curve */
 #define EXIT_MS          200
 
-/* ---- what the code says (zxing's ResultParsers, as QrTextClassifier uses them) --------------------------------- */
+/* ---- what the code says (by zxing's ResultParser rules) -------------------------------------------------------- */
 
 void
 cam_qr_result_free (CamQrResult *result)
@@ -405,7 +405,7 @@ struct _CamQrSheet {
   CamQrResult    *result;
   GAppInfo       *app;
   double          shown;          /* 0 … 1: the scrim's fade and the sheet's rise */
-  double          drag;           /* dp the finger has pulled the sheet down */
+  double          drag;           /* px the finger has pulled the sheet down */
   NeoAnim        *anim;
   gboolean        closing;
   CamQrDismissed  dismissed;
@@ -513,7 +513,7 @@ on_key (GtkEventControllerKey *keys, guint keyval, guint keycode, GdkModifierTyp
   return TRUE;
 }
 
-/* the sheet follows a finger down, and goes when let go past half its height (BottomSheetBehavior's hide) */
+/* the sheet follows a finger down, and goes when let go past half its height */
 static void
 on_drag_update (GtkGestureDrag *drag, double dx, double dy, CamQrSheet *self)
 {
@@ -559,7 +559,7 @@ on_card (NeoPressable *card, CamQrSheet *self)
   context = gdk_display_get_app_launch_context (gtk_widget_get_display (GTK_WIDGET (self)));
   if (self->result->content)
     {
-      /* a vCard or an event goes to its app as a file, as an ACTION_INSERT with its fields would */
+      /* a vCard or an event goes to its app as a file */
       g_autofree char *dir = g_build_filename (g_get_user_cache_dir (), "neo-camera", NULL);
       g_autofree char *path = g_build_filename (dir, self->result->kind == CAM_QR_CONTACT ? "scanned.vcf"
                                                                                           : "scanned.ics", NULL);
@@ -640,7 +640,7 @@ build_sheet (CamQrSheet *self)
   const char *icon_name = self->app ? action_icon (self->result->kind) : NULL;
 
   gtk_widget_add_css_class (sheet, "cam-qr-sheet");
-  /* the drag handle: 32 × 4 dp, 8 dp from the top */
+  /* the drag handle, near the top */
   gtk_widget_set_size_request (handle, 32, 4);
   gtk_widget_set_halign (handle, GTK_ALIGN_CENTER);
   gtk_widget_set_margin_top (handle, 8);
@@ -671,7 +671,7 @@ build_sheet (CamQrSheet *self)
   gtk_widget_add_css_class (data, "cam-qr-data");
   gtk_box_append (GTK_BOX (texts), data);
   gtk_box_append (GTK_BOX (row), texts);
-  /* the copy button: 24 dp icon with 5 dp padding, 16 dp from the card's end */
+  /* the copy button, at the card's end */
   gtk_widget_set_size_request (copy, 34, 34);
   gtk_widget_set_valign (copy, GTK_ALIGN_CENTER);
   gtk_widget_set_margin_end (copy, 16);

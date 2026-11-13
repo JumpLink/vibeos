@@ -125,7 +125,7 @@ timer_reset (Timer *timer)
   timer->last_start = timer->last_start_wall = 0;
 }
 
-/* setRemainingTime: the total moves with it, and a timer that ran out runs again once it has time left */
+/* the total moves with it, and a timer that ran out runs again once it has time left */
 static void
 set_remaining (Timer *timer, gint64 remaining, gint64 now, gint64 wall)
 {

@@ -1,6 +1,6 @@
-// Quick Settings as Android 16 draws it in the shade: the header (clock, date, carrier, system icons), the tile grid
+// Quick Settings in the shade: the header (clock, date, carrier, system icons), the tile grid
 // whose first two rows are the QQS, the brightness slider, the build row and the footer. The shade lays it out once
-// per frame from its expansion f and the QS expansion q (spec §2.1, §2.6, §3); tiles act on SystemState.
+// per frame from its expansion f and the QS expansion q; tiles act on SystemState.
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
@@ -19,46 +19,46 @@ import {openSettings} from './settings.js';
 import {inkBox, SystemIcons} from './statusbar.js';
 import {px, screenPixels, SCALE, SCREEN_H, SCREEN_W} from './units.js';
 
-// --- geometry, screen px (spec §3)
+// --- geometry, screen px
 export const QQS_HEIGHT = 644;          // the stack's top padding: 116 + 2 x 216 + 24 + 72
 export const QS_SHIFT = 504;            // the QQS rows move 116 -> 620 as q goes 0 -> 1
 const GRID_X = 48;
 const GRID_TOP = 116;
-const TILE_W = 228;                     // 76 dp
-const TILE_H = 216;                     // 72 dp
+const TILE_W = 228;
+const TILE_H = 216;
 const COL_PITCH = 252;
 const ROW_GAP = 24;
 const COLUMNS = 4;
 const QQS_ROWS = 2;
-const ICON = 96;                        // 32 dp
-const LARGE_ICON = 84;                  // 28 dp, centred in a 56 dp target after 8 dp padding
+const ICON = 96;
+const LARGE_ICON = 84;                  // a wide tile's icon, centred on LARGE_ICON_CX
 const LARGE_ICON_CX = 108;
-const LARGE_TEXT_X = 210;               // 8 + 56 + 6 dp
-const TILE_RADIUS = 72;                 // 24 dp, on or off: Android's off tile is a pill, this phone's a squircle too
+const LARGE_TEXT_X = 210;               // a wide tile's labels, past its icon
+const TILE_RADIUS = 72;                 // on or off: an off tile is a rounded square too, not a pill
 const CONTENT_FADE_FROM = 0.43;         // QS content fades in over q 0.43..1, the footer over 0.9..1
 const FOOTER_FADE_FROM = 0.9;
 
 const SLIDER_X = 54;
-const SLIDER_END = 867;                 // then a 10 dp spacer and the 45 dp auto button
+const SLIDER_END = 867;                 // then a gap and the auto-brightness button
 const SLIDER_CY = 500;                  // QS position
-const TRACK_H = 120;                    // 40 dp
-const TRACK_RADIUS = 36;                // 12 dp, 2 dp next to the thumb
+const TRACK_H = 120;
+const TRACK_RADIUS = 36;                // TRACK_INNER_RADIUS next to the thumb
 const TRACK_INNER_RADIUS = 6;
-const THUMB_W = 12;                     // 4 x 52 dp
+const THUMB_W = 12;
 const THUMB_H = 156;
-const THUMB_GAP = 18;                   // 6 dp each side
-const TRACK_ICON = 84;                  // 28 dp, 6 dp from the segment's end
+const THUMB_GAP = 18;                   // each side of the thumb
+const TRACK_ICON = 84;                  // TRACK_ICON_PAD from the segment's end
 const TRACK_ICON_PAD = 18;
 const AUTO_X = 897;
-const AUTO_SIZE = 135;                  // 45 dp
+const AUTO_SIZE = 135;
 
 const BUILD_INK_X = 49;
 const BUILD_INK_TOP = 1612;
 const FOOTER_CY = 2195.5;
-const FOOTER_BUTTON = 120;              // 40 dp circles
+const FOOTER_BUTTON = 120;              // circles
 const POWER_X = 912;
 const SETTINGS_X = 768;
-const FOOTER_ICON = 60;                 // 20 dp
+const FOOTER_ICON = 60;
 
 // header: ink positions of the QQS row (q = 0) and the QS layout (q = 1)
 const CLOCK_QQS = [50, 24];
@@ -71,22 +71,22 @@ const ICONS_QS = [1031, 204];
 const CARRIER_END = 1019;
 const CARRIER_QQS_TOP = 24;
 const CARRIER_QS_TOP = 110;
-const HEADER_FADE_OUT = 0.14;           // combined_qs_header_scene.xml keyframes
-const HEADER_FADE_IN = 0.58;
+const HEADER_FADE_OUT = 0.14;           // over q the header fades out by here, moving a tenth of its way,
+const HEADER_FADE_IN = 0.58;            // and fades back in from here at its QS place
 const HEADER_DISPLACEMENT = 0.1066;
 
-// fonts fitted to the stills' pixels (Google Sans Flex, rounded)
-const TILE_LABEL_FONT = font(14, 600);              // variable-title-small-emphasized
-const TILE_SECONDARY_FONT = font(12, 500);          // label-medium
-const CLOCK_FONT = font(14, 650);                   // variable-body-medium-emphasized
+// fonts (Google Sans Flex, rounded)
+const TILE_LABEL_FONT = font(14, 600);
+const TILE_SECONDARY_FONT = font(12, 500);
+const CLOCK_FONT = font(14, 650);
 const CLOCK_BIG_FONT = font(14 * CLOCK_SCALE, 650, {opsz: 14});
 const DATE_FONT = font(14, 600);
 const CARRIER_FONT = font(14, 550);
 const BUILD_FONT = font(12, 500);
 
-const CAP_HEIGHT = 0.73;                // cap height / em of the font (spec §4: 0.72-0.74)
+const CAP_HEIGHT = 0.73;                // cap height / em of the font (0.72-0.74)
 
-// Tile colours (Tile.kt TileDefaults): [background rgb, alpha], foreground [rgb, alpha]
+// Tile colours: [background rgb, alpha], foreground [rgb, alpha]
 const TILE_COLORS = {
     active: {bg: [Color.primary, 1], fg: [Color.onPrimary, 1]},
     inactive: {bg: SurfaceEffect[1], fg: [Color.onSurface, 1]},
@@ -97,7 +97,7 @@ const MOBILE_ICONS = ['ic_signal_cellular_0_4_bar', 'ic_signal_cellular_1_4_bar'
     'ic_signal_cellular_3_4_bar', 'ic_signal_cellular_4_4_bar'];
 
 
-// The tiles of this phone, in AOSP's default order (no power-profiles-daemon: battery saver shows unavailable)
+// The tiles of this phone, in the reference's default order (no power-profiles-daemon: battery saver shows unavailable)
 // state: 'active' | 'inactive' | 'unavailable'
 const TILES = [
     {
@@ -226,7 +226,7 @@ class Tile extends St.Button {
             this._content.add_child(this._secondary);
         }
 
-        // the press highlight: onSurface at 15 %
+        // the press highlight
         this._highlight = new St.Widget({
             style: `background-color: ${rgba(Color.onSurface, 0.15)};`,
             opacity: 0,
@@ -249,7 +249,7 @@ class Tile extends St.Button {
             this.add_action(longPress);
         }
 
-        // the colours spring between inactive and active (Tile.kt:586-600); the corner stays
+        // the colours spring between inactive and active; the corner stays
         this._mode = spec.state(state);
         this._from = TILE_COLORS[this._mode];
         this._to = TILE_COLORS[this._mode];
@@ -307,7 +307,7 @@ class Tile extends St.Button {
         }
     }
 
-    // the squished height (screen px); the content stays centred and unscaled (SquishTile.kt)
+    // the squished height (screen px); the content stays centred and unscaled
     setHeightPx(h) {
         if (Math.abs(h - this._heightPx) < 0.01)
             return;
@@ -328,7 +328,7 @@ class Tile extends St.Button {
         this._icon.set_position(px(LARGE_ICON_CX - LARGE_ICON / 2), px(cy - LARGE_ICON / 2));
         const labelSize = 14 * 3, secondarySize = 12 * 3;
         if (this._secondary.text) {
-            // 20 sp + 16 sp lines, centred together
+            // the label and the secondary line, centred together
             placeCapCentered(this._label, px(LARGE_TEXT_X), px(cy - 24), px(labelSize));
             placeCapCentered(this._secondary, px(LARGE_TEXT_X), px(cy + 30), px(secondarySize));
         } else {
@@ -370,7 +370,7 @@ class BrightnessSlider extends St.Widget {
         pan.connect('cancel', () => this._endDrag());
         this._track.add_action(pan);
 
-        // the auto-brightness button (a LineageOS addition): 45 dp, 22.5 dp corners off, 12 dp on
+        // the auto-brightness button (a LineageOS addition): a circle when off, a rounded square when on
         this._auto = new St.Button({
             x: px(AUTO_X), y: px((THUMB_H - AUTO_SIZE) / 2), width: px(AUTO_SIZE), height: px(AUTO_SIZE),
             reactive: true, can_focus: true, accessible_name: 'Adaptive brightness',
@@ -496,7 +496,7 @@ class BrightnessSlider extends St.Widget {
         segment(0, activeEnd, TRACK_RADIUS, TRACK_INNER_RADIUS, Color.primary, 1);
         segment(inactiveStart, w, TRACK_INNER_RADIUS, TRACK_RADIUS, ...SurfaceEffect[1]);
 
-        // the thumb: a 4 x 52 dp bar
+        // the thumb: a narrow upright bar
         cr.newPath();
         const tr = THUMB_W / 2;
         cr.arc(c, tr, tr, Math.PI, 2 * Math.PI);
@@ -589,7 +589,7 @@ class ShadeHeader extends St.Widget {
         }
     }
 
-    // q: the QS expansion; MotionLayout's linear interpolation with the keyframes of combined_qs_header_scene.xml
+    // q: the QS expansion; the header moves linearly between its keyframes (HEADER_*)
     setProgress(q) {
         this._q = q;
         // the clock grows x2.57 from its ink corner; a crisp small copy at rest
@@ -647,7 +647,7 @@ class QSPanel extends St.Widget {
         this._brightness = new BrightnessSlider(state, shade);
         this.add_child(this._brightness);
 
-        // tiles in reading order; a wide tile that does not fit the row wraps (InfiniteGridLayout.kt)
+        // tiles in reading order; a wide tile that does not fit the row wraps
         this._tiles = [];
         let col = 0, row = 0;
         for (const spec of TILES) {

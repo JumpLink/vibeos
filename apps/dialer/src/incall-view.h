@@ -1,5 +1,4 @@
-/* The in-call screen: a call being placed, up, on hold or just ended (InCallUI's InCallFragment with
- * frag_incall_voice.xml; spec §8.6–8.13).
+/* The in-call screen: a call being placed, up, on hold or just ended.
  *
  * At the top the contact grid: the avatar, a status line ("Calling…"), the name, and under it the kind of number
  * or, once the call is up, how long it has been. In the middle six buttons (Mute, Keypad, Speaker, then Add call

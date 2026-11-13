@@ -18,7 +18,7 @@
 #include <neo.h>
 #include <spongy-gtk.h>
 
-/* conversation_message_view.xml, dimens.xml */
+/* a message's row */
 #define ROW_SIDE_PADDING 12
 #define AVATAR 48
 #define ARROW_GAP 9
@@ -28,18 +28,18 @@
 #define GAP 18                  /* before a message */
 #define GAP_CLUSTERED 2         /* before one clustered with the one above */
 #define META_TOP 4
-#define DELIVERED_START 4       /* SmsDeliverdBadge's margin; ic_sms_delivery_ok is 36 × 26 px, 12 × 8.7 dp */
+#define DELIVERED_START 4       /* the delivered tick: the gap before it, then its size */
 #define DELIVERED_WIDTH 12
 #define DELIVERED_HEIGHT 9
-#define CLUSTER_MS (60 * 1000)  /* ConversationMessageData.canClusterWithMessage */
-/* compose_message_view.xml */
+#define CLUSTER_MS (60 * 1000)  /* at most this far apart to cluster */
+/* the compose bar */
 #define COMPOSE_TOP 16
 #define COMPOSE_BUTTON 48
 #define FIELD_MARGIN_END 8
 #define SEND_PAD_END 12
 #define FIELD_MAX_LINES 4
-#define COUNTER_THRESHOLD 10    /* CODEPOINTS_REMAINING_BEFORE_COUNTER_SHOWN */
-#define REVEAL_MS 300           /* UiUtils.revealOrHideViewWithAnimation */
+#define COUNTER_THRESHOLD 10    /* characters left when the counter shows */
+#define REVEAL_MS 300           /* the send button coming or going */
 #define REFRESH_MS (60 * 1000)
 
 struct _ConversationView {
@@ -91,7 +91,7 @@ person_for (ConversationView *self, const char *destination)
   return NULL;
 }
 
-/* --- the messages (§2.3, §2.4) */
+/* --- the messages */
 
 static gboolean
 clusters (const SmsMessage *a, const SmsMessage *b)
@@ -172,7 +172,7 @@ on_bubble_long_pressed (GtkWidget *pressable, gpointer data)
   select_message (self, *(gint64 *) g_object_get_data (G_OBJECT (pressable), "id"));
 }
 
-/* the sender's avatar (ContactIconView): their card, or "Add to Contacts?"; a long press is the message's */
+/* the sender's avatar: their card, or "Add to Contacts?"; a long press is the message's */
 static void
 on_avatar_clicked (GtkWidget *pressable, gpointer data)
 {
@@ -189,7 +189,7 @@ make_message (ConversationView *self, const SmsMessage *message, gboolean cluste
 {
   gboolean incoming = MESSAGE_STATUS_IS_INCOMING (message->status);
   gboolean selected = message->id == self->selected, failed;
-  /* the delivered badge after the time, or alone where a cluster hides the time (ConversationMessageView) */
+  /* the delivered badge after the time, or alone where a cluster hides the time */
   gboolean delivered = message->status == MESSAGE_STATUS_OUTGOING_DELIVERED;
   g_autofree char *status = status_text (self, message, !clustered_below, &failed);
   MsgPerson *sender = incoming ? person_for (self, message->sender) : NULL;
@@ -241,7 +241,7 @@ make_message (ConversationView *self, const SmsMessage *message, gboolean cluste
         }
       if (delivered)
         {
-          /* message_metadata: the status (the time), then the badge centred on its line */
+          /* the line under the bubble: the status (the time), then the badge centred on its line */
           GtkWidget *line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
           GtkWidget *badge = msg_image_new ("/neo/Messaging/images/ic_sms_delivery_ok.png", DELIVERED_WIDTH,
                                             DELIVERED_HEIGHT);
@@ -267,7 +267,7 @@ make_message (ConversationView *self, const SmsMessage *message, gboolean cluste
     gtk_widget_add_css_class (content, "selected");
 
   bubble = msg_bubble_new (content);
-  /* white for the ones sent from here; an incoming one in its contact's colour, else primary (§2.3) */
+  /* white for the ones sent from here; an incoming one in its contact's colour, else primary */
   if (selected)
     gdk_rgba_parse (&color, "#8dafd1");
   else if (!incoming)
@@ -315,7 +315,7 @@ make_message (ConversationView *self, const SmsMessage *message, gboolean cluste
   return row;
 }
 
-/* --- select mode (§2.5) */
+/* --- select mode */
 
 static SmsMessage *
 selected_message (ConversationView *self)
@@ -338,7 +338,7 @@ select_message (ConversationView *self, gint64 id)
   gtk_widget_set_visible (self->bar, self->selected == 0);
   if (message)
     {
-      /* forward: sent, delivered or come whole (getCanForwardMessage), with text to pass on (an SMS is all text);
+      /* forward: sent, delivered or come whole, with text to pass on (an SMS is all text);
        * copy: text, and sent or come whole; send: one that failed */
       gtk_widget_set_visible (self->forward_action, message->text && *message->text
                                                     && (message->status == MESSAGE_STATUS_OUTGOING_COMPLETE
@@ -371,7 +371,7 @@ on_copy (ConversationView *self)
   select_message (self, 0);
 }
 
-/* the text goes on as a draft to the conversation picked (createForwardedMessage: a text part for a text part) */
+/* the text goes on as a draft to the conversation picked (a text part for a text part) */
 static void
 on_forward (ConversationView *self)
 {
@@ -401,7 +401,7 @@ on_details (ConversationView *self)
 
   if (!message)
     return;
-  /* MessageDetailsDialog: an SMS's type, who, and when */
+  /* Message details: an SMS's type, who, and when */
   g_string_append_printf (body, "%s%s", _("Type: "), _("Text message"));
   if (MESSAGE_STATUS_IS_INCOMING (message->status))
     {
@@ -573,7 +573,7 @@ on_refresh (gpointer data)
   return G_SOURCE_CONTINUE;
 }
 
-/* --- the compose bar (§2.6) */
+/* --- the compose bar */
 
 static char *
 field_text (ConversationView *self)
@@ -721,7 +721,7 @@ make_compose (ConversationView *self)
   return bar;
 }
 
-/* --- the action bar (§2.2) */
+/* --- the action bar */
 
 static void
 on_up (ConversationView *self)
@@ -729,9 +729,8 @@ on_up (ConversationView *self)
   g_signal_emit (self, signals[CLOSED], 0);
 }
 
-/* Make a call (launchPhoneCallActivity, Intent.ACTION_CALL): the Phone app calls the number at once (its "call"
- * action); another phone's app gets the tel: link. An emergency number is not handed over (ConversationFragment
- * says so instead). */
+/* Make a call: the Phone app calls the number at once (its "call" action); another phone's app gets the tel: link.
+ * An emergency number is not handed over (the snackbar says so instead). */
 static void
 on_call (ConversationView *self)
 {
@@ -759,7 +758,7 @@ archive (gpointer data)
   ConversationView *self = data;
 
   sms_client_set_archived (self->client, self->id, !self->conversation->archived);
-  /* ConversationFragment: archiving leaves the conversation */
+  /* archiving leaves the conversation */
   if (!self->conversation->archived)
     g_signal_emit (self, signals[CLOSED], 0);
 }
@@ -815,7 +814,7 @@ on_overflow (GtkWidget *button, gpointer data)
 
   if (!self->conversation)
     return;
-  /* the other one of a 1:1, when they are not a contact (ConversationFragment.onCreateOptionsMenu) */
+  /* the other one of a 1:1, when they are not a contact */
   if (msg_contact_can_add (only_person (self)))
     dialer_popup_menu_append (menu, _("Add contact"), add_contact, self);
   dialer_popup_menu_append (menu, _("People & options"), show_options, self);
@@ -868,7 +867,7 @@ static void
 conversation_view_init (ConversationView *self)
 {
   self->at_bottom = TRUE;
-  /* it opens with the keyboard down (stateHidden): the page has the focus, not the field */
+  /* it opens with the keyboard down: the page has the focus, not the field */
   gtk_widget_set_focusable (GTK_WIDGET (self), TRUE);
 }
 
@@ -908,7 +907,7 @@ conversation_view_new (SmsClient *client, Contacts *contacts, gint64 conversatio
   self->select_bar = msg_action_bar_new (FALSE, "");
   cancel = msg_action_bar_add_close (self->select_bar, _("Done"));
   g_signal_connect_swapped (cancel, "clicked", G_CALLBACK (conversation_view_back), self);
-  /* conversation_fragment_select_menu's order, less Share (no share sheet here) and Save/Download (no MMS) */
+  /* the select menu's order, less Share (no share sheet here) and Save/Download (no MMS) */
   self->forward_action = msg_action_bar_add_action (self->select_bar, "messaging-forward-symbolic", _("Forward"));
   g_signal_connect_swapped (self->forward_action, "clicked", G_CALLBACK (on_forward), self);
   self->copy_action = msg_action_bar_add_action (self->select_bar, "messaging-copy-symbolic", _("Copy text"));
@@ -922,7 +921,7 @@ conversation_view_new (SmsClient *client, Contacts *contacts, gint64 conversatio
   gtk_widget_set_visible (self->select_bar, FALSE);
   gtk_box_append (GTK_BOX (self->box), self->select_bar);
 
-  /* the messages, at the bottom while they are fewer than a screen (stackFromEnd) */
+  /* the messages, at the bottom while they are fewer than a screen */
   self->messages = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_valign (self->messages, GTK_ALIGN_END);
   gtk_widget_set_vexpand (self->messages, TRUE);
@@ -939,7 +938,7 @@ conversation_view_new (SmsClient *client, Contacts *contacts, gint64 conversatio
   gtk_overlay_add_overlay (GTK_OVERLAY (content), GTK_WIDGET (self->snackbar));
   gtk_widget_set_vexpand (content, TRUE);
   gtk_box_append (GTK_BOX (column), content);
-  /* the 4 dp shadow over the list's foot */
+  /* a shadow over the list's foot */
   self->shadow = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (self->shadow, "msg-compose-shadow");
   gtk_widget_set_opacity (self->shadow, 0);

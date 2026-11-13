@@ -1,4 +1,4 @@
-/* neo-messaging: the Messaging app, LineageOS's Messaging (Bugle) rebuilt in GTK 4 (spec/messaging.md).
+/* neo-messaging: the Messaging app, LineageOS's Messaging (Bugle) rebuilt in GTK 4.
  *
  * neo.Messaging, D-Bus activatable: the launcher starts it, an sms: or smsto: link opens the conversation with
  * that number (and the link's body in its field), and the SMS service's notifications open it at a conversation
@@ -48,7 +48,7 @@ on_activate (GApplication *app, gpointer data)
   gtk_window_present (GTK_WINDOW (messaging_window (GTK_APPLICATION (app))));
 }
 
-/* "sms:+49170123,+49171456?body=Hi": the numbers, and the text for the field (Intent.ACTION_SENDTO) */
+/* "sms:+49170123,+49171456?body=Hi": the numbers, and the text for the field */
 static void
 open_uri (GtkWidget *window, const char *uri)
 {

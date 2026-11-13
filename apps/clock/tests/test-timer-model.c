@@ -1,4 +1,4 @@
-/* timer-model and stopwatch-model against DeskClock's Timer.java and Stopwatch.java */
+/* timer-model and stopwatch-model against what DeskClock does */
 #include "../src/stopwatch-model.h"
 #include "../src/timer-model.h"
 

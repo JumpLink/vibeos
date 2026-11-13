@@ -9,7 +9,7 @@
 #define WEEK_MS (7 * 24 * (gint64) HOUR_MS)
 #define YEAR_MS (365 * 24 * (gint64) HOUR_MS)
 
-/* getNumberOfDaysPassed: calendar days, in the local time zone */
+/* days passed: calendar days, in the local time zone */
 static gboolean
 same_day (GDateTime *a, GDateTime *b)
 {
@@ -17,7 +17,7 @@ same_day (GDateTime *a, GDateTime *b)
          && g_date_time_get_day_of_year (a) == g_date_time_get_day_of_year (b);
 }
 
-/* FORMAT_SHOW_TIME, as the system clock is set: "14:05" or "2:05 PM" */
+/* the time of day, as the system clock is set: "14:05" or "2:05 PM" */
 static char *
 time_of_day (GDateTime *date)
 {

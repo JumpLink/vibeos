@@ -1,5 +1,5 @@
-// Recents: Launcher3's RecentsView in its overview state (spec gestures-recents-back.md §2, §5.8), drawn by the shell
-// over the launcher, which stays in BACKGROUND_APP behind it (its wallpaper blurred at depth 0.7).
+// Recents: the row of app cards, drawn by the shell over the launcher, which stays in its background-app pose
+// behind it (its wallpaper blurred at depth 0.7).
 //
 // The swipe up from an app (navigation.js) builds it as soon as the app starts to move: the running app is card 0,
 // the older tasks lie to its left at a pitch of 732 px (LTR locales lay recents out right to left), hidden until the
@@ -40,21 +40,20 @@ import {screenPixels} from './units.js';
 
 Object.assign(ICONS, L3_ICONS);
 
-// TEXTURE_TICK at twice its amplitude (see _scrollOver)
+// the scroll tick at twice its amplitude (see _scrollOver)
 const SCROLL_TICK = TICK.map(([amplitude, ms]) => [amplitude * 2, ms]);
-const PITCH = 732;                      // the card, 684, and the page spacing, 16 dp
-const TOUCH_SLOP = 24;                  // 8 dp
+const PITCH = 732;                      // a card's width and the gap to the next
+const TOUCH_SLOP = 24;
 const CARD_H = TASK[3] - TASK[1];
 const CARD_CENTER_Y = (TASK[1] + TASK[3]) / 2;
 
-// the scrim over the launcher's blurred wallpaper: the dark surface, a dark blur (the recording's (67, 91, 95)
-// read as light gray here)
+// the scrim over the launcher's blurred wallpaper, in the dark surface colour
 const SCRIM = Color.surface;
 const SCRIM_ALPHA = 0.77;
-// HintState's: the overview's colour at alpha round(0.77 × 100) / 255, as a fraction of the overview's
+// the hint pose's scrim: the overview's colour at alpha round(0.77 × 100) / 255, as a fraction of the overview's
 export const HINT_SCRIM = Math.round(SCRIM_ALPHA * 100) / 255 / SCRIM_ALPHA;
 
-// entering (§1.3, §5.8; the clip ran these longer than the code: settle 435 vs ≤ 350, attach 390 vs 300, chip
+// entering (the clip ran these longer than the code: settle 435 vs ≤ 350, attach 390 vs 300, chip
 // fade 185 vs 120)
 export const SETTLE_MS = 435;
 const ATTACH = springCurve([250, 0.8], 1 / 500);
@@ -62,44 +61,42 @@ const ATTACH_MS = 390;
 const DETACH_MS = 300;
 const CHIP_FADE_MS = 185;
 
-// the app chip (IconAppChipView, collapsed): a pill over the card's top-left, inset 36 px (4 dp + its background's
-// 8 dp), with the icon, the app's name, then (the owner's) its memory use, and the menu's chevron 8 dp from the end.
-// Launcher3's is 156 dp wide whatever the name; this one is no narrower and grows to fit the name and the memory, up
-// to the card's width less the insets.
+// the app chip, collapsed: a pill over the card's top-left with the icon, the app's name, then
+// (the owner's) its memory use, and the menu's chevron at the end. It is never narrower than minW and grows to fit the
+// name and the memory, up to the card's width less the insets.
 const CHIP = {inset: 36, minW: 464, h: 108, icon: 72, iconX: 18, textX: 114, memGap: 24, arrow: 72, arrowEnd: 24};
-const CHIP_COLOUR = [34, 44, 45];       // materialColorSurfaceBright, measured
-const CHIP_RADIUS = 84;                 // app_chip_round_corner_radius 28 dp: a pill, collapsed or expanded
-// expanded (revealAnim, for the menu): the background 8 dp out at the top and start, 52 dp tall and at least 216 dp
-// wide; the icon 32 dp; the name's start moves by the icon's growth over two, the chevron to the new end, upside down
+const CHIP_COLOUR = [34, 44, 45];
+const CHIP_RADIUS = 84;                 // a pill, collapsed or expanded
+// expanded (revealAnim, for the menu): the background grows out at the top and start, taller and wider, and so does
+// the icon; the name's start moves by half the icon's growth, the chevron to the new end, upside down
 const CHIP_OPEN = {out: 24, h: 156, minW: 648, icon: 96};
-// the menu (TaskMenuView, enableOverviewIconMenu): 216 dp wide, 4 dp from the card's start and 2 dp under the
-// expanded chip; it opens from 6 dp higher (menuToCollapsedChipGap) and 8 dp further in, its outline from the
-// collapsed chip's width and 0.8 of its height, the rows inside from 0.8 scale. One row an option, 52 dp: the icon
-// 20 dp at 16 dp, the label 14 sp 18 dp after it (all as measured on the S10e)
+// the chip's menu: just under the expanded chip; it opens from a little higher and
+// further in, its outline from the collapsed chip's width and 0.8 of its height, the rows inside from 0.8 scale. One
+// row an option: the icon, then the label
 const MENU = {x: 12, y: 174, w: 648, fromX: 36, fromY: 156, fromW: 468, from: 0.8, r: 84, rowH: 156, icon: 60,
     iconX: 48, textX: 162};
 const MENU_OPEN_MS = 417, MENU_CLOSE_MS = 333;
-const MENU_DIM = 0.4;                   // the card under it: TaskThumbnailView's MAX_SCRIM_ALPHA
-const PRESSED_ALPHA = 0.15;             // app_chip_menu_item_color_fg: onSurface
+const MENU_DIM = 0.4;                   // the scrim over the card while its menu is open
+const PRESSED_ALPHA = 0.15;             // the tint over a pressed chip or menu row
 const EMPHASIZED = new PathInterpolator('M0,0 C0.05,0 0.133333,0.06 0.166666,0.4 C0.208333,0.82 0.25,1 1,1');
 // the panel's alpha and the rows', on EMPHASIZED's progress
 const MENU_ALPHA = clampToProgress(LINEAR, 0.48, 0.74), ROWS_ALPHA = clampToProgress(LINEAR, 0.75, 1);
-// the actions row (OverviewActionsView): the Screenshot pill; Clear all is the same button style. Launcher3 has it
-// at y 1812, 72 px under the card; here the memory map (RamMap) sits between them, MAP_MARGIN from each, and the row
-// goes down by the map's height (Recents._actions)
+// the actions row under the cards: the Screenshot pill; Clear all is the same button style. ACTIONS is where it
+// would sit right under the card; the memory map (RamMap) goes between them, MAP_MARGIN from each, and the row goes
+// down by the map's height (Recents._actions)
 const ACTIONS = [329, 1812, 750, 1956];
-const MAP_MARGIN = 42;                  // 14 dp
+const MAP_MARGIN = 42;
 const BUTTON_COLOUR = [31, 41, 42];
 const BUTTON_H = 144, BUTTON_PAD = 48, BUTTON_ICON = 60, BUTTON_ICON_GAP = 24;
 const DISABLED_ALPHA = 0.29;
 const CLEAR_ALL_LEFT = 150;             // its left edge when scrolled to it: the oldest card's left − 48 − its width
-// no tasks: the carousel icon (120 dp) over "No recent items", the screen's middle (less half the status bar) between
+// no tasks: the carousel icon over "No recent items", the screen's middle (less half the status bar) between
 // them
 const EMPTY_ICON = 360, EMPTY_PAD = 48, STATUS_BAR_H = 116;
 
-// scrolling (PagedView in free scroll; OverScroller's spline; OverScroll.dampedScroll; EdgeEffect's recede)
+// scrolling: free scroll with a spline fling, a damped pull past either end that recedes when let go
 const SNAP_MIN_MS = 270;
-// … and the pager the swipe up drives (paging mode: quick switch), PagedView's: in screen px and px/s
+// … and the pager the swipe up drives (one card at a time: quick switch), in screen px and px/s
 const PAGER_SLOP = 24, PAGER_PAGE_SLOP = 48;                            // touch slop, paging touch slop
 const PAGER_FLING = 1500, PAGER_MIN_FLING = 750, PAGER_MIN_SNAP_V = 4500;
 const PAGER_SIGNIFICANT = 0.4, PAGER_RETURN = 0.33;
@@ -108,8 +105,8 @@ const FRICTION = 0.015, PHYS = 155670.6, DECEL = Math.log(0.78) / Math.log(0.9),
 const OVERSCROLL = 0.07 * SCREEN_W;
 const EDGE = [24.657 * 24.657, 0.98];
 
-// swipe-up dismiss (TaskViewDismissTouchController, RecentsDismissUtils; reflow measured 600/0.8 against the code's
-// 2800)
+// swipe-up dismiss: the card trails the finger at 0.35 until DIS_DETACH_PX, then springs to 1:1; the others reflow
+// into the hole (DIS_REFLOW as measured on the reference phone, much softer than its source's stiffness 2800)
 const DIS_DETACH_PX = 216, DIS_PRE_DETACH = 0.35, DIS_DETACH = [800, 0.95];
 const DIS_UNDERSHOOT = 75, DIS_LENGTH = 1785, DIS_THRESHOLD = 892, DIS_FLING = 3;
 const DIS_Y = [850, 0.65], DIS_V_MIN = 1444, DIS_REFLOW = [600, 0.8], DIS_RSCALE = [200, 0.75];
@@ -117,16 +114,16 @@ const DIS_NEIGHBOUR_DZETA = 0.15;
 
 // leaving
 const LAUNCH_MS = 478;                  // TOUCH_RESPONSE; the code says 336, the clip 478
-const EXIT_MS = 250;                    // OVERVIEW → NORMAL
+const EXIT_MS = 250;                    // recents → home
 const EXIT_SCROLL_PAGE_MS = 150, EXIT_SCROLL_MAX_MS = 750;
-const HOME_SWIPE_SCALE = 0.25;          // FROM_OVERVIEW: the recents scale 1 → 0.75 over the screen's height
+const HOME_SWIPE_SCALE = 0.25;          // swiping up in recents: the cards scale 1 → 0.75 over the screen's height
 const HOME_SWIPE_TY = -211.9;           // … and up by half the way to the top
 const HOME_SWIPE_FLING = 3;             // px/ms
 const PULLBACK_MS = 80;
-// from home, once there: the cards back from under the finger at 0.8 dp/ms, in no less than 80 ms
+// from home, once there: the cards back from under the finger at 2.4 px/ms, in no less than 80 ms
 const DRAG_SETTLE_MIN_MS = 80, DRAG_SETTLE_PX_MS = 2.4;
 
-// ---- OverScroller's spline ----------------------------------------------------------------------------------------
+// ---- the fling's spline -------------------------------------------------------------------------------------------
 
 const SPLINE = (() => {
     const n = 100, p1 = 0.5 * INFLEXION, p2 = 1 - (1 - INFLEXION);
@@ -183,12 +180,12 @@ function dismissScale(f) {
 
 // ---- chrome -------------------------------------------------------------------------------------------------------
 
-// The labels' baseline sits this far (em) below the middle of what they are centred in: the cap height's half, as
-// measured on the chip and the Screenshot button
+// The labels' baseline sits this far (em) below the middle of what they are centred in: half the cap height, so the
+// capitals look centred
 const BASELINE_BELOW_CENTRE = 0.357;
 
 // The app chip over a card's top-left: the icon, the name, the memory and the chevron on a pill (see CHIP). Its
-// origin is the collapsed pill's top-left; expand() opens it out for the menu (IconAppChipView.revealAnim).
+// origin is the collapsed pill's top-left; expand() opens it out for the menu.
 class Chip {
     constructor(app, path, scale, parent) {
         const u = v => v / scale;
@@ -202,7 +199,7 @@ class Chip {
             style: `background-color: rgb(${CHIP_COLOUR}); border-radius: ${u(CHIP_RADIUS)}px;`,
         });
         this.root.add_child(this._pill);
-        // app_chip_fg: pressed, onSurface at 0.15 over it
+        // the pressed state: a tint over the pill
         this._press = new St.Widget({
             style: `background-color: rgba(${Color.onSurface}, ${PRESSED_ALPHA}); border-radius: ${u(CHIP_RADIUS)}px;`,
             opacity: 0,
@@ -215,14 +212,13 @@ class Chip {
             this._icon.set_position(u(CHIP.iconX), u((CHIP.h - CHIP.icon) / 2));
             this.root.add_child(this._icon);
         }
-        // IconAppChipMenuTextStyle: google-sans-text-medium 14 sp, letterSpacing 0.025, made bold by the phone
         this._name = new AndroidText(app?.get_name() ?? '', 14, 500, {colour: Color.onSurface, embolden: true,
             letterSpacing: 0.025});
         this._nameClip = new Clutter.Actor({height: u(CHIP.h), clip_to_allocation: true});
         this._name.set_position(u(-this._name.inset), u(this._labelTop(this._name)));
         this._nameClip.add_child(this._name);
         this.root.add_child(this._nameClip);
-        // the memory: the same 14 sp, not bold, in the secondary text colour; empty until it has been read
+        // the memory, in the secondary text colour; empty until it has been read
         this._memory = new AndroidText('', 14, 500, {colour: Color.onSurfaceVariant});
         this.root.add_child(this._memory);
         this._arrow = new VectorIcon('ic_chevron_down', u(CHIP.arrow), Color.onSurface);
@@ -286,8 +282,7 @@ class Chip {
         this._press.opacity = on ? 255 : 0;
     }
 
-    // at the card's top-left, scaled with it; rect: where it takes a touch (the view's: from the card's corner
-    // 4 dp in, 52 dp tall)
+    // at the card's top-left, scaled with it; rect: where it takes a touch, a little more than the pill
     place(rect, s, alpha) {
         this.root.visible = alpha > 0;
         if (!alpha) {
@@ -309,7 +304,7 @@ class Chip {
     }
 }
 
-// The chip's menu (TaskMenuView): a panel of the chip's colour, one row an option (see MENU). items: {icon, label,
+// The chip's menu: a panel of the chip's colour, one row an option (see MENU). items: {icon, label,
 // run}
 class TaskMenu {
     constructor(items, scale, parent) {
@@ -327,7 +322,7 @@ class TaskMenu {
         this.root.add_child(this._rows);
         this._pressed = items.map((item, i) => {
             const top = i * MENU.rowH;
-            // app_chip_menu_item_bg pressed: a pill of onSurface at 0.15, .5 dp in at the sides
+            // the row's pressed state: a pill just inside the panel's sides
             const press = new St.Widget({
                 style: `background-color: rgba(${Color.onSurface}, ${PRESSED_ALPHA}); ` +
                     `border-radius: ${u(CHIP_RADIUS)}px;`,
@@ -337,8 +332,7 @@ class TaskMenu {
             const icon = new VectorIcon(item.icon, u(MENU.icon), Color.onSurface);
             icon.set_position(u(MENU.iconX), u(top + (MENU.rowH - MENU.icon) / 2));
             this._rows.add_child(icon);
-            // the label: 14 sp in the default sans (BaseIcon), bold on the phone: 600 has its widths, made bold; its
-            // baseline where the chip's would be in a row this tall
+            // the label, its baseline where the chip's would be in a row this tall
             const text = new AndroidText(item.label, 14, 600, {colour: Color.onSurface, embolden: true});
             text.set_position(u(MENU.textX - text.inset),
                 u(top + MENU.rowH / 2 + BASELINE_BELOW_CENTRE * 42 - text.baseline - text.inset));
@@ -446,7 +440,7 @@ class RamMap {
         this._bar.draw = cr => this._paintBar(cr);
         this.root.add_child(this._bar);
 
-        // the legend's texts: 12 sp, the badge bold and white, the parts at 85 % white with their colour's dot
+        // the legend: the total in a ringed badge, then each part with its colour's dot
         this._badge = new St.Widget({
             style: `border: ${u(RAM.badgeBorder)}px solid rgba(255, 255, 255, 0.6); border-radius: 999px;`,
         });
@@ -494,7 +488,7 @@ class RamMap {
         this._bar.queue_repaint();
     }
 
-    // the legend centred under the bar: the badge, 14 dp, the parts' column; the badge centred on the column
+    // the legend centred under the bar: the badge, a gap, the parts' column; the badge centred on the column
     _layout() {
         const u = v => v / this._scale;
         const line = this._parts[0].label.textHeight;
@@ -563,8 +557,7 @@ class Button {
             style: `background-color: rgb(${BUTTON_COLOUR}); border-radius: ${u(BUTTON_H / 2)}px;`,
             offscreen_redirect: Clutter.OffscreenRedirect.AUTOMATIC_FOR_OPACITY,
         });
-        // OverviewActionButton: 14 sp at 600, which the phone draws as 700 made bold; the icon, then 8 dp, then
-        // the label, centred in the pill
+        // the button: the icon, a gap, then the label, centred in the pill
         this._content = new Clutter.Actor();
         this._text = new AndroidText(text, 14, 700, {colour: Color.onSurface, embolden: true});
         let x = 0;
@@ -613,7 +606,7 @@ export function warmUp() {
 
 // ---- the overview -------------------------------------------------------------------------------------------------
 
-// A swiped-away app gets ActivityManager's treatment: asked to close, and its process killed when it hasn't after
+// A swiped-away app is asked to close, and its process killed when it hasn't after
 // KILL_MS (a game ignoring the request, an app stuck). Its window, if it goes, takes the kill with it. A SIGKILL, not
 // mutter's kill: for a Wayland client that is a protocol error, which a stuck client never reads.
 const KILL_MS = 5000;
@@ -704,14 +697,14 @@ export class Recents {
         }
 
         this._runningTask = running ? this._tasks[0] : null;
-        // where the running card is (TaskViewSimulator); from home, where card 0 rests
+        // where the running card is, following the swipe; from home, where card 0 rests
         this._frame = running ? [0, 0, SCREEN_W, SCREEN_H] : TASK.slice();
         this._frameR = running ? 0 : TASK_CORNER_R;
         this._scroll = 0;                           // px along the cards, 0 = the running one centred
         this._pull = 0;                             // px dragged past an end
-        this._offset = 1;                           // ADJACENT_PAGE_HORIZONTAL_OFFSET: 1 = the others off screen
+        this._offset = 1;                           // how far the other cards are pushed aside: 1 = off screen
         this._content = 0;                          // the other cards' alpha
-        this._stripScale = 1;                       // RECENTS_SCALE about _stripPivot
+        this._stripScale = 1;                       // the whole row's scale about _stripPivot
         this._stripPivot = TASK_PIVOT;
         this._stripTy = 0;
         this._dragTx = 0;                           // from home: where the finger has the cards since the pause
@@ -739,7 +732,7 @@ export class Recents {
         this.layout();
     }
 
-    // RecentsView's empty message: label-large 14 sp at 400, made 700 by the phone
+    // the message with no apps open: the carousel icon over the text
     _emptyMessage() {
         const u = v => v / this._scale;
         const root = new Clutter.Actor({opacity: 0});
@@ -848,10 +841,9 @@ export class Recents {
         return page;
     }
 
-    // PagedView.onScrollChanged -> RecentsView.onScrollOverPageChanged: as another page comes nearest the middle (a
-    // card crosses halfway) under the finger or a fling, vibrateForScroll: PRIMITIVE_LOW_TICK, or on a vibrator
-    // without primitives (the S10e's) EFFECT_TEXTURE_TICK, no sooner than 20 ms after the last
-    // (recentsScrollHapticMinGapMillis). At twice Android's amplitude: the owner found it too subtle (2026-11-09).
+    // As another page comes nearest the middle (a card crosses halfway) under the finger or a fling: a low tick
+    // (on the S10e, whose vibrator has no primitives, the texture tick), no sooner than 20 ms after the last. At
+    // twice the reference's amplitude: the owner found it too subtle (2026-11-09).
     _scrollOver() {
         const page = this._nearestPage();
         if (page === this._overPage)
@@ -1045,7 +1037,7 @@ export class Recents {
         if (type === Clutter.EventType.TOUCH_BEGIN) {
             if (this._touch)
                 return Clutter.EVENT_STOP;
-            // the menu open (AbstractFloatingView): a touch on an option is its tap; one anywhere else closes it
+            // the menu open: a touch on an option is its tap; one anywhere else closes it
             // and is spent, but for a swipe from the navigation bar
             if (this._menu) {
                 const item = this._menu.closing ? -1 : this._menu.menu.itemAt(x, y);
@@ -1162,7 +1154,7 @@ export class Recents {
         return Clutter.EVENT_STOP;
     }
 
-    // back (RecentsState.onBackInvoked): to the app recents was opened over when its card is wholly on screen, to
+    // back: to the app recents was opened over when its card is wholly on screen, to
     // its card when it is not, home when it is gone
     back() {
         if (this._busy)
@@ -1261,7 +1253,7 @@ export class Recents {
 
     // ---- the pager, while the swipe up is still going (quick switch) ----------------------------------------------
 
-    // The finger moved dx px along the bar, the cards at scale s. Past the touch slop RecentsView scrolls with it,
+    // The finger moved dx px along the bar, the cards at scale s. Past the touch slop the row scrolls with it,
     // 1:1 on screen.
     pagerMove(dx, s) {
         const pager = this._pager ??= {travel: 0, motion: 0, dragging: false, s};
@@ -1287,9 +1279,9 @@ export class Recents {
         return this._page();
     }
 
-    // The finger left at vx px/s: PagedView's ACTION_UP in paging mode. A fling, or a drag past 40 % of a card, goes
+    // The finger left at vx px/s, paging. A fling, or a drag past 40 % of a card, goes
     // one page on (finger right: older, recents running right to left), but back if the fling went against a drag
-    // of a third of a card; the duration follows the fling (snapToPageWithVelocity). Otherwise the nearest page, in
+    // of a third of a card; the duration follows the fling. Otherwise the nearest page, in
     // 750 ms. The stretch past an end recedes. Returns the page.
     pagerRelease(vx) {
         const pager = this._pager, n = this._tasks.length;
@@ -1322,7 +1314,7 @@ export class Recents {
         return page;
     }
 
-    // PagedView's snapToPage: SCROLL
+    // scroll to a page in ms, on the pager's curve
     snapTo(page, ms) {
         this._scrollTo(page * PITCH, ms, SCROLL);
     }
@@ -1364,7 +1356,7 @@ export class Recents {
         } else {
             dis.target = fy;
             if (!dis.detached) {
-                // past 72 dp it lets go of the finger's 0.35 and springs to 1:1, for good
+                // past DIS_DETACH_PX it lets go of the finger's 0.35 and springs to 1:1, for good
                 dis.detached = true;
                 dis.spring = new Spring(DIS_DETACH, task.dy, 0, fy);
                 this._run('detach', dt => {
@@ -1471,7 +1463,7 @@ export class Recents {
         });
     }
 
-    // RecentsDismissUtils: the older cards to the left slide right into the hole (or, when it was the oldest or
+    // After a dismiss the older cards to the left slide right into the hole (or, when it was the oldest or
     // left of the current page, the newer ones slide left), the first on a spring, each next one chasing it
     _reflow(task, v0) {
         const i = this._tasks.indexOf(task), n = this._tasks.length, page = this._page();
@@ -1600,8 +1592,8 @@ export class Recents {
         });
     }
 
-    // OVERVIEW → NORMAL: the cards slide off to the left, the scrim and the actions fade, the launcher's workspace
-    // grows back in behind (kind 'home': 0.92 → 1 in 250 ms; 'home-reveal', after a swipe up: WorkspaceRevealAnim)
+    // recents → home: the cards slide off to the left, the scrim and the actions fade, the launcher's workspace
+    // grows back in behind (kind 'home': 0.92 → 1 in 250 ms; 'home-reveal', after a swipe up: the home screen's reveal)
     goHome(kind = 'home', closing = false) {
         this._busy = true;
         this._stop('scroll');
@@ -1633,7 +1625,7 @@ export class Recents {
         }, () => this.destroy());
     }
 
-    // Swiping up from the bar: the cards shrink toward 0.75 and rise (FROM_OVERVIEW resistance); t = |dy|/H
+    // Swiping up from the bar: the cards shrink toward 0.75 and rise, resisting the finger; t = |dy|/H
     _homeSwipe(t) {
         this._homeT = t;
         this._stripPivot = TASK_PIVOT;
@@ -1661,15 +1653,15 @@ export class Recents {
 
     // ---- the chip's menu -------------------------------------------------------------------------------------
 
-    // TaskOverlayFactory.getEnabledShortcuts, as LineageOS 23.2 lists them, less what this shell cannot do: App
-    // info; Split screen (no split screen here); Pin and Freeform (off on Android too until turned on); Screenshot;
-    // Clear (TaskViewShortFactory's remove task)
+    // The card menu's options, as LineageOS 23.2 lists them, less what this shell cannot do: App info; Split
+    // screen (no split screen here); Pin and Freeform (off on the reference too until turned on); Screenshot; Clear
+    // (removes the task)
     _menuItems(task) {
         const items = [];
         const id = task.app && !task.app.is_window_backed() ? task.app.get_id() : null;
         if (id) {
             // the app's page in Settings, over the home screen (where back from it leads on Android)
-            // (info_24px: SystemShortcut.AppInfo's with the visual refresh, which the phone has)
+            // (info_24px: the newer App info icon, which the phone has)
             items.push({icon: 'info_24px', label: 'App info', run: () => {
                 this._closeMenu();
                 this.goHome();
@@ -1690,7 +1682,7 @@ export class Recents {
         return items;
     }
 
-    // TaskMenuView.showForTask with the icon menu: the chip opens out, the menu grows from under it and the card
+    // The menu opens: the chip opens out, the menu grows from under it and the card
     // dims, 417 ms on EMPHASIZED (the dim on time). The menu stays where it opened; the chip and the dim go with the
     // card.
     _openMenu(task) {
@@ -1758,7 +1750,7 @@ export class Recents {
 
     // ---- Screenshot ---------------------------------------------------------------------------------------------
 
-    // OverviewActionsView's Screenshot: the current card's app, as it is, into ~/Pictures/Screenshots as
+    // The Screenshot action: the current card's app, as it is, into ~/Pictures/Screenshots as
     // Screenshot_<yyyyMMdd-HHmmss>_<app>.png
     async _takeScreenshot(task = this._tasks[this._page()]) {
         const actor = task?.win.get_compositor_private();

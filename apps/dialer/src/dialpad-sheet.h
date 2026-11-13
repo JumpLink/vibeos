@@ -1,4 +1,4 @@
-/* The main screen's dialpad: the Dialer's DialpadFragment (spec §3).
+/* The main screen's dialpad.
  *
  * It covers the screen: at the foot the dialpad (the digits typed, the keys) with the green dial button over it,
  * and above that a clear space, where the search shows what the digits match. It slides up from the bottom and
@@ -23,7 +23,7 @@ void        dialpad_sheet_show (DialpadSheet *self, const char *number);
 void        dialpad_sheet_hide (DialpadSheet *self);
 gboolean    dialpad_sheet_get_shown (DialpadSheet *self);
 const char *dialpad_sheet_get_digits (DialpadSheet *self);
-/* empties it (closeSearch: a number is not kept from one search to the next) */
+/* empties it (a number is not kept from one search to the next) */
 void        dialpad_sheet_clear (DialpadSheet *self);
 
 /* Signals: "shown-changed" () as it starts to come or go, "digits-changed" () */

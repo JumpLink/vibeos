@@ -6,7 +6,7 @@
 #include <glib/gi18n.h>
 #include <neo.h>
 
-/* V/arrays.xml reminder_minutes_values */
+/* the choices, in minutes before the start */
 static const int minute_values[] = { 0, 1, 5, 10, 15, 20, 25, 30, 45, 60, 120, 180, 360, 540, 720, 1440, 2880, 10080,
                                      20160, 40320 };
 
@@ -20,7 +20,7 @@ G_DEFINE_FINAL_TYPE (CalReminders, cal_reminders, GTK_TYPE_WIDGET)
 enum { CHANGED, N_SIGNALS };
 static guint signals[N_SIGNALS];
 
-/* the values a row offers: the standard ones, and its own if it is not one of them (addMinutesToList) */
+/* the values a row offers: the standard ones, and its own if it is not one of them */
 static GArray *
 values_for (int minutes)
 {

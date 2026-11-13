@@ -94,7 +94,7 @@ export default class GnomePhoneExtension extends Extension {
         this._home = new Home(this);
         this._service = new Service(this._home);
 
-        // Android's SystemUI: the status bar in place of the shell's top panel
+        // the system UI: the status bar in place of the shell's top panel
         this._state = new SystemState();
         this._restorePanel = hideShellPanel();
         // the camera hole: under the status bar upright, on a short edge turned, where apps keep clear of it

@@ -51,14 +51,14 @@ function findTorch() {
 
 // UPower device states that mean "plugged in", until UPower's OnBattery is known: on a charger that gives about what
 // the phone takes (the S10e's 500 mA with the screen on), the battery's state flips between charging and discharging
-// every few seconds, and Android's bolt is there as long as the charger is (BatteryControllerImpl.mPluggedIn)
+// every few seconds, and the bolt should be there as long as the charger is
 const UP_CHARGING = 1;
 const UP_FULLY_CHARGED = 4;
 const UP_PENDING_CHARGE = 5;
 
 // How fast it charges, from the power the charger is allowed to give: the negotiated voltage (a PD contract's 9 V)
-// times the input limit the charger chip was set to, as Android's BatteryStatus does it (max current x max voltage of
-// the plugged supply), with Samsung's names on top. Slowly below 7.5 W (a computer's USB port is 2.5 W), fast from
+// times the input limit the charger chip was set to (max current x max voltage of the plugged supply), with Samsung's
+// names on top. Slowly below 7.5 W (a computer's USB port is 2.5 W), fast from
 // 12 W, super fast from 20 W. The S10e itself takes 15 W at most (stock's cap, the max77705 driver's PD_MAX_MW), so a
 // 27 W charger shows "Fast charging" there, as on One UI.
 const POWER_SUPPLY = '/sys/class/power_supply';
@@ -134,7 +134,7 @@ function readChargeSpeed() {
         : watts >= CHARGE_SLOW_W ? 'normal' : 'slow';
 }
 
-// Android's 5 Wi-Fi levels from NetworkManager's 0..100 strength (WifiManager.calculateSignalLevel, roughly)
+// the icon's 5 Wi-Fi levels (0-4) from NetworkManager's 0..100 strength
 function wifiLevel(strength) {
     if (strength >= 80)
         return 4;

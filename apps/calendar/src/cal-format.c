@@ -47,7 +47,7 @@ cal_format_time (gint64 time)
 {
   g_autoptr(GDateTime) local = local_time (time);
 
-  /* the 12-hour form drops the hour's leading zero, as Android's "h:mm a" */
+  /* the 12-hour form drops the hour's leading zero */
   return g_date_time_format (local, cal_format_uses_24h () ? "%H:%M" : "%-I:%M %p");
 }
 
@@ -79,7 +79,7 @@ cal_format_month_year (int day)
 char *
 cal_format_full_date (int day)
 {
-  /* TRANSLATORS: strftime; "November 7, 2026" (DateUtils FORMAT_SHOW_DATE | FORMAT_SHOW_YEAR) */
+  /* TRANSLATORS: strftime; "November 7, 2026" (the date with the year) */
   return format_day (day, C_("date", "%B %-d, %Y"));
 }
 
@@ -105,7 +105,7 @@ cal_format_weekday_short (int day)
 char *
 cal_format_editor_date (int day)
 {
-  /* TRANSLATORS: strftime; "Sun, Nov 1, 2026" (SHOW_DATE | SHOW_YEAR | SHOW_WEEKDAY | ABBREV_MONTH | ABBREV_WEEKDAY) */
+  /* TRANSLATORS: strftime; "Sun, Nov 1, 2026" (weekday, month, day, year; abbreviated) */
   return format_day (day, C_("date", "%a, %b %-d, %Y"));
 }
 
@@ -121,7 +121,7 @@ cal_format_relative_weekday (int day, int today)
 {
   g_autofree char *weekday = cal_format_weekday (day);
 
-  /* agenda_today, agenda_yesterday, agenda_tomorrow (S:329-333) */
+  /* today, yesterday or tomorrow, then the weekday */
   if (day == today)
     return g_strdup_printf (_("Today, %s"), weekday);
   if (day == today - 1)
@@ -131,7 +131,7 @@ cal_format_relative_weekday (int day, int today)
   return g_steal_pointer (&weekday);
 }
 
-/* "Thursday, April 12" (FORMAT_SHOW_DATE | FORMAT_SHOW_WEEKDAY: the year only when it is not this one) */
+/* "Thursday, April 12" (the year only when it is not this one) */
 static char *
 weekday_date (int day, int today)
 {
@@ -165,7 +165,7 @@ cal_format_event_when (gint64 start, gint64 end, gboolean all_day, gint64 now)
         return g_strconcat (a, RANGE, b, NULL);
       }
     }
-  /* a timed event within one day ("singleDayEvent"): "Today at 10:00 – 11:00", "Thursday, April 12, 10:00 – …" */
+  /* a timed event within one day: "Today at 10:00 – 11:00", "Thursday, April 12, 10:00 – …" */
   if (first == last)
     {
       g_autofree char *times = cal_format_time_range (start, end);
@@ -177,11 +177,11 @@ cal_format_event_when (gint64 start, gint64 end, gboolean all_day, gint64 now)
       {
         g_autofree char *date = weekday_date (first, today);
 
-        /* date_time_fmt: "%1$s, %2$s" */
+        /* the date, then the times */
         return g_strdup_printf (_("%s, %s"), date, times);
       }
     }
-  /* over several days: "Fri, Apr 6, 17:00 – Sun, Apr 8, 18:00" (ABBREV_MONTH | ABBREV_WEEKDAY) */
+  /* over several days: "Fri, Apr 6, 17:00 – Sun, Apr 8, 18:00" */
   {
     g_autoptr(GDateTime) a = local_time (start), b = local_time (end);
     /* TRANSLATORS: strftime; the date of a multi-day event's start or end, "Fri, Apr 6" */
@@ -213,7 +213,7 @@ cal_format_agenda_when (gint64 start, gint64 end, gboolean all_day)
     }
   if (cal_day_number (start) != cal_day_number (end > start ? end - 1 : start))
     {
-      /* over midnight: DateUtils adds the dates, "Nov 9, 22:00 – Nov 10, 02:00" */
+      /* over midnight: the dates added, "Nov 9, 22:00 – Nov 10, 02:00" */
       g_autoptr(GDateTime) a = local_time (start), b = local_time (end);
       /* TRANSLATORS: strftime; "Nov 9" */
       g_autofree char *da = g_date_time_format (a, C_("date", "%b %-d"));
@@ -232,7 +232,7 @@ cal_format_reminder_text (gint64 start, gboolean all_day, const char *location, 
   GString *text = g_string_new (NULL);
   g_autofree char *trimmed = location ? g_strstrip (g_strdup (location)) : NULL;
 
-  /* FORMAT_ABBREV_ALL; the time unless all-day; the date unless today or tomorrow */
+  /* abbreviated; the time unless all-day; the date unless today or tomorrow */
   if (day < today || day > today + 1)
     {
       g_autoptr(GDateTime) local = local_time (start);
@@ -267,7 +267,7 @@ cal_format_reminder_text (gint64 start, gboolean all_day, const char *location, 
 char *
 cal_format_reminder_minutes (int minutes)
 {
-  /* EventViewUtils.constructReminderLabel: weeks, days or hours when it divides evenly, else minutes */
+  /* weeks, days or hours when it divides evenly, else minutes */
   if (minutes != 0 && minutes % (7 * 24 * 60) == 0)
     return g_strdup_printf (g_dngettext (NULL, "%d week", "%d weeks", minutes / (7 * 24 * 60)),
                             minutes / (7 * 24 * 60));
@@ -282,7 +282,7 @@ cal_format_reminder_minutes (int minutes)
 int
 cal_week_start (int setting)
 {
-  /* Etar's values are Calendar.SUNDAY 1 … SATURDAY 7 */
+  /* the setting's values are Sunday 1 … Saturday 7 */
   if (setting >= 1 && setting <= 7)
     return setting - 1;
 #ifdef _NL_TIME_FIRST_WEEKDAY
@@ -368,13 +368,13 @@ cal_format_rrule (const char *rrule, gint64 start)
   if (!freq)
     return NULL;
 
-  /* the end: "; until 12/31/2026" (FORMAT_NUMERIC_DATE), "; for 5 times" */
+  /* the end: "; until 12/31/2026" (a numeric date), "; for 5 times" */
   if (until)
     {
       int y = 0, m = 0, d = 0, h = 0, mi = 0, sec = 0;
       g_autoptr(GDateTime) date = NULL;
 
-      /* Time.parse, then formatDateTime in the shown zone: a UTC end ("…T225959Z") is the local date it falls on */
+      /* parsed, then shown in the app's zone: a UTC end ("…T225959Z") is the local date it falls on */
       if (strlen (until) == 16 && until[15] == 'Z'
           && sscanf (until, "%4d%2d%2dT%2d%2d%2d", &y, &m, &d, &h, &mi, &sec) == 6)
         {
@@ -387,7 +387,7 @@ cal_format_rrule (const char *rrule, gint64 start)
 
       if (date)
         {
-          /* TRANSLATORS: strftime; a repeat rule's end date, numeric (FORMAT_NUMERIC_DATE) */
+          /* TRANSLATORS: strftime; a repeat rule's end date, numeric */
           g_autofree char *text_date = g_date_time_format (date, C_("date", "%-m/%-d/%Y"));
 
           g_string_append_printf (end, _("; until %s"), text_date);
@@ -435,7 +435,7 @@ cal_format_rrule (const char *rrule, gint64 start)
           int week = (g_date_time_get_day_of_month (first) - 1) / 7;
           g_autofree char *name = weekday_name (g_date_time_get_day_of_week (first) % 7, FALSE);
 
-          /* repeat_by_nth_*: "on every first Monday" */
+          /* "on every first Monday" */
           text = g_strdup_printf (_("Monthly (on every %s %s)"), _(nth[MIN (week, 4)]), name);
         }
       else

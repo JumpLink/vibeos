@@ -1,5 +1,4 @@
-/* The clock's stopwatch, as DeskClock keeps it (data/Stopwatch.java, data/Lap.java, the lap rules of
- * data/StopwatchModel.java).
+/* The clock's stopwatch, as DeskClock keeps it.
  *
  * Like a timer (timer-model.h), a running stopwatch does not tick: it keeps the time it had at its last start and
  * when that was, on the elapsed clock, and the total now is worked out from those. A lap is noted as the total at
@@ -16,7 +15,7 @@ typedef enum {
   STOPWATCH_PAUSED,
 } StopwatchState;
 
-#define STOPWATCH_MAX_LAPS 98                   /* StopwatchModel.canAddMoreLaps */
+#define STOPWATCH_MAX_LAPS 98                   /* the most laps it takes */
 
 typedef struct {
   StopwatchState state;
@@ -32,7 +31,7 @@ Stopwatch *stopwatch_copy (const Stopwatch *stopwatch);
 void       stopwatch_free (Stopwatch *stopwatch);
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (Stopwatch, stopwatch_free)
 
-/* the time on the stopwatch: getTotalTime() */
+/* the time on the stopwatch */
 gint64   stopwatch_total (const Stopwatch *stopwatch, gint64 now);
 
 void     stopwatch_start (Stopwatch *stopwatch, gint64 now, gint64 wall);
@@ -47,9 +46,9 @@ void     stopwatch_update_after_time_set (Stopwatch *stopwatch, gint64 now, gint
 
 /* lap @number's own time (1 is the first) */
 gint64   stopwatch_lap_time (const Stopwatch *stopwatch, guint number);
-/* the time of the lap still going, at @total: getCurrentLapTime() */
+/* the time of the lap still going, at @total */
 gint64   stopwatch_current_lap_time (const Stopwatch *stopwatch, gint64 total);
-/* the longest lap, the one still going included; 0 without laps: getLongestLapTime() */
+/* the longest lap, the one still going included; 0 without laps */
 gint64   stopwatch_longest_lap_time (const Stopwatch *stopwatch, gint64 total);
 
 /* --- the store: one key file with a [stopwatch] group */

@@ -1,11 +1,9 @@
-/* An M3 outlined text field (TextInputLayout, Widget.Material3.TextInputLayout.OutlinedBox) around a GtkText or a
- * GtkTextView: a 1 dp colorOutline box with 4 dp corners (2 dp colorPrimary while it has the focus), and its label in
- * the box, at the text's size and place, while the text is empty and unfocused, else 12 sp on the box's top edge in
- * a gap of its own (CollapsingTextHelper, 167 ms).
+/* An outlined text field around a GtkText or a GtkTextView: a box with rounded corners, its outline thicker and in
+ * the primary colour while it has the focus, and its label in the box, at the text's size and place, while the text
+ * is empty and unfocused, else smaller on the box's top edge in a gap of its own (moving in 167 ms).
  *
- * The widget is the TextInputLayout: the box starts the label's half height under its top (labelMarginTop, 16 px at
- * 3x) and is the EditText, @padding on every side of the text. Its lines are an EditText's: @text_size sp lines with
- * includeFontPadding, so the box is as tall as Etar's (still:cal-new-event). */
+ * The box starts the label's half height under the widget's top, @padding on every side of the text. Its lines are
+ * @text_size lines with font padding (cal_text_line). */
 #pragma once
 
 #include <gtk/gtk.h>

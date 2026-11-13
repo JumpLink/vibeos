@@ -49,8 +49,8 @@ cam_mode_selector_measure (GtkWidget *widget, GtkOrientation orientation, int fo
                                                             : CAM_MODE_SELECTOR_H;
 }
 
-/* where a mode's pill starts along the band: its x in the bar, its y in the column (the 48 dp buttons stacked,
- * centred, each pill 4 dp into its button as in the bar) */
+/* where a mode's pill starts along the band: its x in the bar, its y in the column (the buttons stacked, centred,
+ * each pill inset in its button as in the bar) */
 static double
 button_x (GtkWidget *widget, CamMode mode)
 {
@@ -76,7 +76,7 @@ static void
 cam_mode_selector_size_allocate (GtkWidget *widget, int width, int height, int baseline)
 {
   CamModeSelector *self = CAM_MODE_SELECTOR (widget);
-  /* MaterialButton's 4 dp insets: the 48 dp button draws (and ripples) in its middle 40 dp */
+  /* the button's insets: it draws (and ripples) only in its middle, the pill's height */
   int y = CAM_MODE_PAD + (CAM_MODE_BUTTON_H - CAM_MODE_PILL_H) / 2;
   int x = (width - CAM_MODE_BUTTON_W) / 2;
 
@@ -173,7 +173,7 @@ cam_mode_selector_class_init (CamModeSelectorClass *klass)
 static void
 cam_mode_selector_init (CamModeSelector *self)
 {
-  /* camera_mode_photo / _video / _qr, upper-cased by textAllCaps */
+  /* the mode names, in capitals */
   const char *names[CAM_N_MODES] = { C_("mode", "PHOTO"), C_("mode", "VIDEO"), C_("mode", "SCAN") };
 
   self->pill_x = -1;
@@ -210,7 +210,7 @@ cam_mode_selector_set_mode (CamModeSelector *self, CamMode mode, gboolean animat
   self->mode = mode;
   for (int i = 0; i < CAM_N_MODES; i++)
     {
-      /* isEnabled = mode != current: the chosen one is white and does not take a tap */
+      /* enabled unless it is the current mode: the chosen one is white and does not take a tap */
       gtk_widget_set_sensitive (self->buttons[i], i != (int) mode);
       if (i == (int) mode)
         gtk_widget_add_css_class (self->labels[i], "selected");
@@ -219,7 +219,7 @@ cam_mode_selector_set_mode (CamModeSelector *self, CamMode mode, gboolean animat
     }
   if (animate && gtk_widget_get_mapped (widget) && self->pill_x >= 0)
     {
-      /* two ValueAnimators, 300 ms AD */
+      /* the pill's place and width, 300 ms accelerate-decelerate */
       neo_anim_start (self->x_anim, self->pill_x, button_x (widget, mode), CAM_MS_DEFAULT, 0,
                       SPONGY_ACCELERATE_DECELERATE);
       neo_anim_start (self->w_anim, self->pill_w, pill_length (self), CAM_MS_DEFAULT, 0, SPONGY_ACCELERATE_DECELERATE);

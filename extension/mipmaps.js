@@ -1,8 +1,8 @@
 // Mutter mipmaps a window it draws below half its size, and rebuilds the chain (a render pass for each of a dozen
 // levels) whenever the window's content changes while it is that small. That is when apps draw: their first frames
 // as they grow out of their icon, and GTK's unfocused-window transition as one flies home. On the S10e it added 12
-// GPU passes to each of those frames, and a vblank was missed in most launches (2026-11-04). SurfaceFlinger samples
-// a scaled window linearly, never from mipmaps, so windows here are not mipmapped either.
+// GPU passes to each of those frames, and a vblank was missed in most launches (2026-11-04). The reference phone
+// samples a scaled window linearly, never from mipmaps, so windows here are not mipmapped either.
 import Meta from 'gi://Meta';
 
 export class NoWindowMipmaps {

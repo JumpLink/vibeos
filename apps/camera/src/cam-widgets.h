@@ -1,16 +1,16 @@
 /* cam-widgets: the camera screen's small drawn pieces.
  *
- *   CamRotator      a child turned in place with the phone (§17): 300 ms AD along the shortest way
- *   CamIcon         a symbolic icon at a size, white, #444444 when insensitive (the bar buttons' tint list)
- *   CamShutter      the shutter (§4): backplate, record disc → square, capture disc; its five morphs
- *   CamFlip         the flip-camera button (§5.2): the arrows turn 0 → −180° in 500 ms AD on each flip
- *   CamPause        pause / resume (§5.3), avd_video_recording_pause / _resume
- *   CamGallery      the gallery card (§5.1): placeholder icon or the newest capture, 200 ms crossfade
- *   CamLens         one lens button (§6.2)
- *   CamCountdown    the timer's digit (§10)
- *   CamZoomSlider   the zoom slider (§8)
- *   CamIsland       the info island (§13)
- *   CamToast        Android's text toast: the app icon and a message, at the bottom, for 2 s (§19.3)
+ *   CamRotator      a child turned in place with the phone: 300 ms accelerate-decelerate along the shortest way
+ *   CamIcon         a symbolic icon at a size, white, dark grey when insensitive (the bar buttons' tint list)
+ *   CamShutter      the shutter: backplate, record disc → square, capture disc; its five morphs
+ *   CamFlip         the flip-camera button: the arrows turn 0 → −180° in 500 ms accelerate-decelerate on each flip
+ *   CamPause        pause / resume, its glyphs morphing into each other
+ *   CamGallery      the gallery card: placeholder icon or the newest capture, 200 ms crossfade
+ *   CamLens         one lens button
+ *   CamCountdown    the timer's digit
+ *   CamZoomSlider   the zoom slider
+ *   CamIsland       the info island
+ *   CamToast        a toast: the app icon and a message, at the bottom, for 2 s
  */
 #pragma once
 
@@ -18,7 +18,7 @@
 
 G_BEGIN_DECLS
 
-/* the clockwise turn that keeps something upright on a phone turned by `orientation` (§17) */
+/* the clockwise turn that keeps something upright on a phone turned by `orientation` */
 #define CAM_COMPENSATION(orientation) ((360 - (orientation)) % 360)
 
 #define CAM_TYPE_ROTATOR (cam_rotator_get_type ())
@@ -38,11 +38,11 @@ void       cam_icon_set_color       (CamIcon *self, const GdkRGBA *color);
 #define CAM_TYPE_SHUTTER (cam_shutter_get_type ())
 G_DECLARE_FINAL_TYPE (CamShutter, cam_shutter, CAM, SHUTTER, GtkWidget)
 GtkWidget *cam_shutter_new          (void);
-/* photo ↔ video (avd_mode_photo_video / _video_photo) */
+/* photo ↔ video */
 void       cam_shutter_set_video    (CamShutter *self, gboolean video, gboolean animate);
-/* avd_video_start / avd_video_end */
+/* a recording's start and end: the disc turns into a square and back */
 void       cam_shutter_set_recording (CamShutter *self, gboolean recording, gboolean animate);
-/* avd_photo_capture */
+/* a photo taken: both discs shrink and grow back */
 void       cam_shutter_pulse        (CamShutter *self);
 /* Signals: "clicked" */
 

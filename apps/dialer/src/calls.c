@@ -16,7 +16,7 @@
 #define MM_NAME "org.freedesktop.ModemManager1"
 #define CALLAUDIO_NAME "org.mobian_project.CallAudio"
 #define CALLAUDIO_PATH "/org/mobian_project/CallAudio"
-#define POST_DIAL_PAUSE_MS 3000 /* GsmCdmaConnection.PAUSE_DELAY_MILLIS_GSM: the dialpad's "2-sec pause" lasts 3 s */
+#define POST_DIAL_PAUSE_MS 3000 /* the dialpad's "2-sec pause" lasts 3 s */
 
 /* ModemManager's MMCallState and MMCallStateReason */
 enum {
@@ -37,7 +37,7 @@ enum {
 
 /* An answer that has to wait until other calls are gone. A modem without +CHLD cannot hold the call that is up, so it
  * ends, and the waiting call (RINGING_IN once it is alone) is accepted; and GSM holds one call at most, so with one
- * on hold already, that one ends before the call that is up is held (Telecom answers the same two ways). */
+ * on hold already, that one ends before the call that is up is held. */
 typedef enum {
   ANSWER_NOW = 0,
   ANSWER_WHEN_ALONE,            /* Accept, once the others have ended and it rings as a call of its own */
@@ -60,7 +60,7 @@ typedef struct {
   gint64 connected;             /* Unix ms: when it was first up, 0 before */
   gboolean hangup_requested;    /* we asked for the hang-up, so it ended here (LOCAL, CANCELED or REJECTED) */
   gboolean multiparty;
-  /* Telecom's post-dial: what came after the number (tones, "," a pause, ";" a wait), sent once the call is up */
+  /* the post-dial: what came after the number (tones, "," a pause, ";" a wait), sent once the call is up */
   char *post_dial;
   guint post_dial_at;           /* the next character of it */
   guint post_dial_id;           /* a pause running */
@@ -98,7 +98,7 @@ struct _Calls {
   gboolean probed;
   gboolean dtmf_unsupported;    /* the modem said it cannot send tones */
   guint vibrate_45_id;
-  guint active_id;              /* the call InCallVibrationHandler counts as active */
+  guint active_id;              /* the call the in-call vibrations count as active */
   gint64 active_connected;
   gboolean active_was_outgoing;
 };
@@ -226,7 +226,7 @@ learn_dtmf_unsupported (Calls *self)
 }
 
 /* GSM's hold is +CHLD=2, which with no call up holds nothing and accepts nothing: a modem that does not know the
- * command at all answers "not supported", and then the Hold button stays disabled (CAPABILITY_HOLD unset). Asked
+ * command at all answers "not supported", and then the Hold button stays disabled. Asked
  * only with no call up, so it can never touch a call. */
 static void
 on_hold_probe (GObject *source, GAsyncResult *result, gpointer data)
@@ -285,7 +285,7 @@ sync_call_audio (Calls *self)
     }
 }
 
-/* --- InCallUI's vibrations (InCallVibrationHandler), each behind its setting */
+/* --- the in-call vibrations, each behind its setting */
 
 static gboolean
 vibrate_45 (gpointer data)
@@ -382,7 +382,7 @@ sync_ringer (Calls *self)
       else if (is_live (call) && !is_ringing (call))
         busy = TRUE;
     }
-  /* Telecom rings for an incoming call while nothing else is up; a waiting one only beeps (ringer.h) */
+  /* an incoming call rings while nothing else is up; a waiting one only beeps (ringer.h) */
   if (incoming && !busy && incoming->id != self->silenced_call)
     ringer_start (self->ringer);
   else
@@ -391,7 +391,7 @@ sync_ringer (Calls *self)
 
 /* --- the notification of the call in front */
 
-/* InCallPresenter.getCallToDisplay: incoming, then outgoing, then active, then held */
+/* the call to show: incoming, then outgoing, then active, then held */
 static Call *
 call_to_display (Calls *self)
 {
@@ -490,7 +490,7 @@ end_cause (const Call *call)
   return CALL_END_REMOTE;
 }
 
-/* CallList.getDelayForDisconnect: how long "Call ended" (or why) stays */
+/* how long "Call ended" (or why) stays */
 static guint
 end_delay (CallEnd end)
 {
@@ -515,7 +515,7 @@ log_call (Calls *self, Call *call)
 {
   gint64 now = g_get_real_time () / 1000;
   const char *country = calls_get_country (self);
-  /* the number as it was dialled, its pauses and tones too (CallLogManager.getLogNumber) */
+  /* the number as it was dialled, its pauses and tones too */
   g_autofree char *dialled = call->post_dial ? g_strconcat (call->number, call->post_dial, NULL) : NULL;
   CallLogEntry entry = {
     .number = dialled ? dialled : call->number,
@@ -587,8 +587,8 @@ on_blocked_hung_up (GObject *source, GAsyncResult *result, gpointer data)
   g_free (hangup);
 }
 
-/* Telecom's CallScreening for a blocked number (BlockCheckerAdapter): the call is declined before it rings, never
- * shown, never notified, and logged as "Blocked call" (spec §5.8.5). If its number came only after it started
+/* a blocked number: the call is declined before it rings, never
+ * shown, never notified, and logged as "Blocked call". If its number came only after it started
  * ringing (the +CLIP can come after the first RING), it is taken away the moment the number shows who it is. */
 static void
 block_call (Calls *self, Call *call)
@@ -614,10 +614,9 @@ block_call (Calls *self, Call *call)
   sync_calls (self);
 }
 
-/* --- post-dial: the tones after the number (Telecom's Connection.onPostDialContinue; GsmCdmaConnection
- * .processNextPostDialChar). Once the call is up they go out in order: a run of tones in one SendDtmf, a "," as a
- * pause of 3 s, a ";" as a wait that the in-call screen turns into "Send the following tones?" (Yes goes on, No
- * drops the rest). A call on hold waits until it is up again. */
+/* --- post-dial: the tones after the number. Once the call is up they go out in order: a run of tones in one SendDtmf,
+ * a "," as a pause of 3 s, a ";" as a wait that the in-call screen turns into "Send the following tones?" (Yes goes on,
+ * No drops the rest). A call on hold waits until it is up again. */
 
 static void post_dial_next (Call *call);
 
@@ -1509,8 +1508,7 @@ on_notification_action (gboolean missed, gint64 id, const char *action, gpointer
     g_warning ("calls: %s", error->message);
 }
 
-/* the missed calls not yet seen get their notifications again (the service started after a restart or a boot,
- * MissedCallNotifier.updateMissedCallNotification) */
+/* the missed calls not yet seen get their notifications again (the service started after a restart or a boot) */
 static void
 show_new_missed (Calls *self)
 {

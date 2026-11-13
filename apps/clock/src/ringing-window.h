@@ -1,4 +1,4 @@
-/* The ringing alarm, full screen (DeskClock's AlarmActivity, L/alarm_activity.xml; spec/clock.md §4.3–4.5).
+/* The ringing alarm, full screen.
  *
  * The time, the alarm's label, and a pulsing alarm handle between Snooze (left) and Dismiss (right). Dragging the
  * handle onto one of them snoozes or dismisses the alarm; a grey circle then grows from that button and leaves

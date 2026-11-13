@@ -6,8 +6,8 @@
 #include <math.h>
 #include <spongy-gtk.h>
 
-#define TAP_TIMEOUT_MS        100      /* ViewConfiguration.TAP_TIMEOUT */
-#define LONG_PRESS_TIMEOUT_MS 400      /* ViewConfiguration.DEFAULT_LONG_PRESS_TIMEOUT */
+#define TAP_TIMEOUT_MS        100      /* in a scroll view, the press shows only after this */
+#define LONG_PRESS_TIMEOUT_MS 400      /* held still this long, a press is a long press */
 
 struct _NeoPressable {
   GtkWidget       parent;
@@ -199,7 +199,7 @@ neo_pressable_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 
   GskRoundedRect shape = shape_rect (self, w, h);
   if (self->elevated) {
-    /* Material 3 elevation level 3 (a FAB's 6 dp): a key shadow and an ambient one */
+    /* the shadow under a raised button: a soft, wide one and a sharp, close one */
     gtk_snapshot_append_outset_shadow (snapshot, &shape, &(GdkRGBA) { 0, 0, 0, 0.15f }, 0, 4, 3, 8);
     gtk_snapshot_append_outset_shadow (snapshot, &shape, &(GdkRGBA) { 0, 0, 0, 0.3f }, 0, 1, 0, 3);
   }
@@ -281,7 +281,7 @@ neo_pressable_class_init (NeoPressableClass *klass)
                                                   NULL, NULL, NULL, G_TYPE_NONE, 0);
   gtk_widget_class_set_activate_signal (widget_class, signals[ACTIVATE]);
   /* GTK offers a custom widget's class actions as its AT-SPI actions, the last installed first: 0 clicks it (what
-   * the back gesture's DoAction (0) does), 1 long-presses it (TalkBack's long-click) */
+   * the back gesture's DoAction (0) does), 1 long-presses it (a screen reader's long-click) */
   gtk_widget_class_install_action (widget_class, "pressable.long-press", NULL, on_long_press_action);
   gtk_widget_class_install_action (widget_class, "pressable.click", NULL, on_click_action);
   /* a button to assistive technology: its label is read, and it can be pressed (GENERIC would drop the label) */
@@ -369,12 +369,12 @@ GtkWidget *
 neo_text_button_new (const char *label)
 {
   GtkWidget *text = gtk_label_new (label);
-  /* a button is a text view too: its 14 sp line, font padding and all, centred in the button */
+  /* a button is a text view too: its line, font padding and all, centred in the button */
   neo_label_set_font_padding (text, 14);
   gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
   GtkWidget *button = neo_pressable_new (text);
   gtk_widget_add_css_class (button, "neo-text-button");
-  /* M3 text buttons are 40 dp pills inside a 48 dp target */
+  /* the ripple: a pill inside the touch target */
   neo_pressable_set_ripple (NEO_PRESSABLE (button), NEO_RIPPLE_BOUNDED, 20);
   return button;
 }

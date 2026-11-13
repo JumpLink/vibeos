@@ -1,7 +1,6 @@
-/* CalAgendaView: Etar's Agenda (AgendaFragment, AgendaListView with AgendaByDayAdapter; spec/calendar.md §5): the
- * days that have events (and today), each a header with its weekday and date, then its events; the header of the
- * day at the top stays pinned while its events scroll under it (StickyHeaderListView). A red line marks where the
- * past ends.
+/* CalAgendaView: the Agenda view, ported from Etar's: the days that have events (and today), each a header with its
+ * weekday and date, then its events; the header of the day at the top stays pinned while its events scroll under it. A
+ * red line marks where the past ends.
  *
  * It holds a window of days and asks for more as the list nears either end ("range-changed"), keeping what is on
  * screen where it is when the new events arrive.

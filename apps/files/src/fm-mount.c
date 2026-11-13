@@ -57,7 +57,7 @@ fm_mount_error_message (GFile *location, const FmRemote *remote)
   return g_strdup_printf (_("Could not connect to %s."), host);
 }
 
-/* ---- the password dialog (dialog_password_input) ----------------------------------------------------------------- */
+/* ---- the password dialog ----------------------------------------------------------------------------------------- */
 
 typedef struct {
   Mount *mount;
@@ -132,7 +132,7 @@ on_ask_password (GMountOperation *op, const char *message, const char *default_u
           else if (default_domain)
             g_mount_operation_set_domain (op, default_domain);
           g_mount_operation_set_password (op, mount->password ? mount->password : "");
-          /* the server dialog's password is always remembered (spec §12) */
+          /* the server dialog's password is always remembered */
           g_mount_operation_set_password_save (op, G_PASSWORD_SAVE_PERMANENTLY);
         }
       g_mount_operation_reply (op, G_MOUNT_OPERATION_HANDLED);

@@ -1,14 +1,13 @@
-/* Search (cal-search.h): Etar's SearchView and SearchActivity.
+/* Search (cal-search.h): the search field and the search page.
  *
- *  - "Search" in the overflow menu expands the menu item's action view, an AppCompat SearchView, in the main toolbar
- *    (MenuItem showAsAction="never|collapseActionView"): the collapse arrow takes the navigation button's place, the
- *    field takes the title's, Today and ⋮ stay. Focused, it lists the searches made before (SearchRecentSuggestions,
- *    here the "search-history" key), newest first, those containing the text typed.
- *  - Submitting, or tapping a suggestion, collapses it and opens SearchActivity: the same SearchView expanded with
- *    the query and unfocused, Today, ⋮ with Settings, over an Agenda of the matching events from the shown
- *    calendars. Its collapse arrow returns home (Utils.returnToCalendarHome).
- *  - The match is CalendarProvider2's instance search: the query cut into words (or "quoted phrases"), every word
- *    found in the title, the description, the place, or a guest's address or name. */
+ *  - "Search" in the overflow menu opens a search field in the main toolbar: the collapse arrow takes the
+ *    navigation button's place, the field takes the title's, Today and ⋮ stay. Focused, it lists the searches made
+ *    before (the "search-history" key), newest first, those containing the text typed.
+ *  - Submitting, or tapping a suggestion, closes it and opens the search page: the same field with the query and
+ *    unfocused, Today, ⋮ with Settings, over an Agenda of the matching events from the shown calendars. Its
+ *    collapse arrow returns home.
+ *  - The match: the query cut into words (or "quoted phrases"), every word found in the title, the description,
+ *    the place, or a guest's address or name. */
 #include "cal-search.h"
 #include "agenda-view.h"
 #include "cal-colors.h"
@@ -23,14 +22,14 @@
 #include <neo.h>
 #include <spongy-gtk.h>
 
-#define MAX_HISTORY 250         /* SearchRecentSuggestions.MAX_HISTORY_COUNT */
-#define ROW_HEIGHT 58.0         /* abc_search_dropdown_item_icons_2line */
-#define ICON_OFFSET 40.0        /* SearchView.adjustDropDownSizeAndPosition: abc_dropdownitem_icon_width + text padding */
-#define MENU_WIDTH 196.0        /* abc_popup_menu_item_layout's minWidth (cal-window.c's overflow menu) */
+#define MAX_HISTORY 250         /* the searches kept */
+#define ROW_HEIGHT 58.0         /* a suggestion's row */
+#define ICON_OFFSET 40.0        /* the suggestions' icon column and text padding */
+#define MENU_WIDTH 196.0        /* the overflow menu's least width, as cal-window.c's */
 #define EDGE 8.0
 
-/* --- the icons AppCompat draws: abc_ic_search_api_material (the hint), ic_menu_recent_history (a suggestion),
- * abc_ic_commit_search_api_mtrl_alpha (a suggestion's refine arrow), tinted by the CSS colour */
+/* --- the icons: the magnifier (the hint), a history clock (a suggestion) and a suggestion's refine arrow, tinted by
+ * the CSS colour */
 
 typedef enum { ICON_SEARCH, ICON_HISTORY, ICON_COMMIT } IconKind;
 
@@ -47,7 +46,7 @@ typedef struct {
 
 G_DEFINE_TYPE (CalSearchIcon, cal_search_icon, GTK_TYPE_WIDGET)
 
-/* the vector paths, on a 24 unit grid (Material's search and history) */
+/* the vector paths, on a 24 unit grid (a search and a history icon) */
 static const char *search_path =
   "M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16"
   "c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 "
@@ -55,7 +54,7 @@ static const char *search_path =
 static const char *history_path =
   "M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94"
   "-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z";
-/* the commit arrow, as measured in the 32 dp bitmap: an L 11.8…20 × 10.7…19 dp and the diagonal to (21.7, 20.6) */
+/* the refine arrow, on a 32 unit grid: an L at the top left and the diagonal out of its corner */
 static const char *commit_path = "M 11.8 19 V 10.7 H 20 M 12.3 11.2 L 21.7 20.6";
 
 static void
@@ -112,7 +111,7 @@ search_icon_new (IconKind kind, double size, int width, int height)
   return GTK_WIDGET (self);
 }
 
-/* --- the Today button (search_title_bar's action_today: today_icon with the date, as the main toolbar draws it) */
+/* --- the Today button (the date in a calendar icon, as the main toolbar draws it) */
 
 typedef struct {
   GtkWidget parent;
@@ -164,7 +163,7 @@ cal_search_today_init (CalSearchToday *self)
   gtk_widget_set_size_request (GTK_WIDGET (self), 48, 48);
 }
 
-/* --- the history (SearchRecentSuggestions): newest first, each query once, 250 at most */
+/* --- the history: newest first, each query once, 250 at most */
 
 static void
 history_save (GSettings *settings, const char *query)
@@ -185,7 +184,7 @@ history_save (GSettings *settings, const char *query)
   g_settings_set_strv (settings, "search-history", (const char *const *) history);
 }
 
-/* --- the match (CalendarProvider2.tokenizeSearchQuery and constructSearchWhere) */
+/* --- the match: the query cut into words, each looked for in the event */
 
 static GPtrArray *
 tokenize (const char *query)
@@ -221,8 +220,8 @@ contains (const char *haystack, const char *token)
   return strstr (folded, token) != NULL;
 }
 
-/* every token in a column: title, description, place, or a guest's address or name (the organizer is one of them,
- * as Etar's Attendees rows have it) */
+/* every token in a column: title, description, place, or a guest's address or name (the organizer is one of
+ * them) */
 static gboolean
 event_matches (const CalEvent *event, GPtrArray *tokens)
 {
@@ -244,7 +243,7 @@ event_matches (const CalEvent *event, GPtrArray *tokens)
   return TRUE;
 }
 
-/* --- a SearchView */
+/* --- a search field */
 
 typedef struct _Search Search;
 
@@ -318,7 +317,7 @@ on_suggestion (NeoPressable *row, Search *search)
   search->submit (search, query);
 }
 
-/* the refine arrow: the suggestion into the field, to change it (setQueryRefinementEnabled) */
+/* the refine arrow: the suggestion into the field, to change it */
 static void
 on_refine (NeoPressable *button, Search *search)
 {
@@ -364,7 +363,7 @@ is_inside (GtkWidget *widget, GtkWidget *ancestor)
   return widget && ancestor && (widget == ancestor || gtk_widget_is_ancestor (widget, ancestor));
 }
 
-/* AutoCompleteTextView: a touch outside the list closes it, and goes on to what is under it */
+/* a touch outside the list closes it, and goes on to what is under it */
 static void
 on_outside (GtkGestureClick *gesture, int n, double x, double y, Search *search)
 {
@@ -417,7 +416,7 @@ dropdown_update (Search *search)
     }
   while ((child = gtk_widget_get_first_child (search->list)))
     gtk_box_remove (GTK_BOX (search->list), child);
-  /* SearchRecentSuggestionsProvider: display1 LIKE '%query%' ORDER BY date DESC; all of them for no text */
+  /* the searches containing the text, newest first; all of them for no text */
   for (int i = 0; history[i]; i++)
     if (!*needle || contains (history[i], needle))
       {
@@ -470,8 +469,7 @@ update_decorations (Search *search)
 {
   gboolean empty = !*gtk_editable_get_text (GTK_EDITABLE (search->text));
 
-  /* the hint (a magnifier, the query hint being empty) without text; the X with text (updateCloseButton in an
-   * expanded action view) */
+  /* the hint (a magnifier, the query hint being empty) without text; the X with text */
   gtk_widget_set_visible (search->hint, empty);
   gtk_widget_set_visible (search->clear, !empty);
 }
@@ -489,7 +487,7 @@ on_activate (GtkText *text, Search *search)
   g_autofree char *copy = g_strdup (gtk_editable_get_text (GTK_EDITABLE (text)));
   g_autofree char *trimmed = g_strstrip (g_strdup (copy));
 
-  /* onSubmitQuery: TextUtils.getTrimmedLength(query) > 0 */
+  /* only a query with more than spaces */
   if (!*trimmed)
     return;
   dropdown_hide (search);
@@ -499,7 +497,7 @@ on_activate (GtkText *text, Search *search)
 static void
 on_clear (NeoPressable *button, Search *search)
 {
-  /* onCloseClicked with text: empty it, focus, the keyboard up */
+  /* the X with text: empty it, focus, the keyboard up */
   gtk_editable_set_text (GTK_EDITABLE (search->text), "");
   gtk_widget_set_focusable (search->text, TRUE);
   gtk_widget_grab_focus (search->text);
@@ -522,8 +520,8 @@ on_focus_leave (GtkEventControllerFocus *focus, Search *search)
   dropdown_hide (search);
 }
 
-/* a tap on the field shows the suggestions again (SearchView's mOnClickListener: forceSuggestionQuery); on the
- * search page, where the field is kept out of the focus chain until then, it takes the focus */
+/* a tap on the field shows the suggestions again; on the search page, where the field is kept out of the focus
+ * chain until then, it takes the focus */
 static void
 on_text_pressed (GtkGestureClick *gesture, int n, double x, double y, Search *search)
 {
@@ -537,8 +535,8 @@ on_text_pressed (GtkGestureClick *gesture, int n, double x, double y, Search *se
     dropdown_update (search);
 }
 
-/* abc_search_view: the edit frame 8 dp in from both ends; the plate, its underline, holding the 36 dp text and the
- * X; the hint a magnifier 1.25 × the text size after a space (getDecoratedHint) */
+/* the search view: the edit frame; the plate, its underline, holding the text and the X; the hint a magnifier
+ * 1.25 × the text size after a space */
 static void
 search_view_build (Search *search)
 {
@@ -562,9 +560,9 @@ search_view_build (Search *search)
   gtk_widget_add_controller (search->text, GTK_EVENT_CONTROLLER (press));
   gtk_overlay_set_child (GTK_OVERLAY (area), search->text);
 
-  /* "   " with the icon on the second space, 1.25 × 18 sp, ImageSpan.ALIGN_BOTTOM: after the 8 dp padding and an
-   * 18 sp Roboto space (4.46 dp); its bottom on the line's bottom, the line (the icon's 22.5 dp over the font's
-   * 4.9 dp bottom) centred in the 36 dp field, which is centred in the 48 dp plate */
+  /* "   " with the icon on the second space, its bottom on the line's bottom: x after the 8 px padding and a space
+   * (4.46 px); y with the line (the icon's 22.5 px over the font's 4.9 px descent) centred in the 36 px field, which
+   * is centred in the 48 px plate */
   search->hint = search_icon_new (ICON_SEARCH, 22.5, -1, -1);
   ((CalSearchIcon *) search->hint)->x = 8 + 4.46;
   ((CalSearchIcon *) search->hint)->y = (48 - 36) / 2.0 + (36 - (22.5 + 4.9)) / 2 + (22.5 + 4.9) - 22.5;
@@ -617,7 +615,7 @@ search_free (gpointer data)
   g_free (search);
 }
 
-/* --- the search page (SearchActivity) */
+/* --- the search page */
 
 static void page_search (Search *search, const char *query);
 
@@ -642,7 +640,7 @@ on_results (GPtrArray *events, gpointer data)
   cal_agenda_view_set_events (CAL_AGENDA_VIEW (search->agenda), events);
 }
 
-/* Instances.CONTENT_SEARCH_BY_DAY_URI over the days the agenda holds, the shown calendars only */
+/* the search over the days the agenda holds, the shown calendars only */
 static void
 run_query (Search *search)
 {
@@ -685,7 +683,7 @@ today (void)
 static void
 on_page_today (NeoPressable *button, Search *search)
 {
-  /* GO_TO today */
+  /* to today */
   search->day = today ();
   cal_agenda_view_go_to (CAL_AGENDA_VIEW (search->agenda), search->day);
   run_query (search);
@@ -696,7 +694,7 @@ on_page_menu (int index, gpointer data)
 {
   Search *search = data;
 
-  /* action_settings: LAUNCH_SETTINGS */
+  /* ⋮ ▸ Settings */
   cal_window_push (search->window, cal_settings_page_new (search->window));
 }
 
@@ -708,7 +706,7 @@ on_page_more (NeoPressable *button, Search *search)
   cal_popup_show (GTK_WIDGET (button), labels, 1, -1, MENU_WIDTH, TRUE, on_page_menu, search);
 }
 
-/* Back: the suggestions first (AutoCompleteTextView takes it), then home */
+/* Back: the suggestions first, then home */
 static gboolean
 on_page_back (CalPage *page, gpointer data)
 {
@@ -722,7 +720,7 @@ on_page_back (CalPage *page, gpointer data)
   return FALSE;
 }
 
-/* SearchActivity.search: the query into the history, into the field (unfocused), and the agenda searched from the day
+/* a search: the query into the history, into the field (unfocused), and the agenda searched from the day
  * it was last sent to */
 static void
 page_search (Search *search, const char *query)
@@ -731,7 +729,7 @@ page_search (Search *search, const char *query)
   g_free (search->query_text);
   search->query_text = g_strdup (query);
   set_text (search, query);
-  /* clearFocus: and out of the focus chain until tapped, or GtkStack hands the focus to it with the page */
+  /* unfocused, and out of the focus chain until tapped, or GtkStack hands the focus to it with the page */
   if (gtk_widget_has_focus (search->text))
     gtk_window_set_focus (GTK_WINDOW (search->window), NULL);
   gtk_widget_set_focusable (search->text, FALSE);
@@ -759,7 +757,7 @@ push_search_page (GtkWidget *window, const char *query)
   search->day = today ();
   search_view_build (search);
 
-  /* search_title_bar: the expanded SearchView, Today, ⋮ (Settings) */
+  /* the bar: the search field, Today, ⋮ (Settings) */
   bar = cal_page_toolbar (CAL_PAGE (page), NULL, &actions);
   gtk_widget_add_css_class (bar, "cal-search-bar");
   gtk_widget_set_halign (actions, GTK_ALIGN_FILL);
@@ -776,7 +774,7 @@ push_search_page (GtkWidget *window, const char *query)
   gtk_box_append (GTK_BOX (actions), more);
   gtk_box_append (GTK_BOX (page), bar);
 
-  /* search.xml's body_frame: AgendaFragment(usedForSearch) */
+  /* the body: an Agenda of the results */
   search->agenda = cal_agenda_view_new ();
   gtk_widget_set_vexpand (search->agenda, TRUE);
   g_signal_connect (search->agenda, "range-changed", G_CALLBACK (on_range_changed), search);
@@ -837,7 +835,7 @@ on_main_submit (Search *search, const char *query)
   GtkWidget *window = search->window;
   g_autofree char *copy = g_strdup (query);
 
-  /* onQueryTextSubmit / onSuggestionClick: collapseActionView, then SearchActivity */
+  /* a query submitted or a suggestion tapped: the field closes, then the search page */
   main_collapse (search);
   push_search_page (window, copy);
 }
@@ -875,8 +873,7 @@ main_in_front (Search *search)
   return TRUE;
 }
 
-/* Back while the main toolbar searches: the suggestions first, then the action view collapses
- * (AppCompatDelegateImpl.onBackPressed: collapseActionView) */
+/* Back while the main toolbar searches: the suggestions first, then the field closes */
 static gboolean
 on_main_escape (GtkWidget *widget, GVariant *args, gpointer data)
 {
@@ -914,8 +911,8 @@ cal_search_open (GtkWidget *window)
   g_object_set_data_full (G_OBJECT (search->view), "cal-search", search, search_free);
   g_object_set_data (G_OBJECT (bar), "cal-search", search);
 
-  /* Toolbar.expandItemActionView: the collapse button (collapseIcon, the Up arrow) where the navigation button
-   * was, the action view after it; the title goes; the menu (Today, ⋮) stays */
+  /* the field opens: the collapse button (the Up arrow) where the navigation button
+   * was, the field after it; the title goes; the menu (Today, ⋮) stays */
   for (GtkWidget *child = gtk_widget_get_first_child (bar); child; child = gtk_widget_get_next_sibling (child))
     if (gtk_widget_has_css_class (child, "cal-toolbar-nav") || gtk_widget_has_css_class (child, "cal-toolbar-titles"))
       gtk_widget_set_visible (child, FALSE);

@@ -1,4 +1,4 @@
-/* MsgSwipe: a conversation row that can be swiped away sideways (spec §1.8, ConversationListSwipeHelper).
+/* MsgSwipe: a conversation row that can be swiped away sideways.
  *
  * Past the touch slop a mostly sideways drag takes the row (the press under it is cancelled, the list does not
  * scroll): the row follows the finger over the window-coloured background, which shows the archive icon on the side
@@ -14,7 +14,7 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE (MsgSwipe, msg_swipe, MSG, SWIPE, GtkWidget)
 
 /* @row: what is swiped; @start_icon: what a swipe to the right uncovers at the start, @end_icon: what a swipe to the
- * left uncovers at the end (Bugle's left and right image views) */
+ * left uncovers at the end */
 GtkWidget *msg_swipe_new (GtkWidget *row, const char *start_icon, const char *end_icon);
 /* off in the archived list and in select mode */
 void       msg_swipe_set_enabled (MsgSwipe *self, gboolean enabled);

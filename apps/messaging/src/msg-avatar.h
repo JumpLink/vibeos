@@ -1,4 +1,4 @@
-/* MsgAvatar: Messaging's avatar (spec §6), a circle: the contact's photo, else the letter tile (the name's first
+/* MsgAvatar: Messaging's avatar, a circle: the contact's photo, else the letter tile (the name's first
  * letter on a colour picked from its identifier), else the person glyph on that colour; a group's is up to four of
  * them in one box. Checked, it is the blue checkmark circle a selected conversation or picked contact shows. */
 #pragma once
@@ -20,8 +20,8 @@ void msg_avatar_set_group (MsgAvatar *self, const char * const *names, const cha
                            GBytes * const *photos);
 void msg_avatar_set_checked (MsgAvatar *self, gboolean checked);
 
-/* letter_tile_colors[abs(identifier.hashCode()) % 12], or primary_color #33666d: a contact's incoming bubbles have
- * the colour of its avatar (§2.3) */
+/* the avatar's colour for @identifier: a tile colour picked by its hash (Java's String.hashCode), or the action
+ * bar's for the one hash that has no index. A contact's incoming bubbles have the colour of its avatar */
 GdkRGBA msg_avatar_color (const char *identifier);
 
 G_END_DECLS

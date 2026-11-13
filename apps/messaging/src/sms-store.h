@@ -1,9 +1,9 @@
-/* The messages: every text message the phone sent or took in, kept in SQLite (Messaging's bugle_db; spec §10.1). Its
+/* The messages: every text message the phone sent or took in, kept in SQLite (Messaging's bugle_db). Its
  * tables and columns are bugle_db's, the ones this app uses, so what Messaging reads from it maps one to one:
  * conversations, messages, parts (a message's text), participants and conversation_participants.
  *
- * Android keeps the messages twice, in the telephony provider and in bugle_db, and syncs the two. Here the modem
- * hands each message over once (ModemManager, which then forgets it), so bugle_db is the only store.
+ * The modem hands each message over once (ModemManager then forgets it), so bugle_db is the only store: there is
+ * no second copy to keep in step.
  *
  * Only the service writes it (a message comes or is sent, the user deletes or archives); the app reads it, and is
  * told by the service when it changed. A participant is known by its destination: a number in its canonical form
@@ -15,7 +15,7 @@
 
 G_BEGIN_DECLS
 
-/* MessageData's statuses (spec §10.1) */
+/* a message's statuses, with Bugle's numbers */
 typedef enum
 {
   MESSAGE_STATUS_UNKNOWN = 0,
@@ -84,7 +84,7 @@ void      sms_store_set_sms_uri (SmsStore *store, gint64 message_id, const char 
 guint     sms_store_mark_read (SmsStore *store, gint64 conversation_id);
 guint     sms_store_mark_seen (SmsStore *store, gint64 conversation_id);
 void      sms_store_set_archived (SmsStore *store, gint64 conversation_id, gboolean archived);
-/* the text typed and not sent (DraftMessageData), or NULL for none */
+/* the text typed and not sent, or NULL for none */
 void      sms_store_set_draft (SmsStore *store, gint64 conversation_id, const char *text);
 gboolean  sms_store_delete_conversation (SmsStore *store, gint64 conversation_id);
 /* the message goes; its conversation goes with its last message. The conversation's id */

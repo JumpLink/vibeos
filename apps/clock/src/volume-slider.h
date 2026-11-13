@@ -1,7 +1,6 @@
-/* VolumeSlider: the "Alarm volume" setting's slider (AlarmVolumePreference with Material 3 Expressive's discrete
- * Slider; spec/clock.md §10.3): a 16 dp track in colorPrimary up to the value and colorSecondaryContainer after it,
- * a 4 × 44 dp handle standing in a 4 dp gap, and a dot at every step (or, with many steps, only at the end: the
- * screen saver's "Brightness").
+/* VolumeSlider: the "Alarm volume" setting's slider (a discrete slider): a thick track, filled
+ * in the accent up to the value and paler after it, a tall thin handle standing in a gap, and a dot at every step
+ * (or, with many steps, only at the end: the screen saver's "Brightness").
  *
  * Signals: "changed" (int value): moved by a finger, step by step; "released" (): the finger let go. */
 #pragma once

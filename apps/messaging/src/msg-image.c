@@ -1,4 +1,4 @@
-/* Messaging's bitmaps at their size in dp (msg-image.h). */
+/* Messaging's bitmaps at their size in GTK px (msg-image.h). */
 #include "msg-image.h"
 
 /* a texture that says it is @width × @height: GtkPicture's natural size is its paintable's intrinsic one */
@@ -30,7 +30,7 @@ msg_sized_paintable_get_intrinsic_height (GdkPaintable *paintable)
 }
 
 /* none: with its own, GtkPicture would scale it to any width it is measured for, and a vertical box measures each
- * child for the box's whole width (the empty lists' 198 dp picture came out 360 dp wide, cut off at the side) */
+ * child for the box's whole width (the empty lists' 198 px picture came out 360 px wide, cut off at the side) */
 static double
 msg_sized_paintable_get_intrinsic_aspect_ratio (GdkPaintable *paintable)
 {

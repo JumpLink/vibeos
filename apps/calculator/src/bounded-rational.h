@@ -1,5 +1,5 @@
-/* bounded-rational: exact fractions that are not allowed to grow without bound, ExactCalculator's
- * BoundedRational (BoundedRational.java).
+/* bounded-rational: exact fractions that are not allowed to grow without bound; ported from
+ * ExactCalculator's BoundedRational.
  *
  * The calculator keeps a result as an exact fraction for as long as it can: that is why 1÷3×3 is 1
  * and 0.1+0.2 is 0.3 here. A fraction whose numerator and denominator together pass MAX_SIZE

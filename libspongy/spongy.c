@@ -1,4 +1,4 @@
-/* libspongy (see spongy.h). Each part follows its Android source; SPEC.md has the file:line of every number. */
+/* libspongy (see spongy.h): the edge, the fling, the velocity, the springs, the curves and the list, in that order. */
 #include "spongy.h"
 
 #include <math.h>
@@ -30,7 +30,7 @@ sgn (double x)
   return (x > 0) - (x < 0);
 }
 
-/* ---- the stretch edge: android.widget.EdgeEffect (TYPE_STRETCH) ------------------------------------------------ */
+/* ---- the stretch edge ------------------------------------------------------------------------------------------ */
 
 #define NATURAL_FREQUENCY            24.657
 #define DAMPING_RATIO                0.98
@@ -185,7 +185,7 @@ spongy_edge_frame (SpongyEdge *e, double now, bool far_edge, bool *animating)
   return fabsf (a) <= NON_ZERO_EPSILON ? 0.f : a;
 }
 
-/* hwui StretchEffect's computeOverscroll, the affected distance being the whole size as hwui sets it */
+/* the stretch shader's mapping, the affected distance being the whole size */
 float
 spongy_stretch_map (float p, float o, float dim)
 {
@@ -222,9 +222,9 @@ spongy_stretch_unmap (float src, float o, float dim)
   return (lo + hi) / 2;
 }
 
-/* ---- fling: android.widget.OverScroller.SplineOverScroller ----------------------------------------------------- */
+/* ---- fling: a spline that slows down as friction would --------------------------------------------------------- */
 
-#define SCROLL_FRICTION   0.015                    /* ViewConfiguration.getScrollFriction */
+#define SCROLL_FRICTION   0.015                    /* the scroll friction */
 #define INFLEXION         0.35f
 #define START_TENSION     0.5f
 #define END_TENSION       1.0f
@@ -284,7 +284,7 @@ static double
 physical_coeff (void)
 {
   double ppi = density * 160.0;
-  return GRAVITY_EARTH * 39.37 * ppi * 0.84;      /* computeDeceleration (0.84f): "look and feel tuning" */
+  return GRAVITY_EARTH * 39.37 * ppi * 0.84;      /* 0.84: a tuning factor, the fling's feel */
 }
 
 static double
@@ -388,7 +388,7 @@ spongy_fling_abort (SpongyFling *f)
   f->curr_velocity = 0;
 }
 
-/* ---- velocity: VelocityTracker, LeastSquaresVelocityTrackerStrategy degree 2, no weighting ---------------------- */
+/* ---- velocity: a least-squares fit of degree 2, no weighting --------------------------------------------------- */
 
 #define HORIZON_MS            100.0
 #define ASSUME_STOPPED_MS     40.0
@@ -476,7 +476,7 @@ spongy_velocity_get (const SpongyVelocity *v, double now, float *vx, float *vy)
   *vy = lsq_slope (t, ys, m);
 }
 
-/* ---- springs: androidx.dynamicanimation SpringForce + SpringAnimation ------------------------------------------ */
+/* ---- springs --------------------------------------------------------------------------------------------------- */
 
 #define THRESHOLD_MULTIPLIER           0.75
 #define VELOCITY_THRESHOLD_MULTIPLIER  (1000.0 / 16.0)
@@ -558,7 +558,7 @@ spongy_spring_update (SpongySpring *s, double now)
   return true;
 }
 
-/* ---- interpolators: PathInterpolator --------------------------------------------------------------------------- */
+/* ---- easing curves: any cubic path ----------------------------------------------------------------------------- */
 
 void
 spongy_interp_cubic (SpongyInterp *i, float x1, float y1, float x2, float y2)
@@ -683,7 +683,7 @@ spongy_curve (SpongyCurve c, float t)
   }
 }
 
-/* ---- a list: androidx RecyclerView's wiring --------------------------------------------------------------------- */
+/* ---- a list: drag, fling and stretch together ------------------------------------------------------------------ */
 
 #define FLING_DESTRETCH_FACTOR 4.0f
 
@@ -754,7 +754,7 @@ spongy_list_down (SpongyList *l, float y, double t)
     l->flinging = false;
     l->dragging = true;
   }
-  /* stopGlowAnimations: catches a receding stretch where it is, and drags it without slop */
+  /* a touch catches a receding stretch where it is, and drags it without slop */
   if (l->top.distance != 0 && !can_scroll_up (l)) {
     spongy_edge_pull_distance (&l->top, 0, t);
     l->dragging = true;
@@ -765,12 +765,12 @@ spongy_list_down (SpongyList *l, float y, double t)
   }
 }
 
-/* RecyclerView rounds what a stretch took to whole pixels, which is exact for its whole-pixel moves. Ours are
+/* A list that moves in whole pixels can round what a stretch took to whole pixels. Ours are
  * fractional: an edge that took all of a move took exactly it, or the rounding's leftover scrolls the list off its
  * end and the stretch is let go. EPS: float noise in a pull, in units of the size. */
 #define PULL_EPS 1e-6f
 
-/* releaseVerticalGlow: a drag while stretched goes to the stretch first, and only what is left of it (once a drag
+/* A drag while stretched goes to the stretch first, and only what is left of it (once a drag
  * back has undone the stretch) scrolls; what it took, px */
 static float
 release_glow (SpongyList *l, float dy, double t)
@@ -817,14 +817,14 @@ spongy_list_move (SpongyList *l, float y, double t)
   dy -= release_glow (l, dy, t);
   float rest = scroll_by (l, dy);
   float H = l->view_height;
-  /* pullGlows: what the list could not take stretches the edge */
+  /* what the list could not take stretches the edge */
   if (H > 0) {
     if (rest < 0)
       spongy_edge_pull_distance (&l->top, -rest / H, t);
     else if (rest > 0)
       spongy_edge_pull_distance (&l->bottom, rest / H, t);
   }
-  /* considerReleasingGlowsOnScroll */
+  /* a scroll away from a stretched edge lets the stretch go */
   if (!spongy_edge_is_finished (&l->top) && dy > 0)
     spongy_edge_release (&l->top, t);
   if (!spongy_edge_is_finished (&l->bottom) && dy < 0)
@@ -901,7 +901,7 @@ spongy_list_fling (SpongyList *l, float velocity, double t)
   l->flinging = !l->fling.finished;
 }
 
-/* consumeFlingInStretch: a fling out of a stretch first undoes it, four times as fast as it scrolls */
+/* A fling out of a stretch first undoes it, four times as fast as it scrolls */
 static float
 consume_fling_in_stretch (SpongyList *l, float unconsumed, double t)
 {

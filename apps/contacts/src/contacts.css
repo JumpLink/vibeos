@@ -1,7 +1,6 @@
-/* The Contacts styles, over libneo's (neo.css). Contacts is a light theme made dark by force dark (spec §0.2, §5.0):
- * these are the colours it renders, not a palette's. Sizes are dp (1 dp = 1 px here); most of the geometry is set
- * in C next to the spec's numbers, so this file is mainly colours, fonts and backgrounds. The weights are Bold
- * text's: regular 700, medium 800, bold 900. */
+/* The Contacts styles, over libneo's (neo.css). These are the dark colours the screens render, not a palette's. Sizes
+ * are GTK px; most of the geometry is set in C, so this file is mainly colours, fonts and backgrounds. The weights are
+ * Bold text's: regular 700, medium 800, bold 900. */
 
 window.ct-window,
 ct-page,
@@ -9,7 +8,7 @@ ct-page,
 .ct-filter,
 .ct-settings,
 .ct-picker {
-  background-color: #181c1d;            /* background_primary night */
+  background-color: #181c1d;
 }
 
 /* QuickContact draws its own scrim over the page under it */
@@ -17,15 +16,15 @@ ct-page.translucent {
   background: none;
 }
 
-/* ---- toolbars (§1.2, §4.5, §5.2.1) ---- */
+/* ---- toolbars ---- */
 
 .ct-toolbar {
   min-height: 56px;
-  background-color: #33666d;            /* primary_color */
+  background-color: #33666d;
 }
 
 .ct-toolbar-title {
-  margin-left: 16px;                   /* 56 dp button + 16 = 72 dp */
+  margin-left: 16px;                   /* after the navigation button */
   font-size: 20px;
   font-weight: 800;
   color: #ffffff;
@@ -36,18 +35,18 @@ ct-page.translucent {
 }
 
 .ct-toolbar-shadow {
-  min-height: 4px;                      /* abc_action_bar_elevation_material */
+  min-height: 4px;
   background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.13), rgba(0, 0, 0, 0));
 }
 
 .ct-people .ct-toolbar-shadow {
-  min-height: 2px;                      /* tab_elevation */
+  min-height: 2px;
 }
 
 .ct-text-button label {
   font-size: 14px;
   font-weight: 800;
-  color: #81b5bc;                       /* colorAccent made light */
+  color: #81b5bc;
 }
 
 .ct-text-button {
@@ -67,7 +66,7 @@ ct-page.translucent {
   color: #ffffff;
 }
 
-/* ---- search and selection (§1.10, §2) ---- */
+/* ---- search and selection ---- */
 
 .ct-search-bar {
   min-height: 56px;
@@ -94,7 +93,7 @@ ct-page.translucent {
 
 .ct-selection-bar {
   min-height: 56px;
-  background-color: #222222;            /* makeDark(#f6f6f6) */
+  background-color: #222222;
 }
 
 .ct-selection-bar .ct-icon-button image {
@@ -114,7 +113,7 @@ ct-page.translucent {
   color: #81b5bc;
 }
 
-/* ---- the list's header, empty states, FAB (§1.8, §1.9, §1.6) ---- */
+/* ---- the list's header, empty states, FAB ---- */
 
 .ct-list-header {
   min-height: 48px;
@@ -147,7 +146,7 @@ ct-page.translucent {
   color: #959595;
 }
 
-/* the fill (#00383e) and its shadow are the pressable's own (neo_pressable_set_fill) */
+/* the fill and its shadow are the pressable's own (neo_pressable_set_fill) */
 .ct-fab {
   min-width: 56px;
   min-height: 56px;
@@ -158,7 +157,7 @@ ct-page.translucent {
   color: #ffffff;
 }
 
-/* ---- the drawer (§1.7) ---- */
+/* ---- the drawer ---- */
 
 .ct-drawer-scrim {
   background-color: rgba(0, 0, 0, 0.6);
@@ -221,7 +220,7 @@ ct-page.translucent {
 
 .ct-drawer-divider-line {
   min-height: 1px;
-  margin: 7px 0 8px 0;                  /* the 16 dp drawer_horizontal_divider frame */
+  margin: 7px 0 8px 0;                  /* the divider's frame */
   background-color: #2e2e2e;
 }
 
@@ -232,14 +231,14 @@ ct-page.translucent {
   color: #979797;
 }
 
-/* ---- QuickContact (§3) ---- */
+/* ---- QuickContact ---- */
 
 .ct-qc-scrim {
   background-color: rgba(0, 0, 0, 0.784);
 }
 
 .ct-qc-cards {
-  background-color: #232323;            /* card_margin_color made dark */
+  background-color: #232323;
   padding-top: 12px;
 }
 
@@ -256,7 +255,7 @@ ct-page.translucent {
 }
 
 .ct-qc-entry-header {
-  padding-top: 5px;                     /* expanding_entry_card_item's header: paddingTop 5, marginBottom 2 */
+  padding-top: 5px;
   margin-bottom: 2px;
   font-size: 16px;
   font-weight: 700;
@@ -283,7 +282,7 @@ ct-page.translucent {
   color: #ffffff;
 }
 
-/* ---- the editor (§4) ---- */
+/* ---- the editor ---- */
 
 .ct-ed-text {
   font-size: 16px;
@@ -305,7 +304,7 @@ ct-page.translucent {
   font-weight: 700;
 }
 
-/* a multi-line field: its first line where a one-line field's text is, 7 dp under its last (+ the underline's 9) */
+/* a multi-line field: its first line where a one-line field's text is, room for the underline under its last */
 textview.ct-ed-text,
 textview.ct-ed-text > text {
   background: none;
@@ -324,12 +323,12 @@ textview.ct-ed-text {
   min-height: 54px;
 }
 
-/* the one-line text in the middle of the 54 dp field, over the underline's 9 dp (EditText's gravity) */
+/* the one-line text in the middle of the field, above the underline */
 text.ct-ed-text {
   margin-top: 9px;
 }
 
-/* edit_text_material's underline: 1 dp #737373, 2 dp in the accent while focused, 8 dp above the bottom */
+/* the underline: thicker and in the accent colour while focused */
 .ct-ed-input {
   margin-left: 4px;
   margin-right: 4px;
@@ -384,7 +383,7 @@ text.ct-ed-text {
 }
 
 .ct-ed-account {
-  min-height: 46px;                     /* minHeight 54 dp with its 8 dp paddingBottom in it */
+  min-height: 46px;                     /* the row's minimum height less this bottom padding */
   padding-bottom: 8px;
 }
 
@@ -450,7 +449,7 @@ text.ct-ed-text {
   color: #959595;
 }
 
-/* ---- Settings, filter, picker (§5.2, §5.3, §5.1.6) ---- */
+/* ---- Settings, filter, picker ---- */
 
 .ct-pref-row {
   min-height: 48px;
@@ -502,7 +501,7 @@ text.ct-ed-text {
 }
 
 .ct-picker-create-icon {
-  margin: 0 23px 0 80px;               /* the 40 dp picture's centre, 16 + 56 + 20 */
+  margin: 0 23px 0 80px;               /* centred in the column of the contacts' pictures */
 }
 
 .ct-picker-create-text {
@@ -511,7 +510,7 @@ text.ct-ed-text {
   color: #dadada;
 }
 
-/* ---- popups, dialogs, toasts, the snackbar (§7.7, §7.8, §5.0.4) ---- */
+/* ---- popups, dialogs, toasts, the snackbar ---- */
 
 .ct-popup {
   border-radius: 2px;
@@ -553,20 +552,20 @@ text.ct-ed-text {
   color: #e1e1e1;
 }
 
-/* titleDividerNoCustom: 8 dp between a title and its list */
+/* between a title and its list */
 .ct-dialog-list {
   padding-top: 8px;
 }
 
 .ct-dialog-message.no-title {
-  padding-top: 18px;                    /* textSpacerNoTitle */
+  padding-top: 18px;                    /* in place of the title */
 }
 
 .ct-dialog-choice {
   min-height: 48px;
 }
 
-/* select_dialog_item: minHeight 56 dp, its 8 dp paddings inside it */
+/* a dialog's list item: the min-height and the paddings add up to the row's height */
 .ct-dialog-item {
   min-height: 40px;
   padding: 8px 24px;
@@ -644,9 +643,9 @@ text.ct-ed-text {
   color: #e1e1e1;
 }
 
-/* SystemUI's text_toast.xml: drawn by SystemUI in the system's own colours, not the app's (as the Calendar's) */
+/* the toast: in the system's own colours, not the app's (as the Calendar's) */
 .ct-toast {
-  margin: 0 16px 48px 16px;             /* toast_y_offset */
+  margin: 0 16px 48px 16px;             /* above the bottom */
   padding: 0 16px;
   min-height: 48px;
   border-radius: 28px;

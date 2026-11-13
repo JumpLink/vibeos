@@ -62,17 +62,16 @@ calc_text_width (PangoLayout *layout)
   PangoRectangle logical;
 
   pango_layout_get_extents (layout, NULL, &logical);
-  /* Pango spaces the letters apart, Minikin pads each one by half the spacing on either side (Layout.cpp): the
-   * line is a whole spacing wider */
+  /* Pango spaces the letters apart; here each one is padded by half the spacing on either side, so the line is a
+   * whole spacing wider */
   return logical.width / (double) PANGO_SCALE + letter_spacing (layout);
 }
 
 double
 calc_text_bottom_baseline (double height, double padding_bottom, double size, int scale)
 {
-  /* in device pixels, as Android works it out: AlignedTextView takes min (padding, ceil (descent)) off the bottom
-   * padding, and gravity bottom puts the line's bottom, FontMetricsInt's descent (the descent rounded), on what is
-   * left. Checked on still:calc-typed: the result's "1" ends on row 609, its baseline 610. */
+  /* in device pixels: min (padding, ceil (descent)) comes off the bottom padding, and the line's bottom (the
+   * descent rounded) goes on what is left */
   double descent = CALC_DESCENT * size * scale;
   double padding = round (padding_bottom * scale);
   double compound = padding - MIN (padding, ceil (descent));
@@ -80,18 +79,18 @@ calc_text_bottom_baseline (double height, double padding_bottom, double size, in
   return (round (height * scale) - compound - round (descent)) / scale;
 }
 
-/* the height of a wrap_content AlignedTextView with one line of `size` (onMeasure), dp */
+/* the natural height of a text box holding one line of `size`, px */
 double
 calc_text_view_height (double padding_top, double padding_bottom, double size, int scale)
 {
   double px = size * scale;
   double ascent = CALC_ASCENT * px, descent = CALC_DESCENT * px;
   double top = round (padding_top * scale), bottom = round (padding_bottom * scale);
-  /* the top padding loses what lies between the ascent and the top of a capital H (getTextBounds rounds out) */
+  /* the top padding loses what lies between the ascent and the top of a capital H (rounded out) */
   double top_offset = MIN (top, ceil (ascent - ceil (CALC_CAP_HEIGHT * px)));
   double bottom_offset = MIN (bottom, ceil (descent));
 
-  /* the line: FontMetricsInt's ascent and descent, rounded. Checked on still:calc-history: 139 px a row */
+  /* the line: the ascent and descent, rounded. A history row comes out 139 px */
   return (top - top_offset + round (ascent) + round (descent) + bottom - bottom_offset) / scale;
 }
 

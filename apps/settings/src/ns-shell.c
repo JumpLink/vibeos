@@ -77,9 +77,9 @@ lock_picked (GtkWidget *row, guint i, gpointer data)
   Lock *l = data;
   if (i == lock_index (l))
     return;
-  /* a pattern or a PIN counts once it is entered, confirmed and set as the password, as on Android (owner,
-   * 2026-11-12); swipe needs none. A PIN does not keep the password there is: the lock screen's PIN pad types digits
-   * only, and a password with a letter in it could not be typed there to unlock. */
+  /* a pattern or a PIN counts once it is entered, confirmed and set as the password; swipe needs none. A PIN does
+   * not keep the password there is: the lock screen's PIN pad types digits only, and a password with a letter in it
+   * could not be typed there to unlock. */
   if (i != 0) {
     adw_navigation_view_pop (ADW_NAVIGATION_VIEW (gtk_widget_get_ancestor (row, ADW_TYPE_NAVIGATION_VIEW)));
     secret_dialog (l, row, i);

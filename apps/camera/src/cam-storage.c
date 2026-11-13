@@ -124,7 +124,7 @@ cam_storage_init (CamStorage *self)
 {
   self->dirs[0] = camera_dir (G_USER_DIRECTORY_PICTURES);
   self->dirs[1] = camera_dir (G_USER_DIRECTORY_VIDEOS);
-  /* StorageUtils.kt's yyyy-MM-dd-HH-mm-ss-SSS, and this app's -n for a second capture in one millisecond */
+  /* yyyy-MM-dd-HH-mm-ss-SSS, and -n for a second capture in one millisecond */
   self->names = g_regex_new ("^[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{3}(-[0-9]+)?\\.(jpg|mp4)$",
                              G_REGEX_OPTIMIZE, 0, NULL);
   for (int i = 0; i < 2; i++)
@@ -310,7 +310,7 @@ cam_storage_open_gallery (CamStorage *self, GdkAppLaunchContext *context)
     }
   else
     {
-      /* nothing captured yet: the gallery itself (ACTION_VIEW on an image type) */
+      /* nothing captured yet: the gallery itself (the default app for image/jpeg) */
       g_autoptr(GAppInfo) app = g_app_info_get_default_for_type ("image/jpeg", FALSE);
 
       return app && g_app_info_launch (app, NULL, G_APP_LAUNCH_CONTEXT (context), NULL);

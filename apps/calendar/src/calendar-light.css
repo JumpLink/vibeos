@@ -1,7 +1,6 @@
-/* Theme "Light" (pref_theme light, or "System default" on a light system): the plain colours of Etar's colors.xml
- * over Material 3's baseline light roles. Loaded above calendar.css (cal_palette_set); the named colours it
- * redefines win through the cascade, libneo's widgets included. cal-colors.c holds the same values for what is
- * drawn in C. */
+/* Theme "Light" (pref_theme light, or "System default" on a light system). Loaded above calendar.css
+ * (cal_palette_set); the named colours it redefines win through the cascade, libneo's widgets included. cal-colors.c
+ * holds the same values for what is drawn in C. */
 
 @define-color neo_primary #4d7f86;
 @define-color neo_on_primary #ffffff;
@@ -20,12 +19,12 @@
 @define-color neo_outline #79747e;
 @define-color neo_outline_variant #cac4d0;
 
-@define-color cal_separator #555555;     /* edit_event_separator */
-@define-color cal_divider #cac4d0;       /* outlineVariant */
+@define-color cal_separator #555555;     /* the editor's section separators */
+@define-color cal_divider #cac4d0;
 @define-color cal_hint #79747e;
-/* the light values of colours calendar-pickers.css and calendar-accounts.css define for dark (M3 baseline light) */
+/* the light values of colours calendar-pickers.css and calendar-accounts.css define for dark */
 @define-color cal_error #b3261e;
 @define-color cal_tertiary_container #ffd8e4;
 @define-color cal_on_tertiary_container #31111d;
 
-/* the scrim keeps Android's black 60 %; text on an event's colour stays white (event_info_headline_color) */
+/* not redefined: the scrim stays 60 % black, and text on an event's colour stays white */

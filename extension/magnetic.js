@@ -1,21 +1,20 @@
-// Magnetic notification swipes, 1:1 with SystemUI's MagneticNotificationRowManagerImpl (Android 16; the
-// magnetic_notification_swipes flag is on in Lineage 23.2). The swiped row moves at half the finger and pulls its two
-// neighbours on each side along, at 0.12 and 0.04 of it, rounding their corners as it goes. 72 dp out, the row lets go
-// of them: it springs to the finger and follows it alone, the neighbours spring back; within 56 dp it is caught again.
-// On release a row that let go is dismissed unless it is flung back the way it came; one still held is dismissed only
-// by a fling (500 dp/s).
+// Magnetic notification swipes. The swiped row moves at half the finger and pulls its two
+// neighbours on each side along, at 0.12 and 0.04 of it, rounding their corners as it goes. DETACH out, the row lets
+// go of them: it springs to the finger and follows it alone, the neighbours spring back; within ATTACH it is caught
+// again. On release a row that let go is dismissed unless it is flung back the way it came; one still held is
+// dismissed only by a fling (DISMISS_VELOCITY).
 //
-// A row is a listener (MagneticRowListener): setMagneticTranslation(t), triggerMagneticForce(t, spring, v),
+// A row is a listener: setMagneticTranslation(t), triggerMagneticForce(t, spring, v),
 // cancelMagneticAnimations(), cancelTranslationAnimations(), canBeDismissed, and setSwipeRoundness(top, bottom,
 // animated) for the corners the swipe asks for (each corner the larger of that and its own).
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 
-const DP = 3;                                       // px per dp: rows count in screen px
-const DETACH = 72 * DP;                             // MAGNETIC_DETACH_THRESHOLD_DP
-const ATTACH = 56 * DP;                             // MAGNETIC_ATTACH_THRESHOLD_DP
+const DP = 3;                                       // the S10e's scale: rows count in screen px
+const DETACH = 72 * DP;                             // the row lets go of its neighbours this far out
+const ATTACH = 56 * DP;                             // and is caught again within this
 const DISMISS_VELOCITY = 500 * DP;                  // px/s
-const MULTIPLIERS = [0.04, 0.12, 0.5, 0.12, 0.04];  // MAGNETIC_TRANSLATION_MULTIPLIERS
+const MULTIPLIERS = [0.04, 0.12, 0.5, 0.12, 0.04];  // how much of the finger each of the five rows follows
 const CENTRE = 2;
 const ROUNDNESS = [0.5, 0.7, 0.9, 1.0, 0.9, 0.7, 0.5];
 const REDUCTION = 0.65;                             // a row that cannot be dismissed moves less
@@ -28,7 +27,7 @@ const BUFFER = 10;                                  // DirectionEstimator's tran
 
 const State = {IDLE: 0, TARGETS_SET: 1, PULLING: 2, DETACHED: 3};
 
-// once 72 dp out: the sign of the last ten translations' average, the newest weighted most
+// once DETACH out: the sign of the last ten translations' average, the newest weighted most
 class DirectionEstimator {
     constructor() {
         this._kernel = Array.from({length: BUFFER}, (_, i) => -0.45 * Math.cos(Math.PI * (i + 1) / BUFFER) + 0.55);
@@ -58,7 +57,7 @@ class DirectionEstimator {
     }
 }
 
-// the threshold click (PRIMITIVE_CLICK): feedbackd's shortest tick, as for the back gesture. The pull's continuous
+// the click as a row comes loose: feedbackd's shortest tick, as for the back gesture. The pull's continuous
 // low ticks are left out: feedbackd plays every effect at one strength
 function thresholdHaptic() {
     Gio.DBus.session.call('org.sigxcpu.Feedback', '/org/sigxcpu/Feedback', 'org.sigxcpu.Feedback',
@@ -151,7 +150,7 @@ class MagneticSwipe {
         this._applyRoundness(ROUNDNESS.map((m, i) => [i === 0 ? 0 : m * r, i === last ? 0 : m * r]), animated);
     }
 
-    // NotificationRoundnessManager.setRoundnessForAffectedViews: the first one there is rounds its bottom only
+    // the rows a swipe moves round their corners; the first one there is rounds its bottom only
     _applyRoundness(set, animated) {
         let first = true;
         this._roundables.forEach((row, i) => {
@@ -262,5 +261,5 @@ class MagneticSwipe {
     }
 }
 
-// one swipe at a time, as SystemUI's singleton: the shade's rows and the heads-up share it
+// one swipe at a time: the shade's rows and the heads-up share this one
 export const magnetic = new MagneticSwipe();

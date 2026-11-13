@@ -1,5 +1,5 @@
 #!/bin/sh
-# files-servers.sh: throwaway WebDAV, FTP and SMB servers for the files rig (try-files.sh, spec/files.md §15). They run
+# files-servers.sh: throwaway WebDAV, FTP and SMB servers for the files rig (try-files.sh). They run
 # on the development machine, on 127.0.0.1 only, and reach the phone's 127.0.0.1 through `ssh -R`, so the phone needs
 # no server packages and nothing listens on the LAN. Each serves DIR/share, a test tree of its own, to one throwaway
 # account (rig / rig-secret); its password is what the app saves in the rig's keyring.

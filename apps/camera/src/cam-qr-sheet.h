@@ -1,12 +1,11 @@
-/* cam-qr-sheet: what a scanned code says, and what can be done with it (§15.2; QrBottomSheetDialog.kt,
- * L/qr_bottom_sheet_dialog.xml, QrTextClassifier.kt).
+/* cam-qr-sheet: what a scanned code says, and what can be done with it.
  *
- * A modal bottom sheet over a 32 % black scrim: the drag handle, then a 72 dp card with the action's icon, its title
+ * A modal bottom sheet over a dark scrim: the drag handle, then a card with the action's icon, its title
  * ("Open URL", "Add contact", … or "Text") and the code's data, and a Copy button. A tap on the card runs the
  * action. An action is offered only when an app on the phone can do it (a browser for links and lookups, the
  * Contacts app for a vCard, the Calendar for an event, a handler for tel:, sms:, mailto:, geo:); otherwise the code
- * shows as Text. Left out, because nothing here can back them: Share (no share chooser on the phone), Wi-Fi
- * networks (adding one needs NetworkManager and a confirmation; shown as Text), Android's TextClassifier. */
+ * shows as Text. Left out, because nothing here can back them: Share (no share chooser on the phone), Wi-Fi networks
+ * (adding one needs NetworkManager and a confirmation; shown as Text), finding addresses or dates in plain text. */
 #pragma once
 
 #include <gtk/gtk.h>

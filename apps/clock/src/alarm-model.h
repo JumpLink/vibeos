@@ -1,4 +1,4 @@
-/* The clock's alarms, as DeskClock keeps them (provider/Alarm.java, provider/AlarmInstance.java).
+/* The clock's alarms, as DeskClock keeps them.
  *
  * An Alarm is what the user sets: a time of day, the days it repeats on, its sound, vibration and label. An
  * AlarmInstance is one coming occurrence of it: a date and time on the wall clock, and where that occurrence is in
@@ -6,14 +6,14 @@
  * one instance at a time; when that one is over (dismissed, missed), the next is made from the alarm.
  *
  * Instances keep wall-clock fields (year, month, day, hour, minute), not a Unix time: "7:30 on Monday" stays 7:30
- * across a change of time zone or summer time, as on Android, which works out the moment from them each time.
+ * across a change of time zone or summer time: the moment is worked out from them each time.
  *
  * Both the alarm service (neo-clock-alarms) and the app use this file; only the service writes the store. */
 #pragma once
 
 #include <glib.h>
 
-/* the days of the week, as DeskClock's Weekdays bits: Monday is bit 0, Sunday bit 6 */
+/* the days of the week as bits: Monday is bit 0, Sunday bit 6 */
 typedef enum {
   ALARM_MONDAY    = 1 << 0,
   ALARM_TUESDAY   = 1 << 1,
@@ -25,7 +25,7 @@ typedef enum {
   ALARM_EVERY_DAY = 0x7f,
 } AlarmDays;
 
-/* AlarmInstance's states, with Android's numbers (they are what the store keeps) */
+/* an AlarmInstance's states, by the numbers the store keeps */
 typedef enum {
   ALARM_STATE_SILENT = 0,               /* coming, nothing shown yet */
   ALARM_STATE_LOW_NOTIFICATION = 1,     /* "Upcoming alarm" in the shade, from 2 h before */
@@ -72,20 +72,20 @@ AlarmInstance *alarm_instance_copy (const AlarmInstance *instance);
 void           alarm_instance_free (AlarmInstance *instance);
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (AlarmInstance, alarm_instance_free)
 
-/* the first moment after @after (local time) the alarm goes off: Alarm.getNextAlarmTime() */
+/* the first moment after @after (local time) the alarm goes off */
 GDateTime *alarm_next_time (const Alarm *alarm, GDateTime *after);
 
-/* an instance of @alarm at its next time after @after (Alarm.createInstanceAfter) */
+/* an instance of @alarm at its next time after @after */
 AlarmInstance *alarm_instance_after (const Alarm *alarm, GDateTime *after);
 
-/* the moments in an instance's life (AlarmInstance.java), in the current local time zone */
+/* the moments in an instance's life, in the current local time zone */
 GDateTime *alarm_instance_time (const AlarmInstance *instance);             /* when it rings */
 GDateTime *alarm_instance_low_notification_time (const AlarmInstance *instance);   /* 2 h before */
 GDateTime *alarm_instance_high_notification_time (const AlarmInstance *instance);  /* 30 min before */
 GDateTime *alarm_instance_missed_ttl (const AlarmInstance *instance);       /* 12 h after: forgotten */
 void       alarm_instance_set_time (AlarmInstance *instance, GDateTime *time);
 
-/* "Mon, Tue, Wed" / "Monday" / "Every day", as the alarm list says it (Weekdays.toString); "" for no days;
+/* "Mon, Tue, Wed" / "Monday" / "Every day", as the alarm list says it; "" for no days;
  * @first_day: the week's first day (G_DATE_MONDAY .. G_DATE_SUNDAY) */
 char *alarm_days_text (guint days, GDateWeekday first_day);
 
@@ -97,7 +97,7 @@ typedef struct {
   guint next_id;
 } AlarmStore;
 
-/* the store in the file; with no file yet, a new store holding the first-run alarms (spec/clock.md §5.7) */
+/* the store in the file; with no file yet, a new store holding the first-run alarms */
 AlarmStore *alarm_store_load (const char *path, GError **error);
 gboolean    alarm_store_save (AlarmStore *store, const char *path, GError **error);
 void        alarm_store_free (AlarmStore *store);

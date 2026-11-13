@@ -1,9 +1,7 @@
-// Power and volume down together take a screenshot, as PhoneWindowManager's ScreenshotChordRule has it: the second
-// key's down within COMBINE_KEY_DELAY_MILLIS (150 ms) of the first's, the first still held, and the screen on. Neither
-// key then does its own thing: the power key neither sleeps on its up nor opens the menu when held (mPowerKeyHandled),
-// and the volume stays as it was. A volume down waits those 150 ms for the power key before it acts
-// (KeyCombinationManager.getKeyInterceptTimeout). The shot is taken at once (SCREENSHOT_CHORD_KEY_TIMEOUT is 0) under
-// SystemUI's white flash (ScreenshotAnimationController: 133 ms in, 217 ms out, both FAST_OUT_SLOW_IN), and saved,
+// Power and volume down together take a screenshot: the second key's down within 150 ms of the first's, the first
+// still held, and the screen on. Neither key then does its own thing: the power key neither sleeps on its up nor
+// opens the menu when held, and the volume stays as it was. A volume down waits those 150 ms for the power key before
+// it acts. The shot is taken at once under a white flash (133 ms in, 217 ms out, both fast-out-slow-in), and saved,
 // copied and announced as the shell's own screenshot key does it.
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';

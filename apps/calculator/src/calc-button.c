@@ -5,10 +5,10 @@
 #include <math.h>
 #include <neo.h>
 
-#define INSET              4       /* dp: the pill's inset top and bottom (measured: AC's cell 209 px, pill 185) */
-#define TEXT_RATIO         0.4     /* HapticButton.java:50 */
-#define RIPPLE_ALPHA       0.10f   /* measured: the pressed numeric pill is +17/255 lighter */
-#define LONG_PRESS_MS      400     /* ViewConfiguration.getLongPressTimeout () */
+#define INSET              4       /* the pill's inset top and bottom, inside the key's cell */
+#define TEXT_RATIO         0.4     /* the label's size, of the key's height */
+#define RIPPLE_ALPHA       0.10f   /* the ripple, in the label's colour; it also lightens the pressed pill */
+#define LONG_PRESS_MS      400     /* held this long, a press is a long press */
 
 struct _CalcButton {
   GtkWidget        parent;
@@ -35,7 +35,7 @@ theme_colors (CalcButtonTheme theme, GdkRGBA *container, GdkRGBA *content)
 {
   static const NeoColor roles[][2] = {
     [CALC_BUTTON_ADVANCED] = { NEO_SURFACE, NEO_ON_SURFACE },
-    [CALC_BUTTON_NUMERIC]  = { NEO_SURFACE_CONTAINER_HIGHEST, NEO_ON_SURFACE },   /* colorSurfaceVariant */
+    [CALC_BUTTON_NUMERIC]  = { NEO_SURFACE_CONTAINER_HIGHEST, NEO_ON_SURFACE },
     [CALC_BUTTON_OPERATOR] = { NEO_SECONDARY_CONTAINER, NEO_ON_SECONDARY_CONTAINER },
     [CALC_BUTTON_CLEAR]    = { NEO_SURFACE_CONTAINER_HIGHEST, NEO_ON_SURFACE_VARIANT },
     [CALC_BUTTON_ACTION]   = { NEO_PRIMARY_CONTAINER, NEO_ON_PRIMARY_CONTAINER },
@@ -86,7 +86,7 @@ calc_button_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   }
   if (!self->label)
     return;
-  /* text size 0.4 of the key's height; the line (ascent + descent, includeFontPadding off) centred in the key */
+  /* text size 0.4 of the key's height; the line (ascent + descent, no font padding) centred in the key */
   double size = h * TEXT_RATIO;
   if (!self->layout) {
     self->layout = calc_text_layout (widget, self->label, size, self->weight);
@@ -109,7 +109,7 @@ on_long_press (gpointer data)
   gboolean handled = FALSE;
 
   self->long_press_id = 0;
-  /* performLongClick: the click is still to come unless a handler took the long press (the delete key's) */
+  /* the long press: the click is still to come unless a handler took the long press (the delete key's) */
   g_signal_emit (self, signals[LONG_PRESSED], 0, &handled);
   self->long_pressed = handled;
   return G_SOURCE_REMOVE;
@@ -195,7 +195,7 @@ calc_button_init (CalcButton *self)
 {
   GtkGesture *click = gtk_gesture_click_new ();
 
-  self->weight = CALC_WEIGHT_MEDIUM;   /* the button's textAppearanceLabelLarge: Medium */
+  self->weight = CALC_WEIGHT_MEDIUM;
   neo_ripple_init (&self->ripple, GTK_WIDGET (self));
   g_signal_connect (click, "pressed", G_CALLBACK (on_pressed), self);
   g_signal_connect (click, "released", G_CALLBACK (on_released), self);

@@ -1,9 +1,9 @@
-/* cam-storage: where captures go, what they are called, and which one is newest (§21).
+/* cam-storage: where captures go, what they are called, and which one is newest.
  *
- * Photos go to $XDG_PICTURES_DIR/Camera and videos to $XDG_VIDEOS_DIR/Camera (the owner's choice; Aperture puts
- * both in DCIM/Camera), named yyyy-MM-dd-HH-mm-ss-SSS in local time, with -1, -2 … on a collision. The newest
- * capture is the newest file of either folder with such a name (so only this app's captures, as Aperture's
- * thumbnail shows only its own), by modification time; both folders are watched. */
+ * Photos go to $XDG_PICTURES_DIR/Camera and videos to $XDG_VIDEOS_DIR/Camera (the owner's choice, rather than one
+ * DCIM/Camera for both), named yyyy-MM-dd-HH-mm-ss-SSS in local time, with -1, -2 … on a collision. The newest
+ * capture is the newest file of either folder with such a name (so only this app's captures), by
+ * modification time; both folders are watched. */
 #pragma once
 
 #include <gdk/gdk.h>

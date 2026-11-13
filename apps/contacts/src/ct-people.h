@@ -1,4 +1,4 @@
-/* The contact list screen: PeopleActivity (spec §1, §2, §5.1). The toolbar with the drawer button, the title and
+/* The contact list screen. The toolbar with the drawer button, the title and
  * search; the list; the FAB; the drawer (My info, Contacts, the labels, the accounts, Settings); search; selection
  * mode (share, delete); a label's own list with its menu; and the empty states.
  *

@@ -1,18 +1,16 @@
-/* The long-press menus, Launcher3's on Android 16 as measured on the S10e:
+/* The long-press menus:
  *
- *   an icon's   ArrowPopup: [App info, Remove] on the home screen and the dock, [App info, Add to home screen] in
+ *   an icon's   [App info, Remove] on the home screen and the dock, [App info, Add to home screen] in
  *               the drawer, and the app's own shortcuts (its desktop actions) on a card of their own nearest the
- *               icon, with an arrow at the icon's centre. Above the icon when it fits (its bottom 15 dp clear of the
- *               icon), else 13 dp below it; left-aligned 8 px in from the icon, else right-aligned 7 px in, else
+ *               icon, with an arrow at the icon's centre. Above the icon when it fits (ABOVE_GAP_DP clear of it),
+ *               else BELOW_GAP_DP below it; left-aligned a little in from the icon, else right-aligned, else
  *               centred and without the arrow.
- *   the home's  OptionsPopupView, on the wallpaper: [Wallpaper & style, Apps list, Home settings], a card a row
- *               with 28 dp outer and 4 dp inner corners, centred on the finger, its bottom 35 dp above it.
+ *   the home's  on the wallpaper: [Wallpaper & style, Apps list, Home settings], a card a row
+ *               with round outer and small inner corners, centred on the finger, its bottom OPTIONS_GAP_DP above it.
  *
- * Cards (19,27,28), 216 dp wide, rows 52 dp, cards 2 dp apart, 28 dp corners; icons 20 dp at 16 dp, labels Google
- * Sans Flex 600 14 sp at 54 dp, both (221,231,233). It opens scaling 0.5 → 1.02 in 200 ms (emphasized decelerate) and
- * back to 1 in 140 ms about the arrow, its alpha 0 → 1 in 80 ms; it closes shrinking for 230 ms, fading over the
- * last 80. Launcher3's Widgets rows and the shortcuts' "+" are left out: there are no widgets here, and a home cell
- * holds an app, not one of its actions. */
+ * It opens scaling 0.5 → 1.02 in 200 ms (emphasized decelerate) and back to 1 in 140 ms about the arrow, its alpha
+ * 0 → 1 in 80 ms; it closes shrinking for 230 ms, fading over the last 80. Widgets rows and the
+ * shortcuts' "+" are left out: there are no widgets here, and a home cell holds an app, not one of its actions. */
 #include <librsvg/rsvg.h>
 #include <math.h>
 
@@ -30,7 +28,7 @@
 #define TEXT_END_DP       16
 #define TEXT_SP           14
 #define CAP_HEIGHT        0.716f        /* Google Sans Flex: capHeight 1432 / 2000 */
-#define APP_ICON_DP       32            /* a shortcut's: the app's icon, the circle Launcher3 shows in its 35 dp box */
+#define APP_ICON_DP       32            /* a shortcut's row shows the app's icon */
 #define APP_ICON_X_DP     11.5
 #define ABOVE_GAP_DP      15
 #define BELOW_GAP_DP      13
@@ -155,7 +153,7 @@ add_card (int first, int n)
     P.cards[P.n_cards++] = (Card) { first, n };
 }
 
-/* the cards top to bottom from y, every row's y with them, and the corners (all round, or the options' inner 4 dp) */
+/* the cards top to bottom from y, every row's y with them, and their corners (the options' inner ones are small) */
 static void
 stack (float y, bool options)
 {

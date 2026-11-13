@@ -1,10 +1,9 @@
-/* NeoSnackbar: see neo-snackbar.h. Style from DeskClock's Widget.DeskClock.Snackbar (spec/clock.md §12.4); the
- * motion is MDC's default slide: in and out over 250 ms, fast-out-slow-in (BaseTransientBottomBar). */
+/* NeoSnackbar: see neo-snackbar.h. It slides in and out over 250 ms, fast-out-slow-in. */
 #include "neo-snackbar.h"
 #include "neo-anim.h"
 #include "neo-pressable.h"
 
-#define MARGIN   8               /* the default: Material's floating bar */
+#define MARGIN   8               /* the default: a floating bar */
 #define SLIDE_MS 250
 
 struct _NeoSnackbar {

@@ -1,4 +1,4 @@
-/* CalDayView: Etar's DayView, the Week and Day views (day-view.h; spec/calendar.md §3). */
+/* CalDayView: the Week and Day views (day-view.h). */
 #include "day-view.h"
 #include "cal-colors.h"
 #include "cal-format.h"
@@ -8,30 +8,29 @@
 #include <neo.h>
 #include <spongy.h>
 
-/* --- dimensions, dp (V/dimens.xml; E/DayView.java:114-451). Etar scales most of them by the density itself and
- * keeps HOUR_GAP and DAY_GAP at 1 device pixel: `px` below. */
-#define MULTI_DAY_HEADER_HEIGHT 48.0    /* day_header_height */
-#define DAY_HEADER_BOTTOM_MARGIN 4.0    /* day_header_bottom_margin */
+/* --- dimensions, px. HOUR_GAP and DAY_GAP are 1 device pixel instead: `px` below. */
+#define MULTI_DAY_HEADER_HEIGHT 48.0    /* the week's header of weekdays and dates */
+#define DAY_HEADER_BOTTOM_MARGIN 4.0
 #define DAY_HEADER_RIGHT_MARGIN 4.0     /* the labels' left inset in their column */
-#define DATE_HEADER_FONT_SIZE 16.0      /* date_header_text_size */
-#define DAY_HEADER_FONT_SIZE 11.0       /* day_label_text_size */
+#define DATE_HEADER_FONT_SIZE 16.0      /* the date in the header */
+#define DAY_HEADER_FONT_SIZE 11.0       /* the weekday in the header */
 #define HOURS_TEXT_SIZE 12.0
 #define HOURS_LEFT_MARGIN 4.0
 #define HOURS_RIGHT_MARGIN 4.0
-#define WEEK_EVENT_TEXT_SIZE 10.0       /* week_view_event_text_size */
-#define DAY_EVENT_TEXT_SIZE 12.0        /* day_view_event_text_size */
+#define WEEK_EVENT_TEXT_SIZE 10.0
+#define DAY_EVENT_TEXT_SIZE 12.0
 #define NEW_EVENT_HINT_FONT_SIZE 12.0
 #define EVENT_TEXT_VERTICAL_MARGIN 2.0
 #define EVENT_TEXT_HORIZONTAL_MARGIN 4.0
 #define EVENT_RECT_TOP_MARGIN 1.0
-#define STAGGERED_EVENT_SHADOW_WIDTH 4.0        /* a staggered event's shadow, dp */
+#define STAGGERED_EVENT_SHADOW_WIDTH 4.0        /* a staggered event's shadow, px */
 #define EVENT_RECT_LEFT_MARGIN 1.0
 #define ALL_DAY_EVENT_RECT_BOTTOM_MARGIN 1.0
 #define SINGLE_ALLDAY_HEIGHT 34.0
 #define MAX_HEIGHT_OF_ONE_ALLDAY_EVENT 34.0
 #define ALLDAY_TOP_MARGIN 1.0
 #define MIN_HOURS_HEIGHT 180.0
-#define EXPAND_ALL_DAY_BOTTOM_MARGIN 8.0        /* all_day_bottom_margin */
+#define EXPAND_ALL_DAY_BOTTOM_MARGIN 8.0
 #define EVENT_SQUARE_WIDTH 10.0
 #define EVENT_RECT_STROKE_WIDTH 2.0
 #define EVENT_LINE_PADDING 4.0
@@ -43,12 +42,12 @@
 #define MIN_CELL_WIDTH_FOR_TEXT 20.0
 #define DEFAULT_CELL_HEIGHT 64.0
 #define MAX_CELL_HEIGHT 150.0
-#define EXPAND_ICON_SIZE 26.0           /* ic_expand_small's intrinsic size */
+#define EXPAND_ICON_SIZE 26.0           /* the expand arrow's own size */
 
 #define ANIMATION_DURATION 400          /* the all-day area expanding, ms */
 #define CLICK_DISPLAY_MS 150            /* the clicked colour before info opens: tap timeout 100 + 50 ms */
-#define SWITCH_MIN_VELOCITY 2200.0      /* px/s: calculateDuration's floor, so a slow release still moves briskly */
-#define TOUCH_SLOP 8.0                  /* ViewConfiguration's touch slop, dp */
+#define SWITCH_MIN_VELOCITY 2200.0      /* device px/s: the least settle speed, so a slow release still moves briskly */
+#define TOUCH_SLOP 8.0                  /* how far a touch moves before it is a drag, px */
 
 typedef enum { TOUCH_NONE, TOUCH_DOWN, TOUCH_VSCROLL, TOUCH_HSCROLL, TOUCH_PINCH } TouchMode;
 
@@ -61,8 +60,8 @@ struct _CalDayView {
   GPtrArray *all_day;           /* those drawn in the all-day area, laid out together */
   gboolean staggered;           /* Staggered display */
 
-  double cell_height;           /* one hour, dp, without the gap */
-  double view_start_y;          /* the grid's scroll, dp */
+  double cell_height;           /* one hour, px, without the gap */
+  double view_start_y;          /* the grid's scroll, px */
   double view_start_x;          /* a horizontal drag's offset: the next or previous period shows beside */
   gboolean scrolled_once;       /* the first layout scrolls to now */
   int initial_hour;
@@ -73,7 +72,7 @@ struct _CalDayView {
 
   gboolean has_selection, selection_all_day;
   int selection_day, selection_hour;
-  CalEvent *clicked;            /* flashing #8033B5E5 before its info opens */
+  CalEvent *clicked;            /* flashing blue before its info opens */
   guint click_timeout;
 
   TouchMode touch;
@@ -85,7 +84,7 @@ struct _CalDayView {
   double page_from, page_to;
   double pinch_cell_height, pinch_focus;
 
-  double hours_text_width;      /* the widest hour label, unrounded (dp) */
+  double hours_text_width;      /* the widest hour label, unrounded (px) */
   PangoLayout *hour_layouts[24];
   gboolean hours_24;
   guint minute_timer;
@@ -96,8 +95,8 @@ G_DEFINE_FINAL_TYPE (CalDayView, cal_day_view, GTK_TYPE_WIDGET)
 enum { EVENT_ACTIVATED, CREATE_EVENT, DAY_ACTIVATED, PAGE, CELL_HEIGHT_CHANGED, N_SIGNALS };
 static guint signals[N_SIGNALS];
 
-/* --- fonts: DayView's Paint draws Roboto as asked, Regular or Bold; the Bold-text setting is TextView's and does
- * not reach a canvas (measured: the hour labels are Regular on the still) */
+/* --- fonts: regular or bold as asked; the phone's Bold text setting does not reach text this view draws
+ * itself */
 
 static PangoFontDescription *
 font (double size, int weight)
@@ -120,14 +119,14 @@ make_layout (CalDayView *self, const char *text, double size, int weight)
   return layout;
 }
 
-/* Paint.FontMetrics bottom − top + 1, as DayView measures its event font: Roboto's bounding box is 1.327 em */
+/* the height of a line of event text: Roboto's bounding box (1.327 em) in whole device pixels, plus one */
 static double
 event_font_height (double size, double px)
 {
   return round (size * 1.3267 / px) * px + px;
 }
 
-/* --- metrics of one page (one week or day), as DayView.remeasure */
+/* --- metrics of one page (one week or day) */
 
 typedef struct {
   double px;
@@ -135,7 +134,7 @@ typedef struct {
   double header_height;
   double hours_width;
   double pitch;                 /* an hour with its gap */
-  double min_unexpanded;        /* MIN_UNEXPANDED_ALLDAY_EVENT_HEIGHT */
+  double min_unexpanded;        /* the least height of an event */
   int max_all_day;              /* rows the page's all-day events need */
   int max_unexpanded_count;
   double all_day_height;
@@ -148,7 +147,7 @@ typedef struct {
 static double
 day_left (const Metrics *m, int num_days, int day)
 {
-  /* computeDayLeftPosition: day · (width − hours) / days + hours, in whole device pixels */
+  /* a day's left edge: day · (width − hours) / days + hours, in whole device pixels */
   return round ((day * (m->width - m->hours_width) / num_days + m->hours_width) / m->px) * m->px;
 }
 
@@ -177,12 +176,11 @@ measure_page (CalDayView *self, int first_day, Metrics *m)
   m->width = gtk_widget_get_width (GTK_WIDGET (self));
   m->height = gtk_widget_get_height (GTK_WIDGET (self));
   m->header_height = self->num_days > 1 ? MULTI_DAY_HEADER_HEIGHT : 0;
-  /* computeMaxStringWidth rounds the widest label to a whole device pixel: 127 px measured, where a width rounded
-   * up to a whole dp made it 129 */
+  /* the widest label rounded to a whole device pixel, not up to a whole px */
   m->hours_width = HOURS_LEFT_MARGIN + round (self->hours_text_width * MAX (scale, 1)) * m->px + HOURS_RIGHT_MARGIN;
   m->pitch = self->cell_height + m->px;
   m->event_text_size = self->num_days > 1 ? WEEK_EVENT_TEXT_SIZE : DAY_EVENT_TEXT_SIZE;
-  /* MIN_EVENT_HEIGHT: a line of event text and its margins (E/DayView.java:753) */
+  /* the least height of an event: a line of event text and its margins */
   m->min_unexpanded = event_font_height (m->event_text_size, m->px) + EVENT_RECT_TOP_MARGIN
                       + 2 * EVENT_TEXT_VERTICAL_MARGIN + ALL_DAY_EVENT_RECT_BOTTOM_MARGIN;
 
@@ -236,8 +234,8 @@ update_hour_labels (CalDayView *self)
       g_clear_object (&self->hour_layouts[hour]);
       self->hour_layouts[hour] = make_layout (self, text, HOURS_TEXT_SIZE, PANGO_WEIGHT_NORMAL);
     }
-  /* mHoursWidth: the margins and the widest label, the 12-hour ones included whatever the setting
-   * (computeMaxStringWidth over "12 AM", "12 PM" and "22:00"; measured 127 px) */
+  /* the hours column's width: the margins and the widest label, the 12-hour ones included whatever the setting
+   * (the widest of "12 AM", "12 PM" and "22:00") */
   for (guint i = 0; i < G_N_ELEMENTS (wide); i++)
     {
       g_autoptr(PangoLayout) layout = make_layout (self, wide[i], HOURS_TEXT_SIZE, PANGO_WEIGHT_NORMAL);
@@ -272,21 +270,21 @@ draw_text (GtkSnapshot *snapshot, PangoLayout *layout, double x, double baseline
   gtk_snapshot_restore (snapshot);
 }
 
-/* the event's text, DayView.getEventLayout: the title bold, a space, the place; wrapped to the rect, and only the
- * lines that fit whole (drawEventText); centred vertically in the all-day area */
+/* the event's text: the title bold, a space, the place; wrapped to the rect, and only the lines that fit whole;
+ * centred vertically in the all-day area */
 static void
 draw_event_text (CalDayView *self, GtkSnapshot *snapshot, const Metrics *m, CalEvent *event, double left,
                  double top, double right, double bottom, gboolean center)
 {
   g_autofree char *title = g_markup_escape_text (event->title && *event->title ? event->title : _("(No title)"), -1);
   g_autofree char *place = event->location ? g_markup_escape_text (event->location, -1) : NULL;
-  /* a cancelled event's title struck through (setStrikeThruText; the place too, as the paint draws both) */
+  /* a cancelled event's title struck through, and the place with it */
   g_autofree char *markup = g_strdup_printf ("%s<b>%s</b>%s%s%s", event->cancelled ? "<s>" : "", title,
                                              place ? " " : "", place ? place : "", event->cancelled ? "</s>" : "");
   guint32 display = 0xff000000 | cal_event_display_color (event);
   /* the text: an unanswered invitation's in the event's colour, any other adaptive (white, or with real event
-   * colours black or white by the colour's brightness); a declined event's alpha Etar sets is undone by the
-   * setColor after it */
+   * colours black or white by the colour's brightness); a declined event's text is not faded, only its
+   * rect */
   guint32 text = event->self_status == CAL_STATUS_INVITED
                  ? (cal_adaptive_text_color (0xffffffff, display) & 0xff000000) | (display & 0xffffff)
                  : cal_adaptive_text_color (0xffffffff, display);
@@ -299,7 +297,7 @@ draw_event_text (CalDayView *self, GtkSnapshot *snapshot, const Metrics *m, CalE
   layout = make_layout (self, NULL, m->event_text_size, PANGO_WEIGHT_NORMAL);
   pango_layout_set_markup (layout, markup, -1);
   {
-    /* StaticLayout's default hyphenation is NONE: a word too long for the line breaks without a hyphen */
+    /* no hyphenation: a word too long for the line breaks without a hyphen */
     PangoAttrList *attrs = pango_layout_get_attributes (layout) ? pango_attr_list_copy (pango_layout_get_attributes (layout))
                                                                 : pango_attr_list_new ();
 
@@ -334,7 +332,7 @@ draw_event_text (CalDayView *self, GtkSnapshot *snapshot, const Metrics *m, CalE
   gtk_snapshot_restore (snapshot);
 }
 
-/* EventGeometry.computeEventRect for a timed event on @day (an index in the page) */
+/* the rect of a timed event on @day (an index in the page) */
 static gboolean
 event_rect (CalDayView *self, const Metrics *m, CalEvent *event, int day_number, int index, graphene_rect_t *rect)
 {
@@ -358,7 +356,7 @@ event_rect (CalDayView *self, const Metrics *m, CalEvent *event, int day_number,
   if (bottom < top + m->min_unexpanded - ALL_DAY_EVENT_RECT_BOTTOM_MARGIN)
     bottom = top + m->min_unexpanded - ALL_DAY_EVENT_RECT_BOTTOM_MARGIN;
 
-  /* drawEvents: the day's cell, then its share for the event's column */
+  /* the day's cell, then its share for the event's column */
   left = day_left (m, self->num_days, index) + m->px;
   cell_width = day_left (m, self->num_days, index + 1) - left - m->px;
   if (event->staggered)
@@ -382,14 +380,14 @@ event_rect (CalDayView *self, const Metrics *m, CalEvent *event, int day_number,
   return TRUE;
 }
 
-/* the top of an event's text: textTop, where its unobscured part begins (0 unless staggered) */
+/* the top of an event's text: where its unobscured part begins (0 unless staggered) */
 static double
 event_text_top (CalDayView *self, CalEvent *event, const graphene_rect_t *rect)
 {
   return rect->origin.y + (int) (event->text_offset / 60.0 * self->cell_height / 60);
 }
 
-/* drawEventRect's colour: the clicked colour, else the event's, faded when declined */
+/* an event rect's colour: the clicked colour, else the event's, faded when declined */
 static guint32
 event_color (CalDayView *self, CalEvent *event)
 {
@@ -400,8 +398,8 @@ event_color (CalDayView *self, CalEvent *event)
   return 0xff000000 | cal_event_display_color (event);
 }
 
-/* drawEventRect: filled; an invitation not answered yet (ATTENDEE_STATUS_INVITED) as a 2 dp frame (Style.STROKE
- * on the rect moved in by half the stroke: the frame's outside is the filled rect's) */
+/* an event's rect: filled; an invitation not answered yet as a frame (stroked on the rect moved in by half the
+ * stroke: the frame's outside is the filled rect's) */
 static void
 draw_event_rect (CalDayView *self, GtkSnapshot *snapshot, CalEvent *event, double left, double top, double right,
                  double bottom)
@@ -424,7 +422,7 @@ draw_event_rect (CalDayView *self, GtkSnapshot *snapshot, CalEvent *event, doubl
 }
 
 /* the highest column a timed event of the page takes: staggered events draw column by column, the higher ones over
- * the lower (drawEvents sorts the visible ones by column), and a tap finds the highest first */
+ * the lower, and a tap finds the highest first */
 static int
 max_column (CalDayView *self)
 {
@@ -443,15 +441,14 @@ draw_timed_event (CalDayView *self, GtkSnapshot *snapshot, const Metrics *m, Cal
 {
   double top, bottom, left, right;
 
-  /* drawEventRect: 1 dp from the top and the left */
+  /* the rect, inset from the top and the left */
   top = r->origin.y + EVENT_RECT_TOP_MARGIN;
   bottom = r->origin.y + r->size.height;
   left = r->origin.x + EVENT_RECT_LEFT_MARGIN;
   right = r->origin.x + r->size.width;
   if (event->staggered && event->column > 0)
     {
-      /* setShadowLayer(4 dp, staggered_event_shadow_color): Skia's blur sigma 0.57735 r + 0.5 px, a CSS blur
-       * radius twice the sigma */
+      /* the shadow: a blur of sigma 0.57735 r + 0.5 device px; GTK's blur radius is twice the sigma */
       GskRoundedRect box;
       GdkRGBA shadow = cal_argb (CAL_STAGGERED_SHADOW);
 
@@ -460,9 +457,9 @@ draw_timed_event (CalDayView *self, GtkSnapshot *snapshot, const Metrics *m, Cal
                                          2 * (0.57735 * STAGGERED_EVENT_SHADOW_WIDTH + 0.5 * m->px));
     }
   draw_event_rect (self, snapshot, event, left, top, right, bottom);
-  /* getEventTextRect: the text from textTop down */
+  /* the text from its top down */
   top = event_text_top (self, event, r) + EVENT_RECT_TOP_MARGIN;
-  /* setupTextRect: the text margins when there is room for them */
+  /* the text margins when there is room for them */
   if (bottom - top > 2 * EVENT_TEXT_VERTICAL_MARGIN)
     {
       top += EVENT_TEXT_VERTICAL_MARGIN;
@@ -494,7 +491,7 @@ draw_timed_events (CalDayView *self, GtkSnapshot *snapshot, const Metrics *m, in
         }
 }
 
-/* the all-day events of a page (drawAllDayEvents), with "□ +N" for those that do not fit unexpanded; @skipped is
+/* the all-day events of a page, with "□ +N" for those that do not fit unexpanded; @skipped is
  * filled per day */
 static void
 draw_all_day_events (CalDayView *self, GtkSnapshot *snapshot, const Metrics *m, int first_day)
@@ -550,7 +547,7 @@ draw_all_day_events (CalDayView *self, GtkSnapshot *snapshot, const Metrics *m, 
         }
       draw_event_rect (self, snapshot, event, left + EVENT_RECT_LEFT_MARGIN, top + EVENT_RECT_TOP_MARGIN, right,
                        bottom);
-      /* getAllDayEventTextRect */
+      /* the text's rect */
       top += EVENT_RECT_TOP_MARGIN;
       left += EVENT_RECT_LEFT_MARGIN;
       if (bottom - top > 2 * EVENT_TEXT_VERTICAL_MARGIN)
@@ -566,7 +563,7 @@ draw_all_day_events (CalDayView *self, GtkSnapshot *snapshot, const Metrics *m, 
       draw_event_text (self, snapshot, m, event, left, top, right, bottom, TRUE);
     }
 
-  /* drawMoreAlldayEvents: a 10 dp square outlined 2 dp, then "+N" in the event font, #666666 */
+  /* "□ +N": an outlined square, then "+N" in the event font, grey */
   if (more)
     for (int d = 0; d < self->num_days; d++)
       {
@@ -585,7 +582,7 @@ draw_all_day_events (CalDayView *self, GtkSnapshot *snapshot, const Metrics *m, 
         fill (snapshot, CAL_MORE_EVENTS, x - 1, sy - 1, EVENT_RECT_STROKE_WIDTH, EVENT_SQUARE_WIDTH + 2);
         fill (snapshot, CAL_MORE_EVENTS, x + EVENT_SQUARE_WIDTH - 1, sy - 1, EVENT_RECT_STROKE_WIDTH,
               EVENT_SQUARE_WIDTH + 2);
-        /* month_more_events: "+%d" */
+        /* "+%d" */
         text = g_strdup_printf (_("+%d"), skipped[d]);
         layout = make_layout (self, text, m->event_text_size, PANGO_WEIGHT_NORMAL);
         draw_text (snapshot, layout, x + EVENT_SQUARE_WIDTH + EVENT_LINE_PADDING, sy + EVENT_SQUARE_WIDTH,
@@ -593,7 +590,7 @@ draw_all_day_events (CalDayView *self, GtkSnapshot *snapshot, const Metrics *m, 
       }
 }
 
-/* the red line at now: timeline_indicator_holo_light, 2 dp of red over a soft shadow, across the day ± 4 dp */
+/* the red line at now, over a soft shadow; in the week, a little past the day's sides */
 static void
 draw_now_line (CalDayView *self, GtkSnapshot *snapshot, const Metrics *m, int index, double line_y)
 {
@@ -607,7 +604,7 @@ draw_now_line (CalDayView *self, GtkSnapshot *snapshot, const Metrics *m, int in
     }
   else
     left += m->px;
-  /* the 9-patch's shadow: measured #231616 under the line, fading over ~4 dp */
+  /* the shadow under the line, fading out in four steps */
   for (int i = 0; i < 4; i++)
     fill (snapshot, ((guint32) (0x60 - i * 0x18) << 24) | 0x3a0000, left, top + 5 * m->px + i * m->px * 3, right - left,
           3 * m->px);
@@ -628,7 +625,7 @@ draw_header (CalDayView *self, GtkSnapshot *snapshot, const Metrics *m, int firs
       g_autoptr(PangoLayout) name_layout = make_layout (self, name, DAY_HEADER_FONT_SIZE, PANGO_WEIGHT_NORMAL);
       double x = day_left (m, self->num_days, index) + DAY_HEADER_RIGHT_MARGIN;
       double y = m->header_height - DAY_HEADER_BOTTOM_MARGIN;
-      /* today's in the today colour; Saturday and Sunday in theirs (measured #FAFAFA), the rest #B2FFFFFF */
+      /* today's in the today colour; Saturday and Sunday in theirs, the rest in the label colour */
       guint32 color = day == today ? CAL_WEEK_TODAY
                       : weekday == 0 || weekday == 6 ? CAL_WEEKEND_LABEL : CAL_DAY_LABEL;
 
@@ -645,7 +642,7 @@ draw_hours (CalDayView *self, GtkSnapshot *snapshot, const Metrics *m)
   double ascent = pango_layout_get_baseline (self->hour_layouts[0]) / (double) PANGO_SCALE;
   int hour = MAX (first_hour, 0);
 
-  /* drawHours: from the first whole hour; in the day view without an all-day area, that one's label is left out
+  /* the hour labels, from the first whole hour; in the day view without an all-day area, that one's label is left out
    * while the top edge would cut it */
   if (first_hour_offset < ascent / 2 && m->all_day_height == 0 && self->num_days == 1)
     hour++;
@@ -670,7 +667,7 @@ draw_page (CalDayView *self, GtkSnapshot *snapshot, int first_day)
     now_y = (minute / 60) * m.pitch + (minute % 60) * self->cell_height / 60 + m.px;
   }
 
-  /* the view's own background: the past (day_activity's background under the grid) */
+  /* the view's own background: the past */
   fill (snapshot, CAL_PAST_BG, 0, 0, m.width, m.height);
   /* the hours column, its whole height */
   fill (snapshot, CAL_HOUR_BG, 0, 0, m.hours_width, m.height);
@@ -680,7 +677,7 @@ draw_page (CalDayView *self, GtkSnapshot *snapshot, int first_day)
   gtk_snapshot_save (snapshot);
   gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, m.first_cell - self->view_start_y));
 
-  /* drawBgColors: later than now is the future colour */
+  /* the background: later than now is the future colour */
   if (today_index >= 0 && today_index < self->num_days)
     {
       double left = self->num_days == 1 ? m.hours_width : day_left (&m, self->num_days, today_index) + m.px;
@@ -694,13 +691,13 @@ draw_page (CalDayView *self, GtkSnapshot *snapshot, int first_day)
   else if (today_index < 0)
     fill (snapshot, CAL_FUTURE_BG, m.hours_width + m.px, 0, m.width - m.hours_width - m.px, 24 * m.pitch + m.px);
 
-  /* drawGridBackground: a line at every hour, one between days */
+  /* the grid: a line at every hour, one between days */
   for (int hour = 0; hour <= 24; hour++)
     fill (snapshot, CAL_GRID_LINE, m.hours_width, hour * m.pitch, m.width - m.hours_width, m.px);
   for (int day = 0; day < self->num_days; day++)
     fill (snapshot, CAL_GRID_LINE, day_left (&m, self->num_days, day), 0, m.px, 24 * m.pitch + m.px);
 
-  /* drawSelectedRect */
+  /* the selected slot */
   if (self->has_selection && !self->selection_all_day
       && self->selection_day >= first_day && self->selection_day < first_day + self->num_days)
     {
@@ -736,8 +733,8 @@ draw_page (CalDayView *self, GtkSnapshot *snapshot, int first_day)
   gtk_snapshot_restore (snapshot);
   gtk_snapshot_pop (snapshot);
 
-  /* --- the hour labels: they scroll with the grid and pass under the header only (measured: a label straddles
-   * the line under the all-day area) */
+  /* --- the hour labels: they scroll with the grid and pass under the header only (a label can straddle the line
+   * under the all-day area) */
   gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (0, m.header_height, m.hours_width, m.height));
   gtk_snapshot_save (snapshot);
   gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, m.first_cell - self->view_start_y));
@@ -745,7 +742,7 @@ draw_page (CalDayView *self, GtkSnapshot *snapshot, int first_day)
   gtk_snapshot_restore (snapshot);
   gtk_snapshot_pop (snapshot);
 
-  /* --- drawAfterScroll: the header, the all-day area, the line above the grid */
+  /* --- what does not scroll: the header, the all-day area, the line above the grid */
   fill (snapshot, CAL_HOUR_BG, 0, 0, m.width, m.header_height);
   if (m.max_all_day > 0)
     {
@@ -758,7 +755,7 @@ draw_page (CalDayView *self, GtkSnapshot *snapshot, int first_day)
       gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (0, m.header_height, m.width, stop - m.header_height));
       draw_all_day_events (self, snapshot, &m, first_day);
       gtk_snapshot_pop (snapshot);
-      /* drawUpperLeftCorner: the expand chevron while not all fit */
+      /* the upper left corner: the expand chevron while not all fit */
       if (m.max_all_day > m.max_unexpanded_count)
         {
           GdkRGBA color = cal_argb (CAL_EXPAND_ICON);
@@ -770,7 +767,7 @@ draw_page (CalDayView *self, GtkSnapshot *snapshot, int first_day)
                              &color);
         }
     }
-  /* drawScrollLine */
+  /* the line above the grid */
   fill (snapshot, CAL_GRID_LINE, m.hours_width, m.first_cell - m.px, m.width - m.hours_width, m.px);
   if (self->num_days > 1)
     draw_header (self, snapshot, &m, first_day, today);
@@ -782,12 +779,11 @@ cal_day_view_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   CalDayView *self = CAL_DAY_VIEW (widget);
   double width = gtk_widget_get_width (widget), height = gtk_widget_get_height (widget);
 
-  /* day_activity.xml: the FrameLayout around the ViewSwitcher has paddingTop 1dip on day_past_background_color, a
-   * 1 dp strip above the header (measured: #2E2D32 at y 308…310, the view from 311). It is calendar.css's 1 px
-   * padding on cal-day-view, painted here. */
+  /* the strip above the header, in the past-day colour: calendar.css's 1 px padding on cal-day-view, painted
+   * here */
   fill (snapshot, CAL_PAST_BG, 0, -1, width, 1);
   gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (0, 0, width, height));
-  /* a horizontal drag: this period moved aside, the next or previous one beside it (DayView.onDraw's nextView) */
+  /* a horizontal drag: this period moved aside, the next or previous one beside it */
   gtk_snapshot_save (snapshot);
   gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (-self->view_start_x, 0));
   draw_page (self, snapshot, self->first_day);
@@ -822,7 +818,7 @@ on_tick (GtkWidget *widget, GdkFrameClock *clock, gpointer data)
   double density = neo_device_scale (widget);
   gboolean running = spongy_fling_update (&self->fling, gdk_frame_clock_get_frame_time (clock) / 1000.0);
 
-  /* the fling runs in device pixels, as OverScroller */
+  /* the fling runs in device pixels */
   self->view_start_y = self->fling.position / density;
   clamp_scroll (self);
   gtk_widget_queue_draw (widget);
@@ -910,8 +906,8 @@ on_page_anim (NeoAnim *anim, double value, gpointer data)
   gtk_widget_queue_draw (GTK_WIDGET (self));
 }
 
-/* switchViews: the rest of the way to the next period (or back) in 6 × the time the release speed would take,
- * along (t − 1)^5 + 1 (DayView.ScrollInterpolator, calculateDuration) */
+/* a released swipe: the rest of the way to the next period (or back) in 6 × the time the release speed would
+ * take, along (t − 1)^5 + 1 */
 static void
 settle_page (CalDayView *self, double velocity)
 {
@@ -968,7 +964,7 @@ on_drag_update (GtkGestureDrag *gesture, double dx, double dy, CalDayView *self)
     {
       if (fabs (dx) < TOUCH_SLOP && fabs (dy) < TOUCH_SLOP)
         return;
-      /* DayView.onScroll: the first move decides, sideways pages, else the hours scroll */
+      /* the first move decides: sideways pages, else the hours scroll */
       self->touch = fabs (dx) > fabs (dy) ? TOUCH_HSCROLL : TOUCH_VSCROLL;
       gtk_gesture_set_state (GTK_GESTURE (gesture), GTK_EVENT_SEQUENCE_CLAIMED);
       self->has_selection = FALSE;
@@ -1097,7 +1093,7 @@ on_expand_anim (NeoAnim *anim, double value, gpointer data)
   gtk_widget_queue_draw (GTK_WIDGET (self));
 }
 
-/* doSingleTapUp */
+/* a tap */
 static void
 on_released (GtkGestureClick *gesture, int n_press, double x, double y, CalDayView *self)
 {
@@ -1150,7 +1146,7 @@ on_released (GtkGestureClick *gesture, int n_press, double x, double y, CalDayVi
     hour = -1;          /* the all-day area */
   else
     hour = CLAMP ((int) ((y - m.first_cell + self->view_start_y) / m.pitch), 0, 23);
-  /* the selected slot tapped again: a new event there (Etar's "+") */
+  /* the selected slot tapped again: a new event there (the slot shows a "+") */
   if (self->has_selection && self->selection_day == day
       && (hour < 0 ? self->selection_all_day : !self->selection_all_day && self->selection_hour == hour))
     {
@@ -1340,7 +1336,7 @@ cal_day_view_get_first_day (CalDayView *self)
   return self->first_day;
 }
 
-/* Event.computePositions: an event shorter than the minimum height takes that height's time in the layout */
+/* an event shorter than the minimum height takes that height's time in the layout */
 static void
 layout_events (CalDayView *self)
 {

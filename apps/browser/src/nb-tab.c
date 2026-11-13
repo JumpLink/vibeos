@@ -1,6 +1,5 @@
-/* nb-tab: one tab, a page of the browser's one window (nb-switcher.c; Jelly's tabs were windows of their own,
- * spec/jelly.md §1): the navigator with the browser page at its root, the WebView and what it asks for (§5),
- * back (§11). */
+/* nb-tab: one tab, a page of the browser's one window (nb-switcher.c): the navigator with the browser page at its
+ * root, the web view and what it asks for, back. */
 #include "nb.h"
 #include "nb-navigator.h"
 #include "nb-widgets.h"
@@ -12,12 +11,12 @@
 #include <string.h>
 
 /* The engine is WebKit, so the page is told so: an iPhone's Safari gets every site's mobile layout and no "your
- * browser is not supported" for a Chrome name over a WebKit engine. Desktop mode is Safari on a Mac (§5.4). */
+ * browser is not supported" for a Chrome name over a WebKit engine. Desktop mode is Safari on a Mac. */
 #define MOBILE_UA "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) " \
                   "Version/18.0 Mobile/15E148 Safari/604.1"
 #define DESKTOP_UA "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) " \
                    "Version/18.0 Safari/605.1.15"
-/* material_dynamic_primary50 on the reference phone (system_accent1_500, dark) */
+/* a favourite saved without a colour of its own */
 #define DEFAULT_FAVORITE_COLOR "#4d7f86"
 
 static void sync_title (NbTab *t);
@@ -42,7 +41,7 @@ nb_tab_favicon (NbTab *t)
   return t->view ? webkit_web_view_get_favicon (t->view) : NULL;
 }
 
-/* ---- back (§11) ---- */
+/* ---- back ---- */
 
 static gboolean
 can_step_back (NbTab *t)
@@ -69,7 +68,7 @@ step_back (NbTab *t)
   else if (t->finding)
     nb_urlbar_set_finding (t, FALSE);
   else if (t->fullscreen)
-    /* the page leaves it, as Android's onHideCustomView asks the WebView to */
+    /* the page leaves full screen too */
     webkit_web_view_evaluate_javascript (t->view, "document.exitFullscreen ()", -1, NULL, NULL, NULL, NULL, NULL);
   else if (t->view && webkit_web_view_can_go_back (t->view))
     webkit_web_view_go_back (t->view);
@@ -88,7 +87,7 @@ nb_tab_pop_page (NbTab *t)
   nb_navigator_pop (NB_NAVIGATOR (t->nav));
 }
 
-/* ---- the snackbar (Material 3: inverse surface, LENGTH_LONG) ---- */
+/* ---- the snackbar (inverse colours, shown for a long time) ---- */
 
 void
 nb_tab_snackbar (NbTab *t, const char *text, const char *action, void (*cb) (gpointer), gpointer data)
@@ -96,7 +95,7 @@ nb_tab_snackbar (NbTab *t, const char *text, const char *action, void (*cb) (gpo
   neo_snackbar_show (NEO_SNACKBAR (t->snackbar), text, action, cb, data, NEO_SNACKBAR_LONG);
 }
 
-/* ---- favourites (§7.1): the favicon's vibrant colour, else primary50 ---- */
+/* ---- favourites: the favicon's vibrant colour, else primary50 ---- */
 
 /* Palette's vibrant swatch, near enough: the most common saturated mid-light hue among the favicon's pixels */
 static char *
@@ -150,7 +149,7 @@ nb_tab_add_favorite (NbTab *t, const char *title, const char *url)
   nb_tab_snackbar (t, "Added to favorites", NULL, NULL, NULL);
 }
 
-/* ---- desktop mode (§5.4) ---- */
+/* ---- desktop mode ---- */
 
 void
 nb_apply_view_settings (NbTab *t)
@@ -160,10 +159,10 @@ nb_apply_view_settings (NbTab *t)
   WebKitSettings *s = webkit_web_view_get_settings (t->view);
   webkit_settings_set_user_agent (s, t->desktop ? DESKTOP_UA : MOBILE_UA);
   webkit_settings_set_enable_javascript (s, nb_store_get_bool (nb->store, "javascript", TRUE));
-  /* ChromeClient.onCreateWindow: without a user's tap only with Dynamic popups on */
+  /* windows opened without a user's tap: only with Dynamic popups on */
   webkit_settings_set_javascript_can_open_windows_automatically (s, nb_store_get_bool (nb->store, "dynamicPopups",
                                                                                        FALSE));
-  /* WebViewExt: no DOM storage in incognito */
+  /* no DOM storage in incognito */
   webkit_settings_set_enable_html5_local_storage (s, !t->incognito);
   webkit_settings_set_enable_html5_database (s, !t->incognito);
 }
@@ -182,7 +181,7 @@ nb_tab_set_desktop (NbTab *t, gboolean desktop)
   nb_save_session ();
 }
 
-/* ---- reach mode: the bar at the bottom (§2) ---- */
+/* ---- reach mode: the bar at the bottom ---- */
 
 void
 nb_tab_apply_reach (NbTab *t)
@@ -223,7 +222,7 @@ remember_location (const char *origin, gboolean allow)
 static void
 on_location_response (NbDialog *d, int response, Ask *ask)
 {
-  /* Allow and Block are kept for the origin (GeolocationPermissions' retain); Deny for now is not */
+  /* Allow and Block are kept for the origin; Deny for now is not */
   if (response == NB_RESPONSE_OK) {
     remember_location (ask->origin, TRUE);
     webkit_permission_request_allow (ask->req);
@@ -274,7 +273,7 @@ on_permission (WebKitWebView *v, WebKitPermissionRequest *req, NbTab *t)
         webkit_permission_request_deny (req);
       return TRUE;
     }
-    /* MainActivity.showLocationDialog */
+    /* a site asks for the location */
     d = nb_dialog_new ("Provide location?");
     g_autofree char *msg = g_strdup_printf ("%s wants to use your geolocation.", origin);
     nb_dialog_set_message (d, msg);
@@ -290,13 +289,13 @@ g_signal_connect (d, "response", G_CALLBACK (on_location_response), ask);
     return TRUE;
   }
   if (WEBKIT_IS_MEDIA_KEY_SYSTEM_PERMISSION_REQUEST (req)) {
-    /* MainActivity.webProtectedMedia */
+    /* a site asks to play protected media */
     d = nb_dialog_new (origin);
     nb_dialog_set_message (d, "Allow protected media?");
     nb_dialog_add_button (d, "Deny", NB_RESPONSE_CANCEL);
     nb_dialog_add_button (d, "Grant", NB_RESPONSE_OK);
   } else if (WEBKIT_IS_USER_MEDIA_PERMISSION_REQUEST (req)) {
-    /* Android's runtime permission prompt for the app, in the app's dialog style (§5.2) */
+    /* the camera or the microphone: asked in the app's dialog style */
     WebKitUserMediaPermissionRequest *m = WEBKIT_USER_MEDIA_PERMISSION_REQUEST (req);
     gboolean audio = webkit_user_media_permission_is_for_audio_device (m);
     gboolean video = webkit_user_media_permission_is_for_video_device (m);
@@ -308,7 +307,7 @@ g_signal_connect (d, "response", G_CALLBACK (on_location_response), ask);
     nb_dialog_add_button (d, "Block", NB_RESPONSE_CANCEL);
     nb_dialog_add_button (d, "Allow", NB_RESPONSE_OK);
   } else {
-    /* notifications, the clipboard …: Android's WebView offers none of them to a page */
+    /* notifications, the clipboard …: none of them is offered to a page */
     webkit_permission_request_deny (req);
     return TRUE;
   }
@@ -346,7 +345,7 @@ on_auth_response (NbDialog *d, int response, Auth *a)
   }
 }
 
-/* WebClient.onReceivedHttpAuthRequest, L/auth_dialog.xml */
+/* HTTP authentication: the user name and password dialog */
 static gboolean
 on_authenticate (WebKitWebView *v, WebKitAuthenticationRequest *req, NbTab *t)
 {
@@ -372,7 +371,7 @@ g_signal_connect (d, "response", G_CALLBACK (on_auth_response), a);
   return TRUE;
 }
 
-/* ---- downloads (§5.5): asked first ---- */
+/* ---- downloads: asked first ---- */
 
 typedef struct {
   NbTab *t;
@@ -397,7 +396,7 @@ on_download_response (NbDialog *d, int response, DownloadAsk *a)
   g_object_unref (dl);
 }
 
-/* UrlUtils.guessFileName, near enough: the response's name, else the URL's last part */
+/* a download's file name: the response's name, else the URL's last part */
 static char *
 guess_name (const char *url, const char *name)
 {
@@ -429,7 +428,7 @@ g_signal_connect (d, "response", G_CALLBACK (on_download_response), a);
   nb_dialog_present (d, t->win);
 }
 
-/* ---- the certificate (§7.6) ---- */
+/* ---- the certificate ---- */
 
 /* "CN=x,O=y,OU=z" → the value of `key` */
 static char *
@@ -474,7 +473,7 @@ format_date (GDateTime *dt)
   if (!dt)
     return NULL;
   g_autoptr (GDateTime) local = g_date_time_to_local (dt);
-  /* DateFormat.getDateTimeInstance (): "Nov 10, 2026, 4:41:00 AM" in English */
+  /* "Nov 10, 2026, 4:41:00 AM" in English */
   return g_date_time_format (local, "%b %-d, %Y, %-I:%M:%S %p");
 }
 
@@ -530,7 +529,7 @@ nb_tab_show_certificate (NbTab *t)
   nb_dialog_present (d, t->win);
 }
 
-/* ---- print (Jelly: the system's print UI) ---- */
+/* ---- print (GTK's print dialog) ---- */
 
 void
 nb_tab_print (NbTab *t)
@@ -541,7 +540,7 @@ nb_tab_print (NbTab *t)
   webkit_print_operation_run_dialog (op, GTK_WINDOW (t->win));
 }
 
-/* ---- the WebView ---- */
+/* ---- the web view ---- */
 
 static void
 on_title (WebKitWebView *v, GParamSpec *pspec, NbTab *t)
@@ -576,7 +575,7 @@ on_load_changed (WebKitWebView *v, WebKitLoadEvent ev, NbTab *t)
     /* WebKit's error page for the refused certificate: its load keeps the warning sign and the certificate */
     t->tls_error_page = FALSE;
   } else if (ev == WEBKIT_LOAD_STARTED) {
-    /* UrlBarLayout.onPageLoadStarted: the lock back, the certificate gone */
+    /* a load starts: the lock back, the certificate gone */
     g_clear_object (&t->cert);
     t->tls_errors = 0;
     t->tls_failed = FALSE;
@@ -598,7 +597,7 @@ on_load_changed (WebKitWebView *v, WebKitLoadEvent ev, NbTab *t)
 static gboolean
 on_tls_error (WebKitWebView *v, const char *uri, GTlsCertificate *cert, GTlsCertificateFlags errors, NbTab *t)
 {
-  /* WebClient.onReceivedSslError: the warning sign; the load stops (WebKit's error page) */
+  /* a certificate error: the warning sign; the load stops (WebKit's error page) */
   g_set_object (&t->cert, cert);
   t->tls_errors = errors;
   t->tls_failed = TRUE;
@@ -610,7 +609,7 @@ on_tls_error (WebKitWebView *v, const char *uri, GTlsCertificate *cert, GTlsCert
 static GtkWidget *
 on_create (WebKitWebView *v, WebKitNavigationAction *action, NbTab *t)
 {
-  /* ChromeClient.onCreateWindow: a popup is a new tab; without a tap only with Dynamic popups on */
+  /* a popup is a new tab; without a tap only with Dynamic popups on */
   if (!webkit_navigation_action_is_user_gesture (action) && !nb_store_get_bool (nb->store, "dynamicPopups", FALSE))
     return NULL;
   NbTab *n = nb_open_tab (NULL, t->incognito, NULL, v);
@@ -639,7 +638,7 @@ on_decide (WebKitWebView *v, WebKitPolicyDecision *d, WebKitPolicyDecisionType t
     WebKitResponsePolicyDecision *r = WEBKIT_RESPONSE_POLICY_DECISION (d);
     if (!webkit_response_policy_decision_is_mime_type_supported (r) &&
         webkit_response_policy_decision_is_main_frame_main_resource (r)) {
-      /* MainActivity.downloadFileAsk: the page's file is asked for first */
+      /* a download: the user is asked first */
       WebKitURIResponse *resp = webkit_response_policy_decision_get_response (r);
       g_autofree char *url = g_strdup (webkit_uri_response_get_uri (resp));
       g_autofree char *name = g_strdup (webkit_uri_response_get_suggested_filename (resp));
@@ -658,13 +657,13 @@ on_decide (WebKitWebView *v, WebKitPolicyDecision *d, WebKitPolicyDecisionType t
   const char *scheme = g_uri_peek_scheme (uri);
   static const char *const ours[] = { "http", "https", "about", "data", "blob", "file", "javascript", NULL };
   if (scheme && !g_strv_contains (ours, scheme)) {
-    /* WebClient.startActivityForUrl: tel:, mailto:, geo: … go to their app */
+    /* tel:, mailto:, geo: … go to their app */
     webkit_policy_decision_ignore (d);
     g_autoptr (GtkUriLauncher) launcher = gtk_uri_launcher_new (uri);
     gtk_uri_launcher_launch (launcher, GTK_WINDOW (t->win), NULL, on_uri_launched, t);
     return TRUE;
   }
-  /* Do Not Track rides on the page's own loads (WebViewExt.followUrl): a link the page follows is loaded again
+  /* Do Not Track rides on the page's own loads: a link the page follows is loaded again
    * with the header */
   if (type == WEBKIT_POLICY_DECISION_TYPE_NAVIGATION_ACTION && nb_store_get_bool (nb->store, "doNotTrack", FALSE) &&
       g_strcmp0 (webkit_uri_request_get_http_method (req), "POST") != 0 &&
@@ -685,7 +684,7 @@ on_decide (WebKitWebView *v, WebKitPolicyDecision *d, WebKitPolicyDecisionType t
 static gboolean
 on_context_menu (WebKitWebView *v, WebKitContextMenu *menu, WebKitHitTestResult *hit, NbTab *t)
 {
-  /* a text field keeps WebKit's own menu (paste); links and images get the sheet (§5.1); elsewhere nothing */
+  /* a text field keeps WebKit's own menu (paste); links and images get the sheet; elsewhere nothing */
   if (webkit_hit_test_result_context_is_editable (hit) || webkit_hit_test_result_context_is_selection (hit))
     return FALSE;
   gboolean image = webkit_hit_test_result_context_is_image (hit);
@@ -701,7 +700,7 @@ static guint fullscreen_cookie;
 static gboolean
 on_enter_fullscreen (WebKitWebView *v, NbTab *t)
 {
-  /* onShowCustomView: the bar goes, immersive, the screen stays on */
+  /* full screen: the bar goes, immersive, the screen stays on */
   t->fullscreen = TRUE;
   gtk_widget_set_visible (t->bar, FALSE);
   gtk_window_fullscreen (GTK_WINDOW (t->win));
@@ -768,8 +767,8 @@ make_view (NbTab *t)
   nb_apply_view_settings (t);
   if (t->desktop)
     webkit_web_view_set_zoom_level (v, 0.5);
-  /* a WebView's base background, white: a page that paints none (plain text, WebKit's error pages, a page without
-   * CSS) reads as it does in Jelly, black on white; one that declares color-scheme: dark gets WebKit's dark canvas */
+  /* the web view's base background, white: a page that paints none (plain text, WebKit's error pages, a page without
+   * CSS) reads black on white; one that declares color-scheme: dark gets WebKit's dark canvas */
   GdkRGBA bg = { 1, 1, 1, 1 };
   webkit_web_view_set_background_color (v, &bg);
   g_signal_connect (v, "notify::title", G_CALLBACK (on_title), t);
@@ -933,8 +932,8 @@ nb_tab_new (const char *url, gboolean incognito, gboolean desktop, const char *s
   gtk_overlay_add_overlay (GTK_OVERLAY (t->page), t->dropdown);
 
 
-  /* Jelly has no back button on screen: the window carries an invisible one, in the band the shell's back gesture
-   * looks in, sensitive exactly while back has somewhere to go here (§11) */
+  /* The browser has no back button on screen: the window carries an invisible one, in the band the shell's back gesture
+   * looks in, sensitive exactly while back has somewhere to go here */
   t->back_probe = gtk_button_new ();
   gtk_widget_add_css_class (t->back_probe, "nb-back-probe");
   gtk_widget_set_focusable (t->back_probe, FALSE);
@@ -1019,7 +1018,7 @@ nb_tab_close (NbTab *t)
   } else if (shown && nb->last_active) {
     nb_tab_present (nb->last_active);
   } else if (!nb->tabs->len) {
-    /* the last tab closed by its own page: the browser goes, as Jelly's task did */
+    /* the last tab closed by its own page: the browser goes */
     gtk_window_close (GTK_WINDOW (nb->win));
   } else {
     nb_tabs_changed ();

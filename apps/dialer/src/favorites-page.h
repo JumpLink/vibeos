@@ -1,12 +1,11 @@
-/* The Favorites tab: the starred contacts (dialer/speeddial: SpeedDialFragment; spec §6).
+/* The Favorites tab: the starred contacts.
  *
- * A "Favorites" header with "Add", then the favourites three to a row, each a 104 dp picture with the name and the
+ * A "Favorites" header with "Add", then the favourites three to a row, each a large picture with the name and the
  * kind of number under it. A tap calls the contact's number, or asks which one when it has several and none has
  * been chosen to remember; a long press opens its menu (call, message, remove, contact info).
  *
- * The star is the Phone's own (the "favorites" setting): Evolution's address books have none. Android's
- * "Frequents" rows below the favourites come from the contacts provider's usage counts, which Android 10 and later
- * no longer keep, so they never show on the reference phone and are not here either. */
+ * The star is the Phone's own (the "favorites" setting): Evolution's address books have none. There are
+ * no "Frequents" rows below the favourites: nothing here counts how often a contact is called. */
 #pragma once
 
 #include <gtk/gtk.h>

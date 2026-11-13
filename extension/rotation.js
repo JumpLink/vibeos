@@ -1,5 +1,5 @@
-// A phone turns its apps, not itself: the lock screen is portrait (config_enableLockScreenRotation is false) and so is
-// the home screen (Launcher3's "Allow home screen rotation", off by default on a phone). With GNOME's orientation lock
+// A phone turns its apps, not itself: the lock screen is portrait and so is the home screen (a launcher's "Allow home
+// screen rotation" is off by default on a phone). With GNOME's orientation lock
 // (Android's auto-rotate) off, the panel follows the phone only while an app is in front; locked, at home or in the app
 // drawer it is upright, and an app going away turns it back. An app can also have an orientation of its own, as an
 // Android app's manifest gives it: X-Phone-Orientation=landscape in its desktop file (a game) keeps the panel sideways
@@ -26,7 +26,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 const NORMAL = 0;               // MtkMonitorTransform
 const SEASCAPE = 1;             // 90: the phone turned right, its left side up
-const LANDSCAPE = 3;            // 270: turned left, its right side up (Android's landscape, ROTATION_90)
+const LANDSCAPE = 3;            // 270: turned left, its right side up (what an app asking for landscape gets)
 const FOLLOW = -1;              // not a transform: the panel follows the phone
 const TEMPORARY = 1;            // MetaMonitorsConfigMethod
 // mutter claims the sensor again when let go and turns the panel only on a change of its reading: held as it was

@@ -1,5 +1,5 @@
-/* The Settings page (fm-settings.h): PreferenceFragmentCompat's list, the categories in the accent (14 sp Medium,
- * preference_category_material) and CheckBoxPreference rows 72 dp tall, the title 16 sp, the box at the end. */
+/* The Settings page (fm-settings.h): a list of categories, their titles in the accent, and check box rows, the box
+ * at the end. */
 #include "fm-settings.h"
 #include "fm-ui.h"
 
@@ -52,7 +52,7 @@ fm_settings_page_new (FmShell *shell)
   GtkWidget *scroll = spongy_scroll_view_new ();
 
   gtk_widget_add_css_class (list, "fm-pref-list");
-  /* settings.xml's own categories, with only what applies on a Linux phone (spec §11, §13) */
+  /* File Manager+'s own categories, with only what applies on a Linux phone */
   category (list, _("View"));
   check_row (list, shell->settings, "show-hidden", _("Show hidden files"));
   check_row (list, shell->settings, "show-thumbnails", _("Show thumbnails"));

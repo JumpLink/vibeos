@@ -15,10 +15,9 @@
 #define ROW             CT_ROW_H_DP
 #define COLUMN          CT_ROW_HEADER_COL_DP
 #define PHOTO           CT_ROW_PHOTO_DP
-#define CHECKBOX        32.0                    /* AppCompatCheckBox: abc_btn_check_material's 32 dp */
+#define CHECKBOX        32.0                    /* the selection checkbox, with its margin */
 #define NAME_STYLE      CT_TEXT (CT_ROW_NAME_SP, CT_WEIGHT_REGULAR)
 #define SNIPPET_STYLE   CT_TEXT (CT_ROW_SECONDARY_SP, CT_WEIGHT_REGULAR)
-/* SectionHeaderStyle: 16 sp bold, which Bold text takes past Roboto's heaviest; it renders at 900 */
 #define HEADER_STYLE    CT_TEXT (CT_SECTION_SP, CT_WEIGHT_BOLD)
 #define PREVIEW_STYLE   CT_TEXT (CT_FS_PREVIEW_TEXT_SP, CT_WEIGHT_REGULAR)
 #define N_PRESSES       3                       /* rows whose ripple can be on screen at once */
@@ -166,11 +165,11 @@ row_text_free (gpointer data)
 static void
 text_bounds (CtList *self, double width, double *x, double *text_width)
 {
-  /* the section column (none in a search), the 16 dp gap, the picture, the 15 dp gap */
+  /* the section column (none in a search), a gap, the picture, a gap */
   double left = (self->search ? 0 : COLUMN) + CT_ROW_GAP_HEADER_PHOTO_DP + PHOTO + CT_ROW_GAP_PHOTO_TEXT_DP;
   double right = width - CT_ROW_PAD_RIGHT_DP;
 
-  /* the checkbox and 15 dp more come off the name's end */
+  /* the checkbox and its gap come off the name's end */
   if (self->selected)
     right -= CHECKBOX + CT_ROW_GAP_PHOTO_TEXT_DP;
   *x = left;
@@ -187,7 +186,7 @@ row_text (CtList *self, GtkWidget *widget, guint index, double width)
     return text;
   text = g_new0 (RowText, 1);
   text->width = width;
-  /* the match highlight is a bold span, which Bold text makes the same weight as the rest (§0.4, §2.4): the name is
+  /* the match highlight is a bold span, which Bold text makes the same weight as the rest: the name is
    * drawn as it is */
   text->name = text_layout (widget, NAME_STYLE, row->name && *row->name ? row->name : " ", width);
   if (row->match.snippet)
@@ -203,7 +202,7 @@ header_layout (CtList *self, GtkWidget *widget, const char *label)
 
   if (!layout)
     {
-      /* allCaps */
+      /* in capitals */
       g_autofree char *caps = g_utf8_strup (label, -1);
 
       layout = text_layout (widget, HEADER_STYLE, caps, 0);
@@ -212,8 +211,8 @@ header_layout (CtList *self, GtkWidget *widget, const char *label)
   return layout;
 }
 
-/* a section letter centred in the 56 dp column of a row-high box at @top: centred, then 2 dp up
- * (list_item_text_offset_top) */
+/* a section letter centred in the section column of a row-high box at @top: centred, then nudged up
+ * (CT_ROW_TEXT_OFFSET_TOP_DP) */
 static void
 draw_header (CtList *self, GtkWidget *widget, GtkSnapshot *snapshot, const char *label, double top)
 {
@@ -259,7 +258,7 @@ draw_row (CtList *self, GtkWidget *widget, GtkSnapshot *snapshot, guint index, d
       gtk_snapshot_pop (snapshot);
     }
 
-  /* the section's first row shows its letter, or the star for the favourites (ContactListItemView.setSectionHeader) */
+  /* the section's first row shows its letter, or the star for the favourites */
   if (!self->search && row->first && row->section >= 0)
     {
       const CtSection *section = &g_array_index (self->rows->sections, CtSection, row->section);
@@ -274,12 +273,12 @@ draw_row (CtList *self, GtkWidget *widget, GtkSnapshot *snapshot, guint index, d
         draw_header (self, widget, snapshot, section->label, top);
     }
 
-  /* the picture: centred, 1 dp up (list_item_avatar_offset_top) */
+  /* the picture: centred, then nudged up (CT_ROW_PHOTO_OFFSET_TOP_DP) */
   photo = row->entry->photo ? ct_avatar_photo (widget, row->entry->uid, row->entry->photo) : NULL;
   ct_avatar_snapshot (snapshot, widget, left + PHOTO / 2, top + ROW / 2 + CT_ROW_PHOTO_OFFSET_TOP_DP, PHOTO,
                       row->entry->uid, row->name, photo);
 
-  /* the name, and the line that matched under it, centred together, 2 dp up */
+  /* the name, and the line that matched under it, centred together, nudged up */
   text_bounds (self, width, &x, &text_width);
   text = row_text (self, widget, index, text_width);
   text_height = text_box_height (text->name, NAME_STYLE);
@@ -291,7 +290,7 @@ draw_row (CtList *self, GtkWidget *widget, GtkSnapshot *snapshot, guint index, d
     text_draw (snapshot, text->snippet, SNIPPET_STYLE, x, text_top + text_box_height (text->name, NAME_STYLE),
                &snippet_color);
 
-  /* the checkbox: vertically centred, 20 px (raw, not dp) in from the end padding */
+  /* the checkbox: vertically centred, 20 device px in from the end padding */
   if (self->selected)
     ct_snapshot_checkbox (snapshot, width - CT_ROW_PAD_RIGHT_DP - CT_ROW_CHECKBOX_GAP_PX / 3.0 - CHECKBOX,
                           top + (ROW - CHECKBOX) / 2,
@@ -299,7 +298,7 @@ draw_row (CtList *self, GtkWidget *widget, GtkSnapshot *snapshot, guint index, d
                           CT_C_LIST_SECONDARY);
 }
 
-/* PinnedHeaderListView.setFadingHeader: the letter of the section the top row is in, pinned over the column with
+/* the letter of the section the top row is in, pinned over the column with
  * the list's background behind it; when the section's last row goes up past it, the letter goes up with it and
  * fades. The favourites' star is never pinned. */
 static void
@@ -614,7 +613,7 @@ on_update (GtkGesture *gesture, GdkEventSequence *sequence, CtList *self)
 
 /* ===== the fast scroller and the scroll bar ===================================================================== */
 
-/* FastScroller shows only for a list at least four screens long (MIN_PAGES); a search has the plain scroll bar */
+/* the fast scroller shows only for a list at least four screens long; a search has the plain scroll bar */
 static gboolean
 fast_scroller_enabled (CtList *self)
 {
@@ -693,8 +692,8 @@ thumb_top (CtList *self, double thumb)
   return proportion * (track - thumb);
 }
 
-/* fastscroll_label_right_material: a teardrop in colorControlActivated, its square corner towards the thumb,
- * 16 dp in from it, its foot level with the thumb's top */
+/* the fast scroller's letter: a teardrop in the accent colour, its square corner towards the thumb, a little in
+ * from it, its foot level with the thumb's top */
 static void
 draw_preview (CtList *self, GtkSnapshot *snapshot, double width, double thumb)
 {
@@ -732,7 +731,7 @@ draw_bars (CtList *self, GtkSnapshot *snapshot)
   gtk_snapshot_push_opacity (snapshot, self->bar_alpha);
   if (fast_scroller_enabled (self))
     {
-      /* the track the full height at the end, the 8 x 48 dp thumb on it (thumbPosition inside) */
+      /* the track the full height at the end, the thumb on it */
       GdkRGBA track = ct_rgba (CT_C_FASTSCROLL_TRACK);
       GdkRGBA thumb = ct_rgba (self->dragging ? CT_C_FASTSCROLL_THUMB_PRESSED : CT_C_FASTSCROLL_THUMB);
       double top = thumb_top (self, CT_FS_THUMB_H_DP);
@@ -748,7 +747,7 @@ draw_bars (CtList *self, GtkSnapshot *snapshot)
     }
   else if (gtk_adjustment_get_upper (adj) > gtk_adjustment_get_page_size (adj) + 1)
     {
-      /* the plain scroll bar: 4 dp, as long as the view is of the list */
+      /* the plain scroll bar: thin, as long as the view is of the list */
       GdkRGBA color = ct_rgba (CT_C_SCROLLBAR);
       double length = MAX (height * gtk_adjustment_get_page_size (adj) / gtk_adjustment_get_upper (adj),
                            2 * CT_SCROLLBAR_W_DP);
@@ -778,7 +777,7 @@ drag_to (CtList *self, double y)
   spongy_scroll_view_scroll_to (SPONGY_SCROLL_VIEW (self->scroll), proportion * range);
   row = row_at (self, MAX (offset (self), self->top_padding));
   section = row >= 0 ? ct_rows_section_at (self->rows, (guint) row) : NULL;
-  /* the favourites' section has no label, so no preview (ContactsSectionIndexer) */
+  /* the favourites' section has no label, so no preview */
   if (!section || !*section->label)
     g_clear_object (&self->preview);
   else if (g_strcmp0 (section->label, self->preview_label) != 0 || !self->preview)

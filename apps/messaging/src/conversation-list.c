@@ -17,18 +17,16 @@
 #include <spongy-gtk.h>
 
 #define LIST_TOP_PADDING 8
-#define ROW_PADDING 16          /* conversation_list_item_view_padding */
-#define AVATAR 56               /* conversation_list_contact_icon_size */
-#define TEXT_PADDING 16         /* ConversationListItemViewPaddingStyle */
+#define ROW_PADDING 16
+#define AVATAR 56
+#define TEXT_PADDING 16
 #define FAILED_BADGE 24
 #define SNIPPET_LINES_UNREAD 3
 #define FAB_MARGIN 16
 #define EMPTY_TEXT_TOP 20
 #define EMPTY_TEXT_SIDE 60
-#define EMPTY_TEXT_PAD 4         /* the TextView's 7.9 dp more than its lines, over and under them (still:sms-archived:
-                                 * 73 px for one 14 sp line) */
+#define EMPTY_TEXT_PAD 4         /* over and under the text's lines */
 #define REFRESH_MS (60 * 1000)  /* "Just now" becomes "1 min" */
-/* ConversationListSwipeHelper */
 
 typedef struct {
   gint64 id;
@@ -44,7 +42,7 @@ struct _ConversationList {
   Contacts *contacts;
   GSettings *settings;          /* neo.Messaging: Swipe to delete */
   gboolean archived;
-  gboolean forward;             /* ForwardMessageActivity's list: no bars, no FAB, no swipe, no select */
+  gboolean forward;             /* Forward message's list: no bars, no FAB, no swipe, no select */
 
   GtkWidget *box;               /* the page: bar over the content */
   GtkWidget *bar, *select_bar;
@@ -90,7 +88,7 @@ blockable (ConversationList *self)
 }
 
 /* the one conversation selected, when it is with one person who is not a contact: what Add contact acts on
- * (MultiSelectActionModeCallback: one selected, not a group, no lookup key) */
+ * (one selected, not a group, no lookup key) */
 static Row *
 addable (ConversationList *self)
 {
@@ -106,7 +104,7 @@ addable (ConversationList *self)
   return row && msg_contact_can_add (row->person) ? row : NULL;
 }
 
-/* --- select mode (§1.11) */
+/* --- select mode */
 
 static gboolean
 selecting (ConversationList *self)
@@ -340,7 +338,7 @@ on_block (ConversationList *self)
   block->id = row->id;
   block->destination = g_strdup (row->destination);
   g_array_unref (take_selected (self));
-  /* Bugle names the number as stored, not the contact */
+  /* the title names the number as stored, not the contact */
   title = g_strdup_printf (_("Block %s?"), block->destination);
   dialog = neo_dialog_new (title);
   neo_dialog_set_message (dialog, _("You'll continue to receive messages from this number but won't be notified "
@@ -352,8 +350,7 @@ on_block (ConversationList *self)
   neo_dialog_present (dialog, GTK_WIDGET (self));
 }
 
-/* Add contact: "Add to Contacts?" for the person, and select mode left
- * (AbstractConversationListActivity.onActionBarAddContact) */
+/* Add contact: "Add to Contacts?" for the person, and select mode left */
 static void
 on_add_contact (ConversationList *self)
 {
@@ -365,7 +362,7 @@ on_add_contact (ConversationList *self)
   g_array_unref (take_selected (self));
 }
 
-/* --- rows (§1.4, §1.5) */
+/* --- rows */
 
 static void
 on_row_clicked (GtkWidget *pressable, gpointer data)
@@ -385,14 +382,14 @@ on_row_long_pressed (GtkWidget *pressable, gpointer data)
   ConversationList *self = g_object_get_data (G_OBJECT (pressable), "list");
   gint64 id = *(gint64 *) g_object_get_data (G_OBJECT (pressable), "id");
 
-  /* ForwardMessageActivity.onConversationClick takes a long click as a tap */
+  /* in Forward message's list a long press is a tap */
   if (self->forward)
     g_signal_emit (self, signals[OPEN_CONVERSATION], 0, id);
   else
     toggle_selected (self, id);
 }
 
-/* the avatar (ContactIconView): while selecting, a tap on it is the row's; else the person's card, or "Add to
+/* the avatar: while selecting, a tap on it is the row's; else the person's card, or "Add to
  * Contacts?"; a group's takes the tap and does nothing. A long press is the row's. */
 static void
 on_avatar_clicked (GtkWidget *pressable, gpointer data)
@@ -442,8 +439,7 @@ row_time (const SmsConversation *conversation, gboolean *failed, gint64 now)
 }
 
 /* swiped away: archived, with Undo ("1 archived") */
-/* archived, with Undo; or with "Swipe to delete" on, a swipe to the right deletes it, with no Undo and no question
- * (ConversationListItemView.onSwipeComplete) */
+/* archived, with Undo; or with "Swipe to delete" on, a swipe to the right deletes it, with no Undo and no question */
 static void
 on_swiped (GtkWidget *swipe, gboolean right, gpointer data)
 {
@@ -716,8 +712,8 @@ make_fab (void)
   GtkWidget *fab;
   GdkRGBA fill;
 
-  /* ExtendedFloatingActionButton: ic_message and "START CHAT" (textAllCaps) in black on #b8ebf3, corners 16 dp;
-   * padding 12 dp, 20 at the end, 12 between the icon and the text; at least 120 × 48 */
+  /* the "START CHAT" button: an icon and the label in capitals, black on a light fill; more padding at the end
+   * than at the start */
   gtk_image_set_pixel_size (GTK_IMAGE (icon), 24);
   gtk_widget_set_margin_start (box, 12);
   gtk_widget_set_margin_end (box, 20);
@@ -751,7 +747,7 @@ make_empty (gboolean archived)
   GtkWidget *text = gtk_label_new (archived ? _("Archived conversations appear here")
                                             : _("Once you start a new conversation, you’ll see it listed here"));
 
-  /* ic_oobe_conv_list, 198 × 103 dp, with the text 20 dp under it */
+  /* the picture, with the text under it */
   gtk_widget_set_halign (image, GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (box), image);
   gtk_label_set_wrap (GTK_LABEL (text), TRUE);

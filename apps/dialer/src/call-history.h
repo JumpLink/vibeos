@@ -1,5 +1,4 @@
-/* Call history (CallLogActivity, call_log_activity.xml; spec §5.6): the whole call log on a screen of its own, over
- * the main one.
+/* Call history: the whole call log on a screen of its own, over the main one.
  *
  * Its action bar has Up, the title and the ⋮ with "Clear call history"; under it three tabs: All and Missed, each
  * the Recents list (recents-page.c), Missed with the missed calls alone, and Lineage's Statistics (call-stats.c),

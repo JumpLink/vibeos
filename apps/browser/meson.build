@@ -2,7 +2,7 @@ project('neo-browser', 'c', version: '2.0', meson_version: '>= 1.0',
         default_options: ['warning_level=2', 'c_std=gnu11', 'buildtype=release'])
 add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers', language: 'c')
 
-# LineageOS's Jelly over WebKitGTK (spec/jelly.md): libneo draws the Material parts, libspongy scrolls the lists
+# LineageOS's Jelly over WebKitGTK: libneo draws the dialogs, buttons and switches, libspongy scrolls the lists
 gnome = import('gnome')
 deps = [dependency('gtk4', version: '>= 4.14'), dependency('webkitgtk-6.0', version: '>= 2.46'),
         dependency('libsoup-3.0'), dependency('json-glib-1.0'), dependency('neo-1'), dependency('spongy-gtk-1'),

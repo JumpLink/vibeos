@@ -1,5 +1,5 @@
 #!/bin/sh
-# try-files.sh: neo-files on a phone in a session of its own (spec/files.md §15), on a neo-headless display, so the
+# try-files.sh: neo-files on a phone in a session of its own, on a neo-headless display, so the
 # phone can stay locked and nothing the rig does reaches the owner's session.
 #
 # Everything of the rig's is under /tmp: its runtime dir /tmp/files-rt (mode 700: gvfsd's FUSE mount, the keyring's
@@ -17,7 +17,7 @@
 #                                gnome-keyring of its own unlocked with a throwaway password
 #   try-files.sh shot OUT.png
 #   try-files.sh tap X Y | press X Y [MS] | swipe X0 Y0 X1 Y1 [MS]
-#                                touches (dp) on the rig's one touchscreen; press is a long press (800 ms)
+#                                touches (logical px) on the rig's one touchscreen; press is a long press (800 ms)
 #   try-files.sh type TEXT       TEXT typed into the focused field (a server's address, a password)
 #   try-files.sh key NAME...     keys: Return, BackSpace, Escape, Tab, Back
 #   try-files.sh secrets         the rig keyring's items: their labels and attributes (no secrets)

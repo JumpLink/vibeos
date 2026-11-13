@@ -1,4 +1,4 @@
-# libneo: the phone apps' shared widgets (Material 3, the way LineageOS draws it), on GTK 4 and libspongy.
+# libneo: the phone apps' shared widgets (Material 3's look, dark), on GTK 4 and libspongy.
 # Its own project, like the apps that use it: build and install libspongy (the top-level project) first.
 project('libneo', 'c', version: '0.1.0', meson_version: '>= 1.0',
         default_options: ['warning_level=2', 'c_std=gnu11', 'buildtype=release'])

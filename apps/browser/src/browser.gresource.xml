@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- the stylesheet and Jelly's drawables (data/jelly-icons, made by tools/vd2svg.py) where GtkApplication looks for
+<!-- the stylesheet and Jelly's icons (data/jelly-icons, converted by tools/vd2svg.py) where GtkApplication looks for
      icons: the resource base path + /icons -->
 <gresources>
   <gresource prefix="/neo/Browser">

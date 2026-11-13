@@ -1,5 +1,4 @@
-/* NeoNavBar: see neo-nav-bar.h. Geometry measured on still:clock-alarm (spec/clock.md §1.2): the bar y 2040…2280,
- * the pill 192 x 96 px at y 2076…2172, the icon y 2088…2160, the label y 2184…2226 (px at 3 per dp). */
+/* NeoNavBar: see neo-nav-bar.h. */
 #include "neo-nav-bar.h"
 #include "neo-anim.h"
 #include "neo-ripple.h"
@@ -11,7 +10,7 @@
 #define PILL_TOP       12
 #define ICON           24
 #define LABEL_TOP      48
-#define INDICATOR_MS   500    /* MDC NavigationBarItemView: motionDurationLong2, emphasized */
+#define INDICATOR_MS   500    /* the pill coming in: a long duration, on the emphasized curve */
 
 typedef struct {
   GtkWidget *icon, *label;
@@ -97,7 +96,7 @@ neo_nav_bar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   for (guint i = 0; i < self->items->len; i++) {
     Item *item = g_ptr_array_index (self->items, i);
     graphene_rect_t rect = pill_rect (self, i);
-    /* MDC's ActiveIndicatorTransform: the pill widens from 40 % and fades in over the first fifth */
+    /* the pill widens from 40 % and fades in over the first fifth */
     if (item->shown > 0) {
       double scale_x = 0.4 + 0.6 * item->shown;
       graphene_rect_t r = rect;
@@ -111,7 +110,7 @@ neo_nav_bar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
       gtk_snapshot_append_color (snapshot, &c, &r);
       gtk_snapshot_pop (snapshot);
     }
-    /* the ripple plays in the pill's shape (M3 navigation items have their state layer on the indicator) */
+    /* the ripple plays in the pill's shape, not the whole item's */
     if (neo_ripple_is_active (&item->ripple)) {
       GskRoundedRect rounded;
       gsk_rounded_rect_init_from_rect (&rounded, &rect, PILL_H / 2.0);

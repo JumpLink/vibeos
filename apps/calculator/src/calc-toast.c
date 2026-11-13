@@ -1,7 +1,7 @@
-/* CalcToast: see calc-toast.h. The motion is SystemUI's ToastDefaultAnimation: in, the toast scales up from 0.9
- * (333 ms, (0, 0, 0, 1)) while its background fades in over 66 ms and its icon and text over 283 ms after 50;
- * out, it scales back to 0.9 (250 ms, (0.3, 0, 1, 1)), the text and icon fading over 166 ms and the background
- * over the last 100. */
+/* CalcToast: see calc-toast.h. The motion: in, the toast scales up from 0.9 (333 ms, cubic-bezier(0, 0, 0, 1))
+ * while its background fades in over 66 ms and its icon and text over 283 ms after 50; out, it scales back to 0.9
+ * (250 ms, cubic-bezier(0.3, 0, 1, 1)), the text and icon fading over 166 ms and the background over the last
+ * 100. */
 #include "calc-toast.h"
 #include "calc-text.h"
 
@@ -14,9 +14,9 @@
 #define ICON          24
 #define ICON_GAP      10
 #define CORNER        28
-#define Y_OFFSET      48      /* toast_y_offset, from the bottom */
+#define Y_OFFSET      48      /* the toast's bottom, up from the window's */
 #define MARGIN        16
-#define SHORT_MS      2000    /* LENGTH_SHORT */
+#define SHORT_MS      2000    /* how long it stays */
 #define IN_MS         333
 #define OUT_MS        250
 #define APP_ICON      "neo.Calculator"
@@ -84,7 +84,7 @@ calc_toast_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
     gdk_paintable_snapshot (self->icon, snapshot, ICON, ICON);
     gtk_snapshot_restore (snapshot);
   }
-  /* the line centred (gravity center_vertical): ascent over descent in the middle */
+  /* the line centred: ascent over descent in the middle */
   calc_text_draw (snapshot, self->layout, PADDING + icon_w,
                   MIN_HEIGHT / 2.0 + (CALC_ASCENT - CALC_DESCENT) * TEXT_SIZE / 2, &text);
   gtk_snapshot_pop (snapshot);
@@ -193,7 +193,7 @@ calc_toast_show (GtkWidget *widget, const char *text)
     remove_toast (old);
   self = g_object_new (CALC_TYPE_TOAST, NULL);
   self->text = g_strdup (text);
-  /* the app's icon, as SystemUI shows it next to an app's text toast; none if the theme does not have it */
+  /* the app's icon next to the text; none if the theme does not have it */
   theme = gtk_icon_theme_get_for_display (gtk_widget_get_display (widget));
   if (gtk_icon_theme_has_icon (theme, APP_ICON))
     self->icon = GDK_PAINTABLE (gtk_icon_theme_lookup_icon (theme, APP_ICON, NULL, ICON,

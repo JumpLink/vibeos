@@ -1,12 +1,10 @@
-/* The Dialer's pop-up menus: android.widget.PopupMenu as the Dialer shows it (the main ⋮ menu, MainToolbarMenu;
- * a favourite's ContextMenu; spec §2.3, §6.4).
+/* The Dialer's pop-up menus (the main ⋮ menu; a favourite's context menu).
  *
- * A card of 48 dp text rows, at least 196 dp wide (abc_popup_menu_item_layout's minWidth), floating 16 dp up over
- * the app inside the app's own window. It overlaps its anchor: its top on the anchor's top, its end on the
- * anchor's end (DialerPopupMenu's END) or its start on the anchor's start (START), kept inside the window; or it drops
- * below the anchor without overlapping it (BELOW, PopupMenu without overlapAnchor); or it is an action bar's
- * overflow menu (OVERFLOW, ActionMenuPresenter's OverflowPopup). A tap on
- * a row runs the row's action and closes the menu; a tap outside, Back or Escape just closes it. */
+ * A card of text rows with a minimum width, floating with a shadow over the app inside the app's own window. It
+ * overlaps its anchor: its top on the anchor's top, its end on the anchor's end (DialerPopupMenu's END) or its start
+ * on the anchor's start (START), kept inside the window; or it drops below the anchor without overlapping it
+ * (BELOW); or it is an action bar's overflow menu (OVERFLOW). A tap on a row runs the row's action and closes the
+ * menu; a tap outside, Back or Escape just closes it. */
 #pragma once
 
 #include <gtk/gtk.h>
@@ -22,20 +20,18 @@ typedef enum {
   POPUP_MENU_START,
   POPUP_MENU_END,
   POPUP_MENU_BELOW,             /* a drop-down: under the anchor, its start on the anchor's (the dialpad's ⋮) */
-  POPUP_MENU_OVERFLOW,          /* an action bar's ⋮: its end 4 dp in from the anchor's (dropDownHorizontalOffset
-                                 * -4dp), its top on the top of the platform's 48 dp overflow button, centred on the
-                                 * anchor (overlapAnchor) */
+  POPUP_MENU_OVERFLOW,          /* an action bar's ⋮: its end a little in from the anchor's, its top on the top
+                                 * of an overflow button centred on the anchor */
 } PopupMenuGravity;
 
 DialerPopupMenu *dialer_popup_menu_new (void);
 /* @action NULL: a disabled row (dimmed, untappable), as the context menu's "Mobile +49 …" title row */
 void             dialer_popup_menu_append (DialerPopupMenu *self, const char *label, PopupMenuAction action,
                                            gpointer data);
-/* a floating context menu (View.showContextMenu): its header row, the platform's popup_menu_header_item_layout,
- * and the colorBackgroundFloating card */
+/* makes it a context menu: a header row over the items, on a lighter card */
 void             dialer_popup_menu_set_header (DialerPopupMenu *self, const char *header);
-/* the card's corner radius, which its shadow follows (the app's CSS draws the card itself): 2 dp, the framework's
- * popup background, unless set; Messaging's Material Components card (mtrl_popupmenu_background) has 4 */
+/* the card's corner radius, which its shadow follows (the app's CSS draws the card itself): 2 unless set;
+ * Messaging's menus use 4 */
 void             dialer_popup_menu_set_corner (DialerPopupMenu *self, int radius);
 /* shows it over @anchor's window (one made by neo_window_new); it destroys itself once closed */
 void             dialer_popup_menu_present (DialerPopupMenu *self, GtkWidget *anchor, PopupMenuGravity gravity);

@@ -8,7 +8,7 @@
 #define TRACK_H        32
 #define TRACK_OUTLINE  2
 #define THUMB          24
-#define THUMB_OFF      16      /* MaterialSwitch's unchecked thumb without an icon */
+#define THUMB_OFF      16      /* the thumb is smaller off than on */
 #define THUMB_INSET    4
 #define TARGET_H       48
 #define TOGGLE_MS      250
@@ -63,7 +63,7 @@ cal_material_switch_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
       gsk_rounded_rect_init_from_rect (&rect, &GRAPHENE_RECT_INIT (x, y, TRACK_W, TRACK_H), TRACK_H / 2.0);
       gtk_snapshot_append_border (snapshot, &rect, widths, colors);
     }
-  /* the thumb's centre slides between the centres of its 24 dp places, growing from 16 dp to 24 */
+  /* the thumb's centre slides between the centres of its two places, the thumb growing as it goes */
   size = THUMB_OFF + (THUMB - THUMB_OFF) * t;
   travel = TRACK_W - 2 * THUMB_INSET - THUMB;
   cx = x + THUMB_INSET + THUMB / 2.0 + travel * t;
@@ -163,7 +163,7 @@ cal_material_switch_set_active (CalMaterialSwitch *self, gboolean active)
   if (active == self->active)
     return;
   self->active = active;
-  /* from where the thumb is, accelerate-decelerate (SwitchCompat) */
+  /* from where the thumb is, accelerate-decelerate */
   neo_anim_start (self->slide, self->position, active, TOGGLE_MS, 0, SPONGY_ACCELERATE_DECELERATE);
   gtk_accessible_update_state (GTK_ACCESSIBLE (self), GTK_ACCESSIBLE_STATE_CHECKED,
                                active ? GTK_ACCESSIBLE_TRISTATE_TRUE : GTK_ACCESSIBLE_TRISTATE_FALSE, -1);
@@ -206,7 +206,7 @@ cal_check_box_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
       gtk_snapshot_push_rounded_clip (snapshot, &rect);
       gtk_snapshot_append_color (snapshot, &fill, &rect.bounds);
       gtk_snapshot_pop (snapshot);
-      /* ic_mtrl_checked_circle's tick in the 18 dp box */
+      /* the tick, in the box's coordinates */
       gsk_path_builder_move_to (builder, x + 4, y + 9.2);
       gsk_path_builder_line_to (builder, x + 7.4, y + 12.6);
       gsk_path_builder_line_to (builder, x + 14, y + 6);

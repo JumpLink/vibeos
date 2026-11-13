@@ -1,6 +1,6 @@
-/* The drawer (spec §4): 280 dp of #222222 over a 60 % scrim, with three tabs: Locations (Home, Main storage, the
- * media, System, the Recycle Bin, then the last-visited locations), Bookmarks and History. It slides in from ☰ or a
- * swipe from the left edge and settles the way DrawerLayout's ViewDragHelper does. */
+/* The drawer: a panel over a scrim, with three tabs: Locations (Home, Main storage, the media, System,
+ * the Recycle Bin, then the last-visited locations), Bookmarks and History. It slides in from ☰ or a swipe from the
+ * left edge, and settles open or closed from where the finger left it. */
 #pragma once
 
 #include <gtk/gtk.h>

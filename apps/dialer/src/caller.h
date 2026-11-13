@@ -1,4 +1,4 @@
-/* Who is on a call, as the in-call screens show them (CallCardPresenter.getPrimaryInfo, ContactInfoCache): the name,
+/* Who is on a call, as the in-call screens show them: the name,
  * the line under it, and what the avatar is drawn from. */
 #pragma once
 
@@ -19,7 +19,7 @@ typedef struct
 /* @contacts may be NULL (no address book yet): the caller is then the number. @country: the network's */
 Caller *caller_new (Contacts *contacts, const char *number, Presentation presentation, const char *country);
 void    caller_free (Caller *caller);
-/* BottomRow.getLabelForPhoneNumber: "Mobile 030 1234567" for a contact, nothing when the name is the number */
+/* the line under the name: "Mobile 030 1234567" for a contact, nothing when the name is the number */
 char   *caller_label_and_number (const Caller *caller);
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (Caller, caller_free)

@@ -36,7 +36,7 @@ ct_entry_new (EContact *contact, const char *book_uid)
       g_autofree char *phonetic = ct_contact_phonetic_name (contact);
 
       entry->name[order] = ct_contact_display_name (contact, order);
-      /* the sort key is the phonetic name when there is one (SORT_KEY_PRIMARY, §10.5) */
+      /* the sort key is the phonetic name when there is one */
       entry->sort_key[order] = ct_sort_key (phonetic ? phonetic : entry->name[order]);
       entry->section[order] = ct_section_of (phonetic ? phonetic : entry->name[order]);
       entry->section_rank[order] = ct_section_rank (phonetic ? phonetic : entry->name[order]);
@@ -94,7 +94,7 @@ struct _CtStore {
   GHashTable *entries;          /* uid → CtEntry */
   guint changed_idle;
   gboolean ready;
-  /* "My info": EDS's self contact (e_book_client_set_self), kept out of the entries as Android keeps the profile
+  /* "My info": EDS's self contact (e_book_client_set_self), kept out of the entries and so
    * out of the list. @eds_settings is the schema whose "self-contact-uid" e_book_client_is_self reads; NULL when
    * EDS's schemas are not installed, and then there is no profile */
   GSettings *eds_settings;
@@ -556,7 +556,7 @@ ct_store_get_book (CtStore *self, const char *uid)
 const char *
 ct_book_label (CtBook *book)
 {
-  /* the phone's own book is the Device account (DrawerAdapter's account_phone) */
+  /* the phone's own book is the Device account */
   return book->is_local ? _("Device") : book->name;
 }
 
@@ -656,7 +656,7 @@ no_book_error (void)
 }
 
 /* FN must not be empty (vCard 3.0, and Evolution shows FN): a contact without a name gets its display name there,
- * the phone number or the email address as Android's DISPLAY_NAME does */
+ * the phone number or the email address */
 static void
 ensure_full_name (EContact *contact)
 {
@@ -1053,7 +1053,7 @@ ct_store_save_profile (CtStore *self, EContact *profile, CtStoreDone done, gpoin
     }
   else if (self->eds_settings)
     {
-      /* a new one goes to EDS's own personal book, as Android's profile is the device's (else to the default) */
+      /* a new one goes to EDS's own personal book, the phone's own (else to the default) */
       g_autoptr(ESource) builtin = self->registry ? e_source_registry_ref_builtin_address_book (self->registry)
                                                   : NULL;
 

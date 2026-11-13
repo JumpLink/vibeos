@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- The Calendar's settings: Etar's GeneralPreferences (xml-v26/general_preferences.xml, the Android 8+ screen) and
-     ViewDetailsPreferences keys, each one something the app or its reminder service acts on (spec/calendar.md §9) -->
+<!-- The Calendar's settings, each one something the app or its reminder service acts on -->
 <schemalist gettext-domain="neo-calendar">
   <schema id="neo.Calendar" path="/neo/Calendar/">
     <!-- Calendar view setting -->

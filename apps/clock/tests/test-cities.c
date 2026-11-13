@@ -1,4 +1,4 @@
-/* cities against DeskClock's CityDAO, City and Utils.getGMTHourOffset, on the system's tzdata */
+/* cities against what DeskClock does, on the system's tzdata */
 #include "../src/cities.h"
 
 /* 2026-07-01 12:00 UTC: summer in the north, so a zone's DST shows */
@@ -26,7 +26,7 @@ test_list (void)
 {
   GPtrArray *all = cities_get_all ();
 
-  /* DeskClock's 340, less any zone this system's tzdata lacks (none on Debian) */
+  /* the list's 340, less any zone this system's tzdata lacks (none on Debian) */
   g_assert_cmpuint (all->len, >, 330);
   g_assert_nonnull (cities_find ("C164"));
   g_assert_cmpstr (cities_find ("C164")->data->name, ==, "Berlin");

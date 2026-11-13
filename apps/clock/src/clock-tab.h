@@ -1,10 +1,9 @@
-/* ClockTab: what a tab of the Clock's window gives the row of buttons at the bottom (DeskClock's FabController and
- * FabContainer).
+/* ClockTab: what a tab of the Clock's window gives the row of buttons at the bottom.
  *
- * The row belongs to the window and is the same on every tab: the FAB in the middle and a smaller button either
- * side of it. Each tab says what they show and is told when one is pressed. When that changes, the tab asks the
- * window to show it, saying how: at once, or with the FAB or the side buttons shrinking to nothing and growing back
- * with their new icons (the animations are the window's, so every tab moves the same way). */
+ * The row belongs to the window and is the same on every tab: the FAB in the middle and a smaller button either side of
+ * it. Each tab says what they show and is told when one is pressed. When that changes, the tab asks the window to show
+ * it, saying how: at once, or with the FAB or the side buttons shrinking to nothing and growing back with their new
+ * icons (the animations are the window's, so every tab moves the same way). */
 #pragma once
 
 #include <gtk/gtk.h>
@@ -24,8 +23,8 @@ typedef struct {
   const char *description;
 } ClockButton;
 
-/* how the row changes (UpdateFabFlag): the FAB and the side buttons each at once or shrinking and growing back,
- * or all three shrinking away (a page change starts) and growing back (it ended) */
+/* how the row changes: the FAB and the side buttons each at once or shrinking and growing back, or all three shrinking
+ * away (a page change starts) and growing back (it ended) */
 typedef enum {
   CLOCK_FAB_IMMEDIATE = 1 << 0,
   CLOCK_FAB_SHRINK_AND_EXPAND = 1 << 1,
@@ -47,10 +46,9 @@ struct _ClockTabInterface
   /* the row as the tab wants it now: buttons[CLOCK_FAB], [CLOCK_LEFT], [CLOCK_RIGHT] (all hidden unless set) */
   void (*get_buttons) (ClockTab *self, ClockButton *buttons);
   void (*clicked)     (ClockTab *self, ClockButtonPosition button);
-  /* whether the tab counts as having a FAB when the tabs change (getFabTargetVisibility); without this, whether
-   * get_buttons gives it one */
+  /* whether the tab counts as having a FAB when the tabs change; without this, whether get_buttons gives it one */
   gboolean (*has_fab) (ClockTab *self);
-  /* a key the window got, offered to the tab on screen first (onKeyDown); TRUE when the tab used it */
+  /* a key the window got, offered to the tab on screen first; TRUE when the tab used it */
   gboolean (*key_pressed) (ClockTab *self, guint keyval);
 };
 

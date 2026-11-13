@@ -1,24 +1,23 @@
 /* calendar-pickers.css: loaded after calendar.css, at its priority (cal-main.c) */
 
-/* Material 3's baseline roles the pickers need and calendar.css does not name (dark; calendar-light.css should give
- * the light ones: cal_error #b3261e, cal_tertiary_container #ffd8e4, cal_on_tertiary_container #31111d) */
-@define-color cal_error #f2b8b5;                  /* colorError: the date field's error */
+/* colours the pickers need and calendar.css does not name (dark; calendar-light.css has the light ones) */
+@define-color cal_error #f2b8b5;                  /* the date field's error */
 @define-color cal_tertiary_container #633b48;     /* the checked AM/PM button */
 @define-color cal_on_tertiary_container #ffd8e4;
 
-/* --- the time zone picker (TimeZonePickerDialog, timezonepickerview.xml) */
+/* --- the time zone picker */
 
-.neo-dialog.cal-tz-card {                 /* ThemeOverlay.AppCompat.Dialog's 2 dp corners round colorSurfaceContainer */
+.neo-dialog.cal-tz-card {
   background-color: @neo_surface_container;
   border-radius: 2px;
 }
 
-.cal-tz-field {                           /* the search box: 8 dp in from the sides and over the list; the hint's colour */
+.cal-tz-field {                           /* the search box; its CSS colour is the hint's */
   margin: 0 8px 8px 8px;
   color: @cal_hint;
 }
 
-.cal-tz-field text {                      /* textAppearanceMediumInverse, 18 sp */
+.cal-tz-field text {
   padding: 0;
   background: none;
   font-size: 18px;
@@ -27,54 +26,54 @@
   caret-color: @neo_primary;
 }
 
-.cal-tz-clear {                           /* the clear button: a 24 dp icon, padding 8, colorControlNormal */
+.cal-tz-clear {                           /* the clear button */
   padding: 8px;
   color: @neo_on_surface_variant;
 }
 
-.cal-tz-item {                            /* time_zone_item: 20 dp at the sides, 8 dp over the name and under the country */
+.cal-tz-item {                            /* a zone's row */
   padding: 8px 20px;
 }
 
-.cal-tz-name {                            /* textAppearanceMedium: 18 sp, textColorSecondary */
+.cal-tz-name {
   font-size: 18px;
   font-weight: 700;
   color: @neo_on_surface_variant;
 }
 
-.cal-tz-offset {                          /* a TextView's default: 14 sp, textColorPrimary */
+.cal-tz-offset {
   font-size: 14px;
   font-weight: 700;
   color: @neo_on_surface;
 }
 
-.cal-tz-location {                        /* textAppearanceSmall: 14 sp, textColorTertiary */
+.cal-tz-location {
   font-size: 14px;
   font-weight: 700;
   color: @neo_on_surface_variant;
 }
 
-.cal-tz-row + .cal-tz-row {               /* the ListView's divider (list_divider_material: colorForeground, 12 %) */
+.cal-tz-row + .cal-tz-row {               /* a hairline between the rows */
   border-top: 1px solid alpha(@neo_on_surface, 0.12);
 }
 
-.cal-tz-empty {                           /* empty_time_zone_item: 20 dp round a row's height */
+.cal-tz-empty {                           /* the row shown when nothing matches */
   padding: 20px;
 }
 
-.cal-tz-empty-text {                      /* "No results found", 16 sp */
+.cal-tz-empty-text {                      /* "No results found" */
   font-size: 16px;
   font-weight: 700;
   color: @neo_on_surface;
 }
 
-.cal-tz-dropdown {                        /* the AutoCompleteTextView's drop-down, under the field and as wide */
+.cal-tz-dropdown {                        /* the suggestions' drop-down, under the field and as wide */
   background-color: @neo_surface_container;
   border-radius: 4px;
   box-shadow: 0 3px 8px alpha(black, 0.35);
 }
 
-.cal-tz-suggestion {                      /* time_zone_filter_item: 8 dp round a 32 dp line */
+.cal-tz-suggestion {                      /* a suggestion in the drop-down */
   min-height: 32px;
   padding: 8px;
 }
@@ -87,14 +86,14 @@
 
 /* --- the date picker's text input mode */
 
-.cal-date-toggle {                        /* mtrl_picker_header_toggle: 48 dp, 8 dp over the header's end */
+.cal-date-toggle {                        /* switches between the calendar and typing a date */
   min-width: 48px;
   min-height: 48px;
   margin-bottom: 8px;
   color: @neo_on_surface_variant;
 }
 
-.cal-date-input {                         /* mtrl_picker_text_input_date: 16 dp over and under, 12 dp at the sides */
+.cal-date-input {
   padding: 16px 12px;
 }
 
@@ -102,7 +101,7 @@
   color: @cal_error;
 }
 
-.cal-date-field text {                    /* bodyLarge, 16 sp */
+.cal-date-field text {
   padding: 0;
   background: none;
   font-size: 16px;
@@ -115,11 +114,11 @@
   color: @neo_on_surface_variant;
 }
 
-.cal-date-field.error text {              /* cursorErrorColor */
+.cal-date-field.error text {
   caret-color: @cal_error;
 }
 
-.cal-date-error {                         /* the error under the field: bodySmall, 4 dp under it, 16 dp in */
+.cal-date-error {                         /* the error under the field */
   margin: 4px 16px 0 16px;
   font-size: 12px;
   font-weight: 700;
@@ -132,30 +131,30 @@
 
 /* --- the time picker's keyboard mode and 12-hour clock */
 
-.cal-time-picker {                        /* material_clock_face_margin_bottom: 24 dp to the keyboard button */
+.cal-time-picker {                        /* the face's end to the keyboard button */
   padding-bottom: 24px;
 }
 
-.cal-time-card .neo-text-button {         /* Cancel and OK 2 dp under the keyboard button's top */
+.cal-time-card .neo-text-button {         /* Cancel and OK just under the keyboard button's top */
   margin-top: 2px;
 }
 
-.cal-time-mode {                          /* the keyboard button: 48 dp, 12 dp from the card's start */
+.cal-time-mode {                          /* the keyboard button: type the time in */
   min-width: 48px;
   min-height: 48px;
   margin-left: 4px;
   color: @neo_on_surface_variant;
 }
 
-.cal-time-input {                         /* 44 dp from the card's top (the title ends at 33) */
+.cal-time-input {                         /* the typed-time row, under the title */
   margin-top: 11px;
 }
 
-.cal-time-input-display {                 /* material_timepicker_textinput_display: paddingTop 8 */
+.cal-time-input-display {
   margin-top: 8px;
 }
 
-.cal-time-field text {                    /* 56 dp, onSurface */
+.cal-time-field text {
   padding: 0;
   background: none;
   font-size: 56px;
@@ -164,14 +163,14 @@
   caret-color: @neo_primary;
 }
 
-.cal-time-input-label {                   /* "Hour", "Minute": bodySmall, onSurfaceVariant */
+.cal-time-input-label {                   /* "Hour", "Minute" */
   font-size: 12px;
   font-weight: 700;
   color: @neo_on_surface_variant;
 }
 
 .cal-time-display-period,
-.cal-time-input-period {                  /* 12 dp after the minute */
+.cal-time-input-period {                  /* AM/PM, after the minute */
   margin-left: 12px;
 }
 
@@ -179,12 +178,12 @@
   margin-top: 8px;
 }
 
-.cal-time-period {                        /* the toggle group: 1 dp colorOutline, 8 dp corners */
+.cal-time-period {                        /* the AM/PM toggle group */
   border: 1px solid @neo_outline;
   border-radius: 8px;
 }
 
-.cal-time-period-button {                 /* titleMedium */
+.cal-time-period-button {
   background-color: @neo_surface;
   color: @neo_on_surface_variant;
   font-size: 16px;

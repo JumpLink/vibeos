@@ -1,6 +1,5 @@
-/* The Favorites tab: see favorites-page.h. The rules are SpeedDialFragment's, SpeedDialUiItem's (the default
- * channel), FavoritesViewHolder's, ContextMenu's and DisambigDialog's; the geometry is fragment_speed_dial.xml's,
- * speed_dial_header_layout.xml's and favorite_item_layout.xml's, measured on still:dialer-main (spec §6). */
+/* The Favorites tab: see favorites-page.h. The favourite contacts in a grid of tiles; a contact with more than one
+ * number asks which to call, unless a default was remembered. */
 #include "favorites-page.h"
 #include "avatar.h"
 #include "calls-client.h"
@@ -14,22 +13,22 @@
 #include <glib/gi18n.h>
 #include <spongy-gtk.h>
 
-#define COLUMNS         3       /* SpeedDialLayoutManager's spans */
+#define COLUMNS         3
 #define LIST_PAD_BOTTOM 88
-#define HEADER_MARGIN   16      /* the header row's marginStart/End */
+#define HEADER_MARGIN   16      /* the header row's inset at both ends */
 #define HEADER_HEIGHT   48
 #define TILE_TOP        8
 #define TILE_BOTTOM     12
 #define AVATAR          104
-#define AVATAR_GAP      8       /* avatar_container's marginBottom */
+#define AVATAR_GAP      8       /* under the photo */
 #define TEXT_SIDE       4
 #define NAME_TOP        8
 #define NAME_BOTTOM     1
 #define TYPE_BOTTOM     17
-#define OPTION_PAD_X    24      /* disambig_option_layout */
+#define OPTION_PAD_X    24      /* an option in the Choose call type dialog */
 #define OPTION_PAD_Y    8
 #define OPTION_HEIGHT   56
-#define OPTIONS_MIN     168     /* disambig_scrollview's minHeight and maxHeight */
+#define OPTIONS_MIN     168     /* the options' scroller, at least and at most */
 #define OPTIONS_MAX     256
 
 /* ---- a favourite: the contact and the number its tile calls --------------------------------------------------- */
@@ -126,7 +125,7 @@ place_call (FavoritesPage *self, const char *number)
   calls_client_dial (calls_client_get (), number, on_dialed, g_object_ref (self));
 }
 
-/* the star goes (ContextMenu's Remove) */
+/* the star goes (the menu's Remove) */
 static void
 remove_favorite (FavoritesPage *self, const char *uid)
 {
@@ -141,7 +140,7 @@ remove_favorite (FavoritesPage *self, const char *uid)
   g_settings_set_strv (self->settings, "favorites", (const char * const *) result);
 }
 
-/* ---- "Choose call type" (DisambigDialog) ---------------------------------------------------------------------- */
+/* ---- "Choose call type" --------------------------------------------------------------------------------------- */
 
 typedef struct
 {
@@ -165,7 +164,7 @@ on_option_clicked (GtkWidget *option, Disambig *disambig)
   const char *number = g_object_get_data (G_OBJECT (option), "disambig-number");
   FavoritesPage *self = disambig->page;
 
-  /* "Remember this choice": the number becomes the favourite's default (IS_SUPER_PRIMARY on Android) */
+  /* "Remember this choice": the number becomes the favourite's default */
   if (gtk_check_button_get_active (GTK_CHECK_BUTTON (disambig->remember)))
     {
       g_autoptr(GVariant) old = g_settings_get_value (self->settings, "favorite-numbers");
@@ -242,7 +241,7 @@ show_disambig (FavoritesPage *self, const Favorite *favorite)
   neo_dialog_set_flush (disambig->dialog, TRUE);
   gtk_widget_add_css_class (content, "disambig");
 
-  /* the title strip: Header2, 56 dp, 24 dp in */
+  /* the title strip */
   gtk_label_set_xalign (GTK_LABEL (title), 0);
   gtk_widget_set_size_request (title, -1, OPTION_HEIGHT);
   gtk_widget_add_css_class (title, "disambig-title");
@@ -257,7 +256,7 @@ show_disambig (FavoritesPage *self, const Favorite *favorite)
   gtk_scrolled_window_set_max_content_height (GTK_SCROLLED_WINDOW (scroller), OPTIONS_MAX);
   gtk_box_append (GTK_BOX (content), scroller);
 
-  /* "Remember this choice": a 48 dp check box in a 64 dp strip */
+  /* "Remember this choice": a check box in a strip of its own */
   disambig->remember = gtk_check_button_new_with_label (_("Remember this choice"));
   gtk_widget_add_css_class (disambig->remember, "disambig-remember");
   gtk_widget_set_size_request (disambig->remember, -1, 48);
@@ -327,7 +326,7 @@ on_menu_info (gpointer data)
   contacts_app_view (GTK_WIDGET (target->page), target->uid, target->page->snackbar);
 }
 
-/* ContextMenu: "<kind> <number>" (dimmed), Voice Call and Message for the default voice channel, Remove, Contact
+/* the menu: "<kind> <number>" (dimmed), Voice Call and Message for the default voice channel, Remove, Contact
  * info. No Video Call: nothing here can make one */
 static void
 show_menu (FavoritesPage *self, const Favorite *favorite, GtkWidget *anchor)
@@ -377,7 +376,7 @@ on_tile_clicked (GtkWidget *tile, FavoritesPage *self)
 static void
 on_tile_long_pressed (GtkWidget *tile, FavoritesPage *self)
 {
-  /* the menu hangs from the picture (ContextMenu's anchor is the photo view) */
+  /* the menu hangs from the picture */
   show_menu (self, tile_favorite (tile), g_object_get_data (G_OBJECT (tile), "favorite-avatar"));
 }
 
@@ -397,7 +396,7 @@ make_tile (FavoritesPage *self, Favorite *favorite)
   gtk_widget_set_margin_bottom (avatar, AVATAR_GAP);
   gtk_box_append (GTK_BOX (box), avatar);
 
-  /* the name: 14 sp, config_headlineFontFamilyMedium, centred, wrapping */
+  /* the name: centred, wrapping */
   gtk_label_set_wrap (GTK_LABEL (name), TRUE);
   gtk_label_set_wrap_mode (GTK_LABEL (name), PANGO_WRAP_WORD_CHAR);
   gtk_label_set_justify (GTK_LABEL (name), GTK_JUSTIFY_CENTER);
@@ -473,7 +472,7 @@ on_picker_key (GtkEventControllerKey *keys, guint keyval, guint keycode, GdkModi
   return TRUE;
 }
 
-/* ACTION_PICK on the phones: the contacts with a number, over the whole window under a bar with a back arrow */
+/* the contact picker: the contacts with a number, over the whole window under a bar with a back arrow */
 static void
 open_picker (FavoritesPage *self)
 {
@@ -492,7 +491,7 @@ open_picker (FavoritesPage *self)
   gtk_widget_set_margin_start (back, 8);
   gtk_widget_set_valign (back, GTK_ALIGN_CENTER);
   gtk_widget_add_css_class (back, "dialer-icon");
-  /* Android's "Navigate up"; named for the shell's back gesture, which clicks a Back button */
+  /* named "Back", the button the shell's back gesture clicks; "Navigate up" is its description */
   gtk_accessible_update_property (GTK_ACCESSIBLE (back), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Back"),
                                   GTK_ACCESSIBLE_PROPERTY_DESCRIPTION, _("Navigate up"), -1);
   g_signal_connect_swapped (back, "clicked", G_CALLBACK (close_picker), self);
@@ -524,7 +523,7 @@ on_add_favorite (gpointer data)
   open_picker (data);
 }
 
-/* the header row: "Favorites" in Secondary at 16 sp, and the borderless "Add" at its end */
+/* the header row: "Favorites", and the borderless "Add" at its end */
 static GtkWidget *
 make_header (FavoritesPage *self)
 {
@@ -637,7 +636,7 @@ favorites_page_init (FavoritesPage *self)
   self->scroller = spongy_scroll_view_new ();
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->scroller), list);
   gtk_stack_add_child (GTK_STACK (self->stack), self->scroller);
-  /* SpeedDialFragment's empty view: the speed-dial picture, the line, "Add favorite" */
+  /* the empty view: the speed-dial picture, the line, "Add favorite" */
   self->empty = empty_view_new ("/neo/Dialer/images/empty-speed-dial.png",
                                 _("You haven't added any favorites yet"), _("Add favorite"), on_add_favorite, self);
   gtk_stack_add_child (GTK_STACK (self->stack), self->empty);

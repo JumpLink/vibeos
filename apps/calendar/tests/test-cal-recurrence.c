@@ -1,6 +1,6 @@
-/* The repeat dialog's rules (cal-recurrence-picker.c): EventRecurrence's parser and writer, canHandleRecurrenceRule,
- * and the round trip a rule makes through the dialog's model (parse → model → rule), as Etar's would. Built with
- * CAL_RECURRENCE_NO_UI: the dialog itself is left out. */
+/* The repeat dialog's rules (cal-recurrence-picker.c): the RRULE parser and writer, cal_recurrence_picker_can_handle,
+ * and the round trip a rule makes through the dialog's model (parse → model → rule). Built with CAL_RECURRENCE_NO_UI:
+ * the dialog itself is left out. */
 #include "../src/cal-recurrence-picker.h"
 
 #include <locale.h>
@@ -30,9 +30,9 @@ test_parse (void)
 {
   struct { const char *rule, *written; } cases[] = {
     { "FREQ=WEEKLY;BYDAY=MO,WE", "FREQ=WEEKLY;WKST=MO;BYDAY=MO,WE" },
-    { "freq=daily;interval=2", "FREQ=DAILY;INTERVAL=2;WKST=MO" },                    /* ALLOW_LOWER_CASE */
+    { "freq=daily;interval=2", "FREQ=DAILY;INTERVAL=2;WKST=MO" },                    /* lower case allowed */
     { "FREQ=MONTHLY;BYDAY=-1FR;X-NAME=1", "FREQ=MONTHLY;WKST=MO;BYDAY=-1FR" },       /* X- parts dropped */
-    { "BYMONTH=3;FREQ=YEARLY;BYHOUR=9", "FREQ=YEARLY;WKST=MO;BYHOUR=9;BYMONTH=3" },  /* Etar's order */
+    { "BYMONTH=3;FREQ=YEARLY;BYHOUR=9", "FREQ=YEARLY;WKST=MO;BYHOUR=9;BYMONTH=3" },  /* the writer's order */
     { "FREQ=DAILY;INTERVAL=+2", "FREQ=DAILY;INTERVAL=2;WKST=MO" },
     { "FREQ=DAILY;COUNT=-3;INTERVAL=0", "FREQ=DAILY;COUNT=1;INTERVAL=1;WKST=MO" },   /* forced to 1 */
     { "FREQ=DAILY;;COUNT=3", "FREQ=DAILY;COUNT=3;WKST=MO" },
@@ -80,7 +80,7 @@ test_can_handle (void)
     "FREQ=MONTHLY;BYDAY=1MO,3MO", "FREQ=WEEKLY;BYDAY=1MO",                    /* two nths; an nth not monthly */
     "FREQ=MONTHLY;BYMONTHDAY=1,15", "FREQ=MONTHLY;BYDAY=2TU;BYMONTHDAY=3",    /* two days; nth and day */
     "FREQ=MONTHLY;BYDAY=MO,TU", "FREQ=MONTHLY;BYDAY=-2MO",
-    /* canHandleRecurrenceRule passes these, but the dialog throws on them (copyEventRecurrenceToModel) */
+    /* the parser takes these, but the dialog's model refuses them (cal_recurrence_model_init) */
     "FREQ=MONTHLY;BYDAY=MO", "FREQ=MONTHLY;BYMONTH=1,2",
     "FREQ=WEEKLY;BYDAY=XX", "garbage",
   };
@@ -124,8 +124,8 @@ test_round_trip (void)
     { "FREQ=MONTHLY;BYMONTHDAY=15", "Europe/Berlin", "FREQ=MONTHLY;WKST=MO;BYMONTHDAY=15" },
     { "FREQ=MONTHLY", "Europe/Berlin", "FREQ=MONTHLY;WKST=MO" },
     { "FREQ=YEARLY;BYMONTH=3;BYSETPOS=1", "Europe/Berlin", "FREQ=YEARLY;WKST=MO;BYMONTH=3;BYSETPOS=1" },  /* kept */
-    /* Etar rewrites BYDAY and BYMONTHDAY from what the dialog shows: a yearly or daily rule loses its own, a
-     * monthly one its BYMONTHDAY=-1 ("TODO don't lose data") */
+    /* BYDAY and BYMONTHDAY are rewritten from what the dialog shows: a yearly or daily rule loses its own, a
+     * monthly one its BYMONTHDAY=-1 */
     { "FREQ=YEARLY;BYMONTH=3;BYMONTHDAY=8", "Europe/Berlin", "FREQ=YEARLY;WKST=MO;BYMONTH=3" },
     { "FREQ=DAILY;BYDAY=MO,FR", "Europe/Berlin", "FREQ=DAILY;WKST=MO" },
     { "FREQ=MONTHLY;BYMONTHDAY=-1", "Europe/Berlin", "FREQ=MONTHLY;WKST=MO" },
@@ -135,7 +135,7 @@ test_round_trip (void)
     /* … a floating one is in the event's zone, a date at the start's time of day … */
     { "FREQ=DAILY;UNTIL=20261231T120000", "America/New_York", "FREQ=DAILY;UNTIL=20261231T170000Z;WKST=MO" },
     { "FREQ=DAILY;UNTIL=20261231", "Europe/Berlin", "FREQ=DAILY;UNTIL=20261231T090000Z;WKST=MO" },
-    /* … one Time.parse refuses is the default end: a month after the start */
+    /* … one that does not parse is the default end: a month after the start */
     { "FREQ=DAILY;UNTIL=nonsense", "Europe/Berlin", "FREQ=DAILY;UNTIL=20261210T090000Z;WKST=MO" },
     /* an all-day event (no zone): a DATE */
     { "FREQ=DAILY;UNTIL=20261231", NULL, "FREQ=DAILY;UNTIL=20261231;WKST=MO" },
@@ -158,7 +158,7 @@ test_model (void)
   CalRecurrenceModel model;
   g_autofree char *rule = NULL;
 
-  /* copyEventRecurrenceToModel */
+  /* the rule into the model */
   g_free (round_trip ("FREQ=DAILY;INTERVAL=3;COUNT=10", tuesday, "Europe/Berlin", &model));
   g_assert_true (model.repeats);
   g_assert_cmpint (model.freq, ==, CAL_REPEAT_DAILY);
@@ -178,7 +178,7 @@ test_model (void)
   g_assert_cmpint (model.end, ==, CAL_REPEAT_END_BY_DATE);
   g_assert_cmpint (model.end_day, ==, day_number (2026, 12, 31));
   g_assert_cmpint (model.end_second, ==, 23 * 3600 + 59 * 60 + 59);
-  /* the model without a COUNT holds 0 (Etar's: "For a number of events" then makes it 1) */
+  /* the model without a COUNT holds 0 ("For a number of events" then makes it 1) */
   g_assert_cmpint (model.end_count, ==, 0);
 
   /* a picked date keeps the time of day */
@@ -202,7 +202,7 @@ test_model (void)
   }
 }
 
-/* a new rule: onCreateView's defaults, from the start */
+/* a new rule: the dialog's defaults, from the start */
 static void
 test_new_rule (void)
 {
@@ -274,7 +274,7 @@ test_new_rule (void)
 }
 
 /* the default end date: a month on (daily, weekly), three (monthly), three years (yearly); past a month's end it runs
- * into the next, as Time.normalize does */
+ * into the next */
 static void
 test_default_end (void)
 {

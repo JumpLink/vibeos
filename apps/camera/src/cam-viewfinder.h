@@ -1,12 +1,12 @@
-/* cam-viewfinder: the preview and what is drawn over it (§1, §8, §9, §12.1, §14).
+/* cam-viewfinder: the preview and what is drawn over it.
  *
  * The camera's frames come as they leave the sensor; the viewfinder turns them upright by the sensor's orientation,
  * mirrors a front camera's (a selfie preview is a mirror), fits them (whole for 4:3 photos, filling the viewfinder
- * for 16:9 and video, as PreviewView's fitCenter shows the live app doing) and zooms into the middle of them. While
- * the camera is being reconfigured the last picture stays, blurred (PreviewBlurView). Over it: the grid on the
+ * for 16:9 and video) and zooms into the middle of them. While
+ * the camera is being reconfigured the last picture stays, blurred. Over it: the grid on the
  * picture's visible part, the leveler, the focus ring, the capture blink.
  *
- * Touch: a tap ("tapped"), a horizontal fling of more than 75 dp ("fling", +1 for the next mode), a pinch
+ * Touch: a tap ("tapped"), a horizontal fling of more than 75 px ("fling", +1 for the next mode), a pinch
  * ("pinch-begin", "pinch" with the scale since it began, "pinch-end"). */
 #pragma once
 
@@ -34,7 +34,7 @@ void       cam_viewfinder_freeze       (CamViewfinder *self);
 void       cam_viewfinder_thaw         (CamViewfinder *self);
 gboolean   cam_viewfinder_is_frozen    (CamViewfinder *self);
 void       cam_viewfinder_set_grid     (CamViewfinder *self, CamGrid grid);
-/* the leveler, with the phone's tilt in degrees (OrientationEventListener's), NaN for none yet */
+/* the leveler, with the phone's tilt in degrees, NaN for none yet */
 void       cam_viewfinder_set_leveler  (CamViewfinder *self, gboolean shown, double tilt);
 /* the focus ring at a point: it shrinks while focusing, grows back on focus_done and goes 500 ms later */
 void       cam_viewfinder_focus        (CamViewfinder *self, double x, double y);

@@ -86,7 +86,7 @@ by_expiry (gconstpointer a, gconstpointer b, gpointer now)
   return timer_compare_expiry (*(Timer **) a, *(Timer **) b, *(gint64 *) now);
 }
 
-/* the timers in @states (IN bits), in DeskClock's EXPIRY_COMPARATOR order: the one that ends first first */
+/* the timers in @states (IN bits), in expiry order: the one that ends first first */
 static GPtrArray *
 timers_in (TimerService *self, guint states, gint64 now)
 {
@@ -103,7 +103,7 @@ timers_in (TimerService *self, guint states, gint64 now)
   return timers;
 }
 
-/* TimerModel.doResetOrDeleteTimer */
+/* reset; one another app asked for is deleted instead once it has run out */
 static void
 reset_or_delete (TimerService *self, Timer *timer)
 {
@@ -113,7 +113,7 @@ reset_or_delete (TimerService *self, Timer *timer)
     timer_reset (timer);
 }
 
-/* resetOrDeleteExpiredTimers, resetUnexpiredTimers, resetMissedTimers */
+/* every timer in @states reset or deleted, as reset_or_delete does it */
 static void
 reset_all (TimerService *self, guint states)
 {
@@ -141,8 +141,8 @@ expire_due (TimerService *self)
 
 /* --- ringing */
 
-/* TimerModel.updateRinger: the klaxon starts with the first timer to expire and stops with the last one reset; each
- * new one brings the ringing screen up (the shell raises it if it is there already) */
+/* the klaxon starts with the first timer to expire and stops with the last one reset; each new one brings the ringing
+ * screen up (the shell raises it if it is there already) */
 static void
 sync_ringing (TimerService *self)
 {
@@ -176,7 +176,7 @@ sync_ringing (TimerService *self)
     phone_show_full_screen (self->session, RINGING_APP_ID);
 }
 
-/* --- the notifications (TimerNotificationBuilder) */
+/* --- the notifications */
 
 static const char *
 label_or (const Timer *timer, const char *fallback)
@@ -214,19 +214,18 @@ show_unexpired (TimerService *self, GPtrArray *timers, gint64 now)
       actions = paused_actions;
     }
 
-  /* running, the time left counts down in the header, a second ahead as the app rounds it up
-   * (getChronometerBase); paused, it is the text */
+  /* running, the time left counts down in the header, a second ahead as the app rounds it up; paused, it is the text */
   if (running)
     hints = clock_notifier_header_hints (elapsed_wall_now () + remaining + 1000, TRUE, NULL);
   else
     body = clock_notifier_format_elapsed (remaining / 1000);
   self->unexpired_timer = timer->id;
-  /* Android's channel is "Timers" at default importance: in the list, no heads-up (alarm-notifications.c) */
+  /* low urgency: in the list, no heads-up (alarm-notifications.c) */
   self->unexpired_id = clock_notifier_notify (self->notifier, self->unexpired_id, title, body, actions,
                                               CLOCK_URGENCY_LOW, hints);
 }
 
-/* buildHeadsUp: the ringing timers' */
+/* the ringing timers' notification */
 static void
 show_expired (TimerService *self, GPtrArray *timers)
 {
@@ -246,7 +245,7 @@ show_expired (TimerService *self, GPtrArray *timers)
                                             NULL);
 }
 
-/* buildMissed */
+/* the missed timers' notification */
 static void
 show_missed (TimerService *self, GPtrArray *timers)
 {
@@ -273,7 +272,7 @@ close_notification (TimerService *self, guint32 *id)
   *id = 0;
 }
 
-/* TimerModel's updateNotification, updateMissedNotification and updateHeadsUpNotification */
+/* the notifications for the running or paused timers, the ringing ones and the missed ones, as they are now */
 static void
 update_notifications (TimerService *self)
 {
@@ -326,15 +325,15 @@ on_notification (guint32 id, const char *action, gpointer data)
         self->missed_id = 0;
       else
         self->expired_id = 0;
-      /* swiped away: the running and the ringing timers' come back, as Android lets no one swipe an ongoing
-       * notification; the missed one stays away until the timers next change */
+      /* swiped away: the running and the ringing timers' come back, as an ongoing notification cannot be swiped away;
+       * the missed one stays away until the timers next change */
       if (ongoing && g_str_equal (action, "closed"))
         update_notifications (self);
       return;
     }
   if (g_str_equal (action, "default"))
     {
-      /* the ringing ones open the ringing screen (ExpiredTimersActivity), the others the app at the timer */
+      /* the ringing ones open the ringing screen, the others the app at the timer */
       if (id == self->expired_id)
         phone_start_app (RINGING_APP_ID);
       else
@@ -575,7 +574,7 @@ load_store (const char *path)
   return timer_store_load (path, NULL);
 }
 
-/* TimerModel.updateTimersAfterReboot: the store is from another boot, so its elapsed-clock times mean nothing now */
+/* the store is from another boot, so its elapsed-clock times mean nothing now */
 static void
 catch_up_after_reboot (TimerService *self)
 {

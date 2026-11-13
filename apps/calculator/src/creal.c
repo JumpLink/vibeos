@@ -1,4 +1,4 @@
-/* creal: see creal.h. Every algorithm here is com.hp.creals' (CR.java and its node classes), step for
+/* creal: see creal.h. Every algorithm here is com.hp.creals' (its CR class and node classes), step for
  * step; the comments name the Java class each part comes from. */
 #include "creal.h"
 #include "calc-failure.h"

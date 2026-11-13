@@ -1,6 +1,6 @@
-// The volume dialog: Android 16's redesigned VolumeDialog with the panel on the left, as LineageOS puts it (spec §5).
-// A 60 dp pill slides in on a spring: the ringer button on top (feedbackd's profile), the media stream's slider and
-// the settings button. The volume keys come here instead of to gnome-settings-daemon; as AudioService does, the first
+// The volume dialog: a vertical panel on the left edge, as LineageOS puts it.
+// A pill slides in on a spring: the ringer button on top (feedbackd's profile), the media stream's slider and
+// the settings button. The volume keys come here instead of to gnome-settings-daemon; the first
 // press only shows the panel and the next ones step the default output through 15 levels.
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
@@ -21,61 +21,61 @@ import {Color, rgba, setSource} from './palette.js';
 import {openSettings} from './settings.js';
 import {px, SCALE, SCREEN_H, screenPixels} from './units.js';
 
-// --- geometry, screen px (spec §5.3); the window runs from the status bar's bottom to the screen's
-const ROOT_W = 528;                     // 176 dp: how far the panel slides
+// --- geometry, screen px; the window runs from the status bar's bottom to the screen's
+const ROOT_W = 528;                     // how far the panel slides
 const WINDOW_TOP = 116;
-const SLIDER_H = 762;                   // 254 dp, centred in the window
+const SLIDER_H = 762;                   // centred in the window
 const S = (WINDOW_TOP + SCREEN_H) / 2 - SLIDER_H / 2;      // the slider's top: 817
-const PILL_X = 24;                      // 8 dp from the edge, 60 dp wide
+const PILL_X = 24;                      // from the screen's edge
 const PILL_W = 180;
 const PILL_RADIUS = 90;
-const BODY_TOP = S - 84;                // the main background starts 28 dp above the slider, square-topped
-const SLIDER_X = 36;                    // 52 dp
+const BODY_TOP = S - 84;                // the main background starts a little above the slider, square-topped
+const SLIDER_X = 36;
 const SLIDER_W = 156;
-const TRACK_INSET_X = 18;               // the 40 dp track in the 52 dp slider
+const TRACK_INSET_X = 18;               // the track, centred in the slider
 const TRACK_W = 120;
 const TRACK_TOP = 6;                    // the track stops half a handle short of the slider's ends
 const TRACK_LEN = 750;
-const TRACK_RADIUS = 36;                // 12 dp, 2 dp next to the handle
+const TRACK_RADIUS = 36;                // TRACK_INNER_RADIUS next to the handle
 const TRACK_INNER_RADIUS = 6;
-const HANDLE_H = 12;                    // 52 x 4 dp
-const HANDLE_GAP = 18;                  // 6 dp each side
-const ICON_BOX = 120;                   // the stream icon: 20 dp in a 40 dp box
+const HANDLE_H = 12;
+const HANDLE_GAP = 18;                  // each side of the handle
+const ICON_BOX = 120;                   // the stream icon's box; ICON is the glyph in it
 const ICON = 60;
 const ICON_ON_ACTIVE_FROM = 0.816;      // past this the icon moves to the active track
-const SECTION_GAP = 12;                 // 4 dp between the slider and the bottom section
-const BUTTON = 144;                     // 48 dp buttons
-const PILL_END_PAD = 18;                // 6 dp under the bottom section
+const SECTION_GAP = 12;                 // between the slider and the bottom section
+const BUTTON = 144;
+const PILL_END_PAD = 18;                // under the bottom section
 const SETTINGS_TOP = S + SLIDER_H + SECTION_GAP;
 const PILL_BOTTOM = SETTINGS_TOP + BUTTON + PILL_END_PAD;
-const SETTINGS_RIPPLE = 120;            // ripple_drawable_20dp
-const DOT_PITCH = 13;                   // audio_bars_idle: three dots, 4.375 dp apart
+const SETTINGS_RIPPLE = 120;            // the settings button's round press highlight
+const DOT_PITCH = 13;                   // the settings button's three dots
 const DOT_RADIUS = 4.26;
 
-// the ringer: a 60 dp cap above the slider; opened, a drawer of three 48 dp buttons, Normal at the bottom
-const RINGER_BUTTON = 120;              // the 40 dp circle of a 48 dp button
+// the ringer: a cap above the slider; opened, a drawer of three buttons, Normal at the bottom
+const RINGER_BUTTON = 120;              // the circle inside a RINGER_SLOT
 const RINGER_ICON = 60;
 const RINGER_SLOT = 144;
-const RINGER_CENTER = S - 84;           // the bottom button's centre; a hidden one takes 1 dp
+const RINGER_CENTER = S - 84;           // the bottom button's centre; a hidden one takes RINGER_HIDDEN_STEP
 const RINGER_HIDDEN_STEP = 3;
 const RINGER_BG_BOTTOM = S + 6;
-const RINGER_BG_CLOSED = S - 174;       // 60 dp: the cap
-const RINGER_BG_OPEN = S - 462;         // 48 x 3 + 12 dp
-const RINGER_OPEN_RADIUS = 36;          // 12 dp
-const SELECTED_RADIUS = 60;             // 20 dp
-const UNSELECTED_RADIUS = 36;           // 12 dp
+const RINGER_BG_CLOSED = S - 174;       // the cap
+const RINGER_BG_OPEN = S - 462;         // three slots and a margin
+const RINGER_OPEN_RADIUS = 36;
+const SELECTED_RADIUS = 60;             // the selected button is a circle
+const UNSELECTED_RADIUS = 36;           // the others are rounded squares
 const RINGER_OPEN_MS = 400;
 const RINGER_CLOSE_DELAY_MS = 300;
 const RINGER_CLOSE = bezier(0.2, 0, 0, 1);
 
-// --- behaviour (spec §5.5)
-const LEVELS = 15;                      // STREAM_MUSIC
+// --- behaviour
+const LEVELS = 15;                      // media volume steps
 const SHOW_STIFFNESS = 700;
 const SHOW_DAMPING = 0.9;
-const VALUE_STIFFNESS = 1500;           // the slider's Animatable: StiffnessMedium, no bounce
+const VALUE_STIFFNESS = 1500;           // the slider follows the level on a spring, no bounce
 const DISMISS_MS = 3000;
-const SUPPRESS_MS = 500;                // LONG_PRESS_TIMEOUT: a held first press does not change the volume
-const OVERSCROLL_MAX = 168;             // 56 dp
+const SUPPRESS_MS = 500;                // a long press: a held first press does not change the volume
+const OVERSCROLL_MAX = 168;
 const OVERSCROLL = bezier(0.15, 0, 0.2, 1);
 const OVERSCROLL_STIFFNESS = 800;
 const OVERSCROLL_DAMPING = 0.6;
@@ -91,14 +91,14 @@ const RINGER_MODES = [
 ];
 const FEEDBACKD_SCHEMA = 'org.sigxcpu.feedbackd';
 
-// --- haptics: SliderHapticFeedbackProvider with VolumeHapticsConfigsProvider.continuousConfigs, as it plays on the
-// S10e under Android (no composition primitives there, so MSDL's fallbacks, read back with dumpsys vibrator_manager)
-const DRAG_THRESHOLD = 0.02;            // deltaProgressForDragThreshold
-const LOWER_BOOKEND = 0.01;             // SeekableSliderTrackerConfig
+// --- haptics: the slider's texture as the S10e plays it under LineageOS (its vibrator has no composition
+// primitives, so these are the fallback waveforms, read back from the phone)
+const DRAG_THRESHOLD = 0.02;            // of the track: each move this far plays the texture
+const LOWER_BOOKEND = 0.01;             // the ends: a drag that reaches one plays LIMIT_TICK
 const UPPER_BOOKEND = 0.99;
-const DRAG_TEXTURE = [[0.04, 10], [0.12, 20], [0.2, 20], [0.04, 10]];      // DRAG_INDICATOR_CONTINUOUS
-const LIMIT_TICK = [[0.5, 5]];          // DRAG_THRESHOLD_INDICATOR_LIMIT: Prebaked TICK, MEDIUM = 0.5 for 5 ms
-// both at twice Android's amplitude: the owner found them too subtle, as the pattern's dots (2026-11-09)
+const DRAG_TEXTURE = [[0.04, 10], [0.12, 20], [0.2, 20], [0.04, 10]];      // [amplitude, ms] while dragging
+const LIMIT_TICK = [[0.5, 5]];          // at an end: a tick, half amplitude for 5 ms
+// both at twice the reference's amplitude: the owner found them too subtle, as the pattern's dots (2026-11-09)
 const twice = pattern => pattern.map(([amplitude, ms]) => [Math.min(1, amplitude * 2), ms]);
 
 // a texture each time the progress has moved 2 % since the last one, a tick once on reaching either end
@@ -125,7 +125,7 @@ export class SliderHaptics {
         this._atUpper = this._atLower = false;
     }
 
-    // onHandleReleasedFromTouch
+    // the finger let go of the handle
     released() {
         this._last = -1;
     }
@@ -406,7 +406,6 @@ class VolumeDialog extends St.Widget {
         if (!this._shown) {
             this.show();
             // nothing playing: the press only shows the panel, and so does that key held for 500 ms
-            // (AudioService.adjustSuggestedStreamVolume)
             if (!this._playing()) {
                 this._suppressUntil = now + SUPPRESS_MS;
                 return;
@@ -516,7 +515,7 @@ class VolumeDialog extends St.Widget {
             this._setLevel(level, false);
         else
             this._showValue(level / LEVELS, false);
-        // VolumeDialogOverscrollViewModel: a third of the way past the end, eased onto at most 56 dp
+        // dragged past an end, the panel follows a third of the way, eased onto at most OVERSCROLL_MAX
         const past = fraction > 1 ? (fraction - 1) * TRACK_LEN : fraction < 0 ? fraction * TRACK_LEN : 0;
         const amount = OVERSCROLL(clamp(Math.abs(past) / 3 / OVERSCROLL_MAX)) * OVERSCROLL_MAX;
         this._setOverscroll(-Math.sign(past) * amount);
@@ -612,7 +611,7 @@ class VolumeDialog extends St.Widget {
         });
     }
 
-    // colours on a spring k 3800, the corner on k 800 / 0.6 (VolumeDialogRingerViewBinder)
+    // the ringer buttons: colours on a spring k 3800, the corner on k 800 / 0.6
     _selectRinger(index) {
         this._ringer = index;
         this._ringerButtons.forEach((b, i) => {
@@ -673,7 +672,7 @@ class VolumeDialog extends St.Widget {
         });
     }
 
-    // closed, the selected button sits in the cap and the others fold under it at 1 dp each; open, they stack
+    // closed, the selected button sits in the cap, the rest folded under it RINGER_HIDDEN_STEP apart; open, they stack
     _layoutRinger() {
         const d = this._drawer;
         const top = lerp(RINGER_BG_CLOSED, RINGER_BG_OPEN, d);

@@ -36,7 +36,7 @@ on_anim (NeoAnim *anim, double value, gpointer data)
     gtk_overlay_remove_overlay (GTK_OVERLAY (parent), popup->layer);
 }
 
-/* popup_window_exit: a 300 ms fade; the menu takes no more touches meanwhile */
+/* the way out: a 300 ms fade; the menu takes no more touches meanwhile */
 static void
 popup_close (Popup *popup)
 {
@@ -151,19 +151,19 @@ popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, CtPopupP
   gtk_widget_set_overflow (card, GTK_OVERFLOW_HIDDEN);
   gtk_box_append (GTK_BOX (card), scroll);
 
-  /* MenuPopup.measureIndividualMenuWidth: the widest row with its 16 dp insets, at least 196 dp, at most half the
-   * screen or 320 dp, whichever is more */
+  /* the widest row with its insets, at least the minimum, at most half the
+   * screen or 320, whichever is more */
   if (place == CT_POPUP_SPINNER)
     width = MAX (widest + 2 * CT_POPUP_SPINNER_PAD_DP, gtk_widget_get_width (anchor));
   else if (width <= 0)
     width = MIN (MAX (widest + 2 * CT_POPUP_ITEM_PAD_DP, CT_POPUP_MIN_W_DP), MAX (window_width / 2, 320));
   width = MIN (width, window_width - 2 * EDGE);
-  /* the framework's popup has 8 dp of padding above and below its rows (popup_background_material) */
+  /* the card's padding above and below its rows */
   height = MIN (n_labels * CT_POPUP_ITEM_H_DP + 16, window_height - 2 * EDGE);
   switch (place)
     {
     case CT_POPUP_OVER_END:
-      /* overlapAnchor, dropDownHorizontalOffset −4 dp: the top on the anchor's top, the end 4 dp in */
+      /* over the anchor, with a horizontal offset: the top on the anchor's top, the end a little in */
       left = at.x + gtk_widget_get_width (anchor) - width + CT_POPUP_H_OFFSET_DP;
       top = at.y;
       break;
@@ -193,7 +193,7 @@ popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, CtPopupP
   gtk_widget_set_margin_start (card, (int) left);
   gtk_overlay_add_overlay (GTK_OVERLAY (layer), card);
   gtk_overlay_add_overlay (overlay, layer);
-  /* popup_window_enter: the fade from 0.1 over 100 ms (its clip reveal is left out) */
+  /* the way in: a fade from 0.1 over 100 ms */
   gtk_widget_set_opacity (layer, 0.1);
   neo_anim_start (popup->anim, 0.1, 1, CT_POPUP_ENTER_FADE_MS, 0, SPONGY_LINEAR);
 }

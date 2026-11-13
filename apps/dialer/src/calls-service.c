@@ -1,6 +1,6 @@
-/* neo-dialer-calls: the Phone's service, for everything about calls that must go on with the app closed. It runs in
- * the session from login (neo-dialer-calls.service), as Telecom and InCallUI's service do on Android: a call that
- * comes rings and shows its screen whether or not the Phone app is open.
+/* neo-dialer-calls: the Phone's service, for everything about calls that must go on with the app closed. It runs in the
+ * session from login (neo-dialer-calls.service), so that a call that comes rings and shows its screen whether or not
+ * the Phone app is open.
  *
  * This file is its face on D-Bus (neo.Dialer.Calls): the apps ask it to dial, answer and hang up, and read
  * the calls and the call log from it. What it does about calls is in calls.c.
@@ -17,7 +17,7 @@
 #define GATEWAY_NAME "com.callagent.Gsm2sipd"
 #define GATEWAY_PATH "/com/callagent/Gsm2sipd"
 #define GATEWAY_INTERFACE "com.callagent.Gsm2sipd1"
-#define CALL_LOG_LIMIT 500      /* CallLogQuery's limit for the Recents and the call history */
+#define CALL_LOG_LIMIT 500      /* the most calls the Recents and the call history read */
 
 static const char introspection[] =
   "<node>"
@@ -52,7 +52,7 @@ static const char introspection[] =
   "    <method name='SilenceRinger'/>"
   /* Settings' ringtone picker: a ringtone (its URI, or 'default') played once; '' stops it */
   "    <method name='PreviewRingtone'><arg name='uri' type='s' direction='in'/></method>"
-  /* the main dialpad's keypad tone while a key is held (DialpadFragment.playTone, stopTone) */
+  /* the main dialpad's keypad tone while a key is held */
   "    <method name='PlayTone'><arg name='key' type='s' direction='in'/></method>"
   "    <method name='StopTone'/>"
   /* the in-call screen came to the front, or left it; an app that quits or crashes in front counts as gone */
@@ -63,7 +63,7 @@ static const char introspection[] =
   "    <method name='ClearCallLog'/>"
   /* the user looked at the missed calls: they are seen, their notifications go */
   "    <method name='MarkMissedRead'/>"
-  /* these calls are seen: a missed call's row opened in Recents (markCallAsRead) */
+  /* these calls are seen: a missed call's row opened in Recents */
   "    <method name='MarkCallsRead'><arg name='ids' type='ax' direction='in'/></method>"
   "    <signal name='CallLogChanged'/>"
   "  </interface>"

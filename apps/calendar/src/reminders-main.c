@@ -1,38 +1,33 @@
-/* neo-calendar-reminders: the Calendar's reminders, as Etar's AlertService and Android's AlarmManager ring them
- * (spec/calendar.md §10).
+/* neo-calendar-reminders: the service that rings the Calendar's reminders.
  *
- * It runs from login, whether or not the app is open (a systemd user service, neo.Calendar.Reminders on the
- * session bus). It reads the shown calendars' events of the coming weeks from evolution-data-server (CalStore),
- * and at each reminder's time posts a notification: the event's title, its time and place (AlertUtils
- * .formatTimeLocation), a tap opening the event in the app. The phone may be asleep then: neo-wakeup wakes it at
- * the next reminder's time (the RTC), and a CLOCK_REALTIME timerfd here does the rest.
+ * It runs from login, whether or not the app is open (a systemd user service, neo.Calendar.Reminders on the session
+ * bus). It reads the shown calendars' events of the coming weeks from evolution-data-server (CalStore), and at each
+ * reminder's time posts a notification: the event's title, its time and place, a tap opening the event in the app. The
+ * phone may be asleep then: neo-wakeup wakes it at the next reminder's time (the RTC), and a CLOCK_REALTIME timerfd
+ * here does the rest.
  *
- * Its buttons are AlertReceiver.buildBasicNotification's, in its order and at most three: Map (the place looked up
- * in the maps app, when the location reads as a place and something opens geo: links), Call (the number in the
- * location, when something opens tel: links), Email guests (the app's quick responses, then the mail app: only
- * with guests to write to and a mail app), Snooze (not when the default snooze delay is "None"). Snooze waits the
- * default snooze delay, or with "Ask for reminder snooze delay" asks the app for its Snooze delay dialog, which
- * answers with Snooze() here. The notification is resident: Map, Call and Email guests leave it, as Etar's do; a
- * tap, Snooze and a swipe dismiss it.
+ * Its buttons, in this order and at most three: Map (the place looked up in the maps app, when the location reads as a
+ * place and something opens geo: links), Call (the number in the location, when something opens tel: links), Email
+ * guests (the app's quick responses, then the mail app: only with guests to write to and a mail app), Snooze (not when
+ * the default snooze delay is "None"). Snooze waits the default snooze delay, or with "Ask for reminder snooze delay"
+ * asks the app for its Snooze delay dialog, which answers with Snooze() here. The notification is resident: Map, Call
+ * and Email guests leave it; a tap, Snooze and a swipe dismiss it.
  *
- * A notified reminder is fired until it is dismissed (CalendarAlerts' STATE_FIRED): by a tap, Snooze, a swipe, or
- * the app's reminders page (AlertActivity), which reads them with GetFired() and dismisses with Dismiss() and
- * DismissAll(). The Pop-up notification setting has the app open that page as each reminder notifies (Etar's
- * full-screen intent). FiredChanged() tells the page when the list changed. A fired reminder whose event ended
- * more than a day ago (the oldest this service reads) is forgotten. A new notification server (the next login, the
- * shell restarted) has none of the fired ones' notifications: they are posted again, quietly, as AlertService posts
- * the fired ones again after a boot.
+ * A notified reminder is fired until it is dismissed: by a tap, Snooze, a swipe, or the app's reminders page, which
+ * reads them with GetFired() and dismisses with Dismiss() and DismissAll(). The Pop-up notification setting has the app
+ * open that page as each reminder notifies. FiredChanged() tells the page when the list changed. A fired reminder whose
+ * event ended more than a day ago (the oldest this service reads) is forgotten. A new notification server (the next
+ * login, the shell restarted) has none of the fired ones' notifications: they are posted again, quietly.
  *
- * Reminders that came due while nothing ran (the phone was off) still notify while their event has not ended, as
- * Etar's missed alerts do; what was notified and what is fired are kept in $XDG_STATE_HOME/neo-calendar
- * /reminders.ini, so a restart does not notify it again. The first start notifies nothing that is already past (no
- * flood on installing).
+ * Reminders that came due while nothing ran (the phone was off) still notify while their event has not ended; what was
+ * notified and what is fired are kept in $XDG_STATE_HOME/neo-calendar/reminders.ini, so a restart does not notify it
+ * again. The first start notifies nothing that is already past (no flood on installing).
  *
  * The "Notifications" setting off: nothing is posted (the reminders are still marked as handled); nor for an
- * event Skip Reminders skips (cal_alert_skipped). The notification channel's sound and vibration are the
- * Notifications page's: the sound goes to the shell as the notification's sound hint, and the vibration (Android's
- * default pattern) to feedbackd, unless its profile is silent, on a phone that can vibrate. Times are in the home
- * time zone when it is used, as the app's. */
+ * event Skip Reminders skips (cal_alert_skipped). The notification channel's sound and vibration are the Notifications
+ * page's: the sound goes to the shell as the notification's sound hint, and the vibration (250 ms on, off, on) to
+ * feedbackd, unless its profile is silent, on a phone that can vibrate. Times are in the home time zone when it is
+ * used, as the app's. */
 #include "cal-alerts.h"
 #include "cal-format.h"
 #include "cal-store.h"
@@ -207,8 +202,8 @@ replaces_for (Service *self, const char *occurrence)
   return 0;
 }
 
-/* the channel's sound: "default" the sound theme's message-new-instant (Android's default notification sound),
- * "" none, else that file; the shell plays the hint */
+/* the channel's sound: "default" the sound theme's message-new-instant, "" none, else that file; the shell plays the
+ * hint */
 static void
 add_sound (Service *self, GVariantBuilder *hints)
 {
@@ -222,8 +217,8 @@ add_sound (Service *self, GVariantBuilder *hints)
     g_variant_builder_add (hints, "{sv}", "sound-file", g_variant_new_string (sound));
 }
 
-/* the channel's vibration: Notification.DEFAULT_VIBRATE ({0, 250, 250, 250}) through feedbackd, which its silent
- * profile stops (Android's silent ringer mode); quiet still vibrates (vibrate mode) */
+/* the channel's vibration: {0, 250, 250, 250} ms through feedbackd, which its silent profile stops; quiet still
+ * vibrates */
 static void
 vibrate (Service *self)
 {
@@ -294,7 +289,7 @@ fired_changed (Service *self)
 /* The notification server's ids are its own. Another server (the shell restarted, the next login: unique names
  * start over on each bus, so the bus's GUID too) has none of these notifications, and gives their ids to others',
  * whose buttons must not act here nor be closed from here: the fired ones' ids are then forgotten (and those
- * notifications posted again, quietly, by adopt_shown, as AlertService posts the fired ones again after a boot). */
+ * notifications posted again, quietly, by adopt_shown). */
 static void
 check_server (Service *self)
 {
@@ -324,9 +319,8 @@ check_server (Service *self)
   save_state (self);
 }
 
-/* AlertReceiver.buildBasicNotification (the expanding notification of an event that is on, the one with buttons):
- * the title (or "(No title)"), the time and place, no timestamp; a tap opens the event; Map, Call, Email guests and
- * Snooze as they apply, at most three */
+/* the notification with buttons: the title (or "(No title)"), the time and place, no timestamp; a tap opens the event;
+ * Map, Call, Email guests and Snooze as they apply, at most three */
 static void
 notify (Service *self, CalEvent *event, gboolean quiet)
 {
@@ -400,7 +394,7 @@ notify (Service *self, CalEvent *event, gboolean quiet)
   g_hash_table_replace (self->shown, g_steal_pointer (&occurrence), GUINT_TO_POINTER (id));
   save_state (self);
   fired_changed (self);
-  /* Pop-up notification: the reminders page over the app (setFullScreenIntent(AlertActivity)) */
+  /* Pop-up notification: the reminders page over the app */
   if (!quiet && g_settings_get_boolean (self->settings, "popup"))
     app_action (self, "show-alerts", NULL);
 }
@@ -412,7 +406,7 @@ close_notification (Service *self, guint32 id)
                           g_variant_new ("(u)", id), NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 }
 
-/* STATE_DISMISSED: off the reminders page, and its notification closed (DismissAlarmsService) */
+/* dismissed: off the reminders page, and its notification closed */
 static gboolean
 dismiss (Service *self, const char *occurrence)
 {
@@ -432,7 +426,7 @@ dismiss (Service *self, const char *occurrence)
   return was;
 }
 
-/* SnoozeAlarmsService: dismissed now, notified again after @minutes */
+/* snoozed: dismissed now, notified again after @minutes */
 static void
 snooze (Service *self, const char *occurrence, int minutes)
 {
@@ -464,7 +458,7 @@ mail_parameter (Service *self, const CalEvent *event)
                         owner_of (self, event) ? owner_of (self, event) : "", &guests);
 }
 
-/* Map and Call: the location read again (AlertReceiver's MAP_ACTION and CALL_ACTION), the link opened; an event
+/* Map and Call: the location read again, the link opened; an event
  * changed since leaves nothing to open */
 static void
 open_link (Service *self, const char *occurrence, gboolean map)
@@ -510,7 +504,7 @@ on_action (GDBusConnection *bus, const char *sender, const char *path, const cha
     {
       int minutes = g_settings_get_int (self->settings, "default-snooze");
 
-      /* SnoozeDelayActivity: the app asks how long; its answer comes back as Snooze() */
+      /* the app's snooze delay dialog asks how long; its answer comes back as Snooze() */
       if (g_settings_get_boolean (self->settings, "custom-snooze"))
         app_action (self, "snooze-delay", g_variant_new ("(si)", occurrence, minutes));
       else
@@ -520,7 +514,7 @@ on_action (GDBusConnection *bus, const char *sender, const char *path, const cha
     open_link (self, occurrence, g_str_equal (action, "map"));
   else if (g_str_equal (action, "email"))
     {
-      /* QuickResponseActivity, in the app: a quick response, then the mail app; nothing is sent from here */
+      /* Email guests, in the app: a quick response, then the mail app; nothing is sent from here */
       CalEvent *event = find_occurrence (self, occurrence);
 
       if (event)
@@ -540,7 +534,7 @@ on_closed (GDBusConnection *bus, const char *sender, const char *path, const cha
     return;
   g_variant_get (parameters, "(uu)", &id, &reason);
   posted = g_hash_table_lookup (self->posted, GUINT_TO_POINTER (id));
-  /* swiped away (reason 2, dismissed by the user): the delete intent, DismissAlarmsService */
+  /* swiped away (reason 2, dismissed by the user): dismissed */
   if (posted && reason == 2 && g_hash_table_remove (self->shown, posted->occurrence))
     {
       save_state (self);
@@ -554,10 +548,9 @@ on_closed (GDBusConnection *bus, const char *sender, const char *path, const cha
 static const char introspection[] =
   "<node>"
   "  <interface name='neo.Calendar.Reminders'>"
-  /* the fired reminders not dismissed, by start and title (CalendarAlerts.DEFAULT_SORT_ORDER): each its occurrence
-   * key and calendar, uid, rid, start, end, all-day, title, location, color (the calendar's, 0xRRGGBB, as
-   * CalendarAlerts.CALENDAR_COLOR), recurring (it has a repeat rule, CalendarAlerts.RRULE: AlertAdapter's repeat
-   * icon) */
+  /* the fired reminders not dismissed, by start and title: each its occurrence
+   * key and calendar, uid, rid, start, end, all-day, title, location, color (the calendar's, 0xRRGGBB),
+   * recurring (it has a repeat rule: the page's repeat icon) */
   "    <method name='GetFired'><arg type='a(sa{sv})' direction='out'/></method>"
   "    <method name='Dismiss'><arg name='occurrences' type='as' direction='in'/></method>"
   "    <method name='DismissAll'/>"
@@ -647,8 +640,7 @@ on_method (GDBusConnection *bus, const char *sender, const char *path, const cha
     }
   else if (g_str_equal (method, "DismissAll"))
     {
-      /* AlertActivity's Dismiss all: every notification of the app cancelled (nm.cancelAll), every fired one
-       * dismissed */
+      /* the reminders page's Dismiss all: every notification of the app closed, every fired one dismissed */
       GHashTableIter iter;
       gpointer id;
 
@@ -697,8 +689,7 @@ adopt_shown (Service *self)
 
       if (!event)
         {
-          /* not read yet, while some calendar is still loading; else gone, and its notification with it (the
-           * provider's CalendarAlerts rows go with the event, and AlertService's update takes the notification) */
+          /* not read yet, while some calendar is still loading; else gone, and its notification with it */
           if (cal_store_is_ready (self->store))
             {
               if (id)
@@ -984,7 +975,7 @@ main (int argc, char **argv)
   self->server_watch = g_bus_watch_name_on_connection (self->session, NOTIFICATIONS, G_BUS_NAME_WATCHER_FLAGS_NONE,
                                                        on_server, on_server_gone, self, NULL);
 
-  /* every calendar shown in the app (Android rings the visible calendars' reminders) */
+  /* every calendar shown in the app: only shown calendars' reminders ring */
   self->store = cal_store_new (FALSE);
   g_signal_connect (self->store, "changed", G_CALLBACK (on_store_changed), self);
   g_signal_connect (self->store, "calendars-changed", G_CALLBACK (on_store_changed), self);

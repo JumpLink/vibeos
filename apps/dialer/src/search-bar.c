@@ -1,6 +1,4 @@
-/* The search bar: see search-bar.h. Measured on still:dialer-main (the bar [24,140]–[1056,284] px, the magnifier
- * box from x 48, the hint from x 216, the mic 768…912, ⋮ 912…1056) and still:dialer-search-ma (the expanded bar
- * [0,116]–[1080,308], back 24…168, ✕ 936…1080). */
+/* The search bar: see search-bar.h. */
 #include "search-bar.h"
 #include "text.h"
 
@@ -8,21 +6,21 @@
 #include <math.h>
 #include <neo.h>
 
-#define TOOLBAR_HEIGHT  64      /* expanded_search_bar_height */
-#define COLLAPSED_HEIGHT 48     /* collapsed_search_bar_height */
-#define MARGIN          8       /* search_bar_margin */
-#define CORNER          28      /* search_bar_background_rounded_corners */
+#define TOOLBAR_HEIGHT  64      /* the expanded bar's row */
+#define COLLAPSED_HEIGHT 48
+#define MARGIN          8       /* round the collapsed bar; none once expanded */
+#define CORNER          28
 #define BUTTON          48
 #define ICON            24
-#define START           8       /* the magnifier's and the back arrow's marginStart */
+#define START           8       /* the magnifier's and the back arrow's inset */
 #define TEXT_START      (START + BUTTON + 8)
-#define EXPAND_MS       200     /* ANIMATION_DURATION */
-#define MARGIN_FRACTION 0.8     /* EXPAND_MARGIN_FRACTION_START */
+#define EXPAND_MS       200
+#define MARGIN_FRACTION 0.8     /* where the expand animation starts the margins from */
 
-#define BACKGROUND      0x2c3132        /* colorBackgroundSearchBar, colorBackgroundFloating */
-#define BAR_ICON        0xfefefe        /* searchbar_icon_color (neutral1_900), inverted */
+#define BACKGROUND      0x2c3132
+#define BAR_ICON        0xfefefe
 
-#define HINT_STYLE      ((TextStyle) { TEXT_GSF, 16, 700 })     /* Secondary at 16 sp */
+#define HINT_STYLE      ((TextStyle) { TEXT_GSF, 16, 700 })     /* the collapsed bar's "Search contacts" */
 
 struct _DialerSearchBar
 {
@@ -33,7 +31,7 @@ struct _DialerSearchBar
   NeoRipple ripple;
   NeoAnim *anim;
   double progress;              /* the cross-fade: 0 the collapsed row … 1 the expanded one */
-  double fraction;              /* the margins and the expanded row's height, as setMargins leaves them */
+  double fraction;              /* the margins and the row's height, 0 expanded to 1 collapsed */
   gboolean expanded;
   gboolean rounded;             /* the rounded background; the expanded bar is square once it is open */
   gboolean focus;               /* the field takes the focus when the expand ends */
@@ -47,10 +45,10 @@ static guint signals[N_SIGNALS];
 
 /* ---- geometry ------------------------------------------------------------------------------------------------- */
 
-/* setMargins (fraction): the margins and the expanded row's height go through int pixels, as Android's do. The row
- * starts at 48 dp with 8 dp margins (the layout's own values, which fraction 1 gives too); after a collapse they
- * stay where the animation left them, fraction 0.8: 6.33 dp and 51 dp, so a bar that has been opened once is a
- * little taller (the expanded row is invisible, not gone, and still sizes the bar). */
+/* the margins and the expanded row's height are rounded down to whole device pixels. The row
+ * starts at COLLAPSED_HEIGHT with MARGIN margins (which fraction 1 gives too); after a collapse they stay where the
+ * animation left them, at MARGIN_FRACTION, so a bar that has been opened once is a little taller (the expanded row
+ * is invisible, not gone, and still sizes the bar). */
 static double
 px_floor (GtkWidget *widget, double dp)
 {
@@ -117,11 +115,11 @@ dialer_search_bar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   GskRoundedRect shape;
   GdkRGBA background = text_rgb (BACKGROUND);
 
-  /* GradientDrawable clamps the 28 dp radius to half the height: fully round ends */
+  /* the radius clamped to half the height: fully round ends */
   gsk_rounded_rect_init_from_rect (&shape, &bar, self->rounded ? MIN (CORNER, bar.size.height / 2) : 0);
   gtk_snapshot_push_rounded_clip (snapshot, &shape);
   gtk_snapshot_append_color (snapshot, &background, &bar);
-  /* the bar's ripple: ?colorControlHighlight, black 12 %, which force dark turns white; halved like every ripple */
+  /* the bar's ripple, faint white */
   if (neo_ripple_is_active (&self->ripple))
     neo_ripple_snapshot (&self->ripple, snapshot, &bar, &(GdkRGBA) { 1, 1, 1, 0.06 });
   gtk_snapshot_pop (snapshot);
@@ -175,7 +173,7 @@ on_anim (NeoAnim *anim, double value, gpointer data)
     {
       if (self->expanded)
         {
-          /* onAnimationEnd: the square background, and the focus if asked for */
+          /* the animation over: the square background, and the focus if asked for */
           self->rounded = FALSE;
           if (self->focus)
             gtk_widget_grab_focus (self->field);
@@ -196,7 +194,7 @@ dialer_search_bar_expand (DialerSearchBar *self, gboolean focus)
     return;
   self->expanded = TRUE;
   self->focus = focus;
-  /* the margins jump to 0.8 of theirs as it starts, and shrink with the cross-fade (ACCEL_DECEL, the default) */
+  /* the margins jump to 0.8 of theirs as it starts, and shrink with the cross-fade (accelerate-decelerate) */
   neo_anim_start (self->anim, 0, 1, EXPAND_MS, 0, SPONGY_ACCELERATE_DECELERATE);
 }
 
@@ -290,7 +288,7 @@ on_back (DialerSearchBar *self)
     g_signal_emit (self, signals[BACK_CLICKED], 0);
 }
 
-/* the bar is one button while collapsed (setOnClickListener on SearchBarView); its own buttons take their taps */
+/* the bar is one button while collapsed; its own buttons take their taps */
 static void
 on_pressed (GtkGestureClick *click, int n_press, double x, double y, DialerSearchBar *self)
 {
@@ -376,11 +374,11 @@ dialer_search_bar_init (DialerSearchBar *self)
 
   self->mic = icon_button (self, "dialer-mic-symbolic", "search-bar-icon", _("Start voice search"));
   self->menu = icon_button (self, "dialer-more-symbolic", "search-bar-icon", _("More options"));
-  /* Android calls it "stop searching"; its name is the one the shell's back gesture clicks */
+  /* named "Back", the button the shell's back gesture clicks; "stop searching" is its description */
   self->back = icon_button (self, "dialer-back-symbolic", "dialer-icon", _("Back"));
   gtk_accessible_update_property (GTK_ACCESSIBLE (self->back), GTK_ACCESSIBLE_PROPERTY_DESCRIPTION,
                                   _("stop searching"), -1);
-  /* the field opts out of force dark: its raw colours, styled in dialer.css */
+  /* the field is not darkened with the rest: its colours are in dialer.css */
   self->field = gtk_text_new ();
   gtk_widget_add_css_class (self->field, "dialer-search-field");
   gtk_text_set_placeholder_text (GTK_TEXT (self->field), _("Search contacts"));

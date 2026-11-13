@@ -10,7 +10,7 @@
 int  phone_inhibit_sleep (GDBusConnection *system, const char *why);
 void phone_allow_sleep (int *inhibitor);
 
-/* Android's full-screen intent: the shell opens @app_id over the lock screen and lights the screen if the phone is
+/* full screen: the shell opens @app_id over the lock screen and lights the screen if the phone is
  * asleep or locked; in use, it declines and the notification's heads-up stands for it. Without a shell to ask the
  * app is started anyway. */
 void phone_show_full_screen (GDBusConnection *session, const char *app_id);
@@ -22,5 +22,5 @@ void phone_wake_at (GDBusConnection *system, const char *name, gint64 time, gboo
 /* starts @app_id from its desktop file (a tap on a ringing notification opens the ringing screen, locked or not) */
 void phone_start_app (const char *app_id);
 /* activates @app_id's GAction @action, with @parameter (floating, or NULL), D-Bus activating the app if it does not
- * run: Android's intent to an activity, "show this timer" */
+ * run: "show this timer", say */
 void phone_open_app (GDBusConnection *session, const char *app_id, const char *action, GVariant *parameter);

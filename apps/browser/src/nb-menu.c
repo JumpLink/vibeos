@@ -1,16 +1,13 @@
-/* nb-menu: Jelly's menu (MenuDialog, spec/jelly.md §3), the link sheet (§5.1), "Send to" (§5.3) and the add-shortcut
- * sheet (§7.2). */
+/* nb-menu: the browser's menu, the link sheet, "Send to" and the add-shortcut sheet. */
 #include "nb.h"
 #include "nb-widgets.h"
 
 #include <neo.h>
 #include <spongy-gtk.h>
 
-#define MENU_MARGIN 16          /* menu_dialog.xml's layout_margin */
-/* MenuDialog's PopupWindow (View, w, h, focusable) reads no style: no transitions, the default animation style, so
- * showAsDropDown animates the window with Animation.DropDownDown (frameworks/base anim/grow_fade_in.xml,
- * shrink_fade_out.xml): scale 0.9 <-> 1 about the top centre over config_activityDefaultDur 220 ms (decelerate_quint),
- * alpha over config_activityShortDur 150 ms (decelerate_cubic), both ways */
+#define MENU_MARGIN 16          /* px around the menu's list */
+/* the menu grows in from the top: scale 0.9 <-> 1 about the top centre over 220 ms (a quintic deceleration), alpha
+ * over 150 ms (a cubic deceleration), both ways */
 #define SCALE_MS    220
 #define ALPHA_MS    150
 
@@ -38,8 +35,8 @@ nb_popup_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, i
   *minimum = *natural = 0;
 }
 
-/* showAsDropDown (urlBarLayout, anchor.width − menu.width, 0): the menu's end on the bar's end, its top on the bar's
- * bottom, as tall as it wants up to the window's bottom; reach mode: its bottom on the bar's top */
+/* the menu's end on the URL bar's end, its top on the bar's bottom, as tall as it wants up to the window's bottom;
+ * reach mode: its bottom on the bar's top */
 static void
 nb_popup_size_allocate (GtkWidget *widget, int width, int height, int baseline)
 {
@@ -123,7 +120,7 @@ on_popup_pressed (GtkGestureClick *click, int n, double x, double y, NbPopup *se
   if (gtk_widget_compute_bounds (self->content, GTK_WIDGET (self), &box) &&
       graphene_rect_contains_point (&box, &GRAPHENE_POINT_INIT (x, y)))
     return;
-  /* a touch outside dismisses it (and goes nowhere else: PopupWindow is focusable) */
+  /* a touch outside dismisses it, and goes nowhere else */
   gtk_gesture_set_state (GTK_GESTURE (click), GTK_EVENT_SEQUENCE_CLAIMED);
   nb_menu_close (self->tab);
 }
@@ -177,7 +174,7 @@ share_later (gpointer data)
   return G_SOURCE_REMOVE;
 }
 
-/* MainActivity's menu callback: the option, then dismiss */
+/* a menu row: its action, then the menu goes */
 static void
 run_option (NbTab *t, Option o)
 {
@@ -264,7 +261,7 @@ top_icon (NbTab *t, const char *icon, const char *name, Option o)
   GtkWidget *image = nb_icon (icon, 24);
   GtkWidget *b = neo_pressable_new (image);
 
-  /* MenuTopBarIcon: 24 dp, 12 dp either side, a borderless ripple */
+  /* a borderless, round ripple */
   neo_pressable_set_ripple (NEO_PRESSABLE (b), NEO_RIPPLE_CIRCLE, 20);
   gtk_widget_add_css_class (b, "nb-menu-top-icon");
   gtk_widget_set_size_request (b, 24, 24);
@@ -274,7 +271,7 @@ top_icon (NbTab *t, const char *icon, const char *name, Option o)
   return b;
 }
 
-/* MenuItem + MenuItemTitle: 12 dp either side, the 24 dp icon, 16 dp, the title (16 sp); 12 dp above and below */
+/* a menu row: the icon, then the title */
 static GtkWidget *
 item (NbTab *t, const char *icon, const char *title, Option o)
 {
@@ -293,8 +290,8 @@ item (NbTab *t, const char *icon, const char *title, Option o)
   return row;
 }
 
-/* desktopViewButton: the same row, not clickable itself (background @null, clickable false); the title takes the
- * room up to 12 dp before the MaterialSwitch, whose own listener runs the option */
+/* the Desktop site row: the same row, not tappable itself; the title takes the room up to the switch, whose own
+ * listener runs the option */
 static GtkWidget *
 desktop_item (NbTab *t)
 {
@@ -375,7 +372,7 @@ nb_menu_open (NbTab *t)
   gtk_box_append (GTK_BOX (list), item (t, "jelly-desktop-symbolic", "Desktop shortcuts", OPT_DESKTOP_SHORTCUTS));
   gtk_box_append (GTK_BOX (list), item (t, "jelly-settings-symbolic", "Settings", OPT_SETTINGS));
 
-  /* the ScrollView: the list at its natural height, scrolled when the window is shorter */
+  /* the scroller: the list at its natural height, scrolled when the window is shorter */
   GtkWidget *scroll = spongy_scroll_view_new ();
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), list);
   GtkWidget *card = gtk_overlay_new ();
@@ -406,7 +403,7 @@ nb_menu_open (NbTab *t)
   nb_tab_sync_back (t);
 }
 
-/* ==== the link sheet (§5.1) ==== */
+/* ==== the link sheet ==== */
 
 typedef struct {
   NbTab   *t;
@@ -441,7 +438,7 @@ on_link_share (GtkWidget *row, LinkAction *a)
 static void
 on_link_favorite (GtkWidget *row, LinkAction *a)
 {
-  /* setAsFavorite (url, url) */
+  /* a favourite with the URL as its title */
   nb_tab_add_favorite (a->t, a->url, a->url);
   nb_sheet_dismiss (a->sheet);
 }
@@ -482,7 +479,7 @@ nb_link_sheet (NbTab *t, const char *url, gboolean image)
   nb_sheet_present (a->sheet, t->win);
 }
 
-/* ==== Send to (§5.3): the targets this phone has ==== */
+/* ==== Send to: the targets this phone has ==== */
 
 typedef struct {
   NbTab    *t;
@@ -573,7 +570,7 @@ nb_send_to (NbTab *t, const char *url)
   nb_sheet_present (sheet, t->win);
 }
 
-/* ==== the add-shortcut sheet (§7.2, Launcher3's AddItemActivity) ==== */
+/* ==== the add-shortcut sheet: the shortcut's icon and name, Cancel and Add to home screen ==== */
 
 typedef struct {
   NbTab      *t;

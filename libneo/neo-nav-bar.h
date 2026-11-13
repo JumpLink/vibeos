@@ -1,7 +1,7 @@
-/* NeoNavBar: Material 3's bottom navigation bar (BottomNavigationView, labelVisibilityMode labeled).
+/* NeoNavBar: Material 3's bottom navigation bar, every item labelled.
  *
- * 80 dp tall in surfaceContainerHighest, the items in equal columns. The selected item has a 64 x 32 dp pill in
- * secondaryContainer behind its 24 dp icon, and its icon and label in primary; the others are white at 50 %.
+ * The items sit in equal columns. The selected item has a pill behind its icon, and its icon and label in the primary
+ * colour; the others are dimmed.
  * A tap selects an item and emits "selected" (its index); there is no swipe between tabs. */
 #pragma once
 

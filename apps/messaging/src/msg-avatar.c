@@ -3,11 +3,11 @@
 
 #include <math.h>
 
-#define TILE_LETTER_RATIO 0.67          /* letter_to_tile_ratio */
-#define TILE_ICON 32                    /* ic_person_light, 24 dp scaled 1.33x */
+#define TILE_LETTER_RATIO 0.67          /* the letter's size against the tile's */
+#define TILE_ICON 32                    /* the person glyph, on a whole tile */
 #define MAX_PEOPLE 4
 
-/* letter_tile_colors (colors.xml:94-107) as the phone's dark palette resolves them */
+/* the tiles' colours: each person's is picked by a hash of their identifier, so it stays the same everywhere */
 static const char *tile_colors[] = {
   "#81b4bb", "#96b0b4", "#8dafd1", "#6799a0", "#7c9599", "#7394b5",
   "#4d7f86", "#627b7f", "#597a9a", "#33666d", "#4a6366", "#406180",
@@ -122,7 +122,7 @@ push_circle (GtkSnapshot *snapshot, double x, double y, double d)
   gtk_snapshot_push_rounded_clip (snapshot, &circle);
 }
 
-/* the glyph, centred on its ink rather than on its line (AvatarRequest draws at the text bounds' centre) */
+/* the glyph, centred on its ink rather than on its line: at its text bounds' centre */
 static void
 draw_letter (MsgAvatar *self, GtkSnapshot *snapshot, const char *letter, double x, double y, double d)
 {
@@ -176,8 +176,8 @@ draw_person (MsgAvatar *self, GtkSnapshot *snapshot, const Person *person, doubl
         draw_letter (self, snapshot, person->letter, x, y, d);
       else
         {
-          /* its size on a whole tile; a group's smaller circles scale it with them (the 42 dp tile is the
-           * smallest whole one) */
+          /* its size on a whole tile; a group's smaller circles scale it with them (42 is the smallest whole
+           * tile) */
           double icon = d >= 42 ? TILE_ICON : d * TILE_ICON / 42;
 
           draw_icon (self, snapshot, "messaging-person-symbolic", x + (d - icon) / 2, y + (d - icon) / 2, icon,
@@ -197,7 +197,7 @@ msg_avatar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
     {
       GdkRGBA accent, white = { 1, 1, 1, 1 };
 
-      /* ic_checkmark_circle_blue: a lineage_accent disc with the check cut out of it, white behind */
+      /* selected: an accent disc with the check cut out of it, white behind */
       gdk_rgba_parse (&accent, "#b8ebf3");
       push_circle (snapshot, w * 0.2, w * 0.2, w * 0.6);
       gtk_snapshot_append_color (snapshot, &white, &GRAPHENE_RECT_INIT (0, 0, w, w));
@@ -214,7 +214,7 @@ msg_avatar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
       break;
     case 2:
       {
-        /* AvatarGroupRequestDescriptor: two circles of (2 - √2) W, at the top-left and bottom-right corners */
+        /* two people: two circles of (2 - √2) W, at the top-left and bottom-right corners */
         double d = (2 - G_SQRT2) * w;
 
         draw_person (self, snapshot, &self->people[0], 0, 0, d);

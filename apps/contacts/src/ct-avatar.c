@@ -51,11 +51,11 @@ ct_avatar_header_color (const char *uid)
 {
   int index = ct_avatar_color_index (uid);
 
-  /* the default grey's hue (0) is nearest accent2_600, the lowest hue in the table (§6.2) */
+  /* the default grey's hue (0) is nearest accent2_600, the lowest hue in the table */
   return index < 0 ? 0xFF4A6366u : CT_QC_HEADER_BG[index];
 }
 
-/* LetterTileDrawable.draw (§6.2): the disc, then the letter's ink box centred, or the silhouette at alpha 138 */
+/* the disc, then the letter's ink box centred, or the silhouette at alpha 138 */
 void
 ct_avatar_snapshot (GtkSnapshot *snapshot, GtkWidget *widget, double cx, double cy, double diameter,
                     const char *uid, const char *display_name, GdkTexture *photo)
@@ -70,7 +70,7 @@ ct_avatar_snapshot (GtkSnapshot *snapshot, GtkWidget *widget, double cx, double 
   gtk_snapshot_push_rounded_clip (snapshot, &circle);
   if (photo)
     {
-      /* thumbnails are square; anything else is cropped to the middle, as CP2 crops its thumbnails */
+      /* thumbnails are square; anything else is cropped to the middle */
       double w = gdk_texture_get_width (photo), h = gdk_texture_get_height (photo);
       double scale = diameter / MIN (w, h);
 
@@ -86,7 +86,7 @@ ct_avatar_snapshot (GtkSnapshot *snapshot, GtkWidget *widget, double cx, double 
 
     gtk_snapshot_append_color (snapshot, &fill, &box);
   }
-  /* no lookup key: the display name picks the colour and no letter is drawn (ContactPhotoManager :397-405) */
+  /* no UID: the display name picks the colour and no letter is drawn */
   letter = uid && *uid ? ct_tile_letter (display_name) : 0;
   if (letter)
     {
@@ -96,7 +96,7 @@ ct_avatar_snapshot (GtkSnapshot *snapshot, GtkWidget *widget, double cx, double 
       GdkRGBA white = ct_rgba (CT_TILE_LETTER);
 
       g_unichar_to_utf8 (letter, text);
-      /* Paint text is not touched by Bold text: sans-serif 400 at 67 % of the tile */
+      /* the letter's weight is not raised by Bold text */
       layout = text_layout (widget, CT_TEXT (diameter * CT_TILE_LETTER_RATIO, CT_WEIGHT_PAINT), text, 0);
       pango_layout_get_extents (layout, &ink, &logical);
       gtk_snapshot_save (snapshot);
@@ -115,7 +115,7 @@ ct_avatar_snapshot (GtkSnapshot *snapshot, GtkWidget *widget, double cx, double 
   gtk_snapshot_pop (snapshot);
 }
 
-/* centerCrop: the picture scaled to cover @bounds, centred, cut to it */
+/* cropped to fill: the picture scaled to cover @bounds, centred, cut to it */
 static void
 append_cropped (GtkSnapshot *snapshot, GdkTexture *texture, const graphene_rect_t *bounds)
 {
@@ -135,7 +135,7 @@ void
 ct_avatar_header_snapshot (GtkSnapshot *snapshot, const graphene_rect_t *bounds, guint32 tint, GdkTexture *photo)
 {
   GdkRGBA background = ct_rgba (tint);
-  /* the silhouette's white, lightness-inverted by force dark: black, its alpha kept */
+  /* the silhouette's white, lightness-inverted for dark mode: black, its alpha kept */
   graphene_matrix_t to_black;
   graphene_vec4_t no_offset;
 

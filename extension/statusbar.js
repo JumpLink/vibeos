@@ -1,4 +1,4 @@
-// The Android 16 status bar: 116 px tall, clock and notification icons on the left, mobile signal, Wi-Fi and the
+// The status bar: 116 px tall, clock and notification icons on the left, mobile signal, Wi-Fi and the
 // unified battery on the right, ending where the S10e's camera hole begins. It replaces the mobile shell's top
 // panel, reserves its height for maximized windows (strut), is transparent with white icons over the launcher and
 // black over an app, and hides under a fullscreen app.
@@ -17,24 +17,23 @@ import {Canvas, paintIcon} from './icons.js';
 import {Color, cogl, font, setSource, Type} from './palette.js';
 import {px, screenPixels, SCALE, SCREEN_W} from './units.js';
 
-// --- geometry, screen px of the 1080x2280 reference (spec §1)
+// --- geometry, screen px of the 1080x2280 reference
 export const BAR_HEIGHT = 116;
 const CLOCK_INK_X = 26;                 // glyph left edge
 const CLOCK_INK_TOP = 40;               // digit top
 const NOTIF_GAP = 22;                   // clock ink to the first icon's box
-const NOTIF_ICON = 45;                  // 15 dp drawing size
-const NOTIF_GLYPH = 38;                 // a 16 px symbolic icon inks what a 24 dp Android one does at 45
+const NOTIF_ICON = 45;
+const NOTIF_GLYPH = 38;                 // smaller: a symbolic icon has less padding, so it inks as much as the box
 const NOTIF_PITCH = 71;
 const NOTIF_MAX = 4;                    // then the overflow dot
 const NOTIF_ALPHA = 0.9;
-const DOT_RADIUS = 6;                   // 2 sp
+const DOT_RADIUS = 6;                   // the overflow dot
 const CENTER_Y = 57.5;
 const SYSTEM_END = 889;                 // the battery's right edge, the cutout begins here
 const CUTOUT_GAP = 931 - SYSTEM_END;    // from there to the hole (cutout.js), on whichever side it is
-// Turned (measured at ROTATION_90, hole at the start): the bar is 28 dp and its content 16 px higher. The clock
-// starts PAD_START past the hole; at an end without one the battery stops OPEN_END short of the edge, in any rotation
-// (StatusBarContentInsetsProvider: the hole's depth, else ongoing_appops_dot_min_padding 20 dp, plus the bar's
-// 25 px padding)
+// Turned (hole at the start): the bar is LAND_BAR_HEIGHT and its content LAND_RAISE higher. The clock starts
+// PAD_START past the hole; at an end without one the battery stops OPEN_END short of the edge, in any rotation
+// (StatusBarContentInsetsProvider: the hole's depth, else a minimum padding, plus the bar's own padding)
 const LAND_BAR_HEIGHT = 84;
 const LAND_RAISE = 16;
 const PAD_START = 25;
@@ -42,13 +41,13 @@ const OPEN_END = 85;
 const SYSTEM_SPAN = 300;                // signal, Wi-Fi and the widest battery (228) end to end, and room
 const ICONS_TAIL = 2;                   // the battery's antialiased edge past its end
 const ICON_GAP = 19;                    // between signal, Wi-Fi and battery
-const ICON_H = 36;                      // signal and Wi-Fi are 12 sp tall
-const SIGNAL_W = 51;                    // 17 sp: 4 bars, 2 sp apart, 6 sp + 2 sp per level tall
+const ICON_H = 36;                      // signal and Wi-Fi
+const SIGNAL_W = 51;                    // 4 bars, SIGNAL_PAD apart, SIGNAL_BASE tall and SIGNAL_STEP more a level
 const SIGNAL_PAD = 6;
 const SIGNAL_BASE = 18;
 const SIGNAL_STEP = 6;
 const WIFI_W = ICON_H * 16.21 / 12;     // ic_wifi_N viewport 16.21 x 12
-const BATTERY_H = 39;                   // 13 sp; the body is 24 x 13 vp, r 4, so 1 vp = 3 px
+const BATTERY_H = 39;                   // the body's vector is 24 x 13 units, r 4: BATTERY_VP px a unit
 const BATTERY_VP = BATTERY_H / 13;
 
 const FILL = {
@@ -58,7 +57,7 @@ const FILL = {
     powerSave: [0xff, 0xc9, 0x17],
 };
 
-// The charging bolt and the power-save plus (BatteryGlyph.kt), viewport units
+// The charging bolt and the power-save plus, viewport units
 const BOLT = {w: 8, h: 9, d: 'M7.672,3.375L4.302,3.375L5.038,0.563C5.113,0.281 4.91,0 4.633,0C4.515,0 4.398,0.056 ' +
     '4.324,0.146L0.09,5.051C-0.102,5.276 0.047,5.625 0.335,5.625L3.705,5.625L2.969,8.438C2.895,8.719 3.097,9 3.374,' +
     '9C3.492,9 3.609,8.944 3.684,8.854L7.917,3.949C8.109,3.724 7.96,3.375 7.672,3.375Z'};
@@ -118,7 +117,7 @@ function roundRect(cr, x, y, w, h, r) {
     cr.closePath();
 }
 
-// The 4-bar mobile signal (MobileIcon.kt): bars of the current level white, the others at 30 %
+// The 4-bar mobile signal: bars of the current level white, the others at 30 %
 export function paintSignal(cr, x, bottom, level, color, alpha = 1) {
     const barW = (SIGNAL_W - SIGNAL_PAD * 3) / 4;
     for (let bar = 1; bar <= 4; bar++) {
@@ -135,7 +134,7 @@ export function paintWifi(cr, x, top, level, color, alpha = 1) {
     paintIcon(cr, `ic_wifi_${drawn}`, x, top - (WIFI_W - ICON_H) / 2, WIFI_W, color, alpha);
 }
 
-// The unified battery (UnifiedBattery.kt, BatteryFrame.kt): a 24 x 13 rounded body filled to the level, then the
+// The battery: a 24 x 13 rounded body filled to the level, then the
 // cap, or an attribution glyph (bolt, plus) overlapping the body by 20 % with a clear 2 vp stroke around it.
 // Returns the width drawn.
 export function paintBattery(cr, x, top, battery, powerSave, scale = BATTERY_VP) {

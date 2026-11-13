@@ -1,5 +1,4 @@
-/* "Pure black night mode" (pref_pure_black_night_mode, with the dark theme): colorBackground #000000
- * (styles-color.xml colorBackgroundBlack) under the toolbars and pages; dialogs and menus keep their surface
- * containers. Loaded above calendar.css (cal_palette_set). */
+/* "Pure black night mode" (with the dark theme): black under the toolbars and pages; dialogs and menus keep their
+ * surface containers. Loaded above calendar.css (cal_palette_set). */
 
 @define-color neo_surface #000000;

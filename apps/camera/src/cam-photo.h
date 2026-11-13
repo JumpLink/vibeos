@@ -1,4 +1,4 @@
-/* cam-photo: a photo from one frame of the stream (§21).
+/* cam-photo: a photo from one frame of the stream.
  *
  * The frame is cropped to the centre 1/zoom (the digital zoom) and scaled back to the stream's size, turned upright
  * (its pixels: the file says Orientation 1, so every viewer shows it the same), mirrored for a front camera when

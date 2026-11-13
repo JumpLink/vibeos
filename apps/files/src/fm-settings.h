@@ -1,4 +1,4 @@
-/* The Settings page (spec §11): check rows bound to GSettings, under the toolbar's ← (the shell's). */
+/* The Settings page: check rows bound to GSettings, under the toolbar's ← (the shell's). */
 #pragma once
 
 #include <gtk/gtk.h>

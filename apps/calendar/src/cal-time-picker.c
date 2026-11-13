@@ -1,27 +1,21 @@
 /* The time picker (cal-time-picker.h).
  *
- * Measured on still:cal-dlg-time (3 px a dp), from the card's top left: "Select time" 12 sp at (24, 16); the two
- * 96 × 80 dp boxes (8 dp corners) and the 24 dp colon at y 52, centred; the 256 dp face at (24, 168), #36343B; the
- * numbers 16 sp, their centres 100 dp from the face's centre (0–11, 00–55) and 66 dp (12–23); the selector a 48 dp
- * colorPrimary circle on a 2 dp hand, a dot at the centre; the buttons on the card's bottom edge, 8 dp from its end;
- * the keyboard button 48 dp at 12 dp from the card's start, 2 dp higher than Cancel and OK (448…496 dp). The chosen
- * box is primaryContainer #4F378B under onPrimaryContainer, the other #36343B under #E6E0E9; the number under the
- * selector is #141218.
+ * From the card's top: "Select time"; the hour and minute boxes with the colon, centred; the clock face, its numbers
+ * 0–11 (00–55) on the outer ring and 12–23 on the inner; the selector a circle on a thin hand, a dot at the centre;
+ * the buttons on the card's bottom edge, the keyboard button at its start, a little higher than Cancel and OK. The
+ * box being chosen is filled in the primary container colour.
  *
- * Behaviour (TimePickerClockPresenter): a tap or a drag on the face moves the hand; letting go of the hour goes on
- * to the minute; a tap on a box chooses which. The hand turns in 200 ms (ClockHandView's animator).
+ * Behaviour: a tap or a drag on the face moves the hand; letting go of the hour goes on to the minute; a tap on a box
+ * chooses which. The hand turns in 200 ms.
  *
- * The 12-hour clock (TimeFormat.CLOCK_12H, when the phone's clock is 12-hour as Etar asks DateFormat): one ring,
- * 12 1 … 11, and the AM/PM toggle 12 dp right of the boxes (material_clock_period_toggle: 52 × 80 dp of outlined
- * buttons, the checked one tertiaryContainer); the card 328 dp wide.
+ * The 12-hour clock (when the phone's clock is 12-hour): one ring, 12 1 … 11, and the AM/PM toggle right of the boxes
+ * (two outlined buttons, the checked one filled); the card is wider for it.
  *
- * The keyboard input mode (TimePickerTextInputPresenter, material_textinput_timepicker.xml): the keyboard button
- * swaps the boxes and the face for two fields 44 dp under the card's top (52 dp to their tops), "Hour" and "Minute"
- * under them, 24 dp over the keyboard button; the card wraps them (264 dp, 328 with AM/PM). The one being typed is a
- * 96 × 80 dp field, its outline 2 dp colorPrimary while focused; the other a box as above, its tap moves the typing
- * there. At most two digits, at most 23 (12 for a 12-hour clock) and 59 (MaxInputValidator); an empty field is 0.
- * From a keyboard: a digit on a full hour goes on to the minute, Backspace on an empty minute back to the hour, Enter
- * on the hour to the minute (TimePickerTextInputKeyController). The clock button goes back to the face. */
+ * The keyboard input mode: the keyboard button swaps the boxes and the face for two fields, "Hour" and "Minute" under
+ * them; the card wraps them. The one being typed is a field, its outline in the primary colour while focused; the other
+ * a box as above, its tap moves the typing there. At most two digits, at most 23 (12 for a 12-hour clock) and 59; an
+ * empty field is 0. From a keyboard: a digit on a full hour goes on to the minute, Backspace on an empty minute back to
+ * the hour, Enter on the hour to the minute. The clock button goes back to the face. */
 #include "cal-time-picker.h"
 #include "cal-colors.h"
 #include "cal-format.h"
@@ -42,11 +36,11 @@
 #define NUMBER_SIZE 16.0
 #define TURN_MS 200
 #define SELECTED_NUMBER (cal_palette->selected_number)
-#define BOX_WIDTH 96                    /* material_clock_display_width */
-#define BOX_HEIGHT 80                   /* material_clock_display_height */
-#define FIELD_CORNER 8.0                /* shapeAppearanceCornerSmall */
-#define CARD_CLOCK_24H 304              /* the face and its 24 dp sides */
-#define CARD_12H 328                    /* the boxes, 12 dp, the 52 dp toggle and the sides */
+#define BOX_WIDTH 96
+#define BOX_HEIGHT 80
+#define FIELD_CORNER 8.0
+#define CARD_CLOCK_24H 304              /* the face and its sides */
+#define CARD_12H 328                    /* the boxes, the AM/PM toggle and the sides */
 #define CARD_KEYBOARD_24H 264           /* the two fields, the colon and the sides */
 
 typedef struct {
@@ -69,7 +63,7 @@ is_pm (Picker *picker)
   return picker->hour >= 12;
 }
 
-/* TimeModel.getHourForDisplay */
+/* the hour shown: 12 1 … 11 on a 12-hour clock */
 static int
 display_hour (Picker *picker)
 {
@@ -116,7 +110,7 @@ draw_numbers (CalClockFace *self, GtkSnapshot *snapshot, double cx, double cy, c
     for (int i = 0; i < 12; i++)
       {
         double radius = ring ? INNER : OUTER, a = i * 30.0 * G_PI / 180;
-        /* ClockFaceView: 00–55; 0–11 and 12–23; 12 1 … 11 on a 12-hour clock */
+        /* the numbers: 00–55; 0–11 and 12–23; 12 1 … 11 on a 12-hour clock */
         g_autofree char *text = picker->minutes ? g_strdup_printf ("%02d", i * 5)
                                 : picker->use_24h ? g_strdup_printf ("%d", i + ring * 12)
                                                   : g_strdup_printf ("%d", i ? i : 12);
@@ -156,7 +150,7 @@ cal_clock_face_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gtk_snapshot_append_color (snapshot, &primary, &round.bounds);
   gtk_snapshot_pop (snapshot);
 
-  /* the selector, then the numbers: under the selector in its colour, as ClockFaceView clips them */
+  /* the selector, then the numbers: under the selector in its colour */
   gsk_rounded_rect_init_from_rect (&round, &GRAPHENE_RECT_INIT (sx - SELECTOR / 2, sy - SELECTOR / 2, SELECTOR,
                                                                 SELECTOR), SELECTOR / 2);
   gtk_snapshot_push_rounded_clip (snapshot, &round);
@@ -259,7 +253,7 @@ on_drag_update (GtkGestureDrag *drag, double dx, double dy, CalClockFace *self)
 static void
 on_drag_end (GtkGestureDrag *drag, double dx, double dy, CalClockFace *self)
 {
-  /* onActionUp: the hour chosen, the minute next */
+  /* let go: the hour chosen, the minute next */
   if (!self->picker->minutes)
     set_minutes (self->picker, TRUE);
 }
@@ -293,8 +287,8 @@ cal_clock_face_init (CalClockFace *self)
   gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (drag));
 }
 
-/* --- a field of the keyboard mode: the TextInputEditText in its outlined box (no fill, 8 dp corners, the outline
- * 2 dp colorPrimary while focused, colorOutline else), two digits 56 dp, centred */
+/* --- a field of the keyboard mode: two digits, centred, in an outlined box (no fill, the outline in the primary
+ * colour while focused) */
 
 #define CAL_TYPE_TIME_FIELD (cal_time_field_get_type ())
 G_DECLARE_FINAL_TYPE (CalTimeField, cal_time_field, CAL, TIME_FIELD, GtkWidget)
@@ -462,7 +456,7 @@ time_box (Picker *picker, GtkWidget **label, const char *name, GCallback callbac
   return box;
 }
 
-/* --- AM and PM (MaterialButtonToggleGroup, one always checked) */
+/* --- AM and PM (a toggle group, one always checked) */
 
 static void sync_fields (Picker *picker);
 
@@ -471,7 +465,7 @@ on_period (NeoPressable *button, Picker *picker)
 {
   gboolean pm = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (button), "cal-pm"));
 
-  /* TimeModel.setPeriod */
+  /* AM or PM: the hour moved by 12 */
   if (pm && picker->hour < 12)
     picker->hour += 12;
   else if (!pm && picker->hour >= 12)
@@ -513,18 +507,18 @@ period_toggle (Picker *picker, GtkWidget *row, const char *place_class)
 
 /* --- the keyboard input mode */
 
-/* the field being typed and the box for the other (ChipTextInputComboView.setChecked) */
+/* the field being typed and the box for the other */
 static void
 check_field (Picker *picker, gboolean minutes)
 {
   picker->minutes = minutes;
   gtk_stack_set_visible_child (GTK_STACK (picker->hour_stack), minutes ? picker->hour_chip : picker->hour_field);
   gtk_stack_set_visible_child (GTK_STACK (picker->minute_stack), minutes ? picker->minute_field : picker->minute_chip);
-  /* requestFocus: the field keeps its cursor, nothing selected */
+  /* focused: the field keeps its cursor, nothing selected */
   gtk_text_grab_focus_without_selecting (GTK_TEXT (field_text (minutes ? picker->minute_field : picker->hour_field)));
 }
 
-/* TimePickerTextInputPresenter.setTime: both fields and both boxes from the time */
+/* both fields and both boxes from the time */
 static void
 sync_fields (Picker *picker)
 {
@@ -534,8 +528,7 @@ sync_fields (Picker *picker)
   picker->setting_text = TRUE;
   gtk_editable_set_text (GTK_EDITABLE (field_text (picker->hour_field)), hour);
   gtk_editable_set_text (GTK_EDITABLE (field_text (picker->minute_field)), minute);
-  /* setText leaves the cursor at the start (ArrowKeyMovementMethod.initialize), where the first digit typed clears
-   * the prefilled value (clearPrefilledText) */
+  /* the cursor at the start, where the first digit typed clears the prefilled value */
   gtk_editable_set_position (GTK_EDITABLE (field_text (picker->hour_field)), 0);
   gtk_editable_set_position (GTK_EDITABLE (field_text (picker->minute_field)), 0);
   picker->setting_text = FALSE;
@@ -543,7 +536,7 @@ sync_fields (Picker *picker)
   gtk_label_set_label (GTK_LABEL (picker->minute_chip_label), minute);
 }
 
-/* the hour or the minute typed: an empty field is 0; the other box shows it as two digits (TextFormatter) */
+/* the hour or the minute typed: an empty field is 0; the other box shows it as two digits */
 static void
 on_field_changed (GtkEditable *editable, Picker *picker)
 {
@@ -558,11 +551,11 @@ on_field_changed (GtkEditable *editable, Picker *picker)
   if (minutes)
     picker->minute = value;
   else
-    /* TimeModel.setHour: a 12-hour clock keeps AM or PM */
+    /* a 12-hour clock keeps AM or PM */
     picker->hour = picker->use_24h ? value : value % 12 + (is_pm (picker) ? 12 : 0);
 }
 
-/* MaxInputValidator, inputType number: digits only, and what they make no more than the most */
+/* digits only, and what they make no more than the most */
 static void
 on_field_insert (GtkEditable *editable, const char *text, int length, int *position, Picker *picker)
 {
@@ -583,7 +576,7 @@ on_field_insert (GtkEditable *editable, const char *text, int length, int *posit
   g_string_free (result, TRUE);
 }
 
-/* a key on a hardware keyboard (TimePickerTextInputKeyController.onKey): typing over a field that is full starts
+/* a key on a hardware keyboard: typing over a field that is full starts
  * it again, a digit after a full hour goes to the minute, Backspace in an empty minute back to the hour */
 static gboolean
 on_field_key (GtkEventControllerKey *keys, guint keyval, guint keycode, GdkModifierType state, Picker *picker)
@@ -604,13 +597,13 @@ on_field_key (GtkEventControllerKey *keys, guint keyval, guint keycode, GdkModif
       check_field (picker, TRUE);
       return TRUE;
     }
-  /* clearPrefilledText */
+  /* the first digit typed over a full field clears it */
   if (position == 0 && length == 2)
     gtk_editable_set_text (GTK_EDITABLE (text), "");
   return FALSE;
 }
 
-/* IME_ACTION_NEXT on the hour */
+/* Enter on the hour: on to the minute */
 static void
 on_field_activate (GtkText *text, Picker *picker)
 {
@@ -630,7 +623,7 @@ on_minute_chip (NeoPressable *box, Picker *picker)
   check_field (picker, TRUE);
 }
 
-/* one ChipTextInputComboView: the field or the box over the label "Hour" / "Minute" (bodySmall) */
+/* one input: the field or the box over the label "Hour" / "Minute" */
 static GtkWidget *
 combo (Picker *picker, gboolean minutes)
 {
@@ -677,7 +670,7 @@ combo (Picker *picker, gboolean minutes)
   return box;
 }
 
-/* material_textinput_timepicker: the two fields with the colon, AM/PM on a 12-hour clock */
+/* the keyboard mode: the two fields with the colon, AM/PM on a 12-hour clock */
 static GtkWidget *
 keyboard_input (Picker *picker)
 {
@@ -703,7 +696,7 @@ keyboard_input (Picker *picker)
   return row;
 }
 
-/* the keyboard and the clock button (MaterialTimePicker.updateInputMode) */
+/* the keyboard and the clock button */
 static void
 on_mode (NeoPressable *button, Picker *picker)
 {
@@ -727,7 +720,7 @@ on_mode (NeoPressable *button, Picker *picker)
     }
   else
     {
-      /* the keyboard down (hideKeyboard), the face at the time typed */
+      /* the keyboard down, the face at the time typed */
       gtk_widget_grab_focus (GTK_WIDGET (button));
       show_value (picker);
       set_minutes (picker, picker->minutes);
@@ -808,8 +801,8 @@ cal_time_picker_show (GtkWidget *parent, int hour, int minute, CalTimeChosen cho
   neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
   neo_dialog_add_button (dialog, _("OK"), NEO_RESPONSE_OK);
 
-  /* the keyboard button at the start of the buttons' row (the card's last child), 12 dp in, 2 dp higher than
-   * Cancel and OK */
+  /* the keyboard button at the start of the buttons' row (the card's last child), a little higher than Cancel
+   * and OK */
   picker->mode = neo_icon_button_new ("cal-keyboard-symbolic");
   gtk_widget_add_css_class (picker->mode, "cal-time-mode");
   gtk_widget_set_valign (picker->mode, GTK_ALIGN_START);

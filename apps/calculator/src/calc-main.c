@@ -1,4 +1,4 @@
-/* neo-calculator: the Calculator, LineageOS 23.2's ExactCalculator rebuilt in GTK 4 (spec/calculator.md).
+/* neo-calculator: the Calculator, LineageOS 23.2's ExactCalculator rebuilt in GTK 4.
  *
  * Exact arithmetic as the original's: numbers are an exact fraction times a constructive real (unified-real.h),
  * so 1÷3×3 is 1, 0.1+0.2 is 0.3 and sin(π) is 0, and an irrational result has as many digits as one scrolls to.
@@ -32,8 +32,8 @@ on_startup (GApplication *app, gpointer data)
 {
   neo_init ();
   load_style ();
-  /* the formula's and the results' drags count in dp, which are the logical pixels here: spongy's density is
-   * logical pixels per dp (a SpongyScrollView sets it from the monitor once it shows, the history's) */
+  /* the formula's and the results' drags count in logical pixels, so spongy's density (pixels per unit) is 1 (a
+   * SpongyScrollView sets it from the monitor once it shows, the history's) */
   spongy_set_density (1.0);
 }
 

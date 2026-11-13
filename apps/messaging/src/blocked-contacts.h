@@ -1,6 +1,6 @@
-/* Blocked contacts (spec §4.2): BlockedParticipantsActivity, the numbers this app and the Phone block (one list,
+/* Blocked contacts: the numbers this app and the Phone block (one list,
  * blocked-numbers.h), each with its person and "UNBLOCK". A tap on a row unblocks it at once; the conversation stays
- * where it is (Bugle unarchives only when the block itself is undone). */
+ * where it is (only the block's own Undo unarchives it). */
 #pragma once
 
 #include <gtk/gtk.h>

@@ -1,7 +1,5 @@
-/* cam-settings: see cam-settings.h. Measured on still:camera-settings (S10e, 3 px per dp): the app bar 179 dp
- * under the status bar, the up arrow's glyph at x 61…107 px, "Settings" 36 sp bold from x 75 px with its baseline
- * 31 dp above the bar's bottom; rows with their text 24 dp in, categories in colorAccent; switches end 16 dp from
- * the edge. */
+/* cam-settings: see cam-settings.h. A large title above the rows, which scrolls up under the toolbar and then
+ * shows in it; the rows are grouped under accent-coloured category headings, each switch at the row's end. */
 #include "cam-settings.h"
 #include "cam-dialogs.h"
 
@@ -10,11 +8,11 @@
 #include <neo.h>
 #include <spongy-gtk.h>
 
-#define TOOLBAR_H        64       /* ?actionBarSize */
-#define SUMMARY_LINE_H   20       /* textAppearanceBodyMedium's line height, 20 sp */
+#define TOOLBAR_H        64       /* the toolbar, which stays */
+#define SUMMARY_LINE_H   20       /* a summary's line pitch */
 #define APP_BAR_H        179      /* the large collapsing toolbar, expanded */
 #define TITLE_BASELINE   31       /* above the app bar's bottom */
-#define TITLE_SIZE       36       /* textAppearanceDisplaySmall */
+#define TITLE_SIZE       36       /* the large title */
 
 typedef struct {
   const char *key;
@@ -39,10 +37,9 @@ struct _CamSettings {
 
 G_DEFINE_FINAL_TYPE (CamSettings, cam_settings, GTK_TYPE_WIDGET)
 
-/* ---- a summary: wrapped text with BodyMedium's 20 sp line height ------------------------------------------------
- * A TextView with a line height puts the extra space between its lines only (StaticLayout's spacing), which is
- * Pango's layout spacing; CSS line-height on a GtkLabel would pad its first and last lines too, and so every
- * one-line row as well. */
+/* ---- a summary: wrapped text with a line pitch ------------------------------------------------------------------
+ * The line pitch puts its extra space between the lines only, which is Pango's layout spacing; CSS line-height on a
+ * GtkLabel would pad its first and last lines too, and so every one-line row as well. */
 
 #define CAM_TYPE_SUMMARY (cam_summary_get_type ())
 G_DECLARE_FINAL_TYPE (CamSummary, cam_summary, CAM, SUMMARY, GtkWidget)
@@ -154,7 +151,7 @@ category (GtkWidget *list, const char *title)
 
   gtk_label_set_xalign (GTK_LABEL (label), 0);
   neo_label_set_font_padding (label, 14);
-  /* PreferenceCategory (SettingsLib): 24 dp above the first, more space between groups */
+  /* a category heading: space above it, which also parts it from the group before */
   gtk_widget_set_margin_top (label, gtk_widget_get_margin_top (label) + 24);
   gtk_widget_set_margin_bottom (label, gtk_widget_get_margin_bottom (label) + 8);
   gtk_widget_set_margin_start (label, 24);
@@ -183,8 +180,8 @@ row (GtkWidget *list, const char *title, const char *summary_text, GtkWidget **s
   gtk_label_set_wrap (GTK_LABEL (label), TRUE);
   gtk_widget_add_css_class (label, "cam-settings-title");
   neo_label_set_font_padding (label, 16);
-  /* the TextView is 65 px at 3 px/dp (its font metrics rounded outwards): 21⅔ dp, which whole dp can only come
-   * near; 22 drifts +1 px a row where 21 drifts -2 */
+  /* the title is 65 device px tall at scale 3 (its font metrics rounded outwards): 21⅔ px, which whole px can only
+   * come near; 22 drifts +1 device px a row where 21 drifts -2 */
   gtk_widget_set_margin_bottom (label, gtk_widget_get_margin_bottom (label) + 1);
   gtk_box_append (GTK_BOX (column), label);
   gtk_widget_add_css_class (sub, "cam-settings-summary");
@@ -247,7 +244,7 @@ list_index (CamSettings *self, ListRow *list)
 static void
 show_list (CamSettings *self, ListRow *list)
 {
-  /* ListPreference's "%s" summary: the chosen entry */
+  /* the row's summary: the chosen entry */
   cam_summary_set_text (CAM_SUMMARY (list->summary), list->labels[list_index (self, list)]);
 }
 
@@ -303,8 +300,7 @@ list_row (CamSettings *self, GtkWidget *list, const char *key, const char *title
 static void
 on_scrolled (GtkAdjustment *adjustment, CamSettings *self)
 {
-  /* the large title scrolls under the toolbar; once it has, the toolbar takes the title (titleCollapseMode fade)
-   * and lifts (liftOnScroll) */
+  /* the large title scrolls under the toolbar; once it has, the toolbar takes the title (a fade) and lifts */
   gboolean collapsed = gtk_adjustment_get_value (adjustment) >= APP_BAR_H - TOOLBAR_H - TITLE_BASELINE / 2;
 
   gtk_widget_set_opacity (self->collapsed, collapsed ? 1 : 0);
@@ -325,7 +321,7 @@ page (CamSettings *self, int index)
   /* Roboto's ascent (1900 / 2048): the label's top above its baseline */
   int ascent = (int) (TITLE_SIZE * 1900 / 2048.0 + 0.5);
 
-  /* the expanded part of the app bar, under the 64 dp toolbar */
+  /* the expanded part of the app bar, under the toolbar */
   gtk_widget_set_size_request (header, -1, APP_BAR_H - TOOLBAR_H);
   gtk_label_set_xalign (GTK_LABEL (title), 0);
   gtk_widget_set_valign (title, GTK_ALIGN_START);
@@ -491,12 +487,12 @@ build (CamSettings *self)
   action_labels[1] = _("Focus");
   action_labels[2] = _("Microphone mute");
   action_labels[3] = _("Zoom");
-  /* Android's default: the system's volume change */
+  /* the keys keep their usual job: the volume */
   action_labels[4] = _("System default");
   action_labels[5] = _("Nothing");
 
   gtk_widget_add_css_class (box, "cam-settings");
-  /* the toolbar: Navigate up 4 dp in, and the collapsed title */
+  /* the toolbar: Navigate up, and the collapsed title */
   self->toolbar = bar;
   gtk_widget_set_size_request (bar, -1, TOOLBAR_H);
   gtk_widget_add_css_class (bar, "cam-settings-toolbar");

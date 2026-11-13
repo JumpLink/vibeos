@@ -1,4 +1,4 @@
-/* ClockPage: the Clock tab (DeskClock's ClockFragment, L/main_clock_frame.xml; spec/clock.md §6.1).
+/* ClockPage: the Clock tab.
  *
  * The time, large; under it the date and, when an alarm is set, when the next one rings.
  *

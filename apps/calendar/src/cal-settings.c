@@ -20,7 +20,7 @@
 #define CAL_VERSION "0"
 #endif
 
-/* --- General settings (GeneralPreferences, xml-v26/general_preferences.xml: the screen Android 8 and later get) */
+/* --- General settings */
 
 typedef struct {
   GtkWidget *window;
@@ -44,7 +44,7 @@ general_free (gpointer data)
   g_free (general);
 }
 
-/* Pure black night mode only while the look is dark (removePreferenceRecursively when the theme is light, or the
+/* Pure black night mode only while the look is dark (hidden when the theme is light, or the
  * system's and the system is not dark) */
 static void
 show_pure_black (General *general)
@@ -101,7 +101,7 @@ on_home_tz_check (GObject *check, GParamSpec *pspec, General *general)
   gboolean on = cal_check_box_get_active (CAL_CHECK_BOX (check));
   g_autofree char *tzid = g_settings_get_string (general->settings, "home-tz");
 
-  /* Etar keeps the zone it last had: the phone's at the time, the first time */
+  /* the zone set last time, or the phone's the first time */
   if (on && !*tzid)
     g_settings_set_string (general->settings, "home-tz", cal_phone_zone ());
   g_settings_set_boolean (general->settings, "home-tz-enabled", on);
@@ -120,8 +120,8 @@ on_clear_history (NeoPressable *row, General *general)
   cal_window_toast (general->window, _("Search history cleared."));
 }
 
-/* Ask for reminder snooze delay: enabled only with a snooze delay (handleUseCustomSnoozeDelayVisibility), its
- * summary per state (summaryOn, summaryOff) */
+/* Ask for reminder snooze delay: enabled only with a snooze delay, its
+ * summary per state (on, off) */
 static void
 show_custom_snooze (General *general)
 {
@@ -179,16 +179,16 @@ general_page (GtkWidget *window)
   CalListPref *pref;
   CalPref row;
   GtkWidget *check;
-  /* preferences_default_duration_values */
+  /* the default event durations */
   static const int durations[] = { 0, 15, 30, 60, 90, 120 };
   static const char *duration_labels[] = { N_("0 minutes"), N_("15 minutes"), N_("30 minutes"), N_("1 hour"),
                                            N_("1.5 hours"), N_("2 hours") };
-  /* preferences_days_per_week_labels */
+  /* the days per week */
   static const char *days_labels[] = { N_("2 days"), N_("3 days"), N_("4 days"), N_("5 days"), N_("6 days"),
                                        N_("7 days") };
-  /* preferences_default_snooze_delay_values ("None": no Snooze button) */
+  /* the default snooze delays ("None": no Snooze button) */
   static const int snoozes[] = { -1, 5, 10, 15, 20, 25, 30, 45, 60, 120, 180, 720 };
-  /* preferences_default_reminder_values (Integer.MIN_VALUE "None" is -1 here) */
+  /* the default reminder times ("None" is -1) */
   static const int reminders[] = { -1, 0, 1, 5, 10, 15, 20, 25, 30, 45, 60, 120, 180, 360, 540, 720, 1440, 2880,
                                    10080, 20160, 40320 };
 
@@ -200,7 +200,7 @@ general_page (GtkWidget *window)
   gtk_widget_add_css_class (line, "first");
   gtk_box_append (GTK_BOX (list), line);
 
-  /* pref_theme_entries (values-v29): System default, Light, Dark */
+  /* the themes: System default, Light, Dark */
   pref = cal_list_pref_new (settings, "theme", _("Theme"), TRUE);
   cal_list_pref_add (pref, g_strdup (_("System default")), g_strdup ("system"));
   cal_list_pref_add (pref, g_strdup (_("Light")), g_strdup ("light"));
@@ -219,7 +219,7 @@ general_page (GtkWidget *window)
 
   gtk_box_append (GTK_BOX (list), cal_pref_switch (settings, "real-event-colors", _("Use real event colors")));
 
-  /* default_start_entries */
+  /* the views the app can open on */
   pref = cal_list_pref_new (settings, "default-view", _("Default view"), TRUE);
   cal_list_pref_add (pref, g_strdup (_("Previously used view")), g_strdup ("previous"));
   cal_list_pref_add (pref, g_strdup (_("Day")), g_strdup ("day"));
@@ -240,7 +240,7 @@ general_page (GtkWidget *window)
   gtk_box_append (GTK_BOX (list), row.row);
   gtk_box_append (GTK_BOX (list), cal_pref_switch (settings, "show-week-number", _("Show week number")));
 
-  /* buildWeekStartEntries: "Locale default", then the weekdays from Sunday (values 1 … 7) */
+  /* "Locale default", then the weekdays from Sunday (values 1 … 7) */
   pref = cal_list_pref_new (settings, "week-start", _("Week starts on"), FALSE);
   cal_list_pref_add (pref, g_strdup (_("Locale default")), g_strdup ("-1"));
   for (int i = 0; i < 7; i++)
@@ -262,7 +262,7 @@ general_page (GtkWidget *window)
     cal_list_pref_add (pref, g_strdup (_(duration_labels[i])), g_strdup_printf ("%d", durations[i]));
   gtk_box_append (GTK_BOX (list), cal_list_pref_widget (pref));
 
-  /* Use home time zone: a CheckBoxPreference; Home time zone depends on it */
+  /* Use home time zone: a check box row; Home time zone depends on it */
   check = cal_check_box_new ();
   cal_check_box_set_active (CAL_CHECK_BOX (check), g_settings_get_boolean (settings, "home-tz-enabled"));
   gtk_accessible_update_property (GTK_ACCESSIBLE (check), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Use home time zone"), -1);
@@ -282,8 +282,8 @@ general_page (GtkWidget *window)
   gtk_box_append (GTK_BOX (list), plain_pref (_("Clear search history"), _("Remove all the searches you've performed"),
                                               G_CALLBACK (on_clear_history), general));
 
-  /* Notifications & reminders: "Notifications" opens the channel's page on Android, its sound and vibration;
-   * here the app's own (cal_notifications_page_new), what the reminder service does */
+  /* Notifications & reminders: "Notifications" opens the app's own page (cal_notifications_page_new): what the
+   * reminder service does, its sound and vibration */
   gtk_box_append (GTK_BOX (list), cal_pref_category (NULL, _("Notifications & reminders")));
   gtk_box_append (GTK_BOX (list), plain_pref (_("Notifications"), NULL, G_CALLBACK (on_notifications), general));
   gtk_box_append (GTK_BOX (list), cal_pref_switch (settings, "popup", _("Pop-up notification")));
@@ -301,8 +301,8 @@ general_page (GtkWidget *window)
     gtk_box_append (GTK_BOX (list), plain_pref (_("Quick responses"), _("Edit default responses when emailing guests"),
                                                 G_CALLBACK (on_quick_responses), general));
 
-  /* Experimental: Skip Reminders (preferences_skip_reminders_labels; no default, so no summary until one is
-   * chosen). "Don't check battery optimization" is Android's Doze and has nothing here to stand for. */
+  /* Experimental: Skip Reminders (no default, so no summary until one is chosen). There is no battery
+   * optimization row: nothing here would stand for it. */
   gtk_box_append (GTK_BOX (list), cal_pref_category (NULL, _("Experimental")));
   pref = cal_list_pref_new (settings, "skip-reminders", _("Skip Reminders"), TRUE);
   cal_list_pref_add (pref, g_strdup (_("Only if declined")), g_strdup ("declined"));
@@ -311,8 +311,7 @@ general_page (GtkWidget *window)
   return page;
 }
 
-/* --- Display options (ViewDetailsPreferences, view_details_preferences.xml): the Month view's events, upright and
- * on its side */
+/* --- Display options: the Month view's events, upright and on its side */
 
 static GtkWidget *
 month_view_prefs (GSettings *settings, GtkWidget *list, const char *title, const char *which)
@@ -350,8 +349,8 @@ cal_display_options_page_new (GtkWidget *window)
   return page;
 }
 
-/* --- Notifications: what Android's page for Etar's reminder channel holds that the reminder service does: whether
- * it notifies, the sound, the vibration (the last only on a phone that vibrates) */
+/* --- Notifications: what the reminder service does: whether it notifies, the sound, the vibration (the last only on a
+ * phone that vibrates) */
 
 GtkWidget *
 cal_notifications_page_new (GtkWidget *window)
@@ -363,7 +362,7 @@ cal_notifications_page_new (GtkWidget *window)
   g_autoptr(GPtrArray) sounds = cal_alerts_sounds ();
 
   gtk_box_append (GTK_BOX (list), cal_pref_switch (settings, "notifications", _("Show notifications")));
-  /* RingtonePreference's picker: the default sound, none, the phone's notification sounds */
+  /* the sound: the default one, none, or one of the phone's notification sounds */
   pref = cal_list_pref_new (settings, "reminder-sound", _("Sound"), TRUE);
   cal_list_pref_add (pref, cal_alerts_sound_label ("default"), g_strdup ("default"));
   cal_list_pref_add (pref, cal_alerts_sound_label (""), g_strdup (""));
@@ -385,7 +384,7 @@ cal_notifications_page_new (GtkWidget *window)
   return page;
 }
 
-/* --- Quick responses (QuickResponsePreferences): the responses sorted, each an EditTextPreference */
+/* --- Quick responses: the responses sorted, each a row that edits it */
 
 typedef struct {
   GtkWidget *window, *list;
@@ -448,7 +447,7 @@ fill_responses (Responses *responses)
   guint n = g_strv_length (all);
   GtkWidget *child;
 
-  /* Arrays.sort, written back sorted so the rows' indices are the key's */
+  /* sorted, and written back sorted so the rows' indices are the key's */
   qsort (all, n, sizeof (char *), compare_strings);
   g_settings_set_strv (responses->settings, "quick-responses", (const char *const *) all);
   while ((child = gtk_widget_get_first_child (responses->list)))
@@ -485,7 +484,7 @@ cal_can_mail (void)
   return app != NULL;
 }
 
-/* --- the main list (MainListPreferences) */
+/* --- the main list */
 
 typedef struct {
   GtkWidget *window, *list, *calendars;
@@ -527,7 +526,7 @@ fill_calendars (Settings *settings)
 
   while ((child = gtk_widget_get_first_child (settings->calendars)))
     gtk_box_remove (GTK_BOX (settings->calendars), child);
-  /* per account a header (outline_account_circle, its name), then its calendars: the circle in the calendar's
+  /* per account a header (an account icon, its name), then its calendars: the circle in the calendar's
    * colour, an outline when its events are not displayed */
   for (guint i = 0; i < calendars->len; i++)
     {
@@ -570,9 +569,8 @@ cal_settings_page_new (GtkWidget *window)
   pref = cal_pref_row ("cal-settings-symbolic", 0, _("General settings"), NULL, NULL);
   g_signal_connect (pref.row, "clicked", G_CALLBACK (on_general), settings);
   gtk_box_append (GTK_BOX (list), pref.row);
-  /* MainListPreferences' "Add CalDAV calendar" (DAVx⁵ on Android; EDS's webdav backend here, hidden without it),
-   * "Add offline calendar". "Add EteSync calendar" is left out: EDS has no EteSync backend on Debian, and the row
-   * would only promise one. */
+  /* "Add CalDAV calendar" (EDS's webdav backend, hidden without it), "Add offline calendar". "Add EteSync calendar" is
+   * left out: EDS has no EteSync backend on Debian, and the row would only promise one. */
   if (cal_accounts_can_caldav ())
     {
       pref = cal_pref_row ("cal-add-symbolic", 0, _("Add CalDAV calendar"), NULL, NULL);
@@ -591,7 +589,7 @@ cal_settings_page_new (GtkWidget *window)
   return page;
 }
 
-/* --- About (about.xml: the launcher icon 120 dp, then "Build version") */
+/* --- About: the app's icon, then "Build version" */
 
 GtkWidget *
 cal_about_page_new (GtkWidget *window)
@@ -604,7 +602,7 @@ cal_about_page_new (GtkWidget *window)
   gtk_widget_set_halign (icon, GTK_ALIGN_CENTER);
   gtk_widget_add_css_class (icon, "cal-about-icon");
   gtk_box_append (GTK_BOX (list), icon);
-  /* Authors, the licence and the source code link to Etar's project pages: left out, they are not this app's */
+  /* the build version only: no authors, licence or source code rows */
   pref = cal_pref_row ("cal-pencil-symbolic", 0, _("Build version"), CAL_VERSION, NULL);
   gtk_widget_add_css_class (pref.row, "cal-about-row");
   gtk_box_append (GTK_BOX (list), pref.row);

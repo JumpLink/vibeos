@@ -1,9 +1,8 @@
-/* The alarm notifications in the shade (DeskClock's AlarmNotifications): "Upcoming alarm" from 2 h before,
- * "Snoozing until ...", the ringing alarm with Snooze and Dismiss, "Missed alarm". Each instance has at most one,
- * the one for its state.
+/* The alarm notifications in the shade: "Upcoming alarm" from 2 h before, "Snoozing until ...", the ringing alarm with
+ * Snooze and Dismiss, "Missed alarm". Each instance has at most one, the one for its state.
  *
- * Some states answer the user swiping their notification away (Android's delete intent): the upcoming one then
- * stays hidden, a missed one is over. clock-notifier.c says why that takes org.freedesktop.Notifications. */
+ * Some states answer the user swiping their notification away: the upcoming one then stays hidden, a missed one is
+ * over. clock-notifier.c says why that takes org.freedesktop.Notifications. */
 #pragma once
 
 #include "alarm-model.h"
@@ -21,5 +20,5 @@ void                alarm_notifications_free (AlarmNotifications *notifications)
 void                alarm_notifications_show (AlarmNotifications *notifications, const AlarmInstance *instance);
 void                alarm_notifications_clear (AlarmNotifications *notifications, guint instance_id);
 
-/* "Mon 07:30" or "Mon 7:30 AM", as the user's clock format: AlarmUtils.getFormattedTime */
+/* "Mon 07:30" or "Mon 7:30 AM", as the user's clock format */
 char               *alarm_format_time (GDateTime *time);

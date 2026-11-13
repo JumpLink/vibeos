@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-# neo-dialer-calls against a mock phone (mock-phone.py): the call flows of Telecom and InCallUI, end to end over
+# neo-dialer-calls against a mock phone (mock-phone.py): the call flows, end to end over
 # D-Bus, with no modem and no real call. Two buses of its own, so nothing reaches the phone's real ModemManager,
 # shell or notifications.
 #
@@ -212,7 +212,7 @@ def run(t):
     t.wait('swiped away, it is seen', lambda: t.prop('MissedCount') == 0 and t.call_log()[0]['is_read'])
 
     # --- a second call on a modem that cannot hold: answering it ends the call that is up, then accepts it once it
-    # rings on its own (Telecom ends a call it cannot hold)
+    # rings on its own (a call that cannot be held ends)
     t.wait('the last call has gone', lambda: not t.calls())
     t.phone('SetInUse', (False,), '(b)')
     t.phone('Incoming', ('+491701234567',), '(s)')

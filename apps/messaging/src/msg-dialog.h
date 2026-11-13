@@ -1,7 +1,7 @@
 /* Messaging's alert dialogs and snackbar, libneo's restyled in messaging.css.
  *
- * The dialogs are AppCompat's AlertDialog (spec §7.4), their buttons in capitals (Widget.MaterialComponents.Button
- * .TextButton is textAllCaps). The snackbar is Bugle's own (§1.13): edge to edge, #323232, its action in capitals. */
+ * The dialogs' buttons are in capitals. The snackbar is the app's own: edge to edge, its action in
+ * capitals. */
 #pragma once
 
 #include <neo.h>
@@ -29,6 +29,6 @@ msg_snackbar_show (NeoSnackbar *snackbar, const char *text, const char *action, 
 {
   g_autofree char *caps = action ? g_utf8_strup (action, -1) : NULL;
 
-  /* SnackBar.LENGTH_LONG, Bugle's default */
+  /* 5 s, Bugle's default */
   neo_snackbar_show (snackbar, text, caps, action_cb, data, 5000);
 }
