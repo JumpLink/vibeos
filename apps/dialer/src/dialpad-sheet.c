@@ -77,6 +77,7 @@ dialpad_sheet_show (DialpadSheet *self, const char *number)
   if (self->shown)
     return;
   self->shown = TRUE;
+  calls_client_prepare_tones (calls_client_get ());
   gtk_widget_set_visible (GTK_WIDGET (self), TRUE);
   neo_anim_start_cubic (self->slide, self->progress, 1, SLIDE_MS, 0, 0, 0, 0.2, 1);
   g_signal_emit (self, signals[SHOWN_CHANGED], 0);
@@ -89,6 +90,7 @@ dialpad_sheet_hide (DialpadSheet *self)
   if (!self->shown)
     return;
   self->shown = FALSE;
+  calls_client_release_tones (calls_client_get ());
   neo_anim_start (self->fab, self->fab_scale, 0, FAB_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
   neo_anim_start_cubic (self->slide, self->progress, 0, SLIDE_MS, 0, 0.4, 0, 1, 1);
   g_signal_emit (self, signals[SHOWN_CHANGED], 0);

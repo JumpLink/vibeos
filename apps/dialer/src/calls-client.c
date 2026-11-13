@@ -473,6 +473,18 @@ calls_client_stop_tone (CallsClient *self)
 }
 
 void
+calls_client_prepare_tones (CallsClient *self)
+{
+  call (self, "PrepareTones", 0, NULL);
+}
+
+void
+calls_client_release_tones (CallsClient *self)
+{
+  call (self, "ReleaseTones", 0, NULL);
+}
+
+void
 calls_client_set_incall_visible (CallsClient *self, gboolean visible)
 {
   call (self, "SetInCallVisible", 0, g_variant_new ("(b)", visible));

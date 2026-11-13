@@ -18,8 +18,13 @@
 
 /* the keypad tone at 80 of 100, the two sines sharing it */
 #define TONE_VOLUME 0.4
-/* the tone player is let go when the keys have been still a while */
-#define TONE_IDLE_MS 5000
+/* The keypad tones' stream opens, silent, with the keypad and stays open while it is up, so a key only switches a
+ * tone on and off; it closes with the keypad, or once the keys have been still this long */
+#define TONE_IDLE_MS 15000
+/* the sound server's buffer, µs: how long a tone waits behind it once switched on (pulsesink's 200 ms default made
+ * the tone sound two or three keys late), and the size of each piece it is handed */
+#define TONE_BUFFER_US 50000
+#define TONE_LATENCY_US 10000
 
 /* playbin's GstPlayFlags: audio, with its own volume */
 #define PLAY_FLAG_AUDIO 0x02
@@ -43,6 +48,7 @@ struct _Ringer {
 
   GstElement *tone;             /* the keypad tones: two sines into the speaker */
   GstElement *tone_low, *tone_high;
+  GstElement *tone_gate;        /* a volume: 1 while a key is held, 0 between keys, the stream running all along */
   guint tone_idle_id;
 
   /* the speaker's volume, kept while ringing */
@@ -318,7 +324,10 @@ make_tone (Ringer *self)
   GstElement *tone, *sink;
 
   gst_init (NULL, NULL);
-  tone = gst_parse_launch ("audiomixer name=mix ! audioconvert ! pulsesink name=sink "
+  /* the stream runs from the dialpad's opening to its closing and the gate switches the tone: a stream started or
+   * resumed for each key woke the speaker every time (the tone came late) and first played out what the last key
+   * had left in its buffer (garbled) */
+  tone = gst_parse_launch ("audiomixer name=mix ! volume name=gate volume=0 ! audioconvert ! pulsesink name=sink "
                            "audiotestsrc name=low wave=sine is-live=true ! mix. "
                            "audiotestsrc name=high wave=sine is-live=true ! mix.", &error);
   if (!tone)
@@ -327,16 +336,46 @@ make_tone (Ringer *self)
       return NULL;
     }
   sink = gst_bin_get_by_name (GST_BIN (tone), "sink");
-  g_object_set (sink, "stream-properties", props, NULL);
+  g_object_set (sink, "stream-properties", props, "buffer-time", (gint64) TONE_BUFFER_US,
+                "latency-time", (gint64) TONE_LATENCY_US, NULL);
   gst_object_unref (sink);
   /* owned by the bin */
   self->tone_low = gst_bin_get_by_name (GST_BIN (tone), "low");
   self->tone_high = gst_bin_get_by_name (GST_BIN (tone), "high");
+  self->tone_gate = gst_bin_get_by_name (GST_BIN (tone), "gate");
   gst_object_unref (self->tone_low);
   gst_object_unref (self->tone_high);
+  gst_object_unref (self->tone_gate);
   g_object_set (self->tone_low, "volume", TONE_VOLUME / 2, NULL);
   g_object_set (self->tone_high, "volume", TONE_VOLUME / 2, NULL);
   return tone;
+}
+
+/* a keypad tone: only with "Keypad tones" on, not in Vibrate or Mute, and not over the ringtone */
+static gboolean
+tones_wanted (Ringer *self)
+{
+  return g_settings_get_boolean (self->settings, "dtmf-tone-when-dialing") && ringer_mode (self) == RINGER_MODE_NORMAL
+         && !self->ringing;
+}
+
+/* the stream running, silent, with the idle timeout started again */
+static gboolean
+tone_running (Ringer *self)
+{
+  if (!self->tone && !(self->tone = make_tone (self)))
+    return FALSE;
+  g_clear_handle_id (&self->tone_idle_id, g_source_remove);
+  self->tone_idle_id = g_timeout_add (TONE_IDLE_MS, tone_idle, self);
+  gst_element_set_state (self->tone, GST_STATE_PLAYING);
+  return TRUE;
+}
+
+void
+ringer_prepare_tones (Ringer *self)
+{
+  if (tones_wanted (self))
+    tone_running (self);
 }
 
 void
@@ -344,26 +383,28 @@ ringer_play_tone (Ringer *self, char key)
 {
   guint low, high;
 
-  /* a keypad tone: only with "Keypad tones" on, and not in Vibrate or Mute */
-  if (!dtmf_pair (key, &low, &high) || !g_settings_get_boolean (self->settings, "dtmf-tone-when-dialing")
-      || ringer_mode (self) != RINGER_MODE_NORMAL || self->ringing)
+  if (!dtmf_pair (key, &low, &high) || !tones_wanted (self) || !tone_running (self))
     return;
-  if (!self->tone && !(self->tone = make_tone (self)))
-    return;
-  g_clear_handle_id (&self->tone_idle_id, g_source_remove);
   g_object_set (self->tone_low, "freq", (double) low, NULL);
   g_object_set (self->tone_high, "freq", (double) high, NULL);
-  gst_element_set_state (self->tone, GST_STATE_PLAYING);
+  g_object_set (self->tone_gate, "volume", 1.0, NULL);
 }
 
 void
 ringer_stop_tone (Ringer *self)
 {
+  if (self->tone)
+    g_object_set (self->tone_gate, "volume", 0.0, NULL);
+}
+
+void
+ringer_release_tones (Ringer *self)
+{
+  g_clear_handle_id (&self->tone_idle_id, g_source_remove);
   if (!self->tone)
     return;
-  gst_element_set_state (self->tone, GST_STATE_PAUSED);
-  g_clear_handle_id (&self->tone_idle_id, g_source_remove);
-  self->tone_idle_id = g_timeout_add (TONE_IDLE_MS, tone_idle, self);
+  g_object_set (self->tone_gate, "volume", 0.0, NULL);
+  gst_element_set_state (self->tone, GST_STATE_NULL);
 }
 
 /* --- the vibration */
@@ -405,7 +446,7 @@ ringer_start (Ringer *self)
   if (self->ringing)
     return;
   self->ringing = TRUE;
-  ringer_stop_tone (self);
+  ringer_release_tones (self);
   if (mode == RINGER_MODE_NORMAL && g_settings_get_double (self->settings, "ring-volume") > 0)
     play_ringtone (self);
   if (mode == RINGER_MODE_VIBRATE

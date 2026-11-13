@@ -37,3 +37,6 @@ void     ringer_preview (Ringer *ringer, const char *uri);
 /* the main dialpad's keypad tone for @key while it is held, when "Keypad tones" is on */
 void     ringer_play_tone (Ringer *ringer, char key);
 void     ringer_stop_tone (Ringer *ringer);
+/* the dialpad came up: the tones' stream opens now, silent, so the first key sounds at once; and it went */
+void     ringer_prepare_tones (Ringer *ringer);
+void     ringer_release_tones (Ringer *ringer);

@@ -1330,6 +1330,19 @@ calls_stop_tone (Calls *self)
 }
 
 void
+calls_prepare_tones (Calls *self)
+{
+  if (!self->calls->len)
+    ringer_prepare_tones (self->ringer);
+}
+
+void
+calls_release_tones (Calls *self)
+{
+  ringer_release_tones (self->ringer);
+}
+
+void
 calls_set_incall_visible (Calls *self, gboolean visible)
 {
   if (visible == self->incall_visible)

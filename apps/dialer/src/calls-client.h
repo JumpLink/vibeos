@@ -72,6 +72,9 @@ void calls_client_preview_ringtone (CallsClient *self, const char *uri);
 /* the main dialpad's keypad tone while @key is held; the service plays it if "Keypad tones" is on */
 void calls_client_play_tone (CallsClient *self, char key);
 void calls_client_stop_tone (CallsClient *self);
+/* the main dialpad came up, or went (the service opens the tones' stream ahead of the first key) */
+void calls_client_prepare_tones (CallsClient *self);
+void calls_client_release_tones (CallsClient *self);
 /* the in-call screen is in front or not: the service keeps a ringing call's notification from peeking over it */
 void calls_client_set_incall_visible (CallsClient *self, gboolean visible);
 

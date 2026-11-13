@@ -66,6 +66,8 @@ void        calls_silence_ringer (Calls *self);
 void        calls_preview_ringtone (Calls *self, const char *uri);
 void        calls_play_tone (Calls *self, char key);
 void        calls_stop_tone (Calls *self);
+void        calls_prepare_tones (Calls *self);
+void        calls_release_tones (Calls *self);
 /* the in-call screen is in front, or no longer: an incoming call's notification then does not peek over it */
 void        calls_set_incall_visible (Calls *self, gboolean visible);
 /* the missed calls are seen: their notification goes */

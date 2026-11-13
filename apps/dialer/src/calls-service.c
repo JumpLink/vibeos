@@ -55,6 +55,9 @@ static const char introspection[] =
   /* the main dialpad's keypad tone while a key is held */
   "    <method name='PlayTone'><arg name='key' type='s' direction='in'/></method>"
   "    <method name='StopTone'/>"
+  /* the main dialpad came up, or went: the tones' stream opens ahead of the first key, and closes */
+  "    <method name='PrepareTones'/>"
+  "    <method name='ReleaseTones'/>"
   /* the in-call screen came to the front, or left it; an app that quits or crashes in front counts as gone */
   "    <method name='SetInCallVisible'><arg name='visible' type='b' direction='in'/></method>"
   /* the newest calls first, each with CallLog.Calls' column names as keys (call-log.h) */
@@ -263,6 +266,10 @@ on_method_call (GDBusConnection *bus, const char *sender, const char *path, cons
     }
   else if (g_str_equal (method, "StopTone"))
     calls_stop_tone (self->calls);
+  else if (g_str_equal (method, "PrepareTones"))
+    calls_prepare_tones (self->calls);
+  else if (g_str_equal (method, "ReleaseTones"))
+    calls_release_tones (self->calls);
   else if (g_str_equal (method, "SetInCallVisible"))
     {
       g_variant_get (parameters, "(b)", &flag);
