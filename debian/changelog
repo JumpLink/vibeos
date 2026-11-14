@@ -1,3 +1,24 @@
+gnome-phone (0.1.8) unstable; urgency=medium
+
+  * gnome-shell-extension-gnome-phone: the boot goes from the splash
+    straight to the lock screen. The mobile shell used to show its
+    overview, top panel and grey background for about 6 s first; with
+    patches/gnome-shell/0004 the extension keeps the shell from drawing
+    until it has locked, and the display keeps the splash until then. A
+    shell without that patch starts as before.
+  * gnome-shell-extension-gnome-phone: a swipe unlock shows the launcher
+    coming up behind the lock screen instead of going black for 500 ms
+    first, and the bouncer's blur blurs that screen instead of black.
+  * gnome-shell-extension-gnome-phone: tapping the search field in the app
+    drawer no longer moves the whole launcher up behind the keyboard.
+  * neo-launcher: the app drawer has no search field by default (Settings >
+    Home screen > Layout turns it on). A user who switched it on keeps it.
+  * patches/gnome-shell/0004: lets an extension keep the stage hidden while
+    GNOME Shell starts (LayoutManager.holdStartup()), for gnome-shell-mobile
+    51.1.mobile.22. The shell shows the stage anyway after 15 s.
+
+ -- pulpoff <pashkovsky@gmail.com>  Sat, 14 Nov 2026 03:00:00 +0100
+
 gnome-phone (0.1.7) unstable; urgency=medium
 
   * Every ID is neo.* now: the apps (neo.Dialer, neo.Messaging, neo.Clock,
