@@ -61,6 +61,12 @@ export default class GnomePhoneExtension extends Extension {
             return;
         }
 
+        // The session starts on the lock screen. Until it is up the shell draws nothing and the boot splash stays on
+        // the screen, where the shell would otherwise show its overview and top panel for the seconds this takes
+        // (holdStartup() is patches/gnome-shell/0004; a shell without it shows them). The shell stops waiting after
+        // 15 s, a phone held sideways that long included.
+        this._startupHold = Main.layoutManager.holdStartup?.() ?? null;
+
         // the lock screen and home are portrait, the session starts locked, and everything is laid out for an upright
         // panel: a shell started sideways turns upright first
         this._rotation = new Rotation();
@@ -161,9 +167,19 @@ export default class GnomePhoneExtension extends Extension {
         // locked from the start, as a phone after boot, once the extension system is done with this
         this._lockId = GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
             this._lockId = 0;
-            this._keyguard.lock();
+            try {
+                this._keyguard.lock();
+            } finally {
+                // ... and the first frame the shell draws is the lock screen
+                this._releaseStartup();
+            }
             return GLib.SOURCE_REMOVE;
         });
+    }
+
+    _releaseStartup() {
+        this._startupHold?.();
+        this._startupHold = null;
     }
 
     disable() {
@@ -181,6 +197,7 @@ export default class GnomePhoneExtension extends Extension {
         if (this._lockId)
             GLib.source_remove(this._lockId);
         this._lockId = 0;
+        this._releaseStartup();
         this._keyHaptics?.destroy();
         this._keyHaptics = null;
         this._endMark?.destroy();

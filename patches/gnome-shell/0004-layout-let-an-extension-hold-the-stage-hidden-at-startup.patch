@@ -1,0 +1,239 @@
+From: pulpoff <pashkovsky@gmail.com>
+Subject: [PATCH] layout: Let an extension keep the stage hidden at startup
+
+The stage is shown as soon as the system background has loaded, and the
+startup animation runs before the extensions enabled at startup are
+enabled: they are imported asynchronously, after the UI is built. A
+session whose extension puts up its own first screen therefore shows the
+overview, the top panel and the grey system background first. On a
+phone that boots to gnome-phone's lock screen this lasts about 6 s
+(S10e: the shell starts at 8.7 s, the extension is enabled at 12.2 s,
+and the lock screen's first frame is drawn at 14.65 s).
+
+Wait for the extensions enabled at startup before showing the stage, and
+add LayoutManager.holdStartup(): an extension takes a hold in enable()
+and releases it once its screen is built. Until then the stage stays
+hidden and the display goes on scanning out what was there before: the
+boot splash Plymouth left. A hold that is never released ends 15 s after
+the shell started waiting.
+
+A startup that was held has no startup animation: the holder's screen
+shows as it is. The lock screen pushes unlock-dialog, which has no
+overview, so the startup would otherwise zoom the whole UI in from 75%
+over the grey system background. It completes once that first frame is
+on the screen. 'startup-complete' registers the display with GDM, GDM
+then quits Plymouth, and the splash goes with it: completing right after
+the stage is shown left the S10e black from 12.2 s to 14.2 s, while the
+first frame was still being drawn. Not from the stage's 'presented'
+signal, whose ClutterFrameInfo is a bare pointer GJS cannot take (each
+call of the handler throws), but 100 ms after the first 'after-paint',
+or after 5 s at most.
+
+POCO X3 NFC, booted with this and gnome-phone's hold: Plymouth's frame
+is scanned out until 16.04 s, the lock screen from then on, nothing in
+between; the display is registered at 16.15 s and Plymouth has quit by
+16.19 s.
+
+For gnome-shell-mobile 51.1.mobile.22 (tag 51.1.mobile.22 of
+World/MobileShell/gnome-shell-mobile, built into /opt/gnome-mobile),
+after 0003.
+---
+diff --git a/js/ui/extensionSystem.js b/js/ui/extensionSystem.js
+index 5ae8f24..4bfe5ff 100644
+--- a/js/ui/extensionSystem.js
++++ b/js/ui/extensionSystem.js
+@@ -33,6 +33,7 @@ export class ExtensionManager extends Signals.EventEmitter {
+ 
+         this._enableExtensionMutex = new AsyncMutex();
+         this._initializationPromise = null;
++        this._startupPromise = null;
+         this._updateNotified = false;
+         this._updateInProgress = false;
+         this._updatedUUIDS = [];
+@@ -74,7 +75,8 @@ export class ExtensionManager extends Signals.EventEmitter {
+         });
+ 
+         this._installExtensionUpdates();
+-        this._sessionUpdated().then(() => {
++        this._startupPromise = this._sessionUpdated();
++        this._startupPromise.then(() => {
+             ExtensionDownloader.checkForUpdates();
+         }).catch(logError);
+ 
+@@ -85,6 +87,14 @@ export class ExtensionManager extends Signals.EventEmitter {
+         });
+     }
+ 
++    /**
++     * Resolves once the extensions enabled at startup are enabled, or failed
++     * to be; never rejects.
++     */
++    async waitForStartup() {
++        await this._startupPromise?.catch(() => {});
++    }
++
+     get updatesSupported() {
+         const appSys = Shell.AppSystem.get_default();
+         const hasUpdatesApp =
+diff --git a/js/ui/layout.js b/js/ui/layout.js
+index 45409c6..2c2a174 100644
+--- a/js/ui/layout.js
++++ b/js/ui/layout.js
+@@ -22,6 +22,13 @@ import {loadInterfaceXML} from '../misc/fileUtils.js';
+ export const STARTUP_ANIMATION_TIME = 500;
+ export const BACKGROUND_FADE_ANIMATION_TIME = 1000;
+ 
++// the longest the stage stays hidden for holdStartup()
++const STARTUP_HOLD_TIMEOUT = 15; // s
++// the longest a held startup waits for its first frame to be on the screen
++const FIRST_FRAME_TIMEOUT = 5; // s
++// a painted frame goes to KMS at once and is on the screen by the next vblank
++const FIRST_FRAME_FLIP = 100; // ms
++
+ const HOT_CORNER_PRESSURE_THRESHOLD = 100; // pixels
+ const HOT_CORNER_PRESSURE_TIMEOUT = 1000; // ms
+ 
+@@ -247,6 +254,11 @@ export const LayoutManager = GObject.registerClass({
+         this._trackedActors = [];
+         this._topActors = [];
+         this._startingUp = true;
++        this._stageShown = false;
++        this._startupHeld = false;
++        this._firstFrame = null;
++        this._startupHolds = 0;
++        this._startupHoldsReleased = null;
+ 
+         // Set up stage hierarchy to group all UI actors under one container.
+         this.uiGroup = new UiActor({name: 'uiGroup', reactive: true});
+@@ -917,7 +929,11 @@ export const LayoutManager = GObject.registerClass({
+ 
+     async _doStartupAnimation() {
+         await this._loadBackground();
++        await this._waitForStartupHolds();
+ 
++        this._stageShown = true;
++        if (this._startupHeld)
++            this._firstFrame = this._waitForFirstFrame();
+         this._systemBackground.show();
+         global.stage.show();
+ 
+@@ -931,6 +947,98 @@ export const LayoutManager = GObject.registerClass({
+         }
+     }
+ 
++    /**
++     * holdStartup:
++     *
++     * Keeps the stage hidden while the shell starts, so the screen goes on
++     * showing what was there before (the boot splash, kept by
++     * `plymouth quit --retain-splash`), until the function it returns is
++     * called. An extension that puts its own first screen up, a lock screen
++     * say, takes a hold in enable() and releases it once that screen is built:
++     * the first frame the shell shows is then that screen, not the overview.
++     *
++     * The extensions enabled at startup are enabled before the stage is
++     * shown, so enable() is soon enough. Once the stage is shown a hold does
++     * nothing, and one never released ends STARTUP_HOLD_TIMEOUT seconds
++     * after the shell started waiting. A startup that was held has no
++     * startup animation: the screen the holder put up shows as it is, and
++     * the startup completes once that frame is on the screen. Completing it
++     * has GDM quit Plymouth (RegisterDisplay), and the retained boot splash
++     * goes with Plymouth: any sooner, and the screen is black until the
++     * first frame, which takes seconds on a phone.
++     *
++     * @returns {Function} releases the hold; calling it again does nothing
++     */
++    holdStartup() {
++        if (!this._startingUp || this._stageShown)
++            return () => {};
++
++        this._startupHeld = true;
++        this._startupHolds++;
++        let released = false;
++        return () => {
++            if (released)
++                return;
++            released = true;
++            this._startupHolds--;
++            if (this._startupHolds === 0)
++                this._startupHoldsReleased?.();
++        };
++    }
++
++    async _waitForStartupHolds() {
++        const {promise, resolve} = Promise.withResolvers();
++        let timeoutId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT,
++            STARTUP_HOLD_TIMEOUT, () => {
++                timeoutId = 0;
++                if (this._startupHolds > 0)
++                    log(`Showing the stage with ${this._startupHolds} startup hold(s) unreleased`);
++                resolve();
++                return GLib.SOURCE_REMOVE;
++            });
++
++        (async () => {
++            await Main.extensionManager?.waitForStartup();
++            if (this._startupHolds > 0) {
++                const held = Promise.withResolvers();
++                this._startupHoldsReleased = held.resolve;
++                await held.promise;
++            }
++        })().catch(logError).finally(resolve);
++
++        await promise;
++        if (timeoutId)
++            GLib.source_remove(timeoutId);
++        this._startupHoldsReleased = null;
++    }
++
++    // Resolves once the stage's next frame is on the screen, or after
++    // FIRST_FRAME_TIMEOUT seconds. Not from 'presented': its ClutterFrameInfo
++    // is a bare pointer GJS cannot take (every handler call throws), so
++    // FIRST_FRAME_FLIP ms after the frame was painted.
++    _waitForFirstFrame() {
++        return new Promise(resolve => {
++            let timeoutId = 0;
++            const paintId = global.stage.connect('after-paint', () => {
++                global.stage.disconnect(paintId);
++                GLib.source_remove(timeoutId);
++                timeoutId = 0;
++                GLib.timeout_add(GLib.PRIORITY_DEFAULT, FIRST_FRAME_FLIP, () => {
++                    resolve();
++                    return GLib.SOURCE_REMOVE;
++                });
++            });
++            timeoutId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT,
++                FIRST_FRAME_TIMEOUT, () => {
++                    timeoutId = 0;
++                    global.stage.disconnect(paintId);
++                    log('Completing the startup before its first frame was painted');
++                    resolve();
++                    return GLib.SOURCE_REMOVE;
++                });
++        });
++    }
++
+     async _loadBackground() {
+         await this._ensurePrimaryMonitor();
+ 
+@@ -993,7 +1101,7 @@ export const LayoutManager = GObject.registerClass({
+         } else {
+             const monitor = this.primaryMonitor;
+ 
+-            if (!Main.sessionMode.hasOverview) {
++            if (!Main.sessionMode.hasOverview && !this._startupHeld) {
+                 const x = monitor.x + monitor.width / 2.0;
+                 const y = monitor.y + monitor.height / 2.0;
+ 
+@@ -1032,6 +1140,11 @@ export const LayoutManager = GObject.registerClass({
+     }
+ 
+     async _startupAnimationSession() {
++        if (this._startupHeld) {
++            await this._firstFrame;
++            return;
++        }
++
+         if (Main.sessionMode.hasOverview) {
+             await Main.overview.runStartupAnimation();
+         } else {
