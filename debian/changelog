@@ -1,3 +1,13 @@
+gnome-phone (0.1.10) unstable; urgency=medium
+
+  * neo-dictate: the document is read only, so tapping it no longer brings
+    up the on-screen keyboard, and what is said always goes at its end. A
+    long press or a double tap selects a word, a drag on from it selects
+    word by word, and a bar over the selection copies it or selects
+    everything.
+
+ -- pulpoff <pashkovsky@gmail.com>  Sat, 14 Nov 2026 09:49:10 +0100
+
 gnome-phone (0.1.9) unstable; urgency=medium
 
   * neo-dictate: Dictate, a new app. A microphone button and a document:
