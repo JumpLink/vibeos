@@ -29,6 +29,10 @@ import {StatusBar, hideShellPanel} from './statusbar.js';
 import {VolumeDialog} from './volume.js';
 import {WhenLocked} from './whenlocked.js';
 
+// how long the boot splash waits for the lock screen's wallpaper after the lock at most (a POCO X3 decodes the
+// 1080x2280 default in ~70 ms)
+const WALLPAPER_WAIT_MS = 2000;
+
 export default class GnomePhoneExtension extends Extension {
     enable() {
         // ~/.config/gnome-phone/debug: the shell's Eval and Screenshot D-Bus calls are open to every client, for
@@ -170,14 +174,33 @@ export default class GnomePhoneExtension extends Extension {
             try {
                 this._keyguard.lock();
             } finally {
-                // ... and the first frame the shell draws is the lock screen
-                this._releaseStartup();
+                // ... and the first frame the shell draws is the lock screen, with its wallpaper (the keyguard decodes
+                // it in a worker thread)
+                this._releaseStartupWithWallpaper();
             }
             return GLib.SOURCE_REMOVE;
         });
     }
 
+    _releaseStartupWithWallpaper() {
+        const hold = this._startupHold;
+        if (!hold)
+            return;
+        this._startupWaitId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, WALLPAPER_WAIT_MS, () => {
+            this._startupWaitId = 0;
+            this._releaseStartup();
+            return GLib.SOURCE_REMOVE;
+        });
+        this._keyguard.wallpaperLoaded.then(() => {
+            if (this._startupHold === hold)
+                this._releaseStartup();
+        });
+    }
+
     _releaseStartup() {
+        if (this._startupWaitId)
+            GLib.source_remove(this._startupWaitId);
+        this._startupWaitId = 0;
         this._startupHold?.();
         this._startupHold = null;
     }

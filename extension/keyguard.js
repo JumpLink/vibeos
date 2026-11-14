@@ -9,6 +9,8 @@
 // length of the last PIN that unlocked, for Android 14's auto-confirm: a PIN of 6 or more digits unlocks as its last
 // digit is typed.
 import Clutter from 'gi://Clutter';
+import Cogl from 'gi://Cogl';
+import GdkPixbuf from 'gi://GdkPixbuf';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GnomeBG from 'gi://GnomeBG?version=4.0';
@@ -156,6 +158,68 @@ function pictureUri(uri) {
     }
 }
 
+// The wallpaper covering the panel as CSS "background-size: cover" does (scaled to fill it, the middle kept), decoded
+// in GdkPixbuf's worker thread and uploaded once, in the panel's proportions and at most its pixels: a picture larger
+// than the panel is decoded at the size that covers it, a smaller one as it is, and the GPU scales it as it draws
+// (GdkPixbuf scaling a 1080x2280 picture up for a 1080x2400 panel doubled the decode).
+// As a CSS background-image, St loaded it in the paint that first showed it, on the main loop, at the file's size
+// times the stage's scale (3240x6840 for a 1080x2280 picture at scale 3): 2 s of the first lock screen at boot on an
+// S10e, with the boot splash up all that time, and an 88 MB texture kept in St's cache for good.
+// Resolves to a St.ImageContent; rejects for a picture it cannot read, or one that is not a local file.
+async function loadCover(uri, width, height, cancellable) {
+    const file = Gio.File.new_for_uri(uri);
+    const path = file.get_path();
+    if (!path)
+        throw new Error(`not a local file: ${uri}`);
+    const [, w, h] = await new Promise((resolve, reject) => {
+        GdkPixbuf.Pixbuf.get_file_info_async(path, cancellable, (_o, res) => {
+            try {
+                resolve(GdkPixbuf.Pixbuf.get_file_info_finish(res));
+            } catch (e) {
+                reject(e);
+            }
+        });
+    });
+    if (!w || !h)
+        throw new Error(`not a picture: ${uri}`);
+    const stream = await new Promise((resolve, reject) => {
+        file.read_async(GLib.PRIORITY_DEFAULT, cancellable, (_o, res) => {
+            try {
+                resolve(file.read_finish(res));
+            } catch (e) {
+                reject(e);
+            }
+        });
+    });
+    let pixbuf = await new Promise((resolve, reject) => {
+        const done = (_o, res) => {
+            try {
+                resolve(GdkPixbuf.Pixbuf.new_from_stream_finish(res));
+            } catch (e) {
+                reject(e);
+            } finally {
+                stream.close_async(GLib.PRIORITY_DEFAULT, null, null);
+            }
+        };
+        if (w > width && h > height) {
+            // the side short of the panel's proportions fills it, the other is cut
+            const [toW, toH] = w * height > h * width ? [-1, height] : [width, -1];
+            GdkPixbuf.Pixbuf.new_from_stream_at_scale_async(stream, toW, toH, true, cancellable, done);
+        } else {
+            GdkPixbuf.Pixbuf.new_from_stream_async(stream, cancellable, done);
+        }
+    });
+    pixbuf = pixbuf.apply_embedded_orientation() ?? pixbuf;
+    const [pw, ph] = [pixbuf.width, pixbuf.height];
+    const [cw, ch] = pw * height > ph * width
+        ? [Math.round(ph * width / height), ph] : [pw, Math.round(pw * height / width)];
+    const cut = pixbuf.new_subpixbuf(Math.floor((pw - cw) / 2), Math.floor((ph - ch) / 2), cw, ch).copy();
+    const content = St.ImageContent.new_with_preferred_size(cw, ch);
+    content.set_bytes(global.stage.context.get_backend().get_cogl_context(), cut.read_pixel_bytes(),
+        cut.has_alpha ? Cogl.PixelFormat.RGBA_8888 : Cogl.PixelFormat.RGB_888, cw, ch, cut.rowstride);
+    return content;
+}
+
 export class Keyguard extends Signals.EventEmitter {
     // @state: the SystemState (carrier, battery, the status icons)
     constructor(state) {
@@ -185,6 +249,11 @@ export class Keyguard extends Signals.EventEmitter {
         this.occludedBy = null;
         this._occlusionHidden = new Set();
         this._occlusion = {};           // the connections that last while occluded
+        // the wallpaper (_syncWallpaper()): its St.ImageContent or CSS, and the load under way
+        this._wallpaperContent = null;
+        this._wallpaperStyle = null;
+        this._wallpaperLoad = null;
+        this.wallpaperLoaded = Promise.resolve();
         this._loadThrottle();
 
         this._build();
@@ -294,14 +363,41 @@ export class Keyguard extends Signals.EventEmitter {
         this.actor.connect('event', (a, event) => this._onEvent(event));
     }
 
+    // The wallpaper loads off the main loop (loadCover()); the one before stays until it is in. wallpaperLoaded
+    // resolves once it is on, or once it failed and the CSS background took its place.
     _syncWallpaper() {
         const dark = this._interface.get_string('color-scheme') === 'prefer-dark';
         const uri = pictureUri((dark && this._background.get_string('picture-uri-dark')) ||
             this._background.get_string('picture-uri'));
-        const style = uri ? `background-image: url("${uri}"); background-size: cover;`
-            : 'background-color: black;';
-        this._wallpaper.style = style;
+        this._wallpaperLoad?.cancel();
+        this._wallpaperLoad = null;
+        if (!uri) {
+            this._setWallpaper(null, 'background-color: black;');
+            this.wallpaperLoaded = Promise.resolve();
+            return;
+        }
+        const cancellable = new Gio.Cancellable();
+        this._wallpaperLoad = cancellable;
+        this.wallpaperLoaded = loadCover(uri, SCREEN_W, SCREEN_H, cancellable).then(content => {
+            if (!cancellable.is_cancelled())
+                this._setWallpaper(content, null);
+        }, e => {
+            if (cancellable.is_cancelled())
+                return;
+            logError(e, `gnome-phone: the lock screen's wallpaper ${uri}`);
+            this._setWallpaper(null, `background-image: url("${uri}"); background-size: cover;`);
+        }).finally(() => {
+            if (this._wallpaperLoad === cancellable)
+                this._wallpaperLoad = null;
+        });
+    }
+
+    // @content: the St.ImageContent loadCover() made, or null for @style, CSS (black, or the picture as St loads it)
+    _setWallpaper(content, style) {
+        this._wallpaperContent = content;
         this._wallpaperStyle = style;
+        this._wallpaper.set_content(content);
+        this._wallpaper.style = style;
     }
 
     _syncClock() {
@@ -916,6 +1012,7 @@ export class Keyguard extends Signals.EventEmitter {
         const monitor = Main.layoutManager.primaryMonitor;
         const under = new St.Widget({x: monitor.x, y: monitor.y, width: monitor.width, height: monitor.height,
             style: this._wallpaperStyle});
+        under.set_content(this._wallpaperContent);
         Main.layoutManager.uiGroup.insert_child_below(under, global.window_group);
         this._wallpaper.hide();
         this._black.opacity = 0;
@@ -984,6 +1081,8 @@ export class Keyguard extends Signals.EventEmitter {
     }
 
     destroy() {
+        this._wallpaperLoad?.cancel();
+        this._wallpaperLoad = null;
         this._settle?.stop();
         this._unlocking?.stop();
         wholeFrames(this, false);
