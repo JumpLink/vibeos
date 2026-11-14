@@ -67,6 +67,7 @@ Recommends: gnome-phone-session (= ${source:Version}),
             neo-weather (>= ${source:Version}),
             neo-camera (>= ${source:Version}),
             neo-files (>= ${source:Version}),
+            neo-dictate (>= ${source:Version}),
             neo-iconpack-round (>= ${source:Version}),
             neo-parallax-solar-system (>= ${source:Version}),
             feedbackd,
@@ -430,6 +431,24 @@ Description: file manager for GNOME Phone
  Neo Files is File Manager+ rebuilt in GTK 4 on GIO and GVfs: the phone's
  storage, removable media, the recycle bin, recent files, the local network
  and saved remotes over SMB, SFTP, FTP/FTPS and WebDAV.
+
+Package: neo-dictate
+Architecture: any
+Depends: gstreamer1.0-plugins-base,
+         ${shlibs:Depends},
+         ${misc:Depends},
+Recommends: neo-dictate-moonshine,
+            gstreamer1.0-pulseaudio,
+Description: dictation for GNOME Phone
+ Dictate turns speech into text on the phone itself: a microphone button and a
+ document, where what is said appears as it is said, recognised by Moonshine's
+ small streaming models with nothing sent anywhere. The document is plain text,
+ edited and copied as any other.
+ .
+ The recogniser is not part of GNOME Phone: neo-dictate loads Moonshine's
+ library from /usr/lib/neo-dictate and its models from
+ /usr/share/neo-dictate/models, which the neo-dictate-moonshine package
+ (made by tools/neo-dictate-moonshine in the source) installs.
 
 Package: neo-iconpack-round
 Architecture: all

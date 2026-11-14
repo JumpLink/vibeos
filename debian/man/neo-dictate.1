@@ -1,0 +1,28 @@
+.TH NEO-DICTATE 1 "2026-11-14" "gnome-phone 0.1.9" "GNOME Phone"
+.SH NAME
+neo-dictate \- dictation for GNOME Phone
+.SH SYNOPSIS
+.B neo-dictate
+.SH DESCRIPTION
+Turns speech into text on the phone: the microphone button starts and stops listening, and what is said goes into the
+document at its cursor as it is said. Speech is recognised by Moonshine's streaming transcriber on the phone itself,
+from the user's default audio source.
+.PP
+The document is kept in
+.IR $XDG_DATA_HOME/neo-dictate/document.txt .
+The application's
+.B dictate
+action (org.gtk.Actions on /neo/Dictate) starts and stops listening as the button does.
+.SH FILES
+.TP
+.I /usr/lib/neo-dictate/libmoonshine.so
+Moonshine's library, loaded when listening starts (from the system's library path if it is not there).
+.TP
+.I /usr/share/neo-dictate/models/
+The models, a directory each, named as Moonshine names them (tiny-streaming-en, small-streaming-de, ...); one in
+.I $XDG_DATA_HOME/neo-dictate/models/
+is found first. The smallest streaming model for the user's language is used, else the smallest English one.
+.SH ENVIRONMENT
+.TP
+.B MOONSHINE_ORT_SINGLE_THREAD
+neo-dictate sets it to 1 unless it is set: Moonshine runs on one thread.

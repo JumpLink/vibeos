@@ -1,0 +1,4 @@
+usr/bin/neo-dictate
+usr/share/applications/neo.Dictate.desktop
+usr/share/dbus-1/services/neo.Dictate.service
+usr/share/icons/hicolor/scalable/apps/neo.Dictate.svg

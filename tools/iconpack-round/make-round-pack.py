@@ -42,6 +42,7 @@ ICONS = {
     "music":      ("music_note",        "#FDA4AF", "#E11D48"),
     "notes":      ("edit_note",         "#FDE047", "#CA8A04"),
     "recorder":   ("mic",               "#FCA5A5", "#B91C1C"),
+    "dictate":    ("speech_to_text",    "#A5F3FC", "#0E7490"),
     "email":      ("mail",              "#93C5FD", "#2563EB"),
     "download":   ("download",          "#A7F3D0", "#059669"),
 }
@@ -61,6 +62,7 @@ MAP = {
     "neo.Settings.desktop": "settings", "org.gnome.Settings.desktop": "settings",
     "neo.Weather.desktop": "weather", "org.gnome.Weather.desktop": "weather",
     "neo.Files.desktop": "files", "org.gnome.Nautilus.desktop": "files",
+    "neo.Dictate.desktop": "dictate",
     "org.gnome.Console.desktop": "terminal", "org.gnome.Ptyxis.desktop": "terminal",
     "org.gnome.Loupe.desktop": "gallery",
     "org.gnome.Papers.desktop": "documents", "org.gnome.Evince.desktop": "documents",

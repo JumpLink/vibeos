@@ -9,6 +9,7 @@
  "neo.Compass.desktop": "compass",
  "neo.Contacts.desktop": "contacts",
  "neo.Dialer.desktop": "phone",
+ "neo.Dictate.desktop": "dictate",
  "neo.Files.desktop": "files",
  "neo.Messaging.desktop": "messaging",
  "neo.Browser.desktop": "browser",

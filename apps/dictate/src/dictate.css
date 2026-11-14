@@ -1,0 +1,36 @@
+/* Dictate's own styles, over libneo's (neo.css): the app bar is libneo's, the document is the app's. */
+
+.dictate-bar-end {                       /* the last action, off the screen's edge as in the Calendar */
+  margin-right: 4px;
+}
+
+/* the document: body text a size up, on the surface, with the primary colour's caret and selection */
+.dictate-document,
+.dictate-document > text {
+  background-color: @neo_surface;
+  color: @neo_on_surface;
+}
+
+.dictate-document {
+  font-size: 18px;
+  font-weight: 700;
+  caret-color: @neo_primary;
+}
+
+.dictate-document > text > selection {
+  background-color: alpha(@neo_primary, 0.4);
+  color: @neo_on_surface;
+}
+
+/* what to do while the document is empty, centred over the FAB's row */
+.dictate-hint {
+  font-size: 16px;
+  color: @neo_on_surface_variant;
+  margin: 0 48px 120px 48px;
+}
+
+/* over the document's last 120 px, the FAB's row: the text fades into the surface */
+.dictate-fade {
+  min-height: 120px;
+  background-image: linear-gradient(to bottom, alpha(@neo_surface, 0), @neo_surface 70%);
+}
