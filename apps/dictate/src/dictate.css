@@ -57,6 +57,18 @@
   color: @neo_on_surface;
 }
 
+/* the selection's floating toolbar: a raised surface, its actions in the text colour (Android's) */
+.dictate-selection-bar {
+  background-color: @neo_surface_container_highest;
+  border-radius: 12px;
+  padding: 0 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.dictate-selection-bar .neo-text-button {
+  color: @neo_on_surface;
+}
+
 /* what to do while the document is empty, centred over the FAB's row */
 .dictate-hint {
   font-size: 16px;

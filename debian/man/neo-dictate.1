@@ -4,8 +4,8 @@ neo-dictate \- dictation for GNOME Phone
 .SH SYNOPSIS
 .B neo-dictate
 .SH DESCRIPTION
-Turns speech into text on the phone: the microphone button starts and stops listening, and what is said goes into the
-document at its cursor as it is said. Speech is recognised on the phone itself, from the user's default audio source:
+Turns speech into text on the phone: the microphone button starts and stops listening, and what is said goes at the
+end of the document as it is said. Speech is recognised on the phone itself, from the user's default audio source:
 English, German and Spanish by Moonshine's streaming transcriber, with punctuation and capitals; French, Italian and
 Russian by Vosk, in lower case and without punctuation.
 .PP
@@ -14,6 +14,9 @@ choice is kept in the GSettings key
 .B neo.Dictate language
 (empty: the first of the user's languages with a model, else English). Choosing another while listening finishes what
 was said, then listens on in the new language.
+.PP
+The document is not typed in, and no keyboard comes up for it. A long press or a double tap selects a word, and a
+drag on from it selects more; a bar over the selection copies it or selects everything.
 .PP
 The document is kept in
 .IR $XDG_DATA_HOME/neo-dictate/document.txt .

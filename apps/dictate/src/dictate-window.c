@@ -1,9 +1,13 @@
 /* The Dictate window: see dictate-window.h.
  *
+ * The document is not typed in: what is said goes at its end, and it can be selected and copied, with no keyboard
+ * coming up (an on-screen keyboard opens for an editable text that has the focus). A finger selects as on Android, a
+ * long press or a double tap on a word, and selected text gets Android's floating toolbar over it: Copy and Select
+ * all.
+ *
  * The dictation point is the stretch between two marks: `from` (left gravity) and `to` (right gravity). The sentence
  * being spoken fills it, tagged "partial"; a finished sentence takes its place untagged, and both marks move past
- * it, so the next one follows it. Each finished sentence or update is one irreversible change: the undo history is
- * the user's typing, never half a sentence.
+ * it, so the next one follows it.
  *
  * The language listened in is the app bar's button, showing its code: the user's choice (GSettings neo.Dictate
  * language) while its model is installed, else the first of the user's languages with one, else English. */
@@ -24,7 +28,11 @@
 
 typedef struct {
   GtkWidget *window;
-  GtkWidget *scroller, *view, *hint, *mic, *language, *copy, *clear;
+  GtkWidget *page, *scroller, *view, *hint, *mic, *language, *copy, *clear;
+  GtkWidget *selection_bar, *select_all;
+  guint place_id;               /* the selection bar is placed when idle */
+  GtkTextMark *anchor_start, *anchor_end;     /* the word a finger's selection began on */
+  gboolean selecting;           /* a finger is selecting: the bar waits until it lifts */
   NeoSnackbar *snackbar;
   GSettings *settings;
   GtkTextBuffer *buffer;
@@ -91,12 +99,7 @@ load (Window *self)
   GtkTextIter end;
 
   if (g_file_get_contents (self->path, &text, NULL, NULL) && g_utf8_validate (text, -1, NULL))
-    {
-      gtk_text_buffer_begin_irreversible_action (self->buffer);
-      gtk_text_buffer_set_text (self->buffer, text, -1);
-      gtk_text_buffer_end_irreversible_action (self->buffer);
-    }
-  /* dictation goes on at the end */
+    gtk_text_buffer_set_text (self->buffer, text, -1);
   gtk_text_buffer_get_end_iter (self->buffer, &end);
   gtk_text_buffer_place_cursor (self->buffer, &end);
 }
@@ -199,7 +202,6 @@ on_text (DictateEngine *engine, char **finished, const char *partial, Window *se
 {
   GtkTextIter to;
 
-  gtk_text_buffer_begin_irreversible_action (self->buffer);
   for (guint i = 0; finished[i]; i++)
     {
       fill (self, finished[i], NULL);
@@ -208,7 +210,6 @@ on_text (DictateEngine *engine, char **finished, const char *partial, Window *se
       gtk_text_buffer_move_mark (self->buffer, self->from, &to);
     }
   fill (self, partial, self->partial);
-  gtk_text_buffer_end_irreversible_action (self->buffer);
   follow (self);
 }
 
@@ -346,10 +347,9 @@ on_state_changed (DictateEngine *engine, Window *self)
     {
       GtkTextIter to;
 
-      /* typing goes on after what was said */
+      /* the partial sentence is gone (the last one finished), the point empty at the end */
       gtk_text_buffer_get_iter_at_mark (self->buffer, &to, self->to);
       gtk_text_buffer_move_mark (self->buffer, self->from, &to);
-      gtk_text_buffer_place_cursor (self->buffer, &to);
       follow (self);
       if (self->close_when_idle)
         {
@@ -373,7 +373,7 @@ on_error (DictateEngine *engine, const char *message, Window *self)
   neo_snackbar_show (self->snackbar, message, NULL, NULL, NULL, NEO_SNACKBAR_LONG);
 }
 
-/* listening, with what is said going where the cursor is */
+/* listening, with what is said going at the document's end */
 static void
 start (Window *self)
 {
@@ -388,7 +388,7 @@ start (Window *self)
       show_state (self);
       return;
     }
-  gtk_text_buffer_get_iter_at_mark (self->buffer, &at, gtk_text_buffer_get_insert (self->buffer));
+  gtk_text_buffer_get_end_iter (self->buffer, &at);
   gtk_text_buffer_move_mark (self->buffer, self->from, &at);
   gtk_text_buffer_move_mark (self->buffer, self->to, &at);
   g_free (self->speaking);
@@ -463,6 +463,290 @@ action (const char *icon, const char *name, GCallback callback, Window *self)
   return button;
 }
 
+/* --- the selection's bar: Android's floating text toolbar, over the selected text */
+
+#define BAR_GAP 8       /* between the bar and the selected text, and the page's edges */
+
+static gboolean
+place_selection_bar (gpointer data)
+{
+  Window *self = data;
+  GtkTextView *view = GTK_TEXT_VIEW (self->view);
+  GtkTextIter start, end;
+  GdkRectangle first, last;
+  graphene_point_t top, bottom;
+  int page_width = gtk_widget_get_width (self->page), page_height = gtk_widget_get_height (self->page);
+  int width, height, x, y;
+  double centre;
+
+  self->place_id = 0;
+  if (!gtk_text_buffer_get_selection_bounds (self->buffer, &start, &end) || self->selecting)
+    {
+      gtk_widget_set_visible (self->selection_bar, FALSE);
+      return G_SOURCE_REMOVE;
+    }
+
+  /* the selection's first line's top and last line's bottom, in the page */
+  gtk_text_view_get_iter_location (view, &start, &first);
+  gtk_text_view_get_iter_location (view, &end, &last);
+  gtk_text_view_buffer_to_window_coords (view, GTK_TEXT_WINDOW_WIDGET, first.x, first.y, &first.x, &first.y);
+  gtk_text_view_buffer_to_window_coords (view, GTK_TEXT_WINDOW_WIDGET, last.x, last.y + last.height, &last.x,
+                                         &last.y);
+  if (!gtk_widget_compute_point (self->view, self->page, &GRAPHENE_POINT_INIT (first.x, first.y), &top) ||
+      !gtk_widget_compute_point (self->view, self->page, &GRAPHENE_POINT_INIT (last.x, last.y), &bottom))
+    return G_SOURCE_REMOVE;
+  /* scrolled out of sight: the bar comes back with it */
+  if (bottom.y < 0 || top.y > page_height - FAB_ROW)
+    {
+      gtk_widget_set_visible (self->selection_bar, FALSE);
+      return G_SOURCE_REMOVE;
+    }
+
+  gtk_widget_set_visible (self->select_all, !gtk_text_iter_is_start (&start) || !gtk_text_iter_is_end (&end));
+  gtk_widget_set_visible (self->selection_bar, TRUE);
+  /* its size, without the margins that place it (measuring counts them) */
+  gtk_widget_measure (self->selection_bar, GTK_ORIENTATION_HORIZONTAL, -1, NULL, &width, NULL, NULL);
+  gtk_widget_measure (self->selection_bar, GTK_ORIENTATION_VERTICAL, width, NULL, &height, NULL, NULL);
+  width -= gtk_widget_get_margin_start (self->selection_bar);
+  height -= gtk_widget_get_margin_top (self->selection_bar);
+
+  /* above the selection, else below it, else (it fills the page) at the top; never over the FAB's row */
+  y = top.y - BAR_GAP - height;
+  if (y < BAR_GAP)
+    y = bottom.y + BAR_GAP;
+  y = CLAMP (y, BAR_GAP, MAX (BAR_GAP, page_height - FAB_ROW - height));
+  /* over the middle of a selection on one line, else the page's */
+  centre = first.y == last.y - last.height ? (top.x + bottom.x) / 2 : page_width / 2.0;
+  x = CLAMP ((int) centre - width / 2, BAR_GAP, MAX (BAR_GAP, page_width - BAR_GAP - width));
+  gtk_widget_set_margin_start (self->selection_bar, x);
+  gtk_widget_set_margin_top (self->selection_bar, y);
+  return G_SOURCE_REMOVE;
+}
+
+static void
+queue_place (Window *self)
+{
+  if (!self->place_id)
+    self->place_id = g_idle_add (place_selection_bar, self);
+}
+
+static void
+on_mark_set (GtkTextBuffer *buffer, GtkTextIter *at, GtkTextMark *mark, Window *self)
+{
+  if (mark == gtk_text_buffer_get_insert (buffer) || mark == gtk_text_buffer_get_selection_bound (buffer))
+    queue_place (self);
+}
+
+static void
+on_copy_selection (NeoPressable *button, Window *self)
+{
+  GtkTextIter start, end;
+  g_autofree char *text = NULL;
+
+  if (!gtk_text_buffer_get_selection_bounds (self->buffer, &start, &end))
+    return;
+  text = gtk_text_buffer_get_text (self->buffer, &start, &end, FALSE);
+  gdk_clipboard_set_text (gtk_widget_get_clipboard (self->window), text);
+  /* as Android: the selection goes once copied */
+  gtk_text_buffer_select_range (self->buffer, &end, &end);
+  neo_snackbar_show (self->snackbar, _("Text copied"), NULL, NULL, NULL, NEO_SNACKBAR_SHORT);
+}
+
+static void
+on_select_all (NeoPressable *button, Window *self)
+{
+  GtkTextIter start, end;
+
+  gtk_text_buffer_get_bounds (self->buffer, &start, &end);
+  gtk_text_buffer_select_range (self->buffer, &start, &end);
+}
+
+static GtkWidget *
+selection_bar (Window *self)
+{
+  GtkWidget *bar = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+  GtkWidget *copy = neo_text_button_new (_("Copy"));
+
+  gtk_widget_add_css_class (bar, "dictate-selection-bar");
+  g_signal_connect (copy, "clicked", G_CALLBACK (on_copy_selection), self);
+  gtk_box_append (GTK_BOX (bar), copy);
+  self->select_all = neo_text_button_new (_("Select all"));
+  g_signal_connect (self->select_all, "clicked", G_CALLBACK (on_select_all), self);
+  gtk_box_append (GTK_BOX (bar), self->select_all);
+  gtk_widget_set_halign (bar, GTK_ALIGN_START);
+  gtk_widget_set_valign (bar, GTK_ALIGN_START);
+  gtk_widget_set_visible (bar, FALSE);
+  return bar;
+}
+
+/* --- selecting with a finger, as on Android
+ *
+ * GTK's text view does not do it in a scrolling document: a double tap's word is unselected again as the finger
+ * lifts, a long press does nothing, and the drag that selects words is the scroller's. So for a touch the document
+ * has these instead, and its own gestures never see one: a long press selects the word under it, a double tap too,
+ * and a drag on from either selects word by word; a tap lets the selection go. The scroller, the view's parent, still
+ * sees every touch first, and scrolls. A mouse selects as in any GTK text view. */
+
+/* the text under a point of the view; FALSE off the text */
+static gboolean
+iter_at (Window *self, double x, double y, GtkTextIter *iter)
+{
+  int bx, by;
+
+  gtk_text_view_window_to_buffer_coords (GTK_TEXT_VIEW (self->view), GTK_TEXT_WINDOW_WIDGET, x, y, &bx, &by);
+  return gtk_text_view_get_iter_at_location (GTK_TEXT_VIEW (self->view), iter, bx, by);
+}
+
+/* the word at `at`; on a space just after one, that word; elsewhere between words, the character */
+static void
+word_bounds (const GtkTextIter *at, GtkTextIter *start, GtkTextIter *end)
+{
+  *start = *end = *at;
+  if (gtk_text_iter_inside_word (start))
+    {
+      if (!gtk_text_iter_starts_word (start))
+        gtk_text_iter_backward_word_start (start);
+      gtk_text_iter_forward_word_end (end);
+    }
+  else if (gtk_text_iter_ends_word (start))
+    gtk_text_iter_backward_word_start (start);
+  else
+    gtk_text_iter_forward_char (end);
+}
+
+static gboolean
+begin_selecting (Window *self, double x, double y)
+{
+  GtkTextIter at, start, end;
+
+  if (!iter_at (self, x, y, &at))
+    return FALSE;
+  word_bounds (&at, &start, &end);
+  gtk_text_buffer_move_mark (self->buffer, self->anchor_start, &start);
+  gtk_text_buffer_move_mark (self->buffer, self->anchor_end, &end);
+  self->selecting = TRUE;
+  /* focused, the selection has its focused colour; read only, no keyboard comes with it */
+  gtk_widget_grab_focus (self->view);
+  gtk_text_buffer_select_range (self->buffer, &start, &end);
+  return TRUE;
+}
+
+static void
+end_selecting (Window *self)
+{
+  if (!self->selecting)
+    return;
+  self->selecting = FALSE;
+  queue_place (self);
+}
+
+static void
+on_long_press (GtkGestureLongPress *gesture, double x, double y, Window *self)
+{
+  /* claimed, the touch is no longer the scroller's: moving on selects */
+  if (begin_selecting (self, x, y))
+    gtk_gesture_set_state (GTK_GESTURE (gesture), GTK_EVENT_SEQUENCE_CLAIMED);
+}
+
+static void
+on_tap_pressed (GtkGestureClick *gesture, int n_press, double x, double y, Window *self)
+{
+  if (n_press == 2 && begin_selecting (self, x, y))
+    gtk_gesture_set_state (GTK_GESTURE (gesture), GTK_EVENT_SEQUENCE_CLAIMED);
+}
+
+static void
+on_tap_released (GtkGestureClick *gesture, int n_press, double x, double y, Window *self)
+{
+  GdkEventSequence *sequence = gtk_gesture_single_get_current_sequence (GTK_GESTURE_SINGLE (gesture));
+  GtkTextIter at;
+
+  /* a tap, not the end of a selecting touch (those are claimed) */
+  if (n_press != 1 || gtk_gesture_get_sequence_state (GTK_GESTURE (gesture), sequence) == GTK_EVENT_SEQUENCE_CLAIMED)
+    return;
+  iter_at (self, x, y, &at);
+  gtk_text_buffer_place_cursor (self->buffer, &at);
+}
+
+static void
+on_select_drag (GtkGestureDrag *gesture, double dx, double dy, Window *self)
+{
+  GtkTextIter at, start, end, from, to;
+  double x, y;
+
+  if (!self->selecting || !gtk_gesture_drag_get_start_point (gesture, &x, &y))
+    return;
+  /* from the first word to the one under the finger, whichever way it went */
+  iter_at (self, x + dx, y + dy, &at);
+  word_bounds (&at, &start, &end);
+  gtk_text_buffer_get_iter_at_mark (self->buffer, &from, self->anchor_start);
+  gtk_text_buffer_get_iter_at_mark (self->buffer, &to, self->anchor_end);
+  if (gtk_text_iter_compare (&start, &from) < 0)
+    from = start;
+  if (gtk_text_iter_compare (&end, &to) > 0)
+    to = end;
+  gtk_text_buffer_select_range (self->buffer, &from, &to);
+}
+
+static void
+on_select_drag_end (GtkGestureDrag *gesture, double dx, double dy, Window *self)
+{
+  end_selecting (self);
+}
+
+static void
+on_select_cancel (GtkGesture *gesture, GdkEventSequence *sequence, Window *self)
+{
+  end_selecting (self);
+}
+
+/* the view's own gestures never see a touch: the ones above, ahead of this in the capture phase, do */
+static gboolean
+on_view_event (GtkEventControllerLegacy *controller, GdkEvent *event, Window *self)
+{
+  switch (gdk_event_get_event_type (event))
+    {
+    case GDK_TOUCH_BEGIN:
+    case GDK_TOUCH_UPDATE:
+    case GDK_TOUCH_END:
+    case GDK_TOUCH_CANCEL:
+      return GDK_EVENT_STOP;
+    default:
+      return GDK_EVENT_PROPAGATE;
+    }
+}
+
+static void
+touch_selection (Window *self)
+{
+  GtkGesture *taps = gtk_gesture_click_new ();
+  GtkGesture *long_press = gtk_gesture_long_press_new ();
+  GtkGesture *drag = gtk_gesture_drag_new ();
+  GtkEventController *stop = gtk_event_controller_legacy_new ();
+  GtkGesture *gestures[] = { taps, long_press, drag };
+
+  /* a widget's controllers run newest first, and a controller that is not a gesture stops the run: it goes in first */
+  g_signal_connect (stop, "event", G_CALLBACK (on_view_event), self);
+  gtk_event_controller_set_propagation_phase (stop, GTK_PHASE_CAPTURE);
+  gtk_widget_add_controller (self->view, stop);
+
+  g_signal_connect (taps, "pressed", G_CALLBACK (on_tap_pressed), self);
+  g_signal_connect (taps, "released", G_CALLBACK (on_tap_released), self);
+  g_signal_connect (long_press, "pressed", G_CALLBACK (on_long_press), self);
+  g_signal_connect (drag, "drag-update", G_CALLBACK (on_select_drag), self);
+  g_signal_connect (drag, "drag-end", G_CALLBACK (on_select_drag_end), self);
+  g_signal_connect (drag, "cancel", G_CALLBACK (on_select_cancel), self);
+  /* one group: a claim by one (the long press, the double tap) is all three's, so the drag goes on selecting */
+  gtk_gesture_group (long_press, taps);
+  gtk_gesture_group (drag, taps);
+  for (guint i = 0; i < G_N_ELEMENTS (gestures); i++)
+    {
+      gtk_gesture_single_set_touch_only (GTK_GESTURE_SINGLE (gestures[i]), TRUE);
+      gtk_event_controller_set_propagation_phase (GTK_EVENT_CONTROLLER (gestures[i]), GTK_PHASE_CAPTURE);
+      gtk_widget_add_controller (self->view, GTK_EVENT_CONTROLLER (gestures[i]));
+    }
+}
+
 /* --- the window */
 
 static void
@@ -495,6 +779,7 @@ window_free (gpointer data)
   Window *self = data;
 
   g_clear_handle_id (&self->save_id, g_source_remove);
+  g_clear_handle_id (&self->place_id, g_source_remove);
   g_signal_handlers_disconnect_by_data (self->engine, self);
   dictate_engine_stop (self->engine);
   g_clear_object (&self->engine);
@@ -511,7 +796,7 @@ dictate_window_new (GtkApplication *app)
   GtkWidget *content = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *bar = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *title = gtk_label_new (_("Dictate"));
-  GtkWidget *page = gtk_overlay_new ();
+  GtkWidget *page = self->page = gtk_overlay_new ();
   GtkTextIter start;
 
   self->window = neo_window_new (app);
@@ -561,8 +846,10 @@ dictate_window_new (GtkApplication *app)
   gtk_text_view_set_bottom_margin (GTK_TEXT_VIEW (self->view), FAB_ROW + 16);
   gtk_text_view_set_pixels_inside_wrap (GTK_TEXT_VIEW (self->view), 4);
   gtk_text_view_set_pixels_below_lines (GTK_TEXT_VIEW (self->view), 4);
-  gtk_text_view_set_input_hints (GTK_TEXT_VIEW (self->view),
-                                 GTK_INPUT_HINT_SPELLCHECK | GTK_INPUT_HINT_UPPERCASE_SENTENCES);
+  /* read only: selectable, but nothing to type, so no keyboard */
+  gtk_text_view_set_editable (GTK_TEXT_VIEW (self->view), FALSE);
+  gtk_text_view_set_cursor_visible (GTK_TEXT_VIEW (self->view), FALSE);
+  gtk_text_buffer_set_enable_undo (self->buffer, FALSE);
   {
     GdkRGBA variant = neo_color (NEO_ON_SURFACE_VARIANT);
 
@@ -571,13 +858,19 @@ dictate_window_new (GtkApplication *app)
   gtk_text_buffer_get_start_iter (self->buffer, &start);
   self->from = gtk_text_buffer_create_mark (self->buffer, "dictation-from", &start, TRUE);
   self->to = gtk_text_buffer_create_mark (self->buffer, "dictation-to", &start, FALSE);
+  self->anchor_start = gtk_text_buffer_create_mark (self->buffer, NULL, &start, TRUE);
+  self->anchor_end = gtk_text_buffer_create_mark (self->buffer, NULL, &start, FALSE);
+  touch_selection (self);
   load (self);
   g_signal_connect (self->buffer, "changed", G_CALLBACK (on_changed), self);
+  g_signal_connect (self->buffer, "mark-set", G_CALLBACK (on_mark_set), self);
 
   self->scroller = spongy_scroll_view_new ();
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->scroller), self->view);
   gtk_widget_set_vexpand (self->scroller, TRUE);
   gtk_overlay_set_child (GTK_OVERLAY (page), self->scroller);
+  g_signal_connect_swapped (spongy_scroll_view_get_vadjustment (SPONGY_SCROLL_VIEW (self->scroller)), "value-changed",
+                            G_CALLBACK (queue_place), self);
 
   /* what to do, while there is nothing */
   self->hint = gtk_label_new (NULL);
@@ -598,6 +891,9 @@ dictate_window_new (GtkApplication *app)
     gtk_widget_set_can_target (fade, FALSE);
     gtk_overlay_add_overlay (GTK_OVERLAY (page), fade);
   }
+
+  self->selection_bar = selection_bar (self);
+  gtk_overlay_add_overlay (GTK_OVERLAY (page), self->selection_bar);
 
   /* the microphone, in the middle of the bottom row */
   self->mic = dictate_mic_new (self->engine);
