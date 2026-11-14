@@ -1,3 +1,24 @@
+gnome-phone (0.1.9) unstable; urgency=medium
+
+  * neo-dictate: Dictate, a new app. A microphone button and a document:
+    what is said appears in it as it is said, recognised on the phone with
+    nothing sent anywhere, in English, German, Spanish (Moonshine's tiny
+    streaming models, with punctuation and capitals), French, Italian or
+    Russian (Vosk's small models, lower case). The app bar's language
+    button chooses among the languages installed; Copy and Clear are next
+    to it. The recognisers and models are not in these packages:
+    tools/neo-dictate-speech/build-debs.sh makes neo-dictate-moonshine,
+    neo-dictate-vosk and neo-dictate-en, -de, -es, -fr, -it and -ru from
+    their makers' releases.
+  * neo-iconpack-round: an icon for Dictate.
+  * gnome-shell-extension-gnome-phone: the lock screen's wallpaper is
+    decoded off the main loop, at the panel's size instead of three times
+    it. At boot its first frame took 2 s on a Galaxy S10e with the splash
+    still up; the lock screen now comes about 1.5 s sooner after the
+    shell starts.
+
+ -- pulpoff <pashkovsky@gmail.com>  Sat, 14 Nov 2026 08:23:16 +0100
+
 gnome-phone (0.1.8) unstable; urgency=medium
 
   * gnome-shell-extension-gnome-phone: the boot goes from the splash
