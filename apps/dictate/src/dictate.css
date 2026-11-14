@@ -4,6 +4,41 @@
   margin-right: 4px;
 }
 
+/* the language button: its code in a key cap's outline, as the keyboard's language key */
+.dictate-language label {
+  font-size: 12px;
+  font-weight: 800;
+  color: @neo_on_surface;
+  border: 2px solid @neo_on_surface;
+  border-radius: 6px;
+  padding: 1px 4px;
+}
+
+/* the language dialog's rows, as the Calendar's list dialogs: edge to edge, the checked radio in the primary
+   colour */
+.dictate-dialog-list {
+  margin: 0 -24px;
+}
+
+.dictate-dialog-item {
+  min-height: 48px;
+  padding: 0 24px;
+  color: @neo_on_surface;
+}
+
+.dictate-dialog-item label {
+  font-size: 16px;
+}
+
+.dictate-radio {
+  margin-right: 16px;
+  color: @neo_on_surface_variant;
+}
+
+.dictate-radio.dictate-radio-checked {
+  color: @neo_primary;
+}
+
 /* the document: body text a size up, on the surface, with the primary colour's caret and selection */
 .dictate-document,
 .dictate-document > text {

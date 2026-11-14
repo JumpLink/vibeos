@@ -3,10 +3,14 @@
  * The dictation point is the stretch between two marks: `from` (left gravity) and `to` (right gravity). The sentence
  * being spoken fills it, tagged "partial"; a finished sentence takes its place untagged, and both marks move past
  * it, so the next one follows it. Each finished sentence or update is one irreversible change: the undo history is
- * the user's typing, never half a sentence. */
+ * the user's typing, never half a sentence.
+ *
+ * The language listened in is the app bar's button, showing its code: the user's choice (GSettings neo.Dictate
+ * language) while its model is installed, else the first of the user's languages with one, else English. */
 #include "dictate-window.h"
 #include "dictate-engine.h"
 #include "dictate-mic.h"
+#include "dictate-models.h"
 #include "dictate-text.h"
 
 #include <errno.h>
@@ -20,8 +24,9 @@
 
 typedef struct {
   GtkWidget *window;
-  GtkWidget *scroller, *view, *hint, *mic, *copy, *clear;
+  GtkWidget *scroller, *view, *hint, *mic, *language, *copy, *clear;
   NeoSnackbar *snackbar;
+  GSettings *settings;
   GtkTextBuffer *buffer;
   GtkTextMark *from, *to;
   GtkTextTag *partial;
@@ -29,7 +34,9 @@ typedef struct {
   char *path;                   /* the document's file */
   guint save_id;
   guint inhibit;                /* the phone kept awake and its screen on while listening */
+  char *speaking;               /* the language of the dictation going on, for its casing */
   gboolean close_when_idle;     /* closed while listening: it closes once the last words are in */
+  gboolean restart_when_idle;   /* the language changed while listening: listening goes on in the new one */
 } Window;
 
 /* --- the document's file */
@@ -166,7 +173,7 @@ fill (Window *self, const char *text, GtkTextTag *tag)
   gtk_text_buffer_delete (self->buffer, &from, &to);
   if (*text)
     {
-      g_autofree char *tidy = dictate_text_tidy (text, starts_sentence (self));
+      g_autofree char *tidy = dictate_text_tidy (text, starts_sentence (self), self->speaking);
       g_autofree char *spaced_text = spaced (self, tidy);
 
       gtk_text_buffer_get_iter_at_mark (self->buffer, &from, self->from);
@@ -203,6 +210,113 @@ on_text (DictateEngine *engine, char **finished, const char *partial, Window *se
   fill (self, partial, self->partial);
   gtk_text_buffer_end_irreversible_action (self->buffer);
   follow (self);
+}
+
+/* --- the language */
+
+static void
+show_language (Window *self)
+{
+  const DictateLanguage *language = dictate_language_lookup (dictate_engine_get_language (self->engine));
+  GtkWidget *label = neo_pressable_get_child (NEO_PRESSABLE (self->language));
+  g_autofree char *code = language ? g_ascii_strup (language->code, -1) : NULL;
+  /* TRANSLATORS: the language button's name for screen readers; %s is the language's name for itself */
+  g_autofree char *name = language ? g_strdup_printf (_("Language: %s"), language->name) : NULL;
+
+  /* without a model there is nothing to choose: the microphone says what to install */
+  gtk_widget_set_visible (self->language, language != NULL);
+  if (!language)
+    return;
+  gtk_label_set_text (GTK_LABEL (label), code);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (self->language), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);
+}
+
+/* the language to listen in, as the models installed now allow */
+static void
+choose_language (Window *self)
+{
+  g_autofree char *chosen = g_settings_get_string (self->settings, "language");
+  g_autoptr (DictateModel) model = *chosen ? dictate_model_find (chosen) : NULL;
+  g_autofree char *code = model ? g_strdup (chosen) : dictate_language_default ();
+
+  dictate_engine_set_language (self->engine, code);
+  show_language (self);
+}
+
+static void start (Window *self);
+
+static void
+on_language_chosen (NeoDialog *dialog, int response, Window *self)
+{
+  GPtrArray *models = g_object_get_data (G_OBJECT (dialog), "dictate-models");
+  const DictateModel *model;
+  DictateState state;
+
+  if (response < 100 || response - 100 >= (int) models->len)
+    return;
+  model = models->pdata[response - 100];
+  g_settings_set_string (self->settings, "language", model->language);
+  if (g_strcmp0 (model->language, dictate_engine_get_language (self->engine)) == 0)
+    return;
+  dictate_engine_set_language (self->engine, model->language);
+  show_language (self);
+  /* listening: what was said goes in in the old language, then listening goes on in the new one */
+  state = dictate_engine_get_state (self->engine);
+  if (state == DICTATE_STARTING || state == DICTATE_LISTENING)
+    {
+      self->restart_when_idle = TRUE;
+      dictate_engine_stop (self->engine);
+    }
+}
+
+static void
+on_language_row (NeoPressable *row, NeoDialog *dialog)
+{
+  /* a row answers with its index, offset past the standard responses */
+  neo_dialog_respond (dialog, 100 + GPOINTER_TO_INT (g_object_get_data (G_OBJECT (row), "dictate-index")));
+}
+
+/* Android's single-choice list: a radio row for each language with a model, the current one checked; a tap on one
+ * chooses it */
+static void
+on_language (NeoPressable *button, Window *self)
+{
+  GPtrArray *models = dictate_models_installed ();
+  NeoDialog *dialog = neo_dialog_new (_("Language"));
+  GtkWidget *list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  const char *current = dictate_engine_get_language (self->engine);
+
+  for (guint i = 0; i < models->len; i++)
+    {
+      const DictateModel *model = models->pdata[i];
+      gboolean checked = g_strcmp0 (model->language, current) == 0;
+      GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+      GtkWidget *mark = gtk_image_new_from_icon_name (checked ? "dictate-radio-on-symbolic"
+                                                              : "dictate-radio-off-symbolic");
+      GtkWidget *text = gtk_label_new (dictate_language_lookup (model->language)->name);
+      GtkWidget *row;
+
+      gtk_image_set_pixel_size (GTK_IMAGE (mark), 24);
+      gtk_widget_add_css_class (mark, "dictate-radio");
+      if (checked)
+        gtk_widget_add_css_class (mark, "dictate-radio-checked");
+      gtk_box_append (GTK_BOX (box), mark);
+      gtk_label_set_xalign (GTK_LABEL (text), 0);
+      gtk_widget_set_hexpand (text, TRUE);
+      gtk_box_append (GTK_BOX (box), text);
+      row = neo_pressable_new (box);
+      gtk_widget_add_css_class (row, "dictate-dialog-item");
+      neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
+      g_object_set_data (G_OBJECT (row), "dictate-index", GINT_TO_POINTER (i));
+      g_signal_connect (row, "clicked", G_CALLBACK (on_language_row), dialog);
+      gtk_box_append (GTK_BOX (list), row);
+    }
+  gtk_widget_add_css_class (list, "dictate-dialog-list");
+  neo_dialog_set_content (dialog, list);
+  neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
+  g_object_set_data_full (G_OBJECT (dialog), "dictate-models", models, (GDestroyNotify) g_ptr_array_unref);
+  g_signal_connect (dialog, "response", G_CALLBACK (on_language_chosen), self);
+  neo_dialog_present (dialog, self->window);
 }
 
 static void
@@ -243,6 +357,12 @@ on_state_changed (DictateEngine *engine, Window *self)
           gtk_window_destroy (GTK_WINDOW (self->window));
           return;
         }
+      if (self->restart_when_idle)
+        {
+          self->restart_when_idle = FALSE;
+          start (self);
+          return;
+        }
     }
   show_state (self);
 }
@@ -253,25 +373,36 @@ on_error (DictateEngine *engine, const char *message, Window *self)
   neo_snackbar_show (self->snackbar, message, NULL, NULL, NULL, NEO_SNACKBAR_LONG);
 }
 
+/* listening, with what is said going where the cursor is */
 static void
-on_mic (DictateMic *mic, Window *self)
+start (Window *self)
 {
   g_autofree char *reason = NULL;
   GtkTextIter at;
 
+  /* a language installed since the window opened, or one taken away */
+  choose_language (self);
+  if (!dictate_engine_available (self->engine, &reason))
+    {
+      neo_snackbar_show (self->snackbar, reason, NULL, NULL, NULL, NEO_SNACKBAR_LONG);
+      show_state (self);
+      return;
+    }
+  gtk_text_buffer_get_iter_at_mark (self->buffer, &at, gtk_text_buffer_get_insert (self->buffer));
+  gtk_text_buffer_move_mark (self->buffer, self->from, &at);
+  gtk_text_buffer_move_mark (self->buffer, self->to, &at);
+  g_free (self->speaking);
+  self->speaking = g_strdup (dictate_engine_get_language (self->engine));
+  dictate_engine_start (self->engine);
+}
+
+static void
+on_mic (DictateMic *mic, Window *self)
+{
   switch (dictate_engine_get_state (self->engine))
     {
     case DICTATE_IDLE:
-      if (!dictate_engine_available (self->engine, &reason))
-        {
-          neo_snackbar_show (self->snackbar, reason, NULL, NULL, NULL, NEO_SNACKBAR_LONG);
-          return;
-        }
-      /* what is said goes where the cursor is */
-      gtk_text_buffer_get_iter_at_mark (self->buffer, &at, gtk_text_buffer_get_insert (self->buffer));
-      gtk_text_buffer_move_mark (self->buffer, self->from, &at);
-      gtk_text_buffer_move_mark (self->buffer, self->to, &at);
-      dictate_engine_start (self->engine);
+      start (self);
       break;
     case DICTATE_STARTING:
     case DICTATE_LISTENING:
@@ -367,6 +498,8 @@ window_free (gpointer data)
   g_signal_handlers_disconnect_by_data (self->engine, self);
   dictate_engine_stop (self->engine);
   g_clear_object (&self->engine);
+  g_clear_object (&self->settings);
+  g_free (self->speaking);
   g_free (self->path);
   g_free (self);
 }
@@ -383,6 +516,7 @@ dictate_window_new (GtkApplication *app)
 
   self->window = neo_window_new (app);
   self->engine = dictate_engine_new ();
+  self->settings = g_settings_new ("neo.Dictate");
   self->path = g_build_filename (g_get_user_data_dir (), "neo-dictate", "document.txt", NULL);
   g_object_set_data_full (G_OBJECT (self->window), "dictate-window", self, window_free);
   gtk_window_set_title (GTK_WINDOW (self->window), _("Dictate"));
@@ -396,6 +530,19 @@ dictate_window_new (GtkApplication *app)
   gtk_widget_set_valign (title, GTK_ALIGN_CENTER);
   gtk_widget_set_hexpand (title, TRUE);
   gtk_box_append (GTK_BOX (bar), title);
+  {
+    GtkWidget *code = gtk_label_new (NULL);
+
+    /* the outline round the code only, in the middle of the touch target */
+    gtk_widget_set_halign (code, GTK_ALIGN_CENTER);
+    gtk_widget_set_valign (code, GTK_ALIGN_CENTER);
+    self->language = neo_pressable_new (code);
+  }
+  gtk_widget_add_css_class (self->language, "neo-icon-button");
+  gtk_widget_add_css_class (self->language, "dictate-language");
+  neo_pressable_set_ripple (NEO_PRESSABLE (self->language), NEO_RIPPLE_CIRCLE, 20);
+  g_signal_connect (self->language, "clicked", G_CALLBACK (on_language), self);
+  gtk_box_append (GTK_BOX (bar), self->language);
   self->copy = action ("dictate-copy-symbolic", _("Copy"), G_CALLBACK (on_copy), self);
   gtk_box_append (GTK_BOX (bar), self->copy);
   self->clear = action ("dictate-delete-symbolic", _("Clear"), G_CALLBACK (on_clear), self);
@@ -471,6 +618,7 @@ dictate_window_new (GtkApplication *app)
   g_signal_connect (self->engine, "state-changed", G_CALLBACK (on_state_changed), self);
   g_signal_connect (self->engine, "error", G_CALLBACK (on_error), self);
   g_signal_connect (self->window, "close-request", G_CALLBACK (on_close_request), self);
+  choose_language (self);
   show_state (self);
   return self->window;
 }

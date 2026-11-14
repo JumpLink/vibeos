@@ -2,18 +2,14 @@
  *
  * Three threads take part. GStreamer's streaming thread hands each piece of microphone audio to on_sample, which
  * only measures its loudness and queues it, so the microphone never waits for the recogniser. The worker (work)
- * gives the queued audio to Moonshine and asks it for the transcript every UPDATE_MS; a transcript update takes up
- * to 0.7 s on a POCO X3 with the tiny model, during which the audio just queues up. What it hears goes to the main
- * thread (post), where the signals are emitted.
+ * gives the queued audio to the recogniser every UPDATE_MS, which reports what it heard; meanwhile the audio just
+ * queues up. What it heard goes to the main thread (post), where the signals are emitted.
  *
- * The library: libmoonshine.so (with the ONNX Runtime it brings, libonnxruntime.so.1, next to it) from MOONSHINE_DIR,
- * else from the system's library path. The models: a directory per model, named as Moonshine's downloads are
- * (tiny-streaming-en, small-streaming-de, ...), in neo-dictate/models under the user's data directory or one of the
- * system's. The one used is the smallest streaming model for the user's language, else for English: the tiny model
- * keeps up with speech on both reference phones (0.22 and 0.55 s of work per second of speech), the small one only
- * on the faster. */
+ * The worker loads the language's model the first time and keeps it: starting again in the same language is at
+ * once, and another language's model takes the place of the one before (0.15 s for Moonshine's tiny models, up to
+ * 0.9 s for Vosk's small ones on the reference phones). */
 #include "dictate-engine.h"
-#include "moonshine-api.h"
+#include "dictate-recogniser.h"
 
 #include <dlfcn.h>
 #include <glib/gi18n.h>
@@ -22,39 +18,21 @@
 #include <math.h>
 #include <string.h>
 
-#define RATE            16000
-#define UPDATE_MS       300     /* between transcript updates while listening */
+#define UPDATE_MS       300     /* between updates while listening */
 #define QUIET_DB        -55.0   /* loudness: level 0 at or under this (a quiet room is -50 on the phones' mics) */
 #define LOUD_DB         -20.0   /* ... 1 at or over this (speech close to the phone) */
-
-/* the sizes in the order they are tried, with their architectures */
-static const struct { const char *name; uint32_t arch; } MODELS[] = {
-  { "tiny-streaming", MOONSHINE_MODEL_ARCH_TINY_STREAMING },
-  { "small-streaming", MOONSHINE_MODEL_ARCH_SMALL_STREAMING },
-  { "base-streaming", MOONSHINE_MODEL_ARCH_BASE_STREAMING },
-  { "medium-streaming", MOONSHINE_MODEL_ARCH_MEDIUM_STREAMING },
-};
-
-typedef struct {
-  void                     *library;
-  MoonshineGetVersion       get_version;
-  MoonshineErrorToString    error_to_string;
-  MoonshineLoadFromFiles    load;
-  MoonshineFreeTranscriber  free_transcriber;
-  MoonshineCreateStream     create_stream;
-  MoonshineStreamCall       free_stream, start_stream, stop_stream;
-  MoonshineAddAudio         add_audio;
-  MoonshineTranscribeStream transcribe;
-} Moonshine;
 
 struct _DictateEngine
 {
   GObject parent;
   DictateState state;
+  char *language;
 
-  /* the worker's: loaded on the first start, kept from then on */
-  Moonshine ms;
-  int32_t transcriber;          /* < 0: not loaded */
+  /* the worker's: the model loaded last, kept from then on */
+  DictateModel *loaded;
+  DictateRecogniser *recogniser;
+  /* the model to listen with, from start until the worker took it */
+  DictateModel *wanted;
 
   GstElement *pipeline;         /* while the microphone is open */
   guint bus_watch;
@@ -73,109 +51,61 @@ static guint signals[N_SIGNALS];
 
 G_DEFINE_FINAL_TYPE (DictateEngine, dictate_engine, G_TYPE_OBJECT)
 
-/* --- where the library and the model are */
+/* --- the recognisers' libraries */
 
-static char *
-library_path (void)
+char *
+dictate_library_path (const char *library)
 {
-  char *path = g_build_filename (MOONSHINE_DIR, "libmoonshine.so", NULL);
+  char *path = g_build_filename (LIBRARY_DIR, library, NULL);
 
   if (g_file_test (path, G_FILE_TEST_EXISTS))
     return path;
   g_free (path);
-  return g_strdup ("libmoonshine.so");
+  return g_strdup (library);
 }
 
-static gboolean
-library_installed (void)
+gboolean
+dictate_library_installed (const char *library)
 {
-  g_autofree char *path = library_path ();
-  void *library;
+  g_autofree char *path = dictate_library_path (library);
+  void *handle;
 
   if (g_path_is_absolute (path))
     return TRUE;
   /* in the system's path, if anywhere: there is nothing to look for but loading it */
-  library = dlopen (path, RTLD_LAZY | RTLD_LOCAL);
-  if (library)
-    dlclose (library);
-  return library != NULL;
-}
-
-static gboolean
-is_model (const char *dir)
-{
-  static const char *const FILES[] = { "streaming_config.json", "tokenizer.bin", "encoder.ort", "decoder_kv.ort" };
-
-  for (guint i = 0; i < G_N_ELEMENTS (FILES); i++)
-    {
-      g_autofree char *path = g_build_filename (dir, FILES[i], NULL);
-
-      if (!g_file_test (path, G_FILE_TEST_IS_REGULAR))
-        return FALSE;
-    }
-  return TRUE;
-}
-
-/* the model's directory and its architecture, or NULL */
-static char *
-find_model (uint32_t *arch)
-{
-  const char *const *languages = g_get_language_names ();
-  g_autoptr (GPtrArray) dirs = g_ptr_array_new ();
-  char lang[3] = "en";
-
-  /* the first of the user's languages with a code: "de_DE.UTF-8" is de */
-  for (guint i = 0; languages[i]; i++)
-    if (g_ascii_isalpha (languages[i][0]) && g_ascii_isalpha (languages[i][1]) &&
-        (languages[i][2] == '\0' || languages[i][2] == '_' || languages[i][2] == '.' || languages[i][2] == '@'))
-      {
-        lang[0] = g_ascii_tolower (languages[i][0]);
-        lang[1] = g_ascii_tolower (languages[i][1]);
-        break;
-      }
-
-  g_ptr_array_add (dirs, (gpointer) g_get_user_data_dir ());
-  for (const char *const *d = g_get_system_data_dirs (); *d; d++)
-    g_ptr_array_add (dirs, (gpointer) *d);
-
-  for (int pass = 0; pass < 2; pass++)
-    {
-      const char *code = pass == 0 ? lang : "en";
-
-      if (pass == 1 && g_str_equal (lang, "en"))
-        break;
-      for (guint m = 0; m < G_N_ELEMENTS (MODELS); m++)
-        for (guint d = 0; d < dirs->len; d++)
-          {
-            g_autofree char *name = g_strdup_printf ("%s-%s", MODELS[m].name, code);
-            char *dir = g_build_filename (g_ptr_array_index (dirs, d), "neo-dictate", "models", name, NULL);
-
-            if (is_model (dir))
-              {
-                *arch = MODELS[m].arch;
-                return dir;
-              }
-            g_free (dir);
-          }
-    }
-  return NULL;
+  handle = dlopen (path, RTLD_LAZY | RTLD_LOCAL);
+  if (handle)
+    dlclose (handle);
+  return handle != NULL;
 }
 
 gboolean
 dictate_engine_available (DictateEngine *self, char **reason)
 {
-  uint32_t arch;
-  g_autofree char *model = NULL;
+  g_autoptr (DictateModel) model = self->language ? dictate_model_find (self->language) : NULL;
+  const DictateLanguage *language = dictate_language_lookup (self->language);
+  const DictateRecogniserClass *recogniser;
 
-  if (!library_installed ())
-    {
-      *reason = g_strdup (_("Speech recognition is not installed. Install the neo-dictate-moonshine package."));
-      return FALSE;
-    }
-  model = find_model (&arch);
   if (!model)
     {
-      *reason = g_strdup (_("There is no speech model. Install the neo-dictate-moonshine package."));
+      g_autofree char *package = language ? g_strconcat ("neo-dictate-", language->code, NULL) : NULL;
+
+      if (language)
+        /* TRANSLATORS: the first %s is the language's name for itself (Deutsch), the second the package's name
+         * (neo-dictate-de) */
+        *reason = g_strdup_printf (_("There is no speech model for %s. Install the %s package."), language->name,
+                                   package);
+      else
+        *reason = g_strdup (_("There is no speech model. Install a neo-dictate language package, such as "
+                              "neo-dictate-en."));
+      return FALSE;
+    }
+  recogniser = dictate_recogniser_class (model->kind);
+  if (!recogniser->installed ())
+    {
+      /* TRANSLATORS: %s is the package's name (neo-dictate-moonshine) */
+      *reason = g_strdup_printf (_("Speech recognition is not installed. Install the %s package."),
+                                 recogniser->package);
       return FALSE;
     }
   return TRUE;
@@ -252,120 +182,53 @@ post (DictateEngine *self, PostKind kind, char **finished, char *text, DictateSt
 
 /* --- the worker */
 
+/* the model the start asked for, loaded */
 static gboolean
-load_library (Moonshine *ms, char **error)
+load (DictateEngine *self, DictateModel *model)
 {
-  g_autofree char *path = library_path ();
-  int32_t version;
+  g_autofree char *error = NULL;
+  const DictateRecogniserClass *recogniser = dictate_recogniser_class (model->kind);
 
-  ms->library = dlopen (path, RTLD_NOW | RTLD_LOCAL);
-  if (!ms->library)
+  if (self->recogniser && g_str_equal (self->loaded->dir, model->dir))
     {
-      *error = g_strdup (dlerror ());
-      return FALSE;
+      dictate_model_free (model);
+      return TRUE;
     }
-#define SYMBOL(field, name) \
-  if (!(*(void **) &ms->field = dlsym (ms->library, name))) { *error = g_strdup_printf ("no %s", name); goto fail; }
-  SYMBOL (get_version, "moonshine_get_version");
-  SYMBOL (error_to_string, "moonshine_error_to_string");
-  SYMBOL (load, "moonshine_load_transcriber_from_files");
-  SYMBOL (free_transcriber, "moonshine_free_transcriber");
-  SYMBOL (create_stream, "moonshine_create_stream");
-  SYMBOL (free_stream, "moonshine_free_stream");
-  SYMBOL (start_stream, "moonshine_start_stream");
-  SYMBOL (stop_stream, "moonshine_stop_stream");
-  SYMBOL (add_audio, "moonshine_transcribe_add_audio_to_stream");
-  SYMBOL (transcribe, "moonshine_transcribe_stream");
-#undef SYMBOL
-  /* moonshine-api.h's structures are those of version 3 */
-  version = ms->get_version ();
-  if (version < 30000 || version >= 40000)
+  if (self->recogniser)
     {
-      *error = g_strdup_printf ("version %d, not 3", version);
-      goto fail;
+      dictate_recogniser_class (self->loaded->kind)->unload (self->recogniser);
+      self->recogniser = NULL;
     }
-  return TRUE;
-
-fail:
-  dlclose (ms->library);
-  memset (ms, 0, sizeof *ms);
-  return FALSE;
-}
-
-static gboolean
-load (DictateEngine *self)
-{
-  g_autofree char *model = NULL, *error = NULL;
-  uint32_t arch;
-
-  if (self->transcriber >= 0)
-    return TRUE;
-  if (!self->ms.library && !load_library (&self->ms, &error))
+  g_clear_pointer (&self->loaded, dictate_model_free);
+  self->recogniser = recogniser->load (model, &error);
+  if (!self->recogniser)
     {
-      g_warning ("Moonshine: %s", error);
-      post (self, POST_ERROR, NULL, g_strdup (_("Speech recognition could not be started.")), 0);
-      return FALSE;
-    }
-  model = find_model (&arch);
-  if (model)
-    self->transcriber = self->ms.load (model, arch, NULL, 0, MOONSHINE_HEADER_VERSION);
-  if (!model || self->transcriber < 0)
-    {
-      g_warning ("Moonshine: %s: %s", model ? model : "no model",
-                 model ? self->ms.error_to_string (self->transcriber) : "");
+      g_warning ("%s: %s", recogniser->name, error);
+      dictate_model_free (model);
       post (self, POST_ERROR, NULL, g_strdup (_("The speech model could not be loaded.")), 0);
       return FALSE;
     }
+  self->loaded = model;
   return TRUE;
 }
 
-/* the queued audio to the recogniser: TRUE if there was any */
-static gboolean
-feed (DictateEngine *self, int32_t stream)
+/* the queued audio to the recogniser, and what it heard to the main thread if that is news. `partial` is the
+ * unfinished sentence as last passed on. */
+static void
+hear (DictateEngine *self, DictateStream *stream, char **partial)
 {
+  const DictateRecogniserClass *recogniser = dictate_recogniser_class (self->loaded->kind);
   g_autoptr (GArray) audio = NULL;
+  g_autoptr (GPtrArray) finished = g_ptr_array_new_with_free_func (g_free);
+  char *now = NULL;
 
   g_mutex_lock (&self->lock);
   audio = self->queued;
   self->queued = g_array_new (FALSE, FALSE, sizeof (float));
   g_mutex_unlock (&self->lock);
-  if (audio->len)
-    self->ms.add_audio (self->transcriber, stream, (const float *) audio->data, audio->len, RATE, 0);
-  return audio->len > 0;
-}
-
-/* What is new in the transcript since the last time, to the main thread. `done` counts the lines already passed on as
- * finished; `partial` is the unfinished one as last passed on. */
-static void
-report (DictateEngine *self, int32_t stream, uint64_t *done, char **partial)
-{
-  struct transcript_t *transcript = NULL;
-  g_autoptr (GPtrArray) finished = g_ptr_array_new_with_free_func (g_free);
-  const char *heard = "";
-  char *now;
-
-  if (self->ms.transcribe (self->transcriber, stream, 0, &transcript) != 0 || !transcript)
+  if (audio->len == 0)
     return;
-  for (uint64_t i = *done; i < transcript->line_count; i++)
-    {
-      const struct transcript_line_t *line = &transcript->lines[i];
-      const char *text = line->text ? line->text : "";
-
-      if (line->is_complete)
-        {
-          char *sentence = g_strstrip (g_strdup (text));
-
-          /* speech the recogniser made nothing of is an empty line */
-          if (*sentence)
-            g_ptr_array_add (finished, sentence);
-          else
-            g_free (sentence);
-          *done = i + 1;
-        }
-      else
-        heard = text;
-    }
-  now = g_strstrip (g_strdup (heard));
+  recogniser->hear (stream, (const float *) audio->data, audio->len, finished, &now);
   if (finished->len == 0 && g_str_equal (now, *partial))
     {
       g_free (now);
@@ -381,17 +244,23 @@ static gpointer
 work (gpointer data)
 {
   DictateEngine *self = data;
-  int32_t stream = -1;
-  uint64_t done = 0;
+  DictateModel *model;
+  const DictateRecogniserClass *recogniser;
+  DictateStream *stream = NULL;
   g_autofree char *partial = g_strdup ("");
+  g_autofree char *error = NULL;
   gint64 last = 0;
 
-  if (!load (self))
+  g_mutex_lock (&self->lock);
+  model = g_steal_pointer (&self->wanted);
+  g_mutex_unlock (&self->lock);
+  if (!load (self, model))
     goto out;
-  stream = self->ms.create_stream (self->transcriber, 0);
-  if (stream < 0 || self->ms.start_stream (self->transcriber, stream) != 0)
+  recogniser = dictate_recogniser_class (self->loaded->kind);
+  stream = recogniser->begin (self->recogniser, &error);
+  if (!stream)
     {
-      g_warning ("Moonshine: no stream: %s", self->ms.error_to_string (stream < 0 ? stream : -1));
+      g_warning ("%s: %s", recogniser->name, error);
       post (self, POST_ERROR, NULL, g_strdup (_("Speech recognition could not be started.")), 0);
       goto out;
     }
@@ -410,18 +279,23 @@ work (gpointer data)
       if (stop)
         break;
       last = g_get_monotonic_time ();
-      if (feed (self, stream))
-        report (self, stream, &done, &partial);
+      hear (self, stream, &partial);
     }
 
-  /* the microphone is closed: what it heard last, and the end of the stream, which finishes the last sentence */
-  feed (self, stream);
-  self->ms.stop_stream (self->transcriber, stream);
-  report (self, stream, &done, &partial);
+  /* the microphone is closed: what it heard last, then the end of the stream, which finishes the last sentence */
+  hear (self, stream, &partial);
+  {
+    g_autoptr (GPtrArray) finished = g_ptr_array_new_with_free_func (g_free);
+
+    recogniser->end (stream, finished);
+    if (finished->len || *partial)
+      {
+        g_ptr_array_add (finished, NULL);
+        post (self, POST_TEXT, (char **) g_ptr_array_steal (finished, NULL), g_strdup (""), 0);
+      }
+  }
 
 out:
-  if (stream >= 0)
-    self->ms.free_stream (self->transcriber, stream);
   post (self, POST_STATE, NULL, NULL, DICTATE_IDLE);
   g_object_unref (self);
   return NULL;
@@ -481,7 +355,7 @@ start_capture (DictateEngine *self)
   g_autoptr (GstElementFactory) pulse = gst_element_factory_find ("pulsesrc");
   g_autofree char *description = g_strdup_printf (
     "%s ! audioconvert ! audioresample ! audio/x-raw,format=F32LE,rate=%d,channels=1,layout=interleaved "
-    "! appsink name=sink sync=false", pulse ? "pulsesrc client-name=Dictate" : "autoaudiosrc", RATE);
+    "! appsink name=sink sync=false", pulse ? "pulsesrc client-name=Dictate" : "autoaudiosrc", DICTATE_RATE);
   g_autoptr (GError) error = NULL;
   GstAppSinkCallbacks callbacks = { .new_sample = on_sample };
   GstElement *sink;
@@ -523,17 +397,41 @@ stop_capture (DictateEngine *self)
 /* --- the engine */
 
 void
+dictate_engine_set_language (DictateEngine *self, const char *code)
+{
+  g_free (self->language);
+  self->language = g_strdup (code);
+}
+
+const char *
+dictate_engine_get_language (DictateEngine *self)
+{
+  return self->language;
+}
+
+void
 dictate_engine_start (DictateEngine *self)
 {
+  DictateModel *model;
+
   if (self->state != DICTATE_IDLE)
     return;
+  model = self->language ? dictate_model_find (self->language) : NULL;
+  if (!model)
+    {
+      g_signal_emit (self, signals[SIGNAL_ERROR], 0, _("The speech model could not be loaded."));
+      return;
+    }
   g_mutex_lock (&self->lock);
   g_array_set_size (self->queued, 0);
   self->stop = FALSE;
+  g_clear_pointer (&self->wanted, dictate_model_free);
+  self->wanted = model;
   g_mutex_unlock (&self->lock);
   /* the microphone first: what is said while the model loads is heard too */
   if (!start_capture (self))
     {
+      g_clear_pointer (&self->wanted, dictate_model_free);
       g_signal_emit (self, signals[SIGNAL_ERROR], 0, _("The microphone could not be opened."));
       return;
     }
@@ -575,10 +473,11 @@ dictate_engine_finalize (GObject *object)
 
   /* the worker holds a reference while it runs: it is over by now */
   stop_capture (self);
-  if (self->transcriber >= 0)
-    self->ms.free_transcriber (self->transcriber);
-  if (self->ms.library)
-    dlclose (self->ms.library);
+  if (self->recogniser)
+    dictate_recogniser_class (self->loaded->kind)->unload (self->recogniser);
+  dictate_model_free (self->loaded);
+  dictate_model_free (self->wanted);
+  g_free (self->language);
   g_array_unref (self->queued);
   g_mutex_clear (&self->lock);
   g_cond_clear (&self->wake);
@@ -600,7 +499,6 @@ dictate_engine_class_init (DictateEngineClass *klass)
 static void
 dictate_engine_init (DictateEngine *self)
 {
-  self->transcriber = -1;
   self->queued = g_array_new (FALSE, FALSE, sizeof (float));
   g_mutex_init (&self->lock);
   g_cond_init (&self->wake);

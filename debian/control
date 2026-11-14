@@ -437,18 +437,27 @@ Architecture: any
 Depends: gstreamer1.0-plugins-base,
          ${shlibs:Depends},
          ${misc:Depends},
-Recommends: neo-dictate-moonshine,
+Recommends: neo-dictate-en | neo-dictate-de | neo-dictate-es | neo-dictate-fr | neo-dictate-it | neo-dictate-ru,
             gstreamer1.0-pulseaudio,
+Suggests: neo-dictate-de,
+          neo-dictate-en,
+          neo-dictate-es,
+          neo-dictate-fr,
+          neo-dictate-it,
+          neo-dictate-ru,
 Description: dictation for GNOME Phone
  Dictate turns speech into text on the phone itself: a microphone button and a
- document, where what is said appears as it is said, recognised by Moonshine's
- small streaming models with nothing sent anywhere. The document is plain text,
- edited and copied as any other.
+ document, where what is said appears as it is said, with nothing sent
+ anywhere. The document is plain text, edited and copied as any other. It
+ hears English, German, Spanish, French, Italian and Russian, the language
+ chosen in its app bar.
  .
- The recogniser is not part of GNOME Phone: neo-dictate loads Moonshine's
- library from /usr/lib/neo-dictate and its models from
- /usr/share/neo-dictate/models, which the neo-dictate-moonshine package
- (made by tools/neo-dictate-moonshine in the source) installs.
+ The recognisers are not part of GNOME Phone: neo-dictate loads Moonshine's
+ (English, German, Spanish) and Vosk's (French, Italian, Russian) libraries
+ from /usr/lib/neo-dictate and their models from
+ /usr/share/neo-dictate/models. The packages neo-dictate-moonshine,
+ neo-dictate-vosk and one per language (neo-dictate-en, neo-dictate-de, ...),
+ made by tools/neo-dictate-speech in the source, install them.
 
 Package: neo-iconpack-round
 Architecture: all

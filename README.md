@@ -29,7 +29,7 @@ brought up on a POCO X3 NFC.
 | `neo-weather` | The weather where the phone is (GeoClue, or GNOME Weather's first city), from Open-Meteo |
 | `neo-camera` | LineageOS's Aperture rebuilt in GTK 4 on libcamera and GStreamer: photos, videos, barcode scanning |
 | `neo-files` | File Manager+ rebuilt in GTK 4 on GIO and GVfs: storage, removable media, recycle bin, SMB/SFTP/FTP/WebDAV |
-| `neo-dictate` | Dictate: speech to text on the phone itself, a microphone button and a document that fills as you speak. The recogniser is [Moonshine](https://github.com/moonshine-ai/moonshine) (MIT), which is not in these packages: `tools/neo-dictate-moonshine/build-deb.sh` makes `neo-dictate-moonshine`, its library and tiny streaming English model, from Moonshine's own release |
+| `neo-dictate` | Dictate: speech to text on the phone itself, a microphone button and a document that fills as you speak, in English, German, Spanish, French, Italian or Russian. The recognisers are [Moonshine](https://github.com/moonshine-ai/moonshine) (MIT; English, German, Spanish, with punctuation) and [Vosk](https://alphacephei.com/vosk/) (Apache-2.0; French, Italian, Russian, lower case), which are not in these packages: `tools/neo-dictate-speech/build-debs.sh` makes `neo-dictate-moonshine`, `neo-dictate-vosk` and a package per language (`neo-dictate-en`, `neo-dictate-de`, ...) from their own releases |
 | `neo-iconpack-round` | Round, the default icon pack: white Material Symbols glyphs (Apache-2.0) on gradient discs |
 | `neo-parallax-solar-system` | The default wallpaper: a tilt-parallax solar system from NASA's public-domain images |
 | `sim-apn` | Sets up a mobile data profile for every new SIM |

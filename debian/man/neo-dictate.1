@@ -5,8 +5,15 @@ neo-dictate \- dictation for GNOME Phone
 .B neo-dictate
 .SH DESCRIPTION
 Turns speech into text on the phone: the microphone button starts and stops listening, and what is said goes into the
-document at its cursor as it is said. Speech is recognised by Moonshine's streaming transcriber on the phone itself,
-from the user's default audio source.
+document at its cursor as it is said. Speech is recognised on the phone itself, from the user's default audio source:
+English, German and Spanish by Moonshine's streaming transcriber, with punctuation and capitals; French, Italian and
+Russian by Vosk, in lower case and without punctuation.
+.PP
+The language is the app bar's button, which shows its code; it lists the languages whose models are installed. The
+choice is kept in the GSettings key
+.B neo.Dictate language
+(empty: the first of the user's languages with a model, else English). Choosing another while listening finishes what
+was said, then listens on in the new language.
 .PP
 The document is kept in
 .IR $XDG_DATA_HOME/neo-dictate/document.txt .
@@ -15,13 +22,15 @@ The application's
 action (org.gtk.Actions on /neo/Dictate) starts and stops listening as the button does.
 .SH FILES
 .TP
-.I /usr/lib/neo-dictate/libmoonshine.so
-Moonshine's library, loaded when listening starts (from the system's library path if it is not there).
+.I /usr/lib/neo-dictate/libmoonshine.so, /usr/lib/neo-dictate/libvosk.so
+The recognisers' libraries, loaded when listening starts (from the system's library path if they are not there).
 .TP
 .I /usr/share/neo-dictate/models/
-The models, a directory each, named as Moonshine names them (tiny-streaming-en, small-streaming-de, ...); one in
+The models, a directory each, named as their recogniser names them: Moonshine's tiny-streaming-en,
+small-streaming-de, ...; Vosk's vosk-model-small-ru-0.22 or vosk-small-ru. The part of the name that is a language's
+code is its language. One in
 .I $XDG_DATA_HOME/neo-dictate/models/
-is found first. The smallest streaming model for the user's language is used, else the smallest English one.
+is found first. Of several for a language, Moonshine's smallest streaming model is used, then Vosk's.
 .SH ENVIRONMENT
 .TP
 .B MOONSHINE_ORT_SINGLE_THREAD

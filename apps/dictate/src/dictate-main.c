@@ -1,7 +1,8 @@
 /* neo-dictate: Dictate, speech to text on the phone itself.
  *
  * A start button and a document: what is said appears in the document as it is said, recognised on the phone by
- * Moonshine (dictate-engine.c), with nothing sent anywhere. The document is plain text, edited as any other. */
+ * Moonshine or Vosk, by the language (dictate-engine.c), with nothing sent anywhere. The document is plain text,
+ * edited as any other. */
 #include "dictate-window.h"
 
 #include <glib/gi18n.h>
