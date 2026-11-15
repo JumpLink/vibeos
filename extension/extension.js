@@ -10,6 +10,7 @@ import {CollectWhenStill} from './gc.js';
 import {Cutout, CutoutBand} from './cutout.js';
 import {Desktop, isDesktopSession} from './dock.js';
 import {EndMark} from './endmark.js';
+import {syncGtkCss} from './gtkcss.js';
 import {HeadsUp} from './headsup.js';
 import {Home} from './home.js';
 import {KeyHaptics} from './keyhaptics.js';
@@ -57,6 +58,13 @@ export default class GnomePhoneExtension extends Extension {
         } catch (e) {
             logError(e, 'gnome-phone: the keyboard for a tapped text field');
             this._touchFocusKeyboard = null;
+        }
+
+        // the phone's rules for GTK 4 apps (gtkcss.js), taken out again on the docked desktop
+        try {
+            syncGtkCss(!isDesktopSession());
+        } catch (e) {
+            logError(e, 'gnome-phone: the GTK apps\' stylesheet');
         }
 
         // docked to a display: GNOME's own desktop there, and none of the phone's UI (dock.js)

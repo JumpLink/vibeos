@@ -334,14 +334,21 @@ export class Navigation {
             !win.get_transient_for();
     }
 
-    // The app on screen: the focused task; with the launcher focused (or nothing), the topmost task stacked over it.
+    // The app on screen: the focused task, or the task a focused dialog belongs to; otherwise the topmost task stacked
+    // over the launcher. A file picker, an alert or a preferences window is a window of its own, transient for the
+    // app's: taken as is, it is no task, and the swipe up did nothing at all while one was open (Image Viewer's "Open
+    // Image" picker, 11-15). The app goes to recents with its dialogs (task.js draws them on its card; mutter hides a
+    // transient with its minimized parent).
     // A window shorter than the app area leaves a strip of the launcher bare at the bottom (Waydroid's display was
     // 753 px under a 761 px app area on the POCO), and a touch there focuses the launcher before the swipe up sees
     // it: the swipe then took the at-home path and the app sprang back.
     _appWindow() {
         const focus = global.display.focus_window;
-        if (focus && !this.home.isHome(focus))
-            return !focus.minimized && this.isTask(focus) ? focus : null;
+        if (focus && !this.home.isHome(focus)) {
+            const owner = focus.find_root_ancestor();
+            if (!owner.minimized && this.isTask(owner))
+                return owner;
+        }
         const ws = global.workspace_manager.get_active_workspace();
         const stack = global.display.sort_windows_by_stacking(ws.list_windows());
         for (let i = stack.length - 1; i >= 0; i--) {

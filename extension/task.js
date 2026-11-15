@@ -246,6 +246,27 @@ export class TaskView {
             this.actor = null;
             this._clone.source = null;
         }, this);
+
+        // The app's open dialogs (a file picker, an alert) are on its card, as on Android: over the window in their
+        // stacking order, and hidden while the card stands in. Left alone they stayed full size on screen while the
+        // app's card shrank under them.
+        const dialogs = [];
+        win.foreach_transient(t => {
+            if (!t.minimized && t.get_compositor_private())
+                dialogs.push(t);
+            return true;
+        });
+        this._dialogs = global.display.sort_windows_by_stacking(dialogs).map(t => {
+            const actor = t.get_compositor_private();
+            const dialog = {actor, clone: new Clutter.Clone({source: actor, x: actor.x - m.x, y: actor.y - m.y})};
+            this._view.inner.add_child(dialog.clone);
+            actor.opacity = 0;
+            actor.connectObject('destroy', () => {
+                dialog.actor = null;
+                dialog.clone.source = null;
+            }, this);
+            return dialog;
+        });
     }
 
     // The window's content scaled uniformly to the rect's width (device px), cropped about its middle to the
@@ -271,6 +292,13 @@ export class TaskView {
 
     destroy() {
         this._clone.destroy();
+        for (const dialog of this._dialogs) {
+            dialog.clone.destroy();
+            if (dialog.actor) {
+                dialog.actor.disconnectObject(this);
+                dialog.actor.opacity = 255;
+            }
+        }
         keepView(this._view);
         if (this.actor) {
             this.actor.disconnectObject(this);

@@ -86,7 +86,9 @@ export class SidewaysGestures {
         if (Main.actionMode !== Shell.ActionMode.NORMAL || nav.busy || nav._back?.busy || nav.recentsShown ||
             nav.shadeOpen() || nav._keyguard?.showing)
             return false;
-        const win = global.display.focus_window;
+        // a focused dialog's swipes are its app's, as upright (navigation.js _appWindow); back's Escape still goes to
+        // the dialog, which has the focus
+        const win = global.display.focus_window?.find_root_ancestor();
         if (!win || win.minimized || !nav.isTask(win))
             return false;
         const s = this._scale();
