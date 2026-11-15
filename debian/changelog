@@ -1,3 +1,23 @@
+gnome-phone (0.1.11) unstable; urgency=medium
+
+  * gnome-shell-extension-gnome-phone: the home and recents swipes work
+    while an app has a dialog up. A file picker, an alert or a preferences
+    window is a window of its own, and with one in front the swipe up did
+    nothing (Image Viewer's "Open Image", and the file pickers in Settings,
+    Clock, Calendar and the browser's uploads). The app goes to recents
+    with its dialog, its card shows the dialog over it, and it comes back
+    with the dialog in front; the back swipe still closes the dialog.
+    Sideways too.
+  * gnome-shell-extension-gnome-phone: the file picker's sidebar no longer
+    has the asking app's title at its head. The extension keeps its rules
+    for GTK 4 apps in a marked block of ~/.config/gtk-4.0/gtk.css, and takes
+    them out on the docked desktop.
+  * gnome-phone-session: the phone's own storage (UFS or eMMC) is no longer
+    listed as drives in Files and the file picker: no more efs, vendor,
+    product or "629 MB Volume". SD cards and USB drives still show.
+
+ -- pulpoff <pashkovsky@gmail.com>  Sun, 15 Nov 2026 17:37:50 +0100
+
 gnome-phone (0.1.10) unstable; urgency=medium
 
   * neo-dictate: the document is read only, so tapping it no longer brings
