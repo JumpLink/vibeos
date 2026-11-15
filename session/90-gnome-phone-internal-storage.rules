@@ -1,0 +1,8 @@
+# The phone's own storage is not a drive to open: Android's partitions on it (efs, modem, persist, vendor...) and the
+# system's own. udisks marks them ignored, so Files, the file picker and the docked desktop leave them out; an SD card
+# or a USB drive still shows. After 60-persistent-storage.rules, which sets ID_PATH.
+
+# UFS: the host controller's platform device is named ufs or ufshc (13d60000.ufs on the S10e, 1d84000.ufshc on the Poco)
+SUBSYSTEM=="block", ENV{ID_PATH}=="platform-*.ufs*", ENV{UDISKS_IGNORE}="1"
+# eMMC: the card is type MMC (an SD card is type SD)
+SUBSYSTEM=="block", KERNEL=="mmcblk*", ATTRS{type}=="MMC", ENV{UDISKS_IGNORE}="1"

@@ -11,6 +11,7 @@ install -m 644 gnome-phone.service gnome-desktop.service neo-dock.service input-
     neo-wakeup.service /etc/systemd/system/
 install -m 755 neo-dock sim-apn /usr/local/sbin/
 install -m 644 71-neo-dock.rules /etc/udev/rules.d/
+install -m 644 90-gnome-phone-internal-storage.rules /etc/udev/rules.d/
 install -m 644 pam.d/gnome-phone /etc/pam.d/
 install -m 644 environment.d/60-spongy.conf /etc/environment.d/
 install -m 644 neo.Wakeup.conf /etc/dbus-1/system.d/

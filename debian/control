@@ -126,6 +126,10 @@ Description: GNOME Phone session
  starts the session on tty7 as one user), and neo-dock, which switches to the
  regular GNOME desktop while an external display is connected. None of these
  units is enabled on installation; see README.Debian.
+ .
+ A udev rule keeps the phone's own storage (UFS or eMMC: Android's partitions
+ and the system's) out of Files and the file picker; SD cards and USB drives
+ still show.
 
 Package: gnome-phone-daemons
 Architecture: any

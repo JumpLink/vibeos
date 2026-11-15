@@ -25,6 +25,8 @@ install_data('neo-dock', 'sim-apn', install_dir: sbindir, install_mode: 'rwxr-xr
 # the dock switcher's udev rule is opt-in: on a plug or an unplug neo-dock starts a session, which would take over a
 # desktop that did not ask for it. Linked into /etc/udev/rules.d by whoever wants it
 install_data('71-neo-dock.rules', install_dir: datadir / 'gnome-phone-session')
+# the phone's own storage hidden from Files and the file picker (see the file)
+install_data('90-gnome-phone-internal-storage.rules', install_dir: prefix / 'lib' / 'udev' / 'rules.d')
 # the lock screen's PAM service (gp-auth)
 install_data('pam.d/gnome-phone', install_dir: get_option('sysconfdir') / 'pam.d')
 # neo-wakeup's bus name
