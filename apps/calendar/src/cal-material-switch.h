@@ -1,5 +1,5 @@
 /* CalMaterialSwitch: the editor's All day switch, without thumb icons, in the colours of the look in use
- * (cal-colors.h). libneo's NeoSwitch draws the same switch in its own dark palette only; this is it over
+ * (cal-colors.h). libvibeos's VibeosSwitch draws the same switch in its own dark palette only; this is it over
  * the app's palette, so the light theme has a light switch.
  *
  *   off  an outlined track, a small thumb at the start

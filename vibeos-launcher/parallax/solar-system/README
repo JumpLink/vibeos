@@ -1,0 +1,87 @@
+solar-system: a parallax set for the VibeOS launcher, made from NASA images (2026-11-12)
+
+The planets, the Moon and the Sun are NASA photographs and visualizations, all
+from NASA's own sites. The star field, the glows, the dust band, the orbit
+lines and the asteroid belt are original procedural art drawn by
+build_solar_system.py (the generator, kept beside this set in
+vibeos-assets/public/scripts). No ESA, ESO, JAXA, Hubble or individually
+credited image is used.
+
+Layers, back to front (depth in parallax.json):
+  layer0.jpg  -0.60  star field, glows, dust band (procedural)
+  layer1.png  -0.25  orbit lines, asteroid belt (procedural); the Sun
+  layer2.png   0.10  Earth, Moon, Mars
+  layer3.png   0.55  Saturn
+  layer4.png   1.00  Jupiter
+wallpaper.jpg is the set flattened at rest (1080x2280); preview.jpg is 512x512.
+
+Edits made to every image: cut out of its black background with an
+antialiased edge, scaled, and shaded toward the Sun. Earth and Mars got a
+thin atmosphere glow. The Saturn image is mirrored left to right, so that
+its lit side faces the Sun. The Sun image is recoloured from SDO's 304 A
+false colour to yellow-white.
+
+Sources
+
+1. Sun: "SDO:AIA Full-Disk View of Launching Filament"
+   NASA ID: GSFC_20171208_Archive_e002069 (NASA Goddard Space Flight Center)
+   https://images.nasa.gov/details/GSFC_20171208_Archive_e002069
+   https://images-assets.nasa.gov/image/GSFC_20171208_Archive_e002069/GSFC_20171208_Archive_e002069~orig.jpg
+   Credit: NASA/GSFC/SVS/SDO
+
+2. Earth: "View of the Earth seen by the Apollo 17 crew traveling toward
+   the moon" (the "Blue Marble", 7 Dec 1972)
+   NASA ID: as17-148-22727 (NASA Johnson Space Center)
+   https://images.nasa.gov/details/as17-148-22727
+   https://images-assets.nasa.gov/image/as17-148-22727/as17-148-22727~orig.jpg
+   Credit: NASA
+
+3. Moon: "Full Moon" (LRO-based Moon visualization, SVS 4236)
+   NASA ID: GSFC_20171208_Archive_e000868 (NASA Goddard Space Flight Center)
+   https://images.nasa.gov/details/GSFC_20171208_Archive_e000868
+   https://images-assets.nasa.gov/image/GSFC_20171208_Archive_e000868/GSFC_20171208_Archive_e000868~orig.jpg
+   Credit: NASA's Scientific Visualization Studio (NASA/GSFC)
+
+4. Mars: "Global Color Views of Mars" (Viking)
+   NASA ID / PIA: PIA00407 (NASA JPL)
+   https://images.nasa.gov/details/PIA00407
+   https://images-assets.nasa.gov/image/PIA00407/PIA00407~orig.jpg
+   Credit: NASA/JPL/USGS
+
+5. Saturn: "The Greatest Saturn Portrait ...Yet" (Cassini, 6 Oct 2004)
+   NASA ID / PIA: PIA06193 (NASA JPL)
+   https://images.nasa.gov/details/PIA06193
+   https://images-assets.nasa.gov/image/PIA06193/PIA06193~orig.jpg
+   Credit: NASA/JPL/Space Science Institute
+
+6. Jupiter: "Cassini Jupiter Portrait" (Cassini, Dec 2000)
+   PIA04866 (NASA JPL Photojournal)
+   https://science.nasa.gov/photojournal/cassini-jupiter-portrait/
+   https://assets.science.nasa.gov/content/dam/science/psd/photojournal/pia/pia04/pia04866/PIA04866.jpg
+   (the same image is NASA ID PIA04866 on images.nasa.gov; the Photojournal
+   copy is the larger one and is the one used)
+   Credit: NASA/JPL/Space Science Institute
+
+Why these are public domain
+
+Works made by NASA (a US federal agency) are not under copyright in the
+United States (17 U.S.C. 105). NASA's media usage guidelines
+(https://www.nasa.gov/nasa-brand-center/images-and-media/) say NASA
+content, including images, is generally not subject to copyright in the
+US and may be used for educational or informational purposes, reproduced
+and published without explicit permission. JPL's image use policy
+(https://www.jpl.nasa.gov/jpl-image-use-policy) says JPL images, including
+the Photojournal's, may be used for any purpose without prior permission
+unless a copyright is noted on the image; none of PIA00407, PIA04866 or
+PIA06193 notes one. The Space Science Institute led the Cassini imaging team
+under NASA contract; its PIA images are released by NASA/JPL under that
+policy. USGS (Viking mosaics) is a US federal agency too. The two Goddard
+items and the Apollo 17 photograph name only NASA in their credits.
+
+The guidelines ask for the credit lines above (attribution is courteous,
+not a licence condition), and that NASA's name, logos and insignia not be
+used to suggest endorsement. This set uses none of them.
+
+The procedural parts (stars, glows, band, orbits, belt) are original work
+drawn by build_solar_system.py for this set; they contain no third-party
+art.

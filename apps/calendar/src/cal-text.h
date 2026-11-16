@@ -1,19 +1,19 @@
 /* Text for the widgets that draw themselves (Month, Agenda, the date picker).
  *
  * Two kinds of text are on screen, and they are measured differently:
- *  - a line with font padding (neo_label_set_font_padding): Roboto's bounding box (yMax 2163, yMin −555 of 2048
+ *  - a line with font padding (vibeos_label_set_font_padding): Roboto's bounding box (yMax 2163, yMin −555 of 2048
  *    units) rounded outward to device pixels. Its top is where the text's box starts; cal_text_line gives the
  *    baseline and the height. The "Bold text" setting adds 300 to its weight.
  *  - text drawn straight on a view (Month): its ascent and descent are the hhea ascender and descender (1900,
  *    −500), and the Bold text setting does not reach it; fake bold draws Regular as bold.
- * Sizes in px; @scale is the device pixels per px (neo_device_scale), so lines land on whole device pixels. */
+ * Sizes in px; @scale is the device pixels per px (vibeos_device_scale), so lines land on whole device pixels. */
 #pragma once
 
 #include <gtk/gtk.h>
 
 G_BEGIN_DECLS
 
-#define CAL_FONT "Neo Roboto, Roboto"
+#define CAL_FONT "VibeOS Roboto, Roboto"
 
 /* A padded line of @size px text: its baseline below the line's top, and the line's height, in px */
 void         cal_text_line   (double size, int scale, double *baseline, double *height);

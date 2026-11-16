@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=vibeos.Clock.Alarms
+Exec=@bindir@/vibeos-clock-alarms
+SystemdService=vibeos-clock-alarms.service

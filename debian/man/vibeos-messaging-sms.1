@@ -1,0 +1,9 @@
+.TH VIBEOS-MESSAGING-SMS 1 "2026-11-16" "vibeos 0.1.0" "VibeOS"
+.SH NAME
+vibeos-messaging-sms \- SMS service of VibeOS messaging
+.SH SYNOPSIS
+.B vibeos-messaging-sms
+.SH DESCRIPTION
+Takes text messages off the modem through ModemManager, stores and notifies them, and sends messages, with the messaging app closed. It runs as the systemd user service vibeos-messaging-sms.service and owns vibeos.Messaging.Sms on the session bus.
+.SH SEE ALSO
+vibeos-messaging(1), ModemManager(8)

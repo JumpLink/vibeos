@@ -15,7 +15,7 @@
 #include "search-page.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define FAB_SIZE        56      /* the round dialpad button over the page's corner */
 #define FAB_MARGIN      16
@@ -35,7 +35,7 @@ typedef struct
   GPtrArray *screens;           /* Call history, Call details, Settings over it all, the top one last */
   gboolean searching;           /* the search UI is up (regular or the dialpad's) */
   gboolean fab_shown;
-  NeoSnackbar *snackbar;
+  VibeosSnackbar *snackbar;
   int tab;
   gint64 tab_since;             /* when the tab was shown, or 0 while the window is away */
 } Shell;
@@ -126,7 +126,7 @@ set_fab_shown (Shell *shell, gboolean shown)
 {
   /* hidden and shown at once, with no scale motion */
   shell->fab_shown = shown;
-  neo_pressable_set_scale (NEO_PRESSABLE (shell->fab), shown ? 1 : 0);
+  vibeos_pressable_set_scale (VIBEOS_PRESSABLE (shell->fab), shown ? 1 : 0);
 }
 
 /* the search UI over the tabs; the bottom navigation is gone while it is up */
@@ -184,7 +184,7 @@ static void
 on_voice_clicked (Shell *shell)
 {
   /* voice search: no recogniser on this phone */
-  neo_snackbar_show (shell->snackbar, _("Voice search not available"), NULL, NULL, NULL, NEO_SNACKBAR_SHORT);
+  vibeos_snackbar_show (shell->snackbar, _("Voice search not available"), NULL, NULL, NULL, VIBEOS_SNACKBAR_SHORT);
 }
 
 /* the dialpad's digits are the query of a dialpad search */
@@ -281,7 +281,7 @@ static void
 remove_screen (Shell *shell, GtkWidget *screen)
 {
   g_signal_handlers_disconnect_by_data (screen, shell);
-  gtk_overlay_remove_overlay (neo_window_get_overlay (shell->window), screen);
+  gtk_overlay_remove_overlay (vibeos_window_get_overlay (shell->window), screen);
   g_ptr_array_remove (shell->screens, screen);
   if (shell->screens->len)
     gtk_widget_grab_focus (g_ptr_array_index (shell->screens, shell->screens->len - 1));
@@ -325,7 +325,7 @@ push_screen (Shell *shell, GtkWidget *screen)
 {
   g_ptr_array_add (shell->screens, screen);
   g_signal_connect (screen, "closed", G_CALLBACK (on_screen_closed), shell);
-  gtk_widget_insert_before (screen, GTK_WIDGET (neo_window_get_overlay (shell->window)), GTK_WIDGET (shell->snackbar));
+  gtk_widget_insert_before (screen, GTK_WIDGET (vibeos_window_get_overlay (shell->window)), GTK_WIDGET (shell->snackbar));
   gtk_widget_grab_focus (screen);
 }
 
@@ -416,10 +416,10 @@ make_fab (Shell *shell)
 
   gtk_image_set_pixel_size (GTK_IMAGE (icon), 24);
   gtk_widget_add_css_class (icon, "dial-icon");
-  fab = neo_pressable_new (icon);
+  fab = vibeos_pressable_new (icon);
   gtk_widget_set_size_request (fab, FAB_SIZE, FAB_SIZE);
-  neo_pressable_set_fill (NEO_PRESSABLE (fab), &fill, TRUE);
-  neo_pressable_set_ripple (NEO_PRESSABLE (fab), NEO_RIPPLE_CIRCLE, FAB_SIZE / 2.0);
+  vibeos_pressable_set_fill (VIBEOS_PRESSABLE (fab), &fill, TRUE);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (fab), VIBEOS_RIPPLE_CIRCLE, FAB_SIZE / 2.0);
   gtk_widget_set_halign (fab, GTK_ALIGN_END);
   gtk_widget_set_valign (fab, GTK_ALIGN_END);
   gtk_widget_set_margin_end (fab, FAB_MARGIN);
@@ -433,7 +433,7 @@ GtkWidget *
 dialer_window_new (GtkApplication *app, GSettings *settings)
 {
   Shell *shell = g_new0 (Shell, 1);
-  GtkWidget *window = neo_window_new (app);
+  GtkWidget *window = vibeos_window_new (app);
   GtkWidget *page = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *content = gtk_overlay_new ();
   GtkOverlay *overlay;
@@ -446,9 +446,9 @@ dialer_window_new (GtkApplication *app, GSettings *settings)
   gtk_window_set_title (GTK_WINDOW (window), _("Phone"));
   gtk_widget_add_css_class (window, "dialer");
   gtk_widget_add_css_class (page, "dialer-page");
-  neo_window_set_content (GTK_WINDOW (window), page);
-  overlay = neo_window_get_overlay (window);
-  shell->snackbar = NEO_SNACKBAR (neo_snackbar_new ());
+  vibeos_window_set_content (GTK_WINDOW (window), page);
+  overlay = vibeos_window_get_overlay (window);
+  shell->snackbar = VIBEOS_SNACKBAR (vibeos_snackbar_new ());
 
   /* top to bottom: the search bar, the tab's page with the FAB over its corner, the bottom navigation */
   shell->search_bar = dialer_search_bar_new ();
@@ -540,5 +540,5 @@ dialer_window_show_dialpad (GtkWidget *window, const char *number)
 void
 dialer_window_show_message (GtkWidget *window, const char *message)
 {
-  neo_snackbar_show (shell_of (window)->snackbar, message, NULL, NULL, NULL, NEO_SNACKBAR_LONG);
+  vibeos_snackbar_show (shell_of (window)->snackbar, message, NULL, NULL, NULL, VIBEOS_SNACKBAR_LONG);
 }

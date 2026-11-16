@@ -74,7 +74,7 @@ text_label (const char *text, const char *css_class, double size)
   gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
   gtk_label_set_single_line_mode (GTK_LABEL (label), TRUE);
   gtk_widget_add_css_class (label, css_class);
-  neo_label_set_font_padding (label, size);
+  vibeos_label_set_font_padding (label, size);
   return label;
 }
 
@@ -255,7 +255,7 @@ stats_bar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   StatsBar *self = STATS_BAR (widget);
   static const guint32 colors[5] = { BAR_INCOMING, BAR_OUTGOING, BAR_MISSED, BAR_BLOCKED, BAR_REST };
   double width = gtk_widget_get_width (widget), height = gtk_widget_get_height (widget);
-  int scale = neo_device_scale (widget), pixels = (int) round (width * scale), left = 0, right = 0;
+  int scale = vibeos_device_scale (widget), pixels = (int) round (width * scale), left = 0, right = 0;
   GskRoundedRect clip;
 
   if (width <= 0 || height <= 0)
@@ -317,7 +317,7 @@ struct _StatsDetail
   GtkWidget *box;               /* the toolbar, the caller, the cards */
   GtkWidget *caller;
   Contacts *contacts;
-  NeoSnackbar *snackbar;
+  VibeosSnackbar *snackbar;
   Stat *stat, *total;           /* the number's and every number's, as they were when it opened */
   char *uid;                    /* the contact's, or NULL */
 };
@@ -339,7 +339,7 @@ on_detail_dialed (guint id, const GError *error, gpointer data)
   StatsDetail *self = data;
 
   if (error)
-    neo_snackbar_show (self->snackbar, error->message, NULL, NULL, NULL, NEO_SNACKBAR_LONG);
+    vibeos_snackbar_show (self->snackbar, error->message, NULL, NULL, NULL, VIBEOS_SNACKBAR_LONG);
   else
     phone_start_app (INCALL_APP_ID);
   g_object_unref (self);
@@ -394,9 +394,9 @@ make_caller (StatsDetail *self)
   /* the badge: the photo, no padding; only a contact's opens anything */
   dialer_avatar_set (DIALER_AVATAR (avatar), is_contact ? contact->uid : shown, is_contact ? contact->name : NULL,
                      is_contact ? contact->photo : NULL);
-  badge = neo_pressable_new (avatar);
-  neo_pressable_set_ripple (NEO_PRESSABLE (badge), NEO_RIPPLE_CIRCLE, PHOTO / 2.0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (badge), &(GdkRGBA) { 1, 1, 1, 0.06 });
+  badge = vibeos_pressable_new (avatar);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (badge), VIBEOS_RIPPLE_CIRCLE, PHOTO / 2.0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (badge), &(GdkRGBA) { 1, 1, 1, 0.06 });
   gtk_widget_set_valign (badge, GTK_ALIGN_CENTER);
   gtk_widget_set_sensitive (badge, is_contact);
   if (is_contact)
@@ -418,12 +418,12 @@ make_caller (StatsDetail *self)
   /* a call button, for a number that can be called */
   if (stat_callable (stat))
     {
-      GtkWidget *call = neo_icon_button_new ("dialer-call-symbolic");
+      GtkWidget *call = vibeos_icon_button_new ("dialer-call-symbolic");
 
       gtk_widget_set_size_request (call, BUTTON, BUTTON);
       gtk_widget_set_valign (call, GTK_ALIGN_CENTER);
       gtk_widget_add_css_class (call, "dialer-icon");
-      neo_pressable_set_ripple_color (NEO_PRESSABLE (call), &(GdkRGBA) { 1, 1, 1, 0.06 });
+      vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (call), &(GdkRGBA) { 1, 1, 1, 0.06 });
       gtk_accessible_update_property (GTK_ACCESSIBLE (call), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Call"), -1);
       g_signal_connect_swapped (call, "clicked", G_CALLBACK (on_detail_call), self);
       gtk_box_append (GTK_BOX (caller), call);
@@ -654,9 +654,9 @@ action_row (StatsDetail *self, const char *icon_name, const char *text, GCallbac
   gtk_widget_set_margin_start (label, ACTION_PAD);
   gtk_widget_set_margin_end (label, ACTION_PAD);
   gtk_box_append (GTK_BOX (box), label);
-  row = neo_pressable_new (box);
-  neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (row), &(GdkRGBA) { 1, 1, 1, 0.06 });
+  row = vibeos_pressable_new (box);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &(GdkRGBA) { 1, 1, 1, 0.06 });
   g_signal_connect_swapped (row, "clicked", callback, self);
   return row;
 }
@@ -666,7 +666,7 @@ static void
 on_detail_copy (StatsDetail *self)
 {
   gdk_clipboard_set_text (gtk_widget_get_clipboard (GTK_WIDGET (self)), self->stat->number);
-  neo_snackbar_show (self->snackbar, _("Text copied"), NULL, NULL, NULL, NEO_SNACKBAR_SHORT);
+  vibeos_snackbar_show (self->snackbar, _("Text copied"), NULL, NULL, NULL, VIBEOS_SNACKBAR_SHORT);
 }
 
 /* the dialpad with the number, in the main screen */
@@ -723,7 +723,7 @@ static GtkWidget *
 make_detail_bar (StatsDetail *self)
 {
   GtkWidget *bar = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  GtkWidget *close = neo_icon_button_new ("dialer-close-symbolic");
+  GtkWidget *close = vibeos_icon_button_new ("dialer-close-symbolic");
   GtkWidget *title = gtk_label_new (_("Contact statistics details"));
 
   gtk_widget_add_css_class (bar, "dialer-history-bar");
@@ -783,7 +783,7 @@ stats_detail_init (StatsDetail *self)
 
 /* the caller stays put; the cards and the rows under them scroll */
 static GtkWidget *
-stats_detail_new (Contacts *contacts, NeoSnackbar *snackbar, const Stat *stat, const Stat *total)
+stats_detail_new (Contacts *contacts, VibeosSnackbar *snackbar, const Stat *stat, const Stat *total)
 {
   StatsDetail *self = g_object_new (STATS_TYPE_DETAIL, NULL);
   GtkEventController *keys = gtk_event_controller_key_new ();
@@ -824,7 +824,7 @@ struct _CallStats
   GtkWidget parent;
   GtkWidget *stack, *scroller, *header, *rows, *empty;
   Contacts *contacts;
-  NeoSnackbar *snackbar;
+  VibeosSnackbar *snackbar;
   GPtrArray *stats;             /* Stat: every number in the log, the newest first */
   Stat total;                   /* all of them together */
   GCancellable *loading;
@@ -891,7 +891,7 @@ on_menu_copy (gpointer data)
   MenuTarget *target = data;
 
   gdk_clipboard_set_text (gtk_widget_get_clipboard (GTK_WIDGET (target->page)), target->number);
-  neo_snackbar_show (target->page->snackbar, _("Text copied"), NULL, NULL, NULL, NEO_SNACKBAR_SHORT);
+  vibeos_snackbar_show (target->page->snackbar, _("Text copied"), NULL, NULL, NULL, VIBEOS_SNACKBAR_SHORT);
 }
 
 static void
@@ -975,12 +975,12 @@ make_row (CallStats *self, const Stat *stat, const Stat *first)
   gtk_widget_set_margin_top (avatar, PHOTO_PAD_TOP);
   gtk_widget_set_margin_start (avatar, PHOTO_PAD_TOP / 2);
   gtk_widget_set_margin_end (avatar, PHOTO_PAD_TOP / 2);
-  badge = neo_pressable_new (avatar);
+  badge = vibeos_pressable_new (avatar);
   gtk_widget_set_valign (badge, GTK_ALIGN_START);
   gtk_widget_set_margin_end (badge, INFO_START);
   /* a contact's opens its card; anyone else's (no contact URI: a disabled badge) takes the tap and does nothing */
-  neo_pressable_set_ripple (NEO_PRESSABLE (badge), NEO_RIPPLE_CIRCLE, PHOTO / 2.0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (badge), &(GdkRGBA) { 1, 1, 1, is_contact ? 0.06 : 0 });
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (badge), VIBEOS_RIPPLE_CIRCLE, PHOTO / 2.0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (badge), &(GdkRGBA) { 1, 1, 1, is_contact ? 0.06 : 0 });
   if (is_contact)
     {
       gtk_accessible_update_property (GTK_ACCESSIBLE (badge), GTK_ACCESSIBLE_PROPERTY_LABEL, contact->name, -1);
@@ -1028,9 +1028,9 @@ make_row (CallStats *self, const Stat *stat, const Stat *first)
   gtk_box_append (GTK_BOX (box), texts);
 
   /* a bounded ripple; a tap the number's statistics, a long press the context menu */
-  row = neo_pressable_new (box);
-  neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (row), &(GdkRGBA) { 1, 1, 1, 0.06 });
+  row = vibeos_pressable_new (box);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &(GdkRGBA) { 1, 1, 1, 0.06 });
   data = g_new0 (RowData, 1);
   data->page = self;
   data->stat = stat_copy (stat);
@@ -1202,7 +1202,7 @@ call_stats_init (CallStats *self)
 /* the band over the list (the filter band, the total) scrolls away with the list, and comes back only at the top,
  * not on any scroll up */
 GtkWidget *
-call_stats_new (Contacts *contacts, NeoSnackbar *snackbar)
+call_stats_new (Contacts *contacts, VibeosSnackbar *snackbar)
 {
   CallStats *self = g_object_new (CALL_TYPE_STATS, NULL);
   GtkWidget *content = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);

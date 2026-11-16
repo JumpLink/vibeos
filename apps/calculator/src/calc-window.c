@@ -35,7 +35,7 @@
 #include <glib/gi18n.h>
 #include <math.h>
 #include <string.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define DURATION          1.0       /* s: the transition's duration */
 #define MAX_ACCELERATION  1.2       /* progress / s²: the settle after a drag */
@@ -179,18 +179,18 @@ rgb (guint32 rgb)
 typedef void (*DialogAction) (CalcMain *self);
 
 static void
-on_dialog_response (NeoDialog *dialog, int response, CalcMain *self)
+on_dialog_response (VibeosDialog *dialog, int response, CalcMain *self)
 {
   DialogAction action = g_object_get_data (G_OBJECT (dialog), "calc-action");
 
-  if (response == NEO_RESPONSE_OK && action)
+  if (response == VIBEOS_RESPONSE_OK && action)
     action (self);
 }
 
 static void
 message_dialog (CalcMain *self, const char *title, const char *message, const char *positive, DialogAction action)
 {
-  NeoDialog *dialog = neo_dialog_new (title && *title ? title : NULL);
+  VibeosDialog *dialog = vibeos_dialog_new (title && *title ? title : NULL);
   GtkWidget *label = gtk_label_new (message);
 
   /* the message is the dialog's content with its own padding, the content area itself having none
@@ -202,13 +202,13 @@ message_dialog (CalcMain *self, const char *title, const char *message, const ch
   gtk_widget_add_css_class (label, "calc-dialog-message");
   if (!(title && *title))
     gtk_widget_add_css_class (label, "untitled");
-  neo_dialog_set_content (dialog, label);
-  neo_dialog_add_button (dialog, _("Dismiss"), NEO_RESPONSE_CANCEL);
+  vibeos_dialog_set_content (dialog, label);
+  vibeos_dialog_add_button (dialog, _("Dismiss"), VIBEOS_RESPONSE_CANCEL);
   if (positive)
-    neo_dialog_add_button (dialog, positive, NEO_RESPONSE_OK);
+    vibeos_dialog_add_button (dialog, positive, VIBEOS_RESPONSE_OK);
   g_object_set_data (G_OBJECT (dialog), "calc-action", action);
   g_signal_connect_object (dialog, "response", G_CALLBACK (on_dialog_response), self, 0);
-  neo_dialog_present (dialog, GTK_WIDGET (self));
+  vibeos_dialog_present (dialog, GTK_WIDGET (self));
 }
 
 /* ------------------------------------------------------------------------------------------------------------ */
@@ -518,7 +518,7 @@ restore_display_positions (CalcMain *self)
 static void
 set_state (CalcMain *self, CalcState state)
 {
-  GdkRGBA formula_color = neo_color (NEO_ON_SURFACE), result_color = neo_color (NEO_TERTIARY);
+  GdkRGBA formula_color = vibeos_color (VIBEOS_ON_SURFACE), result_color = vibeos_color (VIBEOS_TERTIARY);
   GdkRGBA error = rgb (ERROR_COLOR);
 
   if (self->state == state)
@@ -1363,7 +1363,7 @@ menu_fraction (gpointer data)
 static void
 on_licenses_closed (CalcLicenses *licenses, CalcMain *self)
 {
-  GtkOverlay *overlay = neo_window_get_overlay (GTK_WIDGET (self));
+  GtkOverlay *overlay = vibeos_window_get_overlay (GTK_WIDGET (self));
 
   if (self->licenses != GTK_WIDGET (licenses))
     return;
@@ -1376,7 +1376,7 @@ static void
 menu_licenses (gpointer data)
 {
   CalcMain *self = data;
-  GtkOverlay *overlay = neo_window_get_overlay (GTK_WIDGET (self));
+  GtkOverlay *overlay = vibeos_window_get_overlay (GTK_WIDGET (self));
 
   if (!overlay || self->licenses)
     return;
@@ -1713,7 +1713,7 @@ static void
 calc_main_size_allocate (GtkWidget *widget, int width, int height, int baseline)
 {
   CalcMain *self = CALC_MAIN (widget);
-  int scale = neo_device_scale (widget);
+  int scale = vibeos_device_scale (widget);
   int W = width * scale, H = height * scale;
   Box display, advanced, input, history;
   double travel;
@@ -1746,8 +1746,8 @@ calc_main_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   CalcMain *self = CALC_MAIN (widget);
   double w = gtk_widget_get_width (widget), h = gtk_widget_get_height (widget);
   /* one flat colour: the original's gradient runs between two colours that are the same in the dark theme */
-  GdkRGBA background = neo_color (NEO_SURFACE);
-  GdkRGBA history = neo_color (NEO_SURFACE_CONTAINER);   /* behind the history */
+  GdkRGBA background = vibeos_color (VIBEOS_SURFACE);
+  GdkRGBA history = vibeos_color (VIBEOS_SURFACE_CONTAINER);   /* behind the history */
 
   gtk_snapshot_append_color (snapshot, &background, &GRAPHENE_RECT_INIT (0, 0, w, h));
   if (self->history_height > 0)
@@ -1891,7 +1891,7 @@ static CalcMain *
 calc_main_new (GSettings *settings)
 {
   CalcMain *self = g_object_new (CALC_TYPE_MAIN, NULL);
-  g_autofree char *db = g_build_filename (g_get_user_data_dir (), "neo.Calculator", "history.db", NULL);
+  g_autofree char *db = g_build_filename (g_get_user_data_dir (), "vibeos.Calculator", "history.db", NULL);
 
   self->evaluator = evaluator_new (db, settings);
   evaluator_set_callback (self->evaluator, &evaluator_callback, self);
@@ -1907,13 +1907,13 @@ calc_main_new (GSettings *settings)
 GtkWidget *
 calc_window_new (GtkApplication *app, GSettings *settings)
 {
-  GtkWidget *window = neo_window_new (app);
+  GtkWidget *window = vibeos_window_new (app);
   CalcMain *content = calc_main_new (settings);
   GtkEventController *keys = gtk_event_controller_key_new ();
 
   gtk_window_set_title (GTK_WINDOW (window), _("Calculator"));
   gtk_widget_add_css_class (window, "calculator");
-  neo_window_set_content (GTK_WINDOW (window), GTK_WIDGET (content));
+  vibeos_window_set_content (GTK_WINDOW (window), GTK_WIDGET (content));
   g_signal_connect (keys, "key-pressed", G_CALLBACK (on_key_pressed), content);
   g_signal_connect (keys, "key-released", G_CALLBACK (on_key_released), content);
   gtk_widget_add_controller (window, keys);

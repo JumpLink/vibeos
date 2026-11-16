@@ -1,6 +1,6 @@
 /* The Dialer's bottom navigation.
  *
- * Not libneo's NeoNavBar: the Dialer lays its own items out, in three equal
+ * Not libvibeos's VibeosNavBar: the Dialer lays its own items out, in three equal
  * columns. The selected item has a pill behind its icon, which widens from 40 % as it fades in over 400 ms while
  * the old one narrows and fades out; its icon swaps to the filled one at once. An item can carry a badge with a
  * count over the pill's top-right corner: the Recents tab's new missed calls. */

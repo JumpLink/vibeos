@@ -8,13 +8,13 @@
 #include <glib/gi18n.h>
 #include <glib/gstdio.h>
 
-#define INTERFACE "neo.Clock.Stopwatch"
-#define OBJECT_PATH "/neo/Clock/Stopwatch"
-#define APP_ID "neo.Clock"
+#define INTERFACE "vibeos.Clock.Stopwatch"
+#define OBJECT_PATH "/vibeos/Clock/Stopwatch"
+#define APP_ID "vibeos.Clock"
 
 static const char introspection[] =
   "<node>"
-  "  <interface name='neo.Clock.Stopwatch'>"
+  "  <interface name='vibeos.Clock.Stopwatch'>"
   /* state u (0 reset, 1 running, 2 paused), last-start x, accumulated x, laps ax. Times in ms; last-start is on the
    * elapsed clock (CLOCK_BOOTTIME): the time on it now is accumulated + (now - last-start) while running, and
    * accumulated otherwise. laps: the time on it at the end of each lap, the first lap first */

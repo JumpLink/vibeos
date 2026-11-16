@@ -2,7 +2,7 @@
 #include "incall-button.h"
 
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define PADDING         4
 #define ICON_VIEW       64      /* the round button */
@@ -22,7 +22,7 @@ struct _InCallButton
   char *icon_name;
   PangoLayout *label;
   gboolean checked, pressed;
-  NeoRipple ripple;
+  VibeosRipple ripple;
 };
 
 G_DEFINE_FINAL_TYPE (InCallButton, incall_button, GTK_TYPE_WIDGET)
@@ -90,13 +90,13 @@ incall_button_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
       gtk_snapshot_append_color (snapshot, &disc, &box);
       gtk_snapshot_pop (snapshot);
     }
-  if (neo_ripple_is_active (&self->ripple))
+  if (vibeos_ripple_is_active (&self->ripple))
     {
       gtk_snapshot_push_rounded_clip (snapshot, &oval);
-      neo_ripple_snapshot (&self->ripple, snapshot, &box, &ripple);
+      vibeos_ripple_snapshot (&self->ripple, snapshot, &box, &ripple);
       gtk_snapshot_pop (snapshot);
     }
-  neo_snapshot_icon (snapshot, widget, self->icon_name, cx - ICON_VIEW / 2.0 + ICON_PADDING,
+  vibeos_snapshot_icon (snapshot, widget, self->icon_name, cx - ICON_VIEW / 2.0 + ICON_PADDING,
                      PADDING + ICON_PADDING, ICON_VIEW - 2 * ICON_PADDING, &icon);
 
   /* the layout centres its line in its own width: its logical box says where the line starts */
@@ -118,7 +118,7 @@ release (InCallButton *self)
   if (!self->pressed)
     return;
   self->pressed = FALSE;
-  neo_ripple_release (&self->ripple);
+  vibeos_ripple_release (&self->ripple);
   gtk_widget_queue_draw (GTK_WIDGET (self));
 }
 
@@ -129,7 +129,7 @@ on_pressed (GtkGestureClick *gesture, int n_press, double x, double y, InCallBut
 
   self->pressed = TRUE;
   /* the icon view takes the parent's pressed state: its ripple starts where the finger is */
-  neo_ripple_press (&self->ripple, x - (cx - ICON_VIEW / 2.0), y - PADDING);
+  vibeos_ripple_press (&self->ripple, x - (cx - ICON_VIEW / 2.0), y - PADDING);
   gtk_widget_queue_draw (GTK_WIDGET (self));
 }
 
@@ -157,7 +157,7 @@ incall_button_dispose (GObject *object)
 {
   InCallButton *self = INCALL_BUTTON (object);
 
-  neo_ripple_clear (&self->ripple);
+  vibeos_ripple_clear (&self->ripple);
   g_clear_object (&self->label);
   g_clear_pointer (&self->icon_name, g_free);
   G_OBJECT_CLASS (incall_button_parent_class)->dispose (object);
@@ -182,9 +182,9 @@ static void
 incall_button_init (InCallButton *self)
 {
   GtkGesture *click = gtk_gesture_click_new ();
-  g_autoptr(PangoFontDescription) font = pango_font_description_from_string ("Neo Roboto");
+  g_autoptr(PangoFontDescription) font = pango_font_description_from_string ("VibeOS Roboto");
 
-  neo_ripple_init (&self->ripple, GTK_WIDGET (self));
+  vibeos_ripple_init (&self->ripple, GTK_WIDGET (self));
   self->label = gtk_widget_create_pango_layout (GTK_WIDGET (self), NULL);
   /* 700, not 400: the phone's Bold text setting is on */
   pango_font_description_set_absolute_size (font, LABEL_SIZE * PANGO_SCALE);

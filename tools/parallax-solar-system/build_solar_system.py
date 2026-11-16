@@ -1,8 +1,8 @@
 #!/usr/bin/python3 -I
-# build_solar_system.py DOWNLOADS OUTDIR: the "solar-system" parallax set for Neo, from NASA images (public domain)
+# build_solar_system.py DOWNLOADS OUTDIR: the "solar-system" parallax set for VibeOS, from NASA images (public domain)
 # and procedural art (the star field, the glows, the orbits; drawn here, no third-party material).
 #
-# Neo draws every layer as the 2340x2340 square scaled to cover (screen + 2 margin), margin = range*|depth|*scale,
+# VibeOS draws every layer as the 2340x2340 square scaled to cover (screen + 2 margin), margin = range*|depth|*scale,
 # centred (parallax.c). So the composition is laid out in screen pixels of a 1080x2400 phone at scale 3 and each
 # object is mapped into its layer's square with that layer's zoom.
 import json
@@ -278,7 +278,7 @@ def place(layer, depth, img, x, y):
 
 
 def flatten(layers, w, h, scale=SCALE):
-    """the picture at rest on a w x h screen, as Neo draws it"""
+    """the picture at rest on a w x h screen, as VibeOS draws it"""
     out = Image.new("RGBA", (w, h), (0, 0, 0, 255))
     for im, depth in layers:
         m = math.ceil(RANGE * abs(depth) * scale)

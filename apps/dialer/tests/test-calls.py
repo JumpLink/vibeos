@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-# neo-dialer-calls against a mock phone (mock-phone.py): the call flows, end to end over
+# vibeos-dialer-calls against a mock phone (mock-phone.py): the call flows, end to end over
 # D-Bus, with no modem and no real call. Two buses of its own, so nothing reaches the phone's real ModemManager,
 # shell or notifications.
 #
@@ -19,7 +19,7 @@ BUS_CONFIG = '''<busconfig><type>session</type><listen>unix:tmpdir=%s</listen><a
 <policy context="default"><allow send_destination="*" eavesdrop="true"/><allow eavesdrop="true"/>
 <allow own="*"/></policy></busconfig>'''
 
-NAME, PATH, IFACE = 'neo.Dialer.Calls', '/neo/Dialer/Calls', 'neo.Dialer.Calls'
+NAME, PATH, IFACE = 'vibeos.Dialer.Calls', '/vibeos/Dialer/Calls', 'vibeos.Dialer.Calls'
 # call-types.h
 CONNECTING, DIALING, INCOMING, CALL_WAITING, ACTIVE, ONHOLD, DISCONNECTING, DISCONNECTED = range(8)
 END_NONE, END_LOCAL, END_REMOTE, END_MISSED, END_REJECTED, END_CANCELED, END_BUSY, END_ERROR = range(8)
@@ -47,7 +47,7 @@ def start_bus(tmp, name):
 def block(data_home, number):
     # what the Phone's or the Messaging's Block does: a row in the shared list (blocked-numbers.c), which the
     # service hears of through its file monitor
-    path = os.path.join(data_home, 'neo-phone', 'blocked_numbers.db')
+    path = os.path.join(data_home, 'vibeos-phone', 'blocked_numbers.db')
     os.makedirs(os.path.dirname(path), exist_ok=True)
     db = sqlite3.connect(path)
     db.execute('CREATE TABLE IF NOT EXISTS blocked (_id INTEGER PRIMARY KEY AUTOINCREMENT,'
@@ -107,7 +107,7 @@ class Test:
         return next(c for c in self.calls() if c['id'] == call_id)
 
     def phone(self, method, args=None, signature=None):
-        reply = self.bus.call_sync('neo.Test.Phone', '/neo/Test/Phone', 'neo.Test.Phone', method,
+        reply = self.bus.call_sync('vibeos.Test.Phone', '/vibeos/Test/Phone', 'vibeos.Test.Phone', method,
                                    GLib.Variant(signature, args) if signature else None, None,
                                    Gio.DBusCallFlags.NONE, 5000, None)
         return reply.unpack() if reply else None
@@ -171,7 +171,7 @@ def run(t):
     t.phone('Clear')
     path = t.phone('Incoming', ('+491701234567',), '(s)')[0]
     t.wait('the answer screen is asked for over the lock screen',
-           lambda: ['LaunchFullScreen', 'neo.Dialer.InCall'] in t.logged('LaunchFullScreen'))
+           lambda: ['LaunchFullScreen', 'vibeos.Dialer.InCall'] in t.logged('LaunchFullScreen'))
     # the first ring starts GStreamer, which in a package build's empty HOME scans every plugin first: seconds under
     # emulation, with the service answering nothing meanwhile
     call_id = t.wait('INCOMING', lambda: next((c['id'] for c in t.calls() if c['state'] == INCOMING), 0), timeout=30)
@@ -312,7 +312,7 @@ def main():
         system, system_address = start_bus(tmp, 'system')
         session, session_address = start_bus(tmp, 'session')
         procs += [system, session]
-        env = dict(os.environ, DBUS_SESSION_BUS_ADDRESS=session_address, NEO_DIALER_SYSTEM_BUS=system_address,
+        env = dict(os.environ, DBUS_SESSION_BUS_ADDRESS=session_address, VIBEOS_DIALER_SYSTEM_BUS=system_address,
                    XDG_DATA_HOME=os.path.join(tmp, 'data'), XDG_STATE_HOME=os.path.join(tmp, 'state'),
                    XDG_CONFIG_HOME=os.path.join(tmp, 'config'), GSETTINGS_BACKEND='memory',
                    GSETTINGS_SCHEMA_DIR=tmp, PULSE_SERVER='unix:' + os.path.join(tmp, 'no-sound'))
@@ -322,7 +322,7 @@ def main():
         if mock.stdout.readline().strip() != 'ready':
             print('FAIL the mock phone did not start')
             return 1
-        procs.append(subprocess.Popen([os.path.join(build, 'neo-dialer-calls')], env=env))
+        procs.append(subprocess.Popen([os.path.join(build, 'vibeos-dialer-calls')], env=env))
         run(Test(session_address, env['XDG_DATA_HOME']))
     finally:
         for p in reversed(procs):

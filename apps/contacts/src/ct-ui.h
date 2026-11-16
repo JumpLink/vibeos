@@ -27,7 +27,7 @@ GtkWidget *ct_icon_button (const char *icon_name, const char *name, double width
 GtkWidget *ct_tinted_icon_new (const char *icon_name, double size, guint32 argb);
 void       ct_tinted_icon_set (GtkWidget *icon, const char *icon_name, guint32 argb);
 
-/* a GtkLabel in one of the app's CSS text styles, the font padding added (neo_label_set_font_padding) */
+/* a GtkLabel in one of the app's CSS text styles, the font padding added (vibeos_label_set_font_padding) */
 GtkWidget *ct_label (const char *text, const char *css_class, double size);
 
 /* A borderless text button: a dialog's or the empty view's, with a bounded ripple. The label is upper-cased. */

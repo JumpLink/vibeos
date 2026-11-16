@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=vibeos.Calendar.Reminders
+Exec=@bindir@/vibeos-calendar-reminders
+SystemdService=vibeos-calendar-reminders.service

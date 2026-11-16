@@ -5,7 +5,7 @@
 #include <gio/gunixfdlist.h>
 #include <unistd.h>
 
-#define APP_ID "neo.Clock"
+#define APP_ID "vibeos.Clock"
 
 int
 phone_inhibit_sleep (GDBusConnection *system, const char *why)
@@ -64,7 +64,7 @@ on_full_screen (GObject *source, GAsyncResult *result, gpointer data)
 void
 phone_show_full_screen (GDBusConnection *session, const char *app_id)
 {
-  g_dbus_connection_call (session, "neo.GnomePhone", "/neo/GnomePhone", "neo.GnomePhone",
+  g_dbus_connection_call (session, "vibeos.Shell", "/vibeos/Shell", "vibeos.Shell",
                           "LaunchFullScreen", g_variant_new ("(s)", app_id), G_VARIANT_TYPE ("(b)"),
                           G_DBUS_CALL_FLAGS_NONE, 5000, NULL, on_full_screen, g_strdup (app_id));
 }
@@ -79,7 +79,7 @@ phone_wake_at (GDBusConnection *system, const char *name, gint64 time, gboolean 
   g_variant_builder_init (&options, G_VARIANT_TYPE_VARDICT);
   g_variant_builder_add (&options, "{sv}", "alarm-clock", g_variant_new_boolean (alarm_clock));
   g_variant_builder_add (&options, "{sv}", "app", g_variant_new_string (APP_ID));
-  g_dbus_connection_call (system, "neo.Wakeup", "/neo/Wakeup", "neo.Wakeup", "Set",
+  g_dbus_connection_call (system, "vibeos.Wakeup", "/vibeos/Wakeup", "vibeos.Wakeup", "Set",
                           g_variant_new ("(sxa{sv})", name, time, &options), NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL,
                           NULL, NULL);
 }
@@ -87,7 +87,7 @@ phone_wake_at (GDBusConnection *system, const char *name, gint64 time, gboolean 
 void
 phone_open_app (GDBusConnection *session, const char *app_id, const char *action, GVariant *parameter)
 {
-  /* the app's object path is its id as a path: neo.Clock is /neo/Clock */
+  /* the app's object path is its id as a path: vibeos.Clock is /vibeos/Clock */
   g_autofree char *path = g_strdelimit (g_strconcat ("/", app_id, NULL), ".", '/');
   GVariantBuilder parameters;
 

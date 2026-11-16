@@ -3,7 +3,7 @@
 #include "text.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define BAR_HEIGHT      89      /* 16 + the 32 pill + 8 + the 17 label + 16 */
 #define PILL_TOP        16
@@ -33,7 +33,7 @@ typedef struct
   PangoLayout *label, *badge;
   guint count;
   double progress;              /* the pill: 0 gone … 1 shown */
-  NeoAnim *indicator;
+  VibeosAnim *indicator;
 } Item;
 
 struct _DialerNavBar
@@ -54,7 +54,7 @@ item_free (gpointer data)
 {
   Item *item = data;
 
-  neo_anim_free (item->indicator);
+  vibeos_anim_free (item->indicator);
   g_clear_object (&item->label);
   g_clear_object (&item->badge);
   g_free (item->icon);
@@ -127,7 +127,7 @@ dialer_nav_bar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
           gtk_snapshot_append_color (snapshot, &pill, &rect);
           gtk_snapshot_pop (snapshot);
         }
-      neo_snapshot_icon (snapshot, widget, selected ? item->selected_icon : item->icon, cx - ICON / 2.0,
+      vibeos_snapshot_icon (snapshot, widget, selected ? item->selected_icon : item->icon, cx - ICON / 2.0,
                          PILL_TOP + (PILL_HEIGHT - ICON) / 2.0, ICON, &icon);
       text_draw (snapshot, item->label, LABEL_STYLE, round (cx - text_width (item->label) / 2), LABEL_TOP, &label);
       if (item->count)
@@ -145,7 +145,7 @@ dialer_nav_bar_measure (GtkWidget *widget, GtkOrientation orientation, int for_s
 /* ---- selection ------------------------------------------------------------------------------------------------ */
 
 static void
-on_indicator (NeoAnim *anim, double value, gpointer data)
+on_indicator (VibeosAnim *anim, double value, gpointer data)
 {
   Item *item = data;
 
@@ -164,10 +164,10 @@ select_item (DialerNavBar *self, int index, gboolean animate)
       double to = (int) i == index;
 
       if (animate && gtk_widget_get_mapped (GTK_WIDGET (self)))
-        neo_anim_start (item->indicator, item->progress, to, INDICATOR_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
+        vibeos_anim_start (item->indicator, item->progress, to, INDICATOR_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
       else
         {
-          neo_anim_stop (item->indicator);
+          vibeos_anim_stop (item->indicator);
           item->progress = to;
         }
     }
@@ -255,7 +255,7 @@ dialer_nav_bar_append (DialerNavBar *self, const char *icon, const char *selecte
   item->icon = g_strdup (icon);
   item->selected_icon = g_strdup (selected_icon);
   item->label = text_layout (GTK_WIDGET (self), LABEL_STYLE, label, 0);
-  item->indicator = neo_anim_new (GTK_WIDGET (self), on_indicator, item);
+  item->indicator = vibeos_anim_new (GTK_WIDGET (self), on_indicator, item);
   g_ptr_array_add (self->items, item);
   if (self->selected < 0)
     select_item (self, 0, FALSE);

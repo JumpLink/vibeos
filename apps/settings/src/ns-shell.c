@@ -1,8 +1,8 @@
 /* Lock screen and Keyboard: what the shell itself follows.
  *
- * The lock screen is gnome-phone's keyguard (extension/keyguard.js). It reads neo.Phone lock-type at every lock
+ * The lock screen is VibeOS's keyguard (extension/keyguard.js). It reads vibeos.Shell lock-type at every lock
  * to pick its bouncer: none (swipe), the pattern or the PIN pad. Pattern and PIN are both the user's own password,
- * checked by gp-auth through PAM; ns-pattern.c sets it. The keyguard's notification icons follow GNOME's
+ * checked by vibeos-auth through PAM; ns-pattern.c sets it. The keyguard's notification icons follow GNOME's
  * show-in-lock-screen, globally and per app (Notifications).
  *
  * The on-screen keyboard is GNOME Shell's own. On a touchscreen it opens by itself (keyboard.js: touch mode and the
@@ -18,7 +18,7 @@ static const char *const lock_labels[] = { "Swipe", "Pattern", "PIN", NULL };
 static const char *const lock_types[] = { "swipe", "pattern", "pin" };
 
 typedef struct {
-  GSettings *neo;
+  GSettings *vibeos;
   GtkWidget *type, *change;
 } Lock;
 
@@ -26,7 +26,7 @@ typedef struct {
 static guint
 lock_index (Lock *l)
 {
-  g_autofree char *t = g_settings_get_string (l->neo, "lock-type");
+  g_autofree char *t = g_settings_get_string (l->vibeos, "lock-type");
   for (guint i = 0; i < G_N_ELEMENTS (lock_types); i++)
     if (!g_strcmp0 (t, lock_types[i]))
       return i;
@@ -55,7 +55,7 @@ secret_done (gboolean ok, gpointer data)
 {
   LockSet *ls = data;
   if (ok)
-    g_settings_set_string (ls->l->neo, "lock-type", lock_types[ls->i]);
+    g_settings_set_string (ls->l->vibeos, "lock-type", lock_types[ls->i]);
   lock_show (ls->l);
   g_object_unref (ls->row);
   g_free (ls);
@@ -86,7 +86,7 @@ lock_picked (GtkWidget *row, guint i, gpointer data)
     lock_show (l);
     return;
   }
-  g_settings_set_string (l->neo, "lock-type", lock_types[i]);
+  g_settings_set_string (l->vibeos, "lock-type", lock_types[i]);
 }
 
 static void
@@ -99,12 +99,12 @@ change_tapped (GtkWidget *row, gpointer data)
 static void
 lock_free (Lock *l)
 {
-  g_signal_handlers_disconnect_by_data (l->neo, l);
-  g_object_unref (l->neo);
+  g_signal_handlers_disconnect_by_data (l->vibeos, l);
+  g_object_unref (l->vibeos);
   g_free (l);
 }
 
-/* The always-on display is for OLED panels: black costs them nothing, and gnome-phone's AOD (extension/aod.js) puts
+/* The always-on display is for OLED panels: black costs them nothing, and VibeOS's AOD (extension/aod.js) puts
  * them in their low power mode, where the panel itself keeps the picture at a few nits and ticks the clock. That
  * mode is the `lpm` attribute of the panel's DSI device, which only an OLED panel's driver has (the S10e's); an LCD
  * (the POCO's) would light its whole backlight for a black screen, so it gets no switch (owner, 2026-11-12). */
@@ -131,22 +131,22 @@ panel_is_oled (void)
 void
 ns_page_lock_screen (GtkWidget *row, gpointer data)
 {
-  GSettings *neo = ns_settings ("neo.Phone");
-  if (!neo || !ns_has_key (neo, "lock-type")) {
-    g_clear_object (&neo);
+  GSettings *vibeos = ns_settings ("vibeos.Shell");
+  if (!vibeos || !ns_has_key (vibeos, "lock-type")) {
+    g_clear_object (&vibeos);
     return;
   }
   GtkWidget *c;
   AdwNavigationPage *page = ns_page_new ("Lock screen", &c);
   Lock *l = g_new0 (Lock, 1);
-  l->neo = neo;
+  l->vibeos = vibeos;
   g_object_set_data_full (G_OBJECT (page), "ns-lock", l, (GDestroyNotify) lock_free);
 
   GtkWidget *g = ns_group (c, NULL);
   l->type = ns_row_pick (g, "Screen lock type", lock_labels, lock_index (l), lock_picked, l);
   l->change = ns_row (g, NULL, NULL, "Change PIN", "It is also your password");
   ns_row_on_activate (l->change, change_tapped, l);
-  g_signal_connect_swapped (neo, "changed::lock-type", G_CALLBACK (lock_show), l);
+  g_signal_connect_swapped (vibeos, "changed::lock-type", G_CALLBACK (lock_show), l);
   lock_show (l);
   ns_note (c, "Swipe unlocks without a password. Pattern and PIN unlock with your password: a pattern or PIN set "
               "here becomes your password (also for sudo, SSH and the console).");
@@ -154,8 +154,8 @@ ns_page_lock_screen (GtkWidget *row, gpointer data)
   g = ns_group (c, "On the lock screen");
   GSettings *n = ns_page_settings (page, "org.gnome.desktop.notifications");
   ns_row_switch (g, "Notifications", "Their apps' icons below the clock", n, "show-in-lock-screen");
-  if (ns_has_key (neo, "aod") && panel_is_oled ())
-    ns_row_switch (g, "Always On Display", "The time, the date and notifications while the screen is off", neo,
+  if (ns_has_key (vibeos, "aod") && panel_is_oled ())
+    ns_row_switch (g, "Always On Display", "The time, the date and notifications while the screen is off", vibeos,
                    "aod");
   ns_push (page);
 }

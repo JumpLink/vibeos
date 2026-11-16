@@ -1,0 +1,11 @@
+usr/lib/systemd/system/vibeos.service
+usr/lib/systemd/system/gnome-desktop.service
+usr/lib/systemd/system/vibeos-dock.service
+usr/sbin/vibeos-dock
+usr/share/vibeos-session/71-vibeos-dock.rules
+usr/lib/udev/rules.d/90-vibeos-internal-storage.rules
+usr/share/gnome-shell/modes/vibeos.json
+usr/share/gnome-session/sessions/vibeos.session
+usr/lib/systemd/user/gnome-session@vibeos.target.d
+usr/share/wayland-sessions/vibeos.desktop
+usr/share/glib-2.0/schemas/90_vibeos.gschema.override

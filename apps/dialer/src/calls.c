@@ -192,7 +192,7 @@ call_title (Calls *self, const Call *call)
 static char *
 learned_path (void)
 {
-  return g_build_filename (g_get_user_state_dir (), "neo-dialer", "modem.ini", NULL);
+  return g_build_filename (g_get_user_state_dir (), "vibeos-dialer", "modem.ini", NULL);
 }
 
 static void

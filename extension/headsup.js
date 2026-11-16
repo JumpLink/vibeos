@@ -449,7 +449,7 @@ export class HeadsUp {
     constructor(shade) {
         this.shade = shade;
         this.layer = new St.Widget({
-            name: 'gnomePhoneHeadsUp',
+            name: 'vibeosHeadsUp',
             visible: false,
             width: px(SCREEN_W),
             height: px(SCREEN_H),

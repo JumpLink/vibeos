@@ -22,7 +22,7 @@ SOFTWARE.
 
 ---
 
-Parts of gnome-phone are converted from Android Open Source Project and
+Parts of vibeos are converted from Android Open Source Project and
 LineageOS sources (icons, images, data tables, the calculator's arithmetic) and
-stay under the Apache License, Version 2.0; Neo Roboto is under the SIL Open
+stay under the Apache License, Version 2.0; VibeOS Roboto is under the SIL Open
 Font License 1.1. debian/copyright lists each of those files and its license.

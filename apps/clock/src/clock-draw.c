@@ -2,7 +2,7 @@
 #include "clock-draw.h"
 
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define MAX_RINGS 16     /* textures kept: a ring per size, and a size or two more while one changes */
 #define MAX_BOUNDS 16    /* where colours change: two per arc */
@@ -190,7 +190,7 @@ clock_label_fit (GtkWidget *label, double max_size, double width)
 {
   g_autoptr(PangoLayout) layout = gtk_widget_create_pango_layout (label, gtk_label_get_text (GTK_LABEL (label)));
   g_autoptr(PangoAttrList) attributes = NULL;
-  int scale = neo_device_scale (label);
+  int scale = vibeos_device_scale (label);
   double size, full = text_width (layout, max_size);
 
   if (width <= 0 || full <= width)

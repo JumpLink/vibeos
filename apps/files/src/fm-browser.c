@@ -8,7 +8,7 @@
 #include "fm-util.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <string.h>
 
 #define BATCH          200      /* rows asked of the backend at a time */
@@ -70,13 +70,13 @@ browser_of (GCancellable *cancellable)
 /* ---- the path bar ------------------------------------------------------------------------------------------------ */
 
 static void
-on_home_crumb (NeoPressable *crumb, FmBrowser *b)
+on_home_crumb (VibeosPressable *crumb, FmBrowser *b)
 {
   fm_shell_show_page (b->shell, FM_PAGE_HOME);
 }
 
 static void
-on_crumb (NeoPressable *crumb, FmBrowser *b)
+on_crumb (VibeosPressable *crumb, FmBrowser *b)
 {
   GFile *target = g_object_get_data (G_OBJECT (crumb), "fm-file");
 
@@ -85,7 +85,7 @@ on_crumb (NeoPressable *crumb, FmBrowser *b)
 }
 
 static void
-on_up (NeoPressable *up, FmBrowser *b)
+on_up (VibeosPressable *up, FmBrowser *b)
 {
   g_autoptr(GFile) parent = fm_parent (b->location);
 
@@ -110,13 +110,13 @@ chevron (void)
 static GtkWidget *
 crumb (FmBrowser *b, GtkWidget *child, GFile *target, const char *css_class)
 {
-  GtkWidget *button = neo_pressable_new (child);
+  GtkWidget *button = vibeos_pressable_new (child);
   GdkRGBA ripple = fm_rgba (FM_C_RIPPLE);
 
   gtk_widget_add_css_class (button, "fm-crumb");
   gtk_widget_add_css_class (button, css_class);
-  neo_pressable_set_ripple (NEO_PRESSABLE (button), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (button), &ripple);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (button), &ripple);
   if (target)
     {
       g_object_set_data_full (G_OBJECT (button), "fm-file", g_object_ref (target), g_object_unref);

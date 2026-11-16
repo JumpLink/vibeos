@@ -9,7 +9,7 @@
 
 #include <math.h>
 #include <string.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define MAX_COPY_EXTRA        100
 #define MAX_RECOMPUTE_DIGITS  2000
@@ -56,7 +56,7 @@ static guint signals[N_SIGNALS];
 static int
 device_scale (CalcResult *self)
 {
-  return neo_device_scale (GTK_WIDGET (self));
+  return vibeos_device_scale (GTK_WIDGET (self));
 }
 
 static double
@@ -231,7 +231,7 @@ calc_result_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   text_position (self, &x, &baseline, &width);
   if (self->highlight) {
     /* the highlight behind the result while its copy toolbar is open */
-    GdkRGBA color = neo_color_alpha (NEO_PRIMARY, 0.4f);
+    GdkRGBA color = vibeos_color_alpha (VIBEOS_PRIMARY, 0.4f);
     double size = self->size * self->text_scale;
 
     gtk_snapshot_append_color (snapshot, &color, &GRAPHENE_RECT_INIT (x, baseline - CALC_ASCENT * size, width,
@@ -262,7 +262,7 @@ calc_result_measure (GtkWidget *widget, GtkOrientation orientation, int for_size
 
   *minimum = *natural = 0;
   if (orientation == GTK_ORIENTATION_VERTICAL) {
-    double height = calc_text_view_height (self->pad_top, self->pad_bottom, self->size, neo_device_scale (widget));
+    double height = calc_text_view_height (self->pad_top, self->pad_bottom, self->size, vibeos_device_scale (widget));
 
     *minimum = *natural = (int) ceil (height - 0.001);
   }
@@ -703,8 +703,8 @@ calc_result_init (CalcResult *self)
   self->text_scale = 1;
   self->l.char_width = 1;
   self->l.last_pos = SCROLL_INVALID;
-  self->color = neo_color (NEO_TERTIARY);            /* the result's colour */
-  self->exponent_color = neo_color (NEO_TERTIARY);   /* the exponent's, the same here */
+  self->color = vibeos_color (VIBEOS_TERTIARY);            /* the result's colour */
+  self->exponent_color = vibeos_color (VIBEOS_TERTIARY);   /* the exponent's, the same here */
   g_signal_connect (drag, "drag-begin", G_CALLBACK (on_drag_begin), self);
   g_signal_connect (drag, "drag-update", G_CALLBACK (on_drag_update), self);
   g_signal_connect (drag, "drag-end", G_CALLBACK (on_drag_end), self);

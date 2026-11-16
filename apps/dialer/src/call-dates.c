@@ -2,7 +2,7 @@
 #include "call-dates.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define MINUTE_MS (60 * G_GINT64_CONSTANT (1000))
 #define HOUR_MS   (60 * MINUTE_MS)
@@ -97,7 +97,7 @@ call_dates_details (gint64 date_ms)
     return g_strdup ("");
   /* TRANSLATORS: a call's date and time in Call details, ICU's "EEEE, MMMM d, y 'at' HH:mm" with the 24-hour
    * clock, as strftime: "Wednesday, November 4, 2026 at 04:36" */
-  return g_date_time_format (date, neo_clock_uses_24h () ? C_("call details date", "%A, %B %-d, %Y at %H:%M")
+  return g_date_time_format (date, vibeos_clock_uses_24h () ? C_("call details date", "%A, %B %-d, %Y at %H:%M")
                                    /* TRANSLATORS: the same with the 12-hour clock: "…, 2026 at 4:36 AM" */
                                                          : C_("call details date", "%A, %B %-d, %Y at %-l:%M %p"));
 }

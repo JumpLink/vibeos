@@ -9,7 +9,7 @@
 #include "ct-ui.h"
 
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 #define ROW             CT_ROW_H_DP
@@ -25,7 +25,7 @@
 
 typedef struct {
   int row;                      /* −1: free */
-  NeoRipple ripple;
+  VibeosRipple ripple;
 } Press;
 
 /* a row's text, kept while the row shows (shaping every name on every frame of a fling is wasted work) */
@@ -52,11 +52,11 @@ struct _CtList {
   guint tap_timeout, long_press_timeout;
 
   /* the rows' first appearance */
-  NeoAnim *load_anim;
+  VibeosAnim *load_anim;
   double load_ms;               /* ms into it; < 0 when done */
 
   /* the fast scroller and the search's scroll bar: shown while scrolling, then faded */
-  NeoAnim *bar_anim;
+  VibeosAnim *bar_anim;
   double bar_alpha;
   guint bar_hide;
   gboolean dragging;
@@ -245,7 +245,7 @@ draw_row (CtList *self, GtkWidget *widget, GtkSnapshot *snapshot, guint index, d
   RowText *text;
   GdkTexture *photo;
 
-  if (press && neo_ripple_is_active (&press->ripple))
+  if (press && vibeos_ripple_is_active (&press->ripple))
     {
       graphene_rect_t bounds = GRAPHENE_RECT_INIT (0, (float) top, (float) width, (float) ROW);
       GdkRGBA ripple = ct_rgba (CT_RIPPLE_LIST_SRC);
@@ -253,7 +253,7 @@ draw_row (CtList *self, GtkWidget *widget, GtkSnapshot *snapshot, guint index, d
       gtk_snapshot_push_clip (snapshot, &bounds);
       gtk_snapshot_save (snapshot);
       gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, (float) top));
-      neo_ripple_snapshot (&press->ripple, snapshot, &GRAPHENE_RECT_INIT (0, 0, (float) width, (float) ROW), &ripple);
+      vibeos_ripple_snapshot (&press->ripple, snapshot, &GRAPHENE_RECT_INIT (0, 0, (float) width, (float) ROW), &ripple);
       gtk_snapshot_restore (snapshot);
       gtk_snapshot_pop (snapshot);
     }
@@ -267,7 +267,7 @@ draw_row (CtList *self, GtkWidget *widget, GtkSnapshot *snapshot, guint index, d
         {
           GdkRGBA star = ct_rgba (CT_C_SECTION_HEADER);
 
-          neo_snapshot_icon (snapshot, widget, "ct-star-symbolic", (COLUMN - 24) / 2, top + (ROW - 24) / 2, 24, &star);
+          vibeos_snapshot_icon (snapshot, widget, "ct-star-symbolic", (COLUMN - 24) / 2, top + (ROW - 24) / 2, 24, &star);
         }
       else
         draw_header (self, widget, snapshot, section->label, top);
@@ -471,7 +471,7 @@ ct_list_content_init (CtListContent *self)
   gtk_widget_set_overflow (GTK_WIDGET (self), GTK_OVERFLOW_HIDDEN);
 }
 
-/* ===== pressing a row (NeoPressable's rules, for rows that are not widgets) ===================================== */
+/* ===== pressing a row (VibeosPressable's rules, for rows that are not widgets) ===================================== */
 
 static void
 clear_timeouts (CtList *self)
@@ -488,15 +488,15 @@ start_ripple (CtList *self)
   double top = self->top_padding + self->down_row * ROW - offset (self);
 
   for (int i = 0; !press && i < N_PRESSES; i++)
-    if (!neo_ripple_is_active (&self->presses[i].ripple))
+    if (!vibeos_ripple_is_active (&self->presses[i].ripple))
       press = &self->presses[i];
   if (!press)
     {
       press = &self->presses[0];
-      neo_ripple_clear (&press->ripple);
+      vibeos_ripple_clear (&press->ripple);
     }
   press->row = self->down_row;
-  neo_ripple_press (&press->ripple, self->down_x, self->down_y - top);
+  vibeos_ripple_press (&press->ripple, self->down_x, self->down_y - top);
 }
 
 static gboolean
@@ -531,7 +531,7 @@ release_ripple (CtList *self)
   Press *press = press_of (self, self->down_row);
 
   if (press)
-    neo_ripple_release (&press->ripple);
+    vibeos_ripple_release (&press->ripple);
 }
 
 static void
@@ -623,7 +623,7 @@ fast_scroller_enabled (CtList *self)
 }
 
 static void
-on_bar_anim (NeoAnim *anim, double value, gpointer data)
+on_bar_anim (VibeosAnim *anim, double value, gpointer data)
 {
   CtList *self = data;
 
@@ -639,7 +639,7 @@ on_bar_hide (gpointer data)
   self->bar_hide = 0;
   if (self->dragging)
     return G_SOURCE_REMOVE;
-  neo_anim_start (self->bar_anim, self->bar_alpha, 0, fast_scroller_enabled (self) ? CT_FS_FADE_OUT_MS
+  vibeos_anim_start (self->bar_anim, self->bar_alpha, 0, fast_scroller_enabled (self) ? CT_FS_FADE_OUT_MS
                                                                                    : CT_SCROLLBAR_FADE_MS,
                   0, SPONGY_LINEAR);
   return G_SOURCE_REMOVE;
@@ -655,10 +655,10 @@ show_bar (CtList *self)
   /* a list too short for the fast scroller has no bar at all: only a search has the plain one */
   if (!fast && !self->search)
     return;
-  if (self->bar_alpha < 1 && !neo_anim_is_running (self->bar_anim))
-    neo_anim_start (self->bar_anim, self->bar_alpha, 1, fast ? CT_FS_FADE_IN_MS : 0, 0, SPONGY_LINEAR);
-  else if (neo_anim_is_running (self->bar_anim) && neo_anim_get_to (self->bar_anim) < 1)
-    neo_anim_start (self->bar_anim, self->bar_alpha, 1, fast ? CT_FS_FADE_IN_MS : 0, 0, SPONGY_LINEAR);
+  if (self->bar_alpha < 1 && !vibeos_anim_is_running (self->bar_anim))
+    vibeos_anim_start (self->bar_anim, self->bar_alpha, 1, fast ? CT_FS_FADE_IN_MS : 0, 0, SPONGY_LINEAR);
+  else if (vibeos_anim_is_running (self->bar_anim) && vibeos_anim_get_to (self->bar_anim) < 1)
+    vibeos_anim_start (self->bar_anim, self->bar_alpha, 1, fast ? CT_FS_FADE_IN_MS : 0, 0, SPONGY_LINEAR);
   g_clear_handle_id (&self->bar_hide, g_source_remove);
   self->bar_hide = g_timeout_add (fast ? CT_FS_HIDE_DELAY_MS : CT_SCROLLBAR_DELAY_MS, on_bar_hide, self);
 }
@@ -854,7 +854,7 @@ ct_list_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 }
 
 static void
-on_load_anim (NeoAnim *anim, double value, gpointer data)
+on_load_anim (VibeosAnim *anim, double value, gpointer data)
 {
   CtList *self = data;
 
@@ -870,9 +870,9 @@ ct_list_dispose (GObject *object)
   clear_timeouts (self);
   g_clear_handle_id (&self->bar_hide, g_source_remove);
   for (int i = 0; i < N_PRESSES; i++)
-    neo_ripple_clear (&self->presses[i].ripple);
-  g_clear_pointer (&self->load_anim, neo_anim_free);
-  g_clear_pointer (&self->bar_anim, neo_anim_free);
+    vibeos_ripple_clear (&self->presses[i].ripple);
+  g_clear_pointer (&self->load_anim, vibeos_anim_free);
+  g_clear_pointer (&self->bar_anim, vibeos_anim_free);
   g_clear_pointer (&self->scroll, gtk_widget_unparent);
   g_clear_pointer (&self->rows, ct_rows_free);
   g_clear_pointer (&self->texts, g_hash_table_unref);
@@ -916,10 +916,10 @@ ct_list_init (CtList *self)
   for (int i = 0; i < N_PRESSES; i++)
     {
       self->presses[i].row = -1;
-      neo_ripple_init (&self->presses[i].ripple, self->content);
+      vibeos_ripple_init (&self->presses[i].ripple, self->content);
     }
-  self->load_anim = neo_anim_new (GTK_WIDGET (self), on_load_anim, self);
-  self->bar_anim = neo_anim_new (GTK_WIDGET (self), on_bar_anim, self);
+  self->load_anim = vibeos_anim_new (GTK_WIDGET (self), on_load_anim, self);
+  self->bar_anim = vibeos_anim_new (GTK_WIDGET (self), on_bar_anim, self);
   self->scroll = spongy_scroll_view_new ();
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->scroll), self->content);
   gtk_widget_set_parent (self->scroll, GTK_WIDGET (self));
@@ -983,7 +983,7 @@ ct_list_set_search (CtList *self, gboolean search)
     return;
   self->search = search;
   self->bar_alpha = 0;
-  neo_anim_stop (self->bar_anim);
+  vibeos_anim_stop (self->bar_anim);
   g_hash_table_remove_all (self->texts);
   gtk_widget_queue_draw (self->content);
   gtk_widget_queue_draw (GTK_WIDGET (self));
@@ -1017,7 +1017,7 @@ void
 ct_list_animate_load (CtList *self)
 {
   self->load_ms = 0;
-  neo_anim_start (self->load_anim, 0, 1, (guint) (CT_LIST_LOAD_MS + 14 * LOAD_STAGGER), 0, SPONGY_LINEAR);
+  vibeos_anim_start (self->load_anim, 0, 1, (guint) (CT_LIST_LOAD_MS + 14 * LOAD_STAGGER), 0, SPONGY_LINEAR);
 }
 
 void

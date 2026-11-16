@@ -12,7 +12,7 @@
 #include "ct-window.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 
 typedef struct {
   GtkWidget *page, *window;
@@ -185,7 +185,7 @@ on_row_activated (CtList *list, guint index, Picker *picker)
 }
 
 static void
-on_add (NeoPressable *button, Picker *picker)
+on_add (VibeosPressable *button, Picker *picker)
 {
   g_autoptr(GPtrArray) uids = g_ptr_array_new_with_free_func (g_free);
   GHashTableIter iter;
@@ -204,7 +204,7 @@ on_menu_chosen (int index, gpointer data)
 }
 
 static void
-on_overflow (NeoPressable *button, Picker *picker)
+on_overflow (VibeosPressable *button, Picker *picker)
 {
   const char *labels[] = { _("Select contacts") };
 
@@ -212,13 +212,13 @@ on_overflow (NeoPressable *button, Picker *picker)
 }
 
 static void
-on_search_action (NeoPressable *button, Picker *picker)
+on_search_action (VibeosPressable *button, Picker *picker)
 {
   start_search (picker);
 }
 
 static void
-on_search_back (NeoPressable *button, Picker *picker)
+on_search_back (VibeosPressable *button, Picker *picker)
 {
   stop_search (picker);
 }
@@ -231,13 +231,13 @@ on_search_changed (GtkEditable *entry, Picker *picker)
 }
 
 static void
-on_search_clear (NeoPressable *button, Picker *picker)
+on_search_clear (VibeosPressable *button, Picker *picker)
 {
   gtk_editable_set_text (GTK_EDITABLE (picker->search_entry), "");
 }
 
 static void
-on_selection_close (NeoPressable *button, Picker *picker)
+on_selection_close (VibeosPressable *button, Picker *picker)
 {
   stop_selection (picker);
 }
@@ -325,7 +325,7 @@ make_toolbar (Picker *picker, const char *title)
 }
 
 static void
-on_create (NeoPressable *row, Picker *picker)
+on_create (VibeosPressable *row, Picker *picker)
 {
   GtkWidget *window = picker->window;
   CtPickerCreate create = picker->create;
@@ -353,10 +353,10 @@ ct_picker_offer_new (GtkWidget *page, CtPickerCreate create, gpointer data)
   gtk_box_append (GTK_BOX (box), icon);
   gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (box), label);
-  picker->create_row = neo_pressable_new (box);
+  picker->create_row = vibeos_pressable_new (box);
   gtk_widget_add_css_class (picker->create_row, "ct-picker-create");
-  neo_pressable_set_ripple (NEO_PRESSABLE (picker->create_row), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (picker->create_row), &ripple);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (picker->create_row), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (picker->create_row), &ripple);
   g_signal_connect (picker->create_row, "clicked", G_CALLBACK (on_create), picker);
   /* under the toolbar, over the list */
   gtk_box_insert_child_after (GTK_BOX (page), picker->create_row, gtk_widget_get_first_child (page));

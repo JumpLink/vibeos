@@ -2,7 +2,7 @@
 #include "msg-swipe.h"
 
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define SLOP 8                  /* the movement before a touch becomes a swipe, px */
 #define CANCEL_RATIO 1.2        /* a drag with |dy| > 1.2 |dx| is the list's */
@@ -18,7 +18,7 @@ struct _MsgSwipe {
   GtkWidget parent;
   GtkWidget *background, *row;
   GtkWidget *start_icon, *end_icon;
-  NeoAnim *settle;
+  VibeosAnim *settle;
   double dx;
   gboolean enabled, swiping, committing;
   /* the last positions, for the speed it was let go at */
@@ -43,12 +43,12 @@ set_dx (MsgSwipe *self, double dx)
 }
 
 static void
-on_settle (NeoAnim *anim, double value, gpointer data)
+on_settle (VibeosAnim *anim, double value, gpointer data)
 {
   MsgSwipe *self = data;
 
   set_dx (self, value);
-  if (!neo_anim_is_running (anim) && self->committing)
+  if (!vibeos_anim_is_running (anim) && self->committing)
     {
       self->committing = FALSE;
       g_signal_emit (self, signals[SWIPED], 0, self->dx > 0);
@@ -83,7 +83,7 @@ on_drag_begin (GtkGestureDrag *drag, double x, double y, MsgSwipe *self)
       gtk_gesture_set_state (GTK_GESTURE (drag), GTK_EVENT_SEQUENCE_DENIED);
       return;
     }
-  neo_anim_stop (self->settle);
+  vibeos_anim_stop (self->settle);
   self->swiping = self->dx != 0;          /* caught while settling: it is the finger's again */
   self->sample_us[0] = self->sample_us[1] = 0;
   add_sample (self, self->dx);
@@ -126,7 +126,7 @@ settle (MsgSwipe *self, double v)
       if (flung)
         duration = MIN (DURATION_MS, (guint) (fabs (to - self->dx) / fabs (v) * 1000));
     }
-  neo_anim_start (self->settle, self->dx, to, MAX (duration, 1), 0, SPONGY_FAST_OUT_SLOW_IN);
+  vibeos_anim_start (self->settle, self->dx, to, MAX (duration, 1), 0, SPONGY_FAST_OUT_SLOW_IN);
 }
 
 static void
@@ -173,7 +173,7 @@ msg_swipe_dispose (GObject *object)
 {
   MsgSwipe *self = MSG_SWIPE (object);
 
-  g_clear_pointer (&self->settle, neo_anim_free);
+  g_clear_pointer (&self->settle, vibeos_anim_free);
   g_clear_pointer (&self->background, gtk_widget_unparent);
   g_clear_pointer (&self->row, gtk_widget_unparent);
   G_OBJECT_CLASS (msg_swipe_parent_class)->dispose (object);
@@ -204,7 +204,7 @@ msg_swipe_init (MsgSwipe *self)
   g_signal_connect (drag, "drag-end", G_CALLBACK (on_drag_end), self);
   g_signal_connect (drag, "cancel", G_CALLBACK (on_drag_cancel), self);
   gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (drag));
-  self->settle = neo_anim_new (GTK_WIDGET (self), on_settle, self);
+  self->settle = vibeos_anim_new (GTK_WIDGET (self), on_settle, self);
 }
 
 static GtkWidget *

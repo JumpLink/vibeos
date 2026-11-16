@@ -11,7 +11,7 @@
 #pragma once
 
 #include <gtk/gtk.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #include "contacts.h"
 
@@ -20,7 +20,7 @@ G_BEGIN_DECLS
 #define CALL_TYPE_STATS (call_stats_get_type ())
 G_DECLARE_FINAL_TYPE (CallStats, call_stats, CALL, STATS, GtkWidget)
 
-GtkWidget *call_stats_new (Contacts *contacts, NeoSnackbar *snackbar);
+GtkWidget *call_stats_new (Contacts *contacts, VibeosSnackbar *snackbar);
 /* the order: by the time talked (the default), or by the number of calls */
 gboolean   call_stats_get_sort_by_duration (CallStats *self);
 void       call_stats_set_sort_by_duration (CallStats *self, gboolean by_duration);

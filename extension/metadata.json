@@ -1,11 +1,11 @@
 {
-  "uuid": "gnome-phone@neo",
-  "name": "GNOME Phone",
-  "description": "Android-like phone shell: the Neo launcher as home, gestures, recents, the status bar, the shade, the lock screen and the always-on display.",
+  "uuid": "shell@vibeos",
+  "name": "VibeOS",
+  "description": "VibeOS's shell for touch devices: the VibeOS launcher as home, gestures, recents, the status bar, the shade, the lock screen and the always-on display.",
   "shell-version": [
     "51"
   ],
-  "url": "https://github.com/pulpoff/gnome-phone",
+  "url": "https://github.com/pulpoff/vibeos",
   "session-modes": [
     "user",
     "unlock-dialog"

@@ -1,5 +1,5 @@
 /* The browser's JSON store: history (newest first, one entry per URL), favourites (bookmarks.json, newest first),
- * preferences and the session, in ~/.local/share/neo.Browser: the same files the GJS and the Chrome-style
+ * preferences and the session, in ~/.local/share/vibeos.Browser: the same files the GJS and the Chrome-style
  * browsers kept, in the same formats, so nothing is lost in the switch. Favourites may carry a
  * "color" (Jelly's card colour); preferences keep every member they had, known or not. */
 #pragma once

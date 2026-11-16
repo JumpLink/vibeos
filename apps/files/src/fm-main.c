@@ -1,17 +1,17 @@
-/* neo-files: the Files app, File Manager+ (com.alphainventor.filemanager 3.3.6) rebuilt in GTK 4 for any Mobian phone
+/* vibeos-files: the Files app, File Manager+ (com.alphainventor.filemanager 3.3.6) rebuilt in GTK 4 for any Mobian phone
  *, on GIO and GVfs: local storage, removable media, the Recycle Bin, Recent files, the Local Network
  * and saved remotes over SMB, SFTP, FTP/FTPS and WebDAV.
  *
- * neo.Files is D-Bus activatable. A folder's URI opened with it (`neo-files URI`, or Open over D-Bus from
+ * vibeos.Files is D-Bus activatable. A folder's URI opened with it (`vibeos-files URI`, or Open over D-Bus from
  * another app) browses that folder; a file's URI browses the folder it is in. */
 #include "fm-share.h"
 #include "fm-window.h"
 
 #include <glib/gi18n.h>
 #include <locale.h>
-#include <neo.h>
+#include <vibeos.h>
 
-#define FM_APP_ID "neo.Files"
+#define FM_APP_ID "vibeos.Files"
 
 static GSettings *settings;
 
@@ -20,8 +20,8 @@ load_style (void)
 {
   GtkCssProvider *provider = gtk_css_provider_new ();
 
-  gtk_css_provider_load_from_resource (provider, "/neo/Files/files.css");
-  /* over libneo's, which is at APPLICATION priority too */
+  gtk_css_provider_load_from_resource (provider, "/vibeos/Files/files.css");
+  /* over libvibeos's, which is at APPLICATION priority too */
   gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (provider),
                                               GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
   g_object_unref (provider);
@@ -30,7 +30,7 @@ load_style (void)
 static void
 on_startup (GApplication *app, gpointer data)
 {
-  neo_init ();
+  vibeos_init ();
   load_style ();
   settings = g_settings_new (FM_APP_ID);
   fm_share_init ();
@@ -96,9 +96,9 @@ main (int argc, char **argv)
   g_autoptr(GtkApplication) app = NULL;
 
   setlocale (LC_ALL, "");
-  bindtextdomain ("neo-files", LOCALEDIR);
-  bind_textdomain_codeset ("neo-files", "UTF-8");
-  textdomain ("neo-files");
+  bindtextdomain ("vibeos-files", LOCALEDIR);
+  bind_textdomain_codeset ("vibeos-files", "UTF-8");
+  textdomain ("vibeos-files");
   g_set_application_name (_("Files"));
   app = gtk_application_new (FM_APP_ID, G_APPLICATION_HANDLES_OPEN);
   g_signal_connect (app, "startup", G_CALLBACK (on_startup), NULL);

@@ -11,7 +11,7 @@
 #include "sms-client.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 
 typedef struct
 {
@@ -248,7 +248,7 @@ on_show_options (ConversationView *view, gpointer data)
 typedef struct
 {
   Shell *shell;
-  NeoDialog *dialog;
+  VibeosDialog *dialog;
   char *text;
   gboolean picked;
 } Forward;
@@ -274,7 +274,7 @@ on_forward_picked (GtkWidget *list, gint64 id, gpointer data)
   if (forward->picked)
     return;
   forward->picked = TRUE;
-  neo_dialog_respond (forward->dialog, NEO_RESPONSE_OK);
+  vibeos_dialog_respond (forward->dialog, VIBEOS_RESPONSE_OK);
   /* the conversation picked, with the text as its draft, takes the place of the one it came from, so Back goes to the
    * list */
   open_conversation (shell, id, text, MSG_IS_CONVERSATION_VIEW (top));
@@ -289,12 +289,12 @@ on_forward (ConversationView *view, const char *text, gpointer data)
 
   forward->shell = shell;
   forward->text = g_strdup (text);
-  forward->dialog = neo_dialog_new (_("Forward message"));
+  forward->dialog = vibeos_dialog_new (_("Forward message"));
   gtk_widget_add_css_class (GTK_WIDGET (forward->dialog), "msg-forward-dialog");
   g_object_set_data_full (G_OBJECT (forward->dialog), "msg-forward", forward, forward_free);
   g_signal_connect (list, "open-conversation", G_CALLBACK (on_forward_picked), forward);
-  neo_dialog_set_content (forward->dialog, list);
-  neo_dialog_present (forward->dialog, shell->navigator);
+  vibeos_dialog_set_content (forward->dialog, list);
+  vibeos_dialog_present (forward->dialog, shell->navigator);
 }
 
 static void
@@ -361,7 +361,7 @@ GtkWidget *
 messaging_window_new (GtkApplication *app)
 {
   Shell *shell = g_new0 (Shell, 1);
-  GtkWidget *window = neo_window_new (app);
+  GtkWidget *window = vibeos_window_new (app);
   GtkEventController *shortcuts = gtk_shortcut_controller_new ();
 
   shell->window = window;
@@ -379,7 +379,7 @@ messaging_window_new (GtkApplication *app)
   g_signal_connect (shell->list, "show-settings", G_CALLBACK (on_show_settings), shell);
   msg_navigator_push (MSG_NAVIGATOR (shell->navigator), shell->list);
   g_signal_connect (shell->navigator, "top-changed", G_CALLBACK (on_top_changed), shell);
-  neo_window_set_content (GTK_WINDOW (window), shell->navigator);
+  vibeos_window_set_content (GTK_WINDOW (window), shell->navigator);
 
   g_signal_connect (window, "notify::is-active", G_CALLBACK (on_active), shell);
   g_signal_connect_swapped (window, "notify::suspended", G_CALLBACK (update_visible), shell);

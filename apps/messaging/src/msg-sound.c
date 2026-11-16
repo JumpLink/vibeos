@@ -73,7 +73,7 @@ get_player (void)
 void
 msg_sound_play_sent (void)
 {
-  g_autoptr(GSettings) settings = g_settings_new ("neo.Messaging");
+  g_autoptr(GSettings) settings = g_settings_new ("vibeos.Messaging");
   GstElement *sound;
 
   if (!g_settings_get_boolean (settings, "send-sound") || silenced ())

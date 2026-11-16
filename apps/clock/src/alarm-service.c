@@ -1,12 +1,12 @@
 /* The alarms in the Clock's service. From login, whether or not the Clock app is open, it:
  *
- *  - keeps the alarms (the store, ~/.local/share/neo.Clock/alarms.ini) and takes each instance through its
+ *  - keeps the alarms (the store, ~/.local/share/vibeos.Clock/alarms.ini) and takes each instance through its
  *    states (alarm-engine.c) when they are due;
- *  - wakes the phone for them: neo-wakeup arms the RTC for the next change, and for the next alarm, which it also
+ *  - wakes the phone for them: vibeos-wakeup arms the RTC for the next change, and for the next alarm, which it also
  *    shows in the status bar (its NextAlarmClock);
  *  - rings: the sound and vibration (alarm-klaxon.c), the notification with Snooze and Dismiss, and the ringing
- *    screen (the app as neo.Clock.Ringing), full screen over the lock screen when the phone was asleep or locked;
- *  - serves the Clock app and the ringing screen over D-Bus (neo.Clock.Alarms, below): the app never writes
+ *    screen (the app as vibeos.Clock.Ringing), full screen over the lock screen when the phone was asleep or locked;
+ *  - serves the Clock app and the ringing screen over D-Bus (vibeos.Clock.Alarms, below): the app never writes
  *    the store itself. */
 #include "alarm-service.h"
 #include "alarm-engine.h"
@@ -22,14 +22,14 @@
 #include <sys/timerfd.h>
 #include <unistd.h>
 
-#define INTERFACE "neo.Clock.Alarms"
-#define OBJECT_PATH "/neo/Clock/Alarms"
-#define APP_ID "neo.Clock"
-#define RINGING_APP_ID "neo.Clock.Ringing"
+#define INTERFACE "vibeos.Clock.Alarms"
+#define OBJECT_PATH "/vibeos/Clock/Alarms"
+#define APP_ID "vibeos.Clock"
+#define RINGING_APP_ID "vibeos.Clock.Ringing"
 
 static const char introspection[] =
   "<node>"
-  "  <interface name='neo.Clock.Alarms'>"
+  "  <interface name='vibeos.Clock.Alarms'>"
   /* every alarm, with its coming instance if it has one: id u, hour i, minute i, days u (Monday bit 0), enabled b,
    * vibrate b, label s, ringtone s (absent: the default sound; empty: silent), delete-after-use b; instance u,
    * instance-state i (AlarmState), instance-time x (Unix) */
@@ -70,7 +70,7 @@ struct _AlarmService {
   int timer_fd;                 /* CLOCK_REALTIME, at the next change; cancelled when the clock is set */
   gint64 clock_offset;          /* the wall clock less the elapsed one, to tell a clock set from a resume */
   GFileMonitor *zone_monitor;   /* /etc/localtime: the time zone changed */
-  gint64 sent_alarm, sent_change;       /* what neo-wakeup was last told */
+  gint64 sent_alarm, sent_change;       /* what vibeos-wakeup was last told */
   guint wakeup_watch;
 
   guint ringing;                /* the ringing instance, or 0 */
@@ -169,7 +169,7 @@ static void
 start_ringing (Service *self, AlarmInstance *instance)
 {
   self->ringing = instance->id;
-  /* logind keeps the phone from sleeping while it rings: neo-wakeup's hold on waking lasts only 30 s */
+  /* logind keeps the phone from sleeping while it rings: vibeos-wakeup's hold on waking lasts only 30 s */
   if (self->sleep_inhibitor < 0)
     self->sleep_inhibitor = phone_inhibit_sleep (self->system, "An alarm is ringing");
   alarm_klaxon_start (self->klaxon, instance->ringtone, instance->vibrate);
@@ -390,7 +390,7 @@ on_wakeup_appeared (GDBusConnection *bus, const char *name, const char *owner, g
 {
   Service *self = data;
 
-  /* neo-wakeup (re)started: it knows nothing of ours */
+  /* vibeos-wakeup (re)started: it knows nothing of ours */
   self->sent_alarm = self->sent_change = -1;
   publish (self);
 }
@@ -566,7 +566,7 @@ alarm_service_new (GDBusConnection *session, GDBusConnection *system, GSettings 
   if (self->zone_monitor)
     g_signal_connect (self->zone_monitor, "changed", G_CALLBACK (on_zone_changed), self);
   if (self->system)
-    self->wakeup_watch = g_bus_watch_name_on_connection (self->system, "neo.Wakeup",
+    self->wakeup_watch = g_bus_watch_name_on_connection (self->system, "vibeos.Wakeup",
                                                          G_BUS_NAME_WATCHER_FLAGS_NONE, on_wakeup_appeared, NULL,
                                                          self, NULL);
 

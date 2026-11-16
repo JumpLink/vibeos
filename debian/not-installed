@@ -1,5 +1,5 @@
-# AOSP's sounds (DeskClock, Messaging) stay out of the packages; neo-clock.links and neo-messaging.links put the
+# AOSP's sounds (DeskClock, Messaging) stay out of the packages; vibeos-clock.links and vibeos-messaging.links put the
 # freedesktop sound theme's in their place
-usr/share/neo-clock/sounds/alarm_expire.ogg
-usr/share/neo-clock/sounds/timer_expire.ogg
-usr/share/neo-messaging/sounds/message_sent.wav
+usr/share/vibeos-clock/sounds/alarm_expire.ogg
+usr/share/vibeos-clock/sounds/timer_expire.ogg
+usr/share/vibeos-messaging/sounds/message_sent.wav

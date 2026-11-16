@@ -32,7 +32,7 @@
 struct _StopwatchPage
 {
   GtkWidget parent;
-  NeoSnackbar *snackbar;
+  VibeosSnackbar *snackbar;
   StopwatchClient *client;
 
   GtkWidget *main_text, *hundredths;            /* the time, centred in the ring (place_time) */
@@ -51,7 +51,7 @@ struct _StopwatchPage
   /* the laps coming and going: the ring moving between the middle and
    * the top, the list fading */
   gboolean laps_shown;
-  NeoAnim *transition;
+  VibeosAnim *transition;
   double move, fade;            /* 0 in the middle .. 1 at the top; the list's opacity */
   double move_from, fade_from;
   double first_ms;              /* how long the first of the two steps takes */
@@ -175,7 +175,7 @@ lap_label (const char *css_class, int margin_end)
   GtkWidget *label = gtk_label_new (NULL);
 
   gtk_widget_add_css_class (label, css_class);
-  neo_label_set_font_padding (label, 14);
+  vibeos_label_set_font_padding (label, 14);
   /* the row's padding of 4 on top of the font's own */
   gtk_widget_set_margin_top (label, gtk_widget_get_margin_top (label) + 4);
   gtk_widget_set_valign (label, GTK_ALIGN_START);
@@ -293,7 +293,7 @@ apply_transition (StopwatchPage *self)
  * curve. Laps coming have nothing to fade out, so the ring rises and then they fade in; going, they fade out and
  * then the ring sinks back. */
 static void
-on_transition (NeoAnim *anim, double value, gpointer data)
+on_transition (VibeosAnim *anim, double value, gpointer data)
 {
   StopwatchPage *self = data;
   double first = self->first_ms ? spongy_curve (SPONGY_ACCELERATE_DECELERATE, CLAMP (value / self->first_ms, 0, 1)) : 1;
@@ -325,7 +325,7 @@ show_or_hide_laps (StopwatchPage *self, gboolean shown)
   self->fade_from = self->fade;
   self->first_ms = shown ? (self->move < 1 ? TRANSITION_MS : 0) : (self->fade > 0 ? TRANSITION_MS : 0);
   total = self->first_ms + TRANSITION_MS;
-  neo_anim_start (self->transition, 0, total, total, 0, SPONGY_LINEAR);
+  vibeos_anim_start (self->transition, 0, total, total, 0, SPONGY_LINEAR);
 }
 
 /* --- the ring */
@@ -336,13 +336,13 @@ static void
 snapshot_ring (StopwatchPage *self, GtkSnapshot *snapshot)
 {
   const Stopwatch *sw = stopwatch (self);
-  int scale = neo_device_scale (GTK_WIDGET (self));
+  int scale = vibeos_device_scale (GTK_WIDGET (self));
   /* the centre in whole device pixels */
   double half = floor (self->ring.size.width * scale / 2) / scale;
   double cx = self->ring.origin.x + half, cy = self->ring.origin.y + half;
   double radius = half - STROKE;
-  GdkRGBA circle = neo_color (NEO_SURFACE_CONTAINER_HIGHEST), completed = neo_color (NEO_PRIMARY);
-  GdkRGBA marker = neo_color (NEO_WHITE);
+  GdkRGBA circle = vibeos_color (VIBEOS_SURFACE_CONTAINER_HIGHEST), completed = vibeos_color (VIBEOS_PRIMARY);
+  GdkRGBA marker = vibeos_color (VIBEOS_WHITE);
   guint laps = sw->laps->len;
   gint64 total, first, last;
   double done, left;
@@ -543,7 +543,7 @@ share (StopwatchPage *self)
         }
     }
   gdk_clipboard_set_text (gtk_widget_get_clipboard (GTK_WIDGET (self)), text->str);
-  neo_snackbar_show (self->snackbar, _("Copied to clipboard"), NULL, NULL, NULL, NEO_SNACKBAR_SHORT);
+  vibeos_snackbar_show (self->snackbar, _("Copied to clipboard"), NULL, NULL, NULL, VIBEOS_SNACKBAR_SHORT);
 }
 
 /* --- the buttons */
@@ -636,7 +636,7 @@ static void
 stopwatch_page_size_allocate (GtkWidget *widget, int width, int height, int baseline)
 {
   StopwatchPage *self = STOPWATCH_PAGE (widget);
-  int scale = neo_device_scale (widget);
+  int scale = vibeos_device_scale (widget);
   int left = (int) round (GUIDELINE * width), right = (int) round ((1 - GUIDELINE) * width);
   double size = MIN (MIN (right - left, MAX_CIRCLE), height);
   double middle;
@@ -681,7 +681,7 @@ stopwatch_page_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gtk_widget_snapshot_child (widget, self->scroller, snapshot);
   for (guint i = 0; i < G_N_ELEMENTS (alphas); i++)
     stops[i] = (GskColorStop) { (float) i / (G_N_ELEMENTS (alphas) - 1),
-                                neo_color_alpha (NEO_SURFACE, alphas[i] / 255.f * self->fade) };
+                                vibeos_color_alpha (VIBEOS_SURFACE, alphas[i] / 255.f * self->fade) };
   gtk_snapshot_append_linear_gradient (snapshot, &GRAPHENE_RECT_INIT (0, height - FAB_ROW, width, FAB_ROW),
                                        &GRAPHENE_POINT_INIT (0, height - FAB_ROW), &GRAPHENE_POINT_INIT (0, height),
                                        stops, G_N_ELEMENTS (stops));
@@ -722,7 +722,7 @@ stopwatch_page_dispose (GObject *object)
   self->inhibit = 0;
   if (self->client)
     g_signal_handlers_disconnect_by_data (self->client, self);
-  g_clear_pointer (&self->transition, neo_anim_free);
+  g_clear_pointer (&self->transition, vibeos_anim_free);
   g_clear_pointer (&self->main_text, gtk_widget_unparent);
   g_clear_pointer (&self->hundredths, gtk_widget_unparent);
   g_clear_pointer (&self->scroller, gtk_widget_unparent);
@@ -772,7 +772,7 @@ stopwatch_page_init (StopwatchPage *self)
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->scroller), self->laps);
   gtk_widget_set_parent (self->scroller, GTK_WIDGET (self));
   gtk_widget_set_child_visible (self->scroller, FALSE);
-  self->transition = neo_anim_new (GTK_WIDGET (self), on_transition, self);
+  self->transition = vibeos_anim_new (GTK_WIDGET (self), on_transition, self);
 
   click = gtk_gesture_click_new ();
   g_signal_connect (click, "pressed", G_CALLBACK (on_pressed), self);
@@ -783,7 +783,7 @@ stopwatch_page_init (StopwatchPage *self)
 }
 
 GtkWidget *
-stopwatch_page_new (NeoSnackbar *snackbar)
+stopwatch_page_new (VibeosSnackbar *snackbar)
 {
   StopwatchPage *self = g_object_new (STOPWATCH_TYPE_PAGE, NULL);
 

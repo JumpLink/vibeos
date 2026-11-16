@@ -1,0 +1,6 @@
+usr/bin/vibeos-camera
+usr/share/applications/vibeos.Camera.desktop
+usr/share/dbus-1/services/vibeos.Camera.service
+usr/share/glib-2.0/schemas/vibeos.Camera.gschema.xml
+usr/share/icons/hicolor/scalable/apps/vibeos.Camera.svg
+usr/share/vibeos-camera

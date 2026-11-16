@@ -6,7 +6,7 @@
 
 #include <glib/gi18n.h>
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 #define ROW_HEIGHT    56
@@ -28,7 +28,7 @@ struct _CityPicker
   GSettings *settings;
   GtkWidget *box, *bar, *search_button, *search, *entry, *clear;
   GtkWidget *scroller, *list, *header, *shadow, *track, *thumb;
-  NeoAnim *shadow_anim;
+  VibeosAnim *shadow_anim;
   gboolean shadow_shown;
   GHashTable *rows;             /* City * → Row * */
   GPtrArray *original;          /* the cities chosen when the page opened, by name */
@@ -64,7 +64,7 @@ show_time (Row *row)
   g_autofree char *text = NULL;
   int hour = g_date_time_get_hour (now), minute = g_date_time_get_minute (now);
 
-  if (neo_clock_uses_24h ())
+  if (vibeos_clock_uses_24h ())
     text = g_strdup_printf ("%02d:%02d", hour, minute);
   else
     text = g_strdup_printf ("%d:%02d %s", hour % 12 ? hour % 12 : 12, minute, hour < 12 ? "AM" : "PM");
@@ -87,7 +87,7 @@ show_checked (CityPicker *self, Row *row)
 
 /* the row toggles its check box; the box itself is not clickable */
 static void
-on_row (NeoPressable *widget, CityPicker *self)
+on_row (VibeosPressable *widget, CityPicker *self)
 {
   Row *row = g_object_get_data (G_OBJECT (widget), "city-row");
 
@@ -151,7 +151,7 @@ make_row (CityPicker *self, City *city)
   gtk_widget_set_margin_start (name, 16);
   gtk_widget_set_margin_end (name, 10);
   gtk_widget_add_css_class (name, "primary-label");
-  neo_label_set_font_padding (name, 14);
+  vibeos_label_set_font_padding (name, 14);
   gtk_box_append (GTK_BOX (box), name);
 
   /* the time, at the end */
@@ -159,12 +159,12 @@ make_row (CityPicker *self, City *city)
   gtk_widget_set_valign (row->time, GTK_ALIGN_CENTER);
   gtk_widget_set_margin_end (row->time, 8);
   gtk_widget_add_css_class (row->time, "secondary-label");
-  neo_label_set_font_padding (row->time, 14);
+  vibeos_label_set_font_padding (row->time, 14);
   gtk_box_append (GTK_BOX (box), row->time);
 
-  row->widget = g_object_ref_sink (neo_pressable_new (box));
+  row->widget = g_object_ref_sink (vibeos_pressable_new (box));
   gtk_widget_set_size_request (row->widget, -1, ROW_HEIGHT);
-  neo_pressable_set_ripple (NEO_PRESSABLE (row->widget), NEO_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row->widget), VIBEOS_RIPPLE_BOUNDED, 0);
   gtk_accessible_update_property (GTK_ACCESSIBLE (row->widget), GTK_ACCESSIBLE_PROPERTY_LABEL, city->data->name,
                                   -1);
   g_object_set_data (G_OBJECT (row->widget), "city-row", row);
@@ -340,7 +340,7 @@ on_query (GtkEditable *entry, CityPicker *self)
 }
 
 static void
-on_search (NeoPressable *button, CityPicker *self)
+on_search (VibeosPressable *button, CityPicker *self)
 {
   gtk_widget_set_visible (self->search_button, FALSE);
   gtk_widget_set_visible (self->search, TRUE);
@@ -349,7 +349,7 @@ on_search (NeoPressable *button, CityPicker *self)
 
 /* the search field's close button: clears the query, or with none closes the field */
 static void
-on_clear (NeoPressable *button, CityPicker *self)
+on_clear (VibeosPressable *button, CityPicker *self)
 {
   if (*gtk_editable_get_text (GTK_EDITABLE (self->entry)))
     {
@@ -380,7 +380,7 @@ on_settings (gpointer data)
 }
 
 static void
-on_overflow (NeoPressable *button, CityPicker *self)
+on_overflow (VibeosPressable *button, CityPicker *self)
 {
   ClockPopupMenu *menu = clock_popup_menu_new ();
 
@@ -392,7 +392,7 @@ on_overflow (NeoPressable *button, CityPicker *self)
 }
 
 static void
-on_up (NeoPressable *button, CityPicker *self)
+on_up (VibeosPressable *button, CityPicker *self)
 {
   g_signal_emit (self, signals[CLOSED], 0);
 }
@@ -400,7 +400,7 @@ on_up (NeoPressable *button, CityPicker *self)
 /* --- the drop shadow and the fast-scroll thumb follow the scrolling */
 
 static void
-on_shadow (NeoAnim *anim, double value, gpointer data)
+on_shadow (VibeosAnim *anim, double value, gpointer data)
 {
   CityPicker *self = data;
 
@@ -419,7 +419,7 @@ on_scrolled (GtkAdjustment *adjustment, CityPicker *self)
   if (shown != self->shadow_shown)
     {
       self->shadow_shown = shown;
-      neo_anim_start (self->shadow_anim, gtk_widget_get_opacity (self->shadow), shown, SHADOW_MS, 0,
+      vibeos_anim_start (self->shadow_anim, gtk_widget_get_opacity (self->shadow), shown, SHADOW_MS, 0,
                       SPONGY_ACCELERATE_DECELERATE);
     }
   gtk_widget_set_margin_top (self->thumb, range > 0 ? (int) round (CLAMP (value / range, 0, 1) * MAX (height - THUMB, 0))
@@ -485,7 +485,7 @@ city_picker_dispose (GObject *object)
   CityPicker *self = CLOCK_CITY_PICKER (object);
 
   g_clear_handle_id (&self->tick, g_source_remove);
-  g_clear_pointer (&self->shadow_anim, neo_anim_free);
+  g_clear_pointer (&self->shadow_anim, vibeos_anim_free);
   g_clear_pointer (&self->box, gtk_widget_unparent);
   g_clear_pointer (&self->rows, g_hash_table_unref);
   g_clear_object (&self->header);
@@ -561,10 +561,10 @@ city_picker_init (CityPicker *self)
   gtk_box_append (GTK_BOX (self->search), self->entry);
   close = gtk_image_new_from_icon_name ("clock-close-symbolic");
   gtk_image_set_pixel_size (GTK_IMAGE (close), 24);
-  self->clear = neo_pressable_new (close);
+  self->clear = vibeos_pressable_new (close);
   gtk_widget_set_size_request (self->clear, 48, 48);
   gtk_widget_set_valign (self->clear, GTK_ALIGN_CENTER);
-  neo_pressable_set_ripple (NEO_PRESSABLE (self->clear), NEO_RIPPLE_CIRCLE, 20);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->clear), VIBEOS_RIPPLE_CIRCLE, 20);
   gtk_widget_add_css_class (self->clear, "clock-bar-icon");
   gtk_accessible_update_property (GTK_ACCESSIBLE (self->clear), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Clear query"),
                                   -1);
@@ -580,7 +580,7 @@ city_picker_init (CityPicker *self)
   self->header = g_object_ref_sink (gtk_label_new (_("Selected Cities")));
   gtk_label_set_xalign (GTK_LABEL (self->header), 0);
   gtk_widget_add_css_class (self->header, "city-header");
-  neo_label_set_font_padding (self->header, 20);
+  vibeos_label_set_font_padding (self->header, 20);
   self->scroller = spongy_scroll_view_new ();
   gtk_widget_set_vexpand (self->scroller, TRUE);
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->scroller), self->list);
@@ -610,7 +610,7 @@ city_picker_init (CityPicker *self)
   gtk_widget_set_can_target (self->shadow, FALSE);
   gtk_widget_add_css_class (self->shadow, "city-drop-shadow");
   gtk_widget_set_opacity (self->shadow, 0);
-  self->shadow_anim = neo_anim_new (self->shadow, on_shadow, self);
+  self->shadow_anim = vibeos_anim_new (self->shadow, on_shadow, self);
   gtk_overlay_add_overlay (GTK_OVERLAY (overlay), self->shadow);
   gtk_widget_set_vexpand (overlay, TRUE);
   gtk_box_append (GTK_BOX (self->box), overlay);

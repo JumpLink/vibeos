@@ -2,7 +2,7 @@
 // the always-on display, and the session's org.gnome.ScreenSaver.
 //
 // Awake, the screen shows the shell. Asleep, the lock screen is up behind a black layer over everything, and the
-// panel is in its low power mode; with the AOD on (neo.Phone aod), that layer shows the AOD (aod.js) and the
+// panel is in its low power mode; with the AOD on (vibeos.Shell aod), that layer shows the AOD (aod.js) and the
 // panel ticks a clock of its own. The display is never turned off: the S10e's DSI link cannot be brought back up
 // once it went down, so mutter keeps the outputs on whatever gnome-settings-daemon asks of them
 // (power-save-blocked, patches/mutter/0002) and "off" is a black frame at the panel's lowest brightness.
@@ -57,12 +57,12 @@ const SCREENSAVER_IFACE = `<node>
 // feedbackd's shortest tick, as the back gesture's
 function haptic() {
     Gio.DBus.session.call('org.sigxcpu.Feedback', '/org/sigxcpu/Feedback', 'org.sigxcpu.Feedback',
-        'TriggerFeedback', new GLib.Variant('(ssa{sv}i)', ['neo.GnomePhone', 'button-released', {}, -1]),
+        'TriggerFeedback', new GLib.Variant('(ssa{sv}i)', ['vibeos.Shell', 'button-released', {}, -1]),
         null, Gio.DBusCallFlags.NONE, -1, null, null);
 }
 
-function neoSettings() {
-    const schema = Gio.SettingsSchemaSource.get_default()?.lookup('neo.Phone', true);
+function vibeosSettings() {
+    const schema = Gio.SettingsSchemaSource.get_default()?.lookup('vibeos.Shell', true);
     return schema ? new Gio.Settings({settings_schema: schema}) : null;
 }
 
@@ -79,9 +79,9 @@ export class Power extends Signals.EventEmitter {
         this._sleptAt = 0;
         this._wokeAt = GLib.get_monotonic_time();
 
-        this._neo = neoSettings();
+        this._vibeos = vibeosSettings();
         this._session = new Gio.Settings({schema_id: 'org.gnome.desktop.session'});
-        this._neo?.connectObject('changed', () => this._syncTimeout(), this);
+        this._vibeos?.connectObject('changed', () => this._syncTimeout(), this);
         this._session.connectObject('changed::idle-delay', () => this._syncTimeout(), this);
 
         // mutter keeps the outputs on (see above)
@@ -95,7 +95,7 @@ export class Power extends Signals.EventEmitter {
         // over everything, uiGroup's last: the AOD, or black
         const monitor = Main.layoutManager.primaryMonitor;
         this.layer = new St.Widget({
-            name: 'gnomePhoneScreenOff',
+            name: 'vibeosScreenOff',
             style: 'background-color: black;',
             reactive: true,
             visible: false,
@@ -176,20 +176,20 @@ export class Power extends Signals.EventEmitter {
     }
 
     _doubleTap() {
-        if (!this.interactive && this._neo?.get_boolean('double-tap-wake') !== false)
+        if (!this.interactive && this._vibeos?.get_boolean('double-tap-wake') !== false)
             this.wakeUp('double-tap');
     }
 
     // --- going to sleep and waking
 
     get _aodEnabled() {
-        return this._neo?.get_boolean('aod') ?? false;
+        return this._vibeos?.get_boolean('aod') ?? false;
     }
 
     goToSleep(reason) {
         if (!this.interactive)
             return;
-        log(`gnome-phone: going to sleep (${reason})`);
+        log(`vibeos: going to sleep (${reason})`);
         this._state = this._aodEnabled ? State.DOZING : State.ASLEEP;
         this._sleptAt = GLib.get_monotonic_time();
         this._menu?.closeNow();
@@ -206,7 +206,7 @@ export class Power extends Signals.EventEmitter {
                 this._panel.lowPower(true);
                 this._outputsOff(true);
             }
-            this._panel.wakeGesture(this._neo?.get_boolean('double-tap-wake') !== false);
+            this._panel.wakeGesture(this._vibeos?.get_boolean('double-tap-wake') !== false);
         });
         this._syncTimeout();
         this._setActive(true);
@@ -216,7 +216,7 @@ export class Power extends Signals.EventEmitter {
     wakeUp(reason) {
         if (this.interactive)
             return;
-        log(`gnome-phone: waking up (${reason})`);
+        log(`vibeos: waking up (${reason})`);
         const from = this._state;
         this._state = State.AWAKE;
         this._wokeAt = GLib.get_monotonic_time();
@@ -317,7 +317,7 @@ export class Power extends Signals.EventEmitter {
                 this._syncTimeout();
             }
         } catch (e) {
-            logError(e, 'gnome-phone: idle inhibitors');
+            logError(e, 'vibeos: idle inhibitors');
         }
     }
 
@@ -357,7 +357,7 @@ export class Power extends Signals.EventEmitter {
                 try {
                     bus.call_finish(res);
                 } catch (e) {
-                    log(`gnome-phone: outputs ${off ? 'off' : 'on'}: ${e.message}`);
+                    log(`vibeos: outputs ${off ? 'off' : 'on'}: ${e.message}`);
                 }
             });
     }
@@ -413,7 +413,7 @@ export class Power extends Signals.EventEmitter {
         this._hideLayer();
         this.layer.destroy();
         this._monitors.power_save_blocked = false;
-        this._neo?.disconnectObject(this);
+        this._vibeos?.disconnectObject(this);
         this._session.disconnectObject(this);
     }
 }

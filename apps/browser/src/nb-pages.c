@@ -5,7 +5,7 @@
 #include "nb-widgets.h"
 
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 #include <string.h>
 
@@ -134,7 +134,7 @@ struct _NbSwipeRow {
   double     dx, from_dx, shrink;   /* shrink: 1 = full height, 0 = closed */
   gboolean   dragging, gone;
   SwipeAnim  kind;
-  NeoAnim   *anim;
+  VibeosAnim   *anim;
   double     start_x, last_x, vx;
   gint64     last_us;
 };
@@ -188,7 +188,7 @@ nb_swipe_row_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   if (self->dx < 0) {
     GdkRGBA black = { 0, 0, 0, 1 };
     gtk_snapshot_append_color (snapshot, &red, &GRAPHENE_RECT_INIT (w + self->dx, 0, -self->dx, h));
-    neo_snapshot_icon (snapshot, widget, "jelly-delete-action-symbolic", w - DELETE_MARGIN - 24, (h - 24) / 2, 24,
+    vibeos_snapshot_icon (snapshot, widget, "jelly-delete-action-symbolic", w - DELETE_MARGIN - 24, (h - 24) / 2, 24,
                        &black);
   }
   gtk_widget_snapshot_child (widget, self->child, snapshot);
@@ -197,7 +197,7 @@ nb_swipe_row_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 static void history_row_deleted (History *h, NbSwipeRow *row);
 
 static void
-on_swipe_anim (NeoAnim *anim, double value, gpointer data)
+on_swipe_anim (VibeosAnim *anim, double value, gpointer data)
 {
   NbSwipeRow *self = data;
   double w = gtk_widget_get_width (GTK_WIDGET (self));
@@ -217,7 +217,7 @@ on_swipe_anim (NeoAnim *anim, double value, gpointer data)
   }
   gtk_widget_queue_allocate (GTK_WIDGET (self));
   gtk_widget_queue_draw (GTK_WIDGET (self));
-  if (neo_anim_is_running (anim))
+  if (vibeos_anim_is_running (anim))
     return;
   SwipeAnim done = self->kind;
   self->kind = ANIM_NONE;
@@ -226,7 +226,7 @@ on_swipe_anim (NeoAnim *anim, double value, gpointer data)
     self->gone = TRUE;
     history_row_deleted (self->history, self);
     self->kind = ANIM_COLLAPSE;
-    neo_anim_start (self->anim, 0, 1, MOVE_MS, 0, SPONGY_ACCELERATE_DECELERATE);
+    vibeos_anim_start (self->anim, 0, 1, MOVE_MS, 0, SPONGY_ACCELERATE_DECELERATE);
   } else if (done == ANIM_COLLAPSE) {
     gtk_widget_set_visible (GTK_WIDGET (self), FALSE);
   }
@@ -251,7 +251,7 @@ on_drag_begin (GtkGestureDrag *drag, double x, double y, NbSwipeRow *self)
     gtk_gesture_set_state (GTK_GESTURE (drag), GTK_EVENT_SEQUENCE_DENIED);
     return;
   }
-  neo_anim_stop (self->anim);
+  vibeos_anim_stop (self->anim);
   self->kind = ANIM_NONE;
   self->start_x = self->dx;
   self->dragging = FALSE;
@@ -290,7 +290,7 @@ on_drag_end (GtkGestureDrag *drag, double ox, double oy, NbSwipeRow *self)
   gboolean out = self->dx < -w / 2 || (self->vx <= -SWIPE_ESCAPE && self->dx < 0);
   self->from_dx = self->dx;
   self->kind = out ? ANIM_OUT : ANIM_SETTLE;
-  neo_anim_start (self->anim, 0, 1, SWIPE_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
+  vibeos_anim_start (self->anim, 0, 1, SWIPE_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
 }
 
 static void
@@ -301,7 +301,7 @@ on_drag_cancel (GtkGesture *gesture, GdkEventSequence *seq, NbSwipeRow *self)
   self->dragging = FALSE;
   self->from_dx = self->dx;
   self->kind = ANIM_SETTLE;
-  neo_anim_start (self->anim, 0, 1, SWIPE_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
+  vibeos_anim_start (self->anim, 0, 1, SWIPE_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
 }
 
 static void
@@ -309,7 +309,7 @@ nb_swipe_row_dispose (GObject *object)
 {
   NbSwipeRow *self = NB_SWIPE_ROW (object);
 
-  g_clear_pointer (&self->anim, neo_anim_free);
+  g_clear_pointer (&self->anim, vibeos_anim_free);
   g_clear_pointer (&self->child, gtk_widget_unparent);
   G_OBJECT_CLASS (nb_swipe_row_parent_class)->dispose (object);
 }
@@ -342,7 +342,7 @@ nb_swipe_row_init (NbSwipeRow *self)
 {
   self->shrink = 1;
   gtk_widget_set_overflow (GTK_WIDGET (self), GTK_OVERFLOW_HIDDEN);
-  self->anim = neo_anim_new (GTK_WIDGET (self), on_swipe_anim, self);
+  self->anim = vibeos_anim_new (GTK_WIDGET (self), on_swipe_anim, self);
   GtkGesture *drag = gtk_gesture_drag_new ();
   gtk_gesture_single_set_touch_only (GTK_GESTURE_SINGLE (drag), FALSE);
   g_signal_connect (drag, "drag-begin", G_CALLBACK (on_drag_begin), self);
@@ -393,7 +393,7 @@ history_row_new (History *h, const NbEntry *e)
   gtk_widget_set_valign (box, GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (box), nb_label (title, 18, "nb-history-title", TRUE));
   gtk_box_append (GTK_BOX (box), nb_label (date, 14, "nb-history-summary", TRUE));
-  GtkWidget *pressable = neo_pressable_new (box);
+  GtkWidget *pressable = vibeos_pressable_new (box);
   gtk_widget_add_css_class (pressable, "nb-history-pressable");
   g_signal_connect (pressable, "clicked", G_CALLBACK (on_history_row), row);
   row->child = pressable;
@@ -429,7 +429,7 @@ on_undo (gpointer data)
   g_autoptr (NbSwipeRow) row = g_weak_ref_get (&undo.row);
   if (!row || !row->history)
     return;
-  neo_anim_stop (row->anim);
+  vibeos_anim_stop (row->anim);
   row->kind = ANIM_NONE;
   row->gone = FALSE;
   row->dx = 0;
@@ -507,7 +507,7 @@ draw_spinner (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
   double end = 0.75 * spongy_interp_get (&end_curve, (float) t);
   double offset = 0.25 * t;
   double scale = MIN (w, h) / 48.0;
-  GdkRGBA c = neo_color (NEO_PRIMARY);
+  GdkRGBA c = vibeos_color (VIBEOS_PRIMARY);
 
   cairo_translate (cr, w / 2.0, h / 2.0);
   cairo_scale (cr, scale, scale);
@@ -824,11 +824,11 @@ favorite_card (Favorites *fav, const NbEntry *e)
   gtk_label_set_xalign (GTK_LABEL (label), 0.5);
   gtk_widget_add_css_class (label, "nb-fav-title");
   gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
-  GtkWidget *card = neo_pressable_new (label);
+  GtkWidget *card = vibeos_pressable_new (label);
   gtk_widget_set_hexpand (card, TRUE);
   gtk_widget_add_css_class (card, "nb-fav-card");
-  neo_pressable_set_ripple (NEO_PRESSABLE (card), NEO_RIPPLE_BOUNDED, 2);
-  neo_pressable_set_fill (NEO_PRESSABLE (card), &color, FALSE);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (card), VIBEOS_RIPPLE_BOUNDED, 2);
+  vibeos_pressable_set_fill (VIBEOS_PRESSABLE (card), &color, FALSE);
   g_object_set_data_full (G_OBJECT (card), "nb-url", g_strdup (e->url), g_free);
   g_object_set_data_full (G_OBJECT (card), "nb-title", g_strdup (e->title), g_free);
   g_signal_connect (card, "clicked", G_CALLBACK (on_fav_click), fav);
@@ -969,7 +969,7 @@ download_row (Downloads *dl, NbDownload *e)
   gtk_box_append (GTK_BOX (box), text);
   gtk_widget_add_css_class (box, "nb-download-row");
 
-  GtkWidget *row = neo_pressable_new (box);
+  GtkWidget *row = vibeos_pressable_new (box);
   gtk_widget_add_css_class (row, "nb-download-pressable");
   if (e->done && !e->failed && e->path)
     g_object_set_data_full (G_OBJECT (row), "nb-path", g_strdup (e->path), g_free);
@@ -1097,7 +1097,7 @@ shortcut_row (Shortcuts *s, NbShortcut *sc)
   gtk_widget_set_hexpand (name, TRUE);
   gtk_widget_set_valign (name, GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (box), name);
-  GtkWidget *row = neo_pressable_new (box);
+  GtkWidget *row = vibeos_pressable_new (box);
   g_object_set_data_full (G_OBJECT (row), "nb-id", g_strdup (sc->id), g_free);
   g_object_set_data (G_OBJECT (row), "nb-mark", mark);
   g_signal_connect (row, "clicked", G_CALLBACK (on_shortcut_row), s);

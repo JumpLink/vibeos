@@ -332,7 +332,7 @@ function plateColour(path) {
         if (count)
             colour = sum.map(v => Math.round(v / count));
     } catch (e) {
-        logError(e, `gnome-phone: no plate colour for ${path}`);
+        logError(e, `vibeos: no plate colour for ${path}`);
     }
     plates.set(path, colour);
     return colour;

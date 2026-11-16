@@ -12,7 +12,7 @@
 #include "timer-page.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define FAB_ROW       120       /* the row the FAB sits in, with a margin over and under it */
 #define SIDE_BUTTON   56        /* the left and right buttons, smaller than the FAB */
@@ -25,7 +25,7 @@ typedef enum { TAB_ALARM, TAB_CLOCK, TAB_TIMER, TAB_STOPWATCH, N_TABS } Tab;
 typedef struct
 {
   GtkWidget *widget;
-  NeoAnim *scale;
+  VibeosAnim *scale;
   gboolean grow_back;           /* this shrink is the first half of a shrink-and-expand */
 } Button;
 
@@ -35,7 +35,7 @@ typedef struct
   GSettings *settings;
   GtkWidget *navigator;         /* the window's pages: this shell, then the cities picker, Settings ... */
   GtkWidget *title, *stack, *content, *nav;
-  NeoSnackbar *snackbar;
+  VibeosSnackbar *snackbar;
   GtkWidget *pages[N_TABS];
   Tab tab;
   Button buttons[CLOCK_N_BUTTONS];
@@ -70,14 +70,14 @@ apply (Shell *shell, gboolean fab, gboolean sides)
       gtk_widget_set_visible (widget, buttons[i].icon != NULL);
       if (!buttons[i].icon)
         continue;
-      neo_fab_set_icon (NEO_PRESSABLE (widget), buttons[i].icon);
+      vibeos_fab_set_icon (VIBEOS_PRESSABLE (widget), buttons[i].icon);
       gtk_accessible_update_property (GTK_ACCESSIBLE (widget), GTK_ACCESSIBLE_PROPERTY_LABEL,
                                       buttons[i].description, -1);
     }
 }
 
 static void
-on_scale (NeoAnim *anim, double value, gpointer data)
+on_scale (VibeosAnim *anim, double value, gpointer data)
 {
   Shell *shell = data;
   Button *button = NULL;
@@ -85,8 +85,8 @@ on_scale (NeoAnim *anim, double value, gpointer data)
   for (int i = 0; i < CLOCK_N_BUTTONS; i++)
     if (shell->buttons[i].scale == anim)
       button = &shell->buttons[i];
-  neo_pressable_set_scale (NEO_PRESSABLE (button->widget), value);
-  if (neo_anim_is_running (anim) || value > 0)
+  vibeos_pressable_set_scale (VIBEOS_PRESSABLE (button->widget), value);
+  if (vibeos_anim_is_running (anim) || value > 0)
     return;
 
   /* shrunk to nothing: its new state goes on now, at the end of the shrink, and it grows back if this was the first
@@ -98,7 +98,7 @@ on_scale (NeoAnim *anim, double value, gpointer data)
   if (button->grow_back)
     {
       button->grow_back = FALSE;
-      neo_anim_start (anim, 0, 1, SCALE_MS, 0, SPONGY_ACCELERATE_DECELERATE);
+      vibeos_anim_start (anim, 0, 1, SCALE_MS, 0, SPONGY_ACCELERATE_DECELERATE);
     }
 }
 
@@ -106,7 +106,7 @@ static void
 scale (Button *button, double to, gboolean grow_back)
 {
   button->grow_back = grow_back;
-  neo_anim_start (button->scale, neo_pressable_get_scale (NEO_PRESSABLE (button->widget)), to, SCALE_MS, 0,
+  vibeos_anim_start (button->scale, vibeos_pressable_get_scale (VIBEOS_PRESSABLE (button->widget)), to, SCALE_MS, 0,
                   SPONGY_ACCELERATE_DECELERATE);
 }
 
@@ -144,7 +144,7 @@ on_update_buttons (ClockTab *tab, int how, Shell *shell)
 }
 
 static void
-on_button (NeoPressable *widget, Shell *shell)
+on_button (VibeosPressable *widget, Shell *shell)
 {
   for (int i = 0; i < CLOCK_N_BUTTONS; i++)
     if (shell->buttons[i].widget == GTK_WIDGET (widget))
@@ -177,7 +177,7 @@ select_tab (Shell *shell, Tab tab)
 }
 
 static void
-on_nav (NeoNavBar *nav, int index, Shell *shell)
+on_nav (VibeosNavBar *nav, int index, Shell *shell)
 {
   select_tab (shell, index);
 }
@@ -251,7 +251,7 @@ show_settings (Shell *shell)
 }
 
 static void
-on_settings_button (NeoPressable *button, Shell *shell)
+on_settings_button (VibeosPressable *button, Shell *shell)
 {
   show_settings (shell);
 }
@@ -289,7 +289,7 @@ show_tab (Shell *shell, Tab tab)
   /* a notification's "show": the tabs, over whatever page was open */
   if (clock_navigator_get_depth (CLOCK_NAVIGATOR (shell->navigator)) > 1)
     clock_navigator_pop_to_root (CLOCK_NAVIGATOR (shell->navigator));
-  neo_nav_bar_set_selected (NEO_NAV_BAR (shell->nav), tab);
+  vibeos_nav_bar_set_selected (VIBEOS_NAV_BAR (shell->nav), tab);
   select_tab (shell, tab);
 }
 
@@ -309,7 +309,7 @@ on_child_position (GtkOverlay *overlay, GtkWidget *child, GdkRectangle *rect, Sh
     return FALSE;
   gtk_widget_measure (shell->buttons[CLOCK_FAB].widget, GTK_ORIENTATION_HORIZONTAL, -1, NULL, &fab, NULL, NULL);
   gtk_widget_measure (child, GTK_ORIENTATION_HORIZONTAL, -1, NULL, &size, NULL, NULL);
-  centre_y = height - FAB_ROW / 2 - (int) neo_snackbar_get_lift (shell->snackbar);
+  centre_y = height - FAB_ROW / 2 - (int) vibeos_snackbar_get_lift (shell->snackbar);
   fab_x = (width - fab) / 2;
   if (child == shell->buttons[CLOCK_FAB].widget)
     rect->x = fab_x;
@@ -323,7 +323,7 @@ on_child_position (GtkOverlay *overlay, GtkWidget *child, GdkRectangle *rect, Sh
 }
 
 static void
-on_lift (NeoSnackbar *snackbar, GParamSpec *pspec, Shell *shell)
+on_lift (VibeosSnackbar *snackbar, GParamSpec *pspec, Shell *shell)
 {
   gtk_widget_queue_allocate (shell->content);
 }
@@ -338,7 +338,7 @@ on_active (GtkWindow *window, GParamSpec *pspec, Shell *shell)
   GDBusConnection *bus = g_application_get_dbus_connection (g_application_get_default ());
 
   if (bus)
-    g_dbus_connection_call (bus, "neo.Clock.Alarms", "/neo/Clock/App", "neo.Clock.App",
+    g_dbus_connection_call (bus, "vibeos.Clock.Alarms", "/vibeos/Clock/App", "vibeos.Clock.App",
                             "SetForeground", g_variant_new ("(b)", gtk_window_is_active (window)), NULL,
                             G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 }
@@ -349,7 +349,7 @@ shell_free (gpointer data)
   Shell *shell = data;
 
   for (int i = 0; i < CLOCK_N_BUTTONS; i++)
-    neo_anim_free (shell->buttons[i].scale);
+    vibeos_anim_free (shell->buttons[i].scale);
   g_object_unref (shell->settings);
   g_free (shell);
 }
@@ -358,7 +358,7 @@ GtkWidget *
 clock_window_new (GtkApplication *app, GSettings *settings)
 {
   Shell *shell = g_new0 (Shell, 1);
-  GtkWidget *window = neo_window_new (app);
+  GtkWidget *window = vibeos_window_new (app);
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *bar = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *gear = gtk_image_new_from_icon_name ("clock-settings-symbolic");
@@ -371,20 +371,20 @@ clock_window_new (GtkApplication *app, GSettings *settings)
   gtk_window_set_title (GTK_WINDOW (window), _("Clock"));
 
   /* the app bar: the tab's name, no lift, no shadow */
-  gtk_widget_add_css_class (bar, "neo-app-bar");
+  gtk_widget_add_css_class (bar, "vibeos-app-bar");
   shell->title = gtk_label_new (NULL);
-  gtk_widget_add_css_class (shell->title, "neo-app-bar-title");
+  gtk_widget_add_css_class (shell->title, "vibeos-app-bar-title");
   gtk_widget_set_hexpand (shell->title, TRUE);
   gtk_widget_set_valign (shell->title, GTK_ALIGN_CENTER);
   gtk_label_set_xalign (GTK_LABEL (shell->title), 0);
-  neo_label_set_font_padding (shell->title, 22);
+  vibeos_label_set_font_padding (shell->title, 22);
   gtk_box_append (GTK_BOX (bar), shell->title);
   /* the Settings action, a white gear in a button flush with the end */
   gtk_image_set_pixel_size (GTK_IMAGE (gear), 24);
-  settings_button = neo_pressable_new (gear);
+  settings_button = vibeos_pressable_new (gear);
   gtk_widget_set_size_request (settings_button, 48, 48);
   gtk_widget_set_valign (settings_button, GTK_ALIGN_CENTER);
-  neo_pressable_set_ripple (NEO_PRESSABLE (settings_button), NEO_RIPPLE_CIRCLE, 20);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (settings_button), VIBEOS_RIPPLE_CIRCLE, 20);
   gtk_widget_add_css_class (settings_button, "clock-settings-button");
   gtk_accessible_update_property (GTK_ACCESSIBLE (settings_button), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Settings"),
                                   -1);
@@ -395,7 +395,7 @@ clock_window_new (GtkApplication *app, GSettings *settings)
   /* the content: the pages, then the row of buttons and the snackbar over their bottom */
   shell->stack = gtk_stack_new ();
   gtk_stack_set_transition_type (GTK_STACK (shell->stack), GTK_STACK_TRANSITION_TYPE_NONE);
-  shell->snackbar = NEO_SNACKBAR (neo_snackbar_new ());
+  shell->snackbar = VIBEOS_SNACKBAR (vibeos_snackbar_new ());
   shell->pages[TAB_ALARM] = alarm_page_new (settings, shell->snackbar);
   shell->pages[TAB_CLOCK] = clock_page_new (settings);
   shell->pages[TAB_TIMER] = timer_page_new ();
@@ -418,10 +418,10 @@ clock_window_new (GtkApplication *app, GSettings *settings)
     {
       Button *button = &shell->buttons[i];
 
-      button->widget = neo_fab_new ("clock-add-symbolic", i == CLOCK_FAB);
+      button->widget = vibeos_fab_new ("clock-add-symbolic", i == CLOCK_FAB);
       gtk_widget_set_visible (button->widget, FALSE);
       g_signal_connect (button->widget, "clicked", G_CALLBACK (on_button), shell);
-      button->scale = neo_anim_new (button->widget, on_scale, shell);
+      button->scale = vibeos_anim_new (button->widget, on_scale, shell);
       gtk_overlay_add_overlay (GTK_OVERLAY (shell->content), button->widget);
     }
   gtk_overlay_add_overlay (GTK_OVERLAY (shell->content), GTK_WIDGET (shell->snackbar));
@@ -429,16 +429,16 @@ clock_window_new (GtkApplication *app, GSettings *settings)
   g_signal_connect (shell->snackbar, "notify::lift", G_CALLBACK (on_lift), shell);
   gtk_box_append (GTK_BOX (box), shell->content);
 
-  shell->nav = neo_nav_bar_new ();
+  shell->nav = vibeos_nav_bar_new ();
   for (int i = 0; i < N_TABS; i++)
-    neo_nav_bar_append (NEO_NAV_BAR (shell->nav), tabs[i].icon, _(tabs[i].name));
+    vibeos_nav_bar_append (VIBEOS_NAV_BAR (shell->nav), tabs[i].icon, _(tabs[i].name));
   g_signal_connect (shell->nav, "selected", G_CALLBACK (on_nav), shell);
   gtk_box_append (GTK_BOX (box), shell->nav);
 
   /* the tabs are the first page; the cities picker and Settings open over them */
   shell->navigator = clock_navigator_new ();
   clock_navigator_push (CLOCK_NAVIGATOR (shell->navigator), box);
-  neo_window_set_content (GTK_WINDOW (window), shell->navigator);
+  vibeos_window_set_content (GTK_WINDOW (window), shell->navigator);
   shortcuts = gtk_shortcut_controller_new ();
   gtk_shortcut_controller_add_shortcut (GTK_SHORTCUT_CONTROLLER (shortcuts),
                                         gtk_shortcut_new (gtk_keyval_trigger_new (GDK_KEY_Escape, 0),
@@ -450,7 +450,7 @@ clock_window_new (GtkApplication *app, GSettings *settings)
   gtk_widget_add_controller (window, key);
   /* the tab it was left on */
   shell->tab = g_settings_get_enum (settings, "selected-tab");
-  neo_nav_bar_set_selected (NEO_NAV_BAR (shell->nav), shell->tab);
+  vibeos_nav_bar_set_selected (VIBEOS_NAV_BAR (shell->nav), shell->tab);
   select_tab (shell, shell->tab);
   return window;
 }

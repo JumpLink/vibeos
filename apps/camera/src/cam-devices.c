@@ -39,7 +39,7 @@ prop_size (const GstStructure *props, const char *name, int *w, int *h)
     }
 }
 
-/* NEO_CAMERA_TEST_SOURCE (cam-pipeline.c): a back camera turned 90° and a front one turned 270°, as on most phones,
+/* VIBEOS_CAMERA_TEST_SOURCE (cam-pipeline.c): a back camera turned 90° and a front one turned 270°, as on most phones,
  * with the sizes a phone's camera lists */
 static void
 add_test_cameras (GPtrArray *cameras)
@@ -72,7 +72,7 @@ cam_devices_enumerate (void)
   GstDeviceProvider *provider;
   GList *devices;
 
-  if (g_getenv ("NEO_CAMERA_TEST_SOURCE"))
+  if (g_getenv ("VIBEOS_CAMERA_TEST_SOURCE"))
     {
       add_test_cameras (cameras);
       return cameras;
@@ -366,9 +366,9 @@ led_call (CamLed led, gboolean wait)
   if (!cam_flash_led ())
     return FALSE;
   /* tests: everything up to the LED, which stays dark; turning it off still goes to logind, and lights nothing */
-  if (led != CAM_LED_OFF && g_strcmp0 (g_getenv ("NEO_CAMERA_NO_LED"), "1") == 0)
+  if (led != CAM_LED_OFF && g_strcmp0 (g_getenv ("VIBEOS_CAMERA_NO_LED"), "1") == 0)
     {
-      g_message ("camera: flash LED %s to %d (NEO_CAMERA_NO_LED: not lit)", led_name, led_level (led));
+      g_message ("camera: flash LED %s to %d (VIBEOS_CAMERA_NO_LED: not lit)", led_name, led_level (led));
       return FALSE;
     }
   if (!(bus = system_bus ()))

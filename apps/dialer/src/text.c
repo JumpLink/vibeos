@@ -26,7 +26,7 @@ void
 text_layout_set_style (PangoLayout *layout, TextStyle style)
 {
   g_autoptr(PangoFontDescription) font =
-    pango_font_description_from_string (style.family == TEXT_ROBOTO ? "Neo Roboto" : "Google Sans Flex, Neo Roboto");
+    pango_font_description_from_string (style.family == TEXT_ROBOTO ? "VibeOS Roboto" : "Google Sans Flex, VibeOS Roboto");
 
   pango_font_description_set_absolute_size (font, style.size * PANGO_SCALE);
   pango_font_description_set_weight (font, style.weight);

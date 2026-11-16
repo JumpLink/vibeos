@@ -66,7 +66,7 @@ export const Shade = GObject.registerClass({
     constructor(state, statusBar) {
         const monitor = Main.layoutManager.primaryMonitor;
         super({
-            name: 'gnomePhoneShade',
+            name: 'vibeosShade',
             reactive: true,
             visible: false,
             x: monitor.x,

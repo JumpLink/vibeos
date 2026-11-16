@@ -15,7 +15,7 @@
 
 #include <glib/gi18n.h>
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 
 /* the contact grid: the status line, the caller's name (and photo), the line under it */
 #define GRID_TOP        24
@@ -1288,7 +1288,7 @@ draw_puck (AnswerView *self, GtkSnapshot *snapshot, const Geometry *g, double wi
   double r = PUCK / 2.0 * self->bg_scale, a = fabs (self->puck_progress);
   GdkRGBA white = { 1, 1, 1, 1 };
   GdkRGBA tint = rgb (self->puck_progress >= 0 ? ACCEPT_COLOR : HANGUP_COLOR, 1);
-  GdkRGBA disc = neo_rgba_mix (&white, &tint, a);
+  GdkRGBA disc = vibeos_rgba_mix (&white, &tint, a);
   graphene_rect_t box = GRAPHENE_RECT_INIT (-r, -r, 2 * r, 2 * r);
   GskRoundedRect shape;
   GdkRGBA icon = self->icon_tint;
@@ -1315,7 +1315,7 @@ draw_puck (AnswerView *self, GtkSnapshot *snapshot, const Geometry *g, double wi
   if (icon.alpha > 0)
     {
       gtk_snapshot_rotate (snapshot, self->icon_rotation);
-      neo_snapshot_icon (snapshot, GTK_WIDGET (self), "dialer-call-symbolic", -PUCK_ICON / 2.0, -PUCK_ICON / 2.0,
+      vibeos_snapshot_icon (snapshot, GTK_WIDGET (self), "dialer-call-symbolic", -PUCK_ICON / 2.0, -PUCK_ICON / 2.0,
                          PUCK_ICON, &icon);
     }
   gtk_snapshot_pop (snapshot);
@@ -1356,7 +1356,7 @@ draw_side (AnswerView *self, GtkSnapshot *snapshot, const Geometry *g)
   icon = argb_evaluate (&white, &black, MIN (1, self->side_radius / SIDE_MIN_RADIUS));
   icon.alpha = self->side_icon_alpha;
   if (icon.alpha > 0)
-    neo_snapshot_icon (snapshot, GTK_WIDGET (self), "dialer-end-answer-symbolic", g->side_x - size / 2,
+    vibeos_snapshot_icon (snapshot, GTK_WIDGET (self), "dialer-end-answer-symbolic", g->side_x - size / 2,
                        g->side_y - size / 2, size, &icon);
 }
 
@@ -1561,11 +1561,11 @@ answer_view_init (AnswerView *self)
   GtkGesture *drag = gtk_gesture_drag_new ();
 
   /* 700, not 400: the phone's Bold text setting is on */
-  self->status = new_layout (self, "Neo Roboto", STATUS_SIZE, 700, FALSE);
-  self->name = new_layout (self, "Google Sans Flex, Neo Roboto", NAME_SIZE, 700, FALSE);
-  self->bottom = new_layout (self, "Neo Roboto", STATUS_SIZE, 700, FALSE);
-  self->answer_text = new_layout (self, "Neo Roboto", HINT_SIZE, 700, TRUE);
-  self->reject_text = new_layout (self, "Neo Roboto", HINT_SIZE, 700, TRUE);
+  self->status = new_layout (self, "VibeOS Roboto", STATUS_SIZE, 700, FALSE);
+  self->name = new_layout (self, "Google Sans Flex, VibeOS Roboto", NAME_SIZE, 700, FALSE);
+  self->bottom = new_layout (self, "VibeOS Roboto", STATUS_SIZE, 700, FALSE);
+  self->answer_text = new_layout (self, "VibeOS Roboto", HINT_SIZE, 700, TRUE);
+  self->reject_text = new_layout (self, "VibeOS Roboto", HINT_SIZE, 700, TRUE);
   pango_layout_set_text (self->answer_text, _("Swipe up to answer"), -1);
   pango_layout_set_text (self->reject_text, _("Swipe down to reject"), -1);
   self->name_size = NAME_SIZE;

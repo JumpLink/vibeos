@@ -253,7 +253,7 @@ class VolumeDialog extends St.Widget {
     constructor() {
         const monitor = Main.layoutManager.primaryMonitor;
         super({
-            name: 'gnomePhoneVolume',
+            name: 'vibeosVolume',
             x: monitor.x, y: monitor.y,
             width: px(ROOT_W), height: px(SCREEN_H),
             visible: false,

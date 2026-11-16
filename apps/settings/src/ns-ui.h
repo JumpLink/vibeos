@@ -1,4 +1,4 @@
-/* Neo Settings' building blocks, One UI style: pages with a large title, groups as rounded cards, rows with a
+/* VibeOS Settings' building blocks, One UI style: pages with a large title, groups as rounded cards, rows with a
  * coloured round icon, a title and a "this • that" subtitle. */
 #pragma once
 

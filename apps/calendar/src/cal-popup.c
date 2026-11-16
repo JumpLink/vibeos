@@ -1,7 +1,7 @@
 /* The popup list and the spinner (cal-popup.h). */
 #include "cal-popup.h"
 
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 #define ROW_HEIGHT 48.0
@@ -23,7 +23,7 @@ popup_close (Popup *popup)
 }
 
 static void
-on_row (NeoPressable *row, Popup *popup)
+on_row (VibeosPressable *row, Popup *popup)
 {
   int index = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (row), "cal-index"));
   CalPopupChosen chosen = popup->chosen;
@@ -44,7 +44,7 @@ void
 cal_popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, int selected, double width,
                 gboolean end, CalPopupChosen chosen, gpointer data)
 {
-  GtkOverlay *overlay = neo_window_get_overlay (anchor);
+  GtkOverlay *overlay = vibeos_window_get_overlay (anchor);
   GtkWidget *layer, *scrim, *card, *scroll, *list;
   GtkGesture *press;
   Popup *popup;
@@ -79,16 +79,16 @@ cal_popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, int 
   for (int i = 0; i < n_labels; i++)
     {
       GtkWidget *text = gtk_label_new (labels[i]);
-      GtkWidget *row = neo_pressable_new (text);
+      GtkWidget *row = vibeos_pressable_new (text);
 
       gtk_label_set_xalign (GTK_LABEL (text), 0);
       gtk_label_set_ellipsize (GTK_LABEL (text), PANGO_ELLIPSIZE_END);
-      neo_label_set_font_padding (text, 16);
+      vibeos_label_set_font_padding (text, 16);
       gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
       gtk_widget_add_css_class (row, "cal-menu-item");
       if (i == selected)
         gtk_widget_add_css_class (row, "selected");
-      neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
+      vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
       g_object_set_data (G_OBJECT (row), "cal-index", GINT_TO_POINTER (i));
       g_signal_connect (row, "clicked", G_CALLBACK (on_row), popup);
       gtk_box_append (GTK_BOX (list), row);
@@ -123,7 +123,7 @@ cal_popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, int 
 gboolean
 cal_popup_dismiss (GtkWidget *widget)
 {
-  GtkOverlay *overlay = neo_window_get_overlay (widget);
+  GtkOverlay *overlay = vibeos_window_get_overlay (widget);
 
   if (!overlay)
     return FALSE;
@@ -167,7 +167,7 @@ on_chosen (int index, gpointer data)
 }
 
 static void
-on_clicked (NeoPressable *pressable, CalSpinner *self)
+on_clicked (VibeosPressable *pressable, CalSpinner *self)
 {
   if (!self->labels)
     return;
@@ -214,8 +214,8 @@ cal_spinner_init (CalSpinner *self)
   gtk_widget_add_css_class (arrow, "cal-spinner-arrow");
   gtk_box_append (GTK_BOX (box), self->label);
   gtk_box_append (GTK_BOX (box), arrow);
-  self->pressable = neo_pressable_new (box);
-  neo_pressable_set_ripple (NEO_PRESSABLE (self->pressable), NEO_RIPPLE_BOUNDED, 4);
+  self->pressable = vibeos_pressable_new (box);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->pressable), VIBEOS_RIPPLE_BOUNDED, 4);
   g_signal_connect (self->pressable, "clicked", G_CALLBACK (on_clicked), self);
   gtk_widget_set_parent (self->pressable, GTK_WIDGET (self));
 }

@@ -42,7 +42,7 @@ export class HardwareKeys {
     _grab(accelerator, flags) {
         const action = global.display.grab_accelerator(accelerator, flags);
         if (action === Meta.KeyBindingAction.NONE) {
-            log(`gnome-phone: could not grab ${accelerator}`);
+            log(`vibeos: could not grab ${accelerator}`);
             return 0;
         }
         Main.wm.allowKeybinding(Meta.external_binding_name_for_action(action), Shell.ActionMode.ALL);
@@ -90,7 +90,7 @@ export class AppSwitchKey {
         this._onPress = onPress;
         this._action = global.display.grab_accelerator(APP_SWITCH, Meta.KeyBindingFlags.IGNORE_AUTOREPEAT);
         if (this._action === Meta.KeyBindingAction.NONE) {
-            log(`gnome-phone: could not grab ${APP_SWITCH}`);
+            log(`vibeos: could not grab ${APP_SWITCH}`);
             this._action = 0;
             return;
         }

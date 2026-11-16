@@ -1,4 +1,4 @@
-// Windows over the lock screen. An app whose desktop file says X-GnomePhone-ShowWhenLocked=true may show a window over
+// Windows over the lock screen. An app whose desktop file says X-Vibeos-ShowWhenLocked=true may show a window over
 // the lock screen: the ringing alarm, an incoming call. While such a window is the top one, the keyguard is occluded:
 // its view and its grab step aside for that window, and only for it. The phone stays
 // locked meanwhile: the other windows stay hidden, and home, recents and the shade stay shut (navigation.js, shade.js
@@ -10,7 +10,7 @@ import Gio from 'gi://Gio';
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
 
-const KEY = 'X-GnomePhone-ShowWhenLocked';
+const KEY = 'X-Vibeos-ShowWhenLocked';
 
 // whether @win's app declares that it may show over the lock screen
 export function showsWhenLocked(win) {

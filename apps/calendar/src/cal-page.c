@@ -3,7 +3,7 @@
 #include "cal-window.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 
 struct _CalPage {
   GtkBox parent;
@@ -57,7 +57,7 @@ cal_page_back (CalPage *self)
 }
 
 static void
-on_back (NeoPressable *button, CalPage *self)
+on_back (VibeosPressable *button, CalPage *self)
 {
   cal_page_back (self);
 }
@@ -65,7 +65,7 @@ on_back (NeoPressable *button, CalPage *self)
 GtkWidget *
 cal_page_action (const char *icon_name, const char *name)
 {
-  GtkWidget *button = neo_icon_button_new (icon_name);
+  GtkWidget *button = vibeos_icon_button_new (icon_name);
 
   gtk_widget_add_css_class (button, "cal-action");
   gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);
@@ -92,7 +92,7 @@ cal_page_toolbar (CalPage *self, const char *title, GtkWidget **actions)
       gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
       gtk_widget_add_css_class (label, "cal-toolbar-title");
       /* centred with font padding, its line the font's bounding box (a little lower than a plain label's) */
-      neo_label_set_font_padding (label, 22);
+      vibeos_label_set_font_padding (label, 22);
       gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
       gtk_widget_set_hexpand (label, TRUE);
       gtk_box_append (GTK_BOX (bar), label);

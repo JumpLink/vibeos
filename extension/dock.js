@@ -1,4 +1,4 @@
-// Docked: while a display is plugged in, neo-dock runs the session as gnome-desktop.service, GNOME's own desktop on
+// Docked: while a display is plugged in, vibeos-dock runs the session as gnome-desktop.service, GNOME's own desktop on
 // the display, and none of the phone's UI belongs there (its lock screen, AOD and launcher would come up on the TV,
 // where nothing can unlock them). What the extension does in that session instead: the desktop never blanks, locks or
 // sleeps (an idle and suspend inhibitor, which s10e-sleepd honours too; a suspended phone drops the display), the power
@@ -40,7 +40,7 @@ const RELEASE = 0.35;
 const REPEAT_DELAY_MS = 400;
 const REPEAT_MS = 110;
 
-// Is this session neo-dock's desktop? Both sessions are the same gnome-session and shell, so ask systemd which unit
+// Is this session vibeos-dock's desktop? Both sessions are the same gnome-session and shell, so ask systemd which unit
 // started it (the two units conflict: one is active at a time).
 export function isDesktopSession() {
     try {
@@ -70,7 +70,7 @@ export class Desktop {
                     [this._cookie] = bus.call_finish(res).deepUnpack();
                 } catch (e) {
                     if (!e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
-                        logError(e, 'gnome-phone: keeping the docked desktop awake');
+                        logError(e, 'vibeos: keeping the docked desktop awake');
                 }
             });
 
@@ -79,7 +79,7 @@ export class Desktop {
         try {
             this._pad = new PadNavigation();
         } catch (e) {
-            logError(e, 'gnome-phone: a game controller in the docked desktop');
+            logError(e, 'vibeos: a game controller in the docked desktop');
             this._pad = null;
         }
     }
@@ -113,7 +113,7 @@ class PadNavigation {
             const iter = this._monitor.iterate();
             for (let [ok, device] = iter.next(); ok; [ok, device] = iter.next())
                 this._add(device);
-        }).catch(e => log(`gnome-phone: no game controller in the docked desktop: ${e.message}`));
+        }).catch(e => log(`vibeos: no game controller in the docked desktop: ${e.message}`));
     }
 
     _add(device) {

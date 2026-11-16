@@ -1,3 +1,0 @@
-# gnome-phone's lock screen (gp-auth): the PIN or pattern is the user's own password
-@include common-auth
-@include common-account

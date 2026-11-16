@@ -1,4 +1,4 @@
-project('neo-calendar', 'c', version: '1.0', meson_version: '>= 1.0',
+project('vibeos-calendar', 'c', version: '1.0', meson_version: '>= 1.0',
         default_options: ['warning_level=2', 'c_std=gnu11', 'buildtype=release'])
 add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers', language: 'c')
 
@@ -8,7 +8,7 @@ ecal = dependency('libecal-2.0', version: '>= 3.46')
 m = meson.get_compiler('c').find_library('m')
 bindir = get_option('prefix') / get_option('bindir')
 datadir = get_option('prefix') / get_option('datadir')
-gettext_args = ['-DGETTEXT_PACKAGE="neo-calendar"',
+gettext_args = ['-DGETTEXT_PACKAGE="vibeos-calendar"',
                 '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir')),
                 '-DCAL_VERSION="@0@"'.format(meson.project_version())]
 
@@ -19,7 +19,7 @@ core = static_library('calcore', 'src/cal-model.c', 'src/cal-format.c', 'src/cal
 
 # the app
 resources = gnome.compile_resources('calendar-resources', 'src/calendar.gresource.xml', source_dir: ['src', 'data'])
-executable('neo-calendar', 'src/cal-main.c', 'src/cal-window.c', 'src/cal-text.c', 'src/day-view.c',
+executable('vibeos-calendar', 'src/cal-main.c', 'src/cal-window.c', 'src/cal-text.c', 'src/day-view.c',
            'src/month-view.c', 'src/agenda-view.c', 'src/cal-popup.c', 'src/cal-dialogs.c', 'src/cal-page.c',
            'src/cal-date-picker.c', 'src/cal-reminders.c', 'src/event-info.c', 'src/event-editor.c',
            'src/cal-settings.c', 'src/cal-compat-switch.c', 'src/cal-time-picker.c', 'src/cal-colors.c',
@@ -27,23 +27,23 @@ executable('neo-calendar', 'src/cal-main.c', 'src/cal-window.c', 'src/cal-text.c
            'src/cal-color-picker.c', 'src/cal-material-switch.c', 'src/cal-recurrence-picker.c',
            'src/cal-alert-page.c', 'src/cal-outlined-field.c', resources,
            link_with: core, install: true, c_args: gettext_args,
-           dependencies: [gio, ecal, m, dependency('gtk4', version: '>= 4.14'), dependency('neo-1'),
+           dependencies: [gio, ecal, m, dependency('gtk4', version: '>= 4.14'), dependency('vibeos-1'),
                           dependency('spongy-gtk-1'), dependency('icu-i18n'), dependency('icu-uc')])
 
 # the reminder service: notifies at each reminder, and wakes the phone for it, with the app closed
-executable('neo-calendar-reminders', 'src/reminders-main.c', link_with: core, install: true, c_args: gettext_args,
+executable('vibeos-calendar-reminders', 'src/reminders-main.c', link_with: core, install: true, c_args: gettext_args,
            dependencies: [gio, ecal, m])
 
 unit = configuration_data({'bindir': bindir})
-configure_file(input: 'data/neo-calendar-reminders.service.in', output: 'neo-calendar-reminders.service',
+configure_file(input: 'data/vibeos-calendar-reminders.service.in', output: 'vibeos-calendar-reminders.service',
                configuration: unit, install_dir: get_option('prefix') / 'lib/systemd/user')
-configure_file(input: 'data/neo.Calendar.Reminders.service.in', output: 'neo.Calendar.Reminders.service',
+configure_file(input: 'data/vibeos.Calendar.Reminders.service.in', output: 'vibeos.Calendar.Reminders.service',
                configuration: unit, install_dir: datadir / 'dbus-1/services')
-configure_file(input: 'data/neo.Calendar.service.in', output: 'neo.Calendar.service',
+configure_file(input: 'data/vibeos.Calendar.service.in', output: 'vibeos.Calendar.service',
                configuration: unit, install_dir: datadir / 'dbus-1/services')
-install_data('data/neo.Calendar.desktop', install_dir: datadir / 'applications')
-install_data('data/neo.Calendar.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
-install_data('data/neo.Calendar.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
+install_data('data/vibeos.Calendar.desktop', install_dir: datadir / 'applications')
+install_data('data/vibeos.Calendar.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
+install_data('data/vibeos.Calendar.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
 gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
 
 # the test rig's events (tests/try-calendar.sh): refuses to run outside the rig

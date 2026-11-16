@@ -6,7 +6,7 @@
 #include "cal-compat-switch.h"
 #include "cal-colors.h"
 
-#include <neo.h>
+#include <vibeos.h>
 
 #define WIDTH 46.7
 #define HEIGHT 27.0
@@ -24,7 +24,7 @@ struct _CalCompatSwitch {
   GtkWidget parent;
   gboolean active;
   double position;                      /* 0 off … 1 on */
-  NeoAnim *slide;
+  VibeosAnim *slide;
 };
 
 G_DEFINE_FINAL_TYPE (CalCompatSwitch, cal_compat_switch, GTK_TYPE_WIDGET)
@@ -72,7 +72,7 @@ cal_compat_switch_measure (GtkWidget *widget, GtkOrientation orientation, int fo
 }
 
 static void
-on_slide (NeoAnim *anim, double value, gpointer data)
+on_slide (VibeosAnim *anim, double value, gpointer data)
 {
   CalCompatSwitch *self = data;
 
@@ -98,7 +98,7 @@ cal_compat_switch_dispose (GObject *object)
 {
   CalCompatSwitch *self = CAL_COMPAT_SWITCH (object);
 
-  g_clear_pointer (&self->slide, neo_anim_free);
+  g_clear_pointer (&self->slide, vibeos_anim_free);
   G_OBJECT_CLASS (cal_compat_switch_parent_class)->dispose (object);
 }
 
@@ -143,7 +143,7 @@ cal_compat_switch_init (CalCompatSwitch *self)
 {
   GtkGesture *click = gtk_gesture_click_new ();
 
-  self->slide = neo_anim_new (GTK_WIDGET (self), on_slide, self);
+  self->slide = vibeos_anim_new (GTK_WIDGET (self), on_slide, self);
   g_signal_connect (click, "pressed", G_CALLBACK (on_pressed), self);
   g_signal_connect (click, "released", G_CALLBACK (on_released), self);
   gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (click));
@@ -172,8 +172,8 @@ cal_compat_switch_set_active (CalCompatSwitch *self, gboolean active)
   if (self->active == active)
     return;
   self->active = active;
-  /* a switch not on screen yet starts where it is; NeoAnim jumps to the end there */
-  neo_anim_start (self->slide, self->position, active ? 1 : 0, SLIDE_MS, 0, SPONGY_ACCELERATE_DECELERATE);
+  /* a switch not on screen yet starts where it is; VibeosAnim jumps to the end there */
+  vibeos_anim_start (self->slide, self->position, active ? 1 : 0, SLIDE_MS, 0, SPONGY_ACCELERATE_DECELERATE);
   gtk_accessible_update_state (GTK_ACCESSIBLE (self), GTK_ACCESSIBLE_STATE_CHECKED,
                                active ? GTK_ACCESSIBLE_TRISTATE_TRUE : GTK_ACCESSIBLE_TRISTATE_FALSE, -1);
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_ACTIVE]);

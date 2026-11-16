@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Dictate's settings: the language chosen in the app bar. -->
+<schemalist>
+  <schema id="vibeos.Dictate" path="/vibeos/Dictate/">
+    <key name="language" type="s">
+      <default>''</default>
+      <summary>The language listened in</summary>
+      <description>Its code: de, en, es, fr, it or ru. Empty, or a language whose speech model is not installed: the first of the user's languages with one, else English.</description>
+    </key>
+  </schema>
+</schemalist>

@@ -1,6 +1,6 @@
-/* neo-calendar: the Calendar app, ported from Etar to GTK 4 over evolution-data-server.
+/* vibeos-calendar: the Calendar app, ported from Etar to GTK 4 over evolution-data-server.
  *
- * neo.Calendar, D-Bus activatable: the launcher starts it; the reminder service (neo-calendar-reminders)
+ * vibeos.Calendar, D-Bus activatable: the launcher starts it; the reminder service (vibeos-calendar-reminders)
  * opens an event's info with the "open-event" action when its notification is tapped, the reminders page with
  * "show-alerts" (Pop-up notification), the Snooze delay dialog with "snooze-delay" (Ask for reminder snooze delay)
  * and the quick responses with "email-guests" (a notification's Email guests), all in cal-alert-page.c; an .ics
@@ -15,9 +15,9 @@
 
 #include <glib/gi18n.h>
 #include <locale.h>
-#include <neo.h>
+#include <vibeos.h>
 
-#define APP_ID "neo.Calendar"
+#define APP_ID "vibeos.Calendar"
 
 static GSettings *settings;
 static GSettings *interface;            /* org.gnome.desktop.interface, where installed: "System default" */
@@ -33,10 +33,10 @@ load_style (void)
   for (guint i = 0; i < G_N_ELEMENTS (sheets); i++)
     {
       GtkCssProvider *provider = gtk_css_provider_new ();
-      g_autofree char *path = g_strconcat ("/neo/Calendar/", sheets[i], NULL);
+      g_autofree char *path = g_strconcat ("/vibeos/Calendar/", sheets[i], NULL);
 
       gtk_css_provider_load_from_resource (provider, path);
-      /* over libneo's, which is at APPLICATION priority too: the later provider wins at equal priority */
+      /* over libvibeos's, which is at APPLICATION priority too: the later provider wins at equal priority */
       gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (provider),
                                                   GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
       g_object_unref (provider);
@@ -81,7 +81,7 @@ on_startup (GApplication *app, gpointer data)
                                                                                  "org.gnome.desktop.interface", TRUE)
                                               : NULL;
 
-  neo_init ();
+  vibeos_init ();
   load_style ();
   if (schema && g_settings_schema_has_key (schema, "color-scheme"))
     {
@@ -208,7 +208,7 @@ main (int argc, char **argv)
 
   settings = g_settings_new (APP_ID);
   app = gtk_application_new (APP_ID, G_APPLICATION_HANDLES_OPEN);
-  g_application_set_resource_base_path (G_APPLICATION (app), "/neo/Calendar");
+  g_application_set_resource_base_path (G_APPLICATION (app), "/vibeos/Calendar");
   g_action_map_add_action_entries (G_ACTION_MAP (app), actions, G_N_ELEMENTS (actions), app);
   g_signal_connect (app, "startup", G_CALLBACK (on_startup), NULL);
   g_signal_connect (app, "shutdown", G_CALLBACK (on_shutdown), NULL);

@@ -1,0 +1,6 @@
+# installed with vibeos-parallax-solar-system: the NASA solar-system set is the default wallpaper (VibeOS makes the picture
+# its parallax set); it sorts after Debian's 10_desktop-base
+[org.gnome.desktop.background]
+picture-uri='file:///usr/share/vibeos-launcher/parallax/solar-system/wallpaper.jpg'
+picture-uri-dark='file:///usr/share/vibeos-launcher/parallax/solar-system/wallpaper.jpg'
+picture-options='zoom'

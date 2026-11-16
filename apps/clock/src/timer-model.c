@@ -274,7 +274,7 @@ timer_store_save (TimerStore *store, const char *path, GError **error)
   g_key_file_set_comment (file, NULL, NULL,
                           " The clock's timers. Times in ms: last-start on the clock since boot of the boot named\n"
                           " here, last-start-wall on the wall clock (Unix).\n"
-                          " neo-clock-alarms keeps this file: edit it only while that is stopped.", NULL);
+                          " vibeos-clock-alarms keeps this file: edit it only while that is stopped.", NULL);
   g_key_file_set_string (file, "timers", "boot", store->boot_id);
   for (guint i = 0; i < store->timers->len; i++)
     {

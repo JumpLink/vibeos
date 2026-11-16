@@ -20,7 +20,7 @@
 #include "cal-text.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 #include <string.h>
 #include <unicode/ucal.h>
@@ -657,7 +657,7 @@ static GSettings *
 recent_settings (void)
 {
   GSettingsSchemaSource *source = g_settings_schema_source_get_default ();
-  g_autoptr(GSettingsSchema) schema = source ? g_settings_schema_source_lookup (source, "neo.Calendar", TRUE)
+  g_autoptr(GSettingsSchema) schema = source ? g_settings_schema_source_lookup (source, "vibeos.Calendar", TRUE)
                                              : NULL;
 
   if (!schema || !g_settings_schema_has_key (schema, "recent-timezones"))
@@ -928,7 +928,7 @@ static void
 cal_tz_field_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   CalTzField *self = CAL_TZ_FIELD (widget);
-  int width = gtk_widget_get_width (widget), scale = neo_device_scale (widget);
+  int width = gtk_widget_get_width (widget), scale = vibeos_device_scale (widget);
   gboolean focused = gtk_widget_has_focus (self->text);
   double line = focused ? 2 : 1;
   GdkRGBA underline = cal_argb (focused ? CAL_PRIMARY : CAL_ON_SURFACE_VARIANT);
@@ -1010,9 +1010,9 @@ cal_tz_field_init (CalTzField *self)
   gtk_widget_add_controller (self->text, focus);
 
   gtk_image_set_pixel_size (GTK_IMAGE (icon), 24);
-  self->clear = neo_pressable_new (icon);
+  self->clear = vibeos_pressable_new (icon);
   gtk_widget_add_css_class (self->clear, "cal-tz-clear");
-  neo_pressable_set_ripple (NEO_PRESSABLE (self->clear), NEO_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->clear), VIBEOS_RIPPLE_BOUNDED, 0);
   gtk_widget_set_focus_on_click (self->clear, FALSE);
   gtk_accessible_update_property (GTK_ACCESSIBLE (self->clear), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Clear search"), -1);
   gtk_widget_set_visible (self->clear, FALSE);
@@ -1062,7 +1062,7 @@ fixed_width (GtkWidget *child, int width)
 /* --- the dialog (TimeZonePickerView) */
 
 typedef struct {
-  NeoDialog *dialog;
+  VibeosDialog *dialog;
   Zones *zones;
   CalTzChosen chosen;
   gpointer data;
@@ -1090,7 +1090,7 @@ row_label (const char *css, double size, gboolean wrap, int lines)
       gtk_label_set_lines (GTK_LABEL (label), lines);
       gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
     }
-  neo_label_set_font_padding (label, size);
+  vibeos_label_set_font_padding (label, size);
   return label;
 }
 
@@ -1138,7 +1138,7 @@ static void hide_dropdown (Picker *picker);
 
 /* a row chosen: the zone, kept among the recent ones, and the dialog closes */
 static void
-on_zone_row (NeoPressable *row, Picker *picker)
+on_zone_row (VibeosPressable *row, Picker *picker)
 {
   Zone *zone = picker->zones->zones->pdata[GPOINTER_TO_INT (g_object_get_data (G_OBJECT (row), "cal-tz-index"))];
   g_autofree char *id = g_strdup (zone->id);
@@ -1147,7 +1147,7 @@ on_zone_row (NeoPressable *row, Picker *picker)
   save_recent (id);
   if (picker->chosen)
     picker->chosen (id, picker->data);
-  neo_dialog_respond (picker->dialog, NEO_RESPONSE_OK);
+  vibeos_dialog_respond (picker->dialog, VIBEOS_RESPONSE_OK);
 }
 
 static void
@@ -1155,10 +1155,10 @@ add_zone_row (Picker *picker, int index)
 {
   Zone *zone = picker->zones->zones->pdata[index];
   g_autofree char *offset = row_offset_markup (picker, zone);
-  GtkWidget *row = neo_pressable_new (zone_item (zone->name, offset, zone->country));
+  GtkWidget *row = vibeos_pressable_new (zone_item (zone->name, offset, zone->country));
 
   gtk_widget_add_css_class (row, "cal-tz-row");
-  neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
   gtk_widget_set_focus_on_click (row, FALSE);
   g_object_set_data (G_OBJECT (row), "cal-tz-index", GINT_TO_POINTER (index));
   g_signal_connect (row, "clicked", G_CALLBACK (on_zone_row), picker);
@@ -1176,7 +1176,7 @@ add_empty_row (Picker *picker)
   gtk_widget_set_opacity (item, 0);
   gtk_overlay_set_child (GTK_OVERLAY (overlay), item);
   gtk_widget_add_css_class (label, "cal-tz-empty-text");
-  neo_label_set_font_padding (label, 16);
+  vibeos_label_set_font_padding (label, 16);
   gtk_widget_set_halign (label, GTK_ALIGN_START);
   gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
   gtk_widget_set_margin_top (label, 8);
@@ -1280,7 +1280,7 @@ follow_field (GtkWidget *dropdown, GdkFrameClock *clock, gpointer data)
 
 /* a country or an offset chosen: its text in the field, the keyboard down, the list filtered by it */
 static void
-on_suggestion (NeoPressable *row, Picker *picker)
+on_suggestion (VibeosPressable *row, Picker *picker)
 {
   Suggestion *suggestion = g_object_get_data (G_OBJECT (row), "cal-tz-suggestion");
   g_autofree char *text = g_strdup (suggestion->text);
@@ -1340,10 +1340,10 @@ show_dropdown (Picker *picker, GPtrArray *found)
       gtk_label_set_lines (GTK_LABEL (label), 2);
       gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
       gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
-      neo_label_set_font_padding (label, 18);
-      row = neo_pressable_new (label);
+      vibeos_label_set_font_padding (label, 18);
+      row = vibeos_pressable_new (label);
       gtk_widget_add_css_class (row, "cal-tz-suggestion");
-      neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
+      vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
       gtk_widget_set_focus_on_click (row, FALSE);
       *copy = *suggestion;
       copy->text = g_strdup (suggestion->text);
@@ -1383,7 +1383,7 @@ on_text_changed (GtkEditable *editable, Picker *picker)
 }
 
 static void
-on_clear (NeoPressable *button, Picker *picker)
+on_clear (VibeosPressable *button, Picker *picker)
 {
   gtk_editable_set_text (GTK_EDITABLE (field_text (picker)), "");
 }
@@ -1422,7 +1422,7 @@ on_content_key (GtkEventControllerKey *keys, guint keyval, guint keycode, GdkMod
 }
 
 static void
-on_response (NeoDialog *dialog, int response, Picker *picker)
+on_response (VibeosDialog *dialog, int response, Picker *picker)
 {
   hide_dropdown (picker);
 }
@@ -1446,9 +1446,9 @@ cal_tz_picker_show (GtkWidget *parent, const char *current, gint64 at, CalTzChos
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkGesture *press = gtk_gesture_click_new ();
   GtkEventController *keys = gtk_event_controller_key_new ();
-  GtkOverlay *overlay = neo_window_get_overlay (parent);
+  GtkOverlay *overlay = vibeos_window_get_overlay (parent);
 
-  picker->dialog = neo_dialog_new (NULL);
+  picker->dialog = vibeos_dialog_new (NULL);
   picker->zones = zones_new (id, at);
   picker->chosen = chosen;
   picker->data = data;
@@ -1476,12 +1476,12 @@ cal_tz_picker_show (GtkWidget *parent, const char *current, gint64 at, CalTzChos
   g_signal_connect (keys, "key-pressed", G_CALLBACK (on_content_key), picker);
   gtk_widget_add_controller (picker->content, keys);
 
-  neo_dialog_set_flush (picker->dialog, TRUE);
-  neo_dialog_set_content (picker->dialog, picker->content);
+  vibeos_dialog_set_flush (picker->dialog, TRUE);
+  vibeos_dialog_set_content (picker->dialog, picker->content);
   gtk_widget_add_css_class (gtk_widget_get_parent (picker->content), "cal-tz-card");
   g_signal_connect_data (picker->dialog, "response", G_CALLBACK (on_response), picker, picker_free, 0);
   show_results (picker, FILTER_NONE, NULL, 0);
-  neo_dialog_present (picker->dialog, parent);
+  vibeos_dialog_present (picker->dialog, parent);
   /* the field first: TimeZonePickerDialog's window resizes for the keyboard, which comes up with it */
   gtk_widget_grab_focus (field_text (picker));
 }

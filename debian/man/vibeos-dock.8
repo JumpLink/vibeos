@@ -1,0 +1,9 @@
+.TH VIBEOS-DOCK 8 "2026-11-16" "vibeos 0.1.0" "VibeOS"
+.SH NAME
+vibeos-dock \- switch between the phone session and the GNOME desktop
+.SH SYNOPSIS
+.B vibeos-dock
+.SH DESCRIPTION
+Run on a display plug or unplug (by the opt-in udev rule /usr/share/vibeos-session/71-vibeos-dock.rules) and once at boot: with an external display connected it starts gnome-desktop.service, otherwise vibeos.service. Each executable in /etc/vibeos-dock.d/ is run first with "connected" or "disconnected". The file /run/vibeos-dock.off turns it off.
+.SH SEE ALSO
+systemctl(1)

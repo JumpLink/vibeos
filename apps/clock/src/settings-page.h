@@ -1,6 +1,6 @@
 /* SettingsPage: the Clock's settings, opened from the gear in the app bar or the cities picker's menu.
  *
- * The rows are DeskClock's, each writing its neo.Clock key at once: lists open a radio dialog, switches toggle
+ * The rows are DeskClock's, each writing its vibeos.Clock key at once: lists open a radio dialog, switches toggle
  * from anywhere on the row, the alarm volume is a slider that plays the alarm sound for two seconds when let go.
  * Some of its rows are not here, because nothing on this phone could do what they say (see settings-page.c).
  *

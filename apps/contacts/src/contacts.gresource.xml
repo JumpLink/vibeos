@@ -2,14 +2,14 @@
 <!-- the app's stylesheet, pictures and icons (data/icons, from the APK's vector drawables), where GtkApplication
      looks for icons: the resource base path + /icons -->
 <gresources>
-  <gresource prefix="/neo/Contacts">
+  <gresource prefix="/vibeos/Contacts">
     <file>contacts.css</file>
     <file alias="images/accounts_empty.png">images/accounts_empty.png</file>
     <file alias="images/home_empty.png">images/home_empty.png</file>
     <file alias="images/ic_person_avatar.png">images/ic_person_avatar.png</file>
     <file alias="images/label_empty.png">images/label_empty.png</file>
     <file alias="images/person_white_540dp.png">images/person_white_540dp.png</file>
-    <file alias="icons/scalable/apps/neo.Contacts.svg">neo.Contacts.svg</file>
+    <file alias="icons/scalable/apps/vibeos.Contacts.svg">vibeos.Contacts.svg</file>
     <file alias="icons/scalable/actions/ct-account-circle-symbolic.svg">icons/ct-account-circle-symbolic.svg</file>
     <file alias="icons/scalable/actions/ct-add-symbolic.svg">icons/ct-add-symbolic.svg</file>
     <file alias="icons/scalable/actions/ct-arrow-back-symbolic.svg">icons/ct-arrow-back-symbolic.svg</file>

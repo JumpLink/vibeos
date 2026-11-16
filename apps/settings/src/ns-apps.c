@@ -1,7 +1,7 @@
 /* Notifications, Apps and Default apps. An app's notifications are GNOME's per-app settings
  * (org.gnome.desktop.notifications.application at .../application/<munged id>/, listed in application-children).
  * GNOME Shell follows them (messageTray.js NotificationApplicationPolicy): "enable" keeps the app's notifications
- * or drops them, "show-banners" (with the global one, Do not disturb) lets them pop up (gnome-phone's headsup.js
+ * or drops them, "show-banners" (with the global one, Do not disturb) lets them pop up (VibeOS's headsup.js
  * asks the policy), "show-in-lock-screen" (with the global one) puts the app's icon on the lock screen
  * (keyguard.js and aod.js ask the policy). Emergency alerts are cellbroadcastd's (org.freedesktop.cbd). */
 #include "ns-pages.h"
@@ -179,7 +179,7 @@ ns_page_notifications (GtkWidget *row, gpointer data)
   GtkWidget *r = ns_row_switch (g, "Do not disturb", "No pop-ups: notifications wait in the list", NULL, NULL);
   g_settings_bind (n, "show-banners", ns_row_get_switch (r), "active", G_SETTINGS_BIND_INVERT_BOOLEAN);
   ns_row_switch (g, "Show on the lock screen", "Their apps' icons below the clock", n, "show-in-lock-screen");
-  /* No "Wake the screen" (Phosh's wakeup-screen-* keys): gnome-phone leaves the screen off for a notification.
+  /* No "Wake the screen" (Phosh's wakeup-screen-* keys): vibeos leaves the screen off for a notification.
    * Besides the power key and a double tap, only a full-screen app (an incoming call, a ringing alarm: service.js
    * LaunchFullScreen) turns it on. */
   alerts_row (g);

@@ -6,7 +6,7 @@
 #include "fm-util.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define SHOW_AFTER_MS  500      /* the progress dialog only for a job that takes longer */
 #define TICK_MS        250
@@ -57,7 +57,7 @@ typedef struct {
   GPtrArray *trashed;           /* TRASH: the originals' paths, for UNDO */
 
   /* the window's side */
-  NeoDialog *dialog;
+  VibeosDialog *dialog;
   GtkWidget *percent, *from_label, *to_label, *size_label, *rate_label, *bar, *count_label, *remaining_label;
   guint timer;
   gboolean hidden;
@@ -116,13 +116,13 @@ fail (Job *job, const char *message)
 /* ---- the conflict question --------------------------------------------------------------------------------------- */
 
 static void
-on_conflict_answer (NeoPressable *button, NeoDialog *dialog)
+on_conflict_answer (VibeosPressable *button, VibeosDialog *dialog)
 {
-  neo_dialog_respond (dialog, GPOINTER_TO_INT (g_object_get_data (G_OBJECT (button), "fm-answer")));
+  vibeos_dialog_respond (dialog, GPOINTER_TO_INT (g_object_get_data (G_OBJECT (button), "fm-answer")));
 }
 
 static void
-on_conflict_response (NeoDialog *dialog, int response, Job *job)
+on_conflict_response (VibeosDialog *dialog, int response, Job *job)
 {
   GtkWidget *all = g_object_get_data (G_OBJECT (dialog), "fm-all");
   Answer answer = response >= ANSWER_OVERWRITE && response <= ANSWER_SKIP ? (Answer) response : ANSWER_CANCEL;
@@ -141,7 +141,7 @@ show_conflict (gpointer data)
   Job *job = data;
   const char *labels[] = { _("Overwrite"), _("Rename"), _("Skip") };
   GtkWidget *content;
-  NeoDialog *dialog = fm_dialog_new (NULL, &content);
+  VibeosDialog *dialog = fm_dialog_new (NULL, &content);
   g_autofree char *message = g_strdup_printf (_("%s already exists. Do you want to overwrite?"), job->conflict);
   GtkWidget *all = fm_check_row (_("Apply to all"), FALSE, FALSE);
 
@@ -160,7 +160,7 @@ show_conflict (gpointer data)
   fm_dialog_add_button (dialog, _("Cancel"), ANSWER_CANCEL);
   g_object_set_data (G_OBJECT (dialog), "fm-all", all);
   g_signal_connect (dialog, "response", G_CALLBACK (on_conflict_response), job);
-  neo_dialog_present (dialog, job->shell->window);
+  vibeos_dialog_present (dialog, job->shell->window);
   return G_SOURCE_REMOVE;
 }
 
@@ -806,11 +806,11 @@ update_dialog (Job *job)
 }
 
 static void
-on_progress_response (NeoDialog *dialog, int response, Job *job)
+on_progress_response (VibeosDialog *dialog, int response, Job *job)
 {
   job->dialog = NULL;
   /* CANCEL stops after the current file; HIDE (or a tap outside) leaves the job running with its line */
-  if (response == NEO_RESPONSE_OK + 1)
+  if (response == VIBEOS_RESPONSE_OK + 1)
     g_cancellable_cancel (job->cancellable);
   else
     {
@@ -823,7 +823,7 @@ static void
 show_dialog (Job *job)
 {
   GtkWidget *content, *head = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0), *title, *sizes;
-  NeoDialog *dialog = fm_dialog_new (NULL, &content);
+  VibeosDialog *dialog = fm_dialog_new (NULL, &content);
 
   title = fm_label (job_title (job->kind), "fm-dialog-title", 20, FALSE);
   gtk_widget_set_hexpand (title, TRUE);
@@ -853,12 +853,12 @@ show_dialog (Job *job)
   job->remaining_label = fm_label (NULL, "fm-progress-text", 14, FALSE);
   gtk_box_append (GTK_BOX (content), job->count_label);
   gtk_box_append (GTK_BOX (content), job->remaining_label);
-  fm_dialog_add_button (dialog, _("Hide"), NEO_RESPONSE_OK);
-  fm_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_OK + 1);
+  fm_dialog_add_button (dialog, _("Hide"), VIBEOS_RESPONSE_OK);
+  fm_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_OK + 1);
   g_signal_connect (dialog, "response", G_CALLBACK (on_progress_response), job);
   job->dialog = dialog;
   update_dialog (job);
-  neo_dialog_present (dialog, job->shell->window);
+  vibeos_dialog_present (dialog, job->shell->window);
 }
 
 static gboolean
@@ -917,11 +917,11 @@ on_job_done (GObject *source, GAsyncResult *result, gpointer data)
   g_clear_handle_id (&job->timer, g_source_remove);
   if (job->dialog)
     {
-      NeoDialog *dialog = job->dialog;
+      VibeosDialog *dialog = job->dialog;
 
       g_signal_handlers_disconnect_by_data (dialog, job);
       job->dialog = NULL;
-      neo_dialog_respond (dialog, NEO_RESPONSE_CANCEL);
+      vibeos_dialog_respond (dialog, VIBEOS_RESPONSE_CANCEL);
     }
   fm_shell_job_progress (shell, -1);
   if (job->error)

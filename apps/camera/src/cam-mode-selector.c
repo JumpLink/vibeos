@@ -3,7 +3,7 @@
 #include "cam-constants.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 
 struct _CamModeSelector {
   GtkWidget  parent;
@@ -16,7 +16,7 @@ struct _CamModeSelector {
   gboolean   vertical;          /* a column beside a landscape preview, the buttons stacked */
   double     pill_x, pill_w;    /* the highlight along the band (x, or y in a column) and its length there;
                                  * pill_x < 0 until laid out */
-  NeoAnim   *x_anim, *w_anim;
+  VibeosAnim   *x_anim, *w_anim;
   gboolean   pending;           /* the pill moves once the buttons have their places */
 };
 
@@ -104,7 +104,7 @@ cam_mode_selector_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   if (!self->recording && self->pill_x >= 0)
     {
       GskRoundedRect pill;
-      GdkRGBA fill = neo_color (NEO_SECONDARY_CONTAINER);
+      GdkRGBA fill = vibeos_color (VIBEOS_SECONDARY_CONTAINER);
 
       if (self->vertical)
         gsk_rounded_rect_init_from_rect (&pill, &GRAPHENE_RECT_INIT ((gtk_widget_get_width (widget)
@@ -123,21 +123,21 @@ cam_mode_selector_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 }
 
 static void
-on_x (NeoAnim *anim, double value, gpointer data)
+on_x (VibeosAnim *anim, double value, gpointer data)
 {
   CAM_MODE_SELECTOR (data)->pill_x = value;
   gtk_widget_queue_draw (GTK_WIDGET (data));
 }
 
 static void
-on_w (NeoAnim *anim, double value, gpointer data)
+on_w (VibeosAnim *anim, double value, gpointer data)
 {
   CAM_MODE_SELECTOR (data)->pill_w = value;
   gtk_widget_queue_draw (GTK_WIDGET (data));
 }
 
 static void
-on_button (NeoPressable *button, CamModeSelector *self)
+on_button (VibeosPressable *button, CamModeSelector *self)
 {
   for (int i = 0; i < CAM_N_MODES; i++)
     if (GTK_WIDGET (button) == self->buttons[i])
@@ -150,8 +150,8 @@ cam_mode_selector_dispose (GObject *object)
   CamModeSelector *self = CAM_MODE_SELECTOR (object);
   GtkWidget *child;
 
-  g_clear_pointer (&self->x_anim, neo_anim_free);
-  g_clear_pointer (&self->w_anim, neo_anim_free);
+  g_clear_pointer (&self->x_anim, vibeos_anim_free);
+  g_clear_pointer (&self->w_anim, vibeos_anim_free);
   while ((child = gtk_widget_get_first_child (GTK_WIDGET (self))))
     gtk_widget_unparent (child);
   G_OBJECT_CLASS (cam_mode_selector_parent_class)->dispose (object);
@@ -182,8 +182,8 @@ cam_mode_selector_init (CamModeSelector *self)
       self->available[i] = TRUE;
       self->labels[i] = gtk_label_new (names[i]);
       gtk_widget_add_css_class (self->labels[i], "cam-mode-label");
-      self->buttons[i] = neo_pressable_new (self->labels[i]);
-      neo_pressable_set_ripple (NEO_PRESSABLE (self->buttons[i]), NEO_RIPPLE_BOUNDED, CAM_MODE_PILL_H / 2.0);
+      self->buttons[i] = vibeos_pressable_new (self->labels[i]);
+      vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->buttons[i]), VIBEOS_RIPPLE_BOUNDED, CAM_MODE_PILL_H / 2.0);
       gtk_widget_set_parent (self->buttons[i], GTK_WIDGET (self));
       g_signal_connect (self->buttons[i], "clicked", G_CALLBACK (on_button), self);
     }
@@ -191,8 +191,8 @@ cam_mode_selector_init (CamModeSelector *self)
   gtk_widget_add_css_class (self->duration, "cam-duration");
   gtk_widget_set_visible (self->duration, FALSE);
   gtk_widget_set_parent (self->duration, GTK_WIDGET (self));
-  self->x_anim = neo_anim_new (GTK_WIDGET (self), on_x, self);
-  self->w_anim = neo_anim_new (GTK_WIDGET (self), on_w, self);
+  self->x_anim = vibeos_anim_new (GTK_WIDGET (self), on_x, self);
+  self->w_anim = vibeos_anim_new (GTK_WIDGET (self), on_w, self);
   cam_mode_selector_set_mode (self, CAM_MODE_PHOTO, FALSE);
 }
 
@@ -220,14 +220,14 @@ cam_mode_selector_set_mode (CamModeSelector *self, CamMode mode, gboolean animat
   if (animate && gtk_widget_get_mapped (widget) && self->pill_x >= 0)
     {
       /* the pill's place and width, 300 ms accelerate-decelerate */
-      neo_anim_start (self->x_anim, self->pill_x, button_x (widget, mode), CAM_MS_DEFAULT, 0,
+      vibeos_anim_start (self->x_anim, self->pill_x, button_x (widget, mode), CAM_MS_DEFAULT, 0,
                       SPONGY_ACCELERATE_DECELERATE);
-      neo_anim_start (self->w_anim, self->pill_w, pill_length (self), CAM_MS_DEFAULT, 0, SPONGY_ACCELERATE_DECELERATE);
+      vibeos_anim_start (self->w_anim, self->pill_w, pill_length (self), CAM_MS_DEFAULT, 0, SPONGY_ACCELERATE_DECELERATE);
     }
   else
     {
-      neo_anim_stop (self->x_anim);
-      neo_anim_stop (self->w_anim);
+      vibeos_anim_stop (self->x_anim);
+      vibeos_anim_stop (self->w_anim);
       self->pending = TRUE;
       gtk_widget_queue_allocate (widget);
     }
@@ -279,8 +279,8 @@ cam_mode_selector_set_vertical (CamModeSelector *self, gboolean vertical)
   if (vertical == self->vertical)
     return;
   self->vertical = vertical;
-  neo_anim_stop (self->x_anim);
-  neo_anim_stop (self->w_anim);
+  vibeos_anim_stop (self->x_anim);
+  vibeos_anim_stop (self->w_anim);
   /* no resize queued: the parent sets this while it allocates, and allocates the selector at its new size next */
   self->pending = TRUE;
 }

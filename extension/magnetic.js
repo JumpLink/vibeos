@@ -61,7 +61,7 @@ class DirectionEstimator {
 // low ticks are left out: feedbackd plays every effect at one strength
 function thresholdHaptic() {
     Gio.DBus.session.call('org.sigxcpu.Feedback', '/org/sigxcpu/Feedback', 'org.sigxcpu.Feedback',
-        'TriggerFeedback', new GLib.Variant('(ssa{sv}i)', ['neo.GnomePhone', 'button-released', {}, -1]),
+        'TriggerFeedback', new GLib.Variant('(ssa{sv}i)', ['vibeos.Shell', 'button-released', {}, -1]),
         null, Gio.DBusCallFlags.NONE, -1, null, null);
 }
 

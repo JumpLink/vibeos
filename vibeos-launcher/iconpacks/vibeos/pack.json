@@ -1,0 +1,11 @@
+{
+ "id": "vibeos",
+ "title": "VibeOS",
+ "scale": 0.7,
+ "shape": "squircle",
+ "iconback": [
+  "iconback"
+ ],
+ "iconmask": [],
+ "iconupon": []
+}

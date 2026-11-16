@@ -15,7 +15,7 @@ for the frame (a BEFORE_REDRAW later): a move made from inside the
 window's position-changed or size-changed is lost while mutter is still
 applying the client's ack, and Files then stayed centred with the
 launcher showing above it. Measure down to the keyboard's own top: the
-height above subtracts the bottom panel, which on gnome-phone reserves
+height above subtracts the bottom panel, which on vibeos reserves
 no strut, so the last 18 px of the window were still under the keys.
 A window closed with the keyboard up drops its fit.
 
@@ -34,7 +34,7 @@ on the S10e, built into /opt/gnome-mobile by build51.sh), after 0001.
 -            const frameRect = window.get_frame_rect();
 -            const workArea = window.get_work_area_current_monitor();
 +            // Fit the window, full width, from the top of the work area down to the keyboard's own top: not to the
-+            // work area less the bottom panel, which on gnome-phone reserves no strut and sits under the keys.
++            // work area less the bottom panel, which on vibeos reserves no strut and sits under the keys.
 +            // Mutter unmaximizes only once the client acks it, and the ack restores the window's floating rect,
 +            // centred in the work area, after any move: so fit again whenever the window moves or resizes, or the
 +            // keyboard does (a layout with another row), while the keyboard is up. Not from inside those signals:

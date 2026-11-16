@@ -1,9 +1,0 @@
-.TH NEO-DOCK 8 "2026-11-10" "gnome-phone 0.1.0" "GNOME Phone"
-.SH NAME
-neo-dock \- switch between the phone session and the GNOME desktop
-.SH SYNOPSIS
-.B neo-dock
-.SH DESCRIPTION
-Run on a display plug or unplug (by the opt-in udev rule /usr/share/gnome-phone-session/71-neo-dock.rules) and once at boot: with an external display connected it starts gnome-desktop.service, otherwise gnome-phone.service. Each executable in /etc/neo-dock.d/ is run first with "connected" or "disconnected". The file /run/neo-dock.off turns it off.
-.SH SEE ALSO
-systemctl(1)

@@ -1,0 +1,12 @@
+#!/bin/sh
+# the home layouts the app packages saved before they replaced gnome-phone's (layouts-before-vibeos.sh)
+set -e
+
+if [ "$1" = purge ]; then
+    rm -rf /var/lib/vibeos-launcher/before-vibeos
+    rmdir /var/lib/vibeos-launcher 2>/dev/null || true
+fi
+
+#DEBHELPER#
+
+exit 0

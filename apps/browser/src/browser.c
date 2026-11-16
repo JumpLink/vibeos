@@ -1,12 +1,12 @@
-/* Neo Browser: a phone browser UI in the style of Chrome's (dark) over WebKitGTK 6, in C. The port of the GJS
+/* VibeOS Browser: a phone browser UI in the style of Chrome's (dark) over WebKitGTK 6, in C. The port of the GJS
  * browser it replaced, same pages, same data:
  * toolbar (home, address pill, tab count, menu) • tab switcher grid • menu sheet • address entry with suggestions •
  * new-tab page • history / bookmarks / downloads pages • find in page • long-press link sheet • ad blocking.
  *
- * Session, history and bookmarks are JSON under ~/.local/share/neo.Browser (store.c); downloads go to
+ * Session, history and bookmarks are JSON under ~/.local/share/vibeos.Browser (store.c); downloads go to
  * ~/Downloads. Lists scroll with libspongy's stretch when it is there.
  *
- * The phone's back swipe (gnome-phone's a11y.js) clicks a showing "Back" button when the app has one, and otherwise
+ * The phone's back swipe (VibeOS's a11y.js) clicks a showing "Back" button when the app has one, and otherwise
  * sends the app home. Chrome has no back button on screen, so the window carries an invisible one that is
  * sensitive exactly while back has somewhere to go here: a sheet, a page over the browser, find, the page's own
  * history, another tab. At the start of everything it is off and the swipe goes home, as Chrome's does. */
@@ -22,7 +22,7 @@
 
 #include "store.h"
 
-#define APP_ID "neo.Browser"
+#define APP_ID "vibeos.Browser"
 /* The engine is WebKit, so the page is told so: an iPhone's Safari gets every site's mobile layout and no "your
  * browser is not supported" for a Chrome name over a WebKit engine. Desktop mode is Safari on a Mac. */
 #define MOBILE_UA "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) " \
@@ -46,14 +46,14 @@ static const char SCROLLBAR_CSS[] =
   "border:none!important}";
 
 static const char CSS[] =
-  "window.neo, .neo-bg { background: #121316; color: #e3e3e6; }"
-  ".neo-bar { background: #1b1c1f; min-height: 56px; padding: 0 4px; }"
-  ".neo-bar.incognito, .ntp.incognito { background: #3c3f45; }"
+  "window.vibeos, .vibeos-bg { background: #121316; color: #e3e3e6; }"
+  ".vibeos-bar { background: #1b1c1f; min-height: 56px; padding: 0 4px; }"
+  ".vibeos-bar.incognito, .ntp.incognito { background: #3c3f45; }"
   ".ntp { background: #121316; }"
-  "button.neo-icon { min-width: 40px; min-height: 40px; padding: 4px; margin: 4px; border-radius: 999px;"
+  "button.vibeos-icon { min-width: 40px; min-height: 40px; padding: 4px; margin: 4px; border-radius: 999px;"
   " background: none; box-shadow: none; }"
-  "button.neo-icon:active { background: alpha(#e3e3e6, 0.12); }"
-  "button.neo-icon:disabled { opacity: 0.38; }"
+  "button.vibeos-icon:active { background: alpha(#e3e3e6, 0.12); }"
+  "button.vibeos-icon:disabled { opacity: 0.38; }"
   "button.back-probe { min-width: 1px; min-height: 1px; padding: 0; margin: 0; border: none; background: none;"
   " box-shadow: none; opacity: 0; }"
   "button.pill { background: #2e3035; border-radius: 20px; min-height: 40px; padding: 0 14px 0 12px;"
@@ -62,9 +62,9 @@ static const char CSS[] =
   ".tabcount { border: 2px solid #e3e3e6; border-radius: 5px; min-width: 18px; min-height: 18px;"
   " font-weight: bold; font-size: 12px; }"
   ".tabcount.small { font-size: 10px; }"
-  "progressbar.neo-progress trough { min-height: 2px; background: #3a3c41; border-radius: 0; }"
-  "progressbar.neo-progress progress { min-height: 2px; background: #a8c7fa; border-radius: 0; }"
-  "entry.neo-entry, entry.neo-entry:focus-within { background: none; border: none; box-shadow: none;"
+  "progressbar.vibeos-progress trough { min-height: 2px; background: #3a3c41; border-radius: 0; }"
+  "progressbar.vibeos-progress progress { min-height: 2px; background: #a8c7fa; border-radius: 0; }"
+  "entry.vibeos-entry, entry.vibeos-entry:focus-within { background: none; border: none; box-shadow: none;"
   " outline: none; min-height: 40px; font-size: 16px; color: #e3e3e6; padding: 0; }"
   ".sheet { background: #2b2d31; border-radius: 24px; padding: 8px 0; }"
   ".sheet.bottom { border-radius: 24px 24px 0 0; padding: 16px 0 8px 0; }"
@@ -88,9 +88,9 @@ static const char CSS[] =
   ".sub { color: #a9abb1; font-size: 13px; }"
   ".title-big { font-size: 20px; }"
   ".row-dot { background: #2e3035; border-radius: 20px; min-width: 40px; min-height: 40px; font-size: 16px; }"
-  "list.neo-list, list.neo-list row { background: none; }"
-  "list.neo-list row { min-height: 60px; padding: 0 8px 0 16px; }"
-  "list.neo-list row:active { background: alpha(#e3e3e6, 0.08); }"
+  "list.vibeos-list, list.vibeos-list row { background: none; }"
+  "list.vibeos-list row { min-height: 60px; padding: 0 8px 0 16px; }"
+  "list.vibeos-list row:active { background: alpha(#e3e3e6, 0.08); }"
   ".switcher { background: #1b1c20; }"
   "button.fab { background: #a8c7fa; border-radius: 16px; min-width: 56px; min-height: 48px; padding: 0; }"
   ".segment { background: #2a2c31; border-radius: 24px; padding: 4px; }"
@@ -244,7 +244,7 @@ icon_button (const char *name, GCallback cb, gpointer data)
 {
   GtkWidget *button = gtk_button_new ();
   gtk_button_set_child (GTK_BUTTON (button), icon (name, 24));
-  gtk_widget_add_css_class (button, "neo-icon");
+  gtk_widget_add_css_class (button, "vibeos-icon");
   gtk_widget_set_valign (button, GTK_ALIGN_CENTER);
   if (cb)
     g_signal_connect_swapped (button, "clicked", cb, data);
@@ -388,7 +388,7 @@ on_filter_saved (GObject *src, GAsyncResult *res, gpointer data)
   WebKitUserContentFilter *f = webkit_user_content_filter_store_save_finish (WEBKIT_USER_CONTENT_FILTER_STORE (src),
                                                                              res, &error);
   if (!f) {
-    g_message ("neo-browser: ad filter not compiled: %s", error->message);
+    g_message ("vibeos-browser: ad filter not compiled: %s", error->message);
   } else {
     /* the bundled copy: fetch again soon */
     nb_store_set_filter_time (b->store, c->fetched ? g_get_real_time () / 1e6 : 1);
@@ -420,9 +420,9 @@ on_filter_fetched (GObject *src, GAsyncResult *res, gpointer data)
   g_autoptr (GBytes) bytes = soup_session_send_and_read_finish (SOUP_SESSION (src), res, &error);
 
   if (!bytes)
-    g_message ("neo-browser: ad filter not fetched: %s", error->message);
+    g_message ("vibeos-browser: ad filter not fetched: %s", error->message);
   else if (!msg || soup_message_get_status (msg) != 200 || g_bytes_get_size (bytes) < 10000)
-    g_message ("neo-browser: ad filter not fetched: %zu bytes", g_bytes_get_size (bytes));
+    g_message ("vibeos-browser: ad filter not fetched: %zu bytes", g_bytes_get_size (bytes));
   else
     compile_filter (b, bytes, TRUE);
   g_object_unref (src);
@@ -1095,7 +1095,7 @@ build_browse (Browser *b)
   b->bar_stack = gtk_stack_new ();
   /* toolbar */
   b->toolbar = hbox (0);
-  gtk_widget_add_css_class (b->toolbar, "neo-bar");
+  gtk_widget_add_css_class (b->toolbar, "vibeos-bar");
   gtk_box_append (GTK_BOX (b->toolbar), icon_button ("home", G_CALLBACK (on_home), b));
   b->addr_icon = icon ("globe", 24);
   gtk_widget_set_opacity (b->addr_icon, 0.85);
@@ -1115,7 +1115,7 @@ build_browse (Browser *b)
   gtk_widget_add_css_class (b->count_label, "tabcount");
   GtkWidget *count = gtk_button_new ();
   gtk_button_set_child (GTK_BUTTON (count), b->count_label);
-  gtk_widget_add_css_class (count, "neo-icon");
+  gtk_widget_add_css_class (count, "vibeos-icon");
   gtk_widget_set_valign (count, GTK_ALIGN_CENTER);
   g_signal_connect_swapped (count, "clicked", G_CALLBACK (open_switcher), b);
   gtk_box_append (GTK_BOX (b->toolbar), count);
@@ -1124,12 +1124,12 @@ build_browse (Browser *b)
 
   /* find in page */
   GtkWidget *find = hbox (0);
-  gtk_widget_add_css_class (find, "neo-bar");
+  gtk_widget_add_css_class (find, "vibeos-bar");
   GtkWidget *find_back = icon_button ("back", G_CALLBACK (close_find), b);
   set_back_name (find_back);
   gtk_box_append (GTK_BOX (find), find_back);
   b->find_entry = gtk_entry_new ();
-  gtk_widget_add_css_class (b->find_entry, "neo-entry");
+  gtk_widget_add_css_class (b->find_entry, "vibeos-entry");
   gtk_widget_set_hexpand (b->find_entry, TRUE);
   gtk_widget_set_valign (b->find_entry, GTK_ALIGN_CENTER);
   gtk_entry_set_placeholder_text (GTK_ENTRY (b->find_entry), "Find in page");
@@ -1149,7 +1149,7 @@ build_browse (Browser *b)
   gtk_box_append (GTK_BOX (box), b->bar_stack);
 
   b->progress = gtk_progress_bar_new ();
-  gtk_widget_add_css_class (b->progress, "neo-progress");
+  gtk_widget_add_css_class (b->progress, "vibeos-progress");
   gtk_box_append (GTK_BOX (box), b->progress);
 
   /* the pages, and the new-tab page */
@@ -1191,7 +1191,7 @@ fill_ntp (Browser *b)
   gtk_widget_set_margin_start (col, 20);
   gtk_widget_set_margin_end (col, 20);
   gtk_widget_set_margin_bottom (col, 20);
-  GtkWidget *title = gtk_label_new (incog ? "Incognito" : "Neo");
+  GtkWidget *title = gtk_label_new (incog ? "Incognito" : "VibeOS");
   gtk_widget_add_css_class (title, "ntp-title");
   gtk_box_append (GTK_BOX (col), title);
   GtkWidget *sb = hbox (12);
@@ -1266,7 +1266,7 @@ sync_ui (Browser *b)
   else
     gtk_widget_remove_css_class (b->count_label, "small");
   const char *name = tab_name (t);
-  gtk_window_set_title (GTK_WINDOW (b->win), !t->ntp && *name ? name : "Neo Browser");
+  gtk_window_set_title (GTK_WINDOW (b->win), !t->ntp && *name ? name : "VibeOS Browser");
   sync_progress (b);
   sync_back (b);
 }
@@ -1396,16 +1396,16 @@ static GtkWidget *
 build_omnibox (Browser *b)
 {
   GtkWidget *box = vbox (0);
-  gtk_widget_add_css_class (box, "neo-bg");
+  gtk_widget_add_css_class (box, "vibeos-bg");
   GtkWidget *bar = hbox (4);
-  gtk_widget_add_css_class (bar, "neo-bar");
+  gtk_widget_add_css_class (bar, "vibeos-bar");
   gtk_box_append (GTK_BOX (bar), page_back_button (b));
   GtkWidget *pill = hbox (0);
   gtk_widget_add_css_class (pill, "pill-box");
   gtk_widget_set_hexpand (pill, TRUE);
   gtk_widget_set_valign (pill, GTK_ALIGN_CENTER);
   b->omni_entry = gtk_entry_new ();
-  gtk_widget_add_css_class (b->omni_entry, "neo-entry");
+  gtk_widget_add_css_class (b->omni_entry, "vibeos-entry");
   gtk_widget_set_hexpand (b->omni_entry, TRUE);
   gtk_entry_set_input_purpose (GTK_ENTRY (b->omni_entry), GTK_INPUT_PURPOSE_URL);
   gtk_entry_set_input_hints (GTK_ENTRY (b->omni_entry),
@@ -1418,7 +1418,7 @@ build_omnibox (Browser *b)
   gtk_box_append (GTK_BOX (bar), pill);
   gtk_box_append (GTK_BOX (box), bar);
   b->suggest_list = gtk_list_box_new ();
-  gtk_widget_add_css_class (b->suggest_list, "neo-list");
+  gtk_widget_add_css_class (b->suggest_list, "vibeos-list");
   gtk_list_box_set_selection_mode (GTK_LIST_BOX (b->suggest_list), GTK_SELECTION_NONE);
   g_signal_connect (b->suggest_list, "row-activated", G_CALLBACK (on_suggestion), b);
   gtk_box_append (GTK_BOX (box), scroller_new (b->suggest_list));
@@ -1592,7 +1592,7 @@ build_switcher (Browser *b)
   gtk_widget_set_opacity (si, 0.8);
   gtk_box_append (GTK_BOX (search), si);
   b->tab_filter = gtk_entry_new ();
-  gtk_widget_add_css_class (b->tab_filter, "neo-entry");
+  gtk_widget_add_css_class (b->tab_filter, "vibeos-entry");
   gtk_widget_set_hexpand (b->tab_filter, TRUE);
   gtk_widget_set_valign (b->tab_filter, GTK_ALIGN_CENTER);
   gtk_entry_set_placeholder_text (GTK_ENTRY (b->tab_filter), "Search your tabs");
@@ -1630,7 +1630,7 @@ on_snapshot (GObject *src, GAsyncResult *res, gpointer data)
 
   g_free (job);
   if (!tex) {
-    g_message ("neo-browser: no snapshot: %s", error->message);
+    g_message ("vibeos-browser: no snapshot: %s", error->message);
     return;
   }
   if (!t)
@@ -1747,7 +1747,7 @@ fill_switcher (Browser *b)
     gtk_box_append (GTK_BOX (top), title);
     GtkWidget *close = gtk_button_new ();
     gtk_button_set_child (GTK_BUTTON (close), icon (sel ? "close_dark" : "close", 22));
-    gtk_widget_add_css_class (close, "neo-icon");
+    gtk_widget_add_css_class (close, "vibeos-icon");
     gtk_widget_set_valign (close, GTK_ALIGN_CENTER);
     g_object_set_data (G_OBJECT (close), "tab", GUINT_TO_POINTER (t->id));
     g_signal_connect (close, "clicked", G_CALLBACK (on_card_close), b);
@@ -1794,9 +1794,9 @@ static GtkWidget *
 build_list (Browser *b)
 {
   GtkWidget *box = vbox (0);
-  gtk_widget_add_css_class (box, "neo-bg");
+  gtk_widget_add_css_class (box, "vibeos-bg");
   GtkWidget *bar = hbox (4);
-  gtk_widget_add_css_class (bar, "neo-bar");
+  gtk_widget_add_css_class (bar, "vibeos-bar");
   gtk_box_append (GTK_BOX (bar), page_back_button (b));
   b->list_title = label ("", "title-big", PANGO_ELLIPSIZE_NONE);
   gtk_widget_set_hexpand (b->list_title, TRUE);
@@ -1805,7 +1805,7 @@ build_list (Browser *b)
   gtk_box_append (GTK_BOX (bar), b->list_delete);
   gtk_box_append (GTK_BOX (box), bar);
   b->list = gtk_list_box_new ();
-  gtk_widget_add_css_class (b->list, "neo-list");
+  gtk_widget_add_css_class (b->list, "vibeos-list");
   gtk_list_box_set_selection_mode (GTK_LIST_BOX (b->list), GTK_SELECTION_NONE);
   g_signal_connect (b->list, "row-activated", G_CALLBACK (on_list_row), b);
   b->list_scroll = scroller_new (b->list);
@@ -2514,14 +2514,14 @@ browser_new (GtkApplication *app)
 
   setup_engine (b);
   b->win = adw_application_window_new (app);
-  gtk_window_set_title (GTK_WINDOW (b->win), "Neo Browser");
+  gtk_window_set_title (GTK_WINDOW (b->win), "VibeOS Browser");
   gtk_window_set_default_size (GTK_WINDOW (b->win), 360, 750);
-  gtk_widget_add_css_class (b->win, "neo");
+  gtk_widget_add_css_class (b->win, "vibeos");
   b->toasts = adw_toast_overlay_new ();
   b->overlay = gtk_overlay_new ();
   adw_toast_overlay_set_child (ADW_TOAST_OVERLAY (b->toasts), b->overlay);
   b->pages = gtk_stack_new ();
-  gtk_widget_add_css_class (b->pages, "neo-bg");
+  gtk_widget_add_css_class (b->pages, "vibeos-bg");
   gtk_overlay_set_child (GTK_OVERLAY (b->overlay), b->pages);
   gtk_stack_add_named (GTK_STACK (b->pages), build_browse (b), "browse");
   gtk_stack_add_named (GTK_STACK (b->pages), build_omnibox (b), "omni");

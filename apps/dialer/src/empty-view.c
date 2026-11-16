@@ -1,7 +1,7 @@
 /* The empty list: see empty-view.h. */
 #include "empty-view.h"
 
-#include <neo.h>
+#include <vibeos.h>
 
 #define IMAGE_SIZE      108     /* the picture's height; an icon is scaled up to it */
 #define BUTTON_MIN_W    88
@@ -60,7 +60,7 @@ empty_view_new (const char *icon_name, const char *message, const char *action, 
   gtk_label_set_wrap (GTK_LABEL (text), TRUE);
   gtk_label_set_justify (GTK_LABEL (text), GTK_JUSTIFY_CENTER);
   gtk_widget_add_css_class (text, "dialer-empty-text");
-  neo_label_set_font_padding (text, 16);
+  vibeos_label_set_font_padding (text, 16);
   gtk_box_append (GTK_BOX (box), text);
 
   if (action)
@@ -77,9 +77,9 @@ empty_view_new (const char *icon_name, const char *message, const char *action, 
       gtk_widget_set_margin_start (label, BUTTON_PADDING);
       gtk_widget_set_margin_end (label, BUTTON_PADDING);
       gtk_widget_set_size_request (label, BUTTON_MIN_W - 2 * BUTTON_PADDING, BUTTON_HEIGHT);
-      button = neo_pressable_new (label);
-      neo_pressable_set_fill (NEO_PRESSABLE (button), &fill, FALSE);
-      neo_pressable_set_ripple (NEO_PRESSABLE (button), NEO_RIPPLE_NONE, BUTTON_HEIGHT / 2.0);
+      button = vibeos_pressable_new (label);
+      vibeos_pressable_set_fill (VIBEOS_PRESSABLE (button), &fill, FALSE);
+      vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_NONE, BUTTON_HEIGHT / 2.0);
       gtk_widget_set_halign (button, GTK_ALIGN_CENTER);
       gtk_widget_set_margin_top (button, 16);
       what->callback = callback;

@@ -14,7 +14,7 @@
 
 #include <glib/gi18n.h>
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define CLOCK_TOP       64      /* over the clock: an action bar's height */
 #define CLOCK_SIZE      70
@@ -39,7 +39,7 @@
 #define ALERT_FADE_MS   500
 #define CLOSE_DELAY_MS  2000
 
-/* font padding: the line box adds Roboto's head yMax/yMin beyond hhea (neo_label_set_font_padding) */
+/* font padding: the line box adds Roboto's head yMax/yMin beyond hhea (vibeos_label_set_font_padding) */
 #define PAD_TOP(size)    ((size) * 263 / 2048.0)
 #define PAD_BOTTOM(size) ((size) * 55 / 2048.0)
 
@@ -59,23 +59,23 @@ struct _RingingView
   /* the swipe: how far the pointer is toward Snooze and toward Dismiss, 0…1, and what the touch began on */
   double snooze, dismiss;
   Target target;
-  NeoAnim *reverse;             /* both fractions back to 0 after a swipe let go short of a button */
+  VibeosAnim *reverse;             /* both fractions back to 0 after a swipe let go short of a button */
   double reverse_from;
 
   /* the pulse: a white disc growing from the handle and fading, once a second, while nothing touches it */
-  NeoAnim *pulse;
+  VibeosAnim *pulse;
   double pulse_value;
   gboolean pulse_repeat;
   guint pulses;
 
   /* the hint: the handle nudged toward a button and back, and the line saying which way to swipe */
-  NeoAnim *bounce, *hint_fade;
+  VibeosAnim *bounce, *hint_fade;
   double bounce_from, bounce_to, shift, hint_alpha;
   gboolean hint_shown;
 
   /* the end: a grey circle out of the chosen button, then the alert text, then the window closes */
   gboolean handled, content_gone, alert_info_shown;
-  NeoAnim *reveal, *fade;
+  VibeosAnim *reveal, *fade;
   double reveal_x, reveal_y, reveal_from, reveal_to, reveal_radius, reveal_alpha;
   guint close;
 };
@@ -170,7 +170,7 @@ static PangoLayout *
 new_layout (RingingView *self, double size, int weight)
 {
   PangoLayout *layout = gtk_widget_create_pango_layout (GTK_WIDGET (self), NULL);
-  g_autoptr(PangoFontDescription) font = pango_font_description_from_string ("Neo Roboto");
+  g_autoptr(PangoFontDescription) font = pango_font_description_from_string ("VibeOS Roboto");
 
   pango_font_description_set_absolute_size (font, size * PANGO_SCALE);
   pango_font_description_set_weight (font, weight);
@@ -186,7 +186,7 @@ show_time (RingingView *self)
 {
   g_autoptr(GDateTime) now = g_date_time_new_now_local ();
   g_autofree char *markup = clock_time_markup (g_date_time_get_hour (now), g_date_time_get_minute (now),
-                                               neo_clock_uses_24h (), 0.4);
+                                               vibeos_clock_uses_24h (), 0.4);
 
   pango_layout_set_markup (self->clock, markup, -1);
   g_clear_handle_id (&self->minute, g_source_remove);
@@ -208,17 +208,17 @@ on_minute (gpointer data)
 /* ---- the pulse ------------------------------------------------------------------------------------------------ */
 
 static void
-on_pulse (NeoAnim *anim, double value, gpointer data)
+on_pulse (VibeosAnim *anim, double value, gpointer data)
 {
   RingingView *self = data;
 
   self->pulse_value = value;
   gtk_widget_queue_draw (GTK_WIDGET (self));
   /* the pulse repeats */
-  if (!neo_anim_is_running (anim) && self->pulse_repeat && gtk_widget_get_mapped (GTK_WIDGET (self)))
+  if (!vibeos_anim_is_running (anim) && self->pulse_repeat && gtk_widget_get_mapped (GTK_WIDGET (self)))
     {
       self->pulses++;
-      neo_anim_start (anim, 0, 1, PULSE_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
+      vibeos_anim_start (anim, 0, 1, PULSE_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
     }
 }
 
@@ -226,10 +226,10 @@ static void
 start_pulse (RingingView *self)
 {
   self->pulse_repeat = TRUE;
-  if (!neo_anim_is_running (self->pulse))
+  if (!vibeos_anim_is_running (self->pulse))
     {
       self->pulses = 0;
-      neo_anim_start (self->pulse, 0, 1, PULSE_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
+      vibeos_anim_start (self->pulse, 0, 1, PULSE_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
     }
 }
 
@@ -240,13 +240,13 @@ stop_pulse (RingingView *self)
 {
   self->pulse_repeat = FALSE;
   if (self->pulses > 0)
-    neo_anim_finish (self->pulse);
+    vibeos_anim_finish (self->pulse);
 }
 
 /* ---- the hint ------------------------------------------------------------------------------------------------- */
 
 static void
-on_bounce (NeoAnim *anim, double value, gpointer data)
+on_bounce (VibeosAnim *anim, double value, gpointer data)
 {
   RingingView *self = data;
   double t = decel_accel (value);
@@ -258,7 +258,7 @@ on_bounce (NeoAnim *anim, double value, gpointer data)
 }
 
 static void
-on_hint_fade (NeoAnim *anim, double value, gpointer data)
+on_hint_fade (VibeosAnim *anim, double value, gpointer data)
 {
   RingingView *self = data;
 
@@ -281,12 +281,12 @@ hint (RingingView *self, Target button)
 
   self->bounce_from = self->shift;
   self->bounce_to = to;
-  neo_anim_start (self->bounce, 0, 1, BOUNCE_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start (self->bounce, 0, 1, BOUNCE_MS, 0, SPONGY_LINEAR);
   pango_layout_set_text (self->hint, to < 0 ? _("Swipe left to snooze") : _("Swipe right to dismiss"), -1);
   if (!self->hint_shown)
     {
       self->hint_shown = TRUE;
-      neo_anim_start (self->hint_fade, 0, 1, HINT_FADE_MS, 0, SPONGY_ACCELERATE_DECELERATE);
+      vibeos_anim_start (self->hint_fade, 0, 1, HINT_FADE_MS, 0, SPONGY_ACCELERATE_DECELERATE);
     }
 }
 
@@ -305,28 +305,28 @@ on_close (gpointer data)
 }
 
 static void
-on_fade (NeoAnim *anim, double value, gpointer data)
+on_fade (VibeosAnim *anim, double value, gpointer data)
 {
   RingingView *self = data;
 
   self->reveal_alpha = value;
   gtk_widget_queue_draw (GTK_WIDGET (self));
-  if (!neo_anim_is_running (anim) && !self->close)
+  if (!vibeos_anim_is_running (anim) && !self->close)
     self->close = g_timeout_add (CLOSE_DELAY_MS, on_close, self);
 }
 
 static void
-on_reveal (NeoAnim *anim, double value, gpointer data)
+on_reveal (VibeosAnim *anim, double value, gpointer data)
 {
   RingingView *self = data;
 
   self->reveal_radius = self->reveal_from + (self->reveal_to - self->reveal_from) * value;
   gtk_widget_queue_draw (GTK_WIDGET (self));
   /* covered: the alert text comes up behind the circle, the rest goes, and the circle fades off it */
-  if (!neo_anim_is_running (anim))
+  if (!vibeos_anim_is_running (anim))
     {
       self->content_gone = TRUE;
-      neo_anim_start (self->fade, 1, 0, ALERT_FADE_MS, 0, SPONGY_ACCELERATE_DECELERATE);
+      vibeos_anim_start (self->fade, 1, 0, ALERT_FADE_MS, 0, SPONGY_ACCELERATE_DECELERATE);
     }
 }
 
@@ -346,7 +346,7 @@ reveal (RingingView *self, Target button, const char *title, const char *info)
   pango_layout_set_text (self->alert_title, title, -1);
   self->alert_info_shown = info != NULL;
   pango_layout_set_text (self->alert_info, info ? info : "", -1);
-  neo_anim_start (self->reveal, 0, 1, REVEAL_MS, 0, SPONGY_LINEAR_OUT_SLOW_IN);
+  vibeos_anim_start (self->reveal, 0, 1, REVEAL_MS, 0, SPONGY_LINEAR_OUT_SLOW_IN);
 }
 
 static void
@@ -356,7 +356,7 @@ snooze (RingingView *self)
   g_autofree char *info = g_strdup_printf (ngettext ("%d min", "%d min", minutes), minutes);
 
   self->handled = TRUE;
-  neo_anim_stop (self->reverse);
+  vibeos_anim_stop (self->reverse);
   set_fractions (self, 1, 0);
   reveal (self, TARGET_SNOOZE, _("Snoozed"), info);
   alarms_client_snooze (alarms_client_get (), self->instance);
@@ -366,7 +366,7 @@ static void
 dismiss (RingingView *self)
 {
   self->handled = TRUE;
-  neo_anim_stop (self->reverse);
+  vibeos_anim_stop (self->reverse);
   set_fractions (self, 0, 1);
   reveal (self, TARGET_DISMISS, _("Alarm off"), NULL);
   alarms_client_dismiss (alarms_client_get (), self->instance);
@@ -375,7 +375,7 @@ dismiss (RingingView *self)
 /* ---- touch ---------------------------------------------------------------------------------------------------- */
 
 static void
-on_reverse (NeoAnim *anim, double value, gpointer data)
+on_reverse (VibeosAnim *anim, double value, gpointer data)
 {
   RingingView *self = data;
 
@@ -427,7 +427,7 @@ on_drag_begin (GtkGestureDrag *gesture, double x, double y, RingingView *self)
   gtk_gesture_set_state (GTK_GESTURE (gesture), GTK_EVENT_SEQUENCE_CLAIMED);
   if (self->target == TARGET_HANDLE)
     {
-      neo_anim_stop (self->reverse);
+      vibeos_anim_stop (self->reverse);
       stop_pulse (self);
       track (self, x);
     }
@@ -481,7 +481,7 @@ on_drag_end (GtkGestureDrag *gesture, double dx, double dy, RingingView *self)
         {
           double from = MAX (self->snooze, self->dismiss);
 
-          neo_anim_start (self->reverse, from, 0, (guint) (from * REVERSE_MS), 0, SPONGY_LINEAR);
+          vibeos_anim_start (self->reverse, from, 0, (guint) (from * REVERSE_MS), 0, SPONGY_LINEAR);
         }
       else if (fabs (y - g.cy) <= HANDLE / 2.0 + HANDLE_PAD_Y)
         hint (self, TARGET_DISMISS);
@@ -522,12 +522,12 @@ draw_button (RingingView *self, GtkSnapshot *snapshot, double x, double y, doubl
 
   if (button == TARGET_SNOOZE)
     {
-      disc = neo_color_alpha (NEO_SECONDARY, v);
+      disc = vibeos_color_alpha (VIBEOS_SECONDARY, v);
       glyph = white;
     }
   else
     {
-      GdkRGBA background = neo_color (NEO_SURFACE);
+      GdkRGBA background = vibeos_color (VIBEOS_SURFACE);
 
       disc = (GdkRGBA) { 1, 1, 1, v };
       glyph = argb_evaluate (&white, &background, v);
@@ -539,7 +539,7 @@ draw_button (RingingView *self, GtkSnapshot *snapshot, double x, double y, doubl
   gtk_snapshot_scale (snapshot, scale, scale);
   if (v > 0)
     clock_snapshot_dot (snapshot, 0, 0, BUTTON / 2.0, &disc);
-  neo_snapshot_icon (snapshot, GTK_WIDGET (self), button == TARGET_SNOOZE ? "clock-snooze-symbolic"
+  vibeos_snapshot_icon (snapshot, GTK_WIDGET (self), button == TARGET_SNOOZE ? "clock-snooze-symbolic"
                                                                           : "clock-dismiss-symbolic",
                      -BUTTON / 2.0, -BUTTON / 2.0, BUTTON, &glyph);
   gtk_snapshot_restore (snapshot);
@@ -567,7 +567,7 @@ draw_content (RingingView *self, GtkSnapshot *snapshot, const Geometry *g, doubl
       gtk_snapshot_save (snapshot);
       gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (g->handle_x + self->shift, g->cy));
       gtk_snapshot_scale (snapshot, handle_scale, handle_scale);
-      neo_snapshot_icon (snapshot, GTK_WIDGET (self), "clock-fab-alarm-symbolic", -HANDLE / 2.0, -HANDLE / 2.0, HANDLE,
+      vibeos_snapshot_icon (snapshot, GTK_WIDGET (self), "clock-fab-alarm-symbolic", -HANDLE / 2.0, -HANDLE / 2.0, HANDLE,
                          &(GdkRGBA) { 1, 1, 1, 1 });
       gtk_snapshot_restore (snapshot);
     }
@@ -581,7 +581,7 @@ ringing_view_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   RingingView *self = RINGING_VIEW (widget);
   double width = gtk_widget_get_width (widget), height = gtk_widget_get_height (widget);
-  GdkRGBA background = neo_color (NEO_SURFACE);       /* the window's background, #0A0F10 */
+  GdkRGBA background = vibeos_color (VIBEOS_SURFACE);       /* the window's background, #0A0F10 */
   Geometry g;
 
   measure_geometry (self, &g);
@@ -650,7 +650,7 @@ ringing_view_unmap (GtkWidget *widget)
 
   g_clear_handle_id (&self->minute, g_source_remove);
   self->pulse_repeat = FALSE;
-  neo_anim_stop (self->pulse);
+  vibeos_anim_stop (self->pulse);
   GTK_WIDGET_CLASS (ringing_view_parent_class)->unmap (widget);
 }
 
@@ -662,12 +662,12 @@ ringing_view_dispose (GObject *object)
   g_clear_handle_id (&self->minute, g_source_remove);
   g_clear_handle_id (&self->close, g_source_remove);
   g_signal_handlers_disconnect_by_data (alarms_client_get (), self);
-  g_clear_pointer (&self->pulse, neo_anim_free);
-  g_clear_pointer (&self->reverse, neo_anim_free);
-  g_clear_pointer (&self->bounce, neo_anim_free);
-  g_clear_pointer (&self->hint_fade, neo_anim_free);
-  g_clear_pointer (&self->reveal, neo_anim_free);
-  g_clear_pointer (&self->fade, neo_anim_free);
+  g_clear_pointer (&self->pulse, vibeos_anim_free);
+  g_clear_pointer (&self->reverse, vibeos_anim_free);
+  g_clear_pointer (&self->bounce, vibeos_anim_free);
+  g_clear_pointer (&self->hint_fade, vibeos_anim_free);
+  g_clear_pointer (&self->reveal, vibeos_anim_free);
+  g_clear_pointer (&self->fade, vibeos_anim_free);
   g_clear_object (&self->clock);
   g_clear_object (&self->title);
   g_clear_object (&self->hint);
@@ -703,12 +703,12 @@ ringing_view_init (RingingView *self)
   self->alert_info = new_layout (self, ALERT_SIZE, 700);
   pango_layout_set_text (self->hint, _("Swipe right to dismiss"), -1);
 
-  self->pulse = neo_anim_new (GTK_WIDGET (self), on_pulse, self);
-  self->reverse = neo_anim_new (GTK_WIDGET (self), on_reverse, self);
-  self->bounce = neo_anim_new (GTK_WIDGET (self), on_bounce, self);
-  self->hint_fade = neo_anim_new (GTK_WIDGET (self), on_hint_fade, self);
-  self->reveal = neo_anim_new (GTK_WIDGET (self), on_reveal, self);
-  self->fade = neo_anim_new (GTK_WIDGET (self), on_fade, self);
+  self->pulse = vibeos_anim_new (GTK_WIDGET (self), on_pulse, self);
+  self->reverse = vibeos_anim_new (GTK_WIDGET (self), on_reverse, self);
+  self->bounce = vibeos_anim_new (GTK_WIDGET (self), on_bounce, self);
+  self->hint_fade = vibeos_anim_new (GTK_WIDGET (self), on_hint_fade, self);
+  self->reveal = vibeos_anim_new (GTK_WIDGET (self), on_reveal, self);
+  self->fade = vibeos_anim_new (GTK_WIDGET (self), on_fade, self);
 
   gtk_gesture_single_set_button (GTK_GESTURE_SINGLE (drag), 0);
   g_signal_connect (drag, "drag-begin", G_CALLBACK (on_drag_begin), self);
@@ -735,7 +735,7 @@ set_volume_keys (GtkWidget *window, gboolean take)
   if (!bus || take == GPOINTER_TO_INT (g_object_get_data (G_OBJECT (window), "volume-keys")))
     return;
   g_object_set_data (G_OBJECT (window), "volume-keys", GINT_TO_POINTER (take));
-  g_dbus_connection_call (bus, "neo.GnomePhone", "/neo/GnomePhone", "neo.GnomePhone",
+  g_dbus_connection_call (bus, "vibeos.Shell", "/vibeos/Shell", "vibeos.Shell",
                           "TakeVolumeKeys", g_variant_new ("(sb)", g_application_get_application_id (app), take),
                           NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 }
@@ -821,9 +821,9 @@ ringing_window_new (GtkApplication *app, GSettings *settings)
     }
   g_signal_connect (alarms_client_get (), "ringing-changed", G_CALLBACK (on_ringing_changed), view);
 
-  window = neo_window_new (app);
+  window = vibeos_window_new (app);
   gtk_window_set_title (GTK_WINDOW (window), _("Alarm"));
-  neo_window_set_content (GTK_WINDOW (window), GTK_WIDGET (view));
+  vibeos_window_set_content (GTK_WINDOW (window), GTK_WIDGET (view));
   g_object_unref (view);
   g_signal_connect (window, "close-request", G_CALLBACK (on_close_request), NULL);
   /* KEEP_SCREEN_ON */

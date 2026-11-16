@@ -1,7 +1,7 @@
 /* FmIcon (fm-icon.h). */
 #include "fm-icon.h"
 
-#include <neo.h>
+#include <vibeos.h>
 
 struct _FmIcon {
   GtkWidget parent;
@@ -185,7 +185,7 @@ snapshot_theme_icon (FmIcon *self, GtkSnapshot *snapshot, double x, double y, do
   GtkWidget *widget = GTK_WIDGET (self);
   GtkIconTheme *theme = gtk_icon_theme_get_for_display (gtk_widget_get_display (widget));
   g_autoptr(GtkIconPaintable) paintable = gtk_icon_theme_lookup_by_gicon (theme, shown_icon (self), (int) size,
-                                                                          neo_device_scale (widget),
+                                                                          vibeos_device_scale (widget),
                                                                           gtk_widget_get_direction (widget), 0);
   GdkRGBA color;
 

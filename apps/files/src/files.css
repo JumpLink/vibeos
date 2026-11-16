@@ -1,4 +1,4 @@
-/* The Files styles, over libneo's (neo.css): File Manager+'s dark theme, its dark dialogs and popups. Sizes are GTK
+/* The Files styles, over libvibeos's (vibeos.css): File Manager+'s dark theme, its dark dialogs and popups. Sizes are GTK
  * px; most of the geometry is set in C, so this file is mainly colours, fonts and paddings. The weights are Bold
  * text's: regular 700, medium 800. */
 
@@ -475,7 +475,7 @@ fm-drawer > .fm-drawer-scrim {
 }
 
 .fm-entry,
-.neo-entry.fm-entry {
+.vibeos-entry.fm-entry {
   font-size: 16px;
   font-weight: 700;
   color: #ffffff;
@@ -484,16 +484,16 @@ fm-drawer > .fm-drawer-scrim {
   border-bottom: 2px solid rgba(255, 255, 255, 0.7);
 }
 
-.neo-entry.fm-entry:focus-within {
+.vibeos-entry.fm-entry:focus-within {
   border-bottom-color: #80cbc4;
 }
 
-.neo-entry.fm-entry placeholder,
-.neo-entry.fm-entry text placeholder {
+.vibeos-entry.fm-entry placeholder,
+.vibeos-entry.fm-entry text placeholder {
   color: rgba(255, 255, 255, 0.5);
 }
 
-.neo-entry.fm-entry selection {
+.vibeos-entry.fm-entry selection {
   background-color: rgba(128, 203, 196, 0.4);
 }
 
@@ -506,20 +506,20 @@ fm-drawer > .fm-drawer-scrim {
 
 /* ---- the dialogs: a dark alert dialog ---- */
 
-.fm-window .neo-dialog {
+.fm-window .vibeos-dialog {
   background-color: #424242;
   border-radius: 2px;
   padding: 0;
   margin: 0 1px;
 }
 
-.fm-window .neo-dialog-buttons {
+.fm-window .vibeos-dialog-buttons {
   margin: 0;
   padding: 4px 18px 7px 12px;
   border-spacing: 0;
 }
 
-.fm-window .neo-dialog .neo-text-button {
+.fm-window .vibeos-dialog .vibeos-text-button {
   min-width: 64px;
   min-height: 48px;
   padding: 0 5px;
@@ -727,18 +727,18 @@ fm-drawer > .fm-drawer-scrim {
 
 /* ---- the snackbar and the toast ---- */
 
-.fm-snackbar .neo-snackbar {
+.fm-snackbar .vibeos-snackbar {
   background-color: #2f2f2f;
   border-radius: 0;
 }
 
-.fm-snackbar .neo-snackbar-text {
+.fm-snackbar .vibeos-snackbar-text {
   font-size: 14px;
   font-weight: 700;
   color: #ffffff;
 }
 
-.fm-snackbar .neo-text-button {
+.fm-snackbar .vibeos-text-button {
   color: #80cbc4;
 }
 
@@ -748,7 +748,7 @@ fm-drawer > .fm-drawer-scrim {
   padding: 0 16px;
   min-height: 48px;
   border-radius: 28px;
-  background-color: @neo_surface_container_high;
+  background-color: @vibeos_surface_container_high;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
@@ -760,5 +760,5 @@ fm-drawer > .fm-drawer-scrim {
   padding: 12px 0;
   font-size: 14px;
   font-weight: 700;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }

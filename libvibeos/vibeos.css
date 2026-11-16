@@ -1,0 +1,191 @@
+/* libvibeos's look: Material 3, dark, as the LineageOS 23.2 apps draw it on the reference phone.
+ *
+ * The colours are named by their Material 3 roles (@vibeos_primary, @vibeos_on_surface, ...). vibeos-style.c defines them
+ * from its palette table before this file is loaded, so drawn widgets and CSS share one source; apps use the roles,
+ * never the values.
+ *
+ * Sizes are GTK px: at the phone's scale 3, one is 3 screen px.
+ *
+ * Weights are 300 heavier than usual, as the reference phone draws them with "Bold text" on: regular text is 700,
+ * medium 800. */
+
+/* --- the window */
+
+window.vibeos {
+  background-color: @vibeos_surface;
+  color: @vibeos_on_surface;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+window.vibeos label {
+  font-feature-settings: "tnum" 0;
+}
+
+/* --- text styles, by role */
+
+.vibeos-display-large { font-size: 57px; font-weight: 700; }
+.vibeos-headline-large { font-size: 32px; font-weight: 700; }
+.vibeos-title-large { font-size: 22px; font-weight: 700; }
+.vibeos-title-medium { font-size: 16px; font-weight: 800; }
+.vibeos-body-large { font-size: 16px; font-weight: 700; }
+.vibeos-body-medium { font-size: 14px; font-weight: 700; }
+.vibeos-label-large { font-size: 14px; font-weight: 800; }
+.vibeos-label-medium { font-size: 12px; font-weight: 800; }
+.vibeos-tabular { font-feature-settings: "tnum" 1; }
+
+/* --- the top app bar, no shadow */
+
+.vibeos-app-bar {
+  min-height: 64px;
+  padding-left: 24px;
+}
+
+.vibeos-app-bar-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: @vibeos_on_surface;
+}
+
+/* --- icon buttons: a thumb-sized touch target around the icon */
+
+.vibeos-icon-button {
+  min-width: 48px;
+  min-height: 48px;
+  color: @vibeos_on_surface;
+}
+
+/* --- floating action buttons: full circles (vibeos_fab_new draws the fill, so that it scales with the button) */
+
+.vibeos-fab {
+  color: @vibeos_on_primary;
+  min-width: 88px;
+  min-height: 88px;
+}
+
+.vibeos-fab-small {
+  color: @vibeos_on_secondary;
+  min-width: 56px;
+  min-height: 56px;
+}
+
+/* --- cards */
+
+.vibeos-card {
+  background-color: @vibeos_surface_container_highest;
+  border-radius: 28px;
+}
+
+/* --- the navigation bar: a pill behind the selected item's icon */
+
+.vibeos-nav-bar {
+  background-color: @vibeos_surface_container_highest;
+  min-height: 80px;
+}
+
+.vibeos-nav-item {
+  color: alpha(white, 0.5);
+}
+
+.vibeos-nav-item.selected {
+  color: @vibeos_primary;
+}
+
+.vibeos-nav-label {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.vibeos-nav-indicator {
+  background-color: @vibeos_secondary_container;
+  border-radius: 16px;
+}
+
+/* --- text buttons (dialogs, snackbars, "Delete") */
+
+.vibeos-text-button {
+  color: @vibeos_primary;
+  font-size: 14px;
+  font-weight: 800;
+  min-height: 48px;
+  padding: 0 12px;
+}
+
+/* --- dialogs: a rounded card over a black scrim */
+
+.vibeos-scrim {
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+.vibeos-dialog {
+  background-color: @vibeos_surface_container_highest;
+  border-radius: 28px;
+  padding: 24px 24px 18px 24px;
+}
+
+.vibeos-dialog-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: @vibeos_on_surface;
+  margin-bottom: 16px;
+}
+
+.vibeos-dialog-message {
+  font-size: 14px;
+  color: @vibeos_on_surface_variant;
+}
+
+.vibeos-dialog-buttons {
+  margin-top: 18px;
+}
+
+/* a dialog around a picker: the picker reaches the edges, the card is the plain surface, the buttons sit in a band
+ * of their own */
+.vibeos-dialog.flush {
+  background-color: @vibeos_surface;
+  padding: 0;
+}
+
+.vibeos-dialog.flush .vibeos-dialog-buttons {
+  margin: 4px 12px 8px 12px;
+}
+
+/* --- snackbars */
+
+.vibeos-snackbar {                  /* VibeosSnackbar keeps its margin itself */
+  background-color: @vibeos_surface_container_highest;
+  border-radius: 4px;
+  min-height: 48px;
+  padding: 0 8px 0 16px;
+}
+
+.vibeos-snackbar-text {
+  color: @vibeos_on_surface_variant;
+  font-size: 14px;
+}
+
+/* --- text fields: a line under the text, in the primary colour while focused */
+
+.vibeos-entry {
+  background: none;
+  border: none;
+  border-bottom: 2px solid @vibeos_on_surface_variant;
+  border-radius: 0;
+  box-shadow: none;
+  outline: none;
+  color: @vibeos_on_surface;
+  caret-color: @vibeos_primary;
+  font-size: 18px;
+  min-height: 40px;
+  padding: 0 4px;
+}
+
+.vibeos-entry:focus-within {
+  border-bottom-color: @vibeos_primary;
+}
+
+.vibeos-entry selection {
+  background-color: alpha(@vibeos_primary, 0.4);
+  color: @vibeos_on_surface;
+}

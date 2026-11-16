@@ -1,0 +1,19 @@
+#!/bin/sh
+# Docked to an external display: the GNOME desktop. Undocked: the phone's session, VibeOS. Run from
+# vibeos-dock.service (udev DRM hotplug, and once at boot). What a device needs on a plug or an unplug (the S10e's HDMI
+# sound module) goes in /etc/vibeos-dock.d/, each run with the state.
+[ -e /run/vibeos-dock.off ] && exit 0
+sleep 2	# let the alt mode settle; a replug flaps for a second
+state=disconnected
+for f in /sys/class/drm/card*-DP-*/status; do
+	[ -r "$f" ] && [ "$(cat "$f")" = connected ] && state=connected
+done
+for hook in /etc/vibeos-dock.d/*; do
+	[ -x "$hook" ] && "$hook" $state
+done
+if [ "$state" = connected ]; then
+	session=gnome-desktop.service
+else
+	session=vibeos.service
+fi
+systemctl is-active -q $session || systemctl start $session

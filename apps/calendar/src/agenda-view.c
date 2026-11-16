@@ -10,7 +10,7 @@
 
 #include <glib/gi18n.h>
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 /* --- dimensions, px */
@@ -61,7 +61,7 @@ G_DECLARE_FINAL_TYPE (CalAgendaList, cal_agenda_list, CAL, AGENDA_LIST, GtkWidge
 struct _CalAgendaList {
   GtkWidget parent;
   CalAgendaView *view;
-  NeoRipple ripple;
+  VibeosRipple ripple;
   int pressed;                  /* the row the ripple is on, or −1 */
   double drawn_from, drawn_to;  /* the part of the list the last snapshot drew */
 };
@@ -219,7 +219,7 @@ cal_agenda_list_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   CalAgendaList *self = CAL_AGENDA_LIST (widget);
   CalAgendaView *view = self->view;
-  int scale = neo_device_scale (widget);
+  int scale = vibeos_device_scale (widget);
   double width = gtk_widget_get_width (widget), page = gtk_widget_get_height (GTK_WIDGET (view));
   double offset = offset_of (view);
   GdkRGBA ripple = cal_ripple_color ();
@@ -237,12 +237,12 @@ cal_agenda_list_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
         draw_day (widget, snapshot, scale, row, row->y, width);
       else
         draw_event (widget, snapshot, scale, row, row->y, width);
-      if ((int) i == self->pressed && neo_ripple_is_active (&self->ripple))
+      if ((int) i == self->pressed && vibeos_ripple_is_active (&self->ripple))
         {
           graphene_rect_t bounds = GRAPHENE_RECT_INIT (0, (float) row->y, (float) width, (float) row->height);
 
           gtk_snapshot_push_clip (snapshot, &bounds);
-          neo_ripple_snapshot (&self->ripple, snapshot, &bounds, &ripple);
+          vibeos_ripple_snapshot (&self->ripple, snapshot, &bounds, &ripple);
           gtk_snapshot_pop (snapshot);
         }
     }
@@ -280,7 +280,7 @@ on_list_pressed (GtkGestureClick *gesture, int n, double x, double y, CalAgendaL
       || y - offset_of (self->view) < DAY_MIN_HEIGHT + PAST_PRESENT_HEIGHT)
     return;
   self->pressed = index;
-  neo_ripple_press (&self->ripple, x, y - g_array_index (self->view->rows, Row, index).y);
+  vibeos_ripple_press (&self->ripple, x, y - g_array_index (self->view->rows, Row, index).y);
 }
 
 static void
@@ -290,7 +290,7 @@ on_list_released (GtkGestureClick *gesture, int n, double x, double y, CalAgenda
 
   if (index < 0)
     return;
-  neo_ripple_release (&self->ripple);
+  vibeos_ripple_release (&self->ripple);
   if (row_at (self->view, y) == index)
     g_signal_emit (self->view, signals[EVENT_ACTIVATED], 0, g_array_index (self->view->rows, Row, index).event);
 }
@@ -298,13 +298,13 @@ on_list_released (GtkGestureClick *gesture, int n, double x, double y, CalAgenda
 static void
 on_list_cancel (GtkGesture *gesture, GdkEventSequence *sequence, CalAgendaList *self)
 {
-  neo_ripple_release (&self->ripple);
+  vibeos_ripple_release (&self->ripple);
 }
 
 static void
 cal_agenda_list_dispose (GObject *object)
 {
-  neo_ripple_clear (&CAL_AGENDA_LIST (object)->ripple);
+  vibeos_ripple_clear (&CAL_AGENDA_LIST (object)->ripple);
   G_OBJECT_CLASS (cal_agenda_list_parent_class)->dispose (object);
 }
 
@@ -325,7 +325,7 @@ cal_agenda_list_init (CalAgendaList *self)
   GtkGesture *click = gtk_gesture_click_new ();
 
   self->pressed = -1;
-  neo_ripple_init (&self->ripple, GTK_WIDGET (self));
+  vibeos_ripple_init (&self->ripple, GTK_WIDGET (self));
   g_signal_connect (click, "pressed", G_CALLBACK (on_list_pressed), self);
   g_signal_connect (click, "released", G_CALLBACK (on_list_released), self);
   g_signal_connect (click, "cancel", G_CALLBACK (on_list_cancel), self);
@@ -337,7 +337,7 @@ cal_agenda_list_init (CalAgendaList *self)
 static double
 day_row_height (CalAgendaView *self, gboolean past_present)
 {
-  int scale = neo_device_scale (GTK_WIDGET (self));
+  int scale = vibeos_device_scale (GTK_WIDGET (self));
 
   return (past_present ? PAST_PRESENT_HEIGHT : 1.0 / scale) + DAY_MIN_HEIGHT;
 }
@@ -345,7 +345,7 @@ day_row_height (CalAgendaView *self, gboolean past_present)
 static double
 event_row_height (CalAgendaView *self)
 {
-  return 1.0 / neo_device_scale (GTK_WIDGET (self)) + ITEM_MIN_HEIGHT;
+  return 1.0 / vibeos_device_scale (GTK_WIDGET (self)) + ITEM_MIN_HEIGHT;
 }
 
 static void
@@ -484,7 +484,7 @@ cal_agenda_view_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   CalAgendaView *self = CAL_AGENDA_VIEW (widget);
   double offset = offset_of (self), width = gtk_widget_get_width (widget);
-  int scale = neo_device_scale (widget), next, section;
+  int scale = vibeos_device_scale (widget), next, section;
   GdkRGBA surface = cal_argb (CAL_SURFACE);
 
   gtk_snapshot_append_color (snapshot, &surface, &GRAPHENE_RECT_INIT (0, 0, (float) width,

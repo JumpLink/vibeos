@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=vibeos.Settings
+Exec=@bindir@/vibeos-settings --gapplication-service

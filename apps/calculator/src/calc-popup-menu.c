@@ -4,7 +4,7 @@
 #include "calc-text.h"
 
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define ROW_HEIGHT      48
 #define LIST_PAD        8
@@ -22,7 +22,7 @@ typedef struct {
   CalcMenuAction action;
   gpointer       data;
   PangoLayout   *layout;
-  NeoRipple      ripple;
+  VibeosRipple      ripple;
 } Row;
 
 struct _CalcPopupMenu {
@@ -30,7 +30,7 @@ struct _CalcPopupMenu {
   GArray         *rows;
   graphene_rect_t anchor;
   graphene_rect_t card;
-  NeoAnim        *anim;
+  VibeosAnim        *anim;
   double          shown;
   gboolean        closing;
   int             pressed;      /* the row under the finger, -1: none */
@@ -49,7 +49,7 @@ static void
 calc_popup_menu_size_allocate (GtkWidget *widget, int width, int height, int baseline)
 {
   CalcPopupMenu *self = CALC_POPUP_MENU (widget);
-  int scale = neo_device_scale (widget);
+  int scale = vibeos_device_scale (widget);
   double text = 0;
 
   for (guint i = 0; i < self->rows->len; i++) {
@@ -71,9 +71,9 @@ static void
 calc_popup_menu_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   CalcPopupMenu *self = CALC_POPUP_MENU (widget);
-  int scale = neo_device_scale (widget);
+  int scale = vibeos_device_scale (widget);
   double reveal = self->closing ? 1 : spongy_curve (SPONGY_FAST_OUT_SLOW_IN, self->shown);
-  GdkRGBA background = neo_color (NEO_SURFACE_CONTAINER), text = neo_color (NEO_ON_SURFACE);
+  GdkRGBA background = vibeos_color (VIBEOS_SURFACE_CONTAINER), text = vibeos_color (VIBEOS_ON_SURFACE);
   GskRoundedRect shape;
   double px = TEXT_SIZE * scale;
   /* the text's box (font padding) centred in its row, rounded down: the baseline 90 px into a 144 px row */
@@ -93,9 +93,9 @@ calc_popup_menu_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
     graphene_rect_t r = GRAPHENE_RECT_INIT (self->card.origin.x, self->card.origin.y + LIST_PAD + i * ROW_HEIGHT,
                                             self->card.size.width, ROW_HEIGHT);
 
-    if (neo_ripple_is_active (&row->ripple)) {
-      GdkRGBA ripple = neo_color_alpha (NEO_ON_SURFACE, 0.1f);
-      neo_ripple_snapshot (&row->ripple, snapshot, &r, &ripple);
+    if (vibeos_ripple_is_active (&row->ripple)) {
+      GdkRGBA ripple = vibeos_color_alpha (VIBEOS_ON_SURFACE, 0.1f);
+      vibeos_ripple_snapshot (&row->ripple, snapshot, &r, &ripple);
     }
     calc_text_draw (snapshot, row->layout, r.origin.x + TEXT_PAD, r.origin.y + baseline, &text);
   }
@@ -105,13 +105,13 @@ calc_popup_menu_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 }
 
 static void
-on_anim (NeoAnim *anim, double value, gpointer data)
+on_anim (VibeosAnim *anim, double value, gpointer data)
 {
   CalcPopupMenu *self = data;
 
   self->shown = value;
   gtk_widget_queue_draw (GTK_WIDGET (self));
-  if (self->closing && !neo_anim_is_running (anim)) {
+  if (self->closing && !vibeos_anim_is_running (anim)) {
     GtkWidget *overlay = gtk_widget_get_parent (GTK_WIDGET (self));
 
     if (overlay)
@@ -125,7 +125,7 @@ calc_popup_menu_dismiss (CalcPopupMenu *self)
   if (self->closing)
     return;
   self->closing = TRUE;
-  neo_anim_start (self->anim, self->shown, 0, EXIT_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start (self->anim, self->shown, 0, EXIT_MS, 0, SPONGY_LINEAR);
 }
 
 static int
@@ -155,7 +155,7 @@ on_pressed (GtkGestureClick *click, int n_press, double x, double y, CalcPopupMe
   self->pressed = row;
   if (row >= 0) {
     Row *r = &g_array_index (self->rows, Row, row);
-    neo_ripple_press (&r->ripple, x - self->card.origin.x, y - self->card.origin.y - LIST_PAD - row * ROW_HEIGHT);
+    vibeos_ripple_press (&r->ripple, x - self->card.origin.x, y - self->card.origin.y - LIST_PAD - row * ROW_HEIGHT);
   }
 }
 
@@ -167,7 +167,7 @@ on_released (GtkGestureClick *click, int n_press, double x, double y, CalcPopupM
   self->pressed = -1;
   if (row < 0)
     return;
-  neo_ripple_release (&g_array_index (self->rows, Row, row).ripple);
+  vibeos_ripple_release (&g_array_index (self->rows, Row, row).ripple);
   if (row_at (self, x, y) != row || self->closing)
     return;
   /* the menu goes, then the action runs: it may open a dialog where the menu was */
@@ -182,7 +182,7 @@ static void
 on_stopped (GtkGestureClick *click, CalcPopupMenu *self)
 {
   if (self->pressed >= 0)
-    neo_ripple_release (&g_array_index (self->rows, Row, self->pressed).ripple);
+    vibeos_ripple_release (&g_array_index (self->rows, Row, self->pressed).ripple);
   self->pressed = -1;
 }
 
@@ -200,11 +200,11 @@ calc_popup_menu_dispose (GObject *object)
 {
   CalcPopupMenu *self = CALC_POPUP_MENU (object);
 
-  g_clear_pointer (&self->anim, neo_anim_free);
+  g_clear_pointer (&self->anim, vibeos_anim_free);
   if (self->rows) {
     for (guint i = 0; i < self->rows->len; i++) {
       Row *row = &g_array_index (self->rows, Row, i);
-      neo_ripple_clear (&row->ripple);
+      vibeos_ripple_clear (&row->ripple);
       g_clear_object (&row->layout);
       g_free (row->label);
     }
@@ -235,7 +235,7 @@ calc_popup_menu_init (CalcPopupMenu *self)
 
   self->rows = g_array_new (FALSE, TRUE, sizeof (Row));
   self->pressed = -1;
-  self->anim = neo_anim_new (GTK_WIDGET (self), on_anim, self);
+  self->anim = vibeos_anim_new (GTK_WIDGET (self), on_anim, self);
   g_signal_connect (click, "pressed", G_CALLBACK (on_pressed), self);
   g_signal_connect (click, "released", G_CALLBACK (on_released), self);
   g_signal_connect (click, "stopped", G_CALLBACK (on_stopped), self);
@@ -256,13 +256,13 @@ calc_popup_menu_append (CalcPopupMenu *self, const char *label, CalcMenuAction a
   Row row = { g_strdup (label), action, data, NULL };
 
   g_array_append_val (self->rows, row);
-  neo_ripple_init (&g_array_index (self->rows, Row, self->rows->len - 1).ripple, GTK_WIDGET (self));
+  vibeos_ripple_init (&g_array_index (self->rows, Row, self->rows->len - 1).ripple, GTK_WIDGET (self));
 }
 
 void
 calc_popup_menu_present (CalcPopupMenu *self, GtkWidget *anchor)
 {
-  GtkOverlay *overlay = neo_window_get_overlay (anchor);
+  GtkOverlay *overlay = vibeos_window_get_overlay (anchor);
 
   g_return_if_fail (overlay != NULL);
   /* the rows' ripples point at this widget: their array must not move from here on */
@@ -273,5 +273,5 @@ calc_popup_menu_present (CalcPopupMenu *self, GtkWidget *anchor)
   gtk_overlay_set_clip_overlay (overlay, GTK_WIDGET (self), TRUE);
   gtk_widget_set_focusable (GTK_WIDGET (self), TRUE);
   gtk_widget_grab_focus (GTK_WIDGET (self));
-  neo_anim_start (self->anim, 0, 1, ENTER_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start (self->anim, 0, 1, ENTER_MS, 0, SPONGY_LINEAR);
 }

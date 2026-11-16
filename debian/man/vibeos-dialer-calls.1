@@ -1,0 +1,9 @@
+.TH VIBEOS-DIALER-CALLS 1 "2026-11-16" "vibeos 0.1.0" "VibeOS"
+.SH NAME
+vibeos-dialer-calls \- call service of the VibeOS dialer
+.SH SYNOPSIS
+.B vibeos-dialer-calls
+.SH DESCRIPTION
+Handles calls with the phone app closed: rings for incoming calls through ModemManager, routes the call audio through callaudiod, plays the ringtone and vibration (feedbackd), and keeps the call log. It runs as the systemd user service vibeos-dialer-calls.service and owns vibeos.Dialer.Calls on the session bus.
+.SH SEE ALSO
+vibeos-dialer(1), ModemManager(8), callaudiod(1)

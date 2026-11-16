@@ -4,7 +4,7 @@
 #include "nb-navigator.h"
 #include "nb-widgets.h"
 
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 #include <libsoup/soup.h>
 #include <math.h>
@@ -92,7 +92,7 @@ nb_tab_pop_page (NbTab *t)
 void
 nb_tab_snackbar (NbTab *t, const char *text, const char *action, void (*cb) (gpointer), gpointer data)
 {
-  neo_snackbar_show (NEO_SNACKBAR (t->snackbar), text, action, cb, data, NEO_SNACKBAR_LONG);
+  vibeos_snackbar_show (VIBEOS_SNACKBAR (t->snackbar), text, action, cb, data, VIBEOS_SNACKBAR_LONG);
 }
 
 /* ---- favourites: the favicon's vibrant colour, else primary50 ---- */
@@ -952,7 +952,7 @@ nb_tab_new (const char *url, gboolean incognito, gboolean desktop, const char *s
    * "Entry deleted" is shown over History) */
   t->holder = gtk_overlay_new ();
   gtk_overlay_set_child (GTK_OVERLAY (t->holder), t->nav);
-  t->snackbar = neo_snackbar_new ();
+  t->snackbar = vibeos_snackbar_new ();
   gtk_overlay_add_overlay (GTK_OVERLAY (t->holder), t->snackbar);
   gtk_overlay_set_measure_overlay (GTK_OVERLAY (t->holder), t->snackbar, FALSE);
   g_signal_connect (t->holder, "destroy", G_CALLBACK (on_destroy), t);

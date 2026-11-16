@@ -7,7 +7,7 @@
 
 #include <math.h>
 
-#define RESOURCE "/neo/Contacts/images/"
+#define RESOURCE "/vibeos/Contacts/images/"
 
 static GdkTexture *
 image (const char *name)

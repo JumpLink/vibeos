@@ -1,4 +1,4 @@
-/* nb-widgets: the parts of Jelly's screens that libneo does not have, drawn as Jelly draws them:
+/* nb-widgets: the parts of Jelly's screens that libvibeos does not have, drawn as Jelly draws them:
  *
  *   NbDialog     a rounded card over a dim, nearly as wide as the window, the neutral button at the start
  *   list dialog  a single-choice dialog on NbDialog
@@ -10,7 +10,7 @@
  *   field        the outlined text field around a GtkEntry
  *   indicator    a scrollbar: a thin thumb at the end that shows while scrolling and when the view appears
  *
- * Every one goes over the window made by neo_window_new (its root overlay), as libneo's dialog and snackbar do. */
+ * Every one goes over the window made by vibeos_window_new (its root overlay), as libvibeos's dialog and snackbar do. */
 #pragma once
 
 #include <gtk/gtk.h>

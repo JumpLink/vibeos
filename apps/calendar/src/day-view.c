@@ -5,7 +5,7 @@
 
 #include <glib/gi18n.h>
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy.h>
 
 /* --- dimensions, px. HOUR_GAP and DAY_GAP are 1 device pixel instead: `px` below. */
@@ -68,7 +68,7 @@ struct _CalDayView {
 
   gboolean show_all_all_day;    /* the all-day area expanded */
   double animate_all_day_height;        /* during the expand animation, else 0 */
-  NeoAnim *expand_anim;
+  VibeosAnim *expand_anim;
 
   gboolean has_selection, selection_all_day;
   int selection_day, selection_hour;
@@ -80,7 +80,7 @@ struct _CalDayView {
   SpongyVelocity velocity;
   SpongyFling fling;
   guint tick;
-  NeoAnim *page_anim;
+  VibeosAnim *page_anim;
   double page_from, page_to;
   double pinch_cell_height, pinch_focus;
 
@@ -101,7 +101,7 @@ static guint signals[N_SIGNALS];
 static PangoFontDescription *
 font (double size, int weight)
 {
-  PangoFontDescription *description = pango_font_description_from_string ("Neo Roboto, Roboto");
+  PangoFontDescription *description = pango_font_description_from_string ("VibeOS Roboto, Roboto");
 
   pango_font_description_set_absolute_size (description, size * PANGO_SCALE);
   pango_font_description_set_weight (description, weight);
@@ -169,7 +169,7 @@ page_all_day_rows (CalDayView *self, int first_day)
 static void
 measure_page (CalDayView *self, int first_day, Metrics *m)
 {
-  int scale = neo_device_scale (GTK_WIDGET (self));
+  int scale = vibeos_device_scale (GTK_WIDGET (self));
   double max_unexpanded_height;
 
   m->px = 1.0 / MAX (scale, 1);
@@ -761,7 +761,7 @@ draw_page (CalDayView *self, GtkSnapshot *snapshot, int first_day)
           GdkRGBA color = cal_argb (CAL_EXPAND_ICON);
           double x = MAX ((m.hours_width - EXPAND_ICON_SIZE) / 2, EVENT_TEXT_HORIZONTAL_MARGIN);
 
-          neo_snapshot_icon (snapshot, GTK_WIDGET (self),
+          vibeos_snapshot_icon (snapshot, GTK_WIDGET (self),
                              self->show_all_all_day ? "cal-collapse-symbolic" : "cal-expand-symbolic", x,
                              m.first_cell - EXPAND_ALL_DAY_BOTTOM_MARGIN - EXPAND_ICON_SIZE, EXPAND_ICON_SIZE,
                              &color);
@@ -815,7 +815,7 @@ static gboolean
 on_tick (GtkWidget *widget, GdkFrameClock *clock, gpointer data)
 {
   CalDayView *self = CAL_DAY_VIEW (widget);
-  double density = neo_device_scale (widget);
+  double density = vibeos_device_scale (widget);
   gboolean running = spongy_fling_update (&self->fling, gdk_frame_clock_get_frame_time (clock) / 1000.0);
 
   /* the fling runs in device pixels */
@@ -842,7 +842,7 @@ static void
 start_fling (CalDayView *self, double velocity)
 {
   GdkFrameClock *clock = gtk_widget_get_frame_clock (GTK_WIDGET (self));
-  double density = neo_device_scale (GTK_WIDGET (self));
+  double density = vibeos_device_scale (GTK_WIDGET (self));
   Metrics m;
 
   if (!clock)
@@ -883,12 +883,12 @@ cal_day_view_scroll_to_hour (CalDayView *self, int hour)
 /* --- paging */
 
 static void
-on_page_anim (NeoAnim *anim, double value, gpointer data)
+on_page_anim (VibeosAnim *anim, double value, gpointer data)
 {
   CalDayView *self = data;
 
   self->view_start_x = value;
-  if (value == self->page_to && !neo_anim_is_running (anim))
+  if (value == self->page_to && !vibeos_anim_is_running (anim))
     {
       double width = gtk_widget_get_width (GTK_WIDGET (self));
 
@@ -912,7 +912,7 @@ static void
 settle_page (CalDayView *self, double velocity)
 {
   double width = gtk_widget_get_width (GTK_WIDGET (self)), target, distance, duration;
-  double density = neo_device_scale (GTK_WIDGET (self));
+  double density = vibeos_device_scale (GTK_WIDGET (self));
 
   if (fabs (self->view_start_x) > width / 7 || fabs (velocity) > SWITCH_MIN_VELOCITY / density * 2)
     target = (self->view_start_x != 0 ? (self->view_start_x > 0 ? 1 : -1) : (velocity < 0 ? 1 : -1)) * width;
@@ -928,7 +928,7 @@ settle_page (CalDayView *self, double velocity)
       on_page_anim (self->page_anim, target, self);
       return;
     }
-  neo_anim_start (self->page_anim, self->view_start_x, target, (guint) MIN (duration, 1000), 0,
+  vibeos_anim_start (self->page_anim, self->view_start_x, target, (guint) MIN (duration, 1000), 0,
                   SPONGY_DECELERATE_QUINT);
 }
 
@@ -946,8 +946,8 @@ on_drag_begin (GtkGestureDrag *gesture, double x, double y, CalDayView *self)
   if (self->touch == TOUCH_PINCH)
     return;
   stop_fling (self);
-  if (neo_anim_is_running (self->page_anim))
-    neo_anim_finish (self->page_anim);
+  if (vibeos_anim_is_running (self->page_anim))
+    vibeos_anim_finish (self->page_anim);
   self->touch = TOUCH_DOWN;
   self->down_x = x;
   self->down_y = y;
@@ -1084,11 +1084,11 @@ on_click_timeout (gpointer data)
 }
 
 static void
-on_expand_anim (NeoAnim *anim, double value, gpointer data)
+on_expand_anim (VibeosAnim *anim, double value, gpointer data)
 {
   CalDayView *self = data;
 
-  self->animate_all_day_height = neo_anim_is_running (anim) ? value : 0;
+  self->animate_all_day_height = vibeos_anim_is_running (anim) ? value : 0;
   clamp_scroll (self);
   gtk_widget_queue_draw (GTK_WIDGET (self));
 }
@@ -1123,7 +1123,7 @@ on_released (GtkGestureClick *gesture, int n_press, double x, double y, CalDayVi
       self->show_all_all_day = !self->show_all_all_day;
       measure_page (self, self->first_day, &m);
       to = m.all_day_height;
-      neo_anim_start (self->expand_anim, from, to, ANIMATION_DURATION, 0, SPONGY_LINEAR);
+      vibeos_anim_start (self->expand_anim, from, to, ANIMATION_DURATION, 0, SPONGY_LINEAR);
       return;
     }
   if (x < m.hours_width)
@@ -1216,8 +1216,8 @@ cal_day_view_dispose (GObject *object)
   g_clear_handle_id (&self->click_timeout, g_source_remove);
   g_clear_handle_id (&self->minute_timer, g_source_remove);
   g_clear_pointer (&self->clicked, cal_event_unref);
-  g_clear_pointer (&self->expand_anim, neo_anim_free);
-  g_clear_pointer (&self->page_anim, neo_anim_free);
+  g_clear_pointer (&self->expand_anim, vibeos_anim_free);
+  g_clear_pointer (&self->page_anim, vibeos_anim_free);
   for (int i = 0; i < 24; i++)
     g_clear_object (&self->hour_layouts[i]);
   g_clear_pointer (&self->events, g_ptr_array_unref);
@@ -1269,8 +1269,8 @@ cal_day_view_init (CalDayView *self)
 
     self->initial_hour = g_date_time_get_hour (now);
   }
-  self->expand_anim = neo_anim_new (GTK_WIDGET (self), on_expand_anim, self);
-  self->page_anim = neo_anim_new (GTK_WIDGET (self), on_page_anim, self);
+  self->expand_anim = vibeos_anim_new (GTK_WIDGET (self), on_expand_anim, self);
+  self->page_anim = vibeos_anim_new (GTK_WIDGET (self), on_page_anim, self);
   gtk_widget_set_overflow (GTK_WIDGET (self), GTK_OVERFLOW_HIDDEN);
   gtk_widget_set_focusable (GTK_WIDGET (self), TRUE);
 
@@ -1321,8 +1321,8 @@ cal_day_view_set_num_days (CalDayView *self, int num_days)
 void
 cal_day_view_set_first_day (CalDayView *self, int first_day)
 {
-  if (neo_anim_is_running (self->page_anim))
-    neo_anim_stop (self->page_anim);
+  if (vibeos_anim_is_running (self->page_anim))
+    vibeos_anim_stop (self->page_anim);
   self->view_start_x = 0;
   self->first_day = first_day;
   self->has_selection = FALSE;

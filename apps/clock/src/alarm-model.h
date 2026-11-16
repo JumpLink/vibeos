@@ -8,7 +8,7 @@
  * Instances keep wall-clock fields (year, month, day, hour, minute), not a Unix time: "7:30 on Monday" stays 7:30
  * across a change of time zone or summer time: the moment is worked out from them each time.
  *
- * Both the alarm service (neo-clock-alarms) and the app use this file; only the service writes the store. */
+ * Both the alarm service (vibeos-clock-alarms) and the app use this file; only the service writes the store. */
 #pragma once
 
 #include <glib.h>

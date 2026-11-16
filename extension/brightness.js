@@ -149,7 +149,7 @@ export class Brightness {
                     this._sensor = Gio.DBusProxy.new_for_bus_finish(res);
                 } catch (e) {
                     if (!e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
-                        console.warn(`gnome-phone: brightness: ${e.message}`);
+                        console.warn(`vibeos: brightness: ${e.message}`);
                     return;
                 }
                 this._sensor.connectObject(

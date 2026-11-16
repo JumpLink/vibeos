@@ -529,9 +529,9 @@ has_element (const char *name)
 CamPipeline *
 cam_pipeline_new (GError **error)
 {
-  /* NEO_CAMERA_TEST_SOURCE: a gst-launch fragment giving raw video in place of libcamerasrc (tests on a machine
+  /* VIBEOS_CAMERA_TEST_SOURCE: a gst-launch fragment giving raw video in place of libcamerasrc (tests on a machine
    * whose camera must stay off; cam-devices then lists two test cameras), e.g. "videotestsrc is-live=true" */
-  const char *test = g_getenv ("NEO_CAMERA_TEST_SOURCE");
+  const char *test = g_getenv ("VIBEOS_CAMERA_TEST_SOURCE");
   static const char *const needed[] = {
     "gtk4paintablesink", "tee", "queue", "valve", "videoconvertscale", "videocrop", "videoflip",
     "appsink", "fakesink", NULL,

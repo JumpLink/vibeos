@@ -10,7 +10,7 @@
 #include "phone.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 
 static struct
 {
@@ -50,7 +50,7 @@ take_volume_keys (gboolean take)
     return;
   incall.volume_keys = take;
   if (bus)
-    g_dbus_connection_call (bus, "neo.GnomePhone", "/neo/GnomePhone", "neo.GnomePhone",
+    g_dbus_connection_call (bus, "vibeos.Shell", "/vibeos/Shell", "vibeos.Shell",
                             "TakeVolumeKeys", g_variant_new ("(sb)", g_application_get_application_id (app), take),
                             NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 }
@@ -88,7 +88,7 @@ incall_window_volume_key (int direction)
 /* a call at a wait in its number asks before the tones after it go out. Yes sends them, No
  * (or Back, or a tap beside) drops them */
 static void
-on_post_dial_response (NeoDialog *dialog, int response, gpointer data)
+on_post_dial_response (VibeosDialog *dialog, int response, gpointer data)
 {
   guint id = GPOINTER_TO_UINT (data);
   CallInfo *call = calls_client_find (calls_client_get (), id);
@@ -97,7 +97,7 @@ on_post_dial_response (NeoDialog *dialog, int response, gpointer data)
     incall.post_dial_call = 0;
   /* the call may have ended, or moved on, meanwhile */
   if (call && *call->post_dial_wait)
-    calls_client_continue_post_dial (calls_client_get (), id, response == NEO_RESPONSE_OK);
+    calls_client_continue_post_dial (calls_client_get (), id, response == VIBEOS_RESPONSE_OK);
 }
 
 static void
@@ -109,18 +109,18 @@ sync_post_dial (void)
     {
       CallInfo *call = calls->pdata[i];
       g_autofree char *message = NULL;
-      NeoDialog *dialog;
+      VibeosDialog *dialog;
 
       if (!*call->post_dial_wait || call->id == incall.post_dial_call)
         continue;
       incall.post_dial_call = call->id;
       message = g_strconcat (_("Send the following tones?\n"), call->post_dial_wait, NULL);
-      dialog = neo_dialog_new (NULL);
-      neo_dialog_set_message (dialog, message);
-      neo_dialog_add_button (dialog, _("No"), NEO_RESPONSE_CANCEL);
-      neo_dialog_add_button (dialog, _("Yes"), NEO_RESPONSE_OK);
+      dialog = vibeos_dialog_new (NULL);
+      vibeos_dialog_set_message (dialog, message);
+      vibeos_dialog_add_button (dialog, _("No"), VIBEOS_RESPONSE_CANCEL);
+      vibeos_dialog_add_button (dialog, _("Yes"), VIBEOS_RESPONSE_OK);
       g_signal_connect (dialog, "response", G_CALLBACK (on_post_dial_response), GUINT_TO_POINTER (call->id));
-      neo_dialog_present (dialog, incall.stack);
+      vibeos_dialog_present (dialog, incall.stack);
       break;
     }
 }
@@ -189,7 +189,7 @@ on_failed (CallsClient *client, const char *method, guint id, const char *messag
           || g_str_equal (method, "AnswerAndRelease")))
     answer_view_reset (ANSWER_VIEW (incall.answer));
   if (message && *message)
-    neo_snackbar_show (NEO_SNACKBAR (incall.snackbar), message, NULL, NULL, NULL, NEO_SNACKBAR_LONG);
+    vibeos_snackbar_show (VIBEOS_SNACKBAR (incall.snackbar), message, NULL, NULL, NULL, VIBEOS_SNACKBAR_LONG);
 }
 
 /* the contacts came in after the call (the address books are read in the background): the name can change */
@@ -262,7 +262,7 @@ on_add_call (InCallView *view, gpointer data)
 static void
 on_notice (InCallView *view, const char *text, gpointer data)
 {
-  neo_snackbar_show (NEO_SNACKBAR (incall.snackbar), text, NULL, NULL, NULL, NEO_SNACKBAR_LONG);
+  vibeos_snackbar_show (VIBEOS_SNACKBAR (incall.snackbar), text, NULL, NULL, NULL, VIBEOS_SNACKBAR_LONG);
 }
 
 /* Back closes the keypad first; a ringing call ignores it; otherwise the screen goes, the call stays */
@@ -315,7 +315,7 @@ incall_window_present (GtkApplication *app)
         return;
       if (!incall.contacts)
         incall.contacts = contacts_new ();
-      incall.window = neo_window_new (app);
+      incall.window = vibeos_window_new (app);
       gtk_window_set_title (GTK_WINDOW (incall.window), _("Phone"));
       gtk_widget_add_css_class (incall.window, "dialer");
       incall.stack = gtk_stack_new ();
@@ -323,9 +323,9 @@ incall_window_present (GtkApplication *app)
       incall.incall = incall_view_new ();
       gtk_stack_add_child (GTK_STACK (incall.stack), incall.answer);
       gtk_stack_add_child (GTK_STACK (incall.stack), incall.incall);
-      neo_window_set_content (GTK_WINDOW (incall.window), incall.stack);
-      overlay = neo_window_get_overlay (incall.window);
-      incall.snackbar = neo_snackbar_new ();
+      vibeos_window_set_content (GTK_WINDOW (incall.window), incall.stack);
+      overlay = vibeos_window_get_overlay (incall.window);
+      incall.snackbar = vibeos_snackbar_new ();
       gtk_overlay_add_overlay (overlay, incall.snackbar);
       incall_view_set_locked (INCALL_VIEW (incall.incall), incall.locked);
       g_signal_connect (incall.incall, "add-call", G_CALLBACK (on_add_call), NULL);

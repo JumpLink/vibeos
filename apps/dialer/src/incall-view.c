@@ -9,7 +9,7 @@
 
 #include <glib/gi18n.h>
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 
 /* the contact grid: the status line, the photo and name, the label or timer under them */
 #define GRID_TOP        12
@@ -88,7 +88,7 @@ struct _InCallView
   GtkWidget *end_button;
   GtkWidget *dialpad;
   gboolean dialpad_shown;
-  NeoAnim *slide;
+  VibeosAnim *slide;
   double dialpad_progress;      /* 0 hidden … 1 up */
 
   double grid_bottom;           /* where the contact grid ends: the button grid and the keypad go under it */
@@ -400,12 +400,12 @@ on_end (InCallView *self)
 /* ---- the keypad ----------------------------------------------------------------------------------------------- */
 
 static void
-on_slide (NeoAnim *anim, double value, gpointer data)
+on_slide (VibeosAnim *anim, double value, gpointer data)
 {
   InCallView *self = data;
 
   self->dialpad_progress = value;
-  if (!neo_anim_is_running (anim) && value == 0)
+  if (!vibeos_anim_is_running (anim) && value == 0)
     gtk_widget_set_visible (self->dialpad, FALSE);
   gtk_widget_queue_allocate (GTK_WIDGET (self));
 }
@@ -427,10 +427,10 @@ incall_view_show_dialpad (InCallView *self, gboolean shown)
     {
       dialer_dialpad_set_digits (DIALER_DIALPAD (self->dialpad), "");
       gtk_widget_set_visible (self->dialpad, TRUE);
-      neo_anim_start_cubic (self->slide, self->dialpad_progress, 1, DIALPAD_MS, 0, 0, 0, 0.2, 1);
+      vibeos_anim_start_cubic (self->slide, self->dialpad_progress, 1, DIALPAD_MS, 0, 0, 0, 0.2, 1);
     }
   else
-    neo_anim_start_cubic (self->slide, self->dialpad_progress, 0, DIALPAD_MS, 0, 0.4, 0, 1, 1);
+    vibeos_anim_start_cubic (self->slide, self->dialpad_progress, 0, DIALPAD_MS, 0, 0.4, 0, 1, 1);
   incall_button_set_checked (INCALL_BUTTON (self->buttons[BUTTON_KEYPAD]), shown);
 }
 
@@ -614,7 +614,7 @@ draw_banner (InCallView *self, GtkSnapshot *snapshot, double width)
   GdkRGBA background = rgb (BANNER_COLOR, 0xcc / 255.0), icon = { 1, 1, 1, TEXT_SECONDARY };
 
   gtk_snapshot_append_color (snapshot, &background, &GRAPHENE_RECT_INIT (0, 0, width, height));
-  neo_snapshot_icon (snapshot, GTK_WIDGET (self), "dialer-phone-paused-symbolic", x,
+  vibeos_snapshot_icon (snapshot, GTK_WIDGET (self), "dialer-phone-paused-symbolic", x,
                      round ((height - BANNER_ICON) / 2), BANNER_ICON, &icon);
   x += BANNER_ICON + BANNER_GAP;
   draw_layout (snapshot, self->banner_name, x, text_y, 1);
@@ -668,7 +668,7 @@ incall_view_dispose (GObject *object)
 
   g_signal_handlers_disconnect_by_data (calls_client_get (), self);
   g_clear_handle_id (&self->timer, g_source_remove);
-  g_clear_pointer (&self->slide, neo_anim_free);
+  g_clear_pointer (&self->slide, vibeos_anim_free);
   while ((child = gtk_widget_get_first_child (GTK_WIDGET (self))))
     gtk_widget_unparent (child);
   g_clear_object (&self->status);
@@ -717,12 +717,12 @@ incall_view_init (InCallView *self)
   GdkRGBA end = rgb (END_COLOR, 1);
   CallsClient *client = calls_client_get ();
 
-  self->status = new_layout (self, "Neo Roboto", STATUS_SIZE);
-  self->name = new_layout (self, "Google Sans Flex, Neo Roboto", NAME_SIZE);
+  self->status = new_layout (self, "VibeOS Roboto", STATUS_SIZE);
+  self->name = new_layout (self, "Google Sans Flex, VibeOS Roboto", NAME_SIZE);
   self->name_size = NAME_SIZE;
-  self->bottom = new_layout (self, "Neo Roboto", STATUS_SIZE);
-  self->banner_name = new_layout (self, "Neo Roboto", STATUS_SIZE);
-  self->banner_label = new_layout (self, "Neo Roboto", STATUS_SIZE);
+  self->bottom = new_layout (self, "VibeOS Roboto", STATUS_SIZE);
+  self->banner_name = new_layout (self, "VibeOS Roboto", STATUS_SIZE);
+  self->banner_label = new_layout (self, "VibeOS Roboto", STATUS_SIZE);
   pango_layout_set_text (self->banner_label, _("On hold"), -1);
 
   /* the grid's buttons, then the keypad over them, then the end-call button over that */
@@ -740,15 +740,15 @@ incall_view_init (InCallView *self)
   gtk_widget_set_parent (self->dialpad, GTK_WIDGET (self));
   g_signal_connect (self->dialpad, "key-down", G_CALLBACK (on_dialpad_key), self);
   g_signal_connect_swapped (self->dialpad, "close", G_CALLBACK (on_dialpad_close), self);
-  self->slide = neo_anim_new (GTK_WIDGET (self), on_slide, self);
+  self->slide = vibeos_anim_new (GTK_WIDGET (self), on_slide, self);
 
   /* Incall.Button.End: a red disc at elevation 8 with the black handset in it, and a white ripple */
   gtk_image_set_pixel_size (GTK_IMAGE (icon), END_ICON);
   gtk_widget_add_css_class (icon, "end-call-icon");
-  self->end_button = neo_pressable_new (icon);
-  neo_pressable_set_fill (NEO_PRESSABLE (self->end_button), &end, TRUE);
-  neo_pressable_set_ripple (NEO_PRESSABLE (self->end_button), NEO_RIPPLE_CIRCLE, END_SIZE / 2.0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (self->end_button), &(GdkRGBA) { 1, 1, 1, 0.25 });
+  self->end_button = vibeos_pressable_new (icon);
+  vibeos_pressable_set_fill (VIBEOS_PRESSABLE (self->end_button), &end, TRUE);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->end_button), VIBEOS_RIPPLE_CIRCLE, END_SIZE / 2.0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (self->end_button), &(GdkRGBA) { 1, 1, 1, 0.25 });
   gtk_accessible_update_property (GTK_ACCESSIBLE (self->end_button), GTK_ACCESSIBLE_PROPERTY_LABEL, _("End call"), -1);
   gtk_widget_set_parent (self->end_button, GTK_WIDGET (self));
   g_signal_connect_swapped (self->end_button, "clicked", G_CALLBACK (on_end), self);

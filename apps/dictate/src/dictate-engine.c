@@ -88,22 +88,22 @@ dictate_engine_available (DictateEngine *self, char **reason)
 
   if (!model)
     {
-      g_autofree char *package = language ? g_strconcat ("neo-dictate-", language->code, NULL) : NULL;
+      g_autofree char *package = language ? g_strconcat ("vibeos-dictate-", language->code, NULL) : NULL;
 
       if (language)
         /* TRANSLATORS: the first %s is the language's name for itself (Deutsch), the second the package's name
-         * (neo-dictate-de) */
+         * (vibeos-dictate-de) */
         *reason = g_strdup_printf (_("There is no speech model for %s. Install the %s package."), language->name,
                                    package);
       else
-        *reason = g_strdup (_("There is no speech model. Install a neo-dictate language package, such as "
-                              "neo-dictate-en."));
+        *reason = g_strdup (_("There is no speech model. Install a vibeos-dictate language package, such as "
+                              "vibeos-dictate-en."));
       return FALSE;
     }
   recogniser = dictate_recogniser_class (model->kind);
   if (!recogniser->installed ())
     {
-      /* TRANSLATORS: %s is the package's name (neo-dictate-moonshine) */
+      /* TRANSLATORS: %s is the package's name (vibeos-dictate-moonshine) */
       *reason = g_strdup_printf (_("Speech recognition is not installed. Install the %s package."),
                                  recogniser->package);
       return FALSE;

@@ -1,5 +1,5 @@
 #!/bin/sh
-# try-files.sh: neo-files on a phone in a session of its own, on a neo-headless display, so the
+# try-files.sh: vibeos-files on a phone in a session of its own, on a vibeos-headless display, so the
 # phone can stay locked and nothing the rig does reaches the owner's session.
 #
 # Everything of the rig's is under /tmp: its runtime dir /tmp/files-rt (mode 700: gvfsd's FUSE mount, the keyring's
@@ -10,7 +10,7 @@
 # Run it as root on the phone; it does the rest as the session user.
 #
 #   try-files.sh setup           the rig's directories, the test tree, the SSH keys and the schema
-#   try-files.sh start           the display (neo-headless, NEO_HEADLESS=files) and the rig's touchscreen
+#   try-files.sh start           the display (vibeos-headless, VIBEOS_HEADLESS=files) and the rig's touchscreen
 #   try-files.sh sshd            the SFTP server: the phone's sshd as the session user on 127.0.0.1:2222, its own
 #                                host key, the rig's client key only
 #   try-files.sh app [URI]       the app (BUILD=..., default the work tree's) under dbus-run-session, with a
@@ -28,20 +28,20 @@
 # (tests/files-servers.sh). The LAN is only ever listed (network:///), never mounted.
 set -e
 
-USER_NAME=${NEO_USER:-user}
+USER_NAME=${VIBEOS_USER:-user}
 RT=/tmp/files-rt
 RIG=/tmp/files-rig
 HERE=$(dirname "$(readlink -f "$0")")
-BUILD=${BUILD:-$HERE/../../build/neo-files}
-# the display tool of this tree (tools/neo-headless): it must know NEO_HEADLESS_RUNTIME, or the display and the app
+BUILD=${BUILD:-$HERE/../../build/vibeos-files}
+# the display tool of this tree (tools/vibeos-headless): it must know VIBEOS_HEADLESS_RUNTIME, or the display and the app
 # run in the session's own /run/user/UID, where the rig's xdg-document-portal takes /run/user/UID/doc over from the
-# session's (2026-11-10, with an older copy in /root/neo-tools: the session's portal died, exit 21)
-HL=${HL:-$HERE/../../../../tools/neo-headless}
-export NEO_HEADLESS=files NEO_HEADLESS_RUNTIME=$RT
+# session's (2026-11-10, with an older copy in /root/vibeos-tools: the session's portal died, exit 21)
+HL=${HL:-$HERE/../../../../tools/vibeos-headless}
+export VIBEOS_HEADLESS=files VIBEOS_HEADLESS_RUNTIME=$RT
 STATE=$RT/files.d
 
-if ! grep -q NEO_HEADLESS_RUNTIME "$HL" 2>/dev/null; then
-    echo "try-files: $HL does not know NEO_HEADLESS_RUNTIME; HL=path/to/tools/neo-headless" >&2
+if ! grep -q VIBEOS_HEADLESS_RUNTIME "$HL" 2>/dev/null; then
+    echo "try-files: $HL does not know VIBEOS_HEADLESS_RUNTIME; HL=path/to/tools/vibeos-headless" >&2
     exit 1
 fi
 
@@ -57,7 +57,7 @@ setup)
     # the test tree: the XDG folders Home shows, files of each kind, a hidden one, a deep path
     as_user sh -c '
         cd "$1/home"
-        mkdir -p Documents Downloads Pictures Music Videos "Projects/2026/neo files/deep" .hidden-folder
+        mkdir -p Documents Downloads Pictures Music Videos "Projects/2026/vibeos files/deep" .hidden-folder
         printf "%s\n" "a text file" >Documents/notes.txt
         printf "%s\n" "<html></html>" >Documents/page.html
         head -c 120000 /dev/urandom >Downloads/blob.bin
@@ -96,7 +96,7 @@ UsePAM no
 StrictModes no
 Subsystem sftp /usr/lib/openssh/sftp-server
 EOF
-    as_user cp "$HERE/../data/neo.Files.gschema.xml" "$RIG/schemas/"
+    as_user cp "$HERE/../data/vibeos.Files.gschema.xml" "$RIG/schemas/"
     as_user glib-compile-schemas "$RIG/schemas"
     ;;
 start)
@@ -107,7 +107,7 @@ start)
     sh "$0" touchscreen
     ;;
 touchscreen)
-    # One RemoteDesktop session for all the rig's touches, made before the app runs. neo-headless-input makes a
+    # One RemoteDesktop session for all the rig's touches, made before the app runs. vibeos-headless-input makes a
     # touchscreen per touch and drops it after, and that misbehaved here twice over: the seat lost its touch
     # capability between touches, so a touch that came while the app was busy was lost on the way (the app binds
     # wl_touch a round trip after the capability comes back), and GTK 4.24 crashed handling a touch queued from a
@@ -116,14 +116,14 @@ touchscreen)
     # touch.ack answers when it is done.
     rm -f "$STATE/touch.in" "$STATE/touch.ack" "$STATE/touch.pid"
     as_user mkfifo "$STATE/touch.in" "$STATE/touch.ack"
-    as_user setsid env NEO_HEADLESS_BUS="$(cat "$STATE/bus")" python3 -c '
+    as_user setsid env VIBEOS_HEADLESS_BUS="$(cat "$STATE/bus")" python3 -c '
 import os, sys, time
 from gi.repository import Gio, GLib
 state = sys.argv[1]
 with open(os.path.join(state, "touch.pid"), "w") as pid:
     pid.write("%d\n" % os.getpid())
 bus = Gio.DBusConnection.new_for_address_sync(
-    os.environ["NEO_HEADLESS_BUS"],
+    os.environ["VIBEOS_HEADLESS_BUS"],
     Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT | Gio.DBusConnectionFlags.MESSAGE_BUS_CONNECTION, None, None)
 RD = "org.gnome.Mutter.RemoteDesktop"
 SC = "org.gnome.Mutter.ScreenCast"
@@ -228,12 +228,12 @@ tap | press | swipe)
 type | key)
     # keys through mutter's RemoteDesktop on the display's bus, by keysym: a printable character is its own keysym
     # (mutter presses the level's Shift itself); the display's keyboard keeps the seat's wl_keyboard, so none is lost
-    as_user env NEO_HEADLESS_BUS="$(cat "$STATE/bus")" python3 -c '
+    as_user env VIBEOS_HEADLESS_BUS="$(cat "$STATE/bus")" python3 -c '
 import os, sys, time
 from gi.repository import Gio, GLib
 NAMES = {"Return": 0xff0d, "BackSpace": 0xff08, "Escape": 0xff1b, "Tab": 0xff09, "Back": 0x1008ff26}
 bus = Gio.DBusConnection.new_for_address_sync(
-    os.environ["NEO_HEADLESS_BUS"],
+    os.environ["VIBEOS_HEADLESS_BUS"],
     Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT | Gio.DBusConnectionFlags.MESSAGE_BUS_CONNECTION, None, None)
 service = "org.gnome.Mutter.RemoteDesktop"
 session = bus.call_sync(service, "/org/gnome/Mutter/RemoteDesktop", service, "CreateSession", None,

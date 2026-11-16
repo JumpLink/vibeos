@@ -24,7 +24,7 @@
 
 #include <gio/gdesktopappinfo.h>
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 #include <string.h>
 
@@ -38,7 +38,7 @@ static GtkWidget *
 pref_row (const char *title, const char *summary, GtkWidget **summary_label, GCallback clicked, gpointer data)
 {
   GtkWidget *lines = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  GtkWidget *row = neo_pressable_new (lines);
+  GtkWidget *row = vibeos_pressable_new (lines);
   GtkWidget *label = ct_label (summary ? summary : "", "ct-pref-summary", 14);
   GdkRGBA ripple = ct_rgba (CT_RIPPLE_APPCOMPAT);
 
@@ -49,8 +49,8 @@ pref_row (const char *title, const char *summary, GtkWidget **summary_label, GCa
   gtk_widget_set_visible (label, summary && *summary);
   gtk_box_append (GTK_BOX (lines), label);
   gtk_widget_add_css_class (row, "ct-pref-row");
-  neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (row), &ripple);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
   if (clicked)
     g_signal_connect (row, "clicked", clicked, data);
   else
@@ -144,7 +144,7 @@ on_settings_changed (GSettings *settings, const char *key, Settings *s)
 }
 
 static void
-on_my_info (NeoPressable *row, Settings *s)
+on_my_info (VibeosPressable *row, Settings *s)
 {
   if (ct_store_get_profile (s->store))
     ct_window_show_contact (s->window, CT_PROFILE_UID);
@@ -154,7 +154,7 @@ on_my_info (NeoPressable *row, Settings *s)
 
 /* GNOME Settings' Online Accounts panel, through its "launch-panel" action (as GNOME Shell opens its panels) */
 static void
-on_accounts (NeoPressable *row, Settings *s)
+on_accounts (VibeosPressable *row, Settings *s)
 {
   GDBusConnection *bus = g_application_get_dbus_connection (g_application_get_default ());
   GVariantBuilder args;
@@ -189,7 +189,7 @@ on_default_chosen (int response, gpointer data)
 
 /* a radio list over EDS's writable books */
 static void
-on_default_account (NeoPressable *row, Settings *s)
+on_default_account (VibeosPressable *row, Settings *s)
 {
   g_autoptr(GPtrArray) books = writable_books (s->store);
   const char *current = ct_store_default_book (s->store);
@@ -207,7 +207,7 @@ on_default_account (NeoPressable *row, Settings *s)
 }
 
 static void
-on_filter (NeoPressable *row, Settings *s);
+on_filter (VibeosPressable *row, Settings *s);
 
 typedef struct {
   Settings *settings;
@@ -242,20 +242,20 @@ choose (Settings *s, const char *title, const char *key, const char *value0, con
 }
 
 static void
-on_sort (NeoPressable *row, Settings *s)
+on_sort (VibeosPressable *row, Settings *s)
 {
   choose (s, _("Sort by"), "sort-order", "first-name", _("First name"), "last-name", _("Last name"));
 }
 
 static void
-on_format (NeoPressable *row, Settings *s)
+on_format (VibeosPressable *row, Settings *s)
 {
   choose (s, _("Name format"), "display-order", "first-name-first", _("First name first"), "last-name-first",
           _("Last name first"));
 }
 
 static void
-on_phonetic (NeoPressable *row, Settings *s)
+on_phonetic (VibeosPressable *row, Settings *s)
 {
   choose (s, _("Phonetic name"), "phonetic-name", "always", _("Always show"), "hide-if-empty", _("Hide if empty"));
 }
@@ -339,7 +339,7 @@ on_import_source (int response, gpointer data)
 }
 
 static void
-on_import (NeoPressable *row, Settings *s)
+on_import (VibeosPressable *row, Settings *s)
 {
   const char *labels[] = { _(".vcf file") };
 
@@ -364,7 +364,7 @@ on_export_chosen (int response, gpointer data)
 }
 
 static void
-on_export (NeoPressable *row, Settings *s)
+on_export (VibeosPressable *row, Settings *s)
 {
   const char *labels[] = { _("Export to .vcf file") };
 
@@ -382,7 +382,7 @@ show_about (Settings *s, gboolean about)
 }
 
 static void
-on_about (NeoPressable *row, Settings *s)
+on_about (VibeosPressable *row, Settings *s)
 {
   show_about (s, TRUE);
 }
@@ -469,7 +469,7 @@ static GtkWidget *
 filter_row (const char *text, GtkWidget *mark, GCallback clicked, gpointer data)
 {
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  GtkWidget *row = neo_pressable_new (box);
+  GtkWidget *row = vibeos_pressable_new (box);
   GtkWidget *label = ct_label (text, "ct-filter-text", 16);
   GdkRGBA ripple = ct_rgba (CT_RIPPLE_FRAMEWORK);
 
@@ -480,8 +480,8 @@ filter_row (const char *text, GtkWidget *mark, GCallback clicked, gpointer data)
   gtk_widget_set_valign (mark, GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (box), mark);
   gtk_widget_add_css_class (row, "ct-filter-row");
-  neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (row), &ripple);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
   g_signal_connect (row, "clicked", clicked, data);
   return row;
 }
@@ -532,7 +532,7 @@ customize_state (Customize *c)
 }
 
 static void
-on_book_toggled (NeoPressable *row, Customize *c)
+on_book_toggled (VibeosPressable *row, Customize *c)
 {
   const char *uid = g_object_get_data (G_OBJECT (row), "ct-book");
   GtkWidget *check = g_object_get_data (G_OBJECT (row), "ct-check");
@@ -544,7 +544,7 @@ on_book_toggled (NeoPressable *row, Customize *c)
 
 /* Save: the unticked books are hidden, the filter is "custom" (and the filter screen closes with it) */
 static void
-on_customize_save (NeoPressable *button, Customize *c)
+on_customize_save (VibeosPressable *button, Customize *c)
 {
   GPtrArray *books = ct_store_get_books (c->store);
   g_autoptr(GStrvBuilder) hidden = g_strv_builder_new ();
@@ -636,7 +636,7 @@ customize_new (GtkWidget *window, GtkWidget *filter_page)
 }
 
 static void
-on_filter_all (NeoPressable *row, GtkWidget *page)
+on_filter_all (VibeosPressable *row, GtkWidget *page)
 {
   GtkWidget *window = ct_page_get_window (CT_PAGE (page));
 
@@ -645,7 +645,7 @@ on_filter_all (NeoPressable *row, GtkWidget *page)
 }
 
 static void
-on_filter_customize (NeoPressable *row, GtkWidget *page)
+on_filter_customize (VibeosPressable *row, GtkWidget *page)
 {
   GtkWidget *window = ct_page_get_window (CT_PAGE (page));
 
@@ -653,7 +653,7 @@ on_filter_customize (NeoPressable *row, GtkWidget *page)
 }
 
 static void
-on_filter (NeoPressable *row, Settings *s)
+on_filter (VibeosPressable *row, Settings *s)
 {
   GtkWidget *page = ct_page_new (s->window);
   GtkWidget *rows = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);

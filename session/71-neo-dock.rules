@@ -1,2 +1,0 @@
-# a display plugged in or out: neo-dock picks the session
-ACTION=="change", SUBSYSTEM=="drm", ENV{HOTPLUG}=="1", RUN+="/usr/bin/systemctl --no-block start neo-dock.service"

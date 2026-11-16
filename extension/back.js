@@ -64,7 +64,7 @@ class BackToHome {
         this._left = left;
         this._scale = nav.scale;
         const m = Main.layoutManager.primaryMonitor;
-        this.layer = new Clutter.Actor({name: 'gnomePhoneBack', x: m.x, y: m.y, width: m.width, height: m.height});
+        this.layer = new Clutter.Actor({name: 'vibeosBack', x: m.x, y: m.y, width: m.width, height: m.height});
         Main.layoutManager.uiGroup.insert_child_above(this.layer, global.window_group);
         overWindows(this.layer);
         // The scrim over the launcher, a colour layer with a background blur, is the launcher's to draw: the
@@ -150,7 +150,7 @@ export class EdgeBack {
         this._anim = null;
 
         this._gesture = new Clutter.PanGesture({
-            name: 'gnome-phone back',
+            name: 'vibeos back',
             begin_threshold: SLOP / this._scale,
             max_n_points: 1,
         });
@@ -169,7 +169,7 @@ export class EdgeBack {
                     this._end(true);
             },
             this);
-        global.stage.add_action_full('gnome-phone-back', Clutter.EventPhase.CAPTURE, this._gesture);
+        global.stage.add_action_full('vibeos-back', Clutter.EventPhase.CAPTURE, this._gesture);
         global.display.connectObject('notify::focus-window', () => this._prefetch(), this);
     }
 
@@ -180,7 +180,7 @@ export class EdgeBack {
         if (current === actor)
             return;
         current?.remove_action(this._gesture);
-        actor.add_action_full('gnome-phone-back', Clutter.EventPhase.CAPTURE, this._gesture);
+        actor.add_action_full('vibeos-back', Clutter.EventPhase.CAPTURE, this._gesture);
     }
 
     // ask the focused app what back means there, a moment from now

@@ -2,7 +2,7 @@
  * how long before ("10 minutes" … "4 weeks") and a remove button; "Add reminder" adds one.
  *
  * There is no second spinner for the method (Notification, Email, SMS, Alarm): the phone's reminder service
- * (neo-calendar-reminders) notifies for every reminder and sends no e-mail or SMS, so offering those would claim what
+ * (vibeos-calendar-reminders) notifies for every reminder and sends no e-mail or SMS, so offering those would claim what
  * nothing does. A reminder read from the calendar keeps the method it has. */
 #pragma once
 

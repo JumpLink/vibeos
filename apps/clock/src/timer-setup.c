@@ -4,7 +4,7 @@
 
 #include <glib/gi18n.h>
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <string.h>
 
 #define FAB_ROW         120     /* the view's bottom padding, for the buttons' row */
@@ -85,7 +85,7 @@ set_time (TimerSetup *self, double size)
   highlight = numbers[0] ? 0 : numbers[1] ? 4 : numbers[2] ? 8 : -1;
   if (highlight >= 0 && highlight < (int) g_utf8_strlen (text->str, -1))
     {
-      GdkRGBA primary = neo_color (NEO_PRIMARY);
+      GdkRGBA primary = vibeos_color (VIBEOS_PRIMARY);
       PangoAttribute *color = pango_attr_foreground_new (primary.red * 65535, primary.green * 65535,
                                                          primary.blue * 65535);
 
@@ -106,7 +106,7 @@ set_time (TimerSetup *self, double size)
 static void
 fit_time (TimerSetup *self)
 {
-  int scale = neo_device_scale (GTK_WIDGET (self));
+  int scale = vibeos_device_scale (GTK_WIDGET (self));
   int low = 1, high = TIME_SIZE * scale, size = high;
   double room = round (self->time_box.size.width * scale) + FIT_SLACK;
 
@@ -207,7 +207,7 @@ timer_setup_reset (TimerSetup *self)
 }
 
 static void
-on_key (NeoPressable *key, TimerSetup *self)
+on_key (VibeosPressable *key, TimerSetup *self)
 {
   int index = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (key), "key"));
 
@@ -224,7 +224,7 @@ on_key (NeoPressable *key, TimerSetup *self)
 
 /* a long press on delete clears it all, and the FAB shrinks and grows back even when there was nothing */
 static void
-on_delete_held (NeoPressable *key, TimerSetup *self)
+on_delete_held (VibeosPressable *key, TimerSetup *self)
 {
   timer_setup_reset (self);
   g_signal_emit (self, signals[INPUT_CHANGED], 0);
@@ -234,7 +234,7 @@ gboolean
 timer_setup_key_pressed (TimerSetup *self, guint keyval)
 {
   if (keyval == GDK_KEY_BackSpace)
-    on_key (NEO_PRESSABLE (self->keys[KEY_DELETE]), self);
+    on_key (VIBEOS_PRESSABLE (self->keys[KEY_DELETE]), self);
   else if (keyval >= GDK_KEY_0 && keyval <= GDK_KEY_9)
     append (self, keyval - GDK_KEY_0);
   else if (keyval >= GDK_KEY_KP_0 && keyval <= GDK_KEY_KP_9)
@@ -272,7 +272,7 @@ static void
 timer_setup_size_allocate (GtkWidget *widget, int width, int height, int baseline)
 {
   TimerSetup *self = TIMER_SETUP (widget);
-  int scale = neo_device_scale (widget);
+  int scale = vibeos_device_scale (widget);
   double inner = height - FAB_ROW, time_bottom = guideline (inner, TIME_FRACTION, scale);
   double room = inner - PAD_MARGIN - time_bottom;
   double pad_height = MIN (room, PAD_MAX_HEIGHT), pad_width = pad_height * 3 / 4;
@@ -308,7 +308,7 @@ timer_setup_size_allocate (GtkWidget *widget, int width, int height, int baselin
       graphene_point_t at = GRAPHENE_POINT_INIT (pad_x + columns[column] + KEY_MARGIN + (cell_width - size) / 2,
                                                  pad_y + rows[row] + KEY_MARGIN + (cell_height - size) / 2);
 
-      neo_pressable_set_ripple (NEO_PRESSABLE (self->keys[i]), NEO_RIPPLE_CIRCLE, size / 2);
+      vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->keys[i]), VIBEOS_RIPPLE_CIRCLE, size / 2);
       gtk_widget_allocate (self->keys[i], size, size, -1, gsk_transform_translate (NULL, &at));
     }
 }
@@ -326,7 +326,7 @@ static void
 timer_setup_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   TimerSetup *self = TIMER_SETUP (widget);
-  GdkRGBA color = neo_color (NEO_ON_SURFACE);
+  GdkRGBA color = vibeos_color (VIBEOS_ON_SURFACE);
   PangoRectangle extents;
   double baseline = self->time_box.origin.y + self->time_box.size.height / 2
                     + self->time_size * (2163 - 555) / 2.0 / 2048;
@@ -382,7 +382,7 @@ timer_setup_class_init (TimerSetupClass *klass)
 static void
 timer_setup_init (TimerSetup *self)
 {
-  GdkRGBA key_fill = neo_color (NEO_SURFACE_CONTAINER_HIGHEST), delete_fill = neo_color (NEO_TERTIARY_CONTAINER);
+  GdkRGBA key_fill = vibeos_color (VIBEOS_SURFACE_CONTAINER_HIGHEST), delete_fill = vibeos_color (VIBEOS_TERTIARY_CONTAINER);
 
   self->pointer = -1;
   self->time = gtk_widget_create_pango_layout (GTK_WIDGET (self), NULL);
@@ -407,11 +407,11 @@ timer_setup_init (TimerSetup *self)
 
           child = gtk_label_new (digit);
           gtk_widget_add_css_class (child, "timer-digit");
-          neo_label_set_font_padding (child, DIGIT_SIZE);
+          vibeos_label_set_font_padding (child, DIGIT_SIZE);
           gtk_widget_set_valign (child, GTK_ALIGN_CENTER);
         }
-      self->keys[i] = neo_pressable_new (child);
-      neo_pressable_set_fill (NEO_PRESSABLE (self->keys[i]), i == KEY_DELETE ? &delete_fill : &key_fill, FALSE);
+      self->keys[i] = vibeos_pressable_new (child);
+      vibeos_pressable_set_fill (VIBEOS_PRESSABLE (self->keys[i]), i == KEY_DELETE ? &delete_fill : &key_fill, FALSE);
       g_object_set_data (G_OBJECT (self->keys[i]), "key", GINT_TO_POINTER (i));
       g_signal_connect (self->keys[i], "clicked", G_CALLBACK (on_key), self);
       gtk_widget_set_parent (self->keys[i], GTK_WIDGET (self));

@@ -4,11 +4,11 @@
 #include "fm-ui.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 static void
-on_row (NeoPressable *row, GtkWidget *check)
+on_row (VibeosPressable *row, GtkWidget *check)
 {
   fm_check_set_active (check, !fm_check_get_active (check));
 }
@@ -35,10 +35,10 @@ check_row (GtkWidget *list, GSettings *settings, const char *key, const char *ti
   gtk_widget_set_valign (check, GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (box), text);
   gtk_box_append (GTK_BOX (box), check);
-  row = neo_pressable_new (box);
+  row = vibeos_pressable_new (box);
   gtk_widget_add_css_class (row, "fm-pref-row");
-  neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (row), &ripple);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
   g_settings_bind (settings, key, check, "active", G_SETTINGS_BIND_DEFAULT);
   g_signal_connect (row, "clicked", G_CALLBACK (on_row), check);
   gtk_accessible_update_property (GTK_ACCESSIBLE (row), GTK_ACCESSIBLE_PROPERTY_LABEL, title, -1);

@@ -1,13 +1,13 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: gnome-phone
+Upstream-Name: vibeos
 Upstream-Contact: pulpoff <pashkovsky@gmail.com>
-Source: https://github.com/pulpoff/gnome-phone
+Source: https://github.com/pulpoff/vibeos
 Comment:
  The apps are rebuilds of LineageOS/AOSP apps (Dialer, Messaging, DeskClock,
  Etar, ExactCalculator) and the shell follows SystemUI and Launcher3; their
  icons, images and data tables are converted from those Apache-2.0 sources.
  .
- No sound files from Android are shipped: neo-clock's and neo-messaging's
+ No sound files from Android are shipped: vibeos-clock's and vibeos-messaging's
  own sounds are links into the freedesktop sound theme.
 
 Files: *
@@ -16,7 +16,7 @@ License: Expat
 
 Files: extension/icondata.js
        extension/l3icondata.js
-       neo-launcher/src/popup_icons.h
+       vibeos-launcher/src/popup_icons.h
        apps/*/data/icons/*
        apps/*/data/images/*
        apps/*/data/*.svg
@@ -30,16 +30,26 @@ Comment:
  converted from AOSP and LineageOS sources (frameworks/base SystemUI,
  Launcher3, DeskClock, Dialer, Messaging, ExactCalculator).
 
-Files: neo-launcher/iconpacks/round/icons/*
-       tools/iconpack-round/glyphs/*
+Files: vibeos-launcher/iconpacks/gnome-free/icons/*
+       tools/iconpack-gnome-free/glyphs/*
 Copyright: Google LLC (Material Symbols)
            2026 pulpoff <pashkovsky@gmail.com>
 License: Apache-2.0
 Comment:
- The Round pack's icons are Material Symbols Rounded glyphs on gradient discs,
- made by tools/iconpack-round/make-round-pack.py.
+ The gnome-free pack's icons (called Round before VibeOS) are Material
+ Symbols Rounded glyphs on gradient discs, made by
+ tools/iconpack-gnome-free/make-gnome-free-pack.py.
 
-Files: neo-launcher/parallax/solar-system/*
+Files: vibeos-launcher/iconpacks/vibeos/icons/*
+       tools/iconpack-vibeos/*
+Copyright: Google LLC (Material Symbols)
+           2026 pulpoff <pashkovsky@gmail.com>
+License: Apache-2.0
+Comment:
+ The VibeOS pack's icons are Material Symbols Rounded glyphs on squircles,
+ made by tools/iconpack-vibeos/make-vibeos-pack.py.
+
+Files: vibeos-launcher/parallax/solar-system/*
 Copyright: NASA (the Sun, Earth, Moon, Mars, Saturn and Jupiter images)
            2026 pulpoff <pashkovsky@gmail.com> (the drawn star field, glows and orbits, the composition)
 License: public-domain and Expat
@@ -67,11 +77,11 @@ License: SGI-HP-CRCalc
  PURPOSE OR NON-INFRINGING. (The full notice, as the calculator shows it, is
  in apps/calculator/data/licenses.html.)
 
-Files: libneo/fonts/NeoRoboto.ttf
+Files: libvibeos/fonts/VibeosRoboto.ttf
 Copyright: 2011 The Roboto Project Authors (https://github.com/googlefonts/roboto-classic)
 License: OFL-1.1
 Comment:
- Roboto 3.011 (variable), renamed "Neo Roboto".
+ Roboto 3.011 (variable), renamed "VibeOS Roboto".
 
 License: Expat
  Permission is hereby granted, free of charge, to any person obtaining a copy

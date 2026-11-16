@@ -1,4 +1,4 @@
-/* Neo Settings' building blocks (see ns-ui.h). */
+/* VibeOS Settings' building blocks (see ns-ui.h). */
 #include "ns-ui.h"
 
 #include <math.h>

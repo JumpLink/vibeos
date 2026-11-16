@@ -1,7 +1,7 @@
-project('neo-calculator', 'c', version: '1.0', meson_version: '>= 1.0',
+project('vibeos-calculator', 'c', version: '1.0', meson_version: '>= 1.0',
         default_options: ['warning_level=2', 'c_std=gnu11', 'buildtype=release'])
 add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers', '-Wno-sign-compare',
-                      '-DGETTEXT_PACKAGE="neo-calculator"',
+                      '-DGETTEXT_PACKAGE="vibeos-calculator"',
                       '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir')), language: 'c')
 
 gio = dependency('gio-2.0', version: '>= 2.76')
@@ -20,17 +20,17 @@ bindir = get_option('prefix') / get_option('bindir')
 datadir = get_option('prefix') / get_option('datadir')
 resources = gnome.compile_resources('calculator-resources', 'src/calculator.gresource.xml',
                                     source_dir: ['src', 'data'])
-executable('neo-calculator', 'src/calc-main.c', 'src/calc-window.c', 'src/calc-display.c', 'src/calc-formula.c',
+executable('vibeos-calculator', 'src/calc-main.c', 'src/calc-window.c', 'src/calc-display.c', 'src/calc-formula.c',
            'src/calc-result.c', 'src/calc-history.c', 'src/calc-pad.c', 'src/calc-button.c', 'src/calc-text.c',
            'src/calc-popup-menu.c', 'src/calc-text-toolbar.c', 'src/calc-toast.c', 'src/calc-licenses.c', resources,
            link_with: engine, install: true,
-           dependencies: engine_deps + [gtk, dependency('neo-1'), dependency('spongy-gtk-1')])
+           dependencies: engine_deps + [gtk, dependency('vibeos-1'), dependency('spongy-gtk-1')])
 
-configure_file(input: 'data/neo.Calculator.service.in', output: 'neo.Calculator.service',
+configure_file(input: 'data/vibeos.Calculator.service.in', output: 'vibeos.Calculator.service',
                configuration: configuration_data({'bindir': bindir}), install_dir: datadir / 'dbus-1/services')
-install_data('data/neo.Calculator.desktop', install_dir: datadir / 'applications')
-install_data('data/neo.Calculator.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
-install_data('data/neo.Calculator.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
+install_data('data/vibeos.Calculator.desktop', install_dir: datadir / 'applications')
+install_data('data/vibeos.Calculator.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
+install_data('data/vibeos.Calculator.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
 gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
 
 foreach name : ['creal', 'engine', 'evaluator']

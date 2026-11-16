@@ -1,0 +1,5 @@
+usr/bin/vibeos-settings
+usr/libexec/vibeos-keyring-rekey
+usr/share/applications/vibeos.Settings.desktop
+usr/share/dbus-1/services/vibeos.Settings.service
+usr/share/icons/hicolor/scalable/apps/vibeos.Settings.svg

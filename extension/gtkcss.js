@@ -4,8 +4,8 @@
 // GTK reads the file as an app starts: an app already running keeps the rules it started with.
 import GLib from 'gi://GLib';
 
-const BEGIN = '/* gnome-phone: begin. Written by the gnome-phone shell extension, edits in here are lost */';
-const END = '/* gnome-phone: end */';
+const BEGIN = '/* vibeos: begin. Written by the vibeos shell extension, edits in here are lost */';
+const END = '/* vibeos: end */';
 
 // The file picker GNOME's portal shows (Nautilus's) heads its sidebar with the asking app's title: "Open Image" from
 // Image Viewer. On a phone the sidebar is a page of its own, and the title read as the name of the sidebar. Libadwaita

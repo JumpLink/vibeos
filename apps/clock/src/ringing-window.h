@@ -5,8 +5,8 @@
  * "Snoozed / 10 min" or "Alarm off" for two seconds before the window closes. Tapping the handle or a button only
  * shows which way to swipe.
  *
- * The alarm service starts it (as the app neo.Clock.Ringing) when the phone was asleep or locked; over the
- * lock screen the shell shows it because its desktop file says X-GnomePhone-ShowWhenLocked. It keeps the screen on,
+ * The alarm service starts it (as the app vibeos.Clock.Ringing) when the phone was asleep or locked; over the
+ * lock screen the shell shows it because its desktop file says X-Vibeos-ShowWhenLocked. It keeps the screen on,
  * Back does not close it, and it closes by itself when the alarm stops ringing some other way (the notification,
  * the auto-silence timeout). */
 #pragma once

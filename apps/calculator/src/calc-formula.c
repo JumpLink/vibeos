@@ -3,7 +3,7 @@
 #include "calc-text.h"
 
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define LONG_PRESS_MS      400          /* held this long, a press is a long press */
 #define SIZE_CHANGE_MS     400          /* the text size change's animation */
@@ -33,7 +33,7 @@ struct _CalcFormula {
   guint           long_press_id;
 
   /* the size change: scale from `anim_from` to 1 */
-  NeoAnim        *anim;
+  VibeosAnim        *anim;
   double          anim_from, anim_scale;
 };
 
@@ -126,7 +126,7 @@ calc_formula_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   double w = gtk_widget_get_width (widget), h = view_height (self);
   double tv_width = text_view_width (self);
   double tv_left = -self->scroll;
-  double baseline = calc_text_bottom_baseline (h, self->pad_bottom, self->size, neo_device_scale (widget));
+  double baseline = calc_text_bottom_baseline (h, self->pad_bottom, self->size, vibeos_device_scale (widget));
   double x = tv_left + tv_width - self->pad_end - text_width (self);
 
   if (!self->text || !*self->text)
@@ -168,7 +168,7 @@ calc_formula_measure (GtkWidget *widget, GtkOrientation orientation, int for_siz
   *minimum = *natural = 0;
   if (orientation == GTK_ORIENTATION_VERTICAL) {
     /* a history row's: as tall as its line */
-    double height = calc_text_view_height (self->pad_top, self->pad_bottom, self->size, neo_device_scale (widget));
+    double height = calc_text_view_height (self->pad_top, self->pad_bottom, self->size, vibeos_device_scale (widget));
 
     *minimum = *natural = (int) ceil (height - 0.001);
   }
@@ -312,7 +312,7 @@ calc_formula_scroll_to_end (CalcFormula *self)
 /* --- the size change */
 
 static void
-on_anim (NeoAnim *anim, double value, gpointer data)
+on_anim (VibeosAnim *anim, double value, gpointer data)
 {
   CalcFormula *self = data;
 
@@ -325,7 +325,7 @@ calc_formula_animate_size_change (CalcFormula *self, double old_size)
 {
   self->anim_from = old_size / self->size;
   self->anim_scale = self->anim_from;
-  neo_anim_start (self->anim, 0, 1, SIZE_CHANGE_MS, 0, SPONGY_ACCELERATE_DECELERATE);
+  vibeos_anim_start (self->anim, 0, 1, SIZE_CHANGE_MS, 0, SPONGY_ACCELERATE_DECELERATE);
 }
 
 /* --- the object */
@@ -337,7 +337,7 @@ calc_formula_dispose (GObject *object)
 
   stop_fling (self);
   stop_long_press (self);
-  g_clear_pointer (&self->anim, neo_anim_free);
+  g_clear_pointer (&self->anim, vibeos_anim_free);
   g_clear_object (&self->layout);
   G_OBJECT_CLASS (calc_formula_parent_class)->dispose (object);
 }
@@ -375,8 +375,8 @@ calc_formula_init (CalcFormula *self)
   self->width_constraint = -1;
   self->anim_scale = 1;
   self->to_end = TRUE;
-  self->color = neo_color (NEO_ON_SURFACE);
-  self->anim = neo_anim_new (GTK_WIDGET (self), on_anim, self);
+  self->color = vibeos_color (VIBEOS_ON_SURFACE);
+  self->anim = vibeos_anim_new (GTK_WIDGET (self), on_anim, self);
   g_signal_connect (drag, "drag-begin", G_CALLBACK (on_drag_begin), self);
   g_signal_connect (drag, "drag-update", G_CALLBACK (on_drag_update), self);
   g_signal_connect (drag, "drag-end", G_CALLBACK (on_drag_end), self);

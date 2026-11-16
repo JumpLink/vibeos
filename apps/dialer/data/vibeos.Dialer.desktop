@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Name=Phone
+Comment=Make and receive calls
+Exec=vibeos-dialer %u
+Icon=vibeos.Dialer
+Terminal=false
+StartupNotify=false
+DBusActivatable=true
+Categories=Telephony;GTK;
+Keywords=Phone;Call;Dial;Dialer;Telephone;
+# tel: links (a number in a web page or a message) open the dialpad with the number
+MimeType=x-scheme-handler/tel;
+X-GNOME-UsesNotifications=true
+X-Purism-FormFactor=Workstation;Mobile;

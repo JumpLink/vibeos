@@ -1,5 +1,5 @@
 import json, sys, urllib.parse, urllib.request
-UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) neo-assets-build"}
+UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) vibeos-assets-build"}
 q = sys.argv[1]
 url = "https://images-api.nasa.gov/search?" + urllib.parse.urlencode({"q": q, "media_type": "image"})
 d = json.load(urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=60))

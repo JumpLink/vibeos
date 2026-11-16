@@ -33,7 +33,7 @@ void             dialer_popup_menu_set_header (DialerPopupMenu *self, const char
 /* the card's corner radius, which its shadow follows (the app's CSS draws the card itself): 2 unless set;
  * Messaging's menus use 4 */
 void             dialer_popup_menu_set_corner (DialerPopupMenu *self, int radius);
-/* shows it over @anchor's window (one made by neo_window_new); it destroys itself once closed */
+/* shows it over @anchor's window (one made by vibeos_window_new); it destroys itself once closed */
 void             dialer_popup_menu_present (DialerPopupMenu *self, GtkWidget *anchor, PopupMenuGravity gravity);
 /* shows it with its top-left corner at (x, y) in @widget, kept inside the window: a context menu at the touch */
 void             dialer_popup_menu_present_at (DialerPopupMenu *self, GtkWidget *widget, double x, double y);

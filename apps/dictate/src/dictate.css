@@ -1,4 +1,4 @@
-/* Dictate's own styles, over libneo's (neo.css): the app bar is libneo's, the document is the app's. */
+/* Dictate's own styles, over libvibeos's (vibeos.css): the app bar is libvibeos's, the document is the app's. */
 
 .dictate-bar-end {                       /* the last action, off the screen's edge as in the Calendar */
   margin-right: 4px;
@@ -8,8 +8,8 @@
 .dictate-language label {
   font-size: 12px;
   font-weight: 800;
-  color: @neo_on_surface;
-  border: 2px solid @neo_on_surface;
+  color: @vibeos_on_surface;
+  border: 2px solid @vibeos_on_surface;
   border-radius: 6px;
   padding: 1px 4px;
 }
@@ -23,7 +23,7 @@
 .dictate-dialog-item {
   min-height: 48px;
   padding: 0 24px;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .dictate-dialog-item label {
@@ -32,52 +32,52 @@
 
 .dictate-radio {
   margin-right: 16px;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .dictate-radio.dictate-radio-checked {
-  color: @neo_primary;
+  color: @vibeos_primary;
 }
 
 /* the document: body text a size up, on the surface, with the primary colour's caret and selection */
 .dictate-document,
 .dictate-document > text {
-  background-color: @neo_surface;
-  color: @neo_on_surface;
+  background-color: @vibeos_surface;
+  color: @vibeos_on_surface;
 }
 
 .dictate-document {
   font-size: 18px;
   font-weight: 700;
-  caret-color: @neo_primary;
+  caret-color: @vibeos_primary;
 }
 
 .dictate-document > text > selection {
-  background-color: alpha(@neo_primary, 0.4);
-  color: @neo_on_surface;
+  background-color: alpha(@vibeos_primary, 0.4);
+  color: @vibeos_on_surface;
 }
 
 /* the selection's floating toolbar: a raised surface, its actions in the text colour (Android's) */
 .dictate-selection-bar {
-  background-color: @neo_surface_container_highest;
+  background-color: @vibeos_surface_container_highest;
   border-radius: 12px;
   padding: 0 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
-.dictate-selection-bar .neo-text-button {
-  color: @neo_on_surface;
+.dictate-selection-bar .vibeos-text-button {
+  color: @vibeos_on_surface;
 }
 
 /* what to do while the document is empty, centred over the FAB's row */
 .dictate-hint {
   font-size: 16px;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
   margin: 0 48px 120px 48px;
 }
 
 /* over the document's last 120 px, the FAB's row: the text fades into the surface */
 .dictate-fade {
   min-height: 120px;
-  background-image: linear-gradient(to bottom, alpha(@neo_surface, 0), @neo_surface 70%);
+  background-image: linear-gradient(to bottom, alpha(@vibeos_surface, 0), @vibeos_surface 70%);
 }

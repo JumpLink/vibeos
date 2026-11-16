@@ -1,4 +1,4 @@
-/* neo-dictate: Dictate, speech to text on the phone itself.
+/* vibeos-dictate: Dictate, speech to text on the phone itself.
  *
  * A start button and a document: what is said appears in the document as it is said, recognised on the phone by
  * Moonshine or Vosk, by the language (dictate-engine.c), with nothing sent anywhere. The document is plain text,
@@ -8,17 +8,17 @@
 #include <glib/gi18n.h>
 #include <gst/gst.h>
 #include <locale.h>
-#include <neo.h>
+#include <vibeos.h>
 
-#define APP_ID "neo.Dictate"
+#define APP_ID "vibeos.Dictate"
 
 static void
 load_style (void)
 {
   GtkCssProvider *provider = gtk_css_provider_new ();
 
-  gtk_css_provider_load_from_resource (provider, "/neo/Dictate/dictate.css");
-  /* over libneo's, which is at APPLICATION priority too: the later provider wins at equal priority */
+  gtk_css_provider_load_from_resource (provider, "/vibeos/Dictate/dictate.css");
+  /* over libvibeos's, which is at APPLICATION priority too: the later provider wins at equal priority */
   gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (provider),
                                               GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
   g_object_unref (provider);
@@ -27,7 +27,7 @@ load_style (void)
 static void
 on_startup (GApplication *app, gpointer data)
 {
-  neo_init ();
+  vibeos_init ();
   load_style ();
 }
 
@@ -41,7 +41,7 @@ on_activate (GApplication *app, gpointer data)
   gtk_window_present (window);
 }
 
-/* "dictate": the FAB's start and stop, for other programs over D-Bus (org.gtk.Actions on /neo/Dictate) */
+/* "dictate": the FAB's start and stop, for other programs over D-Bus (org.gtk.Actions on /vibeos/Dictate) */
 static void
 on_dictate (GSimpleAction *action, GVariant *parameter, gpointer data)
 {

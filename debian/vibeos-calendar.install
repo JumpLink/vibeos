@@ -1,0 +1,8 @@
+usr/bin/vibeos-calendar
+usr/bin/vibeos-calendar-reminders
+usr/lib/systemd/user/vibeos-calendar-reminders.service
+usr/share/applications/vibeos.Calendar.desktop
+usr/share/dbus-1/services/vibeos.Calendar.service
+usr/share/dbus-1/services/vibeos.Calendar.Reminders.service
+usr/share/glib-2.0/schemas/vibeos.Calendar.gschema.xml
+usr/share/icons/hicolor/scalable/apps/vibeos.Calendar.svg

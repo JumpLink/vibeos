@@ -547,7 +547,7 @@ ns_page_users (GtkWidget *row, gpointer data)
 
 /* Automatic suspend is gnome-settings-daemon's (sleep-inactive-battery/-ac: -type and -timeout): after so long
  * without a touch it suspends the phone, as on any GNOME machine. Some phones have a daemon of their own that
- * suspends whenever the screen goes off (gnome-phone's s10e-sleepd and surya-sleepd, for the Galaxy S10e and the
+ * suspends whenever the screen goes off (VibeOS's s10e-sleepd and surya-sleepd, for the Galaxy S10e and the
  * Poco X3); there "Never" would not keep the phone awake and a time longer than the screen timeout would never
  * come, so the rows go while one of them runs. They are known by their process names (a comm, at most 15
  * characters): a phone with neither has GNOME's own behaviour, and the rows. */
@@ -598,7 +598,7 @@ sleep_row (GtkWidget *g, GSettings *power, const char *title, const char *what)
   g_object_set_data (G_OBJECT (r), "ns-what", (gpointer) what);
 }
 
-/* Not on this page, and why: the power button's action (power-button-action). gnome-phone keeps the power key to
+/* Not on this page, and why: the power button's action (power-button-action). VibeOS keeps the power key to
  * itself (power.js), as Phosh did, so gnome-settings-daemon's action never runs. */
 void
 ns_page_power (GtkWidget *row, gpointer data)
@@ -647,7 +647,7 @@ wall_cache (const char *path)
 {
   g_autofree char *sum = g_compute_checksum_for_string (G_CHECKSUM_MD5, path, -1);
   g_autofree char *name = g_strconcat ("wall-", sum, ".png", NULL);
-  return g_build_filename (g_get_user_cache_dir (), "neo-settings", name, NULL);
+  return g_build_filename (g_get_user_cache_dir (), "vibeos-settings", name, NULL);
 }
 
 static gboolean
@@ -704,9 +704,9 @@ wall_apply (const char *path, const char *dark)
   g_settings_set_string (bg, "picture-uri", uri);
   g_settings_set_string (bg, "picture-uri-dark", duri);
   /* a picture chosen here replaces the parallax one, which would hide it */
-  g_autoptr (GSettings) neo = ns_settings ("neo.Phone");
-  if (neo && ns_has_key (neo, "wallpaper-parallax"))
-    g_settings_set_string (neo, "wallpaper-parallax", "");
+  g_autoptr (GSettings) vibeos = ns_settings ("vibeos.Shell");
+  if (vibeos && ns_has_key (vibeos, "wallpaper-parallax"))
+    g_settings_set_string (vibeos, "wallpaper-parallax", "");
 }
 
 typedef struct {

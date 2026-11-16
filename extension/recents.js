@@ -414,7 +414,7 @@ function measureApps(keys, done) {
         proc = Gio.Subprocess.new(['timeout', '-s', 'KILL', `${APPMEM_TIMEOUT_S}`, 'python3', helper, ...keys],
             Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_SILENCE);
     } catch (e) {
-        logError(e, 'gnome-phone: appmem');
+        logError(e, 'vibeos: appmem');
         return;
     }
     proc.communicate_utf8_async(null, null, (pr, res) => {
@@ -470,7 +470,7 @@ class RamMap {
         try {
             mi = meminfo();
         } catch (e) {
-            logError(e, 'gnome-phone: meminfo');
+            logError(e, 'vibeos: meminfo');
             return;
         }
         const total = mi.MemTotal || 0;
@@ -620,7 +620,7 @@ function closeApp(win) {
         win.disconnectObject(closing);
         const pid = win.get_pid();
         if (pid > 1 && pid !== new Gio.Credentials().get_unix_pid()) {
-            log(`gnome-phone: ${win.get_wm_class()} (pid ${pid}) did not close, killing it`);
+            log(`vibeos: ${win.get_wm_class()} (pid ${pid}) did not close, killing it`);
             Gio.Subprocess.new(['kill', '-KILL', `${pid}`], Gio.SubprocessFlags.NONE);
         }
         return GLib.SOURCE_REMOVE;
@@ -650,7 +650,7 @@ export class Recents {
         this._nav = nav;
         this._scale = nav.scale;
         const m = Main.layoutManager.primaryMonitor;
-        this.layer = new Clutter.Actor({name: 'gnomePhoneRecents', reactive: true,
+        this.layer = new Clutter.Actor({name: 'vibeosRecents', reactive: true,
             x: m.x, y: m.y, width: m.width, height: m.height});
         Main.layoutManager.uiGroup.insert_child_above(this.layer, global.window_group);
         overWindows(this.layer);
@@ -1797,7 +1797,7 @@ export class Recents {
                 }));
             stream.close(null);
         } catch (e) {
-            logError(e, 'gnome-phone: recents screenshot');
+            logError(e, 'vibeos: recents screenshot');
         }
     }
 

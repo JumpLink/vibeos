@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The Calendar's settings, each one something the app or its reminder service acts on -->
+<schemalist gettext-domain="vibeos-calendar">
+  <schema id="vibeos.Calendar" path="/vibeos/Calendar/">
+    <!-- Calendar view setting -->
+    <key name="theme" type="s">
+      <choices><choice value="system"/><choice value="light"/><choice value="dark"/></choices>
+      <default>"system"</default>
+      <summary>Theme: "system" follows org.gnome.desktop.interface color-scheme (pref_theme)</summary>
+    </key>
+    <key name="pure-black" type="b">
+      <default>false</default>
+      <summary>Pure black night mode: a black window and Etar's _black colours, when the theme is dark</summary>
+    </key>
+    <key name="real-event-colors" type="b">
+      <default>false</default>
+      <summary>Use real event colors (else Etar's darker, more saturated ones)</summary>
+    </key>
+    <key name="view" type="s">
+      <default>"week"</default>
+      <summary>The view shown last (day, week, month, agenda): KEY_START_VIEW</summary>
+    </key>
+    <key name="default-view" type="s">
+      <default>"previous"</default>
+      <summary>Default view: "previous" (Previously used view), day, week, month or agenda</summary>
+    </key>
+    <key name="month-lines-portrait" type="i">
+      <range min="1" max="7"/>
+      <default>7</default>
+      <summary>Display options, Month view (portrait): max number of lines in an event</summary>
+    </key>
+    <key name="month-time-portrait" type="i">
+      <range min="0" max="4"/>
+      <default>0</default>
+      <summary>Display options, Month view (portrait): 0 no time (a phone's default, show_time_in_month false), 1 start, 2 start and end, 4 start and end below (a tablet's)</summary>
+    </key>
+    <key name="month-location-portrait" type="b">
+      <default>false</default>
+      <summary>Display options, Month view (portrait): display location</summary>
+    </key>
+    <key name="month-lines-landscape" type="i">
+      <range min="1" max="7"/>
+      <default>7</default>
+      <summary>Display options, Month view (landscape): max number of lines in an event</summary>
+    </key>
+    <key name="month-time-landscape" type="i">
+      <range min="0" max="4"/>
+      <default>0</default>
+      <summary>Display options, Month view (landscape): as month-time-portrait</summary>
+    </key>
+    <key name="month-location-landscape" type="b">
+      <default>false</default>
+      <summary>Display options, Month view (landscape): display location</summary>
+    </key>
+    <key name="hide-declined" type="b">
+      <default>false</default>
+      <summary>Hide declined events: events this calendar's owner declined (ATTENDEE PARTSTAT=DECLINED)</summary>
+    </key>
+    <key name="staggered" type="b">
+      <default>false</default>
+      <summary>Staggered display: overlapping events in a staggered layout</summary>
+    </key>
+    <key name="show-week-number" type="b">
+      <default>false</default>
+      <summary>Show week number (the Week and Day views' subtitle, the Month view's column)</summary>
+    </key>
+    <key name="week-start" type="i">
+      <default>-1</default>
+      <summary>Week starts on: -1 the locale's, 1 Sunday … 7 Saturday (preferences_week_start_day)</summary>
+    </key>
+    <key name="days-per-week" type="i">
+      <range min="2" max="7"/>
+      <default>7</default>
+      <summary>Days per week: the days the Week view shows</summary>
+    </key>
+    <key name="default-event-duration" type="i">
+      <default>60</default>
+      <summary>Default event duration, minutes</summary>
+    </key>
+    <key name="home-tz-enabled" type="b">
+      <default>false</default>
+      <summary>Use home time zone: the app shows times in home-tz instead of the phone's zone</summary>
+    </key>
+    <key name="home-tz" type="s">
+      <default>""</default>
+      <summary>Home time zone (an IANA zone id); empty: the phone's zone at the time it was turned on</summary>
+    </key>
+    <key name="recent-timezones" type="as">
+      <default>[]</default>
+      <summary>The time zones chosen last in the time zone picker, oldest first, at most 3 (preferences_recent_timezones)</summary>
+    </key>
+    <key name="search-history" type="as">
+      <default>[]</default>
+      <summary>The searches made, newest first (SearchRecentSuggestions); "Clear search history" empties it</summary>
+    </key>
+    <!-- Notifications & reminders -->
+    <key name="notifications" type="b">
+      <default>true</default>
+      <summary>Notifications: the reminder service notifies for reminders</summary>
+    </key>
+    <key name="reminder-sound" type="s">
+      <default>"default"</default>
+      <summary>Sound of a reminder: "default" (the sound theme's message-new-instant), "" silent, or a sound file's path</summary>
+    </key>
+    <key name="reminder-vibrate" type="b">
+      <default>true</default>
+      <summary>Vibration with a reminder (feedbackd), on a phone with a vibrator</summary>
+    </key>
+    <key name="popup" type="b">
+      <default>false</default>
+      <summary>Pop-up notification: a reminder also opens the app's reminders screen (AlertActivity)</summary>
+    </key>
+    <key name="custom-snooze" type="b">
+      <default>false</default>
+      <summary>Ask for reminder snooze delay: Snooze asks how long (SnoozeDelayActivity)</summary>
+    </key>
+    <key name="default-snooze" type="i">
+      <default>5</default>
+      <summary>Default snooze delay time, minutes; -1 no Snooze</summary>
+    </key>
+    <key name="default-reminder" type="i">
+      <default>10</default>
+      <summary>Default reminder time of a new event, minutes; -1 none</summary>
+    </key>
+    <key name="quick-responses" type="as">
+      <default>["Running just a couple of minutes late.", "Be there in about 10 minutes.", "Go ahead and start without me.", "Sorry, I can't make it. We'll have to reschedule."]</default>
+      <summary>Quick responses: the canned texts of "Email guests"</summary>
+    </key>
+    <key name="skip-reminders" type="s">
+      <choices><choice value=""/><choice value="declined"/><choice value="not_responded"/></choices>
+      <default>""</default>
+      <summary>Skip reminders (Experimental): "declined", "not_responded" (declined or not responded), "" none</summary>
+    </key>
+    <!-- kept by the app -->
+    <key name="cell-height" type="d">
+      <default>64.0</default>
+      <summary>The day and week views' hour height in dp, as pinched (DayView's mCellHeight)</summary>
+    </key>
+    <key name="last-calendar" type="s">
+      <default>""</default>
+      <summary>The calendar the last new event went to (the next new one goes there too)</summary>
+    </key>
+  </schema>
+</schemalist>

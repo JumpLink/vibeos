@@ -2,7 +2,7 @@
  *
  * What is said goes into the document where its cursor was when the microphone started: the sentence being spoken
  * in a lighter colour as the recogniser hears it, in the text's own colour once the speaker finished it (a pause).
- * The document is ordinary editable text, kept in the user's data directory (neo-dictate/document.txt) from one
+ * The document is ordinary editable text, kept in the user's data directory (vibeos-dictate/document.txt) from one
  * start of the app to the next. */
 #pragma once
 

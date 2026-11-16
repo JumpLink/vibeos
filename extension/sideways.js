@@ -44,7 +44,7 @@ export class SidewaysGestures {
         this._longPressId = 0;
         this._closeIds = new Set();
         this._gesture = new Clutter.PanGesture({
-            name: 'gnome-phone sideways',
+            name: 'vibeos sideways',
             begin_threshold: SLOP / nav.scale,
             max_n_points: 1,
         });
@@ -62,7 +62,7 @@ export class SidewaysGestures {
                     this._end(true);
             },
             this);
-        global.stage.add_action_full('gnome-phone-sideways', Clutter.EventPhase.CAPTURE, this._gesture);
+        global.stage.add_action_full('vibeos-sideways', Clutter.EventPhase.CAPTURE, this._gesture);
     }
 
     get busy() {

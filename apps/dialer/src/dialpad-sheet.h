@@ -9,7 +9,7 @@
 #pragma once
 
 #include <gtk/gtk.h>
-#include <neo.h>
+#include <vibeos.h>
 
 G_BEGIN_DECLS
 
@@ -17,7 +17,7 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE (DialpadSheet, dialpad_sheet, DIALPAD, SHEET, GtkWidget)
 
 /* @snackbar: where a call that could not be made says why */
-GtkWidget  *dialpad_sheet_new (NeoSnackbar *snackbar);
+GtkWidget  *dialpad_sheet_new (VibeosSnackbar *snackbar);
 /* slides it up, with @number in it (NULL: as it was) */
 void        dialpad_sheet_show (DialpadSheet *self, const char *number);
 void        dialpad_sheet_hide (DialpadSheet *self);

@@ -2,7 +2,7 @@
  * the renderer draws it without paths. */
 #include "analog-clock.h"
 
-#include <neo.h>
+#include <vibeos.h>
 
 #define VIEWPORT 1176.0         /* the face's drawing, in units across and down */
 #define CENTRE   588.0
@@ -109,7 +109,7 @@ analog_clock_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   AnalogClock *self = CLOCK_ANALOG_CLOCK (widget);
   int width = gtk_widget_get_width (widget), height = gtk_widget_get_height (widget);
   double side = MIN (width, height), scale = side / VIEWPORT;
-  GdkRGBA white = neo_color (NEO_WHITE), accent = neo_color (NEO_SECONDARY);
+  GdkRGBA white = vibeos_color (VIBEOS_WHITE), accent = vibeos_color (VIBEOS_SECONDARY);
   GskRoundedRect ring;
   const float widths[4] = { DIAL_WIDTH, DIAL_WIDTH, DIAL_WIDTH, DIAL_WIDTH };
   const GdkRGBA colors[4] = { white, white, white, white };

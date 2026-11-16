@@ -2,7 +2,7 @@
 #include "cal-colors.h"
 
 #include <gtk/gtk.h>
-#include <neo.h>
+#include <vibeos.h>
 
 /* dark */
 static const CalPalette dark = {
@@ -92,17 +92,17 @@ cal_ripple_color (void)
   return cal_palette->dark ? (GdkRGBA) { 1, 1, 1, 0.2f / 2 } : (GdkRGBA) { 0, 0, 0, 0.12f / 2 };
 }
 
-/* a NeoPressable as it maps (a page or dialog built after the look changed) takes the look's ripple */
+/* a VibeosPressable as it maps (a page or dialog built after the look changed) takes the look's ripple */
 static gboolean
 on_map (GSignalInvocationHint *hint, guint n_values, const GValue *values, gpointer data)
 {
   GObject *object = g_value_get_object (&values[0]);
 
-  if (NEO_IS_PRESSABLE (object))
+  if (VIBEOS_IS_PRESSABLE (object))
     {
       GdkRGBA ripple = cal_ripple_color ();
 
-      neo_pressable_set_ripple_color (NEO_PRESSABLE (object), &ripple);
+      vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (object), &ripple);
     }
   return TRUE;
 }
@@ -110,11 +110,11 @@ on_map (GSignalInvocationHint *hint, guint n_values, const GValue *values, gpoin
 void
 cal_palette_restyle (GtkWidget *root)
 {
-  if (NEO_IS_PRESSABLE (root))
+  if (VIBEOS_IS_PRESSABLE (root))
     {
       GdkRGBA ripple = cal_ripple_color ();
 
-      neo_pressable_set_ripple_color (NEO_PRESSABLE (root), &ripple);
+      vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (root), &ripple);
     }
   gtk_widget_queue_draw (root);
   for (GtkWidget *child = gtk_widget_get_first_child (root); child; child = gtk_widget_get_next_sibling (child))
@@ -126,8 +126,8 @@ cal_palette_set (CalLook look)
 {
   static const char *sheets[] = {
     [CAL_LOOK_DARK] = NULL,
-    [CAL_LOOK_BLACK] = "/neo/Calendar/calendar-black.css",
-    [CAL_LOOK_LIGHT] = "/neo/Calendar/calendar-light.css",
+    [CAL_LOOK_BLACK] = "/vibeos/Calendar/calendar-black.css",
+    [CAL_LOOK_LIGHT] = "/vibeos/Calendar/calendar-light.css",
   };
   GdkDisplay *display = gdk_display_get_default ();
 
@@ -137,7 +137,7 @@ cal_palette_set (CalLook look)
     {
       /* the class made, or "map" is not there yet to hook (at startup no widget exists) */
       g_type_class_ref (GTK_TYPE_WIDGET);
-      g_type_ensure (NEO_TYPE_PRESSABLE);
+      g_type_ensure (VIBEOS_TYPE_PRESSABLE);
       g_signal_add_emission_hook (g_signal_lookup ("map", GTK_TYPE_WIDGET), 0, on_map, NULL, NULL);
       hooked = TRUE;
     }

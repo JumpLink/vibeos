@@ -24,7 +24,7 @@ typedef struct {
 struct _CtPager {
   GtkWidget parent;
   GArray *pages;                /* Placed, bottom first */
-  NeoAnim *anim;
+  VibeosAnim *anim;
   GtkWidget *entering, *exiting;
   gboolean closing;
 };
@@ -71,7 +71,7 @@ update_pages (CtPager *self)
 
       gtk_widget_set_child_visible (placed->page, i >= lowest);
       /* only the top page takes touches, and not while it slides */
-      gtk_widget_set_can_target (placed->page, top && !neo_anim_is_running (self->anim));
+      gtk_widget_set_can_target (placed->page, top && !vibeos_anim_is_running (self->anim));
     }
   gtk_widget_queue_allocate (GTK_WIDGET (self));
 }
@@ -117,7 +117,7 @@ ct_pager_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 
 /* a page opening or closing: 450 ms of the emphasized curve for the slides, the fades linear in their windows */
 static void
-on_slide (NeoAnim *anim, double t, gpointer data)
+on_slide (VibeosAnim *anim, double t, gpointer data)
 {
   CtPager *self = data;
   double ms = t * CT_ACTIVITY_ANIM_MS;
@@ -171,7 +171,7 @@ ct_pager_dispose (GObject *object)
 {
   CtPager *self = CT_PAGER (object);
 
-  g_clear_pointer (&self->anim, neo_anim_free);
+  g_clear_pointer (&self->anim, vibeos_anim_free);
   if (self->pages)
     for (guint i = 0; i < self->pages->len; i++)
       gtk_widget_unparent (g_array_index (self->pages, Placed, i).page);
@@ -196,7 +196,7 @@ static void
 ct_pager_init (CtPager *self)
 {
   self->pages = g_array_new (FALSE, TRUE, sizeof (Placed));
-  self->anim = neo_anim_new (GTK_WIDGET (self), on_slide, self);
+  self->anim = vibeos_anim_new (GTK_WIDGET (self), on_slide, self);
 }
 
 static GtkWidget *
@@ -209,8 +209,8 @@ pager_top (CtPager *self)
 static void
 finish_slide (CtPager *self)
 {
-  if (neo_anim_is_running (self->anim))
-    neo_anim_finish (self->anim);
+  if (vibeos_anim_is_running (self->anim))
+    vibeos_anim_finish (self->anim);
 }
 
 static void
@@ -228,7 +228,7 @@ pager_push (CtPager *self, GtkWidget *page)
       self->closing = FALSE;
       self->entering = page;
       self->exiting = below;
-      neo_anim_start (self->anim, 0, 1, CT_ACTIVITY_ANIM_MS, 0, SPONGY_LINEAR);
+      vibeos_anim_start (self->anim, 0, 1, CT_ACTIVITY_ANIM_MS, 0, SPONGY_LINEAR);
     }
   update_pages (self);
 }
@@ -259,7 +259,7 @@ pager_pop (CtPager *self, GtkWidget *page)
       self->closing = TRUE;
       self->exiting = page;
       self->entering = g_array_index (self->pages, Placed, index - 1).page;
-      neo_anim_start (self->anim, 0, 1, CT_ACTIVITY_ANIM_MS, 0, SPONGY_LINEAR);
+      vibeos_anim_start (self->anim, 0, 1, CT_ACTIVITY_ANIM_MS, 0, SPONGY_LINEAR);
     }
   else
     {
@@ -278,7 +278,7 @@ typedef struct {
   CtPager *pager;
   GtkWidget *people;
   GtkWidget *toast, *toast_label;
-  NeoAnim *toast_anim;
+  VibeosAnim *toast_anim;
   guint toast_timeout;
   GtkWidget *snackbar;
 } Shell;
@@ -360,7 +360,7 @@ ct_window_new_contact (GtkWidget *window, EContact *prefill)
 #define TOAST_FADE_MS 250
 
 static void
-on_toast_anim (NeoAnim *anim, double value, gpointer data)
+on_toast_anim (VibeosAnim *anim, double value, gpointer data)
 {
   Shell *shell = data;
 
@@ -374,7 +374,7 @@ on_toast_timeout (gpointer data)
   Shell *shell = data;
 
   shell->toast_timeout = 0;
-  neo_anim_start (shell->toast_anim, neo_anim_get_value (shell->toast_anim), 0, TOAST_FADE_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start (shell->toast_anim, vibeos_anim_get_value (shell->toast_anim), 0, TOAST_FADE_MS, 0, SPONGY_LINEAR);
   return G_SOURCE_REMOVE;
 }
 
@@ -385,7 +385,7 @@ ct_window_toast (GtkWidget *window, const char *text)
 
   gtk_label_set_label (GTK_LABEL (shell->toast_label), text);
   g_clear_handle_id (&shell->toast_timeout, g_source_remove);
-  neo_anim_start (shell->toast_anim, neo_anim_get_value (shell->toast_anim), 1, TOAST_FADE_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start (shell->toast_anim, vibeos_anim_get_value (shell->toast_anim), 1, TOAST_FADE_MS, 0, SPONGY_LINEAR);
   shell->toast_timeout = g_timeout_add (TOAST_FADE_MS + CT_TOAST_SHORT_MS, on_toast_timeout, shell);
 }
 
@@ -393,7 +393,7 @@ static GtkWidget *
 make_toast (Shell *shell)
 {
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  GtkWidget *icon = gtk_image_new_from_icon_name ("neo.Contacts");
+  GtkWidget *icon = gtk_image_new_from_icon_name ("vibeos.Contacts");
 
   gtk_image_set_pixel_size (GTK_IMAGE (icon), 24);
   gtk_widget_add_css_class (icon, "ct-toast-icon");
@@ -413,21 +413,21 @@ make_toast (Shell *shell)
   gtk_widget_set_visible (box, FALSE);
   gtk_accessible_update_property (GTK_ACCESSIBLE (box), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Message"), -1);
   shell->toast = box;
-  shell->toast_anim = neo_anim_new (box, on_toast_anim, shell);
+  shell->toast_anim = vibeos_anim_new (box, on_toast_anim, shell);
   return box;
 }
 
 void
-ct_window_snackbar (GtkWidget *window, const char *text, const char *action, NeoSnackbarAction callback,
+ct_window_snackbar (GtkWidget *window, const char *text, const char *action, VibeosSnackbarAction callback,
                     gpointer data)
 {
-  neo_snackbar_show (NEO_SNACKBAR (shell_of (window)->snackbar), text, action, callback, data, NEO_SNACKBAR_LONG);
+  vibeos_snackbar_show (VIBEOS_SNACKBAR (shell_of (window)->snackbar), text, action, callback, data, VIBEOS_SNACKBAR_LONG);
 }
 
-NeoSnackbar *
+VibeosSnackbar *
 ct_window_get_snackbar (GtkWidget *window)
 {
-  return NEO_SNACKBAR (shell_of (window)->snackbar);
+  return VIBEOS_SNACKBAR (shell_of (window)->snackbar);
 }
 
 /* --- Back: a menu first, then the top page (which may ask, or leave search or a drawer first), then the window */
@@ -453,7 +453,7 @@ shell_free (gpointer data)
   Shell *shell = data;
 
   g_clear_handle_id (&shell->toast_timeout, g_source_remove);
-  g_clear_pointer (&shell->toast_anim, neo_anim_free);
+  g_clear_pointer (&shell->toast_anim, vibeos_anim_free);
   g_object_unref (shell->store);
   g_object_unref (shell->settings);
   g_free (shell);
@@ -463,7 +463,7 @@ GtkWidget *
 ct_window_new (GtkApplication *app, CtStore *store, GSettings *settings)
 {
   Shell *shell = g_new0 (Shell, 1);
-  GtkWidget *window = neo_window_new (app);
+  GtkWidget *window = vibeos_window_new (app);
   GtkWidget *root = gtk_overlay_new ();
   GtkEventController *shortcuts = gtk_shortcut_controller_new ();
 
@@ -477,12 +477,12 @@ ct_window_new (GtkApplication *app, CtStore *store, GSettings *settings)
   shell->pager = g_object_new (CT_TYPE_PAGER, NULL);
   gtk_overlay_set_child (GTK_OVERLAY (root), GTK_WIDGET (shell->pager));
   /* the snackbar is edge to edge on a phone */
-  shell->snackbar = neo_snackbar_new ();
-  neo_snackbar_set_margin (NEO_SNACKBAR (shell->snackbar), 0);
+  shell->snackbar = vibeos_snackbar_new ();
+  vibeos_snackbar_set_margin (VIBEOS_SNACKBAR (shell->snackbar), 0);
   gtk_widget_add_css_class (shell->snackbar, "ct-snackbar");
   gtk_overlay_add_overlay (GTK_OVERLAY (root), shell->snackbar);
   gtk_overlay_add_overlay (GTK_OVERLAY (root), make_toast (shell));
-  neo_window_set_content (GTK_WINDOW (window), root);
+  vibeos_window_set_content (GTK_WINDOW (window), root);
 
   shell->people = ct_people_new (window);
   pager_push (shell->pager, shell->people);

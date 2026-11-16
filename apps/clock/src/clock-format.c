@@ -183,7 +183,7 @@ sound_name (const char *uri)
 static char *
 default_alarm_sound (void)
 {
-  static const char *const sounds[] = { "sounds/android/alarms/Hassium.ogg", "neo-clock/sounds/alarm_expire.ogg" };
+  static const char *const sounds[] = { "sounds/android/alarms/Hassium.ogg", "vibeos-clock/sounds/alarm_expire.ogg" };
   const char *const *dirs = g_get_system_data_dirs ();
 
   for (guint s = 0; s < G_N_ELEMENTS (sounds); s++)

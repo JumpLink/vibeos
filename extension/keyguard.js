@@ -3,9 +3,9 @@
 //
 // Locked, the shell is in the 'unlock-dialog' session mode, as GNOME's own screen shield puts it: windows hidden,
 // gestures, heads-ups and keybindings off, and this view holds a modal grab. It locks when the screen goes off
-// (power.js) and when the session starts. neo.Phone lock-type picks the bouncer: the PIN pad, the pattern, or none
-// (swipe). The secret is the user's password, checked by gp-auth through PAM; wrong attempts are throttled as the
-// AOSP gatekeeper does, kept across restarts in ~/.local/state/gnome-phone/keyguard.json. That file also keeps the
+// (power.js) and when the session starts. vibeos.Shell lock-type picks the bouncer: the PIN pad, the pattern, or none
+// (swipe). The secret is the user's password, checked by vibeos-auth through PAM; wrong attempts are throttled as the
+// AOSP gatekeeper does, kept across restarts in ~/.local/state/vibeos/keyguard.json. That file also keeps the
 // length of the last PIN that unlocked, for Android 14's auto-confirm: a PIN of 6 or more digits unlocks as its last
 // digit is typed.
 import Clutter from 'gi://Clutter';
@@ -37,7 +37,7 @@ Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
 Gio._promisify(Gio.File.prototype, 'load_contents_async');
 Gio._promisify(Gio.File.prototype, 'replace_contents_async');
 
-const GP_AUTH = ['/usr/local/libexec/gp-auth', '/usr/libexec/gp-auth'];
+const GP_AUTH = ['/usr/local/libexec/vibeos-auth', '/usr/libexec/vibeos-auth'];
 
 // --- the lock screen
 const CLOCK_SIZE = 86 * 0.98;           // dp, the small Flex clock
@@ -107,8 +107,8 @@ function lockoutSeconds(n) {
     return 86400;
 }
 
-function neoSettings() {
-    const schema = Gio.SettingsSchemaSource.get_default()?.lookup('neo.Phone', true);
+function vibeosSettings() {
+    const schema = Gio.SettingsSchemaSource.get_default()?.lookup('vibeos.Shell', true);
     return schema ? new Gio.Settings({settings_schema: schema}) : null;
 }
 
@@ -153,7 +153,7 @@ function pictureUri(uri) {
         const [, , , file] = show.get_current_slide(SCREEN_W, SCREEN_H);
         return file ? Gio.File.new_for_path(file).get_uri() : '';
     } catch (e) {
-        logError(e, `gnome-phone: the wallpaper slideshow ${uri}`);
+        logError(e, `vibeos: the wallpaper slideshow ${uri}`);
         return '';
     }
 }
@@ -225,7 +225,7 @@ export class Keyguard extends Signals.EventEmitter {
     constructor(state) {
         super();
         this._state = state;
-        this._neo = neoSettings();
+        this._vibeos = vibeosSettings();
         // the wallpaper is the launcher's (GNOME's background, its dark picture under the dark style), as Shell 51's
         // own unlock dialog has it: Settings' Background panel no longer sets the screensaver's picture
         this._background = new Gio.Settings({schema_id: 'org.gnome.desktop.background'});
@@ -265,7 +265,7 @@ export class Keyguard extends Signals.EventEmitter {
         this._notificationSettings.connectObject('changed::show-in-lock-screen', () => this._syncPill(), this);
         state.connectObject('changed', () => this._syncState(), this);
         // another lock type: the next lock builds its bouncer
-        this._neo?.connectObject('changed::lock-type', () => {
+        this._vibeos?.connectObject('changed::lock-type', () => {
             if (this._bouncerActive)
                 return;
             this._endPrerender();
@@ -286,7 +286,7 @@ export class Keyguard extends Signals.EventEmitter {
     }
 
     get _lockType() {
-        return this._neo?.get_string('lock-type') ?? 'pin';
+        return this._vibeos?.get_string('lock-type') ?? 'pin';
     }
 
     get _secure() {
@@ -298,7 +298,7 @@ export class Keyguard extends Signals.EventEmitter {
     _build() {
         const monitor = Main.layoutManager.primaryMonitor;
         this.actor = new St.Widget({
-            name: 'gnomePhoneKeyguard',
+            name: 'vibeosKeyguard',
             reactive: true,
             visible: false,
             x: monitor.x,
@@ -384,7 +384,7 @@ export class Keyguard extends Signals.EventEmitter {
         }, e => {
             if (cancellable.is_cancelled())
                 return;
-            logError(e, `gnome-phone: the lock screen's wallpaper ${uri}`);
+            logError(e, `vibeos: the lock screen's wallpaper ${uri}`);
             this._setWallpaper(null, `background-image: url("${uri}"); background-size: cover;`);
         }).finally(() => {
             if (this._wallpaperLoad === cancellable)
@@ -911,7 +911,7 @@ export class Keyguard extends Signals.EventEmitter {
     async _check(secret) {
         const helper = GP_AUTH.find(p => GLib.file_test(p, GLib.FileTest.IS_EXECUTABLE));
         if (!helper) {
-            log('gnome-phone: no gp-auth to check the lock screen secret with');
+            log('vibeos: no vibeos-auth to check the lock screen secret with');
             return 2;
         }
         try {
@@ -920,7 +920,7 @@ export class Keyguard extends Signals.EventEmitter {
             await proc.communicate_utf8_async(`${secret}\n`, null);
             return proc.get_if_exited() ? proc.get_exit_status() : 2;
         } catch (e) {
-            logError(e, 'gnome-phone: gp-auth');
+            logError(e, 'vibeos: vibeos-auth');
             return 2;
         }
     }
@@ -957,7 +957,7 @@ export class Keyguard extends Signals.EventEmitter {
     }
 
     get _throttleFile() {
-        return Gio.File.new_for_path(GLib.build_filenamev([GLib.get_user_state_dir(), 'gnome-phone', 'keyguard.json']));
+        return Gio.File.new_for_path(GLib.build_filenamev([GLib.get_user_state_dir(), 'vibeos', 'keyguard.json']));
     }
 
     _loadThrottle() {
@@ -983,7 +983,7 @@ export class Keyguard extends Signals.EventEmitter {
             await file.replace_contents_async(new TextEncoder().encode(data), null, false,
                 Gio.FileCreateFlags.PRIVATE | Gio.FileCreateFlags.REPLACE_DESTINATION, null);
         } catch (e) {
-            logError(e, 'gnome-phone: keyguard state');
+            logError(e, 'vibeos: keyguard state');
         }
     }
 
@@ -1089,7 +1089,7 @@ export class Keyguard extends Signals.EventEmitter {
         if (this._prerenderId)
             global.stage.disconnect(this._prerenderId);
         this._prerenderId = 0;
-        this._neo?.disconnectObject(this);
+        this._vibeos?.disconnectObject(this);
         if (this._countdownId)
             GLib.source_remove(this._countdownId);
         this._wallClock.disconnectObject(this);

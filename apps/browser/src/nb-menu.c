@@ -2,7 +2,7 @@
 #include "nb.h"
 #include "nb-widgets.h"
 
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 #define MENU_MARGIN 16          /* px around the menu's list */
@@ -22,7 +22,7 @@ struct _NbPopup {
   NbTab     *tab;
   double     t;                 /* the running animation's linear time, 0..1 */
   gboolean   closing;
-  NeoAnim   *anim;
+  VibeosAnim   *anim;
   GtkWidget *indicator;
 };
 
@@ -87,13 +87,13 @@ nb_popup_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 }
 
 static void
-on_popup_anim (NeoAnim *anim, double value, gpointer data)
+on_popup_anim (VibeosAnim *anim, double value, gpointer data)
 {
   NbPopup *self = data;
 
   self->t = value;
   gtk_widget_queue_draw (GTK_WIDGET (self));
-  if (self->closing && !neo_anim_is_running (anim)) {
+  if (self->closing && !vibeos_anim_is_running (anim)) {
     GtkWidget *overlay = gtk_widget_get_parent (GTK_WIDGET (self));
     if (overlay)
       gtk_overlay_remove_overlay (GTK_OVERLAY (overlay), GTK_WIDGET (self));
@@ -107,9 +107,9 @@ nb_popup_dismiss (NbPopup *self)
     return;
   self->closing = TRUE;
   gtk_widget_set_can_target (GTK_WIDGET (self), FALSE);
-  neo_anim_stop (self->anim);
+  vibeos_anim_stop (self->anim);
   self->t = 0;
-  neo_anim_start (self->anim, 0, 1, SCALE_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start (self->anim, 0, 1, SCALE_MS, 0, SPONGY_LINEAR);
 }
 
 static void
@@ -130,7 +130,7 @@ nb_popup_dispose (GObject *object)
 {
   NbPopup *self = NB_POPUP (object);
 
-  g_clear_pointer (&self->anim, neo_anim_free);
+  g_clear_pointer (&self->anim, vibeos_anim_free);
   g_clear_pointer (&self->content, gtk_widget_unparent);
   G_OBJECT_CLASS (nb_popup_parent_class)->dispose (object);
 }
@@ -150,7 +150,7 @@ nb_popup_class_init (NbPopupClass *klass)
 static void
 nb_popup_init (NbPopup *self)
 {
-  self->anim = neo_anim_new (GTK_WIDGET (self), on_popup_anim, self);
+  self->anim = vibeos_anim_new (GTK_WIDGET (self), on_popup_anim, self);
   GtkGesture *click = gtk_gesture_click_new ();
   g_signal_connect (click, "pressed", G_CALLBACK (on_popup_pressed), self);
   gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (click));
@@ -247,9 +247,9 @@ on_option (GtkWidget *button, NbTab *t)
 }
 
 static void
-on_desktop_switch (NeoSwitch *sw, GParamSpec *pspec, NbTab *t)
+on_desktop_switch (VibeosSwitch *sw, GParamSpec *pspec, NbTab *t)
 {
-  if (neo_switch_get_active (sw) == t->desktop)
+  if (vibeos_switch_get_active (sw) == t->desktop)
     return;
   nb_menu_close (t);
   run_option (t, OPT_DESKTOP_VIEW);
@@ -259,10 +259,10 @@ static GtkWidget *
 top_icon (NbTab *t, const char *icon, const char *name, Option o)
 {
   GtkWidget *image = nb_icon (icon, 24);
-  GtkWidget *b = neo_pressable_new (image);
+  GtkWidget *b = vibeos_pressable_new (image);
 
   /* a borderless, round ripple */
-  neo_pressable_set_ripple (NEO_PRESSABLE (b), NEO_RIPPLE_CIRCLE, 20);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (b), VIBEOS_RIPPLE_CIRCLE, 20);
   gtk_widget_add_css_class (b, "nb-menu-top-icon");
   gtk_widget_set_size_request (b, 24, 24);
   gtk_accessible_update_property (GTK_ACCESSIBLE (b), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);
@@ -284,7 +284,7 @@ item (NbTab *t, const char *icon, const char *title, Option o)
   gtk_widget_set_hexpand (label, TRUE);
   gtk_box_append (GTK_BOX (box), image);
   gtk_box_append (GTK_BOX (box), label);
-  GtkWidget *row = neo_pressable_new (box);
+  GtkWidget *row = vibeos_pressable_new (box);
   g_object_set_data (G_OBJECT (row), "nb-option", GINT_TO_POINTER (o));
   g_signal_connect (row, "clicked", G_CALLBACK (on_option), t);
   return row;
@@ -298,7 +298,7 @@ desktop_item (NbTab *t)
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *image = nb_icon ("jelly-desktop-symbolic", 24);
   GtkWidget *label = nb_label ("Desktop site", 16, "nb-menu-text", TRUE);
-  GtkWidget *sw = neo_switch_new ();
+  GtkWidget *sw = vibeos_switch_new ();
 
   gtk_widget_add_css_class (box, "nb-menu-item");
   gtk_widget_add_css_class (box, "nb-menu-switch-item");
@@ -308,8 +308,8 @@ desktop_item (NbTab *t)
   gtk_widget_set_valign (image, GTK_ALIGN_CENTER);
   gtk_widget_set_margin_start (label, 16);
   gtk_widget_set_margin_end (label, 12);
-  neo_switch_set_thumb_icons (NEO_SWITCH (sw), FALSE);
-  neo_switch_set_active (NEO_SWITCH (sw), t->desktop);
+  vibeos_switch_set_thumb_icons (VIBEOS_SWITCH (sw), FALSE);
+  vibeos_switch_set_active (VIBEOS_SWITCH (sw), t->desktop);
   gtk_widget_set_valign (sw, GTK_ALIGN_CENTER);
   g_signal_connect (sw, "notify::active", G_CALLBACK (on_desktop_switch), t);
   gtk_box_append (GTK_BOX (box), image);
@@ -393,11 +393,11 @@ nb_menu_open (NbTab *t)
   p->content = outer;
   p->indicator = indicator;
   gtk_widget_set_parent (outer, GTK_WIDGET (p));
-  GtkOverlay *overlay = neo_window_get_overlay (t->win);
+  GtkOverlay *overlay = vibeos_window_get_overlay (t->win);
   gtk_overlay_add_overlay (overlay, GTK_WIDGET (p));
   gtk_overlay_set_measure_overlay (overlay, GTK_WIDGET (p), FALSE);
   gtk_overlay_set_clip_overlay (overlay, GTK_WIDGET (p), TRUE);
-  neo_anim_start (p->anim, 0, 1, SCALE_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start (p->anim, 0, 1, SCALE_MS, 0, SPONGY_LINEAR);
   nb_indicator_awaken (indicator);
   t->menu = GTK_WIDGET (p);
   nb_tab_sync_back (t);
@@ -602,7 +602,7 @@ on_pin_add (GtkWidget *b, PinRequest *p)
   g_autoptr (GError) error = NULL;
 
   if (!nb_add_shortcut (p->name, p->url, p->icon, &error)) {
-    g_message ("neo-browser: shortcut not written: %s", error->message);
+    g_message ("vibeos-browser: shortcut not written: %s", error->message);
     nb_tab_snackbar (p->t, "Shortcut not added", NULL, NULL, NULL);
   }
   nb_sheet_dismiss (p->sheet);
@@ -613,8 +613,8 @@ pill (const char *label)
 {
   GtkWidget *l = nb_label (label, 14, "nb-pin-button-text", FALSE);
   gtk_widget_set_halign (l, GTK_ALIGN_CENTER);
-  GtkWidget *b = neo_pressable_new (l);
-  neo_pressable_set_ripple (NEO_PRESSABLE (b), NEO_RIPPLE_BOUNDED, 24);
+  GtkWidget *b = vibeos_pressable_new (l);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (b), VIBEOS_RIPPLE_BOUNDED, 24);
   gtk_widget_add_css_class (b, "nb-pin-button");
   return b;
 }
@@ -652,7 +652,7 @@ nb_shortcut_sheet (NbTab *t)
     icon = gtk_image_new_from_paintable (GDK_PAINTABLE (favicon));
     gtk_widget_add_css_class (icon, "nb-pin-favicon");
   } else {
-    icon = gtk_image_new_from_icon_name ("neo.Browser");
+    icon = gtk_image_new_from_icon_name ("vibeos.Browser");
   }
   gtk_image_set_pixel_size (GTK_IMAGE (icon), 56);
   gtk_widget_set_halign (icon, GTK_ALIGN_CENTER);

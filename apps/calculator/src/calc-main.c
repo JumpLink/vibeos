@@ -1,17 +1,17 @@
-/* neo-calculator: the Calculator, LineageOS 23.2's ExactCalculator rebuilt in GTK 4.
+/* vibeos-calculator: the Calculator, LineageOS 23.2's ExactCalculator rebuilt in GTK 4.
  *
  * Exact arithmetic as the original's: numbers are an exact fraction times a constructive real (unified-real.h),
  * so 1÷3×3 is 1, 0.1+0.2 is 0.3 and sin(π) is 0, and an irrational result has as many digits as one scrolls to.
  * The history and the memory are kept in a database under the user's data directory (expression-db.c), the angle
- * mode and the memory's entries in GSettings (neo.Calculator). */
+ * mode and the memory's entries in GSettings (vibeos.Calculator). */
 #include "calc-window.h"
 
 #include <glib/gi18n.h>
 #include <locale.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy.h>
 
-#define APP_ID "neo.Calculator"
+#define APP_ID "vibeos.Calculator"
 
 static GSettings *settings;
 
@@ -20,8 +20,8 @@ load_style (void)
 {
   GtkCssProvider *provider = gtk_css_provider_new ();
 
-  gtk_css_provider_load_from_resource (provider, "/neo/Calculator/calculator.css");
-  /* over libneo's, which is at APPLICATION priority too: the later provider wins at equal priority */
+  gtk_css_provider_load_from_resource (provider, "/vibeos/Calculator/calculator.css");
+  /* over libvibeos's, which is at APPLICATION priority too: the later provider wins at equal priority */
   gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (provider),
                                               GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
   g_object_unref (provider);
@@ -30,7 +30,7 @@ load_style (void)
 static void
 on_startup (GApplication *app, gpointer data)
 {
-  neo_init ();
+  vibeos_init ();
   load_style ();
   /* the formula's and the results' drags count in logical pixels, so spongy's density (pixels per unit) is 1 (a
    * SpongyScrollView sets it from the monitor once it shows, the history's) */

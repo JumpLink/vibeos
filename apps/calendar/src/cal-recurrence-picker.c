@@ -5,7 +5,7 @@
  * Left out, each at its place below too:
  *  - the switch's own thumb colours (white on, darker grey off):
  *    CalMaterialSwitch draws its own, and has no way to take others;
- *  - a pressed day showing filled before it toggles: NeoPressable keeps its pressed state to itself. */
+ *  - a pressed day showing filled before it toggles: VibeosPressable keeps its pressed state to itself. */
 #include "cal-recurrence-picker.h"
 
 #include <glib/gi18n.h>
@@ -715,7 +715,7 @@ cal_recurrence_picker_can_handle (const char *rrule)
 #include "cal-material-switch.h"
 #include "cal-popup.h"
 
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 #define MIN_SCREEN_WIDTH_FOR_SINGLE_ROW_WEEK 450
@@ -746,7 +746,7 @@ static const char *const repeat_by_nth[7][5] = {
 };
 
 typedef struct {
-  NeoDialog *dialog;
+  VibeosDialog *dialog;
   CalRecurrenceSet done;
   gpointer data;
 
@@ -942,7 +942,7 @@ toggle_picker_options (Picker *picker)
 static void
 set_radio (GtkWidget *row, gboolean checked)
 {
-  GtkWidget *box = neo_pressable_get_child (NEO_PRESSABLE (row));
+  GtkWidget *box = vibeos_pressable_get_child (VIBEOS_PRESSABLE (row));
 
   gtk_image_set_from_icon_name (GTK_IMAGE (gtk_widget_get_first_child (box)),
                                 checked ? "cal-radio-on-symbolic" : "cal-radio-off-symbolic");
@@ -1075,7 +1075,7 @@ on_end_chosen (int index, gpointer data)
 }
 
 static void
-on_end_spinner (NeoPressable *pressable, Picker *picker)
+on_end_spinner (VibeosPressable *pressable, Picker *picker)
 {
   /* the drop-down's rows are the long forms, as wide as the widest */
   const char *labels[] = { _("Forever"), _("Until a date"), _("For a number of events") };
@@ -1116,7 +1116,7 @@ on_end_date_pressed (GtkGestureClick *click, int n_press, double x, double y, Pi
 }
 
 static void
-on_month_radio (NeoPressable *row, Picker *picker)
+on_month_radio (VibeosPressable *row, Picker *picker)
 {
   picker->model.monthly_repeat = GTK_WIDGET (row) == picker->by_nth ? CAL_REPEAT_MONTHLY_BY_NTH_DAY_OF_WEEK
                                                                     : CAL_REPEAT_MONTHLY_BY_DATE;
@@ -1124,7 +1124,7 @@ on_month_radio (NeoPressable *row, Picker *picker)
 }
 
 static void
-on_day (NeoPressable *pressable, Picker *picker)
+on_day (VibeosPressable *pressable, Picker *picker)
 {
   int weekday = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (pressable), "cal-weekday"));
 
@@ -1133,7 +1133,7 @@ on_day (NeoPressable *pressable, Picker *picker)
 }
 
 static void
-on_done (NeoPressable *button, Picker *picker)
+on_done (VibeosPressable *button, Picker *picker)
 {
   g_autofree char *rrule = NULL;
 
@@ -1148,11 +1148,11 @@ on_done (NeoPressable *button, Picker *picker)
   if (picker->model.repeats && !rrule)
     return;                             /* no rule could be written: Done stays */
   picker->done (rrule, picker->data);
-  neo_dialog_respond (picker->dialog, NEO_RESPONSE_OK);
+  vibeos_dialog_respond (picker->dialog, VIBEOS_RESPONSE_OK);
 }
 
 static void
-on_response (NeoDialog *dialog, int response, Picker *picker)
+on_response (VibeosDialog *dialog, int response, Picker *picker)
 {
   /* Done answers itself (on_done); a tap outside, Back: nothing set */
 }
@@ -1267,7 +1267,7 @@ static GtkWidget *
 day_button (Picker *picker, int weekday)
 {
   GtkWidget *area = g_object_new (GTK_TYPE_DRAWING_AREA, "accessible-role", GTK_ACCESSIBLE_ROLE_TOGGLE_BUTTON, NULL);
-  GtkWidget *button = neo_pressable_new (area);
+  GtkWidget *button = vibeos_pressable_new (area);
   /* the short weekday name in capitals: "SUN" … (2023-01-01 was a Sunday) */
   g_autoptr(GDateTime) date = g_date_time_new_local (2023, 1, 1 + weekday, 12, 0, 0);
   g_autofree char *name = g_date_time_format (date, "%a");
@@ -1282,7 +1282,7 @@ day_button (Picker *picker, int weekday)
   gtk_widget_add_css_class (area, "cal-recur-day-face");
   gtk_accessible_update_property (GTK_ACCESSIBLE (area), GTK_ACCESSIBLE_PROPERTY_LABEL, full, -1);
   /* no ripple: the bubble is its background */
-  neo_pressable_set_ripple (NEO_PRESSABLE (button), NEO_RIPPLE_NONE, 0);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_NONE, 0);
   gtk_widget_add_css_class (button, "cal-recur-day");
   gtk_widget_set_hexpand (button, TRUE);
   g_signal_connect (button, "clicked", G_CALLBACK (on_day), picker);
@@ -1307,8 +1307,8 @@ radio_row (Picker *picker, const char *text)
   gtk_label_set_max_width_chars (GTK_LABEL (label), 200);
   gtk_box_append (GTK_BOX (box), mark);
   gtk_box_append (GTK_BOX (box), label);
-  row = neo_pressable_new (box);
-  neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
+  row = vibeos_pressable_new (box);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
   gtk_widget_add_css_class (row, "cal-recur-radio");
   gtk_widget_set_halign (row, GTK_ALIGN_START);
   gtk_accessible_update_property (GTK_ACCESSIBLE (row), GTK_ACCESSIBLE_PROPERTY_LABEL, text, -1);
@@ -1365,9 +1365,9 @@ first_day_of_week (void)
 {
   /* the "Week starts on" setting */
   GSettingsSchemaSource *source = g_settings_schema_source_get_default ();
-  g_autoptr(GSettingsSchema) schema = source ? g_settings_schema_source_lookup (source, "neo.Calendar", TRUE)
+  g_autoptr(GSettingsSchema) schema = source ? g_settings_schema_source_lookup (source, "vibeos.Calendar", TRUE)
                                              : NULL;
-  g_autoptr(GSettings) settings = schema ? g_settings_new ("neo.Calendar") : NULL;
+  g_autoptr(GSettings) settings = schema ? g_settings_new ("vibeos.Calendar") : NULL;
 
   return cal_week_start (settings ? g_settings_get_int (settings, "week-start") : -1);
 }
@@ -1482,8 +1482,8 @@ cal_recurrence_picker_show (GtkWidget *parent, const char *rrule, gint64 start, 
   gtk_box_append (GTK_BOX (box), picker->end_label);
   gtk_box_append (GTK_BOX (box), arrow);
   /* not a CalSpinner: it shows a short form ("Until") of the row chosen ("Until a date") */
-  picker->end_spinner = neo_pressable_new (box);
-  neo_pressable_set_ripple (NEO_PRESSABLE (picker->end_spinner), NEO_RIPPLE_BOUNDED, 4);
+  picker->end_spinner = vibeos_pressable_new (box);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (picker->end_spinner), VIBEOS_RIPPLE_BOUNDED, 4);
   gtk_widget_add_css_class (picker->end_spinner, "cal-recur-end-spinner");
   gtk_widget_set_valign (picker->end_spinner, GTK_ALIGN_CENTER);
   gtk_accessible_update_property (GTK_ACCESSIBLE (picker->end_spinner), GTK_ACCESSIBLE_PROPERTY_LABEL,
@@ -1524,7 +1524,7 @@ cal_recurrence_picker_show (GtkWidget *parent, const char *rrule, gint64 start, 
   gtk_widget_add_css_class (divider, "cal-recur-divider");
   bar = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_widget_add_css_class (bar, "cal-recur-bar");
-  picker->done_button = neo_text_button_new (_("Done"));
+  picker->done_button = vibeos_text_button_new (_("Done"));
   gtk_widget_add_css_class (picker->done_button, "cal-recur-done");
   gtk_widget_set_hexpand (picker->done_button, TRUE);
   g_signal_connect (picker->done_button, "clicked", G_CALLBACK (on_done), picker);
@@ -1568,12 +1568,12 @@ cal_recurrence_picker_show (GtkWidget *parent, const char *rrule, gint64 start, 
   g_signal_connect (picker->end_count, "changed", G_CALLBACK (on_count_changed), picker);
 
   /* no title, no buttons of the dialog's own */
-  picker->dialog = neo_dialog_new (NULL);
-  neo_dialog_set_flush (picker->dialog, TRUE);
-  neo_dialog_set_content (picker->dialog, card);
+  picker->dialog = vibeos_dialog_new (NULL);
+  vibeos_dialog_set_flush (picker->dialog, TRUE);
+  vibeos_dialog_set_content (picker->dialog, card);
   gtk_widget_add_css_class (gtk_widget_get_parent (card), "cal-recur-card");
   g_signal_connect_data (picker->dialog, "response", G_CALLBACK (on_response), picker, picker_free, 0);
-  neo_dialog_present (picker->dialog, parent);
+  vibeos_dialog_present (picker->dialog, parent);
   gtk_widget_grab_focus (body);
   /* and nothing selected in them, as the dialog's focus on the first field leaves it */
   gtk_editable_select_region (GTK_EDITABLE (picker->interval), 0, 0);

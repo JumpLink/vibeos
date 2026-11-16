@@ -3,7 +3,7 @@
 #include "cam-constants.h"
 
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define TOUCH_SLOP 8            /* px a finger may move before a touch is a drag */
 
@@ -21,11 +21,11 @@ struct _CamViewfinder {
   /* the focus ring */
   gboolean      focusing;
   double        focus_x, focus_y, focus_pad;
-  NeoAnim      *focus_anim;
+  VibeosAnim      *focus_anim;
   guint         focus_hide;
   /* the capture blink, 0 … 1 */
   double        blink;
-  NeoAnim      *blink_anim;
+  VibeosAnim      *blink_anim;
   /* touch */
   double        drag_dx, drag_dy;
   gboolean      dragged, pinching;
@@ -115,7 +115,7 @@ draw_grid (CamViewfinder *self, GtkSnapshot *snapshot)
   double unit = self->grid == CAM_GRID_GOLDEN ? 2 + CAM_GOLDEN_RATIO : size;
   GdkRGBA color = CAM_CA (CAM_C_GRID);
   /* lines 2 device pixels wide */
-  double px = 2.0 / neo_device_scale (GTK_WIDGET (self));
+  double px = 2.0 / vibeos_device_scale (GTK_WIDGET (self));
 
   if (self->grid == CAM_GRID_OFF)
     return;
@@ -135,7 +135,7 @@ draw_leveler (CamViewfinder *self, GtkSnapshot *snapshot)
 {
   double w = gtk_widget_get_width (GTK_WIDGET (self)), h = gtk_widget_get_height (GTK_WIDGET (self));
   double m = MIN (w, h), cx = w / 2, cy = h / 2;
-  double o = self->tilt, px = 4.0 / neo_device_scale (GTK_WIDGET (self));
+  double o = self->tilt, px = 4.0 / vibeos_device_scale (GTK_WIDGET (self));
   int within = (int) o % 90;
   gboolean level = within < CAM_LEVEL_ZONE_DEG || 90 - within < CAM_LEVEL_ZONE_DEG;
   gboolean landscape = (o >= 45 && o < 135) || (o >= 225 && o < 315);
@@ -179,7 +179,7 @@ cam_viewfinder_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
       draw_grid (self, snapshot);
     }
   draw_leveler (self, snapshot);
-  if (self->focusing || neo_anim_is_running (self->focus_anim) || self->focus_hide)
+  if (self->focusing || vibeos_anim_is_running (self->focus_anim) || self->focus_hide)
     {
       double r = CAM_FOCUS_RING / 2.0 - self->focus_pad;
       g_autoptr(GskPathBuilder) builder = gsk_path_builder_new ();
@@ -264,14 +264,14 @@ on_zoom_end (GtkGesture *gesture, GdkEventSequence *sequence, CamViewfinder *sel
 /* ---- the object ------------------------------------------------------------------------------------------------ */
 
 static void
-on_focus_anim (NeoAnim *anim, double value, gpointer data)
+on_focus_anim (VibeosAnim *anim, double value, gpointer data)
 {
   CAM_VIEWFINDER (data)->focus_pad = value;
   gtk_widget_queue_draw (GTK_WIDGET (data));
 }
 
 static void
-on_blink_anim (NeoAnim *anim, double value, gpointer data)
+on_blink_anim (VibeosAnim *anim, double value, gpointer data)
 {
   CAM_VIEWFINDER (data)->blink = value;
   gtk_widget_queue_draw (GTK_WIDGET (data));
@@ -292,8 +292,8 @@ cam_viewfinder_dispose (GObject *object)
     g_signal_handlers_disconnect_by_data (self->paintable, self);
   g_clear_object (&self->paintable);
   g_clear_pointer (&self->frozen, gsk_render_node_unref);
-  g_clear_pointer (&self->focus_anim, neo_anim_free);
-  g_clear_pointer (&self->blink_anim, neo_anim_free);
+  g_clear_pointer (&self->focus_anim, vibeos_anim_free);
+  g_clear_pointer (&self->blink_anim, vibeos_anim_free);
   g_clear_handle_id (&self->focus_hide, g_source_remove);
   G_OBJECT_CLASS (cam_viewfinder_parent_class)->dispose (object);
 }
@@ -327,8 +327,8 @@ cam_viewfinder_init (CamViewfinder *self)
 
   self->zoom = 1;
   self->tilt = NAN;
-  self->focus_anim = neo_anim_new (GTK_WIDGET (self), on_focus_anim, self);
-  self->blink_anim = neo_anim_new (GTK_WIDGET (self), on_blink_anim, self);
+  self->focus_anim = vibeos_anim_new (GTK_WIDGET (self), on_focus_anim, self);
+  self->blink_anim = vibeos_anim_new (GTK_WIDGET (self), on_blink_anim, self);
   g_signal_connect (drag, "drag-begin", G_CALLBACK (on_drag_begin), self);
   g_signal_connect (drag, "drag-update", G_CALLBACK (on_drag_update), self);
   gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (drag));
@@ -428,7 +428,7 @@ cam_viewfinder_focus (CamViewfinder *self, double x, double y)
   self->focus_y = y;
   self->focusing = TRUE;
   /* the ring's padding 0 → 8 px, 300 ms accelerate-decelerate */
-  neo_anim_start (self->focus_anim, 0, CAM_FOCUS_RING_INSET, CAM_MS_DEFAULT, 0, SPONGY_ACCELERATE_DECELERATE);
+  vibeos_anim_start (self->focus_anim, 0, CAM_FOCUS_RING_INSET, CAM_MS_DEFAULT, 0, SPONGY_ACCELERATE_DECELERATE);
 }
 
 static gboolean
@@ -447,7 +447,7 @@ cam_viewfinder_focus_done (CamViewfinder *self)
   if (!self->focusing)
     return;
   self->focusing = FALSE;
-  neo_anim_start (self->focus_anim, self->focus_pad, 0, CAM_MS_DEFAULT, 0, SPONGY_ACCELERATE_DECELERATE);
+  vibeos_anim_start (self->focus_anim, self->focus_pad, 0, CAM_MS_DEFAULT, 0, SPONGY_ACCELERATE_DECELERATE);
   g_clear_handle_id (&self->focus_hide, g_source_remove);
   self->focus_hide = g_timeout_add (CAM_MS_DEFAULT + CAM_MS_FOCUS_HIDE, on_focus_hide, self);
 }
@@ -455,5 +455,5 @@ cam_viewfinder_focus_done (CamViewfinder *self)
 void
 cam_viewfinder_blink (CamViewfinder *self)
 {
-  neo_anim_start (self->blink_anim, 0, 1, CAM_MS_BLINK, 0, SPONGY_ACCELERATE_DECELERATE);
+  vibeos_anim_start (self->blink_anim, 0, 1, CAM_MS_BLINK, 0, SPONGY_ACCELERATE_DECELERATE);
 }

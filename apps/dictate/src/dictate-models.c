@@ -107,7 +107,7 @@ scan (const char *only)
 
   for (guint r = 0; r < roots->len; r++)
     {
-      g_autofree char *models = g_build_filename (roots->pdata[r], "neo-dictate", "models", NULL);
+      g_autofree char *models = g_build_filename (roots->pdata[r], "vibeos-dictate", "models", NULL);
       g_autoptr (GDir) list = g_dir_open (models, 0, NULL);
       g_autoptr (GPtrArray) names = g_ptr_array_new_with_free_func (g_free);
       const char *name;

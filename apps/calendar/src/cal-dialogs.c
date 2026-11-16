@@ -2,7 +2,7 @@
 #include "cal-dialogs.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 typedef struct {
@@ -23,21 +23,21 @@ choice_free (gpointer data, GClosure *closure)
 }
 
 static void
-on_response (NeoDialog *dialog, int response, Choice *choice)
+on_response (VibeosDialog *dialog, int response, Choice *choice)
 {
-  if (response == NEO_RESPONSE_CANCEL)
+  if (response == VIBEOS_RESPONSE_CANCEL)
     choice->done (-1, choice->data);
-  else if (response == NEO_RESPONSE_OK)
+  else if (response == VIBEOS_RESPONSE_OK)
     choice->done (choice->chosen, choice->data);
   else
     choice->done (response - 100, choice->data);
 }
 
 static void
-on_item (NeoPressable *row, NeoDialog *dialog)
+on_item (VibeosPressable *row, VibeosDialog *dialog)
 {
   /* a row answers with its index, offset past the standard responses */
-  neo_dialog_respond (dialog, 100 + GPOINTER_TO_INT (g_object_get_data (G_OBJECT (row), "cal-index")));
+  vibeos_dialog_respond (dialog, 100 + GPOINTER_TO_INT (g_object_get_data (G_OBJECT (row), "cal-index")));
 }
 
 static GtkWidget *
@@ -58,9 +58,9 @@ item_row (const char *label, int index, GtkWidget **mark)
   gtk_label_set_wrap (GTK_LABEL (text), TRUE);
   gtk_widget_set_hexpand (text, TRUE);
   gtk_box_append (GTK_BOX (box), text);
-  row = neo_pressable_new (box);
+  row = vibeos_pressable_new (box);
   gtk_widget_add_css_class (row, "cal-dialog-item");
-  neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
   g_object_set_data (G_OBJECT (row), "cal-index", GINT_TO_POINTER (index));
   return row;
 }
@@ -69,7 +69,7 @@ void
 cal_choice_dialog (GtkWidget *parent, const char *title, const char *const *labels, int n_labels,
                    CalChoiceDone done, gpointer data)
 {
-  NeoDialog *dialog = neo_dialog_new (title);
+  VibeosDialog *dialog = vibeos_dialog_new (title);
   GtkWidget *list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   Choice *choice = g_new0 (Choice, 1);
 
@@ -83,13 +83,13 @@ cal_choice_dialog (GtkWidget *parent, const char *title, const char *const *labe
       gtk_box_append (GTK_BOX (list), row);
     }
   gtk_widget_add_css_class (list, "cal-dialog-list");
-  neo_dialog_set_content (dialog, list);
+  vibeos_dialog_set_content (dialog, list);
   g_signal_connect_data (dialog, "response", G_CALLBACK (on_response), choice, choice_free, 0);
-  neo_dialog_present (dialog, parent);
+  vibeos_dialog_present (dialog, parent);
 }
 
 static void
-on_radio (NeoPressable *row, Choice *choice)
+on_radio (VibeosPressable *row, Choice *choice)
 {
   choice->chosen = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (row), "cal-index"));
   for (guint i = 0; i < choice->radios->len; i++)
@@ -102,7 +102,7 @@ void
 cal_radio_dialog (GtkWidget *parent, const char *title, const char *const *labels, int n_labels,
                   CalChoiceDone done, gpointer data)
 {
-  NeoDialog *dialog = neo_dialog_new (title);
+  VibeosDialog *dialog = vibeos_dialog_new (title);
   GtkWidget *list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   Choice *choice = g_new0 (Choice, 1);
 
@@ -120,20 +120,20 @@ cal_radio_dialog (GtkWidget *parent, const char *title, const char *const *label
       gtk_box_append (GTK_BOX (list), row);
     }
   gtk_widget_add_css_class (list, "cal-dialog-list");
-  neo_dialog_set_content (dialog, list);
-  neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
+  vibeos_dialog_set_content (dialog, list);
+  vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
   /* OK waits for a choice (the dialog's positive button disabled until a row is checked) */
-  choice->ok = neo_dialog_add_button (dialog, _("OK"), NEO_RESPONSE_OK);
+  choice->ok = vibeos_dialog_add_button (dialog, _("OK"), VIBEOS_RESPONSE_OK);
   gtk_widget_set_sensitive (choice->ok, FALSE);
   g_signal_connect_data (dialog, "response", G_CALLBACK (on_response), choice, choice_free, 0);
-  neo_dialog_present (dialog, parent);
+  vibeos_dialog_present (dialog, parent);
 }
 
 void
 cal_list_dialog (GtkWidget *parent, const char *title, const char *const *labels, int n_labels, int selected,
                  CalChoiceDone done, gpointer data)
 {
-  NeoDialog *dialog = neo_dialog_new (title);
+  VibeosDialog *dialog = vibeos_dialog_new (title);
   GtkWidget *list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *scroll = spongy_scroll_view_new ();
   Choice *choice = g_new0 (Choice, 1);
@@ -154,26 +154,26 @@ cal_list_dialog (GtkWidget *parent, const char *title, const char *const *labels
   /* a long list (the reminder times) scrolls inside the dialog */
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), list);
   gtk_widget_add_css_class (scroll, "cal-dialog-scroll");
-  neo_dialog_set_content (dialog, scroll);
-  neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
+  vibeos_dialog_set_content (dialog, scroll);
+  vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
   g_signal_connect_data (dialog, "response", G_CALLBACK (on_response), choice, choice_free, 0);
-  neo_dialog_present (dialog, parent);
+  vibeos_dialog_present (dialog, parent);
 }
 
 void
 cal_confirm_dialog (GtkWidget *parent, const char *message, const char *ok, CalChoiceDone done, gpointer data)
 {
-  NeoDialog *dialog = neo_dialog_new (NULL);
+  VibeosDialog *dialog = vibeos_dialog_new (NULL);
   Choice *choice = g_new0 (Choice, 1);
 
   choice->done = done;
   choice->data = data;
   choice->chosen = 0;
-  neo_dialog_set_message (dialog, message);
-  neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  neo_dialog_add_button (dialog, ok, NEO_RESPONSE_OK);
+  vibeos_dialog_set_message (dialog, message);
+  vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  vibeos_dialog_add_button (dialog, ok, VIBEOS_RESPONSE_OK);
   g_signal_connect_data (dialog, "response", G_CALLBACK (on_response), choice, choice_free, 0);
-  neo_dialog_present (dialog, parent);
+  vibeos_dialog_present (dialog, parent);
 }
 
 typedef struct {
@@ -189,21 +189,21 @@ text_ask_free (gpointer data, GClosure *closure)
 }
 
 static void
-on_text_response (NeoDialog *dialog, int response, TextAsk *ask)
+on_text_response (VibeosDialog *dialog, int response, TextAsk *ask)
 {
-  ask->done (response == NEO_RESPONSE_OK ? gtk_editable_get_text (GTK_EDITABLE (ask->entry)) : NULL, ask->data);
+  ask->done (response == VIBEOS_RESPONSE_OK ? gtk_editable_get_text (GTK_EDITABLE (ask->entry)) : NULL, ask->data);
 }
 
 static void
-on_text_activate (GtkEntry *entry, NeoDialog *dialog)
+on_text_activate (GtkEntry *entry, VibeosDialog *dialog)
 {
-  neo_dialog_respond (dialog, NEO_RESPONSE_OK);
+  vibeos_dialog_respond (dialog, VIBEOS_RESPONSE_OK);
 }
 
 void
 cal_text_dialog (GtkWidget *parent, const char *title, const char *text, CalTextDone done, gpointer data)
 {
-  NeoDialog *dialog = neo_dialog_new (title);
+  VibeosDialog *dialog = vibeos_dialog_new (title);
   TextAsk *ask = g_new0 (TextAsk, 1);
 
   ask->done = done;
@@ -213,10 +213,10 @@ cal_text_dialog (GtkWidget *parent, const char *title, const char *text, CalText
   gtk_editable_set_text (GTK_EDITABLE (ask->entry), text ? text : "");
   gtk_widget_add_css_class (ask->entry, "cal-dialog-entry");
   g_signal_connect (ask->entry, "activate", G_CALLBACK (on_text_activate), dialog);
-  neo_dialog_set_content (dialog, ask->entry);
-  neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  neo_dialog_add_button (dialog, _("OK"), NEO_RESPONSE_OK);
+  vibeos_dialog_set_content (dialog, ask->entry);
+  vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  vibeos_dialog_add_button (dialog, _("OK"), VIBEOS_RESPONSE_OK);
   g_signal_connect_data (dialog, "response", G_CALLBACK (on_text_response), ask, text_ask_free, 0);
-  neo_dialog_present (dialog, parent);
+  vibeos_dialog_present (dialog, parent);
   gtk_widget_grab_focus (ask->entry);
 }

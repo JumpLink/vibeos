@@ -4,7 +4,7 @@
 
 #include <glib/gi18n.h>
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 typedef struct {
@@ -22,7 +22,7 @@ dialog_free (gpointer data, GClosure *closure)
 }
 
 static void
-on_response (NeoDialog *neo, int response, Dialog *dialog)
+on_response (VibeosDialog *vibeos, int response, Dialog *dialog)
 {
   if (dialog->text_done)
     {
@@ -34,23 +34,23 @@ on_response (NeoDialog *neo, int response, Dialog *dialog)
       return;
     }
   if (dialog->done)
-    dialog->done (response == NEO_RESPONSE_CANCEL ? -1 : response, dialog->data);
+    dialog->done (response == VIBEOS_RESPONSE_CANCEL ? -1 : response, dialog->data);
 }
 
 static void
-on_button (NeoPressable *button, NeoDialog *neo)
+on_button (VibeosPressable *button, VibeosDialog *vibeos)
 {
-  neo_dialog_respond (neo, GPOINTER_TO_INT (g_object_get_data (G_OBJECT (button), "ct-response")));
+  vibeos_dialog_respond (vibeos, GPOINTER_TO_INT (g_object_get_data (G_OBJECT (button), "ct-response")));
 }
 
 /* the card: the content box the dialog's parts go in, as wide as the dialog kind says */
 static GtkWidget *
-dialog_card (GtkWidget *parent, NeoDialog *neo, CtDialogWidth width, const char *title)
+dialog_card (GtkWidget *parent, VibeosDialog *vibeos, CtDialogWidth width, const char *title)
 {
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   int screen = gtk_widget_get_width (GTK_WIDGET (gtk_widget_get_root (parent)));
 
-  neo_dialog_set_flush (neo, TRUE);
+  vibeos_dialog_set_flush (vibeos, TRUE);
   gtk_widget_add_css_class (box, "ct-dialog");
   gtk_widget_set_size_request (box, width == CT_DIALOG_FRAMEWORK ? (int) CT_DIALOG_W_DP
                                                                  : (int) (CT_DIALOG_MIN_W_FRAC * (screen > 0 ? screen : 360)),
@@ -62,13 +62,13 @@ dialog_card (GtkWidget *parent, NeoDialog *neo, CtDialogWidth width, const char 
       gtk_label_set_wrap (GTK_LABEL (label), TRUE);
       gtk_box_append (GTK_BOX (box), label);
     }
-  neo_dialog_set_content (neo, box);
+  vibeos_dialog_set_content (vibeos, box);
   return box;
 }
 
 /* the button bar: right-aligned, negative before positive */
 static GtkWidget *
-add_button (GtkWidget *box, NeoDialog *neo, const char *label, int response)
+add_button (GtkWidget *box, VibeosDialog *vibeos, const char *label, int response)
 {
   GtkWidget *bar = g_object_get_data (G_OBJECT (box), "ct-buttons");
   GtkWidget *button = ct_text_button (label, "ct-dialog-button");
@@ -82,19 +82,19 @@ add_button (GtkWidget *box, NeoDialog *neo, const char *label, int response)
       g_object_set_data (G_OBJECT (box), "ct-buttons", bar);
     }
   g_object_set_data (G_OBJECT (button), "ct-response", GINT_TO_POINTER (response));
-  g_signal_connect (button, "clicked", G_CALLBACK (on_button), neo);
+  g_signal_connect (button, "clicked", G_CALLBACK (on_button), vibeos);
   gtk_box_append (GTK_BOX (bar), button);
   return button;
 }
 
 static Dialog *
-watch_dialog (NeoDialog *neo, CtDialogDone done, gpointer data)
+watch_dialog (VibeosDialog *vibeos, CtDialogDone done, gpointer data)
 {
   Dialog *dialog = g_new0 (Dialog, 1);
 
   dialog->done = done;
   dialog->data = data;
-  g_signal_connect_data (neo, "response", G_CALLBACK (on_response), dialog, dialog_free, 0);
+  g_signal_connect_data (vibeos, "response", G_CALLBACK (on_response), dialog, dialog_free, 0);
   return dialog;
 }
 
@@ -102,8 +102,8 @@ void
 ct_confirm_dialog (GtkWidget *parent, const char *title, const char *message, const char *ok, CtDialogDone done,
                    gpointer data)
 {
-  NeoDialog *neo = neo_dialog_new (NULL);
-  GtkWidget *box = dialog_card (parent, neo, CT_DIALOG_APPCOMPAT, title);
+  VibeosDialog *vibeos = vibeos_dialog_new (NULL);
+  GtkWidget *box = dialog_card (parent, vibeos, CT_DIALOG_APPCOMPAT, title);
   GtkWidget *text = ct_label (message, "ct-dialog-message", 16);
 
   gtk_label_set_wrap (GTK_LABEL (text), TRUE);
@@ -111,29 +111,29 @@ ct_confirm_dialog (GtkWidget *parent, const char *title, const char *message, co
   if (!title)
     gtk_widget_add_css_class (text, "no-title");
   gtk_box_append (GTK_BOX (box), text);
-  add_button (box, neo, _("Cancel"), NEO_RESPONSE_CANCEL);
-  add_button (box, neo, ok, CT_DIALOG_OK);
-  watch_dialog (neo, done, data);
-  neo_dialog_present (neo, parent);
+  add_button (box, vibeos, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  add_button (box, vibeos, ok, CT_DIALOG_OK);
+  watch_dialog (vibeos, done, data);
+  vibeos_dialog_present (vibeos, parent);
 }
 
 static void
-on_row (NeoPressable *row, NeoDialog *neo)
+on_row (VibeosPressable *row, VibeosDialog *vibeos)
 {
-  neo_dialog_respond (neo, GPOINTER_TO_INT (g_object_get_data (G_OBJECT (row), "ct-response")));
+  vibeos_dialog_respond (vibeos, GPOINTER_TO_INT (g_object_get_data (G_OBJECT (row), "ct-response")));
 }
 
 static GtkWidget *
-dialog_row (NeoDialog *neo, GtkWidget *child, int index, const char *css_class)
+dialog_row (VibeosDialog *vibeos, GtkWidget *child, int index, const char *css_class)
 {
-  GtkWidget *row = neo_pressable_new (child);
+  GtkWidget *row = vibeos_pressable_new (child);
   GdkRGBA ripple = ct_rgba (CT_RIPPLE_APPCOMPAT);
 
   gtk_widget_add_css_class (row, css_class);
-  neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (row), &ripple);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
   g_object_set_data (G_OBJECT (row), "ct-response", GINT_TO_POINTER (index));
-  g_signal_connect (row, "clicked", G_CALLBACK (on_row), neo);
+  g_signal_connect (row, "clicked", G_CALLBACK (on_row), vibeos);
   return row;
 }
 
@@ -141,8 +141,8 @@ void
 ct_list_dialog (GtkWidget *parent, CtDialogWidth width, const char *title, const char *const *labels, int n_labels,
                 gboolean cancel, CtDialogDone done, gpointer data)
 {
-  NeoDialog *neo = neo_dialog_new (NULL);
-  GtkWidget *box = dialog_card (parent, neo, width, title);
+  VibeosDialog *vibeos = vibeos_dialog_new (NULL);
+  GtkWidget *box = dialog_card (parent, vibeos, width, title);
   GtkWidget *list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
 
   /* a gap under the title */
@@ -153,23 +153,23 @@ ct_list_dialog (GtkWidget *parent, CtDialogWidth width, const char *title, const
 
       gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
       gtk_label_set_ellipsize (GTK_LABEL (text), PANGO_ELLIPSIZE_END);
-      gtk_box_append (GTK_BOX (list), dialog_row (neo, text, i, "ct-dialog-item"));
+      gtk_box_append (GTK_BOX (list), dialog_row (vibeos, text, i, "ct-dialog-item"));
     }
   gtk_box_append (GTK_BOX (box), list);
   if (cancel)
-    add_button (box, neo, _("Cancel"), NEO_RESPONSE_CANCEL);
+    add_button (box, vibeos, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
   else
     gtk_widget_add_css_class (box, "no-buttons");
-  watch_dialog (neo, done, data);
-  neo_dialog_present (neo, parent);
+  watch_dialog (vibeos, done, data);
+  vibeos_dialog_present (vibeos, parent);
 }
 
 void
 ct_radio_dialog (GtkWidget *parent, const char *title, const char *const *labels, int n_labels, int selected,
                  CtDialogDone done, gpointer data)
 {
-  NeoDialog *neo = neo_dialog_new (NULL);
-  GtkWidget *box = dialog_card (parent, neo, CT_DIALOG_APPCOMPAT, title);
+  VibeosDialog *vibeos = vibeos_dialog_new (NULL);
+  GtkWidget *box = dialog_card (parent, vibeos, CT_DIALOG_APPCOMPAT, title);
   GtkWidget *list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *scroll = spongy_scroll_view_new ();
 
@@ -190,13 +190,13 @@ ct_radio_dialog (GtkWidget *parent, const char *title, const char *const *labels
       gtk_widget_set_hexpand (text, TRUE);
       gtk_box_append (GTK_BOX (line), radio);
       gtk_box_append (GTK_BOX (line), text);
-      gtk_box_append (GTK_BOX (list), dialog_row (neo, line, i, "ct-dialog-choice"));
+      gtk_box_append (GTK_BOX (list), dialog_row (vibeos, line, i, "ct-dialog-choice"));
     }
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), list);
   gtk_box_append (GTK_BOX (box), scroll);
   gtk_widget_add_css_class (box, "no-buttons");
-  watch_dialog (neo, done, data);
-  neo_dialog_present (neo, parent);
+  watch_dialog (vibeos, done, data);
+  vibeos_dialog_present (vibeos, parent);
 }
 
 static void
@@ -211,22 +211,22 @@ on_text_changed (GtkEditable *entry, Dialog *dialog)
 }
 
 static void
-on_text_activate (GtkText *entry, NeoDialog *neo)
+on_text_activate (GtkText *entry, VibeosDialog *vibeos)
 {
   Dialog *dialog = g_object_get_data (G_OBJECT (entry), "ct-dialog");
 
   if (gtk_widget_get_sensitive (dialog->ok))
-    neo_dialog_respond (neo, CT_DIALOG_OK);
+    vibeos_dialog_respond (vibeos, CT_DIALOG_OK);
 }
 
 void
 ct_text_dialog (GtkWidget *parent, const char *title, const char *text, const char *hint, int max_length,
                 CtTextCheck check, CtTextDone done, gpointer data)
 {
-  NeoDialog *neo = neo_dialog_new (NULL);
-  GtkWidget *box = dialog_card (parent, neo, CT_DIALOG_APPCOMPAT, title);
+  VibeosDialog *vibeos = vibeos_dialog_new (NULL);
+  GtkWidget *box = dialog_card (parent, vibeos, CT_DIALOG_APPCOMPAT, title);
   GtkWidget *field = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  Dialog *dialog = watch_dialog (neo, NULL, data);
+  Dialog *dialog = watch_dialog (vibeos, NULL, data);
 
   dialog->text_done = done;
   dialog->check = check;
@@ -239,7 +239,7 @@ ct_text_dialog (GtkWidget *parent, const char *title, const char *text, const ch
   gtk_widget_add_css_class (dialog->entry, "ct-dialog-entry");
   g_object_set_data (G_OBJECT (dialog->entry), "ct-dialog", dialog);
   g_signal_connect (dialog->entry, "changed", G_CALLBACK (on_text_changed), dialog);
-  g_signal_connect (dialog->entry, "activate", G_CALLBACK (on_text_activate), neo);
+  g_signal_connect (dialog->entry, "activate", G_CALLBACK (on_text_activate), vibeos);
   /* the field, then its error line in the error colour */
   dialog->error = ct_label ("", "ct-dialog-error", 12);
   gtk_widget_set_visible (dialog->error, FALSE);
@@ -247,10 +247,10 @@ ct_text_dialog (GtkWidget *parent, const char *title, const char *text, const ch
   gtk_box_append (GTK_BOX (field), dialog->entry);
   gtk_box_append (GTK_BOX (field), dialog->error);
   gtk_box_append (GTK_BOX (box), field);
-  add_button (box, neo, _("Cancel"), NEO_RESPONSE_CANCEL);
-  dialog->ok = add_button (box, neo, _("OK"), CT_DIALOG_OK);
+  add_button (box, vibeos, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  dialog->ok = add_button (box, vibeos, _("OK"), CT_DIALOG_OK);
   on_text_changed (GTK_EDITABLE (dialog->entry), dialog);
-  neo_dialog_present (neo, parent);
+  vibeos_dialog_present (vibeos, parent);
 }
 
 /* ===== the date dialog ========================================================================================= */
@@ -488,7 +488,7 @@ on_wheel_changed (CtWheel *wheel, gpointer data)
 
 /* unchecking "Include year" takes the year's wheel away (GONE) */
 static void
-on_include_year (NeoPressable *row, DateDialog *dialog)
+on_include_year (VibeosPressable *row, DateDialog *dialog)
 {
   dialog->include_year = !dialog->include_year;
   gtk_widget_set_visible (dialog->year, dialog->include_year);
@@ -497,7 +497,7 @@ on_include_year (NeoPressable *row, DateDialog *dialog)
 }
 
 static void
-on_date_response (NeoDialog *neo, int response, DateDialog *dialog)
+on_date_response (VibeosDialog *vibeos, int response, DateDialog *dialog)
 {
   if (response == CT_DIALOG_OK && dialog->done)
     dialog->done (dialog->include_year ? CT_WHEEL (dialog->year)->value : 0, CT_WHEEL (dialog->month)->value,
@@ -514,8 +514,8 @@ void
 ct_date_dialog (GtkWidget *parent, int year, int month, int day, gboolean year_optional, CtDateDone done,
                 gpointer data)
 {
-  NeoDialog *neo = neo_dialog_new (NULL);
-  GtkWidget *box = dialog_card (parent, neo, CT_DIALOG_APPCOMPAT, " ");
+  VibeosDialog *vibeos = vibeos_dialog_new (NULL);
+  GtkWidget *box = dialog_card (parent, vibeos, CT_DIALOG_APPCOMPAT, " ");
   GtkWidget *column = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *wheels = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   DateDialog *dialog = g_new0 (DateDialog, 1);
@@ -560,24 +560,24 @@ ct_date_dialog (GtkWidget *parent, int year, int month, int day, gboolean year_o
       GtkWidget *line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
       GtkWidget *check = ct_check_new (CT_C_CHECK_ON, CT_C_CHECK_OFF);
       GtkWidget *label = ct_label (_("Include year"), "ct-date-include", 22);
-      GtkWidget *row = neo_pressable_new (line);
+      GtkWidget *row = vibeos_pressable_new (line);
       GdkRGBA ripple = ct_rgba (CT_RIPPLE_APPCOMPAT);
 
       gtk_widget_set_valign (check, GTK_ALIGN_CENTER);
       gtk_box_append (GTK_BOX (line), check);
       gtk_box_append (GTK_BOX (line), label);
       gtk_widget_add_css_class (row, "ct-date-include-row");
-      neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
-      neo_pressable_set_ripple_color (NEO_PRESSABLE (row), &ripple);
+      vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
+      vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
       g_signal_connect (row, "clicked", G_CALLBACK (on_include_year), dialog);
       dialog->include = check;
       ct_check_set_active (check, dialog->include_year);
       gtk_box_append (GTK_BOX (column), row);
     }
   gtk_box_append (GTK_BOX (box), column);
-  add_button (box, neo, _("Cancel"), NEO_RESPONSE_CANCEL);
-  add_button (box, neo, _("Set"), CT_DIALOG_OK);
-  g_signal_connect_data (neo, "response", G_CALLBACK (on_date_response), dialog, date_dialog_free, 0);
+  add_button (box, vibeos, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  add_button (box, vibeos, _("Set"), CT_DIALOG_OK);
+  g_signal_connect_data (vibeos, "response", G_CALLBACK (on_date_response), dialog, date_dialog_free, 0);
   date_update (dialog);
-  neo_dialog_present (neo, parent);
+  vibeos_dialog_present (vibeos, parent);
 }

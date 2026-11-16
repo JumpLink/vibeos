@@ -1,8 +1,8 @@
 #!/usr/bin/python3
-# A phone for the SMS service to talk to, without a modem or a shell: what neo-messaging-sms finds on its two buses,
+# A phone for the SMS service to talk to, without a modem or a shell: what vibeos-messaging-sms finds on its two buses,
 # for the tests (test-sms.py).
 #
-# On the "system" bus (a bus of its own, NEO_MESSAGING_SYSTEM_BUS): ModemManager with one modem and its Messaging
+# On the "system" bus (a bus of its own, VIBEOS_MESSAGING_SYSTEM_BUS): ModemManager with one modem and its Messaging
 # interface, behaving as ModemManager 1.24 does: a message that comes is announced (Added, received TRUE) while its
 # parts are still RECEIVING and turns RECEIVED when the last one is in; one made by Create is announced with
 # received FALSE, and once sent carries the network's message reference; a deleted one is gone. A delivery report is
@@ -12,7 +12,7 @@
 # On the session bus: a notification server, and the Messaging app's org.freedesktop.Application (what a tap on a
 # notification opens).
 #
-# neo.Test.Modem on the session bus drives it: a message comes, sending fails, the modem goes; and it tells
+# vibeos.Test.Modem on the session bus drives it: a message comes, sending fails, the modem goes; and it tells
 # what the service did (the method calls it got, the notifications it holds, the messages still on the modem).
 import json
 import sys
@@ -76,7 +76,7 @@ SESSION_XML = '''<node>
 <method name="ActivateAction"><arg type="s" direction="in"/><arg type="av" direction="in"/>
 <arg type="a{sv}" direction="in"/></method>
 </interface>
-<interface name="neo.Test.Modem">
+<interface name="vibeos.Test.Modem">
 <method name="Incoming"><arg name="number" type="s" direction="in"/><arg name="parts" type="as" direction="in"/>
 <arg name="timestamp" type="s" direction="in"/><arg type="o" direction="out"/></method>
 <method name="StatusReport"><arg type="o" direction="out"/></method>
@@ -144,8 +144,8 @@ class Modem:
                                lambda *a: None, lambda *a: GLib.Variant('b', self.gateway), None)
         for iface in Gio.DBusNodeInfo.new_for_xml(SESSION_XML).interfaces:
             session.register_object('/org/freedesktop/Notifications' if 'Notifications' in iface.name else
-                                    '/neo/Messaging' if 'Application' in iface.name else
-                                    '/neo/Test/Modem', iface, self.session_call, None, None)
+                                    '/vibeos/Messaging' if 'Application' in iface.name else
+                                    '/vibeos/Test/Modem', iface, self.session_call, None, None)
         # what came while the service was not running: on the modem when it starts
         if waiting:
             self.add(Sms(self, '+491709999999', 'While you were away', RECEIVED, DELIVER, '2026-11-08T01:00:00+01'),
@@ -270,7 +270,7 @@ class Modem:
     # --- the session's services and the test's controls
     def session_call(self, conn, sender, path, iface, method, params, inv):
         args = params.unpack()
-        if iface == 'neo.Test.Modem':
+        if iface == 'vibeos.Test.Modem':
             return self.control(method, args, inv)
         self.log.append([method] + [a for a in args if not isinstance(a, dict)])
         if method == 'Notify':
@@ -279,7 +279,7 @@ class Modem:
             self.next_notification = max(self.next_notification, nid)
             self.notifications[nid] = {'app': app, 'title': title, 'body': body, 'actions': actions[::2],
                                        'desktop-entry': hints.get('desktop-entry'),
-                                       'no-peek': hints.get('x-neo-no-peek', False)}
+                                       'no-peek': hints.get('x-vibeos-no-peek', False)}
             return inv.return_value(GLib.Variant('(u)', (nid,)))
         if method == 'CloseNotification':
             if self.notifications.pop(args[0], None) is not None:
@@ -355,10 +355,10 @@ def main():
         Gio.DBusConnectionFlags.MESSAGE_BUS_CONNECTION, None, None)
     session = Gio.bus_get_sync(Gio.BusType.SESSION, None)
     Modem(system, session, '--waiting' in sys.argv)
-    # --no-app: the real app runs on the session bus and is neo.Messaging itself (to try the UI against it)
-    app = [] if '--no-app' in sys.argv else ['neo.Messaging']
+    # --no-app: the real app runs on the session bus and is vibeos.Messaging itself (to try the UI against it)
+    app = [] if '--no-app' in sys.argv else ['vibeos.Messaging']
     names = [(system, MM), (system, GATEWAY)] + [(session, n) for n in ['org.freedesktop.Notifications'] + app +
-                                                 ['neo.Test.Modem']]
+                                                 ['vibeos.Test.Modem']]
     for conn, name in names:
         conn.call_sync('org.freedesktop.DBus', '/org/freedesktop/DBus', 'org.freedesktop.DBus', 'RequestName',
                        GLib.Variant('(su)', (name, 4)), None, Gio.DBusCallFlags.NONE, -1, None)

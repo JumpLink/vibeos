@@ -18,8 +18,8 @@
  * the app's own.
  *
  * The snooze delay: a time picker titled "Set snooze delay", at the default snooze delay as hours and minutes; OK
- * snoozes the reminder that long through the service's Snooze(), Cancel does nothing. The picker is libneo's
- * NeoTimePicker (not the editor's CalTimePicker), always 24-hour.
+ * snoozes the reminder that long through the service's Snooze(), Cancel does nothing. The picker is libvibeos's
+ * VibeosTimePicker (not the editor's CalTimePicker), always 24-hour.
  *
  * Email guests: a dialog in the app's dialog style, "Choose quick response" over the quick responses sorted and
  * "Write your own…"; a tap opens the mail app (the guests but the calendar's owner, "Re: <title>", the response as
@@ -30,12 +30,12 @@
 #include "cal-window.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 #include <string.h>
 
-#define SERVICE         "neo.Calendar.Reminders"
-#define SERVICE_PATH    "/neo/Calendar/Reminders"
+#define SERVICE         "vibeos.Calendar.Reminders"
+#define SERVICE_PATH    "/vibeos/Calendar/Reminders"
 
 /* --- the reminder service */
 
@@ -68,7 +68,7 @@ typedef struct {
 
 typedef struct {
   GtkWidget *window;
-  NeoDialog *dialog;            /* NULL until the first list has come */
+  VibeosDialog *dialog;            /* NULL until the first list has come */
   GtkWidget *scroll, *list, *dismiss_all;
   GDBusConnection *bus;
   guint changed;                /* the FiredChanged subscription */
@@ -130,13 +130,13 @@ holo_allocate (GtkWidget *widget, int width, int height, int baseline)
 }
 
 static void
-on_response (NeoDialog *dialog, int response, Page *self)
+on_response (VibeosDialog *dialog, int response, Page *self)
 {
   page_free (self);
 }
 
 static void
-on_row (NeoPressable *row, Page *self)
+on_row (VibeosPressable *row, Page *self)
 {
   Item *item = g_object_get_data (G_OBJECT (row), "cal-item");
   const char *occurrences[] = { item->occurrence, NULL };
@@ -144,15 +144,15 @@ on_row (NeoPressable *row, Page *self)
   /* dismissed, its event's info over the views, the page closed */
   service_call ("Dismiss", g_variant_new ("(^as)", occurrences));
   cal_window_open_reminder (self->window, item->calendar, item->uid, item->rid, item->start);
-  neo_dialog_respond (self->dialog, NEO_RESPONSE_CANCEL);
+  vibeos_dialog_respond (self->dialog, VIBEOS_RESPONSE_CANCEL);
 }
 
 static void
-on_dismiss_all (NeoPressable *button, Page *self)
+on_dismiss_all (VibeosPressable *button, Page *self)
 {
   /* every notification and fired reminder dismissed, the page closed */
   service_call ("DismissAll", NULL);
-  neo_dialog_respond (self->dialog, NEO_RESPONSE_CANCEL);
+  vibeos_dialog_respond (self->dialog, VIBEOS_RESPONSE_CANCEL);
 }
 
 static GtkWidget *
@@ -241,12 +241,12 @@ alert_row (Page *self, const char *occurrence, GVariant *fields)
     gtk_box_append (GTK_BOX (box), text (location, "cal-alert-where", 1));
 
   gtk_widget_set_valign (box, GTK_ALIGN_CENTER);
-  row = neo_pressable_new (box);
+  row = vibeos_pressable_new (box);
   gtk_widget_add_css_class (row, "cal-alert-row");
   /* an event that has ended: all three dimmed */
   if (end < g_get_real_time () / G_USEC_PER_SEC)
     gtk_widget_add_css_class (row, "past");
-  neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
   item->occurrence = g_strdup (occurrence);
   item->calendar = g_strdup (calendar);
   item->uid = g_strdup (uid);
@@ -289,9 +289,9 @@ build (Page *self)
   GtkWidget *bar = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *label = gtk_label_new (_("Dismiss all"));
 
-  self->dialog = neo_dialog_new (NULL);
+  self->dialog = vibeos_dialog_new (NULL);
   gtk_widget_add_css_class (GTK_WIDGET (self->dialog), "cal-alerts");
-  neo_dialog_set_flush (self->dialog, TRUE);
+  vibeos_dialog_set_flush (self->dialog, TRUE);
 
   gtk_box_append (GTK_BOX (content), title);
   gtk_box_append (GTK_BOX (content), divider ("cal-alerts-title-divider"));
@@ -301,10 +301,10 @@ build (Page *self)
   gtk_widget_set_vexpand (self->scroll, TRUE);
   gtk_box_append (GTK_BOX (content), self->scroll);
   gtk_box_append (GTK_BOX (content), divider ("cal-alerts-divider"));
-  self->dismiss_all = neo_pressable_new (label);
+  self->dismiss_all = vibeos_pressable_new (label);
   gtk_widget_add_css_class (self->dismiss_all, "cal-alerts-button");
   gtk_widget_set_hexpand (self->dismiss_all, TRUE);
-  neo_pressable_set_ripple (NEO_PRESSABLE (self->dismiss_all), NEO_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->dismiss_all), VIBEOS_RIPPLE_BOUNDED, 0);
   g_signal_connect (self->dismiss_all, "clicked", G_CALLBACK (on_dismiss_all), self);
   gtk_box_append (GTK_BOX (bar), self->dismiss_all);
   gtk_box_append (GTK_BOX (content), bar);
@@ -312,7 +312,7 @@ build (Page *self)
 
   gtk_box_append (GTK_BOX (wrapper), content);
   gtk_widget_set_layout_manager (wrapper, gtk_custom_layout_new (NULL, holo_measure, holo_allocate));
-  neo_dialog_set_content (self->dialog, wrapper);
+  vibeos_dialog_set_content (self->dialog, wrapper);
   g_signal_connect (self->dialog, "response", G_CALLBACK (on_response), self);
 }
 
@@ -339,7 +339,7 @@ on_fired (GObject *source, GAsyncResult *result, gpointer data)
   if (!list || g_variant_n_children (list) == 0)
     {
       if (self->dialog)
-        neo_dialog_respond (self->dialog, NEO_RESPONSE_CANCEL);
+        vibeos_dialog_respond (self->dialog, VIBEOS_RESPONSE_CANCEL);
       else
         page_free (self);
       return;
@@ -357,7 +357,7 @@ on_fired (GObject *source, GAsyncResult *result, gpointer data)
       g_variant_unref (fields);
     }
   if (!gtk_widget_get_parent (GTK_WIDGET (self->dialog)))
-    neo_dialog_present (self->dialog, self->window);
+    vibeos_dialog_present (self->dialog, self->window);
   gtk_widget_add_tick_callback (self->scroll, to_last, NULL, NULL);
 }
 
@@ -404,13 +404,13 @@ cal_alert_page_show (GtkWidget *window)
 static char *snoozing;          /* the reminder the picker is open for (one at a time) */
 
 static void
-on_snooze_delay (NeoDialog *dialog, int response, NeoTimePicker *picker)
+on_snooze_delay (VibeosDialog *dialog, int response, VibeosTimePicker *picker)
 {
   int hour, minute;
 
   /* OK: snoozed with that delay; a cancel leaves the reminder as it was */
-  neo_time_picker_get_time (picker, &hour, &minute);
-  if (response == NEO_RESPONSE_OK && snoozing)
+  vibeos_time_picker_get_time (picker, &hour, &minute);
+  if (response == VIBEOS_RESPONSE_OK && snoozing)
     service_call ("Snooze", g_variant_new ("(si)", snoozing, hour * 60 + minute));
   g_clear_pointer (&snoozing, g_free);
 }
@@ -418,7 +418,7 @@ on_snooze_delay (NeoDialog *dialog, int response, NeoTimePicker *picker)
 void
 cal_alert_snooze_delay (GtkWidget *window, const char *occurrence, int minutes)
 {
-  NeoDialog *dialog;
+  VibeosDialog *dialog;
   GtkWidget *picker;
 
   /* the default delay, 5 minutes when it is none */
@@ -426,17 +426,17 @@ cal_alert_snooze_delay (GtkWidget *window, const char *occurrence, int minutes)
     minutes = 5;
   g_free (snoozing);
   snoozing = g_strdup (occurrence);
-  /* libneo's time picker (not the editor's), titled, its clock always 24-hour: hours and minutes of delay, not a
+  /* libvibeos's time picker (not the editor's), titled, its clock always 24-hour: hours and minutes of delay, not a
    * time of day */
-  dialog = neo_dialog_new (_("Set snooze delay"));
-  neo_dialog_set_flush (dialog, TRUE);
+  dialog = vibeos_dialog_new (_("Set snooze delay"));
+  vibeos_dialog_set_flush (dialog, TRUE);
   gtk_widget_add_css_class (GTK_WIDGET (dialog), "cal-snooze-dialog");
-  picker = neo_time_picker_new (minutes / 60 % 24, minutes % 60, TRUE);
-  neo_dialog_set_content (dialog, picker);
-  neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  neo_dialog_add_button (dialog, _("OK"), NEO_RESPONSE_OK);
+  picker = vibeos_time_picker_new (minutes / 60 % 24, minutes % 60, TRUE);
+  vibeos_dialog_set_content (dialog, picker);
+  vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  vibeos_dialog_add_button (dialog, _("OK"), VIBEOS_RESPONSE_OK);
   g_signal_connect (dialog, "response", G_CALLBACK (on_snooze_delay), picker);
-  neo_dialog_present (dialog, window);
+  vibeos_dialog_present (dialog, window);
 }
 
 /* --- Email guests */

@@ -115,7 +115,7 @@ export class ScreenshotChord {
             this._flashOnce();
             await captureScreenshot(content.get_texture(), null, 1, null);
         } catch (e) {
-            logError(e, 'gnome-phone: screenshot');
+            logError(e, 'vibeos: screenshot');
         }
     }
 

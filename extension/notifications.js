@@ -185,10 +185,10 @@ function chronometer(base, countDown) {
 // what follows the "•" in the header: the chronometer, the sub-text, both, or else how long ago it came
 function headerInfo(n) {
     const parts = [];
-    if (n.neoSubtext)
-        parts.push(n.neoSubtext);
-    if (n.neoChronometer)
-        parts.push(chronometer(n.neoChronometer, n.neoCountDown));
+    if (n.vibeosSubtext)
+        parts.push(n.vibeosSubtext);
+    if (n.vibeosChronometer)
+        parts.push(chronometer(n.vibeosChronometer, n.vibeosCountDown));
     return parts.length ? parts.join(' \u2022 ') : shortTime(n.datetime);
 }
 
@@ -203,21 +203,21 @@ function keepHeaderHints() {
         return () => {};
     const notify = daemon.NotifyAsync;
     daemon.NotifyAsync = function (params, invocation) {
-        this._neoHints = params[6];
+        this._vibeosHints = params[6];
         try {
             return notify.call(this, params, invocation);
         } finally {
-            this._neoHints = null;
+            this._vibeosHints = null;
         }
     };
     const proto = FdoNotificationDaemonSource.prototype;
     const process = proto.processNotification;
     proto.processNotification = function (notification, ...args) {
-        const hints = daemon._neoHints;
+        const hints = daemon._vibeosHints;
         if (hints) {
-            notification.neoChronometer = Number(hints['x-neo-chronometer'] ?? 0);
-            notification.neoCountDown = !!hints['x-neo-chronometer-countdown'];
-            notification.neoSubtext = hints['x-neo-subtext'] ?? '';
+            notification.vibeosChronometer = Number(hints['x-vibeos-chronometer'] ?? 0);
+            notification.vibeosCountDown = !!hints['x-vibeos-chronometer-countdown'];
+            notification.vibeosSubtext = hints['x-vibeos-subtext'] ?? '';
         }
         return process.call(this, notification, ...args);
     };
@@ -429,8 +429,8 @@ class Row extends St.Widget {
             this._layoutContent();
         }
         // the next whole second from the chronometer's base, where its text changes
-        if (n.neoChronometer && this.mapped && !this._tickId) {
-            const phase = ((GLib.get_real_time() / 1000 - n.neoChronometer) % 1000 + 1000) % 1000;
+        if (n.vibeosChronometer && this.mapped && !this._tickId) {
+            const phase = ((GLib.get_real_time() / 1000 - n.vibeosChronometer) % 1000 + 1000) % 1000;
             this._tickId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, Math.ceil(1000 - phase) + 1, () => {
                 this._tickId = 0;
                 this._setTime(false);

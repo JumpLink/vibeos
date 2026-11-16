@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=vibeos.Messaging.Sms
+Exec=@bindir@/vibeos-messaging-sms
+SystemdService=vibeos-messaging-sms.service

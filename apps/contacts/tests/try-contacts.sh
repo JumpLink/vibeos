@@ -8,20 +8,20 @@
 # number calls nobody.
 #
 #   try-contacts.sh start BUILD     the bus, EDS, the schema, the contacts (BUILD: the meson build directory)
-#   try-contacts.sh app BUILD [ARGS] the app on the neo-headless display "contacts" (started if needed)
+#   try-contacts.sh app BUILD [ARGS] the app on the vibeos-headless display "contacts" (started if needed)
 #   try-contacts.sh action NAME [PARAMETER]   activate one of the app's actions (gapplication action)
 #   try-contacts.sh stop            the app, the display, EDS and the bus: only the PIDs this script recorded
 #
-# Run it as root on the phone, as neo-headless is; the app and EDS run as the session user.
+# Run it as root on the phone, as vibeos-headless is; the app and EDS run as the session user.
 set -eu
 
-USER_NAME=${NEO_USER:-user}
+USER_NAME=${VIBEOS_USER:-user}
 UID_=$(id -u "$USER_NAME")
 RUNTIME=/run/user/$UID_
 RIG=${CT_RIG_DIR:-$RUNTIME/contacts-rig}
-HEADLESS=${NEO_HEADLESS_TOOL:-/root/neo-tools/neo-headless}
+HEADLESS=${VIBEOS_HEADLESS_TOOL:-/root/vibeos-tools/vibeos-headless}
 HERE=$(dirname "$(readlink -f "$0")")
-export NEO_HEADLESS=contacts
+export VIBEOS_HEADLESS=contacts
 
 as_user() {
     sudo -u "$USER_NAME" env XDG_RUNTIME_DIR="$RUNTIME" "$@"
@@ -49,7 +49,7 @@ start)
     fi
     as_user mkdir -p "$RIG/data/applications" "$RIG/config" "$RIG/cache" "$RIG/schemas"
     # the app's schema, compiled where GSETTINGS_SCHEMA_DIR points (the system's stay on the path too)
-    as_user cp "$HERE/../data/neo.Contacts.gschema.xml" "$RIG/schemas/"
+    as_user cp "$HERE/../data/vibeos.Contacts.gschema.xml" "$RIG/schemas/"
     as_user glib-compile-schemas "$RIG/schemas"
     # the stand-in for the apps that take links: it only writes down what it was given
     as_user sh -c "cat >'$RIG/links.sh'" <<EOF
@@ -100,11 +100,11 @@ app)
     # `env` execs the app, so the display's recorded app PID is the app's own (its shots come on SIGUSR1)
     sh "$HEADLESS" run env DBUS_SESSION_BUS_ADDRESS="$(cat "$RIG/bus")" CT_RIG_DIR="$RIG" \
         XDG_DATA_HOME="$RIG/data" XDG_CONFIG_HOME="$RIG/config" XDG_CACHE_HOME="$RIG/cache" \
-        GSETTINGS_BACKEND=memory GSETTINGS_SCHEMA_DIR="$RIG/schemas" "$build/neo-contacts" "$@"
+        GSETTINGS_BACKEND=memory GSETTINGS_SCHEMA_DIR="$RIG/schemas" "$build/vibeos-contacts" "$@"
     ;;
 action)
     shift
-    rig gapplication action neo.Contacts "$@"
+    rig gapplication action vibeos.Contacts "$@"
     ;;
 stop)
     sh "$HEADLESS" stop || true

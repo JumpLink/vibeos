@@ -8,10 +8,10 @@
 #include <glib/gi18n.h>
 #include <spongy-gtk.h>
 
-NeoDialog *
+VibeosDialog *
 fm_dialog_new (const char *title, GtkWidget **content)
 {
-  NeoDialog *dialog = neo_dialog_new (NULL);
+  VibeosDialog *dialog = vibeos_dialog_new (NULL);
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
 
   gtk_widget_add_css_class (box, "fm-dialog-content");
@@ -24,17 +24,17 @@ fm_dialog_new (const char *title, GtkWidget **content)
     }
   else
     gtk_widget_add_css_class (box, "untitled");
-  neo_dialog_set_content (dialog, box);
+  vibeos_dialog_set_content (dialog, box);
   *content = box;
   return dialog;
 }
 
 GtkWidget *
-fm_dialog_add_button (NeoDialog *dialog, const char *label, int response)
+fm_dialog_add_button (VibeosDialog *dialog, const char *label, int response)
 {
   g_autofree char *caps = fm_caps (label);
 
-  return neo_dialog_add_button (dialog, caps, response);
+  return vibeos_dialog_add_button (dialog, caps, response);
 }
 
 GtkWidget *
@@ -42,7 +42,7 @@ fm_entry_new (const char *text)
 {
   GtkWidget *entry = gtk_entry_new ();
 
-  gtk_widget_add_css_class (entry, "neo-entry");
+  gtk_widget_add_css_class (entry, "vibeos-entry");
   gtk_widget_add_css_class (entry, "fm-entry");
   if (text)
     gtk_editable_set_text (GTK_EDITABLE (entry), text);
@@ -88,20 +88,20 @@ text_changed (GtkEditable *entry, TextDialog *text)
 }
 
 static void
-on_text_response (NeoDialog *dialog, int response, TextDialog *text)
+on_text_response (VibeosDialog *dialog, int response, TextDialog *text)
 {
   g_autofree char *value = g_strdup (gtk_editable_get_text (GTK_EDITABLE (text->entry)));
 
-  text->done (response == NEO_RESPONSE_OK ? value : NULL, text->data);
+  text->done (response == VIBEOS_RESPONSE_OK ? value : NULL, text->data);
 }
 
 static void
-on_text_activate (GtkEntry *entry, NeoDialog *dialog)
+on_text_activate (GtkEntry *entry, VibeosDialog *dialog)
 {
   TextDialog *text = g_object_get_data (G_OBJECT (dialog), "fm-text");
 
   if (gtk_widget_get_sensitive (text->ok))
-    neo_dialog_respond (dialog, NEO_RESPONSE_OK);
+    vibeos_dialog_respond (dialog, VIBEOS_RESPONSE_OK);
 }
 
 static gboolean
@@ -119,7 +119,7 @@ fm_text_dialog (GtkWidget *parent, const char *title, const char *value, int sel
                 FmTextDone done, gpointer data)
 {
   GtkWidget *content;
-  NeoDialog *dialog = fm_dialog_new (title, &content);
+  VibeosDialog *dialog = fm_dialog_new (title, &content);
   TextDialog *text = g_new0 (TextDialog, 1);
 
   text->check = check;
@@ -132,14 +132,14 @@ fm_text_dialog (GtkWidget *parent, const char *title, const char *value, int sel
   gtk_widget_set_visible (text->error, FALSE);
   gtk_box_append (GTK_BOX (content), text->entry);
   gtk_box_append (GTK_BOX (content), text->error);
-  fm_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  text->ok = fm_dialog_add_button (dialog, _("OK"), NEO_RESPONSE_OK);
+  fm_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  text->ok = fm_dialog_add_button (dialog, _("OK"), VIBEOS_RESPONSE_OK);
   g_object_set_data_full (G_OBJECT (dialog), "fm-text", text, g_free);
   g_signal_connect (text->entry, "changed", G_CALLBACK (text_changed), text);
   g_signal_connect (text->entry, "activate", G_CALLBACK (on_text_activate), dialog);
   g_signal_connect (dialog, "response", G_CALLBACK (on_text_response), text);
   text_changed (GTK_EDITABLE (text->entry), text);
-  neo_dialog_present (dialog, parent);
+  vibeos_dialog_present (dialog, parent);
   /* after the dialog's own focus, which selects all */
   g_idle_add_full (G_PRIORITY_DEFAULT_IDLE, select_stem, text, NULL);
 }
@@ -152,26 +152,26 @@ typedef struct {
 } Confirm;
 
 static void
-on_confirm_response (NeoDialog *dialog, int response, Confirm *confirm)
+on_confirm_response (VibeosDialog *dialog, int response, Confirm *confirm)
 {
-  confirm->done (response == NEO_RESPONSE_OK, confirm->data);
+  confirm->done (response == VIBEOS_RESPONSE_OK, confirm->data);
 }
 
 void
 fm_confirm_dialog (GtkWidget *parent, const char *title, const char *message, FmConfirmDone done, gpointer data)
 {
   GtkWidget *content;
-  NeoDialog *dialog = fm_dialog_new (title, &content);
+  VibeosDialog *dialog = fm_dialog_new (title, &content);
   Confirm *confirm = g_new0 (Confirm, 1);
 
   confirm->done = done;
   confirm->data = data;
   gtk_box_append (GTK_BOX (content), fm_label (message, "fm-dialog-message", 16, TRUE));
-  fm_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  fm_dialog_add_button (dialog, _("OK"), NEO_RESPONSE_OK);
+  fm_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  fm_dialog_add_button (dialog, _("OK"), VIBEOS_RESPONSE_OK);
   g_object_set_data_full (G_OBJECT (dialog), "fm-confirm", confirm, g_free);
   g_signal_connect (dialog, "response", G_CALLBACK (on_confirm_response), confirm);
-  neo_dialog_present (dialog, parent);
+  vibeos_dialog_present (dialog, parent);
 }
 
 /* ---- a list to pick from ---------------------------------------------------------------------------------------- */
@@ -183,18 +183,18 @@ typedef struct {
 } ListDialog;
 
 static void
-on_list_row (NeoPressable *row, NeoDialog *dialog)
+on_list_row (VibeosPressable *row, VibeosDialog *dialog)
 {
   ListDialog *list = g_object_get_data (G_OBJECT (dialog), "fm-list");
 
   list->index = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (row), "fm-index"));
-  neo_dialog_respond (dialog, NEO_RESPONSE_OK);
+  vibeos_dialog_respond (dialog, VIBEOS_RESPONSE_OK);
 }
 
 static void
-on_list_response (NeoDialog *dialog, int response, ListDialog *list)
+on_list_response (VibeosDialog *dialog, int response, ListDialog *list)
 {
-  list->chosen (response == NEO_RESPONSE_OK ? list->index : -1, list->data);
+  list->chosen (response == VIBEOS_RESPONSE_OK ? list->index : -1, list->data);
 }
 
 void
@@ -202,7 +202,7 @@ fm_list_dialog (GtkWidget *parent, const char *title, const FmListRow *rows, int
                 gpointer data)
 {
   GtkWidget *content;
-  NeoDialog *dialog = fm_dialog_new (title, &content);
+  VibeosDialog *dialog = fm_dialog_new (title, &content);
   ListDialog *list = g_new0 (ListDialog, 1);
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *scroll = spongy_scroll_view_new ();
@@ -232,10 +232,10 @@ fm_list_dialog (GtkWidget *parent, const char *title, const FmListRow *rows, int
       gtk_widget_set_hexpand (label, TRUE);
       gtk_box_append (GTK_BOX (line), icon);
       gtk_box_append (GTK_BOX (line), label);
-      row = neo_pressable_new (line);
+      row = vibeos_pressable_new (line);
       gtk_widget_add_css_class (row, "fm-list-dialog-row");
-      neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
-      neo_pressable_set_ripple_color (NEO_PRESSABLE (row), &ripple);
+      vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
+      vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
       g_object_set_data (G_OBJECT (row), "fm-index", GINT_TO_POINTER (i));
       g_signal_connect (row, "clicked", G_CALLBACK (on_list_row), dialog);
       gtk_box_append (GTK_BOX (box), row);
@@ -245,7 +245,7 @@ fm_list_dialog (GtkWidget *parent, const char *title, const FmListRow *rows, int
   gtk_box_append (GTK_BOX (content), scroll);
   g_object_set_data_full (G_OBJECT (dialog), "fm-list", list, g_free);
   g_signal_connect (dialog, "response", G_CALLBACK (on_list_response), list);
-  neo_dialog_present (dialog, parent);
+  vibeos_dialog_present (dialog, parent);
 }
 
 /* ---- counting in a worker (Properties, Delete) ------------------------------------------------------------------- */
@@ -330,7 +330,7 @@ property_row (GtkWidget *content, const char *label, const char *value)
   gtk_box_append (GTK_BOX (content), fm_form_row (label, text));
   gtk_widget_remove_css_class (gtk_widget_get_prev_sibling (text), "fm-form-label");
   gtk_widget_add_css_class (gtk_widget_get_prev_sibling (text), "fm-property-label");
-  neo_label_set_font_padding (gtk_widget_get_prev_sibling (text), 14);
+  vibeos_label_set_font_padding (gtk_widget_get_prev_sibling (text), 14);
   return text;
 }
 
@@ -362,7 +362,7 @@ void
 fm_properties_dialog (GtkWidget *parent, GPtrArray *items)
 {
   GtkWidget *content;
-  NeoDialog *dialog = fm_dialog_new (_("Properties"), &content);
+  VibeosDialog *dialog = fm_dialog_new (_("Properties"), &content);
   Properties *properties = g_new0 (Properties, 1);
   FmItem *first = items->pdata[0];
   guint folders = 0;
@@ -421,11 +421,11 @@ fm_properties_dialog (GtkWidget *parent, GPtrArray *items)
     }
   if (properties->contents)
     g_object_set_data (G_OBJECT (properties->contents), "fm-top", GUINT_TO_POINTER (folders));
-  fm_dialog_add_button (dialog, _("OK"), NEO_RESPONSE_OK);
+  fm_dialog_add_button (dialog, _("OK"), VIBEOS_RESPONSE_OK);
   g_object_set_data_full (G_OBJECT (dialog), "fm-properties", properties, g_free);
   if (properties->size)
     count_items (items, GTK_WIDGET (dialog), on_properties_counted, properties);
-  neo_dialog_present (dialog, parent);
+  vibeos_dialog_present (dialog, parent);
 }
 
 /* ---- View ------------------------------------------------------------------------------------------------------- */
@@ -476,16 +476,16 @@ view_type_row (const char *label, const char *icon_name, const char *description
   gtk_image_set_pixel_size (GTK_IMAGE (image), 20);
   gtk_widget_add_css_class (image, "fm-view-type-icon");
   gtk_widget_set_valign (image, GTK_ALIGN_CENTER);
-  gtk_box_insert_child_after (GTK_BOX (neo_pressable_get_child (NEO_PRESSABLE (row))), image,
+  gtk_box_insert_child_after (GTK_BOX (vibeos_pressable_get_child (VIBEOS_PRESSABLE (row))), image,
                               fm_check_row_get_check (row));
   gtk_accessible_update_property (GTK_ACCESSIBLE (row), GTK_ACCESSIBLE_PROPERTY_LABEL, description, -1);
   return row;
 }
 
 static void
-on_view_response (NeoDialog *dialog, int response, View *view)
+on_view_response (VibeosDialog *dialog, int response, View *view)
 {
-  if (response != NEO_RESPONSE_OK)
+  if (response != VIBEOS_RESPONSE_OK)
     return;
   g_settings_set_string (view->settings, "view-type",
                          fm_check_get_active (fm_check_row_get_check (view->types[1])) ? "grid" : "list");
@@ -505,7 +505,7 @@ fm_view_dialog (GtkWidget *parent, GSettings *settings)
     N_("Type ▼"),
   };
   GtkWidget *content;
-  NeoDialog *dialog = fm_dialog_new (_("View"), &content);
+  VibeosDialog *dialog = fm_dialog_new (_("View"), &content);
   View *view = g_new0 (View, 1);
   GtkWidget *grid = gtk_grid_new (), *types = gtk_grid_new ();
   g_autofree char *current = g_settings_get_string (settings, "sort-order");
@@ -541,11 +541,11 @@ fm_view_dialog (GtkWidget *parent, GSettings *settings)
   gtk_widget_add_css_class (view->hidden, "fm-view-first-check");
   gtk_box_append (GTK_BOX (content), view->hidden);
   gtk_box_append (GTK_BOX (content), view->thumbnails);
-  fm_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  fm_dialog_add_button (dialog, _("OK"), NEO_RESPONSE_OK);
+  fm_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  fm_dialog_add_button (dialog, _("OK"), VIBEOS_RESPONSE_OK);
   g_object_set_data_full (G_OBJECT (dialog), "fm-view", view, view_free);
   g_signal_connect (dialog, "response", G_CALLBACK (on_view_response), view);
-  neo_dialog_present (dialog, parent);
+  vibeos_dialog_present (dialog, parent);
 }
 
 /* ---- Delete ----------------------------------------------------------------------------------------------------- */
@@ -605,11 +605,11 @@ on_delete_counted (const FmCount *count, gpointer data)
 }
 
 static void
-on_delete_response (NeoDialog *dialog, int response, Delete *del)
+on_delete_response (VibeosDialog *dialog, int response, Delete *del)
 {
   gboolean permanently = !del->permanent || fm_check_get_active (fm_check_row_get_check (del->permanent));
 
-  del->done (response == NEO_RESPONSE_OK, permanently, del->data);
+  del->done (response == VIBEOS_RESPONSE_OK, permanently, del->data);
 }
 
 void
@@ -617,7 +617,7 @@ fm_delete_dialog (GtkWidget *parent, GPtrArray *items, gboolean can_trash, gbool
                   gpointer data)
 {
   GtkWidget *content;
-  NeoDialog *dialog = fm_dialog_new (_("Delete"), &content);
+  VibeosDialog *dialog = fm_dialog_new (_("Delete"), &content);
   Delete *del = g_new0 (Delete, 1);
 
   del->items = g_ptr_array_ref (items);
@@ -637,10 +637,10 @@ fm_delete_dialog (GtkWidget *parent, GPtrArray *items, gboolean can_trash, gbool
       gtk_box_append (GTK_BOX (content), del->permanent);
     }
   delete_message (del);
-  fm_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  fm_dialog_add_button (dialog, _("OK"), NEO_RESPONSE_OK);
+  fm_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  fm_dialog_add_button (dialog, _("OK"), VIBEOS_RESPONSE_OK);
   g_object_set_data_full (G_OBJECT (dialog), "fm-delete", del, delete_free);
   g_signal_connect (dialog, "response", G_CALLBACK (on_delete_response), del);
   count_items (items, GTK_WIDGET (dialog), on_delete_counted, del);
-  neo_dialog_present (dialog, parent);
+  vibeos_dialog_present (dialog, parent);
 }

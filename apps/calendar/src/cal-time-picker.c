@@ -23,7 +23,7 @@
 
 #include <glib/gi18n.h>
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -44,7 +44,7 @@
 #define CARD_KEYBOARD_24H 264           /* the two fields, the colon and the sides */
 
 typedef struct {
-  NeoDialog *dialog;
+  VibeosDialog *dialog;
   GtkWidget *content, *display, *hour_box, *minute_box, *hour_label, *minute_label, *face, *period;
   GtkWidget *mode, *input, *input_period, *hour_stack, *minute_stack, *hour_chip, *minute_chip;
   GtkWidget *hour_chip_label, *minute_chip_label, *hour_field, *minute_field;
@@ -81,7 +81,7 @@ struct _CalClockFace {
   GtkWidget parent;
   Picker *picker;
   double angle;                         /* the hand, in degrees clockwise from 12 o'clock */
-  NeoAnim *turn;
+  VibeosAnim *turn;
   gboolean dragged;
 };
 
@@ -105,7 +105,7 @@ draw_numbers (CalClockFace *self, GtkSnapshot *snapshot, double cx, double cy, c
   Picker *picker = self->picker;
   double baseline, height;
 
-  cal_text_line (NUMBER_SIZE, neo_device_scale (GTK_WIDGET (self)), &baseline, &height);
+  cal_text_line (NUMBER_SIZE, vibeos_device_scale (GTK_WIDGET (self)), &baseline, &height);
   for (int ring = 0; ring < (picker->minutes || !picker->use_24h ? 1 : 2); ring++)
     for (int i = 0; i < 12; i++)
       {
@@ -170,7 +170,7 @@ cal_clock_face_measure (GtkWidget *widget, GtkOrientation orientation, int for_s
 }
 
 static void
-on_turn (NeoAnim *anim, double value, gpointer data)
+on_turn (VibeosAnim *anim, double value, gpointer data)
 {
   CalClockFace *self = data;
 
@@ -191,10 +191,10 @@ turn_to_value (CalClockFace *self, gboolean animate)
   else if (from - target > 180)
     from -= 360;
   if (animate)
-    neo_anim_start (self->turn, from, target, TURN_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
+    vibeos_anim_start (self->turn, from, target, TURN_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
   else
     {
-      neo_anim_stop (self->turn);
+      vibeos_anim_stop (self->turn);
       self->angle = target;
       gtk_widget_queue_draw (GTK_WIDGET (self));
     }
@@ -263,7 +263,7 @@ cal_clock_face_dispose (GObject *object)
 {
   CalClockFace *self = CAL_CLOCK_FACE (object);
 
-  g_clear_pointer (&self->turn, neo_anim_free);
+  g_clear_pointer (&self->turn, vibeos_anim_free);
   G_OBJECT_CLASS (cal_clock_face_parent_class)->dispose (object);
 }
 
@@ -280,7 +280,7 @@ cal_clock_face_init (CalClockFace *self)
 {
   GtkGesture *drag = gtk_gesture_drag_new ();
 
-  self->turn = neo_anim_new (GTK_WIDGET (self), on_turn, self);
+  self->turn = vibeos_anim_new (GTK_WIDGET (self), on_turn, self);
   g_signal_connect (drag, "drag-begin", G_CALLBACK (on_drag_begin), self);
   g_signal_connect (drag, "drag-update", G_CALLBACK (on_drag_update), self);
   g_signal_connect (drag, "drag-end", G_CALLBACK (on_drag_end), self);
@@ -429,13 +429,13 @@ set_minutes (Picker *picker, gboolean minutes)
 }
 
 static void
-on_hour_box (NeoPressable *box, Picker *picker)
+on_hour_box (VibeosPressable *box, Picker *picker)
 {
   set_minutes (picker, FALSE);
 }
 
 static void
-on_minute_box (NeoPressable *box, Picker *picker)
+on_minute_box (VibeosPressable *box, Picker *picker)
 {
   set_minutes (picker, TRUE);
 }
@@ -447,9 +447,9 @@ time_box (Picker *picker, GtkWidget **label, const char *name, GCallback callbac
 
   *label = gtk_label_new (NULL);
   gtk_widget_add_css_class (*label, "cal-time-text");
-  box = neo_pressable_new (*label);
+  box = vibeos_pressable_new (*label);
   gtk_widget_add_css_class (box, "cal-time-box");
-  neo_pressable_set_ripple (NEO_PRESSABLE (box), NEO_RIPPLE_BOUNDED, 8);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (box), VIBEOS_RIPPLE_BOUNDED, 8);
   gtk_widget_set_size_request (box, BOX_WIDTH, BOX_HEIGHT);
   gtk_accessible_update_property (GTK_ACCESSIBLE (box), GTK_ACCESSIBLE_PROPERTY_DESCRIPTION, name, -1);
   g_signal_connect (box, "clicked", callback, picker);
@@ -461,7 +461,7 @@ time_box (Picker *picker, GtkWidget **label, const char *name, GCallback callbac
 static void sync_fields (Picker *picker);
 
 static void
-on_period (NeoPressable *button, Picker *picker)
+on_period (VibeosPressable *button, Picker *picker)
 {
   gboolean pm = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (button), "cal-pm"));
 
@@ -488,10 +488,10 @@ period_toggle (Picker *picker, GtkWidget *row, const char *place_class)
   gtk_accessible_update_property (GTK_ACCESSIBLE (group), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Select AM or PM"), -1);
   for (int pm = 0; pm < 2; pm++)
     {
-      GtkWidget *button = neo_pressable_new (gtk_label_new (pm ? _("PM") : _("AM")));
+      GtkWidget *button = vibeos_pressable_new (gtk_label_new (pm ? _("PM") : _("AM")));
 
       gtk_widget_add_css_class (button, "cal-time-period-button");
-      neo_pressable_set_ripple (NEO_PRESSABLE (button), NEO_RIPPLE_BOUNDED, 0);
+      vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_BOUNDED, 0);
       gtk_widget_set_vexpand (button, TRUE);
       g_object_set_data (G_OBJECT (button), "cal-pm", GINT_TO_POINTER (pm));
       g_signal_connect (button, "clicked", G_CALLBACK (on_period), picker);
@@ -612,13 +612,13 @@ on_field_activate (GtkText *text, Picker *picker)
 }
 
 static void
-on_hour_chip (NeoPressable *box, Picker *picker)
+on_hour_chip (VibeosPressable *box, Picker *picker)
 {
   check_field (picker, FALSE);
 }
 
 static void
-on_minute_chip (NeoPressable *box, Picker *picker)
+on_minute_chip (VibeosPressable *box, Picker *picker)
 {
   check_field (picker, TRUE);
 }
@@ -650,7 +650,7 @@ combo (Picker *picker, gboolean minutes)
   gtk_widget_add_controller (text, keys);
 
   gtk_label_set_xalign (GTK_LABEL (label), 0);
-  neo_label_set_font_padding (label, 12);
+  vibeos_label_set_font_padding (label, 12);
   gtk_widget_add_css_class (label, "cal-time-input-label");
   gtk_box_append (GTK_BOX (box), label);
   if (minutes)
@@ -698,9 +698,9 @@ keyboard_input (Picker *picker)
 
 /* the keyboard and the clock button */
 static void
-on_mode (NeoPressable *button, Picker *picker)
+on_mode (VibeosPressable *button, Picker *picker)
 {
-  GtkWidget *image = neo_pressable_get_child (button);
+  GtkWidget *image = vibeos_pressable_get_child (button);
 
   picker->keyboard = !picker->keyboard;
   gtk_widget_set_visible (picker->display, !picker->keyboard);
@@ -729,9 +729,9 @@ on_mode (NeoPressable *button, Picker *picker)
 }
 
 static void
-on_response (NeoDialog *dialog, int response, Picker *picker)
+on_response (VibeosDialog *dialog, int response, Picker *picker)
 {
-  if (response == NEO_RESPONSE_OK)
+  if (response == VIBEOS_RESPONSE_OK)
     picker->chosen (picker->hour, picker->minute, picker->data);
 }
 
@@ -745,7 +745,7 @@ void
 cal_time_picker_show (GtkWidget *parent, int hour, int minute, CalTimeChosen chosen, gpointer data)
 {
   Picker *picker = g_new0 (Picker, 1);
-  NeoDialog *dialog = neo_dialog_new (NULL);
+  VibeosDialog *dialog = vibeos_dialog_new (NULL);
   GtkWidget *content = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *title = gtk_label_new (_("Select time"));
   GtkWidget *display = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
@@ -762,7 +762,7 @@ cal_time_picker_show (GtkWidget *parent, int hour, int minute, CalTimeChosen cho
   picker->data = data;
 
   gtk_label_set_xalign (GTK_LABEL (title), 0);
-  neo_label_set_font_padding (title, 12);
+  vibeos_label_set_font_padding (title, 12);
   gtk_widget_add_css_class (title, "cal-time-title");
   gtk_box_append (GTK_BOX (content), title);
 
@@ -795,22 +795,22 @@ cal_time_picker_show (GtkWidget *parent, int hour, int minute, CalTimeChosen cho
 
   gtk_widget_set_size_request (content, picker->use_24h ? CARD_CLOCK_24H : CARD_12H, -1);
   gtk_widget_add_css_class (content, "cal-time-picker");
-  neo_dialog_set_flush (dialog, TRUE);
-  neo_dialog_set_content (dialog, content);
+  vibeos_dialog_set_flush (dialog, TRUE);
+  vibeos_dialog_set_content (dialog, content);
   gtk_widget_add_css_class (gtk_widget_get_parent (content), "cal-time-card");
-  neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  neo_dialog_add_button (dialog, _("OK"), NEO_RESPONSE_OK);
+  vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  vibeos_dialog_add_button (dialog, _("OK"), VIBEOS_RESPONSE_OK);
 
   /* the keyboard button at the start of the buttons' row (the card's last child), a little higher than Cancel
    * and OK */
-  picker->mode = neo_icon_button_new ("cal-keyboard-symbolic");
+  picker->mode = vibeos_icon_button_new ("cal-keyboard-symbolic");
   gtk_widget_add_css_class (picker->mode, "cal-time-mode");
   gtk_widget_set_valign (picker->mode, GTK_ALIGN_START);
   gtk_accessible_update_property (GTK_ACCESSIBLE (picker->mode), GTK_ACCESSIBLE_PROPERTY_LABEL,
                                   _("Switch to text input mode for the time input."), -1);
   g_signal_connect (picker->mode, "clicked", G_CALLBACK (on_mode), picker);
   buttons = gtk_widget_get_last_child (gtk_widget_get_parent (content));
-  if (buttons && gtk_widget_has_css_class (buttons, "neo-dialog-buttons"))
+  if (buttons && gtk_widget_has_css_class (buttons, "vibeos-dialog-buttons"))
     {
       space = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
       gtk_widget_set_hexpand (space, TRUE);
@@ -823,5 +823,5 @@ cal_time_picker_show (GtkWidget *parent, int hour, int minute, CalTimeChosen cho
   show_value (picker);
   set_minutes (picker, FALSE);
   turn_to_value (face, FALSE);
-  neo_dialog_present (dialog, parent);
+  vibeos_dialog_present (dialog, parent);
 }

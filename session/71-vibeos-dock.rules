@@ -1,0 +1,2 @@
+# a display plugged in or out: vibeos-dock picks the session
+ACTION=="change", SUBSYSTEM=="drm", ENV{HOTPLUG}=="1", RUN+="/usr/bin/systemctl --no-block start vibeos-dock.service"

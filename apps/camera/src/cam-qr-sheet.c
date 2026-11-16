@@ -2,7 +2,7 @@
 #include "cam-qr-sheet.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <string.h>
 
 #define SHEET_MAX_W      640      /* the widest the sheet gets */
@@ -201,7 +201,7 @@ cam_qr_classify (const char *raw)
       result->kind = CAM_QR_EVENT;
       result->data = property (text, "SUMMARY");
       result->content = strstr (text, "BEGIN:VCALENDAR") ? g_strdup (text)
-                        : g_strdup_printf ("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//neo-camera//EN\r\n%s\r\n"
+                        : g_strdup_printf ("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//vibeos-camera//EN\r\n%s\r\n"
                                            "END:VCALENDAR\r\n", text);
       result->mime = "text/calendar";
     }
@@ -406,7 +406,7 @@ struct _CamQrSheet {
   GAppInfo       *app;
   double          shown;          /* 0 … 1: the scrim's fade and the sheet's rise */
   double          drag;           /* px the finger has pulled the sheet down */
-  NeoAnim        *anim;
+  VibeosAnim        *anim;
   gboolean        closing;
   CamQrDismissed  dismissed;
   gpointer        data;
@@ -455,13 +455,13 @@ cam_qr_sheet_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 }
 
 static void
-on_anim (NeoAnim *anim, double value, gpointer data)
+on_anim (VibeosAnim *anim, double value, gpointer data)
 {
   CamQrSheet *self = data;
 
   self->shown = value;
   gtk_widget_queue_draw (GTK_WIDGET (self));
-  if (self->closing && !neo_anim_is_running (anim))
+  if (self->closing && !vibeos_anim_is_running (anim))
     {
       GtkWidget *overlay = gtk_widget_get_parent (GTK_WIDGET (self));
       CamQrDismissed dismissed = self->dismissed;
@@ -489,7 +489,7 @@ dismiss (CamQrSheet *self)
       self->shown = MAX (0, self->shown - self->drag / h);
       self->drag = 0;
     }
-  neo_anim_start (self->anim, self->shown, 0, EXIT_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
+  vibeos_anim_start (self->anim, self->shown, 0, EXIT_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
 }
 
 static void
@@ -548,7 +548,7 @@ toast (CamQrSheet *self, const char *text)
 }
 
 static void
-on_card (NeoPressable *card, CamQrSheet *self)
+on_card (VibeosPressable *card, CamQrSheet *self)
 {
   g_autoptr(GdkAppLaunchContext) context = NULL;
   g_autoptr(GError) error = NULL;
@@ -560,7 +560,7 @@ on_card (NeoPressable *card, CamQrSheet *self)
   if (self->result->content)
     {
       /* a vCard or an event goes to its app as a file */
-      g_autofree char *dir = g_build_filename (g_get_user_cache_dir (), "neo-camera", NULL);
+      g_autofree char *dir = g_build_filename (g_get_user_cache_dir (), "vibeos-camera", NULL);
       g_autofree char *path = g_build_filename (dir, self->result->kind == CAM_QR_CONTACT ? "scanned.vcf"
                                                                                           : "scanned.ics", NULL);
       g_autoptr(GFile) file = g_file_new_for_path (path);
@@ -580,7 +580,7 @@ on_card (NeoPressable *card, CamQrSheet *self)
 }
 
 static void
-on_copy (NeoPressable *button, CamQrSheet *self)
+on_copy (VibeosPressable *button, CamQrSheet *self)
 {
   /* the code's text, as scanned */
   gdk_clipboard_set_text (gtk_widget_get_clipboard (GTK_WIDGET (self)),
@@ -592,7 +592,7 @@ cam_qr_sheet_dispose (GObject *object)
 {
   CamQrSheet *self = CAM_QR_SHEET (object);
 
-  g_clear_pointer (&self->anim, neo_anim_free);
+  g_clear_pointer (&self->anim, vibeos_anim_free);
   g_clear_pointer (&self->sheet, gtk_widget_unparent);
   g_clear_pointer (&self->result, cam_qr_result_free);
   g_clear_object (&self->app);
@@ -617,7 +617,7 @@ cam_qr_sheet_init (CamQrSheet *self)
   GtkGesture *click = gtk_gesture_click_new ();
   GtkEventController *keys = gtk_event_controller_key_new ();
 
-  self->anim = neo_anim_new (GTK_WIDGET (self), on_anim, self);
+  self->anim = vibeos_anim_new (GTK_WIDGET (self), on_anim, self);
   gtk_widget_set_focusable (GTK_WIDGET (self), TRUE);
   g_signal_connect (click, "pressed", G_CALLBACK (on_scrim_pressed), self);
   gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (click));
@@ -634,7 +634,7 @@ build_sheet (CamQrSheet *self)
   GtkWidget *texts = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *title = gtk_label_new (self->app ? action_title (self->result->kind) : _("Text"));
   GtkWidget *data = gtk_label_new (self->result->data);
-  GtkWidget *copy = neo_icon_button_new ("cam-content-copy-symbolic");
+  GtkWidget *copy = vibeos_icon_button_new ("cam-content-copy-symbolic");
   GtkWidget *card;
   GtkGesture *drag = gtk_gesture_drag_new ();
   const char *icon_name = self->app ? action_icon (self->result->kind) : NULL;
@@ -677,11 +677,11 @@ build_sheet (CamQrSheet *self)
   gtk_widget_set_margin_end (copy, 16);
   gtk_widget_add_css_class (copy, "cam-qr-copy");
   gtk_widget_set_tooltip_text (copy, _("Copy to clipboard"));
-  neo_pressable_set_ripple (NEO_PRESSABLE (copy), NEO_RIPPLE_CIRCLE, 20);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (copy), VIBEOS_RIPPLE_CIRCLE, 20);
   g_signal_connect (copy, "clicked", G_CALLBACK (on_copy), self);
   gtk_box_append (GTK_BOX (row), copy);
-  card = neo_pressable_new (row);
-  neo_pressable_set_ripple (NEO_PRESSABLE (card), NEO_RIPPLE_BOUNDED, 12);
+  card = vibeos_pressable_new (row);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (card), VIBEOS_RIPPLE_BOUNDED, 12);
   gtk_widget_set_size_request (card, -1, 72);
   gtk_widget_set_margin_top (card, 12);
   gtk_widget_set_margin_start (card, 16);
@@ -702,7 +702,7 @@ build_sheet (CamQrSheet *self)
 void
 cam_qr_sheet_show (GtkWidget *parent, const char *text, CamQrDismissed dismissed, gpointer data)
 {
-  GtkOverlay *overlay = neo_window_get_overlay (parent);
+  GtkOverlay *overlay = vibeos_window_get_overlay (parent);
   CamQrSheet *self;
 
   g_return_if_fail (overlay != NULL);
@@ -718,5 +718,5 @@ cam_qr_sheet_show (GtkWidget *parent, const char *text, CamQrDismissed dismissed
   gtk_overlay_set_measure_overlay (overlay, GTK_WIDGET (self), FALSE);
   gtk_overlay_set_clip_overlay (overlay, GTK_WIDGET (self), TRUE);
   gtk_widget_grab_focus (GTK_WIDGET (self));
-  neo_anim_start (self->anim, 0, 1, ENTER_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
+  vibeos_anim_start (self->anim, 0, 1, ENTER_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
 }

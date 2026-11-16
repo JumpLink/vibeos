@@ -350,7 +350,7 @@ recents_content_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 
       type_icon (group->types[i], &icon, &color);
       rgba = text_rgb (color);
-      neo_snapshot_icon (snapshot, widget, icon, x + i * (TYPE_ICON + ICON_MARGIN),
+      vibeos_snapshot_icon (snapshot, widget, icon, x + i * (TYPE_ICON + ICON_MARGIN),
                          row_y + (self->row_height - TYPE_ICON) / 2, TYPE_ICON, &rgba);
     }
   text_draw (snapshot, self->date, DATE_STYLE (group->unread), x + icons_width (group) + ICON_MARGIN,
@@ -398,11 +398,11 @@ struct _RecentsRow
   RecentsPage *page;
   Group *group;
   PangoLayout *header;
-  GtkWidget *primary;           /* a NeoPressable around the content */
+  GtkWidget *primary;           /* a VibeosPressable around the content */
   RecentsContent *content;
   GtkWidget *actions;           /* the actions block, made on the first expand */
   gboolean expanded;
-  NeoAnim *anim;                /* 0 … 1 over the 200 ms, linear: the curves are applied per value */
+  VibeosAnim *anim;                /* 0 … 1 over the 200 ms, linear: the curves are applied per value */
   double height_progress, color_progress;
   double press_x, press_y;      /* where the last touch went down: the context menu opens there */
 };
@@ -574,10 +574,10 @@ action_row (RecentsRow *self, const char *icon_name, const char *text, GCallback
   gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
   gtk_widget_set_margin_start (label, ACTION_TEXT_PAD);
   gtk_widget_add_css_class (label, "dialer-primary-text");
-  neo_label_set_font_padding (label, 16);
+  vibeos_label_set_font_padding (label, 16);
   gtk_box_append (GTK_BOX (box), label);
-  row = neo_pressable_new (box);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (row), &(GdkRGBA) { 1, 1, 1, 0.06 });
+  row = vibeos_pressable_new (box);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &(GdkRGBA) { 1, 1, 1, 0.06 });
   g_signal_connect_swapped (row, "clicked", callback, self);
   return row;
 }
@@ -625,7 +625,7 @@ make_actions (RecentsRow *self)
     gtk_box_append (GTK_BOX (self->actions), details);
   }
   gtk_widget_set_parent (self->actions, GTK_WIDGET (self));
-  gtk_widget_set_child_visible (self->actions, self->expanded && !neo_anim_is_running (self->anim));
+  gtk_widget_set_child_visible (self->actions, self->expanded && !vibeos_anim_is_running (self->anim));
 }
 
 /* the number was blocked or unblocked, or the Contacts app came or went: an open entry's actions are made again */
@@ -641,7 +641,7 @@ recents_row_remake_actions (RecentsRow *self)
 }
 
 static void
-on_anim (NeoAnim *anim, double value, gpointer data)
+on_anim (VibeosAnim *anim, double value, gpointer data)
 {
   RecentsRow *self = data;
 
@@ -653,23 +653,23 @@ on_anim (NeoAnim *anim, double value, gpointer data)
                                         : 1 - spongy_curve (SPONGY_ACCELERATE_DECELERATE, value);
   /* the actions appear when the card has grown, and go when it has shrunk */
   if (self->actions)
-    gtk_widget_set_child_visible (self->actions, self->expanded ? !neo_anim_is_running (anim) : value < 1);
+    gtk_widget_set_child_visible (self->actions, self->expanded ? !vibeos_anim_is_running (anim) : value < 1);
   gtk_widget_queue_resize (GTK_WIDGET (self));
 }
 
 static void
 recents_row_set_expanded (RecentsRow *self, gboolean expanded, gboolean animate)
 {
-  if (expanded == self->expanded && (animate || !neo_anim_is_running (self->anim)))
+  if (expanded == self->expanded && (animate || !vibeos_anim_is_running (self->anim)))
     return;
   self->expanded = expanded;
   if (expanded && !self->actions)
     make_actions (self);
   if (animate && gtk_widget_get_mapped (GTK_WIDGET (self)))
-    neo_anim_start (self->anim, 0, 1, EXPAND_MS, 0, SPONGY_LINEAR);
+    vibeos_anim_start (self->anim, 0, 1, EXPAND_MS, 0, SPONGY_LINEAR);
   else
     {
-      neo_anim_stop (self->anim);
+      vibeos_anim_stop (self->anim);
       self->height_progress = self->color_progress = expanded;
       if (self->actions)
         gtk_widget_set_child_visible (self->actions, expanded);
@@ -726,9 +726,9 @@ recents_row_set_group (RecentsRow *self, Group *group)
   if (group->callable && !content->call)
     {
       /* the call button, borderless */
-      content->call = neo_icon_button_new ("dialer-call-symbolic");
+      content->call = vibeos_icon_button_new ("dialer-call-symbolic");
       gtk_widget_add_css_class (content->call, "dialer-icon");
-      neo_pressable_set_ripple_color (NEO_PRESSABLE (content->call), &(GdkRGBA) { 1, 1, 1, 0.06 });
+      vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (content->call), &(GdkRGBA) { 1, 1, 1, 0.06 });
       gtk_widget_set_parent (content->call, GTK_WIDGET (content));
       g_signal_connect_swapped (content->call, "clicked", G_CALLBACK (on_call_clicked), self);
     }
@@ -753,7 +753,7 @@ recents_row_dispose (GObject *object)
 {
   RecentsRow *self = RECENTS_ROW (object);
 
-  g_clear_pointer (&self->anim, neo_anim_free);
+  g_clear_pointer (&self->anim, vibeos_anim_free);
   g_clear_pointer (&self->primary, gtk_widget_unparent);
   g_clear_pointer (&self->actions, gtk_widget_unparent);
   g_clear_object (&self->header);
@@ -780,10 +780,10 @@ recents_row_init (RecentsRow *self)
   GtkGesture *press;
 
   self->content = g_object_new (RECENTS_TYPE_CONTENT, NULL);
-  self->primary = neo_pressable_new (GTK_WIDGET (self->content));
+  self->primary = vibeos_pressable_new (GTK_WIDGET (self->content));
   /* the press ripple, inside the card's corners */
-  neo_pressable_set_ripple (NEO_PRESSABLE (self->primary), NEO_RIPPLE_BOUNDED, CARD_RADIUS);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (self->primary), &(GdkRGBA) { 1, 1, 1, 0.06 });
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->primary), VIBEOS_RIPPLE_BOUNDED, CARD_RADIUS);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (self->primary), &(GdkRGBA) { 1, 1, 1, 0.06 });
   gtk_widget_set_parent (self->primary, GTK_WIDGET (self));
   g_signal_connect_swapped (self->primary, "clicked", G_CALLBACK (on_primary_clicked), self);
   g_signal_connect_swapped (self->primary, "long-pressed", G_CALLBACK (on_primary_long_pressed), self);
@@ -792,7 +792,7 @@ recents_row_init (RecentsRow *self)
   gtk_event_controller_set_propagation_phase (GTK_EVENT_CONTROLLER (press), GTK_PHASE_CAPTURE);
   g_signal_connect (press, "pressed", G_CALLBACK (on_primary_pressed), self);
   gtk_widget_add_controller (self->primary, GTK_EVENT_CONTROLLER (press));
-  self->anim = neo_anim_new (GTK_WIDGET (self), on_anim, self);
+  self->anim = vibeos_anim_new (GTK_WIDGET (self), on_anim, self);
 }
 
 static RecentsRow *
@@ -811,7 +811,7 @@ struct _RecentsPage
 {
   GtkWidget parent;
   Contacts *contacts;
-  NeoSnackbar *snackbar;
+  VibeosSnackbar *snackbar;
   GtkWidget *stack, *scroller, *list, *empty;
   GPtrArray *groups;            /* Group, not yet given to a row */
   guint n_rows;
@@ -1028,32 +1028,32 @@ menu_country (void)
 }
 
 static void
-on_block_response (NeoDialog *dialog, int response, gpointer data)
+on_block_response (VibeosDialog *dialog, int response, gpointer data)
 {
   MenuTarget *target = data;
   g_autoptr(GError) error = NULL;
 
-  if (response == NEO_RESPONSE_OK
+  if (response == VIBEOS_RESPONSE_OK
       && !blocked_numbers_add (blocked_numbers_get_default (), target->number, menu_country (), &error))
     {
       g_warning ("recents: %s", error->message);
-      neo_snackbar_show (target->page->snackbar, _("Problem blocking this number"), NULL, NULL, NULL,
-                         NEO_SNACKBAR_LONG);
+      vibeos_snackbar_show (target->page->snackbar, _("Problem blocking this number"), NULL, NULL, NULL,
+                         VIBEOS_SNACKBAR_LONG);
     }
 }
 
 static void
-on_unblock_response (NeoDialog *dialog, int response, gpointer data)
+on_unblock_response (VibeosDialog *dialog, int response, gpointer data)
 {
   MenuTarget *target = data;
   g_autoptr(GError) error = NULL;
 
-  if (response == NEO_RESPONSE_OK
+  if (response == VIBEOS_RESPONSE_OK
       && !blocked_numbers_remove (blocked_numbers_get_default (), target->number, menu_country (), &error))
     {
       g_warning ("recents: %s", error->message);
-      neo_snackbar_show (target->page->snackbar, _("Problem unblocking this number"), NULL, NULL, NULL,
-                         NEO_SNACKBAR_LONG);
+      vibeos_snackbar_show (target->page->snackbar, _("Problem unblocking this number"), NULL, NULL, NULL,
+                         VIBEOS_SNACKBAR_LONG);
     }
 }
 
@@ -1064,16 +1064,16 @@ on_menu_block (gpointer data)
   MenuTarget *target = data;
   g_autofree char *shown = phone_number_format (target->number, menu_country ());
   g_autofree char *title = g_strdup_printf (_("Block %s?"), shown);
-  NeoDialog *dialog = neo_dialog_new (title);
+  VibeosDialog *dialog = vibeos_dialog_new (title);
 
-  neo_dialog_set_message (dialog, _("You will no longer receive calls or texts from this number."));
-  neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  neo_dialog_add_button (dialog, _("BLOCK"), NEO_RESPONSE_OK);
+  vibeos_dialog_set_message (dialog, _("You will no longer receive calls or texts from this number."));
+  vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  vibeos_dialog_add_button (dialog, _("BLOCK"), VIBEOS_RESPONSE_OK);
   /* the target lives with the menu, which goes before the dialog answers: the dialog holds its own */
   g_object_set_data_full (G_OBJECT (dialog), "menu-target", menu_target_copy (target), menu_target_free);
   g_signal_connect (dialog, "response", G_CALLBACK (on_block_response),
                     g_object_get_data (G_OBJECT (dialog), "menu-target"));
-  neo_dialog_present (dialog, GTK_WIDGET (target->page));
+  vibeos_dialog_present (dialog, GTK_WIDGET (target->page));
 }
 
 /* "Unblock …?": no title, the question is the message */
@@ -1083,15 +1083,15 @@ on_menu_unblock (gpointer data)
   MenuTarget *target = data;
   g_autofree char *shown = phone_number_format (target->number, menu_country ());
   g_autofree char *question = g_strdup_printf (_("Unblock %s?"), shown);
-  NeoDialog *dialog = neo_dialog_new (NULL);
+  VibeosDialog *dialog = vibeos_dialog_new (NULL);
 
-  neo_dialog_set_message (dialog, question);
-  neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  neo_dialog_add_button (dialog, _("UNBLOCK"), NEO_RESPONSE_OK);
+  vibeos_dialog_set_message (dialog, question);
+  vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  vibeos_dialog_add_button (dialog, _("UNBLOCK"), VIBEOS_RESPONSE_OK);
   g_object_set_data_full (G_OBJECT (dialog), "menu-target", menu_target_copy (target), menu_target_free);
   g_signal_connect (dialog, "response", G_CALLBACK (on_unblock_response),
                     g_object_get_data (G_OBJECT (dialog), "menu-target"));
-  neo_dialog_present (dialog, GTK_WIDGET (target->page));
+  vibeos_dialog_present (dialog, GTK_WIDGET (target->page));
 }
 
 static gboolean
@@ -1161,7 +1161,7 @@ on_dialed (guint id, const GError *error, gpointer data)
   RecentsPage *self = data;
 
   if (error)
-    neo_snackbar_show (self->snackbar, error->message, NULL, NULL, NULL, NEO_SNACKBAR_LONG);
+    vibeos_snackbar_show (self->snackbar, error->message, NULL, NULL, NULL, VIBEOS_SNACKBAR_LONG);
   else
     phone_start_app (INCALL_APP_ID);
   g_object_unref (self);
@@ -1255,7 +1255,7 @@ recents_page_init (RecentsPage *self)
 }
 
 static GtkWidget *
-page_new (Contacts *contacts, NeoSnackbar *snackbar, gboolean missed_only, gboolean can_call)
+page_new (Contacts *contacts, VibeosSnackbar *snackbar, gboolean missed_only, gboolean can_call)
 {
   RecentsPage *self = g_object_new (RECENTS_TYPE_PAGE, NULL);
 
@@ -1277,13 +1277,13 @@ page_new (Contacts *contacts, NeoSnackbar *snackbar, gboolean missed_only, gbool
 }
 
 GtkWidget *
-recents_page_new (Contacts *contacts, NeoSnackbar *snackbar)
+recents_page_new (Contacts *contacts, VibeosSnackbar *snackbar)
 {
   return page_new (contacts, snackbar, FALSE, TRUE);
 }
 
 GtkWidget *
-recents_page_new_history (Contacts *contacts, NeoSnackbar *snackbar, gboolean missed_only)
+recents_page_new_history (Contacts *contacts, VibeosSnackbar *snackbar, gboolean missed_only)
 {
   return page_new (contacts, snackbar, missed_only, FALSE);
 }

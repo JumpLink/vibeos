@@ -1,3 +1,0 @@
-[D-BUS Service]
-Name=neo.Calculator
-Exec=@bindir@/neo-calculator --gapplication-service

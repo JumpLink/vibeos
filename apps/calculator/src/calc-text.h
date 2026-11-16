@@ -9,7 +9,7 @@
  * So with gravity "bottom" the baseline sits at bottom - max (padding_bottom, descent), give or take a pixel's
  * rounding (calc_text_bottom_baseline has the exact rule).
  *
- * Sizes are px of the widget. Fonts: "Neo Roboto", the phone's Roboto, at the weights the
+ * Sizes are px of the widget. Fonts: "VibeOS Roboto", the phone's Roboto, at the weights the
  * reference phone draws with Bold text on (+300: Regular 400 is drawn 700, Medium 500 as 800). */
 #pragma once
 
@@ -17,7 +17,7 @@
 
 G_BEGIN_DECLS
 
-#define CALC_FONT              "Neo Roboto"
+#define CALC_FONT              "VibeOS Roboto"
 #define CALC_WEIGHT_REGULAR    700          /* regular, made heavier by Bold text */
 #define CALC_WEIGHT_MEDIUM     800          /* medium, made heavier by Bold text */
 
@@ -28,10 +28,10 @@ G_BEGIN_DECLS
 #define CALC_BOTTOM            (555 / 2048.0)
 #define CALC_CAP_HEIGHT        (1456 / 2048.0)
 
-/* a layout of `text` in Neo Roboto at `size` px, `weight`, with the calculator's font features (tnum, cv03,
+/* a layout of `text` in VibeOS Roboto at `size` px, `weight`, with the calculator's font features (tnum, cv03,
  * cv04) */
 PangoLayout *calc_text_layout (GtkWidget *widget, const char *text, double size, int weight);
-/* a layout for the rest of the app's text (menus, toolbars, the toast): Neo Roboto at `size` px and `weight`,
+/* a layout for the rest of the app's text (menus, toolbars, the toast): VibeOS Roboto at `size` px and `weight`,
  * without the display's font features, `spacing` em between the letters */
 PangoLayout *calc_text_ui_layout (GtkWidget *widget, const char *text, double size, int weight, double spacing);
 /* sets the size of a layout made by calc_text_layout */

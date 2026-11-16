@@ -6,7 +6,7 @@
 #include "clock-popup-menu.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 /* the choices, as this page names them; saving turns them into the setting's or the alarm's own way of saying so */
@@ -41,7 +41,7 @@ call_service (const char *method, GVariant *parameters)
   GDBusConnection *bus = g_application_get_dbus_connection (g_application_get_default ());
 
   if (bus)
-    g_dbus_connection_call (bus, "neo.Clock.Alarms", "/neo/Clock/App", "neo.Clock.App", method,
+    g_dbus_connection_call (bus, "vibeos.Clock.Alarms", "/vibeos/Clock/App", "vibeos.Clock.App", method,
                             parameters, NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
   else if (parameters)
     g_variant_unref (g_variant_ref_sink (parameters));
@@ -118,12 +118,12 @@ add_header (RingtonePicker *self, const char *text)
 
   gtk_label_set_xalign (GTK_LABEL (label), 0);
   gtk_widget_add_css_class (label, "ringtone-header");
-  neo_label_set_font_padding (label, 15);
+  vibeos_label_set_font_padding (label, 15);
   gtk_box_append (GTK_BOX (self->list), label);
 }
 
 static void
-on_sound (NeoPressable *row, RingtonePicker *self)
+on_sound (VibeosPressable *row, RingtonePicker *self)
 {
   const char *sound = g_object_get_data (G_OBJECT (row), "sound");
 
@@ -146,7 +146,7 @@ on_sound (NeoPressable *row, RingtonePicker *self)
 /* --- removing a sound the user added */
 
 static void
-on_remove_answer (NeoDialog *dialog, int response, gpointer data)
+on_remove_answer (VibeosDialog *dialog, int response, gpointer data)
 {
   RingtonePicker *self = g_object_get_data (G_OBJECT (dialog), "picker");
   const char *uri = data;
@@ -155,7 +155,7 @@ on_remove_answer (NeoDialog *dialog, int response, gpointer data)
   g_auto(GStrv) left = NULL;
   GPtrArray *alarms = alarms_client_get_alarms (alarms_client_get ());
 
-  if (response != NEO_RESPONSE_OK)
+  if (response != VIBEOS_RESPONSE_OK)
     return;
   for (guint i = 0; custom[i]; i++)
     if (!g_str_equal (custom[i], uri))
@@ -197,19 +197,19 @@ static void
 on_remove (gpointer data)
 {
   Removal *removal = data;
-  NeoDialog *dialog = neo_dialog_new (NULL);
+  VibeosDialog *dialog = vibeos_dialog_new (NULL);
 
-  neo_dialog_set_message (dialog, _("Alarms and timers using this sound will play the default sound instead."));
-  neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  neo_dialog_add_button (dialog, _("Remove"), NEO_RESPONSE_OK);
+  vibeos_dialog_set_message (dialog, _("Alarms and timers using this sound will play the default sound instead."));
+  vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  vibeos_dialog_add_button (dialog, _("Remove"), VIBEOS_RESPONSE_OK);
   g_object_set_data (G_OBJECT (dialog), "picker", removal->picker);
   g_signal_connect_data (dialog, "response", G_CALLBACK (on_remove_answer), g_steal_pointer (&removal->uri),
                          (GClosureNotify) (void (*) (void)) g_free, 0);
-  neo_dialog_present (dialog, GTK_WIDGET (removal->picker));
+  vibeos_dialog_present (dialog, GTK_WIDGET (removal->picker));
 }
 
 static void
-on_overflow (NeoPressable *button, RingtonePicker *self)
+on_overflow (VibeosPressable *button, RingtonePicker *self)
 {
   ClockPopupMenu *menu = clock_popup_menu_new ();
   Removal *removal = g_new0 (Removal, 1);
@@ -249,7 +249,7 @@ add_sound (RingtonePicker *self, const char *sound, const char *name, const char
   gtk_widget_set_margin_start (label, 16);
   gtk_widget_set_margin_end (label, 16);
   gtk_widget_add_css_class (label, "ringtone-name");
-  neo_label_set_font_padding (label, 16);
+  vibeos_label_set_font_padding (label, 16);
   gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (box), label);
   if (!selected)
@@ -269,10 +269,10 @@ add_sound (RingtonePicker *self, const char *sound, const char *name, const char
       GtkWidget *button;
 
       gtk_image_set_pixel_size (GTK_IMAGE (more), 24);
-      button = neo_pressable_new (more);
+      button = vibeos_pressable_new (more);
       gtk_widget_set_size_request (button, 48, 48);
       gtk_widget_set_valign (button, GTK_ALIGN_CENTER);
-      neo_pressable_set_ripple (NEO_PRESSABLE (button), NEO_RIPPLE_CIRCLE, 20);
+      vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_CIRCLE, 20);
       gtk_widget_add_css_class (button, "ringtone-more");
       gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, _("More options"), -1);
       g_object_set_data_full (G_OBJECT (button), "sound", g_strdup (sound), g_free);
@@ -280,8 +280,8 @@ add_sound (RingtonePicker *self, const char *sound, const char *name, const char
       gtk_box_append (GTK_BOX (box), button);
     }
 
-  row = neo_pressable_new (box);
-  neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
+  row = vibeos_pressable_new (box);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
   gtk_widget_add_css_class (row, "ringtone-row");
   /* the selected row: white at 8 % over it */
   if (selected)
@@ -326,7 +326,7 @@ on_chosen (GObject *source, GAsyncResult *result, gpointer data)
 }
 
 static void
-on_add (NeoPressable *row, RingtonePicker *self)
+on_add (VibeosPressable *row, RingtonePicker *self)
 {
   GtkWidget *root = GTK_WIDGET (gtk_widget_get_root (GTK_WIDGET (self)));
   g_autoptr(GtkFileFilter) filter = gtk_file_filter_new ();
@@ -365,11 +365,11 @@ add_add_new (RingtonePicker *self)
   gtk_widget_set_margin_end (label, 16);
   gtk_widget_set_opacity (label, DIMMED);
   gtk_widget_add_css_class (label, "ringtone-name");
-  neo_label_set_font_padding (label, 16);
+  vibeos_label_set_font_padding (label, 16);
   gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (box), label);
-  row = neo_pressable_new (box);
-  neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
+  row = vibeos_pressable_new (box);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
   gtk_widget_add_css_class (row, "ringtone-row");
   g_signal_connect (row, "clicked", G_CALLBACK (on_add), self);
   gtk_box_append (GTK_BOX (self->list), row);
@@ -470,7 +470,7 @@ on_scrolled (GtkAdjustment *adjustment, RingtonePicker *self)
 }
 
 static void
-on_up (NeoPressable *button, RingtonePicker *self)
+on_up (VibeosPressable *button, RingtonePicker *self)
 {
   g_signal_emit (self, signals[CLOSED], 0);
 }

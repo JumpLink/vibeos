@@ -4,7 +4,7 @@ Subject: [PATCH] orientation-manager: Export the tracking inhibit
 meta_orientation_manager_inhibit_tracking() and _uninhibit_tracking()
 are in the public header, so they are in the typelib, but without
 META_EXPORT they are not in libmutter's exported symbols: a call from
-the shell fails with "undefined symbol". gnome-phone holds the panel
+the shell fails with "undefined symbol". vibeos holds the panel
 upright for the lock screen with them, as Android keeps its lock screen
 portrait on a phone.
 

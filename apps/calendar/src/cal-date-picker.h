@@ -1,4 +1,4 @@
-/* The date dialog, for "Go to…" and the editor's dates. A libneo candidate.
+/* The date dialog, for "Go to…" and the editor's dates. A libvibeos candidate.
  *
  * The header (the title, the chosen date large), the month with ‹ › and a swipe between months, a tap on
  * "November 2026 ▾" for a list of years, the days in circles (today ringed, the choice filled), Cancel and OK.

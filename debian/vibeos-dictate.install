@@ -1,0 +1,5 @@
+usr/bin/vibeos-dictate
+usr/share/applications/vibeos.Dictate.desktop
+usr/share/dbus-1/services/vibeos.Dictate.service
+usr/share/glib-2.0/schemas/vibeos.Dictate.gschema.xml
+usr/share/icons/hicolor/scalable/apps/vibeos.Dictate.svg

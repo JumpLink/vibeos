@@ -1,7 +1,7 @@
-/* The Camera's styles, over libneo's (neo.css). The camera screen draws itself (cam-widgets.c); this styles its
+/* The Camera's styles, over libvibeos's (vibeos.css). The camera screen draws itself (cam-widgets.c); this styles its
  * labels, the pro row, the toast and snackbar, the dialogs and the Settings page. */
 
-window.neo.cam-window {
+window.vibeos.cam-window {
   background-color: #000000;
 }
 
@@ -22,7 +22,7 @@ window.neo.cam-window {
   background-color: #e95950;
   border-radius: 20px;
   color: #ffffff;
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 14px;
   font-weight: 800;
 }
@@ -58,23 +58,23 @@ window.neo.cam-window {
 
 .cam-toast-text {
   color: #f0f0f0;
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 15px;
   font-weight: 500;
 }
 
 /* --- the snackbar, in the inverse colours */
-neo-snackbar-host.cam-snackbar .neo-snackbar {
-  background-color: @neo_inverse_surface;
+vibeos-snackbar-host.cam-snackbar .vibeos-snackbar {
+  background-color: @vibeos_inverse_surface;
 }
 
-neo-snackbar-host.cam-snackbar .neo-snackbar-text {
+vibeos-snackbar-host.cam-snackbar .vibeos-snackbar-text {
   color: #1c2627;
   font-weight: 700;
 }
 
-neo-snackbar-host.cam-snackbar .neo-text-button {
-  color: @neo_inverse_primary;
+vibeos-snackbar-host.cam-snackbar .vibeos-text-button {
+  color: @vibeos_inverse_primary;
 }
 
 /* --- the screen flash */
@@ -84,41 +84,41 @@ neo-snackbar-host.cam-snackbar .neo-text-button {
 
 /* --- the QR sheet */
 .cam-qr-sheet {
-  background-color: @neo_surface_container_low;
+  background-color: @vibeos_surface_container_low;
   border-radius: 28px 28px 0 0;
 }
 
 .cam-qr-handle {
-  background-color: @neo_on_surface;
+  background-color: @vibeos_on_surface;
   border-radius: 2px;
 }
 
 .cam-qr-card {
-  background-color: @neo_surface_container_highest;
+  background-color: @vibeos_surface_container_highest;
   border-radius: 12px;
 }
 
 .cam-qr-icon,
 .cam-qr-copy {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .cam-qr-title {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
   font-size: 14px;
   font-weight: 900;
 }
 
 .cam-qr-data {
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
   font-size: 14px;
   font-weight: 700;
 }
 
 /* --- the dialogs */
-neo-dialog-scrim.cam-settings-dialog > .neo-dialog,
-neo-dialog-scrim.cam-location > .neo-dialog {
-  background-color: @neo_surface;
+vibeos-dialog-scrim.cam-settings-dialog > .vibeos-dialog,
+vibeos-dialog-scrim.cam-location > .vibeos-dialog {
+  background-color: @vibeos_surface;
   border-radius: 16px;
 }
 
@@ -131,80 +131,80 @@ neo-dialog-scrim.cam-location > .neo-dialog {
   padding: 0 24px 0 20px;
   font-size: 16px;
   font-weight: 700;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cam-radio {
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
   margin-left: 4px;
   margin-right: 24px;
 }
 
 .cam-radio.checked {
-  color: @neo_secondary;
+  color: @vibeos_secondary;
 }
 
 .cam-location-title {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
   font-size: 22px;
   font-weight: 700;
 }
 
 .cam-location-body {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
   font-size: 14px;
   font-weight: 700;
 }
 
 .cam-location-button {
-  color: @neo_secondary;
+  color: @vibeos_secondary;
 }
 
 /* --- Settings */
 .cam-settings {
-  background-color: @neo_surface;
+  background-color: @vibeos_surface;
 }
 
 .cam-settings-toolbar {
-  background-color: @neo_surface;
+  background-color: @vibeos_surface;
   transition: background-color 150ms;
 }
 
 .cam-settings-toolbar.lifted {
-  background-color: @neo_surface_container;
+  background-color: @vibeos_surface_container;
 }
 
 .cam-settings-toolbar image {
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cam-settings-large-title {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
   font-size: 36px;
   font-weight: 700;
 }
 
 .cam-settings-collapsed-title {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
   font-size: 22px;
   font-weight: 700;
   transition: opacity 150ms;
 }
 
 .cam-settings-category {
-  color: @neo_secondary;
+  color: @vibeos_secondary;
   font-size: 14px;
   font-weight: 800;
 }
 
 .cam-settings-title {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
   font-size: 16px;
   font-weight: 700;
 }
 
 .cam-settings-summary {
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
   font-size: 14px;
   font-weight: 700;
 }

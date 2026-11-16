@@ -3,7 +3,7 @@
 #include "calc-text.h"
 
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define HEIGHT          48      /* the bar's height */
 #define BUTTON_PAD      16      /* each side of a button's text */
@@ -21,7 +21,7 @@ typedef struct {
   gpointer          data;
   PangoLayout      *layout;
   double            x, width;   /* inside the bar */
-  NeoRipple         ripple;
+  VibeosRipple         ripple;
 } Item;
 
 struct _CalcTextToolbar {
@@ -29,7 +29,7 @@ struct _CalcTextToolbar {
   GArray         *items;
   graphene_rect_t content;      /* in the overlay's coordinates */
   graphene_rect_t bar;
-  NeoAnim        *anim;
+  VibeosAnim        *anim;
   double          shown;
   gboolean        closing;
   int             pressed;
@@ -75,7 +75,7 @@ static void
 calc_text_toolbar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   CalcTextToolbar *self = CALC_TEXT_TOOLBAR (widget);
-  GdkRGBA background = neo_color (NEO_SURFACE_CONTAINER_HIGH), text = neo_color (NEO_ON_SURFACE);
+  GdkRGBA background = vibeos_color (VIBEOS_SURFACE_CONTAINER_HIGH), text = vibeos_color (VIBEOS_ON_SURFACE);
   GskRoundedRect shape;
 
   gtk_snapshot_push_opacity (snapshot, self->shown);
@@ -88,9 +88,9 @@ calc_text_toolbar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
     graphene_rect_t r = GRAPHENE_RECT_INIT (self->bar.origin.x + item->x, self->bar.origin.y, item->width, HEIGHT);
     double tw = calc_text_width (item->layout);
 
-    if (neo_ripple_is_active (&item->ripple)) {
-      GdkRGBA ripple = neo_color_alpha (NEO_ON_SURFACE, 0.1f);
-      neo_ripple_snapshot (&item->ripple, snapshot, &r, &ripple);
+    if (vibeos_ripple_is_active (&item->ripple)) {
+      GdkRGBA ripple = vibeos_color_alpha (VIBEOS_ON_SURFACE, 0.1f);
+      vibeos_ripple_snapshot (&item->ripple, snapshot, &r, &ripple);
     }
     calc_text_draw (snapshot, item->layout, r.origin.x + (r.size.width - tw) / 2,
                     r.origin.y + HEIGHT / 2.0 + (CALC_ASCENT - CALC_DESCENT) * TEXT_SIZE / 2, &text);
@@ -100,13 +100,13 @@ calc_text_toolbar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 }
 
 static void
-on_anim (NeoAnim *anim, double value, gpointer data)
+on_anim (VibeosAnim *anim, double value, gpointer data)
 {
   CalcTextToolbar *self = data;
 
   self->shown = value;
   gtk_widget_queue_draw (GTK_WIDGET (self));
-  if (self->closing && !neo_anim_is_running (anim)) {
+  if (self->closing && !vibeos_anim_is_running (anim)) {
     GtkWidget *overlay = gtk_widget_get_parent (GTK_WIDGET (self));
 
     if (overlay)
@@ -123,7 +123,7 @@ calc_text_toolbar_dismiss (CalcTextToolbar *self)
   /* the toolbar no longer takes touches: what is under it gets them at once */
   gtk_widget_set_can_target (GTK_WIDGET (self), FALSE);
   g_signal_emit (self, signals[CLOSED], 0);
-  neo_anim_start (self->anim, self->shown, 0, EXIT_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start (self->anim, self->shown, 0, EXIT_MS, 0, SPONGY_LINEAR);
 }
 
 static int
@@ -157,7 +157,7 @@ on_pressed (GtkGestureClick *click, int n_press, double x, double y, CalcTextToo
   self->pressed = i;
   if (i >= 0) {
     Item *item = &g_array_index (self->items, Item, i);
-    neo_ripple_press (&item->ripple, x - self->bar.origin.x - item->x, y - self->bar.origin.y);
+    vibeos_ripple_press (&item->ripple, x - self->bar.origin.x - item->x, y - self->bar.origin.y);
   }
 }
 
@@ -169,7 +169,7 @@ on_released (GtkGestureClick *click, int n_press, double x, double y, CalcTextTo
   self->pressed = -1;
   if (i < 0)
     return;
-  neo_ripple_release (&g_array_index (self->items, Item, i).ripple);
+  vibeos_ripple_release (&g_array_index (self->items, Item, i).ripple);
   if (item_at (self, x, y) != i || self->closing)
     return;
   {
@@ -189,7 +189,7 @@ static void
 on_stopped (GtkGestureClick *click, CalcTextToolbar *self)
 {
   if (self->pressed >= 0)
-    neo_ripple_release (&g_array_index (self->items, Item, self->pressed).ripple);
+    vibeos_ripple_release (&g_array_index (self->items, Item, self->pressed).ripple);
   self->pressed = -1;
 }
 
@@ -207,11 +207,11 @@ calc_text_toolbar_dispose (GObject *object)
 {
   CalcTextToolbar *self = CALC_TEXT_TOOLBAR (object);
 
-  g_clear_pointer (&self->anim, neo_anim_free);
+  g_clear_pointer (&self->anim, vibeos_anim_free);
   if (self->items) {
     for (guint i = 0; i < self->items->len; i++) {
       Item *item = &g_array_index (self->items, Item, i);
-      neo_ripple_clear (&item->ripple);
+      vibeos_ripple_clear (&item->ripple);
       g_clear_object (&item->layout);
       g_free (item->label);
     }
@@ -245,7 +245,7 @@ calc_text_toolbar_init (CalcTextToolbar *self)
 
   self->items = g_array_new (FALSE, TRUE, sizeof (Item));
   self->pressed = -1;
-  self->anim = neo_anim_new (GTK_WIDGET (self), on_anim, self);
+  self->anim = vibeos_anim_new (GTK_WIDGET (self), on_anim, self);
   g_signal_connect (click, "pressed", G_CALLBACK (on_pressed), self);
   g_signal_connect (click, "released", G_CALLBACK (on_released), self);
   g_signal_connect (click, "stopped", G_CALLBACK (on_stopped), self);
@@ -266,13 +266,13 @@ calc_text_toolbar_append (CalcTextToolbar *self, const char *label, CalcToolbarA
   Item item = { g_strdup (label), action, data, NULL };
 
   g_array_append_val (self->items, item);
-  neo_ripple_init (&g_array_index (self->items, Item, self->items->len - 1).ripple, GTK_WIDGET (self));
+  vibeos_ripple_init (&g_array_index (self->items, Item, self->items->len - 1).ripple, GTK_WIDGET (self));
 }
 
 void
 calc_text_toolbar_present (CalcTextToolbar *self, GtkWidget *widget, const graphene_rect_t *content)
 {
-  GtkOverlay *overlay = neo_window_get_overlay (widget);
+  GtkOverlay *overlay = vibeos_window_get_overlay (widget);
 
   g_return_if_fail (overlay != NULL);
   {
@@ -292,5 +292,5 @@ calc_text_toolbar_present (CalcTextToolbar *self, GtkWidget *widget, const graph
   gtk_overlay_set_clip_overlay (overlay, GTK_WIDGET (self), TRUE);
   gtk_widget_set_focusable (GTK_WIDGET (self), TRUE);
   gtk_widget_grab_focus (GTK_WIDGET (self));
-  neo_anim_start (self->anim, 0, 1, ENTER_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start (self->anim, 0, 1, ENTER_MS, 0, SPONGY_LINEAR);
 }

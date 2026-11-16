@@ -1,9 +1,9 @@
-/* neo-calendar-reminders: the service that rings the Calendar's reminders.
+/* vibeos-calendar-reminders: the service that rings the Calendar's reminders.
  *
- * It runs from login, whether or not the app is open (a systemd user service, neo.Calendar.Reminders on the session
+ * It runs from login, whether or not the app is open (a systemd user service, vibeos.Calendar.Reminders on the session
  * bus). It reads the shown calendars' events of the coming weeks from evolution-data-server (CalStore), and at each
  * reminder's time posts a notification: the event's title, its time and place, a tap opening the event in the app. The
- * phone may be asleep then: neo-wakeup wakes it at the next reminder's time (the RTC), and a CLOCK_REALTIME timerfd
+ * phone may be asleep then: vibeos-wakeup wakes it at the next reminder's time (the RTC), and a CLOCK_REALTIME timerfd
  * here does the rest.
  *
  * Its buttons, in this order and at most three: Map (the place looked up in the maps app, when the location reads as a
@@ -20,7 +20,7 @@
  * login, the shell restarted) has none of the fired ones' notifications: they are posted again, quietly.
  *
  * Reminders that came due while nothing ran (the phone was off) still notify while their event has not ended; what was
- * notified and what is fired are kept in $XDG_STATE_HOME/neo-calendar/reminders.ini, so a restart does not notify it
+ * notified and what is fired are kept in $XDG_STATE_HOME/vibeos-calendar/reminders.ini, so a restart does not notify it
  * again. The first start notifies nothing that is already past (no flood on installing).
  *
  * The "Notifications" setting off: nothing is posted (the reminders are still marked as handled); nor for an
@@ -39,10 +39,10 @@
 #include <sys/timerfd.h>
 #include <unistd.h>
 
-#define BUS_NAME        "neo.Calendar.Reminders"
-#define OBJECT_PATH     "/neo/Calendar/Reminders"
-#define APP_ID          "neo.Calendar"
-#define APP_PATH        "/neo/Calendar"
+#define BUS_NAME        "vibeos.Calendar.Reminders"
+#define OBJECT_PATH     "/vibeos/Calendar/Reminders"
+#define APP_ID          "vibeos.Calendar"
+#define APP_PATH        "/vibeos/Calendar"
 #define NOTIFICATIONS   "org.freedesktop.Notifications"
 #define NOTIFICATIONS_PATH "/org/freedesktop/Notifications"
 #define LOOK_BACK       (24 * 3600)             /* missed reminders of events still going on */
@@ -75,7 +75,7 @@ typedef struct {
   gboolean first_run;
   int timer_fd;
   gint64 sent_wakeup;
-  const char *wakeup_name;      /* the key of our wake-up in neo-wakeup */
+  const char *wakeup_name;      /* the key of our wake-up in vibeos-wakeup */
   guint wakeup_watch, action_signal, closed_signal;
 } Service;
 
@@ -547,7 +547,7 @@ on_closed (GDBusConnection *bus, const char *sender, const char *path, const cha
 
 static const char introspection[] =
   "<node>"
-  "  <interface name='neo.Calendar.Reminders'>"
+  "  <interface name='vibeos.Calendar.Reminders'>"
   /* the fired reminders not dismissed, by start and title: each its occurrence
    * key and calendar, uid, rid, start, end, all-day, title, location, color (the calendar's, 0xRRGGBB),
    * recurring (it has a repeat rule: the page's repeat icon) */
@@ -749,7 +749,7 @@ tell_wakeup (Service *self, gint64 time)
   self->sent_wakeup = time;
   g_variant_builder_init (&options, G_VARIANT_TYPE_VARDICT);
   g_variant_builder_add (&options, "{sv}", "app", g_variant_new_string (APP_ID));
-  g_dbus_connection_call (self->system, "neo.Wakeup", "/neo/Wakeup", "neo.Wakeup", "Set",
+  g_dbus_connection_call (self->system, "vibeos.Wakeup", "/vibeos/Wakeup", "vibeos.Wakeup", "Set",
                           g_variant_new ("(sxa{sv})", self->wakeup_name, time, &options), NULL,
                           G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 }
@@ -759,7 +759,7 @@ on_wakeup_appeared (GDBusConnection *bus, const char *name, const char *owner, g
 {
   Service *self = data;
 
-  /* neo-wakeup (re)started: it knows nothing of ours */
+  /* vibeos-wakeup (re)started: it knows nothing of ours */
   self->sent_wakeup = -1;
   schedule (self);
 }
@@ -932,7 +932,7 @@ main (int argc, char **argv)
   self->session = g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, &error);
   if (!self->session)
     g_error ("session bus: %s", error->message);
-  /* neo-wakeup is on the system bus; without it (a desktop) reminders still notify while the machine is up */
+  /* vibeos-wakeup is on the system bus; without it (a desktop) reminders still notify while the machine is up */
   self->system = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, NULL);
   self->loop = g_main_loop_new (NULL, FALSE);
   self->settings = g_settings_new (APP_ID);
@@ -941,7 +941,7 @@ main (int argc, char **argv)
   self->posted = g_hash_table_new_full (NULL, NULL, NULL, posted_free);
   self->shown = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
   self->region = cal_alert_region ();
-  self->state_path = g_build_filename (g_get_user_state_dir (), "neo-calendar", "reminders.ini", NULL);
+  self->state_path = g_build_filename (g_get_user_state_dir (), "vibeos-calendar", "reminders.ini", NULL);
   apply_home_zone (self);
   self->sent_wakeup = -1;
   /* a test rig's service (tests/try-calendar.sh) wakes the phone under a key of its own, which the rig clears: it
@@ -958,7 +958,7 @@ main (int argc, char **argv)
                                                             "NotificationClosed", NOTIFICATIONS_PATH, NULL,
                                                             G_DBUS_SIGNAL_FLAGS_NONE, on_closed, self, NULL);
   if (self->system)
-    self->wakeup_watch = g_bus_watch_name_on_connection (self->system, "neo.Wakeup",
+    self->wakeup_watch = g_bus_watch_name_on_connection (self->system, "vibeos.Wakeup",
                                                          G_BUS_NAME_WATCHER_FLAGS_NONE, on_wakeup_appeared, NULL,
                                                          self, NULL);
   {

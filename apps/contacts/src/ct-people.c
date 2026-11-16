@@ -17,7 +17,7 @@
 
 #include <glib/gi18n.h>
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 typedef enum {
@@ -38,20 +38,20 @@ typedef struct {
   GtkWidget *frame, *bar, *nav, *title, *actions, *search_action, *add_member, *overflow;
   GtkWidget *search_bar, *search_entry, *search_clear;
   GtkWidget *selection_bar, *selection_close, *selection_count, *share, *delete, *selection_overflow;
-  NeoAnim *search_anim, *selection_anim;
+  VibeosAnim *search_anim, *selection_anim;
   gboolean searching, selecting, editing;
   GHashTable *selected;         /* uid set */
 
   /* the content */
   GtkWidget *list, *header, *header_icon, *header_text, *empty, *account_empty, *label_empty, *no_results, *fab;
   GtkWidget *back_marker;
-  NeoAnim *fab_anim;
+  VibeosAnim *fab_anim;
   gboolean fab_shown;
   gboolean animated_load;
 
   /* the drawer */
   GtkWidget *drawer, *drawer_scrim, *drawer_sheet, *drawer_items;
-  NeoAnim *drawer_anim;
+  VibeosAnim *drawer_anim;
   double drawer_open;           /* 0 closed … 1 open */
   double drawer_drag_from;
 
@@ -105,25 +105,25 @@ query_of (People *people)
 
 /* the FAB scales in over 186 ms (0, 0, 0.2, 1) and out over 175 ms (0.4, 0, 1, 1) */
 static void
-on_fab_anim (NeoAnim *anim, double value, gpointer data)
+on_fab_anim (VibeosAnim *anim, double value, gpointer data)
 {
   People *people = data;
 
-  neo_pressable_set_scale (NEO_PRESSABLE (people->fab), value);
+  vibeos_pressable_set_scale (VIBEOS_PRESSABLE (people->fab), value);
 }
 
 static void
 show_fab (People *people, gboolean show)
 {
-  double scale = neo_pressable_get_scale (NEO_PRESSABLE (people->fab));
+  double scale = vibeos_pressable_get_scale (VIBEOS_PRESSABLE (people->fab));
 
   if (people->fab_shown == show)
     return;
   people->fab_shown = show;
   if (show)
-    neo_anim_start (people->fab_anim, scale, 1, CT_FAB_SCALE_IN_MS, 0, SPONGY_LINEAR_OUT_SLOW_IN);
+    vibeos_anim_start (people->fab_anim, scale, 1, CT_FAB_SCALE_IN_MS, 0, SPONGY_LINEAR_OUT_SLOW_IN);
   else
-    neo_anim_start (people->fab_anim, scale, 0, CT_FAB_SCALE_OUT_MS, 0, SPONGY_FAST_OUT_LINEAR_IN);
+    vibeos_anim_start (people->fab_anim, scale, 0, CT_FAB_SCALE_OUT_MS, 0, SPONGY_FAST_OUT_LINEAR_IN);
 }
 
 /* the FAB shows in the plain list and an account's list, not in a label's, a search or selection mode
@@ -242,7 +242,7 @@ on_settings_changed (GSettings *settings, const char *key, People *people)
 /* ===== search ================================================================================================== */
 
 static void
-on_search_anim (NeoAnim *anim, double value, gpointer data)
+on_search_anim (VibeosAnim *anim, double value, gpointer data)
 {
   People *people = data;
 
@@ -260,7 +260,7 @@ start_search (People *people, const char *text)
   gtk_editable_set_text (GTK_EDITABLE (people->search_entry), text ? text : "");
   gtk_editable_set_position (GTK_EDITABLE (people->search_entry), -1);
   gtk_widget_set_visible (people->search_bar, TRUE);
-  neo_anim_start (people->search_anim, gtk_widget_get_opacity (people->search_bar), 1, CT_ACTIONBAR_ANIM_MS, 0,
+  vibeos_anim_start (people->search_anim, gtk_widget_get_opacity (people->search_bar), 1, CT_ACTIONBAR_ANIM_MS, 0,
                   SPONGY_LINEAR);
   gtk_widget_grab_focus (people->search_entry);
   update_fab (people);
@@ -274,7 +274,7 @@ stop_search (People *people)
   if (!people->searching)
     return;
   people->searching = FALSE;
-  neo_anim_start (people->search_anim, gtk_widget_get_opacity (people->search_bar), 0, CT_ACTIONBAR_ANIM_MS, 0,
+  vibeos_anim_start (people->search_anim, gtk_widget_get_opacity (people->search_bar), 0, CT_ACTIONBAR_ANIM_MS, 0,
                   SPONGY_LINEAR);
   gtk_window_set_focus (GTK_WINDOW (gtk_widget_get_root (people->page)), NULL);
   update_fab (people);
@@ -291,19 +291,19 @@ on_search_changed (GtkEditable *entry, People *people)
 }
 
 static void
-on_search_action (NeoPressable *button, People *people)
+on_search_action (VibeosPressable *button, People *people)
 {
   start_search (people, NULL);
 }
 
 static void
-on_search_back (NeoPressable *button, People *people)
+on_search_back (VibeosPressable *button, People *people)
 {
   stop_search (people);
 }
 
 static void
-on_search_clear (NeoPressable *button, People *people)
+on_search_clear (VibeosPressable *button, People *people)
 {
   gtk_editable_set_text (GTK_EDITABLE (people->search_entry), "");
   gtk_widget_grab_focus (people->search_entry);
@@ -327,7 +327,7 @@ on_key (GtkEventControllerKey *controller, guint keyval, guint keycode, GdkModif
 /* ===== selection mode ========================================================================================= */
 
 static void
-on_selection_anim (NeoAnim *anim, double value, gpointer data)
+on_selection_anim (VibeosAnim *anim, double value, gpointer data)
 {
   People *people = data;
 
@@ -345,7 +345,7 @@ start_selection (People *people, const char *uid, gboolean editing)
     g_hash_table_add (people->selected, g_strdup (uid));
   ct_list_set_selection (CT_LIST (people->list), people->selected);
   gtk_widget_set_visible (people->selection_bar, TRUE);
-  neo_anim_start (people->selection_anim, gtk_widget_get_opacity (people->selection_bar), 1, CT_ACTIONBAR_ANIM_MS,
+  vibeos_anim_start (people->selection_anim, gtk_widget_get_opacity (people->selection_bar), 1, CT_ACTIONBAR_ANIM_MS,
                   0, SPONGY_LINEAR);
   open_drawer (people, FALSE);
   update_fab (people);
@@ -362,7 +362,7 @@ stop_selection (People *people)
   people->editing = FALSE;
   g_hash_table_remove_all (people->selected);
   ct_list_set_selection (CT_LIST (people->list), NULL);
-  neo_anim_start (people->selection_anim, gtk_widget_get_opacity (people->selection_bar), 0, CT_ACTIONBAR_ANIM_MS,
+  vibeos_anim_start (people->selection_anim, gtk_widget_get_opacity (people->selection_bar), 0, CT_ACTIONBAR_ANIM_MS,
                   0, SPONGY_LINEAR);
   update_fab (people);
   update_toolbar (people);
@@ -430,7 +430,7 @@ on_row_long_pressed (CtList *list, guint index, People *people)
 }
 
 static void
-on_selection_close (NeoPressable *button, People *people)
+on_selection_close (VibeosPressable *button, People *people)
 {
   stop_selection (people);
 }
@@ -438,7 +438,7 @@ on_selection_close (NeoPressable *button, People *people)
 /* Share: this phone has no share sheet to hand a vCard of the selection to another app, so the vCard is written where
  * the person chooses (the file chooser), from where it can go anywhere. */
 static void
-on_share (NeoPressable *button, People *people)
+on_share (VibeosPressable *button, People *people)
 {
   g_autoptr(GPtrArray) uids = selected_uids (people);
 
@@ -484,7 +484,7 @@ on_delete_confirmed (int response, gpointer data)
 /* deleting several: "Delete selected contacts?" (every address book here is writable, so neither
  * read-only variant applies) */
 static void
-on_delete (NeoPressable *button, People *people)
+on_delete (VibeosPressable *button, People *people)
 {
   Deletion *deletion = g_new0 (Deletion, 1);
 
@@ -535,13 +535,13 @@ add_members (People *people)
 }
 
 static void
-on_add_member (NeoPressable *button, People *people)
+on_add_member (VibeosPressable *button, People *people)
 {
   add_members (people);
 }
 
 static void
-on_add_contacts_button (NeoPressable *button, People *people)
+on_add_contacts_button (VibeosPressable *button, People *people)
 {
   add_members (people);
 }
@@ -730,7 +730,7 @@ on_menu_chosen (int index, gpointer data)
 /* a label's menu. Send email shows only when something takes mailto:
  * links, which this phone may not have. */
 static void
-on_overflow (NeoPressable *button, People *people)
+on_overflow (VibeosPressable *button, People *people)
 {
   static Menu menu;
   const char *labels[6];
@@ -814,7 +814,7 @@ update_toolbar (People *people)
 }
 
 static void
-on_nav (NeoPressable *button, People *people)
+on_nav (VibeosPressable *button, People *people)
 {
   open_drawer (people, TRUE);
 }
@@ -926,7 +926,7 @@ make_toolbar (People *people)
 /* ===== the empty states ======================================================================================== */
 
 static void
-on_add_contact (NeoPressable *button, People *people)
+on_add_contact (VibeosPressable *button, People *people)
 {
   ct_window_new_contact (people->window, NULL);
 }
@@ -1001,7 +1001,7 @@ place_drawer (People *people)
 }
 
 static void
-on_drawer_anim (NeoAnim *anim, double value, gpointer data)
+on_drawer_anim (VibeosAnim *anim, double value, gpointer data)
 {
   People *people = data;
 
@@ -1016,7 +1016,7 @@ open_drawer (People *people, gboolean open)
   double to = open ? 1 : 0;
   double distance = fabs (to - people->drawer_open);
 
-  if (distance <= 0 && !neo_anim_is_running (people->drawer_anim))
+  if (distance <= 0 && !vibeos_anim_is_running (people->drawer_anim))
     return;
   if (open)
     {
@@ -1024,7 +1024,7 @@ open_drawer (People *people, gboolean open)
       stop_selection (people);
       ct_popup_dismiss (people->page);
     }
-  neo_anim_start (people->drawer_anim, people->drawer_open, to,
+  vibeos_anim_start (people->drawer_anim, people->drawer_open, to,
                   (guint) MIN ((distance + 1) * CT_DRAWER_SETTLE_BASE_MS, CT_DRAWER_SETTLE_MAX_MS), 0,
                   SPONGY_DECELERATE_QUINT);
 }
@@ -1057,7 +1057,7 @@ on_label_created (const char *text, gpointer data)
 }
 
 static void
-on_drawer_item (NeoPressable *row, People *people)
+on_drawer_item (VibeosPressable *row, People *people)
 {
   ItemKind kind = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (row), "ct-kind"));
   const char *name = g_object_get_data (G_OBJECT (row), "ct-name");
@@ -1102,7 +1102,7 @@ drawer_item (People *people, ItemKind kind, const char *icon, const char *title,
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *image = gtk_image_new_from_icon_name (icon);
   GtkWidget *label = ct_label (title, "ct-drawer-title", CT_DRAWER_TEXT_SP);
-  GtkWidget *row = neo_pressable_new (box);
+  GtkWidget *row = vibeos_pressable_new (box);
   GdkRGBA ripple = ct_rgba (CT_RIPPLE_DRAWER);
 
   gtk_image_set_pixel_size (GTK_IMAGE (image), 24);
@@ -1117,8 +1117,8 @@ drawer_item (People *people, ItemKind kind, const char *icon, const char *title,
     gtk_widget_add_css_class (row, "primary");
   if (active)
     gtk_widget_add_css_class (row, "active");
-  neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (row), &ripple);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
   g_object_set_data (G_OBJECT (row), "ct-kind", GINT_TO_POINTER (kind));
   g_object_set_data_full (G_OBJECT (row), "ct-name", g_strdup (name), g_free);
   gtk_accessible_update_property (GTK_ACCESSIBLE (row), GTK_ACCESSIBLE_PROPERTY_LABEL, title, -1);
@@ -1156,7 +1156,7 @@ my_info_item (People *people)
   EContact *profile = ct_store_get_profile (people->store);
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *lines = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  GtkWidget *row = neo_pressable_new (box);
+  GtkWidget *row = vibeos_pressable_new (box);
   GtkWidget *icon;
   GtkWidget *title = ct_label (_("My info"), "ct-drawer-title", CT_DRAWER_TEXT_SP);
   g_autofree char *name = profile ? ct_contact_display_name (profile, ct_display_order (people->settings)) : NULL;
@@ -1194,8 +1194,8 @@ my_info_item (People *people)
   gtk_box_append (GTK_BOX (box), lines);
   gtk_widget_add_css_class (row, "ct-drawer-item");
   gtk_widget_add_css_class (row, "my-info");
-  neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (row), &ripple);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
   g_object_set_data (G_OBJECT (row), "ct-kind", GINT_TO_POINTER (ITEM_MY_INFO));
   gtk_accessible_update_property (GTK_ACCESSIBLE (row), GTK_ACCESSIBLE_PROPERTY_LABEL, _("My info"), -1);
   g_signal_connect (row, "clicked", G_CALLBACK (on_drawer_item), people);
@@ -1339,7 +1339,7 @@ on_sheet_drag_update (GtkGestureDrag *gesture, double dx, double dy, People *peo
   if (fabs (dy) > fabs (dx) && fabs (dx) < CT_TOUCH_SLOP_DP)
     return;
   gtk_gesture_set_state (GTK_GESTURE (gesture), GTK_EVENT_SEQUENCE_CLAIMED);
-  neo_anim_stop (people->drawer_anim);
+  vibeos_anim_stop (people->drawer_anim);
   people->drawer_open = CLAMP (people->drawer_drag_from + dx / DRAWER_W, 0, 1);
   place_drawer (people);
 }
@@ -1441,7 +1441,7 @@ ct_people_reset (GtkWidget *page)
 
   if (people->drawer_open > 0)
     {
-      neo_anim_stop (people->drawer_anim);
+      vibeos_anim_stop (people->drawer_anim);
       people->drawer_open = 0;
       place_drawer (people);
     }
@@ -1450,7 +1450,7 @@ ct_people_reset (GtkWidget *page)
 }
 
 static void
-on_fab (NeoPressable *fab, People *people)
+on_fab (VibeosPressable *fab, People *people)
 {
   ct_window_new_contact (people->window, NULL);
 }
@@ -1462,10 +1462,10 @@ people_free (gpointer data)
 
   g_signal_handlers_disconnect_by_data (people->store, people);
   g_signal_handlers_disconnect_by_data (people->settings, people);
-  g_clear_pointer (&people->search_anim, neo_anim_free);
-  g_clear_pointer (&people->selection_anim, neo_anim_free);
-  g_clear_pointer (&people->fab_anim, neo_anim_free);
-  g_clear_pointer (&people->drawer_anim, neo_anim_free);
+  g_clear_pointer (&people->search_anim, vibeos_anim_free);
+  g_clear_pointer (&people->selection_anim, vibeos_anim_free);
+  g_clear_pointer (&people->fab_anim, vibeos_anim_free);
+  g_clear_pointer (&people->drawer_anim, vibeos_anim_free);
   g_clear_pointer (&people->selected, g_hash_table_unref);
   forget_undo (people);
   g_free (people->label);
@@ -1496,9 +1496,9 @@ ct_people_new (GtkWidget *window)
   people->store = g_object_ref (ct_window_get_store (window));
   people->settings = g_object_ref (ct_window_get_settings (window));
   people->selected = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
-  people->search_anim = neo_anim_new (page, on_search_anim, people);
-  people->selection_anim = neo_anim_new (page, on_selection_anim, people);
-  people->drawer_anim = neo_anim_new (page, on_drawer_anim, people);
+  people->search_anim = vibeos_anim_new (page, on_search_anim, people);
+  people->selection_anim = vibeos_anim_new (page, on_selection_anim, people);
+  people->drawer_anim = vibeos_anim_new (page, on_drawer_anim, people);
   g_object_set_data_full (G_OBJECT (page), "ct-people", people, people_free);
   gtk_widget_add_css_class (page, "ct-people");
 
@@ -1528,15 +1528,15 @@ ct_people_new (GtkWidget *window)
   gtk_overlay_set_child (GTK_OVERLAY (content), column);
 
   /* the illustrations, each at its own size; label_empty as wide as its aspect makes it */
-  people->empty = empty_view ("/neo/Contacts/images/home_empty.png", CT_EMPTY_IMAGE_H_DP, CT_EMPTY_IMAGE_H_DP,
+  people->empty = empty_view ("/vibeos/Contacts/images/home_empty.png", CT_EMPTY_IMAGE_H_DP, CT_EMPTY_IMAGE_H_DP,
                               _("Your contacts list is empty"), _("Add contact"), G_CALLBACK (on_add_contact), people);
   gtk_overlay_add_overlay (GTK_OVERLAY (content), people->empty);
-  people->account_empty = empty_view ("/neo/Contacts/images/accounts_empty.png", CT_EMPTY_ACCOUNT_IMAGE_DP,
+  people->account_empty = empty_view ("/vibeos/Contacts/images/accounts_empty.png", CT_EMPTY_ACCOUNT_IMAGE_DP,
                                       CT_EMPTY_ACCOUNT_IMAGE_DP, _("No contacts in this account"), _("Add contact"),
                                       G_CALLBACK (on_add_contact), people);
   gtk_widget_add_css_class (people->account_empty, "account");
   gtk_overlay_add_overlay (GTK_OVERLAY (content), people->account_empty);
-  people->label_empty = empty_view ("/neo/Contacts/images/label_empty.png", CT_EMPTY_IMAGE_H_DP * 696 / 540,
+  people->label_empty = empty_view ("/vibeos/Contacts/images/label_empty.png", CT_EMPTY_IMAGE_H_DP * 696 / 540,
                                     CT_EMPTY_IMAGE_H_DP, _("No contacts with this label"), _("Add contacts"),
                                     G_CALLBACK (on_add_contacts_button), people);
   gtk_widget_add_css_class (people->label_empty, "label");
@@ -1556,17 +1556,17 @@ ct_people_new (GtkWidget *window)
 
   /* the FAB: the white plus, in the bottom end corner */
   gtk_image_set_pixel_size (GTK_IMAGE (plus), 24);
-  people->fab = neo_pressable_new (plus);
+  people->fab = vibeos_pressable_new (plus);
   gtk_widget_add_css_class (people->fab, "ct-fab");
-  neo_pressable_set_fill (NEO_PRESSABLE (people->fab), &fab_fill, TRUE);
-  neo_pressable_set_ripple (NEO_PRESSABLE (people->fab), NEO_RIPPLE_CIRCLE, CT_FAB_DP / 2);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (people->fab), &fab_ripple);
+  vibeos_pressable_set_fill (VIBEOS_PRESSABLE (people->fab), &fab_fill, TRUE);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (people->fab), VIBEOS_RIPPLE_CIRCLE, CT_FAB_DP / 2);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (people->fab), &fab_ripple);
   gtk_widget_set_halign (people->fab, GTK_ALIGN_END);
   gtk_widget_set_valign (people->fab, GTK_ALIGN_END);
   gtk_accessible_update_property (GTK_ACCESSIBLE (people->fab), GTK_ACCESSIBLE_PROPERTY_LABEL,
                                   _("Create new contact"), -1);
   g_signal_connect (people->fab, "clicked", G_CALLBACK (on_fab), people);
-  people->fab_anim = neo_anim_new (people->fab, on_fab_anim, people);
+  people->fab_anim = vibeos_anim_new (people->fab, on_fab_anim, people);
   people->fab_shown = TRUE;
   gtk_overlay_add_overlay (GTK_OVERLAY (content), people->fab);
   gtk_widget_set_vexpand (content, TRUE);

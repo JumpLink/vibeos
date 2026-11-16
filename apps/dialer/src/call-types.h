@@ -1,4 +1,4 @@
-/* What a call is to the Dialer, shared by its service (neo-dialer-calls) and its app (neo-dialer).
+/* What a call is to the Dialer, shared by its service (vibeos-dialer-calls) and its app (vibeos-dialer).
  *
  * The service watches ModemManager's calls and turns them into the call states and end causes below, so that the app,
  * the notifications and the call log all read the same thing. They travel over D-Bus as plain numbers: these enums are
@@ -6,14 +6,14 @@
 #pragma once
 
 /* the service: its name on the session bus, and its one object */
-#define CALLS_BUS_NAME "neo.Dialer.Calls"
-#define CALLS_PATH "/neo/Dialer/Calls"
-#define CALLS_INTERFACE "neo.Dialer.Calls"
+#define CALLS_BUS_NAME "vibeos.Dialer.Calls"
+#define CALLS_PATH "/vibeos/Dialer/Calls"
+#define CALLS_INTERFACE "vibeos.Dialer.Calls"
 
 /* the apps: the Phone app with its tabs, and the in-call screen, which may show over the lock screen and so is an
  * app of its own */
-#define DIALER_APP_ID "neo.Dialer"
-#define INCALL_APP_ID "neo.Dialer.InCall"
+#define DIALER_APP_ID "vibeos.Dialer"
+#define INCALL_APP_ID "vibeos.Dialer.InCall"
 
 /* a call's state, in the order the in-call screens care about */
 typedef enum {

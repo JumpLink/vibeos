@@ -1,6 +1,6 @@
 // Gesture navigation: the swipe up from the bottom edge. The app follows the finger, shrinking toward its recents
 // card. Let go and it flies home into its icon on three springs (x, y and size) while the launcher scales the home
-// back in (the launcher does its half itself, told over neo.Launcher), or it settles back to full screen; hold it
+// back in (the launcher does its half itself, told over vibeos.Launcher), or it settles back to full screen; hold it
 // first and the other tasks spring in beside it, and letting go settles it into recents (recents.js). Along the bar
 // the tasks come in at once and page under the finger: quick switch.
 //
@@ -170,7 +170,7 @@ export class Navigation {
         this._recents = null;
 
         this._gesture = new Clutter.PanGesture({
-            name: 'gnome-phone swipe up',
+            name: 'vibeos swipe up',
             begin_threshold: TOUCH_SLOP / this.scale,
             max_n_points: 1,
         });
@@ -181,7 +181,7 @@ export class Navigation {
             'end', () => this._release(false),
             'cancel', () => this._release(true),
             this);
-        global.stage.add_action_full('gnome-phone-swipe-up', Clutter.EventPhase.CAPTURE, this._gesture);
+        global.stage.add_action_full('vibeos-swipe-up', Clutter.EventPhase.CAPTURE, this._gesture);
 
         // the mobile shell's own swipe up (to its overview), and its home bar; stock GNOME Shell has neither
         this._edgeDrag = Main.overview._singleFingerOverviewEdgeDrag;
@@ -212,7 +212,7 @@ export class Navigation {
     }
 
     launcher(method, params) {
-        Gio.DBus.session.call('neo.Launcher', '/neo/Launcher', 'neo.Launcher', method,
+        Gio.DBus.session.call('vibeos.Launcher', '/vibeos/Launcher', 'vibeos.Launcher', method,
             params, null, Gio.DBusCallFlags.NO_AUTO_START, 1000, null, null);
     }
 
@@ -222,7 +222,7 @@ export class Navigation {
 
     // the status bar: clear over a window being dragged (the bar has no background of its own)
     statusBarOverApp(value) {
-        Main.layoutManager.uiGroup.get_children().find(a => a.name === 'gnomePhoneStatusBar')?.setOverApp?.(value);
+        Main.layoutManager.uiGroup.get_children().find(a => a.name === 'vibeosStatusBar')?.setOverApp?.(value);
     }
 
     // the launcher, at rest on its workspace, with nothing over it
@@ -232,7 +232,7 @@ export class Navigation {
     }
 
     shadeOpen() {
-        return !!Main.layoutManager.uiGroup.get_children().find(a => a.name === 'gnomePhoneShade')?.isOpen;
+        return !!Main.layoutManager.uiGroup.get_children().find(a => a.name === 'vibeosShade')?.isOpen;
     }
 
     // a swipe or its animation is under way
@@ -311,7 +311,7 @@ export class Navigation {
     // the tick as the swipe crosses into recents or back out: feedbackd's shortest
     haptic() {
         Gio.DBus.session.call('org.sigxcpu.Feedback', '/org/sigxcpu/Feedback', 'org.sigxcpu.Feedback',
-            'TriggerFeedback', new GLib.Variant('(ssa{sv}i)', ['neo.GnomePhone', 'button-released', {}, -1]),
+            'TriggerFeedback', new GLib.Variant('(ssa{sv}i)', ['vibeos.Shell', 'button-released', {}, -1]),
             null, Gio.DBusCallFlags.NO_AUTO_START, -1, null, null);
     }
 
@@ -660,7 +660,7 @@ export class Navigation {
             task.place(rect, r, alpha, cropTop);
             floating?.place(rect, r, p);
             if (capturing())
-                log(`gnome-phone: home ${Math.round(elapsed * 1000)} p=${p.toFixed(3)} a=${alpha.toFixed(3)} ` +
+                log(`vibeos: home ${Math.round(elapsed * 1000)} p=${p.toFixed(3)} a=${alpha.toFixed(3)} ` +
                     `rect=${rect.map(Math.round)} r=${Math.round(r)}`);
             return !(X.done && Y.done && P.done);
         }, () => {
@@ -674,7 +674,7 @@ export class Navigation {
     // The launcher's icon back. The flying one stays over it until the launcher's first frame with it is on screen
     // (it answers then): dropped at once, a frame or two had neither, and the icon blinked.
     _showIcon(floating) {
-        Gio.DBus.session.call('neo.Launcher', '/neo/Launcher', 'neo.Launcher', 'ShowIcon',
+        Gio.DBus.session.call('vibeos.Launcher', '/vibeos/Launcher', 'vibeos.Launcher', 'ShowIcon',
             null, null, Gio.DBusCallFlags.NO_AUTO_START, SHOW_ICON_WAIT_MS, null, (bus, res) => {
                 try {
                     bus.call_finish(res);

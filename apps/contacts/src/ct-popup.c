@@ -2,7 +2,7 @@
 #include "ct-popup.h"
 #include "ct-ui.h"
 
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 #define EDGE 8.0                /* the menu keeps this far from the window's edges */
@@ -12,7 +12,7 @@ typedef struct {
   CtPopupChosen chosen;
   CtPopupToggled toggled;
   gpointer data;
-  NeoAnim *anim;
+  VibeosAnim *anim;
   gboolean closing;
 } Popup;
 
@@ -21,12 +21,12 @@ popup_free (gpointer data)
 {
   Popup *popup = data;
 
-  g_clear_pointer (&popup->anim, neo_anim_free);
+  g_clear_pointer (&popup->anim, vibeos_anim_free);
   g_free (popup);
 }
 
 static void
-on_anim (NeoAnim *anim, double value, gpointer data)
+on_anim (VibeosAnim *anim, double value, gpointer data)
 {
   Popup *popup = data;
   GtkWidget *parent;
@@ -44,11 +44,11 @@ popup_close (Popup *popup)
     return;
   popup->closing = TRUE;
   gtk_widget_set_can_target (popup->layer, FALSE);
-  neo_anim_start (popup->anim, gtk_widget_get_opacity (popup->layer), 0, CT_POPUP_EXIT_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start (popup->anim, gtk_widget_get_opacity (popup->layer), 0, CT_POPUP_EXIT_MS, 0, SPONGY_LINEAR);
 }
 
 static void
-on_row (NeoPressable *row, Popup *popup)
+on_row (VibeosPressable *row, Popup *popup)
 {
   int index = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (row), "ct-index"));
   GtkWidget *check = g_object_get_data (G_OBJECT (row), "ct-check");
@@ -80,7 +80,7 @@ popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, CtPopupP
             double width, const gboolean *checked, int n_checks, CtPopupToggled toggled, CtPopupChosen chosen,
             gpointer data)
 {
-  GtkOverlay *overlay = neo_window_get_overlay (anchor);
+  GtkOverlay *overlay = vibeos_window_get_overlay (anchor);
   GtkWidget *layer, *scrim, *card, *scroll, *list;
   GtkGesture *press;
   Popup *popup;
@@ -102,7 +102,7 @@ popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, CtPopupP
   popup->data = data;
   layer = gtk_overlay_new ();
   popup->layer = layer;
-  popup->anim = neo_anim_new (layer, on_anim, popup);
+  popup->anim = vibeos_anim_new (layer, on_anim, popup);
   g_object_set_data_full (G_OBJECT (layer), "ct-popup", popup, popup_free);
 
   scrim = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
@@ -116,7 +116,7 @@ popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, CtPopupP
     {
       GtkWidget *text = gtk_label_new (labels[i]);
       GtkWidget *line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-      GtkWidget *row = neo_pressable_new (line);
+      GtkWidget *row = vibeos_pressable_new (line);
       g_autoptr(PangoLayout) layout = text_layout (anchor, CT_TEXT (CT_POPUP_TEXT_SP, CT_WEIGHT_REGULAR), labels[i], 0);
 
       widest = MAX (widest, text_width (layout));
@@ -138,8 +138,8 @@ popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, CtPopupP
           gtk_box_append (GTK_BOX (line), check);
           g_object_set_data (G_OBJECT (row), "ct-check", check);
         }
-      neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
-      neo_pressable_set_ripple_color (NEO_PRESSABLE (row), &ripple);
+      vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
+      vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
       g_object_set_data (G_OBJECT (row), "ct-index", GINT_TO_POINTER (i));
       g_signal_connect (row, "clicked", G_CALLBACK (on_row), popup);
       gtk_box_append (GTK_BOX (list), row);
@@ -195,7 +195,7 @@ popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, CtPopupP
   gtk_overlay_add_overlay (overlay, layer);
   /* the way in: a fade from 0.1 over 100 ms */
   gtk_widget_set_opacity (layer, 0.1);
-  neo_anim_start (popup->anim, 0.1, 1, CT_POPUP_ENTER_FADE_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start (popup->anim, 0.1, 1, CT_POPUP_ENTER_FADE_MS, 0, SPONGY_LINEAR);
 }
 
 void
@@ -216,7 +216,7 @@ ct_popup_show_checks (GtkWidget *anchor, const char *const *labels, int n_labels
 gboolean
 ct_popup_dismiss (GtkWidget *widget)
 {
-  GtkOverlay *overlay = neo_window_get_overlay (widget);
+  GtkOverlay *overlay = vibeos_window_get_overlay (widget);
 
   if (!overlay)
     return FALSE;

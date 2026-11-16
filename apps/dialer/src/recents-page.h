@@ -7,7 +7,7 @@
 #pragma once
 
 #include <gtk/gtk.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #include "contacts.h"
 
@@ -17,10 +17,10 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE (RecentsPage, recents_page, RECENTS, PAGE, GtkWidget)
 
 /* @snackbar: where a call that could not be made says why */
-GtkWidget *recents_page_new (Contacts *contacts, NeoSnackbar *snackbar);
+GtkWidget *recents_page_new (Contacts *contacts, VibeosSnackbar *snackbar);
 /* Call history's All and Missed pages: the same list, with @missed_only the missed calls alone, and
  * nothing to do on an empty one */
-GtkWidget *recents_page_new_history (Contacts *contacts, NeoSnackbar *snackbar, gboolean missed_only);
+GtkWidget *recents_page_new_history (Contacts *contacts, VibeosSnackbar *snackbar, gboolean missed_only);
 /* the top of the list, the entries closed (the tab is shown afresh) */
 void       recents_page_reset (RecentsPage *self);
 /* whether the log had any calls, missed or not, when it was last read (Call history's "Clear call history") */

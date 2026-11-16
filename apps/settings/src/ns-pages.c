@@ -1,4 +1,4 @@
-/* Neo Settings' own pages (see ns-pages.h): the hubs and the small pages. The bigger ones have files of their own
+/* VibeOS Settings' own pages (see ns-pages.h): the hubs and the small pages. The bigger ones have files of their own
  * (ns-net.c, ns-bt.c, ns-sound.c, ns-apps.c, ns-shell.c, ns-privacy.c, ns-system.c). Nothing here blocks: D-Bus
  * answers fill the page when they come. */
 #include "ns-pages.h"
@@ -432,7 +432,7 @@ night_row (GtkWidget *g, GSettings *color, GSettings *iface)
  * connector, min, max and value) and sets it (SetBacklight), and the shell's brightness slider goes through the
  * same object. Writing /sys behind mutter's back would leave the shell's slider and its saved level behind.
  *
- * The slider stands where the shell's does: gnome-phone's brightness.js maps its slider to the backlight on the
+ * The slider stands where the shell's does: VibeOS's brightness.js maps its slider to the backlight on the
  * power GAMMA (1.9), so that the levels comfortable indoors are not all in the first fifth. The two must agree, or
  * one slider would jump when the other moves. Adaptive brightness (brightness.js too) keeps a level set here as
  * its offset from the light's level. */
@@ -657,12 +657,12 @@ ns_page_display (GtkWidget *row, gpointer data)
     GtkWidget *r = ns_row_switch (g, "Auto rotate", "Turn the screen with the phone", NULL, NULL);
     g_settings_bind (touch, "orientation-lock", ns_row_get_switch (r), "active", G_SETTINGS_BIND_INVERT_BOOLEAN);
   }
-  GSettings *neo = ns_page_settings (page, "neo.Phone");
-  if (neo) {
+  GSettings *vibeos = ns_page_settings (page, "vibeos.Shell");
+  if (vibeos) {
     g = ns_group (c, NULL);
     ns_row_switch (g, "Always On Display", "The time, battery and notifications on a black screen while it is off",
-                   neo, "aod");
-    ns_row_switch (g, "Double tap to wake", "Wake the screen with a double tap", neo, "double-tap-wake");
+                   vibeos, "aod");
+    ns_row_switch (g, "Double tap to wake", "Wake the screen with a double tap", vibeos, "double-tap-wake");
   }
   ns_push (page);
 }
@@ -1012,8 +1012,8 @@ ns_page_wallpaper (GtkWidget *row, gpointer data)
   GSettings *bg = ns_page_settings (page, "org.gnome.desktop.background");
   GSettings *iface = ns_page_settings (page, "org.gnome.desktop.interface");
 
-  GSettings *neo = ns_page_settings (page, "neo.Phone");
-  if (neo) {
+  GSettings *vibeos = ns_page_settings (page, "vibeos.Shell");
+  if (vibeos) {
     GtkWidget *g = ns_group (c, "Parallax wallpaper");
     GtkWidget *hint = gtk_label_new ("Layers that move as you tilt the phone. Off picks a still picture instead.");
     gtk_label_set_wrap (GTK_LABEL (hint), TRUE);
@@ -1037,7 +1037,7 @@ ns_page_wallpaper (GtkWidget *row, gpointer data)
   ns_push (page);
 }
 
-/* ---- Home screen (Neo) ---- */
+/* ---- Home screen (VibeOS) ---- */
 
 static const char *const shape_values[] = { "system", "circle", "squircle", "rounded", "square", "teardrop",
                                             "cupertino", "cylinder", "egg", "octagon", "hexagon", "diamond", NULL };
@@ -1063,7 +1063,7 @@ pack_name_cmp (gconstpointer a, gconstpointer b)
   return g_utf8_collate ((*(PackName **) a)->title, (*(PackName **) b)->title);
 }
 
-/* the icon packs installed, as neo-launcher finds them (icons.c icons_list_packs): neo-launcher/iconpacks in the
+/* the icon packs installed, as vibeos-launcher finds them (icons.c icons_list_packs): vibeos-launcher/iconpacks in the
  * user's data dir, then in each system data dir, the first of a name winning; a pack is a folder with a
  * gnome-map.json, named by its pack.json's "title" */
 static GPtrArray *
@@ -1072,9 +1072,9 @@ icon_packs (void)
   GPtrArray *packs = g_ptr_array_new_with_free_func ((GDestroyNotify) pack_name_free);
   g_autoptr (GHashTable) seen = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
   g_autoptr (GStrvBuilder) db = g_strv_builder_new ();
-  g_strv_builder_take (db, g_build_filename (g_get_user_data_dir (), "neo-launcher", "iconpacks", NULL));
+  g_strv_builder_take (db, g_build_filename (g_get_user_data_dir (), "vibeos-launcher", "iconpacks", NULL));
   for (const char *const *s = g_get_system_data_dirs (); *s; s++)
-    g_strv_builder_take (db, g_build_filename (*s, "neo-launcher", "iconpacks", NULL));
+    g_strv_builder_take (db, g_build_filename (*s, "vibeos-launcher", "iconpacks", NULL));
   g_auto (GStrv) dirs = g_strv_builder_end (db);
 
   for (guint i = 0; dirs[i]; i++) {
@@ -1113,15 +1113,15 @@ static const double icon_scales[] = { 0.8, 0.9, 1.0, 1.1 };
 static const char *const icon_labels[] = { "80%", "90%", "100%", "110%", NULL };
 
 typedef struct {
-  GSettings *neo;
+  GSettings *vibeos;
   GtkWidget *grid, *drawer, *icons, *drawer_icons;
 } Layout;
 
 static void
 layout_free (Layout *l)
 {
-  g_signal_handlers_disconnect_by_data (l->neo, l);
-  g_object_unref (l->neo);
+  g_signal_handlers_disconnect_by_data (l->vibeos, l);
+  g_object_unref (l->vibeos);
   g_free (l);
 }
 
@@ -1146,14 +1146,14 @@ scale_index (double v)
 static void
 layout_show (Layout *l)
 {
-  int cols = g_settings_get_int (l->neo, "desktop-grid-columns"), rows = g_settings_get_int (l->neo, "desktop-grid-rows");
+  int cols = g_settings_get_int (l->vibeos, "desktop-grid-columns"), rows = g_settings_get_int (l->vibeos, "desktop-grid-rows");
   guint i = 0;
   while (i < G_N_ELEMENTS (grid_sizes) && (grid_sizes[i][0] != cols || grid_sizes[i][1] != rows))
     i++;
   g_autofree char *grid = g_strdup_printf ("%d × %d", cols, rows);
   pick_show (l->grid, i, G_N_ELEMENTS (grid_sizes), grid);
 
-  int dcols = g_settings_get_int (l->neo, "drawer-grid-columns");
+  int dcols = g_settings_get_int (l->vibeos, "drawer-grid-columns");
   for (i = 0; i < G_N_ELEMENTS (drawer_sizes) && drawer_sizes[i] != dcols; i++)
     ;
   g_autofree char *drawer = g_strdup_printf ("%d columns", dcols);
@@ -1164,7 +1164,7 @@ layout_show (Layout *l)
   for (guint k = 0; k < G_N_ELEMENTS (keys); k++) {
     if (!sizes[k])
       continue;
-    double v = g_settings_get_double (l->neo, keys[k]);
+    double v = g_settings_get_double (l->vibeos, keys[k]);
     g_autofree char *pct = g_strdup_printf ("%.0f%%", v * 100);
     pick_show (sizes[k], scale_index (v), G_N_ELEMENTS (icon_scales), pct);
   }
@@ -1175,7 +1175,7 @@ grid_picked (GtkWidget *row, guint i, gpointer data)
 {
   /* columns and rows in one change, so that the launcher lays its pages out once (a separate object: delay-apply
    * mode stays on the object it is set on) */
-  g_autoptr (GSettings) s = g_settings_new ("neo.Phone");
+  g_autoptr (GSettings) s = g_settings_new ("vibeos.Shell");
   g_settings_delay (s);
   g_settings_set_int (s, "desktop-grid-columns", grid_sizes[i][0]);
   g_settings_set_int (s, "desktop-grid-rows", grid_sizes[i][1]);
@@ -1186,62 +1186,62 @@ static void
 drawer_picked (GtkWidget *row, guint i, gpointer data)
 {
   Layout *l = data;
-  g_settings_set_int (l->neo, "drawer-grid-columns", drawer_sizes[i]);
+  g_settings_set_int (l->vibeos, "drawer-grid-columns", drawer_sizes[i]);
 }
 
 static void
 icons_picked (GtkWidget *row, guint i, gpointer data)
 {
   Layout *l = data;
-  g_settings_set_double (l->neo, row == l->icons ? "desktop-icon-scale" : "drawer-icon-scale", icon_scales[i]);
+  g_settings_set_double (l->vibeos, row == l->icons ? "desktop-icon-scale" : "drawer-icon-scale", icon_scales[i]);
 }
 
 /* the Layout card: the home screen's grid, icon size and app names, the drawer's grid, icon size and search pill */
 static void
-layout_group (AdwNavigationPage *page, GtkWidget *c, GSettings *neo)
+layout_group (AdwNavigationPage *page, GtkWidget *c, GSettings *vibeos)
 {
   Layout *l = g_new0 (Layout, 1);
-  l->neo = g_object_ref (neo);
+  l->vibeos = g_object_ref (vibeos);
   g_object_set_data_full (G_OBJECT (page), "ns-layout", l, (GDestroyNotify) layout_free);
-  gboolean sizes = ns_has_key (neo, "desktop-icon-scale") && ns_has_key (neo, "drawer-icon-scale");
+  gboolean sizes = ns_has_key (vibeos, "desktop-icon-scale") && ns_has_key (vibeos, "drawer-icon-scale");
 
   GtkWidget *g = ns_group (c, "Layout");
   l->grid = ns_row_pick (g, "Home screen grid", grid_labels, 0, grid_picked, l);
   if (sizes)
     l->icons = ns_row_pick (g, "Home screen icon size", icon_labels, 0, icons_picked, l);
   GtkWidget *names = ns_row_switch (g, "App names", "Under the home screen's icons", NULL, NULL);
-  g_settings_bind (neo, "desktop-hide-app-labels", ns_row_get_switch (names), "active",
+  g_settings_bind (vibeos, "desktop-hide-app-labels", ns_row_get_switch (names), "active",
                    G_SETTINGS_BIND_DEFAULT | G_SETTINGS_BIND_INVERT_BOOLEAN);
   l->drawer = ns_row_pick (g, "App drawer grid", drawer_labels, 0, drawer_picked, l);
   if (sizes)
     l->drawer_icons = ns_row_pick (g, "App drawer icon size", icon_labels, 0, icons_picked, l);
-  ns_row_switch (g, "Search bar in the app drawer", NULL, neo, "search-drawer-enabled");
+  ns_row_switch (g, "Search bar in the app drawer", NULL, vibeos, "search-drawer-enabled");
 
   static const char *const keys[] = { "changed::desktop-grid-columns", "changed::desktop-grid-rows",
                                       "changed::drawer-grid-columns", "changed::desktop-icon-scale",
                                       "changed::drawer-icon-scale" };
   for (guint i = 0; i < G_N_ELEMENTS (keys); i++)
-    g_signal_connect_swapped (neo, keys[i], G_CALLBACK (layout_show), l);
+    g_signal_connect_swapped (vibeos, keys[i], G_CALLBACK (layout_show), l);
   layout_show (l);
 }
 
-/* The home screen is neo-launcher. It follows neo.Phone live: the layout keys (main.c layout_read: the grid,
+/* The home screen is vibeos-launcher. It follows vibeos.Shell live: the layout keys (main.c layout_read: the grid,
  * the icons' sizes, app names, the drawer's columns and search pill) lay it out again, a smaller grid moving the icons
  * it has no cell for to the next free one (model.c model_set_grid), and the icon keys (icons.c) draw its icons again
  * (tiles.c tiles_reload_icons).
  *
  * Not on this page, and why: the dock's icons (dock-num-icons: the dock keeps 5 cells whatever the grid),
- * the clock widget (home-widgets: always on the first page) and "Home gesture opens" (launcher: gnome-phone's home
- * gesture always shows Neo); the launcher reads none of them. */
+ * the clock widget (home-widgets: always on the first page) and "Home gesture opens" (launcher: VibeOS's home
+ * gesture always shows VibeOS); the launcher reads none of them. */
 void
 ns_page_home (GtkWidget *row, gpointer data)
 {
-  GSettings *neo = ns_settings ("neo.Phone");
-  if (!neo)
+  GSettings *vibeos = ns_settings ("vibeos.Shell");
+  if (!vibeos)
     return;
   GtkWidget *c;
   AdwNavigationPage *page = ns_page_new ("Home screen", &c);
-  g_object_set_data_full (G_OBJECT (page), "neo", neo, g_object_unref);
+  g_object_set_data_full (G_OBJECT (page), "vibeos", vibeos, g_object_unref);
 
   /* icon packs: what is installed */
   GStrvBuilder *vb = g_strv_builder_new (), *lb = g_strv_builder_new ();
@@ -1258,14 +1258,14 @@ ns_page_home (GtkWidget *row, gpointer data)
   g_strv_builder_unref (lb);
   g_object_set_data_full (G_OBJECT (page), "packs", values, (GDestroyNotify) g_strfreev);
   g_object_set_data_full (G_OBJECT (page), "pack-labels", labels, (GDestroyNotify) g_strfreev);
-  layout_group (page, c, neo);
+  layout_group (page, c, vibeos);
   GtkWidget *g = ns_group (c, "Icons");
-  ns_row_choice (g, "Icon pack", neo, "icon-pack", (const char *const *) values, (const char *const *) labels);
-  ns_row_choice (g, "Icon shape", neo, "icon-shape", shape_values, shape_labels);
-  ns_row_switch (g, "Wrap unthemed icons", "Icons the pack does not cover get its background", neo,
+  ns_row_choice (g, "Icon pack", vibeos, "icon-pack", (const char *const *) values, (const char *const *) labels);
+  ns_row_choice (g, "Icon shape", vibeos, "icon-shape", shape_values, shape_labels);
+  ns_row_switch (g, "Wrap unthemed icons", "Icons the pack does not cover get its background", vibeos,
                  "icon-wrap-unthemed");
-  if (ns_has_key (neo, "icon-shape-legacy"))
-    ns_row_switch (g, "Shape legacy icons", "Icons without pack art on a shaped background", neo,
+  if (ns_has_key (vibeos, "icon-shape-legacy"))
+    ns_row_switch (g, "Shape legacy icons", "Icons without pack art on a shaped background", vibeos,
                    "icon-shape-legacy");
 
   g = ns_group (c, NULL);

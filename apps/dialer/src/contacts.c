@@ -410,7 +410,7 @@ contacts_is_loaded (Contacts *self)
 static void
 contacts_dispose (GObject *object)
 {
-  Contacts *self = NEO_DIALER_CONTACTS (object);
+  Contacts *self = VIBEOS_DIALER_CONTACTS (object);
 
   g_cancellable_cancel (self->cancellable);
   g_clear_handle_id (&self->changed_id, g_source_remove);
@@ -431,7 +431,7 @@ contacts_dispose (GObject *object)
 static void
 contacts_finalize (GObject *object)
 {
-  Contacts *self = NEO_DIALER_CONTACTS (object);
+  Contacts *self = VIBEOS_DIALER_CONTACTS (object);
 
   g_clear_pointer (&self->sorted, g_ptr_array_unref);
   g_hash_table_unref (self->by_uid);
@@ -453,7 +453,7 @@ static void
 contacts_init (Contacts *self)
 {
   GSettingsSchemaSource *schemas = g_settings_schema_source_get_default ();
-  g_autoptr(GSettingsSchema) schema = schemas ? g_settings_schema_source_lookup (schemas, "neo.Dialer", TRUE)
+  g_autoptr(GSettingsSchema) schema = schemas ? g_settings_schema_source_lookup (schemas, "vibeos.Dialer", TRUE)
                                               : NULL;
 
   self->cancellable = g_cancellable_new ();
@@ -462,7 +462,7 @@ contacts_init (Contacts *self)
   /* the app and the service (a missed call's name) alike */
   if (schema)
     {
-      self->settings = g_settings_new ("neo.Dialer");
+      self->settings = g_settings_new ("vibeos.Dialer");
       g_signal_connect_swapped (self->settings, "changed::sort-order", G_CALLBACK (on_order_changed), self);
       g_signal_connect_swapped (self->settings, "changed::display-order", G_CALLBACK (on_order_changed), self);
       read_order (self);

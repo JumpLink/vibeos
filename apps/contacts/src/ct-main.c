@@ -1,10 +1,10 @@
-/* neo-contacts: the Contacts app, LineageOS's Contacts rebuilt in GTK 4,
+/* vibeos-contacts: the Contacts app, LineageOS's Contacts rebuilt in GTK 4,
  * over evolution-data-server's address books.
  *
- * neo.Contacts is D-Bus activatable. The launcher starts it at the list; a .vcf file opened with it is
+ * vibeos.Contacts is D-Bus activatable. The launcher starts it at the list; a .vcf file opened with it is
  * imported after "Import contacts from vCard?". Other apps reach its screens through its actions, which they
- * activate with org.freedesktop.Application.ActivateAction on neo.Contacts (/neo/Contacts), or with
- * `gapplication action neo.Contacts <action> <parameter>`:
+ * activate with org.freedesktop.Application.ActivateAction on vibeos.Contacts (/vibeos/Contacts), or with
+ * `gapplication action vibeos.Contacts <action> <parameter>`:
  *
  *   view-contact    (s)       the card of the contact with that vCard UID, as EDS has it
  *   edit-contact    (s)       the editor for that contact
@@ -29,9 +29,9 @@
 
 #include <glib/gi18n.h>
 #include <locale.h>
-#include <neo.h>
+#include <vibeos.h>
 
-#define CT_APP_ID "neo.Contacts"
+#define CT_APP_ID "vibeos.Contacts"
 
 static CtStore *store;
 static GSettings *settings;
@@ -41,8 +41,8 @@ load_style (void)
 {
   GtkCssProvider *provider = gtk_css_provider_new ();
 
-  gtk_css_provider_load_from_resource (provider, "/neo/Contacts/contacts.css");
-  /* over libneo's, which is at APPLICATION priority too: the later provider wins at equal priority */
+  gtk_css_provider_load_from_resource (provider, "/vibeos/Contacts/contacts.css");
+  /* over libvibeos's, which is at APPLICATION priority too: the later provider wins at equal priority */
   gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (provider),
                                               GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
   g_object_unref (provider);
@@ -51,7 +51,7 @@ load_style (void)
 static void
 on_startup (GApplication *app, gpointer data)
 {
-  neo_init ();
+  vibeos_init ();
   load_style ();
   settings = g_settings_new (CT_APP_ID);
   store = ct_store_new (settings);
@@ -350,7 +350,7 @@ main (int argc, char **argv)
   textdomain (GETTEXT_PACKAGE);
 
   app = gtk_application_new (CT_APP_ID, G_APPLICATION_HANDLES_OPEN);
-  g_application_set_resource_base_path (G_APPLICATION (app), "/neo/Contacts");
+  g_application_set_resource_base_path (G_APPLICATION (app), "/vibeos/Contacts");
   g_action_map_add_action_entries (G_ACTION_MAP (app), actions, G_N_ELEMENTS (actions), app);
   g_signal_connect (app, "startup", G_CALLBACK (on_startup), NULL);
   g_signal_connect (app, "shutdown", G_CALLBACK (on_shutdown), NULL);

@@ -1,4 +1,4 @@
-/* Neo Settings, One UI style: black behind rounded cards in the dark, light grey behind white ones in the light */
+/* VibeOS Settings, One UI style: black behind rounded cards in the dark, light grey behind white ones in the light */
 .ns-root, .ns-window { background-color: #f2f2f4; }
 .ns-card { background-color: #ffffff; border-radius: 26px; margin: 0 14px 18px 14px; }
 .ns-root headerbar { background: transparent; box-shadow: none; }

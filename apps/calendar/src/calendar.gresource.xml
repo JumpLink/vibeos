@@ -2,7 +2,7 @@
 <!-- the app's stylesheet and its icons (data/icons, made from Etar's and Material's vector drawables by tools/vd2svg.py),
      where GtkApplication looks for icons: the resource base path + /icons -->
 <gresources>
-  <gresource prefix="/neo/Calendar">
+  <gresource prefix="/vibeos/Calendar">
     <file>calendar.css</file>
     <file>calendar-black.css</file>
     <file>calendar-light.css</file>
@@ -57,6 +57,6 @@
     <file alias="icons/scalable/actions/cal-view-day-symbolic.svg">icons/cal-view-day-symbolic.svg</file>
     <file alias="icons/scalable/actions/cal-view-month-symbolic.svg">icons/cal-view-month-symbolic.svg</file>
     <file alias="icons/scalable/actions/cal-view-week-symbolic.svg">icons/cal-view-week-symbolic.svg</file>
-    <file alias="icons/scalable/apps/neo.Calendar.svg">neo.Calendar.svg</file>
+    <file alias="icons/scalable/apps/vibeos.Calendar.svg">vibeos.Calendar.svg</file>
   </gresource>
 </gresources>

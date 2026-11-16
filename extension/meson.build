@@ -1,9 +1,9 @@
-# The gnome-phone GNOME Shell extension, installed system-wide (debian/: gnome-shell-extension-gnome-phone).
-# Its own project, like libneo and the apps. Everything in this directory is the extension except the generators in
+# The vibeos GNOME Shell extension, installed system-wide (debian/: gnome-shell-extension-vibeos).
+# Its own project, like libvibeos and the apps. Everything in this directory is the extension except the generators in
 # tools/ (vd2js.py, l3icons.py: they read an Android source tree) and Python's caches.
-project('gnome-shell-extension-gnome-phone', version: '0.1.0', meson_version: '>= 1.0')
+project('gnome-shell-extension-vibeos', version: '0.1.0', meson_version: '>= 1.0')
 
-uuid = 'gnome-phone@neo'
+uuid = 'shell@vibeos'
 extdir = get_option('datadir') / 'gnome-shell' / 'extensions' / uuid
 bindir = get_option('prefix') / get_option('bindir')
 
@@ -16,4 +16,4 @@ install_data('appmem.py', install_dir: extdir, install_mode: 'rwxr-xr-x')
 
 # home.js starts the launcher by its path; a hand-installed launcher lives in /usr/local, the packaged one in bindir
 configure_file(input: 'home.js', output: 'home.js', install_dir: extdir,
-  command: ['sed', '-e', 's|/usr/local/bin/neo-launcher|' + bindir + '/neo-launcher|', '@INPUT@'], capture: true)
+  command: ['sed', '-e', 's|/usr/local/bin/vibeos-launcher|' + bindir + '/vibeos-launcher|', '@INPUT@'], capture: true)

@@ -14,7 +14,7 @@
 #include "month-view.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 
 typedef enum { VIEW_DAY, VIEW_WEEK, VIEW_MONTH, VIEW_AGENDA, N_VIEWS } ViewType;
 
@@ -41,13 +41,13 @@ typedef struct {
   GtkWidget *view_widgets[N_VIEWS];
   GtkWidget *fab;
   GtkWidget *drawer, *drawer_scrim, *drawer_sheet, *drawer_slide, *drawer_items[N_VIEWS];
-  NeoAnim *drawer_anim;
+  VibeosAnim *drawer_anim;
   double drawer_open;                   /* 0 closed … 1 open */
   gboolean drawer_dragging;             /* a drag on the sheet past the touch slop */
   double drawer_drag_from;
   GtkWidget *menu;                      /* the overflow menu while it shows */
   GtkWidget *toast, *toast_label;
-  NeoAnim *toast_anim;
+  VibeosAnim *toast_anim;
   guint toast_timeout;
 
   ViewType view, previous_view;
@@ -344,7 +344,7 @@ on_cell_height (CalDayView *view, double height, Shell *shell)
 /* --- the FAB: a new event at the selected hour, else now rounded up to the next :00 or :30 */
 
 static void
-on_fab (NeoPressable *fab, Shell *shell)
+on_fab (VibeosPressable *fab, Shell *shell)
 {
   gint64 start;
   gboolean all_day = FALSE;
@@ -436,7 +436,7 @@ place_drawer (Shell *shell)
 }
 
 static void
-on_drawer_anim (NeoAnim *anim, double value, gpointer data)
+on_drawer_anim (VibeosAnim *anim, double value, gpointer data)
 {
   Shell *shell = data;
 
@@ -447,12 +447,12 @@ on_drawer_anim (NeoAnim *anim, double value, gpointer data)
 static void
 open_drawer (Shell *shell, gboolean open)
 {
-  neo_anim_start (shell->drawer_anim, shell->drawer_open, open ? 1 : 0,
+  vibeos_anim_start (shell->drawer_anim, shell->drawer_open, open ? 1 : 0,
                   (guint) (DRAWER_MS * fabs ((open ? 1 : 0) - shell->drawer_open)), 0, SPONGY_LINEAR_OUT_SLOW_IN);
 }
 
 static void
-on_drawer_item (NeoPressable *item, Shell *shell)
+on_drawer_item (VibeosPressable *item, Shell *shell)
 {
   int index = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (item), "view"));
 
@@ -461,14 +461,14 @@ on_drawer_item (NeoPressable *item, Shell *shell)
 }
 
 static void
-on_settings_item (NeoPressable *item, Shell *shell)
+on_settings_item (VibeosPressable *item, Shell *shell)
 {
   open_drawer (shell, FALSE);
   cal_window_push (shell->window, cal_settings_page_new (shell->window));
 }
 
 static void
-on_about_item (NeoPressable *item, Shell *shell)
+on_about_item (VibeosPressable *item, Shell *shell)
 {
   open_drawer (shell, FALSE);
   cal_window_push (shell->window, cal_about_page_new (shell->window));
@@ -490,7 +490,7 @@ on_sheet_drag_update (GtkGestureDrag *gesture, double dx, double dy, Shell *shel
       if (fabs (dx) < 8)
         return;
       shell->drawer_dragging = TRUE;
-      neo_anim_stop (shell->drawer_anim);
+      vibeos_anim_stop (shell->drawer_anim);
       shell->drawer_drag_from = shell->drawer_open;
     }
   shell->drawer_open = CLAMP (shell->drawer_drag_from + dx / DRAWER_WIDTH, 0, 1);
@@ -517,20 +517,20 @@ drawer_item (Shell *shell, const char *icon, const char *label, GCallback callba
   GtkWidget *row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *image = gtk_image_new_from_icon_name (icon);
   GtkWidget *text = gtk_label_new (label);
-  GtkWidget *item = neo_pressable_new (row);
+  GtkWidget *item = vibeos_pressable_new (row);
 
   gtk_image_set_pixel_size (GTK_IMAGE (image), 24);
   gtk_widget_add_css_class (row, "cal-drawer-row");
   gtk_widget_add_css_class (image, "cal-drawer-icon");
   gtk_widget_add_css_class (text, "cal-drawer-label");
   gtk_label_set_xalign (GTK_LABEL (text), 0);
-  neo_label_set_font_padding (text, 14);
+  vibeos_label_set_font_padding (text, 14);
   gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (row), image);
   gtk_box_append (GTK_BOX (row), text);
   gtk_widget_add_css_class (item, "cal-drawer-item");
   /* the ripple keeps to the item's pill: a full radius */
-  neo_pressable_set_ripple (NEO_PRESSABLE (item), NEO_RIPPLE_BOUNDED, 24);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (item), VIBEOS_RIPPLE_BOUNDED, 24);
   g_object_set_data (G_OBJECT (item), "view", GINT_TO_POINTER (view));
   g_signal_connect (item, "clicked", callback, shell);
   return item;
@@ -552,7 +552,7 @@ make_drawer (Shell *shell)
   };
   GtkWidget *divider = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
 
-  gtk_widget_add_css_class (scrim, "neo-scrim");
+  gtk_widget_add_css_class (scrim, "vibeos-scrim");
   gtk_widget_set_hexpand (scrim, TRUE);
   gtk_widget_set_vexpand (scrim, TRUE);
   g_signal_connect (press, "pressed", G_CALLBACK (on_scrim_pressed), shell);
@@ -641,7 +641,7 @@ go_to (Shell *shell)
 }
 
 static void
-on_menu_go_to (NeoPressable *item, Shell *shell)
+on_menu_go_to (VibeosPressable *item, Shell *shell)
 {
   close_menu (shell);
   go_to (shell);
@@ -658,7 +658,7 @@ on_refreshed (GObject *client, GAsyncResult *result, gpointer data)
 }
 
 static void
-on_menu_refresh (NeoPressable *item, Shell *shell)
+on_menu_refresh (VibeosPressable *item, Shell *shell)
 {
   GPtrArray *calendars = cal_store_get_calendars (shell->store);
 
@@ -675,14 +675,14 @@ on_menu_refresh (NeoPressable *item, Shell *shell)
 }
 
 static void
-on_menu_view_settings (NeoPressable *item, Shell *shell)
+on_menu_view_settings (VibeosPressable *item, Shell *shell)
 {
   close_menu (shell);
   cal_window_push (shell->window, cal_display_options_page_new (shell->window));
 }
 
 static void
-on_menu_search (NeoPressable *item, Shell *shell)
+on_menu_search (VibeosPressable *item, Shell *shell)
 {
   close_menu (shell);
   cal_search_open (shell->window);
@@ -702,7 +702,7 @@ on_import_chosen (GObject *dialog, GAsyncResult *result, gpointer data)
 /* Import event: the file chooser (the portal's when there is one), then the same import as opening an .ics with
  * the app */
 static void
-on_menu_import (NeoPressable *item, Shell *shell)
+on_menu_import (VibeosPressable *item, Shell *shell)
 {
   g_autoptr(GtkFileDialog) dialog = gtk_file_dialog_new ();
   g_autoptr(GtkFileFilter) filter = gtk_file_filter_new ();
@@ -729,7 +729,7 @@ close_menu (Shell *shell)
 {
   if (!shell->menu)
     return;
-  gtk_overlay_remove_overlay (neo_window_get_overlay (shell->window), shell->menu);
+  gtk_overlay_remove_overlay (vibeos_window_get_overlay (shell->window), shell->menu);
   shell->menu = NULL;
 }
 
@@ -737,20 +737,20 @@ static GtkWidget *
 menu_item (Shell *shell, const char *label, GCallback callback)
 {
   GtkWidget *text = gtk_label_new (label);
-  GtkWidget *item = neo_pressable_new (text);
+  GtkWidget *item = vibeos_pressable_new (text);
 
   gtk_label_set_xalign (GTK_LABEL (text), 0);
   /* font padding: the title sits a little lower than without */
-  neo_label_set_font_padding (text, 16);
+  vibeos_label_set_font_padding (text, 16);
   gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
   gtk_widget_add_css_class (item, "cal-menu-item");
-  neo_pressable_set_ripple (NEO_PRESSABLE (item), NEO_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (item), VIBEOS_RIPPLE_BOUNDED, 0);
   g_signal_connect (item, "clicked", callback, shell);
   return item;
 }
 
 static void
-on_more (NeoPressable *button, Shell *shell)
+on_more (VibeosPressable *button, Shell *shell)
 {
   GtkWidget *scrim = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *menu = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
@@ -775,7 +775,7 @@ on_more (NeoPressable *button, Shell *shell)
     gtk_box_append (GTK_BOX (menu), menu_item (shell, _("View settings"), G_CALLBACK (on_menu_view_settings)));
   gtk_overlay_add_overlay (GTK_OVERLAY (layer), menu);
   shell->menu = layer;
-  gtk_overlay_add_overlay (neo_window_get_overlay (shell->window), layer);
+  gtk_overlay_add_overlay (vibeos_window_get_overlay (shell->window), layer);
 }
 
 /* --- the Today button: a calendar with today's date in it */
@@ -799,11 +799,11 @@ cal_today_icon_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   g_autoptr(GDateTime) now = g_date_time_new_now_local ();
   g_autofree char *number = g_strdup_printf ("%d", g_date_time_get_day_of_month (now));
   PangoLayout *layout = gtk_widget_create_pango_layout (widget, number);
-  PangoFontDescription *font = pango_font_description_from_string ("Neo Roboto, Roboto");
+  PangoFontDescription *font = pango_font_description_from_string ("VibeOS Roboto, Roboto");
   int w, h;
 
   /* the Today icon: its outline with the day's date in bold inside, the baseline at (bottom + height + 1) / 1.75 */
-  neo_snapshot_icon (snapshot, widget, "cal-today-symbolic", x, y, size, &color);
+  vibeos_snapshot_icon (snapshot, widget, "cal-today-symbolic", x, y, size, &color);
   pango_font_description_set_absolute_size (font, 12 * PANGO_SCALE);
   pango_font_description_set_weight (font, PANGO_WEIGHT_BOLD);
   pango_layout_set_font_description (layout, font);
@@ -832,13 +832,13 @@ cal_today_icon_init (CalTodayIcon *self)
 }
 
 static void
-on_today (NeoPressable *button, Shell *shell)
+on_today (VibeosPressable *button, Shell *shell)
 {
   cal_window_go_to (shell->window, today ());
 }
 
 static void
-on_nav (NeoPressable *button, Shell *shell)
+on_nav (VibeosPressable *button, Shell *shell)
 {
   open_drawer (shell, TRUE);
 }
@@ -853,7 +853,7 @@ static GtkWidget *
 make_toolbar (Shell *shell)
 {
   GtkWidget *bar = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  GtkWidget *nav = neo_icon_button_new ("cal-menu-symbolic");
+  GtkWidget *nav = vibeos_icon_button_new ("cal-menu-symbolic");
   GtkWidget *titles = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *today_button, *more;
   GtkGesture *press = gtk_gesture_click_new ();
@@ -873,8 +873,8 @@ make_toolbar (Shell *shell)
   gtk_label_set_ellipsize (GTK_LABEL (shell->title), PANGO_ELLIPSIZE_END);
   gtk_label_set_ellipsize (GTK_LABEL (shell->subtitle), PANGO_ELLIPSIZE_END);
   /* font padding on both lines */
-  neo_label_set_font_padding (shell->title, 22);
-  neo_label_set_font_padding (shell->subtitle, 16);
+  vibeos_label_set_font_padding (shell->title, 22);
+  vibeos_label_set_font_padding (shell->subtitle, 16);
   gtk_box_append (GTK_BOX (titles), shell->title);
   gtk_box_append (GTK_BOX (titles), shell->subtitle);
   gtk_widget_set_hexpand (titles, TRUE);
@@ -885,13 +885,13 @@ make_toolbar (Shell *shell)
   gtk_box_append (GTK_BOX (bar), titles);
 
   shell->today_icon = g_object_new (cal_today_icon_get_type (), NULL);
-  today_button = neo_pressable_new (shell->today_icon);
-  neo_pressable_set_ripple (NEO_PRESSABLE (today_button), NEO_RIPPLE_CIRCLE, 20);
+  today_button = vibeos_pressable_new (shell->today_icon);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (today_button), VIBEOS_RIPPLE_CIRCLE, 20);
   gtk_accessible_update_property (GTK_ACCESSIBLE (today_button), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Today"), -1);
   g_signal_connect (today_button, "clicked", G_CALLBACK (on_today), shell);
   gtk_box_append (GTK_BOX (bar), today_button);
 
-  more = neo_icon_button_new ("cal-more-symbolic");
+  more = vibeos_icon_button_new ("cal-more-symbolic");
   gtk_widget_add_css_class (more, "cal-toolbar-more");
   gtk_accessible_update_property (GTK_ACCESSIBLE (more), GTK_ACCESSIBLE_PROPERTY_LABEL, _("More options"), -1);
   g_signal_connect (more, "clicked", G_CALLBACK (on_more), shell);
@@ -1075,7 +1075,7 @@ cal_window_import (GtkWidget *window, GFile *file)
 #define TOAST_FADE_MS 250
 
 static void
-on_toast_anim (NeoAnim *anim, double value, gpointer data)
+on_toast_anim (VibeosAnim *anim, double value, gpointer data)
 {
   Shell *shell = data;
 
@@ -1089,7 +1089,7 @@ on_toast_timeout (gpointer data)
   Shell *shell = data;
 
   shell->toast_timeout = 0;
-  neo_anim_start (shell->toast_anim, neo_anim_get_value (shell->toast_anim), 0, TOAST_FADE_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start (shell->toast_anim, vibeos_anim_get_value (shell->toast_anim), 0, TOAST_FADE_MS, 0, SPONGY_LINEAR);
   return G_SOURCE_REMOVE;
 }
 
@@ -1102,7 +1102,7 @@ cal_window_toast (GtkWidget *window, const char *text)
 
   gtk_label_set_label (GTK_LABEL (shell->toast_label), text);
   g_clear_handle_id (&shell->toast_timeout, g_source_remove);
-  neo_anim_start (shell->toast_anim, neo_anim_get_value (shell->toast_anim), 1, TOAST_FADE_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start (shell->toast_anim, vibeos_anim_get_value (shell->toast_anim), 1, TOAST_FADE_MS, 0, SPONGY_LINEAR);
   shell->toast_timeout = g_timeout_add (TOAST_FADE_MS + TOAST_MS, on_toast_timeout, shell);
 }
 
@@ -1110,7 +1110,7 @@ static GtkWidget *
 make_toast (Shell *shell)
 {
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  GtkWidget *icon = gtk_image_new_from_icon_name ("neo.Calendar");
+  GtkWidget *icon = gtk_image_new_from_icon_name ("vibeos.Calendar");
 
   gtk_image_set_pixel_size (GTK_IMAGE (icon), 24);
   gtk_widget_add_css_class (icon, "cal-toast-icon");
@@ -1130,7 +1130,7 @@ make_toast (Shell *shell)
   gtk_widget_set_visible (box, FALSE);
   gtk_accessible_update_property (GTK_ACCESSIBLE (box), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Message"), -1);
   shell->toast = box;
-  shell->toast_anim = neo_anim_new (box, on_toast_anim, shell);
+  shell->toast_anim = vibeos_anim_new (box, on_toast_anim, shell);
   return box;
 }
 
@@ -1169,11 +1169,11 @@ shell_free (gpointer data)
 
   g_clear_handle_id (&shell->midnight, g_source_remove);
   g_clear_handle_id (&shell->toast_timeout, g_source_remove);
-  g_clear_pointer (&shell->toast_anim, neo_anim_free);
+  g_clear_pointer (&shell->toast_anim, vibeos_anim_free);
   g_cancellable_cancel (shell->query);
   g_clear_object (&shell->query);
   g_signal_handlers_disconnect_by_data (shell->store, shell);
-  g_clear_pointer (&shell->drawer_anim, neo_anim_free);
+  g_clear_pointer (&shell->drawer_anim, vibeos_anim_free);
   g_ptr_array_unref (shell->pushed);
   g_object_unref (shell->store);
   g_object_unref (shell->settings);
@@ -1275,7 +1275,7 @@ GtkWidget *
 cal_window_new (GtkApplication *app, CalStore *store, GSettings *settings)
 {
   Shell *shell = g_new0 (Shell, 1);
-  GtkWidget *window = neo_window_new (app);
+  GtkWidget *window = vibeos_window_new (app);
   GtkWidget *root = gtk_overlay_new ();
   GtkWidget *content = gtk_overlay_new ();
   GtkWidget *main = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
@@ -1296,7 +1296,7 @@ cal_window_new (GtkApplication *app, CalStore *store, GSettings *settings)
   /* before anything is shown: the store reads floating and all-day times in the home zone too */
   apply_home_zone (shell);
   shell->pushed = g_ptr_array_new ();
-  shell->drawer_anim = neo_anim_new (window, on_drawer_anim, shell);
+  shell->drawer_anim = vibeos_anim_new (window, on_drawer_anim, shell);
   g_object_set_data_full (G_OBJECT (window), "cal-shell", shell, shell_free);
   gtk_window_set_title (GTK_WINDOW (window), _("Calendar"));
   gtk_widget_add_css_class (window, "cal-window");
@@ -1352,10 +1352,10 @@ cal_window_new (GtkApplication *app, CalStore *store, GSettings *settings)
 
   /* the FAB: a rounded square with a white plus, for a new event */
   gtk_image_set_pixel_size (GTK_IMAGE (image), 24);
-  shell->fab = neo_pressable_new (image);
+  shell->fab = vibeos_pressable_new (image);
   gtk_widget_add_css_class (shell->fab, "cal-fab");
-  neo_pressable_set_fill (NEO_PRESSABLE (shell->fab), &fab_fill, TRUE);
-  neo_pressable_set_ripple (NEO_PRESSABLE (shell->fab), NEO_RIPPLE_BOUNDED, 16);
+  vibeos_pressable_set_fill (VIBEOS_PRESSABLE (shell->fab), &fab_fill, TRUE);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (shell->fab), VIBEOS_RIPPLE_BOUNDED, 16);
   gtk_widget_set_halign (shell->fab, GTK_ALIGN_END);
   gtk_widget_set_valign (shell->fab, GTK_ALIGN_END);
   gtk_accessible_update_property (GTK_ACCESSIBLE (shell->fab), GTK_ACCESSIBLE_PROPERTY_LABEL, _("New event"), -1);
@@ -1378,7 +1378,7 @@ cal_window_new (GtkApplication *app, CalStore *store, GSettings *settings)
   g_signal_connect (shell->pages, "notify::transition-running", G_CALLBACK (on_page_transition_done), shell);
   gtk_overlay_set_child (GTK_OVERLAY (root), shell->pages);
   gtk_overlay_add_overlay (GTK_OVERLAY (root), make_toast (shell));
-  neo_window_set_content (GTK_WINDOW (window), root);
+  vibeos_window_set_content (GTK_WINDOW (window), root);
 
   /* Escape is Back (a keyboard's; the shell's gesture presses a page's "Back" button, or sends Escape over the
    * drawer, which is a dialog to it) */

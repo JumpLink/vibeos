@@ -6,7 +6,7 @@
 
 #include <glib/gi18n.h>
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define PADDING         16      /* the card's padding */
 #define CORNER          28      /* as round as an alarm's card */
@@ -109,66 +109,66 @@ on_refit (gpointer data)
 /* --- the buttons */
 
 static void
-on_label_response (NeoDialog *dialog, int response, TimerCard *self)
+on_label_response (VibeosDialog *dialog, int response, TimerCard *self)
 {
   GtkWidget *entry = g_object_get_data (G_OBJECT (dialog), "entry");
 
-  if (response == NEO_RESPONSE_OK)
+  if (response == VIBEOS_RESPONSE_OK)
     timers_client_set_label (timers_client_get (), self->id, gtk_editable_get_text (GTK_EDITABLE (entry)));
 }
 
 static void
-on_label_activate (GtkEntry *entry, NeoDialog *dialog)
+on_label_activate (GtkEntry *entry, VibeosDialog *dialog)
 {
   /* the keyboard's Done is OK */
-  neo_dialog_respond (dialog, NEO_RESPONSE_OK);
+  vibeos_dialog_respond (dialog, VIBEOS_RESPONSE_OK);
 }
 
 /* the label dialog, as for an alarm: "Label" over one line of text, Cancel and OK; the text starts selected */
 static void
-on_label (NeoPressable *button, TimerCard *self)
+on_label (VibeosPressable *button, TimerCard *self)
 {
-  NeoDialog *dialog = neo_dialog_new (NULL);
+  VibeosDialog *dialog = vibeos_dialog_new (NULL);
   GtkWidget *entry = gtk_entry_new ();
 
-  neo_dialog_set_message (dialog, _("Label"));
+  vibeos_dialog_set_message (dialog, _("Label"));
   gtk_editable_set_text (GTK_EDITABLE (entry), self->label ? self->label : "");
   gtk_entry_set_input_hints (GTK_ENTRY (entry), GTK_INPUT_HINT_UPPERCASE_SENTENCES);
-  gtk_widget_add_css_class (entry, "neo-entry");
+  gtk_widget_add_css_class (entry, "vibeos-entry");
   gtk_widget_add_css_class (entry, "label-entry");
   g_signal_connect (entry, "activate", G_CALLBACK (on_label_activate), dialog);
-  neo_dialog_set_content (dialog, entry);
-  neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  neo_dialog_add_button (dialog, _("OK"), NEO_RESPONSE_OK);
+  vibeos_dialog_set_content (dialog, entry);
+  vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  vibeos_dialog_add_button (dialog, _("OK"), VIBEOS_RESPONSE_OK);
   g_object_set_data (G_OBJECT (dialog), "entry", entry);
   g_signal_connect_object (dialog, "response", G_CALLBACK (on_label_response), self, 0);
-  neo_dialog_present (dialog, GTK_WIDGET (self));
+  vibeos_dialog_present (dialog, GTK_WIDGET (self));
   gtk_widget_grab_focus (entry);
   gtk_editable_select_region (GTK_EDITABLE (entry), 0, -1);
 }
 
 static void
-on_close (NeoPressable *button, TimerCard *self)
+on_close (VibeosPressable *button, TimerCard *self)
 {
   timers_client_delete (timers_client_get (), self->id);
 }
 
 /* reset: the service deletes a timer another app asked to have gone once it rang */
 static void
-on_reset (NeoPressable *button, TimerCard *self)
+on_reset (VibeosPressable *button, TimerCard *self)
 {
   timers_client_reset (timers_client_get (), self->id);
 }
 
 static void
-on_add (NeoPressable *button, TimerCard *self)
+on_add (VibeosPressable *button, TimerCard *self)
 {
   timers_client_add_minute (timers_client_get (), self->id);
 }
 
 /* start a paused or reset one, pause a running one, stop one that rang */
 static void
-on_play (NeoPressable *button, TimerCard *self)
+on_play (VibeosPressable *button, TimerCard *self)
 {
   TimersClient *client = timers_client_get ();
 
@@ -395,12 +395,12 @@ timer_card_size_allocate (GtkWidget *widget, int width, int height, int baseline
 static void
 snapshot_ring (TimerCard *self, GtkSnapshot *snapshot)
 {
-  int scale = neo_device_scale (GTK_WIDGET (self));
+  int scale = vibeos_device_scale (GTK_WIDGET (self));
   /* the centre in whole device pixels */
   double half = floor (self->ring.size.width * scale / 2) / scale;
   double cx = self->ring.origin.x + half, cy = self->ring.origin.y + half;
   double radius = half - STROKE, gone;
-  GdkRGBA left = neo_color (NEO_PRIMARY), background = neo_color (NEO_SURFACE);
+  GdkRGBA left = vibeos_color (VIBEOS_PRIMARY), background = vibeos_color (VIBEOS_SURFACE);
 
   if (radius <= 0 || self->ring_hidden || !self->state)
     return;
@@ -416,7 +416,7 @@ timer_card_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   TimerCard *self = TIMER_CARD (widget);
   GskRoundedRect card;
-  GdkRGBA fill = neo_color (NEO_SURFACE_CONTAINER_HIGHEST);
+  GdkRGBA fill = vibeos_color (VIBEOS_SURFACE_CONTAINER_HIGHEST);
 
   gsk_rounded_rect_init_from_rect (&card, &GRAPHENE_RECT_INIT (0, 0, gtk_widget_get_width (widget),
                                                                gtk_widget_get_height (widget)), CORNER);
@@ -464,13 +464,13 @@ timer_card_class_init (TimerCardClass *klass)
 
 /* a filled pill: its corners fully round, the ripple bounded by them */
 static GtkWidget *
-pill_new (GtkWidget *child, NeoColor fill, int height)
+pill_new (GtkWidget *child, VibeosColor fill, int height)
 {
-  GtkWidget *pill = neo_pressable_new (child);
-  GdkRGBA color = neo_color (fill);
+  GtkWidget *pill = vibeos_pressable_new (child);
+  GdkRGBA color = vibeos_color (fill);
 
-  neo_pressable_set_fill (NEO_PRESSABLE (pill), &color, FALSE);
-  neo_pressable_set_ripple (NEO_PRESSABLE (pill), NEO_RIPPLE_BOUNDED, height / 2.0);
+  vibeos_pressable_set_fill (VIBEOS_PRESSABLE (pill), &color, FALSE);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (pill), VIBEOS_RIPPLE_BOUNDED, height / 2.0);
   return pill;
 }
 
@@ -485,12 +485,12 @@ timer_card_init (TimerCard *self)
   gtk_label_set_ellipsize (GTK_LABEL (self->label_text), PANGO_ELLIPSIZE_START);
   gtk_label_set_single_line_mode (GTK_LABEL (self->label_text), TRUE);
   gtk_label_set_xalign (GTK_LABEL (self->label_text), 0);
-  neo_label_set_font_padding (self->label_text, 20);
+  vibeos_label_set_font_padding (self->label_text, 20);
   gtk_widget_set_valign (self->label_text, GTK_ALIGN_START);
   gtk_widget_set_margin_start (self->label_text, LABEL_MARGIN);
   gtk_widget_set_margin_end (self->label_text, LABEL_MARGIN);
-  self->label_button = neo_pressable_new (self->label_text);
-  neo_pressable_set_ripple (NEO_PRESSABLE (self->label_button), NEO_RIPPLE_BOUNDED, 0);
+  self->label_button = vibeos_pressable_new (self->label_text);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->label_button), VIBEOS_RIPPLE_BOUNDED, 0);
   g_signal_connect (self->label_button, "clicked", G_CALLBACK (on_label), self);
   gtk_widget_set_parent (self->label_button, GTK_WIDGET (self));
 
@@ -500,8 +500,8 @@ timer_card_init (TimerCard *self)
   gtk_widget_set_halign (close_icon, GTK_ALIGN_CENTER);
   gtk_widget_set_valign (close_icon, GTK_ALIGN_CENTER);
   gtk_widget_add_css_class (close_icon, "timer-close");
-  self->close = neo_pressable_new (close_icon);
-  neo_pressable_set_ripple (NEO_PRESSABLE (self->close), NEO_RIPPLE_CIRCLE, ICON_SIZE);
+  self->close = vibeos_pressable_new (close_icon);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->close), VIBEOS_RIPPLE_CIRCLE, ICON_SIZE);
   describe (self->close, _("Delete"));
   g_signal_connect (self->close, "clicked", G_CALLBACK (on_close), self);
   gtk_widget_set_parent (self->close, GTK_WIDGET (self));
@@ -512,8 +512,8 @@ timer_card_init (TimerCard *self)
   gtk_widget_set_parent (self->time, GTK_WIDGET (self));
 
   /* reset */
-  self->reset = neo_icon_button_new ("clock-reset-symbolic");
-  gtk_image_set_pixel_size (GTK_IMAGE (neo_pressable_get_child (NEO_PRESSABLE (self->reset))), ICON_SIZE);
+  self->reset = vibeos_icon_button_new ("clock-reset-symbolic");
+  gtk_image_set_pixel_size (GTK_IMAGE (vibeos_pressable_get_child (VIBEOS_PRESSABLE (self->reset))), ICON_SIZE);
   gtk_widget_add_css_class (self->reset, "timer-reset");
   describe (self->reset, _("Reset"));
   g_signal_connect (self->reset, "clicked", G_CALLBACK (on_reset), self);
@@ -522,11 +522,11 @@ timer_card_init (TimerCard *self)
   /* "+ 1:00" in the tertiary colour, and play/pause in primary under it, as wide as it */
   add_text = gtk_label_new (_("+ 1:00"));
   gtk_widget_add_css_class (add_text, "timer-add");
-  neo_label_set_font_padding (add_text, 20);
+  vibeos_label_set_font_padding (add_text, 20);
   gtk_widget_set_valign (add_text, GTK_ALIGN_CENTER);
   gtk_widget_set_margin_start (add_text, BUTTON_PADDING);
   gtk_widget_set_margin_end (add_text, BUTTON_PADDING);
-  self->add = pill_new (add_text, NEO_TERTIARY, ADD_HEIGHT);
+  self->add = pill_new (add_text, VIBEOS_TERTIARY, ADD_HEIGHT);
   describe (self->add, _("Add 1 Minute"));
   g_signal_connect (self->add, "clicked", G_CALLBACK (on_add), self);
   gtk_widget_set_parent (self->add, GTK_WIDGET (self));
@@ -534,7 +534,7 @@ timer_card_init (TimerCard *self)
   self->play_icon = gtk_image_new_from_icon_name ("clock-pause-play-symbolic");
   gtk_image_set_pixel_size (GTK_IMAGE (self->play_icon), 18);
   gtk_widget_add_css_class (self->play_icon, "timer-play");
-  self->play = pill_new (self->play_icon, NEO_PRIMARY, PLAY_HEIGHT);
+  self->play = pill_new (self->play_icon, VIBEOS_PRIMARY, PLAY_HEIGHT);
   g_signal_connect (self->play, "clicked", G_CALLBACK (on_play), self);
   gtk_widget_set_parent (self->play, GTK_WIDGET (self));
 }

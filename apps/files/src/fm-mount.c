@@ -19,7 +19,7 @@ typedef struct {
   gboolean used;                /* the server dialog's password was given once */
   FmMountDone done;
   gpointer data;
-  NeoDialog *dialog;            /* the question showing */
+  VibeosDialog *dialog;            /* the question showing */
   GMountOperation *op;
 } Mount;
 
@@ -75,12 +75,12 @@ on_anonymous_toggled (GtkWidget *check, GParamSpec *pspec, Ask *ask)
 }
 
 static void
-on_ask_response (NeoDialog *dialog, int response, Ask *ask)
+on_ask_response (VibeosDialog *dialog, int response, Ask *ask)
 {
   GMountOperation *op = ask->mount->op;
 
   ask->mount->dialog = NULL;
-  if (response != NEO_RESPONSE_OK)
+  if (response != VIBEOS_RESPONSE_OK)
     {
       g_mount_operation_reply (op, G_MOUNT_OPERATION_ABORTED);
       return;
@@ -104,9 +104,9 @@ on_ask_response (NeoDialog *dialog, int response, Ask *ask)
 }
 
 static void
-on_ask_activate (GtkEntry *entry, NeoDialog *dialog)
+on_ask_activate (GtkEntry *entry, VibeosDialog *dialog)
 {
-  neo_dialog_respond (dialog, NEO_RESPONSE_OK);
+  vibeos_dialog_respond (dialog, VIBEOS_RESPONSE_OK);
 }
 
 static void
@@ -115,7 +115,7 @@ on_ask_password (GMountOperation *op, const char *message, const char *default_u
 {
   g_autofree char *title = NULL;
   GtkWidget *content;
-  NeoDialog *dialog;
+  VibeosDialog *dialog;
   Ask *ask;
 
   /* the server dialog's answer first, once: GVfs asks again only when it was wrong */
@@ -178,12 +178,12 @@ on_ask_password (GMountOperation *op, const char *message, const char *default_u
       ask->remember = fm_check_row (_("Remember password"), FALSE, TRUE);
       gtk_box_append (GTK_BOX (content), ask->remember);
     }
-  fm_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  fm_dialog_add_button (dialog, _("OK"), NEO_RESPONSE_OK);
+  fm_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  fm_dialog_add_button (dialog, _("OK"), VIBEOS_RESPONSE_OK);
   g_object_set_data_full (G_OBJECT (dialog), "fm-ask", ask, g_free);
   g_signal_connect (dialog, "response", G_CALLBACK (on_ask_response), ask);
   mount->dialog = dialog;
-  neo_dialog_present (dialog, mount->parent);
+  vibeos_dialog_present (dialog, mount->parent);
   /* the password field takes the keyboard when the user is already filled in */
   if (ask->password && ask->user && *gtk_editable_get_text (GTK_EDITABLE (ask->user)))
     gtk_widget_grab_focus (ask->password);
@@ -192,7 +192,7 @@ on_ask_password (GMountOperation *op, const char *message, const char *default_u
 /* ---- a question (an unknown host key ...) ------------------------------------------------------------------------ */
 
 static void
-on_question_response (NeoDialog *dialog, int response, Mount *mount)
+on_question_response (VibeosDialog *dialog, int response, Mount *mount)
 {
   mount->dialog = NULL;
   if (response < 0)
@@ -209,7 +209,7 @@ on_ask_question (GMountOperation *op, const char *message, const char **choices,
 {
   g_auto(GStrv) lines = g_strsplit (message, "\n", 2);
   GtkWidget *content;
-  NeoDialog *dialog;
+  VibeosDialog *dialog;
   int n = choices ? (int) g_strv_length ((char **) choices) : 0;
 
   /* answered later, as the password is */
@@ -223,7 +223,7 @@ on_ask_question (GMountOperation *op, const char *message, const char **choices,
     fm_dialog_add_button (dialog, choices[i], i);
   g_signal_connect (dialog, "response", G_CALLBACK (on_question_response), mount);
   mount->dialog = dialog;
-  neo_dialog_present (dialog, mount->parent);
+  vibeos_dialog_present (dialog, mount->parent);
 }
 
 static void
@@ -240,7 +240,7 @@ static void
 on_aborted (GMountOperation *op, Mount *mount)
 {
   if (mount->dialog)
-    neo_dialog_respond (mount->dialog, NEO_RESPONSE_CANCEL);
+    vibeos_dialog_respond (mount->dialog, VIBEOS_RESPONSE_CANCEL);
 }
 
 static void
@@ -259,7 +259,7 @@ on_mounted (GObject *source, GAsyncResult *result, gpointer data)
       g_warning ("mounting %s: %s", uri, error->message);
     }
   if (mount->dialog)
-    neo_dialog_respond (mount->dialog, NEO_RESPONSE_CANCEL);
+    vibeos_dialog_respond (mount->dialog, VIBEOS_RESPONSE_CANCEL);
   mount->done (ok, error, mount->data);
   mount_free (mount);
 }

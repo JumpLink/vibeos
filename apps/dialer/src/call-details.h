@@ -10,7 +10,7 @@
 #pragma once
 
 #include <gtk/gtk.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #include "call-types.h"
 #include "contacts.h"
@@ -22,7 +22,7 @@ G_DECLARE_FINAL_TYPE (CallDetails, call_details, CALL, DETAILS, GtkWidget)
 
 /* the calls with these ids (the entry's, newest first), all to or from @number; @snackbar: the window's, where a
  * call that could not be made says why */
-GtkWidget *call_details_new (Contacts *contacts, NeoSnackbar *snackbar, const char *number, Presentation presentation,
+GtkWidget *call_details_new (Contacts *contacts, VibeosSnackbar *snackbar, const char *number, Presentation presentation,
                              const gint64 *ids, guint n_ids);
 
 /* Signals: "closed" (): ✕, Back, Escape, or Delete, the window takes the screen away; "edit-number" (s number):

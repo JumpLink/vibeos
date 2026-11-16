@@ -9,7 +9,7 @@
 #include "ct-store.h"
 
 #include <gtk/gtk.h>
-#include <neo.h>
+#include <vibeos.h>
 
 G_BEGIN_DECLS
 
@@ -28,8 +28,8 @@ GtkWidget *ct_window_top           (GtkWidget *window);
 void       ct_window_toast         (GtkWidget *window, const char *text);
 /* the full-width snackbar ("Label deleted" UNDO), shown long */
 void       ct_window_snackbar      (GtkWidget *window, const char *text, const char *action,
-                                    NeoSnackbarAction callback, gpointer data);
-NeoSnackbar *ct_window_get_snackbar (GtkWidget *window);
+                                    VibeosSnackbarAction callback, gpointer data);
+VibeosSnackbar *ct_window_get_snackbar (GtkWidget *window);
 
 /* the screens, opened from anywhere (the list, another app's request) */
 void       ct_window_show_contact  (GtkWidget *window, const char *uid);          /* QuickContact */

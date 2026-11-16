@@ -1,29 +1,33 @@
-/* gnome-phone-migrate-ids: carries one user's settings, files and home screen over from the IDs gnome-phone had up to
- * 0.1.6 (legacy-ids.h) to the neo.* ones. It runs once per user, early in the session
- * (gnome-phone-migrate-ids.service, before graphical-session-pre.target; neo-launcher also runs it when it starts
- * and finds no stamp), and then marks the user done with $XDG_STATE_HOME/gnome-phone/ids-migrated, which lists what
- * it did. Two runs at once take turns (a lock beside the stamp), and the second finds the stamp.
+/* vibeos-migrate-ids: carries one user's settings, files and home screen over from the names VibeOS had as
+ * gnome-phone (legacy-ids.h: a first generation up to 0.1.6, then neo.* and gnome-phone from 0.1.7 to 0.1.11) to the
+ * vibeos ones. It runs once per user, early in the session (vibeos-migrate-ids.service, before
+ * graphical-session-pre.target; vibeos-launcher also runs it when it starts and finds no stamp), and then marks the
+ * user done with $XDG_STATE_HOME/vibeos/renamed, which lists what it did. Two runs at once take turns (a lock beside
+ * the stamp), and the second finds the stamp. The newer names are carried over first, so what a user set last wins;
+ * the first generation only for a user gnome-phone 0.1.7 never carried over (no 0.1.7 stamp).
  *
- * It never overwrites what the user already has under a new ID, and it leaves every old setting where it was:
+ * It never overwrites what the user already has under a new name, and it leaves every old setting where it was:
  *  - GSettings: the keys under each old path that the new path does not have yet are copied across. The old schemas
  *    are gone with the old packages, so GSettings cannot read them: dconf dump and dconf load do. The desktop ids in
- *    hidden-from-home are renamed on the way. A device's own defaults for the old schemas (vendor overrides, which
- *    no longer apply) become the user's values where they differ from the new schema's and the user has none.
+ *    hidden-from-home are renamed on the way, and so are values that were names (the launcher choice; the Round icon
+ *    pack, gnome-free now). A device's own defaults for the old schemas (vendor overrides, which no longer apply)
+ *    become the user's values where they differ from the new schema's and the user has none.
  *  - per-app directories ($XDG_DATA_HOME, $XDG_CONFIG_HOME, $XDG_CACHE_HOME, $XDG_STATE_HOME/<app id>: the clock's
- *    alarms, the browser's profile, the calculator's history) move to the new name, and the old name stays as a
- *    symlink to it, so a program from before the upgrade that is still running keeps finding its files. When the
- *    new directory exists already, only the files it lacks are copied into it.
+ *    alarms, the browser's profile, the calculator's history) and the ones named after a program (the launcher's
+ *    layout, Files' bookmarks, Dictate's models) move to the new name, and the old name stays as a symlink to it, so
+ *    a program from before the upgrade that is still running keeps finding its files. When the new directory exists
+ *    already, only the files it lacks are copied into it.
  *  - the browser's home screen shortcuts (desktop files in ~/.local/share/applications) take the new name, with the
- *    new icon name, icon path and window class.
+ *    new command, icon name, icon path, window class and keys.
  *  - default and associated apps (mimeapps.list): the new desktop id goes in front of each old one.
  *  - GNOME Shell's favourites get the new desktop id beside the old one. enabled-extensions and
- *    disabled-extensions name the extension's new UUID in place of the old one: a copy of the old extension left in
+ *    disabled-extensions name the extension's new UUID in place of an old one: a copy of the old extension left in
  *    a user's own extensions directory would otherwise run beside the new one.
  *  - per-app notification settings (org.gnome.desktop.notifications.application) are copied to the new id, which
  *    joins application-children.
  * The home layout is the launcher's: it reads old desktop ids in any layout.json (a ROM's in /etc/xdg too) and in
- * hidden-from-home as the new ones (neo-launcher/src/apps.c). What a 0.1.6 launcher made of the user's layout while
- * the packages were upgraded is undone here, from the copy saved before (restore_layout). */
+ * hidden-from-home as the new ones (vibeos-launcher/src/apps.c). What the old launcher made of the user's layout
+ * while the packages were swapped is undone here, from the copy saved before (restore_layout). */
 #include "legacy-ids.h"
 
 #include <errno.h>
@@ -144,39 +148,56 @@ move_dir (const char *base, const char *old_name, const char *new_name)
   }
 }
 
+/* "vibeos.Clock" -> "neo.Clock" */
+static char *
+neo_id (const char *now)
+{
+  return g_strconcat (NEO_PREFIX, now + strlen (APP_PREFIX), NULL);
+}
+
 static void
-move_app_dirs (void)
+move_app_dirs (gboolean first_generation)
 {
   const char *bases[] = { g_get_user_data_dir (), g_get_user_config_dir (), g_get_user_cache_dir (),
                           g_get_user_state_dir () };
-  for (guint i = 0; i < legacy_n_ids; i++) {
-    if (!legacy_ids[i].data)
-      continue;
-    g_autofree char *old = g_strconcat (LEGACY_PREFIX, legacy_ids[i].old, NULL);
-    for (guint b = 0; b < G_N_ELEMENTS (bases); b++)
+  for (guint b = 0; b < G_N_ELEMENTS (bases); b++) {
+    /* the newer names first: what is left under a first-generation name only fills in what the new one lacks */
+    for (guint i = 0; i < legacy_n_ids; i++) {
+      if (!legacy_ids[i].data)
+        continue;
+      g_autofree char *neo = neo_id (legacy_ids[i].now);
+      move_dir (bases[b], neo, legacy_ids[i].now);
+    }
+    for (guint i = 0; i < neo_n_dirs; i++)
+      move_dir (bases[b], neo_dirs[i].old, neo_dirs[i].now);
+    for (guint i = 0; first_generation && i < legacy_n_ids; i++) {
+      if (!legacy_ids[i].data || !legacy_ids[i].old)
+        continue;
+      g_autofree char *old = g_strconcat (LEGACY_PREFIX, legacy_ids[i].old, NULL);
       move_dir (bases[b], old, legacy_ids[i].now);
+    }
   }
 }
 
 /* ---- the home layout -------------------------------------------------------------------------------------------- */
 
-/* A 0.1.6 launcher still running while the packages are upgraded watches every app's desktop file go and the renamed
+/* The old launcher, still running while the packages are swapped, watches every app's desktop file go and the renamed
  * one come, an app it has never seen: it empties the old one's cells, puts the new one on the first free cell (A→Z)
  * and saves that over the user's layout. The first renamed package to be unpacked saved each user's layout as it was
- * before (debian/layouts-before-0.1.7.sh), and it goes back in place here, before the new launcher reads it; the one
- * that launcher made stays beside it. */
+ * before (debian/layouts-before-vibeos.sh), and it goes back in place here, before the new launcher reads it; the one
+ * the old launcher made stays beside it. */
 static void
 restore_layout (void)
 {
   g_autofree char *saved = g_strconcat (SAVED_LAYOUTS, "/", g_get_user_name (), ".json", NULL);
   /* once: a run that left something else undone comes back at the next start, when the user may have moved icons */
-  g_autofree char *mark = g_build_filename (g_get_user_state_dir (), "gnome-phone", "layout-restored", NULL);
+  g_autofree char *mark = g_build_filename (g_get_user_state_dir (), "vibeos", "layout-restored-vibeos", NULL);
   g_autofree char *before = NULL, *now = NULL;
   gsize len;
   if (g_file_test (mark, G_FILE_TEST_EXISTS) || !g_file_get_contents (saved, &before, &len, NULL))
     return;
-  g_autofree char *file = g_build_filename (g_get_user_config_dir (), "neo-launcher", "layout.json", NULL);
-  g_autofree char *aside = g_build_filename (g_get_user_config_dir (), "neo-launcher", "layout-upgrade-0.1.7.json",
+  g_autofree char *file = g_build_filename (g_get_user_config_dir (), "vibeos-launcher", "layout.json", NULL);
+  g_autofree char *aside = g_build_filename (g_get_user_config_dir (), "vibeos-launcher", "layout-upgrade-vibeos.json",
                                              NULL);
   g_autoptr (GError) error = NULL;
   if (g_file_get_contents (file, &now, NULL, NULL) && !strcmp (now, before)) {
@@ -196,7 +217,7 @@ restore_layout (void)
     note ("home layout: back as it was before the upgrade");
   }
   if (!g_file_set_contents (mark, "", 0, &error))
-    g_printerr ("gnome-phone-migrate-ids: %s\n", error->message);
+    g_printerr ("vibeos-migrate-ids: %s\n", error->message);
 }
 
 /* ---- the browser's shortcuts ------------------------------------------------------------------------------------ */
@@ -208,6 +229,64 @@ replace (const char *s, const char *from, const char *to)
   return g_strjoinv (to, parts);
 }
 
+/* a shortcut's desktop file, old name `old_name` (either generation), under its new name with what it names renamed */
+static void
+move_shortcut (const char *dir, const char *old_name)
+{
+  g_autofree char *new_name = legacy_desktop_id (old_name);
+  g_autofree char *old = g_build_filename (dir, old_name, NULL);
+  g_autofree char *now = g_build_filename (dir, new_name, NULL);
+  if (g_file_test (now, G_FILE_TEST_EXISTS)) {
+    note ("%s exists: %s left as it is", home (now), home (old));
+    return;
+  }
+  g_autoptr (GKeyFile) kf = g_key_file_new ();
+  g_autoptr (GError) error = NULL;
+  if (!g_key_file_load_from_file (kf, old, G_KEY_FILE_KEEP_COMMENTS | G_KEY_FILE_KEEP_TRANSLATIONS, &error)) {
+    note ("could not read %s: %s", home (old), error->message);
+    return;
+  }
+  const char *grp = G_KEY_FILE_DESKTOP_GROUP;
+  /* a shortcut without a favicon shows the browser's icon; one with a favicon has it in the browser's data
+   * directory, which move_app_dirs renamed */
+  g_autofree char *icon = g_key_file_get_string (kf, grp, G_KEY_FILE_DESKTOP_KEY_ICON, NULL);
+  if (!g_strcmp0 (icon, LEGACY_PREFIX "Browser") || !g_strcmp0 (icon, NEO_PREFIX "Browser")) {
+    g_key_file_set_string (kf, grp, G_KEY_FILE_DESKTOP_KEY_ICON, APP_PREFIX "Browser");
+  } else if (icon && strstr (icon, "/" LEGACY_PREFIX "NeoBrowser/")) {
+    g_autofree char *path = replace (icon, "/" LEGACY_PREFIX "NeoBrowser/", "/" APP_PREFIX "Browser/");
+    g_key_file_set_string (kf, grp, G_KEY_FILE_DESKTOP_KEY_ICON, path);
+  } else if (icon && strstr (icon, "/" NEO_PREFIX "Browser/")) {
+    g_autofree char *path = replace (icon, "/" NEO_PREFIX "Browser/", "/" APP_PREFIX "Browser/");
+    g_key_file_set_string (kf, grp, G_KEY_FILE_DESKTOP_KEY_ICON, path);
+  }
+  g_autofree char *wm = g_key_file_get_string (kf, grp, G_KEY_FILE_DESKTOP_KEY_STARTUP_WM_CLASS, NULL);
+  if (!g_strcmp0 (wm, LEGACY_PREFIX "NeoBrowser") || !g_strcmp0 (wm, NEO_PREFIX "Browser"))
+    g_key_file_set_string (kf, grp, G_KEY_FILE_DESKTOP_KEY_STARTUP_WM_CLASS, APP_PREFIX "Browser");
+  /* the browser was the program neo-browser in both generations */
+  g_autofree char *exec = g_key_file_get_string (kf, grp, G_KEY_FILE_DESKTOP_KEY_EXEC, NULL);
+  if (exec && g_str_has_prefix (exec, "neo-browser ")) {
+    g_autofree char *cmd = g_strconcat ("vibeos-browser ", exec + strlen ("neo-browser "), NULL);
+    g_key_file_set_string (kf, grp, G_KEY_FILE_DESKTOP_KEY_EXEC, cmd);
+  }
+  static const char *const keys[][2] = { { "X-NeoBrowser-Shortcut", "X-VibeosBrowser-Shortcut" },
+                                         { "X-NeoBrowser-Url", "X-VibeosBrowser-Url" } };
+  for (guint k = 0; k < G_N_ELEMENTS (keys); k++) {
+    g_autofree char *v = g_key_file_get_string (kf, grp, keys[k][0], NULL);
+    if (!v)
+      continue;
+    if (!g_key_file_has_key (kf, grp, keys[k][1], NULL))
+      g_key_file_set_string (kf, grp, keys[k][1], v);
+    g_key_file_remove_key (kf, grp, keys[k][0], NULL);
+  }
+  if (!g_key_file_save_to_file (kf, now, &error)) {
+    note ("could not write %s: %s", home (now), error->message);
+    failed = TRUE;
+    return;
+  }
+  g_unlink (old);
+  note ("browser shortcut %s is %s", old_name, new_name);
+}
+
 static void
 move_shortcuts (void)
 {
@@ -217,43 +296,11 @@ move_shortcuts (void)
   const char *name;
 
   while (d && (name = g_dir_read_name (d)))
-    if (g_str_has_prefix (name, LEGACY_SHORTCUT_PREFIX) && g_str_has_suffix (name, ".desktop"))
+    if ((g_str_has_prefix (name, LEGACY_SHORTCUT_PREFIX) || g_str_has_prefix (name, NEO_SHORTCUT_PREFIX)) &&
+        g_str_has_suffix (name, ".desktop"))
       g_ptr_array_add (names, g_strdup (name));
-  for (guint i = 0; i < names->len; i++) {
-    g_autofree char *new_name = legacy_desktop_id (names->pdata[i]);
-    g_autofree char *old = g_build_filename (dir, names->pdata[i], NULL);
-    g_autofree char *now = g_build_filename (dir, new_name, NULL);
-    if (g_file_test (now, G_FILE_TEST_EXISTS)) {
-      note ("%s exists: %s left as it is", home (now), home (old));
-      continue;
-    }
-    g_autoptr (GKeyFile) kf = g_key_file_new ();
-    g_autoptr (GError) error = NULL;
-    if (!g_key_file_load_from_file (kf, old, G_KEY_FILE_KEEP_COMMENTS | G_KEY_FILE_KEEP_TRANSLATIONS, &error)) {
-      note ("could not read %s: %s", home (old), error->message);
-      continue;
-    }
-    /* a shortcut without a favicon shows the browser's icon; one with a favicon has it in the browser's data
-     * directory, which move_app_dirs renamed */
-    g_autofree char *icon = g_key_file_get_string (kf, G_KEY_FILE_DESKTOP_GROUP, G_KEY_FILE_DESKTOP_KEY_ICON, NULL);
-    if (!g_strcmp0 (icon, LEGACY_PREFIX "Browser")) {
-      g_key_file_set_string (kf, G_KEY_FILE_DESKTOP_GROUP, G_KEY_FILE_DESKTOP_KEY_ICON, "neo.Browser");
-    } else if (icon && strstr (icon, "/" LEGACY_PREFIX "NeoBrowser/")) {
-      g_autofree char *path = replace (icon, "/" LEGACY_PREFIX "NeoBrowser/", "/neo.Browser/");
-      g_key_file_set_string (kf, G_KEY_FILE_DESKTOP_GROUP, G_KEY_FILE_DESKTOP_KEY_ICON, path);
-    }
-    g_autofree char *wm = g_key_file_get_string (kf, G_KEY_FILE_DESKTOP_GROUP,
-                                                 G_KEY_FILE_DESKTOP_KEY_STARTUP_WM_CLASS, NULL);
-    if (!g_strcmp0 (wm, LEGACY_PREFIX "NeoBrowser"))
-      g_key_file_set_string (kf, G_KEY_FILE_DESKTOP_GROUP, G_KEY_FILE_DESKTOP_KEY_STARTUP_WM_CLASS, "neo.Browser");
-    if (!g_key_file_save_to_file (kf, now, &error)) {
-      note ("could not write %s: %s", home (now), error->message);
-      failed = TRUE;
-      continue;
-    }
-    g_unlink (old);
-    note ("browser shortcut %s is %s", (char *) names->pdata[i], new_name);
-  }
+  for (guint i = 0; i < names->len; i++)
+    move_shortcut (dir, names->pdata[i]);
 }
 
 /* ---- default apps ----------------------------------------------------------------------------------------------- */
@@ -366,6 +413,20 @@ map_id_array (const char *value)
   return g_variant_print (mapped, TRUE);
 }
 
+/* a value of vibeos.Shell (GVariant text) as it reads now: desktop ids renamed, and the values that were names */
+static char *
+map_shell_value (const char *key, const char *value)
+{
+  if (!strcmp (key, "hidden-from-home"))
+    return map_id_array (value);
+  if (!strcmp (key, "launcher") && !strcmp (value, "'neo'"))
+    return g_strdup ("'vibeos'");
+  /* the Round icon pack is gnome-free now */
+  if (!strcmp (key, "icon-pack") && !strcmp (value, "'round'"))
+    return g_strdup ("'gnome-free'");
+  return g_strdup (value);
+}
+
 static void
 copy_path (const char *old, const char *now)
 {
@@ -400,12 +461,9 @@ copy_path (const char *old, const char *now)
         continue;
       }
       g_autofree char *value = g_key_file_get_value (from, *g, *k, NULL);
-      if (!strcmp (now, "/neo/Phone/") && !strcmp (*g, "/") && !strcmp (*k, "hidden-from-home")) {
-        g_autofree char *ids = map_id_array (value);
-        g_key_file_set_value (add, *g, *k, ids);
-      } else {
-        g_key_file_set_value (add, *g, *k, value);
-      }
+      g_autofree char *mapped = !strcmp (now, "/vibeos/Shell/") && !strcmp (*g, "/") ? map_shell_value (*k, value)
+                                                                                     : g_strdup (value);
+      g_key_file_set_value (add, *g, *k, mapped);
       n++;
     }
   }
@@ -424,7 +482,7 @@ copy_path (const char *old, const char *now)
 }
 
 static void
-copy_settings (void)
+copy_settings (gboolean first_generation)
 {
   g_autofree char *dconf = g_find_program_in_path ("dconf");
   if (!dconf) {
@@ -432,7 +490,9 @@ copy_settings (void)
     failed = TRUE;
     return;
   }
-  for (guint i = 0; i < legacy_n_paths; i++) {
+  for (guint i = 0; i < neo_n_paths; i++)
+    copy_path (neo_paths[i].old, neo_paths[i].now);
+  for (guint i = 0; first_generation && i < legacy_n_paths; i++) {
     g_autofree char *old = g_strconcat (LEGACY_PATH, legacy_paths[i].old, NULL);
     copy_path (old, legacy_paths[i].now);
   }
@@ -479,19 +539,22 @@ shell_lists (void)
     note ("org.gnome.shell favorite-apps: the new app ids added");
   }
 
-  /* the extension under its new UUID, and never the old one beside it */
+  /* the extension under its new UUID, and never an old one beside it */
   const char *lists[] = { "enabled-extensions", "disabled-extensions" };
   for (guint l = 0; l < G_N_ELEMENTS (lists); l++) {
     g_auto (GStrv) uuids = g_settings_get_strv (shell, lists[l]);
-    if (!g_strv_contains ((const char *const *) uuids, LEGACY_EXTENSION))
+    if (!g_strv_contains ((const char *const *) uuids, LEGACY_EXTENSION) &&
+        !g_strv_contains ((const char *const *) uuids, NEO_EXTENSION))
       continue;
     gboolean has = g_strv_contains ((const char *const *) uuids, EXTENSION_UUID);
     g_autoptr (GStrvBuilder) b = g_strv_builder_new ();
     for (char **u = uuids; *u; u++)
-      if (strcmp (*u, LEGACY_EXTENSION))
+      if (strcmp (*u, LEGACY_EXTENSION) && strcmp (*u, NEO_EXTENSION)) {
         g_strv_builder_add (b, *u);
-      else if (!has)
+      } else if (!has) {
         g_strv_builder_add (b, EXTENSION_UUID);
+        has = TRUE;
+      }
     g_auto (GStrv) mapped = g_strv_builder_end (b);
     g_settings_set_strv (shell, lists[l], (const char *const *) mapped);
     note ("org.gnome.shell %s: %s in place of the old UUID", lists[l], EXTENSION_UUID);
@@ -506,7 +569,7 @@ munge (const char *app_id)
 }
 
 static void
-notifications (void)
+notifications (gboolean first_generation)
 {
   g_autoptr (GSettings) top = settings ("org.gnome.desktop.notifications");
   g_autoptr (GSettingsSchema) app = schema ("org.gnome.desktop.notifications.application");
@@ -518,8 +581,13 @@ notifications (void)
   g_strv_builder_addv (b, (const char **) kids);
   g_autoptr (GPtrArray) added = g_ptr_array_new_with_free_func (g_free);
 
-  for (guint i = 0; i < legacy_n_ids; i++) {
-    g_autofree char *old_id = g_strconcat (LEGACY_PREFIX, legacy_ids[i].old, NULL);
+  /* the newer names first; then the first generation's */
+  for (guint j = 0; j < 2 * legacy_n_ids; j++) {
+    guint i = j % legacy_n_ids;
+    gboolean neo = j < legacy_n_ids;
+    if (!neo && (!first_generation || !legacy_ids[i].old))
+      continue;
+    g_autofree char *old_id = neo ? neo_id (legacy_ids[i].now) : g_strconcat (LEGACY_PREFIX, legacy_ids[i].old, NULL);
     g_autofree char *old = munge (old_id);
     g_autofree char *now = munge (legacy_ids[i].now);
     if (!g_strv_contains ((const char *const *) kids, old))
@@ -556,7 +624,7 @@ notifications (void)
 
 /* ---- a device's defaults for the old schemas -------------------------------------------------------------------- */
 
-/* "/neo/Phone/" -> "neo.Phone": each schema's path is its id */
+/* "/vibeos/Shell/" -> "vibeos.Shell": each schema's path is its id */
 static char *
 path_schema_id (const char *path)
 {
@@ -605,37 +673,52 @@ vendor_overrides (void)
  * them with the upgrade, since an override for a schema that is no longer installed is skipped. Until the device
  * names the new schema, each such default that differs from the new schema's becomes the user's own value, when the
  * user has none: the phone looks and behaves as it did before the upgrade. */
+/* the vendor defaults for the old schema `old_id` that matter for the new path `now` (see device_defaults) */
+static void
+device_defaults_for (GHashTable *set, const char *old_id, const char *now)
+{
+  g_autofree char *now_id = path_schema_id (now);
+  g_autoptr (GSettingsSchema) s = schema (now_id);
+  if (!s)
+    return;
+  g_autoptr (GSettings) gs = g_settings_new_full (s, NULL, NULL);
+  g_auto (GStrv) keys = g_settings_schema_list_keys (s);
+  for (char **k = keys; *k; k++) {
+    g_autofree char *old_key = g_strconcat (old_id, "\n", *k, NULL);
+    g_autofree char *now_key = g_strconcat (now_id, "\n", *k, NULL);
+    const char *text = g_hash_table_lookup (set, old_key);
+    if (!text || g_hash_table_contains (set, now_key))
+      continue;
+    g_autoptr (GVariant) mine = g_settings_get_user_value (gs, *k);
+    if (mine)
+      continue;
+    g_autofree char *mapped = !strcmp (now, "/vibeos/Shell/") ? map_shell_value (*k, text) : g_strdup (text);
+    g_autoptr (GSettingsSchemaKey) key = g_settings_schema_get_key (s, *k);
+    g_autoptr (GVariant) v = g_variant_parse (g_settings_schema_key_get_value_type (key), mapped, NULL, NULL, NULL);
+    g_autoptr (GVariant) def = g_settings_get_default_value (gs, *k);
+    if (!v || !g_settings_schema_key_range_check (key, v) || (def && g_variant_equal (v, def)))
+      continue;
+    g_settings_set_value (gs, *k, v);
+    note ("the device's default %s %s=%s kept as the user's", now_id, *k, mapped);
+  }
+}
+
+/* A device that set its own defaults for the old schemas (a ROM's override: hidden-from-home, no AOD on an LCD) lost
+ * them with the upgrade, since an override for a schema that is no longer installed is skipped. Until the device
+ * names the new schema, each such default that differs from the new schema's becomes the user's own value, when the
+ * user has none: the phone looks and behaves as it did before the upgrade. */
 static void
 device_defaults (void)
 {
   g_autoptr (GHashTable) set = vendor_overrides ();
+  for (guint i = 0; i < neo_n_paths; i++) {
+    g_autofree char *old_id = path_schema_id (neo_paths[i].old);
+    device_defaults_for (set, old_id, neo_paths[i].now);
+  }
   for (guint i = 0; i < legacy_n_paths; i++) {
-    g_autofree char *now_id = path_schema_id (legacy_paths[i].now);
     g_autofree char *dir = g_strndup (legacy_paths[i].old, strlen (legacy_paths[i].old) - 1);
     g_autofree char *old_id = g_strconcat (LEGACY_PREFIX, dir, NULL);
-    g_autoptr (GSettingsSchema) s = schema (now_id);
-    if (!s)
-      continue;
-    g_autoptr (GSettings) gs = g_settings_new_full (s, NULL, NULL);
-    g_auto (GStrv) keys = g_settings_schema_list_keys (s);
-    for (char **k = keys; *k; k++) {
-      g_autofree char *old_key = g_strconcat (old_id, "\n", *k, NULL);
-      g_autofree char *now_key = g_strconcat (now_id, "\n", *k, NULL);
-      const char *text = g_hash_table_lookup (set, old_key);
-      if (!text || g_hash_table_contains (set, now_key))
-        continue;
-      g_autoptr (GVariant) mine = g_settings_get_user_value (gs, *k);
-      if (mine)
-        continue;
-      g_autofree char *mapped = !strcmp (*k, "hidden-from-home") ? map_id_array (text) : g_strdup (text);
-      g_autoptr (GSettingsSchemaKey) key = g_settings_schema_get_key (s, *k);
-      g_autoptr (GVariant) v = g_variant_parse (g_settings_schema_key_get_value_type (key), mapped, NULL, NULL, NULL);
-      g_autoptr (GVariant) def = g_settings_get_default_value (gs, *k);
-      if (!v || !g_settings_schema_key_range_check (key, v) || (def && g_variant_equal (v, def)))
-        continue;
-      g_settings_set_value (gs, *k, v);
-      note ("the device's default %s %s=%s kept as the user's", now_id, *k, mapped);
-    }
+    device_defaults_for (set, old_id, legacy_paths[i].now);
   }
 }
 
@@ -647,14 +730,17 @@ main (int argc, char **argv)
   g_autofree char *stamp = legacy_stamp_path ();
   g_autofree char *dir = g_path_get_dirname (stamp);
   g_autofree char *lock_file = g_strconcat (stamp, ".lock", NULL);
+  /* gnome-phone 0.1.7 carried this user over from the first generation already */
+  g_autofree char *stamp_0_1_7 = g_build_filename (g_get_user_state_dir (), NEO_STATE_DIR, "ids-migrated", NULL);
+  gboolean first_generation = !g_file_test (stamp_0_1_7, G_FILE_TEST_EXISTS);
 
   if (g_mkdir_with_parents (dir, 0700)) {
-    g_printerr ("gnome-phone-migrate-ids: %s: %s\n", dir, g_strerror (errno));
+    g_printerr ("vibeos-migrate-ids: %s: %s\n", dir, g_strerror (errno));
     return 1;
   }
   int lock = g_open (lock_file, O_RDWR | O_CREAT | O_CLOEXEC, 0600);
   if (lock < 0 || flock (lock, LOCK_EX)) {
-    g_printerr ("gnome-phone-migrate-ids: %s: %s\n", lock_file, g_strerror (errno));
+    g_printerr ("vibeos-migrate-ids: %s: %s\n", lock_file, g_strerror (errno));
     return 1;
   }
   if (g_file_test (stamp, G_FILE_TEST_EXISTS))
@@ -663,29 +749,29 @@ main (int argc, char **argv)
   /* plain files only: no GVfs daemon started for this, this early in the session */
   g_setenv ("GIO_USE_VFS", "local", TRUE);
   report = g_string_new (NULL);
-  move_app_dirs ();
+  move_app_dirs (first_generation);
   restore_layout ();
   move_shortcuts ();
   map_all_mimeapps ();
-  copy_settings ();
+  copy_settings (first_generation);
   device_defaults ();
   shell_lists ();
-  notifications ();
+  notifications (first_generation);
   g_settings_sync ();
 
   g_print ("%s", report->len ? report->str : "nothing to carry over\n");
   if (failed) {
-    g_printerr ("gnome-phone-migrate-ids: not everything was carried over; it tries again at the next start\n");
+    g_printerr ("vibeos-migrate-ids: not everything was carried over; it tries again at the next start\n");
     return 1;
   }
   g_autoptr (GDateTime) when = g_date_time_new_now_local ();
   g_autofree char *date = g_date_time_format_iso8601 (when);
-  g_autofree char *text = g_strdup_printf ("# gnome-phone 0.1.7 renamed its IDs (neo.*); this user's settings and "
-                                           "files were carried over on %s\n%s", date,
+  g_autofree char *text = g_strdup_printf ("# gnome-phone is VibeOS now; this user's settings and files were carried "
+                                           "over to its names on %s\n%s", date,
                                            report->len ? report->str : "nothing to carry over\n");
   g_autoptr (GError) error = NULL;
   if (!g_file_set_contents (stamp, text, -1, &error)) {
-    g_printerr ("gnome-phone-migrate-ids: %s\n", error->message);
+    g_printerr ("vibeos-migrate-ids: %s\n", error->message);
     return 1;
   }
   close (lock);

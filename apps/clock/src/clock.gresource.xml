@@ -2,7 +2,7 @@
 <!-- the app's stylesheet and its icons (data/icons, made from DeskClock's vector drawables by tools/vd2svg.py),
      where GtkApplication looks for icons: the resource base path + /icons -->
 <gresources>
-  <gresource prefix="/neo/Clock">
+  <gresource prefix="/vibeos/Clock">
     <file>clock.css</file>
     <file alias="icons/scalable/actions/clock-add-symbolic.svg">icons/clock-add-symbolic.svg</file>
     <file alias="icons/scalable/actions/clock-alarm-off-symbolic.svg">icons/clock-alarm-off-symbolic.svg</file>

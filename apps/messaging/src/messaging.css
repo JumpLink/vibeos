@@ -15,7 +15,7 @@
 }
 
 .msg-action-title {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 20px;
   font-weight: 800;
   color: #ffffff;
@@ -38,7 +38,7 @@
 }
 
 .msg-row-name {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 16px;
   font-weight: 700;
   color: #a6a6a6;
@@ -46,7 +46,7 @@
 
 .msg-row-snippet,
 .msg-row-time {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 14px;
   font-weight: 700;
   color: #a6a6a6;
@@ -70,14 +70,14 @@
 /* --- Blocked contacts: a name, and "UNBLOCK" in the accent */
 
 .msg-blocked-name {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 18px;
   font-weight: 700;
   color: #bfbfbf;
 }
 
 .msg-blocked-unblock {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 14px;
   font-weight: 700;
   color: #b8ebf3;
@@ -85,7 +85,7 @@
 
 /* the "START CHAT" button: black on its light fill, as it is not darkened with the rest */
 .msg-fab-label {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 14px;
   font-weight: 800;
   letter-spacing: 1.25px;
@@ -97,7 +97,7 @@
 }
 
 .msg-empty-text {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 14px;
   font-weight: 700;
   color: #9b9b9b;
@@ -106,13 +106,13 @@
 /* --- a conversation */
 
 .msg-message-text {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 16px;
   font-weight: 700;
 }
 
 .msg-message-status {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 12px;
   font-weight: 700;
 }
@@ -165,7 +165,7 @@
 }
 
 .msg-compose-text {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 16px;
   font-weight: 700;
   color: #ffffff;
@@ -178,7 +178,7 @@
 }
 
 .msg-compose-hint {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 16px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.22);
@@ -190,7 +190,7 @@
 }
 
 .msg-counter {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 12px;
   font-weight: 700;
   color: #b5b5b5;
@@ -199,7 +199,7 @@
 /* --- the contact picker */
 
 .msg-picker-field {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 20px;
   font-weight: 700;
   color: #ffffff;
@@ -218,7 +218,7 @@
 }
 
 .msg-picker-tab {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 14px;
   font-weight: 900;
   color: rgba(255, 255, 255, 0.5);
@@ -233,7 +233,7 @@
 }
 
 .msg-picker-letter {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 26px;
   font-weight: 700;
   color: #b8ebf3;
@@ -241,7 +241,7 @@
 
 /* a row's lines are 1.73 × their text size tall, as in People & options */
 .msg-picker-name {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 16px;
   font-weight: 700;
   line-height: 27.67px;
@@ -249,7 +249,7 @@
 }
 
 .msg-picker-number {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 14px;
   font-weight: 700;
   line-height: 24.2px;
@@ -257,7 +257,7 @@
 }
 
 .msg-picker-type {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 14px;
   font-weight: 700;
   line-height: 24.2px;
@@ -274,7 +274,7 @@
 }
 
 .popup-menu-text {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 16px;
   font-weight: 700;
   letter-spacing: 0.15px;
@@ -287,38 +287,38 @@
 
 /* --- the alert dialogs: the title over the message, the buttons in capitals */
 
-.msg-window .neo-dialog {
+.msg-window .vibeos-dialog {
   background-color: #181c1d;
   padding: 18px 0 4px 0;
 }
 
-.msg-window .neo-dialog-title {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+.msg-window .vibeos-dialog-title {
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 20px;
   font-weight: 800;
   color: rgba(255, 255, 255, 0.87);
   margin: 0 24px 16px 24px;
 }
 
-.msg-window .neo-dialog-message {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+.msg-window .vibeos-dialog-message {
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 16px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.87);
   margin: 0 24px;
 }
 
-.msg-window .neo-dialog-buttons {
+.msg-window .vibeos-dialog-buttons {
   margin: 12px 12px 0 12px;
 }
 
 /* Forward message: the title with nothing under it, then the conversation list, edge to edge */
-.msg-window .msg-forward-dialog .neo-dialog-title {
+.msg-window .msg-forward-dialog .vibeos-dialog-title {
   margin-bottom: 0;
 }
 
-.msg-window .neo-dialog .neo-text-button {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+.msg-window .vibeos-dialog .vibeos-text-button {
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 14px;
   font-weight: 800;
   letter-spacing: 1.25px;
@@ -329,23 +329,23 @@
 
 /* --- the snackbar: edge to edge and square, the action in yellow */
 
-.msg-window .neo-snackbar {
+.msg-window .vibeos-snackbar {
   background-color: #323232;
   border-radius: 0;
   padding: 0;
   min-height: 0;
 }
 
-.msg-window .neo-snackbar-text {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+.msg-window .vibeos-snackbar-text {
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 14px;
   font-weight: 700;
   color: #ffffff;
   margin: 18px 0 18px 24px;
 }
 
-.msg-window .neo-snackbar .neo-text-button {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+.msg-window .vibeos-snackbar .vibeos-text-button {
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 14px;
   font-weight: 800;
   color: #eeff41;
@@ -360,7 +360,7 @@
 }
 
 .msg-options-header {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 16px;
   font-weight: 700;
   line-height: 27.67px;
@@ -374,7 +374,7 @@
 
 .msg-options-title,
 .msg-person-name {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 18px;
   font-weight: 700;
   line-height: 31px;
@@ -382,7 +382,7 @@
 }
 
 .msg-person-number {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 14px;
   font-weight: 700;
   line-height: 24.2px;
@@ -394,7 +394,7 @@
  * and under them (msg-settings.c) */
 
 .msg-pref-title {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 16px;
   font-weight: 700;
   line-height: 27.67px;
@@ -402,7 +402,7 @@
 }
 
 .msg-pref-summary {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 16px;
   font-weight: 700;
   line-height: 18.75px;
@@ -411,7 +411,7 @@
 
 /* a category's title: a row title's size and height, a little heavier, in the accent colour */
 .msg-pref-category {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 16px;
   font-weight: 800;
   line-height: 27.67px;
@@ -420,7 +420,7 @@
 
 /* "Add to Contacts?": the number beside the avatar, fainter than the question */
 .msg-add-contact-name {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 14px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.54);

@@ -10,7 +10,7 @@
 // sideways turns before it is built (whenUpright). Docked (another monitor on) nothing is turned.
 //
 // Holding the tracking needs meta_orientation_manager_inhibit_tracking(), which a stock mutter has in its typelib but
-// does not export (gnome-phone's mutter patch 0004 does). GJS calling it there does not throw: it aborts the shell (an
+// does not export (VibeOS's mutter patch 0004 does). GJS calling it there does not throw: it aborts the shell (an
 // assertion in its function invoker), so the symbol is looked up first. Without it the panel is held with GNOME's
 // orientation lock
 // instead: set while held, and given back as the user had it when let go. The user's own setting is kept in a file
@@ -39,7 +39,7 @@ const STATE_TYPE = '(ua((ssss)a(siiddada{sv})a{sv})a(iiduba(ssss)a{sv})a{sv})';
 
 const LOCK_KEY = 'orientation-lock';
 // the user's orientation lock while the panel is held with it: 'true' or 'false'
-const SAVED_LOCK = GLib.build_filenamev([GLib.get_user_state_dir(), 'gnome-phone', 'orientation-lock']);
+const SAVED_LOCK = GLib.build_filenamev([GLib.get_user_state_dir(), 'vibeos', 'orientation-lock']);
 
 // The Rotations holding the panel with GNOME's orientation lock, and the user's own setting meanwhile. Two can hold
 // at once (the extension turned on again before its last instance is gone): the first takes the user's setting, the
@@ -57,7 +57,7 @@ function canInhibitTracking() {
             return !!method && typelib.symbol(method.get_symbol())[0];
         });
     } catch (e) {
-        logError(e, 'gnome-phone: looking up mutter\'s orientation tracking inhibit');
+        logError(e, 'vibeos: looking up mutter\'s orientation tracking inhibit');
         return false;
     }
 }
@@ -77,7 +77,7 @@ function writeSavedLock(locked) {
         GLib.mkdir_with_parents(GLib.path_get_dirname(SAVED_LOCK), 0o700);
         GLib.file_set_contents(SAVED_LOCK, locked ? 'true' : 'false');
     } catch (e) {
-        logError(e, 'gnome-phone: saving the orientation lock');
+        logError(e, 'vibeos: saving the orientation lock');
     }
 }
 
@@ -254,7 +254,7 @@ export class Rotation {
                 }
             } while (this._again && !this._destroyed);
         } catch (e) {
-            logError(e, 'gnome-phone: turning the panel');
+            logError(e, 'vibeos: turning the panel');
         } finally {
             this._busy = false;
         }
@@ -333,12 +333,12 @@ export class Rotation {
             [serial, TEMPORARY, [[0, 0, scale, transform, true, [[connector, mode[0], {}]]]], {}]));
     }
 
-    // mutter's tracking, held or let go: with its own call where mutter exports it (gnome-phone's mutter patch 0004),
+    // mutter's tracking, held or let go: with its own call where mutter exports it (VibeOS's mutter patch 0004),
     // else with GNOME's orientation lock
     _inhibit(held) {
         if (!this._canInhibit) {
             if (!this._warned)
-                log('gnome-phone: mutter does not export its orientation tracking inhibit: the panel is held upright ' +
+                log('vibeos: mutter does not export its orientation tracking inhibit: the panel is held upright ' +
                     'with the orientation lock');
             this._warned = true;
             if (held)

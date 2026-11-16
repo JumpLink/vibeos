@@ -13,7 +13,7 @@
 #include "cal-window.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 #ifndef CAL_VERSION
@@ -87,7 +87,7 @@ on_home_tz_chosen (const char *tzid, gpointer data)
 }
 
 static void
-on_home_tz (NeoPressable *row, General *general)
+on_home_tz (VibeosPressable *row, General *general)
 {
   g_autofree char *tzid = g_settings_get_string (general->settings, "home-tz");
 
@@ -108,13 +108,13 @@ on_home_tz_check (GObject *check, GParamSpec *pspec, General *general)
 }
 
 static void
-on_check_row (NeoPressable *row, CalCheckBox *check)
+on_check_row (VibeosPressable *row, CalCheckBox *check)
 {
   cal_check_box_set_active (check, !cal_check_box_get_active (check));
 }
 
 static void
-on_clear_history (NeoPressable *row, General *general)
+on_clear_history (VibeosPressable *row, General *general)
 {
   g_settings_reset (general->settings, "search-history");
   cal_window_toast (general->window, _("Search history cleared."));
@@ -140,19 +140,19 @@ on_snooze_setting (GSettings *settings, const char *key, General *general)
 }
 
 static void
-on_notifications (NeoPressable *row, General *general)
+on_notifications (VibeosPressable *row, General *general)
 {
   cal_window_push (general->window, cal_notifications_page_new (general->window));
 }
 
 static void
-on_display_options (NeoPressable *row, General *general)
+on_display_options (VibeosPressable *row, General *general)
 {
   cal_window_push (general->window, cal_display_options_page_new (general->window));
 }
 
 static void
-on_quick_responses (NeoPressable *row, General *general)
+on_quick_responses (VibeosPressable *row, General *general)
 {
   cal_window_push (general->window, cal_quick_responses_page_new (general->window));
 }
@@ -424,7 +424,7 @@ on_response_edited (const char *text, gpointer data)
 }
 
 static void
-on_response_row (NeoPressable *row, Responses *responses)
+on_response_row (VibeosPressable *row, Responses *responses)
 {
   ResponseEdit *edit = g_new0 (ResponseEdit, 1);
   g_auto(GStrv) all = g_settings_get_strv (responses->settings, "quick-responses");
@@ -503,13 +503,13 @@ settings_free (gpointer data)
 }
 
 static void
-on_general (NeoPressable *row, Settings *settings)
+on_general (VibeosPressable *row, Settings *settings)
 {
   cal_window_push (settings->window, general_page (settings->window));
 }
 
 static void
-on_calendar (NeoPressable *row, Settings *settings)
+on_calendar (VibeosPressable *row, Settings *settings)
 {
   const CalCalendar *calendar = cal_store_find_calendar (settings->store, g_object_get_data (G_OBJECT (row), "cal-uid"));
 
@@ -595,7 +595,7 @@ GtkWidget *
 cal_about_page_new (GtkWidget *window)
 {
   GtkWidget *list, *page = cal_pref_page (window, _("About Calendar"), &list);
-  GtkWidget *icon = gtk_image_new_from_icon_name ("neo.Calendar");
+  GtkWidget *icon = gtk_image_new_from_icon_name ("vibeos.Calendar");
   CalPref pref;
 
   gtk_image_set_pixel_size (GTK_IMAGE (icon), 120);

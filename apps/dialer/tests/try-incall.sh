@@ -1,34 +1,34 @@
 #!/bin/sh
-# try-incall.sh: the in-call screen on a test display of its own (tools/neo-headless), against the mock phone
+# try-incall.sh: the in-call screen on a test display of its own (tools/vibeos-headless), against the mock phone
 # (mock-phone.py) and the call service on two buses of their own. No modem, no real call, no sound, nothing on the
 # phone's own screen: the service rings into a sound server that is not there and notifies the mock.
 #
 #   try-incall.sh start BUILD_DIR       the buses, the mock phone, the service (from BUILD_DIR), the display;
 #                                       HOLD=1 in the environment for a modem that can hold calls, DTMF=1
 #                                       for one that sends touch tones
-#   try-incall.sh ui [ARGS...]          the in-call app on the display (neo-dialer --incall ARGS)
+#   try-incall.sh ui [ARGS...]          the in-call app on the display (vibeos-dialer --incall ARGS)
 #   try-incall.sh app [ARGS...]         the Phone app on the display instead
 #   try-incall.sh phone METHOD [ARGS]   one of the mock's controls: Incoming '"+4930…"', RemoteAnswer, RemoteHangup,
 #                                       SetHold, Report… (gdbus syntax for the arguments)
 #   try-incall.sh calls METHOD [ARGS]   one of the service's methods: Dial, Answer, Hangup…
-#   try-incall.sh shot OUT.png | tap X Y | swipe X0 Y0 X1 Y1 [MS]   as neo-headless
+#   try-incall.sh shot OUT.png | tap X Y | swipe X0 Y0 X1 Y1 [MS]   as vibeos-headless
 #   try-incall.sh stop
 #
 # Run it as root on the phone, from the source tree's tests directory; it does the rest as the session user.
 set -e
 
-USER_NAME=${NEO_USER:-user}
+USER_NAME=${VIBEOS_USER:-user}
 RUNTIME=/run/user/$(id -u "$USER_NAME")
 RIG=$RUNTIME/try-incall.d
 HERE=$(dirname "$(readlink -f "$0")")
-HEADLESS=${HEADLESS:-/root/neo-tools/neo-headless}
-export NEO_HEADLESS=try-incall
+HEADLESS=${HEADLESS:-/root/vibeos-tools/vibeos-headless}
+export VIBEOS_HEADLESS=try-incall
 
 as_user() {
     sudo -u "$USER_NAME" env XDG_RUNTIME_DIR="$RUNTIME" "$@"
 }
 
-# a daemon as the session user, detached, as neo-headless starts its own (see there why not `as_user ... &`)
+# a daemon as the session user, detached, as vibeos-headless starts its own (see there why not `as_user ... &`)
 as_user_daemon() {
     name=$1
     shift
@@ -37,7 +37,7 @@ as_user_daemon() {
 
 # what the service and the mock run with: the rig's buses, its own settings and call log, and no sound server
 rig_env() {
-    echo DBUS_SESSION_BUS_ADDRESS="$(cat "$RIG/session")" NEO_DIALER_SYSTEM_BUS="$(cat "$RIG/system")" \
+    echo DBUS_SESSION_BUS_ADDRESS="$(cat "$RIG/session")" VIBEOS_DIALER_SYSTEM_BUS="$(cat "$RIG/system")" \
         GSETTINGS_BACKEND=memory GSETTINGS_SCHEMA_DIR="$RIG" PULSE_SERVER="unix:$RIG/no-sound"
 }
 
@@ -60,7 +60,7 @@ start)
     as_user mkdir -p "$run/data" "$run/state" "$run/config"
     echo "$run" >"$RIG/run"
     # the session user cannot read root's home, where the build is
-    install -o "$USER_NAME" -m 755 "$build/neo-dialer" "$build/neo-dialer-calls" "$HERE/mock-phone.py" "$RIG/"
+    install -o "$USER_NAME" -m 755 "$build/vibeos-dialer" "$build/vibeos-dialer-calls" "$HERE/mock-phone.py" "$RIG/"
     glib-compile-schemas --targetdir "$RIG" "$HERE/../data"
     cat >"$RIG/bus.conf" <<EOF
 <busconfig><type>session</type><listen>unix:dir=$RIG</listen><auth>EXTERNAL</auth>
@@ -80,12 +80,12 @@ EOF
     # HOLD=1: a modem that holds calls (the service finds out once, as it starts); DTMF=1: one that sends tones
     for feature in Hold:$HOLD Dtmf:$DTMF; do
         if [ -n "${feature#*:}" ]; then
-            as_user gdbus call --address "$(cat "$RIG/session")" --dest neo.Test.Phone \
-                --object-path /neo/Test/Phone --method "neo.Test.Phone.Set${feature%%:*}" true >/dev/null
+            as_user gdbus call --address "$(cat "$RIG/session")" --dest vibeos.Test.Phone \
+                --object-path /vibeos/Test/Phone --method "vibeos.Test.Phone.Set${feature%%:*}" true >/dev/null
         fi
     done
     # shellcheck disable=SC2046
-    as_user_daemon calls env $(rig_env) $(run_dirs) "$RIG/neo-dialer-calls"
+    as_user_daemon calls env $(rig_env) $(run_dirs) "$RIG/vibeos-dialer-calls"
     sh "$HEADLESS" start
     ;;
 ui | app)
@@ -94,21 +94,21 @@ ui | app)
     [ "$what" = ui ] && set -- --incall "$@"
     # the app with the service's data too: what it blocks or deletes is this run's, never the phone's own
     # shellcheck disable=SC2046
-    sh "$HEADLESS" run env $(rig_env) $(run_dirs) "$RIG/neo-dialer" "$@"
+    sh "$HEADLESS" run env $(rig_env) $(run_dirs) "$RIG/vibeos-dialer" "$@"
     ;;
 phone)
     shift
     method=$1
     shift
-    as_user gdbus call --address "$(cat "$RIG/session")" --dest neo.Test.Phone \
-        --object-path /neo/Test/Phone --method "neo.Test.Phone.$method" "$@"
+    as_user gdbus call --address "$(cat "$RIG/session")" --dest vibeos.Test.Phone \
+        --object-path /vibeos/Test/Phone --method "vibeos.Test.Phone.$method" "$@"
     ;;
 calls)
     shift
     method=$1
     shift
-    as_user gdbus call --address "$(cat "$RIG/session")" --dest neo.Dialer.Calls \
-        --object-path /neo/Dialer/Calls --method "neo.Dialer.Calls.$method" "$@"
+    as_user gdbus call --address "$(cat "$RIG/session")" --dest vibeos.Dialer.Calls \
+        --object-path /vibeos/Dialer/Calls --method "vibeos.Dialer.Calls.$method" "$@"
     ;;
 shot | tap | swipe)
     sh "$HEADLESS" "$@"

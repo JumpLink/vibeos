@@ -1,4 +1,4 @@
-// The home screen: the Neo launcher, a Vulkan Wayland client the shell starts itself, so it knows the launcher's
+// The home screen: the VibeOS launcher, a Vulkan Wayland client the shell starts itself, so it knows the launcher's
 // window from every other. That window is made the desktop (under every other window, on every workspace, in no
 // window list) and comes back if the launcher dies.
 import Gio from 'gi://Gio';
@@ -9,7 +9,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {SingleStack} from './stack.js';
 
-const LAUNCHER = ['/usr/local/bin/neo-launcher'];
+const LAUNCHER = ['/usr/local/bin/vibeos-launcher'];
 const RESPAWN_MS = 1000;
 
 export class Home {
@@ -74,14 +74,14 @@ export class Home {
         try {
             this._client = Meta.WaylandClient.new_subprocess(global.context, launcher, LAUNCHER);
         } catch (e) {
-            logError(e, 'gnome-phone: cannot start the launcher');
+            logError(e, 'vibeos: cannot start the launcher');
             return;
         }
         const proc = this._client.get_subprocess();
         proc.wait_async(null, () => {
             if (this._destroyed)
                 return;
-            console.warn(`gnome-phone: the launcher exited (${proc.get_exit_status()}), starting it again`);
+            console.warn(`vibeos: the launcher exited (${proc.get_exit_status()}), starting it again`);
             this._client = null;
             this._window = null;
             this._respawnId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, RESPAWN_MS, () => {

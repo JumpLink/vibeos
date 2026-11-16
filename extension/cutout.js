@@ -42,7 +42,7 @@ function readPanelFile(Gm, compatibles) {
                 const [, bytes] = GLib.file_get_contents(path);
                 return Gm.DisplayPanel.new_from_data(new TextDecoder().decode(bytes));
             } catch (e) {
-                logError(e, `gnome-phone: ${path}`);
+                logError(e, `vibeos: ${path}`);
             }
         }
     }
@@ -96,7 +96,7 @@ export const Cutout = GObject.registerClass({
                 return;
             this._hole = hole;
             this.emit('changed');
-        }).catch(e => logError(e, 'gnome-phone: the display cutout'));
+        }).catch(e => logError(e, 'vibeos: the display cutout'));
         this._sensor = global.backend.get_orientation_manager();
         this._cancellable = new Gio.Cancellable();
         Main.layoutManager.connectObject('monitors-changed', () => this._update(), this);
@@ -169,7 +169,7 @@ export const Cutout = GObject.registerClass({
                         this._set(logical[0][3] & 3);
                 } catch (e) {
                     if (!e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
-                        logError(e, 'gnome-phone: the panel\'s rotation');
+                        logError(e, 'vibeos: the panel\'s rotation');
                 }
             });
     }
@@ -193,7 +193,7 @@ export const Cutout = GObject.registerClass({
 export const CutoutBand = GObject.registerClass(
 class CutoutBand extends St.Widget {
     constructor(cutout, statusBar) {
-        super({name: 'gnomePhoneCutoutBand', style: 'background-color: black;', reactive: false});
+        super({name: 'vibeosCutoutBand', style: 'background-color: black;', reactive: false});
         this._cutout = cutout;
         this._statusBar = statusBar;
         cutout.connectObject('changed', () => this._sync(), this);

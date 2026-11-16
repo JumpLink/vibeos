@@ -5,7 +5,7 @@
 
 #include <glib/gi18n.h>
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 #define TOOLBAR_H        64       /* the toolbar, which stays */
@@ -150,7 +150,7 @@ category (GtkWidget *list, const char *title)
   GtkWidget *label = gtk_label_new (title);
 
   gtk_label_set_xalign (GTK_LABEL (label), 0);
-  neo_label_set_font_padding (label, 14);
+  vibeos_label_set_font_padding (label, 14);
   /* a category heading: space above it, which also parts it from the group before */
   gtk_widget_set_margin_top (label, gtk_widget_get_margin_top (label) + 24);
   gtk_widget_set_margin_bottom (label, gtk_widget_get_margin_bottom (label) + 8);
@@ -179,13 +179,13 @@ row (GtkWidget *list, const char *title, const char *summary_text, GtkWidget **s
   gtk_label_set_xalign (GTK_LABEL (label), 0);
   gtk_label_set_wrap (GTK_LABEL (label), TRUE);
   gtk_widget_add_css_class (label, "cam-settings-title");
-  neo_label_set_font_padding (label, 16);
+  vibeos_label_set_font_padding (label, 16);
   /* the title is 65 device px tall at scale 3 (its font metrics rounded outwards): 21⅔ px, which whole px can only
    * come near; 22 drifts +1 device px a row where 21 drifts -2 */
   gtk_widget_set_margin_bottom (label, gtk_widget_get_margin_bottom (label) + 1);
   gtk_box_append (GTK_BOX (column), label);
   gtk_widget_add_css_class (sub, "cam-settings-summary");
-  /* neo_label_set_font_padding's margins, for a summary that is not a GtkLabel */
+  /* vibeos_label_set_font_padding's margins, for a summary that is not a GtkLabel */
   gtk_widget_set_margin_top (sub, (int) round (14 * (2163 - 1900) / 2048.0));
   gtk_widget_set_margin_bottom (sub, (int) round (14 * (555 - 500) / 2048.0));
   gtk_widget_set_visible (sub, summary_text != NULL);
@@ -201,8 +201,8 @@ row (GtkWidget *list, const char *title, const char *summary_text, GtkWidget **s
     }
   else
     gtk_widget_set_margin_end (box, 24);
-  pressable = neo_pressable_new (box);
-  neo_pressable_set_ripple (NEO_PRESSABLE (pressable), NEO_RIPPLE_BOUNDED, 0);
+  pressable = vibeos_pressable_new (box);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (pressable), VIBEOS_RIPPLE_BOUNDED, 0);
   gtk_widget_add_css_class (pressable, "cam-settings-row");
   gtk_accessible_update_property (GTK_ACCESSIBLE (pressable), GTK_ACCESSIBLE_PROPERTY_LABEL, title, -1);
   gtk_box_append (GTK_BOX (list), pressable);
@@ -210,18 +210,18 @@ row (GtkWidget *list, const char *title, const char *summary_text, GtkWidget **s
 }
 
 static void
-on_switch_row (NeoPressable *pressable, NeoSwitch *toggle)
+on_switch_row (VibeosPressable *pressable, VibeosSwitch *toggle)
 {
-  neo_switch_set_active (toggle, !neo_switch_get_active (toggle));
+  vibeos_switch_set_active (toggle, !vibeos_switch_get_active (toggle));
 }
 
 static GtkWidget *
 switch_row (CamSettings *self, GtkWidget *list, const char *key, const char *title, const char *summary)
 {
-  GtkWidget *toggle = neo_switch_new ();
+  GtkWidget *toggle = vibeos_switch_new ();
   GtkWidget *pressable;
 
-  neo_switch_set_thumb_icons (NEO_SWITCH (toggle), FALSE);
+  vibeos_switch_set_thumb_icons (VIBEOS_SWITCH (toggle), FALSE);
   pressable = row (list, title, summary, NULL, toggle);
   if (key)
     g_settings_bind (self->settings, key, toggle, "active", G_SETTINGS_BIND_DEFAULT);
@@ -265,7 +265,7 @@ on_picked (int chosen, gpointer data)
 }
 
 static void
-on_list_row (NeoPressable *pressable, CamSettings *self)
+on_list_row (VibeosPressable *pressable, CamSettings *self)
 {
   Pick *pick = g_new0 (Pick, 1);
 
@@ -351,7 +351,7 @@ show_page (CamSettings *self, int index)
 }
 
 static void
-on_gestures (NeoPressable *pressable, CamSettings *self)
+on_gestures (VibeosPressable *pressable, CamSettings *self)
 {
   show_page (self, 1);
 }
@@ -366,7 +366,7 @@ go_back (CamSettings *self)
 }
 
 static void
-on_up (NeoPressable *button, CamSettings *self)
+on_up (VibeosPressable *button, CamSettings *self)
 {
   go_back (self);
 }
@@ -400,18 +400,18 @@ on_changed (GSettings *settings, const char *key, CamSettings *self)
   if (g_str_equal (key, "save-location"))
     {
       g_autofree char *value = g_settings_get_string (settings, key);
-      NeoSwitch *toggle = g_object_get_data (G_OBJECT (self->location), "cam-switch");
+      VibeosSwitch *toggle = g_object_get_data (G_OBJECT (self->location), "cam-switch");
 
-      if (neo_switch_get_active (toggle) != g_str_equal (value, "on"))
-        neo_switch_set_active (toggle, g_str_equal (value, "on"));
+      if (vibeos_switch_get_active (toggle) != g_str_equal (value, "on"))
+        vibeos_switch_set_active (toggle, g_str_equal (value, "on"));
     }
 }
 
 static void
-on_location_switch (NeoSwitch *toggle, GParamSpec *pspec, CamSettings *self)
+on_location_switch (VibeosSwitch *toggle, GParamSpec *pspec, CamSettings *self)
 {
   g_autofree char *value = g_settings_get_string (self->settings, "save-location");
-  gboolean on = neo_switch_get_active (toggle);
+  gboolean on = vibeos_switch_get_active (toggle);
 
   /* a three-way key (unset asks once): the switch writes on or off; the window asks GeoClue and turns it back off
    * if it refuses */
@@ -476,7 +476,7 @@ build (CamSettings *self)
   static const char *mirror_labels[3], *action_labels[6];
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *bar = gtk_overlay_new ();
-  GtkWidget *up = neo_icon_button_new ("cam-back-symbolic");
+  GtkWidget *up = vibeos_icon_button_new ("cam-back-symbolic");
   GtkWidget *list;
   GtkEventController *keys = gtk_event_controller_key_new ();
 
@@ -530,9 +530,9 @@ build (CamSettings *self)
   self->location = switch_row (self, list, NULL, _("Save location data"), _("Include GPS location in metadata"));
   {
     g_autofree char *value = g_settings_get_string (self->settings, "save-location");
-    NeoSwitch *toggle = g_object_get_data (G_OBJECT (self->location), "cam-switch");
+    VibeosSwitch *toggle = g_object_get_data (G_OBJECT (self->location), "cam-switch");
 
-    neo_switch_set_active (toggle, g_str_equal (value, "on"));
+    vibeos_switch_set_active (toggle, g_str_equal (value, "on"));
     g_signal_connect (toggle, "notify::active", G_CALLBACK (on_location_switch), self);
   }
   switch_row (self, list, "shutter-sound", _("Shutter sound"), _("Play a sound on capture"));

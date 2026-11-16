@@ -1,9 +1,9 @@
-/* The Phone's styles, over libneo's (neo.css). The colours are the ones the dark Phone renders, so they are plain
+/* The Phone's styles, over libvibeos's (vibeos.css). The colours are the ones the dark Phone renders, so they are plain
  * values, not a palette. Weights sit 300 over the design's (400 as 700, 500 as 800): the phone's Bold text setting
  * is on. The in-call screens draw themselves (answer-view.c, incall-view.c); only the icons inside their buttons
  * are styled here. */
 
-window.neo.dialer,
+window.vibeos.dialer,
 .dialer-page {
   background-color: #181c1d;            /* the page behind the lists */
 }
@@ -30,7 +30,7 @@ window.neo.dialer,
 
 /* a row's main line (name, number, call type) */
 .dialer-primary-text {
-  font-family: "Google Sans Flex", "Neo Roboto", sans-serif;
+  font-family: "Google Sans Flex", "VibeOS Roboto", sans-serif;
   font-size: 16px;
   font-weight: 700;
   color: #f6f7fb;
@@ -43,7 +43,7 @@ window.neo.dialer,
 
 /* the expanded search bar's field: it is not darkened with the rest, so its text stays the light theme's grey */
 .dialer-search-field {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 16px;
   font-weight: 700;
   color: #5f6368;
@@ -62,7 +62,7 @@ window.neo.dialer,
 }
 
 .dialer-empty-text {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 16px;
   font-weight: 700;
   color: #a3a7ac;
@@ -70,7 +70,7 @@ window.neo.dialer,
 }
 
 .dialer-empty-button {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 14px;
   font-weight: 800;
   color: #ffffff;
@@ -83,7 +83,7 @@ window.neo.dialer,
 }
 
 .popup-menu-text {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 16px;
   font-weight: 700;
   color: #f6f7fb;
@@ -95,7 +95,7 @@ window.neo.dialer,
 
 /* a row's second line (number, label, time) */
 .dialer-secondary-text {
-  font-family: "Google Sans Flex", "Neo Roboto", sans-serif;
+  font-family: "Google Sans Flex", "VibeOS Roboto", sans-serif;
   font-size: 14px;
   font-weight: 700;
   color: #a3a7ac;
@@ -103,21 +103,21 @@ window.neo.dialer,
 
 /* Favorites: a tile's name and number type, and the header over the list */
 .favorite-name {
-  font-family: "Google Sans Flex", "Neo Roboto", sans-serif;
+  font-family: "Google Sans Flex", "VibeOS Roboto", sans-serif;
   font-size: 14px;
   font-weight: 800;
   color: #f6f7fb;
 }
 
 .favorite-type {
-  font-family: "Google Sans Flex", "Neo Roboto", sans-serif;
+  font-family: "Google Sans Flex", "VibeOS Roboto", sans-serif;
   font-size: 14px;
   font-weight: 700;
   color: #a3a7ac;
 }
 
 .favorites-header {
-  font-family: "Google Sans Flex", "Neo Roboto", sans-serif;
+  font-family: "Google Sans Flex", "VibeOS Roboto", sans-serif;
   font-size: 16px;
   font-weight: 700;
   color: #a3a7ac;
@@ -125,7 +125,7 @@ window.neo.dialer,
 
 /* the header's borderless Add button, in the accent colour */
 .favorites-add {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 14px;
   font-weight: 800;
   color: #81b5bc;
@@ -137,7 +137,7 @@ window.neo.dialer,
 }
 
 .disambig-title {
-  font-family: "Google Sans Flex", "Neo Roboto", sans-serif;
+  font-family: "Google Sans Flex", "VibeOS Roboto", sans-serif;
   font-size: 16px;
   font-weight: 800;
   color: #f6f7fb;
@@ -146,7 +146,7 @@ window.neo.dialer,
 }
 
 .disambig-remember {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 14px;
   font-weight: 700;
   color: #f6f7fb;
@@ -159,7 +159,7 @@ window.neo.dialer,
 }
 
 .dialer-picker-title {
-  font-family: "Google Sans Flex", "Neo Roboto", sans-serif;
+  font-family: "Google Sans Flex", "VibeOS Roboto", sans-serif;
   font-size: 20px;
   font-weight: 700;
   color: #f6f7fb;
@@ -171,7 +171,7 @@ window.neo.dialer,
 }
 
 .popup-menu-header {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 14px;
   font-weight: 700;
   color: #a3a7ac;
@@ -188,7 +188,7 @@ history-tabs {
 }
 
 .dialer-history-title {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 20px;
   font-weight: 800;
   color: #f6f7fb;
@@ -201,7 +201,7 @@ history-tabs {
 
 /* the tab labels; the selected one in the accent colour */
 .history-tab {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 14px;
   font-weight: 700;
   color: #f6f7fb;
@@ -218,21 +218,21 @@ history-tabs {
 }
 
 .settings-title {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 16px;
   font-weight: 700;
   color: #f6f7fb;
 }
 
 .settings-summary {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 14px;
   font-weight: 700;
   color: #a3a7ac;
 }
 
 .settings-category {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 14px;
   font-weight: 800;
   color: #81b5bc;
@@ -245,14 +245,14 @@ history-tabs {
 
 .blocked-body,
 .blocked-number {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 16px;
   font-weight: 700;
   color: #d6e3e5;
 }
 
 .blocked-add {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 16px;
   font-weight: 700;
   color: #f6f7fb;
@@ -263,23 +263,23 @@ history-tabs {
 }
 
 .settings-choice {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 16px;
   font-weight: 700;
   color: #e1e1e1;
 }
 
-/* a list setting's dialog (Sort by, Name format): wider than a NeoDialog, the negative margin widening the card
+/* a list setting's dialog (Sort by, Name format): wider than a VibeosDialog, the negative margin widening the card
  * past its allocation, evenly; the rows run edge to edge, CANCEL alone in the button bar */
-.settings-dialog .neo-dialog {
+.settings-dialog .vibeos-dialog {
   background-color: #1b1b1b;
   border-radius: 16px;
   padding: 18px 0 0 0;
   margin: 0 -15px;
 }
 
-.settings-dialog .neo-dialog-title {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+.settings-dialog .vibeos-dialog-title {
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 20px;
   font-weight: 800;
   line-height: 27px;
@@ -287,12 +287,12 @@ history-tabs {
   margin: 1px 24px 7px 24px;     /* the extra pixel on top keeps the text just under the box's middle */
 }
 
-.settings-dialog .neo-dialog-buttons {
+.settings-dialog .vibeos-dialog-buttons {
   margin: 4px 12px 4px 12px;
 }
 
-.settings-dialog .neo-text-button {
-  font-family: "Neo Roboto", Roboto, sans-serif;
+.settings-dialog .vibeos-text-button {
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 14px;
   font-weight: 800;
   color: #81b5bc;
@@ -309,7 +309,7 @@ history-tabs {
 /* Call details (call-details.c): the toolbar's title; the large call-type icons, in their own colours and not
  * darkened; a missed call's time in red */
 .dialer-toolbar-title {
-  font-family: "Google Sans Flex", "Neo Roboto", sans-serif;
+  font-family: "Google Sans Flex", "VibeOS Roboto", sans-serif;
   font-size: 20px;
   font-weight: 800;
   color: #f6f7fb;
@@ -333,7 +333,7 @@ history-tabs {
 
 /* Call statistics (call-stats.c): the total over the list; a row's number, smaller than its name */
 .stats-header {
-  font-family: "Google Sans Flex", "Neo Roboto", sans-serif;
+  font-family: "Google Sans Flex", "VibeOS Roboto", sans-serif;
   font-size: 14px;
   font-weight: 800;
   color: #a3a7ac;
@@ -350,7 +350,7 @@ history-tabs {
 }
 
 .stats-card-title {
-  font-family: "Google Sans Flex", "Neo Roboto", sans-serif;
+  font-family: "Google Sans Flex", "VibeOS Roboto", sans-serif;
   font-size: 16px;
   font-weight: 900;
   letter-spacing: 0.15px;

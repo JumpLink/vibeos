@@ -182,7 +182,7 @@ end (DictateStream *self, GPtrArray *finished)
 
 const DictateRecogniserClass dictate_vosk = {
   .name = "Vosk",
-  .package = "neo-dictate-vosk",
+  .package = "vibeos-dictate-vosk",
   .installed = installed,
   .load = load,
   .unload = unload,

@@ -3,7 +3,7 @@
 
 #include <glib/gi18n.h>
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define HALO_REST       8       /* px the disc reaches past the FAB's edge while it listens to silence */
 #define HALO_SWELL      28      /* ... and further at full loudness */
@@ -19,7 +19,7 @@ struct _DictateMic
   gboolean listening;
   double level;                 /* the loudness as drawn, eased */
   double shown;                 /* the disc's opacity, 0 .. 1 */
-  NeoAnim *fade;
+  VibeosAnim *fade;
   guint tick;
   gint64 last_frame;
 };
@@ -52,7 +52,7 @@ on_tick (GtkWidget *widget, GdkFrameClock *clock, gpointer data)
 }
 
 static void
-on_fade (NeoAnim *anim, double value, gpointer data)
+on_fade (VibeosAnim *anim, double value, gpointer data)
 {
   DictateMic *self = data;
 
@@ -66,10 +66,10 @@ dictate_mic_set_listening (DictateMic *self, gboolean listening)
   if (self->listening == listening)
     return;
   self->listening = listening;
-  neo_fab_set_icon (NEO_PRESSABLE (self->fab), listening ? "dictate-stop-symbolic" : "dictate-mic-symbolic");
+  vibeos_fab_set_icon (VIBEOS_PRESSABLE (self->fab), listening ? "dictate-stop-symbolic" : "dictate-mic-symbolic");
   gtk_accessible_update_property (GTK_ACCESSIBLE (self->fab), GTK_ACCESSIBLE_PROPERTY_LABEL,
                                   listening ? _("Stop") : _("Start dictating"), -1);
-  neo_anim_start (self->fade, self->shown, listening ? 1 : 0, FADE_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
+  vibeos_anim_start (self->fade, self->shown, listening ? 1 : 0, FADE_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
   if (!self->tick)
     self->tick = gtk_widget_add_tick_callback (GTK_WIDGET (self), on_tick, NULL, NULL);
 }
@@ -83,7 +83,7 @@ dictate_mic_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   if (self->shown > 0)
     {
       double radius = MIN (w, h) / 2 + (HALO_REST + HALO_SWELL * self->level) * self->shown;
-      GdkRGBA halo = neo_color_alpha (NEO_PRIMARY, 0.24f * (float) self->shown);
+      GdkRGBA halo = vibeos_color_alpha (VIBEOS_PRIMARY, 0.24f * (float) self->shown);
       GskRoundedRect disc;
 
       gsk_rounded_rect_init_from_rect (&disc, &GRAPHENE_RECT_INIT (w / 2 - radius, h / 2 - radius, 2 * radius,
@@ -96,7 +96,7 @@ dictate_mic_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 }
 
 static void
-on_clicked (NeoPressable *fab, DictateMic *self)
+on_clicked (VibeosPressable *fab, DictateMic *self)
 {
   g_signal_emit (self, signals[SIGNAL_CLICKED], 0);
 }
@@ -106,7 +106,7 @@ dictate_mic_dispose (GObject *object)
 {
   DictateMic *self = DICTATE_MIC (object);
 
-  g_clear_pointer (&self->fade, neo_anim_free);
+  g_clear_pointer (&self->fade, vibeos_anim_free);
   g_clear_pointer (&self->fab, gtk_widget_unparent);
   g_clear_object (&self->engine);
   G_OBJECT_CLASS (dictate_mic_parent_class)->dispose (object);
@@ -128,14 +128,14 @@ dictate_mic_class_init (DictateMicClass *klass)
 static void
 dictate_mic_init (DictateMic *self)
 {
-  self->fab = neo_fab_new ("dictate-mic-symbolic", TRUE);
+  self->fab = vibeos_fab_new ("dictate-mic-symbolic", TRUE);
   /* Material 3's large FAB has a 36 px icon: the one thing on the screen to tap */
-  gtk_image_set_pixel_size (GTK_IMAGE (neo_pressable_get_child (NEO_PRESSABLE (self->fab))), 36);
+  gtk_image_set_pixel_size (GTK_IMAGE (vibeos_pressable_get_child (VIBEOS_PRESSABLE (self->fab))), 36);
   gtk_accessible_update_property (GTK_ACCESSIBLE (self->fab), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Start dictating"),
                                   -1);
   gtk_widget_set_parent (self->fab, GTK_WIDGET (self));
   g_signal_connect (self->fab, "clicked", G_CALLBACK (on_clicked), self);
-  self->fade = neo_anim_new (GTK_WIDGET (self), on_fade, self);
+  self->fade = vibeos_anim_new (GTK_WIDGET (self), on_fade, self);
 }
 
 GtkWidget *

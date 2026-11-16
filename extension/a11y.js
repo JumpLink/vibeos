@@ -131,7 +131,7 @@ export class BackProbe {
             return found ? {kind: 'button', name, path: found} : {kind: 'none'};
         } catch (e) {
             if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
-                log(`gnome-phone: back probe: ${e.message}`);
+                log(`vibeos: back probe: ${e.message}`);
             return {kind: 'unknown'};
         }
     }
@@ -142,7 +142,7 @@ export class BackProbe {
             await this._call(name, path, `${ATSPI}.Action`, 'DoAction', new GLib.Variant('(i)', [0]), '(b)');
             return true;
         } catch (e) {
-            log(`gnome-phone: back: ${e.message}`);
+            log(`vibeos: back: ${e.message}`);
             return false;
         }
     }

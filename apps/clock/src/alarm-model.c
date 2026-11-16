@@ -205,7 +205,7 @@ alarm_days_text (guint days, GDateWeekday first_day)
   g_autoptr(GDateTime) monday = g_date_time_new_utc (2024, 1, 1, 12, 0, 0);
 
   if ((days & ALARM_EVERY_DAY) == ALARM_EVERY_DAY)
-    return g_strdup (g_dgettext ("neo-clock", "Every day"));
+    return g_strdup (g_dgettext ("vibeos-clock", "Every day"));
   /* one day is named in full ("Monday"), several by their short names */
   if (days && !(days & (days - 1)))
     {
@@ -344,7 +344,7 @@ alarm_store_save (AlarmStore *store, const char *path, GError **error)
 
   g_key_file_set_comment (file, NULL, NULL,
                           " The clock's alarms ([alarm N]) and their coming occurrences ([instance N]).\n"
-                          " neo-clock-alarms keeps this file: edit it only while that is stopped.", NULL);
+                          " vibeos-clock-alarms keeps this file: edit it only while that is stopped.", NULL);
   for (guint i = 0; i < store->alarms->len; i++)
     {
       Alarm *alarm = g_ptr_array_index (store->alarms, i);

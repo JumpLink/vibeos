@@ -15,7 +15,7 @@ struct _AlarmPage
 {
   GtkWidget parent;
   GSettings *settings;
-  NeoSnackbar *snackbar;
+  VibeosSnackbar *snackbar;
   AlarmsClient *client;
 
   GtkWidget *scroller, *list, *empty;
@@ -23,7 +23,7 @@ struct _AlarmPage
   guint expanded;               /* the open card's alarm, or 0 */
   guint show_when_loaded;       /* an alarm to open once it is in the list (a new one) */
   gboolean showing_empty;
-  NeoAnim *empty_fade;
+  VibeosAnim *empty_fade;
 };
 
 static void alarm_page_tab_init (ClockTabInterface *iface);
@@ -94,7 +94,7 @@ on_toggle_expanded (AlarmCard *card, AlarmPage *self)
 static void
 on_message (AlarmCard *card, const char *text, AlarmPage *self)
 {
-  neo_snackbar_show (self->snackbar, text, NULL, NULL, NULL, NEO_SNACKBAR_SHORT);
+  vibeos_snackbar_show (self->snackbar, text, NULL, NULL, NULL, VIBEOS_SNACKBAR_SHORT);
 }
 
 static void
@@ -128,13 +128,13 @@ on_deleted (AlarmCard *card, ClockAlarm *alarm, AlarmPage *self)
   if (self->expanded == alarm->id)
     self->expanded = 0;
   alarms_client_delete (self->client, alarm->id);
-  neo_snackbar_show (self->snackbar, _("Alarm deleted"), _("undo"), undo_delete, deleted, NEO_SNACKBAR_LONG);
+  vibeos_snackbar_show (self->snackbar, _("Alarm deleted"), _("undo"), undo_delete, deleted, VIBEOS_SNACKBAR_LONG);
 }
 
 /* --- the empty state */
 
 static void
-on_empty_fade (NeoAnim *anim, double value, gpointer data)
+on_empty_fade (VibeosAnim *anim, double value, gpointer data)
 {
   AlarmPage *self = data;
   /* the run is 0..2: the old view fades out over the first half, the new one in over the second */
@@ -152,7 +152,7 @@ show_empty (AlarmPage *self, gboolean empty, gboolean animate)
     return;
   self->showing_empty = empty;
   if (animate)
-    neo_anim_start (self->empty_fade, 0, 2, 2 * EMPTY_FADE_MS, 0, SPONGY_ACCELERATE_DECELERATE);
+    vibeos_anim_start (self->empty_fade, 0, 2, 2 * EMPTY_FADE_MS, 0, SPONGY_ACCELERATE_DECELERATE);
   else
     on_empty_fade (self->empty_fade, 2, self);
 }
@@ -232,7 +232,7 @@ alarm_page_show_alarm (AlarmPage *self, guint id)
   if (card)
     expand (self, card);
   else
-    neo_snackbar_show (self->snackbar, _("Missed alarm has been deleted"), NULL, NULL, NULL, NEO_SNACKBAR_LONG);
+    vibeos_snackbar_show (self->snackbar, _("Missed alarm has been deleted"), NULL, NULL, NULL, VIBEOS_SNACKBAR_LONG);
 }
 
 /* --- adding */
@@ -264,7 +264,7 @@ on_new_time (int hour, int minute, gpointer data)
   g_autofree char *text = clock_alarm_set_text (g_date_time_difference (next, now) / G_TIME_SPAN_SECOND);
 
   alarms_client_add (self->client, &alarm, on_added, g_object_ref (self));
-  neo_snackbar_show (self->snackbar, text, NULL, NULL, NULL, NEO_SNACKBAR_SHORT);
+  vibeos_snackbar_show (self->snackbar, text, NULL, NULL, NULL, VIBEOS_SNACKBAR_SHORT);
 }
 
 void
@@ -272,7 +272,7 @@ alarm_page_add_alarm (AlarmPage *self)
 {
   g_autoptr(GDateTime) now = g_date_time_new_now_local ();
 
-  neo_time_picker_dialog (GTK_WIDGET (self), g_date_time_get_hour (now), g_date_time_get_minute (now), on_new_time,
+  vibeos_time_picker_dialog (GTK_WIDGET (self), g_date_time_get_hour (now), g_date_time_get_minute (now), on_new_time,
                           g_object_ref (self), g_object_unref);
 }
 
@@ -307,7 +307,7 @@ alarm_page_dispose (GObject *object)
 
   if (self->client)
     g_signal_handlers_disconnect_by_data (self->client, self);
-  g_clear_pointer (&self->empty_fade, neo_anim_free);
+  g_clear_pointer (&self->empty_fade, vibeos_anim_free);
   g_clear_pointer (&self->scroller, gtk_widget_unparent);
   g_clear_pointer (&self->empty, gtk_widget_unparent);
   g_clear_object (&self->settings);
@@ -352,11 +352,11 @@ alarm_page_init (AlarmPage *self)
   gtk_box_append (GTK_BOX (self->empty), text);
   gtk_widget_set_parent (self->empty, GTK_WIDGET (self));
   gtk_widget_set_child_visible (self->empty, FALSE);
-  self->empty_fade = neo_anim_new (GTK_WIDGET (self), on_empty_fade, self);
+  self->empty_fade = vibeos_anim_new (GTK_WIDGET (self), on_empty_fade, self);
 }
 
 GtkWidget *
-alarm_page_new (GSettings *settings, NeoSnackbar *snackbar)
+alarm_page_new (GSettings *settings, VibeosSnackbar *snackbar)
 {
   AlarmPage *self = g_object_new (ALARM_TYPE_PAGE, NULL);
 

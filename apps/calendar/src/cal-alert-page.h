@@ -1,6 +1,6 @@
 /* The reminder screens a notification opens in the app: the reminders page (the reminders fired and not
  * dismissed), the snooze delay (how long Snooze waits) and Email guests. The reminder service (reminders-main.c)
- * asks for them through the app's actions (cal-main.c), and they answer through its neo.Calendar.Reminders
+ * asks for them through the app's actions (cal-main.c), and they answer through its vibeos.Calendar.Reminders
  * interface, whose state file stays the only record of what is fired. */
 #pragma once
 

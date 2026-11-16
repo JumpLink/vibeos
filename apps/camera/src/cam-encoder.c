@@ -57,7 +57,7 @@ cache_key (void)
 static char *
 cache_path (void)
 {
-  return g_build_filename (g_get_user_cache_dir (), "neo-camera", "encoder.ini", NULL);
+  return g_build_filename (g_get_user_cache_dir (), "vibeos-camera", "encoder.ini", NULL);
 }
 
 static gboolean
@@ -90,7 +90,7 @@ save_cache (const char *measures)
   g_autofree char *dir = g_path_get_dirname (path);
   g_autofree char *key = cache_key ();
 
-  g_key_file_set_comment (file, NULL, NULL, " neo-camera: the video encoder, measured once (cam-encoder.h)", NULL);
+  g_key_file_set_comment (file, NULL, NULL, " vibeos-camera: the video encoder, measured once (cam-encoder.h)", NULL);
   g_key_file_set_string (file, "encoder", "key", key);
   g_key_file_set_string (file, "encoder", "element", answer.element ? answer.element : "");
   g_key_file_set_boolean (file, "encoder", "hd", answer.hd);

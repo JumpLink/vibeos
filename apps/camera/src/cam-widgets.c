@@ -4,9 +4,9 @@
 
 #include <glib/gi18n.h>
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 
-#define FAMILY "Neo Roboto, Roboto, sans-serif"
+#define FAMILY "VibeOS Roboto, Roboto, sans-serif"
 
 /* a tap: down and up on the widget, "clicked" */
 static void
@@ -41,7 +41,7 @@ on_click_action (GtkWidget *widget, const char *action, GVariant *parameter)
 }
 
 /* a button to assistive technology, which can press it: GTK offers a widget's class actions as its AT-SPI actions
- * (as NeoPressable does) */
+ * (as VibeosPressable does) */
 static void
 install_button_role (GtkWidgetClass *widget_class)
 {
@@ -81,7 +81,7 @@ struct _CamRotator {
   GtkWidget  parent;
   GtkWidget *child;
   double     angle;
-  NeoAnim   *anim;
+  VibeosAnim   *anim;
 };
 
 G_DEFINE_FINAL_TYPE (CamRotator, cam_rotator, GTK_TYPE_WIDGET)
@@ -112,7 +112,7 @@ cam_rotator_size_allocate (GtkWidget *widget, int width, int height, int baselin
 }
 
 static void
-on_rotator_anim (NeoAnim *anim, double value, gpointer data)
+on_rotator_anim (VibeosAnim *anim, double value, gpointer data)
 {
   CamRotator *self = data;
 
@@ -125,7 +125,7 @@ cam_rotator_dispose (GObject *object)
 {
   CamRotator *self = CAM_ROTATOR (object);
 
-  g_clear_pointer (&self->anim, neo_anim_free);
+  g_clear_pointer (&self->anim, vibeos_anim_free);
   g_clear_pointer (&self->child, gtk_widget_unparent);
   G_OBJECT_CLASS (cam_rotator_parent_class)->dispose (object);
 }
@@ -143,7 +143,7 @@ cam_rotator_class_init (CamRotatorClass *klass)
 static void
 cam_rotator_init (CamRotator *self)
 {
-  self->anim = neo_anim_new (GTK_WIDGET (self), on_rotator_anim, self);
+  self->anim = vibeos_anim_new (GTK_WIDGET (self), on_rotator_anim, self);
 }
 
 GtkWidget *
@@ -165,7 +165,7 @@ cam_rotator_get_child (CamRotator *self)
 void
 cam_rotator_set_angle (CamRotator *self, double angle, gboolean animate)
 {
-  double from = neo_anim_is_running (self->anim) ? neo_anim_get_to (self->anim) : self->angle;
+  double from = vibeos_anim_is_running (self->anim) ? vibeos_anim_get_to (self->anim) : self->angle;
   /* the shortest way round (Rotation.getDifference), from where it is going */
   double diff = fmod (fmod (angle - from, 360) + 540, 360) - 180;
 
@@ -173,12 +173,12 @@ cam_rotator_set_angle (CamRotator *self, double angle, gboolean animate)
     return;
   if (!animate)
     {
-      neo_anim_stop (self->anim);
+      vibeos_anim_stop (self->anim);
       self->angle = from + diff;
       gtk_widget_queue_allocate (GTK_WIDGET (self));
       return;
     }
-  neo_anim_start (self->anim, self->angle, from + diff, CAM_MS_ROTATE, 0, SPONGY_ACCELERATE_DECELERATE);
+  vibeos_anim_start (self->anim, self->angle, from + diff, CAM_MS_ROTATE, 0, SPONGY_ACCELERATE_DECELERATE);
 }
 
 /* ---- CamIcon --------------------------------------------------------------------------------------------------- */
@@ -208,7 +208,7 @@ cam_icon_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
                                                                                      : CAM_C (CAM_C_DARK_GREY);
 
   if (self->name)
-    neo_snapshot_icon (snapshot, widget, self->name, (gtk_widget_get_width (widget) - self->size) / 2,
+    vibeos_snapshot_icon (snapshot, widget, self->name, (gtk_widget_get_width (widget) - self->size) / 2,
                        (gtk_widget_get_height (widget) - self->size) / 2, self->size, &color);
 }
 
@@ -273,7 +273,7 @@ struct _CamShutter {
   double     cap_alpha;
   double     square;            /* the record disc, circle 0 … rounded square 1 */
   double     pulse;             /* photo capture, 0 … 1 */
-  NeoAnim   *scale_anim, *white_anim, *alpha_anim, *square_anim, *pulse_anim;
+  VibeosAnim   *scale_anim, *white_anim, *alpha_anim, *square_anim, *pulse_anim;
 };
 
 G_DEFINE_FINAL_TYPE (CamShutter, cam_shutter, GTK_TYPE_WIDGET)
@@ -295,8 +295,8 @@ cam_shutter_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   /* a photo's pulse: both discs to 0.625 and back */
   double pulse = 1 - (1 - CAM_PHOTO_PULSE_SCALE) * self->pulse;
   GdkRGBA white = CAM_C (0xFFFFFF), backplate = CAM_C (CAM_C_GRAY_10), red = CAM_C (CAM_C_REC_RED);
-  GdkRGBA container = neo_color (NEO_SECONDARY_CONTAINER);
-  GdkRGBA cap = neo_rgba_mix (&container, &white, self->cap_white);
+  GdkRGBA container = vibeos_color (VIBEOS_SECONDARY_CONTAINER);
+  GdkRGBA cap = vibeos_rgba_mix (&container, &white, self->cap_white);
   double half = (32 + (9 - 32) * self->square) * pulse, radius = 32 * (1 - self->square) * pulse;
   GskRoundedRect record;
 
@@ -313,7 +313,7 @@ cam_shutter_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 }
 
 #define SHUTTER_SETTER(field)                                                                                       \
-  static void on_shutter_##field (NeoAnim *anim, double value, gpointer data)                                     \
+  static void on_shutter_##field (VibeosAnim *anim, double value, gpointer data)                                     \
   {                                                                                                                 \
     CAM_SHUTTER (data)->field = value;                                                                              \
     gtk_widget_queue_draw (GTK_WIDGET (data));                                                                      \
@@ -324,7 +324,7 @@ SHUTTER_SETTER (cap_alpha)
 SHUTTER_SETTER (square)
 
 static void
-on_shutter_pulse (NeoAnim *anim, double value, gpointer data)
+on_shutter_pulse (VibeosAnim *anim, double value, gpointer data)
 {
   /* 100 ms out, then the same 100 ms reversed (the reverse plays the curve backwards) */
   CAM_SHUTTER (data)->pulse = spongy_curve (SPONGY_FAST_OUT_SLOW_IN, value <= 1 ? value : 2 - value);
@@ -336,11 +336,11 @@ cam_shutter_dispose (GObject *object)
 {
   CamShutter *self = CAM_SHUTTER (object);
 
-  g_clear_pointer (&self->scale_anim, neo_anim_free);
-  g_clear_pointer (&self->white_anim, neo_anim_free);
-  g_clear_pointer (&self->alpha_anim, neo_anim_free);
-  g_clear_pointer (&self->square_anim, neo_anim_free);
-  g_clear_pointer (&self->pulse_anim, neo_anim_free);
+  g_clear_pointer (&self->scale_anim, vibeos_anim_free);
+  g_clear_pointer (&self->white_anim, vibeos_anim_free);
+  g_clear_pointer (&self->alpha_anim, vibeos_anim_free);
+  g_clear_pointer (&self->square_anim, vibeos_anim_free);
+  g_clear_pointer (&self->pulse_anim, vibeos_anim_free);
   G_OBJECT_CLASS (cam_shutter_parent_class)->dispose (object);
 }
 
@@ -361,11 +361,11 @@ cam_shutter_init (CamShutter *self)
 {
   self->cap_scale = 1;
   self->cap_alpha = 1;
-  self->scale_anim = neo_anim_new (GTK_WIDGET (self), on_shutter_cap_scale, self);
-  self->white_anim = neo_anim_new (GTK_WIDGET (self), on_shutter_cap_white, self);
-  self->alpha_anim = neo_anim_new (GTK_WIDGET (self), on_shutter_cap_alpha, self);
-  self->square_anim = neo_anim_new (GTK_WIDGET (self), on_shutter_square, self);
-  self->pulse_anim = neo_anim_new (GTK_WIDGET (self), on_shutter_pulse, self);
+  self->scale_anim = vibeos_anim_new (GTK_WIDGET (self), on_shutter_cap_scale, self);
+  self->white_anim = vibeos_anim_new (GTK_WIDGET (self), on_shutter_cap_white, self);
+  self->alpha_anim = vibeos_anim_new (GTK_WIDGET (self), on_shutter_cap_alpha, self);
+  self->square_anim = vibeos_anim_new (GTK_WIDGET (self), on_shutter_square, self);
+  self->pulse_anim = vibeos_anim_new (GTK_WIDGET (self), on_shutter_pulse, self);
   add_click (GTK_WIDGET (self));
 }
 
@@ -379,13 +379,13 @@ cam_shutter_new (void)
 }
 
 static void
-shutter_to (NeoAnim *anim, double *field, double to, guint ms, SpongyCurve curve, gboolean animate, GtkWidget *w)
+shutter_to (VibeosAnim *anim, double *field, double to, guint ms, SpongyCurve curve, gboolean animate, GtkWidget *w)
 {
   if (animate && gtk_widget_get_mapped (w))
-    neo_anim_start (anim, *field, to, ms, 0, curve);
+    vibeos_anim_start (anim, *field, to, ms, 0, curve);
   else
     {
-      neo_anim_stop (anim);
+      vibeos_anim_stop (anim);
       *field = to;
       gtk_widget_queue_draw (w);
     }
@@ -422,7 +422,7 @@ cam_shutter_set_recording (CamShutter *self, gboolean recording, gboolean animat
 void
 cam_shutter_pulse (CamShutter *self)
 {
-  neo_anim_start (self->pulse_anim, 0, 2, 2 * CAM_MS_PHOTO_PULSE, 0, SPONGY_LINEAR);
+  vibeos_anim_start (self->pulse_anim, 0, 2, 2 * CAM_MS_PHOTO_PULSE, 0, SPONGY_LINEAR);
 }
 
 /* ---- CamFlip --------------------------------------------------------------------------------------------------- */
@@ -444,7 +444,7 @@ struct _CamFlip {
   GskPath   *arrows;
   GskPath   *ring;
   double     angle;
-  NeoAnim   *anim;
+  VibeosAnim   *anim;
 };
 
 G_DEFINE_FINAL_TYPE (CamFlip, cam_flip, GTK_TYPE_WIDGET)
@@ -462,7 +462,7 @@ static void
 cam_flip_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   CamFlip *self = CAM_FLIP (widget);
-  GdkRGBA white = CAM_C (0xFFFFFF), primary = neo_color (NEO_PRIMARY);
+  GdkRGBA white = CAM_C (0xFFFFFF), primary = vibeos_color (VIBEOS_PRIMARY);
   g_autoptr(GskStroke) stroke = gsk_stroke_new (2);
 
   /* the icon unscaled, centred in the button; the group turns about its centre (16, 16) */
@@ -477,12 +477,12 @@ cam_flip_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 }
 
 static void
-on_flip_anim (NeoAnim *anim, double value, gpointer data)
+on_flip_anim (VibeosAnim *anim, double value, gpointer data)
 {
   CamFlip *self = data;
 
   /* the AVD starts from 0 on every flip; the arrows look the same at −180° */
-  self->angle = neo_anim_is_running (anim) ? value : 0;
+  self->angle = vibeos_anim_is_running (anim) ? value : 0;
   gtk_widget_queue_draw (GTK_WIDGET (self));
 }
 
@@ -491,7 +491,7 @@ cam_flip_dispose (GObject *object)
 {
   CamFlip *self = CAM_FLIP (object);
 
-  g_clear_pointer (&self->anim, neo_anim_free);
+  g_clear_pointer (&self->anim, vibeos_anim_free);
   g_clear_pointer (&self->arrows, gsk_path_unref);
   g_clear_pointer (&self->ring, gsk_path_unref);
   G_OBJECT_CLASS (cam_flip_parent_class)->dispose (object);
@@ -518,7 +518,7 @@ cam_flip_init (CamFlip *self)
   self->arrows = gsk_path_parse (arrows);
   gsk_path_builder_add_circle (ring, &GRAPHENE_POINT_INIT (16, 16), 3);
   self->ring = gsk_path_builder_free_to_path (ring);
-  self->anim = neo_anim_new (GTK_WIDGET (self), on_flip_anim, self);
+  self->anim = vibeos_anim_new (GTK_WIDGET (self), on_flip_anim, self);
   add_click (GTK_WIDGET (self));
   gtk_accessible_update_property (GTK_ACCESSIBLE (self), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Flip camera"), -1);
 }
@@ -532,7 +532,7 @@ cam_flip_new (void)
 void
 cam_flip_spin (CamFlip *self)
 {
-  neo_anim_start (self->anim, 0, -180, CAM_MS_FLIP, 0, SPONGY_ACCELERATE_DECELERATE);
+  vibeos_anim_start (self->anim, 0, -180, CAM_MS_FLIP, 0, SPONGY_ACCELERATE_DECELERATE);
 }
 
 /* ---- CamPause -------------------------------------------------------------------------------------------------- */
@@ -542,7 +542,7 @@ struct _CamPause {
   gboolean   paused;
   double     fill;              /* the backplate, gray_10 0 … gray_60 1 */
   double     bars, play;        /* how present each glyph is, 0 … 1 */
-  NeoAnim   *fill_anim, *bars_anim, *play_anim;
+  VibeosAnim   *fill_anim, *bars_anim, *play_anim;
   GskPath   *bars_path, *play_path;
 };
 
@@ -580,7 +580,7 @@ cam_pause_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   CamPause *self = CAM_PAUSE (widget);
   GdkRGBA white = CAM_C (0xFFFFFF), gray10 = CAM_C (CAM_C_GRAY_10), gray60 = CAM_C (CAM_C_GRAY_60);
-  GdkRGBA plate = neo_rgba_mix (&gray10, &gray60, self->fill);
+  GdkRGBA plate = vibeos_rgba_mix (&gray10, &gray60, self->fill);
 
   gtk_snapshot_save (snapshot);
   gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT ((gtk_widget_get_width (widget) - 32) / 2.0,
@@ -595,7 +595,7 @@ cam_pause_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 }
 
 #define PAUSE_SETTER(field)                                                                                         \
-  static void on_pause_##field (NeoAnim *anim, double value, gpointer data)                                       \
+  static void on_pause_##field (VibeosAnim *anim, double value, gpointer data)                                       \
   {                                                                                                                 \
     CAM_PAUSE (data)->field = value;                                                                                \
     gtk_widget_queue_draw (GTK_WIDGET (data));                                                                      \
@@ -609,9 +609,9 @@ cam_pause_dispose (GObject *object)
 {
   CamPause *self = CAM_PAUSE (object);
 
-  g_clear_pointer (&self->fill_anim, neo_anim_free);
-  g_clear_pointer (&self->bars_anim, neo_anim_free);
-  g_clear_pointer (&self->play_anim, neo_anim_free);
+  g_clear_pointer (&self->fill_anim, vibeos_anim_free);
+  g_clear_pointer (&self->bars_anim, vibeos_anim_free);
+  g_clear_pointer (&self->play_anim, vibeos_anim_free);
   g_clear_pointer (&self->bars_path, gsk_path_unref);
   g_clear_pointer (&self->play_path, gsk_path_unref);
   G_OBJECT_CLASS (cam_pause_parent_class)->dispose (object);
@@ -635,9 +635,9 @@ cam_pause_init (CamPause *self)
   self->bars = 1;
   self->bars_path = gsk_path_parse ("M 14 9 L 10 9 L 10 23 L 14 23 L 14 9 Z M 22 9 L 18 9 L 18 23 L 22 23 L 22 9 Z");
   self->play_path = gsk_path_parse ("M 11.5 9 L 22.5 16 L 11.5 23 L 11.5 9 Z");
-  self->fill_anim = neo_anim_new (GTK_WIDGET (self), on_pause_fill, self);
-  self->bars_anim = neo_anim_new (GTK_WIDGET (self), on_pause_bars, self);
-  self->play_anim = neo_anim_new (GTK_WIDGET (self), on_pause_play, self);
+  self->fill_anim = vibeos_anim_new (GTK_WIDGET (self), on_pause_fill, self);
+  self->bars_anim = vibeos_anim_new (GTK_WIDGET (self), on_pause_bars, self);
+  self->play_anim = vibeos_anim_new (GTK_WIDGET (self), on_pause_play, self);
   add_click (GTK_WIDGET (self));
   gtk_accessible_update_property (GTK_ACCESSIBLE (self), GTK_ACCESSIBLE_PROPERTY_LABEL,
                                   _("Pause/resume video recording"), -1);
@@ -652,15 +652,15 @@ cam_pause_new (void)
 void
 cam_pause_set_paused (CamPause *self, gboolean paused, gboolean animate)
 {
-  NeoAnim *out = paused ? self->bars_anim : self->play_anim, *in = paused ? self->play_anim : self->bars_anim;
+  VibeosAnim *out = paused ? self->bars_anim : self->play_anim, *in = paused ? self->play_anim : self->bars_anim;
   double *out_v = paused ? &self->bars : &self->play, *in_v = paused ? &self->play : &self->bars;
 
   self->paused = paused;
   if (!animate || !gtk_widget_get_mapped (GTK_WIDGET (self)))
     {
-      neo_anim_stop (self->fill_anim);
-      neo_anim_stop (out);
-      neo_anim_stop (in);
+      vibeos_anim_stop (self->fill_anim);
+      vibeos_anim_stop (out);
+      vibeos_anim_stop (in);
       self->fill = paused;
       *out_v = 0;
       *in_v = 1;
@@ -669,9 +669,9 @@ cam_pause_set_paused (CamPause *self, gboolean paused, gboolean animate)
     }
   /* pause / resume: the fill 200 ms linear after 100 ms, the glyph going 200 ms accelerating, the glyph coming
    * 200 ms decelerating after 100 ms */
-  neo_anim_start (self->fill_anim, self->fill, paused, CAM_MS_PAUSE_MORPH, 100, SPONGY_LINEAR);
-  neo_anim_start (out, *out_v, 0, CAM_MS_PAUSE_MORPH, 0, SPONGY_ACCELERATE);
-  neo_anim_start (in, *in_v, 1, CAM_MS_PAUSE_MORPH, 100, SPONGY_DECELERATE);
+  vibeos_anim_start (self->fill_anim, self->fill, paused, CAM_MS_PAUSE_MORPH, 100, SPONGY_LINEAR);
+  vibeos_anim_start (out, *out_v, 0, CAM_MS_PAUSE_MORPH, 0, SPONGY_ACCELERATE);
+  vibeos_anim_start (in, *in_v, 1, CAM_MS_PAUSE_MORPH, 100, SPONGY_DECELERATE);
 }
 
 /* ---- CamGallery ------------------------------------------------------------------------------------------------ */
@@ -680,7 +680,7 @@ struct _CamGallery {
   GtkWidget   parent;
   GdkTexture *texture, *old;
   double      fade;             /* the new thumbnail over the old one, 0 … 1 */
-  NeoAnim    *anim;
+  VibeosAnim    *anim;
 };
 
 G_DEFINE_FINAL_TYPE (CamGallery, cam_gallery, GTK_TYPE_WIDGET)
@@ -707,9 +707,9 @@ gallery_layer (GtkSnapshot *snapshot, GtkWidget *widget, GdkTexture *texture, do
     gtk_snapshot_append_scaled_texture (snapshot, texture, GSK_SCALING_FILTER_TRILINEAR, &box);
   else
     {
-      GdkRGBA tint = neo_color (NEO_ON_SECONDARY_CONTAINER);
+      GdkRGBA tint = vibeos_color (VIBEOS_ON_SECONDARY_CONTAINER);
       /* the placeholder icon, half the button's size */
-      neo_snapshot_icon (snapshot, widget, "cam-image-symbolic", (box.size.width - CAM_GALLERY_ICON) / 2,
+      vibeos_snapshot_icon (snapshot, widget, "cam-image-symbolic", (box.size.width - CAM_GALLERY_ICON) / 2,
                          (box.size.height - CAM_GALLERY_ICON) / 2, CAM_GALLERY_ICON, &tint);
     }
   gtk_snapshot_pop (snapshot);
@@ -720,7 +720,7 @@ cam_gallery_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   CamGallery *self = CAM_GALLERY (widget);
   GskRoundedRect card;
-  GdkRGBA fill = neo_color (NEO_SECONDARY_CONTAINER);
+  GdkRGBA fill = vibeos_color (VIBEOS_SECONDARY_CONTAINER);
 
   gsk_rounded_rect_init_from_rect (&card, &GRAPHENE_RECT_INIT (0, 0, gtk_widget_get_width (widget),
                                                                gtk_widget_get_height (widget)), CAM_GALLERY_RADIUS);
@@ -733,12 +733,12 @@ cam_gallery_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 }
 
 static void
-on_gallery_fade (NeoAnim *anim, double value, gpointer data)
+on_gallery_fade (VibeosAnim *anim, double value, gpointer data)
 {
   CamGallery *self = data;
 
   self->fade = value;
-  if (!neo_anim_is_running (anim))
+  if (!vibeos_anim_is_running (anim))
     g_clear_object (&self->old);
   gtk_widget_queue_draw (GTK_WIDGET (self));
 }
@@ -748,7 +748,7 @@ cam_gallery_dispose (GObject *object)
 {
   CamGallery *self = CAM_GALLERY (object);
 
-  g_clear_pointer (&self->anim, neo_anim_free);
+  g_clear_pointer (&self->anim, vibeos_anim_free);
   g_clear_object (&self->texture);
   g_clear_object (&self->old);
   G_OBJECT_CLASS (cam_gallery_parent_class)->dispose (object);
@@ -770,7 +770,7 @@ static void
 cam_gallery_init (CamGallery *self)
 {
   self->fade = 1;
-  self->anim = neo_anim_new (GTK_WIDGET (self), on_gallery_fade, self);
+  self->anim = vibeos_anim_new (GTK_WIDGET (self), on_gallery_fade, self);
   add_click (GTK_WIDGET (self));
   gtk_accessible_update_property (GTK_ACCESSIBLE (self), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Gallery"), -1);
 }
@@ -791,10 +791,10 @@ cam_gallery_set_thumbnail (CamGallery *self, GdkTexture *texture)
   self->texture = texture ? g_object_ref (texture) : NULL;
   /* Coil's crossfade, 200 ms; the placeholder comes back at once */
   if (texture && gtk_widget_get_mapped (GTK_WIDGET (self)))
-    neo_anim_start (self->anim, 0, 1, CAM_MS_THUMB_CROSSFADE, 0, SPONGY_ACCELERATE_DECELERATE);
+    vibeos_anim_start (self->anim, 0, 1, CAM_MS_THUMB_CROSSFADE, 0, SPONGY_ACCELERATE_DECELERATE);
   else
     {
-      neo_anim_stop (self->anim);
+      vibeos_anim_stop (self->anim);
       self->fade = 1;
       g_clear_object (&self->old);
     }
@@ -833,7 +833,7 @@ cam_lens_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   if (self->selected)
     {
       GskRoundedRect pill;
-      GdkRGBA fill = neo_color (NEO_SECONDARY_CONTAINER);
+      GdkRGBA fill = vibeos_color (VIBEOS_SECONDARY_CONTAINER);
 
       gsk_rounded_rect_init_from_rect (&pill, &GRAPHENE_RECT_INIT ((w - CAM_LENS_BUTTON) / 2, (h - CAM_LENS_BUTTON) / 2,
                                                                    CAM_LENS_BUTTON, CAM_LENS_BUTTON),
@@ -895,7 +895,7 @@ struct _CamCountdown {
   gboolean   showing;
   guint      tick;
   double     angle;
-  NeoAnim   *anim, *turn;
+  VibeosAnim   *anim, *turn;
 };
 
 G_DEFINE_FINAL_TYPE (CamCountdown, cam_countdown, GTK_TYPE_WIDGET)
@@ -925,7 +925,7 @@ cam_countdown_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gtk_snapshot_rotate (snapshot, self->angle);
   gtk_snapshot_scale (snapshot, scale, scale);
   /* the digit's box has Roboto's font padding (yMax over the ascent on top, yMin under the descent below, as
-   * neo_label_set_font_padding): centring that box puts the digit 0.05 em lower than centring Pango's */
+   * vibeos_label_set_font_padding): centring that box puts the digit 0.05 em lower than centring Pango's */
   gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (-logical.width / (2.0 * PANGO_SCALE),
                                                           -logical.height / (2.0 * PANGO_SCALE)
                                                           + CAM_SP_COUNTDOWN * ((2163 - 1900) - (555 - 500))
@@ -935,14 +935,14 @@ cam_countdown_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 }
 
 static void
-on_countdown_anim (NeoAnim *anim, double value, gpointer data)
+on_countdown_anim (VibeosAnim *anim, double value, gpointer data)
 {
   CAM_COUNTDOWN (data)->t = value;
   gtk_widget_queue_draw (GTK_WIDGET (data));
 }
 
 static void
-on_countdown_turn (NeoAnim *anim, double value, gpointer data)
+on_countdown_turn (VibeosAnim *anim, double value, gpointer data)
 {
   CAM_COUNTDOWN (data)->angle = value;
   gtk_widget_queue_draw (GTK_WIDGET (data));
@@ -953,7 +953,7 @@ show_digit (CamCountdown *self)
 {
   self->showing = TRUE;
   /* scale 1 → 2.5 and alpha 1 → 0, 800 ms accelerate-decelerate; the next second 1000 ms on, so a 200 ms gap */
-  neo_anim_start (self->anim, 0, 1, CAM_MS_COUNTDOWN_FADE, 0, SPONGY_ACCELERATE_DECELERATE);
+  vibeos_anim_start (self->anim, 0, 1, CAM_MS_COUNTDOWN_FADE, 0, SPONGY_ACCELERATE_DECELERATE);
 }
 
 static gboolean
@@ -980,8 +980,8 @@ cam_countdown_dispose (GObject *object)
   CamCountdown *self = CAM_COUNTDOWN (object);
 
   g_clear_handle_id (&self->tick, g_source_remove);
-  g_clear_pointer (&self->anim, neo_anim_free);
-  g_clear_pointer (&self->turn, neo_anim_free);
+  g_clear_pointer (&self->anim, vibeos_anim_free);
+  g_clear_pointer (&self->turn, vibeos_anim_free);
   G_OBJECT_CLASS (cam_countdown_parent_class)->dispose (object);
 }
 
@@ -997,8 +997,8 @@ cam_countdown_class_init (CamCountdownClass *klass)
 static void
 cam_countdown_init (CamCountdown *self)
 {
-  self->anim = neo_anim_new (GTK_WIDGET (self), on_countdown_anim, self);
-  self->turn = neo_anim_new (GTK_WIDGET (self), on_countdown_turn, self);
+  self->anim = vibeos_anim_new (GTK_WIDGET (self), on_countdown_anim, self);
+  self->turn = vibeos_anim_new (GTK_WIDGET (self), on_countdown_turn, self);
   gtk_widget_set_can_target (GTK_WIDGET (self), FALSE);
 }
 
@@ -1021,7 +1021,7 @@ void
 cam_countdown_cancel (CamCountdown *self)
 {
   g_clear_handle_id (&self->tick, g_source_remove);
-  neo_anim_stop (self->anim);
+  vibeos_anim_stop (self->anim);
   self->showing = FALSE;
   gtk_widget_queue_draw (GTK_WIDGET (self));
 }
@@ -1038,7 +1038,7 @@ cam_countdown_set_angle (CamCountdown *self, double angle, gboolean animate)
   double diff = fmod (fmod (angle - self->angle, 360) + 540, 360) - 180;
 
   if (animate)
-    neo_anim_start (self->turn, self->angle, self->angle + diff, CAM_MS_ROTATE, 0, SPONGY_ACCELERATE_DECELERATE);
+    vibeos_anim_start (self->turn, self->angle, self->angle + diff, CAM_MS_ROTATE, 0, SPONGY_ACCELERATE_DECELERATE);
   else
     {
       self->angle += diff;
@@ -1191,7 +1191,7 @@ struct _CamIsland {
   guint      items;
   int        orientation;
   double     alpha;
-  NeoAnim   *fade;
+  VibeosAnim   *fade;
 };
 
 G_DEFINE_FINAL_TYPE (CamIsland, cam_island, GTK_TYPE_WIDGET)
@@ -1224,7 +1224,7 @@ cam_island_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   static const char *const icons[] = { "cam-thermostat-symbolic", "cam-thermostat-symbolic",
                                        "cam-battery-1-bar-symbolic", "cam-battery-charging-20-symbolic",
                                        "cam-mic-off-symbolic" };
-  GdkRGBA card = neo_color (NEO_SURFACE), on = neo_color (NEO_ON_SURFACE), error = neo_color (NEO_ERROR);
+  GdkRGBA card = vibeos_color (VIBEOS_SURFACE), on = vibeos_color (VIBEOS_ON_SURFACE), error = vibeos_color (VIBEOS_ERROR);
   GskRoundedRect box;
   double x = 8 + 2;
 
@@ -1241,7 +1241,7 @@ cam_island_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
         /* thermal "moderate/severe" in the text colour, everything worse and the battery in the error colour */
         const GdkRGBA *tint = i == CAM_ISLAND_THERMAL || i == CAM_ISLAND_MIC_OFF ? &on : &error;
 
-        neo_snapshot_icon (snapshot, widget, icons[i], x, (CAM_ISLAND_H - 24) / 2.0, 24, tint);
+        vibeos_snapshot_icon (snapshot, widget, icons[i], x, (CAM_ISLAND_H - 24) / 2.0, 24, tint);
         x += 28;
       }
   gtk_snapshot_pop (snapshot);
@@ -1249,7 +1249,7 @@ cam_island_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 }
 
 static void
-on_island_fade (NeoAnim *anim, double value, gpointer data)
+on_island_fade (VibeosAnim *anim, double value, gpointer data)
 {
   CamIsland *self = data;
 
@@ -1261,7 +1261,7 @@ on_island_fade (NeoAnim *anim, double value, gpointer data)
 static void
 cam_island_dispose (GObject *object)
 {
-  g_clear_pointer (&CAM_ISLAND (object)->fade, neo_anim_free);
+  g_clear_pointer (&CAM_ISLAND (object)->fade, vibeos_anim_free);
   G_OBJECT_CLASS (cam_island_parent_class)->dispose (object);
 }
 
@@ -1276,7 +1276,7 @@ cam_island_class_init (CamIslandClass *klass)
 static void
 cam_island_init (CamIsland *self)
 {
-  self->fade = neo_anim_new (GTK_WIDGET (self), on_island_fade, self);
+  self->fade = vibeos_anim_new (GTK_WIDGET (self), on_island_fade, self);
   gtk_widget_set_visible (GTK_WIDGET (self), FALSE);
   gtk_widget_set_can_target (GTK_WIDGET (self), FALSE);
 }
@@ -1300,10 +1300,10 @@ cam_island_set_items (CamIsland *self, guint items)
   if (!was && items)
     {
       gtk_widget_set_visible (GTK_WIDGET (self), TRUE);
-      neo_anim_start (self->fade, self->alpha, 1, CAM_MS_ISLAND_FADE, 0, SPONGY_ACCELERATE_DECELERATE);
+      vibeos_anim_start (self->fade, self->alpha, 1, CAM_MS_ISLAND_FADE, 0, SPONGY_ACCELERATE_DECELERATE);
     }
   else if (was && !items)
-    neo_anim_start (self->fade, self->alpha, 0, CAM_MS_ISLAND_FADE, 0, SPONGY_ACCELERATE_DECELERATE);
+    vibeos_anim_start (self->fade, self->alpha, 0, CAM_MS_ISLAND_FADE, 0, SPONGY_ACCELERATE_DECELERATE);
 }
 
 void
@@ -1324,7 +1324,7 @@ cam_island_get_orientation (CamIsland *self)
 struct _CamToast {
   GtkWidget  parent;
   GtkWidget *box, *label;
-  NeoAnim   *fade;
+  VibeosAnim   *fade;
   guint      timer;
 };
 
@@ -1353,7 +1353,7 @@ cam_toast_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, 
 }
 
 static void
-on_toast_fade (NeoAnim *anim, double value, gpointer data)
+on_toast_fade (VibeosAnim *anim, double value, gpointer data)
 {
   CamToast *self = data;
 
@@ -1367,7 +1367,7 @@ on_toast_timeout (gpointer data)
   CamToast *self = data;
 
   self->timer = 0;
-  neo_anim_start (self->fade, gtk_widget_get_opacity (self->box), 0, 250, 0, SPONGY_ACCELERATE_DECELERATE);
+  vibeos_anim_start (self->fade, gtk_widget_get_opacity (self->box), 0, 250, 0, SPONGY_ACCELERATE_DECELERATE);
   return G_SOURCE_REMOVE;
 }
 
@@ -1377,7 +1377,7 @@ cam_toast_dispose (GObject *object)
   CamToast *self = CAM_TOAST (object);
 
   g_clear_handle_id (&self->timer, g_source_remove);
-  g_clear_pointer (&self->fade, neo_anim_free);
+  g_clear_pointer (&self->fade, vibeos_anim_free);
   g_clear_pointer (&self->box, gtk_widget_unparent);
   G_OBJECT_CLASS (cam_toast_parent_class)->dispose (object);
 }
@@ -1393,7 +1393,7 @@ cam_toast_class_init (CamToastClass *klass)
 static void
 cam_toast_init (CamToast *self)
 {
-  GtkWidget *icon = gtk_image_new_from_icon_name ("neo.Camera");
+  GtkWidget *icon = gtk_image_new_from_icon_name ("vibeos.Camera");
 
   self->box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_widget_add_css_class (self->box, "cam-toast");
@@ -1411,7 +1411,7 @@ cam_toast_init (CamToast *self)
   gtk_box_append (GTK_BOX (self->box), self->label);
   gtk_widget_set_parent (self->box, GTK_WIDGET (self));
   gtk_widget_set_opacity (self->box, 0);
-  self->fade = neo_anim_new (GTK_WIDGET (self), on_toast_fade, self);
+  self->fade = vibeos_anim_new (GTK_WIDGET (self), on_toast_fade, self);
   gtk_widget_set_can_target (GTK_WIDGET (self), FALSE);
   gtk_widget_set_visible (GTK_WIDGET (self), FALSE);
 }
@@ -1427,7 +1427,7 @@ cam_toast_show (CamToast *self, const char *text)
 {
   gtk_label_set_text (GTK_LABEL (self->label), text);
   gtk_widget_set_visible (GTK_WIDGET (self), TRUE);
-  neo_anim_start (self->fade, gtk_widget_get_opacity (self->box), 1, 250, 0, SPONGY_ACCELERATE_DECELERATE);
+  vibeos_anim_start (self->fade, gtk_widget_get_opacity (self->box), 1, 250, 0, SPONGY_ACCELERATE_DECELERATE);
   g_clear_handle_id (&self->timer, g_source_remove);
   /* a short toast */
   self->timer = g_timeout_add (CAM_MS_TOAST, on_toast_timeout, self);

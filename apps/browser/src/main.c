@@ -1,14 +1,14 @@
-/* neo-browser: the Browser, LineageOS's Jelly rebuilt over WebKitGTK.
+/* vibeos-browser: the Browser, LineageOS's Jelly rebuilt over WebKitGTK.
  *
- *   neo-browser                 the most recent tab (the launcher's tap), or the saved ones on a cold start
- *   neo-browser URL…            each URL in a new tab (a link from another app)
- *   neo-browser --incognito     a new incognito tab (the launcher's long-press "New incognito tab")
- *   neo-browser --shortcut=ID URL   a home-screen shortcut (Add shortcut)
+ *   vibeos-browser                 the most recent tab (the launcher's tap), or the saved ones on a cold start
+ *   vibeos-browser URL…            each URL in a new tab (a link from another app)
+ *   vibeos-browser --incognito     a new incognito tab (the launcher's long-press "New incognito tab")
+ *   vibeos-browser --shortcut=ID URL   a home-screen shortcut (Add shortcut)
  *
  * One process holds every tab; a second start hands its command line to it. */
 #include "nb.h"
 
-#include <neo.h>
+#include <vibeos.h>
 #include <string.h>
 
 static void
@@ -16,8 +16,8 @@ load_style (void)
 {
   GtkCssProvider *provider = gtk_css_provider_new ();
 
-  gtk_css_provider_load_from_resource (provider, "/neo/Browser/browser.css");
-  /* over libneo's, which is at APPLICATION priority too: the later provider wins at equal priority */
+  gtk_css_provider_load_from_resource (provider, "/vibeos/Browser/browser.css");
+  /* over libvibeos's, which is at APPLICATION priority too: the later provider wins at equal priority */
   gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (provider),
                                               GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
   g_object_unref (provider);
@@ -26,7 +26,7 @@ load_style (void)
 static void
 on_startup (GApplication *app, gpointer data)
 {
-  neo_init ();
+  vibeos_init ();
   load_style ();
   nb_app_startup (GTK_APPLICATION (app));
 }

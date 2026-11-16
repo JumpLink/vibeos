@@ -362,7 +362,7 @@ struct _SearchPage
   GtkWidget parent;
   Contacts *contacts;
   GSettings *settings;
-  NeoSnackbar *snackbar;
+  VibeosSnackbar *snackbar;
   GtkWidget *scroller, *list;
   char *query;
   gboolean dialpad;
@@ -492,7 +492,7 @@ on_dialed (guint id, const GError *error, gpointer data)
   SearchPage *self = data;
 
   if (error)
-    neo_snackbar_show (self->snackbar, error->message, NULL, NULL, NULL, NEO_SNACKBAR_LONG);
+    vibeos_snackbar_show (self->snackbar, error->message, NULL, NULL, NULL, VIBEOS_SNACKBAR_LONG);
   else
     {
       phone_start_app (INCALL_APP_ID);
@@ -520,7 +520,7 @@ header_row (void)
   gtk_widget_set_margin_end (label, HEADER_SIDE);
   gtk_widget_set_margin_bottom (label, HEADER_BOTTOM);
   gtk_widget_add_css_class (label, "dialer-secondary-text");
-  neo_label_set_font_padding (label, 14);
+  vibeos_label_set_font_padding (label, 14);
   return label;
 }
 
@@ -555,7 +555,7 @@ contact_row (SearchPage *self, const Result *result)
   gtk_label_set_ellipsize (GTK_LABEL (name), PANGO_ELLIPSIZE_END);
   gtk_label_set_attributes (GTK_LABEL (name), name_attrs);
   gtk_widget_add_css_class (name, "dialer-primary-text");
-  neo_label_set_font_padding (name, 16);
+  vibeos_label_set_font_padding (name, 16);
   gtk_widget_set_visible (name, result->first);
   gtk_box_append (GTK_BOX (texts), name);
 
@@ -579,13 +579,13 @@ contact_row (SearchPage *self, const Result *result)
   gtk_label_set_xalign (GTK_LABEL (secondary), 0);
   gtk_label_set_ellipsize (GTK_LABEL (secondary), PANGO_ELLIPSIZE_END);
   gtk_widget_add_css_class (secondary, "dialer-secondary-text");
-  neo_label_set_font_padding (secondary, 14);
+  vibeos_label_set_font_padding (secondary, 14);
   gtk_box_append (GTK_BOX (texts), secondary);
   gtk_box_append (GTK_BOX (box), texts);
 
-  row = neo_pressable_new (box);
-  neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (row), &(GdkRGBA) { 1, 1, 1, 0.06 });
+  row = vibeos_pressable_new (box);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &(GdkRGBA) { 1, 1, 1, 0.06 });
   g_object_set_data_full (G_OBJECT (row), "search-number", g_strdup (result->number->number), g_free);
   g_signal_connect (row, "clicked", G_CALLBACK (on_row_clicked), self);
   return row;
@@ -644,11 +644,11 @@ action_row (SearchPage *self, const char *icon_name, const char *text, GCallback
   gtk_widget_set_margin_start (label, ACTION_TEXT - ACTION_START - ACTION_ICON_BOX);
   gtk_widget_set_margin_end (label, 16);
   gtk_widget_add_css_class (label, "dialer-primary-text");
-  neo_label_set_font_padding (label, 16);
+  vibeos_label_set_font_padding (label, 16);
   gtk_box_append (GTK_BOX (box), label);
-  row = neo_pressable_new (box);
-  neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (row), &(GdkRGBA) { 1, 1, 1, 0.06 });
+  row = vibeos_pressable_new (box);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &(GdkRGBA) { 1, 1, 1, 0.06 });
   g_signal_connect (row, "clicked", callback, self);
   return row;
 }
@@ -791,7 +791,7 @@ search_page_init (SearchPage *self)
 }
 
 GtkWidget *
-search_page_new (Contacts *contacts, GSettings *settings, NeoSnackbar *snackbar)
+search_page_new (Contacts *contacts, GSettings *settings, VibeosSnackbar *snackbar)
 {
   SearchPage *self = g_object_new (SEARCH_TYPE_PAGE, NULL);
 

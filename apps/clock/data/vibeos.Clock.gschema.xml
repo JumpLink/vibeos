@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The Clock's settings: DeskClock's, with its keys, choices and defaults. The alarm service
+     reads the alarm ones as it rings; the app's Settings page writes them all. -->
+<schemalist>
+  <enum id="vibeos.Clock.ClockStyle">
+    <value nick="analog" value="0"/>
+    <value nick="digital" value="1"/>
+  </enum>
+  <enum id="vibeos.Clock.ButtonAction">
+    <value nick="nothing" value="0"/>   <!-- volume buttons: "Control volume" -->
+    <value nick="snooze" value="1"/>
+    <value nick="dismiss" value="2"/>
+  </enum>
+  <enum id="vibeos.Clock.Tab">
+    <value nick="alarm" value="0"/>     <!-- the tabs, in their order -->
+    <value nick="clock" value="1"/>
+    <value nick="timer" value="2"/>
+    <value nick="stopwatch" value="3"/>
+  </enum>
+  <enum id="vibeos.Clock.CitySort">
+    <value nick="name" value="0"/>      <!-- the cities picker's two orders -->
+    <value nick="offset" value="1"/>
+  </enum>
+  <enum id="vibeos.Clock.SaverColor">
+    <value nick="white" value="16777215"/> <!-- the clock's colours, each as 0xRRGGBB -->
+    <value nick="red" value="16711680"/>
+    <value nick="green" value="65280"/>
+    <value nick="blue" value="255"/>
+  </enum>
+  <enum id="vibeos.Clock.WeekStart">
+    <value nick="locale" value="0"/>    <!-- not set: the locale's first day -->
+    <value nick="saturday" value="7"/>  <!-- the days numbered Sunday 1 … Saturday 7 -->
+    <value nick="sunday" value="1"/>
+    <value nick="monday" value="2"/>
+  </enum>
+
+  <schema id="vibeos.Clock" path="/vibeos/Clock/">
+    <!-- the app opens where it was left, on the Clock tab the first time -->
+    <key name="selected-tab" enum="vibeos.Clock.Tab">
+      <default>'clock'</default>
+      <summary>The tab the app shows</summary>
+    </key>
+    <!-- Clock -->
+    <key name="clock-style" enum="vibeos.Clock.ClockStyle">
+      <default>'digital'</default>
+      <summary>Style</summary>
+    </key>
+    <key name="display-clock-seconds" type="b">
+      <default>false</default>
+      <summary>Display time with seconds</summary>
+    </key>
+    <key name="automatic-home-clock" type="b">
+      <default>true</default>
+      <summary>Automatic home clock</summary>
+      <description>While traveling in an area where the time is different, add a clock for home</description>
+    </key>
+    <key name="home-time-zone" type="s">
+      <default>''</default>
+      <summary>Home time zone</summary>
+      <description>One of the setting's IANA zones; empty until one is picked, or until the phone is first seen in
+        one of them (SettingsDAO.getHomeTimeZone)</description>
+    </key>
+    <!-- the world clocks: ids from the city list, src/cities-data.h -->
+    <key name="selected-cities" type="as">
+      <default>[]</default>
+      <summary>The cities on the Clock tab</summary>
+      <description>City ids, such as "C61" for Berlin</description>
+    </key>
+    <key name="city-sort" enum="vibeos.Clock.CitySort">
+      <default>'name'</default>
+      <summary>How the cities picker sorts the cities: by name or by time</summary>
+    </key>
+
+    <!-- Alarms -->
+    <key name="auto-silence" type="i">
+      <!-- the choices are 1, 5, 10, 15, 20, 25 and -1 (choices are only for strings) -->
+      <range min="-1" max="25"/>
+      <default>10</default>
+      <summary>Silence after (minutes; -1 never)</summary>
+    </key>
+    <key name="snooze-duration" type="i">
+      <range min="1" max="30"/>
+      <default>10</default>
+      <summary>Snooze length (minutes)</summary>
+    </key>
+    <key name="alarm-volume" type="d">
+      <range min="0" max="1"/>
+      <!-- 6 of the slider's 7 steps -->
+      <default>0.857</default>
+      <summary>Alarm volume</summary>
+      <description>The speaker's volume while an alarm rings, whatever the media volume is</description>
+    </key>
+    <key name="alarm-crescendo-duration" type="i">
+      <range min="0" max="60"/>
+      <default>0</default>
+      <summary>Gradually increase volume (seconds; 0 off)</summary>
+    </key>
+    <key name="volume-buttons" enum="vibeos.Clock.ButtonAction">
+      <default>'nothing'</default>
+      <summary>Volume buttons</summary>
+    </key>
+    <key name="flip-action" enum="vibeos.Clock.ButtonAction">
+      <default>'nothing'</default>
+      <summary>Flip action</summary>
+    </key>
+    <key name="shake-action" enum="vibeos.Clock.ButtonAction">
+      <default>'nothing'</default>
+      <summary>Shake action</summary>
+    </key>
+    <key name="week-start" enum="vibeos.Clock.WeekStart">
+      <default>'locale'</default>
+      <summary>Start week on</summary>
+    </key>
+    <key name="default-alarm-ringtone" type="s">
+      <default>''</default>
+      <summary>Default alarm sound</summary>
+      <description>A sound file's URI; empty for Hassium, as on LineageOS; "silent" for none</description>
+    </key>
+    <key name="custom-ringtones" type="as">
+      <default>[]</default>
+      <summary>Sounds the user added to the ringtone picker (URIs)</summary>
+    </key>
+
+    <!-- Timers -->
+    <key name="timer-ringtone" type="s">
+      <default>''</default>
+      <summary>Timer sound</summary>
+      <description>A sound file's URI; empty for "Timer Expired", DeskClock's own; "silent" for none</description>
+    </key>
+    <key name="timer-crescendo-duration" type="i">
+      <range min="0" max="60"/>
+      <default>0</default>
+      <summary>Gradually increase volume (seconds; 0 off)</summary>
+    </key>
+    <key name="timer-vibrate" type="b">
+      <default>false</default>
+      <summary>Timer vibrate</summary>
+    </key>
+
+    <!-- Screen saver: the Preview's clock -->
+    <key name="screensaver-clock-style" enum="vibeos.Clock.ClockStyle">
+      <default>'digital'</default>
+      <summary>Screen saver style</summary>
+    </key>
+    <key name="screensaver-clock-color" enum="vibeos.Clock.SaverColor">
+      <default>'white'</default>
+      <summary>Screen saver color</summary>
+    </key>
+    <key name="screensaver-bold-text" type="b">
+      <default>false</default>
+      <summary>Bold clock text (12-hour time only)</summary>
+    </key>
+    <key name="screensaver-show-ampm" type="b">
+      <default>true</default>
+      <summary>Show AM/PM indicator (12-hour time only)</summary>
+    </key>
+    <key name="screensaver-night-mode" type="b">
+      <default>true</default>
+      <summary>Night mode: very dim display (for dark rooms)</summary>
+    </key>
+    <key name="screensaver-night-mode-dnd" type="b">
+      <default>false</default>
+      <summary>Night mode follows Do Not Disturb state</summary>
+    </key>
+    <key name="screensaver-night-mode-color" enum="vibeos.Clock.SaverColor">
+      <default>'white'</default>
+      <summary>Night mode color</summary>
+    </key>
+    <key name="screensaver-night-mode-brightness" type="i">
+      <range min="0" max="100"/>
+      <default>40</default>
+      <summary>Night mode brightness (percent)</summary>
+    </key>
+  </schema>
+</schemalist>

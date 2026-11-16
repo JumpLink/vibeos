@@ -1,11 +1,11 @@
-/* neo-camera: the Camera, LineageOS 23.2's Aperture rebuilt in GTK 4 on libcamera and GStreamer.
+/* vibeos-camera: the Camera, LineageOS 23.2's Aperture rebuilt in GTK 4 on libcamera and GStreamer.
  *
  * Photos are the live stream's current frame (about 2 MP, the sizes libcamera lists), saved as JPEG with EXIF to
  * ~/Pictures/Camera; videos are H.264 + AAC MP4 in ~/Videos/Camera; SCAN reads barcodes with zxing. Nothing here
  * knows a phone: the cameras, their facing and rotation come from libcamera, the flash from the LED class, the
- * encoder from a measurement (cam-encoder.h). The app's settings are GSettings neo.Camera.
+ * encoder from a measurement (cam-encoder.h). The app's settings are GSettings vibeos.Camera.
  *
- * `neo-camera --probe-encoder ELEMENT` is the encoder measurement's child process (cam-encoder.h). */
+ * `vibeos-camera --probe-encoder ELEMENT` is the encoder measurement's child process (cam-encoder.h). */
 #include "cam-encoder.h"
 #include "cam-window.h"
 
@@ -13,16 +13,16 @@
 #include <glib-unix.h>
 #include <gst/gst.h>
 #include <locale.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <pango/pangocairo.h>
 #include <spongy.h>
 
-#define APP_ID "neo.Camera"
+#define APP_ID "vibeos.Camera"
 
 static const char *
 data_dir (void)
 {
-  const char *dir = g_getenv ("NEO_CAMERA_DATADIR");
+  const char *dir = g_getenv ("VIBEOS_CAMERA_DATADIR");
 
   return dir ? dir : DATADIR;
 }
@@ -32,8 +32,8 @@ load_style (void)
 {
   GtkCssProvider *provider = gtk_css_provider_new ();
 
-  gtk_css_provider_load_from_resource (provider, "/neo/Camera/camera.css");
-  /* over libneo's, which is at APPLICATION priority too */
+  gtk_css_provider_load_from_resource (provider, "/vibeos/Camera/camera.css");
+  /* over libvibeos's, which is at APPLICATION priority too */
   gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (provider),
                                               GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
   g_object_unref (provider);
@@ -53,7 +53,7 @@ load_font (void)
 static void
 on_startup (GApplication *app, gpointer data)
 {
-  neo_init ();
+  vibeos_init ();
   load_font ();
   load_style ();
   spongy_set_density (1.0);

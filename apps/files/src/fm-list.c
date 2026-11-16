@@ -6,7 +6,7 @@
 
 #include <gdk-pixbuf/gdk-pixbuf.h>
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 #define THUMB_PX       132      /* device px, a list row's icon on the phone (a tile's decodes at twice this) */
@@ -136,7 +136,7 @@ toggle (FmList *self, FmItem *item)
 }
 
 static void
-on_row_clicked (NeoPressable *pressable, Row *row)
+on_row_clicked (VibeosPressable *pressable, Row *row)
 {
   if (!row->item)
     return;
@@ -147,7 +147,7 @@ on_row_clicked (NeoPressable *pressable, Row *row)
 }
 
 static void
-on_row_long_pressed (NeoPressable *pressable, Row *row)
+on_row_long_pressed (VibeosPressable *pressable, Row *row)
 {
   graphene_point_t at;
 
@@ -206,10 +206,10 @@ on_setup (GtkSignalListItemFactory *factory, GtkListItem *list_item, FmList *sel
   gtk_box_append (GTK_BOX (box), row->icon);
   gtk_box_append (GTK_BOX (box), text);
   gtk_box_append (GTK_BOX (box), row->check);
-  row->pressable = neo_pressable_new (box);
+  row->pressable = vibeos_pressable_new (box);
   gtk_widget_add_css_class (row->pressable, "fm-row");
-  neo_pressable_set_ripple (NEO_PRESSABLE (row->pressable), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (row->pressable), &ripple);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row->pressable), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row->pressable), &ripple);
   g_signal_connect (row->pressable, "clicked", G_CALLBACK (on_row_clicked), row);
   g_signal_connect (row->pressable, "long-pressed", G_CALLBACK (on_row_long_pressed), row);
   g_object_set_data_full (G_OBJECT (row->pressable), "fm-row", row, row_free);
@@ -247,10 +247,10 @@ on_setup_tile (GtkSignalListItemFactory *factory, GtkListItem *list_item, FmList
   gtk_widget_set_valign (row->name, GTK_ALIGN_START);
   gtk_box_append (GTK_BOX (box), frame);
   gtk_box_append (GTK_BOX (box), row->name);
-  row->pressable = neo_pressable_new (box);
+  row->pressable = vibeos_pressable_new (box);
   gtk_widget_add_css_class (row->pressable, "fm-grid-tile");
-  neo_pressable_set_ripple (NEO_PRESSABLE (row->pressable), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (row->pressable), &ripple);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row->pressable), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row->pressable), &ripple);
   g_signal_connect (row->pressable, "clicked", G_CALLBACK (on_row_clicked), row);
   g_signal_connect (row->pressable, "long-pressed", G_CALLBACK (on_row_long_pressed), row);
   g_object_set_data_full (G_OBJECT (row->pressable), "fm-row", row, row_free);

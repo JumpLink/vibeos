@@ -4,7 +4,7 @@
 #include "cal-popup.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 
 /* the choices, in minutes before the start */
 static const int minute_values[] = { 0, 1, 5, 10, 15, 20, 25, 30, 45, 60, 120, 180, 360, 540, 720, 1440, 2880, 10080,
@@ -50,7 +50,7 @@ on_minutes_changed (CalSpinner *spinner, CalReminders *self)
 }
 
 static void
-on_remove (NeoPressable *button, CalReminders *self)
+on_remove (VibeosPressable *button, CalReminders *self)
 {
   GtkWidget *row = g_object_get_data (G_OBJECT (button), "cal-row");
 
@@ -63,7 +63,7 @@ add_row (CalReminders *self, int minutes, CalMethod method)
 {
   GtkWidget *row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *spinner = cal_spinner_new ();
-  GtkWidget *remove = neo_icon_button_new ("cal-close-symbolic");
+  GtkWidget *remove = vibeos_icon_button_new ("cal-close-symbolic");
   g_autoptr(GArray) values = values_for (minutes);
   g_autoptr(GPtrArray) labels = g_ptr_array_new_with_free_func (g_free);
 

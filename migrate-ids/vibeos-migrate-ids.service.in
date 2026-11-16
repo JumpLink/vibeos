@@ -1,0 +1,15 @@
+# Carries the user's settings, files and home screen over from the names VibeOS had as gnome-phone (up to 0.1.11) to
+# the vibeos ones, once, before the session's programs start and read them. Afterwards the stamp file is there and
+# the unit does not even start. A failure does not hold the session up: what is left is tried again at the next start.
+[Unit]
+Description=Carry the settings of gnome-phone over to VibeOS
+Before=graphical-session-pre.target
+ConditionPathExists=!%S/vibeos/renamed
+
+[Service]
+Type=oneshot
+ExecStart=@path@
+TimeoutStartSec=60
+
+[Install]
+WantedBy=graphical-session-pre.target

@@ -1,9 +1,9 @@
 /* The stopwatch's client: see stopwatch-client.h. */
 #include "stopwatch-client.h"
 
-#define SERVICE   "neo.Clock.Alarms"
-#define PATH      "/neo/Clock/Stopwatch"
-#define INTERFACE "neo.Clock.Stopwatch"
+#define SERVICE   "vibeos.Clock.Alarms"
+#define PATH      "/vibeos/Clock/Stopwatch"
+#define INTERFACE "vibeos.Clock.Stopwatch"
 
 struct _StopwatchClient
 {

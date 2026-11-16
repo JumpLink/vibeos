@@ -1,4 +1,4 @@
-/* The calendar's small dialogs, on libneo's NeoDialog (a dialog inside the window). */
+/* The calendar's small dialogs, on libvibeos's VibeosDialog (a dialog inside the window). */
 #pragma once
 
 #include <gtk/gtk.h>

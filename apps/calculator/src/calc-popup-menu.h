@@ -5,7 +5,7 @@
  * width). A tap on a row closes the menu and runs the row's action; a tap outside, Back or Escape just closes it.
  * It comes in growing down from its top while fading in (250 ms) and fades out (150 ms), as the Dialer's.
  *
- * A libneo candidate: the Dialer has its own (popup-menu.c), sized differently. */
+ * A libvibeos candidate: the Dialer has its own (popup-menu.c), sized differently. */
 #pragma once
 
 #include <gtk/gtk.h>
@@ -19,7 +19,7 @@ typedef void (*CalcMenuAction) (gpointer data);
 
 CalcPopupMenu *calc_popup_menu_new     (void);
 void           calc_popup_menu_append  (CalcPopupMenu *self, const char *label, CalcMenuAction action, gpointer data);
-/* shows it over the window `anchor` is in (made by neo_window_new), at the anchor's end and top; it destroys
+/* shows it over the window `anchor` is in (made by vibeos_window_new), at the anchor's end and top; it destroys
  * itself once closed */
 void           calc_popup_menu_present (CalcPopupMenu *self, GtkWidget *anchor);
 void           calc_popup_menu_dismiss (CalcPopupMenu *self);

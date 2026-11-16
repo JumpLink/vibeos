@@ -1,5 +1,5 @@
 /* A popup list of choices over the window, as a spinner's dropdown and the toolbar's overflow menu show it. A tap
- * outside closes it, as Back does. CalSpinner: its value and a drop-down arrow, that opens one. Both are libneo
+ * outside closes it, as Back does. CalSpinner: its value and a drop-down arrow, that opens one. Both are libvibeos
  * candidates. */
 #pragma once
 

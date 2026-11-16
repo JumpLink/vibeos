@@ -20,35 +20,35 @@
  * a full pixel in the primary colour */
 .cal-search-plate {
   min-height: 48px;
-  background-image: linear-gradient(to top, transparent 33.3%, mix(@neo_surface, @neo_on_surface_variant, 0.5) 33.3%,
-                                    mix(@neo_surface, @neo_on_surface_variant, 0.5) 66.7%,
-                                    @neo_on_surface_variant 66.7%);
+  background-image: linear-gradient(to top, transparent 33.3%, mix(@vibeos_surface, @vibeos_on_surface_variant, 0.5) 33.3%,
+                                    mix(@vibeos_surface, @vibeos_on_surface_variant, 0.5) 66.7%,
+                                    @vibeos_on_surface_variant 66.7%);
   background-size: 100% 1px;
   background-position: left bottom;
   background-repeat: no-repeat;
 }
 
 .cal-search-plate.focused {
-  background-image: linear-gradient(@neo_primary, @neo_primary);
+  background-image: linear-gradient(@vibeos_primary, @vibeos_primary);
 }
 
 .cal-search-text {
   min-height: 36px;
   padding: 0 8px;
   font-size: 18px;
-  color: @neo_on_surface;
-  caret-color: @neo_primary;
+  color: @vibeos_on_surface;
+  caret-color: @vibeos_primary;
   background: none;
 }
 
 .cal-search-hint {                       /* the hint, a magnifier */
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-search-close {                      /* the clear (X) button */
   min-width: 40px;
   min-height: 48px;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 /* --- the suggestions: a history icon, the text, and an arrow that puts the suggestion in the field to change it */
@@ -59,17 +59,17 @@
 }
 
 .cal-search-suggestion > image {
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-search-suggestion-text {
   padding: 0 8px;
   font-size: 18px;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .cal-search-refine {
   min-width: 48px;
   min-height: 48px;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }

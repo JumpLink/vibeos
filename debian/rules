@@ -1,6 +1,6 @@
 #!/usr/bin/make -f
-# gnome-phone is several meson projects: the top level (libspongy, neo-launcher, input-boost, gp-auth, neo-wakeup),
-# libneo, the extension, the session files and one per app. libneo and the apps find libspongy and libneo through
+# VibeOS is several meson projects: the top level (libspongy, vibeos-launcher, input-boost, vibeos-auth, vibeos-wakeup),
+# libvibeos, the extension, the session files and one per app. libvibeos and the apps find libspongy and libvibeos through
 # the -uninstalled.pc files meson writes into each build directory, so the projects are configured and built one
 # after the other, in this order.
 
@@ -8,12 +8,12 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
 APPS := calculator calendar clock compass contacts dialer messaging browser settings weather camera files dictate
 # build directory:source directory
-PROJECTS := top:. libneo:libneo extension:extension session:session $(foreach a,$(APPS),$(a):apps/$(a))
+PROJECTS := top:. libvibeos:libvibeos extension:extension session:session $(foreach a,$(APPS),$(a):apps/$(a))
 BUILDDIRS := $(foreach p,$(PROJECTS),obj-$(firstword $(subst :, ,$(p))))
 
-# the libraries being built come before anything installed (a hand-built libspongy or libneo in /usr/local)
-export PKG_CONFIG_PATH := $(CURDIR)/obj-top/meson-uninstalled:$(CURDIR)/obj-libneo/meson-uninstalled
-TEST_LIBS := $(CURDIR)/obj-top/libspongy:$(CURDIR)/obj-libneo
+# the libraries being built come before anything installed (a hand-built libspongy or libvibeos in /usr/local)
+export PKG_CONFIG_PATH := $(CURDIR)/obj-top/meson-uninstalled:$(CURDIR)/obj-libvibeos/meson-uninstalled
+TEST_LIBS := $(CURDIR)/obj-top/libspongy:$(CURDIR)/obj-libvibeos
 
 %:
 	dh $@
@@ -47,12 +47,12 @@ override_dh_auto_clean:
 
 # Nothing that would take over a desktop is enabled: the phone session without a display manager, the docked desktop
 # and the dock switcher are the user's choice (README.Debian), and input-boost's clock floor is the device's to tune.
-# neo-wakeup and sim-apn run from boot.
+# vibeos-wakeup and sim-apn run from boot.
 # --no-start alone also stops the unit before an upgrade and never starts it again: an apt upgrade took the phone's
 # screen away (the session is the whole UI). So the session units stay up through an upgrade (the new one runs from the
 # next login or boot), and input-boost, if the device runs it, restarts once the new one is in.
 override_dh_installsystemd:
-	dh_installsystemd -pgnome-phone-session --no-enable --no-start --no-stop-on-upgrade
-	dh_installsystemd -pgnome-phone-daemons --no-enable --no-start --restart-after-upgrade input-boost.service
-	dh_installsystemd -pgnome-phone-daemons neo-wakeup.service
+	dh_installsystemd -pvibeos-session --no-enable --no-start --no-stop-on-upgrade
+	dh_installsystemd -pvibeos-daemons --no-enable --no-start --restart-after-upgrade input-boost.service
+	dh_installsystemd -pvibeos-daemons vibeos-wakeup.service
 	dh_installsystemd -psim-apn

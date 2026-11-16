@@ -127,7 +127,7 @@ static void
 draw_letter (MsgAvatar *self, GtkSnapshot *snapshot, const char *letter, double x, double y, double d)
 {
   PangoLayout *layout = gtk_widget_create_pango_layout (GTK_WIDGET (self), letter);
-  PangoFontDescription *font = pango_font_description_from_string ("Neo Roboto");
+  PangoFontDescription *font = pango_font_description_from_string ("VibeOS Roboto");
   PangoRectangle ink;
   GdkRGBA white = { 1, 1, 1, 1 };
 

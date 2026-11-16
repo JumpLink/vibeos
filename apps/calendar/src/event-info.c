@@ -12,7 +12,7 @@
 
 #include <errno.h>
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <string.h>
 #include <spongy-gtk.h>
 
@@ -41,7 +41,7 @@ info_free (gpointer data)
   g_cancellable_cancel (info->cancellable);
   g_clear_object (&info->cancellable);
   if (info->menu)
-    gtk_overlay_remove_overlay (neo_window_get_overlay (info->window), info->menu);
+    gtk_overlay_remove_overlay (vibeos_window_get_overlay (info->window), info->menu);
   g_signal_handlers_disconnect_by_data (info->store, info);
   g_clear_pointer (&info->event, cal_event_unref);
   g_clear_pointer (&info->saved_reminders, g_array_unref);
@@ -307,7 +307,7 @@ on_reminders_changed (CalReminders *reminders, Info *info)
 }
 
 static void
-on_add_reminder (NeoPressable *button, Info *info)
+on_add_reminder (VibeosPressable *button, Info *info)
 {
   /* a new reminder: the default reminder time, else 10 minutes */
   int minutes = g_settings_get_int (cal_window_get_settings (info->window), "default-reminder");
@@ -318,7 +318,7 @@ on_add_reminder (NeoPressable *button, Info *info)
 /* --- the actions */
 
 static void
-on_edit (NeoPressable *button, Info *info)
+on_edit (VibeosPressable *button, Info *info)
 {
   g_autoptr(CalEvent) event = cal_event_ref (info->event);
   GtkWidget *window = info->window;
@@ -330,7 +330,7 @@ on_edit (NeoPressable *button, Info *info)
 }
 
 static void
-on_duplicate (NeoPressable *button, Info *info)
+on_duplicate (VibeosPressable *button, Info *info)
 {
   g_autoptr(CalEvent) event = cal_event_ref (info->event);
   GtkWidget *window = info->window;
@@ -376,7 +376,7 @@ on_delete_answer (int index, gpointer data)
 }
 
 static void
-on_delete (NeoPressable *button, Info *info)
+on_delete (VibeosPressable *button, Info *info)
 {
   Deleting *deleting = g_new0 (Deleting, 1);
 
@@ -423,7 +423,7 @@ on_export_chosen (GObject *source, GAsyncResult *result, gpointer data)
 }
 
 static void
-on_export (NeoPressable *button, Info *info)
+on_export (VibeosPressable *button, Info *info)
 {
   g_autoptr(GError) error = NULL;
   char *ics = cal_store_export_sync (info->store, info->event, &error);
@@ -454,7 +454,7 @@ can_share (void)
   gboolean other = FALSE;
 
   for (GList *l = apps; l && !other; l = l->next)
-    other = g_strcmp0 (g_app_info_get_id (l->data), "neo.Calendar.desktop") != 0;
+    other = g_strcmp0 (g_app_info_get_id (l->data), "vibeos.Calendar.desktop") != 0;
   g_list_free_full (apps, g_object_unref);
   return other;
 }
@@ -470,11 +470,11 @@ on_shared (GObject *source, GAsyncResult *result, gpointer data)
 }
 
 static void
-on_share (NeoPressable *button, Info *info)
+on_share (VibeosPressable *button, Info *info)
 {
   g_autoptr(GError) error = NULL;
   g_autofree char *ics = cal_store_export_sync (info->store, info->event, &error);
-  g_autofree char *dir = g_build_filename (g_get_user_cache_dir (), "neo.Calendar", "share", NULL);
+  g_autofree char *dir = g_build_filename (g_get_user_cache_dir (), "vibeos.Calendar", "share", NULL);
   g_autofree char *name = NULL, *path = NULL;
   g_autoptr(GFile) file = NULL;
   g_autoptr(GtkFileLauncher) launcher = NULL;
@@ -527,7 +527,7 @@ on_color_chosen (guint32 rgb, gpointer data)
 }
 
 static void
-on_change_color (NeoPressable *button, Info *info)
+on_change_color (VibeosPressable *button, Info *info)
 {
   const CalCalendar *calendar = cal_store_find_calendar (info->store, info->event->calendar);
   int n_colors;
@@ -540,7 +540,7 @@ on_change_color (NeoPressable *button, Info *info)
 /* Email guests: a quick response (sorted) or "Write your own…", then the mail app with it, as from a reminder's
  * notification */
 static void
-on_email (NeoPressable *button, Info *info)
+on_email (VibeosPressable *button, Info *info)
 {
   const CalCalendar *calendar = cal_store_find_calendar (info->store, info->event->calendar);
 
@@ -558,7 +558,7 @@ guest_row (const CalAttendee *guest)
   GtkWidget *row = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *name = gtk_label_new (guest->name ? guest->name : guest->email);
-  GtkWidget *badge = gtk_picture_new_for_resource ("/neo/Calendar/contact-picture.png");
+  GtkWidget *badge = gtk_picture_new_for_resource ("/vibeos/Calendar/contact-picture.png");
   GtkWidget *separator = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
 
   gtk_widget_add_css_class (row, "cal-guest");
@@ -639,7 +639,7 @@ fill_guests (Info *info)
 
 typedef struct {
   const char *icon, *label;
-  void (*activate) (NeoPressable *button, Info *info);
+  void (*activate) (VibeosPressable *button, Info *info);
 } Action;
 
 static void
@@ -647,7 +647,7 @@ close_menu (Info *info)
 {
   if (!info->menu)
     return;
-  gtk_overlay_remove_overlay (neo_window_get_overlay (info->window), info->menu);
+  gtk_overlay_remove_overlay (vibeos_window_get_overlay (info->window), info->menu);
   info->menu = NULL;
 }
 
@@ -658,16 +658,16 @@ on_menu_scrim (GtkGestureClick *gesture, int n, double x, double y, Info *info)
 }
 
 static void
-on_menu_item (NeoPressable *item, Info *info)
+on_menu_item (VibeosPressable *item, Info *info)
 {
-  void (*activate) (NeoPressable *, Info *) = g_object_get_data (G_OBJECT (item), "cal-activate");
+  void (*activate) (VibeosPressable *, Info *) = g_object_get_data (G_OBJECT (item), "cal-activate");
 
   close_menu (info);
   activate (item, info);
 }
 
 static void
-on_more (NeoPressable *button, Info *info)
+on_more (VibeosPressable *button, Info *info)
 {
   const Action *rest = g_object_get_data (G_OBJECT (button), "cal-actions");
   int n_rest = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (button), "cal-n-actions"));
@@ -688,20 +688,20 @@ on_more (NeoPressable *button, Info *info)
   for (int i = 0; i < n_rest; i++)
     {
       GtkWidget *text = gtk_label_new (rest[i].label);
-      GtkWidget *item = neo_pressable_new (text);
+      GtkWidget *item = vibeos_pressable_new (text);
 
       gtk_label_set_xalign (GTK_LABEL (text), 0);
-      neo_label_set_font_padding (text, 16);
+      vibeos_label_set_font_padding (text, 16);
       gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
       gtk_widget_add_css_class (item, "cal-menu-item");
-      neo_pressable_set_ripple (NEO_PRESSABLE (item), NEO_RIPPLE_BOUNDED, 0);
+      vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (item), VIBEOS_RIPPLE_BOUNDED, 0);
       g_object_set_data (G_OBJECT (item), "cal-activate", rest[i].activate);
       g_signal_connect (item, "clicked", G_CALLBACK (on_menu_item), info);
       gtk_box_append (GTK_BOX (menu), item);
     }
   gtk_overlay_add_overlay (GTK_OVERLAY (layer), menu);
   info->menu = layer;
-  gtk_overlay_add_overlay (neo_window_get_overlay (info->window), layer);
+  gtk_overlay_add_overlay (vibeos_window_get_overlay (info->window), layer);
 }
 
 static int
@@ -806,10 +806,10 @@ event_info_new (GtkWidget *window, CalEvent *event)
   info->repeat = text ("cal-info-repeat", TRUE);
   info->where = text ("cal-info-where", TRUE);
   /* font padding */
-  neo_label_set_font_padding (info->title, 24);
-  neo_label_set_font_padding (info->when, 14);
-  neo_label_set_font_padding (info->repeat, 14);
-  neo_label_set_font_padding (info->where, 14);
+  vibeos_label_set_font_padding (info->title, 24);
+  vibeos_label_set_font_padding (info->when, 14);
+  vibeos_label_set_font_padding (info->repeat, 14);
+  vibeos_label_set_font_padding (info->where, 14);
   gtk_box_append (GTK_BOX (info->headline), info->title);
   gtk_box_append (GTK_BOX (info->headline), info->when);
   gtk_box_append (GTK_BOX (info->headline), info->repeat);
@@ -822,25 +822,25 @@ event_info_new (GtkWidget *window, CalEvent *event)
   info->calendar_row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   label = text ("cal-info-small", FALSE);
   gtk_label_set_label (GTK_LABEL (label), _("Calendar:"));
-  neo_label_set_font_padding (label, 14);
+  vibeos_label_set_font_padding (label, 14);
   gtk_box_append (GTK_BOX (info->calendar_row), label);
   info->calendar_name = text ("cal-info-small", TRUE);
   gtk_widget_add_css_class (info->calendar_name, "cal-info-calendar-name");
   gtk_widget_set_hexpand (info->calendar_name, TRUE);
-  neo_label_set_font_padding (info->calendar_name, 14);
+  vibeos_label_set_font_padding (info->calendar_name, 14);
   gtk_box_append (GTK_BOX (info->calendar_row), info->calendar_name);
   gtk_box_append (GTK_BOX (body), info->calendar_row);
   /* "Organizer:" and the name, one line */
   info->organizer_row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   label = text ("cal-info-small", FALSE);
   gtk_label_set_label (GTK_LABEL (label), _("Organizer:"));
-  neo_label_set_font_padding (label, 14);
+  vibeos_label_set_font_padding (label, 14);
   gtk_box_append (GTK_BOX (info->organizer_row), label);
   info->organizer = text ("cal-info-small", FALSE);
   gtk_label_set_ellipsize (GTK_LABEL (info->organizer), PANGO_ELLIPSIZE_END);
   gtk_widget_add_css_class (info->organizer, "cal-info-calendar-name");
   gtk_widget_set_hexpand (info->organizer, TRUE);
-  neo_label_set_font_padding (info->organizer, 14);
+  vibeos_label_set_font_padding (info->organizer, 14);
   gtk_box_append (GTK_BOX (info->organizer_row), info->organizer);
   gtk_box_append (GTK_BOX (body), info->organizer_row);
   info->description = text ("cal-info-small", TRUE);
@@ -861,9 +861,9 @@ event_info_new (GtkWidget *window, CalEvent *event)
   gtk_box_append (GTK_BOX (email), icon);
   info->email_label = gtk_label_new (NULL);
   gtk_box_append (GTK_BOX (email), info->email_label);
-  email = neo_pressable_new (email);
+  email = vibeos_pressable_new (email);
   gtk_widget_add_css_class (email, "cal-email-guests");
-  neo_pressable_set_ripple (NEO_PRESSABLE (email), NEO_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (email), VIBEOS_RIPPLE_BOUNDED, 0);
   g_signal_connect (email, "clicked", G_CALLBACK (on_email), info);
   gtk_box_append (GTK_BOX (info->email_row), email);
   gtk_box_append (GTK_BOX (content), info->email_row);
@@ -882,9 +882,9 @@ event_info_new (GtkWidget *window, CalEvent *event)
   gtk_box_append (GTK_BOX (content), info->reminders);
   add_text = gtk_label_new (_("Add reminder"));
   gtk_label_set_xalign (GTK_LABEL (add_text), 0);
-  info->add_reminder = neo_pressable_new (add_text);
+  info->add_reminder = vibeos_pressable_new (add_text);
   gtk_widget_add_css_class (info->add_reminder, "cal-add-reminder");
-  neo_pressable_set_ripple (NEO_PRESSABLE (info->add_reminder), NEO_RIPPLE_BOUNDED, 4);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (info->add_reminder), VIBEOS_RIPPLE_BOUNDED, 4);
   g_signal_connect (info->add_reminder, "clicked", G_CALLBACK (on_add_reminder), info);
   gtk_box_append (GTK_BOX (content), info->add_reminder);
 

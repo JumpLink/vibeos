@@ -1,3 +1,0 @@
-[D-BUS Service]
-Name=neo.Dictate
-Exec=@bindir@/neo-dictate --gapplication-service

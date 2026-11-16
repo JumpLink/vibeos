@@ -1,4 +1,4 @@
-// GNOME Phone: turns GNOME Shell (mobile) into the phone the Neo launcher is the home screen of.
+// VibeOS: turns GNOME Shell (mobile) into the phone the VibeOS launcher is the home screen of.
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 
@@ -34,11 +34,11 @@ import {WhenLocked} from './whenlocked.js';
 // 1080x2280 default in ~70 ms)
 const WALLPAPER_WAIT_MS = 2000;
 
-export default class GnomePhoneExtension extends Extension {
+export default class VibeosExtension extends Extension {
     enable() {
-        // ~/.config/gnome-phone/debug: the shell's Eval and Screenshot D-Bus calls are open to every client, for
+        // ~/.config/vibeos/debug: the shell's Eval and Screenshot D-Bus calls are open to every client, for
         // development only
-        const debug = GLib.build_filenamev([GLib.get_user_config_dir(), 'gnome-phone', 'debug']);
+        const debug = GLib.build_filenamev([GLib.get_user_config_dir(), 'vibeos', 'debug']);
         if (GLib.file_test(debug, GLib.FileTest.EXISTS))
             global.context.unsafe_mode = true;
 
@@ -49,14 +49,14 @@ export default class GnomePhoneExtension extends Extension {
         try {
             this._androidKeyboard = new AndroidKeyboard();
         } catch (e) {
-            logError(e, 'gnome-phone: the on-screen keyboard for Android apps');
+            logError(e, 'vibeos: the on-screen keyboard for Android apps');
             this._androidKeyboard = null;
         }
         // a text field a tap focuses opens the keyboard (WebKit's page fields never ask for it themselves)
         try {
             this._touchFocusKeyboard = new TouchFocusKeyboard();
         } catch (e) {
-            logError(e, 'gnome-phone: the keyboard for a tapped text field');
+            logError(e, 'vibeos: the keyboard for a tapped text field');
             this._touchFocusKeyboard = null;
         }
 
@@ -64,7 +64,7 @@ export default class GnomePhoneExtension extends Extension {
         try {
             syncGtkCss(!isDesktopSession());
         } catch (e) {
-            logError(e, 'gnome-phone: the GTK apps\' stylesheet');
+            logError(e, 'vibeos: the GTK apps\' stylesheet');
         }
 
         // docked to a display: GNOME's own desktop there, and none of the phone's UI (dock.js)
@@ -89,7 +89,7 @@ export default class GnomePhoneExtension extends Extension {
         });
     }
 
-    // The GNOME Phone session turns the extension on through its session mode (gnome-phone.json). The unlock-dialog
+    // The VibeOS session turns the extension on through its session mode (vibeos.json). The unlock-dialog
     // mode the lock screen pushes over it lists no extensions of its own, so the shell would turn this one off at
     // every lock, its lock screen with it, and on again as that pops the mode: a loop. While the session is locked,
     // the extension stays among the mode's. (Turned on in the user's settings instead, it stays on by its

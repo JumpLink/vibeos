@@ -14,7 +14,7 @@ typedef struct
 } ClockArc;
 
 /* Stroked arcs (butt ends), one for each of `arcs`, one over the other: the circle at (cx, cy), radius `radius`,
- * `width` wide. `scale`: device pixels per unit (neo_device_scale).
+ * `width` wide. `scale`: device pixels per unit (vibeos_device_scale).
  *
  * The rings change every frame while a timer or the stopwatch runs, and GTK has cairo rasterise a stroke again in
  * every frame that has a new one: a ring 288 px across cost the stopwatch half a core. So the ring is rasterised

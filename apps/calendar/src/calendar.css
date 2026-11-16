@@ -1,40 +1,40 @@
 /* The Calendar's look.
  *
- * The colour roles libneo's stylesheet uses are redefined here with the Calendar's own values; this provider is
- * above libneo's, and named colours resolve through the cascade. cal-colors.h holds the same values for what is
+ * The colour roles libvibeos's stylesheet uses are redefined here with the Calendar's own values; this provider is
+ * above libvibeos's, and named colours resolve through the cascade. cal-colors.h holds the same values for what is
  * drawn in C.
  *
- * Weights are the effective ones with "Bold text" on (+300; neo.css). */
+ * Weights are the effective ones with "Bold text" on (+300; vibeos.css). */
 
-@define-color neo_primary #4d7f86;
-@define-color neo_on_primary #381e72;
-@define-color neo_primary_container #4f378b;
-@define-color neo_on_primary_container #eaddff;
-@define-color neo_secondary_container #00363c;
-@define-color neo_on_secondary_container #e8def8;
-@define-color neo_surface #141218;
-@define-color neo_surface_container_low #1d1b20;
-@define-color neo_surface_container #211f26;
-@define-color neo_surface_container_high #2b2930;
-@define-color neo_surface_container_highest #36343b;
-@define-color neo_on_surface #e6e0e9;
-@define-color neo_on_surface_variant #cac4d0;
-@define-color neo_outline #938f99;
+@define-color vibeos_primary #4d7f86;
+@define-color vibeos_on_primary #381e72;
+@define-color vibeos_primary_container #4f378b;
+@define-color vibeos_on_primary_container #eaddff;
+@define-color vibeos_secondary_container #00363c;
+@define-color vibeos_on_secondary_container #e8def8;
+@define-color vibeos_surface #141218;
+@define-color vibeos_surface_container_low #1d1b20;
+@define-color vibeos_surface_container #211f26;
+@define-color vibeos_surface_container_high #2b2930;
+@define-color vibeos_surface_container_highest #36343b;
+@define-color vibeos_on_surface #e6e0e9;
+@define-color vibeos_on_surface_variant #cac4d0;
+@define-color vibeos_outline #938f99;
 
 @define-color cal_separator #555555;     /* the editor's section separators */
 @define-color cal_divider #312f34;       /* event info's dividers, the editor's CANCEL | DONE divider */
 @define-color cal_hint #928d96;          /* the editor's hints */
 
-window.neo.cal-window {
-  background-color: @neo_surface;
-  color: @neo_on_surface;
+window.vibeos.cal-window {
+  background-color: @vibeos_surface;
+  color: @vibeos_on_surface;
 }
 
 /* --- the toolbars */
 
 .cal-toolbar {
   min-height: 64px;
-  background-color: @neo_surface;
+  background-color: @vibeos_surface;
 }
 
 .cal-toolbar-nav,
@@ -43,7 +43,7 @@ window.neo.cal-window {
                                           * button is also a .cal-action, which this outweighs) */
   min-width: 56px;
   min-height: 56px;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 /* the title and the subtitle, just after the navigation button */
@@ -55,18 +55,18 @@ window.neo.cal-window {
 .cal-toolbar-title {
   font-size: 22px;
   font-weight: 700;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .cal-toolbar-subtitle {
   font-size: 16px;
   font-weight: 800;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .cal-toolbar-more {                      /* the overflow button, narrower than the others */
   min-width: 40px;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 /* its icon nearer the start than the end, the ripple still on the whole button */
@@ -83,7 +83,7 @@ cal-day-view {
 .cal-action {                            /* event info's action buttons */
   min-width: 48px;
   min-height: 48px;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 /* --- the floating add button, in the bottom corner */
@@ -99,7 +99,7 @@ cal-day-view {
 /* --- the drawer */
 
 .cal-drawer {
-  background-color: @neo_surface_container_low;
+  background-color: @vibeos_surface_container_low;
   border-radius: 0 16px 16px 0;
   padding-top: 8px;
 }
@@ -111,7 +111,7 @@ cal-day-view {
 }
 
 .cal-drawer-item.selected {
-  background-color: @neo_secondary_container;
+  background-color: @vibeos_secondary_container;
 }
 
 .cal-drawer-row {
@@ -119,7 +119,7 @@ cal-day-view {
 }
 
 .cal-drawer-icon {
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-drawer-label {                      /* the item's name, after its icon */
@@ -127,24 +127,24 @@ cal-day-view {
   font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.1px;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-drawer-item.selected .cal-drawer-label,
 .cal-drawer-item.selected .cal-drawer-icon {
-  color: @neo_on_secondary_container;
+  color: @vibeos_on_secondary_container;
 }
 
 .cal-drawer-divider {
   min-height: 1px;
   margin: 8px 28px;
-  background-color: @neo_outline;
+  background-color: @vibeos_outline;
 }
 
 /* --- menus and spinner dropdowns */
 
 .cal-menu {
-  background-color: @neo_surface_container;
+  background-color: @vibeos_surface_container;
   border-radius: 4px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
   padding: 8px 0;
@@ -165,7 +165,7 @@ cal-day-view {
   min-height: 48px;
   padding: 0 16px;
   font-size: 16px;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .cal-menu-item label {
@@ -173,7 +173,7 @@ cal-day-view {
 }
 
 .cal-menu-item.selected {
-  background-color: alpha(@neo_on_surface, 0.08);
+  background-color: alpha(@vibeos_on_surface, 0.08);
 }
 
 cal-spinner {
@@ -182,11 +182,11 @@ cal-spinner {
 
 .cal-spinner-text {
   font-size: 16px;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .cal-spinner-arrow {
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 /* --- toasts */
@@ -196,7 +196,7 @@ cal-spinner {
   padding: 0 16px;
   min-height: 48px;
   border-radius: 28px;
-  background-color: @neo_surface_container_high;
+  background-color: @vibeos_surface_container_high;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
@@ -207,17 +207,17 @@ cal-spinner {
 .cal-toast-text {
   padding: 12px 0;
   font-size: 14px;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 /* --- dialogs */
 
-.neo-dialog {
-  background-color: @neo_surface_container_high;
+.vibeos-dialog {
+  background-color: @vibeos_surface_container_high;
 }
 
-.neo-text-button {
-  color: @neo_primary;
+.vibeos-text-button {
+  color: @vibeos_primary;
 }
 
 .cal-dialog-list {
@@ -228,7 +228,7 @@ cal-spinner {
   min-height: 48px;
   padding: 0 24px;
   font-size: 16px;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .cal-dialog-item label {
@@ -237,20 +237,20 @@ cal-spinner {
 
 .cal-radio {
   margin-right: 16px;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 /* --- the date dialog */
 
-.neo-dialog.cal-date-card {
-  background-color: @neo_surface_container_high;
+.vibeos-dialog.cal-date-card {
+  background-color: @vibeos_surface_container_high;
 }
 
-.cal-date-card .neo-dialog-buttons {
+.cal-date-card .vibeos-dialog-buttons {
   margin: 2px 8px 2px 8px;
 }
 
-.cal-date-card .neo-text-button {
+.cal-date-card .vibeos-text-button {
   min-width: 40px;
 }
 
@@ -263,14 +263,14 @@ cal-spinner {
   margin-top: 16px;
   font-size: 14px;
   font-weight: 800;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-date-selection {                    /* the chosen date, under the title */
   margin-bottom: 12px;
   font-size: 32px;
   font-weight: 700;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-date-nav {
@@ -287,13 +287,13 @@ cal-spinner {
 .cal-date-month {
   font-size: 14px;
   font-weight: 800;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-date-arrow {
   min-width: 48px;
   min-height: 48px;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-date-days {                          /* a gap between the weeks and the buttons */
@@ -302,15 +302,15 @@ cal-spinner {
 
 /* the time picker (24-hour clock) */
 
-.neo-dialog.cal-time-card {
-  background-color: @neo_surface_container_high;
+.vibeos-dialog.cal-time-card {
+  background-color: @vibeos_surface_container_high;
 }
 
-.cal-time-card .neo-dialog-buttons {      /* on the card's bottom edge */
+.cal-time-card .vibeos-dialog-buttons {      /* on the card's bottom edge */
   margin: 0 8px 0 8px;
 }
 
-.cal-time-card .neo-text-button {
+.cal-time-card .vibeos-text-button {
   min-width: 40px;
 }
 
@@ -323,7 +323,7 @@ cal-spinner {
   margin: 16px 24px 0 24px;
   font-size: 12px;
   font-weight: 800;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-time-display {                       /* the hour and minute boxes */
@@ -332,13 +332,13 @@ cal-spinner {
 
 .cal-time-box {
   border-radius: 8px;
-  background-color: @neo_surface_container_highest;
-  color: @neo_on_surface;
+  background-color: @vibeos_surface_container_highest;
+  color: @vibeos_on_surface;
 }
 
 .cal-time-box.selected {
-  background-color: @neo_primary_container;
-  color: @neo_on_primary_container;
+  background-color: @vibeos_primary_container;
+  color: @vibeos_on_primary_container;
 }
 
 .cal-time-text,
@@ -348,7 +348,7 @@ cal-spinner {
 }
 
 .cal-time-colon {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .cal-time-face {                          /* the clock face, under the boxes */
@@ -361,23 +361,23 @@ cal-spinner {
   margin: 8px 0;
   border-radius: 18px;
   font-size: 16px;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-year.today {                         /* this year: a ring, inside the pill */
-  box-shadow: inset 0 0 0 1px @neo_primary;
-  color: @neo_primary;
+  box-shadow: inset 0 0 0 1px @vibeos_primary;
+  color: @vibeos_primary;
 }
 
 .cal-year.selected {
-  background-color: @neo_primary;
-  color: @neo_on_primary;
+  background-color: @vibeos_primary;
+  color: @vibeos_on_primary;
 }
 
 /* --- pages (event info, the editor, settings) */
 
 .cal-page {
-  background-color: @neo_surface;
+  background-color: @vibeos_surface;
 }
 
 /* event info */
@@ -422,7 +422,7 @@ cal-spinner {
 
 .cal-info-small {
   font-size: 14px;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-info-calendar-name {
@@ -431,7 +431,7 @@ cal-spinner {
 
 .cal-info-description {
   margin-top: 8px;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .cal-list-separator {                    /* a heading in caps, a line under it */
@@ -440,7 +440,7 @@ cal-spinner {
   padding: 2px 8px 0 8px;
   font-size: 14px;
   font-weight: 900;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
   /* the line along the bottom, inside the height; the text is centred over the whole height */
   box-shadow: inset 0 -2px @cal_divider;
 }
@@ -464,7 +464,7 @@ cal-spinner {
   margin: 0 12px;
   padding-left: 12px;
   font-size: 16px;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .cal-guest-separator {                   /* between two guests in a group */
@@ -477,7 +477,7 @@ cal-spinner {
   min-height: 50px;
   margin: 0 8px 0 6px;
   font-size: 16px;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-email-guests label {
@@ -488,7 +488,7 @@ cal-spinner {
   margin: 4px 12px 12px 12px;
   padding: 12px 8px 12px 8px;
   font-size: 18px;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .cal-add-reminder label {
@@ -505,7 +505,7 @@ cal-spinner {
 }
 
 .cal-reminder-remove {
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 /* the event editor */
@@ -513,18 +513,18 @@ cal-spinner {
 .cal-edit-bar {
   min-height: 64px;
   padding-left: 16px;
-  background-color: @neo_surface;
+  background-color: @vibeos_surface;
 }
 
 .cal-edit-action-icon {                  /* the CANCEL and DONE icons */
   margin-right: 5px;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-edit-action-text {
   font-size: 16px;
   font-weight: 800;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .cal-edit-action-divider {               /* the line between CANCEL and DONE */
@@ -542,8 +542,8 @@ cal-spinner {
   box-shadow: none;
   outline: none;
   font-size: 20px;
-  color: @neo_on_surface;
-  caret-color: @neo_primary;
+  color: @vibeos_on_surface;
+  caret-color: @vibeos_primary;
 }
 
 .cal-edit-title text placeholder {
@@ -567,7 +567,7 @@ cal-spinner {
 
 .cal-edit-icon {
   margin-right: 12px;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-edit-calendar {                     /* the calendar row: the spinner and the colour */
@@ -592,24 +592,24 @@ cal-spinner {
   padding-bottom: 8px;
 }
 
-.cal-edit-all-day-switch {               /* NeoSwitch is the track inside a taller touch target */
+.cal-edit-all-day-switch {               /* VibeosSwitch is the track inside a taller touch target */
   margin-top: 1px;
   margin-right: 24px;
 }
 
 .cal-edit-calendar-name {
   font-size: 18px;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .cal-edit-calendar-account {
   font-size: 14px;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-edit-label {
   font-size: 18px;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .cal-edit-dates {
@@ -620,11 +620,11 @@ cal-spinner {
   min-height: 38px;
   margin: 4px 16px 4px 0;
   padding: 0 12px;
-  border: 1px solid @neo_outline;
+  border: 1px solid @vibeos_outline;
   border-radius: 20px;
   font-size: 14px;
   font-weight: 800;
-  color: @neo_primary;
+  color: @vibeos_primary;
 }
 
 .cal-outlined label {
@@ -645,8 +645,8 @@ cal-spinner {
   padding: 0;
   background: none;
   font-size: 18px;
-  color: @neo_on_surface;
-  caret-color: @neo_primary;
+  color: @vibeos_on_surface;
+  caret-color: @vibeos_primary;
 }
 
 .cal-field-body {
@@ -684,7 +684,7 @@ cal-spinner {
   min-height: 48px;
   margin-right: 20px;
   margin-top: 3px;                       /* centred on the spinner, not the row */
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-edit-tz {                           /* the time zone button: two lines */
@@ -702,7 +702,7 @@ cal-spinner {
   margin: 4px 24px 0 63px;               /* line with the field's text */
   font-size: 12px;
   letter-spacing: 0.4px;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-edit-spinner-row {                  /* availability, visibility */
@@ -737,20 +737,20 @@ cal-spinner {
 
 .cal-pref-icon {
   margin-left: 16px;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-pref-title {
   font-size: 16px;
   letter-spacing: 0.15px;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .cal-pref-summary {                       /* the summary under a title */
   font-size: 14px;
   line-height: 20px;
   letter-spacing: 0.25px;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-pref-widget {
@@ -774,7 +774,7 @@ cal-spinner {
 .cal-pref-category-title {
   font-size: 14px;
   font-weight: 800;
-  color: @neo_primary;
+  color: @vibeos_primary;
 }
 
 .cal-about-icon {
@@ -788,11 +788,11 @@ cal-spinner {
   padding: 0 4px;
   background: none;
   border: none;
-  border-bottom: 2px solid @neo_primary;
+  border-bottom: 2px solid @vibeos_primary;
   border-radius: 0;
   box-shadow: none;
   outline: none;
   font-size: 18px;
-  color: @neo_on_surface;
-  caret-color: @neo_primary;
+  color: @vibeos_on_surface;
+  caret-color: @vibeos_primary;
 }

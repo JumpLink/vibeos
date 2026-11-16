@@ -10,7 +10,7 @@
 
 #include <glib/gi18n.h>
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 #define TOOLBAR        64
@@ -126,7 +126,7 @@ static void
 calc_history_row_size_allocate (GtkWidget *widget, int width, int height, int baseline)
 {
   CalcHistoryRow *self = CALC_HISTORY_ROW (widget);
-  int scale = neo_device_scale (widget);
+  int scale = vibeos_device_scale (widget);
   int y = DIVIDER_PAD * scale + row_divider_px (self->divider, scale) + (self->date ? date_px (scale) : 0);
   double text = (double) text_px (scale) / scale;
 
@@ -142,7 +142,7 @@ static void
 calc_history_row_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   CalcHistoryRow *self = CALC_HISTORY_ROW (widget);
-  int scale = neo_device_scale (widget);
+  int scale = vibeos_device_scale (widget);
   double w = gtk_widget_get_width (widget);
   double y = DIVIDER_PAD;
 
@@ -154,7 +154,7 @@ calc_history_row_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   }
   y += (double) row_divider_px (self->divider, scale) / scale;
   if (self->date) {
-    GdkRGBA color = neo_color (NEO_ON_SURFACE_VARIANT);
+    GdkRGBA color = vibeos_color (VIBEOS_ON_SURFACE_VARIANT);
     double top = floor (-CALC_TOP * DATE_SIZE * scale);
 
     if (!self->date_layout)
@@ -297,7 +297,7 @@ static void
 calc_history_list_size_allocate (GtkWidget *widget, int width, int height, int baseline)
 {
   CalcHistoryList *self = CALC_HISTORY_LIST (widget);
-  int scale = neo_device_scale (widget);
+  int scale = vibeos_device_scale (widget);
   double content, value;
   GHashTableIter iter;
   gpointer key, row;
@@ -564,7 +564,7 @@ static void
 calc_history_size_allocate (GtkWidget *widget, int width, int height, int baseline)
 {
   CalcHistory *self = CALC_HISTORY (widget);
-  int scale = neo_device_scale (widget);
+  int scale = vibeos_device_scale (widget);
   double w = history_width (self), h = history_height (self);
 
   gtk_widget_allocate (self->back, BUTTON, BUTTON, -1,
@@ -588,10 +588,10 @@ static void
 calc_history_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   CalcHistory *self = CALC_HISTORY (widget);
-  int scale = neo_device_scale (widget);
+  int scale = vibeos_device_scale (widget);
   double w = history_width (self), h = history_height (self);
-  GdkRGBA background = neo_color (NEO_SURFACE_CONTAINER);   /* the history's background */
-  GdkRGBA on_surface = neo_color (NEO_ON_SURFACE);
+  GdkRGBA background = vibeos_color (VIBEOS_SURFACE_CONTAINER);   /* the history's background */
+  GdkRGBA on_surface = vibeos_color (VIBEOS_ON_SURFACE);
 
   gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (0, 0, w, h));
   gtk_snapshot_append_color (snapshot, &background, &GRAPHENE_RECT_INIT (0, 0, w, h));
@@ -604,13 +604,13 @@ calc_history_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
     double text_h = (ceil (CALC_BOTTOM * px) - floor (-CALC_TOP * px)) / scale;
     double box_h = EMPTY_ICON + text_h;
     double top = list_top + (list_h - box_h) / 2;
-    GdkRGBA icon = neo_color (NEO_ON_SURFACE_VARIANT);
+    GdkRGBA icon = vibeos_color (VIBEOS_ON_SURFACE_VARIANT);
     double tw;
 
     if (!self->empty)
       self->empty = calc_text_layout (widget, _("No History"), EMPTY_SIZE, CALC_WEIGHT_REGULAR);
     tw = calc_text_width (self->empty);
-    neo_snapshot_icon (snapshot, widget, "calc-history-symbolic", (w - EMPTY_ICON) / 2, top, EMPTY_ICON, &icon);
+    vibeos_snapshot_icon (snapshot, widget, "calc-history-symbolic", (w - EMPTY_ICON) / 2, top, EMPTY_ICON, &icon);
     calc_text_draw (snapshot, self->empty, (w - tw) / 2, top + EMPTY_ICON - floor (-CALC_TOP * px) / scale,
                     &on_surface);
   }
@@ -693,14 +693,14 @@ calc_history_new (Evaluator *evaluator)
   CalcHistory *self = g_object_new (CALC_TYPE_HISTORY, NULL);
 
   self->evaluator = evaluator;
-  self->back = neo_icon_button_new ("calc-back-symbolic");
+  self->back = vibeos_icon_button_new ("calc-back-symbolic");
   gtk_widget_add_css_class (self->back, "calc-toolbar-icon");
   gtk_accessible_update_property (GTK_ACCESSIBLE (self->back), GTK_ACCESSIBLE_PROPERTY_LABEL,
                                   /* the shell's back gesture clicks a button named Back */
                                   _("Back"), -1);
   g_signal_connect (self->back, "clicked", G_CALLBACK (on_back), self);
   gtk_widget_set_parent (self->back, GTK_WIDGET (self));
-  self->overflow = neo_icon_button_new ("calc-more-symbolic");
+  self->overflow = vibeos_icon_button_new ("calc-more-symbolic");
   gtk_widget_add_css_class (self->overflow, "calc-toolbar-icon");
   gtk_accessible_update_property (GTK_ACCESSIBLE (self->overflow), GTK_ACCESSIBLE_PROPERTY_LABEL,
                                   _("More options"), -1);

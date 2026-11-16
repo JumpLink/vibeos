@@ -1,15 +1,15 @@
-/* neo-dialer: the Phone app, LineageOS's Dialer rebuilt in GTK 4.
+/* vibeos-dialer: the Phone app, LineageOS's Dialer rebuilt in GTK 4.
  *
  * One program, two applications, as the Clock has them:
- *  - neo.Dialer, the app with its tabs (Favorites, Recents, Contacts) and the dialpad. It is D-Bus
+ *  - vibeos.Dialer, the app with its tabs (Favorites, Recents, Contacts) and the dialpad. It is D-Bus
  *    activatable: the launcher starts it, a tel: link opens it at the dialpad with the number, another app has a
  *    number called at once ("call", below), and the call service opens it at the call log ("show-call-log", a tap
  *    on a missed call) or to add a call ("add-call").
- *  - neo.Dialer.InCall ("neo-dialer --incall"), the screen of a call: the answer screen while it rings, the
+ *  - vibeos.Dialer.InCall ("vibeos-dialer --incall"), the screen of a call: the answer screen while it rings, the
  *    in-call screen once it is up. The call service has the shell start it for a ringing call; it has a desktop
  *    file of its own so the shell lets it over the lock screen.
  *
- * The calls themselves are not here: the call service (neo-dialer-calls) has them, rings, keeps the call log and
+ * The calls themselves are not here: the call service (vibeos-dialer-calls) has them, rings, keeps the call log and
  * posts the notifications, whether or not this app runs. */
 #include "call-types.h"
 #include "calls-client.h"
@@ -21,7 +21,7 @@
 #include <glib/gi18n.h>
 #include <locale.h>
 #include <string.h>
-#include <neo.h>
+#include <vibeos.h>
 
 static GSettings *settings;
 
@@ -30,8 +30,8 @@ load_style (void)
 {
   GtkCssProvider *provider = gtk_css_provider_new ();
 
-  gtk_css_provider_load_from_resource (provider, "/neo/Dialer/dialer.css");
-  /* over libneo's, which is at APPLICATION priority too: the later provider wins at equal priority */
+  gtk_css_provider_load_from_resource (provider, "/vibeos/Dialer/dialer.css");
+  /* over libvibeos's, which is at APPLICATION priority too: the later provider wins at equal priority */
   gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (provider),
                                               GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
   g_object_unref (provider);
@@ -40,7 +40,7 @@ load_style (void)
 static void
 on_startup (GApplication *app, gpointer data)
 {
-  neo_init ();
+  vibeos_init ();
   load_style ();
 }
 
@@ -93,7 +93,7 @@ on_open (GApplication *app, GFile **files, int n_files, const char *hint, gpoint
 }
 
 /* "call" (s): another app's call to a number (the Contacts app's call button), activated with
- * org.freedesktop.Application.ActivateAction on neo.Dialer, or `gapplication action neo.Dialer call
+ * org.freedesktop.Application.ActivateAction on vibeos.Dialer, or `gapplication action vibeos.Dialer call
  * "'+49…'"`. The number may come as a tel: URI. The call goes out at once and the in-call screen comes up, no window
  * of the Dialer's in between. Except:
  *  - an emergency number is not called this way: the dialpad opens with it, to be called with the dial button;
@@ -210,7 +210,7 @@ main (int argc, char **argv)
   app = gtk_application_new (in_call ? INCALL_APP_ID : DIALER_APP_ID,
                              in_call ? G_APPLICATION_DEFAULT_FLAGS : G_APPLICATION_HANDLES_OPEN);
   /* both find the icons and the style under the app's path (otherwise the InCall one would look in .../InCall) */
-  g_application_set_resource_base_path (G_APPLICATION (app), "/neo/Dialer");
+  g_application_set_resource_base_path (G_APPLICATION (app), "/vibeos/Dialer");
   g_signal_connect (app, "startup", G_CALLBACK (on_startup), NULL);
   if (in_call)
     {

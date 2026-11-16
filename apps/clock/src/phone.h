@@ -6,7 +6,7 @@
 #include <gio/gio.h>
 
 /* logind's sleep lock (a "block" inhibitor), as a file descriptor to close when it may sleep again; -1 if logind
- * said no. neo-wakeup holds the phone up only 30 s after it wakes it: something ringing needs longer. */
+ * said no. vibeos-wakeup holds the phone up only 30 s after it wakes it: something ringing needs longer. */
 int  phone_inhibit_sleep (GDBusConnection *system, const char *why);
 void phone_allow_sleep (int *inhibitor);
 
@@ -15,7 +15,7 @@ void phone_allow_sleep (int *inhibitor);
  * app is started anyway. */
 void phone_show_full_screen (GDBusConnection *session, const char *app_id);
 
-/* neo-wakeup's RTC wake-up named @name at @time (Unix seconds; 0 clears it). @alarm_clock: it is also the next
+/* vibeos-wakeup's RTC wake-up named @name at @time (Unix seconds; 0 clears it). @alarm_clock: it is also the next
  * alarm the status bar shows */
 void phone_wake_at (GDBusConnection *system, const char *name, gint64 time, gboolean alarm_clock);
 

@@ -13,7 +13,7 @@
 
 #include <glib/gi18n.h>
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 #define LIST_TOP_PADDING 8
@@ -40,7 +40,7 @@ struct _ConversationList {
   GtkWidget parent;
   SmsClient *client;
   Contacts *contacts;
-  GSettings *settings;          /* neo.Messaging: Swipe to delete */
+  GSettings *settings;          /* vibeos.Messaging: Swipe to delete */
   gboolean archived;
   gboolean forward;             /* Forward message's list: no bars, no FAB, no swipe, no select */
 
@@ -48,7 +48,7 @@ struct _ConversationList {
   GtkWidget *bar, *select_bar;
   GtkWidget *archive_action, *unarchive_action, *add_contact_action, *block_action;
   GtkWidget *scroll, *list, *empty, *fab;
-  NeoSnackbar *snackbar;
+  VibeosSnackbar *snackbar;
   GHashTable *rows;             /* id -> Row */
   GHashTable *selected;         /* ids */
   guint refresh_id;
@@ -241,12 +241,12 @@ on_unarchive (ConversationList *self)
 }
 
 static void
-on_delete_response (NeoDialog *dialog, int response, gpointer data)
+on_delete_response (VibeosDialog *dialog, int response, gpointer data)
 {
   ConversationList *self = data;
   GArray *ids = g_object_get_data (G_OBJECT (dialog), "ids");
 
-  if (response == NEO_RESPONSE_OK)
+  if (response == VIBEOS_RESPONSE_OK)
     for (guint i = 0; i < ids->len; i++)
       sms_client_delete_conversation (self->client, g_array_index (ids, gint64, i));
 }
@@ -255,14 +255,14 @@ static void
 on_delete (ConversationList *self)
 {
   GArray *ids = take_selected (self);
-  NeoDialog *dialog = neo_dialog_new (ngettext ("Delete this conversation?", "Delete these conversations?",
+  VibeosDialog *dialog = vibeos_dialog_new (ngettext ("Delete this conversation?", "Delete these conversations?",
                                                 ids->len));
 
   g_object_set_data_full (G_OBJECT (dialog), "ids", ids, (GDestroyNotify) g_array_unref);
-  msg_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  msg_dialog_add_button (dialog, _("Delete"), NEO_RESPONSE_OK);
+  msg_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  msg_dialog_add_button (dialog, _("Delete"), VIBEOS_RESPONSE_OK);
   g_signal_connect (dialog, "response", G_CALLBACK (on_delete_response), self);
-  neo_dialog_present (dialog, GTK_WIDGET (self));
+  vibeos_dialog_present (dialog, GTK_WIDGET (self));
 }
 
 /* Block: the number goes on the blocked list (the Phone's too) and the conversation is archived; the service then
@@ -300,13 +300,13 @@ on_block_undo (gpointer data)
 }
 
 static void
-on_block_response (NeoDialog *dialog, int response, gpointer data)
+on_block_response (VibeosDialog *dialog, int response, gpointer data)
 {
   ConversationList *self = data;
   Block *block = g_object_steal_data (G_OBJECT (dialog), "block");
   g_autoptr(GError) error = NULL;
 
-  if (response != NEO_RESPONSE_OK)
+  if (response != VIBEOS_RESPONSE_OK)
     {
       block_free (block);
       return;
@@ -329,7 +329,7 @@ on_block (ConversationList *self)
   Row *row = blockable (self);
   Block *block;
   g_autofree char *title = NULL;
-  NeoDialog *dialog;
+  VibeosDialog *dialog;
 
   if (!row)
     return;
@@ -340,14 +340,14 @@ on_block (ConversationList *self)
   g_array_unref (take_selected (self));
   /* the title names the number as stored, not the contact */
   title = g_strdup_printf (_("Block %s?"), block->destination);
-  dialog = neo_dialog_new (title);
-  neo_dialog_set_message (dialog, _("You'll continue to receive messages from this number but won't be notified "
+  dialog = vibeos_dialog_new (title);
+  vibeos_dialog_set_message (dialog, _("You'll continue to receive messages from this number but won't be notified "
                                     "anymore. This conversation will be archived."));
-  msg_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  msg_dialog_add_button (dialog, _("OK"), NEO_RESPONSE_OK);
+  msg_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  msg_dialog_add_button (dialog, _("OK"), VIBEOS_RESPONSE_OK);
   g_object_set_data (G_OBJECT (dialog), "block", block);
   g_signal_connect (dialog, "response", G_CALLBACK (on_block_response), self);
-  neo_dialog_present (dialog, GTK_WIDGET (self));
+  vibeos_dialog_present (dialog, GTK_WIDGET (self));
 }
 
 /* Add contact: "Add to Contacts?" for the person, and select mode left */
@@ -502,15 +502,15 @@ make_row (ConversationList *self, const SmsConversation *conversation, gint64 no
   if (failed && people->len == 1)
     {
       /* ic_failed_status_red at the avatar's bottom end, 1:1 only */
-      GtkWidget *badge = msg_image_new ("/neo/Messaging/images/ic_failed_status_red.png", FAILED_BADGE,
+      GtkWidget *badge = msg_image_new ("/vibeos/Messaging/images/ic_failed_status_red.png", FAILED_BADGE,
                                         FAILED_BADGE);
 
       gtk_widget_set_halign (badge, GTK_ALIGN_END);
       gtk_widget_set_valign (badge, GTK_ALIGN_END);
       gtk_overlay_add_overlay (GTK_OVERLAY (avatar_box), badge);
     }
-  avatar_pressable = neo_pressable_new (avatar_box);
-  neo_pressable_set_ripple (NEO_PRESSABLE (avatar_pressable), NEO_RIPPLE_NONE, 0);
+  avatar_pressable = vibeos_pressable_new (avatar_box);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (avatar_pressable), VIBEOS_RIPPLE_NONE, 0);
   gtk_widget_set_valign (avatar_pressable, GTK_ALIGN_START);
   gtk_box_append (GTK_BOX (content), avatar_pressable);
 
@@ -548,7 +548,7 @@ make_row (ConversationList *self, const SmsConversation *conversation, gint64 no
   gtk_widget_set_margin_top (content, ROW_PADDING);
   gtk_widget_set_margin_bottom (content, ROW_PADDING);
 
-  pressable = neo_pressable_new (content);
+  pressable = vibeos_pressable_new (content);
   gtk_widget_add_css_class (pressable, "msg-row");
   row->id = conversation->id;
   row->archived = conversation->archived;
@@ -687,7 +687,7 @@ on_snackbar_lift (GObject *snackbar, GParamSpec *pspec, gpointer data)
 {
   ConversationList *self = data;
 
-  gtk_widget_set_margin_bottom (self->fab, FAB_MARGIN + (int) round (neo_snackbar_get_lift (NEO_SNACKBAR (snackbar))));
+  gtk_widget_set_margin_bottom (self->fab, FAB_MARGIN + (int) round (vibeos_snackbar_get_lift (VIBEOS_SNACKBAR (snackbar))));
 }
 
 static void
@@ -723,11 +723,11 @@ make_fab (void)
   gtk_box_append (GTK_BOX (box), label);
   gtk_widget_add_css_class (label, "msg-fab-label");
   gtk_widget_add_css_class (box, "msg-fab-content");
-  fab = neo_pressable_new (box);
+  fab = vibeos_pressable_new (box);
   gdk_rgba_parse (&fill, "#b8ebf3");
-  neo_pressable_set_fill (NEO_PRESSABLE (fab), &fill, TRUE);
-  neo_pressable_set_ripple (NEO_PRESSABLE (fab), NEO_RIPPLE_BOUNDED, 16);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (fab), &(GdkRGBA) { 0, 0, 0, 0.24f });
+  vibeos_pressable_set_fill (VIBEOS_PRESSABLE (fab), &fill, TRUE);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (fab), VIBEOS_RIPPLE_BOUNDED, 16);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (fab), &(GdkRGBA) { 0, 0, 0, 0.24f });
   gtk_widget_add_css_class (fab, "msg-fab");
   gtk_widget_set_size_request (fab, 120, 48);
   gtk_widget_set_halign (fab, GTK_ALIGN_END);
@@ -743,7 +743,7 @@ static GtkWidget *
 make_empty (gboolean archived)
 {
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  GtkWidget *image = msg_image_new ("/neo/Messaging/images/ic_oobe_conv_list.png", 198, 103);
+  GtkWidget *image = msg_image_new ("/vibeos/Messaging/images/ic_oobe_conv_list.png", 198, 103);
   GtkWidget *text = gtk_label_new (archived ? _("Archived conversations appear here")
                                             : _("Once you start a new conversation, you’ll see it listed here"));
 
@@ -830,7 +830,7 @@ build (SmsClient *client, Contacts *contacts, gboolean archived, gboolean forwar
 
   self->client = g_object_ref (client);
   self->contacts = g_object_ref (contacts);
-  self->settings = g_settings_new ("neo.Messaging");
+  self->settings = g_settings_new ("vibeos.Messaging");
   self->archived = archived;
   self->forward = forward;
   self->box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);

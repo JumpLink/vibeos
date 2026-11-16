@@ -240,7 +240,7 @@ make_player (Ringer *self)
   if (sink)
     {
       g_autoptr(GstStructure) props = gst_structure_new ("props", "media.role", G_TYPE_STRING, "phone",
-                                                         "application.id", G_TYPE_STRING, "neo.Dialer", NULL);
+                                                         "application.id", G_TYPE_STRING, "vibeos.Dialer", NULL);
 
       g_object_set (sink, "stream-properties", props, NULL);
       g_object_set (player, "audio-sink", sink, NULL);
@@ -411,7 +411,7 @@ make_tone (Ringer *self)
 {
   g_autoptr(GError) error = NULL;
   g_autoptr(GstStructure) props = gst_structure_new ("props", "media.role", G_TYPE_STRING, "phone",
-                                                     "application.id", G_TYPE_STRING, "neo.Dialer", NULL);
+                                                     "application.id", G_TYPE_STRING, "vibeos.Dialer", NULL);
   g_autoptr(GstCaps) caps = NULL;
   GstAppSrcCallbacks callbacks = { .need_data = tone_need_data };
   GstElement *tone, *src, *sink;
@@ -514,7 +514,7 @@ vibrate (const guint *ms, guint n)
     if (ms[i])
       g_variant_builder_add (&pattern, "(du)", i % 2 ? 0.0 : 1.0, ms[i]);
   g_dbus_connection_call (bus, "org.sigxcpu.Feedback", "/org/sigxcpu/Feedback", "org.sigxcpu.Feedback.Haptic",
-                          "Vibrate", g_variant_new ("(sa(du))", "neo.Dialer", &pattern), NULL,
+                          "Vibrate", g_variant_new ("(sa(du))", "vibeos.Dialer", &pattern), NULL,
                           G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 }
 

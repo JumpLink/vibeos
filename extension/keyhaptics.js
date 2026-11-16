@@ -12,7 +12,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 function tick() {
     Gio.DBus.session.call('org.sigxcpu.Feedback', '/org/sigxcpu/Feedback', 'org.sigxcpu.Feedback',
-        'TriggerFeedback', new GLib.Variant('(ssa{sv}i)', ['neo.GnomePhone', 'button-released', {}, -1]),
+        'TriggerFeedback', new GLib.Variant('(ssa{sv}i)', ['vibeos.Shell', 'button-released', {}, -1]),
         null, Gio.DBusCallFlags.NONE, -1, null, null);
 }
 

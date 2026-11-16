@@ -2,7 +2,7 @@
 #include "cal-outlined-field.h"
 
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #include "cal-colors.h"
 #include "cal-text.h"
@@ -24,7 +24,7 @@ struct _CalOutlinedField {
   gboolean up;                  /* where it goes: on the edge (the cutout opens at once) */
   gboolean focused;             /* the text has the focus (as the focus controller tells: in its "enter" the
                                  * widget's has-focus is not set yet) */
-  NeoAnim *anim;
+  VibeosAnim *anim;
 };
 
 G_DEFINE_FINAL_TYPE (CalOutlinedField, cal_outlined_field, GTK_TYPE_WIDGET)
@@ -87,7 +87,7 @@ cal_outlined_field_measure (GtkWidget *widget, GtkOrientation orientation, int f
     }
   else
     {
-      int scale = neo_device_scale (widget);
+      int scale = vibeos_device_scale (widget);
 
       gtk_widget_measure (self->child, orientation, for_size < 0 ? -1 : MAX (0, for_size - inset), &child_min,
                           &child_nat, NULL, NULL);
@@ -99,7 +99,7 @@ static void
 cal_outlined_field_allocate (GtkWidget *widget, int width, int height, int baseline)
 {
   CalOutlinedField *self = CAL_OUTLINED_FIELD (widget);
-  int scale = neo_device_scale (widget), child_width = MAX (0, width - (int) ceil (2 * self->padding));
+  int scale = vibeos_device_scale (widget), child_width = MAX (0, width - (int) ceil (2 * self->padding));
   int child_min, child_height;
   double ascent, line, text_baseline, y;
 
@@ -164,7 +164,7 @@ static void
 cal_outlined_field_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   CalOutlinedField *self = CAL_OUTLINED_FIELD (widget);
-  int scale = neo_device_scale (widget);
+  int scale = vibeos_device_scale (widget);
   double width = gtk_widget_get_width (widget), top = label_margin (scale), f = self->floated;
   gboolean focused = self->focused;
   double stroke = focused ? 2 : 1, gap_start = 0, gap_end = 0, expanded_baseline;
@@ -208,7 +208,7 @@ is_empty (CalOutlinedField *self)
 }
 
 static void
-on_float (NeoAnim *anim, double value, gpointer data)
+on_float (VibeosAnim *anim, double value, gpointer data)
 {
   CAL_OUTLINED_FIELD (data)->floated = value;
   gtk_widget_queue_draw (GTK_WIDGET (data));
@@ -224,10 +224,10 @@ restate (CalOutlinedField *self, gboolean animate)
     {
       self->up = up;
       if (animate)
-        neo_anim_start (self->anim, self->floated, up ? 1 : 0, LABEL_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
+        vibeos_anim_start (self->anim, self->floated, up ? 1 : 0, LABEL_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
       else
         {
-          neo_anim_stop (self->anim);
+          vibeos_anim_stop (self->anim);
           self->floated = up ? 1 : 0;
         }
     }
@@ -261,7 +261,7 @@ cal_outlined_field_dispose (GObject *object)
   CalOutlinedField *self = CAL_OUTLINED_FIELD (object);
 
   g_clear_pointer (&self->child, gtk_widget_unparent);
-  g_clear_pointer (&self->anim, neo_anim_free);
+  g_clear_pointer (&self->anim, vibeos_anim_free);
   g_clear_pointer (&self->label, g_free);
   G_OBJECT_CLASS (cal_outlined_field_parent_class)->dispose (object);
 }
@@ -284,7 +284,7 @@ cal_outlined_field_init (CalOutlinedField *self)
 {
   GtkGesture *click = gtk_gesture_click_new ();
 
-  self->anim = neo_anim_new (GTK_WIDGET (self), on_float, self);
+  self->anim = vibeos_anim_new (GTK_WIDGET (self), on_float, self);
   g_signal_connect (click, "released", G_CALLBACK (on_released), self);
   gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (click));
 }

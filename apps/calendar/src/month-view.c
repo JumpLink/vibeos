@@ -7,7 +7,7 @@
 #include <glib/gi18n.h>
 #include <math.h>
 #include <string.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy.h>
 
 /* --- dimensions, px */
@@ -70,7 +70,7 @@ struct _CalMonthView {
   SpongyVelocity velocity;
   SpongyFling fling;
   guint tick;
-  NeoAnim *snap;
+  VibeosAnim *snap;
   double snap_from, snap_to;
 };
 
@@ -120,7 +120,7 @@ week_first_day (CalMonthView *self, int week)
 static int
 scale_of (CalMonthView *self)
 {
-  return neo_device_scale (GTK_WIDGET (self));
+  return vibeos_device_scale (GTK_WIDGET (self));
 }
 
 /* the top of the list of weeks: the names, their margin and the 1 px line under them */
@@ -1315,7 +1315,7 @@ viscous_fluid (double x)
 }
 
 static void
-on_snap (NeoAnim *anim, double value, gpointer data)
+on_snap (VibeosAnim *anim, double value, gpointer data)
 {
   CalMonthView *self = data;
   double t = viscous_fluid (value) / viscous_fluid (1);
@@ -1328,13 +1328,13 @@ scroll_to_week (CalMonthView *self, double week, guint duration)
 {
   if (!duration || !gtk_widget_get_mapped (GTK_WIDGET (self)))
     {
-      neo_anim_stop (self->snap);
+      vibeos_anim_stop (self->snap);
       set_top_week (self, week);
       return;
     }
   self->snap_from = self->top_week;
   self->snap_to = week;
-  neo_anim_start (self->snap, 0, 1, duration, 0, SPONGY_LINEAR);
+  vibeos_anim_start (self->snap, 0, 1, duration, 0, SPONGY_LINEAR);
 }
 
 static gboolean
@@ -1359,7 +1359,7 @@ stop_motion (CalMonthView *self)
   if (self->tick)
     gtk_widget_remove_tick_callback (GTK_WIDGET (self), self->tick);
   self->tick = 0;
-  neo_anim_stop (self->snap);
+  vibeos_anim_stop (self->snap);
 }
 
 /* a fast fling goes to the first week of the next (or this, scrolling back) month, or
@@ -1513,7 +1513,7 @@ cal_month_view_dispose (GObject *object)
   CalMonthView *self = CAL_MONTH_VIEW (object);
 
   stop_motion (self);
-  g_clear_pointer (&self->snap, neo_anim_free);
+  g_clear_pointer (&self->snap, vibeos_anim_free);
   g_clear_pointer (&self->weeks, g_hash_table_unref);
   g_clear_pointer (&self->events, g_ptr_array_unref);
   G_OBJECT_CLASS (cal_month_view_parent_class)->dispose (object);
@@ -1545,7 +1545,7 @@ cal_month_view_init (CalMonthView *self)
   /* a phone's Display options: 7 lines, no time, no location (show_time_in_month false) */
   self->details = (Details) { TIME_NONE, FALSE, MAX_LINES };
   self->h24 = cal_format_uses_24h ();
-  self->snap = neo_anim_new (GTK_WIDGET (self), on_snap, self);
+  self->snap = vibeos_anim_new (GTK_WIDGET (self), on_snap, self);
   gtk_widget_set_overflow (GTK_WIDGET (self), GTK_OVERFLOW_HIDDEN);
   gtk_widget_set_focusable (GTK_WIDGET (self), TRUE);
   g_signal_connect (drag, "drag-begin", G_CALLBACK (on_drag_begin), self);

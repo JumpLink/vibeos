@@ -4,7 +4,7 @@
 
 #include <glib/gi18n.h>
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define TOOLBAR_HEIGHT  64      /* the expanded bar's row */
 #define COLLAPSED_HEIGHT 48
@@ -28,8 +28,8 @@ struct _DialerSearchBar
   GtkWidget *mic, *menu;                /* the collapsed row's buttons */
   GtkWidget *back, *field, *clear;      /* the expanded row */
   PangoLayout *hint;
-  NeoRipple ripple;
-  NeoAnim *anim;
+  VibeosRipple ripple;
+  VibeosAnim *anim;
   double progress;              /* the cross-fade: 0 the collapsed row … 1 the expanded one */
   double fraction;              /* the margins and the row's height, 0 expanded to 1 collapsed */
   gboolean expanded;
@@ -52,7 +52,7 @@ static guint signals[N_SIGNALS];
 static double
 px_floor (GtkWidget *widget, double dp)
 {
-  int scale = neo_device_scale (widget);
+  int scale = vibeos_device_scale (widget);
 
   return floor (dp * scale) / scale;
 }
@@ -120,8 +120,8 @@ dialer_search_bar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gtk_snapshot_push_rounded_clip (snapshot, &shape);
   gtk_snapshot_append_color (snapshot, &background, &bar);
   /* the bar's ripple, faint white */
-  if (neo_ripple_is_active (&self->ripple))
-    neo_ripple_snapshot (&self->ripple, snapshot, &bar, &(GdkRGBA) { 1, 1, 1, 0.06 });
+  if (vibeos_ripple_is_active (&self->ripple))
+    vibeos_ripple_snapshot (&self->ripple, snapshot, &bar, &(GdkRGBA) { 1, 1, 1, 0.06 });
   gtk_snapshot_pop (snapshot);
 
   if (self->progress < 1)
@@ -130,7 +130,7 @@ dialer_search_bar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
       double cy = bar.origin.y + bar.size.height / 2;
 
       gtk_snapshot_push_opacity (snapshot, 1 - self->progress);
-      neo_snapshot_icon (snapshot, widget, "dialer-search-symbolic", bar.origin.x + START + (BUTTON - ICON) / 2.0,
+      vibeos_snapshot_icon (snapshot, widget, "dialer-search-symbolic", bar.origin.x + START + (BUTTON - ICON) / 2.0,
                          cy - ICON / 2.0, ICON, &icon);
       text_draw (snapshot, self->hint, HINT_STYLE, bar.origin.x + TEXT_START,
                  cy - text_box_height (self->hint, HINT_STYLE) / 2, &hint);
@@ -162,14 +162,14 @@ set_rows (DialerSearchBar *self)
 }
 
 static void
-on_anim (NeoAnim *anim, double value, gpointer data)
+on_anim (VibeosAnim *anim, double value, gpointer data)
 {
   DialerSearchBar *self = data;
 
   self->progress = value;
   self->fraction = MARGIN_FRACTION * (1 - value);
   set_rows (self);
-  if (!neo_anim_is_running (anim))
+  if (!vibeos_anim_is_running (anim))
     {
       if (self->expanded)
         {
@@ -195,7 +195,7 @@ dialer_search_bar_expand (DialerSearchBar *self, gboolean focus)
   self->expanded = TRUE;
   self->focus = focus;
   /* the margins jump to 0.8 of theirs as it starts, and shrink with the cross-fade (accelerate-decelerate) */
-  neo_anim_start (self->anim, 0, 1, EXPAND_MS, 0, SPONGY_ACCELERATE_DECELERATE);
+  vibeos_anim_start (self->anim, 0, 1, EXPAND_MS, 0, SPONGY_ACCELERATE_DECELERATE);
 }
 
 void
@@ -205,7 +205,7 @@ dialer_search_bar_collapse (DialerSearchBar *self)
     return;
   self->expanded = FALSE;
   dialer_search_bar_hide_keyboard (self);
-  neo_anim_start (self->anim, 1, 0, EXPAND_MS, 0, SPONGY_ACCELERATE_DECELERATE);
+  vibeos_anim_start (self->anim, 1, 0, EXPAND_MS, 0, SPONGY_ACCELERATE_DECELERATE);
 }
 
 gboolean
@@ -292,18 +292,18 @@ on_back (DialerSearchBar *self)
 static void
 on_pressed (GtkGestureClick *click, int n_press, double x, double y, DialerSearchBar *self)
 {
-  if (self->expanded || neo_pick_is_tappable (GTK_WIDGET (self), x, y))
+  if (self->expanded || vibeos_pick_is_tappable (GTK_WIDGET (self), x, y))
     {
       gtk_gesture_set_state (GTK_GESTURE (click), GTK_EVENT_SEQUENCE_DENIED);
       return;
     }
-  neo_ripple_press (&self->ripple, x, y);
+  vibeos_ripple_press (&self->ripple, x, y);
 }
 
 static void
 on_released (GtkGestureClick *click, int n_press, double x, double y, DialerSearchBar *self)
 {
-  neo_ripple_release (&self->ripple);
+  vibeos_ripple_release (&self->ripple);
   if (!self->expanded)
     g_signal_emit (self, signals[SEARCH_CLICKED], 0);
 }
@@ -311,7 +311,7 @@ on_released (GtkGestureClick *click, int n_press, double x, double y, DialerSear
 static void
 on_stopped (GtkGestureClick *click, DialerSearchBar *self)
 {
-  neo_ripple_release (&self->ripple);
+  vibeos_ripple_release (&self->ripple);
 }
 
 /* ---- GObject -------------------------------------------------------------------------------------------------- */
@@ -322,8 +322,8 @@ dialer_search_bar_dispose (GObject *object)
   DialerSearchBar *self = DIALER_SEARCH_BAR (object);
   GtkWidget *child;
 
-  g_clear_pointer (&self->anim, neo_anim_free);
-  neo_ripple_clear (&self->ripple);
+  g_clear_pointer (&self->anim, vibeos_anim_free);
+  vibeos_ripple_clear (&self->ripple);
   g_clear_object (&self->hint);
   while ((child = gtk_widget_get_first_child (GTK_WIDGET (self))))
     gtk_widget_unparent (child);
@@ -355,7 +355,7 @@ dialer_search_bar_class_init (DialerSearchBarClass *klass)
 static GtkWidget *
 icon_button (DialerSearchBar *self, const char *icon, const char *css_class, const char *description)
 {
-  GtkWidget *button = neo_icon_button_new (icon);
+  GtkWidget *button = vibeos_icon_button_new (icon);
 
   gtk_widget_add_css_class (button, css_class);
   gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, description, -1);
@@ -391,8 +391,8 @@ dialer_search_bar_init (DialerSearchBar *self)
   g_signal_connect_swapped (self->clear, "clicked", G_CALLBACK (on_clear), self);
   g_signal_connect (self->field, "changed", G_CALLBACK (on_changed), self);
 
-  neo_ripple_init (&self->ripple, GTK_WIDGET (self));
-  self->anim = neo_anim_new (GTK_WIDGET (self), on_anim, self);
+  vibeos_ripple_init (&self->ripple, GTK_WIDGET (self));
+  self->anim = vibeos_anim_new (GTK_WIDGET (self), on_anim, self);
   g_signal_connect (click, "pressed", G_CALLBACK (on_pressed), self);
   g_signal_connect (click, "released", G_CALLBACK (on_released), self);
   g_signal_connect (click, "stopped", G_CALLBACK (on_stopped), self);

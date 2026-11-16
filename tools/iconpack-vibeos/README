@@ -1,0 +1,16 @@
+The VibeOS icon pack (vibeos-launcher/iconpacks/vibeos), the launcher's default, generated:
+
+    python3 -I make-vibeos-pack.py ../../vibeos-launcher/iconpacks/vibeos ../iconpack-gnome-free/glyphs
+
+Each icon is a Material Symbols Rounded glyph on a squircle tile in the app's colour: white on a coloured tile,
+coloured on a white one. The glyphs are gnome-free's, unchanged (../iconpack-gnome-free/glyphs: Google, Apache-2.0,
+glyphs/LICENSE; from github.com/google/material-design-icons,
+symbols/web/<name>/materialsymbolsrounded/<name>_fill1_48px.svg). Everything else is drawn by the script, which needs
+python3-gi with Rsvg 2.0, python3-cairo and python3-pil. Its output is byte-for-byte reproducible. To add an app, add
+a line in ICONS (glyph, background, glyph colour) and its desktop id in MAP.
+
+Provenance: the tile is the launcher's own squircle (icons.c superellipse (), exponent 4). Its size in the canvas
+(0.891), its drop shadow, the glyph's size against the tile (the glyph's 48-unit box at 0.73 of the tile) and each
+app's colours were measured from the H2O icon pack. H2O is a third-party pack that may not be redistributed. No H2O
+file, image or glyph is used here or shipped: the script holds only those numbers, as data. H2O has no icon for two
+apps, so their colours are our own: android (#3DDC84, Android's green) and dictate (#7C4DFF, a violet).

@@ -12,7 +12,7 @@
 // That close waits for the finger, though. The shell closes the keyboard the moment the field loses the focus, and the
 // window it had shrunk grows back at once. GTK moves the focus on a button's PRESS (focus-on-click), so a dialog's
 // Cancel or Rename touched while the keyboard was up moved down the screen before the finger lifted: the release
-// missed the button and the dialog stayed, re-centred lower, as if it had opened again (neo-settings' phone name,
+// missed the button and the dialog stayed, re-centred lower, as if it had opened again (vibeos-settings' phone name,
 // 2026-11-12). On Android a button takes no focus in touch mode and the keyboard goes once the tap is done. So while a
 // finger is down, Keyboard.close only marks the keyboard to close; the last finger lifting closes it, unless a field
 // took the focus meanwhile (open).
@@ -53,15 +53,15 @@ export class TouchFocusKeyboard {
         const self = this;
         proto.close = function (...args) {
             if (self._touches > 0) {
-                this.__gnomePhoneCloseHeld = true;
+                this.__vibeosCloseHeld = true;
                 self._closeLater(CLOSE_HELD_MAX_MS);
                 return undefined;
             }
-            this.__gnomePhoneCloseHeld = false;
+            this.__vibeosCloseHeld = false;
             return close.apply(this, args);
         };
         proto.open = function (...args) {
-            this.__gnomePhoneCloseHeld = false;
+            this.__vibeosCloseHeld = false;
             return open.apply(this, args);
         };
         this._unholdClose = () => {
@@ -70,8 +70,8 @@ export class TouchFocusKeyboard {
         };
         this._closeHeld = () => {
             const keyboard = Main.keyboard._keyboard;
-            if (keyboard?.__gnomePhoneCloseHeld) {
-                keyboard.__gnomePhoneCloseHeld = false;
+            if (keyboard?.__vibeosCloseHeld) {
+                keyboard.__vibeosCloseHeld = false;
                 close.call(keyboard);
             }
         };
@@ -110,7 +110,7 @@ export class TouchFocusKeyboard {
             this._closeHeld();
             return GLib.SOURCE_REMOVE;
         });
-        GLib.Source.set_name_by_id(this._closeId, '[gnome-phone] keyboard close after the lift');
+        GLib.Source.set_name_by_id(this._closeId, '[vibeos] keyboard close after the lift');
     }
 
     _onEvent(event) {
@@ -121,7 +121,7 @@ export class TouchFocusKeyboard {
             this._hadFocus = Main.inputMethod.currentFocus !== null;
         } else if (type === Clutter.EventType.TOUCH_END || type === Clutter.EventType.TOUCH_CANCEL) {
             this._touches = Math.max(0, this._touches - 1);
-            if (this._touches === 0 && Main.keyboard._keyboard?.__gnomePhoneCloseHeld)
+            if (this._touches === 0 && Main.keyboard._keyboard?.__vibeosCloseHeld)
                 this._closeLater(CLOSE_AFTER_LIFT_MS);
             if (type === Clutter.EventType.TOUCH_END)
                 this._watch();
@@ -146,7 +146,7 @@ export class TouchFocusKeyboard {
             this._pollId = 0;
             return GLib.SOURCE_REMOVE;
         });
-        GLib.Source.set_name_by_id(this._pollId, '[gnome-phone] touch focus keyboard');
+        GLib.Source.set_name_by_id(this._pollId, '[vibeos] touch focus keyboard');
     }
 
     _open() {

@@ -9,7 +9,7 @@
  * being spoken fills it, tagged "partial"; a finished sentence takes its place untagged, and both marks move past
  * it, so the next one follows it.
  *
- * The language listened in is the app bar's button, showing its code: the user's choice (GSettings neo.Dictate
+ * The language listened in is the app bar's button, showing its code: the user's choice (GSettings vibeos.Dictate
  * language) while its model is installed, else the first of the user's languages with one, else English. */
 #include "dictate-window.h"
 #include "dictate-engine.h"
@@ -19,7 +19,7 @@
 
 #include <errno.h>
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 #define FAB_ROW         120     /* the FAB's row at the bottom: the document's last line scrolls up out of it */
@@ -33,7 +33,7 @@ typedef struct {
   guint place_id;               /* the selection bar is placed when idle */
   GtkTextMark *anchor_start, *anchor_end;     /* the word a finger's selection began on */
   gboolean selecting;           /* a finger is selecting: the bar waits until it lifts */
-  NeoSnackbar *snackbar;
+  VibeosSnackbar *snackbar;
   GSettings *settings;
   GtkTextBuffer *buffer;
   GtkTextMark *from, *to;
@@ -219,7 +219,7 @@ static void
 show_language (Window *self)
 {
   const DictateLanguage *language = dictate_language_lookup (dictate_engine_get_language (self->engine));
-  GtkWidget *label = neo_pressable_get_child (NEO_PRESSABLE (self->language));
+  GtkWidget *label = vibeos_pressable_get_child (VIBEOS_PRESSABLE (self->language));
   g_autofree char *code = language ? g_ascii_strup (language->code, -1) : NULL;
   /* TRANSLATORS: the language button's name for screen readers; %s is the language's name for itself */
   g_autofree char *name = language ? g_strdup_printf (_("Language: %s"), language->name) : NULL;
@@ -247,7 +247,7 @@ choose_language (Window *self)
 static void start (Window *self);
 
 static void
-on_language_chosen (NeoDialog *dialog, int response, Window *self)
+on_language_chosen (VibeosDialog *dialog, int response, Window *self)
 {
   GPtrArray *models = g_object_get_data (G_OBJECT (dialog), "dictate-models");
   const DictateModel *model;
@@ -271,19 +271,19 @@ on_language_chosen (NeoDialog *dialog, int response, Window *self)
 }
 
 static void
-on_language_row (NeoPressable *row, NeoDialog *dialog)
+on_language_row (VibeosPressable *row, VibeosDialog *dialog)
 {
   /* a row answers with its index, offset past the standard responses */
-  neo_dialog_respond (dialog, 100 + GPOINTER_TO_INT (g_object_get_data (G_OBJECT (row), "dictate-index")));
+  vibeos_dialog_respond (dialog, 100 + GPOINTER_TO_INT (g_object_get_data (G_OBJECT (row), "dictate-index")));
 }
 
 /* Android's single-choice list: a radio row for each language with a model, the current one checked; a tap on one
  * chooses it */
 static void
-on_language (NeoPressable *button, Window *self)
+on_language (VibeosPressable *button, Window *self)
 {
   GPtrArray *models = dictate_models_installed ();
-  NeoDialog *dialog = neo_dialog_new (_("Language"));
+  VibeosDialog *dialog = vibeos_dialog_new (_("Language"));
   GtkWidget *list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   const char *current = dictate_engine_get_language (self->engine);
 
@@ -305,19 +305,19 @@ on_language (NeoPressable *button, Window *self)
       gtk_label_set_xalign (GTK_LABEL (text), 0);
       gtk_widget_set_hexpand (text, TRUE);
       gtk_box_append (GTK_BOX (box), text);
-      row = neo_pressable_new (box);
+      row = vibeos_pressable_new (box);
       gtk_widget_add_css_class (row, "dictate-dialog-item");
-      neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
+      vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
       g_object_set_data (G_OBJECT (row), "dictate-index", GINT_TO_POINTER (i));
       g_signal_connect (row, "clicked", G_CALLBACK (on_language_row), dialog);
       gtk_box_append (GTK_BOX (list), row);
     }
   gtk_widget_add_css_class (list, "dictate-dialog-list");
-  neo_dialog_set_content (dialog, list);
-  neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
+  vibeos_dialog_set_content (dialog, list);
+  vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
   g_object_set_data_full (G_OBJECT (dialog), "dictate-models", models, (GDestroyNotify) g_ptr_array_unref);
   g_signal_connect (dialog, "response", G_CALLBACK (on_language_chosen), self);
-  neo_dialog_present (dialog, self->window);
+  vibeos_dialog_present (dialog, self->window);
 }
 
 static void
@@ -370,7 +370,7 @@ on_state_changed (DictateEngine *engine, Window *self)
 static void
 on_error (DictateEngine *engine, const char *message, Window *self)
 {
-  neo_snackbar_show (self->snackbar, message, NULL, NULL, NULL, NEO_SNACKBAR_LONG);
+  vibeos_snackbar_show (self->snackbar, message, NULL, NULL, NULL, VIBEOS_SNACKBAR_LONG);
 }
 
 /* listening, with what is said going at the document's end */
@@ -384,7 +384,7 @@ start (Window *self)
   choose_language (self);
   if (!dictate_engine_available (self->engine, &reason))
     {
-      neo_snackbar_show (self->snackbar, reason, NULL, NULL, NULL, NEO_SNACKBAR_LONG);
+      vibeos_snackbar_show (self->snackbar, reason, NULL, NULL, NULL, VIBEOS_SNACKBAR_LONG);
       show_state (self);
       return;
     }
@@ -425,38 +425,38 @@ dictate_window_toggle_dictation (GtkWidget *window)
 /* --- the app bar's actions */
 
 static void
-on_copy (NeoPressable *button, Window *self)
+on_copy (VibeosPressable *button, Window *self)
 {
   g_autofree char *text = document_text (self);
 
   gdk_clipboard_set_text (gtk_widget_get_clipboard (self->window), text);
-  neo_snackbar_show (self->snackbar, _("Text copied"), NULL, NULL, NULL, NEO_SNACKBAR_SHORT);
+  vibeos_snackbar_show (self->snackbar, _("Text copied"), NULL, NULL, NULL, VIBEOS_SNACKBAR_SHORT);
 }
 
 static void
-on_clear_response (NeoDialog *dialog, int response, Window *self)
+on_clear_response (VibeosDialog *dialog, int response, Window *self)
 {
-  if (response != NEO_RESPONSE_OK)
+  if (response != VIBEOS_RESPONSE_OK)
     return;
   gtk_text_buffer_set_text (self->buffer, "", -1);
 }
 
 static void
-on_clear (NeoPressable *button, Window *self)
+on_clear (VibeosPressable *button, Window *self)
 {
-  NeoDialog *dialog = neo_dialog_new (_("Clear the text?"));
+  VibeosDialog *dialog = vibeos_dialog_new (_("Clear the text?"));
 
-  neo_dialog_set_message (dialog, _("All of the text is deleted."));
-  neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  neo_dialog_add_button (dialog, _("Clear"), NEO_RESPONSE_OK);
+  vibeos_dialog_set_message (dialog, _("All of the text is deleted."));
+  vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  vibeos_dialog_add_button (dialog, _("Clear"), VIBEOS_RESPONSE_OK);
   g_signal_connect (dialog, "response", G_CALLBACK (on_clear_response), self);
-  neo_dialog_present (dialog, self->window);
+  vibeos_dialog_present (dialog, self->window);
 }
 
 static GtkWidget *
 action (const char *icon, const char *name, GCallback callback, Window *self)
 {
-  GtkWidget *button = neo_icon_button_new (icon);
+  GtkWidget *button = vibeos_icon_button_new (icon);
 
   gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);
   g_signal_connect (button, "clicked", callback, self);
@@ -538,7 +538,7 @@ on_mark_set (GtkTextBuffer *buffer, GtkTextIter *at, GtkTextMark *mark, Window *
 }
 
 static void
-on_copy_selection (NeoPressable *button, Window *self)
+on_copy_selection (VibeosPressable *button, Window *self)
 {
   GtkTextIter start, end;
   g_autofree char *text = NULL;
@@ -549,11 +549,11 @@ on_copy_selection (NeoPressable *button, Window *self)
   gdk_clipboard_set_text (gtk_widget_get_clipboard (self->window), text);
   /* as Android: the selection goes once copied */
   gtk_text_buffer_select_range (self->buffer, &end, &end);
-  neo_snackbar_show (self->snackbar, _("Text copied"), NULL, NULL, NULL, NEO_SNACKBAR_SHORT);
+  vibeos_snackbar_show (self->snackbar, _("Text copied"), NULL, NULL, NULL, VIBEOS_SNACKBAR_SHORT);
 }
 
 static void
-on_select_all (NeoPressable *button, Window *self)
+on_select_all (VibeosPressable *button, Window *self)
 {
   GtkTextIter start, end;
 
@@ -565,12 +565,12 @@ static GtkWidget *
 selection_bar (Window *self)
 {
   GtkWidget *bar = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  GtkWidget *copy = neo_text_button_new (_("Copy"));
+  GtkWidget *copy = vibeos_text_button_new (_("Copy"));
 
   gtk_widget_add_css_class (bar, "dictate-selection-bar");
   g_signal_connect (copy, "clicked", G_CALLBACK (on_copy_selection), self);
   gtk_box_append (GTK_BOX (bar), copy);
-  self->select_all = neo_text_button_new (_("Select all"));
+  self->select_all = vibeos_text_button_new (_("Select all"));
   g_signal_connect (self->select_all, "clicked", G_CALLBACK (on_select_all), self);
   gtk_box_append (GTK_BOX (bar), self->select_all);
   gtk_widget_set_halign (bar, GTK_ALIGN_START);
@@ -753,7 +753,7 @@ static void
 on_lift (GObject *snackbar, GParamSpec *pspec, Window *self)
 {
   /* the FAB rises with the snackbar, which never covers it */
-  gtk_widget_set_margin_bottom (self->mic, (FAB_ROW - FAB_SIZE) / 2 + (int) neo_snackbar_get_lift (self->snackbar));
+  gtk_widget_set_margin_bottom (self->mic, (FAB_ROW - FAB_SIZE) / 2 + (int) vibeos_snackbar_get_lift (self->snackbar));
 }
 
 static gboolean
@@ -799,19 +799,19 @@ dictate_window_new (GtkApplication *app)
   GtkWidget *page = self->page = gtk_overlay_new ();
   GtkTextIter start;
 
-  self->window = neo_window_new (app);
+  self->window = vibeos_window_new (app);
   self->engine = dictate_engine_new ();
-  self->settings = g_settings_new ("neo.Dictate");
-  self->path = g_build_filename (g_get_user_data_dir (), "neo-dictate", "document.txt", NULL);
+  self->settings = g_settings_new ("vibeos.Dictate");
+  self->path = g_build_filename (g_get_user_data_dir (), "vibeos-dictate", "document.txt", NULL);
   g_object_set_data_full (G_OBJECT (self->window), "dictate-window", self, window_free);
   gtk_window_set_title (GTK_WINDOW (self->window), _("Dictate"));
 
   /* the app bar */
-  gtk_widget_add_css_class (bar, "neo-app-bar");
-  gtk_widget_add_css_class (title, "neo-app-bar-title");
+  gtk_widget_add_css_class (bar, "vibeos-app-bar");
+  gtk_widget_add_css_class (title, "vibeos-app-bar-title");
   gtk_label_set_xalign (GTK_LABEL (title), 0);
   gtk_label_set_ellipsize (GTK_LABEL (title), PANGO_ELLIPSIZE_END);
-  neo_label_set_font_padding (title, 22);
+  vibeos_label_set_font_padding (title, 22);
   gtk_widget_set_valign (title, GTK_ALIGN_CENTER);
   gtk_widget_set_hexpand (title, TRUE);
   gtk_box_append (GTK_BOX (bar), title);
@@ -821,11 +821,11 @@ dictate_window_new (GtkApplication *app)
     /* the outline round the code only, in the middle of the touch target */
     gtk_widget_set_halign (code, GTK_ALIGN_CENTER);
     gtk_widget_set_valign (code, GTK_ALIGN_CENTER);
-    self->language = neo_pressable_new (code);
+    self->language = vibeos_pressable_new (code);
   }
-  gtk_widget_add_css_class (self->language, "neo-icon-button");
+  gtk_widget_add_css_class (self->language, "vibeos-icon-button");
   gtk_widget_add_css_class (self->language, "dictate-language");
-  neo_pressable_set_ripple (NEO_PRESSABLE (self->language), NEO_RIPPLE_CIRCLE, 20);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->language), VIBEOS_RIPPLE_CIRCLE, 20);
   g_signal_connect (self->language, "clicked", G_CALLBACK (on_language), self);
   gtk_box_append (GTK_BOX (bar), self->language);
   self->copy = action ("dictate-copy-symbolic", _("Copy"), G_CALLBACK (on_copy), self);
@@ -851,7 +851,7 @@ dictate_window_new (GtkApplication *app)
   gtk_text_view_set_cursor_visible (GTK_TEXT_VIEW (self->view), FALSE);
   gtk_text_buffer_set_enable_undo (self->buffer, FALSE);
   {
-    GdkRGBA variant = neo_color (NEO_ON_SURFACE_VARIANT);
+    GdkRGBA variant = vibeos_color (VIBEOS_ON_SURFACE_VARIANT);
 
     self->partial = gtk_text_buffer_create_tag (self->buffer, "partial", "foreground-rgba", &variant, NULL);
   }
@@ -903,12 +903,12 @@ dictate_window_new (GtkApplication *app)
   g_signal_connect (self->mic, "clicked", G_CALLBACK (on_mic), self);
   gtk_overlay_add_overlay (GTK_OVERLAY (page), self->mic);
 
-  self->snackbar = NEO_SNACKBAR (neo_snackbar_new ());
+  self->snackbar = VIBEOS_SNACKBAR (vibeos_snackbar_new ());
   g_signal_connect (self->snackbar, "notify::lift", G_CALLBACK (on_lift), self);
   gtk_overlay_add_overlay (GTK_OVERLAY (page), GTK_WIDGET (self->snackbar));
 
   gtk_box_append (GTK_BOX (content), page);
-  neo_window_set_content (GTK_WINDOW (self->window), content);
+  vibeos_window_set_content (GTK_WINDOW (self->window), content);
 
   g_signal_connect (self->engine, "text", G_CALLBACK (on_text), self);
   g_signal_connect (self->engine, "state-changed", G_CALLBACK (on_state_changed), self);

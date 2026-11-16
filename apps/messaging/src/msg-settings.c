@@ -3,7 +3,7 @@
 #include "msg-action-bar.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 /* the rows: an icon's space is kept at the start, so a title starts at TITLE_START */
@@ -44,9 +44,9 @@ text_label (const char *text, const char *css_class)
 static void
 on_row_clicked (GtkWidget *row, gpointer data)
 {
-  NeoSwitch *toggle = data;
+  VibeosSwitch *toggle = data;
 
-  neo_switch_set_active (toggle, !neo_switch_get_active (toggle));
+  vibeos_switch_set_active (toggle, !vibeos_switch_get_active (toggle));
 }
 
 /* a settings row: the title (and its summary) in the text block, then @widget at the end, if any; the row takes the
@@ -81,7 +81,7 @@ pref_row (const char *title, const char *summary, GtkWidget *widget)
   if (widget)
     gtk_box_append (GTK_BOX (content), widget);
 
-  row = neo_pressable_new (content);
+  row = vibeos_pressable_new (content);
   gtk_widget_set_size_request (row, -1, ROW_MIN_HEIGHT);
   gtk_accessible_update_property (GTK_ACCESSIBLE (row), GTK_ACCESSIBLE_PROPERTY_LABEL, title, -1);
   return row;
@@ -91,11 +91,11 @@ pref_row (const char *title, const char *summary, GtkWidget *widget)
 static GtkWidget *
 switch_row (MsgSettings *self, const char *title, const char *summary, const char *key)
 {
-  GtkWidget *toggle = neo_switch_new ();
+  GtkWidget *toggle = vibeos_switch_new ();
   GtkWidget *row;
 
   /* a switch without thumb icons, bound to the setting both ways */
-  neo_switch_set_thumb_icons (NEO_SWITCH (toggle), FALSE);
+  vibeos_switch_set_thumb_icons (VIBEOS_SWITCH (toggle), FALSE);
   g_settings_bind (self->settings, key, toggle, "active", G_SETTINGS_BIND_DEFAULT);
   gtk_widget_set_valign (toggle, GTK_ALIGN_CENTER);
   gtk_widget_set_margin_start (toggle, PAD);
@@ -172,7 +172,7 @@ settings_page (const char *title, GtkWidget **list)
   GtkWidget *scroll = spongy_scroll_view_new ();
 
   *list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  self->settings = g_settings_new ("neo.Messaging");
+  self->settings = g_settings_new ("vibeos.Messaging");
   self->box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_parent (self->box, GTK_WIDGET (self));
   gtk_widget_add_css_class (self->box, "msg-page");

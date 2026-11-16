@@ -9,7 +9,7 @@
 #pragma once
 
 #include <gtk/gtk.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #include "contacts.h"
 
@@ -18,6 +18,6 @@ G_BEGIN_DECLS
 #define FAVORITES_TYPE_PAGE (favorites_page_get_type ())
 G_DECLARE_FINAL_TYPE (FavoritesPage, favorites_page, FAVORITES, PAGE, GtkWidget)
 
-GtkWidget *favorites_page_new (Contacts *contacts, GSettings *settings, NeoSnackbar *snackbar);
+GtkWidget *favorites_page_new (Contacts *contacts, GSettings *settings, VibeosSnackbar *snackbar);
 
 G_END_DECLS

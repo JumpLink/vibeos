@@ -1,5 +1,5 @@
-/* The stopwatch in the Clock's service: it keeps it (the store, ~/.local/share/neo.Clock/stopwatch.ini) and serves it
- * to the app over D-Bus (neo.Clock.Stopwatch, in stopwatch-service.c). It never ticks either (stopwatch-model.h); while
+/* The stopwatch in the Clock's service: it keeps it (the store, ~/.local/share/vibeos.Clock/stopwatch.ini) and serves it
+ * to the app over D-Bus (vibeos.Clock.Stopwatch, in stopwatch-service.c). It never ticks either (stopwatch-model.h); while
  * the app is not in front and the stopwatch has time on it, a notification shows it running, with its buttons. */
 #pragma once
 

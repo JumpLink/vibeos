@@ -76,11 +76,11 @@ notifier_header_hints (gint64 chronometer, const char *subtext, gboolean no_peek
 
   g_variant_builder_init (&hints, G_VARIANT_TYPE_VARDICT);
   if (chronometer)
-    g_variant_builder_add (&hints, "{sv}", "x-neo-chronometer", g_variant_new_int64 (chronometer));
+    g_variant_builder_add (&hints, "{sv}", "x-vibeos-chronometer", g_variant_new_int64 (chronometer));
   if (subtext)
-    g_variant_builder_add (&hints, "{sv}", "x-neo-subtext", g_variant_new_string (subtext));
+    g_variant_builder_add (&hints, "{sv}", "x-vibeos-subtext", g_variant_new_string (subtext));
   if (no_peek)
-    g_variant_builder_add (&hints, "{sv}", "x-neo-no-peek", g_variant_new_boolean (TRUE));
+    g_variant_builder_add (&hints, "{sv}", "x-vibeos-no-peek", g_variant_new_boolean (TRUE));
   return g_variant_builder_end (&hints);
 }
 

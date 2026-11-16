@@ -1,8 +1,0 @@
-[Desktop Entry]
-Name=GNOME Phone
-Comment=GNOME as a phone: the Neo launcher, gestures, the status bar, the shade and the lock screen
-Exec=/usr/bin/gnome-session --session=gnome-phone
-TryExec=/usr/bin/gnome-session
-Type=Application
-DesktopNames=GNOME
-X-GDM-SessionRegisters=true

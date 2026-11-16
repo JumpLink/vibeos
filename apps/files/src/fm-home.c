@@ -5,7 +5,7 @@
 #include "fm-util.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 struct _FmHome {
@@ -20,7 +20,7 @@ typedef enum {
 } TileKind;
 
 static void
-on_tile (NeoPressable *tile, FmHome *home)
+on_tile (VibeosPressable *tile, FmHome *home)
 {
   GFile *location = g_object_get_data (G_OBJECT (tile), "fm-file");
 
@@ -128,10 +128,10 @@ tile (FmHome *home, FmGlyph glyph, const char *name, GFile *location, GtkWidget 
   gtk_box_append (GTK_BOX (box), icon);
   gtk_box_append (GTK_BOX (box), label);
   gtk_box_append (GTK_BOX (box), info);
-  pressable = neo_pressable_new (box);
+  pressable = vibeos_pressable_new (box);
   gtk_widget_add_css_class (pressable, "fm-tile");
-  neo_pressable_set_ripple (NEO_PRESSABLE (pressable), NEO_RIPPLE_BOUNDED, 2);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (pressable), &ripple);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (pressable), VIBEOS_RIPPLE_BOUNDED, 2);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (pressable), &ripple);
   if (location)
     g_object_set_data_full (G_OBJECT (pressable), "fm-file", g_object_ref (location), g_object_unref);
   g_signal_connect (pressable, "clicked", G_CALLBACK (on_tile), home);

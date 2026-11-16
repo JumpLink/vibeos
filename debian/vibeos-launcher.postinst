@@ -1,0 +1,18 @@
+#!/bin/sh
+# A ROM's own home layout and launcher settings for gnome-phone's launcher (/etc/xdg/neo-launcher: the layout new
+# users start from) are copied to the VibeOS launcher's name once, when this package is first installed. Users who
+# have a layout of their own keep theirs (vibeos-migrate-ids carries it over).
+set -e
+
+case "$1" in
+configure)
+    if [ -z "$2" ] && [ -d /etc/xdg/neo-launcher ] && [ ! -e /etc/xdg/vibeos-launcher ]; then
+        cp -a /etc/xdg/neo-launcher /etc/xdg/vibeos-launcher
+        echo "/etc/xdg/vibeos-launcher: copied from /etc/xdg/neo-launcher"
+    fi
+    ;;
+esac
+
+#DEBHELPER#
+
+exit 0

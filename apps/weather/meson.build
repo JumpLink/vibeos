@@ -1,18 +1,18 @@
-project('neo-weather', 'c', version: '0.1', default_options: ['warning_level=2', 'c_std=gnu11'])
+project('vibeos-weather', 'c', version: '0.1', default_options: ['warning_level=2', 'c_std=gnu11'])
 add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers', language: 'c')
 
 gnome = import('gnome')
 deps = [dependency('gtk4', version: '>= 4.12'), dependency('libadwaita-1', version: '>= 1.5'),
         dependency('json-glib-1.0'), meson.get_compiler('c').find_library('m')]
-# the page scrolls the way the launcher's drawer does (gnome-phone's libspongy: the fling, the stretch at the ends),
+# the page scrolls the way the launcher's drawer does (VibeOS's libspongy: the fling, the stretch at the ends),
 # where it is installed
 spongy = dependency('spongy-gtk-1', required: false)
 if spongy.found()
   deps += spongy
   add_project_arguments('-DHAVE_SPONGY', language: 'c')
 endif
-resources = gnome.compile_resources('wx-resources', 'src/neo-weather.gresource.xml', source_dir: 'src')
+resources = gnome.compile_resources('wx-resources', 'src/vibeos-weather.gresource.xml', source_dir: 'src')
 
-executable('neo-weather', 'src/main.c', resources, dependencies: deps, install: true)
-install_data('data/neo.Weather.desktop', install_dir: get_option('datadir') / 'applications')
-install_data('data/neo.Weather.svg', install_dir: get_option('datadir') / 'icons' / 'hicolor' / 'scalable' / 'apps')
+executable('vibeos-weather', 'src/main.c', resources, dependencies: deps, install: true)
+install_data('data/vibeos.Weather.desktop', install_dir: get_option('datadir') / 'applications')
+install_data('data/vibeos.Weather.svg', install_dir: get_option('datadir') / 'icons' / 'hicolor' / 'scalable' / 'apps')

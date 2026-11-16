@@ -2,7 +2,7 @@
 <!-- the app's stylesheet and its icons (data/icons, made from the Dialer's vector drawables by tools/vd2svg.py),
      where GtkApplication looks for icons: the resource base path + /icons -->
 <gresources>
-  <gresource prefix="/neo/Dialer">
+  <gresource prefix="/vibeos/Dialer">
     <file>dialer.css</file>
     <file alias="images/empty-contacts.png">images/empty-contacts.png</file>
     <file alias="images/empty-speed-dial.png">images/empty-speed-dial.png</file>

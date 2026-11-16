@@ -3,7 +3,7 @@
 #include "cam-location-art.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 #define RESPONSE_ITEM 100
@@ -22,15 +22,15 @@ answer_free (gpointer data, GClosure *closure)
 /* ---- the list -------------------------------------------------------------------------------------------------- */
 
 static void
-on_list_response (NeoDialog *dialog, int response, Answer *answer)
+on_list_response (VibeosDialog *dialog, int response, Answer *answer)
 {
   ((CamChoiceDone) answer->done) (response >= RESPONSE_ITEM ? response - RESPONSE_ITEM : -1, answer->data);
 }
 
 static void
-on_item (NeoPressable *row, NeoDialog *dialog)
+on_item (VibeosPressable *row, VibeosDialog *dialog)
 {
-  neo_dialog_respond (dialog, RESPONSE_ITEM + GPOINTER_TO_INT (g_object_get_data (G_OBJECT (row), "cam-index")));
+  vibeos_dialog_respond (dialog, RESPONSE_ITEM + GPOINTER_TO_INT (g_object_get_data (G_OBJECT (row), "cam-index")));
 }
 
 /* one row a choice: the radio, then the text */
@@ -52,9 +52,9 @@ item_row (const char *label, int index, gboolean checked)
   gtk_label_set_wrap (GTK_LABEL (text), TRUE);
   gtk_widget_set_hexpand (text, TRUE);
   gtk_box_append (GTK_BOX (box), text);
-  row = neo_pressable_new (box);
+  row = vibeos_pressable_new (box);
   gtk_widget_add_css_class (row, "cam-dialog-item");
-  neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
   gtk_accessible_update_state (GTK_ACCESSIBLE (row), GTK_ACCESSIBLE_STATE_CHECKED,
                                checked ? GTK_ACCESSIBLE_TRISTATE_TRUE : GTK_ACCESSIBLE_TRISTATE_FALSE, -1);
   g_object_set_data (G_OBJECT (row), "cam-index", GINT_TO_POINTER (index));
@@ -65,7 +65,7 @@ void
 cam_list_dialog (GtkWidget *parent, const char *title, const char *const *labels, int n_labels, int selected,
                  CamChoiceDone done, gpointer data)
 {
-  NeoDialog *dialog = neo_dialog_new (title);
+  VibeosDialog *dialog = vibeos_dialog_new (title);
   GtkWidget *list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *scroll = spongy_scroll_view_new ();
   Answer *answer = g_new0 (Answer, 1);
@@ -83,10 +83,10 @@ cam_list_dialog (GtkWidget *parent, const char *title, const char *const *labels
   gtk_widget_add_css_class (list, "cam-dialog-list");
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), list);
   gtk_widget_add_css_class (scroll, "cam-dialog-scroll");
-  neo_dialog_set_content (dialog, scroll);
-  neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
+  vibeos_dialog_set_content (dialog, scroll);
+  vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
   g_signal_connect_data (dialog, "response", G_CALLBACK (on_list_response), answer, answer_free, 0);
-  neo_dialog_present (dialog, parent);
+  vibeos_dialog_present (dialog, parent);
 }
 
 /* ---- the location prompt --------------------------------------------------------------------------------------- */
@@ -116,7 +116,7 @@ cam_location_art_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   int width = gtk_widget_get_width (widget), height = gtk_widget_get_height (widget);
   double scale = width / (double) CAM_ART_W;
-  GdkRGBA outline = neo_color (NEO_OUTLINE_VARIANT), accent = neo_color (NEO_SECONDARY);
+  GdkRGBA outline = vibeos_color (VIBEOS_OUTLINE_VARIANT), accent = vibeos_color (VIBEOS_SECONDARY);
 
   gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (0, 0, width, height));
   gtk_snapshot_save (snapshot);
@@ -164,35 +164,35 @@ cam_location_art_init (CamLocationArt *self)
 }
 
 static void
-on_location_response (NeoDialog *dialog, int response, Answer *answer)
+on_location_response (VibeosDialog *dialog, int response, Answer *answer)
 {
-  ((CamLocationDone) answer->done) (response == NEO_RESPONSE_OK, answer->data);
+  ((CamLocationDone) answer->done) (response == VIBEOS_RESPONSE_OK, answer->data);
 }
 
 static void
-on_later (NeoPressable *button, NeoDialog *dialog)
+on_later (VibeosPressable *button, VibeosDialog *dialog)
 {
-  neo_dialog_respond (dialog, NEO_RESPONSE_CANCEL);
+  vibeos_dialog_respond (dialog, VIBEOS_RESPONSE_CANCEL);
 }
 
 static void
-on_turn_on (NeoPressable *button, NeoDialog *dialog)
+on_turn_on (VibeosPressable *button, VibeosDialog *dialog)
 {
-  neo_dialog_respond (dialog, NEO_RESPONSE_OK);
+  vibeos_dialog_respond (dialog, VIBEOS_RESPONSE_OK);
 }
 
 void
 cam_location_dialog (GtkWidget *parent, CamLocationDone done, gpointer data)
 {
-  NeoDialog *dialog = neo_dialog_new (NULL);
+  VibeosDialog *dialog = vibeos_dialog_new (NULL);
   GtkWidget *card = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *art = g_object_new (CAM_TYPE_LOCATION_ART, NULL);
   GtkWidget *texts = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *title = gtk_label_new (_("Add photo and video locations"));
   GtkWidget *body = gtk_label_new (_("Map your memories by including location metadata with each capture."));
   GtkWidget *buttons = gtk_center_box_new ();
-  GtkWidget *later = neo_text_button_new (_("Later"));
-  GtkWidget *turn_on = neo_text_button_new (_("Turn on"));
+  GtkWidget *later = vibeos_text_button_new (_("Later"));
+  GtkWidget *turn_on = vibeos_text_button_new (_("Turn on"));
   Answer *answer = g_new0 (Answer, 1);
 
   /* a card of fixed width; its background is in camera.css */
@@ -207,13 +207,13 @@ cam_location_dialog (GtkWidget *parent, CamLocationDone done, gpointer data)
   gtk_label_set_max_width_chars (GTK_LABEL (title), 1);
   gtk_label_set_justify (GTK_LABEL (title), GTK_JUSTIFY_CENTER);
   gtk_widget_add_css_class (title, "cam-location-title");
-  neo_label_set_font_padding (title, 22);
+  vibeos_label_set_font_padding (title, 22);
   gtk_box_append (GTK_BOX (texts), title);
   gtk_label_set_wrap (GTK_LABEL (body), TRUE);
   gtk_label_set_max_width_chars (GTK_LABEL (body), 1);
   gtk_label_set_justify (GTK_LABEL (body), GTK_JUSTIFY_CENTER);
   gtk_widget_add_css_class (body, "cam-location-body");
-  neo_label_set_font_padding (body, 14);
+  vibeos_label_set_font_padding (body, 14);
   gtk_widget_set_margin_top (body, gtk_widget_get_margin_top (body) + 16);
   gtk_box_append (GTK_BOX (texts), body);
   gtk_widget_set_margin_top (buttons, 24);
@@ -227,10 +227,10 @@ cam_location_dialog (GtkWidget *parent, CamLocationDone done, gpointer data)
   g_signal_connect (turn_on, "clicked", G_CALLBACK (on_turn_on), dialog);
 
   gtk_widget_add_css_class (GTK_WIDGET (dialog), "cam-location");
-  neo_dialog_set_flush (dialog, TRUE);
-  neo_dialog_set_content (dialog, card);
+  vibeos_dialog_set_flush (dialog, TRUE);
+  vibeos_dialog_set_content (dialog, card);
   answer->done = G_CALLBACK (done);
   answer->data = data;
   g_signal_connect_data (dialog, "response", G_CALLBACK (on_location_response), answer, answer_free, 0);
-  neo_dialog_present (dialog, parent);
+  vibeos_dialog_present (dialog, parent);
 }

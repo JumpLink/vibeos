@@ -46,7 +46,7 @@ struct _CallDetails
   GtkWidget *box;               /* the toolbar, the list */
   GtkWidget *list, *header, *entries, *footer;
   Contacts *contacts;
-  NeoSnackbar *snackbar;
+  VibeosSnackbar *snackbar;
   char *number;
   Presentation presentation;
   GArray *ids;                  /* gint64 */
@@ -76,7 +76,7 @@ text_label (const char *text, const char *css_class, double size)
   gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
   gtk_label_set_single_line_mode (GTK_LABEL (label), TRUE);
   gtk_widget_add_css_class (label, css_class);
-  neo_label_set_font_padding (label, size);
+  vibeos_label_set_font_padding (label, size);
   return label;
 }
 
@@ -94,7 +94,7 @@ on_dialed (guint id, const GError *error, gpointer data)
   CallDetails *self = data;
 
   if (error)
-    neo_snackbar_show (self->snackbar, error->message, NULL, NULL, NULL, NEO_SNACKBAR_LONG);
+    vibeos_snackbar_show (self->snackbar, error->message, NULL, NULL, NULL, VIBEOS_SNACKBAR_LONG);
   else
     phone_start_app (INCALL_APP_ID);
   g_object_unref (self);
@@ -155,9 +155,9 @@ make_header (CallDetails *self)
   gtk_widget_set_margin_end (avatar, BADGE_PAD);
   gtk_widget_set_margin_top (avatar, BADGE_PAD);
   gtk_widget_set_margin_bottom (avatar, BADGE_PAD);
-  badge = neo_pressable_new (avatar);
-  neo_pressable_set_ripple (NEO_PRESSABLE (badge), NEO_RIPPLE_CIRCLE, BADGE / 2.0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (badge), &(GdkRGBA) { 1, 1, 1, 0.06 });
+  badge = vibeos_pressable_new (avatar);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (badge), VIBEOS_RIPPLE_CIRCLE, BADGE / 2.0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (badge), &(GdkRGBA) { 1, 1, 1, 0.06 });
   gtk_widget_set_valign (badge, GTK_ALIGN_CENTER);
   gtk_widget_set_sensitive (badge, is_contact);
   if (is_contact)
@@ -187,12 +187,12 @@ make_header (CallDetails *self)
   /* the call-back button, in the icon colour; none for a number that cannot be called */
   if (!withheld && *self->number)
     {
-      GtkWidget *call = neo_icon_button_new ("dialer-call-symbolic");
+      GtkWidget *call = vibeos_icon_button_new ("dialer-call-symbolic");
 
       gtk_widget_set_size_request (call, BUTTON, BUTTON);
       gtk_widget_set_valign (call, GTK_ALIGN_CENTER);
       gtk_widget_add_css_class (call, "dialer-icon");
-      neo_pressable_set_ripple_color (NEO_PRESSABLE (call), &(GdkRGBA) { 1, 1, 1, 0.06 });
+      vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (call), &(GdkRGBA) { 1, 1, 1, 0.06 });
       gtk_accessible_update_property (GTK_ACCESSIBLE (call), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Call"), -1);
       g_signal_connect_swapped (call, "clicked", G_CALLBACK (on_call), self);
       gtk_box_append (GTK_BOX (header), call);
@@ -342,9 +342,9 @@ action_row (CallDetails *self, const char *icon_name, const char *text, GCallbac
   gtk_widget_set_margin_start (label, ACTION_PAD);
   gtk_widget_set_margin_end (label, ACTION_PAD);
   gtk_box_append (GTK_BOX (box), label);
-  row = neo_pressable_new (box);
-  neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (row), &(GdkRGBA) { 1, 1, 1, 0.06 });
+  row = vibeos_pressable_new (box);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &(GdkRGBA) { 1, 1, 1, 0.06 });
   g_signal_connect_swapped (row, "clicked", callback, self);
   return row;
 }
@@ -354,7 +354,7 @@ static void
 on_copy (CallDetails *self)
 {
   gdk_clipboard_set_text (gtk_widget_get_clipboard (GTK_WIDGET (self)), self->number);
-  neo_snackbar_show (self->snackbar, _("Text copied"), NULL, NULL, NULL, NEO_SNACKBAR_SHORT);
+  vibeos_snackbar_show (self->snackbar, _("Text copied"), NULL, NULL, NULL, VIBEOS_SNACKBAR_SHORT);
 }
 
 /* the dialpad with the number, in the main screen */
@@ -476,7 +476,7 @@ static GtkWidget *
 make_bar (CallDetails *self)
 {
   GtkWidget *bar = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  GtkWidget *close = neo_icon_button_new ("dialer-close-symbolic");
+  GtkWidget *close = vibeos_icon_button_new ("dialer-close-symbolic");
   GtkWidget *title = gtk_label_new (_("Call details"));
 
   gtk_widget_add_css_class (bar, "dialer-history-bar");
@@ -539,7 +539,7 @@ call_details_init (CallDetails *self)
 }
 
 GtkWidget *
-call_details_new (Contacts *contacts, NeoSnackbar *snackbar, const char *number, Presentation presentation,
+call_details_new (Contacts *contacts, VibeosSnackbar *snackbar, const char *number, Presentation presentation,
                   const gint64 *ids, guint n_ids)
 {
   CallDetails *self = g_object_new (CALL_TYPE_DETAILS, NULL);

@@ -1,4 +1,4 @@
-/* Neo Weather: One UI Weather's layout over a sky for the weather now */
+/* VibeOS Weather: One UI Weather's layout over a sky for the weather now */
 /* the sky is a texture under the page (main.c, skies[]); this only shows before it is drawn */
 window.wx { color: white; background-color: #26305a; }
 .wx-body { padding: 0 16px 24px 16px; }

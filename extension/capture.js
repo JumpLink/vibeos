@@ -1,5 +1,5 @@
 // Frame capture for checking animations against the Android recordings (development only).
-// With ~/.config/gnome-phone/capture present, an animation can save the stage as it draws: one PNG at a time to
+// With ~/.config/vibeos/capture present, an animation can save the stage as it draws: one PNG at a time to
 // /tmp/gp-cap/<name>-<ms>.png, labelled with the animation's own clock, so frames line up with a recording's timeline
 // whatever the capture costs (run it with the shell's slow-down factor raised).
 import Gio from 'gi://Gio';
@@ -13,7 +13,7 @@ const DIR = '/tmp/gp-cap';
 let busy = false;
 
 export function capturing() {
-    return GLib.file_test(GLib.build_filenamev([GLib.get_user_config_dir(), 'gnome-phone', 'capture']),
+    return GLib.file_test(GLib.build_filenamev([GLib.get_user_config_dir(), 'vibeos', 'capture']),
         GLib.FileTest.EXISTS);
 }
 
@@ -32,7 +32,7 @@ export async function capture(name, ms) {
         await Shell.Screenshot.composite_to_stream(texture, 0, 0, -1, -1, 1, null, 0, 0, 1, stream);
         stream.close(null);
     } catch (e) {
-        logError(e, 'gnome-phone: capture');
+        logError(e, 'vibeos: capture');
     } finally {
         busy = false;
     }

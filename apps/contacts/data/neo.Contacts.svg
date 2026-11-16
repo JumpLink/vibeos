@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><!-- LineageOS Contacts' launcher icon (converted by tools/vd2svg.py): the part of its background and foreground layers that a launcher shows, on the tile the other apps use, inset like the GNOME app icon grid --><defs><clipPath id="tile"><rect width="128" height="128" rx="28"/></clipPath><radialGradient id="shine" gradientUnits="userSpaceOnUse" cx="28.54" cy="28.54" r="72"><stop offset="0" stop-color="#fff" stop-opacity="0.098"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs><g data-neo-inset="1" transform="translate(64 64) scale(0.86) translate(-64 -64)"><g clip-path="url(#tile)"><g transform="scale(1.777778) translate(-18 -18)">
-  <path d="M0,0h108v108h-108z" fill="#ffffff"/>
-  <path d="M77,51C77,59.837 70,63 61,63C52,63 45,59.837 45,51C45,38.163 52,31 61,31C70,31 77,38.163 77,51Z" fill="#4d84e9"/>
-  <path d="M71,49C68.569,50.255 64.821,51 61,51C57.179,51 53.431,50.255 51,49C52.093,52.47 54.333,57 61,57C67.667,57 69.907,52.47 71,49Z" fill="#ffffff"/>
-    <clipPath id="clip0"><path d="M0,0h108v108h-108z"/></clipPath>
-      <path d="M64,64C64,72.837 57,76 48,76C39,76 32,72.837 32,64C32,51.163 39,44 48,44C57,44 64,51.163 64,64Z" fill="#193057"/>
-      <path d="M58,62C55.569,63.255 51.821,64 48,64C44.179,64 40.431,63.255 38,62C39.093,65.47 41.333,70 48,70C54.667,70 56.907,65.47 58,62Z" fill="#ffffff"/>
-<circle cx="28.54" cy="28.54" r="72" fill="url(#shine)" fill-opacity="0.6"/></g></g></g></svg>

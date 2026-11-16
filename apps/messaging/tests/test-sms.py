@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-# neo-messaging-sms against a mock modem (mock-modem.py): Messaging's receive and send flows and its
+# vibeos-messaging-sms against a mock modem (mock-modem.py): Messaging's receive and send flows and its
 # notifications, end to end over D-Bus, with no modem and no real message. Two buses of its own, so nothing
 # reaches the phone's real ModemManager or notifications; the store is read as the app reads it.
 #
@@ -19,7 +19,7 @@ BUS_CONFIG = '''<busconfig><type>session</type><listen>unix:tmpdir=%s</listen><a
 <policy context="default"><allow send_destination="*" eavesdrop="true"/><allow eavesdrop="true"/>
 <allow own="*"/></policy></busconfig>'''
 
-NAME, PATH, IFACE = 'neo.Messaging.Sms', '/neo/Messaging/Sms', 'neo.Messaging.Sms'
+NAME, PATH, IFACE = 'vibeos.Messaging.Sms', '/vibeos/Messaging/Sms', 'vibeos.Messaging.Sms'
 # sms-store.h
 COMPLETE, DELIVERED, YET_TO_SEND, SENDING, RESENDING, AWAITING_RETRY, FAILED, INCOMING = 1, 2, 4, 5, 6, 7, 8, 100
 UNKNOWN_ERROR = 'org.freedesktop.ModemManager1.Error.MessageError.Unknown'
@@ -47,7 +47,7 @@ def start_bus(tmp, name):
 def block(data_home, number):
     # what the Phone's or the Messaging's Block does: a row in the shared list (dialer/src/blocked-numbers.c), which
     # the service hears of through its file monitor
-    path = os.path.join(data_home, 'neo-phone', 'blocked_numbers.db')
+    path = os.path.join(data_home, 'vibeos-phone', 'blocked_numbers.db')
     os.makedirs(os.path.dirname(path), exist_ok=True)
     db = sqlite3.connect(path)
     db.execute('CREATE TABLE IF NOT EXISTS blocked (_id INTEGER PRIMARY KEY AUTOINCREMENT,'
@@ -63,7 +63,7 @@ def write_settings(config_home, **keys):
     path = os.path.join(config_home, 'glib-2.0', 'settings', 'keyfile')
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path + '.new', 'w') as f:
-        f.write('[neo/Messaging]\n' + ''.join('%s=%s\n' % (k.replace('_', '-'), 'true' if v else 'false')
+        f.write('[vibeos/Messaging]\n' + ''.join('%s=%s\n' % (k.replace('_', '-'), 'true' if v else 'false')
                                                      for k, v in keys.items()))
     os.replace(path + '.new', path)
 
@@ -116,7 +116,7 @@ class Test:
         return reply.unpack()[0]
 
     def modem(self, method, args=None, signature=None):
-        reply = self.bus.call_sync('neo.Test.Modem', '/neo/Test/Modem', 'neo.Test.Modem', method,
+        reply = self.bus.call_sync('vibeos.Test.Modem', '/vibeos/Test/Modem', 'vibeos.Test.Modem', method,
                                    GLib.Variant(signature, args) if signature else None, None,
                                    Gio.DBusCallFlags.NONE, 5000, None)
         return reply.unpack() if reply else None
@@ -182,7 +182,7 @@ def run(t):
           rows and rows[0][5] == 1794096000000, rows)
     n = t.wait('and notified, by its sender', lambda: t.notification('0170 9999999'))
     if n:
-        check('as the Messaging\'s', n[1]['app'] == 'Messaging' and n[1]['desktop-entry'] == 'neo.Messaging',
+        check('as the Messaging\'s', n[1]['app'] == 'Messaging' and n[1]['desktop-entry'] == 'vibeos.Messaging',
               n)
 
     # a long message in parts: one message once all are in
@@ -409,7 +409,7 @@ def main():
         subprocess.run(['glib-compile-schemas', '--targetdir', tmp, os.path.join(source, 'data')], check=True)
         config_home = os.path.join(tmp, 'config')
         write_settings(config_home, delivery_reports=False)
-        env = dict(os.environ, DBUS_SESSION_BUS_ADDRESS=session_address, NEO_MESSAGING_SYSTEM_BUS=system_address,
+        env = dict(os.environ, DBUS_SESSION_BUS_ADDRESS=session_address, VIBEOS_MESSAGING_SYSTEM_BUS=system_address,
                    XDG_DATA_HOME=os.path.join(tmp, 'data'), XDG_CONFIG_HOME=config_home,
                    GSETTINGS_BACKEND='keyfile', GSETTINGS_SCHEMA_DIR=tmp, LANG='C.UTF-8', LC_ALL='C.UTF-8')
         mock = subprocess.Popen([sys.executable, os.path.join(source, 'tests', 'mock-modem.py'), system_address,
@@ -418,8 +418,8 @@ def main():
         if mock.stdout.readline().strip() != 'ready':
             print('FAIL the mock modem did not start')
             return 1
-        procs.append(subprocess.Popen([os.path.join(build, 'neo-messaging-sms')], env=env))
-        run(Test(session_address, os.path.join(tmp, 'data', 'neo-messaging', 'bugle_db'), config_home))
+        procs.append(subprocess.Popen([os.path.join(build, 'vibeos-messaging-sms')], env=env))
+        run(Test(session_address, os.path.join(tmp, 'data', 'vibeos-messaging', 'bugle_db'), config_home))
     finally:
         for p in reversed(procs):
             p.terminate()

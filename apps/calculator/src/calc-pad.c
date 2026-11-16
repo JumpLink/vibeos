@@ -3,7 +3,7 @@
 #include "calc-button.h"
 
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define MAX_GUIDES 8
 
@@ -43,7 +43,7 @@ static void
 calc_pad_size_allocate (GtkWidget *widget, int width, int height, int baseline)
 {
   CalcPad *self = CALC_PAD (widget);
-  int scale = neo_device_scale (widget);
+  int scale = vibeos_device_scale (widget);
   /* the pad's own size in device pixels, which the window knows better than the whole logical pixels around it */
   double exact_w = self->exact_width > 0 ? self->exact_width : width;
   double exact_h = self->exact_height > 0 ? self->exact_height : height;

@@ -16,7 +16,7 @@
 #include "cal-window.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 #include <string.h>
 
@@ -136,7 +136,7 @@ format_minute (int minute)
 static void
 set_button_text (GtkWidget *button, const char *text)
 {
-  gtk_label_set_label (GTK_LABEL (neo_pressable_get_child (NEO_PRESSABLE (button))), text);
+  gtk_label_set_label (GTK_LABEL (vibeos_pressable_get_child (VIBEOS_PRESSABLE (button))), text);
 }
 
 static void
@@ -160,7 +160,7 @@ show_times (Editor *editor)
       g_autofree char *zone = cal_tz_label_markup (editor->tzid, start_time (editor), TRUE);
 
       gtk_widget_set_visible (editor->tz_row, !editor->all_day);
-      gtk_label_set_markup (GTK_LABEL (neo_pressable_get_child (NEO_PRESSABLE (editor->tz_button))), zone ? zone : "");
+      gtk_label_set_markup (GTK_LABEL (vibeos_pressable_get_child (VIBEOS_PRESSABLE (editor->tz_button))), zone ? zone : "");
     }
 }
 
@@ -393,7 +393,7 @@ done (Editor *editor)
 }
 
 static void
-on_done (NeoPressable *button, Editor *editor)
+on_done (VibeosPressable *button, Editor *editor)
 {
   done (editor);
 }
@@ -422,7 +422,7 @@ on_back (CalPage *page, gpointer data)
 }
 
 static void
-on_cancel (NeoPressable *button, Editor *editor)
+on_cancel (VibeosPressable *button, Editor *editor)
 {
   cal_page_back (CAL_PAGE (editor->page));
 }
@@ -447,7 +447,7 @@ on_calendar_chosen (int index, gpointer data)
 }
 
 static void
-on_calendar (NeoPressable *row, Editor *editor)
+on_calendar (VibeosPressable *row, Editor *editor)
 {
   GPtrArray *calendars = cal_store_get_calendars (editor->store);
   g_autoptr(GPtrArray) labels = g_ptr_array_new_with_free_func (g_free);
@@ -570,26 +570,26 @@ week_start (Editor *editor)
 
 /* the editor's date pickers are titled "Go to…" as well */
 static void
-on_start_date_clicked (NeoPressable *button, Editor *editor)
+on_start_date_clicked (VibeosPressable *button, Editor *editor)
 {
   cal_date_picker_show (editor->page, _("Go to…"), editor->start_day, week_start (editor), on_start_date,
                         editor);
 }
 
 static void
-on_end_date_clicked (NeoPressable *button, Editor *editor)
+on_end_date_clicked (VibeosPressable *button, Editor *editor)
 {
   cal_date_picker_show (editor->page, _("Go to…"), editor->end_day, week_start (editor), on_end_date, editor);
 }
 
 static void
-on_start_time_clicked (NeoPressable *button, Editor *editor)
+on_start_time_clicked (VibeosPressable *button, Editor *editor)
 {
   cal_time_picker_show (editor->page, editor->start_minute / 60, editor->start_minute % 60, on_start_minute, editor);
 }
 
 static void
-on_end_time_clicked (NeoPressable *button, Editor *editor)
+on_end_time_clicked (VibeosPressable *button, Editor *editor)
 {
   cal_time_picker_show (editor->page, editor->end_minute / 60, editor->end_minute % 60, on_end_minute, editor);
 }
@@ -608,7 +608,7 @@ on_repeat_chosen (const char *rrule, gpointer data)
 }
 
 static void
-on_repeat (NeoPressable *button, Editor *editor)
+on_repeat (VibeosPressable *button, Editor *editor)
 {
   /* the picker gets the start, its zone (an all-day event's dates have none) and the rule */
   cal_recurrence_picker_show (editor->page, editor->rrule, start_time (editor), editor->all_day ? NULL : editor->tzid,
@@ -624,7 +624,7 @@ on_reminders_changed (CalReminders *reminders, Editor *editor)
 }
 
 static void
-on_add_reminder (NeoPressable *button, Editor *editor)
+on_add_reminder (VibeosPressable *button, Editor *editor)
 {
   int minutes = g_settings_get_int (editor->settings, "default-reminder");
 
@@ -647,7 +647,7 @@ on_color_chosen (guint32 rgb, gpointer data)
 }
 
 static void
-on_color (NeoPressable *button, Editor *editor)
+on_color (VibeosPressable *button, Editor *editor)
 {
   const CalCalendar *calendar = cal_store_find_calendar (editor->store, editor->calendar);
   guint32 calendar_color = calendar ? calendar->color : 0x3f51b5;
@@ -673,7 +673,7 @@ on_tz_chosen (const char *tzid, gpointer data)
 }
 
 static void
-on_tz (NeoPressable *button, Editor *editor)
+on_tz (VibeosPressable *button, Editor *editor)
 {
   cal_tz_picker_show (editor->window, editor->tzid, start_time (editor), on_tz_chosen, editor);
 }
@@ -709,14 +709,14 @@ static GtkWidget *
 outlined_button (const char *name, GCallback callback, gpointer data)
 {
   GtkWidget *label = gtk_label_new (NULL);
-  GtkWidget *button = neo_pressable_new (label);
+  GtkWidget *button = vibeos_pressable_new (label);
 
   gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
   /* centred with font padding (the font's bounding box, not its line) */
-  neo_label_set_font_padding (label, 14);
+  vibeos_label_set_font_padding (label, 14);
   gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
   gtk_widget_add_css_class (button, "cal-outlined");
-  neo_pressable_set_ripple (NEO_PRESSABLE (button), NEO_RIPPLE_BOUNDED, 20);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_BOUNDED, 20);
   gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_DESCRIPTION, name, -1);
   gtk_widget_set_halign (button, GTK_ALIGN_START);
   g_signal_connect (button, "clicked", callback, data);
@@ -775,9 +775,9 @@ action_button (const char *icon_name, const char *label, GCallback callback, Edi
   gtk_box_append (GTK_BOX (box), icon);
   gtk_box_append (GTK_BOX (box), text);
   gtk_widget_set_halign (box, GTK_ALIGN_CENTER);
-  button = neo_pressable_new (box);
+  button = vibeos_pressable_new (box);
   gtk_widget_set_hexpand (button, TRUE);
-  neo_pressable_set_ripple (NEO_PRESSABLE (button), NEO_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_BOUNDED, 0);
   g_signal_connect (button, "clicked", callback, editor);
   return button;
 }
@@ -788,7 +788,7 @@ title_bar (Editor *editor)
   GtkWidget *bar = gtk_center_box_new ();
   GtkWidget *divider = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *overlay = gtk_overlay_new ();
-  GtkWidget *back = neo_icon_button_new ("cal-back-symbolic");
+  GtkWidget *back = vibeos_icon_button_new ("cal-back-symbolic");
 
   /* "✕ CANCEL" and "✓ DONE" in two equal halves of the toolbar, the divider between */
   gtk_center_box_set_start_widget (GTK_CENTER_BOX (bar),
@@ -840,8 +840,8 @@ build (Editor *editor)
   gtk_label_set_ellipsize (GTK_LABEL (editor->calendar_account), PANGO_ELLIPSIZE_END);
   gtk_widget_add_css_class (editor->calendar_account, "cal-edit-calendar-account");
   /* the name over the account, each with its font padding */
-  neo_label_set_font_padding (editor->calendar_name, 18);
-  neo_label_set_font_padding (editor->calendar_account, 14);
+  vibeos_label_set_font_padding (editor->calendar_name, 18);
+  vibeos_label_set_font_padding (editor->calendar_account, 14);
   gtk_box_append (GTK_BOX (calendar_text), editor->calendar_name);
   gtk_box_append (GTK_BOX (calendar_text), editor->calendar_account);
   {
@@ -874,18 +874,18 @@ build (Editor *editor)
     GtkWidget *lens = gtk_image_new_from_icon_name ("cal-color-symbolic");
 
     gtk_image_set_pixel_size (GTK_IMAGE (lens), 48);
-    editor->color_button = neo_pressable_new (lens);
+    editor->color_button = vibeos_pressable_new (lens);
     gtk_widget_add_css_class (editor->color_button, "cal-edit-color");
     gtk_widget_set_valign (editor->color_button, GTK_ALIGN_CENTER);
-    neo_pressable_set_ripple (NEO_PRESSABLE (editor->color_button), NEO_RIPPLE_CIRCLE, 24);
+    vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (editor->color_button), VIBEOS_RIPPLE_CIRCLE, 24);
     gtk_accessible_update_property (GTK_ACCESSIBLE (editor->color_button), GTK_ACCESSIBLE_PROPERTY_LABEL,
                                     _("Choose event color"), -1);
     g_signal_connect (editor->color_button, "clicked", G_CALLBACK (on_color), editor);
   }
   if (new_event)
     {
-      editor->calendar_row = neo_pressable_new (box);
-      neo_pressable_set_ripple (NEO_PRESSABLE (editor->calendar_row), NEO_RIPPLE_BOUNDED, 0);
+      editor->calendar_row = vibeos_pressable_new (box);
+      vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (editor->calendar_row), VIBEOS_RIPPLE_BOUNDED, 0);
       gtk_accessible_update_property (GTK_ACCESSIBLE (editor->calendar_row), GTK_ACCESSIBLE_PROPERTY_LABEL,
                                       _("Calendar"), -1);
       g_signal_connect (editor->calendar_row, "clicked", G_CALLBACK (on_calendar), editor);
@@ -920,7 +920,7 @@ build (Editor *editor)
      * height. */
     GtkWidget *overlay = gtk_overlay_new ();
 
-    neo_label_set_font_padding (label, 18);
+    vibeos_label_set_font_padding (label, 18);
     line = row ("cal-schedule-symbolic", box);
     gtk_widget_add_css_class (line, "cal-edit-all-day");
     gtk_overlay_set_child (GTK_OVERLAY (overlay), line);
@@ -946,7 +946,7 @@ build (Editor *editor)
   /* the time zone: an outlined button over the row's width, the name and its GMT offset */
   editor->tz_button = outlined_button (_("Time zone"), G_CALLBACK (on_tz), editor);
   {
-    GtkWidget *tz_label = neo_pressable_get_child (NEO_PRESSABLE (editor->tz_button));
+    GtkWidget *tz_label = vibeos_pressable_get_child (VIBEOS_PRESSABLE (editor->tz_button));
 
     /* its lines are spaced by the stylesheet's line height instead */
     gtk_widget_set_margin_top (tz_label, 0);
@@ -987,7 +987,7 @@ build (Editor *editor)
     /* the helper text under the box, in line with the field's text */
     gtk_label_set_xalign (GTK_LABEL (helper), 0);
     gtk_label_set_wrap (GTK_LABEL (helper), TRUE);
-    neo_label_set_font_padding (helper, 12);
+    vibeos_label_set_font_padding (helper, 12);
     gtk_widget_add_css_class (helper, "cal-text-helper");
     gtk_box_append (GTK_BOX (content), helper);
   }
@@ -1026,9 +1026,9 @@ build (Editor *editor)
   gtk_box_append (GTK_BOX (box), editor->reminders);
   label = gtk_label_new (_("Add reminder"));
   gtk_label_set_xalign (GTK_LABEL (label), 0);
-  editor->add_reminder = neo_pressable_new (label);
+  editor->add_reminder = vibeos_pressable_new (label);
   gtk_widget_add_css_class (editor->add_reminder, "cal-add-reminder");
-  neo_pressable_set_ripple (NEO_PRESSABLE (editor->add_reminder), NEO_RIPPLE_BOUNDED, 4);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (editor->add_reminder), VIBEOS_RIPPLE_BOUNDED, 4);
   g_signal_connect (editor->add_reminder, "clicked", G_CALLBACK (on_add_reminder), editor);
   gtk_box_append (GTK_BOX (box), editor->add_reminder);
   line = row ("cal-notifications-symbolic", box);

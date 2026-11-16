@@ -1,16 +1,16 @@
 /*
  * "Set pattern" / "Set PIN" (Lock screen): draw an unlock pattern, draw it again to confirm, and it becomes
- * the user's password: the dots joined in order as digits ("1478"), which gnome-phone's lock screen (keyguard.js,
- * bouncer.js) hands gp-auth, and gp-auth to PAM, when the same pattern is drawn there. The current pattern (or
+ * the user's password: the dots joined in order as digits ("1478"), which VibeOS's lock screen (keyguard.js,
+ * bouncer.js) hands vibeos-auth, and vibeos-auth to PAM, when the same pattern is drawn there. The current pattern (or
  * PIN/password) comes first, checked through PAM like the lock screen does; the password is then set through
  * AccountsService (a polkit rule of ours lets the active local user do that without polkit's own text prompt, which
- * wanted the pattern typed as digits). The login keyring then gets the same password (neo-keyring-rekey), so that
+ * wanted the pattern typed as digits). The login keyring then gets the same password (vibeos-keyring-rekey), so that
  * unlocking the lock screen unlocks it too (pam_gnome_keyring) and apps find their secrets. A PIN (or a password)
  * goes the same way, typed instead of drawn: on the lock screen's PIN pad, not the keyboard (owner, 2026-11-12: the
  * current PIN and a new one are typed on "the same numeric keyboard like on lock screen", the phone's first password
  * being a PIN). A current password that is not digits still has a text field, behind "Use password".
  *
- * Taken from the Mobile Settings plugin (gnome/neo-phosh/ms-plugin-surya). libcrypt is opened at run time: the
+ * Taken from a Mobile Settings plugin written for the Poco X3 (ms-plugin-surya). libcrypt is opened at run time: the
  * phone has the library but not its header.
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
@@ -353,7 +353,7 @@ on_keyring_rekeyed (GObject *source, GAsyncResult *res, gpointer data)
   g_autofree char *err_out = NULL;
 
   if (!g_subprocess_communicate_utf8_finish (G_SUBPROCESS (source), res, NULL, &err_out, &error))
-    g_warning ("neo-keyring-rekey: %s", error->message);
+    g_warning ("vibeos-keyring-rekey: %s", error->message);
   else if (!g_subprocess_get_successful (G_SUBPROCESS (source)))
     g_warning ("The login keyring kept its old password: %s", err_out ? err_out : "");
   finish (pd, TRUE);
@@ -373,7 +373,7 @@ rekey_keyring (PatternDialog *pd)
                            G_SUBPROCESS_FLAGS_STDERR_PIPE, &error,
                            NS_REKEY, NULL);
   if (!proc) {
-    g_warning ("neo-keyring-rekey: %s", error->message);
+    g_warning ("vibeos-keyring-rekey: %s", error->message);
     finish (pd, TRUE);
     return;
   }
@@ -453,9 +453,9 @@ check_thread (GTask *task, gpointer source, gpointer data, GCancellable *cancell
 {
   struct pam_conv conv = { pam_answer, data };
   pam_handle_t *handle = NULL;
-  /* the lock screen's own PAM service (gp-auth's "gnome-phone", /etc/pam.d/gnome-phone), so what unlocks the
+  /* the lock screen's own PAM service (vibeos-auth's "vibeos", /etc/pam.d/vibeos), so what unlocks the
    * phone is what is asked for here */
-  int rc = pam_start ("gnome-phone", g_get_user_name (), &conv, &handle);
+  int rc = pam_start ("vibeos", g_get_user_name (), &conv, &handle);
 
   if (rc == PAM_SUCCESS)
     rc = pam_authenticate (handle, 0);
@@ -566,7 +566,7 @@ pad_click (void)
   g_autoptr (GDBusConnection) session = g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, NULL);
   if (session)
     g_dbus_connection_call (session, "org.sigxcpu.Feedback", "/org/sigxcpu/Feedback", "org.sigxcpu.Feedback",
-                            "TriggerFeedback", g_variant_new ("(ssa{sv}i)", "neo.Settings",
+                            "TriggerFeedback", g_variant_new ("(ssa{sv}i)", "vibeos.Settings",
                                                               "button-released", NULL, -1),
                             NULL, G_DBUS_CALL_FLAGS_NO_AUTO_START, -1, NULL, NULL, NULL);
 }
@@ -799,11 +799,11 @@ ns_pattern_dialog_present (GtkWidget *parent, gboolean pin, NsPatternDone callba
   {
     /* what unlocks the phone now: the dot grid for a pattern, a text field for a PIN or a password */
     GSettingsSchema *schema = g_settings_schema_source_lookup (g_settings_schema_source_get_default (),
-                                                               "neo.Phone", TRUE);
+                                                               "vibeos.Shell", TRUE);
     if (schema) {
       /* made from the schema just found: g_settings_new () on a schema that is not installed aborts the app */
-      g_autoptr (GSettings) neo = g_settings_new_full (schema, NULL, NULL);
-      g_autofree char *type = g_settings_get_string (neo, "lock-type");
+      g_autoptr (GSettings) vibeos = g_settings_new_full (schema, NULL, NULL);
+      g_autofree char *type = g_settings_get_string (vibeos, "lock-type");
 
       pd->current_is_pattern = g_strcmp0 (type, "pattern") == 0;
       g_settings_schema_unref (schema);

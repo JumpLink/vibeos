@@ -5,7 +5,7 @@
  * and kept inside the window. Only the items that are both visible and enabled are on it. Any touch elsewhere,
  * Back or Escape closes it.
  *
- * A libneo candidate: any app with selectable text would want it.
+ * A libvibeos candidate: any app with selectable text would want it.
  *
  * Signals: "closed" (), once, when it starts to go. */
 #pragma once

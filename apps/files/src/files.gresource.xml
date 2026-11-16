@@ -2,8 +2,8 @@
 <!-- the stylesheet and the app's own icon, where GtkApplication looks for icons: the resource base path + /icons.
      Every other icon comes from the user's icon theme; the Material Symbols in data/icons are no longer bundled. -->
 <gresources>
-  <gresource prefix="/neo/Files">
+  <gresource prefix="/vibeos/Files">
     <file>files.css</file>
-    <file alias="icons/scalable/apps/neo.Files.svg">neo.Files.svg</file>
+    <file alias="icons/scalable/apps/vibeos.Files.svg">vibeos.Files.svg</file>
   </gresource>
 </gresources>

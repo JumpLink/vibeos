@@ -1,8 +1,8 @@
-/* neo-dialer-calls: the Phone's service, for everything about calls that must go on with the app closed. It runs in the
- * session from login (neo-dialer-calls.service), so that a call that comes rings and shows its screen whether or not
+/* vibeos-dialer-calls: the Phone's service, for everything about calls that must go on with the app closed. It runs in the
+ * session from login (vibeos-dialer-calls.service), so that a call that comes rings and shows its screen whether or not
  * the Phone app is open.
  *
- * This file is its face on D-Bus (neo.Dialer.Calls): the apps ask it to dial, answer and hang up, and read
+ * This file is its face on D-Bus (vibeos.Dialer.Calls): the apps ask it to dial, answer and hang up, and read
  * the calls and the call log from it. What it does about calls is in calls.c.
  *
  * It also stands aside while gsm2sip is in gateway mode: then gsm2sipd answers the modem's calls and bridges them
@@ -391,7 +391,7 @@ on_signal (gpointer data)
 static GDBusConnection *
 system_bus (GError **error)
 {
-  const char *address = g_getenv ("NEO_DIALER_SYSTEM_BUS");
+  const char *address = g_getenv ("VIBEOS_DIALER_SYSTEM_BUS");
 
   if (address && *address)
     return g_dbus_connection_new_for_address_sync (address, G_DBUS_CONNECTION_FLAGS_AUTHENTICATION_CLIENT
@@ -407,7 +407,7 @@ main (int argc, char **argv)
   Service service = { 0 };
   g_autoptr(GError) error = NULL;
   g_autoptr(GDBusNodeInfo) node = NULL;
-  g_autofree char *log_path = g_build_filename (g_get_user_data_dir (), "neo-dialer", "calls.db", NULL);
+  g_autofree char *log_path = g_build_filename (g_get_user_data_dir (), "vibeos-dialer", "calls.db", NULL);
   g_autofree char *gnome_calls = g_build_filename (g_get_user_data_dir (), "calls", "records.db", NULL);
   guint owner;
 

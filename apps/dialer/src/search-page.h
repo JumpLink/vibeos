@@ -11,7 +11,7 @@
 #pragma once
 
 #include <gtk/gtk.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #include "contacts.h"
 
@@ -21,7 +21,7 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE (SearchPage, search_page, SEARCH, PAGE, GtkWidget)
 
 /* @settings: the favourites, which smart dial ranks first */
-GtkWidget *search_page_new (Contacts *contacts, GSettings *settings, NeoSnackbar *snackbar);
+GtkWidget *search_page_new (Contacts *contacts, GSettings *settings, VibeosSnackbar *snackbar);
 /* searches again after 300 ms of no change (an empty query clears the list at once) */
 void       search_page_set_query (SearchPage *self, const char *query, gboolean dialpad);
 

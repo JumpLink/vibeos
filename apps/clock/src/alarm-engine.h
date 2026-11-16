@@ -10,7 +10,7 @@
  * When an instance is gone (or missed), its alarm makes the next one if it repeats, or switches off (or is deleted,
  * if it was made to be used once).
  *
- * The engine is logic only: it never sleeps, rings or shows anything. Its host (neo-clock-alarms) asks it when the
+ * The engine is logic only: it never sleeps, rings or shows anything. Its host (vibeos-clock-alarms) asks it when the
  * next change is due (alarm_engine_next_change), wakes the phone for then, and calls alarm_engine_tick() at that
  * time; it shows each instance as its state says (the "instance-changed" signal), takes down what showed one that is
  * gone ("instance-removed"), and saves the store when told ("store-changed"). The time comes from the clock set with

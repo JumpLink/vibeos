@@ -6,7 +6,7 @@
  * The asking needs the Contacts app: without it a tap on someone who is not a contact does nothing. */
 #pragma once
 
-#include <neo.h>
+#include <vibeos.h>
 
 #include "msg-people.h"
 
@@ -17,6 +17,6 @@ gboolean msg_contact_can_add (const MsgPerson *person);
 /* "Add to Contacts?" for the person, over the window @from is in */
 void     msg_contact_confirm_add (GtkWidget *from, const MsgPerson *person);
 /* the contact's card, or "Add to Contacts?" */
-void     msg_contact_show_or_add (GtkWidget *from, const MsgPerson *person, NeoSnackbar *snackbar);
+void     msg_contact_show_or_add (GtkWidget *from, const MsgPerson *person, VibeosSnackbar *snackbar);
 
 G_END_DECLS

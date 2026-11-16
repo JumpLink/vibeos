@@ -92,7 +92,7 @@ nb_store_write_node (NbStore *store, const char *name, JsonNode *node)
   json_generator_set_root (gen, node);
   g_autofree char *text = json_generator_to_data (gen, NULL);
   if (!g_file_set_contents (path, text, -1, &error))
-    g_warning ("neo-browser: %s not saved: %s", name, error->message);
+    g_warning ("vibeos-browser: %s not saved: %s", name, error->message);
 }
 
 static JsonNode *

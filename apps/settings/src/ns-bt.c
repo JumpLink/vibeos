@@ -6,7 +6,7 @@
 #include "ns-pages.h"
 #include "ns-ui.h"
 
-#define AGENT_PATH "/neo/Settings/agent"
+#define AGENT_PATH "/vibeos/Settings/agent"
 
 static GDBusObjectManager *bluez;
 static GPtrArray *waiting;

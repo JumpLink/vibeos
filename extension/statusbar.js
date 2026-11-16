@@ -331,7 +331,7 @@ class StatusBar extends St.Widget {
     constructor(state, home, cutout) {
         const monitor = Main.layoutManager.primaryMonitor;
         super({
-            name: 'gnomePhoneStatusBar',
+            name: 'vibeosStatusBar',
             reactive: true,
             x: monitor.x,
             y: monitor.y,

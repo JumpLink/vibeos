@@ -7,7 +7,7 @@
 #include <pulse/glib-mainloop.h>
 #include <pulse/pulseaudio.h>
 
-#define FALLBACK_SOUND "neo-clock/sounds/alarm_expire.ogg"     /* the Clock's own "Beep-Beep-Beep Alarm" */
+#define FALLBACK_SOUND "vibeos-clock/sounds/alarm_expire.ogg"     /* the Clock's own "Beep-Beep-Beep Alarm" */
 #define CRESCENDO_STEP_MS 50
 #define VIBRATE_PERIOD_MS 1000                                  /* 500 ms off, 500 on */
 
@@ -22,7 +22,7 @@ static const struct {
   /* Hassium, LineageOS's default alarm sound */
   [ALARM_KLAXON_ALARM] = { "default-alarm-ringtone", "alarm-crescendo-duration", "sounds/android/alarms/Hassium.ogg" },
   /* the Clock's own "Timer Expired" */
-  [ALARM_KLAXON_TIMER] = { "timer-ringtone", "timer-crescendo-duration", "neo-clock/sounds/timer_expire.ogg" },
+  [ALARM_KLAXON_TIMER] = { "timer-ringtone", "timer-crescendo-duration", "vibeos-clock/sounds/timer_expire.ogg" },
   /* a preview names its sound; without one it is the default alarm sound */
   [ALARM_KLAXON_PREVIEW] = { "default-alarm-ringtone", NULL, "sounds/android/alarms/Hassium.ogg" },
 };
@@ -221,7 +221,7 @@ make_player (AlarmKlaxon *self)
   if (sink)
     {
       g_autoptr(GstStructure) props = gst_structure_new ("props", "media.role", G_TYPE_STRING, "alarm",
-                                                         "application.id", G_TYPE_STRING, "neo.Clock", NULL);
+                                                         "application.id", G_TYPE_STRING, "vibeos.Clock", NULL);
 
       g_object_set (sink, "stream-properties", props, NULL);
       g_object_set (player, "audio-sink", sink, NULL);
@@ -273,7 +273,7 @@ vibrate_once (AlarmKlaxon *self)
   g_variant_builder_add (&pattern, "(du)", 0.0, 500);
   g_variant_builder_add (&pattern, "(du)", 1.0, 500);
   g_dbus_connection_call (bus, "org.sigxcpu.Feedback", "/org/sigxcpu/Feedback", "org.sigxcpu.Feedback.Haptic",
-                          "Vibrate", g_variant_new ("(sa(du))", "neo.Clock", &pattern), NULL,
+                          "Vibrate", g_variant_new ("(sa(du))", "vibeos.Clock", &pattern), NULL,
                           G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 }
 

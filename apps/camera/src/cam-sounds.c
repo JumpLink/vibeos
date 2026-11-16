@@ -49,7 +49,7 @@ get_player (CamSound sound)
   g_autofree char *path = NULL;
   g_autofree char *uri = NULL;
   GstElement *player, *sink;
-  const char *dir = g_getenv ("NEO_CAMERA_DATADIR");
+  const char *dir = g_getenv ("VIBEOS_CAMERA_DATADIR");
 
   if (players[sound])
     return players[sound];
@@ -69,7 +69,7 @@ get_player (CamSound sound)
   path = g_build_filename (dir ? dir : DATADIR, "sounds", files[sound], NULL);
   uri = g_filename_to_uri (path, NULL, NULL);
   g_object_set (player, "uri", uri, NULL);
-  if (g_strcmp0 (g_getenv ("NEO_CAMERA_SOUND_MUTE"), "1") == 0)
+  if (g_strcmp0 (g_getenv ("VIBEOS_CAMERA_SOUND_MUTE"), "1") == 0)
     g_object_set (player, "mute", TRUE, "volume", 0.0, NULL);
   bus = gst_element_get_bus (player);
   gst_bus_add_watch (bus, on_message, player);
@@ -80,7 +80,7 @@ get_player (CamSound sound)
 gboolean
 cam_sounds_play (CamSound sound, gboolean setting)
 {
-  gboolean muted = g_strcmp0 (g_getenv ("NEO_CAMERA_SOUND_MUTE"), "1") == 0;
+  gboolean muted = g_strcmp0 (g_getenv ("VIBEOS_CAMERA_SOUND_MUTE"), "1") == 0;
   GstElement *player;
 
   /* the muted test plays whatever the profile says */

@@ -291,7 +291,7 @@ sms_client_init (SmsClient *self)
 {
   g_autoptr(GError) error = NULL;
 
-  self->store_path = g_build_filename (g_get_user_data_dir (), "neo-messaging", "bugle_db", NULL);
+  self->store_path = g_build_filename (g_get_user_data_dir (), "vibeos-messaging", "bugle_db", NULL);
   self->bus = g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, &error);
   if (!self->bus)
     {

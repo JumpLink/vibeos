@@ -1,5 +1,5 @@
 /* Compass: which way the phone points, on a drawn compass rose, and where you are. The C port of the GJS
- * neo.Compass, same dial.
+ * vibeos.Compass, same dial.
  *
  * The heading comes from iio-sensor-proxy (net.hadess.SensorProxy.Compass, fed by the sensor hub's
  * bcm4775-compass); the dial turns so its N points at magnetic north. The position comes from GeoClue.
@@ -11,7 +11,7 @@
 #include <adwaita.h>
 #include <math.h>
 
-#define APP_ID      "neo.Compass"
+#define APP_ID      "vibeos.Compass"
 #define SENSOR_BUS  "net.hadess.SensorProxy"
 #define SENSOR_PATH "/net/hadess/SensorProxy/Compass"
 #define SENSOR_IF   "net.hadess.SensorProxy.Compass"

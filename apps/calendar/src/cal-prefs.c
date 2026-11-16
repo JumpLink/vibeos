@@ -66,7 +66,7 @@ cal_pref_row (const char *icon_name, guint32 color, const char *title, const cha
   gtk_label_set_xalign (GTK_LABEL (pref.title), 0);
   gtk_label_set_wrap (GTK_LABEL (pref.title), TRUE);
   gtk_widget_add_css_class (pref.title, "cal-pref-title");
-  neo_label_set_font_padding (pref.title, 16);
+  vibeos_label_set_font_padding (pref.title, 16);
   gtk_box_append (GTK_BOX (texts), pref.title);
   pref.summary = gtk_label_new (summary);
   gtk_label_set_xalign (GTK_LABEL (pref.summary), 0);
@@ -86,8 +86,8 @@ cal_pref_row (const char *icon_name, guint32 color, const char *title, const cha
       pref.end = end;
     }
   gtk_widget_add_css_class (box, "cal-pref");
-  pref.row = neo_pressable_new (box);
-  neo_pressable_set_ripple (NEO_PRESSABLE (pref.row), NEO_RIPPLE_BOUNDED, 0);
+  pref.row = vibeos_pressable_new (box);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (pref.row), VIBEOS_RIPPLE_BOUNDED, 0);
   gtk_accessible_update_property (GTK_ACCESSIBLE (pref.row), GTK_ACCESSIBLE_PROPERTY_LABEL, title, -1);
   return pref;
 }
@@ -121,7 +121,7 @@ cal_pref_category (const char *icon_name, const char *title)
   gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
   gtk_widget_set_hexpand (label, TRUE);
   gtk_widget_add_css_class (label, "cal-pref-category-title");
-  neo_label_set_font_padding (label, 14);
+  vibeos_label_set_font_padding (label, 14);
   gtk_box_append (GTK_BOX (box), label);
   gtk_widget_add_css_class (box, "cal-pref-category");
   gtk_accessible_update_property (GTK_ACCESSIBLE (box), GTK_ACCESSIBLE_PROPERTY_LABEL, title, -1);
@@ -160,7 +160,7 @@ cal_pref_page (GtkWidget *window, const char *title, GtkWidget **list)
 /* --- a switch row: a tap anywhere on the row toggles it */
 
 void
-cal_pref_toggle_row (NeoPressable *row, CalCompatSwitch *toggle)
+cal_pref_toggle_row (VibeosPressable *row, CalCompatSwitch *toggle)
 {
   cal_compat_switch_set_active (toggle, !cal_compat_switch_get_active (toggle));
 }
@@ -249,7 +249,7 @@ on_list_chosen (int index, gpointer data)
 }
 
 static void
-on_list_row (NeoPressable *row, CalListPref *list)
+on_list_row (VibeosPressable *row, CalListPref *list)
 {
   cal_list_dialog (GTK_WIDGET (row), list->title, (const char *const *) list->labels->pdata, (int) list->labels->len,
                    list_index (list), on_list_chosen, list);

@@ -3,7 +3,7 @@
  * the light and black sheets. */
 
 /* the dialog: nearly square corners, no shadow */
-neo-dialog-scrim.cal-alerts > .neo-dialog.flush {
+vibeos-dialog-scrim.cal-alerts > .vibeos-dialog.flush {
   background-color: #282828;
   border-radius: 2px;
 }
@@ -73,7 +73,7 @@ neo-dialog-scrim.cal-alerts > .neo-dialog.flush {
 }
 
 /* --- the Snooze delay dialog: a time picker with a title. The picker dialog is flush (no card padding), so the
- * title takes a titled dialog's own margins, as libneo's other dialog titles */
-.cal-snooze-dialog .neo-dialog.flush .neo-dialog-title {
+ * title takes a titled dialog's own margins, as libvibeos's other dialog titles */
+.cal-snooze-dialog .vibeos-dialog.flush .vibeos-dialog-title {
   margin: 24px 24px 16px 24px;
 }

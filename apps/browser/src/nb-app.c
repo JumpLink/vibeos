@@ -65,7 +65,7 @@ on_filter_saved (GObject *src, GAsyncResult *res, gpointer data)
   WebKitUserContentFilter *f = webkit_user_content_filter_store_save_finish (WEBKIT_USER_CONTENT_FILTER_STORE (src),
                                                                              res, &error);
   if (!f) {
-    g_message ("neo-browser: ad filter not compiled: %s", error->message);
+    g_message ("vibeos-browser: ad filter not compiled: %s", error->message);
     return;
   }
   /* the bundled copy: fetch again soon */
@@ -93,9 +93,9 @@ on_filter_fetched (GObject *src, GAsyncResult *res, gpointer data)
   g_autoptr (GBytes) bytes = soup_session_send_and_read_finish (SOUP_SESSION (src), res, &error);
 
   if (!bytes)
-    g_message ("neo-browser: ad filter not fetched: %s", error->message);
+    g_message ("vibeos-browser: ad filter not fetched: %s", error->message);
   else if (!msg || soup_message_get_status (msg) != 200 || g_bytes_get_size (bytes) < 10000)
-    g_message ("neo-browser: ad filter not fetched: %zu bytes", g_bytes_get_size (bytes));
+    g_message ("vibeos-browser: ad filter not fetched: %zu bytes", g_bytes_get_size (bytes));
   else
     compile_filter (bytes, TRUE);
   g_object_unref (src);
@@ -651,7 +651,7 @@ nb_add_shortcut (const char *name, const char *url, GdkTexture *favicon, GError 
   g_autofree char *file = g_build_filename (apps, file_name, NULL);
   g_autofree char *q_id = exec_quote (id);
   g_autofree char *q_url = exec_quote (url);
-  const char *icon_value = "neo.Browser";
+  const char *icon_value = "vibeos.Browser";
 
   g_mkdir_with_parents (icons, 0700);
   g_mkdir_with_parents (apps, 0755);
@@ -661,13 +661,13 @@ nb_add_shortcut (const char *name, const char *url, GdkTexture *favicon, GError 
   g_autoptr (GKeyFile) kf = g_key_file_new ();
   g_key_file_set_string (kf, G_KEY_FILE_DESKTOP_GROUP, G_KEY_FILE_DESKTOP_KEY_TYPE, "Application");
   g_key_file_set_string (kf, G_KEY_FILE_DESKTOP_GROUP, G_KEY_FILE_DESKTOP_KEY_NAME, name && *name ? name : url);
-  g_autofree char *exec = g_strdup_printf ("neo-browser --shortcut=%s %s", q_id, q_url);
+  g_autofree char *exec = g_strdup_printf ("vibeos-browser --shortcut=%s %s", q_id, q_url);
   g_key_file_set_string (kf, G_KEY_FILE_DESKTOP_GROUP, G_KEY_FILE_DESKTOP_KEY_EXEC, exec);
   g_key_file_set_string (kf, G_KEY_FILE_DESKTOP_GROUP, G_KEY_FILE_DESKTOP_KEY_ICON, icon_value);
   g_key_file_set_string (kf, G_KEY_FILE_DESKTOP_GROUP, G_KEY_FILE_DESKTOP_KEY_STARTUP_WM_CLASS, NB_APP_ID);
   g_key_file_set_boolean (kf, G_KEY_FILE_DESKTOP_GROUP, G_KEY_FILE_DESKTOP_KEY_TERMINAL, FALSE);
-  g_key_file_set_string (kf, G_KEY_FILE_DESKTOP_GROUP, "X-NeoBrowser-Shortcut", id);
-  g_key_file_set_string (kf, G_KEY_FILE_DESKTOP_GROUP, "X-NeoBrowser-Url", url);
+  g_key_file_set_string (kf, G_KEY_FILE_DESKTOP_GROUP, "X-VibeosBrowser-Shortcut", id);
+  g_key_file_set_string (kf, G_KEY_FILE_DESKTOP_GROUP, "X-VibeosBrowser-Url", url);
   g_key_file_set_string (kf, G_KEY_FILE_DESKTOP_GROUP, "X-Purism-FormFactor", "Workstation;Mobile;");
   return g_key_file_save_to_file (kf, file, error);
 }
@@ -688,9 +688,9 @@ nb_list_shortcuts (void)
     if (!g_key_file_load_from_file (kf, path, G_KEY_FILE_NONE, NULL))
       continue;
     NbShortcut *s = g_new0 (NbShortcut, 1);
-    s->id = g_key_file_get_string (kf, G_KEY_FILE_DESKTOP_GROUP, "X-NeoBrowser-Shortcut", NULL);
+    s->id = g_key_file_get_string (kf, G_KEY_FILE_DESKTOP_GROUP, "X-VibeosBrowser-Shortcut", NULL);
     s->name = g_key_file_get_locale_string (kf, G_KEY_FILE_DESKTOP_GROUP, G_KEY_FILE_DESKTOP_KEY_NAME, NULL, NULL);
-    s->url = g_key_file_get_string (kf, G_KEY_FILE_DESKTOP_GROUP, "X-NeoBrowser-Url", NULL);
+    s->url = g_key_file_get_string (kf, G_KEY_FILE_DESKTOP_GROUP, "X-VibeosBrowser-Url", NULL);
     s->desktop_file = g_steal_pointer (&path);
     if (s->id && s->name)
       g_ptr_array_add (out, s);

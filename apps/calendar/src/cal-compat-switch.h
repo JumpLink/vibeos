@@ -1,7 +1,7 @@
 /* CalCompatSwitch: the settings screens' switch, a thin track under a bigger thumb (cal-compat-switch.c); not the
  * editor's switch (CalMaterialSwitch).
  *
- * A libneo candidate: any settings screen of this style needs it. */
+ * A libvibeos candidate: any settings screen of this style needs it. */
 #pragma once
 
 #include <gtk/gtk.h>

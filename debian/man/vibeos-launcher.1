@@ -1,0 +1,16 @@
+.TH VIBEOS-LAUNCHER 1 "2026-11-16" "vibeos 0.1.0" "VibeOS"
+.SH NAME
+vibeos-launcher \- the VibeOS home screen of VibeOS
+.SH SYNOPSIS
+.B vibeos-launcher
+.SH DESCRIPTION
+VibeOS is a Wayland client drawn with Vulkan: home pages with a dock, the app drawer, widgets, icon packs and parallax wallpapers. It is started by the vibeos GNOME Shell extension, which makes its window the desktop, and is not meant to be run by hand. Its settings are the GSettings schema vibeos.Shell.
+.SH ENVIRONMENT
+.TP
+.B VIBEOS_DENSITY
+Device pixels per Android dp, instead of the compositor's scale.
+.TP
+.B VIBEOS_WINDOWED
+Run in a normal window rather than full screen (for development).
+.SH SEE ALSO
+gnome-shell(1)

@@ -1,7 +1,7 @@
-// The always-on display, and the panel's low power mode under it: Phosh's AOD (Neo's aod.c) as the owner signed it
+// The always-on display, and the panel's low power mode under it: Phosh's AOD (VibeOS's aod.c) as the owner signed it
 // off, moved into the shell.
 //
-// While the screen is "off" with neo.Phone aod on, power.js's black layer shows this: the date, one icon per app
+// While the screen is "off" with vibeos.Shell aod on, power.js's black layer shows this: the date, one icon per app
 // with notifications, and the battery at the bottom where the lock screen says it charges, dim grey on black, which costs next to nothing on OLED. With a panel that
 // keeps a clock of its own (the S10e's S6E3FA7: a `self_clock` attribute next to `lpm`), the AOD is Samsung's: once
 // it shows, the panel goes into its low power mode and draws analog hands over the dial drawn here, ticking by itself
@@ -117,7 +117,7 @@ export class Panel {
                 }
                 return true;
             } catch (e) {
-                log(`gnome-phone: ${path} <- ${value}: ${e.message}`);
+                log(`vibeos: ${path} <- ${value}: ${e.message}`);
                 return false;
             }
         });
@@ -192,7 +192,7 @@ class Aod extends St.BoxLayout {
     constructor(panel, state) {
         const monitor = Main.layoutManager.primaryMonitor;
         super({
-            name: 'gnomePhoneAod',
+            name: 'vibeosAod',
             orientation: Clutter.Orientation.VERTICAL,
             width: monitor.width,
             height: monitor.height,
@@ -457,7 +457,7 @@ class Aod extends St.BoxLayout {
         this._running = false;
         this._showPanelClock(false);
         this._shift(0, 0);
-        log(`gnome-phone: the panel's clock is off, showing the time (${this._clockFailures} of ${CLOCK_TRIES})`);
+        log(`vibeos: the panel's clock is off, showing the time (${this._clockFailures} of ${CLOCK_TRIES})`);
     }
 
     destroy() {

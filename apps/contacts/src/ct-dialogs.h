@@ -1,4 +1,4 @@
-/* The Contacts dialogs, on libneo's NeoDialog (the scrim, the card, Back and a tap outside closing
+/* The Contacts dialogs, on libvibeos's VibeosDialog (the scrim, the card, Back and a tap outside closing
  * it), in its "flush" form so that the card is as wide as the content: CT_DIALOG_FRAMEWORK has a fixed width,
  * CT_DIALOG_APPCOMPAT nearly the screen's.
  *

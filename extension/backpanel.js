@@ -318,7 +318,7 @@ class PanelEffect extends Clutter.ShaderEffect {
 class BackPanel {
     constructor() {
         // the actor paints a plain rectangle into the effect's texture; the effect draws the panel over it
-        this.actor = new Clutter.Actor({name: 'gnomePhoneBackPanel', width: PANEL_W / SCALE, height: PANEL_H / SCALE,
+        this.actor = new Clutter.Actor({name: 'vibeosBackPanel', width: PANEL_W / SCALE, height: PANEL_H / SCALE,
             visible: false, reactive: false, background_color: new Cogl.Color({red: 0, green: 0, blue: 0, alpha: 255})});
         this._effect = new PanelEffect();
         this.actor.add_effect(this._effect);

@@ -1,4 +1,4 @@
-/* The Contacts styles, over libneo's (neo.css). These are the dark colours the screens render, not a palette's. Sizes
+/* The Contacts styles, over libvibeos's (vibeos.css). These are the dark colours the screens render, not a palette's. Sizes
  * are GTK px; most of the geometry is set in C, so this file is mainly colours, fonts and backgrounds. The weights are
  * Bold text's: regular 700, medium 800, bold 900. */
 
@@ -146,7 +146,7 @@ ct-page.translucent {
   color: #959595;
 }
 
-/* the fill and its shadow are the pressable's own (neo_pressable_set_fill) */
+/* the fill and its shadow are the pressable's own (vibeos_pressable_set_fill) */
 .ct-fab {
   min-width: 56px;
   min-height: 56px;
@@ -649,7 +649,7 @@ text.ct-ed-text {
   padding: 0 16px;
   min-height: 48px;
   border-radius: 28px;
-  background-color: @neo_surface_container_high;
+  background-color: @vibeos_surface_container_high;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
@@ -661,7 +661,7 @@ text.ct-ed-text {
   padding: 12px 0;
   font-size: 14px;
   font-weight: 700;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .ct-snackbar {

@@ -187,7 +187,7 @@ stopwatch_save (const Stopwatch *stopwatch, const char *path, GError **error)
   g_key_file_set_comment (file, NULL, NULL,
                           " The clock's stopwatch. Times in ms: last-start on the clock since boot of the boot named\n"
                           " here, last-start-wall on the wall clock (Unix); laps: the total at the end of each.\n"
-                          " neo-clock-alarms keeps this file: edit it only while that is stopped.", NULL);
+                          " vibeos-clock-alarms keeps this file: edit it only while that is stopped.", NULL);
   g_key_file_set_string (file, "stopwatch", "boot", stopwatch->boot_id);
   g_key_file_set_integer (file, "stopwatch", "state", stopwatch->state);
   g_key_file_set_int64 (file, "stopwatch", "last-start", stopwatch->last_start);

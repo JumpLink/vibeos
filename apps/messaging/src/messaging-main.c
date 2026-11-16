@@ -1,10 +1,10 @@
-/* neo-messaging: the Messaging app, LineageOS's Messaging (Bugle) rebuilt in GTK 4.
+/* vibeos-messaging: the Messaging app, LineageOS's Messaging (Bugle) rebuilt in GTK 4.
  *
- * neo.Messaging, D-Bus activatable: the launcher starts it, an sms: or smsto: link opens the conversation with
+ * vibeos.Messaging, D-Bus activatable: the launcher starts it, an sms: or smsto: link opens the conversation with
  * that number (and the link's body in its field), and the SMS service's notifications open it at a conversation
  * ("open-conversation", its id) or at the list ("show-conversations").
  *
- * The messages themselves are not here: the SMS service (neo-messaging-sms) receives and sends them, keeps them in
+ * The messages themselves are not here: the SMS service (vibeos-messaging-sms) receives and sends them, keeps them in
  * its database and posts the notifications, whether or not this app runs. The app reads the database and asks the
  * service for every change. */
 #include "messaging-types.h"
@@ -13,15 +13,15 @@
 #include <glib/gi18n.h>
 #include <locale.h>
 #include <string.h>
-#include <neo.h>
+#include <vibeos.h>
 
 static void
 load_style (void)
 {
   GtkCssProvider *provider = gtk_css_provider_new ();
 
-  gtk_css_provider_load_from_resource (provider, "/neo/Messaging/messaging.css");
-  /* over libneo's, which is at APPLICATION priority too: the later provider wins at equal priority */
+  gtk_css_provider_load_from_resource (provider, "/vibeos/Messaging/messaging.css");
+  /* over libvibeos's, which is at APPLICATION priority too: the later provider wins at equal priority */
   gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (provider),
                                               GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
   g_object_unref (provider);
@@ -30,7 +30,7 @@ load_style (void)
 static void
 on_startup (GApplication *app, gpointer data)
 {
-  neo_init ();
+  vibeos_init ();
   load_style ();
 }
 

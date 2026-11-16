@@ -1,8 +1,8 @@
-/* CalMaterialSwitch (cal-material-switch.h): libneo's NeoSwitch without icons, over the app's palette. */
+/* CalMaterialSwitch (cal-material-switch.h): libvibeos's VibeosSwitch without icons, over the app's palette. */
 #include "cal-material-switch.h"
 #include "cal-colors.h"
 
-#include <neo.h>
+#include <vibeos.h>
 
 #define TRACK_W        52
 #define TRACK_H        32
@@ -17,7 +17,7 @@ struct _CalMaterialSwitch {
   GtkWidget parent;
   gboolean active;
   double position;              /* 0 off … 1 on */
-  NeoAnim *slide;
+  VibeosAnim *slide;
 };
 
 G_DEFINE_FINAL_TYPE (CalMaterialSwitch, cal_material_switch, GTK_TYPE_WIDGET)
@@ -50,9 +50,9 @@ cal_material_switch_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   double size, travel, cx, cy;
 
   outline_on.alpha = 0;
-  track = neo_rgba_mix (&track_off, &track_on, t);
-  outline = neo_rgba_mix (&outline_off, &outline_on, t);
-  thumb = neo_rgba_mix (&thumb_off, &thumb_on, t);
+  track = vibeos_rgba_mix (&track_off, &track_on, t);
+  outline = vibeos_rgba_mix (&outline_off, &outline_on, t);
+  thumb = vibeos_rgba_mix (&thumb_off, &thumb_on, t);
   fill_round (snapshot, x, y, TRACK_W, TRACK_H, &track);
   if (outline.alpha > 0)
     {
@@ -79,7 +79,7 @@ cal_material_switch_measure (GtkWidget *widget, GtkOrientation orientation, int 
 }
 
 static void
-on_slide (NeoAnim *anim, double value, gpointer data)
+on_slide (VibeosAnim *anim, double value, gpointer data)
 {
   CalMaterialSwitch *self = data;
 
@@ -110,7 +110,7 @@ cal_material_switch_set_property (GObject *object, guint id, const GValue *value
 static void
 cal_material_switch_dispose (GObject *object)
 {
-  g_clear_pointer (&CAL_MATERIAL_SWITCH (object)->slide, neo_anim_free);
+  g_clear_pointer (&CAL_MATERIAL_SWITCH (object)->slide, vibeos_anim_free);
   G_OBJECT_CLASS (cal_material_switch_parent_class)->dispose (object);
 }
 
@@ -125,7 +125,7 @@ cal_material_switch_class_init (CalMaterialSwitchClass *klass)
   object_class->dispose = cal_material_switch_dispose;
   widget_class->snapshot = cal_material_switch_snapshot;
   widget_class->measure = cal_material_switch_measure;
-  gtk_widget_class_set_css_name (widget_class, "neo-switch");
+  gtk_widget_class_set_css_name (widget_class, "vibeos-switch");
   gtk_widget_class_set_accessible_role (widget_class, GTK_ACCESSIBLE_ROLE_SWITCH);
   props[PROP_ACTIVE] = g_param_spec_boolean ("active", NULL, NULL, FALSE,
                                              G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY | G_PARAM_STATIC_STRINGS);
@@ -137,9 +137,9 @@ cal_material_switch_init (CalMaterialSwitch *self)
 {
   GtkGesture *click = gtk_gesture_click_new ();
 
-  self->slide = neo_anim_new (GTK_WIDGET (self), on_slide, self);
+  self->slide = vibeos_anim_new (GTK_WIDGET (self), on_slide, self);
   /* a pressable around it leaves its taps to it */
-  g_object_set_data (G_OBJECT (self), "neo-tappable", GINT_TO_POINTER (TRUE));
+  g_object_set_data (G_OBJECT (self), "vibeos-tappable", GINT_TO_POINTER (TRUE));
   g_signal_connect (click, "released", G_CALLBACK (on_released), self);
   gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (click));
 }
@@ -164,7 +164,7 @@ cal_material_switch_set_active (CalMaterialSwitch *self, gboolean active)
     return;
   self->active = active;
   /* from where the thumb is, accelerate-decelerate */
-  neo_anim_start (self->slide, self->position, active, TOGGLE_MS, 0, SPONGY_ACCELERATE_DECELERATE);
+  vibeos_anim_start (self->slide, self->position, active, TOGGLE_MS, 0, SPONGY_ACCELERATE_DECELERATE);
   gtk_accessible_update_state (GTK_ACCESSIBLE (self), GTK_ACCESSIBLE_STATE_CHECKED,
                                active ? GTK_ACCESSIBLE_TRISTATE_TRUE : GTK_ACCESSIBLE_TRISTATE_FALSE, -1);
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_ACTIVE]);
@@ -276,7 +276,7 @@ cal_check_box_init (CalCheckBox *self)
 {
   GtkGesture *click = gtk_gesture_click_new ();
 
-  g_object_set_data (G_OBJECT (self), "neo-tappable", GINT_TO_POINTER (TRUE));
+  g_object_set_data (G_OBJECT (self), "vibeos-tappable", GINT_TO_POINTER (TRUE));
   g_signal_connect (click, "released", G_CALLBACK (on_box_released), self);
   gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (click));
 }

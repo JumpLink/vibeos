@@ -3,7 +3,7 @@
  * text from one is kept, archived, and not notified ("You'll continue to receive messages from this number but won't be
  * notified anymore").
  *
- * It is a small SQLite database, $XDG_DATA_HOME/neo-phone/blocked_numbers.db, with the columns of Android's
+ * It is a small SQLite database, $XDG_DATA_HOME/vibeos-phone/blocked_numbers.db, with the columns of Android's
  * blocked-numbers table. Every process that uses it opens it itself; a change made by one comes to the others through
  * a file monitor, as "changed". */
 #pragma once

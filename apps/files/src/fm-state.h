@@ -1,6 +1,6 @@
 /* What the app remembers besides its settings: the bookmarks
- * ($XDG_CONFIG_HOME/neo-files/bookmarks.ini), and the folders visited and the last-visited locations
- * ($XDG_STATE_HOME/neo-files/state.ini). Every change is written at once. No GTK: the tests link it alone. */
+ * ($XDG_CONFIG_HOME/vibeos-files/bookmarks.ini), and the folders visited and the last-visited locations
+ * ($XDG_STATE_HOME/vibeos-files/state.ini). Every change is written at once. No GTK: the tests link it alone. */
 #pragma once
 
 #include <gio/gio.h>

@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=vibeos.Dialer.Calls
+Exec=@bindir@/vibeos-dialer-calls
+SystemdService=vibeos-dialer-calls.service

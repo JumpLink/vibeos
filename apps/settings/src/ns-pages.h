@@ -1,4 +1,4 @@
-/* Neo Settings' own pages; each pushes itself onto the navigation. */
+/* VibeOS Settings' own pages; each pushes itself onto the navigation. */
 #pragma once
 
 #include <gtk/gtk.h>
@@ -34,7 +34,7 @@ void ns_page_apps (GtkWidget *row, gpointer data);
 void ns_page_default_apps (GtkWidget *row, gpointer data);
 void ns_page_app (const char *id);
 
-/* ns-shell.c: the lock screen (gnome-phone's keyguard), the on-screen keyboard (GNOME Shell's) */
+/* ns-shell.c: the lock screen (VibeOS's keyguard), the on-screen keyboard (GNOME Shell's) */
 void ns_page_lock_screen (GtkWidget *row, gpointer data);
 void ns_page_keyboard (GtkWidget *row, gpointer data);
 

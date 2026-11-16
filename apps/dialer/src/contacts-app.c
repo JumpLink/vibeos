@@ -5,7 +5,7 @@
 #include <glib/gi18n.h>
 #include <string.h>
 
-#define CONTACTS_APP_ID "neo.Contacts"
+#define CONTACTS_APP_ID "vibeos.Contacts"
 #define OTHER_APP_ID    "org.gnome.Contacts"    /* another Mobian phone's: it opens at its list */
 
 gboolean
@@ -50,16 +50,16 @@ launch (GtkWidget *from, const char *app_id)
 
 /* no Contacts app of ours: another phone's, at its list, else the Dialer's toast */
 static void
-open_other (GtkWidget *from, NeoSnackbar *snackbar)
+open_other (GtkWidget *from, VibeosSnackbar *snackbar)
 {
   if (app_action_installed (OTHER_APP_ID))
     launch (from, OTHER_APP_ID);
   else if (snackbar)
-    neo_snackbar_show (snackbar, _("No contacts app available"), NULL, NULL, NULL, NEO_SNACKBAR_SHORT);
+    vibeos_snackbar_show (snackbar, _("No contacts app available"), NULL, NULL, NULL, VIBEOS_SNACKBAR_SHORT);
 }
 
 void
-contacts_app_open (GtkWidget *from, NeoSnackbar *snackbar)
+contacts_app_open (GtkWidget *from, VibeosSnackbar *snackbar)
 {
   if (contacts_app_installed ())
     launch (from, CONTACTS_APP_ID);
@@ -68,7 +68,7 @@ contacts_app_open (GtkWidget *from, NeoSnackbar *snackbar)
 }
 
 void
-contacts_app_view (GtkWidget *from, const char *uid, NeoSnackbar *snackbar)
+contacts_app_view (GtkWidget *from, const char *uid, VibeosSnackbar *snackbar)
 {
   if (!contacts_app_installed () || !uid || !*uid)
     {

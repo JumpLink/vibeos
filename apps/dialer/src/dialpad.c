@@ -3,7 +3,7 @@
 
 #include <glib/gi18n.h>
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define DIGITS_HEIGHT   60      /* the field with the typed number */
 #define DIGITS_SIZE     34      /* the typed number, shrunk as far as DIGITS_MIN_SIZE to fit */
@@ -41,7 +41,7 @@ static PangoLayout *
 gsf_layout (GtkWidget *widget, const char *text, double size)
 {
   PangoLayout *layout = gtk_widget_create_pango_layout (widget, text);
-  g_autoptr(PangoFontDescription) font = pango_font_description_from_string ("Google Sans Flex, Neo Roboto");
+  g_autoptr(PangoFontDescription) font = pango_font_description_from_string ("Google Sans Flex, VibeOS Roboto");
 
   /* 700, not 400: the phone's Bold text setting is on */
   pango_font_description_set_absolute_size (font, size * PANGO_SCALE);
@@ -61,7 +61,7 @@ struct _DialpadKey
   DialerDialpad *pad;           /* the dialpad it is on, which says what a key did */
   char c;
   PangoLayout *number, *letters;
-  NeoRipple ripple;
+  VibeosRipple ripple;
   gboolean down;
   guint long_press;
 };
@@ -120,10 +120,10 @@ dialpad_key_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   double group, top;
 
   /* a key's ripple, faint black: the dialpad is not darkened, so neither is its ripple */
-  if (neo_ripple_is_active (&self->ripple))
+  if (vibeos_ripple_is_active (&self->ripple))
     {
       gtk_snapshot_push_clip (snapshot, &box);
-      neo_ripple_snapshot (&self->ripple, snapshot, &box, &(GdkRGBA) { 0, 0, 0, 0.06 });
+      vibeos_ripple_snapshot (&self->ripple, snapshot, &box, &(GdkRGBA) { 0, 0, 0, 0.06 });
       gtk_snapshot_pop (snapshot);
     }
 
@@ -148,7 +148,7 @@ dialpad_key_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   top += number.height + NUMBER_GAP;
   if (self->c == '1')
     /* the voicemail glyph, under a 1 px spacer that lines it up with the letters of the keys beside it */
-    neo_snapshot_icon (snapshot, widget, "dialer-voicemail-symbolic", cx - VOICEMAIL_SIZE / 2.0, top + 1,
+    vibeos_snapshot_icon (snapshot, widget, "dialer-voicemail-symbolic", cx - VOICEMAIL_SIZE / 2.0, top + 1,
                        VOICEMAIL_SIZE, &secondary);
   else
     draw_ink (snapshot, self->letters, &letters, cx, top, &secondary);
@@ -168,7 +168,7 @@ key_up (DialpadKey *self)
   if (!self->down)
     return;
   self->down = FALSE;
-  neo_ripple_release (&self->ripple);
+  vibeos_ripple_release (&self->ripple);
   pad_key_up (self->pad, self->c);
 }
 
@@ -189,7 +189,7 @@ on_key_pressed (GtkGestureClick *gesture, int n_press, double x, double y, Dialp
   if (self->down)
     return;
   self->down = TRUE;
-  neo_ripple_press (&self->ripple, x, y);
+  vibeos_ripple_press (&self->ripple, x, y);
   g_clear_handle_id (&self->long_press, g_source_remove);
   self->long_press = g_timeout_add (LONG_PRESS_MS, on_long_press, self);
   pad_key_down (self->pad, self->c);
@@ -213,7 +213,7 @@ dialpad_key_dispose (GObject *object)
   DialpadKey *self = DIALPAD_KEY (object);
 
   g_clear_handle_id (&self->long_press, g_source_remove);
-  neo_ripple_clear (&self->ripple);
+  vibeos_ripple_clear (&self->ripple);
   g_clear_object (&self->number);
   g_clear_object (&self->letters);
   G_OBJECT_CLASS (dialpad_key_parent_class)->dispose (object);
@@ -234,7 +234,7 @@ dialpad_key_class_init (DialpadKeyClass *klass)
 static void
 dialpad_key_init (DialpadKey *self)
 {
-  neo_ripple_init (&self->ripple, GTK_WIDGET (self));
+  vibeos_ripple_init (&self->ripple, GTK_WIDGET (self));
 }
 
 static GtkWidget *
@@ -274,7 +274,7 @@ struct _DialerDialpad
   GtkWidget *close, *overflow, *backspace;
   GString *digits;
   PangoLayout *digits_layout;
-  NeoAnim *overflow_fade;
+  VibeosAnim *overflow_fade;
   double overflow_alpha;
 };
 
@@ -406,13 +406,13 @@ dialer_dialpad_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 /* ---- digits --------------------------------------------------------------------------------------------------- */
 
 static void
-on_overflow_fade (NeoAnim *anim, double value, gpointer data)
+on_overflow_fade (VibeosAnim *anim, double value, gpointer data)
 {
   DialerDialpad *self = data;
 
   self->overflow_alpha = value;
   /* faded out: gone at the end */
-  if (!neo_anim_is_running (anim) && value == 0)
+  if (!vibeos_anim_is_running (anim) && value == 0)
     gtk_widget_set_visible (self->overflow, FALSE);
   gtk_widget_queue_draw (GTK_WIDGET (self));
 }
@@ -424,12 +424,12 @@ update_overflow (DialerDialpad *self)
   gboolean show = self->mode == DIALPAD_DIALER && self->digits->len > 0;
   double to = show ? 1 : 0;
 
-  if (neo_anim_is_running (self->overflow_fade) ? neo_anim_get_to (self->overflow_fade) == to
+  if (vibeos_anim_is_running (self->overflow_fade) ? vibeos_anim_get_to (self->overflow_fade) == to
                                                 : self->overflow_alpha == to)
     return;
   if (show)
     gtk_widget_set_visible (self->overflow, TRUE);
-  neo_anim_start (self->overflow_fade, self->overflow_alpha, to, 300, 0, SPONGY_ACCELERATE_DECELERATE);
+  vibeos_anim_start (self->overflow_fade, self->overflow_alpha, to, 300, 0, SPONGY_ACCELERATE_DECELERATE);
 }
 
 static void
@@ -489,7 +489,7 @@ pad_key_long_pressed (DialerDialpad *self, char c)
 }
 
 static void
-on_backspace (NeoPressable *button, DialerDialpad *self)
+on_backspace (VibeosPressable *button, DialerDialpad *self)
 {
   if (self->digits->len == 0)
     return;
@@ -498,19 +498,19 @@ on_backspace (NeoPressable *button, DialerDialpad *self)
 }
 
 static void
-on_backspace_long (NeoPressable *button, DialerDialpad *self)
+on_backspace_long (VibeosPressable *button, DialerDialpad *self)
 {
   dialer_dialpad_set_digits (self, "");
 }
 
 static void
-on_close (NeoPressable *button, DialerDialpad *self)
+on_close (VibeosPressable *button, DialerDialpad *self)
 {
   g_signal_emit (self, signals[CLOSE], 0);
 }
 
 static void
-on_overflow (NeoPressable *button, DialerDialpad *self)
+on_overflow (VibeosPressable *button, DialerDialpad *self)
 {
   g_signal_emit (self, signals[OVERFLOW], 0, button);
 }
@@ -520,12 +520,12 @@ static GtkWidget *
 row_button (DialerDialpad *self, const char *icon_name, const char *description)
 {
   GtkWidget *image = gtk_image_new_from_icon_name (icon_name);
-  GtkWidget *button = neo_pressable_new (image);
+  GtkWidget *button = vibeos_pressable_new (image);
 
   gtk_image_set_pixel_size (GTK_IMAGE (image), 24);
   gtk_widget_add_css_class (image, "dialpad-icon");
-  neo_pressable_set_ripple (NEO_PRESSABLE (button), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (button), &(GdkRGBA) { 0, 0, 0, 0.06 });
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (button), &(GdkRGBA) { 0, 0, 0, 0.06 });
   gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, description, -1);
   gtk_widget_set_parent (button, GTK_WIDGET (self));
   return button;
@@ -541,7 +541,7 @@ dialer_dialpad_dispose (GObject *object)
 
   while ((child = gtk_widget_get_first_child (GTK_WIDGET (self))))
     gtk_widget_unparent (child);
-  g_clear_pointer (&self->overflow_fade, neo_anim_free);
+  g_clear_pointer (&self->overflow_fade, vibeos_anim_free);
   g_clear_object (&self->digits_layout);
   if (self->digits)
     g_string_free (self->digits, TRUE);
@@ -578,7 +578,7 @@ dialer_dialpad_init (DialerDialpad *self)
 {
   self->digits = g_string_new (NULL);
   self->digits_layout = gsf_layout (GTK_WIDGET (self), "", DIGITS_SIZE);
-  self->overflow_fade = neo_anim_new (GTK_WIDGET (self), on_overflow_fade, self);
+  self->overflow_fade = vibeos_anim_new (GTK_WIDGET (self), on_overflow_fade, self);
 }
 
 GtkWidget *

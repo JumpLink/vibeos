@@ -1,4 +1,4 @@
-/* Neo Settings: the phone's settings app, One UI style, in C and GTK4. The main menu groups everything the way a
+/* VibeOS Settings: the phone's settings app, One UI style, in C and GTK4. The main menu groups everything the way a
  * phone does; each entry is one of our own pages (ns-pages.h), or an app (Software). The services the pages
  * follow (NetworkManager, BlueZ, the sound server) are connected at start, in the background. */
 #include "ns-bt.h"
@@ -36,10 +36,10 @@ static const Entry entries[] = {
   { "preferences-desktop-wallpaper-symbolic", "pink", "Wallpaper and style", "Wallpapers • Parallax • Colour palette",
     "background accent dark theme", ns_page_wallpaper },
   { "view-app-grid-symbolic", "pink", "Home screen", "Grid • Icon size • Icon pack",
-    "launcher neo grid columns rows layout icon size pack shape app names labels drawer search", ns_page_home, NULL,
-    "neo.Phone" },
+    "launcher vibeos grid columns rows layout icon size pack shape app names labels drawer search", ns_page_home, NULL,
+    "vibeos.Shell" },
   { "system-lock-screen-symbolic", "blue", "Lock screen", "Screen lock type • Notifications",
-    "pattern pin swipe password unlock", ns_page_lock_screen, NULL, "neo.Phone" },
+    "pattern pin swipe password unlock", ns_page_lock_screen, NULL, "vibeos.Shell" },
   { NULL },
   { "security-high-symbolic", "purple", "Security and privacy", "Screen lock • Permissions • Usage",
     "password pin camera microphone history trash", ns_page_privacy },
@@ -189,7 +189,7 @@ main_page (void)
 
 /* ---- the app ---- */
 
-/* back (Alt+Left from Neo's edge swipe) and Escape: the page before, or out of Settings from the main menu */
+/* back (Alt+Left from VibeOS's edge swipe) and Escape: the page before, or out of Settings from the main menu */
 static gboolean
 go_back (GtkWidget *win, GVariant *args, gpointer nav)
 {
@@ -230,7 +230,7 @@ activate (GtkApplication *app, gpointer data)
     return;
   }
   GtkCssProvider *css = gtk_css_provider_new ();
-  gtk_css_provider_load_from_resource (css, "/neo/Settings/style.css");
+  gtk_css_provider_load_from_resource (css, "/vibeos/Settings/style.css");
   gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (css),
                                               GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
   g_object_unref (css);
@@ -270,7 +270,7 @@ startup (GApplication *app, gpointer data)
   g_task_run_in_thread (t, apps_thread);
 }
 
-/* a page by name: `--page home` (the launcher's "Settings" opens the home screen's), the panel names gnome-phone asks
+/* a page by name: `--page home` (the launcher's "Settings" opens the home screen's), the panel names vibeos asks
  * for (a quick settings tile's long press, the volume panel's and the notification shade's settings buttons) and
  * GNOME Settings' names, which other apps ask for. "network" is the flight mode tile's: Connections has the switch. */
 static const struct {
@@ -358,7 +358,7 @@ command_line (GApplication *app, GApplicationCommandLine *cl, gpointer data)
 int
 main (int argc, char **argv)
 {
-  g_autoptr (AdwApplication) app = adw_application_new ("neo.Settings", G_APPLICATION_HANDLES_COMMAND_LINE);
+  g_autoptr (AdwApplication) app = adw_application_new ("vibeos.Settings", G_APPLICATION_HANDLES_COMMAND_LINE);
   const GOptionEntry options[] = {
     { "page", 0, 0, G_OPTION_ARG_STRING, NULL, "Open a page: home, wallpaper, wifi, hotspot, bluetooth, power…", "PAGE" },
     { "app", 0, 0, G_OPTION_ARG_STRING, NULL, "Open an app's page (its desktop file id)", "ID" },

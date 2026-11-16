@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- the app's stylesheet and its icons (data/icons: the microphone is Material Symbols Rounded's, filled, as the
-     Round icon pack's glyphs; Copy and Clear are the Dialer's, the radio marks the Calendar's), where GtkApplication
+     gnome-free icon pack's glyphs; Copy and Clear are the Dialer's, the radio marks the Calendar's), where GtkApplication
      looks for icons: the resource base path + /icons -->
 <gresources>
-  <gresource prefix="/neo/Dictate">
+  <gresource prefix="/vibeos/Dictate">
     <file>dictate.css</file>
     <file alias="icons/scalable/actions/dictate-mic-symbolic.svg">icons/dictate-mic-symbolic.svg</file>
     <file alias="icons/scalable/actions/dictate-stop-symbolic.svg">icons/dictate-stop-symbolic.svg</file>

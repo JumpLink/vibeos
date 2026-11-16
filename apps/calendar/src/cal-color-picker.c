@@ -12,7 +12,7 @@
 
 #include <glib/gi18n.h>
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 #define COLUMNS 4
@@ -207,7 +207,7 @@ typedef struct {
   gpointer data;
   GArray *colors;               /* Color, as shown */
   guint32 calendar_color;       /* the event dialog's "default": raw */
-  NeoDialog *dialog;
+  VibeosDialog *dialog;
 } Picker;
 
 static void
@@ -223,7 +223,7 @@ picker_free (gpointer data, GClosure *closure)
 #define RESPONSE_SWATCH 100
 
 static void
-on_response (NeoDialog *dialog, int response, Picker *picker)
+on_response (VibeosDialog *dialog, int response, Picker *picker)
 {
   if (response == RESPONSE_DEFAULT)
     picker->chosen (picker->calendar_color, picker->data);
@@ -232,16 +232,16 @@ on_response (NeoDialog *dialog, int response, Picker *picker)
 }
 
 static void
-on_swatch (NeoPressable *pressable, Picker *picker)
+on_swatch (VibeosPressable *pressable, Picker *picker)
 {
-  neo_dialog_respond (picker->dialog, RESPONSE_SWATCH + GPOINTER_TO_INT (g_object_get_data (G_OBJECT (pressable),
+  vibeos_dialog_respond (picker->dialog, RESPONSE_SWATCH + GPOINTER_TO_INT (g_object_get_data (G_OBJECT (pressable),
                                                                                              "cal-index")));
 }
 
 static void
-on_default (NeoPressable *button, Picker *picker)
+on_default (VibeosPressable *button, Picker *picker)
 {
-  neo_dialog_respond (picker->dialog, RESPONSE_DEFAULT);
+  vibeos_dialog_respond (picker->dialog, RESPONSE_DEFAULT);
 }
 
 static gboolean
@@ -281,8 +281,8 @@ cell (Picker *picker, int index, guint32 current_display)
   g_signal_connect (click, "pressed", G_CALLBACK (on_swatch_pressed), swatch);
   g_signal_connect (click, "end", G_CALLBACK (on_swatch_released), swatch);
   gtk_widget_add_controller (swatch, GTK_EVENT_CONTROLLER (click));
-  pressable = neo_pressable_new (swatch);
-  neo_pressable_set_ripple (NEO_PRESSABLE (pressable), NEO_RIPPLE_NONE, 0);
+  pressable = vibeos_pressable_new (swatch);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (pressable), VIBEOS_RIPPLE_NONE, 0);
   gtk_widget_add_css_class (pressable, "cal-swatch");
   g_object_set_data (G_OBJECT (pressable), "cal-index", GINT_TO_POINTER (index));
   g_signal_connect (pressable, "clicked", G_CALLBACK (on_swatch), picker);
@@ -338,26 +338,26 @@ show (GtkWidget *parent, const char *title, const guint32 *colors, int n_colors,
   gtk_widget_add_css_class (scroll, "cal-palette-scroll");
   content = scroll;
 
-  picker->dialog = neo_dialog_new (title);
+  picker->dialog = vibeos_dialog_new (title);
   gtk_widget_add_css_class (GTK_WIDGET (picker->dialog), "cal-color-picker");
   if (event)
     {
       /* the neutral button sits at the start of the button bar, on its own */
       GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
       GtkWidget *buttons = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-      GtkWidget *reset = neo_text_button_new (_("Set to default calendar color"));
+      GtkWidget *reset = vibeos_text_button_new (_("Set to default calendar color"));
 
       gtk_box_append (GTK_BOX (box), scroll);
-      gtk_widget_add_css_class (buttons, "neo-dialog-buttons");
+      gtk_widget_add_css_class (buttons, "vibeos-dialog-buttons");
       gtk_widget_add_css_class (buttons, "cal-dialog-neutral");
       gtk_box_append (GTK_BOX (buttons), reset);
       g_signal_connect (reset, "clicked", G_CALLBACK (on_default), picker);
       gtk_box_append (GTK_BOX (box), buttons);
       content = box;
     }
-  neo_dialog_set_content (picker->dialog, content);
+  vibeos_dialog_set_content (picker->dialog, content);
   g_signal_connect_data (picker->dialog, "response", G_CALLBACK (on_response), picker, picker_free, 0);
-  neo_dialog_present (picker->dialog, parent);
+  vibeos_dialog_present (picker->dialog, parent);
 }
 
 void

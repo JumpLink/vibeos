@@ -3,7 +3,7 @@
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 
-const APP = 'neo.GnomePhone';
+const APP = 'vibeos.Shell';
 
 // a click, for a key or a tap: feedbackd's shortest event, through its profile as the on-screen keyboard's and the
 // back gesture's ticks

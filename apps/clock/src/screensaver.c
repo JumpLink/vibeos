@@ -6,7 +6,7 @@
 #include "clock-format.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define FADE_MS       3000      /* each fade, out or in */
 #define START_DELAY   5         /* ms before every fade-in */
@@ -31,7 +31,7 @@ struct _SaverView
   double x, y;                  /* the block's place in the window */
   double alpha, scale;
   float filter[4];              /* the dimming: what red, green, blue and alpha are multiplied by */
-  NeoAnim *anim;
+  VibeosAnim *anim;
   Phase phase;
   guint start, move, tick;      /* the first placing; the minute's move (3 s before it) and its new time (at it) */
 };
@@ -51,7 +51,7 @@ time_markup (SaverView *self, GDateTime *now)
   gboolean bold = g_settings_get_boolean (self->settings, "screensaver-bold-text");
   g_autofree char *ampm = NULL;
 
-  if (neo_clock_uses_24h ())
+  if (vibeos_clock_uses_24h ())
     return g_strdup_printf ("%02d:%02d", hour, minute);
   if (g_settings_get_boolean (self->settings, "screensaver-show-ampm"))
     ampm = g_strdup_printf ("\u200A<span size='40%%' weight='%d'>%s</span>",
@@ -77,7 +77,7 @@ show_time (SaverView *self)
   if (next > 0)
     {
       g_autoptr(GDateTime) when = g_date_time_new_from_unix_local (next);
-      g_autofree char *text = clock_alarm_time_text (when, neo_clock_uses_24h ());
+      g_autofree char *text = clock_alarm_time_text (when, vibeos_clock_uses_24h ());
       g_autofree char *alarm = g_utf8_strup (text, -1);
 
       gtk_label_set_text (GTK_LABEL (self->alarm), alarm);
@@ -169,7 +169,7 @@ fade_in_elsewhere (SaverView *self)
   gtk_widget_queue_allocate (GTK_WIDGET (self));
   dim (self);
   self->phase = IN;
-  neo_anim_start (self->anim, 0, 1, FADE_MS, START_DELAY, SPONGY_DECELERATE);
+  vibeos_anim_start (self->anim, 0, 1, FADE_MS, START_DELAY, SPONGY_DECELERATE);
 }
 
 static gboolean
@@ -184,7 +184,7 @@ fade_in_later (gpointer data)
 }
 
 static void
-on_anim (NeoAnim *anim, double value, gpointer data)
+on_anim (VibeosAnim *anim, double value, gpointer data)
 {
   SaverView *self = data;
 
@@ -205,7 +205,7 @@ on_anim (NeoAnim *anim, double value, gpointer data)
     }
   gtk_widget_queue_draw (GTK_WIDGET (self));
   /* gone: back somewhere else, from the main loop rather than from inside the animation's own last call */
-  if (!neo_anim_is_running (anim) && self->phase == OUT)
+  if (!vibeos_anim_is_running (anim) && self->phase == OUT)
     g_idle_add_full (G_PRIORITY_DEFAULT, fade_in_later, g_object_ref (self), g_object_unref);
 }
 
@@ -216,7 +216,7 @@ on_move (gpointer data)
   SaverView *self = data;
 
   self->phase = OUT;
-  neo_anim_start (self->anim, 0, 1, FADE_MS, 0, SPONGY_ACCELERATE);
+  vibeos_anim_start (self->anim, 0, 1, FADE_MS, 0, SPONGY_ACCELERATE);
   self->move = g_timeout_add (until_minute (-FADE_MS), on_move, self);
   return G_SOURCE_REMOVE;
 }
@@ -247,7 +247,7 @@ on_start (gpointer data)
   gtk_widget_queue_allocate (GTK_WIDGET (self));
   dim (self);
   self->phase = FIRST_IN;
-  neo_anim_start (self->anim, 0, 1, FADE_MS, START_DELAY, SPONGY_DECELERATE);
+  vibeos_anim_start (self->anim, 0, 1, FADE_MS, START_DELAY, SPONGY_DECELERATE);
   self->move = g_timeout_add (until_minute (-FADE_MS), on_move, self);
   self->tick = g_timeout_add (until_minute (0), on_tick, self);
   return G_SOURCE_REMOVE;
@@ -267,7 +267,7 @@ saver_view_size_allocate (GtkWidget *widget, int width, int height, int baseline
   /* placed once the window has its size */
   if (!self->anim && width > 0 && height > 0)
     {
-      self->anim = neo_anim_new (widget, on_anim, self);
+      self->anim = vibeos_anim_new (widget, on_anim, self);
       self->start = g_idle_add (on_start, self);
     }
 }
@@ -315,7 +315,7 @@ saver_view_dispose (GObject *object)
   g_clear_handle_id (&self->start, g_source_remove);
   g_clear_handle_id (&self->move, g_source_remove);
   g_clear_handle_id (&self->tick, g_source_remove);
-  g_clear_pointer (&self->anim, neo_anim_free);
+  g_clear_pointer (&self->anim, vibeos_anim_free);
   g_clear_pointer (&self->block, gtk_widget_unparent);
   g_clear_object (&self->settings);
   G_OBJECT_CLASS (saver_view_parent_class)->dispose (object);
@@ -361,7 +361,7 @@ build (SaverView *self)
   self->time = gtk_label_new (NULL);
   gtk_widget_add_css_class (self->time, "saver-time");
   gtk_widget_set_halign (self->time, GTK_ALIGN_CENTER);
-  neo_label_set_font_padding (self->time, TIME_SIZE);
+  vibeos_label_set_font_padding (self->time, TIME_SIZE);
   gtk_widget_set_margin_bottom (self->time, gtk_widget_get_margin_bottom (self->time) - 8);
   gtk_widget_set_visible (self->time, !analog);
   gtk_box_append (GTK_BOX (self->block), self->time);
@@ -369,7 +369,7 @@ build (SaverView *self)
   gtk_widget_set_halign (line, GTK_ALIGN_START);
   self->date = gtk_label_new (NULL);
   gtk_widget_add_css_class (self->date, "body");
-  neo_label_set_font_padding (self->date, 14);
+  vibeos_label_set_font_padding (self->date, 14);
   gtk_box_append (GTK_BOX (line), self->date);
   self->alarm_icon = gtk_image_new_from_icon_name ("clock-alarm-small-symbolic");
   gtk_image_set_pixel_size (GTK_IMAGE (self->alarm_icon), 14);
@@ -379,7 +379,7 @@ build (SaverView *self)
   gtk_box_append (GTK_BOX (line), self->alarm_icon);
   self->alarm = gtk_label_new (NULL);
   gtk_widget_add_css_class (self->alarm, "body");
-  neo_label_set_font_padding (self->alarm, 14);
+  vibeos_label_set_font_padding (self->alarm, 14);
   gtk_box_append (GTK_BOX (line), self->alarm);
   gtk_box_append (GTK_BOX (self->block), line);
   show_time (self);
@@ -436,7 +436,7 @@ void
 screensaver_present (GtkApplication *app, GSettings *settings)
 {
   SaverView *view = g_object_new (SAVER_TYPE_VIEW, NULL);
-  GtkWidget *window = neo_window_new (app);
+  GtkWidget *window = vibeos_window_new (app);
   GtkGesture *click = gtk_gesture_click_new ();
   GtkEventController *keys = gtk_event_controller_key_new ();
 
@@ -444,7 +444,7 @@ screensaver_present (GtkApplication *app, GSettings *settings)
   build (view);
   gtk_window_set_title (GTK_WINDOW (window), _("Screen saver"));
   gtk_widget_add_css_class (window, "clock-screensaver");
-  neo_window_set_content (GTK_WINDOW (window), GTK_WIDGET (view));
+  vibeos_window_set_content (GTK_WINDOW (window), GTK_WIDGET (view));
 
   gtk_gesture_single_set_button (GTK_GESTURE_SINGLE (click), 0);
   g_signal_connect (click, "pressed", G_CALLBACK (on_pressed), window);

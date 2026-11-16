@@ -1,5 +1,5 @@
-/* The parallax wallpapers Neo can show: every directory with a parallax.json in /usr/share/neo-launcher/parallax and
- * ~/.local/share/neo-launcher/parallax, as a grid of previews. A set is GNOME's wallpaper (org.gnome.desktop.background)
+/* The parallax wallpapers VibeOS can show: every directory with a parallax.json in /usr/share/vibeos-launcher/parallax and
+ * ~/.local/share/vibeos-launcher/parallax, as a grid of previews. A set is GNOME's wallpaper (org.gnome.desktop.background)
  * set to the picture in its folder, which the launcher plays as that set. */
 #pragma once
 

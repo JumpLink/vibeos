@@ -1,0 +1,8 @@
+The gnome-free icon pack (vibeos-launcher/iconpacks/gnome-free; called Round before VibeOS), generated:
+
+    python3 -I make-gnome-free-pack.py ../../vibeos-launcher/iconpacks/gnome-free glyphs
+
+Each icon is a white Material Symbols Rounded glyph (glyphs/, Google, Apache-2.0: glyphs/LICENSE; from
+github.com/google/material-design-icons, symbols/web/<name>/materialsymbolsrounded/<name>_fill1_48px.svg) on a round
+gradient in the app's colour. The script needs python3-gi with Rsvg 2.0, python3-cairo and python3-pil. To add an
+app: a line in ICONS (glyph and colours) and its desktop id in MAP.

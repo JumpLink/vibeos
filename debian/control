@@ -1,4 +1,4 @@
-Source: gnome-phone
+Source: vibeos
 Section: gnome
 Priority: optional
 Maintainer: pulpoff <pashkovsky@gmail.com>
@@ -44,52 +44,60 @@ Build-Depends: debhelper-compat (= 13),
                tzdata <!nocheck>,
 Standards-Version: 4.7.2
 Rules-Requires-Root: no
-Homepage: https://github.com/pulpoff/gnome-phone
+Homepage: https://github.com/pulpoff/vibeos
 
-Package: gnome-phone
+Package: vibeos
 Architecture: all
 Section: metapackages
-Depends: gnome-shell-extension-gnome-phone (= ${source:Version}),
-         neo-launcher (>= ${source:Version}),
-         gnome-phone-daemons (>= ${source:Version}),
+Conflicts: gnome-phone
+Replaces: gnome-phone
+Provides: gnome-phone
+Depends: gnome-shell-extension-vibeos (= ${source:Version}),
+         vibeos-launcher (>= ${source:Version}),
+         vibeos-daemons (>= ${source:Version}),
          ${misc:Depends},
-Recommends: gnome-phone-session (= ${source:Version}),
+Recommends: vibeos-session (= ${source:Version}),
             sim-apn (= ${source:Version}),
-            neo-dialer (>= ${source:Version}),
-            neo-messaging (>= ${source:Version}),
-            neo-clock (>= ${source:Version}),
-            neo-calendar (>= ${source:Version}),
-            neo-calculator (>= ${source:Version}),
-            neo-compass (>= ${source:Version}),
-            neo-contacts (>= ${source:Version}),
-            neo-browser (>= ${source:Version}),
-            neo-settings (>= ${source:Version}),
-            neo-weather (>= ${source:Version}),
-            neo-camera (>= ${source:Version}),
-            neo-files (>= ${source:Version}),
-            neo-dictate (>= ${source:Version}),
-            neo-iconpack-round (>= ${source:Version}),
-            neo-parallax-solar-system (>= ${source:Version}),
+            vibeos-dialer (>= ${source:Version}),
+            vibeos-messaging (>= ${source:Version}),
+            vibeos-clock (>= ${source:Version}),
+            vibeos-calendar (>= ${source:Version}),
+            vibeos-calculator (>= ${source:Version}),
+            vibeos-compass (>= ${source:Version}),
+            vibeos-contacts (>= ${source:Version}),
+            vibeos-browser (>= ${source:Version}),
+            vibeos-settings (>= ${source:Version}),
+            vibeos-weather (>= ${source:Version}),
+            vibeos-camera (>= ${source:Version}),
+            vibeos-files (>= ${source:Version}),
+            vibeos-dictate (>= ${source:Version}),
+            vibeos-iconpack-vibeos (>= ${source:Version}),
+            vibeos-iconpack-gnome-free (>= ${source:Version}),
+            vibeos-parallax-solar-system (>= ${source:Version}),
             feedbackd,
             iio-sensor-proxy,
             modemmanager,
             callaudiod,
             mesa-vulkan-drivers,
-Description: GNOME as a phone (metapackage)
- GNOME Phone turns a stock GNOME Shell into a phone shell: the Neo launcher as
- the home screen, Android-style gesture navigation, recents, the status bar,
- the notification shade with quick settings, the lock screen and the always-on
- display, and a set of phone apps.
+Description: GNOME-based system for touch devices (metapackage)
+ VibeOS turns GNOME into a system for touch devices, phones first, then
+ tablets and touch laptops: the VibeOS launcher as the home screen,
+ Android-style gesture navigation, recents, the status bar, the notification
+ shade with quick settings, the lock screen and the always-on display, and a
+ set of apps.
  .
  This metapackage installs the shell extension, the launcher and the system
  helpers, and recommends the session and the apps.
 
-Package: gnome-shell-extension-gnome-phone
+Package: gnome-shell-extension-vibeos
 Architecture: all
+Conflicts: gnome-shell-extension-gnome-phone
+Replaces: gnome-shell-extension-gnome-phone
+Provides: gnome-shell-extension-gnome-phone
 Depends: gnome-shell (>= 51~),
          gnome-shell (<< 52~),
-         neo-launcher (>= ${source:Version}),
-         gnome-phone-daemons (>= ${source:Version}),
+         vibeos-launcher (>= ${source:Version}),
+         vibeos-daemons (>= ${source:Version}),
          python3,
          gir1.2-gnomebluetooth-3.0,
          gir1.2-gnomedesktop-4.0,
@@ -99,31 +107,34 @@ Depends: gnome-shell (>= 51~),
 Recommends: feedbackd,
             iio-sensor-proxy,
             gir1.2-manette-0.2,
-Suggests: gnome-phone-session,
-Description: GNOME Shell extension that makes the shell a phone
- The gnome-phone@neo extension replaces GNOME Shell's top panel,
- overview and lock screen with a phone's: Android-style gesture navigation
+Suggests: vibeos-session,
+Description: GNOME Shell extension of VibeOS, the shell for touch devices
+ The shell@vibeos extension replaces GNOME Shell's top panel, overview and
+ lock screen with a touch device's: Android-style gesture navigation
  (home, back, recents), the status bar, the notification shade with quick
  settings, heads-up notifications, the volume panel, the power menu, the
- lock screen with PIN or pattern, and the always-on display. The Neo launcher
+ lock screen with PIN or pattern, and the always-on display. The VibeOS launcher
  is started as the home screen.
  .
  The extension is for GNOME Shell 51. It is not turned on for the regular
- GNOME session; the gnome-phone-session package provides a "GNOME Phone"
+ GNOME session; the vibeos-session package provides a "VibeOS"
  session that always runs it.
 
-Package: gnome-phone-session
+Package: vibeos-session
 Architecture: all
+Conflicts: gnome-phone-session
+Replaces: gnome-phone-session
+Provides: gnome-phone-session
 Depends: gnome-session (>= 51~),
-         gnome-shell-extension-gnome-phone (= ${source:Version}),
+         gnome-shell-extension-vibeos (= ${source:Version}),
          ${misc:Depends},
 Suggests: gdm3,
-Description: GNOME Phone session
- A "GNOME Phone" session for display managers: GNOME's own session with GNOME
- Shell in the gnome-phone mode, which always runs the gnome-phone extension.
+Description: VibeOS session
+ A "VibeOS" session for display managers: GNOME's own session with GNOME
+ Shell in the vibeos mode, which always runs the vibeos extension.
  .
- Also systemd units for a phone without a display manager (gnome-phone.service
- starts the session on tty7 as one user), and neo-dock, which switches to the
+ Also systemd units for a phone without a display manager (vibeos.service
+ starts the session on tty7 as one user), and vibeos-dock, which switches to the
  regular GNOME desktop while an external display is connected. None of these
  units is enabled on installation; see README.Debian.
  .
@@ -131,25 +142,29 @@ Description: GNOME Phone session
  and the system's) out of Files and the file picker; SD cards and USB drives
  still show.
 
-Package: gnome-phone-daemons
+Package: vibeos-daemons
 Architecture: any
 Section: admin
+Conflicts: gnome-phone-daemons
+Replaces: gnome-phone-daemons
+Provides: gnome-phone-daemons
 Depends: dconf-cli,
          ${shlibs:Depends},
          ${misc:Depends},
-Description: GNOME Phone system helpers
- Small system programs used by the GNOME Phone shell and apps:
-  * gp-auth checks the lock screen's PIN or pattern through PAM (the PIN or
+Description: VibeOS system helpers
+ Small system programs used by the VibeOS shell and apps:
+  * vibeos-auth checks the lock screen's PIN or pattern through PAM (the PIN or
     pattern is the user's own password);
-  * neo-wakeup wakes the phone from suspend at the times apps ask for (alarm
-    clocks, calendar reminders), over D-Bus (neo.Wakeup), and publishes
+  * vibeos-wakeup wakes the phone from suspend at the times apps ask for (alarm
+    clocks, calendar reminders), over D-Bus (vibeos.Wakeup), and publishes
     the next alarm clock;
   * input-boost raises the GPU's (and optionally the CPUs') clock floor while
     the touchscreen is touched. It is not enabled by default: its floor must
     be tuned for the device;
-  * gnome-phone-migrate-ids carries each user's settings, files and home
-    screen over from the IDs GNOME Phone had up to 0.1.6 to the neo.* ones,
-    once, as the user's session starts (a systemd user unit).
+  * vibeos-migrate-ids carries each user's settings, files and home
+    screen over from the names VibeOS had as gnome-phone (up to 0.1.11) to
+    the vibeos ones, once, as the user's session starts (a systemd user
+    unit).
 
 Package: sim-apn
 Architecture: all
@@ -167,18 +182,21 @@ Description: mobile data profile for every new SIM
  mobile-broadband-provider-info, pinned to that SIM, with roaming off. A
  connection made by hand, and a SIM that already has one, are left alone.
 
-Package: neo-launcher
+Package: vibeos-launcher
 Architecture: any
+Conflicts: neo-launcher
+Replaces: neo-launcher
+Provides: neo-launcher
 Depends: ${shlibs:Depends},
          ${misc:Depends},
 Recommends: mesa-vulkan-drivers,
-Description: Neo, a phone home screen in Vulkan
- Neo is the home screen of GNOME Phone: pages with a dock, an app drawer that
- follows the finger, widgets, icon packs and icon shapes, and parallax
- wallpapers. It is a Wayland client drawn with Vulkan 1.0 and scrolls with
+Description: home screen of VibeOS, in Vulkan
+ The VibeOS launcher is the home screen of VibeOS: pages with a dock, an app
+ drawer that follows the finger, widgets, icon packs and icon shapes, and
+ parallax wallpapers. It is a Wayland client drawn with Vulkan 1.0 and scrolls with
  libspongy's Android physics.
  .
- It is started by the gnome-phone GNOME Shell extension, which makes its
+ It is started by the vibeos GNOME Shell extension, which makes its
  window the desktop.
 
 Package: libspongy-1-0
@@ -235,105 +253,132 @@ Description: Android scroll physics (stretch overscroll, fling) - development fi
  .
  This package contains the headers, the pkg-config files and the GIR XML.
 
-Package: libneo-1-0
+Package: libvibeos-1-0
 Architecture: any
 Multi-Arch: same
 Section: libs
-Depends: fonts-neo-roboto (= ${source:Version}),
+Conflicts: libneo-1-0
+Replaces: libneo-1-0
+Provides: libneo-1-0
+Depends: fonts-vibeos-roboto (= ${source:Version}),
          ${shlibs:Depends},
          ${misc:Depends},
-Description: Material 3 widgets of the Neo phone apps
- libneo holds what the Neo apps share: their Material 3 look the way
+Description: Material 3 widgets of the VibeOS phone apps
+ libvibeos holds what the VibeOS apps share: their Material 3 look the way
  LineageOS draws it, ripples, pressable surfaces, switches, the navigation
  bar, snackbars, dialogs and the time picker, on GTK 4 and libspongy.
  .
  This package contains the shared library.
 
-Package: libneo-dev
+Package: libvibeos-dev
 Architecture: any
 Multi-Arch: same
 Section: libdevel
-Depends: libneo-1-0 (= ${binary:Version}),
+Conflicts: libneo-dev
+Replaces: libneo-dev
+Provides: libneo-dev
+Depends: libvibeos-1-0 (= ${binary:Version}),
          libspongy-dev (= ${binary:Version}),
          libgtk-4-dev (>= 4.14),
          ${misc:Depends},
-Description: Material 3 widgets of the Neo phone apps - development files
- libneo holds what the Neo apps share: their Material 3 look, ripples,
+Description: Material 3 widgets of the VibeOS phone apps - development files
+ libvibeos holds what the VibeOS apps share: their Material 3 look, ripples,
  pressable surfaces, switches, the navigation bar, snackbars, dialogs and the
  time picker, on GTK 4 and libspongy.
  .
  This package contains the headers and the pkg-config file.
 
-Package: fonts-neo-roboto
+Package: fonts-vibeos-roboto
 Architecture: all
 Multi-Arch: foreign
 Section: fonts
+Conflicts: fonts-neo-roboto
+Replaces: fonts-neo-roboto
+Provides: fonts-neo-roboto
 Depends: ${misc:Depends},
-Description: Roboto variable font as Android ships it, for the Neo apps
+Description: Roboto variable font as Android ships it, for the VibeOS apps
  Roboto 3 as a variable font (weight 100-900, width 75-100), as Android
- ships it, under the family name "Neo Roboto" so that a static Roboto
- installed on the system never stands in for it. libneo draws the Neo apps'
+ ships it, under the family name "VibeOS Roboto" so that a static Roboto
+ installed on the system never stands in for it. libvibeos draws the VibeOS apps'
  text with it.
 
-Package: neo-calculator
+Package: vibeos-calculator
 Architecture: any
+Conflicts: neo-calculator
+Replaces: neo-calculator
+Provides: neo-calculator
 Depends: ${shlibs:Depends},
          ${misc:Depends},
-Description: Calculator for GNOME Phone
+Description: Calculator for VibeOS
  The LineageOS/AOSP ExactCalculator rebuilt in GTK 4: exact real arithmetic
  that keeps every digit you scroll to, the formula and result display,
  history, and the advanced pad.
 
-Package: neo-calendar
+Package: vibeos-calendar
 Architecture: any
+Conflicts: neo-calendar
+Replaces: neo-calendar
+Provides: neo-calendar
 Depends: evolution-data-server,
          ${shlibs:Depends},
          ${misc:Depends},
-Recommends: gnome-phone-daemons,
-Description: Calendar for GNOME Phone
+Recommends: vibeos-daemons,
+Description: Calendar for VibeOS
  The LineageOS Etar calendar rebuilt in GTK 4 on evolution-data-server: day,
  month and agenda views, the event editor, and reminders that notify with the
- app closed (neo-calendar-reminders, a user service). With neo-wakeup
- (gnome-phone-daemons) a reminder wakes the phone from suspend.
+ app closed (vibeos-calendar-reminders, a user service). With vibeos-wakeup
+ (vibeos-daemons) a reminder wakes the phone from suspend.
 
-Package: neo-clock
+Package: vibeos-clock
 Architecture: any
+Conflicts: neo-clock
+Replaces: neo-clock
+Provides: neo-clock
 Depends: sound-theme-freedesktop,
          tzdata,
          gstreamer1.0-plugins-base,
          ${shlibs:Depends},
          ${misc:Depends},
-Recommends: gnome-phone-daemons,
+Recommends: vibeos-daemons,
             feedbackd,
             gstreamer1.0-plugins-good,
-Description: Clock for GNOME Phone
+Description: Clock for VibeOS
  The LineageOS DeskClock rebuilt in GTK 4: alarms, world clocks, timers, the
  stopwatch and the screen saver. Alarms and timers ring with the app closed
- (neo-clock-alarms, a user service). With neo-wakeup (gnome-phone-daemons) an
+ (vibeos-clock-alarms, a user service). With vibeos-wakeup (vibeos-daemons) an
  alarm wakes the phone from suspend.
 
-Package: neo-compass
+Package: vibeos-compass
 Architecture: any
+Conflicts: neo-compass
+Replaces: neo-compass
+Provides: neo-compass
 Depends: ${shlibs:Depends},
          ${misc:Depends},
 Recommends: iio-sensor-proxy,
             geoclue-2.0,
-Description: Compass for GNOME Phone
+Description: Compass for VibeOS
  A compass with the heading from iio-sensor-proxy's compass and the position
  from GeoClue.
 
-Package: neo-contacts
+Package: vibeos-contacts
 Architecture: any
+Conflicts: neo-contacts
+Replaces: neo-contacts
+Provides: neo-contacts
 Depends: evolution-data-server,
          ${shlibs:Depends},
          ${misc:Depends},
-Description: Contacts app for GNOME Phone
+Description: Contacts app for VibeOS
  The LineageOS Contacts app rebuilt in GTK 4 on evolution-data-server's
  address books: the contact list, a contact's details, the editor and the
  contact picker other apps open.
 
-Package: neo-dialer
+Package: vibeos-dialer
 Architecture: any
+Conflicts: neo-dialer
+Replaces: neo-dialer
+Provides: neo-dialer
 Depends: gstreamer1.0-plugins-base,
          sound-theme-freedesktop,
          ${shlibs:Depends},
@@ -343,15 +388,18 @@ Recommends: modemmanager,
             feedbackd,
             evolution-data-server,
             gstreamer1.0-plugins-good,
-Description: Phone app for GNOME Phone
+Description: Phone app for VibeOS
  The LineageOS Dialer rebuilt in GTK 4: favorites, recents and contacts, the
  dialpad, the call log, blocked numbers, and the in-call and incoming-call
  screens. Calls go through ModemManager and callaudiod; contacts come from
- evolution-data-server. Calls ring with the app closed (neo-dialer-calls, a
+ evolution-data-server. Calls ring with the app closed (vibeos-dialer-calls, a
  user service).
 
-Package: neo-messaging
+Package: vibeos-messaging
 Architecture: any
+Conflicts: neo-messaging
+Replaces: neo-messaging
+Provides: neo-messaging
 Depends: gstreamer1.0-plugins-base,
          sound-theme-freedesktop,
          ${shlibs:Depends},
@@ -359,22 +407,28 @@ Depends: gstreamer1.0-plugins-base,
 Recommends: modemmanager,
             feedbackd,
             evolution-data-server,
-Description: Messaging app for GNOME Phone
+Description: Messaging app for VibeOS
  The LineageOS Messaging app rebuilt in GTK 4 for SMS through ModemManager:
  conversations, the composer, forwarding, archiving and blocked contacts.
  Messages are taken off the modem and notified with the app closed
- (neo-messaging-sms, a user service).
+ (vibeos-messaging-sms, a user service).
 
-Package: neo-browser
+Package: vibeos-browser
 Architecture: any
+Conflicts: neo-browser
+Replaces: neo-browser
+Provides: neo-browser
 Depends: ${shlibs:Depends},
          ${misc:Depends},
-Description: web browser for GNOME Phone
- Neo Browser has the phone UI of Chrome for Android (tabs grid, bottom
+Description: web browser for VibeOS
+ VibeOS Browser has the phone UI of Chrome for Android (tabs grid, bottom
  toolbar, incognito) on WebKitGTK 6.
 
-Package: neo-settings
+Package: vibeos-settings
 Architecture: any
+Conflicts: neo-settings
+Replaces: neo-settings
+Provides: neo-settings
 Depends: python3,
          python3-gi,
          gir1.2-glib-2.0,
@@ -384,28 +438,34 @@ Recommends: accountsservice,
             network-manager,
             gnome-keyring,
             pkexec,
-Description: settings app for GNOME Phone
- Neo Settings is One UI's Settings for GNOME Phone: connections (Wi-Fi,
+Description: settings app for VibeOS
+ VibeOS Settings is the settings app of VibeOS: connections (Wi-Fi,
  Bluetooth, mobile network, hotspot), sounds, notifications, display, battery,
  wallpaper and parallax sets, the home screen's icon pack and shapes, the lock
  screen (PIN, pattern, password), location, accounts, apps, language, date and
- time, accessibility and the phone's details. GNOME Phone opens it wherever
+ time, accessibility and the phone's details. VibeOS opens it wherever
  GNOME opens a Settings panel.
 
-Package: neo-weather
+Package: vibeos-weather
 Architecture: any
+Conflicts: neo-weather
+Replaces: neo-weather
+Provides: neo-weather
 Depends: curl,
          ${shlibs:Depends},
          ${misc:Depends},
 Recommends: geoclue-2.0,
-Description: weather app for GNOME Phone
- Neo Weather shows the weather where the phone is: the next 24 hours, today
+Description: weather app for VibeOS
+ VibeOS Weather shows the weather where the phone is: the next 24 hours, today
  against yesterday, the week and the details. The forecast is Open-Meteo's,
  the place GeoClue's (or GNOME Weather's first city), named by OpenStreetMap's
  Nominatim.
 
-Package: neo-camera
+Package: vibeos-camera
 Architecture: any
+Conflicts: neo-camera
+Replaces: neo-camera
+Provides: neo-camera
 Depends: gstreamer1.0-libcamera,
          gstreamer1.0-plugins-base,
          gstreamer1.0-plugins-good,
@@ -416,69 +476,90 @@ Recommends: gstreamer1.0-plugins-bad,
             gstreamer1.0-plugins-ugly,
             gstreamer1.0-libav,
             gstreamer1.0-pulseaudio,
-Description: camera app for GNOME Phone
- Neo Camera is LineageOS's Aperture rebuilt in GTK 4 on libcamera and
+Description: camera app for VibeOS
+ VibeOS Camera is LineageOS's Aperture rebuilt in GTK 4 on libcamera and
  GStreamer: photos (JPEG with EXIF in ~/Pictures/Camera), videos (H.264 and
  AAC in ~/Videos/Camera) and barcode scanning, with the front and rear
  cameras, flash, timer, grid and level. It runs on any phone libcamera
  supports; the video encoder is the fastest one that works (V4L2, VA-API,
  openh264 or x264).
 
-Package: neo-files
+Package: vibeos-files
 Architecture: any
+Conflicts: neo-files
+Replaces: neo-files
+Provides: neo-files
 Depends: ${shlibs:Depends},
          ${misc:Depends},
 Recommends: gvfs-backends,
             gvfs-fuse,
             xdg-desktop-portal-gnome,
-Description: file manager for GNOME Phone
- Neo Files is File Manager+ rebuilt in GTK 4 on GIO and GVfs: the phone's
+Description: file manager for VibeOS
+ VibeOS Files is File Manager+ rebuilt in GTK 4 on GIO and GVfs: the phone's
  storage, removable media, the recycle bin, recent files, the local network
  and saved remotes over SMB, SFTP, FTP/FTPS and WebDAV.
 
-Package: neo-dictate
+Package: vibeos-dictate
 Architecture: any
+Conflicts: neo-dictate
+Replaces: neo-dictate
+Provides: neo-dictate
 Depends: gstreamer1.0-plugins-base,
          ${shlibs:Depends},
          ${misc:Depends},
-Recommends: neo-dictate-en | neo-dictate-de | neo-dictate-es | neo-dictate-fr | neo-dictate-it | neo-dictate-ru,
+Recommends: vibeos-dictate-en | vibeos-dictate-de | vibeos-dictate-es | vibeos-dictate-fr | vibeos-dictate-it | vibeos-dictate-ru,
             gstreamer1.0-pulseaudio,
-Suggests: neo-dictate-de,
-          neo-dictate-en,
-          neo-dictate-es,
-          neo-dictate-fr,
-          neo-dictate-it,
-          neo-dictate-ru,
-Description: dictation for GNOME Phone
+Suggests: vibeos-dictate-de,
+          vibeos-dictate-en,
+          vibeos-dictate-es,
+          vibeos-dictate-fr,
+          vibeos-dictate-it,
+          vibeos-dictate-ru,
+Description: dictation for VibeOS
  Dictate turns speech into text on the phone itself: a microphone button and a
  document, where what is said appears as it is said, with nothing sent
  anywhere. The document is plain text, edited and copied as any other. It
  hears English, German, Spanish, French, Italian and Russian, the language
  chosen in its app bar.
  .
- The recognisers are not part of GNOME Phone: neo-dictate loads Moonshine's
+ The recognisers are not part of VibeOS: vibeos-dictate loads Moonshine's
  (English, German, Spanish) and Vosk's (French, Italian, Russian) libraries
- from /usr/lib/neo-dictate and their models from
- /usr/share/neo-dictate/models. The packages neo-dictate-moonshine,
- neo-dictate-vosk and one per language (neo-dictate-en, neo-dictate-de, ...),
- made by tools/neo-dictate-speech in the source, install them.
+ from /usr/lib/vibeos-dictate and their models from
+ /usr/share/vibeos-dictate/models. The packages vibeos-dictate-moonshine,
+ vibeos-dictate-vosk and one per language (vibeos-dictate-en, vibeos-dictate-de, ...),
+ made by tools/vibeos-dictate-speech in the source, install them.
 
-Package: neo-iconpack-round
+Package: vibeos-iconpack-gnome-free
+Architecture: all
+Conflicts: neo-iconpack-round
+Replaces: neo-iconpack-round
+Provides: neo-iconpack-round
+Depends: ${misc:Depends},
+Recommends: vibeos-launcher,
+Description: gnome-free icon pack for the VibeOS launcher
+ gnome-free (called Round before VibeOS): colourful icons for VibeOS's apps
+ and the GNOME apps it keeps, a white Material Symbols glyph on a gradient
+ disc in each app's colour. VibeOS Settings' Home screen switches packs.
+
+Package: vibeos-iconpack-vibeos
 Architecture: all
 Depends: ${misc:Depends},
-Recommends: neo-launcher,
-Description: Round icon pack for the Neo launcher
- Round, colourful icons for GNOME Phone's apps and the GNOME apps it keeps:
- a white Material Symbols glyph on a gradient disc in each app's colour.
- Installing it makes it the launcher's icon pack; Neo Settings' Home screen
- switches packs.
+Recommends: vibeos-launcher,
+Description: VibeOS icon pack for the VibeOS launcher
+ The VibeOS icons, the launcher's default: a large Material Symbols glyph on
+ a squircle in each app's colour (white on colour, or coloured on white), for
+ VibeOS's apps and the GNOME apps it keeps. Installing it makes it the launcher's icon pack; VibeOS
+ Settings' Home screen switches packs.
 
-Package: neo-parallax-solar-system
+Package: vibeos-parallax-solar-system
 Architecture: all
+Conflicts: neo-parallax-solar-system
+Replaces: neo-parallax-solar-system
+Provides: neo-parallax-solar-system
 Depends: ${misc:Depends},
-Recommends: neo-launcher,
-Description: NASA solar-system parallax wallpaper for the Neo launcher
- A layered wallpaper that moves with the phone's tilt on GNOME Phone's Neo
+Recommends: vibeos-launcher,
+Description: NASA solar-system parallax wallpaper for the VibeOS launcher
+ A layered wallpaper that moves with the device's tilt on the VibeOS
  launcher: the Sun, Earth, the Moon, Mars, Saturn and Jupiter from NASA's
  public-domain images over a drawn star field. Installing it makes it the
  default wallpaper; GNOME Settings' Background panel lists it too.

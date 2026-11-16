@@ -45,7 +45,7 @@ phone_show_full_screen (GDBusConnection *session, const char *app_id, PhoneFullS
   request->app_id = g_strdup (app_id);
   request->done = done;
   request->data = data;
-  g_dbus_connection_call (session, "neo.GnomePhone", "/neo/GnomePhone", "neo.GnomePhone",
+  g_dbus_connection_call (session, "vibeos.Shell", "/vibeos/Shell", "vibeos.Shell",
                           "LaunchFullScreen", g_variant_new ("(s)", app_id), G_VARIANT_TYPE ("(b)"),
                           G_DBUS_CALL_FLAGS_NONE, 5000, NULL, on_full_screen, request);
 }
@@ -53,7 +53,7 @@ phone_show_full_screen (GDBusConnection *session, const char *app_id, PhoneFullS
 void
 phone_open_app (GDBusConnection *session, const char *app_id, const char *action, GVariant *parameter)
 {
-  /* the app's object path is its id as a path: neo.Dialer is /neo/Dialer */
+  /* the app's object path is its id as a path: vibeos.Dialer is /vibeos/Dialer */
   g_autofree char *path = g_strdelimit (g_strconcat ("/", app_id, NULL), ".", '/');
   GVariantBuilder parameters;
 

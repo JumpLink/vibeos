@@ -3,7 +3,7 @@
  * The video quality list is what the camera and its encoder can record. The encoders are GStreamer's: a phone's
  * hardware one (V4L2 or VA) if it works, else x264 or OpenH264 in software. Whether a hardware encoder works, and how
  * fast one is, is a property of the phone's kernel and CPU that no element reports, so it is measured: each candidate
- * encodes 120 frames of a test picture at 1080p and at 720p in a child process (`neo-camera --probe-encoder`, so a
+ * encodes 120 frames of a test picture at 1080p and at 720p in a child process (`vibeos-camera --probe-encoder`, so a
  * driver that crashes takes only the child with it), a size that falls short once is measured again (a hardware
  * encoder's first session is slow), and a size counts when it encodes at least CAM_ENCODER_MIN_FPS within twice the
  * bitrate asked for (an encoder that ignores its rate control fills a phone at 150 Mbit/s). The result is kept in the
@@ -32,7 +32,7 @@ char             *cam_encoder_launch (const char *element, int bitrate);
 /* the raw format it wants: NV12, or I420 for OpenH264 */
 const char       *cam_encoder_format (const char *element);
 
-/* the child's side: `neo-camera --probe-encoder ELEMENT` prints "fps1080 fps720" and exits */
+/* the child's side: `vibeos-camera --probe-encoder ELEMENT` prints "fps1080 fps720" and exits */
 int               cam_encoder_probe_main (const char *element);
 
 G_END_DECLS

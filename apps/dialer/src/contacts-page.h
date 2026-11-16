@@ -8,7 +8,7 @@
 #pragma once
 
 #include <gtk/gtk.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #include "contacts.h"
 
@@ -18,9 +18,9 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE (ContactsPage, contacts_page, CONTACTS, PAGE, GtkWidget)
 
 /* @snackbar: where "No contacts app available" shows */
-GtkWidget *contacts_page_new (Contacts *contacts, NeoSnackbar *snackbar);
+GtkWidget *contacts_page_new (Contacts *contacts, VibeosSnackbar *snackbar);
 /* the same list as a picker (Favorites' "Add"): no "Create new contact", and a tap emits "picked" (s uid) */
-GtkWidget *contacts_page_new_picker (Contacts *contacts, NeoSnackbar *snackbar);
+GtkWidget *contacts_page_new_picker (Contacts *contacts, VibeosSnackbar *snackbar);
 /* the top of the list (the tab is shown afresh) */
 void       contacts_page_reset (ContactsPage *self);
 

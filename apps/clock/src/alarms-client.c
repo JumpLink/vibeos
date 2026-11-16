@@ -1,9 +1,9 @@
 /* The alarm service's client: see alarms-client.h. */
 #include "alarms-client.h"
 
-#define SERVICE   "neo.Clock.Alarms"
-#define PATH      "/neo/Clock/Alarms"
-#define INTERFACE "neo.Clock.Alarms"
+#define SERVICE   "vibeos.Clock.Alarms"
+#define PATH      "/vibeos/Clock/Alarms"
+#define INTERFACE "vibeos.Clock.Alarms"
 
 struct _AlarmsClient
 {

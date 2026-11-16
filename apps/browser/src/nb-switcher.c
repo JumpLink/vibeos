@@ -14,7 +14,7 @@
 #include "nb-widgets.h"
 
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 #define THUMB_WIDTH  480        /* px: a card is about half the screen, at the phone's scale */
@@ -165,7 +165,7 @@ card_new (NbTab *t, int width)
     gtk_picture_set_content_fit (GTK_PICTURE (icon), GTK_CONTENT_FIT_CONTAIN);
     gtk_picture_set_can_shrink (GTK_PICTURE (icon), TRUE);
   } else {
-    icon = gtk_image_new_from_icon_name ("neo.Browser");
+    icon = gtk_image_new_from_icon_name ("vibeos.Browser");
     gtk_image_set_pixel_size (GTK_IMAGE (icon), 16);
   }
   gtk_widget_set_size_request (icon, 16, 16);
@@ -178,8 +178,8 @@ card_new (NbTab *t, int width)
   gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
   gtk_label_set_xalign (GTK_LABEL (label), 0);
   gtk_box_append (GTK_BOX (head), label);
-  GtkWidget *x = neo_pressable_new (nb_icon ("jelly-clear-symbolic", 18));
-  neo_pressable_set_ripple (NEO_PRESSABLE (x), NEO_RIPPLE_CIRCLE, 16);
+  GtkWidget *x = vibeos_pressable_new (nb_icon ("jelly-clear-symbolic", 18));
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (x), VIBEOS_RIPPLE_CIRCLE, 16);
   gtk_widget_add_css_class (x, "nb-tab-card-close");
   gtk_widget_set_size_request (x, 32, 32);
   gtk_widget_set_valign (x, GTK_ALIGN_CENTER);
@@ -204,8 +204,8 @@ card_new (NbTab *t, int width)
   gtk_widget_set_size_request (picture, -1, (int) round (width * THUMB_ASPECT));
   gtk_box_append (GTK_BOX (card), picture);
 
-  GtkWidget *press = neo_pressable_new (card);
-  neo_pressable_set_ripple (NEO_PRESSABLE (press), NEO_RIPPLE_BOUNDED, 16);
+  GtkWidget *press = vibeos_pressable_new (card);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (press), VIBEOS_RIPPLE_BOUNDED, 16);
   g_object_set_data (G_OBJECT (press), "nb-tab", t);
   g_autofree char *name = g_strdup_printf ("%s%s", title, t == nb->last_active ? ", current tab" : "");
   gtk_accessible_update_property (GTK_ACCESSIBLE (press), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);
@@ -399,7 +399,7 @@ nb_window_get (void)
   if (nb->win)
     return nb->win;
   nb->quitting = FALSE;
-  nb->win = neo_window_new (nb->gapp);
+  nb->win = vibeos_window_new (nb->gapp);
   gtk_widget_add_css_class (nb->win, "nb");
   gtk_window_set_title (GTK_WINDOW (nb->win), "Browser");
   nb->root = gtk_stack_new ();
@@ -410,7 +410,7 @@ nb_window_get (void)
   nb->switcher = switcher_new ();
   gtk_stack_add_named (GTK_STACK (nb->root), nb->switcher, "switcher");
   gtk_stack_set_visible_child_name (GTK_STACK (nb->root), "tabs");
-  neo_window_set_content (GTK_WINDOW (nb->win), nb->root);
+  vibeos_window_set_content (GTK_WINDOW (nb->win), nb->root);
   g_signal_connect (nb->win, "notify::is-active", G_CALLBACK (on_active), NULL);
   g_signal_connect (nb->win, "close-request", G_CALLBACK (on_close_request), NULL);
   g_signal_connect (nb->win, "destroy", G_CALLBACK (on_window_destroy), NULL);

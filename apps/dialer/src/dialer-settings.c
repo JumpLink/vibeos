@@ -16,7 +16,7 @@
 
 #include <glib/gi18n.h>
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 #include <string.h>
 
@@ -66,7 +66,7 @@ G_DECLARE_FINAL_TYPE (SettingsSwitch, settings_switch, SETTINGS, SWITCH, GtkWidg
 struct _SettingsSwitch
 {
   GtkWidget parent;
-  NeoAnim *anim;
+  VibeosAnim *anim;
   double position;              /* 0 off … 1 on */
 };
 
@@ -85,7 +85,7 @@ settings_switch_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   SettingsSwitch *self = SETTINGS_SWITCH (widget);
   double top = (gtk_widget_get_height (widget) - TRACK_HEIGHT) / 2.0;
   GdkRGBA off = rgb (TRACK_OFF), on = rgb (TRACK_ON), thumb = rgb (THUMB_COLOR);
-  GdkRGBA track = neo_rgba_mix (&off, &on, (float) self->position);
+  GdkRGBA track = vibeos_rgba_mix (&off, &on, (float) self->position);
   double x = THUMB_INSET + self->position * (SWITCH_WIDTH - TRACK_HEIGHT);
   GskRoundedRect rect;
 
@@ -101,7 +101,7 @@ settings_switch_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 }
 
 static void
-on_switch_anim (NeoAnim *anim, double value, gpointer data)
+on_switch_anim (VibeosAnim *anim, double value, gpointer data)
 {
   SettingsSwitch *self = data;
 
@@ -112,13 +112,13 @@ on_switch_anim (NeoAnim *anim, double value, gpointer data)
 static void
 settings_switch_set_active (SettingsSwitch *self, gboolean active)
 {
-  neo_anim_start (self->anim, self->position, active ? 1 : 0, SWITCH_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
+  vibeos_anim_start (self->anim, self->position, active ? 1 : 0, SWITCH_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
 }
 
 static void
 settings_switch_dispose (GObject *object)
 {
-  g_clear_pointer (&SETTINGS_SWITCH (object)->anim, neo_anim_free);
+  g_clear_pointer (&SETTINGS_SWITCH (object)->anim, vibeos_anim_free);
   G_OBJECT_CLASS (settings_switch_parent_class)->dispose (object);
 }
 
@@ -136,7 +136,7 @@ settings_switch_class_init (SettingsSwitchClass *klass)
 static void
 settings_switch_init (SettingsSwitch *self)
 {
-  self->anim = neo_anim_new (GTK_WIDGET (self), on_switch_anim, self);
+  self->anim = vibeos_anim_new (GTK_WIDGET (self), on_switch_anim, self);
   gtk_widget_set_can_target (GTK_WIDGET (self), FALSE);
 }
 
@@ -320,7 +320,7 @@ text_label (const char *text, const char *css_class, double size)
   gtk_label_set_wrap (GTK_LABEL (label), TRUE);
   gtk_label_set_wrap_mode (GTK_LABEL (label), PANGO_WRAP_WORD_CHAR);
   gtk_widget_add_css_class (label, css_class);
-  neo_label_set_font_padding (label, size);
+  vibeos_label_set_font_padding (label, size);
   return label;
 }
 
@@ -355,8 +355,8 @@ add_row (GtkWidget *page, const char *title, const char *summary, GtkWidget *wid
       gtk_box_append (GTK_BOX (row), widget);
     }
   /* a bounded ripple over the whole row */
-  pressable = neo_pressable_new (row);
-  neo_pressable_set_ripple (NEO_PRESSABLE (pressable), NEO_RIPPLE_BOUNDED, 0);
+  pressable = vibeos_pressable_new (row);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (pressable), VIBEOS_RIPPLE_BOUNDED, 0);
   gtk_accessible_update_property (GTK_ACCESSIBLE (pressable), GTK_ACCESSIBLE_PROPERTY_LABEL, title, -1);
   gtk_box_append (GTK_BOX (page_list (page)), pressable);
   return pressable;
@@ -405,7 +405,7 @@ typedef void (*ChoiceFunc) (DialerSettings *self, int index);
 typedef struct
 {
   DialerSettings *self;
-  NeoDialog *dialog;
+  VibeosDialog *dialog;
   ChoiceFunc chosen;
 } Choice;
 
@@ -414,13 +414,13 @@ on_choice_clicked (GtkWidget *row, Choice *choice)
 {
   /* selecting an entry applies it and closes the dialog */
   choice->chosen (choice->self, GPOINTER_TO_INT (g_object_get_data (G_OBJECT (row), "index")));
-  neo_dialog_respond (choice->dialog, NEO_RESPONSE_OK);
+  vibeos_dialog_respond (choice->dialog, VIBEOS_RESPONSE_OK);
 }
 
 static void
 show_choice (DialerSettings *self, const char *title, const char * const *entries, int selected, ChoiceFunc chosen)
 {
-  NeoDialog *dialog = neo_dialog_new (title);
+  VibeosDialog *dialog = vibeos_dialog_new (title);
   GtkWidget *list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   Choice *choice = g_new0 (Choice, 1);
   g_autofree char *cancel = g_utf8_strup (_("Cancel"), -1);
@@ -447,17 +447,17 @@ show_choice (DialerSettings *self, const char *title, const char * const *entrie
       gtk_widget_set_margin_end (label, CHOICE_RADIO);
       gtk_widget_add_css_class (label, "settings-choice");
       gtk_box_append (GTK_BOX (row), label);
-      pressable = neo_pressable_new (row);
-      neo_pressable_set_ripple (NEO_PRESSABLE (pressable), NEO_RIPPLE_BOUNDED, 0);
+      pressable = vibeos_pressable_new (row);
+      vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (pressable), VIBEOS_RIPPLE_BOUNDED, 0);
       g_object_set_data (G_OBJECT (pressable), "index", GINT_TO_POINTER (i));
       g_signal_connect (pressable, "clicked", G_CALLBACK (on_choice_clicked), choice);
       gtk_box_append (GTK_BOX (list), pressable);
     }
   /* a list dialog (dialer.css .settings-dialog): the rows edge to edge, its button in capitals */
   gtk_widget_add_css_class (GTK_WIDGET (dialog), "settings-dialog");
-  neo_dialog_set_content (dialog, list);
-  neo_dialog_add_button (dialog, cancel, NEO_RESPONSE_CANCEL);
-  neo_dialog_present (dialog, GTK_WIDGET (self));
+  vibeos_dialog_set_content (dialog, list);
+  vibeos_dialog_add_button (dialog, cancel, VIBEOS_RESPONSE_CANCEL);
+  vibeos_dialog_present (dialog, GTK_WIDGET (self));
 }
 
 /* ---- Display options ----------------------------------------------------------------------------------------- */
@@ -679,8 +679,8 @@ add_ringtone_row (DialerSettings *self, GtkWidget *page, const char *title, cons
   gtk_widget_set_margin_start (label, CHOICE_TEXT - RADIO);
   gtk_widget_add_css_class (label, "settings-choice");
   gtk_box_append (GTK_BOX (row), label);
-  pressable = neo_pressable_new (row);
-  neo_pressable_set_ripple (NEO_PRESSABLE (pressable), NEO_RIPPLE_BOUNDED, 0);
+  pressable = vibeos_pressable_new (row);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (pressable), VIBEOS_RIPPLE_BOUNDED, 0);
   g_object_set_data_full (G_OBJECT (pressable), "uri", g_strdup (uri), g_free);
   g_object_set_data (G_OBJECT (pressable), "radio", radio);
   g_signal_connect (pressable, "clicked", G_CALLBACK (on_ringtone_clicked), self);
@@ -749,12 +749,12 @@ blocked_country (void)
 }
 
 static void
-on_unblock_response (NeoDialog *dialog, int response, gpointer data)
+on_unblock_response (VibeosDialog *dialog, int response, gpointer data)
 {
   const char *number = g_object_get_data (G_OBJECT (dialog), "number");
   g_autoptr(GError) error = NULL;
 
-  if (response == NEO_RESPONSE_OK
+  if (response == VIBEOS_RESPONSE_OK
       && !blocked_numbers_remove (blocked_numbers_get_default (), number, blocked_country (), &error))
     g_warning ("settings: %s", error->message);
 }
@@ -766,14 +766,14 @@ on_unblock_clicked (GtkWidget *button, gpointer data)
   const char *number = g_object_get_data (G_OBJECT (button), "number");
   g_autofree char *shown = phone_number_format (number, blocked_country ());
   g_autofree char *question = g_strdup_printf (_("Unblock %s?"), shown);
-  NeoDialog *dialog = neo_dialog_new (NULL);
+  VibeosDialog *dialog = vibeos_dialog_new (NULL);
 
-  neo_dialog_set_message (dialog, question);
-  neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  neo_dialog_add_button (dialog, _("Unblock"), NEO_RESPONSE_OK);
+  vibeos_dialog_set_message (dialog, question);
+  vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  vibeos_dialog_add_button (dialog, _("Unblock"), VIBEOS_RESPONSE_OK);
   g_object_set_data_full (G_OBJECT (dialog), "number", g_strdup (number), g_free);
   g_signal_connect (dialog, "response", G_CALLBACK (on_unblock_response), NULL);
-  neo_dialog_present (dialog, button);
+  vibeos_dialog_present (dialog, button);
 }
 
 /* the rows under "Add a number": one per blocked number, the last blocked first; made again on every change, from
@@ -791,7 +791,7 @@ fill_blocked (GtkWidget *rows)
       GtkWidget *row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
       g_autofree char *shown = phone_number_format (numbers[i], blocked_country ());
       GtkWidget *label = text_label (shown, "blocked-number", 16);
-      GtkWidget *unblock = neo_icon_button_new ("dialer-close-symbolic");
+      GtkWidget *unblock = vibeos_icon_button_new ("dialer-close-symbolic");
 
       gtk_widget_set_size_request (row, -1, BLOCKED_ROW_HEIGHT);
       gtk_widget_set_margin_start (row, ROW_PAD_X);
@@ -814,13 +814,13 @@ fill_blocked (GtkWidget *rows)
 }
 
 static void
-on_add_response (NeoDialog *dialog, int response, gpointer data)
+on_add_response (VibeosDialog *dialog, int response, gpointer data)
 {
   GtkWidget *entry = g_object_get_data (G_OBJECT (dialog), "entry");
   g_autofree char *number = g_strstrip (g_strdup (gtk_editable_get_text (GTK_EDITABLE (entry))));
   g_autoptr(GError) error = NULL;
 
-  if (response != NEO_RESPONSE_OK || !*number)
+  if (response != VIBEOS_RESPONSE_OK || !*number)
     return;
   /* an emergency number cannot be blocked */
   if (phone_number_is_emergency (number))
@@ -830,29 +830,29 @@ on_add_response (NeoDialog *dialog, int response, gpointer data)
 }
 
 static void
-on_add_activate (GtkEntry *entry, NeoDialog *dialog)
+on_add_activate (GtkEntry *entry, VibeosDialog *dialog)
 {
-  neo_dialog_respond (dialog, NEO_RESPONSE_OK);
+  vibeos_dialog_respond (dialog, VIBEOS_RESPONSE_OK);
 }
 
 /* "Add a number": one line for the number (the phone keypad), Cancel and Block */
 static void
 on_add_clicked (GtkWidget *link, gpointer data)
 {
-  NeoDialog *dialog = neo_dialog_new (NULL);
+  VibeosDialog *dialog = vibeos_dialog_new (NULL);
   GtkWidget *entry = gtk_entry_new ();
 
-  neo_dialog_set_message (dialog, _("Add a number"));
+  vibeos_dialog_set_message (dialog, _("Add a number"));
   gtk_entry_set_placeholder_text (GTK_ENTRY (entry), _("Phone number"));
   gtk_entry_set_input_purpose (GTK_ENTRY (entry), GTK_INPUT_PURPOSE_PHONE);
-  gtk_widget_add_css_class (entry, "neo-entry");
+  gtk_widget_add_css_class (entry, "vibeos-entry");
   g_signal_connect (entry, "activate", G_CALLBACK (on_add_activate), dialog);
-  neo_dialog_set_content (dialog, entry);
-  neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  neo_dialog_add_button (dialog, _("Block"), NEO_RESPONSE_OK);
+  vibeos_dialog_set_content (dialog, entry);
+  vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  vibeos_dialog_add_button (dialog, _("Block"), VIBEOS_RESPONSE_OK);
   g_object_set_data (G_OBJECT (dialog), "entry", entry);
   g_signal_connect (dialog, "response", G_CALLBACK (on_add_response), NULL);
-  neo_dialog_present (dialog, link);
+  vibeos_dialog_present (dialog, link);
   gtk_widget_grab_focus (entry);
 }
 
@@ -876,8 +876,8 @@ on_blocked (DialerSettings *self)
    * width, and a link sized to it broke "Add a number" in two */
   gtk_label_set_wrap (GTK_LABEL (add), FALSE);
   gtk_widget_set_valign (add, GTK_ALIGN_CENTER);
-  add_pressable = neo_pressable_new (add);
-  neo_pressable_set_ripple (NEO_PRESSABLE (add_pressable), NEO_RIPPLE_BOUNDED, 0);
+  add_pressable = vibeos_pressable_new (add);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (add_pressable), VIBEOS_RIPPLE_BOUNDED, 0);
   gtk_widget_set_halign (add_pressable, GTK_ALIGN_START);
   gtk_widget_set_size_request (add_pressable, -1, BLOCKED_ADD_HEIGHT);
   gtk_widget_set_margin_start (add_pressable, ROW_PAD_X);
@@ -928,7 +928,7 @@ static GtkWidget *
 make_bar (DialerSettings *self)
 {
   GtkWidget *bar = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  GtkWidget *up = neo_icon_button_new ("dialer-back-symbolic");
+  GtkWidget *up = vibeos_icon_button_new ("dialer-back-symbolic");
 
   gtk_widget_add_css_class (bar, "dialer-history-bar");
   gtk_widget_set_size_request (bar, -1, BAR_HEIGHT);

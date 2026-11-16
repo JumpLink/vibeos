@@ -7,7 +7,7 @@
 #include "timers-client.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 #define CARD_MARGIN  16         /* a card, in from the sides */
@@ -29,7 +29,7 @@ struct _TimerPage
   guint update;
 
   /* the change of view */
-  NeoAnim *change;
+  VibeosAnim *change;
   gboolean to_list, switched;
   double distance;              /* how far the old view slides; the new one comes from as far the other way */
   double old_y, new_y;
@@ -149,7 +149,7 @@ apply_offsets (TimerPage *self)
 static void
 show_view (TimerPage *self, gboolean list)
 {
-  neo_anim_stop (self->change);
+  vibeos_anim_stop (self->change);
   self->on_list = list;
   self->old_y = self->new_y = 0;
   gtk_widget_set_opacity (self->setup, 1);
@@ -167,7 +167,7 @@ show_view (TimerPage *self, gboolean list)
  * from as far the other way and fades in over the second half. The buttons shrink with the fade-out; when it ends
  * the old view goes, and they grow back as the new view's. */
 static void
-on_change (NeoAnim *anim, double value, gpointer data)
+on_change (VibeosAnim *anim, double value, gpointer data)
 {
   TimerPage *self = data;
   GtkWidget *old = self->to_list ? self->setup : self->scroller, *new = self->to_list ? self->scroller : self->setup;
@@ -192,7 +192,7 @@ on_change (NeoAnim *anim, double value, gpointer data)
         stop_updating (self);
       clock_tab_update_buttons (CLOCK_TAB (self), CLOCK_ALL_IMMEDIATE | CLOCK_ALL_EXPAND);
     }
-  if (!neo_anim_is_running (anim))
+  if (!vibeos_anim_is_running (anim))
     {
       self->old_y = self->new_y = 0;
       gtk_widget_set_opacity (self->setup, 1);
@@ -207,7 +207,7 @@ change_view (TimerPage *self, gboolean to_list, gboolean down)
 {
   int width = gtk_widget_get_width (GTK_WIDGET (self)) - 2 * CARD_MARGIN;
 
-  if (self->on_list == to_list || neo_anim_is_running (self->change))
+  if (self->on_list == to_list || vibeos_anim_is_running (self->change))
     return;
   self->to_list = to_list;
   self->switched = FALSE;
@@ -218,13 +218,13 @@ change_view (TimerPage *self, gboolean to_list, gboolean down)
   gtk_widget_set_child_visible (to_list ? self->scroller : self->setup, TRUE);
   gtk_widget_set_opacity (to_list ? self->scroller : self->setup, 0);
   clock_tab_update_buttons (CLOCK_TAB (self), CLOCK_ALL_SHRINK);
-  neo_anim_start (self->change, 0, CHANGE_MS, CHANGE_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start (self->change, 0, CHANGE_MS, CHANGE_MS, 0, SPONGY_LINEAR);
 }
 
 static gboolean
 changing (TimerPage *self)
 {
-  return neo_anim_is_running (self->change);
+  return vibeos_anim_is_running (self->change);
 }
 
 /* --- the timers changing */
@@ -404,7 +404,7 @@ timer_page_dispose (GObject *object)
   stop_updating (self);
   if (self->client)
     g_signal_handlers_disconnect_by_data (self->client, self);
-  g_clear_pointer (&self->change, neo_anim_free);
+  g_clear_pointer (&self->change, vibeos_anim_free);
   g_clear_pointer (&self->setup, gtk_widget_unparent);
   g_clear_pointer (&self->scroller, gtk_widget_unparent);
   g_clear_pointer (&self->probe, gtk_widget_unparent);
@@ -447,7 +447,7 @@ timer_page_init (TimerPage *self)
   gtk_widget_set_parent (self->probe, GTK_WIDGET (self));
   gtk_widget_set_child_visible (self->probe, FALSE);
 
-  self->change = neo_anim_new (GTK_WIDGET (self), on_change, self);
+  self->change = vibeos_anim_new (GTK_WIDGET (self), on_change, self);
 }
 
 GtkWidget *

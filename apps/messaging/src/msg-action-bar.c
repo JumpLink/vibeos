@@ -2,7 +2,7 @@
 #include "msg-action-bar.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define HEIGHT 56
 #define UP_WIDTH 56             /* the up button's least width */
@@ -17,10 +17,10 @@ icon_button (const char *icon, int width, const char *label)
   GtkWidget *button;
 
   gtk_image_set_pixel_size (GTK_IMAGE (image), 24);
-  button = neo_pressable_new (image);
+  button = vibeos_pressable_new (image);
   gtk_widget_set_size_request (button, width, HEIGHT);
   /* the ripple: a circle around the icon, not the whole button */
-  neo_pressable_set_ripple (NEO_PRESSABLE (button), NEO_RIPPLE_CIRCLE, 20);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_CIRCLE, 20);
   gtk_widget_add_css_class (button, "msg-action-icon");
   gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, label, -1);
   return button;

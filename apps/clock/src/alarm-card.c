@@ -4,7 +4,7 @@
 #include "clock-format.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define CARD_RADIUS     28
 #define CARD_TOP        8         /* the margin above every card */
@@ -49,22 +49,22 @@ alarm_day_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   if (self->checked)
     {
       /* chosen: a filled disc, the letter in the background's colour */
-      GdkRGBA fill = neo_color (NEO_PRIMARY);
+      GdkRGBA fill = vibeos_color (VIBEOS_PRIMARY);
 
       gtk_snapshot_push_rounded_clip (snapshot, &circle);
       gtk_snapshot_append_color (snapshot, &fill, &box);
       gtk_snapshot_pop (snapshot);
-      ink = neo_color (NEO_SURFACE);
+      ink = vibeos_color (VIBEOS_SURFACE);
     }
   else
     {
       /* not chosen: a thin ring, the letter white */
-      GdkRGBA ring = neo_color (NEO_SECONDARY);
+      GdkRGBA ring = vibeos_color (VIBEOS_SECONDARY);
       float widths[4] = { 1, 1, 1, 1 };
       GdkRGBA colors[4] = { ring, ring, ring, ring };
 
       gtk_snapshot_append_border (snapshot, &circle, widths, colors);
-      ink = neo_color (NEO_WHITE);
+      ink = vibeos_color (VIBEOS_WHITE);
     }
   pango_layout_get_pixel_extents (self->letter, NULL, &text);
   gtk_snapshot_save (snapshot);
@@ -101,7 +101,7 @@ alarm_day_init (AlarmDay *self)
 
   g_signal_connect (click, "released", G_CALLBACK (on_day_released), self);
   gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (click));
-  g_object_set_data (G_OBJECT (self), "neo-tappable", GINT_TO_POINTER (TRUE));
+  g_object_set_data (G_OBJECT (self), "vibeos-tappable", GINT_TO_POINTER (TRUE));
 }
 
 static GtkWidget *
@@ -109,7 +109,7 @@ alarm_day_new (int index)
 {
   AlarmDay *self = g_object_new (ALARM_TYPE_DAY, NULL);
   g_autofree char *letter = clock_weekday_letter (index);
-  PangoFontDescription *font = pango_font_description_from_string ("Neo Roboto");
+  PangoFontDescription *font = pango_font_description_from_string ("VibeOS Roboto");
 
   /* 700, not 400: the phone's Bold text setting is on */
   pango_font_description_set_weight (font, 700);
@@ -149,7 +149,7 @@ alarm_caret_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   AlarmCaret *self = ALARM_CARET (widget);
   double cx = gtk_widget_get_width (widget) / 2.0, cy = gtk_widget_get_height (widget) / 2.0;
-  GdkRGBA disc = neo_color (NEO_OUTLINE), white = neo_color (NEO_WHITE);
+  GdkRGBA disc = vibeos_color (VIBEOS_OUTLINE), white = vibeos_color (VIBEOS_WHITE);
   GskRoundedRect circle;
 
   gsk_rounded_rect_init_from_rect (&circle, &GRAPHENE_RECT_INIT (cx - 10, cy - 10, 20, 20), 10);
@@ -191,9 +191,9 @@ struct _AlarmCard
   double bounds;                /* 0 collapsed .. 1 expanded, eased */
   double elapsed;               /* ms into an expand or collapse; < 0 at rest */
   gboolean expanding;           /* which of the two `elapsed` is in */
-  NeoAnim *change;
+  VibeosAnim *change;
   double presence;              /* the list's add/remove: 0 no space .. 1 */
-  NeoAnim *appear;
+  VibeosAnim *appear;
   gboolean leaving;
   GCallback gone;
   gpointer gone_data;
@@ -305,12 +305,12 @@ label_looks_expanded (AlarmCard *self)
 }
 
 static void
-on_change (NeoAnim *anim, double value, gpointer data)
+on_change (VibeosAnim *anim, double value, gpointer data)
 {
   AlarmCard *self = data;
   double eased = spongy_curve (SPONGY_FAST_OUT_SLOW_IN, value / CHANGE_MS);
 
-  self->elapsed = neo_anim_is_running (anim) ? value : -1;
+  self->elapsed = vibeos_anim_is_running (anim) ? value : -1;
   self->bounds = self->expanding ? eased : 1 - eased;
   /* the arrow is the holder's: it turns when the new holder takes over, at the end */
   ALARM_CARET (self->caret_icon)->up = self->elapsed < 0 ? self->expanded : !self->expanded;
@@ -328,10 +328,10 @@ alarm_card_set_expanded (AlarmCard *self, gboolean expanded, gboolean animate)
   self->expanded = expanded;
   self->expanding = expanded;
   if (animate)
-    neo_anim_start (self->change, 0, CHANGE_MS, CHANGE_MS, 0, SPONGY_LINEAR);
+    vibeos_anim_start (self->change, 0, CHANGE_MS, CHANGE_MS, 0, SPONGY_LINEAR);
   else
     {
-      neo_anim_stop (self->change);
+      vibeos_anim_stop (self->change);
       on_change (self->change, CHANGE_MS, self);
     }
 }
@@ -345,7 +345,7 @@ alarm_card_get_expanded (AlarmCard *self)
 /* --- the list's item animations */
 
 static void
-on_appear (NeoAnim *anim, double value, gpointer data)
+on_appear (VibeosAnim *anim, double value, gpointer data)
 {
   AlarmCard *self = data;
   gboolean appearing = !self->leaving;
@@ -358,7 +358,7 @@ on_appear (NeoAnim *anim, double value, gpointer data)
   self->presence = space;
   gtk_widget_set_opacity (GTK_WIDGET (self), alpha);
   gtk_widget_queue_resize (GTK_WIDGET (self));
-  if (!neo_anim_is_running (anim) && !appearing && self->gone)
+  if (!vibeos_anim_is_running (anim) && !appearing && self->gone)
     {
       GCallback gone = self->gone;
 
@@ -371,7 +371,7 @@ void
 alarm_card_appear (AlarmCard *self)
 {
   self->leaving = FALSE;
-  neo_anim_start (self->appear, 0, 270, 270, 0, SPONGY_LINEAR);
+  vibeos_anim_start (self->appear, 0, 270, 270, 0, SPONGY_LINEAR);
 }
 
 void
@@ -381,7 +381,7 @@ alarm_card_disappear (AlarmCard *self, GCallback gone, gpointer data)
   self->gone_data = data;
   self->leaving = TRUE;
   gtk_widget_set_sensitive (GTK_WIDGET (self), FALSE);
-  neo_anim_start (self->appear, 0, 270, 270, 0, SPONGY_LINEAR);
+  vibeos_anim_start (self->appear, 0, 270, 270, 0, SPONGY_LINEAR);
 }
 
 /* --- layout */
@@ -473,7 +473,7 @@ alarm_card_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   AlarmCard *self = ALARM_CARD (widget);
   double h = collapsed_height (self) + (expanded_height (self) - collapsed_height (self)) * self->bounds;
   GskRoundedRect card;
-  GdkRGBA background = neo_color (NEO_SURFACE_CONTAINER_HIGHEST);
+  GdkRGBA background = vibeos_color (VIBEOS_SURFACE_CONTAINER_HIGHEST);
 
   gsk_rounded_rect_init_from_rect (&card, &GRAPHENE_RECT_INIT (0, CARD_TOP, gtk_widget_get_width (widget), h),
                                    CARD_RADIUS);
@@ -491,7 +491,7 @@ static void
 show_alarm (AlarmCard *self)
 {
   ClockAlarm *alarm = self->alarm;
-  gboolean use_24h = neo_clock_uses_24h ();
+  gboolean use_24h = vibeos_clock_uses_24h ();
   g_autofree char *time = clock_time_markup (alarm->hour, alarm->minute, use_24h, 0.3);
   g_autofree char *repeat = NULL, *sound = NULL;
   GDateWeekday first = clock_week_start (self->settings);
@@ -522,7 +522,7 @@ show_alarm (AlarmCard *self)
                          alarm->instance_state != ALARM_STATE_SNOOZE ? _("Tomorrow") : _("Today"));
     }
   gtk_label_set_text (GTK_LABEL (self->repeat), repeat);
-  neo_switch_set_active (NEO_SWITCH (self->toggle), alarm->enabled);
+  vibeos_switch_set_active (VIBEOS_SWITCH (self->toggle), alarm->enabled);
 
   if (can_dismiss (self))
     {
@@ -536,7 +536,7 @@ show_alarm (AlarmCard *self)
 
           text = g_strdup_printf (_("Snoozing until %s"), when);
         }
-      gtk_label_set_text (GTK_LABEL (neo_pressable_get_child (NEO_PRESSABLE (self->dismiss))),
+      gtk_label_set_text (GTK_LABEL (vibeos_pressable_get_child (VIBEOS_PRESSABLE (self->dismiss))),
                           text ? text : _("Dismiss"));
     }
 
@@ -598,9 +598,9 @@ tell_alarm_set (AlarmCard *self, int hour, int minute, guint days)
 }
 
 static void
-on_switch (NeoSwitch *toggle, GParamSpec *pspec, AlarmCard *self)
+on_switch (VibeosSwitch *toggle, GParamSpec *pspec, AlarmCard *self)
 {
-  gboolean on = neo_switch_get_active (toggle);
+  gboolean on = vibeos_switch_get_active (toggle);
 
   if (self->syncing || on == self->alarm->enabled)
     return;
@@ -620,12 +620,12 @@ on_time_chosen (int hour, int minute, gpointer data)
 }
 
 static void
-on_time (NeoPressable *time, AlarmCard *self)
+on_time (VibeosPressable *time, AlarmCard *self)
 {
   /* a tap on the time of a collapsed card opens it as well as the picker */
   if (!self->expanded)
     g_signal_emit (self, signals[TOGGLE_EXPANDED], 0);
-  neo_time_picker_dialog (GTK_WIDGET (self), self->alarm->hour, self->alarm->minute, on_time_chosen,
+  vibeos_time_picker_dialog (GTK_WIDGET (self), self->alarm->hour, self->alarm->minute, on_time_chosen,
                           g_object_ref (self), g_object_unref);
 }
 
@@ -653,40 +653,40 @@ on_day (AlarmDay *day, AlarmCard *self)
 }
 
 static void
-on_label_response (NeoDialog *dialog, int response, AlarmCard *self)
+on_label_response (VibeosDialog *dialog, int response, AlarmCard *self)
 {
   GtkWidget *entry = g_object_get_data (G_OBJECT (dialog), "entry");
 
-  if (response == NEO_RESPONSE_OK)
+  if (response == VIBEOS_RESPONSE_OK)
     update (self, g_variant_new_parsed ("{'label': <%s>}", gtk_editable_get_text (GTK_EDITABLE (entry))));
 }
 
 static void
-on_label_activate (GtkEntry *entry, NeoDialog *dialog)
+on_label_activate (GtkEntry *entry, VibeosDialog *dialog)
 {
   /* the keyboard's Done is OK */
-  neo_dialog_respond (dialog, NEO_RESPONSE_OK);
+  vibeos_dialog_respond (dialog, VIBEOS_RESPONSE_OK);
 }
 
 static void
-on_label (NeoPressable *row, AlarmCard *self)
+on_label (VibeosPressable *row, AlarmCard *self)
 {
   /* the label dialog: "Label" over one line of text, Cancel and OK; the text starts selected */
-  NeoDialog *dialog = neo_dialog_new (NULL);
+  VibeosDialog *dialog = vibeos_dialog_new (NULL);
   GtkWidget *entry = gtk_entry_new ();
 
-  neo_dialog_set_message (dialog, _("Label"));
+  vibeos_dialog_set_message (dialog, _("Label"));
   gtk_editable_set_text (GTK_EDITABLE (entry), self->alarm->label);
   gtk_entry_set_input_hints (GTK_ENTRY (entry), GTK_INPUT_HINT_UPPERCASE_SENTENCES);
-  gtk_widget_add_css_class (entry, "neo-entry");
+  gtk_widget_add_css_class (entry, "vibeos-entry");
   gtk_widget_add_css_class (entry, "label-entry");
   g_signal_connect (entry, "activate", G_CALLBACK (on_label_activate), dialog);
-  neo_dialog_set_content (dialog, entry);
-  neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  neo_dialog_add_button (dialog, _("OK"), NEO_RESPONSE_OK);
+  vibeos_dialog_set_content (dialog, entry);
+  vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  vibeos_dialog_add_button (dialog, _("OK"), VIBEOS_RESPONSE_OK);
   g_object_set_data (G_OBJECT (dialog), "entry", entry);
   g_signal_connect_object (dialog, "response", G_CALLBACK (on_label_response), self, 0);
-  neo_dialog_present (dialog, GTK_WIDGET (self));
+  vibeos_dialog_present (dialog, GTK_WIDGET (self));
   gtk_widget_grab_focus (entry);
   gtk_editable_select_region (GTK_EDITABLE (entry), 0, -1);
 }
@@ -703,12 +703,12 @@ buzz (void)
   g_variant_builder_init (&pattern, G_VARIANT_TYPE ("a(du)"));
   g_variant_builder_add (&pattern, "(du)", 1.0, 300);
   g_dbus_connection_call (bus, "org.sigxcpu.Feedback", "/org/sigxcpu/Feedback", "org.sigxcpu.Feedback.Haptic",
-                          "Vibrate", g_variant_new ("(sa(du))", "neo.Clock", &pattern), NULL,
+                          "Vibrate", g_variant_new ("(sa(du))", "vibeos.Clock", &pattern), NULL,
                           G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 }
 
 static void
-on_vibrate (NeoPressable *row, AlarmCard *self)
+on_vibrate (VibeosPressable *row, AlarmCard *self)
 {
   gboolean on = !self->alarm->vibrate;
 
@@ -718,9 +718,9 @@ on_vibrate (NeoPressable *row, AlarmCard *self)
 }
 
 static void
-on_dismiss (NeoPressable *button, AlarmCard *self)
+on_dismiss (VibeosPressable *button, AlarmCard *self)
 {
-  g_autofree char *time = clock_time_text (self->alarm->hour, self->alarm->minute, neo_clock_uses_24h ());
+  g_autofree char *time = clock_time_text (self->alarm->hour, self->alarm->minute, vibeos_clock_uses_24h ());
   g_autofree char *text = g_strdup_printf (_("%s alarm dismissed"), time);
 
   alarms_client_dismiss (alarms_client_get (), self->alarm->instance);
@@ -728,13 +728,13 @@ on_dismiss (NeoPressable *button, AlarmCard *self)
 }
 
 static void
-on_delete (NeoPressable *button, AlarmCard *self)
+on_delete (VibeosPressable *button, AlarmCard *self)
 {
   g_signal_emit (self, signals[DELETED], 0, self->alarm);
 }
 
 static void
-on_caret (NeoPressable *caret, AlarmCard *self)
+on_caret (VibeosPressable *caret, AlarmCard *self)
 {
   g_signal_emit (self, signals[TOGGLE_EXPANDED], 0);
 }
@@ -743,7 +743,7 @@ static void
 on_body_released (GtkGestureClick *click, int n_press, double x, double y, AlarmCard *self)
 {
   /* the card itself has no ripple: a tap anywhere else on it opens or closes it */
-  if (!neo_pick_is_tappable (GTK_WIDGET (self), x, y))
+  if (!vibeos_pick_is_tappable (GTK_WIDGET (self), x, y))
     g_signal_emit (self, signals[TOGGLE_EXPANDED], 0);
 }
 
@@ -758,7 +758,7 @@ body_label (const char *css)
   gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
   gtk_label_set_single_line_mode (GTK_LABEL (label), TRUE);
   /* centred in its row */
-  neo_label_set_font_padding (label, 14);
+  vibeos_label_set_font_padding (label, 14);
   gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
   gtk_widget_add_css_class (label, "body");
   if (css)
@@ -769,7 +769,7 @@ body_label (const char *css)
 /* a row: an icon, its text after it, in a pressable with the plain ripple */
 /* the ringtone row opens the ringtone picker for this alarm */
 static void
-on_ringtone (NeoPressable *row, AlarmCard *self)
+on_ringtone (VibeosPressable *row, AlarmCard *self)
 {
   g_signal_emit (self, signals[PICK_RINGTONE], 0);
 }
@@ -788,8 +788,8 @@ icon_row (const char *icon_name, GtkWidget **icon, GtkWidget **text)
   gtk_widget_set_hexpand (*text, TRUE);
   gtk_box_append (GTK_BOX (box), *icon);
   gtk_box_append (GTK_BOX (box), *text);
-  row = neo_pressable_new (box);
-  neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
+  row = vibeos_pressable_new (box);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
   return row;
 }
 
@@ -799,8 +799,8 @@ alarm_card_dispose (GObject *object)
   AlarmCard *self = ALARM_CARD (object);
   GtkWidget *child;
 
-  g_clear_pointer (&self->change, neo_anim_free);
-  g_clear_pointer (&self->appear, neo_anim_free);
+  g_clear_pointer (&self->change, vibeos_anim_free);
+  g_clear_pointer (&self->appear, vibeos_anim_free);
   while ((child = gtk_widget_get_first_child (GTK_WIDGET (self))))
     gtk_widget_unparent (child);
   g_clear_pointer (&self->alarm, clock_alarm_free);
@@ -841,8 +841,8 @@ alarm_card_init (AlarmCard *self)
 
   self->elapsed = -1;
   self->presence = 1;
-  self->change = neo_anim_new (widget, on_change, self);
-  self->appear = neo_anim_new (widget, on_appear, self);
+  self->change = vibeos_anim_new (widget, on_change, self);
+  self->appear = vibeos_anim_new (widget, on_appear, self);
 
   /* the label row: ic_label and the label (or the "Add label" hint) */
   self->label_row = icon_row ("clock-label-symbolic", &self->label_icon, &self->label_text);
@@ -853,15 +853,15 @@ alarm_card_init (AlarmCard *self)
   /* the time: display_time, a plain ripple over it */
   self->time_text = gtk_label_new (NULL);
   gtk_widget_add_css_class (self->time_text, "alarm-time");
-  neo_label_set_font_padding (self->time_text, TIME_SIZE);
-  self->time = neo_pressable_new (self->time_text);
-  neo_pressable_set_ripple (NEO_PRESSABLE (self->time), NEO_RIPPLE_BOUNDED, 0);
+  vibeos_label_set_font_padding (self->time_text, TIME_SIZE);
+  self->time = vibeos_pressable_new (self->time_text);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->time), VIBEOS_RIPPLE_BOUNDED, 0);
   g_signal_connect (self->time, "clicked", G_CALLBACK (on_time), self);
   gtk_widget_set_parent (self->time, widget);
 
   self->caret_icon = g_object_new (ALARM_TYPE_CARET, NULL);
-  self->caret = neo_pressable_new (self->caret_icon);
-  neo_pressable_set_ripple (NEO_PRESSABLE (self->caret), NEO_RIPPLE_CIRCLE, 20);
+  self->caret = vibeos_pressable_new (self->caret_icon);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->caret), VIBEOS_RIPPLE_CIRCLE, 20);
   g_signal_connect (self->caret, "clicked", G_CALLBACK (on_caret), self);
   gtk_widget_set_parent (self->caret, widget);
 
@@ -870,11 +870,11 @@ alarm_card_init (AlarmCard *self)
   gtk_widget_set_margin_end (self->repeat, TEXT_PAD);
   gtk_widget_set_parent (self->repeat, widget);
 
-  self->toggle = neo_switch_new ();
+  self->toggle = vibeos_switch_new ();
   g_signal_connect (self->toggle, "notify::active", G_CALLBACK (on_switch), self);
   gtk_widget_set_parent (self->toggle, widget);
 
-  self->dismiss = neo_text_button_new (NULL);
+  self->dismiss = vibeos_text_button_new (NULL);
   gtk_widget_add_css_class (self->dismiss, "alarm-text-button");
   g_signal_connect (self->dismiss, "clicked", G_CALLBACK (on_dismiss), self);
   gtk_widget_set_parent (self->dismiss, widget);
@@ -902,7 +902,7 @@ alarm_card_init (AlarmCard *self)
   g_signal_connect (self->vibrate, "clicked", G_CALLBACK (on_vibrate), self);
   gtk_widget_set_parent (self->vibrate, widget);
 
-  self->delete = neo_text_button_new (_("Delete"));
+  self->delete = vibeos_text_button_new (_("Delete"));
   gtk_widget_add_css_class (self->delete, "alarm-text-button");
   g_signal_connect (self->delete, "clicked", G_CALLBACK (on_delete), self);
   gtk_widget_set_parent (self->delete, widget);

@@ -5,7 +5,7 @@
 #include "timers-client.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 #define CARD_MARGIN  16
@@ -97,7 +97,7 @@ take_volume_keys (gboolean take)
   GDBusConnection *bus = g_application_get_dbus_connection (app);
 
   if (bus)
-    g_dbus_connection_call (bus, "neo.GnomePhone", "/neo/GnomePhone", "neo.GnomePhone",
+    g_dbus_connection_call (bus, "vibeos.Shell", "/vibeos/Shell", "vibeos.Shell",
                             "TakeVolumeKeys", g_variant_new ("(sb)", g_application_get_application_id (app), take),
                             NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 }
@@ -126,11 +126,11 @@ open_window (void)
   GtkWidget *scroller = spongy_scroll_view_new ();
   GtkEventController *keys = gtk_event_controller_key_new ();
 
-  expired.window = neo_window_new (expired.app);
+  expired.window = vibeos_window_new (expired.app);
   gtk_window_set_title (GTK_WINDOW (expired.window), _("Timer"));
   expired.list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroller), expired.list);
-  neo_window_set_content (GTK_WINDOW (expired.window), scroller);
+  vibeos_window_set_content (GTK_WINDOW (expired.window), scroller);
   g_signal_connect (keys, "key-pressed", G_CALLBACK (on_key_pressed), NULL);
   g_signal_connect (keys, "key-released", G_CALLBACK (on_key_released), NULL);
   gtk_widget_add_controller (expired.window, keys);

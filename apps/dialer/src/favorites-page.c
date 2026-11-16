@@ -97,7 +97,7 @@ struct _FavoritesPage
   GtkWidget parent;
   Contacts *contacts;
   GSettings *settings;
-  NeoSnackbar *snackbar;
+  VibeosSnackbar *snackbar;
   GtkWidget *stack, *scroller, *empty, *grid;
   GPtrArray *favorites;         /* Favorite, in the tiles' order */
   GtkWidget *picker;            /* the contact picker over the window, while it is up */
@@ -113,7 +113,7 @@ on_dialed (guint id, const GError *error, gpointer data)
   FavoritesPage *self = data;
 
   if (error)
-    neo_snackbar_show (self->snackbar, error->message, NULL, NULL, NULL, NEO_SNACKBAR_LONG);
+    vibeos_snackbar_show (self->snackbar, error->message, NULL, NULL, NULL, VIBEOS_SNACKBAR_LONG);
   else
     phone_start_app (INCALL_APP_ID);
   g_object_unref (self);
@@ -145,7 +145,7 @@ remove_favorite (FavoritesPage *self, const char *uid)
 typedef struct
 {
   FavoritesPage *page;
-  NeoDialog *dialog;
+  VibeosDialog *dialog;
   GtkWidget *remember;
   char *uid;
 } Disambig;
@@ -181,7 +181,7 @@ on_option_clicked (GtkWidget *option, Disambig *disambig)
       g_settings_set_value (self->settings, "favorite-numbers", g_variant_builder_end (&numbers));
     }
   place_call (self, number);
-  neo_dialog_respond (disambig->dialog, NEO_RESPONSE_OK);
+  vibeos_dialog_respond (disambig->dialog, VIBEOS_RESPONSE_OK);
 }
 
 static GtkWidget *
@@ -203,7 +203,7 @@ disambig_option (Disambig *disambig, const ContactNumber *number)
     {
       gtk_label_set_xalign (GTK_LABEL (text), 0);
       gtk_widget_add_css_class (text, "dialer-primary-text");
-      neo_label_set_font_padding (text, 16);
+      vibeos_label_set_font_padding (text, 16);
       gtk_box_append (GTK_BOX (texts), text);
     }
   gtk_widget_set_visible (label, *number->label);
@@ -215,9 +215,9 @@ disambig_option (Disambig *disambig, const ContactNumber *number)
   gtk_widget_set_valign (icon, GTK_ALIGN_CENTER);
   gtk_widget_add_css_class (icon, "dialer-icon");
   gtk_box_append (GTK_BOX (box), icon);
-  option = neo_pressable_new (box);
-  neo_pressable_set_ripple (NEO_PRESSABLE (option), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (option), &(GdkRGBA) { 1, 1, 1, 0.06 });
+  option = vibeos_pressable_new (box);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (option), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (option), &(GdkRGBA) { 1, 1, 1, 0.06 });
   gtk_accessible_update_property (GTK_ACCESSIBLE (option), GTK_ACCESSIBLE_PROPERTY_LABEL,
                                   C_("disambig_option_voice_call", "Call"), -1);
   g_object_set_data_full (G_OBJECT (option), "disambig-number", g_strdup (number->number), g_free);
@@ -237,8 +237,8 @@ show_disambig (FavoritesPage *self, const Favorite *favorite)
 
   disambig->page = g_object_ref (self);
   disambig->uid = g_strdup (favorite->uid);
-  disambig->dialog = neo_dialog_new (NULL);
-  neo_dialog_set_flush (disambig->dialog, TRUE);
+  disambig->dialog = vibeos_dialog_new (NULL);
+  vibeos_dialog_set_flush (disambig->dialog, TRUE);
   gtk_widget_add_css_class (content, "disambig");
 
   /* the title strip */
@@ -266,9 +266,9 @@ show_disambig (FavoritesPage *self, const Favorite *favorite)
   gtk_box_append (GTK_BOX (footer), disambig->remember);
   gtk_box_append (GTK_BOX (content), footer);
 
-  neo_dialog_set_content (disambig->dialog, content);
+  vibeos_dialog_set_content (disambig->dialog, content);
   g_object_set_data_full (G_OBJECT (disambig->dialog), "disambig", disambig, (GDestroyNotify) disambig_free);
-  neo_dialog_present (disambig->dialog, GTK_WIDGET (self));
+  vibeos_dialog_present (disambig->dialog, GTK_WIDGET (self));
 }
 
 /* ---- the context menu --------------------------------------------------------------------------------------- */
@@ -405,7 +405,7 @@ make_tile (FavoritesPage *self, Favorite *favorite)
   gtk_widget_set_margin_top (name, NAME_TOP);
   gtk_widget_set_margin_bottom (name, NAME_BOTTOM);
   gtk_widget_add_css_class (name, "favorite-name");
-  neo_label_set_font_padding (name, 14);
+  vibeos_label_set_font_padding (name, 14);
   gtk_box_append (GTK_BOX (box), name);
 
   /* the default channel's kind; empty (one line still) when there is none */
@@ -414,12 +414,12 @@ make_tile (FavoritesPage *self, Favorite *favorite)
   gtk_widget_set_margin_end (type, TEXT_SIDE);
   gtk_widget_set_margin_bottom (type, TYPE_BOTTOM);
   gtk_widget_add_css_class (type, "favorite-type");
-  neo_label_set_font_padding (type, 14);
+  vibeos_label_set_font_padding (type, 14);
   gtk_box_append (GTK_BOX (box), type);
 
   /* no ripple: the tile's root has no background */
-  tile = neo_pressable_new (box);
-  neo_pressable_set_ripple (NEO_PRESSABLE (tile), NEO_RIPPLE_NONE, 0);
+  tile = vibeos_pressable_new (box);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (tile), VIBEOS_RIPPLE_NONE, 0);
   gtk_widget_set_hexpand (tile, TRUE);
   gtk_accessible_update_property (GTK_ACCESSIBLE (tile), GTK_ACCESSIBLE_PROPERTY_LABEL, favorite->name, -1);
   g_object_set_data (G_OBJECT (tile), "favorite", favorite);
@@ -476,9 +476,9 @@ on_picker_key (GtkEventControllerKey *keys, guint keyval, guint keycode, GdkModi
 static void
 open_picker (FavoritesPage *self)
 {
-  GtkOverlay *overlay = neo_window_get_overlay (GTK_WIDGET (self));
+  GtkOverlay *overlay = vibeos_window_get_overlay (GTK_WIDGET (self));
   GtkWidget *bar = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  GtkWidget *back = neo_icon_button_new ("dialer-back-symbolic");
+  GtkWidget *back = vibeos_icon_button_new ("dialer-back-symbolic");
   GtkWidget *title = gtk_label_new (_("Choose a contact"));
   GtkWidget *list = contacts_page_new_picker (self->contacts, self->snackbar);
   GtkEventController *keys = gtk_event_controller_key_new ();
@@ -539,17 +539,17 @@ make_header (FavoritesPage *self)
   gtk_widget_set_hexpand (title, TRUE);
   gtk_widget_set_valign (title, GTK_ALIGN_CENTER);
   gtk_widget_add_css_class (title, "favorites-header");
-  neo_label_set_font_padding (title, 16);
+  vibeos_label_set_font_padding (title, 16);
   gtk_box_append (GTK_BOX (row), title);
   gtk_widget_set_margin_start (add_label, 8);
   gtk_widget_set_margin_end (add_label, 8);
   gtk_widget_set_valign (add_label, GTK_ALIGN_CENTER);
   gtk_widget_add_css_class (add_label, "favorites-add");
-  add = neo_pressable_new (add_label);
+  add = vibeos_pressable_new (add_label);
   gtk_widget_set_size_request (add, 48, 48);
   gtk_widget_set_valign (add, GTK_ALIGN_CENTER);
-  neo_pressable_set_ripple (NEO_PRESSABLE (add), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (add), &(GdkRGBA) { 1, 1, 1, 0.06 });
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (add), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (add), &(GdkRGBA) { 1, 1, 1, 0.06 });
   g_signal_connect_swapped (add, "clicked", G_CALLBACK (on_add_clicked), self);
   gtk_box_append (GTK_BOX (row), add);
   return row;
@@ -637,13 +637,13 @@ favorites_page_init (FavoritesPage *self)
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->scroller), list);
   gtk_stack_add_child (GTK_STACK (self->stack), self->scroller);
   /* the empty view: the speed-dial picture, the line, "Add favorite" */
-  self->empty = empty_view_new ("/neo/Dialer/images/empty-speed-dial.png",
+  self->empty = empty_view_new ("/vibeos/Dialer/images/empty-speed-dial.png",
                                 _("You haven't added any favorites yet"), _("Add favorite"), on_add_favorite, self);
   gtk_stack_add_child (GTK_STACK (self->stack), self->empty);
 }
 
 GtkWidget *
-favorites_page_new (Contacts *contacts, GSettings *settings, NeoSnackbar *snackbar)
+favorites_page_new (Contacts *contacts, GSettings *settings, VibeosSnackbar *snackbar)
 {
   FavoritesPage *self = g_object_new (FAVORITES_TYPE_PAGE, NULL);
 

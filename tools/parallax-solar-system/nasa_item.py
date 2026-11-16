@@ -1,7 +1,7 @@
 # nasa_item.py ID [download-dir]: an NASA Image Library item's title, center, credits and description, and
 # with a download dir its original image (~orig) saved there as ID.<ext> plus ID.meta.json
 import json, os, sys, urllib.parse, urllib.request
-UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) neo-assets-build"}
+UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) vibeos-assets-build"}
 def get(url):
     return urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=120)
 nid = sys.argv[1]

@@ -1,3 +1,0 @@
-[D-BUS Service]
-Name=neo.Clock
-Exec=@bindir@/neo-clock --gapplication-service

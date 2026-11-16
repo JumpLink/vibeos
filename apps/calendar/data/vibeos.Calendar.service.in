@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=vibeos.Calendar
+Exec=@bindir@/vibeos-calendar --gapplication-service

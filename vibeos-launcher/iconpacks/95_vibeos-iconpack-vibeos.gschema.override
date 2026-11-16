@@ -1,0 +1,3 @@
+# installed with vibeos-iconpack-vibeos: the VibeOS icons are the default
+[vibeos.Shell]
+icon-pack='vibeos'

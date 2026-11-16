@@ -1,0 +1,15 @@
+.TH VIBEOS-CAMERA 1 "2026-11-16" "vibeos 0.1.0" "VibeOS"
+.SH NAME
+vibeos-camera \- camera for VibeOS
+.SH SYNOPSIS
+.B vibeos-camera
+.SH DESCRIPTION
+LineageOS's Aperture rebuilt in GTK 4 on libcamera and GStreamer. Photos are saved as JPEG with EXIF to
+.IR ~/Pictures/Camera ,
+videos as H.264 and AAC MP4 to
+.IR ~/Videos/Camera ;
+the scan mode reads barcodes (GStreamer's zxing element). The cameras, their facing and rotation come from libcamera,
+the flash from the LED class, and the video encoder from a measurement of the ones GStreamer has. It is D-Bus
+activatable as vibeos.Camera; its settings are GSettings vibeos.Camera.
+.SH SEE ALSO
+gst-launch-1.0(1)

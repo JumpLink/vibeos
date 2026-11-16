@@ -2,7 +2,7 @@
 #include "fm-ui.h"
 
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 GdkRGBA
@@ -38,7 +38,7 @@ fm_label (const char *text, const char *css_class, double size, gboolean wrap)
       gtk_label_set_single_line_mode (GTK_LABEL (label), TRUE);
       gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
     }
-  neo_label_set_font_padding (label, size);
+  vibeos_label_set_font_padding (label, size);
   return label;
 }
 
@@ -46,15 +46,15 @@ GtkWidget *
 fm_icon_button_sized (const char *icon_name, const char *name, int width, int height, int glyph_size)
 {
   GtkWidget *image = gtk_image_new_from_icon_name (icon_name);
-  GtkWidget *button = neo_pressable_new (image);
+  GtkWidget *button = vibeos_pressable_new (image);
   GdkRGBA ripple = fm_rgba (FM_C_RIPPLE);
 
   gtk_image_set_pixel_size (GTK_IMAGE (image), glyph_size);
   gtk_widget_set_size_request (button, width, height);
   gtk_widget_add_css_class (button, "fm-icon-button");
   /* a borderless ripple: a circle of the button's half diagonal, capped to stay near the glyph */
-  neo_pressable_set_ripple (NEO_PRESSABLE (button), NEO_RIPPLE_CIRCLE, MIN (hypot (width, height) / 2, 24));
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (button), &ripple);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_CIRCLE, MIN (hypot (width, height) / 2, 24));
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (button), &ripple);
   gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);
   return button;
 }
@@ -73,13 +73,13 @@ fm_text_button (const char *label)
   GtkWidget *button;
   GdkRGBA ripple = fm_rgba (FM_C_RIPPLE_CARD);
 
-  neo_label_set_font_padding (text, 14);
+  vibeos_label_set_font_padding (text, 14);
   gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
   gtk_widget_set_halign (text, GTK_ALIGN_CENTER);
-  button = neo_pressable_new (text);
+  button = vibeos_pressable_new (text);
   gtk_widget_add_css_class (button, "fm-text-button");
-  neo_pressable_set_ripple (NEO_PRESSABLE (button), NEO_RIPPLE_BOUNDED, 2);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (button), &ripple);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_BOUNDED, 2);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (button), &ripple);
   gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, label, -1);
   return button;
 }
@@ -220,7 +220,7 @@ fm_check_get_active (GtkWidget *check)
 }
 
 static void
-on_check_row (NeoPressable *row, GtkWidget *check)
+on_check_row (VibeosPressable *row, GtkWidget *check)
 {
   /* a radio button is set by a tap, never cleared: its group clears the others */
   if (FM_CHECK (check)->radio)
@@ -235,7 +235,7 @@ fm_check_row (const char *label, gboolean radio, gboolean active)
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *check = fm_check_new (radio);
   GtkWidget *text = fm_label (label, "fm-check-text", 16, TRUE);
-  GtkWidget *row = neo_pressable_new (box);
+  GtkWidget *row = vibeos_pressable_new (box);
   GdkRGBA ripple = fm_rgba (FM_C_RIPPLE_CARD);
 
   fm_check_set_active (check, active);
@@ -244,8 +244,8 @@ fm_check_row (const char *label, gboolean radio, gboolean active)
   gtk_box_append (GTK_BOX (box), check);
   gtk_box_append (GTK_BOX (box), text);
   gtk_widget_add_css_class (row, "fm-check-row");
-  neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (row), &ripple);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
   g_object_set_data (G_OBJECT (row), "fm-check", check);
   g_signal_connect (row, "clicked", G_CALLBACK (on_check_row), check);
   gtk_accessible_update_property (GTK_ACCESSIBLE (row), GTK_ACCESSIBLE_PROPERTY_LABEL, label, -1);
@@ -381,7 +381,7 @@ typedef struct {
   GtkWidget *layer;
   FmPopupChosen chosen;
   gpointer data;
-  NeoAnim *anim;
+  VibeosAnim *anim;
   gboolean closing;
 } Popup;
 
@@ -390,12 +390,12 @@ popup_free (gpointer data)
 {
   Popup *popup = data;
 
-  g_clear_pointer (&popup->anim, neo_anim_free);
+  g_clear_pointer (&popup->anim, vibeos_anim_free);
   g_free (popup);
 }
 
 static void
-on_popup_anim (NeoAnim *anim, double value, gpointer data)
+on_popup_anim (VibeosAnim *anim, double value, gpointer data)
 {
   Popup *popup = data;
   GtkWidget *parent;
@@ -413,11 +413,11 @@ popup_close (Popup *popup)
   popup->closing = TRUE;
   gtk_widget_set_can_target (popup->layer, FALSE);
   /* closing: a fade */
-  neo_anim_start (popup->anim, gtk_widget_get_opacity (popup->layer), 0, 150, 0, SPONGY_LINEAR);
+  vibeos_anim_start (popup->anim, gtk_widget_get_opacity (popup->layer), 0, 150, 0, SPONGY_LINEAR);
 }
 
 static void
-on_popup_row (NeoPressable *row, Popup *popup)
+on_popup_row (VibeosPressable *row, Popup *popup)
 {
   if (popup->closing)
     return;
@@ -444,7 +444,7 @@ void
 fm_popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, FmPopupPlace place, double x, double y,
                FmPopupChosen chosen, gpointer data)
 {
-  GtkOverlay *overlay = neo_window_get_overlay (anchor);
+  GtkOverlay *overlay = vibeos_window_get_overlay (anchor);
   GtkWidget *layer, *scrim, *card, *scroll, *list;
   GtkGesture *press;
   GtkEventController *keys;
@@ -466,7 +466,7 @@ fm_popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, FmPop
   popup->data = data;
   layer = gtk_overlay_new ();
   popup->layer = layer;
-  popup->anim = neo_anim_new (layer, on_popup_anim, popup);
+  popup->anim = vibeos_anim_new (layer, on_popup_anim, popup);
   g_object_set_data_full (G_OBJECT (layer), "fm-popup", popup, popup_free);
 
   scrim = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
@@ -485,7 +485,7 @@ fm_popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, FmPop
   for (int i = 0; i < n_labels; i++)
     {
       GtkWidget *text = fm_label (labels[i], "fm-popup-text", 16, FALSE);
-      GtkWidget *row = neo_pressable_new (text);
+      GtkWidget *row = vibeos_pressable_new (text);
       PangoLayout *layout = gtk_widget_create_pango_layout (text, labels[i]);
       int w;
 
@@ -495,8 +495,8 @@ fm_popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, FmPop
       widest = MAX (widest, w * 16.0 / 14.0);
       gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
       gtk_widget_add_css_class (row, "fm-popup-item");
-      neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
-      neo_pressable_set_ripple_color (NEO_PRESSABLE (row), &ripple);
+      vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
+      vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
       g_object_set_data (G_OBJECT (row), "fm-index", GINT_TO_POINTER (i));
       g_signal_connect (row, "clicked", G_CALLBACK (on_popup_row), popup);
       gtk_box_append (GTK_BOX (list), row);
@@ -532,13 +532,13 @@ fm_popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, FmPop
   gtk_overlay_set_measure_overlay (overlay, layer, FALSE);
   gtk_widget_grab_focus (layer);
   gtk_widget_set_opacity (layer, 0.1);
-  neo_anim_start (popup->anim, 0.1, 1, 100, 0, SPONGY_LINEAR);
+  vibeos_anim_start (popup->anim, 0.1, 1, 100, 0, SPONGY_LINEAR);
 }
 
 gboolean
 fm_popup_dismiss (GtkWidget *widget)
 {
-  GtkOverlay *overlay = neo_window_get_overlay (widget);
+  GtkOverlay *overlay = vibeos_window_get_overlay (widget);
 
   if (!overlay)
     return FALSE;

@@ -2,7 +2,7 @@
  *
  * A pill in the key's container colour, inset top and bottom inside the key's cell, with its label centred: text
  * at 0.4 of the key's height, so it grows with the key, or an icon (the delete key's). A press shows the ripple
- * (neo-ripple.h) in the label's colour, which is also what lightens the pill while the finger is down, back to
+ * (vibeos-ripple.h) in the label's colour, which is also what lightens the pill while the finger is down, back to
  * nothing ~300 ms after the release.
  *
  * Signals: "clicked" () on a tap, "long-pressed" () -> gboolean after 400 ms held: a handler that returns TRUE

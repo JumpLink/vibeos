@@ -7,7 +7,7 @@
 
 #include <glib/gi18n.h>
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 #define DRAWER_W        280
@@ -23,7 +23,7 @@ struct _FmDrawer {
   GtkWidget *layer, *scrim, *sheet, *tabs[N_TABS], *tab_line, *pages;
   GtkWidget *locations, *bookmarks, *history;
   Tab tab;
-  NeoAnim *anim;
+  VibeosAnim *anim;
   double open, drag_from;
   gboolean editing_bookmarks;
   GCancellable *cancellable;    /* the storage and Recycle Bin sizes being asked */
@@ -97,7 +97,7 @@ place (FmDrawer *drawer)
 }
 
 static void
-on_anim (NeoAnim *anim, double value, gpointer data)
+on_anim (VibeosAnim *anim, double value, gpointer data)
 {
   FmDrawer *drawer = data;
 
@@ -111,7 +111,7 @@ fm_drawer_open (FmDrawer *drawer, gboolean open)
   double to = open ? 1 : 0;
   double distance = fabs (to - drawer->open);
 
-  if (distance <= 0 && !neo_anim_is_running (drawer->anim))
+  if (distance <= 0 && !vibeos_anim_is_running (drawer->anim))
     return;
   if (open)
     {
@@ -120,14 +120,14 @@ fm_drawer_open (FmDrawer *drawer, gboolean open)
       gtk_widget_set_visible (drawer->layer, TRUE);
       gtk_widget_grab_focus (drawer->sheet);
     }
-  neo_anim_start (drawer->anim, drawer->open, to, (guint) MIN ((distance + 1) * SETTLE_BASE_MS, SETTLE_MAX_MS), 0,
+  vibeos_anim_start (drawer->anim, drawer->open, to, (guint) MIN ((distance + 1) * SETTLE_BASE_MS, SETTLE_MAX_MS), 0,
                   SPONGY_DECELERATE_QUINT);
 }
 
 gboolean
 fm_drawer_is_open (FmDrawer *drawer)
 {
-  return drawer->open > 0 && !(neo_anim_is_running (drawer->anim) && neo_anim_get_to (drawer->anim) == 0);
+  return drawer->open > 0 && !(vibeos_anim_is_running (drawer->anim) && vibeos_anim_get_to (drawer->anim) == 0);
 }
 
 static void
@@ -151,7 +151,7 @@ on_sheet_drag_update (GtkGestureDrag *gesture, double dx, double dy, FmDrawer *d
       && (fabs (dx) < TOUCH_SLOP || fabs (dy) > fabs (dx)))
     return;
   gtk_gesture_set_state (GTK_GESTURE (gesture), GTK_EVENT_SEQUENCE_CLAIMED);
-  neo_anim_stop (drawer->anim);
+  vibeos_anim_stop (drawer->anim);
   drawer->open = CLAMP (drawer->drag_from + dx / DRAWER_W, 0, 1);
   place (drawer);
 }
@@ -218,7 +218,7 @@ go (FmDrawer *drawer, GFile *location)
 }
 
 static void
-on_location_row (NeoPressable *row, FmDrawer *drawer)
+on_location_row (VibeosPressable *row, FmDrawer *drawer)
 {
   GFile *location = g_object_get_data (G_OBJECT (row), "fm-file");
 
@@ -236,14 +236,14 @@ on_location_row (NeoPressable *row, FmDrawer *drawer)
 static GtkWidget *
 row_new (FmDrawer *drawer, GtkWidget *content, GFile *location, const char *name, const char *css_class)
 {
-  GtkWidget *row = neo_pressable_new (content);
+  GtkWidget *row = vibeos_pressable_new (content);
   GdkRGBA ripple = fm_rgba (FM_C_RIPPLE);
 
   gtk_widget_add_css_class (row, "fm-nav-row");
   if (css_class)
     gtk_widget_add_css_class (row, css_class);
-  neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (row), &ripple);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
   if (location)
     g_object_set_data_full (G_OBJECT (row), "fm-file", g_object_ref (location), g_object_unref);
   gtk_accessible_update_property (GTK_ACCESSIBLE (row), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);
@@ -413,7 +413,7 @@ on_visited_chosen (int index, gpointer data)
 }
 
 static void
-on_visited_more (NeoPressable *more, FmDrawer *drawer)
+on_visited_more (VibeosPressable *more, FmDrawer *drawer)
 {
   VisitedMenu *menu = g_object_get_data (G_OBJECT (more), "fm-menu");
   const char *labels[] = { menu->pinned ? _("Unpin") : _("Pin"), _("Remove") };
@@ -457,7 +457,7 @@ on_eject_chosen (int index, gpointer data)
 }
 
 static void
-on_media_long_pressed (NeoPressable *row, FmDrawer *drawer)
+on_media_long_pressed (VibeosPressable *row, FmDrawer *drawer)
 {
   GMount *mount = g_object_get_data (G_OBJECT (row), "fm-mount");
   const char *labels[] = { _("Eject") };
@@ -633,7 +633,7 @@ on_bookmark_chosen (int choice, gpointer data)
 }
 
 static void
-on_bookmark_long_pressed (NeoPressable *row, FmDrawer *drawer)
+on_bookmark_long_pressed (VibeosPressable *row, FmDrawer *drawer)
 {
   const char *labels[] = { _("Rename"), _("Remove") };
 
@@ -641,13 +641,13 @@ on_bookmark_long_pressed (NeoPressable *row, FmDrawer *drawer)
 }
 
 static void
-on_bookmark_remove (NeoPressable *button, FmDrawer *drawer)
+on_bookmark_remove (VibeosPressable *button, FmDrawer *drawer)
 {
   remove_bookmark (drawer, GPOINTER_TO_UINT (g_object_get_data (G_OBJECT (button), "fm-index")));
 }
 
 static void
-on_bookmarks_edit (NeoPressable *button, FmDrawer *drawer)
+on_bookmarks_edit (VibeosPressable *button, FmDrawer *drawer)
 {
   drawer->editing_bookmarks = !drawer->editing_bookmarks;
   build_bookmarks (drawer);
@@ -718,7 +718,7 @@ build_bookmarks (FmDrawer *drawer)
 /* ---- the History tab --------------------------------------------------------------------------------------------- */
 
 static void
-on_history_clear (NeoPressable *button, FmDrawer *drawer)
+on_history_clear (VibeosPressable *button, FmDrawer *drawer)
 {
   fm_state_clear_history (drawer->shell->state);
   fm_drawer_refresh (drawer);
@@ -809,7 +809,7 @@ select_tab (FmDrawer *drawer, Tab tab)
 }
 
 static void
-on_tab (NeoPressable *tab, FmDrawer *drawer)
+on_tab (VibeosPressable *tab, FmDrawer *drawer)
 {
   select_tab (drawer, GPOINTER_TO_INT (g_object_get_data (G_OBJECT (tab), "fm-tab")));
 }
@@ -865,7 +865,7 @@ fm_drawer_new (FmShell *shell)
   drawer->shell = shell;
   drawer->layer = GTK_WIDGET (layer);
   layer->drawer = drawer;
-  drawer->anim = neo_anim_new (drawer->layer, on_anim, drawer);
+  drawer->anim = vibeos_anim_new (drawer->layer, on_anim, drawer);
 
   drawer->scrim = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (drawer->scrim, "fm-drawer-scrim");
@@ -881,10 +881,10 @@ fm_drawer_new (FmShell *shell)
       GdkRGBA ripple = fm_rgba (FM_C_RIPPLE);
 
       gtk_image_set_pixel_size (GTK_IMAGE (image), 20);
-      drawer->tabs[i] = neo_pressable_new (image);
+      drawer->tabs[i] = vibeos_pressable_new (image);
       gtk_widget_add_css_class (drawer->tabs[i], "fm-nav-tab");
-      neo_pressable_set_ripple (NEO_PRESSABLE (drawer->tabs[i]), NEO_RIPPLE_BOUNDED, 0);
-      neo_pressable_set_ripple_color (NEO_PRESSABLE (drawer->tabs[i]), &ripple);
+      vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (drawer->tabs[i]), VIBEOS_RIPPLE_BOUNDED, 0);
+      vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (drawer->tabs[i]), &ripple);
       g_object_set_data (G_OBJECT (drawer->tabs[i]), "fm-tab", GINT_TO_POINTER (i));
       g_signal_connect (drawer->tabs[i], "clicked", G_CALLBACK (on_tab), drawer);
       gtk_accessible_update_property (GTK_ACCESSIBLE (drawer->tabs[i]), GTK_ACCESSIBLE_PROPERTY_LABEL, names[i], -1);
@@ -935,6 +935,6 @@ fm_drawer_free (FmDrawer *drawer)
   if (drawer->cancellable)
     g_cancellable_cancel (drawer->cancellable);
   g_clear_object (&drawer->cancellable);
-  g_clear_pointer (&drawer->anim, neo_anim_free);
+  g_clear_pointer (&drawer->anim, vibeos_anim_free);
   g_free (drawer);
 }

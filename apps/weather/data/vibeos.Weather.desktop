@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Weather
+Comment=The weather where you are
+Keywords=forecast;temperature;rain;
+Exec=vibeos-weather
+Icon=vibeos.Weather
+Terminal=false
+Type=Application
+Categories=Utility;GTK;
+StartupNotify=true
+X-Purism-FormFactor=Workstation;Mobile;

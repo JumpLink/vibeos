@@ -14,7 +14,7 @@ static void
 fixture_set_up (Fixture *f, gconstpointer data)
 {
   f->dir = g_dir_make_tmp ("test-blocked-XXXXXX", NULL);
-  f->path = g_build_filename (f->dir, "neo-phone", "blocked_numbers.db", NULL);
+  f->path = g_build_filename (f->dir, "vibeos-phone", "blocked_numbers.db", NULL);
 }
 
 static void

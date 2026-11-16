@@ -2,7 +2,7 @@
  * anchor while it fades in. */
 #include "clock-popup-menu.h"
 
-#include <neo.h>
+#include <vibeos.h>
 
 #define ROW_HEIGHT      48
 #define TEXT_PAD        16      /* the text's inset at both ends */
@@ -23,7 +23,7 @@ struct _ClockPopupMenu
   GtkWidget *card;
   GArray *rows;                 /* Row, by the rows' order */
   graphene_rect_t anchor_bounds;
-  NeoAnim *anim;
+  VibeosAnim *anim;
   double shown;                 /* 0 … 1 */
   gboolean closing;
 };
@@ -80,13 +80,13 @@ clock_popup_menu_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 }
 
 static void
-on_anim (NeoAnim *anim, double value, gpointer data)
+on_anim (VibeosAnim *anim, double value, gpointer data)
 {
   ClockPopupMenu *self = data;
 
   self->shown = value;
   gtk_widget_queue_draw (GTK_WIDGET (self));
-  if (self->closing && !neo_anim_is_running (anim))
+  if (self->closing && !vibeos_anim_is_running (anim))
     {
       GtkWidget *overlay = gtk_widget_get_parent (GTK_WIDGET (self));
 
@@ -101,7 +101,7 @@ dismiss (ClockPopupMenu *self)
   if (self->closing)
     return;
   self->closing = TRUE;
-  neo_anim_start (self->anim, self->shown, 0, EXIT_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start (self->anim, self->shown, 0, EXIT_MS, 0, SPONGY_LINEAR);
 }
 
 static void
@@ -143,7 +143,7 @@ clock_popup_menu_dispose (GObject *object)
 {
   ClockPopupMenu *self = CLOCK_POPUP_MENU (object);
 
-  g_clear_pointer (&self->anim, neo_anim_free);
+  g_clear_pointer (&self->anim, vibeos_anim_free);
   g_clear_pointer (&self->card, gtk_widget_unparent);
   g_clear_pointer (&self->rows, g_array_unref);
   G_OBJECT_CLASS (clock_popup_menu_parent_class)->dispose (object);
@@ -172,7 +172,7 @@ clock_popup_menu_init (ClockPopupMenu *self)
   gtk_widget_add_css_class (self->card, "clock-popup-menu");
   gtk_widget_set_overflow (self->card, GTK_OVERFLOW_HIDDEN);
   gtk_widget_set_parent (self->card, GTK_WIDGET (self));
-  self->anim = neo_anim_new (GTK_WIDGET (self), on_anim, self);
+  self->anim = vibeos_anim_new (GTK_WIDGET (self), on_anim, self);
   g_signal_connect (click, "pressed", G_CALLBACK (on_pressed), self);
   gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (click));
   g_signal_connect (keys, "key-pressed", G_CALLBACK (on_key), self);
@@ -200,10 +200,10 @@ clock_popup_menu_append (ClockPopupMenu *self, const char *label, ClockMenuActio
   gtk_widget_set_margin_start (text, TEXT_PAD);
   gtk_widget_set_margin_end (text, TEXT_PAD);
   gtk_widget_add_css_class (text, "clock-popup-menu-text");
-  neo_label_set_font_padding (text, 16);
-  item = neo_pressable_new (text);
+  vibeos_label_set_font_padding (text, 16);
+  item = vibeos_pressable_new (text);
   gtk_widget_set_size_request (item, -1, ROW_HEIGHT);
-  neo_pressable_set_ripple (NEO_PRESSABLE (item), NEO_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (item), VIBEOS_RIPPLE_BOUNDED, 0);
   g_object_set_data (G_OBJECT (item), "menu-row", GUINT_TO_POINTER (self->rows->len));
   g_signal_connect (item, "clicked", G_CALLBACK (on_row_clicked), self);
   gtk_box_append (GTK_BOX (self->card), item);
@@ -218,13 +218,13 @@ present (ClockPopupMenu *self, GtkOverlay *overlay)
   gtk_overlay_set_clip_overlay (overlay, GTK_WIDGET (self), TRUE);
   gtk_widget_set_focusable (GTK_WIDGET (self), TRUE);
   gtk_widget_grab_focus (GTK_WIDGET (self));
-  neo_anim_start (self->anim, 0, 1, ENTER_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start (self->anim, 0, 1, ENTER_MS, 0, SPONGY_LINEAR);
 }
 
 void
 clock_popup_menu_present (ClockPopupMenu *self, GtkWidget *anchor)
 {
-  GtkOverlay *overlay = neo_window_get_overlay (anchor);
+  GtkOverlay *overlay = vibeos_window_get_overlay (anchor);
   GtkWidget *root = GTK_WIDGET (gtk_widget_get_root (anchor));
 
   g_return_if_fail (overlay != NULL);

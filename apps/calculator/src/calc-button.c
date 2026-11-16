@@ -3,7 +3,7 @@
 #include "calc-text.h"
 
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define INSET              4       /* the pill's inset top and bottom, inside the key's cell */
 #define TEXT_RATIO         0.4     /* the label's size, of the key's height */
@@ -20,7 +20,7 @@ struct _CalcButton {
   int              weight;
   PangoLayout     *layout;
   double           layout_size;
-  NeoRipple        ripple;
+  VibeosRipple        ripple;
   guint            long_press_id;
   gboolean         long_pressed;
 };
@@ -33,17 +33,17 @@ static guint signals[N_SIGNALS];
 static void
 theme_colors (CalcButtonTheme theme, GdkRGBA *container, GdkRGBA *content)
 {
-  static const NeoColor roles[][2] = {
-    [CALC_BUTTON_ADVANCED] = { NEO_SURFACE, NEO_ON_SURFACE },
-    [CALC_BUTTON_NUMERIC]  = { NEO_SURFACE_CONTAINER_HIGHEST, NEO_ON_SURFACE },
-    [CALC_BUTTON_OPERATOR] = { NEO_SECONDARY_CONTAINER, NEO_ON_SECONDARY_CONTAINER },
-    [CALC_BUTTON_CLEAR]    = { NEO_SURFACE_CONTAINER_HIGHEST, NEO_ON_SURFACE_VARIANT },
-    [CALC_BUTTON_ACTION]   = { NEO_PRIMARY_CONTAINER, NEO_ON_PRIMARY_CONTAINER },
-    [CALC_BUTTON_EQUALS]   = { NEO_TERTIARY, NEO_ON_TERTIARY },
+  static const VibeosColor roles[][2] = {
+    [CALC_BUTTON_ADVANCED] = { VIBEOS_SURFACE, VIBEOS_ON_SURFACE },
+    [CALC_BUTTON_NUMERIC]  = { VIBEOS_SURFACE_CONTAINER_HIGHEST, VIBEOS_ON_SURFACE },
+    [CALC_BUTTON_OPERATOR] = { VIBEOS_SECONDARY_CONTAINER, VIBEOS_ON_SECONDARY_CONTAINER },
+    [CALC_BUTTON_CLEAR]    = { VIBEOS_SURFACE_CONTAINER_HIGHEST, VIBEOS_ON_SURFACE_VARIANT },
+    [CALC_BUTTON_ACTION]   = { VIBEOS_PRIMARY_CONTAINER, VIBEOS_ON_PRIMARY_CONTAINER },
+    [CALC_BUTTON_EQUALS]   = { VIBEOS_TERTIARY, VIBEOS_ON_TERTIARY },
   };
 
-  *container = neo_color (roles[theme][0]);
-  *content = neo_color (roles[theme][1]);
+  *container = vibeos_color (roles[theme][0]);
+  *content = vibeos_color (roles[theme][1]);
 }
 
 static void
@@ -72,15 +72,15 @@ calc_button_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gtk_snapshot_push_rounded_clip (snapshot, &pill);
   if (self->theme != CALC_BUTTON_ADVANCED)
     gtk_snapshot_append_color (snapshot, &container, &box);
-  if (neo_ripple_is_active (&self->ripple)) {
+  if (vibeos_ripple_is_active (&self->ripple)) {
     GdkRGBA ripple = content;
     ripple.alpha = RIPPLE_ALPHA;
-    neo_ripple_snapshot (&self->ripple, snapshot, &box, &ripple);
+    vibeos_ripple_snapshot (&self->ripple, snapshot, &box, &ripple);
   }
   gtk_snapshot_pop (snapshot);
 
   if (self->icon_name) {
-    neo_snapshot_icon (snapshot, widget, self->icon_name, (w - self->icon_size) / 2, (h - self->icon_size) / 2,
+    vibeos_snapshot_icon (snapshot, widget, self->icon_name, (w - self->icon_size) / 2, (h - self->icon_size) / 2,
                        self->icon_size, &content);
     return;
   }
@@ -127,7 +127,7 @@ static void
 on_pressed (GtkGestureClick *click, int n_press, double x, double y, CalcButton *self)
 {
   /* the ripple's bounds are the pill's */
-  neo_ripple_press (&self->ripple, x, y - INSET);
+  vibeos_ripple_press (&self->ripple, x, y - INSET);
   self->long_pressed = FALSE;
   stop_long_press (self);
   self->long_press_id = g_timeout_add (LONG_PRESS_MS, on_long_press, self);
@@ -139,7 +139,7 @@ on_released (GtkGestureClick *click, int n_press, double x, double y, CalcButton
   gboolean was_long = self->long_pressed;
 
   stop_long_press (self);
-  neo_ripple_release (&self->ripple);
+  vibeos_ripple_release (&self->ripple);
   if (!was_long)
     g_signal_emit (self, signals[CLICKED], 0);
 }
@@ -149,7 +149,7 @@ on_stopped (GtkGestureClick *click, CalcButton *self)
 {
   /* the finger moved off, or another gesture took the touch */
   stop_long_press (self);
-  neo_ripple_release (&self->ripple);
+  vibeos_ripple_release (&self->ripple);
 }
 
 static void
@@ -158,7 +158,7 @@ calc_button_dispose (GObject *object)
   CalcButton *self = CALC_BUTTON (object);
 
   stop_long_press (self);
-  neo_ripple_clear (&self->ripple);
+  vibeos_ripple_clear (&self->ripple);
   g_clear_object (&self->layout);
   G_OBJECT_CLASS (calc_button_parent_class)->dispose (object);
 }
@@ -196,13 +196,13 @@ calc_button_init (CalcButton *self)
   GtkGesture *click = gtk_gesture_click_new ();
 
   self->weight = CALC_WEIGHT_MEDIUM;
-  neo_ripple_init (&self->ripple, GTK_WIDGET (self));
+  vibeos_ripple_init (&self->ripple, GTK_WIDGET (self));
   g_signal_connect (click, "pressed", G_CALLBACK (on_pressed), self);
   g_signal_connect (click, "released", G_CALLBACK (on_released), self);
   g_signal_connect (click, "stopped", G_CALLBACK (on_stopped), self);
   g_signal_connect (click, "cancel", G_CALLBACK (on_stopped), self);
   gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (click));
-  g_object_set_data (G_OBJECT (self), "neo-tappable", GINT_TO_POINTER (1));
+  g_object_set_data (G_OBJECT (self), "vibeos-tappable", GINT_TO_POINTER (1));
 }
 
 GtkWidget *

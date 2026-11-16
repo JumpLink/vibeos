@@ -4,7 +4,7 @@
 #include "calc-text.h"
 
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define TOOLBAR           64      /* the toolbar's height */
 #define HANDLE_WIDTH      24      /* the drag handle, a pill under the result */
@@ -60,7 +60,7 @@ static void
 calc_display_size_allocate (GtkWidget *widget, int width, int height, int baseline)
 {
   CalcDisplay *self = CALC_DISPLAY (widget);
-  int scale = neo_device_scale (widget);
+  int scale = vibeos_device_scale (widget);
   int W = (int) round (display_width (self) * scale), H = (int) round (display_height (self) * scale);
   int toolbar = TOOLBAR * scale;
   int handle = (HANDLE_HEIGHT + 2 * HANDLE_MARGIN) * scale;
@@ -118,10 +118,10 @@ static void
 calc_display_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   CalcDisplay *self = CALC_DISPLAY (widget);
-  int scale = neo_device_scale (widget);
+  int scale = vibeos_device_scale (widget);
   double w = display_width (self), h = display_height (self);
-  GdkRGBA surface = neo_color (NEO_SURFACE);
-  GdkRGBA secondary = neo_color (NEO_ON_SURFACE_VARIANT);
+  GdkRGBA surface = vibeos_color (VIBEOS_SURFACE);
+  GdkRGBA secondary = vibeos_color (VIBEOS_ON_SURFACE_VARIANT);
   GskRoundedRect shape;
 
   /* the bottom corners rounded */
@@ -225,7 +225,7 @@ calc_display_new (gboolean one_line)
   }
   gtk_widget_set_parent (self->formula, GTK_WIDGET (self));
   gtk_widget_set_parent (self->result, GTK_WIDGET (self));
-  self->overflow = neo_icon_button_new ("calc-more-symbolic");
+  self->overflow = vibeos_icon_button_new ("calc-more-symbolic");
   gtk_widget_add_css_class (self->overflow, "calc-toolbar-icon");
   gtk_widget_set_tooltip_text (self->overflow, NULL);
   gtk_accessible_update_property (GTK_ACCESSIBLE (self->overflow), GTK_ACCESSIBLE_PROPERTY_LABEL, "More options", -1);

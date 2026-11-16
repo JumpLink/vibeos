@@ -29,7 +29,7 @@ clock_notifier_notify (ClockNotifier *self, guint32 replaces, const char *title,
 
   g_variant_builder_init (&hints, G_VARIANT_TYPE_VARDICT);
   /* the Clock's: its name and icon */
-  g_variant_builder_add (&hints, "{sv}", "desktop-entry", g_variant_new_string ("neo.Clock"));
+  g_variant_builder_add (&hints, "{sv}", "desktop-entry", g_variant_new_string ("vibeos.Clock"));
   g_variant_builder_add (&hints, "{sv}", "resident", g_variant_new_boolean (TRUE));
   g_variant_builder_add (&hints, "{sv}", "x-gnome-privacy-scope", g_variant_new_string ("system"));
   g_variant_builder_add (&hints, "{sv}", "urgency", g_variant_new_byte (urgency));
@@ -70,11 +70,11 @@ clock_notifier_header_hints (gint64 chronometer, gboolean countdown, const char 
   g_variant_builder_init (&hints, G_VARIANT_TYPE_VARDICT);
   if (chronometer)
     {
-      g_variant_builder_add (&hints, "{sv}", "x-neo-chronometer", g_variant_new_int64 (chronometer));
-      g_variant_builder_add (&hints, "{sv}", "x-neo-chronometer-countdown", g_variant_new_boolean (countdown));
+      g_variant_builder_add (&hints, "{sv}", "x-vibeos-chronometer", g_variant_new_int64 (chronometer));
+      g_variant_builder_add (&hints, "{sv}", "x-vibeos-chronometer-countdown", g_variant_new_boolean (countdown));
     }
   if (subtext)
-    g_variant_builder_add (&hints, "{sv}", "x-neo-subtext", g_variant_new_string (subtext));
+    g_variant_builder_add (&hints, "{sv}", "x-vibeos-subtext", g_variant_new_string (subtext));
   return g_variant_builder_end (&hints);
 }
 

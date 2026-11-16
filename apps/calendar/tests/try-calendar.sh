@@ -1,6 +1,6 @@
 #!/bin/sh
 # try-calendar.sh: the Calendar against an evolution-data-server of its own, on a test display of its own
-# (tools/neo-headless). The phone's calendars are never touched: the rig's EDS runs on a private session bus, with
+# (tools/vibeos-headless). The phone's calendars are never touched: the rig's EDS runs on a private session bus, with
 # its own config, data and cache directories, so it has only the built-in calendars and what cal-seed puts there.
 #
 #   try-calendar.sh start BUILD_DIR     the private bus (EDS starts on it when first asked), the display
@@ -9,37 +9,37 @@
 #   try-calendar.sh app [ARGS...]       the app on the display, on the rig's bus and settings
 #   try-calendar.sh reminders           the reminder service on the rig's bus, with a stand-in notification server
 #                                       there (fake-notify.py: nothing is shown or heard); its wake-ups go to the
-#                                       phone's neo-wakeup under a key of their own, cleared on stop
+#                                       phone's vibeos-wakeup under a key of their own, cleared on stop
 #   try-calendar.sh notify-log          the notifications the reminder service sent
 #   try-calendar.sh invoke ID ACTION    a tap on notification ID ("default") or its button ("snooze")
 #   try-calendar.sh env                 the rig's environment, for running something else in it
-#   try-calendar.sh shot OUT.png | tap X Y | swipe X0 Y0 X1 Y1 [MS]   as neo-headless
+#   try-calendar.sh shot OUT.png | tap X Y | swipe X0 Y0 X1 Y1 [MS]   as vibeos-headless
 #   try-calendar.sh stop                the display, the app, the service, EDS and the bus
 #
-# Run it as root on the phone (or as the session user on a desktop, HEADLESS pointing at a neo-headless that works
+# Run it as root on the phone (or as the session user on a desktop, HEADLESS pointing at a vibeos-headless that works
 # there); it does the rest as the session user.
 #
 # Nothing in the rig uses the session's runtime directory (/run/user/UID): the rig, its display and everything on
 # its bus get one of their own, CAL_RIG_RUNTIME (/tmp/try-calendar-rt), made 700 for the session user. A GTK app on a
 # private bus activates xdg-desktop-portal there, which brings up a second xdg-document-portal; in the session's
 # directory that one takes over $XDG_RUNTIME_DIR/doc and the session's own portal dies (11-10), and an a11y bus
-# started there would take .../at-spi the same way. The display needs a neo-headless that knows
-# NEO_HEADLESS_RUNTIME (tools/neo-headless).
+# started there would take .../at-spi the same way. The display needs a vibeos-headless that knows
+# VIBEOS_HEADLESS_RUNTIME (tools/vibeos-headless).
 set -e
 
-USER_NAME=${NEO_USER:-user}
+USER_NAME=${VIBEOS_USER:-user}
 RUNTIME=${CAL_RIG_RUNTIME:-/tmp/try-calendar-rt}
 RIG=$RUNTIME/try-calendar.d
 HERE=$(dirname "$(readlink -f "$0")")
-HEADLESS=${HEADLESS:-/root/neo-tools/neo-headless}
-export NEO_HEADLESS=${NEO_HEADLESS:-cal}
-export NEO_HEADLESS_RUNTIME=$RUNTIME
+HEADLESS=${HEADLESS:-/root/vibeos-tools/vibeos-headless}
+export VIBEOS_HEADLESS=${VIBEOS_HEADLESS:-cal}
+export VIBEOS_HEADLESS_RUNTIME=$RUNTIME
 if [ "$RUNTIME" = "/run/user/$(id -u "$USER_NAME")" ]; then
     echo "try-calendar: CAL_RIG_RUNTIME must not be the session's runtime directory" >&2
     exit 1
 fi
-if ! grep -q NEO_HEADLESS_RUNTIME "$HEADLESS" 2>/dev/null; then
-    echo "try-calendar: $HEADLESS does not know NEO_HEADLESS_RUNTIME; HEADLESS=a newer tools/neo-headless" >&2
+if ! grep -q VIBEOS_HEADLESS_RUNTIME "$HEADLESS" 2>/dev/null; then
+    echo "try-calendar: $HEADLESS does not know VIBEOS_HEADLESS_RUNTIME; HEADLESS=a newer tools/vibeos-headless" >&2
     exit 1
 fi
 # the session user's, 700, as a runtime directory must be (made when missing, kept when there)
@@ -57,7 +57,7 @@ as_user() {
     fi
 }
 
-# a daemon as the session user, detached, as neo-headless starts its own
+# a daemon as the session user, detached, as vibeos-headless starts its own
 as_user_daemon() {
     name=$1
     shift
@@ -85,12 +85,12 @@ start)
     as_user mkdir -p "$run/config" "$run/data" "$run/cache" "$run/state" "$run/schemas" "$run/bin"
     echo "$run" | as_user tee "$RIG/run" >/dev/null
     # the programs and the schema where the session user can run and read them (not root's home)
-    for f in neo-calendar neo-calendar-reminders cal-seed; do
+    for f in vibeos-calendar vibeos-calendar-reminders cal-seed; do
         as_user tee "$run/bin/$f" <"$build/$f" >/dev/null
         chmod 755 "$run/bin/$f"
     done
     as_user tee "$run/bin/fake-notify.py" <"$HERE/fake-notify.py" >/dev/null
-    as_user tee "$run/schemas/neo.Calendar.gschema.xml" <"$HERE/../data/neo.Calendar.gschema.xml" >/dev/null
+    as_user tee "$run/schemas/vibeos.Calendar.gschema.xml" <"$HERE/../data/vibeos.Calendar.gschema.xml" >/dev/null
     as_user glib-compile-schemas "$run/schemas"
     # The bus. Services it activates (evolution-source-registry, evolution-calendar-factory) inherit its
     # environment, so they keep everything under $run.
@@ -110,7 +110,7 @@ seed)
 app)
     shift
     # shellcheck disable=SC2046
-    "$HEADLESS" run env $(rig_env) "$(cat "$RIG/run")/bin/neo-calendar" "$@"
+    "$HEADLESS" run env $(rig_env) "$(cat "$RIG/run")/bin/vibeos-calendar" "$@"
     ;;
 reminders)
     run=$(cat "$RIG/run")
@@ -118,7 +118,7 @@ reminders)
     as_user_daemon notify env $(rig_env) python3 -u "$run/bin/fake-notify.py"
     sleep 1
     # shellcheck disable=SC2046
-    as_user_daemon reminders env $(rig_env) "$run/bin/neo-calendar-reminders"
+    as_user_daemon reminders env $(rig_env) "$run/bin/vibeos-calendar-reminders"
     ;;
 notify-log)
     cat "$RIG/notify.log"
@@ -137,7 +137,7 @@ shot | tap | swipe)
 stop)
     "$HEADLESS" stop || true
     # each by its pid file, if that pid is still the program it was (a stale file's pid may be another's now)
-    for p in reminders:neo-calendar-reminders notify:fake-notify.py; do
+    for p in reminders:vibeos-calendar-reminders notify:fake-notify.py; do
         f=$RIG/${p%%:*}.pid
         pid=$(cat "$f" 2>/dev/null || true)
         if [ -n "$pid" ] && tr '\0' ' ' <"/proc/$pid/cmdline" 2>/dev/null | grep -q "${p#*:}"; then
@@ -146,7 +146,7 @@ stop)
         [ -f "$f" ] && : >"$f"
     done
     # the rig service's wake-up, if it left one
-    as_user busctl --system call neo.Wakeup /neo/Wakeup neo.Wakeup Set 'sxa{sv}' \
+    as_user busctl --system call vibeos.Wakeup /vibeos/Wakeup vibeos.Wakeup Set 'sxa{sv}' \
         calendar-reminder-rig 0 0 2>/dev/null || true
     if [ -f "$RIG/run" ] && [ -f "$(cat "$RIG/run")/bus" ]; then
         run=$(cat "$RIG/run")

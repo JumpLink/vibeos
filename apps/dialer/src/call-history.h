@@ -9,7 +9,7 @@
 #pragma once
 
 #include <gtk/gtk.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #include "contacts.h"
 
@@ -19,7 +19,7 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE (CallHistory, call_history, CALL, HISTORY, GtkWidget)
 
 /* @snackbar: the window's, where a call that could not be made says why */
-GtkWidget *call_history_new (Contacts *contacts, NeoSnackbar *snackbar);
+GtkWidget *call_history_new (Contacts *contacts, VibeosSnackbar *snackbar);
 
 /* Signals: "closed" (): Up, Back or Escape, the window takes the screen away; "edit-number" (s number): the
  * context menu's "Edit number before call", the main screen's dialpad with the number in it; "show-details"

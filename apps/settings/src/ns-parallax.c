@@ -1,5 +1,5 @@
 /* The parallax picker (see ns-parallax.h). A preview is the set's preview.jpg if it has one, else its layers laid
- * over each other at preview size, made in a thread and kept in ~/.cache/neo-settings. */
+ * over each other at preview size, made in a thread and kept in ~/.cache/vibeos-settings. */
 #include "ns-parallax.h"
 #include "ns-pages.h"
 #include "ns-ui.h"
@@ -23,7 +23,7 @@ thumb_cache (const char *dir)
 {
   g_autofree char *sum = g_compute_checksum_for_string (G_CHECKSUM_MD5, dir, -1);
   g_autofree char *name = g_strconcat ("parallax-", sum, ".png", NULL);
-  return g_build_filename (g_get_user_cache_dir (), "neo-settings", name, NULL);
+  return g_build_filename (g_get_user_cache_dir (), "vibeos-settings", name, NULL);
 }
 
 /* the picture at path over out, scaled to cover it, centred */
@@ -143,7 +143,7 @@ mark_current (Grid *g)
 
 /* A set is applied as any wallpaper is, asked where first: GNOME's wallpaper becomes the picture in its folder (the
  * set at rest, for the lock screen too), which the launcher plays as the set. Off is a still picture, chosen from the
- * Wallpapers. (Neo's own wallpaper-parallax key, written here before, is read only when there is no picture at all:
+ * Wallpapers. (VibeOS's own wallpaper-parallax key, written here before, is read only when there is no picture at all:
  * a set picked here changed nothing.) */
 static void
 picked (GtkFlowBox *flow, GtkFlowBoxChild *child, Grid *g)
@@ -252,9 +252,9 @@ ns_parallax_grid (GSettings *bg, GSettings *iface)
   gtk_flow_box_set_activate_on_single_click (GTK_FLOW_BOX (flow), TRUE);
   gtk_flow_box_append (GTK_FLOW_BOX (flow), card_new ("", "Off"));
   g_autoptr (GHashTable) seen = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
-  g_autofree char *mine = g_build_filename (g_get_user_data_dir (), "neo-launcher", "parallax", NULL);
+  g_autofree char *mine = g_build_filename (g_get_user_data_dir (), "vibeos-launcher", "parallax", NULL);
   add_sets (flow, mine, seen);
-  add_sets (flow, "/usr/share/neo-launcher/parallax", seen);
+  add_sets (flow, "/usr/share/vibeos-launcher/parallax", seen);
   g_signal_connect (flow, "child-activated", G_CALLBACK (picked), g);
   g_signal_connect (bg, "changed::picture-uri", G_CALLBACK (changed), g);
   g_signal_connect (bg, "changed::picture-uri-dark", G_CALLBACK (changed), g);

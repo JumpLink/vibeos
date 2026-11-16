@@ -2,7 +2,7 @@
 #include "msg-dates.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define MINUTE_MS (60 * 1000)
 #define HOUR_MS (60 * MINUTE_MS)
@@ -21,7 +21,7 @@ same_day (GDateTime *a, GDateTime *b)
 static char *
 time_of_day (GDateTime *date)
 {
-  return g_date_time_format (date, neo_clock_uses_24h () ? C_("time", "%H:%M") : C_("time", "%-l:%M %p"));
+  return g_date_time_format (date, vibeos_clock_uses_24h () ? C_("time", "%H:%M") : C_("time", "%-l:%M %p"));
 }
 
 static char *
@@ -30,7 +30,7 @@ timestamp (gint64 time, gint64 now, gboolean abbreviated)
   g_autoptr(GDateTime) date = g_date_time_new_from_unix_local (time / 1000);
   g_autoptr(GDateTime) today = g_date_time_new_from_unix_local (now / 1000);
   gint64 age = now - time;
-  gboolean use_24h = neo_clock_uses_24h ();
+  gboolean use_24h = vibeos_clock_uses_24h ();
   g_autofree char *clock = NULL;
 
   if (!date || !today)

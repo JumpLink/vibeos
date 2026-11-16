@@ -1,8 +1,8 @@
-/* neo-messaging-sms: the Messaging's service, for everything about text messages that must go on with the app closed.
- * It runs in the session from login (neo-messaging-sms.service): a message that comes is kept in bugle_db, taken off
+/* vibeos-messaging-sms: the Messaging's service, for everything about text messages that must go on with the app closed.
+ * It runs in the session from login (vibeos-messaging-sms.service): a message that comes is kept in bugle_db, taken off
  * the modem and notified; one written is sent, tried again while there is no network, and notified when it is given up.
  *
- * This file is its face on D-Bus (neo.Messaging.Sms) and its notifications. It is bugle_db's only writer: the
+ * This file is its face on D-Bus (vibeos.Messaging.Sms) and its notifications. It is bugle_db's only writer: the
  * app reads the store itself, read-only, and is told by Changed what to read again.
  *
  * It stands aside while gsm2sip is in gateway mode, as the Phone's service does: then gsm2sipd takes the modem's
@@ -104,7 +104,7 @@ typedef struct {
   GHashTable *retries;          /* message id -> Retry, while it is still to go */
   GHashTable *reports;          /* reference -> Report: the delivery reports waited for (256 at most: a TP-MR is a
                                  * byte) */
-  GSettings *settings;          /* the app's (neo.Messaging), for "delivery-reports"; NULL without its schema */
+  GSettings *settings;          /* the app's (vibeos.Messaging), for "delivery-reports"; NULL without its schema */
 
   gint64 visible;               /* SetVisible's */
   char *visible_sender;
@@ -1074,7 +1074,7 @@ on_signal (gpointer data)
 static GDBusConnection *
 system_bus (GError **error)
 {
-  const char *address = g_getenv ("NEO_MESSAGING_SYSTEM_BUS");
+  const char *address = g_getenv ("VIBEOS_MESSAGING_SYSTEM_BUS");
 
   if (address && *address)
     return g_dbus_connection_new_for_address_sync (address, G_DBUS_CONNECTION_FLAGS_AUTHENTICATION_CLIENT
@@ -1090,7 +1090,7 @@ main (int argc, char **argv)
   g_autoptr(GError) error = NULL;
   g_autoptr(GDBusNodeInfo) node = NULL;
   g_autoptr(GPtrArray) unsent = NULL;
-  g_autofree char *dir = g_build_filename (g_get_user_data_dir (), "neo-messaging", NULL);
+  g_autofree char *dir = g_build_filename (g_get_user_data_dir (), "vibeos-messaging", NULL);
   g_autofree char *store_path = g_build_filename (dir, "bugle_db", NULL);
   guint owner;
 

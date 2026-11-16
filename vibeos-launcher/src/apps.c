@@ -1,0 +1,114 @@
+/* The apps a launcher shows: visible .desktop entries, by id, without the Android apps that come with Waydroid's
+ * image (GNOME has its own phone, contacts, messages, clock, files: these expect Android's telephony and home).
+ * Play stays, and what it installs, and Android's settings under a name that tells it from GNOME's. */
+#include "apps.h"
+#include "legacy-ids.h"
+
+#include <string.h>
+
+static const char *android_builtin[] = {
+  "com.android.calculator2", "com.android.deskclock", "com.android.documentsui", "com.android.gallery3d",
+  "com.android.inputmethod.latin", "com.google.android.apps.messaging", "com.google.android.contacts",
+  "com.google.android.dialer", "org.lineageos.aperture", "org.lineageos.eleven", "org.lineageos.etar",
+  "org.lineageos.jelly", "org.lineageos.recorder", "org.lineageos.updater", NULL,
+};
+
+#define ANDROID_SETTINGS "waydroid.com.android.settings.desktop"
+
+const char *const apps_replaced[][2] = {
+  { "org.gnome.Calls.desktop", "vibeos.Dialer.desktop" },
+  { "sm.puri.Chatty.desktop", "vibeos.Messaging.desktop" },
+  { "org.gnome.Calculator.desktop", "vibeos.Calculator.desktop" },
+  { "org.gnome.Calendar.desktop", "vibeos.Calendar.desktop" },
+  { "org.gnome.Snapshot.desktop", "vibeos.Camera.desktop" },
+  { "org.gnome.Nautilus.desktop", "vibeos.Files.desktop" },
+  { "org.gnome.Settings.desktop", "vibeos.Settings.desktop" },
+  { "org.gnome.Weather.desktop", "vibeos.Weather.desktop" },
+  /* GNOME's video player since 49 */
+  { "org.gnome.Totem.desktop", "org.gnome.Showtime.desktop" },
+};
+const guint apps_n_replaced = G_N_ELEMENTS (apps_replaced);
+
+static gboolean
+is_android_builtin (const char *id)
+{
+  if (!g_str_has_prefix (id, "waydroid.") || !g_str_has_suffix (id, ".desktop"))
+    return FALSE;
+  g_autofree char *pkg = g_strndup (id + strlen ("waydroid."), strlen (id) - strlen ("waydroid.") - strlen (".desktop"));
+  return g_strv_contains (android_builtin, pkg);
+}
+
+GHashTable *
+apps_installed (void)
+{
+  GHashTable *apps = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_object_unref);
+  GList *all = g_app_info_get_all ();
+
+  for (GList *l = all; l; l = l->next) {
+    GAppInfo *info = l->data;
+    const char *id = g_app_info_get_id (info);
+    if (!id)
+      continue;
+    /* Waydroid writes its Settings entry NoDisplay; VibeOS shows it as Android Settings */
+    if (!g_app_info_should_show (info) && g_strcmp0 (id, ANDROID_SETTINGS))
+      continue;
+    if (is_android_builtin (id) || g_str_has_prefix (id, "vibeos.Launcher") ||
+        g_str_has_prefix (id, LEGACY_PREFIX "NeoLauncher"))
+      continue;
+    /* a phone shows phone apps: nothing that runs in a terminal (htop, nvtop), and not Waydroid's whole-screen
+     * Android session (its apps come one by one, as windows of their own) */
+    if ((G_IS_DESKTOP_APP_INFO (info) && g_desktop_app_info_get_boolean (G_DESKTOP_APP_INFO (info), "Terminal")) ||
+        !g_strcmp0 (id, "Waydroid.desktop"))
+      continue;
+    g_hash_table_replace (apps, g_strdup (id), g_object_ref (info));
+  }
+  g_list_free_full (all, g_object_unref);
+  /* one app per job: GNOME's Settings, Calculator, Calendar... give way to the phone's own once it is installed
+   * (they stay installed, and other apps can still open them) */
+  for (guint r = 0; r < apps_n_replaced; r++)
+    if (g_hash_table_contains (apps, apps_replaced[r][1]))
+      g_hash_table_remove (apps, apps_replaced[r][0]);
+  return apps;
+}
+
+char *
+apps_current_id (const char *id)
+{
+  g_autofree char *now = legacy_desktop_id (id);
+  if (!now)
+    return g_strdup (id);
+  g_autoptr (GDesktopAppInfo) old = g_desktop_app_info_new (id);
+  g_autoptr (GDesktopAppInfo) renamed = old ? NULL : g_desktop_app_info_new (now);
+  return renamed ? g_steal_pointer (&now) : g_strdup (id);
+}
+
+const char *
+app_name (GAppInfo *info)
+{
+  if (!info)
+    return "";
+  if (!g_strcmp0 (g_app_info_get_id (info), ANDROID_SETTINGS))
+    return "Android Settings";
+  return g_app_info_get_display_name (info) ?: "";
+}
+
+GAppInfo *
+app_for_app_id (const char *app_id)
+{
+  if (!app_id || !*app_id)
+    return NULL;
+  g_autofree char *a = g_strconcat (app_id, ".desktop", NULL);
+  g_autofree char *lower = g_ascii_strdown (a, -1);
+  GDesktopAppInfo *info = g_desktop_app_info_new (a);
+  if (!info)
+    info = g_desktop_app_info_new (lower);
+  return info ? G_APP_INFO (info) : NULL;
+}
+
+gint
+app_compare (gconstpointer a, gconstpointer b)
+{
+  g_autofree char *ka = g_utf8_collate_key (app_name ((GAppInfo *) a), -1);
+  g_autofree char *kb = g_utf8_collate_key (app_name ((GAppInfo *) b), -1);
+  return strcmp (ka, kb);
+}

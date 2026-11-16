@@ -1,7 +1,7 @@
 /* The Calendar's colours, as 0xAARRGGBB, in the three looks its Theme setting gives: dark, pure black (Pure black night
  * mode: a black window) and light; cal_palette_set picks one for the app.
  *
- * Not libneo's palette: the surfaces are purple-grey, only the primary colour follows the wallpaper, and the views
+ * Not libvibeos's palette: the surfaces are purple-grey, only the primary colour follows the wallpaper, and the views
  * draw with colours of their own. The stylesheets name the same values (calendar.css for dark,
  * calendar-black.css and calendar-light.css over it). The names below read the palette in use. */
 #pragma once
@@ -41,8 +41,8 @@ CalLook     cal_palette_look  (void);
 /* the Theme setting is exactly "light" (not "system" in a light look): the Month view then paints today in the
  * primary colour at alpha 72 instead of its today colour */
 extern gboolean cal_theme_light;
-/* the ripple's colour, half the highlight: white 20 % in the dark looks (libneo's),
- * black 12 % in the light one. Every NeoPressable takes it as it maps. */
+/* the ripple's colour, half the highlight: white 20 % in the dark looks (libvibeos's),
+ * black 12 % in the light one. Every VibeosPressable takes it as it maps. */
 GdkRGBA     cal_ripple_color  (void);
 /* after cal_palette_set: every widget under @root redrawn in the new colours, its ripples recoloured */
 void        cal_palette_restyle (GtkWidget *root);

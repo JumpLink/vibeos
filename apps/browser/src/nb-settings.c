@@ -9,7 +9,7 @@
 #include "nb-widgets.h"
 
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 #define BAR_EXPANDED  179
@@ -65,7 +65,7 @@ pref_row (const char *title, const char *summary, GtkWidget *end, GtkWidget **su
     gtk_widget_set_valign (end, GTK_ALIGN_CENTER);
     gtk_box_append (GTK_BOX (box), end);
   }
-  GtkWidget *row = neo_pressable_new (box);
+  GtkWidget *row = vibeos_pressable_new (box);
   gtk_widget_add_css_class (row, "nb-pref");
   return row;
 }
@@ -218,7 +218,7 @@ on_home (GtkWidget *row, Settings *s)
   GtkWidget *label = nb_label ("Enabled", 14, "nb-check-text", FALSE);
   gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (check), label);
-  GtkWidget *check_row = neo_pressable_new (check);
+  GtkWidget *check_row = vibeos_pressable_new (check);
   gtk_accessible_update_property (GTK_ACCESSIBLE (check_row), GTK_ACCESSIBLE_PROPERTY_LABEL, "Enabled", -1);
   g_signal_connect (check_row, "clicked", G_CALLBACK (on_home_check), h);
   gtk_box_append (GTK_BOX (box), check_row);

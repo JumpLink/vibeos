@@ -6,7 +6,7 @@ startup animation runs before the extensions enabled at startup are
 enabled: they are imported asynchronously, after the UI is built. A
 session whose extension puts up its own first screen therefore shows the
 overview, the top panel and the grey system background first. On a
-phone that boots to gnome-phone's lock screen this lasts about 6 s
+phone that boots to VibeOS's lock screen this lasts about 6 s
 (S10e: the shell starts at 8.7 s, the extension is enabled at 12.2 s,
 and the lock screen's first frame is drawn at 14.65 s).
 
@@ -29,7 +29,7 @@ signal, whose ClutterFrameInfo is a bare pointer GJS cannot take (each
 call of the handler throws), but 100 ms after the first 'after-paint',
 or after 5 s at most.
 
-POCO X3 NFC, booted with this and gnome-phone's hold: Plymouth's frame
+POCO X3 NFC, booted with this and VibeOS's hold: Plymouth's frame
 is scanned out until 16.04 s, the lock screen from then on, nothing in
 between; the display is registered at 16.15 s and Plymouth has quit by
 16.19 s.

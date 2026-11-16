@@ -13,7 +13,7 @@
 #include "fm-util.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define BACK_MAX        100
 #define TOAST_FADE_MS   250
@@ -31,7 +31,7 @@ typedef struct {
   GtkWidget *search, *view, *empty, *edit, *add, *overflow;
   char *bottom_mode;            /* what the bottom bar holds now: rebuilt only when it changes */
   GtkWidget *toast, *toast_label;
-  NeoAnim *toast_anim;
+  VibeosAnim *toast_anim;
   guint toast_timeout;
   GtkWidget *back_marker;
   FmSnackAction snack_cb;
@@ -112,7 +112,7 @@ fm_shell_remotes_changed (FmShell *shell)
 /* ---- the toast and the snackbar ------------------------------------------------------------------------------------ */
 
 static void
-on_toast_anim (NeoAnim *anim, double value, gpointer data)
+on_toast_anim (VibeosAnim *anim, double value, gpointer data)
 {
   Shell *s = data;
 
@@ -126,7 +126,7 @@ on_toast_timeout (gpointer data)
   Shell *s = data;
 
   s->toast_timeout = 0;
-  neo_anim_start (s->toast_anim, neo_anim_get_value (s->toast_anim), 0, TOAST_FADE_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start (s->toast_anim, vibeos_anim_get_value (s->toast_anim), 0, TOAST_FADE_MS, 0, SPONGY_LINEAR);
   return G_SOURCE_REMOVE;
 }
 
@@ -137,7 +137,7 @@ fm_shell_toast (FmShell *shell, const char *text)
 
   gtk_label_set_label (GTK_LABEL (s->toast_label), text);
   g_clear_handle_id (&s->toast_timeout, g_source_remove);
-  neo_anim_start (s->toast_anim, neo_anim_get_value (s->toast_anim), 1, TOAST_FADE_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start (s->toast_anim, vibeos_anim_get_value (s->toast_anim), 1, TOAST_FADE_MS, 0, SPONGY_LINEAR);
   s->toast_timeout = g_timeout_add (TOAST_FADE_MS + TOAST_SHORT_MS, on_toast_timeout, s);
 }
 
@@ -145,7 +145,7 @@ static GtkWidget *
 toast_new (Shell *s)
 {
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  GtkWidget *icon = gtk_image_new_from_icon_name ("neo.Files");
+  GtkWidget *icon = gtk_image_new_from_icon_name ("vibeos.Files");
 
   gtk_image_set_pixel_size (GTK_IMAGE (icon), 24);
   gtk_widget_add_css_class (icon, "fm-toast-icon");
@@ -166,7 +166,7 @@ toast_new (Shell *s)
   gtk_widget_set_visible (box, FALSE);
   gtk_accessible_update_property (GTK_ACCESSIBLE (box), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Message"), -1);
   s->toast = box;
-  s->toast_anim = neo_anim_new (box, on_toast_anim, s);
+  s->toast_anim = vibeos_anim_new (box, on_toast_anim, s);
   return box;
 }
 
@@ -202,8 +202,8 @@ fm_shell_snackbar (FmShell *shell, const char *text, const char *action, FmSnack
   s->snack_cb = action_cb;
   s->snack_data = data;
   s->snack_destroy = destroy;
-  neo_snackbar_show (NEO_SNACKBAR (shell->snackbar), text, action_cb ? caps : NULL,
-                     action_cb ? on_snack_action : NULL, s, NEO_SNACKBAR_LONG);
+  vibeos_snackbar_show (VIBEOS_SNACKBAR (shell->snackbar), text, action_cb ? caps : NULL,
+                     action_cb ? on_snack_action : NULL, s, VIBEOS_SNACKBAR_LONG);
 }
 
 void
@@ -771,19 +771,19 @@ show_more (FmShell *shell, GtkWidget *anchor)
 /* ---- the toolbar's actions ----------------------------------------------------------------------------------------- */
 
 static void
-on_nav (NeoPressable *button, FmShell *shell)
+on_nav (VibeosPressable *button, FmShell *shell)
 {
   fm_drawer_open (shell->drawer, TRUE);
 }
 
 static void
-on_back_button (NeoPressable *button, FmShell *shell)
+on_back_button (VibeosPressable *button, FmShell *shell)
 {
   fm_shell_back (shell);
 }
 
 static void
-on_search (NeoPressable *button, FmShell *shell)
+on_search (VibeosPressable *button, FmShell *shell)
 {
   fm_browser_search_begin (shell->browser);
   fm_shell_update_bars (shell);
@@ -803,7 +803,7 @@ on_search_activate (GtkEntry *entry, FmShell *shell)
 }
 
 static void
-on_view (NeoPressable *button, FmShell *shell)
+on_view (VibeosPressable *button, FmShell *shell)
 {
   fm_view_dialog (shell->window, shell->settings);
 }
@@ -816,20 +816,20 @@ on_empty_answer (gboolean ok, gpointer data)
 }
 
 static void
-on_empty (NeoPressable *button, FmShell *shell)
+on_empty (VibeosPressable *button, FmShell *shell)
 {
   fm_confirm_dialog (shell->window, _("Empty Recycle Bin"), _("Are you sure you want to empty the Recycle Bin?"),
                      on_empty_answer, shell);
 }
 
 static void
-on_edit (NeoPressable *button, FmShell *shell)
+on_edit (VibeosPressable *button, FmShell *shell)
 {
   fm_remote_page_toggle_edit (shell->remote_page);
 }
 
 static void
-on_add (NeoPressable *button, FmShell *shell)
+on_add (VibeosPressable *button, FmShell *shell)
 {
   fm_remote_page_add (shell->remote_page);
 }
@@ -933,7 +933,7 @@ on_overflow_chosen (int index, gpointer data)
 
 /* the overflow: Home has Refresh and Settings; a folder New folder and Refresh; the Recycle Bin Refresh */
 static void
-on_overflow (NeoPressable *button, FmShell *shell)
+on_overflow (VibeosPressable *button, FmShell *shell)
 {
   const char *labels[3];
   int n = 0;
@@ -947,20 +947,20 @@ on_overflow (NeoPressable *button, FmShell *shell)
 }
 
 static void
-on_select_close (NeoPressable *button, FmShell *shell)
+on_select_close (VibeosPressable *button, FmShell *shell)
 {
   end_selection (shell);
 }
 
 static void
-on_select_all (NeoPressable *button, FmShell *shell)
+on_select_all (VibeosPressable *button, FmShell *shell)
 {
   fm_list_select_all (fm_browser_get_list (shell->browser));
   fm_shell_update_bars (shell);
 }
 
 static void
-on_select_range (NeoPressable *button, FmShell *shell)
+on_select_range (VibeosPressable *button, FmShell *shell)
 {
   fm_list_select_range (fm_browser_get_list (shell->browser));
   fm_shell_update_bars (shell);
@@ -981,7 +981,7 @@ typedef enum {
 } BottomItem;
 
 static void
-on_bottom_item (NeoPressable *button, FmShell *shell)
+on_bottom_item (VibeosPressable *button, FmShell *shell)
 {
   BottomItem item = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (button), "fm-item"));
 
@@ -1041,11 +1041,11 @@ bottom_item (FmShell *shell, BottomItem item, const char *icon, const char *labe
   gtk_box_append (GTK_BOX (box), image);
   gtk_box_append (GTK_BOX (box), text);
   gtk_widget_set_valign (box, GTK_ALIGN_CENTER);
-  button = neo_pressable_new (box);
+  button = vibeos_pressable_new (box);
   gtk_widget_add_css_class (button, "fm-bottom-item");
   gtk_widget_set_hexpand (button, TRUE);
-  neo_pressable_set_ripple (NEO_PRESSABLE (button), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (button), &ripple);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (button), &ripple);
   gtk_widget_set_sensitive (button, sensitive);
   g_object_set_data (G_OBJECT (button), "fm-item", GINT_TO_POINTER (item));
   g_signal_connect (button, "clicked", G_CALLBACK (on_bottom_item), shell);
@@ -1162,11 +1162,11 @@ fm_shell_update_bars (FmShell *shell)
   gtk_widget_set_visible (s->search, browsing && !trash && !network);
   gtk_widget_set_visible (s->view, browsing && !trash);
   /* the View button shows how the folder is shown: rows or tiles */
-  gtk_image_set_from_icon_name (GTK_IMAGE (neo_pressable_get_child (NEO_PRESSABLE (s->view))),
+  gtk_image_set_from_icon_name (GTK_IMAGE (vibeos_pressable_get_child (VIBEOS_PRESSABLE (s->view))),
                                 fm_list_get_grid (list) ? "view-grid-symbolic" : "view-list-symbolic");
   gtk_widget_set_visible (s->empty, trash);
   gtk_widget_set_visible (s->edit, shell->page == FM_PAGE_REMOTE && shell->remotes->len > 0);
-  gtk_image_set_from_icon_name (GTK_IMAGE (neo_pressable_get_child (NEO_PRESSABLE (s->edit))),
+  gtk_image_set_from_icon_name (GTK_IMAGE (vibeos_pressable_get_child (VIBEOS_PRESSABLE (s->edit))),
                                 fm_remote_page_is_editing (shell->remote_page) ? "object-select-symbolic"
                                                                                : "document-edit-symbolic");
   gtk_widget_set_visible (s->add, shell->page == FM_PAGE_REMOTE);
@@ -1304,7 +1304,7 @@ shell_free (gpointer data)
 
   snack_clear (s);
   g_clear_handle_id (&s->toast_timeout, g_source_remove);
-  g_clear_pointer (&s->toast_anim, neo_anim_free);
+  g_clear_pointer (&s->toast_anim, vibeos_anim_free);
   g_signal_handlers_disconnect_by_data (shell->monitor, shell);
   g_signal_handlers_disconnect_by_data (shell->settings, shell);
   fm_browser_free (shell->browser);
@@ -1427,12 +1427,12 @@ fm_window_new (GtkApplication *app, GSettings *settings)
 {
   Shell *s = g_new0 (Shell, 1);
   FmShell *shell = &s->pub;
-  GtkWidget *window = neo_window_new (app);
+  GtkWidget *window = vibeos_window_new (app);
   GtkWidget *main = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *content = gtk_overlay_new ();
   GtkEventController *shortcuts = gtk_shortcut_controller_new ();
-  g_autofree char *config_dir = g_build_filename (g_get_user_config_dir (), "neo-files", NULL);
-  g_autofree char *state_dir = g_build_filename (g_get_user_state_dir (), "neo-files", NULL);
+  g_autofree char *config_dir = g_build_filename (g_get_user_config_dir (), "vibeos-files", NULL);
+  g_autofree char *state_dir = g_build_filename (g_get_user_state_dir (), "vibeos-files", NULL);
   GtkOverlay *overlay;
 
   shell->window = window;
@@ -1478,17 +1478,17 @@ fm_window_new (GtkApplication *app, GSettings *settings)
   gtk_box_append (GTK_BOX (shell->bottom), shell->bottom_items);
   gtk_widget_set_visible (shell->bottom, FALSE);
   gtk_box_append (GTK_BOX (main), shell->bottom);
-  neo_window_set_content (GTK_WINDOW (window), main);
+  vibeos_window_set_content (GTK_WINDOW (window), main);
 
-  overlay = GTK_OVERLAY (g_object_get_data (G_OBJECT (window), "neo-overlay"));
+  overlay = GTK_OVERLAY (g_object_get_data (G_OBJECT (window), "vibeos-overlay"));
   /* the marker the shell's back gesture sees while Back has something to leave */
   s->back_marker = g_object_new (GTK_TYPE_BOX, "accessible-role", GTK_ACCESSIBLE_ROLE_DIALOG, NULL);
   gtk_accessible_update_property (GTK_ACCESSIBLE (s->back_marker), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Files"), -1);
   gtk_widget_set_can_target (s->back_marker, FALSE);
   gtk_widget_set_visible (s->back_marker, FALSE);
   gtk_overlay_add_overlay (overlay, s->back_marker);
-  shell->snackbar = neo_snackbar_new ();
-  neo_snackbar_set_margin (NEO_SNACKBAR (shell->snackbar), 0);
+  shell->snackbar = vibeos_snackbar_new ();
+  vibeos_snackbar_set_margin (VIBEOS_SNACKBAR (shell->snackbar), 0);
   gtk_widget_add_css_class (shell->snackbar, "fm-snackbar");
   gtk_overlay_add_overlay (overlay, shell->snackbar);
   gtk_overlay_add_overlay (overlay, toast_new (s));

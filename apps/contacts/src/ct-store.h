@@ -111,6 +111,6 @@ gboolean    ct_store_can_have_profile (CtStore *self);
 /* writes @profile over the self contact, or adds it and makes it the self contact; @done gets CT_PROFILE_UID */
 void        ct_store_save_profile (CtStore *self, EContact *profile, CtStoreDone done, gpointer data);
 /* what the screens call the profile (its real UID is EDS's) */
-#define CT_PROFILE_UID "neo-contacts-profile"
+#define CT_PROFILE_UID "vibeos-contacts-profile"
 
 G_END_DECLS

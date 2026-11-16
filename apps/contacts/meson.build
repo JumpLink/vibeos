@@ -1,7 +1,7 @@
-project('neo-contacts', 'c', version: '1.0', meson_version: '>= 1.0',
+project('vibeos-contacts', 'c', version: '1.0', meson_version: '>= 1.0',
         default_options: ['warning_level=2', 'c_std=gnu11', 'buildtype=release'])
 add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers',
-                      '-DGETTEXT_PACKAGE="neo-contacts"',
+                      '-DGETTEXT_PACKAGE="vibeos-contacts"',
                       '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir')),
                       '-DCT_VERSION="@0@"'.format(meson.project_version()), language: 'c')
 
@@ -22,19 +22,19 @@ core = static_library('contacts-core', 'src/ct-contact.c', 'src/ct-vcard.c', 'sr
 
 gtk = dependency('gtk4', version: '>= 4.14')
 resources = gnome.compile_resources('contacts-resources', 'src/contacts.gresource.xml', source_dir: ['src', 'data'])
-executable('neo-contacts', 'src/ct-main.c', 'src/ct-window.c', 'src/ct-page.c', 'src/ct-people.c', 'src/ct-list.c',
+executable('vibeos-contacts', 'src/ct-main.c', 'src/ct-window.c', 'src/ct-page.c', 'src/ct-people.c', 'src/ct-list.c',
            'src/ct-quick.c', 'src/ct-editor.c', 'src/ct-picker.c', 'src/ct-settings.c', 'src/ct-dialogs.c',
            'src/ct-popup.c', 'src/ct-ui.c', 'src/ct-avatar.c', '../dialer/src/text.c',
            '../dialer/src/phone-number.c', '../dialer/src/avatar.c', resources,
            include_directories: dialer, link_with: core, install: true,
-           dependencies: [gio, ebook, m, gtk, dependency('neo-1'), dependency('spongy-gtk-1')])
+           dependencies: [gio, ebook, m, gtk, dependency('vibeos-1'), dependency('spongy-gtk-1')])
 
 unit = configuration_data({'bindir': bindir})
-configure_file(input: 'data/neo.Contacts.service.in', output: 'neo.Contacts.service',
+configure_file(input: 'data/vibeos.Contacts.service.in', output: 'vibeos.Contacts.service',
                configuration: unit, install_dir: datadir / 'dbus-1/services')
-install_data('data/neo.Contacts.desktop', install_dir: datadir / 'applications')
-install_data('data/neo.Contacts.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
-install_data('data/neo.Contacts.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
+install_data('data/vibeos.Contacts.desktop', install_dir: datadir / 'applications')
+install_data('data/vibeos.Contacts.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
+install_data('data/vibeos.Contacts.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
 gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
 
 foreach name : ['ct-contact', 'ct-vcard', 'ct-rows']

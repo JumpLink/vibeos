@@ -27,7 +27,7 @@
 
 #include <glib/gi18n.h>
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 typedef enum {
@@ -351,13 +351,13 @@ on_row_changed (Row *row)
 }
 
 typedef struct {
-  NeoAnim *anim;
+  VibeosAnim *anim;
   GtkWidget *widget;
   Row *row;
 } Fade;
 
 static void
-on_fade (NeoAnim *anim, double value, gpointer data)
+on_fade (VibeosAnim *anim, double value, gpointer data)
 {
   Fade *fade = data;
 
@@ -377,7 +377,7 @@ fade_free (gpointer data)
 {
   Fade *fade = data;
 
-  neo_anim_free (fade->anim);
+  vibeos_anim_free (fade->anim);
   g_free (fade);
 }
 
@@ -391,26 +391,26 @@ fade_row (Row *row, gboolean in)
     {
       fade = g_new0 (Fade, 1);
       fade->widget = row->widget;
-      fade->anim = neo_anim_new (row->widget, on_fade, fade);
+      fade->anim = vibeos_anim_new (row->widget, on_fade, fade);
       g_object_set_data_full (G_OBJECT (row->widget), "ct-fade", fade, fade_free);
     }
   fade->row = in ? NULL : row;
   if (in)
     {
       gtk_widget_set_opacity (row->widget, 0);
-      neo_anim_start (fade->anim, 0, 1, CT_ED_ANIM_MS, CT_ED_ANIM_MS, SPONGY_ACCELERATE_DECELERATE);
+      vibeos_anim_start (fade->anim, 0, 1, CT_ED_ANIM_MS, CT_ED_ANIM_MS, SPONGY_ACCELERATE_DECELERATE);
     }
   else
     {
       gtk_widget_set_can_target (row->widget, FALSE);
-      neo_anim_start (fade->anim, gtk_widget_get_opacity (row->widget), 0, CT_ED_ANIM_MS, 0,
+      vibeos_anim_start (fade->anim, gtk_widget_get_opacity (row->widget), 0, CT_ED_ANIM_MS, 0,
                       SPONGY_ACCELERATE_DECELERATE);
     }
 }
 
 /* delete: the only row of a section is cleared, not removed */
 static void
-on_delete (NeoPressable *button, Row *row)
+on_delete (VibeosPressable *button, Row *row)
 {
   Section *section = row->section;
 
@@ -549,7 +549,7 @@ on_type_chosen (int index, gpointer data)
 /* the spinner's list: the custom label first if the row has one, then every type of the Device
  * account's list, less a Birthday another row has */
 static void
-on_spinner (NeoPressable *spinner, Row *row)
+on_spinner (VibeosPressable *spinner, Row *row)
 {
   static TypeMenu menu;
   const CtType *types = ct_kind_types (row->section->kind->kind);
@@ -581,7 +581,7 @@ static GtkWidget *
 spinner_new (Row *row)
 {
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  GtkWidget *spinner = neo_pressable_new (box);
+  GtkWidget *spinner = vibeos_pressable_new (box);
   GtkWidget *caret = ct_tinted_icon_new ("ct-drop-down-symbolic", 24, CT_C_ED_UNDERLINE);
   GdkRGBA ripple = ct_rgba (CT_RIPPLE_APPCOMPAT);
   const CtType *types = ct_kind_types (row->section->kind->kind);
@@ -605,8 +605,8 @@ spinner_new (Row *row)
   gtk_widget_add_css_class (spinner, "ct-ed-spinner");
   gtk_widget_set_size_request (spinner, (int) ceil (widest + CT_ED_SPINNER_EXTRA_DP), (int) CT_ED_MIN_LINE_DP);
   gtk_widget_set_halign (spinner, GTK_ALIGN_START);
-  neo_pressable_set_ripple (NEO_PRESSABLE (spinner), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (spinner), &ripple);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (spinner), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (spinner), &ripple);
   g_signal_connect (spinner, "clicked", G_CALLBACK (on_spinner), row);
   return spinner;
 }
@@ -627,7 +627,7 @@ on_date_chosen (int year, int month, int day, gpointer data)
 }
 
 static void
-on_date_button (NeoPressable *button, Row *row)
+on_date_button (VibeosPressable *button, Row *row)
 {
   int year = 0, month = 0, day = 0;
 
@@ -641,7 +641,7 @@ static GtkWidget *
 date_button_new (Row *row)
 {
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  GtkWidget *button = neo_pressable_new (box);
+  GtkWidget *button = vibeos_pressable_new (box);
   GtkWidget *caret = ct_tinted_icon_new ("ct-drop-down-symbolic", 24, CT_C_ED_UNDERLINE);
   g_autofree char *display = row->date ? ct_date_format_display (row->date) : NULL;
   GdkRGBA ripple = ct_rgba (CT_RIPPLE_APPCOMPAT);
@@ -657,8 +657,8 @@ date_button_new (Row *row)
   if (!row->date)
     gtk_widget_add_css_class (box, "empty");
   gtk_widget_set_size_request (button, -1, (int) CT_ED_MIN_LINE_DP);
-  neo_pressable_set_ripple (NEO_PRESSABLE (button), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (button), &ripple);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (button), &ripple);
   gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Date"), -1);
   g_signal_connect (button, "clicked", G_CALLBACK (on_date_button), row);
   return button;
@@ -866,7 +866,7 @@ build_name_fields (Editor *editor)
 static void
 update_chevron (Editor *editor)
 {
-  GtkWidget *image = neo_pressable_get_child (NEO_PRESSABLE (editor->chevron));
+  GtkWidget *image = vibeos_pressable_get_child (VIBEOS_PRESSABLE (editor->chevron));
   gboolean can_hide = !*editor->name->prefix || !*editor->name->middle || !*editor->name->suffix;
 
   gtk_image_set_from_icon_name (GTK_IMAGE (image), editor->name_expanded ? "ct-expand-less-symbolic"
@@ -878,7 +878,7 @@ update_chevron (Editor *editor)
 }
 
 static void
-on_chevron (NeoPressable *button, Editor *editor)
+on_chevron (VibeosPressable *button, Editor *editor)
 {
   editor->name_expanded = !editor->name_expanded;
   build_name_fields (editor);
@@ -1011,7 +1011,7 @@ on_labels_chosen (int index, gpointer data)
 }
 
 static void
-on_labels_button (NeoPressable *button, Editor *editor)
+on_labels_button (VibeosPressable *button, Editor *editor)
 {
   static LabelsMenu menu;
   const char *labels[64];
@@ -1049,12 +1049,12 @@ labels_section (Editor *editor)
   gtk_box_append (GTK_BOX (box), editor->labels_text);
   gtk_widget_set_valign (caret, GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (box), caret);
-  editor->labels_button = neo_pressable_new (box);
+  editor->labels_button = vibeos_pressable_new (box);
   gtk_widget_add_css_class (editor->labels_button, "ct-ed-spinner");
   gtk_widget_add_css_class (editor->labels_button, "labels");
   gtk_widget_set_size_request (editor->labels_button, -1, (int) CT_ED_MIN_LINE_DP);
-  neo_pressable_set_ripple (NEO_PRESSABLE (editor->labels_button), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (editor->labels_button), &ripple);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (editor->labels_button), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (editor->labels_button), &ripple);
   g_signal_connect (editor->labels_button, "clicked", G_CALLBACK (on_labels_button), editor);
   gtk_box_append (GTK_BOX (editor->sections[S_LABELS].rows), editor->labels_button);
   update_labels_button (editor);
@@ -1100,7 +1100,7 @@ ed_photo_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 
   ct_avatar_header_snapshot (snapshot, &bounds, editor->photo_tint, editor->photo_texture);
   /* the camera badge, white, in the bottom end corner */
-  neo_snapshot_icon (snapshot, widget, "ct-camera-alt-symbolic", width - CT_ED_PHOTO_BADGE_MARGIN_DP - 24,
+  vibeos_snapshot_icon (snapshot, widget, "ct-camera-alt-symbolic", width - CT_ED_PHOTO_BADGE_MARGIN_DP - 24,
                      height - CT_ED_PHOTO_BADGE_MARGIN_DP - 24, 24, &white);
 }
 
@@ -1207,7 +1207,7 @@ on_photo_action (int response, gpointer data)
 
 /* "Change photo": Remove photo / Choose photo (Take photo is left out) */
 static void
-on_photo_tapped (NeoPressable *button, Editor *editor)
+on_photo_tapped (VibeosPressable *button, Editor *editor)
 {
   const char *labels[2];
   int n = 0;
@@ -1222,14 +1222,14 @@ static GtkWidget *
 photo_area (Editor *editor)
 {
   GtkWidget *photo = g_object_new (ED_TYPE_PHOTO, NULL);
-  GtkWidget *button = neo_pressable_new (photo);
+  GtkWidget *button = vibeos_pressable_new (photo);
   GdkRGBA ripple = ct_rgba (CT_RIPPLE_QC_TOOLBAR);
 
   ED_PHOTO (photo)->editor = editor;
   editor->photo = photo;
   gtk_widget_add_css_class (button, "ct-ed-photo-button");
-  neo_pressable_set_ripple (NEO_PRESSABLE (button), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (button), &ripple);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (button), &ripple);
   g_signal_connect (button, "clicked", G_CALLBACK (on_photo_tapped), editor);
   return button;
 }
@@ -1299,7 +1299,7 @@ on_account_chosen (int index, gpointer data)
 
 /* the account chooser: a new contact, not the profile, and more than one writable address book */
 static void
-on_account_header (NeoPressable *header, Editor *editor)
+on_account_header (VibeosPressable *header, Editor *editor)
 {
   g_autoptr(GPtrArray) books = writable_books (editor);
   const char *labels[16];
@@ -1316,7 +1316,7 @@ account_header (Editor *editor)
 {
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *lines = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  GtkWidget *header = neo_pressable_new (box);
+  GtkWidget *header = vibeos_pressable_new (box);
   GdkRGBA ripple = ct_rgba (CT_RIPPLE_APPCOMPAT);
 
   editor->account_icon = ct_tinted_icon_new ("ct-smartphone-symbolic", 24, CT_C_ED_ACCOUNT_ICON);
@@ -1335,8 +1335,8 @@ account_header (Editor *editor)
   gtk_widget_set_valign (editor->account_expander, GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (box), editor->account_expander);
   gtk_widget_add_css_class (header, "ct-ed-account");
-  neo_pressable_set_ripple (NEO_PRESSABLE (header), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (header), &ripple);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (header), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (header), &ripple);
   g_signal_connect (header, "clicked", G_CALLBACK (on_account_header), editor);
   editor->account_header = header;
   update_account (editor);
@@ -1361,7 +1361,7 @@ update_more_fields (Editor *editor)
 
 /* "More fields": every section shows with an empty row, and the button goes */
 static void
-on_more_fields (NeoPressable *button, Editor *editor)
+on_more_fields (VibeosPressable *button, Editor *editor)
 {
   editor->expanded = TRUE;
   for (int i = 0; i < N_SECTIONS; i++)
@@ -1372,7 +1372,7 @@ on_more_fields (NeoPressable *button, Editor *editor)
 }
 
 static void
-on_legacy_long_pressed (NeoPressable *row, Editor *editor)
+on_legacy_long_pressed (VibeosPressable *row, Editor *editor)
 {
   ct_copy_text (GTK_WIDGET (row), g_object_get_data (G_OBJECT (row), "ct-copy"));
   ct_window_toast (editor->window, _("Text copied"));
@@ -1398,7 +1398,7 @@ legacy_section (Editor *editor)
         {
           CtItem *item = items->pdata[i];
           GtkWidget *line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-          GtkWidget *row = neo_pressable_new (line);
+          GtkWidget *row = vibeos_pressable_new (line);
           GtkWidget *icon = ct_tinted_icon_new (icons[k], 24, CT_ED_ICON_COLOR);
           GtkWidget *value = ct_label (item->value, "ct-ed-legacy-text", 16);
           GtkWidget *type = ct_label (kinds[k] == CT_KIND_IM && item->value2 ? item->value2
@@ -1703,7 +1703,7 @@ save (Editor *editor)
 }
 
 static void
-on_save (NeoPressable *button, Editor *editor)
+on_save (VibeosPressable *button, Editor *editor)
 {
   save (editor);
 }
@@ -1887,10 +1887,10 @@ ct_editor_new (GtkWidget *window, const char *uid, EContact *prefill)
   /* "More fields", in line with the fields */
   more_label = ct_label (_("More fields"), "ct-ed-more-text", 16);
   gtk_widget_set_valign (more_label, GTK_ALIGN_CENTER);
-  editor->more_fields = neo_pressable_new (more_label);
+  editor->more_fields = vibeos_pressable_new (more_label);
   gtk_widget_add_css_class (editor->more_fields, "ct-ed-more");
-  neo_pressable_set_ripple (NEO_PRESSABLE (editor->more_fields), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (editor->more_fields), &ripple);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (editor->more_fields), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (editor->more_fields), &ripple);
   g_signal_connect (editor->more_fields, "clicked", G_CALLBACK (on_more_fields), editor);
   gtk_box_append (GTK_BOX (editor->content), editor->more_fields);
   editor->legacy = legacy_section (editor);

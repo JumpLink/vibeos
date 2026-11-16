@@ -8,7 +8,7 @@
 #include "clock-tab.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 #define FAB_HEIGHT       88     /* the list's bottom padding, so the last card scrolls out from under the button */
@@ -62,7 +62,7 @@ show_next_alarm (ClockPage *self)
   if (shown)
     {
       g_autoptr(GDateTime) time = g_date_time_new_from_unix_local (next);
-      g_autofree char *text = clock_alarm_time_text (time, neo_clock_uses_24h ());
+      g_autofree char *text = clock_alarm_time_text (time, vibeos_clock_uses_24h ());
       g_autofree char *upper = g_utf8_strup (text, -1);
 
       gtk_label_set_text (GTK_LABEL (self->alarm), upper);
@@ -72,7 +72,7 @@ show_next_alarm (ClockPage *self)
 static void
 show_main_time (ClockPage *self, GDateTime *now, gboolean seconds)
 {
-  gboolean use_24h = neo_clock_uses_24h ();
+  gboolean use_24h = vibeos_clock_uses_24h ();
   g_autofree char *time = NULL, *date = NULL, *upper = NULL;
   int hour = g_date_time_get_hour (now), minute = g_date_time_get_minute (now);
 
@@ -154,7 +154,7 @@ show_card (Card *card, GDateTime *local)
     {
       g_autoptr(GDateTime) there = g_date_time_to_timezone (local, card->tz);
       g_autofree char *markup = clock_time_markup (g_date_time_get_hour (there), g_date_time_get_minute (there),
-                                                   neo_clock_uses_24h (), 0.3);
+                                                   vibeos_clock_uses_24h (), 0.3);
 
       gtk_label_set_markup (GTK_LABEL (card->time), markup);
     }
@@ -190,7 +190,7 @@ make_card (ClockPage *self, const char *name, GTimeZone *tz)
   gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
   gtk_label_set_single_line_mode (GTK_LABEL (label), TRUE);
   gtk_widget_add_css_class (label, "body");
-  neo_label_set_font_padding (label, 14);
+  vibeos_label_set_font_padding (label, 14);
   gtk_box_append (GTK_BOX (column), label);
   card->hours = gtk_label_new (NULL);
   gtk_label_set_xalign (GTK_LABEL (card->hours), 0);
@@ -198,7 +198,7 @@ make_card (ClockPage *self, const char *name, GTimeZone *tz)
   gtk_label_set_lines (GTK_LABEL (card->hours), 2);
   gtk_label_set_ellipsize (GTK_LABEL (card->hours), PANGO_ELLIPSIZE_END);
   gtk_widget_add_css_class (card->hours, "secondary-label");
-  neo_label_set_font_padding (card->hours, 14);
+  vibeos_label_set_font_padding (card->hours, 14);
   gtk_widget_set_margin_top (card->hours, gtk_widget_get_margin_top (card->hours) + 3);
   gtk_box_append (GTK_BOX (column), card->hours);
   gtk_box_append (GTK_BOX (row), column);
@@ -221,7 +221,7 @@ make_card (ClockPage *self, const char *name, GTimeZone *tz)
       gtk_widget_set_margin_start (card->time, 24);
       gtk_widget_set_valign (card->time, GTK_ALIGN_CENTER);
       gtk_widget_add_css_class (card->time, "world-clock-time");
-      neo_label_set_font_padding (card->time, 48);
+      vibeos_label_set_font_padding (card->time, 48);
       gtk_box_append (GTK_BOX (row), card->time);
     }
   return card;
@@ -439,7 +439,7 @@ clock_page_init (ClockPage *self)
   self->line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   self->date = gtk_label_new (NULL);
   gtk_widget_add_css_class (self->date, "body");
-  neo_label_set_font_padding (self->date, 14);
+  vibeos_label_set_font_padding (self->date, 14);
   self->alarm_icon = gtk_image_new_from_icon_name ("clock-alarm-small-symbolic");
   gtk_image_set_pixel_size (GTK_IMAGE (self->alarm_icon), 14);
   gtk_widget_set_margin_start (self->alarm_icon, 6);
@@ -447,7 +447,7 @@ clock_page_init (ClockPage *self)
   gtk_widget_add_css_class (self->alarm_icon, "next-alarm");
   self->alarm = gtk_label_new (NULL);
   gtk_widget_add_css_class (self->alarm, "body");
-  neo_label_set_font_padding (self->alarm, 14);
+  vibeos_label_set_font_padding (self->alarm, 14);
   gtk_box_append (GTK_BOX (self->line), self->date);
   gtk_box_append (GTK_BOX (self->line), self->alarm_icon);
   gtk_box_append (GTK_BOX (self->line), self->alarm);

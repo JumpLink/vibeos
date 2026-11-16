@@ -1,26 +1,26 @@
-/* The Browser's look, LineageOS Jelly's. Sizes are GTK px, colours the roles libneo defines (@neo_*). Weights are
+/* The Browser's look, LineageOS Jelly's. Sizes are GTK px, colours the roles libvibeos defines (@vibeos_*). Weights are
  * Bold text's heavier ones: regular 700, medium 800. Label sizes are set in code (nb_label), with font padding. */
 
 window.nb {
-  background-color: @neo_surface;
+  background-color: @vibeos_surface;
 }
 
 /* ==== the browser page ==== */
 
 .nb-browser,
 .nb-view {
-  background-color: @neo_surface;
+  background-color: @vibeos_surface;
 }
 
 /* the app bar */
 .nb-bar {
-  background-color: @neo_surface;
+  background-color: @vibeos_surface;
   min-height: 64px;
 }
 
 /* the address card: a pill */
 .nb-url-card {
-  background-color: @neo_surface_container_highest;
+  background-color: @vibeos_surface_container_highest;
   border-radius: 32px;
   margin: 8px 4px 8px 16px;
   min-height: 48px;
@@ -28,18 +28,18 @@ window.nb {
 
 /* the find-in-page card */
 .nb-find-card {
-  background-color: @neo_surface_container_highest;
+  background-color: @vibeos_surface_container_highest;
   border-radius: 32px;
   margin: 8px 4px;
   min-height: 48px;
 }
 
 .nb-card-icon {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .nb-bar-icon {
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 /* the icon buttons' tint has no disabled state: previous / next are not dimmed; GTK's theme halves a disabled
@@ -59,8 +59,8 @@ entry.nb-find-entry {
   outline: none;
   min-height: 48px;
   padding: 0;
-  color: @neo_on_surface;
-  caret-color: @neo_secondary;
+  color: @vibeos_on_surface;
+  caret-color: @vibeos_secondary;
   font-size: 16px;
 }
 
@@ -74,17 +74,17 @@ entry.nb-find-entry > text > placeholder {
 entry.nb-url-entry selection,
 entry.nb-find-entry selection,
 entry.nb-field-entry selection {
-  background-color: alpha(@neo_primary, 0.4);
-  color: @neo_on_surface;
+  background-color: alpha(@vibeos_primary, 0.4);
+  color: @vibeos_on_surface;
 }
 
 .nb-find-count {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 /* the suggestions: flat, as wide as the card */
 .nb-dropdown {
-  background-color: @neo_surface;
+  background-color: @vibeos_surface;
 }
 
 .nb-suggest-row {
@@ -94,11 +94,11 @@ entry.nb-field-entry selection {
 
 .nb-suggest-icon,
 .nb-suggest-title {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .nb-suggest-url {
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
   margin-left: 40px;
 }
 
@@ -122,17 +122,17 @@ entry.nb-field-entry selection {
 }
 
 .nb-menu-top {
-  background-color: @neo_surface_container_highest;
+  background-color: @vibeos_surface_container_highest;
   border-radius: 28px;
   padding: 12px 16px;            /* the card's padding and the icons' margins */
 }
 
 .nb-menu-top-icon {
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .nb-menu-card {
-  background-color: @neo_surface;
+  background-color: @vibeos_surface;
   border-radius: 4px;
 }
 
@@ -152,51 +152,51 @@ entry.nb-field-entry selection {
 
 .nb-menu-icon,
 .nb-menu-text {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .nb-menu-divider {
   min-height: 1px;
   margin: 8px 0;
-  background-color: @neo_surface_container_highest;
+  background-color: @vibeos_surface_container_highest;
 }
 
 /* ==== sheets ==== */
 
 .nb-sheet-box {
-  background-color: @neo_surface;
+  background-color: @vibeos_surface;
 }
 
 .nb-sheet-row {
   min-height: 28px;
   padding: 16px;
-  background-color: @neo_surface;
+  background-color: @vibeos_surface;
 }
 
 .nb-sheet-icon {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .nb-sheet-text {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
   margin-left: 16px;
 }
 
 .nb-sheet-title {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
   padding: 16px 16px 8px 16px;
 }
 
 /* the add-to-home sheet, as the launcher's add-item sheet: rounded at the top; the actions' padding is all there is
  * under the pills */
 .nb-pin-sheet {
-  background-color: @neo_surface_container;
+  background-color: @vibeos_surface_container;
   border-radius: 28px 28px 0 0;
   padding: 24px 0 0 0;
 }
 
 .nb-pin-title {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
   margin: 0 11px;
 }
 
@@ -207,7 +207,7 @@ entry.nb-field-entry selection {
 
 /* the preview: a card around the shortcut's cell */
 .nb-pin-card {
-  background-color: @neo_surface_bright;
+  background-color: @vibeos_surface_bright;
   border-radius: 28px;
   margin: 16px;
   padding: 16px 11px 12px 11px;
@@ -218,12 +218,12 @@ entry.nb-field-entry selection {
 }
 
 .nb-pin-name {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
   margin-top: 12px;
 }
 
 .nb-pin-dims {
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .nb-pin-buttons {
@@ -249,25 +249,25 @@ entry.nb-field-entry selection {
 /* ==== dialogs ==== */
 
 .nb-dialog {
-  background-color: @neo_surface;
+  background-color: @vibeos_surface;
   border-radius: 16px;
 }
 
 .nb-dialog-title {
   font-size: 24px;
   font-weight: 700;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
   margin: 18px 24px 0 24px;
 }
 
 .nb-dialog-message {
   font-size: 14px;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
   margin: 16px 24px 0 24px;
 }
 
 .nb-dialog-text {
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 /* the button bar: less room at the start, where the neutral button sits */
@@ -275,8 +275,8 @@ entry.nb-field-entry selection {
   padding: 14px 24px 14px 12px;
 }
 
-.nb-dialog .neo-text-button {
-  color: @neo_primary;
+.nb-dialog .vibeos-text-button {
+  color: @vibeos_primary;
 }
 
 .nb-dialog-form {
@@ -294,21 +294,21 @@ entry.nb-field-entry selection {
 }
 
 .nb-list-text {
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
   margin-left: 26px;
 }
 
 .nb-cert-heading {
   font-weight: 900;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .nb-cert-key {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .nb-cert-value {
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 /* the deleting dialog: a spinner beside the message */
@@ -325,17 +325,17 @@ entry.nb-field-entry selection {
   margin-top: 8px;
   min-height: 56px;
   padding: 0 16px;
-  border: 1px solid @neo_outline;
+  border: 1px solid @vibeos_outline;
   border-radius: 4px;
 }
 
 .nb-field.focused .nb-field-box {
-  border: 2px solid @neo_primary;
+  border: 2px solid @vibeos_primary;
   padding: 0 15px;
 }
 
 .nb-field.error .nb-field-box {
-  border-color: @neo_error;
+  border-color: @vibeos_error;
 }
 
 entry.nb-field-entry {
@@ -347,29 +347,29 @@ entry.nb-field-entry {
   min-height: 56px;
   padding: 0;
   font-size: 16px;
-  color: @neo_on_surface;
-  caret-color: @neo_primary;
+  color: @vibeos_on_surface;
+  caret-color: @vibeos_primary;
 }
 
 entry.nb-field-entry > text > placeholder {
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
   opacity: 1;
 }
 
 .nb-field-label {
-  color: @neo_on_surface_variant;
-  background-color: @neo_surface;
+  color: @vibeos_on_surface_variant;
+  background-color: @vibeos_surface;
   margin-left: 12px;
   padding: 0 4px;
 }
 
 .nb-field.focused .nb-field-label {
-  color: @neo_primary;
+  color: @vibeos_primary;
 }
 
 .nb-field.error .nb-field-label,
 .nb-field-error {
-  color: @neo_error;
+  color: @vibeos_error;
 }
 
 .nb-field-error {
@@ -397,56 +397,56 @@ entry.nb-field-entry > text > placeholder {
 }
 
 .nb-check-text {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 /* the toast, as Calculator's */
 .nb-toast {
-  background-color: @neo_surface_container_high;
+  background-color: @vibeos_surface_container_high;
   border-radius: 28px;
   min-height: 48px;
   padding: 0 16px;
 }
 
 .nb-toast-text {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 /* the snackbar: inverse colours */
-window.nb .neo-snackbar {
-  background-color: @neo_inverse_surface;
+window.nb .vibeos-snackbar {
+  background-color: @vibeos_inverse_surface;
 }
 
-window.nb .neo-snackbar-text {
+window.nb .vibeos-snackbar-text {
   color: #2a3436;
 }
 
-window.nb .neo-snackbar .neo-text-button {
-  color: @neo_inverse_primary;
+window.nb .vibeos-snackbar .vibeos-text-button {
+  color: @vibeos_inverse_primary;
 }
 
 /* ==== the pages ==== */
 
 .nb-page {
-  background-color: @neo_surface;
+  background-color: @vibeos_surface;
 }
 
 /* the pages' toolbar: the up arrow, the title (its size set in code), the actions */
 .nb-toolbar {
   min-height: 64px;
-  background-color: @neo_surface;
+  background-color: @vibeos_surface;
 }
 
 .nb-up {
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .nb-toolbar-title {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .nb-toolbar-action {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 /* the toolbar's shadow once the list scrolls */
@@ -456,7 +456,7 @@ window.nb .neo-snackbar .neo-text-button {
 }
 
 .nb-empty-image {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
   margin: 8px;
 }
 
@@ -465,7 +465,7 @@ window.nb .neo-snackbar .neo-text-button {
 }
 
 .nb-empty-text {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
   padding: 19px 64px 0 64px;
 }
 
@@ -476,15 +476,15 @@ window.nb .neo-snackbar .neo-text-button {
 
 .nb-history-pressable {
   min-height: 60px;
-  background-color: @neo_surface;
+  background-color: @vibeos_surface;
 }
 
 .nb-history-title {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .nb-history-summary {
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 /* Favorites: a grid of cards */
@@ -515,7 +515,7 @@ window.nb .neo-snackbar .neo-text-button {
 /* Downloads: each file's type on a black tile */
 .nb-downloads,
 .nb-downloads .nb-toolbar {
-  background-color: @neo_surface_bright;
+  background-color: @vibeos_surface_bright;
 }
 
 .nb-download-list {
@@ -541,11 +541,11 @@ window.nb .neo-snackbar .neo-text-button {
 }
 
 .nb-download-name {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .nb-download-meta {
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 /* Desktop shortcuts: a checkbox, then the name */
@@ -555,18 +555,18 @@ window.nb .neo-snackbar .neo-text-button {
 }
 
 .nb-shortcut-name {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
   margin: 0 15px 5px 15px;
 }
 
 /* ==== Settings ==== */
 
 .nb-settings-header {
-  background-color: @neo_surface;
+  background-color: @vibeos_surface;
 }
 
 .nb-settings-big-title {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .nb-settings-bar {
@@ -575,7 +575,7 @@ window.nb .neo-snackbar .neo-text-button {
 }
 
 .nb-settings-bar.collapsed {
-  background-color: @neo_surface_container;
+  background-color: @vibeos_surface_container;
 }
 
 .nb-pref-list {
@@ -588,16 +588,16 @@ window.nb .neo-snackbar .neo-text-button {
 }
 
 .nb-pref-title {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .nb-pref-summary {
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 /* a preference category's title, in the secondary colour */
 .nb-pref-category {
-  color: @neo_secondary;
+  color: @vibeos_secondary;
   font-weight: 800;
 }
 
@@ -625,13 +625,13 @@ window.nb .neo-snackbar .neo-text-button {
 
 /* a card: the tab's line over its page; the tab shown is outlined */
 .nb-tab-card {
-  background-color: @neo_surface_container_high;
+  background-color: @vibeos_surface_container_high;
   border: 2px solid transparent;
   border-radius: 16px;
 }
 
 .nb-tab-card.current {
-  border-color: @neo_primary;
+  border-color: @vibeos_primary;
 }
 
 .nb-tab-card-head {
@@ -640,12 +640,12 @@ window.nb .neo-snackbar .neo-text-button {
 }
 
 .nb-tab-card-title {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .nb-tab-card-icon,
 .nb-tab-card-close {
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .nb-tab-card-thumb {
@@ -653,5 +653,5 @@ window.nb .neo-snackbar .neo-text-button {
 }
 
 .nb-tab-card-blank {
-  background-color: @neo_surface_container_highest;
+  background-color: @vibeos_surface_container_highest;
 }

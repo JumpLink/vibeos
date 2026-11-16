@@ -5,7 +5,7 @@
 #include "nb-suggest.h"
 #include "nb-widgets.h"
 
-#include <neo.h>
+#include <vibeos.h>
 #include <string.h>
 
 #define FADE_LENGTH 12          /* the fading edge's length, px */
@@ -26,7 +26,7 @@ draw_fade (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer da
   NbTab *t = data;
   const char *text = gtk_editable_get_text (GTK_EDITABLE (t->entry));
   g_autoptr (PangoLayout) layout = gtk_widget_create_pango_layout (t->entry, text);
-  GdkRGBA card = neo_color (NEO_SURFACE_CONTAINER_HIGHEST);
+  GdkRGBA card = vibeos_color (VIBEOS_SURFACE_CONTAINER_HIGHEST);
   int w;
 
   pango_layout_get_pixel_size (layout, &w, NULL);
@@ -82,7 +82,7 @@ draw_progress (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointe
 {
   NbTab *t = data;
   double p = t->view ? webkit_web_view_get_estimated_load_progress (t->view) : 0;
-  GdkRGBA track = neo_color (NEO_SURFACE_CONTAINER_HIGHEST), bar = neo_color (NEO_PRIMARY);
+  GdkRGBA track = vibeos_color (VIBEOS_SURFACE_CONTAINER_HIGHEST), bar = vibeos_color (VIBEOS_PRIMARY);
 
   gdk_cairo_set_source_rgba (cr, &track);
   cairo_paint (cr);
@@ -142,7 +142,7 @@ bold_matches (const char *text, const char *query)
 }
 
 static void
-on_suggestion (NeoPressable *row, NbTab *t)
+on_suggestion (VibeosPressable *row, NbTab *t)
 {
   const char *target = g_object_get_data (G_OBJECT (row), "nb-target");
   g_autofree char *text = g_strdup (target);
@@ -179,7 +179,7 @@ suggestion_row (NbTab *t, NbSuggestion *s, const char *query)
   }
   gtk_box_append (GTK_BOX (box), lines);
   gtk_widget_add_css_class (box, "nb-suggest-row");
-  GtkWidget *row = neo_pressable_new (box);
+  GtkWidget *row = vibeos_pressable_new (box);
   /* the URL, else the title */
   g_object_set_data_full (G_OBJECT (row), "nb-target", g_strdup (s->url ? s->url : s->title), g_free);
   g_signal_connect (row, "clicked", G_CALLBACK (on_suggestion), t);
@@ -403,8 +403,8 @@ count_button (NbTab *t)
   gtk_widget_add_css_class (t->count_label, "nb-tab-count");
   gtk_widget_set_halign (t->count_label, GTK_ALIGN_CENTER);
   gtk_widget_set_valign (t->count_label, GTK_ALIGN_CENTER);
-  t->count = neo_pressable_new (t->count_label);
-  neo_pressable_set_ripple (NEO_PRESSABLE (t->count), NEO_RIPPLE_CIRCLE, 20);
+  t->count = vibeos_pressable_new (t->count_label);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (t->count), VIBEOS_RIPPLE_CIRCLE, 20);
   gtk_widget_add_css_class (t->count, "nb-bar-icon");
   gtk_widget_set_size_request (t->count, 48, 48);
   gtk_widget_set_valign (t->count, GTK_ALIGN_CENTER);
@@ -417,7 +417,7 @@ count_button (NbTab *t)
 static GtkWidget *
 bar_icon_button (const char *icon, const char *name, const char *css)
 {
-  GtkWidget *b = neo_icon_button_new (icon);
+  GtkWidget *b = vibeos_icon_button_new (icon);
 
   gtk_widget_add_css_class (b, css);
   gtk_widget_set_valign (b, GTK_ALIGN_CENTER);
@@ -446,8 +446,8 @@ url_group (NbTab *t)
 
   /* the lock: a small button with a borderless ripple; a tap shows the certificate */
   GtkWidget *lock_image = nb_icon ("jelly-lock-symbolic", 20);
-  t->lock = neo_pressable_new (lock_image);
-  neo_pressable_set_ripple (NEO_PRESSABLE (t->lock), NEO_RIPPLE_CIRCLE, 20);
+  t->lock = vibeos_pressable_new (lock_image);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (t->lock), VIBEOS_RIPPLE_CIRCLE, 20);
   g_object_set_data (G_OBJECT (t->lock), "nb-image", lock_image);
   gtk_widget_add_css_class (t->lock, "nb-card-icon");
   gtk_widget_set_size_request (t->lock, 20, 20);
@@ -519,8 +519,8 @@ find_group (NbTab *t)
   gtk_widget_set_visible (t->find_count, FALSE);
   gtk_box_append (GTK_BOX (card), t->find_count);
   GtkWidget *clear_image = nb_icon ("jelly-clear-symbolic", 24);
-  t->find_clear = neo_pressable_new (clear_image);
-  neo_pressable_set_ripple (NEO_PRESSABLE (t->find_clear), NEO_RIPPLE_CIRCLE, 20);
+  t->find_clear = vibeos_pressable_new (clear_image);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (t->find_clear), VIBEOS_RIPPLE_CIRCLE, 20);
   gtk_widget_add_css_class (t->find_clear, "nb-card-icon");
   gtk_widget_set_valign (t->find_clear, GTK_ALIGN_CENTER);
   gtk_widget_set_margin_end (t->find_clear, 12);

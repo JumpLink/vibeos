@@ -1,7 +1,7 @@
-The "solar-system" parallax set (neo-launcher/parallax/solar-system), made from NASA images (public domain) and
+The "solar-system" parallax set (vibeos-launcher/parallax/solar-system), made from NASA images (public domain) and
 procedural art drawn by the script:
 
-    python3 -I build_solar_system.py DOWNLOADS ../../neo-launcher/parallax/solar-system
+    python3 -I build_solar_system.py DOWNLOADS ../../vibeos-launcher/parallax/solar-system
 
 DOWNLOADS holds the six NASA originals the set's README lists (with their URLs; nasa_search.py and nasa_item.py
 query images.nasa.gov for them). The script needs python3-pil and python3-numpy.

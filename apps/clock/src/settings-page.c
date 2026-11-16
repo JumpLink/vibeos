@@ -18,7 +18,7 @@
 
 #include <glib/gi18n.h>
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 #include <stdlib.h>
 
@@ -75,7 +75,7 @@ add_category (SettingsPage *self, const char *title)
     }
   gtk_label_set_xalign (GTK_LABEL (label), 0);
   /* the font padding first: it sets the margins, and the category's spacing goes on top of it */
-  neo_label_set_font_padding (label, 14);
+  vibeos_label_set_font_padding (label, 14);
   gtk_widget_set_margin_top (label, gtk_widget_get_margin_top (label) + (first ? 24 : 23));
   gtk_widget_set_margin_bottom (label, gtk_widget_get_margin_bottom (label) + 8);
   gtk_widget_set_margin_start (label, 16);
@@ -100,15 +100,15 @@ add_row (SettingsPage *self, const char *title, GtkWidget **summary, GtkWidget *
   gtk_widget_set_margin_end (box, 16);
   gtk_widget_set_hexpand (column, TRUE);
   gtk_widget_set_valign (column, GTK_ALIGN_CENTER);
-  /* one more under the text than over it: the text's box should be about ⅔ px taller than libneo's (its bottom
-   * padding rounded up to a whole pixel, which libneo's margins cannot do), and without it the rows came out a
+  /* one more under the text than over it: the text's box should be about ⅔ px taller than libvibeos's (its bottom
+   * padding rounded up to a whole pixel, which libvibeos's margins cannot do), and without it the rows came out a
    * little short */
   gtk_widget_set_margin_top (column, 16);
   gtk_widget_set_margin_bottom (column, 17);
   gtk_label_set_xalign (GTK_LABEL (label), 0);
   gtk_label_set_wrap (GTK_LABEL (label), TRUE);
   gtk_widget_add_css_class (label, "settings-title");
-  neo_label_set_font_padding (label, 16);
+  vibeos_label_set_font_padding (label, 16);
   gtk_box_append (GTK_BOX (column), label);
   if (summary)
     {
@@ -116,7 +116,7 @@ add_row (SettingsPage *self, const char *title, GtkWidget **summary, GtkWidget *
       gtk_label_set_xalign (GTK_LABEL (*summary), 0);
       gtk_label_set_wrap (GTK_LABEL (*summary), TRUE);
       gtk_widget_add_css_class (*summary, "settings-summary");
-      neo_label_set_font_padding (*summary, 14);
+      vibeos_label_set_font_padding (*summary, 14);
       gtk_box_append (GTK_BOX (column), *summary);
     }
   gtk_box_append (GTK_BOX (box), column);
@@ -127,8 +127,8 @@ add_row (SettingsPage *self, const char *title, GtkWidget **summary, GtkWidget *
       gtk_widget_set_valign (end, GTK_ALIGN_CENTER);
       gtk_box_append (GTK_BOX (box), end);
     }
-  row = neo_pressable_new (box);
-  neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
+  row = vibeos_pressable_new (box);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
   gtk_widget_add_css_class (row, "settings-row");
   gtk_accessible_update_property (GTK_ACCESSIBLE (row), GTK_ACCESSIBLE_PROPERTY_LABEL, title, -1);
   gtk_box_append (GTK_BOX (self->list), row);
@@ -216,7 +216,7 @@ on_chosen (int chosen, gpointer data)
 }
 
 static void
-on_list (NeoPressable *row, ListRow *list)
+on_list (VibeosPressable *row, ListRow *list)
 {
   SettingsPage *self = CLOCK_SETTINGS_PAGE (gtk_widget_get_ancestor (GTK_WIDGET (row), CLOCK_TYPE_SETTINGS_PAGE));
   Pick *pick = g_new0 (Pick, 1);
@@ -292,23 +292,23 @@ add_home_zones (ListRow *list)
 /* --- switch rows: the row toggles the switch, the switch the setting */
 
 static void
-on_switch_row (NeoPressable *row, NeoSwitch *toggle)
+on_switch_row (VibeosPressable *row, VibeosSwitch *toggle)
 {
-  neo_switch_set_active (toggle, !neo_switch_get_active (toggle));
+  vibeos_switch_set_active (toggle, !vibeos_switch_get_active (toggle));
 }
 
 static void
-on_switch (NeoSwitch *toggle, GParamSpec *pspec, SettingsPage *self)
+on_switch (VibeosSwitch *toggle, GParamSpec *pspec, SettingsPage *self)
 {
   if (!self->syncing)
     g_settings_set_boolean (self->settings, g_object_get_data (G_OBJECT (toggle), "key"),
-                            neo_switch_get_active (toggle));
+                            vibeos_switch_get_active (toggle));
 }
 
 static GtkWidget *
 add_switch (SettingsPage *self, const char *title, const char *summary, const char *key)
 {
-  GtkWidget *toggle = neo_switch_new ();
+  GtkWidget *toggle = vibeos_switch_new ();
   GtkWidget *label = NULL;
   GtkWidget *row = add_row (self, title, summary ? &label : NULL, toggle);
 
@@ -326,12 +326,12 @@ add_switch (SettingsPage *self, const char *title, const char *summary, const ch
 static void
 show_switch (SettingsPage *self, GtkWidget *row)
 {
-  NeoSwitch *toggle = g_object_get_data (G_OBJECT (row), "toggle");
+  VibeosSwitch *toggle = g_object_get_data (G_OBJECT (row), "toggle");
 
-  neo_switch_set_active (toggle, g_settings_get_boolean (self->settings, g_object_get_data (G_OBJECT (toggle),
+  vibeos_switch_set_active (toggle, g_settings_get_boolean (self->settings, g_object_get_data (G_OBJECT (toggle),
                                                                                              "key")));
   gtk_accessible_update_state (GTK_ACCESSIBLE (row), GTK_ACCESSIBLE_STATE_CHECKED,
-                               neo_switch_get_active (toggle) ? GTK_ACCESSIBLE_TRISTATE_TRUE
+                               vibeos_switch_get_active (toggle) ? GTK_ACCESSIBLE_TRISTATE_TRUE
                                                               : GTK_ACCESSIBLE_TRISTATE_FALSE, -1);
 }
 
@@ -351,7 +351,7 @@ on_volume_released (VolumeSlider *slider, SettingsPage *self)
 
   /* let go: the default alarm sound for two seconds, at the new volume, by the service */
   if (bus)
-    g_dbus_connection_call (bus, "neo.Clock.Alarms", "/neo/Clock/App", "neo.Clock.App",
+    g_dbus_connection_call (bus, "vibeos.Clock.Alarms", "/vibeos/Clock/App", "vibeos.Clock.App",
                             "PlaySound", g_variant_new ("(su)", "", PREVIEW_MS), NULL, G_DBUS_CALL_FLAGS_NONE, -1,
                             NULL, NULL, NULL);
 }
@@ -382,7 +382,7 @@ add_volume (SettingsPage *self)
   gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
   gtk_widget_set_margin_start (label, 12);
   gtk_widget_add_css_class (label, "settings-title");
-  neo_label_set_font_padding (label, 16);
+  vibeos_label_set_font_padding (label, 16);
   gtk_box_append (GTK_BOX (column), label);
   self->slider = volume_slider_new (VOLUME_STEPS - 1);
   gtk_accessible_update_property (GTK_ACCESSIBLE (self->slider), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Alarm volume"),
@@ -415,12 +415,12 @@ add_brightness (SettingsPage *self)
   gtk_widget_set_margin_bottom (column, 8);
   gtk_label_set_xalign (GTK_LABEL (label), 0);
   gtk_widget_add_css_class (label, "settings-title");
-  neo_label_set_font_padding (label, 16);
+  vibeos_label_set_font_padding (label, 16);
   gtk_box_append (GTK_BOX (column), label);
   self->brightness_summary = gtk_label_new (NULL);
   gtk_label_set_xalign (GTK_LABEL (self->brightness_summary), 0);
   gtk_widget_add_css_class (self->brightness_summary, "settings-summary");
-  neo_label_set_font_padding (self->brightness_summary, 14);
+  vibeos_label_set_font_padding (self->brightness_summary, 14);
   gtk_box_append (GTK_BOX (column), self->brightness_summary);
   /* negative margins take back the slider's own inset, so its track's ends line up with the text */
   self->brightness = volume_slider_new (100);
@@ -454,31 +454,31 @@ on_date_time_done (GObject *source, GAsyncResult *result, gpointer data)
 
 /* "Change date & time" (ACTION_DATE_SETTINGS): the phone's Settings app on its Date & Time page */
 static void
-on_date_time (NeoPressable *row, SettingsPage *self)
+on_date_time (VibeosPressable *row, SettingsPage *self)
 {
   GDBusConnection *bus = g_application_get_dbus_connection (g_application_get_default ());
 
   if (bus)
-    g_dbus_connection_call (bus, "neo.Settings", "/neo/Settings", "org.freedesktop.Application",
+    g_dbus_connection_call (bus, "vibeos.Settings", "/vibeos/Settings", "org.freedesktop.Application",
                             "ActivateAction", g_variant_new_parsed ("('launch-panel', [<('datetime', @av [])>], "
                                                                     "@a{sv} {})"),
                             NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, on_date_time_done, NULL);
 }
 
 static void
-on_timer_sound (NeoPressable *row, SettingsPage *self)
+on_timer_sound (VibeosPressable *row, SettingsPage *self)
 {
   g_signal_emit (self, signals[PICK_TIMER_SOUND], 0);
 }
 
 static void
-on_preview (NeoPressable *row, SettingsPage *self)
+on_preview (VibeosPressable *row, SettingsPage *self)
 {
   g_signal_emit (self, signals[SHOW_SCREENSAVER], 0);
 }
 
 static void
-on_screensaver_settings (NeoPressable *row, SettingsPage *self)
+on_screensaver_settings (VibeosPressable *row, SettingsPage *self)
 {
   g_signal_emit (self, signals[SCREENSAVER_SETTINGS], 0);
 }
@@ -513,7 +513,7 @@ refresh_screensaver (SettingsPage *self)
   show_switch (self, self->night_dnd);
   gtk_widget_set_visible (self->saver_bold, digital);
   gtk_widget_set_visible (self->saver_ampm, digital);
-  gtk_widget_set_sensitive (self->saver_ampm, !neo_clock_uses_24h ());
+  gtk_widget_set_sensitive (self->saver_ampm, !vibeos_clock_uses_24h ());
   gtk_widget_set_sensitive (self->night_dnd, night);
   gtk_widget_set_sensitive (self->night_color, night);
   gtk_widget_set_sensitive (self->brightness, night);
@@ -568,7 +568,7 @@ on_scrolled (GtkAdjustment *adjustment, SettingsPage *self)
 }
 
 static void
-on_up (NeoPressable *button, SettingsPage *self)
+on_up (VibeosPressable *button, SettingsPage *self)
 {
   g_signal_emit (self, signals[CLOSED], 0);
 }

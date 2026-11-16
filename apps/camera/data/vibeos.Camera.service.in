@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=vibeos.Camera
+Exec=@bindir@/vibeos-camera --gapplication-service

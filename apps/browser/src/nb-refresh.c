@@ -11,7 +11,7 @@
 #include "nb.h"
 
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy.h>
 
 #define WORLD "nbpull"
@@ -249,14 +249,14 @@ nb_refresh_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gsk_rounded_rect_init_from_rect (&disc, &GRAPHENE_RECT_INIT (-r, -r, 2 * r, 2 * r), r);
   gtk_snapshot_append_outset_shadow (snapshot, &disc, &(GdkRGBA) { 0, 0, 0, 0.28 }, 0, 1.75, 0, 3.5);
   gtk_snapshot_push_rounded_clip (snapshot, &disc);
-  GdkRGBA bg = neo_color (NEO_SURFACE_CONTAINER_HIGH);
+  GdkRGBA bg = vibeos_color (VIBEOS_SURFACE_CONTAINER_HIGH);
   gtk_snapshot_append_color (snapshot, &bg, &disc.bounds);
   gtk_snapshot_pop (snapshot);
 
   /* the ring: angles start at 3 o'clock and grow clockwise (y down) */
   double sweep = (self->end_trim - self->start_trim) * 360;
   if (sweep > 0.1) {
-    GdkRGBA color = neo_color_alpha (NEO_PRIMARY, self->alpha);
+    GdkRGBA color = vibeos_color_alpha (VIBEOS_PRIMARY, self->alpha);
     double a0 = ((self->start_trim + self->rotation) * 360 + self->group_rotation * 360) * G_PI / 180;
     double a1 = a0 + sweep * G_PI / 180;
 

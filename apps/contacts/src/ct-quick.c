@@ -35,7 +35,7 @@
 
 #include <glib/gi18n.h>
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 typedef struct _Quick Quick;
@@ -61,7 +61,7 @@ struct _Quick {
   SpongyInterp title_curve;
 
   double sheet;                 /* how far the sheet is below its place: 0 in place … 1 off the bottom */
-  NeoAnim *sheet_anim, *scrim_anim, *expand_anim;
+  VibeosAnim *sheet_anim, *scrim_anim, *expand_anim;
   gboolean closing;
 
   double press_x, press_y;      /* where the last press on an entry was, for its context menu */
@@ -485,7 +485,7 @@ open_or_toast (Quick *quick, const char *uri)
 }
 
 static void
-on_entry_clicked (NeoPressable *row, Quick *quick)
+on_entry_clicked (VibeosPressable *row, Quick *quick)
 {
   const char *uri = g_object_get_data (G_OBJECT (row), "ct-uri");
 
@@ -496,7 +496,7 @@ on_entry_clicked (NeoPressable *row, Quick *quick)
 }
 
 static void
-on_alt_clicked (NeoPressable *button, Quick *quick)
+on_alt_clicked (VibeosPressable *button, Quick *quick)
 {
   open_or_toast (quick, g_object_get_data (G_OBJECT (button), "ct-uri"));
 }
@@ -555,7 +555,7 @@ on_context_chosen (int index, gpointer data)
 /* the context menu at the finger: Copy to clipboard, and for a number or an address of several of its kind,
  * Set default or Clear default ("Call via" needs several calling accounts, which this phone does not have) */
 static void
-on_entry_long_pressed (NeoPressable *row, Quick *quick)
+on_entry_long_pressed (VibeosPressable *row, Quick *quick)
 {
   static Context context;
   const char *labels[2];
@@ -606,7 +606,7 @@ entry_row (Quick *quick, const Entry *entry, gboolean card_has_icons)
 {
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *lines = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  GtkWidget *row = neo_pressable_new (box);
+  GtkWidget *row = vibeos_pressable_new (box);
   GtkGesture *press = gtk_gesture_click_new ();
   GdkRGBA ripple = ct_rgba (CT_RIPPLE_FRAMEWORK);
   gboolean header_only = !entry->sub && !entry->text;
@@ -648,23 +648,23 @@ entry_row (Quick *quick, const Entry *entry, gboolean card_has_icons)
   if (entry->alt_icon)
     {
       GtkWidget *icon = ct_tinted_icon_new (entry->alt_icon, CT_QC_ICON_DP, quick->primary);
-      GtkWidget *alt = neo_pressable_new (icon);
+      GtkWidget *alt = vibeos_pressable_new (icon);
 
       gtk_widget_set_halign (icon, GTK_ALIGN_CENTER);
       gtk_widget_set_valign (icon, GTK_ALIGN_CENTER);
       gtk_widget_set_size_request (alt, (int) CT_QC_CLICKABLE_ICON_DP, (int) CT_QC_CLICKABLE_ICON_DP);
       gtk_widget_set_valign (alt, GTK_ALIGN_START);
-      neo_pressable_set_ripple (NEO_PRESSABLE (alt), NEO_RIPPLE_CIRCLE, hypot (CT_QC_CLICKABLE_ICON_DP,
+      vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (alt), VIBEOS_RIPPLE_CIRCLE, hypot (CT_QC_CLICKABLE_ICON_DP,
                                                                                 CT_QC_CLICKABLE_ICON_DP) / 2);
-      neo_pressable_set_ripple_color (NEO_PRESSABLE (alt), &ripple);
+      vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (alt), &ripple);
       gtk_accessible_update_property (GTK_ACCESSIBLE (alt), GTK_ACCESSIBLE_PROPERTY_LABEL, entry->alt_name, -1);
       g_object_set_data_full (G_OBJECT (alt), "ct-uri", g_strdup (entry->alt_uri), g_free);
       g_signal_connect (alt, "clicked", G_CALLBACK (on_alt_clicked), quick);
       gtk_box_append (GTK_BOX (box), alt);
     }
 
-  neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (row), &ripple);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
   gtk_accessible_update_property (GTK_ACCESSIBLE (row), GTK_ACCESSIBLE_PROPERTY_LABEL, entry->header, -1);
   g_object_set_data_full (G_OBJECT (row), "ct-uri", g_strdup (entry->uri), g_free);
   g_object_set_data_full (G_OBJECT (row), "ct-copy", g_strdup (entry->copy), g_free);
@@ -953,7 +953,7 @@ static void
 update_star (Quick *quick)
 {
   gboolean starred = ct_contact_is_starred (quick->contact);
-  GtkWidget *image = neo_pressable_get_child (NEO_PRESSABLE (quick->star));
+  GtkWidget *image = vibeos_pressable_get_child (VIBEOS_PRESSABLE (quick->star));
 
   gtk_image_set_from_icon_name (GTK_IMAGE (image), starred ? "ct-star-symbolic" : "ct-star-border-symbolic");
   gtk_accessible_update_property (GTK_ACCESSIBLE (quick->star), GTK_ACCESSIBLE_PROPERTY_LABEL,
@@ -962,13 +962,13 @@ update_star (Quick *quick)
 }
 
 static void
-on_star (NeoPressable *button, Quick *quick)
+on_star (VibeosPressable *button, Quick *quick)
 {
   ct_store_set_starred (quick->store, quick->uid, !ct_contact_is_starred (quick->contact));
 }
 
 static void
-on_edit (NeoPressable *button, Quick *quick)
+on_edit (VibeosPressable *button, Quick *quick)
 {
   ct_window_edit_contact (quick->window, quick->profile ? CT_PROFILE_UID : quick->uid);
 }
@@ -1021,7 +1021,7 @@ on_menu_chosen (int index, gpointer data)
 
 /* the menu: Delete (not for "My info") and Share; the rest is left out (the top comment) */
 static void
-on_overflow (NeoPressable *button, Quick *quick)
+on_overflow (VibeosPressable *button, Quick *quick)
 {
   const char *labels[2];
   int n = 0;
@@ -1161,7 +1161,7 @@ on_store_changed (CtStore *store, Quick *quick)
 /* ===== coming and going ======================================================================================== */
 
 static void
-on_sheet (NeoAnim *anim, double value, gpointer data)
+on_sheet (VibeosAnim *anim, double value, gpointer data)
 {
   Quick *quick = data;
 
@@ -1175,7 +1175,7 @@ on_sheet (NeoAnim *anim, double value, gpointer data)
 }
 
 static void
-on_scrim (NeoAnim *anim, double value, gpointer data)
+on_scrim (VibeosAnim *anim, double value, gpointer data)
 {
   Quick *quick = data;
 
@@ -1189,8 +1189,8 @@ on_map (GtkWidget *stage, Quick *quick)
 {
   if (quick->closing || quick->sheet == 0)
     return;
-  neo_anim_start (quick->sheet_anim, 1, 0, CT_QC_ENTRANCE_MS, 0, SPONGY_LINEAR_OUT_SLOW_IN);
-  neo_anim_start (quick->scrim_anim, 0, 1, CT_QC_SCRIM_FADE_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start (quick->sheet_anim, 1, 0, CT_QC_ENTRANCE_MS, 0, SPONGY_LINEAR_OUT_SLOW_IN);
+  vibeos_anim_start (quick->scrim_anim, 0, 1, CT_QC_SCRIM_FADE_MS, 0, SPONGY_LINEAR);
 }
 
 /* scrolling off the bottom: 250 ms, accelerating from the drag's speed (none, for Back: t²), then closed without an
@@ -1201,9 +1201,9 @@ quick_close (Quick *quick)
   if (quick->closing)
     return;
   quick->closing = TRUE;
-  neo_anim_stop (quick->scrim_anim);
+  vibeos_anim_stop (quick->scrim_anim);
   gtk_widget_set_can_target (quick->stage, FALSE);
-  neo_anim_start (quick->sheet_anim, quick->sheet, 1, CT_QC_EXIT_MS, 0, SPONGY_ACCELERATE);
+  vibeos_anim_start (quick->sheet_anim, quick->sheet, 1, CT_QC_EXIT_MS, 0, SPONGY_ACCELERATE);
 }
 
 static gboolean
@@ -1215,7 +1215,7 @@ on_back (CtPage *page, gpointer data)
 
 /* a tap on the header below its full height: back to the full height and the cards' top (300 ms) */
 static void
-on_expand (NeoAnim *anim, double value, gpointer data)
+on_expand (VibeosAnim *anim, double value, gpointer data)
 {
   Quick *quick = data;
 
@@ -1229,7 +1229,7 @@ on_header_released (GtkGestureClick *gesture, int n, double x, double y, Quick *
 
   if (header_height (quick) >= quick->max_h - 0.5 || offset <= 0)
     return;
-  neo_anim_start (quick->expand_anim, offset, 0, CT_QC_EXPAND_HEADER_MS, 0, SPONGY_ACCELERATE_DECELERATE);
+  vibeos_anim_start (quick->expand_anim, offset, 0, CT_QC_EXPAND_HEADER_MS, 0, SPONGY_ACCELERATE_DECELERATE);
 }
 
 static void
@@ -1245,9 +1245,9 @@ quick_free (gpointer data)
   Quick *quick = data;
 
   g_signal_handlers_disconnect_by_data (quick->store, quick);
-  g_clear_pointer (&quick->sheet_anim, neo_anim_free);
-  g_clear_pointer (&quick->scrim_anim, neo_anim_free);
-  g_clear_pointer (&quick->expand_anim, neo_anim_free);
+  g_clear_pointer (&quick->sheet_anim, vibeos_anim_free);
+  g_clear_pointer (&quick->scrim_anim, vibeos_anim_free);
+  g_clear_pointer (&quick->expand_anim, vibeos_anim_free);
   g_clear_object (&quick->contact);
   g_clear_object (&quick->photo);
   g_free (quick->name);
@@ -1319,9 +1319,9 @@ ct_quick_new (GtkWidget *window, const char *uid)
                     G_CALLBACK (on_scrolled), quick);
   gtk_box_append (GTK_BOX (quick->page), quick->stage);
 
-  quick->sheet_anim = neo_anim_new (quick->stage, on_sheet, quick);
-  quick->scrim_anim = neo_anim_new (quick->stage, on_scrim, quick);
-  quick->expand_anim = neo_anim_new (quick->stage, on_expand, quick);
+  quick->sheet_anim = vibeos_anim_new (quick->stage, on_sheet, quick);
+  quick->scrim_anim = vibeos_anim_new (quick->stage, on_scrim, quick);
+  quick->expand_anim = vibeos_anim_new (quick->stage, on_expand, quick);
   g_signal_connect_after (quick->stage, "map", G_CALLBACK (on_map), quick);
 
   g_signal_connect (store, "changed", G_CALLBACK (on_store_changed), quick);

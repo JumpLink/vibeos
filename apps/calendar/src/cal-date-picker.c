@@ -16,7 +16,7 @@
 
 #include <glib/gi18n.h>
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 #include <string.h>
 #include <unicode/udat.h>
@@ -47,7 +47,7 @@
 #define ERROR_ICON_PATH "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"
 
 typedef struct {
-  NeoDialog *dialog;
+  VibeosDialog *dialog;
   CalDateChosen chosen;
   gpointer data;
   int selected;                 /* the chosen day, or NO_DAY */
@@ -120,7 +120,7 @@ cal_day_grid_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   CalDayGrid *self = CAL_DAY_GRID (widget);
   Picker *picker = self->picker;
-  int scale = neo_device_scale (widget), first = month_start (picker->month), n = month_days (picker->month);
+  int scale = vibeos_device_scale (widget), first = month_start (picker->month), n = month_days (picker->month);
   int offset = (cal_day_of_week (first) - picker->week_start + 7) % 7;
   int today = cal_day_number (g_get_real_time () / G_USEC_PER_SEC);
   GdkRGBA text = cal_argb (CAL_ON_SURFACE), primary = cal_argb (CAL_PRIMARY), on_primary = cal_argb (CAL_ON_PRIMARY);
@@ -279,19 +279,19 @@ update (Picker *picker)
 }
 
 static void
-on_prev (NeoPressable *button, Picker *picker)
+on_prev (VibeosPressable *button, Picker *picker)
 {
   show_month (picker, picker->month - 1);
 }
 
 static void
-on_next (NeoPressable *button, Picker *picker)
+on_next (VibeosPressable *button, Picker *picker)
 {
   show_month (picker, picker->month + 1);
 }
 
 static void
-on_year (NeoPressable *button, Picker *picker)
+on_year (VibeosPressable *button, Picker *picker)
 {
   int year = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (button), "cal-year"));
 
@@ -317,7 +317,7 @@ scroll_to_year (GtkWidget *years, GdkFrameClock *clock, gpointer data)
 }
 
 static void
-on_month_toggle (NeoPressable *button, Picker *picker)
+on_month_toggle (VibeosPressable *button, Picker *picker)
 {
   gboolean years = g_str_equal (gtk_stack_get_visible_child_name (GTK_STACK (picker->stack)), "days");
 
@@ -329,15 +329,15 @@ on_month_toggle (NeoPressable *button, Picker *picker)
 }
 
 static void
-on_response (NeoDialog *dialog, int response, Picker *picker)
+on_response (VibeosDialog *dialog, int response, Picker *picker)
 {
   g_clear_handle_id (&picker->validation, g_source_remove);
-  if (response == NEO_RESPONSE_OK && picker->selected != NO_DAY)
+  if (response == VIBEOS_RESPONSE_OK && picker->selected != NO_DAY)
     picker->chosen (picker->selected, picker->data);
 }
 
 /* The year list is as tall as the days (six rows and the weekday row) and scrolls the rest. A size request alone
- * no longer does it: NeoDialog wraps its content's natural height, and the list's is all of its 67 rows, which
+ * no longer does it: VibeosDialog wraps its content's natural height, and the list's is all of its 67 rows, which
  * would stretch the card to the window. Its holder asks for that one height, natural and minimum. */
 static void
 years_measure (GtkWidget *holder, GtkOrientation orientation, int for_size, int *min, int *nat, int *min_base,
@@ -368,7 +368,7 @@ years_list (Picker *picker)
     {
       g_autofree char *text = g_strdup_printf ("%d", year);
       GtkWidget *label = gtk_label_new (text);
-      GtkWidget *button = neo_pressable_new (label);
+      GtkWidget *button = vibeos_pressable_new (label);
 
       gtk_widget_add_css_class (button, "cal-year");
       gtk_widget_set_halign (button, GTK_ALIGN_CENTER);
@@ -377,7 +377,7 @@ years_list (Picker *picker)
         gtk_widget_add_css_class (button, "selected");
       else if (year == this_year)
         gtk_widget_add_css_class (button, "today");
-      neo_pressable_set_ripple (NEO_PRESSABLE (button), NEO_RIPPLE_BOUNDED, 18);
+      vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_BOUNDED, 18);
       g_object_set_data (G_OBJECT (button), "cal-year", GINT_TO_POINTER (year));
       g_signal_connect (button, "clicked", G_CALLBACK (on_year), picker);
       gtk_grid_attach (GTK_GRID (grid), button, (year - YEAR_FIRST) % 3, (year - YEAR_FIRST) / 3, 1, 1);
@@ -405,7 +405,7 @@ struct _CalDateField {
   char *placeholder;
   gboolean error;
   double floated;               /* the label: 0 in the field, 1 on the outline, smaller */
-  NeoAnim *float_anim;
+  VibeosAnim *float_anim;
   GskPath *error_icon;
 };
 
@@ -436,7 +436,7 @@ cal_date_field_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   CalDateField *self = CAL_DATE_FIELD (widget);
   double width = gtk_widget_get_width (widget), f = self->floated;
-  int scale = neo_device_scale (widget);
+  int scale = vibeos_device_scale (widget);
   gboolean focused = gtk_widget_has_focus (self->text);
   double stroke = focused ? 2 : 1, inset = stroke / 2, size = FIELD_TEXT_SIZE + (LABEL_SIZE - FIELD_TEXT_SIZE) * f;
   double baseline, line, label_width = 0;
@@ -475,7 +475,7 @@ cal_date_field_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 }
 
 static void
-on_float (NeoAnim *anim, double value, gpointer data)
+on_float (VibeosAnim *anim, double value, gpointer data)
 {
   CAL_DATE_FIELD (data)->floated = value;
   gtk_widget_queue_draw (GTK_WIDGET (data));
@@ -490,10 +490,10 @@ field_restate (CalDateField *self, gboolean animate)
 
   gtk_text_set_placeholder_text (GTK_TEXT (self->text), focused ? self->placeholder : NULL);
   if (animate && (up ? 1.0 : 0.0) != self->floated)
-    neo_anim_start (self->float_anim, self->floated, up ? 1 : 0, LABEL_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
+    vibeos_anim_start (self->float_anim, self->floated, up ? 1 : 0, LABEL_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
   else if (!animate)
     {
-      neo_anim_stop (self->float_anim);
+      vibeos_anim_stop (self->float_anim);
       self->floated = up ? 1 : 0;
     }
   gtk_widget_queue_draw (GTK_WIDGET (self));
@@ -511,7 +511,7 @@ cal_date_field_dispose (GObject *object)
   CalDateField *self = CAL_DATE_FIELD (object);
 
   g_clear_pointer (&self->text, gtk_widget_unparent);
-  g_clear_pointer (&self->float_anim, neo_anim_free);
+  g_clear_pointer (&self->float_anim, vibeos_anim_free);
   g_clear_pointer (&self->error_icon, gsk_path_unref);
   g_clear_pointer (&self->label, g_free);
   g_clear_pointer (&self->placeholder, g_free);
@@ -537,7 +537,7 @@ cal_date_field_init (CalDateField *self)
   gtk_widget_add_css_class (GTK_WIDGET (self), "cal-date-field");
   self->label = g_strdup (_("Date"));
   self->error_icon = gsk_path_parse (ERROR_ICON_PATH);
-  self->float_anim = neo_anim_new (GTK_WIDGET (self), on_float, self);
+  self->float_anim = vibeos_anim_new (GTK_WIDGET (self), on_float, self);
   self->text = gtk_text_new ();
   /* a date: the digits and the separators */
   gtk_text_set_input_purpose (GTK_TEXT (self->text), GTK_INPUT_PURPOSE_NUMBER);
@@ -868,9 +868,9 @@ text_input (Picker *picker)
 
 /* the pencil and the calendar icon */
 static void
-on_mode_toggle (NeoPressable *button, Picker *picker)
+on_mode_toggle (VibeosPressable *button, Picker *picker)
 {
-  GtkWidget *image = neo_pressable_get_child (button);
+  GtkWidget *image = vibeos_pressable_get_child (button);
 
   picker->text_mode = !picker->text_mode;
   gtk_widget_set_visible (picker->nav, !picker->text_mode);
@@ -931,7 +931,7 @@ cal_date_picker_show (GtkWidget *parent, const char *title, int day, int week_st
                       gpointer data)
 {
   Picker *picker = g_new0 (Picker, 1);
-  NeoDialog *dialog = neo_dialog_new (NULL);
+  VibeosDialog *dialog = vibeos_dialog_new (NULL);
   GtkWidget *content = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *header = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *title_label = gtk_label_new (title);
@@ -962,7 +962,7 @@ cal_date_picker_show (GtkWidget *parent, const char *title, int day, int week_st
   gtk_widget_set_vexpand (selection_row, TRUE);
   gtk_widget_add_css_class (picker->selection, "cal-date-selection");
   gtk_box_append (GTK_BOX (selection_row), picker->selection);
-  picker->toggle = neo_icon_button_new ("cal-pencil-symbolic");
+  picker->toggle = vibeos_icon_button_new ("cal-pencil-symbolic");
   gtk_widget_add_css_class (picker->toggle, "cal-date-toggle");
   gtk_widget_set_valign (picker->toggle, GTK_ALIGN_END);
   gtk_accessible_update_property (GTK_ACCESSIBLE (picker->toggle), GTK_ACCESSIBLE_PROPERTY_LABEL,
@@ -982,9 +982,9 @@ cal_date_picker_show (GtkWidget *parent, const char *title, int day, int week_st
   gtk_image_set_pixel_size (GTK_IMAGE (arrow), 24);
   gtk_box_append (GTK_BOX (toggle_box), picker->month_label);
   gtk_box_append (GTK_BOX (toggle_box), arrow);
-  toggle = neo_pressable_new (toggle_box);
+  toggle = vibeos_pressable_new (toggle_box);
   gtk_widget_add_css_class (toggle, "cal-date-month-toggle");
-  neo_pressable_set_ripple (NEO_PRESSABLE (toggle), NEO_RIPPLE_BOUNDED, 24);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (toggle), VIBEOS_RIPPLE_BOUNDED, 24);
   gtk_accessible_update_property (GTK_ACCESSIBLE (toggle), GTK_ACCESSIBLE_PROPERTY_DESCRIPTION,
                                   _("Switch to year view"), -1);
   g_signal_connect (toggle, "clicked", G_CALLBACK (on_month_toggle), picker);
@@ -996,13 +996,13 @@ cal_date_picker_show (GtkWidget *parent, const char *title, int day, int week_st
     gtk_widget_set_hexpand (space, TRUE);
     gtk_box_append (GTK_BOX (nav), space);
   }
-  picker->prev = neo_icon_button_new ("cal-chevron-left-symbolic");
+  picker->prev = vibeos_icon_button_new ("cal-chevron-left-symbolic");
   gtk_widget_add_css_class (picker->prev, "cal-date-arrow");
   gtk_accessible_update_property (GTK_ACCESSIBLE (picker->prev), GTK_ACCESSIBLE_PROPERTY_LABEL,
                                   _("Change to previous month"), -1);
   g_signal_connect (picker->prev, "clicked", G_CALLBACK (on_prev), picker);
   gtk_box_append (GTK_BOX (nav), picker->prev);
-  picker->next = neo_icon_button_new ("cal-chevron-right-symbolic");
+  picker->next = vibeos_icon_button_new ("cal-chevron-right-symbolic");
   gtk_widget_add_css_class (picker->next, "cal-date-arrow");
   gtk_accessible_update_property (GTK_ACCESSIBLE (picker->next), GTK_ACCESSIBLE_PROPERTY_LABEL,
                                   _("Change to next month"), -1);
@@ -1024,13 +1024,13 @@ cal_date_picker_show (GtkWidget *parent, const char *title, int day, int week_st
 
   gtk_widget_set_size_request (content, (int) CARD_WIDTH, -1);
   gtk_widget_add_css_class (content, "cal-date-picker");
-  neo_dialog_set_flush (dialog, TRUE);
-  neo_dialog_set_content (dialog, content);
+  vibeos_dialog_set_flush (dialog, TRUE);
+  vibeos_dialog_set_content (dialog, content);
   /* the card is the content's parent: its own class takes the picker's colour and button band */
   gtk_widget_add_css_class (gtk_widget_get_parent (content), "cal-date-card");
-  neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  picker->ok = neo_dialog_add_button (dialog, _("OK"), NEO_RESPONSE_OK);
+  vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  picker->ok = vibeos_dialog_add_button (dialog, _("OK"), VIBEOS_RESPONSE_OK);
   g_signal_connect_data (dialog, "response", G_CALLBACK (on_response), picker, picker_free, 0);
   update (picker);
-  neo_dialog_present (dialog, parent);
+  vibeos_dialog_present (dialog, parent);
 }

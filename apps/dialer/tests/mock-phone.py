@@ -1,14 +1,14 @@
 #!/usr/bin/python3
-# A phone for the call service to talk to, without a modem or a shell: what neo-dialer-calls finds on its two buses,
+# A phone for the call service to talk to, without a modem or a shell: what vibeos-dialer-calls finds on its two buses,
 # for the tests (test-calls.py) and for trying the in-call screen with no real call.
 #
-# On the "system" bus (a bus of its own, NEO_DIALER_SYSTEM_BUS): ModemManager with one modem, its Voice interface
+# On the "system" bus (a bus of its own, VIBEOS_DIALER_SYSTEM_BUS): ModemManager with one modem, its Voice interface
 # and its calls, behaving as ModemManager 1.24 does: a call it makes is UNKNOWN until started, a terminated one stays
 # until deleted, every state change comes as StateChanged and as a property change.
 #
 # On the session bus: callaudiod's CallAudio, a notification server, and the shell's LaunchFullScreen.
 #
-# neo.Test.Phone on the session bus drives it: a call comes in, the other side answers or hangs up; and it
+# vibeos.Test.Phone on the session bus drives it: a call comes in, the other side answers or hangs up; and it
 # tells what the service did (the method calls it got, the notifications it holds).
 import json
 import sys
@@ -71,10 +71,10 @@ SESSION_XML = '''<node>
 <signal name="ActionInvoked"><arg type="u"/><arg type="s"/></signal>
 <signal name="NotificationClosed"><arg type="u"/><arg type="u"/></signal>
 </interface>
-<interface name="neo.GnomePhone">
+<interface name="vibeos.Shell">
 <method name="LaunchFullScreen"><arg type="s" direction="in"/><arg type="b" direction="out"/></method>
 </interface>
-<interface name="neo.Test.Phone">
+<interface name="vibeos.Test.Phone">
 <method name="Incoming"><arg name="number" type="s" direction="in"/><arg type="o" direction="out"/></method>
 <method name="RemoteAnswer"><arg type="o" direction="in"/></method>
 <method name="RemoteHangup"><arg type="o" direction="in"/><arg name="reason" type="i" direction="in"/></method>
@@ -127,8 +127,8 @@ class Phone:
         for iface in Gio.DBusNodeInfo.new_for_xml(SESSION_XML).interfaces:
             session.register_object('/org/mobian_project/CallAudio' if 'CallAudio' in iface.name else
                                     '/org/freedesktop/Notifications' if 'Notifications' in iface.name else
-                                    '/neo/GnomePhone' if 'GnomePhone' in iface.name else
-                                    '/neo/Test/Phone', iface, self.session_call, None, None)
+                                    '/vibeos/Shell' if 'Vibeos' in iface.name else
+                                    '/vibeos/Test/Phone', iface, self.session_call, None, None)
 
     # --- ModemManager
     def modem_props(self, name):
@@ -239,7 +239,7 @@ class Phone:
     # --- the session's services and the test's controls
     def session_call(self, conn, sender, path, iface, method, params, inv):
         args = params.unpack()
-        if iface == 'neo.Test.Phone':
+        if iface == 'vibeos.Test.Phone':
             return self.control(method, args, inv)
         self.log.append([method] + [a for a in args if not isinstance(a, dict)])
         if method == 'Notify':
@@ -248,8 +248,8 @@ class Phone:
             self.next_notification = max(self.next_notification, nid)
             self.notifications[nid] = {'title': title, 'body': body, 'actions': actions[::2],
                                        'urgency': hints.get('urgency', 1),
-                                       'no-peek': hints.get('x-neo-no-peek', False),
-                                       'chronometer': hints.get('x-neo-chronometer', 0)}
+                                       'no-peek': hints.get('x-vibeos-no-peek', False),
+                                       'chronometer': hints.get('x-vibeos-chronometer', 0)}
             return inv.return_value(GLib.Variant('(u)', (nid,)))
         if method == 'CloseNotification':
             if self.notifications.pop(args[0], None) is not None:
@@ -324,7 +324,7 @@ def main():
     session = Gio.bus_get_sync(Gio.BusType.SESSION, None)
     phone = Phone(system, session)
     names = [(system, MM)] + [(session, n) for n in ('org.mobian_project.CallAudio', 'org.freedesktop.Notifications',
-                                                     'neo.GnomePhone', 'neo.Test.Phone')]
+                                                     'vibeos.Shell', 'vibeos.Test.Phone')]
     for conn, name in names:
         conn.call_sync('org.freedesktop.DBus', '/org/freedesktop/DBus', 'org.freedesktop.DBus', 'RequestName',
                        GLib.Variant('(su)', (name, 4)), None, Gio.DBusCallFlags.NONE, -1, None)

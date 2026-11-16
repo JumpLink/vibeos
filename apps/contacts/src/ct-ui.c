@@ -3,7 +3,7 @@
 
 #include <glib/gi18n.h>
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 
 GdkRGBA
 ct_rgba (guint32 argb)
@@ -16,15 +16,15 @@ GtkWidget *
 ct_icon_button (const char *icon_name, const char *name, double width, double height, guint32 ripple)
 {
   GtkWidget *image = gtk_image_new_from_icon_name (icon_name);
-  GtkWidget *button = neo_pressable_new (image);
+  GtkWidget *button = vibeos_pressable_new (image);
   GdkRGBA color = ct_rgba (ripple);
 
   gtk_image_set_pixel_size (GTK_IMAGE (image), 24);
   gtk_widget_set_size_request (button, (int) width, (int) height);
   gtk_widget_add_css_class (button, "ct-icon-button");
   /* unbounded: a circle of half the button's diagonal around its centre */
-  neo_pressable_set_ripple (NEO_PRESSABLE (button), NEO_RIPPLE_CIRCLE, hypot (width, height) / 2);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (button), &color);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_CIRCLE, hypot (width, height) / 2);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (button), &color);
   gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);
   return button;
 }
@@ -54,7 +54,7 @@ ct_tinted_icon_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   CtTintedIcon *self = CT_TINTED_ICON (widget);
 
   if (self->icon_name)
-    neo_snapshot_icon (snapshot, widget, self->icon_name, 0, 0, self->size, &self->color);
+    vibeos_snapshot_icon (snapshot, widget, self->icon_name, 0, 0, self->size, &self->color);
 }
 
 static void
@@ -107,7 +107,7 @@ ct_label (const char *text, const char *css_class, double size)
 
   gtk_widget_add_css_class (label, css_class);
   gtk_label_set_xalign (GTK_LABEL (label), 0);
-  neo_label_set_font_padding (label, size);
+  vibeos_label_set_font_padding (label, size);
   return label;
 }
 
@@ -119,14 +119,14 @@ ct_text_button (const char *label, const char *css_class)
   GtkWidget *button;
   GdkRGBA ripple = ct_rgba (CT_RIPPLE_APPCOMPAT);
 
-  neo_label_set_font_padding (text, 14);
+  vibeos_label_set_font_padding (text, 14);
   gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
-  button = neo_pressable_new (text);
+  button = vibeos_pressable_new (text);
   gtk_widget_add_css_class (button, "ct-text-button");
   if (css_class)
     gtk_widget_add_css_class (button, css_class);
-  neo_pressable_set_ripple (NEO_PRESSABLE (button), NEO_RIPPLE_BOUNDED, 2);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (button), &ripple);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_BOUNDED, 2);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (button), &ripple);
   gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, label, -1);
   return button;
 }

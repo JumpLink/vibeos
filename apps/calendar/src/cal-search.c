@@ -19,7 +19,7 @@
 #include "cal-window.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 #define MAX_HISTORY 250         /* the searches kept */
@@ -132,10 +132,10 @@ cal_search_today_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   g_autoptr(GDateTime) now = g_date_time_new_now_local ();
   g_autofree char *number = g_strdup_printf ("%d", g_date_time_get_day_of_month (now));
   PangoLayout *layout = gtk_widget_create_pango_layout (widget, number);
-  PangoFontDescription *font = pango_font_description_from_string ("Neo Roboto, Roboto");
+  PangoFontDescription *font = pango_font_description_from_string ("VibeOS Roboto, Roboto");
   int w, h;
 
-  neo_snapshot_icon (snapshot, widget, "cal-today-symbolic", x, y, size, &color);
+  vibeos_snapshot_icon (snapshot, widget, "cal-today-symbolic", x, y, size, &color);
   pango_font_description_set_absolute_size (font, 12 * PANGO_SCALE);
   pango_font_description_set_weight (font, PANGO_WEIGHT_BOLD);
   pango_layout_set_font_description (layout, font);
@@ -309,7 +309,7 @@ set_text (Search *search, const char *text)
 }
 
 static void
-on_suggestion (NeoPressable *row, Search *search)
+on_suggestion (VibeosPressable *row, Search *search)
 {
   g_autofree char *query = g_strdup (g_object_get_data (G_OBJECT (row), "cal-query"));
 
@@ -319,7 +319,7 @@ on_suggestion (NeoPressable *row, Search *search)
 
 /* the refine arrow: the suggestion into the field, to change it */
 static void
-on_refine (NeoPressable *button, Search *search)
+on_refine (VibeosPressable *button, Search *search)
 {
   gtk_editable_set_text (GTK_EDITABLE (search->text), g_object_get_data (G_OBJECT (button), "cal-query"));
   gtk_editable_set_position (GTK_EDITABLE (search->text), -1);
@@ -331,7 +331,7 @@ suggestion_row (Search *search, const char *query)
 {
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *label = gtk_label_new (query);
-  GtkWidget *refine = neo_pressable_new (search_icon_new (ICON_COMMIT, 32, 48, 48));
+  GtkWidget *refine = vibeos_pressable_new (search_icon_new (ICON_COMMIT, 32, 48, 48));
   GtkWidget *row;
 
   gtk_box_append (GTK_BOX (box), search_icon_new (ICON_HISTORY, 24, 32, 48));
@@ -341,7 +341,7 @@ suggestion_row (Search *search, const char *query)
   gtk_widget_set_hexpand (label, TRUE);
   gtk_widget_add_css_class (label, "cal-search-suggestion-text");
   gtk_box_append (GTK_BOX (box), label);
-  neo_pressable_set_ripple (NEO_PRESSABLE (refine), NEO_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (refine), VIBEOS_RIPPLE_BOUNDED, 0);
   gtk_widget_set_valign (refine, GTK_ALIGN_CENTER);
   gtk_widget_add_css_class (refine, "cal-search-refine");
   gtk_accessible_update_property (GTK_ACCESSIBLE (refine), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Edit query"), -1);
@@ -349,8 +349,8 @@ suggestion_row (Search *search, const char *query)
   g_signal_connect (refine, "clicked", G_CALLBACK (on_refine), search);
   gtk_box_append (GTK_BOX (box), refine);
   gtk_widget_add_css_class (box, "cal-search-suggestion");
-  row = neo_pressable_new (box);
-  neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
+  row = vibeos_pressable_new (box);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
   gtk_accessible_update_property (GTK_ACCESSIBLE (row), GTK_ACCESSIBLE_PROPERTY_LABEL, query, -1);
   g_object_set_data_full (G_OBJECT (row), "cal-query", g_strdup (query), g_free);
   g_signal_connect (row, "clicked", G_CALLBACK (on_suggestion), search);
@@ -379,7 +379,7 @@ on_outside (GtkGestureClick *gesture, int n, double x, double y, Search *search)
 static void
 dropdown_update (Search *search)
 {
-  GtkOverlay *overlay = neo_window_get_overlay (search->window);
+  GtkOverlay *overlay = vibeos_window_get_overlay (search->window);
   g_auto(GStrv) history = g_settings_get_strv (search->settings, "search-history");
   g_autofree char *needle = g_utf8_casefold (gtk_editable_get_text (GTK_EDITABLE (search->text)), -1);
   graphene_rect_t frame;
@@ -495,7 +495,7 @@ on_activate (GtkText *text, Search *search)
 }
 
 static void
-on_clear (NeoPressable *button, Search *search)
+on_clear (VibeosPressable *button, Search *search)
 {
   /* the X with text: empty it, focus, the keyboard up */
   gtk_editable_set_text (GTK_EDITABLE (search->text), "");
@@ -570,7 +570,7 @@ search_view_build (Search *search)
   gtk_overlay_add_overlay (GTK_OVERLAY (area), search->hint);
   gtk_widget_set_hexpand (area, TRUE);
 
-  search->clear = neo_icon_button_new ("cal-close-symbolic");
+  search->clear = vibeos_icon_button_new ("cal-close-symbolic");
   gtk_widget_add_css_class (search->clear, "cal-search-close");
   gtk_accessible_update_property (GTK_ACCESSIBLE (search->clear), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Clear query"),
                                   -1);
@@ -681,7 +681,7 @@ today (void)
 }
 
 static void
-on_page_today (NeoPressable *button, Search *search)
+on_page_today (VibeosPressable *button, Search *search)
 {
   /* to today */
   search->day = today ();
@@ -699,7 +699,7 @@ on_page_menu (int index, gpointer data)
 }
 
 static void
-on_page_more (NeoPressable *button, Search *search)
+on_page_more (VibeosPressable *button, Search *search)
 {
   const char *labels[] = { _("Settings") };
 
@@ -762,12 +762,12 @@ push_search_page (GtkWidget *window, const char *query)
   gtk_widget_add_css_class (bar, "cal-search-bar");
   gtk_widget_set_halign (actions, GTK_ALIGN_FILL);
   gtk_box_append (GTK_BOX (actions), search->view);
-  today_button = neo_pressable_new (g_object_new (cal_search_today_get_type (), NULL));
-  neo_pressable_set_ripple (NEO_PRESSABLE (today_button), NEO_RIPPLE_CIRCLE, 20);
+  today_button = vibeos_pressable_new (g_object_new (cal_search_today_get_type (), NULL));
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (today_button), VIBEOS_RIPPLE_CIRCLE, 20);
   gtk_accessible_update_property (GTK_ACCESSIBLE (today_button), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Today"), -1);
   g_signal_connect (today_button, "clicked", G_CALLBACK (on_page_today), search);
   gtk_box_append (GTK_BOX (actions), today_button);
-  more = neo_icon_button_new ("cal-more-symbolic");
+  more = vibeos_icon_button_new ("cal-more-symbolic");
   gtk_widget_add_css_class (more, "cal-toolbar-more");
   gtk_accessible_update_property (GTK_ACCESSIBLE (more), GTK_ACCESSIBLE_PROPERTY_LABEL, _("More options"), -1);
   g_signal_connect (more, "clicked", G_CALLBACK (on_page_more), search);
@@ -824,7 +824,7 @@ main_collapse (Search *search)
 }
 
 static void
-on_collapse (NeoPressable *button, Search *search)
+on_collapse (VibeosPressable *button, Search *search)
 {
   main_collapse (search);
 }
@@ -855,7 +855,7 @@ main_in_front (Search *search)
 {
   GtkWidget *stack = gtk_widget_get_ancestor (search->bar, GTK_TYPE_STACK);
   GtkWidget *visible = stack ? gtk_stack_get_visible_child (GTK_STACK (stack)) : NULL;
-  GtkOverlay *overlay = neo_window_get_overlay (search->window);
+  GtkOverlay *overlay = vibeos_window_get_overlay (search->window);
   GtkWidget *content;
 
   if (stack && (!visible || !gtk_widget_is_ancestor (search->bar, visible)))

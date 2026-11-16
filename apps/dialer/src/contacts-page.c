@@ -171,7 +171,7 @@ struct _ContactsRow
   gboolean first;               /* the first row of its section */
   gboolean header_hidden;       /* the anchored header shows its letter instead */
   PangoLayout *header;
-  GtkWidget *target;            /* a NeoPressable around the content */
+  GtkWidget *target;            /* a VibeosPressable around the content */
   ContactsContent *content;
 };
 
@@ -277,10 +277,10 @@ static void
 contacts_row_init (ContactsRow *self)
 {
   self->content = g_object_new (CONTACTS_TYPE_CONTENT, NULL);
-  self->target = neo_pressable_new (GTK_WIDGET (self->content));
+  self->target = vibeos_pressable_new (GTK_WIDGET (self->content));
   /* the press ripple, over the touch area only */
-  neo_pressable_set_ripple (NEO_PRESSABLE (self->target), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (self->target), &(GdkRGBA) { 1, 1, 1, 0.06 });
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->target), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (self->target), &(GdkRGBA) { 1, 1, 1, 0.06 });
   gtk_widget_set_parent (self->target, GTK_WIDGET (self));
   g_signal_connect_swapped (self->target, "clicked", G_CALLBACK (on_target_clicked), self);
 }
@@ -301,7 +301,7 @@ struct _ContactsPage
 {
   GtkWidget parent;
   Contacts *contacts;
-  NeoSnackbar *snackbar;
+  VibeosSnackbar *snackbar;
   GtkWidget *stack, *scroller, *list, *add, *empty;
   GPtrArray *entries;           /* Entry, not yet given to a row */
   guint n_rows;
@@ -612,7 +612,7 @@ update_create (ContactsPage *self)
   if (self->empty && can_create == self->empty_creates)
     return;
   /* the empty view: the contacts picture, the line, "Create new contact" */
-  empty = empty_view_new ("/neo/Dialer/images/empty-contacts.png", _("You don't have any contacts yet"),
+  empty = empty_view_new ("/vibeos/Dialer/images/empty-contacts.png", _("You don't have any contacts yet"),
                           can_create ? _("Create new contact") : NULL, on_create, self);
   gtk_stack_add_child (GTK_STACK (self->stack), empty);
   if (self->empty)
@@ -649,11 +649,11 @@ add_contact_row (ContactsPage *self)
   gtk_widget_set_margin_start (label, NAME_START);
   gtk_widget_set_margin_end (label, NAME_END);
   gtk_widget_add_css_class (label, "dialer-primary-text");
-  neo_label_set_font_padding (label, 16);
+  vibeos_label_set_font_padding (label, 16);
   gtk_box_append (GTK_BOX (box), label);
-  row = neo_pressable_new (box);
-  neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (row), &(GdkRGBA) { 1, 1, 1, 0.06 });
+  row = vibeos_pressable_new (box);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &(GdkRGBA) { 1, 1, 1, 0.06 });
   gtk_widget_set_margin_top (row, ADD_TOP);
   gtk_widget_set_margin_start (row, HEADER_WIDTH);
   gtk_widget_set_margin_end (row, TARGET_END);
@@ -727,7 +727,7 @@ contacts_page_init (ContactsPage *self)
 }
 
 GtkWidget *
-contacts_page_new (Contacts *contacts, NeoSnackbar *snackbar)
+contacts_page_new (Contacts *contacts, VibeosSnackbar *snackbar)
 {
   ContactsPage *self = g_object_new (CONTACTS_TYPE_PAGE, NULL);
 
@@ -741,7 +741,7 @@ contacts_page_new (Contacts *contacts, NeoSnackbar *snackbar)
 }
 
 GtkWidget *
-contacts_page_new_picker (Contacts *contacts, NeoSnackbar *snackbar)
+contacts_page_new_picker (Contacts *contacts, VibeosSnackbar *snackbar)
 {
   ContactsPage *self = g_object_new (CONTACTS_TYPE_PAGE, NULL);
 
@@ -749,7 +749,7 @@ contacts_page_new_picker (Contacts *contacts, NeoSnackbar *snackbar)
   gtk_widget_set_visible (self->add, FALSE);
   self->contacts = g_object_ref (contacts);
   self->snackbar = snackbar;
-  self->empty = empty_view_new ("/neo/Dialer/images/empty-contacts.png", _("You don't have any contacts yet"),
+  self->empty = empty_view_new ("/vibeos/Dialer/images/empty-contacts.png", _("You don't have any contacts yet"),
                                 NULL, NULL, NULL);
   gtk_stack_add_child (GTK_STACK (self->stack), self->empty);
   g_signal_connect_swapped (contacts, "changed", G_CALLBACK (on_contacts_changed), self);

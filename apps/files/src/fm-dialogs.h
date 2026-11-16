@@ -1,18 +1,18 @@
-/* The dialogs, a dark alert dialog on libneo's NeoDialog: a card with the title, the content,
+/* The dialogs, a dark alert dialog on libvibeos's VibeosDialog: a card with the title, the content,
  * and CANCEL / OK in the accent at the end. */
 #pragma once
 
 #include <gtk/gtk.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #include "fm-places.h"
 
 G_BEGIN_DECLS
 
 /* a dialog with this title (NULL for none) and a content box to fill; buttons go on with fm_dialog_add_button */
-NeoDialog  *fm_dialog_new         (const char *title, GtkWidget **content);
+VibeosDialog  *fm_dialog_new         (const char *title, GtkWidget **content);
 /* a button, its label upper-cased */
-GtkWidget  *fm_dialog_add_button  (NeoDialog *dialog, const char *label, int response);
+GtkWidget  *fm_dialog_add_button  (VibeosDialog *dialog, const char *label, int response);
 /* the underlined text field */
 GtkWidget  *fm_entry_new          (const char *text);
 /* a form row: the label (weight 3) and the field (weight 7), as the server and Properties dialogs have */

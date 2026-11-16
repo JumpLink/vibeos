@@ -1,0 +1,11 @@
+{
+ "id": "gnome-free",
+ "title": "gnome-free",
+ "scale": 0.62,
+ "shape": null,
+ "iconback": [
+  "iconback"
+ ],
+ "iconmask": [],
+ "iconupon": []
+}

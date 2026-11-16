@@ -6,13 +6,13 @@
 #pragma once
 
 #include <gtk/gtk.h>
-#include <neo.h>
+#include <vibeos.h>
 
 G_BEGIN_DECLS
 
 #define STOPWATCH_TYPE_PAGE (stopwatch_page_get_type ())
 G_DECLARE_FINAL_TYPE (StopwatchPage, stopwatch_page, STOPWATCH, PAGE, GtkWidget)
 
-GtkWidget *stopwatch_page_new (NeoSnackbar *snackbar);
+GtkWidget *stopwatch_page_new (VibeosSnackbar *snackbar);
 
 G_END_DECLS

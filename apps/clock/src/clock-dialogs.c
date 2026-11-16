@@ -2,7 +2,7 @@
 #include "clock-dialogs.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 typedef struct
@@ -18,16 +18,16 @@ choice_free (gpointer data, GClosure *closure)
 }
 
 static void
-on_response (NeoDialog *dialog, int response, Choice *choice)
+on_response (VibeosDialog *dialog, int response, Choice *choice)
 {
   /* a row answers with its index past the standard responses; anything else is a cancel */
   choice->done (response >= 100 ? response - 100 : -1, choice->data);
 }
 
 static void
-on_item (NeoPressable *row, NeoDialog *dialog)
+on_item (VibeosPressable *row, VibeosDialog *dialog)
 {
-  neo_dialog_respond (dialog, 100 + GPOINTER_TO_INT (g_object_get_data (G_OBJECT (row), "clock-index")));
+  vibeos_dialog_respond (dialog, 100 + GPOINTER_TO_INT (g_object_get_data (G_OBJECT (row), "clock-index")));
 }
 
 /* a choice of a list dialog: the radio, then the text */
@@ -49,9 +49,9 @@ item_row (const char *label, int index, gboolean checked)
   gtk_label_set_wrap (GTK_LABEL (text), TRUE);
   gtk_widget_set_hexpand (text, TRUE);
   gtk_box_append (GTK_BOX (box), text);
-  row = neo_pressable_new (box);
+  row = vibeos_pressable_new (box);
   gtk_widget_add_css_class (row, "clock-dialog-item");
-  neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
   gtk_accessible_update_state (GTK_ACCESSIBLE (row), GTK_ACCESSIBLE_STATE_CHECKED,
                                checked ? GTK_ACCESSIBLE_TRISTATE_TRUE : GTK_ACCESSIBLE_TRISTATE_FALSE, -1);
   g_object_set_data (G_OBJECT (row), "clock-index", GINT_TO_POINTER (index));
@@ -62,7 +62,7 @@ void
 clock_list_dialog (GtkWidget *parent, const char *title, const char *const *labels, int n_labels, int selected,
                    ClockChoiceDone done, gpointer data)
 {
-  NeoDialog *dialog = neo_dialog_new (title);
+  VibeosDialog *dialog = vibeos_dialog_new (title);
   GtkWidget *list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *scroll = spongy_scroll_view_new ();
   Choice *choice = g_new0 (Choice, 1);
@@ -80,8 +80,8 @@ clock_list_dialog (GtkWidget *parent, const char *title, const char *const *labe
   /* a long list (the snooze lengths, the time zones) scrolls inside the dialog */
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), list);
   gtk_widget_add_css_class (scroll, "clock-dialog-scroll");
-  neo_dialog_set_content (dialog, scroll);
-  neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
+  vibeos_dialog_set_content (dialog, scroll);
+  vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
   g_signal_connect_data (dialog, "response", G_CALLBACK (on_response), choice, choice_free, 0);
-  neo_dialog_present (dialog, parent);
+  vibeos_dialog_present (dialog, parent);
 }

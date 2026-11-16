@@ -2,7 +2,7 @@
 // and the 3x3 pattern. Each is a full-screen
 // actor in screen px of the 1080x2280 reference that takes the touches on its keys or grid, shows the messages, and
 // emits 'submit' with the secret: the PIN's digits, or the pattern's dots 1-9 in the order they were joined (what
-// gp-auth checks, as Phosh's pattern lock had it). keyguard.js checks it and calls back wrong(), lockout() or the
+// vibeos-auth checks, as Phosh's pattern lock had it). keyguard.js checks it and calls back wrong(), lockout() or the
 // disappear animation.
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';

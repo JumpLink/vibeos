@@ -1,7 +1,7 @@
-project('neo-files', 'c', version: '1.0', meson_version: '>= 1.0',
+project('vibeos-files', 'c', version: '1.0', meson_version: '>= 1.0',
         default_options: ['warning_level=2', 'c_std=gnu11', 'buildtype=release'])
 add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers',
-                      '-DGETTEXT_PACKAGE="neo-files"',
+                      '-DGETTEXT_PACKAGE="vibeos-files"',
                       '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir')),
                       '-DFM_VERSION="@0@"'.format(meson.project_version()), language: 'c')
 
@@ -26,19 +26,19 @@ configure_file(output: 'fm-config.h', configuration: config)
 
 gtk = dependency('gtk4', version: '>= 4.14')
 resources = gnome.compile_resources('files-resources', 'src/files.gresource.xml', source_dir: ['src', 'data'])
-executable('neo-files', 'src/fm-main.c', 'src/fm-window.c', 'src/fm-ui.c', 'src/fm-icon.c', 'src/fm-dialogs.c',
+executable('vibeos-files', 'src/fm-main.c', 'src/fm-window.c', 'src/fm-ui.c', 'src/fm-icon.c', 'src/fm-dialogs.c',
            'src/fm-list.c', 'src/fm-browser.c', 'src/fm-drawer.c', 'src/fm-home.c', 'src/fm-remote-page.c',
            'src/fm-mount.c', 'src/fm-jobs.c', 'src/fm-settings.c', 'src/fm-share.c', resources,
            link_with: core, install: true,
-           dependencies: [gio, m, gtk, secret, dependency('gdk-pixbuf-2.0'), dependency('neo-1'),
+           dependencies: [gio, m, gtk, secret, dependency('gdk-pixbuf-2.0'), dependency('vibeos-1'),
                           dependency('spongy-gtk-1')])
 
 unit = configuration_data({'bindir': bindir})
-configure_file(input: 'data/neo.Files.service.in', output: 'neo.Files.service',
+configure_file(input: 'data/vibeos.Files.service.in', output: 'vibeos.Files.service',
                configuration: unit, install_dir: datadir / 'dbus-1/services')
-install_data('data/neo.Files.desktop', install_dir: datadir / 'applications')
-install_data('data/neo.Files.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
-install_data('data/neo.Files.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
+install_data('data/vibeos.Files.desktop', install_dir: datadir / 'applications')
+install_data('data/vibeos.Files.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
+install_data('data/vibeos.Files.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
 gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
 
 foreach name : ['fm-item', 'fm-remotes', 'fm-state', 'fm-util', 'fm-places', 'fm-scan']

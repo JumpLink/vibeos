@@ -6,6 +6,6 @@
 typedef struct _AlarmService AlarmService;
 
 /* serves the alarms on @session and rings them; NULL (and @error) if it cannot serve them. @system: for logind and
- * neo-wakeup, or NULL */
+ * vibeos-wakeup, or NULL */
 AlarmService *alarm_service_new (GDBusConnection *session, GDBusConnection *system, GSettings *settings,
                                  const char *store_path, GError **error);

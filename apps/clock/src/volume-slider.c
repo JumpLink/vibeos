@@ -2,7 +2,7 @@
 #include "volume-slider.h"
 
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define INSET       14          /* the track's ends, in from the view's */
 #define TRACK       16          /* its height; the outer ends fully round */
@@ -55,8 +55,8 @@ volume_slider_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   int width = gtk_widget_get_width (widget), height = gtk_widget_get_height (widget);
   double cy = height / 2.0, x = step_x (self, self->value), start = INSET, end = width - INSET;
   double active_end = x - HANDLE_W / 2.0 - GAP, inactive_start = x + HANDLE_W / 2.0 + GAP;
-  GdkRGBA active = neo_color (NEO_PRIMARY), inactive = neo_color (NEO_SECONDARY_CONTAINER);
-  GdkRGBA on_active = neo_color (NEO_ON_PRIMARY), on_inactive = neo_color (NEO_ON_SECONDARY_CONTAINER);
+  GdkRGBA active = vibeos_color (VIBEOS_PRIMARY), inactive = vibeos_color (VIBEOS_SECONDARY_CONTAINER);
+  GdkRGBA on_active = vibeos_color (VIBEOS_ON_PRIMARY), on_inactive = vibeos_color (VIBEOS_ON_SECONDARY_CONTAINER);
 
   append_rounded (snapshot, &GRAPHENE_RECT_INIT (start, cy - TRACK / 2.0, active_end - start, TRACK), TRACK / 2.0,
                   INNER, &active);

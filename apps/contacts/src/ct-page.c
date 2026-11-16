@@ -3,7 +3,7 @@
 #include "ct-ui.h"
 #include "ct-window.h"
 
-#include <neo.h>
+#include <vibeos.h>
 
 struct _CtPage {
   GtkBox parent;
@@ -93,7 +93,7 @@ ct_page_get_translucent (CtPage *self)
 }
 
 static void
-on_nav (NeoPressable *button, CtPage *self)
+on_nav (VibeosPressable *button, CtPage *self)
 {
   ct_page_back (self);
 }

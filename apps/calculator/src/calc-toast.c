@@ -6,7 +6,7 @@
 #include "calc-text.h"
 
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 
 #define TEXT_SIZE     14
 #define MIN_HEIGHT    48
@@ -19,7 +19,7 @@
 #define SHORT_MS      2000    /* how long it stays */
 #define IN_MS         333
 #define OUT_MS        250
-#define APP_ICON      "neo.Calculator"
+#define APP_ICON      "vibeos.Calculator"
 
 #define CALC_TYPE_TOAST (calc_toast_get_type ())
 G_DECLARE_FINAL_TYPE (CalcToast, calc_toast, CALC, TOAST, GtkWidget)
@@ -51,7 +51,7 @@ calc_toast_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   double w = gtk_widget_get_width (widget), h = gtk_widget_get_height (widget);
   double icon_w = self->icon ? ICON + ICON_GAP : 0;
   double text_w, bar_w, x, y;
-  GdkRGBA background = neo_color (NEO_SURFACE_CONTAINER_HIGH), text = neo_color (NEO_ON_SURFACE);
+  GdkRGBA background = vibeos_color (VIBEOS_SURFACE_CONTAINER_HIGH), text = vibeos_color (VIBEOS_ON_SURFACE);
   GskRoundedRect shape;
 
   if (!self->layout) {
@@ -183,7 +183,7 @@ calc_toast_init (CalcToast *self)
 void
 calc_toast_show (GtkWidget *widget, const char *text)
 {
-  GtkOverlay *overlay = neo_window_get_overlay (widget);
+  GtkOverlay *overlay = vibeos_window_get_overlay (widget);
   GtkIconTheme *theme;
   CalcToast *self, *old;
 

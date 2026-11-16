@@ -10,7 +10,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 // An end mark after @parent's children; a child added later goes after it, so it is added last
 export function addEndMark(parent) {
-    const mark = new Clutter.Actor({name: 'gnomePhoneEndMark'});
+    const mark = new Clutter.Actor({name: 'vibeosEndMark'});
     parent.add_child(mark);
     return mark;
 }

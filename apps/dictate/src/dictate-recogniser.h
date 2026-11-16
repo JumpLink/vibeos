@@ -1,6 +1,6 @@
 /* dictate-recogniser: the speech recognisers Dictate runs, behind one interface, driven by dictate-engine.c.
  *
- * Neither is part of GNOME Phone. Each is a library loaded at run time from LIBRARY_DIR (else from the system's
+ * Neither is part of VibeOS. Each is a library loaded at run time from LIBRARY_DIR (else from the system's
  * library path), once, and kept: Moonshine's (dictate-moonshine.c; English, German, Spanish) and Vosk's
  * (dictate-vosk.c; Russian, French, Italian). Their models are found by dictate-models.c. All of it but `installed`
  * runs on the engine's worker thread, one stream at a time. */

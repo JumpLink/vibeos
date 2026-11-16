@@ -5,7 +5,7 @@
 #include <glib/gi18n.h>
 #include <math.h>
 #include <string.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 #define TOOLBAR        64
@@ -14,7 +14,7 @@
 #define ARROW_X        83.5   /* device px: the arrow's centre from the start */
 #define ICON_Y         95.5   /* device px: the arrow's centre from the top */
 #define BUTTON         48
-#define PAGE           "/neo/Calculator/licenses.html"
+#define PAGE           "/vibeos/Calculator/licenses.html"
 
 struct _CalcLicenses {
   GtkWidget    parent;
@@ -39,7 +39,7 @@ static void
 calc_licenses_size_allocate (GtkWidget *widget, int width, int height, int baseline)
 {
   CalcLicenses *self = CALC_LICENSES (widget);
-  int scale = neo_device_scale (widget);
+  int scale = vibeos_device_scale (widget);
 
   gtk_widget_allocate (self->back, BUTTON, BUTTON, -1,
                        gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (ARROW_X / scale - BUTTON / 2.0,
@@ -52,9 +52,9 @@ static void
 calc_licenses_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   CalcLicenses *self = CALC_LICENSES (widget);
-  int scale = neo_device_scale (widget);
+  int scale = vibeos_device_scale (widget);
   double w = gtk_widget_get_width (widget);
-  GdkRGBA surface = neo_color (NEO_SURFACE), on_surface = neo_color (NEO_ON_SURFACE);
+  GdkRGBA surface = vibeos_color (VIBEOS_SURFACE), on_surface = vibeos_color (VIBEOS_ON_SURFACE);
   double px = TITLE_SIZE * scale;
   double top = floor (-CALC_TOP * px), bottom = ceil (CALC_BOTTOM * px);
   double box_top = floor ((TOOLBAR * scale - (bottom - top)) / 2);
@@ -192,7 +192,7 @@ calc_licenses_new (void)
   CalcLicenses *self = g_object_new (CALC_TYPE_LICENSES, NULL);
   GtkEventController *keys = gtk_event_controller_key_new ();
 
-  self->back = neo_icon_button_new ("calc-back-symbolic");
+  self->back = vibeos_icon_button_new ("calc-back-symbolic");
   gtk_widget_add_css_class (self->back, "calc-toolbar-icon");
   gtk_accessible_update_property (GTK_ACCESSIBLE (self->back), GTK_ACCESSIBLE_PROPERTY_LABEL,
                                   /* the shell's back gesture clicks a button named Back */

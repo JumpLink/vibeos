@@ -1,0 +1,9 @@
+.TH VIBEOS-CLOCK-ALARMS 1 "2026-11-16" "vibeos 0.1.0" "VibeOS"
+.SH NAME
+vibeos-clock-alarms \- alarm and timer service of the VibeOS clock
+.SH SYNOPSIS
+.B vibeos-clock-alarms
+.SH DESCRIPTION
+Rings alarms and timers and keeps the stopwatch with the clock app closed, and asks vibeos-wakeup to wake the phone for each alarm. It runs as the systemd user service vibeos-clock-alarms.service and owns vibeos.Clock.Alarms on the session bus.
+.SH SEE ALSO
+vibeos-clock(1), vibeos-wakeup(8)

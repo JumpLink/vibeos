@@ -1,9 +1,0 @@
-usr/bin/neo-clock
-usr/bin/neo-clock-alarms
-usr/lib/systemd/user/neo-clock-alarms.service
-usr/share/applications/neo.Clock.desktop
-usr/share/applications/neo.Clock.Ringing.desktop
-usr/share/dbus-1/services/neo.Clock.service
-usr/share/dbus-1/services/neo.Clock.Alarms.service
-usr/share/glib-2.0/schemas/neo.Clock.gschema.xml
-usr/share/icons/hicolor/scalable/apps/neo.Clock.svg

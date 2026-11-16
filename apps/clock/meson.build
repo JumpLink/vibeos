@@ -1,4 +1,4 @@
-project('neo-clock', 'c', version: '1.0', meson_version: '>= 1.0',
+project('vibeos-clock', 'c', version: '1.0', meson_version: '>= 1.0',
         default_options: ['warning_level=2', 'c_std=gnu11', 'buildtype=release'])
 add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers', language: 'c')
 
@@ -13,7 +13,7 @@ models = static_library('models', 'src/alarm-model.c', 'src/alarm-engine.c', 'sr
                         'src/stopwatch-model.c', 'src/elapsed.c', dependencies: gio)
 
 # the service: alarms, timers and the stopwatch, with the app closed
-executable('neo-clock-alarms', 'src/clock-service.c', 'src/alarm-service.c', 'src/timer-service.c',
+executable('vibeos-clock-alarms', 'src/clock-service.c', 'src/alarm-service.c', 'src/timer-service.c',
            'src/stopwatch-service.c', 'src/alarm-klaxon.c', 'src/alarm-notifications.c', 'src/clock-notifier.c',
            'src/phone.c', link_with: models, install: true,
            dependencies: [gio, m, dependency('gstreamer-1.0'), dependency('libpulse-mainloop-glib')])
@@ -22,9 +22,9 @@ executable('neo-clock-alarms', 'src/clock-service.c', 'src/alarm-service.c', 'sr
 # world clocks, the home clock and the cities picker, and the tests
 cities = static_library('cities', 'src/cities.c', dependencies: gio)
 
-# the app: its tabs, and the full-screen ringing alarm and expired timers (neo-clock --ringing)
+# the app: its tabs, and the full-screen ringing alarm and expired timers (vibeos-clock --ringing)
 resources = gnome.compile_resources('clock-resources', 'src/clock.gresource.xml', source_dir: ['src', 'data'])
-executable('neo-clock', 'src/clock-main.c', 'src/clock-window.c', 'src/alarm-page.c', 'src/alarm-card.c',
+executable('vibeos-clock', 'src/clock-main.c', 'src/clock-window.c', 'src/alarm-page.c', 'src/alarm-card.c',
            'src/clock-page.c', 'src/ringing-window.c', 'src/alarms-client.c', 'src/clock-format.c',
            'src/clock-tab.c', 'src/clock-draw.c', 'src/timers-client.c', 'src/stopwatch-client.c',
            'src/timer-page.c', 'src/timer-card.c', 'src/timer-setup.c', 'src/stopwatch-page.c',
@@ -32,22 +32,22 @@ executable('neo-clock', 'src/clock-main.c', 'src/clock-window.c', 'src/alarm-pag
            'src/clock-dialogs.c', 'src/analog-clock.c', 'src/city-picker.c', 'src/settings-page.c',
            'src/volume-slider.c', 'src/ringtone-picker.c', 'src/screensaver.c', resources,
            link_with: [models, cities], install: true,
-           c_args: ['-DGETTEXT_PACKAGE="neo-clock"', '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir'))],
-           dependencies: [gio, m, dependency('gtk4', version: '>= 4.14'), dependency('neo-1'),
+           c_args: ['-DGETTEXT_PACKAGE="vibeos-clock"', '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir'))],
+           dependencies: [gio, m, dependency('gtk4', version: '>= 4.14'), dependency('vibeos-1'),
                           dependency('spongy-gtk-1')])
 
 unit = configuration_data({'bindir': bindir})
-configure_file(input: 'data/neo-clock-alarms.service.in', output: 'neo-clock-alarms.service',
+configure_file(input: 'data/vibeos-clock-alarms.service.in', output: 'vibeos-clock-alarms.service',
                configuration: unit, install_dir: get_option('prefix') / 'lib/systemd/user')
-configure_file(input: 'data/neo.Clock.Alarms.service.in', output: 'neo.Clock.Alarms.service',
+configure_file(input: 'data/vibeos.Clock.Alarms.service.in', output: 'vibeos.Clock.Alarms.service',
                configuration: unit, install_dir: datadir / 'dbus-1/services')
-configure_file(input: 'data/neo.Clock.service.in', output: 'neo.Clock.service',
+configure_file(input: 'data/vibeos.Clock.service.in', output: 'vibeos.Clock.service',
                configuration: unit, install_dir: datadir / 'dbus-1/services')
-install_data('data/neo.Clock.desktop', 'data/neo.Clock.Ringing.desktop',
+install_data('data/vibeos.Clock.desktop', 'data/vibeos.Clock.Ringing.desktop',
              install_dir: datadir / 'applications')
-install_data('data/neo.Clock.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
-install_data('data/neo.Clock.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
-install_data('data/sounds/alarm_expire.ogg', 'data/sounds/timer_expire.ogg', install_dir: datadir / 'neo-clock/sounds')
+install_data('data/vibeos.Clock.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
+install_data('data/vibeos.Clock.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
+install_data('data/sounds/alarm_expire.ogg', 'data/sounds/timer_expire.ogg', install_dir: datadir / 'vibeos-clock/sounds')
 gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
 
 foreach name : ['alarm-model', 'alarm-engine', 'timer-model']

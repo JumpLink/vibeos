@@ -23,7 +23,7 @@
 
 #include <gio/gdesktopappinfo.h>
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 #include <dlfcn.h>
 
@@ -165,9 +165,9 @@ dialog_buttons (GtkWidget **negative, const char *negative_label, GtkWidget **po
   GtkWidget *buttons = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
 
   gtk_widget_set_halign (buttons, GTK_ALIGN_END);
-  gtk_widget_add_css_class (buttons, "neo-dialog-buttons");
-  *negative = neo_text_button_new (negative_label);
-  *positive = neo_text_button_new (positive_label);
+  gtk_widget_add_css_class (buttons, "vibeos-dialog-buttons");
+  *negative = vibeos_text_button_new (negative_label);
+  *positive = vibeos_text_button_new (positive_label);
   gtk_box_append (GTK_BOX (buttons), *negative);
   gtk_box_append (GTK_BOX (buttons), *positive);
   return buttons;
@@ -190,7 +190,7 @@ registry_of (GtkWidget *window)
 
 typedef struct {
   GtkWidget *window;
-  NeoDialog *dialog;
+  VibeosDialog *dialog;
   Field *name;
 } Offline;
 
@@ -209,7 +209,7 @@ on_offline_committed (GObject *registry, GAsyncResult *result, gpointer data)
 }
 
 static void
-on_offline_add (NeoPressable *button, Offline *offline)
+on_offline_add (VibeosPressable *button, Offline *offline)
 {
   ESourceRegistry *registry = registry_of (offline->window);
   /* the name as typed: only an empty one is refused */
@@ -226,7 +226,7 @@ on_offline_add (NeoPressable *button, Offline *offline)
   if (!registry || !(source = e_source_new (NULL, NULL, NULL)))
     {
       cal_window_toast (offline->window, _("The calendar could not be added."));
-      neo_dialog_respond (offline->dialog, NEO_RESPONSE_CANCEL);
+      vibeos_dialog_respond (offline->dialog, VIBEOS_RESPONSE_CANCEL);
       return;
     }
   /* visible, the offline default colour; as GNOME Calendar's local calendar: backend "local" under "local-stub" */
@@ -238,13 +238,13 @@ on_offline_add (NeoPressable *button, Offline *offline)
   e_source_selectable_set_color (E_SOURCE_SELECTABLE (calendar), color);
   e_source_selectable_set_selected (E_SOURCE_SELECTABLE (calendar), TRUE);
   e_source_registry_commit_source (registry, source, NULL, on_offline_committed, g_object_ref (offline->window));
-  neo_dialog_respond (offline->dialog, NEO_RESPONSE_OK);
+  vibeos_dialog_respond (offline->dialog, VIBEOS_RESPONSE_OK);
 }
 
 static void
-on_offline_cancel (NeoPressable *button, Offline *offline)
+on_offline_cancel (VibeosPressable *button, Offline *offline)
 {
-  neo_dialog_respond (offline->dialog, NEO_RESPONSE_CANCEL);
+  vibeos_dialog_respond (offline->dialog, VIBEOS_RESPONSE_CANCEL);
 }
 
 static void
@@ -261,8 +261,8 @@ cal_accounts_add_offline (GtkWidget *window)
   GtkWidget *cancel, *add;
 
   offline->window = window;
-  offline->dialog = neo_dialog_new (_("Add offline calendar"));
-  neo_dialog_set_message (offline->dialog,
+  offline->dialog = vibeos_dialog_new (_("Add offline calendar"));
+  vibeos_dialog_set_message (offline->dialog,
                           _("Offline calendars are NOT synchronized to a cloud service and only available on your phone."));
   /* the field in a padded frame */
   offline->name = field_new (_("Name"), FALSE, GTK_INPUT_PURPOSE_FREE_FORM);
@@ -274,10 +274,10 @@ cal_accounts_add_offline (GtkWidget *window)
   gtk_box_append (GTK_BOX (content), dialog_buttons (&cancel, _("Cancel"), &add, _("Add calendar")));
   g_signal_connect (cancel, "clicked", G_CALLBACK (on_offline_cancel), offline);
   g_signal_connect (add, "clicked", G_CALLBACK (on_offline_add), offline);
-  neo_dialog_set_content (offline->dialog, content);
+  vibeos_dialog_set_content (offline->dialog, content);
   g_object_set_data_full (G_OBJECT (offline->dialog), "cal-offline", offline, g_free);
   gtk_widget_add_css_class (GTK_WIDGET (offline->dialog), "cal-offline-dialog");
-  neo_dialog_present (offline->dialog, window);
+  vibeos_dialog_present (offline->dialog, window);
   gtk_widget_grab_focus (offline->name->text);
 }
 
@@ -471,7 +471,7 @@ on_discovered (GObject *object, GAsyncResult *result, gpointer data)
 }
 
 static void
-on_login (NeoPressable *button, Caldav *caldav)
+on_login (VibeosPressable *button, Caldav *caldav)
 {
   g_autofree char *text = field_get (caldav->url);
   g_autofree char *user = field_get (caldav->user);
@@ -590,7 +590,7 @@ on_password_stored (GObject *source, GAsyncResult *result, gpointer data)
 }
 
 static void
-on_create (NeoPressable *button, Caldav *caldav)
+on_create (VibeosPressable *button, Caldav *caldav)
 {
   g_autofree char *name = field_get (caldav->account);
   g_autofree char *user = field_get (caldav->user);
@@ -643,9 +643,9 @@ on_caldav_url_changed (GtkEditable *editable, Caldav *caldav)
 static GtkWidget *
 filled_button (const char *label)
 {
-  GtkWidget *button = neo_pressable_new (gtk_label_new (label));
+  GtkWidget *button = vibeos_pressable_new (gtk_label_new (label));
 
-  neo_pressable_set_ripple (NEO_PRESSABLE (button), NEO_RIPPLE_BOUNDED, 20);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_BOUNDED, 20);
   gtk_widget_add_css_class (button, "cal-filled-button");
   gtk_widget_set_halign (button, GTK_ALIGN_END);
   return button;
@@ -800,19 +800,19 @@ synchronized (CalendarPage *page)
 }
 
 static void
-on_color (NeoPressable *row, CalendarPage *page)
+on_color (VibeosPressable *row, CalendarPage *page)
 {
   /* an account without colours of its own gets the default ones, after a warning that a sync may undo the
    * change */
   if (!page->local && synchronized (page))
     {
-      NeoDialog *dialog = neo_dialog_new (_("Warning"));
+      VibeosDialog *dialog = vibeos_dialog_new (_("Warning"));
 
-      neo_dialog_set_message (dialog, _("Changing the color may be reverted when the calendar is synchronized again."));
-      neo_dialog_add_button (dialog, _("I understand"), NEO_RESPONSE_OK);
+      vibeos_dialog_set_message (dialog, _("Changing the color may be reverted when the calendar is synchronized again."));
+      vibeos_dialog_add_button (dialog, _("I understand"), VIBEOS_RESPONSE_OK);
       /* both at once, the warning over the palette */
       show_color_picker (page);
-      neo_dialog_present (dialog, page->window);
+      vibeos_dialog_present (dialog, page->window);
       return;
     }
   show_color_picker (page);
@@ -834,7 +834,7 @@ on_name_done (const char *text, gpointer data)
 }
 
 static void
-on_name (NeoPressable *row, CalendarPage *page)
+on_name (VibeosPressable *row, CalendarPage *page)
 {
   const CalCalendar *calendar = cal_store_find_calendar (page->store, page->uid);
 
@@ -871,14 +871,14 @@ on_delete_confirmed (int index, gpointer data)
 }
 
 static void
-on_delete (NeoPressable *row, CalendarPage *page)
+on_delete (VibeosPressable *row, CalendarPage *page)
 {
   cal_confirm_dialog (page->window, _("Do you really want to delete this calendar?"), _("Delete calendar"),
                       on_delete_confirmed, page);
 }
 
 static void
-on_configure (NeoPressable *row, GDesktopAppInfo *info)
+on_configure (VibeosPressable *row, GDesktopAppInfo *info)
 {
   g_app_info_launch (G_APP_INFO (info), NULL, NULL, NULL);
 }

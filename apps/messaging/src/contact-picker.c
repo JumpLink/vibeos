@@ -6,7 +6,7 @@
 #include "phone-number.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 /* a contact's row, and the tabs */
@@ -126,7 +126,7 @@ make_row (ContactPicker *self, const Contact *contact, const char *number, const
   gtk_widget_set_margin_top (box, ROW_PAD_VERTICAL);
   gtk_widget_set_margin_bottom (box, ROW_PAD_VERTICAL);
 
-  row = neo_pressable_new (box);
+  row = vibeos_pressable_new (box);
   g_object_set_data_full (G_OBJECT (row), "number", g_strdup (number), g_free);
   gtk_accessible_update_property (GTK_ACCESSIBLE (row), GTK_ACCESSIBLE_PROPERTY_LABEL,
                                   contact ? contact->name : formatted, -1);
@@ -352,11 +352,11 @@ make_tabs (ContactPicker *self)
       gtk_widget_set_valign (self->underlines[i], GTK_ALIGN_END);
       gtk_widget_add_css_class (self->underlines[i], "msg-picker-underline");
       gtk_overlay_add_overlay (GTK_OVERLAY (cell), self->underlines[i]);
-      tab = neo_pressable_new (cell);
+      tab = vibeos_pressable_new (cell);
       gtk_widget_set_size_request (tab, -1, TAB_HEIGHT);
       gdk_rgba_parse (&ripple, "#ddffffff");
       ripple.alpha = 0.24;
-      neo_pressable_set_ripple_color (NEO_PRESSABLE (tab), &ripple);
+      vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (tab), &ripple);
       g_object_set_data (G_OBJECT (tab), "tab", GUINT_TO_POINTER (i));
       gtk_accessible_update_property (GTK_ACCESSIBLE (tab), GTK_ACCESSIBLE_PROPERTY_LABEL, _(titles[i]), -1);
       g_signal_connect (tab, "clicked", G_CALLBACK (on_tab_clicked), self);
@@ -461,7 +461,7 @@ make_frequents_empty (void)
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   /* the picture at a third of its pixel size (msg-image.h), with the text under it as the conversation list's
    * empty view has it */
-  GtkWidget *image = msg_image_new ("/neo/Messaging/images/ic_oobe_freq_list.png", 169, 104);
+  GtkWidget *image = msg_image_new ("/vibeos/Messaging/images/ic_oobe_freq_list.png", 169, 104);
   GtkWidget *text = gtk_label_new (_("Enter a contact name or phone number to start a new message"));
 
   gtk_widget_set_halign (image, GTK_ALIGN_CENTER);

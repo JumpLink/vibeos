@@ -1,13 +1,13 @@
-/* Neo Weather: the page behind the home screen's weather widget, laid out like One UI's Weather: the place and the
+/* VibeOS Weather: the page behind the home screen's weather widget, laid out like One UI's Weather: the place and the
  * temperature over the sky, the next 24 hours as a curve, today against yesterday, the week, and the details.
  * GTK4, so scrolling is the GPU moving what is already drawn; the page scrolls in libspongy's view (a fling, and
- * a stretch at the ends), like the other GNOME Phone apps, where it is installed.
+ * a stretch at the ends), like the other VibeOS apps, where it is installed.
  *
  * Where: the first city in GNOME Weather, if it has one; otherwise where the phone is, from GeoClue at city accuracy,
- * named by OpenStreetMap's Nominatim. The place is kept in ~/.cache/neo-launcher/weather.json (lat, lon, place), so
+ * named by OpenStreetMap's Nominatim. The place is kept in ~/.cache/vibeos-launcher/weather.json (lat, lon, place), so
  * the page opens on the last place at once and moves when the phone has.
  * What: one Open-Meteo forecast (no key) with yesterday in it (past_days=1), fetched in curl and kept in
- * ~/.cache/neo-launcher/forecast.json; the page shows that at once and asks again when it is 15 minutes old. */
+ * ~/.cache/vibeos-launcher/forecast.json; the page shows that at once and asks again when it is 15 minutes old. */
 #include <adwaita.h>
 #include <json-glib/json-glib.h>
 #include <math.h>
@@ -16,7 +16,7 @@
 #endif
 
 #define STALE_S (15 * 60)
-#define UA "neo-weather/1.0 (GNOME Phone)"
+#define UA "vibeos-weather/1.0 (VibeOS)"
 #define HOURS 24
 #define COL_W 66              /* px, one hour in the hourly strip */
 
@@ -542,7 +542,7 @@ fill (Page *p, JsonObject *o)
 static char *
 cache_path (const char *name)
 {
-  return g_build_filename (g_get_user_cache_dir (), "neo-launcher", name, NULL);
+  return g_build_filename (g_get_user_cache_dir (), "vibeos-launcher", name, NULL);
 }
 
 static void
@@ -827,7 +827,7 @@ on_geo_client (GObject *src, GAsyncResult *res, gpointer data)
     return;
   }
   g_variant_get (ret, "(o)", &p->geo_client);
-  if (!geo_set (p, "DesktopId", g_variant_new_string ("neo.Weather"), &error) ||
+  if (!geo_set (p, "DesktopId", g_variant_new_string ("vibeos.Weather"), &error) ||
       !geo_set (p, "RequestedAccuracyLevel", g_variant_new_uint32 (GEO_CITY), &error)) {
     geo_failed (p, "client setup", error);
     return;
@@ -919,7 +919,7 @@ refresh_clicked (GtkButton *b, Page *p)
   where (p);
 }
 
-/* back (Alt+Left from Neo's edge swipe) and Escape close the page, back to the home screen */
+/* back (Alt+Left from VibeOS's edge swipe) and Escape close the page, back to the home screen */
 static void
 add_back (GtkWidget *win)
 {
@@ -942,7 +942,7 @@ activate (GtkApplication *app, gpointer data)
     return;
   }
   GtkCssProvider *css = gtk_css_provider_new ();
-  gtk_css_provider_load_from_resource (css, "/neo/Weather/style.css");
+  gtk_css_provider_load_from_resource (css, "/vibeos/Weather/style.css");
   gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (css),
                                               GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
   g_object_unref (css);
@@ -1003,7 +1003,7 @@ activate (GtkApplication *app, gpointer data)
 int
 main (int argc, char **argv)
 {
-  g_autoptr (AdwApplication) app = adw_application_new ("neo.Weather", G_APPLICATION_DEFAULT_FLAGS);
+  g_autoptr (AdwApplication) app = adw_application_new ("vibeos.Weather", G_APPLICATION_DEFAULT_FLAGS);
   g_signal_connect (app, "activate", G_CALLBACK (activate), NULL);
   return g_application_run (G_APPLICATION (app), argc, argv);
 }

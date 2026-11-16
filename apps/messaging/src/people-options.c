@@ -9,7 +9,7 @@
 #include "phone-number.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 /* an option's row and a person's */
@@ -28,7 +28,7 @@ struct _PeopleOptions {
   gboolean had_conversation;
 
   GtkWidget *box, *list;
-  NeoSnackbar *snackbar;
+  VibeosSnackbar *snackbar;
 };
 
 G_DEFINE_FINAL_TYPE (PeopleOptions, people_options, GTK_TYPE_WIDGET)
@@ -78,13 +78,13 @@ header (const char *text, gboolean divider)
 /* --- Block / Unblock */
 
 static void
-on_block_response (NeoDialog *dialog, int response, gpointer data)
+on_block_response (VibeosDialog *dialog, int response, gpointer data)
 {
   PeopleOptions *self = data;
   const char *destination = g_object_get_data (G_OBJECT (dialog), "destination");
   g_autoptr(GError) error = NULL;
 
-  if (response != NEO_RESPONSE_OK)
+  if (response != VIBEOS_RESPONSE_OK)
     return;
   if (!blocked_numbers_add (blocked_numbers_get_default (), destination, country (self), &error))
     {
@@ -102,7 +102,7 @@ on_block_clicked (GtkWidget *row, gpointer data)
   const char *destination = g_object_get_data (G_OBJECT (row), "destination");
   g_autoptr(GError) error = NULL;
   g_autofree char *shown = NULL, *title = NULL;
-  NeoDialog *dialog;
+  VibeosDialog *dialog;
 
   /* Unblock is at once, and the conversation comes back out of the archive */
   if (blocked_numbers_contains (blocked_numbers_get_default (), destination, country (self)))
@@ -115,14 +115,14 @@ on_block_clicked (GtkWidget *row, gpointer data)
     }
   shown = phone_number_format (destination, country (self));
   title = g_strdup_printf (_("Block %s?"), shown);
-  dialog = neo_dialog_new (title);
-  neo_dialog_set_message (dialog, _("You'll continue to receive messages from this number but won't be notified "
+  dialog = vibeos_dialog_new (title);
+  vibeos_dialog_set_message (dialog, _("You'll continue to receive messages from this number but won't be notified "
                                     "anymore. This conversation will be archived."));
-  msg_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  msg_dialog_add_button (dialog, _("OK"), NEO_RESPONSE_OK);
+  msg_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  msg_dialog_add_button (dialog, _("OK"), VIBEOS_RESPONSE_OK);
   g_object_set_data_full (G_OBJECT (dialog), "destination", g_strdup (destination), g_free);
   g_signal_connect_object (dialog, "response", G_CALLBACK (on_block_response), self, 0);
-  neo_dialog_present (dialog, row);
+  vibeos_dialog_present (dialog, row);
 }
 
 static GtkWidget *
@@ -138,7 +138,7 @@ block_row (PeopleOptions *self, const char *destination)
   gtk_widget_set_valign (title, GTK_ALIGN_CENTER);
   gtk_widget_set_margin_start (title, PAD);
   gtk_widget_set_margin_end (title, PAD);
-  row = neo_pressable_new (title);
+  row = vibeos_pressable_new (title);
   gtk_widget_set_size_request (row, -1, OPTION_HEIGHT);
   g_object_set_data_full (G_OBJECT (row), "destination", g_strdup (destination), g_free);
   g_signal_connect (row, "clicked", G_CALLBACK (on_block_clicked), self);
@@ -157,9 +157,9 @@ on_person_clicked (GtkWidget *row, gpointer data)
 }
 
 static void
-on_copy_response (NeoDialog *dialog, int response, gpointer data)
+on_copy_response (VibeosDialog *dialog, int response, gpointer data)
 {
-  if (response == NEO_RESPONSE_OK)
+  if (response == VIBEOS_RESPONSE_OK)
     gdk_clipboard_set_text (gtk_widget_get_clipboard (GTK_WIDGET (data)),
                             g_object_get_data (G_OBJECT (dialog), "number"));
 }
@@ -170,14 +170,14 @@ on_person_long_pressed (GtkWidget *row, gpointer data)
 {
   PeopleOptions *self = data;
   const char *number = g_object_get_data (G_OBJECT (row), "number");
-  NeoDialog *dialog = neo_dialog_new (_("Copy to clipboard?"));
+  VibeosDialog *dialog = vibeos_dialog_new (_("Copy to clipboard?"));
 
-  neo_dialog_set_message (dialog, number);
-  msg_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  msg_dialog_add_button (dialog, _("Copy"), NEO_RESPONSE_OK);
+  vibeos_dialog_set_message (dialog, number);
+  msg_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  msg_dialog_add_button (dialog, _("Copy"), VIBEOS_RESPONSE_OK);
   g_object_set_data_full (G_OBJECT (dialog), "number", g_strdup (number), g_free);
   g_signal_connect_object (dialog, "response", G_CALLBACK (on_copy_response), self, 0);
-  neo_dialog_present (dialog, row);
+  vibeos_dialog_present (dialog, row);
 }
 
 static GtkWidget *
@@ -212,7 +212,7 @@ person_row (PeopleOptions *self, MsgPerson *person)
   gtk_widget_set_margin_top (content, PERSON_PAD_VERTICAL);
   gtk_widget_set_margin_bottom (content, PERSON_PAD_VERTICAL);
 
-  row = neo_pressable_new (content);
+  row = vibeos_pressable_new (content);
   g_object_set_data_full (G_OBJECT (row), "number", g_strdup (number), g_free);
   g_object_set_data_full (G_OBJECT (row), "person", msg_person_copy (person), (GDestroyNotify) msg_person_free);
   gtk_accessible_update_property (GTK_ACCESSIBLE (row), GTK_ACCESSIBLE_PROPERTY_LABEL, person->name, -1);

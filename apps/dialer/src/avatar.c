@@ -1,7 +1,7 @@
 /* The avatar: see avatar.h. */
 #include "avatar.h"
 
-#include <neo.h>
+#include <vibeos.h>
 
 /* the tile colours: accent1, accent2 and accent3 at 300, 400, 500 and 600, the phone's dynamic palette */
 static const guint32 tile_colors[] = {
@@ -61,7 +61,7 @@ static void
 snapshot_letter (GtkSnapshot *snapshot, GtkWidget *widget, double cx, double cy, double diameter, const char *letter)
 {
   g_autoptr(PangoLayout) layout = gtk_widget_create_pango_layout (widget, letter);
-  g_autoptr(PangoFontDescription) font = pango_font_description_from_string ("Neo Roboto");
+  g_autoptr(PangoFontDescription) font = pango_font_description_from_string ("VibeOS Roboto");
   PangoRectangle ink;
 
   /* 400, not 700: the letter is painted, and the Bold text setting does not reach painted text; centred on the
@@ -109,7 +109,7 @@ avatar_snapshot (GtkSnapshot *snapshot, GtkWidget *widget, double cx, double cy,
           /* the person glyph, white */
           double size = diameter * ICON_RATIO;
 
-          neo_snapshot_icon (snapshot, widget, "dialer-person-symbolic", cx - size / 2, cy - size / 2, size,
+          vibeos_snapshot_icon (snapshot, widget, "dialer-person-symbolic", cx - size / 2, cy - size / 2, size,
                              &(GdkRGBA) { 1, 1, 1, 1 });
         }
     }

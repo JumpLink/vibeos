@@ -1,6 +1,6 @@
 /* dictate-models: the languages Dictate hears and the speech models installed for them.
  *
- * A model is a directory in neo-dictate/models under the user's data directory or one of the system's, named as its
+ * A model is a directory in vibeos-dictate/models under the user's data directory or one of the system's, named as its
  * recogniser names its downloads: Moonshine's tiny-streaming-en, small-streaming-de, ...; Vosk's
  * vosk-model-small-ru-0.22, or vosk-small-ru. Its language is the part of the name that is a language's code, its
  * recogniser what the directory holds. Where a language has several, the one used is the first of: Moonshine's tiny,

@@ -15,7 +15,7 @@
 #include "sms-segments.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 /* a message's row */
@@ -54,8 +54,8 @@ struct _ConversationView {
   GtkWidget *forward_action, *copy_action, *resend_action;
   GtkWidget *scroll, *messages, *shadow;
   GtkWidget *field, *hint, *send, *self_avatar, *counter;
-  NeoAnim *reveal;
-  NeoSnackbar *snackbar;
+  VibeosAnim *reveal;
+  VibeosSnackbar *snackbar;
   gint64 selected;              /* the message selected, or 0 */
   gint64 newest;                /* the newest message shown, for "New message" */
   gboolean at_bottom;
@@ -210,8 +210,8 @@ make_message (ConversationView *self, const SmsMessage *message, gboolean cluste
   /* an incoming message's, when it shows */
   if (incoming && !clustered_above && message->sender && *message->sender)
     {
-      avatar = neo_pressable_new (avatar);
-      neo_pressable_set_ripple (NEO_PRESSABLE (avatar), NEO_RIPPLE_NONE, 0);
+      avatar = vibeos_pressable_new (avatar);
+      vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (avatar), VIBEOS_RIPPLE_NONE, 0);
       gtk_widget_set_valign (avatar, GTK_ALIGN_START);
       g_object_set_data (G_OBJECT (avatar), "view", self);
       g_object_set_data_full (G_OBJECT (avatar), "sender", g_strdup (message->sender), g_free);
@@ -243,7 +243,7 @@ make_message (ConversationView *self, const SmsMessage *message, gboolean cluste
         {
           /* the line under the bubble: the status (the time), then the badge centred on its line */
           GtkWidget *line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-          GtkWidget *badge = msg_image_new ("/neo/Messaging/images/ic_sms_delivery_ok.png", DELIVERED_WIDTH,
+          GtkWidget *badge = msg_image_new ("/vibeos/Messaging/images/ic_sms_delivery_ok.png", DELIVERED_WIDTH,
                                             DELIVERED_HEIGHT);
 
           gtk_widget_set_margin_start (badge, DELIVERED_START);
@@ -277,8 +277,8 @@ make_message (ConversationView *self, const SmsMessage *message, gboolean cluste
   else
     gdk_rgba_parse (&color, "#33666d");
   msg_bubble_set_color (MSG_BUBBLE (bubble), &color);
-  pressable = neo_pressable_new (bubble);
-  neo_pressable_set_ripple (NEO_PRESSABLE (pressable), NEO_RIPPLE_NONE, 0);
+  pressable = vibeos_pressable_new (bubble);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (pressable), VIBEOS_RIPPLE_NONE, 0);
   g_object_set_data (G_OBJECT (pressable), "view", self);
   /* read out as the text and what its line under it says */
   {
@@ -397,7 +397,7 @@ on_details (ConversationView *self)
 {
   g_autoptr(SmsMessage) message = selected_message (self);
   g_autoptr(GString) body = g_string_new (NULL);
-  NeoDialog *dialog;
+  VibeosDialog *dialog;
 
   if (!message)
     return;
@@ -421,35 +421,35 @@ on_details (ConversationView *self)
       g_string_append_printf (body, "\n%s%s", _("To: "), to);
       g_string_append_printf (body, "\n%s%s", _("Sent: "), sent);
     }
-  dialog = neo_dialog_new (_("Message details"));
-  neo_dialog_set_message (dialog, body->str);
-  msg_dialog_add_button (dialog, _("OK"), NEO_RESPONSE_OK);
-  neo_dialog_present (dialog, GTK_WIDGET (self));
+  dialog = vibeos_dialog_new (_("Message details"));
+  vibeos_dialog_set_message (dialog, body->str);
+  msg_dialog_add_button (dialog, _("OK"), VIBEOS_RESPONSE_OK);
+  vibeos_dialog_present (dialog, GTK_WIDGET (self));
   select_message (self, 0);
 }
 
 static void
-on_delete_message_response (NeoDialog *dialog, int response, gpointer data)
+on_delete_message_response (VibeosDialog *dialog, int response, gpointer data)
 {
   ConversationView *self = data;
   gint64 id = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (dialog), "message"));
 
-  if (response == NEO_RESPONSE_OK)
+  if (response == VIBEOS_RESPONSE_OK)
     sms_client_delete_message (self->client, id);
 }
 
 static void
 on_delete_message (ConversationView *self)
 {
-  NeoDialog *dialog = neo_dialog_new (_("Delete this message?"));
+  VibeosDialog *dialog = vibeos_dialog_new (_("Delete this message?"));
 
-  neo_dialog_set_message (dialog, _("This action cannot be undone."));
-  msg_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  msg_dialog_add_button (dialog, _("Delete"), NEO_RESPONSE_OK);
+  vibeos_dialog_set_message (dialog, _("This action cannot be undone."));
+  msg_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  msg_dialog_add_button (dialog, _("Delete"), VIBEOS_RESPONSE_OK);
   g_object_set_data (G_OBJECT (dialog), "message", GINT_TO_POINTER (self->selected));
   g_signal_connect (dialog, "response", G_CALLBACK (on_delete_message_response), self);
   select_message (self, 0);
-  neo_dialog_present (dialog, GTK_WIDGET (self));
+  vibeos_dialog_present (dialog, GTK_WIDGET (self));
 }
 
 /* --- the list */
@@ -586,12 +586,12 @@ field_text (ConversationView *self)
 }
 
 static void
-on_reveal (NeoAnim *anim, double value, gpointer data)
+on_reveal (VibeosAnim *anim, double value, gpointer data)
 {
   ConversationView *self = data;
 
   /* the send button grows from its centre over the "Me" avatar, which shrinks away the same way */
-  neo_pressable_set_scale (NEO_PRESSABLE (self->send), value);
+  vibeos_pressable_set_scale (VIBEOS_PRESSABLE (self->send), value);
   gtk_widget_set_opacity (self->self_avatar, value < 1 ? 1 - value : 0);
   /* shrunk away, it is not there to tap */
   gtk_widget_set_can_target (self->send, value > 0.5);
@@ -607,8 +607,8 @@ on_text_changed (GtkTextBuffer *buffer, gpointer data)
   g_autofree char *counter = NULL;
 
   gtk_widget_set_visible (self->hint, !has_text);
-  if (has_text != (neo_anim_get_to (self->reveal) > 0.5))
-    neo_anim_start (self->reveal, neo_anim_get_value (self->reveal), has_text ? 1 : 0, REVEAL_MS, 0,
+  if (has_text != (vibeos_anim_get_to (self->reveal) > 0.5))
+    vibeos_anim_start (self->reveal, vibeos_anim_get_value (self->reveal), has_text ? 1 : 0, REVEAL_MS, 0,
                     SPONGY_FAST_OUT_SLOW_IN);
   /* "62 / 2": shown once it takes more than one message, or the last 10 are left; its line is kept either way */
   counter = g_strdup_printf ("%u / %u", length.remaining, length.segments);
@@ -693,12 +693,12 @@ make_compose (ConversationView *self)
   msg_avatar_set_person (MSG_AVATAR (self->self_avatar), NULL, _("Me"), NULL);
   gtk_overlay_set_child (GTK_OVERLAY (right), self->self_avatar);
   gtk_image_set_pixel_size (GTK_IMAGE (send_icon), 24);
-  self->send = neo_pressable_new (send_icon);
+  self->send = vibeos_pressable_new (send_icon);
   gtk_widget_set_size_request (self->send, COMPOSE_BUTTON, COMPOSE_BUTTON);
   gdk_rgba_parse (&send_color, "#00383f");
-  neo_pressable_set_fill (NEO_PRESSABLE (self->send), &send_color, FALSE);
-  neo_pressable_set_ripple (NEO_PRESSABLE (self->send), NEO_RIPPLE_CIRCLE, COMPOSE_BUTTON / 2.0);
-  neo_pressable_set_scale (NEO_PRESSABLE (self->send), 0);
+  vibeos_pressable_set_fill (VIBEOS_PRESSABLE (self->send), &send_color, FALSE);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->send), VIBEOS_RIPPLE_CIRCLE, COMPOSE_BUTTON / 2.0);
+  vibeos_pressable_set_scale (VIBEOS_PRESSABLE (self->send), 0);
   gtk_widget_set_can_target (self->send, FALSE);
   gtk_widget_add_css_class (self->send, "msg-send");
   gtk_accessible_update_property (GTK_ACCESSIBLE (self->send), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Send"), -1);
@@ -707,7 +707,7 @@ make_compose (ConversationView *self)
   gtk_widget_set_valign (right, GTK_ALIGN_END);
   gtk_widget_set_margin_end (right, SEND_PAD_END);
   gtk_box_append (GTK_BOX (row), right);
-  self->reveal = neo_anim_new (self->send, on_reveal, self);
+  self->reveal = vibeos_anim_new (self->send, on_reveal, self);
 
   gtk_widget_set_margin_top (row, COMPOSE_TOP);
   gtk_box_append (GTK_BOX (bar), row);
@@ -745,7 +745,7 @@ on_call (ConversationView *self)
       msg_snackbar_show (self->snackbar, _("Can't make a voice call to emergency services here."), NULL, NULL, NULL);
       return;
     }
-  if (app_action_activate (GTK_WIDGET (self), "neo.Dialer", "call", g_variant_new_string (only->destination)))
+  if (app_action_activate (GTK_WIDGET (self), "vibeos.Dialer", "call", g_variant_new_string (only->destination)))
     return;
   uri = g_strconcat ("tel:", only->destination, NULL);
   if (!g_app_info_launch_default_for_uri (uri, NULL, &error))
@@ -764,11 +764,11 @@ archive (gpointer data)
 }
 
 static void
-on_delete_response (NeoDialog *dialog, int response, gpointer data)
+on_delete_response (VibeosDialog *dialog, int response, gpointer data)
 {
   ConversationView *self = data;
 
-  if (response == NEO_RESPONSE_OK)
+  if (response == VIBEOS_RESPONSE_OK)
     sms_client_delete_conversation (self->client, self->id);
 }
 
@@ -776,12 +776,12 @@ static void
 delete_conversation (gpointer data)
 {
   ConversationView *self = data;
-  NeoDialog *dialog = neo_dialog_new (ngettext ("Delete this conversation?", "Delete these conversations?", 1));
+  VibeosDialog *dialog = vibeos_dialog_new (ngettext ("Delete this conversation?", "Delete these conversations?", 1));
 
-  msg_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  msg_dialog_add_button (dialog, _("Delete"), NEO_RESPONSE_OK);
+  msg_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  msg_dialog_add_button (dialog, _("Delete"), VIBEOS_RESPONSE_OK);
   g_signal_connect (dialog, "response", G_CALLBACK (on_delete_response), self);
-  neo_dialog_present (dialog, GTK_WIDGET (self));
+  vibeos_dialog_present (dialog, GTK_WIDGET (self));
 }
 
 static MsgPerson *
@@ -838,7 +838,7 @@ conversation_view_dispose (GObject *object)
     g_signal_handlers_disconnect_by_data (self->client, self);
   if (self->contacts)
     g_signal_handlers_disconnect_by_data (self->contacts, self);
-  g_clear_pointer (&self->reveal, neo_anim_free);
+  g_clear_pointer (&self->reveal, vibeos_anim_free);
   g_clear_object (&self->client);
   g_clear_object (&self->contacts);
   g_clear_pointer (&self->conversation, sms_conversation_free);

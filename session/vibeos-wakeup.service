@@ -1,0 +1,18 @@
+[Unit]
+Description=Wakes the phone at the times apps ask for (alarm clocks)
+
+[Service]
+Type=dbus
+BusName=vibeos.Wakeup
+ExecStart=/usr/local/sbin/vibeos-wakeup
+Restart=on-failure
+# root for the system bus name, but with no capability other than the one its timer needs
+CapabilityBoundingSet=CAP_WAKE_ALARM
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+
+[Install]
+WantedBy=multi-user.target

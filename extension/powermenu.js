@@ -61,7 +61,7 @@ async function logind(method, mode = '') {
             await login1('SetRebootParameter', new GLib.Variant('(s)', [mode]));
         await login1(method, new GLib.Variant('(b)', [false]));
     } catch (e) {
-        log(`gnome-phone: ${method}: ${e.message}`);
+        log(`vibeos: ${method}: ${e.message}`);
     }
 }
 

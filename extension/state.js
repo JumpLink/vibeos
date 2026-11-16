@@ -220,7 +220,7 @@ export const SystemState = GObject.registerClass({
             this._client = await NM.Client.new_async(this._cancellable);
         } catch (e) {
             if (!e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
-                console.warn(`gnome-phone: no NetworkManager: ${e.message}`);
+                console.warn(`vibeos: no NetworkManager: ${e.message}`);
             return;
         }
         this._client.connectObject(
@@ -259,7 +259,7 @@ export const SystemState = GObject.registerClass({
                         'notify::access-technology', () => this._syncNetwork(),
                         this);
                 } catch (e) {
-                    console.warn(`gnome-phone: no modem: ${e.message}`);
+                    console.warn(`vibeos: no modem: ${e.message}`);
                 }
             }
             this._readOperatorNames();
@@ -489,7 +489,7 @@ export const SystemState = GObject.registerClass({
                 } catch (e) {
                     if (e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
                         return;
-                    console.warn(`gnome-phone: torch: ${e.message}`);
+                    console.warn(`vibeos: torch: ${e.message}`);
                 }
                 this._syncTorch();
             });

@@ -6,7 +6,7 @@
 #include "msg-people.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 /* a blocked contact's row */
@@ -79,7 +79,7 @@ make_row (BlockedContacts *self, const char *number)
   gtk_widget_set_margin_top (content, ROW_PADDING);
   gtk_widget_set_margin_bottom (content, ROW_PADDING);
 
-  row = neo_pressable_new (content);
+  row = vibeos_pressable_new (content);
   g_object_set_data_full (G_OBJECT (row), "number", g_strdup (number), g_free);
   gtk_accessible_update_property (GTK_ACCESSIBLE (row), GTK_ACCESSIBLE_PROPERTY_LABEL, person->name, -1);
   g_signal_connect (row, "clicked", G_CALLBACK (on_row_clicked), self);

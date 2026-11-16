@@ -301,7 +301,7 @@ export class LaunchTransition {
         const frame = {x: target.x - buf.x, y: target.y - buf.y, width: target.width, height: target.height};
         const effect = new CropEffect();
         effect.setHole(0, 0, 0, 0, 0);
-        actor.add_effect_with_name('gnome-phone-launch', effect);
+        actor.add_effect_with_name('vibeos-launch', effect);
         const floating = this._iconActor(app, icon, box.w);
         global.window_group.add_child(floating);
 
@@ -345,7 +345,7 @@ export class LaunchTransition {
         global.window_group.add_child(splash);
         const effect = new CropEffect();
         effect.setAlpha(1);
-        splash.add_effect_with_name('gnome-phone-launch', effect);
+        splash.add_effect_with_name('vibeos-launch', effect);
 
         const frame = {x: 0, y: 0, width: area.width, height: area.height};
         const run = {box, target: area, actor: splash, frame, effect, app, iconActor, grown: false, window: null};
@@ -353,7 +353,7 @@ export class LaunchTransition {
         effect.setHole(0, 0, 0, 0, 0);
         const step = elapsed => this._apply(run, clamp((elapsed - START_DELAY_MS) / LAUNCH_MS, 0, 1));
         if (capturing())
-            log(`gnome-phone: launch ${JSON.stringify({box, target: [area.x, area.y, area.width, area.height]})}`);
+            log(`vibeos: launch ${JSON.stringify({box, target: [area.x, area.y, area.width, area.height]})}`);
         step(0);
         run.timeline = this._timeline(splash, START_DELAY_MS + LAUNCH_MS, step, () => {
             run.timeline = null;
@@ -430,7 +430,7 @@ export class LaunchTransition {
     // the app cannot start: the splash fades where it got to, and a notification says why
     _failed(run, app, error) {
         Gio.DBusError.strip_remote_error(error);
-        console.warn(`gnome-phone: ${app.get_id()} cannot start: ${error.message}`);
+        console.warn(`vibeos: ${app.get_id()} cannot start: ${error.message}`);
         run.timeline?.stop();
         run.timeline = null;
         run.exiting = true;
@@ -465,7 +465,7 @@ export class LaunchTransition {
         run.exiting = true;
         const {actor: splash, effect, iconActor, windowActor} = run;
         this._reset(splash, effect);
-        splash.add_effect_with_name('gnome-phone-launch', effect);
+        splash.add_effect_with_name('vibeos-launch', effect);
         const [w, h] = splash.get_size();
         const R = Math.sqrt(h * h + (w / 2) * (w / 2)) / SPLASH_SOLID;
         const shift = this._dp(SPLASH_SHIFT_DP);

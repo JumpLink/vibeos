@@ -1,4 +1,4 @@
-/* The editor's time picker, its clock 24- or 12-hour as the phone's (libneo's NeoTimePicker, a plainer dialog, is the
+/* The editor's time picker, its clock 24- or 12-hour as the phone's (libvibeos's VibeosTimePicker, a plainer dialog, is the
  * snooze delay's).
  *
  * "Select time"; the hour and the minute in two boxes, the one being chosen filled; a clock face: 0–11 outside and
@@ -6,7 +6,7 @@
  * keyboard button, Cancel, OK. The keyboard button switches to the text input mode: two fields, Hour and Minute (and
  * AM/PM), typed from the keyboard; the clock button switches back.
  *
- * A libneo candidate, next to NeoTimePicker. */
+ * A libvibeos candidate, next to VibeosTimePicker. */
 #pragma once
 
 #include <gtk/gtk.h>

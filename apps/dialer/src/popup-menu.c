@@ -1,7 +1,7 @@
 /* The pop-up menu: see popup-menu.h. On opening, the card's clip grows down from the anchor while it fades in. */
 #include "popup-menu.h"
 
-#include <neo.h>
+#include <vibeos.h>
 
 #define MIN_WIDTH       196
 #define ROW_HEIGHT      48
@@ -28,7 +28,7 @@ struct _DialerPopupMenu
   PopupMenuGravity gravity;
   int corner;
   graphene_rect_t anchor_bounds;
-  NeoAnim *anim;
+  VibeosAnim *anim;
   double shown;                 /* 0 … 1 */
   gboolean closing;
 };
@@ -106,13 +106,13 @@ dialer_popup_menu_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 }
 
 static void
-on_anim (NeoAnim *anim, double value, gpointer data)
+on_anim (VibeosAnim *anim, double value, gpointer data)
 {
   DialerPopupMenu *self = data;
 
   self->shown = value;
   gtk_widget_queue_draw (GTK_WIDGET (self));
-  if (self->closing && !neo_anim_is_running (anim))
+  if (self->closing && !vibeos_anim_is_running (anim))
     {
       GtkWidget *overlay = gtk_widget_get_parent (GTK_WIDGET (self));
 
@@ -127,7 +127,7 @@ dismiss (DialerPopupMenu *self)
   if (self->closing)
     return;
   self->closing = TRUE;
-  neo_anim_start (self->anim, self->shown, 0, EXIT_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start (self->anim, self->shown, 0, EXIT_MS, 0, SPONGY_LINEAR);
 }
 
 static void
@@ -169,7 +169,7 @@ dialer_popup_menu_dispose (GObject *object)
 {
   DialerPopupMenu *self = DIALER_POPUP_MENU (object);
 
-  g_clear_pointer (&self->anim, neo_anim_free);
+  g_clear_pointer (&self->anim, vibeos_anim_free);
   g_clear_pointer (&self->card, gtk_widget_unparent);
   g_clear_pointer (&self->rows, g_array_unref);
   G_OBJECT_CLASS (dialer_popup_menu_parent_class)->dispose (object);
@@ -199,7 +199,7 @@ dialer_popup_menu_init (DialerPopupMenu *self)
   gtk_widget_add_css_class (self->card, "popup-menu");
   gtk_widget_set_overflow (self->card, GTK_OVERFLOW_HIDDEN);
   gtk_widget_set_parent (self->card, GTK_WIDGET (self));
-  self->anim = neo_anim_new (GTK_WIDGET (self), on_anim, self);
+  self->anim = vibeos_anim_new (GTK_WIDGET (self), on_anim, self);
   g_signal_connect (click, "pressed", G_CALLBACK (on_pressed), self);
   gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (click));
   g_signal_connect (keys, "key-pressed", G_CALLBACK (on_key), self);
@@ -227,7 +227,7 @@ dialer_popup_menu_append (DialerPopupMenu *self, const char *label, PopupMenuAct
   gtk_widget_set_margin_start (text, TEXT_PAD);
   gtk_widget_set_margin_end (text, TEXT_PAD);
   gtk_widget_add_css_class (text, "popup-menu-text");
-  neo_label_set_font_padding (text, 16);
+  vibeos_label_set_font_padding (text, 16);
   if (!action)
     {
       gtk_widget_add_css_class (text, "disabled");
@@ -236,10 +236,10 @@ dialer_popup_menu_append (DialerPopupMenu *self, const char *label, PopupMenuAct
       g_array_append_val (self->rows, row);
       return;
     }
-  item = neo_pressable_new (text);
+  item = vibeos_pressable_new (text);
   gtk_widget_set_size_request (item, -1, ROW_HEIGHT);
-  neo_pressable_set_ripple (NEO_PRESSABLE (item), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (item), &(GdkRGBA) { 1, 1, 1, 0.06 });
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (item), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (item), &(GdkRGBA) { 1, 1, 1, 0.06 });
   g_object_set_data (G_OBJECT (item), "menu-row", GUINT_TO_POINTER (self->rows->len));
   g_signal_connect (item, "clicked", G_CALLBACK (on_row_clicked), self);
   gtk_box_append (GTK_BOX (self->card), item);
@@ -277,13 +277,13 @@ present (DialerPopupMenu *self, GtkOverlay *overlay)
   gtk_overlay_set_clip_overlay (overlay, GTK_WIDGET (self), TRUE);
   gtk_widget_set_focusable (GTK_WIDGET (self), TRUE);
   gtk_widget_grab_focus (GTK_WIDGET (self));
-  neo_anim_start (self->anim, 0, 1, ENTER_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start (self->anim, 0, 1, ENTER_MS, 0, SPONGY_LINEAR);
 }
 
 void
 dialer_popup_menu_present (DialerPopupMenu *self, GtkWidget *anchor, PopupMenuGravity gravity)
 {
-  GtkOverlay *overlay = neo_window_get_overlay (anchor);
+  GtkOverlay *overlay = vibeos_window_get_overlay (anchor);
   GtkWidget *root = GTK_WIDGET (gtk_widget_get_root (anchor));
 
   g_return_if_fail (overlay != NULL);
@@ -296,7 +296,7 @@ dialer_popup_menu_present (DialerPopupMenu *self, GtkWidget *anchor, PopupMenuGr
 void
 dialer_popup_menu_present_at (DialerPopupMenu *self, GtkWidget *widget, double x, double y)
 {
-  GtkOverlay *overlay = neo_window_get_overlay (widget);
+  GtkOverlay *overlay = vibeos_window_get_overlay (widget);
   GtkWidget *root = GTK_WIDGET (gtk_widget_get_root (widget));
   graphene_point_t point;
 

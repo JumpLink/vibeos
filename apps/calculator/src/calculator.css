@@ -1,13 +1,13 @@
-/* The Calculator's styles, over libneo's (neo.css). Its own widgets draw themselves with libneo's palette; only
- * the icon buttons (neo_icon_button: the toolbars' ⋮ and back arrows) and the licenses page are styled here. */
+/* The Calculator's styles, over libvibeos's (vibeos.css). Its own widgets draw themselves with libvibeos's palette; only
+ * the icon buttons (vibeos_icon_button: the toolbars' ⋮ and back arrows) and the licenses page are styled here. */
 
-window.neo.calculator {
-  background-color: @neo_surface;
+window.vibeos.calculator {
+  background-color: @vibeos_surface;
 }
 
 /* the toolbars' icons */
 .calc-toolbar-icon {
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 /* licenses.html in a browser's default styles: black on white, inside the body's margin (a page without a doctype:
@@ -19,7 +19,7 @@ window.neo.calculator {
 
 .calc-licenses-page label {
   color: #000000;
-  font-family: "Neo Roboto", sans-serif;
+  font-family: "VibeOS Roboto", sans-serif;
   font-weight: 400;
 }
 
@@ -51,10 +51,10 @@ window.neo.calculator {
 }
 
 /* a dialog's message sits a little further out at the sides, and further from the title and the buttons, than
- * NeoDialog's own text; the margins make up the difference */
+ * VibeosDialog's own text; the margins make up the difference */
 label.calc-dialog-message {
   font-size: 18px;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
   margin: 4px -4px 2px -4px;
 }
 

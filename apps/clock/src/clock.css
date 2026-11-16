@@ -1,5 +1,5 @@
-/* The Clock's own styles, over libneo's (neo.css). Weights sit 300 over the nominal ones (400 as 700, 500 as 800):
- * the phone's Bold text setting is on (neo.css says how). */
+/* The Clock's own styles, over libvibeos's (vibeos.css). Weights sit 300 over the nominal ones (400 as 700, 500 as 800):
+ * the phone's Bold text setting is on (vibeos.css says how). */
 
 /* most of the app's text */
 .body {
@@ -24,11 +24,11 @@
 
 /* the label row's icon, and the "Add label" hint */
 .label-icon {
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .body.hint {
-  color: alpha(@neo_on_surface, 0.6);
+  color: alpha(@vibeos_on_surface, 0.6);
 }
 
 /* the ringtone row; the vibrate row, its check accented once ticked */
@@ -37,19 +37,19 @@
 }
 
 .body.vibrate-text {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .vibrate-check {
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .vibrate-check.checked {
-  color: @neo_secondary;
+  color: @vibeos_secondary;
 }
 
 /* Delete and Dismiss: borderless buttons with the body text's look */
-.neo-text-button.alarm-text-button {
+.vibeos-text-button.alarm-text-button {
   font-size: 14px;
   font-weight: 800;
   padding: 0 12px 0 4px;
@@ -84,34 +84,34 @@
 /* the keypad's time ("00h 00m 00s"), which timer-setup.c lays out and sizes itself */
 timer-setup {
   font-weight: 700;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 /* a digit key's label, and ⌫ */
 .timer-digit {
   font-size: 36px;
   font-weight: 800;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .timer-delete {
-  color: @neo_on_tertiary_container;
+  color: @vibeos_on_tertiary_container;
 }
 
 /* a timer card's label, and its "Label" hint */
 .timer-label {
   font-size: 20px;
   font-weight: 800;
-  color: @neo_secondary;
+  color: @vibeos_secondary;
 }
 
 .timer-label.hint {
-  color: alpha(@neo_on_surface, 0.6);
+  color: alpha(@vibeos_on_surface, 0.6);
 }
 
 /* the close button: a white cross on a disc */
 .timer-close {
-  background-color: @neo_outline;
+  background-color: @vibeos_outline;
   border-radius: 50%;
   color: white;
 }
@@ -121,22 +121,22 @@ timer-setup {
   font-size: 40px;
   font-weight: 700;
   font-feature-settings: "tnum" 1;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .timer-reset {
-  color: @neo_primary;
+  color: @vibeos_primary;
 }
 
 /* "+ 1:00" and play/pause, on their filled buttons */
 .timer-add {
   font-size: 20px;
   font-weight: 800;
-  color: @neo_on_primary;
+  color: @vibeos_on_primary;
 }
 
 .timer-play {
-  color: @neo_on_primary;
+  color: @vibeos_on_primary;
 }
 
 /* --- the Stopwatch tab */
@@ -146,19 +146,19 @@ timer-setup {
   font-size: 72px;
   font-weight: 700;
   font-feature-settings: "tnum" 1;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .stopwatch-hundredths {
   font-size: 42px;
   font-weight: 700;
   font-feature-settings: "tnum" 1;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .stopwatch-main.pressed,
 .stopwatch-hundredths.pressed {
-  color: @neo_secondary;
+  color: @vibeos_secondary;
 }
 
 /* a lap row: the number accented, the lap and total times in white */
@@ -166,7 +166,7 @@ timer-setup {
   font-size: 14px;
   font-weight: 800;
   font-feature-settings: "tnum" 1;
-  color: @neo_secondary;
+  color: @vibeos_secondary;
 }
 
 .lap-time {
@@ -178,7 +178,7 @@ timer-setup {
 
 /* --- the cities picker's overflow menu (clock-popup-menu.c) */
 .clock-popup-menu {
-  background-color: @neo_surface_container;
+  background-color: @vibeos_surface_container;
   border-radius: 4px;
   padding: 8px 0;
 }
@@ -186,7 +186,7 @@ timer-setup {
 .clock-popup-menu-text {
   font-size: 16px;
   font-weight: 700;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 /* --- the Clock tab's cities */
@@ -201,12 +201,12 @@ timer-setup {
 .secondary-label {
   font-size: 14px;
   font-weight: 800;
-  color: @neo_secondary;
+  color: @vibeos_secondary;
 }
 
 /* a city's card, as round as an alarm's */
 .world-card {
-  background-color: @neo_surface_container_highest;
+  background-color: @vibeos_surface_container_highest;
   border-radius: 28px;
   padding: 24px 16px;
   margin: 8px 16px 0 16px;
@@ -227,13 +227,13 @@ timer-setup {
 
 /* --- second-level pages' bars (clock-bar.c): Up and the action icons, then the title */
 .clock-bar {
-  background-color: @neo_surface;
+  background-color: @vibeos_surface;
 }
 
 .clock-bar-title {
   font-size: 20px;
   font-weight: 800;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 /* the cities picker's icons are dimmer than the other bars' */
@@ -244,7 +244,7 @@ timer-setup {
 /* Settings and the sound picker: the bar turns a shade lighter once the list scrolls under it, fading over
  * 150 ms */
 .clock-bar.settings .clock-bar-icon {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .clock-bar.settings {
@@ -252,7 +252,7 @@ timer-setup {
 }
 
 .clock-bar.settings.lifted {
-  background-color: @neo_surface_container;
+  background-color: @vibeos_surface_container;
 }
 
 /* --- the cities picker */
@@ -275,7 +275,7 @@ timer-setup {
 .city-check {
   min-width: 14px;
   min-height: 14px;
-  border: 2px solid @neo_on_surface_variant;
+  border: 2px solid @vibeos_on_surface_variant;
   border-radius: 2px;
 }
 
@@ -284,12 +284,12 @@ timer-setup {
 }
 
 .city-check.checked {
-  background-color: @neo_primary;
-  border-color: @neo_primary;
+  background-color: @vibeos_primary;
+  border-color: @vibeos_primary;
 }
 
 .city-check.checked image {
-  color: @neo_on_primary;
+  color: @vibeos_on_primary;
 }
 
 /* the "Selected Cities" header */
@@ -309,7 +309,7 @@ timer-setup {
 }
 
 .city-fast-thumb {
-  background-color: @neo_on_surface_variant;
+  background-color: @vibeos_on_surface_variant;
 }
 
 /* the shadow under the bar, shown once the list scrolls */
@@ -322,12 +322,12 @@ timer-setup {
 .city-search {
   font-size: 16px;
   font-weight: 700;
-  color: @neo_on_surface;
-  caret-color: @neo_primary;
+  color: @vibeos_on_surface;
+  caret-color: @vibeos_primary;
 }
 
 .city-search > placeholder {
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 /* --- Settings */
@@ -342,20 +342,20 @@ timer-setup {
 .settings-category {
   font-size: 14px;
   font-weight: 800;
-  color: @neo_secondary;
+  color: @vibeos_secondary;
 }
 
 /* a row's title and summary */
 .settings-title {
   font-size: 16px;
   font-weight: 700;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .settings-summary {
   font-size: 14px;
   font-weight: 700;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 /* a row that can't be used now (Home time zone with Automatic home clock off) */
@@ -378,17 +378,17 @@ timer-setup {
   padding: 0 24px 0 20px;
   font-size: 16px;
   font-weight: 700;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 /* the radio, accented when on */
 .clock-radio {
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
   margin-right: 20px;
 }
 
 .clock-radio.checked {
-  color: @neo_secondary;
+  color: @vibeos_secondary;
 }
 
 /* --- the sound picker */
@@ -397,7 +397,7 @@ timer-setup {
 .ringtone-header {
   font-size: 15px;
   font-weight: 700;
-  color: @neo_secondary;
+  color: @vibeos_secondary;
   padding: 16px 15px;
 }
 
@@ -414,27 +414,27 @@ timer-setup {
 .ringtone-name {
   font-size: 16px;
   font-weight: 700;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .ringtone-check {
-  color: @neo_secondary;
+  color: @vibeos_secondary;
 }
 
 .ringtone-more {
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 /* "Add new": a black + on a filled circle */
 .ringtone-add {
   color: black;
-  background-color: @neo_primary;
+  background-color: @vibeos_primary;
   border-radius: 50%;
 }
 
 /* --- the screen saver: white on black, which screensaver.c then multiplies by the clock or night-mode
  * colour */
-window.neo.clock-screensaver {
+window.vibeos.clock-screensaver {
   background-color: black;
 }
 

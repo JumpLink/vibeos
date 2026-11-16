@@ -1,5 +1,5 @@
 /* The saved remotes: a server's address and user, never a password. They are kept in
- * $XDG_CONFIG_HOME/neo-files/remotes.ini, a GKeyFile with one group per remote. No GTK: the tests link it alone. */
+ * $XDG_CONFIG_HOME/vibeos-files/remotes.ini, a GKeyFile with one group per remote. No GTK: the tests link it alone. */
 #pragma once
 
 #include <gio/gio.h>

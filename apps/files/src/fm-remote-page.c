@@ -9,7 +9,7 @@
 #include "fm-util.h"
 
 #include <glib/gi18n.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 #include <stdlib.h>
 
@@ -120,7 +120,7 @@ take_field (char **value, GtkWidget *entry)
 }
 
 static void
-on_server_response (NeoDialog *dialog, int response, Server *server)
+on_server_response (VibeosDialog *dialog, int response, Server *server)
 {
   FmShell *shell = server->page->shell;
   FmRemote *remote, *old = server->id ? fm_shell_find_remote (shell, server->id) : NULL;
@@ -128,7 +128,7 @@ on_server_response (NeoDialog *dialog, int response, Server *server)
   Opening *opening;
   g_autofree char *password = NULL;
 
-  if (response != NEO_RESPONSE_OK)
+  if (response != VIBEOS_RESPONSE_OK)
     return;
   remote = fm_remote_new (server->proto);
   if (server->secure && fm_check_get_active (server->secure))
@@ -222,7 +222,7 @@ server_dialog (FmRemotePage *page, FmProto proto, const FmRemote *editing, const
 {
   GtkWidget *content, *form = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0), *scroll = spongy_scroll_view_new ();
   Server *server = g_new0 (Server, 1);
-  NeoDialog *dialog;
+  VibeosDialog *dialog;
   g_autofree char *address = editing ? fm_remote_get_address (editing) : g_strdup (host);
   g_autofree char *port = editing && editing->port ? g_strdup_printf ("%d", editing->port) : NULL;
   g_autofree char *default_port = NULL;
@@ -288,13 +288,13 @@ server_dialog (FmRemotePage *page, FmProto proto, const FmRemote *editing, const
                         server);
       on_anonymous (fm_check_row_get_check (server->anonymous), NULL, server);
     }
-  fm_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  server->ok = fm_dialog_add_button (dialog, _("OK"), NEO_RESPONSE_OK);
+  fm_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  server->ok = fm_dialog_add_button (dialog, _("OK"), VIBEOS_RESPONSE_OK);
   g_signal_connect (server->host, "changed", G_CALLBACK (on_server_changed), server);
   server_check (server);
   g_object_set_data_full (G_OBJECT (dialog), "fm-server", server, server_free);
   g_signal_connect (dialog, "response", G_CALLBACK (on_server_response), server);
-  neo_dialog_present (dialog, page->shell->window);
+  vibeos_dialog_present (dialog, page->shell->window);
 }
 
 /* ---- the Local Network scan --------------------------------------------------------------------------------------- *
@@ -305,7 +305,7 @@ server_dialog (FmRemotePage *page, FmProto proto, const FmRemote *editing, const
 
 typedef struct {
   FmRemotePage *page;
-  NeoDialog *dialog;
+  VibeosDialog *dialog;
   GtkWidget *list, *progress, *empty;
   GFileMonitor *monitor;
   GCancellable *cancellable;
@@ -344,7 +344,7 @@ scan_update (Scan *scan)
 }
 
 static void
-on_scan_row (NeoPressable *row, Scan *scan)
+on_scan_row (VibeosPressable *row, Scan *scan)
 {
   const char *host = g_object_get_data (G_OBJECT (row), "fm-host");
   /* the host's shares: GVfs lists them (smb-browse), and a tap on one mounts it */
@@ -352,7 +352,7 @@ on_scan_row (NeoPressable *row, Scan *scan)
   g_autoptr(GFile) server = g_file_new_for_uri (uri);
   FmRemotePage *page = scan->page;
 
-  neo_dialog_respond (scan->dialog, NEO_RESPONSE_OK);
+  vibeos_dialog_respond (scan->dialog, VIBEOS_RESPONSE_OK);
   fm_shell_open_location (page->shell, server);
 }
 
@@ -370,10 +370,10 @@ scan_row_add (Scan *scan, const char *name, const char *host)
   gtk_widget_set_hexpand (label, TRUE);
   gtk_box_append (GTK_BOX (line), label);
   gtk_widget_add_css_class (line, "fm-scan-line");
-  row = neo_pressable_new (line);
+  row = vibeos_pressable_new (line);
   gtk_widget_add_css_class (row, "fm-scan-row");
-  neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (row), &ripple);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
   g_object_set_data_full (G_OBJECT (row), "fm-host", g_strdup (host), g_free);
   g_signal_connect (row, "clicked", G_CALLBACK (on_scan_row), scan);
   gtk_accessible_update_property (GTK_ACCESSIBLE (row), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);
@@ -559,11 +559,11 @@ on_network_listed (GObject *source, GAsyncResult *result, gpointer data)
 }
 
 static void
-on_scan_response (NeoDialog *dialog, int response, Scan *scan)
+on_scan_response (VibeosDialog *dialog, int response, Scan *scan)
 {
   g_cancellable_cancel (scan->cancellable);
   /* MANUAL INPUT: the SMB server dialog, empty */
-  if (response == NEO_RESPONSE_OK + 1)
+  if (response == VIBEOS_RESPONSE_OK + 1)
     server_dialog (scan->page, FM_PROTO_SMB, NULL, NULL);
 }
 
@@ -596,8 +596,8 @@ local_network_dialog (FmRemotePage *page)
   gtk_widget_add_css_class (area, "fm-scan-area");
   gtk_widget_set_vexpand (area, TRUE);
   gtk_box_append (GTK_BOX (content), area);
-  fm_dialog_add_button (scan->dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  fm_dialog_add_button (scan->dialog, _("Manual input"), NEO_RESPONSE_OK + 1);
+  fm_dialog_add_button (scan->dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  fm_dialog_add_button (scan->dialog, _("Manual input"), VIBEOS_RESPONSE_OK + 1);
   g_object_set_data_full (G_OBJECT (scan->dialog), "fm-scan", scan, scan_free);
   g_signal_connect (scan->dialog, "response", G_CALLBACK (on_scan_response), scan);
   scan_update (scan);
@@ -610,7 +610,7 @@ local_network_dialog (FmRemotePage *page)
   g_file_enumerate_children_async (network, "standard::display-name,standard::target-uri", G_FILE_QUERY_INFO_NONE,
                                    G_PRIORITY_DEFAULT, scan->cancellable, on_network_listed,
                                    g_object_ref (scan->cancellable));
-  neo_dialog_present (scan->dialog, page->shell->window);
+  vibeos_dialog_present (scan->dialog, page->shell->window);
 }
 
 /* ---- Add Remote ---------------------------------------------------------------------------------------------------- */
@@ -716,7 +716,7 @@ remote_menu (FmRemotePage *page, GtkWidget *row)
 }
 
 static void
-on_remote_clicked (NeoPressable *row, FmRemotePage *page)
+on_remote_clicked (VibeosPressable *row, FmRemotePage *page)
 {
   RemoteRef *ref = g_object_get_data (G_OBJECT (row), "fm-ref");
   FmRemote *remote = fm_shell_find_remote (page->shell, ref->id);
@@ -737,13 +737,13 @@ on_remote_clicked (NeoPressable *row, FmRemotePage *page)
 }
 
 static void
-on_remote_long_pressed (NeoPressable *row, FmRemotePage *page)
+on_remote_long_pressed (VibeosPressable *row, FmRemotePage *page)
 {
   remote_menu (page, GTK_WIDGET (row));
 }
 
 static void
-on_footer (NeoPressable *footer, FmRemotePage *page)
+on_footer (VibeosPressable *footer, FmRemotePage *page)
 {
   fm_remote_page_add (page);
 }
@@ -788,11 +788,11 @@ fm_remote_page_refresh (FmRemotePage *page)
           gtk_widget_add_css_class (more, "fm-remote-more");
           gtk_box_append (GTK_BOX (box), more);
         }
-      row = neo_pressable_new (box);
+      row = vibeos_pressable_new (box);
       gtk_widget_add_css_class (row, "fm-row");
       gtk_widget_add_css_class (row, "fm-remote-row");
-      neo_pressable_set_ripple (NEO_PRESSABLE (row), NEO_RIPPLE_BOUNDED, 0);
-      neo_pressable_set_ripple_color (NEO_PRESSABLE (row), &ripple);
+      vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
+      vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
       ref->page = page;
       ref->id = g_strdup (remote->id);
       g_object_set_data_full (G_OBJECT (row), "fm-ref", ref, remote_ref_free);
@@ -816,10 +816,10 @@ fm_remote_page_refresh (FmRemotePage *page)
     gtk_box_append (GTK_BOX (line), label);
   }
   gtk_widget_set_halign (line, GTK_ALIGN_CENTER);
-  footer = neo_pressable_new (line);
+  footer = vibeos_pressable_new (line);
   gtk_widget_add_css_class (footer, "fm-remote-footer");
-  neo_pressable_set_ripple (NEO_PRESSABLE (footer), NEO_RIPPLE_BOUNDED, 0);
-  neo_pressable_set_ripple_color (NEO_PRESSABLE (footer), &ripple);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (footer), VIBEOS_RIPPLE_BOUNDED, 0);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (footer), &ripple);
   g_signal_connect (footer, "clicked", G_CALLBACK (on_footer), page);
   gtk_box_append (GTK_BOX (page->box), footer);
 }

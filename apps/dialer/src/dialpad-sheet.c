@@ -21,9 +21,9 @@ struct _DialpadSheet
 {
   GtkWidget parent;
   GtkWidget *dialpad, *dial;
-  NeoSnackbar *snackbar;
+  VibeosSnackbar *snackbar;
   gboolean shown;
-  NeoAnim *slide, *fab;
+  VibeosAnim *slide, *fab;
   double progress;              /* 0 down … 1 up */
   double fab_scale;
   GCancellable *recall;         /* looking up the last number called */
@@ -43,25 +43,25 @@ rgb (guint32 value)
 /* ---- the motion ----------------------------------------------------------------------------------------------- */
 
 static void
-on_fab (NeoAnim *anim, double value, gpointer data)
+on_fab (VibeosAnim *anim, double value, gpointer data)
 {
   DialpadSheet *self = data;
 
   self->fab_scale = value;
-  neo_pressable_set_scale (NEO_PRESSABLE (self->dial), value);
+  vibeos_pressable_set_scale (VIBEOS_PRESSABLE (self->dial), value);
 }
 
 static void
-on_slide (NeoAnim *anim, double value, gpointer data)
+on_slide (VibeosAnim *anim, double value, gpointer data)
 {
   DialpadSheet *self = data;
 
   self->progress = value;
-  if (!neo_anim_is_running (anim))
+  if (!vibeos_anim_is_running (anim))
     {
       /* the dial button scales in once the dialpad is up; gone, the sheet stops taking touches */
       if (value == 1)
-        neo_anim_start (self->fab, self->fab_scale, 1, FAB_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
+        vibeos_anim_start (self->fab, self->fab_scale, 1, FAB_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
       else if (value == 0)
         gtk_widget_set_visible (GTK_WIDGET (self), FALSE);
     }
@@ -79,7 +79,7 @@ dialpad_sheet_show (DialpadSheet *self, const char *number)
   self->shown = TRUE;
   calls_client_prepare_tones (calls_client_get ());
   gtk_widget_set_visible (GTK_WIDGET (self), TRUE);
-  neo_anim_start_cubic (self->slide, self->progress, 1, SLIDE_MS, 0, 0, 0, 0.2, 1);
+  vibeos_anim_start_cubic (self->slide, self->progress, 1, SLIDE_MS, 0, 0, 0, 0.2, 1);
   g_signal_emit (self, signals[SHOWN_CHANGED], 0);
 }
 
@@ -91,8 +91,8 @@ dialpad_sheet_hide (DialpadSheet *self)
     return;
   self->shown = FALSE;
   calls_client_release_tones (calls_client_get ());
-  neo_anim_start (self->fab, self->fab_scale, 0, FAB_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
-  neo_anim_start_cubic (self->slide, self->progress, 0, SLIDE_MS, 0, 0.4, 0, 1, 1);
+  vibeos_anim_start (self->fab, self->fab_scale, 0, FAB_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
+  vibeos_anim_start_cubic (self->slide, self->progress, 0, SLIDE_MS, 0, 0.4, 0, 1, 1);
   g_signal_emit (self, signals[SHOWN_CHANGED], 0);
 }
 
@@ -124,7 +124,7 @@ on_dialed (guint id, const GError *error, gpointer data)
   if (!self->dialpad)
     ;                           /* the window closed meanwhile */
   else if (error)
-    neo_snackbar_show (self->snackbar, error->message, NULL, NULL, NULL, NEO_SNACKBAR_LONG);
+    vibeos_snackbar_show (self->snackbar, error->message, NULL, NULL, NULL, VIBEOS_SNACKBAR_LONG);
   else
     {
       /* the call is the service's now: its screen comes up, and the dialpad goes away empty */
@@ -228,8 +228,8 @@ dialpad_sheet_dispose (GObject *object)
 
   if (self->recall)
     g_cancellable_cancel (self->recall);
-  g_clear_pointer (&self->slide, neo_anim_free);
-  g_clear_pointer (&self->fab, neo_anim_free);
+  g_clear_pointer (&self->slide, vibeos_anim_free);
+  g_clear_pointer (&self->fab, vibeos_anim_free);
   while ((child = gtk_widget_get_first_child (GTK_WIDGET (self))))
     gtk_widget_unparent (child);
   self->dialpad = self->dial = NULL;
@@ -320,23 +320,23 @@ dialpad_sheet_init (DialpadSheet *self)
   /* the dial button: green with a black handset, its shadow under it */
   gtk_image_set_pixel_size (GTK_IMAGE (icon), 24);
   gtk_widget_add_css_class (icon, "dial-icon");
-  self->dial = neo_pressable_new (icon);
-  neo_pressable_set_fill (NEO_PRESSABLE (self->dial), &green, TRUE);
-  neo_pressable_set_ripple (NEO_PRESSABLE (self->dial), NEO_RIPPLE_CIRCLE, DIAL_SIZE / 2.0);
-  neo_pressable_set_scale (NEO_PRESSABLE (self->dial), 0);
+  self->dial = vibeos_pressable_new (icon);
+  vibeos_pressable_set_fill (VIBEOS_PRESSABLE (self->dial), &green, TRUE);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->dial), VIBEOS_RIPPLE_CIRCLE, DIAL_SIZE / 2.0);
+  vibeos_pressable_set_scale (VIBEOS_PRESSABLE (self->dial), 0);
   gtk_accessible_update_property (GTK_ACCESSIBLE (self->dial), GTK_ACCESSIBLE_PROPERTY_LABEL, _("dial"), -1);
   gtk_widget_set_parent (self->dial, GTK_WIDGET (self));
   g_signal_connect_swapped (self->dial, "clicked", G_CALLBACK (on_dial), self);
 
   g_signal_connect (space, "pressed", G_CALLBACK (on_space_pressed), self);
   gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (space));
-  self->slide = neo_anim_new (GTK_WIDGET (self), on_slide, self);
-  self->fab = neo_anim_new (GTK_WIDGET (self), on_fab, self);
+  self->slide = vibeos_anim_new (GTK_WIDGET (self), on_slide, self);
+  self->fab = vibeos_anim_new (GTK_WIDGET (self), on_fab, self);
   gtk_widget_set_visible (GTK_WIDGET (self), FALSE);
 }
 
 GtkWidget *
-dialpad_sheet_new (NeoSnackbar *snackbar)
+dialpad_sheet_new (VibeosSnackbar *snackbar)
 {
   DialpadSheet *self = g_object_new (DIALPAD_TYPE_SHEET, NULL);
 

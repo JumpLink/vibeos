@@ -2,13 +2,13 @@
 #include "nb-widgets.h"
 
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 #include <spongy-gtk.h>
 
 /* ==== NbDialog ===================================================================================================
  *
  * The window takes most of the screen's width, the card is inset in it, with rounded corners, over a light dim.
- * The motion is NeoDialog's: alpha 0 → 1 rising 20 px in 220 ms, out 150 ms. */
+ * The motion is VibeosDialog's: alpha 0 → 1 rising 20 px in 220 ms, out 150 ms. */
 
 #define DLG_WIDTH_FRACTION 0.95
 #define DLG_INSET     16
@@ -24,7 +24,7 @@ struct _NbDialog {
   GtkWidget  parent;
   GtkWidget *card, *title, *message, *content, *buttons, *start, *end;
   double     shown, rise;
-  NeoAnim   *anim;
+  VibeosAnim   *anim;
   gboolean   closing;
   GArray    *sticky;
 };
@@ -73,14 +73,14 @@ nb_dialog_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 }
 
 static void
-on_dialog_anim (NeoAnim *anim, double value, gpointer data)
+on_dialog_anim (VibeosAnim *anim, double value, gpointer data)
 {
   NbDialog *self = data;
 
   self->shown = value;
   self->rise = self->closing ? -EXIT_RISE * (1 - value) : ENTER_RISE * (1 - value);
   gtk_widget_queue_draw (GTK_WIDGET (self));
-  if (self->closing && !neo_anim_is_running (anim)) {
+  if (self->closing && !vibeos_anim_is_running (anim)) {
     GtkWidget *overlay = gtk_widget_get_parent (GTK_WIDGET (self));
     if (overlay)
       gtk_overlay_remove_overlay (GTK_OVERLAY (overlay), GTK_WIDGET (self));
@@ -94,7 +94,7 @@ nb_dialog_close (NbDialog *self)
     return;
   self->closing = TRUE;
   gtk_widget_set_can_target (GTK_WIDGET (self), FALSE);
-  neo_anim_start_cubic (self->anim, 1, 0, EXIT_MS, 0, 0.3f, 0, 1, 1);
+  vibeos_anim_start_cubic (self->anim, 1, 0, EXIT_MS, 0, 0.3f, 0, 1, 1);
 }
 
 static gboolean
@@ -128,13 +128,13 @@ nb_dialog_set_sticky (NbDialog *self, int response)
 void
 nb_dialog_present (NbDialog *self, GtkWidget *parent)
 {
-  GtkOverlay *overlay = neo_window_get_overlay (parent);
+  GtkOverlay *overlay = vibeos_window_get_overlay (parent);
 
   g_return_if_fail (overlay != NULL);
   gtk_overlay_add_overlay (overlay, GTK_WIDGET (self));
   gtk_overlay_set_measure_overlay (overlay, GTK_WIDGET (self), FALSE);
   gtk_overlay_set_clip_overlay (overlay, GTK_WIDGET (self), TRUE);
-  neo_anim_start_cubic (self->anim, 0, 1, ENTER_MS, 0, 0.2f, 0, 0, 1);
+  vibeos_anim_start_cubic (self->anim, 0, 1, ENTER_MS, 0, 0.2f, 0, 0, 1);
   /* the dialog itself, for Escape: a field waits for a tap before the keyboard comes up */
   gtk_widget_grab_focus (GTK_WIDGET (self));
 }
@@ -161,7 +161,7 @@ on_dialog_key (GtkEventControllerKey *keys, guint keyval, guint keycode, GdkModi
 }
 
 static void
-on_dialog_button (NeoPressable *button, NbDialog *self)
+on_dialog_button (VibeosPressable *button, NbDialog *self)
 {
   nb_dialog_respond (self, GPOINTER_TO_INT (g_object_get_data (G_OBJECT (button), "nb-response")));
 }
@@ -171,7 +171,7 @@ nb_dialog_dispose (GObject *object)
 {
   NbDialog *self = NB_DIALOG (object);
 
-  g_clear_pointer (&self->anim, neo_anim_free);
+  g_clear_pointer (&self->anim, vibeos_anim_free);
   g_clear_pointer (&self->card, gtk_widget_unparent);
   g_clear_pointer (&self->sticky, g_array_unref);
   G_OBJECT_CLASS (nb_dialog_parent_class)->dispose (object);
@@ -207,7 +207,7 @@ nb_dialog_init (NbDialog *self)
   gtk_label_set_xalign (GTK_LABEL (self->title), 0);
   gtk_label_set_wrap (GTK_LABEL (self->title), TRUE);
   gtk_widget_add_css_class (self->title, "nb-dialog-title");
-  neo_label_set_font_padding (self->title, 24);
+  vibeos_label_set_font_padding (self->title, 24);
   gtk_widget_set_visible (self->title, FALSE);
   gtk_box_append (GTK_BOX (self->card), self->title);
 
@@ -215,7 +215,7 @@ nb_dialog_init (NbDialog *self)
   gtk_label_set_xalign (GTK_LABEL (self->message), 0);
   gtk_label_set_wrap (GTK_LABEL (self->message), TRUE);
   gtk_widget_add_css_class (self->message, "nb-dialog-message");
-  neo_label_set_font_padding (self->message, 14);
+  vibeos_label_set_font_padding (self->message, 14);
   gtk_widget_set_visible (self->message, FALSE);
   gtk_box_append (GTK_BOX (self->card), self->message);
 
@@ -229,7 +229,7 @@ nb_dialog_init (NbDialog *self)
   gtk_widget_set_visible (self->buttons, FALSE);
   gtk_box_append (GTK_BOX (self->card), self->buttons);
 
-  self->anim = neo_anim_new (GTK_WIDGET (self), on_dialog_anim, self);
+  self->anim = vibeos_anim_new (GTK_WIDGET (self), on_dialog_anim, self);
 
   GtkGesture *click = gtk_gesture_click_new ();
   g_signal_connect (click, "pressed", G_CALLBACK (on_dialog_pressed), self);
@@ -271,7 +271,7 @@ nb_dialog_set_content (NbDialog *self, GtkWidget *content)
 GtkWidget *
 nb_dialog_add_button (NbDialog *self, const char *label, int response)
 {
-  GtkWidget *button = neo_text_button_new (label);
+  GtkWidget *button = vibeos_text_button_new (label);
 
   g_object_set_data (G_OBJECT (button), "nb-response", GINT_TO_POINTER (response));
   g_signal_connect (button, "clicked", G_CALLBACK (on_dialog_button), self);
@@ -289,7 +289,7 @@ typedef struct {
 } ListPick;
 
 static void
-on_list_row (NeoPressable *row, ListPick *pick)
+on_list_row (VibeosPressable *row, ListPick *pick)
 {
   int index = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (row), "nb-index"));
   GtkWidget *rows = gtk_widget_get_parent (GTK_WIDGET (row));
@@ -325,7 +325,7 @@ nb_list_dialog_present (GtkWidget *parent, const char *title, const char *const 
     gtk_widget_set_hexpand (text, TRUE);
     gtk_box_append (GTK_BOX (box), mark);
     gtk_box_append (GTK_BOX (box), text);
-    GtkWidget *row = neo_pressable_new (box);
+    GtkWidget *row = vibeos_pressable_new (box);
     g_object_set_data (G_OBJECT (row), "nb-index", GINT_TO_POINTER (i));
     g_object_set_data (G_OBJECT (row), "nb-mark", mark);
     g_signal_connect (row, "clicked", G_CALLBACK (on_list_row), pick);
@@ -354,7 +354,7 @@ struct _NbSheet {
   GtkWidget parent;
   GtkWidget *content;
   double     dim, shown;
-  NeoAnim   *anim;
+  VibeosAnim   *anim;
   gboolean   closing;
 };
 
@@ -394,13 +394,13 @@ nb_sheet_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 }
 
 static void
-on_sheet_anim (NeoAnim *anim, double value, gpointer data)
+on_sheet_anim (VibeosAnim *anim, double value, gpointer data)
 {
   NbSheet *self = data;
 
   self->shown = value;
   gtk_widget_queue_allocate (GTK_WIDGET (self));
-  if (self->closing && !neo_anim_is_running (anim)) {
+  if (self->closing && !vibeos_anim_is_running (anim)) {
     GtkWidget *overlay = gtk_widget_get_parent (GTK_WIDGET (self));
     g_object_ref (self);
     if (overlay)
@@ -417,19 +417,19 @@ nb_sheet_dismiss (NbSheet *self)
     return;
   self->closing = TRUE;
   gtk_widget_set_can_target (GTK_WIDGET (self), FALSE);
-  neo_anim_start (self->anim, self->shown, 0, SHEET_OUT_MS, 0, SPONGY_FAST_OUT_LINEAR_IN);
+  vibeos_anim_start (self->anim, self->shown, 0, SHEET_OUT_MS, 0, SPONGY_FAST_OUT_LINEAR_IN);
 }
 
 void
 nb_sheet_present (NbSheet *self, GtkWidget *parent)
 {
-  GtkOverlay *overlay = neo_window_get_overlay (parent);
+  GtkOverlay *overlay = vibeos_window_get_overlay (parent);
 
   g_return_if_fail (overlay != NULL);
   gtk_overlay_add_overlay (overlay, GTK_WIDGET (self));
   gtk_overlay_set_measure_overlay (overlay, GTK_WIDGET (self), FALSE);
   gtk_overlay_set_clip_overlay (overlay, GTK_WIDGET (self), TRUE);
-  neo_anim_start (self->anim, 0, 1, SHEET_IN_MS, 0, SPONGY_LINEAR_OUT_SLOW_IN);
+  vibeos_anim_start (self->anim, 0, 1, SHEET_IN_MS, 0, SPONGY_LINEAR_OUT_SLOW_IN);
   gtk_widget_grab_focus (GTK_WIDGET (self));
 }
 
@@ -459,7 +459,7 @@ nb_sheet_dispose (GObject *object)
 {
   NbSheet *self = NB_SHEET (object);
 
-  g_clear_pointer (&self->anim, neo_anim_free);
+  g_clear_pointer (&self->anim, vibeos_anim_free);
   g_clear_pointer (&self->content, gtk_widget_unparent);
   G_OBJECT_CLASS (nb_sheet_parent_class)->dispose (object);
 }
@@ -483,7 +483,7 @@ static void
 nb_sheet_init (NbSheet *self)
 {
   gtk_widget_set_focusable (GTK_WIDGET (self), TRUE);
-  self->anim = neo_anim_new (GTK_WIDGET (self), on_sheet_anim, self);
+  self->anim = vibeos_anim_new (GTK_WIDGET (self), on_sheet_anim, self);
   GtkGesture *click = gtk_gesture_click_new ();
   g_signal_connect (click, "pressed", G_CALLBACK (on_sheet_pressed), self);
   gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (click));
@@ -520,7 +520,7 @@ nb_sheet_row (const char *icon_name, GdkPaintable *icon, const char *text)
   GtkWidget *label = nb_label (text, 14, "nb-sheet-text", TRUE);
   gtk_box_append (GTK_BOX (box), label);
   gtk_widget_add_css_class (box, "nb-sheet-row");
-  return neo_pressable_new (box);
+  return vibeos_pressable_new (box);
 }
 
 /* ==== the toast ===================================================================================================
@@ -532,7 +532,7 @@ nb_sheet_row (const char *icon_name, GdkPaintable *icon, const char *text)
 #define TOAST_LONG_MS 3500
 #define TOAST_IN_MS   333
 #define TOAST_OUT_MS  250
-#define TOAST_ICON    "neo.Browser"
+#define TOAST_ICON    "vibeos.Browser"
 
 typedef struct {
   GtkWidget   *pill;
@@ -581,7 +581,7 @@ on_toast_tick (GtkWidget *widget, GdkFrameClock *clock, gpointer data)
 void
 nb_toast_show (GtkWidget *widget, const char *text)
 {
-  GtkOverlay *overlay = neo_window_get_overlay (widget);
+  GtkOverlay *overlay = vibeos_window_get_overlay (widget);
   GtkWidget *old, *holder, *pill, *icon;
   GtkIconTheme *theme;
 
@@ -632,7 +632,7 @@ struct _NbSwitch {
   GtkWidget parent;
   gboolean  active;
   double    pos;              /* 0 off .. 1 on */
-  NeoAnim  *anim;
+  VibeosAnim  *anim;
 };
 
 G_DEFINE_FINAL_TYPE (NbSwitch, nb_switch, GTK_TYPE_WIDGET)
@@ -652,8 +652,8 @@ nb_switch_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   NbSwitch *self = NB_SWITCH (widget);
   double y = (gtk_widget_get_height (widget) - SW_H) / 2.0;
-  GdkRGBA track = neo_color (self->active ? NEO_PRIMARY : NEO_SURFACE_CONTAINER_HIGHEST);
-  GdkRGBA thumb = neo_color (self->active ? NEO_ON_PRIMARY : NEO_OUTLINE);
+  GdkRGBA track = vibeos_color (self->active ? VIBEOS_PRIMARY : VIBEOS_SURFACE_CONTAINER_HIGHEST);
+  GdkRGBA thumb = vibeos_color (self->active ? VIBEOS_ON_PRIMARY : VIBEOS_OUTLINE);
   GskRoundedRect r;
   double x = SW_INSET + self->pos * (SW_W - 2 * SW_INSET - SW_THUMB);
 
@@ -668,7 +668,7 @@ nb_switch_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 }
 
 static void
-on_switch_anim (NeoAnim *anim, double value, gpointer data)
+on_switch_anim (VibeosAnim *anim, double value, gpointer data)
 {
   NB_SWITCH (data)->pos = value;
   gtk_widget_queue_draw (GTK_WIDGET (data));
@@ -688,7 +688,7 @@ nb_switch_set_active (NbSwitch *self, gboolean active)
     return;
   self->active = active;
   if (gtk_widget_get_mapped (GTK_WIDGET (self)))
-    neo_anim_start (self->anim, self->pos, active, SW_MS, 0, SPONGY_ACCELERATE_DECELERATE);
+    vibeos_anim_start (self->anim, self->pos, active, SW_MS, 0, SPONGY_ACCELERATE_DECELERATE);
   else
     self->pos = active;
   gtk_accessible_update_state (GTK_ACCESSIBLE (self), GTK_ACCESSIBLE_STATE_CHECKED,
@@ -720,7 +720,7 @@ nb_switch_set_property (GObject *object, guint id, const GValue *value, GParamSp
 static void
 nb_switch_dispose (GObject *object)
 {
-  g_clear_pointer (&NB_SWITCH (object)->anim, neo_anim_free);
+  g_clear_pointer (&NB_SWITCH (object)->anim, vibeos_anim_free);
   G_OBJECT_CLASS (nb_switch_parent_class)->dispose (object);
 }
 
@@ -744,12 +744,12 @@ nb_switch_class_init (NbSwitchClass *klass)
 static void
 nb_switch_init (NbSwitch *self)
 {
-  self->anim = neo_anim_new (GTK_WIDGET (self), on_switch_anim, self);
+  self->anim = vibeos_anim_new (GTK_WIDGET (self), on_switch_anim, self);
   GtkGesture *click = gtk_gesture_click_new ();
   g_signal_connect (click, "released", G_CALLBACK (on_switch_released), self);
   gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (click));
-  /* a row's NeoPressable leaves a press on it to the switch */
-  g_object_set_data (G_OBJECT (self), "neo-tappable", GINT_TO_POINTER (1));
+  /* a row's VibeosPressable leaves a press on it to the switch */
+  g_object_set_data (G_OBJECT (self), "vibeos-tappable", GINT_TO_POINTER (1));
 }
 
 GtkWidget *
@@ -786,7 +786,7 @@ nb_mark_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   GskRoundedRect r;
 
   if (self->kind == NB_MARK_RADIO) {
-    GdkRGBA c = neo_color (self->active ? NEO_SECONDARY : NEO_ON_SURFACE_VARIANT);
+    GdkRGBA c = vibeos_color (self->active ? VIBEOS_SECONDARY : VIBEOS_ON_SURFACE_VARIANT);
     double cx = w / 2, cy = h / 2;
     float widths[4] = { 2, 2, 2, 2 };
     GdkRGBA colors[4] = { c, c, c, c };
@@ -803,13 +803,13 @@ nb_mark_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   double x = (w - 18) / 2, y = (h - 18) / 2;
   gsk_rounded_rect_init_from_rect (&r, &GRAPHENE_RECT_INIT (x, y, 18, 18), 2);
   if (!self->active) {
-    GdkRGBA c = neo_color (NEO_ON_SURFACE_VARIANT);
+    GdkRGBA c = vibeos_color (VIBEOS_ON_SURFACE_VARIANT);
     float widths[4] = { 2, 2, 2, 2 };
     GdkRGBA colors[4] = { c, c, c, c };
     gtk_snapshot_append_border (snapshot, &r, widths, colors);
     return;
   }
-  GdkRGBA fill = neo_color (NEO_PRIMARY), mark = neo_color (NEO_ON_PRIMARY);
+  GdkRGBA fill = vibeos_color (VIBEOS_PRIMARY), mark = vibeos_color (VIBEOS_ON_PRIMARY);
   gtk_snapshot_push_rounded_clip (snapshot, &r);
   gtk_snapshot_append_color (snapshot, &fill, &r.bounds);
   gtk_snapshot_pop (snapshot);
@@ -889,7 +889,7 @@ nb_label (const char *text, double size, const char *css, gboolean ellipsize)
   pango_attr_list_unref (attrs);
   gtk_label_set_xalign (GTK_LABEL (label), 0);
   /* font padding: the font's yMax / yMin above and below the line */
-  neo_label_set_font_padding (label, size);
+  vibeos_label_set_font_padding (label, size);
   /* centred across a row taller than it; a caller places it otherwise */
   gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
   if (ellipsize) {
@@ -904,7 +904,7 @@ nb_label (const char *text, double size, const char *css, gboolean ellipsize)
 GtkWidget *
 nb_action_button (const char *icon_name, const char *tooltip)
 {
-  GtkWidget *button = neo_icon_button_new (icon_name);
+  GtkWidget *button = vibeos_icon_button_new (icon_name);
 
   if (tooltip)
     gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, tooltip, -1);
@@ -915,7 +915,7 @@ GtkWidget *
 nb_toolbar_new (const char *title, double title_size, GCallback up, gpointer data, GtkWidget *actions)
 {
   GtkWidget *bar = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  GtkWidget *up_button = neo_icon_button_new ("jelly-back-symbolic");
+  GtkWidget *up_button = vibeos_icon_button_new ("jelly-back-symbolic");
   GtkWidget *label;
 
   gtk_widget_add_css_class (bar, "nb-toolbar");

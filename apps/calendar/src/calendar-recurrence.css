@@ -2,8 +2,8 @@
  * Loaded after calendar.css at its priority (cal-main.c); the looks' named colours come from calendar-black.css and
  * calendar-light.css over both. Text is regular weight, 700 with "Bold text" on. */
 
-.neo-dialog.cal-recur-card {             /* the dialog window */
-  background-color: @neo_surface_container;
+.vibeos-dialog.cal-recur-card {             /* the dialog window */
+  background-color: @vibeos_surface_container;
   border-radius: 2px;
 }
 
@@ -24,7 +24,7 @@
   padding: 12px;
   font-size: 15px;
   font-weight: 700;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .cal-recur-end-spinner .cal-spinner-text {
@@ -34,7 +34,7 @@
 .cal-recur .cal-spinner-text:disabled,
 .cal-recur .cal-spinner-arrow:disabled,
 .cal-recur-text:disabled {
-  color: alpha(@neo_on_surface, 0.38);
+  color: alpha(@vibeos_on_surface, 0.38);
 }
 
 .cal-recur-options {
@@ -48,7 +48,7 @@
 .cal-recur-text {
   font-size: 15px;
   font-weight: 700;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 /* the number fields: an underline a little above the field's bottom, thicker and in the primary colour with the
@@ -56,16 +56,16 @@
 .cal-recur-number {
   margin: 4px 4px 7px 4px;
   padding: 10px 0 11px 0;
-  border-bottom: 1px solid @neo_on_surface_variant;
+  border-bottom: 1px solid @vibeos_on_surface_variant;
 }
 
 .cal-recur-number:focus-within {
   padding-bottom: 10px;
-  border-bottom: 2px solid @neo_primary;
+  border-bottom: 2px solid @vibeos_primary;
 }
 
 .cal-recur-number:disabled {
-  border-bottom-color: alpha(@neo_on_surface, 0.38);
+  border-bottom-color: alpha(@vibeos_on_surface, 0.38);
 }
 
 .cal-recur-number text {
@@ -73,16 +73,16 @@
   background: none;
   font-size: 15px;
   font-weight: 700;
-  color: @neo_on_surface;
-  caret-color: @neo_primary;
+  color: @vibeos_on_surface;
+  caret-color: @vibeos_primary;
 }
 
 .cal-recur-number text:disabled {
-  color: alpha(@neo_on_surface, 0.38);
+  color: alpha(@vibeos_on_surface, 0.38);
 }
 
 .cal-recur-number text selection {
-  background-color: alpha(@neo_primary, 0.4);
+  background-color: alpha(@vibeos_primary, 0.4);
 }
 
 .cal-recur-interval-field {              /* room for two digits */
@@ -119,16 +119,16 @@
 
 .cal-recur-radio-mark {
   margin: 0 4px;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-recur-radio.checked .cal-recur-radio-mark {
-  color: @neo_primary;
+  color: @vibeos_primary;
 }
 
 .cal-recur-radio-mark:disabled,
 .cal-recur-radio.checked .cal-recur-radio-mark:disabled {
-  color: alpha(@neo_on_surface, 0.38);
+  color: alpha(@vibeos_on_surface, 0.38);
 }
 
 /* the end: the spinner, then the count or the date */
@@ -153,7 +153,7 @@
 .cal-recur-divider {
   min-height: 1px;
   margin-top: 8px;
-  background-color: alpha(@neo_on_surface, 0.12);
+  background-color: alpha(@vibeos_on_surface, 0.12);
 }
 
 .cal-recur-bar {
@@ -162,7 +162,7 @@
 
 .cal-recur-done {
   min-height: 48px;
-  color: @neo_primary;
+  color: @vibeos_primary;
 }
 
 .cal-recur-done label {
@@ -171,11 +171,11 @@
 }
 
 .cal-recur-done:disabled {
-  color: alpha(@neo_on_surface, 0.38);
+  color: alpha(@vibeos_on_surface, 0.38);
 }
 
 /* the editor's Repeat button off (a rule the dialog cannot show) */
 .cal-outlined:disabled {
-  color: alpha(@neo_on_surface, 0.38);
-  border-color: alpha(@neo_on_surface, 0.12);
+  color: alpha(@vibeos_on_surface, 0.38);
+  border-color: alpha(@vibeos_on_surface, 0.12);
 }

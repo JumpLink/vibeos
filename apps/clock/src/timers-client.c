@@ -1,9 +1,9 @@
 /* The timers' client: see timers-client.h. */
 #include "timers-client.h"
 
-#define SERVICE   "neo.Clock.Alarms"
-#define PATH      "/neo/Clock/Timers"
-#define INTERFACE "neo.Clock.Timers"
+#define SERVICE   "vibeos.Clock.Alarms"
+#define PATH      "/vibeos/Clock/Timers"
+#define INTERFACE "vibeos.Clock.Timers"
 
 struct _TimersClient
 {

@@ -1,7 +1,7 @@
 /* The browser's pages and the transitions between them (nb-navigator.h, a copy of Clock's clock-navigator.c). */
 #include "nb-navigator.h"
 
-#include <neo.h>
+#include <vibeos.h>
 
 /* the open and close transitions: a slide, and a short fade a little after it starts */
 #define SLIDE 96                /* px */
@@ -14,7 +14,7 @@ struct _NbNavigator {
   GtkWidget parent;
   GPtrArray *pages;             /* bottom first */
   GtkWidget *leaving;           /* a page on its way out (closed or replaced), drawn until the slide ends */
-  NeoAnim *anim;
+  VibeosAnim *anim;
   double progress;              /* 0 -> 1 through the transition */
   gboolean closing;             /* the transition is a close (back), else an open */
 };
@@ -65,7 +65,7 @@ static void
 sync_visibility (NbNavigator *self)
 {
   GtkWidget *top = nb_navigator_get_top (self), *under = under_top (self);
-  gboolean moving = neo_anim_is_running (self->anim);
+  gboolean moving = vibeos_anim_is_running (self->anim);
 
   for (guint i = 0; i < self->pages->len; i++)
     {
@@ -77,12 +77,12 @@ sync_visibility (NbNavigator *self)
 }
 
 static void
-on_anim (NeoAnim *anim, double value, gpointer data)
+on_anim (VibeosAnim *anim, double value, gpointer data)
 {
   NbNavigator *self = data;
 
   self->progress = value;
-  if (!neo_anim_is_running (anim))
+  if (!vibeos_anim_is_running (anim))
     {
       finish_leaving (self);
       sync_visibility (self);
@@ -96,7 +96,7 @@ start (NbNavigator *self, gboolean closing)
   self->closing = closing;
   self->progress = 0;
   sync_visibility (self);
-  neo_anim_start (self->anim, 0, 1, SLIDE_MS, 0, SPONGY_EMPHASIZED);
+  vibeos_anim_start (self->anim, 0, 1, SLIDE_MS, 0, SPONGY_EMPHASIZED);
   sync_visibility (self);
   if (nb_navigator_get_top (self))
     gtk_widget_grab_focus (nb_navigator_get_top (self));
@@ -107,7 +107,7 @@ void
 nb_navigator_push (NbNavigator *self, GtkWidget *page)
 {
   finish_leaving (self);
-  neo_anim_finish (self->anim);
+  vibeos_anim_finish (self->anim);
   g_ptr_array_add (self->pages, g_object_ref_sink (page));
   gtk_widget_set_parent (page, GTK_WIDGET (self));
   start (self, FALSE);
@@ -119,7 +119,7 @@ nb_navigator_pop (NbNavigator *self)
   if (self->pages->len < 2)
     return FALSE;
   finish_leaving (self);
-  neo_anim_finish (self->anim);
+  vibeos_anim_finish (self->anim);
   self->leaving = g_ptr_array_steal_index (self->pages, self->pages->len - 1);
   start (self, TRUE);
   return TRUE;
@@ -129,7 +129,7 @@ void
 nb_navigator_replace (NbNavigator *self, GtkWidget *page)
 {
   finish_leaving (self);
-  neo_anim_finish (self->anim);
+  vibeos_anim_finish (self->anim);
   if (self->pages->len > 1)
     self->leaving = g_ptr_array_steal_index (self->pages, self->pages->len - 1);
   g_ptr_array_add (self->pages, g_object_ref_sink (page));
@@ -179,7 +179,7 @@ nb_navigator_size_allocate (GtkWidget *widget, int width, int height, int baseli
 {
   NbNavigator *self = NB_NAVIGATOR (widget);
   GtkWidget *top = nb_navigator_get_top (self), *under = under_top (self);
-  gboolean moving = neo_anim_is_running (self->anim);
+  gboolean moving = vibeos_anim_is_running (self->anim);
   double t = self->progress;
 
   for (guint i = 0; i < self->pages->len; i++)
@@ -204,7 +204,7 @@ nb_navigator_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   NbNavigator *self = NB_NAVIGATOR (widget);
   GtkWidget *top = nb_navigator_get_top (self), *under = under_top (self);
-  gboolean moving = neo_anim_is_running (self->anim);
+  gboolean moving = vibeos_anim_is_running (self->anim);
 
   if (!moving)
     {
@@ -244,7 +244,7 @@ nb_navigator_dispose (GObject *object)
 {
   NbNavigator *self = NB_NAVIGATOR (object);
 
-  g_clear_pointer (&self->anim, neo_anim_free);
+  g_clear_pointer (&self->anim, vibeos_anim_free);
   finish_leaving (self);
   if (self->pages)
     {
@@ -274,7 +274,7 @@ static void
 nb_navigator_init (NbNavigator *self)
 {
   self->pages = g_ptr_array_new_with_free_func (g_object_unref);
-  self->anim = neo_anim_new (GTK_WIDGET (self), on_anim, self);
+  self->anim = vibeos_anim_new (GTK_WIDGET (self), on_anim, self);
   self->progress = 1;
   gtk_widget_set_overflow (GTK_WIDGET (self), GTK_OVERFLOW_HIDDEN);
 }

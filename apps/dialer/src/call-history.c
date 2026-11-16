@@ -31,7 +31,7 @@ struct _HistoryTabs
 {
   GtkWidget parent;
   GtkWidget *tabs[N_PAGES];     /* the pressables; their labels carry "selected" */
-  NeoAnim *anim;
+  VibeosAnim *anim;
   double position;              /* the underline's page: between two while the pages slide */
 };
 
@@ -65,7 +65,7 @@ history_tabs_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 }
 
 static void
-on_tabs_anim (NeoAnim *anim, double value, gpointer data)
+on_tabs_anim (VibeosAnim *anim, double value, gpointer data)
 {
   HistoryTabs *self = data;
 
@@ -79,14 +79,14 @@ history_tabs_select (HistoryTabs *self, int page)
 {
   for (int i = 0; i < N_PAGES; i++)
     {
-      GtkWidget *label = neo_pressable_get_child (NEO_PRESSABLE (self->tabs[i]));
+      GtkWidget *label = vibeos_pressable_get_child (VIBEOS_PRESSABLE (self->tabs[i]));
 
       if (i == page)
         gtk_widget_add_css_class (label, "selected");
       else
         gtk_widget_remove_css_class (label, "selected");
     }
-  neo_anim_start (self->anim, self->position, page, PAGE_MS, 0, SPONGY_DECELERATE_QUINT);
+  vibeos_anim_start (self->anim, self->position, page, PAGE_MS, 0, SPONGY_DECELERATE_QUINT);
 }
 
 static void
@@ -100,7 +100,7 @@ history_tabs_dispose (GObject *object)
 {
   HistoryTabs *self = HISTORY_TABS (object);
 
-  g_clear_pointer (&self->anim, neo_anim_free);
+  g_clear_pointer (&self->anim, vibeos_anim_free);
   for (int i = 0; i < N_PAGES; i++)
     g_clear_pointer (&self->tabs[i], gtk_widget_unparent);
   G_OBJECT_CLASS (history_tabs_parent_class)->dispose (object);
@@ -128,7 +128,7 @@ history_tabs_init (HistoryTabs *self)
   const char *titles[N_PAGES] = { _("All"), _("Missed"), _("Statistics") };
 
   gtk_widget_set_size_request (GTK_WIDGET (self), -1, TAB_HEIGHT);
-  self->anim = neo_anim_new (GTK_WIDGET (self), on_tabs_anim, self);
+  self->anim = vibeos_anim_new (GTK_WIDGET (self), on_tabs_anim, self);
   for (int i = 0; i < N_PAGES; i++)
     {
       GtkWidget *label = gtk_label_new (titles[i]);
@@ -137,15 +137,15 @@ history_tabs_init (HistoryTabs *self)
       gtk_widget_set_margin_start (label, TAB_PAD);
       gtk_widget_set_margin_end (label, TAB_PAD);
       /* a bounded ripple on each tab */
-      self->tabs[i] = neo_pressable_new (label);
-      neo_pressable_set_ripple (NEO_PRESSABLE (self->tabs[i]), NEO_RIPPLE_BOUNDED, 0);
+      self->tabs[i] = vibeos_pressable_new (label);
+      vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->tabs[i]), VIBEOS_RIPPLE_BOUNDED, 0);
       gtk_widget_set_hexpand (self->tabs[i], TRUE);
       g_object_set_data (G_OBJECT (self->tabs[i]), "page", GINT_TO_POINTER (i));
       g_signal_connect (self->tabs[i], "clicked", G_CALLBACK (on_tab_clicked), self);
       gtk_widget_set_parent (self->tabs[i], GTK_WIDGET (self));
     }
   history_tabs_select (self, PAGE_ALL);
-  neo_anim_finish (self->anim);
+  vibeos_anim_finish (self->anim);
 }
 
 /* ---- the screen ---------------------------------------------------------------------------------------------- */
@@ -216,11 +216,11 @@ on_key (GtkEventControllerKey *keys, guint keyval, guint keycode, GdkModifierTyp
 }
 
 static void
-on_clear_response (NeoDialog *dialog, int response, gpointer data)
+on_clear_response (VibeosDialog *dialog, int response, gpointer data)
 {
   /* OK: the missed-call notifications go, then every row (the service does both). The "Clearing call history…"
    * progress dialog is left out: it is one DELETE here, and would only flash */
-  if (response == NEO_RESPONSE_OK)
+  if (response == VIBEOS_RESPONSE_OK)
     calls_client_clear_call_log (calls_client_get ());
 }
 
@@ -229,13 +229,13 @@ static void
 on_clear (gpointer data)
 {
   CallHistory *self = data;
-  NeoDialog *dialog = neo_dialog_new (_("Clear call history?"));
+  VibeosDialog *dialog = vibeos_dialog_new (_("Clear call history?"));
 
-  neo_dialog_set_message (dialog, _("This will delete all calls from your history"));
-  neo_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  neo_dialog_add_button (dialog, _("OK"), NEO_RESPONSE_OK);
+  vibeos_dialog_set_message (dialog, _("This will delete all calls from your history"));
+  vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  vibeos_dialog_add_button (dialog, _("OK"), VIBEOS_RESPONSE_OK);
   g_signal_connect (dialog, "response", G_CALLBACK (on_clear_response), NULL);
-  neo_dialog_present (dialog, GTK_WIDGET (self));
+  vibeos_dialog_present (dialog, GTK_WIDGET (self));
 }
 
 static void
@@ -330,7 +330,7 @@ static GtkWidget *
 make_bar (CallHistory *self)
 {
   GtkWidget *bar = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  GtkWidget *up = neo_icon_button_new ("dialer-back-symbolic");
+  GtkWidget *up = vibeos_icon_button_new ("dialer-back-symbolic");
   GtkWidget *title = gtk_label_new (_("Call History"));
 
   gtk_widget_add_css_class (bar, "dialer-history-bar");
@@ -351,7 +351,7 @@ make_bar (CallHistory *self)
   gtk_widget_add_css_class (title, "dialer-history-title");
   gtk_box_append (GTK_BOX (bar), title);
 
-  self->overflow = neo_icon_button_new ("dialer-more-symbolic");
+  self->overflow = vibeos_icon_button_new ("dialer-more-symbolic");
   gtk_widget_set_size_request (self->overflow, OVERFLOW_WIDTH, OVERFLOW_HEIGHT);
   gtk_widget_set_valign (self->overflow, GTK_ALIGN_CENTER);
   gtk_widget_add_css_class (self->overflow, "dialer-history-icon");
@@ -364,7 +364,7 @@ make_bar (CallHistory *self)
 }
 
 GtkWidget *
-call_history_new (Contacts *contacts, NeoSnackbar *snackbar)
+call_history_new (Contacts *contacts, VibeosSnackbar *snackbar)
 {
   CallHistory *self = g_object_new (CALL_TYPE_HISTORY, NULL);
   GtkEventController *keys = gtk_event_controller_key_new ();

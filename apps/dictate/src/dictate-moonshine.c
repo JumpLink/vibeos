@@ -188,7 +188,7 @@ end (DictateStream *self, GPtrArray *finished)
 
 const DictateRecogniserClass dictate_moonshine = {
   .name = "Moonshine",
-  .package = "neo-dictate-moonshine",
+  .package = "vibeos-dictate-moonshine",
   .installed = installed,
   .load = load,
   .unload = unload,

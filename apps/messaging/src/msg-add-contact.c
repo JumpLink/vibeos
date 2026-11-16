@@ -19,16 +19,16 @@ msg_contact_can_add (const MsgPerson *person)
 }
 
 static void
-on_response (NeoDialog *dialog, int response, gpointer data)
+on_response (VibeosDialog *dialog, int response, gpointer data)
 {
-  if (response == NEO_RESPONSE_OK)
+  if (response == VIBEOS_RESPONSE_OK)
     contacts_app_insert_or_edit (GTK_WIDGET (dialog), g_object_get_data (G_OBJECT (dialog), "destination"));
 }
 
 void
 msg_contact_confirm_add (GtkWidget *from, const MsgPerson *person)
 {
-  NeoDialog *dialog = neo_dialog_new (_("Add to Contacts?"));
+  VibeosDialog *dialog = vibeos_dialog_new (_("Add to Contacts?"));
   GtkWidget *body = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *avatar = msg_avatar_new (AVATAR);
   GtkWidget *name = gtk_label_new (person->destination);
@@ -50,16 +50,16 @@ msg_contact_confirm_add (GtkWidget *from, const MsgPerson *person)
   gtk_widget_set_margin_end (body, BODY_PAD);
   gtk_widget_set_margin_top (body, BODY_PAD);
   gtk_widget_set_margin_bottom (body, BODY_PAD);
-  neo_dialog_set_content (dialog, body);
-  msg_dialog_add_button (dialog, _("Cancel"), NEO_RESPONSE_CANCEL);
-  msg_dialog_add_button (dialog, _("Add Contact"), NEO_RESPONSE_OK);
+  vibeos_dialog_set_content (dialog, body);
+  msg_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  msg_dialog_add_button (dialog, _("Add Contact"), VIBEOS_RESPONSE_OK);
   g_object_set_data_full (G_OBJECT (dialog), "destination", g_strdup (person->destination), g_free);
   g_signal_connect (dialog, "response", G_CALLBACK (on_response), NULL);
-  neo_dialog_present (dialog, from);
+  vibeos_dialog_present (dialog, from);
 }
 
 void
-msg_contact_show_or_add (GtkWidget *from, const MsgPerson *person, NeoSnackbar *snackbar)
+msg_contact_show_or_add (GtkWidget *from, const MsgPerson *person, VibeosSnackbar *snackbar)
 {
   if (!person)
     return;

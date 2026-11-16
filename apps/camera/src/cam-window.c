@@ -18,9 +18,9 @@
 
 #include <glib/gi18n.h>
 #include <math.h>
-#include <neo.h>
+#include <vibeos.h>
 
-#define APP_ID            "neo.Camera"
+#define APP_ID            "vibeos.Camera"
 #define ZOOM_MAX          8.0      /* digital: a crop of the frame */
 #define BAR_ICON          40       /* the icon scaled to the button less its padding */
 #define FLASH_SETTLE_MS   1000     /* the torch on before the frame is taken: the exposure follows it */
@@ -97,13 +97,13 @@ struct _CamView {
   /* zoom */
   double     zoom, pinch_base;
   gint64     pinch_end;
-  NeoAnim   *zoom_anim;
+  VibeosAnim   *zoom_anim;
   guint      slider_hide;
 
   /* the pro row */
   double     pro_shown;
   gboolean   pro_open;
-  NeoAnim   *pro_anim;
+  VibeosAnim   *pro_anim;
 
   /* captures */
   CamRecorder *recorder;
@@ -173,9 +173,9 @@ bar_button (CamView *self, const char *icon_name, GtkWidget **icon)
   GtkWidget *button;
 
   *icon = cam_icon_new (icon_name, BAR_ICON);
-  button = neo_pressable_new (rotator (self, *icon));
+  button = vibeos_pressable_new (rotator (self, *icon));
   gtk_widget_set_size_request (button, CAM_BAR_BUTTON, CAM_BAR_BUTTON);
-  neo_pressable_set_ripple (NEO_PRESSABLE (button), NEO_RIPPLE_CIRCLE, CAM_RIPPLE_RADIUS);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_CIRCLE, CAM_RIPPLE_RADIUS);
   return button;
 }
 
@@ -221,7 +221,7 @@ take_volume_keys (CamView *self, gboolean take)
   if (take == self->volume_keys || !bus)
     return;
   self->volume_keys = take;
-  g_dbus_connection_call (bus, "neo.GnomePhone", "/neo/GnomePhone", "neo.GnomePhone",
+  g_dbus_connection_call (bus, "vibeos.Shell", "/vibeos/Shell", "vibeos.Shell",
                           "TakeVolumeKeys", g_variant_new ("(sb)", APP_ID, take), NULL, G_DBUS_CALL_FLAGS_NONE, -1,
                           NULL, NULL, NULL);
 }
@@ -236,7 +236,7 @@ shell_has (CamView *self, const char *method)
 
   if (!bus)
     return FALSE;
-  reply = g_dbus_connection_call_sync (bus, "neo.GnomePhone", "/neo/GnomePhone",
+  reply = g_dbus_connection_call_sync (bus, "vibeos.Shell", "/vibeos/Shell",
                                        "org.freedesktop.DBus.Introspectable", "Introspect", NULL,
                                        G_VARIANT_TYPE ("(s)"), G_DBUS_CALL_FLAGS_NONE, 1000, NULL, NULL);
   if (!reply)
@@ -259,7 +259,7 @@ keep_bright (CamView *self, gboolean on)
   if (!self->bright_hook || !bus || on == self->bright_on)
     return;
   self->bright_on = on;
-  g_dbus_connection_call (bus, "neo.GnomePhone", "/neo/GnomePhone", "neo.GnomePhone",
+  g_dbus_connection_call (bus, "vibeos.Shell", "/vibeos/Shell", "vibeos.Shell",
                           "KeepScreenBright", g_variant_new ("(sb)", APP_ID, on), NULL, G_DBUS_CALL_FLAGS_NONE, -1,
                           NULL, NULL, NULL);
 }
@@ -377,7 +377,7 @@ on_torch_help_ok (gpointer data)
 }
 
 static void
-on_flash_clicked (NeoPressable *button, CamView *self)
+on_flash_clicked (VibeosPressable *button, CamView *self)
 {
   CamFlash *flash = mode_flash (self);
 
@@ -403,19 +403,19 @@ on_flash_clicked (NeoPressable *button, CamView *self)
   update_flash (self);
   if (self->mode == CAM_MODE_PHOTO && has_led (self)
       && !g_settings_get_boolean (self->settings, "force-torch-help-shown"))
-    neo_snackbar_show (NEO_SNACKBAR (self->snackbar),
+    vibeos_snackbar_show (VIBEOS_SNACKBAR (self->snackbar),
                        _("On photo mode, you can long press the flash button to switch into torch mode."), _("OK"),
                        on_torch_help_ok, self, INDEFINITE);
 }
 
 static void
-on_flash_long_pressed (NeoPressable *button, CamView *self)
+on_flash_long_pressed (VibeosPressable *button, CamView *self)
 {
   if (self->mode != CAM_MODE_PHOTO || !has_led (self) || self->state != ST_IDLE)
     return;
   self->force_torch = !self->force_torch;
   g_settings_set_boolean (self->settings, "force-torch-help-shown", TRUE);
-  neo_snackbar_dismiss (NEO_SNACKBAR (self->snackbar));
+  vibeos_snackbar_dismiss (VIBEOS_SNACKBAR (self->snackbar));
   update_flash (self);
 }
 
@@ -451,7 +451,7 @@ apply_zoom (CamView *self, double ratio, gboolean show_slider)
 }
 
 static void
-on_zoom_anim (NeoAnim *anim, double value, gpointer data)
+on_zoom_anim (VibeosAnim *anim, double value, gpointer data)
 {
   apply_zoom (CAM_VIEW (data), value, TRUE);
 }
@@ -460,14 +460,14 @@ static void
 smooth_zoom (CamView *self, double ratio)
 {
   /* from the current ratio, 300 ms accelerate-decelerate */
-  neo_anim_start (self->zoom_anim, self->zoom, CLAMP (ratio, 1, ZOOM_MAX), CAM_MS_DEFAULT, 0,
+  vibeos_anim_start (self->zoom_anim, self->zoom, CLAMP (ratio, 1, ZOOM_MAX), CAM_MS_DEFAULT, 0,
                   SPONGY_ACCELERATE_DECELERATE);
 }
 
 static void
 zoom_step (CamView *self, int direction)
 {
-  double target = neo_anim_is_running (self->zoom_anim) ? neo_anim_get_to (self->zoom_anim) : self->zoom;
+  double target = vibeos_anim_is_running (self->zoom_anim) ? vibeos_anim_get_to (self->zoom_anim) : self->zoom;
   double power = direction > 0 ? floor (log2 (target) + 1e-6) + 1 : ceil (log2 (target) - 1e-6) - 1;
 
   /* the next or previous power of two */
@@ -477,14 +477,14 @@ zoom_step (CamView *self, int direction)
 static void
 on_slider_changed (CamZoomSlider *slider, double progress, CamView *self)
 {
-  neo_anim_stop (self->zoom_anim);
+  vibeos_anim_stop (self->zoom_anim);
   apply_zoom (self, zoom_ratio (progress), TRUE);
 }
 
 static void
 on_pinch_begin (CamViewfinder *viewfinder, CamView *self)
 {
-  neo_anim_stop (self->zoom_anim);
+  vibeos_anim_stop (self->zoom_anim);
   self->pinch_base = self->zoom;
 }
 
@@ -565,7 +565,7 @@ update_lenses (CamView *self)
 /* ---- the pro row ----------------------------------------------------------------------------------------------- */
 
 static void
-on_pro_anim (NeoAnim *anim, double value, gpointer data)
+on_pro_anim (VibeosAnim *anim, double value, gpointer data)
 {
   CamView *self = data;
 
@@ -582,7 +582,7 @@ slide_pro (CamView *self, gboolean open)
     return;
   self->pro_open = open;
   /* slide up 250 ms, down 200 ms, both accelerate-decelerate, with the alpha */
-  neo_anim_start (self->pro_anim, self->pro_shown, open ? 1 : 0, open ? CAM_MS_SLIDE_UP : CAM_MS_SLIDE_DOWN, 0,
+  vibeos_anim_start (self->pro_anim, self->pro_shown, open ? 1 : 0, open ? CAM_MS_SLIDE_UP : CAM_MS_SLIDE_DOWN, 0,
                   SPONGY_ACCELERATE_DECELERATE);
 }
 
@@ -614,9 +614,9 @@ pro_button (CamView *self, ProButton *pro, GtkWidget *row, GCallback clicked)
   gtk_box_append (GTK_BOX (box), pro->label);
   gtk_widget_set_size_request (box, CAM_PRO_BUTTON_W, -1);
   pro->rotator = rotator (self, box);
-  pro->button = neo_pressable_new (pro->rotator);
+  pro->button = vibeos_pressable_new (pro->rotator);
   /* borderless: half the 96 × 68⅓ px button's diagonal */
-  neo_pressable_set_ripple (NEO_PRESSABLE (pro->button), NEO_RIPPLE_CIRCLE,
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (pro->button), VIBEOS_RIPPLE_CIRCLE,
                             hypot (CAM_PRO_BUTTON_W, CAM_PRO_ROW_H - 2 * CAM_PRO_ROW_PAD_V) / 2);
   gtk_widget_set_valign (pro->button, GTK_ALIGN_START);
   g_signal_connect (pro->button, "clicked", clicked, self);
@@ -687,7 +687,7 @@ update_pro_row (CamView *self)
 }
 
 static void
-on_aspect (NeoPressable *button, CamView *self)
+on_aspect (VibeosPressable *button, CamView *self)
 {
   self->wide = !self->wide;
   g_settings_set_string (self->settings, "aspect-ratio", self->wide ? "16:9" : "4:3");
@@ -696,7 +696,7 @@ on_aspect (NeoPressable *button, CamView *self)
 }
 
 static void
-on_quality (NeoPressable *button, CamView *self)
+on_quality (VibeosPressable *button, CamView *self)
 {
   int next = self->quality == 1080 ? 720 : 1080;
 
@@ -709,7 +709,7 @@ on_quality (NeoPressable *button, CamView *self)
 }
 
 static void
-on_nothing (NeoPressable *button, CamView *self)
+on_nothing (VibeosPressable *button, CamView *self)
 {
 }
 
@@ -731,7 +731,7 @@ update_island (CamView *self)
 }
 
 static void
-on_mic (NeoPressable *button, CamView *self)
+on_mic (VibeosPressable *button, CamView *self)
 {
   self->mic = !self->mic;
   g_settings_set_boolean (self->settings, "last-mic-mode", self->mic);
@@ -742,7 +742,7 @@ on_mic (NeoPressable *button, CamView *self)
 }
 
 static void
-on_timer (NeoPressable *button, CamView *self)
+on_timer (VibeosPressable *button, CamView *self)
 {
   self->timer = self->timer == 0 ? 3 : self->timer == 3 ? 10 : 0;
   g_settings_set_int (self->settings, "timer-mode", self->timer);
@@ -758,7 +758,7 @@ apply_grid (CamView *self)
 }
 
 static void
-on_grid (NeoPressable *button, CamView *self)
+on_grid (VibeosPressable *button, CamView *self)
 {
   static const char *const names[] = { "off", "3x3", "4x4", "golden" };
 
@@ -780,7 +780,7 @@ on_settings_closed (CamSettings *page, CamView *self)
 }
 
 static void
-on_settings (NeoPressable *button, CamView *self)
+on_settings (VibeosPressable *button, CamView *self)
 {
   slide_pro (self, FALSE);
   self->in_settings = TRUE;
@@ -794,7 +794,7 @@ on_settings (NeoPressable *button, CamView *self)
 }
 
 static void
-on_pro (NeoPressable *button, CamView *self)
+on_pro (VibeosPressable *button, CamView *self)
 {
   slide_pro (self, !self->pro_open);
 }
@@ -989,7 +989,7 @@ bind_camera (CamView *self)
   self->bound_w = width;
   self->bound_h = height;
   /* a new binding starts at 1× (the zoom belongs to the camera bound) */
-  neo_anim_stop (self->zoom_anim);
+  vibeos_anim_stop (self->zoom_anim);
   apply_zoom (self, 1, FALSE);
   cam_pipeline_set_scanning (self->pipeline, FALSE);
   g_message ("camera: %s (%s) at %d×%d", self->camera->id, facing_name (self->camera->facing), width, height);
@@ -1092,7 +1092,7 @@ set_mode (CamView *self, CamMode mode, gboolean animate)
   g_settings_set_string (self->settings, "last-camera-mode", names[mode]);
   cam_mode_selector_set_mode (CAM_MODE_SELECTOR (self->modes), mode, animate);
   slide_pro (self, FALSE);
-  neo_snackbar_dismiss (NEO_SNACKBAR (self->snackbar));
+  vibeos_snackbar_dismiss (VIBEOS_SNACKBAR (self->snackbar));
   if (mode != CAM_MODE_PHOTO)
     self->force_torch = FALSE;
   self->scan_flash = FLASH_OFF;
@@ -1507,7 +1507,7 @@ on_thermal (CamSensors *sensors, GParamSpec *pspec, CamView *self)
     default:
       return;
     }
-  neo_snackbar_show (NEO_SNACKBAR (self->snackbar), text, _("OK"), on_thermal_ok, self, INDEFINITE);
+  vibeos_snackbar_show (VIBEOS_SNACKBAR (self->snackbar), text, _("OK"), on_thermal_ok, self, INDEFINITE);
   if (thermal >= CAM_THERMAL_EMERGENCY)
     {
       /* the app closes (a recording is finished first, by sync_running) */
@@ -1836,7 +1836,7 @@ cam_view_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   CamView *self = CAM_VIEW (widget);
   int width = gtk_widget_get_width (widget), height = gtk_widget_get_height (widget);
   int vf_h = viewfinder_height (height);
-  GdkRGBA black = CAM_C (0), divider = neo_color (NEO_OUTLINE_VARIANT);
+  GdkRGBA black = CAM_C (0), divider = vibeos_color (VIBEOS_OUTLINE_VARIANT);
 
   if (!self->viewfinder)
     {
@@ -1939,8 +1939,8 @@ cam_view_dispose (GObject *object)
   g_clear_handle_id (&self->duration_timer, g_source_remove);
   g_clear_handle_id (&self->start_timer, g_source_remove);
   g_clear_handle_id (&self->flash_timer, g_source_remove);
-  g_clear_pointer (&self->zoom_anim, neo_anim_free);
-  g_clear_pointer (&self->pro_anim, neo_anim_free);
+  g_clear_pointer (&self->zoom_anim, vibeos_anim_free);
+  g_clear_pointer (&self->pro_anim, vibeos_anim_free);
   while ((child = gtk_widget_get_first_child (GTK_WIDGET (self))))
     gtk_widget_unparent (child);
   g_clear_object (&self->cancel);
@@ -2068,7 +2068,7 @@ build (CamView *self)
   g_signal_connect (self->modes, "mode-chosen", G_CALLBACK (on_mode_chosen), self);
 
   /* the snackbar over the viewfinder's bottom, above the secondary bar */
-  self->snackbar = neo_snackbar_new ();
+  self->snackbar = vibeos_snackbar_new ();
   gtk_widget_add_css_class (self->snackbar, "cam-snackbar");
   gtk_widget_set_parent (self->snackbar, widget);
 
@@ -2077,8 +2077,8 @@ build (CamView *self)
   gtk_widget_set_parent (self->settings_page, widget);
   g_signal_connect (self->settings_page, "closed", G_CALLBACK (on_settings_closed), self);
 
-  self->zoom_anim = neo_anim_new (widget, on_zoom_anim, self);
-  self->pro_anim = neo_anim_new (widget, on_pro_anim, self);
+  self->zoom_anim = vibeos_anim_new (widget, on_zoom_anim, self);
+  self->pro_anim = vibeos_anim_new (widget, on_pro_anim, self);
 }
 
 static CamGrid
@@ -2191,7 +2191,7 @@ on_ask_location (gpointer data)
 GtkWindow *
 cam_window_new (GtkApplication *app)
 {
-  GtkWindow *window = GTK_WINDOW (neo_window_new (app));
+  GtkWindow *window = GTK_WINDOW (vibeos_window_new (app));
   CamView *self = g_object_new (CAM_TYPE_VIEW, NULL);
   g_autoptr(GError) error = NULL;
   GtkOverlay *overlay;
@@ -2210,8 +2210,8 @@ cam_window_new (GtkApplication *app)
   self->storage = cam_storage_new ();
   self->bright_hook = shell_has (self, "KeepScreenBright");
   gtk_window_set_title (window, _("Camera"));
-  neo_window_set_content (window, GTK_WIDGET (self));
-  overlay = neo_window_get_overlay (GTK_WIDGET (window));
+  vibeos_window_set_content (window, GTK_WIDGET (self));
+  overlay = vibeos_window_get_overlay (GTK_WIDGET (window));
   gtk_widget_add_css_class (GTK_WIDGET (window), "cam-window");
 
   /* the screen flash and the toast over everything */
@@ -2280,8 +2280,8 @@ cam_window_new (GtkApplication *app)
 void
 cam_window_volume_key (GtkWindow *window, int direction)
 {
-  GtkWidget *content = neo_window_get_overlay (GTK_WIDGET (window))
-                       ? gtk_overlay_get_child (neo_window_get_overlay (GTK_WIDGET (window))) : NULL;
+  GtkWidget *content = vibeos_window_get_overlay (GTK_WIDGET (window))
+                       ? gtk_overlay_get_child (vibeos_window_get_overlay (GTK_WIDGET (window))) : NULL;
 
   if (content && CAM_IS_VIEW (content))
     volume_key (CAM_VIEW (content), direction);

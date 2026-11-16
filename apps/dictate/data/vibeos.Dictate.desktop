@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Dictate
+Comment=Speech to text, recognised on the phone
+Exec=vibeos-dictate
+Icon=vibeos.Dictate
+Terminal=false
+StartupNotify=false
+DBusActivatable=true
+Categories=Utility;Accessibility;GTK;
+Keywords=Dictation;Speech;Voice;Transcribe;Microphone;Text;
+X-Purism-FormFactor=Workstation;Mobile;

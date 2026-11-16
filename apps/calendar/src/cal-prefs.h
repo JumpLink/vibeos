@@ -11,7 +11,7 @@
 #include "cal-compat-switch.h"
 
 #include <gtk/gtk.h>
-#include <neo.h>
+#include <vibeos.h>
 
 G_BEGIN_DECLS
 
@@ -34,7 +34,7 @@ GtkWidget *cal_pref_page        (GtkWidget *window, const char *title, GtkWidget
 /* a switch row: the row toggles it; its summary label is the row's "cal-pref-summary" data */
 GtkWidget *cal_pref_switch      (GSettings *settings, const char *key, const char *title);
 /* a "clicked" handler for a row whose end widget is @toggle */
-void       cal_pref_toggle_row  (NeoPressable *row, CalCompatSwitch *toggle);
+void       cal_pref_toggle_row  (VibeosPressable *row, CalCompatSwitch *toggle);
 
 typedef struct _CalListPref CalListPref;
 typedef void (*CalListChanged) (CalListPref *list, gpointer data);

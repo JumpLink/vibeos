@@ -7,8 +7,8 @@
 
 /* --- the time zone picker */
 
-.neo-dialog.cal-tz-card {
-  background-color: @neo_surface_container;
+.vibeos-dialog.cal-tz-card {
+  background-color: @vibeos_surface_container;
   border-radius: 2px;
 }
 
@@ -22,13 +22,13 @@
   background: none;
   font-size: 18px;
   font-weight: 700;
-  color: @neo_on_surface;
-  caret-color: @neo_primary;
+  color: @vibeos_on_surface;
+  caret-color: @vibeos_primary;
 }
 
 .cal-tz-clear {                           /* the clear button */
   padding: 8px;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-tz-item {                            /* a zone's row */
@@ -38,23 +38,23 @@
 .cal-tz-name {
   font-size: 18px;
   font-weight: 700;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-tz-offset {
   font-size: 14px;
   font-weight: 700;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .cal-tz-location {
   font-size: 14px;
   font-weight: 700;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-tz-row + .cal-tz-row {               /* a hairline between the rows */
-  border-top: 1px solid alpha(@neo_on_surface, 0.12);
+  border-top: 1px solid alpha(@vibeos_on_surface, 0.12);
 }
 
 .cal-tz-empty {                           /* the row shown when nothing matches */
@@ -64,11 +64,11 @@
 .cal-tz-empty-text {                      /* "No results found" */
   font-size: 16px;
   font-weight: 700;
-  color: @neo_on_surface;
+  color: @vibeos_on_surface;
 }
 
 .cal-tz-dropdown {                        /* the suggestions' drop-down, under the field and as wide */
-  background-color: @neo_surface_container;
+  background-color: @vibeos_surface_container;
   border-radius: 4px;
   box-shadow: 0 3px 8px alpha(black, 0.35);
 }
@@ -81,7 +81,7 @@
 .cal-tz-suggestion label {
   font-size: 18px;
   font-weight: 700;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 /* --- the date picker's text input mode */
@@ -90,7 +90,7 @@
   min-width: 48px;
   min-height: 48px;
   margin-bottom: 8px;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-date-input {
@@ -106,12 +106,12 @@
   background: none;
   font-size: 16px;
   font-weight: 700;
-  color: @neo_on_surface;
-  caret-color: @neo_primary;
+  color: @vibeos_on_surface;
+  caret-color: @vibeos_primary;
 }
 
 .cal-date-field text placeholder {
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-date-field.error text {
@@ -125,8 +125,8 @@
   color: @cal_error;
 }
 
-.cal-date-card .neo-text-button:disabled { /* OK with no day chosen */
-  color: alpha(@neo_on_surface, 0.38);
+.cal-date-card .vibeos-text-button:disabled { /* OK with no day chosen */
+  color: alpha(@vibeos_on_surface, 0.38);
 }
 
 /* --- the time picker's keyboard mode and 12-hour clock */
@@ -135,7 +135,7 @@
   padding-bottom: 24px;
 }
 
-.cal-time-card .neo-text-button {         /* Cancel and OK just under the keyboard button's top */
+.cal-time-card .vibeos-text-button {         /* Cancel and OK just under the keyboard button's top */
   margin-top: 2px;
 }
 
@@ -143,7 +143,7 @@
   min-width: 48px;
   min-height: 48px;
   margin-left: 4px;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-time-input {                         /* the typed-time row, under the title */
@@ -159,14 +159,14 @@
   background: none;
   font-size: 56px;
   font-weight: 700;
-  color: @neo_on_surface;
-  caret-color: @neo_primary;
+  color: @vibeos_on_surface;
+  caret-color: @vibeos_primary;
 }
 
 .cal-time-input-label {                   /* "Hour", "Minute" */
   font-size: 12px;
   font-weight: 700;
-  color: @neo_on_surface_variant;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-time-display-period,
@@ -179,19 +179,19 @@
 }
 
 .cal-time-period {                        /* the AM/PM toggle group */
-  border: 1px solid @neo_outline;
+  border: 1px solid @vibeos_outline;
   border-radius: 8px;
 }
 
 .cal-time-period-button {
-  background-color: @neo_surface;
-  color: @neo_on_surface_variant;
+  background-color: @vibeos_surface;
+  color: @vibeos_on_surface_variant;
   font-size: 16px;
   font-weight: 800;
 }
 
 .cal-time-period-button + .cal-time-period-button {
-  border-top: 1px solid @neo_outline;
+  border-top: 1px solid @vibeos_outline;
 }
 
 .cal-time-period-button.checked {

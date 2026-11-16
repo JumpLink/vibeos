@@ -31,7 +31,7 @@ static const char schema[] =
 static char *
 default_path (void)
 {
-  return g_build_filename (g_get_user_data_dir (), "neo-phone", "blocked_numbers.db", NULL);
+  return g_build_filename (g_get_user_data_dir (), "vibeos-phone", "blocked_numbers.db", NULL);
 }
 
 /* --- reading */
