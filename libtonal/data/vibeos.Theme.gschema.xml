@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The system's colours: a seed colour, a style and a contrast level, from which every app computes its light and
+     dark schemes. Light or dark is org.gnome.desktop.interface color-scheme. -->
+<schemalist>
+  <schema id="vibeos.Theme" path="/vibeos/Theme/">
+    <key name="source" type="s">
+      <choices><choice value="wallpaper"/><choice value="preset"/></choices>
+      <default>"wallpaper"</default>
+      <summary>Where the seed comes from</summary>
+      <description>"wallpaper": the seed is the wallpaper's main colour (vibeos-theme --wallpaper sets it when the
+        wallpaper changes); "preset": the seed was picked by hand.</description>
+    </key>
+    <key name="seed" type="u">
+      <default>0x007c88</default>
+      <summary>The seed colour, 0xRRGGBB</summary>
+      <description>Every colour of the theme is computed from it. The default teal gives the colours the VibeOS apps
+        were drawn in before they had a theme.</description>
+    </key>
+    <key name="style" type="s">
+      <choices>
+        <choice value="tonal-spot"/><choice value="neutral"/><choice value="vibrant"/><choice value="expressive"/>
+        <choice value="fidelity"/><choice value="content"/><choice value="monochrome"/><choice value="rainbow"/>
+        <choice value="fruit-salad"/>
+      </choices>
+      <default>"tonal-spot"</default>
+      <summary>How the seed becomes palettes</summary>
+      <description>"tonal-spot" is calm and close to the seed; "neutral" nearly grey; "vibrant" and "expressive"
+        colourful, the latter with shifted hues; "fidelity" and "content" keep the seed's own chroma;
+        "monochrome" is grey; "rainbow" and "fruit-salad" are playful.</description>
+    </key>
+    <key name="contrast" type="d">
+      <range min="-1" max="1"/>
+      <default>0</default>
+      <summary>Contrast level: 0 standard, 0.5 medium, 1 high (below 0, less than standard)</summary>
+    </key>
+    <key name="pure-black" type="b">
+      <default>false</default>
+      <summary>In dark mode, black backgrounds instead of the scheme's near-black</summary>
+    </key>
+
+    <!-- What vibeos-theme --apply computes from the keys above, for programs that do not compute it themselves -->
+    <key name="light-roles" type="a{su}">
+      <default>{}</default>
+      <summary>The light scheme: each role's colour (0xAARRGGBB) by its name ("primary", "on_surface", ...)</summary>
+    </key>
+    <key name="dark-roles" type="a{su}">
+      <default>{}</default>
+      <summary>The dark scheme, as light-roles</summary>
+    </key>
+    <key name="light-palettes" type="a{sau}">
+      <default>{}</default>
+      <summary>The tonal palettes in light mode: "accent1", "accent2", "accent3", "neutral1", "neutral2" and
+        "error", each the colours of stops 0, 10, 50, 100, 200 ... 900 and 1000 (tones 100, 99, 95, 90, 80 ... 10
+        and 0)</summary>
+    </key>
+    <key name="dark-palettes" type="a{sau}">
+      <default>{}</default>
+      <summary>The tonal palettes in dark mode, as light-palettes (the primary palette is less colourful in
+        dark)</summary>
+    </key>
+  </schema>
+</schemalist>
