@@ -21,8 +21,9 @@ vibeos (1:0.1.1) unstable; urgency=medium
     address's font.
   * Text fields: the cursor's handle is in the accent colour and goes away
     as you type.
-  * VibeOS icons: Font Awesome Free's phone and comment glyphs for Phone and
-    Messages (CC BY 4.0), a black circle for the video player, and a console
+  * VibeOS icons: Font Awesome Free's phone, comment and camera glyphs for
+    Phone, Messages and Camera (CC BY 4.0; the camera white with a black
+    lens on dark red), a black circle for the video player, and a console
     icon of its own.
   * Tools: widget dumps, vibeos-gallery and vibeos-specdiff, to measure the
     layouts; vibeos-headless runs without the mutter package.

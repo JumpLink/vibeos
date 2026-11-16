@@ -11,6 +11,7 @@
 import json
 import math
 import os
+import re
 import sys
 
 import cairo
@@ -32,15 +33,17 @@ SHADOW = (3 / 192, 0.5 / 192, 0.22)   # the tile's drop shadow: offset down and 
 SCALE = 0.70      # an app the pack does not draw sits on the backplate at this share of the canvas
 WHITE = "#FFFFFF"
 
-# drawable: (glyph, background, glyph colour). The background is a colour, (top, bottom) for a vertical gradient, or
-# (top-left, bottom-right, "diagonal"). The colours are those of the H2O pack's icon for the same app (named in the
+# drawable: (glyph, background, glyph colour[, lens]). The background is a colour, (top, bottom) for a vertical
+# gradient, or (top-left, bottom-right, "diagonal"). A lens, (colour, cx, cy, r) in the glyph's own units, is a disc
+# drawn under the glyph: it fills a round hole in it (the camera's lens) a colour of its own. The colours are those of the H2O pack's icon for the same app (named in the
 # comment), measured; "no H2O" marks the two apps H2O has no icon for.
 ICONS = {
     "phone":      ("fa/phone",          "#51D392",                           WHITE),      # phone
     "messaging":  ("fa/comment",        ("#08CBDD", "#0B93E1"),              WHITE),      # messages
     "contacts":   ("person",            "#008BFF",                           WHITE),      # contacts
     "browser":    ("public",            ("#41BFFA", "#1895F7", "diagonal"),  WHITE),      # browser
-    "camera":     ("photo_camera",      "#EBEBED",                           "#1D2D47"),  # camera
+    "camera":     ("fa/camera",         "#B71C1C",                           WHITE,       # our own: dark red,
+                   ("#000000", 256, 288, 97)),                                                # a black lens
     "calendar":   ("calendar_month",    WHITE,                               "#1E88E5"),  # calendar
     "clock":      ("schedule",          WHITE,                               "#454444"),  # clock
     "compass":    ("explore",           "#243048",                           WHITE),      # h2o_compass
@@ -152,9 +155,9 @@ def _rect(x, y, w, h):
     return r
 
 
-def glyph(name, colour):
+def glyph(name, colour, lens=None):
     """the glyph in its colour, its 48-unit box EM of the tile and centred on it (a Font Awesome or own glyph's box
-    FA_EM of that)"""
+    FA_EM of that), over its lens if it has one"""
     size = PX * TILE * EM
     if name.startswith("fa/") or name.startswith("own/"):
         folder, base = name.split("/", 1)
@@ -168,19 +171,28 @@ def glyph(name, colour):
     s = cairo.ImageSurface(cairo.FORMAT_ARGB32, PX, PX)
     cr = cairo.Context(s)
     off = (PX - size) / 2
+    if lens:
+        # the view box is fitted into the box, centred, as render_document () does
+        lc, cx, cy, r = lens
+        vx, vy, vw, vh = (float(v) for v in re.search(r'viewBox="([^"]+)"', svg).group(1).replace(",", " ").split())
+        unit = size / max(vw, vh)
+        x0, y0 = off + (size - vw * unit) / 2 - vx * unit, off + (size - vh * unit) / 2 - vy * unit
+        cr.arc(x0 + cx * unit, y0 + cy * unit, r * unit, 0, 2 * math.pi)
+        cr.set_source_rgb(*rgb(lc))
+        cr.fill()
     h.render_document(cr, _rect(off, off, size, size))
     return to_pil(s)
 
 
-def icon(glyph_name, bg, fg):
+def icon(glyph_name, bg, fg, lens=None):
     im = tile(bg)
-    im.alpha_composite(glyph(glyph_name, fg))   # the glyph's box lies well inside the tile: nothing to clip
+    im.alpha_composite(glyph(glyph_name, fg, lens))   # the glyph's box lies well inside the tile: nothing to clip
     return im
 
 
 os.makedirs(os.path.join(OUT, "icons"), exist_ok=True)
-for name, (g, bg, fg) in ICONS.items():
-    icon(g, bg, fg).save(os.path.join(OUT, "icons", name + ".png"), optimize=True)
+for name, (g, bg, fg, *lens) in ICONS.items():
+    icon(g, bg, fg, *lens).save(os.path.join(OUT, "icons", name + ".png"), optimize=True)
 # the backplate for apps the pack does not draw: the tile, white
 tile(WHITE).save(os.path.join(OUT, "icons", "iconback.png"), optimize=True)
 
