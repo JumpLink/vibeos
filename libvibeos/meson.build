@@ -8,6 +8,7 @@ libm = meson.get_compiler('c').find_library('m')
 gtk4 = dependency('gtk4', version: '>= 4.14')
 spongy_dep = dependency('spongy-1')
 spongy_gtk_dep = dependency('spongy-gtk-1')
+tonal_dep = dependency('tonal-1')
 
 gnome = import('gnome')
 vibeos_resources = gnome.compile_resources('vibeos-resources', 'vibeos.gresource.xml', c_name: 'vibeos')
@@ -35,7 +36,7 @@ vibeos_lib = shared_library('vibeos-1',
   'vibeos-dialog.c',
   'vibeos-time-picker.c',
   vibeos_resources,
-  dependencies: [gtk4, libm, spongy_dep, spongy_gtk_dep],
+  dependencies: [gtk4, libm, spongy_dep, spongy_gtk_dep, tonal_dep],
   version: '0.1.0',
   install: true)
 vibeos_dep = declare_dependency(link_with: vibeos_lib, include_directories: include_directories('.'),
@@ -47,3 +48,6 @@ import('pkgconfig').generate(vibeos_lib, name: 'vibeos-1', subdirs: 'vibeos-1', 
 # Roboto as Android ships it (variable: weight 100-900, width 75-100), under its own family name so that the
 # system's static Roboto cut can never stand in for it
 install_data('fonts/VibeosRoboto.ttf', install_dir: get_option('datadir') / 'fonts' / 'vibeos')
+
+# the theme without a display: its colours from vibeos.Theme, light and dark, and without the schema
+subdir('tests')

@@ -1,0 +1,50 @@
+.TH VIBEOS-THEME 1 "2026-11-16" "vibeos 0.1.0" "VibeOS"
+.SH NAME
+vibeos-theme \- the system's colours from a seed colour or a wallpaper
+.SH SYNOPSIS
+.B vibeos-theme
+.RB [ \-\-seed\ #RRGGBB | \-\-wallpaper\ FILE ]
+.RB [ \-\-style\ STYLE ]
+.RB [ \-\-contrast\ LEVEL ]
+.RB [ \-\-pure\-black | \-\-no\-pure\-black ]
+.RB [ \-\-print ]
+.RB [ \-\-apply ]
+.SH DESCRIPTION
+Computes Material 3's light and dark colour schemes and its five tonal palettes from one seed colour, as Android computes its system colours, and prints them or stores them in the vibeos.Theme settings. The VibeOS apps compute the same colours from vibeos.Theme's seed, style and contrast, and follow every change to them, and to org.gnome.desktop.interface color-scheme (light or dark), without a restart.
+.PP
+Without
+.B \-\-seed
+or
+.BR \-\-wallpaper ,
+the seed, style, contrast and pure-black setting are vibeos.Theme's; each option replaces one of them.
+.SH OPTIONS
+.TP
+.BI \-\-seed " #RRGGBB"
+The seed colour.
+.TP
+.BI \-\-wallpaper " FILE"
+Takes the seed from an image: its colours are quantized and the best one for a theme is the seed. With
+.B \-\-print
+(or without
+.BR \-\-apply )
+the candidates are listed, best first.
+.TP
+.BI \-\-style " STYLE"
+tonal-spot (the default), neutral, vibrant, expressive, fidelity, content, monochrome, rainbow or fruit-salad.
+.TP
+.BI \-\-contrast " LEVEL"
+From \-1 to 1: 0 is standard, 0.5 medium and 1 high contrast.
+.TP
+.BR \-\-pure\-black ", " \-\-no\-pure\-black
+Black backgrounds in dark mode, or the scheme's own near-black.
+.TP
+.B \-\-print
+Prints every role in light and dark, and the palettes' stops in each mode. The default without
+.BR \-\-apply .
+.TP
+.B \-\-apply
+Stores the seed (and its source: the wallpaper or a preset), the style, the contrast, the pure-black setting and the computed colours in vibeos.Theme.
+.SH ENVIRONMENT
+The apps take VIBEOS_COLOR_SCHEME (light or dark), VIBEOS_SEED and VIBEOS_CONTRAST over the settings, for tests.
+.SH SEE ALSO
+gsettings(1)

@@ -77,6 +77,19 @@ License: SGI-HP-CRCalc
  PURPOSE OR NON-INFRINGING. (The full notice, as the calculator shows it, is
  in apps/calculator/data/licenses.html.)
 
+Files: libtonal/*
+Copyright: 2021-2025 Google LLC
+           2026 pulpoff <pashkovsky@gmail.com>
+License: Apache-2.0
+Comment:
+ NOTICE: libtonal is a port to C of Google's Material Color Utilities
+ (https://github.com/material-foundation/material-color-utilities, Java
+ sources as of 194144d75ed7, Copyright 2021-2025 Google LLC, Apache-2.0):
+ HCT and CAM16, tonal palettes, the dynamic schemes with their variants and
+ contrast levels, the Wu and weighted k-means quantizers and Score. The
+ upstream project ships no NOTICE file. Each libtonal source file carries an
+ SPDX Apache-2.0 header; the C port is under the same licence.
+
 Files: libvibeos/fonts/VibeosRoboto.ttf
 Copyright: 2011 The Roboto Project Authors (https://github.com/googlefonts/roboto-classic)
 License: OFL-1.1

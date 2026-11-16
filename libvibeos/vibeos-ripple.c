@@ -1,5 +1,6 @@
 /* vibeos-ripple: see vibeos-ripple.h. */
 #include "vibeos-ripple.h"
+#include "vibeos-style.h"
 
 #include <math.h>
 #include <string.h>
@@ -158,5 +159,8 @@ vibeos_ripple_snapshot (VibeosRipple *ripple, GtkSnapshot *snapshot, const graph
 GdkRGBA
 vibeos_ripple_default_color (void)
 {
-  return (GdkRGBA) { 1, 1, 1, 0.2f / 2 };
+  /* white on dark, black on light, each at half the highlight's alpha */
+  if (vibeos_theme_get_dark (vibeos_theme_get_default ()))
+    return (GdkRGBA) { 1, 1, 1, 0.2f / 2 };
+  return (GdkRGBA) { 0, 0, 0, 0.12f / 2 };
 }

@@ -45,8 +45,8 @@ gboolean vibeos_ripple_is_active (VibeosRipple *ripple);
 void     vibeos_ripple_snapshot (VibeosRipple *ripple, GtkSnapshot *snapshot, const graphene_rect_t *bounds,
                               const GdkRGBA *color);
 
-/* The default ripple colour: a translucent white, halved so that ripple and
- * background together reach the full alpha. */
+/* The default ripple colour: a translucent white in dark mode, black in light mode, halved so that ripple and
+ * background together reach the full alpha. It follows the theme: read it as you draw. */
 GdkRGBA  vibeos_ripple_default_color (void);
 
 G_END_DECLS

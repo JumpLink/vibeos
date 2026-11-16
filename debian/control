@@ -165,6 +165,9 @@ Description: VibeOS system helpers
     screen over from the names VibeOS had as gnome-phone (up to 0.1.11) to
     the vibeos ones, once, as the user's session starts (a systemd user
     unit).
+  * vibeos-theme computes the system's colours from a seed colour or the
+    wallpaper and stores them in vibeos.Theme (whose schema is here), which
+    the apps follow, light or dark.
 
 Package: sim-apn
 Architecture: all
@@ -253,6 +256,33 @@ Description: Android scroll physics (stretch overscroll, fling) - development fi
  .
  This package contains the headers, the pkg-config files and the GIR XML.
 
+Package: libtonal-1-0
+Architecture: any
+Multi-Arch: same
+Section: libs
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+Description: Material 3 colour schemes from a seed colour or an image
+ libtonal computes Material 3's colours the way Android computes its system
+ colours: the light and dark schemes of a seed colour in each style and
+ contrast level, the five tonal palettes, and the seed colours of a
+ wallpaper. A C port of Material Color Utilities, on GLib.
+ .
+ This package contains the shared library.
+
+Package: libtonal-dev
+Architecture: any
+Multi-Arch: same
+Section: libdevel
+Depends: libtonal-1-0 (= ${binary:Version}),
+         libglib2.0-dev,
+         ${misc:Depends},
+Description: Material 3 colour schemes from a seed colour or an image - development files
+ libtonal computes Material 3's colours the way Android computes its system
+ colours: schemes, tonal palettes and a wallpaper's seed colours.
+ .
+ This package contains the header and the pkg-config file.
+
 Package: libvibeos-1-0
 Architecture: any
 Multi-Arch: same
@@ -279,6 +309,7 @@ Replaces: libneo-dev
 Provides: libneo-dev
 Depends: libvibeos-1-0 (= ${binary:Version}),
          libspongy-dev (= ${binary:Version}),
+         libtonal-dev (= ${binary:Version}),
          libgtk-4-dev (>= 4.14),
          ${misc:Depends},
 Description: Material 3 widgets of the VibeOS phone apps - development files
