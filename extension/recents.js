@@ -29,7 +29,7 @@ import {PathInterpolator} from './launch.js';
 import {VelocityTracker} from './motion.js';
 import {Color, cogl, setSource} from './palette.js';
 import {overWindows} from './scanout.js';
-import {openAppInfo, settingsApp} from './settings.js';
+import {openAppInfo} from './settings.js';
 import {
     ACCELERATE_2, ACCELERATE_DECELERATE, DECELERATE, DECELERATE_3, FAST_OUT_SLOW_IN, LINEAR, NAV_GESTURE_H,
     OVERSHOOT_1_2, SCREEN_H, SCREEN_W, SCROLL, Spring, TASK, TASK_CORNER_R, TASK_PIVOT, TASK_W, TOUCH_RESPONSE,
@@ -1665,9 +1665,6 @@ export class Recents {
             items.push({icon: 'info_24px', label: 'App info', run: () => {
                 this._closeMenu();
                 this.goHome();
-                const settings = settingsApp();
-                if (settings)
-                    this._nav.expectWindow?.(settings);
                 openAppInfo(id);
             }});
         }

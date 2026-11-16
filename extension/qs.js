@@ -159,7 +159,7 @@ const TILES = [
         },
     },
     {
-        id: 'dark', label: 'Dark theme', panel: 'appearance',
+        id: 'dark', label: 'Dark theme', panel: 'display',
         icon: s => s.darkMode ? 'qs_light_dark_theme_icon_on' : 'qs_light_dark_theme_icon_off',
         state: s => s.darkMode ? 'active' : 'inactive',
         toggle: s => {
@@ -173,7 +173,7 @@ const TILES = [
         toggle: s => s.setPowerSave(!s.powerSave),
     },
     {
-        id: 'nightlight', label: 'Night Light', panel: 'display',
+        id: 'nightlight', label: 'Night Light', panel: 'night-light',
         icon: s => s.nightLight ? 'qs_nightlight_icon_on' : 'qs_nightlight_icon_off',
         state: s => s.nightLight ? 'active' : 'inactive',
         toggle: s => {

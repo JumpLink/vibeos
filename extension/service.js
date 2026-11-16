@@ -5,6 +5,7 @@ import Shell from 'gi://Shell';
 
 import {LaunchTransition} from './launch.js';
 import {Navigation} from './navigation.js';
+import {setExpectWindow} from './settings.js';
 
 const IFACE = `<node>
   <interface name="vibeos.Shell">
@@ -50,7 +51,7 @@ export class Service {
         this._launch = new LaunchTransition();
         this._nav = new Navigation(home);
         this._nav.onGestureBegin = () => this._launch.cancelSplash();
-        this._nav.expectWindow = app => this._launch.expect(app);
+        setExpectWindow(app => this._launch.expect(app));
         this._volumeKeys = new Map();   // app id -> {sender, watch}: who took the volume keys
         this._impl = Gio.DBusExportedObject.wrapJSObject(IFACE, this);
         this._impl.export(Gio.DBus.session, '/vibeos/Shell');
@@ -139,6 +140,7 @@ export class Service {
     }
 
     destroy() {
+        setExpectWindow(null);
         this._launch.destroy();
         this._nav.destroy();
         for (const appId of [...this._volumeKeys.keys()])
