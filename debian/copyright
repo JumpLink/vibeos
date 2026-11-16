@@ -61,6 +61,15 @@ Comment:
  squircles, made by tools/iconpack-vibeos/make-vibeos-pack.py. Font Awesome's
  licence text: tools/iconpack-vibeos/fontawesome/LICENSE.txt.
 
+Files: vibeos-launcher/iconpacks/vibeos/icons/terminal.png
+       tools/iconpack-vibeos/own/*
+Copyright: 2026 pulpoff <pashkovsky@gmail.com>
+License: Expat
+Comment:
+ The VibeOS pack's console icon is a glyph drawn for VibeOS
+ (tools/iconpack-vibeos/own/terminal.svg) on a squircle, made by
+ tools/iconpack-vibeos/make-vibeos-pack.py.
+
 Files: vibeos-launcher/parallax/solar-system/*
 Copyright: NASA (the Sun, Earth, Moon, Mars, Saturn and Jupiter images)
            2026 pulpoff <pashkovsky@gmail.com> (the drawn star field, glows and orbits, the composition)

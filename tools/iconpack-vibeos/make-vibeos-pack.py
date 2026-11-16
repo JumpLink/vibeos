@@ -2,8 +2,9 @@
 # make-vibeos-pack.py OUTDIR GLYPHDIR: the "VibeOS" icon pack for the VibeOS launcher, free to redistribute.
 #
 # Each icon is a Material Symbols Rounded glyph (Google, Apache-2.0; GLYPHDIR holds <name>_fill1_48px.svg, the glyphs
-# the gnome-free pack uses), or a Font Awesome Free one ("fa/<name>": fontawesome/<name>.svg beside this script, CC BY
-# 4.0), on a squircle tile in the app's colour: white on a coloured tile, coloured on a white one.
+# the gnome-free pack uses), a Font Awesome Free one ("fa/<name>": fontawesome/<name>.svg beside this script, CC BY
+# 4.0) or one drawn for this pack ("own/<name>": own/<name>.svg, whose view box is the tile), on a squircle tile in
+# the app's colour: white on a coloured tile, coloured on a white one.
 # The tile is the launcher's own squircle (icons.c superellipse (): |x|^4 + |y|^4 = 1) at TILE of the canvas, over a
 # short drop shadow; the glyph's 48-unit box is EM of the tile. Apps the pack does not draw are put on the pack's
 # backplate (a white tile of the same shape and size) by the launcher, at pack.json's scale.
@@ -20,6 +21,7 @@ from PIL import Image, ImageFilter
 
 OUT, GLYPHS = sys.argv[1], sys.argv[2]
 FA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fontawesome")
+OWN = os.path.join(os.path.dirname(os.path.abspath(__file__)), "own")
 PX = 256          # icon size, as gnome-free's
 SS = 4            # supersampling for the tile's edge and its shadow
 TILE = 0.891      # the tile's side over the canvas: 228 of 256 px, 14 px clear all round
@@ -46,7 +48,7 @@ ICONS = {
     "settings":   ("settings",          "#425D74",                           WHITE),      # settings
     "weather":    ("partly_cloudy_day", "#FCAD08",                           WHITE),      # weather
     "files":      ("folder",            ("#FFA823", "#FFB923"),              WHITE),      # file_manager
-    "terminal":   ("terminal",          "#243048",                           WHITE),      # termux (Compass's dark grey, not its black)
+    "terminal":   ("own/terminal",      "#243048",                           WHITE),      # termux (Compass's dark grey, not its black)
     "gallery":    ("photo_library",     ("#1FAFEB", "#2945CA"),              WHITE),      # gallery
     "documents":  ("description",       "#4385F3",                           WHITE),      # google_drive (its blue)
     "video":      ("play_circle",       WHITE,                               "#000000"),  # google_play_movies (black, not its red)
@@ -152,9 +154,13 @@ def _rect(x, y, w, h):
 
 def glyph(name, colour):
     """the glyph in its colour, its 48-unit box EM of the tile and centred on it (a Font Awesome glyph's box FA_EM of
-    that)"""
+    that; one of this pack's own drawn over the whole tile)"""
     size = PX * TILE * EM
-    if name.startswith("fa/"):
+    if name.startswith("own/"):
+        with open(os.path.join(OWN, name[4:] + ".svg")) as f:
+            svg = f.read().replace('fill="currentColor"', 'fill="%s"' % colour)
+        size = PX * TILE
+    elif name.startswith("fa/"):
         with open(os.path.join(FA, name[3:] + ".svg")) as f:
             svg = f.read().replace('fill="currentColor"', 'fill="%s"' % colour)
         size *= FA_EM
