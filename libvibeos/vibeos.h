@@ -22,3 +22,24 @@
 #include "vibeos-snackbar.h"
 #include "vibeos-dialog.h"
 #include "vibeos-time-picker.h"
+#include "vibeos-layout.h"
+#include "vibeos-page-stack.h"
+#include "vibeos-nav-rail.h"
+#include "vibeos-list-detail.h"
+#include "vibeos-fab-column.h"
+#include "vibeos-list-row.h"
+#include "vibeos-card-list.h"
+#include "vibeos-top-bar.h"
+#include "vibeos-search.h"
+
+/* The layouts, for phones and tablets:
+ *
+ *   vibeos-layout.h       what the window is on: a phone or a tablet, and how wide it is
+ *   vibeos-page-stack.h   pages pushed and popped, with their transitions
+ *   vibeos-nav-rail.h     the navigation rail, the nav bar's place on a tablet
+ *   vibeos-list-detail.h  a list and the page an item opens: side by side on a tablet, one at a time on a phone
+ *   vibeos-fab-column.h   the floating action buttons, in a column beside the content or a row under it
+ *   vibeos-list-row.h     a settings-style row on its card
+ *   vibeos-card-list.h    rows on cards, in groups
+ *   vibeos-top-bar.h      the top app bar: small, large and in selection mode
+ *   vibeos-search.h       the search bar and the search view it opens */

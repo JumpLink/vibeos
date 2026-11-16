@@ -189,3 +189,90 @@ window.vibeos label {
   background-color: alpha(@vibeos_primary, 0.4);
   color: @vibeos_on_surface;
 }
+
+/* --- list rows on cards (VibeosListRow draws the card and places the text) */
+
+.vibeos-list-row-title {
+  font-size: 16px;
+  color: @vibeos_on_surface;
+}
+
+.vibeos-list-row-title.selected {
+  font-weight: 900;
+}
+
+.vibeos-list-row-summary,
+.vibeos-list-row-value {
+  font-size: 14px;
+  color: @vibeos_on_surface_variant;
+}
+
+.vibeos-list-row-icon {
+  color: @vibeos_on_surface_variant;
+}
+
+.vibeos-list-row-initials {
+  font-size: 16px;
+  font-weight: 800;
+  color: @vibeos_on_primary_container;
+}
+
+/* a group's header over its cards */
+.vibeos-card-list-header {
+  font-size: 14px;
+  font-weight: 800;
+  color: @vibeos_primary;
+}
+
+/* --- the top app bar (VibeosTopBar) */
+
+.vibeos-top-bar-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: @vibeos_on_surface;
+}
+
+.vibeos-top-bar-large-title {
+  font-size: 36px;
+  font-weight: 700;
+  color: @vibeos_on_surface;
+}
+
+.vibeos-top-bar-back {
+  color: @vibeos_on_surface;
+}
+
+/* --- search: the bar at the top of a list and the view it opens */
+
+.vibeos-search-hint {
+  font-size: 16px;
+  color: @vibeos_on_surface_variant;
+}
+
+.vibeos-search-entry {
+  background: none;
+  border: none;
+  box-shadow: none;
+  outline: none;
+  color: @vibeos_on_surface;
+  caret-color: @vibeos_primary;
+  font-size: 16px;
+  min-height: 40px;
+}
+
+/* --- the navigation rail: the bar's items in a column at the start */
+
+.vibeos-nav-rail {
+  background-color: @vibeos_surface;
+}
+
+/* --- the two panes of a list and its detail */
+
+.vibeos-detail-pane {
+  background-color: @vibeos_surface_container;
+}
+
+/* the navigation bar with its labels beside the icons: a lower bar */
+.vibeos-nav-bar.horizontal {
+  min-height: 64px;
+}

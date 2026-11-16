@@ -11,6 +11,13 @@
 #define ICON           24
 #define LABEL_TOP      48
 #define INDICATOR_MS   500    /* the pill coming in: a long duration, on the emphasized curve */
+#define MAX_ITEM_W     168    /* on a wide bar the items keep this width, centred as a group */
+/* horizontal items: the icon and its label side by side in a lower pill, on a lower bar */
+#define H_BAR_H        64
+#define H_PILL_H       40
+#define H_PAD          16     /* the pill's padding either side */
+#define H_GAP          4      /* between the icon and the label */
+#define H_ITEM_SPACE   28     /* an item is the widest pill and this much more, where the bar has the room */
 
 typedef struct {
   GtkWidget *icon, *label;
@@ -25,6 +32,7 @@ struct _VibeosNavBar {
   GPtrArray *items;
   int        selected;
   int        pressed;          /* the item under the finger, or -1 */
+  gboolean   horizontal;       /* the icon beside the label, rather than over it */
 };
 
 G_DEFINE_FINAL_TYPE (VibeosNavBar, vibeos_nav_bar, GTK_TYPE_WIDGET)
@@ -43,17 +51,56 @@ item_free (gpointer data)
   g_free (item);
 }
 
+static int
+label_width (Item *item)
+{
+  int min, nat;
+  gtk_widget_measure (item->label, GTK_ORIENTATION_HORIZONTAL, -1, &min, &nat, NULL, NULL);
+  return nat;
+}
+
+/* the pill of a horizontal item: the icon, the gap and the label, padded */
+static double
+horizontal_pill_width (Item *item)
+{
+  return H_PAD + ICON + H_GAP + label_width (item) + H_PAD;
+}
+
+/* The items share the bar in equal columns, up to MAX_ITEM_W each; horizontal items take only the widest pill and
+ * some room around it. A bar wider than its items keeps them together in its middle. */
 static double
 column_width (VibeosNavBar *self)
 {
-  return self->items->len ? gtk_widget_get_width (GTK_WIDGET (self)) / (double) self->items->len : 0;
+  double col;
+  if (!self->items->len)
+    return 0;
+  col = MIN (MAX_ITEM_W, gtk_widget_get_width (GTK_WIDGET (self)) / (double) self->items->len);
+  if (self->horizontal) {
+    double widest = 0;
+    for (guint i = 0; i < self->items->len; i++)
+      widest = MAX (widest, horizontal_pill_width (g_ptr_array_index (self->items, i)));
+    col = MIN (col, widest + H_ITEM_SPACE);
+  }
+  return col;
+}
+
+/* where the first column starts */
+static double
+group_start (VibeosNavBar *self)
+{
+  return (gtk_widget_get_width (GTK_WIDGET (self)) - column_width (self) * self->items->len) / 2;
 }
 
 static graphene_rect_t
 pill_rect (VibeosNavBar *self, guint index)
 {
-  double col = column_width (self);
-  return GRAPHENE_RECT_INIT (col * index + (col - PILL_W) / 2, PILL_TOP, PILL_W, PILL_H);
+  double col = column_width (self), x = group_start (self) + col * index;
+  if (self->horizontal) {
+    double w = MIN (col, horizontal_pill_width (g_ptr_array_index (self->items, index)));
+    return GRAPHENE_RECT_INIT (x + (col - w) / 2, (gtk_widget_get_height (GTK_WIDGET (self)) - H_PILL_H) / 2.0,
+                               w, H_PILL_H);
+  }
+  return GRAPHENE_RECT_INIT (x + (col - PILL_W) / 2, PILL_TOP, PILL_W, PILL_H);
 }
 
 /* ---- layout and drawing ---------------------------------------------------------------------------------------- */
@@ -63,17 +110,32 @@ vibeos_nav_bar_measure (GtkWidget *widget, GtkOrientation orientation, int for_s
                      int *minimum, int *natural, int *minimum_baseline, int *natural_baseline)
 {
   VibeosNavBar *self = VIBEOS_NAV_BAR (widget);
-  *minimum = *natural = orientation == GTK_ORIENTATION_VERTICAL ? BAR_H : (int) self->items->len * PILL_W;
+  if (orientation == GTK_ORIENTATION_VERTICAL)
+    *minimum = *natural = self->horizontal ? H_BAR_H : BAR_H;
+  else
+    *minimum = *natural = (int) self->items->len * PILL_W;
 }
 
 static void
 vibeos_nav_bar_size_allocate (GtkWidget *widget, int width, int height, int baseline)
 {
   VibeosNavBar *self = VIBEOS_NAV_BAR (widget);
-  double col = column_width (self);
+  double col = column_width (self), start = group_start (self);
   for (guint i = 0; i < self->items->len; i++) {
     Item *item = g_ptr_array_index (self->items, i);
-    double x = col * i;
+    double x = start + col * i;
+    if (self->horizontal) {
+      graphene_rect_t pill = pill_rect (self, i);
+      int label_h, unused, label_w = MAX (0, (int) (pill.size.width - 2 * H_PAD - ICON - H_GAP));
+      gtk_widget_measure (item->label, GTK_ORIENTATION_VERTICAL, label_w, &label_h, &unused, NULL, NULL);
+      gtk_widget_allocate (item->icon, ICON, ICON, -1,
+                           gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (pill.origin.x + H_PAD,
+                                                                                pill.origin.y + (H_PILL_H - ICON) / 2)));
+      gtk_widget_allocate (item->label, label_w, label_h, -1,
+                           gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (
+                             pill.origin.x + H_PAD + ICON + H_GAP, pill.origin.y + (H_PILL_H - label_h) / 2.0)));
+      continue;
+    }
     gtk_widget_allocate (item->icon, ICON, ICON, -1,
                          gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (x + (col - ICON) / 2,
                                                                               PILL_TOP + (PILL_H - ICON) / 2)));
@@ -100,10 +162,10 @@ vibeos_nav_bar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
     if (item->shown > 0) {
       double scale_x = 0.4 + 0.6 * item->shown;
       graphene_rect_t r = rect;
-      r.size.width = PILL_W * scale_x;
-      r.origin.x += (PILL_W - r.size.width) / 2;
+      r.size.width = rect.size.width * scale_x;
+      r.origin.x += (rect.size.width - r.size.width) / 2;
       GskRoundedRect rounded;
-      gsk_rounded_rect_init_from_rect (&rounded, &r, PILL_H / 2.0);
+      gsk_rounded_rect_init_from_rect (&rounded, &r, rect.size.height / 2);
       GdkRGBA c = pill;
       c.alpha = MIN (1, item->shown * 5);
       gtk_snapshot_push_rounded_clip (snapshot, &rounded);
@@ -113,7 +175,7 @@ vibeos_nav_bar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
     /* the ripple plays in the pill's shape, not the whole item's */
     if (vibeos_ripple_is_active (&item->ripple)) {
       GskRoundedRect rounded;
-      gsk_rounded_rect_init_from_rect (&rounded, &rect, PILL_H / 2.0);
+      gsk_rounded_rect_init_from_rect (&rounded, &rect, rect.size.height / 2);
       GdkRGBA ripple = vibeos_ripple_default_color ();
       gtk_snapshot_push_rounded_clip (snapshot, &rounded);
       vibeos_ripple_snapshot (&item->ripple, snapshot, &rect, &ripple);
@@ -162,8 +224,8 @@ select_item (VibeosNavBar *self, int index, gboolean animate)
 static int
 item_at (VibeosNavBar *self, double x)
 {
-  double col = column_width (self);
-  int index = col > 0 ? (int) (x / col) : -1;
+  double col = column_width (self), from = x - group_start (self);
+  int index = col > 0 && from >= 0 ? (int) (from / col) : -1;
   return index >= 0 && index < (int) self->items->len ? index : -1;
 }
 
@@ -283,4 +345,23 @@ int
 vibeos_nav_bar_get_selected (VibeosNavBar *self)
 {
   return self->selected;
+}
+
+void
+vibeos_nav_bar_set_horizontal_items (VibeosNavBar *self, gboolean horizontal)
+{
+  if (self->horizontal == !!horizontal)
+    return;
+  self->horizontal = !!horizontal;
+  if (horizontal)
+    gtk_widget_add_css_class (GTK_WIDGET (self), "horizontal");
+  else
+    gtk_widget_remove_css_class (GTK_WIDGET (self), "horizontal");
+  gtk_widget_queue_resize (GTK_WIDGET (self));
+}
+
+gboolean
+vibeos_nav_bar_get_horizontal_items (VibeosNavBar *self)
+{
+  return self->horizontal;
 }

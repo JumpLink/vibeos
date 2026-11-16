@@ -1,7 +1,8 @@
 /* VibeosNavBar: Material 3's bottom navigation bar, every item labelled.
  *
- * The items sit in equal columns. The selected item has a pill behind its icon, and its icon and label in the primary
- * colour; the others are dimmed.
+ * The items sit in equal columns up to a maximum width: on a wider bar they stay together in its middle. The selected
+ * item has a pill behind its icon, and its icon and label in the primary colour; the others are dimmed. With
+ * horizontal items (a phone turned on its side) each label sits beside its icon, inside the pill, on a lower bar.
  * A tap selects an item and emits "selected" (its index); there is no swipe between tabs. */
 #pragma once
 
@@ -18,6 +19,9 @@ int        vibeos_nav_bar_append       (VibeosNavBar *self, const char *icon_nam
 /* selects without emitting "selected" and without the indicator's animation */
 void       vibeos_nav_bar_set_selected (VibeosNavBar *self, int index);
 int        vibeos_nav_bar_get_selected (VibeosNavBar *self);
+/* the label beside the icon rather than under it; off by default */
+void       vibeos_nav_bar_set_horizontal_items (VibeosNavBar *self, gboolean horizontal);
+gboolean   vibeos_nav_bar_get_horizontal_items (VibeosNavBar *self);
 
 /* Signals: "selected" (int index) */
 

@@ -15,6 +15,7 @@
 struct _VibeosDialog {
   GtkWidget  parent;
   GtkWidget *card, *title, *message, *content, *buttons;
+  GtkWidget *anchor;          /* weak: the pane the card centres on, or NULL for the window */
   double     shown;           /* the window animation: 0 .. 1 */
   double     rise;            /* dp the card is below (positive) or above (negative) its place */
   VibeosAnim   *anim;
@@ -47,15 +48,21 @@ vibeos_dialog_size_allocate (GtkWidget *widget, int width, int height, int basel
 {
   VibeosDialog *self = VIBEOS_DIALOG (widget);
   int min_w, nat_w, h, min_h;
+  /* the space the card is centred in: the window, or the pane it belongs to (the scrim still covers the window) */
+  graphene_rect_t area = GRAPHENE_RECT_INIT (0, 0, width, height);
+  if (self->anchor && !gtk_widget_compute_bounds (self->anchor, widget, &area))
+    area = GRAPHENE_RECT_INIT (0, 0, width, height);
+  int across = (int) area.size.width;
   gtk_widget_measure (self->card, GTK_ORIENTATION_HORIZONTAL, -1, &min_w, &nat_w, NULL, NULL);
   /* an alert dialog spans the window less its insets; one that holds a picker wraps it (the time picker's) */
-  int w = self->flush ? MIN (nat_w, width) : MAX (card_width (width), min_w);
+  int w = self->flush ? MIN (nat_w, across) : MAX (card_width (across), min_w);
   /* its content's natural height (a list wraps its rows), up to the window
    * less its insets: a scrolled list then scrolls */
   gtk_widget_measure (self->card, GTK_ORIENTATION_VERTICAL, w, &min_h, &h, NULL, NULL);
   h = MAX (MIN (h, height - 2 * SIDE_INSET), MIN (min_h, height - 2 * SIDE_INSET));
   gtk_widget_allocate (self->card, w, h, -1,
-                       gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT ((width - w) / 2.0, (height - h) / 2.0)));
+                       gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (area.origin.x + (across - w) / 2.0,
+                                                                            (height - h) / 2.0)));
 }
 
 static void
@@ -151,6 +158,7 @@ static void
 vibeos_dialog_dispose (GObject *object)
 {
   VibeosDialog *self = VIBEOS_DIALOG (object);
+  vibeos_dialog_set_anchor (self, NULL);
   g_clear_pointer (&self->anim, vibeos_anim_free);
   g_clear_pointer (&self->card, gtk_widget_unparent);
   G_OBJECT_CLASS (vibeos_dialog_parent_class)->dispose (object);
@@ -259,4 +267,15 @@ vibeos_dialog_set_flush (VibeosDialog *self, gboolean flush)
     gtk_widget_add_css_class (self->card, "flush");
   else
     gtk_widget_remove_css_class (self->card, "flush");
+}
+
+void
+vibeos_dialog_set_anchor (VibeosDialog *self, GtkWidget *pane)
+{
+  if (self->anchor)
+    g_object_remove_weak_pointer (G_OBJECT (self->anchor), (gpointer *) &self->anchor);
+  self->anchor = pane;
+  if (pane)
+    g_object_add_weak_pointer (G_OBJECT (pane), (gpointer *) &self->anchor);
+  gtk_widget_queue_allocate (GTK_WIDGET (self));
 }
