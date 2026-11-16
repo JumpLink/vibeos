@@ -5,7 +5,8 @@
  * checked by vibeos-auth through PAM; ns-pattern.c sets it. The keyguard's notification icons follow GNOME's
  * show-in-lock-screen, globally and per app (Notifications).
  *
- * The on-screen keyboard is GNOME Shell's own. On a touchscreen it opens by itself (keyboard.js: touch mode and the
+ * The on-screen keyboard is one of two, vibeos.Shell keyboard: VibeOS's own (extension/keyboard) or GNOME Shell's;
+ * the shell swaps them as the key changes. On a touchscreen either opens by itself (keyboard.js: touch mode and the
  * last device a touchscreen); screen-keyboard-enabled keeps it on with a hardware keyboard or a mouse in use too.
  * Its layouts, like a hardware keyboard's, are org.gnome.desktop.input-sources, named from the XKB rules file. */
 #include "ns-pages.h"
@@ -392,14 +393,21 @@ layouts_rows (AdwNavigationPage *page, GtkWidget *c)
   layouts_fill (page);
 }
 
-/* Not on this page, and why: which keyboard (Stevia or Squeekboard), their word suggestions and sizes, and how
- * long a press on the home bar opens it (Phosh's osk-unfold-delay). GNOME Shell's keyboard replaced them all, and
- * it has no settings of its own besides the switch and the layouts. */
+/* Not on this page, and why: Phosh's keyboards (Stevia or Squeekboard), their word suggestions and sizes, and how
+ * long a press on the home bar opens one (Phosh's osk-unfold-delay). The shell's keyboards replaced them all, and
+ * have no settings of their own besides which one, the switch and the layouts. */
 void
 ns_page_keyboard (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
   AdwNavigationPage *page = ns_page_new ("Keyboard", &c);
+  GSettings *shell = ns_page_settings (page, "vibeos.Shell");
+  if (ns_has_key (shell, "keyboard")) {
+    static const char *const keyboards[] = { "vibeos", "gnome", NULL };
+    static const char *const keyboard_labels[] = { "VibeOS keyboard", "GNOME keyboard", NULL };
+    GtkWidget *g = ns_group (c, NULL);
+    ns_row_choice (g, "On-screen keyboard", shell, "keyboard", keyboards, keyboard_labels);
+  }
   GSettings *a11y = ns_page_settings (page, "org.gnome.desktop.a11y.applications");
   if (ns_has_key (a11y, "screen-keyboard-enabled")) {
     GtkWidget *g = ns_group (c, NULL);
