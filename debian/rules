@@ -4,6 +4,8 @@
 # the -uninstalled.pc files meson writes into each build directory, so the projects are configured and built one
 # after the other, in this order.
 
+include /usr/share/dpkg/pkg-info.mk
+
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
 APPS := calculator calendar clock compass contacts dialer messaging browser settings weather camera files dictate
@@ -56,3 +58,11 @@ override_dh_installsystemd:
 	dh_installsystemd -pvibeos-daemons --no-enable --no-start --restart-after-upgrade input-boost.service
 	dh_installsystemd -pvibeos-daemons vibeos-wakeup.service
 	dh_installsystemd -psim-apn
+
+# The apps and the launcher need the very libraries they were built with: libvibeos's, libspongy's and libtonal's
+# interfaces change from one release to the next (vibeos_device_scale returns a double now, not an int), and an app
+# run against another release's library reads wrong values or does not start
+SHARED_LIBS := libspongy-1-0 libspongy-gtk-1-0 libtonal-1-0 libvibeos-1-0
+override_dh_makeshlibs:
+	set -e; for p in $(SHARED_LIBS); do dh_makeshlibs -p$$p -V "$$p (= $(DEB_VERSION))"; done
+	dh_makeshlibs $(foreach p,$(SHARED_LIBS),-N$(p))
