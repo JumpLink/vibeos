@@ -1,0 +1,28 @@
+# The list on a phone on its side: ours on a 721 x 332 display at 3x, the reference with its cutout (116 px) on the
+# left and its status bar (84 px) on top. The navigation bar lays its items out in a row here.
+
+ref-offset 116,84
+ref-density 3
+tolerance 1
+
+pill left            | x0('css=vibeos-search-pill')     | x0('id=open_search_bar')              | 16
+pill right           | x1('css=vibeos-search-pill')     | x1('id=open_search_bar')              | 705.3
+pill top             | y0('css=vibeos-search-pill')     | y0('id=open_search_bar')              | 8
+hint start           | x0('css=vibeos-search-hint')     | x0('id=open_search_bar_text_view')    | 68
+picture right        | x1('css=ct-pill-disc')           | x1('id=og_apd_internal_image_view')   | 699.3
+labels button left   | x0('css=ct-icon-button#0')       | x0('class=View#3')                    | 609.3
+filter button right  | x1('css=ct-icon-button#1')       | x1('class=View#6')                    | 705.3
+info card right      | x1('css=ct-info-card')           | x1('class=View#13')                   | 705.3
+share button left    | x0('css=ct-info-share')          | x0('class=View#15')                   | 653.3
+header right         | x1('class=CtListHeader#0')       | x1('class=View#17')                   | 705.3
+row 0 right          | x1('class=CtListRow#0')          | x1('class=View#20')                   | 705.3
+fab left             | x0('css=ct-fab')                 | x0('id=floating_action_button')       | 641.3
+fab top              | y0('css=ct-fab')                 | y0('id=floating_action_button')       | 196
+bar top              | y0('class=VibeosNavBar')         | y0('id=bottom_nav')                   | 268
+bar height           | h('class=VibeosNavBar')          | h('id=bottom_nav')                    | 64
+icon 0 x             | x0('class=VibeosNavBar >> class=GtkImage#0') | x0('id=navigation_bar_item_icon_view#0') | 177.3
+icon 0 y             | y0('class=VibeosNavBar >> class=GtkImage#0') | y0('id=navigation_bar_item_icon_view#0') | 288
+label 0 x            | x0('css=vibeos-nav-label#0')     | x0('class=TextView#6')                | 205.3
+label 0 centre       | cy('css=vibeos-nav-label#0')     | cy('class=TextView#6')                | 300
+icon 1 x             | x0('class=VibeosNavBar >> class=GtkImage#1') | x0('id=navigation_bar_item_icon_view#1') | 318
+icon 2 x             | x0('class=VibeosNavBar >> class=GtkImage#2') | x0('id=navigation_bar_item_icon_view#2') | 466.3

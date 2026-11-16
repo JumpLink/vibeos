@@ -1,0 +1,80 @@
+# The list on a phone, at its top, held against the reference phone's list at its top:
+#
+#   vibeos-specdiff ct-list.specdiff ours.xml REF.xml
+#
+# with ours dumped from vibeos-contacts on a 360 x 721 display at 3x, holding the test book's made-up contacts
+# (tests/ct-seed), and REF.xml the reference's list with a profile card and four favourites.
+
+ref-offset 0,116
+ref-density 3
+tolerance 1
+
+# the search pill and its account picture
+pill left           | x0('css=vibeos-search-pill')    | x0('id=open_search_bar')                 | 16
+pill right          | x1('css=vibeos-search-pill')    | x1('id=open_search_bar')                 | 344
+pill top            | y0('css=vibeos-search-pill')    | y0('id=open_search_bar')                 | 8
+pill bottom         | y1('css=vibeos-search-pill')    | y1('id=open_search_bar')                 | 56
+hint start          | x0('css=vibeos-search-hint')    | x0('id=open_search_bar_text_view')       | 68
+hint centre         | cy('css=vibeos-search-hint')    | cy('id=open_search_bar_text_view')       | 32
+picture left        | x0('css=ct-pill-disc')          | x0('id=og_apd_internal_image_view')      | 296
+picture right       | x1('css=ct-pill-disc')          | x1('id=og_apd_internal_image_view')      | 338
+picture top         | y0('css=ct-pill-disc')          | y0('id=og_apd_internal_image_view')      | 11
+
+# the filter row
+account button left | x0('css=ct-account-button')     | x0('class=Button#0')                     | 16
+account button top  | y0('css=ct-account-button')     | y0('class=Button#0')                     | 76
+account button h    | h('css=ct-account-button')      | h('class=Button#0')                      | 40
+account text start  | x0('css=ct-account-text')       | x0('class=TextView#1')                   | 54
+account text centre | cy('css=ct-account-text')       | cy('class=TextView#1')                   | 96
+account button w    | w('css=ct-account-button')      | w('class=Button#0')                      | 153.3
+labels button left  | x0('css=ct-icon-button#0')      | x0('class=View#3')                       | 248
+labels button top   | y0('css=ct-icon-button#0')      | y0('class=View#3')                       | 72
+filter button left  | x0('css=ct-icon-button#1')      | x0('class=View#6')                       | 296
+filter button right | x1('css=ct-icon-button#1')      | x1('class=View#6')                       | 344
+head bottom         | y1('css=ct-list-filters') + 8   | y1('id=app_bar_compose_view')            | 128
+
+# "Your info"
+info card left      | x0('css=ct-info-card')          | x0('class=View#13')                      | 16
+info card right     | x1('css=ct-info-card')          | x1('class=View#13')                      | 344
+info card top       | y0('css=ct-info-card')          | y0('class=View#13')                      | 136
+info card height    | h('css=ct-info-card')           | h('class=View#13')                       | 72
+info picture x      | x0('css=ct-info-avatar')        | x0('class=View#14')                      | 32
+info picture y      | y0('css=ct-info-avatar')        | y0('class=View#14')                      | 152
+info title x        | x0('css=ct-info-title')         | x0('class=TextView#2')                   | 84
+info title top      | y0('css=ct-info-title')         | y0('class=TextView#2')                   | 152
+info name x         | x0('css=ct-info-name')          | x0('class=TextView#3')                   | 84
+info name top       | y0('css=ct-info-name')          | y0('class=TextView#3')                   | 168
+info name bottom    | y1('css=ct-info-name')          | y1('class=TextView#3')                   | 192
+share button left   | x0('css=ct-info-share')         | x0('class=View#15')                      | 292
+share button top    | y0('css=ct-info-share')         | y0('class=View#15')                      | 148
+
+# the favourites' header and rows
+header left         | x0('class=CtListHeader#0')      | x0('class=View#17')                      | 16
+header top          | y0('class=CtListHeader#0')      | y0('class=View#17')                      | 208
+header height       | h('class=CtListHeader#0')       | h('class=View#17')                       | 32
+star x              | x0('css=ct-list-header-star')   | x0('class=View#18')                      | 32
+header text x       | x0('css=ct-list-header-text#0') | x0('class=TextView#4')                   | 56
+header text top     | y0('css=ct-list-header-text#0') | y0('class=TextView#4')                   | 216
+row 0 left          | x0('class=CtListRow#0')         | x0('class=View#20')                      | 16
+row 0 right         | x1('class=CtListRow#0')         | x1('class=View#20')                      | 344
+row 0 top           | y0('class=CtListRow#0')         | y0('class=View#20')                      | 240
+row 0 height        | h('class=CtListRow#0')          | h('class=View#20')                       | 56
+row 0 picture x     | x0('class=CtListRow#0 >> class=CtAvatarView') | x0('class=View#22')         | 32
+row 0 picture y     | y0('class=CtListRow#0 >> class=CtAvatarView') | y0('class=View#22')         | 248
+row 0 picture size  | w('class=CtListRow#0 >> class=CtAvatarView')  | w('class=View#22')          | 40
+row 0 name x        | x0('css=ct-row-name#0')         | x0('class=TextView#5')                   | 88
+row 0 name top      | y0('css=ct-row-name#0')         | y0('class=TextView#5')                   | 256
+row 0 name height   | h('css=ct-row-name#0')          | h('class=TextView#5')                    | 24
+row gap             | y0('class=CtListRow#1') - y1('class=CtListRow#0') | y0('class=View#24') - y1('class=View#20') | 2
+row 1 top           | y0('class=CtListRow#1')         | y0('class=View#24')                      | 298
+
+# the FAB and the navigation bar; the bar is the library's, taller than the reference's, with its icons and labels
+# lower: its height and the two offsets in it are off by that
+fab size            | w('css=ct-fab')                 | w('id=floating_action_button')           | 56
+fab right           | x1('css=ct-fab')                | x1('id=floating_action_button')          | 336
+fab above the bar   | y0('class=VibeosNavBar') - y1('css=ct-fab') | y0('id=bottom_nav') - y1('id=floating_action_button') | 16
+bar height          | h('class=VibeosNavBar')         | h('id=bottom_nav')                       | 64
+bar bottom          | y1('class=VibeosNavBar')        | y1('id=bottom_nav')                      | 721.3
+nav icon top        | y0('class=VibeosNavBar >> class=GtkImage') - y0('class=VibeosNavBar') | y0('id=navigation_bar_item_icon_view') - y0('id=bottom_nav') | 10
+nav icon x          | x0('class=VibeosNavBar >> class=GtkImage') | x0('id=navigation_bar_item_icon_view') | 48
+nav label top       | y0('css=vibeos-nav-label') - y0('class=VibeosNavBar') | y0('id=navigation_bar_item_large_label_view') - y0('id=bottom_nav') | 42

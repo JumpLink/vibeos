@@ -1,0 +1,20 @@
+# The list with its filters shown: the chips' row under the filter row, nothing chosen, held against the reference's
+# list in the same state (360 x 721 at 3x, as ct-list.specdiff).
+
+ref-offset 0,116
+ref-density 3
+tolerance 1
+
+chips row top        | y0('css=ct-chips-row')                | y0('class=View#9')                   | 120
+chips row height     | h('css=ct-chips-row')                 | h('class=View#9')                    | 48
+chip 0 left          | x0('css=ct-chip#0')                   | x0('class=CheckBox#1')               | 16
+chip 0 top           | y0('css=ct-chip#0')                   | y0('class=CheckBox#1')               | 128
+chip 0 height        | h('css=ct-chip#0')                    | h('class=CheckBox#1')                | 32
+chip 0 text start    | x0('css=ct-chip-text#0')              | x0('class=TextView#2')               | 50
+chip 0 text centre   | cy('css=ct-chip-text#0')              | cy('class=TextView#2')               | 144
+chip 0 text to end   | x1('css=ct-chip#0') - x1('css=ct-chip-text#0') | x1('class=CheckBox#1') - x1('class=TextView#2') | 16
+chip gap             | x0('css=ct-chip#1') - x1('css=ct-chip#0') | x0('class=CheckBox#2') - x1('class=CheckBox#1') | 8
+chip 1 text start    | x0('css=ct-chip-text#1') - x0('css=ct-chip#1') | x0('class=TextView#3') - x0('class=CheckBox#2') | 34
+head bottom          | y1('css=ct-chips-row') + 8            | y0('class=View#20')                  | 176
+info card top        | y0('css=ct-info-card')                | y0('class=View#21')                  | 176
+favourites top       | y0('class=CtListHeader#0')            | y0('class=View#25')                  | 248
