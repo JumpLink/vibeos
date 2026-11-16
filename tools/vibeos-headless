@@ -52,6 +52,10 @@ NAME=${VIBEOS_HEADLESS:-vibeos-headless}
 STATE=$RUNTIME/$NAME.d          # beside the Wayland socket, $RUNTIME/$NAME
 SHOT=$STATE/shot.png
 HERE=$(dirname "$(readlink -f "$0")")
+# the mutter to run: the mutter package's, or VIBEOS_HEADLESS_MUTTER, a command line, on a phone without that package
+# (the phones run the mobile shell, and mutter's default plugin comes with the package: a mutter of the same version
+# and its plugin, given with --mutter-plugin=PATH, from anywhere)
+MUTTER=${VIBEOS_HEADLESS_MUTTER:-mutter}
 # the app area: the panel in GTK px (scale 3) less the 39 px status bar
 case "$(tr -d '\0' < /proc/device-tree/compatible 2>/dev/null)" in
 *surya*) AREA=360x761 ;;      # 1080 x 2400
@@ -102,6 +106,10 @@ start)
             "for a second display" >&2
         exit 1
     fi
+    if ! command -v ${MUTTER%% *} >/dev/null; then
+        echo "vibeos-headless: no mutter: install the mutter package, or see VIBEOS_HEADLESS_MUTTER" >&2
+        exit 1
+    fi
     as_user mkdir -p "$STATE"
     # the scale the display's pictures are made at, for `run`
     echo "$SCALE" | as_user tee "$STATE/scale" >/dev/null
@@ -110,7 +118,11 @@ start)
     head -1 "$STATE/bus.tmp" >"$STATE/bus"
     tail -1 "$STATE/bus.tmp" >"$STATE/bus.pid"
     rm -f "$STATE/bus.tmp"
-    as_user_daemon mutter env DBUS_SESSION_BUS_ADDRESS="$(cat "$STATE/bus")" mutter --headless --wayland --no-x11 \
+    # PipeWire is the session's, wherever the display's runtime directory is: mutter's RemoteDesktop (taps, swipes)
+    # will not start without it
+    # shellcheck disable=SC2086 # a command line, split into words
+    as_user_daemon mutter env DBUS_SESSION_BUS_ADDRESS="$(cat "$STATE/bus")" PIPEWIRE_RUNTIME_DIR="$SESSION_RUNTIME" \
+        $MUTTER --headless --wayland --no-x11 \
         --wayland-display="$NAME" --virtual-monitor "$AREA"
     # ready once its Wayland socket is there
     for _ in $(seq 50); do [ -S "$RUNTIME/$NAME" ] && break; sleep 0.1; done
