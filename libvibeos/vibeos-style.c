@@ -492,6 +492,7 @@ vibeos_window_new (GtkApplication *app)
         g_unix_signal_add (SIGUSR1, on_shot_signal, NULL);
       shots = TRUE;
     }
+  { extern void vibeos_dump_attach (GtkWidget *window); vibeos_dump_attach (window); }  /* VIBEOS_DUMP: vibeos-dump.c */
   return window;
 }
 

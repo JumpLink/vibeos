@@ -1,0 +1,240 @@
+#!/usr/bin/python3 -I
+# vibeos-specdiff: holds our layout against the reference phone's, widget by widget, in dp.
+#
+#   vibeos-specdiff RULES OURS.xml REF.xml [--tolerance DP] [--ref-offset X,Y] [--ref-density D] [--ours-density D]
+#
+# OURS.xml is a dump of one of our windows (libvibeos's VIBEOS_DUMP, `vibeos-headless dump`), REF.xml a view dump of
+# the reference app (uiautomator's format, which ours copies). RULES says what to compare, one measurement a line:
+#
+#   # the first card's left edge, the gap between two rows, a row's height
+#   card left     | x0('class=VibeosListRow')                  | x0('id=icon_frame')                       | 16
+#   row gap       | y0('class=VibeosListRow#1') - y1('class=VibeosListRow#0')
+#                                                              | y0('id=icon_frame#1/..') - y1('id=icon_frame#0/..') | 2
+#
+# Each line is a name, our expression, the reference's expression and, optionally, the value the spec gives, all
+# separated by "|"; a line ending in "|" or "\" goes on on the next. A measurement passes when ours is within the
+# tolerance (1 dp) of the reference's, and the reference's within it of the spec's value when there is one (which
+# catches a rule that picked the wrong reference node).
+#
+# Expressions are arithmetic (+ - * / and parentheses, numbers) over a node's box:
+#
+#   x0 y0 x1 y1   its edges          w h       its size         cx cy     its centre
+#
+# each of a selector, in quotes: key=value pairs, comma-separated, that the node must all match, then #N for the
+# Nth such node in the file (from 0; #0 when left out), then any number of /.. for its parent's parent's... A node can
+# also be looked for under another: "A >> B" is the first B (or B's #N) inside A.
+#
+#   id=title          the resource-id, or its part after ":id/" (the reference's are "com.android.settings:id/title")
+#   class=TextView    the class, whole or its last part after a dot
+#   text=Apps         the text, exactly; text~=App: the text contains it
+#   desc=...          content-desc, exactly
+#   css=vibeos-x      one of the CSS classes (our dumps only)
+#
+# Positions are in dp from the top left of the app's window. The reference dump covers the whole screen, status bar
+# included: its offset (in its own px) is taken off its positions, and its px are turned into dp by its density
+# (ours carry theirs). These come from the command line or from lines of the rules file:
+#
+#   ref-offset 0,116     the status bar on the reference phone, 116 px
+#   ref-density 3
+#   tolerance 1
+#
+# It prints every measurement, and exits 1 when one fails, 2 when a selector finds nothing or a rule is wrong.
+import argparse
+import ast
+import operator
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+
+class RuleError(Exception):
+    pass
+
+
+class Dump:
+    def __init__(self, path, density, offset):
+        root = ET.parse(path).getroot()
+        self.path = path
+        self.density = density or float(root.get('density', 0) or 0)
+        if not self.density:
+            raise RuleError(f'{path}: no density in the file; give one on the command line or in the rules')
+        self.offset = offset
+        self.nodes = []        # in document order
+        self.parent = {}
+        self.children = {}
+
+        def walk(node, parent):
+            for child in node:
+                if child.tag != 'node':
+                    continue
+                self.nodes.append(child)
+                self.parent[child] = parent
+                walk(child, child)
+
+        walk(root, None)
+        self.index = {node: i for i, node in enumerate(self.nodes)}
+
+    def box(self, node):
+        x0, y0, x1, y1 = map(int, re.findall(r'-?\d+', node.get('bounds', '')))
+        ox, oy = self.offset
+        d = self.density
+        return (x0 - ox) / d, (y0 - oy) / d, (x1 - ox) / d, (y1 - oy) / d
+
+    def descendants(self, node):
+        if node is None:
+            return list(self.nodes)
+        out, stack = [], list(reversed([c for c in node if c.tag == 'node']))
+        while stack:
+            n = stack.pop()
+            out.append(n)
+            stack.extend(reversed([c for c in n if c.tag == 'node']))
+        return out
+
+    def select(self, selector):
+        node = None
+        for step in selector.split('>>'):
+            node = self.step(step.strip(), node, selector)
+        return node
+
+    def step(self, step, within, whole):
+        ups = 0
+        while step.endswith('/..'):
+            step, ups = step[:-3], ups + 1
+        nth = 0
+        m = re.match(r'^(.*)#(\d+)$', step)
+        if m:
+            step, nth = m.group(1), int(m.group(2))
+        tests = []
+        for pair in filter(None, (p.strip() for p in step.split(','))):
+            m = re.match(r'^([a-z-]+)(~?=)(.*)$', pair)
+            if not m:
+                raise RuleError(f'"{pair}" in "{whole}" is no key=value')
+            tests.append(m.groups())
+        found = [n for n in self.descendants(within) if all(self.matches(n, *t) for t in tests)]
+        if nth >= len(found):
+            raise RuleError(f'{self.path}: "{whole}" finds {len(found)} node(s), not a #{nth}')
+        node = found[nth]
+        for _ in range(ups):
+            node = self.parent.get(node)
+            if node is None:
+                raise RuleError(f'{self.path}: "{whole}" goes above the top')
+        return node
+
+    @staticmethod
+    def matches(node, key, op, value):
+        if key == 'id':
+            rid = node.get('resource-id', '')
+            return rid == value or rid.split(':id/')[-1] == value
+        if key == 'class':
+            cls = node.get('class', '')
+            return cls == value or cls.split('.')[-1] == value
+        if key == 'text':
+            text = node.get('text', '')
+            return value in text if op == '~=' else text == value
+        if key == 'desc':
+            return node.get('content-desc', '') == value
+        if key == 'css':
+            return value in node.get('css', '').split()
+        raise RuleError(f'"{key}" is none of id, class, text, desc, css')
+
+
+MEASURES = {
+    'x0': lambda b: b[0], 'y0': lambda b: b[1], 'x1': lambda b: b[2], 'y1': lambda b: b[3],
+    'w': lambda b: b[2] - b[0], 'h': lambda b: b[3] - b[1],
+    'cx': lambda b: (b[0] + b[2]) / 2, 'cy': lambda b: (b[1] + b[3]) / 2,
+}
+OPERATORS = {ast.Add: operator.add, ast.Sub: operator.sub, ast.Mult: operator.mul, ast.Div: operator.truediv}
+
+
+def evaluate(text, dump):
+    def ev(node):
+        if isinstance(node, ast.Expression):
+            return ev(node.body)
+        if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+            return float(node.value)
+        if isinstance(node, ast.BinOp) and type(node.op) in OPERATORS:
+            return OPERATORS[type(node.op)](ev(node.left), ev(node.right))
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub):
+            return -ev(node.operand)
+        if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in MEASURES
+                and len(node.args) == 1 and isinstance(node.args[0], ast.Constant)
+                and isinstance(node.args[0].value, str)):
+            return MEASURES[node.func.id](dump.box(dump.select(node.args[0].value)))
+        raise RuleError(f'"{text}": only numbers, + - * / and x0 y0 x1 y1 w h cx cy of a quoted selector')
+
+    try:
+        return ev(ast.parse(text.strip(), mode='eval'))
+    except SyntaxError as e:
+        raise RuleError(f'"{text}": {e.msg}')
+
+
+def read_rules(path):
+    settings, rules, pending = {}, [], ''
+    for number, line in enumerate(open(path, encoding='utf-8'), 1):
+        line = line.split('#', 1)[0] if line.lstrip().startswith('#') else line
+        line = re.sub(r'\s+#\s.*$', '', line).rstrip()
+        if not line.strip():
+            continue
+        if line.endswith('\\'):
+            pending += line[:-1] + ' '
+            continue
+        if line.endswith('|'):
+            pending += line + ' '
+            continue
+        line, pending = pending + line, ''
+        words = line.split()
+        if words[0] in ('ref-offset', 'ref-density', 'ours-density', 'tolerance') and '|' not in line:
+            settings[words[0]] = words[1] if len(words) > 1 else ''
+            continue
+        parts = [p.strip() for p in line.split('|')]
+        if len(parts) not in (3, 4):
+            raise RuleError(f'{path}:{number}: a rule is NAME | OURS | REF [| SPEC]')
+        rules.append((parts[0], parts[1], parts[2], float(parts[3]) if len(parts) == 4 and parts[3] else None))
+    return settings, rules
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Compare our layout with the reference, in dp.')
+    parser.add_argument('rules')
+    parser.add_argument('ours')
+    parser.add_argument('ref')
+    parser.add_argument('--tolerance', type=float)
+    parser.add_argument('--ref-offset')
+    parser.add_argument('--ref-density', type=float)
+    parser.add_argument('--ours-density', type=float)
+    args = parser.parse_args()
+
+    try:
+        settings, rules = read_rules(args.rules)
+        tolerance = args.tolerance if args.tolerance is not None else float(settings.get('tolerance', 1))
+        offset = args.ref_offset or settings.get('ref-offset', '0,0')
+        offset = tuple(float(v) for v in offset.split(','))
+        ref_density = args.ref_density or float(settings.get('ref-density', 0))
+        ours_density = args.ours_density or float(settings.get('ours-density', 0))
+        ours = Dump(args.ours, ours_density, (0, 0))
+        ref = Dump(args.ref, ref_density, offset)
+    except (RuleError, OSError, ET.ParseError, ValueError) as e:
+        print(f'vibeos-specdiff: {e}', file=sys.stderr)
+        return 2
+
+    failed = broken = 0
+    width = max([len(r[0]) for r in rules] + [11])
+    print(f'{"measurement":<{width}}  {"ours":>8}  {"ref":>8}  {"spec":>8}  {"diff":>7}')
+    for name, ours_expr, ref_expr, spec in rules:
+        try:
+            a, b = evaluate(ours_expr, ours), evaluate(ref_expr, ref)
+        except RuleError as e:
+            print(f'{name:<{width}}  ERROR {e}')
+            broken += 1
+            continue
+        ok = abs(a - b) <= tolerance + 1e-6 and (spec is None or abs(b - spec) <= tolerance + 1e-6)
+        failed += not ok
+        spec_text = f'{spec:8.3f}' if spec is not None else ' ' * 8
+        print(f'{name:<{width}}  {a:8.3f}  {b:8.3f}  {spec_text}  {a - b:+7.3f}  {"ok" if ok else "FAIL"}')
+    print(f'{len(rules) - failed - broken} of {len(rules)} within {tolerance:g} dp'
+          + (f', {failed} off' if failed else '') + (f', {broken} broken' if broken else ''))
+    return 2 if broken else 1 if failed else 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

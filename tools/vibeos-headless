@@ -4,21 +4,33 @@
 #
 # It is a headless mutter on a private D-Bus, so nothing it does reaches the running shell. An app run on it talks
 # to the real session bus (its services, its settings) but draws on the headless display, where it gets frames as
-# on a lit screen: its animations run. Pictures come from the app itself (libvibeos's VIBEOS_SHOT, at 3x, the phone's
-# scale); touches go in through mutter's RemoteDesktop API (vibeos-headless-input), which also keeps a keyboard
-# plugged in, so its windows are active as on the phone.
+# on a lit screen: its animations run. Pictures come from the app itself (libvibeos's VIBEOS_SHOT, at the scale of
+# the screen the size stands for: 3x for the phone's); touches go in through mutter's RemoteDesktop API
+# (vibeos-headless-input), which also keeps a keyboard plugged in, so its windows are active as on the phone.
 #
 #   vibeos-headless start                  the display: the phone's app area under its status bar, in dp: 360 x 721
-#                                       on the Galaxy S10e, 360 x 761 on the POCO X3 (VIBEOS_HEADLESS_SIZE=WxH to choose)
+#                                       on the Galaxy S10e, 360 x 761 on the POCO X3 (VIBEOS_HEADLESS_SIZE to choose:
+#                                       WxH, or one of the sizes below)
 #   vibeos-headless run APP [ARGS...]      an app on it (as the session user), on GL; GSK_RENDERER=cairo in the
 #                                       environment to compare with the software renderer
 #   vibeos-headless shot OUT.png           what the app shows now
+#   vibeos-headless dump OUT.xml           the app's widgets and where they are (libvibeos's VIBEOS_DUMP), from the same
+#                                       moment as a shot
 #   vibeos-headless tap X Y                a finger down and up at (X, Y) dp
 #   vibeos-headless swipe X0 Y0 X1 Y1 [MS] a finger drawn from one point to the other
 #   vibeos-headless stop                   (it stops by itself after 15 minutes unused: VIBEOS_HEADLESS_IDLE)
 #
 # An app already running on the phone's own screen keeps its window there: run again, it only hands its
 # arguments to that instance (GApplication), and `run` finds no window. Stop that one first.
+#
+# The sizes VIBEOS_HEADLESS_SIZE knows by name, each with the scale its pictures and dumps are made at:
+#
+#   phone        360 x 721 at 3x     the Galaxy S10e upright, under its status bar
+#   phone-land   760 x 332 at 3x     the same on its side
+#   tablet       1280 x 740 at 2x    the Galaxy Tab S5e on its side, between its status bar and its taskbar
+#   tablet-port  800 x 1220 at 2x    the same upright
+#
+# A size given as WxH is at 3x, or at VIBEOS_HEADLESS_SCALE.
 #
 # One display per name: VIBEOS_HEADLESS=other in the environment gives a second one (its own bus, state and Wayland
 # socket) beside a display someone else is using; every command then takes the same VIBEOS_HEADLESS.
@@ -45,7 +57,21 @@ case "$(tr -d '\0' < /proc/device-tree/compatible 2>/dev/null)" in
 *surya*) AREA=360x761 ;;      # 1080 x 2400
 *)       AREA=360x721 ;;      # 1080 x 2280, the Galaxy S10e
 esac
-AREA=${VIBEOS_HEADLESS_SIZE:-$AREA}
+SCALE=3
+case ${VIBEOS_HEADLESS_SIZE:-} in
+'')          ;;
+phone)       AREA=360x721 ;;
+phone-land)  AREA=760x332 ;;
+tablet)      AREA=1280x740 SCALE=2 ;;
+tablet-port) AREA=800x1220 SCALE=2 ;;
+*x*)         AREA=$VIBEOS_HEADLESS_SIZE SCALE=${VIBEOS_HEADLESS_SCALE:-3} ;;
+*)
+    echo "vibeos-headless: VIBEOS_HEADLESS_SIZE=$VIBEOS_HEADLESS_SIZE is no WxH and none of phone, phone-land," \
+        "tablet, tablet-port" >&2
+    exit 2
+    ;;
+esac
+DUMP=$STATE/dump.xml
 
 as_user() {
     sudo -u "$USER_NAME" env XDG_RUNTIME_DIR="$RUNTIME" "$@"
@@ -62,7 +88,7 @@ as_user_daemon() {
 }
 
 case $1 in
-run | shot | tap | swipe)
+run | shot | dump | tap | swipe)
     # in use: put off the idle stop (start)
     [ -d "$STATE" ] && touch "$STATE/used"
     ;;
@@ -77,6 +103,8 @@ start)
         exit 1
     fi
     as_user mkdir -p "$STATE"
+    # the scale the display's pictures are made at, for `run`
+    echo "$SCALE" | as_user tee "$STATE/scale" >/dev/null
     # the private bus, and mutter on it; --print-address writes where the bus is, for the input tool
     as_user dbus-daemon --session --fork --print-address=1 --print-pid=1 </dev/null >"$STATE/bus.tmp"
     head -1 "$STATE/bus.tmp" >"$STATE/bus"
@@ -109,24 +137,26 @@ start)
     ;;
 run)
     shift
-    rm -f "$SHOT"
+    rm -f "$SHOT" "$DUMP"
     as_user_daemon app env DBUS_SESSION_BUS_ADDRESS="unix:path=$SESSION_RUNTIME/bus" WAYLAND_DISPLAY="$NAME" \
-        GDK_BACKEND=wayland GSK_RENDERER=${GSK_RENDERER:-gl} VIBEOS_SHOT="$SHOT" VIBEOS_SHOT_SCALE=3 "$@"
+        GDK_BACKEND=wayland GSK_RENDERER=${GSK_RENDERER:-gl} VIBEOS_SHOT="$SHOT" VIBEOS_DUMP="$DUMP" \
+        VIBEOS_SHOT_SCALE="$(cat "$STATE/scale" 2>/dev/null || echo 3)" "$@"
     # the app's first picture comes a second after its window shows
     for _ in $(seq 100); do [ -f "$SHOT" ] && exit 0; sleep 0.1; done
     echo "vibeos-headless: no window yet, see $STATE/app.log" >&2
     exit 1
     ;;
-shot)
-    # the app draws a new picture on SIGUSR1; wait for the file to change
-    before=$(stat -c %Y.%s "$SHOT" 2>/dev/null || true)
+shot | dump)
+    # the app draws a new picture and writes a new dump on SIGUSR1; wait for the file to change
+    [ "$1" = shot ] && file=$SHOT || file=$DUMP
+    before=$(stat -c %Y.%s "$file" 2>/dev/null || true)
     kill -USR1 "$(cat "$STATE/app.pid")"
     for _ in $(seq 50); do
-        [ "$(stat -c %Y.%s "$SHOT" 2>/dev/null)" != "$before" ] && sleep 0.2 && cp "$SHOT" "$2" && exit 0
+        [ "$(stat -c %Y.%s "$file" 2>/dev/null)" != "$before" ] && sleep 0.2 && cp "$file" "$2" && exit 0
         sleep 0.1
     done
     # an unchanged picture is as good as a new one
-    cp "$SHOT" "$2"
+    cp "$file" "$2"
     ;;
 tap | swipe)
     # the script goes in on stdin, read by root: the session user cannot read it where it is (root's home)

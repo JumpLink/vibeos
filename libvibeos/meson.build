@@ -24,6 +24,15 @@ vibeos_headers = files(
   'vibeos-snackbar.h',
   'vibeos-dialog.h',
   'vibeos-time-picker.h',
+  'vibeos-layout.h',
+  'vibeos-page-stack.h',
+  'vibeos-nav-rail.h',
+  'vibeos-list-detail.h',
+  'vibeos-fab-column.h',
+  'vibeos-list-row.h',
+  'vibeos-card-list.h',
+  'vibeos-top-bar.h',
+  'vibeos-search.h',
 )
 vibeos_lib = shared_library('vibeos-1',
   'vibeos-style.c',
@@ -35,6 +44,16 @@ vibeos_lib = shared_library('vibeos-1',
   'vibeos-snackbar.c',
   'vibeos-dialog.c',
   'vibeos-time-picker.c',
+  'vibeos-layout.c',
+  'vibeos-page-stack.c',
+  'vibeos-nav-rail.c',
+  'vibeos-list-detail.c',
+  'vibeos-fab-column.c',
+  'vibeos-list-row.c',
+  'vibeos-card-list.c',
+  'vibeos-top-bar.c',
+  'vibeos-search.c',
+  'vibeos-dump.c',
   vibeos_resources,
   dependencies: [gtk4, libm, spongy_dep, spongy_gtk_dep, tonal_dep],
   version: '0.1.0',
@@ -51,3 +70,6 @@ install_data('fonts/VibeosRoboto.ttf', install_dir: get_option('datadir') / 'fon
 
 # the theme without a display: its colours from vibeos.Theme, light and dark, and without the schema
 subdir('tests')
+
+# the widget gallery, for trying the widgets on a desktop or a headless display (not installed)
+subdir('demo')

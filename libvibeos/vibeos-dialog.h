@@ -36,6 +36,9 @@ GtkWidget *vibeos_dialog_add_button   (VibeosDialog *self, const char *label, in
 void       vibeos_dialog_set_flush    (VibeosDialog *self, gboolean flush);
 /* shows it over the window `parent` is in */
 void       vibeos_dialog_present      (VibeosDialog *self, GtkWidget *parent);
+/* centres the card on `pane` (the detail pane of a two-pane layout) rather than on the window, and keeps it within
+ * the pane's width; the scrim still covers the whole window. NULL: the window again */
+void       vibeos_dialog_set_anchor   (VibeosDialog *self, GtkWidget *pane);
 /* answers with `response` and closes, as a button would */
 void       vibeos_dialog_respond      (VibeosDialog *self, int response);
 
