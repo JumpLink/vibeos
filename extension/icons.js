@@ -48,7 +48,11 @@ const JOINS = {miter: 0, round: 1, bevel: 2};
 
 // Paint icon @name into the box (x, y, size, size) of @cr's user space, fit and centred, in @color at @alpha
 export function paintIcon(cr, name, x, y, size, color, alpha = 1) {
-    const icon = ICONS[name];
+    paintIconData(cr, ICONS[name], x, y, size, color, alpha);
+}
+
+// The same for an icon of another icon-data module (the keyboard has its own)
+export function paintIconData(cr, icon, x, y, size, color, alpha = 1) {
     if (!icon)
         return;
     const s = size / Math.max(icon.w, icon.h);

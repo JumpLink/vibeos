@@ -2,10 +2,13 @@
 # vd2js.py - Android VectorDrawable / AnimatedVectorDrawable XML -> GJS icon-data module (icondata.js).
 #
 #   python3 tools/vd2js.py [-o icondata.js] [--fwb DIR]
+#   python3 tools/vd2js.py --latinime DIR [-o keyboard/icondata.js] [--fwb DIR]
 #
 # Reads frameworks/base (default $FWB, else ref/fwb under the current directory). Files missing from
 # that sparse checkout are read with `git show HEAD:<path>`. The module goes to stdout or -o FILE; notes
 # (wrappers followed, approximations, icons not found) go to stderr. Python 3 stdlib only.
+# --latinime: the on-screen keyboard's icons instead, from a LatinIME checkout's java/res (the keys' and the
+# suggestion strip's), plus the input method navigation bar's from frameworks/base core.
 #
 # Output: export const ICONS = {name: {w, h, dw, dh, ops}}. w/h = viewport, dw/dh = size in dp. ops run in
 # order, in viewport coordinates:
@@ -33,6 +36,8 @@ AAPT = '{http://schemas.android.com/aapt}'
 FWB = os.environ.get('FWB', 'ref/fwb')
 FLAG = 'flag(com.android.systemui.icon_refresh_2025)'
 SYSUI, SLIB, CORE = 'packages/SystemUI/res', 'packages/SettingsLib/res', 'core/res/res'
+LATINIME = None                         # --latinime: the checkout; its files are named 'latinime:<path>'
+LATIN = 'latinime:java/res'
 FLAG_DRAWABLES = f'{SYSUI}/{FLAG}/drawable'
 
 NOTES = []          # (icon, text), printed to stderr and summarised in the report
@@ -50,6 +55,14 @@ _text_cache = {}
 def read_text(rel):
     """Contents of fwb/<rel>, or None."""
     if rel not in _text_cache:
+        if rel.startswith('latinime:'):
+            path = os.path.join(LATINIME, rel[len('latinime:'):])
+            if os.path.isfile(path):
+                with open(path, encoding='utf-8') as f:
+                    _text_cache[rel] = f.read()
+            else:
+                _text_cache[rel] = None
+            return _text_cache[rel]
         path = os.path.join(FWB, rel)
         if os.path.isfile(path):
             with open(path, encoding='utf-8') as f:
@@ -63,6 +76,9 @@ def read_text(rel):
 def list_dir(rel):
     """File names in fwb/<rel> (working tree and git tree merged)."""
     names = set()
+    if rel.startswith('latinime:'):
+        path = os.path.join(LATINIME, rel[len('latinime:'):])
+        return sorted(os.listdir(path)) if os.path.isdir(path) else []
     path = os.path.join(FWB, rel)
     if os.path.isdir(path):
         names.update(os.listdir(path))
@@ -83,6 +99,8 @@ def flag_dirs(res):
 def search_roots(origin, pkg):
     if pkg == 'android' or origin == CORE:
         return [CORE]
+    if origin == LATIN:
+        return [LATIN]
     return flag_dirs(SYSUI) + [SYSUI] + flag_dirs(SLIB) + [SLIB]
 
 
@@ -784,7 +802,21 @@ KEYGUARD_ICONS = {'keyguard_' + n: n for n in ('ic_lock', 'ic_unlocked', 'pin_bo
 KOTLIN_ICONS = {'qs_edit': 'packages/SystemUI/src/com/android/systemui/common/ui/icons/Edit.kt'}
 
 
+# the keyboard's (--latinime): the keys' icons of its Material You theme, the suggestion strip's tool keys, and
+# the input method navigation bar's hide and switcher buttons
+LATIN_ICONS = [
+    'sym_keyboard_shift', 'sym_keyboard_shift_locked', 'sym_keyboard_delete', 'sym_keyboard_settings',
+    'sym_keyboard_return', 'sym_keyboard_next', 'sym_keyboard_search', 'sym_keyboard_send', 'sym_keyboard_done',
+    'sym_keyboard_previous', 'sym_keyboard_tab', 'sym_keyboard_voice', 'sym_keyboard_voice_off',
+    'sym_keyboard_space', 'sym_keyboard_language_switch', 'sym_keyboard_smiley', 'sym_keyboard_clipboard_paste',
+    'ic_floating_keyboard', 'ic_split_keyboard',
+]
+LATIN_CORE_ICONS = ['ic_ime_nav_back', 'ic_ime_switcher']
+
+
 def icon_names():
+    if LATINIME:
+        return LATIN_ICONS + LATIN_CORE_ICONS
     names = [n[:-4] for n in list_dir(FLAG_DRAWABLES) if n.endswith('.xml')]
     for n in SYSUI_ICONS + SLIB_ICONS + CORE_ICONS + list(KEYGUARD_ICONS):
         if n not in names:
@@ -793,7 +825,14 @@ def icon_names():
 
 
 def locate(name):
-    """Top-level lookup: flag dir, SystemUI, SettingsLib, core; keyguard_* in res-keyguard."""
+    """Top-level lookup: flag dir, SystemUI, SettingsLib, core; keyguard_* in res-keyguard; the keyboard's in
+    LatinIME, then core."""
+    if LATINIME:
+        for root in (LATIN, CORE):
+            rel = f'{root}/drawable/{name}.xml'
+            if read_text(rel) is not None:
+                return rel, root
+        return None, None
     if name in KEYGUARD_ICONS:
         rel = f'{KEYGUARD}/drawable/{KEYGUARD_ICONS[name]}.xml'
         return (rel, SYSUI) if read_text(rel) is not None else (None, None)
@@ -846,18 +885,26 @@ def convert(name):
 
 
 def main():
-    global FWB
+    global FWB, LATINIME
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('-o', '--output', help='write here instead of stdout')
     ap.add_argument('--fwb', default=FWB, help='frameworks/base checkout')
+    ap.add_argument('--latinime', help='LatinIME checkout: the keyboard\'s icons instead')
     args = ap.parse_args()
     FWB = args.fwb
+    LATINIME = args.latinime
 
-    lines = ['// Generated by tools/vd2js.py from Android 16 (LineageOS 23.2) vector drawables. Do not edit.',
-             f'// Source: frameworks/base ({FLAG} on); each entry names its file(s).',
-             'export const ICONS = {']
+    if LATINIME:
+        lines = ['// Generated by tools/vd2js.py --latinime from the vector drawables of the AOSP keyboard (LineageOS',
+                 '// LatinIME, Apache-2.0) and of frameworks/base core. Do not edit.',
+                 '// Each entry names its file(s): latinime: under the keyboard\'s tree, core/ under frameworks/base.',
+                 'export const ICONS = {']
+    else:
+        lines = ['// Generated by tools/vd2js.py from Android 16 (LineageOS 23.2) vector drawables. Do not edit.',
+                 f'// Source: frameworks/base ({FLAG} on); each entry names its file(s).',
+                 'export const ICONS = {']
     missing = []
-    for name in icon_names() + list(KOTLIN_ICONS):
+    for name in icon_names() + ([] if LATINIME else list(KOTLIN_ICONS)):
         try:
             res = convert(name)
         except (LookupError, ValueError, ET.ParseError) as e:
