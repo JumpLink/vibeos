@@ -14,3 +14,4 @@ Provenance: the tile is the launcher's own squircle (icons.c superellipse (), ex
 app's colours were measured from the H2O icon pack. H2O is a third-party pack that may not be redistributed. No H2O
 file, image or glyph is used here or shipped: the script holds only those numbers, as data. H2O has no icon for two
 apps, so their colours are our own: android (#3DDC84, Android's green) and dictate (#7C4DFF, a violet).
+The video icon's circle is black (#000000) rather than its H2O counterpart's red.
