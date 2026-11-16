@@ -46,7 +46,7 @@ ICONS = {
     "settings":   ("settings",          "#425D74",                           WHITE),      # settings
     "weather":    ("partly_cloudy_day", "#FCAD08",                           WHITE),      # weather
     "files":      ("folder",            ("#FFA823", "#FFB923"),              WHITE),      # file_manager
-    "terminal":   ("terminal",          "#000000",                           WHITE),      # termux
+    "terminal":   ("terminal",          "#243048",                           WHITE),      # termux (Compass's dark grey, not its black)
     "gallery":    ("photo_library",     ("#1FAFEB", "#2945CA"),              WHITE),      # gallery
     "documents":  ("description",       "#4385F3",                           WHITE),      # google_drive (its blue)
     "video":      ("play_circle",       WHITE,                               "#000000"),  # google_play_movies (black, not its red)
