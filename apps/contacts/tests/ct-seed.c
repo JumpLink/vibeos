@@ -4,8 +4,9 @@
  *
  * It only ever writes to the address book of the evolution-data-server on its own session bus, and it refuses to
  * run unless tests/try-contacts.sh started it (CT_RIG_DIR set, XDG_DATA_HOME inside it) and that book is empty:
- * it cannot fill a real address book by mistake. The numbers are in Berlin's 030 23125 range, which the Federal
- * Network Agency keeps for fiction; the addresses are example.com / example.org. */
+ * it cannot fill a real address book by mistake. The numbers are in the 555-0100 to 555-0199 range, which North
+ * America keeps for fiction; the addresses are example.com / example.com. One birthday falls in the coming days,
+ * whenever the rig runs, so that Highlights has something for "For you". */
 #include "ct-contact.h"
 
 #include <gdk-pixbuf/gdk-pixbuf.h>
@@ -22,40 +23,40 @@ typedef struct {
 } Person;
 
 static const Person people[] = {
-  { "Anna", "Albrecht", "2:+49 30 23125 101", "anna@example.com", TRUE, "Family" },
-  { "Ben", "Bauer", "2:+49 30 23125 102;3:+49 30 23125 202", NULL, FALSE, "Friends" },
-  { "Clara", "Conrad", "2:+49 30 23125 103", "clara@example.org", TRUE, NULL },
+  { "Anna", "Albrecht", "2:+1 202-555-0101", "anna@example.com", TRUE, "Family" },
+  { "Ben", "Bauer", "2:+1 202-555-0102;3:+1 202-555-0152", NULL, FALSE, "Friends" },
+  { "Clara", "Conrad", "2:+1 202-555-0103", "clara@example.com", TRUE, NULL },
   { "David", "Dietrich", NULL, "david@example.com", FALSE, "Work" },
-  { "Emma", "Engel", "1:+49 30 23125 105", NULL, FALSE, "Family,Friends" },
-  { "Felix", "Fischer", "2:+49 30 23125 106", NULL, FALSE, NULL },
-  { "Greta", "Graf", "2:+49 30 23125 107", "greta@example.org", FALSE, NULL },
-  { "Hannah", "Hoffmann", "2:+49 30 23125 108", NULL, TRUE, "Friends" },
-  { "Ida", "Imhof", "3:+49 30 23125 109", NULL, FALSE, NULL },
-  { "Jonas", "Jäger", "2:+49 30 23125 110", "jonas@example.com", FALSE, "Work" },
-  { "Karl", "König", "2:+49 30 23125 111", NULL, FALSE, NULL },
-  { "Lena", "Lange", "2:+49 30 23125 112", NULL, FALSE, NULL },
-  { "Max", "Maier", "2:+49 30 23125 113;1:+49 30 23125 213", NULL, FALSE, "Family" },
-  { "Nora", "Neumann", "2:+49 30 23125 114", NULL, FALSE, NULL },
-  { "Otto", "Olbrich", NULL, "otto@example.org", FALSE, NULL },
-  { "Paula", "Peters", "2:+49 30 23125 116", NULL, FALSE, NULL },
-  { "Quentin", "Quast", "2:+49 30 23125 117", NULL, FALSE, NULL },
-  { "Rosa", "Richter", "2:+49 30 23125 118", NULL, FALSE, NULL },
-  { "Simon", "Schmidt", "2:+49 30 23125 119", "simon@example.com", FALSE, "Work" },
-  { "Tara", "Thiel", "2:+49 30 23125 120", NULL, FALSE, NULL },
-  { "Ulrich", "Ulmer", "1:+49 30 23125 121", NULL, FALSE, NULL },
-  { "Vera", "Vogel", "2:+49 30 23125 122", NULL, FALSE, NULL },
-  { "Walter", "Weber", "2:+49 30 23125 123", NULL, FALSE, NULL },
-  { "Xenia", "Xander", "2:+49 30 23125 124", NULL, FALSE, NULL },
-  { "Yusuf", "Yilmaz", "2:+49 30 23125 125", NULL, FALSE, NULL },
-  { "Zoe", "Zimmermann", "2:+49 30 23125 126", NULL, FALSE, NULL },
-  { "Alexandra", "Ahrens", "2:+49 30 23125 127", NULL, FALSE, NULL },
-  { "Bruno", "Brandt", "2:+49 30 23125 128", NULL, FALSE, NULL },
-  { "Martha", "Möller", "2:+49 30 23125 129", NULL, FALSE, NULL },
-  { "Sophie", "Sommer", "2:+49 30 23125 130", NULL, FALSE, NULL },
-  { "Νίκος", "Παπαδόπουλος", "2:+49 30 23125 131", NULL, FALSE, NULL },
-  { "Ольга", "Иванова", "2:+49 30 23125 132", NULL, FALSE, NULL },
-  { "", "", "2:+49 30 23125 199", NULL, FALSE, NULL },      /* no name: shows its number, under "#" */
-  { "4 Seasons", "", "3:+49 30 23125 133", NULL, FALSE, NULL },
+  { "Emma", "Engel", "1:+1 202-555-0105", NULL, FALSE, "Family,Friends" },
+  { "Felix", "Fischer", "2:+1 202-555-0106", NULL, FALSE, NULL },
+  { "Greta", "Graf", "2:+1 202-555-0107", "greta@example.com", FALSE, NULL },
+  { "Hannah", "Hoffmann", "2:+1 202-555-0108", NULL, TRUE, "Friends" },
+  { "Ida", "Imhof", "3:+1 202-555-0109", NULL, FALSE, NULL },
+  { "Jonas", "Jäger", "2:+1 202-555-0110", "jonas@example.com", FALSE, "Work" },
+  { "Karl", "König", "2:+1 202-555-0111", NULL, FALSE, NULL },
+  { "Lena", "Lange", "2:+1 202-555-0112", NULL, FALSE, NULL },
+  { "Max", "Maier", "2:+1 202-555-0113;1:+1 202-555-0163", NULL, FALSE, "Family" },
+  { "Nora", "Neumann", "2:+1 202-555-0114", NULL, FALSE, NULL },
+  { "Otto", "Olbrich", NULL, "otto@example.com", FALSE, NULL },
+  { "Paula", "Peters", "2:+1 202-555-0116", NULL, FALSE, NULL },
+  { "Quentin", "Quast", "2:+1 202-555-0117", NULL, FALSE, NULL },
+  { "Rosa", "Richter", "2:+1 202-555-0118", NULL, FALSE, NULL },
+  { "Simon", "Schmidt", "2:+1 202-555-0119", "simon@example.com", FALSE, "Work" },
+  { "Tara", "Thiel", "2:+1 202-555-0120", NULL, FALSE, NULL },
+  { "Ulrich", "Ulmer", "1:+1 202-555-0121", NULL, FALSE, NULL },
+  { "Vera", "Vogel", "2:+1 202-555-0122", NULL, FALSE, NULL },
+  { "Walter", "Weber", "2:+1 202-555-0123", NULL, FALSE, NULL },
+  { "Xenia", "Xander", "2:+1 202-555-0124", NULL, FALSE, NULL },
+  { "Yusuf", "Yilmaz", "2:+1 202-555-0125", NULL, FALSE, NULL },
+  { "Zoe", "Zimmermann", "2:+1 202-555-0126", NULL, FALSE, NULL },
+  { "Alexandra", "Ahrens", "2:+1 202-555-0127", NULL, FALSE, NULL },
+  { "Bruno", "Brandt", "2:+1 202-555-0128", NULL, FALSE, NULL },
+  { "Martha", "Möller", "2:+1 202-555-0129", NULL, FALSE, NULL },
+  { "Sophie", "Sommer", "2:+1 202-555-0130", NULL, FALSE, NULL },
+  { "Νίκος", "Παπαδόπουλος", "2:+1 202-555-0131", NULL, FALSE, NULL },
+  { "Ольга", "Иванова", "2:+1 202-555-0132", NULL, FALSE, NULL },
+  { "", "", "2:+1 202-555-0199", NULL, FALSE, NULL },      /* no name: shows its number, under "#" */
+  { "4 Seasons", "", "3:+1 202-555-0133", NULL, FALSE, NULL },
 };
 
 static void
@@ -154,8 +155,8 @@ everything (void)
   name->phonetic_family = g_strdup ("Lindner");
   ct_contact_set_name (contact, name);
   e_contact_set (contact, E_CONTACT_FULL_NAME, "Dr. Lukas Maria Lindner");
-  add_items (contact, CT_KIND_PHONE, "2:+49 30 23125 140;1:+49 30 23125 141;3:+49 30 23125 142");
-  add_items (contact, CT_KIND_EMAIL, "1:lukas@example.com;2:l.lindner@example.org");
+  add_items (contact, CT_KIND_PHONE, "2:+1 202-555-0140;1:+1 202-555-0141;3:+1 202-555-0142");
+  add_items (contact, CT_KIND_EMAIL, "1:lukas@example.com;2:l.lindner@example.com");
   add_items (contact, CT_KIND_ADDRESS, "1:Beispielstraße 1\n10115 Berlin\nGermany");
   add_items (contact, CT_KIND_NICKNAME, "Luke");
   add_items (contact, CT_KIND_WEBSITE, "https://example.com/lukas");
@@ -168,8 +169,8 @@ everything (void)
   ct_contact_set_items (contact, CT_KIND_ORGANIZATION, org);
   /* the legacy kinds the editor shows read-only */
   e_vcard_attribute_add_param_with_value (jabber, e_vcard_attribute_param_new (EVC_TYPE), "HOME");
-  e_vcard_append_attribute_with_value (E_VCARD (contact), jabber, "lukas@jabber.example.org");
-  e_vcard_append_attribute_with_value (E_VCARD (contact), sip, "lukas@sip.example.org");
+  e_vcard_append_attribute_with_value (E_VCARD (contact), jabber, "lukas@jabber.example.com");
+  e_vcard_append_attribute_with_value (E_VCARD (contact), sip, "lukas@sip.example.com");
   ct_contact_set_starred (contact, TRUE);
   ct_contact_add_label (contact, "Work");
   set_photo (contact, 0x5a7d9a, 0xc9a66b);
@@ -245,8 +246,20 @@ main (int argc, char **argv)
     EContact *contact = e_contact_new ();
 
     set_name (contact, "Mia", "Martens");
-    add_items (contact, CT_KIND_PHONE, "2:+49 30 23125 150");
+    add_items (contact, CT_KIND_PHONE, "2:+1 202-555-0150");
     add_items (contact, CT_KIND_EVENT, "3:--07-04");
+    contacts = g_slist_prepend (contacts, contact);
+  }
+  {
+    /* a birthday in five days */
+    EContact *contact = e_contact_new ();
+    g_autoptr(GDateTime) now = g_date_time_new_now_local ();
+    g_autoptr(GDateTime) soon = g_date_time_add_days (now, 5);
+    g_autofree char *date = g_date_time_format (soon, "3:--%m-%d");
+
+    set_name (contact, "Theo", "Tauber");
+    add_items (contact, CT_KIND_PHONE, "2:+1 202-555-0160");
+    add_items (contact, CT_KIND_EVENT, date);
     contacts = g_slist_prepend (contacts, contact);
   }
   if (!e_book_client_add_contacts_sync (E_BOOK_CLIENT (client), contacts, E_BOOK_OPERATION_FLAG_NONE, NULL, NULL,
