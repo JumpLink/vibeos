@@ -609,19 +609,15 @@ window.nb .vibeos-snackbar .vibeos-text-button {
 /* ==== the tab count and the tab switcher (nb-switcher.c) ==== */
 
 /* the tab count (nb-widgets.c): the number in a rounded square, in the bar's icon colour and in the address's own
- * font and size; two figures a size smaller, to stay in the square. The widget centres the number's ink, and keeps
- * the square square. No weight of its own: the address's comes from the window (libvibeos), heavier with Bold text,
+ * font, at a size two figures fit (one is no bigger). The widget centres the number's ink, and keeps the square
+ * square. No weight of its own: the address's comes from the window (libvibeos), heavier with Bold text,
  * which a weight set here (this sheet is not converted) would not follow. */
 nb-tab-count {
   border: 2px solid currentColor;
   border-radius: 5px;
   min-width: 18px;
   min-height: 18px;
-  font-size: 16px;
-}
-
-nb-tab-count.two-figures {
-  font-size: 13px;
+  font-size: 11px;
 }
 
 .nb-switcher-grid {

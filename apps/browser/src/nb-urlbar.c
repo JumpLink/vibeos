@@ -386,11 +386,6 @@ nb_urlbar_sync_count (NbTab *t)
   g_autofree char *text = n > 99 ? g_strdup (":D") : g_strdup_printf ("%u", n);
   g_autofree char *name = g_strdup_printf (n == 1 ? "Switch tabs, %u open tab" : "Switch tabs, %u open tabs", n);
   nb_tab_count_set_text (NB_TAB_COUNT (t->count_label), text);
-  /* two figures (or the smile) a size smaller, to stay in the square */
-  if (strlen (text) > 1)
-    gtk_widget_add_css_class (t->count_label, "two-figures");
-  else
-    gtk_widget_remove_css_class (t->count_label, "two-figures");
   gtk_accessible_update_property (GTK_ACCESSIBLE (t->count), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);
 }
 
