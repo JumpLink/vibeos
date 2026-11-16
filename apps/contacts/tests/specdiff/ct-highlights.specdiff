@@ -1,0 +1,21 @@
+# Highlights on a phone (360 x 721 at 3x). The reference has seven favourites in two rows and ours four in one, so
+# the rows are held by their first cells and by the step from the last row to "For you".
+
+ref-offset 0,116
+ref-density 3
+tolerance 1
+
+favourites band top   | y0('css=first')                              | y0('id=add_favorites_button')       | 64
+favourites band h     | h('css=first')                               | h('id=add_favorites_button')        | 48
+add button right      | x1('css=first >> css=vibeos-text-button')    | x1('id=add_favorites_button')       | 360
+cell 0 picture x      | x0('css=ct-favourite-avatar#0')              | x0('id=monogram#0')                 | 16
+cell 0 picture y      | y0('css=ct-favourite-avatar#0')              | y0('id=monogram#0')                 | 116
+picture size          | w('css=ct-favourite-avatar#0')               | w('id=monogram#0')                  | 58
+cell 1 picture x      | x0('css=ct-favourite-avatar#1')              | x0('id=monogram#1')                 | 106
+cell 3 picture x      | x0('css=ct-favourite-avatar#3')              | x0('id=monogram#3')                 | 286
+name 0 box left       | x0('css=ct-favourite-name#0')                | x0('id=name#0')                     | 8
+name 0 box right      | x1('css=ct-favourite-name#0')                | x1('id=name#0')                     | 82
+name 0 top            | y0('css=ct-favourite-name#0')                | y0('id=name#0')                     | 182
+two-line name height  | h('css=ct-favourite-name#0')                 | h('id=name#0')                      | 33
+last row to "For you" | y0('text=For you/..') - y0('css=ct-favourite-avatar#0') | y0('text=For you') - y0('id=monogram#4') | 115
+"For you" band h      | h('text=For you/..')                         | h('text=For you')                   | 48

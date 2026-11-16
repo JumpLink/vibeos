@@ -137,7 +137,7 @@ struct _Editor {
 
   GBytes *photo_bytes;          /* the photo to save, NULL for none */
   GdkTexture *photo_texture;
-  guint32 photo_tint;
+  char *photo_tint_uid;         /* whose tile colour the photo's background takes (NULL: the default) */
 
   GtkWidget *more_fields, *legacy;
   gboolean expanded;            /* "More fields" was tapped */
@@ -582,8 +582,7 @@ spinner_new (Row *row)
 {
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *spinner = vibeos_pressable_new (box);
-  GtkWidget *caret = ct_tinted_icon_new ("ct-drop-down-symbolic", 24, CT_C_ED_UNDERLINE);
-  GdkRGBA ripple = ct_rgba (CT_RIPPLE_APPCOMPAT);
+  GtkWidget *caret = ct_tinted_icon_new ("ct-drop-down-symbolic", 24, VIBEOS_ON_SURFACE_VARIANT);
   const CtType *types = ct_kind_types (row->section->kind->kind);
   double widest = 0;
 
@@ -606,7 +605,6 @@ spinner_new (Row *row)
   gtk_widget_set_size_request (spinner, (int) ceil (widest + CT_ED_SPINNER_EXTRA_DP), (int) CT_ED_MIN_LINE_DP);
   gtk_widget_set_halign (spinner, GTK_ALIGN_START);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (spinner), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (spinner), &ripple);
   g_signal_connect (spinner, "clicked", G_CALLBACK (on_spinner), row);
   return spinner;
 }
@@ -642,9 +640,8 @@ date_button_new (Row *row)
 {
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *button = vibeos_pressable_new (box);
-  GtkWidget *caret = ct_tinted_icon_new ("ct-drop-down-symbolic", 24, CT_C_ED_UNDERLINE);
+  GtkWidget *caret = ct_tinted_icon_new ("ct-drop-down-symbolic", 24, VIBEOS_ON_SURFACE_VARIANT);
   g_autofree char *display = row->date ? ct_date_format_display (row->date) : NULL;
-  GdkRGBA ripple = ct_rgba (CT_RIPPLE_APPCOMPAT);
 
   row->date_label = ct_label (display ? display : _("Date"), "ct-ed-spinner-text", 16);
   gtk_widget_set_valign (row->date_label, GTK_ALIGN_CENTER);
@@ -658,7 +655,6 @@ date_button_new (Row *row)
     gtk_widget_add_css_class (box, "empty");
   gtk_widget_set_size_request (button, -1, (int) CT_ED_MIN_LINE_DP);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (button), &ripple);
   gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Date"), -1);
   g_signal_connect (button, "clicked", G_CALLBACK (on_date_button), row);
   return button;
@@ -668,8 +664,7 @@ date_button_new (Row *row)
 static GtkWidget *
 delete_button_new (Row *row)
 {
-  GtkWidget *button = ct_icon_button ("ct-close-symbolic", _("delete"), CT_ED_END_COLUMN_DP, CT_ED_MIN_LINE_DP,
-                                      CT_RIPPLE_APPCOMPAT);
+  GtkWidget *button = ct_icon_button ("ct-close-symbolic", _("delete"), CT_ED_END_COLUMN_DP, CT_ED_MIN_LINE_DP);
   g_autofree char *name = row->section->kind->typed
                             ? g_strdup_printf (_("Delete %1$s %2$s"), row_type_label (row), _(row->section->kind->name))
                             : g_strdup_printf (_("Delete %s"), _(row->section->kind->name));
@@ -799,7 +794,7 @@ section_new (Editor *editor, SectionId id)
   gtk_widget_set_size_request (icon_column, (int) CT_ED_KIND_ICON_COL_DP, -1);
   if (section->kind->icon)
     {
-      GtkWidget *icon = ct_tinted_icon_new (section->kind->icon, 24, CT_ED_ICON_COLOR);
+      GtkWidget *icon = ct_tinted_icon_new (section->kind->icon, 24, VIBEOS_ON_SURFACE_VARIANT);
 
       gtk_widget_set_halign (icon, GTK_ALIGN_START);
       gtk_widget_set_margin_start (icon, (int) CT_ED_KIND_ICON_START_DP);
@@ -918,7 +913,7 @@ name_section (Editor *editor)
   editor->name_row = row;
   /* the chevron, beside the first field (gravity top) */
   editor->chevron = ct_icon_button ("ct-expand-more-symbolic", _("Show more name fields"), CT_ED_END_COLUMN_DP,
-                                    CT_ED_MIN_LINE_DP, CT_RIPPLE_APPCOMPAT);
+                                    CT_ED_MIN_LINE_DP);
   gtk_widget_add_css_class (editor->chevron, "ct-ed-chevron");
   gtk_widget_set_valign (editor->chevron, GTK_ALIGN_START);
   g_signal_connect (editor->chevron, "clicked", G_CALLBACK (on_chevron), editor);
@@ -1039,8 +1034,7 @@ labels_section (Editor *editor)
 {
   GtkWidget *section = section_new (editor, S_LABELS);
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  GtkWidget *caret = ct_tinted_icon_new ("ct-drop-down-symbolic", 24, CT_C_ED_UNDERLINE);
-  GdkRGBA ripple = ct_rgba (CT_RIPPLE_APPCOMPAT);
+  GtkWidget *caret = ct_tinted_icon_new ("ct-drop-down-symbolic", 24, VIBEOS_ON_SURFACE_VARIANT);
 
   editor->labels_text = ct_label ("", "ct-ed-spinner-text", 16);
   gtk_label_set_ellipsize (GTK_LABEL (editor->labels_text), PANGO_ELLIPSIZE_END);
@@ -1054,7 +1048,6 @@ labels_section (Editor *editor)
   gtk_widget_add_css_class (editor->labels_button, "labels");
   gtk_widget_set_size_request (editor->labels_button, -1, (int) CT_ED_MIN_LINE_DP);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (editor->labels_button), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (editor->labels_button), &ripple);
   g_signal_connect (editor->labels_button, "clicked", G_CALLBACK (on_labels_button), editor);
   gtk_box_append (GTK_BOX (editor->sections[S_LABELS].rows), editor->labels_button);
   update_labels_button (editor);
@@ -1096,9 +1089,9 @@ ed_photo_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   Editor *editor = ED_PHOTO (widget)->editor;
   double width = gtk_widget_get_width (widget), height = gtk_widget_get_height (widget);
   graphene_rect_t bounds = GRAPHENE_RECT_INIT (0, 0, (float) width, (float) height);
-  GdkRGBA white = ct_rgba (0xFFFFFFFFu);
+  GdkRGBA white = vibeos_color (VIBEOS_WHITE), tint = ct_avatar_header_color (editor->photo_tint_uid);
 
-  ct_avatar_header_snapshot (snapshot, &bounds, editor->photo_tint, editor->photo_texture);
+  ct_avatar_header_snapshot (snapshot, &bounds, &tint, editor->photo_texture);
   /* the camera badge, white, in the bottom end corner */
   vibeos_snapshot_icon (snapshot, widget, "ct-camera-alt-symbolic", width - CT_ED_PHOTO_BADGE_MARGIN_DP - 24,
                      height - CT_ED_PHOTO_BADGE_MARGIN_DP - 24, 24, &white);
@@ -1223,13 +1216,11 @@ photo_area (Editor *editor)
 {
   GtkWidget *photo = g_object_new (ED_TYPE_PHOTO, NULL);
   GtkWidget *button = vibeos_pressable_new (photo);
-  GdkRGBA ripple = ct_rgba (CT_RIPPLE_QC_TOOLBAR);
 
   ED_PHOTO (photo)->editor = editor;
   editor->photo = photo;
   gtk_widget_add_css_class (button, "ct-ed-photo-button");
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (button), &ripple);
   g_signal_connect (button, "clicked", G_CALLBACK (on_photo_tapped), editor);
   return button;
 }
@@ -1266,7 +1257,7 @@ update_account (Editor *editor)
   gtk_widget_set_can_target (editor->account_header, chooser);
   ct_tinted_icon_set (editor->account_icon, !book || book->is_local ? "ct-smartphone-symbolic"
                                                                     : "ct-account-circle-symbolic",
-                      CT_C_ED_ACCOUNT_ICON);
+                      VIBEOS_ON_SURFACE_VARIANT);
   description = g_strdup_printf ("%s\n%s", _("Saving to"), name);
   gtk_accessible_update_property (GTK_ACCESSIBLE (editor->account_header), GTK_ACCESSIBLE_PROPERTY_LABEL,
                                   description, -1);
@@ -1317,9 +1308,8 @@ account_header (Editor *editor)
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *lines = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *header = vibeos_pressable_new (box);
-  GdkRGBA ripple = ct_rgba (CT_RIPPLE_APPCOMPAT);
 
-  editor->account_icon = ct_tinted_icon_new ("ct-smartphone-symbolic", 24, CT_C_ED_ACCOUNT_ICON);
+  editor->account_icon = ct_tinted_icon_new ("ct-smartphone-symbolic", 24, VIBEOS_ON_SURFACE_VARIANT);
   gtk_widget_set_valign (editor->account_icon, GTK_ALIGN_START);
   gtk_widget_add_css_class (editor->account_icon, "ct-ed-account-icon");
   gtk_box_append (GTK_BOX (box), editor->account_icon);
@@ -1330,13 +1320,12 @@ account_header (Editor *editor)
   gtk_widget_set_hexpand (lines, TRUE);
   gtk_widget_add_css_class (lines, "ct-ed-account-lines");
   gtk_box_append (GTK_BOX (box), lines);
-  editor->account_expander = ct_tinted_icon_new ("ct-expand-more-symbolic", 24, CT_C_ED_CHEVRON);
+  editor->account_expander = ct_tinted_icon_new ("ct-expand-more-symbolic", 24, VIBEOS_ON_SURFACE_VARIANT);
   gtk_widget_add_css_class (editor->account_expander, "ct-ed-account-expander");
   gtk_widget_set_valign (editor->account_expander, GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (box), editor->account_expander);
   gtk_widget_add_css_class (header, "ct-ed-account");
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (header), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (header), &ripple);
   g_signal_connect (header, "clicked", G_CALLBACK (on_account_header), editor);
   editor->account_header = header;
   update_account (editor);
@@ -1399,7 +1388,7 @@ legacy_section (Editor *editor)
           CtItem *item = items->pdata[i];
           GtkWidget *line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
           GtkWidget *row = vibeos_pressable_new (line);
-          GtkWidget *icon = ct_tinted_icon_new (icons[k], 24, CT_ED_ICON_COLOR);
+          GtkWidget *icon = ct_tinted_icon_new (icons[k], 24, VIBEOS_ON_SURFACE_VARIANT);
           GtkWidget *value = ct_label (item->value, "ct-ed-legacy-text", 16);
           GtkWidget *type = ct_label (kinds[k] == CT_KIND_IM && item->value2 ? item->value2
                                                                              : _(ct_type_label (kinds[k], item->type,
@@ -1752,6 +1741,7 @@ editor_free (gpointer data)
   g_clear_object (&editor->photo_texture);
   g_clear_object (&editor->original);
   g_free (editor->uid);
+  g_free (editor->photo_tint_uid);
   g_free (editor->book_uid);
   g_free (editor->initial_state);
   g_free (editor->saved_name);
@@ -1806,7 +1796,6 @@ ct_editor_new (GtkWidget *window, const char *uid, EContact *prefill)
   GtkWidget *toolbar, *actions, *title, *shadow, *frame;
   GtkWidget *top = ct_window_top (window);
   GtkWidget *more_label;
-  GdkRGBA ripple = ct_rgba (CT_RIPPLE_APPCOMPAT);
   EContact *loaded = NULL;
   GBytes *photo = NULL;
   g_autoptr(GPtrArray) labels = NULL;
@@ -1848,8 +1837,7 @@ ct_editor_new (GtkWidget *window, const char *uid, EContact *prefill)
         e_contact_photo_free (picture);
     }
   /* the photo's background: the card's own colour (it was opened from QuickContact) or the default tint */
-  editor->photo_tint = !editor->is_new ? ct_avatar_header_color (editor->profile ? CT_PROFILE_UID : uid)
-                                       : CT_C_QC_DEFAULT_TINT;
+  editor->photo_tint_uid = !editor->is_new ? g_strdup (editor->profile ? CT_PROFILE_UID : uid) : NULL;
   editor->name = ct_contact_get_name (prefill && editor->is_new ? prefill : editor->original);
   labels = ct_contact_dup_labels (editor->original);
   editor->labels = g_ptr_array_new_with_free_func (g_free);
@@ -1890,7 +1878,6 @@ ct_editor_new (GtkWidget *window, const char *uid, EContact *prefill)
   editor->more_fields = vibeos_pressable_new (more_label);
   gtk_widget_add_css_class (editor->more_fields, "ct-ed-more");
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (editor->more_fields), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (editor->more_fields), &ripple);
   g_signal_connect (editor->more_fields, "clicked", G_CALLBACK (on_more_fields), editor);
   gtk_box_append (GTK_BOX (editor->content), editor->more_fields);
   editor->legacy = legacy_section (editor);

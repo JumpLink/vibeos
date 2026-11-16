@@ -265,8 +265,8 @@ make_toolbar (Picker *picker, const char *title)
   gtk_widget_add_css_class (frame, "ct-people-toolbar");
   picker->bar = ct_page_toolbar (CT_PAGE (picker->page), NULL, "ct-arrow-back-symbolic", _("Back"), title, &actions,
                                  NULL);
-  picker->search_action = ct_icon_button ("ct-search-symbolic", _("Search contacts"), 56, 48, CT_RIPPLE_APPCOMPAT);
-  picker->overflow = ct_icon_button ("ct-more-vert-symbolic", _("More options"), 40, 48, CT_RIPPLE_APPCOMPAT);
+  picker->search_action = ct_icon_button ("ct-search-symbolic", _("Search contacts"), 56, 48);
+  picker->overflow = ct_icon_button ("ct-more-vert-symbolic", _("More options"), 40, 48);
   g_signal_connect (picker->search_action, "clicked", G_CALLBACK (on_search_action), picker);
   g_signal_connect (picker->overflow, "clicked", G_CALLBACK (on_overflow), picker);
   for (GtkWidget *w = picker->search_action; w; w = w == picker->search_action ? picker->overflow : NULL)
@@ -280,8 +280,7 @@ make_toolbar (Picker *picker, const char *title)
   /* the search box, as the list's */
   picker->search_bar = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_widget_add_css_class (picker->search_bar, "ct-search-bar");
-  back = ct_icon_button ("ct-arrow-back-symbolic", _("stop searching"), CT_SEARCH_ICON_DP, CT_TOOLBAR_H_DP,
-                         CT_RIPPLE_APPCOMPAT);
+  back = ct_icon_button ("ct-arrow-back-symbolic", _("stop searching"), CT_SEARCH_ICON_DP, CT_TOOLBAR_H_DP);
   gtk_widget_add_css_class (back, "ct-search-back");
   g_signal_connect (back, "clicked", G_CALLBACK (on_search_back), picker);
   gtk_box_append (GTK_BOX (picker->search_bar), back);
@@ -292,8 +291,7 @@ make_toolbar (Picker *picker, const char *title)
   gtk_widget_set_valign (picker->search_entry, GTK_ALIGN_CENTER);
   g_signal_connect (picker->search_entry, "changed", G_CALLBACK (on_search_changed), picker);
   gtk_box_append (GTK_BOX (picker->search_bar), picker->search_entry);
-  picker->search_clear = ct_icon_button ("ct-close-symbolic", _("Clear search"), CT_SEARCH_ICON_DP, CT_TOOLBAR_H_DP,
-                                         CT_RIPPLE_APPCOMPAT);
+  picker->search_clear = ct_icon_button ("ct-close-symbolic", _("Clear search"), CT_SEARCH_ICON_DP, CT_TOOLBAR_H_DP);
   gtk_widget_add_css_class (picker->search_clear, "ct-search-clear");
   gtk_widget_set_visible (picker->search_clear, FALSE);
   g_signal_connect (picker->search_clear, "clicked", G_CALLBACK (on_search_clear), picker);
@@ -304,8 +302,7 @@ make_toolbar (Picker *picker, const char *title)
   /* the selection bar: ✕, the count ("Select contacts" at 0), ADD */
   picker->selection_bar = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_widget_add_css_class (picker->selection_bar, "ct-selection-bar");
-  back = ct_icon_button ("ct-close-symbolic", _("close"), CT_SELECTION_CLOSE_DP, CT_TOOLBAR_H_DP,
-                         CT_RIPPLE_APPCOMPAT);
+  back = ct_icon_button ("ct-close-symbolic", _("close"), CT_SELECTION_CLOSE_DP, CT_TOOLBAR_H_DP);
   gtk_widget_add_css_class (back, "ct-selection-close");
   g_signal_connect (back, "clicked", G_CALLBACK (on_selection_close), picker);
   gtk_box_append (GTK_BOX (picker->selection_bar), back);
@@ -342,9 +339,8 @@ ct_picker_offer_new (GtkWidget *page, CtPickerCreate create, gpointer data)
 {
   Picker *picker = g_object_get_data (G_OBJECT (page), "ct-picker");
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  GtkWidget *icon = ct_tinted_icon_new ("ct-person-add-symbolic", 24, CT_C_ACCENT_TEXT);
+  GtkWidget *icon = ct_tinted_icon_new ("ct-person-add-symbolic", 24, VIBEOS_PRIMARY);
   GtkWidget *label = ct_label (_("Create new contact"), "ct-picker-create-text", 16);
-  GdkRGBA ripple = ct_rgba (CT_RIPPLE_APPCOMPAT);
 
   picker->create = create;
   picker->create_data = data;
@@ -356,7 +352,6 @@ ct_picker_offer_new (GtkWidget *page, CtPickerCreate create, gpointer data)
   picker->create_row = vibeos_pressable_new (box);
   gtk_widget_add_css_class (picker->create_row, "ct-picker-create");
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (picker->create_row), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (picker->create_row), &ripple);
   g_signal_connect (picker->create_row, "clicked", G_CALLBACK (on_create), picker);
   /* under the toolbar, over the list */
   gtk_box_insert_child_after (GTK_BOX (page), picker->create_row, gtk_widget_get_first_child (page));

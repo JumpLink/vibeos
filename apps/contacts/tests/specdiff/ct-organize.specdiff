@@ -1,0 +1,14 @@
+# Organize on a phone (360 x 721 at 3x): the first group and its rows. Its cards are the card list's own, which are
+# set apart from the reference's (wider sides, taller rows, text further in): these measure by how much.
+
+ref-offset 0,116
+ref-density 3
+tolerance 1
+
+group header x      | x0('css=vibeos-card-list-header#0')  | x0('class=TextView#1')    | 24
+group header top    | y0('css=vibeos-card-list-header#0')  | y0('class=TextView#1')    | 80
+first card top      | y0('class=VibeosListRow#0')          | y0('class=View#2')        | 116
+card left           | x0('class=VibeosListRow#0')          | x0('class=View#2')        | 12
+card right          | x1('class=VibeosListRow#0')          | x1('class=View#2')        | 348
+two-line row height | h('class=VibeosListRow#2')           | h('class=View#8')         | 72
+row title x         | x0('css=vibeos-list-row-title#1')    | x0('class=TextView#5')    | 68

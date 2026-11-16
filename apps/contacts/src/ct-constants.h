@@ -1,234 +1,83 @@
-/* The app's numbers: sizes in GTK px (the phone renders at scale 3; a name ending in _PX is in device px), text
- * sizes in GTK px too, times in ms. Colours are ARGB, as drawn in dark mode, unless the name ends in _SRC. */
+/* The app's numbers: sizes in dp (a GTK px here, whatever the display's scale), text sizes in sp, times in ms. The
+ * colours are the theme's roles (vibeos_color), read when drawn, so none is here. */
 #pragma once
 
 #include <glib.h>
-#include <stdint.h>
 
-
-/* ======== 0. rendering model ======== */
-#define CT_PX_PER_DP                      3
-#define CT_SCREEN_W_PX                 1080
-#define CT_SCREEN_H_PX                 2280
-#define CT_STATUSBAR_H_PX               116          /* portrait */
-#define CT_STATUSBAR_H_LAND_PX           84          /* landscape */
-#define CT_CUTOUT_INSET_LAND_PX         116
-#define CT_IME_CONTENT_BOTTOM_PX       1349          /* the content's bottom with the keyboard up */
-#define CT_BOLD_TEXT_ADJUST             300          /* Bold text: every weight + 300, up to 1000 */
-#define CT_WEIGHT_REGULAR               700
-#define CT_WEIGHT_MEDIUM                800
-#define CT_WEIGHT_BOLD                  900
+/* ======== text ======== */
+#define CT_WEIGHT_REGULAR               700          /* the text renderer's weights: regular, and */
 #define CT_WEIGHT_PAINT                 400          /* the avatar's letter, which Bold text leaves alone */
-#define CT_TEXT_BOX_EM                    1.355f     /* a text line's box with its font padding, in em */
-#define CT_FD_MAKE_L_PIVOT              110.0f       /* dark mode's lightness inversion: L' = min(110 - L*, 100) */
-#define CT_FD_PALETTE_V_SPLIT             0.5f       /* HSV V >= 0.5 -> Light palette */
 
-/* ---- palette ---- */
-#define CT_ACCENT1_100               0xFFB8EBF3u
-#define CT_ACCENT1_300               0xFF81B4BBu
-#define CT_ACCENT1_400               0xFF6799A0u
-#define CT_ACCENT1_500               0xFF4D7F86u
-#define CT_ACCENT1_600               0xFF33666Du
-#define CT_ACCENT1_700               0xFF174E55u
-#define CT_ACCENT1_800               0xFF00363Cu
-#define CT_ACCENT2_300               0xFF96B0B4u
-#define CT_ACCENT2_400               0xFF7C9599u
-#define CT_ACCENT2_500               0xFF627B7Fu
-#define CT_ACCENT2_600               0xFF4A6366u
-#define CT_ACCENT2_700               0xFF324B4Eu
-#define CT_ACCENT2_800               0xFF1C3438u
-#define CT_ACCENT3_300               0xFF8DAFD1u
-#define CT_ACCENT3_400               0xFF7394B5u
-#define CT_ACCENT3_500               0xFF597A9Au
-#define CT_ACCENT3_600               0xFF406180u
-#define CT_ACCENT3_700               0xFF274967u
-#define CT_ACCENT3_800               0xFF0C334Fu
-#define CT_NEUTRAL1_800              0xFF2C3132u
-#define CT_NEUTRAL1_900              0xFF181C1Du
+/* ======== the home page ======== */
+#define CT_RAIL_W_DP                     80.0f       /* the tablet's navigation rail */
+#define CT_TAB_FADE_MS                  150          /* one tab giving way to another */
+#define CT_TAB_PAD_BOTTOM_DP             24.0f       /* under the last card of Highlights and Organize */
+#define CT_LIST_PANE_RATIO                0.36f      /* on a tablet, the list's share of the width */
+#define CT_LIST_PANE_MIN_DP             360.0f       /* and its bounds */
+#define CT_LIST_PANE_MAX_DP             420.0f
+#define CT_DETAIL_EMPTY_ICON_DP          96.0f       /* the picture on the detail side when nothing is open */
 
-/* ---- app colours, effective ---- */
-#define CT_C_WINDOW_BG               0xFF181C1Du
-#define CT_C_TOOLBAR                 0xFF33666Du
-#define CT_C_STATUSBAR               0xFF174E55u
-#define CT_C_STATUSBAR_LABEL         0xFF181C1Du
-#define CT_C_TOOLBAR_LABEL           0xFF2C3132u
-#define CT_C_STATUSBAR_QC            0xFF051112u     /* the status bar under QuickContact's scrim */
-#define CT_C_LIST_NAME               0xFFDADADAu
-#define CT_C_LIST_SECONDARY          0xFF737373u
-#define CT_C_SECTION_HEADER          0xFF33666Du
-#define CT_C_TEXT_PRIMARY            0xFFDBDBDBu
-#define CT_C_TEXT_SECONDARY          0xFF959595u
-#define CT_C_ACCENT_TEXT             0xFF81B5BCu
-#define CT_C_ICON_NORMAL             0xFFEBEBEBu
-#define CT_C_ICON_SELECTED           0xFFEDF9FBu
-#define CT_C_ICON_SECONDARY_TINT     0xFFEAEAEAu
-#define CT_C_ICON_HINT_TINT          0xFF9E9E9Eu
-#define CT_C_ICON_OVERFLOW_SELECT    0xFFE9E9E9u
-#define CT_C_WHITE                   0xFFFFFFFFu
-#define CT_C_FAB                     0xFF00383Eu
-#define CT_C_SEARCH_BOX              0xFF1B1B1Bu
-#define CT_C_SEARCH_HINT             0xFF767676u
-#define CT_C_SELECTION_BAR           0xFF222222u
-#define CT_C_SELECTION_COUNT         0xDFFFFFFFu
-#define CT_C_DRAWER_BG               0xFF1F1F1Fu
-#define CT_C_DRAWER_SELECTED         0xFF2C2C2Cu
-#define CT_C_DRAWER_DIVIDER          0xFF2E2E2Eu
-#define CT_C_DRAWER_TEXT             0xDDFFFFFFu
-#define CT_C_DRAWER_HEADER_TEXT      0x89FFFFFFu
-#define CT_C_DRAWER_STATUS_SCRIM     0x33000000u
-#define CT_C_DRAWER_SCRIM            0x99000000u
-#define CT_C_ALERT_BG                0xFF323232u
-#define CT_C_EMPTY_BG                0xFF272727u
-#define CT_C_CARD                    0xFF1B1B1Bu
-#define CT_C_CARD_GUTTER             0xFF232323u
-#define CT_C_QC_HEADER_TEXT          0xFFF8F8F8u
-#define CT_C_QC_SUB_TEXT             0xFF959595u
-#define CT_C_QC_DEFAULT_TINT         0xFF607D8Bu
-#define CT_C_QC_DEFAULT_TINT_DARK    0xFF455A64u
-#define CT_C_QC_DEFAULT_TITLE        0xFF7794A2u
-#define CT_C_QC_SCRIM                0xC8000000u
-#define CT_C_POPUP_BG                0xFF1F1F1Fu
-#define CT_C_POPUP_TEXT              0xDEFFFFFFu
-#define CT_C_CHECK_ON                0xFFEDF9FBu
-#define CT_C_CHECK_OFF               0xFFEBEBEBu
-#define CT_C_DIALOG_BG               0xFF1B1B1Bu
-#define CT_C_DIALOG_SCRIM            0x99000000u
-#define CT_C_DIALOG_TEXT             0xFFE1E1E1u
-#define CT_C_SNACKBAR_BG             0xFF323232u
-#define CT_C_SCROLLBAR               0x87737373u
-#define CT_C_FASTSCROLL_THUMB        0xFF737373u
-#define CT_C_FASTSCROLL_THUMB_PRESSED 0xFF33666Du
-#define CT_C_FASTSCROLL_TRACK        0x39737373u
-#define CT_C_TOOLBAR_SHADOW_TOP      0xFF15191Au     /* the shadow's darkest row, under the toolbar */
+/* ======== the list's head ======== */
+#define CT_HEAD_GAP_DP                    8.0f       /* above the pill, the filter row and "Your info" */
+#define CT_PILL_H_DP                     48.0f
+#define CT_PILL_ICON_X_DP                16.0f       /* the magnifier's start, from the pill's */
+#define CT_PILL_TEXT_X_DP                52.0f       /* the hint's */
+#define CT_PILL_DISC_DP                  42.0f       /* the account picture at its end */
+#define CT_SHEET_AVATAR_DP               40.0f       /* the account sheet's profile picture */
+#define CT_ACCOUNT_BUTTON_H_DP           40.0f       /* "All contacts ▾" */
+#define CT_ACCOUNT_ICON_DP               18.0f
+#define CT_CHIP_ICON_DP                  18.0f
+#define CT_CHIP_RADIUS_DP                 8.0f
+#define CT_CHIP_GAP_DP                    8.0f
 
-/* ======== 1. the contact list ======== */
-/* ---- toolbar ---- */
-#define CT_TOOLBAR_H_DP                  56.0f
-#define CT_TOOLBAR_H_LAND_DP             48.0f
-#define CT_TOOLBAR_ELEVATION_DP           2.0f
-#define CT_TOOLBAR_NAV_W_DP              56.0f
-#define CT_TOOLBAR_TITLE_X_DP            72.0f       /* past the navigation button */
-#define CT_TOOLBAR_TITLE_SP              20.0f       /* px: it does not follow the font scale */
-#define CT_TOOLBAR_ACTION_PAD_DP         16.0f
-#define CT_TOOLBAR_ACTION_W_PX          168
-#define CT_DRAWER_ARROW_BAR_LEN_DP       18.0f
-#define CT_DRAWER_ARROW_BAR_THICK_DP      2.0f
-#define CT_DRAWER_ARROW_GAP_DP            3.0f
-#define CT_DRAWER_ARROW_HEAD_DP           8.0f
-#define CT_DRAWER_ARROW_SHAFT_DP         16.0f
-#define CT_DRAWER_ARROW_SIZE_DP          24.0f
-
-/* ---- rows ---- */
-#define CT_LIST_PAD_TOP_DP                7.0f
+/* ======== the rows ======== */
+#define CT_LIST_SIDE_DP                  16.0f       /* the cards' margin from the list's sides */
+#define CT_LIST_PAD_TOP_DP                8.0f       /* above the first card with no head */
+#define CT_LIST_PAD_BOTTOM_DP            24.0f       /* under the last */
+#define CT_LIST_PAD_BOTTOM_FAB_DP        88.0f       /* the same, clear of the FAB */
+#define CT_CARD_OUTER_RADIUS_DP          20.0f       /* a card's ends */
+#define CT_CARD_INNER_RADIUS_DP           4.0f       /* between its rows */
 #define CT_ROW_H_DP                      56.0f
-#define CT_ROW_PAD_TOP_DP                 7.0f
-#define CT_ROW_PAD_BOTTOM_DP              7.0f
-#define CT_ROW_PAD_RIGHT_DP              32.0f
-#define CT_ROW_HEADER_COL_DP             56.0f
-#define CT_ROW_GAP_HEADER_PHOTO_DP       16.0f
+#define CT_ROW_SNIPPET_H_DP              72.0f       /* a search result with the line that matched */
+#define CT_ROW_GAP_DP                     2.0f       /* between the rows of a card */
 #define CT_ROW_PHOTO_DP                  40.0f
-#define CT_ROW_PHOTO_OFFSET_TOP_DP       -1.0f
-#define CT_ROW_GAP_PHOTO_TEXT_DP         15.0f
-#define CT_ROW_NAME_SP                   16.0f
-#define CT_ROW_TEXT_OFFSET_TOP_DP        -2.0f
-#define CT_ROW_SECONDARY_SP              14.0f
-#define CT_ROW_CHECKBOX_GAP_PX           20          /* device px */
-#define CT_ROW_PHOTO_X_PX               216
-#define CT_ROW_NAME_X_PX                381
-#define CT_ROW_NAME_X_SEARCH_PX         213
+#define CT_ROW_PHOTO_X_DP                16.0f       /* from the card's start */
+#define CT_ROW_NAME_X_DP                 72.0f
+#define CT_ROW_NAME_BOX_DP               24.0f
+#define CT_ROW_SNIPPET_BOX_DP            20.0f
+#define CT_ROW_END_DP                    16.0f       /* the text's (or the checkbox's) end, from the card's */
+#define CT_ROW_CHECK_GAP_DP               8.0f
+#define CT_SECTION_H_DP                  32.0f       /* a section's header */
+#define CT_SECTION_TEXT_X_DP             16.0f       /* from the card's start */
+#define CT_SECTION_TEXT_BOX_DP           16.0f
+#define CT_SECTION_STAR_DP               16.0f
+#define CT_SECTION_STAR_TEXT_X_DP        40.0f       /* "Favorites", past the star */
 
-/* ---- section headers ---- */
-#define CT_SECTION_SP                    16.0f       /* in capitals */
-#define CT_SECTION_BLANK                 "…"
-#define CT_PINNED_FADE_MS                20
-
-/* ---- fast scroller ---- */
-#define CT_FS_THUMB_W_DP                  8.0f
-#define CT_FS_THUMB_H_DP                 48.0f
-#define CT_FS_TRACK_W_DP                  8.0f
-#define CT_FS_MIN_PAGES                   4
-#define CT_FS_FADE_IN_MS                150
-#define CT_FS_FADE_OUT_MS               300
-#define CT_FS_HIDE_DELAY_MS            1500
-#define CT_FS_SLIDE_MS                  150
-#define CT_FS_PREVIEW_FADE_MS            50
-#define CT_FS_PREVIEW_RESIZE_MS         100
-#define CT_FS_PREVIEW_TEXT_SP            45.0f
-#define CT_FS_PREVIEW_MIN_W_DP          104.0f
-#define CT_FS_PREVIEW_MIN_H_DP           88.0f
-#define CT_FS_PREVIEW_CORNER_DP          44.0f       /* 44/44/0/44 */
-#define CT_FS_PREVIEW_PAD_H_DP           22.0f
-#define CT_FS_PREVIEW_INSET_DP           16.0f
-
-/* ---- FAB ---- */
+/* ======== the FAB ======== */
 #define CT_FAB_DP                        56.0f
-#define CT_FAB_MARGIN_DP                 16.0f       /* end and bottom, no nav inset */
-#define CT_FAB_ICON_DP                   24.0f
-#define CT_FAB_ELEVATION_DP               6.0f
-#define CT_FAB_TRANSLATION_Z_DP           8.0f
-#define CT_FAB_SCALE_IN_MS              186          /* linear-out-slow-in (0,0,0.2,1) */
-#define CT_FAB_ICON_FADE_IN_MS          116
-#define CT_FAB_ICON_FADE_IN_DELAY_MS     70
-#define CT_FAB_SCALE_OUT_MS             175          /* fast-out-linear-in (0.4,0,1,1) */
-#define CT_FAB_ICON_FADE_OUT_MS          46
+#define CT_FAB_RADIUS_DP                 16.0f
+#define CT_FAB_MARGIN_END_DP             24.0f
+#define CT_FAB_MARGIN_BOTTOM_DP          16.0f
+#define CT_FAB_SCALE_IN_MS              186          /* linear-out-slow-in */
+#define CT_FAB_SCALE_OUT_MS             175          /* fast-out-linear-in */
 
-/* ---- drawer ---- */
-#define CT_DRAWER_W_DP                  320.0f
-#define CT_DRAWER_ELEVATION_DP           10.0f
-#define CT_DRAWER_SPACER_DP               8.0f
-#define CT_DRAWER_ITEM_H_DP              48.0f
-#define CT_DRAWER_ITEM_PAD_START_DP      16.0f
-#define CT_DRAWER_PRIMARY_PAD_END_DP     32.0f
-#define CT_DRAWER_ICON_BOX_DP            32.0f
-#define CT_DRAWER_TEXT_MARGIN_DP         32.0f
-#define CT_DRAWER_TEXT_SP                14.0f
-#define CT_DRAWER_HEADER_SP              14.0f
-#define CT_DRAWER_HEADER_PAD_V_DP        12.0f
-#define CT_DRAWER_HEADER_PAD_END_DP      24.0f
-#define CT_DRAWER_DIVIDER_FRAME_DP       16.0f
-#define CT_DRAWER_DIVIDER_DP              1.0f
-#define CT_DRAWER_EDGE_DP                20.0f       /* the start-edge strip a swipe opens the drawer from */
-#define CT_DRAWER_SETTLE_BASE_MS        256          /* the drawer settles in (fraction to go + 1) x this */
-#define CT_DRAWER_SETTLE_MAX_MS         600          /* and at most this */
-#define CT_DRAWER_PEEK_DELAY_MS         160
-#define CT_DRAWER_MIN_FLING_DP_S        400.0f       /* px/s */
+/* ======== search, Highlights ======== */
+#define CT_RECENT_CELLS                   8          /* search's "Recent contacts" */
+#define CT_RECENT_CELL_W_DP              76.0f
+#define CT_RECENT_AVATAR_DP              48.0f
+#define CT_FAVOURITE_CELL_W_DP           90.0f       /* a favourite's cell, edge to edge across the width */
+#define CT_FAVOURITE_AVATAR_DP           58.0f
+#define CT_FAVOURITE_COLUMNS              4          /* at least, and at most on a wide window */
+#define CT_FAVOURITE_COLUMNS_MAX         12
 
-/* ---- account header, alert, refresh, empty ---- */
-#define CT_ACCOUNT_HEADER_H_DP           48.0f
-#define CT_ACCOUNT_HEADER_SP             14.0f
-#define CT_HEADER_ICON_X_DP              16.0f       /* the account icon */
-#define CT_HEADER_TEXT_X_DP              64.0f       /* the count's start */
-#define CT_ALERT_PAD_START_DP            20.0f
-#define CT_ALERT_TEXT_SP                 16.0f
-#define CT_ALERT_TEXT_PAD_V_DP           16.0f
-#define CT_ALERT_DISMISS_W_DP            56.0f
-#define CT_PULL_REFRESH_DISTANCE_DP      40.0f
-#define CT_EMPTY_IMAGE_H_DP             150.0f
-#define CT_EMPTY_IMAGE_OFFSET_DP        210.0f       /* top: screen height / 2 − this */
-#define CT_EMPTY_TEXT_SP                 18.0f
-#define CT_EMPTY_TEXT_ALPHA               0.54f
-#define CT_EMPTY_TEXT_PAD_TOP_DP         32.0f
-#define CT_EMPTY_ACCOUNT_IMAGE_DP        96.0f       /* top: screen height / 4 + CT_EMPTY_ACCOUNT_OFFSET_DP */
-#define CT_EMPTY_ACCOUNT_OFFSET_DP       30.0f
-#define CT_NO_ACCOUNT_IMAGE_W_DP        180.0f       /* top: screen height / 2 − CT_NO_ACCOUNT_OFFSET_DP */
-#define CT_NO_ACCOUNT_OFFSET_DP         230.0f
-
-/* ---- selection mode, search ---- */
-#define CT_ACTIONBAR_ANIM_MS            195          /* search box and selection bar alpha */
-#define CT_SELECTION_CLOSE_DP            56.0f
-#define CT_SELECTION_COUNT_MARGIN_DP     72.0f
+/* ======== pages with a toolbar (Settings, the picker) and selection ======== */
+#define CT_TOOLBAR_H_DP                  56.0f
+#define CT_TOOLBAR_NAV_W_DP              56.0f
+#define CT_TOOLBAR_TITLE_SP              20.0f
 #define CT_SEARCH_ICON_DP                56.0f
-#define CT_SEARCH_NAV_MARGIN_DP           8.0f
-#define CT_SEARCH_TEXT_MARGIN_DP          8.0f
-#define CT_SEARCH_TEXT_SP                16.0f
-#define CT_SEARCH_CLOSE_PAD_DP           16.0f
-#define CT_SEARCH_CURSOR_W_DP             2.0f
-#define CT_SEARCH_CURSOR_H_DP            22.0f
-#define CT_SEARCH_NO_RESULTS_SP          22.0f
-#define CT_SEARCH_NO_RESULTS_PAD_DP      24.0f
+#define CT_SELECTION_CLOSE_DP            56.0f
 
-/* ======== 3. QuickContact ======== */
-#define CT_QC_STARTING_EMPTY_H_DP       150.0f
+/* ======== QuickContact ======== */
 #define CT_QC_INTERMEDIATE_RATIO          0.6f
 #define CT_QC_SCRIM_FADE_MS             200
 #define CT_QC_ENTRANCE_MS               300          /* linear-out-slow-in */
@@ -238,30 +87,18 @@
 #define CT_QC_PHONETIC_MAX_DP            28.0f
 #define CT_QC_TITLE_PLACEHOLDER_DP       20.0f
 #define CT_QC_TITLE_MARGIN_H_DP          16.0f
-#define CT_QC_TITLE_MARGIN_BOTTOM_DP      8.0f
 #define CT_QC_TITLE_MAX_MARGIN_DP        16.0f
 #define CT_QC_TITLE_CURVE_X1              0.16f      /* the title's curve: cubic Bézier (0.16, 0.4, 0.2, 1) */
 #define CT_QC_TITLE_CURVE_Y1              0.4f
 #define CT_QC_TITLE_CURVE_X2              0.2f
 #define CT_QC_TITLE_CURVE_Y2              1.0f
-#define CT_QC_GRADIENT_END           0x88000000u
+#define CT_QC_GRADIENT_ALPHA              0.533f     /* the scrim's colour at the header's bottom, under the title */
 #define CT_QC_GRADIENT_TITLE_FACTOR       1.25f
 #define CT_QC_TOOLBAR_ELEVATION_DP        4.5f
 #define CT_QC_COLOR_BLEND_START           0.5f
 #define CT_QC_TILE_INTERMEDIATE_ALPHA     0.8f
 #define CT_QC_TILE_EXPONENT               3.0f
-#define CT_QC_SPRING_DAMPENING            0.01f
-#define CT_QC_SNAP_SLOP_DP               33.0f
-#define CT_QC_DISMISS_RELEASE_DP         40.0f
-#define CT_QC_DISMISS_SCROLL_DP         100.0f
-#define CT_QC_SCROLLER_DEFAULT_MS       250
-#define CT_QC_LAND_PHOTO_RATIO            0.7f
-#define CT_QC_CARD_CORNER_DP             28.0f
-#define CT_QC_CARD_MARGIN_H_DP            8.0f
-#define CT_QC_CARD_MARGIN_BOTTOM_DP      12.0f
-#define CT_QC_CARDS_PAD_TOP_DP           12.0f
 #define CT_QC_CARD_TITLE_SP              16.0f
-#define CT_QC_CARD_TITLE_PAD_DP          16.0f
 #define CT_QC_ENTRY_PAD_START_DP         20.0f
 #define CT_QC_ENTRY_PAD_END_DP            8.0f
 #define CT_QC_ENTRY_PAD_TOP_DP           13.0f
@@ -272,85 +109,40 @@
 #define CT_QC_ICON_MARGIN_TOP_DP         12.0f
 #define CT_QC_IMAGE_SPACING_DP           27.0f
 #define CT_QC_HEADER_SP                  16.0f
-#define CT_QC_HEADER_PAD_TOP_DP           5.0f
-#define CT_QC_HEADER_MARGIN_BOTTOM_DP     2.0f
 #define CT_QC_SUB_SP                     14.0f
 #define CT_QC_CLICKABLE_ICON_DP          48.0f
-#define CT_QC_CLICKABLE_ICON_PAD_DP      12.0f
-#define CT_QC_STATUS_ANIM_MS            150          /* unused */
 
-/* ======== 6. avatars ======== */
+/* ======== the editor ======== */
+#define CT_ED_MIN_LINE_DP                54.0f
+#define CT_ED_KIND_ICON_TOP_DP           14.0f
+#define CT_ED_KIND_ICON_COL_DP           68.0f       /* the kind's icon with its margins */
+#define CT_ED_KIND_ICON_START_DP         16.0f
+#define CT_ED_PHOTO_RATIO                 1.96f      /* height = width / 1.96 */
+#define CT_ED_TYPE_LABEL_W_DP           150.0f
+#define CT_ED_END_COLUMN_DP              56.0f       /* the ✕ / chevron column */
+#define CT_ED_SPINNER_EXTRA_DP           56.0f       /* spinner = widest label + this (its padding and caret) */
+#define CT_ED_PHOTO_BADGE_MARGIN_DP      16.0f       /* the camera badge, bottom and end */
+#define CT_ED_ANIM_MS                   200          /* a row's fade in (after 200) and out */
+
+/* ======== avatars ======== */
 #define CT_TILE_LETTER_RATIO              0.67f
-#define CT_TILE_SILHOUETTE_ALPHA        138
-#define CT_TILE_DEFAULT              0xFFCCCCCCu
-#define CT_TILE_LETTER               0xFFFFFFFFu
-#define CT_TILE_PLACEHOLDER_SILHOUETTE 0xFFE8E8E8u
-#define CT_TILE_COUNT                    12
-static const uint32_t G_GNUC_UNUSED CT_TILE_COLORS[CT_TILE_COUNT] = {  /* index = abs(ct_java_hash(uid)) % 12 */
-    0xFF81B4BBu, 0xFF96B0B4u, 0xFF8DAFD1u,
-    0xFF6799A0u, 0xFF7C9599u, 0xFF7394B5u,
-    0xFF4D7F86u, 0xFF627B7Fu, 0xFF597A9Au,
-    0xFF33666Du, 0xFF4A6366u, 0xFF406180u };
-static const uint32_t G_GNUC_UNUSED CT_TILE_COLORS_DARK[CT_TILE_COUNT] = {  /* QuickContact's secondary colour */
-    0xFF4D7F86u, 0xFF627B7Fu, 0xFF597A9Au,
-    0xFF33666Du, 0xFF4A6366u, 0xFF406180u,
-    0xFF174E55u, 0xFF324B4Eu, 0xFF274967u,
-    0xFF00363Cu, 0xFF1C3438u, 0xFF0C334Fu };
-static const uint32_t G_GNUC_UNUSED CT_QC_HEADER_BG[CT_TILE_COUNT] = {     /* QuickContact's header, by tile colour */
-    0xFF34666Du, 0xFF4B6367u, 0xFF406381u,
-    0xFF4E8086u, 0xFF647C80u, 0xFF406381u,
-    0xFF4E8086u, 0xFF647C80u, 0xFF597A9Au,
-    0xFF34666Du, 0xFF4A6366u, 0xFF406180u };
 
-/* QuickContact's theme colour for a tile: the CT_TILE_COLORS entry nearest the tile's hue. The kind icons take it as
- * it is; the card titles are text, so they take it lightened (CT_QC_TITLE). A contact with a photo, and the default
- * grey tile, take #607d8b / #455a64. */
-static const uint32_t G_GNUC_UNUSED CT_QC_PRIMARY[CT_TILE_COUNT] = {
-    0xFF81B4BBu, 0xFF96B0B4u, 0xFF8DAFD1u,
-    0xFF6799A0u, 0xFF7C9599u, 0xFF8DAFD1u,
-    0xFF6799A0u, 0xFF7C9599u, 0xFF597A9Au,
-    0xFF81B4BBu, 0xFF4A6366u, 0xFF406180u };
-static const uint32_t G_GNUC_UNUSED CT_QC_TITLE[CT_TILE_COUNT] = {        /* CT_QC_PRIMARY lightened, for text */
-    0xFF81B4BBu, 0xFF96B0B4u, 0xFF8DAFD1u,
-    0xFF6799A0u, 0xFF7C9599u, 0xFF8DAFD1u,
-    0xFF6799A0u, 0xFF7C9599u, 0xFF7495B6u,
-    0xFF81B4BBu, 0xFF96B1B4u, 0xFF90B0D2u };
-#define CT_C_QC_CARD                 0xFF1B1B1Bu
-#define CT_C_QC_GUTTER               0xFF232323u     /* between the cards */
-#define CT_C_QC_NO_DATA              0xFF737373u     /* "Add phone number": grey text and icon */
+/* ======== menus, dialogs, toasts ======== */
+#define CT_POPUP_H_OFFSET_DP             -4.0f
+#define CT_POPUP_MIN_W_DP               196.0f
+#define CT_POPUP_ITEM_H_DP               48.0f
+#define CT_POPUP_ITEM_PAD_DP             16.0f
+#define CT_POPUP_SPINNER_PAD_DP           8.0f
+#define CT_POPUP_TEXT_SP                 16.0f
+#define CT_POPUP_ENTER_FADE_MS          100          /* from alpha 0.1 */
+#define CT_POPUP_EXIT_MS                300
+#define CT_DIALOG_W_DP                  320.0f       /* CT_DIALOG_FRAMEWORK dialogs */
+#define CT_DIALOG_MIN_W_FRAC              0.95f      /* CT_DIALOG_APPCOMPAT dialogs: at least this much of the width */
+#define CT_DIALOG_TITLE_SP               20.0f
+#define CT_TOAST_SHORT_MS              2000
 
-/* ======== 7. ripples, scrolling, motion ======== */
-#define CT_RIPPLE_ENTER_MS              450          /* progress 0 -> 0.5, fast-out-slow-in */
-#define CT_RIPPLE_EXIT_MS               375          /* progress -> 1, linear, after enter */
-#define CT_RIPPLE_NOISE_MS             7000
-#define CT_RIPPLE_SPARKLE            0x8DFFFFFFu
-#define CT_RIPPLE_FOCUS_BG_MS            80
-#define CT_RIPPLE_LIST_SRC           0x1F000000u
-#define CT_RIPPLE_APPCOMPAT          0x1FFFFFFFu
-#define CT_RIPPLE_DRAWER             0x1AFFFFFFu
-#define CT_RIPPLE_FRAMEWORK          0x33FFFFFFu     /* QC entries, filter screen */
-#define CT_RIPPLE_QC_TOOLBAR         0xA0FFFFFFu
-#define CT_RIPPLE_FAB                0xFFFFFFFFu
-#define CT_TAP_TIMEOUT_MS               100
-#define CT_PRESSED_STATE_MS              64
-#define CT_LONG_PRESS_MS                400
+/* ======== motion ======== */
 #define CT_TOUCH_SLOP_DP                  8.0f
-#define CT_FLING_MIN_DP_S                50.0f
-#define CT_FLING_MAX_DP_S              8000.0f
-#define CT_FLING_FRICTION                 0.015f
-#define CT_FLING_INFLEXION                0.35f
-#define CT_FLING_PHYS_TUNING              0.84f      /* x 9.80665 x 39.37 x dpi */
-#define CT_STRETCH_LINEAR                 0.016f
-#define CT_STRETCH_EXP                    0.016f
-#define CT_STRETCH_EXP_DIST               0.33f
-#define CT_STRETCH_SPRING_FREQ           24.657f
-#define CT_STRETCH_SPRING_DAMPING         0.98f
-#define CT_STRETCH_ABSORB_MULT           13.0f
-#define CT_STRETCH_LINEAR_VEL           200.0f
-#define CT_STRETCH_LINEAR_DIST_PX         8.0f
-#define CT_SCROLLBAR_W_DP                 4.0f
-#define CT_SCROLLBAR_FADE_MS            250
-#define CT_SCROLLBAR_DELAY_MS           400
 #define CT_ACTIVITY_SLIDE_DP             96.0f       /* the emphasized curve (fast-out-extra-slow-in) */
 #define CT_ACTIVITY_ANIM_MS             450
 #define CT_ACTIVITY_OPEN_FADE_DELAY_MS   50
@@ -359,69 +151,3 @@ static const uint32_t G_GNUC_UNUSED CT_QC_TITLE[CT_TILE_COUNT] = {        /* CT_
 #define CT_LIST_LOAD_MS                 190          /* linear-out-slow-in */
 #define CT_LIST_LOAD_DELAY_FRAC           0.10f
 #define CT_LIST_LOAD_TRANSLATE_FRAC       0.05f
-#define CT_POPUP_ELEVATION_DP            16.0f
-#define CT_POPUP_CORNER_DP                2.0f
-#define CT_POPUP_H_OFFSET_DP             -4.0f
-#define CT_POPUP_MIN_W_DP               196.0f
-#define CT_POPUP_ITEM_H_DP               48.0f
-#define CT_POPUP_ITEM_PAD_DP             16.0f
-#define CT_POPUP_SPINNER_PAD_DP           8.0f
-#define CT_POPUP_TEXT_SP                 16.0f
-#define CT_POPUP_ENTER_MS               250          /* a clip reveal from the anchor, left out */
-#define CT_POPUP_ENTER_FADE_MS          100          /* from alpha 0.1 */
-#define CT_POPUP_EXIT_MS                300
-#define CT_DIALOG_W_DP                  320.0f       /* CT_DIALOG_FRAMEWORK dialogs */
-#define CT_DIALOG_MIN_W_FRAC              0.95f      /* CT_DIALOG_APPCOMPAT dialogs: at least this much of the width */
-#define CT_DIALOG_CORNER_DP              16.0f       /* the app's own dialogs */
-#define CT_DIALOG_CORNER_FW_DP            2.0f       /* framework light dialogs */
-#define CT_DIALOG_TITLE_PAD_TOP_DP       18.0f
-#define CT_DIALOG_PAD_H_DP               24.0f
-#define CT_DIALOG_TITLE_SP               20.0f
-#define CT_DIALOG_BUTTON_H_DP            54.0f       /* on a screen at least 720 px tall */
-#define CT_DIALOG_ENTER_MS              220          /* the standard curve, rising 20 px into place */
-#define CT_DIALOG_ENTER_DY_DP            20.0f
-#define CT_DIALOG_EXIT_MS               150          /* the standard accelerate curve, rising 10 px */
-#define CT_DIALOG_EXIT_DY_DP            -10.0f
-#define CT_DIALOG_APPCOMPAT_MS          150          /* alpha only */
-#define CT_SNACKBAR_ELEVATION_DP          6.0f
-#define CT_SNACKBAR_TEXT_SP              14.0f
-#define CT_SNACKBAR_PAD_H_DP             12.0f
-#define CT_SNACKBAR_PAD_V_DP             14.0f
-#define CT_SNACKBAR_PAD_V_2LINE_DP       16.0f
-#define CT_SNACKBAR_SLIDE_MS            250          /* in and out */
-#define CT_SNACKBAR_TEXT_FADE_MS        180          /* the text's fade, after 70 */
-#define CT_SNACKBAR_SHORT_MS           1500          /* a short snackbar's time on screen */
-#define CT_SNACKBAR_LONG_MS            2750          /* a long one's */
-#define CT_TOAST_Y_OFFSET_DP             48.0f
-#define CT_TOAST_MAX_W_DP               300.0f
-#define CT_TOAST_TEXT_SP                 14.0f
-#define CT_TOAST_SHORT_MS              2000
-#define CT_TOAST_LONG_MS               3500
-
-/* ======== 4. editor ======== */
-#define CT_ED_MIN_LINE_DP                54.0f
-#define CT_ED_ROUND_BUTTON_PAD_DP        16.0f
-#define CT_ED_KIND_ICON_TOP_DP           14.0f
-#define CT_ED_KIND_ICON_COL_DP           68.0f       /* the kind's icon with its margins */
-#define CT_ED_KIND_ICON_START_DP         16.0f
-#define CT_ED_KIND_ICON_END_DP           28.0f
-#define CT_ED_PHOTO_RATIO                 1.96f      /* height = width / 1.96 */
-#define CT_ED_FORM_TEXT_SP               16.0f
-#define CT_ED_ROW_BOTTOM_PAD_DP           2.0f
-#define CT_ED_SPINNER_PAD_END_DP         24.0f
-#define CT_ED_TYPE_LABEL_W_DP           150.0f
-#define CT_ED_TOOLBAR_ELEVATION_DP        4.0f
-#define CT_ED_ICON_COLOR             0xFFE5E5E5u
-#define CT_ED_END_COLUMN_DP             56.0f       /* the ✕ / chevron column */
-#define CT_ED_SPINNER_EXTRA_DP          56.0f       /* spinner = widest label + this (its padding and caret) */
-#define CT_ED_PHOTO_BADGE_MARGIN_DP     16.0f       /* the camera badge, bottom and end */
-#define CT_ED_ANIM_MS                   200          /* a row's fade in (after 200) and out */
-#define CT_C_ED_UNDERLINE            0xFF737373u     /* the fields' underline, the spinner caret */
-#define CT_C_ED_ACCOUNT_ICON         0xFFEBEBEBu     /* the Device icon */
-#define CT_C_ED_CHEVRON              0xFFEAEAEAu     /* name chevron, account expander */
-
-/* ======== curves ======== */
-/* fast-out-slow-in (0.4,0,0.2,1), linear-out-slow-in (0,0,0.2,1), fast-out-linear-in (0.4,0,1,1),
-   standard (0.2,0,0,1), standard accelerate (0.3,0,1,1)
-   emphasized (fast-out-extra-slow-in): path M0,0 C0.05,0 0.133333,0.06 0.166666,0.4 C0.208333,0.82 0.25,1 1,1
-   quintic out: t' = (t-1)^5 + 1 (QC fling, drawer settle) */

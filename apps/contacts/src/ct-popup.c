@@ -86,7 +86,6 @@ popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, CtPopupP
   Popup *popup;
   graphene_point_t at;
   double window_width, window_height, height, left, top, widest = 0;
-  GdkRGBA ripple = ct_rgba (CT_RIPPLE_APPCOMPAT);
 
   if (!overlay)
     return;
@@ -132,14 +131,13 @@ popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, CtPopupP
         gtk_widget_add_css_class (row, "check");
       if (checked && i < n_checks)
         {
-          GtkWidget *check = ct_check_new (CT_C_CHECK_ON, CT_C_CHECK_OFF);
+          GtkWidget *check = ct_check_new ();
 
           ct_check_set_active (check, checked[i]);
           gtk_box_append (GTK_BOX (line), check);
           g_object_set_data (G_OBJECT (row), "ct-check", check);
         }
       vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
-      vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
       g_object_set_data (G_OBJECT (row), "ct-index", GINT_TO_POINTER (i));
       g_signal_connect (row, "clicked", G_CALLBACK (on_row), popup);
       gtk_box_append (GTK_BOX (list), row);

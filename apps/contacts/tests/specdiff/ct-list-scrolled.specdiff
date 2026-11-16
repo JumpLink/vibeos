@@ -1,0 +1,27 @@
+# The list scrolled into its sections: the header held at the top and a letter's section under a card, held against
+# the reference's list scrolled the same way (360 x 721 at 3x, as ct-list.specdiff).
+
+ref-offset 0,116
+ref-density 3
+tolerance 1
+
+# the header pinned at the top
+pinned left          | x0('css=sticky')                    | x0('class=View#60')                      | 16
+pinned right         | x1('css=sticky')                    | x1('class=View#60')                      | 344
+pinned top           | y0('css=sticky')                    | y0('class=View#60')                      | 0
+pinned height        | h('css=sticky')                     | h('class=View#60')                       | 32
+pinned star x        | x0('css=sticky >> class=GtkImage')  | x0('class=View#61')                      | 32
+pinned text x        | x0('css=sticky >> class=GtkLabel')  | x0('class=TextView#14')                  | 56
+pinned text top      | y0('css=sticky >> class=GtkLabel')  | y0('class=TextView#14')                  | 8
+pinned text height   | h('css=sticky >> class=GtkLabel')   | h('class=TextView#14')                   | 16
+
+# a letter's section: its header right under the card before, the card right under it
+letter header height | h('text=A/..')                      | h('class=View#50')                       | 32
+letter x             | x0('text=A')                        | x0('class=TextView#11')                  | 32
+letter top in band   | y0('text=A') - y0('text=A/..')      | y0('class=TextView#11') - y0('class=View#50') | 8
+card to header       | y0('text=A/..') - y1('text=Dr. Lukas Maria Lindner/..') | y0('class=View#50') - y1('class=View#47') | 0
+header to card       | y0('text=Alexandra Ahrens/..') - y1('text=A/..') | y0('class=View#53') - y1('class=View#50') | 0
+row height           | h('text=Alexandra Ahrens/..')       | h('class=View#53')                       | 56
+row picture in row   | y0('text=Alexandra Ahrens/.. >> class=CtAvatarView') - y0('text=Alexandra Ahrens/..') | \
+                       y0('class=View#55') - y0('class=View#53') | 8
+row name in row      | y0('text=Alexandra Ahrens') - y0('text=Alexandra Ahrens/..') | y0('class=TextView#12') - y0('class=View#53') | 16

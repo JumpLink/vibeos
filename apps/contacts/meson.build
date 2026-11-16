@@ -24,7 +24,7 @@ gtk = dependency('gtk4', version: '>= 4.14')
 resources = gnome.compile_resources('contacts-resources', 'src/contacts.gresource.xml', source_dir: ['src', 'data'])
 executable('vibeos-contacts', 'src/ct-main.c', 'src/ct-window.c', 'src/ct-page.c', 'src/ct-people.c', 'src/ct-list.c',
            'src/ct-quick.c', 'src/ct-editor.c', 'src/ct-picker.c', 'src/ct-settings.c', 'src/ct-dialogs.c',
-           'src/ct-popup.c', 'src/ct-ui.c', 'src/ct-avatar.c', '../dialer/src/text.c',
+           'src/ct-popup.c', 'src/ct-ui.c', 'src/ct-avatar.c', 'src/ct-highlights.c', 'src/ct-organize.c', '../dialer/src/text.c',
            '../dialer/src/phone-number.c', '../dialer/src/avatar.c', resources,
            include_directories: dialer, link_with: core, install: true,
            dependencies: [gio, ebook, m, gtk, dependency('vibeos-1'), dependency('spongy-gtk-1')])

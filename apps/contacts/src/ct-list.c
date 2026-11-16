@@ -1,67 +1,55 @@
 /* The contact list (ct-list.h).
  *
- * Three widgets: CtList, the one the screens hold, has the scroll view (libspongy: the drag, the fling, the
- * stretch) and draws the fast scroller over it; inside the scroll view is CtListContent, a GtkScrollable as tall as
- * the view, which draws the rows the adjustment says are showing, and the pinned letter over them. The fast
- * scroller's drag is CtList's, in the capture phase, so that it gets the touch before the scroll view does. */
+ * Three levels: CtList holds the scroll view (libspongy: the drag, the fling, the stretch); inside it CtListContent,
+ * a GtkScrollable as tall as the view, places the head, the rows and headers on screen and the pinned header, all
+ * at their scrolled positions. The rows and headers are laid out once per change of the contacts (Item, below) and
+ * get widgets only while they show. */
 #include "ct-list.h"
 #include "ct-avatar.h"
 #include "ct-ui.h"
 
+#include <glib/gi18n.h>
 #include <math.h>
-#include <vibeos.h>
 #include <spongy-gtk.h>
+#include <vibeos.h>
 
+#define SIDE            CT_LIST_SIDE_DP
 #define ROW             CT_ROW_H_DP
-#define COLUMN          CT_ROW_HEADER_COL_DP
-#define PHOTO           CT_ROW_PHOTO_DP
-#define CHECKBOX        32.0                    /* the selection checkbox, with its margin */
-#define NAME_STYLE      CT_TEXT (CT_ROW_NAME_SP, CT_WEIGHT_REGULAR)
-#define SNIPPET_STYLE   CT_TEXT (CT_ROW_SECONDARY_SP, CT_WEIGHT_REGULAR)
-#define HEADER_STYLE    CT_TEXT (CT_SECTION_SP, CT_WEIGHT_BOLD)
-#define PREVIEW_STYLE   CT_TEXT (CT_FS_PREVIEW_TEXT_SP, CT_WEIGHT_REGULAR)
-#define N_PRESSES       3                       /* rows whose ripple can be on screen at once */
+#define SNIPPET_ROW     CT_ROW_SNIPPET_H_DP
+#define GAP             CT_ROW_GAP_DP
+#define HEADER          CT_SECTION_H_DP
+#define CHECKBOX        32.0
 #define LOAD_STAGGER    (CT_LIST_LOAD_MS * CT_LIST_LOAD_DELAY_FRAC)
 
-typedef struct {
-  int row;                      /* −1: free */
-  VibeosRipple ripple;
-} Press;
+typedef enum { ITEM_HEADER, ITEM_ROW } ItemKind;
 
-/* a row's text, kept while the row shows (shaping every name on every frame of a fling is wasted work) */
+/* a header or a row, where it is from the top of the first one */
 typedef struct {
-  PangoLayout *name, *snippet;
-  double width;
-} RowText;
+  ItemKind kind;
+  guint index;                  /* the row's index in CtRows.rows, or the header's section */
+  double y, h;
+  gboolean first, last;         /* a row that starts or ends its card */
+} Item;
 
 struct _CtList {
   GtkWidget parent;
   GtkWidget *scroll, *content;
   CtRows *rows;
+  GArray *items;                /* Item */
+  GArray *section_items;        /* guint: each section's header item, G_MAXUINT for none */
+  double items_h;
+  guint generation;             /* a new set of rows: every widget is bound again */
   gboolean search;
-  double top_padding;
+  double bottom;
   GHashTable *selected;         /* uid set, or NULL outside selection mode */
-  GHashTable *texts;            /* row index -> RowText */
-  GHashTable *headers;          /* section label -> PangoLayout */
-
-  /* the press */
-  Press presses[N_PRESSES];
-  int down_row;
-  double down_x, down_y;
-  gboolean long_pressed;
-  guint tap_timeout, long_press_timeout;
+  char *current;
+  GtkWidget *head;
+  GPtrArray *row_widgets, *header_widgets;
+  GtkWidget *sticky;
 
   /* the rows' first appearance */
   VibeosAnim *load_anim;
   double load_ms;               /* ms into it; < 0 when done */
-
-  /* the fast scroller and the search's scroll bar: shown while scrolling, then faded */
-  VibeosAnim *bar_anim;
-  double bar_alpha;
-  guint bar_hide;
-  gboolean dragging;
-  PangoLayout *preview;
-  char *preview_label;
 };
 
 G_DEFINE_FINAL_TYPE (CtList, ct_list, GTK_TYPE_WIDGET)
@@ -69,31 +57,335 @@ G_DEFINE_FINAL_TYPE (CtList, ct_list, GTK_TYPE_WIDGET)
 enum { ROW_ACTIVATED, ROW_LONG_PRESSED, N_SIGNALS };
 static guint signals[N_SIGNALS];
 
-static GtkAdjustment *
-vadjustment (CtList *self)
+static Item *
+item_at (CtList *self, guint i)
 {
-  return spongy_scroll_view_get_vadjustment (SPONGY_SCROLL_VIEW (self->scroll));
+  return &g_array_index (self->items, Item, i);
 }
 
+/* ===== a row =================================================================================================== */
+
+#define CT_TYPE_LIST_ROW (ct_list_row_get_type ())
+G_DECLARE_FINAL_TYPE (CtListRow, ct_list_row, CT, LIST_ROW, GtkWidget)
+
+struct _CtListRow {
+  GtkWidget parent;
+  CtList *list;
+  GtkWidget *target, *avatar, *name, *snippet, *check;
+  int item;                     /* the item it shows, −1: free */
+  guint row;                    /* its row in CtRows */
+  guint generation;
+  double top_radius, bottom_radius;
+  gboolean current;
+};
+
+G_DEFINE_FINAL_TYPE (CtListRow, ct_list_row, GTK_TYPE_WIDGET)
+
+static GskRoundedRect
+card_shape (double w, double h, double top, double bottom)
+{
+  GskRoundedRect shape;
+  graphene_size_t t = GRAPHENE_SIZE_INIT ((float) top, (float) top);
+  graphene_size_t b = GRAPHENE_SIZE_INIT ((float) bottom, (float) bottom);
+
+  gsk_rounded_rect_init (&shape, &GRAPHENE_RECT_INIT (0, 0, (float) w, (float) h), &t, &t, &b, &b);
+  return shape;
+}
+
+static void
+put (GtkWidget *child, double x, double y, double w, double h)
+{
+  int min, nat;
+
+  /* measured first, as GTK asks; then placed in the box the layout wants, which may be smaller than the text */
+  gtk_widget_measure (child, GTK_ORIENTATION_VERTICAL, (int) MAX (w, 0), &min, &nat, NULL, NULL);
+  gtk_widget_allocate (child, (int) MAX (w, 0), (int) h, -1,
+                       gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT ((float) x, (float) y)));
+}
+
+static void
+ct_list_row_size_allocate (GtkWidget *widget, int width, int height, int baseline)
+{
+  CtListRow *self = CT_LIST_ROW (widget);
+  gboolean check = gtk_widget_get_visible (self->check);
+  gboolean snippet = gtk_widget_get_visible (self->snippet);
+  double text_end = width - CT_ROW_END_DP - (check ? CHECKBOX + CT_ROW_CHECK_GAP_DP : 0);
+  double text_w = text_end - CT_ROW_NAME_X_DP;
+
+  put (self->target, 0, 0, width, height);
+  put (self->avatar, CT_ROW_PHOTO_X_DP, (height - CT_ROW_PHOTO_DP) / 2, CT_ROW_PHOTO_DP, CT_ROW_PHOTO_DP);
+  if (snippet)
+    {
+      put (self->name, CT_ROW_NAME_X_DP, height / 2.0 - CT_ROW_NAME_BOX_DP + 2, text_w, CT_ROW_NAME_BOX_DP);
+      put (self->snippet, CT_ROW_NAME_X_DP, height / 2.0 + 2, text_w, CT_ROW_SNIPPET_BOX_DP);
+    }
+  else
+    put (self->name, CT_ROW_NAME_X_DP, (height - CT_ROW_NAME_BOX_DP) / 2, text_w, CT_ROW_NAME_BOX_DP);
+  if (check)
+    put (self->check, width - CT_ROW_END_DP - CHECKBOX + 4, (height - CHECKBOX) / 2, CHECKBOX, CHECKBOX);
+}
+
+static void
+ct_list_row_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
+{
+  CtListRow *self = CT_LIST_ROW (widget);
+  double w = gtk_widget_get_width (widget), h = gtk_widget_get_height (widget);
+  GskRoundedRect shape = card_shape (w, h, self->top_radius, self->bottom_radius);
+  /* the contact open beside the list shows in the selected colour */
+  GdkRGBA fill = vibeos_color (self->current ? VIBEOS_SECONDARY_CONTAINER : CT_CARD);
+
+  gtk_snapshot_push_rounded_clip (snapshot, &shape);
+  gtk_snapshot_append_color (snapshot, &fill, &shape.bounds);
+  gtk_widget_snapshot_child (widget, self->target, snapshot);
+  gtk_snapshot_pop (snapshot);
+  for (GtkWidget *child = gtk_widget_get_next_sibling (self->target); child; child = gtk_widget_get_next_sibling (child))
+    gtk_widget_snapshot_child (widget, child, snapshot);
+}
+
+static void
+ct_list_row_dispose (GObject *object)
+{
+  GtkWidget *child;
+
+  while ((child = gtk_widget_get_first_child (GTK_WIDGET (object))))
+    gtk_widget_unparent (child);
+  G_OBJECT_CLASS (ct_list_row_parent_class)->dispose (object);
+}
+
+static void
+ct_list_row_class_init (CtListRowClass *klass)
+{
+  G_OBJECT_CLASS (klass)->dispose = ct_list_row_dispose;
+  GTK_WIDGET_CLASS (klass)->size_allocate = ct_list_row_size_allocate;
+  GTK_WIDGET_CLASS (klass)->snapshot = ct_list_row_snapshot;
+  gtk_widget_class_set_css_name (GTK_WIDGET_CLASS (klass), "ct-list-row");
+}
+
+static void
+ct_list_row_init (CtListRow *self)
+{
+  self->item = -1;
+}
+
+static void
+on_row_clicked (VibeosPressable *target, CtListRow *row)
+{
+  if (row->item >= 0)
+    g_signal_emit (row->list, signals[ROW_ACTIVATED], 0, row->row);
+}
+
+static void
+on_row_long_pressed (VibeosPressable *target, CtListRow *row)
+{
+  if (row->item >= 0)
+    g_signal_emit (row->list, signals[ROW_LONG_PRESSED], 0, row->row);
+}
+
+static GtkWidget *
+row_label (const char *css_class)
+{
+  GtkWidget *label = gtk_label_new (NULL);
+
+  gtk_widget_add_css_class (label, css_class);
+  gtk_label_set_xalign (GTK_LABEL (label), 0);
+  gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
+  gtk_label_set_single_line_mode (GTK_LABEL (label), TRUE);
+  gtk_widget_set_can_target (label, FALSE);
+  return label;
+}
+
+static CtListRow *
+list_row_new (CtList *list)
+{
+  CtListRow *self = g_object_new (CT_TYPE_LIST_ROW, NULL);
+
+  self->list = list;
+  self->target = vibeos_pressable_new (NULL);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->target), VIBEOS_RIPPLE_BOUNDED, 0);
+  g_signal_connect (self->target, "clicked", G_CALLBACK (on_row_clicked), self);
+  g_signal_connect (self->target, "long-pressed", G_CALLBACK (on_row_long_pressed), self);
+  gtk_widget_set_parent (self->target, GTK_WIDGET (self));
+  self->avatar = ct_avatar_view_new (CT_ROW_PHOTO_DP);
+  gtk_widget_set_parent (self->avatar, GTK_WIDGET (self));
+  self->name = row_label ("ct-row-name");
+  gtk_widget_set_parent (self->name, GTK_WIDGET (self));
+  self->snippet = row_label ("ct-row-snippet");
+  gtk_widget_set_parent (self->snippet, GTK_WIDGET (self));
+  self->check = ct_check_new ();
+  gtk_widget_set_parent (self->check, GTK_WIDGET (self));
+  return self;
+}
+
+/* ===== a section's header ====================================================================================== */
+
+#define CT_TYPE_LIST_HEADER (ct_list_header_get_type ())
+G_DECLARE_FINAL_TYPE (CtListHeader, ct_list_header, CT, LIST_HEADER, GtkWidget)
+
+struct _CtListHeader {
+  GtkWidget parent;
+  GtkWidget *star, *label;
+  int item;                     /* −1: free */
+  guint generation;
+  gboolean sticky;              /* the pinned one: it covers the rows passing under it */
+};
+
+G_DEFINE_FINAL_TYPE (CtListHeader, ct_list_header, GTK_TYPE_WIDGET)
+
+static void
+ct_list_header_size_allocate (GtkWidget *widget, int width, int height, int baseline)
+{
+  CtListHeader *self = CT_LIST_HEADER (widget);
+  gboolean star = gtk_widget_get_visible (self->star);
+  double x = star ? CT_SECTION_STAR_TEXT_X_DP : CT_SECTION_TEXT_X_DP;
+  int min, nat;
+
+  gtk_widget_measure (self->label, GTK_ORIENTATION_HORIZONTAL, -1, &min, &nat, NULL, NULL);
+  if (star)
+    put (self->star, CT_SECTION_TEXT_X_DP, (height - CT_SECTION_STAR_DP) / 2, CT_SECTION_STAR_DP, CT_SECTION_STAR_DP);
+  put (self->label, x, (height - CT_SECTION_TEXT_BOX_DP) / 2, MIN (nat, width - x - CT_SECTION_TEXT_X_DP),
+       CT_SECTION_TEXT_BOX_DP);
+}
+
+static void
+ct_list_header_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
+{
+  CtListHeader *self = CT_LIST_HEADER (widget);
+
+  if (self->sticky)
+    {
+      /* the band the width of the whole list, in the background's colour */
+      GtkWidget *content = gtk_widget_get_parent (widget);
+      GdkRGBA background = vibeos_color (VIBEOS_SURFACE_CONTAINER);
+      double w = content ? gtk_widget_get_width (content) : gtk_widget_get_width (widget);
+
+      gtk_snapshot_append_color (snapshot, &background,
+                                 &GRAPHENE_RECT_INIT ((float) -SIDE, 0, (float) w,
+                                                      (float) gtk_widget_get_height (widget)));
+    }
+  gtk_widget_snapshot_child (widget, self->star, snapshot);
+  gtk_widget_snapshot_child (widget, self->label, snapshot);
+}
+
+static void
+ct_list_header_dispose (GObject *object)
+{
+  GtkWidget *child;
+
+  while ((child = gtk_widget_get_first_child (GTK_WIDGET (object))))
+    gtk_widget_unparent (child);
+  G_OBJECT_CLASS (ct_list_header_parent_class)->dispose (object);
+}
+
+static void
+ct_list_header_class_init (CtListHeaderClass *klass)
+{
+  G_OBJECT_CLASS (klass)->dispose = ct_list_header_dispose;
+  GTK_WIDGET_CLASS (klass)->size_allocate = ct_list_header_size_allocate;
+  GTK_WIDGET_CLASS (klass)->snapshot = ct_list_header_snapshot;
+  gtk_widget_class_set_css_name (GTK_WIDGET_CLASS (klass), "ct-list-header");
+}
+
+static void
+ct_list_header_init (CtListHeader *self)
+{
+  self->item = -1;
+  self->star = gtk_image_new_from_icon_name ("ct-star-symbolic");
+  gtk_image_set_pixel_size (GTK_IMAGE (self->star), (int) CT_SECTION_STAR_DP);
+  gtk_widget_add_css_class (self->star, "ct-list-header-star");
+  gtk_widget_set_parent (self->star, GTK_WIDGET (self));
+  self->label = row_label ("ct-list-header-text");
+  gtk_widget_set_parent (self->label, GTK_WIDGET (self));
+  gtk_widget_set_can_target (GTK_WIDGET (self), FALSE);
+}
+
+/* the header of section @index */
+static void
+header_show (CtList *list, CtListHeader *header, guint section_index)
+{
+  const CtSection *section = &g_array_index (list->rows->sections, CtSection, section_index);
+  gboolean favourites = section->rank == CT_BUCKET_FAVOURITES;
+
+  gtk_widget_set_visible (header->star, favourites);
+  gtk_label_set_label (GTK_LABEL (header->label), favourites ? _("Favorites") : section->label);
+}
+
+/* ===== the layout ============================================================================================== */
+
+/* the rows and headers, top to bottom: a section's header, then its rows on one card */
+static void
+build_items (CtList *self)
+{
+  double y = 0;
+
+  g_array_set_size (self->items, 0);
+  g_array_set_size (self->section_items, 0);
+  self->generation++;
+  if (!self->rows)
+    {
+      self->items_h = 0;
+      return;
+    }
+  for (guint s = 0; !self->search && s < self->rows->sections->len; s++)
+    {
+      guint none = G_MAXUINT;
+
+      g_array_append_val (self->section_items, none);
+    }
+  for (guint i = 0; i < self->rows->rows->len; i++)
+    {
+      CtRow *row = &g_array_index (self->rows->rows, CtRow, i);
+      gboolean first = i == 0 || (!self->search && row->first);
+      gboolean last = i + 1 == self->rows->rows->len
+                      || (!self->search && g_array_index (self->rows->rows, CtRow, i + 1).first);
+      Item item;
+
+      if (first && !self->search && row->section >= 0)
+        {
+          Item header = { ITEM_HEADER, (guint) row->section, y, HEADER, FALSE, FALSE };
+
+          g_array_index (self->section_items, guint, row->section) = self->items->len;
+          g_array_append_val (self->items, header);
+          y += HEADER;
+        }
+      else if (!first)
+        y += GAP;
+      item = (Item) { ITEM_ROW, i, y, self->search && row->match.snippet ? SNIPPET_ROW : ROW, first, last };
+      g_array_append_val (self->items, item);
+      y += item.h;
+    }
+  self->items_h = y;
+}
+
+/* the first item whose bottom is below @y */
 static guint
-n_rows (CtList *self)
+first_item_below (CtList *self, double y)
 {
-  return self->rows ? self->rows->rows->len : 0;
+  guint lo = 0, hi = self->items->len;
+
+  while (lo < hi)
+    {
+      guint mid = (lo + hi) / 2;
+      Item *item = item_at (self, mid);
+
+      if (item->y + item->h <= y)
+        lo = mid + 1;
+      else
+        hi = mid;
+    }
+  return lo;
 }
 
-static double
-content_height (CtList *self)
-{
-  return self->top_padding + n_rows (self) * ROW;
-}
-
-/* the row at @y of the content (the view's coordinates plus the scroll offset), or −1 */
+/* the section the item at the top of the view is in, −1 for none */
 static int
-row_at (CtList *self, double y)
+section_of_item (CtList *self, guint index)
 {
-  double index = floor ((y - self->top_padding) / ROW);
+  Item *item;
 
-  return index >= 0 && index < n_rows (self) ? (int) index : -1;
+  if (index >= self->items->len)
+    return -1;
+  item = item_at (self, index);
+  return item->kind == ITEM_HEADER ? (int) item->index
+                                   : g_array_index (self->rows->rows, CtRow, item->index).section;
 }
 
 /* ===== the content ============================================================================================ */
@@ -113,6 +405,115 @@ G_DEFINE_FINAL_TYPE_WITH_CODE (CtListContent, ct_list_content, GTK_TYPE_WIDGET,
                                G_IMPLEMENT_INTERFACE (GTK_TYPE_SCROLLABLE, NULL))
 
 static double
+head_height (CtList *self, int width)
+{
+  int min, nat;
+
+  if (!self->head || !gtk_widget_get_visible (self->head))
+    return CT_LIST_PAD_TOP_DP;
+  gtk_widget_measure (self->head, GTK_ORIENTATION_VERTICAL, width, &min, &nat, NULL, NULL);
+  return nat;
+}
+
+static void
+bind_row (CtList *self, CtListRow *widget, guint index)
+{
+  Item *item = item_at (self, index);
+  CtRow *row = &g_array_index (self->rows->rows, CtRow, item->index);
+  gboolean current = self->current && g_strcmp0 (self->current, row->entry->uid) == 0;
+
+  if (widget->item != (int) index || widget->generation != self->generation)
+    {
+      const char *name = row->name && *row->name ? row->name : " ";
+
+      widget->item = (int) index;
+      widget->row = item->index;
+      widget->generation = self->generation;
+      gtk_label_set_label (GTK_LABEL (widget->name), name);
+      gtk_label_set_label (GTK_LABEL (widget->snippet), row->match.snippet ? row->match.snippet : "");
+      gtk_widget_set_visible (widget->snippet, self->search && row->match.snippet);
+      ct_avatar_view_set (widget->avatar, row->entry->uid, row->name, row->entry->photo);
+      gtk_accessible_update_property (GTK_ACCESSIBLE (widget->target), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);
+      widget->top_radius = item->first ? CT_CARD_OUTER_RADIUS_DP : CT_CARD_INNER_RADIUS_DP;
+      widget->bottom_radius = item->last ? CT_CARD_OUTER_RADIUS_DP : CT_CARD_INNER_RADIUS_DP;
+      gtk_widget_queue_resize (GTK_WIDGET (widget));
+    }
+  gtk_widget_set_visible (widget->check, self->selected != NULL);
+  if (self->selected)
+    ct_check_set_active (widget->check, g_hash_table_contains (self->selected, row->entry->uid));
+  if (widget->current != current)
+    {
+      widget->current = current;
+      gtk_widget_queue_draw (GTK_WIDGET (widget));
+    }
+}
+
+/* the widget that shows item @index: the one that showed it last time, else a free one, else a new one */
+static GtkWidget *
+widget_for (CtList *self, guint index, GPtrArray *taken)
+{
+  Item *item = item_at (self, index);
+  GPtrArray *pool = item->kind == ITEM_ROW ? self->row_widgets : self->header_widgets;
+  GtkWidget *found = NULL;
+
+  for (guint i = 0; i < pool->len && !found; i++)
+    {
+      GtkWidget *widget = pool->pdata[i];
+      int bound = item->kind == ITEM_ROW ? CT_LIST_ROW (widget)->item : CT_LIST_HEADER (widget)->item;
+      guint generation = item->kind == ITEM_ROW ? CT_LIST_ROW (widget)->generation
+                                                : CT_LIST_HEADER (widget)->generation;
+
+      if (bound == (int) index && generation == self->generation && !g_ptr_array_find (taken, widget, NULL))
+        found = widget;
+    }
+  for (guint i = 0; i < pool->len && !found; i++)
+    if (!g_ptr_array_find (taken, pool->pdata[i], NULL))
+      {
+        GtkWidget *widget = pool->pdata[i];
+        int bound = item->kind == ITEM_ROW ? CT_LIST_ROW (widget)->item : CT_LIST_HEADER (widget)->item;
+
+        /* one bound to an item still on screen is left for it */
+        if (bound < 0 || !g_object_get_data (G_OBJECT (widget), "ct-wanted"))
+          found = widget;
+      }
+  if (!found)
+    {
+      found = item->kind == ITEM_ROW ? GTK_WIDGET (list_row_new (self)) : g_object_new (CT_TYPE_LIST_HEADER, NULL);
+      gtk_widget_insert_before (found, self->content, self->sticky);
+      g_ptr_array_add (pool, found);
+    }
+  g_ptr_array_add (taken, found);
+  if (item->kind == ITEM_ROW)
+    bind_row (self, CT_LIST_ROW (found), index);
+  else
+    {
+      CtListHeader *header = CT_LIST_HEADER (found);
+
+      if (header->item != (int) index || header->generation != self->generation)
+        {
+          header->item = (int) index;
+          header->generation = self->generation;
+          header_show (self, header, item->index);
+        }
+    }
+  return found;
+}
+
+static void
+configure (CtListContent *self, double total)
+{
+  double height = gtk_widget_get_height (GTK_WIDGET (self));
+  double upper, value;
+
+  if (!self->vadjustment)
+    return;
+  upper = MAX (total, height);
+  value = CLAMP (gtk_adjustment_get_value (self->vadjustment), 0, upper - height);
+  if (gtk_adjustment_get_upper (self->vadjustment) != upper || gtk_adjustment_get_page_size (self->vadjustment) != height)
+    gtk_adjustment_configure (self->vadjustment, value, 0, upper, ROW, height * 0.9, height);
+}
+
+static double
 offset (CtList *self)
 {
   CtListContent *content = CT_LIST_CONTENT (self->content);
@@ -121,27 +522,111 @@ offset (CtList *self)
 }
 
 static void
-configure (CtListContent *self)
+place (GtkWidget *child, double x, double y, double w, double h)
 {
-  double height = gtk_widget_get_height (GTK_WIDGET (self));
-  double upper, value;
-
-  if (!self->vadjustment)
-    return;
-  upper = MAX (content_height (self->list), height);
-  value = CLAMP (gtk_adjustment_get_value (self->vadjustment), 0, upper - height);
-  gtk_adjustment_configure (self->vadjustment, value, 0, upper, ROW, height * 0.9, height);
+  gtk_widget_allocate (child, (int) w, (int) ceil (h), -1,
+                       gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT ((float) x, (float) y)));
 }
 
 static void
 ct_list_content_size_allocate (GtkWidget *widget, int width, int height, int baseline)
 {
-  CtListContent *self = CT_LIST_CONTENT (widget);
+  CtList *self = CT_LIST_CONTENT (widget)->list;
+  double head = head_height (self, width);
+  double scrolled, top, card_w = MAX (width - 2 * SIDE, 0);
+  g_autoptr(GPtrArray) taken = g_ptr_array_new ();
+  guint first, shown = 0;
+  int section = -1;
 
-  /* a new width is new ellipsizing */
-  if (self->list->texts)
-    g_hash_table_remove_all (self->list->texts);
-  configure (self);
+  configure (CT_LIST_CONTENT (widget), head + self->items_h + self->bottom);
+  scrolled = offset (self);
+  if (self->head && gtk_widget_get_visible (self->head))
+    place (self->head, 0, -scrolled, width, head);
+
+  /* the items on screen: the head's height down from the content's top */
+  top = scrolled - head;
+  first = first_item_below (self, top);
+  /* which widgets keep their items: marked first, so a free widget is not one about to be wanted */
+  for (guint pass = 0; pass < 2; pass++)
+    {
+      GPtrArray *pool = pass == 0 ? self->row_widgets : self->header_widgets;
+
+      for (guint i = 0; i < pool->len; i++)
+        {
+          GtkWidget *w = pool->pdata[i];
+          int bound = pass == 0 ? CT_LIST_ROW (w)->item : CT_LIST_HEADER (w)->item;
+          guint generation = pass == 0 ? CT_LIST_ROW (w)->generation : CT_LIST_HEADER (w)->generation;
+          gboolean wanted = bound >= (int) first && generation == self->generation && bound < (int) self->items->len
+                            && item_at (self, (guint) bound)->y < top + height;
+
+          g_object_set_data (G_OBJECT (w), "ct-wanted", GINT_TO_POINTER (wanted));
+        }
+    }
+  for (guint i = first; i < self->items->len && item_at (self, i)->y < top + height; i++)
+    {
+      Item *item = item_at (self, i);
+      GtkWidget *child = widget_for (self, i, taken);
+      double y = head + item->y - scrolled;
+
+      if (item->kind == ITEM_ROW && self->load_ms >= 0)
+        {
+          /* row k on screen starts a stagger after the one above it: from transparent, a little low */
+          double t = CLAMP ((self->load_ms - shown * LOAD_STAGGER) / CT_LIST_LOAD_MS, 0, 1);
+          double eased = spongy_curve (SPONGY_LINEAR_OUT_SLOW_IN, (float) t);
+
+          gtk_widget_set_opacity (child, eased);
+          y += (1 - eased) * ROW * CT_LIST_LOAD_TRANSLATE_FRAC;
+        }
+      else
+        gtk_widget_set_opacity (child, 1);
+      if (item->kind == ITEM_ROW)
+        shown++;
+      gtk_widget_set_child_visible (child, TRUE);
+      place (child, SIDE, y, card_w, item->h);
+    }
+  /* the rest go off screen, free */
+  for (guint pass = 0; pass < 2; pass++)
+    {
+      GPtrArray *pool = pass == 0 ? self->row_widgets : self->header_widgets;
+
+      for (guint i = 0; i < pool->len; i++)
+        if (!g_ptr_array_find (taken, pool->pdata[i], NULL))
+          {
+            GtkWidget *w = pool->pdata[i];
+
+            if (pass == 0)
+              CT_LIST_ROW (w)->item = -1;
+            else
+              CT_LIST_HEADER (w)->item = -1;
+            gtk_widget_set_child_visible (w, FALSE);
+          }
+    }
+
+  /* the pinned header: the section at the top, once its own header has gone up past the top, pushed up by the
+   * next section's header as it comes */
+  if (!self->search && top > 0)
+    section = section_of_item (self, first);
+  if (section >= 0 && (guint) section < self->section_items->len
+      && g_array_index (self->section_items, guint, section) != G_MAXUINT
+      && item_at (self, g_array_index (self->section_items, guint, section))->y < top)
+    {
+      double y = 0;
+      guint next;
+
+      for (next = (guint) section + 1; next < self->section_items->len; next++)
+        if (g_array_index (self->section_items, guint, next) != G_MAXUINT)
+          break;
+      if (next < self->section_items->len)
+        y = MIN (0, item_at (self, g_array_index (self->section_items, guint, next))->y - top - HEADER);
+      header_show (self, CT_LIST_HEADER (self->sticky), (guint) section);
+      gtk_widget_set_child_visible (self->sticky, TRUE);
+      place (self->sticky, SIDE, y, card_w, HEADER);
+    }
+  else
+    {
+      gtk_widget_set_child_visible (self->sticky, FALSE);
+      place (self->sticky, SIDE, -HEADER, card_w, HEADER);
+    }
 }
 
 static void
@@ -151,232 +636,7 @@ ct_list_content_measure (GtkWidget *widget, GtkOrientation orientation, int for_
   *minimum = *natural = 0;
 }
 
-static void
-row_text_free (gpointer data)
-{
-  RowText *text = data;
-
-  g_clear_object (&text->name);
-  g_clear_object (&text->snippet);
-  g_free (text);
-}
-
-/* where a row's name starts and how wide it may be */
-static void
-text_bounds (CtList *self, double width, double *x, double *text_width)
-{
-  /* the section column (none in a search), a gap, the picture, a gap */
-  double left = (self->search ? 0 : COLUMN) + CT_ROW_GAP_HEADER_PHOTO_DP + PHOTO + CT_ROW_GAP_PHOTO_TEXT_DP;
-  double right = width - CT_ROW_PAD_RIGHT_DP;
-
-  /* the checkbox and its gap come off the name's end */
-  if (self->selected)
-    right -= CHECKBOX + CT_ROW_GAP_PHOTO_TEXT_DP;
-  *x = left;
-  *text_width = MAX (right - left, 0);
-}
-
-static RowText *
-row_text (CtList *self, GtkWidget *widget, guint index, double width)
-{
-  RowText *text = g_hash_table_lookup (self->texts, GUINT_TO_POINTER (index));
-  CtRow *row = &g_array_index (self->rows->rows, CtRow, index);
-
-  if (text && text->width == width)
-    return text;
-  text = g_new0 (RowText, 1);
-  text->width = width;
-  /* the match highlight is a bold span, which Bold text makes the same weight as the rest: the name is
-   * drawn as it is */
-  text->name = text_layout (widget, NAME_STYLE, row->name && *row->name ? row->name : " ", width);
-  if (row->match.snippet)
-    text->snippet = text_layout (widget, SNIPPET_STYLE, row->match.snippet, width);
-  g_hash_table_replace (self->texts, GUINT_TO_POINTER (index), text);
-  return text;
-}
-
-static PangoLayout *
-header_layout (CtList *self, GtkWidget *widget, const char *label)
-{
-  PangoLayout *layout = g_hash_table_lookup (self->headers, label);
-
-  if (!layout)
-    {
-      /* in capitals */
-      g_autofree char *caps = g_utf8_strup (label, -1);
-
-      layout = text_layout (widget, HEADER_STYLE, caps, 0);
-      g_hash_table_insert (self->headers, (gpointer) label, layout);
-    }
-  return layout;
-}
-
-/* a section letter centred in the section column of a row-high box at @top: centred, then nudged up
- * (CT_ROW_TEXT_OFFSET_TOP_DP) */
-static void
-draw_header (CtList *self, GtkWidget *widget, GtkSnapshot *snapshot, const char *label, double top)
-{
-  PangoLayout *layout = header_layout (self, widget, label);
-  PangoRectangle logical;
-  GdkRGBA color = ct_rgba (CT_C_SECTION_HEADER);
-
-  pango_layout_get_extents (layout, NULL, &logical);
-  text_draw (snapshot, layout, HEADER_STYLE, (COLUMN - logical.width / (double) PANGO_SCALE) / 2,
-             top + (ROW - text_box_height (layout, HEADER_STYLE)) / 2 + CT_ROW_TEXT_OFFSET_TOP_DP, &color);
-}
-
-static Press *
-press_of (CtList *self, int row)
-{
-  for (int i = 0; i < N_PRESSES; i++)
-    if (self->presses[i].row == row)
-      return &self->presses[i];
-  return NULL;
-}
-
-static void
-draw_row (CtList *self, GtkWidget *widget, GtkSnapshot *snapshot, guint index, double top, double width)
-{
-  CtRow *row = &g_array_index (self->rows->rows, CtRow, index);
-  double left = (self->search ? 0 : COLUMN) + CT_ROW_GAP_HEADER_PHOTO_DP;
-  double x, text_width, text_height, text_top;
-  GdkRGBA name_color = ct_rgba (CT_C_LIST_NAME), snippet_color = ct_rgba (CT_C_LIST_SECONDARY);
-  Press *press = press_of (self, (int) index);
-  RowText *text;
-  GdkTexture *photo;
-
-  if (press && vibeos_ripple_is_active (&press->ripple))
-    {
-      graphene_rect_t bounds = GRAPHENE_RECT_INIT (0, (float) top, (float) width, (float) ROW);
-      GdkRGBA ripple = ct_rgba (CT_RIPPLE_LIST_SRC);
-
-      gtk_snapshot_push_clip (snapshot, &bounds);
-      gtk_snapshot_save (snapshot);
-      gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, (float) top));
-      vibeos_ripple_snapshot (&press->ripple, snapshot, &GRAPHENE_RECT_INIT (0, 0, (float) width, (float) ROW), &ripple);
-      gtk_snapshot_restore (snapshot);
-      gtk_snapshot_pop (snapshot);
-    }
-
-  /* the section's first row shows its letter, or the star for the favourites */
-  if (!self->search && row->first && row->section >= 0)
-    {
-      const CtSection *section = &g_array_index (self->rows->sections, CtSection, row->section);
-
-      if (section->rank == CT_BUCKET_FAVOURITES)
-        {
-          GdkRGBA star = ct_rgba (CT_C_SECTION_HEADER);
-
-          vibeos_snapshot_icon (snapshot, widget, "ct-star-symbolic", (COLUMN - 24) / 2, top + (ROW - 24) / 2, 24, &star);
-        }
-      else
-        draw_header (self, widget, snapshot, section->label, top);
-    }
-
-  /* the picture: centred, then nudged up (CT_ROW_PHOTO_OFFSET_TOP_DP) */
-  photo = row->entry->photo ? ct_avatar_photo (widget, row->entry->uid, row->entry->photo) : NULL;
-  ct_avatar_snapshot (snapshot, widget, left + PHOTO / 2, top + ROW / 2 + CT_ROW_PHOTO_OFFSET_TOP_DP, PHOTO,
-                      row->entry->uid, row->name, photo);
-
-  /* the name, and the line that matched under it, centred together, nudged up */
-  text_bounds (self, width, &x, &text_width);
-  text = row_text (self, widget, index, text_width);
-  text_height = text_box_height (text->name, NAME_STYLE);
-  if (text->snippet)
-    text_height += text_box_height (text->snippet, SNIPPET_STYLE);
-  text_top = top + (ROW - text_height) / 2 + CT_ROW_TEXT_OFFSET_TOP_DP;
-  text_draw (snapshot, text->name, NAME_STYLE, x, text_top, &name_color);
-  if (text->snippet)
-    text_draw (snapshot, text->snippet, SNIPPET_STYLE, x, text_top + text_box_height (text->name, NAME_STYLE),
-               &snippet_color);
-
-  /* the checkbox: vertically centred, 20 device px in from the end padding */
-  if (self->selected)
-    ct_snapshot_checkbox (snapshot, width - CT_ROW_PAD_RIGHT_DP - CT_ROW_CHECKBOX_GAP_PX / 3.0 - CHECKBOX,
-                          top + (ROW - CHECKBOX) / 2,
-                          g_hash_table_contains (self->selected, row->entry->uid), CT_C_SECTION_HEADER,
-                          CT_C_LIST_SECONDARY);
-}
-
-/* the letter of the section the top row is in, pinned over the column with
- * the list's background behind it; when the section's last row goes up past it, the letter goes up with it and
- * fades. The favourites' star is never pinned. */
-static void
-draw_pinned_header (CtList *self, GtkWidget *widget, GtkSnapshot *snapshot, double scrolled)
-{
-  int index = row_at (self, MAX (scrolled, self->top_padding));
-  const CtSection *section = index >= 0 ? ct_rows_section_at (self->rows, (guint) index) : NULL;
-  double y = 0, alpha = 1;
-  const CtSection *next;
-  GdkRGBA background = ct_rgba (CT_C_WINDOW_BG);
-
-  if (!section || section->rank == CT_BUCKET_FAVOURITES)
-    return;
-  next = (guint) index + 1 < n_rows (self) ? ct_rows_section_at (self->rows, (guint) index + 1) : NULL;
-  if (next && next != section)
-    {
-      double bottom = self->top_padding + (index + 1) * ROW - scrolled;
-
-      if (bottom < ROW)
-        {
-          double portion = bottom - ROW;
-
-          alpha = (ROW + portion) / ROW;
-          y = portion;
-        }
-    }
-  gtk_snapshot_push_opacity (snapshot, CLAMP (alpha, 0, 1));
-  gtk_snapshot_append_color (snapshot, &background, &GRAPHENE_RECT_INIT (0, (float) y, (float) COLUMN, (float) ROW));
-  draw_header (self, widget, snapshot, section->label, y);
-  gtk_snapshot_pop (snapshot);
-}
-
-static void
-ct_list_content_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
-{
-  CtList *self = CT_LIST_CONTENT (widget)->list;
-  double width = gtk_widget_get_width (widget), height = gtk_widget_get_height (widget);
-  double scrolled = offset (self);
-  int first, last;
-
-  if (!n_rows (self))
-    return;
-  first = MAX (0, (int) floor ((scrolled - self->top_padding) / ROW));
-  last = MIN ((int) n_rows (self) - 1, (int) floor ((scrolled + height - self->top_padding) / ROW));
-  /* the texts of rows that went off screen go */
-  {
-    GHashTableIter iter;
-    gpointer key;
-
-    g_hash_table_iter_init (&iter, self->texts);
-    while (g_hash_table_iter_next (&iter, &key, NULL))
-      if ((int) GPOINTER_TO_UINT (key) < first || (int) GPOINTER_TO_UINT (key) > last)
-        g_hash_table_iter_remove (&iter);
-  }
-  for (int i = first; i <= last; i++)
-    {
-      double top = self->top_padding + i * ROW - scrolled;
-      gboolean animating = self->load_ms >= 0;
-
-      if (animating)
-        {
-          /* row i (of those on screen) starts 19 ms after the one above it: alpha 0 -> 1, 5 % of a row up */
-          double t = CLAMP ((self->load_ms - (i - first) * LOAD_STAGGER) / CT_LIST_LOAD_MS, 0, 1);
-          double eased = spongy_curve (SPONGY_LINEAR_OUT_SLOW_IN, t);
-
-          gtk_snapshot_push_opacity (snapshot, eased);
-          top += (1 - eased) * ROW * CT_LIST_LOAD_TRANSLATE_FRAC;
-        }
-      draw_row (self, widget, snapshot, (guint) i, top, width);
-      if (animating)
-        gtk_snapshot_pop (snapshot);
-    }
-  if (!self->search)
-    draw_pinned_header (self, widget, snapshot, scrolled);
-}
-
-static void
-on_value_changed (GtkAdjustment *adjustment, CtListContent *self);
+static void on_value_changed (GtkAdjustment *adjustment, CtListContent *self);
 
 static void
 set_adjustment (CtListContent *self, GtkAdjustment **slot, GtkAdjustment *adjustment)
@@ -389,7 +649,7 @@ set_adjustment (CtListContent *self, GtkAdjustment **slot, GtkAdjustment *adjust
   if (slot == &self->vadjustment && self->vadjustment)
     {
       g_signal_connect (self->vadjustment, "value-changed", G_CALLBACK (on_value_changed), self);
-      configure (self);
+      gtk_widget_queue_allocate (GTK_WIDGET (self));
     }
 }
 
@@ -440,9 +700,12 @@ static void
 ct_list_content_dispose (GObject *object)
 {
   CtListContent *self = CT_LIST_CONTENT (object);
+  GtkWidget *child;
 
   set_adjustment (self, &self->vadjustment, NULL);
   set_adjustment (self, &self->hadjustment, NULL);
+  while ((child = gtk_widget_get_first_child (GTK_WIDGET (object))))
+    gtk_widget_unparent (child);
   G_OBJECT_CLASS (ct_list_content_parent_class)->dispose (object);
 }
 
@@ -457,7 +720,6 @@ ct_list_content_class_init (CtListContentClass *klass)
   object_class->get_property = ct_list_content_get_property;
   widget_class->measure = ct_list_content_measure;
   widget_class->size_allocate = ct_list_content_size_allocate;
-  widget_class->snapshot = ct_list_content_snapshot;
   g_object_class_override_property (object_class, PROP_HADJUSTMENT, "hadjustment");
   g_object_class_override_property (object_class, PROP_VADJUSTMENT, "vadjustment");
   g_object_class_override_property (object_class, PROP_HSCROLL_POLICY, "hscroll-policy");
@@ -471,362 +733,10 @@ ct_list_content_init (CtListContent *self)
   gtk_widget_set_overflow (GTK_WIDGET (self), GTK_OVERFLOW_HIDDEN);
 }
 
-/* ===== pressing a row (VibeosPressable's rules, for rows that are not widgets) ===================================== */
-
-static void
-clear_timeouts (CtList *self)
-{
-  g_clear_handle_id (&self->tap_timeout, g_source_remove);
-  g_clear_handle_id (&self->long_press_timeout, g_source_remove);
-}
-
-/* the ripple of the row the finger is on starts: in a free slot, else in the oldest */
-static void
-start_ripple (CtList *self)
-{
-  Press *press = press_of (self, self->down_row);
-  double top = self->top_padding + self->down_row * ROW - offset (self);
-
-  for (int i = 0; !press && i < N_PRESSES; i++)
-    if (!vibeos_ripple_is_active (&self->presses[i].ripple))
-      press = &self->presses[i];
-  if (!press)
-    {
-      press = &self->presses[0];
-      vibeos_ripple_clear (&press->ripple);
-    }
-  press->row = self->down_row;
-  vibeos_ripple_press (&press->ripple, self->down_x, self->down_y - top);
-}
-
-static gboolean
-on_tap_timeout (gpointer data)
-{
-  CtList *self = data;
-
-  self->tap_timeout = 0;
-  start_ripple (self);
-  return G_SOURCE_REMOVE;
-}
-
-static gboolean
-on_long_press_timeout (gpointer data)
-{
-  CtList *self = data;
-
-  self->long_press_timeout = 0;
-  self->long_pressed = TRUE;
-  if (self->tap_timeout)
-    {
-      g_clear_handle_id (&self->tap_timeout, g_source_remove);
-      start_ripple (self);
-    }
-  g_signal_emit (self, signals[ROW_LONG_PRESSED], 0, (guint) self->down_row);
-  return G_SOURCE_REMOVE;
-}
-
-static void
-release_ripple (CtList *self)
-{
-  Press *press = press_of (self, self->down_row);
-
-  if (press)
-    vibeos_ripple_release (&press->ripple);
-}
-
-static void
-on_pressed (GtkGestureClick *click, int n_press, double x, double y, CtList *self)
-{
-  int row = row_at (self, y + offset (self));
-
-  clear_timeouts (self);
-  self->down_row = row;
-  if (row < 0)
-    {
-      gtk_gesture_set_state (GTK_GESTURE (click), GTK_EVENT_SEQUENCE_DENIED);
-      return;
-    }
-  self->down_x = x;
-  self->down_y = y;
-  self->long_pressed = FALSE;
-  self->tap_timeout = g_timeout_add (CT_TAP_TIMEOUT_MS, on_tap_timeout, self);
-  self->long_press_timeout = g_timeout_add (CT_LONG_PRESS_MS, on_long_press_timeout, self);
-}
-
-static void
-on_released (GtkGestureClick *click, int n_press, double x, double y, CtList *self)
-{
-  int row = self->down_row;
-
-  if (row < 0)
-    return;
-  /* a tap quicker than the tap timeout still plays the whole ripple */
-  if (self->tap_timeout)
-    {
-      g_clear_handle_id (&self->tap_timeout, g_source_remove);
-      start_ripple (self);
-    }
-  g_clear_handle_id (&self->long_press_timeout, g_source_remove);
-  release_ripple (self);
-  self->down_row = -1;
-  if (!self->long_pressed && (guint) row < n_rows (self))
-    g_signal_emit (self, signals[ROW_ACTIVATED], 0, (guint) row);
-}
-
-/* the press is lost: the scroll view took the touch, or the finger moved away */
-static void
-on_lost (GtkGesture *gesture, gpointer unused, CtList *self)
-{
-  if (self->down_row < 0)
-    return;
-  clear_timeouts (self);
-  release_ripple (self);
-  self->down_row = -1;
-}
-
-static gboolean
-moved_away (CtList *self, GtkGesture *gesture)
-{
-  GdkEventSequence *sequence = gtk_gesture_single_get_current_sequence (GTK_GESTURE_SINGLE (gesture));
-  int distance = 5;
-  double x, y;
-
-  if (!gtk_gesture_get_point (gesture, sequence, &x, &y))
-    return TRUE;
-  g_object_get (gtk_widget_get_settings (GTK_WIDGET (self)), "gtk-double-click-distance", &distance, NULL);
-  return hypot (x - self->down_x, y - self->down_y) > distance;
-}
-
-static void
-on_stopped (GtkGestureClick *click, CtList *self)
-{
-  if (moved_away (self, GTK_GESTURE (click)))
-    on_lost (GTK_GESTURE (click), NULL, self);
-}
-
-static void
-on_update (GtkGesture *gesture, GdkEventSequence *sequence, CtList *self)
-{
-  if (self->down_row >= 0 && moved_away (self, gesture))
-    on_lost (gesture, NULL, self);
-}
-
-/* ===== the fast scroller and the scroll bar ===================================================================== */
-
-/* the fast scroller shows only for a list at least four screens long; a search has the plain scroll bar */
-static gboolean
-fast_scroller_enabled (CtList *self)
-{
-  double page = gtk_widget_get_height (GTK_WIDGET (self));
-
-  return !self->search && page > 0 && content_height (self) >= CT_FS_MIN_PAGES * page;
-}
-
-static void
-on_bar_anim (VibeosAnim *anim, double value, gpointer data)
-{
-  CtList *self = data;
-
-  self->bar_alpha = value;
-  gtk_widget_queue_draw (GTK_WIDGET (self));
-}
-
-static gboolean
-on_bar_hide (gpointer data)
-{
-  CtList *self = data;
-
-  self->bar_hide = 0;
-  if (self->dragging)
-    return G_SOURCE_REMOVE;
-  vibeos_anim_start (self->bar_anim, self->bar_alpha, 0, fast_scroller_enabled (self) ? CT_FS_FADE_OUT_MS
-                                                                                   : CT_SCROLLBAR_FADE_MS,
-                  0, SPONGY_LINEAR);
-  return G_SOURCE_REMOVE;
-}
-
-/* the list moved: the bar shows, and fades once it has been still a while (1500 ms the fast scroller, 400 ms the
- * scroll bar) */
-static void
-show_bar (CtList *self)
-{
-  gboolean fast = fast_scroller_enabled (self);
-
-  /* a list too short for the fast scroller has no bar at all: only a search has the plain one */
-  if (!fast && !self->search)
-    return;
-  if (self->bar_alpha < 1 && !vibeos_anim_is_running (self->bar_anim))
-    vibeos_anim_start (self->bar_anim, self->bar_alpha, 1, fast ? CT_FS_FADE_IN_MS : 0, 0, SPONGY_LINEAR);
-  else if (vibeos_anim_is_running (self->bar_anim) && vibeos_anim_get_to (self->bar_anim) < 1)
-    vibeos_anim_start (self->bar_anim, self->bar_alpha, 1, fast ? CT_FS_FADE_IN_MS : 0, 0, SPONGY_LINEAR);
-  g_clear_handle_id (&self->bar_hide, g_source_remove);
-  self->bar_hide = g_timeout_add (fast ? CT_FS_HIDE_DELAY_MS : CT_SCROLLBAR_DELAY_MS, on_bar_hide, self);
-}
-
 static void
 on_value_changed (GtkAdjustment *adjustment, CtListContent *content)
 {
-  CtList *self = content->list;
-
-  /* the finger's press goes when the list moves under it */
-  if (self->down_row >= 0 && !self->long_pressed)
-    {
-      clear_timeouts (self);
-      release_ripple (self);
-      self->down_row = -1;
-    }
-  show_bar (self);
-  gtk_widget_queue_draw (GTK_WIDGET (content));
-  gtk_widget_queue_draw (GTK_WIDGET (self));
-}
-
-/* the thumb's top: as far down the track as the list is scrolled */
-static double
-thumb_top (CtList *self, double thumb)
-{
-  GtkAdjustment *adj = vadjustment (self);
-  double track = gtk_widget_get_height (GTK_WIDGET (self));
-  double range = gtk_adjustment_get_upper (adj) - gtk_adjustment_get_page_size (adj);
-  double proportion = range > 0 ? CLAMP (gtk_adjustment_get_value (adj) / range, 0, 1) : 0;
-
-  return proportion * (track - thumb);
-}
-
-/* the fast scroller's letter: a teardrop in the accent colour, its square corner towards the thumb, a little in
- * from it, its foot level with the thumb's top */
-static void
-draw_preview (CtList *self, GtkSnapshot *snapshot, double width, double thumb)
-{
-  PangoRectangle logical;
-  double w, h, right, bottom, corner = CT_FS_PREVIEW_CORNER_DP;
-  graphene_rect_t box;
-  graphene_size_t round = GRAPHENE_SIZE_INIT (corner, corner), square = GRAPHENE_SIZE_INIT (0, 0);
-  GskRoundedRect shape;
-  GdkRGBA fill = ct_rgba (CT_C_FASTSCROLL_THUMB_PRESSED), white = ct_rgba (CT_C_WHITE);
-
-  if (!self->preview)
-    return;
-  pango_layout_get_extents (self->preview, NULL, &logical);
-  w = MAX (logical.width / (double) PANGO_SCALE + 2 * CT_FS_PREVIEW_PAD_H_DP, CT_FS_PREVIEW_MIN_W_DP);
-  h = MAX (text_box_height (self->preview, PREVIEW_STYLE), CT_FS_PREVIEW_MIN_H_DP);
-  right = width - CT_FS_TRACK_W_DP - CT_FS_PREVIEW_INSET_DP;
-  bottom = MAX (thumb_top (self, CT_FS_THUMB_H_DP), h);
-  box = GRAPHENE_RECT_INIT ((float) (right - w), (float) (bottom - h), (float) w, (float) h);
-  gsk_rounded_rect_init (&shape, &box, &round, &round, &square, &round);
-  gtk_snapshot_push_rounded_clip (snapshot, &shape);
-  gtk_snapshot_append_color (snapshot, &fill, &box);
-  gtk_snapshot_pop (snapshot);
-  text_draw (snapshot, self->preview, PREVIEW_STYLE, box.origin.x + (w - logical.width / (double) PANGO_SCALE) / 2,
-             box.origin.y + (h - text_box_height (self->preview, PREVIEW_STYLE)) / 2, &white);
-}
-
-static void
-draw_bars (CtList *self, GtkSnapshot *snapshot)
-{
-  double width = gtk_widget_get_width (GTK_WIDGET (self)), height = gtk_widget_get_height (GTK_WIDGET (self));
-  GtkAdjustment *adj = vadjustment (self);
-
-  if (self->bar_alpha <= 0)
-    return;
-  gtk_snapshot_push_opacity (snapshot, self->bar_alpha);
-  if (fast_scroller_enabled (self))
-    {
-      /* the track the full height at the end, the thumb on it */
-      GdkRGBA track = ct_rgba (CT_C_FASTSCROLL_TRACK);
-      GdkRGBA thumb = ct_rgba (self->dragging ? CT_C_FASTSCROLL_THUMB_PRESSED : CT_C_FASTSCROLL_THUMB);
-      double top = thumb_top (self, CT_FS_THUMB_H_DP);
-
-      gtk_snapshot_append_color (snapshot, &track,
-                                 &GRAPHENE_RECT_INIT ((float) (width - CT_FS_TRACK_W_DP), 0, CT_FS_TRACK_W_DP,
-                                                      (float) height));
-      gtk_snapshot_append_color (snapshot, &thumb,
-                                 &GRAPHENE_RECT_INIT ((float) (width - CT_FS_THUMB_W_DP), (float) top,
-                                                      CT_FS_THUMB_W_DP, CT_FS_THUMB_H_DP));
-      if (self->dragging)
-        draw_preview (self, snapshot, width, CT_FS_THUMB_H_DP);
-    }
-  else if (gtk_adjustment_get_upper (adj) > gtk_adjustment_get_page_size (adj) + 1)
-    {
-      /* the plain scroll bar: thin, as long as the view is of the list */
-      GdkRGBA color = ct_rgba (CT_C_SCROLLBAR);
-      double length = MAX (height * gtk_adjustment_get_page_size (adj) / gtk_adjustment_get_upper (adj),
-                           2 * CT_SCROLLBAR_W_DP);
-      GskRoundedRect shape;
-      graphene_rect_t bar = GRAPHENE_RECT_INIT ((float) (width - CT_SCROLLBAR_W_DP), (float) thumb_top (self, length),
-                                                CT_SCROLLBAR_W_DP, (float) length);
-
-      gsk_rounded_rect_init_from_rect (&shape, &bar, CT_SCROLLBAR_W_DP / 2);
-      gtk_snapshot_push_rounded_clip (snapshot, &shape);
-      gtk_snapshot_append_color (snapshot, &color, &bar);
-      gtk_snapshot_pop (snapshot);
-    }
-  gtk_snapshot_pop (snapshot);
-}
-
-/* the list scrolls to put the row under @y of the track at the top, and the preview shows its section */
-static void
-drag_to (CtList *self, double y)
-{
-  GtkAdjustment *adj = vadjustment (self);
-  double height = gtk_widget_get_height (GTK_WIDGET (self));
-  double range = gtk_adjustment_get_upper (adj) - gtk_adjustment_get_page_size (adj);
-  double proportion = CLAMP ((y - CT_FS_THUMB_H_DP / 2) / MAX (height - CT_FS_THUMB_H_DP, 1), 0, 1);
-  const CtSection *section;
-  int row;
-
-  spongy_scroll_view_scroll_to (SPONGY_SCROLL_VIEW (self->scroll), proportion * range);
-  row = row_at (self, MAX (offset (self), self->top_padding));
-  section = row >= 0 ? ct_rows_section_at (self->rows, (guint) row) : NULL;
-  /* the favourites' section has no label, so no preview */
-  if (!section || !*section->label)
-    g_clear_object (&self->preview);
-  else if (g_strcmp0 (section->label, self->preview_label) != 0 || !self->preview)
-    {
-      g_clear_object (&self->preview);
-      self->preview = text_layout (GTK_WIDGET (self), PREVIEW_STYLE, section->label, 0);
-    }
-  g_free (self->preview_label);
-  self->preview_label = section ? g_strdup (section->label) : NULL;
-  gtk_widget_queue_draw (GTK_WIDGET (self));
-}
-
-static void
-on_drag_begin (GtkGestureDrag *drag, double x, double y, CtList *self)
-{
-  double width = gtk_widget_get_width (GTK_WIDGET (self));
-  double top = thumb_top (self, CT_FS_THUMB_H_DP);
-
-  /* only on the thumb while it shows, with the touch slop around it */
-  if (!fast_scroller_enabled (self) || self->bar_alpha <= 0 || x < width - CT_FS_THUMB_W_DP - CT_TOUCH_SLOP_DP * 2
-      || y < top - CT_TOUCH_SLOP_DP || y > top + CT_FS_THUMB_H_DP + CT_TOUCH_SLOP_DP)
-    {
-      gtk_gesture_set_state (GTK_GESTURE (drag), GTK_EVENT_SEQUENCE_DENIED);
-      return;
-    }
-  gtk_gesture_set_state (GTK_GESTURE (drag), GTK_EVENT_SEQUENCE_CLAIMED);
-  self->dragging = TRUE;
-  g_clear_handle_id (&self->bar_hide, g_source_remove);
-  drag_to (self, y);
-}
-
-static void
-on_drag_update (GtkGestureDrag *drag, double dx, double dy, CtList *self)
-{
-  double x, y;
-
-  if (self->dragging && gtk_gesture_drag_get_start_point (drag, &x, &y))
-    drag_to (self, y + dy);
-}
-
-static void
-on_drag_end (GtkGestureDrag *drag, double dx, double dy, CtList *self)
-{
-  if (!self->dragging)
-    return;
-  self->dragging = FALSE;
-  g_clear_object (&self->preview);
-  show_bar (self);
-  gtk_widget_queue_draw (GTK_WIDGET (self));
+  gtk_widget_queue_allocate (GTK_WIDGET (content));
 }
 
 /* ===== CtList ================================================================================================= */
@@ -845,21 +755,12 @@ ct_list_size_allocate (GtkWidget *widget, int width, int height, int baseline)
 }
 
 static void
-ct_list_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
-{
-  CtList *self = CT_LIST (widget);
-
-  gtk_widget_snapshot_child (widget, self->scroll, snapshot);
-  draw_bars (self, snapshot);
-}
-
-static void
 on_load_anim (VibeosAnim *anim, double value, gpointer data)
 {
   CtList *self = data;
 
   self->load_ms = value >= 1 ? -1 : value * (CT_LIST_LOAD_MS + 14 * LOAD_STAGGER);
-  gtk_widget_queue_draw (self->content);
+  gtk_widget_queue_allocate (self->content);
 }
 
 static void
@@ -867,18 +768,14 @@ ct_list_dispose (GObject *object)
 {
   CtList *self = CT_LIST (object);
 
-  clear_timeouts (self);
-  g_clear_handle_id (&self->bar_hide, g_source_remove);
-  for (int i = 0; i < N_PRESSES; i++)
-    vibeos_ripple_clear (&self->presses[i].ripple);
   g_clear_pointer (&self->load_anim, vibeos_anim_free);
-  g_clear_pointer (&self->bar_anim, vibeos_anim_free);
   g_clear_pointer (&self->scroll, gtk_widget_unparent);
   g_clear_pointer (&self->rows, ct_rows_free);
-  g_clear_pointer (&self->texts, g_hash_table_unref);
-  g_clear_pointer (&self->headers, g_hash_table_unref);
-  g_clear_object (&self->preview);
-  g_clear_pointer (&self->preview_label, g_free);
+  g_clear_pointer (&self->items, g_array_unref);
+  g_clear_pointer (&self->section_items, g_array_unref);
+  g_clear_pointer (&self->row_widgets, g_ptr_array_unref);
+  g_clear_pointer (&self->header_widgets, g_ptr_array_unref);
+  g_clear_pointer (&self->current, g_free);
   G_OBJECT_CLASS (ct_list_parent_class)->dispose (object);
 }
 
@@ -891,7 +788,6 @@ ct_list_class_init (CtListClass *klass)
   object_class->dispose = ct_list_dispose;
   widget_class->measure = ct_list_measure;
   widget_class->size_allocate = ct_list_size_allocate;
-  widget_class->snapshot = ct_list_snapshot;
   gtk_widget_class_set_css_name (widget_class, "ct-list");
   signals[ROW_ACTIVATED] = g_signal_new ("row-activated", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL,
                                          NULL, NULL, G_TYPE_NONE, 1, G_TYPE_UINT);
@@ -902,42 +798,24 @@ ct_list_class_init (CtListClass *klass)
 static void
 ct_list_init (CtList *self)
 {
-  GtkGesture *click = gtk_gesture_click_new ();
-  GtkGesture *drag = gtk_gesture_drag_new ();
-
-  self->top_padding = CT_LIST_PAD_TOP_DP;
-  self->down_row = -1;
   self->load_ms = -1;
-  self->texts = g_hash_table_new_full (NULL, NULL, NULL, row_text_free);
-  self->headers = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_object_unref);
+  self->bottom = CT_LIST_PAD_BOTTOM_DP;
+  self->items = g_array_new (FALSE, FALSE, sizeof (Item));
+  self->section_items = g_array_new (FALSE, FALSE, sizeof (guint));
+  /* the pools hold the widgets the content has as children: the content unparents them */
+  self->row_widgets = g_ptr_array_new ();
+  self->header_widgets = g_ptr_array_new ();
   self->content = g_object_new (CT_TYPE_LIST_CONTENT, NULL);
   CT_LIST_CONTENT (self->content)->list = self;
-  /* the ripples are drawn with the rows, so it is the content they redraw */
-  for (int i = 0; i < N_PRESSES; i++)
-    {
-      self->presses[i].row = -1;
-      vibeos_ripple_init (&self->presses[i].ripple, self->content);
-    }
+  self->sticky = g_object_new (CT_TYPE_LIST_HEADER, NULL);
+  CT_LIST_HEADER (self->sticky)->sticky = TRUE;
+  gtk_widget_add_css_class (self->sticky, "sticky");
+  gtk_widget_set_child_visible (self->sticky, FALSE);
+  gtk_widget_set_parent (self->sticky, self->content);
   self->load_anim = vibeos_anim_new (GTK_WIDGET (self), on_load_anim, self);
-  self->bar_anim = vibeos_anim_new (GTK_WIDGET (self), on_bar_anim, self);
   self->scroll = spongy_scroll_view_new ();
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->scroll), self->content);
   gtk_widget_set_parent (self->scroll, GTK_WIDGET (self));
-
-  gtk_gesture_single_set_button (GTK_GESTURE_SINGLE (click), GDK_BUTTON_PRIMARY);
-  g_signal_connect (click, "pressed", G_CALLBACK (on_pressed), self);
-  g_signal_connect (click, "released", G_CALLBACK (on_released), self);
-  g_signal_connect (click, "stopped", G_CALLBACK (on_stopped), self);
-  g_signal_connect (click, "update", G_CALLBACK (on_update), self);
-  g_signal_connect (click, "cancel", G_CALLBACK (on_lost), self);
-  gtk_widget_add_controller (self->content, GTK_EVENT_CONTROLLER (click));
-
-  /* before the scroll view's own drag, which is in the capture phase too, one level down */
-  gtk_event_controller_set_propagation_phase (GTK_EVENT_CONTROLLER (drag), GTK_PHASE_CAPTURE);
-  g_signal_connect (drag, "drag-begin", G_CALLBACK (on_drag_begin), self);
-  g_signal_connect (drag, "drag-update", G_CALLBACK (on_drag_update), self);
-  g_signal_connect (drag, "drag-end", G_CALLBACK (on_drag_end), self);
-  gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (drag));
 }
 
 GtkWidget *
@@ -951,17 +829,10 @@ ct_list_set_rows (CtList *self, CtRows *rows, gboolean to_top)
 {
   g_clear_pointer (&self->rows, ct_rows_free);
   self->rows = rows;
-  g_hash_table_remove_all (self->texts);
-  /* a press on a row that has gone is no press */
-  for (int i = 0; i < N_PRESSES; i++)
-    self->presses[i].row = -1;
-  self->down_row = -1;
-  clear_timeouts (self);
-  configure (CT_LIST_CONTENT (self->content));
+  build_items (self);
   if (to_top)
     spongy_scroll_view_scroll_to (SPONGY_SCROLL_VIEW (self->scroll), 0);
-  gtk_widget_queue_draw (self->content);
-  gtk_widget_queue_draw (GTK_WIDGET (self));
+  gtk_widget_queue_allocate (self->content);
 }
 
 CtRows *
@@ -973,7 +844,7 @@ ct_list_get_rows (CtList *self)
 CtEntry *
 ct_list_get_entry (CtList *self, guint index)
 {
-  return index < n_rows (self) ? g_array_index (self->rows->rows, CtRow, index).entry : NULL;
+  return self->rows && index < self->rows->rows->len ? g_array_index (self->rows->rows, CtRow, index).entry : NULL;
 }
 
 void
@@ -982,35 +853,58 @@ ct_list_set_search (CtList *self, gboolean search)
   if (self->search == search)
     return;
   self->search = search;
-  self->bar_alpha = 0;
-  vibeos_anim_stop (self->bar_anim);
-  g_hash_table_remove_all (self->texts);
-  gtk_widget_queue_draw (self->content);
-  gtk_widget_queue_draw (GTK_WIDGET (self));
+  build_items (self);
+  gtk_widget_queue_allocate (self->content);
 }
 
 void
-ct_list_set_top_padding (CtList *self, double padding)
+ct_list_set_head (CtList *self, GtkWidget *head)
 {
-  if (self->top_padding == padding)
+  if (self->head == head)
     return;
-  self->top_padding = padding;
-  configure (CT_LIST_CONTENT (self->content));
-  gtk_widget_queue_draw (self->content);
+  if (self->head)
+    gtk_widget_unparent (self->head);
+  self->head = head;
+  /* under everything else: the rows never pass under it, and the pinned header goes over it */
+  if (head)
+    gtk_widget_insert_after (head, self->content, NULL);
+  gtk_widget_queue_allocate (self->content);
+}
+
+void
+ct_list_set_bottom_padding (CtList *self, double padding)
+{
+  self->bottom = padding;
+  gtk_widget_queue_allocate (self->content);
 }
 
 void
 ct_list_set_selection (CtList *self, GHashTable *selected)
 {
   self->selected = selected;
-  g_hash_table_remove_all (self->texts);
-  gtk_widget_queue_draw (self->content);
+  gtk_widget_queue_allocate (self->content);
 }
 
 void
 ct_list_update_selection (CtList *self)
 {
-  gtk_widget_queue_draw (self->content);
+  for (guint i = 0; i < self->row_widgets->len; i++)
+    {
+      CtListRow *row = self->row_widgets->pdata[i];
+
+      if (row->item >= 0)
+        bind_row (self, row, (guint) row->item);
+    }
+}
+
+void
+ct_list_set_current (CtList *self, const char *uid)
+{
+  if (g_strcmp0 (self->current, uid) == 0)
+    return;
+  g_free (self->current);
+  self->current = g_strdup (uid);
+  ct_list_update_selection (self);
 }
 
 void

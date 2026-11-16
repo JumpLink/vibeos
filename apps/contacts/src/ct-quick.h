@@ -12,5 +12,8 @@ G_BEGIN_DECLS
 /* the card of the contact with vCard UID @uid (or CT_PROFILE_UID for "My info"); NULL, after a toast, when there
  * is no such contact */
 GtkWidget *ct_quick_new (GtkWidget *window, const char *uid);
+/* the same card filling a detail pane beside the list: it does not cover anything or slide in, and Back closes the
+ * pane */
+GtkWidget *ct_quick_new_embedded (GtkWidget *window, const char *uid);
 
 G_END_DECLS
