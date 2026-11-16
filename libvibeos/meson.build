@@ -76,6 +76,6 @@ subdir('tests')
 # the widget gallery, for trying the widgets on a desktop or a headless display (not installed)
 subdir('demo')
 
-# vibeos.Interface: Bold text (the font size is GNOME's own text-scaling-factor)
+# vibeos.Interface: Bold text and Display size (the font size is GNOME's own text-scaling-factor)
 install_data('data/vibeos.Interface.gschema.xml', install_dir: get_option('datadir') / 'glib-2.0/schemas')
 gnome.post_install(glib_compile_schemas: true)

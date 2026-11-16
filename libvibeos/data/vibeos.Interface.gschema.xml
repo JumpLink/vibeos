@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- How heavy the system draws text, besides org.gnome.desktop.interface: its text-scaling-factor is
+<!-- How big and how heavy the system draws things, besides org.gnome.desktop.interface: its text-scaling-factor is
      the font size, which GNOME's apps follow too. -->
 <schemalist>
   <schema id="vibeos.Interface" path="/vibeos/Interface/">
@@ -9,6 +9,16 @@
       <description>On, the VibeOS apps that follow the font settings draw every weight 300 heavier, up to 1000:
         regular text (400) at 700, medium (500) at 800. Apps that do not follow them yet are always drawn so.
       </description>
+    </key>
+    <key name="display-size" type="(di)">
+      <default>(0.0, 0)</default>
+      <summary>Display size: the screen's own scale and the step from it</summary>
+      <description>The first number is the screen's scale at the default display size, in screen pixels per GTK
+        pixel (3 on a phone with 3 pixels to a dp); 0 until Display size has been set. The second is the step
+        picked from it: 0 is the default, -1, -2 and -3 each a size smaller, 1, 2 and 3 each a size larger. The
+        steps are computed from the first number and the screen's size, so the step stays the same choice when the
+        list of scales the compositor offers changes. The size itself is the compositor's scale: this key is what
+        Settings shows and what the session puts back.</description>
     </key>
   </schema>
 </schemalist>

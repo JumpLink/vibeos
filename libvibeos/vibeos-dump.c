@@ -79,18 +79,20 @@ widget_description (GtkWidget *widget)
 }
 
 static void
-dump_widget (GString *out, GtkWidget *window, GtkWidget *widget, int index, int depth, int scale)
+dump_widget (GString *out, GtkWidget *window, GtkWidget *widget, int index, int depth, double scale)
 {
   graphene_rect_t box;
   int x0, y0, x1, y1, i = 0;
+  /* in float, as the box is, so that an edge on a half pixel rounds as it always has */
+  float s = (float) scale;
   g_autofree char *css = NULL;
 
   if (!gtk_widget_get_mapped (widget) || !gtk_widget_compute_bounds (widget, window, &box))
     return;
-  x0 = (int) round (box.origin.x * scale);
-  y0 = (int) round (box.origin.y * scale);
-  x1 = (int) round ((box.origin.x + box.size.width) * scale);
-  y1 = (int) round ((box.origin.y + box.size.height) * scale);
+  x0 = (int) round (box.origin.x * s);
+  y0 = (int) round (box.origin.y * s);
+  x1 = (int) round ((box.origin.x + box.size.width) * s);
+  y1 = (int) round ((box.origin.y + box.size.height) * s);
   css = css_classes (widget);
 
   g_string_append_printf (out, "%*s<node index=\"%d\"", 2 * depth, "", index);
@@ -126,16 +128,18 @@ dump (gpointer data)
 {
   GtkWidget *window = data;
   const char *path = g_getenv ("VIBEOS_DUMP");
-  int scale = vibeos_device_scale (window);
+  double scale = vibeos_device_scale (window);
   g_autoptr(GString) out = g_string_new ("<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>\n");
   g_autoptr(GError) error = NULL;
 
-  g_string_append_printf (out, "<hierarchy rotation=\"0\" density=\"%d\">\n", scale);
+  g_string_append (out, "<hierarchy rotation=\"0\" density=\"");
+  append_number (out, scale);
+  g_string_append (out, "\">\n");
   dump_widget (out, window, window, 0, 1, scale);
   g_string_append (out, "</hierarchy>\n");
   if (g_file_set_contents (path, out->str, out->len, &error))
-    g_message ("VIBEOS_DUMP: %s, %d×%d", path, gtk_widget_get_width (window) * scale,
-               gtk_widget_get_height (window) * scale);
+    g_message ("VIBEOS_DUMP: %s, %d×%d", path, (int) round (gtk_widget_get_width (window) * scale),
+               (int) round (gtk_widget_get_height (window) * scale));
   else
     g_message ("VIBEOS_DUMP: %s", error->message);
   return G_SOURCE_REMOVE;

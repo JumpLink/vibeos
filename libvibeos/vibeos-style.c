@@ -5,7 +5,6 @@
 #include <glib-unix.h>
 #include <math.h>
 #include <signal.h>
-#include <stdlib.h>
 #include <string.h>
 #include <tonal.h>
 
@@ -449,7 +448,8 @@ shoot (gpointer data)
   const char *path = g_getenv ("VIBEOS_SHOT");
   int width = gtk_widget_get_width (window), height = gtk_widget_get_height (window);
   /* the screen's scale, or VIBEOS_SHOT_SCALE: a window on a test display at scale 1 still makes a phone-sized picture */
-  int scale = vibeos_device_scale (window);
+  double scale = vibeos_device_scale (window);
+  int picture_w = (int) round (width * scale), picture_h = (int) round (height * scale);
   GdkPaintable *paintable = gtk_widget_paintable_new (window);
   GtkSnapshot *snapshot = gtk_snapshot_new ();
   GskRenderNode *node;
@@ -462,9 +462,9 @@ shoot (gpointer data)
   else
     {
       GdkTexture *texture = gsk_renderer_render_texture (gtk_native_get_renderer (GTK_NATIVE (window)), node,
-                                                         &GRAPHENE_RECT_INIT (0, 0, width * scale, height * scale));
+                                                         &GRAPHENE_RECT_INIT (0, 0, picture_w, picture_h));
       if (gdk_texture_save_to_png (texture, path))
-        g_message ("VIBEOS_SHOT: %s, %d×%d", path, width * scale, height * scale);
+        g_message ("VIBEOS_SHOT: %s, %d×%d", path, picture_w, picture_h);
       else
         g_message ("VIBEOS_SHOT: cannot write %s", path);
       g_object_unref (texture);
@@ -531,12 +531,19 @@ vibeos_window_get_overlay (GtkWidget *widget)
   return root ? g_object_get_data (G_OBJECT (root), "vibeos-overlay") : NULL;
 }
 
-int
+double
 vibeos_device_scale (GtkWidget *widget)
 {
   const char *shot_scale = g_getenv ("VIBEOS_SHOT_SCALE");
+  double value = shot_scale ? g_ascii_strtod (shot_scale, NULL) : 0;
+  GtkNative *native;
+  GdkSurface *surface;
 
-  return shot_scale && atoi (shot_scale) > 0 ? atoi (shot_scale) : gtk_widget_get_scale_factor (widget);
+  if (value > 0)
+    return value;
+  native = gtk_widget_get_native (widget);
+  surface = native ? gtk_native_get_surface (native) : NULL;
+  return surface ? gdk_surface_get_scale (surface) : gtk_widget_get_scale_factor (widget);
 }
 
 /* ---- text ---------------------------------------------------------------------------------------------------- */
