@@ -13,5 +13,9 @@ GtkWidget *ct_settings_new (GtkWidget *window);
 void       ct_import_file  (GtkWidget *window, GFile *file);
 /* the contacts @uids (strings) as one .vcf file, wherever the person saves it: Settings' "Export", and Share */
 void       ct_export_contacts (GtkWidget *window, GPtrArray *uids, const char *title);
+/* Import and Export as Settings, Organize and the account sheet offer them: the dialog asking from where (to where),
+ * over @parent, then the file chooser */
+void       ct_import_contacts (GtkWidget *window, GtkWidget *parent);
+void       ct_export_all      (GtkWidget *window, GtkWidget *parent);
 
 G_END_DECLS

@@ -112,8 +112,7 @@ ct_page_toolbar (CtPage *self, const char *css_class, const char *nav_icon, cons
   if (nav_icon)
     {
       /* the navigation button: a borderless ripple of half its diagonal */
-      GtkWidget *nav = ct_icon_button (nav_icon, nav_name, CT_TOOLBAR_NAV_W_DP, CT_TOOLBAR_H_DP,
-                                       CT_RIPPLE_APPCOMPAT);
+      GtkWidget *nav = ct_icon_button (nav_icon, nav_name, CT_TOOLBAR_NAV_W_DP, CT_TOOLBAR_H_DP);
 
       gtk_widget_add_css_class (nav, "ct-toolbar-nav");
       g_signal_connect (nav, "clicked", G_CALLBACK (on_nav), self);

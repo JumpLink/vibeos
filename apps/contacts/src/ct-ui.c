@@ -5,26 +5,17 @@
 #include <math.h>
 #include <vibeos.h>
 
-GdkRGBA
-ct_rgba (guint32 argb)
-{
-  return (GdkRGBA) { ((argb >> 16) & 0xff) / 255.0f, ((argb >> 8) & 0xff) / 255.0f, (argb & 0xff) / 255.0f,
-                     ((argb >> 24) & 0xff) / 255.0f };
-}
-
 GtkWidget *
-ct_icon_button (const char *icon_name, const char *name, double width, double height, guint32 ripple)
+ct_icon_button (const char *icon_name, const char *name, double width, double height)
 {
   GtkWidget *image = gtk_image_new_from_icon_name (icon_name);
   GtkWidget *button = vibeos_pressable_new (image);
-  GdkRGBA color = ct_rgba (ripple);
 
   gtk_image_set_pixel_size (GTK_IMAGE (image), 24);
   gtk_widget_set_size_request (button, (int) width, (int) height);
   gtk_widget_add_css_class (button, "ct-icon-button");
   /* unbounded: a circle of half the button's diagonal around its centre */
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_CIRCLE, hypot (width, height) / 2);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (button), &color);
   gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);
   return button;
 }
@@ -36,7 +27,7 @@ struct _CtTintedIcon {
   GtkWidget parent;
   char *icon_name;
   double size;
-  GdkRGBA color;
+  VibeosColor role;
 };
 
 G_DEFINE_FINAL_TYPE (CtTintedIcon, ct_tinted_icon, GTK_TYPE_WIDGET)
@@ -53,8 +44,10 @@ ct_tinted_icon_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   CtTintedIcon *self = CT_TINTED_ICON (widget);
 
+  GdkRGBA color = vibeos_color (self->role);
+
   if (self->icon_name)
-    vibeos_snapshot_icon (snapshot, widget, self->icon_name, 0, 0, self->size, &self->color);
+    vibeos_snapshot_icon (snapshot, widget, self->icon_name, 0, 0, self->size, &color);
 }
 
 static void
@@ -80,23 +73,23 @@ ct_tinted_icon_init (CtTintedIcon *self)
 }
 
 GtkWidget *
-ct_tinted_icon_new (const char *icon_name, double size, guint32 argb)
+ct_tinted_icon_new (const char *icon_name, double size, VibeosColor role)
 {
   CtTintedIcon *self = g_object_new (CT_TYPE_TINTED_ICON, NULL);
 
   self->size = size;
-  ct_tinted_icon_set (GTK_WIDGET (self), icon_name, argb);
+  ct_tinted_icon_set (GTK_WIDGET (self), icon_name, role);
   return GTK_WIDGET (self);
 }
 
 void
-ct_tinted_icon_set (GtkWidget *icon, const char *icon_name, guint32 argb)
+ct_tinted_icon_set (GtkWidget *icon, const char *icon_name, VibeosColor role)
 {
   CtTintedIcon *self = CT_TINTED_ICON (icon);
 
   g_free (self->icon_name);
   self->icon_name = g_strdup (icon_name);
-  self->color = ct_rgba (argb);
+  self->role = role;
   gtk_widget_queue_draw (icon);
 }
 
@@ -112,12 +105,21 @@ ct_label (const char *text, const char *css_class, double size)
 }
 
 GtkWidget *
+ct_text (const char *text, const char *css_class)
+{
+  GtkWidget *label = gtk_label_new (text);
+
+  gtk_widget_add_css_class (label, css_class);
+  gtk_label_set_xalign (GTK_LABEL (label), 0);
+  return label;
+}
+
+GtkWidget *
 ct_text_button (const char *label, const char *css_class)
 {
   g_autofree char *caps = g_utf8_strup (label, -1);
   GtkWidget *text = gtk_label_new (caps);
   GtkWidget *button;
-  GdkRGBA ripple = ct_rgba (CT_RIPPLE_APPCOMPAT);
 
   vibeos_label_set_font_padding (text, 14);
   gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
@@ -125,8 +127,7 @@ ct_text_button (const char *label, const char *css_class)
   gtk_widget_add_css_class (button, "ct-text-button");
   if (css_class)
     gtk_widget_add_css_class (button, css_class);
-  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_BOUNDED, 2);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (button), &ripple);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_BOUNDED, 20);
   gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, label, -1);
   return button;
 }
@@ -134,11 +135,11 @@ ct_text_button (const char *label, const char *css_class)
 /* the checkbox at rest, without its animation: unchecked, a rounded square's outline; checked, the square
  * filled and the mark drawn over it */
 void
-ct_snapshot_checkbox (GtkSnapshot *snapshot, double x, double y, gboolean checked, guint32 on, guint32 off)
+ct_snapshot_checkbox (GtkSnapshot *snapshot, double x, double y, gboolean checked)
 {
   GskRoundedRect outer;
   graphene_rect_t box = GRAPHENE_RECT_INIT ((float) x + 7, (float) y + 7, 18, 18);
-  GdkRGBA color = ct_rgba (checked ? on : off);
+  GdkRGBA color = vibeos_color (checked ? VIBEOS_PRIMARY : VIBEOS_ON_SURFACE_VARIANT);
 
   gsk_rounded_rect_init_from_rect (&outer, &box, 2);
   if (!checked)
@@ -153,12 +154,11 @@ ct_snapshot_checkbox (GtkSnapshot *snapshot, double x, double y, gboolean checke
   gtk_snapshot_append_color (snapshot, &color, &box);
   gtk_snapshot_pop (snapshot);
   {
-    /* the check mark, stroked in the window's colour rather than cut out: a cut-out would show the list's
-     * background, which is near enough to it */
+    /* the check mark, in the colour that goes on the primary one */
     g_autoptr(GskPathBuilder) builder = gsk_path_builder_new ();
     g_autoptr(GskPath) path = NULL;
     g_autoptr(GskStroke) stroke = gsk_stroke_new (2);
-    GdkRGBA mark = ct_rgba (CT_C_WINDOW_BG);
+    GdkRGBA mark = vibeos_color (VIBEOS_ON_PRIMARY);
     double ox = x + 4, oy = y + 4;     /* the vector centred in the box */
 
     gsk_path_builder_move_to (builder, (float) (ox + 6.6), (float) (oy + 12.2));
@@ -175,7 +175,6 @@ G_DECLARE_FINAL_TYPE (CtCheck, ct_check, CT, CHECK, GtkWidget)
 struct _CtCheck {
   GtkWidget parent;
   gboolean active;
-  guint32 on, off;
 };
 
 G_DEFINE_FINAL_TYPE (CtCheck, ct_check, GTK_TYPE_WIDGET)
@@ -192,7 +191,7 @@ ct_check_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   CtCheck *self = CT_CHECK (widget);
 
-  ct_snapshot_checkbox (snapshot, 0, (gtk_widget_get_height (widget) - 32) / 2.0, self->active, self->on, self->off);
+  ct_snapshot_checkbox (snapshot, 0, (gtk_widget_get_height (widget) - 32) / 2.0, self->active);
 }
 
 static void
@@ -210,13 +209,9 @@ ct_check_init (CtCheck *self)
 }
 
 GtkWidget *
-ct_check_new (guint32 on, guint32 off)
+ct_check_new (void)
 {
-  CtCheck *self = g_object_new (CT_TYPE_CHECK, NULL);
-
-  self->on = on;
-  self->off = off;
-  return GTK_WIDGET (self);
+  return g_object_new (CT_TYPE_CHECK, NULL);
 }
 
 void

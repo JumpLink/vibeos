@@ -50,9 +50,8 @@ struct _Quick {
   EContact *contact;            /* the card shown (a ref) */
   char *name, *phonetic;
   GdkTexture *photo;
-  guint32 header_tint;          /* the header's colour behind the silhouette, and the photo's tint when collapsed */
-  guint32 primary;              /* the kind icons */
-  guint32 title_color;          /* the card titles */
+  char *tint_uid;               /* whose tile colour the header takes (NULL: the default one, as a photo does) */
+  gboolean embedded;            /* in a detail pane: no scrim, no sheet coming and going */
 
   GtkWidget *stage, *scrim, *scroll, *content, *header, *cards;
   GtkWidget *actions, *star, *edit, *overflow;
@@ -128,7 +127,7 @@ push_photo_tint (GtkSnapshot *snapshot, Quick *quick, double height)
   double r = height >= intermediate ? 0 : (intermediate - height) / (intermediate - quick->min_h);
   double alpha = 1 - MIN (pow (r, 1.5) * 2, 1);
   double tint = MIN (pow (r, 1.5) * 3, 1);
-  GdkRGBA t = ct_rgba (quick->header_tint);
+  GdkRGBA t = ct_avatar_header_color (quick->tint_uid);
   /* the luminance weights of a saturation matrix */
   double lr = 0.213 * (1 - alpha), lg = 0.715 * (1 - alpha), lb = 0.072 * (1 - alpha);
   double k[3] = { 1 - tint + tint * t.red, 1 - tint + tint * t.green, 1 - tint + tint * t.blue };
@@ -175,7 +174,7 @@ silhouette_blend (Quick *quick, double ratio)
 static void
 append_gradient (GtkSnapshot *snapshot, double y, double width, double height, double alpha, gboolean dark_bottom)
 {
-  GdkRGBA dark = ct_rgba (CT_QC_GRADIENT_END), clear = { 0, 0, 0, 0 };
+  GdkRGBA dark = vibeos_color_alpha (VIBEOS_SCRIM, CT_QC_GRADIENT_ALPHA), clear = { 0, 0, 0, 0 };
   GskColorStop stops[2];
 
   dark.alpha *= alpha;
@@ -199,13 +198,13 @@ qc_header_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   TextStyle phonetic_style = CT_TEXT (CT_QC_PHONETIC_MAX_DP, CT_WEIGHT_REGULAR);
   g_autoptr(PangoLayout) title = NULL;
   g_autoptr(PangoLayout) phonetic = NULL;
-  GdkRGBA white = ct_rgba (0xFFFFFFFFu);
+  GdkRGBA white = vibeos_color (VIBEOS_WHITE), tint = ct_avatar_header_color (quick->tint_uid);
   double box, block, b, scale, bottom, top, alpha;
 
   /* the toolbar's shadow once the header is down to its least (drawn under it, over the cards) */
   if (height <= quick->min_h + 0.5)
     {
-      GdkRGBA shade = { 0, 0, 0, 0.3f }, clear = { 0, 0, 0, 0 };
+      GdkRGBA shade = vibeos_color_alpha (VIBEOS_SHADOW, 0.3f), clear = { 0, 0, 0, 0 };
 
       gtk_snapshot_append_linear_gradient (snapshot,
                                            &GRAPHENE_RECT_INIT (0, (float) height, (float) width,
@@ -222,17 +221,15 @@ qc_header_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 
       if (tinted)
         push_photo_tint (snapshot, quick, height);
-      ct_avatar_header_snapshot (snapshot, &bounds, quick->header_tint, quick->photo);
+      ct_avatar_header_snapshot (snapshot, &bounds, &tint, quick->photo);
       if (tinted)
         gtk_snapshot_pop (snapshot);
     }
   else
     {
-      GdkRGBA tint = ct_rgba (quick->header_tint);
-
       gtk_snapshot_append_color (snapshot, &tint, &bounds);
       gtk_snapshot_push_opacity (snapshot, 1 - silhouette_blend (quick, ratio));
-      ct_avatar_header_snapshot (snapshot, &bounds, quick->header_tint, NULL);
+      ct_avatar_header_snapshot (snapshot, &bounds, &tint, NULL);
       gtk_snapshot_pop (snapshot);
     }
 
@@ -312,12 +309,13 @@ struct _QcContent {
 
 G_DEFINE_FINAL_TYPE (QcContent, qc_content, GTK_TYPE_WIDGET)
 
-/* the maximum height: the header is square with the screen's width, the status bar's inset included
- * (the photo container's width); the window here starts under the status bar */
+/* the maximum height: square with the page's width, but never more than half the page's height (a wide pane) */
 static double
-max_header_height (double width)
+max_header_height (Quick *quick, double width)
 {
-  return MAX (width - CT_STATUSBAR_H_PX / (double) CT_PX_PER_DP, CT_TOOLBAR_H_DP);
+  double limit = quick->view_h > 0 ? quick->view_h / 2 : width;
+
+  return MAX (MIN (width, limit), CT_TOOLBAR_H_DP);
 }
 
 static void
@@ -336,7 +334,7 @@ qc_content_measure (GtkWidget *widget, GtkOrientation orientation, int for_size,
   {
     int cards_min, cards_nat;
     double view = quick->view_h;
-    double gap = max_header_height (for_size > 0 ? for_size : 0);
+    double gap = max_header_height (quick, for_size > 0 ? for_size : 0);
 
     gtk_widget_measure (quick->cards, orientation, for_size, &cards_min, &cards_nat, NULL, NULL);
     *minimum = *natural = (int) ceil (gap + MAX (cards_nat, view - quick->min_h));
@@ -355,7 +353,7 @@ qc_content_size_allocate (GtkWidget *widget, int width, int height, int baseline
   Quick *quick = QC_CONTENT (widget)->quick;
   double offset = MAX (spongy_scroll_view_get_offset (SPONGY_SCROLL_VIEW (quick->scroll)), 0);
 
-  quick->max_h = max_header_height (width);
+  quick->max_h = max_header_height (quick, width);
   gtk_widget_allocate (quick->cards, width, (int) (height - quick->max_h), -1,
                        gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (0, (float) quick->max_h)));
   /* the header at the top of the view, wherever the content is scrolled to */
@@ -608,7 +606,6 @@ entry_row (Quick *quick, const Entry *entry, gboolean card_has_icons)
   GtkWidget *lines = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *row = vibeos_pressable_new (box);
   GtkGesture *press = gtk_gesture_click_new ();
-  GdkRGBA ripple = ct_rgba (CT_RIPPLE_FRAMEWORK);
   gboolean header_only = !entry->sub && !entry->text;
   double top = entry->later_of_kind && !header_only ? CT_QC_NO_ICON_MARGIN_TOP_DP : CT_QC_ENTRY_PAD_TOP_DP;
   GtkWidget *label;
@@ -625,7 +622,7 @@ entry_row (Quick *quick, const Entry *entry, gboolean card_has_icons)
   if (card_has_icons)
     {
       GtkWidget *icon = ct_tinted_icon_new (entry->icon ? entry->icon : "ct-phone-symbolic", CT_QC_ICON_DP,
-                                            entry->add ? CT_C_QC_NO_DATA : quick->primary);
+                                            entry->add ? VIBEOS_ON_SURFACE_VARIANT : VIBEOS_PRIMARY);
 
       gtk_widget_set_valign (icon, GTK_ALIGN_START);
       gtk_widget_set_margin_top (icon, (int) CT_QC_ICON_MARGIN_TOP_DP);
@@ -647,7 +644,7 @@ entry_row (Quick *quick, const Entry *entry, gboolean card_has_icons)
   gtk_box_append (GTK_BOX (box), lines);
   if (entry->alt_icon)
     {
-      GtkWidget *icon = ct_tinted_icon_new (entry->alt_icon, CT_QC_ICON_DP, quick->primary);
+      GtkWidget *icon = ct_tinted_icon_new (entry->alt_icon, CT_QC_ICON_DP, VIBEOS_PRIMARY);
       GtkWidget *alt = vibeos_pressable_new (icon);
 
       gtk_widget_set_halign (icon, GTK_ALIGN_CENTER);
@@ -656,7 +653,6 @@ entry_row (Quick *quick, const Entry *entry, gboolean card_has_icons)
       gtk_widget_set_valign (alt, GTK_ALIGN_START);
       vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (alt), VIBEOS_RIPPLE_CIRCLE, hypot (CT_QC_CLICKABLE_ICON_DP,
                                                                                 CT_QC_CLICKABLE_ICON_DP) / 2);
-      vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (alt), &ripple);
       gtk_accessible_update_property (GTK_ACCESSIBLE (alt), GTK_ACCESSIBLE_PROPERTY_LABEL, entry->alt_name, -1);
       g_object_set_data_full (G_OBJECT (alt), "ct-uri", g_strdup (entry->alt_uri), g_free);
       g_signal_connect (alt, "clicked", G_CALLBACK (on_alt_clicked), quick);
@@ -664,7 +660,6 @@ entry_row (Quick *quick, const Entry *entry, gboolean card_has_icons)
     }
 
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
   gtk_accessible_update_property (GTK_ACCESSIBLE (row), GTK_ACCESSIBLE_PROPERTY_LABEL, entry->header, -1);
   g_object_set_data_full (G_OBJECT (row), "ct-uri", g_strdup (entry->uri), g_free);
   g_object_set_data_full (G_OBJECT (row), "ct-copy", g_strdup (entry->copy), g_free);
@@ -691,15 +686,7 @@ card_new (Quick *quick, const char *title)
   if (title)
     {
       GtkWidget *label = ct_label (title, "ct-qc-card-title", CT_QC_CARD_TITLE_SP);
-      PangoAttrList *attrs = pango_attr_list_new ();
-      GdkRGBA color = ct_rgba (quick->title_color);
 
-      /* the theme colour, which no style sheet knows */
-      pango_attr_list_insert (attrs, pango_attr_foreground_new ((guint16) (color.red * 65535),
-                                                                (guint16) (color.green * 65535),
-                                                                (guint16) (color.blue * 65535)));
-      gtk_label_set_attributes (GTK_LABEL (label), attrs);
-      pango_attr_list_unref (attrs);
       gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
       gtk_box_append (GTK_BOX (card), label);
     }
@@ -1039,11 +1026,9 @@ make_actions (Quick *quick)
 {
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
 
-  quick->star = ct_icon_button ("ct-star-border-symbolic", _("Add to favorites"), 48, CT_TOOLBAR_H_DP,
-                                CT_RIPPLE_QC_TOOLBAR);
-  quick->edit = ct_icon_button ("ct-create-symbolic", _("Edit"), 48, CT_TOOLBAR_H_DP, CT_RIPPLE_QC_TOOLBAR);
-  quick->overflow = ct_icon_button ("ct-more-vert-symbolic", _("More options"), 40, CT_TOOLBAR_H_DP,
-                                    CT_RIPPLE_QC_TOOLBAR);
+  quick->star = ct_icon_button ("ct-star-border-symbolic", _("Add to favorites"), 48, CT_TOOLBAR_H_DP);
+  quick->edit = ct_icon_button ("ct-create-symbolic", _("Edit"), 48, CT_TOOLBAR_H_DP);
+  quick->overflow = ct_icon_button ("ct-more-vert-symbolic", _("More options"), 40, CT_TOOLBAR_H_DP);
   g_signal_connect (quick->star, "clicked", G_CALLBACK (on_star), quick);
   g_signal_connect (quick->edit, "clicked", G_CALLBACK (on_edit), quick);
   g_signal_connect (quick->overflow, "clicked", G_CALLBACK (on_overflow), quick);
@@ -1094,7 +1079,6 @@ rebuild (Quick *quick)
   EContact *contact = current_contact (quick, &photo_bytes);
   CtNameOrder order = ct_display_order (quick->settings);
   GtkWidget *child, *about;
-  int index;
 
   if (!contact)
     return;
@@ -1117,20 +1101,9 @@ rebuild (Quick *quick)
       g_bytes_unref (photo_bytes);
     }
 
-  /* the theme colour: the tile's through the hue mapping, or the default for a photo (the top comment) */
-  index = quick->photo ? -1 : ct_avatar_color_index (quick->profile ? CT_PROFILE_UID : quick->uid);
-  if (quick->photo)
-    {
-      quick->header_tint = CT_C_QC_DEFAULT_TINT;
-      quick->primary = CT_C_QC_DEFAULT_TINT;
-      quick->title_color = CT_C_QC_DEFAULT_TITLE;
-    }
-  else
-    {
-      quick->header_tint = ct_avatar_header_color (quick->profile ? CT_PROFILE_UID : quick->uid);
-      quick->primary = index < 0 ? 0xFF4A6366u : CT_QC_PRIMARY[index];
-      quick->title_color = index < 0 ? 0xFF96B1B4u : CT_QC_TITLE[index];
-    }
+  /* the header's colour: the tile's, or the default one for a photo (the top comment) */
+  g_free (quick->tint_uid);
+  quick->tint_uid = quick->photo ? NULL : g_strdup (quick->profile ? CT_PROFILE_UID : quick->uid);
 
   while ((child = gtk_widget_get_first_child (quick->cards)))
     gtk_box_remove (GTK_BOX (quick->cards), child);
@@ -1187,7 +1160,7 @@ on_scrim (VibeosAnim *anim, double value, gpointer data)
 static void
 on_map (GtkWidget *stage, Quick *quick)
 {
-  if (quick->closing || quick->sheet == 0)
+  if (quick->closing || quick->sheet == 0 || quick->embedded)
     return;
   vibeos_anim_start (quick->sheet_anim, 1, 0, CT_QC_ENTRANCE_MS, 0, SPONGY_LINEAR_OUT_SLOW_IN);
   vibeos_anim_start (quick->scrim_anim, 0, 1, CT_QC_SCRIM_FADE_MS, 0, SPONGY_LINEAR);
@@ -1200,6 +1173,11 @@ quick_close (Quick *quick)
 {
   if (quick->closing)
     return;
+  if (quick->embedded)
+    {
+      ct_window_pop (quick->window, quick->page);
+      return;
+    }
   quick->closing = TRUE;
   vibeos_anim_stop (quick->scrim_anim);
   gtk_widget_set_can_target (quick->stage, FALSE);
@@ -1253,13 +1231,28 @@ quick_free (gpointer data)
   g_free (quick->name);
   g_free (quick->phonetic);
   g_free (quick->uid);
+  g_free (quick->tint_uid);
   g_object_unref (quick->store);
   g_object_unref (quick->settings);
   g_free (quick);
 }
 
+static GtkWidget *quick_new (GtkWidget *window, const char *uid, gboolean embedded);
+
 GtkWidget *
 ct_quick_new (GtkWidget *window, const char *uid)
+{
+  return quick_new (window, uid, FALSE);
+}
+
+GtkWidget *
+ct_quick_new_embedded (GtkWidget *window, const char *uid)
+{
+  return quick_new (window, uid, TRUE);
+}
+
+static GtkWidget *
+quick_new (GtkWidget *window, const char *uid, gboolean embedded)
 {
   CtStore *store = ct_window_get_store (window);
   gboolean profile = g_strcmp0 (uid, CT_PROFILE_UID) == 0;
@@ -1278,13 +1271,14 @@ ct_quick_new (GtkWidget *window, const char *uid)
   quick->uid = g_strdup (uid);
   quick->profile = profile;
   quick->min_h = CT_TOOLBAR_H_DP;
-  quick->max_h = max_header_height (360);
-  quick->sheet = 1;
+  quick->max_h = max_header_height (quick, 360);
+  quick->embedded = embedded;
+  quick->sheet = embedded ? 0 : 1;
   spongy_interp_cubic (&quick->title_curve, CT_QC_TITLE_CURVE_X1, CT_QC_TITLE_CURVE_Y1, CT_QC_TITLE_CURVE_X2,
                        CT_QC_TITLE_CURVE_Y2);
 
   quick->page = ct_page_new (window);
-  ct_page_set_translucent (CT_PAGE (quick->page), TRUE);
+  ct_page_set_translucent (CT_PAGE (quick->page), !embedded);
   ct_page_set_back_handler (CT_PAGE (quick->page), on_back, quick);
   gtk_widget_add_css_class (quick->page, "ct-quick");
   g_object_set_data_full (G_OBJECT (quick->page), "ct-quick", quick, quick_free);
@@ -1295,6 +1289,7 @@ ct_quick_new (GtkWidget *window, const char *uid)
   quick->scrim = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (quick->scrim, "ct-qc-scrim");
   gtk_widget_set_opacity (quick->scrim, 0);
+  gtk_widget_set_visible (quick->scrim, !embedded);
   gtk_widget_set_parent (quick->scrim, quick->stage);
 
   quick->scroll = spongy_scroll_view_new ();

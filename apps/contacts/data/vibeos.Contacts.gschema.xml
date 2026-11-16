@@ -37,5 +37,10 @@
       <summary>Address books left out of the list</summary>
       <description>With contacts-to-display "custom": the UIDs of the address books "Customize view" unticked.</description>
     </key>
+    <key name="recent-contacts" type="as">
+      <default>[]</default>
+      <summary>Contacts opened lately</summary>
+      <description>The vCard UIDs of the contacts last opened, the latest first, for Recents and search's "Recent contacts".</description>
+    </key>
   </schema>
 </schemalist>

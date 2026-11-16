@@ -40,7 +40,6 @@ pref_row (const char *title, const char *summary, GtkWidget **summary_label, GCa
   GtkWidget *lines = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *row = vibeos_pressable_new (lines);
   GtkWidget *label = ct_label (summary ? summary : "", "ct-pref-summary", 14);
-  GdkRGBA ripple = ct_rgba (CT_RIPPLE_APPCOMPAT);
 
   gtk_widget_add_css_class (lines, "ct-pref-lines");
   gtk_box_append (GTK_BOX (lines), ct_label (title, "ct-pref-title", 16));
@@ -50,7 +49,6 @@ pref_row (const char *title, const char *summary, GtkWidget **summary_label, GCa
   gtk_box_append (GTK_BOX (lines), label);
   gtk_widget_add_css_class (row, "ct-pref-row");
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
   if (clicked)
     g_signal_connect (row, "clicked", clicked, data);
   else
@@ -305,21 +303,39 @@ pick_vcf_files (GtkWidget *window, const char *book_uid)
   gtk_file_dialog_open_multiple (dialog, GTK_WINDOW (window), NULL, on_import_files, target);
 }
 
+/* the import's and the export's dialogs, opened over @parent, whichever screen asked */
+typedef struct {
+  GtkWidget *window, *parent;
+} Asker;
+
+static Asker *
+asker_new (GtkWidget *window, GtkWidget *parent)
+{
+  Asker *asker = g_new0 (Asker, 1);
+
+  asker->window = window;
+  asker->parent = parent;
+  /* it lives as long as the screen that asked */
+  g_object_set_data_full (G_OBJECT (parent), "ct-asker", asker, g_free);
+  return asker;
+}
+
 static void
 on_import_account (int response, gpointer data)
 {
-  Settings *s = data;
-  g_autoptr(GPtrArray) books = writable_books (s->store);
+  Asker *asker = data;
+  g_autoptr(GPtrArray) books = writable_books (ct_window_get_store (asker->window));
 
   if (response >= 0 && (guint) response < books->len)
-    pick_vcf_files (s->window, ((CtBook *) books->pdata[response])->uid);
+    pick_vcf_files (asker->window, ((CtBook *) books->pdata[response])->uid);
 }
 
 static void
 on_import_source (int response, gpointer data)
 {
-  Settings *s = data;
-  g_autoptr(GPtrArray) books = writable_books (s->store);
+  Asker *asker = data;
+  CtStore *store = ct_window_get_store (asker->window);
+  g_autoptr(GPtrArray) books = writable_books (store);
 
   if (response != 0)
     return;
@@ -331,19 +347,26 @@ on_import_source (int response, gpointer data)
 
       for (guint i = 0; i < n; i++)
         labels[i] = ct_book_label (books->pdata[i]);
-      ct_list_dialog (s->page, CT_DIALOG_APPCOMPAT, _("Save imported contacts to:"), labels, (int) n, FALSE,
-                      on_import_account, s);
+      ct_list_dialog (asker->parent, CT_DIALOG_APPCOMPAT, _("Save imported contacts to:"), labels, (int) n, FALSE,
+                      on_import_account, asker);
       return;
     }
-  pick_vcf_files (s->window, ct_store_default_book (s->store));
+  pick_vcf_files (asker->window, ct_store_default_book (store));
+}
+
+void
+ct_import_contacts (GtkWidget *window, GtkWidget *parent)
+{
+  const char *labels[] = { _(".vcf file") };
+
+  ct_list_dialog (parent, CT_DIALOG_FRAMEWORK, _("Import contacts from"), labels, 1, TRUE, on_import_source,
+                  asker_new (window, parent));
 }
 
 static void
 on_import (VibeosPressable *row, Settings *s)
 {
-  const char *labels[] = { _(".vcf file") };
-
-  ct_list_dialog (s->page, CT_DIALOG_FRAMEWORK, _("Import contacts from"), labels, 1, TRUE, on_import_source, s);
+  ct_import_contacts (s->window, s->page);
 }
 
 /* --- export */
@@ -351,24 +374,31 @@ on_import (VibeosPressable *row, Settings *s)
 static void
 on_export_chosen (int response, gpointer data)
 {
-  Settings *s = data;
+  Asker *asker = data;
   g_autoptr(GPtrArray) entries = NULL;
   g_autoptr(GPtrArray) uids = g_ptr_array_new_with_free_func (g_free);
 
   if (response != 0)
     return;
-  entries = ct_shown_entries (s->store, s->settings);
+  entries = ct_shown_entries (ct_window_get_store (asker->window), ct_window_get_settings (asker->window));
   for (guint i = 0; i < entries->len; i++)
     g_ptr_array_add (uids, g_strdup (((CtEntry *) entries->pdata[i])->uid));
-  ct_export_contacts (s->window, uids, _("Export contacts"));
+  ct_export_contacts (asker->window, uids, _("Export contacts"));
+}
+
+void
+ct_export_all (GtkWidget *window, GtkWidget *parent)
+{
+  const char *labels[] = { _("Export to .vcf file") };
+
+  ct_list_dialog (parent, CT_DIALOG_APPCOMPAT, _("Export contacts"), labels, 1, FALSE, on_export_chosen,
+                  asker_new (window, parent));
 }
 
 static void
 on_export (VibeosPressable *row, Settings *s)
 {
-  const char *labels[] = { _("Export to .vcf file") };
-
-  ct_list_dialog (s->page, CT_DIALOG_APPCOMPAT, _("Export contacts"), labels, 1, FALSE, on_export_chosen, s);
+  ct_export_all (s->window, s->page);
 }
 
 /* --- About Contacts: the rows in the screen's place, the title "About Contacts" */
@@ -471,7 +501,6 @@ filter_row (const char *text, GtkWidget *mark, GCallback clicked, gpointer data)
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *row = vibeos_pressable_new (box);
   GtkWidget *label = ct_label (text, "ct-filter-text", 16);
-  GdkRGBA ripple = ct_rgba (CT_RIPPLE_FRAMEWORK);
 
   gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
   gtk_widget_set_hexpand (label, TRUE);
@@ -481,7 +510,6 @@ filter_row (const char *text, GtkWidget *mark, GCallback clicked, gpointer data)
   gtk_box_append (GTK_BOX (box), mark);
   gtk_widget_add_css_class (row, "ct-filter-row");
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
   g_signal_connect (row, "clicked", clicked, data);
   return row;
 }
@@ -617,7 +645,7 @@ customize_new (GtkWidget *window, GtkWidget *filter_page)
     {
       CtBook *book = books->pdata[i];
       gboolean shown = !g_strv_contains ((const char *const *) hidden, book->uid);
-      GtkWidget *check = ct_check_new (CT_C_CHECK_ON, CT_C_CHECK_OFF);
+      GtkWidget *check = ct_check_new ();
       GtkWidget *row = filter_row (ct_book_label (book), check, G_CALLBACK (on_book_toggled), c);
 
       ct_check_set_active (check, shown);

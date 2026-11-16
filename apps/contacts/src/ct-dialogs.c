@@ -127,11 +127,9 @@ static GtkWidget *
 dialog_row (VibeosDialog *vibeos, GtkWidget *child, int index, const char *css_class)
 {
   GtkWidget *row = vibeos_pressable_new (child);
-  GdkRGBA ripple = ct_rgba (CT_RIPPLE_APPCOMPAT);
 
   gtk_widget_add_css_class (row, css_class);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
   g_object_set_data (G_OBJECT (row), "ct-response", GINT_TO_POINTER (index));
   g_signal_connect (row, "clicked", G_CALLBACK (on_row), vibeos);
   return row;
@@ -315,7 +313,7 @@ ct_wheel_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   CtWheel *self = CT_WHEEL (widget);
   double width = gtk_widget_get_width (widget), middle = gtk_widget_get_height (widget) / 2;
   TextStyle style = CT_TEXT (18, CT_WEIGHT_REGULAR);
-  GdkRGBA text = ct_rgba (CT_C_DIALOG_TEXT), divider = ct_rgba (CT_C_LIST_SECONDARY);
+  GdkRGBA text = vibeos_color (VIBEOS_ON_SURFACE), divider = vibeos_color (VIBEOS_OUTLINE_VARIANT);
 
   for (int row = -2; row <= 2; row++)
     {
@@ -558,17 +556,15 @@ ct_date_dialog (GtkWidget *parent, int year, int month, int day, gboolean year_o
     {
       /* the "Include year" check box */
       GtkWidget *line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-      GtkWidget *check = ct_check_new (CT_C_CHECK_ON, CT_C_CHECK_OFF);
+      GtkWidget *check = ct_check_new ();
       GtkWidget *label = ct_label (_("Include year"), "ct-date-include", 22);
       GtkWidget *row = vibeos_pressable_new (line);
-      GdkRGBA ripple = ct_rgba (CT_RIPPLE_APPCOMPAT);
 
       gtk_widget_set_valign (check, GTK_ALIGN_CENTER);
       gtk_box_append (GTK_BOX (line), check);
       gtk_box_append (GTK_BOX (line), label);
       gtk_widget_add_css_class (row, "ct-date-include-row");
       vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
-      vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
       g_signal_connect (row, "clicked", G_CALLBACK (on_include_year), dialog);
       dialog->include = check;
       ct_check_set_active (check, dialog->include_year);
