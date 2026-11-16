@@ -229,6 +229,19 @@ replace (const char *s, const char *from, const char *to)
   return g_strjoinv (to, parts);
 }
 
+/* A picture or parallax set chosen from the launcher's directory (/usr/share/neo-launcher/parallax/...: the
+ * wallpapers that came in packages) under the launcher's new name, when the old one is gone with its package and the
+ * renamed package put the same file there; otherwise NULL. In a user's own directory the old name is a symlink to the
+ * new one (move_dir), so a path there keeps working and is left alone. */
+static char *
+renamed_launcher_path (const char *path)
+{
+  if (!path || !strstr (path, "/neo-launcher/") || g_file_test (path, G_FILE_TEST_EXISTS))
+    return NULL;
+  g_autofree char *now = replace (path, "/neo-launcher/", "/vibeos-launcher/");
+  return g_file_test (now, G_FILE_TEST_EXISTS) ? g_steal_pointer (&now) : NULL;
+}
+
 /* a shortcut's desktop file, old name `old_name` (either generation), under its new name with what it names renamed */
 static void
 move_shortcut (const char *dir, const char *old_name)
@@ -424,6 +437,14 @@ map_shell_value (const char *key, const char *value)
   /* the Round icon pack is gnome-free now */
   if (!strcmp (key, "icon-pack") && !strcmp (value, "'round'"))
     return g_strdup ("'gnome-free'");
+  if (!strcmp (key, "wallpaper-parallax")) {
+    g_autoptr (GVariant) v = g_variant_parse (G_VARIANT_TYPE_STRING, value, NULL, NULL, NULL);
+    g_autofree char *now = v ? renamed_launcher_path (g_variant_get_string (v, NULL)) : NULL;
+    if (now) {
+      g_autoptr (GVariant) n = g_variant_ref_sink (g_variant_new_string (now));
+      return g_variant_print (n, FALSE);
+    }
+  }
   return g_strdup (value);
 }
 
@@ -624,6 +645,33 @@ notifications (gboolean first_generation)
 
 /* ---- a device's defaults for the old schemas -------------------------------------------------------------------- */
 
+/* ---- wallpapers */
+
+/* GNOME's wallpaper and lock screen picture, when the user chose one of the launcher's (renamed_launcher_path) */
+static void
+wallpapers (void)
+{
+  static const char *const keys[][2] = { { "org.gnome.desktop.background", "picture-uri" },
+                                         { "org.gnome.desktop.background", "picture-uri-dark" },
+                                         { "org.gnome.desktop.screensaver", "picture-uri" } };
+  for (guint i = 0; i < G_N_ELEMENTS (keys); i++) {
+    g_autoptr (GSettingsSchema) s = schema (keys[i][0]);
+    if (!s || !g_settings_schema_has_key (s, keys[i][1]))
+      continue;
+    g_autoptr (GSettings) gs = g_settings_new_full (s, NULL, NULL);
+    g_autoptr (GVariant) mine = g_settings_get_user_value (gs, keys[i][1]);
+    if (!mine || !g_variant_is_of_type (mine, G_VARIANT_TYPE_STRING))
+      continue;
+    g_autofree char *path = g_filename_from_uri (g_variant_get_string (mine, NULL), NULL, NULL);
+    g_autofree char *now = renamed_launcher_path (path);
+    g_autofree char *uri = now ? g_filename_to_uri (now, NULL, NULL) : NULL;
+    if (!uri)
+      continue;
+    g_settings_set_string (gs, keys[i][1], uri);
+    note ("%s %s: %s", keys[i][0], keys[i][1], uri);
+  }
+}
+
 /* "/vibeos/Shell/" -> "vibeos.Shell": each schema's path is its id */
 static char *
 path_schema_id (const char *path)
@@ -755,6 +803,7 @@ main (int argc, char **argv)
   map_all_mimeapps ();
   copy_settings (first_generation);
   device_defaults ();
+  wallpapers ();
   shell_lists ();
   notifications (first_generation);
   g_settings_sync ();
