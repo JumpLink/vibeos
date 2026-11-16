@@ -60,6 +60,11 @@ function text(str, size, bold) {
     return t;
 }
 
+// A key label's width at a text size
+export function labelWidth(str, size) {
+    return text(str, size, false).width;
+}
+
 // Text with its baseline at y, centred on x or starting there; @scaleX squeezes it about that point
 function drawText(cr, str, size, bold, x, y, {centre = true, colour, alpha = 1, scaleX = 1}) {
     const t = text(str, size, bold);
@@ -267,6 +272,47 @@ class PressedKey extends ScreenCanvas {
         cr.rectangle(r.x, r.y, r.w, r.h);
         cr.fill();
         paintKey(cr, v.m, this._key, v.colors, true, v);
+    }
+});
+
+// A long press's panel (geometry.placeMoreKeys): the keys on a rounded card in the letter keys' colour, the one the
+// finger chooses in their pressed colour. It stands over the keyboard and above it, in the stage: @place(v, panel,
+// keysX, keysY) puts it there, (keysX, keysY) being where the keys' actor is on the stage; @select(i) marks a key.
+export const MoreKeysPanel = GObject.registerClass(
+class MoreKeysPanel extends ScreenCanvas {
+    place(v, panel, keysX, keysY) {
+        const s = v.scale;
+        const left = v.m.insetLeft + panel.x;
+        const x0 = Math.floor(left / s), y0 = Math.floor(panel.y / s);
+        const x1 = Math.ceil((left + panel.w) / s), y1 = Math.ceil((panel.y + panel.h) / s);
+        this._panel = panel;
+        this._selected = -1;
+        this._origin = [x0 * s, y0 * s];
+        this.set_position(keysX + x0, keysY + y0);
+        this.set_size(x1 - x0, y1 - y0);
+        this.setView(v);
+        this.show();
+    }
+
+    select(i) {
+        if (i === this._selected)
+            return;
+        this._selected = i;
+        this.queue_repaint();
+    }
+
+    paint(cr, v) {
+        const panel = this._panel;
+        if (!panel)
+            return;
+        cr.translate(v.m.insetLeft - this._origin[0], -this._origin[1]);
+        roundRect(cr, panel.x, panel.y, panel.w, panel.h, panel.corner);
+        setSource(cr, v.colors.letter);
+        cr.fill();
+        // the keys at the panel's text sizes, on the card (only the chosen one has a background of its own)
+        const m = {...v.m, letterSize: panel.letterSize, labelSize: panel.labelSize};
+        panel.keys.forEach((k, i) =>
+            paintKey(cr, m, {...k, key: {...k.key, b: 'empty'}}, v.colors, i === this._selected, v));
     }
 });
 
