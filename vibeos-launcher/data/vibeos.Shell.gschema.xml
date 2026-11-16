@@ -117,5 +117,14 @@
       <summary>Always On Display</summary>
       <description>When the screen goes off, the panel stays on, black, with the time, the date, the battery and the apps with notifications in dim grey.</description>
     </key>
+    <key name="keyboard" type="s">
+      <choices>
+        <choice value="gnome"/>
+        <choice value="vibeos"/>
+      </choices>
+      <default>'gnome'</default>
+      <summary>On-screen keyboard</summary>
+      <description>gnome: GNOME Shell's own keyboard. vibeos: the AOSP keyboard's layouts, sizes and colours, for the phone and the tablet.</description>
+    </key>
 </schema>
 </schemalist>

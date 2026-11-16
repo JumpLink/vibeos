@@ -29,8 +29,15 @@ function findKey(actor) {
     return null;
 }
 
+// While VibeOS's own keyboard is in use (keyboard/keyboard.js) there are no shell keys to patch: pause(true) takes the
+// patches out, pause(false) puts them back.
 export class KeyHaptics {
     constructor() {
+        this._paused = false;
+        this._install();
+    }
+
+    _install() {
         const proto = Keyboard.Keyboard.prototype;
         const addRowKeys = proto._addRowKeys;
         this._addRowKeys = addRowKeys;
@@ -58,10 +65,26 @@ export class KeyHaptics {
         };
     }
 
-    destroy() {
-        Keyboard.Keyboard.prototype._addRowKeys = this._addRowKeys;
+    _uninstall() {
+        if (this._addRowKeys)
+            Keyboard.Keyboard.prototype._addRowKeys = this._addRowKeys;
+        this._addRowKeys = null;
         if (this._keyProto)
             this._keyProto.press = this._press;
         this._keyProto = null;
+    }
+
+    pause(paused) {
+        if (paused === this._paused)
+            return;
+        this._paused = paused;
+        if (paused)
+            this._uninstall();
+        else
+            this._install();
+    }
+
+    destroy() {
+        this._uninstall();
     }
 }

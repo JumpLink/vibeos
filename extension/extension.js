@@ -13,6 +13,7 @@ import {EndMark} from './endmark.js';
 import {syncGtkCss} from './gtkcss.js';
 import {HeadsUp} from './headsup.js';
 import {Home} from './home.js';
+import {KeyboardSwap} from './keyboard/keyboard.js';
 import {KeyHaptics} from './keyhaptics.js';
 import {AppSwitchKey} from './keys.js';
 import {Keyguard} from './keyguard.js';
@@ -71,6 +72,15 @@ export default class VibeosExtension extends Extension {
         if (isDesktopSession()) {
             this._desktop = new Desktop();
             return;
+        }
+
+        // the on-screen keyboard: VibeOS's own in place of GNOME's while vibeos.Shell keyboard is 'vibeos'
+        try {
+            this._keyboardSwap = new KeyboardSwap();
+            this._keyboardSwap.connect('changed', () => this._keyHaptics?.pause(this._keyboardSwap.active));
+        } catch (e) {
+            logError(e, 'vibeos: the on-screen keyboard');
+            this._keyboardSwap = null;
         }
 
         // The session starts on the lock screen. Until it is up the shell draws nothing and the boot splash stays on
@@ -169,8 +179,9 @@ export default class VibeosExtension extends Extension {
         });
         // ... and over them all, the end of uiGroup
         this._endMark = new EndMark();
-        // the on-screen keyboard's keys tick under the finger
+        // GNOME's on-screen keyboard's keys tick under the finger (paused while VibeOS's keyboard is in use)
         this._keyHaptics = new KeyHaptics();
+        this._keyHaptics.pause(this._keyboardSwap?.active ?? false);
         // The shell's haptics never start feedbackd (NO_AUTO_START), they only find it running: Calls' and Chatty's
         // daemons started it at login, the Phone and Messaging apps in their place only on a ring. So it starts here.
         Gio.DBus.session.call('org.freedesktop.DBus', '/org/freedesktop/DBus', 'org.freedesktop.DBus',
@@ -231,6 +242,8 @@ export default class VibeosExtension extends Extension {
         this._releaseStartup();
         this._keyHaptics?.destroy();
         this._keyHaptics = null;
+        this._keyboardSwap?.destroy();
+        this._keyboardSwap = null;
         this._endMark?.destroy();
         this._endMark = null;
         this._appSwitch?.destroy();
