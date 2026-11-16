@@ -19,6 +19,11 @@ import {SCREEN_H, SCREEN_W} from './units.js';
 
 export {SCREEN_H, SCREEN_W};
 export const NAV_GESTURE_H = 96;               // the bottom strip a swipe starts in
+
+// A point at @y (stage px) on a monitor of @scale lies in that strip: where the swipe home may start
+export function inHomeStrip(y, scale) {
+    return y * scale >= SCREEN_H - NAV_GESTURE_H;
+}
 // the recents card: 684 × 1444 at [198, 296, 882, 1740] on the 1080 × 2280 reference; on another panel the panel's
 // shape, as wide and as high up for its size
 const TASK_REF_W = 684, TASK_REF_CY = 1018;

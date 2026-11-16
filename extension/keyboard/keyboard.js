@@ -20,6 +20,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as InputSources from 'resource:///org/gnome/shell/ui/status/keyboard.js';
 
 import {click} from '../haptics.js';
+import {inHomeStrip} from '../task.js';
 import {formFactor, keyAt, measure, moreKeyAt, placeKeys, placeMoreKeys} from './geometry.js';
 import {KeyboardPalette} from './palette.js';
 import {KeysCanvas, labelWidth, MoreKeysPanel, NavCanvas, PressedKey, StripCanvas} from './renderer.js';
@@ -61,12 +62,17 @@ function inputSources() {
     return Object.values(manager.inputSources ?? {}).sort((a, b) => a.index - b.index);
 }
 
+// a touch's finger: its slot, the same for each of its events
+function touchId(event) {
+    return event.get_event_sequence()?.get_slot?.() ?? event.get_event_sequence();
+}
+
 export const VibeosKeyboard = GObject.registerClass(
 class VibeosKeyboard extends KeyboardUI.Keyboard {
     // The shell's keyboard is set up, then its looks are taken away and ours put in
     _setupKeyboard() {
         this._kb = {locale: 'en_US', purpose: Clutter.InputContentPurpose.NORMAL, page: 'alphabet', view: null,
-            touches: new Map(), more: null, lastShift: 0, manualShift: false, capitals: null};
+            touches: new Map(), passOn: new Set(), more: null, lastShift: 0, manualShift: false, capitals: null};
         this._layers = {default: 'alphabet', shift: 'alphabet-shifted'};
         super._setupKeyboard();
 
@@ -509,6 +515,7 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
                 GLib.source_remove(touch.timer);
         }
         this._kb?.touches.clear();
+        this._kb?.passOn.clear();
         if (this._kb?.more)
             this._kbCloseMore();
         this._kbPressed?.hide();
@@ -516,7 +523,7 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
 
     _onTouch(event) {
         const type = event.type();
-        const id = event.get_event_sequence()?.get_slot?.() ?? event.get_event_sequence();
+        const id = touchId(event);
         if (type === Clutter.EventType.TOUCH_BEGIN)
             this._kbPress(id, event);
         else if (type === Clutter.EventType.TOUCH_UPDATE)
@@ -525,7 +532,7 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
             this._kbRelease(id, false);
         else if (type === Clutter.EventType.TOUCH_CANCEL)
             this._kbRelease(id, true);
-        return Clutter.EVENT_STOP;
+        return this._kbPassOn(event) ? Clutter.EVENT_PROPAGATE : Clutter.EVENT_STOP;
     }
 
     _onMotion(event) {
@@ -547,12 +554,13 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
 
     _onNavEvent(event) {
         const type = event.type();
+        const passed = this._kbPassOn(event) ? Clutter.EVENT_PROPAGATE : Clutter.EVENT_STOP;
         if (type !== Clutter.EventType.TOUCH_END && type !== Clutter.EventType.BUTTON_RELEASE)
-            return Clutter.EVENT_STOP;
+            return passed;
         const [x] = event.get_coords();
         const [ok, ax] = this._kbNav.transform_stage_point(x, 0);
         if (!ok || !this._kb.view)
-            return Clutter.EVENT_STOP;
+            return passed;
         switch (this._kbNav.hitTest(this._kb.view, ax * this._kb.view.scale)) {
         case 'hide':
             this.close(true);
@@ -561,7 +569,26 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
             this._kbNextSource();
             break;
         }
-        return Clutter.EVENT_STOP;
+        return passed;
+    }
+
+    // A touch that lands in the bottom strip the swipe home starts in (task.js) is passed on as well as taken. Clutter
+    // cancels every gesture on a touch an actor claims, so over the keyboard the swipe home never began. When it
+    // does begin, the keys hear nothing more of the touch: releaseKeyboardTouches () lets it go, typing nothing.
+    // Elsewhere on the keys a touch stays theirs alone.
+    _kbPassOn(event) {
+        const type = event.type();
+        const id = touchId(event);
+        if (type === Clutter.EventType.TOUCH_BEGIN) {
+            const [, y] = event.get_coords();
+            this._kb.passOn.delete(id);
+            if (inHomeStrip(y, global.display.get_monitor_scale(Main.layoutManager.primaryIndex)))
+                this._kb.passOn.add(id);
+        }
+        const passOn = this._kb.passOn.has(id);
+        if (type === Clutter.EventType.TOUCH_END || type === Clutter.EventType.TOUCH_CANCEL)
+            this._kb.passOn.delete(id);
+        return passOn;
     }
 
     _kbNextSource() {
@@ -662,6 +689,12 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
 function vibeosSettings() {
     const schema = Gio.SettingsSchemaSource.get_default()?.lookup('vibeos.Shell', true);
     return schema?.has_key('keyboard') ? new Gio.Settings({settings_schema: schema}) : null;
+}
+
+// The keyboard's touches let go, the swipe home having taken one: a gesture that takes a touch tells the actors
+// under it nothing, and its key would stay pressed with its long press still to come
+export function releaseKeyboardTouches() {
+    Main.keyboard._keyboard?._kbReleaseAll?.();
 }
 
 // A keyboard taken out of use: the window it moved put back, the shell's composited state and its swipe gesture

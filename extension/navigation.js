@@ -23,9 +23,9 @@ import {capturing} from './capture.js';
 import {VelocityTracker} from './motion.js';
 import {forgetClosing, HINT_SCRIM, PAGER_SNAP_MS, Recents, SETTLE_MS, warmUp} from './recents.js';
 import {
-    ACCELERATE, DECELERATE, DECELERATE_3, FRAME_MS, FloatingIcon, HOME_ICON_PX, LINEAR, NAV_GESTURE_H,
+    ACCELERATE, DECELERATE, DECELERATE_3, FRAME_MS, FloatingIcon, HOME_ICON_PX, LINEAR,
     OVERSHOOT_1_2, SCALE_REVEAL, SCREEN_H, SCREEN_W, SCROLL, SCROLL_CUBIC, Spring, TASK, TASK_CORNER_R, TASK_PIVOT,
-    TASK_W, animate, clamp, dropKeptViews, lerp, lerpRect, warmViews,
+    TASK_W, animate, clamp, dropKeptViews, inHomeStrip, lerp, lerpRect, warmViews,
 } from './task.js';
 
 const TOUCH_SLOP = 34;                  // the touch slop × √2, on the hypotenuse
@@ -381,7 +381,7 @@ export class Navigation {
         if (this._keyguard?.showing)
             return false;
         const [x, y] = event.get_coords();
-        if (y * this.scale < SCREEN_H - NAV_GESTURE_H)
+        if (!inHomeStrip(y, this.scale))
             return false;
         this._down = {x: x * this.scale, y: y * this.scale};
         this._tracker.clear();

@@ -3,6 +3,7 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Shell from 'gi://Shell';
 
+import {releaseKeyboardTouches} from './keyboard/keyboard.js';
 import {LaunchTransition} from './launch.js';
 import {Navigation} from './navigation.js';
 import {setExpectWindow} from './settings.js';
@@ -50,7 +51,11 @@ export class Service {
         this._home = home;
         this._launch = new LaunchTransition();
         this._nav = new Navigation(home);
-        this._nav.onGestureBegin = () => this._launch.cancelSplash();
+        this._nav.onGestureBegin = () => {
+            this._launch.cancelSplash();
+            // a swipe home that began on the keyboard's bottom row: the key it landed on lets go
+            releaseKeyboardTouches();
+        };
         setExpectWindow(app => this._launch.expect(app));
         this._volumeKeys = new Map();   // app id -> {sender, watch}: who took the volume keys
         this._impl = Gio.DBusExportedObject.wrapJSObject(IFACE, this);
