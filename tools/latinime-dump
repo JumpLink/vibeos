@@ -1,0 +1,758 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+"""latinime-dump: the keyboard layouts and geometry of AOSP LatinIME (LineageOS) as the JSON the VibeOS keyboard draws.
+
+  latinime-dump PHONE_TREE TABLET_TREE OUTDIR
+        PHONE_TREE is the LatinIME checkout the phone layouts come from, TABLET_TREE the one for the tablet's (the
+        tablet's keyboard is a release newer). Writes OUTDIR/<locale>.json for every language, OUTDIR/pads.json (the
+        number and phone pads) and OUTDIR/geometry.json (the sizes, per form factor).
+  latinime-dump --text TREE FORM LOCALE SET ELEMENT [CONDITION=VALUE ...]
+        one keyboard as text, a row per line: (label width% [background] hint= more={...}). CONDITION is one of
+        the layouts' switch cases: mode=email, languageSwitchKeyEnabled=true, ...
+  latinime-dump --check OUTDIR LISTING
+        reads every "# kbd_... form=F locale=L set=S element=E" block of LISTING (rows in the --text notation) and
+        compares it with the same keyboard as OUTDIR's JSON has it; prints the differences, exits 1 if any.
+
+A tree is LatinIME's own repository (java/res, java/src). FORM is phone, phone-land, tablet or tablet-land: the
+resource directories each would use. Python 3 standard library only.
+
+The JSON, per language file:
+  {"locale", "name" (the language's own name, for the space bar), "fullName", "set", "rows": [row, ...],
+   "forms": {form: {page: [row index, ...]}}}
+A page is "alphabet", "alphabet-shifted", "alphabet-locked", "symbols" or "symbols-shifted", optionally followed by
+"/email" or "/url" (the field's purpose) and "+lang" (the language key shown). A row is a list of keys:
+  x, w      left edge and width, in % of the keyboard's width less its side paddings
+  l         label; i: icon name instead
+  c         what the key does when it is not text: shift, capslock, delete, enter, space, symbols (to symbols and
+            back), language, emoji, settings, clipboard_paste, shortcut, tab, next, previous, shift_enter
+  t         the text it types, when that is not its label
+  b         background: normal (default), functional, action, spacebar, stickyOff, stickyOn, empty
+  h         hint label (top right)
+  m         long-press keys: [{l|i, c, t}]; mc: their columns; mf: flags (fixed, auto, labels, dividers, noPanel)
+  f         label flags, a: action flags, alt: the code typed instead while typing fast
+  spacer    a gap with no key
+  vl, vr    how much narrower the key is drawn than it is, on its left and right (same unit as x, w): the key
+            still takes touches over its whole width
+"""
+import json
+import os
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+ANDROID = '{http://schemas.android.com/apk/res/android}'
+
+XML_DIRS = {
+    'phone': ['xml'],
+    'phone-land': ['xml-land', 'xml'],
+    'tablet': ['xml-sw600dp', 'xml'],
+    'tablet-land': ['xml-sw600dp-land', 'xml-sw600dp', 'xml-land', 'xml'],
+}
+# resource values: the smallest width outranks the orientation
+VALUE_DIRS = {
+    'phone': ['values'],
+    'phone-land': ['values-land', 'values'],
+    'tablet': ['values-sw768dp', 'values-sw600dp', 'values'],
+    'tablet-land': ['values-sw768dp-land', 'values-sw768dp', 'values-sw600dp-land', 'values-sw600dp',
+                    'values-land', 'values'],
+}
+
+# the languages VibeOS's keyboard speaks: locale, layout set, the language's own name (short, and with the country)
+LOCALES = [
+    ('en_US', 'qwerty', 'English', 'English (US)'),
+    ('en_GB', 'qwerty', 'English', 'English (UK)'),
+    ('de', 'qwertz', 'Deutsch', 'Deutsch'),
+    ('fr', 'azerty', 'Français', 'Français'),
+    ('it', 'qwerty', 'Italiano', 'Italiano'),
+    ('es', 'spanish', 'Español', 'Español'),
+    ('ru', 'east_slavic', 'Русский', 'Русский'),
+    ('uk', 'east_slavic', 'Українська', 'Українська'),
+    ('iw', 'hebrew', 'עברית', 'עברית'),
+]
+FORMS = ['phone', 'phone-land', 'tablet', 'tablet-land']
+ELEMENTS = [('alphabet', 'alphabet'), ('alphabet-shifted', 'alphabetManualShifted'),
+            ('alphabet-locked', 'alphabetShiftLocked'), ('symbols', 'symbols'),
+            ('symbols-shifted', 'symbolsShifted')]
+SHIFTED_ELEMENTS = ('alphabetManualShifted', 'alphabetAutomaticShifted', 'alphabetShiftLocked',
+                    'alphabetShiftLockShifted')
+MODES = ['text', 'email', 'url']
+
+LABEL_FLAGS = {
+    'alignHintLabelToBottom': 0x02, 'alignIconToBottom': 0x04, 'alignLabelOffCenter': 0x08,
+    'fontNormal': 0x10, 'fontMonoSpace': 0x20, 'fontDefault': 0x30,
+    'followKeyLargeLetterRatio': 0x40, 'followKeyLetterRatio': 0x80, 'followKeyLabelRatio': 0xC0,
+    'followKeyHintLabelRatio': 0x140, 'hasPopupHint': 0x200, 'hasShiftedLetterHint': 0x400,
+    'hasHintLabel': 0x800, 'autoXScale': 0x4000, 'autoYScale': 0x8000, 'autoScale': 0xC000,
+    'preserveCase': 0x10000, 'shiftedLetterActivated': 0x20000, 'fromCustomActionLabel': 0x40000,
+    'followFunctionalTextColor': 0x80000, 'keepBackgroundAspectRatio': 0x100000,
+    'disableKeyHintLabel': 0x40000000, 'disableAdditionalMoreKeys': 0x80000000,
+}
+ACTION_FLAGS = {'isRepeatable': 0x01, 'noKeyPreview': 0x02, 'altCodeWhileTyping': 0x04, 'enableLongPress': 0x08}
+# the label flags the keyboard reads, by their short names in the JSON
+LABEL_FLAG_NAMES = [
+    (0x02, 'alignHintBottom'), (0x04, 'alignIconBottom'), (0x08, 'offCenter'), (0x200, 'popupHint'),
+    (0x400, 'shiftedHint'), (0x800, 'hintLabel'), (0x4000, 'autoXScale'), (0x8000, 'autoYScale'),
+    (0x10000, 'preserveCase'), (0x20000, 'shiftedActive'), (0x80000, 'functionalText'),
+    (0x100000, 'keepAspect'),
+]
+TEXT_RATIO = {0x40: 'largeLetter', 0x80: 'letter', 0xC0: 'label', 0x140: 'hintLabel'}
+FONT = {0x10: 'normal', 0x20: 'mono'}
+ACTION_FLAG_NAMES = [(0x01, 'repeat'), (0x02, 'noPreview'), (0x04, 'altWhileTyping'), (0x08, 'longPress')]
+CODES = {
+    'key_tab': 'tab', 'key_enter': 'enter', 'key_space': 'space', 'key_shift': 'shift', 'key_capslock': 'capslock',
+    'key_switch_alpha_symbol': 'symbols', 'key_output_text': 'text', 'key_delete': 'delete',
+    'key_settings': 'settings', 'key_shortcut': 'shortcut', 'key_action_next': 'next',
+    'key_action_previous': 'previous', 'key_shift_enter': 'shift_enter', 'key_language_switch': 'language',
+    'key_emoji': 'emoji', 'key_alpha_from_emoji': 'alpha', 'key_unspecified': 'none',
+    'key_clipboard_paste': 'clipboard_paste',
+}
+BACKGROUNDS = ['empty', 'normal', 'functional', 'stickyOff', 'stickyOn', 'action', 'spacebar']
+
+# the geometry values each form factor's resources give: (JSON name, resource type, resource name)
+GEOMETRY = [
+    ('keyboardHeight', 'dimen', 'config_default_keyboard_height'),
+    ('maxKeyboardHeight', 'fraction', 'config_max_keyboard_height'),
+    ('minKeyboardHeight', 'fraction', 'config_min_keyboard_height'),
+    ('topPadding', 'fraction', 'config_keyboard_top_padding_holo'),
+    ('bottomPadding', 'fraction', 'config_keyboard_bottom_padding_holo'),
+    ('leftPadding', 'fraction', 'config_keyboard_left_padding'),
+    ('rightPadding', 'fraction', 'config_keyboard_right_padding'),
+    ('verticalGap', 'fraction', 'config_key_vertical_gap_you'),
+    ('horizontalGap', 'fraction', 'config_key_horizontal_gap_holo'),
+    ('letterRatio', 'fraction', 'config_key_letter_ratio_you'),
+    ('labelRatio', 'fraction', 'config_key_label_ratio_lxx'),
+    ('largeLetterRatio', 'fraction', 'config_key_large_letter_ratio_lxx'),
+    ('hintLetterRatio', 'fraction', 'config_key_hint_letter_ratio_lxx'),
+    ('hintLabelRatio', 'fraction', 'config_key_hint_label_ratio_lxx'),
+    ('shiftedLetterHintRatio', 'fraction', 'config_key_shifted_letter_hint_ratio_lxx'),
+    ('spacebarLanguageRatio', 'fraction', 'config_language_on_spacebar_text_ratio'),
+    ('hintLetterPadding', 'dimen', 'config_key_hint_letter_padding_you'),
+    ('hintLetterPaddingVertical', 'dimen', 'config_key_hint_letter_padding_vertical_you'),
+    ('shiftedLetterHintPadding', 'dimen', 'config_key_shifted_letter_hint_padding'),
+    ('keyCornerRadius', 'dimen', 'keyboard_key_corner_radius_you'),
+    ('actionKeyCornerRadius', 'dimen', 'keyboard_key_action_corner_radius_you'),
+    ('stripHeight', 'dimen', 'config_suggestions_strip_height'),
+    ('stripMargin', 'dimen', 'config_suggestions_strip_horizontal_margin'),
+    ('stripEdgeKeyWidth', 'dimen', 'config_suggestions_strip_edge_key_width'),
+    ('suggestionTextSize', 'dimen', 'config_suggestion_text_size'),
+    ('suggestionMinWidth', 'dimen', 'config_suggestion_min_width'),
+    ('suggestionPadding', 'dimen', 'config_suggestion_text_horizontal_padding'),
+    ('suggestionsCount', 'integer', 'config_suggestions_count_in_strip'),
+    ('centerSuggestion', 'fraction', 'config_center_suggestion_percentile'),
+    ('moreKeysKeyHeight', 'dimen', 'config_more_keys_keyboard_key_height'),
+    ('moreKeysMaxColumns', 'integer', 'config_max_more_keys_column'),
+    ('previewHeight', 'dimen', 'config_key_preview_height_you'),
+    ('previewOffset', 'dimen', 'config_key_preview_offset_you'),
+    ('previewTextRatio', 'fraction', 'config_key_preview_text_ratio_you'),
+    ('previewOn', 'bool', 'config_default_key_preview_popup'),
+    ('fullscreenMode', 'bool', 'config_use_fullscreen_mode'),
+    ('longPressTimeout', 'integer', 'config_default_longpress_key_timeout'),
+]
+
+
+# ---------- a LatinIME tree ----------
+
+class Tree:
+    def __init__(self, root):
+        self.root = root
+        self.res = os.path.join(root, 'java', 'res')
+        src = self._read('java/src/com/android/inputmethod/keyboard/internal/KeyboardTextsTable.java')
+        src = re.sub(r'//[^\n]*', '', src)
+        names = re.search(r'String\[\] NAMES = \{(.*?)\};', src, re.S).group(1)
+        self.names = {n: i for i, n in enumerate(java_strings(re.sub(r'/\*.*?\*/', '', names, flags=re.S)))}
+        self.tables = {m.group(1): java_strings(re.sub(r'/\*.*?\*/', '', m.group(2), flags=re.S))
+                       for m in re.finditer(r'String\[\] (TEXTS_\w+) = \{(.*?)\};', src, re.S)}
+        lt = re.search(r'LOCALES_AND_TEXTS = \{(.*?)\};', src, re.S).group(1)
+        self.locale_tables = dict(re.findall(r'"(\w+)"\s*,\s*(TEXTS_\w+)', lt))
+        self._xml = {}
+        self._values = {}
+
+    def _read(self, rel):
+        with open(os.path.join(self.root, rel), encoding='utf-8') as f:
+            return f.read()
+
+    def table(self, locale):
+        for key in (locale, locale.split('_')[0]):
+            if key in self.locale_tables:
+                return self.tables[self.locale_tables[key]]
+        return self.tables['TEXTS_DEFAULT']
+
+    def text(self, locale, name):
+        i = self.names.get(name)
+        if i is None:
+            raise LookupError(f'no text {name}')
+        tab = self.table(locale)
+        v = tab[i] if i < len(tab) else None
+        return self.tables['TEXTS_DEFAULT'][i] if v is None else v
+
+    def resolve(self, locale, s, depth=0):
+        if s is None or depth > 10:
+            return s
+        return re.sub(r'!text/(\w+)', lambda m: self.resolve(locale, self.text(locale, m.group(1)), depth + 1), s)
+
+    def xml(self, form, name):
+        for d in XML_DIRS[form]:
+            p = os.path.join(self.res, d, name + '.xml')
+            if os.path.exists(p):
+                if p not in self._xml:
+                    self._xml[p] = ET.parse(p).getroot()
+                return self._xml[p]
+        raise FileNotFoundError(name)
+
+    def values(self, d):
+        if d not in self._values:
+            idx = {}
+            path = os.path.join(self.res, d)
+            for fn in sorted(os.listdir(path)) if os.path.isdir(path) else []:
+                if not fn.endswith('.xml'):
+                    continue
+                try:
+                    tree = ET.parse(os.path.join(path, fn)).getroot()
+                except ET.ParseError:
+                    continue
+                for el in tree:
+                    typ = el.get('type') if el.tag == 'item' else el.tag
+                    if typ and el.get('name'):
+                        idx.setdefault((typ, el.get('name')), (el.text or '').strip())
+            self._values[d] = idx
+        return self._values[d]
+
+    def value(self, form, typ, name, depth=0):
+        for d in VALUE_DIRS[form]:
+            v = self.values(d).get((typ, name))
+            if v is not None:
+                m = re.match(r'^@(\w+)/(\w+)$', v)
+                if m and depth < 8:
+                    return self.value(form, m.group(1), m.group(2), depth + 1)
+                return v
+        return None
+
+    def drawable_padding(self, name):
+        """The padding (dp) of a shape drawable, left side."""
+        el = ET.parse(os.path.join(self.res, 'drawable', name + '.xml')).getroot()
+        for ch in el:
+            if ch.tag == 'padding':
+                return parse_number(ch.get(ANDROID + 'left'))
+        return 0.0
+
+
+def java_strings(body):
+    out = []
+    for m in re.finditer(r'"((?:[^"\\]|\\.)*)"(\s*\+\s*"(?:[^"\\]|\\.)*")*|\bnull\b|\bEMPTY\b|,', body):
+        t = m.group(0)
+        if t == ',':
+            continue
+        if t == 'null':
+            out.append(None)
+        elif t == 'EMPTY':
+            out.append('')
+        else:
+            s = ''.join(re.findall(r'"((?:[^"\\]|\\.)*)"', t))
+            s = re.sub(r'\\u([0-9A-Fa-f]{4})', lambda x: chr(int(x.group(1), 16)), s)
+            s = s.replace('\\\\', '\x00').replace('\\"', '"').replace("\\'", "'").replace('\x00', '\\')
+            out.append(s)
+    return out
+
+
+def attrs(el):
+    """An element's attributes in the keyboard's own namespace (whichever URI the file gives it), with the escapes
+    the resource compiler takes out of an attribute's text taken out: \\@ is @, \\\\ is \\."""
+    return {k.split('}', 1)[1]: aapt_unescape(v) for k, v in el.attrib.items()
+            if k.startswith('{') and not k.startswith(ANDROID)}
+
+
+def aapt_unescape(v):
+    def one(m):
+        c = m.group(1)
+        if c[0] == 'u' and len(c) == 5:
+            return chr(int(c[1:], 16))
+        return {'n': '\n', 't': '\t'}.get(c, c)
+    return re.sub(r'\\(u[0-9a-fA-F]{4}|.)', one, v)
+
+
+def parse_number(v):
+    m = re.match(r'^\s*(-?[\d.]+)\s*(dp|dip|sp|px|%p|%)?\s*$', v or '')
+    if not m:
+        return None
+    n = float(m.group(1))
+    return n / 100 if m.group(2) in ('%', '%p') else n
+
+
+# ---------- key specs (label|output, !icon/, !code/, escapes) ----------
+
+def parse_escape(s):
+    out, i = [], 0
+    while i < len(s):
+        if s[i] == '\\' and i + 1 < len(s):
+            out.append(s[i + 1])
+            i += 2
+        else:
+            out.append(s[i])
+            i += 1
+    return ''.join(out)
+
+
+def label_end(spec):
+    if '\\' not in spec:
+        i = spec.find('|')
+        return -1 if spec == '|' else i
+    i = 0
+    while i < len(spec):
+        if spec[i] == '\\' and i + 1 < len(spec):
+            i += 2
+            continue
+        if spec[i] == '|':
+            return i
+        i += 1
+    return -1
+
+
+def parse_spec(spec):
+    """(label, icon, code, text) of a key spec: code a name from CODES, text the output when it is no code."""
+    end = label_end(spec)
+    before = spec if end < 0 else spec[:end]
+    after = None if end < 0 else spec[end + 1:]
+    icon = before[6:] if before.startswith('!icon/') else None
+    label = None if icon else parse_escape(before)
+    code = text = None
+    if after is not None and after.startswith('!code/'):
+        code = CODES.get(after[6:], after[6:])
+    elif after is not None and after.startswith('0x'):
+        text = chr(int(after[2:], 16))
+    elif after is not None:
+        text = parse_escape(after)
+    return label, icon, code, text      # neither code nor text: the label types itself
+
+
+def split_more(v):
+    out, cur, i = [], [], 0
+    while i < len(v):
+        c = v[i]
+        if c == '\\' and i + 1 < len(v):
+            cur.append(v[i:i + 2])
+            i += 2
+            continue
+        if c == ',':
+            out.append(''.join(cur))
+            cur = []
+        else:
+            cur.append(c)
+        i += 1
+    out.append(''.join(cur))
+    return [x for x in out if x != '']
+
+
+def upper(s):
+    return s.upper() if s is not None else None
+
+
+# ---------- one keyboard ----------
+
+class Board:
+    """One keyboard of a tree, resolved: rows of key dicts."""
+
+    def __init__(self, tree, form, locale, layoutset, element, extra=None):
+        self.tree, self.form, self.locale, self.element = tree, form, locale, element
+        lang = locale.split('_')[0]
+        self.cond = {
+            'keyboardLayoutSetElement': element, 'keyboardLayoutSet': layoutset, 'languageCode': lang,
+            'localeCode': locale, 'countryCode': locale.split('_')[1] if '_' in locale else '',
+            'mode': 'text', 'imeAction': 'actionUnspecified', 'keyboardTheme': 'You', 'numberRowEnabled': 'false',
+            'emojiKeyEnabled': 'false', 'languageSwitchKeyEnabled': 'false', 'isSplitLayout': 'false',
+            'passwordInput': 'false', 'clobberSettingsKey': 'false', 'navigateNext': 'false',
+            'navigatePrevious': 'false', 'isMultiLine': 'false', 'hasShortcutKey': 'false',
+            'shortcutKeyEnabled': 'false', 'shortcutKeyOnSymbols': 'false',
+            'isIconDefined': 'go_key|next_key|previous_key|done_key|send_key|search_key',
+        }
+        self.cond.update(extra or {})
+        self.styles = {}
+        self.rows = []
+        sets = tree.xml(form, 'keyboard_layout_set_' + layoutset)
+        kind = element if element in ('symbols', 'symbolsShifted', 'phone', 'phoneSymbols', 'number') \
+            else 'alphabet'
+        name = None
+        for e in sets:
+            if attrs(e).get('elementName') == kind:
+                name = attrs(e)['elementKeyboard'].split('/')[-1]
+        self.name = name
+        root = tree.xml(form, name)
+        width = parse_number(attrs(root).get('keyWidth'))
+        self.default_width = width if width is not None else 0.1
+        self._walk(root, {}, None)
+
+    def _matches(self, el):
+        for k, v in attrs(el).items():
+            cur = self.cond.get(k)
+            if cur is None:
+                return False
+            if k == 'isIconDefined':
+                if v not in cur.split('|'):
+                    return False
+            elif cur not in v.split('|'):
+                return False
+        return True
+
+    def _style(self, name):
+        st = self.styles.get(name)
+        if st is None:
+            return {}
+        d = dict(self._style(st['parentStyle'])) if 'parentStyle' in st else {}
+        for k, v in st.items():
+            if k == 'parentStyle':
+                continue
+            if k in ('keyLabelFlags', 'keyActionFlags') and k in d:
+                d[k] = d[k] + '|' + v           # flags add up along the style chain
+            else:
+                d[k] = v
+        return d
+
+    def _walk(self, el, ctx, row):
+        for ch in list(el):
+            tag = ch.tag
+            at = attrs(ch)
+            if tag == 'switch':
+                for c in ch:
+                    if c.tag == 'default' or self._matches(c):
+                        self._walk(c, ctx, row)
+                        break
+            elif tag in ('merge', 'case', 'default', 'Keyboard'):
+                self._walk(ch, ctx, row)
+            elif tag == 'include':
+                name = at.pop('keyboardLayout').split('/')[-1]
+                nctx = dict(ctx)
+                xpos = at.pop('keyXPos', None)
+                if 'keyLabelFlags' in at and 'keyLabelFlags' in nctx:
+                    at['keyLabelFlags'] = nctx['keyLabelFlags'] + '|' + at['keyLabelFlags']
+                nctx.update(at)
+                if xpos is not None:
+                    nctx['_xpos'] = [xpos, False]
+                self._walk(self.tree.xml(self.form, name), nctx, row)
+            elif tag == 'key-style':
+                self.styles[at.pop('styleName')] = at
+            elif tag == 'Row':
+                nctx = dict(ctx)
+                nctx.pop('_xpos', None)
+                nctx.update(at)
+                r = {'keys': [], 'ctx': nctx}
+                self.rows.append(r)
+                self._walk(ch, nctx, r)
+            elif tag in ('Key', 'Spacer'):
+                d = self._style(at['keyStyle']) if 'keyStyle' in at else {}
+                k = {}
+                for name in ('keyWidth', 'backgroundType'):
+                    if name in ctx:
+                        k[name] = ctx[name]
+                for name, v in d.items():
+                    k[name] = v
+                for name, v in at.items():
+                    if name == 'keyStyle':
+                        continue
+                    if name in ('keyLabelFlags', 'keyActionFlags') and name in k:
+                        k[name] = k[name] + '|' + v
+                    else:
+                        k[name] = v
+                if 'keyLabelFlags' in ctx:      # the row's default label flags add to the key's
+                    k['keyLabelFlags'] = ctx['keyLabelFlags'] + ('|' + k['keyLabelFlags']
+                                                                 if 'keyLabelFlags' in k else '')
+                xp = ctx.get('_xpos')
+                if xp is not None and not xp[1]:
+                    if 'keyXPos' not in at:
+                        k['keyXPos'] = xp[0]
+                    xp[1] = True
+                k['_tag'] = tag
+                row['keys'].append(k)
+
+    # the keys as the keyboard sees them, a list per row
+    def resolved(self):
+        out = []
+        shifted = self.element in SHIFTED_ELEMENTS
+        for r in self.rows:
+            x = 0.0
+            keys = []
+            for k in r['keys']:
+                xp = parse_number(k.get('keyXPos'))
+                if xp is not None:
+                    x = max(1 + xp, x) if xp < 0 else xp
+                w = k.get('keyWidth')
+                if w == 'fillRight':
+                    wv = 1 - x
+                else:
+                    wv = parse_number(w) if w else self.default_width
+                key = {'x': pct(x), 'w': pct(wv)}
+                x += wv
+                for name, short in (('visualInsetsLeft', 'vl'), ('visualInsetsRight', 'vr')):
+                    v = parse_number(k.get(name))
+                    if v:
+                        key[short] = pct(v)
+                if k['_tag'] == 'Spacer':
+                    key['spacer'] = True
+                    keys.append(key)
+                    continue
+                self._key(k, key, shifted)
+                keys.append(key)
+            out.append(keys)
+        return out
+
+    def _flags(self, v, table):
+        n = 0
+        for f in (v or '').split('|'):
+            if f:
+                n |= table[f]
+        return n
+
+    def _key(self, k, key, shifted):
+        tree, loc = self.tree, self.locale
+        lflags = self._flags(k.get('keyLabelFlags'), LABEL_FLAGS)
+        aflags = self._flags(k.get('keyActionFlags'), ACTION_FLAGS)
+        up = shifted and not lflags & LABEL_FLAGS['preserveCase']
+        spec = tree.resolve(loc, k.get('keySpec'))
+        if up and k.get('keySpecUpper'):
+            spec = tree.resolve(loc, k['keySpecUpper'])
+            up = False
+        label, icon, code, text = parse_spec(spec)
+        if code is None and text is not None and len(text) == 1 and label is not None and text == label:
+            text = None
+        if up:
+            label, text = upper(label), upper(text)
+        if label is not None:
+            key['l'] = label
+        if icon:
+            key['i'] = icon
+        if code:
+            key['c'] = code
+        if text is not None and text != label:
+            key['t'] = text
+        bt = k.get('backgroundType', 'normal')
+        if bt != 'normal':
+            key['b'] = bt
+        hint = None if lflags & LABEL_FLAGS['disableKeyHintLabel'] else tree.resolve(loc, k.get('keyHintLabel'))
+        if hint:
+            key['h'] = upper(hint) if (shifted and not lflags & LABEL_FLAGS['preserveCase']) else hint
+        more = split_more(tree.resolve(loc, k['moreKeys'])) if k.get('moreKeys') else []
+        extra = [] if lflags & LABEL_FLAGS['disableAdditionalMoreKeys'] else \
+            (split_more(tree.resolve(loc, k['additionalMoreKeys'])) if k.get('additionalMoreKeys') else [])
+        more = merge_more(more, extra)
+        columns, mflags, specs = None, [], []
+        for m in more:
+            mm = re.match(r'^!(fixedColumnOrder|autoColumnOrder)!(\d+)$', m)
+            if mm:
+                columns = int(mm.group(2))
+                mflags.append('fixed' if mm.group(1) == 'fixedColumnOrder' else 'auto')
+                continue
+            mm = re.match(r'^!(needsDividers|hasLabels|noPanelAutoMoreKey)!$', m)
+            if mm:
+                mflags.append({'needsDividers': 'dividers', 'hasLabels': 'labels',
+                               'noPanelAutoMoreKey': 'noPanel'}[mm.group(1)])
+                continue
+            specs.append(m)
+        if specs:
+            aflags |= ACTION_FLAGS['enableLongPress']
+            out = []
+            sup = shifted and not lflags & LABEL_FLAGS['preserveCase']
+            for m in specs:
+                ml, mi, mc, mt = parse_spec(m)
+                if sup:
+                    ml, mt = upper(ml), upper(mt)
+                e = {}
+                if ml is not None:
+                    e['l'] = ml
+                if mi:
+                    e['i'] = mi
+                if mc:
+                    e['c'] = mc
+                if mt is not None and mt != ml:
+                    e['t'] = mt
+                out.append(e)
+            key['m'] = out
+        if columns:
+            key['mc'] = columns
+        if mflags:
+            key['mf'] = mflags
+        names = [n for bit, n in LABEL_FLAG_NAMES if lflags & bit == bit]
+        ratio = TEXT_RATIO.get(lflags & 0x1C0)
+        if ratio:
+            names.append('size:' + ratio)
+        font = FONT.get(lflags & 0x30)
+        if font:
+            names.append('font:' + font)
+        if names:
+            key['f'] = names
+        anames = [n for bit, n in ACTION_FLAG_NAMES if aflags & bit]
+        if anames:
+            key['a'] = anames
+        if k.get('altCode'):
+            key['alt'] = CODES.get(k['altCode'].replace('!code/', ''), k['altCode'])
+
+
+def merge_more(more, extra):
+    if not extra:
+        return [m for m in more if m != '%']
+    if '%' in more:
+        res, ai = [], 0
+        for m in more:
+            if m == '%':
+                if ai < len(extra):
+                    res.append(extra[ai])
+                    ai += 1
+            else:
+                res.append(m)
+        return res + extra[ai:]
+    return extra + more
+
+
+def pct(v):
+    return round(v * 100, 4)
+
+
+# ---------- the text notation ----------
+
+def text_rows(rows):
+    """The rows in the notation of the --text listing."""
+    lines = []
+    for row in rows:
+        x = 0.0
+        out = []
+        for k in row:
+            if k['x'] > x + 0.01:
+                out.append(f'<gap {round(k["x"] - x, 4):g}%>')
+            x = k['x'] + k['w']
+            if k.get('spacer'):
+                out.append(f'<spacer {k["w"]:g}%>')
+                continue
+            bits = [k['l'] if 'l' in k else '[' + k['i'] + ']', f'{k["w"]:g}%']
+            if k.get('b'):
+                bits.append(k['b'])
+            if 'h' in k:
+                bits.append('hint=' + k['h'])
+            if k.get('m') or k.get('mf'):
+                ms = []
+                if 'mc' in k:
+                    order = 'fixedColumnOrder' if 'fixed' in k.get('mf', []) else 'autoColumnOrder'
+                    ms.append(f'!{order}!{k["mc"]}')
+                if 'noPanel' in k.get('mf', []):
+                    ms.append('!noPanelAutoMoreKey!')
+                for m in k.get('m', []):
+                    ms.append(m['l'] if 'l' in m else '[' + m['i'] + ']')
+                bits.append('more={' + ' '.join(ms) + '}')
+            out.append('(' + ' '.join(bits) + ')')
+        lines.append('  ' + ' '.join(out))
+    return lines
+
+
+# ---------- output ----------
+
+def geometry(tree, form):
+    g = {}
+    for name, typ, res in GEOMETRY:
+        v = tree.value(form, typ, res)
+        if v is None:
+            continue
+        if typ == 'bool':
+            g[name] = v == 'true'
+        elif typ == 'integer':
+            g[name] = int(v)
+        else:
+            g[name] = parse_number(v)
+    # every key's background is drawn grown by the key drawables' padding
+    g['keyBackgroundPadding'] = tree.drawable_padding('btn_keyboard_key_functional_normal_you')
+    return g
+
+
+def dump(phone_root, tablet_root, outdir):
+    trees = {'phone': Tree(phone_root), 'tablet': Tree(tablet_root)}
+    tree_of = {f: trees['tablet' if f.startswith('tablet') else 'phone'] for f in FORMS}
+    os.makedirs(outdir, exist_ok=True)
+    for locale, layoutset, name, full in LOCALES:
+        rows, index, forms = [], {}, {}
+
+        def row_id(r):
+            key = json.dumps(r, ensure_ascii=False, sort_keys=True)
+            if key not in index:
+                index[key] = len(rows)
+                rows.append(r)
+            return index[key]
+
+        for form in FORMS:
+            pages = {}
+            for page, element in ELEMENTS:
+                for mode in MODES:
+                    for lang in (False, True):
+                        extra = {'mode': mode, 'languageSwitchKeyEnabled': 'true' if lang else 'false'}
+                        board = Board(tree_of[form], form, locale, layoutset, element, extra)
+                        key = page + ('' if mode == 'text' else '/' + mode) + ('+lang' if lang else '')
+                        pages[key] = [row_id(r) for r in board.resolved()]
+            forms[form] = pages
+        doc = {'locale': locale, 'name': name, 'fullName': full, 'set': layoutset, 'forms': forms, 'rows': rows}
+        write_json(os.path.join(outdir, locale + '.json'), doc)
+
+    rows, index, forms = [], {}, {}
+
+    def pad_row(r):
+        key = json.dumps(r, ensure_ascii=False, sort_keys=True)
+        if key not in index:
+            index[key] = len(rows)
+            rows.append(r)
+        return index[key]
+
+    for form in FORMS:
+        forms[form] = {page: [pad_row(r) for r in Board(tree_of[form], form, 'en_US', 'qwerty', page,
+                                                        {'mode': 'phone' if page.startswith('phone') else 'number'})
+                              .resolved()]
+                       for page in ('number', 'phone', 'phoneSymbols')}
+    write_json(os.path.join(outdir, 'pads.json'), {'forms': forms, 'rows': rows})
+
+    write_json(os.path.join(outdir, 'geometry.json'), {form: geometry(tree_of[form], form) for form in FORMS})
+
+
+def write_json(path, doc):
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(doc, f, ensure_ascii=False, separators=(',', ':'), sort_keys=True)
+        f.write('\n')
+
+
+def check(outdir, listing):
+    """Compare the listing's blocks with OUTDIR's JSON; the number of differences."""
+    text = open(listing, encoding='utf-8').read()
+    blocks = re.findall(r'^# (\S+)\s+form=(\S+) locale=(\S+) set=(\S+) element=(\S+)[^\n]*\n((?:  [^\n]*\n)+)',
+                        text, re.M)
+    page_of = {e: p for p, e in ELEMENTS}
+    bad = 0
+    docs = {}
+    for _, form, locale, _set, element, body in blocks:
+        if element in ('number', 'phone', 'phoneSymbols'):
+            doc = docs.setdefault('pads', json.load(open(os.path.join(outdir, 'pads.json'), encoding='utf-8')))
+            ids = doc['forms'][form][element]
+        else:
+            doc = docs.setdefault(locale, json.load(open(os.path.join(outdir, locale + '.json'), encoding='utf-8')))
+            ids = doc['forms'][form][page_of[element]]
+        got = text_rows([doc['rows'][i] for i in ids])
+        want = body.rstrip('\n').split('\n')
+        for g, w in zip(got, want):
+            if g.rstrip() != w.rstrip():
+                bad += 1
+                print(f'{form} {locale} {element}:\n  want {w.strip()}\n  got  {g.strip()}')
+        if len(got) != len(want):
+            bad += 1
+            print(f'{form} {locale} {element}: {len(got)} rows, the listing has {len(want)}')
+    print(f'{len(blocks)} keyboards compared, {bad} differences')
+    return bad
+
+
+def main(argv):
+    if len(argv) >= 6 and argv[0] == '--text':
+        _, root, form, locale, layoutset, element, *conds = argv
+        board = Board(Tree(root), form, locale, layoutset, element, dict(c.split('=', 1) for c in conds))
+        print(f'# {board.name}  form={form} locale={locale} set={layoutset} element={element}')
+        print('\n'.join(text_rows(board.resolved())))
+        return 0
+    if len(argv) == 3 and argv[0] == '--check':
+        return 1 if check(argv[1], argv[2]) else 0
+    if len(argv) == 3 and not argv[0].startswith('-'):
+        dump(*argv)
+        return 0
+    print(__doc__, file=sys.stderr)
+    return 2
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))
