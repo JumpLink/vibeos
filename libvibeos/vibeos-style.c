@@ -1,10 +1,10 @@
 /* vibeos-style: the theme's colours, the stylesheet and the window frame. See vibeos-style.h. */
 #include "vibeos-style.h"
+#include "vibeos-text.h"
 
 #include <glib-unix.h>
 #include <math.h>
 #include <signal.h>
-#include <stdlib.h>
 #include <string.h>
 #include <tonal.h>
 
@@ -211,6 +211,9 @@ load_stylesheet (VibeosTheme *self)
 {
   g_autoptr (GString) css = g_string_new (NULL);
   g_autoptr (GBytes) sheet = g_resources_lookup_data ("/vibeos/libvibeos/vibeos.css", 0, NULL);
+  g_autofree char *source = g_strndup (g_bytes_get_data (sheet, NULL), g_bytes_get_size (sheet));
+  /* its sizes in sp and dp, its weights before Bold text: in px and weights for the font settings in effect */
+  g_autofree char *converted = vibeos_css_convert (source, vibeos_font_scale (), vibeos_bold_text ());
 
   /* the colours first, as @define-color lines, then the stylesheet that uses them */
   for (int i = 0; i < VIBEOS_N_COLORS; i++)
@@ -218,7 +221,7 @@ load_stylesheet (VibeosTheme *self)
   for (gsize i = 0; i < G_N_ELEMENTS (css_colors); i++)
     g_string_append_printf (css, "@define-color %s %s;\n", css_colors[i].css,
                             self->dark ? css_colors[i].dark : css_colors[i].light);
-  g_string_append_len (css, g_bytes_get_data (sheet, NULL), g_bytes_get_size (sheet));
+  g_string_append (css, converted);
   gtk_css_provider_load_from_string (self->provider, css->str);
 
   /* GTK's own widgets in the same mode */
@@ -402,6 +405,11 @@ vibeos_init_full (VibeosInitFlags flags)
   if (self->initialized)
     return;
   self->flags = flags;
+  /* the font settings first, so that the stylesheet is loaded once, with them (vibeos-text.c) */
+  {
+    extern void _vibeos_text_set_following (gboolean);
+    _vibeos_text_set_following ((flags & VIBEOS_INIT_SCALED_TEXT) != 0);
+  }
   self->initialized = TRUE;
   self->provider = gtk_css_provider_new ();
   /* above the theme (APPLICATION), so GTK's own look never shows through a libvibeos widget */
@@ -411,6 +419,16 @@ vibeos_init_full (VibeosInitFlags flags)
   self->computed = FALSE;
   update (self);
   load_stylesheet (self);
+}
+
+/* the font settings changed (vibeos-text.c): the stylesheet again, with their sizes and weights */
+G_GNUC_INTERNAL void vibeos_style_reload (void);
+
+void
+vibeos_style_reload (void)
+{
+  if (default_theme && default_theme->initialized)
+    load_stylesheet (default_theme);
 }
 
 /* ---- the window ------------------------------------------------------------------------------------------------ */
@@ -430,7 +448,8 @@ shoot (gpointer data)
   const char *path = g_getenv ("VIBEOS_SHOT");
   int width = gtk_widget_get_width (window), height = gtk_widget_get_height (window);
   /* the screen's scale, or VIBEOS_SHOT_SCALE: a window on a test display at scale 1 still makes a phone-sized picture */
-  int scale = vibeos_device_scale (window);
+  double scale = vibeos_device_scale (window);
+  int picture_w = (int) round (width * scale), picture_h = (int) round (height * scale);
   GdkPaintable *paintable = gtk_widget_paintable_new (window);
   GtkSnapshot *snapshot = gtk_snapshot_new ();
   GskRenderNode *node;
@@ -443,9 +462,9 @@ shoot (gpointer data)
   else
     {
       GdkTexture *texture = gsk_renderer_render_texture (gtk_native_get_renderer (GTK_NATIVE (window)), node,
-                                                         &GRAPHENE_RECT_INIT (0, 0, width * scale, height * scale));
+                                                         &GRAPHENE_RECT_INIT (0, 0, picture_w, picture_h));
       if (gdk_texture_save_to_png (texture, path))
-        g_message ("VIBEOS_SHOT: %s, %d×%d", path, width * scale, height * scale);
+        g_message ("VIBEOS_SHOT: %s, %d×%d", path, picture_w, picture_h);
       else
         g_message ("VIBEOS_SHOT: cannot write %s", path);
       g_object_unref (texture);
@@ -512,12 +531,19 @@ vibeos_window_get_overlay (GtkWidget *widget)
   return root ? g_object_get_data (G_OBJECT (root), "vibeos-overlay") : NULL;
 }
 
-int
+double
 vibeos_device_scale (GtkWidget *widget)
 {
   const char *shot_scale = g_getenv ("VIBEOS_SHOT_SCALE");
+  double value = shot_scale ? g_ascii_strtod (shot_scale, NULL) : 0;
+  GtkNative *native;
+  GdkSurface *surface;
 
-  return shot_scale && atoi (shot_scale) > 0 ? atoi (shot_scale) : gtk_widget_get_scale_factor (widget);
+  if (value > 0)
+    return value;
+  native = gtk_widget_get_native (widget);
+  surface = native ? gtk_native_get_surface (native) : NULL;
+  return surface ? gdk_surface_get_scale (surface) : gtk_widget_get_scale_factor (widget);
 }
 
 /* ---- text ---------------------------------------------------------------------------------------------------- */

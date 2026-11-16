@@ -2,6 +2,7 @@
 #include "vibeos-pressable.h"
 #include "vibeos-ripple.h"
 #include "vibeos-style.h"
+#include "vibeos-text.h"
 
 #include <math.h>
 #include <spongy-gtk.h>
@@ -376,7 +377,7 @@ vibeos_text_button_new (const char *label)
 {
   GtkWidget *text = gtk_label_new (label);
   /* a button is a text view too: its line, font padding and all, centred in the button */
-  vibeos_label_set_font_padding (text, 14);
+  vibeos_label_set_font_padding_sp (text, 14);
   gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
   GtkWidget *button = vibeos_pressable_new (text);
   gtk_widget_add_css_class (button, "vibeos-text-button");

@@ -3,8 +3,9 @@
  * at both ends. It takes the place of a GtkScrolledWindow with a vertical policy and no scroll bars; a GtkScrollable
  * child (a GtkListView) is scrolled through its vadjustment, anything else is laid out at its full height.
  *
- * Distances (the slop, fling speeds) are in a unit SPONGY_DENSITY in the environment gives in screen pixels (3 on a
- * 1080 px wide phone made for 420-480 dpi); without it the monitor's size gives it. */
+ * Distances (the slop, fling speeds) are in dp: one logical pixel, whatever scale the screen is set to (its display
+ * size), so they follow a new scale by themselves. SPONGY_DENSITY in the environment overrides that with a dp in
+ * screen pixels (3: three screen pixels whatever the scale). */
 #pragma once
 
 #include <gtk/gtk.h>

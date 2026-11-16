@@ -95,10 +95,11 @@ void        vibeos_window_set_content (GtkWindow *window, GtkWidget *content);
 /* the root overlay of the window `widget` is in, or NULL */
 GtkOverlay *vibeos_window_get_overlay (GtkWidget *widget);
 
-/* Screen pixels per GTK px for `widget`: its scale factor on the phone, or VIBEOS_SHOT_SCALE on a test display at scale
- * 1, so that what is rounded to whole screen pixels (sizes, guidelines, centring) comes out the same in the test's
- * picture */
-int     vibeos_device_scale (GtkWidget *widget);
+/* Screen pixels per GTK px for `widget`: its window's scale on the screen, fractional when the screen's is (2.5,
+ * 2.4), or VIBEOS_SHOT_SCALE on a test display at scale 1, so that what is rounded to whole screen pixels (sizes,
+ * guidelines, centring) comes out the same in the test's picture. Before the window is on a screen, the scale GTK
+ * draws it at (the fractional scale rounded up). */
+double  vibeos_device_scale (GtkWidget *widget);
 
 /* Font padding: on the reference phone a line of text is as tall as the font's bounding box (Roboto's yMax 2163 and
  * yMin -555 of 2048 units) rather than its ascent and descent (1900, -500), so its text stands 0.128 of the text
@@ -128,6 +129,7 @@ void    vibeos_snapshot_icon (GtkSnapshot *snapshot, GtkWidget *widget, const ch
 typedef enum {
   VIBEOS_INIT_DEFAULT     = 0,
   VIBEOS_INIT_ALWAYS_DARK = 1 << 0,   /* dark whatever color-scheme says, as some apps are on Android */
+  VIBEOS_INIT_SCALED_TEXT = 1 << 1,   /* text follows Font size and Bold text: see vibeos-text.h */
 } VibeosInitFlags;
 
 /* vibeos_init () with flags */

@@ -1,6 +1,6 @@
 /* vibeos-gallery: the layout widgets, a page at a time, to try them and to measure them.
  *
- *   vibeos-gallery [PAGE] [--fullscreen] [--watch] [--cycle]
+ *   vibeos-gallery [PAGE] [--fullscreen] [--watch] [--cycle] [--dialog] [--print-text]
  *
  *   settings      (the default) a settings app: the top-level list, and each item's page beside it on a tablet or
  *                 over it on a phone
@@ -8,6 +8,7 @@
  *   rail          the navigation rail beside a page
  *   fab           the floating action buttons, in their column or their row
  *   top-bar       the large top bar collapsing over a list, with selection mode on a long press
+ *   text          text in sp, which follows Font size, and in dp, which does not, and the weights Bold text adds to
  *
  *   --fullscreen  fill the monitor, as the phone's shell shows every window
  *   --watch       print what the window's VibeosLayout says each time it changes, and each property it notifies
@@ -15,6 +16,11 @@
  *                 G_MESSAGES_DEBUG=vibeos-page-stack): on the settings page an item's page, then a page under it
  *   --dialog      on the settings page, open the dialog "Data Saver" opens, once the window shows (on a tablet it is
  *                 centred on the page beside the list)
+ *   --print-text  print every label's font size (px) and weight once the window shows, and again each time Font size
+ *                 or Bold text changes
+ *
+ * The gallery follows Font size and Bold text (org.gnome.desktop.interface text-scaling-factor, vibeos.Interface
+ * bold-text, or VIBEOS_FONT_SCALE and VIBEOS_BOLD_TEXT in the environment), live.
  *
  * Run it on a display of its own (tools/vibeos-headless), with VIBEOS_DUMP and VIBEOS_SHOT to see what it lays out. */
 #include <vibeos.h>
@@ -23,7 +29,7 @@
 #include <string.h>
 
 static const char *page_name = "settings";
-static gboolean fullscreen, watch, cycle, dialog;
+static gboolean fullscreen, watch, cycle, dialog, print_text;
 
 /* ---- the settings app ------------------------------------------------------------------------------------------ */
 
@@ -436,6 +442,119 @@ top_bar_page (void)
   return overlay;
 }
 
+/* ---- text ------------------------------------------------------------------------------------------------------ */
+
+static GtkWidget *
+text_line (GtkWidget *box, const char *text, const char *css_class)
+{
+  GtkWidget *label = gtk_label_new (text);
+
+  gtk_label_set_xalign (GTK_LABEL (label), 0);
+  gtk_label_set_wrap (GTK_LABEL (label), TRUE);
+  gtk_widget_add_css_class (label, css_class);
+  gtk_box_append (GTK_BOX (box), label);
+  return label;
+}
+
+/* a label sized in C, as a widget that draws its own text would: from vibeos_sp () and vibeos_font_weight (), again
+ * whenever they change */
+static void
+size_in_code (GtkWidget *label)
+{
+  PangoAttrList *attributes = pango_attr_list_new ();
+
+  pango_attr_list_insert (attributes, pango_attr_size_new_absolute ((int) round (vibeos_sp (18) * PANGO_SCALE)));
+  pango_attr_list_insert (attributes, pango_attr_weight_new (vibeos_font_weight (400)));
+  gtk_label_set_attributes (GTK_LABEL (label), attributes);
+  pango_attr_list_unref (attributes);
+}
+
+static GtkWidget *
+text_page (void)
+{
+  GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  GtkWidget *label;
+  static const struct { const char *text, *css_class; } lines[] = {
+    { "Follows Font size", "gallery-text-heading" },
+    { "8 sp, the smallest", "gallery-sp-8" },
+    { "12 sp, a label", "gallery-sp-12" },
+    { "14 sp, a summary", "gallery-sp-14" },
+    { "16 sp, a title", "gallery-sp-16" },
+    { "22 sp, a top bar", "gallery-sp-22" },
+    { "30 sp, large", "gallery-sp-30" },
+    { "57 sp", "gallery-sp-57" },
+    { "100", "gallery-sp-100" },
+    { "Never follows it", "gallery-text-heading" },
+    { "12 dp, a tab that has to fit", "gallery-dp-12" },
+    { "22 dp, a clock's title", "gallery-dp-22" },
+    { "Bold text adds to these", "gallery-text-heading" },
+    { "Regular, 400", "gallery-weight-regular" },
+    { "Medium, 500", "gallery-weight-medium" },
+    { "Semibold, 600", "gallery-weight-semibold" },
+  };
+
+  gtk_widget_add_css_class (box, "gallery-text-page");
+  for (guint i = 0; i < G_N_ELEMENTS (lines); i++)
+    text_line (box, lines[i].text, lines[i].css_class);
+  label = text_line (box, "18 sp, sized in code", "gallery-text-code");
+  size_in_code (label);
+  g_signal_connect_object (vibeos_text_get_default (), "changed", G_CALLBACK (size_in_code), label,
+                           G_CONNECT_SWAPPED);
+  return scrolled (box);
+}
+
+/* --print-text: each label shown, with the size and weight it is drawn at */
+static void
+print_labels (GtkWidget *widget)
+{
+  if (GTK_IS_LABEL (widget) && gtk_widget_get_mapped (widget))
+    {
+      const PangoFontDescription *font = pango_context_get_font_description (gtk_widget_get_pango_context (widget));
+      double px = pango_font_description_get_size (font) / (double) PANGO_SCALE;
+      int weight = pango_font_description_get_weight (font);
+      PangoAttrList *attributes = gtk_label_get_attributes (GTK_LABEL (widget));
+      g_auto (GStrv) classes = gtk_widget_get_css_classes (widget);
+      g_autofree char *joined = g_strjoinv (" ", classes);
+
+      /* sizes and weights set in code */
+      if (attributes)
+        {
+          PangoAttrIterator *it = pango_attr_list_get_iterator (attributes);
+          PangoAttribute *size = pango_attr_iterator_get (it, PANGO_ATTR_ABSOLUTE_SIZE);
+          PangoAttribute *bold = pango_attr_iterator_get (it, PANGO_ATTR_WEIGHT);
+
+          if (size)
+            px = ((PangoAttrInt *) size)->value / (double) PANGO_SCALE;
+          if (bold)
+            weight = ((PangoAttrInt *) bold)->value;
+          pango_attr_iterator_destroy (it);
+        }
+      g_print ("  %-32s %8.3f px  weight %4d  height %3d  %s\n", gtk_label_get_text (GTK_LABEL (widget)), px, weight,
+               gtk_widget_get_height (widget), joined);
+    }
+  for (GtkWidget *child = gtk_widget_get_first_child (widget); child; child = gtk_widget_get_next_sibling (child))
+    print_labels (child);
+}
+
+/* a few frames on, when a change of the settings has been styled and laid out */
+static gboolean
+print_text_now (GtkWidget *window, GdkFrameClock *clock, gpointer data)
+{
+  int *frames = data;
+
+  if (++*frames < 3)
+    return G_SOURCE_CONTINUE;
+  g_print ("font size %g, bold text %s:\n", vibeos_font_scale (), vibeos_bold_text () ? "on" : "off");
+  print_labels (window);
+  return G_SOURCE_REMOVE;
+}
+
+static void
+print_text_soon (GtkWidget *window)
+{
+  gtk_widget_add_tick_callback (window, print_text_now, g_new0 (int, 1), g_free);
+}
+
 /* ---- the window ------------------------------------------------------------------------------------------------ */
 
 static void
@@ -478,6 +597,8 @@ on_activate (GtkApplication *app)
     content = fab_page ();
   else if (g_str_equal (page_name, "top-bar"))
     content = top_bar_page ();
+  else if (g_str_equal (page_name, "text"))
+    content = text_page ();
   else
     {
       content = settings_page (window);
@@ -486,7 +607,21 @@ on_activate (GtkApplication *app)
   vibeos_window_set_content (GTK_WINDOW (window), content);
   if (fullscreen)
     gtk_window_fullscreen (GTK_WINDOW (window));
+  if (print_text)
+    {
+      g_signal_connect (window, "map", G_CALLBACK (print_text_soon), NULL);
+      g_signal_connect_object (vibeos_text_get_default (), "changed", G_CALLBACK (print_text_soon), window,
+                               G_CONNECT_SWAPPED);
+    }
   gtk_window_present (GTK_WINDOW (window));
+}
+
+/* libvibeos with the gallery's text following Font size and Bold text, and the gallery's own stylesheet */
+static void
+on_startup (GtkApplication *app)
+{
+  vibeos_init_full (VIBEOS_INIT_SCALED_TEXT);
+  vibeos_css_load_resource ("/vibeos/Gallery/gallery.css", GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
 }
 
 int
@@ -504,16 +639,19 @@ main (int argc, char **argv)
         cycle = TRUE;
       else if (g_str_equal (argv[i], "--dialog"))
         dialog = TRUE;
+      else if (g_str_equal (argv[i], "--print-text"))
+        print_text = TRUE;
       else if (argv[i][0] != '-')
         page_name = argv[i];
       else
         {
-          g_printerr ("usage: vibeos-gallery [settings|nav|rail|fab|top-bar] [--fullscreen] [--watch] [--cycle] [--dialog]\n");
+          g_printerr ("usage: vibeos-gallery [settings|nav|rail|fab|top-bar|text] [--fullscreen] [--watch] [--cycle] "
+                      "[--dialog] [--print-text]\n");
           return 2;
         }
     }
   app = gtk_application_new ("org.vibeos.Gallery", G_APPLICATION_NON_UNIQUE);
-  g_signal_connect (app, "startup", G_CALLBACK (vibeos_init), NULL);
+  g_signal_connect (app, "startup", G_CALLBACK (on_startup), NULL);
   g_signal_connect (app, "activate", G_CALLBACK (on_activate), NULL);
   return g_application_run (G_APPLICATION (app), 1, argv);
 }
