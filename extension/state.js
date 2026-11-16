@@ -61,10 +61,19 @@ const UP_PENDING_CHARGE = 5;
 // names on top. Slowly below 7.5 W (a computer's USB port is 2.5 W), fast from
 // 12 W, super fast from 20 W. The S10e itself takes 15 W at most (stock's cap, the max77705 driver's PD_MAX_MW), so a
 // 27 W charger shows "Fast charging" there, as on One UI.
+//
+// Only the power supply class's own attributes, as any phone's drivers fill them in, and they differ: the S10e's
+// charger chip gives input_current_limit, the Poco's (pm8150b) its limit as current_max and a voltage_now of 73 V.
+// So a voltage outside what USB delivers is no voltage; a USB-C port's current_max (a supply whose usb_type lists C
+// or PD) is what the port offers, used only when no charger chip says what it takes; and a computer's data port
+// (BC1.2 SDP) charges slowly unless a PD contract was made, whatever current its USB-C pins advertise (the Poco said
+// "Super fast charging" on a PC's port, 2026-11-16).
 const POWER_SUPPLY = '/sys/class/power_supply';
 const CHARGE_SLOW_W = 7.5;
 const CHARGE_FAST_W = 12;
 const CHARGE_SUPER_FAST_W = 20;
+const USB_MIN_UV = 4e6;
+const USB_MAX_UV = 25e6;  // PD's 20 V and PPS above it
 // a plug-in brings a burst of uevents while the PD contract is made (500 mA first, the 9 V limit ~1 s later)
 const CHARGE_SETTLE_MS = 400;
 
@@ -106,7 +115,7 @@ function readChargeCurrent() {
 
 // 'slow', 'normal', 'fast', 'superfast', or null when nothing is plugged in (or the supply says too little to tell)
 function readChargeSpeed() {
-    let volts = 0, limit = 0, max = 0, plugged = false;
+    let volts = 0, limit = 0, chip = 0, offer = 0, plugged = false, computerPort = false, pd = false;
     let dir;
     try {
         dir = GLib.Dir.open(POWER_SUPPLY, 0);
@@ -118,15 +127,29 @@ function readChargeSpeed() {
         if (at('type') === 'Battery' || at('online') !== '1')
             continue;
         plugged = true;
-        volts = Math.max(volts, parseInt(at('voltage_now') ?? at('voltage_max') ?? '0') || 0);
+        // usb_type lists what the supply can tell, the one it found in brackets: "Unknown [SDP] DCP CDP"
+        const types = at('usb_type') ?? '';
+        const found = types.match(/\[([^\]]+)\]/)?.[1] ?? '';
+        const port = /(^|\s)\[?(C|PD)\]?(\s|$)/.test(types);
+        computerPort ||= found === 'SDP';
+        pd ||= found.startsWith('PD');
+        const uv = parseInt(at('voltage_now') ?? at('voltage_max') ?? '0') || 0;
+        if (uv >= USB_MIN_UV && uv <= USB_MAX_UV)
+            volts = Math.max(volts, uv);
         limit = Math.max(limit, parseInt(at('input_current_limit') ?? '0') || 0);
-        max = Math.max(max, parseInt(at('current_max') ?? '0') || 0);
+        const max = parseInt(at('current_max') ?? '0') || 0;
+        if (port)
+            offer = Math.max(offer, max);
+        else
+            chip = Math.max(chip, max);
     }
     dir.close();
     if (!plugged)
         return null;
+    if (computerPort && !pd)
+        return 'slow';
     // the charger chip's limit is what the phone draws; a port's current_max is only what it offers
-    const amps = (limit || max) / 1e6;
+    const amps = (limit || chip || offer) / 1e6;
     if (!amps)
         return null;
     const watts = (volts ? volts / 1e6 : 5) * amps;
