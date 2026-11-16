@@ -1127,3 +1127,87 @@ nb_indicator_new (GtkAdjustment *adjustment)
   g_signal_connect_object (adjustment, "changed", G_CALLBACK (gtk_widget_queue_draw), area, G_CONNECT_SWAPPED);
   return area;
 }
+
+/* ==== NbTabCount: the number of open tabs in a square ============================================================
+ *
+ * The square is the widget's CSS border; the number is drawn in the widget's CSS font. A label centres its line,
+ * ascent and descent, so a figure (nothing under the baseline) sat high in the square: here the number's own ink is
+ * centred. Measured as wide as high either way, the square stays square, growing only if the number outgrows it. */
+
+struct _NbTabCount {
+  GtkWidget  parent;
+  char      *text;
+};
+
+G_DEFINE_FINAL_TYPE (NbTabCount, nb_tab_count, GTK_TYPE_WIDGET)
+
+static void
+nb_tab_count_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, int *minimum, int *natural,
+                      int *minimum_baseline, int *natural_baseline)
+{
+  g_autoptr (PangoLayout) layout = gtk_widget_create_pango_layout (widget, NB_TAB_COUNT (widget)->text);
+  PangoRectangle ink;
+
+  pango_layout_get_pixel_extents (layout, &ink, NULL);
+  /* the CSS min-width and min-height are the square's own size: this only counts once the number is bigger */
+  *minimum = *natural = MAX (ink.width, ink.height) + 4;
+}
+
+static void
+nb_tab_count_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
+{
+  g_autoptr (PangoLayout) layout = gtk_widget_create_pango_layout (widget, NB_TAB_COUNT (widget)->text);
+  PangoRectangle ink;
+  GdkRGBA color;
+
+  pango_layout_get_extents (layout, &ink, NULL);
+  gtk_widget_get_color (widget, &color);
+  gtk_snapshot_save (snapshot);
+  gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (
+      (gtk_widget_get_width (widget) - (float) ink.width / PANGO_SCALE) / 2 - (float) ink.x / PANGO_SCALE,
+      (gtk_widget_get_height (widget) - (float) ink.height / PANGO_SCALE) / 2 - (float) ink.y / PANGO_SCALE));
+  gtk_snapshot_append_layout (snapshot, layout, &color);
+  gtk_snapshot_restore (snapshot);
+}
+
+static void
+nb_tab_count_finalize (GObject *object)
+{
+  g_free (NB_TAB_COUNT (object)->text);
+  G_OBJECT_CLASS (nb_tab_count_parent_class)->finalize (object);
+}
+
+static void
+nb_tab_count_class_init (NbTabCountClass *klass)
+{
+  GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
+
+  G_OBJECT_CLASS (klass)->finalize = nb_tab_count_finalize;
+  widget_class->measure = nb_tab_count_measure;
+  widget_class->snapshot = nb_tab_count_snapshot;
+  gtk_widget_class_set_css_name (widget_class, "nb-tab-count");
+  /* the button it is in carries the name ("Switch tabs, 2 open tabs") */
+  gtk_widget_class_set_accessible_role (widget_class, GTK_ACCESSIBLE_ROLE_PRESENTATION);
+}
+
+static void
+nb_tab_count_init (NbTabCount *self)
+{
+  self->text = g_strdup ("1");
+}
+
+GtkWidget *
+nb_tab_count_new (void)
+{
+  return g_object_new (NB_TYPE_TAB_COUNT, NULL);
+}
+
+void
+nb_tab_count_set_text (NbTabCount *self, const char *text)
+{
+  if (g_strcmp0 (self->text, text) == 0)
+    return;
+  g_free (self->text);
+  self->text = g_strdup (text);
+  gtk_widget_queue_resize (GTK_WIDGET (self));
+}

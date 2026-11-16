@@ -70,6 +70,12 @@ gboolean   nb_switch_get_active   (NbSwitch *self);
 void       nb_switch_set_active   (NbSwitch *self, gboolean active);
 /* Properties: "active" */
 
+/* The number of open tabs in its square (CSS node nb-tab-count: the square is its border, the number its font) */
+#define NB_TYPE_TAB_COUNT (nb_tab_count_get_type ())
+G_DECLARE_FINAL_TYPE (NbTabCount, nb_tab_count, NB, TAB_COUNT, GtkWidget)
+GtkWidget *nb_tab_count_new       (void);
+void       nb_tab_count_set_text  (NbTabCount *self, const char *text);
+
 typedef enum { NB_MARK_CHECK, NB_MARK_RADIO } NbMarkKind;
 #define NB_TYPE_MARK (nb_mark_get_type ())
 G_DECLARE_FINAL_TYPE (NbMark, nb_mark, NB, MARK, GtkWidget)

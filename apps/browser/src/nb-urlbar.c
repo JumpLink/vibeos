@@ -385,7 +385,12 @@ nb_urlbar_sync_count (NbTab *t)
   /* the number up to 99, then a smile */
   g_autofree char *text = n > 99 ? g_strdup (":D") : g_strdup_printf ("%u", n);
   g_autofree char *name = g_strdup_printf (n == 1 ? "Switch tabs, %u open tab" : "Switch tabs, %u open tabs", n);
-  gtk_label_set_text (GTK_LABEL (t->count_label), text);
+  nb_tab_count_set_text (NB_TAB_COUNT (t->count_label), text);
+  /* two figures (or the smile) a size smaller, to stay in the square */
+  if (strlen (text) > 1)
+    gtk_widget_add_css_class (t->count_label, "two-figures");
+  else
+    gtk_widget_remove_css_class (t->count_label, "two-figures");
   gtk_accessible_update_property (GTK_ACCESSIBLE (t->count), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);
 }
 
@@ -399,8 +404,7 @@ on_count (NbTab *t)
 static GtkWidget *
 count_button (NbTab *t)
 {
-  t->count_label = gtk_label_new ("1");
-  gtk_widget_add_css_class (t->count_label, "nb-tab-count");
+  t->count_label = nb_tab_count_new ();
   gtk_widget_set_halign (t->count_label, GTK_ALIGN_CENTER);
   gtk_widget_set_valign (t->count_label, GTK_ALIGN_CENTER);
   t->count = vibeos_pressable_new (t->count_label);
