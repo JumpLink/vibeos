@@ -5,6 +5,7 @@
  * the way down only if nothing is rounded on the way. */
 #include "vibeos-card-list.h"
 #include "vibeos-list-row.h"
+#include "vibeos-text.h"
 
 #include <math.h>
 
@@ -13,7 +14,8 @@
 #define GROUP_GAP     16      /* between groups */
 #define HEADER_H      52      /* a header's band: the space over its line, the line, the space under it */
 #define HEADER_TOP    24
-#define HEADER_LINE   20
+#define HEADER_LINE   20      /* for its text of HEADER_SIZE sp at a font size of 1: it grows with it */
+#define HEADER_SIZE   14
 #define HEADER_X      24
 #define OUTER_RADIUS  20
 #define INNER_RADIUS  4
@@ -108,13 +110,14 @@ layout (VibeosCardList *self, int width, gboolean allocate)
       if (e->header)
         {
           int label_w = MAX (width - 2 * HEADER_X, 0), min, nat;
+          double line = HEADER_LINE * (vibeos_sp (HEADER_SIZE) / HEADER_SIZE);
 
           y += before == ROW ? ROW_GAP : 0;
           gtk_widget_measure (e->widget, GTK_ORIENTATION_VERTICAL, label_w, &min, &nat, NULL, NULL);
           if (allocate)
-            gtk_widget_allocate (e->widget, label_w, MAX (nat, HEADER_LINE), -1,
+            gtk_widget_allocate (e->widget, label_w, MAX (nat, (int) ceil (line)), -1,
                                  gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (HEADER_X, y + HEADER_TOP)));
-          y += HEADER_H + MAX (nat - HEADER_LINE, 0);
+          y += HEADER_H - HEADER_LINE + MAX (nat, line);
           before = HEADER;
           continue;
         }

@@ -4,11 +4,12 @@
 #include "vibeos-anim.h"
 #include "vibeos-dialog.h"
 #include "vibeos-style.h"
+#include "vibeos-text.h"
 
 #include <math.h>
 
 #define HEADER_H        100
-#define TIME_SIZE       60      /* the header's hours and minutes */
+#define TIME_SIZE       60      /* the header's hours and minutes, in sp */
 #define AMPM_SIZE       16
 #define AMPM_PADDING    16
 #define SEPARATOR_PAD   2       /* either side of the ':' */
@@ -21,7 +22,7 @@
 #define SELECTOR_DOT_R  2       /* in the selector on a minute between the numbers */
 #define INSET_OUTER     22      /* the outer ring of numbers, in from the dial's edge */
 #define INSET_INNER     58      /* the inner ring (24-hour mode) */
-#define TEXT_OUTER      16      /* the outer ring's numbers */
+#define TEXT_OUTER      16      /* the outer ring's numbers, in sp */
 #define TEXT_INNER      12      /* the inner ring's */
 #define FADE_MS         500     /* the hours <-> minutes cross-fade */
 
@@ -65,16 +66,43 @@ vibeos_clock_uses_24h (void)
 
 /* ---- text ------------------------------------------------------------------------------------------------------ */
 
-static PangoLayout *
-make_layout (VibeosTimePicker *self, const char *text, int size)
+/* the font of a layout whose text is `sp`, at the font size and weight in effect */
+static void
+set_font (PangoLayout *layout, int sp)
 {
-  PangoLayout *layout = gtk_widget_create_pango_layout (GTK_WIDGET (self), text);
   PangoFontDescription *font = pango_font_description_from_string ("VibeOS Roboto");
-  pango_font_description_set_weight (font, 700);
-  pango_font_description_set_absolute_size (font, size * PANGO_SCALE);
+  pango_font_description_set_weight (font, vibeos_font_weight (400));
+  pango_font_description_set_absolute_size (font, vibeos_sp (sp) * PANGO_SCALE);
   pango_layout_set_font_description (layout, font);
   pango_font_description_free (font);
+  g_object_set_data (G_OBJECT (layout), "vibeos-sp", GINT_TO_POINTER (sp));
+}
+
+static PangoLayout *
+make_layout (VibeosTimePicker *self, const char *text, int sp)
+{
+  PangoLayout *layout = gtk_widget_create_pango_layout (GTK_WIDGET (self), text);
+  set_font (layout, sp);
   return layout;
+}
+
+static void
+refont (PangoLayout *layout)
+{
+  set_font (layout, GPOINTER_TO_INT (g_object_get_data (G_OBJECT (layout), "vibeos-sp")));
+}
+
+/* the font settings changed: every layout's font again */
+static void
+on_text_changed (VibeosTimePicker *self)
+{
+  PangoLayout *header[] = { self->time_hours, self->time_minutes, self->separator, self->am, self->pm };
+  for (int ring = 0; ring < 3; ring++)
+    for (int i = 0; i < 12; i++)
+      refont (self->rings[ring][i]);
+  for (guint i = 0; i < G_N_ELEMENTS (header); i++)
+    refont (header[i]);
+  gtk_widget_queue_draw (GTK_WIDGET (self));
 }
 
 static void
@@ -450,6 +478,8 @@ vibeos_time_picker_new (int hour, int minute, gboolean use_24h)
   self->separator = make_layout (self, ":", TIME_SIZE);
   self->am = make_layout (self, "AM", AMPM_SIZE);
   self->pm = make_layout (self, "PM", AMPM_SIZE);
+  g_signal_connect_object (vibeos_text_get_default (), "changed", G_CALLBACK (on_text_changed), self,
+                           G_CONNECT_SWAPPED);
   update_header (self);
   return GTK_WIDGET (self);
 }

@@ -128,6 +128,7 @@ void    vibeos_snapshot_icon (GtkSnapshot *snapshot, GtkWidget *widget, const ch
 typedef enum {
   VIBEOS_INIT_DEFAULT     = 0,
   VIBEOS_INIT_ALWAYS_DARK = 1 << 0,   /* dark whatever color-scheme says, as some apps are on Android */
+  VIBEOS_INIT_SCALED_TEXT = 1 << 1,   /* text follows Font size and Bold text: see vibeos-text.h */
 } VibeosInitFlags;
 
 /* vibeos_init () with flags */

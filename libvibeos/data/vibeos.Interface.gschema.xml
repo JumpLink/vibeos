@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- How heavy the system draws text, besides org.gnome.desktop.interface: its text-scaling-factor is
+     the font size, which GNOME's apps follow too. -->
+<schemalist>
+  <schema id="vibeos.Interface" path="/vibeos/Interface/">
+    <key name="bold-text" type="b">
+      <default>true</default>
+      <summary>Bold text</summary>
+      <description>On, the VibeOS apps that follow the font settings draw every weight 300 heavier, up to 1000:
+        regular text (400) at 700, medium (500) at 800. Apps that do not follow them yet are always drawn so.
+      </description>
+    </key>
+  </schema>
+</schemalist>

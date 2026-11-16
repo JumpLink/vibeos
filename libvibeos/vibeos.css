@@ -5,10 +5,12 @@
  * source; apps use the roles, never the values. @vibeos_nav_item is the one colour that is not a role: a navigation
  * item's when it is not selected.
  *
- * Sizes are GTK px: at the phone's scale 3, one is 3 screen px.
+ * Text sizes are sp, every other size dp (one GTK px: at the phone's scale 3, 3 screen px). vibeos-style.c turns sp
+ * into px for the font size in effect before the sheet is loaded (see vibeos-text.h).
  *
- * Weights are 300 heavier than usual, as the reference phone draws them with "Bold text" on: regular text is 700,
- * medium 800. */
+ * Weights are the usual ones, regular 400 and medium 500. With Bold text on, each is drawn 300 heavier, and an app
+ * that does not follow the font settings has it on: there regular text is 700 and medium 800, as on the reference
+ * phone. */
 
 /* --- the window */
 
@@ -16,8 +18,8 @@ window.vibeos {
   background-color: @vibeos_surface;
   color: @vibeos_on_surface;
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 14sp;
+  font-weight: 400;
 }
 
 window.vibeos label {
@@ -26,34 +28,34 @@ window.vibeos label {
 
 /* --- text styles, by role */
 
-.vibeos-display-large { font-size: 57px; font-weight: 700; }
-.vibeos-headline-large { font-size: 32px; font-weight: 700; }
-.vibeos-title-large { font-size: 22px; font-weight: 700; }
-.vibeos-title-medium { font-size: 16px; font-weight: 800; }
-.vibeos-body-large { font-size: 16px; font-weight: 700; }
-.vibeos-body-medium { font-size: 14px; font-weight: 700; }
-.vibeos-label-large { font-size: 14px; font-weight: 800; }
-.vibeos-label-medium { font-size: 12px; font-weight: 800; }
+.vibeos-display-large { font-size: 57sp; font-weight: 400; }
+.vibeos-headline-large { font-size: 32sp; font-weight: 400; }
+.vibeos-title-large { font-size: 22sp; font-weight: 400; }
+.vibeos-title-medium { font-size: 16sp; font-weight: 500; }
+.vibeos-body-large { font-size: 16sp; font-weight: 400; }
+.vibeos-body-medium { font-size: 14sp; font-weight: 400; }
+.vibeos-label-large { font-size: 14sp; font-weight: 500; }
+.vibeos-label-medium { font-size: 12sp; font-weight: 500; }
 .vibeos-tabular { font-feature-settings: "tnum" 1; }
 
 /* --- the top app bar, no shadow */
 
 .vibeos-app-bar {
-  min-height: 64px;
-  padding-left: 24px;
+  min-height: 64dp;
+  padding-left: 24dp;
 }
 
 .vibeos-app-bar-title {
-  font-size: 22px;
-  font-weight: 800;
+  font-size: 22sp;
+  font-weight: 500;
   color: @vibeos_on_surface;
 }
 
 /* --- icon buttons: a thumb-sized touch target around the icon */
 
 .vibeos-icon-button {
-  min-width: 48px;
-  min-height: 48px;
+  min-width: 48dp;
+  min-height: 48dp;
   color: @vibeos_on_surface;
 }
 
@@ -61,28 +63,28 @@ window.vibeos label {
 
 .vibeos-fab {
   color: @vibeos_on_primary;
-  min-width: 88px;
-  min-height: 88px;
+  min-width: 88dp;
+  min-height: 88dp;
 }
 
 .vibeos-fab-small {
   color: @vibeos_on_secondary;
-  min-width: 56px;
-  min-height: 56px;
+  min-width: 56dp;
+  min-height: 56dp;
 }
 
 /* --- cards */
 
 .vibeos-card {
   background-color: @vibeos_surface_container_highest;
-  border-radius: 28px;
+  border-radius: 28dp;
 }
 
 /* --- the navigation bar: a pill behind the selected item's icon */
 
 .vibeos-nav-bar {
   background-color: @vibeos_surface_container_highest;
-  min-height: 80px;
+  min-height: 80dp;
 }
 
 .vibeos-nav-item {
@@ -94,23 +96,23 @@ window.vibeos label {
 }
 
 .vibeos-nav-label {
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 12sp;
+  font-weight: 400;
 }
 
 .vibeos-nav-indicator {
   background-color: @vibeos_secondary_container;
-  border-radius: 16px;
+  border-radius: 16dp;
 }
 
 /* --- text buttons (dialogs, snackbars, "Delete") */
 
 .vibeos-text-button {
   color: @vibeos_primary;
-  font-size: 14px;
-  font-weight: 800;
-  min-height: 48px;
-  padding: 0 12px;
+  font-size: 14sp;
+  font-weight: 500;
+  min-height: 48dp;
+  padding: 0 12dp;
 }
 
 /* --- dialogs: a rounded card over a black scrim */
@@ -121,24 +123,24 @@ window.vibeos label {
 
 .vibeos-dialog {
   background-color: @vibeos_surface_container_highest;
-  border-radius: 28px;
-  padding: 24px 24px 18px 24px;
+  border-radius: 28dp;
+  padding: 24dp 24dp 18dp 24dp;
 }
 
 .vibeos-dialog-title {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 24sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
-  margin-bottom: 16px;
+  margin-bottom: 16dp;
 }
 
 .vibeos-dialog-message {
-  font-size: 14px;
+  font-size: 14sp;
   color: @vibeos_on_surface_variant;
 }
 
 .vibeos-dialog-buttons {
-  margin-top: 18px;
+  margin-top: 18dp;
 }
 
 /* a dialog around a picker: the picker reaches the edges, the card is the plain surface, the buttons sit in a band
@@ -149,21 +151,21 @@ window.vibeos label {
 }
 
 .vibeos-dialog.flush .vibeos-dialog-buttons {
-  margin: 4px 12px 8px 12px;
+  margin: 4dp 12dp 8dp 12dp;
 }
 
 /* --- snackbars */
 
 .vibeos-snackbar {                  /* VibeosSnackbar keeps its margin itself */
   background-color: @vibeos_surface_container_highest;
-  border-radius: 4px;
-  min-height: 48px;
-  padding: 0 8px 0 16px;
+  border-radius: 4dp;
+  min-height: 48dp;
+  padding: 0 8dp 0 16dp;
 }
 
 .vibeos-snackbar-text {
   color: @vibeos_on_surface_variant;
-  font-size: 14px;
+  font-size: 14sp;
 }
 
 /* --- text fields: a line under the text, in the primary colour while focused */
@@ -171,15 +173,15 @@ window.vibeos label {
 .vibeos-entry {
   background: none;
   border: none;
-  border-bottom: 2px solid @vibeos_on_surface_variant;
+  border-bottom: 2dp solid @vibeos_on_surface_variant;
   border-radius: 0;
   box-shadow: none;
   outline: none;
   color: @vibeos_on_surface;
   caret-color: @vibeos_primary;
-  font-size: 18px;
-  min-height: 40px;
-  padding: 0 4px;
+  font-size: 18sp;
+  min-height: 40dp;
+  padding: 0 4dp;
 }
 
 .vibeos-entry:focus-within {
@@ -194,17 +196,17 @@ window.vibeos label {
 /* --- list rows on cards (VibeosListRow draws the card and places the text) */
 
 .vibeos-list-row-title {
-  font-size: 16px;
+  font-size: 16sp;
   color: @vibeos_on_surface;
 }
 
 .vibeos-list-row-title.selected {
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .vibeos-list-row-summary,
 .vibeos-list-row-value {
-  font-size: 14px;
+  font-size: 14sp;
   color: @vibeos_on_surface_variant;
 }
 
@@ -213,29 +215,29 @@ window.vibeos label {
 }
 
 .vibeos-list-row-initials {
-  font-size: 16px;
-  font-weight: 800;
+  font-size: 16sp;
+  font-weight: 500;
   color: @vibeos_on_primary_container;
 }
 
 /* a group's header over its cards */
 .vibeos-card-list-header {
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 14sp;
+  font-weight: 500;
   color: @vibeos_primary;
 }
 
 /* --- the top app bar (VibeosTopBar) */
 
 .vibeos-top-bar-title {
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 22sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }
 
 .vibeos-top-bar-large-title {
-  font-size: 36px;
-  font-weight: 700;
+  font-size: 36sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }
 
@@ -246,7 +248,7 @@ window.vibeos label {
 /* --- search: the bar at the top of a list and the view it opens */
 
 .vibeos-search-hint {
-  font-size: 16px;
+  font-size: 16sp;
   color: @vibeos_on_surface_variant;
 }
 
@@ -257,8 +259,8 @@ window.vibeos label {
   outline: none;
   color: @vibeos_on_surface;
   caret-color: @vibeos_primary;
-  font-size: 16px;
-  min-height: 40px;
+  font-size: 16sp;
+  min-height: 40dp;
 }
 
 /* --- the navigation rail: the bar's items in a column at the start */
@@ -275,5 +277,5 @@ window.vibeos label {
 
 /* the navigation bar with its labels beside the icons: a lower bar */
 .vibeos-nav-bar.horizontal {
-  min-height: 64px;
+  min-height: 64dp;
 }

@@ -33,6 +33,7 @@ vibeos_headers = files(
   'vibeos-card-list.h',
   'vibeos-top-bar.h',
   'vibeos-search.h',
+  'vibeos-text.h',
 )
 vibeos_lib = shared_library('vibeos-1',
   'vibeos-style.c',
@@ -54,6 +55,7 @@ vibeos_lib = shared_library('vibeos-1',
   'vibeos-top-bar.c',
   'vibeos-search.c',
   'vibeos-dump.c',
+  'vibeos-text.c',
   vibeos_resources,
   dependencies: [gtk4, libm, spongy_dep, spongy_gtk_dep, tonal_dep],
   version: '0.1.0',
@@ -73,3 +75,7 @@ subdir('tests')
 
 # the widget gallery, for trying the widgets on a desktop or a headless display (not installed)
 subdir('demo')
+
+# vibeos.Interface: Bold text (the font size is GNOME's own text-scaling-factor)
+install_data('data/vibeos.Interface.gschema.xml', install_dir: get_option('datadir') / 'glib-2.0/schemas')
+gnome.post_install(glib_compile_schemas: true)

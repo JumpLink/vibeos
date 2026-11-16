@@ -1,11 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- For the tests: the one key of GNOME's interface settings that libvibeos follows -->
+<!-- For the tests: the keys of GNOME's interface settings that libvibeos follows -->
 <schemalist>
   <schema id="org.gnome.desktop.interface" path="/org/gnome/desktop/interface/">
     <key name="color-scheme" type="s">
       <choices><choice value="default"/><choice value="prefer-dark"/><choice value="prefer-light"/></choices>
       <default>"default"</default>
       <summary>Color scheme</summary>
+    </key>
+    <key name="text-scaling-factor" type="d">
+      <range min="0.5" max="3.0"/>
+      <default>1.0</default>
+      <summary>Text scaling factor</summary>
     </key>
   </schema>
 </schemalist>

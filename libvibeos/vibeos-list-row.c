@@ -8,6 +8,7 @@
 #include "vibeos-pressable.h"
 #include "vibeos-style.h"
 #include "vibeos-switch.h"
+#include "vibeos-text.h"
 
 #include <math.h>
 
@@ -17,6 +18,8 @@
 #define TITLE_MORE        (61 / 3.0)   /* each further line of a wrapped title */
 #define SUMMARY_LINE      20
 #define SUMMARY_MORE      (53 / 3.0)   /* each further line of a wrapped summary */
+#define TITLE_SIZE        16    /* the title's text and the summary's, in sp (vibeos.css): the lines above are for */
+#define SUMMARY_SIZE      14    /* these at a font size of 1, and grow with them */
 #define TEXT_PLAIN        16    /* the text's inset with nothing at the start */
 #define TEXT_AFTER_START  68    /* and with something there */
 #define ICON              24
@@ -152,8 +155,8 @@ text_block (VibeosListRow *self, int width, double *title_h, double *summary_h)
   int w = text_width (self, width);
   int title = MAX (1, line_count (self->title, w)), summary = line_count (self->summary, w);
 
-  *title_h = TITLE_LINE + (title - 1) * TITLE_MORE;
-  *summary_h = summary ? SUMMARY_LINE + (summary - 1) * SUMMARY_MORE : 0;
+  *title_h = (TITLE_LINE + (title - 1) * TITLE_MORE) * (vibeos_sp (TITLE_SIZE) / TITLE_SIZE);
+  *summary_h = summary ? (SUMMARY_LINE + (summary - 1) * SUMMARY_MORE) * (vibeos_sp (SUMMARY_SIZE) / SUMMARY_SIZE) : 0;
 }
 
 double

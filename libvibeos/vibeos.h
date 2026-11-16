@@ -43,3 +43,8 @@
  *   vibeos-card-list.h    rows on cards, in groups
  *   vibeos-top-bar.h      the top app bar: small, large and in selection mode
  *   vibeos-search.h       the search bar and the search view it opens */
+#include "vibeos-text.h"
+
+/* Text that follows the system's font settings:
+ *
+ *   vibeos-text.h         Font size and Bold text: sp and dp in stylesheets, vibeos_sp () for sizes set in C */
