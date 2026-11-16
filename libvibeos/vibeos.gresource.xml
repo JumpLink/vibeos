@@ -2,5 +2,8 @@
 <gresources>
   <gresource prefix="/vibeos/libvibeos">
     <file>vibeos.css</file>
+    <file>handles/text-handle-insertion-symbolic.svg</file>
+    <file>handles/text-handle-start-symbolic.svg</file>
+    <file>handles/text-handle-end-symbolic.svg</file>
   </gresource>
 </gresources>

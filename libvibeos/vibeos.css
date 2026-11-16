@@ -279,3 +279,29 @@ window.vibeos label {
 .vibeos-nav-bar.horizontal {
   min-height: 64dp;
 }
+
+/* ---- the touch handles under a field's cursor and at a selection's ends ---- */
+/* In the accent colour, as GTK's own grey pictures vanish on a dark surface: under the cursor a drop centred on it,
+ * pointing up; at a selection's start a disc to the left of its first character, at its end one to the right of its
+ * last, each pointing at the text with its square corner. */
+cursor-handle {
+  color: @vibeos_primary;
+  min-width: 22dp;
+  min-height: 22dp;
+}
+
+cursor-handle.top:dir(ltr),
+cursor-handle.bottom:dir(rtl) {
+  -gtk-icon-source: -gtk-recolor(url("resource:///vibeos/libvibeos/handles/text-handle-start-symbolic.svg"));
+}
+
+cursor-handle.bottom:dir(ltr),
+cursor-handle.top:dir(rtl) {
+  -gtk-icon-source: -gtk-recolor(url("resource:///vibeos/libvibeos/handles/text-handle-end-symbolic.svg"));
+}
+
+/* the cursor's handle is also .bottom: this one has to be the more specific */
+cursor-handle.bottom.insertion-cursor {
+  min-height: 26.556dp;
+  -gtk-icon-source: -gtk-recolor(url("resource:///vibeos/libvibeos/handles/text-handle-insertion-symbolic.svg"));
+}

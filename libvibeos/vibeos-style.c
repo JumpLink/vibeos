@@ -410,6 +410,11 @@ vibeos_init_full (VibeosInitFlags flags)
     extern void _vibeos_text_set_following (gboolean);
     _vibeos_text_set_following ((flags & VIBEOS_INIT_SCALED_TEXT) != 0);
   }
+  /* the cursor's touch handle put away as the keyboard types (vibeos-text-handles.c) */
+  {
+    extern void _vibeos_text_handles_init (void);
+    _vibeos_text_handles_init ();
+  }
   self->initialized = TRUE;
   self->provider = gtk_css_provider_new ();
   /* above the theme (APPLICATION), so GTK's own look never shows through a libvibeos widget */

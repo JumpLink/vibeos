@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">
+  <!-- a selection's start: a disc with its top right corner square, pointing at the first character -->
+  <path d="M11 0 H22 V11 A11 11 0 1 1 11 0 Z"/>
+</svg>
