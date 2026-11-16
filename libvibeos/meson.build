@@ -52,6 +52,7 @@ vibeos_lib = shared_library('vibeos-1',
   'vibeos-card-list.c',
   'vibeos-top-bar.c',
   'vibeos-search.c',
+  'vibeos-dump.c',
   vibeos_resources,
   dependencies: [gtk4, libm, spongy_dep, spongy_gtk_dep],
   version: '0.1.0',
@@ -65,3 +66,6 @@ import('pkgconfig').generate(vibeos_lib, name: 'vibeos-1', subdirs: 'vibeos-1', 
 # Roboto as Android ships it (variable: weight 100-900, width 75-100), under its own family name so that the
 # system's static Roboto cut can never stand in for it
 install_data('fonts/VibeosRoboto.ttf', install_dir: get_option('datadir') / 'fonts' / 'vibeos')
+
+# the widget gallery, for trying the widgets on a desktop or a headless display (not installed)
+subdir('demo')
