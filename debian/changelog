@@ -1,3 +1,37 @@
+vibeos (1:0.1.1) unstable; urgency=medium
+
+  * Colours: Material 3 colour schemes from a seed colour or the wallpaper,
+    light and dark (libtonal, a new library, and vibeos-theme). The apps
+    follow vibeos.Theme and the system's colour scheme.
+  * Text and display: Font size, Bold text and Display size for the apps
+    that ask for them. The screen's scale is used as it is, fractional too,
+    and a dp is one logical pixel at any scale.
+  * Tablets: two-pane layouts and the first list widgets in libvibeos.
+  * Keyboard: VibeOS's own on-screen keyboard, now the default, with the
+    AOSP keyboard's layouts and sizes, long press for a key's more keys and
+    a tick under the finger. The swipe home works over it, and the keyboard
+    goes as soon as the swipe begins. Settings > Keyboard chooses VibeOS's
+    keyboard or GNOME's.
+  * Contacts: the list screen, Highlights, Organize, and two panes on a
+    tablet.
+  * Shell: Settings comes to the front from the notification shade and the
+    quick settings; a tile's long press opens its own page.
+  * Lock screen: a computer's USB port shows as slow charging on any phone.
+  * Browser: the tab count is a square with its number centred, in the
+    address's font.
+  * Text fields: the cursor's handle is in the accent colour and goes away
+    as you type.
+  * VibeOS icons: Font Awesome Free's phone and comment glyphs for Phone and
+    Messages (CC BY 4.0), a black circle for the video player, and a console
+    icon of its own.
+  * Tools: widget dumps, vibeos-gallery and vibeos-specdiff, to measure the
+    layouts; vibeos-headless runs without the mutter package.
+  * Packaging: new packages libtonal-1-0 and libtonal-dev. The apps depend
+    on the exact library version they were built with. The 0.1.0 entry now
+    names the relations it used (Breaks/Replaces, not Conflicts/Provides).
+
+ -- pulpoff <pashkovsky@gmail.com>  Mon, 16 Nov 2026 23:06:41 +0100
+
 vibeos (1:0.1.0) unstable; urgency=medium
 
   * First release of VibeOS, the new name of gnome-phone: a GNOME-based
@@ -11,7 +45,7 @@ vibeos (1:0.1.0) unstable; urgency=medium
     shell@vibeos), the session (gnome-phone is vibeos), the font family
     (VibeOS Roboto) and the per-user directories.
   * Upgrading from gnome-phone: the vibeos packages replace the old ones
-    (Conflicts/Replaces/Provides). Each old app package (neo-browser, ...)
+    (Breaks/Replaces). Each old app package (neo-browser, ...)
     is upgraded to an empty transitional package instead of being removed,
     so that the app packages save each user's home layout before the old
     launcher sees an app go and rearranges it. vibeos-session moves the
