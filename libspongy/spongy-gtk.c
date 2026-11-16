@@ -34,6 +34,7 @@ struct _SpongyScrollView {
   guint          press_timer;  /* to show the press, or to end a tap's flash of it */
   float          top_at_down, bottom_at_down;   /* the edges' stretch when the touch went down */
   bool           overshot_top, overshot_bottom; /* edge-overshot sent for this touch */
+  GdkSurface    *surface;      /* realized on: its scale is followed */
 };
 
 enum { PROP_0, PROP_CHILD, PROP_OFFSET, N_PROPS };
@@ -63,8 +64,9 @@ device_scale (SpongyScrollView *self)
   return surface ? gdk_surface_get_scale (surface) : 1.0;
 }
 
-/* The physics' unit length in this surface's logical pixels: SPONGY_DENSITY (screen px per unit), or the monitor's
- * dots per inch over 160 */
+/* The physics' unit length (a dp) in this surface's logical pixels: one, since a logical pixel is a dp at any scale
+ * the screen is set to, unless SPONGY_DENSITY gives a dp in screen pixels, which the surface's scale turns into
+ * logical ones */
 static void
 update_density (SpongyScrollView *self)
 {
@@ -75,17 +77,8 @@ update_density (SpongyScrollView *self)
   double scale = gdk_surface_get_scale (surface);
   const char *env = g_getenv ("SPONGY_DENSITY");
   double px_per_dp = env ? g_ascii_strtod (env, NULL) : 0;
-  if (px_per_dp <= 0) {
-    GdkMonitor *m = gdk_display_get_monitor_at_surface (gdk_surface_get_display (surface), surface);
-    int mm = m ? gdk_monitor_get_height_mm (m) : 0;
-    if (mm > 0) {
-      GdkRectangle geo;
-      gdk_monitor_get_geometry (m, &geo);
-      px_per_dp = geo.height * gdk_monitor_get_scale (m) / (mm / 25.4) / 160;
-    } else {
-      px_per_dp = scale;
-    }
-  }
+  if (px_per_dp <= 0)
+    px_per_dp = scale;
   spongy_set_density (px_per_dp / scale);
   double density = spongy_density ();
   self->list.slop = (int) lround (8 * density);
@@ -579,10 +572,35 @@ snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 /* ---- the widget ---- */
 
 static void
+on_scale (GdkSurface *surface, GParamSpec *pspec, SpongyScrollView *self)
+{
+  update_density (self);
+}
+
+static void
 realize (GtkWidget *widget)
 {
+  SpongyScrollView *self = SPONGY_SCROLL_VIEW (widget);
   GTK_WIDGET_CLASS (spongy_scroll_view_parent_class)->realize (widget);
-  update_density (SPONGY_SCROLL_VIEW (widget));
+  update_density (self);
+  /* a new screen scale (another display size) can change it */
+  GtkNative *native = gtk_widget_get_native (widget);
+  self->surface = native ? gtk_native_get_surface (native) : NULL;
+  if (self->surface) {
+    g_object_ref (self->surface);
+    g_signal_connect (self->surface, "notify::scale", G_CALLBACK (on_scale), self);
+  }
+}
+
+static void
+unrealize (GtkWidget *widget)
+{
+  SpongyScrollView *self = SPONGY_SCROLL_VIEW (widget);
+  if (self->surface) {
+    g_signal_handlers_disconnect_by_func (self->surface, on_scale, self);
+    g_clear_object (&self->surface);
+  }
+  GTK_WIDGET_CLASS (spongy_scroll_view_parent_class)->unrealize (widget);
 }
 
 static void
@@ -744,6 +762,7 @@ spongy_scroll_view_class_init (SpongyScrollViewClass *klass)
   widget_class->size_allocate = size_allocate;
   widget_class->snapshot = snapshot;
   widget_class->realize = realize;
+  widget_class->unrealize = unrealize;
   widget_class->unmap = unmap;
 
   props[PROP_CHILD] = g_param_spec_object ("child", NULL, NULL, GTK_TYPE_WIDGET,
