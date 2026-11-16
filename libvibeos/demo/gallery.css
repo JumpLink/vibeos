@@ -1,0 +1,30 @@
+/* vibeos-gallery's own look, on libvibeos's. Text sizes in sp follow Font size; those in dp, as text that has to fit a
+ * fixed place, do not. Weights are the usual ones: Bold text adds to them. */
+
+.gallery-text-page {
+  padding: 8dp 24dp 24dp 24dp;
+}
+
+.gallery-text-heading {
+  font-size: 14sp;
+  font-weight: 500;
+  color: @vibeos_primary;
+  margin-top: 16dp;
+  margin-bottom: 4dp;
+}
+
+.gallery-sp-8 { font-size: 8sp; }
+.gallery-sp-12 { font-size: 12sp; }
+.gallery-sp-14 { font-size: 14sp; }
+.gallery-sp-16 { font-size: 16sp; }
+.gallery-sp-22 { font-size: 22sp; }
+.gallery-sp-30 { font-size: 30sp; }
+.gallery-sp-57 { font-size: 57sp; }
+.gallery-sp-100 { font-size: 100sp; }
+
+.gallery-dp-12 { font-size: 12dp; }
+.gallery-dp-22 { font-size: 22dp; }
+
+.gallery-weight-regular { font-size: 16sp; font-weight: 400; }
+.gallery-weight-medium { font-size: 16sp; font-weight: 500; }
+.gallery-weight-semibold { font-size: 16sp; font-weight: 600; }
