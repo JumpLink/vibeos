@@ -49,6 +49,18 @@ Comment:
  The VibeOS pack's icons are Material Symbols Rounded glyphs on squircles,
  made by tools/iconpack-vibeos/make-vibeos-pack.py.
 
+Files: vibeos-launcher/iconpacks/vibeos/icons/phone.png
+       vibeos-launcher/iconpacks/vibeos/icons/messaging.png
+       tools/iconpack-vibeos/fontawesome/*
+Copyright: 2025 Fonticons, Inc. (Font Awesome Free 7.0.0)
+           2026 pulpoff <pashkovsky@gmail.com>
+License: CC-BY-4.0
+Comment:
+ The VibeOS pack's phone and messaging icons are Font Awesome Free's "phone"
+ and "comment" glyphs (solid style, unchanged; https://fontawesome.com) on
+ squircles, made by tools/iconpack-vibeos/make-vibeos-pack.py. Font Awesome's
+ licence text: tools/iconpack-vibeos/fontawesome/LICENSE.txt.
+
 Files: vibeos-launcher/parallax/solar-system/*
 Copyright: NASA (the Sun, Earth, Moon, Mars, Saturn and Jupiter images)
            2026 pulpoff <pashkovsky@gmail.com> (the drawn star field, glows and orbits, the composition)
@@ -237,6 +249,12 @@ License: OFL-1.1
  DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
  OTHER DEALINGS IN THE FONT SOFTWARE.
+
+License: CC-BY-4.0
+ Creative Commons Attribution 4.0 International. You may share and adapt the
+ material for any purpose, provided appropriate credit is given, a link to the
+ licence is provided and changes are indicated. The full text:
+ https://creativecommons.org/licenses/by/4.0/legalcode
 
 License: public-domain
  Works of the United States federal government, including NASA's images, are

@@ -15,3 +15,8 @@ app's colours were measured from the H2O icon pack. H2O is a third-party pack th
 file, image or glyph is used here or shipped: the script holds only those numbers, as data. H2O has no icon for two
 apps, so their colours are our own: android (#3DDC84, Android's green) and dictate (#7C4DFF, a violet).
 The video icon's circle is black (#000000) rather than its H2O counterpart's red.
+
+Two glyphs are Font Awesome Free 7.0.0's, solid style, unchanged: "phone" (the phone icon) and "comment" (messaging),
+in fontawesome/ beside the script (Fonticons, Inc., CC BY 4.0 for the icons; fontawesome/LICENSE.txt; from
+@fortawesome/fontawesome-free 7.0.0, svgs/solid/). A Font Awesome glyph fills its 512-unit box, so it is drawn at
+40/48 of the Material glyphs' box, the share a Material glyph's 40 units take of its 48.

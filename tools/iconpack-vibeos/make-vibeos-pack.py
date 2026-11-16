@@ -2,7 +2,8 @@
 # make-vibeos-pack.py OUTDIR GLYPHDIR: the "VibeOS" icon pack for the VibeOS launcher, free to redistribute.
 #
 # Each icon is a Material Symbols Rounded glyph (Google, Apache-2.0; GLYPHDIR holds <name>_fill1_48px.svg, the glyphs
-# the gnome-free pack uses) on a squircle tile in the app's colour: white on a coloured tile, coloured on a white one.
+# the gnome-free pack uses), or a Font Awesome Free one ("fa/<name>": fontawesome/<name>.svg beside this script, CC BY
+# 4.0), on a squircle tile in the app's colour: white on a coloured tile, coloured on a white one.
 # The tile is the launcher's own squircle (icons.c superellipse (): |x|^4 + |y|^4 = 1) at TILE of the canvas, over a
 # short drop shadow; the glyph's 48-unit box is EM of the tile. Apps the pack does not draw are put on the pack's
 # backplate (a white tile of the same shape and size) by the launcher, at pack.json's scale.
@@ -18,10 +19,12 @@ from gi.repository import Rsvg
 from PIL import Image, ImageFilter
 
 OUT, GLYPHS = sys.argv[1], sys.argv[2]
+FA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fontawesome")
 PX = 256          # icon size, as gnome-free's
 SS = 4            # supersampling for the tile's edge and its shadow
 TILE = 0.891      # the tile's side over the canvas: 228 of 256 px, 14 px clear all round
 EM = 0.73         # the glyph's 48-unit box over the tile's side (a 40-unit glyph spans 61 % of the tile)
+FA_EM = 40 / 48   # a Font Awesome glyph fills its box: it spans what a 40-unit Material glyph does of its 48
 EXP = 4           # the squircle's exponent: the launcher's
 SHADOW = (3 / 192, 0.5 / 192, 0.22)   # the tile's drop shadow: offset down and blur (sigma) over the canvas, opacity
 SCALE = 0.70      # an app the pack does not draw sits on the backplate at this share of the canvas
@@ -31,8 +34,8 @@ WHITE = "#FFFFFF"
 # (top-left, bottom-right, "diagonal"). The colours are those of the H2O pack's icon for the same app (named in the
 # comment), measured; "no H2O" marks the two apps H2O has no icon for.
 ICONS = {
-    "phone":      ("call",              "#51D392",                           WHITE),      # phone
-    "messaging":  ("chat",              ("#08CBDD", "#0B93E1"),              WHITE),      # messages
+    "phone":      ("fa/phone",          "#51D392",                           WHITE),      # phone
+    "messaging":  ("fa/comment",        ("#08CBDD", "#0B93E1"),              WHITE),      # messages
     "contacts":   ("person",            "#008BFF",                           WHITE),      # contacts
     "browser":    ("public",            ("#41BFFA", "#1895F7", "diagonal"),  WHITE),      # browser
     "camera":     ("photo_camera",      "#EBEBED",                           "#1D2D47"),  # camera
@@ -148,13 +151,19 @@ def _rect(x, y, w, h):
 
 
 def glyph(name, colour):
-    """the glyph in its colour, its 48-unit box EM of the tile and centred on it"""
-    with open(os.path.join(GLYPHS, name + "_fill1_48px.svg")) as f:
-        svg = f.read().replace("<svg ", '<svg fill="%s" ' % colour, 1)
+    """the glyph in its colour, its 48-unit box EM of the tile and centred on it (a Font Awesome glyph's box FA_EM of
+    that)"""
+    size = PX * TILE * EM
+    if name.startswith("fa/"):
+        with open(os.path.join(FA, name[3:] + ".svg")) as f:
+            svg = f.read().replace('fill="currentColor"', 'fill="%s"' % colour)
+        size *= FA_EM
+    else:
+        with open(os.path.join(GLYPHS, name + "_fill1_48px.svg")) as f:
+            svg = f.read().replace("<svg ", '<svg fill="%s" ' % colour, 1)
     h = Rsvg.Handle.new_from_data(svg.encode())
     s = cairo.ImageSurface(cairo.FORMAT_ARGB32, PX, PX)
     cr = cairo.Context(s)
-    size = PX * TILE * EM
     off = (PX - size) / 2
     h.render_document(cr, _rect(off, off, size, size))
     return to_pil(s)
