@@ -127,7 +127,7 @@ class Phone:
         for iface in Gio.DBusNodeInfo.new_for_xml(SESSION_XML).interfaces:
             session.register_object('/org/mobian_project/CallAudio' if 'CallAudio' in iface.name else
                                     '/org/freedesktop/Notifications' if 'Notifications' in iface.name else
-                                    '/vibeos/Shell' if 'Vibeos' in iface.name else
+                                    '/vibeos/Shell' if iface.name == 'vibeos.Shell' else
                                     '/vibeos/Test/Phone', iface, self.session_call, None, None)
 
     # --- ModemManager
