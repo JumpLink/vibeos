@@ -1,5 +1,5 @@
 #!/usr/bin/make -f
-# VibeOS is several meson projects: the top level (libspongy, vibeos-launcher, input-boost, vibeos-auth, vibeos-wakeup),
+# VibeOS is several meson projects: the top level (libspongy, libtonal, vibeos-launcher, input-boost, vibeos-auth, vibeos-wakeup),
 # libvibeos, the extension, the session files and one per app. libvibeos and the apps find libspongy and libvibeos through
 # the -uninstalled.pc files meson writes into each build directory, so the projects are configured and built one
 # after the other, in this order.
@@ -13,7 +13,7 @@ BUILDDIRS := $(foreach p,$(PROJECTS),obj-$(firstword $(subst :, ,$(p))))
 
 # the libraries being built come before anything installed (a hand-built libspongy or libvibeos in /usr/local)
 export PKG_CONFIG_PATH := $(CURDIR)/obj-top/meson-uninstalled:$(CURDIR)/obj-libvibeos/meson-uninstalled
-TEST_LIBS := $(CURDIR)/obj-top/libspongy:$(CURDIR)/obj-libvibeos
+TEST_LIBS := $(CURDIR)/obj-top/libspongy:$(CURDIR)/obj-libvibeos:$(CURDIR)/obj-top/libtonal
 
 %:
 	dh $@
