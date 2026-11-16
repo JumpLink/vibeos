@@ -23,5 +23,4 @@ in fontawesome/ beside the script (Fonticons, Inc., CC BY 4.0 for the icons; fon
 40/48 of the Material glyphs' box, the share a Material glyph's 40 units take of its 48.
 
 The console's glyph, a prompt's chevron and a cursor's underscore, is drawn for VibeOS: own/terminal.svg ("own/<name>"
-in ICONS). Its view box is the tile, so it is drawn over the whole tile, where the drawing puts it, rather than in the
-glyph box the others share.
+in ICONS). Like a Font Awesome glyph it fills its view box's width, centred in it, and is drawn at the same 40/48.

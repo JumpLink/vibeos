@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="17.8 15.9 140.2 140.2">
-  <!-- the console's glyph, drawn for VibeOS: a prompt's chevron and a cursor's underscore. The view box is the tile:
-       the glyph is drawn where it sits on it -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="37.871 39.871 99.902 99.902">
+  <!-- the console's glyph, drawn for VibeOS: a prompt's chevron and a cursor's underscore. It fills its view box's
+       width, centred in it, as a Font Awesome glyph does -->
   <path fill="currentColor" d="
 M40.184853,66.549042
     C37.032990,61.769707 37.257763,57.954369 40.585262,55.197502

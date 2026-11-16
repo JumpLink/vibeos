@@ -3,8 +3,8 @@
 #
 # Each icon is a Material Symbols Rounded glyph (Google, Apache-2.0; GLYPHDIR holds <name>_fill1_48px.svg, the glyphs
 # the gnome-free pack uses), a Font Awesome Free one ("fa/<name>": fontawesome/<name>.svg beside this script, CC BY
-# 4.0) or one drawn for this pack ("own/<name>": own/<name>.svg, whose view box is the tile), on a squircle tile in
-# the app's colour: white on a coloured tile, coloured on a white one.
+# 4.0) or one drawn for this pack ("own/<name>": own/<name>.svg, filling its box as a Font Awesome glyph does), on a
+# squircle tile in the app's colour: white on a coloured tile, coloured on a white one.
 # The tile is the launcher's own squircle (icons.c superellipse (): |x|^4 + |y|^4 = 1) at TILE of the canvas, over a
 # short drop shadow; the glyph's 48-unit box is EM of the tile. Apps the pack does not draw are put on the pack's
 # backplate (a white tile of the same shape and size) by the launcher, at pack.json's scale.
@@ -26,7 +26,7 @@ PX = 256          # icon size, as gnome-free's
 SS = 4            # supersampling for the tile's edge and its shadow
 TILE = 0.891      # the tile's side over the canvas: 228 of 256 px, 14 px clear all round
 EM = 0.73         # the glyph's 48-unit box over the tile's side (a 40-unit glyph spans 61 % of the tile)
-FA_EM = 40 / 48   # a Font Awesome glyph fills its box: it spans what a 40-unit Material glyph does of its 48
+FA_EM = 40 / 48   # a Font Awesome (or own) glyph fills its box: it spans what a 40-unit Material glyph does of its 48
 EXP = 4           # the squircle's exponent: the launcher's
 SHADOW = (3 / 192, 0.5 / 192, 0.22)   # the tile's drop shadow: offset down and blur (sigma) over the canvas, opacity
 SCALE = 0.70      # an app the pack does not draw sits on the backplate at this share of the canvas
@@ -153,15 +153,12 @@ def _rect(x, y, w, h):
 
 
 def glyph(name, colour):
-    """the glyph in its colour, its 48-unit box EM of the tile and centred on it (a Font Awesome glyph's box FA_EM of
-    that; one of this pack's own drawn over the whole tile)"""
+    """the glyph in its colour, its 48-unit box EM of the tile and centred on it (a Font Awesome or own glyph's box
+    FA_EM of that)"""
     size = PX * TILE * EM
-    if name.startswith("own/"):
-        with open(os.path.join(OWN, name[4:] + ".svg")) as f:
-            svg = f.read().replace('fill="currentColor"', 'fill="%s"' % colour)
-        size = PX * TILE
-    elif name.startswith("fa/"):
-        with open(os.path.join(FA, name[3:] + ".svg")) as f:
+    if name.startswith("fa/") or name.startswith("own/"):
+        folder, base = name.split("/", 1)
+        with open(os.path.join(FA if folder == "fa" else OWN, base + ".svg")) as f:
             svg = f.read().replace('fill="currentColor"', 'fill="%s"' % colour)
         size *= FA_EM
     else:
