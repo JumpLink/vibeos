@@ -1,8 +1,9 @@
-/* libvibeos's look: Material 3, dark, as the LineageOS 23.2 apps draw it on the reference phone.
+/* libvibeos's look: Material 3, light or dark, as the LineageOS 23.2 apps draw it on the reference phone.
  *
  * The colours are named by their Material 3 roles (@vibeos_primary, @vibeos_on_surface, ...). vibeos-style.c defines them
- * from its palette table before this file is loaded, so drawn widgets and CSS share one source; apps use the roles,
- * never the values.
+ * from the theme before this file is loaded, and again whenever the theme changes, so drawn widgets and CSS share one
+ * source; apps use the roles, never the values. @vibeos_nav_item is the one colour that is not a role: a navigation
+ * item's when it is not selected.
  *
  * Sizes are GTK px: at the phone's scale 3, one is 3 screen px.
  *
@@ -85,7 +86,7 @@ window.vibeos label {
 }
 
 .vibeos-nav-item {
-  color: alpha(white, 0.5);
+  color: @vibeos_nav_item;
 }
 
 .vibeos-nav-item.selected {
@@ -115,7 +116,7 @@ window.vibeos label {
 /* --- dialogs: a rounded card over a black scrim */
 
 .vibeos-scrim {
-  background-color: rgba(0, 0, 0, 0.6);
+  background-color: alpha(@vibeos_scrim, 0.6);
 }
 
 .vibeos-dialog {

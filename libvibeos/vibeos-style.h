@@ -9,7 +9,8 @@
 
 G_BEGIN_DECLS
 
-/* The colour roles of the apps' dark palette (the values are in vibeos-style.c). */
+/* The colour roles. Their values come from the theme (VibeosTheme below): the scheme of vibeos.Theme's seed, light or
+ * dark. New roles are only ever added at the end. */
 typedef enum {
   VIBEOS_PRIMARY,
   VIBEOS_ON_PRIMARY,
@@ -39,10 +40,46 @@ typedef enum {
   VIBEOS_OUTLINE_VARIANT,
   VIBEOS_INVERSE_SURFACE,
   VIBEOS_WHITE,
+  /* the rest of the scheme's roles */
+  VIBEOS_ON_ERROR,
+  VIBEOS_ON_ERROR_CONTAINER,
+  VIBEOS_BACKGROUND,
+  VIBEOS_ON_BACKGROUND,
+  VIBEOS_SURFACE_DIM,
+  VIBEOS_SURFACE_VARIANT,
+  VIBEOS_INVERSE_ON_SURFACE,
+  VIBEOS_SURFACE_TINT,
+  VIBEOS_SHADOW,
+  VIBEOS_SCRIM,
+  VIBEOS_PRIMARY_FIXED,
+  VIBEOS_PRIMARY_FIXED_DIM,
+  VIBEOS_ON_PRIMARY_FIXED,
+  VIBEOS_ON_PRIMARY_FIXED_VARIANT,
+  VIBEOS_SECONDARY_FIXED,
+  VIBEOS_SECONDARY_FIXED_DIM,
+  VIBEOS_ON_SECONDARY_FIXED,
+  VIBEOS_ON_SECONDARY_FIXED_VARIANT,
+  VIBEOS_TERTIARY_FIXED,
+  VIBEOS_TERTIARY_FIXED_DIM,
+  VIBEOS_ON_TERTIARY_FIXED,
+  VIBEOS_ON_TERTIARY_FIXED_VARIANT,
+  /* fixed colours: not from the seed, but each with a light and a dark value */
+  VIBEOS_DIALOG_TITLE,                  /* a classic (non-Material) dialog's title */
+  VIBEOS_CATEGORY_NETWORK,              /* Settings' category icon circles and their glyphs */
+  VIBEOS_ON_CATEGORY_NETWORK,
+  VIBEOS_CATEGORY_SYSTEM,
+  VIBEOS_ON_CATEGORY_SYSTEM,
+  VIBEOS_CALL,                          /* the Call pill and its label */
+  VIBEOS_ON_CALL,
+  VIBEOS_MISSED_CALL,                   /* a missed call's line in the call log */
+  VIBEOS_SEARCH_CURSOR,                 /* the Settings search field's cursor */
+  VIBEOS_EMOJI_TAB_SELECTED,            /* the emoji keyboard's category tabs */
+  VIBEOS_EMOJI_TAB,
   VIBEOS_N_COLORS
 } VibeosColor;
 
-/* Loads the stylesheet (with the palette) for the whole display. Safe to call more than once. */
+/* Loads the stylesheet (with the theme's colours) for the whole display and follows the theme (below). Safe to call
+ * more than once. */
 void    vibeos_init        (void);
 
 GdkRGBA vibeos_color       (VibeosColor color);
@@ -74,5 +111,48 @@ void    vibeos_label_set_font_padding (GtkWidget *label, double size);
 /* A symbolic icon from the icon theme, drawn at `size` dp in `color` (an Android icon with its tint) */
 void    vibeos_snapshot_icon (GtkSnapshot *snapshot, GtkWidget *widget, const char *icon_name, double x, double y,
                            double size, const GdkRGBA *color);
+
+/* ---- the theme ------------------------------------------------------------------------------------------------ *
+ *
+ * The colours above are the scheme of vibeos.Theme's seed colour, style and contrast level, light or dark as
+ * org.gnome.desktop.interface color-scheme says ("prefer-dark" is dark). When either changes, libvibeos swaps the
+ * stylesheet, redraws every window and emits VibeosTheme::changed: widgets that draw with vibeos_color () at draw
+ * time follow by themselves; one that keeps a colour (an app's own GdkRGBA, a fill set once) re-reads it there.
+ *
+ * Without the vibeos.Theme schema (libvibeos on a system without VibeOS's settings) the apps are dark, in the
+ * colours of vibeos.Theme's default seed.
+ *
+ * For tests and development, the environment overrides the settings: VIBEOS_COLOR_SCHEME=light or dark, VIBEOS_SEED
+ * (#RRGGBB) and VIBEOS_CONTRAST (-1 to 1). */
+
+typedef enum {
+  VIBEOS_INIT_DEFAULT     = 0,
+  VIBEOS_INIT_ALWAYS_DARK = 1 << 0,   /* dark whatever color-scheme says, as some apps are on Android */
+} VibeosInitFlags;
+
+/* vibeos_init () with flags */
+void    vibeos_init_full (VibeosInitFlags flags);
+
+#define VIBEOS_TYPE_THEME (vibeos_theme_get_type ())
+G_DECLARE_FINAL_TYPE (VibeosTheme, vibeos_theme, VIBEOS, THEME, GObject)
+
+/* The process's theme. Signal: "changed" (), after the colours changed and before the redraw. */
+VibeosTheme *vibeos_theme_get_default (void);
+gboolean     vibeos_theme_get_dark    (VibeosTheme *theme);
+/* the seed colour, 0xRRGGBB */
+guint32      vibeos_theme_get_seed    (VibeosTheme *theme);
+
+/* The tonal palettes, by Android's names (system_accent1_200 is VIBEOS_PALETTE_ACCENT1, stop 200), in the current
+ * mode: stops 0, 10, 50, 100, 200, ... 900 and 1000, tones 100 (white) down to 0 (black). */
+typedef enum {
+  VIBEOS_PALETTE_ACCENT1,
+  VIBEOS_PALETTE_ACCENT2,
+  VIBEOS_PALETTE_ACCENT3,
+  VIBEOS_PALETTE_NEUTRAL1,
+  VIBEOS_PALETTE_NEUTRAL2,
+  VIBEOS_PALETTE_ERROR,
+} VibeosPalette;
+
+GdkRGBA vibeos_palette_stop (VibeosPalette palette, int stop);
 
 G_END_DECLS

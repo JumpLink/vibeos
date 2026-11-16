@@ -17,7 +17,9 @@ struct _VibeosPressable {
   VibeosRippleShape  shape;
   double          radius;
   GdkRGBA         color;
+  gboolean        has_color;          /* else the default ripple colour, as it is when the ripple draws */
   GdkRGBA         fill;               /* drawn in the shape, under the ripple; alpha 0 for none */
+  int             fill_role;          /* a FAB's fill: the theme's colour as it is when the button draws; -1 none */
   gboolean        elevated;
   double          scale;
 
@@ -204,13 +206,15 @@ vibeos_pressable_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
     gtk_snapshot_append_outset_shadow (snapshot, &shape, &(GdkRGBA) { 0, 0, 0, 0.3f }, 0, 1, 0, 3);
   }
   gboolean ripple = self->shape != VIBEOS_RIPPLE_NONE && vibeos_ripple_is_active (&self->ripple);
-  if (self->fill.alpha > 0 || ripple) {
+  GdkRGBA fill = self->fill_role >= 0 ? vibeos_color (self->fill_role) : self->fill;
+  if (fill.alpha > 0 || ripple) {
+    GdkRGBA color = self->has_color ? self->color : vibeos_ripple_default_color ();
     gtk_snapshot_push_rounded_clip (snapshot, &shape);
-    if (self->fill.alpha > 0)
-      gtk_snapshot_append_color (snapshot, &self->fill, &shape.bounds);
+    if (fill.alpha > 0)
+      gtk_snapshot_append_color (snapshot, &fill, &shape.bounds);
     if (ripple)
       /* the wave grows over the widget's box, from where the finger is, whatever its clip */
-      vibeos_ripple_snapshot (&self->ripple, snapshot, &GRAPHENE_RECT_INIT (0, 0, w, h), &self->color);
+      vibeos_ripple_snapshot (&self->ripple, snapshot, &GRAPHENE_RECT_INIT (0, 0, w, h), &color);
     gtk_snapshot_pop (snapshot);
   }
 
@@ -292,7 +296,7 @@ static void
 vibeos_pressable_init (VibeosPressable *self)
 {
   self->scale = 1;
-  self->color = vibeos_ripple_default_color ();
+  self->fill_role = -1;
   g_object_set_data (G_OBJECT (self), "vibeos-tappable", GINT_TO_POINTER (TRUE));
   vibeos_ripple_init (&self->ripple, GTK_WIDGET (self));
 
@@ -340,12 +344,14 @@ void
 vibeos_pressable_set_ripple_color (VibeosPressable *self, const GdkRGBA *color)
 {
   self->color = *color;
+  self->has_color = TRUE;
 }
 
 void
 vibeos_pressable_set_fill (VibeosPressable *self, const GdkRGBA *fill, gboolean elevated)
 {
   self->fill = *fill;
+  self->fill_role = -1;
   self->elevated = elevated;
   gtk_widget_queue_draw (GTK_WIDGET (self));
 }
@@ -401,6 +407,8 @@ vibeos_fab_new (const char *icon_name, gboolean large)
   gtk_widget_set_valign (fab, GTK_ALIGN_CENTER);
   GdkRGBA fill = vibeos_color (large ? VIBEOS_PRIMARY : VIBEOS_SECONDARY);
   vibeos_pressable_set_fill (VIBEOS_PRESSABLE (fab), &fill, TRUE);
+  /* the fill follows the theme */
+  VIBEOS_PRESSABLE (fab)->fill_role = large ? VIBEOS_PRIMARY : VIBEOS_SECONDARY;
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (fab), VIBEOS_RIPPLE_CIRCLE, large ? 44 : 28);
   return fab;
 }
