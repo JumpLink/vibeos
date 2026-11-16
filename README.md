@@ -135,10 +135,11 @@ empty folder, check them against `SHA256SUMS`, then:
 
 ```sh
 sha256sum -c SHA256SUMS
-sudo apt install ./*.deb
+sudo apt install $(ls ./*.deb | grep -v '^\./neo-')
 sudo apt-mark hold libmutter-51-0 gir1.2-mutter-51 mutter-common mutter-common-bin
 ```
 
+The `neo-*` files are empty transitional packages, only for an [upgrade from gnome-phone](#upgrading-from-gnome-phone).
 The hold keeps the patched mutter from being replaced by Debian's at the next upgrade. Skip the mutter `.deb` files
 and the hold if you want Debian's stock mutter. Skip the `vibeos-dictate-*` speech packages you do not need: each
 language's model is large.
@@ -154,9 +155,19 @@ To run without a display manager, see `/usr/share/doc/vibeos-session/README.Debi
 
 ## Upgrading from gnome-phone
 
-Install the VibeOS packages the same way, all of them at once (`sudo apt install ./*.deb`): each one replaces its
-gnome-phone package (`gnome-phone-*`, `neo-*`, `libneo-*`, `fonts-neo-roboto`). Then restart the device. Until then
-the running shell, launcher and services are still gnome-phone's.
+Install the VibeOS packages the same way, but all of them at once and the `neo-*` ones included
+(`sudo apt install ./*.deb`): each one replaces its gnome-phone package (`gnome-phone-*`, `neo-*`, `libneo-*`,
+`fonts-neo-roboto`). Then restart the device. Until then the running shell, launcher and services are still
+gnome-phone's.
+
+The old app packages (`neo-browser`, `neo-dialer`, …) are not removed but upgraded to empty transitional packages, so
+that each app keeps its place on the home screen. Once the device has restarted into VibeOS, remove them and the
+removed packages' leftover configuration:
+
+```sh
+sudo apt purge $(dpkg-query -W -f '${db:Status-Abbrev} ${Package}\n' 'neo-*' 'gnome-phone*' 'libneo-*' \
+    fonts-neo-roboto gnome-shell-extension-gnome-phone 2>/dev/null | awk '/^(ii|rc)/ { print $2 }')
+```
 
 What carries over:
 

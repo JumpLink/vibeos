@@ -11,8 +11,10 @@ vibeos (1:0.1.0) unstable; urgency=medium
     shell@vibeos), the session (gnome-phone is vibeos), the font family
     (VibeOS Roboto) and the per-user directories.
   * Upgrading from gnome-phone: the vibeos packages replace the old ones
-    (Conflicts/Replaces/Provides). The app packages save each user's home
-    layout before the old launcher can rearrange it, vibeos-session moves the
+    (Conflicts/Replaces/Provides). Each old app package (neo-browser, ...)
+    is upgraded to an empty transitional package instead of being removed,
+    so that the app packages save each user's home layout before the old
+    launcher sees an app go and rearranges it. vibeos-session moves the
     users' login session and a mobile shell's unit drop-in over to vibeos,
     and vibeos-migrate-ids carries each user's settings, files, shortcuts and
     home screen over at the next login.

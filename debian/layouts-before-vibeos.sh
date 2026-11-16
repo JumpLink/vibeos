@@ -1,9 +1,12 @@
 #!/bin/sh
-# preinst of every app package (linked as <package>.preinst). Before VibeOS the apps were gnome-phone's, under other
-# package names and desktop ids. The old launcher (neo-launcher, gnome-phone up to 0.1.11) still running in a session
-# while the packages are swapped sees each app's desktop file go and the renamed one come, an app it has never seen:
-# it empties the old one's cells, puts the new one on the first free cell and saves that over the user's home layout.
-# So before the first renamed app is unpacked, each user's layout is saved to
+# preinst of every app package and of the old app names' transitional packages (linked as <package>.preinst). Before
+# VibeOS the apps were gnome-phone's, under other package names and desktop ids. The old launcher (neo-launcher,
+# gnome-phone up to 0.1.11) still running in a session while the packages are swapped sees each app's desktop file go
+# and the renamed one come, an app it has never seen: it empties the old one's cells, puts the new one on the first
+# free cell and saves that over the user's home layout. The old app packages are upgraded to transitional ones rather
+# than removed (apt removes a package that a new one conflicts with before it unpacks anything, so no preinst of ours
+# would run before the first app's desktop file was gone). So before the first old app's files go, each user's
+# layout is saved to
 # /var/lib/vibeos-launcher/before-vibeos/<user>.json, readable by that user only; vibeos-migrate-ids puts it back at
 # the next login, before the new launcher reads it (and the new launcher reads the old ids in it as the new ones).
 set -e
@@ -14,7 +17,7 @@ SAVED=/var/lib/vibeos-launcher/before-vibeos
 OLD_DIR=.config/neo-launcher
 
 save_layouts() {
-    # once, by the first of the app packages: by the second the first one's desktop file is gone
+    # once, by the first of the packages: by the second the first old app's desktop file may be gone
     [ ! -e "$SAVED/done" ] || return 0
     mkdir -p "$SAVED"
     getent passwd | while IFS=: read -r name _ uid gid _ dir _; do
@@ -35,8 +38,8 @@ save_layouts() {
 
 case "$1" in
 install|upgrade)
-    # whichever renamed package comes first (the launcher's package may already have replaced the old launcher's
-    # files; the old launcher itself still runs until the next login)
+    # whichever package comes first (the old launcher's package may already be gone: the old launcher itself still
+    # runs until the next login)
     save_layouts || echo "could not save the home layouts before the upgrade" >&2
     ;;
 esac
