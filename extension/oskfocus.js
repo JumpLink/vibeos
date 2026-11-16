@@ -31,8 +31,19 @@ const POLL_MS = 40;
 const CLOSE_AFTER_LIFT_MS = 60; // the app has the lift (and its button its click) before its window grows back
 const CLOSE_HELD_MAX_MS = 2000; // a lift that never came (a grab took the touch) cannot keep the keyboard up
 
+// the one running, for gestureTookTouches ()
+let current = null;
+
+// A gesture took the fingers that are down (the swipe home): the stage never sees a touch end once a gesture has the
+// touch, so their lift would not come and the keyboard's close would wait out CLOSE_HELD_MAX_MS. They are counted
+// gone, and a close from now on is not held.
+export function gestureTookTouches() {
+    current?._gestureTook();
+}
+
 export class TouchFocusKeyboard {
     constructor() {
+        current = this;
         this._hadFocus = true;
         this._pollId = 0;
         this._touches = 0;
@@ -99,6 +110,13 @@ export class TouchFocusKeyboard {
         };
     }
 
+    _gestureTook() {
+        this._touches = 0;
+        if (this._closeId)
+            GLib.source_remove(this._closeId);
+        this._closeId = 0;
+    }
+
     _closeLater(ms) {
         if (!this._closeHeld)
             return;
@@ -163,6 +181,8 @@ export class TouchFocusKeyboard {
     }
 
     destroy() {
+        if (current === this)
+            current = null;
         this._stop();
         global.stage.disconnectObject(this);
         if (this._closeId)

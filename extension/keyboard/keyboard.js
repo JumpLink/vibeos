@@ -20,6 +20,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as InputSources from 'resource:///org/gnome/shell/ui/status/keyboard.js';
 
 import {click} from '../haptics.js';
+import {gestureTookTouches} from '../oskfocus.js';
 import {inHomeStrip} from '../task.js';
 import {formFactor, keyAt, measure, moreKeyAt, placeKeys, placeMoreKeys} from './geometry.js';
 import {KeyboardPalette} from './palette.js';
@@ -574,7 +575,7 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
 
     // A touch that lands in the bottom strip the swipe home starts in (task.js) is passed on as well as taken. Clutter
     // cancels every gesture on a touch an actor claims, so over the keyboard the swipe home never began. When it
-    // does begin, the keys hear nothing more of the touch: releaseKeyboardTouches () lets it go, typing nothing.
+    // does begin, the keys hear nothing more of the touch: dismissKeyboard () lets it go, typing nothing.
     // Elsewhere on the keys a touch stays theirs alone.
     _kbPassOn(event) {
         const type = event.type();
@@ -691,10 +692,15 @@ function vibeosSettings() {
     return schema?.has_key('keyboard') ? new Gio.Settings({settings_schema: schema}) : null;
 }
 
-// The keyboard's touches let go, the swipe home having taken one: a gesture that takes a touch tells the actors
-// under it nothing, and its key would stay pressed with its long press still to come
-export function releaseKeyboardTouches() {
-    Main.keyboard._keyboard?._kbReleaseAll?.();
+// The swipe home begun: the keyboard goes at once, with the app. Its touches let go first: a gesture that takes a
+// touch tells the actors under it nothing, and the key it began on would stay pressed, its long press still to come.
+// The finger is the gesture's now, so the close is not held for its lift (oskfocus.js), which would never come: the
+// keyboard stayed up for two seconds after the app had gone.
+export function dismissKeyboard() {
+    const keyboard = Main.keyboard._keyboard;
+    keyboard?._kbReleaseAll?.();
+    gestureTookTouches();
+    keyboard?.close();
 }
 
 // A keyboard taken out of use: the window it moved put back, the shell's composited state and its swipe gesture

@@ -3,7 +3,7 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Shell from 'gi://Shell';
 
-import {releaseKeyboardTouches} from './keyboard/keyboard.js';
+import {dismissKeyboard} from './keyboard/keyboard.js';
 import {LaunchTransition} from './launch.js';
 import {Navigation} from './navigation.js';
 import {setExpectWindow} from './settings.js';
@@ -53,8 +53,8 @@ export class Service {
         this._nav = new Navigation(home);
         this._nav.onGestureBegin = () => {
             this._launch.cancelSplash();
-            // a swipe home that began on the keyboard's bottom row: the key it landed on lets go
-            releaseKeyboardTouches();
+            // the keyboard goes with the app (and the key a swipe from its bottom row landed on lets go)
+            dismissKeyboard();
         };
         setExpectWindow(app => this._launch.expect(app));
         this._volumeKeys = new Map();   // app id -> {sender, watch}: who took the volume keys
