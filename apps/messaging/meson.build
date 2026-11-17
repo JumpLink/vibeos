@@ -61,3 +61,6 @@ test('sms-flow', find_program('python3'), timeout: 120,
 # a conversation's layout: date lines, runs, gaps, the date line's words (in UTC and English)
 test('thread', executable('test-thread', 'tests/test-thread.c', 'src/msg-thread.c', dependencies: [gio]),
      env: ['TZ=UTC', 'LC_ALL=C.UTF-8'])
+
+# made-up conversations and contacts for a test rig's private store and address book; not installed
+executable('msg-seed', 'tests/msg-seed.c', include_directories: 'src', link_with: store, dependencies: [gio, ebook])
