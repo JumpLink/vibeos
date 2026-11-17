@@ -27,10 +27,11 @@ executable('vibeos-messaging-sms', 'src/sms-service.c', 'src/sms-modem.c', link_
 gnome = import('gnome')
 gtk = dependency('gtk4', version: '>= 4.14')
 resources = gnome.compile_resources('messaging-resources', 'src/messaging.gresource.xml', source_dir: ['src', 'data'])
-executable('vibeos-messaging', 'src/messaging-main.c', 'src/messaging-window.c', 'src/msg-navigator.c',
+executable('vibeos-messaging', 'src/messaging-main.c', 'src/messaging-window.c',
+           'src/msg-account.c', 'src/msg-account-menu.c', 'src/msg-card.c', 'src/msg-search.c', 'src/msg-thread.c',
            'src/blocked-contacts.c', 'src/people-options.c', 'src/msg-settings.c', 'src/msg-sound.c',
            'src/conversation-list.c', 'src/conversation-view.c', 'src/contact-picker.c', 'src/msg-action-bar.c',
-           'src/msg-add-contact.c', 'src/msg-avatar.c', 'src/msg-bubble.c', 'src/msg-dates.c', 'src/msg-image.c',
+           'src/msg-add-contact.c', 'src/msg-avatar.c', 'src/msg-bubble.c', 'src/msg-dates.c',
            'src/msg-people.c', 'src/msg-swipe.c', 'src/sms-client.c', 'src/sms-segments.c',
            '../dialer/src/popup-menu.c', '../dialer/src/contacts-app.c', '../dialer/src/app-action.c', resources,
            link_with: [store, phone],

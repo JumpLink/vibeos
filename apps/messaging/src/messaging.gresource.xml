@@ -1,34 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- the app's stylesheet, its images and its icons (data/icons, from Bugle's vector drawables),
-     where GtkApplication looks for icons: the resource base path + /icons -->
+<!-- the app's stylesheet and its icons (data/icons: messaging-* from Bugle's vector drawables, msg-* Material
+     Symbols Rounded), where GtkApplication looks for icons: the resource base path + /icons -->
 <gresources>
   <gresource prefix="/vibeos/Messaging">
     <file>messaging.css</file>
-    <file alias="images/ic_failed_status_red.png">images/ic_failed_status_red.png</file>
-    <file alias="images/ic_oobe_conv_list.png">images/ic_oobe_conv_list.png</file>
-    <file alias="images/ic_oobe_freq_list.png">images/ic_oobe_freq_list.png</file>
-    <file alias="images/ic_sms_delivery_ok.png">images/ic_sms_delivery_ok.png</file>
-    <file alias="icons/scalable/actions/messaging-archive-symbolic.svg">icons/messaging-archive-symbolic.svg</file>
-    <file alias="icons/scalable/actions/messaging-arrow-back-symbolic.svg">icons/messaging-arrow-back-symbolic.svg</file>
-    <file alias="icons/scalable/actions/messaging-attachment-symbolic.svg">icons/messaging-attachment-symbolic.svg</file>
-    <file alias="icons/scalable/actions/messaging-back-symbolic.svg">icons/messaging-back-symbolic.svg</file>
-    <file alias="icons/scalable/actions/messaging-block-symbolic.svg">icons/messaging-block-symbolic.svg</file>
-    <file alias="icons/scalable/actions/messaging-cancel-symbolic.svg">icons/messaging-cancel-symbolic.svg</file>
-    <file alias="icons/scalable/actions/messaging-checkmark-circle-symbolic.svg">icons/messaging-checkmark-circle-symbolic.svg</file>
-    <file alias="icons/scalable/actions/messaging-checkmark-symbolic.svg">icons/messaging-checkmark-symbolic.svg</file>
-    <file alias="icons/scalable/actions/messaging-copy-symbolic.svg">icons/messaging-copy-symbolic.svg</file>
-    <file alias="icons/scalable/actions/messaging-delete-symbolic.svg">icons/messaging-delete-symbolic.svg</file>
-    <file alias="icons/scalable/actions/messaging-dialpad-symbolic.svg">icons/messaging-dialpad-symbolic.svg</file>
-    <file alias="icons/scalable/actions/messaging-forward-symbolic.svg">icons/messaging-forward-symbolic.svg</file>
-    <file alias="icons/scalable/actions/messaging-info-symbolic.svg">icons/messaging-info-symbolic.svg</file>
-    <file alias="icons/scalable/actions/messaging-message-symbolic.svg">icons/messaging-message-symbolic.svg</file>
-    <file alias="icons/scalable/actions/messaging-more-symbolic.svg">icons/messaging-more-symbolic.svg</file>
     <file alias="icons/scalable/actions/messaging-people-add-symbolic.svg">icons/messaging-people-add-symbolic.svg</file>
-    <file alias="icons/scalable/actions/messaging-person-symbolic.svg">icons/messaging-person-symbolic.svg</file>
-    <file alias="icons/scalable/actions/messaging-phone-symbolic.svg">icons/messaging-phone-symbolic.svg</file>
-    <file alias="icons/scalable/actions/messaging-send-symbolic.svg">icons/messaging-send-symbolic.svg</file>
-    <file alias="icons/scalable/actions/messaging-share-symbolic.svg">icons/messaging-share-symbolic.svg</file>
-    <file alias="icons/scalable/actions/messaging-sms-symbolic.svg">icons/messaging-sms-symbolic.svg</file>
-    <file alias="icons/scalable/actions/messaging-unarchive-symbolic.svg">icons/messaging-unarchive-symbolic.svg</file>
+    <file alias="icons/scalable/actions/msg-add-circle-symbolic.svg">icons/msg-add-circle-symbolic.svg</file>
+    <file alias="icons/scalable/actions/msg-archive-symbolic.svg">icons/msg-archive-symbolic.svg</file>
+    <file alias="icons/scalable/actions/msg-arrow-back-symbolic.svg">icons/msg-arrow-back-symbolic.svg</file>
+    <file alias="icons/scalable/actions/msg-arrow-upward-symbolic.svg">icons/msg-arrow-upward-symbolic.svg</file>
+    <file alias="icons/scalable/actions/msg-block-symbolic.svg">icons/msg-block-symbolic.svg</file>
+    <file alias="icons/scalable/actions/msg-call-symbolic.svg">icons/msg-call-symbolic.svg</file>
+    <file alias="icons/scalable/actions/msg-chat-symbolic.svg">icons/msg-chat-symbolic.svg</file>
+    <file alias="icons/scalable/actions/msg-check-symbolic.svg">icons/msg-check-symbolic.svg</file>
+    <file alias="icons/scalable/actions/msg-close-symbolic.svg">icons/msg-close-symbolic.svg</file>
+    <file alias="icons/scalable/actions/msg-content-copy-symbolic.svg">icons/msg-content-copy-symbolic.svg</file>
+    <file alias="icons/scalable/actions/msg-delete-symbolic.svg">icons/msg-delete-symbolic.svg</file>
+    <file alias="icons/scalable/actions/msg-error-filled-symbolic.svg">icons/msg-error-filled-symbolic.svg</file>
+    <file alias="icons/scalable/actions/msg-forward-symbolic.svg">icons/msg-forward-symbolic.svg</file>
+    <file alias="icons/scalable/actions/msg-info-symbolic.svg">icons/msg-info-symbolic.svg</file>
+    <file alias="icons/scalable/actions/msg-link-symbolic.svg">icons/msg-link-symbolic.svg</file>
+    <file alias="icons/scalable/actions/msg-mark-chat-read-symbolic.svg">icons/msg-mark-chat-read-symbolic.svg</file>
+    <file alias="icons/scalable/actions/msg-mark-chat-unread-symbolic.svg">icons/msg-mark-chat-unread-symbolic.svg</file>
+    <file alias="icons/scalable/actions/msg-more-vert-symbolic.svg">icons/msg-more-vert-symbolic.svg</file>
+    <file alias="icons/scalable/actions/msg-person-filled-symbolic.svg">icons/msg-person-filled-symbolic.svg</file>
+    <file alias="icons/scalable/actions/msg-person-off-symbolic.svg">icons/msg-person-off-symbolic.svg</file>
+    <file alias="icons/scalable/actions/msg-person-symbolic.svg">icons/msg-person-symbolic.svg</file>
+    <file alias="icons/scalable/actions/msg-search-symbolic.svg">icons/msg-search-symbolic.svg</file>
+    <file alias="icons/scalable/actions/msg-send-symbolic.svg">icons/msg-send-symbolic.svg</file>
+    <file alias="icons/scalable/actions/msg-settings-symbolic.svg">icons/msg-settings-symbolic.svg</file>
+    <file alias="icons/scalable/actions/msg-unarchive-symbolic.svg">icons/msg-unarchive-symbolic.svg</file>
   </gresource>
 </gresources>

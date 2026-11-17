@@ -1,10 +1,12 @@
 /* A conversation's page.
  *
- * The messages, oldest at the top and the newest at the bottom, where it opens: bubbles in the sender's colour
- * (white for those sent from here), clustered when one person writes several in a row, each cluster's time under
- * its last. Under them the compose bar: the text field, and the send button once there is text. A long press
- * selects a message (forward, copy, details, delete; send again when it failed); a tap on a failed one sends it
- * again. */
+ * A bar with the back arrow, the person's avatar and name (a tap opens the details), Call and ⋮. Under it, on a
+ * container with round top corners, the messages, oldest at the top and the newest at the bottom, where it opens:
+ * incoming bubbles on the left, ours on the right in the primary colour, stacked into runs (msg-thread.h), with a
+ * date line where the day or the hour changes and the newest message's time under it. A failed one says so under
+ * it, with "Check options" (Try again, Delete). At the bottom the compose bar: ⊕, the pill with the text, and the
+ * round send button once there is text; for a sender who cannot be answered, a note instead. A long press selects
+ * a message (forward, copy, details, delete; send again when it failed). */
 #pragma once
 
 #include <gtk/gtk.h>

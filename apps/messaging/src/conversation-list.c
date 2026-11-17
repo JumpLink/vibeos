@@ -2,14 +2,13 @@
 #include "conversation-list.h"
 #include "blocked-numbers.h"
 #include "msg-add-contact.h"
+#include "msg-account.h"
 #include "msg-action-bar.h"
 #include "msg-avatar.h"
 #include "msg-dates.h"
 #include "msg-dialog.h"
-#include "msg-image.h"
 #include "msg-people.h"
 #include "msg-swipe.h"
-#include "popup-menu.h"
 
 #include <glib/gi18n.h>
 #include <math.h>
@@ -17,12 +16,19 @@
 #include <spongy-gtk.h>
 
 #define LIST_TOP_PADDING 8
-#define ROW_PADDING 16
-#define AVATAR 56
-#define TEXT_PADDING 16
-#define FAILED_BADGE 24
-#define SNIPPET_LINES_UNREAD 3
-#define FAB_MARGIN 16
+#define LIST_BOTTOM_PADDING 96  /* the last row clear of the FAB */
+#define AVATAR 52
+#define AVATAR_X 16
+#define TEXT_X 16               /* the text's inset after the avatar */
+#define TIME_END 24             /* the time's inset from the end */
+#define TIME_GAP 12             /* between the name or the snippet and the time's column */
+#define ERROR_ICON 16
+#define ERROR_GAP 2
+#define ERROR_TOP 2             /* the error sign's inset from the snippet's top */
+#define ACCOUNT 44              /* the account's picture in its 48 px button */
+#define BAR_END 8               /* the last button's inset from the end */
+#define FAB_MARGIN 24
+#define GO_TOP 44
 #define EMPTY_TEXT_TOP 20
 #define EMPTY_TEXT_SIDE 60
 #define EMPTY_TEXT_PAD 4         /* over and under the text's lines */
@@ -36,6 +42,7 @@ typedef struct {
   GtkWidget *row, *swipe, *content, *avatar;
 } Row;
 
+
 struct _ConversationList {
   GtkWidget parent;
   SmsClient *client;
@@ -47,17 +54,18 @@ struct _ConversationList {
   GtkWidget *box;               /* the page: bar over the content */
   GtkWidget *bar, *select_bar;
   GtkWidget *archive_action, *unarchive_action, *add_contact_action, *block_action;
-  GtkWidget *scroll, *list, *empty, *fab;
+  GtkWidget *scroll, *list, *empty, *fab, *go_top, *account;
   VibeosSnackbar *snackbar;
   GHashTable *rows;             /* id -> Row */
   GHashTable *selected;         /* ids */
+  gint64 current;               /* the conversation open beside the list, or 0 */
   guint refresh_id;
   gboolean at_top;
 };
 
 G_DEFINE_FINAL_TYPE (ConversationList, conversation_list, GTK_TYPE_WIDGET)
 
-enum { OPEN_CONVERSATION, START_CHAT, SHOW_ARCHIVED, SHOW_BLOCKED, SHOW_SETTINGS, CLOSED, AT_TOP_CHANGED, N_SIGNALS };
+enum { OPEN_CONVERSATION, START_CHAT, CLOSED, AT_TOP_CHANGED, SHOW_SEARCH, SHOW_ACCOUNT, N_SIGNALS };
 static guint signals[N_SIGNALS];
 
 static void reload (ConversationList *self);
@@ -126,6 +134,10 @@ sync_select (ConversationList *self)
       gboolean on = g_hash_table_contains (self->selected, key);
 
       msg_avatar_set_checked (MSG_AVATAR (row->avatar), on);
+      if (on)
+        gtk_widget_add_css_class (row->row, "selected");
+      else
+        gtk_widget_remove_css_class (row->row, "selected");
       /* no swiping while selecting, nor in the archived list or the forward one */
       msg_swipe_set_enabled (MSG_SWIPE (row->swipe), !self->archived && !self->forward && !selecting (self));
       if (on)
@@ -141,8 +153,12 @@ sync_select (ConversationList *self)
   gtk_widget_set_visible (self->add_contact_action, addable (self) != NULL);
   gtk_widget_set_visible (self->block_action, blockable (self) != NULL);
   if (self->fab)
-    /* the FAB slides away to the right while selecting (300 ms) */
     gtk_widget_set_visible (self->fab, !selecting (self));
+  {
+    g_autofree char *count = g_strdup_printf ("%u", g_hash_table_size (self->selected));
+
+    msg_action_bar_set_title (self->select_bar, count);
+  }
   g_signal_emit (self, signals[AT_TOP_CHANGED], 0);
 }
 
@@ -373,7 +389,18 @@ on_row_clicked (GtkWidget *pressable, gpointer data)
   if (selecting (self))
     toggle_selected (self, id);
   else
-    g_signal_emit (self, signals[OPEN_CONVERSATION], 0, id);
+    {
+      /* the row that opens a conversation shows its press highlight first (msg-window.c) */
+      g_object_set_data (G_OBJECT (self), "msg-pressed-row", pressable);
+      g_signal_emit (self, signals[OPEN_CONVERSATION], 0, id);
+      g_object_set_data (G_OBJECT (self), "msg-pressed-row", NULL);
+    }
+}
+
+GtkWidget *
+conversation_list_get_pressed_row (ConversationList *self)
+{
+  return g_object_get_data (G_OBJECT (self), "msg-pressed-row");
 }
 
 static void
@@ -411,15 +438,22 @@ text_label (const char *text, const char *css)
 
   gtk_label_set_xalign (GTK_LABEL (label), 0);
   gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
+  gtk_label_set_single_line_mode (GTK_LABEL (label), TRUE);
   gtk_widget_add_css_class (label, css);
   return label;
 }
 
-/* the status words where the time goes: "Draft", "Sending…", "Not sent. Tap to try again." */
-static char *
-row_time (const SmsConversation *conversation, gboolean *failed, gint64 now)
+static gboolean
+is_failed (const SmsConversation *conversation)
 {
-  *failed = FALSE;
+  return conversation->latest_status == MESSAGE_STATUS_OUTGOING_FAILED
+         || conversation->latest_status == MESSAGE_STATUS_OUTGOING_FAILED_EMERGENCY_NUMBER;
+}
+
+/* where the time goes: "Draft", "Sending…", or when */
+static char *
+row_time (const SmsConversation *conversation, gint64 now)
+{
   if (conversation->show_draft)
     return g_strdup (_("Draft"));
   switch (conversation->latest_status)
@@ -429,16 +463,24 @@ row_time (const SmsConversation *conversation, gboolean *failed, gint64 now)
     case MESSAGE_STATUS_OUTGOING_RESENDING:
     case MESSAGE_STATUS_OUTGOING_AWAITING_RETRY:
       return g_strdup (_("Sending…"));
-    case MESSAGE_STATUS_OUTGOING_FAILED:
-    case MESSAGE_STATUS_OUTGOING_FAILED_EMERGENCY_NUMBER:
-      *failed = TRUE;
-      return g_strdup (_("Not sent. Tap to try again."));
     default:
       return msg_dates_conversation (conversation->sort_timestamp, now);
     }
 }
 
-/* swiped away: archived, with Undo ("1 archived") */
+/* the newest message's words, "You: " before one of ours */
+static char *
+row_snippet (const SmsConversation *conversation)
+{
+  const char *text = conversation->snippet ? conversation->snippet : "";
+
+  if (conversation->show_draft)
+    return g_strdup (conversation->draft ? conversation->draft : "");
+  if (conversation->latest_status != MESSAGE_STATUS_UNKNOWN && !MESSAGE_STATUS_IS_INCOMING (conversation->latest_status))
+    return g_strdup_printf (_("You: %s"), text);
+  return g_strdup (text);
+}
+
 /* archived, with Undo; or with "Swipe to delete" on, a swipe to the right deletes it, with no Undo and no question */
 static void
 on_swiped (GtkWidget *swipe, gboolean right, gpointer data)
@@ -465,12 +507,13 @@ make_row (ConversationList *self, const SmsConversation *conversation, gint64 no
   g_autoptr(GPtrArray) people = msg_people_new (self->contacts, (const char * const *) conversation->destinations,
                                                 sms_client_get_country (self->client));
   g_autofree char *name = msg_people_name (people);
-  g_autofree char *time = NULL;
-  gboolean failed, unread = !conversation->read;
+  g_autofree char *time = row_time (conversation, now);
+  g_autofree char *snippet_text = row_snippet (conversation);
+  gboolean unread = !conversation->read;
   GtkWidget *content = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  GtkWidget *avatar_box = gtk_overlay_new ();
   GtkWidget *avatar = msg_avatar_new (AVATAR);
-  GtkWidget *column = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  GtkWidget *grid = gtk_grid_new ();
+  GtkWidget *line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, ERROR_GAP);
   GtkWidget *name_label, *snippet, *time_label, *pressable, *avatar_pressable;
   Row *row = g_new0 (Row, 1);
 
@@ -497,59 +540,57 @@ make_row (ConversationList *self, const SmsConversation *conversation, gint64 no
       msg_avatar_set_group (MSG_AVATAR (avatar), (const char * const *) names->pdata,
                             (const char * const *) ids->pdata, (GBytes * const *) photos->pdata);
     }
-  gtk_overlay_set_child (GTK_OVERLAY (avatar_box), avatar);
-  time = row_time (conversation, &failed, now);
-  if (failed && people->len == 1)
-    {
-      /* ic_failed_status_red at the avatar's bottom end, 1:1 only */
-      GtkWidget *badge = msg_image_new ("/vibeos/Messaging/images/ic_failed_status_red.png", FAILED_BADGE,
-                                        FAILED_BADGE);
-
-      gtk_widget_set_halign (badge, GTK_ALIGN_END);
-      gtk_widget_set_valign (badge, GTK_ALIGN_END);
-      gtk_overlay_add_overlay (GTK_OVERLAY (avatar_box), badge);
-    }
-  avatar_pressable = vibeos_pressable_new (avatar_box);
+  avatar_pressable = vibeos_pressable_new (avatar);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (avatar_pressable), VIBEOS_RIPPLE_NONE, 0);
-  gtk_widget_set_valign (avatar_pressable, GTK_ALIGN_START);
+  gtk_widget_set_valign (avatar_pressable, GTK_ALIGN_CENTER);
+  gtk_widget_set_margin_start (avatar_pressable, AVATAR_X);
   gtk_box_append (GTK_BOX (content), avatar_pressable);
 
+  /* the name and the time over the snippet; the time's column as wide as the time */
   name_label = text_label (name, "msg-row-name");
-  snippet = text_label (conversation->show_draft ? conversation->draft : conversation->snippet, "msg-row-snippet");
   time_label = text_label (time, "msg-row-time");
-  /* unread: bold and light, the snippet up to 3 lines; read: 1 line */
+  snippet = text_label (snippet_text, "msg-row-snippet");
+  gtk_widget_set_hexpand (name_label, TRUE);
+  gtk_widget_set_hexpand (snippet, TRUE);
+  gtk_widget_set_valign (time_label, GTK_ALIGN_START);
   if (unread)
     {
       gtk_widget_add_css_class (name_label, "unread");
       gtk_widget_add_css_class (snippet, "unread");
-      gtk_label_set_wrap (GTK_LABEL (snippet), TRUE);
-      gtk_label_set_wrap_mode (GTK_LABEL (snippet), PANGO_WRAP_WORD_CHAR);
-      gtk_label_set_lines (GTK_LABEL (snippet), SNIPPET_LINES_UNREAD);
+      gtk_widget_add_css_class (time_label, "unread");
     }
-  else
-    gtk_label_set_single_line_mode (GTK_LABEL (snippet), TRUE);
   if (conversation->show_draft)
+    gtk_widget_add_css_class (time_label, "draft");
+  /* a send that failed: the error sign before the snippet */
+  if (is_failed (conversation))
     {
-      gtk_widget_add_css_class (snippet, "draft");
-      gtk_widget_add_css_class (time_label, "draft");
+      GtkWidget *error = gtk_image_new_from_icon_name ("msg-error-filled-symbolic");
+
+      gtk_image_set_pixel_size (GTK_IMAGE (error), ERROR_ICON);
+      /* level with the snippet's first line's letters, a little over its middle */
+      gtk_widget_set_valign (error, GTK_ALIGN_START);
+      gtk_widget_set_margin_top (error, ERROR_TOP);
+      gtk_widget_add_css_class (error, "msg-row-error");
+      gtk_box_append (GTK_BOX (line), error);
     }
-  if (failed)
-    gtk_widget_add_css_class (time_label, "failed");
-  gtk_box_append (GTK_BOX (column), name_label);
-  gtk_box_append (GTK_BOX (column), snippet);
-  gtk_box_append (GTK_BOX (column), time_label);
-  gtk_widget_set_hexpand (column, TRUE);
-  gtk_widget_set_margin_start (column, TEXT_PADDING);
-  gtk_widget_set_margin_end (column, TEXT_PADDING);
-  gtk_box_append (GTK_BOX (content), column);
+  gtk_box_append (GTK_BOX (line), snippet);
+  gtk_grid_set_column_spacing (GTK_GRID (grid), TIME_GAP);
+  gtk_grid_attach (GTK_GRID (grid), name_label, 0, 0, 1, 1);
+  gtk_grid_attach (GTK_GRID (grid), time_label, 1, 0, 1, 1);
+  gtk_grid_attach (GTK_GRID (grid), line, 0, 1, 1, 1);
+  gtk_widget_set_hexpand (grid, TRUE);
+  gtk_widget_set_valign (grid, GTK_ALIGN_CENTER);
+  gtk_widget_set_margin_start (grid, TEXT_X);
+  gtk_widget_set_margin_end (grid, TIME_END);
+  gtk_box_append (GTK_BOX (content), grid);
   gtk_widget_add_css_class (content, "msg-row-content");
-  gtk_widget_set_margin_start (content, ROW_PADDING);
-  gtk_widget_set_margin_end (content, ROW_PADDING);
-  gtk_widget_set_margin_top (content, ROW_PADDING);
-  gtk_widget_set_margin_bottom (content, ROW_PADDING);
 
   pressable = vibeos_pressable_new (content);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (pressable), VIBEOS_RIPPLE_BOUNDED, 16);
   gtk_widget_add_css_class (pressable, "msg-row");
+  if (conversation->id == self->current)
+    gtk_widget_add_css_class (pressable, "current");
+  gtk_widget_set_name (pressable, "conversation_row");
   row->id = conversation->id;
   row->archived = conversation->archived;
   if (g_strv_length (conversation->destinations) == 1)
@@ -571,8 +612,8 @@ make_row (ConversationList *self, const SmsConversation *conversation, gint64 no
   gtk_accessible_update_property (GTK_ACCESSIBLE (pressable), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);
   row->swipe = msg_swipe_new (pressable,
                               g_settings_get_boolean (self->settings, "swipe-right-deletes")
-                              ? "messaging-delete-symbolic" : "messaging-archive-symbolic",
-                              "messaging-archive-symbolic");
+                              ? "msg-delete-symbolic" : "msg-archive-symbolic",
+                              "msg-archive-symbolic");
   g_object_set_data_full (G_OBJECT (row->swipe), "id", g_memdup2 (&row->id, sizeof row->id), g_free);
   g_signal_connect (row->swipe, "swiped", G_CALLBACK (on_swiped), self);
   return row->swipe;
@@ -626,6 +667,25 @@ on_refresh (gpointer data)
   return G_SOURCE_CONTINUE;
 }
 
+void
+conversation_list_set_current (ConversationList *self, gint64 id)
+{
+  GHashTableIter iter;
+  gpointer value;
+
+  self->current = id;
+  g_hash_table_iter_init (&iter, self->rows);
+  while (g_hash_table_iter_next (&iter, NULL, &value))
+    {
+      Row *row = value;
+
+      if (row->id == id)
+        gtk_widget_add_css_class (row->row, "current");
+      else
+        gtk_widget_remove_css_class (row->row, "current");
+    }
+}
+
 /* --- the page */
 
 gboolean
@@ -634,60 +694,60 @@ conversation_list_is_at_top (ConversationList *self)
   return !selecting (self) && self->at_top;
 }
 
+/* away from the top: the FAB down to its icon, and the button back to the newest */
 static void
 on_scrolled (GObject *scroll, GParamSpec *pspec, gpointer data)
 {
   ConversationList *self = data;
   gboolean at_top = spongy_scroll_view_get_offset (SPONGY_SCROLL_VIEW (scroll)) <= 0;
 
-  if (at_top != self->at_top)
-    {
-      self->at_top = at_top;
-      g_signal_emit (self, signals[AT_TOP_CHANGED], 0);
-    }
+  if (at_top == self->at_top)
+    return;
+  self->at_top = at_top;
+  if (self->fab)
+    vibeos_extended_fab_set_extended (VIBEOS_EXTENDED_FAB (self->fab), at_top);
+  if (self->go_top)
+    gtk_widget_set_visible (self->go_top, !at_top);
+  g_signal_emit (self, signals[AT_TOP_CHANGED], 0);
 }
 
 static void
-show_archived (gpointer data)
+on_go_top (ConversationList *self)
 {
-  g_signal_emit (data, signals[SHOW_ARCHIVED], 0);
+  spongy_scroll_view_scroll_to (SPONGY_SCROLL_VIEW (self->scroll), 0);
 }
 
 static void
-show_blocked (gpointer data)
+on_search (ConversationList *self)
 {
-  g_signal_emit (data, signals[SHOW_BLOCKED], 0);
+  g_signal_emit (self, signals[SHOW_SEARCH], 0);
 }
 
 static void
-show_settings (gpointer data)
+on_account (ConversationList *self)
 {
-  g_signal_emit (data, signals[SHOW_SETTINGS], 0);
+  g_signal_emit (self, signals[SHOW_ACCOUNT], 0);
 }
 
 static void
-on_overflow (GtkWidget *button, gpointer data)
+update_account (ConversationList *self)
 {
-  ConversationList *self = data;
-  DialerPopupMenu *menu = dialer_popup_menu_new ();
-  g_auto(GStrv) blocked = blocked_numbers_list (blocked_numbers_get_default ());
+  MsgAccount *account = msg_account_get_default ();
+  GtkWidget *avatar = vibeos_pressable_get_child (VIBEOS_PRESSABLE (self->account));
 
-  dialer_popup_menu_append (menu, _("Archived"), show_archived, self);
-  /* only with a blocked contact */
-  if (blocked[0])
-    dialer_popup_menu_append (menu, _("Blocked contacts"), show_blocked, self);
-  dialer_popup_menu_append (menu, _("Settings"), show_settings, self);
-  dialer_popup_menu_set_corner (menu, 4);
-  dialer_popup_menu_present (menu, button, POPUP_MENU_OVERFLOW);
+  msg_avatar_set_person (MSG_AVATAR (avatar), msg_account_get_name (account), msg_account_get_login (account),
+                         msg_account_get_picture (account));
 }
 
-/* the FAB rides up over the snackbar while it shows */
+/* the FAB and the button rise over the snackbar while it shows */
 static void
 on_snackbar_lift (GObject *snackbar, GParamSpec *pspec, gpointer data)
 {
   ConversationList *self = data;
+  int lift = (int) round (vibeos_snackbar_get_lift (VIBEOS_SNACKBAR (snackbar)));
 
-  gtk_widget_set_margin_bottom (self->fab, FAB_MARGIN + (int) round (vibeos_snackbar_get_lift (VIBEOS_SNACKBAR (snackbar))));
+  gtk_widget_set_margin_bottom (self->fab, FAB_MARGIN + lift);
+  gtk_widget_set_margin_bottom (self->go_top, FAB_MARGIN + lift);
 }
 
 static void
@@ -703,53 +763,44 @@ on_up (ConversationList *self)
 }
 
 static GtkWidget *
-make_fab (void)
+make_go_top (void)
 {
-  GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 12);
-  GtkWidget *icon = gtk_image_new_from_icon_name ("messaging-message-symbolic");
-  g_autofree char *caps = g_utf8_strup (_("Start chat"), -1);
-  GtkWidget *label = gtk_label_new (caps);
-  GtkWidget *fab;
-  GdkRGBA fill;
+  GtkWidget *icon = gtk_image_new_from_icon_name ("msg-arrow-upward-symbolic");
+  GtkWidget *button;
+  GdkRGBA fill = vibeos_color (VIBEOS_SURFACE_CONTAINER_HIGHEST);
 
-  /* the "START CHAT" button: an icon and the label in capitals, black on a light fill; more padding at the end
-   * than at the start */
   gtk_image_set_pixel_size (GTK_IMAGE (icon), 24);
-  gtk_widget_set_margin_start (box, 12);
-  gtk_widget_set_margin_end (box, 20);
-  gtk_widget_set_margin_top (box, 12);
-  gtk_widget_set_margin_bottom (box, 12);
-  gtk_box_append (GTK_BOX (box), icon);
-  gtk_box_append (GTK_BOX (box), label);
-  gtk_widget_add_css_class (label, "msg-fab-label");
-  gtk_widget_add_css_class (box, "msg-fab-content");
-  fab = vibeos_pressable_new (box);
-  gdk_rgba_parse (&fill, "#b8ebf3");
-  vibeos_pressable_set_fill (VIBEOS_PRESSABLE (fab), &fill, TRUE);
-  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (fab), VIBEOS_RIPPLE_BOUNDED, 16);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (fab), &(GdkRGBA) { 0, 0, 0, 0.24f });
-  gtk_widget_add_css_class (fab, "msg-fab");
-  gtk_widget_set_size_request (fab, 120, 48);
-  gtk_widget_set_halign (fab, GTK_ALIGN_END);
-  gtk_widget_set_valign (fab, GTK_ALIGN_END);
-  gtk_widget_set_margin_end (fab, FAB_MARGIN);
-  gtk_widget_set_margin_bottom (fab, FAB_MARGIN);
-  gtk_accessible_update_property (GTK_ACCESSIBLE (fab), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Start new conversation"),
-                                  -1);
-  return fab;
+  button = vibeos_pressable_new (icon);
+  gtk_widget_add_css_class (button, "msg-go-top");
+  gtk_widget_set_name (button, "go_to_top");
+  gtk_widget_set_size_request (button, GO_TOP, GO_TOP);
+  vibeos_pressable_set_fill (VIBEOS_PRESSABLE (button), &fill, TRUE);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_CIRCLE, GO_TOP / 2.0);
+  gtk_widget_set_halign (button, GTK_ALIGN_CENTER);
+  gtk_widget_set_valign (button, GTK_ALIGN_END);
+  gtk_widget_set_margin_bottom (button, FAB_MARGIN);
+  gtk_widget_set_visible (button, FALSE);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, _("View latest"), -1);
+  return button;
+}
+
+/* the button's circle in the theme's colour of now */
+static void
+on_theme_changed (VibeosTheme *theme, ConversationList *self)
+{
+  GdkRGBA fill = vibeos_color (VIBEOS_SURFACE_CONTAINER_HIGHEST);
+
+  if (self->go_top)
+    vibeos_pressable_set_fill (VIBEOS_PRESSABLE (self->go_top), &fill, TRUE);
 }
 
 static GtkWidget *
 make_empty (gboolean archived)
 {
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  GtkWidget *image = msg_image_new ("/vibeos/Messaging/images/ic_oobe_conv_list.png", 198, 103);
   GtkWidget *text = gtk_label_new (archived ? _("Archived conversations appear here")
                                             : _("Once you start a new conversation, you’ll see it listed here"));
 
-  /* the picture, with the text under it */
-  gtk_widget_set_halign (image, GTK_ALIGN_CENTER);
-  gtk_box_append (GTK_BOX (box), image);
   gtk_label_set_wrap (GTK_LABEL (text), TRUE);
   gtk_label_set_justify (GTK_LABEL (text), GTK_JUSTIFY_CENTER);
   gtk_widget_set_margin_top (text, EMPTY_TEXT_TOP + EMPTY_TEXT_PAD);
@@ -776,6 +827,8 @@ conversation_list_dispose (GObject *object)
   if (self->contacts)
     g_signal_handlers_disconnect_by_data (self->contacts, self);
   g_signal_handlers_disconnect_by_data (blocked_numbers_get_default (), self);
+  g_signal_handlers_disconnect_by_data (msg_account_get_default (), self);
+  g_signal_handlers_disconnect_by_data (vibeos_theme_get_default (), self);
   if (self->settings)
     g_signal_handlers_disconnect_by_data (self->settings, self);
   g_clear_object (&self->settings);
@@ -799,16 +852,14 @@ conversation_list_class_init (ConversationListClass *klass)
                                              NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_INT64);
   signals[START_CHAT] = g_signal_new ("start-chat", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
                                       NULL, G_TYPE_NONE, 0);
-  signals[SHOW_ARCHIVED] = g_signal_new ("show-archived", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL,
-                                         NULL, NULL, G_TYPE_NONE, 0);
-  signals[SHOW_BLOCKED] = g_signal_new ("show-blocked", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL,
-                                        NULL, NULL, G_TYPE_NONE, 0);
-  signals[SHOW_SETTINGS] = g_signal_new ("show-settings", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL,
-                                         NULL, NULL, G_TYPE_NONE, 0);
   signals[CLOSED] = g_signal_new ("closed", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL, NULL,
                                   G_TYPE_NONE, 0);
   signals[AT_TOP_CHANGED] = g_signal_new ("at-top-changed", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL,
                                           NULL, NULL, G_TYPE_NONE, 0);
+  signals[SHOW_SEARCH] = g_signal_new ("show-search", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
+                                       NULL, G_TYPE_NONE, 0);
+  signals[SHOW_ACCOUNT] = g_signal_new ("show-account", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
+                                        NULL, G_TYPE_NONE, 0);
 }
 
 static void
@@ -820,12 +871,38 @@ conversation_list_init (ConversationList *self)
   gtk_widget_set_focusable (GTK_WIDGET (self), TRUE);
 }
 
+/* the bar's search button and the account's picture */
+static void
+add_home_buttons (ConversationList *self)
+{
+  GtkWidget *end = msg_action_bar_get_end (self->bar);
+  GtkWidget *search = msg_action_bar_add_action (self->bar, "msg-search-symbolic", _("Search"));
+  GtkWidget *avatar = msg_avatar_new (ACCOUNT);
+
+  g_signal_connect_swapped (search, "clicked", G_CALLBACK (on_search), self);
+  gtk_widget_set_halign (avatar, GTK_ALIGN_CENTER);
+  gtk_widget_set_valign (avatar, GTK_ALIGN_CENTER);
+  self->account = vibeos_pressable_new (avatar);
+  gtk_widget_set_size_request (self->account, 48, 48);
+  gtk_widget_set_valign (self->account, GTK_ALIGN_CENTER);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->account), VIBEOS_RIPPLE_CIRCLE, 24);
+  gtk_widget_set_name (self->account, "account_button");
+  gtk_accessible_update_property (GTK_ACCESSIBLE (self->account), GTK_ACCESSIBLE_PROPERTY_LABEL,
+                                  _("Account and settings"), -1);
+  g_signal_connect_swapped (self->account, "clicked", G_CALLBACK (on_account), self);
+  gtk_box_append (GTK_BOX (end), self->account);
+  gtk_widget_set_margin_end (end, BAR_END);
+  g_signal_connect_swapped (msg_account_get_default (), "changed", G_CALLBACK (update_account), self);
+  update_account (self);
+}
+
 static GtkWidget *
 build (SmsClient *client, Contacts *contacts, gboolean archived, gboolean forward)
 {
   ConversationList *self = g_object_new (MSG_TYPE_CONVERSATION_LIST, NULL);
   GtkWidget *content = gtk_overlay_new ();
   GtkWidget *inner = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  GtkWidget *sheet = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *cancel;
 
   self->client = g_object_ref (client);
@@ -835,28 +912,29 @@ build (SmsClient *client, Contacts *contacts, gboolean archived, gboolean forwar
   self->forward = forward;
   self->box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_parent (self->box, GTK_WIDGET (self));
-  gtk_widget_add_css_class (self->box, "msg-page");
+  gtk_widget_add_css_class (self->box, forward ? "msg-forward-page" : "msg-list-page");
 
-  /* "Messaging", with its overflow; the archived list: "Archived" with the up arrow and no menu */
-  self->bar = msg_action_bar_new (archived, archived ? _("Archived") : _("Messaging"));
+  /* "Messages", with search and the account; the archived list: "Archived" with the back arrow */
+  self->bar = msg_action_bar_new (archived, archived ? _("Archived") : _("Messages"));
+  gtk_widget_add_css_class (self->bar, "msg-list-bar");
   if (archived)
     g_signal_connect_swapped (msg_action_bar_get_up (self->bar), "clicked", G_CALLBACK (on_up), self);
-  else
-    g_signal_connect (msg_action_bar_add_overflow (self->bar), "clicked", G_CALLBACK (on_overflow), self);
+  else if (!forward)
+    add_home_buttons (self);
   gtk_box_append (GTK_BOX (self->box), self->bar);
-  /* select mode: the X, no title, Archive or Unarchive, Delete, and Block for one person */
+  /* select mode: the ✕, how many, Archive or Unarchive, Delete, Add contact and Block for one person */
   self->select_bar = msg_action_bar_new (FALSE, "");
+  gtk_widget_add_css_class (self->select_bar, "msg-list-bar");
   cancel = msg_action_bar_add_close (self->select_bar, _("Done"));
   g_signal_connect_swapped (cancel, "clicked", G_CALLBACK (conversation_list_back), self);
-  self->archive_action = msg_action_bar_add_action (self->select_bar, "messaging-archive-symbolic", _("Archive"));
-  self->unarchive_action = msg_action_bar_add_action (self->select_bar, "messaging-unarchive-symbolic",
-                                                      _("Unarchive"));
-  g_signal_connect_swapped (msg_action_bar_add_action (self->select_bar, "messaging-delete-symbolic", _("Delete")),
+  self->archive_action = msg_action_bar_add_action (self->select_bar, "msg-archive-symbolic", _("Archive"));
+  self->unarchive_action = msg_action_bar_add_action (self->select_bar, "msg-unarchive-symbolic", _("Unarchive"));
+  g_signal_connect_swapped (msg_action_bar_add_action (self->select_bar, "msg-delete-symbolic", _("Delete")),
                             "clicked", G_CALLBACK (on_delete), self);
   self->add_contact_action = msg_action_bar_add_action (self->select_bar, "messaging-people-add-symbolic",
                                                         _("Add contact"));
   g_signal_connect_swapped (self->add_contact_action, "clicked", G_CALLBACK (on_add_contact), self);
-  self->block_action = msg_action_bar_add_action (self->select_bar, "messaging-block-symbolic", _("Block"));
+  self->block_action = msg_action_bar_add_action (self->select_bar, "msg-block-symbolic", _("Block"));
   g_signal_connect_swapped (self->archive_action, "clicked", G_CALLBACK (on_archive), self);
   g_signal_connect_swapped (self->unarchive_action, "clicked", G_CALLBACK (on_unarchive), self);
   g_signal_connect_swapped (self->block_action, "clicked", G_CALLBACK (on_block), self);
@@ -865,22 +943,34 @@ build (SmsClient *client, Contacts *contacts, gboolean archived, gboolean forwar
   gtk_widget_set_visible (self->select_bar, FALSE);
   gtk_box_append (GTK_BOX (self->box), self->select_bar);
 
+  /* the list on its sheet, the sheet's top corners round */
   self->list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  gtk_widget_set_name (self->list, "conversation_list");
   gtk_widget_set_margin_top (self->list, LIST_TOP_PADDING);
+  gtk_widget_set_margin_bottom (self->list, forward ? 0 : LIST_BOTTOM_PADDING);
   gtk_box_append (GTK_BOX (inner), self->list);
   self->scroll = spongy_scroll_view_new ();
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->scroll), inner);
   gtk_widget_set_vexpand (self->scroll, TRUE);
   g_signal_connect (self->scroll, "notify::offset", G_CALLBACK (on_scrolled), self);
   self->empty = make_empty (archived);
-  gtk_overlay_set_child (GTK_OVERLAY (content), gtk_box_new (GTK_ORIENTATION_VERTICAL, 0));
-  gtk_box_append (GTK_BOX (gtk_overlay_get_child (GTK_OVERLAY (content))), self->scroll);
-  gtk_box_append (GTK_BOX (gtk_overlay_get_child (GTK_OVERLAY (content))), self->empty);
+  gtk_widget_add_css_class (sheet, "msg-list-sheet");
+  gtk_widget_set_overflow (sheet, GTK_OVERFLOW_HIDDEN);
+  gtk_box_append (GTK_BOX (sheet), self->scroll);
+  gtk_box_append (GTK_BOX (sheet), self->empty);
+  gtk_overlay_set_child (GTK_OVERLAY (content), sheet);
   if (!archived && !forward)
     {
-      self->fab = make_fab ();
+      self->fab = vibeos_extended_fab_new ("msg-chat-symbolic", _("Start chat"));
+      gtk_widget_set_name (self->fab, "start_chat_fab");
+      gtk_widget_set_margin_end (self->fab, FAB_MARGIN);
+      gtk_widget_set_margin_bottom (self->fab, FAB_MARGIN);
       g_signal_connect_swapped (self->fab, "clicked", G_CALLBACK (on_fab), self);
       gtk_overlay_add_overlay (GTK_OVERLAY (content), self->fab);
+      self->go_top = make_go_top ();
+      g_signal_connect_swapped (self->go_top, "clicked", G_CALLBACK (on_go_top), self);
+      gtk_overlay_add_overlay (GTK_OVERLAY (content), self->go_top);
+      g_signal_connect (vibeos_theme_get_default (), "changed", G_CALLBACK (on_theme_changed), self);
     }
   self->snackbar = msg_snackbar_new ();
   gtk_overlay_add_overlay (GTK_OVERLAY (content), GTK_WIDGET (self->snackbar));
@@ -888,6 +978,8 @@ build (SmsClient *client, Contacts *contacts, gboolean archived, gboolean forwar
     g_signal_connect (self->snackbar, "notify::lift", G_CALLBACK (on_snackbar_lift), self);
   gtk_widget_set_vexpand (content, TRUE);
   gtk_box_append (GTK_BOX (self->box), content);
+  if (forward)
+    gtk_widget_set_visible (self->bar, FALSE);
 
   g_signal_connect (client, "changed", G_CALLBACK (on_changed), self);
   /* the network's country and the address book come in after the window opens: numbers and names as they then read
@@ -909,4 +1001,24 @@ GtkWidget *
 conversation_list_new_forward (SmsClient *client, Contacts *contacts)
 {
   return build (client, contacts, FALSE, TRUE);
+}
+
+/* Mark all as read: every conversation not read yet, in the list and archived */
+void
+conversation_list_mark_all_read (SmsClient *client)
+{
+  SmsStore *store = sms_client_get_store (client);
+
+  for (int archived = 0; store && archived < 2; archived++)
+    {
+      g_autoptr (GPtrArray) conversations = sms_store_list_conversations (store, archived);
+
+      for (guint i = 0; i < conversations->len; i++)
+        {
+          SmsConversation *conversation = conversations->pdata[i];
+
+          if (!conversation->read)
+            sms_client_mark_read (client, conversation->id);
+        }
+    }
 }

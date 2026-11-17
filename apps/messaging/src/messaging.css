@@ -1,161 +1,207 @@
-/* Messaging's look. The colours are the ones the dark app renders, so they are plain values, not a
- * palette. Weights sit 300 over the design's (400 as 700, 500 as 800, bold as 900): the phone's Bold text setting
- * is on. */
+/* Messages' look. Sizes in sp (text) and dp, weights as designed (Bold text adds to them); colours from the theme:
+ * the list, the search page, the account menu and the settings in its colours (@vibeos_*), the conversation and New
+ * chat in the calmer set the original rules give (@vibeos_original_*, vibeos-original-colors.h). */
 
-.msg-window,
-.msg-page {
-  background-color: #181c1d;
+.msg-window {
+  background-color: @vibeos_surface_container;
 }
 
-/* --- the action bar */
+/* --- the top bars */
 
 .msg-action-bar {
-  background-color: #33666d;
-  color: #ffffff;
+  background: none;
 }
 
 .msg-action-title {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 20px;
-  font-weight: 800;
-  color: #ffffff;
+  font-size: 22sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
 }
 
-.msg-action-icon {
-  color: #ffffff;
+.msg-action-icon,
+.msg-bar-icon {
+  color: @vibeos_on_surface;
 }
 
 /* --- the conversation list */
 
+.msg-list-page {
+  background-color: @vibeos_surface_container;
+}
+
+.msg-list-sheet {
+  background-color: @vibeos_surface;
+  border-radius: 28dp 28dp 0 0;
+}
+
 /* opaque, to cover the swipe background as it moves over it */
 .msg-row {
-  background-color: #181c1d;
+  background-color: @vibeos_surface;
+}
+
+.msg-row-content {
+  min-height: 80dp;
+}
+
+/* a tapped row, while its conversation gets ready: a lighter card */
+.msg-row.vibeos-highlighted {
+  background-image: image(alpha(@vibeos_on_surface, 0.1));
+  border-radius: 16dp;
+}
+
+/* selected, and on a tablet the conversation open beside the list */
+.msg-row.selected,
+.msg-row.current {
+  background-image: image(@vibeos_primary_container);
+  border-radius: 16dp;
 }
 
 .msg-swipe-background {
-  background-color: #181c1d;
-  color: #ffffff;
+  background-color: @vibeos_surface;
+  color: @vibeos_on_surface_variant;
 }
 
 .msg-row-name {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  color: #a6a6a6;
+  font-size: 16sp;
+  line-height: 24.67sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
 }
 
-.msg-row-snippet,
+.msg-row-snippet {
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
+  font-size: 14sp;
+  line-height: 23sp;
+  font-weight: 400;
+  color: @vibeos_on_surface_variant;
+}
+
 .msg-row-time {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  color: #a6a6a6;
+  font-size: 12sp;
+  line-height: 17sp;
+  font-weight: 400;
+  color: @vibeos_on_surface_variant;
 }
 
 .msg-row-name.unread,
-.msg-row-snippet.unread {
-  font-weight: 900;
-  color: #e0e0e0;
+.msg-row-snippet.unread,
+.msg-row-time.unread {
+  font-weight: 700;
+  color: @vibeos_on_surface;
 }
 
-.msg-row-snippet.draft,
 .msg-row-time.draft {
-  font-style: italic;
+  color: @vibeos_error;
 }
 
-.msg-row-time.failed {
-  color: #f05a24;
+.msg-row-error {
+  color: @vibeos_error;
 }
 
-/* --- Blocked contacts: a name, and "UNBLOCK" in the accent */
-
-.msg-blocked-name {
-  font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 18px;
-  font-weight: 700;
-  color: #bfbfbf;
-}
-
-.msg-blocked-unblock {
-  font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  color: #b8ebf3;
-}
-
-/* the "START CHAT" button: black on its light fill, as it is not darkened with the rest */
-.msg-fab-label {
-  font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: 1.25px;
-  color: #000000;
-}
-
-.msg-fab-content {
-  color: #000000;
+.msg-go-top {
+  color: @vibeos_on_surface;
 }
 
 .msg-empty-text {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  color: #9b9b9b;
+  font-size: 14sp;
+  font-weight: 400;
+  color: @vibeos_on_surface_variant;
+}
+
+/* --- Forward message's list, in its dialog */
+
+.msg-forward-page,
+.msg-forward-page .msg-list-sheet,
+.msg-forward-page .msg-row {
+  background-color: transparent;
 }
 
 /* --- a conversation */
 
+.msg-conversation-page {
+  background-color: @vibeos_original_surface_container;
+}
+
+.msg-conversation-bar .msg-action-title {
+  font-size: 20sp;
+  color: @vibeos_original_on_surface;
+}
+
+.msg-conversation-bar .msg-action-icon {
+  color: @vibeos_original_on_surface;
+}
+
+.msg-conversation-container {
+  background-color: @vibeos_original_surface;
+  border-radius: 28dp 28dp 0 0;
+}
+
+.msg-separator {
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
+  font-size: 12sp;
+  font-weight: 500;
+  color: @vibeos_original_on_surface_variant;
+}
+
 .msg-message-text {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 16sp;
+  line-height: 24sp;
+  font-weight: 400;
 }
 
-.msg-message-status {
+.msg-message-text.incoming {
+  color: @vibeos_original_on_surface;
+}
+
+.msg-message-text.outgoing {
+  color: @vibeos_original_surface;
+}
+
+.msg-message-text.selected {
+  color: @vibeos_original_on_tertiary_container;
+}
+
+.msg-time-under,
+.msg-sender {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 12sp;
+  line-height: 20sp;
+  font-weight: 400;
+  color: @vibeos_original_on_surface_variant;
 }
 
-/* a bubble is not darkened with the rest: an outgoing one is dark grey on white */
-.outgoing .msg-message-text {
-  color: #323232;
+.msg-failed-icon,
+.msg-failed-text {
+  color: @vibeos_original_error;
 }
 
-.outgoing .msg-message-status {
-  color: rgba(50, 50, 50, 0.6);
+.msg-failed-text,
+.msg-failed-link {
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
+  font-size: 12sp;
+  line-height: 16sp;
+  font-weight: 400;
 }
 
-.incoming .msg-message-text {
-  color: #ffffff;
+.msg-failed-link {
+  color: @vibeos_original_on_surface;
+  text-decoration-line: underline;
 }
 
-.incoming .msg-message-status {
-  color: rgba(255, 255, 255, 0.6);
-}
+/* the compose bar: ⊕, the pill, the round send button */
 
-.msg-message-status.failed {
-  color: rgba(255, 0, 0, 0.6);
+.msg-compose-icon {
+  color: @vibeos_original_on_surface_variant;
 }
-
-.selected .msg-message-text,
-.selected .msg-message-status {
-  color: #ffffff;
-}
-
-/* a shadow over the list's foot while the newest message is out of sight */
-.msg-compose-shadow {
-  min-height: 4px;
-  margin-top: -4px;
-  background-image: linear-gradient(to top, rgba(0, 0, 0, 0.267), transparent);
-}
-
-/* --- the compose bar */
 
 .msg-compose-field {
-  background-color: #5a5f60;
-  border-radius: 28px;
-  min-height: 48px;
+  background-color: @vibeos_original_surface_container;
+  border-radius: 28dp;
 }
 
 .msg-compose-field scrolledwindow,
@@ -166,262 +212,314 @@
 
 .msg-compose-text {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  color: #ffffff;
-  caret-color: #ffffff;
-  padding: 13px 16px;
+  font-size: 16sp;
+  line-height: 24sp;
+  font-weight: 400;
+  color: @vibeos_original_on_surface;
+  caret-color: @vibeos_original_primary;
+  padding: 16dp 16dp;
 }
 
 .msg-compose-text selection {
-  background-color: rgba(184, 235, 243, 0.4);
+  background-color: alpha(@vibeos_original_primary, 0.4);
 }
 
 .msg-compose-hint {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.22);
-  margin: 0 16px;
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_original_on_surface_variant;
+  margin: 0 16dp;
 }
 
 .msg-send {
-  color: #ffffff;
+  color: @vibeos_original_on_tertiary_container;
 }
 
 .msg-counter {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 12px;
-  font-weight: 700;
-  color: #b5b5b5;
+  font-size: 12sp;
+  font-weight: 400;
+  color: @vibeos_original_on_surface_variant;
 }
 
-/* --- the contact picker */
-
-.msg-picker-field {
+.msg-no-reply {
+  background-color: @vibeos_original_surface_container;
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 20px;
-  font-weight: 700;
-  color: #ffffff;
-  caret-color: #ffffff;
-  background: none;
-  padding: 0 4px;
-  min-height: 42px;
+  font-size: 16sp;
+  line-height: 24sp;
+  font-weight: 400;
+  color: @vibeos_original_on_surface_variant;
 }
 
-.msg-picker-field > placeholder {
-  color: rgba(255, 255, 255, 0.627);
+/* Check options */
+
+.msg-sheet-icon {
+  color: @vibeos_on_surface_variant;
 }
 
-.msg-picker-tabs {
-  background-color: #33666d;
-}
-
-.msg-picker-tab {
+.msg-sheet-title {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 14px;
-  font-weight: 900;
-  color: rgba(255, 255, 255, 0.5);
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
 }
 
-.msg-picker-tab.selected {
-  color: #cef8ff;
-}
-
-.msg-picker-underline {
-  background-color: #ffffff;
-}
-
-.msg-picker-letter {
-  font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 26px;
-  font-weight: 700;
-  color: #b8ebf3;
-}
-
-/* a row's lines are 1.73 × their text size tall, as in People & options */
-.msg-picker-name {
-  font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 27.67px;
-  color: #bfbfbf;
-}
-
-.msg-picker-number {
-  font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 24.2px;
-  color: #999999;
-}
-
-.msg-picker-type {
-  font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 24.2px;
-  color: rgba(255, 255, 255, 0.541);
-}
-
-/* --- the pop-up menus (the Phone's popup-menu.c): rounder than the Phone's, with room over and under the
- * rows */
+/* --- the ⋮ menus (the Phone's popup-menu.c): rounded, in the conversation's colours */
 
 .popup-menu {
-  background-color: #1b1b1b;
-  border-radius: 4px;
-  padding: 8px 0;
+  background-color: @vibeos_original_surface_container_high;
+  border-radius: 20dp;
+  padding: 8dp 0;
 }
 
 .popup-menu-text {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: 0.15px;
-  color: rgba(255, 255, 255, 0.871);
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_original_on_surface;
 }
 
 .popup-menu-text.disabled {
   opacity: 0.38;
 }
 
-/* --- the alert dialogs: the title over the message, the buttons in capitals */
+/* --- segmented cards (msg-card.h) */
 
-.msg-window .vibeos-dialog {
-  background-color: #181c1d;
-  padding: 18px 0 4px 0;
+.msg-card {
+  border-radius: 4dp;
 }
 
-.msg-window .vibeos-dialog-title {
+.msg-card.first {
+  border-top-left-radius: 20dp;
+  border-top-right-radius: 20dp;
+}
+
+.msg-card.last {
+  border-bottom-left-radius: 20dp;
+  border-bottom-right-radius: 20dp;
+}
+
+.msg-card-icon {
+  color: @vibeos_on_surface_variant;
+}
+
+.msg-card-title {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 20px;
-  font-weight: 800;
-  color: rgba(255, 255, 255, 0.87);
-  margin: 0 24px 16px 24px;
+  font-size: 14sp;
+  font-weight: 500;
+  color: @vibeos_on_surface;
 }
 
-.msg-window .vibeos-dialog-message {
+/* --- the account menu */
+
+.msg-account-menu {
+  background-color: @vibeos_surface_container;
+}
+
+.msg-account-menu .msg-card {
+  background-color: @vibeos_surface_container_lowest;
+}
+
+.msg-account-name {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.87);
-  margin: 0 24px;
+  font-size: 20sp;
+  line-height: 28.33sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
 }
 
-.msg-window .vibeos-dialog-buttons {
-  margin: 12px 12px 0 12px;
-}
-
-/* Forward message: the title with nothing under it, then the conversation list, edge to edge */
-.msg-window .msg-forward-dialog .vibeos-dialog-title {
-  margin-bottom: 0;
-}
-
-.msg-window .vibeos-dialog .vibeos-text-button {
+.msg-account-login {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: 1.25px;
-  color: #81b5bc;
-  padding: 0 8px;
-  min-width: 64px;
+  font-size: 14sp;
+  line-height: 19.67sp;
+  font-weight: 400;
+  color: @vibeos_on_surface_variant;
 }
 
-/* --- the snackbar: edge to edge and square, the action in yellow */
+/* --- the search page */
 
-.msg-window .vibeos-snackbar {
-  background-color: #323232;
-  border-radius: 0;
-  padding: 0;
-  min-height: 0;
+.msg-search-page {
+  background-color: @vibeos_surface_container;
 }
 
-.msg-window .vibeos-snackbar-text {
+.msg-search-pill {
+  background-color: @vibeos_surface;
+  border-radius: 24dp;
+}
+
+.msg-search-field {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  color: #ffffff;
-  margin: 18px 0 18px 24px;
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
+  caret-color: @vibeos_primary;
+  background: none;
 }
 
-.msg-window .vibeos-snackbar .vibeos-text-button {
+.msg-search-field > placeholder {
+  color: @vibeos_on_surface_variant;
+}
+
+.msg-search-chip {
+  background-color: @vibeos_secondary_container;
+  color: @vibeos_on_secondary_container;
+  border-radius: 8dp;
+  padding: 4dp 8dp;
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 14px;
-  font-weight: 800;
-  color: #eeff41;
-  padding: 0 24px;
+  font-size: 14sp;
+  font-weight: 500;
 }
 
-/* --- People & options: a page with a theme of its own, hence its lighter background. Each line there is
- * 1.73 × its text size tall, so a header is 16 + 27.67 + 16 */
-
-.msg-people-options {
-  background-color: #1b1b1b;
+.msg-tile {
+  background-color: @vibeos_surface;
+  border-radius: 26dp;
 }
 
-.msg-options-header {
+.msg-tile-icon {
+  color: @vibeos_primary;
+}
+
+.msg-tile-label {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 27.67px;
-  color: #9b9b9b;
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
 }
 
-.msg-options-divider {
-  min-height: 1px;
-  background-color: #424242;
+.msg-search-result {
+  background-color: @vibeos_surface_container;
 }
 
-.msg-options-title,
-.msg-person-name {
+/* --- New chat, in the conversation's colours */
+
+.msg-picker-page {
+  background-color: @vibeos_original_surface_container;
+}
+
+.msg-picker-page .msg-action-title {
+  color: @vibeos_original_on_surface;
+}
+
+.msg-picker-page .msg-action-icon {
+  color: @vibeos_original_on_surface;
+}
+
+.msg-picker-pill,
+.msg-picker-page .msg-card {
+  background-color: @vibeos_original_surface_container_high;
+}
+
+.msg-picker-pill {
+  border-radius: 24dp;
+}
+
+.msg-picker-to,
+.msg-picker-field {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 31px;
-  color: #bfbfbf;
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_original_on_surface;
+  caret-color: @vibeos_original_primary;
+  background: none;
 }
 
-.msg-person-number {
+.msg-picker-field > placeholder {
+  color: @vibeos_original_on_surface_variant;
+}
+
+.msg-picker-header {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 24.2px;
-  color: #999999;
+  font-size: 14sp;
+  font-weight: 500;
+  color: @vibeos_original_on_surface_variant;
 }
 
-/* --- Settings: a summary is as large as its title, only fainter. A line of text is 1.73 × its size tall on
- * its own and 1.17 × for each further line: the title gets the one, the summary its 1.17 × lines plus padding over
- * and under them (msg-settings.c) */
+.msg-picker-name {
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
+  font-size: 16sp;
+  line-height: 24sp;
+  font-weight: 400;
+  color: @vibeos_original_on_surface;
+}
+
+.msg-picker-number {
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
+  font-size: 14sp;
+  line-height: 20sp;
+  font-weight: 400;
+  color: @vibeos_original_on_surface_variant;
+}
+
+/* --- the settings */
+
+.msg-settings-page {
+  background-color: @vibeos_surface_container;
+}
+
+.msg-settings-page .msg-card {
+  background-color: @vibeos_surface;
+}
 
 .msg-pref-title {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 27.67px;
-  color: rgba(255, 255, 255, 0.87);
+  font-size: 16sp;
+  line-height: 24sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
 }
 
 .msg-pref-summary {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 18.75px;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 14sp;
+  line-height: 20sp;
+  font-weight: 400;
+  color: @vibeos_on_surface_variant;
 }
 
-/* a category's title: a row title's size and height, a little heavier, in the accent colour */
-.msg-pref-category {
+/* --- the tablet's empty conversation pane */
+
+.msg-detail-empty {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 16px;
-  font-weight: 800;
-  line-height: 27.67px;
-  color: #b8ebf3;
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_on_surface_variant;
+  background-color: @vibeos_surface;
 }
 
-/* "Add to Contacts?": the number beside the avatar, fainter than the question */
+/* --- the pages still drawn as lists of their own: Blocked contacts, the details */
+
+.msg-page,
+.msg-people-options {
+  background-color: @vibeos_surface_container;
+}
+
+.msg-blocked-name,
+.msg-options-title,
+.msg-person-name {
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
+}
+
+.msg-blocked-unblock {
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
+  font-size: 14sp;
+  font-weight: 500;
+  color: @vibeos_primary;
+}
+
+.msg-options-header,
+.msg-person-number,
 .msg-add-contact-name {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.54);
+  font-size: 14sp;
+  font-weight: 400;
+  color: @vibeos_on_surface_variant;
+}
+
+.msg-options-divider {
+  min-height: 1px;
+  background-color: @vibeos_outline_variant;
 }

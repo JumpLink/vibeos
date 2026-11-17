@@ -1,5 +1,5 @@
-/* Messaging's action bar, with a shadow under it: an up arrow at the start when the screen has
- * one, the title, then action icons and the overflow ⋮ at the end. */
+/* Messaging's top bar, 64 px tall: a back arrow at the start when the screen has one, the title, then action icons
+ * and the overflow ⋮ at the end, every button a 48 px target. */
 #pragma once
 
 #include <gtk/gtk.h>
@@ -19,5 +19,7 @@ GtkWidget *msg_action_bar_add_close (GtkWidget *bar, const char *label);
 GtkWidget *msg_action_bar_add_overflow (GtkWidget *bar);
 /* a widget in the title's place (the picker's recipient field) */
 void       msg_action_bar_set_custom (GtkWidget *bar, GtkWidget *custom);
+/* the box the actions are in, at the bar's end */
+GtkWidget *msg_action_bar_get_end (GtkWidget *bar);
 
 G_END_DECLS
