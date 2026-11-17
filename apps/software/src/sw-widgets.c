@@ -631,15 +631,20 @@ sw_app_tile_new (JsonObject *app, int width)
 GtkWidget *
 sw_strip_new (GtkWidget **box)
 {
-  GtkWidget *scroll = gtk_scrolled_window_new ();
+  /* sideways with the same fling and edge stretch as the page it is in; no scrollbar: the next tile peeking in
+   * says there is more. A drag that goes sideways first is the strip's, one that goes up or down first the page's. */
+  GtkWidget *scroll = g_object_new (SPONGY_TYPE_SCROLL_VIEW, "orientation", GTK_ORIENTATION_HORIZONTAL, NULL);
 
-  *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 4);
+  *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, SW_STRIP_SPACING);
   gtk_widget_add_css_class (*box, "sw-strip");
-  /* sideways only, and no scrollbar: the next tile peeking in says there is more */
-  gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (scroll), GTK_POLICY_EXTERNAL, GTK_POLICY_NEVER);
-  gtk_scrolled_window_set_propagate_natural_height (GTK_SCROLLED_WINDOW (scroll), TRUE);
-  gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (scroll), *box);
+  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), *box);
   return scroll;
+}
+
+void
+sw_strip_snap (GtkWidget *strip, int item_width)
+{
+  spongy_scroll_view_set_snap (SPONGY_SCROLL_VIEW (strip), item_width + SW_STRIP_SPACING, FALSE);
 }
 
 GtkWidget *
@@ -678,11 +683,10 @@ sw_section_header_new (const char *title, const char *count, const char *action,
 GtkWidget *
 sw_category_icon_new (JsonObject *category, int size)
 {
-  const char *icon = sw_json_string (category, "icon"), *id = sw_json_string (category, "id");
+  const char *icon = sw_json_string (category, "icon");
   g_autofree char *name = g_strdup_printf ("sw-fa-%s-symbolic", icon ? icon : "shapes");
   GtkIconTheme *theme = gtk_icon_theme_get_for_display (gdk_display_get_default ());
   GtkWidget *image;
-  char hue[16];
 
   if (!gtk_icon_theme_has_icon (theme, name))
     {
@@ -691,10 +695,10 @@ sw_category_icon_new (JsonObject *category, int size)
     }
   image = gtk_image_new_from_icon_name (name);
   gtk_image_set_pixel_size (GTK_IMAGE (image), size);
-  /* one of four of the theme's colours, the same for a category every time */
-  g_snprintf (hue, sizeof hue, "hue-%u", (id ? g_str_hash (id) : 0) % 4);
+  /* a circle at its own size, in the middle of whatever row it is in (not stretched to the row's height) */
+  gtk_widget_set_halign (image, GTK_ALIGN_CENTER);
+  gtk_widget_set_valign (image, GTK_ALIGN_CENTER);
   gtk_widget_add_css_class (image, "sw-category-icon");
-  gtk_widget_add_css_class (image, hue);
   return image;
 }
 
@@ -884,15 +888,29 @@ sw_stars_get_rating (SwStars *self)
 /* ---- progress -------------------------------------------------------------------------------------------------- */
 
 struct _SwProgress {
-  GtkWidget parent_instance;
-  int       size, percent;
-  double    width;
-  gboolean  bar;
-  guint     tick;
-  gint64    start;
+  GtkWidget   parent_instance;
+  int         size, percent;
+  double      width;
+  double      shown;      /* the fraction drawn: it moves to percent / 100 smoothly, never in a step */
+  VibeosAnim *anim;
+  gboolean    bar;
+  guint       tick;
+  gint64      start;
 };
 
 G_DEFINE_FINAL_TYPE (SwProgress, sw_progress, GTK_TYPE_WIDGET)
+
+/* a new percentage: the fill grows (or shrinks) to it over a moment, from where it is drawn now */
+#define PROGRESS_MS 250
+
+static void
+on_progress_anim (VibeosAnim *anim, double value, gpointer data)
+{
+  SwProgress *self = data;
+
+  self->shown = value;
+  gtk_widget_queue_draw (GTK_WIDGET (self));
+}
 
 static gboolean
 on_progress_tick (GtkWidget *widget, GdkFrameClock *clock, gpointer data)
@@ -952,7 +970,7 @@ sw_progress_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
       cairo_line_to (cr, w - h / 2.0, y);
       cairo_stroke (cr);
       if (self->percent >= 0)
-        from = 0, to = self->percent / 100.0;
+        from = 0, to = self->shown;
       else
         {
           /* a segment sweeping across, once a second and a half */
@@ -980,9 +998,9 @@ sw_progress_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
           cairo_arc (cr, cx, cy, r, 0, 2 * G_PI);
           cairo_stroke (cr);
           gdk_cairo_set_source_rgba (cr, &fill);
-          if (self->percent > 0)
+          if (self->shown > 0)
             {
-              cairo_arc (cr, cx, cy, r, -G_PI / 2, -G_PI / 2 + 2 * G_PI * self->percent / 100.0);
+              cairo_arc (cr, cx, cy, r, -G_PI / 2, -G_PI / 2 + 2 * G_PI * self->shown);
               cairo_stroke (cr);
             }
         }
@@ -1012,10 +1030,20 @@ sw_progress_measure (GtkWidget *widget, GtkOrientation orientation, int for_size
 }
 
 static void
+sw_progress_dispose (GObject *object)
+{
+  SwProgress *self = SW_PROGRESS (object);
+
+  g_clear_pointer (&self->anim, vibeos_anim_free);
+  G_OBJECT_CLASS (sw_progress_parent_class)->dispose (object);
+}
+
+static void
 sw_progress_class_init (SwProgressClass *klass)
 {
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
+  G_OBJECT_CLASS (klass)->dispose = sw_progress_dispose;
   widget_class->map = sw_progress_map;
   widget_class->unmap = sw_progress_unmap;
   widget_class->snapshot = sw_progress_snapshot;
@@ -1028,6 +1056,7 @@ static void
 sw_progress_init (SwProgress *self)
 {
   self->percent = -1;
+  self->anim = vibeos_anim_new (GTK_WIDGET (self), on_progress_anim, self);
 }
 
 GtkWidget *
@@ -1054,7 +1083,17 @@ sw_progress_bar_new (int height)
 void
 sw_progress_set_percent (SwProgress *self, int percent)
 {
-  self->percent = CLAMP (percent, -1, 100);
+  percent = CLAMP (percent, -1, 100);
+  if (percent >= 0 && percent != self->percent)
+    {
+      /* from the sweeping segment: the fill starts from nothing */
+      double from = self->percent < 0 ? 0 : self->shown;
+
+      vibeos_anim_start (self->anim, from, percent / 100.0, PROGRESS_MS, 0, SPONGY_DECELERATE);
+    }
+  else if (percent < 0)
+    vibeos_anim_stop (self->anim);
+  self->percent = percent;
   if (percent >= 0)
     gtk_accessible_update_property (GTK_ACCESSIBLE (self), GTK_ACCESSIBLE_PROPERTY_VALUE_NOW, (double) percent,
                                     GTK_ACCESSIBLE_PROPERTY_VALUE_MAX, 100.0, -1);

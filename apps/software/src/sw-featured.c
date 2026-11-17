@@ -72,6 +72,8 @@ apps_columns (JsonArray *items)
   GtkWidget *box, *strip = sw_strip_new (&box), *column = NULL;
 
   gtk_widget_add_css_class (box, "sw-columns");
+  /* a fling ends with a whole column at the left */
+  sw_strip_snap (strip, COLUMN_W);
   for (guint i = 0; i < json_array_get_length (items); i++)
     {
       JsonObject *app = sw_json_array_object (items, i);
@@ -122,6 +124,7 @@ banners (JsonArray *items)
   GtkWidget *box, *strip = sw_strip_new (&box);
 
   gtk_widget_add_css_class (box, "sw-banners");
+  sw_strip_snap (strip, BANNER_W);
   for (guint i = 0; i < json_array_get_length (items); i++)
     {
       JsonObject *banner = sw_json_array_object (items, i), *image = sw_json_object (banner, "image");

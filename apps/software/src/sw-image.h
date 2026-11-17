@@ -5,6 +5,9 @@
  * loader in a worker thread; at most six downloads run at once, the ones asked for last first (they are the ones on
  * the screen now).
  *
+ * A picture drawn smaller than it is is scaled once, in a worker thread, to the widget's size in screen pixels, and
+ * that copy is drawn pixel for pixel (64 MB of such copies are kept): nothing is scaled by the GPU frame after frame.
+ *
  * Until it is in, the picture is a plain tile of the surface's colour, so rows keep their height. A picture loads
  * once it is mapped and within a screen's height (or width) of the window: the scroll views it sits in are watched,
  * and a long list loads as it scrolls. */
@@ -27,6 +30,9 @@ void       sw_image_set_aspect   (SwImage *self, double aspect);
 void       sw_image_set_fallback (SwImage *self, const char *icon_name);
 /* a picture already at hand (no URL) */
 void       sw_image_set_paintable (SwImage *self, GdkPaintable *paintable);
+/* the whole picture, as large as it fits in the box, centred (the default: the box filled, what sticks out cut off) */
+void       sw_image_set_contain   (SwImage *self, gboolean contain);
+void       sw_image_set_size      (SwImage *self, int width, int height);
 
 /* the picture behind `url` if it is in memory already, else NULL */
 GdkTexture *sw_image_cache_lookup (const char *url);

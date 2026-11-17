@@ -13,6 +13,8 @@
  *   VIBEOS_SOFTWARE_PAGE          steps to walk once the window shows, ';' between them ("tab:apps;app:org.gnome.
  *                                 Maps"; sw-window.c has the list)
  *   VIBEOS_INSTALLER_DEMO         App Installer's canned states (its inst-demo.h), when it runs with it
+ *   G_MESSAGES_DEBUG              vibeos-software-frames: how smoothly each run of frames went (sw-window.c);
+ *                                 vibeos-page-stack: every frame of a page's transition (libvibeos)
  *
  * Closing the window while a job runs hides it: Software stays until App Installer reports the job's end, so that
  * the result is still told (and recorded) and the account's device list stays right. */

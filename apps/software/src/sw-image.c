@@ -4,11 +4,15 @@
 #include <gdk-pixbuf/gdk-pixbuf.h>
 #include <glib/gstdio.h>
 #include <libsoup/soup.h>
+#include <math.h>
 #include <spongy-gtk.h>
+#include <string.h>
 #include <vibeos.h>
 
-#define MAX_ACTIVE   6
-#define MEMORY_LIMIT 400   /* pictures kept in memory; half go when it is reached */
+#define MAX_ACTIVE    6
+#define MEMORY_LIMIT  400          /* pictures kept in memory, as decoded; half go when it is reached */
+#define MEMORY_BYTES  (160 << 20)  /* or when they take this much */
+#define SIZED_BYTES   (64 << 20)   /* pictures made smaller for where they are drawn, at most */
 
 /* ---- the loader: one per process ------------------------------------------------------------------------------- */
 
@@ -20,6 +24,10 @@ typedef struct {
 
 static GHashTable *memory;        /* url -> GdkTexture */
 static GQueue     *memory_order;  /* urls, oldest first */
+static gsize       memory_bytes;
+static GHashTable *sized;         /* "WxH url" -> GdkTexture: a picture at the size it is drawn, in screen pixels */
+static GQueue     *sized_order;   /* keys, least recently used first */
+static gsize       sized_bytes;
 static GHashTable *pending;       /* url -> Pending */
 static GQueue     *queue;         /* Pending, not started */
 static int         active;
@@ -36,6 +44,8 @@ loader_init (void)
     return;
   memory = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_object_unref);
   memory_order = g_queue_new ();
+  sized = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_object_unref);
+  sized_order = g_queue_new ();
   pending = g_hash_table_new (g_str_hash, g_str_equal);
   queue = g_queue_new ();
   session = soup_session_new_with_options ("timeout", 30, "max-conns-per-host", MAX_ACTIVE, NULL);
@@ -49,22 +59,68 @@ sw_image_cache_lookup (const char *url)
   return url ? g_hash_table_lookup (memory, url) : NULL;
 }
 
+static gsize
+texture_bytes (GdkTexture *texture)
+{
+  return (gsize) gdk_texture_get_width (texture) * gdk_texture_get_height (texture) * 4;
+}
+
 static void
 memory_add (const char *url, GdkTexture *texture)
 {
   if (g_hash_table_contains (memory, url))
     return;
-  if (g_hash_table_size (memory) >= MEMORY_LIMIT)
-    /* the widgets showing them keep their own reference */
-    for (guint i = 0; i < MEMORY_LIMIT / 2; i++)
+  if (g_hash_table_size (memory) >= MEMORY_LIMIT || memory_bytes + texture_bytes (texture) > MEMORY_BYTES)
+    /* the oldest half go; the widgets showing them keep their own reference */
+    while (!g_queue_is_empty (memory_order)
+           && (g_hash_table_size (memory) > MEMORY_LIMIT / 2 || memory_bytes > MEMORY_BYTES / 2))
       {
         char *old = g_queue_pop_head (memory_order);
+        GdkTexture *gone = g_hash_table_lookup (memory, old);
 
+        if (gone)
+          memory_bytes -= texture_bytes (gone);
         g_hash_table_remove (memory, old);
         g_free (old);
       }
   g_hash_table_insert (memory, g_strdup (url), g_object_ref (texture));
   g_queue_push_tail (memory_order, g_strdup (url));
+  memory_bytes += texture_bytes (texture);
+}
+
+static GdkTexture *
+sized_lookup (const char *key)
+{
+  GdkTexture *texture = g_hash_table_lookup (sized, key);
+  GList *link;
+
+  /* used again: the last to go */
+  if (texture && (link = g_queue_find_custom (sized_order, key, (GCompareFunc) strcmp)))
+    {
+      g_queue_unlink (sized_order, link);
+      g_queue_push_tail_link (sized_order, link);
+    }
+  return texture;
+}
+
+static void
+sized_add (const char *key, GdkTexture *texture)
+{
+  if (g_hash_table_contains (sized, key))
+    return;
+  while (!g_queue_is_empty (sized_order) && sized_bytes + texture_bytes (texture) > SIZED_BYTES)
+    {
+      char *old = g_queue_pop_head (sized_order);
+      GdkTexture *gone = g_hash_table_lookup (sized, old);
+
+      if (gone)
+        sized_bytes -= texture_bytes (gone);
+      g_hash_table_remove (sized, old);
+      g_free (old);
+    }
+  g_hash_table_insert (sized, g_strdup (key), g_object_ref (texture));
+  g_queue_push_tail (sized_order, g_strdup (key));
+  sized_bytes += texture_bytes (texture);
 }
 
 static char *
@@ -288,9 +344,11 @@ struct _SwImage {
   char         *url;
   char         *fallback;
   GdkPaintable *picture;
+  GdkTexture   *sized;        /* the picture as drawn now, made for the widget's size in screen pixels */
+  char         *sizing;       /* the key of the one being made */
   int           width, height;
   double        radius, aspect;
-  gboolean      requested, failed;
+  gboolean      requested, failed, contain;
   GPtrArray    *watched;      /* GtkAdjustment */
   guint         tick;
 };
@@ -298,11 +356,134 @@ struct _SwImage {
 G_DEFINE_FINAL_TYPE (SwImage, sw_image, GTK_TYPE_WIDGET)
 
 static void
+forget_sized (SwImage *self)
+{
+  g_clear_object (&self->sized);
+  g_clear_pointer (&self->sizing, g_free);
+}
+
+static void
 image_set_texture (SwImage *self, GdkTexture *texture, gboolean failed)
 {
+  forget_sized (self);
   g_set_object (&self->picture, (GdkPaintable *) texture);
   self->failed = failed;
   gtk_widget_queue_draw (GTK_WIDGET (self));
+}
+
+/* ---- the picture at the size it is drawn ----------------------------------------------------------------------- *
+ *
+ * A picture drawn smaller than it is would be scaled down by the GPU every frame it is drawn (and, filtered well,
+ * through mipmaps made on the way). Instead it is scaled once, in a worker thread, to exactly the widget's box in
+ * screen pixels, cropped as the box crops it, and then drawn pixel for pixel. Until that copy is in (a frame or
+ * two), the picture itself is drawn scaled. */
+
+typedef struct {
+  GdkTexture *texture;
+  int         width, height;   /* the box, in screen pixels */
+  char       *key;
+  GWeakRef    image;
+} Sizing;
+
+static void
+sizing_free (gpointer data)
+{
+  Sizing *s = data;
+
+  g_object_unref (s->texture);
+  g_free (s->key);
+  g_weak_ref_clear (&s->image);
+  g_free (s);
+}
+
+/* the texture scaled to cover width × height and cropped to it, centred: in a worker thread */
+static GdkTexture *
+scale_cover (GdkTexture *texture, int width, int height)
+{
+  int pw = gdk_texture_get_width (texture), ph = gdk_texture_get_height (texture);
+  gboolean alpha = gdk_texture_get_format (texture) != GDK_MEMORY_R8G8B8;
+  GdkTextureDownloader *downloader = gdk_texture_downloader_new (texture);
+  g_autoptr (GBytes) pixels = NULL, out = NULL;
+  g_autoptr (GdkPixbuf) source = NULL, scaled = NULL, cropped = NULL;
+  double f = MAX ((double) width / pw, (double) height / ph);
+  int sw = MAX (width, (int) ceil (pw * f)), sh = MAX (height, (int) ceil (ph * f));
+  gsize stride;
+
+  gdk_texture_downloader_set_format (downloader, alpha ? GDK_MEMORY_R8G8B8A8 : GDK_MEMORY_R8G8B8);
+  pixels = gdk_texture_downloader_download_bytes (downloader, &stride);
+  gdk_texture_downloader_free (downloader);
+  source = gdk_pixbuf_new_from_bytes (pixels, GDK_COLORSPACE_RGB, alpha, 8, pw, ph, (int) stride);
+  scaled = gdk_pixbuf_scale_simple (source, sw, sh, GDK_INTERP_BILINEAR);
+  if (!scaled)
+    return NULL;
+  cropped = gdk_pixbuf_new_subpixbuf (scaled, (sw - width) / 2, (sh - height) / 2, width, height);
+  g_set_object (&cropped, gdk_pixbuf_copy (cropped));
+  out = gdk_pixbuf_read_pixel_bytes (cropped);
+  return gdk_memory_texture_new (width, height, alpha ? GDK_MEMORY_R8G8B8A8 : GDK_MEMORY_R8G8B8, out,
+                                 gdk_pixbuf_get_rowstride (cropped));
+}
+
+static void
+sizing_thread (GTask *task, gpointer source, gpointer data, GCancellable *cancellable)
+{
+  Sizing *s = data;
+
+  g_task_return_pointer (task, scale_cover (s->texture, s->width, s->height), g_object_unref);
+}
+
+static void
+on_sized (GObject *source, GAsyncResult *res, gpointer data)
+{
+  Sizing *s = g_task_get_task_data (G_TASK (res));
+  g_autoptr (GdkTexture) texture = g_task_propagate_pointer (G_TASK (res), NULL);
+  g_autoptr (SwImage) self = g_weak_ref_get (&s->image);
+
+  if (!texture)
+    return;
+  sized_add (s->key, texture);
+  /* still the same picture at the same size */
+  if (self && !g_strcmp0 (self->sizing, s->key))
+    {
+      g_clear_pointer (&self->sizing, g_free);
+      g_set_object (&self->sized, texture);
+      gtk_widget_queue_draw (GTK_WIDGET (self));
+    }
+}
+
+/* the copy for a box of width × height screen pixels: at hand, or asked for */
+static GdkTexture *
+sized_for (SwImage *self, GdkTexture *texture, int width, int height)
+{
+  g_autofree char *key = NULL;
+  GdkTexture *found;
+  g_autoptr (GTask) task = NULL;
+  Sizing *s;
+
+  if (self->sized && gdk_texture_get_width (self->sized) == width && gdk_texture_get_height (self->sized) == height)
+    return self->sized;
+  if (!self->url)
+    return NULL;
+  key = g_strdup_printf ("%dx%d %s", width, height, self->url);
+  if ((found = sized_lookup (key)))
+    {
+      g_clear_pointer (&self->sizing, g_free);
+      g_set_object (&self->sized, found);
+      return found;
+    }
+  if (!g_strcmp0 (self->sizing, key))
+    return NULL;
+  s = g_new0 (Sizing, 1);
+  s->texture = g_object_ref (texture);
+  s->width = width;
+  s->height = height;
+  s->key = g_strdup (key);
+  g_weak_ref_init (&s->image, self);
+  g_free (self->sizing);
+  self->sizing = g_steal_pointer (&key);
+  task = g_task_new (NULL, NULL, on_sized, NULL);
+  g_task_set_task_data (task, s, sizing_free);
+  g_task_run_in_thread (task, sizing_thread);
+  return NULL;
 }
 
 static void
@@ -381,7 +562,11 @@ start_watching (SwImage *self)
     return;
   for (GtkWidget *w = gtk_widget_get_parent (widget); w; w = gtk_widget_get_parent (w))
     if (SPONGY_IS_SCROLL_VIEW (w))
-      watch (spongy_scroll_view_get_vadjustment (SPONGY_SCROLL_VIEW (w)), self);
+      {
+        /* one of the two, the way it scrolls */
+        watch (spongy_scroll_view_get_hadjustment (SPONGY_SCROLL_VIEW (w)), self);
+        watch (spongy_scroll_view_get_vadjustment (SPONGY_SCROLL_VIEW (w)), self);
+      }
     else if (GTK_IS_SCROLLED_WINDOW (w))
       {
         watch (gtk_scrolled_window_get_hadjustment (GTK_SCROLLED_WINDOW (w)), self);
@@ -458,17 +643,47 @@ sw_image_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gsk_rounded_rect_init_from_rect (&rounded, &box, self->radius);
   if (self->radius > 0)
     gtk_snapshot_push_rounded_clip (snapshot, &rounded);
-  if (self->picture)
+  if (self->picture && self->contain)
+    {
+      /* all of it, as large as fits, centred: the full-screen viewer's pictures, rarely scaled down */
+      double pw = gdk_paintable_get_intrinsic_width (self->picture);
+      double ph = gdk_paintable_get_intrinsic_height (self->picture);
+      double scale = pw > 0 && ph > 0 ? MIN (w / pw, h / ph) : 1;
+      double dw = pw > 0 ? pw * scale : w, dh = ph > 0 ? ph * scale : h;
+
+      gtk_snapshot_save (snapshot);
+      gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT ((w - dw) / 2, (h - dh) / 2));
+      if (GDK_IS_TEXTURE (self->picture))
+        gtk_snapshot_append_scaled_texture (snapshot, GDK_TEXTURE (self->picture), GSK_SCALING_FILTER_LINEAR,
+                                            &GRAPHENE_RECT_INIT (0, 0, dw, dh));
+      else
+        gdk_paintable_snapshot (self->picture, snapshot, dw, dh);
+      gtk_snapshot_restore (snapshot);
+    }
+  else if (self->picture)
     {
       double pw = gdk_paintable_get_intrinsic_width (self->picture);
       double ph = gdk_paintable_get_intrinsic_height (self->picture);
       double scale = pw > 0 && ph > 0 ? MAX (w / pw, h / ph) : 1;
       double dw = pw > 0 ? pw * scale : w, dh = ph > 0 ? ph * scale : h;
+      double device = vibeos_device_scale (widget);
+      int sw = (int) ceil (w * device), sh = (int) ceil (h * device);
+      GdkTexture *copy = NULL;
 
+      /* drawn smaller than it is: the copy made for this box, pixel for pixel */
+      if (GDK_IS_TEXTURE (self->picture) && pw > 0 && ph > 0 && scale * device < 0.95)
+        copy = sized_for (self, GDK_TEXTURE (self->picture), sw, sh);
+      if (copy)
+        {
+          gtk_snapshot_append_texture (snapshot, copy, &box);
+          if (self->radius > 0)
+            gtk_snapshot_pop (snapshot);
+          return;
+        }
       /* fill the box, centred, cropping what sticks out (screenshots of slightly different shapes) */
       gtk_snapshot_push_clip (snapshot, &box);
       if (GDK_IS_TEXTURE (self->picture))
-        gtk_snapshot_append_scaled_texture (snapshot, GDK_TEXTURE (self->picture), GSK_SCALING_FILTER_TRILINEAR,
+        gtk_snapshot_append_scaled_texture (snapshot, GDK_TEXTURE (self->picture), GSK_SCALING_FILTER_LINEAR,
                                             &GRAPHENE_RECT_INIT ((w - dw) / 2, (h - dh) / 2, dw, dh));
       else
         {
@@ -503,6 +718,7 @@ sw_image_dispose (GObject *object)
 
   unwatch (self);
   forget (self, self->url);
+  forget_sized (self);
   g_clear_object (&self->picture);
   G_OBJECT_CLASS (sw_image_parent_class)->dispose (object);
 }
@@ -566,6 +782,7 @@ sw_image_set_url (SwImage *self, const char *url)
   self->url = url && *url ? g_strdup (url) : NULL;
   self->requested = self->failed = FALSE;
   texture = sw_image_cache_lookup (self->url);
+  forget_sized (self);
   g_set_object (&self->picture, (GdkPaintable *) texture);
   if (gtk_widget_get_mapped (GTK_WIDGET (self)))
     start_watching (self);
@@ -592,7 +809,25 @@ sw_image_set_paintable (SwImage *self, GdkPaintable *paintable)
 {
   unwatch (self);
   forget (self, self->url);
+  forget_sized (self);
   g_clear_pointer (&self->url, g_free);
   g_set_object (&self->picture, paintable);
   gtk_widget_queue_draw (GTK_WIDGET (self));
+}
+
+void
+sw_image_set_contain (SwImage *self, gboolean contain)
+{
+  self->contain = contain;
+  gtk_widget_queue_draw (GTK_WIDGET (self));
+}
+
+void
+sw_image_set_size (SwImage *self, int width, int height)
+{
+  if (self->width == width && self->height == height)
+    return;
+  self->width = width;
+  self->height = height;
+  gtk_widget_queue_resize (GTK_WIDGET (self));
 }

@@ -236,7 +236,7 @@ window.sw-window,
 .sw-chip {
   min-height: 40px;
   border-radius: 20px;
-  padding: 0 16px 0 8px;
+  padding: 0 16px 0 6px;
   background-color: @vibeos_surface_container_high;
 }
 
@@ -265,16 +265,15 @@ window.sw-window,
   padding: 12px 0;
 }
 
-/* a category's Font Awesome icon on a circle in one of four hues */
+/* a category's Font Awesome icon on a circle, 6px in from the chip's edges (16 + 2 × 6 = 28 of the chip's 40) */
 .sw-category-icon {
   border-radius: 999px;
-  padding: 5px;
+  padding: 6px;
+  min-width: 16px;
+  min-height: 16px;
+  background-color: @vibeos_secondary_container;
+  color: @vibeos_on_secondary_container;
 }
-
-.sw-category-icon.hue-0 { background-color: @vibeos_primary_container; color: @vibeos_on_primary_container; }
-.sw-category-icon.hue-1 { background-color: @vibeos_secondary_container; color: @vibeos_on_secondary_container; }
-.sw-category-icon.hue-2 { background-color: @vibeos_tertiary_container; color: @vibeos_on_tertiary_container; }
-.sw-category-icon.hue-3 { background-color: @vibeos_surface_container_highest; color: @vibeos_primary; }
 
 /* banners: pictures with their title over a dark fade */
 .sw-banner {
@@ -427,11 +426,19 @@ window.sw-window,
 }
 
 .sw-screenshots {
-  padding: 16px 0 0 0;
+  padding-top: 16px;
 }
 
-.sw-screenshots sw-image {
+.sw-screenshots > vibeos-pressable {
   margin-right: 8px;
+  border-radius: 12px;
+}
+
+/* the full-screen viewer's back arrow, white on the black */
+.sw-viewer-back {
+  min-width: 48px;
+  min-height: 48px;
+  color: white;
 }
 
 .sw-description {

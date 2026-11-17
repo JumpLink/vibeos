@@ -23,6 +23,7 @@
 #include "sw-json.h"
 #include "sw-menu.h"
 #include "sw-updates.h"
+#include "sw-viewer.h"
 #include "sw-widgets.h"
 #include "sw-window.h"
 
@@ -34,12 +35,18 @@ typedef struct {
   char       *id;
   JsonObject *summary, *app, *config, *my;
   GAppInfo   *launcher;
-  gboolean    launcher_known;
+  gboolean    launcher_known, shown;
+  guint       show_tick;     /* the details wait for the page's transition to end */
+  VibeosAnim *reveal;        /* and fade in once built */
 } Page;
+
+/* the details fading in, once built */
+#define REVEAL_MS 150
 
 static void load (Page *p);
 static void update_action (Page *p);
 static void update_review_box (Page *p);
+static void schedule_show (Page *p);
 
 static const char *
 package_of (Page *p)
@@ -68,6 +75,7 @@ page_free (gpointer data)
   g_clear_pointer (&p->config, json_object_unref);
   g_clear_pointer (&p->my, json_object_unref);
   g_clear_object (&p->launcher);
+  g_clear_pointer (&p->reveal, vibeos_anim_free);
   g_free (p);
 }
 
@@ -295,26 +303,48 @@ stats (Page *p)
   return row;
 }
 
+/* a screenshot tapped: all of them full screen, from that one */
+static void
+on_screenshot_clicked (GtkWidget *button, GtkWidget *strip)
+{
+  JsonArray *list = g_object_get_data (G_OBJECT (strip), "sw-shots");
+  GPtrArray *thumbs = g_object_get_data (G_OBJECT (strip), "sw-thumbs");
+  guint index = GPOINTER_TO_UINT (g_object_get_data (G_OBJECT (button), "sw-index"));
+
+  if (list && thumbs && index < thumbs->len)
+    sw_viewer_present (g_ptr_array_index (thumbs, index), list, index, thumbs);
+}
+
 static GtkWidget *
 screenshots (JsonArray *list)
 {
   GtkWidget *box, *strip = sw_strip_new (&box);
+  GPtrArray *thumbs = g_ptr_array_new ();
+  guint n = json_array_get_length (list);
 
   gtk_widget_add_css_class (box, "sw-screenshots");
-  for (guint i = 0; i < json_array_get_length (list); i++)
+  for (guint i = 0; i < n; i++)
     {
       JsonObject *shot = sw_json_array_object (list, i);
       double w = sw_json_double (shot, "width"), h = sw_json_double (shot, "height");
       /* 220 tall, as wide as the picture's shape makes it (phone-shaped pictures narrow, desktop ones wide) */
       int height = 220, width = (int) (w > 0 && h > 0 ? height * w / h : height * 0.5);
-      GtkWidget *image = sw_image_new (MIN (width, 320), height, 12);
+      GtkWidget *image = sw_image_new (MIN (width, 320), height, 12), *button;
       const char *caption = sw_json_string (shot, "caption");
+      g_autofree char *label = caption ? g_strdup (caption) : g_strdup_printf ("Screenshot %u of %u", i + 1, n);
 
       sw_image_set_url (SW_IMAGE (image), sw_json_string (shot, "url"));
-      if (caption)
-        gtk_accessible_update_property (GTK_ACCESSIBLE (image), GTK_ACCESSIBLE_PROPERTY_LABEL, caption, -1);
-      gtk_box_append (GTK_BOX (box), image);
+      button = vibeos_pressable_new (image);
+      vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_BOUNDED, 12);
+      gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, label, -1);
+      g_object_set_data (G_OBJECT (button), "sw-index", GUINT_TO_POINTER (i));
+      g_signal_connect (button, "clicked", G_CALLBACK (on_screenshot_clicked), strip);
+      gtk_box_append (GTK_BOX (box), button);
+      /* the strip holds the thumbnails in its box: they live as long as it does */
+      g_ptr_array_add (thumbs, image);
     }
+  g_object_set_data_full (G_OBJECT (strip), "sw-shots", json_array_ref (list), (GDestroyNotify) json_array_unref);
+  g_object_set_data_full (G_OBJECT (strip), "sw-thumbs", thumbs, (GDestroyNotify) g_ptr_array_unref);
   return strip;
 }
 
@@ -641,7 +671,7 @@ on_loaded_again (SwApiResult *result, const SwApiError *error, gpointer data)
     }
   g_clear_pointer (&p->app, json_object_unref);
   p->app = json_object_ref (sw_json_node_object (result->data));
-  show (p);
+  schedule_show (p);
 }
 
 static void
@@ -804,10 +834,19 @@ information (Page *p)
 }
 
 static void
+on_reveal (VibeosAnim *anim, double value, gpointer data)
+{
+  Page *p = data;
+
+  gtk_widget_set_opacity (p->details, value);
+}
+
+static void
 show (Page *p)
 {
   GtkWidget *child;
   JsonArray *shots = sw_json_array (p->app, "screenshots");
+  gboolean first = !p->shown;
 
   while ((child = gtk_widget_get_first_child (p->details)))
     gtk_box_remove (GTK_BOX (p->details), child);
@@ -831,6 +870,49 @@ show (Page *p)
   if (sw_installer_get_installed (sw_installer_get_default (), package_of (p)))
     find_launcher (p);
   sw_status_show (SW_STATUS (p->status));
+  p->shown = TRUE;
+  /* the first time, where the page showed it loading: the details fade in rather than appear */
+  if (first && gtk_widget_get_mapped (p->page))
+    {
+      if (!p->reveal)
+        p->reveal = vibeos_anim_new (p->details, on_reveal, p);
+      vibeos_anim_start (p->reveal, 0, 1, REVEAL_MS, 0, SPONGY_LINEAR_OUT_SLOW_IN);
+    }
+}
+
+static gboolean
+page_moving (Page *p)
+{
+  GtkWidget *stack = gtk_widget_get_ancestor (p->page, VIBEOS_TYPE_PAGE_STACK);
+
+  return stack && vibeos_page_stack_is_animating (VIBEOS_PAGE_STACK (stack));
+}
+
+static gboolean
+show_when_still (GtkWidget *widget, GdkFrameClock *clock, gpointer data)
+{
+  Page *p = data;
+
+  if (page_moving (p))
+    return G_SOURCE_CONTINUE;
+  p->show_tick = 0;
+  show (p);
+  return G_SOURCE_REMOVE;
+}
+
+/* The details, built now or, while the page slides in or out, right after: building a page of them takes longer than
+ * a frame, and the slide would stop for it. Two calls before then build them once. */
+static void
+schedule_show (Page *p)
+{
+  if (p->show_tick)
+    return;
+  if (!gtk_widget_get_mapped (p->page) || !page_moving (p))
+    {
+      show (p);
+      return;
+    }
+  p->show_tick = gtk_widget_add_tick_callback (p->page, show_when_still, p, NULL);
 }
 
 static void
@@ -843,7 +925,7 @@ on_config (SwApiResult *result, const SwApiError *error, gpointer data)
   g_clear_pointer (&p->config, json_object_unref);
   p->config = json_object_ref (sw_json_node_object (result->data));
   if (p->app)
-    show (p);
+    schedule_show (p);
 }
 
 static void
@@ -864,7 +946,7 @@ on_loaded (SwApiResult *result, const SwApiError *error, gpointer data)
     return;
   g_clear_pointer (&p->app, json_object_unref);
   p->app = json_object_ref (sw_json_node_object (result->data));
-  show (p);
+  schedule_show (p);
 }
 
 static void

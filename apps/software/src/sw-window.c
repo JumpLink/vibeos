@@ -15,13 +15,16 @@
 
 #define NAV_HEIGHT 80
 #define STEP_MS    900
+#define TAB_FADE_MS 180   /* another tab's content fades in */
 
 typedef struct {
-  GtkWidget *window, *stack, *tabs, *tab_stack, *nav, *snackbar, *marker;
-  GtkWidget *homes[4];
-  int        tab;
-  char     **steps;
-  guint      step, step_timeout;
+  GtkWidget  *window, *stack, *tabs, *tab_stack, *nav, *snackbar, *marker;
+  GtkWidget  *homes[4];
+  int         tab;
+  char      **steps;
+  guint       step, step_timeout;
+  VibeosAnim *tab_fade;
+  GtkWidget  *fading;     /* the tab content fading in */
 } Win;
 
 static Win *
@@ -45,9 +48,30 @@ update_marker (Win *win)
 }
 
 static void
+on_tab_fade (VibeosAnim *anim, double value, gpointer data)
+{
+  Win *win = data;
+
+  if (win->fading)
+    gtk_widget_set_opacity (win->fading, value);
+}
+
+static void
 select_tab (Win *win, int tab)
 {
+  gboolean changed = tab != win->tab;
+
   win->tab = tab;
+  /* the old tab's content goes at once and the new one's fades in: nothing is laid out while it does */
+  if (win->fading)
+    gtk_widget_set_opacity (win->fading, 1);
+  win->fading = NULL;
+  if (changed && gtk_widget_get_mapped (win->tab_stack))
+    {
+      win->fading = win->homes[tab];
+      gtk_widget_set_opacity (win->fading, 0);
+      vibeos_anim_start (win->tab_fade, 0, 1, TAB_FADE_MS, 0, SPONGY_LINEAR_OUT_SLOW_IN);
+    }
   gtk_stack_set_visible_child (GTK_STACK (win->tab_stack), win->homes[tab]);
   vibeos_nav_bar_set_selected (VIBEOS_NAV_BAR (win->nav), tab);
   update_marker (win);
@@ -323,6 +347,8 @@ on_account_notice (SwAccount *account, const char *text, GtkWidget *window)
  *   allapps:0|1                    All apps, on this device or not      install:PACKAGE    install it
  *   popular                        the tab's Popular  type:TEXT         TEXT into the focused field
  *   scroll:PX                      the page PX down   toast:TEXT        a snackbar
+ *   strip:PX                       the page's first sideways strip PX along
+ *   screenshot:N                   tap the app page's Nth screenshot (from 0): the full-screen viewer
  *   press:LABEL                    tap the button LABEL               fill:LABEL=TEXT    TEXT into the field LABEL
  *   code:DIGITS                    DIGITS into the code's boxes       text:TEXT          TEXT into the review's field
  *   wait:MS                        MS before the next step */
@@ -372,6 +398,21 @@ is_button (GtkWidget *widget, const char *text)
   while (child && !GTK_IS_LABEL (child))
     child = GTK_IS_BOX (child) ? gtk_widget_get_last_child (child) : NULL;
   return child && !g_strcmp0 (gtk_label_get_text (GTK_LABEL (child)), text);
+}
+
+/* a box with the CSS class `text` */
+static gboolean
+has_class (GtkWidget *widget, const char *text)
+{
+  return gtk_widget_has_css_class (widget, text);
+}
+
+/* a sideways scroll view */
+static gboolean
+is_strip (GtkWidget *widget, const char *text)
+{
+  return SPONGY_IS_SCROLL_VIEW (widget)
+         && gtk_orientable_get_orientation (GTK_ORIENTABLE (widget)) == GTK_ORIENTATION_HORIZONTAL;
 }
 
 /* a field (sw_field_new) labelled `text` */
@@ -530,6 +571,31 @@ do_step (Win *win, const char *step)
       if (scroll)
         spongy_scroll_view_scroll_to (SPONGY_SCROLL_VIEW (scroll), atof (arg));
     }
+  else if (!strcmp (what, "strip") || !strcmp (what, "screenshot"))
+    {
+      GtkWidget *top = vibeos_page_stack_get_top (VIBEOS_PAGE_STACK (win->stack));
+      GtkWidget *page = top == win->tabs ? win->homes[win->tab] : top;
+
+      if (!strcmp (what, "strip"))
+        {
+          GtkWidget *strip = find_widget (page, is_strip, NULL);
+
+          if (strip)
+            spongy_scroll_view_scroll_to (SPONGY_SCROLL_VIEW (strip), atof (arg));
+        }
+      else
+        {
+          GtkWidget *box = find_widget (page, has_class, "sw-screenshots");
+          GtkWidget *shot = box ? gtk_widget_get_first_child (box) : NULL;
+
+          for (int i = atoi (arg); shot && i > 0; i--)
+            shot = gtk_widget_get_next_sibling (shot);
+          if (shot)
+            g_signal_emit_by_name (shot, "clicked");
+          else
+            g_warning ("VIBEOS_SOFTWARE_PAGE: nothing for %s", step);
+        }
+    }
   else if (strcmp (what, "wait"))
     g_warning ("VIBEOS_SOFTWARE_PAGE: unknown step %s", step);
 }
@@ -567,6 +633,112 @@ sw_window_run_steps (GtkWidget *window, const char *steps)
 
 /* ---- the window ------------------------------------------------------------------------------------------------ */
 
+/* ---- frame timing ---------------------------------------------------------------------------------------------
+ *
+ * With G_MESSAGES_DEBUG=vibeos-software-frames, every run of frames (frames less than 100 ms apart: a fling, a
+ * transition, a drag) is logged once it ends: how many, how far apart (mean and worst), how many came later than
+ * one and a half refresh intervals, and how long the app worked on each (layout, drawing and handing it to the
+ * compositor: mean and worst) against the refresh interval. */
+
+#define FRAMES_DOMAIN "vibeos-software-frames"
+#define BURST_GAP_US  100000
+
+typedef struct {
+  gint64 last, started, work_start, refresh;
+  guint  frames, late, flush;
+  double gap_sum, gap_worst, work_sum, work_worst;
+} Frames;
+
+/* logs the run that just ended (a run of fewer than five frames is a single redraw, not motion) and starts afresh */
+static void
+frames_report (Frames *f)
+{
+  if (f->frames >= 5)
+    g_log (FRAMES_DOMAIN, G_LOG_LEVEL_DEBUG,
+           "%u frames in %.0f ms: %.2f ms apart, worst %.2f, %u late; work %.2f ms a frame, worst %.2f "
+           "(refresh %.2f ms)", f->frames, (f->last - f->started) / 1000.0, f->gap_sum / f->frames, f->gap_worst,
+           f->late, f->work_sum / f->frames, f->work_worst, f->refresh / 1000.0);
+  f->frames = f->late = 0;
+  f->gap_sum = f->gap_worst = f->work_sum = f->work_worst = 0;
+  f->last = 0;
+}
+
+static gboolean
+frames_flush (gpointer data)
+{
+  Frames *f = data;
+
+  f->flush = 0;
+  frames_report (f);
+  return G_SOURCE_REMOVE;
+}
+
+static void
+frames_before_paint (GdkFrameClock *clock, Frames *f)
+{
+  f->work_start = g_get_monotonic_time ();
+}
+
+static void
+frames_after_paint (GdkFrameClock *clock, Frames *f)
+{
+  gint64 now = gdk_frame_clock_get_frame_time (clock);
+  GdkFrameTimings *timings = gdk_frame_clock_get_current_timings (clock);
+  double work = f->work_start ? (g_get_monotonic_time () - f->work_start) / 1000.0 : 0;
+  gint64 refresh = 0;
+
+  f->work_start = 0;
+  /* the compositor's refresh interval as the clock knows it: this frame's own timings are not complete yet */
+  gdk_frame_clock_get_refresh_info (clock, now, &refresh, NULL);
+  if (refresh <= 0 && timings)
+    refresh = gdk_frame_timings_get_refresh_interval (timings);
+  if (refresh > 0)
+    f->refresh = refresh;
+  if (f->last && now - f->last < BURST_GAP_US)
+    {
+      double gap = (now - f->last) / 1000.0;
+
+      f->frames++;
+      f->gap_sum += gap;
+      f->gap_worst = MAX (f->gap_worst, gap);
+      f->work_sum += work;
+      f->work_worst = MAX (f->work_worst, work);
+      if (f->refresh > 0 && gap > 1.5 * f->refresh / 1000.0)
+        f->late++;
+    }
+  else
+    {
+      frames_report (f);
+      f->started = now;
+    }
+  f->last = now;
+  g_clear_handle_id (&f->flush, g_source_remove);
+  f->flush = g_timeout_add (BURST_GAP_US / 1000, frames_flush, f);
+}
+
+static void
+frames_free (gpointer data)
+{
+  Frames *f = data;
+
+  g_clear_handle_id (&f->flush, g_source_remove);
+  g_free (f);
+}
+
+static void
+frames_watch (GtkWidget *window)
+{
+  GdkFrameClock *clock = gtk_widget_get_frame_clock (window);
+  Frames *f;
+
+  if (!clock || g_log_writer_default_would_drop (G_LOG_LEVEL_DEBUG, FRAMES_DOMAIN))
+    return;
+  f = g_new0 (Frames, 1);
+  g_object_set_data_full (G_OBJECT (window), "sw-frames", f, frames_free);
+  g_signal_connect (clock, "before-paint", G_CALLBACK (frames_before_paint), f);
+  g_signal_connect (clock, "after-paint", G_CALLBACK (frames_after_paint), f);
+}
+
 static void
 win_free (gpointer data)
 {
@@ -574,6 +746,7 @@ win_free (gpointer data)
 
   g_clear_handle_id (&win->step_timeout, g_source_remove);
   g_strfreev (win->steps);
+  g_clear_pointer (&win->tab_fade, vibeos_anim_free);
   g_free (win);
 }
 
@@ -606,6 +779,7 @@ sw_window_new (GtkApplication *app)
   win->tab_stack = gtk_stack_new ();
   /* a tab shows at once, as a nav bar's tabs do */
   gtk_stack_set_transition_type (GTK_STACK (win->tab_stack), GTK_STACK_TRANSITION_TYPE_NONE);
+  win->tab_fade = vibeos_anim_new (win->tab_stack, on_tab_fade, win);
   gtk_widget_set_vexpand (win->tab_stack, TRUE);
   win->homes[SW_TAB_FEATURED] = sw_home_new (SW_HOME_FEATURED);
   win->homes[SW_TAB_APPS] = sw_home_new (SW_HOME_APPS);
@@ -647,6 +821,7 @@ sw_window_new (GtkApplication *app)
                                         gtk_shortcut_new (gtk_keyval_trigger_new (GDK_KEY_Back, 0), action));
   gtk_widget_add_controller (window, shortcuts);
 
+  g_signal_connect_after (window, "realize", G_CALLBACK (frames_watch), NULL);
   g_signal_connect_object (sw_installer_get_default (), "finished", G_CALLBACK (on_job_finished), window, 0);
   g_signal_connect_object (sw_updates_get_default (), "changed", G_CALLBACK (on_updates_changed), window, 0);
   g_signal_connect_object (sw_account_get_default (), "notice", G_CALLBACK (on_account_notice), window, 0);

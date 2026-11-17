@@ -24,7 +24,7 @@ resources = gnome.compile_resources('software-resources', 'src/software.gresourc
 executable('vibeos-software', 'src/sw-main.c', 'src/sw-window.c', 'src/sw-widgets.c', 'src/sw-image.c',
            'src/sw-menu.c', 'src/sw-installer.c', 'src/sw-updates.c', 'src/sw-account.c', 'src/sw-featured.c',
            'src/sw-list.c', 'src/sw-app-page.c', 'src/sw-reviews.c', 'src/sw-search.c', 'src/sw-mine.c',
-           'src/sw-account-pages.c', resources, link_with: core, install: true,
+           'src/sw-account-pages.c', 'src/sw-viewer.c', resources, link_with: core, install: true,
            dependencies: [gio, soup, json, vibeos, gtk, gtk_wayland, secret, spongy,
                           meson.get_compiler('c').find_library('m')])
 

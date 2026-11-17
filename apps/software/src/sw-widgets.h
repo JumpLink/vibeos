@@ -86,8 +86,11 @@ void        sw_app_cache_put    (JsonObject *app);
 GtkWidget *sw_app_row_new       (JsonObject *app, const char *subtitle);
 /* an AppSummary's tile, `width` wide */
 GtkWidget *sw_app_tile_new      (JsonObject *app, int width);
-/* a horizontal row of tiles (or anything), scrolled sideways */
+/* a horizontal row of tiles (or anything), scrolled sideways: `box`, its items SW_STRIP_SPACING apart */
+#define SW_STRIP_SPACING 4
 GtkWidget *sw_strip_new         (GtkWidget **box);
+/* the strip's items, all `item_width` wide, come to rest with one at the start (24px in), none cut off there */
+void       sw_strip_snap        (GtkWidget *strip, int item_width);
 /* "Title  3                See all" over a section; `action` NULL for none */
 GtkWidget *sw_section_header_new (const char *title, const char *count, const char *action, GCallback callback,
                                   gpointer data);
