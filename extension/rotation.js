@@ -1,7 +1,10 @@
 // A phone turns its apps, not itself: the lock screen is portrait and so is the home screen (a launcher's "Allow home
 // screen rotation" is off by default on a phone). With GNOME's orientation lock
 // (Android's auto-rotate) off, the panel follows the phone only while an app is in front; locked, at home or in the app
-// drawer it is upright, and an app going away turns it back. An app can also have an orientation of its own, as an
+// drawer it is upright, and an app going away turns it back. An app opens the way the panel is now and turns when the
+// phone is turned after that: the sensor's last reading may be older than the hold (the phone lay flat, or was
+// turned while it was held), and applied as the app opened it turned an app started upright sideways (2026-11-17).
+// An app can also have an orientation of its own, as an
 // Android app's manifest gives it: X-Phone-Orientation=landscape in its desktop file (a game) keeps the panel sideways
 // while it is in front, however the phone is held, or lies on the table; X-Phone-Orientation=portrait keeps it
 // upright (an app laid out for portrait only). Mutter's orientation manager turns the panel with the accelerometer;
@@ -29,11 +32,13 @@ const SEASCAPE = 1;             // 90: the phone turned right, its left side up
 const LANDSCAPE = 3;            // 270: turned left, its right side up (what an app asking for landscape gets)
 const FOLLOW = -1;              // not a transform: the panel follows the phone
 const TEMPORARY = 1;            // MetaMonitorsConfigMethod
-// mutter claims the sensor again when let go and turns the panel only on a change of its reading: held as it was
-// before, the phone would stay upright. Its reading is fresh by then.
-const RESYNC_MS = 700;
 // a shell started sideways is built anyway if the panel has not turned by then
 const UPRIGHT_TIMEOUT_MS = 2000;
+// an app that asks for landscape is turned for as it starts, before its window maps; held for it this long at most
+const STARTING_MS = 10000;
+// a sideways app's window gone with nothing in front: upright only if none comes back by then (a game re-creating
+// its window, or a dialog of its own between two of its windows)
+const SETTLE_MS = 400;
 
 const STATE_TYPE = '(ua((ssss)a(siiddada{sv})a{sv})a(iiduba(ssss)a{sv})a{sv})';
 
@@ -126,6 +131,10 @@ export class Rotation {
         this._again = false;
         this._resyncId = 0;
         this._syncId = 0;
+        this._starting = null;          // an app asking for landscape that is starting, before its window maps
+        this._startingId = 0;
+        this._destroyedAt = 0;          // when a window last went away (monotonic us)
+        this._settleId = 0;
         this._waits = new Map();        // whenUpright's: id -> its timeout
         this._nextWait = 0;
         this._canInhibit = canInhibitTracking();    // else the orientation lock holds the panel
@@ -157,8 +166,42 @@ export class Rotation {
         const queue = () => this._queueSync();
         global.display.connectObject('restacked', queue, 'notify::focus-window', queue, this);
         global.window_manager.connectObject('minimize', queue, 'unminimize', queue, 'map', queue,
-            'destroy', queue, this);
+            'destroy', () => {
+                this._destroyedAt = GLib.get_monotonic_time();
+                queue();
+            }, this);
+        Shell.AppSystem.get_default().connectObject('app-state-changed', (_sys, app) => this._appStateChanged(app),
+            this);
         this._sync();
+    }
+
+    // A game tapped on the home screen turns the panel as it starts: waiting for its window, the game first drew a
+    // portrait window for a second and a half, then the turn
+    _appStateChanged(app) {
+        if (app.state === Shell.AppState.STARTING) {
+            if (this._keyguard?.showing || app.get_app_info()?.get_string('X-Phone-Orientation') !== 'landscape')
+                return;
+            this._setStarting(app);
+            this.holdSideways();
+        } else if (app === this._starting) {
+            this._setStarting(null);
+            this._queueSync();
+        }
+    }
+
+    _setStarting(app) {
+        if (this._startingId)
+            GLib.source_remove(this._startingId);
+        this._startingId = 0;
+        this._starting = app;
+        if (app) {
+            this._startingId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, STARTING_MS, () => {
+                this._startingId = 0;
+                this._starting = null;
+                this._queueSync();
+                return GLib.SOURCE_REMOVE;
+            });
+        }
     }
 
     // the top app window over the launcher on this workspace (going home minimizes them all), as the status bar has
@@ -194,12 +237,33 @@ export class Rotation {
             return;
         const front = this._keyguard.showing ? null : this._frontApp();
         const wanted = front ? this._wantedOrientation(front) : null;
+        if (!front && this._starting && !this._keyguard.showing) {
+            this.holdSideways();
+            return;
+        }
+        if (!front && this._forced && !this._keyguard.showing && this._settle())
+            return;
         if (!front || wanted === 'portrait')
             this.hold();
         else if (wanted === 'landscape')
             this.holdSideways();
         else
             this.release();
+    }
+
+    // true while a window that went away may still be followed by another of the same app: sync again after
+    _settle() {
+        const left = SETTLE_MS - (GLib.get_monotonic_time() - this._destroyedAt) / 1000;
+        if (left <= 0)
+            return false;
+        if (!this._settleId) {
+            this._settleId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, Math.ceil(left), () => {
+                this._settleId = 0;
+                this._sync();
+                return GLib.SOURCE_REMOVE;
+            });
+        }
+        return true;
     }
 
     // upright, whichever way the phone is held
@@ -272,16 +336,9 @@ export class Rotation {
         if (!this._held)
             return;
         this._held = false;
+        // mutter claims the sensor again and turns the panel on the next change of its reading only
         this._inhibit(false);
         this._cancelResync();
-        this._resyncId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, RESYNC_MS, () => {
-            this._resyncId = 0;
-            const o = this._sensor.get_orientation();
-            if (!this._touchscreen.get_boolean(LOCK_KEY) && this._sensor.has_accelerometer &&
-                o !== Meta.Orientation.NORMAL && o !== Meta.Orientation.UNDEFINED)
-                this._sensor.emit('orientation-changed');
-            return GLib.SOURCE_REMOVE;
-        });
     }
 
     // call back once the panel is upright (at once if it is): the id to cancel it with, 0 if called already
@@ -384,6 +441,11 @@ export class Rotation {
         if (this._syncId)
             GLib.source_remove(this._syncId);
         this._syncId = 0;
+        if (this._settleId)
+            GLib.source_remove(this._settleId);
+        this._settleId = 0;
+        this._setStarting(null);
+        Shell.AppSystem.get_default().disconnectObject(this);
         this._sensor.disconnectObject(this);
         Main.layoutManager.disconnectObject(this);
         this._keyguard?.disconnectObject(this);

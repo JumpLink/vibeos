@@ -322,7 +322,8 @@ class Entry {
         const shown = h * this._interpolator(this.f);
         const [top, bottom] = this._clipTop ? [h - shown, h] : [0, shown];
         const y = this.y + this._dragY;
-        this.row.set_position(px(SIDE), px(y));
+        const left = this._headsUp.left;
+        this.row.set_position(px(left), px(y));
         this.row.setExpansion(this.p);
         this.row.setVisibleRange(top, bottom);
         this.row.setContentAlpha(this._interpolator(clamp((this.f - ALPHA_START) / (1 - ALPHA_START))));
@@ -330,7 +331,7 @@ class Entry {
         const visible = this._alpha > 0;
         this.row.visible = this.shadow.actor.visible = visible;
         this.row.opacity = Math.round(255 * this._alpha);
-        this.shadow.place(SIDE, y + top, bottom - top, this._alpha);
+        this.shadow.place(left, y + top, bottom - top, this._alpha);
     }
 
     expandTo(p) {
@@ -454,6 +455,9 @@ export class HeadsUp {
             width: px(SCREEN_W),
             height: px(SCREEN_H),
         });
+        this.left = SIDE;               // the card's left edge, screen px
+        this._fit();
+        Main.layoutManager.connectObject('monitors-changed', () => this._fit(), this);
         this._queue = [];               // waiting, the most urgent first
         this._entry = null;             // the one pinned
         this._tracked = null;           // ... the one the shade took along
@@ -479,6 +483,20 @@ export class HeadsUp {
             if (Main.sessionMode.isLocked)
                 this._releaseAll();
         }, this);
+    }
+
+    // The layer covers the panel as it is turned now. Sideways (a game in landscape) the card keeps its upright
+    // width and is centred, as a phone's heads-up is in landscape: laid out for the upright panel it sat in the left
+    // half, its shadow cut off at the screen's left edge.
+    _fit() {
+        const m = Main.layoutManager.primaryMonitor;
+        if (!m)
+            return;
+        this.layer.set_size(m.width, m.height);
+        const w = Math.round(m.width * SCALE);
+        this.left = m.width > m.height ? Math.round((w - ROW_W) / 2) : SIDE;
+        if (this._entry?.row)
+            this._entry._apply();
     }
 
     _addSource(source) {
@@ -774,6 +792,7 @@ export class HeadsUp {
             source.disconnectObject(this);
         this.shade.disconnectObject(this);
         Main.sessionMode.disconnectObject(this);
+        Main.layoutManager.disconnectObject(this);
         for (const e of [this._entry, this._tracked, ...this._leaving]) {
             if (!e)
                 continue;
