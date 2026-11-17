@@ -12,7 +12,8 @@
  *
  * Each picture shows the store's 540 px screenshot at once (the thumbnail's own, in memory already) and, where the
  * store has a full-size one (a screenshot's `full`), fades over to it once it has loaded; zoomed in, that is what
- * shows. A store without them leaves the 540 px pictures, scaled up. */
+ * shows. A full-size picture is fetched the first time its page shows, not before. A store without them leaves the
+ * 540 px pictures, scaled up. */
 #pragma once
 
 #include <gtk/gtk.h>

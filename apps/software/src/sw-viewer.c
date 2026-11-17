@@ -61,7 +61,9 @@ G_DECLARE_FINAL_TYPE (SwViewerPage, sw_viewer_page, SW, VIEWER_PAGE, GtkWidget)
 
 struct _SwViewerPage {
   GtkWidget   parent_instance;
-  GtkWidget  *small, *large;     /* the 540 px picture; the full-size one over it (NULL: the store has none) */
+  GtkWidget  *small, *large;     /* the 540 px picture; the full-size one over it (NULL: none, or not asked for yet) */
+  char       *large_url;         /* the full-size picture's (NULL: the store has none) */
+  int         width, height;
   VibeosAnim *crossfade;
   double      large_shown;       /* how far the full-size picture has faded in, 0 to 1 */
   double      zoom, x, y;        /* drawn `zoom` times as large, then moved by x, y */
@@ -77,6 +79,7 @@ sw_viewer_page_dispose (GObject *object)
   g_clear_pointer (&self->crossfade, vibeos_anim_free);
   g_clear_pointer (&self->small, gtk_widget_unparent);
   g_clear_pointer (&self->large, gtk_widget_unparent);
+  g_clear_pointer (&self->large_url, g_free);
   G_OBJECT_CLASS (sw_viewer_page_parent_class)->dispose (object);
 }
 
@@ -143,7 +146,8 @@ on_large_loaded (SwImage *large, SwViewerPage *self)
     on_crossfade (self->crossfade, 1, self);
 }
 
-/* the API's Screenshot `shot`, in a box of width × height: its `url` at once, its `full` one over it once loaded */
+/* the API's Screenshot `shot`, in a box of width × height: its `url` at once; its `full` one comes when the page is
+ * first the one showing (sw_viewer_page_want_full), so that pages nobody looks at cost no download */
 static GtkWidget *
 sw_viewer_page_new (JsonObject *shot, int width, int height)
 {
@@ -151,6 +155,9 @@ sw_viewer_page_new (JsonObject *shot, int width, int height)
   JsonObject *full = sw_json_object (shot, "full");
   const char *large = full ? sw_json_string (full, "url") : NULL, *caption = sw_json_string (shot, "caption");
 
+  self->width = width;
+  self->height = height;
+  self->large_url = large && *large ? g_strdup (large) : NULL;
   self->crossfade = vibeos_anim_new (GTK_WIDGET (self), on_crossfade, self);
   self->small = sw_image_new (width, height, 0);
   sw_image_set_contain (SW_IMAGE (self->small), TRUE);
@@ -158,25 +165,32 @@ sw_viewer_page_new (JsonObject *shot, int width, int height)
   if (caption)
     gtk_accessible_update_property (GTK_ACCESSIBLE (self->small), GTK_ACCESSIBLE_PROPERTY_LABEL, caption, -1);
   gtk_widget_set_parent (self->small, GTK_WIDGET (self));
-  if (large && *large)
-    {
-      self->large = sw_image_new (width, height, 0);
-      sw_image_set_contain (SW_IMAGE (self->large), TRUE);
-      sw_image_set_url (SW_IMAGE (self->large), large);
-      /* the same picture again, for the screen reader */
-      gtk_accessible_update_state (GTK_ACCESSIBLE (self->large), GTK_ACCESSIBLE_STATE_HIDDEN, TRUE, -1);
-      /* in memory already (opened before): there at once */
-      if (sw_image_has_picture (SW_IMAGE (self->large)))
-        self->large_shown = 1;
-      g_signal_connect (self->large, "loaded", G_CALLBACK (on_large_loaded), self);
-      gtk_widget_set_parent (self->large, GTK_WIDGET (self));
-    }
   return GTK_WIDGET (self);
+}
+
+/* the full-size picture, the first time the page shows: it fades in once loaded */
+static void
+sw_viewer_page_want_full (SwViewerPage *self)
+{
+  if (!self->large_url || self->large)
+    return;
+  self->large = sw_image_new (self->width, self->height, 0);
+  sw_image_set_contain (SW_IMAGE (self->large), TRUE);
+  sw_image_set_url (SW_IMAGE (self->large), self->large_url);
+  /* the same picture again, for the screen reader */
+  gtk_accessible_update_state (GTK_ACCESSIBLE (self->large), GTK_ACCESSIBLE_STATE_HIDDEN, TRUE, -1);
+  /* in memory already (opened before): there at once */
+  if (sw_image_has_picture (SW_IMAGE (self->large)))
+    self->large_shown = 1;
+  g_signal_connect (self->large, "loaded", G_CALLBACK (on_large_loaded), self);
+  gtk_widget_set_parent (self->large, GTK_WIDGET (self));
 }
 
 static void
 sw_viewer_page_set_size (SwViewerPage *self, int width, int height)
 {
+  self->width = width;
+  self->height = height;
   sw_image_set_size (SW_IMAGE (self->small), width, height);
   if (self->large)
     sw_image_set_size (SW_IMAGE (self->large), width, height);
@@ -1031,9 +1045,13 @@ on_pager_changed (GtkAdjustment *adj, SwViewer *self)
 static void
 on_pager_offset (GObject *pager, GParamSpec *pspec, SwViewer *self)
 {
-  /* another page: the one zoomed back at 1x */
-  if (self->zoomed && self->zoomed != page_at (self, current (self)))
+  SwViewerPage *page = page_at (self, current (self));
+
+  /* another page: the one zoomed back at 1x, and this one's full-size picture asked for */
+  if (self->zoomed && self->zoomed != page)
     unzoom (self);
+  if (page)
+    sw_viewer_page_want_full (page);
   /* the dots */
   gtk_widget_queue_draw (GTK_WIDGET (self));
 }
@@ -1196,6 +1214,8 @@ sw_viewer_present (GtkWidget *thumb, JsonArray *shots, guint index, GPtrArray *t
       g_weak_ref_init (ref, thumbs && i < thumbs->len ? g_ptr_array_index (thumbs, i) : NULL);
       g_ptr_array_add (self->thumbs, ref);
     }
+  if (n_pages (self))
+    sw_viewer_page_want_full (page_at (self, MIN (index, n_pages (self) - 1)));
   gtk_accessible_update_property (GTK_ACCESSIBLE (self), GTK_ACCESSIBLE_PROPERTY_LABEL, "Screenshots", -1);
 
   /* from the thumbnail, where it is now */
