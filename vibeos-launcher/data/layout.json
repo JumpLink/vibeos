@@ -27,7 +27,7 @@
    "vibeos.Browser.desktop",
    "org.gnome.Loupe.desktop",
    "vibeos.Calendar.desktop",
-   "org.gnome.Software.desktop"
+   "vibeos.Software.desktop"
   ],
   [
    null,

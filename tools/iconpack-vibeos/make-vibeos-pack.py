@@ -88,7 +88,7 @@ MAP = {
     "org.gnome.Loupe.desktop": "gallery",
     "org.gnome.Papers.desktop": "documents", "org.gnome.Evince.desktop": "documents",
     "org.gnome.Showtime.desktop": "video", "org.gnome.Totem.desktop": "video", "mpv.desktop": "video",
-    "org.gnome.Software.desktop": "store",
+    "vibeos.Software.desktop": "store", "org.gnome.Software.desktop": "store",
     "vibeos.BootAndroid.desktop": "android", "Waydroid.desktop": "android",
     "org.gnome.Maps.desktop": "maps",
     "org.gnome.Music.desktop": "music", "com.github.neithern.g4music.desktop": "music",

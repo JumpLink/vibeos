@@ -40,6 +40,30 @@ Comment:
  check_circle, error, info, shield); its app icon is the package_2 glyph on
  a tile drawn for VibeOS.
 
+Files: apps/software/data/icons/*
+Copyright: Google LLC (Material Symbols)
+License: Apache-2.0
+Comment:
+ Software's glyphs (the tabs, stars, the account, the settings) are Material
+ Symbols Rounded and Material Icons glyphs.
+
+Files: apps/software/data/vibeos.Software.svg
+       docs/icons/software.png
+Copyright: 2026 pulpoff <pashkovsky@gmail.com>
+License: Expat
+Comment:
+ Software's app icon, a shopping bag with an arrow into it, is drawn for
+ VibeOS on the tile the other apps use.
+
+Files: apps/software/data/fontawesome/*
+Copyright: 2025 Fonticons, Inc. (Font Awesome Free 7.0.0)
+License: CC-BY-4.0
+Comment:
+ Software's category icons are Font Awesome Free's glyphs (solid style,
+ unchanged; https://fontawesome.com): the store names each category's icon by
+ its Font Awesome name. Font Awesome's licence text:
+ apps/software/data/fontawesome/LICENSE.txt.
+
 Files: vibeos-launcher/iconpacks/gnome-free/icons/*
        tools/iconpack-gnome-free/glyphs/*
 Copyright: Google LLC (Material Symbols)

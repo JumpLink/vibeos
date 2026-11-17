@@ -24,6 +24,7 @@ const char *const apps_replaced[][2] = {
   { "org.gnome.Nautilus.desktop", "vibeos.Files.desktop" },
   { "org.gnome.Settings.desktop", "vibeos.Settings.desktop" },
   { "org.gnome.Weather.desktop", "vibeos.Weather.desktop" },
+  { "org.gnome.Software.desktop", "vibeos.Software.desktop" },
   /* GNOME's video player since 49 */
   { "org.gnome.Totem.desktop", "org.gnome.Showtime.desktop" },
 };

@@ -15,6 +15,7 @@
  "vibeos.Messaging.desktop": "messaging",
  "vibeos.Browser.desktop": "browser",
  "vibeos.Settings.desktop": "settings",
+ "vibeos.Software.desktop": "store",
  "vibeos.Weather.desktop": "weather",
  "firefox-esr.desktop": "browser",
  "mpv.desktop": "video",
