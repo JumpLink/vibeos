@@ -42,6 +42,7 @@ Upgrading from gnome-phone keeps everything: see [Upgrading from gnome-phone](#u
 <tr><td><img src="docs/icons/weather.png" width="48"></td><td><b>Weather</b> (<code>vibeos-weather</code>)</td><td>The weather where you are: the next 24 hours, the week and the details, from Open-Meteo, the place from GeoClue</td></tr>
 <tr><td><img src="docs/icons/compass.png" width="48"></td><td><b>Compass</b> (<code>vibeos-compass</code>)</td><td>A compass with the heading from iio-sensor-proxy and the position from GeoClue</td></tr>
 <tr><td><img src="docs/icons/dictate.png" width="48"></td><td><b>Dictate</b> (<code>vibeos-dictate</code>)</td><td>Speech to text on the device itself, with nothing sent anywhere, in English, German, Spanish, French, Italian or Russian</td></tr>
+<tr><td><img src="docs/icons/installer.png" width="48"></td><td><b>App Installer</b> (<code>vibeos-installer</code>)</td><td>Installs .deb files tapped in Files, and installs and uninstalls apps from the software sources for Software (its D-Bus interface): shows the app, both versions when one is installed, and what else changes, before anything does; PackageKit installs, polkit asks</td></tr>
 <tr><td><img src="docs/icons/settings.png" width="48"></td><td><b>Settings</b> (<code>vibeos-settings</code>)</td><td>Settings made for touch: Wi-Fi, Bluetooth, mobile network and hotspot, sounds, notifications, display, battery, wallpaper and parallax, the home screen, the lock screen (PIN, pattern, password), location, accounts, apps, language, accessibility. VibeOS opens it wherever GNOME opens a Settings panel</td></tr>
 </table>
 
@@ -95,7 +96,7 @@ shell; the device images do.
 | `vibeos-session` | The "VibeOS" session (GDM, or a systemd unit with no display manager) |
 | `vibeos-daemons` | The PIN check, alarm wake-ups, the touch GPU boost, and `vibeos-migrate-ids`, which carries a user's settings over from gnome-phone |
 | `vibeos-launcher` | The home screen |
-| `vibeos-dialer`, `vibeos-messaging`, `vibeos-contacts`, `vibeos-browser`, `vibeos-camera`, `vibeos-files`, `vibeos-clock`, `vibeos-calendar`, `vibeos-calculator`, `vibeos-weather`, `vibeos-compass`, `vibeos-dictate`, `vibeos-settings` | The apps |
+| `vibeos-dialer`, `vibeos-messaging`, `vibeos-contacts`, `vibeos-browser`, `vibeos-camera`, `vibeos-files`, `vibeos-clock`, `vibeos-calendar`, `vibeos-calculator`, `vibeos-weather`, `vibeos-compass`, `vibeos-dictate`, `vibeos-installer`, `vibeos-settings` | The apps |
 | `vibeos-iconpack-vibeos` | The VibeOS icons, the default: large Material Symbols glyphs on squircles in each app's colour |
 | `vibeos-iconpack-gnome-free` | gnome-free (called Round before): white glyphs on gradient discs |
 | `vibeos-parallax-solar-system` | The default wallpaper: a tilt-parallax solar system from NASA's public-domain images |

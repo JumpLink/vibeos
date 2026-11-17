@@ -1,0 +1,299 @@
+/* App Installer's styles, over libvibeos's (vibeos.css). Every colour is a role of the theme (the @vibeos_ names), so
+ * light and dark follow the system's scheme and colour. Sizes are GTK px. The weights are Bold text's, as the other
+ * apps': regular 700, medium 800, bold 900. */
+
+window.inst-window,
+.inst-page {
+  background-color: @vibeos_surface_container;
+}
+
+/* ---- the start page ---- */
+
+.inst-start {
+  padding: 0 32px 48px 32px;
+}
+
+.inst-start-icon {
+  margin-bottom: 24px;
+}
+
+.inst-start-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: @vibeos_on_surface;
+  margin-bottom: 12px;
+}
+
+.inst-start-text {
+  font-size: 15px;
+  color: @vibeos_on_surface_variant;
+}
+
+.inst-start-button {
+  margin-top: 28px;
+}
+
+.inst-start-more {
+  margin-top: 28px;
+  font-size: 13px;
+  color: @vibeos_on_surface_variant;
+}
+
+/* ---- a job: the content scrolls, the buttons stay at the bottom ---- */
+
+/* text 24px from the window's sides, and the cards' edges under it: the card list keeps 16px of its own on each
+ * side, so it gets 8px of the content's padding and the rest 16px more */
+.inst-content {
+  padding: 8px 8px 24px 8px;
+}
+
+.inst-content > * {
+  margin-left: 16px;
+  margin-right: 16px;
+}
+
+.inst-content > vibeos-card-list {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.inst-header {
+  margin-top: 8px;
+}
+
+.inst-header image {
+  margin-bottom: 14px;
+}
+
+.inst-sheet-view .inst-header image {
+  margin-bottom: 0;
+}
+
+/* the generic icon: the package glyph on a tile, for a package with no icon of its own */
+.inst-generic-icon {
+  background-color: @vibeos_primary_container;
+  color: @vibeos_on_primary_container;
+  border-radius: 22px;
+}
+
+.inst-sheet-view .inst-generic-icon {
+  border-radius: 14px;
+}
+
+.inst-name {
+  font-size: 24px;
+  font-weight: 700;
+  color: @vibeos_on_surface;
+}
+
+.inst-sheet-view .inst-name {
+  font-size: 20px;
+}
+
+.inst-sub {
+  font-size: 14px;
+  color: @vibeos_on_surface_variant;
+}
+
+/* the question */
+.inst-lead-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: @vibeos_on_surface;
+}
+
+.inst-lead-text {
+  font-size: 15px;
+  color: @vibeos_on_surface_variant;
+}
+
+.inst-warning .inst-lead-title {
+  color: @vibeos_error;
+}
+
+/* the versions side by side, on a card */
+.inst-versions {
+  background-color: @vibeos_surface_bright;
+  border-radius: 20px;
+  padding: 14px 18px;
+  margin-top: 6px;
+}
+
+.inst-version-what {
+  font-size: 15px;
+  color: @vibeos_on_surface_variant;
+}
+
+.inst-version-value {
+  font-size: 15px;
+  font-weight: 800;
+  color: @vibeos_on_surface;
+}
+
+.inst-version-tag {
+  font-size: 13px;
+  font-weight: 800;
+  color: @vibeos_primary;
+}
+
+.inst-version-tag.inst-older {
+  color: @vibeos_error;
+}
+
+/* the progress: a status line over a linear indicator */
+.inst-status {
+  font-size: 15px;
+  color: @vibeos_on_surface;
+}
+
+.inst-percent {
+  font-size: 15px;
+  color: @vibeos_on_surface_variant;
+}
+
+progressbar.inst-progress trough {
+  min-height: 4px;
+  border-radius: 2px;
+  background-color: @vibeos_secondary_container;
+  border: none;
+}
+
+progressbar.inst-progress progress {
+  min-height: 4px;
+  min-width: 0;
+  margin: 0;
+  border-radius: 2px;
+  background-color: @vibeos_primary;
+  border: none;
+}
+
+/* how it ended */
+.inst-outcome-icon {
+  color: @vibeos_on_surface_variant;
+}
+
+.inst-success .inst-outcome-icon {
+  color: @vibeos_primary;
+}
+
+.inst-failure .inst-outcome-icon {
+  color: @vibeos_error;
+}
+
+.inst-details {
+  font-family: monospace;
+  font-size: 12px;
+  color: @vibeos_on_surface_variant;
+  background-color: @vibeos_surface_bright;
+  border-radius: 16px;
+  padding: 12px 14px;
+  margin-top: 4px;
+}
+
+/* "A package can change anything on this device" */
+.inst-trust {
+  color: @vibeos_on_surface_variant;
+  padding: 0 4px;
+}
+
+.inst-trust-text {
+  font-size: 13px;
+  color: @vibeos_on_surface_variant;
+}
+
+/* the app's own words */
+.inst-summary {
+  font-size: 16px;
+  font-weight: 800;
+  color: @vibeos_on_surface;
+}
+
+.inst-description {
+  font-size: 14px;
+  color: @vibeos_on_surface_variant;
+}
+
+/* the buttons */
+.inst-action-bar {
+  padding: 12px 20px 16px 20px;
+  background-color: @vibeos_surface_container;
+}
+
+/* as tall as a text button's touch target, so that the bar keeps its height with a filled button alone */
+.inst-actions {
+  min-height: 48px;
+}
+
+.inst-filled-button {
+  min-height: 40px;
+  border-radius: 20px;
+  padding: 0 24px;
+  background-color: @vibeos_primary;
+}
+
+.inst-filled-button label {
+  font-size: 14px;
+  font-weight: 800;
+  color: @vibeos_on_primary;
+}
+
+.inst-filled-button.inst-destructive {
+  background-color: @vibeos_error;
+}
+
+.inst-filled-button.inst-destructive label {
+  color: @vibeos_on_error;
+}
+
+.inst-filled-button:disabled {
+  background-color: alpha(@vibeos_on_surface, 0.12);
+}
+
+.inst-filled-button:disabled label {
+  color: alpha(@vibeos_on_surface, 0.38);
+}
+
+/* ---- the sheet over another app ---- */
+
+window.inst-sheet-window {
+  background-color: transparent;
+}
+
+window.inst-sheet-window.inst-demo-backdrop {
+  background-color: @vibeos_surface_dim;
+}
+
+.inst-scrim {
+  background-color: alpha(@vibeos_scrim, 0.32);
+  transition: opacity 250ms ease-in;
+}
+
+.inst-scrim.inst-scrim-out {
+  opacity: 0;
+}
+
+.inst-sheet {
+  background-color: @vibeos_surface_container_low;
+  border-radius: 28px 28px 0 0;
+  padding-bottom: 8px;
+}
+
+.inst-sheet-handle {
+  min-width: 32px;
+  min-height: 4px;
+  border-radius: 2px;
+  margin: 16px 0 8px 0;
+  background-color: alpha(@vibeos_on_surface_variant, 0.4);
+}
+
+.inst-sheet-view .inst-content {
+  padding: 8px 8px 8px 8px;
+}
+
+.inst-sheet-view .inst-actions {
+  padding: 8px 20px 8px 20px;
+}
+
+.inst-sheet .inst-versions {
+  background-color: @vibeos_surface_container_highest;
+}
