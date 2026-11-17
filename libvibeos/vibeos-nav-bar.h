@@ -19,6 +19,8 @@ int        vibeos_nav_bar_append       (VibeosNavBar *self, const char *icon_nam
 /* selects without emitting "selected" and without the indicator's animation */
 void       vibeos_nav_bar_set_selected (VibeosNavBar *self, int index);
 int        vibeos_nav_bar_get_selected (VibeosNavBar *self);
+/* a badge on an item's icon: a number ("3") in a small pill in the error colour, a dot for "", none for NULL */
+void       vibeos_nav_bar_set_badge    (VibeosNavBar *self, int index, const char *text);
 /* the label beside the icon rather than under it; off by default */
 void       vibeos_nav_bar_set_horizontal_items (VibeosNavBar *self, gboolean horizontal);
 gboolean   vibeos_nav_bar_get_horizontal_items (VibeosNavBar *self);

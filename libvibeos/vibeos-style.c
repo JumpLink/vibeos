@@ -114,6 +114,7 @@ struct _VibeosTheme {
   GSettings       *interface;           /* org.gnome.desktop.interface, NULL without its schema */
   GtkCssProvider  *provider;
 
+  VibeosScheme     scheme;              /* the app's own choice of light or dark (vibeos_theme_set_scheme) */
   gboolean         computed;
   Source           source;
   gboolean         dark;
@@ -145,8 +146,8 @@ parse_rgb (const char *text, guint32 *rgb)
   return TRUE;
 }
 
-/* light or dark: VIBEOS_COLOR_SCHEME, else dark for an app that is always dark or without vibeos.Theme, else
- * color-scheme */
+/* light or dark: VIBEOS_COLOR_SCHEME, else the app's own choice (vibeos_theme_set_scheme), else dark for an app that
+ * is always dark or without vibeos.Theme, else color-scheme */
 static gboolean
 want_dark (VibeosTheme *self)
 {
@@ -161,6 +162,8 @@ want_dark (VibeosTheme *self)
         return FALSE;
       g_warning ("VIBEOS_COLOR_SCHEME=%s: not light or dark", env);
     }
+  if (self->scheme != VIBEOS_SCHEME_SYSTEM)
+    return self->scheme == VIBEOS_SCHEME_DARK;
   if ((self->flags & VIBEOS_INIT_ALWAYS_DARK) || !self->settings || !self->interface)
     return TRUE;
   scheme = g_settings_get_string (self->interface, "color-scheme");
@@ -340,6 +343,25 @@ vibeos_theme_get_dark (VibeosTheme *theme)
 {
   g_return_val_if_fail (VIBEOS_IS_THEME (theme), TRUE);
   return theme->dark;
+}
+
+void
+vibeos_theme_set_scheme (VibeosTheme *theme, VibeosScheme scheme)
+{
+  g_return_if_fail (VIBEOS_IS_THEME (theme));
+
+  if (theme->scheme == scheme)
+    return;
+  theme->scheme = scheme;
+  update (theme);
+}
+
+VibeosScheme
+vibeos_theme_get_scheme (VibeosTheme *theme)
+{
+  g_return_val_if_fail (VIBEOS_IS_THEME (theme), VIBEOS_SCHEME_SYSTEM);
+
+  return theme->scheme;
 }
 
 guint32

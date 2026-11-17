@@ -141,6 +141,17 @@ G_DECLARE_FINAL_TYPE (VibeosTheme, vibeos_theme, VIBEOS, THEME, GObject)
 /* The process's theme. Signal: "changed" (), after the colours changed and before the redraw. */
 VibeosTheme *vibeos_theme_get_default (void);
 gboolean     vibeos_theme_get_dark    (VibeosTheme *theme);
+/* An app's own choice of light or dark, over color-scheme: VIBEOS_SCHEME_SYSTEM (the default) follows color-scheme,
+ * LIGHT and DARK keep the app in that mode. VIBEOS_COLOR_SCHEME in the environment still decides over it. A change
+ * restyles and redraws every window and emits "changed", as a change of color-scheme does. */
+typedef enum {
+  VIBEOS_SCHEME_SYSTEM,
+  VIBEOS_SCHEME_LIGHT,
+  VIBEOS_SCHEME_DARK,
+} VibeosScheme;
+
+void         vibeos_theme_set_scheme  (VibeosTheme *theme, VibeosScheme scheme);
+VibeosScheme vibeos_theme_get_scheme  (VibeosTheme *theme);
 /* the seed colour, 0xRRGGBB */
 guint32      vibeos_theme_get_seed    (VibeosTheme *theme);
 

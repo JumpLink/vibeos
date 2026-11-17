@@ -219,7 +219,7 @@ struct _VibeosSearchView {
 
 G_DEFINE_FINAL_TYPE (VibeosSearchView, vibeos_search_view, GTK_TYPE_WIDGET)
 
-enum { VIEW_CHANGED, VIEW_CLOSED, N_VIEW_SIGNALS };
+enum { VIEW_CHANGED, VIEW_CLOSED, VIEW_ACTIVATED, N_VIEW_SIGNALS };
 static guint view_signals[N_VIEW_SIGNALS];
 
 static void
@@ -294,6 +294,13 @@ on_text_changed (GtkEditable *entry, VibeosSearchView *self)
 
   gtk_widget_set_visible (self->clear, text && *text);
   g_signal_emit (self, view_signals[VIEW_CHANGED], 0, text);
+}
+
+/* Enter: the search as typed, for a view whose results come only when asked for */
+static void
+on_text_activate (GtkText *entry, VibeosSearchView *self)
+{
+  g_signal_emit (self, view_signals[VIEW_ACTIVATED], 0, gtk_editable_get_text (GTK_EDITABLE (entry)));
 }
 
 static void
@@ -395,6 +402,8 @@ vibeos_search_view_class_init (VibeosSearchViewClass *klass)
                                              NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_STRING);
   view_signals[VIEW_CLOSED] = g_signal_new ("closed", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0,
                                             NULL, NULL, NULL, G_TYPE_NONE, 0);
+  view_signals[VIEW_ACTIVATED] = g_signal_new ("search-activated", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0,
+                                               NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_STRING);
 }
 
 static void
@@ -411,6 +420,7 @@ vibeos_search_view_init (VibeosSearchView *self)
   self->entry = gtk_text_new ();
   gtk_widget_add_css_class (self->entry, "vibeos-search-entry");
   g_signal_connect (self->entry, "changed", G_CALLBACK (on_text_changed), self);
+  g_signal_connect (self->entry, "activate", G_CALLBACK (on_text_activate), self);
   gtk_widget_set_parent (self->entry, widget);
 
   self->clear = vibeos_icon_button_new ("edit-clear-symbolic");

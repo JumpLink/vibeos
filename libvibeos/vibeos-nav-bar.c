@@ -18,9 +18,15 @@
 #define H_PAD          16     /* the pill's padding either side */
 #define H_GAP          4      /* between the icon and the label */
 #define H_ITEM_SPACE   28     /* an item is the widest pill and this much more, where the bar has the room */
+/* a badge: a dot over the icon's top end, or a pill with a number starting at the icon's middle */
+#define BADGE_H        16
+#define BADGE_DOT      6
+#define BADGE_X        4      /* the pill's start, from the icon's middle */
+#define BADGE_Y        (-4)   /* its top, from the icon's top */
 
 typedef struct {
   GtkWidget *icon, *label;
+  GtkWidget *badge;            /* a GtkLabel, hidden while the item has no badge */
   double     shown;            /* the pill: 0 hidden .. 1 shown */
   VibeosAnim   *indicator;
   VibeosRipple  ripple;
@@ -48,6 +54,7 @@ item_free (gpointer data)
   vibeos_ripple_clear (&item->ripple);
   gtk_widget_unparent (item->icon);
   gtk_widget_unparent (item->label);
+  gtk_widget_unparent (item->badge);
   g_free (item);
 }
 
@@ -116,6 +123,28 @@ vibeos_nav_bar_measure (GtkWidget *widget, GtkOrientation orientation, int for_s
     *minimum = *natural = (int) self->items->len * PILL_W;
 }
 
+/* the badge over an icon whose top start is (x, y): a dot at its top end, or a pill from its middle */
+static void
+allocate_badge (Item *item, double x, double y)
+{
+  int w, h, unused;
+
+  if (!gtk_widget_get_visible (item->badge))
+    return;
+  if (gtk_widget_has_css_class (item->badge, "dot"))
+    {
+      gtk_widget_allocate (item->badge, BADGE_DOT, BADGE_DOT, -1,
+                           gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (x + ICON - BADGE_DOT, y)));
+      return;
+    }
+  gtk_widget_measure (item->badge, GTK_ORIENTATION_HORIZONTAL, -1, &unused, &w, NULL, NULL);
+  gtk_widget_measure (item->badge, GTK_ORIENTATION_VERTICAL, -1, &unused, &h, NULL, NULL);
+  w = MAX (w, BADGE_H);
+  h = MAX (h, BADGE_H);
+  gtk_widget_allocate (item->badge, w, h, -1,
+                       gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (x + ICON / 2.0 + BADGE_X, y + BADGE_Y)));
+}
+
 static void
 vibeos_nav_bar_size_allocate (GtkWidget *widget, int width, int height, int baseline)
 {
@@ -131,6 +160,7 @@ vibeos_nav_bar_size_allocate (GtkWidget *widget, int width, int height, int base
       gtk_widget_allocate (item->icon, ICON, ICON, -1,
                            gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (pill.origin.x + H_PAD,
                                                                                 pill.origin.y + (H_PILL_H - ICON) / 2)));
+      allocate_badge (item, pill.origin.x + H_PAD, pill.origin.y + (H_PILL_H - ICON) / 2);
       gtk_widget_allocate (item->label, label_w, label_h, -1,
                            gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (
                              pill.origin.x + H_PAD + ICON + H_GAP, pill.origin.y + (H_PILL_H - label_h) / 2.0)));
@@ -139,6 +169,7 @@ vibeos_nav_bar_size_allocate (GtkWidget *widget, int width, int height, int base
     gtk_widget_allocate (item->icon, ICON, ICON, -1,
                          gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (x + (col - ICON) / 2,
                                                                               PILL_TOP + (PILL_H - ICON) / 2)));
+    allocate_badge (item, x + (col - ICON) / 2, PILL_TOP + (PILL_H - ICON) / 2);
     int label_h, unused;
     gtk_widget_measure (item->label, GTK_ORIENTATION_VERTICAL, (int) col, &label_h, &unused, NULL, NULL);
     gtk_widget_allocate (item->label, (int) col, label_h, -1,
@@ -183,6 +214,7 @@ vibeos_nav_bar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
     }
     gtk_widget_snapshot_child (widget, item->icon, snapshot);
     gtk_widget_snapshot_child (widget, item->label, snapshot);
+    gtk_widget_snapshot_child (widget, item->badge, snapshot);
   }
 }
 
@@ -324,8 +356,13 @@ vibeos_nav_bar_append (VibeosNavBar *self, const char *icon_name, const char *la
   gtk_label_set_ellipsize (GTK_LABEL (item->label), PANGO_ELLIPSIZE_END);
   gtk_widget_add_css_class (item->label, "vibeos-nav-item");
   gtk_widget_add_css_class (item->label, "vibeos-nav-label");
+  item->badge = gtk_label_new (NULL);
+  gtk_widget_add_css_class (item->badge, "vibeos-nav-badge");
+  gtk_widget_set_can_target (item->badge, FALSE);
+  gtk_widget_set_visible (item->badge, FALSE);
   gtk_widget_set_parent (item->icon, GTK_WIDGET (self));
   gtk_widget_set_parent (item->label, GTK_WIDGET (self));
+  gtk_widget_set_parent (item->badge, GTK_WIDGET (self));
   item->indicator = vibeos_anim_new (GTK_WIDGET (self), on_indicator, item);
   vibeos_ripple_init (&item->ripple, GTK_WIDGET (self));
   g_ptr_array_add (self->items, item);
@@ -364,4 +401,22 @@ gboolean
 vibeos_nav_bar_get_horizontal_items (VibeosNavBar *self)
 {
   return self->horizontal;
+}
+
+void
+vibeos_nav_bar_set_badge (VibeosNavBar *self, int index, const char *text)
+{
+  Item *item;
+
+  g_return_if_fail (index >= 0 && index < (int) self->items->len);
+  item = g_ptr_array_index (self->items, index);
+  gtk_widget_set_visible (item->badge, text != NULL);
+  gtk_label_set_text (GTK_LABEL (item->badge), text ? text : "");
+  if (text && !*text)
+    gtk_widget_add_css_class (item->badge, "dot");
+  else
+    gtk_widget_remove_css_class (item->badge, "dot");
+  gtk_accessible_update_property (GTK_ACCESSIBLE (item->badge), GTK_ACCESSIBLE_PROPERTY_LABEL,
+                                  text ? text : "", -1);
+  gtk_widget_queue_allocate (GTK_WIDGET (self));
 }

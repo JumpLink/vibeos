@@ -7,7 +7,8 @@
  *
  * VibeosSearchView covers the window (vibeos_search_view_open puts it in the window's overlay, fading in): a back
  * button, the entry, a clear button once there is text, and under them whatever the app shows the results in. It
- * emits "search-changed" with the text as it is typed and "closed" when the back button or Escape closes it. */
+ * emits "search-changed" with the text as it is typed, "search-activated" with it when Enter is pressed (a search
+ * that runs only when asked for), and "closed" when the back button or Escape closes it. */
 #pragma once
 
 #include <gtk/gtk.h>
@@ -41,6 +42,6 @@ void        vibeos_search_view_open        (VibeosSearchView *self, GtkWidget *w
 /* fades out and leaves the window; emits "closed" */
 void        vibeos_search_view_close       (VibeosSearchView *self);
 
-/* Signals: "search-changed" (const char *text), "closed" () */
+/* Signals: "search-changed" (const char *text), "search-activated" (const char *text), "closed" () */
 
 G_END_DECLS
