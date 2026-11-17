@@ -551,6 +551,8 @@ progressbar.sw-histogram-bar progress {
 .sw-counter {
   font-size: 12px;
   color: @vibeos_on_surface_variant;
+  /* level with the field's label beside it, which keeps 6px over the field */
+  margin: 0 4px 6px 0;
 }
 
 .sw-counter.error {
