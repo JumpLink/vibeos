@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Name=App Installer
+Comment=Install apps from package files, and uninstall them
+Exec=vibeos-installer %F
+Icon=vibeos.Installer
+Terminal=false
+StartupNotify=false
+DBusActivatable=true
+Categories=System;PackageManager;GTK;
+Keywords=Install;Uninstall;Package;deb;Software;App;
+# a .deb file opened with it is shown before it is installed (and it is the VibeOS session's default for them:
+# gnome-mimeapps.list beside this file)
+MimeType=application/vnd.debian.binary-package;application/x-deb;
+X-Purism-FormFactor=Workstation;Mobile;

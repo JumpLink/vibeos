@@ -1,0 +1,105 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+ "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<!--
+  vibeos.Installer1: App Installer's interface for other apps (Software first), on the session bus.
+
+  Bus name vibeos.Installer, object /vibeos/Installer. App Installer is D-Bus activatable: the first call starts it,
+  and it stays while it has jobs.
+
+  An app asks for an install or an uninstall and gets a job id back at once. App Installer then does the whole job
+  by the same rules as when a person opens a .deb file in it: it looks the package up (refreshing the package lists
+  first when they are old), lets PackageKit check what else would change, and asks the user to confirm when there
+  is something to confirm. Then PackageKit does it, and polkit asks for the password (the shell's dialog). The caller
+  never sees a password and decides nothing: it follows the job through Progress and Finished.
+
+  App Installer asks (a bottom sheet over the caller's window, see "parent-window") before:
+    - replacing an installed version with a newer one, an older one (a downgrade), or the same one again;
+    - installing or removing other packages along with the one asked for;
+    - any uninstall;
+    - installing any .deb file (InstallFile).
+  A new package with nothing else to install goes straight to polkit's password dialog. App Installer refuses,
+  without asking, to remove part of VibeOS (any vibeos-* package), the shell, the window manager or the session, or a
+  package the system marks Essential or Priority: required, or to install something that would remove one; the job
+  then finishes as "refused".
+
+  No other window of App Installer's opens for a job asked for here: the caller shows the progress.
+
+  Options (a{sv}) for InstallPackage, InstallFile and RemovePackage:
+    "parent-window"  s   the caller's window, as an xdg-foreign handle: "wayland:" and the handle
+                         gdk_wayland_toplevel_export_handle (GTK 4) gives. App Installer's sheet is made transient
+                         for it. Without it the sheet is a window of its own.
+
+  Status, in Progress (what the job is doing now):
+    "reading"           reading the file, or looking the package up
+    "refreshing"        refreshing the package lists (when they are more than six hours old)
+    "checking"          PackageKit's dry run: what else it installs or removes
+    "asking"            the sheet is up, waiting for the user's answer
+    "starting"          the real transaction is starting
+    "waiting-for-auth"  polkit is asking for the password
+    "waiting-for-lock"  another install or update (apt, Software, unattended-upgrades) is running; it waits
+    "downloading"
+    "installing"
+    "removing"
+    "finishing"
+    "stopping"          Cancel was called and PackageKit is stopping
+  Percent is 0 to 100, or -1 when not known.
+
+  Result, in Finished:
+    "done"       installed or removed (or already installed in that version: nothing to do)
+    "cancelled"  the user said no (in the sheet, or by closing the password dialog), or Cancel stopped it
+    "refused"    App Installer will not do it, or it cannot be done: a dependency cannot be met, no such package,
+                 it would remove part of VibeOS, it is made for another architecture
+    "failed"     it went wrong: no network, another install holding the lock, a broken package, no space, ...
+  Message is one sentence for the user, in English ("Notes 1.3 is installed.", "Packages it needs could not be
+  downloaded. Check the internet connection and try again.").
+
+  The signals are sent to the caller that asked for the job only (not broadcast): subscribe with sender
+  vibeos.Installer and path /vibeos/Installer.
+-->
+<node>
+  <interface name="vibeos.Installer1">
+    <!-- Install the package `name` from the software sources (apt's), its newest version for this device. -->
+    <method name="InstallPackage">
+      <arg name="name" type="s" direction="in"/>
+      <arg name="options" type="a{sv}" direction="in"/>
+      <arg name="job" type="u" direction="out"/>
+    </method>
+    <!-- Install a .deb file, by its absolute path (a file the calling user can read). Always asks first. -->
+    <method name="InstallFile">
+      <arg name="path" type="s" direction="in"/>
+      <arg name="options" type="a{sv}" direction="in"/>
+      <arg name="job" type="u" direction="out"/>
+    </method>
+    <!-- Uninstall the installed package `name`, and the packages that depend on it (the sheet names them).
+         Nothing else: what it pulled in when it was installed stays (no autoremove). -->
+    <method name="RemovePackage">
+      <arg name="name" type="s" direction="in"/>
+      <arg name="options" type="a{sv}" direction="in"/>
+      <arg name="job" type="u" direction="out"/>
+    </method>
+    <!-- Stop a job of the caller's own. Before the real transaction it always stops; during it, only while
+         PackageKit can stop it (the download), not once dpkg runs. Finished follows. -->
+    <method name="Cancel">
+      <arg name="job" type="u" direction="in"/>
+    </method>
+    <!-- Whether `name` is installed: "installed" (installed_version set; available_version is the newest in the
+         software sources, or the installed one), "available" (not installed, in the software sources) or
+         "not-installed" (neither). Answers from the package lists as they are: no refresh. -->
+    <method name="GetState">
+      <arg name="name" type="s" direction="in"/>
+      <arg name="state" type="s" direction="out"/>
+      <arg name="installed_version" type="s" direction="out"/>
+      <arg name="available_version" type="s" direction="out"/>
+    </method>
+    <signal name="Progress">
+      <arg name="job" type="u"/>
+      <arg name="percent" type="i"/>
+      <arg name="status" type="s"/>
+    </signal>
+    <signal name="Finished">
+      <arg name="job" type="u"/>
+      <arg name="result" type="s"/>
+      <arg name="message" type="s"/>
+    </signal>
+  </interface>
+</node>

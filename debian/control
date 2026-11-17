@@ -37,6 +37,7 @@ Build-Depends: debhelper-compat (= 13),
                libpulse-dev,
                libwebkitgtk-6.0-dev (>= 2.46),
                libsoup-3.0-dev,
+               libappstream-dev (>= 1.0),
                dbus-daemon <!nocheck>,
                python3 <!nocheck>,
                python3-gi <!nocheck>,
@@ -71,6 +72,7 @@ Recommends: vibeos-session (= ${source:Version}),
             vibeos-camera (>= ${source:Version}),
             vibeos-files (>= ${source:Version}),
             vibeos-dictate (>= ${source:Version}),
+            vibeos-installer (>= ${source:Version}),
             vibeos-iconpack-vibeos (>= ${source:Version}),
             vibeos-iconpack-gnome-free (>= ${source:Version}),
             vibeos-parallax-solar-system (>= ${source:Version}),
@@ -548,6 +550,24 @@ Description: dictation for VibeOS
  vibeos-dictate-vosk and one per language (vibeos-dictate-en,
  vibeos-dictate-de, ...), made by tools/vibeos-dictate-speech in the source,
  install them.
+
+Package: vibeos-installer
+Architecture: any
+Depends: packagekit,
+         ${shlibs:Depends},
+         ${misc:Depends},
+Recommends: appstream,
+Description: app installer for VibeOS
+ App Installer installs .deb package files, and installs and uninstalls
+ packages from the software sources, for the user and for other apps (such
+ as Software) over D-Bus. Before anything changes it shows the package: the
+ app's name and icon, its version, sizes and description, whether it is new,
+ an upgrade, a downgrade or a reinstall (both versions side by side), and the
+ other packages it installs or removes. It refuses to uninstall VibeOS
+ itself, the shell and the system's essential packages.
+ .
+ PackageKit does the installing and polkit asks for the password. It is the
+ VibeOS session's default app for .deb files.
 
 Package: vibeos-iconpack-gnome-free
 Architecture: all

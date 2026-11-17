@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=vibeos.Installer
+Exec=@bindir@/vibeos-installer --gapplication-service

@@ -39,6 +39,7 @@
  "vibeos.Dialer.desktop": "phone",
  "vibeos.Dictate.desktop": "dictate",
  "vibeos.Files.desktop": "files",
+ "vibeos.Installer.desktop": "installer",
  "vibeos.Messaging.desktop": "messaging",
  "vibeos.Settings.desktop": "settings",
  "vibeos.Weather.desktop": "weather"

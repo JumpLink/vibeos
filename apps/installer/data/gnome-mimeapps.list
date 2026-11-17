@@ -1,0 +1,9 @@
+# App Installer opens .deb files in the VibeOS session (and in GNOME's: the session's desktop name is GNOME).
+#
+# Debian's gnome-session-common gives these types to GNOME Software's local-file handler in
+# /usr/share/applications/gnome-mimeapps.list. GLib reads $XDG_CONFIG_DIRS before $XDG_DATA_DIRS, so this file,
+# installed as /etc/xdg/gnome-mimeapps.list, comes first. A default the user sets (~/.config/mimeapps.list) still
+# comes before both.
+[Default Applications]
+application/vnd.debian.binary-package=vibeos.Installer.desktop
+application/x-deb=vibeos.Installer.desktop

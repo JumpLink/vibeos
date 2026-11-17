@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- the app's stylesheet, its D-Bus interface and its icons (data/icons: Material Symbols), where GtkApplication
+     looks for icons: the resource base path + /icons -->
+<gresources>
+  <gresource prefix="/vibeos/Installer">
+    <file>installer.css</file>
+    <file alias="vibeos.Installer1.xml">vibeos.Installer1.xml</file>
+    <file alias="icons/scalable/apps/vibeos.Installer.svg">vibeos.Installer.svg</file>
+    <file alias="icons/scalable/actions/inst-done-symbolic.svg">icons/inst-done-symbolic.svg</file>
+    <file alias="icons/scalable/actions/inst-error-symbolic.svg">icons/inst-error-symbolic.svg</file>
+    <file alias="icons/scalable/actions/inst-info-symbolic.svg">icons/inst-info-symbolic.svg</file>
+    <file alias="icons/scalable/actions/inst-package-symbolic.svg">icons/inst-package-symbolic.svg</file>
+    <file alias="icons/scalable/actions/inst-shield-symbolic.svg">icons/inst-shield-symbolic.svg</file>
+  </gresource>
+</gresources>

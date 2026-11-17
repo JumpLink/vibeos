@@ -1,0 +1,62 @@
+.TH VIBEOS-INSTALLER 1 "2026-11-17" "vibeos 0.1.1" "VibeOS"
+.SH NAME
+vibeos-installer \- App Installer: installs and uninstalls software packages on VibeOS
+.SH SYNOPSIS
+.B vibeos-installer
+.RI [ FILE.deb ...]
+.br
+.B vibeos-installer \-\-install
+.I NAME
+.br
+.B vibeos-installer \-\-uninstall
+.I NAME
+.SH DESCRIPTION
+App Installer shows a package before anything changes: its app's name and icon, the version, the sizes, its
+description, and what installing it will do. A new install is asked once; when a version is installed already it
+shows both versions and which is newer, and asks to replace it (Replace with the file's version), says so plainly when
+the file's version is OLDER, and offers Reinstall for the same version. The check before that (PackageKit's simulation)
+names the other packages it installs too, or says which dependency cannot be met. A package installs with full rights
+on the device, and the page says so.
+.PP
+Installing and uninstalling go through PackageKit; polkit asks for the password, App Installer never sees it.
+Back while a package installs takes the window home and the install goes on; a notification says how it ended.
+.PP
+Opened from the app drawer it starts at a page that says what it does, with Choose a package. It is the default app
+for .deb files in the VibeOS session (Files opens them with it).
+.PP
+.B \-\-install
+.I NAME
+installs the package NAME from the software sources (apt's), with the same page and questions;
+.B \-\-uninstall
+.I NAME
+asks to uninstall it, with the space freed and the other packages that would go with it. It will not uninstall
+VibeOS's own packages, the shell (gnome-shell, mutter), the session, or packages that are Essential or of priority
+required.
+.PP
+Other apps (Software) use its D-Bus interface,
+.B vibeos.Installer1
+on
+.I /vibeos/Installer
+(bus name vibeos.Installer): InstallPackage, InstallFile, RemovePackage, Cancel and GetState, with the signals Progress
+and Finished. A call from another app never opens App Installer's window: polkit asks for the password, and a sheet
+over the calling app asks a question when there is one (a replacement, a downgrade, other packages, an uninstall).
+The interface is documented in
+.IR /usr/share/dbus-1/interfaces/vibeos.Installer1.xml .
+.SH FILES
+.TP
+.I /etc/xdg/gnome-mimeapps.list
+Makes App Installer the session's default for application/vnd.debian.binary-package and application/x-deb. A default
+the user chooses (in
+.IR ~/.config/mimeapps.list )
+comes first.
+.TP
+.I ~/.cache/vibeos-installer/
+A copy of a .deb opened from somewhere PackageKit cannot read (a network folder, a document portal), and when the
+software sources' lists were last refreshed (they are refreshed when older than six hours).
+.SH ENVIRONMENT
+.TP
+.B VIBEOS_INSTALLER_DEMO
+Plays canned states instead of asking PackageKit: nothing is installed or removed. A comma-separated list of
+settings, such as
+.B installed=1.2-1,deps=2,auto
+(the list is in the source, apps/installer/src/inst-demo.h).

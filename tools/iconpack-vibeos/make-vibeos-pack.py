@@ -64,6 +64,7 @@ ICONS = {
     "dictate":    ("speech_to_text",    "#7C4DFF",                           WHITE),      # no H2O: a violet
     "email":      ("mail",              ("#2AB7E1", "#2C92E3", "diagonal"),  WHITE),      # email
     "download":   ("download",          "#099DFF",                           WHITE),      # download
+    "installer":  ("fa/box-open",       "#A0673A",                           WHITE),      # no H2O: cardboard brown
 }
 
 # desktop id -> drawable (our apps by their own ids, GNOME's by theirs): gnome-free's map
@@ -82,6 +83,7 @@ MAP = {
     "vibeos.Weather.desktop": "weather", "org.gnome.Weather.desktop": "weather",
     "vibeos.Files.desktop": "files", "org.gnome.Nautilus.desktop": "files",
     "vibeos.Dictate.desktop": "dictate",
+    "vibeos.Installer.desktop": "installer",
     "org.gnome.Console.desktop": "terminal", "org.gnome.Ptyxis.desktop": "terminal",
     "org.gnome.Loupe.desktop": "gallery",
     "org.gnome.Papers.desktop": "documents", "org.gnome.Evince.desktop": "documents",

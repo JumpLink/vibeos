@@ -30,6 +30,16 @@ Comment:
  converted from AOSP and LineageOS sources (frameworks/base SystemUI,
  Launcher3, DeskClock, Dialer, Messaging, ExactCalculator).
 
+Files: apps/installer/data/icons/*
+       apps/installer/data/vibeos.Installer.svg
+Copyright: Google LLC (Material Symbols)
+           2026 pulpoff <pashkovsky@gmail.com>
+License: Apache-2.0
+Comment:
+ App Installer's icons are Material Symbols Rounded glyphs (package_2,
+ check_circle, error, info, shield); its app icon is the package_2 glyph on
+ a tile drawn for VibeOS.
+
 Files: vibeos-launcher/iconpacks/gnome-free/icons/*
        tools/iconpack-gnome-free/glyphs/*
 Copyright: Google LLC (Material Symbols)
@@ -52,13 +62,15 @@ Comment:
 Files: vibeos-launcher/iconpacks/vibeos/icons/phone.png
        vibeos-launcher/iconpacks/vibeos/icons/messaging.png
        vibeos-launcher/iconpacks/vibeos/icons/camera.png
+       vibeos-launcher/iconpacks/vibeos/icons/installer.png
        tools/iconpack-vibeos/fontawesome/*
 Copyright: 2025 Fonticons, Inc. (Font Awesome Free 7.0.0)
            2026 pulpoff <pashkovsky@gmail.com>
 License: CC-BY-4.0
 Comment:
- The VibeOS pack's phone, messaging and camera icons are Font Awesome Free's
- "phone", "comment" and "camera" glyphs (solid style, unchanged;
+ The VibeOS pack's phone, messaging, camera and App Installer icons are Font
+ Awesome Free's "phone", "comment", "camera" and "box-open" glyphs (solid
+ style, unchanged;
  https://fontawesome.com) on squircles, made by tools/iconpack-vibeos/make-vibeos-pack.py. Font Awesome's
  licence text: tools/iconpack-vibeos/fontawesome/LICENSE.txt.
 
