@@ -37,6 +37,13 @@ const REPEAT_START_MS = 400;
 const REPEAT_MS = 50;
 // a finger further than this from every key of a long press's panel chooses none of them (lifted, it types nothing)
 const MORE_KEYS_REACH_DP = 48;
+// a short press's key preview: it grows into place as the finger lands, stays a moment after the finger lifts, then
+// shrinks away
+const PREVIEW_SHOW_MS = 17;
+const PREVIEW_SHOW_SCALE = 0.98;
+const PREVIEW_LINGER_MS = 70;
+const PREVIEW_DISMISS_MS = 53;
+const PREVIEW_DISMISS_SCALE = 0.94;
 
 // an input source's XKB layout -> the keyboard's language
 const LOCALES = {us: 'en_US', gb: 'en_GB', de: 'de', fr: 'fr', it: 'it', es: 'es', ru: 'ru', ua: 'uk', il: 'iw'};
@@ -73,7 +80,7 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
     // The shell's keyboard is set up, then its looks are taken away and ours put in
     _setupKeyboard() {
         this._kb = {locale: 'en_US', purpose: Clutter.InputContentPurpose.NORMAL, page: 'alphabet', view: null,
-            touches: new Map(), passOn: new Set(), more: null, lastShift: 0, manualShift: false, capitals: null};
+            touches: new Map(), passOn: new Set(), more: null, preview: null, lastShift: 0, manualShift: false, capitals: null};
         this._layers = {default: 'alphabet', shift: 'alphabet-shifted'};
         super._setupKeyboard();
 
@@ -101,6 +108,11 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         this._kbMore = new MoreKeysPanel({reactive: false});
         this._kbMore.hide();
         Main.layoutManager.uiGroup.add_child(this._kbMore);
+        // a short press's key preview, the same card as a long press's panel of one key and where that one opens
+        this._kbPreview = new MoreKeysPanel({reactive: false});
+        this._kbPreview.set_pivot_point(0.5, 1);
+        this._kbPreview.hide();
+        Main.layoutManager.uiGroup.add_child(this._kbPreview);
         this.add_child(this._kbStrip);
         this.add_child(this._kbKeys);
         this.add_child(this._kbNav);
@@ -126,6 +138,8 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         this._kbReleaseAll();
         this._kbMore?.destroy();
         this._kbMore = null;
+        this._kbPreview?.destroy();
+        this._kbPreview = null;
         this._kbPalette?.destroy();
         this._kbPalette = null;
         super._onDestroy();
@@ -395,6 +409,7 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         // decides: none when silent)
         click();
         this._kbPressed.place(this._kb.view, k);
+        this._kbPreviewShow(id, k);
         const key = k.key;
         if (key.a?.includes('repeat'))
             this._kbTimer(touch, REPEAT_START_MS, () => this._kbRepeat(id, 1));
@@ -435,6 +450,7 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         const key = touch.k.key;
         touch.done = true;
         this._kbPressed.hide();
+        this._kbPreviewHide();
         if (key.mf?.includes('noPanel')) {
             click();
             this._kbActivate(key.m[0]);
@@ -462,6 +478,58 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         this._kbMore?.hide();
     }
 
+    // A short press's key preview: the key's label, large, on a card above the key, where a long press's panel of
+    // one key opens (the long press turns the one into the other). Keys the layout gives no preview (shift, delete,
+    // space, enter, the page keys) show none, nor does the tablet.
+    _kbPreviewShow(id, k) {
+        this._kbPreviewHide();
+        const view = this._kb.view;
+        const key = k.key;
+        if (!view?.m.moreKeys.single || !key.l || key.a?.includes('noPreview'))
+            return;
+        const panel = placeMoreKeys(view.m, {...k, key: {l: key.l, m: [{l: key.l}]}}, k.x + k.w / 2, labelWidth);
+        const [keysX, keysY] = this._kbKeys.get_transformed_position();
+        this._kb.preview = {id, timer: 0};
+        const actor = this._kbPreview;
+        actor.place(view, panel, keysX, keysY);
+        Main.layoutManager.uiGroup.set_child_above_sibling(actor, null);
+        actor.set_scale(PREVIEW_SHOW_SCALE, PREVIEW_SHOW_SCALE);
+        actor.ease({scale_x: 1, scale_y: 1, duration: PREVIEW_SHOW_MS, mode: Clutter.AnimationMode.LINEAR});
+    }
+
+    // the finger that showed the preview lifted: it stays a moment, then shrinks away
+    _kbPreviewLift(id) {
+        const preview = this._kb.preview;
+        if (preview?.id !== id || preview.timer)
+            return;
+        preview.timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, PREVIEW_LINGER_MS, () => {
+            preview.timer = 0;
+            if (this._kb?.preview === preview) {
+                this._kb.preview = null;
+                this._kbPreview.ease({
+                    scale_x: PREVIEW_DISMISS_SCALE, scale_y: PREVIEW_DISMISS_SCALE,
+                    duration: PREVIEW_DISMISS_MS, mode: Clutter.AnimationMode.LINEAR,
+                    onComplete: () => {
+                        if (!this._kb?.preview)
+                            this._kbPreview?.hide();
+                    },
+                });
+            }
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    // the preview gone at once
+    _kbPreviewHide() {
+        const preview = this._kb?.preview;
+        if (preview?.timer)
+            GLib.source_remove(preview.timer);
+        if (this._kb)
+            this._kb.preview = null;
+        this._kbPreview?.remove_all_transitions();
+        this._kbPreview?.hide();
+    }
+
     _kbMove(id, event) {
         const touch = this._kb.touches.get(id);
         if (!touch)
@@ -482,6 +550,10 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         this._kb.touches.delete(id);
         if (this._kb.touches.size === 0)
             this._kbPressed.hide();
+        if (cancelled && this._kb.preview?.id === id)
+            this._kbPreviewHide();
+        else
+            this._kbPreviewLift(id);
         const more = this._kb.more?.id === id ? this._kb.more : null;
         if (more) {
             this._kbCloseMore();
@@ -508,6 +580,9 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
                 touch.k = keyAt(this._kb.view.rows, touch.k.x + touch.k.w / 2, touch.k.y + touch.k.h / 2);
         }
         this._kbPressed.hide();
+        // (a preview whose finger lifted stays its moment: typing a capital turns the page back as the finger lifts)
+        if (this._kb.preview && this._kb.touches.has(this._kb.preview.id))
+            this._kbPreviewHide();
     }
 
     _kbReleaseAll() {
@@ -520,6 +595,7 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         if (this._kb?.more)
             this._kbCloseMore();
         this._kbPressed?.hide();
+        this._kbPreviewHide();
     }
 
     _onTouch(event) {
