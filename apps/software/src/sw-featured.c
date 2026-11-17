@@ -283,6 +283,21 @@ on_map (GtkWidget *widget, Home *home)
   load (home);
 }
 
+/* other apps in the lists now (VibeOS apps only, or all): what shows goes, and the tab asks again, at once if it
+ * shows, else when it next does */
+static void
+on_catalog_changed (SwApi *api, GtkWidget *widget)
+{
+  Home *home = g_object_get_data (G_OBJECT (widget), "sw-home");
+
+  sw_cancellable_renew (home->home);
+  g_clear_pointer (&home->shown, g_free);
+  sw_status_loading (SW_STATUS (home->status));
+  sw_scroll_to_top (home->scroll);
+  if (gtk_widget_get_mapped (home->home))
+    load (home);
+}
+
 static void
 on_search (VibeosSearchBar *bar, Home *home)
 {
@@ -344,6 +359,7 @@ sw_home_new (SwHomeKind kind)
     }
   gtk_box_append (GTK_BOX (home->home), home->pages);
   g_signal_connect (home->home, "map", G_CALLBACK (on_map), home);
+  g_signal_connect_object (sw_api_get_default (), "catalog-changed", G_CALLBACK (on_catalog_changed), home->home, 0);
   return home->home;
 }
 

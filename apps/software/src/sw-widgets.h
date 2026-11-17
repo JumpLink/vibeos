@@ -37,6 +37,8 @@ GtkWidget    *sw_scroll_new        (GtkWidget *child);
 void          sw_scroll_to_top     (GtkWidget *scroll);
 /* cancelled when `widget` is destroyed */
 GCancellable *sw_cancellable_for   (GtkWidget *widget);
+/* cancels the widget's requests on their way (they never call back) and gives it a new cancellable */
+void          sw_cancellable_renew (GtkWidget *widget);
 GtkWidget    *sw_label_new         (const char *text, const char *css_class);
 /* a column with the page's side margins */
 GtkWidget    *sw_column_new        (int spacing);

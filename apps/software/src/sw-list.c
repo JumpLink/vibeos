@@ -194,6 +194,24 @@ on_map (GtkWidget *widget, List *list)
     load_first (list);
 }
 
+/* other apps in the catalogue now (VibeOS apps only, or all): the list starts again from its first page, at once if
+ * it shows, else when it next does */
+static void
+on_list_catalog_changed (SwApi *api, GtkWidget *widget)
+{
+  List *list = g_object_get_data (G_OBJECT (widget), "sw-list");
+
+  sw_cancellable_renew (list->list);
+  list->loading = list->first_shown = list->done = FALSE;
+  g_clear_pointer (&list->cursor, g_free);
+  clear (list);
+  set_footer (list, NULL);
+  sw_status_loading (SW_STATUS (list->status));
+  sw_scroll_to_top (list->scroll);
+  if (gtk_widget_get_mapped (list->list))
+    load_first (list);
+}
+
 GtkWidget *
 sw_app_list_new (const char *path)
 {
@@ -217,6 +235,8 @@ sw_app_list_new (const char *path)
   g_signal_connect (spongy_scroll_view_get_vadjustment (SPONGY_SCROLL_VIEW (list->scroll)), "changed",
                     G_CALLBACK (on_scrolled), list);
   g_signal_connect (list->list, "map", G_CALLBACK (on_map), list);
+  g_signal_connect_object (sw_api_get_default (), "catalog-changed", G_CALLBACK (on_list_catalog_changed), list->list,
+                           0);
   return list->list;
 }
 
@@ -332,6 +352,16 @@ load_categories (Categories *c)
               on_categories, c);
 }
 
+/* other apps in the catalogue now: other categories and counts */
+static void
+on_categories_catalog_changed (SwApi *api, GtkWidget *page)
+{
+  Categories *c = g_object_get_data (G_OBJECT (page), "sw-categories");
+
+  sw_cancellable_renew (c->page);
+  load_categories (c);
+}
+
 static void
 categories_free (gpointer data)
 {
@@ -353,6 +383,8 @@ sw_categories_page_new (const char *type)
   c->status = sw_status_new (sw_scroll_new (c->cards));
   sw_page_set_body (c->page, c->status);
   g_object_set_data_full (G_OBJECT (c->page), "sw-categories", c, categories_free);
+  g_signal_connect_object (sw_api_get_default (), "catalog-changed", G_CALLBACK (on_categories_catalog_changed),
+                           c->page, 0);
   load_categories (c);
   return c->page;
 }

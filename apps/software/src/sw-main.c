@@ -56,11 +56,21 @@ apply_scheme (void)
                            : !g_strcmp0 (scheme, "dark") ? VIBEOS_SCHEME_DARK : VIBEOS_SCHEME_SYSTEM);
 }
 
+/* the store's lists: VibeOS's own apps only, or all of them */
+static void
+apply_source (void)
+{
+  sw_api_set_source (sw_api_get_default (),
+                     settings && g_settings_get_boolean (settings, "vibeos-only") ? "vibeos" : NULL);
+}
+
 static void
 on_setting_changed (GSettings *s, const char *key, gpointer data)
 {
   if (!g_strcmp0 (key, "color-scheme"))
     apply_scheme ();
+  else if (!g_strcmp0 (key, "vibeos-only"))
+    apply_source ();
   else if (!g_strcmp0 (key, "update-mode"))
     /* a mode that allows more now: look at once */
     sw_updates_check (sw_updates_get_default (), FALSE);
@@ -109,6 +119,7 @@ on_startup (GApplication *app, gpointer data)
   else
     g_warning ("the settings schema %s is not installed: the defaults stand", SW_APP_ID);
   apply_scheme ();
+  apply_source ();
   sw_device_load (NULL, NULL);
   sw_installer_get_default ();
   sw_updates_get_default ();

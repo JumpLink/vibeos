@@ -88,6 +88,18 @@ sw_cancellable_for (GtkWidget *widget)
   return cancellable;
 }
 
+void
+sw_cancellable_renew (GtkWidget *widget)
+{
+  GCancellable *cancellable = g_object_get_data (G_OBJECT (widget), "sw-cancellable");
+
+  if (!cancellable)
+    return;
+  g_cancellable_cancel (cancellable);
+  g_signal_handlers_disconnect_by_func (widget, on_destroy_cancel, cancellable);
+  g_object_set_data (G_OBJECT (widget), "sw-cancellable", NULL);
+}
+
 GtkWidget *
 sw_label_new (const char *text, const char *css_class)
 {

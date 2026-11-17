@@ -806,7 +806,7 @@ static void
 settings_rows (GtkWidget *cards, GtkWidget *owner)
 {
   GSettings *settings = settings_new ();
-  GtkWidget *row;
+  GtkWidget *row, *toggle;
 
   if (settings)
     g_object_set_data_full (G_OBJECT (owner), "sw-settings", settings, g_object_unref);
@@ -817,6 +817,14 @@ settings_rows (GtkWidget *cards, GtkWidget *owner)
   g_signal_connect (row, "clicked", G_CALLBACK (on_updates_row), NULL);
   if (settings)
     g_signal_connect_object (settings, "changed", G_CALLBACK (on_setting_changed), row, 0);
+  vibeos_card_list_append (VIBEOS_CARD_LIST (cards), row);
+  row = vibeos_list_row_new ("VibeOS apps only", "None of Debian's in the store's lists");
+  vibeos_list_row_set_icon (VIBEOS_LIST_ROW (row), "sw-apps-symbolic");
+  toggle = vibeos_list_row_set_switch (VIBEOS_LIST_ROW (row), FALSE);
+  if (settings)
+    g_settings_bind (settings, "vibeos-only", toggle, "active", G_SETTINGS_BIND_DEFAULT);
+  else
+    gtk_widget_set_sensitive (row, FALSE);
   vibeos_card_list_append (VIBEOS_CARD_LIST (cards), row);
   row = vibeos_list_row_new ("Theme", NULL);
   vibeos_list_row_set_icon (VIBEOS_LIST_ROW (row), "sw-palette-symbolic");

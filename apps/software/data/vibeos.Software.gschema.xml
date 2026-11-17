@@ -21,6 +21,12 @@
         on any network; "never": only when asked (Mine's Check for updates). Software never installs updates by
         itself: they are installed from Mine.</description>
     </key>
+    <key name="vibeos-only" type="b">
+      <default>false</default>
+      <summary>Only VibeOS's own apps in the store</summary>
+      <description>When true, the store's lists (Featured, Apps, Games, the categories, See all and search) show only
+        the apps from VibeOS's own source, none of Debian's. Mine still shows every app installed.</description>
+    </key>
     <key name="color-scheme" enum="vibeos.Software.ColorScheme">
       <default>'system'</default>
       <summary>Software's light or dark</summary>

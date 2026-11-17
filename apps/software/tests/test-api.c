@@ -1,6 +1,6 @@
 /* The store client against a local SoupServer that answers like the store: ETags and 304s, max-age, cursors, the
- * error shape, rate limits, 401s, a proxy's HTML page and a closed port. Also the JSON helpers, dpkg's status file
- * and the device id. */
+ * error shape, rate limits, 401s, a proxy's HTML page and a closed port, and which requests carry the source. Also
+ * the JSON helpers, dpkg's status file and the device id. */
 #include "sw-api.h"
 #include "sw-device.h"
 #include "sw-dpkg.h"
@@ -19,6 +19,8 @@ static char *last_body;
 static char *catalog_etag;
 static char *catalog_body;
 static int catalog_max_age;
+static int source_hits;          /* requests that reached the server at all */
+static char *last_source;        /* the last one's source parameter */
 
 static void
 respond_json (SoupServerMessage *msg, guint status, const char *body)
@@ -37,6 +39,9 @@ handler (SoupServer *srv, SoupServerMessage *msg, const char *path, GHashTable *
 
   g_free (last_authorization);
   last_authorization = g_strdup (auth);
+  source_hits++;
+  g_free (last_source);
+  last_source = g_strdup (query ? g_hash_table_lookup (query, "source") : NULL);
 
   if (!strcmp (path, "/api/v1/catalog"))
     {
@@ -152,6 +157,15 @@ handler (SoupServer *srv, SoupServerMessage *msg, const char *path, GHashTable *
         soup_server_message_set_status (msg, 204, NULL);
       else
         respond_json (msg, 201, "{\"data\":{\"ok\":true}}");
+      return;
+    }
+  /* the catalogue's other lists and an app's own pages, for the source: an empty answer */
+  if (g_str_has_prefix (path, "/api/v1/featured") || g_str_has_prefix (path, "/api/v1/browse/") ||
+      g_str_has_prefix (path, "/api/v1/categories") || g_str_has_prefix (path, "/api/v1/collections/") ||
+      g_str_has_prefix (path, "/api/v1/search") || g_str_has_prefix (path, "/api/v1/apps/") ||
+      !strcmp (path, "/api/v1/config") || !strcmp (path, "/api/v1/me/apps"))
+    {
+      respond_json (msg, 200, "{\"data\":{}}");
       return;
     }
   respond_json (msg, 404, "{\"error\":{\"code\":\"not_found\",\"message\":\"Unknown path.\"}}");
@@ -464,6 +478,80 @@ test_cursors (void)
 
     g_assert_cmpstr (plain, ==, "/x");
   }
+}
+
+/* ---- the source ------------------------------------------------------------------------------------------------ */
+
+static void
+on_catalog_changed (SwApi *api, int *count)
+{
+  (*count)++;
+}
+
+/* the source parameter that reached the server for a catalog read of `path`, or NULL; it must have been asked (no
+ * kept copy answered) */
+static const char *
+source_sent (SwApi *api, const char *path, SwApiFlags flags)
+{
+  Outcome o;
+
+  g_clear_pointer (&last_source, g_free);
+  source_hits = 0;
+  get (api, path, flags, &o);
+  g_assert_false (o.failed);
+  g_assert_cmpint (source_hits, ==, 1);
+  outcome_clear (&o);
+  return last_source;
+}
+
+static void
+test_source (void)
+{
+  g_autoptr (SwApi) api = sw_api_new (base_url, NULL);
+  static const char *const lists[] = { "/featured", "/browse/apps", "/browse/games", "/categories?type=apps",
+                                       "/apps?type=app&sort=popular", "/apps?category=games", "/collections/new",
+                                       "/collections/new/apps", "/search?q=chess&type=game", "/search/suggest?q=ch" };
+  static const char *const others[] = { "/apps/org.gnome.Chess", "/apps/org.gnome.Chess/reviews?sort=newest",
+                                        "/config", "/me/apps", "/featuredx", "/collections/new/apps/more" };
+  g_autofree char *next = sw_api_path_with_cursor ("/apps?type=app", "eyJvIjoyfQ");
+  int changed = 0;
+  Outcome o;
+
+  g_signal_connect (api, "catalog-changed", G_CALLBACK (on_catalog_changed), &changed);
+  /* every app: the paths as they are */
+  g_assert_null (sw_api_get_source (api));
+  for (guint i = 0; i < G_N_ELEMENTS (lists); i++)
+    g_assert_null (source_sent (api, lists[i], SW_API_CACHED));
+
+  sw_api_set_source (api, "vibeos");
+  g_assert_cmpint (changed, ==, 1);
+  sw_api_set_source (api, "vibeos");
+  g_assert_cmpint (changed, ==, 1);
+  g_assert_cmpstr (sw_api_get_source (api), ==, "vibeos");
+  /* the lists carry it, and what was kept for them without it does not answer for them */
+  for (guint i = 0; i < G_N_ELEMENTS (lists); i++)
+    g_assert_cmpstr (source_sent (api, lists[i], SW_API_CACHED), ==, "vibeos");
+  for (guint i = 0; i < G_N_ELEMENTS (others); i++)
+    g_assert_null (source_sent (api, others[i], SW_API_CACHED));
+  /* a list's next page keeps it */
+  g_assert_cmpstr (source_sent (api, next, SW_API_NONE), ==, "vibeos");
+  get (api, next, SW_API_NONE, &o);
+  g_assert_cmpstr (o.data[0], ==, "[{\"id\":\"c\"}]");
+  outcome_clear (&o);
+  /* never on a write */
+  g_clear_pointer (&last_source, g_free);
+  memset (&o, 0, sizeof o);
+  sw_api_send (api, "POST", "/echo", NULL, SW_API_NONE, NULL, on_answer, &o);
+  wait_for (&o);
+  g_assert_null (last_source);
+  outcome_clear (&o);
+
+  /* back to every app, which an empty source also means */
+  sw_api_set_source (api, NULL);
+  g_assert_cmpint (changed, ==, 2);
+  sw_api_set_source (api, "");
+  g_assert_cmpint (changed, ==, 2);
+  g_assert_null (source_sent (api, "/apps?category=games", SW_API_REVALIDATE | SW_API_CACHED));
 }
 
 /* ---- errors ---------------------------------------------------------------------------------------------------- */
@@ -839,6 +927,7 @@ main (int argc, char **argv)
   g_test_add_func ("/api/disk-cache", test_disk_cache);
   g_test_add_func ("/api/token-kept-apart", test_token_kept_apart);
   g_test_add_func ("/api/cursors", test_cursors);
+  g_test_add_func ("/api/source", test_source);
   g_test_add_func ("/api/errors", test_errors);
   g_test_add_func ("/api/network-error", test_network_error);
   g_test_add_func ("/api/unauthorized", test_unauthorized);

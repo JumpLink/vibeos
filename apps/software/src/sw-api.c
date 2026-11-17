@@ -28,11 +28,12 @@ struct _SwApi {
   char        *user_agent;
   int          default_max_age;
   GHashTable  *memory;       /* key -> Entry */
+  char        *source;       /* the catalogue's lists hold only this source's apps; NULL: all */
 };
 
 G_DEFINE_FINAL_TYPE (SwApi, sw_api, G_TYPE_OBJECT)
 
-enum { UNAUTHORIZED, N_SIGNALS };
+enum { UNAUTHORIZED, CATALOG_CHANGED, N_SIGNALS };
 static guint signals[N_SIGNALS];
 
 typedef struct {
@@ -527,6 +528,26 @@ continue_later (gpointer data)
   return G_SOURCE_REMOVE;
 }
 
+/* a list of the catalogue's, which the source narrows: /featured, /browse/apps, /categories, /apps (not
+ * /apps/{id}), /collections/{id} and its /apps, /search and /search/suggest */
+static gboolean
+is_catalog_list (const char *path)
+{
+  g_autofree char *bare = g_strndup (path, strcspn (path, "?"));
+  g_auto (GStrv) parts = g_strsplit (bare, "/", -1);
+  guint n = g_strv_length (parts);
+
+  if (n < 2 || *parts[0])
+    return FALSE;
+  if (n == 2)
+    return g_str_equal (parts[1], "featured") || g_str_equal (parts[1], "categories") ||
+           g_str_equal (parts[1], "apps") || g_str_equal (parts[1], "search");
+  if (n == 3)
+    return g_str_equal (parts[1], "browse") || g_str_equal (parts[1], "collections") ||
+           (g_str_equal (parts[1], "search") && g_str_equal (parts[2], "suggest"));
+  return n == 4 && g_str_equal (parts[1], "collections") && g_str_equal (parts[3], "apps");
+}
+
 static Request *
 request_new (SwApi *self, const char *method, const char *path, SwApiFlags flags, GCancellable *cancellable,
              SwApiCallback callback, gpointer data)
@@ -535,8 +556,11 @@ request_new (SwApi *self, const char *method, const char *path, SwApiFlags flags
 
   req->api = g_object_ref (self);
   req->method = g_strdup (method);
-  req->path = g_strdup (path);
-  req->url = g_strconcat (self->root, path, NULL);
+  if (self->source && g_str_equal (method, "GET") && is_catalog_list (path))
+    req->path = g_strconcat (path, strchr (path, '?') ? "&source=" : "?source=", self->source, NULL);
+  else
+    req->path = g_strdup (path);
+  req->url = g_strconcat (self->root, req->path, NULL);
   req->flags = flags;
   req->cancellable = cancellable ? g_object_ref (cancellable) : g_cancellable_new ();
   req->callback = callback;
@@ -632,6 +656,7 @@ sw_api_finalize (GObject *object)
   g_free (self->token_tag);
   g_free (self->cache_dir);
   g_free (self->user_agent);
+  g_free (self->source);
   g_hash_table_unref (self->memory);
   G_OBJECT_CLASS (sw_api_parent_class)->finalize (object);
 }
@@ -642,6 +667,8 @@ sw_api_class_init (SwApiClass *klass)
   G_OBJECT_CLASS (klass)->finalize = sw_api_finalize;
   signals[UNAUTHORIZED] = g_signal_new ("unauthorized", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL,
                                         NULL, NULL, G_TYPE_NONE, 0);
+  signals[CATALOG_CHANGED] = g_signal_new ("catalog-changed", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL,
+                                           NULL, NULL, G_TYPE_NONE, 0);
 }
 
 static void
@@ -709,6 +736,24 @@ const char *
 sw_api_get_token (SwApi *self)
 {
   return self->token;
+}
+
+void
+sw_api_set_source (SwApi *self, const char *source)
+{
+  if (source && !*source)
+    source = NULL;
+  if (!g_strcmp0 (self->source, source))
+    return;
+  g_free (self->source);
+  self->source = g_strdup (source);
+  g_signal_emit (self, signals[CATALOG_CHANGED], 0);
+}
+
+const char *
+sw_api_get_source (SwApi *self)
+{
+  return self->source;
 }
 
 void

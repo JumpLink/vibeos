@@ -16,6 +16,10 @@
  * the server even within max-age (a pull to refresh). What a signed-in request returns is kept apart from what an
  * anonymous one does: reviews carry the account's own flags.
  *
+ * The catalogue's lists (featured, browse, categories, apps, collections, search) can be narrowed to the apps of one
+ * source: with sw_api_set_source (api, "vibeos") every GET of one of them carries source=vibeos, an app's own page,
+ * its reviews and the account's requests never do. The kept answers follow the URLs, so each source's are its own.
+ *
  * A cancelled request never calls back: a page cancels its GCancellable when it goes, and its callbacks can rely on
  * the page being there.
  *
@@ -82,6 +86,10 @@ void        sw_api_set_token     (SwApi *self, const char *token);
 const char *sw_api_get_token     (SwApi *self);
 /* the User-Agent's VibeOS release and architecture */
 void        sw_api_set_identity  (SwApi *self, const char *vibeos_version, const char *arch);
+/* only the apps of `source` ("vibeos" or "debian") in the catalogue's lists from now on, or all of them (NULL);
+ * emits "catalog-changed" when that changes */
+void        sw_api_set_source    (SwApi *self, const char *source);
+const char *sw_api_get_source    (SwApi *self);
 /* the max-age a kept answer is good for when the server names none, in seconds (60); tests set 0 */
 void        sw_api_set_default_max_age (SwApi *self, int seconds);
 
@@ -113,6 +121,7 @@ gboolean    sw_api_parse_response (guint status, const char *retry_after, GBytes
 void        sw_api_result_clear  (SwApiResult *result);
 void        sw_api_error_clear   (SwApiError *error);
 
-/* Signals: "unauthorized" (): a request with the token got 401 */
+/* Signals: "unauthorized" (): a request with the token got 401. "catalog-changed" (): the source changed, and with
+ * it every list of apps: what shows them asks again. */
 
 G_END_DECLS
