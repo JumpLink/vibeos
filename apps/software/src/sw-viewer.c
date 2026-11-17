@@ -184,19 +184,20 @@ sw_viewer_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
       gtk_snapshot_restore (snapshot);
     }
 
-  /* the dots and the arrow come and go with the backdrop */
+  /* the dots and the arrow come and go with the backdrop: each faded by itself, as one group they would be a
+   * picture of the whole screen's size (from the arrow at the top to the dots at the bottom) every frame */
   if (shown > 0.01)
     {
       guint n = n_pages (self);
       double offset = spongy_scroll_view_get_offset (SPONGY_SCROLL_VIEW (self->pager)), at = offset / w;
       double row = n * DOT + (n - 1) * DOT_GAP, x0 = (w - row) / 2, y = h - 24 - DOT;
 
-      gtk_snapshot_push_opacity (snapshot, clamp01 (shown));
+      shown = clamp01 (shown);
       for (guint i = 0; n > 1 && i < n; i++)
         {
           /* the dot of the page showing lights up, sliding over as the pages slide */
           double lit = clamp01 (1 - fabs (at - i));
-          GdkRGBA dot = { 1, 1, 1, 0.4 + 0.6 * lit };
+          GdkRGBA dot = { 1, 1, 1, (0.4 + 0.6 * lit) * shown };
           GskRoundedRect circle;
 
           gsk_rounded_rect_init_from_rect (&circle, &GRAPHENE_RECT_INIT (x0 + i * (DOT + DOT_GAP), y, DOT, DOT),
@@ -205,6 +206,7 @@ sw_viewer_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
           gtk_snapshot_append_color (snapshot, &dot, &circle.bounds);
           gtk_snapshot_pop (snapshot);
         }
+      gtk_snapshot_push_opacity (snapshot, shown);
       gtk_widget_snapshot_child (widget, self->back, snapshot);
       gtk_snapshot_pop (snapshot);
     }

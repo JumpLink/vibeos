@@ -23,8 +23,8 @@ typedef struct {
   int         tab;
   char      **steps;
   guint       step, step_timeout;
+  GtkWidget  *tab_veil;   /* over the tab content, which fades in when another tab is chosen */
   VibeosAnim *tab_fade;
-  GtkWidget  *fading;     /* the tab content fading in */
 } Win;
 
 static Win *
@@ -52,8 +52,7 @@ on_tab_fade (VibeosAnim *anim, double value, gpointer data)
 {
   Win *win = data;
 
-  if (win->fading)
-    gtk_widget_set_opacity (win->fading, value);
+  sw_veil_set_cover (SW_VEIL (win->tab_veil), 1 - value);
 }
 
 static void
@@ -63,13 +62,9 @@ select_tab (Win *win, int tab)
 
   win->tab = tab;
   /* the old tab's content goes at once and the new one's fades in: nothing is laid out while it does */
-  if (win->fading)
-    gtk_widget_set_opacity (win->fading, 1);
-  win->fading = NULL;
   if (changed && gtk_widget_get_mapped (win->tab_stack))
     {
-      win->fading = win->homes[tab];
-      gtk_widget_set_opacity (win->fading, 0);
+      sw_veil_set_cover (SW_VEIL (win->tab_veil), 1);
       vibeos_anim_start (win->tab_fade, 0, 1, TAB_FADE_MS, 0, SPONGY_LINEAR_OUT_SLOW_IN);
     }
   gtk_stack_set_visible_child (GTK_STACK (win->tab_stack), win->homes[tab]);
@@ -779,15 +774,16 @@ sw_window_new (GtkApplication *app)
   win->tab_stack = gtk_stack_new ();
   /* a tab shows at once, as a nav bar's tabs do */
   gtk_stack_set_transition_type (GTK_STACK (win->tab_stack), GTK_STACK_TRANSITION_TYPE_NONE);
-  win->tab_fade = vibeos_anim_new (win->tab_stack, on_tab_fade, win);
-  gtk_widget_set_vexpand (win->tab_stack, TRUE);
+  win->tab_veil = sw_veil_new (win->tab_stack);
+  win->tab_fade = vibeos_anim_new (win->tab_veil, on_tab_fade, win);
+  gtk_widget_set_vexpand (win->tab_veil, TRUE);
   win->homes[SW_TAB_FEATURED] = sw_home_new (SW_HOME_FEATURED);
   win->homes[SW_TAB_APPS] = sw_home_new (SW_HOME_APPS);
   win->homes[SW_TAB_GAMES] = sw_home_new (SW_HOME_GAMES);
   win->homes[SW_TAB_MINE] = sw_mine_new ();
   for (int i = 0; i < 4; i++)
     gtk_stack_add_child (GTK_STACK (win->tab_stack), win->homes[i]);
-  gtk_box_append (GTK_BOX (win->tabs), win->tab_stack);
+  gtk_box_append (GTK_BOX (win->tabs), win->tab_veil);
   win->nav = vibeos_nav_bar_new ();
   for (int i = 0; i < 4; i++)
     vibeos_nav_bar_append (VIBEOS_NAV_BAR (win->nav), icons[i], labels[i]);
@@ -795,6 +791,8 @@ sw_window_new (GtkApplication *app)
   gtk_box_append (GTK_BOX (win->tabs), win->nav);
 
   win->stack = vibeos_page_stack_new ();
+  /* every page lies on the window's surface: the pages fade over it */
+  vibeos_page_stack_set_backdrop (VIBEOS_PAGE_STACK (win->stack), VIBEOS_SURFACE);
   gtk_widget_set_vexpand (win->stack, TRUE);
   vibeos_page_stack_set_root (VIBEOS_PAGE_STACK (win->stack), win->tabs);
   g_signal_connect (win->stack, "top-changed", G_CALLBACK (on_top_changed), win);

@@ -2,6 +2,7 @@
  *
  *   pages      a pushed page: the top bar (back arrow, title, actions) over a body
  *   status     a body that is loading, failed (a sentence and Retry), empty, or showing its content
+ *   veils      a child faded in or out over the page's surface, cheaply
  *   buttons    filled, tonal, outlined and text buttons: pills with a ripple
  *   app rows   an app in a list: icon, name, summary, rating, and its install button
  *   app tiles  an app in a horizontal row: icon, name, rating
@@ -57,6 +58,20 @@ void       sw_status_empty       (SwStatus *self, const char *icon_name, const c
                                   SwRetryFunc retry, gpointer data);
 void       sw_status_show        (SwStatus *self);
 gboolean   sw_status_is_showing  (SwStatus *self);
+/* what replaced the loading ring (or another message) on screen is still fading in */
+gboolean   sw_status_is_fading   (SwStatus *self);
+
+/* ---- veils ----------------------------------------------------------------------------------------------------- */
+
+/* A bin that fades its child over the page's surface: it draws the child and then the surface's colour over it,
+ * `cover` of the way (0: the child as it is, 1: bare surface). That is the picture the child gives at an opacity of
+ * 1 - cover on the surface, without the copy of the whole child the GPU makes for an opacity, every frame of a fade.
+ * So it is only right where the child lies on the plain surface, as a page's content does. */
+#define SW_TYPE_VEIL (sw_veil_get_type ())
+G_DECLARE_FINAL_TYPE (SwVeil, sw_veil, SW, VEIL, GtkWidget)
+
+GtkWidget *sw_veil_new       (GtkWidget *child);
+void       sw_veil_set_cover (SwVeil *self, double cover);
 
 /* ---- buttons --------------------------------------------------------------------------------------------------- */
 

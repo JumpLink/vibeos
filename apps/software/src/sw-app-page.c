@@ -35,15 +35,11 @@ typedef struct {
   char       *id;
   JsonObject *summary, *app, *config, *my;
   GAppInfo   *launcher;
-  gboolean    launcher_known, shown;
-  guint       show_tick;     /* the details wait for the page's transition to end */
-  VibeosAnim *reveal;        /* and fade in once built */
+  gboolean    launcher_known;
+  guint       show_tick;     /* the details wait for the page's transition to end (and then fade in: the status) */
   guint       later_tick;    /* the sections below the first screen, built a frame apart */
   guint       built;         /* how many of those are in */
 } Page;
-
-/* the details fading in, once built */
-#define REVEAL_MS 150
 
 static void load (Page *p);
 static void update_action (Page *p);
@@ -77,7 +73,6 @@ page_free (gpointer data)
   g_clear_pointer (&p->config, json_object_unref);
   g_clear_pointer (&p->my, json_object_unref);
   g_clear_object (&p->launcher);
-  g_clear_pointer (&p->reveal, vibeos_anim_free);
   g_free (p);
 }
 
@@ -838,14 +833,6 @@ information (Page *p)
   gtk_box_append (GTK_BOX (p->details), cards);
 }
 
-static void
-on_reveal (VibeosAnim *anim, double value, gpointer data)
-{
-  Page *p = data;
-
-  gtk_widget_set_opacity (p->details, value);
-}
-
 static gboolean page_moving (Page *p);
 
 /* The sections below the first screen. Built all at once, the details take several frames' time; built one a frame
@@ -857,7 +844,7 @@ build_later (GtkWidget *widget, GdkFrameClock *clock, gpointer data)
 {
   Page *p = data;
 
-  if ((p->reveal && vibeos_anim_is_running (p->reveal)) || page_moving (p))
+  if (sw_status_is_fading (SW_STATUS (p->status)) || page_moving (p))
     return G_SOURCE_CONTINUE;
   later[p->built++] (p);
   if (p->built < G_N_ELEMENTS (later))
@@ -884,7 +871,6 @@ show (Page *p)
 {
   GtkWidget *child;
   JsonArray *shots = sw_json_array (p->app, "screenshots");
-  gboolean first = !p->shown;
 
   if (p->later_tick)
     gtk_widget_remove_tick_callback (p->page, p->later_tick);
@@ -906,15 +892,8 @@ show (Page *p)
   update_action (p);
   if (sw_installer_get_installed (sw_installer_get_default (), package_of (p)))
     find_launcher (p);
+  /* the first time, where the page showed it loading, the details fade in rather than appear */
   sw_status_show (SW_STATUS (p->status));
-  p->shown = TRUE;
-  /* the first time, where the page showed it loading: the details fade in rather than appear */
-  if (first && gtk_widget_get_mapped (p->page))
-    {
-      if (!p->reveal)
-        p->reveal = vibeos_anim_new (p->details, on_reveal, p);
-      vibeos_anim_start (p->reveal, 0, 1, REVEAL_MS, 0, SPONGY_LINEAR_OUT_SLOW_IN);
-    }
   build_rest (p);
 }
 

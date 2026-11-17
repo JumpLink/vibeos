@@ -110,11 +110,85 @@ sw_column_new (int spacing)
   return box;
 }
 
+/* ---- veils ----------------------------------------------------------------------------------------------------- */
+
+struct _SwVeil {
+  GtkWidget  parent_instance;
+  GtkWidget *child;
+  double     cover;
+};
+
+G_DEFINE_FINAL_TYPE (SwVeil, sw_veil, GTK_TYPE_WIDGET)
+
+static void
+sw_veil_dispose (GObject *object)
+{
+  SwVeil *self = SW_VEIL (object);
+
+  g_clear_pointer (&self->child, gtk_widget_unparent);
+  G_OBJECT_CLASS (sw_veil_parent_class)->dispose (object);
+}
+
+static void
+sw_veil_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
+{
+  SwVeil *self = SW_VEIL (widget);
+  GdkRGBA surface;
+
+  /* all covered: the surface alone, which is what shows here anyway */
+  if (!self->child || self->cover >= 1)
+    return;
+  gtk_widget_snapshot_child (widget, self->child, snapshot);
+  if (self->cover <= 0)
+    return;
+  surface = vibeos_color_alpha (VIBEOS_SURFACE, self->cover);
+  gtk_snapshot_append_color (snapshot, &surface,
+                             &GRAPHENE_RECT_INIT (0, 0, gtk_widget_get_width (widget), gtk_widget_get_height (widget)));
+}
+
+static void
+sw_veil_class_init (SwVeilClass *klass)
+{
+  G_OBJECT_CLASS (klass)->dispose = sw_veil_dispose;
+  GTK_WIDGET_CLASS (klass)->snapshot = sw_veil_snapshot;
+  gtk_widget_class_set_layout_manager_type (GTK_WIDGET_CLASS (klass), GTK_TYPE_BIN_LAYOUT);
+  gtk_widget_class_set_css_name (GTK_WIDGET_CLASS (klass), "sw-veil");
+}
+
+static void
+sw_veil_init (SwVeil *self)
+{
+}
+
+GtkWidget *
+sw_veil_new (GtkWidget *child)
+{
+  SwVeil *self = g_object_new (SW_TYPE_VEIL, NULL);
+
+  self->child = child;
+  gtk_widget_set_parent (child, GTK_WIDGET (self));
+  return GTK_WIDGET (self);
+}
+
+void
+sw_veil_set_cover (SwVeil *self, double cover)
+{
+  cover = CLAMP (cover, 0, 1);
+  if (cover == self->cover)
+    return;
+  self->cover = cover;
+  gtk_widget_queue_draw (GTK_WIDGET (self));
+}
+
 /* ---- status ---------------------------------------------------------------------------------------------------- */
 
+/* content or a message taking the loading ring's place fades in */
+#define STATUS_FADE_MS 150
+
 struct _SwStatus {
-  GtkWidget  parent_instance;
-  GtkWidget *stack, *content, *message;
+  GtkWidget   parent_instance;
+  GtkWidget  *veil, *stack, *loading, *content, *message;
+  VibeosAnim *fade;
 };
 
 G_DEFINE_FINAL_TYPE (SwStatus, sw_status, GTK_TYPE_WIDGET)
@@ -124,8 +198,37 @@ sw_status_dispose (GObject *object)
 {
   SwStatus *self = SW_STATUS (object);
 
-  g_clear_pointer (&self->stack, gtk_widget_unparent);
+  g_clear_pointer (&self->fade, vibeos_anim_free);
+  g_clear_pointer (&self->veil, gtk_widget_unparent);
+  self->stack = NULL;
   G_OBJECT_CLASS (sw_status_parent_class)->dispose (object);
+}
+
+static void
+on_status_fade (VibeosAnim *anim, double value, gpointer data)
+{
+  SwStatus *self = data;
+
+  sw_veil_set_cover (SW_VEIL (self->veil), 1 - value);
+}
+
+/* shows `child` of the stack: at once when it is the loading ring or nothing is on screen, else fading in */
+static void
+status_present (SwStatus *self, GtkWidget *child)
+{
+  GtkWidget *was = gtk_stack_get_visible_child (GTK_STACK (self->stack));
+
+  gtk_stack_set_visible_child (GTK_STACK (self->stack), child);
+  if (child == was)
+    return;
+  if (child == self->loading || !gtk_widget_get_mapped (GTK_WIDGET (self)))
+    {
+      vibeos_anim_stop (self->fade);
+      sw_veil_set_cover (SW_VEIL (self->veil), 0);
+      return;
+    }
+  sw_veil_set_cover (SW_VEIL (self->veil), 1);
+  vibeos_anim_start (self->fade, 0, 1, STATUS_FADE_MS, 0, SPONGY_LINEAR_OUT_SLOW_IN);
 }
 
 static void
@@ -139,19 +242,21 @@ sw_status_class_init (SwStatusClass *klass)
 static void
 sw_status_init (SwStatus *self)
 {
-  GtkWidget *loading = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0), *ring = sw_progress_new (40, 4);
+  GtkWidget *ring = sw_progress_new (40, 4);
 
+  /* no stack transition: a cross-fade draws both children into pictures of their own every frame (see veils) */
   self->stack = gtk_stack_new ();
-  gtk_stack_set_transition_type (GTK_STACK (self->stack), GTK_STACK_TRANSITION_TYPE_CROSSFADE);
-  gtk_stack_set_transition_duration (GTK_STACK (self->stack), 150);
   gtk_stack_set_hhomogeneous (GTK_STACK (self->stack), FALSE);
   gtk_stack_set_vhomogeneous (GTK_STACK (self->stack), FALSE);
-  gtk_widget_set_parent (self->stack, GTK_WIDGET (self));
+  self->veil = sw_veil_new (self->stack);
+  gtk_widget_set_parent (self->veil, GTK_WIDGET (self));
+  self->fade = vibeos_anim_new (GTK_WIDGET (self), on_status_fade, self);
+  self->loading = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_valign (ring, GTK_ALIGN_START);
   gtk_widget_set_halign (ring, GTK_ALIGN_CENTER);
   gtk_widget_set_margin_top (ring, 96);
-  gtk_box_append (GTK_BOX (loading), ring);
-  gtk_stack_add_named (GTK_STACK (self->stack), loading, "loading");
+  gtk_box_append (GTK_BOX (self->loading), ring);
+  gtk_stack_add_named (GTK_STACK (self->stack), self->loading, "loading");
   gtk_widget_set_vexpand (GTK_WIDGET (self), TRUE);
 }
 
@@ -178,20 +283,26 @@ sw_status_set_content (SwStatus *self, GtkWidget *content)
 void
 sw_status_loading (SwStatus *self)
 {
-  gtk_stack_set_visible_child_name (GTK_STACK (self->stack), "loading");
+  status_present (self, self->loading);
 }
 
 void
 sw_status_show (SwStatus *self)
 {
   if (self->content)
-    gtk_stack_set_visible_child (GTK_STACK (self->stack), self->content);
+    status_present (self, self->content);
 }
 
 gboolean
 sw_status_is_showing (SwStatus *self)
 {
   return self->content && gtk_stack_get_visible_child (GTK_STACK (self->stack)) == self->content;
+}
+
+gboolean
+sw_status_is_fading (SwStatus *self)
+{
+  return vibeos_anim_is_running (self->fade);
 }
 
 typedef struct {
@@ -250,7 +361,7 @@ show_message (SwStatus *self, const char *icon_name, const char *title, const ch
     gtk_stack_remove (GTK_STACK (self->stack), self->message);
   self->message = box;
   gtk_stack_add_named (GTK_STACK (self->stack), box, NULL);
-  gtk_stack_set_visible_child (GTK_STACK (self->stack), box);
+  status_present (self, box);
 }
 
 void
