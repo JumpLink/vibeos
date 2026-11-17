@@ -35,7 +35,7 @@
 #define HIGHLIGHT_RADIUS  20
 
 typedef enum { START_NONE, START_ICON, START_CIRCLE, START_AVATAR } Start;
-typedef enum { END_NONE, END_SWITCH, END_SPLIT, END_CHEVRON, END_VALUE } End;
+typedef enum { END_NONE, END_SWITCH, END_SPLIT, END_ICON, END_VALUE } End;
 
 struct _VibeosListRow {
   GtkWidget  parent;
@@ -44,7 +44,7 @@ struct _VibeosListRow {
   GtkWidget *initials;          /* an avatar's initials, or NULL */
   GtkWidget *title, *summary;
   GtkWidget *chevron;           /* a split row's, before the divider */
-  GtkWidget *end;               /* the switch, the chevron or the value, or NULL */
+  GtkWidget *end;               /* the switch, the chevron (or another icon) or the value, or NULL */
   Start      start_kind;
   End        end_kind;
   GdkRGBA    start_fill;
@@ -132,7 +132,7 @@ text_end (VibeosListRow *self, int width)
       return switch_x (self, width) - TEXT_GAP;
     case END_SPLIT:
       return divider_x (self, width) - ICON - TEXT_GAP;
-    case END_CHEVRON:
+    case END_ICON:
       return width - END_PAD - ICON - TEXT_GAP;
     case END_VALUE:
       return width - END_PAD - natural_width (self->end) - TEXT_GAP;
@@ -235,7 +235,7 @@ vibeos_list_row_size_allocate (GtkWidget *widget, int width, int height, int bas
         put (self->end, width - END_PAD - end_w, (h - end_h) / 2, end_w, end_h);
         break;
       }
-    case END_CHEVRON:
+    case END_ICON:
       put (self->end, width - END_PAD - ICON, (h - ICON) / 2, ICON, ICON);
       break;
     case END_NONE:
@@ -442,15 +442,21 @@ vibeos_list_row_set_switch (VibeosListRow *self, gboolean split)
 }
 
 void
-vibeos_list_row_set_chevron (VibeosListRow *self)
+vibeos_list_row_set_end_icon (VibeosListRow *self, const char *icon_name)
 {
-  GtkWidget *image = gtk_image_new_from_icon_name ("go-next-symbolic");
+  GtkWidget *image = gtk_image_new_from_icon_name (icon_name);
 
   vibeos_list_row_clear_end (self);
   gtk_image_set_pixel_size (GTK_IMAGE (image), ICON);
   gtk_widget_add_css_class (image, "vibeos-list-row-icon");
   self->end = part (self, image);
-  self->end_kind = END_CHEVRON;
+  self->end_kind = END_ICON;
+}
+
+void
+vibeos_list_row_set_chevron (VibeosListRow *self)
+{
+  vibeos_list_row_set_end_icon (self, "go-next-symbolic");
 }
 
 void

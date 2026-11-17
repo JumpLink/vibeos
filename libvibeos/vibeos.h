@@ -43,6 +43,13 @@
  *   vibeos-card-list.h    rows on cards, in groups
  *   vibeos-top-bar.h      the top app bar: small, large and in selection mode
  *   vibeos-search.h       the search bar and the search view it opens */
+#include "vibeos-sheet.h"
+#include "vibeos-about.h"
+
+/* Sheets:
+ *
+ *   vibeos-sheet.h        the bottom sheet, inside the window, with pages pushed over its first
+ *   vibeos-about.h        the About sheet every app shows: its icon, name, the VibeOS release, links, credits, legal */
 #include "vibeos-text.h"
 
 /* Text that follows the system's font settings:

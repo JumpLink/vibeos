@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- a link that leaves the app: a box open at its top right, an arrow out of it toward that corner -->
+  <path d="M1 5a2 2 0 0 1 2-2h4v2H3v8h8V9h2v4a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2z"/>
+  <path d="M9 1h6v6h-2V4.41L7.71 9.71 6.29 8.29 11.59 3H9z"/>
+</svg>

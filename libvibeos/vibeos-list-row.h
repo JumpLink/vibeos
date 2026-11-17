@@ -4,7 +4,8 @@
  *
  *   start   nothing, an outlined icon, an icon in a coloured circle, or an avatar (a picture or initials in a circle)
  *   end     nothing, a switch, a chevron, a chevron and a switch with a divider between them (the row opens a page,
- *           the switch toggles on its own), or a value
+ *           the switch toggles on its own), a value, or another icon (an external link's arrow: the row opens a
+ *           web page)
  *
  * The text starts at one of two insets, the farther one when there is something at the start. The row is as tall as
  * its lines need, never less than a one-line row: one, two and three lines give the three heights of the list.
@@ -44,6 +45,8 @@ void        vibeos_list_row_set_text_inset (VibeosListRow *self, int inset);
 GtkWidget  *vibeos_list_row_set_switch   (VibeosListRow *self, gboolean split);
 /* the end: a chevron */
 void        vibeos_list_row_set_chevron  (VibeosListRow *self);
+/* the end: an icon in the chevron's place, such as vibeos-external-link-symbolic for a row that opens a web page */
+void        vibeos_list_row_set_end_icon (VibeosListRow *self, const char *icon_name);
 /* the end: a value, in the summary's colour */
 void        vibeos_list_row_set_value    (VibeosListRow *self, const char *value);
 /* the end: nothing */

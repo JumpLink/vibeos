@@ -11,6 +11,16 @@ spongy_gtk_dep = dependency('spongy-gtk-1')
 tonal_dep = dependency('tonal-1')
 
 gnome = import('gnome')
+fs = import('fs')
+
+# The VibeOS release the About sheet shows: the newest entry of debian/changelog, the one file a release changes,
+# without its epoch ("vibeos (1:0.1.1) unstable; ..." gives 0.1.1). Meson configures again when the file changes.
+vibeos_release = ''
+changelog = '..' / 'debian' / 'changelog'
+if fs.is_file(changelog)
+  vibeos_release = fs.read(changelog).split('\n')[0].split('(')[1].split(')')[0].split(':')[-1]
+endif
+
 vibeos_resources = gnome.compile_resources('vibeos-resources', 'vibeos.gresource.xml', c_name: 'vibeos')
 
 vibeos_headers = files(
@@ -33,6 +43,8 @@ vibeos_headers = files(
   'vibeos-card-list.h',
   'vibeos-top-bar.h',
   'vibeos-search.h',
+  'vibeos-sheet.h',
+  'vibeos-about.h',
   'vibeos-text.h',
 )
 vibeos_lib = shared_library('vibeos-1',
@@ -54,10 +66,13 @@ vibeos_lib = shared_library('vibeos-1',
   'vibeos-card-list.c',
   'vibeos-top-bar.c',
   'vibeos-search.c',
+  'vibeos-sheet.c',
+  'vibeos-about.c',
   'vibeos-dump.c',
   'vibeos-text.c',
   'vibeos-text-handles.c',
   vibeos_resources,
+  c_args: ['-DVIBEOS_RELEASE="@0@"'.format(vibeos_release)],
   dependencies: [gtk4, libm, spongy_dep, spongy_gtk_dep, tonal_dep],
   version: '0.1.0',
   install: true)

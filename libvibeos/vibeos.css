@@ -263,6 +263,66 @@ window.vibeos label {
   min-height: 40dp;
 }
 
+/* --- bottom sheets (VibeosSheet draws the dim and the sheet; its text is libvibeos's in any window) */
+
+vibeos-sheet {
+  color: @vibeos_on_surface;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
+  font-size: 14sp;
+  font-weight: 400;
+}
+
+/* a section of text on a card, as the About sheet's Credits and Legal show them */
+.vibeos-sheet-text {
+  background-color: @vibeos_surface_bright;
+  border-radius: 4dp;
+  padding: 16dp;
+  font-size: 14sp;
+  color: @vibeos_on_surface;
+}
+
+.vibeos-sheet-text.vibeos-card-first {
+  border-top-left-radius: 20dp;
+  border-top-right-radius: 20dp;
+}
+
+.vibeos-sheet-text.vibeos-card-last {
+  border-bottom-left-radius: 20dp;
+  border-bottom-right-radius: 20dp;
+}
+
+.vibeos-sheet-text link {
+  color: @vibeos_primary;
+}
+
+/* --- the About sheet: the app's icon, name, developer and version over its rows */
+
+.vibeos-about-icon {
+  margin-top: 4dp;
+  -gtk-icon-shadow: 0 1dp 12dp alpha(black, 0.05), 0 1dp alpha(black, 0.3);
+}
+
+.vibeos-about-name {
+  font-size: 28sp;
+  font-weight: 500;
+  margin: 12dp 24dp 0 24dp;
+}
+
+.vibeos-about-developer {
+  font-size: 16sp;
+  margin: 6dp 24dp 0 24dp;
+}
+
+/* the version in a pill, in the primary colour */
+.vibeos-about-version {
+  background-color: alpha(@vibeos_primary, 0.12);
+  color: @vibeos_primary;
+  border-radius: 999px;
+  padding: 5dp 18dp;
+  margin-top: 12dp;
+  font-size: 16sp;
+}
+
 /* --- the navigation rail: the bar's items in a column at the start */
 
 .vibeos-nav-rail {

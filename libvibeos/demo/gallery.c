@@ -9,11 +9,14 @@
  *   fab           the floating action buttons, in their column or their row
  *   top-bar       the large top bar collapsing over a list, with selection mode on a long press
  *   text          text in sp, which follows Font size, and in dp, which does not, and the weights Bold text adds to
+ *   about         the About sheet every app shows, rising over a page once the window shows; a row on the page opens
+ *                 it again
  *
  *   --fullscreen  fill the monitor, as the phone's shell shows every window
  *   --watch       print what the window's VibeosLayout says each time it changes, and each property it notifies
  *   --cycle       open and close pages by themselves, every 1.5 s, to time the transitions (with
- *                 G_MESSAGES_DEBUG=vibeos-page-stack): on the settings page an item's page, then a page under it
+ *                 G_MESSAGES_DEBUG=vibeos-page-stack): on the settings page an item's page, then a page under it; on
+ *                 the about page the sheet's Legal page, back, its Credits page, back, the sheet closed, open again
  *   --dialog      on the settings page, open the dialog "Data Saver" opens, once the window shows (on a tablet it is
  *                 centred on the page beside the list)
  *   --print-text  print every label's font size (px) and weight once the window shows, and again each time Font size
@@ -442,6 +445,99 @@ top_bar_page (void)
   return overlay;
 }
 
+/* ---- about ----------------------------------------------------------------------------------------------------- */
+
+/* what the gallery adds to the sheet's Credits page, as an app adds its own */
+static const VibeosAboutSection about_credits[] = {
+  { "Gallery", "Every libvibeos widget, a page at a time." },
+  { NULL },
+};
+
+static GtkWidget *about_sheet;   /* weak: the sheet while it shows */
+
+static void
+about_open (GtkWidget *parent)
+{
+  const VibeosAboutInfo info = { .name = "Gallery", .icon_name = "vibeos.Settings", .credits = about_credits };
+
+  g_set_weak_pointer (&about_sheet, vibeos_about_present (parent, &info));
+}
+
+static void
+on_about_row (VibeosListRow *row)
+{
+  about_open (GTK_WIDGET (row));
+}
+
+/* the row on the about page whose title is `title`, in the sheet: what a tap would open */
+static GtkWidget *
+find_row (GtkWidget *widget, const char *title)
+{
+  if (VIBEOS_IS_LIST_ROW (widget))
+    for (GtkWidget *c = gtk_widget_get_first_child (widget); c; c = gtk_widget_get_next_sibling (c))
+      if (GTK_IS_LABEL (c) && g_str_equal (gtk_label_get_text (GTK_LABEL (c)), title))
+        return widget;
+  for (GtkWidget *c = gtk_widget_get_first_child (widget); c; c = gtk_widget_get_next_sibling (c))
+    {
+      GtkWidget *row = find_row (c, title);
+
+      if (row)
+        return row;
+    }
+  return NULL;
+}
+
+/* --cycle: Legal, back, Credits, back, closed, open again */
+static gboolean
+about_cycle (gpointer data)
+{
+  GtkWidget *page = data;
+  static int steps;
+  int step = steps++ % 6;
+
+  switch (step)
+    {
+    case 0:
+    case 2:
+      if (about_sheet)
+        g_signal_emit_by_name (find_row (about_sheet, step == 0 ? "Legal" : "Credits"), "clicked");
+      break;
+    case 1:
+    case 3:
+      if (about_sheet)
+        vibeos_sheet_back (VIBEOS_SHEET (about_sheet));
+      break;
+    case 4:
+      if (about_sheet)
+        vibeos_sheet_close (VIBEOS_SHEET (about_sheet));
+      break;
+    default:
+      about_open (page);
+    }
+  return G_SOURCE_CONTINUE;
+}
+
+static void
+about_mapped (GtkWidget *page)
+{
+  about_open (page);
+  if (cycle)
+    g_timeout_add_full (G_PRIORITY_DEFAULT, 1500, about_cycle, g_object_ref (page), g_object_unref);
+}
+
+static GtkWidget *
+about_page (void)
+{
+  GtkWidget *list = vibeos_card_list_new ();
+  GtkWidget *row = vibeos_list_row_new ("About Gallery", "The sheet every app shows");
+
+  vibeos_list_row_set_chevron (VIBEOS_LIST_ROW (row));
+  g_signal_connect (row, "clicked", G_CALLBACK (on_about_row), NULL);
+  vibeos_card_list_append (VIBEOS_CARD_LIST (list), row);
+  vibeos_card_list_set_margins (VIBEOS_CARD_LIST (list), 8, 16);
+  return page_with_bar (NULL, list, "About", FALSE);
+}
+
 /* ---- text ------------------------------------------------------------------------------------------------------ */
 
 static GtkWidget *
@@ -599,6 +695,11 @@ on_activate (GtkApplication *app)
     content = top_bar_page ();
   else if (g_str_equal (page_name, "text"))
     content = text_page ();
+  else if (g_str_equal (page_name, "about"))
+    {
+      content = about_page ();
+      g_signal_connect (content, "map", G_CALLBACK (about_mapped), NULL);
+    }
   else
     {
       content = settings_page (window);
@@ -645,7 +746,7 @@ main (int argc, char **argv)
         page_name = argv[i];
       else
         {
-          g_printerr ("usage: vibeos-gallery [settings|nav|rail|fab|top-bar|text] [--fullscreen] [--watch] [--cycle] "
+          g_printerr ("usage: vibeos-gallery [settings|nav|rail|fab|top-bar|text|about] [--fullscreen] [--watch] [--cycle] "
                       "[--dialog] [--print-text]\n");
           return 2;
         }

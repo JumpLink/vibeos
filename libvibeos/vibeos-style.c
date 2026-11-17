@@ -420,6 +420,9 @@ vibeos_init_full (VibeosInitFlags flags)
   /* above the theme (APPLICATION), so GTK's own look never shows through a libvibeos widget */
   gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (self->provider),
                                               GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  /* libvibeos's own icons (vibeos-external-link-symbolic), found by name like the icon theme's */
+  gtk_icon_theme_add_resource_path (gtk_icon_theme_get_for_display (gdk_display_get_default ()),
+                                    "/vibeos/libvibeos/icons");
   /* the colours again, for the flags */
   self->computed = FALSE;
   update (self);
