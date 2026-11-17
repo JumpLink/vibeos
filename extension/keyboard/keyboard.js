@@ -21,6 +21,7 @@ import * as InputSources from 'resource:///org/gnome/shell/ui/status/keyboard.js
 
 import {click} from '../haptics.js';
 import {gestureTookTouches} from '../oskfocus.js';
+import {openSettings} from '../settings.js';
 import {inHomeStrip} from '../task.js';
 import {formFactor, keyAt, measure, moreKeyAt, placeKeys, placeMoreKeys} from './geometry.js';
 import {KeyboardPalette} from './palette.js';
@@ -37,6 +38,17 @@ const REPEAT_START_MS = 400;
 const REPEAT_MS = 50;
 // a finger further than this from every key of a long press's panel chooses none of them (lifted, it types nothing)
 const MORE_KEYS_REACH_DP = 48;
+// a finger that moves this far after its panel opens has slid in the panel; one that did not leaves the panel open
+const MORE_KEYS_SLIDE_DP = 8;
+// an open panel's key a tap chooses: the one under the finger, or one this close to it (the gaps between them)
+const MORE_KEYS_TAP_REACH_DP = 4;
+// a short press's key preview: it grows into place as the finger lands, stays a moment after the finger lifts, then
+// shrinks away
+const PREVIEW_SHOW_MS = 17;
+const PREVIEW_SHOW_SCALE = 0.98;
+const PREVIEW_LINGER_MS = 70;
+const PREVIEW_DISMISS_MS = 53;
+const PREVIEW_DISMISS_SCALE = 0.94;
 
 // an input source's XKB layout -> the keyboard's language
 const LOCALES = {us: 'en_US', gb: 'en_GB', de: 'de', fr: 'fr', it: 'it', es: 'es', ru: 'ru', ua: 'uk', il: 'iw'};
@@ -73,7 +85,7 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
     // The shell's keyboard is set up, then its looks are taken away and ours put in
     _setupKeyboard() {
         this._kb = {locale: 'en_US', purpose: Clutter.InputContentPurpose.NORMAL, page: 'alphabet', view: null,
-            touches: new Map(), passOn: new Set(), more: null, lastShift: 0, manualShift: false, capitals: null};
+            touches: new Map(), passOn: new Set(), more: null, preview: null, lastShift: 0, manualShift: false, capitals: null};
         this._layers = {default: 'alphabet', shift: 'alphabet-shifted'};
         super._setupKeyboard();
 
@@ -101,6 +113,16 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         this._kbMore = new MoreKeysPanel({reactive: false});
         this._kbMore.hide();
         Main.layoutManager.uiGroup.add_child(this._kbMore);
+        // left open after its finger lifted, the panel takes taps of its own (reactive only then)
+        this._kbMore.connect('touch-event', (_actor, event) => this._onMoreEvent(event));
+        this._kbMore.connect('button-press-event', (_actor, event) => this._onMoreEvent(event));
+        this._kbMore.connect('button-release-event', (_actor, event) => this._onMoreEvent(event));
+        this._kbMore.connect('motion-event', (_actor, event) => this._onMoreEvent(event));
+        // a short press's key preview, the same card as a long press's panel of one key and where that one opens
+        this._kbPreview = new MoreKeysPanel({reactive: false});
+        this._kbPreview.set_pivot_point(0.5, 1);
+        this._kbPreview.hide();
+        Main.layoutManager.uiGroup.add_child(this._kbPreview);
         this.add_child(this._kbStrip);
         this.add_child(this._kbKeys);
         this.add_child(this._kbNav);
@@ -126,6 +148,8 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         this._kbReleaseAll();
         this._kbMore?.destroy();
         this._kbMore = null;
+        this._kbPreview?.destroy();
+        this._kbPreview = null;
         this._kbPalette?.destroy();
         this._kbPalette = null;
         super._onDestroy();
@@ -383,8 +407,15 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
     // {k: the key, p: the finger's last point, timer, done: the hold has done the key's work (lifted, it types
     // nothing more)}. Another finger while a panel is open closes the panel.
     _kbPress(id, event) {
-        if (this._kb.more)
+        if (this._kb.more) {
+            const open = this._kb.more.open;
             this._kbCloseMore();
+            // (a panel left open: the tap that closes it types nothing)
+            if (open) {
+                this._kb.touches.set(id, {k: null, p: null, timer: 0, done: true});
+                return;
+            }
+        }
         const p = this._kbPoint(event);
         const k = p ? keyAt(this._kb.view.rows, ...p) : null;
         const touch = {k, p, timer: 0, done: false};
@@ -395,6 +426,7 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         // decides: none when silent)
         click();
         this._kbPressed.place(this._kb.view, k);
+        this._kbPreviewShow(id, k);
         const key = k.key;
         if (key.a?.includes('repeat'))
             this._kbTimer(touch, REPEAT_START_MS, () => this._kbRepeat(id, 1));
@@ -435,6 +467,7 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         const key = touch.k.key;
         touch.done = true;
         this._kbPressed.hide();
+        this._kbPreviewHide();
         if (key.mf?.includes('noPanel')) {
             click();
             this._kbActivate(key.m[0]);
@@ -443,7 +476,7 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         const at = view.m.tablet ? touch.p[0] : touch.k.x + touch.k.w / 2;
         const panel = placeMoreKeys(view.m, touch.k, at, labelWidth);
         const [keysX, keysY] = this._kbKeys.get_transformed_position();
-        this._kb.more = {id, panel, selected: -1};
+        this._kb.more = {id, panel, selected: -1, start: touch.p, slid: false, open: false, down: false};
         this._kbMore.place(view, panel, keysX, keysY);
         Main.layoutManager.uiGroup.set_child_above_sibling(this._kbMore, null);
         this._kbChoose(touch.p);
@@ -459,7 +492,126 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
 
     _kbCloseMore() {
         this._kb.more = null;
-        this._kbMore?.hide();
+        this._kbWatchOutside(false);
+        if (this._kbMore) {
+            this._kbMore.reactive = false;
+            this._kbMore.hide();
+        }
+    }
+
+    // A panel of several keys whose finger lifted where it landed stays open, nothing chosen: a tap on one of its
+    // keys types that key, a tap anywhere else closes it
+    _kbLeaveMoreOpen(more) {
+        more.id = null;
+        more.open = true;
+        more.selected = -1;
+        this._kbMore.select(-1);
+        this._kbMore.reactive = true;
+        this._kbWatchOutside(true);
+    }
+
+    // a finger on the open panel chooses the key under it; lifted, that key typed and the panel closed
+    _onMoreEvent(event) {
+        const more = this._kb?.more;
+        if (!more?.open)
+            return Clutter.EVENT_PROPAGATE;
+        const type = event.type();
+        const T = Clutter.EventType;
+        if (type === T.TOUCH_CANCEL) {
+            this._kbCloseMore();
+            return Clutter.EVENT_STOP;
+        }
+        if (type === T.TOUCH_END || type === T.BUTTON_RELEASE) {
+            const chosen = more.down && more.selected >= 0 ? more.panel.keys[more.selected].key : null;
+            this._kbCloseMore();
+            if (chosen)
+                this._kbActivate(chosen);
+            return Clutter.EVENT_STOP;
+        }
+        if (type === T.TOUCH_BEGIN || type === T.BUTTON_PRESS) {
+            more.down = true;
+            click();
+        } else if (!more.down) {
+            return Clutter.EVENT_STOP;
+        }
+        const p = this._kbPoint(event);
+        more.selected = p ? moreKeyAt(more.panel, ...p, MORE_KEYS_TAP_REACH_DP * this._kb.view.m.density) : -1;
+        this._kbMore.select(more.selected);
+        return Clutter.EVENT_STOP;
+    }
+
+    // While a panel is open, a finger or click anywhere but on it or on the keys (which close it themselves) closes
+    // it; the touch goes on to wherever it was going
+    _kbWatchOutside(on) {
+        if (!on) {
+            if (this._kbOutsideId)
+                global.stage.disconnect(this._kbOutsideId);
+            this._kbOutsideId = 0;
+            return;
+        }
+        if (this._kbOutsideId)
+            return;
+        this._kbOutsideId = global.stage.connect('captured-event', (_stage, event) => {
+            const type = event.type();
+            if (type !== Clutter.EventType.TOUCH_BEGIN && type !== Clutter.EventType.BUTTON_PRESS)
+                return Clutter.EVENT_PROPAGATE;
+            const target = global.stage.get_event_actor(event);
+            if (this._kb?.more?.open && !this._kbMore.contains(target) && !this._kbKeys.contains(target))
+                this._kbCloseMore();
+            return Clutter.EVENT_PROPAGATE;
+        });
+    }
+
+    // A short press's key preview: the key's label, large, on a card above the key, where a long press's panel of
+    // one key opens (the long press turns the one into the other). Keys the layout gives no preview (shift, delete,
+    // space, enter, the page keys) show none, nor does the tablet.
+    _kbPreviewShow(id, k) {
+        this._kbPreviewHide();
+        const view = this._kb.view;
+        const key = k.key;
+        if (!view?.m.moreKeys.single || !key.l || key.a?.includes('noPreview'))
+            return;
+        const panel = placeMoreKeys(view.m, {...k, key: {l: key.l, m: [{l: key.l}]}}, k.x + k.w / 2, labelWidth);
+        const [keysX, keysY] = this._kbKeys.get_transformed_position();
+        this._kb.preview = {id, timer: 0};
+        const actor = this._kbPreview;
+        actor.place(view, panel, keysX, keysY);
+        Main.layoutManager.uiGroup.set_child_above_sibling(actor, null);
+        actor.set_scale(PREVIEW_SHOW_SCALE, PREVIEW_SHOW_SCALE);
+        actor.ease({scale_x: 1, scale_y: 1, duration: PREVIEW_SHOW_MS, mode: Clutter.AnimationMode.LINEAR});
+    }
+
+    // the finger that showed the preview lifted: it stays a moment, then shrinks away
+    _kbPreviewLift(id) {
+        const preview = this._kb.preview;
+        if (preview?.id !== id || preview.timer)
+            return;
+        preview.timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, PREVIEW_LINGER_MS, () => {
+            preview.timer = 0;
+            if (this._kb?.preview === preview) {
+                this._kb.preview = null;
+                this._kbPreview.ease({
+                    scale_x: PREVIEW_DISMISS_SCALE, scale_y: PREVIEW_DISMISS_SCALE,
+                    duration: PREVIEW_DISMISS_MS, mode: Clutter.AnimationMode.LINEAR,
+                    onComplete: () => {
+                        if (!this._kb?.preview)
+                            this._kbPreview?.hide();
+                    },
+                });
+            }
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    // the preview gone at once
+    _kbPreviewHide() {
+        const preview = this._kb?.preview;
+        if (preview?.timer)
+            GLib.source_remove(preview.timer);
+        if (this._kb)
+            this._kb.preview = null;
+        this._kbPreview?.remove_all_transitions();
+        this._kbPreview?.hide();
     }
 
     _kbMove(id, event) {
@@ -467,8 +619,14 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         if (!touch)
             return;
         touch.p = this._kbPoint(event) ?? touch.p;
-        if (this._kb.more?.id === id)
+        const more = this._kb.more;
+        if (more?.id === id) {
+            const slide = MORE_KEYS_SLIDE_DP * this._kb.view.m.density;
+            if (!more.slid && more.start && touch.p &&
+                Math.hypot(touch.p[0] - more.start[0], touch.p[1] - more.start[1]) > slide)
+                more.slid = true;
             this._kbChoose(touch.p);
+        }
     }
 
     // A finger up: the key typed, unless holding it did something already; with a panel open, the panel's chosen
@@ -482,8 +640,17 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         this._kb.touches.delete(id);
         if (this._kb.touches.size === 0)
             this._kbPressed.hide();
+        if (cancelled && this._kb.preview?.id === id)
+            this._kbPreviewHide();
+        else
+            this._kbPreviewLift(id);
         const more = this._kb.more?.id === id ? this._kb.more : null;
         if (more) {
+            // held and lifted without sliding, on a key with several more keys: the panel stays for a tap
+            if (!cancelled && !more.slid && more.panel.keys.length > 1) {
+                this._kbLeaveMoreOpen(more);
+                return;
+            }
             this._kbCloseMore();
             if (!cancelled && more.selected >= 0)
                 this._kbActivate(more.panel.keys[more.selected].key);
@@ -508,6 +675,9 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
                 touch.k = keyAt(this._kb.view.rows, touch.k.x + touch.k.w / 2, touch.k.y + touch.k.h / 2);
         }
         this._kbPressed.hide();
+        // (a preview whose finger lifted stays its moment: typing a capital turns the page back as the finger lifts)
+        if (this._kb.preview && this._kb.touches.has(this._kb.preview.id))
+            this._kbPreviewHide();
     }
 
     _kbReleaseAll() {
@@ -520,6 +690,7 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         if (this._kb?.more)
             this._kbCloseMore();
         this._kbPressed?.hide();
+        this._kbPreviewHide();
     }
 
     _onTouch(event) {
@@ -672,9 +843,18 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         case 'language':
             this._kbNextSource();
             break;
-        case 'emoji':
+        // the gear (a long press on the comma): Settings, on its keyboard page
         case 'settings':
+            openSettings('keyboard');
+            break;
+        // the clipboard's text typed into the field
         case 'clipboard_paste':
+            St.Clipboard.get_default().get_text(St.ClipboardType.CLIPBOARD, (_clipboard, text) => {
+                if (text && this._kb)
+                    this._kbCommit(text);
+            });
+            break;
+        case 'emoji':
         case 'shortcut':
         case 'next':
         case 'previous':
