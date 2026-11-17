@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Software's settings. What it keeps besides: the store's answers and pictures in ~/.cache/vibeos-software/, this
+     device's random id and the account's name in ~/.local/share/vibeos-software/, the account's token in the login
+     keyring (sw-account.c). -->
+<schemalist>
+  <enum id="vibeos.Software.UpdateMode">
+    <value nick="wifi" value="0"/>
+    <value nick="always" value="1"/>
+    <value nick="never" value="2"/>
+  </enum>
+  <enum id="vibeos.Software.ColorScheme">
+    <value nick="system" value="0"/>
+    <value nick="light" value="1"/>
+    <value nick="dark" value="2"/>
+  </enum>
+  <schema id="vibeos.Software" path="/vibeos/Software/">
+    <key name="update-mode" enum="vibeos.Software.UpdateMode">
+      <default>'wifi'</default>
+      <summary>When Software looks for updates by itself</summary>
+      <description>"wifi": when it starts and when apps change, on a network that does not count the data; "always":
+        on any network; "never": only when asked (Mine's Check for updates). Software never installs updates by
+        itself: they are installed from Mine.</description>
+    </key>
+    <key name="color-scheme" enum="vibeos.Software.ColorScheme">
+      <default>'system'</default>
+      <summary>Software's light or dark</summary>
+      <description>"system" follows the system's scheme; "light" and "dark" are Software's own.</description>
+    </key>
+    <key name="recent-searches" type="as">
+      <default>[]</default>
+      <summary>The last searches, the newest first</summary>
+      <description>Shown under the search field before anything is typed; at most eight.</description>
+    </key>
+  </schema>
+</schemalist>

@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Software
+Comment=Find, install and update apps and games
+Exec=vibeos-software
+Icon=vibeos.Software
+Terminal=false
+StartupNotify=true
+DBusActivatable=true
+Categories=System;PackageManager;GTK;
+Keywords=Store;Apps;Games;Install;Update;Uninstall;Review;
+X-Purism-FormFactor=Workstation;Mobile;
