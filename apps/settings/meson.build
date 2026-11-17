@@ -29,7 +29,7 @@ monitors = static_library('monitors', 'src/ns-monitors.c', dependencies: [gio, c
 executable('vibeos-settings',
   'src/main.c', 'src/ns-ui.c', 'src/ns-pages.c', 'src/ns-parallax.c', 'src/ns-net.c', 'src/ns-bt.c',
   'src/ns-sound.c', 'src/ns-apps.c', 'src/ns-shell.c', 'src/ns-pattern.c', 'src/ns-privacy.c', 'src/ns-system.c',
-  'src/ns-displays.c', 'src/ns-caps.c',
+  'src/ns-displays.c', 'src/ns-caps.c', 'src/ns-charge.c',
   resources,
   link_with: monitors,
   dependencies: deps,
