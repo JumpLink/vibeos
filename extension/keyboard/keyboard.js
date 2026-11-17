@@ -21,6 +21,7 @@ import * as InputSources from 'resource:///org/gnome/shell/ui/status/keyboard.js
 
 import {click} from '../haptics.js';
 import {gestureTookTouches} from '../oskfocus.js';
+import {openSettings} from '../settings.js';
 import {inHomeStrip} from '../task.js';
 import {formFactor, keyAt, measure, moreKeyAt, placeKeys, placeMoreKeys} from './geometry.js';
 import {KeyboardPalette} from './palette.js';
@@ -748,9 +749,18 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         case 'language':
             this._kbNextSource();
             break;
-        case 'emoji':
+        // the gear (a long press on the comma): Settings, on its keyboard page
         case 'settings':
+            openSettings('keyboard');
+            break;
+        // the clipboard's text typed into the field
         case 'clipboard_paste':
+            St.Clipboard.get_default().get_text(St.ClipboardType.CLIPBOARD, (_clipboard, text) => {
+                if (text && this._kb)
+                    this._kbCommit(text);
+            });
+            break;
+        case 'emoji':
         case 'shortcut':
         case 'next':
         case 'previous':
