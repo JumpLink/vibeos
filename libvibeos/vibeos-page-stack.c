@@ -30,6 +30,7 @@ struct _VibeosPageStack {
   VibeosPageTransition  transition;
   VibeosPageTransition  running;        /* the kind of the transition running (the stack's may change meanwhile) */
   gint64                trace_start;    /* the frame time of the transition's first frame, for the trace */
+  guint                 tidy;           /* puts away what the transition that just ended left, after its last frame */
 
   guint                 highlight_ms;
   GtkWidget            *highlighted;    /* weak: shows the press highlight until the push's transition ends */
@@ -189,6 +190,28 @@ trace (VibeosPageStack *self, double t)
            f.in_x, f.in_alpha, f.in_scale, f.out_x, f.out_alpha);
 }
 
+/* What a transition leaves when it ends: the page that left goes (destroyed, when nothing else holds it) and the page
+ * it uncovered stops being drawn. Destroying or unmapping a whole page can take longer than a frame, so at the end of
+ * a transition that ran on screen this waits until its last frame has been drawn (an idle after the frame); a cut,
+ * or the next transition starting, does it at once. */
+static void
+tidy_now (VibeosPageStack *self)
+{
+  g_clear_handle_id (&self->tidy, g_source_remove);
+  finish_leaving (self);
+  sync_visibility (self);
+}
+
+static gboolean
+on_tidy (gpointer data)
+{
+  VibeosPageStack *self = data;
+
+  self->tidy = 0;
+  tidy_now (self);
+  return G_SOURCE_REMOVE;
+}
+
 static void
 on_anim (VibeosAnim *anim, double value, gpointer data)
 {
@@ -199,9 +222,9 @@ on_anim (VibeosAnim *anim, double value, gpointer data)
     trace (self, value);
   if (!vibeos_anim_is_running (anim))
     {
-      finish_leaving (self);
-      sync_visibility (self);
       clear_highlight (self);
+      if (!self->tidy)
+        self->tidy = g_idle_add_full (G_PRIORITY_LOW, on_tidy, self, NULL);
     }
   gtk_widget_queue_allocate (GTK_WIDGET (self));
 }
@@ -234,7 +257,10 @@ start (VibeosPageStack *self, gboolean back)
   if (duration (self) && gtk_widget_get_mapped (GTK_WIDGET (self)))
     vibeos_anim_start (self->anim, 0, 1, duration (self), 0, SPONGY_LINEAR);
   else
-    on_anim (self->anim, 1, self);      /* a cut, or nothing on screen to animate */
+    {
+      on_anim (self->anim, 1, self);    /* a cut, or nothing on screen to animate */
+      tidy_now (self);
+    }
   sync_visibility (self);
   if (top)
     gtk_widget_grab_focus (top);
@@ -246,7 +272,7 @@ static void
 settle (VibeosPageStack *self)
 {
   vibeos_anim_finish (self->anim);
-  finish_leaving (self);
+  tidy_now (self);
 }
 
 static void
@@ -557,6 +583,7 @@ vibeos_page_stack_dispose (GObject *object)
   VibeosPageStack *self = VIBEOS_PAGE_STACK (object);
 
   g_clear_handle_id (&self->highlight_timeout, g_source_remove);
+  g_clear_handle_id (&self->tidy, g_source_remove);
   g_clear_object (&self->pending);
   clear_highlight (self);
   g_clear_pointer (&self->anim, vibeos_anim_free);
