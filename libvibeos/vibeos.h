@@ -55,3 +55,10 @@
 /* Text that follows the system's font settings:
  *
  *   vibeos-text.h         Font size and Bold text: sp and dp in stylesheets, vibeos_sp () for sizes set in C */
+#include "vibeos-original-colors.h"
+#include "vibeos-extended-fab.h"
+
+/* More colours and widgets:
+ *
+ *   vibeos-original-colors.h  the theme's colours by Material 3's original rules, for apps that draw parts in them
+ *   vibeos-extended-fab.h     the extended floating action button, which collapses to its icon on scroll */

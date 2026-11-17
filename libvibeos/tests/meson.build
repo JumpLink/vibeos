@@ -27,3 +27,7 @@ test('text-settings', test_text, args: ['settings'], env: text_env + ['GSETTINGS
 test('text-environment', test_text, args: ['environment'],
   env: test_env + ['GSETTINGS_SCHEMA_DIR=' + meson.current_build_dir(), 'VIBEOS_FONT_SCALE=1.5', 'VIBEOS_BOLD_TEXT=0'])
 test('text-no-schema', test_text, args: ['no-schema'], env: text_env + ['GSETTINGS_SCHEMA_DIR='])
+
+# the theme's colours by the original rules, against what the reference phone draws, in both modes
+test_original = executable('test-original-colors', 'test-original-colors.c', test_schemas, dependencies: vibeos_dep)
+test('original-colors', test_original, env: test_env + ['GSETTINGS_SCHEMA_DIR=' + meson.current_build_dir()])
