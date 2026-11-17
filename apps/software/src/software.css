@@ -415,7 +415,7 @@ window.sw-window,
   border-radius: 12px;
 }
 
-/* the full-screen viewer's back arrow, white on the black */
+/* the full-screen viewer's back arrow and close button, white on a dark circle (drawn by the button) */
 .sw-viewer-back {
   min-width: 48px;
   min-height: 48px;

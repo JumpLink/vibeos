@@ -2,11 +2,17 @@
  *
  * Swiped sideways it goes to the next or previous picture, one at a time, with a dot per picture; dragged up or down
  * the picture follows the finger while the black fades, and let go far enough (or flung) it closes, otherwise it
- * springs back. Back, Escape, Alt+Left and the shell's back gesture close it too; Left and Right page with a
- * keyboard. It grows out of the thumbnail tapped and shrinks back into the thumbnail of the picture it shows.
+ * springs back. The close button at the top right, the back arrow at the top left, Back, Escape, Alt+Left and the
+ * shell's back gesture close it too; Left and Right page with a keyboard. It grows out of the thumbnail tapped and
+ * shrinks back into the thumbnail of the picture it shows.
  *
- * The store serves screenshots 540 px wide only (no larger picture), so the viewer shows the thumbnails' own
- * pictures, scaled up. */
+ * Two fingers pinch a picture larger (up to 4 times) or smaller, a double tap zooms in where it is tapped and out
+ * again, and one finger moves a zoomed-in picture; zoomed in, it neither pages nor drags away. A single tap hides the
+ * buttons and the dots, or shows them.
+ *
+ * Each picture shows the store's 540 px screenshot at once (the thumbnail's own, in memory already) and, where the
+ * store has a full-size one (a screenshot's `full`), fades over to it once it has loaded; zoomed in, that is what
+ * shows. A store without them leaves the 540 px pictures, scaled up. */
 #pragma once
 
 #include <gtk/gtk.h>

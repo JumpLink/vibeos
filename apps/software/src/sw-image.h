@@ -34,7 +34,12 @@ void       sw_image_set_paintable (SwImage *self, GdkPaintable *paintable);
 void       sw_image_set_contain   (SwImage *self, gboolean contain);
 void       sw_image_set_size      (SwImage *self, int width, int height);
 
+/* whether the picture is in (not the tile shown until then, nor the fallback) */
+gboolean   sw_image_has_picture   (SwImage *self);
 /* the picture behind `url` if it is in memory already, else NULL */
 GdkTexture *sw_image_cache_lookup (const char *url);
+
+/* Signals: "loaded" (): the picture asked for came in, or could not be had (sw_image_has_picture tells which). Not
+ * emitted for a picture that was in memory already when the URL was set. */
 
 G_END_DECLS

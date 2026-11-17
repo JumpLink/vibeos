@@ -355,6 +355,9 @@ struct _SwImage {
 
 G_DEFINE_FINAL_TYPE (SwImage, sw_image, GTK_TYPE_WIDGET)
 
+enum { LOADED, N_SIGNALS };
+static guint signals[N_SIGNALS];
+
 static void
 forget_sized (SwImage *self)
 {
@@ -369,6 +372,7 @@ image_set_texture (SwImage *self, GdkTexture *texture, gboolean failed)
   g_set_object (&self->picture, (GdkPaintable *) texture);
   self->failed = failed;
   gtk_widget_queue_draw (GTK_WIDGET (self));
+  g_signal_emit (self, signals[LOADED], 0);
 }
 
 /* ---- the picture at the size it is drawn ----------------------------------------------------------------------- *
@@ -653,8 +657,12 @@ sw_image_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 
       gtk_snapshot_save (snapshot);
       gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT ((w - dw) / 2, (h - dh) / 2));
+      /* a picture larger than the screen (a full-size screenshot) through mipmaps, made once, so that it does not
+       * shimmer drawn smaller; it is drawn at many sizes as it zooms, so no copy is made for one of them */
       if (GDK_IS_TEXTURE (self->picture))
-        gtk_snapshot_append_scaled_texture (snapshot, GDK_TEXTURE (self->picture), GSK_SCALING_FILTER_LINEAR,
+        gtk_snapshot_append_scaled_texture (snapshot, GDK_TEXTURE (self->picture),
+                                            scale * vibeos_device_scale (widget) < 0.95 ? GSK_SCALING_FILTER_TRILINEAR
+                                                                                        : GSK_SCALING_FILTER_LINEAR,
                                             &GRAPHENE_RECT_INIT (0, 0, dw, dh));
       else
         gdk_paintable_snapshot (self->picture, snapshot, dw, dh);
@@ -748,6 +756,8 @@ sw_image_class_init (SwImageClass *klass)
   widget_class->measure = sw_image_measure;
   widget_class->snapshot = sw_image_snapshot;
   gtk_widget_class_set_css_name (widget_class, "sw-image");
+  signals[LOADED] = g_signal_new ("loaded", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL, NULL,
+                                  G_TYPE_NONE, 0);
   gtk_widget_class_set_accessible_role (widget_class, GTK_ACCESSIBLE_ROLE_IMG);
 }
 
@@ -813,6 +823,12 @@ sw_image_set_paintable (SwImage *self, GdkPaintable *paintable)
   g_clear_pointer (&self->url, g_free);
   g_set_object (&self->picture, paintable);
   gtk_widget_queue_draw (GTK_WIDGET (self));
+}
+
+gboolean
+sw_image_has_picture (SwImage *self)
+{
+  return self->picture != NULL;
 }
 
 void
