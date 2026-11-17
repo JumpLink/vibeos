@@ -346,6 +346,7 @@ on_account_notice (SwAccount *account, const char *text, GtkWidget *window)
  *   screenshot:N                   tap the app page's Nth screenshot (from 0): the full-screen viewer
  *   press:LABEL                    tap the button LABEL               fill:LABEL=TEXT    TEXT into the field LABEL
  *   code:DIGITS                    DIGITS into the code's boxes       text:TEXT          TEXT into the review's field
+ *   switch:TITLE                   tap the switch of the row TITLE    back               back one page
  *   wait:MS                        MS before the next step */
 
 static gboolean run_step (gpointer data);
@@ -393,6 +394,12 @@ is_button (GtkWidget *widget, const char *text)
   while (child && !GTK_IS_LABEL (child))
     child = GTK_IS_BOX (child) ? gtk_widget_get_last_child (child) : NULL;
   return child && !g_strcmp0 (gtk_label_get_text (GTK_LABEL (child)), text);
+}
+
+static gboolean
+is_switch (GtkWidget *widget, const char *text)
+{
+  return VIBEOS_IS_SWITCH (widget);
 }
 
 /* a box with the CSS class `text` */
@@ -557,6 +564,19 @@ do_step (Win *win, const char *step)
       else
         g_warning ("VIBEOS_SOFTWARE_PAGE: nothing for %s", step);
     }
+  else if (!strcmp (what, "switch"))
+    {
+      GtkWidget *top = vibeos_page_stack_get_top (VIBEOS_PAGE_STACK (win->stack));
+      GtkWidget *row = find_widget (top == win->tabs ? win->homes[win->tab] : top, is_button, arg);
+      GtkWidget *toggle = row ? find_widget (row, is_switch, NULL) : NULL;
+
+      if (toggle)
+        vibeos_switch_set_active (VIBEOS_SWITCH (toggle), !vibeos_switch_get_active (VIBEOS_SWITCH (toggle)));
+      else
+        g_warning ("VIBEOS_SOFTWARE_PAGE: nothing for %s", step);
+    }
+  else if (!strcmp (what, "back"))
+    vibeos_page_stack_pop (VIBEOS_PAGE_STACK (win->stack));
   else if (!strcmp (what, "scroll"))
     {
       /* the showing page's scroll view, `arg` pixels down */
