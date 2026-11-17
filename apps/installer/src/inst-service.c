@@ -248,6 +248,8 @@ on_method_call (GDBusConnection *connection, const char *sender, const char *pat
           return;
         }
       job = !strcmp (method, "InstallPackage") ? inst_job_new_package (name) : inst_job_new_remove (name);
+      /* what Software installs runs sandboxed */
+      inst_job_set_sandbox (job, TRUE);
       g_dbus_method_invocation_return_value (invocation, g_variant_new ("(u)", add_job (job, sender, options)));
     }
   else if (!strcmp (method, "InstallFile"))
@@ -255,6 +257,7 @@ on_method_call (GDBusConnection *connection, const char *sender, const char *pat
       const char *path;
       g_autoptr (GVariant) options = NULL;
       g_autoptr (GFile) file = NULL;
+      InstJob *job;
 
       g_variant_get (params, "(&s@a{sv})", &path, &options);
       if (!g_path_is_absolute (path) || !g_file_test (path, G_FILE_TEST_IS_REGULAR))
@@ -264,9 +267,9 @@ on_method_call (GDBusConnection *connection, const char *sender, const char *pat
           return;
         }
       file = g_file_new_for_path (path);
-      g_dbus_method_invocation_return_value (invocation,
-                                             g_variant_new ("(u)", add_job (inst_job_new_file (file), sender,
-                                                                            options)));
+      job = inst_job_new_file (file);
+      inst_job_set_sandbox (job, TRUE);
+      g_dbus_method_invocation_return_value (invocation, g_variant_new ("(u)", add_job (job, sender, options)));
     }
   else if (!strcmp (method, "Cancel"))
     {

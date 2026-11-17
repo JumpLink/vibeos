@@ -232,6 +232,7 @@ on_chosen (GObject *source, GAsyncResult *result, gpointer data)
   if (!file || !win_of (window))
     return;
   job = inst_job_new_file (file);
+  inst_job_set_sandbox (job, TRUE);
   inst_window_show_job (window, job, TRUE);
 }
 

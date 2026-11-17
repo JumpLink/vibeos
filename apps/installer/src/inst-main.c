@@ -151,6 +151,7 @@ inst_app_open (GApplication *app, GFile **files, int n_files, const char *hint)
       g_autoptr (InstJob) job = inst_job_new_file (files[i]);
       GtkWidget *window = window_for_job (GTK_APPLICATION (app));
 
+      inst_job_set_sandbox (job, TRUE);
       /* a file tapped in Files: its page alone, Back leaves */
       inst_window_show_job (window, job, FALSE);
       gtk_window_present (GTK_WINDOW (window));
