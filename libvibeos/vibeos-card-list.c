@@ -138,6 +138,13 @@ layout (VibeosCardList *self, int width, gboolean allocate)
   return y + self->bottom;
 }
 
+/* the height depends on the width (its rows wrap): without this GTK measures it for no width, at its natural one */
+static GtkSizeRequestMode
+vibeos_card_list_get_request_mode (GtkWidget *widget)
+{
+  return GTK_SIZE_REQUEST_HEIGHT_FOR_WIDTH;
+}
+
 static void
 vibeos_card_list_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, int *min, int *nat,
                           int *min_baseline, int *nat_baseline)
@@ -270,6 +277,7 @@ vibeos_card_list_class_init (VibeosCardListClass *klass)
 
   G_OBJECT_CLASS (klass)->dispose = vibeos_card_list_dispose;
   widget_class->measure = vibeos_card_list_measure;
+  widget_class->get_request_mode = vibeos_card_list_get_request_mode;
   widget_class->size_allocate = vibeos_card_list_size_allocate;
   gtk_widget_class_set_css_name (widget_class, "vibeos-card-list");
   gtk_widget_class_set_accessible_role (widget_class, GTK_ACCESSIBLE_ROLE_LIST);

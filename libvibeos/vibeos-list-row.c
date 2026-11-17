@@ -168,6 +168,13 @@ vibeos_list_row_get_exact_height (VibeosListRow *self, int width)
   return MAX (ONE_LINE_H, PAD + title_h + summary_h + PAD);
 }
 
+/* the height depends on the width (its lines wrap): without this GTK measures it for no width, at its natural one */
+static GtkSizeRequestMode
+vibeos_list_row_get_request_mode (GtkWidget *widget)
+{
+  return GTK_SIZE_REQUEST_HEIGHT_FOR_WIDTH;
+}
+
 static void
 vibeos_list_row_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, int *min, int *nat,
                          int *min_baseline, int *nat_baseline)
@@ -528,6 +535,7 @@ vibeos_list_row_class_init (VibeosListRowClass *klass)
 
   G_OBJECT_CLASS (klass)->dispose = vibeos_list_row_dispose;
   widget_class->measure = vibeos_list_row_measure;
+  widget_class->get_request_mode = vibeos_list_row_get_request_mode;
   widget_class->size_allocate = vibeos_list_row_size_allocate;
   widget_class->snapshot = vibeos_list_row_snapshot;
   gtk_widget_class_set_css_name (widget_class, "vibeos-list-row");
