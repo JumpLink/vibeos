@@ -38,6 +38,8 @@ typedef struct {
   gboolean    launcher_known, shown;
   guint       show_tick;     /* the details wait for the page's transition to end */
   VibeosAnim *reveal;        /* and fade in once built */
+  guint       later_tick;    /* the sections below the first screen, built a frame apart */
+  guint       built;         /* how many of those are in */
 } Page;
 
 /* the details fading in, once built */
@@ -599,6 +601,9 @@ update_review_box (Page *p)
   GtkWidget *child, *button;
   JsonObject *mine = sw_json_object (p->my, "review");
 
+  /* not built yet (or being rebuilt): the reviews section asks for the account's review itself */
+  if (!p->review_box)
+    return;
   while ((child = gtk_widget_get_first_child (p->review_box)))
     gtk_box_remove (GTK_BOX (p->review_box), child);
   /* the preview's reviews do not say which is the account's (the API leaves "mine" out of them): the account's own
@@ -841,6 +846,39 @@ on_reveal (VibeosAnim *anim, double value, gpointer data)
   gtk_widget_set_opacity (p->details, value);
 }
 
+static gboolean page_moving (Page *p);
+
+/* The sections below the first screen. Built all at once, the details take several frames' time; built one a frame
+ * after the first screen has faded in, no frame waits long for them (and nobody sees them arrive: they are below). */
+static void (*const later[]) (Page *p) = { whats_new, reviews, permissions, similar, information };
+
+static gboolean
+build_later (GtkWidget *widget, GdkFrameClock *clock, gpointer data)
+{
+  Page *p = data;
+
+  if ((p->reveal && vibeos_anim_is_running (p->reveal)) || page_moving (p))
+    return G_SOURCE_CONTINUE;
+  later[p->built++] (p);
+  if (p->built < G_N_ELEMENTS (later))
+    return G_SOURCE_CONTINUE;
+  p->later_tick = 0;
+  return G_SOURCE_REMOVE;
+}
+
+static void
+build_rest (Page *p)
+{
+  if (!gtk_widget_get_mapped (p->page))
+    {
+      while (p->built < G_N_ELEMENTS (later))
+        later[p->built++] (p);
+      return;
+    }
+  if (!p->later_tick)
+    p->later_tick = gtk_widget_add_tick_callback (p->page, build_later, p, NULL);
+}
+
 static void
 show (Page *p)
 {
@@ -848,9 +886,13 @@ show (Page *p)
   JsonArray *shots = sw_json_array (p->app, "screenshots");
   gboolean first = !p->shown;
 
+  if (p->later_tick)
+    gtk_widget_remove_tick_callback (p->page, p->later_tick);
+  p->later_tick = 0;
+  p->built = 0;
   while ((child = gtk_widget_get_first_child (p->details)))
     gtk_box_remove (GTK_BOX (p->details), child);
-  p->more_button = p->previews = NULL;
+  p->more_button = p->previews = p->review_box = NULL;
   head_update (p, p->app);
   gtk_box_append (GTK_BOX (p->details), stats (p));
   if (shots && json_array_get_length (shots))
@@ -861,11 +903,6 @@ show (Page *p)
       gtk_box_append (GTK_BOX (p->details), strip);
     }
   description (p);
-  whats_new (p);
-  reviews (p);
-  permissions (p);
-  similar (p);
-  information (p);
   update_action (p);
   if (sw_installer_get_installed (sw_installer_get_default (), package_of (p)))
     find_launcher (p);
@@ -878,6 +915,7 @@ show (Page *p)
         p->reveal = vibeos_anim_new (p->details, on_reveal, p);
       vibeos_anim_start (p->reveal, 0, 1, REVEAL_MS, 0, SPONGY_LINEAR_OUT_SLOW_IN);
     }
+  build_rest (p);
 }
 
 static gboolean
