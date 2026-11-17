@@ -87,14 +87,15 @@ Files: vibeos-launcher/iconpacks/vibeos/icons/phone.png
        vibeos-launcher/iconpacks/vibeos/icons/messaging.png
        vibeos-launcher/iconpacks/vibeos/icons/camera.png
        vibeos-launcher/iconpacks/vibeos/icons/installer.png
+       vibeos-launcher/iconpacks/vibeos/icons/store.png
        tools/iconpack-vibeos/fontawesome/*
 Copyright: 2025 Fonticons, Inc. (Font Awesome Free 7.0.0)
            2026 pulpoff <pashkovsky@gmail.com>
 License: CC-BY-4.0
 Comment:
- The VibeOS pack's phone, messaging, camera and App Installer icons are Font
- Awesome Free's "phone", "comment", "camera" and "box-open" glyphs (solid
- style, unchanged;
+ The VibeOS pack's phone, messaging, camera, App Installer and store (Software)
+ icons are Font Awesome Free's "phone", "comment", "camera", "box-open" and
+ "bag-shopping" glyphs (solid style, unchanged;
  https://fontawesome.com) on squircles, made by tools/iconpack-vibeos/make-vibeos-pack.py. Font Awesome's
  licence text: tools/iconpack-vibeos/fontawesome/LICENSE.txt.
 

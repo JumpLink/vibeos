@@ -55,7 +55,7 @@ ICONS = {
     "gallery":    ("photo_library",     ("#1FAFEB", "#2945CA"),              WHITE),      # gallery
     "documents":  ("description",       "#4385F3",                           WHITE),      # google_drive (its blue)
     "video":      ("play_circle",       WHITE,                               "#000000"),  # google_play_movies (black, not its red)
-    "store":      ("shopping_bag",      WHITE,                               "#00D4FF"),  # google_play_store
+    "store":      ("fa/bag-shopping",   ("#4FD1A5", "#0F7A6B", "diagonal"),  WHITE),      # Software's own: its icon's teal
     "android":    ("android",           "#3DDC84",                           WHITE),      # no H2O: Android's green
     "maps":       ("map",               "#009F55",                           WHITE),      # google_maps (its green)
     "music":      ("music_note",        ("#FAFBF5", "#F9F7F8"),              "#0079B1"),  # music

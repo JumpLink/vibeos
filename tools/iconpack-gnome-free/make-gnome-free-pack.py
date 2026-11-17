@@ -37,7 +37,7 @@ ICONS = {
     "gallery":    ("photo_library",     "#F9A8D4", "#DB2777"),
     "documents":  ("description",       "#BEF264", "#4D7C0F"),
     "video":      ("play_circle",       "#F0ABFC", "#A21CAF"),
-    "store":      ("shopping_bag",      "#67E8F9", "#4F46E5"),
+    "store":      ("shopping_bag",      "#4FD1A5", "#0F7A6B"),
     "android":    ("android",           "#86EFAC", "#15803D"),
     "maps":       ("map",               "#86EFAC", "#0F766E"),
     "music":      ("music_note",        "#FDA4AF", "#E11D48"),
