@@ -58,3 +58,6 @@ test('sms-segments', executable('test-sms-segments', 'tests/test-sms-segments.c'
 # the message flows end to end, against a mock modem and notification server on buses of their own
 test('sms-flow', find_program('python3'), timeout: 120,
      args: [files('tests/test-sms.py'), meson.current_build_dir(), meson.current_source_dir()])
+# a conversation's layout: date lines, runs, gaps, the date line's words (in UTC and English)
+test('thread', executable('test-thread', 'tests/test-thread.c', 'src/msg-thread.c', dependencies: [gio]),
+     env: ['TZ=UTC', 'LC_ALL=C.UTF-8'])
