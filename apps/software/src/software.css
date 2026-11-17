@@ -1,0 +1,742 @@
+/* Software's styles, over libvibeos's (vibeos.css). Every colour is a role of the theme (the @vibeos_ names), so light
+ * and dark follow the system's scheme and colour, or the one chosen in Software's settings. Sizes are GTK px. The
+ * weights are Bold text's, as the other apps': regular 700, medium 800, bold 900. */
+
+window.sw-window,
+.sw-page,
+.sw-home {
+  background-color: @vibeos_surface;
+}
+
+/* ---- text ---- */
+
+.sw-body-text,
+.sw-body-item {
+  font-size: 15px;
+  color: @vibeos_on_surface;
+}
+
+.sw-body-item {
+  margin-left: 4px;
+}
+
+.sw-caption,
+.sw-caption-padded {
+  font-size: 13px;
+  color: @vibeos_on_surface_variant;
+}
+
+.sw-caption-padded {
+  margin: 0 24px 4px 24px;
+}
+
+.sw-subtitle {
+  font-size: 16px;
+  font-weight: 800;
+  color: @vibeos_on_surface;
+}
+
+.sw-summary {
+  font-size: 15px;
+  font-weight: 800;
+  color: @vibeos_on_surface;
+}
+
+.sw-form-error,
+.sw-list-error,
+.sw-suggest-error {
+  font-size: 14px;
+  color: @vibeos_error;
+}
+
+.sw-list-error,
+.sw-suggest-error {
+  margin: 16px 24px;
+}
+
+/* a column with the page's side margins: text 24px in, cards 16px in (a card list keeps 16px of its own on each
+ * side), strips from edge to edge. Margins rather than padding, so that a strip need not reach outside its parent. */
+.sw-column {
+  padding: 8px 0 32px 0;
+}
+
+.sw-column > *,
+.sw-app-details > *,
+.sw-sheet-column > * {
+  margin-left: 24px;
+  margin-right: 24px;
+}
+
+.sw-column > vibeos-card-list,
+.sw-app-details > vibeos-card-list,
+.sw-app-details > .sw-bleed {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+/* in a sheet the cards are as far in as the text */
+.sw-sheet-column > vibeos-card-list {
+  margin-left: 8px;
+  margin-right: 8px;
+}
+
+.sw-form {
+  padding-top: 16px;
+}
+
+.sw-sheet-column {
+  padding: 0 0 16px 0;
+}
+
+.sw-divider {
+  min-height: 1px;
+  background-color: @vibeos_outline_variant;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+/* ---- loading, failed, empty ---- */
+
+.sw-message {
+  padding: 48px 40px;
+}
+
+.sw-message-icon {
+  color: @vibeos_on_surface_variant;
+  margin-bottom: 16px;
+}
+
+.sw-message-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: @vibeos_on_surface;
+  margin-bottom: 8px;
+}
+
+.sw-message-text {
+  font-size: 15px;
+  color: @vibeos_on_surface_variant;
+}
+
+.sw-message-button {
+  margin-top: 24px;
+}
+
+/* ---- buttons: pills ---- */
+
+.sw-button {
+  min-height: 40px;
+  border-radius: 20px;
+  padding: 0 24px;
+}
+
+.sw-button label {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.sw-button.large {
+  min-height: 48px;
+  border-radius: 24px;
+}
+
+.sw-button.large label {
+  font-size: 15px;
+}
+
+.sw-button.small {
+  min-height: 36px;
+  border-radius: 18px;
+  padding: 0 16px;
+}
+
+.sw-button.filled { background-color: @vibeos_primary; }
+.sw-button.filled label { color: @vibeos_on_primary; }
+.sw-button.tonal { background-color: @vibeos_secondary_container; }
+.sw-button.tonal label { color: @vibeos_on_secondary_container; }
+.sw-button.outlined { border: 1px solid @vibeos_outline; }
+.sw-button.outlined label { color: @vibeos_primary; }
+.sw-button.text { padding: 0 12px; }
+.sw-button.text label { color: @vibeos_primary; }
+.sw-button.danger { background-color: @vibeos_error; }
+.sw-button.danger label { color: @vibeos_on_error; }
+
+.sw-button:disabled {
+  background-color: alpha(@vibeos_on_surface, 0.12);
+  border-color: transparent;
+}
+
+.sw-button.text:disabled {
+  background-color: transparent;
+}
+
+.sw-button:disabled label {
+  color: alpha(@vibeos_on_surface, 0.38);
+}
+
+/* ---- the tabs' homes ---- */
+
+.sw-search-bar {
+  margin: 8px 16px 4px 16px;
+}
+
+.sw-home-column {
+  padding-bottom: 24px;
+}
+
+/* the line under the tabs and the chosen one's are drawn by SwTabs (sw-widgets.c) */
+.sw-tab {
+  min-height: 48px;
+}
+
+.sw-tab label {
+  font-size: 15px;
+  font-weight: 800;
+  color: @vibeos_on_surface_variant;
+}
+
+.sw-tab.selected label {
+  color: @vibeos_on_surface;
+}
+
+/* a section's title, its count and its action */
+.sw-section-header {
+  margin: 24px 16px 8px 24px;
+  min-height: 40px;
+}
+
+.sw-section-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: @vibeos_on_surface;
+}
+
+.sw-section-count {
+  font-size: 14px;
+  font-weight: 800;
+  color: @vibeos_on_surface_variant;
+  background-color: @vibeos_surface_container_high;
+  border-radius: 12px;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0 4px;
+  margin-left: 10px;
+}
+
+/* a strip scrolled sideways: 24px in, as the titles */
+.sw-strip {
+  padding: 0 24px;
+}
+
+/* categories: three rows of chips */
+.sw-category-strip {
+  padding: 4px 24px 8px 24px;
+}
+
+.sw-chip {
+  min-height: 40px;
+  border-radius: 20px;
+  padding: 0 16px 0 8px;
+  background-color: @vibeos_surface_container_high;
+}
+
+.sw-chip label {
+  font-size: 14px;
+  font-weight: 800;
+  color: @vibeos_on_surface;
+}
+
+.sw-chip.filter {
+  padding: 0 16px;
+  background-color: transparent;
+  border: 1px solid @vibeos_outline_variant;
+}
+
+.sw-chip.filter.selected {
+  background-color: @vibeos_secondary_container;
+  border-color: transparent;
+}
+
+.sw-chip.filter.selected label {
+  color: @vibeos_on_secondary_container;
+}
+
+.sw-chips {
+  padding: 12px 0;
+}
+
+/* a category's Font Awesome icon on a circle in one of four hues */
+.sw-category-icon {
+  border-radius: 999px;
+  padding: 5px;
+}
+
+.sw-category-icon.hue-0 { background-color: @vibeos_primary_container; color: @vibeos_on_primary_container; }
+.sw-category-icon.hue-1 { background-color: @vibeos_secondary_container; color: @vibeos_on_secondary_container; }
+.sw-category-icon.hue-2 { background-color: @vibeos_tertiary_container; color: @vibeos_on_tertiary_container; }
+.sw-category-icon.hue-3 { background-color: @vibeos_surface_container_highest; color: @vibeos_primary; }
+
+/* banners: pictures with their title over a dark fade */
+.sw-banner {
+  border-radius: 20px;
+}
+
+.sw-banner-text {
+  padding: 16px 20px;
+  background-image: linear-gradient(to bottom, transparent, alpha(black, 0.6));
+  border-radius: 0 0 20px 20px;
+}
+
+.sw-banner-title {
+  font-size: 20px;
+  font-weight: 900;
+  color: white;
+}
+
+.sw-banner-subtitle {
+  font-size: 14px;
+  color: alpha(white, 0.9);
+}
+
+/* ---- apps in lists and strips ---- */
+
+.sw-app-row-box {
+  padding: 8px 16px 8px 24px;
+  min-height: 72px;
+}
+
+.sw-app-row.in-column .sw-app-row-box {
+  padding-left: 0;
+  padding-right: 8px;
+}
+
+.sw-app-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: @vibeos_on_surface;
+}
+
+.sw-app-summary {
+  font-size: 13px;
+  color: @vibeos_on_surface_variant;
+}
+
+.sw-rating {
+  font-size: 13px;
+  font-weight: 800;
+  color: @vibeos_on_surface_variant;
+}
+
+.sw-rating image {
+  color: @vibeos_on_surface_variant;
+}
+
+.sw-app-tile-box {
+  padding: 4px 0;
+}
+
+.sw-tile-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: @vibeos_on_surface;
+}
+
+.sw-list {
+  padding: 4px 0 16px 0;
+}
+
+.sw-list-footer {
+  padding: 16px 0 24px 0;
+}
+
+.sw-list-header,
+.sw-corrected {
+  font-size: 14px;
+  color: @vibeos_on_surface_variant;
+  margin: 12px 24px 0 24px;
+}
+
+.sw-ring-stop {
+  color: @vibeos_on_surface;
+}
+
+/* ---- an app's page ---- */
+
+.sw-app-head {
+  padding: 8px 24px 0 24px;
+}
+
+.sw-app-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: @vibeos_on_surface;
+}
+
+.sw-app-developer {
+  font-size: 15px;
+  font-weight: 800;
+  color: @vibeos_primary;
+}
+
+.sw-app-action {
+  padding: 20px 24px 4px 24px;
+}
+
+.sw-job-line,
+.sw-update-note,
+.sw-installed-note {
+  font-size: 14px;
+  color: @vibeos_on_surface_variant;
+}
+
+.sw-installed-note {
+  margin: 12px 0;
+}
+
+.sw-app-details {
+  padding: 0 0 32px 0;
+}
+
+.sw-app-details > .sw-section-header {
+  margin-right: 16px;
+}
+
+/* rating, installs, size, age, side by side under thin dividers */
+.sw-stats {
+  margin-top: 20px;
+  padding: 8px 0;
+}
+
+.sw-stat {
+  border-left: 1px solid @vibeos_outline_variant;
+}
+
+.sw-stat:first-child {
+  border-left: none;
+}
+
+.sw-stat-value {
+  font-size: 16px;
+  font-weight: 800;
+  color: @vibeos_on_surface;
+}
+
+.sw-stat-caption {
+  font-size: 12px;
+  color: @vibeos_on_surface_variant;
+}
+
+.sw-screenshots {
+  padding: 16px 0 0 0;
+}
+
+.sw-screenshots sw-image {
+  margin-right: 8px;
+}
+
+.sw-description {
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+/* a text button's label in line with the text over it */
+.sw-app-details > .sw-read-more {
+  margin-left: 12px;
+}
+
+/* ratings: the big figure beside the five bars */
+.sw-histogram {
+  padding: 4px 0 16px 0;
+}
+
+.sw-big-rating {
+  font-size: 48px;
+  font-weight: 800;
+  color: @vibeos_on_surface;
+}
+
+.sw-histogram-key {
+  font-size: 12px;
+  font-weight: 800;
+  color: @vibeos_on_surface_variant;
+  min-width: 10px;
+}
+
+progressbar.sw-histogram-bar trough {
+  min-height: 8px;
+  border-radius: 4px;
+  border: none;
+  background-color: @vibeos_surface_container_highest;
+}
+
+progressbar.sw-histogram-bar progress {
+  min-height: 8px;
+  min-width: 0;
+  margin: 0;
+  border-radius: 4px;
+  border: none;
+  background-color: @vibeos_primary;
+}
+
+.sw-review-box {
+  padding: 8px 0 16px 0;
+}
+
+.sw-all-reviews {
+  margin-top: 8px;
+}
+
+/* ---- reviews ---- */
+
+.sw-review {
+  padding: 16px 0;
+  border-bottom: 1px solid @vibeos_outline_variant;
+}
+
+.sw-reviews .sw-review {
+  margin: 0 24px;
+}
+
+.sw-review-initial {
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: 18px;
+  background-color: @vibeos_tertiary_container;
+  color: @vibeos_on_tertiary_container;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.sw-review-author {
+  font-size: 15px;
+  font-weight: 800;
+  color: @vibeos_on_surface;
+}
+
+.sw-review-text {
+  font-size: 15px;
+  color: @vibeos_on_surface;
+}
+
+.sw-helpful {
+  min-height: 32px;
+  border-radius: 16px;
+  padding: 0 12px;
+  border: 1px solid @vibeos_outline_variant;
+  color: @vibeos_on_surface_variant;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.sw-helpful.selected {
+  background-color: @vibeos_secondary_container;
+  border-color: transparent;
+  color: @vibeos_on_secondary_container;
+}
+
+/* the review's text field: a rounded outline */
+.sw-text-area {
+  border: 1px solid @vibeos_outline;
+  border-radius: 16px;
+  padding: 12px 16px;
+}
+
+.sw-text-area textview,
+.sw-text-area textview text {
+  background-color: transparent;
+  font-size: 16px;
+  color: @vibeos_on_surface;
+}
+
+.sw-counter {
+  font-size: 12px;
+  color: @vibeos_on_surface_variant;
+}
+
+.sw-counter.error {
+  color: @vibeos_error;
+}
+
+/* ---- search ---- */
+
+.sw-suggestions {
+  padding: 8px 0;
+}
+
+.sw-suggest-box {
+  min-height: 56px;
+  padding: 0 8px 0 24px;
+}
+
+.sw-suggest-box > image {
+  color: @vibeos_on_surface_variant;
+}
+
+.sw-suggest-box label {
+  font-size: 16px;
+  color: @vibeos_on_surface;
+}
+
+.sw-suggest-app {
+  font-weight: 800;
+}
+
+/* ---- Mine ---- */
+
+.sw-mine {
+  background-color: @vibeos_surface_container;
+}
+
+.sw-mine-header {
+  padding: 12px 16px 4px 24px;
+  min-height: 56px;
+}
+
+.sw-mine-title {
+  font-size: 28px;
+  font-weight: 800;
+  color: @vibeos_on_surface;
+}
+
+.sw-avatar-button {
+  min-width: 48px;
+  min-height: 48px;
+}
+
+.sw-mine-column > vibeos-card-list {
+  margin-bottom: 16px;
+}
+
+.sw-mine-sheet {
+  background-color: @vibeos_surface;
+  border-radius: 28px 28px 0 0;
+  padding-bottom: 24px;
+}
+
+.sw-mine-section > .sw-section-header {
+  margin-top: 20px;
+}
+
+.sw-note {
+  margin: 0 24px 8px 24px;
+}
+
+/* ---- the account ---- */
+
+.sw-avatar {
+  border-radius: 999px;
+  background-color: @vibeos_surface_container_highest;
+  color: @vibeos_on_surface_variant;
+  font-weight: 800;
+}
+
+.sw-avatar label {
+  font-size: 18px;
+}
+
+.sw-avatar.large label {
+  font-size: 32px;
+}
+
+.sw-avatar.signed-in {
+  background-color: @vibeos_primary;
+  color: @vibeos_on_primary;
+}
+
+.sw-profile-card {
+  padding: 24px 24px 8px 24px;
+}
+
+.sw-profile-name {
+  font-size: 22px;
+  font-weight: 800;
+  color: @vibeos_on_surface;
+  margin-top: 8px;
+}
+
+.sw-profile-email,
+.sw-profile-text {
+  font-size: 14px;
+  color: @vibeos_on_surface_variant;
+}
+
+.sw-profile-card box {
+  margin-top: 8px;
+}
+
+/* a field: its label over a rounded box, an error or a hint under it */
+.sw-field-label {
+  font-size: 13px;
+  font-weight: 800;
+  color: @vibeos_on_surface_variant;
+  margin: 0 0 6px 4px;
+}
+
+.sw-field-box {
+  min-height: 52px;
+  border-radius: 16px;
+  padding: 0 4px 0 16px;
+  background-color: @vibeos_surface_container_highest;
+  border: 2px solid transparent;
+}
+
+.sw-field-box:focus-within {
+  border-color: @vibeos_primary;
+}
+
+.sw-field-box.error {
+  border-color: @vibeos_error;
+}
+
+.sw-field-box text {
+  font-size: 16px;
+  color: @vibeos_on_surface;
+}
+
+.sw-field-eye {
+  color: @vibeos_on_surface_variant;
+}
+
+.sw-field-error,
+.sw-field-hint {
+  font-size: 13px;
+  margin: 6px 0 0 4px;
+}
+
+.sw-field-error { color: @vibeos_error; }
+.sw-field-hint { color: @vibeos_on_surface_variant; }
+
+/* the code: six boxes */
+.sw-code-box {
+  min-width: 38px;
+  min-height: 56px;
+  border-radius: 12px;
+  background-color: @vibeos_surface_container_highest;
+  border: 2px solid transparent;
+  font-size: 24px;
+  font-weight: 800;
+  color: @vibeos_on_surface;
+}
+
+.sw-code-box.current {
+  border-color: @vibeos_primary;
+}
+
+.sw-code-box.error {
+  border-color: @vibeos_error;
+}
+
+/* ---- the ⋮ menu (sw-menu.c): libvibeos's colours and font, which this window does not have of its own ---- */
+
+.sw-menu {
+  background-color: @vibeos_surface_container;
+  border-radius: 4px;
+  padding: 8px 0;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
+}
+
+.sw-menu-text {
+  font-size: 16px;
+  font-weight: 700;
+  color: @vibeos_on_surface;
+}

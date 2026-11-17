@@ -169,7 +169,9 @@ on_hostnamed (GObject *source, GAsyncResult *res, gpointer data)
       if (g_variant_is_of_type (value, G_VARIANT_TYPE_STRING) && *g_variant_get_string (value, NULL))
         {
           g_free (model);
-          model = sw_device_clean_model (g_variant_get_string (value, NULL), strlen (g_variant_get_string (value, NULL)));
+          const char *text = g_variant_get_string (value, NULL);
+
+          model = sw_device_clean_model (text, strlen (text));
           model_done = TRUE;
           maybe_done ();
           return;

@@ -296,7 +296,8 @@ entry_save (SwApi *self, const char *key, const Entry *entry)
   g_string_append_len (contents, body, size);
   bytes = g_string_free_to_bytes (contents);
   file = g_file_new_for_path (path);
-  g_file_replace_contents_bytes_async (file, bytes, NULL, FALSE, G_FILE_CREATE_PRIVATE | G_FILE_CREATE_REPLACE_DESTINATION,
+  g_file_replace_contents_bytes_async (file, bytes, NULL, FALSE,
+                                       G_FILE_CREATE_PRIVATE | G_FILE_CREATE_REPLACE_DESTINATION,
                                        NULL, on_cache_written, NULL);
 }
 

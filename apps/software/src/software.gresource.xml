@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- the stylesheet, the app's icon and its glyphs, where GtkApplication looks for icons: the resource base path +
+     /icons. data/icons: our own symbolic glyphs. data/fontawesome: Font Awesome Free 7.0.0 solid glyphs (CC BY 4.0,
+     data/fontawesome/LICENSE.txt) for the store's categories, which name their icon by its Font Awesome name: "coins"
+     is sw-fa-coins-symbolic -->
+<gresources>
+  <gresource prefix="/vibeos/Software">
+    <file>software.css</file>
+    <file alias="icons/scalable/apps/vibeos.Software.svg">vibeos.Software.svg</file>
+    <file alias="icons/scalable/actions/sw-account-symbolic.svg">icons/sw-account-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-apps-symbolic.svg">icons/sw-apps-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-back-symbolic.svg">icons/sw-back-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-check-symbolic.svg">icons/sw-check-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-chevron-symbolic.svg">icons/sw-chevron-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-close-symbolic.svg">icons/sw-close-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-cloud-off-symbolic.svg">icons/sw-cloud-off-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-delete-symbolic.svg">icons/sw-delete-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-download-symbolic.svg">icons/sw-download-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-edit-symbolic.svg">icons/sw-edit-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-email-symbolic.svg">icons/sw-email-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-featured-symbolic.svg">icons/sw-featured-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-flag-symbolic.svg">icons/sw-flag-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-games-symbolic.svg">icons/sw-games-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-history-symbolic.svg">icons/sw-history-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-info-symbolic.svg">icons/sw-info-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-lock-symbolic.svg">icons/sw-lock-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-logout-symbolic.svg">icons/sw-logout-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-mine-symbolic.svg">icons/sw-mine-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-more-symbolic.svg">icons/sw-more-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-north-west-symbolic.svg">icons/sw-north-west-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-package-symbolic.svg">icons/sw-package-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-palette-symbolic.svg">icons/sw-palette-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-person-symbolic.svg">icons/sw-person-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-phone-symbolic.svg">icons/sw-phone-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-public-symbolic.svg">icons/sw-public-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-refresh-symbolic.svg">icons/sw-refresh-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-search-symbolic.svg">icons/sw-search-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-settings-symbolic.svg">icons/sw-settings-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-shield-symbolic.svg">icons/sw-shield-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-sort-symbolic.svg">icons/sw-sort-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-star-outline-symbolic.svg">icons/sw-star-outline-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-star-symbolic.svg">icons/sw-star-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-thumb-up-fill-symbolic.svg">icons/sw-thumb-up-fill-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-thumb-up-symbolic.svg">icons/sw-thumb-up-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-update-symbolic.svg">icons/sw-update-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-visibility-off-symbolic.svg">icons/sw-visibility-off-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-visibility-symbolic.svg">icons/sw-visibility-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-warning-symbolic.svg">icons/sw-warning-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-wifi-symbolic.svg">icons/sw-wifi-symbolic.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-bag-shopping-symbolic.svg">fontawesome/bag-shopping.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-basketball-symbolic.svg">fontawesome/basketball.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-bolt-symbolic.svg">fontawesome/bolt.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-book-symbolic.svg">fontawesome/book.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-briefcase-symbolic.svg">fontawesome/briefcase.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-camera-symbolic.svg">fontawesome/camera.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-chess-board-symbolic.svg">fontawesome/chess-board.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-chess-knight-symbolic.svg">fontawesome/chess-knight.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-child-reaching-symbolic.svg">fontawesome/child-reaching.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-child-symbolic.svg">fontawesome/child.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-code-symbolic.svg">fontawesome/code.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-coins-symbolic.svg">fontawesome/coins.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-comments-symbolic.svg">fontawesome/comments.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-compass-symbolic.svg">fontawesome/compass.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-crosshairs-symbolic.svg">fontawesome/crosshairs.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-dice-symbolic.svg">fontawesome/dice.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-dragon-symbolic.svg">fontawesome/dragon.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-file-lines-symbolic.svg">fontawesome/file-lines.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-flag-checkered-symbolic.svg">fontawesome/flag-checkered.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-flask-symbolic.svg">fontawesome/flask.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-font-symbolic.svg">fontawesome/font.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-futbol-symbolic.svg">fontawesome/futbol.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-gears-symbolic.svg">fontawesome/gears.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-ghost-symbolic.svg">fontawesome/ghost.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-globe-symbolic.svg">fontawesome/globe.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-graduation-cap-symbolic.svg">fontawesome/graduation-cap.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-guitar-symbolic.svg">fontawesome/guitar.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-heart-pulse-symbolic.svg">fontawesome/heart-pulse.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-landmark-symbolic.svg">fontawesome/landmark.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-masks-theater-symbolic.svg">fontawesome/masks-theater.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-music-symbolic.svg">fontawesome/music.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-newspaper-symbolic.svg">fontawesome/newspaper.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-palette-symbolic.svg">fontawesome/palette.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-plane-symbolic.svg">fontawesome/plane.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-puzzle-piece-symbolic.svg">fontawesome/puzzle-piece.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-rectangle-list-symbolic.svg">fontawesome/rectangle-list.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-route-symbolic.svg">fontawesome/route.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-screwdriver-wrench-symbolic.svg">fontawesome/screwdriver-wrench.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-shapes-symbolic.svg">fontawesome/shapes.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-spa-symbolic.svg">fontawesome/spa.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-tractor-symbolic.svg">fontawesome/tractor.svg</file>
+    <file alias="icons/scalable/actions/sw-fa-utensils-symbolic.svg">fontawesome/utensils.svg</file>
+  </gresource>
+</gresources>
