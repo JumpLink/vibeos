@@ -19,6 +19,8 @@
 
 #include <gtk/gtk.h>
 
+#include "vibeos-style.h"
+
 G_BEGIN_DECLS
 
 typedef enum {
@@ -35,6 +37,10 @@ GtkWidget *vibeos_page_stack_new            (void);
 /* VIBEOS_PAGE_TRANSITION_SHARED_AXIS by default */
 void       vibeos_page_stack_set_transition (VibeosPageStack *self, VibeosPageTransition transition);
 VibeosPageTransition vibeos_page_stack_get_transition (VibeosPageStack *self);
+/* What shows behind the pages, when it is one colour of the theme all over (the window's surface, as a rule): the
+ * pages then fade by having that colour drawn over them, the same picture as drawing them translucent but much less
+ * work for the GPU. Without it (the default) they fade with an opacity, which is right over any backdrop. */
+void       vibeos_page_stack_set_backdrop   (VibeosPageStack *self, VibeosColor color);
 
 /* opens `page` over the others */
 void       vibeos_page_stack_push           (VibeosPageStack *self, GtkWidget *page);

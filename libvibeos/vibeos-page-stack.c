@@ -2,11 +2,19 @@
  *
  * A transition runs on one VibeosAnim, linear from 0 to 1 over its duration: the slide follows it through the
  * fast-out-slow-in curve, the fades follow the time itself. Two pages are drawn while it runs, the incoming one (the
- * new top) over the outgoing one (the page it covers, or the one going away, which stays a child until the end). */
+ * new top) over the outgoing one (the page it covers, or the one going away, which stays a child until the end).
+ *
+ * A page fading is drawn one of two ways. With an opacity, the GPU draws the whole page into a picture of its own
+ * first and then that at the opacity, every frame of the transition. Over a backdrop of one colour
+ * (vibeos_page_stack_set_backdrop) it draws the page as it is and then the backdrop's colour over it at 1 - the
+ * opacity, which gives the same picture without the extra copy (on the Poco X3's Adreno 618 that copy held a push
+ * at 60 frames a second). That holds because the two pages never show translucent at the same time: the outgoing one
+ * has gone before the incoming one starts to show, in every transition (frame_at). */
 #define G_LOG_DOMAIN "vibeos-page-stack"
 
 #include "vibeos-page-stack.h"
 #include "vibeos-anim.h"
+#include "vibeos-style.h"
 
 #define PUSH_MS            250
 #define BACK_MS            170
@@ -30,6 +38,8 @@ struct _VibeosPageStack {
   VibeosPageTransition  transition;
   VibeosPageTransition  running;        /* the kind of the transition running (the stack's may change meanwhile) */
   gint64                trace_start;    /* the frame time of the transition's first frame, for the trace */
+  gboolean              has_backdrop;   /* the pages fade over this colour of the theme, not with an opacity */
+  VibeosColor           backdrop;
   guint                 tidy;           /* puts away what the transition that just ended left, after its last frame */
 
   guint                 highlight_ms;
@@ -476,6 +486,17 @@ vibeos_page_stack_get_transition (VibeosPageStack *self)
   return self->transition;
 }
 
+void
+vibeos_page_stack_set_backdrop (VibeosPageStack *self, VibeosColor color)
+{
+  g_return_if_fail (VIBEOS_IS_PAGE_STACK (self));
+  g_return_if_fail (color < VIBEOS_N_COLORS);
+
+  self->has_backdrop = TRUE;
+  self->backdrop = color;
+  gtk_widget_queue_draw (GTK_WIDGET (self));
+}
+
 /* ---- layout and drawing ---------------------------------------------------------------------------------------- */
 
 static void
@@ -520,11 +541,15 @@ vibeos_page_stack_size_allocate (GtkWidget *widget, int width, int height, int b
 static void
 snapshot_page (GtkWidget *widget, GtkWidget *page, GtkSnapshot *snapshot, double alpha, double scale)
 {
+  VibeosPageStack *self = VIBEOS_PAGE_STACK (widget);
   double w = gtk_widget_get_width (widget), h = gtk_widget_get_height (widget);
+  gboolean veil = self->has_backdrop && alpha < 1;
+  graphene_rect_t bounds;
 
   if (alpha <= 0)
     return;
-  gtk_snapshot_push_opacity (snapshot, alpha);
+  if (!veil && alpha < 1)
+    gtk_snapshot_push_opacity (snapshot, alpha);
   gtk_snapshot_save (snapshot);
   if (scale != 1)
     {
@@ -533,8 +558,16 @@ snapshot_page (GtkWidget *widget, GtkWidget *page, GtkSnapshot *snapshot, double
       gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (-w / 2, -h / 2));
     }
   gtk_widget_snapshot_child (widget, page, snapshot);
+  /* the backdrop over the page where it lies (moved, and scaled with it), as much as the fade takes away */
+  if (veil && gtk_widget_compute_bounds (page, widget, &bounds))
+    {
+      GdkRGBA cover = vibeos_color_alpha (self->backdrop, 1 - alpha);
+
+      gtk_snapshot_append_color (snapshot, &cover, &bounds);
+    }
   gtk_snapshot_restore (snapshot);
-  gtk_snapshot_pop (snapshot);
+  if (!veil && alpha < 1)
+    gtk_snapshot_pop (snapshot);
 }
 
 static void
