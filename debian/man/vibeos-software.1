@@ -1,0 +1,66 @@
+.TH VIBEOS-SOFTWARE 1 "2026-11-17" "vibeos 0.1.1" "VibeOS"
+.SH NAME
+vibeos-software \- Software: the VibeOS store's app
+.SH SYNOPSIS
+.B vibeos-software
+.SH DESCRIPTION
+Software shows the catalog of the VibeOS store (vibeos.top, its API version 1) in four tabs: Featured, Apps, Games and
+Mine. Featured, Apps and Games have the categories, the store's sections and lists of apps; search suggests apps and
+words as they are typed and keeps the recent searches. An app's page has the install button, the rating, the size and
+the age rating, the screenshots, the description, what is new, the permissions the app declares (shown for
+information: VibeOS does not ask for or limit them yet), the ratings and reviews, similar apps and the package's
+details.
+.PP
+Installing, updating and uninstalling go through App Installer's D-Bus interface
+.RB ( vibeos.Installer1 ,
+see
+.BR vibeos-installer (1)):
+polkit asks for the password, Software never sees it. A job goes on when its page is left, and Mine shows it; closing
+the window while one runs hides it until the job ends.
+.PP
+Mine lists the jobs, the updates (with Update all) and All apps: the ones on this device, and, with a store account,
+the ones the account had on other devices or before. Software asks the store for updates when it starts and when the
+installed packages change, on Wi-Fi only, on any network, or only when asked (its settings); it does not install them
+by itself.
+.PP
+A store account (signed up and confirmed with a 6-digit code the store emails) rates and reviews apps, marks reviews
+helpful and reports them. The store sets the rules: when it refuses something, its own reason is shown. Signed in, the
+store learns this device (a random id, the model, the VibeOS release and the architecture) and the catalog's apps
+installed on it. Settings and About are on the account's page, signed in or not.
+.SH FILES
+.TP
+.I ~/.cache/vibeos-software/api/
+The store's answers with their ETags: a screen is drawn from them at once and asked for again in the background.
+.TP
+.I ~/.cache/vibeos-software/images/
+Icons and screenshots (their addresses never change their bytes).
+.TP
+.I ~/.local/share/vibeos-software/device-id
+This device's random id for the store.
+.TP
+.I ~/.local/share/vibeos-software/account.json
+The signed-in account's name and address (0600), for Mine offline. The account's token is kept in the login keyring
+(the Secret Service) under the schema vibeos.Software.Token, with the store's address as its attribute; without a
+Secret Service it is kept for the session only.
+.PP
+The settings are in the GSettings schema
+.BR vibeos.Software :
+update-mode (wifi, always or never), color-scheme (system, light or dark) and recent-searches.
+.SH ENVIRONMENT
+.TP
+.B VIBEOS_STORE_URL
+The store's address, https://vibeos.top unless set (a local copy of the server, for tests).
+.TP
+.B VIBEOS_SOFTWARE_TOKEN_FILE
+Keeps the account's token in this file (written 0600) instead of the login keyring, for tests.
+.TP
+.B VIBEOS_SOFTWARE_DPKG_STATUS
+Reads the installed packages from this file instead of
+.IR /var/lib/dpkg/status .
+.TP
+.B VIBEOS_SOFTWARE_PAGE
+Steps walked once the window shows, separated by semicolons, such as
+.B tab:apps;app:org.gnome.Maps;scroll:800
+(the list is in the source, apps/software/src/sw-window.c), for pictures and tests.
+.SH SEE ALSO
+.BR vibeos-installer (1)

@@ -73,6 +73,7 @@ Recommends: vibeos-session (= ${source:Version}),
             vibeos-files (>= ${source:Version}),
             vibeos-dictate (>= ${source:Version}),
             vibeos-installer (>= ${source:Version}),
+            vibeos-software (>= ${source:Version}),
             vibeos-iconpack-vibeos (>= ${source:Version}),
             vibeos-iconpack-gnome-free (>= ${source:Version}),
             vibeos-parallax-solar-system (>= ${source:Version}),
@@ -568,6 +569,28 @@ Description: app installer for VibeOS
  .
  PackageKit does the installing and polkit asks for the password. It is the
  VibeOS session's default app for .deb files.
+
+Package: vibeos-software
+Architecture: any
+Depends: vibeos-installer (>= ${source:Version}),
+         webp-pixbuf-loader,
+         ${shlibs:Depends},
+         ${misc:Depends},
+Recommends: gnome-keyring,
+Description: app store for VibeOS
+ Software is the VibeOS store's app, on the catalog at vibeos.top: featured
+ apps, apps and games by category, search with suggestions, and an app's page
+ with its screenshots, description, what is new, the permissions it declares,
+ its ratings and reviews and its details. Mine lists the apps installed, the
+ updates (with Update all) and, with a store account, the apps the account
+ had on other devices.
+ .
+ A store account, confirmed by a code sent by email, rates and reviews apps,
+ marks reviews helpful and reports them. Its token is kept in the login
+ keyring.
+ .
+ Installing, updating and uninstalling go through App Installer, and polkit
+ asks for the password: Software never sees it.
 
 Package: vibeos-iconpack-gnome-free
 Architecture: all
