@@ -16,7 +16,7 @@ file, image or glyph is used here or shipped: the script holds only those number
 apps, so their colours are our own: android (#3DDC84, Android's green), dictate (#7C4DFF, a violet) and installer
 (#A0673A, a cardboard brown). The store's (Software, and GNOME Software where it is installed) are our own too, not its
 H2O counterpart's: white on Software's teal (#4FD1A5 to #0F7A6B, the app's icon's gradient).
-The video icon's circle is black (#000000) rather than its H2O counterpart's red, and the console's tile is Compass's
+The video icon's circle is dark blue (#0D47A1) rather than its H2O counterpart's red, and the console's tile is Compass's
 dark grey (#243048) rather than its counterpart's black. The camera's colours are our own: a white camera on a dark red
 tile (#B71C1C), its lens black. The lens is a hole in the glyph; the script draws a black disc under it (ICONS' lens).
 

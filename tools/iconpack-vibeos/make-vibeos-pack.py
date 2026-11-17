@@ -54,7 +54,7 @@ ICONS = {
     "terminal":   ("own/terminal",      "#243048",                           WHITE),      # termux (Compass's dark grey, not its black)
     "gallery":    ("photo_library",     ("#1FAFEB", "#2945CA"),              WHITE),      # gallery
     "documents":  ("description",       "#4385F3",                           WHITE),      # google_drive (its blue)
-    "video":      ("play_circle",       WHITE,                               "#000000"),  # google_play_movies (black, not its red)
+    "video":      ("play_circle",       WHITE,                               "#0D47A1"),  # google_play_movies (dark blue, not its red)
     "store":      ("fa/bag-shopping",   ("#4FD1A5", "#0F7A6B", "diagonal"),  WHITE),      # Software's own: its icon's teal
     "android":    ("android",           "#3DDC84",                           WHITE),      # no H2O: Android's green
     "maps":       ("map",               "#009F55",                           WHITE),      # google_maps (its green)
