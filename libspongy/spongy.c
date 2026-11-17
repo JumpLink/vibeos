@@ -311,6 +311,17 @@ spongy_fling_duration (float velocity)
   return (int) (1000.0 * exp (l / (dr - 1.0)));
 }
 
+float
+spongy_fling_velocity (double distance)
+{
+  if (distance <= 0)
+    return 0;
+  /* distance = F c e^(dr / (dr - 1) l), where l = ln (INFLEXION v / (F c)) */
+  double dr = deceleration_rate (), fc = SCROLL_FRICTION * physical_coeff ();
+  double l = log (distance / fc) * (dr - 1.0) / dr;
+  return (float) (fc * exp (l) / INFLEXION);
+}
+
 static void
 adjust_duration (SpongyFling *f, float start, float old_final, float new_final)
 {
@@ -960,4 +971,48 @@ spongy_list_frame (SpongyList *l, double now, float *top_amount, float *bottom_a
   if (bottom_amount)
     *bottom_amount = b;
   return more || at || ab || l->down;
+}
+
+/* ---- snapping -------------------------------------------------------------------------------------------------- */
+
+float
+spongy_list_snap (SpongyList *l, SpongySnap mode, float interval, double t)
+{
+  if (mode == SPONGY_SNAP_NONE || interval <= 0 || l->down || l->max_offset <= 0)
+    return l->offset;
+  /* a stretch springs back to its end */
+  if (l->top.distance != 0 || l->bottom.distance != 0)
+    return l->offset;
+  float velocity = l->flinging ? l->fling.velocity : 0;
+  float rest = l->offset + (l->flinging ? l->fling.final - l->fling.position : 0);
+  float target;
+  if (mode == SPONGY_SNAP_PAGES && velocity != 0) {
+    /* one page on in the fling's direction from where it is (a list let go exactly on a page goes to the next) */
+    float page = l->offset / interval;
+    target = (velocity > 0 ? ceilf (page + 1e-4f) : floorf (page - 1e-4f)) * interval;
+  } else if (rest >= l->max_offset) {
+    target = l->max_offset;
+  } else if (rest <= 0) {
+    target = 0;
+  } else {
+    /* the nearer of the multiples either side; the end is the last one */
+    float lo = floorf (rest / interval) * interval, hi = fminf (lo + interval, l->max_offset);
+    target = rest - lo <= hi - rest ? lo : hi;
+  }
+  target = fminf (fmaxf (target, 0), l->max_offset);
+  float d = target - l->offset;
+  spongy_fling_abort (&l->fling);
+  l->flinging = false;
+  if (fabsf (d) < 0.5f) {
+    l->offset = target;
+    return target;
+  }
+  spongy_fling_start (&l->fling, 0, d > 0 ? spongy_fling_velocity (d) : -spongy_fling_velocity (-d), -INFINITY,
+                      INFINITY, t);
+  /* exactly there: the speed was found for this distance, the curve keeps its shape */
+  l->fling.distance = l->fling.final = d;
+  l->flinging = !l->fling.finished;
+  if (!l->flinging)
+    l->offset = target;
+  return target;
 }

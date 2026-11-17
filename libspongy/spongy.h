@@ -6,7 +6,7 @@
  *   SpongyVelocity  the pointer's velocity: a least-squares quadratic over the last 100 ms
  *   SpongySpring    a damped spring, stepped exactly
  *   SpongyInterp    easing curves: any cubic path, and the stock ones
- *   SpongyList      a vertical list wired to all of the above
+ *   SpongyList      a list along one axis (up and down, or sideways) wired to all of the above, and snapping
  *
  * Plain C, no allocation, no clock of its own: every call takes the frame or event time in milliseconds. Distances
  * are pixels. The stretch itself is drawn by whoever renders (see spongy_stretch_map); spongy-gtk.h is a GTK 4
@@ -83,6 +83,8 @@ bool   spongy_fling_update        (SpongyFling *f, double now_ms);
 void   spongy_fling_abort         (SpongyFling *f);
 double spongy_fling_distance      (float velocity);     /* how far a fling at this speed goes, px */
 int    spongy_fling_duration      (float velocity);     /* ms */
+/* the inverse of spongy_fling_distance: the speed, px/s, of a fling that runs `distance` px (0 for none) */
+float  spongy_fling_velocity      (double distance);
 
 /* ---- velocity -------------------------------------------------------------------------------------------------- */
 
@@ -169,9 +171,10 @@ float  spongy_curve               (SpongyCurve c, float t);
 
 /* ---- a list ---------------------------------------------------------------------------------------------------- */
 
-/* A vertical list: drag with touch slop, the stretch at both ends (pulling,
- * catching a receding stretch, a drag back shrinking it), the fling with a stretch absorbing its leftover speed at
- * the end, and flinging out of a stretch. offset 0 is the top; max = content height - view height. */
+/* A list along one axis: drag with touch slop, the stretch at both ends (pulling, catching a receding stretch, a drag
+ * back shrinking it), the fling with a stretch absorbing its leftover speed at the end, and flinging out of a
+ * stretch. offset 0 is the top (the left, for a sideways list, whose "top" edge is the left one); max = content
+ * height - view height (widths, sideways). */
 typedef struct {
   float  offset, max_offset;
   float  view_height;
@@ -197,6 +200,19 @@ void   spongy_list_fling          (SpongyList *l, float velocity, double t_ms);
  * with (the top one anchored at the top, positive; the bottom one at the bottom, negative). Returns true while
  * anything still moves. */
 bool   spongy_list_frame          (SpongyList *l, double now_ms, float *top_amount, float *bottom_amount);
+
+/* Snapping: where a list let go comes to rest (a grid's columns, a pager's pages) */
+typedef enum {
+  SPONGY_SNAP_NONE,      /* where the fling stops */
+  SPONGY_SNAP_ITEMS,     /* the multiple of the interval nearest to where the fling would have stopped */
+  SPONGY_SNAP_PAGES,     /* the next multiple in the fling's direction, at most; the nearest without a fling */
+} SpongySnap;
+
+/* Called right after spongy_list_up or spongy_list_fling: aims the list at a multiple of `interval` px (the end
+ * counts as one, so the last column or page can be partly one), by starting its fling again with the speed that
+ * stops it exactly there, along the same curve. Nothing while a stretch shows: it springs back to an end, which is
+ * a snap point. Returns where the list will rest. */
+float  spongy_list_snap           (SpongyList *l, SpongySnap mode, float interval, double t_ms);
 
 #ifdef __cplusplus
 }
