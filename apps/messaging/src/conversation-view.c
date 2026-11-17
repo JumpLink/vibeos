@@ -1,45 +1,57 @@
 /* A conversation (conversation-view.h). */
 #include "conversation-view.h"
 #include "app-action.h"
+#include "blocked-numbers.h"
 #include "msg-action-bar.h"
 #include "msg-add-contact.h"
 #include "msg-avatar.h"
 #include "msg-bubble.h"
 #include "msg-dates.h"
 #include "msg-dialog.h"
-#include "msg-image.h"
 #include "msg-people.h"
 #include "msg-sound.h"
+#include "msg-thread.h"
 #include "phone-number.h"
 #include "popup-menu.h"
 #include "sms-segments.h"
 
 #include <glib/gi18n.h>
+#include <math.h>
 #include <vibeos.h>
 #include <spongy-gtk.h>
 
-/* a message's row */
-#define ROW_SIDE_PADDING 12
-#define AVATAR 48
-#define ARROW_GAP 9
-#define TEXT_PAD_SIDE 14
-#define TEXT_PAD_TOP 10
-#define TEXT_PAD_BOTTOM 12
-#define GAP 18                  /* before a message */
-#define GAP_CLUSTERED 2         /* before one clustered with the one above */
-#define META_TOP 4
-#define DELIVERED_START 4       /* the delivered tick: the gap before it, then its size */
-#define DELIVERED_WIDTH 12
-#define DELIVERED_HEIGHT 9
-#define CLUSTER_MS (60 * 1000)  /* at most this far apart to cluster */
+/* the top bar */
+#define BAR_AVATAR 40
+#define BAR_AVATAR_GAP 8        /* from the back arrow to the avatar */
+#define BAR_TITLE_GAP 12        /* from the avatar to the name */
+#define MENU_CORNER 20
+/* the messages */
+#define SIDE 8                  /* the bubbles' inset from the container's sides */
+#define BUBBLE_PAD_X 16
+#define BUBBLE_PAD_Y 8
+#define BUBBLE_MARGIN 70        /* a bubble leaves at least this much of the width free */
+#define BUBBLE_MAX 480          /* and is never wider than this */
+#define SEPARATOR_H 32
+#define SEPARATOR_BEFORE 24     /* from a message to the date line under it */
+#define SEPARATOR_AFTER 8       /* from the date line to its first message */
+#define META_TOP 4              /* a failed message's line under it */
+#define META_END 16             /* that line's inset from the bubble's end */
+#define META_ICON 12
+#define META_GAP 4
+#define LIST_TOP 8
+#define LIST_BOTTOM 8
+#define REVEAL_DRAW_MS 80       /* the messages drawn this long after the bar */
 /* the compose bar */
-#define COMPOSE_TOP 16
-#define COMPOSE_BUTTON 48
-#define FIELD_MARGIN_END 8
-#define SEND_PAD_END 12
-#define FIELD_MAX_LINES 4
+#define COMPOSE_PAD 8
+#define COMPOSE_H 56
+#define PLUS_W 48
+#define SEND 56
+#define SEND_GAP 8
+#define FIELD_MAX_LINES 6
 #define COUNTER_THRESHOLD 10    /* characters left when the counter shows */
-#define REVEAL_MS 300           /* the send button coming or going */
+#define REVEAL_MS 200           /* the send button coming or going */
+#define NOTE_H 96               /* "can't reply": its band */
+#define NOTE_SIDE 30
 #define REFRESH_MS (60 * 1000)
 
 struct _ConversationView {
@@ -50,17 +62,19 @@ struct _ConversationView {
   SmsConversation *conversation;
   GPtrArray *people;            /* MsgPerson */
 
-  GtkWidget *box, *bar, *select_bar, *call_action;
+  GtkWidget *box, *bar, *select_bar, *call_action, *title_avatar, *title_row;
   GtkWidget *forward_action, *copy_action, *resend_action;
-  GtkWidget *scroll, *messages, *shadow;
-  GtkWidget *field, *hint, *send, *self_avatar, *counter;
+  GtkWidget *container, *messages_area, *scroll, *messages;
+  GtkWidget *compose, *note, *field, *hint, *send, *counter;
+  GPtrArray *bubbles;           /* MsgBubble, for their widths */
+  int max_width;
   VibeosAnim *reveal;
   VibeosSnackbar *snackbar;
   gint64 selected;              /* the message selected, or 0 */
   gint64 newest;                /* the newest message shown, for "New message" */
   gboolean at_bottom;
   gboolean loading;
-  guint refresh_id;
+  guint refresh_id, draw_id, width_id;
 };
 
 G_DEFINE_FINAL_TYPE (ConversationView, conversation_view, GTK_TYPE_WIDGET)
@@ -69,6 +83,7 @@ enum { CLOSED, SHOW_OPTIONS, FORWARD, N_SIGNALS };
 static guint signals[N_SIGNALS];
 
 static void reload (ConversationView *self);
+static void select_message (ConversationView *self, gint64 id);
 
 gint64
 conversation_view_get_id (ConversationView *self)
@@ -91,59 +106,115 @@ person_for (ConversationView *self, const char *destination)
   return NULL;
 }
 
-/* --- the messages */
+static MsgPerson *
+only_person (ConversationView *self)
+{
+  return self->people && self->people->len == 1 ? self->people->pdata[0] : NULL;
+}
+
+/* a number that can be called and written to: digits and a +, longer than a short code */
+static gboolean
+is_dialable (const char *destination)
+{
+  return destination && *destination && strspn (destination, "+0123456789") == strlen (destination)
+         && strlen (destination) > 6;
+}
+
+/* one sender who is a name, not a number (a bank, a delivery service): they cannot be answered */
+static gboolean
+cannot_reply (ConversationView *self)
+{
+  MsgPerson *only = only_person (self);
+
+  return only && only->destination && *only->destination
+         && strspn (only->destination, "+0123456789 ()-.") != strlen (only->destination);
+}
 
 static gboolean
-clusters (const SmsMessage *a, const SmsMessage *b)
+is_failed (const SmsMessage *message)
 {
-  gint64 delta;
-
-  if (!a || !b || MESSAGE_STATUS_IS_INCOMING (a->status) != MESSAGE_STATUS_IS_INCOMING (b->status)
-      || g_strcmp0 (a->sender, b->sender) != 0)
-    return FALSE;
-  delta = a->received - b->received;
-  return ABS (delta) <= CLUSTER_MS;
+  return message->status == MESSAGE_STATUS_OUTGOING_FAILED
+         || message->status == MESSAGE_STATUS_OUTGOING_FAILED_EMERGENCY_NUMBER;
 }
 
-/* the status line: what is happening to it, else its time (only under a cluster's last) */
-static char *
-status_text (ConversationView *self, const SmsMessage *message, gboolean last_of_cluster, gboolean *failed)
+static gint64
+message_time (const SmsMessage *message)
 {
-  *failed = FALSE;
-  switch (message->status)
-    {
-    case MESSAGE_STATUS_OUTGOING_YET_TO_SEND:
-    case MESSAGE_STATUS_OUTGOING_SENDING:
-    case MESSAGE_STATUS_OUTGOING_RESENDING:
-      return g_strdup (_("Sending…"));
-    case MESSAGE_STATUS_OUTGOING_AWAITING_RETRY:
-      return g_strdup (_("Not sent. Trying again…"));
-    case MESSAGE_STATUS_OUTGOING_FAILED:
-      *failed = TRUE;
-      return g_strdup (message->id == self->selected ? _("Resend or delete") : _("Not sent. Tap to try again."));
-    case MESSAGE_STATUS_OUTGOING_FAILED_EMERGENCY_NUMBER:
-      *failed = TRUE;
-      return g_strdup (_("Please make a voice call to emergency services. Your text message could not be "
-                         "delivered at this time."));
-    default:
-      break;
-    }
-  if (!last_of_cluster)
-    return NULL;
-  else
-    {
-      g_autofree char *time = msg_dates_message (MESSAGE_STATUS_IS_INCOMING (message->status) ? message->received
-                                                                                             : message->sent,
-                                                 g_get_real_time () / 1000);
-      MsgPerson *sender = MESSAGE_STATUS_IS_INCOMING (message->status) && self->people->len > 1
-                          ? person_for (self, message->sender) : NULL;
-
-      /* a group's incoming ones say who */
-      return sender ? g_strdup_printf ("%s  %s", sender->name, time) : g_steal_pointer (&time);
-    }
+  return MESSAGE_STATUS_IS_INCOMING (message->status) ? message->received : message->sent;
 }
 
-static void select_message (ConversationView *self, gint64 id);
+/* --- Check options: what a failed message can do */
+
+typedef struct {
+  ConversationView *self;
+  gint64 id;
+  VibeosSheet *sheet;
+} Options;
+
+static void
+on_try_again (GtkWidget *row, Options *options)
+{
+  sms_client_resend (options->self->client, options->id);
+  vibeos_sheet_close (options->sheet);
+}
+
+static void
+on_options_delete (GtkWidget *row, Options *options)
+{
+  sms_client_delete_message (options->self->client, options->id);
+  vibeos_sheet_close (options->sheet);
+}
+
+static GtkWidget *
+sheet_row (const char *icon_name, const char *title)
+{
+  GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 16);
+  GtkWidget *icon = gtk_image_new_from_icon_name (icon_name);
+  GtkWidget *label = gtk_label_new (title);
+  GtkWidget *row;
+
+  gtk_image_set_pixel_size (GTK_IMAGE (icon), 24);
+  gtk_widget_add_css_class (icon, "msg-sheet-icon");
+  gtk_label_set_xalign (GTK_LABEL (label), 0);
+  gtk_widget_add_css_class (label, "msg-sheet-title");
+  gtk_box_append (GTK_BOX (box), icon);
+  gtk_box_append (GTK_BOX (box), label);
+  gtk_widget_set_margin_start (box, 24);
+  gtk_widget_set_margin_end (box, 24);
+  gtk_widget_set_size_request (box, -1, 56);
+  row = vibeos_pressable_new (box);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (row), GTK_ACCESSIBLE_PROPERTY_LABEL, title, -1);
+  return row;
+}
+
+static void
+show_check_options (ConversationView *self, gint64 id)
+{
+  Options *options = g_new0 (Options, 1);
+  GtkWidget *content = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  GtkWidget *again = sheet_row ("msg-send-symbolic", _("Try again"));
+  GtkWidget *remove = sheet_row ("msg-delete-symbolic", _("Delete"));
+
+  options->self = self;
+  options->id = id;
+  options->sheet = VIBEOS_SHEET (vibeos_sheet_new (_("Not sent")));
+  g_object_set_data_full (G_OBJECT (options->sheet), "msg-options", options, g_free);
+  g_signal_connect (again, "clicked", G_CALLBACK (on_try_again), options);
+  g_signal_connect (remove, "clicked", G_CALLBACK (on_options_delete), options);
+  gtk_box_append (GTK_BOX (content), again);
+  gtk_box_append (GTK_BOX (content), remove);
+  gtk_widget_set_margin_bottom (content, 16);
+  vibeos_sheet_set_content (options->sheet, content);
+  vibeos_sheet_present (options->sheet, GTK_WIDGET (self));
+}
+
+static void
+on_check_options (GtkWidget *button, ConversationView *self)
+{
+  show_check_options (self, *(gint64 *) g_object_get_data (G_OBJECT (button), "id"));
+}
+
+/* --- the messages */
 
 static void
 on_bubble_clicked (GtkWidget *pressable, gpointer data)
@@ -158,10 +229,10 @@ on_bubble_clicked (GtkWidget *pressable, gpointer data)
       select_message (self, self->selected == id ? 0 : id);
       return;
     }
-  /* "Not sent. Tap to try again." */
+  /* a failed one: what can be done with it */
   message = store ? sms_store_get_message (store, id) : NULL;
   if (message && message->status == MESSAGE_STATUS_OUTGOING_FAILED)
-    sms_client_resend (self->client, id);
+    show_check_options (self, id);
 }
 
 static void
@@ -172,147 +243,193 @@ on_bubble_long_pressed (GtkWidget *pressable, gpointer data)
   select_message (self, *(gint64 *) g_object_get_data (G_OBJECT (pressable), "id"));
 }
 
-/* the sender's avatar: their card, or "Add to Contacts?"; a long press is the message's */
-static void
-on_avatar_clicked (GtkWidget *pressable, gpointer data)
+static GtkWidget *
+small_label (const char *text, const char *css)
 {
-  ConversationView *self = g_object_get_data (G_OBJECT (pressable), "view");
-  const char *sender = g_object_get_data (G_OBJECT (pressable), "sender");
-  g_autoptr(MsgPerson) person = msg_person_new (self->contacts, sender, sms_client_get_country (self->client));
+  GtkWidget *label = gtk_label_new (text);
 
-  msg_contact_show_or_add (pressable, person, self->snackbar);
+  gtk_label_set_xalign (GTK_LABEL (label), 0);
+  gtk_widget_add_css_class (label, css);
+  return label;
 }
 
 static GtkWidget *
-make_message (ConversationView *self, const SmsMessage *message, gboolean clustered_above,
-              gboolean clustered_below)
+make_separator (gint64 time, gboolean first)
+{
+  g_autofree char *text = msg_thread_separator_text (time, g_get_real_time () / 1000, vibeos_clock_uses_24h ());
+  GtkWidget *label = small_label (text, "msg-separator");
+
+  gtk_label_set_xalign (GTK_LABEL (label), 0.5);
+  gtk_widget_set_size_request (label, -1, SEPARATOR_H);
+  gtk_widget_set_name (label, "text_separator");
+  gtk_widget_set_margin_top (label, first ? 0 : SEPARATOR_BEFORE);
+  gtk_widget_set_margin_bottom (label, SEPARATOR_AFTER);
+  return label;
+}
+
+/* under a failed message: the error sign, "Not sent" and "Check options" */
+static GtkWidget *
+make_failed_line (ConversationView *self, const SmsMessage *message)
+{
+  GtkWidget *line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, META_GAP);
+  GtkWidget *icon = gtk_image_new_from_icon_name ("msg-error-filled-symbolic");
+  gboolean emergency = message->status == MESSAGE_STATUS_OUTGOING_FAILED_EMERGENCY_NUMBER;
+  GtkWidget *text = small_label (emergency ? _("Not sent. Call emergency services instead.") : _("Not sent"),
+                                 "msg-failed-text");
+
+  gtk_image_set_pixel_size (GTK_IMAGE (icon), META_ICON);
+  gtk_widget_add_css_class (icon, "msg-failed-icon");
+  gtk_box_append (GTK_BOX (line), icon);
+  gtk_label_set_wrap (GTK_LABEL (text), TRUE);
+  gtk_box_append (GTK_BOX (line), text);
+  if (!emergency)
+    {
+      GtkWidget *link = gtk_label_new (_("Check options"));
+      GtkWidget *button;
+
+      gtk_widget_add_css_class (link, "msg-failed-link");
+      button = vibeos_pressable_new (link);
+      vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_NONE, 0);
+      g_object_set_data_full (G_OBJECT (button), "id", g_memdup2 (&message->id, sizeof message->id), g_free);
+      g_signal_connect (button, "clicked", G_CALLBACK (on_check_options), self);
+      gtk_box_append (GTK_BOX (line), button);
+    }
+  gtk_widget_set_name (line, "metatext");
+  gtk_widget_set_halign (line, GTK_ALIGN_END);
+  gtk_widget_set_margin_top (line, META_TOP);
+  gtk_widget_set_margin_end (line, META_END);
+  return line;
+}
+
+/* what a message's own line under it says, if anything: sending, or the newest one's time */
+static char *
+status_text (const SmsMessage *message, gboolean time_under)
+{
+  switch (message->status)
+    {
+    case MESSAGE_STATUS_OUTGOING_YET_TO_SEND:
+    case MESSAGE_STATUS_OUTGOING_SENDING:
+    case MESSAGE_STATUS_OUTGOING_RESENDING:
+      return g_strdup (_("Sending…"));
+    case MESSAGE_STATUS_OUTGOING_AWAITING_RETRY:
+      return g_strdup (_("Not sent. Trying again…"));
+    default:
+      break;
+    }
+  if (!time_under)
+    return NULL;
+  {
+    g_autofree char *time = msg_thread_time_text (message_time (message), vibeos_clock_uses_24h ());
+
+    if (message->status == MESSAGE_STATUS_OUTGOING_DELIVERED)
+      return g_strdup_printf (C_("time, status", "%s • Delivered"), time);
+    return g_steal_pointer (&time);
+  }
+}
+
+static GtkWidget *
+make_message (ConversationView *self, const SmsMessage *message, const MsgThreadPlace *place, int gap)
 {
   gboolean incoming = MESSAGE_STATUS_IS_INCOMING (message->status);
-  gboolean selected = message->id == self->selected, failed;
-  /* the delivered badge after the time, or alone where a cluster hides the time */
-  gboolean delivered = message->status == MESSAGE_STATUS_OUTGOING_DELIVERED;
-  g_autofree char *status = status_text (self, message, !clustered_below, &failed);
-  MsgPerson *sender = incoming ? person_for (self, message->sender) : NULL;
-  GtkWidget *row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  GtkWidget *avatar = msg_avatar_new (AVATAR);
-  GtkWidget *content = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  gboolean failed = is_failed (message);
+  g_autofree char *status = failed ? NULL : status_text (message, place->time_under);
+  GtkWidget *column = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *text = gtk_label_new (message->text);
   GtkWidget *bubble, *pressable;
-  GdkRGBA color;
-
-  /* the sender's, or for the ones sent from here "Me": hidden but keeping its place within a cluster */
-  if (sender)
-    msg_avatar_set_person (MSG_AVATAR (avatar), sender->name, sender->identifier, sender->photo);
-  else
-    msg_avatar_set_person (MSG_AVATAR (avatar), NULL, incoming ? message->sender : _("Me"), NULL);
-  gtk_widget_set_opacity (avatar, clustered_above ? 0 : 1);
-  gtk_widget_set_valign (avatar, GTK_ALIGN_START);
-  /* an incoming message's, when it shows */
-  if (incoming && !clustered_above && message->sender && *message->sender)
-    {
-      avatar = vibeos_pressable_new (avatar);
-      vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (avatar), VIBEOS_RIPPLE_NONE, 0);
-      gtk_widget_set_valign (avatar, GTK_ALIGN_START);
-      g_object_set_data (G_OBJECT (avatar), "view", self);
-      g_object_set_data_full (G_OBJECT (avatar), "sender", g_strdup (message->sender), g_free);
-      g_object_set_data_full (G_OBJECT (avatar), "id", g_memdup2 (&message->id, sizeof message->id), g_free);
-      g_signal_connect (avatar, "clicked", G_CALLBACK (on_avatar_clicked), NULL);
-      g_signal_connect (avatar, "long-pressed", G_CALLBACK (on_bubble_long_pressed), NULL);
-    }
 
   gtk_label_set_wrap (GTK_LABEL (text), TRUE);
   gtk_label_set_wrap_mode (GTK_LABEL (text), PANGO_WRAP_WORD_CHAR);
+  /* as wide as its text on one line, up to the bubbles' widest, and wrapped there */
+  gtk_label_set_natural_wrap_mode (GTK_LABEL (text), GTK_NATURAL_WRAP_NONE);
   gtk_label_set_xalign (GTK_LABEL (text), 0);
   gtk_label_set_selectable (GTK_LABEL (text), FALSE);
   gtk_widget_add_css_class (text, "msg-message-text");
-  gtk_box_append (GTK_BOX (content), text);
-  if (status || delivered)
-    {
-      GtkWidget *meta = NULL;
+  gtk_widget_add_css_class (text, incoming ? "incoming" : "outgoing");
+  gtk_widget_set_name (text, "message_text");
+  gtk_widget_set_margin_start (text, BUBBLE_PAD_X);
+  gtk_widget_set_margin_end (text, BUBBLE_PAD_X);
+  gtk_widget_set_margin_top (text, BUBBLE_PAD_Y);
+  gtk_widget_set_margin_bottom (text, BUBBLE_PAD_Y);
+  if (message->id == self->selected)
+    gtk_widget_add_css_class (text, "selected");
 
-      if (status)
-        {
-          meta = gtk_label_new (status);
-          gtk_label_set_wrap (GTK_LABEL (meta), TRUE);
-          gtk_label_set_xalign (GTK_LABEL (meta), 0);
-          gtk_widget_add_css_class (meta, "msg-message-status");
-          if (failed)
-            gtk_widget_add_css_class (meta, "failed");
-        }
-      if (delivered)
-        {
-          /* the line under the bubble: the status (the time), then the badge centred on its line */
-          GtkWidget *line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-          GtkWidget *badge = msg_image_new ("/vibeos/Messaging/images/ic_sms_delivery_ok.png", DELIVERED_WIDTH,
-                                            DELIVERED_HEIGHT);
-
-          gtk_widget_set_margin_start (badge, DELIVERED_START);
-          gtk_widget_set_valign (badge, GTK_ALIGN_CENTER);
-          gtk_widget_set_halign (line, GTK_ALIGN_START);
-          if (meta)
-            gtk_box_append (GTK_BOX (line), meta);
-          gtk_box_append (GTK_BOX (line), badge);
-          meta = line;
-        }
-      gtk_widget_set_margin_top (meta, META_TOP);
-      gtk_box_append (GTK_BOX (content), meta);
-    }
-  gtk_widget_set_margin_start (content, TEXT_PAD_SIDE);
-  gtk_widget_set_margin_end (content, TEXT_PAD_SIDE);
-  gtk_widget_set_margin_top (content, TEXT_PAD_TOP);
-  gtk_widget_set_margin_bottom (content, TEXT_PAD_BOTTOM);
-  gtk_widget_set_valign (content, GTK_ALIGN_CENTER);
-  gtk_widget_add_css_class (content, incoming ? "incoming" : "outgoing");
-  if (selected)
-    gtk_widget_add_css_class (content, "selected");
-
-  bubble = msg_bubble_new (content);
-  /* white for the ones sent from here; an incoming one in its contact's colour, else primary */
-  if (selected)
-    gdk_rgba_parse (&color, "#8dafd1");
-  else if (!incoming)
-    gdk_rgba_parse (&color, "#ffffff");
-  else if (sender && sender->is_contact)
-    color = msg_avatar_color (sender->identifier);
-  else
-    gdk_rgba_parse (&color, "#33666d");
-  msg_bubble_set_color (MSG_BUBBLE (bubble), &color);
+  bubble = msg_bubble_new (text);
+  gtk_widget_set_name (bubble, "message_bubble");
+  msg_bubble_set_run (MSG_BUBBLE (bubble), place->position, !incoming);
+  msg_bubble_set_max_width (MSG_BUBBLE (bubble), self->max_width);
+  g_object_set_data (G_OBJECT (bubble), "msg-incoming", GINT_TO_POINTER (incoming));
+  g_object_set_data (G_OBJECT (bubble), "msg-failed", GINT_TO_POINTER (failed));
+  g_object_set_data (G_OBJECT (bubble), "msg-selected", GINT_TO_POINTER (message->id == self->selected));
+  g_ptr_array_add (self->bubbles, bubble);
   pressable = vibeos_pressable_new (bubble);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (pressable), VIBEOS_RIPPLE_NONE, 0);
   g_object_set_data (G_OBJECT (pressable), "view", self);
-  /* read out as the text and what its line under it says */
   {
-    g_autofree char *said = status ? g_strdup_printf ("%s, %s", message->text ? message->text : "", status)
-                                   : g_strdup (message->text ? message->text : "");
-    g_autofree char *spoken = delivered ? g_strdup_printf ("%s, %s", said, _("Delivered")) : g_steal_pointer (&said);
+    g_autofree char *spoken = status || failed ? g_strdup_printf ("%s, %s", message->text ? message->text : "",
+                                                                 failed ? _("Not sent") : status)
+                                               : g_strdup (message->text ? message->text : "");
 
     gtk_accessible_update_property (GTK_ACCESSIBLE (pressable), GTK_ACCESSIBLE_PROPERTY_LABEL, spoken, -1);
   }
   g_object_set_data_full (G_OBJECT (pressable), "id", g_memdup2 (&message->id, sizeof message->id), g_free);
   g_signal_connect (pressable, "clicked", G_CALLBACK (on_bubble_clicked), NULL);
   g_signal_connect (pressable, "long-pressed", G_CALLBACK (on_bubble_long_pressed), NULL);
-  gtk_widget_set_hexpand (pressable, TRUE);
   gtk_widget_set_halign (pressable, incoming ? GTK_ALIGN_START : GTK_ALIGN_END);
 
-  /* incoming: [avatar] gap [bubble]; outgoing: [bubble] gap [avatar], the other side's avatar width kept free */
-  if (incoming)
+  /* in a group, the sender's name over the first of their run */
+  if (incoming && self->people->len > 1
+      && (place->position == MSG_RUN_SINGLE || place->position == MSG_RUN_FIRST))
     {
-      gtk_box_append (GTK_BOX (row), avatar);
-      gtk_widget_set_margin_start (pressable, ARROW_GAP);
-      gtk_widget_set_margin_end (pressable, AVATAR);
-      gtk_box_append (GTK_BOX (row), pressable);
+      MsgPerson *sender = person_for (self, message->sender);
+      GtkWidget *name = small_label (sender ? sender->name : message->sender, "msg-sender");
+
+      gtk_widget_set_margin_start (name, BUBBLE_PAD_X);
+      gtk_box_append (GTK_BOX (column), name);
     }
-  else
+  gtk_box_append (GTK_BOX (column), pressable);
+  if (failed)
+    gtk_box_append (GTK_BOX (column), make_failed_line (self, message));
+  else if (status)
     {
-      gtk_widget_set_margin_start (pressable, AVATAR);
-      gtk_widget_set_margin_end (pressable, ARROW_GAP);
-      gtk_box_append (GTK_BOX (row), pressable);
-      gtk_box_append (GTK_BOX (row), avatar);
+      GtkWidget *line = small_label (status, "msg-time-under");
+
+      gtk_widget_set_halign (line, incoming ? GTK_ALIGN_START : GTK_ALIGN_END);
+      gtk_box_append (GTK_BOX (column), line);
     }
-  gtk_widget_set_margin_start (row, ROW_SIDE_PADDING);
-  gtk_widget_set_margin_end (row, ROW_SIDE_PADDING);
-  gtk_widget_set_margin_top (row, clustered_above ? GAP_CLUSTERED : GAP);
-  return row;
+  gtk_widget_set_margin_top (column, gap);
+  return column;
+}
+
+/* the bubbles' colours, from the theme of now: incoming on the container's surface, ours in the primary colour
+ * (dimmed when it failed), the one selected in the tertiary container's */
+static void
+paint_bubbles (ConversationView *self)
+{
+  for (guint i = 0; i < self->bubbles->len; i++)
+    {
+      MsgBubble *bubble = self->bubbles->pdata[i];
+      GdkRGBA color;
+
+      if (g_object_get_data (G_OBJECT (bubble), "msg-selected"))
+        color = vibeos_original_color (VIBEOS_TERTIARY_CONTAINER);
+      else if (g_object_get_data (G_OBJECT (bubble), "msg-incoming"))
+        color = vibeos_original_color (VIBEOS_SURFACE_CONTAINER);
+      else if (g_object_get_data (G_OBJECT (bubble), "msg-failed"))
+        {
+          GdkRGBA primary = vibeos_original_color (VIBEOS_PRIMARY), surface = vibeos_original_color (VIBEOS_SURFACE);
+
+          color = vibeos_rgba_mix (&surface, &primary, 0.65f);
+        }
+      else
+        color = vibeos_original_color (VIBEOS_PRIMARY);
+      msg_bubble_set_color (bubble, &color);
+    }
+}
+
+static void
+on_theme_changed (VibeosTheme *theme, ConversationView *self)
+{
+  paint_bubbles (self);
 }
 
 /* --- select mode */
@@ -486,8 +603,6 @@ on_adjustment_value (GtkAdjustment *adj, gpointer data)
   ConversationView *self = data;
 
   self->at_bottom = is_at_bottom (self);
-  /* the shadow above the compose bar shows while the newest message is out of sight */
-  gtk_widget_set_opacity (self->shadow, self->at_bottom ? 0 : 1);
 }
 
 static void
@@ -503,13 +618,32 @@ static void
 update_title (ConversationView *self)
 {
   g_autofree char *name = msg_people_name (self->people);
-  MsgPerson *only = self->people->len == 1 ? self->people->pdata[0] : NULL;
-  gboolean callable = only && only->destination[0] && strspn (only->destination, "+0123456789")
-                                                      == strlen (only->destination);
+  MsgPerson *only = only_person (self);
 
-  msg_action_bar_set_title (self->bar, *name ? name : _("Messaging"));
-  /* "Make a call": one other person with a phone number (a sender's name or a short code cannot be called) */
-  gtk_widget_set_visible (self->call_action, callable && strlen (only->destination) > 6);
+  msg_action_bar_set_title (self->bar, *name ? name : _("Messages"));
+  if (only)
+    msg_avatar_set_person (MSG_AVATAR (self->title_avatar), only->name, only->identifier, only->photo);
+  else
+    {
+      g_autoptr(GPtrArray) names = g_ptr_array_new (), ids = g_ptr_array_new (), photos = g_ptr_array_new ();
+
+      for (guint i = 0; i < self->people->len; i++)
+        {
+          MsgPerson *person = self->people->pdata[i];
+
+          g_ptr_array_add (names, person->name);
+          g_ptr_array_add (ids, person->identifier);
+          g_ptr_array_add (photos, person->photo);
+        }
+      g_ptr_array_add (names, NULL);
+      msg_avatar_set_group (MSG_AVATAR (self->title_avatar), (const char * const *) names->pdata,
+                            (const char * const *) ids->pdata, (GBytes * const *) photos->pdata);
+    }
+  /* Call: one other person with a phone number (a sender's name or a short code cannot be called) */
+  gtk_widget_set_visible (self->call_action, only && is_dialable (only->destination));
+  /* a sender who cannot be answered: the note in the compose bar's place */
+  gtk_widget_set_visible (self->compose, !cannot_reply (self));
+  gtk_widget_set_visible (self->note, cannot_reply (self));
 }
 
 static void
@@ -517,6 +651,8 @@ reload (ConversationView *self)
 {
   SmsStore *store = sms_client_get_store (self->client);
   g_autoptr(GPtrArray) messages = NULL;
+  g_autofree MsgThreadItem *items = NULL;
+  g_autofree MsgThreadPlace *places = NULL;
   gint64 newest = self->newest;
   GtkWidget *child;
 
@@ -535,22 +671,33 @@ reload (ConversationView *self)
   update_title (self);
 
   messages = sms_store_list_messages (store, self->id);
-  while ((child = gtk_widget_get_first_child (self->messages)))
-    gtk_box_remove (GTK_BOX (self->messages), child);
+  items = g_new0 (MsgThreadItem, MAX (messages->len, 1));
+  places = g_new0 (MsgThreadPlace, MAX (messages->len, 1));
   for (guint i = 0; i < messages->len; i++)
     {
       SmsMessage *message = messages->pdata[i];
 
-      gtk_box_append (GTK_BOX (self->messages),
-                      make_message (self, message, i > 0 && clusters (message, messages->pdata[i - 1]),
-                                    i + 1 < messages->len && clusters (message, messages->pdata[i + 1])));
+      items[i] = (MsgThreadItem) { message_time (message), !MESSAGE_STATUS_IS_INCOMING (message->status),
+                                   message->sender, is_failed (message) };
     }
+  msg_thread_layout (items, messages->len, places);
+  while ((child = gtk_widget_get_first_child (self->messages)))
+    gtk_box_remove (GTK_BOX (self->messages), child);
+  g_ptr_array_set_size (self->bubbles, 0);
+  for (guint i = 0; i < messages->len; i++)
+    {
+      if (places[i].separator)
+        gtk_box_append (GTK_BOX (self->messages), make_separator (items[i].time, i == 0));
+      gtk_box_append (GTK_BOX (self->messages),
+                      make_message (self, messages->pdata[i], &places[i], msg_thread_gap_before (places, i)));
+    }
+  paint_bubbles (self);
   if (messages->len)
     {
       SmsMessage *last = messages->pdata[messages->len - 1];
 
       self->newest = last->id;
-      /* scrolled up when a message came: "New message", VIEW scrolls down to it */
+      /* scrolled up when a message came: "New message", View scrolls down to it */
       if (!self->loading && newest && last->id != newest && MESSAGE_STATUS_IS_INCOMING (last->status)
           && !self->at_bottom)
         msg_snackbar_show (self->snackbar, _("New message"), _("View"), on_view_new, self);
@@ -573,6 +720,20 @@ on_refresh (gpointer data)
   return G_SOURCE_CONTINUE;
 }
 
+/* the bubbles' widest: the width less a margin, within a cap */
+static gboolean
+update_widths (gpointer data)
+{
+  ConversationView *self = data;
+  int width = gtk_widget_get_width (self->messages);
+
+  self->width_id = 0;
+  self->max_width = width > 0 ? MIN (width - BUBBLE_MARGIN, BUBBLE_MAX) : 0;
+  for (guint i = 0; i < self->bubbles->len; i++)
+    msg_bubble_set_max_width (self->bubbles->pdata[i], self->max_width);
+  return G_SOURCE_REMOVE;
+}
+
 /* --- the compose bar */
 
 static char *
@@ -590,10 +751,8 @@ on_reveal (VibeosAnim *anim, double value, gpointer data)
 {
   ConversationView *self = data;
 
-  /* the send button grows from its centre over the "Me" avatar, which shrinks away the same way */
+  /* the send button grows from its centre; shrunk away, it is not there to tap */
   vibeos_pressable_set_scale (VIBEOS_PRESSABLE (self->send), value);
-  gtk_widget_set_opacity (self->self_avatar, value < 1 ? 1 - value : 0);
-  /* shrunk away, it is not there to tap */
   gtk_widget_set_can_target (self->send, value > 0.5);
 }
 
@@ -609,12 +768,12 @@ on_text_changed (GtkTextBuffer *buffer, gpointer data)
   gtk_widget_set_visible (self->hint, !has_text);
   if (has_text != (vibeos_anim_get_to (self->reveal) > 0.5))
     vibeos_anim_start (self->reveal, vibeos_anim_get_value (self->reveal), has_text ? 1 : 0, REVEAL_MS, 0,
-                    SPONGY_FAST_OUT_SLOW_IN);
-  /* "62 / 2": shown once it takes more than one message, or the last 10 are left; its line is kept either way */
+                       SPONGY_FAST_OUT_SLOW_IN);
+  /* "62 / 2": once it takes more than one message, or the last 10 are left */
   counter = g_strdup_printf ("%u / %u", length.remaining, length.segments);
   gtk_label_set_text (GTK_LABEL (self->counter), counter);
-  gtk_widget_set_opacity (self->counter, has_text && (length.segments > 1 || length.remaining <= COUNTER_THRESHOLD)
-                                         ? 1 : 0);
+  gtk_widget_set_visible (self->counter, has_text && (length.segments > 1
+                                                      || length.remaining <= COUNTER_THRESHOLD));
 }
 
 static void
@@ -648,80 +807,119 @@ conversation_view_save_draft (ConversationView *self)
   sms_client_set_draft (self->client, self->id, text);
 }
 
+static void
+update_send_fill (ConversationView *self)
+{
+  GdkRGBA fill = vibeos_original_color (VIBEOS_TERTIARY_CONTAINER);
+
+  vibeos_pressable_set_fill (VIBEOS_PRESSABLE (self->send), &fill, FALSE);
+}
+
+/* ⊕, the pill with the text, and the round send button */
 static GtkWidget *
 make_compose (ConversationView *self)
 {
-  GtkWidget *bar = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+  GtkWidget *plus_icon = gtk_image_new_from_icon_name ("msg-add-circle-symbolic");
+  GtkWidget *plus;
+  GtkWidget *pill = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *field_box = gtk_overlay_new ();
   GtkWidget *field_scroll = gtk_scrolled_window_new ();
-  GtkWidget *right = gtk_overlay_new ();
-  GtkWidget *send_icon = gtk_image_new_from_icon_name ("messaging-send-symbolic");
-  GdkRGBA send_color;
+  GtkWidget *send_icon = gtk_image_new_from_icon_name ("msg-send-symbolic");
 
-  /* no attach button: there is no MMS here yet, so nothing it could attach could be sent */
+  /* the shortcuts (camera, files, location …): none of them can be sent as an SMS yet, so it is shown but off */
+  gtk_image_set_pixel_size (GTK_IMAGE (plus_icon), 24);
+  plus = vibeos_pressable_new (plus_icon);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (plus), VIBEOS_RIPPLE_CIRCLE, 20);
+  gtk_widget_set_size_request (plus, PLUS_W, COMPOSE_H);
+  gtk_widget_set_valign (plus, GTK_ALIGN_END);
+  gtk_widget_set_sensitive (plus, FALSE);
+  gtk_widget_add_css_class (plus, "msg-compose-icon");
+  gtk_widget_set_name (plus, "ComposeRowIcon:Shortcuts");
+  gtk_accessible_update_property (GTK_ACCESSIBLE (plus), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Show attach options"), -1);
+  gtk_box_append (GTK_BOX (row), plus);
+
   self->field = gtk_text_view_new ();
   gtk_text_view_set_wrap_mode (GTK_TEXT_VIEW (self->field), GTK_WRAP_WORD_CHAR);
   gtk_text_view_set_accepts_tab (GTK_TEXT_VIEW (self->field), FALSE);
   gtk_text_view_set_input_hints (GTK_TEXT_VIEW (self->field), GTK_INPUT_HINT_UPPERCASE_SENTENCES
                                                               | GTK_INPUT_HINT_SPELLCHECK | GTK_INPUT_HINT_EMOJI);
   gtk_widget_add_css_class (self->field, "msg-compose-text");
-  gtk_accessible_update_property (GTK_ACCESSIBLE (self->field), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Send message"),
+  gtk_widget_set_name (self->field, "compose_message_text");
+  gtk_accessible_update_property (GTK_ACCESSIBLE (self->field), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Text message"),
                                   -1);
   g_signal_connect (gtk_text_view_get_buffer (GTK_TEXT_VIEW (self->field)), "changed",
                     G_CALLBACK (on_text_changed), self);
-  /* at most 4 lines, then it scrolls */
+  /* a few lines, then it scrolls */
   gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (field_scroll), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
   gtk_scrolled_window_set_propagate_natural_height (GTK_SCROLLED_WINDOW (field_scroll), TRUE);
-  gtk_scrolled_window_set_max_content_height (GTK_SCROLLED_WINDOW (field_scroll), FIELD_MAX_LINES * 19 + 26);
+  gtk_scrolled_window_set_max_content_height (GTK_SCROLLED_WINDOW (field_scroll),
+                                              (int) round (FIELD_MAX_LINES * vibeos_sp (24) + 32));
   gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (field_scroll), self->field);
   gtk_overlay_set_child (GTK_OVERLAY (field_box), field_scroll);
-  self->hint = gtk_label_new (_("Send message"));
+  self->hint = gtk_label_new (_("Text message"));
   gtk_label_set_xalign (GTK_LABEL (self->hint), 0);
+  gtk_label_set_ellipsize (GTK_LABEL (self->hint), PANGO_ELLIPSIZE_END);
   gtk_widget_set_can_target (self->hint, FALSE);
   gtk_widget_add_css_class (self->hint, "msg-compose-hint");
   gtk_overlay_add_overlay (GTK_OVERLAY (field_box), self->hint);
-  gtk_widget_add_css_class (field_box, "msg-compose-field");
   gtk_widget_set_hexpand (field_box, TRUE);
-  gtk_widget_set_valign (field_box, GTK_ALIGN_END);
-  gtk_widget_set_margin_start (field_box, ROW_SIDE_PADDING);
-  gtk_widget_set_margin_end (field_box, FIELD_MARGIN_END);
-  gtk_box_append (GTK_BOX (row), field_box);
+  gtk_widget_set_valign (field_box, GTK_ALIGN_CENTER);
+  gtk_box_append (GTK_BOX (pill), field_box);
+  /* the counter at the pill's end, when it says something */
+  self->counter = small_label ("", "msg-counter");
+  gtk_widget_set_valign (self->counter, GTK_ALIGN_END);
+  gtk_widget_set_margin_end (self->counter, 16);
+  gtk_widget_set_margin_bottom (self->counter, 8);
+  gtk_widget_set_visible (self->counter, FALSE);
+  gtk_box_append (GTK_BOX (pill), self->counter);
+  gtk_widget_add_css_class (pill, "msg-compose-field");
+  gtk_widget_set_size_request (pill, -1, COMPOSE_H);
+  gtk_widget_set_hexpand (pill, TRUE);
+  gtk_box_append (GTK_BOX (row), pill);
 
-  /* the right column: the "Me" avatar while the field is empty, else the send button */
-  self->self_avatar = msg_avatar_new (COMPOSE_BUTTON);
-  msg_avatar_set_person (MSG_AVATAR (self->self_avatar), NULL, _("Me"), NULL);
-  gtk_overlay_set_child (GTK_OVERLAY (right), self->self_avatar);
+  /* the round send button, there while there is text */
   gtk_image_set_pixel_size (GTK_IMAGE (send_icon), 24);
   self->send = vibeos_pressable_new (send_icon);
-  gtk_widget_set_size_request (self->send, COMPOSE_BUTTON, COMPOSE_BUTTON);
-  gdk_rgba_parse (&send_color, "#00383f");
-  vibeos_pressable_set_fill (VIBEOS_PRESSABLE (self->send), &send_color, FALSE);
-  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->send), VIBEOS_RIPPLE_CIRCLE, COMPOSE_BUTTON / 2.0);
+  gtk_widget_set_size_request (self->send, SEND, SEND);
+  gtk_widget_set_valign (self->send, GTK_ALIGN_END);
+  gtk_widget_set_margin_start (self->send, SEND_GAP);
+  update_send_fill (self);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->send), VIBEOS_RIPPLE_CIRCLE, SEND / 2.0);
   vibeos_pressable_set_scale (VIBEOS_PRESSABLE (self->send), 0);
   gtk_widget_set_can_target (self->send, FALSE);
   gtk_widget_add_css_class (self->send, "msg-send");
-  gtk_accessible_update_property (GTK_ACCESSIBLE (self->send), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Send"), -1);
+  gtk_widget_set_name (self->send, "Compose:Draft:Send");
+  gtk_accessible_update_property (GTK_ACCESSIBLE (self->send), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Send SMS"), -1);
   g_signal_connect_swapped (self->send, "clicked", G_CALLBACK (on_send), self);
-  gtk_overlay_add_overlay (GTK_OVERLAY (right), self->send);
-  gtk_widget_set_valign (right, GTK_ALIGN_END);
-  gtk_widget_set_margin_end (right, SEND_PAD_END);
-  gtk_box_append (GTK_BOX (row), right);
+  gtk_box_append (GTK_BOX (row), self->send);
   self->reveal = vibeos_anim_new (self->send, on_reveal, self);
 
-  gtk_widget_set_margin_top (row, COMPOSE_TOP);
-  gtk_box_append (GTK_BOX (bar), row);
-  /* the counter's line, under the field's end, kept when it shows nothing */
-  self->counter = gtk_label_new ("");
-  gtk_label_set_xalign (GTK_LABEL (self->counter), 1);
-  gtk_widget_set_margin_end (self->counter, COMPOSE_BUTTON + SEND_PAD_END + FIELD_MARGIN_END + 16);
-  gtk_widget_add_css_class (self->counter, "msg-counter");
-  gtk_widget_set_opacity (self->counter, 0);
-  gtk_box_append (GTK_BOX (bar), self->counter);
-  return bar;
+  gtk_widget_set_margin_start (row, COMPOSE_PAD);
+  gtk_widget_set_margin_end (row, COMPOSE_PAD);
+  gtk_widget_set_margin_top (row, COMPOSE_PAD);
+  gtk_widget_set_margin_bottom (row, COMPOSE_PAD);
+  gtk_widget_add_css_class (row, "msg-compose");
+  return row;
 }
 
-/* --- the action bar */
+static GtkWidget *
+make_note (void)
+{
+  GtkWidget *label = gtk_label_new (_("Sender can't accept replies. Contact them directly."));
+
+  gtk_label_set_wrap (GTK_LABEL (label), TRUE);
+  gtk_label_set_justify (GTK_LABEL (label), GTK_JUSTIFY_CENTER);
+  gtk_label_set_xalign (GTK_LABEL (label), 0.5);
+  gtk_widget_set_margin_start (label, NOTE_SIDE);
+  gtk_widget_set_margin_end (label, NOTE_SIDE);
+  gtk_widget_set_size_request (label, -1, NOTE_H);
+  gtk_widget_add_css_class (label, "msg-no-reply");
+  gtk_widget_set_name (label, "Compose:Disabled");
+  return label;
+}
+
+/* --- the top bar */
 
 static void
 on_up (ConversationView *self)
@@ -729,12 +927,18 @@ on_up (ConversationView *self)
   g_signal_emit (self, signals[CLOSED], 0);
 }
 
-/* Make a call: the Phone app calls the number at once (its "call" action); another phone's app gets the tel: link.
- * An emergency number is not handed over (the snackbar says so instead). */
+static void
+show_options (gpointer data)
+{
+  g_signal_emit (data, signals[SHOW_OPTIONS], 0);
+}
+
+/* Call: the Phone app calls the number at once (its "call" action); another phone's app gets the tel: link. An
+ * emergency number is not handed over (the snackbar says so instead). */
 static void
 on_call (ConversationView *self)
 {
-  MsgPerson *only = self->people && self->people->len == 1 ? self->people->pdata[0] : NULL;
+  MsgPerson *only = only_person (self);
   g_autofree char *uri = NULL;
   g_autoptr(GError) error = NULL;
 
@@ -784,65 +988,163 @@ delete_conversation (gpointer data)
   vibeos_dialog_present (dialog, GTK_WIDGET (self));
 }
 
+/* the one other person, when they can be blocked (one number, not blocked yet) */
 static MsgPerson *
-only_person (ConversationView *self)
+blockable (ConversationView *self)
 {
-  return self->people && self->people->len == 1 ? self->people->pdata[0] : NULL;
-}
-
-static void
-add_contact (gpointer data)
-{
-  ConversationView *self = data;
   MsgPerson *only = only_person (self);
 
-  if (only)
-    msg_contact_confirm_add (GTK_WIDGET (self), only);
+  if (!only || !only->destination || !*only->destination
+      || blocked_numbers_contains (blocked_numbers_get_default (), only->destination, country (self)))
+    return NULL;
+  return only;
 }
 
 static void
-show_options (gpointer data)
+on_block_response (VibeosDialog *dialog, int response, gpointer data)
 {
-  g_signal_emit (data, signals[SHOW_OPTIONS], 0);
+  ConversationView *self = data;
+  MsgPerson *only = blockable (self);
+  g_autoptr(GError) error = NULL;
+
+  if (response != VIBEOS_RESPONSE_OK || !only)
+    return;
+  if (!blocked_numbers_add (blocked_numbers_get_default (), only->destination, country (self), &error))
+    {
+      g_warning ("messaging: %s", error->message);
+      return;
+    }
+  /* blocked: archived, and the conversation closes */
+  sms_client_set_archived (self->client, self->id, TRUE);
+  g_signal_emit (self, signals[CLOSED], 0);
 }
 
+static void
+block (gpointer data)
+{
+  ConversationView *self = data;
+  MsgPerson *only = blockable (self);
+  g_autofree char *title = NULL;
+  VibeosDialog *dialog;
+
+  if (!only)
+    return;
+  title = g_strdup_printf (_("Block %s?"), only->destination);
+  dialog = vibeos_dialog_new (title);
+  vibeos_dialog_set_message (dialog, _("You'll continue to receive messages from this number but won't be notified "
+                                    "anymore. This conversation will be archived."));
+  msg_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  msg_dialog_add_button (dialog, _("Block"), VIBEOS_RESPONSE_OK);
+  g_signal_connect (dialog, "response", G_CALLBACK (on_block_response), self);
+  vibeos_dialog_present (dialog, GTK_WIDGET (self));
+}
+
+/* the rows that do something here, in the reference app's order */
 static void
 on_overflow (GtkWidget *button, gpointer data)
 {
   ConversationView *self = data;
-  DialerPopupMenu *menu = dialer_popup_menu_new ();
+  DialerPopupMenu *menu;
 
   if (!self->conversation)
     return;
-  /* the other one of a 1:1, when they are not a contact */
-  if (msg_contact_can_add (only_person (self)))
-    dialer_popup_menu_append (menu, _("Add contact"), add_contact, self);
-  dialer_popup_menu_append (menu, _("People & options"), show_options, self);
+  menu = dialer_popup_menu_new ();
+  dialer_popup_menu_append (menu, _("Details"), show_options, self);
   dialer_popup_menu_append (menu, self->conversation->archived ? _("Unarchive") : _("Archive"), archive, self);
   dialer_popup_menu_append (menu, _("Delete"), delete_conversation, self);
-  dialer_popup_menu_set_corner (menu, 4);
+  if (blockable (self))
+    dialer_popup_menu_append (menu, _("Block"), block, self);
+  dialer_popup_menu_set_corner (menu, MENU_CORNER);
   dialer_popup_menu_present (menu, button, POPUP_MENU_OVERFLOW);
 }
 
+/* the avatar and the name, after the back arrow: a tap opens the details */
+static GtkWidget *
+make_title_row (ConversationView *self)
+{
+  GtkWidget *title = msg_action_bar_get_title (self->bar);
+  GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+  GtkWidget *row;
+
+  self->title_avatar = msg_avatar_new (BAR_AVATAR);
+  gtk_widget_set_valign (self->title_avatar, GTK_ALIGN_CENTER);
+  gtk_widget_set_name (self->title_avatar, "monogram");
+  gtk_box_append (GTK_BOX (box), self->title_avatar);
+  g_object_ref (title);
+  gtk_box_remove (GTK_BOX (gtk_widget_get_parent (title)), title);
+  gtk_widget_set_margin_start (title, BAR_TITLE_GAP);
+  gtk_widget_set_hexpand (title, TRUE);
+  gtk_box_append (GTK_BOX (box), title);
+  g_object_unref (title);
+  row = vibeos_pressable_new (box);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_NONE, 0);
+  gtk_widget_set_hexpand (row, TRUE);
+  gtk_widget_set_margin_start (row, BAR_AVATAR_GAP);
+  gtk_widget_set_name (row, "top_app_bar_title_row");
+  g_signal_connect_swapped (row, "clicked", G_CALLBACK (show_options), self);
+  return row;
+}
+
 /* --- the page */
+
+/* the messages come a moment after the bar, as the page draws */
+static gboolean
+on_draw_messages (gpointer data)
+{
+  ConversationView *self = data;
+
+  self->draw_id = 0;
+  gtk_widget_set_opacity (self->messages_area, 1);
+  return G_SOURCE_REMOVE;
+}
+
+static void
+on_map (GtkWidget *widget, gpointer data)
+{
+  ConversationView *self = MSG_CONVERSATION_VIEW (widget);
+
+  if (gtk_widget_get_opacity (self->messages_area) < 1 && !self->draw_id)
+    self->draw_id = g_timeout_add (REVEAL_DRAW_MS, on_draw_messages, self);
+}
+
+static void
+conversation_view_size_allocate (GtkWidget *widget, int width, int height, int baseline)
+{
+  ConversationView *self = MSG_CONVERSATION_VIEW (widget);
+  int messages_width = width - 2 * SIDE;
+
+  gtk_widget_allocate (self->box, width, height, baseline, NULL);
+  if (MIN (messages_width - BUBBLE_MARGIN, BUBBLE_MAX) != self->max_width && !self->width_id)
+    self->width_id = g_idle_add (update_widths, self);
+}
+
+static void
+conversation_view_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, int *min, int *nat,
+                           int *min_baseline, int *nat_baseline)
+{
+  gtk_widget_measure (MSG_CONVERSATION_VIEW (widget)->box, orientation, for_size, min, nat, min_baseline,
+                      nat_baseline);
+}
 
 static void
 conversation_view_dispose (GObject *object)
 {
   ConversationView *self = MSG_CONVERSATION_VIEW (object);
 
-  if (self->refresh_id)
-    g_source_remove (self->refresh_id);
-  self->refresh_id = 0;
+  g_clear_handle_id (&self->refresh_id, g_source_remove);
+  g_clear_handle_id (&self->draw_id, g_source_remove);
+  g_clear_handle_id (&self->width_id, g_source_remove);
   if (self->client)
     g_signal_handlers_disconnect_by_data (self->client, self);
   if (self->contacts)
     g_signal_handlers_disconnect_by_data (self->contacts, self);
+  g_signal_handlers_disconnect_by_data (vibeos_theme_get_default (), self);
   g_clear_pointer (&self->reveal, vibeos_anim_free);
   g_clear_object (&self->client);
   g_clear_object (&self->contacts);
   g_clear_pointer (&self->conversation, sms_conversation_free);
   g_clear_pointer (&self->people, g_ptr_array_unref);
+  g_clear_pointer (&self->bubbles, g_ptr_array_unref);
   g_clear_pointer (&self->box, gtk_widget_unparent);
   G_OBJECT_CLASS (conversation_view_parent_class)->dispose (object);
 }
@@ -853,7 +1155,8 @@ conversation_view_class_init (ConversationViewClass *klass)
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
   G_OBJECT_CLASS (klass)->dispose = conversation_view_dispose;
-  gtk_widget_class_set_layout_manager_type (widget_class, GTK_TYPE_BIN_LAYOUT);
+  widget_class->size_allocate = conversation_view_size_allocate;
+  widget_class->measure = conversation_view_measure;
   gtk_widget_class_set_css_name (widget_class, "msg-conversation");
   signals[CLOSED] = g_signal_new ("closed", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL, NULL,
                                   G_TYPE_NONE, 0);
@@ -867,6 +1170,7 @@ static void
 conversation_view_init (ConversationView *self)
 {
   self->at_bottom = TRUE;
+  self->bubbles = g_ptr_array_new ();
   /* it opens with the keyboard down: the page has the focus, not the field */
   gtk_widget_set_focusable (GTK_WIDGET (self), TRUE);
 }
@@ -875,10 +1179,8 @@ GtkWidget *
 conversation_view_new (SmsClient *client, Contacts *contacts, gint64 conversation)
 {
   ConversationView *self = g_object_new (MSG_TYPE_CONVERSATION_VIEW, NULL);
-  GtkWidget *content = gtk_overlay_new ();
-  GtkWidget *column = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *inner = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  GtkWidget *cancel, *title;
+  GtkWidget *cancel, *end;
   GtkAdjustment *adj;
 
   self->client = g_object_ref (client);
@@ -887,44 +1189,48 @@ conversation_view_new (SmsClient *client, Contacts *contacts, gint64 conversatio
   self->people = g_ptr_array_new ();
   self->box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_parent (self->box, GTK_WIDGET (self));
-  gtk_widget_add_css_class (self->box, "msg-page");
+  gtk_widget_add_css_class (self->box, "msg-conversation-page");
 
-  self->bar = msg_action_bar_new (TRUE, _("Messaging"));
+  /* back, the avatar and the name, Call, ⋮ */
+  self->bar = msg_action_bar_new (TRUE, _("Messages"));
+  gtk_widget_add_css_class (self->bar, "msg-conversation-bar");
+  gtk_widget_set_name (self->bar, "top_app_bar");
   g_signal_connect_swapped (msg_action_bar_get_up (self->bar), "clicked", G_CALLBACK (on_up), self);
-  /* the title is a button too, the same as the up arrow */
-  title = msg_action_bar_get_title (self->bar);
-  {
-    GtkGesture *click = gtk_gesture_click_new ();
-
-    g_signal_connect_swapped (click, "released", G_CALLBACK (on_up), self);
-    gtk_widget_add_controller (title, GTK_EVENT_CONTROLLER (click));
-  }
-  self->call_action = msg_action_bar_add_action (self->bar, "messaging-phone-symbolic", _("Make a call"));
+  self->title_row = make_title_row (self);
+  end = msg_action_bar_get_end (self->bar);
+  gtk_box_insert_child_after (GTK_BOX (self->bar), self->title_row, msg_action_bar_get_up (self->bar));
+  gtk_widget_set_hexpand (end, FALSE);
+  self->call_action = msg_action_bar_add_action (self->bar, "msg-call-symbolic", _("Call"));
   g_signal_connect_swapped (self->call_action, "clicked", G_CALLBACK (on_call), self);
   g_signal_connect (msg_action_bar_add_overflow (self->bar), "clicked", G_CALLBACK (on_overflow), self);
   gtk_box_append (GTK_BOX (self->box), self->bar);
 
   self->select_bar = msg_action_bar_new (FALSE, "");
+  gtk_widget_add_css_class (self->select_bar, "msg-conversation-bar");
   cancel = msg_action_bar_add_close (self->select_bar, _("Done"));
   g_signal_connect_swapped (cancel, "clicked", G_CALLBACK (conversation_view_back), self);
-  /* the select menu's order, less Share (no share sheet here) and Save/Download (no MMS) */
-  self->forward_action = msg_action_bar_add_action (self->select_bar, "messaging-forward-symbolic", _("Forward"));
+  self->forward_action = msg_action_bar_add_action (self->select_bar, "msg-forward-symbolic", _("Forward"));
   g_signal_connect_swapped (self->forward_action, "clicked", G_CALLBACK (on_forward), self);
-  self->copy_action = msg_action_bar_add_action (self->select_bar, "messaging-copy-symbolic", _("Copy text"));
+  self->copy_action = msg_action_bar_add_action (self->select_bar, "msg-content-copy-symbolic", _("Copy text"));
   g_signal_connect_swapped (self->copy_action, "clicked", G_CALLBACK (on_copy), self);
-  g_signal_connect_swapped (msg_action_bar_add_action (self->select_bar, "messaging-info-symbolic",
-                                                       _("View details")), "clicked", G_CALLBACK (on_details), self);
-  self->resend_action = msg_action_bar_add_action (self->select_bar, "messaging-send-symbolic", _("Send"));
+  g_signal_connect_swapped (msg_action_bar_add_action (self->select_bar, "msg-info-symbolic", _("View details")),
+                            "clicked", G_CALLBACK (on_details), self);
+  self->resend_action = msg_action_bar_add_action (self->select_bar, "msg-send-symbolic", _("Send"));
   g_signal_connect_swapped (self->resend_action, "clicked", G_CALLBACK (on_resend), self);
-  g_signal_connect_swapped (msg_action_bar_add_action (self->select_bar, "messaging-delete-symbolic", _("Delete")),
+  g_signal_connect_swapped (msg_action_bar_add_action (self->select_bar, "msg-delete-symbolic", _("Delete")),
                             "clicked", G_CALLBACK (on_delete_message), self);
   gtk_widget_set_visible (self->select_bar, FALSE);
   gtk_box_append (GTK_BOX (self->box), self->select_bar);
 
-  /* the messages, at the bottom while they are fewer than a screen */
+  /* the messages on their container, at the bottom while they are fewer than a screen */
   self->messages = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  gtk_widget_set_name (self->messages, "message_list");
   gtk_widget_set_valign (self->messages, GTK_ALIGN_END);
   gtk_widget_set_vexpand (self->messages, TRUE);
+  gtk_widget_set_margin_start (self->messages, SIDE);
+  gtk_widget_set_margin_end (self->messages, SIDE);
+  gtk_widget_set_margin_top (self->messages, LIST_TOP);
+  gtk_widget_set_margin_bottom (self->messages, LIST_BOTTOM);
   gtk_box_append (GTK_BOX (inner), self->messages);
   self->scroll = spongy_scroll_view_new ();
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->scroll), inner);
@@ -932,21 +1238,27 @@ conversation_view_new (SmsClient *client, Contacts *contacts, gint64 conversatio
   adj = spongy_scroll_view_get_vadjustment (SPONGY_SCROLL_VIEW (self->scroll));
   g_signal_connect (adj, "changed", G_CALLBACK (on_adjustment_changed), self);
   g_signal_connect (adj, "value-changed", G_CALLBACK (on_adjustment_value), self);
-  /* the snackbar over the list's foot, above the compose bar (its anchor) */
-  gtk_overlay_set_child (GTK_OVERLAY (content), self->scroll);
+  self->messages_area = gtk_overlay_new ();
+  gtk_overlay_set_child (GTK_OVERLAY (self->messages_area), self->scroll);
   self->snackbar = msg_snackbar_new ();
-  gtk_overlay_add_overlay (GTK_OVERLAY (content), GTK_WIDGET (self->snackbar));
-  gtk_widget_set_vexpand (content, TRUE);
-  gtk_box_append (GTK_BOX (column), content);
-  /* a shadow over the list's foot */
-  self->shadow = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  gtk_widget_add_css_class (self->shadow, "msg-compose-shadow");
-  gtk_widget_set_opacity (self->shadow, 0);
-  gtk_box_append (GTK_BOX (column), self->shadow);
-  gtk_box_append (GTK_BOX (column), make_compose (self));
-  gtk_widget_set_vexpand (column, TRUE);
-  gtk_box_append (GTK_BOX (self->box), column);
+  gtk_overlay_add_overlay (GTK_OVERLAY (self->messages_area), GTK_WIDGET (self->snackbar));
+  gtk_widget_set_vexpand (self->messages_area, TRUE);
+  gtk_widget_set_opacity (self->messages_area, 0);
+  self->container = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  gtk_widget_add_css_class (self->container, "msg-conversation-container");
+  gtk_widget_set_overflow (self->container, GTK_OVERFLOW_HIDDEN);
+  gtk_widget_set_vexpand (self->container, TRUE);
+  gtk_box_append (GTK_BOX (self->container), self->messages_area);
+  self->compose = make_compose (self);
+  gtk_box_append (GTK_BOX (self->container), self->compose);
+  gtk_box_append (GTK_BOX (self->box), self->container);
+  self->note = make_note ();
+  gtk_widget_set_visible (self->note, FALSE);
+  gtk_box_append (GTK_BOX (self->box), self->note);
 
+  g_signal_connect (self, "map", G_CALLBACK (on_map), NULL);
+  g_signal_connect (vibeos_theme_get_default (), "changed", G_CALLBACK (on_theme_changed), self);
+  g_signal_connect_swapped (vibeos_theme_get_default (), "changed", G_CALLBACK (update_send_fill), self);
   g_signal_connect (client, "changed", G_CALLBACK (on_changed), self);
   /* the network's country and the address book can come in after the conversation opens (a notification's tap) */
   g_signal_connect_swapped (client, "notify::country", G_CALLBACK (reload), self);

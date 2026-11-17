@@ -1,7 +1,6 @@
-/* Settings: with one SIM, the app's settings open straight away, titled "Settings". Its rows that this app acts on:
- * "Outgoing message sounds", "Swipe to delete" and "Advanced", which opens the SIM's settings ("Advanced settings")
- * with its "Advanced" category's "SMS delivery reports". All are GSettings vibeos.Messaging; the service reads
- * "delivery-reports".
+/* Messages settings, from the account menu: segmented cards with the rows this app acts on, "Hear outgoing message
+ * sounds", "Swipe to delete" and "Advanced", which opens the SIM's settings ("SMS delivery reports"). All are
+ * GSettings vibeos.Messaging; the service reads "delivery-reports".
  *
  * Left out, as each would claim what the phone does not do: "Default SMS app" (no default to change here; the
  * session's sms: handler is set apart from the app), "Notifications" (the system's notification settings for the

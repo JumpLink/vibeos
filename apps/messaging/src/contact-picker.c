@@ -2,35 +2,34 @@
 #include "contact-picker.h"
 #include "msg-action-bar.h"
 #include "msg-avatar.h"
-#include "msg-image.h"
+#include "msg-card.h"
 #include "phone-number.h"
 
 #include <glib/gi18n.h>
 #include <vibeos.h>
 #include <spongy-gtk.h>
 
-/* a contact's row, and the tabs */
-#define ROW_PAD_VERTICAL 8
-#define ROW_PAD_START 16
-#define HEADER_WIDTH 56         /* the alphabet header's column (All contacts) */
-#define AVATAR 42
-#define TEXT_PAD_START 12
-#define TEXT_PAD_END 24
-#define NAME_PAD_BOTTOM 4
-#define LABEL_PAD_START 12
-#define TAB_HEIGHT 56
-#define FREQUENTS 20            /* how many Frequents shows */
+#define PILL_SIDE 12            /* the To pill's and the cards' margin from the sides */
+#define PILL_H 48
+#define TO_X 20                 /* "To:" in the pill */
+#define FIELD_GAP 18            /* from "To:" to the field */
+#define FIELD_END 16
+#define LIST_TOP 8
+#define HEADER_H 40
+#define HEADER_X 2
+#define ROW_H 72
+#define AVATAR 40
+#define AVATAR_X 16             /* in the card */
+#define TEXT_GAP 16             /* from the avatar to the text */
+#define TEXT_END 16
+#define FREQUENTS 8             /* how many of the most written to come first */
 
 struct _ContactPicker {
   GtkWidget parent;
   SmsClient *client;
   Contacts *contacts;
 
-  GtkWidget *box, *bar, *field, *dialpad_action, *clear_action;
-  GtkWidget *tabs, *tab_labels[2], *underlines[2];
-  GtkWidget *pages, *frequents, *frequents_empty, *all, *results, *results_page;
-  guint tab;
-  gboolean phone_input;
+  GtkWidget *box, *bar, *field, *list, *results, *pages, *empty;
 };
 
 G_DEFINE_FINAL_TYPE (ContactPicker, contact_picker, GTK_TYPE_WIDGET)
@@ -43,8 +42,6 @@ country (ContactPicker *self)
 {
   return sms_client_get_country (self->client);
 }
-
-/* --- rows */
 
 static void
 on_row_clicked (GtkWidget *row, gpointer data)
@@ -66,67 +63,38 @@ text_label (const char *text, const char *css_class)
   return label;
 }
 
-/* one of a contact's numbers: with the avatar and the name on its first, only the number on the others. @letter:
- * the All contacts list's header column, the letter shown on a letter's first contact ("" for the others), or NULL
- * for a list without the column. @contact NULL: a typed number, the avatar and the number only */
+/* one of a contact's numbers, on its card: the avatar, the name, the number and its type. @contact NULL: a typed
+ * number, the avatar and the number only */
 static GtkWidget *
-make_row (ContactPicker *self, const Contact *contact, const char *number, const char *label, gboolean first,
-          const char *letter)
+make_row (ContactPicker *self, const Contact *contact, const char *number, const char *label)
 {
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *avatar = msg_avatar_new (AVATAR);
   GtkWidget *column = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  GtkWidget *line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   g_autofree char *formatted = phone_number_format (number, country (self));
-  GtkWidget *detail, *row;
+  g_autofree char *detail = label ? g_strdup_printf (C_("number, type", "%s • %s"), formatted, label)
+                                  : g_strdup (formatted);
+  GtkWidget *row;
 
-  if (letter)
-    {
-      GtkWidget *header = gtk_label_new (letter);
-
-      gtk_widget_set_size_request (header, HEADER_WIDTH, -1);
-      gtk_widget_set_valign (header, GTK_ALIGN_CENTER);
-      gtk_widget_add_css_class (header, "msg-picker-letter");
-      gtk_box_append (GTK_BOX (box), header);
-    }
   if (contact)
     msg_avatar_set_person (MSG_AVATAR (avatar), contact->name_primary, contact->uid, contact->photo);
   else
     msg_avatar_set_person (MSG_AVATAR (avatar), NULL, number, NULL);
-  /* a contact's other numbers: its avatar's place kept, empty */
-  gtk_widget_set_opacity (avatar, first ? 1 : 0);
   gtk_widget_set_valign (avatar, GTK_ALIGN_CENTER);
+  gtk_widget_set_margin_start (avatar, AVATAR_X);
   gtk_box_append (GTK_BOX (box), avatar);
-
-  if (contact && first)
-    {
-      GtkWidget *name = text_label (contact->name, "msg-picker-name");
-
-      gtk_widget_set_margin_bottom (name, NAME_PAD_BOTTOM);
-      gtk_box_append (GTK_BOX (column), name);
-    }
-  /* the number takes the width, so the type sits at the row's end */
-  detail = text_label (formatted, "msg-picker-number");
-  gtk_widget_set_hexpand (detail, TRUE);
-  gtk_box_append (GTK_BOX (line), detail);
-  if (label)
-    {
-      GtkWidget *type = text_label (label, "msg-picker-type");
-
-      gtk_widget_set_margin_start (type, LABEL_PAD_START);
-      gtk_box_append (GTK_BOX (line), type);
-    }
-  gtk_box_append (GTK_BOX (column), line);
+  if (contact)
+    gtk_box_append (GTK_BOX (column), text_label (contact->name, "msg-picker-name"));
+  gtk_box_append (GTK_BOX (column), text_label (detail, contact ? "msg-picker-number" : "msg-picker-name"));
   gtk_widget_set_valign (column, GTK_ALIGN_CENTER);
   gtk_widget_set_hexpand (column, TRUE);
-  gtk_widget_set_margin_start (column, TEXT_PAD_START);
-  gtk_widget_set_margin_end (column, TEXT_PAD_END);
+  gtk_widget_set_margin_start (column, TEXT_GAP);
+  gtk_widget_set_margin_end (column, TEXT_END);
   gtk_box_append (GTK_BOX (box), column);
-  gtk_widget_set_margin_start (box, ROW_PAD_START);
-  gtk_widget_set_margin_top (box, ROW_PAD_VERTICAL);
-  gtk_widget_set_margin_bottom (box, ROW_PAD_VERTICAL);
+  gtk_widget_set_size_request (box, -1, ROW_H);
 
-  row = vibeos_pressable_new (box);
+  row = msg_card_row_new (box);
+  gtk_widget_set_name (row, "contact_row");
   g_object_set_data_full (G_OBJECT (row), "number", g_strdup (number), g_free);
   gtk_accessible_update_property (GTK_ACCESSIBLE (row), GTK_ACCESSIBLE_PROPERTY_LABEL,
                                   contact ? contact->name : formatted, -1);
@@ -143,13 +111,30 @@ clear (GtkWidget *list)
     gtk_box_remove (GTK_BOX (list), child);
 }
 
-/* a contact's numbers, one row each */
-static void
-append_contact (ContactPicker *self, GtkWidget *list, const Contact *contact, const char *letter,
-                const char *only_matching)
+/* a header over a group of cards, flush with the list's start */
+static GtkWidget *
+add_group (GtkWidget *list, const char *header)
 {
-  gboolean first = TRUE;
+  GtkWidget *group = msg_card_group_new ();
 
+  if (header)
+    {
+      GtkWidget *label = text_label (header, "msg-picker-header");
+
+      gtk_widget_set_size_request (label, -1, HEADER_H);
+      gtk_widget_set_margin_start (label, HEADER_X);
+      gtk_box_append (GTK_BOX (list), label);
+    }
+  gtk_widget_set_margin_start (group, PILL_SIDE);
+  gtk_widget_set_margin_end (group, PILL_SIDE);
+  gtk_box_append (GTK_BOX (list), group);
+  return group;
+}
+
+/* a contact's numbers, one card each */
+static void
+append_contact (ContactPicker *self, GtkWidget *group, const Contact *contact, const char *only_matching)
+{
   for (guint i = 0; i < contact->numbers->len; i++)
     {
       ContactNumber *number = contact->numbers->pdata[i];
@@ -161,9 +146,7 @@ append_contact (ContactPicker *self, GtkWidget *list, const Contact *contact, co
           if (!strstr (digits, only_matching))
             continue;
         }
-      gtk_box_append (GTK_BOX (list), make_row (self, contact, number->number, number->label, first,
-                                                letter ? (first ? letter : "") : NULL));
-      first = FALSE;
+      msg_card_group_append (group, make_row (self, contact, number->number, number->label));
     }
 }
 
@@ -183,46 +166,44 @@ first_letter (const Contact *contact)
   return g_strdup (letter);
 }
 
+/* the contacts written to most, counted from the messages, then every contact under its letter */
 static void
 fill_all (ContactPicker *self)
 {
-  GPtrArray *contacts = contacts_get_all (self->contacts);
-  g_autofree char *previous = NULL;
-
-  clear (self->all);
-  for (guint i = 0; contacts && i < contacts->len; i++)
-    {
-      const Contact *contact = contacts->pdata[i];
-      g_autofree char *letter = first_letter (contact);
-      gboolean new_letter = g_strcmp0 (letter, previous) != 0;
-
-      append_contact (self, self->all, contact, new_letter ? letter : "", NULL);
-      g_free (previous);
-      previous = g_steal_pointer (&letter);
-    }
-}
-
-/* the contacts written with most, counted from the messages */
-static void
-fill_frequents (ContactPicker *self)
-{
   SmsStore *store = sms_client_get_store (self->client);
   g_auto(GStrv) frequent = store ? sms_store_list_frequent (store, FREQUENTS * 2) : NULL;
+  GPtrArray *contacts = contacts_get_all (self->contacts);
+  g_autofree char *previous = NULL;
+  GtkWidget *group = NULL;
   guint shown = 0;
 
-  clear (self->frequents);
+  clear (self->list);
   for (guint i = 0; frequent && frequent[i] && shown < FREQUENTS; i++)
     {
       const Contact *contact = contacts_lookup (self->contacts, frequent[i], country (self));
 
       if (!contact)
         continue;
-      gtk_box_append (GTK_BOX (self->frequents),
-                      make_row (self, contact, frequent[i], contact_number_label (contact, frequent[i], country (self)),
-                                TRUE, NULL));
+      if (!group)
+        group = add_group (self->list, _("Top contacts"));
+      msg_card_group_append (group, make_row (self, contact, frequent[i],
+                                              contact_number_label (contact, frequent[i], country (self))));
       shown++;
     }
-  gtk_widget_set_visible (self->frequents_empty, shown == 0);
+  for (guint i = 0; contacts && i < contacts->len; i++)
+    {
+      const Contact *contact = contacts->pdata[i];
+      g_autofree char *letter = first_letter (contact);
+
+      if (!contact->numbers->len)
+        continue;
+      if (g_strcmp0 (letter, previous) != 0)
+        group = add_group (self->list, letter);
+      append_contact (self, group, contact, NULL);
+      g_free (previous);
+      previous = g_steal_pointer (&letter);
+    }
+  gtk_widget_set_visible (self->empty, !gtk_widget_get_first_child (self->list));
 }
 
 /* the folded words of @text: lower case, no accents */
@@ -285,99 +266,25 @@ fill_results (ContactPicker *self, const char *query)
   g_auto(GStrv) words = g_strsplit (g_strstrip (folded), " ", -1);
   gboolean numeric = looks_like_number (query);
   g_autofree char *digits = numeric ? phone_number_normalize (query) : NULL;
+  GtkWidget *group;
 
   clear (self->results);
+  group = add_group (self->results, NULL);
   /* the number typed, picked as it is */
   if (numeric)
-    gtk_box_append (GTK_BOX (self->results), make_row (self, NULL, digits, NULL, TRUE, NULL));
+    msg_card_group_append (group, make_row (self, NULL, digits, NULL));
   for (guint i = 0; contacts && i < contacts->len; i++)
     {
       const Contact *contact = contacts->pdata[i];
 
       if (contact->name && name_matches (contact->name, words))
-        append_contact (self, self->results, contact, NULL, NULL);
+        append_contact (self, group, contact, NULL);
       else if (numeric)
-        append_contact (self, self->results, contact, NULL, digits);
+        append_contact (self, group, contact, digits);
     }
-}
-
-/* --- the tabs */
-
-static void
-select_tab (ContactPicker *self, guint tab)
-{
-  self->tab = tab;
-  for (guint i = 0; i < 2; i++)
-    {
-      if (i == tab)
-        gtk_widget_add_css_class (self->tab_labels[i], "selected");
-      else
-        gtk_widget_remove_css_class (self->tab_labels[i], "selected");
-      gtk_widget_set_visible (self->underlines[i], i == tab);
-    }
-  gtk_stack_set_visible_child_name (GTK_STACK (self->pages), tab == 0 ? "frequents" : "all");
-}
-
-static void
-on_tab_clicked (GtkWidget *tab, gpointer data)
-{
-  ContactPicker *self = data;
-
-  select_tab (self, GPOINTER_TO_UINT (g_object_get_data (G_OBJECT (tab), "tab")));
-}
-
-/* the two tabs, the selected one's underline under it (the strip's indicator, which follows the pager as it is
- * swiped; the pages here only change by a tap) */
-static GtkWidget *
-make_tabs (ContactPicker *self)
-{
-  GtkWidget *row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  const char *titles[] = { N_("FREQUENTS"), N_("ALL CONTACTS") };
-
-  gtk_box_set_homogeneous (GTK_BOX (row), TRUE);
-  for (guint i = 0; i < 2; i++)
-    {
-      GtkWidget *label = gtk_label_new (_(titles[i]));
-      GtkWidget *cell = gtk_overlay_new ();
-      GtkWidget *tab;
-      GdkRGBA ripple;
-
-      gtk_widget_add_css_class (label, "msg-picker-tab");
-      gtk_widget_set_margin_start (label, 10);
-      gtk_widget_set_margin_end (label, 10);
-      self->tab_labels[i] = label;
-      gtk_overlay_set_child (GTK_OVERLAY (cell), label);
-      self->underlines[i] = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-      gtk_widget_set_size_request (self->underlines[i], -1, 2);
-      gtk_widget_set_valign (self->underlines[i], GTK_ALIGN_END);
-      gtk_widget_add_css_class (self->underlines[i], "msg-picker-underline");
-      gtk_overlay_add_overlay (GTK_OVERLAY (cell), self->underlines[i]);
-      tab = vibeos_pressable_new (cell);
-      gtk_widget_set_size_request (tab, -1, TAB_HEIGHT);
-      gdk_rgba_parse (&ripple, "#ddffffff");
-      ripple.alpha = 0.24;
-      vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (tab), &ripple);
-      g_object_set_data (G_OBJECT (tab), "tab", GUINT_TO_POINTER (i));
-      gtk_accessible_update_property (GTK_ACCESSIBLE (tab), GTK_ACCESSIBLE_PROPERTY_LABEL, _(titles[i]), -1);
-      g_signal_connect (tab, "clicked", G_CALLBACK (on_tab_clicked), self);
-      gtk_box_append (GTK_BOX (row), tab);
-    }
-  gtk_widget_add_css_class (row, "msg-picker-tabs");
-  return row;
 }
 
 /* --- the field */
-
-static void
-update_field_actions (ContactPicker *self)
-{
-  const char *text = gtk_editable_get_text (GTK_EDITABLE (self->field));
-  gboolean typed = *text != '\0';
-
-  /* the dialpad toggle while it is empty, the X once there is text */
-  gtk_widget_set_visible (self->dialpad_action, !typed);
-  gtk_widget_set_visible (self->clear_action, typed);
-}
 
 static void
 on_field_changed (GtkEditable *field, gpointer data)
@@ -386,10 +293,7 @@ on_field_changed (GtkEditable *field, gpointer data)
   const char *text = gtk_editable_get_text (field);
   g_autofree char *stripped = g_strstrip (g_strdup (text));
 
-  update_field_actions (self);
-  gtk_widget_set_visible (self->tabs, !*stripped);
-  gtk_stack_set_visible_child_name (GTK_STACK (self->pages), *stripped ? "results"
-                                                            : self->tab == 0 ? "frequents" : "all");
+  gtk_stack_set_visible_child_name (GTK_STACK (self->pages), *stripped ? "results" : "all");
   if (*stripped)
     fill_results (self, stripped);
 }
@@ -399,27 +303,11 @@ static void
 on_field_activate (GtkText *field, gpointer data)
 {
   ContactPicker *self = data;
-  GtkWidget *first = gtk_widget_get_first_child (self->results);
+  GtkWidget *group = gtk_widget_get_first_child (self->results);
+  GtkWidget *first = group ? gtk_widget_get_first_child (group) : NULL;
 
-  if (first && gtk_widget_get_visible (self->results_page))
+  if (first && g_strcmp0 (gtk_stack_get_visible_child_name (GTK_STACK (self->pages)), "results") == 0)
     g_signal_emit (self, signals[PICKED], 0, g_object_get_data (G_OBJECT (first), "number"));
-}
-
-static void
-on_dialpad_toggle (ContactPicker *self)
-{
-  /* the on-screen keyboard between letters and the phone pad */
-  self->phone_input = !self->phone_input;
-  gtk_text_set_input_purpose (GTK_TEXT (self->field), self->phone_input ? GTK_INPUT_PURPOSE_PHONE
-                                                                        : GTK_INPUT_PURPOSE_FREE_FORM);
-  gtk_widget_grab_focus (self->field);
-}
-
-static void
-on_clear (ContactPicker *self)
-{
-  gtk_editable_set_text (GTK_EDITABLE (self->field), "");
-  gtk_widget_grab_focus (self->field);
 }
 
 static void
@@ -435,7 +323,6 @@ on_contacts_changed (Contacts *contacts, gpointer data)
   const char *text = gtk_editable_get_text (GTK_EDITABLE (self->field));
   g_autofree char *stripped = g_strstrip (g_strdup (text));
 
-  fill_frequents (self);
   fill_all (self);
   if (*stripped)
     fill_results (self, stripped);
@@ -449,6 +336,8 @@ scrolled (GtkWidget *list)
   GtkWidget *inner = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *scroll = spongy_scroll_view_new ();
 
+  gtk_widget_set_margin_top (list, LIST_TOP);
+  gtk_widget_set_margin_bottom (list, LIST_TOP);
   gtk_box_append (GTK_BOX (inner), list);
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), inner);
   gtk_widget_set_vexpand (scroll, TRUE);
@@ -456,29 +345,49 @@ scrolled (GtkWidget *list)
 }
 
 static GtkWidget *
-make_frequents_empty (void)
+make_empty (void)
 {
-  GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  /* the picture at a third of its pixel size (msg-image.h), with the text under it as the conversation list's
-   * empty view has it */
-  GtkWidget *image = msg_image_new ("/vibeos/Messaging/images/ic_oobe_freq_list.png", 169, 104);
-  GtkWidget *text = gtk_label_new (_("Enter a contact name or phone number to start a new message"));
+  GtkWidget *text = gtk_label_new (_("Type a name or a phone number to start a chat"));
 
-  gtk_widget_set_halign (image, GTK_ALIGN_CENTER);
-  gtk_box_append (GTK_BOX (box), image);
   gtk_label_set_wrap (GTK_LABEL (text), TRUE);
   gtk_label_set_justify (GTK_LABEL (text), GTK_JUSTIFY_CENTER);
-  /* a gap under the picture, plus 4 over and under the text's lines, as the list's */
-  gtk_widget_set_margin_top (text, 20 + 4);
-  gtk_widget_set_margin_bottom (text, 4);
   gtk_widget_set_margin_start (text, 60);
   gtk_widget_set_margin_end (text, 60);
   gtk_widget_add_css_class (text, "msg-empty-text");
-  gtk_box_append (GTK_BOX (box), text);
-  gtk_widget_set_valign (box, GTK_ALIGN_CENTER);
-  gtk_widget_set_vexpand (box, TRUE);
-  gtk_widget_set_can_target (box, FALSE);
-  return box;
+  gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
+  gtk_widget_set_vexpand (text, TRUE);
+  gtk_widget_set_can_target (text, FALSE);
+  return text;
+}
+
+/* "To:" and the field, in a pill */
+static GtkWidget *
+make_to (ContactPicker *self)
+{
+  GtkWidget *pill = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+  GtkWidget *to = gtk_label_new (_("To:"));
+
+  gtk_widget_add_css_class (to, "msg-picker-to");
+  gtk_widget_set_margin_start (to, TO_X);
+  gtk_box_append (GTK_BOX (pill), to);
+  self->field = gtk_text_new ();
+  gtk_text_set_placeholder_text (GTK_TEXT (self->field), _("Type name, phone number, or email"));
+  gtk_text_set_input_hints (GTK_TEXT (self->field), GTK_INPUT_HINT_NO_SPELLCHECK);
+  gtk_widget_set_valign (self->field, GTK_ALIGN_CENTER);
+  gtk_widget_set_hexpand (self->field, TRUE);
+  gtk_widget_set_margin_start (self->field, FIELD_GAP);
+  gtk_widget_set_margin_end (self->field, FIELD_END);
+  gtk_widget_add_css_class (self->field, "msg-picker-field");
+  gtk_widget_set_name (self->field, "ContactSearchField");
+  gtk_accessible_update_property (GTK_ACCESSIBLE (self->field), GTK_ACCESSIBLE_PROPERTY_LABEL, _("To"), -1);
+  g_signal_connect (self->field, "changed", G_CALLBACK (on_field_changed), self);
+  g_signal_connect (self->field, "activate", G_CALLBACK (on_field_activate), self);
+  gtk_box_append (GTK_BOX (pill), self->field);
+  gtk_widget_add_css_class (pill, "msg-picker-pill");
+  gtk_widget_set_size_request (pill, -1, PILL_H);
+  gtk_widget_set_margin_start (pill, PILL_SIDE);
+  gtk_widget_set_margin_end (pill, PILL_SIDE);
+  return pill;
 }
 
 static void
@@ -524,57 +433,34 @@ GtkWidget *
 contact_picker_new (SmsClient *client, Contacts *contacts)
 {
   ContactPicker *self = g_object_new (MSG_TYPE_CONTACT_PICKER, NULL);
-  GtkWidget *frequents_page = gtk_overlay_new ();
+  GtkWidget *all_page = gtk_overlay_new ();
 
   self->client = g_object_ref (client);
   self->contacts = g_object_ref (contacts);
   self->box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_parent (self->box, GTK_WIDGET (self));
-  gtk_widget_add_css_class (self->box, "msg-page");
+  gtk_widget_add_css_class (self->box, "msg-picker-page");
 
-  /* the action bar: the back arrow, "To", the dialpad toggle or the X */
-  self->bar = msg_action_bar_new (TRUE, "");
+  self->bar = msg_action_bar_new (TRUE, _("New chat"));
+  gtk_widget_add_css_class (self->bar, "msg-page-bar");
   g_signal_connect_swapped (msg_action_bar_get_up (self->bar), "clicked", G_CALLBACK (on_back), self);
-  self->field = gtk_text_new ();
-  gtk_text_set_placeholder_text (GTK_TEXT (self->field), _("To"));
-  gtk_text_set_input_hints (GTK_TEXT (self->field), GTK_INPUT_HINT_NO_SPELLCHECK);
-  gtk_widget_set_valign (self->field, GTK_ALIGN_CENTER);
-  /* the text lined up with the titles' inset: 56 for the arrow, 12 here and the field's own 4 */
-  gtk_widget_set_margin_start (self->field, 12);
-  gtk_widget_add_css_class (self->field, "msg-picker-field");
-  gtk_accessible_update_property (GTK_ACCESSIBLE (self->field), GTK_ACCESSIBLE_PROPERTY_LABEL, _("To"), -1);
-  g_signal_connect (self->field, "changed", G_CALLBACK (on_field_changed), self);
-  g_signal_connect (self->field, "activate", G_CALLBACK (on_field_activate), self);
-  msg_action_bar_set_custom (self->bar, self->field);
-  self->dialpad_action = msg_action_bar_add_action (self->bar, "messaging-dialpad-symbolic",
-                                                    _("Switch between entering text and numbers"));
-  g_signal_connect_swapped (self->dialpad_action, "clicked", G_CALLBACK (on_dialpad_toggle), self);
-  self->clear_action = msg_action_bar_add_action (self->bar, "messaging-cancel-symbolic", _("Clear text"));
-  g_signal_connect_swapped (self->clear_action, "clicked", G_CALLBACK (on_clear), self);
   gtk_box_append (GTK_BOX (self->box), self->bar);
-
-  self->tabs = make_tabs (self);
-  gtk_box_append (GTK_BOX (self->box), self->tabs);
+  gtk_box_append (GTK_BOX (self->box), make_to (self));
 
   self->pages = gtk_stack_new ();
   gtk_stack_set_transition_type (GTK_STACK (self->pages), GTK_STACK_TRANSITION_TYPE_NONE);
-  self->frequents = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  gtk_overlay_set_child (GTK_OVERLAY (frequents_page), scrolled (self->frequents));
-  self->frequents_empty = make_frequents_empty ();
-  gtk_overlay_add_overlay (GTK_OVERLAY (frequents_page), self->frequents_empty);
-  gtk_stack_add_named (GTK_STACK (self->pages), frequents_page, "frequents");
-  self->all = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  gtk_stack_add_named (GTK_STACK (self->pages), scrolled (self->all), "all");
+  self->list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  gtk_widget_set_name (self->list, "contact_list");
+  gtk_overlay_set_child (GTK_OVERLAY (all_page), scrolled (self->list));
+  self->empty = make_empty ();
+  gtk_overlay_add_overlay (GTK_OVERLAY (all_page), self->empty);
+  gtk_stack_add_named (GTK_STACK (self->pages), all_page, "all");
   self->results = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  self->results_page = scrolled (self->results);
-  gtk_stack_add_named (GTK_STACK (self->pages), self->results_page, "results");
+  gtk_stack_add_named (GTK_STACK (self->pages), scrolled (self->results), "results");
   gtk_widget_set_vexpand (self->pages, TRUE);
   gtk_box_append (GTK_BOX (self->box), self->pages);
 
   g_signal_connect (contacts, "changed", G_CALLBACK (on_contacts_changed), self);
-  fill_frequents (self);
   fill_all (self);
-  select_tab (self, 0);
-  update_field_actions (self);
   return GTK_WIDGET (self);
 }

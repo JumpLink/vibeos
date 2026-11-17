@@ -1,0 +1,23 @@
+# A conversation with a sender that is a name, which cannot be answered, at its end, held against the reference
+# phone's: the newest message with its time under it, and the note in the compose bar's place.
+#
+#   vibeos-specdiff msg-conv-noreply.specdiff ours.xml REF.xml
+#
+# with ours dumped from vibeos-messaging on a 360 x 721 display at 3x, showing the rig's (tests/msg-seed) conversation
+# with ExampleCo, and REF.xml the reference's conversation with such a sender.
+
+ref-offset 0,116
+ref-density 3
+tolerance 1
+
+bubble left         | x0('id=message_bubble#1')                      | x0('id=message_bubble_context')         | 8
+time under top      | y0('css=msg-time-under') - y1('id=message_bubble#1') \
+                    | y0('class=View#11') - y1('id=message_bubble_context') | 0
+time under left     | x0('css=msg-time-under')                       | x0('class=View#11')                     | 8
+time under height   | h('css=msg-time-under')                        | h('class=View#11')                      | 20
+note top            | y0('id=Compose:Disabled')                      | y0('id=Compose:Disabled/../..')         | 625.3
+note height         | h('id=Compose:Disabled')                       | h('id=Compose:Disabled/../..')          | 96
+note after time     | y0('id=Compose:Disabled') - y1('css=msg-time-under') \
+                    | y0('id=Compose:Disabled/../..') - y1('class=View#11') | 8
+note text left      | x0('id=Compose:Disabled')                      | x0('id=Compose:Disabled')               | 30
+note text right     | x1('id=Compose:Disabled')                      | x1('id=Compose:Disabled')               | 330

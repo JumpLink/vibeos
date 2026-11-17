@@ -4,11 +4,11 @@
 #include <glib/gi18n.h>
 #include <vibeos.h>
 
-#define HEIGHT 56
-#define UP_WIDTH 56             /* the up button's least width */
-#define INSET 16                /* the title's, after the up arrow or from the start */
-#define ACTION_WIDTH 48
-#define OVERFLOW_WIDTH 36       /* narrower than an action icon */
+#define HEIGHT 64
+#define BUTTON 48               /* every button's target: the back arrow, the actions, the overflow */
+#define EDGE 4                  /* the back arrow's inset from the start, the last button's from the end */
+#define TITLE_AFTER_UP 4        /* the title's inset after the back arrow */
+#define TITLE_ALONE 16          /* and without one */
 
 static GtkWidget *
 icon_button (const char *icon, int width, const char *label)
@@ -18,7 +18,8 @@ icon_button (const char *icon, int width, const char *label)
 
   gtk_image_set_pixel_size (GTK_IMAGE (image), 24);
   button = vibeos_pressable_new (image);
-  gtk_widget_set_size_request (button, width, HEIGHT);
+  gtk_widget_set_size_request (button, width, BUTTON);
+  gtk_widget_set_valign (button, GTK_ALIGN_CENTER);
   /* the ripple: a circle around the icon, not the whole button */
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_CIRCLE, 20);
   gtk_widget_add_css_class (button, "msg-action-icon");
@@ -37,16 +38,16 @@ msg_action_bar_new (gboolean up, const char *title)
   gtk_widget_set_size_request (bar, -1, HEIGHT);
   if (up)
     {
-      GtkWidget *button = icon_button ("messaging-back-symbolic", UP_WIDTH, _("Back"));
+      GtkWidget *button = icon_button ("msg-arrow-back-symbolic", BUTTON, _("Back"));
 
       /* named "Back", the button the shell's back gesture clicks; "Navigate up" is its description */
       gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_DESCRIPTION,
                                       _("Navigate up"), -1);
+      gtk_widget_set_margin_start (button, EDGE);
       gtk_box_append (GTK_BOX (bar), button);
       g_object_set_data (G_OBJECT (bar), "up", button);
     }
-  /* the title's start: UP_WIDTH plus INSET with the up arrow, else INSET */
-  gtk_widget_set_margin_start (label, INSET);
+  gtk_widget_set_margin_start (label, up ? TITLE_AFTER_UP : TITLE_ALONE);
   gtk_widget_set_hexpand (label, TRUE);
   gtk_label_set_xalign (GTK_LABEL (label), 0);
   gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
@@ -55,6 +56,7 @@ msg_action_bar_new (gboolean up, const char *title)
   gtk_accessible_update_property (GTK_ACCESSIBLE (label), GTK_ACCESSIBLE_PROPERTY_LABEL, title, -1);
   gtk_box_append (GTK_BOX (bar), label);
   g_object_set_data (G_OBJECT (bar), "title", label);
+  gtk_widget_set_margin_end (end, EDGE);
   gtk_box_append (GTK_BOX (bar), end);
   g_object_set_data (G_OBJECT (bar), "end", end);
   return bar;
@@ -86,7 +88,7 @@ msg_action_bar_add_action (GtkWidget *bar, const char *icon, const char *label)
 {
   GtkWidget *end = g_object_get_data (G_OBJECT (bar), "end");
   GtkWidget *overflow = g_object_get_data (G_OBJECT (bar), "overflow");
-  GtkWidget *button = icon_button (icon, ACTION_WIDTH, label);
+  GtkWidget *button = icon_button (icon, BUTTON, label);
 
   gtk_box_insert_child_after (GTK_BOX (end), button, overflow ? gtk_widget_get_prev_sibling (overflow)
                                                               : gtk_widget_get_last_child (end));
@@ -96,11 +98,13 @@ msg_action_bar_add_action (GtkWidget *bar, const char *icon, const char *label)
 GtkWidget *
 msg_action_bar_add_close (GtkWidget *bar, const char *label)
 {
-  GtkWidget *button = icon_button ("messaging-cancel-symbolic", UP_WIDTH, _("Back"));
+  GtkWidget *button = icon_button ("msg-close-symbolic", BUTTON, _("Back"));
 
   /* "Back" as the up arrow is, so the back gesture leaves select mode */
   gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_DESCRIPTION, label, -1);
+  gtk_widget_set_margin_start (button, EDGE);
   gtk_box_prepend (GTK_BOX (bar), button);
+  gtk_widget_set_margin_start (msg_action_bar_get_title (bar), TITLE_AFTER_UP);
   return button;
 }
 
@@ -108,7 +112,7 @@ GtkWidget *
 msg_action_bar_add_overflow (GtkWidget *bar)
 {
   GtkWidget *end = g_object_get_data (G_OBJECT (bar), "end");
-  GtkWidget *button = icon_button ("messaging-more-symbolic", OVERFLOW_WIDTH, _("More options"));
+  GtkWidget *button = icon_button ("msg-more-vert-symbolic", BUTTON, _("More options"));
 
   gtk_box_append (GTK_BOX (end), button);
   g_object_set_data (G_OBJECT (bar), "overflow", button);
@@ -123,4 +127,10 @@ msg_action_bar_set_custom (GtkWidget *bar, GtkWidget *custom)
   gtk_widget_set_visible (title, FALSE);
   gtk_widget_set_hexpand (custom, TRUE);
   gtk_box_insert_child_after (GTK_BOX (bar), custom, title);
+}
+
+GtkWidget *
+msg_action_bar_get_end (GtkWidget *bar)
+{
+  return g_object_get_data (G_OBJECT (bar), "end");
 }

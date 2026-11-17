@@ -1,0 +1,52 @@
+# The conversation list on a phone, at its top, held against the reference phone's list at its top:
+#
+#   vibeos-specdiff msg-list.specdiff ours.xml REF.xml
+#
+# with ours dumped from vibeos-messaging on a 360 x 721 display at 3x, holding the rig's made-up conversations
+# (tests/msg-seed). The reference's second row has a failed message; ours is the third (a draft sorts first), so the
+# failed sign is measured from its own row.
+
+ref-offset 0,116
+ref-density 3
+tolerance 1
+
+# the bar: the title, the search button and the account picture
+bar height          | h('css=msg-list-bar')                         | h('id=toolbar')                        | 64
+search left         | x0('css=msg-list-bar >> css=msg-action-icon#0') | x0('id=action_zero_state_search')   | 256
+search top          | y0('css=msg-list-bar >> css=msg-action-icon#0') | y0('id=action_zero_state_search')   | 8
+search size         | w('css=msg-list-bar >> css=msg-action-icon#0') | w('id=action_zero_state_search')    | 48
+picture left        | x0('id=account_button >> class=MsgAvatar')    | x0('id=og_apd_internal_image_view')    | 306
+picture top         | y0('id=account_button >> class=MsgAvatar')    | y0('id=og_apd_internal_image_view')    | 10
+picture size        | w('id=account_button >> class=MsgAvatar')     | w('id=og_apd_internal_image_view')     | 44
+
+# the first row
+row top             | y0('id=conversation_row#0')                   | y0('id=swipeableContainer#0')          | 72
+row height          | h('id=conversation_row#0')                    | h('id=swipeableContainer#0')           | 80
+avatar left         | x0('id=conversation_row#0 >> class=MsgAvatar') | x0('id=conversation_icon#0')          | 16
+avatar top          | y0('id=conversation_row#0 >> class=MsgAvatar') | y0('id=conversation_icon#0')          | 86
+avatar size         | w('id=conversation_row#0 >> class=MsgAvatar') | w('id=conversation_icon#0')            | 52
+name start          | x0('css=msg-row-name#0')                      | x0('id=conversation_name#0')           | 84
+name top            | y0('css=msg-row-name#0')                      | y0('id=conversation_name#0')           | 88.3
+name height         | h('css=msg-row-name#0')                       | h('id=conversation_name#0')            | 24.7
+snippet start       | x0('css=msg-row-snippet#0')                   | x0('id=conversation_snippet#0')        | 84
+snippet top         | y0('css=msg-row-snippet#0')                   | y0('id=conversation_snippet#0')        | 113
+snippet height      | h('css=msg-row-snippet#0')                    | h('id=conversation_snippet#0')         | 23
+time end            | x1('css=msg-row-time#0')                      | x1('id=conversation_timestamp#0')      | 336
+time top            | y0('css=msg-row-time#0')                      | y0('id=conversation_timestamp#0')      | 88.3
+time height         | h('css=msg-row-time#0')                       | h('id=conversation_timestamp#0')       | 17
+snippet to time     | x0('css=msg-row-time#0') - x1('css=msg-row-snippet#0') \
+                    | x0('id=conversation_timestamp#0') - x1('id=conversation_snippet#0') | 12
+
+# the second row, and the row with the failed sign before its snippet
+row 2 top           | y0('id=conversation_row#1')                   | y0('id=swipeableContainer#1')          | 152
+error icon start    | x0('css=msg-row-error')                       | x0('id=conversation_status_icon')      | 84
+error icon size     | w('css=msg-row-error')                        | w('id=conversation_status_icon')       | 16
+error icon centre   | cy('css=msg-row-error') - y0('id=conversation_row#2') \
+                    | cy('id=conversation_status_icon') - y0('id=swipeableContainer#1') | 51
+snippet after icon  | x0('css=msg-row-snippet#2') - x1('css=msg-row-error') \
+                    | x0('id=conversation_snippet#1') - x1('id=conversation_status_icon') | 2
+
+# Start chat
+fab end             | x1('id=start_chat_fab')                       | x1('id=start_chat_fab')                | 336
+fab bottom          | y1('id=start_chat_fab')                       | y1('id=start_chat_fab')                | 697.3
+fab height          | h('id=start_chat_fab')                        | h('id=start_chat_fab')                 | 56

@@ -1,0 +1,46 @@
+From: pulpoff <pashkovsky@gmail.com>
+Subject: [PATCH] screenShield: Connect the power save handler only where mutter
+ exports the mode
+
+The screen shield goes back to the clock page when the display leaves the
+ON state, reading MetaMonitorManager:power-save-mode and comparing it with
+Meta.PowerSaveMode.ON. The mutter the phones run keeps the power save mode
+private: MetaMonitorManager has no power-save-mode property and MetaPowerSave
+is not introspected, so Meta.PowerSaveMode is undefined. Every change of the
+power save mode, i.e. every time the screen goes off or on, threw
+
+  TypeError: can't access property "ON", (intermediate value).PowerSaveMode
+  is undefined
+
+Connect the handler only when Meta.PowerSaveMode exists. VibeOS's lock
+screen leaves its PIN pad by itself when the screen goes off, so nothing is
+lost there.
+---
+diff --git a/js/ui/screenShield.js b/js/ui/screenShield.js
+index 2e0c090..5a5f4a7 100644
+--- a/js/ui/screenShield.js
++++ b/js/ui/screenShield.js
+@@ -109,12 +109,18 @@ export class ScreenShield extends Signals.EventEmitter {
+             this._prepareForSleep.bind(this));
+ 
+         // The unlock prompt is of no use while the display is off; go back to
+-        // the clock page whenever the display leaves the ON state.
++        // the clock page whenever the display leaves the ON state. That needs
++        // the power save mode, which only a mutter that exports it can give
++        // (MetaMonitorManager:power-save-mode and Meta.PowerSaveMode). Where
++        // mutter keeps the mode private, every change would throw on the
++        // missing enum, so the handler is not connected at all.
+         this._monitorManager = global.backend.get_monitor_manager();
+-        this._monitorManager.connectObject('power-save-mode-changed', () => {
+-            if (this._monitorManager.power_save_mode !== Meta.PowerSaveMode.ON)
+-                this.cancelUnlock();
+-        }, this);
++        if (Meta.PowerSaveMode) {
++            this._monitorManager.connectObject('power-save-mode-changed', () => {
++                if (this._monitorManager.power_save_mode !== Meta.PowerSaveMode.ON)
++                    this.cancelUnlock();
++            }, this);
++        }
+ 
+         this._loginSession = null;
+         this._getLoginSession();

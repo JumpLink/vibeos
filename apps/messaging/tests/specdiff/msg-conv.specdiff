@@ -1,0 +1,59 @@
+# A conversation on a phone, at its end, held against the reference phone's: a date line, two messages that came,
+# then two sent ones that failed, the compose bar under them:
+#
+#   vibeos-specdiff msg-conv.specdiff ours.xml REF.xml
+#
+# with ours dumped from vibeos-messaging on a 360 x 721 display at 3x, showing the rig's (tests/msg-seed) conversation
+# with two failed messages, and REF.xml the reference's conversation ending the same way. The reference's dump lists
+# its messages newest first, ours oldest first: their #N count from opposite ends.
+
+ref-offset 0,116
+ref-density 3
+tolerance 1
+
+# the top bar: back, the avatar and the name, Call, the menu
+bar bottom          | y1('id=top_app_bar')                           | y1('id=top_app_bar')                    | 64
+back left           | x0('id=top_app_bar >> css=msg-action-icon#0')  | x0('id=top_app_bar >> class=View#1')    | 4
+back size           | w('id=top_app_bar >> css=msg-action-icon#0')   | w('id=top_app_bar >> class=View#1')     | 48
+avatar left         | x0('id=monogram')                              | x0('id=GlideMonogram')                  | 60
+avatar top          | y0('id=monogram')                              | y0('id=GlideMonogram')                  | 12
+avatar size         | w('id=monogram')                               | w('id=GlideMonogram')                   | 40
+title start         | x0('id=top_app_bar_title_row >> class=GtkLabel') | x0('id=top_app_bar_title_row >> class=TextView') | 112
+title centre        | cy('id=top_app_bar_title_row >> class=GtkLabel') | cy('id=top_app_bar_title_row >> class=TextView') | 32
+call left           | x0('id=top_app_bar >> css=msg-action-icon#1')  | x0('id=top_app_bar >> class=View#9')    | 260
+menu left           | x0('id=top_app_bar >> css=msg-action-icon#2')  | x0('id=top_app_bar >> class=View#11')   | 308
+
+# the date line and the messages that came
+date line height    | h('id=text_separator#0')                       | h('id=text_separator#0')                | 32
+date line to bubble | y0('id=message_bubble#0') - y1('id=text_separator#0') \
+                    | y0('id=message_bubble_context#3') - y1('id=text_separator#0') | 8
+bubble left         | x0('id=message_bubble#0')                      | x0('id=message_bubble_context#3')       | 8
+bubble height       | h('id=message_bubble#0')                       | h('id=message_bubble_context#3')        | 40
+text start          | x0('id=message_text#0') - x0('id=message_bubble#0') \
+                    | x0('id=message_bubble_context#3 >> id=message_text') - x0('id=message_bubble_context#3') | 16
+run gap             | y0('id=message_bubble#1') - y1('id=message_bubble#0') \
+                    | y0('id=message_bubble_context#2') - y1('id=message_bubble_context#3') | 2
+
+# the sent ones that failed, each with its line under it
+runs gap            | y0('id=message_bubble#2') - y1('id=message_bubble#1') \
+                    | y0('id=message_bubble_context#1') - y1('id=message_bubble_context#2') | 16
+sent bubble end     | x1('id=message_bubble#2')                      | x1('id=message_bubble_context#1')       | 352
+sent bubble height  | h('id=message_bubble#2')                       | h('id=message_bubble_context#1')        | 40
+failed line top     | y0('id=metatext#0') - y1('id=message_bubble#2') \
+                    | y0('id=metatext#1') - y1('id=message_bubble_context#1') | 4
+failed line height  | h('id=metatext#0')                             | h('id=metatext#1')                      | 16
+failed line end     | x1('id=metatext#0')                            | x1('id=metatext#1')                     | 336
+failed icon size    | w('css=msg-failed-icon#0')                     | w('id=ERROR_FILLED#1')                  | 12
+after failed line   | y0('id=message_bubble#3') - y1('id=metatext#0') \
+                    | y0('id=message_bubble_context#0') - y1('id=metatext#1') | 2
+
+# the compose bar
+plus top            | y0('id=ComposeRowIcon:Shortcuts')              | y0('id=ComposeRowIcon:Shortcuts')       | 657.3
+plus bottom         | y1('id=ComposeRowIcon:Shortcuts')              | y1('id=ComposeRowIcon:Shortcuts')       | 713.3
+field left          | x0('css=msg-compose-field')                    | x1('id=ComposeRowIcon:Shortcuts')       | 56
+field height        | h('css=msg-compose-field')                     | h('id=compose_message_text')            | 56
+plus left           | x0('id=ComposeRowIcon:Shortcuts')              | x0('id=ComposeRowIcon:Shortcuts')       | 8
+plus width          | w('id=ComposeRowIcon:Shortcuts')               | w('id=ComposeRowIcon:Shortcuts')        | 48
+send left           | x0('id=Compose:Draft:Send')                    | x0('id=Compose:Draft:Send')             | 296
+send top            | y0('id=Compose:Draft:Send')                    | y0('id=Compose:Draft:Send')             | 657.3
+send size           | w('id=Compose:Draft:Send')                     | w('id=Compose:Draft:Send')              | 56

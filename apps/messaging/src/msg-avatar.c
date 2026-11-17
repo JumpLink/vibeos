@@ -1,21 +1,24 @@
 /* Messaging's avatar (msg-avatar.h). */
 #include "msg-avatar.h"
 
+#include <vibeos.h>
+
 #include <math.h>
 
-#define TILE_LETTER_RATIO 0.67          /* the letter's size against the tile's */
-#define TILE_ICON 32                    /* the person glyph, on a whole tile */
+#define TILE_LETTER_RATIO 0.5           /* the letter's size against the tile's */
+#define TILE_ICON_RATIO 0.6             /* the person glyph's */
 #define MAX_PEOPLE 4
 
-/* the tiles' colours: each person's is picked by a hash of their identifier, so it stays the same everywhere */
-static const char *tile_colors[] = {
-  "#81b4bb", "#96b0b4", "#8dafd1", "#6799a0", "#7c9599", "#7394b5",
-  "#4d7f86", "#627b7f", "#597a9a", "#33666d", "#4a6366", "#406180",
+/* the tiles' colours: the three accent palettes at three tones each, picked by a hash of the person's identifier, so
+ * a person's stays the same everywhere; bright tiles with a dark glyph, in light mode and dark */
+static const VibeosPalette tile_palettes[3] = {
+  VIBEOS_PALETTE_ACCENT1, VIBEOS_PALETTE_ACCENT3, VIBEOS_PALETTE_ACCENT2,
 };
+static const int tile_stops[3] = { 300, 200, 400 };
 
 typedef struct {
   char *letter;                 /* NULL: the person glyph */
-  GdkRGBA color;
+  int tile;                     /* the tile's colour, an index; -1 for the default */
   GdkTexture *photo;
 } Person;
 
@@ -42,17 +45,28 @@ tile_index (const char *identifier)
     hash = (gint32) ((guint32) hash * 31u + units[i]);
   if (hash == G_MININT32)
     return -1;
-  return (hash < 0 ? -hash : hash) % G_N_ELEMENTS (tile_colors);
+  return (hash < 0 ? -hash : hash) % (G_N_ELEMENTS (tile_palettes) * G_N_ELEMENTS (tile_stops));
+}
+
+static GdkRGBA
+tile_color (int index)
+{
+  if (index < 0)
+    return vibeos_palette_stop (VIBEOS_PALETTE_NEUTRAL2, 300);
+  return vibeos_palette_stop (tile_palettes[index % 3], tile_stops[index / 3]);
 }
 
 GdkRGBA
 msg_avatar_color (const char *identifier)
 {
-  int index = tile_index (identifier);
-  GdkRGBA color;
+  return tile_color (tile_index (identifier));
+}
 
-  gdk_rgba_parse (&color, index >= 0 ? tile_colors[index] : "#33666d");
-  return color;
+/* the glyph and the letter: nearly black on every tile */
+static GdkRGBA
+ink_color (int index)
+{
+  return vibeos_palette_stop (index < 0 ? VIBEOS_PALETTE_NEUTRAL2 : tile_palettes[index % 3], 900);
 }
 
 static void
@@ -78,7 +92,7 @@ set_one (Person *person, const char *name, const char *identifier, GBytes *photo
       g_unichar_to_utf8 (g_unichar_toupper (first), letter);
       person->letter = g_strdup (letter);
     }
-  person->color = msg_avatar_color (identifier ? identifier : name);
+  person->tile = tile_index (identifier ? identifier : name);
   if (photo)
     person->photo = gdk_texture_new_from_bytes (photo, NULL);
 }
@@ -124,22 +138,22 @@ push_circle (GtkSnapshot *snapshot, double x, double y, double d)
 
 /* the glyph, centred on its ink rather than on its line: at its text bounds' centre */
 static void
-draw_letter (MsgAvatar *self, GtkSnapshot *snapshot, const char *letter, double x, double y, double d)
+draw_letter (MsgAvatar *self, GtkSnapshot *snapshot, const char *letter, double x, double y, double d,
+             const GdkRGBA *ink)
 {
   PangoLayout *layout = gtk_widget_create_pango_layout (GTK_WIDGET (self), letter);
   PangoFontDescription *font = pango_font_description_from_string ("VibeOS Roboto");
-  PangoRectangle ink;
-  GdkRGBA white = { 1, 1, 1, 1 };
+  PangoRectangle extents;
 
-  /* Paint text: sans-serif-medium, 500, which Bold text does not adjust */
+  /* medium, which Bold text does not adjust */
   pango_font_description_set_weight (font, 500);
   pango_font_description_set_absolute_size (font, d * TILE_LETTER_RATIO * PANGO_SCALE);
   pango_layout_set_font_description (layout, font);
-  pango_layout_get_pixel_extents (layout, &ink, NULL);
+  pango_layout_get_pixel_extents (layout, &extents, NULL);
   gtk_snapshot_save (snapshot);
-  gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (x + (d - ink.width) / 2 - ink.x,
-                                                          y + (d - ink.height) / 2 - ink.y));
-  gtk_snapshot_append_layout (snapshot, layout, &white);
+  gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (x + (d - extents.width) / 2 - extents.x,
+                                                          y + (d - extents.height) / 2 - extents.y));
+  gtk_snapshot_append_layout (snapshot, layout, ink);
   gtk_snapshot_restore (snapshot);
   pango_font_description_free (font);
   g_object_unref (layout);
@@ -164,24 +178,22 @@ draw_icon (MsgAvatar *self, GtkSnapshot *snapshot, const char *name, double x, d
 static void
 draw_person (MsgAvatar *self, GtkSnapshot *snapshot, const Person *person, double x, double y, double d)
 {
-  GdkRGBA white = { 1, 1, 1, 1 };
-
   push_circle (snapshot, x, y, d);
   if (person->photo)
     gtk_snapshot_append_texture (snapshot, person->photo, &GRAPHENE_RECT_INIT (x, y, d, d));
   else
     {
-      gtk_snapshot_append_color (snapshot, &person->color, &GRAPHENE_RECT_INIT (x, y, d, d));
+      GdkRGBA fill = tile_color (person->tile), ink = ink_color (person->tile);
+
+      gtk_snapshot_append_color (snapshot, &fill, &GRAPHENE_RECT_INIT (x, y, d, d));
       if (person->letter)
-        draw_letter (self, snapshot, person->letter, x, y, d);
+        draw_letter (self, snapshot, person->letter, x, y, d, &ink);
       else
         {
-          /* its size on a whole tile; a group's smaller circles scale it with them (42 is the smallest whole
-           * tile) */
-          double icon = d >= 42 ? TILE_ICON : d * TILE_ICON / 42;
+          double icon = round (d * TILE_ICON_RATIO);
 
-          draw_icon (self, snapshot, "messaging-person-symbolic", x + (d - icon) / 2, y + (d - icon) / 2, icon,
-                     &white);
+          draw_icon (self, snapshot, "msg-person-filled-symbolic", x + (d - icon) / 2, y + (d - icon) / 2, icon,
+                     &ink);
         }
     }
   gtk_snapshot_pop (snapshot);
@@ -195,14 +207,14 @@ msg_avatar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 
   if (self->checked)
     {
-      GdkRGBA accent, white = { 1, 1, 1, 1 };
+      GdkRGBA fill = vibeos_color (VIBEOS_PRIMARY), ink = vibeos_color (VIBEOS_ON_PRIMARY);
+      double icon = round (w * 0.5);
 
-      /* selected: an accent disc with the check cut out of it, white behind */
-      gdk_rgba_parse (&accent, "#b8ebf3");
-      push_circle (snapshot, w * 0.2, w * 0.2, w * 0.6);
-      gtk_snapshot_append_color (snapshot, &white, &GRAPHENE_RECT_INIT (0, 0, w, w));
+      /* selected: a disc in the primary colour with a check */
+      push_circle (snapshot, 0, 0, w);
+      gtk_snapshot_append_color (snapshot, &fill, &GRAPHENE_RECT_INIT (0, 0, w, w));
       gtk_snapshot_pop (snapshot);
-      draw_icon (self, snapshot, "messaging-checkmark-circle-symbolic", 0, 0, w, &accent);
+      draw_icon (self, snapshot, "msg-check-symbolic", (w - icon) / 2, (w - icon) / 2, icon, &ink);
       return;
     }
   switch (self->count)

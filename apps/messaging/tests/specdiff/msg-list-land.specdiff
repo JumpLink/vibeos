@@ -1,0 +1,33 @@
+# The conversation list on a phone on its side: ours on a 721 x 332 display at 3x, the reference with its cutout
+# (116 px) on the left and its status bar (84 px) on top. One pane, the rows stretched to the full width. The
+# reference's list is scrolled a little (its FAB folded, "View latest" up), so ours is too: rows are measured by
+# their second one's height and insets, the buttons by where they sit.
+#
+#   vibeos-specdiff msg-list-land.specdiff ours.xml REF.xml
+
+ref-offset 116,84
+ref-density 3
+tolerance 1
+
+# the bar
+bar height          | h('css=msg-list-bar')                         | h('id=toolbar')                        | 64
+search left         | x0('css=msg-list-bar >> css=msg-action-icon#0') | x0('id=action_zero_state_search')   | 617.3
+search top          | y0('css=msg-list-bar >> css=msg-action-icon#0') | y0('id=action_zero_state_search')   | 8
+picture right       | x1('id=account_button >> class=MsgAvatar')    | x1('id=og_apd_internal_image_view')    | 711.3
+picture top         | y0('id=account_button >> class=MsgAvatar')    | y0('id=og_apd_internal_image_view')    | 10
+
+# a whole row
+row height          | h('id=conversation_row#1')                    | h('id=swipeableContainer#1')           | 80
+row right           | x1('id=conversation_row#1')                   | x1('id=swipeableContainer#1')          | 721.3
+avatar left         | x0('id=conversation_row#1 >> class=MsgAvatar') | x0('id=conversation_icon#1')          | 16
+avatar inset        | y0('id=conversation_row#1 >> class=MsgAvatar') - y0('id=conversation_row#1') \
+                    | y0('id=conversation_icon#1') - y0('id=swipeableContainer#1') | 14
+name start          | x0('css=msg-row-name#1')                      | x0('id=conversation_name#1')           | 84
+time end            | x1('css=msg-row-time#1')                      | x1('id=conversation_timestamp#1')      | 697.3
+
+# Start chat, folded, and View latest
+fab left            | x0('id=start_chat_fab')                       | x0('id=start_chat_fab')                | 641.3
+fab end             | x1('id=start_chat_fab')                       | x1('id=start_chat_fab')                | 697.3
+fab bottom          | y1('id=start_chat_fab')                       | y1('id=start_chat_fab')                | 308
+latest centre       | cx('id=go_to_top')                            | cx('id=go_to_top_button')              | 360.7
+latest bottom       | y1('id=go_to_top')                            | y1('id=go_to_top_inflated_view')       | 308

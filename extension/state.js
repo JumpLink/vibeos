@@ -431,15 +431,35 @@ export const SystemState = GObject.registerClass({
                 this._upowerDaemon.connectObject('g-properties-changed', () => this._syncBattery(), this);
                 this._syncBattery();
             });
-        Gio.DBusProxy.new(Gio.DBus.system, Gio.DBusProxyFlags.NONE, null,
+        // power-profiles-daemon is ordered after multi-user.target, so it can come up long after the shell (48 s
+        // into a Poco boot). Starting it while making the proxy then times out after 25 s and leaves Battery Saver
+        // unavailable for the whole session. So the proxy is made at once and follows the name instead: GDBusProxy
+        // loads the properties whenever the daemon appears, notifies g-name-owner after that, and clears them when
+        // it goes.
+        Gio.DBusProxy.new(Gio.DBus.system, Gio.DBusProxyFlags.DO_NOT_AUTO_START_AT_CONSTRUCTION, null,
             PPD_BUS, PPD_PATH, PPD_BUS, this._cancellable, (o, res) => {
                 try {
                     this._ppd = Gio.DBusProxy.new_finish(res);
                 } catch (e) {
                     return;
                 }
-                this._ppd.connectObject('g-properties-changed', () => this._syncPowerSave(), this);
+                this._ppd.connectObject(
+                    'g-properties-changed', () => this._syncPowerSave(),
+                    'notify::g-name-owner', () => this._syncPowerSave(), this);
                 this._syncPowerSave();
+                // not running yet: ask the bus to start it, without waiting for the answer (a daemon that is not
+                // started at boot still comes up; one that is already on its way is picked up by the name)
+                if (!this._ppd.g_name_owner) {
+                    Gio.DBus.system.call('org.freedesktop.DBus', '/org/freedesktop/DBus', 'org.freedesktop.DBus',
+                        'StartServiceByName', new GLib.Variant('(su)', [PPD_BUS, 0]), null, Gio.DBusCallFlags.NONE,
+                        -1, this._cancellable, (bus, r) => {
+                            try {
+                                bus.call_finish(r);
+                            } catch (e) {
+                                // a timeout or no such service: the tile stays unavailable until the name appears
+                            }
+                        });
+                }
             });
     }
 

@@ -1,4 +1,5 @@
-/* Messaging's window: its screens as pages over one another (msg-navigator.h), the conversation list first.
+/* Messaging's window: the conversation list, with the conversation opened from it over it on a phone and beside it
+ * on a tablet (VibeosListDetail); the search page, the account menu, New chat and the settings over both.
  *
  * It tells the SMS service what is on screen (SetVisible), so that a message coming into the conversation being
  * looked at is read at once and makes no notification, and one coming while the list is open at its top is seen. */

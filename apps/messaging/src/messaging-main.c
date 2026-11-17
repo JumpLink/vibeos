@@ -18,19 +18,16 @@
 static void
 load_style (void)
 {
-  GtkCssProvider *provider = gtk_css_provider_new ();
-
-  gtk_css_provider_load_from_resource (provider, "/vibeos/Messaging/messaging.css");
-  /* over libvibeos's, which is at APPLICATION priority too: the later provider wins at equal priority */
-  gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (provider),
-                                              GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
-  g_object_unref (provider);
+  /* the conversation's colours by the original rules, as @vibeos_original_* */
+  vibeos_original_colors_init ();
+  /* over libvibeos's, which is at APPLICATION priority too; its sizes in sp and dp follow Font size */
+  vibeos_css_load_resource ("/vibeos/Messaging/messaging.css", GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
 }
 
 static void
 on_startup (GApplication *app, gpointer data)
 {
-  vibeos_init ();
+  vibeos_init_full (VIBEOS_INIT_SCALED_TEXT);
   load_style ();
 }
 
