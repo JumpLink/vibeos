@@ -228,16 +228,12 @@ window.sw-window,
   padding: 0 24px;
 }
 
-/* categories: three rows of chips */
-.sw-category-strip {
-  padding: 4px 24px 8px 24px;
-}
-
+/* filter chips: outlined, filled when chosen */
 .sw-chip {
   min-height: 40px;
   border-radius: 20px;
-  padding: 0 16px 0 6px;
-  background-color: @vibeos_surface_container_high;
+  padding: 0 16px;
+  border: 1px solid @vibeos_outline_variant;
 }
 
 .sw-chip label {
@@ -246,33 +242,18 @@ window.sw-window,
   color: @vibeos_on_surface;
 }
 
-.sw-chip.filter {
-  padding: 0 16px;
-  background-color: transparent;
-  border: 1px solid @vibeos_outline_variant;
-}
-
-.sw-chip.filter.selected {
+.sw-chip.selected {
   background-color: @vibeos_secondary_container;
   border-color: transparent;
 }
 
-.sw-chip.filter.selected label {
+.sw-chip.selected label {
   color: @vibeos_on_secondary_container;
 }
 
 .sw-chips {
-  padding: 12px 0;
-}
-
-/* a category's Font Awesome icon on a circle, 6px in from the chip's edges (16 + 2 × 6 = 28 of the chip's 40) */
-.sw-category-icon {
-  border-radius: 999px;
-  padding: 6px;
-  min-width: 16px;
-  min-height: 16px;
-  background-color: @vibeos_secondary_container;
-  color: @vibeos_on_secondary_container;
+  padding-top: 12px;
+  padding-bottom: 12px;
 }
 
 /* banners: pictures with their title over a dark fade */

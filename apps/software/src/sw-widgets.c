@@ -681,63 +681,11 @@ sw_section_header_new (const char *title, const char *count, const char *action,
 /* ---- chips ----------------------------------------------------------------------------------------------------- */
 
 GtkWidget *
-sw_category_icon_new (JsonObject *category, int size)
-{
-  const char *icon = sw_json_string (category, "icon");
-  g_autofree char *name = g_strdup_printf ("sw-fa-%s-symbolic", icon ? icon : "shapes");
-  GtkIconTheme *theme = gtk_icon_theme_get_for_display (gdk_display_get_default ());
-  GtkWidget *image;
-
-  if (!gtk_icon_theme_has_icon (theme, name))
-    {
-      g_free (name);
-      name = g_strdup ("sw-fa-shapes-symbolic");
-    }
-  image = gtk_image_new_from_icon_name (name);
-  gtk_image_set_pixel_size (GTK_IMAGE (image), size);
-  /* a circle at its own size, in the middle of whatever row it is in (not stretched to the row's height) */
-  gtk_widget_set_halign (image, GTK_ALIGN_CENTER);
-  gtk_widget_set_valign (image, GTK_ALIGN_CENTER);
-  gtk_widget_add_css_class (image, "sw-category-icon");
-  return image;
-}
-
-static void
-on_category_clicked (GtkWidget *chip, gpointer data)
-{
-  JsonObject *category = g_object_get_data (G_OBJECT (chip), "sw-category");
-  g_autofree char *id = sw_api_escape (sw_json_string (category, "id"));
-  g_autofree char *path = g_strdup_printf ("/apps?category=%s", id);
-
-  sw_window_open_list (chip, sw_json_string (category, "name"), path);
-}
-
-GtkWidget *
-sw_category_chip_new (JsonObject *category)
-{
-  GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 8), *label, *chip;
-
-  gtk_box_append (GTK_BOX (box), sw_category_icon_new (category, 16));
-  label = gtk_label_new (sw_json_string (category, "name"));
-  gtk_box_append (GTK_BOX (box), label);
-  chip = vibeos_pressable_new (box);
-  gtk_widget_add_css_class (chip, "sw-chip");
-  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (chip), VIBEOS_RIPPLE_BOUNDED, 18);
-  g_object_set_data_full (G_OBJECT (chip), "sw-category", json_object_ref (category),
-                          (GDestroyNotify) json_object_unref);
-  gtk_accessible_update_property (GTK_ACCESSIBLE (chip), GTK_ACCESSIBLE_PROPERTY_LABEL,
-                                  sw_json_string (category, "name"), -1);
-  g_signal_connect (chip, "clicked", G_CALLBACK (on_category_clicked), NULL);
-  return chip;
-}
-
-GtkWidget *
 sw_filter_chip_new (const char *label)
 {
   GtkWidget *chip = vibeos_pressable_new (gtk_label_new (label));
 
   gtk_widget_add_css_class (chip, "sw-chip");
-  gtk_widget_add_css_class (chip, "filter");
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (chip), VIBEOS_RIPPLE_BOUNDED, 8);
   return chip;
 }

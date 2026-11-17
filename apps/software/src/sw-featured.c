@@ -9,8 +9,9 @@
  *              section of a tab is a carousel of columns of three rows (each row with its Install button); the ones
  *              after it are rows of tiles, so the screen does not repeat one shape all the way down.
  *
- * Apps and Games add their categories as chips over the sections, and a second sub-tab, Popular: GET /apps sorted by
- * installs, page after page. A tab loads when it first shows, so starting costs only Featured's request. */
+ * Apps and Games add a Categories row over the sections, which opens the list of their categories (those with apps
+ * in them), and a second sub-tab, Popular: GET /apps sorted by installs, page after page. A tab loads when it first
+ * shows, so starting costs only Featured's request. */
 #include "sw-pages.h"
 #include "sw-image.h"
 #include "sw-json.h"
@@ -170,50 +171,48 @@ banners (JsonArray *items)
 }
 
 static void
-on_all_categories (GtkWidget *button, Home *home)
+on_categories (VibeosListRow *row, Home *home)
 {
-  sw_window_push (button, sw_categories_page_new (home->kind == SW_HOME_GAMES ? "games" : "apps"));
+  sw_window_push (GTK_WIDGET (row), sw_categories_page_new (home->kind == SW_HOME_GAMES ? "games" : "apps"));
 }
 
-/* the chips in three rows, scrolled sideways together; chip i in row i mod 3, so the rows stay as long */
+/* The way into the tab's categories: one row that opens their list, saying how many there are. Only categories with
+ * apps in them count (an older server lists empty ones too); with none, there is no row. */
 static GtkWidget *
-categories (Home *home, JsonArray *list)
+categories_row (Home *home, JsonArray *list)
 {
-  GtkWidget *box, *strip = sw_strip_new (&box), *rows = gtk_box_new (GTK_ORIENTATION_VERTICAL, 8), *row[3];
+  GdkRGBA fill = vibeos_color (VIBEOS_SECONDARY_CONTAINER), glyph = vibeos_color (VIBEOS_ON_SECONDARY_CONTAINER);
+  g_autofree char *summary = NULL;
+  GtkWidget *cards, *row;
+  guint n = 0;
 
-  gtk_box_append (GTK_BOX (box), rows);
-  for (int r = 0; r < 3; r++)
-    {
-      row[r] = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 8);
-      gtk_box_append (GTK_BOX (rows), row[r]);
-    }
-  for (guint i = 0; i < json_array_get_length (list); i++)
-    {
-      JsonObject *category = sw_json_array_object (list, i);
-
-      if (category)
-        gtk_box_append (GTK_BOX (row[i % 3]), sw_category_chip_new (category));
-    }
-  gtk_widget_add_css_class (box, "sw-category-strip");
-  return strip;
+  for (guint i = 0; list && i < json_array_get_length (list); i++)
+    if (sw_json_int (sw_json_array_object (list, i), "app_count", 0) > 0)
+      n++;
+  if (!n)
+    return NULL;
+  summary = g_strdup_printf (n == 1 ? "%u category" : "%u categories", n);
+  row = vibeos_list_row_new ("Categories", summary);
+  vibeos_list_row_set_icon_circle (VIBEOS_LIST_ROW (row), "sw-fa-shapes-symbolic", &fill, &glyph);
+  vibeos_list_row_set_chevron (VIBEOS_LIST_ROW (row));
+  g_signal_connect (row, "clicked", G_CALLBACK (on_categories), home);
+  cards = vibeos_card_list_new ();
+  vibeos_card_list_set_margins (VIBEOS_CARD_LIST (cards), 16, 0);
+  vibeos_card_list_append (VIBEOS_CARD_LIST (cards), row);
+  return cards;
 }
 
 static void
 show (Home *home, JsonObject *data)
 {
-  JsonArray *sections = sw_json_array (data, "sections"), *chips = sw_json_array (data, "categories");
-  GtkWidget *child;
+  JsonArray *sections = sw_json_array (data, "sections");
+  GtkWidget *child, *categories = categories_row (home, sw_json_array (data, "categories"));
   int apps_sections = 0;
 
   while ((child = gtk_widget_get_first_child (home->column)))
     gtk_box_remove (GTK_BOX (home->column), child);
-  if (chips && json_array_get_length (chips))
-    {
-      GtkWidget *header = sw_section_header_new ("Categories", NULL, "All", G_CALLBACK (on_all_categories), home);
-
-      gtk_box_append (GTK_BOX (home->column), header);
-      gtk_box_append (GTK_BOX (home->column), categories (home, chips));
-    }
+  if (categories)
+    gtk_box_append (GTK_BOX (home->column), categories);
   for (guint i = 0; sections && i < json_array_get_length (sections); i++)
     {
       JsonObject *section = sw_json_array_object (sections, i);

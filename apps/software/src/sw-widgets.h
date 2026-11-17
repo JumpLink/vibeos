@@ -5,7 +5,7 @@
  *   buttons    filled, tonal, outlined and text buttons: pills with a ripple
  *   app rows   an app in a list: icon, name, summary, rating, and its install button
  *   app tiles  an app in a horizontal row: icon, name, rating
- *   chips      a category: its Font Awesome icon in a coloured circle, its name
+ *   chips      a filter chip ("Newest"), chosen or not
  *   stars      a rating drawn as five stars, or five stars to tap
  *   progress   a ring: a job's percent, or turning while it is not known
  *   tabs       text tabs with an underline under the chosen one
@@ -116,10 +116,6 @@ void       sw_app_activate      (GtkWidget *from, JsonObject *app);
 
 /* ---- chips ----------------------------------------------------------------------------------------------------- */
 
-/* a category's chip (a Category object); a tap opens its list */
-GtkWidget *sw_category_chip_new (JsonObject *category);
-/* a category's icon in its colour, `size` across; an unknown icon gets a generic one */
-GtkWidget *sw_category_icon_new (JsonObject *category, int size);
 /* a filter chip ("Newest") that can be chosen */
 GtkWidget *sw_filter_chip_new   (const char *label);
 void       sw_filter_chip_set_selected (GtkWidget *chip, gboolean selected);
