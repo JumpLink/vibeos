@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The Weather's preferences: the city chosen in Set City. The place shown and the forecast are kept in
+     ~/.cache/vibeos-launcher/ (main.c), where the home screen can read them. -->
+<schemalist>
+  <schema id="vibeos.Weather" path="/vibeos/Weather/">
+    <key name="city" type="(sdd)">
+      <default>('', 0.0, 0.0)</default>
+      <summary>The city chosen in Set City: its name, latitude and longitude (degrees); no name: none chosen</summary>
+      <description>A chosen city is shown instead of GNOME Weather's first city and of where the phone is, until
+        "Use my location" clears it.</description>
+    </key>
+  </schema>
+</schemalist>

@@ -1,19 +1,23 @@
 /* VibeOS Weather: the page behind the home screen's weather widget, laid out like One UI's Weather: the place and the
  * temperature over the sky, the next 24 hours as a curve, today against yesterday, the week, and the details.
  * GTK4, so scrolling is the GPU moving what is already drawn; the page scrolls in libspongy's view (a fling, and
- * a stretch at the ends), like the other VibeOS apps, where it is installed.
+ * a stretch at the ends), like the other VibeOS apps. Its ⋮ menu, Set City and About are libvibeos's, as theirs.
  *
- * Where: the first city in GNOME Weather, if it has one; otherwise where the phone is, from GeoClue at city accuracy,
- * named by OpenStreetMap's Nominatim. The place is kept in ~/.cache/vibeos-launcher/weather.json (lat, lon, place), so
- * the page opens on the last place at once and moves when the phone has.
+ * Where: the city chosen in Set City, if there is one (kept in vibeos.Weather's city; Open-Meteo's geocoding finds
+ * the cities as their name is typed); otherwise the first city in GNOME Weather, if it has one; otherwise where the
+ * phone is, from GeoClue at city accuracy, named by OpenStreetMap's Nominatim. "Use my location" in Set City goes back
+ * from a chosen city to the last two. The place shown is kept in ~/.cache/vibeos-launcher/weather.json (lat, lon,
+ * place), so the page opens on the last place at once and moves when the phone has, and the home screen's widget can
+ * show the same place.
  * What: one Open-Meteo forecast (no key) with yesterday in it (past_days=1), fetched in curl and kept in
  * ~/.cache/vibeos-launcher/forecast.json; the page shows that at once and asks again when it is 15 minutes old. */
 #include <adwaita.h>
 #include <json-glib/json-glib.h>
 #include <math.h>
-#ifdef HAVE_SPONGY
 #include <spongy-gtk.h>
-#endif
+#include <vibeos.h>
+
+#include "wx-menu.h"
 
 #define STALE_S (15 * 60)
 #define UA "vibeos-weather/1.0 (VibeOS)"
@@ -25,6 +29,9 @@ typedef struct {
   double           lat, lon;
   char            *place;
   gboolean         have_place;
+  gboolean         shown;        /* the body shows a forecast (not a message) */
+  char            *city;         /* the city chosen in Set City, while there is one */
+  GSettings       *settings;     /* vibeos.Weather, where the chosen city is kept; NULL without the schema */
   GDBusConnection *system;
   char            *geo_client;   /* the GeoClue client object, while it looks */
   guint            geo_signal, geo_timeout;
@@ -412,6 +419,7 @@ fill (Page *p, JsonObject *o)
     return;
   for (GtkWidget *ch; (ch = gtk_widget_get_first_child (p->body));)
     gtk_box_remove (GTK_BOX (p->body), ch);
+  p->shown = TRUE;
 
   int code = (int) cur (c, "weather_code");
   gboolean day = cur (c, "is_day") != 0;
@@ -537,6 +545,18 @@ fill (Page *p, JsonObject *o)
   gtk_box_append (GTK_BOX (p->body), label ("Open-Meteo.com", "wx-credit", 0.5));
 }
 
+/* the page without a forecast, saying why */
+static void
+waiting (Page *p, const char *text)
+{
+  for (GtkWidget *ch; (ch = gtk_widget_get_first_child (p->body));)
+    gtk_box_remove (GTK_BOX (p->body), ch);
+  GtkWidget *message = label (text, "wx-summary", 0);
+  gtk_widget_add_css_class (message, "wx-message");
+  gtk_box_append (GTK_BOX (p->body), message);
+  p->shown = FALSE;
+}
+
 /* ---- the forecast, fetched (curl, away from the main loop) and kept ---- */
 
 static char *
@@ -555,6 +575,9 @@ fetched (GObject *src, GAsyncResult *res, gpointer data)
   g_autoptr (JsonParser) jp = json_parser_new ();
   if (!ok || !json_parser_load_from_data (jp, out, -1, NULL) || !JSON_NODE_HOLDS_OBJECT (json_parser_get_root (jp))) {
     g_message ("Open-Meteo gave no answer");
+    /* a forecast shown stays; a page waiting for one says it is not coming */
+    if (!p->shown)
+      waiting (p, "No forecast: Open-Meteo did not answer. Tap reload to try again.");
     return;
   }
   g_autofree char *path = cache_path ("forecast.json");
@@ -674,10 +697,7 @@ nowhere (Page *p)
   gtk_spinner_stop (GTK_SPINNER (p->spinner));
   if (p->have_place)
     return;
-  for (GtkWidget *ch; (ch = gtk_widget_get_first_child (p->body));)
-    gtk_box_remove (GTK_BOX (p->body), ch);
-  gtk_box_append (GTK_BOX (p->body),
-                  label ("No location. Turn on Location in Settings, then tap reload.", "wx-summary", 0));
+  waiting (p, "No location. Turn on Location in Settings, then tap reload, or set a city in the ⋮ menu.");
 }
 
 typedef struct {
@@ -701,10 +721,23 @@ named (GObject *src, GAsyncResult *res, gpointer data)
       if (json_object_has_member (a, keys[i]))
         name = json_object_get_string_member (a, keys[i]);
   }
+  /* a city chosen while the phone was being found wins over where it is */
+  if (n->p->city) {
+    g_free (n);
+    return;
+  }
   /* unnamed: the old name only if the phone is still there */
   gboolean near = n->p->have_place && fabs (n->lat - n->p->lat) <= 0.02 && fabs (n->lon - n->p->lon) <= 0.02;
   use_place (n->p, n->lat, n->lon, name ? name : near ? NULL : "");
   g_free (n);
+}
+
+/* the user's language, two letters, for places' names ("en" in the C locale) */
+static char *
+user_language (void)
+{
+  g_autofree char *lang = g_strndup (g_get_language_names ()[0], 2);
+  return g_strdup (g_strcmp0 (lang, "C") ? lang : "en");
 }
 
 /* the place's name from Nominatim, in the user's language */
@@ -714,10 +747,9 @@ name_place (Page *p, double lat, double lon)
   char la[G_ASCII_DTOSTR_BUF_SIZE], lo[G_ASCII_DTOSTR_BUF_SIZE];
   g_ascii_formatd (la, sizeof la, "%.4f", lat);
   g_ascii_formatd (lo, sizeof lo, "%.4f", lon);
-  g_autofree char *lang = g_strndup (g_get_language_names ()[0], 2);
+  g_autofree char *lang = user_language ();
   g_autofree char *url = g_strdup_printf ("https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14"
-                                          "&lat=%s&lon=%s&accept-language=%s", la, lo,
-                                          g_strcmp0 (lang, "C") ? lang : "en");
+                                          "&lat=%s&lon=%s&accept-language=%s", la, lo, lang);
   const char *argv[] = { "curl", "-sf", "--max-time", "15", "-A", UA, url, NULL };
   GSubprocess *sp = g_subprocess_newv (argv, G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_SILENCE, NULL);
   if (!sp) {
@@ -827,6 +859,11 @@ on_geo_client (GObject *src, GAsyncResult *res, gpointer data)
     return;
   }
   g_variant_get (ret, "(o)", &p->geo_client);
+  /* a city was chosen while GeoClue was asked: it is not needed */
+  if (p->city) {
+    geo_stop (p);
+    return;
+  }
   if (!geo_set (p, "DesktopId", g_variant_new_string ("vibeos.Weather"), &error) ||
       !geo_set (p, "RequestedAccuracyLevel", g_variant_new_uint32 (GEO_CITY), &error)) {
     geo_failed (p, "client setup", error);
@@ -892,11 +929,68 @@ weather_app_city (Page *p)
   return TRUE;
 }
 
+/* where the page is for: a chosen city stays, and is shown already; otherwise GNOME Weather's or the phone's */
 static void
 where (Page *p)
 {
+  if (p->city)
+    return;
   if (!weather_app_city (p))
     locate (p);
+}
+
+/* the city chosen in Set City, from vibeos.Weather: the page is for it, at once */
+static gboolean
+load_city (Page *p)
+{
+  const char *name;
+  double lat, lon;
+
+  if (!p->settings)
+    return FALSE;
+  g_autoptr (GVariant) city = g_settings_get_value (p->settings, "city");
+  g_variant_get (city, "(&sdd)", &name, &lat, &lon);
+  if (!*name)
+    return FALSE;
+  p->city = g_strdup (name);
+  g_free (p->place);
+  p->place = g_strdup (name);
+  p->lat = lat;
+  p->lon = lon;
+  p->have_place = TRUE;
+  save_place (p);
+  return TRUE;
+}
+
+/* a city chosen in Set City: kept, and shown instead of wherever the page was for; GeoClue stops looking */
+static void
+choose_city (Page *p, const char *name, double lat, double lon)
+{
+  gboolean far = !p->have_place || fabs (lat - p->lat) > 0.02 || fabs (lon - p->lon) > 0.02;
+
+  /* the spinner was GeoClue's, if it was looking; the forecast's fetch starts its own */
+  geo_stop (p);
+  gtk_spinner_stop (GTK_SPINNER (p->spinner));
+  g_free (p->city);
+  p->city = g_strdup (name);
+  if (p->settings)
+    g_settings_set (p->settings, "city", "(sdd)", name, lat, lon);
+  /* another place's forecast does not stay up while this one's comes */
+  if (far) {
+    g_autofree char *text = g_strdup_printf ("Getting the weather for %s…", name);
+    waiting (p, text);
+  }
+  use_place (p, lat, lon, name);
+}
+
+/* "Use my location": no chosen city; the page goes back to GNOME Weather's first city or to where the phone is */
+static void
+use_my_location (Page *p)
+{
+  g_clear_pointer (&p->city, g_free);
+  if (p->settings)
+    g_settings_reset (p->settings, "city");
+  where (p);
 }
 
 static void
@@ -904,13 +998,340 @@ page_free (Page *p)
 {
   geo_stop (p);
   g_clear_object (&p->system);
+  g_clear_object (&p->settings);
+  g_free (p->city);
   g_free (p->place);
   g_free (p);
 }
 
+/* ---- Set City: a sheet with a field, and the cities matching what is typed, from Open-Meteo's geocoding ----
+ *
+ * A bottom sheet as tall as the window lets it be, the field at its top. The on-screen keyboard shrinks the window
+ * it opens over (the shell gives the window the space above the keyboard), and the sheet with it: the field stays
+ * where it is, the list of cities under it gets shorter and scrolls. A search waits for a pause in the typing; an
+ * answer for anything but the latest search is dropped, and the search it was for stopped. */
+
+#define SEARCH_DELAY_MS 250     /* the pause in the typing that starts a search */
+#define SEARCH_MIN      2       /* the characters a search needs: fewer would match half the world */
+#define SEARCH_COUNT    8
+
+typedef struct {
+  char  *name;
+  double lat, lon;
+} City;
+
+typedef struct {
+  Page        *p;
+  GtkWidget   *sheet, *text, *clear, *status, *list;
+  GArray      *cities;          /* City: the rows', in order */
+  guint        delay;           /* the pause before the search */
+  guint        serial;          /* the latest search; an answer to an older one is dropped */
+  GSubprocess *curl;            /* the latest search, while it runs */
+  gboolean     gone;            /* the sheet is: answers are dropped */
+} CitySearch;                   /* a g_rc_box: the sheet holds it, and each search running */
+
+typedef struct {
+  CitySearch *search;
+  guint       serial;
+} Query;
+
+static void
+city_clear (gpointer data)
+{
+  g_free (((City *) data)->name);
+}
+
+static void
+search_clear (gpointer data)
+{
+  CitySearch *s = data;
+
+  g_array_unref (s->cities);
+  g_clear_object (&s->curl);
+}
+
+static void
+search_release (gpointer data)
+{
+  g_rc_box_release_full (data, search_clear);
+}
+
+/* the search running, or about to, is not: an answer that still comes is an old one */
+static void
+search_stop (CitySearch *s)
+{
+  s->serial++;
+  g_clear_handle_id (&s->delay, g_source_remove);
+  if (s->curl)
+    g_subprocess_force_exit (s->curl);
+  g_clear_object (&s->curl);
+}
+
+static void
+show_status (CitySearch *s, const char *text)
+{
+  gtk_label_set_text (GTK_LABEL (s->status), text ? text : "");
+  gtk_widget_set_visible (s->status, text != NULL);
+}
+
+static void
+clear_rows (CitySearch *s)
+{
+  vibeos_card_list_remove_all (VIBEOS_CARD_LIST (s->list));
+  g_array_set_size (s->cities, 0);
+}
+
+static void
+on_city_row (VibeosListRow *row, CitySearch *s)
+{
+  City *c = &g_array_index (s->cities, City, GPOINTER_TO_UINT (g_object_get_data (G_OBJECT (row), "wx-city")));
+
+  choose_city (s->p, c->name, c->lat, c->lon);
+  vibeos_sheet_close (VIBEOS_SHEET (s->sheet));
+}
+
+static void
+on_here_row (VibeosListRow *row, CitySearch *s)
+{
+  use_my_location (s->p);
+  vibeos_sheet_close (VIBEOS_SHEET (s->sheet));
+}
+
+/* too little typed to search: no cities; while a city is chosen, the way back to where the phone is */
+static void
+show_idle (CitySearch *s)
+{
+  clear_rows (s);
+  show_status (s, NULL);
+  if (s->p->city) {
+    g_autofree char *now = g_strdup_printf ("Instead of %s", s->p->city);
+    GtkWidget *row = vibeos_list_row_new ("Use my location", now);
+    vibeos_list_row_set_icon (VIBEOS_LIST_ROW (row), "find-location-symbolic");
+    g_signal_connect (row, "clicked", G_CALLBACK (on_here_row), s);
+    vibeos_card_list_append (VIBEOS_CARD_LIST (s->list), row);
+  }
+}
+
+/* under a city's name, where it is: "region, country", each said once */
+static char *
+city_where (JsonObject *o, const char *name)
+{
+  const char *region = json_object_get_string_member_with_default (o, "admin1", NULL);
+  const char *country = json_object_get_string_member_with_default (o, "country", NULL);
+  GString *where = g_string_new (NULL);
+
+  if (region && *region && g_strcmp0 (region, name))
+    g_string_append (where, region);
+  if (country && *country && g_strcmp0 (country, region) && g_strcmp0 (country, name))
+    g_string_append_printf (where, "%s%s", where->len ? ", " : "", country);
+  return g_string_free (where, FALSE);
+}
+
+/* the answer: {"results": [{"name", "latitude", "longitude", "admin1", "country", ...}, ...]}, no results when
+ * nothing matches; NULL when there was no answer */
+static void
+show_cities (CitySearch *s, JsonObject *answer)
+{
+  JsonArray *results = arr (answer, "results");
+
+  clear_rows (s);
+  if (!answer) {
+    show_status (s, "No answer. Check the connection, then type again.");
+    return;
+  }
+  for (guint i = 0; results && i < json_array_get_length (results); i++) {
+    JsonObject *o = json_array_get_object_element (results, i);
+    if (!o || !json_object_has_member (o, "latitude") || !json_object_has_member (o, "longitude"))
+      continue;
+    const char *name = json_object_get_string_member_with_default (o, "name", "");
+    if (!*name)
+      continue;
+    City c = { g_strdup (name), json_object_get_double_member (o, "latitude"),
+               json_object_get_double_member (o, "longitude") };
+    g_autofree char *where = city_where (o, name);
+    GtkWidget *row = vibeos_list_row_new (name, *where ? where : NULL);
+    g_object_set_data (G_OBJECT (row), "wx-city", GUINT_TO_POINTER (s->cities->len));
+    g_array_append_val (s->cities, c);
+    g_signal_connect (row, "clicked", G_CALLBACK (on_city_row), s);
+    vibeos_card_list_append (VIBEOS_CARD_LIST (s->list), row);
+  }
+  show_status (s, s->cities->len ? NULL : "No cities found");
+}
+
+static void
+on_cities (GObject *src, GAsyncResult *res, gpointer data)
+{
+  Query *q = data;
+  CitySearch *s = q->search;
+  g_autofree char *out = NULL;
+  g_autoptr (JsonParser) jp = json_parser_new ();
+  gboolean ok = g_subprocess_communicate_utf8_finish (G_SUBPROCESS (src), res, &out, NULL, NULL) && out &&
+                json_parser_load_from_data (jp, out, -1, NULL) && JSON_NODE_HOLDS_OBJECT (json_parser_get_root (jp));
+
+  if (!s->gone && q->serial == s->serial) {
+    g_clear_object (&s->curl);
+    show_cities (s, ok ? json_node_get_object (json_parser_get_root (jp)) : NULL);
+  }
+  search_release (s);
+  g_free (q);
+}
+
+static gboolean
+search_now (gpointer data)
+{
+  CitySearch *s = data;
+  g_autofree char *typed = g_strstrip (g_strdup (gtk_editable_get_text (GTK_EDITABLE (s->text))));
+  g_autofree char *name = g_uri_escape_string (typed, NULL, FALSE);
+  g_autofree char *lang = user_language ();
+  g_autofree char *url = g_strdup_printf ("https://geocoding-api.open-meteo.com/v1/search?name=%s&count=%d"
+                                          "&language=%s&format=json", name, SEARCH_COUNT, lang);
+  const char *argv[] = { "curl", "-sf", "--max-time", "15", "-A", UA, url, NULL };
+
+  s->delay = 0;
+  s->curl = g_subprocess_newv (argv, G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_SILENCE, NULL);
+  if (!s->curl) {
+    show_cities (s, NULL);
+    return G_SOURCE_REMOVE;
+  }
+  Query *q = g_new (Query, 1);
+  q->search = g_rc_box_acquire (s);
+  q->serial = s->serial;
+  g_subprocess_communicate_utf8_async (s->curl, NULL, NULL, on_cities, q);
+  return G_SOURCE_REMOVE;
+}
+
+/* each change: the search before it is stopped; one starts once the typing pauses. The cities shown stay until the
+ * new ones come. */
+static void
+on_typed (GtkEditable *text, CitySearch *s)
+{
+  g_autofree char *typed = g_strstrip (g_strdup (gtk_editable_get_text (text)));
+
+  gtk_widget_set_visible (s->clear, *gtk_editable_get_text (text) != '\0');
+  search_stop (s);
+  if (g_utf8_strlen (typed, -1) < SEARCH_MIN) {
+    show_idle (s);
+    return;
+  }
+  s->delay = g_timeout_add (SEARCH_DELAY_MS, search_now, s);
+}
+
+/* Enter: the first city found */
+static void
+on_enter (GtkText *text, CitySearch *s)
+{
+  City *c = s->cities->len > 0 ? &g_array_index (s->cities, City, 0) : NULL;
+
+  if (!c)
+    return;
+  choose_city (s->p, c->name, c->lat, c->lon);
+  vibeos_sheet_close (VIBEOS_SHEET (s->sheet));
+}
+
+static void
+on_clear (VibeosPressable *button, CitySearch *s)
+{
+  gtk_editable_set_text (GTK_EDITABLE (s->text), "");
+  gtk_widget_grab_focus (s->text);
+}
+
+static void
+on_search_destroy (GtkWidget *sheet, CitySearch *s)
+{
+  s->gone = TRUE;
+  search_stop (s);
+}
+
+/* the ⋮ menu's Set City */
+static void
+set_city (gpointer data)
+{
+  Page *p = data;
+  CitySearch *s = g_rc_box_new0 (CitySearch);
+  GtkWidget *content = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  GtkWidget *field = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+  GtkWidget *icon = gtk_image_new_from_icon_name ("system-search-symbolic");
+  GtkWidget *scroll = spongy_scroll_view_new ();
+
+  s->p = p;
+  s->cities = g_array_new (FALSE, TRUE, sizeof (City));
+  g_array_set_clear_func (s->cities, city_clear);
+  s->sheet = vibeos_sheet_new ("Set City");
+  vibeos_sheet_set_full_height (VIBEOS_SHEET (s->sheet), TRUE);
+  g_object_set_data_full (G_OBJECT (s->sheet), "wx-city-search", s, search_release);
+  g_signal_connect (s->sheet, "destroy", G_CALLBACK (on_search_destroy), s);
+
+  /* the field: a pill with the magnifier, the text and, once there is text, a button that clears it */
+  gtk_widget_add_css_class (field, "wx-city-field");
+  gtk_image_set_pixel_size (GTK_IMAGE (icon), 24);
+  gtk_widget_add_css_class (icon, "wx-city-icon");
+  gtk_box_append (GTK_BOX (field), icon);
+  s->text = gtk_text_new ();
+  gtk_widget_add_css_class (s->text, "vibeos-search-entry");
+  gtk_widget_set_hexpand (s->text, TRUE);
+  gtk_widget_set_valign (s->text, GTK_ALIGN_CENTER);
+  gtk_text_set_placeholder_text (GTK_TEXT (s->text), "City name");
+  gtk_text_set_input_hints (GTK_TEXT (s->text),
+                            GTK_INPUT_HINT_UPPERCASE_WORDS | GTK_INPUT_HINT_NO_SPELLCHECK | GTK_INPUT_HINT_NO_EMOJI);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (s->text), GTK_ACCESSIBLE_PROPERTY_LABEL, "City name", -1);
+  g_signal_connect (s->text, "changed", G_CALLBACK (on_typed), s);
+  g_signal_connect (s->text, "activate", G_CALLBACK (on_enter), s);
+  gtk_box_append (GTK_BOX (field), s->text);
+  s->clear = vibeos_icon_button_new ("edit-clear-symbolic");
+  gtk_accessible_update_property (GTK_ACCESSIBLE (s->clear), GTK_ACCESSIBLE_PROPERTY_LABEL, "Clear", -1);
+  gtk_widget_set_visible (s->clear, FALSE);
+  g_signal_connect (s->clear, "clicked", G_CALLBACK (on_clear), s);
+  gtk_box_append (GTK_BOX (field), s->clear);
+  gtk_box_append (GTK_BOX (content), field);
+
+  /* why no cities show, when none do */
+  s->status = label (NULL, "wx-city-status", 0);
+  gtk_widget_set_visible (s->status, FALSE);
+  gtk_box_append (GTK_BOX (content), s->status);
+
+  /* the cities, under the field, scrolling */
+  s->list = vibeos_card_list_new ();
+  vibeos_card_list_set_margins (VIBEOS_CARD_LIST (s->list), 8, 16);
+  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), s->list);
+  gtk_widget_set_vexpand (scroll, TRUE);
+  gtk_box_append (GTK_BOX (content), scroll);
+
+  vibeos_sheet_set_content (VIBEOS_SHEET (s->sheet), content);
+  show_idle (s);
+  vibeos_sheet_present (VIBEOS_SHEET (s->sheet), p->win);
+  /* typing at once: the keyboard comes up for a field focused right after a tap */
+  gtk_widget_grab_focus (s->text);
+}
+
+/* ---- About ---- */
+
+/* where the page's data comes from, and on what terms (the About sheet's Legal page) */
+static const VibeosAboutSection wx_legal[] = {
+  { "Open-Meteo",
+    "Weather forecasts by <a href=\"https://open-meteo.com/\">Open-Meteo.com</a>, under "
+    "<a href=\"https://creativecommons.org/licenses/by/4.0/\">CC BY 4.0</a>.\n\n"
+    "Set City finds cities with Open-Meteo's geocoding, on data from "
+    "<a href=\"https://www.geonames.org/\">GeoNames</a>, under CC BY 4.0." },
+  { "OpenStreetMap",
+    "The place's name, where the phone is, from OpenStreetMap's "
+    "<a href=\"https://nominatim.openstreetmap.org/\">Nominatim</a>. Data © "
+    "<a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap contributors</a>, under the "
+    "<a href=\"https://opendatacommons.org/licenses/odbl/\">Open Database License</a> (ODbL)." },
+  { NULL },
+};
+
+static void
+about (gpointer data)
+{
+  Page *p = data;
+  const VibeosAboutInfo info = { .name = "Weather", .icon_name = "vibeos.Weather", .legal = wx_legal };
+
+  vibeos_about_present (p->win, &info);
+}
+
 /* ---- the window ---- */
 
-/* reload: the forecast for the place shown, and where the phone is now */
+/* reload: the forecast for the place shown, and where the phone is now (a chosen city stays) */
 static void
 refresh_clicked (GtkButton *b, Page *p)
 {
@@ -919,7 +1340,19 @@ refresh_clicked (GtkButton *b, Page *p)
   where (p);
 }
 
-/* back (Alt+Left from VibeOS's edge swipe) and Escape close the page, back to the home screen */
+/* ⋮: the menu, over the button */
+static void
+more_clicked (GtkButton *button, Page *p)
+{
+  WxMenu *menu = wx_menu_new ();
+
+  wx_menu_append (menu, "Set City", set_city, p);
+  wx_menu_append (menu, "About", about, p);
+  wx_menu_present (menu, GTK_WIDGET (button));
+}
+
+/* back (Alt+Left from VibeOS's edge swipe) and Escape close the page, back to the home screen; while the menu or a
+ * sheet shows, they close that instead (their own keys come first: the focus is in them) */
 static void
 add_back (GtkWidget *win)
 {
@@ -948,6 +1381,11 @@ activate (GtkApplication *app, gpointer data)
   g_object_unref (css);
 
   Page *p = g_new0 (Page, 1);
+  GSettingsSchemaSource *schemas = g_settings_schema_source_get_default ();
+  g_autoptr (GSettingsSchema) schema = schemas ? g_settings_schema_source_lookup (schemas, "vibeos.Weather", TRUE)
+                                               : NULL;
+  /* without its schema (run from the build tree) a chosen city lasts as long as the app */
+  p->settings = schema ? g_settings_new_full (schema, NULL, NULL) : NULL;
   GtkWidget *win = p->win = adw_application_window_new (app);
   g_object_set_data_full (G_OBJECT (win), "page", p, (GDestroyNotify) page_free);
   gtk_window_set_title (GTK_WINDOW (win), "Weather");
@@ -964,18 +1402,12 @@ activate (GtkApplication *app, gpointer data)
   set_sky (p, "cloudy");
   p->body = gtk_box_new (GTK_ORIENTATION_VERTICAL, 12);
   gtk_widget_add_css_class (p->body, "wx-body");
-#ifdef HAVE_SPONGY
   GtkWidget *sc = spongy_scroll_view_new ();
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (sc), p->body);
-#else
-  GtkWidget *sc = gtk_scrolled_window_new ();
-  gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (sc), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
-  gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (sc), p->body);
-#endif
   gtk_widget_set_vexpand (sc, TRUE);
   gtk_overlay_add_overlay (GTK_OVERLAY (overlay), sc);
 
-  /* reload floats over the sky, top right; back is the system's (the swipe, or closing the app) */
+  /* reload and the ⋮ menu float over the sky, top right; back is the system's (the swipe, or closing the app) */
   GtkWidget *bar = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_widget_set_valign (bar, GTK_ALIGN_START);
   gtk_widget_set_halign (bar, GTK_ALIGN_END);
@@ -985,25 +1417,41 @@ activate (GtkApplication *app, gpointer data)
   gtk_widget_add_css_class (reload, "flat");
   gtk_widget_add_css_class (reload, "circular");
   g_signal_connect (reload, "clicked", G_CALLBACK (refresh_clicked), p);
+  GtkWidget *more = gtk_button_new_from_icon_name ("view-more-symbolic");
+  gtk_widget_add_css_class (more, "flat");
+  gtk_widget_add_css_class (more, "circular");
+  gtk_accessible_update_property (GTK_ACCESSIBLE (more), GTK_ACCESSIBLE_PROPERTY_LABEL, "More options", -1);
+  g_signal_connect (more, "clicked", G_CALLBACK (more_clicked), p);
   gtk_box_append (GTK_BOX (bar), p->spinner);
   gtk_box_append (GTK_BOX (bar), reload);
+  gtk_box_append (GTK_BOX (bar), more);
   gtk_overlay_add_overlay (GTK_OVERLAY (overlay), bar);
   adw_application_window_set_content (ADW_APPLICATION_WINDOW (win), overlay);
+  /* the menu and the sheets go over everything, in this overlay (libvibeos finds it here) */
+  g_object_set_data (G_OBJECT (win), "vibeos-overlay", overlay);
 
   gtk_window_present (GTK_WINDOW (win));
-  /* the last place at once, then where the phone is now */
-  if (load_place (p)) {
+  /* the chosen city, or the last place, at once; then where the phone is now, without a chosen city */
+  if (load_city (p) || load_place (p)) {
     if (!load_cache (p))
       fetch (p);
   } else
-    gtk_box_append (GTK_BOX (p->body), label ("Finding where you are…", "wx-summary", 0));
+    waiting (p, "Finding where you are…");
   where (p);
+}
+
+/* libvibeos's colours, font and icons, for the menu and the sheets */
+static void
+startup (GApplication *app, gpointer data)
+{
+  vibeos_init ();
 }
 
 int
 main (int argc, char **argv)
 {
   g_autoptr (AdwApplication) app = adw_application_new ("vibeos.Weather", G_APPLICATION_DEFAULT_FLAGS);
+  g_signal_connect (app, "startup", G_CALLBACK (startup), NULL);
   g_signal_connect (app, "activate", G_CALLBACK (activate), NULL);
   return g_application_run (G_APPLICATION (app), argc, argv);
 }

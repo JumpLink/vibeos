@@ -1,13 +1,24 @@
-.TH VIBEOS-WEATHER 1 "2026-11-16" "vibeos 0.1.0" "VibeOS"
+.TH VIBEOS-WEATHER 1 "2026-11-17" "vibeos 0.1.0" "VibeOS"
 .SH NAME
 vibeos-weather \- weather app for VibeOS
 .SH SYNOPSIS
 .B vibeos-weather
 .SH DESCRIPTION
 Shows the weather where the phone is: now, the next 24 hours, today against yesterday, the week and the details.
-The place is the first city in GNOME Weather if it has one, otherwise where GeoClue puts the phone (city accuracy),
-named by OpenStreetMap's Nominatim. The forecast is Open-Meteo's (no key). The last place and forecast are kept in
+The place is the city set with
+.B Set City
+in the app's menu, if one is (Open-Meteo's geocoding finds the cities as their name is typed; the city is kept in the
+.B vibeos.Weather
+setting
+.BR city );
+otherwise the first city in GNOME Weather if it has one, otherwise where GeoClue puts the phone (city accuracy),
+named by OpenStreetMap's Nominatim.
+.B Use my location
+in Set City goes back from a set city to those. The forecast is Open-Meteo's (no key). The last place and forecast
+are kept in
 .I ~/.cache/vibeos-launcher/
-so the app opens on them at once.
+so the app opens on them at once. The menu's
+.B About
+says where the data comes from and under which licences.
 .SH SEE ALSO
 geoclue(5)

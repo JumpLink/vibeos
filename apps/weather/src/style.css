@@ -12,6 +12,7 @@ window.wx { color: white; background-color: #26305a; }
 .wx-card { background-color: alpha(#1e2648, 0.72); border-radius: 26px; padding: 18px; }
 .wx-card separator { background-color: alpha(white, 0.25); min-height: 1px; }
 .wx-summary { font-size: 17px; font-weight: bold; }
+.wx-message { margin: 64px 18px 0 18px; }          /* the page without a forecast: under reload and the menu */
 .wx-dim { color: alpha(white, 0.75); font-size: 14px; }
 .wx-small { font-size: 13px; font-weight: bold; color: alpha(white, 0.85); }
 .wx-big { font-size: 18px; font-weight: bold; }
@@ -25,3 +26,24 @@ window.wx { color: white; background-color: #26305a; }
 .wx-credit { font-size: 11px; color: alpha(white, 0.5); }
 .wx-sun { color: #ffcc40; }
 .wx-moon { color: #ccd8f2; }
+
+/* The ⋮ menu (wx-menu.c) and Set City's sheet are libvibeos's, as in the other VibeOS apps: its colours, and its font,
+ * which this window does not have of its own */
+.wx-menu {
+  background-color: @vibeos_surface_container;
+  border-radius: 4px;
+  padding: 8px 0;
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
+}
+.wx-menu-text { font-size: 16px; font-weight: 700; color: @vibeos_on_surface; }
+/* Set City's field: a pill, as VibeOS's search bar */
+.wx-city-field {
+  background-color: @vibeos_surface_container_highest;
+  border-radius: 28px;
+  min-height: 56px;
+  margin: 4px 16px 0 16px;
+  padding: 0 4px 0 16px;
+}
+.wx-city-icon { color: @vibeos_on_surface_variant; margin-right: 12px; }
+.wx-city-field placeholder { color: @vibeos_on_surface_variant; }
+.wx-city-status { font-size: 14px; font-weight: 700; color: @vibeos_on_surface_variant; margin: 20px 24px 0 24px; }
