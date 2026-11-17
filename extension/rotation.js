@@ -1,7 +1,10 @@
 // A phone turns its apps, not itself: the lock screen is portrait and so is the home screen (a launcher's "Allow home
 // screen rotation" is off by default on a phone). With GNOME's orientation lock
 // (Android's auto-rotate) off, the panel follows the phone only while an app is in front; locked, at home or in the app
-// drawer it is upright, and an app going away turns it back. An app can also have an orientation of its own, as an
+// drawer it is upright, and an app going away turns it back. An app opens the way the panel is now and turns when the
+// phone is turned after that: the sensor's last reading may be older than the hold (the phone lay flat, or was
+// turned while it was held), and applied as the app opened it turned an app started upright sideways (2026-11-17).
+// An app can also have an orientation of its own, as an
 // Android app's manifest gives it: X-Phone-Orientation=landscape in its desktop file (a game) keeps the panel sideways
 // while it is in front, however the phone is held, or lies on the table; X-Phone-Orientation=portrait keeps it
 // upright (an app laid out for portrait only). Mutter's orientation manager turns the panel with the accelerometer;
@@ -29,9 +32,6 @@ const SEASCAPE = 1;             // 90: the phone turned right, its left side up
 const LANDSCAPE = 3;            // 270: turned left, its right side up (what an app asking for landscape gets)
 const FOLLOW = -1;              // not a transform: the panel follows the phone
 const TEMPORARY = 1;            // MetaMonitorsConfigMethod
-// mutter claims the sensor again when let go and turns the panel only on a change of its reading: held as it was
-// before, the phone would stay upright. Its reading is fresh by then.
-const RESYNC_MS = 700;
 // a shell started sideways is built anyway if the panel has not turned by then
 const UPRIGHT_TIMEOUT_MS = 2000;
 
@@ -272,16 +272,9 @@ export class Rotation {
         if (!this._held)
             return;
         this._held = false;
+        // mutter claims the sensor again and turns the panel on the next change of its reading only
         this._inhibit(false);
         this._cancelResync();
-        this._resyncId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, RESYNC_MS, () => {
-            this._resyncId = 0;
-            const o = this._sensor.get_orientation();
-            if (!this._touchscreen.get_boolean(LOCK_KEY) && this._sensor.has_accelerometer &&
-                o !== Meta.Orientation.NORMAL && o !== Meta.Orientation.UNDEFINED)
-                this._sensor.emit('orientation-changed');
-            return GLib.SOURCE_REMOVE;
-        });
     }
 
     // call back once the panel is upright (at once if it is): the id to cancel it with, 0 if called already
