@@ -1,0 +1,169 @@
+.TH VIBEOS-SANDBOX 1 "2026-11-17" "vibeos 0.1.1" "VibeOS"
+.SH NAME
+vibeos-sandbox \- runs the apps installed from Software in a sandbox, with the permissions the user gave them
+.SH SYNOPSIS
+.B vibeos-sandbox run
+.RB [ \-\-file\-forwarding ]
+.I APP-ID
+.B \-\-
+.I COMMAND
+.RI [ ARG ...]
+.br
+.B vibeos-sandbox add
+.RB [ \-\-origin=store | file ]
+.I PACKAGE
+\&...
+.br
+.B vibeos-sandbox remove
+.I PACKAGE
+\&...
+.br
+.B vibeos-sandbox sync
+.RB [ \-\-wait ]
+.RB [ \-\-history\-client=\fITEXT\fR ]
+.br
+.B vibeos-sandbox list
+.br
+.B vibeos-sandbox permissions
+.I APP-ID
+.br
+.B vibeos-sandbox set
+.I APP-ID PERMISSION
+.BR allow | ask | deny
+.br
+.B vibeos-sandbox clear-cache
+.I PACKAGE
+.br
+.B vibeos-sandbox ps
+.br
+.B vibeos-sandbox kill
+.I APP-ID
+.SH DESCRIPTION
+The apps installed from Software, or from a .deb file with App Installer, run sandboxed. VibeOS's own apps do not.
+.PP
+.B run
+starts
+.I COMMAND
+as the app
+.I APP-ID
+in a sandbox made with bubblewrap: the system's
+.IR /usr ,
+.I /etc
+and
+.I /opt
+read-only, a home of its own where the user's home is
+.RI ( ~/.local/share/vibeos-sandbox/data/ PACKAGE ),
+its own
+.I /tmp
+and processes, the compositor's, PipeWire's and PulseAudio's sockets, the GPU, and a session bus filtered by
+xdg-dbus-proxy (in a bubblewrap of its own). It never sees the system bus, the sound cards or the input devices.
+A /.flatpak-info names the app, so the portals (the file chooser, the location, the camera, notifications, running
+in the background), PipeWire and GNOME Shell treat it as they treat a Flatpak app. With
+.BR \-\-file\-forwarding ,
+the files and URIs between
+.B @@
+(or
+.BR @@u )
+and
+.B @@
+in the command are the ones the user opened with the app: they go to it through the document portal.
+.B vibeos-sandbox
+stays outside as the sandbox's supervisor and takes everything away when the app ends.
+.PP
+.B add
+sandboxes the apps of the installed packages: for each app, a desktop file in
+.I ~/.local/share/applications
+that starts it with
+.BR "vibeos-sandbox run" ,
+the same for its D-Bus services in
+.IR ~/.local/share/dbus-1/services ;
+its autostart entries are hidden in
+.I ~/.config/autostart
+unless the app may run in the background, and its systemd user units are masked. The package's own files are never
+changed. A file of the user's own in the way is kept beside it, as
+.IR NAME.vibeos-sandbox-saved ,
+and put back by
+.BR remove .
+An app whose desktop id is not one the portals accept (firefox-esr) shows as
+.RI vibeos.app. ID .
+App Installer runs
+.B add
+for what it installs new from Software or from a .deb file.
+.B remove
+stops sandboxing a package; its files in the sandbox stay.
+.PP
+.B sync
+follows what dpkg did: a sandboxed package that was updated gets its files again; one that was uninstalled (removed or
+purged) loses them, and its apps lose what they kept, as on Android: their home in
+.I ~/.local/share/vibeos-sandbox/data/
+(their files and settings) and their entries in the permission store, the documents they were given among them. A
+package that dpkg is still unpacking, configuring or removing is left as it is;
+.B \-\-wait
+waits until dpkg's status has stayed the same for two seconds, and looks again while dpkg wrote it meanwhile or left
+a package half done, for up to ten minutes. The first time, it also sandboxes the packages that
+PackageKit's history says App Installer installed before;
+.B \-\-history\-client
+looks for another program in the history instead, every time it is given. A systemd user unit runs it as the session
+starts, and another one, with
+.BR \-\-wait ,
+whenever dpkg's status changes.
+.PP
+.B clear-cache
+deletes what a sandboxed package's apps keep in their cache (the
+.I .cache
+folder in their home, their XDG_CACHE_HOME); they make it again as they need it. Settings' "Clear cache" runs it.
+.SH PERMISSIONS
+.B permissions
+lists what the app may do, and whether it asks for it;
+.B set
+changes it, and taking a permission away stops the app at once. They are kept in the desktop's permission store
+(xdg-permission-store), where the portals read them too.
+.PP
+An app asks for permissions in its desktop file, with the names below:
+.B X-VibeOS-Permissions=network;camera;
+\&. One it does not name is never allowed, whatever the store says, and
+.B set
+refuses it; an app whose desktop file has no such key may be given any of them. The permissions:
+.TP
+.B network
+allowed by default (to an app that names its permissions, when it names this one); without it the app has a
+network of its own with nothing in it.
+.TP
+.B location
+the location portal asks the first time (\fBask\fR); allowed or not, from then on.
+.TP
+.B camera
+the camera portal asks the first time; allowed, the app also gets the camera devices.
+.TP
+.B microphone
+not allowed by default: WirePlumber hides the microphones from the app, and does not link what it records.
+.TP
+.BR contacts ", " calendar
+not allowed by default: evolution-data-server's address books, or calendars, on the filtered bus.
+.TP
+.BR phone ", " sms
+not allowed by default: the dialer's call service, the messaging app's SMS service.
+.TP
+.B files
+not allowed by default: the shared folders (Documents, Downloads, Music, Pictures, Videos...) and removable media.
+Without it the app gets only the files the user picks in the file chooser or opens with it.
+.TP
+.B background
+an app with no windows left is asked about (\fBask\fR); allowed, its autostart entries run too.
+.PP
+A permission changed takes effect at the app's next start, except the location, the camera, the microphone and
+running in the background, which take effect at once.
+.SH FILES
+.TP
+.I ~/.local/share/vibeos-sandbox/packages/
+one record per sandboxed package: its apps and the files written for them.
+.TP
+.I ~/.local/share/vibeos-sandbox/data/
+one home per sandboxed package; deleted when the package is uninstalled.
+.TP
+.I $XDG_RUNTIME_DIR/.flatpak/
+one directory per running sandbox, as Flatpak's, for the portals.
+.SH SEE ALSO
+.BR bwrap (1),
+.BR xdg-dbus-proxy (1),
+.BR vibeos-installer (1)

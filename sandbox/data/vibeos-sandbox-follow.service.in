@@ -1,0 +1,11 @@
+# Follows what dpkg installs, updates and uninstalls for the sandbox (started by vibeos-sandbox-sync.path). dpkg
+# writes its status after each step of each package, so this waits until it is done with the sandboxed ones: an
+# app half unpacked is neither gone (its data deleted) nor there.
+[Unit]
+Description=Follow what dpkg does to the apps from Software
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+ExecStart=@path@ sync --wait
+TimeoutStartSec=900

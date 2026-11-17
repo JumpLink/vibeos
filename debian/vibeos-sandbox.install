@@ -1,0 +1,7 @@
+usr/bin/vibeos-sandbox
+usr/lib/systemd/user/vibeos-sandbox-sync.service
+usr/lib/systemd/user/vibeos-sandbox-follow.service
+usr/lib/systemd/user/vibeos-sandbox-sync.path
+usr/share/wireplumber/scripts/vibeos/sandbox-access.lua
+usr/share/wireplumber/wireplumber.conf.d/60-vibeos-sandbox.conf
+usr/share/pipewire/pipewire-pulse.conf.d/60-vibeos-sandbox.conf
