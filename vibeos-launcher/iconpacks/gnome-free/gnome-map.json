@@ -11,6 +11,7 @@
  "vibeos.Dialer.desktop": "phone",
  "vibeos.Dictate.desktop": "dictate",
  "vibeos.Files.desktop": "files",
+ "vibeos.Installer.desktop": "installer",
  "vibeos.Messaging.desktop": "messaging",
  "vibeos.Browser.desktop": "browser",
  "vibeos.Settings.desktop": "settings",

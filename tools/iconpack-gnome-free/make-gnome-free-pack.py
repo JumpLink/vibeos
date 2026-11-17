@@ -46,6 +46,7 @@ ICONS = {
     "dictate":    ("speech_to_text",    "#A5F3FC", "#0E7490"),
     "email":      ("mail",              "#93C5FD", "#2563EB"),
     "download":   ("download",          "#A7F3D0", "#059669"),
+    "installer":  ("package_2",         "#E7B98A", "#9A5B2E"),
 }
 
 # desktop id -> drawable (our apps by their own ids, GNOME's by theirs)
@@ -64,6 +65,7 @@ MAP = {
     "vibeos.Weather.desktop": "weather", "org.gnome.Weather.desktop": "weather",
     "vibeos.Files.desktop": "files", "org.gnome.Nautilus.desktop": "files",
     "vibeos.Dictate.desktop": "dictate",
+    "vibeos.Installer.desktop": "installer",
     "org.gnome.Console.desktop": "terminal", "org.gnome.Ptyxis.desktop": "terminal",
     "org.gnome.Loupe.desktop": "gallery",
     "org.gnome.Papers.desktop": "documents", "org.gnome.Evince.desktop": "documents",

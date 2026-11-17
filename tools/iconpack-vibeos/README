@@ -12,14 +12,15 @@ a line in ICONS (glyph, background, glyph colour) and its desktop id in MAP.
 Provenance: the tile is the launcher's own squircle (icons.c superellipse (), exponent 4). Its size in the canvas
 (0.891), its drop shadow, the glyph's size against the tile (the glyph's 48-unit box at 0.73 of the tile) and each
 app's colours were measured from the H2O icon pack. H2O is a third-party pack that may not be redistributed. No H2O
-file, image or glyph is used here or shipped: the script holds only those numbers, as data. H2O has no icon for two
-apps, so their colours are our own: android (#3DDC84, Android's green) and dictate (#7C4DFF, a violet).
+file, image or glyph is used here or shipped: the script holds only those numbers, as data. H2O has no icon for three
+apps, so their colours are our own: android (#3DDC84, Android's green), dictate (#7C4DFF, a violet) and installer
+(#A0673A, a cardboard brown).
 The video icon's circle is black (#000000) rather than its H2O counterpart's red, and the console's tile is Compass's
 dark grey (#243048) rather than its counterpart's black. The camera's colours are our own: a white camera on a dark red
 tile (#B71C1C), its lens black. The lens is a hole in the glyph; the script draws a black disc under it (ICONS' lens).
 
-Three glyphs are Font Awesome Free 7.0.0's, solid style, unchanged: "phone" (the phone icon), "comment" (messaging)
-and "camera", in fontawesome/ beside the script (Fonticons, Inc., CC BY 4.0 for the icons; fontawesome/LICENSE.txt; from
+Four glyphs are Font Awesome Free 7.0.0's, solid style, unchanged: "phone" (the phone icon), "comment" (messaging),
+"camera" and "box-open" (App Installer), in fontawesome/ beside the script (Fonticons, Inc., CC BY 4.0 for the icons; fontawesome/LICENSE.txt; from
 @fortawesome/fontawesome-free 7.0.0, svgs/solid/). A Font Awesome glyph fills its 512-unit box, so it is drawn at
 40/48 of the Material glyphs' box, the share a Material glyph's 40 units take of its 48.
 
