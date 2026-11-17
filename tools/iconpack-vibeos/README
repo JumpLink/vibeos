@@ -15,7 +15,7 @@ app's colours were measured from the H2O icon pack. H2O is a third-party pack th
 file, image or glyph is used here or shipped: the script holds only those numbers, as data. H2O has no icon for three
 apps, so their colours are our own: android (#3DDC84, Android's green), dictate (#7C4DFF, a violet) and installer
 (#A0673A, a cardboard brown).
-The video icon's circle is black (#000000) rather than its H2O counterpart's red, and the console's tile is Compass's
+The video icon's circle is dark blue (#0D47A1) rather than its H2O counterpart's red, and the console's tile is Compass's
 dark grey (#243048) rather than its counterpart's black. The camera's colours are our own: a white camera on a dark red
 tile (#B71C1C), its lens black. The lens is a hole in the glyph; the script draws a black disc under it (ICONS' lens).
 
