@@ -3,8 +3,8 @@
 #include "common.glsl"
 
 // Dual Kawase, down: the centre and four diagonal taps; pc.p0.xy = half a source texel × offset
-layout(set = 0, binding = 0) uniform sampler2D tex;
-layout(location = 0) in vec2 v_uv;
+TEX_BINDING uniform sampler2D tex;
+LOC(0) in vec2 v_uv;
 layout(location = 0) out vec4 o;
 
 void main()

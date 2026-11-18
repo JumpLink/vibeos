@@ -72,7 +72,7 @@ text_init (void)
   FcInit ();
   T.fonts = g_hash_table_new (g_str_hash, g_str_equal);
   T.glyphs = g_hash_table_new_full (g_int64_hash, g_int64_equal, g_free, g_free);
-  T.atlas = gfx_tex_new (ATLAS, ATLAS, VK_FORMAT_R8_UNORM);
+  T.atlas = gfx_tex_new (ATLAS, ATLAS, GFX_FORMAT_R8);
   if (!T.atlas)
     return false;
   guint8 *zero = g_malloc0 (ATLAS * ATLAS);

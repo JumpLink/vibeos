@@ -10,18 +10,18 @@ layout(location = 3) in vec4 i_m;       // screen = [m0 m1; m2 m3] p + t
 layout(location = 4) in vec4 i_misc;    // tx ty radius mode
 layout(location = 5) in vec4 i_clip;    // screen x0 y0 x1 y1
 
-layout(location = 0) out vec2 v_uv;
-layout(location = 1) out vec2 v_local;          // from the rect's centre, in its own units
-layout(location = 2) flat out vec4 v_color;
-layout(location = 3) flat out vec4 v_shape;     // half w, half h, radius, mode
-layout(location = 4) flat out vec4 v_clip;
-layout(location = 5) flat out vec4 v_extra;     // the corners' radii (mode 3), the ring's width (mode 4)
+LOC(0) out vec2 v_uv;
+LOC(1) out vec2 v_local;          // from the rect's centre, in its own units
+LOC(2) flat out vec4 v_color;
+LOC(3) flat out vec4 v_shape;     // half w, half h, radius, mode
+LOC(4) flat out vec4 v_clip;
+LOC(5) flat out vec4 v_extra;     // the corners' radii (mode 3), the ring's width (mode 4)
 
 const vec2 corners[6] = vec2[](vec2(0, 0), vec2(1, 0), vec2(0, 1), vec2(0, 1), vec2(1, 0), vec2(1, 1));
 
 void main()
 {
-  vec2 c = corners[gl_VertexIndex];
+  vec2 c = corners[VERTEX_INDEX];
   float mode = i_misc.w;
 
   // Grow the quad by a pixel on every side so the edge can be antialiased; glyph masks are pixel-aligned and come
@@ -37,6 +37,10 @@ void main()
 
   vec2 s = vec2(i_m.x * p.x + i_m.y * p.y, i_m.z * p.x + i_m.w * p.y) + i_misc.xy;
   gl_Position = vec4(s / pc.vp * 2.0 - 1.0, 0.0, 1.0);
+#ifndef VULKAN
+  if (pc.pad.x != 0.0)          // the window, whose rows OpenGL ES counts from the bottom: drawn upside down
+    gl_Position.y = -gl_Position.y;
+#endif
 
   v_uv = mix(i_uv.xy, i_uv.zw, f);
   v_local = (f - 0.5) * i_rect.zw;

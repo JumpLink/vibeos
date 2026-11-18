@@ -1,5 +1,6 @@
-/* The Vulkan device and the swapchain on the launcher's Wayland surface. Vulkan 1.0 only: panvk on a Mali-G76 (Bifrost
- * v7) offers no more, so no dynamic rendering, timeline semaphores or descriptor indexing anywhere in here. */
+/* The Vulkan device and the swapchain on the launcher's Wayland surface, for gfx-vk.c. Vulkan 1.0 only: panvk on a
+ * Mali-G76 (Bifrost v7) offers no more, so no dynamic rendering, timeline semaphores or descriptor indexing anywhere
+ * in here. */
 #pragma once
 
 #include <stdbool.h>
@@ -47,7 +48,9 @@ typedef struct {
   bool                             recreate;
 } Vk;
 
-bool            vk_init          (Vk *vk, struct wl_display *display, struct wl_surface *surface, uint32_t w, uint32_t h);
+/* allow_cpu: a software rasterizer (lavapipe) will do when no GPU can present; without it, no GPU fails */
+bool            vk_init          (Vk *vk, struct wl_display *display, struct wl_surface *surface, uint32_t w, uint32_t h,
+                                  bool allow_cpu);
 bool            vk_resize        (Vk *vk, uint32_t w, uint32_t h);
 uint32_t        vk_memory_type   (Vk *vk, uint32_t type_bits, VkMemoryPropertyFlags flags);
 bool            vk_alloc_buffer  (Vk *vk, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags flags,
@@ -61,7 +64,7 @@ VkFrame        *vk_frame         (Vk *vk);
 VkCommandBuffer vk_oneshot_begin (Vk *vk);
 void            vk_oneshot_end   (Vk *vk, VkCommandBuffer cmd);
 
-void            vk_destroy       (Vk *vk);
+void            vk_destroy       (Vk *vk);     /* what vk_init made, all of it or as far as it got */
 
 #define VK_CHECK(x) do { VkResult r_ = (x); if (r_ != VK_SUCCESS) { \
     g_warning ("%s:%d: %s = %d", __FILE__, __LINE__, #x, r_); return false; } } while (0)

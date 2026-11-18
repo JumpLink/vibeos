@@ -13,6 +13,8 @@ Build-Depends: debhelper-compat (= 13),
                gir1.2-gtk-4.0-dev,
                libadwaita-1-dev (>= 1.5),
                libvulkan-dev,
+               libegl-dev,
+               libgles-dev,
                libwayland-dev,
                libxkbcommon-dev,
                wayland-protocols,
@@ -190,11 +192,13 @@ Provides: neo-launcher
 Depends: ${shlibs:Depends},
          ${misc:Depends},
 Recommends: mesa-vulkan-drivers,
-Description: home screen of VibeOS, in Vulkan
+            libegl-mesa0,
+Description: home screen of VibeOS, in Vulkan or OpenGL ES
  The VibeOS launcher is the home screen of VibeOS: pages with a dock, an app
  drawer that follows the finger, widgets, icon packs and icon shapes, and
- parallax wallpapers. It is a Wayland client drawn with Vulkan 1.0 and
- scrolls with libspongy's Android physics.
+ parallax wallpapers. It is a Wayland client drawn with Vulkan 1.0, or with
+ OpenGL ES 3.0 where the GPU has no Vulkan driver, and scrolls with
+ libspongy's Android physics.
  .
  It is started by the vibeos GNOME Shell extension, which makes its
  window the desktop.
