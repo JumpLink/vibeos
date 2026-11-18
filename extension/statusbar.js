@@ -1,5 +1,6 @@
 // The status bar: 116 px tall, clock and notification icons on the left, mobile signal, Wi-Fi and the
-// unified battery on the right, ending where the S10e's camera hole begins. It replaces the mobile shell's top
+// unified battery on the right, ending where a camera hole at the bar's end begins (the S10e's), or clear of a punch
+// hole in its middle (the S20 FE's). It replaces the mobile shell's top
 // panel, reserves its height for maximized windows (strut), is transparent with white icons over the launcher and
 // black over an app, and hides under a fullscreen app.
 import Clutter from 'gi://Clutter';
@@ -49,6 +50,26 @@ const SIGNAL_STEP = 6;
 const WIFI_W = ICON_H * 16.21 / 12;     // ic_wifi_N viewport 16.21 x 12
 const BATTERY_H = 39;                   // the body's vector is 24 x 13 units, r 4: BATTERY_VP px a unit
 const BATTERY_VP = BATTERY_H / 13;
+
+// Where a hole sits in a status row W px wide and @height tall, from its box there ([x, y, width, height], screen
+// px): 'start' (the clock clears it), 'end' (the system icons stop CUTOUT_GAP before it), 'middle' (a punch hole
+// near the centre: the clock and the notification icons stay left of it and the system icons end where they would
+// without one, as Android's StatusBarContentInsetsProvider splits the bar around it), or null (not in the row)
+export function holePlace([x, y, w, h], W, height = BAR_HEIGHT) {
+    if (h <= 0 || y >= height)
+        return null;
+    if (x + w < W / 3)
+        return 'start';
+    if (x > W * 2 / 3)
+        return 'end';
+    return 'middle';
+}
+
+// Where the system icons end in a status row W px wide, screen px: CUTOUT_GAP before a hole at the row's end, else
+// OPEN_END short of the edge. Upright on the S10e (hole from 931) 889, on the S20 FE (hole in the middle) 995.
+export function systemEnd(hole, W, height = BAR_HEIGHT) {
+    return holePlace(hole, W, height) === 'end' ? hole[0] - CUTOUT_GAP : W - OPEN_END;
+}
 
 const FILL = {
     default: [255, 255, 255],
@@ -344,6 +365,8 @@ class StatusBar extends St.Widget {
         this._home = home;
         this._cutout = cutout;
         this._clockInkX = CLOCK_INK_X;
+        this._notificationsEnd = Infinity;  // where the notification icons stop: before a hole in the bar's middle
+        this._notificationCount = 0;        // sources with a non-silent notification
         this._raise = 0;                // how much higher than upright the content sits (turned: LAND_RAISE)
 
         // black over apps, nothing over the launcher
@@ -414,9 +437,10 @@ class StatusBar extends St.Widget {
         this._layoutNotifications();
     }
 
-    // Upright the hole is at the bar's end (the battery ends CUTOUT_GAP before it). Turned the bar is lower and runs
-    // the panel's whole length, the hole at its start (the clock clears it), at its end (as upright) or on an edge
-    // the bar is not on
+    // Upright the hole is at the bar's end (the S10e: the battery ends CUTOUT_GAP before it) or in its middle (the S20
+    // FE: the notification icons stop CUTOUT_GAP before it, the battery ends as without one). Turned the bar is lower
+    // and runs the panel's whole length, the hole at its start (the clock clears it), at its end (as upright) or on
+    // an edge the bar is not on
     _relayout() {
         const m = Main.layoutManager.primaryMonitor;
         if (!m)
@@ -427,13 +451,12 @@ class StatusBar extends St.Widget {
         this.set_position(m.x, m.y);
         this.set_size(m.width, Math.ceil(px(height)));
         this._background.set_size(m.width, this.height);
-        const [holeX, holeY, holeW, holeH] = this._cutout.rect;
-        const inBar = holeH > 0 && holeY < height;
+        const hole = this._cutout.rect;
         const W = m.width * SCALE;
-        const atStart = inBar && holeX + holeW < W / 2;
-        const atEnd = inBar && !atStart;
-        this._clockInkX = atStart ? holeX + holeW + PAD_START : CLOCK_INK_X;
-        this._system.setEnd(atEnd ? holeX - CUTOUT_GAP : W - OPEN_END);
+        const place = holePlace(hole, W, height);
+        this._clockInkX = place === 'start' ? hole[0] + hole[2] + PAD_START : CLOCK_INK_X;
+        this._notificationsEnd = place === 'middle' ? hole[0] - CUTOUT_GAP : Infinity;
+        this._system.setEnd(systemEnd(hole, W, height));
         this._system.setCenterY(CENTER_Y - this._raise);
         this._syncClock();
     }
@@ -453,6 +476,11 @@ class StatusBar extends St.Widget {
     // an app (not the launcher) is on screen under the bar
     get overApp() {
         return !!this._overApp;
+    }
+
+    // the camera hole the bar keeps clear of
+    get cutout() {
+        return this._cutout;
     }
 
     get clockInkRight() {
@@ -483,12 +511,14 @@ class StatusBar extends St.Widget {
         this._notifications.destroy_all_children();
         const sources = [...this._sources].filter(s =>
             s.notifications.some(n => n.urgency !== 0 /* LOW: silent */));
+        this._notificationCount = sources.length;
         const size = px(NOTIF_GLYPH);
         sources.slice(0, NOTIF_MAX).forEach(source => {
             const icon = notificationIcon(source, size);
             this._notifications.add_child(icon);
         });
-        if (sources.length > NOTIF_MAX) {
+        // the dot stands for the sources without an icon (_layoutNotifications shows it)
+        if (sources.length > 0) {
             const dot = new Canvas({width: px(DOT_RADIUS * 2), height: px(DOT_RADIUS * 2)});
             dot.draw = (cr, w, h) => {
                 cr.arc(w / 2, h / 2, w / 2, 0, 2 * Math.PI);
@@ -500,18 +530,27 @@ class StatusBar extends St.Widget {
         this._layoutNotifications();
     }
 
+    // up to NOTIF_MAX icons after the clock, as many as end before _notificationsEnd, then the dot for the rest
     _layoutNotifications() {
         if (!this._notifications)
             return;
-        let x = this._clockInkRight + NOTIF_GAP;
+        const x0 = this._clockInkRight + NOTIF_GAP;
+        const total = this._notificationCount;
+        const right = n => n < total ? x0 + n * NOTIF_PITCH + DOT_RADIUS * 2 : x0 + (n - 1) * NOTIF_PITCH + NOTIF_ICON;
+        let shown = Math.min(total, NOTIF_MAX);
+        while (shown > 0 && right(shown) > this._notificationsEnd)
+            shown--;
         const centerY = CENTER_Y - this._raise;
+        let i = 0;
         for (const child of this._notifications) {
             if (child instanceof St.Icon) {
-                child.set_position(px(x + (NOTIF_ICON - NOTIF_GLYPH) / 2), px(centerY - NOTIF_GLYPH / 2));
-                x += NOTIF_PITCH;
+                child.visible = i < shown;
+                child.set_position(px(x0 + i * NOTIF_PITCH + (NOTIF_ICON - NOTIF_GLYPH) / 2),
+                    px(centerY - NOTIF_GLYPH / 2));
+                i++;
             } else {
-                child.set_position(px(x), px(centerY - DOT_RADIUS));
-                x += DOT_RADIUS * 2;
+                child.visible = shown < total && right(shown) <= this._notificationsEnd;
+                child.set_position(px(x0 + shown * NOTIF_PITCH), px(centerY - DOT_RADIUS));
             }
         }
     }
