@@ -142,7 +142,7 @@ export default class VibeosExtension extends Extension {
         Main.layoutManager.addTopChrome(this._headsUp.layer);
         overWindows(this._headsUp.layer);
         // the lock screen, over them all (the heads-ups hold back while it is up)
-        this._keyguard = new Keyguard(this._state);
+        this._keyguard = new Keyguard(this._state, this._cutout);
         Main.layoutManager.addTopChrome(this._keyguard.actor);
         overWindows(this._keyguard.actor);
         this._service.setKeyguard(this._keyguard);

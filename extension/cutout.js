@@ -3,7 +3,9 @@
 // built in, from a description a device package installs as display-panels/<compatible>.json under /etc/gmobile or
 // gmobile/ in the data dirs (gmobile 0.7.5 reads only its built-in ones, but parses such a file the same way). No
 // data: no hole. On the S10e (beyond0lte) it is the path LineageOS describes it with, "M 0,0 H -49.67 V 38.67 H 0 V 0 Z
-// @dp @right": a 149 x 116 px box in the top right corner of the upright panel. Upright, the status bar is over it.
+// @dp @right": a 149 x 116 px box in the top right corner of the upright panel. On the S20 FE (r8s) it is LineageOS's
+// box around the punch hole, "M -60,0 h 120 v 120 h -120 Z": 120 x 120 px in the top centre. Upright, the status bar
+// is over it.
 // Turned, it is on a short edge, and apps are kept clear of it: a black band
 // along that edge, which CutoutBand reserves as a strut, and a status bar whose content starts after the hole when
 // the hole is at its end.
@@ -106,6 +108,11 @@ export const Cutout = GObject.registerClass({
     // 'top', 'right', 'bottom' or 'left'; null with another monitor on (the phone docked)
     get side() {
         return this._transform === null ? null : SIDES[this._transform];
+    }
+
+    // the hole on the upright panel, screen px: [x, y, width, height] ([0, 0, 0, 0]: none)
+    get upright() {
+        return this._hole ?? [0, 0, 0, 0];
     }
 
     // how far the hole reaches in from the upright panel's top edge, screen px (0: no hole)

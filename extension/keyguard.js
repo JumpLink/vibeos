@@ -28,7 +28,7 @@ import {animate, clamp, EMPHASIZED_ACCELERATE, FAST_OUT_SLOW_IN, lerp, LINEAR, M
     TOUCH_RESPONSE, VelocityTracker} from './motion.js';
 import {Color, rgba, SHADE_PANEL} from './palette.js';
 import {chargingText} from './state.js';
-import {notificationIcon, SystemIcons} from './statusbar.js';
+import {notificationIcon, SystemIcons, systemEnd} from './statusbar.js';
 import {AndroidText} from './text.js';
 import {wholeFrames} from './redraws.js';
 import {px, screenPixels, SCALE, SCREEN_H, SCREEN_W} from './units.js';
@@ -51,7 +51,7 @@ const DATE_WGHT = 630;
 const DATE_INK_TOP = 541.5;
 const CARRIER_LEFT = 48;
 const CARRIER_INK_TOP = 42;
-const SYSTEM_END = 880;                 // 9 px left of the home status bar's
+const SYSTEM_INSET = 9;                 // the icons end this much left of the home status bar's (880 on the S10e)
 const PILL = {x: 48, y: 664, h: 144, pad: 39, slot: 66, icon: 45, max: 3};
 const PILL_COLOUR = [19, 27, 28];
 const PILL_ICON = [221, 231, 233];
@@ -221,10 +221,12 @@ async function loadCover(uri, width, height, cancellable) {
 }
 
 export class Keyguard extends Signals.EventEmitter {
-    // @state: the SystemState (carrier, battery, the status icons)
-    constructor(state) {
+    // @state: the SystemState (carrier, battery, the status icons); @cutout: the camera hole the status icons keep
+    // clear of
+    constructor(state, cutout) {
         super();
         this._state = state;
+        this._cutout = cutout;
         this._vibeos = vibeosSettings();
         // the wallpaper is the launcher's (GNOME's background, its dark picture under the dark style), as Shell 51's
         // own unlock dialog has it: Settings' Background panel no longer sets the screensaver's picture
@@ -334,8 +336,9 @@ export class Keyguard extends Signals.EventEmitter {
         this.actor.add_child(this._content);
         this._carrier = new AndroidText('', 14, 700, {colour: Color.white, opsz: 16});
         this._content.add_child(this._carrier);
-        this._systemIcons = new SystemIcons(this._state, {end: SYSTEM_END});
+        this._systemIcons = new SystemIcons(this._state, {end: this._systemEnd()});
         this._content.add_child(this._systemIcons);
+        this._cutout.connectObject('changed', () => this._systemIcons.setEnd(this._systemEnd()), this);
         this._clock = new AndroidText('', CLOCK_SIZE, CLOCK_WGHT, {colour: CLOCK_COLOUR});
         this._content.add_child(this._clock);
         this._date = new AndroidText('', DATE_SIZE, DATE_WGHT, {colour: Color.white});
@@ -1080,6 +1083,11 @@ export class Keyguard extends Signals.EventEmitter {
         this._goingAway();
     }
 
+    // where the status icons end, screen px: as the home status bar's on the upright panel, less SYSTEM_INSET
+    _systemEnd() {
+        return systemEnd(this._cutout.upright, SCREEN_W) - SYSTEM_INSET;
+    }
+
     destroy() {
         this._wallpaperLoad?.cancel();
         this._wallpaperLoad = null;
@@ -1096,6 +1104,7 @@ export class Keyguard extends Signals.EventEmitter {
         this._interface.disconnectObject(this);
         this._background.disconnectObject(this);
         this._notificationSettings.disconnectObject(this);
+        this._cutout.disconnectObject(this);
         this._state.disconnectObject(this);
         Main.messageTray.disconnectObject(this);
         for (const source of Main.messageTray.getSources())

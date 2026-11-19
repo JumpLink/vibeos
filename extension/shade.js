@@ -91,7 +91,7 @@ export const Shade = GObject.registerClass({
         });
         this.add_child(this._tint);
 
-        this._qs = new QSPanel(state, this);
+        this._qs = new QSPanel(state, this, statusBar.cutout);
         this.add_child(this._qs);
 
         // the notifications scrim: from stackY down, rounded at the top, half opaque, faded in with f

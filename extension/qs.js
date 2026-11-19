@@ -16,7 +16,7 @@ import {Canvas, hasIcon, paintIcon, VectorIcon} from './icons.js';
 import {animate, animateSpring, clamp, lerp, Spring} from './motion.js';
 import {Color, cogl, font, mix, rgba, setSource, SurfaceEffect} from './palette.js';
 import {openSettings} from './settings.js';
-import {inkBox, SystemIcons} from './statusbar.js';
+import {inkBox, SystemIcons, systemEnd} from './statusbar.js';
 import {px, screenPixels, SCALE, SCREEN_H, SCREEN_W} from './units.js';
 
 // --- geometry, screen px
@@ -66,7 +66,8 @@ const CLOCK_QS = [53, 80];
 const CLOCK_SCALE = 2.57;
 const DATE_QQS = [198, 24];
 const DATE_QS = [49, 189];
-const ICONS_QQS = [912, 42];            // the cluster's right end and centre line
+const ICONS_QQS = [912, 42];            // the cluster's right end and centre line (the end follows the hole: _qqsEnd)
+const QQS_OUTSET = 23;                  // the collapsed header's icons end this much right of the status bar's
 const ICONS_QS = [1031, 204];
 const CARRIER_END = 1019;
 const CARRIER_QQS_TOP = 24;
@@ -550,9 +551,12 @@ class FooterButton extends St.Button {
 
 const ShadeHeader = GObject.registerClass(
 class ShadeHeader extends St.Widget {
-    constructor(state) {
+    // @cutout: the camera hole the collapsed header's icons keep clear of, as the status bar's do
+    constructor(state, cutout) {
         super({width: px(SCREEN_W), height: px(260)});
         this._state = state;
+        this._cutout = cutout;
+        this._qqsEnd = ICONS_QQS[0];
 
         this._clock = new Clutter.Text({font_name: CLOCK_FONT, color: cogl(Color.white)});
         this._bigClock = new Clutter.Text({font_name: CLOCK_BIG_FONT, color: cogl(Color.white), visible: false});
@@ -565,7 +569,9 @@ class ShadeHeader extends St.Widget {
         this._wallClock = new GnomeDesktop.WallClock({time_only: true});
         this._wallClock.connectObject('notify::clock', () => this._syncTime(), this);
         state.connectObject('changed', () => this._syncCarrier(), this);
+        cutout?.connectObject('changed', () => this._syncHole(), this);
         this._q = 0;
+        this._syncHole();
         this._syncTime();
         this._syncCarrier();
     }
@@ -578,6 +584,14 @@ class ShadeHeader extends St.Widget {
         this._bigInk = inkBox(this._bigClock);
         this._dateInk = inkBox(this._date);
         this.setProgress(this._q);
+    }
+
+    // collapsed, the icons end as the status bar's do, QQS_OUTSET further right: 912 on the S10e (before its hole),
+    // 1018 on the S20 FE (its hole is in the middle)
+    _syncHole() {
+        this._qqsEnd = this._cutout ? systemEnd(this._cutout.upright, SCREEN_W) + QQS_OUTSET : ICONS_QQS[0];
+        if (this._clockInk)             // laid out (_syncTime) already
+            this.setProgress(this._q);
     }
 
     _syncCarrier() {
@@ -620,7 +634,7 @@ class ShadeHeader extends St.Widget {
         const date = keyed(DATE_QQS, DATE_QS);
         this._date.set_position(px(date.x) - this._dateInk.x, px(date.y) - this._dateInk.y);
         this._date.opacity = Math.round(255 * date.alpha);
-        const icons = keyed(ICONS_QQS, ICONS_QS);
+        const icons = keyed([this._qqsEnd, ICONS_QQS[1]], ICONS_QS);
         this._icons.set_position(px(icons.x - ICONS_QQS[0]), px(icons.y - ICONS_QQS[1]));
         this._icons.opacity = Math.round(255 * icons.alpha);
 
@@ -636,12 +650,13 @@ class ShadeHeader extends St.Widget {
 
 export const QSPanel = GObject.registerClass(
 class QSPanel extends St.Widget {
-    constructor(state, shade) {
+    // @cutout: the camera hole (cutout.js)
+    constructor(state, shade, cutout) {
         super({width: px(SCREEN_W), height: px(SCREEN_H), clip_to_allocation: false});
         this._state = state;
         this._shade = shade;
 
-        this._header = new ShadeHeader(state);
+        this._header = new ShadeHeader(state, cutout);
         this.add_child(this._header);
 
         this._brightness = new BrightnessSlider(state, shade);
