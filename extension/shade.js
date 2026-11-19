@@ -145,9 +145,12 @@ export const Shade = GObject.registerClass({
         this._pull.connect('cancel', () => this._endDrag(true));
         statusBar.add_action(this._pull);
         // at shutdown the status bar may go first
-        statusBar.connectObject('destroy', () => {
-            this._statusBar = null;
-        }, this);
+        statusBar.connectObject(
+            'destroy', () => {
+                this._statusBar = null;
+            },
+            'content-changed', () => this._syncBarLine(),
+            this);
 
         // drags on the open shade: down expands the QS, up collapses QS and then the shade
         this._pan = new Clutter.PanGesture({
@@ -655,10 +658,12 @@ export const Shade = GObject.registerClass({
         const scrim = notificationScrimAlpha(f);
         this._tint.opacity = Math.round(255 * scrim * (1 - m));
         this._qs.layoutFor({q, squish: 1, contentAlpha: content, mirror: m, slide});
-        // the header's clock and icons take over from the status bar's, which fades as the scrim comes: never the
-        // two sets at once
-        if (this._statusBar)
+        // the header draws the status bar's clock and icons at their places while the shade shows, the bar's own
+        // hidden under them; the rest of the bar fades as the scrim comes
+        if (this._statusBar) {
             this._statusBar.opacity = Math.round(255 * (1 - scrim * (1 - m)));
+            this._statusBar.setLineHidden(this.visible);
+        }
 
         const {panel, header} = layout;
         const top = panel.top + slide + q * (HEIGHT - panel.top);
@@ -700,8 +705,16 @@ export const Shade = GObject.registerClass({
         this._scrim.set_size(px(panel.width), px(panel.height + (panel.roundBottom ? 0 : H)));
         this._qs.remove_clip();
         this._qs.setTablet(layout);
+        this._syncBarLine();
         this._stack.setFrame(layout.rows);
         this._queueApply();
+    }
+
+    // a tablet's header: the clock and the icons where the status bar has them, as it lays them out again (a turn,
+    // the clock's minute)
+    _syncBarLine() {
+        if (this._layout && this._statusBar)
+            this._qs.setBarLine(this._statusBar.contentLine);
     }
 
     _onDestroy() {
@@ -714,8 +727,10 @@ export const Shade = GObject.registerClass({
             global.compositor.get_laters().remove(this._applyId);
         this._ungrab();
         this._statusBar?.remove_action(this._pull);
-        if (this._statusBar)
+        if (this._statusBar) {
             this._statusBar.opacity = 255;
+            this._statusBar.setLineHidden(false);
+        }
         global.window_group.set_scale(1, 1);
         global.window_group.set_translation(0, 0, 0);
     }

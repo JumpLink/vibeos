@@ -40,7 +40,7 @@ const LAND_RAISE = 16;
 const PAD_START = 25;
 const OPEN_END = 85;
 const TABLET_END = 74;                  // a tablet's: the battery's charging bolt ends this far from the edge
-const SYSTEM_SPAN = 300;                // signal, Wi-Fi and the widest battery (228) end to end, and room
+export const SYSTEM_SPAN = 300;         // signal, Wi-Fi and the widest battery (228) end to end, and room
 const ICONS_TAIL = 2;                   // the battery's antialiased edge past its end
 const ICON_GAP = 19;                    // between signal, Wi-Fi and battery
 const ICON_H = 36;                      // signal and Wi-Fi
@@ -301,7 +301,15 @@ class SystemIcons extends Canvas {
         }, this);
     }
 
-    // the icons' vertical centre, screen px of the area
+    // where the icons end and their vertical centre, screen px of the area
+    get end() {
+        return this._end;
+    }
+
+    get centerY() {
+        return this._centerY;
+    }
+
     setCenterY(centerY) {
         if (centerY === this._centerY)
             return;
@@ -330,8 +338,10 @@ class SystemIcons extends Canvas {
     }
 });
 
-export const StatusBar = GObject.registerClass(
-class StatusBar extends St.Widget {
+export const StatusBar = GObject.registerClass({
+    // the clock's text or the bar's layout changed (contentLine)
+    Signals: {'content-changed': {}},
+}, class StatusBar extends St.Widget {
     constructor(state, home, cutout) {
         const monitor = Main.layoutManager.primaryMonitor;
         super({
@@ -416,6 +426,7 @@ class StatusBar extends St.Widget {
         this._clock.set_position(px(this._clockInkX) - ink.x, px(CLOCK_INK_TOP - this._raise) - ink.y);
         this._clockInkRight = this._clockInkX + ink.width * SCALE;
         this._layoutNotifications();
+        this.emit('content-changed');
     }
 
     // Upright the hole is at the bar's end (the battery ends CUTOUT_GAP before it). Turned the bar is lower and runs
@@ -440,6 +451,26 @@ class StatusBar extends St.Widget {
         this._system.setEnd(atEnd ? holeX - CUTOUT_GAP : W - (TABLET ? TABLET_END : OPEN_END));
         this._system.setCenterY(CENTER_Y - this._raise);
         this._syncClock();
+    }
+
+    // Where the clock and the system icons are, for a tablet's shade header to draw its own at the same place: the
+    // clock's text and font, its ink's start and top, the icons' end and centre line (screen px)
+    get contentLine() {
+        return {
+            clockText: this._clock.text,
+            clockFont: this._clock.font_name,
+            clockInkX: this._clockInkX,
+            clockInkTop: CLOCK_INK_TOP - this._raise,
+            systemEnd: this._system.end,
+            centerY: this._system.centerY,
+        };
+    }
+
+    // The clock and the system icons hidden while a tablet's shade draws them over the bar at the same place: one
+    // set drawn over the other would thicken their edges
+    setLineHidden(hidden) {
+        this._clock.visible = !hidden;
+        this._system.visible = !hidden;
     }
 
     // the bar's height in screen px: 116 upright, 84 turned or on a tablet

@@ -18,7 +18,7 @@ import {Canvas, hasIcon, paintIcon, VectorIcon} from './icons.js';
 import {animate, animateSpring, clamp, lerp, Spring} from './motion.js';
 import {Color, cogl, font, mix, rgba, setSource, SurfaceEffect, TabletShade} from './palette.js';
 import {openSettings} from './settings.js';
-import {inkBox, SystemIcons} from './statusbar.js';
+import {BAR_HEIGHT, inkBox, SYSTEM_SPAN, SystemIcons} from './statusbar.js';
 import {px, screenPixels, SCALE, SCREEN_H, SCREEN_W, TABLET} from './units.js';
 
 // --- geometry, screen px
@@ -80,7 +80,6 @@ const HEADER_DISPLACEMENT = 0.1066;
 // a tablet's header: a 56 dp row, the date 8 dp past the clock
 const TABLET_HEADER_H = 168;
 const TABLET_DATE_GAP = 24;
-const TABLET_ICONS_SPAN = 1200;
 
 // fonts (Google Sans Flex, rounded)
 const TILE_LABEL_FONT = font(14, 600);
@@ -794,11 +793,13 @@ class ShadeHeader extends St.Widget {
         this._bigClock = new Clutter.Text({font_name: CLOCK_BIG_FONT, color: cogl(Color.white), visible: false});
         this._date = new Clutter.Text({font_name: DATE_FONT, color: cogl(Color.white)});
         this._carrier = new Clutter.Text({font_name: CARRIER_FONT, color: cogl(Color.white), opacity: 0});
-        // a tablet's header is a row across the screen: its icons' canvas covers only their end of it
+        // a tablet's icons are the status bar's, on a canvas of its size: a drawing area of a fractional size
+        // stretches its whole-pixel texture over it, and two sizes would draw the same icons a fraction apart
         this._icons = new SystemIcons(state, TABLET
-            ? {end: ICONS_QQS[0], centerY: ICONS_QQS[1], height: TABLET_HEADER_H, span: TABLET_ICONS_SPAN}
+            ? {end: ICONS_QQS[0], centerY: ICONS_QQS[1], height: BAR_HEIGHT, span: SYSTEM_SPAN}
             : {end: ICONS_QQS[0], centerY: ICONS_QQS[1], height: 116});
         this._tabletHeader = null;
+        this._barLine = null;
         for (const child of [this._icons, this._clock, this._bigClock, this._date, this._carrier])
             this.add_child(child);
 
@@ -812,7 +813,11 @@ class ShadeHeader extends St.Widget {
 
     _syncTime() {
         const now = GLib.DateTime.new_now_local();
-        this._clock.text = this._bigClock.text = now.format('%H:%M');
+        const time = now.format('%H:%M');
+        this._bigClock.text = time;
+        // a tablet's clock is the status bar's (setBarLine)
+        if (!this._barLine)
+            this._clock.text = time;
         this._date.text = now.format('%a, %b %-d');
         this._clockInk = inkBox(this._clock);
         this._bigInk = inkBox(this._bigClock);
@@ -829,29 +834,51 @@ class ShadeHeader extends St.Widget {
         }
     }
 
-    // A tablet's header stays where it is: the clock and the date at its start, the icons at its end, all centred on
-    // one line (@header: clockX, iconsEnd, centerY, screen px)
+    // A tablet's header row spans the screen (@header: width, screen px). Its clock and icons are the status bar's
+    // (setBarLine), and the date follows the clock
     setTablet(header) {
         this._tabletHeader = header;
         this.set_size(px(header.width), px(TABLET_HEADER_H));
-        this._icons.setEnd(header.iconsEnd);
-        this._icons.setCenterY(header.centerY);
+        this.opacity = 255;
         this.setProgress(this._q);
     }
 
+    // A tablet's clock and icons are drawn where the status bar has its own, in its clock's text and font, so they
+    // stay in place all the while the shade opens over the bar and closes (@line: StatusBar.contentLine)
+    setBarLine(line) {
+        this._barLine = line;
+        this._clock.font_name = line.clockFont;
+        this._clock.text = line.clockText;
+        this._clockInk = inkBox(this._clock);
+        if (this._icons.end !== line.systemEnd)
+            this._icons.setEnd(line.systemEnd);
+        this._icons.setCenterY(line.centerY);
+        this.setProgress(this._q);
+    }
+
+    // the date fades in and out with the shade's content; the clock and the icons are there all the while
+    setDateAlpha(alpha) {
+        this._date.opacity = Math.round(255 * alpha);
+    }
+
     _layoutTablet() {
-        const {clockX, centerY} = this._tabletHeader;
+        const line = this._barLine;
         this._bigClock.visible = false;
         this._carrier.visible = false;
-        this._clock.visible = true;
+        this._clock.visible = !!line;
+        this._icons.visible = !!line;
+        this._date.visible = !!line;
+        if (!line)
+            return;
+        // the clock's ink where the status bar's is
         const ink = this._clockInk;
-        const top = px(centerY) - ink.height / 2;
-        this._clock.set_position(px(clockX) - ink.x, top - ink.y);
+        const top = px(line.clockInkTop);
+        this._clock.set_position(px(line.clockInkX) - ink.x, top - ink.y);
         // the date on the clock's baseline, past its end
         const baseline = top + ink.height;
         const dateBaseline = this._date.get_layout().get_baseline() / 1024 / this._date.get_resource_scale();
-        this._date.set_position(px(clockX + TABLET_DATE_GAP) + ink.width - this._dateInk.x, baseline - dateBaseline);
-        this._date.opacity = 255;
+        this._date.set_position(px(line.clockInkX + TABLET_DATE_GAP) + ink.width - this._dateInk.x,
+            baseline - dateBaseline);
         this._icons.set_position(this._icons.x, 0);
         this._icons.opacity = 255;
     }
@@ -999,6 +1026,11 @@ class QSPanel extends St.Widget {
         return this._brightness.dragging;
     }
 
+    // a tablet's: where the status bar has its clock and icons (StatusBar.contentLine)
+    setBarLine(line) {
+        this._header.setBarLine(line);
+    }
+
     // a tablet's layout (shadelayout.js) for the screen as it is turned now
     setTablet(layout) {
         this._tablet = layout;
@@ -1085,7 +1117,7 @@ class QSPanel extends St.Widget {
             q = 1;
         if (q !== this._q)
             this._header.setProgress(q);
-        this._header.opacity = Math.round(255 * contentAlpha * keep);
+        this._header.setDateAlpha(contentAlpha * keep);
 
         const content = clamp((q - CONTENT_FADE_FROM) / (1 - CONTENT_FADE_FROM));
         const footer = landscape ? 1 : clamp((q - FOOTER_FADE_FROM) / (1 - FOOTER_FADE_FROM));

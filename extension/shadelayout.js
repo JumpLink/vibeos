@@ -21,7 +21,9 @@ export function tabletShade() {
     if (!TABLET)
         return null;
     const W = WIDTH, H = HEIGHT;
-    const header = {width: W, height: 56 * DP, centerY: 28 * DP, iconsEnd: W - 20 * DP};
+    // the header row across the top: the clock, the date and the icons on the status bar's line (qs.js), the rest of
+    // the shade under it
+    const header = {width: W, height: 56 * DP};
 
     if (W > H) {
         const left = 40 * DP, width = W / 2 - 2 * left;
@@ -33,7 +35,7 @@ export function tabletShade() {
             height: H,
             travel: 300 * DP,
             qsTravel: 0,
-            header: {...header, clockX: 40 * DP},
+            header,
             qs: {
                 left, width, trackEnd: left + width - AUTO_SIZE - AUTO_GAP, autoSize: AUTO_SIZE,
                 qqsRows: 0, qqsTop: 160 * DP, gridTop: 160 * DP, brightnessCY: 120 * DP,
@@ -63,7 +65,7 @@ export function tabletShade() {
         height: H,
         travel: 300 * DP,
         qsTravel: 400 * DP,
-        header: {...header, clockX: 24 * DP},
+        header,
         qs: {
             left, width, trackEnd: left + width - AUTO_SIZE - AUTO_GAP, autoSize: AUTO_SIZE,
             qqsRows: 2, qqsTop: 56 * DP, gridTop: 152 * DP, brightnessCY: 112 * DP,
