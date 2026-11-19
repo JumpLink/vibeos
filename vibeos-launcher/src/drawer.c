@@ -10,7 +10,9 @@
  * The search pill (Settings can take it away; the list then starts where it was) searches the apps:
  * a tap gives it the typing and brings the keyboard up (text-input-v3, wl.c), and the list shows the apps whose name
  * has a word starting with each word typed, then the ones whose generic name or keywords
- * do. Enter opens the first; scrolling the list puts the keyboard away; back, or the sheet closing, ends the search. */
+ * do. Enter opens the first; scrolling the list puts the keyboard away; back, or the sheet closing, ends the search.
+ *
+ * A tablet's sheet floats: narrower than the screen, centred, opaque; a tap beside it closes it as back does. */
 #include <librsvg/rsvg.h>
 #include <math.h>
 #include <xkbcommon/xkbcommon-keysyms.h>
@@ -42,6 +44,8 @@
 #define HINT_RGB             0xA2ADAF
 #define LABEL_RGB            0xDDE7E9
 #define THUMB_RGB            0xB8EBF3      /* also the caret */
+#define TAB_SHEET_RGB        0x11353A      /* a tablet's, opaque */
+#define TAB_SEARCH_RGB       0x102326
 #define CARET_BLINK_MS       500           /* the caret's half period */
 #define CARET_DP             2
 
@@ -76,6 +80,8 @@ static struct {
   float       list_top_amount, list_bottom_amount;
   float       list_top, list_h, cols_x0, col_w, icon, row_h, label_y;
   int         cols;
+  float       sx, sw;              /* the sheet's left and width: the screen's on a phone */
+  bool        outside;             /* the finger came down beside a tablet's sheet */
   /* the search: what is typed into the pill, and the apps it finds (NULL while nothing is typed: every app) */
   bool        focused;             /* the pill takes the typing (the text input is on, the keyboard up) */
   GString    *query;
@@ -126,10 +132,34 @@ drawer_icon_size (void)
   return D.icon;
 }
 
-/* the label's room: LABEL_DRAWER_MAX_DP in a column of 5, and what this many columns are wider */
+/* a tablet's drawer for the way it is turned */
+static const TabletDrawer *
+tab (void)
+{
+  return N.W >= N.H ? &TAB_DRAWER_LAND : &TAB_DRAWER_PORT;
+}
+
+/* a tablet's sheet's width: its own, or the screen's less a margin when that is narrower */
+static float
+tab_sheet_w (void)
+{
+  return MIN (dp (tab ()->sheet_w), N.W - 2 * dp (TAB_LIST_SIDE_DP));
+}
+
+/* the first row's icons' top below the list's */
+static float
+first_icon_top (void)
+{
+  return dp (N.tablet ? tab ()->first_icon_top : LIST_ICON_TOP_DP);
+}
+
+/* the label's room: LABEL_DRAWER_MAX_DP in a column of 5, and what this many columns are wider (a tablet's: its
+ * cell's width less a margin each side) */
 float
 drawer_label_width (void)
 {
+  if (N.tablet)
+    return (tab_sheet_w () - 2 * dp (TAB_LIST_SIDE_DP)) / MAX (1, N.drawer_cols) - 2 * dp (TAB_LABEL_SIDE_DP);
   float span = N.W - 2 * dp (WS_SIDE_DP);
   return dp (LABEL_DRAWER_MAX_DP) + span / MAX (1, N.drawer_cols) - span / LABEL_REF_COLS;
 }
@@ -145,7 +175,7 @@ static void
 list_sync (void)
 {
   int rows = ((int) items ()->len + D.cols - 1) / D.cols;
-  float content = dp (LIST_ICON_TOP_DP) + rows * D.row_h;
+  float content = first_icon_top () + rows * D.row_h;
   if (D.list.view_height == 0)
     spongy_list_init (&D.list, D.list_h, content);
   else
@@ -180,15 +210,24 @@ drawer_layout (void)
   if (!N.search)
     search_end ();
   /* without the pill the list starts where the pill was */
-  D.list_top = dp (N.search ? LIST_TOP_DP : SEARCH_TOP_DP);
-  D.list_h = N.H - status_px () - D.list_top;
   D.cols = MAX (1, N.drawer_cols);
-  D.cols_x0 = dp (WS_SIDE_DP);
-  D.col_w = (N.W - 2 * D.cols_x0) / D.cols;
+  if (N.tablet) {
+    D.sw = roundf (tab_sheet_w ());
+    D.sx = roundf ((N.W - D.sw) / 2);
+    D.list_top = dp (N.search ? TAB_LIST_TOP_DP : TAB_SEARCH_TOP_DP);
+    D.cols_x0 = D.sx + dp (TAB_LIST_SIDE_DP);
+  } else {
+    D.sx = 0;
+    D.sw = N.W;
+    D.list_top = dp (N.search ? LIST_TOP_DP : SEARCH_TOP_DP);
+    D.cols_x0 = dp (WS_SIDE_DP);
+  }
+  D.list_h = N.H - status_px () - D.list_top;
+  D.col_w = (D.sw - 2 * (D.cols_x0 - D.sx)) / D.cols;
   /* the icon at its set size while it fits its column (with the press's 1.1); the row grows or shrinks with it */
   D.icon = roundf (MIN (dp (N.drawer_icon_dp), D.col_w / 1.1f));
-  D.row_h = dp (LIST_ROW_DP) + D.icon - roundf (dp (ICON_DP));
-  D.label_y = D.icon + dp (LIST_LABEL_BASELINE_DP - ICON_DP);
+  D.row_h = dp (N.tablet ? tab ()->row : LIST_ROW_DP) + D.icon - roundf (dp (ICON_DP));
+  D.label_y = D.icon + dp ((N.tablet ? TAB_LIST_LABEL_BASELINE_DP : LIST_LABEL_BASELINE_DP) - ICON_DP);
   search_filter ();                /* the apps again (an app installed or removed), or the list's size */
   spongy_edge_init (&D.bump, N.H - status_px ());
 }
@@ -199,11 +238,13 @@ drawer_layout (void)
 static void
 pill_rect (float r[4])
 {
-  r[0] = dp (SEARCH_SIDE_DP);
-  r[1] = dp (SEARCH_TOP_DP);
-  r[2] = N.W - 2 * r[0];
-  r[3] = dp (SEARCH_H_DP);
+  float side = dp (N.tablet ? tab ()->search_side : SEARCH_SIDE_DP);
+  r[0] = D.sx + side;
+  r[1] = dp (N.tablet ? TAB_SEARCH_TOP_DP : SEARCH_TOP_DP);
+  r[2] = D.sw - 2 * side;
+  r[3] = dp (N.tablet ? TAB_SEARCH_H_DP : SEARCH_H_DP);
 }
+
 
 static bool
 pill_hit (float x, float y)
@@ -282,7 +323,7 @@ search_filter (void)
         g_ptr_array_add (D.found, N.sorted->pdata[i]);
     if (!D.found->len) {
       g_autofree char *s = g_strdup_printf ("No apps found matching “%s”", D.query->str);
-      D.none = text_layout (D.search_font, s, N.W - 2 * dp (24), 3, TEXT_CENTER);
+      D.none = text_layout (D.search_font, s, D.sw - 2 * dp (24), 3, TEXT_CENTER);
     }
   }
   list_sync ();
@@ -371,7 +412,7 @@ drawer_search_submit (void)
   if (!D.focused || !D.found || !D.found->len)
     return;
   float x = roundf (D.cols_x0 + (D.col_w - D.icon) / 2);
-  float y = roundf (sheet_top () + D.list_top + dp (LIST_ICON_TOP_DP) - roundf (D.list.offset));
+  float y = roundf (sheet_top () + D.list_top + first_icon_top () - roundf (D.list.offset));
   search_blur ();
   tile_launch (D.found->pdata[0], x, y, D.icon, true);
 }
@@ -586,7 +627,7 @@ drawer_touch_down (float x, float y, double t)
   D.down = true;
   D.down_x = x;
   D.down_y = y;
-  D.dragging = D.decided = D.moved = false;
+  D.dragging = D.decided = D.moved = D.outside = false;
   D.overshot = false;
   D.opening = false;
   spongy_velocity_clear (&D.vel);
@@ -601,7 +642,8 @@ drawer_touch_down (float x, float y, double t)
   }
   D.catch_anim = false;
   D.f_start = D.f;
-  D.list_touch = y >= sheet_top () + D.list_top;
+  D.outside = x < D.sx || x >= D.sx + D.sw;
+  D.list_touch = !D.outside && y >= sheet_top () + D.list_top;
   if (D.list_touch)
     spongy_list_down (&D.list, y, t);
   return true;
@@ -657,7 +699,7 @@ tile_at (float x, float y, float *ix, float *iy)
   float top = sheet_top () + D.list_top;
   if (y < top)
     return NULL;
-  float ly = y - top + roundf (D.list.offset) - dp (LIST_ICON_TOP_DP);
+  float ly = y - top + roundf (D.list.offset) - first_icon_top ();
   int row = (int) floorf (ly / D.row_h), col = (int) floorf ((x - D.cols_x0) / D.col_w);
   if (ly < -dp (8) || col < 0 || col >= D.cols)
     return NULL;
@@ -669,7 +711,7 @@ tile_at (float x, float y, float *ix, float *iy)
   if (i >= items ()->len)
     return NULL;
   *ix = roundf (D.cols_x0 + col * D.col_w + (D.col_w - D.icon) / 2);
-  *iy = roundf (top + dp (LIST_ICON_TOP_DP) + row * D.row_h - roundf (D.list.offset));
+  *iy = roundf (top + first_icon_top () + row * D.row_h - roundf (D.list.offset));
   return items ()->pdata[i];
 }
 
@@ -707,6 +749,9 @@ drawer_touch_up (float x, float y, double t)
       search_blur ();
       tile_launch (tile, ix, iy, D.icon, true);
     }
+  } else if (!D.moved && !D.decided && D.outside) {
+    drawer_back ();                /* a tap beside a tablet's sheet */
+    return;
   } else if (!D.moved && !D.decided && pill_hit (D.down_x, D.down_y)) {
     search_focus ();
   }
@@ -816,7 +861,7 @@ tinted (GfxTex *tex, float x, float y, float w, float h, GfxColor c)
 static void
 draw_list (float top, float view_h)
 {
-  float off = roundf (D.list.offset), row_h = D.row_h, first_icon = dp (LIST_ICON_TOP_DP);
+  float off = roundf (D.list.offset), row_h = D.row_h, first_icon = first_icon_top ();
   GPtrArray *list = items ();
   int first = MAX (0, (int) floorf ((off - first_icon - D.label_y) / row_h)) * D.cols;
   int last = MIN ((int) list->len, ((int) ceilf ((off + view_h) / row_h) + 1) * D.cols);
@@ -831,7 +876,7 @@ draw_list (float top, float view_h)
                GFX_RGBA (LABEL_RGB, 1));
   }
   if (D.none)
-    text_draw (D.none, dp (24), roundf (top + first_icon + dp (16) - off), GFX_RGBA (HINT_RGB, 1));
+    text_draw (D.none, D.sx + dp (24), roundf (top + first_icon + dp (16) - off), GFX_RGBA (HINT_RGB, 1));
 }
 
 /* the pill: the hint, or what is typed (its end in view: the caret is there), and the caret while it has the typing */
@@ -841,7 +886,7 @@ draw_search (void)
   float r[4];
   pill_rect (r);
   float sx = r[0], sy = r[1], sw = r[2], sh = r[3];
-  gfx_rect (sx, sy, sw, sh, sh / 2, GFX_RGBA (SEARCH_RGB, 1));
+  gfx_rect (sx, sy, sw, sh, sh / 2, GFX_RGBA (N.tablet ? TAB_SEARCH_RGB : SEARCH_RGB, 1));
   float isz = dp (24);
   if (D.search_icon)
     tinted (D.search_icon, sx + dp (12), roundf (sy + (sh - isz) / 2), isz, isz, GFX_RGBA (HINT_RGB, 1));
@@ -881,7 +926,7 @@ draw_box (bool list_stretched)
     q->mode = GFX_MODE_TEX;
   } else {
     gfx_save ();
-    gfx_clip (0, lt, N.W, lt + D.list_h);
+    gfx_clip (D.sx, lt, D.sx + D.sw, lt + D.list_h);
     draw_list (lt, D.list_h);
     gfx_restore ();
   }
@@ -891,7 +936,7 @@ draw_box (bool list_stretched)
     float th = dp (FASTSCROLL_H_DP), tw = roundf (dp (FASTSCROLL_W_DP));
     float t0 = lt + dp (FASTSCROLL_TOP_DP), t1 = lt + D.list_h - dp (FASTSCROLL_TOP_DP) - th;
     float y = t0 + (t1 - t0) * CLAMP (D.list.offset / D.list.max_offset, 0, 1);
-    gfx_rect (N.W - tw - dp (FASTSCROLL_END_DP), roundf (y), tw, th, tw / 2, GFX_RGBA (THUMB_RGB, 1));
+    gfx_rect (D.sx + D.sw - tw - dp (FASTSCROLL_END_DP), roundf (y), tw, th, tw / 2, GFX_RGBA (THUMB_RGB, 1));
   }
 }
 
@@ -943,7 +988,10 @@ drawer_draw (void)
   gfx_save ();
   if (scale != 1)
     gfx_scale (scale, scale, N.W / 2.0f, N.H / 2.0f);   /* the apps view and its header, about their centre */
-  gfx_rect (0, top, N.W, N.H - top + r, r, GFX_RGBA (SHEET_RGB, SHEET_ALPHA));
+  if (N.tablet)
+    gfx_rect (D.sx, top, D.sw, N.H - top + r, r, GFX_RGBA (TAB_SHEET_RGB, 1));
+  else
+    gfx_rect (0, top, N.W, N.H - top + r, r, GFX_RGBA (SHEET_RGB, SHEET_ALPHA));
   gfx_save ();
   gfx_translate (0, top);
   if (D.bump_amount != 0 && D.box_target) {

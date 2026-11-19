@@ -10,6 +10,7 @@ import {CollectWhenStill} from './gc.js';
 import {Cutout, CutoutBand} from './cutout.js';
 import {Desktop, isDesktopSession} from './dock.js';
 import {EndMark} from './endmark.js';
+import {FrameLog} from './framelog.js';
 import {syncGtkCss} from './gtkcss.js';
 import {HeadsUp} from './headsup.js';
 import {Home} from './home.js';
@@ -28,7 +29,8 @@ import {Service} from './service.js';
 import {Shade} from './shade.js';
 import {SystemState} from './state.js';
 import {StatusBar, hideShellPanel} from './statusbar.js';
-import {geometry} from './units.js';
+import {Taskbar} from './taskbar.js';
+import {TABLET, geometry} from './units.js';
 import {VolumeDialog} from './volume.js';
 import {WhenLocked} from './whenlocked.js';
 
@@ -47,6 +49,8 @@ export default class VibeosExtension extends Extension {
         const debug = GLib.build_filenamev([GLib.get_user_config_dir(), 'vibeos', 'debug']);
         if (GLib.file_test(debug, GLib.FileTest.EXISTS))
             global.context.unsafe_mode = true;
+        // frame times in the journal while $XDG_RUNTIME_DIR/vibeos-frame-log exists
+        this._frameLog = new FrameLog();
 
         this._keepThroughLock();
 
@@ -139,6 +143,13 @@ export default class VibeosExtension extends Extension {
         overWindows(this._cutoutBand);
         Main.layoutManager.addChrome(this._statusBar, {affectsStruts: true});
         overWindows(this._statusBar);
+        // a tablet's taskbar, over apps and recents
+        if (TABLET) {
+            this._taskbar = new Taskbar(this._service.navigation, this._home);
+            Main.layoutManager.addChrome(this._taskbar.actor);
+            overWindows(this._taskbar.actor);
+            this._service.navigation.taskbar = this._taskbar;
+        }
         // ... and the notification shade pulled from it, above everything
         this._shade = new Shade(this._state, this._statusBar);
         Main.layoutManager.addTopChrome(this._shade);
@@ -231,6 +242,8 @@ export default class VibeosExtension extends Extension {
     }
 
     disable() {
+        this._frameLog?.destroy();
+        this._frameLog = null;
         if (this._keptThroughLock)
             delete Main.extensionManager._getModeExtensions;
         this._keptThroughLock = false;
@@ -272,6 +285,10 @@ export default class VibeosExtension extends Extension {
         this._shade = null;
         this._cutoutBand?.destroy();
         this._cutoutBand = null;
+        if (this._service?.navigation)
+            this._service.navigation.taskbar = null;
+        this._taskbar?.destroy();
+        this._taskbar = null;
         this._statusBar?.destroy();
         this._statusBar = null;
         this._cutout?.destroy();

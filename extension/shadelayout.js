@@ -25,7 +25,7 @@ export function tabletShade() {
 
     if (W > H) {
         const left = 40 * DP, width = W / 2 - 2 * left;
-        const panel = {x: W / 2, top: 56 * DP, startTop: 56 * DP, right: W - 24 * DP, bottom: H - 40 * DP};
+        const panel = {x: W / 2, top: 56 * DP, right: W - 24 * DP, bottom: H - 40 * DP};
         const powerCX = left + width - 20 * DP;
         return {
             landscape: true,
@@ -69,8 +69,7 @@ export function tabletShade() {
             qqsRows: 2, qqsTop: 56 * DP, gridTop: 152 * DP, brightnessCY: 112 * DP,
             footerCY: H - 62 * DP, powerCX, settingsCX: powerCX - FOOTER_PITCH,
         },
-        panel: {x: columnX, top: 248 * DP, startTop: 150 * DP, width: columnW, height: H, radius: PANEL_RADIUS,
-            roundBottom: false},
+        panel: {x: columnX, top: 248 * DP, width: columnW, height: H, radius: PANEL_RADIUS, roundBottom: false},
         rows: {top: ROW_INSET_PORT, left, width, end: H, scrollEnd: H - ROW_END_INSET, clipX: columnX, clipW: columnW},
     };
 }

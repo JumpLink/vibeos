@@ -183,6 +183,7 @@ function takeView() {
     if (kept) {
         kept.root.set({x: m.x, y: m.y, width: m.width, height: m.height, visible: true, scale_x: 1, scale_y: 1,
             translation_x: 0, translation_y: 0});
+        kept.inner.set_size(m.width, m.height);       // (the screen may have turned since)
         kept.inner.background_color = black();
         return kept;
     }
@@ -251,8 +252,15 @@ export class TaskView {
         const m = Main.layoutManager.primaryMonitor;
         this._view = takeView();
         this.root = this._view.root;
+        // The crop works on what the view draws: a window bigger than the screen (one laid out for the screen before
+        // it turned) drew past it and stood out of its card over the next one, uncropped (the tablet, 11-19)
+        if (TABLET)
+            this._view.inner.clip_to_allocation = true;
         this._clone = new Clutter.Clone({source: this.actor, x: this.actor.x - m.x, y: this.actor.y - m.y});
         this._view.inner.add_child(this._clone);
+        this._placeClone();
+        if (TABLET)
+            win.connectObject('size-changed', () => this._placeClone(), this);
         this._effect = this._view.effect;
         this._effect.setAlpha(1);
         this._effect.setHole(0, 0, 0, 0, 0);
@@ -286,29 +294,83 @@ export class TaskView {
         });
     }
 
+    // The window's clone where the window is on screen. On a tablet a maximized window the screen turned under while
+    // it was in recents keeps the size it had until it shows again (mutter lays it out then): its clone covers the
+    // screen below its top as the window will, scaled up and cropped, rather than leave part of its card empty.
+    _placeClone() {
+        const m = Main.layoutManager.primaryMonitor;
+        if (!m || !this.actor)
+            return;
+        let s = 1, x = this.actor.x - m.x, y = this.actor.y - m.y;
+        if (TABLET && this.win.is_maximized()) {
+            const f = this.win.get_frame_rect(), area = this.win.get_work_area_current_monitor();
+            const stale = Math.abs(f.width - area.width) > 1 || Math.abs(f.height - area.height) > 1;
+            if (f.width > 0 && f.height > 0 && stale) {
+                s = Math.max(area.width / f.width, area.height / f.height);
+                x = area.x - m.x - (f.x - this.actor.x) * s;
+                y = area.y - m.y - (f.y - this.actor.y) * s;
+            }
+        }
+        this._clone.set_scale(s, s);
+        this._clone.set_position(x, y);
+    }
+
+    // the screen turned: the view the screen's size again, the window and its dialogs where they are now
+    fit() {
+        const m = Main.layoutManager.primaryMonitor;
+        if (!m)
+            return;
+        this.root.set({x: m.x, y: m.y, width: m.width, height: m.height});
+        this._view.inner.set_size(m.width, m.height);
+        this._placeClone();
+        for (const dialog of this._dialogs) {
+            if (dialog.actor)
+                dialog.clone.set_position(dialog.actor.x - m.x, dialog.actor.y - m.y);
+        }
+    }
+
+    // the window's top below the screen's (px): the status bar's band over an app that is not fullscreen
+    windowTop() {
+        const m = Main.layoutManager.primaryMonitor;
+        if (!m || !this.win.get_compositor_private())
+            return 0;
+        return Math.max(0, this.win.get_frame_rect().y - m.y) * SCREEN_W / m.width;
+    }
+
     // The window's content scaled uniformly to the rect's width (device px), cropped about its middle to the
     // rect's height (or from its top); r the corners on screen (px). Off screen, the card is not drawn at all.
-    place(rect, r, alpha = 1, cropTop = false) {
+    // skip: px of the screen's top left out (a tablet's grid shows the window from its own top, filling the card
+    // and losing a little of its right edge)
+    place(rect, r, alpha = 1, cropTop = false, skip = 0) {
         const sc = this._scale;
         this.rect = rect;
         const visible = alpha > 0 && rect[2] > 0 && rect[0] < SCREEN_W && rect[3] > 0 && rect[1] < SCREEN_H;
         this.root.visible = visible;
         if (!visible)
             return;
-        const s = (rect[2] - rect[0]) / SCREEN_W;
-        const cropH = (rect[3] - rect[1]) / s;
-        const top = cropTop ? 0 : (SCREEN_H - cropH) / 2;
+        let s = (rect[2] - rect[0]) / SCREEN_W;
+        let cropW = SCREEN_W, cropH = (rect[3] - rect[1]) / s;
+        let top = cropTop ? 0 : (SCREEN_H - cropH) / 2;
+        if (skip > 0) {
+            s = Math.max(s, (rect[3] - rect[1]) / (SCREEN_H - skip));
+            cropW = (rect[2] - rect[0]) / s;
+            cropH = (rect[3] - rect[1]) / s;
+            top = skip;
+        }
         this.root.set_pivot_point(0, 0);
         this.root.scale_x = this.root.scale_y = s;
         this.root.translation_x = rect[0] / sc - this.root.x;
         this.root.translation_y = (rect[1] - top * s) / sc - this.root.y;
-        this._effect.setGeometry(this._view.inner, [0, top / sc, SCREEN_W / sc, (top + cropH) / sc],
+        this._effect.setGeometry(this._view.inner, [0, top / sc, cropW / sc, (top + cropH) / sc],
             r / (s * sc), 1 / (s * sc));
         this._effect.setAlpha(alpha);
     }
 
     destroy() {
+        this.win.disconnectObject(this);
         this._clone.destroy();
+        if (TABLET)
+            this._view.inner.clip_to_allocation = false;
         for (const dialog of this._dialogs) {
             dialog.clone.destroy();
             if (dialog.actor) {

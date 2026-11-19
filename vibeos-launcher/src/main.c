@@ -348,7 +348,7 @@ layout_read (int *cols, int *rows)
 {
   *cols = CLAMP (grid_setting ("desktop-grid-columns", TAB_COLS), 3, 8);
   *rows = CLAMP (grid_setting ("desktop-grid-rows", TAB_ROWS), 3, 8);
-  N.drawer_cols = CLAMP (g_settings_get_int (N.settings, "drawer-grid-columns"), 3, 8);
+  N.drawer_cols = CLAMP (grid_setting ("drawer-grid-columns", TAB_DRAWER_COLS), 3, 8);
   N.icon_dp = (N.tablet ? TAB_ICON_DP : ICON_DP) * icon_scale ("desktop-icon-scale");
   N.drawer_icon_dp = ICON_DP * icon_scale ("drawer-icon-scale");
   N.labels = !g_settings_get_boolean (N.settings, "desktop-hide-app-labels");
@@ -531,7 +531,9 @@ on_frame (gpointer data, gint64 time)
   float sdepth = SPRING_DEPTH * drag_spring ();
   bool sharp_home = sdepth > 0;      /* a drag: only the wallpaper blurs, the workspace stays sharp over the scrim */
   float depth = floorf (MAX (MAX (DRAWER_DEPTH * de, nav_depth ()), sdepth) * 256) / 256;
-  float blurring = floorf (MAX (MAX (DRAWER_DEPTH * de, nav_blurs () ? nav_depth () : 0), sdepth) * 256) / 256;
+  /* (a tablet's drawer blurs nothing: its sheet is opaque, the scrim around it plain) */
+  float drawer_blur = N.tablet ? 0 : DRAWER_DEPTH * de;
+  float blurring = floorf (MAX (MAX (drawer_blur, nav_blurs () ? nav_depth () : 0), sdepth) * 256) / 256;
   float radius = MAX (floorf (MIN (1, blurring / BLUR_FULL_DEPTH) * dp (BLUR_MAX_DP)), nav_scrim_blur ());
   float scrim = nav_scrim_alpha ();
   float zoom = 1 + (WALLPAPER_ZOOM - 1) * (1 - depth);

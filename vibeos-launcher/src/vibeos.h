@@ -57,6 +57,26 @@ typedef struct {
 static const TabletGrid TABLET_LAND = { 184, 120, 58, 40.5f, 112, 120 };
 static const TabletGrid TABLET_PORT = { 118, 184, 159.5f, 76.5f, 148, 102 };
 
+/* A tablet's drawer, as Android 17's launcher lays it out on the Galaxy Tab S5e: a sheet of its own width, centred,
+ * under the status bar, opaque over the grey scrim and nothing blurred; the search pill and the cells in from its
+ * sides, 6 columns sharing its width between the insets, the rows a fixed pitch apart. The pill, the list's top and
+ * a label's baseline below its icon are the same either way the screen is turned. */
+typedef struct {
+  float sheet_w;                   /* the sheet's width */
+  float search_side;               /* the search pill in from the sheet's sides */
+  float first_icon_top;            /* the first row's icons' top below the list's */
+  float row;                       /* from one row to the next */
+} TabletDrawer;
+static const TabletDrawer TAB_DRAWER_LAND = { 868, 19.5f, 72.5f, 142 };
+static const TabletDrawer TAB_DRAWER_PORT = { 648, 21, 80.5f, 158 };
+#define TAB_DRAWER_COLS          6
+#define TAB_SEARCH_TOP_DP        28
+#define TAB_SEARCH_H_DP          52.5
+#define TAB_LIST_TOP_DP          74.5
+#define TAB_LIST_SIDE_DP         16            /* the cells in from the sheet's sides */
+#define TAB_LIST_LABEL_BASELINE_DP 78          /* below the icon's top */
+#define TAB_LABEL_SIDE_DP        8             /* a label's room: its cell less this on each side */
+
 #define WALLPAPER_ZOOM           1.10f         /* the wallpaper at home, about the screen centre */
 #define CONTENT_SCALE            0.97f         /* workspace + dock behind the drawer and behind a launch */
 

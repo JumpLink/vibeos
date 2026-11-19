@@ -980,6 +980,8 @@ class NotificationStack extends St.Widget {
         this._clearing = false;
         this._frame = null;             // a tablet's panel (setFrame); the phone's full width without one
         this._rowColors = {};           // ... and its cards' colours
+        this._endShift = 0;             // a tablet's panel on its way in: how far above its place it is now
+        this._clipTop = 0;              // ... and the line it comes out from under
 
         this._header = new SectionHeader();
         this._header.visible = false;
@@ -1007,11 +1009,22 @@ class NotificationStack extends St.Widget {
         return this._rows.size === 0;
     }
 
+    // "No notifications" as shown: 1 with nothing in the stack, 0 with rows, between while they come or go
+    get emptyAlpha() {
+        return this._emptyAlpha.now;
+    }
+
     // Where the rows go and where the stack ends, screen px: the phone's screen less its margins, or a tablet's
-    // notification panel, which the stack is cut to
+    // notification panel, which the stack is cut to (where it is now, on its way in)
     get _bounds() {
-        return this._frame ?? {top: TOP_PADDING, left: SIDE, width: ROW_W, end: SCREEN_H,
-            scrollEnd: SCREEN_H - BOTTOM_INSET, clipX: null, clipW: 0};
+        if (!this._frame) {
+            return {top: TOP_PADDING, left: SIDE, width: ROW_W, end: SCREEN_H, scrollEnd: SCREEN_H - BOTTOM_INSET,
+                clipX: null, clipW: 0};
+        }
+        if (this._endShift === 0)
+            return this._frame;
+        return {...this._frame, end: this._frame.end + this._endShift,
+            scrollEnd: this._frame.scrollEnd + this._endShift};
     }
 
     // a tablet's panel (shadelayout.js: rows) for the screen as it is turned now; the rows wrap their text again
@@ -1031,10 +1044,13 @@ class NotificationStack extends St.Widget {
     }
 
     // stackY: the scrim top (screen px); ratio: the stack's expansion without the shelf
-    // (StackScrollAlgorithm.getExpansionFractionWithoutShelf); alpha: the content alpha
-    layoutFor({stackY, ratio, alpha}) {
+    // (StackScrollAlgorithm.getExpansionFractionWithoutShelf); alpha: the content alpha. A tablet's panel coming
+    // down: endShift moves its end with it, and nothing shows above clipTop (screen px).
+    layoutFor({stackY, ratio, alpha, endShift = 0, clipTop = 0}) {
         this._stackY = stackY;
         this._ratio = ratio;
+        this._endShift = endShift;
+        this._clipTop = clipTop;
         this.opacity = Math.round(255 * alpha);
         this._place();
     }
@@ -1300,8 +1316,11 @@ class NotificationStack extends St.Widget {
             if (actor instanceof Row)
                 actor.setExpansion(state.p);
         }
+        const empty = this._emptyAlpha.now;
         this._emptyAlpha.now = lerp(this._emptyAlpha.from, this._emptyAlpha.to, e);
         this._place();
+        if (this._emptyAlpha.now !== empty)
+            this._shade.stackEmptyChanged?.();
     }
 
     // drop what has faded out
@@ -1323,8 +1342,8 @@ class NotificationStack extends St.Widget {
         const bounds = this._bounds;
         if (bounds.clipX !== null) {
             // a tablet's panel: the stack never shows past it
-            this.set_clip(px(bounds.clipX), px(this._stackY), px(bounds.clipW),
-                px(Math.max(bounds.end - this._stackY, 0)));
+            const clipY = Math.max(this._stackY, this._clipTop);
+            this.set_clip(px(bounds.clipX), px(clipY), px(bounds.clipW), px(Math.max(bounds.end - clipY, 0)));
         } else if (this._scroll > 0) {
             this.set_clip(0, px(this._stackY), px(SCREEN_W), px(SCREEN_H - this._stackY));
         } else {

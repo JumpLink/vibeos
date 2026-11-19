@@ -15,7 +15,7 @@ import {animate, Animator, clamp, FAST_OUT_SLOW_IN, fling, lerp, MIN_FLING_VELOC
     VelocityTracker} from './motion.js';
 import {NotificationStack} from './notifications.js';
 import {Color, rgba, SHADE_PANEL, TabletShade} from './palette.js';
-import {QQS_HEIGHT, QSPanel} from './qs.js';
+import {clipAbove, QQS_HEIGHT, QSPanel} from './qs.js';
 import {wholeFrames} from './redraws.js';
 import {tabletShade} from './shadelayout.js';
 import {geometry, HEIGHT, px, SCALE, SCREEN_H, TABLET} from './units.js';
@@ -42,6 +42,8 @@ const BLUR_VELOCITY_MAX = 3000;
 const ZOOM_LAUNCHER = 0.05;
 const ZOOM_APP = 0.025;
 const MIRROR_MS = 150;                  // the shade fading away around the brightness slider
+const TABLET_FADE_FROM = 0.15;          // a tablet's quick settings and panel fade in over this part of the pull...
+const TABLET_FADE_TO = 0.7;             // ... as they come down
 
 // the content's alpha over the expansion f: 0 below f 0.417, 0.164 at 0.5, 0.837 at 0.7
 export function contentAlpha(f) {
@@ -437,6 +439,12 @@ export const Shade = GObject.registerClass({
         this._queueApply();
     }
 
+    // the stack's "No notifications" came or went: a tablet's panel goes or comes with it
+    stackEmptyChanged() {
+        if (this._layout)
+            this._queueApply();
+    }
+
     _closed() {
         this._f = 0;
         this._q = 0;
@@ -634,29 +642,34 @@ export const Shade = GObject.registerClass({
     }
 
     // A tablet's shade: the screen behind neither blurs nor zooms. An opaque scrim fades in over the first part of
-    // the pull, then the quick settings and the notification panel fade in; upright the panel's top also comes down
-    // with the finger, and the second pull takes it on down off the screen as it fades.
+    // the pull. The quick settings and the notification panel come down with the finger, from a whole pull above
+    // their places, out from under the header, fading in; a fast fling takes them a little past, they spring back,
+    // and closing they go back up the same way. Upright the second pull takes the panel on down off the screen as it
+    // fades. With no notifications there is no panel: "No notifications" on the scrim.
     _applyTablet() {
         const f = this._f, q = this._q, m = this._mirror, layout = this._layout;
         this.visible = f > 0 || this._tracking;
-        const content = contentAlpha(f);
+        const content = FAST_OUT_SLOW_IN(clamp((f - TABLET_FADE_FROM) / (TABLET_FADE_TO - TABLET_FADE_FROM)));
+        const slide = (f - 1) * H + this._over;
 
         const scrim = notificationScrimAlpha(f);
         this._tint.opacity = Math.round(255 * scrim * (1 - m));
-        this._qs.layoutFor({q, squish: 1, contentAlpha: content, mirror: m});
+        this._qs.layoutFor({q, squish: 1, contentAlpha: content, mirror: m, slide});
         // the header's clock and icons take over from the status bar's, which fades as the scrim comes: never the
         // two sets at once
         if (this._statusBar)
             this._statusBar.opacity = Math.round(255 * (1 - scrim * (1 - m)));
 
-        const {panel} = layout;
-        const top = layout.landscape ? panel.top
-            : lerp(panel.startTop, panel.top + this._over, f) + q * (HEIGHT - panel.top);
+        const {panel, header} = layout;
+        const top = panel.top + slide + q * (HEIGHT - panel.top);
         this._stackY = top;
         const alpha = content * (1 - m) * (1 - q);
         this._scrim.set_position(px(panel.x), px(top));
-        this._scrim.opacity = Math.round(255 * alpha);
-        this._stack.layoutFor({stackY: top, ratio: lerp(STACK_START_FRACTION, 1, f), alpha});
+        this._scrim.opacity = Math.round(255 * alpha * (1 - this._stack.emptyAlpha));
+        this._scrim.visible = this._scrim.opacity > 0;
+        clipAbove(this._scrim, px(header.height));
+        this._stack.layoutFor({stackY: top, ratio: lerp(STACK_START_FRACTION, 1, f), alpha,
+            endShift: panel.roundBottom ? slide : 0, clipTop: header.height});
         this.emit('expansion-changed');
     }
 
@@ -683,7 +696,8 @@ export const Shade = GObject.registerClass({
         const r = px(panel.radius).toFixed(2);
         this._scrim.style = `background-color: ${rgba(TabletShade.panel)}; ` +
             `border-radius: ${panel.roundBottom ? `${r}px` : `${r}px ${r}px 0 0`};`;
-        this._scrim.set_size(px(panel.width), px(panel.height));
+        // a panel that runs off the bottom of the screen is a pull longer, so its end never shows on the way down
+        this._scrim.set_size(px(panel.width), px(panel.height + (panel.roundBottom ? 0 : H)));
         this._qs.remove_clip();
         this._qs.setTablet(layout);
         this._stack.setFrame(layout.rows);

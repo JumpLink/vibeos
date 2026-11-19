@@ -20,7 +20,7 @@ import * as Signals from 'resource:///org/gnome/shell/misc/signals.js';
 import {Aod, Panel} from './aod.js';
 import {HardwareKeys} from './keys.js';
 import {animate, bezier, LINEAR} from './motion.js';
-import {geometry} from './units.js';
+import {geometry, TABLET} from './units.js';
 
 Gio._promisify(Gio.DBusProxy.prototype, 'call');
 
@@ -38,6 +38,10 @@ const KEYGUARD_TIMEOUT_MS = 10000;
 const LONG_PRESS_MS = 500;
 // a sleep this soon after waking is taken as a bounce of the key
 const MIN_AWAKE_MS = 300;
+// The tablet's panel hung for good when it was turned on again 0.64 s after it went off, and came back from 1.2 s
+// and 2.2 s (Galaxy Tab S5e, 11-19): a wake sooner than this after its outputs went off waits until then. It counts
+// from mutter putting the outputs in power save, about 0.2 s after they were asked to go off.
+const WAKE_FLOOR_MS = 1500;
 // gnome-session's inhibitor flag for idle (video playback, a presentation)
 const INHIBIT_IDLE = 8;
 // org.gnome.Mutter.DisplayConfig's PowerSaveMode (META_POWER_SAVE_ON, META_POWER_SAVE_OFF)
@@ -88,6 +92,11 @@ export class Power extends Signals.EventEmitter {
         // mutter keeps the outputs on (see above)
         this._monitors = global.backend.get_monitor_manager();
         this._monitors.power_save_blocked = true;
+        // the outputs off for real: the wake floor counts from here
+        this._monitors.connectObject('power-save-mode-changed', () => {
+            if (this._outputsAreOff)
+                this._offAt = GLib.get_monotonic_time();
+        }, this);
         this._panel = new Panel();
         // whatever a shell that crashed asleep left behind
         this._panel.lowPower(false);
@@ -223,13 +232,31 @@ export class Power extends Signals.EventEmitter {
             this._panel.wakeGesture(this._vibeos?.get_boolean('double-tap-wake') !== false);
         });
         this._syncTimeout();
-        this._setActive(true);
+        // (a tablet's: once its outputs have been off for the wake floor, _outputsOff)
+        if (!TABLET)
+            this._setActive(true);
         this.emit('state-changed');
     }
 
     wakeUp(reason) {
         if (this.interactive)
             return;
+        // the panel went off only just now: the wake waits for the floor, from any source (one waiting wake stands for
+        // every one made meanwhile)
+        if (TABLET && this._outputsAreOff) {
+            const wait = this._floorLeft();
+            if (wait > 0) {
+                if (!this._wakeWaitId) {
+                    log(`vibeos: waking up (${reason}) in ${wait} ms: the panel went off just now`);
+                    this._wakeWaitId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, wait, () => {
+                        this._wakeWaitId = 0;
+                        this.wakeUp(reason);
+                        return GLib.SOURCE_REMOVE;
+                    });
+                }
+                return;
+            }
+        }
         log(`vibeos: waking up (${reason})`);
         const from = this._state;
         this._state = State.AWAKE;
@@ -358,10 +385,32 @@ export class Power extends Signals.EventEmitter {
     // the outputs go off for real once the black is up, as gnome-settings-daemon would have them: power_save_blocked
     // comes off for that, and back on before they are turned on again (an "on" goes through it anyway). A panel with
     // a low power mode (the S10e's, whose DSI link does not come back from off) stays on, at its lowest brightness.
+    // what is left of the wake floor, in ms (0 or less: none)
+    _floorLeft() {
+        return Math.ceil(WAKE_FLOOR_MS - (GLib.get_monotonic_time() - this._offAt) / 1000);
+    }
+
     _outputsOff(off) {
         if (this._panel.hasLowPower || off === (this._outputsAreOff ?? false))
             return;
         this._outputsAreOff = off;
+        if (off)
+            this._offAt = GLib.get_monotonic_time();
+        // The screen saver's "active" is gnome-settings-daemon's cue to take the outputs as its to blank, and from
+        // then on any input at all (a touch, a volume key) has it turn them on again by itself, past this file and its
+        // wake floor: on a tablet it is told only once the floor is over
+        if (TABLET && off) {
+            const afterFloor = () => {
+                this._activeId = 0;
+                const left = this._floorLeft();
+                if (left > 0)
+                    this._activeId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, left, afterFloor);
+                else if (!this.interactive && !this._wakeWaitId)
+                    this._setActive(true);
+                return GLib.SOURCE_REMOVE;
+            };
+            this._activeId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, WAKE_FLOOR_MS, afterFloor);
+        }
         this._monitors.power_save_blocked = !off;
         Gio.DBus.session.call('org.gnome.Mutter.DisplayConfig', '/org/gnome/Mutter/DisplayConfig',
             'org.freedesktop.DBus.Properties', 'Set',
@@ -377,6 +426,9 @@ export class Power extends Signals.EventEmitter {
     }
 
     _setActive(active) {
+        if (this._activeId)
+            GLib.source_remove(this._activeId);
+        this._activeId = 0;
         if (active === this._active)
             return;
         this._active = active;
@@ -408,6 +460,12 @@ export class Power extends Signals.EventEmitter {
 
     destroy() {
         this._cancelLongPress();
+        if (this._wakeWaitId)
+            GLib.source_remove(this._wakeWaitId);
+        this._wakeWaitId = 0;
+        if (this._activeId)
+            GLib.source_remove(this._activeId);
+        this._activeId = 0;
         this._fadeAnim?.stop();
         if (this._idleWatch)
             this._idleMonitor.remove_watch(this._idleWatch);
@@ -428,6 +486,7 @@ export class Power extends Signals.EventEmitter {
         this._hideLayer();
         this.layer.destroy();
         this._monitors.power_save_blocked = false;
+        this._monitors.disconnectObject(this);
         this._vibeos?.disconnectObject(this);
         this._session.disconnectObject(this);
     }

@@ -73,6 +73,11 @@ export class Service {
         this._launch.launch(app, from, icon);
     }
 
+    // the navigation (a tablet's taskbar works with it)
+    get navigation() {
+        return this._nav;
+    }
+
     Icons(icons) {
         this._nav.setIcons(icons);
     }

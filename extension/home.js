@@ -21,6 +21,12 @@ export class Home {
         this._destroyed = false;
 
         global.display.connectObject('window-created', (_d, win) => this._windowCreated(win), this);
+        // A turn of the screen: the launcher's window is asked for the turned screen's size. Left alone it kept the
+        // size it had, cut to fit (800 × 800 on the tablet turned upright), and the launcher drew in that square.
+        Main.layoutManager.connectObject('monitors-changed', () => {
+            if (this._window)
+                this._fitWindow(this._window);
+        }, this);
         this._spawn();
         this._takeOverview();
         this._stack = new SingleStack(this);

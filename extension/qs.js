@@ -7,6 +7,7 @@ import GLib from 'gi://GLib';
 import GnomeDesktop from 'gi://GnomeDesktop';
 import GObject from 'gi://GObject';
 import Pango from 'gi://Pango';
+import Shell from 'gi://Shell';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -277,7 +278,25 @@ class Tile extends St.Button {
             this._highlight.opacity = this.pressed ? 255 : 0;
         });
 
+        // A two-target tile (a tablet's Wi-Fi, Bluetooth, Do Not Disturb): its icon's square toggles it, the rest of
+        // it opens its details, the setting's page, as a long press does
+        this._onTarget = true;
+        if (this._target && spec.panel) {
+            this.connect('captured-event', (_a, event) => {
+                const type = event.type();
+                if (type === Clutter.EventType.TOUCH_BEGIN || type === Clutter.EventType.BUTTON_PRESS) {
+                    const [ok, x] = this.transform_stage_point(...event.get_coords());
+                    this._onTarget = !ok || x < px(2 * TABLET_TARGET_INSET + TABLET_TARGET);
+                }
+                return Clutter.EVENT_PROPAGATE;
+            });
+        }
         this.connect('clicked', () => {
+            if (!this._onTarget) {
+                openSettings(spec.panel);
+                onActivated?.(this, true);
+                return;
+            }
             spec.toggle(state);
             onActivated?.(this);
         });
@@ -622,7 +641,134 @@ class BrightnessSlider extends St.Widget {
     }
 });
 
-// --- footer: settings and power (no foreground-service pill: nothing reports one)
+// --- footer: settings and power, and on a tablet the active apps' pill
+
+const PILL_FONT = font(14, 500);
+const PILL_ICON = 60;                   // the info glyph and the chevron
+const PILL_ICON_X = 73.5;               // the info glyph's centre from the pill's start
+const PILL_TEXT_X = 138;
+const PILL_CHEVRON_END = 73.5;          // the chevron's centre from the pill's end
+const PILL_GAP = 24;                    // the pill's end before the settings button
+
+// "N apps are active", where Android counts the apps with a foreground service: here the apps running with no window
+// of theirs open, an app's own name on the session bus with no window (the Phone and Messaging apps' daemons, a
+// player playing on) and the apps the desktop portal's background monitor reports. None, no pill. A tap opens the apps'
+// settings.
+const ActiveAppsPill = GObject.registerClass(
+class ActiveAppsPill extends St.Button {
+    constructor(onTap) {
+        super({
+            reactive: true, can_focus: true, visible: false, height: px(FOOTER_BUTTON),
+            style: `background-color: ${colorStyle(TABLET_TILE)}; border-radius: ${px(FOOTER_BUTTON / 2)}px;`,
+        });
+        this._box = new St.Widget({x_expand: true, y_expand: true});
+        this.set_child(this._box);
+        this._info = new VectorIcon('ic_qs_footer_info', px(PILL_ICON), Color.onSurface);
+        this._text = new Clutter.Text({font_name: PILL_FONT, color: cogl(Color.onSurface),
+            ellipsize: Pango.EllipsizeMode.END});
+        this._chevron = new VectorIcon('ic_chevron_end', px(PILL_ICON), Color.onSurface);
+        for (const child of [this._info, this._text, this._chevron])
+            this._box.add_child(child);
+        this.connect('clicked', () => onTap());
+        this.count = 0;
+        this._names = [];               // the well-known names on the session bus
+        this._portalIds = [];
+        this._proxy = null;
+        const bus = Gio.DBus.session;
+        this._busSub = bus.signal_subscribe('org.freedesktop.DBus', 'org.freedesktop.DBus', 'NameOwnerChanged',
+            '/org/freedesktop/DBus', null, Gio.DBusSignalFlags.NONE, (_c, _s, _p, _i, _n, params) => {
+                if (!params.get_child_value(0).get_string()[0].startsWith(':'))
+                    this._listLater();
+            });
+        Shell.AppSystem.get_default().connectObject('app-state-changed', () => this._count(), this);
+        this._listLater();
+        Gio.DBusProxy.new_for_bus(Gio.BusType.SESSION, Gio.DBusProxyFlags.DO_NOT_AUTO_START, null,
+            'org.freedesktop.background.Monitor', '/org/freedesktop/background/monitor',
+            'org.freedesktop.background.Monitor', null, (_o, res) => {
+                try {
+                    this._proxy = Gio.DBusProxy.new_for_bus_finish(res);
+                } catch {
+                    return;
+                }
+                if (this._destroyed) {
+                    this._proxy = null;
+                    return;
+                }
+                this._proxy.connectObject('g-properties-changed', () => this._read(), this);
+                this._read();
+            });
+        this.connect('destroy', () => {
+            this._destroyed = true;
+            this._proxy?.disconnectObject(this);
+            this._proxy = null;
+            Gio.DBus.session.signal_unsubscribe(this._busSub);
+            Shell.AppSystem.get_default().disconnectObject(this);
+            if (this._listId)
+                GLib.source_remove(this._listId);
+            this._listId = 0;
+        });
+    }
+
+    // names come and go in bursts: the list once they settle
+    _listLater() {
+        if (this._listId)
+            return;
+        this._listId = GLib.timeout_add(GLib.PRIORITY_DEFAULT_IDLE, 500, () => {
+            this._listId = 0;
+            Gio.DBus.session.call('org.freedesktop.DBus', '/org/freedesktop/DBus', 'org.freedesktop.DBus',
+                'ListNames', null, new GLib.VariantType('(as)'), Gio.DBusCallFlags.NONE, -1, null, (bus, res) => {
+                    try {
+                        [this._names] = bus.call_finish(res).deepUnpack();
+                    } catch {
+                        return;
+                    }
+                    if (!this._destroyed)
+                        this._count();
+                });
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    _read() {
+        const apps = this._proxy?.get_cached_property('BackgroundApps')?.deepUnpack() ?? [];
+        this._portalIds = apps.map(app => app.app_id?.deepUnpack?.() ?? app.app_id).filter(id => id);
+        this._count();
+    }
+
+    _count() {
+        const appSystem = Shell.AppSystem.get_default();
+        const ids = new Set();
+        for (const name of this._names) {
+            if (name.startsWith(':') || name.startsWith('vibeos.Shell') || name.startsWith('vibeos.Launcher'))
+                continue;
+            const app = appSystem.lookup_app(`${name}.desktop`);
+            if (app && app.get_n_windows() === 0)
+                ids.add(app.get_id());
+        }
+        for (const id of this._portalIds)
+            ids.add(id.endsWith('.desktop') ? id : `${id}.desktop`);
+        if (ids.size !== this.count)
+            this.setCount(ids.size);
+    }
+
+    setCount(n) {
+        this.count = n;
+        this._text.text = n === 1 ? '1 app is active' : `${n} apps are active`;
+        this.visible = n > 0;
+        this.setWidthPx(this._w ?? 0);
+    }
+
+    // its width (screen px), from the column's start to the settings button
+    setWidthPx(w) {
+        this._w = w;
+        this.width = px(w);
+        const cy = FOOTER_BUTTON / 2;
+        this._info.set_position(px(PILL_ICON_X - PILL_ICON / 2), px(cy - PILL_ICON / 2));
+        this._chevron.set_position(px(w - PILL_CHEVRON_END - PILL_ICON / 2), px(cy - PILL_ICON / 2));
+        this._text.width = px(Math.max(0, w - PILL_TEXT_X - PILL_CHEVRON_END - PILL_ICON / 2 - 24));
+        placeCapCentered(this._text, px(PILL_TEXT_X), px(cy), px(14 * 3));
+    }
+});
 
 const FooterButton = GObject.registerClass(
 class FooterButton extends St.Button {
@@ -759,6 +905,15 @@ class ShadeHeader extends St.Widget {
 
 // --- the panel
 
+// @actor (a child of the panel) cut where it reaches above @y (the panel's px); whole again below it
+export function clipAbove(actor, y) {
+    const top = y - actor.y;
+    if (top > 0)
+        actor.set_clip(0, top, actor.width, Math.max(actor.height - top, 0));
+    else if (actor.has_clip)
+        actor.remove_clip();
+}
+
 export const QSPanel = GObject.registerClass(
 class QSPanel extends St.Widget {
     constructor(state, shade) {
@@ -823,6 +978,13 @@ class QSPanel extends St.Widget {
         this._footer.add_child(power);
         this._settingsButton = settings;
         this._powerButton = power;
+        if (TABLET) {
+            this._activeApps = new ActiveAppsPill(() => {
+                shade.close?.();
+                openSettings('applications');
+            });
+            this._footer.add_child(this._activeApps);
+        }
         this.add_child(this._footer);
         addEndMark(this);
 
@@ -854,6 +1016,10 @@ class QSPanel extends St.Widget {
         this._footer.set_size(px(layout.width), px(FOOTER_BUTTON));
         this._settingsButton.x = px(qs.settingsCX - FOOTER_BUTTON / 2);
         this._powerButton.x = px(qs.powerCX - FOOTER_BUTTON / 2);
+        if (this._activeApps) {
+            this._activeApps.x = px(qs.left);
+            this._activeApps.setWidthPx(qs.settingsCX - FOOTER_BUTTON / 2 - PILL_GAP - qs.left);
+        }
         this._settingsButton.style = `background-color: ${colorStyle(TABLET_TILE)}; ` +
             `border-radius: ${px(FOOTER_BUTTON / 2)}px;`;
         this._build.visible = false;
@@ -861,10 +1027,11 @@ class QSPanel extends St.Widget {
     }
 
     // @squish: the tiles' height factor while the shade opens (0.1..1); @contentAlpha: the header's;
-    // @mirror: all but the brightness slider fade while it is dragged
-    layoutFor({q, squish, contentAlpha, mirror = 0}) {
+    // @mirror: all but the brightness slider fade while it is dragged; @slide: a tablet's quick settings on their way
+    // down, how far above their places they are (screen px, 0 or less)
+    layoutFor({q, squish, contentAlpha, mirror = 0, slide = 0}) {
         if (this._tablet) {
-            this._layoutTablet(q, contentAlpha, 1 - mirror);
+            this._layoutTablet(q, contentAlpha, 1 - mirror, slide);
             return;
         }
         const keep = 1 - mirror;
@@ -907,11 +1074,13 @@ class QSPanel extends St.Widget {
         this._squish = squish;
     }
 
-    // A tablet's quick settings fade in with the shade rather than squish. In landscape they are all there at once.
-    // Upright the first two rows come first; the second pull moves them down to make room for the brightness row,
-    // and the other rows and the footer fade in as on a phone.
-    _layoutTablet(q, contentAlpha, keep) {
-        const {qs, landscape} = this._tablet;
+    // A tablet's quick settings come down with the shade, fading in, rather than squish; the header stays and they
+    // come out from under it. In landscape they are all there at once. Upright the first two rows come first; the
+    // second pull moves them down to make room for the brightness row, and the other rows and the footer fade in as
+    // on a phone.
+    _layoutTablet(q, contentAlpha, keep, slide) {
+        const {qs, landscape, header} = this._tablet;
+        const under = px(header.height);
         if (landscape)
             q = 1;
         if (q !== this._q)
@@ -925,19 +1094,22 @@ class QSPanel extends St.Widget {
             const qqs = tile._row < qs.qqsRows;
             const qsY = qs.gridTop + tile._row * (TILE_H + ROW_GAP);
             const y = qqs ? lerp(qs.qqsTop + tile._row * (TILE_H + ROW_GAP), qsY, q) : qsY + shift;
-            tile.set_position(px(qs.left + tile._col * this._tilePitch), px(y));
+            tile.set_position(px(qs.left + tile._col * this._tilePitch), px(y + slide));
             const alpha = (qqs ? 1 : content) * contentAlpha * keep;
             tile.opacity = Math.round(255 * alpha);
             tile.visible = alpha > 0;
+            clipAbove(tile, under);
         }
 
-        this._brightness.set_position(0, px(qs.brightnessCY - THUMB_H / 2 + shift));
+        this._brightness.set_position(0, px(qs.brightnessCY - THUMB_H / 2 + shift + slide));
         this._brightness.opacity = Math.round(255 * content * contentAlpha);
         this._brightness.visible = content * contentAlpha > 0;
+        clipAbove(this._brightness, under);
 
-        this._footer.set_position(0, px(qs.footerCY - FOOTER_BUTTON / 2));
+        this._footer.set_position(0, px(qs.footerCY - FOOTER_BUTTON / 2 + slide));
         this._footer.opacity = Math.round(255 * footer * contentAlpha * keep);
         this._footer.visible = footer * contentAlpha > 0;
+        clipAbove(this._footer, under);
         this._q = q;
     }
 });
