@@ -61,8 +61,9 @@ static struct {
   TextFont   *stats_font;
   TextLayout *stats;
   gint64      prev, stats_t0;
-  int         frames, late;
+  int         frames, late, drawn;
   double      worst_ms, cpu_ms;
+  double      fill_blend, fill_opaque;   /* px shaded over the frames drawn */
 } A = { .touch = -1 };
 
 static gint64
@@ -432,8 +433,10 @@ init_gpu (void)
   drawer_layout ();
   nav_init ();
   clock_tick (NULL);
-  if (g_getenv ("VIBEOS_STATS"))
+  if (g_getenv ("VIBEOS_STATS")) {
     A.stats_font = text_font ("Roboto Mono", 400, dp (12));
+    gfx_count_fill (true);
+  }
   A.ready = true;
   return true;
 }
@@ -453,18 +456,28 @@ stats_frame (gint64 time, gint64 cpu_start)
   }
   A.prev = time;
   A.cpu_ms = MAX (A.cpu_ms, (mono_ns () - cpu_start) / 1e6);
+  double blend, opaque;
+  gfx_fill (&blend, &opaque);
+  A.fill_blend += blend;
+  A.fill_opaque += opaque;
+  A.drawn++;
   if (!A.stats_t0)
     A.stats_t0 = time;
   if (time - A.stats_t0 > 1000000000) {
     double secs = (time - A.stats_t0) / 1e9;
-    g_autofree char *s = g_strdup_printf ("%.1f fps  late %d  worst %.1f ms  cpu %.1f ms", A.frames / secs, A.late,
-                                          A.worst_ms, A.cpu_ms);
+    /* the screens' worth of px shaded a frame: blended, and written opaque */
+    double screen = (double) N.W * N.H * A.drawn;
+    g_autofree char *s = g_strdup_printf ("%.1f fps  late %d  worst %.1f ms  cpu %.1f ms  fill %.2f + %.2f opaque",
+                                          A.frames / secs, A.late, A.worst_ms, A.cpu_ms, A.fill_blend / screen,
+                                          A.fill_opaque / screen);
     if (A.stats_font) {
       text_layout_free (A.stats);
       A.stats = text_layout (A.stats_font, s, 0, 1, TEXT_LEFT);
+      g_message ("stats: %s", s);
     }
-    A.frames = A.late = 0;
+    A.frames = A.late = A.drawn = 0;
     A.worst_ms = A.cpu_ms = 0;
+    A.fill_blend = A.fill_opaque = 0;
     A.stats_t0 = time;
   }
 }
@@ -516,8 +529,8 @@ on_frame (gpointer data, gint64 time)
     drawer_layout ();
     nav_icons_changed ();
   }
-  bool more = A.par ? parallax_tick (A.par) : false;
-  more |= home_frame ();
+  bool home_moving = home_frame ();
+  bool more = home_moving;
   more |= drawer_frame ();
   more |= popup_frame ();
   more |= drag_frame ();
@@ -539,11 +552,22 @@ on_frame (gpointer data, gint64 time)
   float zoom = 1 + (WALLPAPER_ZOOM - 1) * (1 - depth);
   float scale = (1 + (CONTENT_SCALE - 1) * de) * launch_content_scale () * nav_home_scale ();
   float stretch = home_stretch ();
+  /* Through a transition (the drawer, the pages moving, an app going or coming, a drag's depth, a launch) the
+   * wallpaper keeps still whatever the tilt does, so its layers are drawn as one picture the whole way; at rest on
+   * the home it follows the tilt again */
+  if (A.par) {
+    bool moving = f > 0 || drawer_dragging () || home_moving || home_dragging () || depth > 0 ||
+                  fabsf (scale - 1) > 1e-4f || fabsf (stretch) > 1e-4f || nav_home_alpha () < 1 ||
+                  nav_home_ty () != 0 || N.launch_t0 != 0;
+    parallax_hold (A.par, moving);
+    more |= parallax_tick (A.par);
+  }
 
   if (!gfx_frame_begin ()) {
     wl_schedule (N.wl);
     return;
   }
+  parallax_prepare (A.par, WALLPAPER_ZOOM);
   if (stretch != 0) {
     gfx_pass_begin (target (&A.home_target, N.W, N.H), (GfxColor) { 0, 0, 0, 0 });
     home_draw (scale);
@@ -567,8 +591,12 @@ on_frame (gpointer data, gint64 time)
   drawer_prepare ();
 
   gfx_pass_begin (NULL, (GfxColor) { 0, 0, 0, 1 });
+  /* what the drawer's sheet will cover is not drawn under it */
+  float cover[4];
+  if (drawer_cover (cover))
+    gfx_occlude (cover[0], cover[1], cover[2], cover[3]);
   if (blurred) {
-    gfx_image (blurred, 0, 0, N.W, N.H, 0, 1);
+    gfx_image_opaque (blurred, 0, 0, N.W, N.H);     /* (a blur of an opaque picture) */
   } else if (A.par) {
     parallax_draw (A.par, zoom);
   }
@@ -577,6 +605,7 @@ on_frame (gpointer data, gint64 time)
   if (!blurred || sharp_home)
     draw_home (scale, stretch);
   drawer_draw ();
+  gfx_occlude (0, 0, 0, 0);
   popup_draw ();
   drag_draw ();
   if (scrim > 0)

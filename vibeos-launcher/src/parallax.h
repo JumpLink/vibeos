@@ -19,5 +19,13 @@ void      parallax_run    (Parallax *p, bool run);     /* follow the tilt while 
 /* one frame's sensor step; true while the picture moves (another frame is wanted). At rest the sensor is polled
  * slowly and `wake` is called when it moves again. */
 bool      parallax_tick   (Parallax *p);
-/* the whole screen, zoomed by `zoom` about its centre (1: none) */
+/* Held, the offsets keep still whatever the tilt does (through a transition, so the layers are drawn as one picture
+ * the whole way); let go, the picture eases to where the tilt has it in 150 ms. Before the frame's tick. */
+void      parallax_hold   (Parallax *p, bool hold);
+/* Before the frame's passes. While the layers keep still against each other (the drawer and the home only zoom
+ * them), they are drawn into one picture once and that picture is drawn for them, a single opaque quad instead of
+ * one blended quad a layer; while the tilt moves them, they are drawn one by one. `rest_zoom` is the zoom the picture
+ * rests at (the home's), where the one picture is the layers' own pixels; it covers the screen from a zoom of 1 up. */
+void      parallax_prepare (Parallax *p, float rest_zoom);
+/* the whole screen, zoomed by `zoom` about its centre (1: none); the first thing drawn in its pass (cleared to black) */
 void      parallax_draw   (Parallax *p, float zoom);

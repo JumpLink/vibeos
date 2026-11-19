@@ -192,6 +192,7 @@ float  home_label_width  (void);                         /* px */
 int    home_n_pages      (void);                         /* with the extra page */
 int    home_page         (void);
 bool   home_snapping     (void);
+bool   home_dragging     (void);                         /* a finger moves the pages */
 void   home_snap         (int page, double ms);          /* ms 0: the scroller's 750 */
 void   home_set_extra_page (bool on);
 int    home_page_at      (float x);
@@ -224,6 +225,7 @@ void   drawer_layout     (void);
 float  drawer_progress   (void);                         /* f: 0 home, 1 all apps */
 bool   drawer_frame      (void);
 void   drawer_draw       (void);
+bool   drawer_cover      (float r[4]);                   /* the screen rect the sheet covers whole this frame */
 bool   drawer_is_open    (void);
 /* a drag handed over from home (finger moved up past the slop); y_down is where it went down */
 void   drawer_drag_begin (float y_down, float y, double t);

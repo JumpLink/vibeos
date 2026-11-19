@@ -451,6 +451,12 @@ home_snapping (void)
   return H.snapping;
 }
 
+bool
+home_dragging (void)
+{
+  return H.dragging;
+}
+
 void
 home_set_extra_page (bool on)
 {

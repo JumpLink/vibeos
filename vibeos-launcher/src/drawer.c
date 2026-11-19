@@ -971,6 +971,33 @@ drawer_prepare (void)
   }
 }
 
+/* a tablet's sheet, at this frame's scale about the screen's centre */
+static float
+sheet_scale (void)
+{
+  return 1 - (1 - HOME_MIN_SCALE) * decelerate3 (D.home_p);
+}
+
+/* What the sheet will cover whole this frame, in screen px: a tablet's (opaque) from below its top corners to the
+ * screen's bottom, a pixel in from its antialiased edge and on whole pixels. The screen pass takes it as its hole
+ * (gfx_occlude), so the wallpaper, the home and the scrim are not drawn under it; drawer_draw takes it away before
+ * the sheet. A phone's sheet is see-through: none. */
+bool
+drawer_cover (float r[4])
+{
+  if (!N.tablet || D.f <= 0)
+    return false;
+  float top = roundf (sheet_top ()) + dp (SHEET_RADIUS_DP), k = sheet_scale ();
+  float cx = N.W / 2.0f, cy = N.H / 2.0f;
+  float x0 = cx + (D.sx - cx) * k, x1 = cx + (D.sx + D.sw - cx) * k;
+  float y0 = cy + (top - cy) * k, y1 = cy + (N.H - cy) * k;
+  r[0] = ceilf (MAX (x0, 0)) + 1;
+  r[1] = ceilf (MAX (y0, 0)) + 1;
+  r[2] = floorf (MIN (x1, N.W)) - 1;
+  r[3] = MIN (y1, N.H) >= N.H ? N.H : floorf (y1) - 1;
+  return r[2] > r[0] && r[3] > r[1];
+}
+
 /* the scrim, the sheet and its contents (the screen pass) */
 void
 drawer_draw (void)
@@ -984,7 +1011,8 @@ drawer_draw (void)
   if (top >= N.H)
     return;
   float r = dp (SHEET_RADIUS_DP);
-  float scale = 1 - (1 - HOME_MIN_SCALE) * decelerate3 (D.home_p);
+  float scale = sheet_scale ();
+  gfx_occlude (0, 0, 0, 0);        /* (drawer_cover's: what comes from here on is drawn whole) */
   gfx_save ();
   if (scale != 1)
     gfx_scale (scale, scale, N.W / 2.0f, N.H / 2.0f);   /* the apps view and its header, about their centre */

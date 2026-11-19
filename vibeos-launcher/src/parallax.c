@@ -28,6 +28,7 @@
 #define REST_G 0.006
 #define REST_TICKS 60
 #define STILL 30            /* frames without a move: at rest, the idle poll takes over */
+#define RELEASE_MS 150      /* let go after a hold: from the held picture to the tilt's */
 
 typedef struct {
   char   *file;
@@ -64,6 +65,23 @@ struct Parallax {
   bool        have_g;
   double      ox, oy, tx, ty;
   int         still;
+  /* A transition holds the offsets (the picture keeps still, and is drawn as one); let go, the picture goes from
+   * where it was held to where the tilt has it in RELEASE_MS */
+  bool        held;
+  bool        resync;       /* the next reading is taken as it is, not through the low-pass */
+  gint64      release_t;    /* µs, while going back to the tilt; 0 otherwise */
+  double      from_ox, from_oy;
+  guint       gen;          /* the layers' textures: a new one each time they change */
+  /* The layers drawn into one picture, at the zoom the picture rests at, beyond the screen by flat_mx/my at each
+   * side (as far as the zoom of 1 shows): drawn for them while they keep still against each other */
+  GfxTex     *flat;
+  float       flat_zoom;
+  int         flat_mx, flat_my;
+  double      flat_ox, flat_oy;
+  guint       flat_gen;
+  bool        use_flat;     /* this frame */
+  double      last_ox, last_oy;   /* the last frame's, to see the layers keep still */
+  guint       last_gen;
   guint       idle;
   void      (*wake) (void *data);
   void       *wake_data;
@@ -228,18 +246,20 @@ ssc_stop (Parallax *p)
 static void
 find_accel (Parallax *p)
 {
-  g_autoptr (GDir) dir = g_dir_open (ACCEL_DIR, 0, NULL);
+  /* VIBEOS_ACCEL_DIR: a directory in place of the IIO devices', for a test that writes the readings itself */
+  const char *base = g_getenv ("VIBEOS_ACCEL_DIR") ? g_getenv ("VIBEOS_ACCEL_DIR") : ACCEL_DIR;
+  g_autoptr (GDir) dir = g_dir_open (base, 0, NULL);
   const char *name;
   while (dir && (name = g_dir_read_name (dir))) {
-    g_autofree char *x = g_build_filename (ACCEL_DIR, name, "in_accel_x_raw", NULL);
+    g_autofree char *x = g_build_filename (base, name, "in_accel_x_raw", NULL);
     if (!g_file_test (x, G_FILE_TEST_EXISTS))
       continue;
     const char *axes[] = { "x", "y", "z" };
     for (int i = 0; i < 3; i++) {
       g_autofree char *f = g_strdup_printf ("in_accel_%s_raw", axes[i]);
-      p->accel[i] = g_build_filename (ACCEL_DIR, name, f, NULL);
+      p->accel[i] = g_build_filename (base, name, f, NULL);
     }
-    p->rate = g_build_filename (ACCEL_DIR, name, "in_accel_sampling_frequency", NULL);
+    p->rate = g_build_filename (base, name, "in_accel_sampling_frequency", NULL);
     return;
   }
   if (ssc_load ()) {
@@ -293,9 +313,9 @@ read_accel (Parallax *p, double g[3])
   return true;
 }
 
-/* one reading: true when the picture moved by more than a hair */
+/* one reading into the filters: where the tilt has the picture now (p->tx, p->ty); false without a reading */
 static bool
-step (Parallax *p)
+filter (Parallax *p)
 {
   double g[3];
   if (!read_accel (p, g))
@@ -311,6 +331,10 @@ step (Parallax *p)
     memcpy (p->settled, g, sizeof g);
     p->calm = 0;
     p->have_g = true;
+  }
+  if (p->resync) {
+    memcpy (p->g, g, sizeof g);     /* back from a hold: the phone as it is held now, not the low-pass's way there */
+    p->resync = false;
   }
   double off = 0;
   for (int i = 0; i < 3; i++) {
@@ -329,6 +353,15 @@ step (Parallax *p)
   /* x: the right edge dipping; y: the top edge coming towards you */
   p->tx = CLAMP ((in[0] - p->rest[0]) / p->tilt, -1, 1);
   p->ty = CLAMP ((in[1] - p->rest[1]) / p->tilt, -1, 1);
+  return true;
+}
+
+/* one reading: true when the picture moved by more than a hair */
+static bool
+step (Parallax *p)
+{
+  if (!filter (p))
+    return false;
   double ox = p->ox + (p->tx - p->ox) * EASE;
   double oy = p->oy + (p->ty - p->oy) * EASE;
   double moved = (fabs (ox - p->ox) + fabs (oy - p->oy)) * p->range * p->scale;
@@ -343,7 +376,7 @@ static gboolean
 idle_poll (gpointer data)
 {
   Parallax *p = data;
-  if (!p->running) {
+  if (!p->running || p->held) {
     p->idle = 0;
     return G_SOURCE_REMOVE;
   }
@@ -358,11 +391,57 @@ idle_poll (gpointer data)
   return G_SOURCE_CONTINUE;
 }
 
+/* let go: from the held offsets to the tilt's, decelerating; the tilt's own easing takes over at the end */
+static bool
+release_step (Parallax *p)
+{
+  filter (p);
+  double t = (g_get_monotonic_time () - p->release_t) / (RELEASE_MS * 1000.0);
+  if (t >= 1) {
+    p->ox = p->tx;
+    p->oy = p->ty;
+    p->release_t = 0;
+    return true;
+  }
+  double e = 1 - (1 - t) * (1 - t);
+  p->ox = p->from_ox + (p->tx - p->from_ox) * e;
+  p->oy = p->from_oy + (p->ty - p->from_oy) * e;
+  return true;
+}
+
+void
+parallax_hold (Parallax *p, bool hold)
+{
+  if (!p || p->held == hold)
+    return;
+  p->held = hold;
+  if (hold) {
+    p->release_t = 0;               /* held where a release had got to */
+    if (p->idle) {
+      g_source_remove (p->idle);
+      p->idle = 0;
+    }
+    if (p->running)
+      set_rate (p, RATE_IDLE);      /* nothing reads it until the hold ends */
+    return;
+  }
+  if (!p->running)
+    return;
+  set_rate (p, RATE_RUN);
+  p->from_ox = p->ox;
+  p->from_oy = p->oy;
+  p->release_t = g_get_monotonic_time ();
+  p->resync = true;
+  p->still = 0;
+}
+
 bool
 parallax_tick (Parallax *p)
 {
-  if (!p || !p->running)
-    return false;
+  if (!p || !p->running || p->held)
+    return false;           /* (held: the picture keeps still, nothing to follow) */
+  if (p->release_t)
+    return release_step (p);
   if (p->still >= STILL)
     return false;           /* the idle poll has it */
   if (step (p)) {
@@ -442,6 +521,7 @@ parallax_free (Parallax *p)
   }
   ssc_stop (p);
   set_rate (p, RATE_IDLE);
+  gfx_tex_free (p->flat);
   g_ptr_array_unref (p->layers);
   for (int i = 0; i < 3; i++)
     g_free (p->accel[i]);
@@ -510,6 +590,7 @@ decode_done (GObject *source, GAsyncResult *res, gpointer data)
   p->kept_h = p->tex_h;
   p->tex_w = d->w;
   p->tex_h = d->h;
+  p->gen++;
   g_clear_object (&p->decoding);
   g_message ("parallax: %u layers for %dx%d decoded", p->layers->len, d->w, d->h);
   if (p->wake)
@@ -549,6 +630,7 @@ parallax_resize (Parallax *p, int w, int h, double scale)
     p->tex_w = w;
     p->tex_h = h;
     p->kept_w = p->kept_h = 0;
+    p->gen++;
     g_message ("parallax: %u layers for %dx%d in %.0f ms", p->layers->len, w, h,
                (g_get_monotonic_time () - t0) / 1000.0);
     return;
@@ -566,6 +648,7 @@ parallax_resize (Parallax *p, int w, int h, double scale)
     p->kept_h = p->tex_h;
     p->tex_w = w;
     p->tex_h = h;
+    p->gen++;
     return;
   }
   Decode *d = g_new0 (Decode, 1);
@@ -612,12 +695,12 @@ parallax_run (Parallax *p, bool run)
   }
 }
 
-void
-parallax_draw (Parallax *p, float zoom)
+/* the layers, back to front, as they sit now on the w × h screen; the first thing drawn in its pass, so the back one
+ * is written, not blended, over the pass's black (the same pixels: the textures are premultiplied) */
+static void
+draw_layers (Parallax *p)
 {
-  gfx_save ();
-  if (zoom != 1)
-    gfx_scale (zoom, zoom, p->w / 2.f, p->h / 2.f);
+  bool back = true;
   for (guint i = 0; i < p->layers->len; i++) {
     Layer *l = p->layers->pdata[i];
     if (!l->tex)
@@ -625,14 +708,72 @@ parallax_draw (Parallax *p, float zoom)
     /* depth -1…1: the layers behind the screen plane (negative) move against the ones in front */
     float dx = (float) (-p->ox * p->range * l->depth * p->scale);
     float dy = (float) (-p->oy * p->range * l->depth * p->scale);
-    if (p->tex_w == p->w && p->tex_h == p->h) {
-      gfx_image (l->tex, -(l->margin + dx), -(l->margin + dy), l->tex->w, l->tex->h, 0, 1);
-      continue;
+    float x = -(l->margin + dx), y = -(l->margin + dy), w = l->tex->w, h = l->tex->h;
+    if (p->tex_w != p->w || p->tex_h != p->h) {
+      /* made for the screen's old shape, until the new one's is in: scaled to cover it, about its centre */
+      float k = MAX ((float) p->w / p->tex_w, (float) p->h / p->tex_h);
+      w = l->tex->w * k;
+      h = l->tex->h * k;
+      x = (p->w - w) / 2 - dx;
+      y = (p->h - h) / 2 - dy;
     }
-    /* made for the screen's old shape, until the new one's is in: scaled to cover it, about its centre */
-    float k = MAX ((float) p->w / p->tex_w, (float) p->h / p->tex_h);
-    float tw = l->tex->w * k, th = l->tex->h * k;
-    gfx_image (l->tex, (p->w - tw) / 2 - dx, (p->h - th) / 2 - dy, tw, th, 0, 1);
+    if (back)
+      gfx_image_opaque (l->tex, x, y, w, h);
+    else
+      gfx_image (l->tex, x, y, w, h, 0, 1);
+    back = false;
+  }
+}
+
+void
+parallax_prepare (Parallax *p, float rest_zoom)
+{
+  if (!p)
+    return;
+  bool moved = p->ox != p->last_ox || p->oy != p->last_oy || p->gen != p->last_gen;
+  p->last_ox = p->ox;
+  p->last_oy = p->oy;
+  p->last_gen = p->gen;
+  /* past the screen far enough to cover it at a zoom of 1 */
+  int mx = (int) ceilf (p->w * (rest_zoom - 1) / 2), my = (int) ceilf (p->h * (rest_zoom - 1) / 2);
+  p->use_flat = p->flat && p->flat_gen == p->gen && p->flat_ox == p->ox && p->flat_oy == p->oy &&
+                p->flat_zoom == rest_zoom && p->flat->w == p->w + 2 * mx && p->flat->h == p->h + 2 * my;
+  if (p->use_flat || moved || p->w <= 0 || p->h <= 0 || rest_zoom < 1)
+    return;
+  if (!p->flat || p->flat->w != p->w + 2 * mx || p->flat->h != p->h + 2 * my) {
+    gfx_tex_free (p->flat);
+    p->flat = gfx_target_new (p->w + 2 * mx, p->h + 2 * my);
+    if (!p->flat)
+      return;
+  }
+  gfx_pass_begin (p->flat, (GfxColor) { 0, 0, 0, 1 });
+  gfx_translate (mx, my);
+  gfx_scale (rest_zoom, rest_zoom, p->w / 2.f, p->h / 2.f);
+  draw_layers (p);
+  gfx_pass_end ();
+  p->flat_zoom = rest_zoom;
+  p->flat_mx = mx;
+  p->flat_my = my;
+  p->flat_ox = p->ox;
+  p->flat_oy = p->oy;
+  p->flat_gen = p->gen;
+  p->use_flat = true;
+}
+
+void
+parallax_draw (Parallax *p, float zoom)
+{
+  gfx_save ();
+  if (p->use_flat && zoom >= 1) {
+    /* at the rest zoom, pixel for pixel what the layers draw */
+    float k = zoom / p->flat_zoom;
+    if (k != 1)
+      gfx_scale (k, k, p->w / 2.f, p->h / 2.f);
+    gfx_image_opaque (p->flat, -p->flat_mx, -p->flat_my, p->flat->w, p->flat->h);
+  } else {
+    if (zoom != 1)
+      gfx_scale (zoom, zoom, p->w / 2.f, p->h / 2.f);
+    draw_layers (p);
   }
   gfx_restore ();
 }

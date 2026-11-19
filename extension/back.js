@@ -8,6 +8,7 @@
 //     black 0.8 scrim blurred 90 → 10 px; on release it flies into its icon from rest, the scrim fading in 233 ms
 //   a dialog, or an app the probe cannot read (Waydroid's: Android takes Escape as BACK): Escape
 //   recents: as its own Escape; the launcher's drawer: closed
+//   the keyboard up, over any of these: the keyboard goes down, and that is all (Android's back with the IME shown)
 //
 // The gesture: a strip EDGE_W wide on either side above the gesture bar; the swipe starts when it is more
 // across than along past SLOP, and gives the touch back to the app after 250 ms without that.
@@ -20,6 +21,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {BackProbe} from './a11y.js';
 import {BackPanelController} from './backpanel.js';
+import {dismissKeyboard} from './keyboard/keyboard.js';
 import {cubic} from './launch.js';
 import {Animator} from './motion.js';
 import {overWindows} from './scanout.js';
@@ -224,12 +226,15 @@ export class EdgeBack {
     // what back means for what is in front now: {kind, win} or null
     _target() {
         const nav = this._nav;
+        const focus = global.display.focus_window;
+        const launcher = !focus || nav.home.isHome(focus);
+        if (Main.keyboard.visible)
+            return {kind: 'keyboard', launcher};
         if (nav.recentsShown)
             return {kind: 'recents'};
         if (nav.bouncerShown)
             return {kind: 'keyguard'};
-        const focus = global.display.focus_window;
-        if (!focus || nav.home.isHome(focus))
+        if (launcher)
             return {kind: nav.drawerOpen ? 'drawer' : 'home-screen'};
         if (focus.get_transient_for() || focus.get_window_type() !== Meta.WindowType.NORMAL)
             return {kind: 'key', win: focus};
@@ -316,7 +321,7 @@ export class EdgeBack {
         g.started = true;
         // the finger is back's now: the launcher under it lets go (Android pilfers it), so the drawer's list
         // neither scrolls nor opens the app it started on
-        if (g.target.kind === 'drawer' || g.target.kind === 'home-screen')
+        if (g.target.kind === 'drawer' || g.target.kind === 'home-screen' || g.target.launcher)
             this._nav.launcher('Cancel', null);
         this._move();
     }
@@ -510,6 +515,11 @@ export class EdgeBack {
             break;
         case 'drawer':
             nav.launcher('Back', null);
+            break;
+        case 'keyboard':
+            // (the gesture had the touch: the key it may have begun on is let go, and the close is not held for a lift
+            // the stage never sees)
+            dismissKeyboard();
             break;
         case 'home-screen':
             break;

@@ -302,6 +302,11 @@ export class Keyguard extends Signals.EventEmitter {
 
         this._build();
         this._layout();
+        // GNOME's screen shield stays out of the way: the session going idle (gnome-session's presence) faded its
+        // lightbox in and locked it under this keyguard, which has the screen timeout (power.js) and the lock. Its
+        // handler is stubbed on the instance while this runs; destroy() gives the prototype's back.
+        if (Main.screenShield)
+            Main.screenShield._onStatusChanged = () => {};
         // turned: laid out again, the wallpaper covering the screen as it is now
         geometry.connectObject('changed', () => this._layout(), this);
         this._wallClock = new GnomeDesktop.WallClock({time_only: true});
@@ -1230,6 +1235,8 @@ export class Keyguard extends Signals.EventEmitter {
     }
 
     destroy() {
+        if (Main.screenShield)
+            delete Main.screenShield._onStatusChanged;
         this._wallpaperLoad?.cancel();
         this._wallpaperLoad = null;
         this._settle?.stop();
