@@ -1117,15 +1117,26 @@ export class Recents {
         return this.running;
     }
 
-    // The settle is over: the overview takes the input. Its actions show at once, the chips fade in.
+    // The settle is over: the overview takes the input. Its actions show at once, the chips fade in. Once, and not
+    // after destroy(): a grab taken then would never be given back, and every shell key would stay filtered out.
     show() {
+        if (this.shown || this._destroyed)
+            return;
+        // the screen locked while it settled: home, under the lock screen, as the launcher goes home when the screen
+        // goes off. Shown, its grab would sit over the lock screen's, and touches and keys would go to it unseen.
+        if (this._nav.locked) {
+            this.goHome('home');
+            return;
+        }
         this.shown = true;
         this._frame = TASK.slice();
         this._frameR = TASK_CORNER_R;
         this._actionsAlpha = 1;
         if (this._chipAlpha < 1)
             this._tween('chips', CHIP_FADE_MS, t => (this._chipAlpha = LINEAR(t)));
-        this._grab = Main.pushModal(this.layer, {actionMode: Shell.ActionMode.NONE});
+        // POPUP, not NONE: the shell filters every key out under NONE, the power key's (Shell.ActionMode.ALL) and the
+        // volume keys' too, and on Android both work in recents; the recents key reaches _onKey (NORMAL only)
+        this._grab ??= Main.pushModal(this.layer, {actionMode: Shell.ActionMode.POPUP});
         this.layer.grab_key_focus();
         // the grab keeps touches from the stage: back watches them here
         this._nav.watchBack(this.layer);

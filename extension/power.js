@@ -92,10 +92,27 @@ export class Power extends Signals.EventEmitter {
         // mutter keeps the outputs on (see above)
         this._monitors = global.backend.get_monitor_manager();
         this._monitors.power_save_blocked = true;
-        // the outputs off for real: the wake floor counts from here
+        // the outputs off for real: the wake floor counts from here. Only a change to off: the outputs turned on by
+        // someone else while ours are off (gnome-settings-daemon on a touch) are no new "off", and taking them as one
+        // held the next wake back as if the panel had only just gone off. The mode itself is only on D-Bus.
         this._monitors.connectObject('power-save-mode-changed', () => {
-            if (this._outputsAreOff)
-                this._offAt = GLib.get_monotonic_time();
+            if (!this._outputsAreOff)
+                return;
+            const at = GLib.get_monotonic_time();
+            Gio.DBus.session.call('org.gnome.Mutter.DisplayConfig', '/org/gnome/Mutter/DisplayConfig',
+                'org.freedesktop.DBus.Properties', 'Get',
+                new GLib.Variant('(ss)', ['org.gnome.Mutter.DisplayConfig', 'PowerSaveMode']),
+                new GLib.VariantType('(v)'), Gio.DBusCallFlags.NONE, -1, null, (bus, res) => {
+                    let mode;
+                    try {
+                        mode = bus.call_finish(res).recursiveUnpack()[0];
+                    } catch (e) {
+                        log(`vibeos: the outputs' power save mode: ${e.message}`);
+                        return;
+                    }
+                    if (this._outputsAreOff && mode === POWER_SAVE_OFF)
+                        this._offAt = at;
+                });
         }, this);
         this._panel = new Panel();
         // whatever a shell that crashed asleep left behind

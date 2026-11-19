@@ -81,8 +81,8 @@ export class HardwareKeys {
 // The Bixby key under the volume keys opens recents. The device tree reports it as
 // KEY_COFFEE, which XKB makes XF86ScreenSaver and gnome-settings-daemon a screen lock; the udev hwdb entry
 // (61-s10e-bixby.hwdb) makes it KEY_APPSELECT, XF86AppSelect, which nothing else in GNOME takes. onPress() once per
-// press, repeats dropped. In recents (a modal grab, action mode NONE) the shell filters the binding out, and the
-// key reaches recents itself (recents.js _onKey).
+// press, repeats dropped. In recents (a modal grab, action mode POPUP) the shell filters the binding out (it is
+// allowed in NORMAL only), and the key reaches recents itself (recents.js _onKey).
 const APP_SWITCH = 'XF86AppSelect';
 
 export class AppSwitchKey {

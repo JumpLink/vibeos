@@ -19,6 +19,7 @@ import {KeyHaptics} from './keyhaptics.js';
 import {AppSwitchKey} from './keys.js';
 import {Keyguard} from './keyguard.js';
 import {NoWindowMipmaps} from './mipmaps.js';
+import {ModalWatch} from './modalwatch.js';
 import {AndroidKeyboard} from './osk.js';
 import {TouchFocusKeyboard} from './oskfocus.js';
 import {overWindows, restoreUnredirect} from './scanout.js';
@@ -194,6 +195,10 @@ export default class VibeosExtension extends Extension {
             if (this._power.interactive)
                 this._service.toggleRecents();
         });
+        // a modal grab still up with the shell at rest on the home screen goes to the journal
+        const nav = this._service.navigation;
+        this._modalWatch = new ModalWatch(() => this._power.interactive && !this._keyguard.showing &&
+            !nav.recentsShown && !this._shade?.isOpen && !this._powerMenu?.showing && nav._atHome());
         // ... and over them all, the end of uiGroup
         this._endMark = new EndMark();
         // GNOME's on-screen keyboard's keys tick under the finger (paused while VibeOS's keyboard is in use)
@@ -267,6 +272,8 @@ export default class VibeosExtension extends Extension {
         this._endMark = null;
         this._appSwitch?.destroy();
         this._appSwitch = null;
+        this._modalWatch?.destroy();
+        this._modalWatch = null;
         this._power?.destroy();
         this._power = null;
         this._powerMenu?.destroy();

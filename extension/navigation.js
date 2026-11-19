@@ -293,6 +293,10 @@ export class Navigation {
         return !!this._keyguard?.bouncerShowing;
     }
 
+    get locked() {
+        return !!this._keyguard?.showing;
+    }
+
     keyguardBack() {
         this._keyguard?.back();
     }
@@ -321,7 +325,7 @@ export class Navigation {
             this.launcherState('background');
             this.statusBarOverApp(false);
             this.taskbar?.unstash();
-            const recents = this._recents = new Recents(this, win);
+            const recents = this._newRecents(win);
             this._g = {win, recents, shift: 0, rect: [0, 0, SCREEN_W, SCREEN_H], r: 0, x: 0};
             recents.attach();
             recents.toGrid(SETTLE_MS);
@@ -331,7 +335,7 @@ export class Navigation {
             }, SETTLE_MS, t => recents.setScrim(LINEAR(t)));
         } else if (this._atHome()) {
             this.onGestureBegin?.();
-            const recents = this._recents = new Recents(this, null);
+            const recents = this._newRecents(null);
             // let go already: the overview is up as soon as the cards are in
             this._g = {home: true, recents, p: 0, x: SCREEN_W / 2, y: SCREEN_H, entering: false, reached: false,
                 released: true, anim: null};
@@ -403,6 +407,15 @@ export class Navigation {
         if (this._recents === recents)
             this._recents = null;
         this.taskbar?.sync();
+    }
+
+    // a new recents: one still there goes first, its modal grab with it (left up, it would filter out every key)
+    _newRecents(win) {
+        if (this._recents) {
+            console.warn('vibeos: a recents was still there, destroyed');
+            this._recents.destroy();
+        }
+        return (this._recents = new Recents(this, win));
     }
 
     // A tablet's taskbar's all-apps button: home, the drawer opening there (from recents, as recents goes home)
@@ -503,7 +516,7 @@ export class Navigation {
         this.launcherState('background');
         this.statusBarOverApp(false);
         this.taskbar?.unstash();
-        const recents = this._recents = new Recents(this, win);
+        const recents = this._newRecents(win);
         this._g = {win, recents, shift: 0, rect: [0, 0, SCREEN_W, SCREEN_H], r: 0, x: this._down.x};
         this._move();
     }
@@ -792,7 +805,7 @@ export class Navigation {
     // ---- from the home screen --------------------------------------------------------------------------------------
 
     _beginHome() {
-        const recents = this._recents = new Recents(this, null);
+        const recents = this._newRecents(null);
         this._g = {home: true, recents, p: 0, entering: false, reached: false, released: false, anim: null};
         this._move();
     }
