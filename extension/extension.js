@@ -28,6 +28,7 @@ import {Service} from './service.js';
 import {Shade} from './shade.js';
 import {SystemState} from './state.js';
 import {StatusBar, hideShellPanel} from './statusbar.js';
+import {geometry} from './units.js';
 import {VolumeDialog} from './volume.js';
 import {WhenLocked} from './whenlocked.js';
 
@@ -37,6 +38,10 @@ const WALLPAPER_WAIT_MS = 2000;
 
 export default class VibeosExtension extends Extension {
     enable() {
+        // the screen's geometry first: every module lays out with it, and its monitors-changed handler runs before
+        // theirs
+        geometry.start();
+
         // ~/.config/vibeos/debug: the shell's Eval and Screenshot D-Bus calls are open to every client, for
         // development only
         const debug = GLib.build_filenamev([GLib.get_user_config_dir(), 'vibeos', 'debug']);
@@ -89,10 +94,11 @@ export default class VibeosExtension extends Extension {
         // 15 s, a phone held sideways that long included.
         this._startupHold = Main.layoutManager.holdStartup?.() ?? null;
 
-        // the lock screen and home are portrait, the session starts locked, and everything is laid out for an upright
-        // panel: a shell started sideways turns upright first
+        // a phone's lock screen and home are portrait, the session starts locked, and everything is laid out for an
+        // upright panel: a shell started sideways turns upright first. A tablet's follow the sensor and lay out
+        // whichever way it is turned: built at once.
         this._rotation = new Rotation();
-        this._rotation.hold();
+        this._rotation.holdHome();
         this._buildId = this._rotation.whenUpright(() => {
             this._buildId = 0;
             this._build();
@@ -287,5 +293,6 @@ export default class VibeosExtension extends Extension {
         this._rotation = null;
         // every actor that held the display composited is gone by now
         restoreUnredirect();
+        geometry.stop();
     }
 }

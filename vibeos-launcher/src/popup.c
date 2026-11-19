@@ -223,7 +223,7 @@ popup_open_icon (Tile *t, ModelPos pos, bool from_drawer, float ix, float iy, fl
   add_card (0, n_sys);
   add_card (n_sys, P.n_rows - n_sys);
   h = total_height ();
-  float top = roundf (dp (STATUS_BAR_DP));
+  float top = roundf (dp (N.status_dp));
   P.above = iy - dp (ABOVE_GAP_DP) - h >= top;
   if (!P.above && P.n_cards == 2) {
     Card sys = P.cards[0];
@@ -260,7 +260,7 @@ popup_open_options (float x, float y)
     add_card (i, 1);
   P.w = dp (POP_W_DP);
   float h = total_height ();
-  float top = roundf (dp (STATUS_BAR_DP));
+  float top = roundf (dp (N.status_dp));
   P.above = y - dp (OPTIONS_GAP_DP) - h >= top;
   stack (P.above ? y - dp (OPTIONS_GAP_DP) - h : y + dp (OPTIONS_GAP_DP), true);
   P.x = roundf (CLAMP (x - P.w / 2, dp (OPTIONS_SIDE_DP), N.W - dp (OPTIONS_SIDE_DP) - P.w));

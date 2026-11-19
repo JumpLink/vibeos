@@ -93,7 +93,7 @@ static struct {
 static float
 status_px (void)
 {
-  return roundf (dp (STATUS_BAR_DP));
+  return roundf (dp (N.status_dp));
 }
 
 static float

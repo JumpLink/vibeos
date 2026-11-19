@@ -18,10 +18,10 @@ import {animate, animateSpring, Animator, bezier, clamp, FAST_OUT_LINEAR_IN, FAS
     lerp, splineFling, Spring, VelocityTracker} from './motion.js';
 import {magnetic} from './magnetic.js';
 import {RoundRect} from './roundrect.js';
-import {Color, cogl, font, rgba, SurfaceEffect} from './palette.js';
+import {Color, cogl, font, rgba, SurfaceEffect, TabletShade} from './palette.js';
 import {openSettings} from './settings.js';
 import {symbolicIcon} from './statusbar.js';
-import {px, SCALE, SCREEN_H, SCREEN_W} from './units.js';
+import {HEIGHT, px, SCALE, SCREEN_H, SCREEN_W, WIDTH} from './units.js';
 
 // --- the stack, screen px
 export const SIDE = 48;                 // the margin on each side
@@ -244,11 +244,13 @@ function plainBody(notification) {
 // --- a notification row
 
 // @stack takes the row's taps and swipes; a heads-up has a card of its own colour (@card [rgb, alpha]), and the
-// circle's glyph is punched out in it (@glyph)
+// circle's glyph is punched out in it (@glyph). @width: a tablet's wider card (screen px); the text column, the expand
+// pill and the dismissal keep their distances from its end
 export const Row = GObject.registerClass(
 class Row extends St.Widget {
-    constructor(stack, notification, {card = SurfaceEffect[1], glyph = GLYPH_COLOR} = {}) {
-        super({reactive: true, width: px(ROW_W), height: px(MIN_H)});
+    constructor(stack, notification, {card = SurfaceEffect[1], glyph = GLYPH_COLOR, width = ROW_W} = {}) {
+        super({reactive: true, width: px(width), height: px(MIN_H)});
+        this._w = width;
         this._stack = stack;
         this.notification = notification;
         this._cardColor = card;
@@ -273,7 +275,7 @@ class Row extends St.Widget {
             reactive: true,
             can_focus: true,
             button_mask: St.ButtonMask.PRIMARY,
-            width: px(ROW_W),
+            width: px(width),
             height: px(MIN_H),
         });
         // its fill a shader's: a swipe changes the corners every frame, which St would draw anew each time
@@ -283,7 +285,7 @@ class Row extends St.Widget {
         this._card.connect('clicked', () => this._stack.activate(this));
         this.add_child(this._card);
 
-        this._content = new St.Widget({width: px(ROW_W), height: px(MIN_H)});
+        this._content = new St.Widget({width: px(width), height: px(MIN_H)});
         this.add_child(this._content);
         this._iconBox = new St.Widget({x: px(ICON_POS), y: px(ICON_POS), width: px(ICON), height: px(ICON)});
         this._content.add_child(this._iconBox);
@@ -357,6 +359,40 @@ class Row extends St.Widget {
         return this._urgency === MessageTray.Urgency.LOW;
     }
 
+    // the text column's ends and the pill, as far from the card's end as on the phone's card
+    get _collapsedEnd() {
+        return this._w - (ROW_W - COLLAPSED_END);
+    }
+
+    get _expandedEnd() {
+        return this._w - (ROW_W - EXPANDED_END);
+    }
+
+    // the card's colour and the circle glyph's, as the constructor takes them
+    setColors(card, glyph) {
+        this._cardColor = card;
+        this._glyphColor = glyph;
+        this._iconKey = null;
+        if (this.notification)
+            this._updateIcon();
+        this._applyCard();
+    }
+
+    // the card across another width: the text wraps again, and its height follows
+    setWidth(w) {
+        if (w === this._w)
+            return;
+        this._w = w;
+        this.width = px(w);
+        this._card.width = px(w);
+        this._content.width = px(w);
+        const top = this._visibleTop, bottom = this._visibleH;
+        this._visibleH = -1;
+        this.setVisibleRange(top, bottom);
+        this.update();
+        this._layoutContent();
+    }
+
     get critical() {
         return this._urgency === MessageTray.Urgency.CRITICAL;
     }
@@ -388,18 +424,18 @@ class Row extends St.Widget {
         const markup = `<span line_height="${bodyLineFactor(this._bigText)}">` +
             `${GLib.markup_escape_text(body, -1)}</span>`;
         this._bigText.set_markup(markup);
-        this._bigText.set_size(px(EXPANDED_END - CONTENT_X), -1);
+        this._bigText.set_size(px(this._expandedEnd - CONTENT_X), -1);
         this._bigText.remove_clip();
-        this._lines = this._hasText ? countLines(this._bigText, markup, EXPANDED_END - CONTENT_X) : 0;
+        this._lines = this._hasText ? countLines(this._bigText, markup, this._expandedEnd - CONTENT_X) : 0;
         if (this._lines > MAX_LINES) {
             // a fixed height ends the wrapped text in an ellipsis at that line
             this._bigText.height = px(MAX_LINES * LINE);
-            this._bigText.set_clip(0, 0, px(EXPANDED_END - CONTENT_X), px(MAX_LINES * LINE));
+            this._bigText.set_clip(0, 0, px(this._expandedEnd - CONTENT_X), px(MAX_LINES * LINE));
             this._lines = MAX_LINES;
         }
         // the collapsed line is cut short: the expanded text cross-fades in over it
-        this._crossFade = this._lines > 1 || naturalWidth(this._text) > COLLAPSED_END - CONTENT_X;
-        this._text.width = px(COLLAPSED_END - CONTENT_X);
+        this._crossFade = this._lines > 1 || naturalWidth(this._text) > this._collapsedEnd - CONTENT_X;
+        this._text.width = px(this._collapsedEnd - CONTENT_X);
 
         this._updateIcon();
         this._updateActions();
@@ -542,17 +578,17 @@ class Row extends St.Widget {
         const infoW = 2 * DOT_MARGIN + this._dotW + this._timeW;
         const collapsedBaseline = this._hasText ? TITLE_BASELINE : ONE_LINE_BASELINE;
 
-        const titleW = lerp(Math.min(this._titleW, COLLAPSED_END - CONTENT_X - infoW),
-            Math.min(this._titleW, EXPANDED_END - CONTENT_X), p);
+        const titleW = lerp(Math.min(this._titleW, this._collapsedEnd - CONTENT_X - infoW),
+            Math.min(this._titleW, this._expandedEnd - CONTENT_X), p);
         this._title.width = px(Math.max(titleW, 0));
         placeBaseline(this._title, CONTENT_X, lerp(collapsedBaseline, BIG_TITLE_BASELINE, p));
 
         // "• time": behind the title collapsed, behind the app name expanded
-        const appW = Math.min(this._appW, EXPANDED_END - CONTENT_X - infoW);
+        const appW = Math.min(this._appW, this._expandedEnd - CONTENT_X - infoW);
         this._app.width = px(Math.max(appW, 0));
         placeBaseline(this._app, CONTENT_X, HEADER_BASELINE);
         this._app.opacity = Math.round(255 * fadeIn(p));
-        const collapsedInfoX = CONTENT_X + Math.min(this._titleW, COLLAPSED_END - CONTENT_X - infoW);
+        const collapsedInfoX = CONTENT_X + Math.min(this._titleW, this._collapsedEnd - CONTENT_X - infoW);
         const infoX = lerp(collapsedInfoX, CONTENT_X + appW, p) + DOT_MARGIN;
         const infoBaseline = lerp(collapsedBaseline, HEADER_BASELINE, p);
         placeBaseline(this._dot, infoX, infoBaseline);
@@ -578,7 +614,7 @@ class Row extends St.Widget {
 
         // the pill: centred in a one-line row, at the top otherwise
         const pillY = this._hasText ? PILL_Y : lerp((MIN_H - PILL_H) / 2, PILL_Y, p);
-        this._pill.set_position(px(PILL_X - PILL_TOUCH), px(pillY - PILL_TOUCH));
+        this._pill.set_position(px(this._w - (ROW_W - PILL_X) - PILL_TOUCH), px(pillY - PILL_TOUCH));
     }
 
     // --- the card: its height (the stack's clip) and corners
@@ -595,9 +631,9 @@ class Row extends St.Widget {
         this._visibleH = bottom;
         this.height = px(bottom);
         this._card.set_position(0, px(top));
-        this._card.set_size(px(ROW_W), px(bottom - top));
-        this._shape.set_size(px(ROW_W), px(bottom - top));
-        this._content.set_clip(0, px(top), px(ROW_W), px(bottom - top));
+        this._card.set_size(px(this._w), px(bottom - top));
+        this._shape.set_size(px(this._w), px(bottom - top));
+        this._content.set_clip(0, px(top), px(this._w), px(bottom - top));
     }
 
     // the content's alpha in a heads-up's appear animation
@@ -772,20 +808,21 @@ class Row extends St.Widget {
 
     _applyContentAlpha() {
         this._content.opacity = Math.round(255 * this._contentAlpha *
-            (1 - clamp(Math.abs(this._fadeTx) / ROW_W / FAR_ENOUGH)));
+            (1 - clamp(Math.abs(this._fadeTx) / this._w / FAR_ENOUGH)));
     }
 
     // off the screen: a slow release accelerates out, a fling keeps its speed
     dismiss(v, accelerate, {delay = 0, onDone = null} = {}) {
         this.dismissing = true;
-        const target = (Math.abs(v) > ESCAPE_VELOCITY && v < 0) || this.tx < 0 ? -DISMISS_X : DISMISS_X;
+        const away = this._w + (DISMISS_X - ROW_W);
+        const target = (Math.abs(v) > ESCAPE_VELOCITY && v < 0) || this.tx < 0 ? -away : away;
         let duration, interpolator;
         if (accelerate) {
             duration = v !== 0 ? Math.min(MAX_ESCAPE_MS, Math.abs(target - this.tx) * 1000 / Math.abs(v))
                 : ESCAPE_MS;
             interpolator = FAST_OUT_LINEAR_IN;
         } else {
-            ({duration, interpolator} = flingDismissing(this.tx, target, v, ROW_W));
+            ({duration, interpolator} = flingDismissing(this.tx, target, v, this._w));
         }
         this._swipeAnim?.stop();
         this._magneticAnim?.stop();
@@ -854,7 +891,12 @@ class SectionHeader extends St.Widget {
     }
 
     setVisibleHeight(h) {
-        this.set_clip(0, 0, px(SCREEN_W), px(h));
+        this.set_clip(0, 0, this.width, px(h));
+    }
+
+    // over rows of @rowW: the header spans them and their margins
+    setRowWidth(rowW) {
+        this.width = px(rowW + 2 * SIDE);
     }
 });
 
@@ -872,6 +914,9 @@ class Footer extends St.Widget {
         const clear = this._button(CLEAR_X, CLEAR_W, 'Clear all', label);
         const settings = this._button(SETTINGS_X, ICON_BUTTON_W, 'Notification settings',
             new VectorIcon('notif_footer_btn_settings', px(FOOTER_ICON), Color.onSurface));
+        this._clear = clear;
+        this._settings = settings;
+        this._buttons = [history, clear, settings];
         // this phone keeps no notification history: both icon buttons open the notification settings
         history.connect('clicked', () => stack.openSettings());
         settings.connect('clicked', () => stack.openSettings());
@@ -897,7 +942,23 @@ class Footer extends St.Widget {
     }
 
     setVisibleHeight(h) {
-        this.set_clip(0, 0, px(SCREEN_W), px(h));
+        this.set_clip(0, 0, this.width, px(h));
+    }
+
+    // the pills' fill, [rgb, alpha]
+    setFill(fill) {
+        for (const button of this._buttons) {
+            button.style = `background-color: ${rgba(...fill)}; ` +
+                `border-radius: ${px(FOOTER_PILL_H / 2).toFixed(2)}px;`;
+        }
+    }
+
+    // under rows of @rowW: Clear all takes what the two icon buttons leave
+    setRowWidth(rowW) {
+        this.width = px(rowW + 2 * SIDE);
+        const end = SIDE + rowW;
+        this._settings.x = px(end - ICON_BUTTON_W);
+        this._clear.width = px(rowW - 2 * (CLEAR_X - HISTORY_X));
     }
 });
 
@@ -917,6 +978,8 @@ class NotificationStack extends St.Widget {
         this._ratio = 1;
         this._scroll = 0;
         this._clearing = false;
+        this._frame = null;             // a tablet's panel (setFrame); the phone's full width without one
+        this._rowColors = {};           // ... and its cards' colours
 
         this._header = new SectionHeader();
         this._header.visible = false;
@@ -944,6 +1007,29 @@ class NotificationStack extends St.Widget {
         return this._rows.size === 0;
     }
 
+    // Where the rows go and where the stack ends, screen px: the phone's screen less its margins, or a tablet's
+    // notification panel, which the stack is cut to
+    get _bounds() {
+        return this._frame ?? {top: TOP_PADDING, left: SIDE, width: ROW_W, end: SCREEN_H,
+            scrollEnd: SCREEN_H - BOTTOM_INSET, clipX: null, clipW: 0};
+    }
+
+    // a tablet's panel (shadelayout.js: rows) for the screen as it is turned now; the rows wrap their text again
+    setFrame(frame) {
+        this._frame = frame;
+        this._rowColors = {card: [TabletShade.card, 1], glyph: TabletShade.card};
+        this.set_size(px(WIDTH), px(HEIGHT));
+        const rows = new Set([...this._rows.values(), ...[...this._layout.keys()].filter(a => a instanceof Row)]);
+        for (const row of rows) {
+            row.setColors(this._rowColors.card, this._rowColors.glyph);
+            row.setWidth(frame.width);
+        }
+        this._header.setRowWidth(frame.width);
+        this._footer.setRowWidth(frame.width);
+        this._footer.setFill(this._rowColors.card);
+        this._relayout(false);
+    }
+
     // stackY: the scrim top (screen px); ratio: the stack's expansion without the shelf
     // (StackScrollAlgorithm.getExpansionFractionWithoutShelf); alpha: the content alpha
     layoutFor({stackY, ratio, alpha}) {
@@ -962,13 +1048,17 @@ class NotificationStack extends St.Widget {
             if (!state.leaving)
                 height = Math.max(height, state.offset + state.h);
         }
-        const bottom = this._stackY + TOP_PADDING + height;
-        return Math.max(0, bottom - (SCREEN_H - BOTTOM_INSET));
+        const bounds = this._bounds;
+        const bottom = this._stackY + bounds.top + height;
+        return Math.max(0, bottom - bounds.scrollEnd);
     }
 
-    // a drag up (or down) at screen y would scroll the stack
-    canScroll(y, up) {
+    // a drag up (or down) at screen y (and x: a tablet's panel is not the whole width) would scroll the stack
+    canScroll(y, up, x = null) {
         if (y < this._stackY)
+            return false;
+        const {clipX, clipW} = this._bounds;
+        if (x !== null && clipX !== null && (x < clipX || x > clipX + clipW))
             return false;
         return up ? this._scroll < this._maxScroll : this._scroll > 0;
     }
@@ -1029,7 +1119,7 @@ class NotificationStack extends St.Widget {
     _addNotification(notification) {
         if (this._rows.has(notification))
             return;
-        const row = new Row(this, notification);
+        const row = new Row(this, notification, {...this._rowColors, width: this._bounds.width});
         row.order = ++this._order;
         this._rows.set(notification, row);
         this.insert_child_below(row, this._header);
@@ -1230,13 +1320,19 @@ class NotificationStack extends St.Widget {
     _place() {
         // what scrolls above the scrim's top is cut there
         this._scroll = clamp(this._scroll, 0, this._maxScroll);
-        if (this._scroll > 0)
+        const bounds = this._bounds;
+        if (bounds.clipX !== null) {
+            // a tablet's panel: the stack never shows past it
+            this.set_clip(px(bounds.clipX), px(this._stackY), px(bounds.clipW),
+                px(Math.max(bounds.end - this._stackY, 0)));
+        } else if (this._scroll > 0) {
             this.set_clip(0, px(this._stackY), px(SCREEN_W), px(SCREEN_H - this._stackY));
-        else
+        } else {
             this.remove_clip();
-        const top = this._stackY + TOP_PADDING - this._scroll;
+        }
+        const top = this._stackY + bounds.top - this._scroll;
         for (const [actor, state] of this._layout) {
-            const x = actor instanceof Row ? SIDE : 0;
+            const x = actor instanceof Row ? bounds.left : bounds.left - SIDE;
             actor.set_position(px(x), px(top + this._ratio * state.offset));
             actor.setVisibleHeight(state.h * this._ratio);
             actor.opacity = Math.round(255 * state.alpha);
@@ -1246,7 +1342,8 @@ class NotificationStack extends St.Widget {
         this._empty.visible = emptyAlpha > 0;
         if (emptyAlpha > 0) {
             const [w, h] = this._empty.get_size();
-            this._empty.set_position(px(SCREEN_W / 2) - w / 2, px((this._stackY + SCREEN_H) / 2) - h / 2);
+            this._empty.set_position(px(bounds.left + bounds.width / 2) - w / 2,
+                px((this._stackY + bounds.end) / 2) - h / 2);
             this._empty.opacity = Math.round(255 * emptyAlpha);
         }
     }
@@ -1293,8 +1390,9 @@ class NotificationStack extends St.Widget {
                 },
             });
 
-        const onScreen = rows.filter(row => this._stackY + TOP_PADDING +
-            this._ratio * (this._layout.get(row)?.offset ?? 0) < SCREEN_H);
+        const bounds = this._bounds;
+        const onScreen = rows.filter(row => this._stackY + bounds.top +
+            this._ratio * (this._layout.get(row)?.offset ?? 0) < bounds.end);
         let delay = 0, step = CLEAR_DELAY, left = onScreen.length;
         const finish = () => {
             for (const row of rows)

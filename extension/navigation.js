@@ -21,6 +21,7 @@ import {EdgeBack} from './back.js';
 import {SidewaysGestures, sideways} from './sideways.js';
 import {capturing} from './capture.js';
 import {VelocityTracker} from './motion.js';
+import {geometry, SCALE, SCREEN_SCALE} from './units.js';
 import {forgetClosing, HINT_SCRIM, PAGER_SNAP_MS, Recents, SETTLE_MS, warmUp} from './recents.js';
 import {
     ACCELERATE, DECELERATE, DECELERATE_3, FRAME_MS, FloatingIcon, HOME_ICON_PX, LINEAR,
@@ -32,7 +33,7 @@ const TOUCH_SLOP = 34;                  // the touch slop × √2, on the hypote
 const QUICKSWITCH_DEG = 15;
 const PAUSE_MIN_UP = 108;               // the travel before a pause counts
 const DRAG_LENGTH = 540;                // H − the recents card's bottom
-const MAX_SHIFT = SCREEN_H / DRAG_LENGTH;
+let MAX_SHIFT;
 const FLING_PX_MS = 1.5;
 const MAX_SWIPE_MS = 350;
 const DURATION_MULT = 1 / 0.7;
@@ -53,12 +54,12 @@ const HOME_VX = [300, 500];             // px/s: the least start velocity, and w
 const HOME_VY = [2000, 5000];
 const HOME_V_FALLOFF = 1.4;
 const HOME_WIN_ALPHA_END = 0.85;        // window alpha 1 − (p/0.85)³
-const HOME_DEFAULT_CENTER = [SCREEN_W / 2, SCREEN_H - 500];    // no icon: availH 2092 − the hotseat's 312
+let HOME_DEFAULT_CENTER;               // no icon: availH 2092 − the hotseat's 312
 const SHOW_ICON_WAIT_MS = 250;              // a launcher that never draws its icon again: the flying one goes anyway
-const DOCK_TOP = SCREEN_H - 312;
+let DOCK_TOP;
 const REVEAL_SCALE_FROM = 0.85;
 const REVEAL_MS = 1000;
-const REVEAL_PIVOT = [SCREEN_W / 2, SCREEN_H / 2];
+let REVEAL_PIVOT;
 
 // the swipe from the home screen: the hint pose, then recents
 const HINT_SCALE = 0.92;                // the workspace's scale in the hint pose
@@ -69,12 +70,23 @@ const HINT_SPRING_V = 0.9;              // … and its start velocity, scale per
 const HOME_PAUSE_MIN_UP = 24;           // the touch slop
 const HOME_FLING = 3;                   // px/ms
 const OVERVIEW_IN_MS = 380;             // the cards sliding in from the side
-const OVERVIEW_WS_SCALE = TASK_W / 1032;    // the workspace down to a card's width (the cell layout is 1032)
+let OVERVIEW_WS_SCALE;                 // the workspace down to a card's width (the cell layout is 1032)
 const OVERVIEW_WS_TY = -(312 - 36) / 2; // up by half the default swipe height (all-apps cell − its label)
 const OVERVIEW_DEPTH = 0.7;
 const OVERVIEW_MOVEMENT = 0.25;         // the cards follow the finger this much once there
 
 const Target = {HOME: 'home', RECENTS: 'recents', NEW_TASK: 'new-task', LAST_TASK: 'last-task'};
+
+// the lengths above that follow the screen (task.js's, read again when it changes)
+function layoutScreen() {
+    MAX_SHIFT = SCREEN_H / DRAG_LENGTH;
+    HOME_DEFAULT_CENTER = [SCREEN_W / 2, SCREEN_H - 500];
+    DOCK_TOP = SCREEN_H - 312;
+    REVEAL_PIVOT = [SCREEN_W / 2, SCREEN_H / 2];
+    OVERVIEW_WS_SCALE = TASK_W / 1032;
+}
+layoutScreen();
+geometry.connect('changed', layoutScreen);
 
 // The flight's start velocity: at least `min`, and past `softMax` only the 1/1.4th power of the rest, so a hard
 // fling does not overshoot
@@ -161,7 +173,8 @@ export class Navigation {
     constructor(home) {
         this.home = home;
         this.icons = new Map();
-        this.scale = global.display.get_monitor_scale(Main.layoutManager.primaryIndex);
+        // reference px per stage px: touches are compared with the reference's lengths
+        this.scale = SCALE;
         this._tracker = new VelocityTracker();
         this._pause = new MotionPause(() => this._paused());
         this.drawerOpen = false;
@@ -187,6 +200,20 @@ export class Navigation {
         this._edgeDrag = Main.overview._singleFingerOverviewEdgeDrag;
         if (this._edgeDrag)
             this._edgeDrag.enabled = false;
+        // and its overview and workspace swipes, with one finger and with three. The one-finger ones wait for that
+        // edge drag only while it is on: off, any upward drag that no gesture here took began GNOME's overview,
+        // which this session cannot lay out, and every gesture stopped with it. The shell turns them on again when
+        // the first window opens or the last closes, so they are turned off after it each time.
+        this._shellSwipes = ['_singleFingerOverviewGesture', '_threeFingerOverviewGesture',
+            '_singleFingerWorkspacesGesture', '_threeFingerWorkspacesGesture']
+            .map(name => Main.overview[name]).filter(swipe => swipe);
+        const swipesOff = () => {
+            for (const swipe of this._shellSwipes)
+                swipe.enabled = false;
+        };
+        swipesOff();
+        Main.wm.workspaceTracker?.connectObject('notify::zero-open-windows', swipesOff, this);
+        global.workspace_manager.connectObject('notify::layout-rows', swipesOff, this);
         this._homeBar = Main.layoutManager.bottomPanelBox ?? null;
         if (this._homeBar) {
             Main.layoutManager.untrackChrome(this._homeBar);
@@ -208,7 +235,9 @@ export class Navigation {
     // The launcher's icons: app id → its rect on the current page or the dock (device px; w 0 when it is not
     // there) and its picture
     setIcons(icons) {
-        this.icons = new Map(icons.map(([id, rect, path]) => [id, {rect, path}]));
+        // the launcher's rectangles are in its buffer's pixels, the screen's: in reference px here
+        const k = SCALE / SCREEN_SCALE;
+        this.icons = new Map(icons.map(([id, rect, path]) => [id, {rect: rect.map(v => v * k), path}]));
     }
 
     launcher(method, params) {
@@ -691,9 +720,9 @@ export class Navigation {
         this._move();
     }
 
-    // the launcher's workspace and dock, frame by frame
+    // the launcher's workspace and dock, frame by frame; ty in reference px, the launcher's in its buffer's
     _pose(scale, alpha, depth, ty = 0) {
-        this.launcher('Pose', new GLib.Variant('(dddd)', [scale, alpha, depth, ty]));
+        this.launcher('Pose', new GLib.Variant('(dddd)', [scale, alpha, depth, ty * SCREEN_SCALE / SCALE]));
     }
 
     // home → the hint pose, linear in p: the workspace 1 → 0.92, the depth 0 → 0.05, the scrim up to the hint's
@@ -840,6 +869,18 @@ export class Navigation {
         this._gesture.disconnectObject(this);
         if (this._edgeDrag)
             this._edgeDrag.enabled = true;
+        // the shell's swipes as it keeps them: the overview's while a window is open, the workspaces' with rows
+        Main.wm.workspaceTracker?.disconnectObject(this);
+        global.workspace_manager.disconnectObject(this);
+        const windows = !(Main.wm.workspaceTracker?.zeroOpenWindows ?? true);
+        const rows = global.workspace_manager.layoutRows !== -1;
+        const {_singleFingerOverviewGesture: one, _threeFingerOverviewGesture: three} = Main.overview;
+        const {_singleFingerWorkspacesGesture: oneWs, _threeFingerWorkspacesGesture: threeWs} = Main.overview;
+        for (const [swipe, on] of [[one, windows], [three, windows], [oneWs, rows], [threeWs, rows]]) {
+            if (swipe)
+                swipe.enabled = on;
+        }
+        this._shellSwipes = [];
         if (this._homeBar) {
             this._homeBar.show();
             Main.layoutManager.trackChrome(this._homeBar, {affectsStruts: true, trackFullscreen: true});

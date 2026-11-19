@@ -34,6 +34,7 @@ typedef struct {
   double  depth;
   GfxTex *tex;
   float   margin;           /* px of the layer beyond each screen edge */
+  GfxTex *kept;             /* its texture for the screen's other shape, while it may turn back */
 } Layer;
 
 struct Parallax {
@@ -43,6 +44,9 @@ struct Parallax {
   double      tilt;         /* the tilt (of g) that moves it that far */
   int         w, h;
   double      scale;
+  int         tex_w, tex_h;   /* the screen the layers' textures were made for (the old one until a decode is in) */
+  int         kept_w, kept_h; /* … and the one the kept textures were made for; 0 for none */
+  GCancellable *decoding;     /* the layers being decoded for w × h in a thread */
   bool        running;
   char       *accel[3];
   char       *rate;
@@ -378,6 +382,7 @@ layer_free (gpointer data)
 {
   Layer *l = data;
   gfx_tex_free (l->tex);
+  gfx_tex_free (l->kept);
   g_free (l->file);
   g_free (l);
 }
@@ -431,6 +436,10 @@ parallax_free (Parallax *p)
     return;
   if (p->idle)
     g_source_remove (p->idle);
+  if (p->decoding) {
+    g_cancellable_cancel (p->decoding);
+    g_clear_object (&p->decoding);
+  }
   ssc_stop (p);
   set_rate (p, RATE_IDLE);
   g_ptr_array_unref (p->layers);
@@ -441,26 +450,148 @@ parallax_free (Parallax *p)
   g_free (p);
 }
 
+/* A layer's texture size for a w × h screen: the screen and its margin at each side */
+static void
+layer_size (Parallax *p, Layer *l, int w, int h, int *bw, int *bh)
+{
+  l->margin = ceilf ((float) (p->range * fabs (l->depth) * p->scale));
+  *bw = w + 2 * (int) l->margin;
+  *bh = h + 2 * (int) l->margin;
+}
+
+typedef struct {
+  guint       n;
+  char      **files;
+  int        *bw, *bh;
+  GdkPixbuf **out;
+  int         w, h;
+} Decode;
+
+static void
+decode_free (gpointer data)
+{
+  Decode *d = data;
+  for (guint i = 0; i < d->n; i++) {
+    g_free (d->files[i]);
+    g_clear_object (&d->out[i]);
+  }
+  g_free (d->files);
+  g_free (d->bw);
+  g_free (d->bh);
+  g_free (d->out);
+  g_free (d);
+}
+
+static void
+decode_thread (GTask *task, gpointer source, gpointer data, GCancellable *cancellable)
+{
+  Decode *d = data;
+  for (guint i = 0; i < d->n && !g_cancellable_is_cancelled (cancellable); i++)
+    d->out[i] = image_load (d->files[i], d->bw[i], d->bh[i], TRUE);
+  g_task_return_boolean (task, TRUE);
+}
+
+/* the layers decoded for the new shape are in: they take over, and the old ones are kept for a turn back */
+static void
+decode_done (GObject *source, GAsyncResult *res, gpointer data)
+{
+  GTask *task = G_TASK (res);
+  if (g_cancellable_is_cancelled (g_task_get_cancellable (task)))
+    return;                 /* the picture or its parallax is gone, or the screen turned back first */
+  Parallax *p = data;
+  Decode *d = g_task_get_task_data (task);
+  for (guint i = 0; i < d->n && i < p->layers->len; i++) {
+    Layer *l = p->layers->pdata[i];
+    gfx_tex_free (l->kept);
+    l->kept = l->tex;
+    l->tex = d->out[i] ? image_texture (d->out[i]) : NULL;
+  }
+  p->kept_w = p->tex_w;
+  p->kept_h = p->tex_h;
+  p->tex_w = d->w;
+  p->tex_h = d->h;
+  g_clear_object (&p->decoding);
+  g_message ("parallax: %u layers for %dx%d decoded", p->layers->len, d->w, d->h);
+  if (p->wake)
+    p->wake (p->wake_data);
+}
+
+/* The screen's size changed. The first time, the layers are decoded for it at once. A turned screen (a tablet's) has
+ * its picture at once if it was this shape before (the textures are kept for both), else the layers are decoded in a
+ * thread while the old ones, scaled to cover the new shape, stand in: decoding them took the main loop 2.5 s, and
+ * meanwhile the turned window showed its old frame cut by the new shape. */
 void
 parallax_resize (Parallax *p, int w, int h, double scale)
 {
   if (p->w == w && p->h == h && p->scale == scale)
     return;
+  bool first = !p->tex_w || p->scale != scale;
   p->w = w;
   p->h = h;
   p->scale = scale;
-  gint64 t0 = g_get_monotonic_time ();
-  for (guint i = 0; i < p->layers->len; i++) {
-    Layer *l = p->layers->pdata[i];
-    l->margin = ceilf ((float) (p->range * fabs (l->depth) * scale));
-    int bw = w + 2 * (int) l->margin, bh = h + 2 * (int) l->margin;
-    GdkPixbuf *pb = image_load (l->file, bw, bh, TRUE);
-    gfx_tex_free (l->tex);
-    l->tex = pb ? image_texture (pb) : NULL;
-    g_clear_object (&pb);
+  if (p->decoding) {
+    g_cancellable_cancel (p->decoding);
+    g_clear_object (&p->decoding);
   }
-  g_message ("parallax: %u layers for %dx%d in %.0f ms", p->layers->len, w, h,
-             (g_get_monotonic_time () - t0) / 1000.0);
+  if (first) {
+    gint64 t0 = g_get_monotonic_time ();
+    for (guint i = 0; i < p->layers->len; i++) {
+      Layer *l = p->layers->pdata[i];
+      int bw, bh;
+      layer_size (p, l, w, h, &bw, &bh);
+      GdkPixbuf *pb = image_load (l->file, bw, bh, TRUE);
+      gfx_tex_free (l->tex);
+      gfx_tex_free (l->kept);
+      l->kept = NULL;
+      l->tex = pb ? image_texture (pb) : NULL;
+      g_clear_object (&pb);
+    }
+    p->tex_w = w;
+    p->tex_h = h;
+    p->kept_w = p->kept_h = 0;
+    g_message ("parallax: %u layers for %dx%d in %.0f ms", p->layers->len, w, h,
+               (g_get_monotonic_time () - t0) / 1000.0);
+    return;
+  }
+  if (p->tex_w == w && p->tex_h == h)
+    return;                 /* turned back before the decode was in */
+  if (p->kept_w == w && p->kept_h == h) {
+    for (guint i = 0; i < p->layers->len; i++) {
+      Layer *l = p->layers->pdata[i];
+      GfxTex *t = l->tex;
+      l->tex = l->kept;
+      l->kept = t;
+    }
+    p->kept_w = p->tex_w;
+    p->kept_h = p->tex_h;
+    p->tex_w = w;
+    p->tex_h = h;
+    return;
+  }
+  Decode *d = g_new0 (Decode, 1);
+  d->n = p->layers->len;
+  d->files = g_new0 (char *, d->n);
+  d->bw = g_new0 (int, d->n);
+  d->bh = g_new0 (int, d->n);
+  d->out = g_new0 (GdkPixbuf *, d->n);
+  d->w = w;
+  d->h = h;
+  for (guint i = 0; i < d->n; i++) {
+    Layer *l = p->layers->pdata[i];
+    d->files[i] = g_strdup (l->file);
+    layer_size (p, l, w, h, &d->bw[i], &d->bh[i]);
+  }
+  p->decoding = g_cancellable_new ();
+  g_autoptr (GTask) task = g_task_new (NULL, p->decoding, decode_done, p);
+  g_task_set_task_data (task, d, decode_free);
+  g_task_run_in_thread (task, decode_thread);
+}
+
+void
+parallax_set_wake (Parallax *p, void (*wake) (void *data), void *data)
+{
+  p->wake = wake;
+  p->wake_data = data;
 }
 
 void
@@ -494,7 +625,14 @@ parallax_draw (Parallax *p, float zoom)
     /* depth -1…1: the layers behind the screen plane (negative) move against the ones in front */
     float dx = (float) (-p->ox * p->range * l->depth * p->scale);
     float dy = (float) (-p->oy * p->range * l->depth * p->scale);
-    gfx_image (l->tex, -(l->margin + dx), -(l->margin + dy), l->tex->w, l->tex->h, 0, 1);
+    if (p->tex_w == p->w && p->tex_h == p->h) {
+      gfx_image (l->tex, -(l->margin + dx), -(l->margin + dy), l->tex->w, l->tex->h, 0, 1);
+      continue;
+    }
+    /* made for the screen's old shape, until the new one's is in: scaled to cover it, about its centre */
+    float k = MAX ((float) p->w / p->tex_w, (float) p->h / p->tex_h);
+    float tw = l->tex->w * k, th = l->tex->h * k;
+    gfx_image (l->tex, (p->w - tw) / 2 - dx, (p->h - th) / 2 - dy, tw, th, 0, 1);
   }
   gfx_restore ();
 }

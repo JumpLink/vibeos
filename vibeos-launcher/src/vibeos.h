@@ -34,6 +34,29 @@
 #define PAGE_DOT_DP              6
 #define PAGE_DOT_GAP_DP          4
 
+/* A tablet (a smallest width of 600 dp or more), as Android 17's launcher lays out the Galaxy Tab S5e: a 6 x 5 grid by
+ * default and a 6-cell dock, both centred, their columns a fixed pitch apart; larger icons and labels; the rows a
+ * fixed pitch apart from a first row at a fixed height, the dock and the page dots a fixed height above the bottom.
+ * Landscape and portrait each have their own. */
+#define TABLET_SW_DP             600
+#define TAB_STATUS_BAR_DP        28
+#define TAB_COLS                 6
+#define TAB_ROWS                 5
+#define TAB_DOCK_SLOTS           6
+#define TAB_ICON_DP              60
+#define TAB_LABEL_SP             14
+#define TAB_LABEL_BASELINE_DP    80.25         /* below the icon's top */
+#define TAB_CONTENT_DP           85            /* icon, gap and label: the icon's top in a cell is (pitch − this)/2 */
+typedef struct {
+  float pitch_x, pitch_y;          /* from one column / row to the next */
+  float first_icon_top;            /* the first row's icons' top */
+  float dock_above_bottom;         /* the dock's icons' bottom above the screen's */
+  float dots_above_bottom;         /* the page dots' centre above the screen's bottom */
+  float label_max;                 /* a label's room */
+} TabletGrid;
+static const TabletGrid TABLET_LAND = { 184, 120, 58, 40.5f, 112, 120 };
+static const TabletGrid TABLET_PORT = { 118, 184, 159.5f, 76.5f, 148, 102 };
+
 #define WALLPAPER_ZOOM           1.10f         /* the wallpaper at home, about the screen centre */
 #define CONTENT_SCALE            0.97f         /* workspace + dock behind the drawer and behind a launch */
 
@@ -78,6 +101,8 @@ typedef struct {
   Wl          *wl;
   int          W, H;
   double       dp;
+  bool         tablet;            /* a smallest width of TABLET_SW_DP or more, whichever way it is turned */
+  float        status_dp;         /* the shell's status bar: STATUS_BAR_DP, a tablet's TAB_STATUS_BAR_DP */
   double       now;               /* ms, the frame being drawn */
   GHashTable  *tiles;             /* id -> Tile* */
   GPtrArray   *sorted;            /* Tile*, the drawer's A→Z order */

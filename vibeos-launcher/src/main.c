@@ -253,6 +253,7 @@ wallpaper_load (void)
   parallax_free (A.par);
   A.par = p;
   if (p) {
+    parallax_set_wake (p, wake, NULL);
     parallax_resize (p, N.W, N.H, N.dp);
     parallax_run (p, !A.suspended);
   }
@@ -331,14 +332,24 @@ icon_scale (const char *key)
   return CLAMP (g_settings_get_double (N.settings, key), 0.5, 1.5);
 }
 
+/* A grid key: what Settings set, or with nothing set on a tablet the tablet's own default (the schema's is a phone's) */
+static int
+grid_setting (const char *key, int tablet_default)
+{
+  g_autoptr (GVariant) user = N.tablet ? g_settings_get_user_value (N.settings, key) : NULL;
+  if (N.tablet && !user)
+    return tablet_default;
+  return g_settings_get_int (N.settings, key);
+}
+
 /* the layout keys (vibeos.Shell) into N; the home grid's columns and rows for the model */
 static void
 layout_read (int *cols, int *rows)
 {
-  *cols = CLAMP (g_settings_get_int (N.settings, "desktop-grid-columns"), 3, 8);
-  *rows = CLAMP (g_settings_get_int (N.settings, "desktop-grid-rows"), 3, 8);
+  *cols = CLAMP (grid_setting ("desktop-grid-columns", TAB_COLS), 3, 8);
+  *rows = CLAMP (grid_setting ("desktop-grid-rows", TAB_ROWS), 3, 8);
   N.drawer_cols = CLAMP (g_settings_get_int (N.settings, "drawer-grid-columns"), 3, 8);
-  N.icon_dp = ICON_DP * icon_scale ("desktop-icon-scale");
+  N.icon_dp = (N.tablet ? TAB_ICON_DP : ICON_DP) * icon_scale ("desktop-icon-scale");
   N.drawer_icon_dp = ICON_DP * icon_scale ("drawer-icon-scale");
   N.labels = !g_settings_get_boolean (N.settings, "desktop-hide-app-labels");
   N.search = g_settings_get_boolean (N.settings, "search-drawer-enabled");
@@ -816,6 +827,8 @@ on_resize (gpointer data, int w, int h, double scale)
   const char *d = g_getenv ("VIBEOS_DENSITY");
   N.dp = d ? g_ascii_strtod (d, NULL) : scale > 0 ? scale : 3.0;
   spongy_set_density (N.dp);
+  N.tablet = MIN (w, h) / N.dp >= TABLET_SW_DP;
+  N.status_dp = N.tablet ? TAB_STATUS_BAR_DP : STATUS_BAR_DP;
 }
 
 static void

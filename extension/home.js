@@ -17,6 +17,7 @@ export class Home {
         this._client = null;
         this._window = null;
         this._respawnId = 0;
+        this._fitId = 0;
         this._destroyed = false;
 
         global.display.connectObject('window-created', (_d, win) => this._windowCreated(win), this);
@@ -102,6 +103,24 @@ export class Home {
             if (this._window === win)
                 this._window = null;
         }, this);
+        win.connectObject('shown', () => this._fitWindow(win), this);
+    }
+
+    // A turn of the screen before the launcher's first frame: the shell keeps its window at the turned screen's size,
+    // but tells the launcher, when the window shows, the size it gave before the turn, and the launcher draws at that
+    // size until the next turn. Asking for the screen's size once the window shows sends the launcher the right one;
+    // when it already has it nothing is sent.
+    _fitWindow(win) {
+        if (this._fitId)
+            GLib.source_remove(this._fitId);
+        this._fitId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            this._fitId = 0;
+            if (win !== this._window)
+                return GLib.SOURCE_REMOVE;
+            const monitor = global.display.get_monitor_geometry(win.get_monitor());
+            win.move_resize_frame(false, monitor.x, monitor.y, monitor.width, monitor.height);
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     destroy() {
@@ -112,6 +131,8 @@ export class Home {
         this._window?.disconnectObject(this);
         if (this._respawnId)
             GLib.source_remove(this._respawnId);
+        if (this._fitId)
+            GLib.source_remove(this._fitId);
         this._client?.get_subprocess()?.force_exit();
         this._client = null;
     }

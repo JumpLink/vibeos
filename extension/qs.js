@@ -6,6 +6,7 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GnomeDesktop from 'gi://GnomeDesktop';
 import GObject from 'gi://GObject';
+import Pango from 'gi://Pango';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -14,10 +15,10 @@ import * as SystemActions from 'resource:///org/gnome/shell/misc/systemActions.j
 import {addEndMark} from './endmark.js';
 import {Canvas, hasIcon, paintIcon, VectorIcon} from './icons.js';
 import {animate, animateSpring, clamp, lerp, Spring} from './motion.js';
-import {Color, cogl, font, mix, rgba, setSource, SurfaceEffect} from './palette.js';
+import {Color, cogl, font, mix, rgba, setSource, SurfaceEffect, TabletShade} from './palette.js';
 import {openSettings} from './settings.js';
 import {inkBox, SystemIcons} from './statusbar.js';
-import {px, screenPixels, SCALE, SCREEN_H, SCREEN_W} from './units.js';
+import {px, screenPixels, SCALE, SCREEN_H, SCREEN_W, TABLET} from './units.js';
 
 // --- geometry, screen px
 export const QQS_HEIGHT = 644;          // the stack's top padding: 116 + 2 x 216 + 24 + 72
@@ -29,6 +30,7 @@ const TILE_H = 216;
 const COL_PITCH = 252;
 const ROW_GAP = 24;
 const COLUMNS = 4;
+const TABLET_COLUMNS = 3;
 const QQS_ROWS = 2;
 const ICON = 96;
 const LARGE_ICON = 84;                  // a wide tile's icon, centred on LARGE_ICON_CX
@@ -74,6 +76,10 @@ const CARRIER_QS_TOP = 110;
 const HEADER_FADE_OUT = 0.14;           // over q the header fades out by here, moving a tenth of its way,
 const HEADER_FADE_IN = 0.58;            // and fades back in from here at its QS place
 const HEADER_DISPLACEMENT = 0.1066;
+// a tablet's header: a 56 dp row, the date 8 dp past the clock
+const TABLET_HEADER_H = 168;
+const TABLET_DATE_GAP = 24;
+const TABLET_ICONS_SPAN = 1200;
 
 // fonts (Google Sans Flex, rounded)
 const TILE_LABEL_FONT = font(14, 600);
@@ -92,6 +98,31 @@ const TILE_COLORS = {
     inactive: {bg: SurfaceEffect[1], fg: [Color.onSurface, 1]},
     unavailable: {bg: [Color.surface, 0.18], fg: [Color.onSurfaceVariant, 0.38]},
 };
+
+// A tablet's tiles are pills with the icon and the labels side by side, on an opaque scrim. On is a rounded rectangle
+// in the primary colour; off and unavailable are full pills.
+const TABLET_TILE = [TabletShade.tile, 1];
+const TABLET_DIM = [Color.onSurfaceVariant, 0.38];
+const TABLET_TILE_COLORS = {
+    active: {bg: [Color.primary, 1], fg: [Color.onPrimary, 1], radius: TILE_RADIUS},
+    inactive: {bg: TABLET_TILE, fg: [Color.onSurface, 1], radius: TILE_H / 2},
+    unavailable: {bg: [TabletShade.unavailable, 1], fg: TABLET_DIM, radius: TILE_H / 2},
+};
+// ... except Wi-Fi, Bluetooth and Do Not Disturb, whose icon sits on a target of its own: a rounded square in the
+// primary colour when on, a circle when off, on a pill that stays dark
+const TABLET_TARGET = 168;
+const TABLET_TARGET_INSET = 24;
+const TABLET_TARGET_RADIUS = 48;
+const TABLET_DUAL_COLORS = {
+    active: {bg: TABLET_TILE, fg: [Color.onSurface, 1], target: [Color.primary, 1], glyph: [Color.onPrimary, 1],
+        radius: TILE_H / 2, targetRadius: TABLET_TARGET_RADIUS},
+    inactive: {bg: TABLET_TILE, fg: [Color.onSurface, 1], target: [TabletShade.tileTarget, 1],
+        glyph: [Color.onSurface, 1], radius: TILE_H / 2, targetRadius: TABLET_TARGET / 2},
+    unavailable: {bg: [TabletShade.unavailable, 1], fg: TABLET_DIM, target: [TabletShade.unavailable, 1],
+        glyph: TABLET_DIM, radius: TILE_H / 2, targetRadius: TABLET_TARGET / 2},
+};
+const DUAL_TARGET = new Set(['wifi', 'bluetooth', 'dnd']);
+const TABLET_TEXT_END = 24;             // the labels end this far from the tile's end
 
 const MOBILE_ICONS = ['ic_signal_cellular_0_4_bar', 'ic_signal_cellular_1_4_bar', 'ic_signal_cellular_2_4_bar',
     'ic_signal_cellular_3_4_bar', 'ic_signal_cellular_4_4_bar'];
@@ -201,27 +232,37 @@ function placeCapCentered(text, x, capCenterY, sizePx) {
 
 const Tile = GObject.registerClass(
 class Tile extends St.Button {
-    constructor(spec, state, onActivated) {
+    // @tablet: a tablet's pill tile, its width set by the layout (setWidthPx)
+    constructor(spec, state, onActivated, tablet = false) {
+        const w = tablet || spec.wide ? 2 * TILE_W + ROW_GAP : TILE_W;
         super({
             reactive: true,
             can_focus: true,
             button_mask: St.ButtonMask.PRIMARY,
-            width: px(spec.wide ? 2 * TILE_W + ROW_GAP : TILE_W),
+            width: px(w),
             height: px(TILE_H),
         });
         this._spec = spec;
         this._state = state;
-        this.wide = !!spec.wide;
+        this._tablet = tablet;
+        this._w = w;
+        this.wide = tablet || !!spec.wide;
         this.accessible_name = spec.label;
+        this._palette = !tablet ? TILE_COLORS : DUAL_TARGET.has(spec.id) ? TABLET_DUAL_COLORS : TABLET_TILE_COLORS;
 
         this._content = new St.Widget({x_expand: true, y_expand: true});
         this.set_child(this._content);
 
+        if (this._palette === TABLET_DUAL_COLORS) {
+            this._target = new St.Widget({width: px(TABLET_TARGET), height: px(TABLET_TARGET)});
+            this._content.add_child(this._target);
+        }
         this._icon = new VectorIcon(spec.icon(state), px(this.wide ? LARGE_ICON : ICON), Color.onSurface);
         this._content.add_child(this._icon);
         if (this.wide) {
-            this._label = new Clutter.Text({font_name: TILE_LABEL_FONT, text: spec.label});
-            this._secondary = new Clutter.Text({font_name: TILE_SECONDARY_FONT});
+            const ellipsize = tablet ? Pango.EllipsizeMode.END : Pango.EllipsizeMode.NONE;
+            this._label = new Clutter.Text({font_name: TILE_LABEL_FONT, text: spec.label, ellipsize});
+            this._secondary = new Clutter.Text({font_name: TILE_SECONDARY_FONT, ellipsize});
             this._content.add_child(this._label);
             this._content.add_child(this._secondary);
         }
@@ -251,8 +292,8 @@ class Tile extends St.Button {
 
         // the colours spring between inactive and active; the corner stays
         this._mode = spec.state(state);
-        this._from = TILE_COLORS[this._mode];
-        this._to = TILE_COLORS[this._mode];
+        this._from = this._palette[this._mode];
+        this._to = this._palette[this._mode];
         this._colorT = 1;
         state.connectObject('changed', () => this._sync(), this);
         this._heightPx = TILE_H;
@@ -275,7 +316,7 @@ class Tile extends St.Button {
         // restart the colour spring from where it is now
         const current = this._colors();
         this._from = current;
-        this._to = TILE_COLORS[mode];
+        this._to = this._palette[mode];
         this._mode = mode;
         this._colorT = 0;
         this._spring?.stop();
@@ -291,20 +332,42 @@ class Tile extends St.Button {
     }
 
     _colors() {
-        const t = clamp(this._colorT, 0, 1);
-        return {bg: mixColor(this._from.bg, this._to.bg, t), fg: mixColor(this._from.fg, this._to.fg, t)};
+        const t = clamp(this._colorT, 0, 1), a = this._from, b = this._to;
+        const colors = {bg: mixColor(a.bg, b.bg, t), fg: mixColor(a.fg, b.fg, t)};
+        if (this._tablet) {
+            colors.glyph = mixColor(a.glyph ?? a.fg, b.glyph ?? b.fg, t);
+            colors.radius = lerp(a.radius, b.radius, t);
+            if (a.target) {
+                colors.target = mixColor(a.target, b.target, t);
+                colors.targetRadius = lerp(a.targetRadius, b.targetRadius, t);
+            }
+        }
+        return colors;
     }
 
     _applyStyle() {
-        const {bg, fg} = this._colors();
-        this.style = `background-color: ${colorStyle(bg)}; border-radius: ${px(TILE_RADIUS).toFixed(2)}px;`;
-        this._highlight.style = `background-color: ${rgba(Color.onSurface, 0.15)}; ` +
-            `border-radius: ${px(TILE_RADIUS).toFixed(2)}px;`;
-        this._icon.setColor(fg[0], fg[1]);
+        const {bg, fg, glyph = fg, radius = TILE_RADIUS, target, targetRadius} = this._colors();
+        const r = px(radius).toFixed(2);
+        this.style = `background-color: ${colorStyle(bg)}; border-radius: ${r}px;`;
+        this._highlight.style = `background-color: ${rgba(Color.onSurface, 0.15)}; border-radius: ${r}px;`;
+        if (this._target) {
+            this._target.style = `background-color: ${colorStyle(target)}; ` +
+                `border-radius: ${px(targetRadius).toFixed(2)}px;`;
+        }
+        this._icon.setColor(glyph[0], glyph[1]);
         if (this.wide) {
             this._label.color = cogl(fg[0], fg[1]);
             this._secondary.color = cogl(fg[0], fg[1]);
         }
+    }
+
+    // a tablet tile's width (screen px), from the layout
+    setWidthPx(w) {
+        if (Math.abs(w - this._w) < 0.01)
+            return;
+        this._w = w;
+        this.width = px(w);
+        this._layoutContent();
     }
 
     // the squished height (screen px); the content stays centred and unscaled
@@ -318,7 +381,7 @@ class Tile extends St.Button {
 
     _layoutContent() {
         const h = this._heightPx;
-        const w = this.wide ? 2 * TILE_W + ROW_GAP : TILE_W;
+        const w = this._w;
         this._highlight.set_size(px(w), px(h));
         const cy = h / 2;
         if (!this.wide) {
@@ -326,6 +389,12 @@ class Tile extends St.Button {
             return;
         }
         this._icon.set_position(px(LARGE_ICON_CX - LARGE_ICON / 2), px(cy - LARGE_ICON / 2));
+        this._target?.set_position(px(TABLET_TARGET_INSET), px(cy - TABLET_TARGET / 2));
+        if (this._tablet) {
+            const textW = px(Math.max(w - LARGE_TEXT_X - TABLET_TEXT_END, 0));
+            this._label.width = textW;
+            this._secondary.width = textW;
+        }
         const labelSize = 14 * 3, secondarySize = 12 * 3;
         if (this._secondary.text) {
             // the label and the secondary line, centred together
@@ -351,6 +420,11 @@ class BrightnessSlider extends St.Widget {
         super({width: px(SCREEN_W), height: px(THUMB_H), reactive: false});
         this._state = state;
         this._shade = shade;
+        // the track's ends and the auto button's size, screen px of the row; a tablet's layout moves them
+        this._x0 = SLIDER_X;
+        this._x1 = SLIDER_END;
+        this._autoSize = AUTO_SIZE;
+        this._autoOff = SurfaceEffect[1];
 
         this._track = new Canvas({
             x: px(SLIDER_X), y: 0, width: px(SLIDER_END - SLIDER_X), height: px(THUMB_H), reactive: true,
@@ -397,6 +471,22 @@ class BrightnessSlider extends St.Widget {
         return this._dragging;
     }
 
+    // a tablet's row: the track from @x0 to @x1, then the auto button of @autoSize at the row's end @end, the parts
+    // that are off in the colour of an off tile (screen px)
+    setSpan(x0, x1, end, autoSize, offColor) {
+        this._x0 = x0;
+        this._x1 = x1;
+        this._autoSize = autoSize;
+        this._autoOff = offColor;
+        this.set_size(px(end), px(THUMB_H));
+        this._track.set_position(px(x0), 0);
+        this._track.set_size(px(x1 - x0), px(THUMB_H));
+        this._auto.set_position(px(end - autoSize), px((THUMB_H - autoSize) / 2));
+        this._auto.set_size(px(autoSize), px(autoSize));
+        this._styleAuto();
+        this._track.queue_repaint();
+    }
+
     _sync() {
         if (!this._dragging) {
             const v = this._state.brightness;
@@ -421,9 +511,9 @@ class BrightnessSlider extends St.Widget {
 
     _styleAuto() {
         const t = clamp(this._autoT, 0, 1);
-        const bg = mixColor(SurfaceEffect[1], [Color.primary, 1], t);
+        const bg = mixColor(this._autoOff, [Color.primary, 1], t);
         const fg = mix(Color.onSurface, Color.onPrimary, t);
-        const radius = lerp(67.5, TRACK_RADIUS, t);
+        const radius = lerp(this._autoSize / 2, TRACK_RADIUS, t);
         this._auto.style = `background-color: ${colorStyle(bg)}; border-radius: ${px(radius).toFixed(2)}px;`;
         this._autoIcon.setColor(fg);
         this._autoIcon.name = this._autoOn ? 'ic_qs_brightness_auto_on' : 'ic_qs_brightness_auto_off';
@@ -431,7 +521,7 @@ class BrightnessSlider extends St.Widget {
 
     _dragTo(gesture) {
         const point = gesture.get_point_coords(0);      // in the track's own coordinates
-        const w = SLIDER_END - SLIDER_X;
+        const w = this._x1 - this._x0;
         const v = clamp((point.x * SCALE - THUMB_W / 2) / (w - THUMB_W));
         if (!this._dragging) {
             this._dragging = true;
@@ -473,7 +563,7 @@ class BrightnessSlider extends St.Widget {
 
     _paintTrack(cr) {
         screenPixels(cr);
-        const w = SLIDER_END - SLIDER_X;
+        const w = this._x1 - this._x0;
         const c = THUMB_W / 2 + this._value * (w - THUMB_W);
         const top = (THUMB_H - TRACK_H) / 2;
         const activeEnd = c - THUMB_W / 2 - THUMB_GAP;
@@ -494,7 +584,7 @@ class BrightnessSlider extends St.Widget {
             cr.fill();
         };
         segment(0, activeEnd, TRACK_RADIUS, TRACK_INNER_RADIUS, Color.primary, 1);
-        segment(inactiveStart, w, TRACK_INNER_RADIUS, TRACK_RADIUS, ...SurfaceEffect[1]);
+        segment(inactiveStart, w, TRACK_INNER_RADIUS, TRACK_RADIUS, ...this._autoOff);
 
         // the thumb: a narrow upright bar
         cr.newPath();
@@ -558,7 +648,11 @@ class ShadeHeader extends St.Widget {
         this._bigClock = new Clutter.Text({font_name: CLOCK_BIG_FONT, color: cogl(Color.white), visible: false});
         this._date = new Clutter.Text({font_name: DATE_FONT, color: cogl(Color.white)});
         this._carrier = new Clutter.Text({font_name: CARRIER_FONT, color: cogl(Color.white), opacity: 0});
-        this._icons = new SystemIcons(state, {end: ICONS_QQS[0], centerY: ICONS_QQS[1], height: 116});
+        // a tablet's header is a row across the screen: its icons' canvas covers only their end of it
+        this._icons = new SystemIcons(state, TABLET
+            ? {end: ICONS_QQS[0], centerY: ICONS_QQS[1], height: TABLET_HEADER_H, span: TABLET_ICONS_SPAN}
+            : {end: ICONS_QQS[0], centerY: ICONS_QQS[1], height: 116});
+        this._tabletHeader = null;
         for (const child of [this._icons, this._clock, this._bigClock, this._date, this._carrier])
             this.add_child(child);
 
@@ -589,9 +683,40 @@ class ShadeHeader extends St.Widget {
         }
     }
 
+    // A tablet's header stays where it is: the clock and the date at its start, the icons at its end, all centred on
+    // one line (@header: clockX, iconsEnd, centerY, screen px)
+    setTablet(header) {
+        this._tabletHeader = header;
+        this.set_size(px(header.width), px(TABLET_HEADER_H));
+        this._icons.setEnd(header.iconsEnd);
+        this._icons.setCenterY(header.centerY);
+        this.setProgress(this._q);
+    }
+
+    _layoutTablet() {
+        const {clockX, centerY} = this._tabletHeader;
+        this._bigClock.visible = false;
+        this._carrier.visible = false;
+        this._clock.visible = true;
+        const ink = this._clockInk;
+        const top = px(centerY) - ink.height / 2;
+        this._clock.set_position(px(clockX) - ink.x, top - ink.y);
+        // the date on the clock's baseline, past its end
+        const baseline = top + ink.height;
+        const dateBaseline = this._date.get_layout().get_baseline() / 1024 / this._date.get_resource_scale();
+        this._date.set_position(px(clockX + TABLET_DATE_GAP) + ink.width - this._dateInk.x, baseline - dateBaseline);
+        this._date.opacity = 255;
+        this._icons.set_position(this._icons.x, 0);
+        this._icons.opacity = 255;
+    }
+
     // q: the QS expansion; the header moves linearly between its keyframes (HEADER_*)
     setProgress(q) {
         this._q = q;
+        if (this._tabletHeader) {
+            this._layoutTablet();
+            return;
+        }
         // the clock grows x2.57 from its ink corner; a crisp small copy at rest
         const [x0, y0] = CLOCK_QQS, [x1, y1] = CLOCK_QS;
         const x = lerp(x0, x1, q), y = lerp(y0, y1, q);
@@ -656,7 +781,7 @@ class QSPanel extends St.Widget {
                 col = 0;
                 row++;
             }
-            const tile = new Tile(spec, state, (t, longPress) => shade.onTileActivated?.(t, longPress));
+            const tile = new Tile(spec, state, (t, longPress) => shade.onTileActivated?.(t, longPress), TABLET);
             tile._row = row;
             tile._col = col;
             this._tiles.push(tile);
@@ -696,9 +821,12 @@ class QSPanel extends St.Widget {
         });
         this._footer.add_child(settings);
         this._footer.add_child(power);
+        this._settingsButton = settings;
+        this._powerButton = power;
         this.add_child(this._footer);
         addEndMark(this);
 
+        this._tablet = null;
         this._f = -1;
         this._q = -1;
         this._squish = -1;
@@ -709,9 +837,36 @@ class QSPanel extends St.Widget {
         return this._brightness.dragging;
     }
 
+    // a tablet's layout (shadelayout.js) for the screen as it is turned now
+    setTablet(layout) {
+        this._tablet = layout;
+        const {qs} = layout;
+        this.set_size(px(layout.width), px(layout.height));
+        this._header.setTablet(layout.header);
+        const tileW = (qs.width - (TABLET_COLUMNS - 1) * ROW_GAP) / TABLET_COLUMNS;
+        this._tiles.forEach((tile, i) => {
+            tile._row = Math.floor(i / TABLET_COLUMNS);
+            tile._col = i % TABLET_COLUMNS;
+            tile.setWidthPx(tileW);
+        });
+        this._tilePitch = tileW + ROW_GAP;
+        this._brightness.setSpan(qs.left, qs.trackEnd, qs.left + qs.width, qs.autoSize, TABLET_TILE);
+        this._footer.set_size(px(layout.width), px(FOOTER_BUTTON));
+        this._settingsButton.x = px(qs.settingsCX - FOOTER_BUTTON / 2);
+        this._powerButton.x = px(qs.powerCX - FOOTER_BUTTON / 2);
+        this._settingsButton.style = `background-color: ${colorStyle(TABLET_TILE)}; ` +
+            `border-radius: ${px(FOOTER_BUTTON / 2)}px;`;
+        this._build.visible = false;
+        this._q = -1;
+    }
+
     // @squish: the tiles' height factor while the shade opens (0.1..1); @contentAlpha: the header's;
     // @mirror: all but the brightness slider fade while it is dragged
     layoutFor({q, squish, contentAlpha, mirror = 0}) {
+        if (this._tablet) {
+            this._layoutTablet(q, contentAlpha, 1 - mirror);
+            return;
+        }
         const keep = 1 - mirror;
         const shift = (q - 1) * QS_SHIFT;           // everything below the header moves with q
         const content = clamp((q - CONTENT_FADE_FROM) / (1 - CONTENT_FADE_FROM));
@@ -750,6 +905,40 @@ class QSPanel extends St.Widget {
 
         this._q = q;
         this._squish = squish;
+    }
+
+    // A tablet's quick settings fade in with the shade rather than squish. In landscape they are all there at once.
+    // Upright the first two rows come first; the second pull moves them down to make room for the brightness row,
+    // and the other rows and the footer fade in as on a phone.
+    _layoutTablet(q, contentAlpha, keep) {
+        const {qs, landscape} = this._tablet;
+        if (landscape)
+            q = 1;
+        if (q !== this._q)
+            this._header.setProgress(q);
+        this._header.opacity = Math.round(255 * contentAlpha * keep);
+
+        const content = clamp((q - CONTENT_FADE_FROM) / (1 - CONTENT_FADE_FROM));
+        const footer = landscape ? 1 : clamp((q - FOOTER_FADE_FROM) / (1 - FOOTER_FADE_FROM));
+        const shift = (q - 1) * (qs.gridTop - qs.qqsTop);
+        for (const tile of this._tiles) {
+            const qqs = tile._row < qs.qqsRows;
+            const qsY = qs.gridTop + tile._row * (TILE_H + ROW_GAP);
+            const y = qqs ? lerp(qs.qqsTop + tile._row * (TILE_H + ROW_GAP), qsY, q) : qsY + shift;
+            tile.set_position(px(qs.left + tile._col * this._tilePitch), px(y));
+            const alpha = (qqs ? 1 : content) * contentAlpha * keep;
+            tile.opacity = Math.round(255 * alpha);
+            tile.visible = alpha > 0;
+        }
+
+        this._brightness.set_position(0, px(qs.brightnessCY - THUMB_H / 2 + shift));
+        this._brightness.opacity = Math.round(255 * content * contentAlpha);
+        this._brightness.visible = content * contentAlpha > 0;
+
+        this._footer.set_position(0, px(qs.footerCY - FOOTER_BUTTON / 2));
+        this._footer.opacity = Math.round(255 * footer * contentAlpha * keep);
+        this._footer.visible = footer * contentAlpha > 0;
+        this._q = q;
     }
 });
 

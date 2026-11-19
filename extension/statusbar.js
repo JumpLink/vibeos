@@ -1,5 +1,6 @@
 // The status bar: 116 px tall, clock and notification icons on the left, mobile signal, Wi-Fi and the
-// unified battery on the right, ending where the S10e's camera hole begins. It replaces the mobile shell's top
+// unified battery on the right, ending where the S10e's camera hole begins. A tablet's is 84 px tall whichever way it
+// is turned, as a phone's turned one. It replaces the mobile shell's top
 // panel, reserves its height for maximized windows (strut), is transparent with white icons over the launcher and
 // black over an app, and hides under a fullscreen app.
 import Clutter from 'gi://Clutter';
@@ -15,7 +16,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {Canvas, paintIcon} from './icons.js';
 import {Color, cogl, font, setSource, Type} from './palette.js';
-import {px, screenPixels, SCALE, SCREEN_W} from './units.js';
+import {px, screenPixels, SCALE, SCREEN_W, TABLET} from './units.js';
 
 // --- geometry, screen px of the 1080x2280 reference
 export const BAR_HEIGHT = 116;
@@ -38,6 +39,7 @@ const LAND_BAR_HEIGHT = 84;
 const LAND_RAISE = 16;
 const PAD_START = 25;
 const OPEN_END = 85;
+const TABLET_END = 74;                  // a tablet's: the battery's charging bolt ends this far from the edge
 const SYSTEM_SPAN = 300;                // signal, Wi-Fi and the widest battery (228) end to end, and room
 const ICONS_TAIL = 2;                   // the battery's antialiased edge past its end
 const ICON_GAP = 19;                    // between signal, Wi-Fi and battery
@@ -307,13 +309,15 @@ class SystemIcons extends Canvas {
         this.queue_repaint();
     }
 
-    // where the icons end, screen px of the area
+    // where the icons end, screen px of the area; without a span the canvas runs from 0 to there
     setEnd(end) {
         this._end = end;
         if (this._span) {
             this._left = Math.max(0, end - this._span);
             this.set_position(px(this._left), 0);
             this.set_width(px(end + ICONS_TAIL - this._left));
+        } else if (TABLET) {
+            this.set_width(px(end + ICONS_TAIL));
         }
         this.queue_repaint();
     }
@@ -421,7 +425,7 @@ class StatusBar extends St.Widget {
         const m = Main.layoutManager.primaryMonitor;
         if (!m)
             return;
-        const turned = m.width > m.height;
+        const turned = TABLET || m.width > m.height;
         const height = turned ? LAND_BAR_HEIGHT : BAR_HEIGHT;
         this._raise = turned ? LAND_RAISE : 0;
         this.set_position(m.x, m.y);
@@ -433,12 +437,12 @@ class StatusBar extends St.Widget {
         const atStart = inBar && holeX + holeW < W / 2;
         const atEnd = inBar && !atStart;
         this._clockInkX = atStart ? holeX + holeW + PAD_START : CLOCK_INK_X;
-        this._system.setEnd(atEnd ? holeX - CUTOUT_GAP : W - OPEN_END);
+        this._system.setEnd(atEnd ? holeX - CUTOUT_GAP : W - (TABLET ? TABLET_END : OPEN_END));
         this._system.setCenterY(CENTER_Y - this._raise);
         this._syncClock();
     }
 
-    // the bar's height in screen px: 116 upright, 84 turned
+    // the bar's height in screen px: 116 upright, 84 turned or on a tablet
     get barHeight() {
         return this._raise ? LAND_BAR_HEIGHT : BAR_HEIGHT;
     }

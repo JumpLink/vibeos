@@ -36,7 +36,7 @@ import {
     TaskView, animate, appGicon, clamp, clampToProgress, lerp, scaleRect, springCurve,
 } from './task.js';
 import {AndroidText} from './text.js';
-import {screenPixels} from './units.js';
+import {geometry, screenPixels} from './units.js';
 
 Object.assign(ICONS, L3_ICONS);
 
@@ -44,8 +44,7 @@ Object.assign(ICONS, L3_ICONS);
 const SCROLL_TICK = TICK.map(([amplitude, ms]) => [amplitude * 2, ms]);
 const PITCH = 732;                      // a card's width and the gap to the next
 const TOUCH_SLOP = 24;
-const CARD_H = TASK[3] - TASK[1];
-const CARD_CENTER_Y = (TASK[1] + TASK[3]) / 2;
+let CARD_H, CARD_CENTER_Y;
 
 // the scrim over the launcher's blurred wallpaper, in the dark surface colour
 const SCRIM = Color.surface;
@@ -102,8 +101,17 @@ const PAGER_FLING = 1500, PAGER_MIN_FLING = 750, PAGER_MIN_SNAP_V = 4500;
 const PAGER_SIGNIFICANT = 0.4, PAGER_RETURN = 0.33;
 export const PAGER_SNAP_MS = 750;
 const FRICTION = 0.015, PHYS = 155670.6, DECEL = Math.log(0.78) / Math.log(0.9), INFLEXION = 0.35;
-const OVERSCROLL = 0.07 * SCREEN_W;
+let OVERSCROLL;
 const EDGE = [24.657 * 24.657, 0.98];
+
+// the lengths above that follow the screen (task.js's, read again when it changes)
+function layoutScreen() {
+    CARD_H = TASK[3] - TASK[1];
+    CARD_CENTER_Y = (TASK[1] + TASK[3]) / 2;
+    OVERSCROLL = 0.07 * SCREEN_W;
+}
+layoutScreen();
+geometry.connect('changed', layoutScreen);
 
 // swipe-up dismiss: the card trails the finger at 0.35 until DIS_DETACH_PX, then springs to 1:1; the others reflow
 // into the hole (DIS_REFLOW as measured on the reference phone, much softer than its source's stiffness 2800)

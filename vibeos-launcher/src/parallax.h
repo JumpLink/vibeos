@@ -13,6 +13,8 @@ Parallax *parallax_new    (const char *dir, void (*wake) (void *data), void *dat
 Parallax *parallax_new_image (const char *file);
 void      parallax_free   (Parallax *p);
 void      parallax_resize (Parallax *p, int w, int h, double scale);
+/* who is called when the picture changes by itself (a turned screen's layers decoded): a frame is wanted */
+void      parallax_set_wake (Parallax *p, void (*wake) (void *data), void *data);
 void      parallax_run    (Parallax *p, bool run);     /* follow the tilt while shown */
 /* one frame's sensor step; true while the picture moves (another frame is wanted). At rest the sensor is polled
  * slowly and `wake` is called when it moves again. */

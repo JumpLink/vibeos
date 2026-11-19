@@ -20,6 +20,7 @@ import * as Signals from 'resource:///org/gnome/shell/misc/signals.js';
 import {Aod, Panel} from './aod.js';
 import {HardwareKeys} from './keys.js';
 import {animate, bezier, LINEAR} from './motion.js';
+import {geometry} from './units.js';
 
 Gio._promisify(Gio.DBusProxy.prototype, 'call');
 
@@ -107,6 +108,8 @@ export class Power extends Signals.EventEmitter {
         });
         this._aod = new Aod(this._panel, state);
         this.layer.add_child(this._aod);
+        // the screen as it is turned now: a layer left the size it was built at covered part of a turned screen
+        geometry.connectObject('changed', () => this._fit(), this);
 
         this._keys = new HardwareKeys({
             onPower: (pressed, time) => this._powerKey(pressed, time),
@@ -186,10 +189,21 @@ export class Power extends Signals.EventEmitter {
         return this._vibeos?.get_boolean('aod') ?? false;
     }
 
+    // the layer and the AOD over the whole screen as it is now
+    _fit() {
+        const monitor = Main.layoutManager.primaryMonitor;
+        if (!monitor)
+            return;
+        this.layer.set_position(monitor.x, monitor.y);
+        this.layer.set_size(monitor.width, monitor.height);
+        this._aod.fit(monitor);
+    }
+
     goToSleep(reason) {
         if (!this.interactive)
             return;
         log(`vibeos: going to sleep (${reason})`);
+        this._fit();
         this._state = this._aodEnabled ? State.DOZING : State.ASLEEP;
         this._sleptAt = GLib.get_monotonic_time();
         this._menu?.closeNow();
@@ -399,6 +413,7 @@ export class Power extends Signals.EventEmitter {
             this._idleMonitor.remove_watch(this._idleWatch);
         this._sessionManager?.disconnectObject(this);
         this._keyguard.disconnectObject(this);
+        geometry.disconnectObject(this);
         this._keys.destroy();
         if (this._nameId)
             Gio.bus_unown_name(this._nameId);

@@ -663,7 +663,7 @@ bar_rect (float r[4])
 {
   float w = 2 * dp (BAR_PAD_DP) + dp (BAR_ICON_DP) + dp (BAR_GAP_DP) + text_layout_width (bar_label ());
   r[0] = roundf ((N.W - w) / 2);
-  r[1] = roundf (dp (STATUS_BAR_DP + BAR_TOP_DP));
+  r[1] = roundf (dp (N.status_dp + BAR_TOP_DP));
   r[2] = roundf (w);
   r[3] = dp (BAR_H_DP);
 }

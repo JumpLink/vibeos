@@ -245,7 +245,9 @@ class Aod extends St.BoxLayout {
         this.add_child(this._box);
         this.add_child(new St.Widget({y_expand: true}));
         this.add_child(this._battery);
-        this.add_child(new St.Widget({height: px(monitor.height * SCALE - BATTERY_CENTRE_Y - BATTERY_ROW_H / 2)}));
+        this._under = new St.Widget();
+        this.add_child(this._under);
+        this.fit(monitor);
         this._box.connectObject('notify::allocation', () => this._onMoved(), this);
 
         this._wallClock = new GnomeDesktop.WallClock({time_only: true});
@@ -262,6 +264,12 @@ class Aod extends St.BoxLayout {
 
         this._showPanelClock(this._useClock);
         this.prepare();
+    }
+
+    // the whole of @monitor, as it is turned now
+    fit(monitor) {
+        this.set_size(monitor.width, monitor.height);
+        this._under.height = px(monitor.height * SCALE - BATTERY_CENTRE_Y - BATTERY_ROW_H / 2);
     }
 
     // --- the content

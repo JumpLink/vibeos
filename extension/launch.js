@@ -15,6 +15,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 
 import {capture, capturing} from './capture.js';
+import {dp} from './units.js';
 
 const LAUNCH_MS = 500;
 const START_DELAY_MS = 16;
@@ -34,7 +35,6 @@ const SPLASH_TIMEOUT_MS = 15000;        // no window by then: the splash goes
 const SPLASH_RGB = [47, 47, 47];        // the splash's flat background
 const FAIL_FADE_MS = 150;               // the splash of an app that cannot start
 
-const ANDROID_DENSITY = 3;              // screen px per DP unit, the S10e's scale
 
 // ---- curves -------------------------------------------------------------------------------------------------------
 
@@ -198,7 +198,7 @@ export class LaunchTransition {
 
     // Android dp as stage px
     _dp(v) {
-        return v * ANDROID_DENSITY / this._scale();
+        return dp(v);
     }
 
     // app: Shell.App; from: the icon's box on screen in device pixels; icon: the launcher's own picture of the

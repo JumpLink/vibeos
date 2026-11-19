@@ -23,6 +23,7 @@ import {click} from '../haptics.js';
 import {gestureTookTouches} from '../oskfocus.js';
 import {openSettings} from '../settings.js';
 import {inHomeStrip} from '../task.js';
+import {SCALE} from '../units.js';
 import {formFactor, keyAt, measure, moreKeyAt, placeKeys, placeMoreKeys} from './geometry.js';
 import {KeyboardPalette} from './palette.js';
 import {KeysCanvas, labelWidth, MoreKeysPanel, NavCanvas, PressedKey, StripCanvas} from './renderer.js';
@@ -754,7 +755,7 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         if (type === Clutter.EventType.TOUCH_BEGIN) {
             const [, y] = event.get_coords();
             this._kb.passOn.delete(id);
-            if (inHomeStrip(y, global.display.get_monitor_scale(Main.layoutManager.primaryIndex)))
+            if (inHomeStrip(y, SCALE))
                 this._kb.passOn.add(id);
         }
         const passOn = this._kb.passOn.has(id);

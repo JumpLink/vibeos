@@ -15,9 +15,12 @@ import {capture, capturing} from './capture.js';
 import {CropEffect, PathInterpolator, cubic} from './launch.js';
 import {Animator} from './motion.js';
 import {overWindows} from './scanout.js';
-import {SCREEN_H, SCREEN_W} from './units.js';
+import {geometry, HEIGHT, SCREEN_H as PANEL_H, SCREEN_W as PANEL_W, TABLET, WIDTH} from './units.js';
 
-export {SCREEN_H, SCREEN_W};
+// The screen the system gestures and recents are laid out on, reference px: a phone's upright panel (its gestures run
+// upright only, sideways.js has them while it is turned), a tablet's screen as it is turned now. Read again, with the
+// recents card below, whenever the screen changes, before any other module's handler of that runs.
+export let SCREEN_W = PANEL_W, SCREEN_H = PANEL_H;
 export const NAV_GESTURE_H = 96;               // the bottom strip a swipe starts in
 
 // A point at @y (stage px) on a monitor of @scale lies in that strip: where the swipe home may start
@@ -27,12 +30,21 @@ export function inHomeStrip(y, scale) {
 // the recents card: 684 × 1444 at [198, 296, 882, 1740] on the 1080 × 2280 reference; on another panel the panel's
 // shape, as wide and as high up for its size
 const TASK_REF_W = 684, TASK_REF_CY = 1018;
-const taskW = TASK_REF_W * SCREEN_W / 1080, taskH = taskW * SCREEN_H / SCREEN_W, taskCY = TASK_REF_CY * SCREEN_H / 2280;
-export const TASK = [(SCREEN_W - taskW) / 2, taskCY - taskH / 2, (SCREEN_W + taskW) / 2, taskCY + taskH / 2];
-export const TASK_W = TASK[2] - TASK[0];
-// where the screen scales about onto the card: [540, 807.27] on the reference
-export const TASK_PIVOT = [TASK[0] / (1 - TASK_W / SCREEN_W), TASK[1] / (1 - TASK_W / SCREEN_W)];
-export const TASK_FULL_SCALE = SCREEN_W / TASK_W;
+export let TASK, TASK_W, TASK_PIVOT, TASK_FULL_SCALE;
+
+function layoutScreen() {
+    SCREEN_W = TABLET ? WIDTH : PANEL_W;
+    SCREEN_H = TABLET ? HEIGHT : PANEL_H;
+    const taskW = TASK_REF_W * SCREEN_W / 1080, taskH = taskW * SCREEN_H / SCREEN_W;
+    const taskCY = TASK_REF_CY * SCREEN_H / 2280;
+    TASK = [(SCREEN_W - taskW) / 2, taskCY - taskH / 2, (SCREEN_W + taskW) / 2, taskCY + taskH / 2];
+    TASK_W = TASK[2] - TASK[0];
+    // where the screen scales about onto the card: [540, 807.27] on the reference
+    TASK_PIVOT = [TASK[0] / (1 - TASK_W / SCREEN_W), TASK[1] / (1 - TASK_W / SCREEN_W)];
+    TASK_FULL_SCALE = SCREEN_W / TASK_W;
+}
+layoutScreen();
+geometry.connect('changed', layoutScreen);
 export const TASK_CORNER_R = 84;               // the card's corners
 export const FRAME_MS = 1000 / 60;
 

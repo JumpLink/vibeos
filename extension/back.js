@@ -24,12 +24,16 @@ import {cubic} from './launch.js';
 import {Animator} from './motion.js';
 import {overWindows} from './scanout.js';
 import {NAV_GESTURE_H, SCREEN_H, SCREEN_W, Spring, TaskView, clamp, lerp} from './task.js';
+import {geometry} from './units.js';
 import {sideways} from './sideways.js';
 
 const EDGE_W = 30 * 3;                  // the edge strip a back swipe starts in
 const SLOP = 8 * 3 * 0.75;              // touch slop × 0.75
 const LONG_PRESS_MS = 250;              // min(back_timeout, the long press timeout)
-const MAX_DISTANCE = SCREEN_W;          // progress = dx / the display's width, linear
+let MAX_DISTANCE = SCREEN_W;            // progress = dx / the display's width, linear
+geometry.connect('changed', () => {
+    MAX_DISTANCE = SCREEN_W;
+});
 const PROGRESS_SPRING = [1500, 1];      // the progress follows the finger on a medium, unbouncy spring
 const PROBE_WAIT_MS = 600;              // released before the app answered: how long to wait for it
 // The window first follows the finger 150 ms after it came down (the launcher is started first, and the
