@@ -56,6 +56,7 @@ Provides: gnome-phone
 Depends: gnome-shell-extension-vibeos (= ${source:Version}),
          vibeos-launcher (>= ${source:Version}),
          vibeos-daemons (>= ${source:Version}),
+         vibeos-archive-keyring,
          ${misc:Depends},
 Recommends: vibeos-session (= ${source:Version}),
             sim-apn (= ${source:Version}),
@@ -573,6 +574,7 @@ Description: app installer for VibeOS
 Package: vibeos-software
 Architecture: any
 Depends: vibeos-installer (>= ${source:Version}),
+         vibeos-archive-keyring,
          webp-pixbuf-loader,
          ${shlibs:Depends},
          ${misc:Depends},
@@ -591,6 +593,24 @@ Description: app store for VibeOS
  .
  Installing, updating and uninstalling go through App Installer, and polkit
  asks for the password: Software never sees it.
+ .
+ A user timer looks for updates without the window, after login and every
+ six hours, and suggests each new version once in a notification that opens
+ Mine. Software's update setting (Wi-Fi only, any network or never) applies.
+
+Package: vibeos-archive-keyring
+Architecture: all
+Multi-Arch: foreign
+Section: misc
+Depends: ${misc:Depends},
+Description: VibeOS archive's signing key and apt source
+ The OpenPGP key that signs VibeOS's apt archive at https://vibeos.top/apt
+ (ed25519, 0802 5010 73FA FEAC CFF5  B808 FF24 1881 81F7 82CB), and the
+ archive as an apt source (suite forky, component main), so that apt,
+ PackageKit and Software get new versions of VibeOS and its apps.
+ .
+ The source is a configuration file: a change to it (or its removal) is kept
+ through upgrades. The archive's opt-in mutter component is not in it.
 
 Package: vibeos-iconpack-gnome-free
 Architecture: all

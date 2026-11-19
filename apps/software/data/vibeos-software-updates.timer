@@ -1,0 +1,17 @@
+# When Software looks for updates without its window: ten minutes after login and every six hours, each time at a
+# random point of the next half hour, so that phones do not all ask the store at once. A run the phone missed while it
+# was off (or its user logged out) happens as soon as the timer starts again; one missed while it slept, when it wakes.
+# Enabled for every user by the package; `systemctl --user disable vibeos-software-updates.timer` stops it for one.
+[Unit]
+Description=Look for app updates in the VibeOS store now and then
+Documentation=man:vibeos-software(1)
+ConditionUser=!@system
+
+[Timer]
+OnStartupSec=10min
+OnCalendar=*-*-* 00/6:00:00
+RandomizedDelaySec=30min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

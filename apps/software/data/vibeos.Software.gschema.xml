@@ -17,9 +17,11 @@
     <key name="update-mode" enum="vibeos.Software.UpdateMode">
       <default>'wifi'</default>
       <summary>When Software looks for updates by itself</summary>
-      <description>"wifi": when it starts and when apps change, on a network that does not count the data; "always":
-        on any network; "never": only when asked (Mine's Check for updates). Software never installs updates by
-        itself: they are installed from Mine.</description>
+      <description>Software looks for updates when it starts, when apps change and every hour while it is open, and
+        without its window after login and every six hours (the user timer vibeos-software-updates.timer), which
+        suggests each new version once in a notification. "wifi": only on a network that does not count the data;
+        "always": on any network; "never": only when asked (Mine's Check for updates), and no notifications. Software
+        never installs updates by itself: they are installed from Mine.</description>
     </key>
     <key name="vibeos-only" type="b">
       <default>false</default>

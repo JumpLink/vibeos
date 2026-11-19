@@ -17,8 +17,13 @@
  *                                 vibeos-page-stack: every frame of a page's transition (libvibeos)
  *
  * Closing the window while a job runs hides it: Software stays until App Installer reports the job's end, so that
- * the result is still told (and recorded) and the account's device list stays right. */
+ * the result is still told (and recorded) and the account's device list stays right.
+ *
+ * `vibeos-software --check-updates` opens no window: it asks the store for updates once and suggests the new ones in
+ * a notification (sw-check.h), for the user timer vibeos-software-updates.timer. The notification's action, the app
+ * action "show-updates", opens Software on Mine. */
 #include "sw-account.h"
+#include "sw-check.h"
 #include "sw-device.h"
 #include "sw-installer.h"
 #include "sw-pages.h"
@@ -26,6 +31,7 @@
 #include "sw-window.h"
 
 #include <locale.h>
+#include <string.h>
 #include <vibeos.h>
 
 #define SW_APP_ID "vibeos.Software"
@@ -149,16 +155,39 @@ on_activate (GApplication *app, gpointer data)
   gtk_window_present (window);
 }
 
+/* the update notification's action: the window, on Mine */
+static void
+on_show_updates (GSimpleAction *action, GVariant *parameter, gpointer data)
+{
+  GApplication *app = data;
+  GtkWindow *window;
+
+  on_activate (app, NULL);
+  window = gtk_application_get_active_window (GTK_APPLICATION (app));
+  if (window)
+    sw_window_show_tab (GTK_WIDGET (window), SW_TAB_MINE);
+  /* Mine may be in front already (no new map): what the notification told is on it now, or it asks again */
+  sw_updates_mark_seen (sw_updates_get_default ());
+}
+
 int
 main (int argc, char **argv)
 {
   g_autoptr (GtkApplication) app = NULL;
+  g_autoptr (GSimpleAction) show_updates = NULL;
   int status;
 
   setlocale (LC_ALL, "");
+  /* the check without a window: no display, no GTK */
+  for (int i = 1; i < argc; i++)
+    if (!strcmp (argv[i], "--check-updates"))
+      return sw_check_run ();
   app = gtk_application_new (SW_APP_ID, G_APPLICATION_DEFAULT_FLAGS);
   g_signal_connect (app, "startup", G_CALLBACK (on_startup), NULL);
   g_signal_connect (app, "activate", G_CALLBACK (on_activate), NULL);
+  show_updates = g_simple_action_new (SW_CHECK_ACTION, NULL);
+  g_signal_connect (show_updates, "activate", G_CALLBACK (on_show_updates), app);
+  g_action_map_add_action (G_ACTION_MAP (app), G_ACTION (show_updates));
   status = g_application_run (G_APPLICATION (app), argc, argv);
   g_clear_object (&settings);
   return status;

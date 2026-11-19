@@ -1,10 +1,17 @@
 /* SwUpdates: see sw-updates.h */
 #include "sw-updates.h"
+#include "sw-check.h"
 #include "sw-device.h"
 #include "sw-installer.h"
 #include "sw-json.h"
 
+#include <glib/gstdio.h>
+
 #define RECHECK_MS 2000
+/* while Software runs: how often it looks whether the last check is old, and how old is old. The wall clock, not the
+ * monotonic one: a phone asleep for a night with Software open checks when it wakes. */
+#define TICK_S     600
+#define STALE_US   ((gint64) G_USEC_PER_SEC * 60 * 60)
 
 struct _SwUpdates {
   GObject       parent_instance;
@@ -15,6 +22,11 @@ struct _SwUpdates {
   GCancellable *cancellable;
   GSettings    *settings;
   guint         recheck;
+  guint         tick;
+  gint64        asked_at;     /* the wall clock when the last check went out, 0 before the first */
+  gint64        answered_at;  /* and when the last check answered */
+  gint64        saved_at;     /* the suggested-updates file's change time when Software last wrote it */
+  gint64        refreshed_for; /* that file's change time Software last checked again for (sw_updates_mark_seen) */
 };
 
 G_DEFINE_FINAL_TYPE (SwUpdates, sw_updates, G_TYPE_OBJECT)
@@ -29,11 +41,7 @@ may_check (SwUpdates *self)
 {
   g_autofree char *mode = self->settings ? g_settings_get_string (self->settings, "update-mode") : g_strdup ("wifi");
 
-  if (!g_strcmp0 (mode, "never"))
-    return FALSE;
-  if (!g_strcmp0 (mode, "wifi"))
-    return !g_network_monitor_get_network_metered (g_network_monitor_get_default ());
-  return TRUE;
+  return sw_check_allowed (mode, g_network_monitor_get_network_metered (g_network_monitor_get_default ()));
 }
 
 static void
@@ -67,6 +75,7 @@ on_checked (SwApiResult *result, const SwApiError *error, gpointer data)
             g_hash_table_replace (self->entries, g_strdup (package), json_object_ref (entry));
         }
       self->checked = TRUE;
+      self->answered_at = g_get_real_time ();
     }
   g_signal_emit (self, changed_signal, 0);
   if (self->again)
@@ -81,10 +90,7 @@ check_now (SwUpdates *self)
 {
   SwInstaller *installer = sw_installer_get_default ();
   GHashTable *installed = sw_installer_get_installed_all (installer);
-  g_autoptr (JsonBuilder) b = NULL;
   g_autoptr (JsonNode) body = NULL;
-  GHashTableIter iter;
-  gpointer package, version;
 
   if (self->checking)
     {
@@ -93,27 +99,9 @@ check_now (SwUpdates *self)
     }
   if (!sw_installer_is_loaded (installer) || !g_hash_table_size (installed))
     return;
-  b = json_builder_new ();
-  json_builder_begin_object (b);
-  json_builder_set_member_name (b, "arch");
-  json_builder_add_string_value (b, sw_device_arch ());
-  json_builder_set_member_name (b, "packages");
-  json_builder_begin_array (b);
-  /* every installed package: the store keeps those it knows (at most 5000) */
-  g_hash_table_iter_init (&iter, installed);
-  for (guint n = 0; g_hash_table_iter_next (&iter, &package, &version) && n < 5000; n++)
-    {
-      json_builder_begin_object (b);
-      json_builder_set_member_name (b, "package");
-      json_builder_add_string_value (b, package);
-      json_builder_set_member_name (b, "version");
-      json_builder_add_string_value (b, version);
-      json_builder_end_object (b);
-    }
-  json_builder_end_array (b);
-  json_builder_end_object (b);
-  body = json_builder_get_root (b);
+  body = sw_check_request (installed, sw_device_arch ());
   self->checking = TRUE;
+  self->asked_at = g_get_real_time ();
   g_signal_emit (self, changed_signal, 0);
   sw_api_send (sw_api_get_default (), "POST", "/updates/check", body, SW_API_NO_TOKEN, self->cancellable,
                on_checked, self);
@@ -124,6 +112,71 @@ sw_updates_check (SwUpdates *self, gboolean asked)
 {
   if (asked || may_check (self))
     check_now (self);
+}
+
+void
+sw_updates_check_if_stale (SwUpdates *self)
+{
+  if (self->checking || (self->asked_at && g_get_real_time () - self->asked_at < STALE_US))
+    return;
+  sw_updates_check (self, FALSE);
+}
+
+static gboolean
+on_tick (gpointer data)
+{
+  sw_updates_check_if_stale (data);
+  return G_SOURCE_CONTINUE;
+}
+
+/* the wall clock's microseconds when `path` last changed, 0 when there is no such file */
+static gint64
+changed_at (const char *path)
+{
+  GStatBuf st;
+
+  if (g_stat (path, &st) != 0)
+    return 0;
+  return (gint64) st.st_mtim.tv_sec * G_USEC_PER_SEC + st.st_mtim.tv_nsec / 1000;
+}
+
+void
+sw_updates_mark_seen (SwUpdates *self)
+{
+  g_autoptr (GPtrArray) list = NULL;
+  g_autoptr (GHashTable) suggested = NULL;
+  g_autofree char *path = NULL;
+  g_autoptr (GError) error = NULL;
+  GApplication *app = g_application_get_default ();
+  gint64 changed;
+
+  if (!self->checked)
+    return;
+  path = sw_suggested_path ();
+  changed = changed_at (path);
+  /* The timer's check wrote the file after this list came: the store may have newer versions than the list, and
+   * marking the list would take them back (the timer would suggest them again). A new check's answer is marked when
+   * it comes, as Mine shows it. Once for each change of the file: a check that fails does not ask again. */
+  if (changed > self->answered_at && changed != self->saved_at)
+    {
+      if (changed != self->refreshed_for && !self->checking)
+        {
+          self->refreshed_for = changed;
+          sw_updates_check (self, FALSE);
+        }
+      return;
+    }
+  /* the list is on the screen: the notification about it has nothing more to say */
+  if (app && g_application_get_is_registered (app) && !g_application_get_is_remote (app))
+    g_application_withdraw_notification (app, SW_CHECK_NOTIFICATION_ID);
+  list = sw_updates_list (self);
+  suggested = sw_suggested_load (path);
+  if (!sw_suggested_replace (suggested, list))
+    return;
+  if (sw_suggested_save (suggested, path, &error))
+    self->saved_at = changed_at (path);
+  else
+    g_warning ("could not keep the updates suggested: %s", error->message);
 }
 
 static gboolean
@@ -234,6 +287,7 @@ sw_updates_init (SwUpdates *self)
     }
   g_signal_connect (sw_installer_get_default (), "changed", G_CALLBACK (on_installed_changed), self);
   g_signal_connect (sw_installer_get_default (), "package-changed", G_CALLBACK (on_package_changed), self);
+  self->tick = g_timeout_add_seconds (TICK_S, on_tick, self);
 }
 
 SwUpdates *

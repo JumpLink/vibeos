@@ -1,3 +1,28 @@
+vibeos (1:0.1.2) unstable; urgency=medium
+
+  * Software, the new app store: Featured, Apps, Games and Mine, search,
+    categories, app pages with screenshots, ratings and reviews, and a
+    store account. It replaces GNOME Software on the home screen.
+  * Updates: Software checks for new versions in the background and
+    suggests each one once, in a notification that opens Mine.
+  * vibeos-archive-keyring, a new package: the archive's signing key and
+    its apt source, so updates can be installed.
+  * App Installer, a new app: installs .deb files and packages from the
+    software sources, and uninstalls them. Packages from a signed archive
+    install as trusted, and an upgrade asks for nothing but the password.
+  * Messages redrawn: the conversation list, a conversation, New chat,
+    search and settings.
+  * Keyboard: key previews on a short press, panels of several keys that
+    stay open, a gear for the settings, and paste.
+  * Rotation: an app opens the way the panel is, and a landscape game
+    turns the panel as it starts. The heads-up card is centred in
+    landscape.
+  * Weather: Set City and About. Every app has an About sheet.
+  * Battery Saver stays available when power-profiles-daemon starts late,
+    and the lock screen no longer throws at every screen off and on.
+
+ -- pulpoff <pashkovsky@gmail.com>  Thu, 19 Nov 2026 00:24:19 +0100
+
 vibeos (1:0.1.1) unstable; urgency=medium
 
   * Colours: Material 3 colour schemes from a seed colour or the wallpaper,

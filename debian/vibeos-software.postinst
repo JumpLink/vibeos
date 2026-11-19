@@ -1,0 +1,14 @@
+#!/bin/sh
+# Software's update timer (vibeos-software-updates.timer). debhelper enables it for every user, which takes effect
+# when their user manager next starts (the next login); the user managers running now get it at once, so a phone
+# that installed or updated Software looks for updates without a restart. A user who masked the timer keeps it off.
+set -e
+
+#DEBHELPER#
+
+if [ "$1" = configure ] && [ -z "${DPKG_ROOT:-}" ] && [ -d /run/systemd/system ]; then
+    deb-systemd-invoke --user daemon-reload > /dev/null 2>&1 || true
+    deb-systemd-invoke --user start vibeos-software-updates.timer > /dev/null 2>&1 || true
+fi
+
+exit 0

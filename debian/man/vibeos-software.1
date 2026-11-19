@@ -1,8 +1,10 @@
-.TH VIBEOS-SOFTWARE 1 "2026-11-17" "vibeos 0.1.1" "VibeOS"
+.TH VIBEOS-SOFTWARE 1 "2026-11-18" "vibeos 0.1.1" "VibeOS"
 .SH NAME
 vibeos-software \- Software: the VibeOS store's app
 .SH SYNOPSIS
 .B vibeos-software
+.br
+.B vibeos-software \-\-check\-updates
 .SH DESCRIPTION
 Software shows the catalog of the VibeOS store (vibeos.top, its API version 1) in four tabs: Featured, Apps, Games and
 Mine. Featured, Apps and Games have the categories, the store's sections and lists of apps; search suggests apps and
@@ -19,9 +21,22 @@ polkit asks for the password, Software never sees it. A job goes on when its pag
 the window while one runs hides it until the job ends.
 .PP
 Mine lists the jobs, the updates (with Update all) and All apps: the ones on this device, and, with a store account,
-the ones the account had on other devices or before. Software asks the store for updates when it starts and when the
-installed packages change, on Wi-Fi only, on any network, or only when asked (its settings); it does not install them
-by itself.
+the ones the account had on other devices or before. Software asks the store for updates when it starts, when the
+installed packages change and every hour while it is open, on Wi-Fi only, on any network, or only when asked (its
+settings); it does not install them by itself. The number of updates shows on the Mine tab.
+.PP
+Without the window, the user timer
+.B vibeos-software-updates.timer
+(enabled for every user by the package) runs
+.B vibeos-software \-\-check\-updates
+ten minutes after login and every six hours, at a random point of the next half hour; a run missed while the device
+was off or asleep happens when it is back. It reads the installed packages, asks the store, and posts one notification
+when the store has a version it has not suggested before: "Clock can be updated", or "3 apps can be updated" with
+their names. Tapping it opens Software on Mine. A version is suggested once, by the notification or by Mine showing
+it; a newer version of the same app is suggested again. The update setting applies: "never" asks nothing, and "wifi"
+asks nothing on a metered network. Without a notification server (no graphical session) it asks nothing either.
+.B systemctl \-\-user disable \-\-now vibeos\-software\-updates.timer
+turns it off for one user.
 .PP
 A store account (signed up and confirmed with a 6-digit code the store emails) rates and reviews apps, marks reviews
 helpful and reports them. The store sets the rules: when it refuses something, its own reason is shown. Signed in, the
@@ -38,6 +53,9 @@ Icons and screenshots (their addresses never change their bytes).
 .I ~/.local/share/vibeos-software/device-id
 This device's random id for the store.
 .TP
+.I ~/.local/share/vibeos-software/suggested-updates
+The updates already suggested, one package and version per line: the notification does not tell them again.
+.TP
 .I ~/.local/share/vibeos-software/account.json
 The signed-in account's name and address (0600), for Mine offline. The account's token is kept in the login keyring
 (the Secret Service) under the schema vibeos.Software.Token, with the store's address as its attribute; without a
@@ -45,11 +63,12 @@ Secret Service it is kept for the session only.
 .PP
 The settings are in the GSettings schema
 .BR vibeos.Software :
-update-mode (wifi, always or never), color-scheme (system, light or dark) and recent-searches.
+update-mode (wifi, always or never), vibeos-only, color-scheme (system, light or dark) and recent-searches.
 .SH ENVIRONMENT
 .TP
 .B VIBEOS_STORE_URL
-The store's address, https://vibeos.top unless set (a local copy of the server, for tests).
+The store's address, https://vibeos.top unless set (a local copy of the server, for tests). For the timer's checks,
+set it in a drop-in for vibeos-software-updates.service.
 .TP
 .B VIBEOS_SOFTWARE_TOKEN_FILE
 Keeps the account's token in this file (written 0600) instead of the login keyring, for tests.
@@ -63,4 +82,5 @@ Steps walked once the window shows, separated by semicolons, such as
 .B tab:apps;app:org.gnome.Maps;scroll:800
 (the list is in the source, apps/software/src/sw-window.c), for pictures and tests.
 .SH SEE ALSO
-.BR vibeos-installer (1)
+.BR vibeos-installer (1),
+.BR systemd.timer (5)

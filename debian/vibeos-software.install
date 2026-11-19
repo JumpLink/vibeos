@@ -3,3 +3,5 @@ usr/share/applications/vibeos.Software.desktop
 usr/share/dbus-1/services/vibeos.Software.service
 usr/share/glib-2.0/schemas/vibeos.Software.gschema.xml
 usr/share/icons/hicolor/scalable/apps/vibeos.Software.svg
+usr/lib/systemd/user/vibeos-software-updates.service
+usr/lib/systemd/user/vibeos-software-updates.timer
