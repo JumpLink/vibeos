@@ -7,20 +7,23 @@
 #include <vulkan/vulkan_wayland.h>
 
 static bool
-pick_device (Vk *vk)
+pick_device (Vk *vk, bool allow_cpu)
 {
   uint32_t n = 0;
   vkEnumeratePhysicalDevices (vk->inst, &n, NULL);
   if (!n) {
-    g_warning ("vulkan: no device (panvk on Bifrost needs PAN_I_WANT_A_BROKEN_VULKAN_DRIVER=1)");
+    if (allow_cpu)
+      g_warning ("vulkan: no device (panvk on Bifrost needs PAN_I_WANT_A_BROKEN_VULKAN_DRIVER=1)");
+    else
+      g_message ("vulkan: no device");
     return false;
   }
   VkPhysicalDevice devs[8];
   n = MIN (n, 8);
   vkEnumeratePhysicalDevices (vk->inst, &n, devs);
   /* a GPU first: with every installed ICD enumerated (no VK_DRIVER_FILES), the software rasterizer (lavapipe) can
-   * come before the phone's GPU; it is only taken when nothing else can present */
-  for (int cpu = 0; cpu < 2; cpu++) {
+   * come before the phone's GPU; it is only taken when nothing else can present, and when allowed to */
+  for (int cpu = 0; cpu < (allow_cpu ? 2 : 1); cpu++) {
     for (uint32_t i = 0; i < n; i++) {
       VkPhysicalDeviceProperties props;
       vkGetPhysicalDeviceProperties (devs[i], &props);
@@ -48,7 +51,10 @@ pick_device (Vk *vk)
       }
     }
   }
-  g_warning ("vulkan: no device can present to the surface");
+  if (allow_cpu)
+    g_warning ("vulkan: no device can present to the surface");
+  else
+    g_message ("vulkan: no GPU can present to the surface");
   return false;
 }
 
@@ -194,7 +200,7 @@ make_swapchain (Vk *vk, uint32_t w, uint32_t h)
 }
 
 bool
-vk_init (Vk *vk, struct wl_display *display, struct wl_surface *surface, uint32_t w, uint32_t h)
+vk_init (Vk *vk, struct wl_display *display, struct wl_surface *surface, uint32_t w, uint32_t h, bool allow_cpu)
 {
   memset (vk, 0, sizeof *vk);
   const char *exts[] = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME };
@@ -219,7 +225,7 @@ vk_init (Vk *vk, struct wl_display *display, struct wl_surface *surface, uint32_
     .display = display, .surface = surface,
   };
   VK_CHECK (vkCreateWaylandSurfaceKHR (vk->inst, &sci, NULL, &vk->surface));
-  if (!pick_device (vk))
+  if (!pick_device (vk, allow_cpu))
     return false;
 
   float prio = 1.0f;
@@ -404,19 +410,22 @@ vk_oneshot_end (Vk *vk, VkCommandBuffer cmd)
 void
 vk_destroy (Vk *vk)
 {
-  if (!vk->dev)
-    return;
-  vkDeviceWaitIdle (vk->dev);
-  destroy_swapchain_images (vk);
-  vkDestroySwapchainKHR (vk->dev, vk->swapchain, NULL);
-  for (int i = 0; i < VK_FRAMES; i++) {
-    vkDestroySemaphore (vk->dev, vk->frame[i].acquired, NULL);
-    vkDestroyFence (vk->dev, vk->frame[i].fence, NULL);
+  if (vk->dev) {
+    vkDeviceWaitIdle (vk->dev);
+    destroy_swapchain_images (vk);
+    vkDestroySwapchainKHR (vk->dev, vk->swapchain, NULL);
+    for (int i = 0; i < VK_FRAMES; i++) {
+      vkDestroySemaphore (vk->dev, vk->frame[i].acquired, NULL);
+      vkDestroyFence (vk->dev, vk->frame[i].fence, NULL);
+    }
+    vkDestroyCommandPool (vk->dev, vk->cmd_pool, NULL);
+    vkDestroyRenderPass (vk->dev, vk->rp_present, NULL);
+    vkDestroyRenderPass (vk->dev, vk->rp_offscreen, NULL);
+    vkDestroyDevice (vk->dev, NULL);
   }
-  vkDestroyCommandPool (vk->dev, vk->cmd_pool, NULL);
-  vkDestroyRenderPass (vk->dev, vk->rp_present, NULL);
-  vkDestroyRenderPass (vk->dev, vk->rp_offscreen, NULL);
-  vkDestroyDevice (vk->dev, NULL);
-  vkDestroySurfaceKHR (vk->inst, vk->surface, NULL);
-  vkDestroyInstance (vk->inst, NULL);
+  if (vk->surface)
+    vkDestroySurfaceKHR (vk->inst, vk->surface, NULL);
+  if (vk->inst)
+    vkDestroyInstance (vk->inst, NULL);
+  memset (vk, 0, sizeof *vk);
 }

@@ -1,11 +1,25 @@
 /* The 2D renderer: every frame is a list of quads (images, flat colours, text masks), each with its own rounded
  * corners, transform, opacity and clip, drawn in batches by an instanced pipeline. Offscreen targets turn a group
- * into a texture for effects (blur, the stretch overscroll). Textures hold premultiplied BGRA (cairo's ARGB32). */
+ * into a texture for effects (blur, the stretch overscroll). Textures hold premultiplied BGRA (cairo's ARGB32).
+ *
+ * It draws through one of two backends, picked at start (gfx_init): Vulkan 1.0 (gfx-vk.c) when the Vulkan loader has
+ * a GPU that can present to the surface, otherwise OpenGL ES 3.0 on EGL (gfx-gl.c), and Vulkan's software rasterizer
+ * only when neither is there. VIBEOS_LAUNCHER_RENDERER=vulkan or =gl takes that one whatever the device has. Both
+ * draw the same pictures from the same instances and shaders (shaders/). */
 #pragma once
 
-#include "vk.h"
+#include <stdbool.h>
+#include <stdint.h>
+
+struct wl_display;
+struct wl_surface;
 
 typedef struct GfxTex GfxTex;
+
+typedef enum {
+  GFX_FORMAT_BGRA8,     /* premultiplied B G R A bytes in memory (cairo's ARGB32 on a little-endian CPU) */
+  GFX_FORMAT_R8,        /* one byte: a coverage mask (the glyph atlas) */
+} GfxFormat;
 
 typedef enum {
   GFX_MODE_TEX = 0,     /* texture × colour */
@@ -40,22 +54,22 @@ typedef struct { float r, g, b, a; } GfxColor;   /* straight alpha; premultiplie
 #define GFX_RGBA(rgb, alpha) ((GfxColor) { ((rgb) >> 16 & 0xff) / 255.f, ((rgb) >> 8 & 0xff) / 255.f, \
                                            ((rgb) & 0xff) / 255.f, (alpha) })
 
+/* What every backend's texture starts with */
 struct GfxTex {
-  VkImage         image;
-  VkDeviceMemory  mem;
-  VkImageView     view;
-  VkDescriptorSet set;
-  VkFramebuffer   fb;         /* render targets only */
-  VkFormat        format;
-  VkImageLayout   layout;
-  int             w, h;
+  int       w, h;
+  GfxFormat format;
+  bool      target;           /* drawn into by a pass (gfx_target_new) */
 };
 
-bool     gfx_init            (Vk *vk);
-Vk      *gfx_vk              (void);
+/* The device and the swapchain on the launcher's surface (w × h pixels), and the renderer on them */
+bool     gfx_init            (struct wl_display *display, struct wl_surface *surface, int w, int h);
+void     gfx_resize          (int w, int h);
+void     gfx_finish          (void);           /* waits for the device to be done, before exit */
+const char *gfx_backend_name (void);           /* "vulkan" or "gl" */
 
-GfxTex  *gfx_tex_new         (int w, int h, VkFormat format);
+GfxTex  *gfx_tex_new         (int w, int h, GfxFormat format);
 GfxTex  *gfx_tex_from_bgra   (int w, int h, const void *pixels, int stride);
+/* pixels in the texture's format; uploaded before the next pass (a large one at once) */
 void     gfx_tex_write       (GfxTex *t, int x, int y, int w, int h, const void *pixels, int stride);
 GfxTex  *gfx_target_new      (int w, int h);
 void     gfx_tex_free        (GfxTex *t);      /* once no frame in flight uses it */

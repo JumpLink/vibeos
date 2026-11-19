@@ -1,5 +1,9 @@
+# the renderer's two backends (src/gfx.h): Vulkan, and OpenGL ES 3.0 on EGL for a GPU without a Vulkan driver
 deps = [
   dependency('vulkan'),
+  dependency('egl'),
+  dependency('glesv2'),
+  dependency('wayland-egl'),
   dependency('wayland-client'),
   dependency('glib-2.0'),
   dependency('gio-unix-2.0'),
@@ -38,9 +42,9 @@ foreach p : protocols
 endforeach
 
 executable('vibeos-launcher',
-  'src/main.c', 'src/vk.c', 'src/gfx.c', 'src/wl.c', 'src/text.c', 'src/image.c', 'src/parallax.c', 'src/apps.c',
-  'src/icons.c', 'src/model.c', 'src/tiles.c', 'src/home.c', 'src/drawer.c', 'src/nav.c',
-  'src/popup.c', 'src/drag.c',
+  'src/main.c', 'src/vk.c', 'src/gfx.c', 'src/gfx-vk.c', 'src/gfx-gl.c', 'src/wl.c', 'src/text.c', 'src/image.c',
+  'src/parallax.c', 'src/apps.c', 'src/icons.c', 'src/model.c', 'src/tiles.c', 'src/home.c', 'src/drawer.c',
+  'src/nav.c', 'src/popup.c', 'src/drag.c',
   proto_src,
   include_directories: include_directories('src', 'shaders'),
   c_args: '-DMIGRATE_IDS="@0@"'.format(migrate_ids_path),

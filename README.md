@@ -77,8 +77,9 @@ VibeOS is not a shell of its own and does not use Phosh. It is:
   touch device's: gesture navigation (swipe up for home and recents, in from an edge for back), the status bar, the
   shade and quick settings, heads-up notifications, the lock screen and PIN pad, the always-on display, rotation;
 - **a session** (`vibeos`) for GDM, or a systemd unit for a device without a display manager;
-- **the VibeOS launcher**, the home screen: a Wayland client drawn with Vulkan, with pages, a dock, an app drawer
-  that follows the finger, widgets, icon packs and icon shapes, and tilt-parallax wallpapers;
+- **the VibeOS launcher**, the home screen: a Wayland client drawn with Vulkan, or OpenGL ES where the GPU has no
+  Vulkan driver, with pages, a dock, an app drawer that follows the finger, widgets, icon packs and icon shapes, and
+  tilt-parallax wallpapers;
 - **the apps** above, in GTK 4 with their own Material 3 widgets (`libvibeos`, `libspongy`);
 - **system helpers**: the lock screen's PIN check (PAM), waking from suspend for alarms and reminders, a GPU clock
   boost while the screen is touched, and a mobile data profile for every new SIM.
@@ -128,7 +129,8 @@ display and at scale 2.5. All five patches do nothing on a desktop.
   Environment=GSETTINGS_SCHEMA_DIR=/opt/gnome-mobile/share/glib-2.0/schemas
   ```
 - A device with a working mainline kernel: display and touch, and ModemManager for calls and SMS on a phone
-- Vulkan for the launcher (Mesa: Panfrost/panvk on Mali, Turnip on Adreno; lavapipe works, slowly)
+- Vulkan or OpenGL ES 3.0 for the launcher (Mesa: panvk or Panfrost on Mali, Turnip or freedreno on Adreno; on the
+  CPU alone, with lavapipe, it works, slowly)
 
 ## Install
 

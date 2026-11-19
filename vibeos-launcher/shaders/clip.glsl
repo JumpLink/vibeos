@@ -12,6 +12,10 @@ float clip_coverage(vec4 clip)
   if (clip.z <= clip.x)
     return 1.0;
   vec2 fc = gl_FragCoord.xy;
+#ifndef VULKAN
+  if (pc.pad.x != 0.0)          // the window: its rows counted from the top, as everywhere else
+    fc.y = pc.vp.y - fc.y;
+#endif
   vec2 a = clamp(fc - clip.xy + 0.5, 0.0, 1.0);
   vec2 b = clamp(clip.zw - fc + 0.5, 0.0, 1.0);
   return a.x * a.y * b.x * b.y;

@@ -1,6 +1,6 @@
-/* VibeOS Launcher 2: the home screen as a Vulkan Wayland client: the parallax wallpaper zoomed ×1.10, the workspace
- * and dock, and the app drawer sheet whose depth zooms the wallpaper out, shrinks the home to 0.97 and blurs both
- * behind it. */
+/* VibeOS Launcher 2: the home screen as a Wayland client drawn with Vulkan or OpenGL ES (gfx.h): the parallax
+ * wallpaper zoomed ×1.10, the workspace and dock, and the app drawer sheet whose depth zooms the wallpaper out, shrinks
+ * the home to 0.97 and blurs both behind it. */
 #include <glib.h>
 #include <glib-unix.h>
 #include <linux/input-event-codes.h>
@@ -33,9 +33,8 @@ Vibeos N;
 typedef enum { OWNER_NONE, OWNER_HOME, OWNER_DRAWER, OWNER_POPUP, OWNER_HELD, OWNER_BAR } Owner;
 
 static struct {
-  Vk          vk;
   bool        ready;
-  int         vk_w, vk_h;
+  int         gfx_w, gfx_h;     /* the size the renderer draws at */
   GMainLoop  *loop;
   Parallax   *par;
   bool        suspended;    /* the compositor's: an app covers the launcher */
@@ -394,10 +393,10 @@ layout_changed (GSettings *s, const char *key, gpointer data)
 static bool
 init_gpu (void)
 {
-  if (!vk_init (&A.vk, wl_get_display (N.wl), wl_get_surface (N.wl), N.W, N.H) || !gfx_init (&A.vk) || !text_init ())
+  if (!gfx_init (wl_get_display (N.wl), wl_get_surface (N.wl), N.W, N.H) || !text_init ())
     return false;
-  A.vk_w = N.W;
-  A.vk_h = N.H;
+  A.gfx_w = N.W;
+  A.gfx_h = N.H;
   wallpaper_load ();
   g_signal_connect (A.bg, "changed", G_CALLBACK (wallpaper_changed), NULL);
   g_signal_connect (A.iface, "changed::color-scheme", G_CALLBACK (wallpaper_changed), NULL);
@@ -494,10 +493,10 @@ on_frame (gpointer data, gint64 time)
     g_main_loop_quit (A.loop);
     return;
   }
-  if (A.vk_w != N.W || A.vk_h != N.H) {
-    vk_resize (&A.vk, N.W, N.H);
-    A.vk_w = N.W;
-    A.vk_h = N.H;
+  if (A.gfx_w != N.W || A.gfx_h != N.H) {
+    gfx_resize (N.W, N.H);
+    A.gfx_w = N.W;
+    A.gfx_h = N.H;
     if (A.par)
       parallax_resize (A.par, N.W, N.H, N.dp);
     tiles_relabel ();               /* the columns' widths changed */
@@ -886,6 +885,6 @@ main (int argc, char **argv)
   wl_schedule (N.wl);
   g_main_loop_run (A.loop);
   if (A.ready)
-    vkDeviceWaitIdle (A.vk.dev);
+    gfx_finish ();
   return 0;
 }
