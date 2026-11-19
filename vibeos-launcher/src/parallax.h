@@ -13,11 +13,14 @@ Parallax *parallax_new    (const char *dir, void (*wake) (void *data), void *dat
 Parallax *parallax_new_image (const char *file);
 void      parallax_free   (Parallax *p);
 void      parallax_resize (Parallax *p, int w, int h, double scale);
-/* who is called when the picture changes by itself (a turned screen's layers decoded): a frame is wanted */
+/* who is called when the picture changes by itself (the tilt moved a layer a px, a turned screen's layers decoded):
+ * a frame is wanted */
 void      parallax_set_wake (Parallax *p, void (*wake) (void *data), void *data);
-void      parallax_run    (Parallax *p, bool run);     /* follow the tilt while shown */
-/* one frame's sensor step; true while the picture moves (another frame is wanted). At rest the sensor is polled
- * slowly and `wake` is called when it moves again. */
+/* Follow the tilt while shown: the filter steps 60 times a second on a timer of its own, and the layers are drawn at
+ * offsets in whole px of the fastest one, so `wake` is called only when a step moves that a px; at rest the sensor is
+ * polled slowly. */
+void      parallax_run    (Parallax *p, bool run);
+/* the frame's step of the way back from a hold; true while it lasts (another frame is wanted) */
 bool      parallax_tick   (Parallax *p);
 /* Held, the offsets keep still whatever the tilt does (through a transition, so the layers are drawn as one picture
  * the whole way); let go, the picture eases to where the tilt has it in 150 ms. Before the frame's tick. */

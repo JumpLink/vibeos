@@ -1,5 +1,5 @@
 /* The parallax wallpaper (see parallax.h). The filter is the GTK 3 launcher's, tuned there on this phone. The
- * accelerometer is IIO's, or on the POCO X3 NFC the ADSP sensor hub's, through libssc. */
+ * accelerometer is IIO's, or on the POCO X3 NFC and the Galaxy Tab S5e the ADSP sensor hub's, through libssc. */
 #include "parallax.h"
 
 #include <dlfcn.h>
@@ -13,6 +13,7 @@
 
 #include "gfx.h"
 #include "image.h"
+#include "pieces.h"
 
 #define ACCEL_DIR "/sys/bus/iio/devices"
 /* Per frame at 60 Hz: time constants of ≈ 0.25 s and ≈ 0.15 s, the picture glides after the phone (owner: the
@@ -29,6 +30,9 @@
 #define REST_TICKS 60
 #define STILL 30            /* frames without a move: at rest, the idle poll takes over */
 #define RELEASE_MS 150      /* let go after a hold: from the held picture to the tilt's */
+#define TICK_US 16667       /* the filter's step, 1/60 s: its constants are per step, whatever the frame rate */
+#define TICK_MS 16          /* the timer that takes the steps, while the picture moves */
+#define PIECE_TILE 16       /* texels: a layer is drawn as the tiles of it that are not clear (pieces.h) */
 
 typedef struct {
   char   *file;
@@ -36,12 +40,15 @@ typedef struct {
   GfxTex *tex;
   float   margin;           /* px of the layer beyond each screen edge */
   GfxTex *kept;             /* its texture for the screen's other shape, while it may turn back */
+  GArray *pieces;           /* the parts of tex worth drawing (Piece, texels); NULL: all of it */
+  GArray *kept_pieces;      /* … and of kept */
 } Layer;
 
 struct Parallax {
   char       *dir;
   GPtrArray  *layers;
   double      range;        /* dp a depth-1 layer moves either way */
+  double      depth_max;    /* the fastest layer's depth, either way */
   double      tilt;         /* the tilt (of g) that moves it that far */
   int         w, h;
   double      scale;
@@ -64,6 +71,12 @@ struct Parallax {
   int         calm;
   bool        have_g;
   double      ox, oy, tx, ty;
+  /* What the layers are drawn at: ox, oy in whole px of the fastest layer on the screen (at the zoom the picture
+   * rests at). A frame is asked for only when these change; the filter steps on its own timer meanwhile. */
+  double      qx, qy;
+  float       zoom;
+  guint       follow;
+  gint64      follow_t;     /* µs: the steps taken up to here */
   int         still;
   /* A transition holds the offsets (the picture keeps still, and is drawn as one); let go, the picture goes from
    * where it was held to where the tilt has it in RELEASE_MS */
@@ -77,20 +90,21 @@ struct Parallax {
   GfxTex     *flat;
   float       flat_zoom;
   int         flat_mx, flat_my;
-  double      flat_ox, flat_oy;
+  double      flat_qx, flat_qy;
   guint       flat_gen;
   bool        use_flat;     /* this frame */
-  double      last_ox, last_oy;   /* the last frame's, to see the layers keep still */
+  double      last_qx, last_qy;   /* the last frame's, to see the layers keep still */
   guint       last_gen;
   guint       idle;
   void      (*wake) (void *data);
   void       *wake_data;
 };
 
-/* ---- the POCO X3 NFC's accelerometer: the ADSP sensor hub's (SSC), reached through libssc, not IIO ----
- * libssc is loaded at run time (only that phone has it). A sensor lives only while the parallax runs: the hub's
- * protection domain restarts at every screen-on there (surya-sleep-resume), and a sensor opened before that talks
- * to nothing. It measures ~23 Hz in m/s² on Android's axes; step() uses only the direction. */
+/* ---- the sensor hub's accelerometer (SSC: the POCO X3 NFC's, the Tab S5e's), reached through libssc, not IIO ----
+ * libssc is loaded at run time (only these have it). A sensor lives only while the parallax runs: the hub's
+ * protection domain restarts at every screen-on on the POCO (surya-sleep-resume), and a sensor opened before that
+ * talks to nothing. It measures at its own rate (~23 Hz on the POCO, ~13 Hz on the Tab S5e; set_rate has no say), in
+ * m/s² on Android's axes; step() uses only the direction, the latest measurement at every step. */
 typedef void (*SscNew) (GCancellable *, GAsyncReadyCallback, gpointer);
 typedef GObject *(*SscNewFinish) (GAsyncResult *, GError **);
 typedef void (*SscOpen) (GObject *, GCancellable *, GAsyncReadyCallback, gpointer);
@@ -356,6 +370,19 @@ filter (Parallax *p)
   return true;
 }
 
+/* ox, oy to what the layers are drawn at; true when that changed */
+static bool
+quantize (Parallax *p)
+{
+  double px = p->range * p->depth_max * p->scale * p->zoom;     /* the fastest layer's px per unit of offset */
+  double qx = px > 0 ? round (p->ox * px) / px : p->ox, qy = px > 0 ? round (p->oy * px) / px : p->oy;
+  if (qx == p->qx && qy == p->qy)
+    return false;
+  p->qx = qx;
+  p->qy = qy;
+  return true;
+}
+
 /* one reading: true when the picture moved by more than a hair */
 static bool
 step (Parallax *p)
@@ -372,6 +399,72 @@ step (Parallax *p)
   return true;
 }
 
+static void
+wake (Parallax *p)
+{
+  if (p->wake)
+    p->wake (p->wake_data);
+}
+
+static gboolean idle_poll (gpointer data);
+
+/* The picture follows the tilt: a filter step every 1/60 s, a frame only when that moves the layers a px. Still for
+ * STILL steps, it rests: one more frame draws its layers as one picture for the next transition, and the idle poll
+ * watches for the next move. */
+static gboolean
+follow (gpointer data)
+{
+  Parallax *p = data;
+  gint64 now = g_get_monotonic_time ();
+  if (now - p->follow_t > 4 * TICK_US)
+    p->follow_t = now - TICK_US;    /* the main loop was held up: the steps missed are not made up */
+  while (now - p->follow_t >= TICK_US) {
+    p->follow_t += TICK_US;
+    if (step (p))
+      p->still = 0;
+    else
+      p->still++;
+  }
+  if (quantize (p))
+    wake (p);
+  if (p->still < STILL)
+    return G_SOURCE_CONTINUE;
+  p->follow = 0;
+  set_rate (p, RATE_IDLE);
+  if (!p->idle)
+    p->idle = g_timeout_add (IDLE_MS, idle_poll, p);
+  wake (p);
+  return G_SOURCE_REMOVE;
+}
+
+static void
+follow_start (Parallax *p)
+{
+  if (p->follow || !p->running || p->held || p->release_t)
+    return;
+  if (p->idle) {
+    g_source_remove (p->idle);
+    p->idle = 0;
+  }
+  set_rate (p, RATE_RUN);
+  p->still = 0;
+  p->follow_t = g_get_monotonic_time () - TICK_US;
+  p->follow = g_timeout_add (TICK_MS, follow, p);
+}
+
+static void
+follow_stop (Parallax *p)
+{
+  if (p->follow) {
+    g_source_remove (p->follow);
+    p->follow = 0;
+  }
+  if (p->idle) {
+    g_source_remove (p->idle);
+    p->idle = 0;
+  }
+}
+
 static gboolean
 idle_poll (gpointer data)
 {
@@ -381,11 +474,10 @@ idle_poll (gpointer data)
     return G_SOURCE_REMOVE;
   }
   if (step (p)) {
-    set_rate (p, RATE_RUN);
-    p->still = 0;
     p->idle = 0;
-    if (p->wake)
-      p->wake (p->wake_data);
+    if (quantize (p))
+      wake (p);
+    follow_start (p);
     return G_SOURCE_REMOVE;
   }
   return G_SOURCE_CONTINUE;
@@ -401,11 +493,14 @@ release_step (Parallax *p)
     p->ox = p->tx;
     p->oy = p->ty;
     p->release_t = 0;
+    quantize (p);
+    follow_start (p);
     return true;
   }
   double e = 1 - (1 - t) * (1 - t);
   p->ox = p->from_ox + (p->tx - p->from_ox) * e;
   p->oy = p->from_oy + (p->ty - p->from_oy) * e;
+  quantize (p);
   return true;
 }
 
@@ -417,10 +512,7 @@ parallax_hold (Parallax *p, bool hold)
   p->held = hold;
   if (hold) {
     p->release_t = 0;               /* held where a release had got to */
-    if (p->idle) {
-      g_source_remove (p->idle);
-      p->idle = 0;
-    }
+    follow_stop (p);
     if (p->running)
       set_rate (p, RATE_IDLE);      /* nothing reads it until the hold ends */
     return;
@@ -428,8 +520,8 @@ parallax_hold (Parallax *p, bool hold)
   if (!p->running)
     return;
   set_rate (p, RATE_RUN);
-  p->from_ox = p->ox;
-  p->from_oy = p->oy;
+  p->from_ox = p->qx;               /* from the picture as it was held */
+  p->from_oy = p->qy;
   p->release_t = g_get_monotonic_time ();
   p->resync = true;
   p->still = 0;
@@ -438,22 +530,10 @@ parallax_hold (Parallax *p, bool hold)
 bool
 parallax_tick (Parallax *p)
 {
-  if (!p || !p->running || p->held)
-    return false;           /* (held: the picture keeps still, nothing to follow) */
-  if (p->release_t)
-    return release_step (p);
-  if (p->still >= STILL)
-    return false;           /* the idle poll has it */
-  if (step (p)) {
-    p->still = 0;
-    return true;
-  }
-  if (++p->still == STILL) {
-    set_rate (p, RATE_IDLE);
-    if (!p->idle)
-      p->idle = g_timeout_add (IDLE_MS, idle_poll, p);
-  }
-  return true;              /* a few more frames before it counts as still */
+  /* held, the picture keeps still; else, but for the way back from a hold, follow () asks for the frames it needs */
+  if (!p || !p->running || p->held || !p->release_t)
+    return false;
+  return release_step (p);
 }
 
 static void
@@ -462,8 +542,20 @@ layer_free (gpointer data)
   Layer *l = data;
   gfx_tex_free (l->tex);
   gfx_tex_free (l->kept);
+  g_clear_pointer (&l->pieces, g_array_unref);
+  g_clear_pointer (&l->kept_pieces, g_array_unref);
   g_free (l->file);
   g_free (l);
+}
+
+/* the parts of a layer's picture worth drawing; NULL: all of it */
+static GArray *
+layer_pieces (GdkPixbuf *pb)
+{
+  if (!pb || !gdk_pixbuf_get_has_alpha (pb) || gdk_pixbuf_get_n_channels (pb) != 4)
+    return NULL;
+  return pieces_find (gdk_pixbuf_read_pixels (pb), gdk_pixbuf_get_width (pb), gdk_pixbuf_get_height (pb),
+                      gdk_pixbuf_get_rowstride (pb), PIECE_TILE);
 }
 
 Parallax *
@@ -479,6 +571,7 @@ parallax_new (const char *dir, void (*wake) (void *data), void *data)
     return NULL;
   Parallax *p = g_new0 (Parallax, 1);
   p->dir = g_strdup (dir);
+  p->zoom = 1;
   p->wake = wake;
   p->wake_data = data;
   p->layers = g_ptr_array_new_with_free_func (layer_free);
@@ -489,6 +582,7 @@ parallax_new (const char *dir, void (*wake) (void *data), void *data)
     Layer *l = g_new0 (Layer, 1);
     l->file = g_build_filename (dir, json_object_get_string_member (lo, "file"), NULL);
     l->depth = json_object_has_member (lo, "depth") ? json_object_get_double_member (lo, "depth") : 0;
+    p->depth_max = MAX (p->depth_max, fabs (l->depth));
     g_ptr_array_add (p->layers, l);
   }
   find_accel (p);
@@ -500,6 +594,7 @@ parallax_new_image (const char *file)
 {
   Parallax *p = g_new0 (Parallax, 1);
   p->dir = g_path_get_dirname (file);
+  p->zoom = 1;
   p->layers = g_ptr_array_new_with_free_func (layer_free);
   p->tilt = 0.2;
   Layer *l = g_new0 (Layer, 1);
@@ -513,8 +608,7 @@ parallax_free (Parallax *p)
 {
   if (!p)
     return;
-  if (p->idle)
-    g_source_remove (p->idle);
+  follow_stop (p);
   if (p->decoding) {
     g_cancellable_cancel (p->decoding);
     g_clear_object (&p->decoding);
@@ -544,6 +638,7 @@ typedef struct {
   char      **files;
   int        *bw, *bh;
   GdkPixbuf **out;
+  GArray    **pieces;
   int         w, h;
 } Decode;
 
@@ -554,8 +649,10 @@ decode_free (gpointer data)
   for (guint i = 0; i < d->n; i++) {
     g_free (d->files[i]);
     g_clear_object (&d->out[i]);
+    g_clear_pointer (&d->pieces[i], g_array_unref);
   }
   g_free (d->files);
+  g_free (d->pieces);
   g_free (d->bw);
   g_free (d->bh);
   g_free (d->out);
@@ -566,8 +663,10 @@ static void
 decode_thread (GTask *task, gpointer source, gpointer data, GCancellable *cancellable)
 {
   Decode *d = data;
-  for (guint i = 0; i < d->n && !g_cancellable_is_cancelled (cancellable); i++)
+  for (guint i = 0; i < d->n && !g_cancellable_is_cancelled (cancellable); i++) {
     d->out[i] = image_load (d->files[i], d->bw[i], d->bh[i], TRUE);
+    d->pieces[i] = layer_pieces (d->out[i]);
+  }
   g_task_return_boolean (task, TRUE);
 }
 
@@ -585,6 +684,9 @@ decode_done (GObject *source, GAsyncResult *res, gpointer data)
     gfx_tex_free (l->kept);
     l->kept = l->tex;
     l->tex = d->out[i] ? image_texture (d->out[i]) : NULL;
+    g_clear_pointer (&l->kept_pieces, g_array_unref);
+    l->kept_pieces = l->pieces;
+    l->pieces = g_steal_pointer (&d->pieces[i]);
   }
   p->kept_w = p->tex_w;
   p->kept_h = p->tex_h;
@@ -625,6 +727,9 @@ parallax_resize (Parallax *p, int w, int h, double scale)
       gfx_tex_free (l->kept);
       l->kept = NULL;
       l->tex = pb ? image_texture (pb) : NULL;
+      g_clear_pointer (&l->pieces, g_array_unref);
+      g_clear_pointer (&l->kept_pieces, g_array_unref);
+      l->pieces = layer_pieces (pb);
       g_clear_object (&pb);
     }
     p->tex_w = w;
@@ -643,6 +748,9 @@ parallax_resize (Parallax *p, int w, int h, double scale)
       GfxTex *t = l->tex;
       l->tex = l->kept;
       l->kept = t;
+      GArray *pc = l->pieces;
+      l->pieces = l->kept_pieces;
+      l->kept_pieces = pc;
     }
     p->kept_w = p->tex_w;
     p->kept_h = p->tex_h;
@@ -657,6 +765,7 @@ parallax_resize (Parallax *p, int w, int h, double scale)
   d->bw = g_new0 (int, d->n);
   d->bh = g_new0 (int, d->n);
   d->out = g_new0 (GdkPixbuf *, d->n);
+  d->pieces = g_new0 (GArray *, d->n);
   d->w = w;
   d->h = h;
   for (guint i = 0; i < d->n; i++) {
@@ -685,13 +794,25 @@ parallax_run (Parallax *p, bool run)
   p->running = run;
   p->still = 0;
   set_rate (p, run ? RATE_RUN : RATE_IDLE);
-  if (run)
+  if (run) {
     ssc_start (p);
-  else
+    follow_start (p);
+  } else {
     ssc_stop (p);
-  if (!run && p->idle) {
-    g_source_remove (p->idle);
-    p->idle = 0;
+    follow_stop (p);
+  }
+}
+
+/* a layer's picture, at x y w h, as its pieces: what is clear in it is not drawn */
+static void
+draw_pieces (GfxTex *t, GArray *pieces, float x, float y, float w, float h)
+{
+  float kx = w / t->w, ky = h / t->h;
+  for (guint i = 0; i < pieces->len; i++) {
+    const Piece *c = &g_array_index (pieces, Piece, i);
+    /* an edge two pieces share is the same texel number put through the same sums: the same float, so no seam */
+    gfx_image_piece (t, x + c->x0 * kx, y + c->y0 * ky, x + c->x1 * kx, y + c->y1 * ky,
+                     (float) c->x0 / t->w, (float) c->y0 / t->h, (float) c->x1 / t->w, (float) c->y1 / t->h);
   }
 }
 
@@ -706,8 +827,8 @@ draw_layers (Parallax *p)
     if (!l->tex)
       continue;
     /* depth -1…1: the layers behind the screen plane (negative) move against the ones in front */
-    float dx = (float) (-p->ox * p->range * l->depth * p->scale);
-    float dy = (float) (-p->oy * p->range * l->depth * p->scale);
+    float dx = (float) (-p->qx * p->range * l->depth * p->scale);
+    float dy = (float) (-p->qy * p->range * l->depth * p->scale);
     float x = -(l->margin + dx), y = -(l->margin + dy), w = l->tex->w, h = l->tex->h;
     if (p->tex_w != p->w || p->tex_h != p->h) {
       /* made for the screen's old shape, until the new one's is in: scaled to cover it, about its centre */
@@ -719,6 +840,8 @@ draw_layers (Parallax *p)
     }
     if (back)
       gfx_image_opaque (l->tex, x, y, w, h);
+    else if (l->pieces)
+      draw_pieces (l->tex, l->pieces, x, y, w, h);
     else
       gfx_image (l->tex, x, y, w, h, 0, 1);
     back = false;
@@ -730,13 +853,17 @@ parallax_prepare (Parallax *p, float rest_zoom)
 {
   if (!p)
     return;
-  bool moved = p->ox != p->last_ox || p->oy != p->last_oy || p->gen != p->last_gen;
-  p->last_ox = p->ox;
-  p->last_oy = p->oy;
+  if (p->zoom != rest_zoom) {
+    p->zoom = rest_zoom;
+    quantize (p);
+  }
+  bool moved = p->qx != p->last_qx || p->qy != p->last_qy || p->gen != p->last_gen;
+  p->last_qx = p->qx;
+  p->last_qy = p->qy;
   p->last_gen = p->gen;
   /* past the screen far enough to cover it at a zoom of 1 */
   int mx = (int) ceilf (p->w * (rest_zoom - 1) / 2), my = (int) ceilf (p->h * (rest_zoom - 1) / 2);
-  p->use_flat = p->flat && p->flat_gen == p->gen && p->flat_ox == p->ox && p->flat_oy == p->oy &&
+  p->use_flat = p->flat && p->flat_gen == p->gen && p->flat_qx == p->qx && p->flat_qy == p->qy &&
                 p->flat_zoom == rest_zoom && p->flat->w == p->w + 2 * mx && p->flat->h == p->h + 2 * my;
   if (p->use_flat || moved || p->w <= 0 || p->h <= 0 || rest_zoom < 1)
     return;
@@ -754,8 +881,8 @@ parallax_prepare (Parallax *p, float rest_zoom)
   p->flat_zoom = rest_zoom;
   p->flat_mx = mx;
   p->flat_my = my;
-  p->flat_ox = p->ox;
-  p->flat_oy = p->oy;
+  p->flat_qx = p->qx;
+  p->flat_qy = p->qy;
   p->flat_gen = p->gen;
   p->use_flat = true;
 }

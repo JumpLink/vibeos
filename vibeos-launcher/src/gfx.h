@@ -13,6 +13,7 @@ typedef enum {
   GFX_MODE_MASK = 2,    /* colour × texture.r (glyphs) */
   GFX_MODE_CORNERS = 3, /* colour, the corners' radii in u0 v0 u1 v1 (top left, top right, bottom right, left) */
   GFX_MODE_RING = 4,    /* colour, an outline u0 wide inside the rounded rect */
+  GFX_MODE_PIECE = 5,   /* texture × colour, x y w h the edges x0 y0 x1 y1, kept exact: neither grown nor antialiased */
 } GfxMode;
 
 typedef enum {
@@ -98,6 +99,10 @@ void     gfx_ring            (float x, float y, float w, float h, float radius, 
 void     gfx_image           (GfxTex *t, float x, float y, float w, float h, float radius, float alpha);
 void     gfx_image_uv        (GfxTex *t, float x, float y, float w, float h, float u0, float v0, float u1, float v1,
                               float radius, float alpha);
+/* A piece of a picture: the rect between the edges x0 y0 x1 y1, its texture's u0 v0 u1 v1 in it. Its edges are drawn
+ * where they fall, not antialiased: pieces that share an edge (the same numbers, worked out the same way) meet without
+ * a seam and without a pixel drawn twice, as the picture drawn whole would be. */
+void     gfx_image_piece     (GfxTex *t, float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1);
 /* An opaque picture written over what is under it, not blended: the cheapest full-screen draw. Its texture's alpha
  * is taken as 1. Under an opacity below 1 or a clip it is drawn as gfx_image is. */
 void     gfx_image_opaque    (GfxTex *t, float x, float y, float w, float h);

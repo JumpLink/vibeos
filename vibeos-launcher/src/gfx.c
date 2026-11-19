@@ -482,13 +482,15 @@ gfx_frame_begin (void)
 static double
 shaded (const GfxInst *q)
 {
+  bool edges = q->mode == GFX_MODE_PIECE;
+  float w = edges ? q->w - q->x : q->w, h = edges ? q->h - q->y : q->h;
   if (q->m[1] != 0 || q->m[2] != 0)
-    return fabs (q->m[0] * q->m[3] - q->m[1] * q->m[2]) * q->w * q->h;
-  float x0 = q->m[0] * q->x + q->tx, x1 = q->m[0] * (q->x + q->w) + q->tx;
-  float y0 = q->m[3] * q->y + q->ty, y1 = q->m[3] * (q->y + q->h) + q->ty;
-  float w = MIN (MAX (x0, x1), G.pass_w) - MAX (MIN (x0, x1), 0);
-  float h = MIN (MAX (y0, y1), G.pass_h) - MAX (MIN (y0, y1), 0);
-  return w > 0 && h > 0 ? (double) w * h : 0;
+    return fabs (q->m[0] * q->m[3] - q->m[1] * q->m[2]) * w * h;
+  float x0 = q->m[0] * q->x + q->tx, x1 = q->m[0] * (q->x + w) + q->tx;
+  float y0 = q->m[3] * q->y + q->ty, y1 = q->m[3] * (q->y + h) + q->ty;
+  float sw = MIN (MAX (x0, x1), G.pass_w) - MAX (MIN (x0, x1), 0);
+  float sh = MIN (MAX (y0, y1), G.pass_h) - MAX (MIN (y0, y1), 0);
+  return sw > 0 && sh > 0 ? (double) sw * sh : 0;
 }
 
 static void
@@ -814,6 +816,19 @@ void
 gfx_image (GfxTex *t, float x, float y, float w, float h, float radius, float alpha)
 {
   gfx_image_uv (t, x, y, w, h, 0, 0, 1, 1, radius, alpha);
+}
+
+void
+gfx_image_piece (GfxTex *t, float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1)
+{
+  if (hidden (x0, y0, x1 - x0, y1 - y0))
+    return;
+  GfxInst *q = gfx_push (t, GFX_PIPE_QUAD);
+  float a = q->a;
+  q->x = x0; q->y = y0; q->w = x1; q->h = y1;
+  q->u0 = u0; q->v0 = v0; q->u1 = u1; q->v1 = v1;
+  q->r = q->g = q->b = q->a = a;
+  q->mode = GFX_MODE_PIECE;
 }
 
 static void
