@@ -60,7 +60,7 @@ static void
 nb_dialog_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   NbDialog *self = NB_DIALOG (widget);
-  GdkRGBA scrim = { 0, 0, 0, DIM };
+  GdkRGBA scrim = vibeos_color_alpha (VIBEOS_SCRIM, DIM);
 
   gtk_snapshot_push_opacity (snapshot, self->shown);
   gtk_snapshot_append_color (snapshot, &scrim,
@@ -386,7 +386,7 @@ static void
 nb_sheet_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   NbSheet *self = NB_SHEET (widget);
-  GdkRGBA scrim = { 0, 0, 0, self->dim * self->shown };
+  GdkRGBA scrim = vibeos_color_alpha (VIBEOS_SCRIM, self->dim * self->shown);
 
   gtk_snapshot_append_color (snapshot, &scrim,
                              &GRAPHENE_RECT_INIT (0, 0, gtk_widget_get_width (widget), gtk_widget_get_height (widget)));
@@ -1086,7 +1086,9 @@ indicator_draw (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpoint
     return;
   double len = MAX (height * page / upper, 2 * IND_W);
   double y = (height - len) * value / MAX (1, upper - page);
-  cairo_set_source_rgb (cr, 0x59 / 255.0, 0x61 / 255.0, 0x63 / 255.0);
+  GdkRGBA thumb = vibeos_color (VIBEOS_OUTLINE);
+
+  gdk_cairo_set_source_rgba (cr, &thumb);
   cairo_rectangle (cr, width - IND_W, y, IND_W, len);
   cairo_fill (cr);
 }

@@ -16,8 +16,6 @@
                   "Version/18.0 Mobile/15E148 Safari/604.1"
 #define DESKTOP_UA "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) " \
                    "Version/18.0 Safari/605.1.15"
-/* a favourite saved without a colour of its own */
-#define DEFAULT_FAVORITE_COLOR "#4d7f86"
 
 static void sync_title (NbTab *t);
 
@@ -145,7 +143,8 @@ nb_tab_add_favorite (NbTab *t, const char *title, const char *url)
   if (!url || !*url)
     return;
   g_autofree char *color = vibrant_color (nb_tab_favicon (t));
-  nb_store_add_favorite (nb->store, url, title && *title ? title : url, color ? color : DEFAULT_FAVORITE_COLOR);
+  /* without a colour of its own (no favicon) it is saved with none: its card is then in the theme's colours */
+  nb_store_add_favorite (nb->store, url, title && *title ? title : url, color);
   nb_tab_snackbar (t, "Added to favorites", NULL, NULL, NULL);
 }
 
@@ -769,7 +768,7 @@ make_view (NbTab *t)
     webkit_web_view_set_zoom_level (v, 0.5);
   /* the web view's base background, white: a page that paints none (plain text, WebKit's error pages, a page without
    * CSS) reads black on white; one that declares color-scheme: dark gets WebKit's dark canvas */
-  GdkRGBA bg = { 1, 1, 1, 1 };
+  GdkRGBA bg = vibeos_color (VIBEOS_WHITE);
   webkit_web_view_set_background_color (v, &bg);
   g_signal_connect (v, "notify::title", G_CALLBACK (on_title), t);
   g_signal_connect (v, "notify::uri", G_CALLBACK (on_uri), t);
