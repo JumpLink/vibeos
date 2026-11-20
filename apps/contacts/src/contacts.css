@@ -54,7 +54,7 @@ ct-page.translucent {
 }
 
 .ct-detail-empty-text {
-  margin-top: 16dp;
+  margin: 16dp 24dp 0 24dp;
   font-size: 16sp;
   font-weight: 400;
   color: @vibeos_on_surface_variant;

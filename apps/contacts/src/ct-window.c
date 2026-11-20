@@ -598,6 +598,8 @@ make_home (Shell *shell)
   gtk_box_append (GTK_BOX (shell->detail_empty), empty_icon);
   GtkWidget *empty_text = ct_text (_("Pick a contact to see it here"), "ct-detail-empty-text");
   gtk_label_set_xalign (GTK_LABEL (empty_text), 0.5);
+  gtk_label_set_wrap (GTK_LABEL (empty_text), TRUE);
+  gtk_label_set_justify (GTK_LABEL (empty_text), GTK_JUSTIFY_CENTER);
   gtk_box_append (GTK_BOX (shell->detail_empty), empty_text);
   gtk_box_append (GTK_BOX (placeholder), shell->detail_empty);
   vibeos_list_detail_set_placeholder (VIBEOS_LIST_DETAIL (shell->list_detail), placeholder);
