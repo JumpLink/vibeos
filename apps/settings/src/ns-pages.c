@@ -882,13 +882,15 @@ preview_pager (void)
   GtkWidget *card = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (card, "ns-preview-card");
   gtk_widget_set_overflow (card, GTK_OVERFLOW_HIDDEN);
-  gtk_widget_set_size_request (card, -1, 240);
-  /* a fixed height: a larger font size fills it rather than growing it */
+  /* 240 high, whatever the page and the font size: a larger font fills the card rather than growing it, and a
+   * page with room to spare does not stretch it */
   GtkWidget *clip = gtk_scrolled_window_new ();
   gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (clip), GTK_POLICY_NEVER, GTK_POLICY_EXTERNAL);
+  gtk_scrolled_window_set_min_content_height (GTK_SCROLLED_WINDOW (clip), 240);
+  gtk_scrolled_window_set_max_content_height (GTK_SCROLLED_WINDOW (clip), 240);
   gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (clip), p->stack);
   gtk_widget_set_can_target (clip, FALSE);
-  gtk_widget_set_vexpand (clip, TRUE);
+  gtk_widget_set_vexpand (clip, FALSE);
   gtk_box_append (GTK_BOX (card), clip);
   GtkGesture *swipe = gtk_gesture_swipe_new ();
   g_signal_connect (swipe, "swipe", G_CALLBACK (preview_swiped), p);
