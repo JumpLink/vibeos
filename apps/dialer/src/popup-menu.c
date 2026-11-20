@@ -87,6 +87,7 @@ dialer_popup_menu_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   DialerPopupMenu *self = DIALER_POPUP_MENU (widget);
   graphene_rect_t card;
   GskRoundedRect shape;
+  GdkRGBA far, near;
   double reveal = self->closing ? 1 : spongy_curve (SPONGY_FAST_OUT_SLOW_IN, self->shown);
 
   if (!gtk_widget_compute_bounds (self->card, widget, &card))
@@ -94,8 +95,10 @@ dialer_popup_menu_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gtk_snapshot_push_opacity (snapshot, self->closing ? self->shown : MIN (1, self->shown * 2));
   /* a soft shadow under the card */
   gsk_rounded_rect_init_from_rect (&shape, &card, self->corner);
-  gtk_snapshot_append_outset_shadow (snapshot, &shape, &(GdkRGBA) { 0, 0, 0, 0.3f }, 0, 8, 2, 16);
-  gtk_snapshot_append_outset_shadow (snapshot, &shape, &(GdkRGBA) { 0, 0, 0, 0.2f }, 0, 2, 0, 4);
+  far = vibeos_color_alpha (VIBEOS_SHADOW, 0.3f);
+  near = vibeos_color_alpha (VIBEOS_SHADOW, 0.2f);
+  gtk_snapshot_append_outset_shadow (snapshot, &shape, &far, 0, 8, 2, 16);
+  gtk_snapshot_append_outset_shadow (snapshot, &shape, &near, 0, 2, 0, 4);
   /* the clip reveal: from the top edge down */
   gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (card.origin.x, card.origin.y, card.size.width,
                                                          card.size.height * reveal));

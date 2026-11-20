@@ -664,8 +664,8 @@ on_detail_edit (StatsDetail *self)
   g_signal_emit (self, detail_signals[DETAIL_EDIT_NUMBER], 0, self->stat->number);
 }
 
-/* the separator (#12000000: black, so on this dark theme all but invisible) and the two rows, for a number that can
- * be called; a SIP address has no Edit number before call */
+/* the separator (a faint line in the theme's outline) and the two rows, for a number that can be called; a SIP
+ * address has no Edit number before call */
 static void
 add_actions (StatsDetail *self, GtkWidget *list)
 {

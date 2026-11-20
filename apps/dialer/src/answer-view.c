@@ -422,11 +422,13 @@ hint_lines (PangoLayout *layout, double width)
 static void
 draw_layout (GtkSnapshot *snapshot, PangoLayout *layout, double x, double y, double alpha)
 {
+  GdkRGBA white = vibeos_color_alpha (VIBEOS_WHITE, alpha);
+
   if (alpha <= 0)
     return;
   gtk_snapshot_save (snapshot);
   gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (x, y));
-  gtk_snapshot_append_layout (snapshot, layout, &(GdkRGBA) { 1, 1, 1, alpha });
+  gtk_snapshot_append_layout (snapshot, layout, &white);
   gtk_snapshot_restore (snapshot);
 }
 
@@ -1294,12 +1296,13 @@ draw_puck (AnswerView *self, GtkSnapshot *snapshot, const Geometry *g, double wi
   double cx = width / 2 + self->puck_x, cy = g->puck_cy + self->puck_y;
   double pivot = self->pivot_bottom_until > now_us (self) ? PUCK_BOX / 2.0 : 0;
   double r = PUCK / 2.0 * self->bg_scale, a = fabs (self->puck_progress);
-  GdkRGBA white = { 1, 1, 1, 1 };
+  GdkRGBA white = vibeos_color (VIBEOS_WHITE);
   GdkRGBA tint = self->puck_progress >= 0 ? rgb (ACCEPT_COLOR, 1) : palette_rgb (HANGUP_COLOR);
   GdkRGBA disc = vibeos_rgba_mix (&white, &tint, a);
   graphene_rect_t box = GRAPHENE_RECT_INIT (-r, -r, 2 * r, 2 * r);
   GskRoundedRect shape;
   GdkRGBA icon = self->icon_tint;
+  GdkRGBA far = vibeos_color_alpha (VIBEOS_SHADOW, 0.18), near = vibeos_color_alpha (VIBEOS_SHADOW, 0.3);
 
   if (self->puck_alpha <= 0)
     return;
@@ -1311,9 +1314,8 @@ draw_puck (AnswerView *self, GtkSnapshot *snapshot, const Geometry *g, double wi
 
   /* the disc's shadow, deeper while the finger is on it */
   gsk_rounded_rect_init_from_rect (&shape, &box, r);
-  gtk_snapshot_append_outset_shadow (snapshot, &shape, &(GdkRGBA) { 0, 0, 0, 0.18 }, 0, self->tracking ? 6 : 4, 1,
-                                     self->tracking ? 12 : 8);
-  gtk_snapshot_append_outset_shadow (snapshot, &shape, &(GdkRGBA) { 0, 0, 0, 0.3 }, 0, 1, 0, 3);
+  gtk_snapshot_append_outset_shadow (snapshot, &shape, &far, 0, self->tracking ? 6 : 4, 1, self->tracking ? 12 : 8);
+  gtk_snapshot_append_outset_shadow (snapshot, &shape, &near, 0, 1, 0, 3);
   gtk_snapshot_push_rounded_clip (snapshot, &shape);
   gtk_snapshot_append_color (snapshot, &disc, &box);
   gtk_snapshot_pop (snapshot);
@@ -1342,7 +1344,9 @@ argb_evaluate (const GdkRGBA *a, const GdkRGBA *b, double t)
 static void
 draw_side (AnswerView *self, GtkSnapshot *snapshot, const Geometry *g)
 {
-  GdkRGBA white = { 1, 1, 1, 1 }, black = { 0, 0, 0, 1 }, icon;
+  /* the call screen is dark in either mode: white and black are its own, from libvibeos's fixed white and the
+   * palettes' darkest tone */
+  GdkRGBA white = vibeos_color (VIBEOS_WHITE), black = vibeos_palette_stop (VIBEOS_PALETTE_NEUTRAL1, 1000), icon;
   double size = SIDE_ICON * self->side_icon_scale;
 
   if (!self->other_call || (self->side_done && !self->side_finishing))
@@ -1354,10 +1358,11 @@ draw_side (AnswerView *self, GtkSnapshot *snapshot, const Geometry *g)
       graphene_rect_t box = GRAPHENE_RECT_INIT (g->side_x - self->side_radius, g->side_y - self->side_radius,
                                                 2 * self->side_radius, 2 * self->side_radius);
       GskRoundedRect circle;
+      GdkRGBA fill = vibeos_color_alpha (VIBEOS_WHITE, fraction);
 
       gsk_rounded_rect_init_from_rect (&circle, &box, self->side_radius);
       gtk_snapshot_push_rounded_clip (snapshot, &circle);
-      gtk_snapshot_append_color (snapshot, &(GdkRGBA) { 1, 1, 1, fraction }, &box);
+      gtk_snapshot_append_color (snapshot, &fill, &box);
       gtk_snapshot_pop (snapshot);
     }
   /* the icon's colour: white to black as the circle grows to its smallest size */
@@ -1378,12 +1383,13 @@ answer_view_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   Geometry g;
 
   measure_geometry (self, &g);
-  /* the window's background: blended toward #66000000, alpha too, over what is behind (here black) */
+  /* the window's background: blended toward black at 40 % opacity, alpha too, over what is behind (here black) */
   if (self->background > 0)
     {
       double t = self->background;
+      GdkRGBA black = vibeos_palette_stop (VIBEOS_PALETTE_NEUTRAL1, 1000);
 
-      gtk_snapshot_append_color (snapshot, &(GdkRGBA) { 0, 0, 0, 1 }, &all);
+      gtk_snapshot_append_color (snapshot, &black, &all);
       background = (GdkRGBA) { background.red * (1 - t), background.green * (1 - t), background.blue * (1 - t),
                                1 - t + 0.4 * t };
     }

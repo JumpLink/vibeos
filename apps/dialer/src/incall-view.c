@@ -181,9 +181,11 @@ fit_name (InCallView *self, double width)
 static void
 draw_layout (GtkSnapshot *snapshot, PangoLayout *layout, double x, double y, double alpha)
 {
+  GdkRGBA white = vibeos_color_alpha (VIBEOS_WHITE, alpha);
+
   gtk_snapshot_save (snapshot);
   gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (x, y));
-  gtk_snapshot_append_layout (snapshot, layout, &(GdkRGBA) { 1, 1, 1, alpha });
+  gtk_snapshot_append_layout (snapshot, layout, &white);
   gtk_snapshot_restore (snapshot);
 }
 
@@ -616,7 +618,7 @@ draw_banner (InCallView *self, GtkSnapshot *snapshot, double width)
 {
   double height = banner_height (self), x = BANNER_PAD_X;
   double text_y = round ((height - roboto_box (self->banner_label)) / 2) + ROBOTO_PAD_TOP (STATUS_SIZE);
-  GdkRGBA background = rgb (BANNER_COLOR, BANNER_ALPHA), icon = { 1, 1, 1, TEXT_SECONDARY };
+  GdkRGBA background = rgb (BANNER_COLOR, BANNER_ALPHA), icon = vibeos_color_alpha (VIBEOS_WHITE, TEXT_SECONDARY);
 
   gtk_snapshot_append_color (snapshot, &background, &GRAPHENE_RECT_INIT (0, 0, width, height));
   vibeos_snapshot_icon (snapshot, GTK_WIDGET (self), "dialer-phone-paused-symbolic", x,
@@ -728,6 +730,7 @@ static void
 incall_view_init (InCallView *self)
 {
   GtkWidget *icon = gtk_image_new_from_icon_name ("dialer-call-end-symbolic");
+  GdkRGBA ripple;
   CallsClient *client = calls_client_get ();
 
   self->status = new_layout (self, "VibeOS Roboto", STATUS_SIZE);
@@ -761,7 +764,8 @@ incall_view_init (InCallView *self)
   self->end_button = vibeos_pressable_new (icon);
   update_end_fill (self);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->end_button), VIBEOS_RIPPLE_CIRCLE, END_SIZE / 2.0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (self->end_button), &(GdkRGBA) { 1, 1, 1, 0.25 });
+  ripple = vibeos_color_alpha (VIBEOS_WHITE, 0.25);
+  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (self->end_button), &ripple);
   gtk_accessible_update_property (GTK_ACCESSIBLE (self->end_button), GTK_ACCESSIBLE_PROPERTY_LABEL, _("End call"), -1);
   gtk_widget_set_parent (self->end_button, GTK_WIDGET (self));
   g_signal_connect_swapped (self->end_button, "clicked", G_CALLBACK (on_end), self);

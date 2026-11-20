@@ -72,9 +72,9 @@ incall_button_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   GskRoundedRect oval;
   PangoRectangle logical;
   /* the icon: black on the light disc, white without it; the ripple faint grey on the disc, faint white off it */
-  GdkRGBA icon = self->checked ? (GdkRGBA) { 0, 0, 0, 1 } : (GdkRGBA) { 1, 1, 1, 1 };
-  GdkRGBA ripple = self->checked ? (GdkRGBA) { 0x88 / 255.0, 0x88 / 255.0, 0x88 / 255.0, 0.25 }
-                                 : (GdkRGBA) { 1, 1, 1, 0.25 };
+  GdkRGBA icon = self->checked ? vibeos_palette_stop (VIBEOS_PALETTE_NEUTRAL1, 1000) : vibeos_color (VIBEOS_WHITE);
+  GdkRGBA ripple = self->checked ? vibeos_palette_stop (VIBEOS_PALETTE_NEUTRAL1, 500) : vibeos_color (VIBEOS_WHITE);
+  GdkRGBA white = vibeos_color (VIBEOS_WHITE), shadow = vibeos_color_alpha (VIBEOS_SHADOW, 0.2);
 
   if (!gtk_widget_is_sensitive (widget))
     gtk_snapshot_push_opacity (snapshot, DISABLED_ALPHA);
@@ -86,7 +86,7 @@ incall_button_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
       GdkRGBA disc = vibeos_palette_stop (VIBEOS_PALETTE_NEUTRAL1, 50);
 
       disc.alpha = gtk_widget_is_sensitive (widget) ? 1 : 0.6;
-      gtk_snapshot_append_outset_shadow (snapshot, &oval, &(GdkRGBA) { 0, 0, 0, 0.2 }, 0, self->pressed ? 4 : 2, 0,
+      gtk_snapshot_append_outset_shadow (snapshot, &oval, &shadow, 0, self->pressed ? 4 : 2, 0,
                                          self->pressed ? 8 : 4);
       gtk_snapshot_push_rounded_clip (snapshot, &oval);
       gtk_snapshot_append_color (snapshot, &disc, &box);
@@ -106,7 +106,7 @@ incall_button_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gtk_snapshot_save (snapshot);
   gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (round (cx - logical.width / 2.0) - logical.x,
                                                           PADDING + ICON_VIEW + LABEL_GAP + PAD_TOP (LABEL_SIZE)));
-  gtk_snapshot_append_layout (snapshot, self->label, &(GdkRGBA) { 1, 1, 1, 1 });
+  gtk_snapshot_append_layout (snapshot, self->label, &white);
   gtk_snapshot_restore (snapshot);
   if (!gtk_widget_is_sensitive (widget))
     gtk_snapshot_pop (snapshot);

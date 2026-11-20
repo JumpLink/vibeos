@@ -385,13 +385,14 @@ dialer_dialpad_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   double width = gtk_widget_get_width (widget), height = gtk_widget_get_height (widget), x0, x1, size = DIGITS_SIZE;
   graphene_rect_t box = GRAPHENE_RECT_INIT (0, 0, width, height);
   GskRoundedRect shape;
-  GdkRGBA background = rgb (self, BACKGROUND, 1), primary = rgb (self, PRIMARY, 1);
+  GdkRGBA background = rgb (self, BACKGROUND, 1), primary = rgb (self, PRIMARY, 1), shadow;
   int text_width, text_height;
 
   /* the sheet: round top corners and a shadow over the page above it */
   gsk_rounded_rect_init (&shape, &box, &GRAPHENE_SIZE_INIT (CORNER, CORNER), &GRAPHENE_SIZE_INIT (CORNER, CORNER),
                          &GRAPHENE_SIZE_INIT (0, 0), &GRAPHENE_SIZE_INIT (0, 0));
-  gtk_snapshot_append_outset_shadow (snapshot, &shape, &(GdkRGBA) { 0, 0, 0, 0.25 }, 0, -2, 0, 10);
+  shadow = vibeos_color_alpha (VIBEOS_SHADOW, 0.25);
+  gtk_snapshot_append_outset_shadow (snapshot, &shape, &shadow, 0, -2, 0, 10);
   gtk_snapshot_push_rounded_clip (snapshot, &shape);
   gtk_snapshot_append_color (snapshot, &background, &box);
   gtk_snapshot_pop (snapshot);
