@@ -472,8 +472,8 @@ Description: settings app for VibeOS
  Bluetooth, mobile network, hotspot), sounds, notifications, display, battery,
  wallpaper and parallax sets, the home screen's icon pack and shapes, the lock
  screen (PIN, pattern, password), location, accounts, apps, language, date and
- time, accessibility and the phone's details. VibeOS opens it wherever
- GNOME opens a Settings panel.
+ time, accessibility and the device's details, on phones and tablets alike.
+ VibeOS opens it wherever GNOME opens a Settings panel.
 
 Package: vibeos-weather
 Architecture: any
