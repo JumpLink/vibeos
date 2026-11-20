@@ -311,14 +311,14 @@ static void
 draw_storage_bar (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer data)
 {
   double used = *(double *) data;
-
   /* the used part over the rest: a bar 4 device px tall at the foot of its allocation */
   double bar = MIN (height, 4 / 3.0);
+  GdkRGBA track = vibeos_color (VIBEOS_OUTLINE_VARIANT), fill = vibeos_color (VIBEOS_PRIMARY);
 
-  cairo_set_source_rgb (cr, 0x47 / 255.0, 0x4f / 255.0, 0x58 / 255.0);
+  gdk_cairo_set_source_rgba (cr, &track);
   cairo_rectangle (cr, 0, height - bar, width, bar);
   cairo_fill (cr);
-  cairo_set_source_rgb (cr, 0x3c / 255.0, 0x87 / 255.0, 0xee / 255.0);
+  gdk_cairo_set_source_rgba (cr, &fill);
   cairo_rectangle (cr, 0, height - bar, width * used, bar);
   cairo_fill (cr);
 }
@@ -826,11 +826,13 @@ draw_tab_line (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointe
   FmDrawer *drawer = data;
   double w = width / (double) N_TABS;
 
-  /* a grey line at the bottom; the accent indicator over it, under the selected tab */
-  cairo_set_source_rgb (cr, 0x66 / 255.0, 0x66 / 255.0, 0x66 / 255.0);
+  GdkRGBA line = vibeos_color (VIBEOS_OUTLINE_VARIANT), indicator = vibeos_color (VIBEOS_PRIMARY);
+
+  /* a thin line at the bottom; the accent indicator over it, under the selected tab */
+  gdk_cairo_set_source_rgba (cr, &line);
   cairo_rectangle (cr, 0, height - 1, width, 1);
   cairo_fill (cr);
-  cairo_set_source_rgb (cr, 0x80 / 255.0, 0xcb / 255.0, 0xc4 / 255.0);
+  gdk_cairo_set_source_rgba (cr, &indicator);
   cairo_rectangle (cr, round (w * drawer->tab), height - 4, round (w), 4);
   cairo_fill (cr);
 }
