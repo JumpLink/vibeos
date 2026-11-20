@@ -108,8 +108,8 @@ lock_free (Lock *l)
  * them in their low power mode, where the panel itself keeps the picture at a few nits and ticks the clock. That
  * mode is the `lpm` attribute of the panel's DSI device, which only an OLED panel's driver has (the S10e's); an LCD
  * (the POCO's) would light its whole backlight for a black screen, so it gets no switch (owner, 2026-11-12). */
-static gboolean
-panel_is_oled (void)
+gboolean
+ns_panel_is_oled (void)
 {
   g_autoptr (GDir) d = g_dir_open ("/sys/bus/mipi-dsi/devices", 0, NULL);
   for (const char *n; d && (n = g_dir_read_name (d));) {
@@ -154,7 +154,7 @@ ns_page_lock_screen (GtkWidget *row, gpointer data)
   g = ns_group (c, "On the lock screen");
   GSettings *n = ns_page_settings (page, "org.gnome.desktop.notifications");
   ns_row_switch (g, "Notifications", "Their apps' icons below the clock", n, "show-in-lock-screen");
-  if (ns_has_key (vibeos, "aod") && panel_is_oled ())
+  if (ns_has_key (vibeos, "aod") && ns_panel_is_oled ())
     ns_row_switch (g, "Always On Display", "The time, the date and notifications while the screen is off", vibeos,
                    "aod");
   ns_push (page);

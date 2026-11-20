@@ -42,6 +42,8 @@ void ns_page_app_row (GtkWidget *row, gpointer id);
 /* ns-shell.c: the lock screen (VibeOS's keyguard), the on-screen keyboard (GNOME Shell's) */
 void ns_page_lock_screen (GtkWidget *row, gpointer data);
 void ns_page_keyboard (GtkWidget *row, gpointer data);
+/* whether the screen is an OLED panel with a low power mode: the always-on display is offered only there */
+gboolean ns_panel_is_oled (void);
 
 /* ns-privacy.c */
 void ns_page_privacy (GtkWidget *row, gpointer data);

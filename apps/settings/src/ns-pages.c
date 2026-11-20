@@ -1,6 +1,7 @@
 /* VibeOS Settings' own pages (see ns-pages.h): the hubs and the small pages. The bigger ones have files of their own
  * (ns-net.c, ns-bt.c, ns-sound.c, ns-apps.c, ns-shell.c, ns-privacy.c, ns-system.c). Nothing here blocks: D-Bus
  * answers fill the page when they come. */
+#include "ns-caps.h"
 #include "ns-pages.h"
 #include "ns-parallax.h"
 #include "ns-ui.h"
@@ -582,7 +583,7 @@ dark_set (const GValue *value, const GVariantType *type, gpointer data)
 static GtkWidget *
 dark_row (GtkWidget *g, GSettings *iface)
 {
-  GtkWidget *r = ns_row_switch (g, "Dark mode", "Dark backgrounds for apps and the system", NULL, NULL);
+  GtkWidget *r = ns_row_switch (g, "Dark theme", "Dark backgrounds for apps and the system", NULL, NULL);
   g_settings_bind_with_mapping (iface, "color-scheme", ns_row_get_switch (r), "active", G_SETTINGS_BIND_DEFAULT,
                                 dark_get, dark_set, NULL, NULL);
   return r;
@@ -611,40 +612,47 @@ ns_page_display (GtkWidget *row, gpointer data)
   /* the displays connected, Join or Mirror, the main display: shown while there is more than one (ns-displays.c) */
   ns_displays_cards (GTK_WIDGET (page), c);
 
-  GtkWidget *g = ns_group (c, NULL);
-  dark_row (g, iface);
-  GSettings *color = ns_page_settings (page, "org.gnome.settings-daemon.plugins.color");
-  if (color && display_has_gamma ())
-    night_row (g, color, iface);
-
   /* both rows wait for an answer (mutter's, the sensor's): the card shows with the first that has something */
-  g = ns_group (c, NULL);
+  GtkWidget *g = ns_group (c, "Brightness");
   ns_group_set_visible (g, FALSE);
   brightness_row (g);
   adaptive_row (g, ns_page_settings (page, "org.gnome.settings-daemon.plugins.power"));
 
-  g = ns_group (c, NULL);
-  page_row (g, NULL, "Display size and text", "Font size • Bold text • Display size", ns_page_display_size);
-  ns_displays_scale_row (GTK_WIDGET (page), g);
-
+  g = ns_group (c, "Lock display");
+  GSettings *vibeos = ns_page_settings (page, "vibeos.Shell");
+  if (vibeos && ns_has_key (vibeos, "lock-type"))
+    page_row (g, NULL, "Lock screen", "Screen lock type • What it shows", ns_page_lock_screen);
+  if (vibeos && ns_has_key (vibeos, "aod") && ns_panel_is_oled ())
+    ns_row_switch (g, "Always On Display", "The time, battery and notifications on a black screen while it is off",
+                   vibeos, "aod");
   GSettings *session = ns_page_settings (page, "org.gnome.desktop.session");
   guint idle = g_settings_get_uint (session, "idle-delay"), sel = 1;
   for (guint i = 0; i < G_N_ELEMENTS (timeouts); i++)
     if (timeouts[i] == idle)
       sel = i;
-  g = ns_group (c, NULL);
   ns_row_pick (g, "Screen timeout", timeout_labels, sel, timeout_picked, session);
-  GSettings *touch = ns_page_settings (page, "org.gnome.settings-daemon.peripherals.touchscreen");
-  if (touch) {
-    GtkWidget *r = ns_row_switch (g, "Auto rotate", "Turn the screen with the phone", NULL, NULL);
-    g_settings_bind (touch, "orientation-lock", ns_row_get_switch (r), "active", G_SETTINGS_BIND_INVERT_BOOLEAN);
+
+  g = ns_group (c, "Appearance");
+  dark_row (g, iface);
+  page_row (g, NULL, "Display size & text", "Font size • Bold text • Display size", ns_page_display_size);
+  ns_displays_scale_row (GTK_WIDGET (page), g);
+
+  GSettings *color = ns_page_settings (page, "org.gnome.settings-daemon.plugins.color");
+  if (color && display_has_gamma ()) {
+    g = ns_group (c, "Color");
+    night_row (g, color, iface);
   }
-  GSettings *vibeos = ns_page_settings (page, "vibeos.Shell");
-  if (vibeos) {
-    g = ns_group (c, NULL);
-    ns_row_switch (g, "Always On Display", "The time, battery and notifications on a black screen while it is off",
-                   vibeos, "aod");
-    ns_row_switch (g, "Double tap to wake", "Wake the screen with a double tap", vibeos, "double-tap-wake");
+
+  GSettings *touch = ns_page_settings (page, "org.gnome.settings-daemon.peripherals.touchscreen");
+  if (touch || vibeos) {
+    g = ns_group (c, "Other display controls");
+    if (touch) {
+      g_autofree char *sub = g_strdup_printf ("Turn the screen with the %s", ns_device_noun ());
+      GtkWidget *r = ns_row_switch (g, "Auto-rotate screen", sub, NULL, NULL);
+      g_settings_bind (touch, "orientation-lock", ns_row_get_switch (r), "active", G_SETTINGS_BIND_INVERT_BOOLEAN);
+    }
+    if (vibeos && ns_has_key (vibeos, "double-tap-wake"))
+      ns_row_switch (g, "Tap to wake", "Wake the screen with a double tap", vibeos, "double-tap-wake");
   }
   ns_push (page);
 }
