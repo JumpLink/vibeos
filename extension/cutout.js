@@ -103,7 +103,8 @@ export const Cutout = GObject.registerClass({
         this._update();
     }
 
-    // 'top', 'right', 'bottom' or 'left'; null with another monitor on (the phone docked)
+    // 'top', 'right', 'bottom' or 'left'; null when the primary monitor is not the phone's own panel (a display
+    // made the primary one: the phone docked)
     get side() {
         return this._transform === null ? null : SIDES[this._transform];
     }
@@ -146,27 +147,35 @@ export const Cutout = GObject.registerClass({
     }
 
     // The transform at once from the panel's shape and the sensor (mutter turns the panel by the sensor's reading),
-    // then mutter's own word for it (GNOME's orientation lock can hold a reading the sensor has left)
+    // then mutter's own word for it (GNOME's orientation lock can hold a reading the sensor has left). With a display
+    // plugged in as well the panel keeps its hole for as long as it is the primary monitor: the status bar is still
+    // on it (2026-11-20: a TV on the S10e put the battery under the camera); mutter says which one that is.
     _update() {
-        if (Main.layoutManager.monitors.length !== 1) {
+        const m = Main.layoutManager.primaryMonitor;
+        if (!m) {
             this._set(null);
             return;
         }
-        const m = Main.layoutManager.primaryMonitor;
-        if (m.height >= m.width) {
-            this._set(this._transform === 2 ? 2 : 0);
-        } else {
-            const o = this._sensor.get_orientation();
-            this._set(o === Meta.Orientation.LEFT_UP ? 1 : o === Meta.Orientation.RIGHT_UP ? 3
-                : this._transform === 1 || this._transform === 3 ? this._transform : 1);
+        if (Main.layoutManager.monitors.length === 1) {
+            if (m.height >= m.width) {
+                this._set(this._transform === 2 ? 2 : 0);
+            } else {
+                const o = this._sensor.get_orientation();
+                this._set(o === Meta.Orientation.LEFT_UP ? 1 : o === Meta.Orientation.RIGHT_UP ? 3
+                    : this._transform === 1 || this._transform === 3 ? this._transform : 1);
+            }
         }
         Gio.DBus.session.call('org.gnome.Mutter.DisplayConfig', '/org/gnome/Mutter/DisplayConfig',
             'org.gnome.Mutter.DisplayConfig', 'GetCurrentState', null, new GLib.VariantType(STATE_TYPE),
             Gio.DBusCallFlags.NONE, -1, this._cancellable, (bus, res) => {
                 try {
-                    const [, , logical] = bus.call_finish(res).recursiveUnpack();
-                    if (logical.length === 1)
-                        this._set(logical[0][3] & 3);
+                    const [, monitors, logical] = bus.call_finish(res).recursiveUnpack();
+                    const builtin = monitors.filter(([, , props]) => props['is-builtin']).map(([[c]]) => c);
+                    const primary = logical.find(l => l[4]) ?? (logical.length === 1 ? logical[0] : null);
+                    if (!primary || !primary[5].some(([c]) => builtin.includes(c)))
+                        this._set(null);
+                    else
+                        this._set(primary[3] & 3);
                 } catch (e) {
                     if (!e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
                         logError(e, 'vibeos: the panel\'s rotation');
