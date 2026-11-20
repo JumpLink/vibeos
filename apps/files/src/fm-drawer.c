@@ -362,8 +362,9 @@ fixed_row (FmDrawer *drawer, FmGlyph glyph, const char *name, GFile *location, g
   gtk_widget_set_valign (icon, GTK_ALIGN_CENTER);
   gtk_widget_set_hexpand (label, TRUE);
   gtk_label_set_xalign (GTK_LABEL (description), 1);
-  /* the description at the top, beside the name */
+  /* the description at the top, beside the name, and apart from it where a large font size fills the row */
   gtk_widget_set_valign (description, GTK_ALIGN_START);
+  gtk_widget_set_margin_start (description, 8);
   gtk_box_append (GTK_BOX (top), label);
   gtk_box_append (GTK_BOX (top), description);
   gtk_box_append (GTK_BOX (text), top);
