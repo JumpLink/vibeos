@@ -9,6 +9,8 @@
 #include <spongy-gtk.h>
 #include <string.h>
 
+/* behind a row being swiped away: the design's fixed red, the same in either mode and whatever the accent */
+#define COLOR_DELETE           "#F44336"
 #define DELETE_MARGIN          12          /* the delete icon, in from the row's end */
 
 /* ==== the frame shared by every page ============================================================================= */
@@ -176,15 +178,16 @@ nb_swipe_row_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   NbSwipeRow *self = NB_SWIPE_ROW (widget);
   double w = gtk_widget_get_width (widget), h = gtk_widget_get_height (widget);
-  /* behind a row being swiped away: the theme's error colour, the delete icon on it */
-  GdkRGBA red = vibeos_color (VIBEOS_ERROR);
+  /* behind a row being swiped away: the fixed red, the delete icon in black on it */
+  GdkRGBA red;
 
+  gdk_rgba_parse (&red, COLOR_DELETE);
   if (self->gone) {
     gtk_snapshot_append_color (snapshot, &red, &GRAPHENE_RECT_INIT (0, 0, w, h));
     return;
   }
   if (self->dx < 0) {
-    GdkRGBA icon = vibeos_color (VIBEOS_ON_ERROR);
+    GdkRGBA icon = vibeos_palette_stop (VIBEOS_PALETTE_NEUTRAL1, 1000);
     gtk_snapshot_append_color (snapshot, &red, &GRAPHENE_RECT_INIT (w + self->dx, 0, -self->dx, h));
     vibeos_snapshot_icon (snapshot, widget, "jelly-delete-action-symbolic", w - DELETE_MARGIN - 24, (h - 24) / 2, 24,
                        &icon);
