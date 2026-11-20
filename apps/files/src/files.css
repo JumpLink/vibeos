@@ -691,7 +691,7 @@ fm-drawer > .fm-drawer-scrim {
   background-color: @vibeos_surface_container;
   border-radius: 2dp;
   padding: 8dp 0;
-  box-shadow: 0 2dp 8dp rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2dp 8dp alpha(@vibeos_shadow, 0.5);
 }
 
 .fm-popup-item {
@@ -749,7 +749,7 @@ fm-drawer > .fm-drawer-scrim {
   min-height: 48dp;
   border-radius: 28dp;
   background-color: @vibeos_surface_container_high;
-  box-shadow: 0 1dp 3dp rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1dp 3dp alpha(@vibeos_shadow, 0.3);
 }
 
 .fm-toast-icon {

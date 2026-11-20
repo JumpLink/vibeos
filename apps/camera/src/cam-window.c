@@ -1678,10 +1678,20 @@ is_landscape (int width, int height)
   return width > height;
 }
 
+/* the modes' column: wider than CAM_MODE_COLUMN_W where a large font size widens its buttons */
 static int
-viewfinder_width (int width)
+mode_column_w (CamView *self)
 {
-  return width - CAM_SECONDARY_BAR_H - CAM_PRIMARY_BAR_H - CAM_MODE_COLUMN_W;
+  int nat = 0;
+
+  gtk_widget_measure (self->modes, GTK_ORIENTATION_HORIZONTAL, -1, NULL, &nat, NULL, NULL);
+  return MAX (CAM_MODE_COLUMN_W, nat);
+}
+
+static int
+viewfinder_width (CamView *self, int width)
+{
+  return width - CAM_SECONDARY_BAR_H - CAM_PRIMARY_BAR_H - mode_column_w (self);
 }
 
 static void
@@ -1716,7 +1726,7 @@ place_island (CamView *self, int vf_w, int vf_h)
 static void
 allocate_landscape (CamView *self, int width, int height)
 {
-  int vf_w = viewfinder_width (width), w, h;
+  int vf_w = viewfinder_width (self, width), w, h;
   double col2 = vf_w, col1 = vf_w + CAM_SECONDARY_BAR_H, col0 = col1 + CAM_PRIMARY_BAR_H;
   double pro_h = CAM_PRO_ROW_H, shutter_x = col1 + CAM_PRIMARY_BAR_PAD;
   graphene_rect_t picture;
@@ -1762,7 +1772,7 @@ allocate_landscape (CamView *self, int width, int height)
     place (self->shutter, shutter_x, (height - CAM_SHUTTER_VIEW) / 2.0, CAM_SHUTTER_VIEW, CAM_SHUTTER_VIEW);
   place (self->gallery, shutter_x + (CAM_SHUTTER_VIEW - CAM_GALLERY_SIZE) / 2.0,
          height - CAM_GALLERY_MARGIN - CAM_GALLERY_SIZE, CAM_GALLERY_SIZE, CAM_GALLERY_SIZE);
-  place (self->modes, col0, 0, CAM_MODE_COLUMN_W, height);
+  place (self->modes, col0, 0, width - (int) col0, height);
 }
 
 static void
@@ -1856,7 +1866,7 @@ cam_view_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gtk_widget_snapshot_child (widget, self->pro_row, snapshot);
   if (is_landscape (width, height))
     {
-      int vf_w = viewfinder_width (width);
+      int vf_w = viewfinder_width (self, width);
 
       /* the columns, the divider between the secondary and the primary one */
       gtk_snapshot_append_color (snapshot, &black, &GRAPHENE_RECT_INIT (vf_w, 0, width - vf_w, height));

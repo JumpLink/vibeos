@@ -108,6 +108,12 @@ dialpad_sheet_clear (DialpadSheet *self)
   dialer_dialpad_set_digits (DIALER_DIALPAD (self->dialpad), "");
 }
 
+void
+dialpad_sheet_set_compact (DialpadSheet *self, gboolean compact)
+{
+  dialer_dialpad_set_compact (DIALER_DIALPAD (self->dialpad), compact);
+}
+
 /* ---- dialling ------------------------------------------------------------------------------------------------- */
 
 static void

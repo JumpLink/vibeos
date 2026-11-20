@@ -16,6 +16,8 @@
 
 #define ROW_HIGHLIGHT_MS 120    /* a tapped row's press highlight before its conversation opens */
 #define LIST_RATIO 0.4          /* the list's share of a tablet's width */
+#define LIST_MIN   360          /* as wide as a phone at least */
+#define LIST_MAX   480
 
 typedef struct
 {
@@ -26,6 +28,7 @@ typedef struct
   GtkWidget *home;              /* the list and the conversation open, beside it on a tablet */
   GtkWidget *list;
   GtkWidget *shown;             /* the conversation view last on top, whose draft is kept when it goes */
+  VibeosLayout *layout;
 } Shell;
 
 static void open_conversation (Shell *shell, gint64 id, const char *draft, gboolean replace, GtkWidget *row);
@@ -47,6 +50,11 @@ shell_free (gpointer data)
   g_clear_object (&shell->contacts);
   g_clear_object (&shell->client);
   g_clear_object (&shell->shown);
+  if (shell->layout)
+    {
+      g_signal_handlers_disconnect_by_data (shell->layout, shell);
+      g_object_unref (shell->layout);
+    }
   g_free (shell);
 }
 
@@ -54,6 +62,14 @@ static VibeosListDetail *
 home (Shell *shell)
 {
   return VIBEOS_LIST_DETAIL (shell->home);
+}
+
+/* the list beside a conversation on a tablet: its share of the width, but as wide as a phone at least */
+static void
+update_list_width (Shell *shell)
+{
+  vibeos_list_detail_set_list_width (home (shell), (int) CLAMP (vibeos_layout_get_width (shell->layout) * LIST_RATIO,
+                                                                LIST_MIN, LIST_MAX));
 }
 
 static VibeosPageStack *
@@ -528,7 +544,6 @@ messaging_window_new (GtkApplication *app)
   shell->home = vibeos_list_detail_new ();
   gtk_widget_add_css_class (shell->home, "msg-home");
   vibeos_list_detail_set_list (home (shell), shell->list);
-  vibeos_list_detail_set_list_ratio (home (shell), LIST_RATIO);
   vibeos_list_detail_set_placeholder (home (shell), make_placeholder ());
   vibeos_page_stack_set_highlight_time (vibeos_list_detail_get_list_stack (home (shell)), ROW_HIGHLIGHT_MS);
   g_signal_connect (home (shell), "detail-closed", G_CALLBACK (on_detail_closed), shell);
@@ -542,6 +557,10 @@ messaging_window_new (GtkApplication *app)
   vibeos_page_stack_push (pager (shell), shell->home);
   g_signal_connect (shell->pager, "top-changed", G_CALLBACK (on_top_changed), shell);
   vibeos_window_set_content (GTK_WINDOW (window), shell->pager);
+  /* the window's own, which goes with the window: held until the shell goes */
+  shell->layout = g_object_ref (vibeos_layout_get_for_window (GTK_WINDOW (window)));
+  g_signal_connect_swapped (shell->layout, "changed", G_CALLBACK (update_list_width), shell);
+  update_list_width (shell);
 
   g_signal_connect (window, "notify::is-active", G_CALLBACK (on_active), shell);
   g_signal_connect_swapped (window, "notify::suspended", G_CALLBACK (update_visible), shell);

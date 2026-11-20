@@ -1,14 +1,16 @@
 /* App Installer's window (inst-window.h) */
 #include "inst-window.h"
-#include "inst-demo.h"
 #include "inst-view.h"
 
 #include <glib/gi18n.h>
 #include <spongy-gtk.h>
 #include <vibeos.h>
 
+#define CONTENT_MAX 640   /* on a wider window (a tablet) a page's content keeps to this, centred, under its bar */
+
 typedef struct {
-  GtkWidget *window, *stack, *start, *job_page, *top_bar, *view, *marker;
+  GtkWidget *window, *stack, *start, *start_box, *job_page, *top_bar, *view, *marker;
+  VibeosLayout *layout;
   InstJob   *job;
   gboolean   ran;    /* the job has started installing or removing (only then is its end worth a notification) */
 } Win;
@@ -37,7 +39,31 @@ win_free (gpointer data)
   if (win->job && !inst_job_is_finished (win->job) && inst_job_get_phase (win->job) != INST_PHASE_RUNNING)
     inst_job_cancel (win->job);
   drop_job (win);
+  if (win->layout)
+    {
+      g_signal_handlers_disconnect_by_data (win->layout, win);
+      g_object_unref (win->layout);
+    }
   g_free (win);
+}
+
+/* a page's content across a phone's width; on a wider window CONTENT_MAX wide in the middle */
+static void
+cap_width (Win *win, GtkWidget *content)
+{
+  int side = win->layout ? MAX (0, (vibeos_layout_get_width (win->layout) - CONTENT_MAX) / 2) : 0;
+
+  if (!content)
+    return;
+  gtk_widget_set_margin_start (content, side);
+  gtk_widget_set_margin_end (content, side);
+}
+
+static void
+on_layout_changed (VibeosLayout *layout, Win *win)
+{
+  cap_width (win, win->start_box);
+  cap_width (win, win->view);
 }
 
 gboolean
@@ -177,6 +203,7 @@ inst_window_show_job (GtkWidget *window, InstJob *job, gboolean over_start)
   page = page_new (_("App Installer"), over_start, win, &win->top_bar);
   win->view = inst_view_new (job, INST_VIEW_PAGE);
   gtk_widget_set_vexpand (win->view, TRUE);
+  cap_width (win, win->view);
   g_signal_connect (win->view, "done", G_CALLBACK (on_view_done), win);
   gtk_box_append (GTK_BOX (page), win->view);
   win->job_page = page;
@@ -188,7 +215,7 @@ inst_window_show_job (GtkWidget *window, InstJob *job, gboolean over_start)
     {
       /* no start page under it: Back leaves the window */
       vibeos_page_stack_set_root (VIBEOS_PAGE_STACK (win->stack), page);
-      win->start = NULL;
+      win->start = win->start_box = NULL;
     }
   /* the back gesture: Escape (handled above) rather than leaving the app unasked */
   gtk_widget_set_visible (win->marker, TRUE);
@@ -280,6 +307,8 @@ start_page (Win *win)
   gtk_box_append (GTK_BOX (box), more);
 
   /* centred in the page, and scrolled where a large font size makes it taller than the page */
+  win->start_box = box;
+  cap_width (win, box);
   scroll = spongy_scroll_view_new ();
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), box);
   gtk_widget_set_vexpand (scroll, TRUE);
@@ -310,13 +339,6 @@ inst_window_new (GtkApplication *app)
   g_object_set_data_full (G_OBJECT (window), "inst-win", win, win_free);
   gtk_window_set_title (GTK_WINDOW (window), _("App Installer"));
   gtk_widget_add_css_class (window, "inst-window");
-  /* the demo is for pictures: the phone's app area (the Galaxy S10e's, under its status bar), whatever the test
-   * display's size. (libvibeos's layout opens a window at its monitor's size: it is asked first, then overruled.) */
-  if (inst_demo_active ())
-    {
-      vibeos_layout_get_for_window (GTK_WINDOW (window));
-      gtk_window_set_default_size (GTK_WINDOW (window), 360, 721);
-    }
 
   win->stack = vibeos_page_stack_new ();
   gtk_widget_set_vexpand (win->stack, TRUE);
@@ -330,6 +352,9 @@ inst_window_new (GtkApplication *app)
   gtk_widget_set_visible (win->marker, FALSE);
   gtk_box_append (GTK_BOX (root), win->marker);
   vibeos_window_set_content (GTK_WINDOW (window), root);
+  /* the window's own layout, which goes with the window: held until the window's state goes */
+  win->layout = g_object_ref (vibeos_layout_get_for_window (GTK_WINDOW (window)));
+  g_signal_connect (win->layout, "changed", G_CALLBACK (on_layout_changed), win);
 
   action = gtk_callback_action_new (on_back_key, win, NULL);
   gtk_shortcut_controller_add_shortcut (GTK_SHORTCUT_CONTROLLER (shortcuts),

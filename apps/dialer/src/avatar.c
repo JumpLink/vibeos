@@ -65,6 +65,7 @@ snapshot_letter (GtkSnapshot *snapshot, GtkWidget *widget, double cx, double cy,
   g_autoptr(PangoLayout) layout = gtk_widget_create_pango_layout (widget, letter);
   g_autoptr(PangoFontDescription) font = pango_font_description_from_string ("VibeOS Roboto");
   PangoRectangle ink;
+  GdkRGBA white;
 
   /* 400, not 700: the letter is painted, and the Bold text setting does not reach painted text; centred on the
    * glyph's own ink */
@@ -74,7 +75,8 @@ snapshot_letter (GtkSnapshot *snapshot, GtkWidget *widget, double cx, double cy,
   pango_layout_get_pixel_extents (layout, &ink, NULL);
   gtk_snapshot_save (snapshot);
   gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (cx - ink.x - ink.width / 2.0, cy - ink.y - ink.height / 2.0));
-  gtk_snapshot_append_layout (snapshot, layout, &(GdkRGBA) { 1, 1, 1, 1 });
+  white = vibeos_color (VIBEOS_WHITE);
+  gtk_snapshot_append_layout (snapshot, layout, &white);
   gtk_snapshot_restore (snapshot);
 }
 
@@ -110,9 +112,10 @@ avatar_snapshot (GtkSnapshot *snapshot, GtkWidget *widget, double cx, double cy,
         {
           /* the person glyph, white */
           double size = diameter * ICON_RATIO;
+          GdkRGBA white = vibeos_color (VIBEOS_WHITE);
 
           vibeos_snapshot_icon (snapshot, widget, "dialer-person-symbolic", cx - size / 2, cy - size / 2, size,
-                             &(GdkRGBA) { 1, 1, 1, 1 });
+                             &white);
         }
     }
   gtk_snapshot_pop (snapshot);

@@ -119,7 +119,7 @@ entry.nb-field-entry selection {
 /* the menu's two cards, slightly raised */
 .nb-menu-top,
 .nb-menu-card {
-  box-shadow: 0 1dp 2dp rgba(0, 0, 0, 0.3), 0 1dp 3dp 1dp rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1dp 2dp alpha(@vibeos_shadow, 0.3), 0 1dp 3dp 1dp alpha(@vibeos_shadow, 0.15);
 }
 
 .nb-menu-top {
@@ -453,7 +453,7 @@ window.nb .vibeos-snackbar .vibeos-text-button {
 /* the toolbar's shadow once the list scrolls */
 .nb-toolbar-shadow {
   min-height: 6dp;
-  background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0));
+  background-image: linear-gradient(to bottom, alpha(@vibeos_shadow, 0.35), alpha(@vibeos_shadow, 0));
 }
 
 .nb-empty-image {
@@ -497,7 +497,7 @@ window.nb .vibeos-snackbar .vibeos-text-button {
 .nb-fav-card {
   margin: 4dp;
   border-radius: 2dp;
-  box-shadow: 0 1dp 2dp rgba(0, 0, 0, 0.3), 0 1dp 3dp 1dp rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1dp 2dp alpha(@vibeos_shadow, 0.3), 0 1dp 3dp 1dp alpha(@vibeos_shadow, 0.15);
 }
 
 .nb-fav-title {
@@ -506,13 +506,19 @@ window.nb .vibeos-snackbar .vibeos-text-button {
 }
 
 /* a favourite's text on the site's own colour: black on a light one, white on a dark one (nb-pages.c), whatever the
- * theme */
+ * theme: the colour is the site's, not the theme's. Black is the darkest tone of the theme's palettes, which is black
+ * in every theme */
 .nb-fav-dark-text {
-  color: #000000;
+  color: @vibeos_shadow;
 }
 
 .nb-fav-light-text {
   color: @vibeos_white;
+}
+
+/* on a favourite without a colour of its own: the theme's primary container */
+.nb-fav-theme-text {
+  color: @vibeos_on_primary_container;
 }
 
 /* Downloads: each file's type on a black tile */

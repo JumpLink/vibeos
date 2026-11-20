@@ -21,16 +21,20 @@
 #define GRID_TOP        24
 #define GRID_SIDE       24
 #define ROW_GAP         8
-#define STATUS_SIZE     18      /* the status and bottom lines */
-#define NAME_SIZE       54      /* the name, shrunk as far as NAME_MIN_SIZE to fit */
+#define STATUS_SIZE     18      /* sp: the status and bottom lines */
+#define STATUS_PX      vibeos_sp (STATUS_SIZE)
+#define NAME_SIZE       54      /* sp: the name, shrunk as far as NAME_MIN_SIZE to fit */
 #define NAME_MIN_SIZE   32
+#define ROBOTO          "VibeOS Roboto"
+#define NAME_FAMILY     "Google Sans Flex, VibeOS Roboto"
 #define AVATAR          172     /* only for a contact with a photo */
 #define SPACER          220     /* under the column, over the puck */
 #define ENTRY_MS        1000    /* the screen's fade and slide in */
 
 /* the puck, with "Swipe up to answer" over it and "Swipe down to reject" under it */
 #define METHOD_SIDE     50      /* the hints' inset; a touch this close to a side starts no swipe */
-#define HINT_SIZE       14      /* the hints, italic */
+#define HINT_SIZE       14      /* sp: the hints, italic */
+#define HINT_PX        vibeos_sp (HINT_SIZE)
 #define SPACE_HOLDER    50
 #define ANSWER_GAP      18
 #define PUCK_BOX        88      /* the box the disc sits in */
@@ -339,18 +343,26 @@ run_tweens (AnswerView *self, gint64 now)
 
 /* ---- text ----------------------------------------------------------------------------------------------------- */
 
-static PangoLayout *
-new_layout (AnswerView *self, const char *family, double size, int weight, gboolean italic)
+/* the layout's text at `size` sp and `weight` as drawn with Bold text on (Bold text off draws it 300 lighter), as
+ * the font size and Bold text are now; unchanged when it is so already */
+static void
+set_style (PangoLayout *layout, const char *family, double size, int weight, gboolean italic)
 {
-  PangoLayout *layout = gtk_widget_create_pango_layout (GTK_WIDGET (self), NULL);
   g_autoptr(PangoFontDescription) font = pango_font_description_from_string (family);
 
-  pango_font_description_set_absolute_size (font, size * PANGO_SCALE);
-  /* the weight as drawn with Bold text on: Bold text off draws it 300 lighter */
+  pango_font_description_set_absolute_size (font, vibeos_sp (size) * PANGO_SCALE);
   pango_font_description_set_weight (font, vibeos_font_weight (weight - 300));
   if (italic)
     pango_font_description_set_style (font, PANGO_STYLE_ITALIC);
   pango_layout_set_font_description (layout, font);
+}
+
+static PangoLayout *
+new_layout (AnswerView *self, const char *family, double size, int weight, gboolean italic)
+{
+  PangoLayout *layout = gtk_widget_create_pango_layout (GTK_WIDGET (self), NULL);
+
+  set_style (layout, family, size, weight, italic);
   return layout;
 }
 
@@ -392,22 +404,19 @@ single_line (PangoLayout *layout, double width)
 static void
 fit_name (AnswerView *self, double width)
 {
-  g_autoptr(PangoFontDescription) font = pango_font_description_copy (pango_layout_get_font_description (self->name));
   double size;
 
   pango_layout_set_width (self->name, -1);
   pango_layout_set_ellipsize (self->name, PANGO_ELLIPSIZE_NONE);
   for (size = NAME_SIZE; size > NAME_MIN_SIZE; size--)
     {
-      pango_font_description_set_absolute_size (font, size * PANGO_SCALE);
-      pango_layout_set_font_description (self->name, font);
+      set_style (self->name, NAME_FAMILY, size, 700, FALSE);
       if (layout_width (self->name) <= width)
         break;
     }
-  pango_font_description_set_absolute_size (font, size * PANGO_SCALE);
-  pango_layout_set_font_description (self->name, font);
+  set_style (self->name, NAME_FAMILY, size, 700, FALSE);
   single_line (self->name, width);
-  self->name_size = size;
+  self->name_size = vibeos_sp (size);
 }
 
 /* the hints may take two lines in the puck's area's width */
@@ -422,11 +431,13 @@ hint_lines (PangoLayout *layout, double width)
 static void
 draw_layout (GtkSnapshot *snapshot, PangoLayout *layout, double x, double y, double alpha)
 {
+  GdkRGBA white = vibeos_color_alpha (VIBEOS_WHITE, alpha);
+
   if (alpha <= 0)
     return;
   gtk_snapshot_save (snapshot);
   gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (x, y));
-  gtk_snapshot_append_layout (snapshot, layout, &(GdkRGBA) { 1, 1, 1, alpha });
+  gtk_snapshot_append_layout (snapshot, layout, &white);
   gtk_snapshot_restore (snapshot);
 }
 
@@ -445,19 +456,19 @@ static void
 measure_geometry (AnswerView *self, Geometry *g)
 {
   double height = gtk_widget_get_height (GTK_WIDGET (self)), width = gtk_widget_get_width (GTK_WIDGET (self));
-  double hint_box = roboto_box (self->reject_text, HINT_SIZE);
+  double hint_box = roboto_box (self->reject_text, HINT_PX);
 
   g->status_y = GRID_TOP;
-  g->name_y = g->status_y + roboto_box (self->status, STATUS_SIZE) + ROW_GAP;
+  g->name_y = g->status_y + roboto_box (self->status, STATUS_PX) + ROW_GAP;
   g->bottom_y = g->name_y + GSF_PAD_TOP (self->name_size) + layout_height (self->name) + GSF_PAD_BOTTOM (self->name_size)
                 + ROW_GAP;
-  g->data_y = g->bottom_y + roboto_box (self->bottom, STATUS_SIZE);
+  g->data_y = g->bottom_y + roboto_box (self->bottom, STATUS_PX);
   g->data_bottom = height - SPACER;
 
   /* the puck's column is anchored at the foot: reject hint, puck, answer hint, from the bottom up */
   g->reject_y = height - REJECT_GAP - hint_box;
   g->puck_cy = g->reject_y - PUCK_GAP - PUCK_BOX / 2.0;
-  g->answer_y = g->puck_cy - PUCK_BOX / 2.0 - ANSWER_GAP - roboto_box (self->answer_text, HINT_SIZE);
+  g->answer_y = g->puck_cy - PUCK_BOX / 2.0 - ANSWER_GAP - roboto_box (self->answer_text, HINT_PX);
 
   g->side_x = width - SIDE_BOX / 2.0;
   g->side_y = height - SIDE_BOX / 2.0;
@@ -1275,11 +1286,11 @@ draw_grid (AnswerView *self, GtkSnapshot *snapshot, const Geometry *g, double wi
   gtk_snapshot_scale (snapshot, self->grid_scale, self->grid_scale);
   gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (-width / 2, -cy));
   gtk_snapshot_push_opacity (snapshot, alpha);
-  draw_centered (snapshot, self->status, width, g->status_y + ROBOTO_PAD_TOP (STATUS_SIZE), TEXT_SECONDARY);
+  draw_centered (snapshot, self->status, width, g->status_y + ROBOTO_PAD_TOP (STATUS_PX), TEXT_SECONDARY);
   draw_centered (snapshot, self->name, width,
                  g->name_y + (g->name_y - GRID_TOP) * 0.5 * slide + GSF_PAD_TOP (self->name_size), 1);
   draw_centered (snapshot, self->bottom, width,
-                 g->bottom_y + (g->bottom_y - GRID_TOP) * 0.5 * slide + ROBOTO_PAD_TOP (STATUS_SIZE), TEXT_SECONDARY);
+                 g->bottom_y + (g->bottom_y - GRID_TOP) * 0.5 * slide + ROBOTO_PAD_TOP (STATUS_PX), TEXT_SECONDARY);
   if (self->photo && g->data_bottom - g->data_y >= AVATAR)
     avatar_snapshot (snapshot, GTK_WIDGET (self), width / 2,
                      (g->data_y + g->data_bottom) / 2 + (g->data_y - GRID_TOP) * 0.5 * slide, AVATAR, NULL, NULL,
@@ -1294,12 +1305,13 @@ draw_puck (AnswerView *self, GtkSnapshot *snapshot, const Geometry *g, double wi
   double cx = width / 2 + self->puck_x, cy = g->puck_cy + self->puck_y;
   double pivot = self->pivot_bottom_until > now_us (self) ? PUCK_BOX / 2.0 : 0;
   double r = PUCK / 2.0 * self->bg_scale, a = fabs (self->puck_progress);
-  GdkRGBA white = { 1, 1, 1, 1 };
+  GdkRGBA white = vibeos_color (VIBEOS_WHITE);
   GdkRGBA tint = self->puck_progress >= 0 ? rgb (ACCEPT_COLOR, 1) : palette_rgb (HANGUP_COLOR);
   GdkRGBA disc = vibeos_rgba_mix (&white, &tint, a);
   graphene_rect_t box = GRAPHENE_RECT_INIT (-r, -r, 2 * r, 2 * r);
   GskRoundedRect shape;
   GdkRGBA icon = self->icon_tint;
+  GdkRGBA far = vibeos_color_alpha (VIBEOS_SHADOW, 0.18), near = vibeos_color_alpha (VIBEOS_SHADOW, 0.3);
 
   if (self->puck_alpha <= 0)
     return;
@@ -1311,9 +1323,8 @@ draw_puck (AnswerView *self, GtkSnapshot *snapshot, const Geometry *g, double wi
 
   /* the disc's shadow, deeper while the finger is on it */
   gsk_rounded_rect_init_from_rect (&shape, &box, r);
-  gtk_snapshot_append_outset_shadow (snapshot, &shape, &(GdkRGBA) { 0, 0, 0, 0.18 }, 0, self->tracking ? 6 : 4, 1,
-                                     self->tracking ? 12 : 8);
-  gtk_snapshot_append_outset_shadow (snapshot, &shape, &(GdkRGBA) { 0, 0, 0, 0.3 }, 0, 1, 0, 3);
+  gtk_snapshot_append_outset_shadow (snapshot, &shape, &far, 0, self->tracking ? 6 : 4, 1, self->tracking ? 12 : 8);
+  gtk_snapshot_append_outset_shadow (snapshot, &shape, &near, 0, 1, 0, 3);
   gtk_snapshot_push_rounded_clip (snapshot, &shape);
   gtk_snapshot_append_color (snapshot, &disc, &box);
   gtk_snapshot_pop (snapshot);
@@ -1342,7 +1353,9 @@ argb_evaluate (const GdkRGBA *a, const GdkRGBA *b, double t)
 static void
 draw_side (AnswerView *self, GtkSnapshot *snapshot, const Geometry *g)
 {
-  GdkRGBA white = { 1, 1, 1, 1 }, black = { 0, 0, 0, 1 }, icon;
+  /* the call screen is dark in either mode: white and black are its own, from libvibeos's fixed white and the
+   * palettes' darkest tone */
+  GdkRGBA white = vibeos_color (VIBEOS_WHITE), black = vibeos_palette_stop (VIBEOS_PALETTE_NEUTRAL1, 1000), icon;
   double size = SIDE_ICON * self->side_icon_scale;
 
   if (!self->other_call || (self->side_done && !self->side_finishing))
@@ -1354,10 +1367,11 @@ draw_side (AnswerView *self, GtkSnapshot *snapshot, const Geometry *g)
       graphene_rect_t box = GRAPHENE_RECT_INIT (g->side_x - self->side_radius, g->side_y - self->side_radius,
                                                 2 * self->side_radius, 2 * self->side_radius);
       GskRoundedRect circle;
+      GdkRGBA fill = vibeos_color_alpha (VIBEOS_WHITE, fraction);
 
       gsk_rounded_rect_init_from_rect (&circle, &box, self->side_radius);
       gtk_snapshot_push_rounded_clip (snapshot, &circle);
-      gtk_snapshot_append_color (snapshot, &(GdkRGBA) { 1, 1, 1, fraction }, &box);
+      gtk_snapshot_append_color (snapshot, &fill, &box);
       gtk_snapshot_pop (snapshot);
     }
   /* the icon's colour: white to black as the circle grows to its smallest size */
@@ -1378,12 +1392,13 @@ answer_view_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   Geometry g;
 
   measure_geometry (self, &g);
-  /* the window's background: blended toward #66000000, alpha too, over what is behind (here black) */
+  /* the window's background: blended toward black at 40 % opacity, alpha too, over what is behind (here black) */
   if (self->background > 0)
     {
       double t = self->background;
+      GdkRGBA black = vibeos_palette_stop (VIBEOS_PALETTE_NEUTRAL1, 1000);
 
-      gtk_snapshot_append_color (snapshot, &(GdkRGBA) { 0, 0, 0, 1 }, &all);
+      gtk_snapshot_append_color (snapshot, &black, &all);
       background = (GdkRGBA) { background.red * (1 - t), background.green * (1 - t), background.blue * (1 - t),
                                1 - t + 0.4 * t };
     }
@@ -1393,10 +1408,10 @@ answer_view_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   if (self->state != STATE_COMPLETED)
     {
       draw_layout (snapshot, self->answer_text, METHOD_SIDE,
-                   g.answer_y + self->text_y + ROBOTO_PAD_TOP (HINT_SIZE), self->text_alpha * TEXT_SECONDARY);
+                   g.answer_y + self->text_y + ROBOTO_PAD_TOP (HINT_PX), self->text_alpha * TEXT_SECONDARY);
       draw_puck (self, snapshot, &g, width);
     }
-  draw_layout (snapshot, self->reject_text, METHOD_SIDE, g.reject_y + self->reject_y + ROBOTO_PAD_TOP (HINT_SIZE),
+  draw_layout (snapshot, self->reject_text, METHOD_SIDE, g.reject_y + self->reject_y + ROBOTO_PAD_TOP (HINT_PX),
                self->reject_alpha * TEXT_SECONDARY);
   draw_side (self, snapshot, &g);
 }
@@ -1406,6 +1421,11 @@ answer_view_size_allocate (GtkWidget *widget, int width, int height, int baselin
 {
   AnswerView *self = ANSWER_VIEW (widget);
 
+  /* the text at the font size and Bold text in effect (they may have changed since the last time) */
+  set_style (self->status, ROBOTO, STATUS_SIZE, 700, FALSE);
+  set_style (self->bottom, ROBOTO, STATUS_SIZE, 700, FALSE);
+  set_style (self->answer_text, ROBOTO, HINT_SIZE, 700, TRUE);
+  set_style (self->reject_text, ROBOTO, HINT_SIZE, 700, TRUE);
   single_line (self->status, width - 2 * GRID_SIDE);
   single_line (self->bottom, width - 2 * GRID_SIDE);
   fit_name (self, width - 2 * GRID_SIDE);
@@ -1569,14 +1589,14 @@ answer_view_init (AnswerView *self)
   GtkGesture *drag = gtk_gesture_drag_new ();
 
   /* 700, not 400: the phone's Bold text setting is on */
-  self->status = new_layout (self, "VibeOS Roboto", STATUS_SIZE, 700, FALSE);
-  self->name = new_layout (self, "Google Sans Flex, VibeOS Roboto", NAME_SIZE, 700, FALSE);
-  self->bottom = new_layout (self, "VibeOS Roboto", STATUS_SIZE, 700, FALSE);
-  self->answer_text = new_layout (self, "VibeOS Roboto", HINT_SIZE, 700, TRUE);
-  self->reject_text = new_layout (self, "VibeOS Roboto", HINT_SIZE, 700, TRUE);
+  self->status = new_layout (self, ROBOTO, STATUS_SIZE, 700, FALSE);
+  self->name = new_layout (self, NAME_FAMILY, NAME_SIZE, 700, FALSE);
+  self->bottom = new_layout (self, ROBOTO, STATUS_SIZE, 700, FALSE);
+  self->answer_text = new_layout (self, ROBOTO, HINT_SIZE, 700, TRUE);
+  self->reject_text = new_layout (self, ROBOTO, HINT_SIZE, 700, TRUE);
   pango_layout_set_text (self->answer_text, _("Swipe up to answer"), -1);
   pango_layout_set_text (self->reject_text, _("Swipe down to reject"), -1);
-  self->name_size = NAME_SIZE;
+  self->name_size = vibeos_sp (NAME_SIZE);
   self->touch_enabled = TRUE;
   self->grid_alpha = self->grid_scale = self->entry = self->entry_alpha = 1;
   self->text_alpha = self->puck_alpha = self->icon_alpha = 1;
