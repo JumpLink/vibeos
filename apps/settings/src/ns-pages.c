@@ -1357,14 +1357,16 @@ void
 ns_page_wallpaper (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Wallpaper and style", &c);
+  NsPage *page = ns_page_new ("Wallpaper & style", &c);
   GSettings *bg = ns_page_settings (page, "org.gnome.desktop.background");
   GSettings *iface = ns_page_settings (page, "org.gnome.desktop.interface");
 
   GSettings *vibeos = ns_page_settings (page, "vibeos.Shell");
   if (vibeos) {
     GtkWidget *g = ns_group (c, "Parallax wallpaper");
-    GtkWidget *hint = gtk_label_new ("Layers that move as you tilt the phone. Off picks a still picture instead.");
+    g_autofree char *text = g_strdup_printf ("Layers that move as you tilt the %s. Off picks a still picture "
+                                             "instead.", ns_device_noun ());
+    GtkWidget *hint = gtk_label_new (text);
     gtk_label_set_wrap (GTK_LABEL (hint), TRUE);
     gtk_label_set_xalign (GTK_LABEL (hint), 0);
     gtk_widget_add_css_class (hint, "ns-sub");
@@ -1385,6 +1387,12 @@ ns_page_wallpaper (GtkWidget *row, gpointer data)
   GSettings *theme = ns_page_settings (page, "vibeos.Theme");
   if (theme)
     ns_row_widget (g, "Colour", accent_picker (theme));
+
+  /* the launcher's own options: its grid, its icons */
+  if (vibeos) {
+    g = ns_group (c, "Home screen");
+    page_row (g, "view-app-grid-symbolic", "Home screen", "Grid • Icon size • Icon pack", ns_page_home);
+  }
   ns_push (page);
 }
 
@@ -1619,9 +1627,6 @@ ns_page_home (GtkWidget *row, gpointer data)
     ns_row_switch (g, "Shape legacy icons", "Icons without pack art on a shaped background", vibeos,
                    "icon-shape-legacy");
 
-  g = ns_group (c, NULL);
-  page_row (g, "preferences-desktop-wallpaper-symbolic", "Wallpaper and style", "Parallax • Picture",
-            ns_page_wallpaper);
   ns_push (page);
 }
 
