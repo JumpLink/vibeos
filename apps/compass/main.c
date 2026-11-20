@@ -4,6 +4,9 @@
  * The heading comes from iio-sensor-proxy (net.hadess.SensorProxy.Compass, fed by the sensor hub's
  * bcm4775-compass); the dial turns so its N points at magnetic north. The position comes from GeoClue.
  *
+ * The sensor's heading is where the device's top edge points. The screen may be turned (a tablet on its side): the
+ * dial shows where the screen's top points, the heading less the turn, read from Mutter's DisplayConfig.
+ *
  * Both are claimed only while the window is in front: in the background the sensor hub stops streaming (several
  * DSP and CPU wakeups a second) and the GPS is let go. iio-sensor-proxy crashes on a quick claim / release / claim
  * of the compass, so the sensor is released only after 3 s in the background, and coming back within that time
@@ -25,6 +28,7 @@
 /* the needle closes 15 % of the gap per 60 Hz frame in the GJS app; as a time constant it is the same at 120 Hz */
 #define EASE_TAU_US 102600.0
 #define GEO_EXACT   8          /* GClueAccuracyLevel: exact (the dial prints tenths of a second) */
+#define PHONE_RADIUS 155.0     /* the dial's radius on an upright phone, which the ticks and pointer are drawn for */
 
 static const char *const NAMES[] = {"N", "NE", "E", "SE", "S", "SW", "W", "NW"};
 
@@ -36,7 +40,11 @@ typedef struct {
   GDBusProxy   *sensor;
   gboolean      sensor_asked;   /* the proxy is being made */
   gboolean      claimed;
-  double        heading;        /* degrees, < 0 = no reading yet */
+  double        heading;        /* degrees, < 0 = no reading yet: where the screen's top points */
+  double        sensor_heading; /* ... where the device's top points, as the sensor gives it */
+  int           rotation;       /* the screen's clockwise turn from the device's own upright, degrees */
+  GDBusConnection *session;
+  guint         display_signal;
   double        shown;          /* where the dial is drawn, easing towards heading */
   guint         tick_id;
   gint64        last_frame;
@@ -110,8 +118,71 @@ on_sensor_props (GDBusProxy *proxy, GVariant *changed, GStrv invalidated, gpoint
 
   if (!g_variant_lookup (changed, "CompassHeading", "d", &h) || h < 0)   /* -1: not known yet */
     return;
-  c->heading = h;
+  c->sensor_heading = h;
+  c->heading = fmod (h - c->rotation + 360.0, 360.0);
   start_tick (c);
+}
+
+/* ---- the screen's turn (Mutter's DisplayConfig) ---- */
+
+/* GetCurrentState's logical monitors: (x, y, scale, transform, primary, monitors, properties). The transform is
+ * Mutter's: 1 is a 90° turn, a device with its left edge up, so its quarter turns are the device's clockwise turn
+ * the screen is laid out for; the flipped transforms (4…7) count as their turn. Without DisplayConfig (another
+ * compositor) the screen is taken as upright. */
+static void
+on_display_state (GObject *object, GAsyncResult *result, gpointer data)
+{
+  Compass *c = data;
+  g_autoptr (GVariant) reply = g_dbus_connection_call_finish (G_DBUS_CONNECTION (object), result, NULL);
+  g_autoptr (GVariant) logical = NULL;
+  GVariantIter iter;
+  guint32 transform, chosen = 0;
+  gboolean primary, found = FALSE;
+
+  if (!reply)
+    return;
+  logical = g_variant_get_child_value (reply, 2);
+  g_variant_iter_init (&iter, logical);
+  while (g_variant_iter_next (&iter, "(iiduba(ssss)@a{sv})", NULL, NULL, NULL, &transform, &primary, NULL, NULL))
+    if (!found || primary) {
+      chosen = transform;
+      found = TRUE;
+      if (primary)
+        break;
+    }
+  c->rotation = (int) (chosen % 4) * 90;
+  if (c->heading >= 0) {
+    c->heading = fmod (c->sensor_heading - c->rotation + 360.0, 360.0);
+    start_tick (c);
+  }
+}
+
+static void
+read_display (Compass *c)
+{
+  g_dbus_connection_call (c->session, "org.gnome.Mutter.DisplayConfig", "/org/gnome/Mutter/DisplayConfig",
+                          "org.gnome.Mutter.DisplayConfig", "GetCurrentState", NULL, NULL, G_DBUS_CALL_FLAGS_NONE,
+                          -1, NULL, on_display_state, c);
+}
+
+static void
+on_monitors_changed (GDBusConnection *connection, const char *sender, const char *path, const char *interface,
+                     const char *signal, GVariant *parameters, gpointer data)
+{
+  read_display (data);
+}
+
+static void
+watch_display (Compass *c)
+{
+  c->session = g_application_get_dbus_connection (g_application_get_default ());
+  if (!c->session)
+    return;
+  g_object_ref (c->session);
+  c->display_signal = g_dbus_connection_signal_subscribe (c->session, NULL, "org.gnome.Mutter.DisplayConfig",
+                                                          "MonitorsChanged", "/org/gnome/Mutter/DisplayConfig", NULL,
+                                                          G_DBUS_SIGNAL_FLAGS_NONE, on_monitors_changed, c, NULL);
+  read_display (c);
 }
 
 static void
@@ -450,6 +521,7 @@ draw (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
   GtkWidget *wd = GTK_WIDGET (area);
   double R = MIN (w, h) / 2.0 * 0.86, cx = w / 2.0, cy = h / 2.0;   /* a margin round the dial */
   double rim = R * 0.80;                                           /* where the ticks start */
+  double u = MAX (1.0, R / PHONE_RADIUS);                           /* the ticks and pointer grow with the dial */
 
   /* body: a disc with a rim band a shade further from the window's background */
   source (cr, VIBEOS_SURFACE_CONTAINER_HIGHEST, 1);
@@ -472,9 +544,9 @@ draw (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
     cairo_save (cr);
     cairo_rotate (cr, rad (a));
     source (cr, VIBEOS_ON_SURFACE, card ? 1 : ten ? 0.85 : 0.45);
-    cairo_set_line_width (cr, card ? 3 : ten ? 1.8 : 1);
-    cairo_move_to (cr, 0, -R + 4);
-    cairo_line_to (cr, 0, -R + (card ? 22 : ten ? 15 : 10));
+    cairo_set_line_width (cr, (card ? 3 : ten ? 1.8 : 1) * u);
+    cairo_move_to (cr, 0, -R + 4 * u);
+    cairo_line_to (cr, 0, -R + (card ? 22 : ten ? 15 : 10) * u);
     cairo_stroke (cr);
     cairo_restore (cr);
   }
@@ -482,7 +554,7 @@ draw (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
   for (int a = 0; a < 360; a += 30) {
     char deg[8];
     g_snprintf (deg, sizeof deg, "%d", a);
-    along (cr, wd, a, R - 38, deg, R * 0.075, FALSE, VIBEOS_ON_SURFACE);
+    along (cr, wd, a, R - 38 * u, deg, R * 0.075, FALSE, VIBEOS_ON_SURFACE);
   }
   static const struct { int a; const char *t; } cardinals[] = {{0, "N"}, {90, "E"}, {180, "S"}, {270, "W"}},
                                                  inter[] = {{45, "NE"}, {135, "SE"}, {225, "SW"}, {315, "NW"}};
@@ -497,14 +569,14 @@ draw (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
 
   /* the fixed red pointer at the top: where the phone points */
   source (cr, VIBEOS_ERROR, 1);
-  cairo_move_to (cr, cx, cy - R + 14);
-  cairo_line_to (cr, cx - 10, cy - R - 6);
-  cairo_line_to (cr, cx + 10, cy - R - 6);
+  cairo_move_to (cr, cx, cy - R + 14 * u);
+  cairo_line_to (cr, cx - 10 * u, cy - R - 6 * u);
+  cairo_line_to (cr, cx + 10 * u, cy - R - 6 * u);
   cairo_close_path (cr);
   cairo_fill (cr);
-  cairo_set_line_width (cr, 2.5);
-  cairo_move_to (cr, cx, cy - R + 10);
-  cairo_line_to (cr, cx, cy - R + 30);
+  cairo_set_line_width (cr, 2.5 * u);
+  cairo_move_to (cr, cx, cy - R + 10 * u);
+  cairo_line_to (cr, cx, cy - R + 30 * u);
   cairo_stroke (cr);
 
   /* the middle: heading, a divider, where you are */
@@ -588,6 +660,7 @@ on_activate (GtkApplication *app, gpointer data)
   g_signal_connect (c->win, "notify::is-active", G_CALLBACK (on_window_notify), c);
   g_signal_connect (c->win, "notify::suspended", G_CALLBACK (on_window_notify), c);
   gtk_window_present (GTK_WINDOW (c->win));
+  watch_display (c);
   sync_active (c);
 }
 
@@ -608,6 +681,9 @@ main (int argc, char **argv)
   g_signal_connect (app, "startup", G_CALLBACK (on_startup), NULL);
   g_signal_connect (app, "activate", G_CALLBACK (on_activate), &c);
   int status = g_application_run (G_APPLICATION (app), argc, argv);
+  if (c.display_signal)
+    g_dbus_connection_signal_unsubscribe (c.session, c.display_signal);
+  g_clear_object (&c.session);
   g_clear_object (&c.sensor);
   g_clear_object (&c.system);
   g_free (c.geo_error);
