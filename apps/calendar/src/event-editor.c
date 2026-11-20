@@ -20,6 +20,10 @@
 #include <spongy-gtk.h>
 #include <string.h>
 
+/* a tablet: the fields no wider than this, centred, upright and turned */
+#define TABLET_WIDTH 600
+#define TABLET_WIDE_WIDTH 800
+
 typedef struct {
   GtkWidget *page, *window;
   CalStore *store;
@@ -43,7 +47,7 @@ typedef struct {
   GtkWidget *color_button, *tz_row, *tz_button, *guests;
   GtkWidget *location, *description, *url, *repeat_row, *repeat, *reminders, *add_reminder;
   GtkWidget *availability, *access;
-  GtkWidget *scroll;
+  GtkWidget *scroll, *content;
   gboolean saving;
 } Editor;
 
@@ -1067,6 +1071,7 @@ build (Editor *editor)
     gtk_box_append (GTK_BOX (content), line);
   }
 
+  editor->content = content;
   editor->scroll = spongy_scroll_view_new ();
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (editor->scroll), content);
   gtk_widget_set_vexpand (editor->scroll, TRUE);
@@ -1079,6 +1084,18 @@ focus_title (GtkWidget *title)
 {
   gtk_widget_grab_focus (title);
   gtk_editable_set_position (GTK_EDITABLE (title), -1);
+}
+
+/* a tablet's editor fills the screen, its fields a centred column */
+static void
+on_layout_changed (VibeosLayout *layout, GtkWidget *page)
+{
+  Editor *editor = g_object_get_data (G_OBJECT (page), "cal-editor");
+  int cap = vibeos_layout_is_landscape (layout) ? TABLET_WIDE_WIDTH : TABLET_WIDTH;
+  int margin = vibeos_layout_is_tablet (layout) ? MAX (0, (vibeos_layout_get_width (layout) - cap) / 2) : 0;
+
+  gtk_widget_set_margin_start (editor->content, margin);
+  gtk_widget_set_margin_end (editor->content, margin);
 }
 
 static GtkWidget *
@@ -1149,6 +1166,12 @@ editor_page (GtkWidget *window, CalEvent *original, CalEvent *source, gint64 sta
     }
 
   build (editor);
+  {
+    VibeosLayout *layout = vibeos_layout_get_for_window (GTK_WINDOW (window));
+
+    g_signal_connect_object (layout, "changed", G_CALLBACK (on_layout_changed), page, 0);
+    on_layout_changed (layout, page);
+  }
   if (source)
     cal_reminders_set (CAL_REMINDERS (editor->reminders), source->reminders);
   else
