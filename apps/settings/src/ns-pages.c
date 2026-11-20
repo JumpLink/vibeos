@@ -9,6 +9,7 @@
 #include <json-glib/json-glib.h>
 #include <math.h>
 #include <sys/utsname.h>
+#include <tonal.h>
 #include <unistd.h>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
@@ -1033,10 +1034,11 @@ ns_page_battery (GtkWidget *row, gpointer data)
   ns_push (page);
 }
 
-/* ---- Wallpaper and style ---- */
+/* ---- Wallpaper & style ---- */
 
-/* the colours offered for the system's colours (vibeos.Theme seed), and the GNOME accent each comes closest to, for
- * GTK apps that follow org.gnome.desktop.interface accent-color */
+/* the colours offered for the system's colours: seeds for vibeos.Theme (each swatch shows the primary colour the
+ * theme engine makes of its seed), and the GNOME accent each comes closest to, for GTK apps that follow
+ * org.gnome.desktop.interface accent-color */
 static const struct {
   const char *name, *gnome;
   guint32     seed;
@@ -1064,7 +1066,12 @@ swatch_draw (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
     cairo_fill (cr);
     r *= 0.76;
   }
-  cairo_set_source_rgb (cr, ((seed >> 16) & 0xff) / 255.0, ((seed >> 8) & 0xff) / 255.0, (seed & 0xff) / 255.0);
+  /* the primary of the seed's scheme, light or dark as the app is now */
+  TonalScheme scheme;
+  gboolean dark = vibeos_theme_get_dark (vibeos_theme_get_default ());
+  tonal_scheme_init (&scheme, 0xff000000 | seed, TONAL_VARIANT_TONAL_SPOT, dark, 0, TONAL_SPEC_2025);
+  guint32 c = tonal_scheme_color (&scheme, TONAL_PRIMARY);
+  cairo_set_source_rgb (cr, ((c >> 16) & 0xff) / 255.0, ((c >> 8) & 0xff) / 255.0, (c & 0xff) / 255.0);
   cairo_arc (cr, w / 2.0, h / 2.0, r, 0, 2 * G_PI);
   cairo_fill (cr);
 }

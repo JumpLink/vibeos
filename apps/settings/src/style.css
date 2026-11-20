@@ -186,7 +186,7 @@ window.ns-window button.ns-tonal:disabled {
 }
 
 window.ns-window button.vibeos-text-button {
-  background-color: transparent;
+  background: none;
   border-radius: 999px;
 }
 
@@ -278,7 +278,8 @@ window.ns-window flowboxchild {
 .ns-parallax-thumb {
   border-radius: 16dp;
   background-color: @vibeos_surface_container_highest;
-  border: 3dp solid transparent;
+  /* the ring of the set picked, in the page's own colour (unseen) on the others */
+  border: 3dp solid @vibeos_surface_bright;
 }
 
 .ns-parallax-card.ns-picked .ns-parallax-thumb {
@@ -287,7 +288,7 @@ window.ns-window flowboxchild {
 
 /* the system's colour: a circle of each (drawn in C), a ring around the one picked */
 window.ns-window button.ns-swatch {
-  background-color: transparent;
+  background: none;
   border-radius: 999px;
   min-width: 48dp;
   min-height: 48dp;

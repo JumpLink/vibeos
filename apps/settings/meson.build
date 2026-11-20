@@ -9,6 +9,8 @@ gnome = import('gnome')
 cc = meson.get_compiler('c')
 deps = [dependency('gtk4', version: '>= 4.14'), dependency('vibeos-1'),
         dependency('json-glib-1.0'), dependency('goa-backend-1.0'), dependency('gio-unix-2.0'), dependency('gmodule-2.0'),
+        # the colour swatches show what the theme engine makes of each seed
+        dependency('tonal-1'),
         dependency('libnm'), dependency('libdrm'), dependency('libpulse-mainloop-glib'),
         # the pattern dialog checks the current password the way the lock screen does
         cc.find_library('pam'), cc.find_library('m', required: false)]
