@@ -1,5 +1,7 @@
 /* The parallax wallpaper (see parallax.h). The filter is the GTK 3 launcher's, tuned there on this phone. The
- * accelerometer is IIO's, or on the POCO X3 NFC and the Galaxy Tab S5e the ADSP sensor hub's, through libssc. */
+ * accelerometer is IIO's, or on the POCO X3 NFC and the Galaxy Tab S5e the ADSP sensor hub's, through libssc.
+ * Its readings are taken as iio-sensor-proxy takes them (through the same mount matrix, so on the panel's axes:
+ * x to the right, y up, the vector g itself, upright reads y < 0), then onto the screen's as it is turned. */
 #include "parallax.h"
 
 #include <dlfcn.h>
@@ -8,6 +10,7 @@
 #include <glib.h>
 #include <json-glib/json-glib.h>
 #include <math.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -67,6 +70,9 @@ struct Parallax {
   bool        ssc_opened;
   gint64      ssc_last;     /* monotonic µs of the last measurement (or of the opening) */
   double      ssc_g[3];     /* its last measurement, m/s² */
+  double      mount[9];     /* the accelerometer's axes onto the panel's (row by row, as iio-sensor-proxy has it) */
+  int         transform;    /* how the screen is turned (wl_output): onto its axes from the panel's */
+  bool        tell_turn;    /* log the next reading on the screen's axes: a turn's check */
   double      g[3], rest[3], settled[3];
   int         calm;
   bool        have_g;
@@ -257,9 +263,125 @@ ssc_stop (Parallax *p)
     ssc_owner = NULL;
 }
 
+/* ---- the mount matrix, from where iio-sensor-proxy takes it: the device's udev ACCEL_MOUNT_MATRIX, or else the IIO
+ * device's own mount matrix in sysfs. libudev is loaded at run time, as libssc is. ---- */
+typedef void *(*UdevNew) (void);
+typedef void *(*UdevUnref) (void *);
+typedef void *(*UdevFromSyspath) (void *, const char *);
+typedef const char *(*UdevProperty) (void *, const char *);
+
+/* a udev property of the device at syspath (a /sys path, links followed), or NULL */
+static char *
+udev_property (const char *syspath, const char *key)
+{
+  static bool tried;
+  static UdevNew u_new;
+  static UdevUnref u_unref, d_unref;
+  static UdevFromSyspath d_new;
+  static UdevProperty d_get;
+  if (!tried) {
+    tried = true;
+    void *h = dlopen ("libudev.so.1", RTLD_NOW | RTLD_LOCAL);
+    if (h) {
+      u_new = (UdevNew) dlsym (h, "udev_new");
+      u_unref = (UdevUnref) dlsym (h, "udev_unref");
+      d_new = (UdevFromSyspath) dlsym (h, "udev_device_new_from_syspath");
+      d_get = (UdevProperty) dlsym (h, "udev_device_get_property_value");
+      d_unref = (UdevUnref) dlsym (h, "udev_device_unref");
+    }
+  }
+  g_autofree char *path = realpath (syspath, NULL);
+  if (!path || !u_new || !u_unref || !d_new || !d_get || !d_unref)
+    return NULL;
+  void *u = u_new ();
+  if (!u)
+    return NULL;
+  char *v = NULL;
+  void *d = d_new (u, path);
+  if (d) {
+    v = g_strdup (d_get (d, key));
+    d_unref (d);
+  }
+  u_unref (u);
+  return v;
+}
+
+/* "a, b, c; d, e, f; g, h, i" (rows) into m; false, and m left alone, if it is not that */
+static bool
+parse_mount (const char *s, double m[9])
+{
+  double v[9];
+  g_auto (GStrv) rows = s ? g_strsplit (s, ";", -1) : NULL;
+  if (!rows || g_strv_length (rows) != 3)
+    return false;
+  for (int r = 0; r < 3; r++) {
+    g_auto (GStrv) c = g_strsplit (rows[r], ",", -1);
+    if (g_strv_length (c) != 3)
+      return false;
+    for (int i = 0; i < 3; i++) {
+      char *end;
+      v[r * 3 + i] = g_ascii_strtod (c[i], &end);
+      if (end == c[i])
+        return false;
+    }
+  }
+  memcpy (m, v, sizeof v);
+  return true;
+}
+
+static void
+set_mount (Parallax *p, const char *matrix, const char *from)
+{
+  if (!parse_mount (matrix, p->mount))
+    return;
+  static const double id[9] = { 1, 0, 0, 0, 1, 0, 0, 0, 1 };
+  if (memcmp (p->mount, id, sizeof id))
+    g_message ("parallax: the accelerometer's mount matrix (%s): %s", from, matrix);
+}
+
+/* the sensor hub's: on its fastrpc node, the one iio-sensor-proxy's rule marks ssc-accel */
+static void
+find_ssc_mount (Parallax *p)
+{
+  g_autoptr (GDir) dir = g_dir_open ("/sys/class/misc", 0, NULL);
+  const char *name;
+  while (dir && (name = g_dir_read_name (dir))) {
+    if (!g_str_has_prefix (name, "fastrpc-"))
+      continue;
+    g_autofree char *path = g_build_filename ("/sys/class/misc", name, NULL);
+    g_autofree char *types = udev_property (path, "IIO_SENSOR_PROXY_TYPE");
+    if (!types || !strstr (types, "ssc-accel"))
+      continue;
+    g_autofree char *m = udev_property (path, "ACCEL_MOUNT_MATRIX");
+    set_mount (p, m, name);
+    return;
+  }
+}
+
+static void
+find_iio_mount (Parallax *p, const char *dev)
+{
+  g_autofree char *m = udev_property (dev, "ACCEL_MOUNT_MATRIX");
+  if (m) {
+    set_mount (p, m, "udev");
+    return;
+  }
+  const char *files[] = { "in_accel_mount_matrix", "in_mount_matrix", "mount_matrix" };
+  for (guint i = 0; i < G_N_ELEMENTS (files); i++) {
+    g_autofree char *f = g_build_filename (dev, files[i], NULL);
+    g_autofree char *s = NULL;
+    if (g_file_get_contents (f, &s, NULL, NULL)) {
+      set_mount (p, g_strstrip (s), files[i]);
+      return;
+    }
+  }
+}
+
 static void
 find_accel (Parallax *p)
 {
+  static const double id[9] = { 1, 0, 0, 0, 1, 0, 0, 0, 1 };
+  memcpy (p->mount, id, sizeof id);
   /* VIBEOS_ACCEL_DIR: a directory in place of the IIO devices', for a test that writes the readings itself */
   const char *base = g_getenv ("VIBEOS_ACCEL_DIR") ? g_getenv ("VIBEOS_ACCEL_DIR") : ACCEL_DIR;
   g_autoptr (GDir) dir = g_dir_open (base, 0, NULL);
@@ -274,11 +396,16 @@ find_accel (Parallax *p)
       p->accel[i] = g_build_filename (base, name, f, NULL);
     }
     p->rate = g_build_filename (base, name, "in_accel_sampling_frequency", NULL);
+    if (!g_getenv ("VIBEOS_ACCEL_DIR")) {
+      g_autofree char *dev = g_build_filename (base, name, NULL);
+      find_iio_mount (p, dev);
+    }
     return;
   }
   if (ssc_load ()) {
     p->use_ssc = true;
     g_message ("parallax: the sensor hub's accelerometer (libssc)");
+    find_ssc_mount (p);
     return;
   }
   g_message ("parallax: no accelerometer, the wallpaper stays still");
@@ -298,7 +425,7 @@ set_rate (Parallax *p, int hz)
 }
 
 static bool
-read_accel (Parallax *p, double g[3])
+read_raw (Parallax *p, double g[3])
 {
   if (p->use_ssc) {
     if (p->ssc_opened && !p->ssc_retry && g_get_monotonic_time () - p->ssc_last > SSC_QUIET_US) {
@@ -323,6 +450,35 @@ read_accel (Parallax *p, double g[3])
       return false;
     buf[n] = '\0';
     g[i] = g_ascii_strtod (buf, NULL);
+  }
+  return true;
+}
+
+/* a reading on the screen's axes as it shows: the sensor's through the mount matrix onto the panel's, then turned
+ * with the screen (wl_output transform 1: the content 90° counter-clockwise, the device turned clockwise with its
+ * left edge up, so the screen's right is the panel's up and its up the panel's left) */
+static bool
+read_accel (Parallax *p, double g[3])
+{
+  double s[3];
+  if (!read_raw (p, s))
+    return false;
+  const double *m = p->mount;
+  double x = m[0] * s[0] + m[1] * s[1] + m[2] * s[2];
+  double y = m[3] * s[0] + m[4] * s[1] + m[5] * s[2];
+  g[2] = m[6] * s[0] + m[7] * s[1] + m[8] * s[2];
+  switch (p->transform & 3) {
+  case 1: g[0] = y;  g[1] = -x; break;
+  case 2: g[0] = -x; g[1] = -y; break;
+  case 3: g[0] = -y; g[1] = x;  break;
+  default: g[0] = x; g[1] = y;  break;
+  }
+  if (p->tell_turn) {
+    p->tell_turn = false;
+    double n = sqrt (g[0] * g[0] + g[1] * g[1] + g[2] * g[2]);
+    if (n > 0)                /* held upright on the screen as it shows: x ≈ 0, y ≈ -1 */
+      g_message ("parallax: on the screen's axes (transform %d): x %.2f y %.2f z %.2f", p->transform,
+                 g[0] / n, g[1] / n, g[2] / n);
   }
   return true;
 }
@@ -784,6 +940,16 @@ parallax_set_wake (Parallax *p, void (*wake) (void *data), void *data)
 {
   p->wake = wake;
   p->wake_data = data;
+}
+
+void
+parallax_set_transform (Parallax *p, int transform)
+{
+  if (!p || p->transform == transform)
+    return;
+  p->transform = transform;
+  p->have_g = false;        /* the axes turned under the filter: it starts again from the reading as it comes */
+  p->tell_turn = true;
 }
 
 void

@@ -559,6 +559,7 @@ on_frame (gpointer data, gint64 time)
     bool moving = f > 0 || drawer_dragging () || home_moving || home_dragging () || depth > 0 ||
                   fabsf (scale - 1) > 1e-4f || fabsf (stretch) > 1e-4f || nav_home_alpha () < 1 ||
                   nav_home_ty () != 0 || N.launch_t0 != 0;
+    parallax_set_transform (A.par, wl_get_transform (N.wl));
     parallax_hold (A.par, moving);
     more |= parallax_tick (A.par);
   }

@@ -20,6 +20,8 @@ void      parallax_set_wake (Parallax *p, void (*wake) (void *data), void *data)
  * offsets in whole px of the fastest one, so `wake` is called only when a step moves that a px; at rest the sensor is
  * polled slowly. */
 void      parallax_run    (Parallax *p, bool run);
+/* how the screen is turned (a wl_output transform): the tilt is taken on the screen's axes as it shows */
+void      parallax_set_transform (Parallax *p, int transform);
 /* the frame's step of the way back from a hold; true while it lasts (another frame is wanted) */
 bool      parallax_tick   (Parallax *p);
 /* Held, the offsets keep still whatever the tilt does (through a transition, so the layers are drawn as one picture
