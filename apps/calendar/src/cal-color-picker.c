@@ -143,7 +143,7 @@ cal_swatch_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   if (self->checked)
     {
       double scale = size / SWATCH, disc = 31 * scale;
-      GdkRGBA shade = { 0, 0, 0, 38 / 255.f }, white = { 1, 1, 1, 1 };
+      GdkRGBA shade = vibeos_color_alpha (VIBEOS_SHADOW, 38 / 255.f), white = vibeos_color (VIBEOS_WHITE);
       g_autoptr(GskStroke) stroke = gsk_stroke_new (3.5f);
 
       gsk_rounded_rect_init_from_rect (&oval, &GRAPHENE_RECT_INIT ((size - disc) / 2, (size - disc) / 2, disc, disc),

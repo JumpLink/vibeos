@@ -30,6 +30,8 @@ typedef struct {
   guint32 agenda_declined_title, agenda_declined_when;
   /* the time picker's number under the selector, the compat switch's off thumb and track */
   guint32 selected_number, switch_thumb_off, switch_track_off;
+  /* what is disabled: text and lines at Material's disabled alpha */
+  guint32 disabled;
   gboolean dark;
 } CalPalette;
 
@@ -63,6 +65,7 @@ void        cal_palette_restyle (GtkWidget *root);
 #define CAL_ON_PRIMARY_CONTAINER        (cal_palette->on_primary_container)
 #define CAL_SECONDARY_CONTAINER         (cal_palette->secondary_container)
 #define CAL_ON_SECONDARY_CONTAINER      (cal_palette->on_secondary_container)
+#define CAL_DISABLED                    (cal_palette->disabled)
 
 /* the Week and Day views */
 #define CAL_HOUR_BG             (cal_palette->hour_bg)          /* the hours column, the header */
