@@ -36,8 +36,10 @@ const DECELERATE = t => 1 - (1 - t) * (1 - t);
 const KEYGUARD_TIMEOUT_MS = 10000;
 // a press of the power key held this long is a long press (the power menu)
 const LONG_PRESS_MS = 500;
-// a sleep this soon after waking is taken as a bounce of the key
-const MIN_AWAKE_MS = 300;
+// a sleep this soon after waking is taken as a bounce of the key. The tablet's panel lights about half a second after
+// the wake: a press made then, by someone who saw nothing happen yet (a wake held for the floor below shows nothing
+// for up to a second and a half), turned it straight off again (11-20), so there a press counts only once it is lit.
+const MIN_AWAKE_MS = TABLET ? 1000 : 300;
 // The tablet's panel hung for good when it was turned on again 0.64 s after it went off, and came back from 1.2 s
 // and 2.2 s (Galaxy Tab S5e, 11-19): a wake sooner than this after its outputs went off waits until then. It counts
 // from mutter putting the outputs in power save, about 0.2 s after they were asked to go off.
