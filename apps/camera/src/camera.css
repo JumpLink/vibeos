@@ -4,8 +4,16 @@
  * white as on the reference phone. Text sizes are sp and every other size dp; weights are the usual ones, and Bold
  * text draws each 300 heavier. */
 
+/* The camera's own colours, which are not the theme's: the screen and the controls over the picture are black and
+ * white with Aperture's fixed greys and red in every theme, as cam-constants.h has them for what the app draws. Only
+ * these few are named here; everything else is a theme role. */
+@define-color cam_black #000000;
+@define-color cam_white #ffffff;
+@define-color cam_dark_grey #444444;      /* an unselected mode, a disabled control */
+@define-color cam_rec_red #e95950;        /* the recording's duration pill */
+
 window.vibeos.cam-window {
-  background-color: #000000;
+  background-color: @cam_black;
 }
 
 /* --- the mode selector: the labels dimmed, the chosen one white */
@@ -13,18 +21,18 @@ window.vibeos.cam-window {
   font-family: "Droid Sans Mono", "Noto Mono", monospace;
   font-size: 14sp;
   font-weight: 400;
-  color: #444444;
+  color: @cam_dark_grey;
 }
 
 .cam-mode-label.selected {
-  color: #ffffff;
+  color: @cam_white;
 }
 
 /* the recording's duration: a red pill */
 .cam-duration {
-  background-color: #e95950;
+  background-color: @cam_rec_red;
   border-radius: 20dp;
-  color: #ffffff;
+  color: @cam_white;
   font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 14sp;
   font-weight: 500;
@@ -32,20 +40,20 @@ window.vibeos.cam-window {
 
 /* --- the pro row: a translucent black band; a disabled button's label dimmed */
 .cam-pro-row {
-  background-color: rgba(0, 0, 0, 0.6);
+  background-color: alpha(@cam_black, 0.6);
 }
 
 .cam-pro-label {
   font-family: "Droid Sans Mono", "Noto Mono", monospace;
   font-size: 12sp;
   font-weight: 400;
-  color: #ffffff;
+  color: @cam_white;
   margin-top: 10dp;
   padding: 0 4dp;
 }
 
 .cam-pro-label:disabled {
-  color: #444444;
+  color: @cam_dark_grey;
 }
 
 /* --- the toast: a pill with the app icon, then the text */
@@ -82,7 +90,7 @@ vibeos-snackbar-host.cam-snackbar .vibeos-text-button {
 
 /* --- the screen flash */
 .cam-screen-flash {
-  background-color: #ffffff;
+  background-color: @cam_white;
 }
 
 /* --- the QR sheet */

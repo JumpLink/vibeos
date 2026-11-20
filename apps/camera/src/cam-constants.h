@@ -54,7 +54,8 @@
 #define CAM_SP_COUNTDOWN           125      /* the self-timer's countdown */
 #define CAM_DP_SLIDER_TEXT         10
 
-/* colours (standard contrast) */
+/* the camera's own colours, the same in every theme: the controls over the picture are black and white with these
+ * fixed greys, red and yellow (camera.css names the few its labels use). The rest of the app is in the theme's roles */
 #define CAM_C_REC_RED              0xE95950
 #define CAM_C_GRAY_10              0xF6FAFA
 #define CAM_C_GRAY_60              0x2A3232
