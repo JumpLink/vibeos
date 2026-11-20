@@ -35,6 +35,22 @@ n_available (CamModeSelector *self)
   return n;
 }
 
+/* a button's width: CAM_MODE_BUTTON_W, or wider where a label needs it (a large font size) */
+static int
+button_w (CamModeSelector *self)
+{
+  int w = CAM_MODE_BUTTON_W;
+
+  for (int i = 0; i < CAM_N_MODES; i++)
+    {
+      int min, nat;
+
+      gtk_widget_measure (self->labels[i], GTK_ORIENTATION_HORIZONTAL, -1, &min, &nat, NULL, NULL);
+      w = MAX (w, nat + 2 * CAM_MODE_LABEL_PAD);
+    }
+  return w;
+}
+
 static void
 cam_mode_selector_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, int *min, int *nat,
                            int *min_base, int *nat_base)
@@ -42,10 +58,11 @@ cam_mode_selector_measure (GtkWidget *widget, GtkOrientation orientation, int fo
   CamModeSelector *self = CAM_MODE_SELECTOR (widget);
 
   if (self->vertical)
-    *min = *nat = orientation == GTK_ORIENTATION_HORIZONTAL ? CAM_MODE_COLUMN_W
-                                                            : n_available (self) * CAM_MODE_BUTTON_H;
+    *min = *nat = orientation == GTK_ORIENTATION_HORIZONTAL
+                    ? MAX (CAM_MODE_COLUMN_W, button_w (self) + CAM_MODE_COLUMN_W - CAM_MODE_BUTTON_W)
+                    : n_available (self) * CAM_MODE_BUTTON_H;
   else
-    *min = *nat = orientation == GTK_ORIENTATION_HORIZONTAL ? n_available (self) * CAM_MODE_BUTTON_W
+    *min = *nat = orientation == GTK_ORIENTATION_HORIZONTAL ? n_available (self) * button_w (self)
                                                             : CAM_MODE_SELECTOR_H;
 }
 
@@ -62,14 +79,14 @@ button_x (GtkWidget *widget, CamMode mode)
   if (self->vertical)
     return (gtk_widget_get_height (widget) - n_available (self) * CAM_MODE_BUTTON_H) / 2 + before * CAM_MODE_BUTTON_H
            + (CAM_MODE_BUTTON_H - CAM_MODE_PILL_H) / 2;
-  return (gtk_widget_get_width (widget) - n_available (self) * CAM_MODE_BUTTON_W) / 2 + before * CAM_MODE_BUTTON_W;
+  return (gtk_widget_get_width (widget) - n_available (self) * button_w (self)) / 2 + before * button_w (self);
 }
 
 /* the pill's length along the band */
 static double
 pill_length (CamModeSelector *self)
 {
-  return self->vertical ? CAM_MODE_PILL_H : CAM_MODE_BUTTON_W;
+  return self->vertical ? CAM_MODE_PILL_H : button_w (self);
 }
 
 static void
@@ -78,17 +95,18 @@ cam_mode_selector_size_allocate (GtkWidget *widget, int width, int height, int b
   CamModeSelector *self = CAM_MODE_SELECTOR (widget);
   /* the button's insets: it draws (and ripples) only in its middle, the pill's height */
   int y = CAM_MODE_PAD + (CAM_MODE_BUTTON_H - CAM_MODE_PILL_H) / 2;
-  int x = (width - CAM_MODE_BUTTON_W) / 2;
+  int w = button_w (self), x = (width - w) / 2;
 
   for (int i = 0; i < CAM_N_MODES; i++)
     gtk_widget_size_allocate (self->buttons[i],
                               self->vertical
-                                ? &(GtkAllocation) { x, (int) button_x (widget, i), CAM_MODE_BUTTON_W, CAM_MODE_PILL_H }
-                                : &(GtkAllocation) { (int) button_x (widget, i), y, CAM_MODE_BUTTON_W, CAM_MODE_PILL_H },
+                                ? &(GtkAllocation) { x, (int) button_x (widget, i), w, CAM_MODE_PILL_H }
+                                : &(GtkAllocation) { (int) button_x (widget, i), y, w, CAM_MODE_PILL_H },
                               -1);
   gtk_widget_size_allocate (self->duration, &(GtkAllocation) { x, self->vertical ? (height - CAM_MODE_PILL_H) / 2 : y,
-                                                                CAM_MODE_BUTTON_W, CAM_MODE_PILL_H }, -1);
-  if (self->pill_x < 0 || self->pending)
+                                                                w, CAM_MODE_PILL_H }, -1);
+  /* in place at once when it is not moving (the buttons may have grown with the font size) */
+  if (self->pill_x < 0 || self->pending || !vibeos_anim_is_running (self->x_anim))
     {
       self->pending = FALSE;
       self->pill_x = button_x (widget, self->mode);
@@ -108,8 +126,8 @@ cam_mode_selector_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 
       if (self->vertical)
         gsk_rounded_rect_init_from_rect (&pill, &GRAPHENE_RECT_INIT ((gtk_widget_get_width (widget)
-                                                                      - CAM_MODE_BUTTON_W) / 2, self->pill_x,
-                                                                     CAM_MODE_BUTTON_W, self->pill_w),
+                                                                      - button_w (self)) / 2, self->pill_x,
+                                                                     button_w (self), self->pill_w),
                                          CAM_MODE_PILL_H / 2.0);
       else
         gsk_rounded_rect_init_from_rect (&pill, &GRAPHENE_RECT_INIT (self->pill_x, CAM_MODE_PAD + 4, self->pill_w,

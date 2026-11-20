@@ -9,7 +9,7 @@
 #include <spongy-gtk.h>
 
 #define TOOLBAR_H        64       /* the toolbar, which stays */
-#define SUMMARY_LINE_H   20       /* a summary's line pitch */
+#define SUMMARY_LINE_H   20       /* sp: a summary's line pitch */
 #define APP_BAR_H        179      /* the large collapsing toolbar, expanded */
 #define TITLE_BASELINE   31       /* above the app bar's bottom */
 #define TITLE_SIZE       36       /* the large title */
@@ -62,7 +62,7 @@ summary_layout (CamSummary *self, int width)
   pango_layout_set_wrap (layout, PANGO_WRAP_WORD_CHAR);
   if (width > 0)
     pango_layout_set_width (layout, width * PANGO_SCALE);
-  pango_layout_set_spacing (layout, MAX (0, SUMMARY_LINE_H * PANGO_SCALE - line.height));
+  pango_layout_set_spacing (layout, MAX (0, (int) (vibeos_sp (SUMMARY_LINE_H) * PANGO_SCALE) - line.height));
   return layout;
 }
 
