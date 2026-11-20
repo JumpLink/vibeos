@@ -364,7 +364,7 @@ device_page (GtkWidget *b, GDBusProxy *dev)
   GtkWidget *conn = ns_row_button (g, "Connect", FALSE, connect_tapped, NULL);
   g_object_set_data_full (G_OBJECT (conn), "ns-dev", g_object_ref (dev), g_object_unref);
   g_object_set_data (G_OBJECT (page), "ns-conn", conn);
-  GtkWidget *r = ns_row (g, NULL, NULL, "Rename", alias);
+  GtkWidget *r = ns_row (g, NULL, "Rename", alias);
   ns_row_on_activate (r, rename_tapped, dev);
   g = ns_group (c, NULL);
   g_autofree char *addr = prop_string (dev, "Address");
@@ -438,7 +438,7 @@ bt_fill (NsPage *page)
     if (!is_paired && !name)
       continue;        /* nameless ones are just addresses */
     gboolean conn = prop_bool (dev, "Connected");
-    GtkWidget *r = ns_row (is_paired ? bt->paired : bt->avail, device_icon (dev), conn ? "blue" : "grey", alias_,
+    GtkWidget *r = ns_row (is_paired ? bt->paired : bt->avail, device_icon (dev), alias_,
                            is_paired ? (conn ? "Connected" : NULL) : NULL);
     g_object_set_data_full (G_OBJECT (r), "ns-dev", g_object_ref (dev), g_object_unref);
     if (is_paired) {
@@ -490,7 +490,7 @@ ns_page_bluetooth (GtkWidget *row, gpointer data)
   ns_later_init (page, bt_fill);
 
   GtkWidget *g = ns_group (c, NULL);
-  bt->power = ns_row_toggle (g, NULL, NULL, "Bluetooth", NULL);
+  bt->power = ns_row_toggle (g, NULL, "Bluetooth", NULL);
   g_signal_connect (ns_row_get_switch (bt->power), "notify::active", G_CALLBACK (bt_power), page);
   bt->visible = ns_note (c, "");
   gtk_widget_set_visible (bt->visible, FALSE);
@@ -546,7 +546,7 @@ name_got (GObject *src, GAsyncResult *res, gpointer row)
 GtkWidget *
 ns_bt_name_row (GtkWidget *g)
 {
-  GtkWidget *r = ns_row (g, NULL, NULL, "Device name", g_get_host_name ());
+  GtkWidget *r = ns_row (g, NULL, "Device name", g_get_host_name ());
   ns_row_on_activate (r, name_tapped, NULL);
   g_autoptr (GDBusConnection) bus = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, NULL);
   if (bus)

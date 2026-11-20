@@ -15,9 +15,9 @@
 #include <xf86drmMode.h>
 
 static GtkWidget *
-page_row (GtkWidget *g, const char *icon, const char *color, const char *title, const char *sub, NsActivate page)
+page_row (GtkWidget *g, const char *icon, const char *title, const char *sub, NsActivate page)
 {
-  GtkWidget *r = ns_row (g, icon, color, title, sub);
+  GtkWidget *r = ns_row (g, icon, title, sub);
   ns_row_on_activate (r, page, NULL);
   return r;
 }
@@ -61,9 +61,9 @@ ns_page_connections (GtkWidget *row, gpointer data)
   GtkWidget *c;
   NsPage *page = ns_page_new ("Connections", &c);
   GtkWidget *g = ns_group (c, NULL);
-  page_row (g, "network-wireless-symbolic", "blue", "Wi-Fi", "Networks • Saved networks", ns_page_wifi);
-  page_row (g, "bluetooth-symbolic", "blue", "Bluetooth", "Pair • Connected devices", ns_page_bluetooth);
-  GtkWidget *air = ns_row (g, "airplane-mode-symbolic", "orange", "Flight mode",
+  page_row (g, "network-wireless-symbolic", "Wi-Fi", "Networks • Saved networks", ns_page_wifi);
+  page_row (g, "bluetooth-symbolic", "Bluetooth", "Pair • Connected devices", ns_page_bluetooth);
+  GtkWidget *air = ns_row (g, "airplane-mode-symbolic", "Flight mode",
                            "Turn off calls, messages and mobile data");
   GtkWidget *sw = ns_row_add_switch (air, FALSE);
   g_signal_connect (sw, "notify::active", G_CALLBACK (airplane_set), NULL);
@@ -76,17 +76,17 @@ ns_page_connections (GtkWidget *row, gpointer data)
                             G_VARIANT_TYPE ("(v)"), G_DBUS_CALL_FLAGS_NONE, 3000, NULL, airplane_got,
                             g_object_ref (air));
   g = ns_group (c, NULL);
-  page_row (g, "network-cellular-symbolic", "green", "Mobile network", "Mobile data • Access points • SIM",
+  page_row (g, "network-cellular-symbolic", "Mobile network", "Mobile data • Access points • SIM",
             ns_page_mobile);
-  page_row (g, "network-wireless-hotspot-symbolic", "green", "Mobile hotspot", "Share the mobile data",
+  page_row (g, "network-wireless-hotspot-symbolic", "Mobile hotspot", "Share the mobile data",
             ns_page_hotspot);
-  page_row (g, "network-wired-symbolic", "violet", "Network and VPN", "VPN • USB • Proxy", ns_page_network);
+  page_row (g, "network-wired-symbolic", "Network and VPN", "VPN • USB • Proxy", ns_page_network);
   g = ns_group (c, NULL);
-  page_row (g, "emblem-shared-symbolic", "orange", "Sharing", "Device name • Visibility", ns_page_sharing);
+  page_row (g, "emblem-shared-symbolic", "Sharing", "Device name • Visibility", ns_page_sharing);
   /* printing needs CUPS, which a phone rarely has: GNOME Settings' page, only when it is there */
   g_autofree char *cups = g_find_program_in_path ("lpstat");
   if (cups)
-    page_row (g, "printer-symbolic", "grey", "Printers", NULL, ns_page_printers);
+    page_row (g, "printer-symbolic", "Printers", NULL, ns_page_printers);
   ns_push (page);
 }
 
@@ -408,7 +408,7 @@ night_row_changed (GSettings *color, const char *key, GtkWidget *row)
 static void
 night_row (GtkWidget *g, GSettings *color, GSettings *iface)
 {
-  GtkWidget *r = ns_row (g, NULL, NULL, "Night light", NULL);
+  GtkWidget *r = ns_row (g, NULL, "Night light", NULL);
   GtkWidget *sw = ns_row_add_switch (r, TRUE);
   g_settings_bind (color, "night-light-enabled", sw, "active", G_SETTINGS_BIND_DEFAULT);
   ns_row_on_activate (r, ns_page_night_light, NULL);
@@ -624,7 +624,7 @@ ns_page_display (GtkWidget *row, gpointer data)
   adaptive_row (g, ns_page_settings (page, "org.gnome.settings-daemon.plugins.power"));
 
   g = ns_group (c, NULL);
-  page_row (g, NULL, NULL, "Display size and text", "Font size • Bold text • Display size", ns_page_display_size);
+  page_row (g, NULL, "Display size and text", "Font size • Bold text • Display size", ns_page_display_size);
   ns_displays_scale_row (GTK_WIDGET (page), g);
 
   GSettings *session = ns_page_settings (page, "org.gnome.desktop.session");
@@ -1214,8 +1214,8 @@ ns_page_battery (GtkWidget *row, gpointer data)
    * (statusbar.js paintBattery) has no number in it yet. It needs the level drawn into the battery's body when the
    * key is on. */
   g = ns_group (c, NULL);
-  page_row (g, NULL, NULL, "Battery information", "Health • Temperature • Capacity", ns_page_battery_info);
-  page_row (g, NULL, NULL, "Power and screen blank",
+  page_row (g, NULL, "Battery information", "Health • Temperature • Capacity", ns_page_battery_info);
+  page_row (g, NULL, "Power and screen blank",
             ns_screen_off_sleeper () ? "Dim the screen" : "Automatic suspend • Dim the screen", ns_page_power);
   ns_push (page);
 }
@@ -1366,7 +1366,7 @@ ns_page_wallpaper (GtkWidget *row, gpointer data)
   }
 
   GtkWidget *g = ns_group (c, "Picture");
-  GtkWidget *r = page_row (g, "preferences-desktop-wallpaper-symbolic", "pink", "Wallpapers", NULL,
+  GtkWidget *r = page_row (g, "preferences-desktop-wallpaper-symbolic", "Wallpapers", NULL,
                            ns_page_wallpapers);
   picture_changed (bg, NULL, r);
   g_signal_connect_object (bg, "changed::picture-uri", G_CALLBACK (picture_changed), r, 0);
@@ -1611,7 +1611,7 @@ ns_page_home (GtkWidget *row, gpointer data)
                    "icon-shape-legacy");
 
   g = ns_group (c, NULL);
-  page_row (g, "preferences-desktop-wallpaper-symbolic", "pink", "Wallpaper and style", "Parallax • Picture",
+  page_row (g, "preferences-desktop-wallpaper-symbolic", "Wallpaper and style", "Parallax • Picture",
             ns_page_wallpaper);
   ns_push (page);
 }
@@ -1624,16 +1624,16 @@ ns_page_general (GtkWidget *row, gpointer data)
   GtkWidget *c;
   NsPage *page = ns_page_new ("General management", &c);
   GtkWidget *g = ns_group (c, NULL);
-  page_row (g, "preferences-desktop-locale-symbolic", "violet", "Language and region", "Language • Formats",
+  page_row (g, "preferences-desktop-locale-symbolic", "Language and region", "Language • Formats",
             ns_page_language);
-  page_row (g, "preferences-system-time-symbolic", "blue", "Date and time", "Automatic time • Time zone",
+  page_row (g, "preferences-system-time-symbolic", "Date and time", "Automatic time • Time zone",
             ns_page_datetime);
-  page_row (g, "input-keyboard-symbolic", "grey", "Keyboard", "On-screen keyboard • Layouts", ns_page_keyboard);
-  page_row (g, "input-mouse-symbolic", "grey", "Mouse and touchpad", "Pointer speed • Hardware keyboard",
+  page_row (g, "input-keyboard-symbolic", "Keyboard", "On-screen keyboard • Layouts", ns_page_keyboard);
+  page_row (g, "input-mouse-symbolic", "Mouse and touchpad", "Pointer speed • Hardware keyboard",
             ns_page_mouse);
   g = ns_group (c, NULL);
-  page_row (g, "system-users-symbolic", "orange", "Users", "Your account • Password", ns_page_users);
-  page_row (g, "view-grid-symbolic", "blue", "Default apps", "Browser • Email • Music", ns_page_default_apps);
+  page_row (g, "system-users-symbolic", "Users", "Your account • Password", ns_page_users);
+  page_row (g, "view-grid-symbolic", "Default apps", "Browser • Email • Music", ns_page_default_apps);
   ns_push (page);
 }
 
@@ -1724,6 +1724,6 @@ ns_page_about (GtkWidget *row, gpointer data)
   ns_row_info (g, "Processor", cpus);
 
   g = ns_group (c, NULL);
-  page_row (g, NULL, NULL, "Software information", "Device name • Versions", ns_page_software);
+  page_row (g, NULL, "Software information", "Device name • Versions", ns_page_software);
   ns_push (page);
 }

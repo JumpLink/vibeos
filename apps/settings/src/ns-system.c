@@ -294,7 +294,7 @@ zone_region (GtkWidget *row, gpointer region)
     if (!g_str_has_prefix (z, prefix))
       continue;
     g_autofree char *nice = g_strdelimit (g_strdup (z + strlen (prefix)), "_/", ' ');
-    GtkWidget *r = ns_row (g, NULL, NULL, nice, NULL);
+    GtkWidget *r = ns_row (g, NULL, nice, NULL);
     g_object_set_data (G_OBJECT (r), "ns-page", page);
     ns_row_on_activate (r, zone_set, (gpointer) z);
   }
@@ -322,7 +322,7 @@ zones_page (GtkWidget *row, gpointer page)
       continue;
     }
     g_hash_table_add (seen, region);
-    GtkWidget *r = ns_row (g, NULL, NULL, region, NULL);
+    GtkWidget *r = ns_row (g, NULL, region, NULL);
     g_object_set_data (G_OBJECT (r), "ns-page", page);
     ns_row_on_activate (r, zone_region, region);
   }
@@ -390,7 +390,7 @@ ns_page_datetime (GtkWidget *row, gpointer data)
   GSettings *dt = ns_page_settings (page, "org.gnome.desktop.datetime");
   if (ns_has_key (dt, "automatic-timezone"))
     ns_row_switch (g, "Automatic time zone", "From the phone's location", dt, "automatic-timezone");
-  t->zone = ns_row (g, NULL, NULL, "Time zone", NULL);
+  t->zone = ns_row (g, NULL, "Time zone", NULL);
   ns_row_on_activate (t->zone, zones_page, page);
 
   GSettings *iface = ns_page_settings (page, "org.gnome.desktop.interface");
@@ -451,7 +451,7 @@ other_got (GObject *src, GAsyncResult *res, gpointer group)
     const char *real = "", *login = "";
     g_variant_lookup (props, "RealName", "&s", &real);
     g_variant_lookup (props, "UserName", "&s", &login);
-    ns_row (group, "avatar-default-symbolic", "grey", *real ? real : login, login);
+    ns_row (group, "avatar-default-symbolic", *real ? real : login, login);
     ns_group_set_visible (group, TRUE);
   }
   g_object_unref (group);
@@ -525,12 +525,12 @@ ns_page_users (GtkWidget *row, gpointer data)
   Users *u = g_new0 (Users, 1);
   g_object_set_data_full (G_OBJECT (page), "ns-users", u, g_free);
   GtkWidget *g = ns_group (c, "Your account");
-  u->name = ns_row (g, NULL, NULL, "Name", NULL);
+  u->name = ns_row (g, NULL, "Name", NULL);
   ns_row_on_activate (u->name, real_name_tapped, NULL);
   u->login = ns_row_info (g, "User name", g_get_user_name ());
   u->type = ns_row_info (g, "Account type", NULL);
   g = ns_group (c, NULL);
-  GtkWidget *r = ns_row (g, NULL, NULL, "Screen lock and password", "A pattern or PIN is also your password");
+  GtkWidget *r = ns_row (g, NULL, "Screen lock and password", "A pattern or PIN is also your password");
   ns_row_on_activate (r, ns_page_lock_screen, NULL);
   u->others = ns_group (c, "Other users");
   ns_group_set_visible (u->others, FALSE);

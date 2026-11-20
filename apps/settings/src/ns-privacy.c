@@ -59,13 +59,13 @@ ns_page_privacy (GtkWidget *row, gpointer data)
   GtkWidget *c;
   NsPage *page = ns_page_new ("Security and privacy", &c);
   GtkWidget *g = ns_group (c, NULL);
-  GtkWidget *r = ns_row (g, "system-lock-screen-symbolic", "blue", "Lock screen", "Screen lock type • Notifications");
+  GtkWidget *r = ns_row (g, "system-lock-screen-symbolic", "Lock screen", "Screen lock type • Notifications");
   ns_row_on_activate (r, ns_page_lock_screen, NULL);
   if (ns_settings_exists ("org.gnome.system.location")) {
-    r = ns_row (g, "find-location-symbolic", "purple", "Location", "Location services • App access");
+    r = ns_row (g, "find-location-symbolic", "Location", "Location services • App access");
     ns_row_on_activate (r, ns_page_location, NULL);
   }
-  r = ns_row (g, "system-users-symbolic", "orange", "Your account", "Name • Password");
+  r = ns_row (g, "system-users-symbolic", "Your account", "Name • Password");
   ns_row_on_activate (r, ns_page_users, NULL);
 
   GSettings *p = ns_page_settings (page, "org.gnome.desktop.privacy");
@@ -134,7 +134,7 @@ apps_got (GObject *src, GAsyncResult *res, gpointer group)
     while (g_variant_iter_next (&it, "{&s^a&s}", &app, &p)) {
       g_autofree char *file = g_strconcat (app, ".desktop", NULL);
       g_autoptr (GDesktopAppInfo) info = *app ? g_desktop_app_info_new (file) : NULL;
-      GtkWidget *r = info ? ns_row_app (group, G_APP_INFO (info), NULL) : ns_row (group, NULL, NULL, app, NULL);
+      GtkWidget *r = info ? ns_row_app (group, G_APP_INFO (info), NULL) : ns_row (group, NULL, app, NULL);
       GtkWidget *sw = ns_row_add_switch (r, FALSE);
       ns_switch_set_active (sw, p && p[0] && g_strcmp0 (p[0], "NONE"));
       g_object_set_data_full (G_OBJECT (sw), "ns-app", g_strdup (app), g_free);
@@ -285,11 +285,11 @@ providers_got (GObject *src, GAsyncResult *res, gpointer group)
   GList *all = NULL;
   g_autoptr (GError) err = NULL;
   if (!goa_provider_get_all_finish (&all, res, &err))
-    ns_row (group, NULL, NULL, "No providers", err->message);
+    ns_row (group, NULL, "No providers", err->message);
   for (GList *l = all; l; l = l->next) {
     GoaProvider *p = l->data;
     g_autofree char *name = goa_provider_get_provider_name (p, NULL);
-    GtkWidget *r = ns_row (group, NULL, NULL, name, NULL);
+    GtkWidget *r = ns_row (group, NULL, name, NULL);
     g_autoptr (GIcon) icon = goa_provider_get_provider_icon (p, NULL);
     GtkWidget *img = gtk_image_new_from_gicon (icon);
     gtk_image_set_pixel_size (GTK_IMAGE (img), 32);
@@ -399,7 +399,7 @@ accounts_got (GObject *src, GAsyncResult *res, gpointer group)
       g_variant_lookup (acc, "ProviderName", "&s", &provider);
       g_variant_lookup (acc, "PresentationIdentity", "&s", &who);
       g_variant_lookup (acc, "AttentionNeeded", "b", &attention);
-      GtkWidget *r = ns_row (group, "avatar-default-symbolic", "blue", provider,
+      GtkWidget *r = ns_row (group, "avatar-default-symbolic", provider,
                              attention ? "Needs you to sign in again" : who);
       g_object_set_data_full (G_OBJECT (r), "ns-path", g_strdup (path), g_free);
       g_object_set_data_full (G_OBJECT (r), "ns-props", acc, (GDestroyNotify) g_variant_unref);
@@ -486,7 +486,7 @@ ns_page_accessibility (GtkWidget *row, gpointer data)
     ns_row_switch (g, "High contrast", "Stronger colours and outlines", a11y, "high-contrast");
   if (ns_has_key (iface, "enable-animations"))
     inverted (g, "Reduce animations", "Less movement on screen", iface, "enable-animations");
-  GtkWidget *r = ns_row (g, NULL, NULL, "Display size and text", "Font size • Bold text • Display size");
+  GtkWidget *r = ns_row (g, NULL, "Display size and text", "Font size • Bold text • Display size");
   ns_row_on_activate (r, ns_page_display_size, NULL);
   if (ns_has_key (iface, "cursor-size"))
     int_row (g, "Pointer size", iface, "cursor-size", cursors, cursor_labels);

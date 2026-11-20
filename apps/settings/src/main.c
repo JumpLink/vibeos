@@ -221,7 +221,7 @@ search_changed (VibeosSearchView *view, const char *text, GtkWidget *results)
     const Entry *e = g_object_get_data (menu_rows->pdata[i], "ns-entry");
     if (!matches (e, words))
       continue;
-    GtkWidget *r = ns_row (results, NULL, NULL, e->title, e->subtitle);
+    GtkWidget *r = ns_row (results, NULL, e->title, e->subtitle);
     set_circle (r, e);
     ns_row_on_activate (r, result_clicked, (gpointer) e);
   }

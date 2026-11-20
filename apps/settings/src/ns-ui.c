@@ -260,7 +260,7 @@ row_clicked (VibeosListRow *row, gpointer data)
 }
 
 GtkWidget *
-ns_row (GtkWidget *group, const char *icon, const char *color, const char *title, const char *subtitle)
+ns_row (GtkWidget *group, const char *icon, const char *title, const char *subtitle)
 {
   GtkWidget *row = vibeos_list_row_new (title, subtitle && *subtitle ? subtitle : NULL);
   if (icon)
@@ -332,7 +332,7 @@ ns_row_add_switch (GtkWidget *row, gboolean split)
 GtkWidget *
 ns_row_switch (GtkWidget *group, const char *title, const char *subtitle, GSettings *s, const char *key)
 {
-  GtkWidget *row = ns_row (group, NULL, NULL, title, subtitle);
+  GtkWidget *row = ns_row (group, NULL, title, subtitle);
   GtkWidget *sw = ns_row_add_switch (row, FALSE);
   if (s)
     g_settings_bind (s, key, sw, "active", G_SETTINGS_BIND_DEFAULT);
@@ -412,7 +412,7 @@ spin_free (Spin *sp)
 GtkWidget *
 ns_row_spin (GtkWidget *group, const char *title, GSettings *s, const char *key, int lo, int hi)
 {
-  GtkWidget *row = ns_row (group, NULL, NULL, title, NULL);
+  GtkWidget *row = ns_row (group, NULL, title, NULL);
   Spin *sp = g_new0 (Spin, 1);
   sp->s = s;
   sp->key = g_strdup (key);
@@ -456,7 +456,7 @@ ns_mark_new (gboolean on)
 static GtkWidget *
 mark_row (GtkWidget *g, const char *label, gboolean on)
 {
-  GtkWidget *r = ns_row (g, NULL, NULL, label, NULL);
+  GtkWidget *r = ns_row (g, NULL, label, NULL);
   GtkWidget *mark = ns_mark_new (on);
   ns_row_suffix (r, mark);
   g_object_set_data (G_OBJECT (r), "ns-mark", mark);
@@ -537,7 +537,7 @@ ns_row_choice (GtkWidget *group, const char *title, GSettings *s, const char *ke
   c->key = g_strdup (key);
   c->values = values;
   c->labels = labels;
-  c->row = ns_row (group, NULL, NULL, title, NULL);
+  c->row = ns_row (group, NULL, title, NULL);
   g_object_set_data_full (G_OBJECT (c->row), "ns-title", g_strdup (title), g_free);
   ns_row_set_subtitle (c->row, choice_label (c));
   ns_row_on_activate (c->row, choice_open, c);
@@ -546,9 +546,9 @@ ns_row_choice (GtkWidget *group, const char *title, GSettings *s, const char *ke
 }
 
 GtkWidget *
-ns_row_toggle (GtkWidget *group, const char *icon, const char *color, const char *title, const char *subtitle)
+ns_row_toggle (GtkWidget *group, const char *icon, const char *title, const char *subtitle)
 {
-  GtkWidget *r = ns_row (group, icon, color, title, subtitle);
+  GtkWidget *r = ns_row (group, icon, title, subtitle);
   ns_row_add_switch (r, FALSE);
   return r;
 }
@@ -576,7 +576,7 @@ ns_row_get_switch (GtkWidget *row)
 GtkWidget *
 ns_row_app (GtkWidget *group, GAppInfo *app, const char *subtitle)
 {
-  GtkWidget *row = ns_row (group, NULL, NULL, g_app_info_get_display_name (app), subtitle);
+  GtkWidget *row = ns_row (group, NULL, g_app_info_get_display_name (app), subtitle);
   GIcon *gi = g_app_info_get_icon (app);
   GtkWidget *img = gi ? gtk_image_new_from_gicon (gi) : gtk_image_new_from_icon_name ("application-x-executable");
   gtk_image_set_pixel_size (GTK_IMAGE (img), 40);
@@ -588,13 +588,13 @@ ns_row_app (GtkWidget *group, GAppInfo *app, const char *subtitle)
 GtkWidget *
 ns_row_info (GtkWidget *group, const char *title, const char *value)
 {
-  return ns_row (group, NULL, NULL, title, value && *value ? value : "–");
+  return ns_row (group, NULL, title, value && *value ? value : "–");
 }
 
 GtkWidget *
 ns_row_button (GtkWidget *group, const char *title, gboolean destructive, NsActivate cb, gpointer data)
 {
-  GtkWidget *r = ns_row (group, NULL, NULL, title, NULL);
+  GtkWidget *r = ns_row (group, NULL, title, NULL);
   gtk_widget_add_css_class (r, destructive ? "ns-danger" : "ns-accent");
   ns_row_on_activate (r, cb, data);
   return r;
@@ -823,7 +823,7 @@ ns_row_pick (GtkWidget *group, const char *title, const char *const *labels, gui
   p->labels = g_strdupv ((char **) labels);
   p->picked = picked;
   p->data = data;
-  p->row = ns_row (group, NULL, NULL, title, NULL);
+  p->row = ns_row (group, NULL, title, NULL);
   g_object_set_data_full (G_OBJECT (p->row), "ns-title", g_strdup (title), g_free);
   g_object_set_data (G_OBJECT (p->row), "ns-pick", p);
   ns_row_pick_select (p->row, selected);
@@ -904,7 +904,7 @@ ns_row_entry (GtkWidget *group, const char *title, GSettings *s, const char *key
   Entry *e = g_new0 (Entry, 1);
   e->s = s;
   e->key = g_strdup (key);
-  e->row = ns_row (group, NULL, NULL, title, NULL);
+  e->row = ns_row (group, NULL, title, NULL);
   g_object_set_data_full (G_OBJECT (e->row), "ns-title", g_strdup (title), g_free);
   entry_show (s, key, e);
   g_autofree char *sig = g_strconcat ("changed::", key, NULL);
@@ -962,7 +962,7 @@ ns_row_value (GtkWidget *group, const char *title, const char *value, gboolean s
               gpointer data)
 {
   Value *v = g_new0 (Value, 1);
-  v->row = ns_row (group, NULL, NULL, title, NULL);
+  v->row = ns_row (group, NULL, title, NULL);
   v->title = g_strdup (title);
   v->value = g_strdup (value);
   v->secret = secret;

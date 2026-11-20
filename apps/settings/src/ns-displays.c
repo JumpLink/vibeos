@@ -380,7 +380,7 @@ display_open (GtkWidget *row, gpointer data)
 static GtkWidget *
 choice_row (GtkWidget *g, const char *title, const char *subtitle, gboolean on, NsActivate picked, gpointer data)
 {
-  GtkWidget *r = ns_row (g, NULL, NULL, title, subtitle);
+  GtkWidget *r = ns_row (g, NULL, title, subtitle);
   GtkWidget *mark = gtk_image_new_from_icon_name ("object-select-symbolic");
   gtk_widget_add_css_class (mark, "ns-accent");
   gtk_widget_set_opacity (mark, on);
@@ -460,8 +460,7 @@ fill_cards (Displays *d)
   for (guint i = 0; i < m->monitors->len; i++) {
     NsMonitor *mon = m->monitors->pdata[i];
     g_autofree char *sub = summary (m, mon);
-    GtkWidget *r = ns_row (d->list, mon->builtin ? "phone-symbolic" : "video-display-symbolic",
-                           mon->builtin ? "lime" : "blue", mon->name, sub);
+    GtkWidget *r = ns_row (d->list, mon->builtin ? "phone-symbolic" : "video-display-symbolic", mon->name, sub);
     /* the built-in panel has a page only while it is off: its scale is below, and it has one mode */
     if (!mon->builtin || !mon->logical) {
       g_object_set_data_full (G_OBJECT (r), "ns-connector", g_strdup (mon->connector), g_free);

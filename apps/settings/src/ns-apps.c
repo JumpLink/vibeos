@@ -145,7 +145,7 @@ alerts_row (GtkWidget *g)
 {
   if (!ns_settings_exists ("org.freedesktop.cbd"))
     return;
-  GtkWidget *r = ns_row (g, NULL, NULL, "Emergency alerts", "Cell broadcast warnings");
+  GtkWidget *r = ns_row (g, NULL, "Emergency alerts", "Cell broadcast warnings");
   ns_row_on_activate (r, alerts_page, NULL);
   gtk_widget_set_visible (r, FALSE);
   g_autoptr (GDBusConnection) bus = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, NULL);
@@ -399,7 +399,7 @@ app_page (GAppInfo *app)
   GSettings *ns = app_settings (NOTIFY_APP, "/org/gnome/desktop/notifications/application/", app);
   if (ns) {
     g_object_set_data_full (G_OBJECT (page), "ns-notify", ns, g_object_unref);
-    GtkWidget *r = ns_row (g, "preferences-system-notifications-symbolic", "orange", "Notifications", NULL);
+    GtkWidget *r = ns_row (g, "preferences-system-notifications-symbolic", "Notifications", NULL);
     allowed_changed (ns, NULL, r);
     g_signal_connect_object (ns, "changed::enable", G_CALLBACK (allowed_changed), r, 0);
     ns_row_on_activate (r, app_notify_page, app);
@@ -513,7 +513,7 @@ ns_page_apps (GtkWidget *row, gpointer data)
   GtkWidget *c;
   NsPage *page = ns_page_new ("Apps", &c);
   GtkWidget *g = ns_group (c, NULL);
-  GtkWidget *r = ns_row (g, "view-grid-symbolic", NULL, "Default apps", "Browser • Email • Music • Photos");
+  GtkWidget *r = ns_row (g, "view-grid-symbolic", "Default apps", "Browser • Email • Music • Photos");
   ns_row_on_activate (r, default_apps_tapped, NULL);
   g = ns_group (c, NULL);
   IconBake *bake = g_new0 (IconBake, 1);
