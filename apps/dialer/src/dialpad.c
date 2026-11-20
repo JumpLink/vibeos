@@ -5,9 +5,10 @@
 #include <math.h>
 #include <vibeos.h>
 
-#define DIGITS_HEIGHT   60      /* the field with the typed number */
-#define DIGITS_SIZE     34      /* the typed number, shrunk as far as DIGITS_MIN_SIZE to fit */
+#define DIGITS_HEIGHT   60      /* the field with the typed number, at least */
+#define DIGITS_SIZE     34      /* sp: the typed number, shrunk as far as DIGITS_MIN_SIZE to fit */
 #define DIGITS_MIN_SIZE 24
+#define GSF_LINE        (2504 / 2000.0)     /* Google Sans Flex's line height, of its size */
 #define SPACE_ABOVE     (1 + 14)        /* a one-pixel spacer, then the gap over the keys */
 #define KEY_HEIGHT      64      /* the rows' minimum; they share what is left over */
 #define SPACE_BELOW     8
@@ -17,9 +18,9 @@
 #define BUTTON_MARGIN   8
 #define MENU_PADDING    10      /* round ✕ and ⋮ */
 #define DELETE_PADDING  16      /* round ⌫ */
-#define NUMBER_SIZE     36      /* a key's digit */
+#define NUMBER_SIZE     36      /* a key's digit: dp, it keeps its size whatever the font size */
 #define NUMBER_GAP      3       /* between a key's digit and its letters */
-#define LETTERS_SIZE    12
+#define LETTERS_SIZE    12      /* sp, as * and # are */
 #define STAR_SIZE       36
 #define POUND_SIZE      23
 #define SYMBOL_GAP      13      /* room left under * and #, which lifts them */
@@ -60,17 +61,31 @@ rgb (DialerDialpad *pad, PadColor color, double alpha)
   return rgba;
 }
 
+/* the layout's text at `size` px, at 400 as Bold text draws it; unchanged when it is that already */
+static void
+gsf_style (PangoLayout *layout, double size)
+{
+  g_autoptr(PangoFontDescription) font = pango_font_description_from_string ("Google Sans Flex, VibeOS Roboto");
+
+  pango_font_description_set_absolute_size (font, size * PANGO_SCALE);
+  pango_font_description_set_weight (font, vibeos_font_weight (400));
+  pango_layout_set_font_description (layout, font);
+}
+
 static PangoLayout *
 gsf_layout (GtkWidget *widget, const char *text, double size)
 {
   PangoLayout *layout = gtk_widget_create_pango_layout (widget, text);
-  g_autoptr(PangoFontDescription) font = pango_font_description_from_string ("Google Sans Flex, VibeOS Roboto");
 
-  /* 700, not 400: the phone's Bold text setting is on */
-  pango_font_description_set_absolute_size (font, size * PANGO_SCALE);
-  pango_font_description_set_weight (font, vibeos_font_weight (400));
-  pango_layout_set_font_description (layout, font);
+  gsf_style (layout, size);
   return layout;
+}
+
+/* the field with the typed number: as tall as a line of it at the font size in effect, DIGITS_HEIGHT at least */
+static double
+digits_height (void)
+{
+  return MAX (DIGITS_HEIGHT, ceil (vibeos_sp (DIGITS_SIZE) * GSF_LINE));
 }
 
 /* ---- a key ---------------------------------------------------------------------------------------------------- */
@@ -139,8 +154,15 @@ dialpad_key_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   double width = gtk_widget_get_width (widget), height = gtk_widget_get_height (widget), cx = width / 2;
   graphene_rect_t box = GRAPHENE_RECT_INIT (0, 0, width, height);
   GdkRGBA primary = rgb (self->pad, PRIMARY, 1), secondary = rgb (self->pad, SECONDARY, 1);
-  Ink number = ink_of (self->number), letters = { 0 };
+  Ink number, letters = { 0 };
   double group, top;
+
+  /* the sizes and weight at the font size and Bold text in effect (the digit's size is fixed) */
+  gsf_style (self->number, self->c == '*' ? vibeos_sp (STAR_SIZE)
+                           : self->c == '#' ? vibeos_sp (POUND_SIZE) : NUMBER_SIZE);
+  if (self->letters)
+    gsf_style (self->letters, vibeos_sp (LETTERS_SIZE));
+  number = ink_of (self->number);
 
   /* a key's ripple, the theme's */
   if (vibeos_ripple_is_active (&self->ripple))
@@ -273,8 +295,8 @@ dialpad_key_new (DialerDialpad *pad, char c)
 
   self->pad = pad;
   self->c = c;
-  self->number = gsf_layout (GTK_WIDGET (self), text,
-                             c == '*' ? STAR_SIZE : c == '#' ? POUND_SIZE : NUMBER_SIZE);
+  /* sized as the key draws */
+  self->number = gsf_layout (GTK_WIDGET (self), text, NUMBER_SIZE);
   if (letters && *letters)
     self->letters = gsf_layout (GTK_WIDGET (self), letters, LETTERS_SIZE);
   /* the content descriptions are "1," "2,ABC" … "*" "#" */
@@ -328,7 +350,7 @@ dialer_dialpad_measure (GtkWidget *widget, GtkOrientation orientation, int for_s
   if (orientation == GTK_ORIENTATION_HORIZONTAL)
     *minimum = *natural = 0;
   else
-    *minimum = *natural = DIGITS_HEIGHT + SPACE_ABOVE + 4 * KEY_HEIGHT + end_space (self) + SPACE_BELOW;
+    *minimum = *natural = digits_height () + SPACE_ABOVE + 4 * KEY_HEIGHT + end_space (self) + SPACE_BELOW;
 }
 
 /* the ✕, ⋮ and ⌫ buttons: an icon with padding beside it, the row's height less the margins */
@@ -338,7 +360,7 @@ allocate_button (GtkWidget *button, double x, double width)
   if (!gtk_widget_get_visible (button))
     return;
   gtk_widget_size_allocate (button, &(GtkAllocation) { (int) x, BUTTON_MARGIN, (int) width,
-                                                       DIGITS_HEIGHT - 2 * BUTTON_MARGIN }, -1);
+                                                       (int) digits_height () - 2 * BUTTON_MARGIN }, -1);
 }
 
 /* the field between the buttons */
@@ -359,7 +381,7 @@ static void
 dialer_dialpad_size_allocate (GtkWidget *widget, int width, int height, int baseline)
 {
   DialerDialpad *self = DIALER_DIALPAD (widget);
-  double fixed = DIGITS_HEIGHT + SPACE_ABOVE + end_space (self) + SPACE_BELOW;
+  double field = digits_height (), fixed = field + SPACE_ABOVE + end_space (self) + SPACE_BELOW;
   double row = MAX (KEY_HEIGHT, (height - fixed) / 4);
   double key = width * 15.0 / 47, side = width / 47.0;
 
@@ -370,7 +392,7 @@ dialer_dialpad_size_allocate (GtkWidget *widget, int width, int height, int base
   for (int i = 0; i < 12; i++)
     {
       int r = i / 3, c = i % 3;
-      double x = side + c * key, y = DIGITS_HEIGHT + SPACE_ABOVE + r * row;
+      double x = side + c * key, y = field + SPACE_ABOVE + r * row;
 
       gtk_widget_size_allocate (self->keys[i], &(GtkAllocation) { (int) round (x), (int) round (y),
                                                                   (int) (round (x + key) - round (x)),
@@ -382,7 +404,8 @@ static void
 dialer_dialpad_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   DialerDialpad *self = DIALER_DIALPAD (widget);
-  double width = gtk_widget_get_width (widget), height = gtk_widget_get_height (widget), x0, x1, size = DIGITS_SIZE;
+  double width = gtk_widget_get_width (widget), height = gtk_widget_get_height (widget), x0, x1;
+  double full = vibeos_sp (DIGITS_SIZE), size = full, field = digits_height ();
   graphene_rect_t box = GRAPHENE_RECT_INIT (0, 0, width, height);
   GskRoundedRect shape;
   GdkRGBA background = rgb (self, BACKGROUND, 1), primary = rgb (self, PRIMARY, 1), shadow;
@@ -404,22 +427,23 @@ dialer_dialpad_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   {
     g_autoptr(PangoFontDescription) font = pango_font_description_copy (pango_layout_get_font_description (self->digits_layout));
 
-    pango_font_description_set_absolute_size (font, DIGITS_SIZE * PANGO_SCALE);
+    pango_font_description_set_absolute_size (font, full * PANGO_SCALE);
+    pango_font_description_set_weight (font, vibeos_font_weight (400));
     pango_layout_set_font_description (self->digits_layout, font);
     pango_layout_get_pixel_size (self->digits_layout, &text_width, &text_height);
     if (text_width > x1 - x0)
       {
-        size = MAX (DIGITS_MIN_SIZE, DIGITS_SIZE * (x1 - x0) / text_width);
+        size = MAX (vibeos_sp (DIGITS_MIN_SIZE), full * (x1 - x0) / text_width);
         pango_font_description_set_absolute_size (font, size * PANGO_SCALE);
         pango_layout_set_font_description (self->digits_layout, font);
         pango_layout_get_pixel_size (self->digits_layout, &text_width, &text_height);
       }
   }
-  gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (x0, 0, x1 - x0, DIGITS_HEIGHT));
+  gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (x0, 0, x1 - x0, field));
   gtk_snapshot_save (snapshot);
   gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (text_width > x1 - x0 ? x1 - text_width
                                                                                : round ((x0 + x1 - text_width) / 2),
-                                                          round ((DIGITS_HEIGHT - text_height) / 2.0)));
+                                                          round ((field - text_height) / 2.0)));
   gtk_snapshot_append_layout (snapshot, self->digits_layout, &primary);
   gtk_snapshot_restore (snapshot);
   gtk_snapshot_pop (snapshot);

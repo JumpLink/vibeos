@@ -8,7 +8,7 @@
 #define ICON_VIEW       64      /* the round button */
 #define ICON_PADDING    14      /* around the icon, which is scaled up to fill the rest */
 #define LABEL_GAP       8
-#define LABEL_SIZE      12      /* the label under the button */
+#define LABEL_SIZE      12      /* sp: the label under the button */
 #define LABEL_MAX_EMS   9
 #define WIDTH           104     /* a column of the grid: three to a phone's width */
 #define DISABLED_ALPHA  0.3
@@ -30,13 +30,25 @@ G_DEFINE_FINAL_TYPE (InCallButton, incall_button, GTK_TYPE_WIDGET)
 enum { CLICKED, N_SIGNALS };
 static guint signals[N_SIGNALS];
 
+/* the label at 400 as Bold text draws it, at the font size in effect; unchanged when it is so already */
+static void
+update_label_font (InCallButton *self)
+{
+  g_autoptr(PangoFontDescription) font = pango_font_description_from_string ("VibeOS Roboto");
+
+  pango_font_description_set_absolute_size (font, vibeos_sp (LABEL_SIZE) * PANGO_SCALE);
+  pango_font_description_set_weight (font, vibeos_font_weight (400));
+  pango_layout_set_font_description (self->label, font);
+}
+
 static double
 label_height (InCallButton *self)
 {
   int width, height;
 
+  update_label_font (self);
   pango_layout_get_size (self->label, &width, &height);
-  return PAD_TOP (LABEL_SIZE) + height / (double) PANGO_SCALE + PAD_BOTTOM (LABEL_SIZE);
+  return PAD_TOP (vibeos_sp (LABEL_SIZE)) + height / (double) PANGO_SCALE + PAD_BOTTOM (vibeos_sp (LABEL_SIZE));
 }
 
 static void
@@ -60,7 +72,9 @@ incall_button_size_allocate (GtkWidget *widget, int width, int height, int basel
   InCallButton *self = INCALL_BUTTON (widget);
 
   /* one line, at most 9 ems, ellipsized at the end */
-  pango_layout_set_width (self->label, (int) (MIN (width - 2 * PADDING, LABEL_MAX_EMS * LABEL_SIZE) * PANGO_SCALE));
+  update_label_font (self);
+  pango_layout_set_width (self->label,
+                          (int) (MIN (width - 2 * PADDING, LABEL_MAX_EMS * vibeos_sp (LABEL_SIZE)) * PANGO_SCALE));
 }
 
 static void
@@ -104,8 +118,9 @@ incall_button_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   /* the layout centres its line in its own width: its logical box says where the line starts */
   pango_layout_get_pixel_extents (self->label, NULL, &logical);
   gtk_snapshot_save (snapshot);
-  gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (round (cx - logical.width / 2.0) - logical.x,
-                                                          PADDING + ICON_VIEW + LABEL_GAP + PAD_TOP (LABEL_SIZE)));
+  gtk_snapshot_translate (snapshot,
+                          &GRAPHENE_POINT_INIT (round (cx - logical.width / 2.0) - logical.x,
+                                                PADDING + ICON_VIEW + LABEL_GAP + PAD_TOP (vibeos_sp (LABEL_SIZE))));
   gtk_snapshot_append_layout (snapshot, self->label, &white);
   gtk_snapshot_restore (snapshot);
   if (!gtk_widget_is_sensitive (widget))
@@ -184,14 +199,10 @@ static void
 incall_button_init (InCallButton *self)
 {
   GtkGesture *click = gtk_gesture_click_new ();
-  g_autoptr(PangoFontDescription) font = pango_font_description_from_string ("VibeOS Roboto");
 
   vibeos_ripple_init (&self->ripple, GTK_WIDGET (self));
   self->label = gtk_widget_create_pango_layout (GTK_WIDGET (self), NULL);
-  /* 700, not 400: the phone's Bold text setting is on */
-  pango_font_description_set_absolute_size (font, LABEL_SIZE * PANGO_SCALE);
-  pango_font_description_set_weight (font, vibeos_font_weight (400));
-  pango_layout_set_font_description (self->label, font);
+  update_label_font (self);
   pango_layout_set_ellipsize (self->label, PANGO_ELLIPSIZE_END);
   pango_layout_set_alignment (self->label, PANGO_ALIGN_CENTER);
 

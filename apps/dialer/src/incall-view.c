@@ -16,9 +16,12 @@
 #define GRID_SIDE       24
 #define AVATAR          88
 #define AVATAR_GAP      8
-#define STATUS_SIZE     18      /* the status and bottom lines, and the hold banner */
-#define NAME_SIZE       36      /* the name, shrunk as far as NAME_MIN_SIZE to fit */
+#define STATUS_SIZE     18      /* sp: the status and bottom lines, and the hold banner */
+#define STATUS_PX      vibeos_sp (STATUS_SIZE)
+#define NAME_SIZE       36      /* sp: the name, shrunk as far as NAME_MIN_SIZE to fit */
 #define NAME_MIN_SIZE   28
+#define STATUS_FAMILY   "VibeOS Roboto"
+#define NAME_FAMILY     "Google Sans Flex, VibeOS Roboto"
 #define NAME_GAP        4
 #define BOTTOM_GAP      2       /* under the label or the timer */
 
@@ -81,7 +84,7 @@ struct _InCallView
   gboolean locked;
 
   PangoLayout *status, *name, *bottom, *banner_name, *banner_label;
-  double name_size;
+  double name_size;             /* px */
   char *label;                  /* the bottom row's text when no timer shows */
   guint timer;
 
@@ -118,16 +121,24 @@ is_live (CallState state)
 
 /* ---- text ----------------------------------------------------------------------------------------------------- */
 
+/* the layout's text at `size` sp, at 400 as Bold text draws it, as the font size and Bold text are now (unchanged
+ * when it is so already) */
+static void
+set_style (PangoLayout *layout, const char *family, double size)
+{
+  g_autoptr(PangoFontDescription) font = pango_font_description_from_string (family);
+
+  pango_font_description_set_absolute_size (font, vibeos_sp (size) * PANGO_SCALE);
+  pango_font_description_set_weight (font, vibeos_font_weight (400));
+  pango_layout_set_font_description (layout, font);
+}
+
 static PangoLayout *
 new_layout (InCallView *self, const char *family, double size)
 {
   PangoLayout *layout = gtk_widget_create_pango_layout (GTK_WIDGET (self), NULL);
-  g_autoptr(PangoFontDescription) font = pango_font_description_from_string (family);
 
-  /* 400, which Bold text makes 700 */
-  pango_font_description_set_absolute_size (font, size * PANGO_SCALE);
-  pango_font_description_set_weight (font, vibeos_font_weight (400));
-  pango_layout_set_font_description (layout, font);
+  set_style (layout, family, size);
   pango_layout_set_single_paragraph_mode (layout, TRUE);
   pango_layout_set_ellipsize (layout, PANGO_ELLIPSIZE_END);
   return layout;
@@ -154,28 +165,25 @@ layout_width (PangoLayout *layout)
 static double
 roboto_box (PangoLayout *layout)
 {
-  return ROBOTO_PAD_TOP (STATUS_SIZE) + layout_height (layout) + ROBOTO_PAD_BOTTOM (STATUS_SIZE);
+  return ROBOTO_PAD_TOP (STATUS_PX) + layout_height (layout) + ROBOTO_PAD_BOTTOM (STATUS_PX);
 }
 
 /* the largest size from NAME_SIZE down to NAME_MIN_SIZE at which the name fits; below that it is ellipsized */
 static void
 fit_name (InCallView *self, double width)
 {
-  g_autoptr(PangoFontDescription) font = pango_font_description_copy (pango_layout_get_font_description (self->name));
   double size;
 
   pango_layout_set_width (self->name, -1);
   for (size = NAME_SIZE; size > NAME_MIN_SIZE; size--)
     {
-      pango_font_description_set_absolute_size (font, size * PANGO_SCALE);
-      pango_layout_set_font_description (self->name, font);
+      set_style (self->name, NAME_FAMILY, size);
       if (layout_width (self->name) <= width)
         break;
     }
-  pango_font_description_set_absolute_size (font, size * PANGO_SCALE);
-  pango_layout_set_font_description (self->name, font);
+  set_style (self->name, NAME_FAMILY, size);
   pango_layout_set_width (self->name, (int) (width * PANGO_SCALE));
-  self->name_size = size;
+  self->name_size = vibeos_sp (size);
 }
 
 static void
@@ -544,6 +552,11 @@ incall_view_size_allocate (GtkWidget *widget, int width, int height, int baselin
   double dialpad_top, end_top = height - END_MARGIN - END_SIZE;
   int min, nat;
 
+  /* the text at the font size and Bold text in effect (they may have changed since the last time) */
+  set_style (self->status, STATUS_FAMILY, STATUS_SIZE);
+  set_style (self->bottom, STATUS_FAMILY, STATUS_SIZE);
+  set_style (self->banner_name, STATUS_FAMILY, STATUS_SIZE);
+  set_style (self->banner_label, STATUS_FAMILY, STATUS_SIZE);
   pango_layout_set_width (self->status, (int) ((width - 2 * GRID_SIDE) * PANGO_SCALE));
   pango_layout_set_width (self->bottom, (int) ((width - 2 * GRID_SIDE) * PANGO_SCALE));
   pango_layout_set_alignment (self->status, PANGO_ALIGN_CENTER);
@@ -605,11 +618,11 @@ draw_grid (InCallView *self, GtkSnapshot *snapshot, double width)
   avatar_snapshot (snapshot, GTK_WIDGET (self), width / 2, y + AVATAR / 2.0, AVATAR, self->identifier,
                    self->letter_from, self->photo);
   y += AVATAR + AVATAR_GAP;
-  draw_centered (snapshot, self->status, width, y + ROBOTO_PAD_TOP (STATUS_SIZE), TEXT_SECONDARY);
+  draw_centered (snapshot, self->status, width, y + ROBOTO_PAD_TOP (STATUS_PX), TEXT_SECONDARY);
   y += roboto_box (self->status);
   draw_centered (snapshot, self->name, width, y + GSF_PAD_TOP (self->name_size), 1);
   y += GSF_PAD_TOP (self->name_size) + layout_height (self->name) + GSF_PAD_BOTTOM (self->name_size) + NAME_GAP;
-  draw_centered (snapshot, self->bottom, width, y + ROBOTO_PAD_TOP (STATUS_SIZE), TEXT_SECONDARY);
+  draw_centered (snapshot, self->bottom, width, y + ROBOTO_PAD_TOP (STATUS_PX), TEXT_SECONDARY);
 }
 
 /* the held call's banner: across the top, over the contact grid */
@@ -617,7 +630,7 @@ static void
 draw_banner (InCallView *self, GtkSnapshot *snapshot, double width)
 {
   double height = banner_height (self), x = BANNER_PAD_X;
-  double text_y = round ((height - roboto_box (self->banner_label)) / 2) + ROBOTO_PAD_TOP (STATUS_SIZE);
+  double text_y = round ((height - roboto_box (self->banner_label)) / 2) + ROBOTO_PAD_TOP (STATUS_PX);
   GdkRGBA background = rgb (BANNER_COLOR, BANNER_ALPHA), icon = vibeos_color_alpha (VIBEOS_WHITE, TEXT_SECONDARY);
 
   gtk_snapshot_append_color (snapshot, &background, &GRAPHENE_RECT_INIT (0, 0, width, height));
@@ -733,12 +746,12 @@ incall_view_init (InCallView *self)
   GdkRGBA ripple;
   CallsClient *client = calls_client_get ();
 
-  self->status = new_layout (self, "VibeOS Roboto", STATUS_SIZE);
-  self->name = new_layout (self, "Google Sans Flex, VibeOS Roboto", NAME_SIZE);
-  self->name_size = NAME_SIZE;
-  self->bottom = new_layout (self, "VibeOS Roboto", STATUS_SIZE);
-  self->banner_name = new_layout (self, "VibeOS Roboto", STATUS_SIZE);
-  self->banner_label = new_layout (self, "VibeOS Roboto", STATUS_SIZE);
+  self->status = new_layout (self, STATUS_FAMILY, STATUS_SIZE);
+  self->name = new_layout (self, NAME_FAMILY, NAME_SIZE);
+  self->name_size = vibeos_sp (NAME_SIZE);
+  self->bottom = new_layout (self, STATUS_FAMILY, STATUS_SIZE);
+  self->banner_name = new_layout (self, STATUS_FAMILY, STATUS_SIZE);
+  self->banner_label = new_layout (self, STATUS_FAMILY, STATUS_SIZE);
   pango_layout_set_text (self->banner_label, _("On hold"), -1);
 
   /* the grid's buttons, then the keypad over them, then the end-call button over that */
