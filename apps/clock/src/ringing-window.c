@@ -519,7 +519,7 @@ static void
 draw_button (RingingView *self, GtkSnapshot *snapshot, double x, double y, double fraction, Target button)
 {
   double v = accel_decel (fraction), scale = BUTTON_SCALE + (1 - BUTTON_SCALE) * v;
-  GdkRGBA white = { 1, 1, 1, 1 }, disc, glyph;
+  GdkRGBA white = vibeos_color (VIBEOS_WHITE), disc, glyph;
 
   if (button == TARGET_SNOOZE)
     {
@@ -530,7 +530,7 @@ draw_button (RingingView *self, GtkSnapshot *snapshot, double x, double y, doubl
     {
       GdkRGBA background = vibeos_color (VIBEOS_SURFACE);
 
-      disc = (GdkRGBA) { 1, 1, 1, v };
+      disc = vibeos_color_alpha (VIBEOS_WHITE, v);
       glyph = argb_evaluate (&white, &background, v);
     }
   glyph.alpha = (ICON_ALPHA + (255 - ICON_ALPHA) * v) / 255;
