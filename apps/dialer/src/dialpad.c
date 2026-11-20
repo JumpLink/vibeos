@@ -25,6 +25,11 @@
 #define POUND_SIZE      23
 #define SYMBOL_GAP      13      /* room left under * and #, which lifts them */
 #define VOICEMAIL_SIZE  18      /* the voicemail glyph under the 1 */
+/* compact (a phone held sideways): lower keys, each with its digit and letters on one line */
+#define COMPACT_KEY_HEIGHT  36
+#define COMPACT_NUMBER_SIZE 24  /* dp, as the digit's full size is */
+#define COMPACT_GAP         6   /* between the digit and its letters */
+#define COMPACT_END_SPACE   72  /* under the keys, for the dial button */
 #define LONG_PRESS_MS   400
 
 /* colours, read as the pad draws: the theme's roles in the Dialer; in a call, whose screen is dark in light mode too,
@@ -48,6 +53,7 @@ static const struct { VibeosPalette palette; int stop; } pad_in_call[] = {
 };
 
 static gboolean pad_is_in_call (DialerDialpad *self);
+static gboolean pad_is_compact (DialerDialpad *self);
 
 static GdkRGBA
 rgb (DialerDialpad *pad, PadColor color, double alpha)
@@ -156,10 +162,13 @@ dialpad_key_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   GdkRGBA primary = rgb (self->pad, PRIMARY, 1), secondary = rgb (self->pad, SECONDARY, 1);
   Ink number, letters = { 0 };
   double group, top;
+  gboolean compact = pad_is_compact (self->pad);
+  double symbol_scale = compact ? (double) COMPACT_NUMBER_SIZE / NUMBER_SIZE : 1;
 
   /* the sizes and weight at the font size and Bold text in effect (the digit's size is fixed) */
-  gsf_style (self->number, self->c == '*' ? vibeos_sp (STAR_SIZE)
-                           : self->c == '#' ? vibeos_sp (POUND_SIZE) : NUMBER_SIZE);
+  gsf_style (self->number, self->c == '*' ? vibeos_sp (STAR_SIZE) * symbol_scale
+                           : self->c == '#' ? vibeos_sp (POUND_SIZE) * symbol_scale
+                           : compact ? COMPACT_NUMBER_SIZE : NUMBER_SIZE);
   if (self->letters)
     gsf_style (self->letters, vibeos_sp (LETTERS_SIZE));
   number = ink_of (self->number);
@@ -176,11 +185,32 @@ dialpad_key_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 
   if (self->c == '*' || self->c == '#')
     {
-      /* * and #: the secondary colour, a little faded, lifted by SYMBOL_GAP */
+      /* * and #: the secondary colour, a little faded, lifted by SYMBOL_GAP (in the middle of a compact key) */
       GdkRGBA symbol = rgb (self->pad, SECONDARY, 0.8);
 
-      top = round ((height - (number.height + SYMBOL_GAP)) / 2);
+      top = round ((height - (number.height + (compact ? 0 : SYMBOL_GAP))) / 2);
       draw_ink (snapshot, self->number, &number, cx, top, &symbol);
+      return;
+    }
+  if (compact)
+    {
+      /* the digit, then its letters (or the voicemail glyph) on its baseline, the pair in the key's middle */
+      double side = self->c == '1' ? VOICEMAIL_SIZE : self->letters ? ink_of (self->letters).width : 0;
+      double gap = side > 0 ? COMPACT_GAP : 0, x = round (cx - (number.width + gap + side) / 2);
+      double baseline;
+
+      top = round ((height - number.height) / 2);
+      baseline = top + number.height;
+      draw_ink (snapshot, self->number, &number, x + number.width / 2, top, &primary);
+      x += number.width + gap;
+      if (self->c == '1')
+        vibeos_snapshot_icon (snapshot, widget, "dialer-voicemail-symbolic", x, round (baseline - VOICEMAIL_SIZE),
+                              VOICEMAIL_SIZE, &secondary);
+      else if (self->letters)
+        {
+          letters = ink_of (self->letters);
+          draw_ink (snapshot, self->letters, &letters, x + letters.width / 2, baseline - letters.height, &secondary);
+        }
       return;
     }
   if (self->c == '1')
@@ -205,7 +235,10 @@ static void
 dialpad_key_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, int *minimum, int *natural,
                      int *minimum_baseline, int *natural_baseline)
 {
-  *minimum = *natural = orientation == GTK_ORIENTATION_VERTICAL ? KEY_HEIGHT : 0;
+  DialpadKey *self = DIALPAD_KEY (widget);
+
+  *minimum = *natural = orientation != GTK_ORIENTATION_VERTICAL ? 0
+                        : pad_is_compact (self->pad) ? COMPACT_KEY_HEIGHT : KEY_HEIGHT;
 }
 
 static void
@@ -317,6 +350,7 @@ struct _DialerDialpad
 {
   GtkWidget parent;
   DialpadMode mode;
+  gboolean compact;
   GtkWidget *keys[12];          /* 1 2 3 / 4 5 6 / 7 8 9 / * 0 # */
   GtkWidget *close, *overflow, *backspace;
   GString *digits;
@@ -335,10 +369,22 @@ pad_is_in_call (DialerDialpad *self)
   return self->mode == DIALPAD_INCALL;
 }
 
+static gboolean
+pad_is_compact (DialerDialpad *self)
+{
+  return self->compact;
+}
+
 static int
 end_space (DialerDialpad *self)
 {
-  return self->mode == DIALPAD_INCALL ? INCALL_END_SPACE : END_SPACE;
+  return self->mode == DIALPAD_INCALL ? INCALL_END_SPACE : self->compact ? COMPACT_END_SPACE : END_SPACE;
+}
+
+static int
+key_height (DialerDialpad *self)
+{
+  return self->compact ? COMPACT_KEY_HEIGHT : KEY_HEIGHT;
 }
 
 static void
@@ -350,7 +396,7 @@ dialer_dialpad_measure (GtkWidget *widget, GtkOrientation orientation, int for_s
   if (orientation == GTK_ORIENTATION_HORIZONTAL)
     *minimum = *natural = 0;
   else
-    *minimum = *natural = digits_height () + SPACE_ABOVE + 4 * KEY_HEIGHT + end_space (self) + SPACE_BELOW;
+    *minimum = *natural = digits_height () + SPACE_ABOVE + 4 * key_height (self) + end_space (self) + SPACE_BELOW;
 }
 
 /* the ✕, ⋮ and ⌫ buttons: an icon with padding beside it, the row's height less the margins */
@@ -382,7 +428,7 @@ dialer_dialpad_size_allocate (GtkWidget *widget, int width, int height, int base
 {
   DialerDialpad *self = DIALER_DIALPAD (widget);
   double field = digits_height (), fixed = field + SPACE_ABOVE + end_space (self) + SPACE_BELOW;
-  double row = MAX (KEY_HEIGHT, (height - fixed) / 4);
+  double row = MAX (key_height (self), (height - fixed) / 4);
   double key = width * 15.0 / 47, side = width / 47.0;
 
   allocate_button (self->close, BUTTON_MARGIN, 2 * MENU_PADDING + 24);
@@ -634,6 +680,17 @@ dialer_dialpad_init (DialerDialpad *self)
   self->digits = g_string_new (NULL);
   self->digits_layout = gsf_layout (GTK_WIDGET (self), "", DIGITS_SIZE);
   self->overflow_fade = vibeos_anim_new (GTK_WIDGET (self), on_overflow_fade, self);
+}
+
+void
+dialer_dialpad_set_compact (DialerDialpad *self, gboolean compact)
+{
+  if (self->compact == !!compact)
+    return;
+  self->compact = !!compact;
+  for (int i = 0; i < 12; i++)
+    gtk_widget_queue_resize (self->keys[i]);
+  gtk_widget_queue_resize (GTK_WIDGET (self));
 }
 
 GtkWidget *

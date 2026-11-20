@@ -27,6 +27,8 @@ const char *dialer_dialpad_get_digits (DialerDialpad *self);
 void        dialer_dialpad_set_digits (DialerDialpad *self, const char *digits);
 /* adds @c to the digits (the in-call keypad shows the tone it sent) */
 void        dialer_dialpad_append (DialerDialpad *self, char c);
+/* compact, for a phone held sideways: lower keys, each with its digit and letters on one line */
+void        dialer_dialpad_set_compact (DialerDialpad *self, gboolean compact);
 
 /* Signals:
  *   "key-down" (int c): '0'…'9', '*', '#' pressed

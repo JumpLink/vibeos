@@ -25,6 +25,8 @@ gboolean    dialpad_sheet_get_shown (DialpadSheet *self);
 const char *dialpad_sheet_get_digits (DialpadSheet *self);
 /* empties it (a number is not kept from one search to the next) */
 void        dialpad_sheet_clear (DialpadSheet *self);
+/* the compact dialpad, for a phone held sideways */
+void        dialpad_sheet_set_compact (DialpadSheet *self, gboolean compact);
 
 /* Signals: "shown-changed" () as it starts to come or go, "digits-changed" () */
 

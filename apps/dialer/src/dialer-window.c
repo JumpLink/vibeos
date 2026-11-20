@@ -26,6 +26,7 @@
 #define LIST_PANE_MIN   360     /* as wide as a phone at least */
 #define LIST_PANE_MAX   480
 #define DIALPAD_MAX     412     /* the tablet's dialpad: over the list column, as wide as a big phone at most */
+#define SIDEWAYS_PAD    384     /* a sideways phone's dialpad, at the end: what it was dialling stays beside it */
 
 enum { TAB_FAVORITES, TAB_RECENTS, TAB_CONTACTS, N_TABS };
 
@@ -37,7 +38,7 @@ typedef struct
   GtkWidget *toolbar;           /* a revealer: the toolbar slides up out of the way under the dialpad */
   GtkWidget *search_bar, *stack, *pages[N_TABS], *search, *fab, *nav;
   GtkWidget *tab_children[N_TABS];      /* the stack's child for a tab: the page, or Recents in its list-detail */
-  GtkWidget *nav_rail, *rail_fab;       /* the tablet's navigation, the dialpad button at its top */
+  GtkWidget *nav_rail, *rail_fab;       /* the rail (a tablet, a sideways phone), with the dialpad button */
   GtkWidget *recents_ld;                /* Recents and a call's details beside it on a tablet */
   GtkWidget *details_empty;             /* what the details pane shows with no call open */
   VibeosLayout *layout;
@@ -119,6 +120,13 @@ on_active (GtkWindow *window, GParamSpec *pspec, Shell *shell)
 static void close_search (Shell *shell);
 static void on_show_details (Shell *shell, const char *number, int presentation, GArray *ids);
 
+/* the rail rather than the bottom navigation: on a tablet, and on a phone held sideways */
+static gboolean
+has_rail (Shell *shell)
+{
+  return shell->layout && (vibeos_layout_is_tablet (shell->layout) || vibeos_layout_is_landscape (shell->layout));
+}
+
 static void
 show_tab (Shell *shell, int tab)
 {
@@ -162,7 +170,7 @@ static void
 show_search (Shell *shell, gboolean shown)
 {
   shell->searching = shown;
-  gtk_widget_set_visible (shell->nav, !shown && !(shell->layout && vibeos_layout_is_tablet (shell->layout)));
+  gtk_widget_set_visible (shell->nav, !shown && !has_rail (shell));
   gtk_stack_set_visible_child (GTK_STACK (shell->stack), shown ? shell->search : shell->tab_children[shell->tab]);
 }
 
@@ -480,21 +488,25 @@ make_fab (Shell *shell)
 }
 
 /* a tablet (upright too): the rail with the dialpad button for the bottom navigation and the corner button, and a
- * call's details beside Recents; the dialpad over the list column rather than the whole width */
+ * call's details beside Recents; the dialpad over the list column rather than the whole width.
+ * A phone held sideways: the rail too, its destinations icons only, and a compact dialpad at the end, beside what it
+ * finds; the page at the full width. */
 static void
 update_layout (Shell *shell)
 {
-  gboolean tablet = vibeos_layout_is_tablet (shell->layout);
+  gboolean tablet = vibeos_layout_is_tablet (shell->layout), rail = has_rail (shell), sideways = rail && !tablet;
   int list = (int) CLAMP ((vibeos_layout_get_width (shell->layout) - RAIL_W) * LIST_PANE_RATIO, LIST_PANE_MIN,
                           LIST_PANE_MAX);
 
-  gtk_widget_set_visible (shell->nav_rail, tablet);
-  gtk_widget_set_visible (shell->nav, !tablet && !shell->searching);
-  gtk_widget_set_visible (shell->fab, !tablet);
+  gtk_widget_set_visible (shell->nav_rail, rail);
+  vibeos_nav_rail_set_labels (VIBEOS_NAV_RAIL (shell->nav_rail), !sideways);
+  gtk_widget_set_visible (shell->nav, !rail && !shell->searching);
+  gtk_widget_set_visible (shell->fab, !rail);
   vibeos_list_detail_set_list_width (VIBEOS_LIST_DETAIL (shell->recents_ld), list);
-  gtk_widget_set_halign (shell->sheet, tablet ? GTK_ALIGN_START : GTK_ALIGN_FILL);
+  gtk_widget_set_halign (shell->sheet, tablet ? GTK_ALIGN_START : sideways ? GTK_ALIGN_END : GTK_ALIGN_FILL);
   gtk_widget_set_margin_start (shell->sheet, tablet ? RAIL_W : 0);
-  gtk_widget_set_size_request (shell->sheet, tablet ? MIN (list, DIALPAD_MAX) : -1, -1);
+  gtk_widget_set_size_request (shell->sheet, tablet ? MIN (list, DIALPAD_MAX) : sideways ? SIDEWAYS_PAD : -1, -1);
+  dialpad_sheet_set_compact (DIALPAD_SHEET (shell->sheet), sideways);
 }
 
 static void
@@ -559,7 +571,7 @@ dialer_window_new (GtkApplication *app, GSettings *settings)
   gtk_window_set_title (GTK_WINDOW (window), _("Phone"));
   gtk_widget_add_css_class (window, "dialer");
   gtk_widget_add_css_class (page, "dialer-page");
-  /* the tablet's rail at the start, the page beside it */
+  /* the rail at the start (a tablet, a sideways phone), the page beside it */
   shell->nav_rail = vibeos_nav_rail_new ();
   gtk_widget_add_css_class (shell->nav_rail, "dialer-rail");
   vibeos_nav_rail_append (VIBEOS_NAV_RAIL (shell->nav_rail), "dialer-star-outline-symbolic",
