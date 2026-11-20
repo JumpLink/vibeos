@@ -97,6 +97,7 @@ struct _CalcMain {
   Evaluator         *evaluator;
   gboolean           one_line;          /* landscape: the one-line display and pads */
   gboolean           tablet;            /* a tablet: the same layouts with a tablet's sizes */
+  VibeosLayout      *layout;            /* the window's, while the view is in it */
   /* the owner of the listener the evaluator calls back: a new one for each layout, so that what was asked for
    * an old layout does not reach the new one */
   GObject           *generation;
@@ -1772,6 +1773,40 @@ calc_main_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   }
 }
 
+/* the window found to be a tablet (or no longer one) after it was laid out: made again, as for a rotation */
+static void
+on_layout_changed (VibeosLayout *layout, CalcMain *self)
+{
+  if (vibeos_layout_is_tablet (layout) != self->tablet && !self->rebuild_idle)
+    self->rebuild_idle = g_idle_add (rebuild_idle, self);
+}
+
+static void
+calc_main_root (GtkWidget *widget)
+{
+  CalcMain *self = CALC_MAIN (widget);
+
+  GTK_WIDGET_CLASS (calc_main_parent_class)->root (widget);
+  self->layout = vibeos_layout_get (widget);
+  if (self->layout) {
+    g_object_ref (self->layout);
+    g_signal_connect (self->layout, "changed", G_CALLBACK (on_layout_changed), self);
+    on_layout_changed (self->layout, self);
+  }
+}
+
+static void
+calc_main_unroot (GtkWidget *widget)
+{
+  CalcMain *self = CALC_MAIN (widget);
+
+  if (self->layout) {
+    g_signal_handlers_disconnect_by_data (self->layout, self);
+    g_clear_object (&self->layout);
+  }
+  GTK_WIDGET_CLASS (calc_main_parent_class)->unroot (widget);
+}
+
 /* ------------------------------------------------------------------------------------------------------------ */
 /* keys */
 
@@ -1881,6 +1916,8 @@ calc_main_class_init (CalcMainClass *klass)
   widget_class->measure = calc_main_measure;
   widget_class->size_allocate = calc_main_size_allocate;
   widget_class->snapshot = calc_main_snapshot;
+  widget_class->root = calc_main_root;
+  widget_class->unroot = calc_main_unroot;
   gtk_widget_class_set_css_name (widget_class, "calc-main");
 }
 
