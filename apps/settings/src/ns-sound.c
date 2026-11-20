@@ -294,6 +294,12 @@ preview_page_left (GtkWidget *page, gpointer data)
 }
 
 static void
+sound_back (NsPage *page)
+{
+  preview_stop ();
+}
+
+static void
 preview_play (const char *uri)
 {
   preview_stop ();
@@ -456,13 +462,13 @@ void
 ns_page_sound (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Sounds and vibration", &c);
+  NsPage *page = ns_page_new ("Sounds and vibration", &c);
   Sound *s = g_new0 (Sound, 1);
   s->names = g_ptr_array_new_with_free_func (g_free);
   g_object_set_data_full (G_OBJECT (page), "sound", s, (GDestroyNotify) sound_free);
   shown = s;
   /* back from a ringtone picker (or gone): its preview stops */
-  g_signal_connect (page, "showing", G_CALLBACK (preview_page_left), NULL);
+  ns_page_on_back (page, sound_back);
   g_signal_connect (page, "destroy", G_CALLBACK (preview_page_left), NULL);
 
   GSettings *fb = ns_page_settings (page, "org.sigxcpu.feedbackd");

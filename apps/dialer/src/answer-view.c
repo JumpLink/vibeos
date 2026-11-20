@@ -68,13 +68,14 @@
 #define GSF_PAD_TOP(size)       ((size) * 278 / 2000.0)
 #define GSF_PAD_BOTTOM(size)    ((size) * 33 / 2000.0)
 
-/* colours */
-#define BACKGROUND      0x181c1d
+/* colours: the screen is dark in light mode too, in the dark tones of the theme's palettes; the greens are libvibeos's
+ * fixed call colour; all read as the view draws */
+#define BACKGROUND      VIBEOS_PALETTE_NEUTRAL1, 900
 #define TEXT_SECONDARY  (0xdd / 255.0)  /* the status and bottom lines: white at this alpha */
-#define CALL_GREEN      0x3ee0a0        /* the puck's icon until the first touch */
-#define ANSWER_ICON     0x00c853        /* the puck's icon once touched, fading out as the swipe goes on */
-#define ACCEPT_COLOR    0x00c853        /* the disc's tint, swiped up */
-#define HANGUP_COLOR    0xdf0000        /* the disc's tint, swiped down */
+#define CALL_GREEN      VIBEOS_CALL     /* the puck's icon until the first touch */
+#define ANSWER_ICON     VIBEOS_CALL     /* the puck's icon once touched, fading out as the swipe goes on */
+#define ACCEPT_COLOR    VIBEOS_CALL     /* the disc's tint, swiped up */
+#define HANGUP_COLOR    VIBEOS_PALETTE_ERROR, 500       /* the disc's tint, swiped down */
 
 /* ---- the tween engine ----------------------------------------------------------------------------------------- */
 
@@ -182,9 +183,15 @@ struct _AnswerView
 G_DEFINE_FINAL_TYPE (AnswerView, answer_view, GTK_TYPE_WIDGET)
 
 static GdkRGBA
-rgb (guint32 value, double alpha)
+rgb (VibeosColor color, double alpha)
 {
-  return (GdkRGBA) { ((value >> 16) & 0xff) / 255.0, ((value >> 8) & 0xff) / 255.0, (value & 0xff) / 255.0, alpha };
+  return vibeos_color_alpha (color, alpha);
+}
+
+static GdkRGBA
+palette_rgb (VibeosPalette palette, int at)
+{
+  return vibeos_palette_stop (palette, at);
 }
 
 /* the bounce curve: it reaches the end, then bounces off it three times, each bounce lower */
@@ -339,7 +346,8 @@ new_layout (AnswerView *self, const char *family, double size, int weight, gbool
   g_autoptr(PangoFontDescription) font = pango_font_description_from_string (family);
 
   pango_font_description_set_absolute_size (font, size * PANGO_SCALE);
-  pango_font_description_set_weight (font, weight);
+  /* the weight as drawn with Bold text on: Bold text off draws it 300 lighter */
+  pango_font_description_set_weight (font, vibeos_font_weight (weight - 300));
   if (italic)
     pango_font_description_set_style (font, PANGO_STYLE_ITALIC);
   pango_layout_set_font_description (layout, font);
@@ -1287,7 +1295,7 @@ draw_puck (AnswerView *self, GtkSnapshot *snapshot, const Geometry *g, double wi
   double pivot = self->pivot_bottom_until > now_us (self) ? PUCK_BOX / 2.0 : 0;
   double r = PUCK / 2.0 * self->bg_scale, a = fabs (self->puck_progress);
   GdkRGBA white = { 1, 1, 1, 1 };
-  GdkRGBA tint = rgb (self->puck_progress >= 0 ? ACCEPT_COLOR : HANGUP_COLOR, 1);
+  GdkRGBA tint = self->puck_progress >= 0 ? rgb (ACCEPT_COLOR, 1) : palette_rgb (HANGUP_COLOR);
   GdkRGBA disc = vibeos_rgba_mix (&white, &tint, a);
   graphene_rect_t box = GRAPHENE_RECT_INIT (-r, -r, 2 * r, 2 * r);
   GskRoundedRect shape;
@@ -1366,7 +1374,7 @@ answer_view_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   AnswerView *self = ANSWER_VIEW (widget);
   double width = gtk_widget_get_width (widget), height = gtk_widget_get_height (widget);
   graphene_rect_t all = GRAPHENE_RECT_INIT (0, 0, width, height);
-  GdkRGBA background = rgb (BACKGROUND, 1);
+  GdkRGBA background = palette_rgb (BACKGROUND);
   Geometry g;
 
   measure_geometry (self, &g);

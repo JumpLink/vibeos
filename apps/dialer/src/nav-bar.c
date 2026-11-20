@@ -3,9 +3,10 @@
 #include "text.h"
 
 #include <glib/gi18n.h>
+#include <math.h>
 #include <vibeos.h>
 
-#define BAR_HEIGHT      89      /* 16 + the 32 pill + 8 + the 17 label + 16 */
+#define BAR_PAD_BOTTOM  16      /* under the label: the bar is 16 + the 32 pill + 8 + the label (17 at 12 sp) + 16 */
 #define PILL_TOP        16
 #define PILL_WIDTH      64
 #define PILL_HEIGHT     32
@@ -18,11 +19,12 @@
 #define BADGE_PAD_BOTTOM 1
 #define BADGE_STROKE    2
 
-#define BACKGROUND      0x2c3132        /* the bar, and the ring round a badge */
-#define PILL            0x324b4e        /* the selected tab's indicator */
-#define ICON_SELECTED   0xfdfdfd
-#define BADGE_FILL      0x1f2728
-#define BADGE_TEXT      0xdadce0
+#define BACKGROUND      VIBEOS_SURFACE_CONTAINER_HIGHEST        /* the bar, and the ring round a badge */
+#define PILL            VIBEOS_SECONDARY_CONTAINER      /* the selected tab's indicator */
+#define ICON_SELECTED   VIBEOS_ON_SECONDARY_CONTAINER
+#define ICON_UNSELECTED VIBEOS_ON_SURFACE_VARIANT
+#define BADGE_FILL      VIBEOS_ERROR
+#define BADGE_TEXT      VIBEOS_ON_ERROR
 
 #define LABEL_STYLE     ((TextStyle) { TEXT_GSF, 12, 800 })     /* the tabs' labels and a badge's count */
 
@@ -109,7 +111,7 @@ dialer_nav_bar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
       Item *item = self->items->pdata[i];
       gboolean selected = (int) i == self->selected;
       double cx = col * i + col / 2;
-      GdkRGBA icon = text_rgb (selected ? ICON_SELECTED : COLOR_ICON);
+      GdkRGBA icon = text_rgb (selected ? ICON_SELECTED : ICON_UNSELECTED);
       GdkRGBA label = text_rgb (selected ? COLOR_TEXT_PRIMARY : COLOR_TEXT_SECONDARY);
 
       /* the active indicator: its width scaled 0.4 → 1 and alpha 0 → 1 with the progress */
@@ -139,7 +141,28 @@ static void
 dialer_nav_bar_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, int *minimum, int *natural,
                         int *minimum_baseline, int *natural_baseline)
 {
-  *minimum = *natural = orientation == GTK_ORIENTATION_VERTICAL ? BAR_HEIGHT : 0;
+  DialerNavBar *self = DIALER_NAV_BAR (widget);
+  Item *first = self->items->len ? self->items->pdata[0] : NULL;
+  /* the label's line, as tall as the font size makes it */
+  double label = first ? text_box_height (first->label, LABEL_STYLE) : 17;
+
+  *minimum = *natural = orientation == GTK_ORIENTATION_VERTICAL ? (int) ceil (LABEL_TOP + label + BAR_PAD_BOTTOM - 0.01)
+                                                                : 0;
+}
+
+/* a new font size: the labels and the badges in it, and the bar as tall as they need */
+static void
+on_text_changed (DialerNavBar *self)
+{
+  for (guint i = 0; i < self->items->len; i++)
+    {
+      Item *item = self->items->pdata[i];
+
+      text_layout_set_style (item->label, LABEL_STYLE);
+      if (item->badge)
+        text_layout_set_style (item->badge, LABEL_STYLE);
+    }
+  gtk_widget_queue_resize (GTK_WIDGET (self));
 }
 
 /* ---- selection ------------------------------------------------------------------------------------------------ */
@@ -238,6 +261,8 @@ dialer_nav_bar_init (DialerNavBar *self)
   g_signal_connect (click, "pressed", G_CALLBACK (on_pressed), self);
   g_signal_connect (click, "released", G_CALLBACK (on_released), self);
   gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (click));
+  g_signal_connect_object (vibeos_text_get_default (), "changed", G_CALLBACK (on_text_changed), self,
+                           G_CONNECT_SWAPPED);
 }
 
 GtkWidget *

@@ -200,7 +200,7 @@ clock_popup_menu_append (ClockPopupMenu *self, const char *label, ClockMenuActio
   gtk_widget_set_margin_start (text, TEXT_PAD);
   gtk_widget_set_margin_end (text, TEXT_PAD);
   gtk_widget_add_css_class (text, "clock-popup-menu-text");
-  vibeos_label_set_font_padding (text, 16);
+  vibeos_label_set_font_padding_sp (text, 16);
   item = vibeos_pressable_new (text);
   gtk_widget_set_size_request (item, -1, ROW_HEIGHT);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (item), VIBEOS_RIPPLE_BOUNDED, 0);

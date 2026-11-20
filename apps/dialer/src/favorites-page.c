@@ -203,7 +203,7 @@ disambig_option (Disambig *disambig, const ContactNumber *number)
     {
       gtk_label_set_xalign (GTK_LABEL (text), 0);
       gtk_widget_add_css_class (text, "dialer-primary-text");
-      vibeos_label_set_font_padding (text, 16);
+      vibeos_label_set_font_padding_sp (text, 16);
       gtk_box_append (GTK_BOX (texts), text);
     }
   gtk_widget_set_visible (label, *number->label);
@@ -217,7 +217,6 @@ disambig_option (Disambig *disambig, const ContactNumber *number)
   gtk_box_append (GTK_BOX (box), icon);
   option = vibeos_pressable_new (box);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (option), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (option), &(GdkRGBA) { 1, 1, 1, 0.06 });
   gtk_accessible_update_property (GTK_ACCESSIBLE (option), GTK_ACCESSIBLE_PROPERTY_LABEL,
                                   C_("disambig_option_voice_call", "Call"), -1);
   g_object_set_data_full (G_OBJECT (option), "disambig-number", g_strdup (number->number), g_free);
@@ -405,7 +404,7 @@ make_tile (FavoritesPage *self, Favorite *favorite)
   gtk_widget_set_margin_top (name, NAME_TOP);
   gtk_widget_set_margin_bottom (name, NAME_BOTTOM);
   gtk_widget_add_css_class (name, "favorite-name");
-  vibeos_label_set_font_padding (name, 14);
+  vibeos_label_set_font_padding_sp (name, 14);
   gtk_box_append (GTK_BOX (box), name);
 
   /* the default channel's kind; empty (one line still) when there is none */
@@ -414,7 +413,7 @@ make_tile (FavoritesPage *self, Favorite *favorite)
   gtk_widget_set_margin_end (type, TEXT_SIDE);
   gtk_widget_set_margin_bottom (type, TYPE_BOTTOM);
   gtk_widget_add_css_class (type, "favorite-type");
-  vibeos_label_set_font_padding (type, 14);
+  vibeos_label_set_font_padding_sp (type, 14);
   gtk_box_append (GTK_BOX (box), type);
 
   /* no ripple: the tile's root has no background */
@@ -539,7 +538,7 @@ make_header (FavoritesPage *self)
   gtk_widget_set_hexpand (title, TRUE);
   gtk_widget_set_valign (title, GTK_ALIGN_CENTER);
   gtk_widget_add_css_class (title, "favorites-header");
-  vibeos_label_set_font_padding (title, 16);
+  vibeos_label_set_font_padding_sp (title, 16);
   gtk_box_append (GTK_BOX (row), title);
   gtk_widget_set_margin_start (add_label, 8);
   gtk_widget_set_margin_end (add_label, 8);
@@ -549,7 +548,6 @@ make_header (FavoritesPage *self)
   gtk_widget_set_size_request (add, 48, 48);
   gtk_widget_set_valign (add, GTK_ALIGN_CENTER);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (add), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (add), &(GdkRGBA) { 1, 1, 1, 0.06 });
   g_signal_connect_swapped (add, "clicked", G_CALLBACK (on_add_clicked), self);
   gtk_box_append (GTK_BOX (row), add);
   return row;

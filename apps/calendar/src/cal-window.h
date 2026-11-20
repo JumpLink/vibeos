@@ -20,6 +20,8 @@ void       cal_window_pop  (GtkWidget *window);
 
 /* the event's info screen */
 void       cal_window_show_event   (GtkWidget *window, CalEvent *event);
+/* a tablet's Agenda: the pane beside the list empty again (its event deleted or gone) */
+void       cal_window_close_pane   (GtkWidget *window);
 /* the editor: a new event from @start (rounded as the FAB rounds it when @round), or @event changed */
 void       cal_window_new_event    (GtkWidget *window, gint64 start, gboolean all_day);
 void       cal_window_edit_event   (GtkWidget *window, CalEvent *event, gboolean duplicate);

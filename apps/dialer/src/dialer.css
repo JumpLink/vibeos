@@ -1,92 +1,107 @@
-/* The Phone's styles, over libvibeos's (vibeos.css). The colours are the ones the dark Phone renders, so they are plain
- * values, not a palette. Weights sit 300 over the design's (400 as 700, 500 as 800): the phone's Bold text setting
- * is on. The in-call screens draw themselves (answer-view.c, incall-view.c); only the icons inside their buttons
- * are styled here. */
+/* The Phone's styles, over libvibeos's (vibeos.css). Every colour is a role of the theme, light or dark: the
+ * surfaces, the text and the accent follow the theme's colour; the call button's green and its label are libvibeos's
+ * fixed call colours. The in-call screens draw themselves (answer-view.c, incall-view.c); only the icons inside their
+ * buttons are styled here. */
 
 window.vibeos.dialer,
-.dialer-page {
-  background-color: #181c1d;            /* the page behind the lists */
+.dialer-page,
+.vibeos-nav-rail.dialer-rail {
+  background-color: @vibeos_surface_container;            /* the page behind the lists, and the tablet's rail */
 }
 
-/* the dialpad's ✕, ⋮ and ⌫: the dialpad is not darkened with the rest, so they keep the light teal */
+/* the dialpad's ✕, ⋮ and ⌫, in the dialpad's digit colour; in a call the pad is dark in light mode too */
 .dialpad-icon {
-  color: #b8ebf3;
+  color: @vibeos_on_primary_container;
+}
+
+.dialpad-in-call .dialpad-icon {
+  color: @vibeos_primary_fixed;
+}
+
+/* the dialpad button over the page's corner: its icon on the button's container colour */
+.dialpad-fab-icon {
+  color: @vibeos_on_primary_container;
 }
 
 /* the handset on the dial button and on the in-call end button */
 .dial-icon,
 .end-call-icon {
-  color: #000000;
+  color: @vibeos_on_call;
 }
 
 /* the action and toolbar icons */
 .dialer-icon {
-  color: #eff0f2;
+  color: @vibeos_on_surface;
 }
 
 .search-bar-icon {
-  color: #fefefe;
+  color: @vibeos_on_surface_variant;
 }
 
 /* a row's main line (name, number, call type) */
 .dialer-primary-text {
   font-family: "Google Sans Flex", "VibeOS Roboto", sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  color: #f6f7fb;
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
 }
 
 .recents-divider {
-  min-height: 1px;
-  background-color: #383838;
+  min-height: 1dp;
+  background-color: @vibeos_outline_variant;
 }
 
-/* the expanded search bar's field: it is not darkened with the rest, so its text stays the light theme's grey */
+/* the expanded search bar's field */
 .dialer-search-field {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  color: #5f6368;
-  caret-color: #e8f3f4;
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
+  caret-color: @vibeos_primary;
   background: none;
 }
 
 .dialer-search-field > placeholder {
-  color: #80868b;
+  color: @vibeos_on_surface_variant;
   opacity: 1;
 }
 
 /* an empty list's placeholder: a picture, a line of text and an action button */
+/* the details side paints nothing of its own: with no call open, the placeholder under it shows */
+.dialer-recents .vibeos-detail-pane {
+  background: none;
+}
+
 .dialer-empty-image {
-  color: #bdc1c6;
+  color: @vibeos_on_surface_variant;
 }
 
 .dialer-empty-text {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  color: #a3a7ac;
-  padding: 8px 16px;
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_on_surface_variant;
+  padding: 8dp 16dp;
 }
 
 .dialer-empty-button {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 14px;
-  font-weight: 800;
-  color: #ffffff;
+  font-size: 14sp;
+  font-weight: 500;
+  color: @vibeos_on_primary;
 }
 
 /* the pop-up menus (popup-menu.c) */
 .popup-menu {
-  background-color: #181c1d;
-  border-radius: 2px;
+  background-color: @vibeos_surface_container;
+  border-radius: 2dp;
 }
 
 .popup-menu-text {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  color: #f6f7fb;
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
 }
 
 .popup-menu-text.disabled {
@@ -96,285 +111,285 @@ window.vibeos.dialer,
 /* a row's second line (number, label, time) */
 .dialer-secondary-text {
   font-family: "Google Sans Flex", "VibeOS Roboto", sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  color: #a3a7ac;
+  font-size: 14sp;
+  font-weight: 400;
+  color: @vibeos_on_surface_variant;
 }
 
 /* Favorites: a tile's name and number type, and the header over the list */
 .favorite-name {
   font-family: "Google Sans Flex", "VibeOS Roboto", sans-serif;
-  font-size: 14px;
-  font-weight: 800;
-  color: #f6f7fb;
+  font-size: 14sp;
+  font-weight: 500;
+  color: @vibeos_on_surface;
 }
 
 .favorite-type {
   font-family: "Google Sans Flex", "VibeOS Roboto", sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  color: #a3a7ac;
+  font-size: 14sp;
+  font-weight: 400;
+  color: @vibeos_on_surface_variant;
 }
 
 .favorites-header {
   font-family: "Google Sans Flex", "VibeOS Roboto", sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  color: #a3a7ac;
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_on_surface_variant;
 }
 
 /* the header's borderless Add button, in the accent colour */
 .favorites-add {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 14px;
-  font-weight: 800;
-  color: #81b5bc;
+  font-size: 14sp;
+  font-weight: 500;
+  color: @vibeos_primary;
 }
 
 /* the Choose call type dialog: its strips, title and "Remember this choice" */
 .disambig {
-  background-color: #1b1b1b;
+  background-color: @vibeos_surface_container_high;
 }
 
 .disambig-title {
   font-family: "Google Sans Flex", "VibeOS Roboto", sans-serif;
-  font-size: 16px;
-  font-weight: 800;
-  color: #f6f7fb;
-  padding: 0 24px;
-  background-color: #2c3132;
+  font-size: 16sp;
+  font-weight: 500;
+  color: @vibeos_on_surface;
+  padding: 0 24dp;
+  background-color: @vibeos_surface_container_highest;
 }
 
 .disambig-remember {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  color: #f6f7fb;
-  margin: 0 16px;
+  font-size: 14sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
+  margin: 0 16dp;
 }
 
 /* the contact picker over the window */
 .dialer-picker {
-  background-color: #181c1d;
+  background-color: @vibeos_surface_container;
 }
 
 .dialer-picker-title {
   font-family: "Google Sans Flex", "VibeOS Roboto", sans-serif;
-  font-size: 20px;
-  font-weight: 700;
-  color: #f6f7fb;
+  font-size: 20sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
 }
 
-/* a context menu (a pop-up with a header line), a shade lighter than the plain pop-ups */
+/* a context menu (a pop-up with a header line), a shade off the plain pop-ups */
 .popup-menu.context {
-  background-color: #2c3132;
+  background-color: @vibeos_surface_container_high;
 }
 
 .popup-menu-header {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  color: #a3a7ac;
+  font-size: 14sp;
+  font-weight: 400;
+  color: @vibeos_on_surface_variant;
 }
 
 /* Call history (call-history.c): the action bar and the tab strip share one colour, with no seam between them */
 .dialer-history {
-  background-color: #181c1d;
+  background-color: @vibeos_surface_container;
 }
 
 .dialer-history-bar,
 history-tabs {
-  background-color: #1f2728;
+  background-color: @vibeos_surface_container_high;
 }
 
 .dialer-history-title {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 20px;
-  font-weight: 800;
-  color: #f6f7fb;
+  font-size: 20sp;
+  font-weight: 500;
+  color: @vibeos_on_surface;
 }
 
 /* the Up arrow and the overflow */
 .dialer-history-icon {
-  color: #fdfdfd;
+  color: @vibeos_on_surface;
 }
 
 /* the tab labels; the selected one in the accent colour */
 .history-tab {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  color: #f6f7fb;
+  font-size: 14sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
 }
 
 .history-tab.selected {
-  color: #81b5bc;
+  color: @vibeos_primary;
 }
 
 /* Settings (dialer-settings.c): the bar is Call history's; a row's title and summary, a category's heading in the
  * accent colour, a choice in a list dialog */
 .dialer-settings {
-  background-color: #181c1d;
+  background-color: @vibeos_surface_container;
 }
 
 .settings-title {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  color: #f6f7fb;
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
 }
 
 .settings-summary {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  color: #a3a7ac;
+  font-size: 14sp;
+  font-weight: 400;
+  color: @vibeos_on_surface_variant;
 }
 
 .settings-category {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 14px;
-  font-weight: 800;
-  color: #81b5bc;
+  font-size: 14sp;
+  font-weight: 500;
+  color: @vibeos_primary;
 }
 
-/* Blocked numbers: a page with its own theme, hence greys unlike the Phone's */
+/* Blocked numbers */
 .blocked-numbers {
-  background-color: #24292a;
+  background-color: @vibeos_surface_container;
 }
 
 .blocked-body,
 .blocked-number {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  color: #d6e3e5;
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
 }
 
 .blocked-add {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  color: #f6f7fb;
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
 }
 
 .blocked-unblock {
-  color: #d6e3e5;
+  color: @vibeos_on_surface_variant;
 }
 
 .settings-choice {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  color: #e1e1e1;
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
 }
 
 /* a list setting's dialog (Sort by, Name format): wider than a VibeosDialog, the negative margin widening the card
  * past its allocation, evenly; the rows run edge to edge, CANCEL alone in the button bar */
 .settings-dialog .vibeos-dialog {
-  background-color: #1b1b1b;
-  border-radius: 16px;
-  padding: 18px 0 0 0;
-  margin: 0 -15px;
+  background-color: @vibeos_surface_container_high;
+  border-radius: 16dp;
+  padding: 18dp 0 0 0;
+  margin: 0 -15dp;
 }
 
 .settings-dialog .vibeos-dialog-title {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 20px;
-  font-weight: 800;
-  line-height: 27px;
-  color: #f6f7fb;
-  margin: 1px 24px 7px 24px;     /* the extra pixel on top keeps the text just under the box's middle */
+  font-size: 20sp;
+  font-weight: 500;
+  line-height: 27sp;
+  color: @vibeos_on_surface;
+  margin: 1dp 24dp 7dp 24dp;     /* the extra pixel on top keeps the text just under the box's middle */
 }
 
 .settings-dialog .vibeos-dialog-buttons {
-  margin: 4px 12px 4px 12px;
+  margin: 4dp 12dp 4dp 12dp;
 }
 
 .settings-dialog .vibeos-text-button {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 14px;
-  font-weight: 800;
-  color: #81b5bc;
-  min-height: 54px;
-  padding: 0 12px;
+  font-size: 14sp;
+  font-weight: 500;
+  color: @vibeos_primary;
+  min-height: 54dp;
+  padding: 0 12dp;
 }
 
 /* a choice in the dialog: larger than a settings row's, a pixel under the row's middle */
 .settings-dialog .settings-choice {
-  font-size: 18px;
-  margin-top: 2px;
+  font-size: 18sp;
+  margin-top: 2dp;
 }
 
-/* Call details (call-details.c): the toolbar's title; the large call-type icons, in their own colours and not
- * darkened; a missed call's time in red */
+/* Call details (call-details.c): the toolbar's title; the large call-type icons, each type in a colour of its own; a
+ * missed call's time in the error red */
 .dialer-toolbar-title {
   font-family: "Google Sans Flex", "VibeOS Roboto", sans-serif;
-  font-size: 20px;
-  font-weight: 800;
-  color: #f6f7fb;
+  font-size: 20sp;
+  font-weight: 500;
+  color: @vibeos_on_surface;
 }
 
 .details-incoming {
-  color: #00a8ff;
+  color: @vibeos_primary;
 }
 
 .details-outgoing {
-  color: #00c853;
+  color: @vibeos_call;
 }
 
 .details-missed {
-  color: #c53929;
+  color: @vibeos_error;
 }
 
 .dialer-secondary-text.details-missed-text {
-  color: #fb6a51;
+  color: @vibeos_error;
 }
 
 /* Call statistics (call-stats.c): the total over the list; a row's number, smaller than its name */
 .stats-header {
   font-family: "Google Sans Flex", "VibeOS Roboto", sans-serif;
-  font-size: 14px;
-  font-weight: 800;
-  color: #a3a7ac;
+  font-size: 14sp;
+  font-weight: 500;
+  color: @vibeos_on_surface_variant;
 }
 
 .dialer-secondary-text.stats-number {
-  font-size: 12px;
+  font-size: 12sp;
 }
 
 /* a statistics card (flat, no shadow) and its category title */
 .stats-card {
-  background-color: #242727;
-  border-radius: 28px;
+  background-color: @vibeos_surface_container_high;
+  border-radius: 28dp;
 }
 
 .stats-card-title {
   font-family: "Google Sans Flex", "VibeOS Roboto", sans-serif;
-  font-size: 16px;
-  font-weight: 900;
-  letter-spacing: 0.15px;
-  color: #f6f7fb;
+  font-size: 16sp;
+  font-weight: 600;
+  letter-spacing: 0.15sp;
+  color: @vibeos_on_surface;
 }
 
 /* the small call-type icons on a card's detail lines, in Recents' colours */
 .stats-incoming {
-  color: #007fc6;
+  color: @vibeos_primary;
 }
 
 .stats-outgoing {
-  color: #009740;
+  color: @vibeos_call;
 }
 
 .stats-missed {
-  color: #922b20;
+  color: @vibeos_error;
 }
 
 .stats-blocked {
-  color: #f6f7f8;
+  color: @vibeos_on_surface;
 }
 
 /* the separator over Copy number */
 .stats-separator {
-  background-color: rgba(0, 0, 0, 0.07);
+  background-color: @vibeos_outline_variant;
 }

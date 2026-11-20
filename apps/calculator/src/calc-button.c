@@ -6,7 +6,8 @@
 #include <vibeos.h>
 
 #define INSET              4       /* the pill's inset top and bottom, inside the key's cell */
-#define TEXT_RATIO         0.4     /* the label's size, of the key's height */
+#define TEXT_RATIO         0.4     /* the label's size at the default Font size, of the key's height */
+#define TEXT_SIDE          8       /* the least room left and right of a label made larger by Font size */
 #define RIPPLE_ALPHA       0.10f   /* the ripple, in the label's colour; it also lightens the pressed pill */
 #define LONG_PRESS_MS      400     /* held this long, a press is a long press */
 
@@ -86,12 +87,20 @@ calc_button_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   }
   if (!self->label)
     return;
-  /* text size 0.4 of the key's height; the line (ascent + descent, no font padding) centred in the key */
-  double size = h * TEXT_RATIO;
+  /* text size 0.4 of the key's height at the default Font size, in sp so that Font size makes it larger, but never
+   * past the key: the line (ascent + descent, no font padding) inside the pill, and TEXT_SIDE left and right; the
+   * line centred in the key */
+  double size = MIN (vibeos_sp (h * TEXT_RATIO), (h - 2 * INSET) / (CALC_ASCENT + CALC_DESCENT));
+  size = MAX (size, h * TEXT_RATIO);
   if (!self->layout) {
     self->layout = calc_text_layout (widget, self->label, size, self->weight);
     self->layout_size = size;
   } else if (self->layout_size != size) {
+    calc_text_set_size (self->layout, size, self->weight);
+    self->layout_size = size;
+  }
+  if (size > h * TEXT_RATIO && calc_text_width (self->layout) > w - 2 * TEXT_SIDE) {
+    size = MAX (h * TEXT_RATIO, size * (w - 2 * TEXT_SIDE) / calc_text_width (self->layout));
     calc_text_set_size (self->layout, size, self->weight);
     self->layout_size = size;
   }
@@ -190,6 +199,15 @@ calc_button_class_init (CalcButtonClass *klass)
                                         g_signal_accumulator_true_handled, NULL, NULL, G_TYPE_BOOLEAN, 0);
 }
 
+/* Font size or Bold text changed: the label is made again at the new size and weight */
+static void
+on_text_changed (CalcButton *self)
+{
+  g_clear_object (&self->layout);
+  self->layout_size = 0;
+  gtk_widget_queue_draw (GTK_WIDGET (self));
+}
+
 static void
 calc_button_init (CalcButton *self)
 {
@@ -203,6 +221,8 @@ calc_button_init (CalcButton *self)
   g_signal_connect (click, "cancel", G_CALLBACK (on_stopped), self);
   gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (click));
   g_object_set_data (G_OBJECT (self), "vibeos-tappable", GINT_TO_POINTER (1));
+  g_signal_connect_object (vibeos_text_get_default (), "changed", G_CALLBACK (on_text_changed), self,
+                           G_CONNECT_SWAPPED);
 }
 
 GtkWidget *

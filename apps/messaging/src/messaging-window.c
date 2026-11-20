@@ -526,6 +526,7 @@ messaging_window_new (GtkApplication *app)
   g_signal_connect (shell->list, "show-search", G_CALLBACK (on_search), shell);
   g_signal_connect (shell->list, "show-account", G_CALLBACK (on_account), shell);
   shell->home = vibeos_list_detail_new ();
+  gtk_widget_add_css_class (shell->home, "msg-home");
   vibeos_list_detail_set_list (home (shell), shell->list);
   vibeos_list_detail_set_list_ratio (home (shell), LIST_RATIO);
   vibeos_list_detail_set_placeholder (home (shell), make_placeholder ());

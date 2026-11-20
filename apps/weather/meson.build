@@ -3,9 +3,9 @@ add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers'
 
 gnome = import('gnome')
 # the page scrolls the way the launcher's drawer does (VibeOS's libspongy: the fling, the stretch at the ends); its
-# menu, the About sheet and Set City are libvibeos's, as in the other VibeOS apps
-deps = [dependency('gtk4', version: '>= 4.14'), dependency('libadwaita-1', version: '>= 1.5'),
-        dependency('json-glib-1.0'), dependency('vibeos-1'), dependency('spongy-gtk-1'),
+# window, menu, the About sheet and Set City are libvibeos's, as in the other VibeOS apps
+deps = [dependency('gtk4', version: '>= 4.14'), dependency('json-glib-1.0'), dependency('vibeos-1'),
+        dependency('spongy-gtk-1'),
         meson.get_compiler('c').find_library('m')]
 resources = gnome.compile_resources('wx-resources', 'src/vibeos-weather.gresource.xml', source_dir: 'src')
 

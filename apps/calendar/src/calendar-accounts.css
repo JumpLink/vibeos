@@ -3,73 +3,73 @@
 /* --- the colour picker */
 
 .cal-palette-scroll {
-  padding: 28px;
+  padding: 28dp;
 }
 
 .cal-palette .cal-swatch {
-  margin: 4px;
+  margin: 4dp;
 }
 
 /* the neutral button at the start of the bar */
 .cal-dialog-neutral {
-  margin-left: -12px;
+  margin-left: -12dp;
 }
 
 /* --- an outlined text field: the outline thicker and in the primary colour with focus, in the error colour with an
  * error */
 
-@define-color cal_error #f2b8b5;          /* the dark theme's; calendar-light.css has the light one */
+@define-color cal_error @vibeos_error;
 
 .cal-field-outline {
-  margin-top: 8px;
-  min-height: 56px;
-  border-radius: 4px;
-  box-shadow: inset 0 0 0 1px @vibeos_outline;
+  margin-top: 8dp;
+  min-height: 56dp;
+  border-radius: 4dp;
+  box-shadow: inset 0 0 0 1dp @vibeos_outline;
   transition: box-shadow 150ms;
 }
 
 .cal-field.focused .cal-field-outline {
-  box-shadow: inset 0 0 0 2px @vibeos_primary;
+  box-shadow: inset 0 0 0 2dp @vibeos_primary;
 }
 
 .cal-field.error .cal-field-outline {
-  box-shadow: inset 0 0 0 1px @cal_error;
+  box-shadow: inset 0 0 0 1dp @cal_error;
 }
 
 .cal-field.error.focused .cal-field-outline {
-  box-shadow: inset 0 0 0 2px @cal_error;
+  box-shadow: inset 0 0 0 2dp @cal_error;
 }
 
 .cal-field-text {
-  padding: 0 16px;
-  min-height: 24px;
-  font-size: 16px;
+  padding: 0 16dp;
+  min-height: 24dp;
+  font-size: 16sp;
   color: @vibeos_on_surface;
   caret-color: @vibeos_primary;
   background: none;
 }
 
 .cal-field-error-icon {
-  margin-right: 12px;
+  margin-right: 12dp;
   color: @cal_error;
 }
 
 /* the hint: resting in the middle of the box, floating up onto the top outline, smaller, a strip of the background
  * on each side cutting the outline */
 .cal-field-hint {
-  margin: 24px 16px 0 16px;
+  margin: 24dp 16dp 0 16dp;
   padding: 0;
-  min-height: 24px;
-  font-size: 16px;
+  min-height: 24dp;
+  font-size: 16sp;
   color: @vibeos_on_surface_variant;
   transition: margin 150ms, font-size 150ms, min-height 150ms, padding 150ms, color 150ms;
 }
 
 .cal-field.floating .cal-field-hint {
-  margin: 0 12px;
-  padding: 0 4px;
-  min-height: 16px;
-  font-size: 12px;
+  margin: 0 12dp;
+  padding: 0 4dp;
+  min-height: 16dp;
+  font-size: 12sp;
   background-color: @vibeos_surface_container_highest;   /* the dialog card */
 }
 
@@ -82,8 +82,8 @@
 }
 
 .cal-field-error {
-  margin: 4px 16px 0 16px;
-  font-size: 12px;
+  margin: 4dp 16dp 0 16dp;
+  font-size: 12sp;
   color: @cal_error;
 }
 
@@ -91,18 +91,18 @@
  * own padding) */
 
 .cal-offline-frame {
-  margin: 0 -24px;
-  padding: 16px;
+  margin: 0 -24dp;
+  padding: 16dp;
 }
 
 .cal-offline-dialog .vibeos-dialog-buttons {
-  margin-top: 2px;
+  margin-top: 2dp;
 }
 
 /* --- Add CalDAV calendar (DAVx⁵'s "Login with URL and user name") */
 
 .cal-caldav {
-  padding: 16px 16px 24px 16px;
+  padding: 16dp 16dp 24dp 16dp;
 }
 
 .cal-caldav .cal-field.floating .cal-field-hint {
@@ -110,40 +110,40 @@
 }
 
 .cal-caldav-intro {
-  margin: 8px 0 16px 0;
-  font-size: 22px;
+  margin: 8dp 0 16dp 0;
+  font-size: 22sp;
   color: @vibeos_on_surface;
 }
 
 .cal-caldav-field {
-  margin-bottom: 8px;
+  margin-bottom: 8dp;
 }
 
 .cal-caldav-status {
-  margin: 8px 0;
-  font-size: 14px;
+  margin: 8dp 0;
+  font-size: 14sp;
   color: @vibeos_on_surface_variant;
 }
 
 .cal-caldav .cal-pref-category {
-  margin: 8px -16px 0 -16px;
+  margin: 8dp -16dp 0 -16dp;
 }
 
 .cal-caldav .cal-pref {
-  margin: 0 -16px;
+  margin: 0 -16dp;
 }
 
 /* the CalDAV page's filled pill buttons */
 .cal-filled-button {
-  margin-top: 16px;
-  min-height: 40px;
-  border-radius: 20px;
-  padding: 0 24px;
+  margin-top: 16dp;
+  min-height: 40dp;
+  border-radius: 20dp;
+  padding: 0 24dp;
   background-color: @vibeos_primary;
 }
 
 .cal-filled-button label {
-  font-size: 14px;
+  font-size: 14sp;
   font-weight: 500;
   color: @vibeos_on_primary;
 }

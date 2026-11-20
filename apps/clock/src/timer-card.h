@@ -25,6 +25,9 @@ guint      timer_card_get_id (TimerCard *self);
 /* the time left at `now` (the elapsed clock), the ring, the label and the buttons for the timer's state */
 void       timer_card_update (TimerCard *self, const Timer *timer, gint64 now);
 
+/* with the ring (the default), or the time alone in a lower box, as a tablet's three columns show it */
+void       timer_card_set_ring (TimerCard *self, gboolean ring);
+
 /* the height of the ring's box in a card `width` wide: how far the Timer tab slides when it changes view */
 double     timer_card_get_ring_height (TimerCard *self, int width);
 

@@ -4,57 +4,57 @@
 
 /* the dialog: nearly square corners, no shadow */
 vibeos-dialog-scrim.cal-alerts > .vibeos-dialog.flush {
-  background-color: #282828;
-  border-radius: 2px;
+  background-color: @vibeos_surface_container_high;
+  border-radius: 2dp;
 }
 
 /* the title, one line, in blue, a line in the same blue under it */
 .cal-alerts-title {
-  font-size: 22px;
-  color: #33b5e5;
-  min-height: 64px;
-  padding: 0 16px;
+  font-size: 22sp;
+  color: @vibeos_primary;
+  min-height: 64dp;
+  padding: 0 16dp;
 }
 
 .cal-alerts-title-divider {
-  min-height: 2px;
-  background-color: #33b5e5;
+  min-height: 2dp;
+  background-color: @vibeos_primary;
 }
 
 /* between the rows and above the buttons: a grey hairline */
 .cal-alerts-divider {
-  min-height: 1px;
-  background-color: rgba(255, 255, 255, 0.12);
+  min-height: 1dp;
+  background-color: @vibeos_outline_variant;
 }
 
 /* --- a reminder's row */
 .cal-alert-row {
-  min-height: 64px;
+  min-height: 64dp;
 }
 
 .cal-alert-row > box {
-  padding: 16px 0;
+  padding: 16dp 0;
 }
 
 .cal-alert-title {
-  font-size: 18px;
-  color: #ffffff;
+  font-size: 18sp;
+  color: @vibeos_on_surface;
 }
 
 .cal-alert-line,
 .cal-alert-where {
-  margin-left: 44px;
+  margin-left: 44dp;
 }
 
 .cal-alert-when,
 .cal-alert-where {
-  font-size: 14px;
-  color: #999999;
+  font-size: 14sp;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-alert-repeat {                     /* the repeat icon, after the time */
-  margin-left: 5px;
-  color: #999999;
+  margin-left: 5dp;
+  color: @vibeos_on_surface_variant;
 }
 
 /* the event ended: the title, the time and the place dimmed */
@@ -62,18 +62,18 @@ vibeos-dialog-scrim.cal-alerts > .vibeos-dialog.flush {
 .cal-alert-row.past .cal-alert-when,
 .cal-alert-row.past .cal-alert-where,
 .cal-alert-row.past .cal-alert-repeat {
-  color: rgba(153, 153, 153, 0.561);
+  color: alpha(@vibeos_on_surface_variant, 0.56);
 }
 
 /* --- the button bar */
 .cal-alerts-button {
-  min-height: 48px;
-  font-size: 14px;
-  color: #f3f3f3;
+  min-height: 48dp;
+  font-size: 14sp;
+  color: @vibeos_on_surface;
 }
 
 /* --- the Snooze delay dialog: a time picker with a title. The picker dialog is flush (no card padding), so the
  * title takes a titled dialog's own margins, as libvibeos's other dialog titles */
 .cal-snooze-dialog .vibeos-dialog.flush .vibeos-dialog-title {
-  margin: 24px 24px 16px 24px;
+  margin: 24dp 24dp 16dp 24dp;
 }

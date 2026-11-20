@@ -713,7 +713,7 @@ outlined_button (const char *name, GCallback callback, gpointer data)
 
   gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
   /* centred with font padding (the font's bounding box, not its line) */
-  vibeos_label_set_font_padding (label, 14);
+  vibeos_label_set_font_padding_sp (label, 14);
   gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
   gtk_widget_add_css_class (button, "cal-outlined");
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_BOUNDED, 20);
@@ -840,8 +840,8 @@ build (Editor *editor)
   gtk_label_set_ellipsize (GTK_LABEL (editor->calendar_account), PANGO_ELLIPSIZE_END);
   gtk_widget_add_css_class (editor->calendar_account, "cal-edit-calendar-account");
   /* the name over the account, each with its font padding */
-  vibeos_label_set_font_padding (editor->calendar_name, 18);
-  vibeos_label_set_font_padding (editor->calendar_account, 14);
+  vibeos_label_set_font_padding_sp (editor->calendar_name, 18);
+  vibeos_label_set_font_padding_sp (editor->calendar_account, 14);
   gtk_box_append (GTK_BOX (calendar_text), editor->calendar_name);
   gtk_box_append (GTK_BOX (calendar_text), editor->calendar_account);
   {
@@ -920,7 +920,7 @@ build (Editor *editor)
      * height. */
     GtkWidget *overlay = gtk_overlay_new ();
 
-    vibeos_label_set_font_padding (label, 18);
+    vibeos_label_set_font_padding_sp (label, 18);
     line = row ("cal-schedule-symbolic", box);
     gtk_widget_add_css_class (line, "cal-edit-all-day");
     gtk_overlay_set_child (GTK_OVERLAY (overlay), line);
@@ -987,7 +987,7 @@ build (Editor *editor)
     /* the helper text under the box, in line with the field's text */
     gtk_label_set_xalign (GTK_LABEL (helper), 0);
     gtk_label_set_wrap (GTK_LABEL (helper), TRUE);
-    vibeos_label_set_font_padding (helper, 12);
+    vibeos_label_set_font_padding_sp (helper, 12);
     gtk_widget_add_css_class (helper, "cal-text-helper");
     gtk_box_append (GTK_BOX (content), helper);
   }

@@ -1,0 +1,59 @@
+# Settings on a tablet on its side, held against the reference tablet's two-pane Settings: the main menu on the
+# left, the first entry's page beside it.
+#
+#   vibeos-specdiff settings-tablet-land.specdiff ours.xml
+#
+# with ours dumped (`vibeos-headless dump`) from vibeos-settings on a 1280 x 740 display at 2x (VIBEOS_HEADLESS_SIZE
+# tablet), at the default font size, and the reference a dump of the whole screen with Settings just opened
+# (tools/specdiff-refs/settings-tablet-land.xml): its status bar is 56 px, and its menu window comes after the page's.
+
+ref-offset 0,56
+ref-density 2
+tolerance 1
+
+# the panes
+menu pane right     | x1('css=vibeos-list-pane')    | x1('id=settings_homepage_container')     | 465
+page pane left      | x0('css=vibeos-detail-pane')  | x0('id=content_parent')                  | 465
+
+# the search pill over the menu
+pill left           | x0('css=vibeos-search-pill')  | x0('id=search_action_bar')               | 16
+pill right          | x1('css=vibeos-search-pill')  | x1('id=search_action_bar')               | 449
+pill top            | y0('css=vibeos-search-pill')  | y0('id=search_action_bar')               | 8
+pill bottom         | y1('css=vibeos-search-pill')  | y1('id=search_action_bar')               | 80
+
+# the menu's cards and rows
+card left           | x0('css=vibeos-list-pane >> class=VibeosListRow') |
+                      x0('id=settings_homepage_container >> id=icon_frame') | 16
+card right          | x1('css=vibeos-list-pane >> class=VibeosListRow') |
+                      x1('id=settings_homepage_container >> id=text_frame') | 449
+first row top       | y0('css=vibeos-list-pane >> class=VibeosListRow') |
+                      y0('id=settings_homepage_container >> id=icon_frame/..') | 94
+row 0 height        | h('css=vibeos-list-pane >> class=VibeosListRow') |
+                      h('id=settings_homepage_container >> id=text_frame') | 75
+row 2 height        | h('css=vibeos-list-pane >> class=VibeosListRow#2') |
+                      h('id=settings_homepage_container >> id=text_frame#2') | 75
+gap in group 1      | y0('css=vibeos-list-pane >> class=VibeosListRow#1') - y1('css=vibeos-list-pane >> class=VibeosListRow') |
+                      y0('id=settings_homepage_container >> id=text_frame#1') - \
+                      y1('id=settings_homepage_container >> id=text_frame') | 2
+gap between groups  | y0('css=vibeos-list-pane >> class=VibeosListRow#2') - \
+                      y1('css=vibeos-list-pane >> class=VibeosListRow#1') |
+                      y0('id=settings_homepage_container >> id=text_frame#2') - \
+                      y1('id=settings_homepage_container >> id=text_frame#1') | 16
+icon left           | x0('css=vibeos-list-pane >> css=vibeos-list-row-icon-circle') |
+                      x0('id=settings_homepage_container >> id=icon') | 32
+icon width          | w('css=vibeos-list-pane >> css=vibeos-list-row-icon-circle') |
+                      w('id=settings_homepage_container >> id=icon') | 40
+icon centre         | cy('css=vibeos-list-pane >> css=vibeos-list-row-icon-circle') - \
+                      y0('css=vibeos-list-pane >> class=VibeosListRow') |
+                      cy('id=settings_homepage_container >> id=icon') - \
+                      y0('id=settings_homepage_container >> id=text_frame') | 37.5
+title left          | x0('css=vibeos-list-pane >> css=vibeos-list-row-title') |
+                      x0('id=settings_homepage_container >> id=title') | 84
+title top           | y0('css=vibeos-list-pane >> css=vibeos-list-row-title') - \
+                      y0('css=vibeos-list-pane >> class=VibeosListRow') |
+                      y0('id=settings_homepage_container >> id=title') - \
+                      y0('id=settings_homepage_container >> id=text_frame') | 16
+
+# the page beside it: where its rows' text starts
+page title left     | x0('css=vibeos-detail-pane >> css=vibeos-list-row-title') |
+                      x0('id=content_parent >> id=title') | 549

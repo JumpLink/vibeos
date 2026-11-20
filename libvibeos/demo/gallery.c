@@ -55,7 +55,7 @@ static const Item top_items[] = {
   { "drive-harddisk-symbolic", "Storage", "34% used - 84.3 GB free", 0xfcbd00 },
   { "battery-good-symbolic", "Battery", "71%", 0x80da88 },
   { "emblem-system-symbolic", "System", "Languages, gestures, time, backup", 0xc7c7c7 },
-  { "dialog-information-symbolic", "About phone", "Test phone", 0xc7c7c7 },
+  { "dialog-information-symbolic", "About device", "Test phone", 0xc7c7c7 },
   { NULL },
   { "security-high-symbolic", "Security & privacy", "App security, device lock, permissions", 0x60d5f3 },
   { "find-location-symbolic", "Location", "On - 3 apps have access to location", 0x60d5f3 },

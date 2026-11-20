@@ -25,6 +25,8 @@
 #define FAB_ROW         120     /* the FAB's row at the bottom: the document's last line scrolls up out of it */
 #define FAB_SIZE        88
 #define SAVE_DELAY_MS   1000    /* after the last change, the document is written */
+#define TEXT_MARGIN     24      /* the document's margins on a phone */
+#define COLUMN_MAX      640     /* on a wider window the text keeps to a column this wide, in the middle */
 
 typedef struct {
   GtkWidget *window;
@@ -773,11 +775,33 @@ on_close_request (GtkWindow *window, Window *self)
   return TRUE;
 }
 
+/* the document's margins: the phone's, or wider so that the text keeps to a readable column in the middle */
+static void
+update_margins (Window *self)
+{
+  VibeosLayout *layout = vibeos_layout_get_for_window (GTK_WINDOW (self->window));
+  int margin = MAX (TEXT_MARGIN, (vibeos_layout_get_width (layout) - COLUMN_MAX) / 2);
+
+  gtk_text_view_set_left_margin (GTK_TEXT_VIEW (self->view), margin);
+  gtk_text_view_set_right_margin (GTK_TEXT_VIEW (self->view), margin);
+}
+
+/* the theme changed: the words still being recognised in its colour */
+static void
+update_partial (Window *self)
+{
+  GdkRGBA variant = vibeos_color (VIBEOS_ON_SURFACE_VARIANT);
+
+  g_object_set (self->partial, "foreground-rgba", &variant, NULL);
+}
+
 static void
 window_free (gpointer data)
 {
   Window *self = data;
 
+  /* the window's layout goes with the window; the theme stays */
+  g_signal_handlers_disconnect_by_data (vibeos_theme_get_default (), self);
   g_clear_handle_id (&self->save_id, g_source_remove);
   g_clear_handle_id (&self->place_id, g_source_remove);
   g_signal_handlers_disconnect_by_data (self->engine, self);
@@ -811,7 +835,7 @@ dictate_window_new (GtkApplication *app)
   gtk_widget_add_css_class (title, "vibeos-app-bar-title");
   gtk_label_set_xalign (GTK_LABEL (title), 0);
   gtk_label_set_ellipsize (GTK_LABEL (title), PANGO_ELLIPSIZE_END);
-  vibeos_label_set_font_padding (title, 22);
+  vibeos_label_set_font_padding_sp (title, 22);
   gtk_widget_set_valign (title, GTK_ALIGN_CENTER);
   gtk_widget_set_hexpand (title, TRUE);
   gtk_box_append (GTK_BOX (bar), title);
@@ -840,8 +864,8 @@ dictate_window_new (GtkApplication *app)
   self->buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (self->view));
   gtk_widget_add_css_class (self->view, "dictate-document");
   gtk_text_view_set_wrap_mode (GTK_TEXT_VIEW (self->view), GTK_WRAP_WORD_CHAR);
-  gtk_text_view_set_left_margin (GTK_TEXT_VIEW (self->view), 24);
-  gtk_text_view_set_right_margin (GTK_TEXT_VIEW (self->view), 24);
+  gtk_text_view_set_left_margin (GTK_TEXT_VIEW (self->view), TEXT_MARGIN);
+  gtk_text_view_set_right_margin (GTK_TEXT_VIEW (self->view), TEXT_MARGIN);
   gtk_text_view_set_top_margin (GTK_TEXT_VIEW (self->view), 8);
   gtk_text_view_set_bottom_margin (GTK_TEXT_VIEW (self->view), FAB_ROW + 16);
   gtk_text_view_set_pixels_inside_wrap (GTK_TEXT_VIEW (self->view), 4);
@@ -914,6 +938,10 @@ dictate_window_new (GtkApplication *app)
   g_signal_connect (self->engine, "state-changed", G_CALLBACK (on_state_changed), self);
   g_signal_connect (self->engine, "error", G_CALLBACK (on_error), self);
   g_signal_connect (self->window, "close-request", G_CALLBACK (on_close_request), self);
+  g_signal_connect_swapped (vibeos_layout_get_for_window (GTK_WINDOW (self->window)), "changed",
+                            G_CALLBACK (update_margins), self);
+  g_signal_connect_swapped (vibeos_theme_get_default (), "changed", G_CALLBACK (update_partial), self);
+  update_margins (self);
   choose_language (self);
   show_state (self);
   return self->window;

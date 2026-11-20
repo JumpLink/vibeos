@@ -206,7 +206,6 @@ fm_list_dialog (GtkWidget *parent, const char *title, const FmListRow *rows, int
   ListDialog *list = g_new0 (ListDialog, 1);
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *scroll = spongy_scroll_view_new ();
-  GdkRGBA ripple = fm_rgba (FM_C_RIPPLE_CARD);
 
   list->chosen = chosen;
   list->data = data;
@@ -235,7 +234,6 @@ fm_list_dialog (GtkWidget *parent, const char *title, const FmListRow *rows, int
       row = vibeos_pressable_new (line);
       gtk_widget_add_css_class (row, "fm-list-dialog-row");
       vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
-      vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
       g_object_set_data (G_OBJECT (row), "fm-index", GINT_TO_POINTER (i));
       g_signal_connect (row, "clicked", G_CALLBACK (on_list_row), dialog);
       gtk_box_append (GTK_BOX (box), row);
@@ -330,7 +328,7 @@ property_row (GtkWidget *content, const char *label, const char *value)
   gtk_box_append (GTK_BOX (content), fm_form_row (label, text));
   gtk_widget_remove_css_class (gtk_widget_get_prev_sibling (text), "fm-form-label");
   gtk_widget_add_css_class (gtk_widget_get_prev_sibling (text), "fm-property-label");
-  vibeos_label_set_font_padding (gtk_widget_get_prev_sibling (text), 14);
+  vibeos_label_set_font_padding_sp (gtk_widget_get_prev_sibling (text), 14);
   return text;
 }
 

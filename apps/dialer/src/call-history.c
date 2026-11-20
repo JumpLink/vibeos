@@ -16,7 +16,7 @@
 #define TAB_HEIGHT      48
 #define TAB_PAD         10      /* a tab label's side padding */
 #define UNDERLINE       2       /* under the selected tab */
-#define UNDERLINE_COLOR 0x33666d
+#define UNDERLINE_COLOR VIBEOS_PRIMARY  /* the theme's, read as the strip draws */
 #define PAGE_MS         200     /* to the next page, from rest: (1 + 1) × 100 ms */
 #define FLING_VELOCITY  400     /* the slowest fling that turns the page, px/s */
 
@@ -48,8 +48,7 @@ history_tabs_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   HistoryTabs *self = HISTORY_TABS (widget);
   int from = CLAMP ((int) floor (self->position), 0, N_PAGES - 1), to = MIN (from + 1, N_PAGES - 1);
   double t = self->position - from;
-  GdkRGBA color = { ((UNDERLINE_COLOR >> 16) & 0xff) / 255.0, ((UNDERLINE_COLOR >> 8) & 0xff) / 255.0,
-                    (UNDERLINE_COLOR & 0xff) / 255.0, 1 };
+  GdkRGBA color = vibeos_color (UNDERLINE_COLOR);
   graphene_rect_t a, b;
   double left, right;
 

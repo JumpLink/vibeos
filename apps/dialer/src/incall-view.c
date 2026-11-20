@@ -43,10 +43,12 @@
 #define GSF_PAD_TOP(size)       ((size) * 278 / 2000.0)
 #define GSF_PAD_BOTTOM(size)    ((size) * 33 / 2000.0)
 
-#define BACKGROUND      0x181c1d
+/* colours: the call's screen is dark in light mode too, in the dark tones of the theme's palettes, read as it draws */
+#define BACKGROUND      VIBEOS_PALETTE_NEUTRAL1, 900
 #define TEXT_SECONDARY  (0xdd / 255.0)  /* the status and bottom lines: white at this alpha */
-#define END_COLOR       0xe46962
-#define BANNER_COLOR    0x212121        /* at 0xCC */
+#define END_COLOR       VIBEOS_PALETTE_ERROR, 400
+#define BANNER_COLOR    VIBEOS_PALETTE_NEUTRAL1, 800    /* at BANNER_ALPHA */
+#define BANNER_ALPHA    0.4
 
 /* the buttons this phone has; the GSM chooser's others (Record, which Germany forbids, Merge, Manage, Video call,
  * Change SIM) need what the modem or this phone does not have, so they are never allowed */
@@ -100,9 +102,12 @@ enum { ADD_CALL, NOTICE, N_SIGNALS };
 static guint signals[N_SIGNALS];
 
 static GdkRGBA
-rgb (guint32 value, double alpha)
+rgb (VibeosPalette palette, int stop, double alpha)
 {
-  return (GdkRGBA) { ((value >> 16) & 0xff) / 255.0, ((value >> 8) & 0xff) / 255.0, (value & 0xff) / 255.0, alpha };
+  GdkRGBA rgba = vibeos_palette_stop (palette, stop);
+
+  rgba.alpha = alpha;
+  return rgba;
 }
 
 static gboolean
@@ -121,7 +126,7 @@ new_layout (InCallView *self, const char *family, double size)
 
   /* 400, which Bold text makes 700 */
   pango_font_description_set_absolute_size (font, size * PANGO_SCALE);
-  pango_font_description_set_weight (font, 700);
+  pango_font_description_set_weight (font, vibeos_font_weight (400));
   pango_layout_set_font_description (layout, font);
   pango_layout_set_single_paragraph_mode (layout, TRUE);
   pango_layout_set_ellipsize (layout, PANGO_ELLIPSIZE_END);
@@ -611,7 +616,7 @@ draw_banner (InCallView *self, GtkSnapshot *snapshot, double width)
 {
   double height = banner_height (self), x = BANNER_PAD_X;
   double text_y = round ((height - roboto_box (self->banner_label)) / 2) + ROBOTO_PAD_TOP (STATUS_SIZE);
-  GdkRGBA background = rgb (BANNER_COLOR, 0xcc / 255.0), icon = { 1, 1, 1, TEXT_SECONDARY };
+  GdkRGBA background = rgb (BANNER_COLOR, BANNER_ALPHA), icon = { 1, 1, 1, TEXT_SECONDARY };
 
   gtk_snapshot_append_color (snapshot, &background, &GRAPHENE_RECT_INIT (0, 0, width, height));
   vibeos_snapshot_icon (snapshot, GTK_WIDGET (self), "dialer-phone-paused-symbolic", x,
@@ -702,6 +707,15 @@ incall_view_class_init (InCallViewClass *klass)
                                   G_TYPE_NONE, 1, G_TYPE_STRING);
 }
 
+/* the end-call button's red, from the theme's error palette as it is now */
+static void
+update_end_fill (InCallView *self)
+{
+  GdkRGBA end = rgb (END_COLOR, 1);
+
+  vibeos_pressable_set_fill (VIBEOS_PRESSABLE (self->end_button), &end, TRUE);
+}
+
 static void
 add_button (InCallView *self, ButtonId id, const char *icon, const char *label, GCallback clicked)
 {
@@ -714,7 +728,6 @@ static void
 incall_view_init (InCallView *self)
 {
   GtkWidget *icon = gtk_image_new_from_icon_name ("dialer-call-end-symbolic");
-  GdkRGBA end = rgb (END_COLOR, 1);
   CallsClient *client = calls_client_get ();
 
   self->status = new_layout (self, "VibeOS Roboto", STATUS_SIZE);
@@ -746,7 +759,7 @@ incall_view_init (InCallView *self)
   gtk_image_set_pixel_size (GTK_IMAGE (icon), END_ICON);
   gtk_widget_add_css_class (icon, "end-call-icon");
   self->end_button = vibeos_pressable_new (icon);
-  vibeos_pressable_set_fill (VIBEOS_PRESSABLE (self->end_button), &end, TRUE);
+  update_end_fill (self);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->end_button), VIBEOS_RIPPLE_CIRCLE, END_SIZE / 2.0);
   vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (self->end_button), &(GdkRGBA) { 1, 1, 1, 0.25 });
   gtk_accessible_update_property (GTK_ACCESSIBLE (self->end_button), GTK_ACCESSIBLE_PROPERTY_LABEL, _("End call"), -1);
@@ -755,6 +768,8 @@ incall_view_init (InCallView *self)
 
   g_signal_connect (client, "audio-changed", G_CALLBACK (on_audio_changed), self);
   g_signal_connect (client, "status-changed", G_CALLBACK (on_status_changed), self);
+  g_signal_connect_object (vibeos_theme_get_default (), "changed", G_CALLBACK (update_end_fill), self,
+                           G_CONNECT_SWAPPED);
 }
 
 GtkWidget *

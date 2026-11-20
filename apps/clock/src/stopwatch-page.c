@@ -175,7 +175,7 @@ lap_label (const char *css_class, int margin_end)
   GtkWidget *label = gtk_label_new (NULL);
 
   gtk_widget_add_css_class (label, css_class);
-  vibeos_label_set_font_padding (label, 14);
+  vibeos_label_set_font_padding_sp (label, 14);
   /* the row's padding of 4 on top of the font's own */
   gtk_widget_set_margin_top (label, gtk_widget_get_margin_top (label) + 4);
   gtk_widget_set_valign (label, GTK_ALIGN_START);

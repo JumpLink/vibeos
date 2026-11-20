@@ -82,6 +82,20 @@ static const struct {
   [VIBEOS_SEARCH_CURSOR]              = { "vibeos_search_cursor", FIXED, 0x03dac6, 0x03dac6 },
   [VIBEOS_EMOJI_TAB_SELECTED]         = { "vibeos_emoji_tab_selected", FIXED, 0x37474f, 0xd4d4d5 },
   [VIBEOS_EMOJI_TAB]                  = { "vibeos_emoji_tab", FIXED, 0xbbbdc5, 0x5e5e62 },
+  /* the light circles of security and accessibility are not on record: the dark one's hue at tone 90, with the
+   * chroma the recorded light circles have against their dark ones */
+  [VIBEOS_CATEGORY_APPS]              = { "vibeos_category_apps", FIXED, 0xd0e4ff, 0xa1c9ff },
+  [VIBEOS_ON_CATEGORY_APPS]           = { "vibeos_on_category_apps", FIXED, 0x04409f, 0x04409f },
+  [VIBEOS_CATEGORY_NOTIFICATIONS]     = { "vibeos_category_notifications", FIXED, 0xffd8ef, 0xffaee4 },
+  [VIBEOS_ON_CATEGORY_NOTIFICATIONS]  = { "vibeos_on_category_notifications", FIXED, 0x8d0053, 0x8d0053 },
+  [VIBEOS_CATEGORY_DISPLAY]           = { "vibeos_category_display", FIXED, 0xffdcc3, 0xffb683 },
+  [VIBEOS_ON_CATEGORY_DISPLAY]        = { "vibeos_on_category_display", FIXED, 0x753403, 0x753403 },
+  [VIBEOS_CATEGORY_BATTERY]           = { "vibeos_category_battery", FIXED, 0xbeefbb, 0x80da88 },
+  [VIBEOS_ON_CATEGORY_BATTERY]        = { "vibeos_on_category_battery", FIXED, 0x00522c, 0x00522c },
+  [VIBEOS_CATEGORY_SECURITY]          = { "vibeos_category_security", FIXED, 0xbbeaf9, 0x60d5f3 },
+  [VIBEOS_ON_CATEGORY_SECURITY]       = { "vibeos_on_category_security", FIXED, 0x004e5d, 0x004e5d },
+  [VIBEOS_CATEGORY_ACCESSIBILITY]     = { "vibeos_category_accessibility", FIXED, 0xeedcfe, 0xd9bafd },
+  [VIBEOS_ON_CATEGORY_ACCESSIBILITY]  = { "vibeos_on_category_accessibility", FIXED, 0x5629a4, 0x5629a4 },
 };
 
 /* colours only the stylesheet uses, by mode: the navigation bar's unselected items are a translucent white on the

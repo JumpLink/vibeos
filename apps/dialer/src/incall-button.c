@@ -81,9 +81,11 @@ incall_button_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gsk_rounded_rect_init_from_rect (&oval, &box, ICON_VIEW / 2.0);
   if (self->checked)
     {
-      /* a checked button: a light disc, its shadow deeper while pressed; dimmed when disabled */
-      GdkRGBA disc = { 0xed / 255.0, 0xf1 / 255.0, 0xf2 / 255.0, gtk_widget_is_sensitive (widget) ? 1 : 0.6 };
+      /* a checked button: a light disc in the theme's neutral palette, its shadow deeper while pressed; dimmed when
+       * disabled */
+      GdkRGBA disc = vibeos_palette_stop (VIBEOS_PALETTE_NEUTRAL1, 50);
 
+      disc.alpha = gtk_widget_is_sensitive (widget) ? 1 : 0.6;
       gtk_snapshot_append_outset_shadow (snapshot, &oval, &(GdkRGBA) { 0, 0, 0, 0.2 }, 0, self->pressed ? 4 : 2, 0,
                                          self->pressed ? 8 : 4);
       gtk_snapshot_push_rounded_clip (snapshot, &oval);
@@ -188,7 +190,7 @@ incall_button_init (InCallButton *self)
   self->label = gtk_widget_create_pango_layout (GTK_WIDGET (self), NULL);
   /* 700, not 400: the phone's Bold text setting is on */
   pango_font_description_set_absolute_size (font, LABEL_SIZE * PANGO_SCALE);
-  pango_font_description_set_weight (font, 700);
+  pango_font_description_set_weight (font, vibeos_font_weight (400));
   pango_layout_set_font_description (self->label, font);
   pango_layout_set_ellipsize (self->label, PANGO_ELLIPSIZE_END);
   pango_layout_set_alignment (self->label, PANGO_ALIGN_CENTER);

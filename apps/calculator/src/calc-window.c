@@ -41,7 +41,7 @@
 #define MAX_ACCELERATION  1.2       /* progress / s²: the settle after a drag */
 #define MAX_VELOCITY      4.0       /* progress / s */
 #define TOUCH_SLOP        8         /* px: the move that starts a drag */
-#define ERROR_COLOR       0xB00020  /* the formula and the result after an error */
+#define ERROR_COLOR       VIBEOS_ERROR      /* the formula and the result after an error */
 #define N_INVERTIBLE      6
 
 typedef enum {
@@ -165,12 +165,6 @@ static gboolean
 have_unprocessed (CalcMain *self)
 {
   return self->unprocessed && *self->unprocessed;
-}
-
-static GdkRGBA
-rgb (guint32 rgb)
-{
-  return (GdkRGBA) { ((rgb >> 16) & 0xff) / 255.0f, ((rgb >> 8) & 0xff) / 255.0f, (rgb & 0xff) / 255.0f, 1 };
 }
 
 /* ------------------------------------------------------------------------------------------------------------ */
@@ -519,7 +513,7 @@ static void
 set_state (CalcMain *self, CalcState state)
 {
   GdkRGBA formula_color = vibeos_color (VIBEOS_ON_SURFACE), result_color = vibeos_color (VIBEOS_TERTIARY);
-  GdkRGBA error = rgb (ERROR_COLOR);
+  GdkRGBA error = vibeos_color (ERROR_COLOR);
 
   if (self->state == state)
     return;

@@ -179,7 +179,6 @@ on_setup (GtkSignalListItemFactory *factory, GtkListItem *list_item, FmList *sel
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *text = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *sub = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  GdkRGBA ripple = fm_rgba (FM_C_RIPPLE);
 
   row->list = self;
   row->icon = fm_icon_new (FM_GLYPH_FOLDER, 44);
@@ -209,7 +208,6 @@ on_setup (GtkSignalListItemFactory *factory, GtkListItem *list_item, FmList *sel
   row->pressable = vibeos_pressable_new (box);
   gtk_widget_add_css_class (row->pressable, "fm-row");
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row->pressable), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row->pressable), &ripple);
   g_signal_connect (row->pressable, "clicked", G_CALLBACK (on_row_clicked), row);
   g_signal_connect (row->pressable, "long-pressed", G_CALLBACK (on_row_long_pressed), row);
   g_object_set_data_full (G_OBJECT (row->pressable), "fm-row", row, row_free);
@@ -227,7 +225,6 @@ on_setup_tile (GtkSignalListItemFactory *factory, GtkListItem *list_item, FmList
   Row *row = g_new0 (Row, 1);
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *frame = gtk_overlay_new ();
-  GdkRGBA ripple = fm_rgba (FM_C_RIPPLE);
 
   row->list = self;
   row->icon = fm_icon_new (FM_GLYPH_FOLDER, 64);
@@ -250,7 +247,6 @@ on_setup_tile (GtkSignalListItemFactory *factory, GtkListItem *list_item, FmList
   row->pressable = vibeos_pressable_new (box);
   gtk_widget_add_css_class (row->pressable, "fm-grid-tile");
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row->pressable), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row->pressable), &ripple);
   g_signal_connect (row->pressable, "clicked", G_CALLBACK (on_row_clicked), row);
   g_signal_connect (row->pressable, "long-pressed", G_CALLBACK (on_row_long_pressed), row);
   g_object_set_data_full (G_OBJECT (row->pressable), "fm-row", row, row_free);

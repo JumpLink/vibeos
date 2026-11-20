@@ -34,7 +34,7 @@ ns_bt_init (void)
 }
 
 static void
-with_bluez (AdwNavigationPage *page, NsFill fill)
+with_bluez (NsPage *page, NsFill fill)
 {
   if (bluez) {
     fill (page);
@@ -111,7 +111,7 @@ static const char agent_xml[] =
 
 static guint agent_id;
 static GtkWidget *agent_parent;      /* the Bluetooth page, for the dialogs */
-static AdwDialog *agent_dialog;
+static GtkWidget *agent_dialog;
 static GDBusMethodInvocation *pending;
 
 static char *
@@ -163,7 +163,7 @@ agent_call (GDBusConnection *bus, const char *sender, const char *path, const ch
 
   if (!g_strcmp0 (method, "Cancel") || !g_strcmp0 (method, "Release")) {
     if (agent_dialog)
-      adw_dialog_force_close (agent_dialog);
+      ns_dialog_close (agent_dialog);
     agent_reply (NULL);
     g_dbus_method_invocation_return_value (inv, NULL);
     return;
@@ -330,7 +330,7 @@ forget_answered (gboolean yes, gpointer row)
   if (yes && ad) {
     g_dbus_proxy_call (ad, "RemoveDevice", g_variant_new ("(o)", g_dbus_proxy_get_object_path (dev)),
                        G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
-    adw_navigation_view_pop (ADW_NAVIGATION_VIEW (gtk_widget_get_ancestor (row, ADW_TYPE_NAVIGATION_VIEW)));
+    ns_pop (row);
   }
   g_clear_object (&ad);
 }
@@ -343,13 +343,12 @@ forget_tapped (GtkWidget *row, gpointer data)
 }
 
 static void
-device_fill (AdwNavigationPage *page)
+device_fill (NsPage *page)
 {
   GDBusProxy *dev = g_object_get_data (G_OBJECT (page), "ns-dev");
   GtkWidget *conn = g_object_get_data (G_OBJECT (page), "ns-conn");
   gboolean on = prop_bool (dev, "Connected");
-  gtk_label_set_text (GTK_LABEL (g_object_get_data (G_OBJECT (conn), "ns-title-label")),
-                      on ? "Disconnect" : "Connect");
+  ns_row_set_title (conn, on ? "Disconnect" : "Connect");
   ns_row_set_subtitle (conn, on ? "Connected" : NULL);
 }
 
@@ -358,7 +357,7 @@ device_page (GtkWidget *b, GDBusProxy *dev)
 {
   GtkWidget *c;
   g_autofree char *alias = prop_string (dev, "Alias");
-  AdwNavigationPage *page = ns_page_new (alias ? alias : "Device", &c);
+  NsPage *page = ns_page_new (alias ? alias : "Device", &c);
   g_object_set_data_full (G_OBJECT (page), "ns-dev", g_object_ref (dev), g_object_unref);
   ns_later_init (page, device_fill);
   GtkWidget *g = ns_group (c, NULL);
@@ -387,7 +386,7 @@ by_name (gconstpointer a, gconstpointer b)
 }
 
 static void
-bt_fill (AdwNavigationPage *page)
+bt_fill (NsPage *page)
 {
   Bt *bt = g_object_get_data (G_OBJECT (page), "bt");
   if (!bt->adapter) {
@@ -443,9 +442,8 @@ bt_fill (AdwNavigationPage *page)
                            is_paired ? (conn ? "Connected" : NULL) : NULL);
     g_object_set_data_full (G_OBJECT (r), "ns-dev", g_object_ref (dev), g_object_unref);
     if (is_paired) {
-      GtkWidget *gear = gtk_button_new_from_icon_name ("emblem-system-symbolic");
-      gtk_widget_add_css_class (gear, "flat");
-      gtk_widget_add_css_class (gear, "circular");
+      GtkWidget *gear = vibeos_icon_button_new ("emblem-system-symbolic");
+      gtk_accessible_update_property (GTK_ACCESSIBLE (gear), GTK_ACCESSIBLE_PROPERTY_LABEL, "Device settings", -1);
       g_signal_connect_data (gear, "clicked", G_CALLBACK (device_page), g_object_ref (dev),
                              (GClosureNotify) (void (*) (void)) g_object_unref, 0);
       ns_row_suffix (r, gear);
@@ -461,11 +459,11 @@ bt_fill (AdwNavigationPage *page)
 }
 
 static void
-bt_power (GtkSwitch *sw, GParamSpec *ps, AdwNavigationPage *page)
+bt_power (GtkWidget *sw, GParamSpec *ps, NsPage *page)
 {
   Bt *bt = g_object_get_data (G_OBJECT (page), "bt");
   if (!ns_switch_syncing (GTK_WIDGET (sw)) && bt->adapter)
-    prop_set (bt->adapter, "org.bluez.Adapter1", "Powered", g_variant_new_boolean (gtk_switch_get_active (sw)));
+    prop_set (bt->adapter, "org.bluez.Adapter1", "Powered", g_variant_new_boolean (ns_switch_get_active (sw)));
 }
 
 static void
@@ -486,7 +484,7 @@ void
 ns_page_bluetooth (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Bluetooth", &c);
+  NsPage *page = ns_page_new ("Bluetooth", &c);
   Bt *bt = g_new0 (Bt, 1);
   g_object_set_data_full (G_OBJECT (page), "bt", bt, (GDestroyNotify) bt_free);
   ns_later_init (page, bt_fill);
@@ -527,7 +525,7 @@ static void
 name_tapped (GtkWidget *row, gpointer data)
 {
   const char *cur = g_object_get_data (G_OBJECT (row), "ns-name");
-  ns_ask (row, "Phone name", "Shown to Bluetooth devices and on the network.", cur, FALSE, "Rename", pretty_set,
+  ns_ask (row, "Device name", "Shown to Bluetooth devices and on the network.", cur, FALSE, "Rename", pretty_set,
           g_object_ref (row));
 }
 
@@ -548,7 +546,7 @@ name_got (GObject *src, GAsyncResult *res, gpointer row)
 GtkWidget *
 ns_bt_name_row (GtkWidget *g)
 {
-  GtkWidget *r = ns_row (g, NULL, NULL, "Phone name", g_get_host_name ());
+  GtkWidget *r = ns_row (g, NULL, NULL, "Device name", g_get_host_name ());
   ns_row_on_activate (r, name_tapped, NULL);
   g_autoptr (GDBusConnection) bus = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, NULL);
   if (bus)
@@ -560,7 +558,7 @@ ns_bt_name_row (GtkWidget *g)
 }
 
 static void
-visible_fill (AdwNavigationPage *page)
+visible_fill (NsPage *page)
 {
   GtkWidget *r = g_object_get_data (G_OBJECT (page), "ns-visible");
   g_autoptr (GDBusProxy) ad = adapter ();
@@ -576,13 +574,13 @@ visible_fill (AdwNavigationPage *page)
 }
 
 static void
-visible_set (GtkSwitch *sw, GParamSpec *ps, gpointer data)
+visible_set (GtkWidget *sw, GParamSpec *ps, gpointer data)
 {
   g_autoptr (GDBusProxy) ad = adapter ();
   if (ad && !ns_switch_syncing (GTK_WIDGET (sw))) {
     /* 0: until switched off again */
     prop_set (ad, "org.bluez.Adapter1", "DiscoverableTimeout", g_variant_new_uint32 (0));
-    prop_set (ad, "org.bluez.Adapter1", "Discoverable", g_variant_new_boolean (gtk_switch_get_active (sw)));
+    prop_set (ad, "org.bluez.Adapter1", "Discoverable", g_variant_new_boolean (ns_switch_get_active (sw)));
   }
 }
 
@@ -590,7 +588,7 @@ void
 ns_page_sharing (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Sharing", &c);
+  NsPage *page = ns_page_new ("Sharing", &c);
   ns_later_init (page, visible_fill);
   GtkWidget *g = ns_group (c, NULL);
   ns_bt_name_row (g);

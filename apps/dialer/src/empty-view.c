@@ -7,7 +7,7 @@
 #define BUTTON_MIN_W    88
 #define BUTTON_HEIGHT   48
 #define BUTTON_PADDING  16
-#define BUTTON_COLOR    0x33666d
+#define BUTTON_COLOR    VIBEOS_PRIMARY  /* the theme's, read as the button draws */
 
 typedef struct
 {
@@ -60,7 +60,7 @@ empty_view_new (const char *icon_name, const char *message, const char *action, 
   gtk_label_set_wrap (GTK_LABEL (text), TRUE);
   gtk_label_set_justify (GTK_LABEL (text), GTK_JUSTIFY_CENTER);
   gtk_widget_add_css_class (text, "dialer-empty-text");
-  vibeos_label_set_font_padding (text, 16);
+  vibeos_label_set_font_padding_sp (text, 16);
   gtk_box_append (GTK_BOX (box), text);
 
   if (action)
@@ -70,15 +70,13 @@ empty_view_new (const char *icon_name, const char *message, const char *action, 
       GtkWidget *label = gtk_label_new (caps);
       GtkWidget *button;
       Action *what = g_new (Action, 1);
-      GdkRGBA fill = { ((BUTTON_COLOR >> 16) & 0xff) / 255.0, ((BUTTON_COLOR >> 8) & 0xff) / 255.0,
-                       (BUTTON_COLOR & 0xff) / 255.0, 1 };
 
       gtk_widget_add_css_class (label, "dialer-empty-button");
       gtk_widget_set_margin_start (label, BUTTON_PADDING);
       gtk_widget_set_margin_end (label, BUTTON_PADDING);
       gtk_widget_set_size_request (label, BUTTON_MIN_W - 2 * BUTTON_PADDING, BUTTON_HEIGHT);
       button = vibeos_pressable_new (label);
-      vibeos_pressable_set_fill (VIBEOS_PRESSABLE (button), &fill, FALSE);
+      vibeos_pressable_set_fill_role (VIBEOS_PRESSABLE (button), BUTTON_COLOR, FALSE);
       vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_NONE, BUTTON_HEIGHT / 2.0);
       gtk_widget_set_halign (button, GTK_ALIGN_CENTER);
       gtk_widget_set_margin_top (button, 16);

@@ -41,43 +41,56 @@ entry (VibeosCardList *self, guint i)
   return &g_array_index (self->entries, Entry, i);
 }
 
-/* whether row i is the first (last) of its group: nothing before (after) it in the group */
-static gboolean
-first_in_group (VibeosCardList *self, guint i)
+/* Each row's corners: outer where its group starts and ends, small between. Only the rows that show count: a hidden
+ * row (a choice that does not apply, or a row a search filters out) leaves the rows around it with the corners they
+ * would have without it. A group starts at a header or at a row that starts one, shown or not. */
+static void
+set_place (GtkWidget *row, gboolean first, gboolean last)
 {
-  return i == 0 || entry (self, i)->starts_group || entry (self, i - 1)->header;
-}
-
-static gboolean
-last_in_group (VibeosCardList *self, guint i)
-{
-  return i + 1 >= self->entries->len || entry (self, i + 1)->header || entry (self, i + 1)->starts_group;
+  if (VIBEOS_IS_LIST_ROW (row))
+    vibeos_list_row_set_corners (VIBEOS_LIST_ROW (row), first ? OUTER_RADIUS : INNER_RADIUS,
+                                 last ? OUTER_RADIUS : INNER_RADIUS);
+  if (first)
+    gtk_widget_add_css_class (row, "vibeos-card-first");
+  else
+    gtk_widget_remove_css_class (row, "vibeos-card-first");
+  if (last)
+    gtk_widget_add_css_class (row, "vibeos-card-last");
+  else
+    gtk_widget_remove_css_class (row, "vibeos-card-last");
 }
 
 static void
 update_corners (VibeosCardList *self)
 {
+  GtkWidget *before = NULL;       /* the last row shown in the group so far */
+  gboolean before_first = FALSE;
+
   for (guint i = 0; i < self->entries->len; i++)
     {
       Entry *e = entry (self, i);
-      gboolean first, last;
 
-      if (e->header)
+      if (e->header || e->starts_group)
+        {
+          if (before)
+            set_place (before, before_first, TRUE);
+          before = NULL;
+        }
+      if (e->header || !gtk_widget_get_visible (e->widget))
         continue;
-      first = first_in_group (self, i);
-      last = last_in_group (self, i);
-      if (VIBEOS_IS_LIST_ROW (e->widget))
-        vibeos_list_row_set_corners (VIBEOS_LIST_ROW (e->widget), first ? OUTER_RADIUS : INNER_RADIUS,
-                                     last ? OUTER_RADIUS : INNER_RADIUS);
-      if (first)
-        gtk_widget_add_css_class (e->widget, "vibeos-card-first");
-      else
-        gtk_widget_remove_css_class (e->widget, "vibeos-card-first");
-      if (last)
-        gtk_widget_add_css_class (e->widget, "vibeos-card-last");
-      else
-        gtk_widget_remove_css_class (e->widget, "vibeos-card-last");
+      if (before)
+        set_place (before, before_first, FALSE);
+      before_first = before == NULL;
+      before = e->widget;
     }
+  if (before)
+    set_place (before, before_first, TRUE);
+}
+
+static void
+on_child_visible (GtkWidget *child, GParamSpec *pspec, VibeosCardList *self)
+{
+  update_corners (self);
 }
 
 /* ---- layout ---------------------------------------------------------------------------------------------------- */
@@ -100,13 +113,17 @@ layout (VibeosCardList *self, int width, gboolean allocate)
   double y = self->top;
   int card_w = MAX (width - 2 * SIDE, 0);
   enum { NOTHING, ROW, HEADER } before = NOTHING;
+  gboolean new_group = FALSE;       /* a hidden header or group start since the last row shown */
 
   for (guint i = 0; i < self->entries->len; i++)
     {
       Entry *e = entry (self, i);
 
       if (!gtk_widget_get_visible (e->widget))
-        continue;
+        {
+          new_group = new_group || e->header || e->starts_group;
+          continue;
+        }
       if (e->header)
         {
           int label_w = MAX (width - 2 * HEADER_X, 0), min, nat;
@@ -119,12 +136,14 @@ layout (VibeosCardList *self, int width, gboolean allocate)
                                  gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (HEADER_X, y + HEADER_TOP)));
           y += HEADER_H - HEADER_LINE + MAX (nat, line);
           before = HEADER;
+          new_group = FALSE;
           continue;
         }
       if (before == ROW)
-        y += e->starts_group ? GROUP_GAP : ROW_GAP;
+        y += e->starts_group || new_group ? GROUP_GAP : ROW_GAP;
       else if (before == HEADER)
         y += ROW_GAP;
+      new_group = FALSE;
       {
         double h = row_height (e->widget, card_w);
 
@@ -193,6 +212,7 @@ vibeos_card_list_append (VibeosCardList *self, GtkWidget *row)
   self->new_group = FALSE;
   g_array_append_val (self->entries, e);
   gtk_widget_set_parent (row, GTK_WIDGET (self));
+  g_signal_connect (row, "notify::visible", G_CALLBACK (on_child_visible), self);
   update_corners (self);
   gtk_widget_queue_resize (GTK_WIDGET (self));
 }
@@ -230,6 +250,7 @@ vibeos_card_list_remove (VibeosCardList *self, GtkWidget *row)
         if (entry (self, i)->starts_group && i + 1 < self->entries->len && !entry (self, i + 1)->header)
           entry (self, i + 1)->starts_group = TRUE;
         g_array_remove_index (self->entries, i);
+        g_signal_handlers_disconnect_by_func (row, on_child_visible, self);
         gtk_widget_unparent (row);
         update_corners (self);
         gtk_widget_queue_resize (GTK_WIDGET (self));
@@ -241,7 +262,10 @@ void
 vibeos_card_list_remove_all (VibeosCardList *self)
 {
   for (guint i = 0; i < self->entries->len; i++)
-    gtk_widget_unparent (entry (self, i)->widget);
+    {
+      g_signal_handlers_disconnect_by_func (entry (self, i)->widget, on_child_visible, self);
+      gtk_widget_unparent (entry (self, i)->widget);
+    }
   g_array_set_size (self->entries, 0);
   self->new_group = FALSE;
   gtk_widget_queue_resize (GTK_WIDGET (self));

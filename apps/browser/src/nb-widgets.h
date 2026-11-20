@@ -103,8 +103,10 @@ void       nb_indicator_awaken    (GtkWidget *indicator);
 
 /* A symbolic icon from the app's resources at `size` px */
 GtkWidget *nb_icon                (const char *icon_name, int size);
-/* A label: `size` px with the font padding above and below, `css` its colour/weight class or
+/* A label: `size` sp (it follows Font size) with the font padding above and below, `css` its colour/weight class or
  * NULL, ellipsized at the end when `ellipsize` */
 GtkWidget *nb_label               (const char *text, double size, const char *css, gboolean ellipsize);
+/* a wrapped label's line pitch, in sp like its size */
+void       nb_label_set_line_height (GtkWidget *label, double sp);
 
 G_END_DECLS

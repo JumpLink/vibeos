@@ -151,7 +151,7 @@ make_row (CityPicker *self, City *city)
   gtk_widget_set_margin_start (name, 16);
   gtk_widget_set_margin_end (name, 10);
   gtk_widget_add_css_class (name, "primary-label");
-  vibeos_label_set_font_padding (name, 14);
+  vibeos_label_set_font_padding_sp (name, 14);
   gtk_box_append (GTK_BOX (box), name);
 
   /* the time, at the end */
@@ -159,7 +159,7 @@ make_row (CityPicker *self, City *city)
   gtk_widget_set_valign (row->time, GTK_ALIGN_CENTER);
   gtk_widget_set_margin_end (row->time, 8);
   gtk_widget_add_css_class (row->time, "secondary-label");
-  vibeos_label_set_font_padding (row->time, 14);
+  vibeos_label_set_font_padding_sp (row->time, 14);
   gtk_box_append (GTK_BOX (box), row->time);
 
   row->widget = g_object_ref_sink (vibeos_pressable_new (box));
@@ -580,7 +580,7 @@ city_picker_init (CityPicker *self)
   self->header = g_object_ref_sink (gtk_label_new (_("Selected Cities")));
   gtk_label_set_xalign (GTK_LABEL (self->header), 0);
   gtk_widget_add_css_class (self->header, "city-header");
-  vibeos_label_set_font_padding (self->header, 20);
+  vibeos_label_set_font_padding_sp (self->header, 20);
   self->scroller = spongy_scroll_view_new ();
   gtk_widget_set_vexpand (self->scroller, TRUE);
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->scroller), self->list);

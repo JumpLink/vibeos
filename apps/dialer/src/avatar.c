@@ -3,20 +3,19 @@
 
 #include <vibeos.h>
 
-/* the tile colours: accent1, accent2 and accent3 at 300, 400, 500 and 600, the phone's dynamic palette */
-static const guint32 tile_colors[] = {
-  0x81b4bb, 0x96b0b4, 0x8dafd1, 0x6799a0, 0x7c9599, 0x7394b5,
-  0x4d7f86, 0x627b7f, 0x597a9a, 0x33666d, 0x4a6366, 0x406180,
+/* the tile colours: accent1, accent2 and accent3 at 300, 400, 500 and 600 of the theme's palettes, as the phone's
+ * dynamic palette gives them; read as the tile draws, so they follow the theme */
+static const struct { VibeosPalette palette; int stop; } tile_colors[] = {
+  { VIBEOS_PALETTE_ACCENT1, 300 }, { VIBEOS_PALETTE_ACCENT2, 300 }, { VIBEOS_PALETTE_ACCENT3, 300 },
+  { VIBEOS_PALETTE_ACCENT1, 400 }, { VIBEOS_PALETTE_ACCENT2, 400 }, { VIBEOS_PALETTE_ACCENT3, 400 },
+  { VIBEOS_PALETTE_ACCENT1, 500 }, { VIBEOS_PALETTE_ACCENT2, 500 }, { VIBEOS_PALETTE_ACCENT3, 500 },
+  { VIBEOS_PALETTE_ACCENT1, 600 }, { VIBEOS_PALETTE_ACCENT2, 600 }, { VIBEOS_PALETTE_ACCENT3, 600 },
 };
-#define DEFAULT_COLOR   0xcccccc        /* a tile with no identifier to pick a colour by */
+/* a tile with no identifier to pick a colour by: a neutral grey */
+#define DEFAULT_PALETTE VIBEOS_PALETTE_NEUTRAL2
+#define DEFAULT_STOP    300
 #define LETTER_RATIO    0.67            /* the letter's size against the tile's */
 #define ICON_RATIO      0.7             /* the person glyph's scale */
-
-static GdkRGBA
-rgb (guint32 value)
-{
-  return (GdkRGBA) { ((value >> 16) & 0xff) / 255.0, ((value >> 8) & 0xff) / 255.0, (value & 0xff) / 255.0, 1 };
-}
 
 /* java.lang.String.hashCode: s[0]·31^(n−1) + … + s[n−1] over the UTF-16 units, in 32-bit wrapping arithmetic */
 static gint32
@@ -35,11 +34,14 @@ tile_color (const char *identifier)
 {
   gint32 hash;
 
+  guint i;
+
   if (!identifier || !*identifier)
-    return rgb (DEFAULT_COLOR);
+    return vibeos_palette_stop (DEFAULT_PALETTE, DEFAULT_STOP);
   /* the absolute value: the one hash it cannot make positive is rare enough to fold in with the rest */
   hash = java_hash (identifier);
-  return rgb (tile_colors[(hash < 0 ? -(gint64) hash : hash) % G_N_ELEMENTS (tile_colors)]);
+  i = (hash < 0 ? -(gint64) hash : hash) % G_N_ELEMENTS (tile_colors);
+  return vibeos_palette_stop (tile_colors[i].palette, tile_colors[i].stop);
 }
 
 /* the first character of the name, upper-cased, if it is a letter; else none */

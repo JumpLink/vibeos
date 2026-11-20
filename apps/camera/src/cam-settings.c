@@ -150,7 +150,7 @@ category (GtkWidget *list, const char *title)
   GtkWidget *label = gtk_label_new (title);
 
   gtk_label_set_xalign (GTK_LABEL (label), 0);
-  vibeos_label_set_font_padding (label, 14);
+  vibeos_label_set_font_padding_sp (label, 14);
   /* a category heading: space above it, which also parts it from the group before */
   gtk_widget_set_margin_top (label, gtk_widget_get_margin_top (label) + 24);
   gtk_widget_set_margin_bottom (label, gtk_widget_get_margin_bottom (label) + 8);
@@ -179,7 +179,7 @@ row (GtkWidget *list, const char *title, const char *summary_text, GtkWidget **s
   gtk_label_set_xalign (GTK_LABEL (label), 0);
   gtk_label_set_wrap (GTK_LABEL (label), TRUE);
   gtk_widget_add_css_class (label, "cam-settings-title");
-  vibeos_label_set_font_padding (label, 16);
+  vibeos_label_set_font_padding_sp (label, 16);
   /* the title is 65 device px tall at scale 3 (its font metrics rounded outwards): 21⅔ px, which whole px can only
    * come near; 22 drifts +1 device px a row where 21 drifts -2 */
   gtk_widget_set_margin_bottom (label, gtk_widget_get_margin_bottom (label) + 1);

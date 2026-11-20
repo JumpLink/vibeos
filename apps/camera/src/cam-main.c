@@ -27,18 +27,6 @@ data_dir (void)
   return dir ? dir : DATADIR;
 }
 
-static void
-load_style (void)
-{
-  GtkCssProvider *provider = gtk_css_provider_new ();
-
-  gtk_css_provider_load_from_resource (provider, "/vibeos/Camera/camera.css");
-  /* over libvibeos's, which is at APPLICATION priority too */
-  gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (provider),
-                                              GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
-  g_object_unref (provider);
-}
-
 /* Droid Sans Mono, the mode and pro-row labels' font: shipped with the app (Apache-2.0), not in Debian */
 static void
 load_font (void)
@@ -53,9 +41,11 @@ load_font (void)
 static void
 on_startup (GApplication *app, gpointer data)
 {
-  vibeos_init ();
+  /* dark in light mode too, as the reference phone's camera; the text follows Font size and Bold text, the
+   * stylesheet in sp and dp over libvibeos's */
+  vibeos_init_full (VIBEOS_INIT_ALWAYS_DARK | VIBEOS_INIT_SCALED_TEXT);
   load_font ();
-  load_style ();
+  vibeos_css_load_resource ("/vibeos/Camera/camera.css", GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
   spongy_set_density (1.0);
 }
 

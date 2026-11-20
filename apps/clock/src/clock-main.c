@@ -26,22 +26,14 @@ static GSettings *settings;
 static GtkWidget *alarm_window;         /* the Ringing app's ringing alarm, while it is open */
 
 static void
-load_style (void)
-{
-  GtkCssProvider *provider = gtk_css_provider_new ();
-
-  gtk_css_provider_load_from_resource (provider, "/vibeos/Clock/clock.css");
-  /* over libvibeos's, which is at APPLICATION priority too: the later provider wins at equal priority */
-  gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (provider),
-                                              GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
-  g_object_unref (provider);
-}
-
-static void
 on_startup (GApplication *app, gpointer data)
 {
-  vibeos_init ();
-  load_style ();
+  gboolean ringing = GPOINTER_TO_INT (data);
+
+  /* the text follows Font size and Bold text; the stylesheet in sp and dp, over libvibeos's. The ringing alarm and
+   * the timers that ran out are dark in light mode too, as on the reference phone */
+  vibeos_init_full (VIBEOS_INIT_SCALED_TEXT | (ringing ? VIBEOS_INIT_ALWAYS_DARK : 0));
+  vibeos_css_load_resource ("/vibeos/Clock/clock.css", GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
 }
 
 /* --- the app */
@@ -144,7 +136,7 @@ main (int argc, char **argv)
   app = gtk_application_new (ringing ? RINGING_ID : APP_ID, G_APPLICATION_DEFAULT_FLAGS);
   /* both find the icons and the style under the app's path (otherwise the Ringing one would look in .../Ringing) */
   g_application_set_resource_base_path (G_APPLICATION (app), "/vibeos/Clock");
-  g_signal_connect (app, "startup", G_CALLBACK (on_startup), NULL);
+  g_signal_connect (app, "startup", G_CALLBACK (on_startup), GINT_TO_POINTER (ringing));
   if (ringing)
     {
       static const GActionEntry actions[] = {

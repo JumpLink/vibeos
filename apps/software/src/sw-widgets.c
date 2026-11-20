@@ -100,6 +100,17 @@ sw_cancellable_renew (GtkWidget *widget)
   g_object_set_data (G_OBJECT (widget), "sw-cancellable", NULL);
 }
 
+/* a word too long for its line breaks between two letters with no hyphen added, as Android draws it */
+static void
+no_hyphens (GtkWidget *label)
+{
+  PangoAttrList *attrs = pango_attr_list_new ();
+
+  pango_attr_list_insert (attrs, pango_attr_insert_hyphens_new (FALSE));
+  gtk_label_set_attributes (GTK_LABEL (label), attrs);
+  pango_attr_list_unref (attrs);
+}
+
 GtkWidget *
 sw_label_new (const char *text, const char *css_class)
 {
@@ -108,6 +119,7 @@ sw_label_new (const char *text, const char *css_class)
   gtk_label_set_xalign (GTK_LABEL (label), 0);
   gtk_label_set_wrap (GTK_LABEL (label), TRUE);
   gtk_label_set_wrap_mode (GTK_LABEL (label), PANGO_WRAP_WORD_CHAR);
+  no_hyphens (label);
   if (css_class)
     gtk_widget_add_css_class (label, css_class);
   return label;
@@ -585,6 +597,9 @@ sw_install_button_new (JsonObject *app)
   gtk_widget_add_css_class (ib->stack, "sw-install");
   ib->button = sw_button_new ("Install", SW_BUTTON_TONAL);
   gtk_widget_add_css_class (ib->button, "small");
+  /* the action is read whole at any font size: the app's name beside it gives way instead */
+  gtk_label_set_ellipsize (GTK_LABEL (vibeos_pressable_get_child (VIBEOS_PRESSABLE (ib->button))),
+                           PANGO_ELLIPSIZE_NONE);
   g_signal_connect (ib->button, "clicked", G_CALLBACK (on_install_clicked), ib);
   gtk_stack_add_child (GTK_STACK (ib->stack), ib->button);
 
@@ -689,6 +704,7 @@ sw_app_row_new (JsonObject *app, const char *subtitle)
   gtk_label_set_xalign (GTK_LABEL (name), 0);
   gtk_label_set_wrap (GTK_LABEL (name), TRUE);
   gtk_label_set_wrap_mode (GTK_LABEL (name), PANGO_WRAP_WORD_CHAR);
+  no_hyphens (name);
   gtk_label_set_lines (GTK_LABEL (name), 2);
   gtk_label_set_ellipsize (GTK_LABEL (name), PANGO_ELLIPSIZE_END);
   gtk_label_set_width_chars (GTK_LABEL (name), 1);
@@ -731,6 +747,7 @@ sw_app_tile_new (JsonObject *app, int width)
   gtk_label_set_xalign (GTK_LABEL (name), 0);
   gtk_label_set_wrap (GTK_LABEL (name), TRUE);
   gtk_label_set_wrap_mode (GTK_LABEL (name), PANGO_WRAP_WORD_CHAR);
+  no_hyphens (name);
   gtk_label_set_lines (GTK_LABEL (name), 2);
   gtk_label_set_ellipsize (GTK_LABEL (name), PANGO_ELLIPSIZE_END);
   gtk_label_set_max_width_chars (GTK_LABEL (name), 1);
@@ -776,8 +793,11 @@ sw_section_header_new (const char *title, const char *count, const char *action,
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 8), *label = gtk_label_new (title);
 
   gtk_widget_add_css_class (box, "sw-section-header");
+  /* a title too long for the line, at a large font size, goes on to a second one */
   gtk_label_set_xalign (GTK_LABEL (label), 0);
-  gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
+  gtk_label_set_wrap (GTK_LABEL (label), TRUE);
+  gtk_label_set_wrap_mode (GTK_LABEL (label), PANGO_WRAP_WORD);
+  gtk_label_set_width_chars (GTK_LABEL (label), 1);
   gtk_widget_add_css_class (label, "sw-section-title");
   gtk_accessible_update_property (GTK_ACCESSIBLE (label), GTK_ACCESSIBLE_PROPERTY_LEVEL, 2, -1);
   gtk_box_append (GTK_BOX (box), label);
