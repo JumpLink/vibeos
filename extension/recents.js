@@ -33,7 +33,7 @@ import {Canvas, VectorIcon} from './icons.js';
 import {ICONS as L3_ICONS} from './l3icondata.js';
 import {PathInterpolator} from './launch.js';
 import {VelocityTracker} from './motion.js';
-import {Color, TabletRecents, cogl, setSource} from './palette.js';
+import {Color, cogl, setSource} from './palette.js';
 import {overWindows} from './scanout.js';
 import {openAppInfo} from './settings.js';
 import {
@@ -700,10 +700,11 @@ export class Recents {
             x: m.x, y: m.y, width: m.width, height: m.height});
         Main.layoutManager.uiGroup.insert_child_above(this.layer, global.window_group);
         overWindows(this.layer);
-        // (a tablet's is opaque: its grid has a background of its own)
-        this._scrimAlpha = GRID ? 1 : SCRIM_ALPHA;
+        // (a tablet's grid has the phone's scrim too, dark and a little see-through: its own light grey background was
+        // too bright, owner 11-20)
+        this._scrimAlpha = SCRIM_ALPHA;
         this._scrim = new Clutter.Actor({width: m.width, height: m.height, opacity: 0,
-            background_color: cogl(GRID ? TabletRecents.background : SCRIM)});
+            background_color: cogl(SCRIM)});
         this.layer.add_child(this._scrim);
 
         // the running task first, then the others, most recent first (from every workspace: the mobile shell gives

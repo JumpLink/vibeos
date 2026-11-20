@@ -68,11 +68,6 @@ export const TabletShade = {
     card: Color.surfaceContainer,
 };
 
-// A tablet's recents: the opaque background behind the grid of cards
-export const TabletRecents = {
-    background: [70, 85, 88],
-};
-
 // A tablet's taskbar: the stashed handle, the pill's fill and outline, its dividers and the all-apps glyph
 export const TabletTaskbar = {
     handleLight: [255, 255, 255, 0.92],     // the handle over a dark app
