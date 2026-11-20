@@ -2,11 +2,12 @@
 #include "cal-text.h"
 
 #include <math.h>
+#include <vibeos.h>
 
 void
 cal_text_line (double size, int scale, double *baseline, double *height)
 {
-  double px = size * scale;
+  double px = vibeos_sp (size) * scale;
   double top = ceil (px * 2163 / 2048 - 0.001), bottom = ceil (px * 555 / 2048 - 0.001);
 
   /* the box rounded outward: 18 px text at scale 3 is 58 + 15 = 73 device pixels */
@@ -19,7 +20,7 @@ cal_text_line (double size, int scale, double *baseline, double *height)
 void
 cal_paint_line (double size, int scale, double *ascent, double *height)
 {
-  double px = size * scale;
+  double px = vibeos_sp (size) * scale;
 
   if (ascent)
     *ascent = floor (px * 1900 / 2048 + 0.5) / scale;
@@ -28,16 +29,22 @@ cal_paint_line (double size, int scale, double *ascent, double *height)
 }
 
 PangoLayout *
-cal_text_layout (GtkWidget *widget, const char *text, double size, int weight)
+cal_paint_layout (GtkWidget *widget, const char *text, double size, int weight)
 {
   PangoLayout *layout = gtk_widget_create_pango_layout (widget, text);
   PangoFontDescription *font = pango_font_description_from_string (CAL_FONT);
 
-  pango_font_description_set_absolute_size (font, size * PANGO_SCALE);
+  pango_font_description_set_absolute_size (font, vibeos_sp (size) * PANGO_SCALE);
   pango_font_description_set_weight (font, weight);
   pango_layout_set_font_description (layout, font);
   pango_font_description_free (font);
   return layout;
+}
+
+PangoLayout *
+cal_text_layout (GtkWidget *widget, const char *text, double size, int weight)
+{
+  return cal_paint_layout (widget, text, size, vibeos_font_weight (weight - 300));
 }
 
 void

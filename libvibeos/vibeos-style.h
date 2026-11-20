@@ -75,6 +75,18 @@ typedef enum {
   VIBEOS_SEARCH_CURSOR,                 /* the Settings search field's cursor */
   VIBEOS_EMOJI_TAB_SELECTED,            /* the emoji keyboard's category tabs */
   VIBEOS_EMOJI_TAB,
+  VIBEOS_CATEGORY_APPS,                 /* the rest of Settings' category circles, and their glyphs */
+  VIBEOS_ON_CATEGORY_APPS,
+  VIBEOS_CATEGORY_NOTIFICATIONS,        /* notifications, sound */
+  VIBEOS_ON_CATEGORY_NOTIFICATIONS,
+  VIBEOS_CATEGORY_DISPLAY,              /* display, wallpaper and style */
+  VIBEOS_ON_CATEGORY_DISPLAY,
+  VIBEOS_CATEGORY_BATTERY,
+  VIBEOS_ON_CATEGORY_BATTERY,
+  VIBEOS_CATEGORY_SECURITY,             /* security, location, accounts */
+  VIBEOS_ON_CATEGORY_SECURITY,
+  VIBEOS_CATEGORY_ACCESSIBILITY,
+  VIBEOS_ON_CATEGORY_ACCESSIBILITY,
   VIBEOS_N_COLORS
 } VibeosColor;
 

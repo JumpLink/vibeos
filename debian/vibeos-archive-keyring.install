@@ -1,0 +1,4 @@
+# the archive's public key and its apt source, as https://vibeos.top/apt publishes them (the same bytes, so a system
+# that copied them from there by hand gets no configuration file question)
+archive/vibeos-archive-keyring.gpg usr/share/keyrings
+archive/vibeos.sources etc/apt/sources.list.d

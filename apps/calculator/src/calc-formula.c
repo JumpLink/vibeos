@@ -7,7 +7,7 @@
 
 #define LONG_PRESS_MS      400          /* held this long, a press is a long press */
 #define SIZE_CHANGE_MS     400          /* the text size change's animation */
-#define UNPROCESSED_COLOR  0xff0000     /* red */
+#define UNPROCESSED_COLOR  VIBEOS_ERROR /* the text not evaluated yet */
 
 struct _CalcFormula {
   GtkWidget       parent;
@@ -60,8 +60,9 @@ ensure_layout (CalcFormula *self)
 
     pango_attr_list_insert (attrs, pango_attr_font_features_new ("tnum, cv03, cv04"));
     if (self->text && self->text[self->processed_len]) {
-      PangoAttribute *red = pango_attr_foreground_new ((UNPROCESSED_COLOR >> 16) * 257, ((UNPROCESSED_COLOR >> 8) & 0xff) * 257,
-                                                       (UNPROCESSED_COLOR & 0xff) * 257);
+      GdkRGBA color = vibeos_color (UNPROCESSED_COLOR);
+      PangoAttribute *red = pango_attr_foreground_new ((guint16) (color.red * 65535), (guint16) (color.green * 65535),
+                                                       (guint16) (color.blue * 65535));
       red->start_index = self->processed_len;
       pango_attr_list_insert (attrs, red);
     }

@@ -2,7 +2,8 @@
  *
  * The tab: the account's picture (its page, or signing in), All apps, the jobs App Installer is running for Software
  * (installing, updating, uninstalling, waiting their turn), and the updates the store has (sw-updates.h), each with
- * Update, and Update all. A refresh asks the store for updates whatever the update setting says.
+ * Update, and Update all. A refresh asks the store for updates whatever the update setting says. Updates Mine has
+ * shown count as suggested: the notification of updates (sw-check.h) goes, and does not come back for them.
  *
  * All apps: On this device is what dpkg says is installed, as the store's rows (POST /apps/lookup, 500 packages a
  * request), signed in or not. Not on this device is the account's history (GET /me/apps): apps it had on any of its
@@ -166,7 +167,12 @@ on_jobs_changed (SwInstaller *installer, const char *package, GtkWidget *mine)
 static void
 on_updates_changed (SwUpdates *updates, GtkWidget *mine)
 {
+  GtkRoot *root = gtk_widget_get_root (mine);
+
   update_updates (g_object_get_data (G_OBJECT (mine), "sw-mine"));
+  /* a check answered while Mine is in front: what it found is seen */
+  if (gtk_widget_get_mapped (mine) && GTK_IS_WINDOW (root) && gtk_window_is_active (GTK_WINDOW (root)))
+    sw_updates_mark_seen (updates);
 }
 
 static void
@@ -186,6 +192,7 @@ on_mine_map (GtkWidget *widget, Mine *m)
 {
   update_jobs (m);
   update_updates (m);
+  sw_updates_mark_seen (sw_updates_get_default ());
 }
 
 GtkWidget *

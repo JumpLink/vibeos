@@ -1,10 +1,13 @@
 #!/usr/bin/python3 -I
 # vibeos-specdiff: holds our layout against the reference phone's, widget by widget, in dp.
 #
-#   vibeos-specdiff RULES OURS.xml REF.xml [--tolerance DP] [--ref-offset X,Y] [--ref-density D] [--ours-density D]
+#   vibeos-specdiff RULES OURS.xml [REF.xml] [--tolerance DP] [--ref-offset X,Y] [--ref-density D] [--ours-density D]
 #
 # OURS.xml is a dump of one of our windows (libvibeos's VIBEOS_DUMP, `vibeos-headless dump`), REF.xml a view dump of
-# the reference app (uiautomator's format, which ours copies). RULES says what to compare, one measurement a line:
+# the reference app (uiautomator's format, which ours copies; a dump of every window on the screen works too). Without
+# REF.xml it is the repo's copy of the dump the rules were written against, tools/specdiff-refs/RULES-NAME.xml: the
+# reference's dumps with their text removed (vibeos-specdiff-redact), as they hold the reference phone's own data.
+# RULES says what to compare, one measurement a line:
 #
 #   # the first card's left edge, the gap between two rows, a row's height
 #   card left     | x0('class=VibeosListRow')                  | x0('id=icon_frame')                       | 16
@@ -42,6 +45,7 @@
 import argparse
 import ast
 import operator
+import os
 import re
 import sys
 import xml.etree.ElementTree as ET
@@ -71,7 +75,9 @@ class Dump:
                 self.parent[child] = parent
                 walk(child, child)
 
-        walk(root, None)
+        # one window's hierarchy, or (a dump of every window on the screen) the hierarchies of all of them, in order
+        for hierarchy in [root] if root.tag == 'hierarchy' else root.iter('hierarchy'):
+            walk(hierarchy, None)
         self.index = {node: i for i, node in enumerate(self.nodes)}
 
     def box(self, node):
@@ -193,11 +199,17 @@ def read_rules(path):
     return settings, rules
 
 
+def default_ref(rules):
+    """the repo's copy of the reference dump a rules file was written against: specdiff-refs/NAME.xml"""
+    name = os.path.splitext(os.path.basename(rules))[0]
+    return os.path.join(os.path.dirname(os.path.realpath(__file__)), 'specdiff-refs', name + '.xml')
+
+
 def main():
     parser = argparse.ArgumentParser(description='Compare our layout with the reference, in dp.')
     parser.add_argument('rules')
     parser.add_argument('ours')
-    parser.add_argument('ref')
+    parser.add_argument('ref', nargs='?')
     parser.add_argument('--tolerance', type=float)
     parser.add_argument('--ref-offset')
     parser.add_argument('--ref-density', type=float)
@@ -212,7 +224,7 @@ def main():
         ref_density = args.ref_density or float(settings.get('ref-density', 0))
         ours_density = args.ours_density or float(settings.get('ours-density', 0))
         ours = Dump(args.ours, ours_density, (0, 0))
-        ref = Dump(args.ref, ref_density, offset)
+        ref = Dump(args.ref or default_ref(args.rules), ref_density, offset)
     except (RuleError, OSError, ET.ParseError, ValueError) as e:
         print(f'vibeos-specdiff: {e}', file=sys.stderr)
         return 2

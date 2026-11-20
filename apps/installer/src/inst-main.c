@@ -35,18 +35,6 @@ struct _InstApp {
 
 G_DEFINE_FINAL_TYPE (InstApp, inst_app, GTK_TYPE_APPLICATION)
 
-static void
-load_style (void)
-{
-  GtkCssProvider *provider = gtk_css_provider_new ();
-
-  gtk_css_provider_load_from_resource (provider, "/vibeos/Installer/installer.css");
-  /* over libvibeos's, which is at APPLICATION priority too */
-  gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (provider),
-                                              GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
-  g_object_unref (provider);
-}
-
 /* the window for a new job: the one there is, unless it is busy with a running one */
 static GtkWidget *
 window_for_job (GtkApplication *app)
@@ -116,8 +104,9 @@ inst_app_startup (GApplication *app)
   };
 
   G_APPLICATION_CLASS (inst_app_parent_class)->startup (app);
-  vibeos_init ();
-  load_style ();
+  /* the text follows Font size and Bold text; the stylesheet in sp and dp, over libvibeos's */
+  vibeos_init_full (VIBEOS_INIT_SCALED_TEXT);
+  vibeos_css_load_resource ("/vibeos/Installer/installer.css", GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
   g_action_map_add_action_entries (G_ACTION_MAP (app), actions, G_N_ELEMENTS (actions), app);
 }
 

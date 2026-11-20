@@ -57,7 +57,7 @@ void
 ns_page_privacy (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Security and privacy", &c);
+  NsPage *page = ns_page_new ("Security and privacy", &c);
   GtkWidget *g = ns_group (c, NULL);
   GtkWidget *r = ns_row (g, "system-lock-screen-symbolic", "blue", "Lock screen", "Screen lock type • Notifications");
   ns_row_on_activate (r, ns_page_lock_screen, NULL);
@@ -105,11 +105,11 @@ session_bus (void)
 }
 
 static void
-app_access (GtkSwitch *sw, GParamSpec *ps, gpointer data)
+app_access (GtkWidget *sw, GParamSpec *ps, gpointer data)
 {
   const char *app = g_object_get_data (G_OBJECT (sw), "ns-app");
   g_autoptr (GDBusConnection) bus = session_bus ();
-  const char *perm[] = { gtk_switch_get_active (sw) ? "EXACT" : "NONE", "0", NULL };
+  const char *perm[] = { ns_switch_get_active (sw) ? "EXACT" : "NONE", "0", NULL };
   if (bus)
     g_dbus_connection_call (bus, "org.freedesktop.impl.portal.PermissionStore",
                             "/org/freedesktop/impl/portal/PermissionStore",
@@ -135,11 +135,10 @@ apps_got (GObject *src, GAsyncResult *res, gpointer group)
       g_autofree char *file = g_strconcat (app, ".desktop", NULL);
       g_autoptr (GDesktopAppInfo) info = *app ? g_desktop_app_info_new (file) : NULL;
       GtkWidget *r = info ? ns_row_app (group, G_APP_INFO (info), NULL) : ns_row (group, NULL, NULL, app, NULL);
-      GtkWidget *sw = gtk_switch_new ();
-      gtk_switch_set_active (GTK_SWITCH (sw), p && p[0] && g_strcmp0 (p[0], "NONE"));
+      GtkWidget *sw = ns_row_add_switch (r, FALSE);
+      ns_switch_set_active (sw, p && p[0] && g_strcmp0 (p[0], "NONE"));
       g_object_set_data_full (G_OBJECT (sw), "ns-app", g_strdup (app), g_free);
       g_signal_connect (sw, "notify::active", G_CALLBACK (app_access), NULL);
-      ns_row_suffix (r, sw);
       g_clear_pointer (&p, g_free);
       n++;
     }
@@ -153,7 +152,7 @@ void
 ns_page_location (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Location", &c);
+  NsPage *page = ns_page_new ("Location", &c);
   GSettings *loc = ns_page_settings (page, "org.gnome.system.location");
   if (!loc)
     return;
@@ -188,7 +187,7 @@ static const char *const features[][2] = {
 };
 
 static void
-goa_set (GtkSwitch *sw, GParamSpec *ps, gpointer data)
+goa_set (GtkWidget *sw, GParamSpec *ps, gpointer data)
 {
   g_autoptr (GDBusConnection) bus = session_bus ();
   if (bus)
@@ -196,7 +195,7 @@ goa_set (GtkSwitch *sw, GParamSpec *ps, gpointer data)
                             "org.freedesktop.DBus.Properties", "Set",
                             g_variant_new ("(ssv)", "org.gnome.OnlineAccounts.Account",
                                            g_object_get_data (G_OBJECT (sw), "ns-prop"),
-                                           g_variant_new_boolean (!gtk_switch_get_active (sw))),
+                                           g_variant_new_boolean (!ns_switch_get_active (sw))),
                             NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 }
 
@@ -208,7 +207,7 @@ goa_removed (gboolean yes, gpointer row)
     g_dbus_connection_call (bus, "org.gnome.OnlineAccounts", g_object_get_data (G_OBJECT (row), "ns-path"),
                             "org.gnome.OnlineAccounts.Account", "Remove", NULL, NULL, G_DBUS_CALL_FLAGS_NONE, -1,
                             NULL, NULL, NULL);
-    adw_navigation_view_pop (ADW_NAVIGATION_VIEW (gtk_widget_get_ancestor (row, ADW_TYPE_NAVIGATION_VIEW)));
+    ns_pop (row);
   }
 }
 
@@ -255,10 +254,9 @@ added (GObject *src, GAsyncResult *res, gpointer row)
   g_autoptr (GError) err = NULL;
   g_autoptr (GoaObject) obj = goa_provider_add_account_finish (GOA_PROVIDER (src), res, &err);
   if (obj) {
-    AdwNavigationView *nav = ADW_NAVIGATION_VIEW (gtk_widget_get_ancestor (row, ADW_TYPE_NAVIGATION_VIEW));
-    if (nav) {
-      adw_navigation_view_pop (nav);
-      AdwNavigationPage *list = adw_navigation_view_get_visible_page (nav);
+    if (ns_page_of (row)) {
+      ns_pop (row);
+      NsPage *list = ns_top_page ();
       if (list && g_object_get_data (G_OBJECT (list), "ns-accounts"))
         ns_later (list);
     }
@@ -295,8 +293,7 @@ providers_got (GObject *src, GAsyncResult *res, gpointer group)
     g_autoptr (GIcon) icon = goa_provider_get_provider_icon (p, NULL);
     GtkWidget *img = gtk_image_new_from_gicon (icon);
     gtk_image_set_pixel_size (GTK_IMAGE (img), 32);
-    GtkWidget *box = g_object_get_data (G_OBJECT (r), "ns-box");
-    gtk_box_prepend (GTK_BOX (box), img);
+    vibeos_list_row_set_start_widget (VIBEOS_LIST_ROW (r), img);
     g_object_set_data_full (G_OBJECT (r), "ns-provider", g_object_ref (p), g_object_unref);
     ns_row_on_activate (r, provider_tapped, NULL);
   }
@@ -308,7 +305,7 @@ static void
 add_account (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Add account", &c);
+  NsPage *page = ns_page_new ("Add account", &c);
   GtkWidget *g = ns_group (c, NULL);
   goa_provider_get_all (providers_got, g_object_ref (g));
   ns_push (page);
@@ -355,7 +352,7 @@ account_page (GtkWidget *row, gpointer props)
   g_variant_lookup (props, "ProviderName", "&s", &provider);
   g_variant_lookup (props, "PresentationIdentity", "&s", &who);
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new (provider, &c);
+  NsPage *page = ns_page_new (provider, &c);
   GtkWidget *g = ns_group (c, NULL);
   ns_row_info (g, "Account", who);
   g = ns_group (c, "Use for");
@@ -365,7 +362,7 @@ account_page (GtkWidget *row, gpointer props)
       continue;
     GtkWidget *r = ns_row_switch (g, features[i][1], NULL, NULL, NULL);
     GtkWidget *sw = ns_row_get_switch (r);
-    gtk_switch_set_active (GTK_SWITCH (sw), !off);
+    ns_switch_set_active (sw, !off);
     g_object_set_data_full (G_OBJECT (sw), "ns-path", g_strdup (path), g_free);
     g_object_set_data (G_OBJECT (sw), "ns-prop", (gpointer) features[i][0]);
     g_signal_connect (sw, "notify::active", G_CALLBACK (goa_set), NULL);
@@ -416,7 +413,7 @@ accounts_got (GObject *src, GAsyncResult *res, gpointer group)
 }
 
 static void
-accounts_refresh (AdwNavigationPage *page)
+accounts_refresh (NsPage *page)
 {
   GtkWidget *g = g_object_get_data (G_OBJECT (page), "ns-accounts");
   g_autoptr (GDBusConnection) bus = session_bus ();
@@ -446,7 +443,7 @@ void
 ns_page_accounts (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Accounts", &c);
+  NsPage *page = ns_page_new ("Accounts", &c);
   GtkWidget *g = ns_group (c, "Online accounts");
   ns_group_set_visible (g, FALSE);
   g_object_set_data (G_OBJECT (page), "ns-accounts", g);
@@ -459,9 +456,9 @@ ns_page_accounts (GtkWidget *row, gpointer data)
   /* an account added, removed or signed in again: the list again */
   g_autoptr (GDBusConnection) bus = session_bus ();
   if (bus) {
-    guint sub = g_dbus_connection_signal_subscribe (bus, "org.gnome.OnlineAccounts", NULL, NULL,
-                                                    "/org/gnome/OnlineAccounts", NULL,
-                                                    G_DBUS_SIGNAL_FLAGS_MATCH_ARG0_PATH, accounts_changed, page, NULL);
+    /* every signal of GOA's: accounts come and go on its object manager, and change on their own paths */
+    guint sub = g_dbus_connection_signal_subscribe (bus, "org.gnome.OnlineAccounts", NULL, NULL, NULL, NULL,
+                                                    G_DBUS_SIGNAL_FLAGS_NONE, accounts_changed, page, NULL);
     g_signal_connect_data (page, "destroy", G_CALLBACK (unsubscribe), GUINT_TO_POINTER (sub), NULL, 0);
   }
   accounts_refresh (page);
@@ -477,7 +474,7 @@ void
 ns_page_accessibility (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Accessibility", &c);
+  NsPage *page = ns_page_new ("Accessibility", &c);
   GSettings *a11y = ns_page_settings (page, "org.gnome.desktop.a11y.interface");
   GSettings *iface = ns_page_settings (page, "org.gnome.desktop.interface");
   GSettings *apps = ns_page_settings (page, "org.gnome.desktop.a11y.applications");
@@ -489,8 +486,8 @@ ns_page_accessibility (GtkWidget *row, gpointer data)
     ns_row_switch (g, "High contrast", "Stronger colours and outlines", a11y, "high-contrast");
   if (ns_has_key (iface, "enable-animations"))
     inverted (g, "Reduce animations", "Less movement on screen", iface, "enable-animations");
-  GtkWidget *r = ns_row (g, NULL, NULL, "Font size", "Display settings");
-  ns_row_on_activate (r, ns_page_display, NULL);
+  GtkWidget *r = ns_row (g, NULL, NULL, "Display size and text", "Font size • Bold text • Display size");
+  ns_row_on_activate (r, ns_page_display_size, NULL);
   if (ns_has_key (iface, "cursor-size"))
     int_row (g, "Pointer size", iface, "cursor-size", cursors, cursor_labels);
   /* the screen reader is Orca: only when it is installed */

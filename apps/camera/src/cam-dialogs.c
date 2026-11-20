@@ -207,13 +207,13 @@ cam_location_dialog (GtkWidget *parent, CamLocationDone done, gpointer data)
   gtk_label_set_max_width_chars (GTK_LABEL (title), 1);
   gtk_label_set_justify (GTK_LABEL (title), GTK_JUSTIFY_CENTER);
   gtk_widget_add_css_class (title, "cam-location-title");
-  vibeos_label_set_font_padding (title, 22);
+  vibeos_label_set_font_padding_sp (title, 22);
   gtk_box_append (GTK_BOX (texts), title);
   gtk_label_set_wrap (GTK_LABEL (body), TRUE);
   gtk_label_set_max_width_chars (GTK_LABEL (body), 1);
   gtk_label_set_justify (GTK_LABEL (body), GTK_JUSTIFY_CENTER);
   gtk_widget_add_css_class (body, "cam-location-body");
-  vibeos_label_set_font_padding (body, 14);
+  vibeos_label_set_font_padding_sp (body, 14);
   gtk_widget_set_margin_top (body, gtk_widget_get_margin_top (body) + 16);
   gtk_box_append (GTK_BOX (texts), body);
   gtk_widget_set_margin_top (buttons, 24);

@@ -1090,7 +1090,7 @@ row_label (const char *css, double size, gboolean wrap, int lines)
       gtk_label_set_lines (GTK_LABEL (label), lines);
       gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
     }
-  vibeos_label_set_font_padding (label, size);
+  vibeos_label_set_font_padding_sp (label, size);
   return label;
 }
 
@@ -1176,7 +1176,7 @@ add_empty_row (Picker *picker)
   gtk_widget_set_opacity (item, 0);
   gtk_overlay_set_child (GTK_OVERLAY (overlay), item);
   gtk_widget_add_css_class (label, "cal-tz-empty-text");
-  vibeos_label_set_font_padding (label, 16);
+  vibeos_label_set_font_padding_sp (label, 16);
   gtk_widget_set_halign (label, GTK_ALIGN_START);
   gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
   gtk_widget_set_margin_top (label, 8);
@@ -1340,7 +1340,7 @@ show_dropdown (Picker *picker, GPtrArray *found)
       gtk_label_set_lines (GTK_LABEL (label), 2);
       gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
       gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
-      vibeos_label_set_font_padding (label, 18);
+      vibeos_label_set_font_padding_sp (label, 18);
       row = vibeos_pressable_new (label);
       gtk_widget_add_css_class (row, "cal-tz-suggestion");
       vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);

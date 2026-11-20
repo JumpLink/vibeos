@@ -1,6 +1,6 @@
-/* Language and region, Date and time, Users, Power, Wallpapers, Software information and Display's screen scale.
- * The system services (AccountsService, localed, timedated, the compositor's DisplayConfig) are asked in the
- * background; what needs the administrator's password asks through polkit, whose prompt GNOME Shell shows. */
+/* Language and region, Date and time, Users, Power, Wallpapers and Software information. The system services
+ * (AccountsService, localed, timedated) are asked in the background; what needs the administrator's password asks
+ * through polkit, whose prompt GNOME Shell shows. */
 #include "ns-bt.h"
 #include "ns-pages.h"
 #include "ns-ui.h"
@@ -124,7 +124,7 @@ logout (GtkWidget *row, gpointer data)
 }
 
 static void
-lang_rows (AdwNavigationPage *page, const char *current)
+lang_rows (NsPage *page, const char *current)
 {
   Lang *l = g_object_get_data (G_OBJECT (page), "ns-lang");
   if (!l->locales)
@@ -220,7 +220,7 @@ void
 ns_page_language (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Language and region", &c);
+  NsPage *page = ns_page_new ("Language and region", &c);
   Lang *l = g_new0 (Lang, 1);
   g_object_set_data_full (G_OBJECT (page), "ns-lang", l, (GDestroyNotify) lang_free);
   l->group = ns_group (c, NULL);
@@ -262,32 +262,31 @@ timedate_call (const char *method, GVariant *args)
 }
 
 static void
-ntp_set (GtkSwitch *sw, GParamSpec *ps, gpointer data)
+ntp_set (GtkWidget *sw, GParamSpec *ps, gpointer data)
 {
   if (!ns_switch_syncing (GTK_WIDGET (sw)))
-    timedate_call ("SetNTP", g_variant_new ("(bb)", gtk_switch_get_active (sw), TRUE));
+    timedate_call ("SetNTP", g_variant_new ("(bb)", ns_switch_get_active (sw), TRUE));
 }
 
 static void
 zone_set (GtkWidget *row, gpointer zone)
 {
-  AdwNavigationPage *page = g_object_get_data (G_OBJECT (row), "ns-page");
+  NsPage *page = g_object_get_data (G_OBJECT (row), "ns-page");
   Time *t = g_object_get_data (G_OBJECT (page), "ns-time");
   timedate_call ("SetTimezone", g_variant_new ("(sb)", (const char *) zone, TRUE));
   g_autofree char *nice = g_strdelimit (g_strdup (zone), "_", ' ');
   ns_row_set_subtitle (t->zone, nice);
-  AdwNavigationView *nav = ADW_NAVIGATION_VIEW (gtk_widget_get_ancestor (row, ADW_TYPE_NAVIGATION_VIEW));
-  adw_navigation_view_pop_to_page (nav, page);
+  ns_pop_to (page);
 }
 
 /* two steps: the region, then its cities */
 static void
 zone_region (GtkWidget *row, gpointer region)
 {
-  AdwNavigationPage *page = g_object_get_data (G_OBJECT (row), "ns-page");
+  NsPage *page = g_object_get_data (G_OBJECT (row), "ns-page");
   Time *t = g_object_get_data (G_OBJECT (page), "ns-time");
   GtkWidget *c;
-  AdwNavigationPage *cities = ns_page_new (region, &c);
+  NsPage *cities = ns_page_new (region, &c);
   GtkWidget *g = ns_group (c, NULL);
   g_autofree char *prefix = g_strconcat (region, "/", NULL);
   for (guint i = 0; i < t->zones->len; i++) {
@@ -309,7 +308,7 @@ zones_page (GtkWidget *row, gpointer page)
   if (!t->zones)
     return;
   GtkWidget *c;
-  AdwNavigationPage *regions = ns_page_new ("Time zone", &c);
+  NsPage *regions = ns_page_new ("Time zone", &c);
   GtkWidget *g = ns_group (c, NULL);
   g_autoptr (GHashTable) seen = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
   for (guint i = 0; i < t->zones->len; i++) {
@@ -382,7 +381,7 @@ void
 ns_page_datetime (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Date and time", &c);
+  NsPage *page = ns_page_new ("Date and time", &c);
   Time *t = g_new0 (Time, 1);
   g_object_set_data_full (G_OBJECT (page), "ns-time", t, (GDestroyNotify) time_free);
   GtkWidget *g = ns_group (c, NULL);
@@ -522,7 +521,7 @@ void
 ns_page_users (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Users", &c);
+  NsPage *page = ns_page_new ("Users", &c);
   Users *u = g_new0 (Users, 1);
   g_object_set_data_full (G_OBJECT (page), "ns-users", u, g_free);
   GtkWidget *g = ns_group (c, "Your account");
@@ -604,7 +603,7 @@ void
 ns_page_power (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Power and screen blank", &c);
+  NsPage *page = ns_page_new ("Power and screen blank", &c);
   GSettings *power = ns_page_settings (page, "org.gnome.settings-daemon.plugins.power");
   if (!power)
     return;
@@ -715,9 +714,10 @@ typedef struct {
 } Apply;
 
 static void
-apply_response (AdwAlertDialog *d, const char *response, Apply *a)
+apply_response (gboolean yes, gpointer data)
 {
-  if (!g_strcmp0 (response, "set"))
+  Apply *a = data;
+  if (yes)
     wall_apply (a->path, a->dark);
   g_free (a->path);
   g_free (a->dark);
@@ -730,17 +730,11 @@ apply_response (AdwAlertDialog *d, const char *response, Apply *a)
 void
 ns_wallpaper_ask (GtkWidget *w, const char *path, const char *dark)
 {
-  AdwDialog *d = adw_alert_dialog_new ("Set as wallpaper", "On the home screen and the lock screen");
-  adw_alert_dialog_add_responses (ADW_ALERT_DIALOG (d), "cancel", "Cancel", "set", "Set", NULL);
-  adw_alert_dialog_set_response_appearance (ADW_ALERT_DIALOG (d), "set", ADW_RESPONSE_SUGGESTED);
-  adw_alert_dialog_set_prefer_wide_layout (ADW_ALERT_DIALOG (d), FALSE);
-  adw_alert_dialog_set_close_response (ADW_ALERT_DIALOG (d), "cancel");
   Apply *a = g_new0 (Apply, 1);
   a->path = g_strdup (path);
   a->dark = g_strdup (dark);
   a->w = g_object_ref (w);
-  g_signal_connect (d, "response", G_CALLBACK (apply_response), a);
-  adw_dialog_present (d, w);
+  ns_confirm (w, "Set as wallpaper", "On the home screen and the lock screen", "Set", FALSE, apply_response, a);
 }
 
 static void
@@ -795,7 +789,7 @@ void
 ns_page_wallpapers (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Wallpapers", &c);
+  NsPage *page = ns_page_new ("Wallpapers", &c);
   GtkWidget *g = ns_group (c, NULL);
   ns_row_button (g, "Choose from your pictures", FALSE, from_files, NULL);
 
@@ -874,11 +868,13 @@ void
 ns_page_software (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Software information", &c);
+  NsPage *page = ns_page_new ("Software information", &c);
   GtkWidget *g = ns_group (c, NULL);
   ns_bt_name_row (g);
 
   g = ns_group (c, NULL);
+  if (*vibeos_release ())
+    ns_row_info (g, "VibeOS", vibeos_release ());
   g_autofree char *deb = NULL;
   if (g_file_get_contents ("/etc/debian_version", &deb, NULL, NULL))
     g_strstrip (deb);
@@ -892,153 +888,12 @@ ns_page_software (GtkWidget *row, gpointer data)
   g_autofree char *gtk = g_strdup_printf ("%u.%u.%u", gtk_get_major_version (), gtk_get_minor_version (),
                                           gtk_get_micro_version ());
   ns_row_info (g, "GTK", gtk);
-  g_autofree char *adw = g_strdup_printf ("%u.%u.%u", adw_get_major_version (), adw_get_minor_version (),
-                                          adw_get_micro_version ());
-  ns_row_info (g, "libadwaita", adw);
   struct utsname u;
   uname (&u);
   ns_row_info (g, "Kernel", u.release);
   ns_row_info (g, "Kernel build", u.version);
   ns_row_info (g, "Settings", NS_VERSION);
   ns_push (page);
-}
-
-/* ---- Display: the screen scale, through mutter's DisplayConfig ----
- *
- * GetCurrentState lists the screen's modes, each with the scales it can take; ApplyMonitorsConfig sets one. The
- * logical monitor keeps its place and its rotation (the turn auto-rotate gave it), only the scale changes. Applied
- * "persistent" (2), mutter keeps it in ~/.config/monitors.xml and the shell asks whether to keep it, going back by
- * itself if nobody answers, as GNOME Settings' Displays does. */
-
-typedef struct {
-  guint32  serial;
-  char    *connector, *mode;
-  GArray  *scales;
-  gint32   x, y;                /* the logical monitor's place and rotation, kept */
-  guint32  transform;
-} Scale;
-
-static void
-scale_free (Scale *s)
-{
-  g_free (s->connector);
-  g_free (s->mode);
-  g_array_unref (s->scales);
-  g_free (s);
-}
-
-static void
-scale_applied (GObject *src, GAsyncResult *res, gpointer row)
-{
-  g_autoptr (GError) err = NULL;
-  g_autoptr (GVariant) v = g_dbus_connection_call_finish (G_DBUS_CONNECTION (src), res, &err);
-  if (!v) {
-    g_dbus_error_strip_remote_error (err);
-    ns_row_set_subtitle (row, err->message);
-  }
-  g_object_unref (row);
-}
-
-static void
-scale_picked (GtkWidget *row, guint i, gpointer data)
-{
-  Scale *s = g_object_get_data (G_OBJECT (row), "ns-scale");
-  GVariantBuilder mons, lms;
-  g_variant_builder_init (&mons, G_VARIANT_TYPE ("a(ssa{sv})"));
-  g_variant_builder_add (&mons, "(ss@a{sv})", s->connector, s->mode, g_variant_new_array (G_VARIANT_TYPE ("{sv}"),
-                                                                                         NULL, 0));
-  g_variant_builder_init (&lms, G_VARIANT_TYPE ("a(iiduba(ssa{sv}))"));
-  g_variant_builder_add (&lms, "(iidub@a(ssa{sv}))", s->x, s->y, g_array_index (s->scales, double, i), s->transform,
-                         TRUE, g_variant_builder_end (&mons));
-  g_autoptr (GDBusConnection) ses = bus (G_BUS_TYPE_SESSION);
-  /* 2: persistent */
-  if (ses)
-    g_dbus_connection_call (ses, "org.gnome.Mutter.DisplayConfig", "/org/gnome/Mutter/DisplayConfig",
-                            "org.gnome.Mutter.DisplayConfig", "ApplyMonitorsConfig",
-                            g_variant_new ("(uu@a(iiduba(ssa{sv}))@a{sv})", s->serial, 2, g_variant_builder_end (&lms),
-                                           g_variant_new_array (G_VARIANT_TYPE ("{sv}"), NULL, 0)),
-                            NULL, G_DBUS_CALL_FLAGS_NONE, 10000, NULL, scale_applied, g_object_ref (row));
-}
-
-static void
-state_got (GObject *src, GAsyncResult *res, gpointer group)
-{
-  g_autoptr (GVariant) v = g_dbus_connection_call_finish (G_DBUS_CONNECTION (src), res, NULL);
-  if (!v) {
-    g_object_unref (group);
-    return;
-  }
-  Scale *s = g_new0 (Scale, 1);
-  s->scales = g_array_new (FALSE, FALSE, sizeof (double));
-  g_autoptr (GVariant) monitors = g_variant_get_child_value (v, 1);
-  g_autoptr (GVariant) logical = g_variant_get_child_value (v, 2);
-  g_variant_get_child (v, 0, "u", &s->serial);
-  double cur = 0;
-  /* the built-in screen: the first monitor, its current mode (or its first) */
-  if (g_variant_n_children (monitors)) {
-    g_autoptr (GVariant) m = g_variant_get_child_value (monitors, 0);
-    g_autoptr (GVariant) spec = g_variant_get_child_value (m, 0);
-    g_autoptr (GVariant) modes = g_variant_get_child_value (m, 1);
-    g_variant_get_child (spec, 0, "s", &s->connector);
-    guint pick = 0;
-    for (guint i = 0; i < g_variant_n_children (modes); i++) {
-      g_autoptr (GVariant) mode = g_variant_get_child_value (modes, i);
-      g_autoptr (GVariant) props = g_variant_get_child_value (mode, 6);
-      gboolean current = FALSE;
-      if (g_variant_lookup (props, "is-current", "b", &current) && current)
-        pick = i;
-    }
-    if (g_variant_n_children (modes)) {
-      g_autoptr (GVariant) mode = g_variant_get_child_value (modes, pick);
-      g_autoptr (GVariant) sc = g_variant_get_child_value (mode, 5);
-      g_variant_get_child (mode, 0, "s", &s->mode);
-      for (guint k = 0; k < g_variant_n_children (sc); k++) {
-        double d;
-        g_variant_get_child (sc, k, "d", &d);
-        g_array_append_val (s->scales, d);
-      }
-    }
-  }
-  if (g_variant_n_children (logical)) {
-    g_autoptr (GVariant) lm = g_variant_get_child_value (logical, 0);
-    g_variant_get_child (lm, 0, "i", &s->x);
-    g_variant_get_child (lm, 1, "i", &s->y);
-    g_variant_get_child (lm, 2, "d", &cur);
-    g_variant_get_child (lm, 3, "u", &s->transform);
-  }
-  if (!cur) {
-    /* no logical monitor listed (none is on): the scale GTK sees */
-    GListModel *ms = gdk_display_get_monitors (gdk_display_get_default ());
-    g_autoptr (GdkMonitor) gm = g_list_model_get_n_items (ms) ? g_list_model_get_item (ms, 0) : NULL;
-    cur = gm ? gdk_monitor_get_scale (gm) : 1;
-  }
-  if (!s->connector || !s->mode || s->scales->len < 2) {
-    scale_free (s);
-    g_object_unref (group);
-    return;
-  }
-  g_autoptr (GPtrArray) labels = g_ptr_array_new_with_free_func (g_free);
-  guint sel = 0;
-  for (guint i = 0; i < s->scales->len; i++) {
-    double d = g_array_index (s->scales, double, i);
-    g_ptr_array_add (labels, g_strdup_printf ("%.0f%%", d * 100));
-    if (ABS (d - cur) < ABS (g_array_index (s->scales, double, sel) - cur))
-      sel = i;
-  }
-  g_ptr_array_add (labels, NULL);
-  GtkWidget *r = ns_row_pick (group, "Screen scale", (const char *const *) labels->pdata, sel, scale_picked, NULL);
-  g_object_set_data_full (G_OBJECT (r), "ns-scale", s, (GDestroyNotify) scale_free);
-  g_object_unref (group);
-}
-
-void
-ns_page_scale_row (GtkWidget *group)
-{
-  g_autoptr (GDBusConnection) ses = bus (G_BUS_TYPE_SESSION);
-  if (ses)
-    g_dbus_connection_call (ses, "org.gnome.Mutter.DisplayConfig", "/org/gnome/Mutter/DisplayConfig",
-                            "org.gnome.Mutter.DisplayConfig", "GetCurrentState", NULL, NULL, G_DBUS_CALL_FLAGS_NONE,
-                            3000, NULL, state_got, g_object_ref (group));
 }
 
 /* ---- Mouse, touchpad and hardware keyboard: mutter follows GNOME's peripherals settings ---- */
@@ -1081,7 +936,7 @@ void
 ns_page_mouse (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Mouse and touchpad", &c);
+  NsPage *page = ns_page_new ("Mouse and touchpad", &c);
   GSettings *mouse = ns_page_settings (page, "org.gnome.desktop.peripherals.mouse");
   GSettings *pad = ns_page_settings (page, "org.gnome.desktop.peripherals.touchpad");
   GSettings *kbd = ns_page_settings (page, "org.gnome.desktop.peripherals.keyboard");

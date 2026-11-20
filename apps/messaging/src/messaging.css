@@ -479,6 +479,12 @@
 
 /* --- the tablet's empty conversation pane */
 
+/* the detail side paints nothing of its own: with no conversation open, the placeholder under it shows (the
+ * conversation draws its own background) */
+.msg-home .vibeos-detail-pane {
+  background: none;
+}
+
 .msg-detail-empty {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 16sp;

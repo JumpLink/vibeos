@@ -267,8 +267,10 @@ inst_job_can_start (InstJob *self)
 gboolean
 inst_job_needs_question (InstJob *self)
 {
-  return self->kind != INST_JOB_PACKAGE || self->plan.change != INST_CHANGE_NEW || self->plan.also_install->len > 0
-         || self->plan.also_remove->len > 0;
+  /* an archive package that is new, or newer than the installed one, needs nothing but the password */
+  return self->kind != INST_JOB_PACKAGE
+         || (self->plan.change != INST_CHANGE_NEW && self->plan.change != INST_CHANGE_UPGRADE)
+         || self->plan.also_install->len > 0 || self->plan.also_remove->len > 0;
 }
 
 gboolean
@@ -642,6 +644,13 @@ flags_for_change (InstJob *self)
 {
   guint64 flags = INST_PK_FLAG_NONE;
 
+  /*
+   * Packages come from signed archives: asking for trusted ones only makes PackageKit (and polkit) treat the
+   * install as trusted, instead of warning that the software is not from a trusted source. A local .deb file
+   * is never trusted, so file jobs leave the flag out.
+   */
+  if (self->kind == INST_JOB_PACKAGE)
+    flags |= INST_PK_FLAG_ONLY_TRUSTED;
   if (self->plan.change == INST_CHANGE_DOWNGRADE)
     flags |= INST_PK_FLAG_ALLOW_DOWNGRADE;
   if (self->plan.change == INST_CHANGE_REINSTALL)

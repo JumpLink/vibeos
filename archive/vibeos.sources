@@ -1,0 +1,5 @@
+Types: deb
+URIs: https://vibeos.top/apt
+Suites: forky
+Components: main
+Signed-By: /usr/share/keyrings/vibeos-archive-keyring.gpg

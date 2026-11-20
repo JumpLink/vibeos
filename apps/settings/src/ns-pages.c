@@ -21,17 +21,11 @@ page_row (GtkWidget *g, const char *icon, const char *color, const char *title, 
   return r;
 }
 
-static void
-toggle (GtkWidget *row, gpointer sw)
-{
-  gtk_switch_set_active (sw, !gtk_switch_get_active (sw));
-}
-
 /* ---- Connections ---- */
 
 /* Flight mode is gnome-settings-daemon's rfkill switch */
 static void
-airplane_set (GtkSwitch *sw, GParamSpec *ps, gpointer data)
+airplane_set (GtkWidget *sw, GParamSpec *ps, gpointer data)
 {
   if (g_object_get_data (G_OBJECT (sw), "ns-syncing"))
     return;
@@ -40,7 +34,7 @@ airplane_set (GtkSwitch *sw, GParamSpec *ps, gpointer data)
     g_dbus_connection_call (bus, "org.gnome.SettingsDaemon.Rfkill", "/org/gnome/SettingsDaemon/Rfkill",
                             "org.freedesktop.DBus.Properties", "Set",
                             g_variant_new ("(ssv)", "org.gnome.SettingsDaemon.Rfkill", "AirplaneMode",
-                                           g_variant_new_boolean (gtk_switch_get_active (sw))),
+                                           g_variant_new_boolean (ns_switch_get_active (sw))),
                             NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 }
 
@@ -53,7 +47,7 @@ airplane_got (GObject *src, GAsyncResult *res, gpointer row)
     g_variant_get (v, "(v)", &on);
     GtkWidget *sw = ns_row_get_switch (row);
     g_object_set_data (G_OBJECT (sw), "ns-syncing", GINT_TO_POINTER (1));
-    gtk_switch_set_active (GTK_SWITCH (sw), g_variant_get_boolean (on));
+    ns_switch_set_active (sw, g_variant_get_boolean (on));
     g_object_set_data (G_OBJECT (sw), "ns-syncing", NULL);
     gtk_widget_set_visible (row, TRUE);
   }
@@ -64,15 +58,13 @@ void
 ns_page_connections (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Connections", &c);
+  NsPage *page = ns_page_new ("Connections", &c);
   GtkWidget *g = ns_group (c, NULL);
   page_row (g, "network-wireless-symbolic", "blue", "Wi-Fi", "Networks • Saved networks", ns_page_wifi);
   page_row (g, "bluetooth-symbolic", "blue", "Bluetooth", "Pair • Connected devices", ns_page_bluetooth);
   GtkWidget *air = ns_row (g, "airplane-mode-symbolic", "orange", "Flight mode",
                            "Turn off calls, messages and mobile data");
-  GtkWidget *sw = gtk_switch_new ();
-  ns_row_suffix (air, sw);
-  ns_row_on_activate (air, toggle, sw);
+  GtkWidget *sw = ns_row_add_switch (air, FALSE);
   g_signal_connect (sw, "notify::active", G_CALLBACK (airplane_set), NULL);
   gtk_widget_set_visible (air, FALSE);
   g_autoptr (GDBusConnection) bus = g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, NULL);
@@ -89,7 +81,7 @@ ns_page_connections (GtkWidget *row, gpointer data)
             ns_page_hotspot);
   page_row (g, "network-wired-symbolic", "violet", "Network and VPN", "VPN • USB • Proxy", ns_page_network);
   g = ns_group (c, NULL);
-  page_row (g, "emblem-shared-symbolic", "orange", "Sharing", "Phone name • Visibility", ns_page_sharing);
+  page_row (g, "emblem-shared-symbolic", "orange", "Sharing", "Device name • Visibility", ns_page_sharing);
   /* printing needs CUPS, which a phone rarely has: GNOME Settings' page, only when it is there */
   g_autofree char *cups = g_find_program_in_path ("lpstat");
   if (cups)
@@ -265,7 +257,6 @@ night_show (Night *n)
   gtk_widget_set_visible (n->end, mode == NIGHT_CUSTOM);
   night_time_show (n, n->start, "night-light-schedule-from");
   night_time_show (n, n->end, "night-light-schedule-to");
-  gtk_list_box_invalidate_headers (GTK_LIST_BOX (gtk_widget_get_parent (n->start)));
 
   /* the slider: right is warmer; greyed out while night light is off */
   double k = g_settings_get_uint (n->color, "night-light-temperature");
@@ -363,7 +354,7 @@ void
 ns_page_night_light (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Night light", &c);
+  NsPage *page = ns_page_new ("Night light", &c);
   GSettings *color = ns_page_settings (page, "org.gnome.settings-daemon.plugins.color");
   GtkWidget *intro = ns_note (c, "Night light tints your screen amber. This makes it easier to look at your screen "
                                  "or read in dim light, and may help you fall asleep more easily.");
@@ -417,9 +408,8 @@ static void
 night_row (GtkWidget *g, GSettings *color, GSettings *iface)
 {
   GtkWidget *r = ns_row (g, NULL, NULL, "Night light", NULL);
-  GtkWidget *sw = gtk_switch_new ();
+  GtkWidget *sw = ns_row_add_switch (r, TRUE);
   g_settings_bind (color, "night-light-enabled", sw, "active", G_SETTINGS_BIND_DEFAULT);
-  ns_row_suffix (r, sw);
   ns_row_on_activate (r, ns_page_night_light, NULL);
   g_object_set_data (G_OBJECT (r), "ns-iface", iface);
   g_signal_connect_object (color, "changed", G_CALLBACK (night_row_changed), r, 0);
@@ -488,7 +478,6 @@ brightness_read (Brightness *b)
   gtk_widget_set_visible (b->row, found);
   if (found)
     ns_group_set_visible (gtk_widget_get_parent (b->row), TRUE);
-  gtk_list_box_invalidate_headers (GTK_LIST_BOX (gtk_widget_get_parent (b->row)));
   /* not while a finger is on it */
   if (!found || gtk_widget_get_state_flags (b->scale) & GTK_STATE_FLAG_ACTIVE)
     return;
@@ -557,7 +546,6 @@ light_got (GObject *src, GAsyncResult *res, gpointer row)
       && gtk_widget_get_parent (row)) {
     gtk_widget_set_visible (row, TRUE);
     ns_group_set_visible (gtk_widget_get_parent (row), TRUE);
-    gtk_list_box_invalidate_headers (GTK_LIST_BOX (gtk_widget_get_parent (row)));
   }
   g_object_unref (row);
 }
@@ -599,17 +587,12 @@ dark_row (GtkWidget *g, GSettings *iface)
   return r;
 }
 
-static const double text_scales[] = { 0.9, 1.0, 1.15, 1.3 };
-static const char *const text_labels[] = { "Small", "Default", "Large", "Larger", NULL };
+/* Font size: org.gnome.desktop.interface text-scaling-factor, which GNOME's apps follow too */
+static const double text_scales[] = { 0.85, 1.0, 1.15, 1.3, 1.5, 1.8, 2.0 };
 static const guint timeouts[] = { 30, 60, 120, 300, 600, 0 };
 static const char *const timeout_labels[] = { "30 seconds", "1 minute", "2 minutes", "5 minutes", "10 minutes",
                                               "Never", NULL };
 
-static void
-text_picked (GtkWidget *row, guint i, gpointer iface)
-{
-  g_settings_set_double (iface, "text-scaling-factor", text_scales[i]);
-}
 
 static void
 timeout_picked (GtkWidget *row, guint i, gpointer session)
@@ -621,8 +604,11 @@ void
 ns_page_display (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Display", &c);
+  NsPage *page = ns_page_new ("Display", &c);
   GSettings *iface = ns_page_settings (page, "org.gnome.desktop.interface");
+
+  /* the displays connected, Join or Mirror, the main display: shown while there is more than one (ns-displays.c) */
+  ns_displays_cards (GTK_WIDGET (page), c);
 
   GtkWidget *g = ns_group (c, NULL);
   dark_row (g, iface);
@@ -637,13 +623,8 @@ ns_page_display (GtkWidget *row, gpointer data)
   adaptive_row (g, ns_page_settings (page, "org.gnome.settings-daemon.plugins.power"));
 
   g = ns_group (c, NULL);
-  double f = g_settings_get_double (iface, "text-scaling-factor");
-  guint ti = 1;
-  for (guint i = 0; i < G_N_ELEMENTS (text_scales); i++)
-    if (ABS (text_scales[i] - f) < 0.01)
-      ti = i;
-  ns_row_pick (g, "Font size", text_labels, ti, text_picked, iface);
-  ns_page_scale_row (g);
+  page_row (g, NULL, NULL, "Display size and text", "Font size • Bold text • Display size", ns_page_display_size);
+  ns_displays_scale_row (GTK_WIDGET (page), g);
 
   GSettings *session = ns_page_settings (page, "org.gnome.desktop.session");
   guint idle = g_settings_get_uint (session, "idle-delay"), sel = 1;
@@ -664,6 +645,115 @@ ns_page_display (GtkWidget *row, gpointer data)
                    vibeos, "aod");
     ns_row_switch (g, "Double tap to wake", "Wake the screen with a double tap", vibeos, "double-tap-wake");
   }
+  ns_push (page);
+}
+
+/* ---- Display size and text ---- */
+
+/* the Font size step closest to the factor there is (GNOME's own settings take any) */
+static guint
+text_step (GSettings *iface)
+{
+  double f = g_settings_get_double (iface, "text-scaling-factor");
+  guint best = 1;
+  for (guint i = 0; i < G_N_ELEMENTS (text_scales); i++)
+    if (fabs (text_scales[i] - f) < fabs (text_scales[best] - f))
+      best = i;
+  return best;
+}
+
+static void
+text_show (GtkWidget *row, GSettings *iface)
+{
+  double f = g_settings_get_double (iface, "text-scaling-factor");
+  g_autofree char *pct = g_strdup_printf ("%.0f%%", f * 100);
+  ns_row_steps_set_value_text (row, fabs (f - 1) < 0.005 ? "Default" : pct);
+}
+
+static void
+text_moved (GtkRange *range, GSettings *iface)
+{
+  if (g_object_get_data (G_OBJECT (range), "ns-syncing"))
+    return;
+  guint i = MIN ((guint) round (gtk_range_get_value (range)), G_N_ELEMENTS (text_scales) - 1);
+  if (fabs (g_settings_get_double (iface, "text-scaling-factor") - text_scales[i]) > 0.005)
+    g_settings_set_double (iface, "text-scaling-factor", text_scales[i]);
+}
+
+static void
+text_changed (GSettings *iface, const char *key, GtkWidget *row)
+{
+  GtkWidget *sc = g_object_get_data (G_OBJECT (row), "ns-scale");
+  g_object_set_data (G_OBJECT (sc), "ns-syncing", GINT_TO_POINTER (1));
+  gtk_range_set_value (GTK_RANGE (sc), text_step (iface));
+  g_object_set_data (G_OBJECT (sc), "ns-syncing", NULL);
+  text_show (row, iface);
+}
+
+static void
+size_reset (gboolean yes, gpointer page)
+{
+  if (!yes)
+    return;
+  GSettings *iface = g_object_get_data (G_OBJECT (page), "ns-iface");
+  GSettings *vi = g_object_get_data (G_OBJECT (page), "ns-vibeos-iface");
+  g_settings_reset (iface, "text-scaling-factor");
+  if (vi)
+    g_settings_reset (vi, "bold-text");
+  ns_displays_size_reset (GTK_WIDGET (page));
+}
+
+static void
+size_reset_tapped (GtkWidget *row, gpointer page)
+{
+  ns_confirm (row, "Reset display size and text?", "Font size, Display size and Bold text go back to how they were at first.",
+              "Reset", FALSE, size_reset, page);
+}
+
+/* Font size, Display size and Bold text, over a preview that follows them */
+void
+ns_page_display_size (GtkWidget *row, gpointer data)
+{
+  GtkWidget *c;
+  NsPage *page = ns_page_new ("Display size and text", &c);
+  GSettings *iface = ns_page_settings (page, "org.gnome.desktop.interface");
+  GSettings *vi = ns_page_settings (page, "vibeos.Interface");
+  g_object_set_data (G_OBJECT (page), "ns-iface", iface);
+  g_object_set_data (G_OBJECT (page), "ns-vibeos-iface", vi);
+
+  GtkWidget *g = ns_group (c, NULL);
+  GtkWidget *preview = gtk_box_new (GTK_ORIENTATION_VERTICAL, 8);
+  gtk_widget_add_css_class (preview, "ns-preview");
+  GtkWidget *l = gtk_label_new ("Preview");
+  gtk_label_set_xalign (GTK_LABEL (l), 0);
+  gtk_widget_add_css_class (l, "vibeos-title-large");
+  gtk_box_append (GTK_BOX (preview), l);
+  l = gtk_label_new ("Font size makes text bigger or smaller. Display size makes everything on the screen bigger or "
+                     "smaller, text and pictures alike.");
+  gtk_label_set_xalign (GTK_LABEL (l), 0);
+  gtk_label_set_wrap (GTK_LABEL (l), TRUE);
+  gtk_widget_add_css_class (l, "vibeos-body-large");
+  gtk_box_append (GTK_BOX (preview), l);
+  ns_row_widget (g, NULL, preview);
+
+  g = ns_group (c, NULL);
+  GtkWidget *sc;
+  GtkWidget *font = ns_row_steps (g, "Font size", G_N_ELEMENTS (text_scales), text_step (iface), &sc);
+  g_object_set_data (G_OBJECT (font), "ns-scale", sc);
+  text_show (font, iface);
+  g_signal_connect (sc, "value-changed", G_CALLBACK (text_moved), iface);
+  g_signal_connect_object (iface, "changed::text-scaling-factor", G_CALLBACK (text_changed), font, 0);
+  /* the shell keeps the size it started at until it can follow a new one: Display size shows, without changing,
+   * unless NS_DISPLAY_SIZE=1 asks for it */
+  ns_displays_size_row (GTK_WIDGET (page), g, !g_strcmp0 (g_getenv ("NS_DISPLAY_SIZE"), "1"));
+
+  if (vi && ns_has_key (vi, "bold-text")) {
+    g = ns_group (c, NULL);
+    ns_row_switch (g, "Bold text", "Heavier text in the VibeOS apps", vi, "bold-text");
+  }
+
+  g = ns_group (c, NULL);
+  ns_row_button (g, "Reset settings", FALSE, size_reset_tapped, page);
   ns_push (page);
 }
 
@@ -862,7 +952,6 @@ bat_info_got (GObject *src, GAsyncResult *res, gpointer group)
       any |= v[i] != NULL;
     }
     ns_group_set_visible (group, any);
-    gtk_list_box_invalidate_headers (GTK_LIST_BOX (group));
     gtk_widget_set_visible (b->none, !any);
   }
   g_object_unref (group);
@@ -888,7 +977,7 @@ void
 ns_page_battery_info (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Battery information", &c);
+  NsPage *page = ns_page_new ("Battery information", &c);
   BatInfo *b = g_new0 (BatInfo, 1);
   GtkWidget *g = ns_group (c, NULL);
   g_object_set_data_full (G_OBJECT (g), "ns-batinfo", b, (GDestroyNotify) bat_info_free);
@@ -910,7 +999,7 @@ void
 ns_page_battery (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Battery", &c);
+  NsPage *page = ns_page_new ("Battery", &c);
   Charge *ch = g_new0 (Charge, 1);
   g_object_set_data_full (G_OBJECT (page), "charge", ch, g_free);
 
@@ -946,44 +1035,102 @@ ns_page_battery (GtkWidget *row, gpointer data)
 
 /* ---- Wallpaper and style ---- */
 
-static const char *const accents[][2] = {
-  { "blue", "#3584e4" }, { "teal", "#2190a4" }, { "green", "#3a944a" }, { "yellow", "#c88800" },
-  { "orange", "#ed5b00" }, { "red", "#e62d42" }, { "pink", "#d56199" }, { "purple", "#9141ac" },
-  { "slate", "#6f8396" },
+/* the colours offered for the system's colours (vibeos.Theme seed), and the GNOME accent each comes closest to, for
+ * GTK apps that follow org.gnome.desktop.interface accent-color */
+static const struct {
+  const char *name, *gnome;
+  guint32     seed;
+} accents[] = {
+  { "Teal", "teal", 0x007c88 }, { "Blue", "blue", 0x3584e4 }, { "Green", "green", 0x3a944a },
+  { "Yellow", "yellow", 0xc88800 }, { "Orange", "orange", 0xed5b00 }, { "Red", "red", 0xe62d42 },
+  { "Pink", "pink", 0xd56199 }, { "Purple", "purple", 0x9141ac }, { "Slate", "slate", 0x6f8396 },
 };
 
 static void
-accent_toggled (GtkToggleButton *b, GSettings *iface)
+swatch_draw (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
 {
-  if (gtk_toggle_button_get_active (b))
-    g_settings_set_enum (iface, "accent-color", GPOINTER_TO_INT (g_object_get_data (G_OBJECT (b), "ns-accent")));
+  guint32 seed = accents[GPOINTER_TO_UINT (data)].seed;
+  GtkWidget *b = gtk_widget_get_parent (GTK_WIDGET (area));
+  gboolean on = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (b));
+  double r = MIN (w, h) / 2.0;
+  if (on) {
+    GdkRGBA ring = vibeos_color (VIBEOS_ON_SURFACE);
+    gdk_cairo_set_source_rgba (cr, &ring);
+    cairo_arc (cr, w / 2.0, h / 2.0, r, 0, 2 * G_PI);
+    cairo_fill (cr);
+    GdkRGBA gap = vibeos_color (VIBEOS_SURFACE_BRIGHT);
+    gdk_cairo_set_source_rgba (cr, &gap);
+    cairo_arc (cr, w / 2.0, h / 2.0, r * 0.88, 0, 2 * G_PI);
+    cairo_fill (cr);
+    r *= 0.76;
+  }
+  cairo_set_source_rgb (cr, ((seed >> 16) & 0xff) / 255.0, ((seed >> 8) & 0xff) / 255.0, (seed & 0xff) / 255.0);
+  cairo_arc (cr, w / 2.0, h / 2.0, r, 0, 2 * G_PI);
+  cairo_fill (cr);
+}
+
+static void
+accent_toggled (GtkToggleButton *b, GSettings *theme)
+{
+  gtk_widget_queue_draw (gtk_button_get_child (GTK_BUTTON (b)));
+  if (!gtk_toggle_button_get_active (b))
+    return;
+  guint i = GPOINTER_TO_UINT (g_object_get_data (G_OBJECT (b), "ns-accent"));
+  g_autofree char *source = g_settings_get_string (theme, "source");
+  if (g_settings_get_uint (theme, "seed") == accents[i].seed && !g_strcmp0 (source, "preset"))
+    return;
+  /* the apps follow the seed; vibeos-theme --apply then stores the colours computed from it for the rest */
+  g_settings_set_string (theme, "source", "preset");
+  g_settings_set_uint (theme, "seed", accents[i].seed);
+  g_settings_sync ();
+  g_autoptr (GSettings) iface = ns_settings ("org.gnome.desktop.interface");
+  if (iface && ns_has_key (iface, "accent-color"))
+    g_settings_set_string (iface, "accent-color", accents[i].gnome);
+  g_autofree char *tool = g_find_program_in_path ("vibeos-theme");
+  if (tool)
+    ns_spawn ((const char *const[]) { tool, "--apply", NULL });
+}
+
+static void
+accent_redraw (GtkWidget *flow)
+{
+  for (GtkWidget *c = gtk_widget_get_first_child (flow); c; c = gtk_widget_get_next_sibling (c))
+    gtk_widget_queue_draw (gtk_button_get_child (GTK_BUTTON (gtk_flow_box_child_get_child (GTK_FLOW_BOX_CHILD (c)))));
 }
 
 static GtkWidget *
-accent_picker (GSettings *iface)
+accent_picker (GSettings *theme)
 {
   GtkWidget *flow = gtk_flow_box_new ();
+  gtk_widget_add_css_class (flow, "ns-swatches");
   gtk_flow_box_set_selection_mode (GTK_FLOW_BOX (flow), GTK_SELECTION_NONE);
+  gtk_flow_box_set_homogeneous (GTK_FLOW_BOX (flow), TRUE);
   gtk_flow_box_set_min_children_per_line (GTK_FLOW_BOX (flow), 5);
   gtk_flow_box_set_max_children_per_line (GTK_FLOW_BOX (flow), 9);
-  int cur = g_settings_get_enum (iface, "accent-color");
+  guint32 cur = g_settings_get_uint (theme, "seed");
   GtkWidget *first = NULL;
   for (guint i = 0; i < G_N_ELEMENTS (accents); i++) {
     GtkWidget *b = gtk_toggle_button_new ();
-    gtk_widget_set_tooltip_text (b, accents[i][0]);
-    g_autofree char *cls = g_strconcat ("ns-accent-", accents[i][0], NULL);
-    gtk_widget_add_css_class (b, "ns-accent-dot");
-    gtk_widget_add_css_class (b, cls);
+    gtk_widget_add_css_class (b, "ns-swatch");
+    gtk_accessible_update_property (GTK_ACCESSIBLE (b), GTK_ACCESSIBLE_PROPERTY_LABEL, accents[i].name, -1);
+    GtkWidget *dot = gtk_drawing_area_new ();
+    gtk_widget_set_hexpand (dot, TRUE);
+    gtk_widget_set_vexpand (dot, TRUE);
+    gtk_drawing_area_set_draw_func (GTK_DRAWING_AREA (dot), swatch_draw, GUINT_TO_POINTER (i), NULL);
+    gtk_button_set_child (GTK_BUTTON (b), dot);
     gtk_widget_set_halign (b, GTK_ALIGN_CENTER);
     if (first)
       gtk_toggle_button_set_group (GTK_TOGGLE_BUTTON (b), GTK_TOGGLE_BUTTON (first));
     else
       first = b;
-    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (b), (int) i == cur);
-    g_object_set_data (G_OBJECT (b), "ns-accent", GINT_TO_POINTER (i));
-    g_signal_connect (b, "toggled", G_CALLBACK (accent_toggled), iface);
+    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (b), accents[i].seed == cur);
+    g_object_set_data (G_OBJECT (b), "ns-accent", GUINT_TO_POINTER (i));
+    g_signal_connect (b, "toggled", G_CALLBACK (accent_toggled), theme);
     gtk_flow_box_append (GTK_FLOW_BOX (flow), b);
   }
+  /* the ring around the colour picked is drawn in the theme's colours */
+  g_signal_connect_object (vibeos_theme_get_default (), "changed", G_CALLBACK (accent_redraw), flow,
+                           G_CONNECT_SWAPPED);
   return flow;
 }
 
@@ -1008,7 +1155,7 @@ void
 ns_page_wallpaper (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Wallpaper and style", &c);
+  NsPage *page = ns_page_new ("Wallpaper and style", &c);
   GSettings *bg = ns_page_settings (page, "org.gnome.desktop.background");
   GSettings *iface = ns_page_settings (page, "org.gnome.desktop.interface");
 
@@ -1033,7 +1180,9 @@ ns_page_wallpaper (GtkWidget *row, gpointer data)
 
   g = ns_group (c, "Style");
   dark_row (g, iface);
-  ns_row_widget (g, "Accent colour", accent_picker (iface));
+  GSettings *theme = ns_page_settings (page, "vibeos.Theme");
+  if (theme)
+    ns_row_widget (g, "Colour", accent_picker (theme));
   ns_push (page);
 }
 
@@ -1198,7 +1347,7 @@ icons_picked (GtkWidget *row, guint i, gpointer data)
 
 /* the Layout card: the home screen's grid, icon size and app names, the drawer's grid, icon size and search pill */
 static void
-layout_group (AdwNavigationPage *page, GtkWidget *c, GSettings *vibeos)
+layout_group (NsPage *page, GtkWidget *c, GSettings *vibeos)
 {
   Layout *l = g_new0 (Layout, 1);
   l->vibeos = g_object_ref (vibeos);
@@ -1240,7 +1389,7 @@ ns_page_home (GtkWidget *row, gpointer data)
   if (!vibeos)
     return;
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Home screen", &c);
+  NsPage *page = ns_page_new ("Home screen", &c);
   g_object_set_data_full (G_OBJECT (page), "vibeos", vibeos, g_object_unref);
 
   /* icon packs: what is installed */
@@ -1280,7 +1429,7 @@ void
 ns_page_general (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("General management", &c);
+  NsPage *page = ns_page_new ("General management", &c);
   GtkWidget *g = ns_group (c, NULL);
   page_row (g, "preferences-desktop-locale-symbolic", "violet", "Language and region", "Language • Formats",
             ns_page_language);
@@ -1295,7 +1444,7 @@ ns_page_general (GtkWidget *row, gpointer data)
   ns_push (page);
 }
 
-/* ---- About phone ---- */
+/* ---- About device ---- */
 
 static char *
 first_line_after (const char *file, const char *key)
@@ -1333,14 +1482,14 @@ void
 ns_page_about (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("About phone", &c);
+  NsPage *page = ns_page_new ("About device", &c);
 
   g_autofree char *model = NULL;
   g_file_get_contents ("/sys/firmware/devicetree/base/model", &model, NULL, NULL);
   if (model)
     g_strstrip (model);
 
-  /* the head: the phone's name and model, big */
+  /* the head: the device's name and model, big */
   GtkWidget *head = gtk_box_new (GTK_ORIENTATION_VERTICAL, 4);
   gtk_widget_add_css_class (head, "ns-about-head");
   GtkWidget *name = gtk_label_new (g_get_host_name ());
@@ -1382,6 +1531,6 @@ ns_page_about (GtkWidget *row, gpointer data)
   ns_row_info (g, "Processor", cpus);
 
   g = ns_group (c, NULL);
-  page_row (g, NULL, NULL, "Software information", "Phone name • Versions", ns_page_software);
+  page_row (g, NULL, NULL, "Software information", "Device name • Versions", ns_page_software);
   ns_push (page);
 }

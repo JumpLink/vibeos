@@ -407,7 +407,7 @@ timer_setup_init (TimerSetup *self)
 
           child = gtk_label_new (digit);
           gtk_widget_add_css_class (child, "timer-digit");
-          vibeos_label_set_font_padding (child, DIGIT_SIZE);
+          vibeos_label_set_font_padding_sp (child, DIGIT_SIZE);
           gtk_widget_set_valign (child, GTK_ALIGN_CENTER);
         }
       self->keys[i] = vibeos_pressable_new (child);

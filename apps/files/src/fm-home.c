@@ -120,10 +120,15 @@ tile (FmHome *home, FmGlyph glyph, const char *name, GFile *location, GtkWidget 
   GtkWidget *label = fm_label (name, "fm-tile-name", 16, FALSE);
   GtkWidget *info = fm_label (" ", "fm-tile-info", 12, FALSE);
   GtkWidget *pressable;
-  GdkRGBA ripple = fm_rgba (FM_C_RIPPLE);
 
   gtk_label_set_xalign (GTK_LABEL (label), 0.5f);
   gtk_label_set_xalign (GTK_LABEL (info), 0.5f);
+  /* a name too wide for the tile, at a large font size, goes on to a second line, and only then is cut short */
+  gtk_label_set_single_line_mode (GTK_LABEL (label), FALSE);
+  gtk_label_set_wrap (GTK_LABEL (label), TRUE);
+  gtk_label_set_wrap_mode (GTK_LABEL (label), PANGO_WRAP_WORD);
+  gtk_label_set_lines (GTK_LABEL (label), 2);
+  gtk_label_set_justify (GTK_LABEL (label), GTK_JUSTIFY_CENTER);
   gtk_widget_set_halign (icon, GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (box), icon);
   gtk_box_append (GTK_BOX (box), label);
@@ -131,7 +136,6 @@ tile (FmHome *home, FmGlyph glyph, const char *name, GFile *location, GtkWidget 
   pressable = vibeos_pressable_new (box);
   gtk_widget_add_css_class (pressable, "fm-tile");
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (pressable), VIBEOS_RIPPLE_BOUNDED, 2);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (pressable), &ripple);
   if (location)
     g_object_set_data_full (G_OBJECT (pressable), "fm-file", g_object_ref (location), g_object_unref);
   g_signal_connect (pressable, "clicked", G_CALLBACK (on_tile), home);

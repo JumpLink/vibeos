@@ -26,15 +26,38 @@
 #define VOICEMAIL_SIZE  18      /* the voicemail glyph under the 1 */
 #define LONG_PRESS_MS   400
 
-/* colours: the dialpad is not darkened with the rest of the app */
-#define BACKGROUND      0x2c3132        /* the sheet */
-#define PRIMARY         0xb8ebf3        /* the digits and the icons */
-#define SECONDARY       0x5f6368        /* the letters, * and # */
+/* colours, read as the pad draws: the theme's roles in the Dialer; in a call, whose screen is dark in light mode too,
+ * the dark tones of the theme's palettes */
+typedef enum
+{
+  BACKGROUND,                   /* the sheet */
+  PRIMARY,                      /* the digits and the icons */
+  SECONDARY,                    /* the letters, * and # */
+} PadColor;
+
+static const VibeosColor pad_roles[] = {
+  [BACKGROUND] = VIBEOS_SURFACE_CONTAINER_HIGHEST,
+  [PRIMARY] = VIBEOS_ON_PRIMARY_CONTAINER,
+  [SECONDARY] = VIBEOS_ON_SURFACE_VARIANT,
+};
+static const struct { VibeosPalette palette; int stop; } pad_in_call[] = {
+  [BACKGROUND] = { VIBEOS_PALETTE_NEUTRAL1, 800 },
+  [PRIMARY] = { VIBEOS_PALETTE_ACCENT1, 100 },      /* the theme's primary_fixed, as the CSS gives its icons */
+  [SECONDARY] = { VIBEOS_PALETTE_NEUTRAL2, 300 },
+};
+
+static gboolean pad_is_in_call (DialerDialpad *self);
 
 static GdkRGBA
-rgb (guint32 value, double alpha)
+rgb (DialerDialpad *pad, PadColor color, double alpha)
 {
-  return (GdkRGBA) { ((value >> 16) & 0xff) / 255.0, ((value >> 8) & 0xff) / 255.0, (value & 0xff) / 255.0, alpha };
+  GdkRGBA rgba;
+
+  if (!pad_is_in_call (pad))
+    return vibeos_color_alpha (pad_roles[color], alpha);
+  rgba = vibeos_palette_stop (pad_in_call[color].palette, pad_in_call[color].stop);
+  rgba.alpha = alpha;
+  return rgba;
 }
 
 static PangoLayout *
@@ -45,7 +68,7 @@ gsf_layout (GtkWidget *widget, const char *text, double size)
 
   /* 700, not 400: the phone's Bold text setting is on */
   pango_font_description_set_absolute_size (font, size * PANGO_SCALE);
-  pango_font_description_set_weight (font, 700);
+  pango_font_description_set_weight (font, vibeos_font_weight (400));
   pango_layout_set_font_description (layout, font);
   return layout;
 }
@@ -115,22 +138,24 @@ dialpad_key_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   DialpadKey *self = DIALPAD_KEY (widget);
   double width = gtk_widget_get_width (widget), height = gtk_widget_get_height (widget), cx = width / 2;
   graphene_rect_t box = GRAPHENE_RECT_INIT (0, 0, width, height);
-  GdkRGBA primary = rgb (PRIMARY, 1), secondary = rgb (SECONDARY, 1);
+  GdkRGBA primary = rgb (self->pad, PRIMARY, 1), secondary = rgb (self->pad, SECONDARY, 1);
   Ink number = ink_of (self->number), letters = { 0 };
   double group, top;
 
-  /* a key's ripple, faint black: the dialpad is not darkened, so neither is its ripple */
+  /* a key's ripple, the theme's */
   if (vibeos_ripple_is_active (&self->ripple))
     {
+      GdkRGBA ripple = vibeos_ripple_default_color ();
+
       gtk_snapshot_push_clip (snapshot, &box);
-      vibeos_ripple_snapshot (&self->ripple, snapshot, &box, &(GdkRGBA) { 0, 0, 0, 0.06 });
+      vibeos_ripple_snapshot (&self->ripple, snapshot, &box, &ripple);
       gtk_snapshot_pop (snapshot);
     }
 
   if (self->c == '*' || self->c == '#')
     {
       /* * and #: the secondary colour, a little faded, lifted by SYMBOL_GAP */
-      GdkRGBA symbol = rgb (SECONDARY, 0.8);
+      GdkRGBA symbol = rgb (self->pad, SECONDARY, 0.8);
 
       top = round ((height - (number.height + SYMBOL_GAP)) / 2);
       draw_ink (snapshot, self->number, &number, cx, top, &symbol);
@@ -282,6 +307,12 @@ G_DEFINE_FINAL_TYPE (DialerDialpad, dialer_dialpad, GTK_TYPE_WIDGET)
 
 static const char key_order[] = "123456789*0#";
 
+static gboolean
+pad_is_in_call (DialerDialpad *self)
+{
+  return self->mode == DIALPAD_INCALL;
+}
+
 static int
 end_space (DialerDialpad *self)
 {
@@ -354,7 +385,7 @@ dialer_dialpad_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   double width = gtk_widget_get_width (widget), height = gtk_widget_get_height (widget), x0, x1, size = DIGITS_SIZE;
   graphene_rect_t box = GRAPHENE_RECT_INIT (0, 0, width, height);
   GskRoundedRect shape;
-  GdkRGBA background = rgb (BACKGROUND, 1), primary = rgb (PRIMARY, 1);
+  GdkRGBA background = rgb (self, BACKGROUND, 1), primary = rgb (self, PRIMARY, 1);
   int text_width, text_height;
 
   /* the sheet: round top corners and a shadow over the page above it */
@@ -525,7 +556,6 @@ row_button (DialerDialpad *self, const char *icon_name, const char *description)
   gtk_image_set_pixel_size (GTK_IMAGE (image), 24);
   gtk_widget_add_css_class (image, "dialpad-icon");
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (button), &(GdkRGBA) { 0, 0, 0, 0.06 });
   gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, description, -1);
   gtk_widget_set_parent (button, GTK_WIDGET (self));
   return button;
@@ -599,7 +629,9 @@ dialer_dialpad_new (DialpadMode mode)
   g_signal_connect (self->overflow, "clicked", G_CALLBACK (on_overflow), self);
   g_signal_connect (self->backspace, "clicked", G_CALLBACK (on_backspace), self);
   g_signal_connect (self->backspace, "long-pressed", G_CALLBACK (on_backspace_long), self);
-  /* the in-call keypad: ✕ shown, ⋮ gone, ⌫ invisible but keeping its room */
+  /* the in-call keypad: dark like the call's screen; ✕ shown, ⋮ gone, ⌫ invisible but keeping its room */
+  if (mode == DIALPAD_INCALL)
+    gtk_widget_add_css_class (GTK_WIDGET (self), "dialpad-in-call");
   gtk_widget_set_visible (self->close, mode == DIALPAD_INCALL);
   gtk_widget_set_visible (self->overflow, FALSE);
   gtk_widget_set_visible (self->backspace, mode == DIALPAD_DIALER);

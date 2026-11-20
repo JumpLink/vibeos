@@ -83,7 +83,7 @@ cal_popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, int 
 
       gtk_label_set_xalign (GTK_LABEL (text), 0);
       gtk_label_set_ellipsize (GTK_LABEL (text), PANGO_ELLIPSIZE_END);
-      vibeos_label_set_font_padding (text, 16);
+      vibeos_label_set_font_padding_sp (text, 16);
       gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
       gtk_widget_add_css_class (row, "cal-menu-item");
       if (i == selected)

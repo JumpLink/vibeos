@@ -18,6 +18,7 @@
 
 typedef struct {
   GtkWidget *page, *window;
+  gboolean pane;                /* beside a tablet's Agenda rather than a page over the views */
   CalStore *store;
   CalEvent *event;
   GArray *saved_reminders;      /* the reminders as the calendar has them */
@@ -218,6 +219,16 @@ show_event (Info *info)
                                                              < CAL_MAX_REMINDERS);
 }
 
+/* the event is gone or deleted: the page goes; a pane empties */
+static void
+leave (Info *info)
+{
+  if (info->pane)
+    cal_window_close_pane (info->window);
+  else
+    cal_window_pop (info->window);
+}
+
 /* the store changed: read the event again (it may have been edited, or be gone) */
 static void
 on_found (GObject *source, GAsyncResult *result, gpointer data)
@@ -231,7 +242,7 @@ on_found (GObject *source, GAsyncResult *result, gpointer data)
   if (!event)
     {
       /* "Event not found.": it went from under us */
-      cal_window_pop (info->window);
+      leave (info);
       return;
     }
   /* the reminders the user is changing stay as they are (and still differ from the calendar's) */
@@ -323,9 +334,10 @@ on_edit (VibeosPressable *button, Info *info)
   g_autoptr(CalEvent) event = cal_event_ref (info->event);
   GtkWidget *window = info->window;
 
-  /* Edit: the info screen goes, the editor takes its place */
+  /* Edit: the info screen goes, the editor takes its place (a pane stays under it) */
   save_reminders (info);
-  cal_window_pop (window);
+  if (!info->pane)
+    cal_window_pop (window);
   cal_window_edit_event (window, event, FALSE);
 }
 
@@ -336,7 +348,8 @@ on_duplicate (VibeosPressable *button, Info *info)
   GtkWidget *window = info->window;
 
   save_reminders (info);
-  cal_window_pop (window);
+  if (!info->pane)
+    cal_window_pop (window);
   cal_window_edit_event (window, event, TRUE);
 }
 
@@ -353,6 +366,7 @@ typedef struct {
   GtkWidget *window;
   CalStore *store;
   CalEvent *event;
+  gboolean pane;
 } Deleting;
 
 static void
@@ -367,8 +381,11 @@ on_delete_answer (int index, gpointer data)
       CalScope scope = deleting->event->recurring ? scopes[index] : CAL_SCOPE_ALL;
 
       cal_store_delete (deleting->store, deleting->event, scope, on_deleted, NULL);
-      /* deleted: back to the views */
-      cal_window_pop (deleting->window);
+      /* deleted: back to the views, or the pane empty */
+      if (deleting->pane)
+        cal_window_close_pane (deleting->window);
+      else
+        cal_window_pop (deleting->window);
     }
   g_object_unref (deleting->store);
   cal_event_unref (deleting->event);
@@ -381,6 +398,7 @@ on_delete (VibeosPressable *button, Info *info)
   Deleting *deleting = g_new0 (Deleting, 1);
 
   deleting->window = info->window;
+  deleting->pane = info->pane;
   deleting->store = g_object_ref (info->store);
   deleting->event = cal_event_ref (info->event);
   if (info->event->recurring)
@@ -691,7 +709,7 @@ on_more (VibeosPressable *button, Info *info)
       GtkWidget *item = vibeos_pressable_new (text);
 
       gtk_label_set_xalign (GTK_LABEL (text), 0);
-      vibeos_label_set_font_padding (text, 16);
+      vibeos_label_set_font_padding_sp (text, 16);
       gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
       gtk_widget_add_css_class (item, "cal-menu-item");
       vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (item), VIBEOS_RIPPLE_BOUNDED, 0);
@@ -779,22 +797,29 @@ text (const char *css_class, gboolean wrap)
   return label;
 }
 
-GtkWidget *
-event_info_new (GtkWidget *window, CalEvent *event)
+static GtkWidget *
+make_info (GtkWidget *window, CalEvent *event, gboolean pane)
 {
   Info *info = g_new0 (Info, 1);
   GtkWidget *page = cal_page_new (window);
-  GtkWidget *scroll, *content, *body, *label, *add_text, *icon, *email;
+  GtkWidget *scroll, *content, *body, *label, *add_text, *icon, *email, *toolbar;
 
   info->page = page;
+  info->pane = pane;
   info->window = window;
   info->store = g_object_ref (cal_window_get_store (window));
   info->event = cal_event_ref (event);
   g_object_set_data_full (G_OBJECT (page), "cal-info", info, info_free);
   cal_page_set_back_handler (CAL_PAGE (page), on_back, info);
 
-  /* the toolbar (update_actions fills it) */
-  gtk_box_append (GTK_BOX (page), cal_page_toolbar (CAL_PAGE (page), NULL, &info->actions));
+  /* the toolbar (update_actions fills it); a pane's has no Back */
+  toolbar = cal_page_toolbar (CAL_PAGE (page), NULL, &info->actions);
+  if (pane)
+    {
+      gtk_box_remove (GTK_BOX (toolbar), gtk_widget_get_first_child (toolbar));
+      gtk_widget_add_css_class (page, "cal-info-pane");
+    }
+  gtk_box_append (GTK_BOX (page), toolbar);
 
   content = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
 
@@ -806,10 +831,10 @@ event_info_new (GtkWidget *window, CalEvent *event)
   info->repeat = text ("cal-info-repeat", TRUE);
   info->where = text ("cal-info-where", TRUE);
   /* font padding */
-  vibeos_label_set_font_padding (info->title, 24);
-  vibeos_label_set_font_padding (info->when, 14);
-  vibeos_label_set_font_padding (info->repeat, 14);
-  vibeos_label_set_font_padding (info->where, 14);
+  vibeos_label_set_font_padding_sp (info->title, 24);
+  vibeos_label_set_font_padding_sp (info->when, 14);
+  vibeos_label_set_font_padding_sp (info->repeat, 14);
+  vibeos_label_set_font_padding_sp (info->where, 14);
   gtk_box_append (GTK_BOX (info->headline), info->title);
   gtk_box_append (GTK_BOX (info->headline), info->when);
   gtk_box_append (GTK_BOX (info->headline), info->repeat);
@@ -822,25 +847,25 @@ event_info_new (GtkWidget *window, CalEvent *event)
   info->calendar_row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   label = text ("cal-info-small", FALSE);
   gtk_label_set_label (GTK_LABEL (label), _("Calendar:"));
-  vibeos_label_set_font_padding (label, 14);
+  vibeos_label_set_font_padding_sp (label, 14);
   gtk_box_append (GTK_BOX (info->calendar_row), label);
   info->calendar_name = text ("cal-info-small", TRUE);
   gtk_widget_add_css_class (info->calendar_name, "cal-info-calendar-name");
   gtk_widget_set_hexpand (info->calendar_name, TRUE);
-  vibeos_label_set_font_padding (info->calendar_name, 14);
+  vibeos_label_set_font_padding_sp (info->calendar_name, 14);
   gtk_box_append (GTK_BOX (info->calendar_row), info->calendar_name);
   gtk_box_append (GTK_BOX (body), info->calendar_row);
   /* "Organizer:" and the name, one line */
   info->organizer_row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   label = text ("cal-info-small", FALSE);
   gtk_label_set_label (GTK_LABEL (label), _("Organizer:"));
-  vibeos_label_set_font_padding (label, 14);
+  vibeos_label_set_font_padding_sp (label, 14);
   gtk_box_append (GTK_BOX (info->organizer_row), label);
   info->organizer = text ("cal-info-small", FALSE);
   gtk_label_set_ellipsize (GTK_LABEL (info->organizer), PANGO_ELLIPSIZE_END);
   gtk_widget_add_css_class (info->organizer, "cal-info-calendar-name");
   gtk_widget_set_hexpand (info->organizer, TRUE);
-  vibeos_label_set_font_padding (info->organizer, 14);
+  vibeos_label_set_font_padding_sp (info->organizer, 14);
   gtk_box_append (GTK_BOX (info->organizer_row), info->organizer);
   gtk_box_append (GTK_BOX (body), info->organizer_row);
   info->description = text ("cal-info-small", TRUE);
@@ -896,4 +921,22 @@ event_info_new (GtkWidget *window, CalEvent *event)
   g_signal_connect (info->store, "changed", G_CALLBACK (on_store_changed), info);
   show_event (info);
   return page;
+}
+
+GtkWidget *
+event_info_new (GtkWidget *window, CalEvent *event)
+{
+  return make_info (window, event, FALSE);
+}
+
+GtkWidget *
+event_info_new_pane (GtkWidget *window, CalEvent *event)
+{
+  return make_info (window, event, TRUE);
+}
+
+void
+event_info_save (GtkWidget *info)
+{
+  save_reminders (g_object_get_data (G_OBJECT (info), "cal-info"));
 }

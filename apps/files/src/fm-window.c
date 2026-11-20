@@ -34,6 +34,8 @@ typedef struct {
   VibeosAnim *toast_anim;
   guint toast_timeout;
   GtkWidget *back_marker;
+  GtkWidget *row;               /* the window's content: the docked drawer, then the page */
+  VibeosLayout *layout;
   FmSnackAction snack_cb;
   gpointer snack_data;
   GDestroyNotify snack_destroy;
@@ -1033,7 +1035,6 @@ bottom_item (FmShell *shell, BottomItem item, const char *icon, const char *labe
   GtkWidget *image = gtk_image_new_from_icon_name (icon);
   GtkWidget *text = fm_label (label, "fm-bottom-text", 14, FALSE);
   GtkWidget *button;
-  GdkRGBA ripple = fm_rgba (FM_C_RIPPLE);
 
   gtk_image_set_pixel_size (GTK_IMAGE (image), 24);
   gtk_widget_add_css_class (image, "fm-bottom-icon");
@@ -1045,7 +1046,6 @@ bottom_item (FmShell *shell, BottomItem item, const char *icon, const char *labe
   gtk_widget_add_css_class (button, "fm-bottom-item");
   gtk_widget_set_hexpand (button, TRUE);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (button), &ripple);
   gtk_widget_set_sensitive (button, sensitive);
   g_object_set_data (G_OBJECT (button), "fm-item", GINT_TO_POINTER (item));
   g_signal_connect (button, "clicked", G_CALLBACK (on_bottom_item), shell);
@@ -1157,6 +1157,8 @@ fm_shell_update_bars (FmShell *shell)
       gtk_label_set_text (GTK_LABEL (shell->select_title), title);
     }
   gtk_label_set_text (GTK_LABEL (shell->title), page_title (shell));
+  if (shell->drawer)
+    fm_drawer_sync_rail (shell->drawer);
   gtk_window_set_title (GTK_WINDOW (shell->window), shell->page == FM_PAGE_HOME ? _("Files") : page_title (shell));
 
   gtk_widget_set_visible (s->search, browsing && !trash && !network);
@@ -1252,7 +1254,7 @@ fm_shell_reload (FmShell *shell)
     fm_browser_reload (shell->browser, NULL);
   else if (shell->page == FM_PAGE_HOME)
     fm_home_refresh (shell->home);
-  if (fm_drawer_is_open (shell->drawer))
+  if (fm_drawer_is_open (shell->drawer) || fm_drawer_is_docked (shell->drawer))
     fm_drawer_refresh (shell->drawer);
   fm_shell_update_bars (shell);
 }
@@ -1262,7 +1264,7 @@ on_mounts_changed (GVolumeMonitor *monitor, GMount *mount, FmShell *shell)
 {
   if (shell->page == FM_PAGE_HOME)
     fm_home_refresh (shell->home);
-  if (fm_drawer_is_open (shell->drawer))
+  if (fm_drawer_is_open (shell->drawer) || fm_drawer_is_docked (shell->drawer))
     fm_drawer_refresh (shell->drawer);
 }
 
@@ -1307,6 +1309,9 @@ shell_free (gpointer data)
   g_clear_pointer (&s->toast_anim, vibeos_anim_free);
   g_signal_handlers_disconnect_by_data (shell->monitor, shell);
   g_signal_handlers_disconnect_by_data (shell->settings, shell);
+  if (s->layout)
+    g_signal_handlers_disconnect_by_data (s->layout, shell);
+  g_clear_object (&s->layout);
   fm_browser_free (shell->browser);
   fm_home_free (shell->home);
   fm_remote_page_free (shell->remote_page);
@@ -1422,6 +1427,19 @@ toolbar_new (Shell *s)
   return stack;
 }
 
+/* a tablet held sideways: the drawer docked at the window's start as a sidebar; held upright: the rail of the places
+ * there, with ☰ on it; either way the toolbar has no ☰ */
+static void
+on_layout_changed (VibeosLayout *layout, FmShell *shell)
+{
+  gboolean tablet = vibeos_layout_is_tablet (layout);
+  gboolean sideways = tablet && vibeos_layout_is_landscape (layout);
+
+  fm_drawer_set_docked (shell->drawer, SHELL (shell)->row, sideways);
+  gtk_widget_set_visible (fm_drawer_get_rail (shell->drawer), tablet && !sideways);
+  gtk_widget_set_visible (shell->nav, !tablet);
+}
+
 GtkWidget *
 fm_window_new (GtkApplication *app, GSettings *settings)
 {
@@ -1478,7 +1496,11 @@ fm_window_new (GtkApplication *app, GSettings *settings)
   gtk_box_append (GTK_BOX (shell->bottom), shell->bottom_items);
   gtk_widget_set_visible (shell->bottom, FALSE);
   gtk_box_append (GTK_BOX (main), shell->bottom);
-  vibeos_window_set_content (GTK_WINDOW (window), main);
+  /* the row: the docked drawer of a tablet comes in at its start */
+  s->row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+  gtk_widget_set_hexpand (main, TRUE);
+  gtk_box_append (GTK_BOX (s->row), main);
+  vibeos_window_set_content (GTK_WINDOW (window), s->row);
 
   overlay = GTK_OVERLAY (g_object_get_data (G_OBJECT (window), "vibeos-overlay"));
   /* the marker the shell's back gesture sees while Back has something to leave */
@@ -1495,6 +1517,9 @@ fm_window_new (GtkApplication *app, GSettings *settings)
   shell->drawer = fm_drawer_new (shell);
   gtk_overlay_add_overlay (overlay, fm_drawer_get_widget (shell->drawer));
   fm_drawer_attach_edge (shell->drawer, main);
+  /* the upright tablet's rail, at the row's start (hidden until the layout asks for it) */
+  gtk_widget_set_visible (fm_drawer_get_rail (shell->drawer), FALSE);
+  gtk_box_prepend (GTK_BOX (s->row), fm_drawer_get_rail (shell->drawer));
 
   g_signal_connect (fm_browser_get_list (shell->browser), "selection-changed", G_CALLBACK (on_list_changed), shell);
   g_signal_connect (shell->monitor, "mount-added", G_CALLBACK (on_mounts_changed), shell);
@@ -1513,5 +1538,8 @@ fm_window_new (GtkApplication *app, GSettings *settings)
   shell->page = FM_PAGE_HOME;
   gtk_stack_set_visible_child_name (GTK_STACK (shell->pages), "home");
   fm_shell_update_bars (shell);
+  s->layout = g_object_ref (vibeos_layout_get_for_window (GTK_WINDOW (window)));
+  g_signal_connect (s->layout, "changed", G_CALLBACK (on_layout_changed), shell);
+  on_layout_changed (s->layout, shell);
   return window;
 }

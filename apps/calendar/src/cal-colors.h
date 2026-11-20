@@ -1,9 +1,9 @@
 /* The Calendar's colours, as 0xAARRGGBB, in the three looks its Theme setting gives: dark, pure black (Pure black night
  * mode: a black window) and light; cal_palette_set picks one for the app.
  *
- * Not libvibeos's palette: the surfaces are purple-grey, only the primary colour follows the wallpaper, and the views
- * draw with colours of their own. The stylesheets name the same values (calendar.css for dark,
- * calendar-black.css and calendar-light.css over it). The names below read the palette in use. */
+ * Every colour is a role of libvibeos's theme as it is now (the stylesheets use the same roles; calendar-black.css
+ * puts the window's surface on black), so the views follow the theme's colour, light or dark. The views' own names
+ * below say which role each of their colours is; they read the palette in use. */
 #pragma once
 
 #include <gtk/gtk.h>
@@ -35,14 +35,15 @@ typedef struct {
 
 extern const CalPalette *cal_palette;
 
-/* the look in use: the palette above, and the stylesheet over calendar.css (none for dark) */
+/* the look in use: the palette above from the theme as it is now, and the stylesheet over calendar.css (only the
+ * black look has one); again after the theme changed */
 void        cal_palette_set   (CalLook look);
 CalLook     cal_palette_look  (void);
 /* the Theme setting is exactly "light" (not "system" in a light look): the Month view then paints today in the
  * primary colour at alpha 72 instead of its today colour */
 extern gboolean cal_theme_light;
-/* the ripple's colour, half the highlight: white 20 % in the dark looks (libvibeos's),
- * black 12 % in the light one. Every VibeosPressable takes it as it maps. */
+/* the ripple's colour: libvibeos's, white 10 % in the dark looks, black 6 % in the light one. Every VibeosPressable
+ * takes it as it maps. */
 GdkRGBA     cal_ripple_color  (void);
 /* after cal_palette_set: every widget under @root redrawn in the new colours, its ripples recoloured */
 void        cal_palette_restyle (GtkWidget *root);

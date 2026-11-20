@@ -173,7 +173,8 @@ new_layout (RingingView *self, double size, int weight)
   g_autoptr(PangoFontDescription) font = pango_font_description_from_string ("VibeOS Roboto");
 
   pango_font_description_set_absolute_size (font, size * PANGO_SCALE);
-  pango_font_description_set_weight (font, weight);
+  /* a weight from 700 up is Bold text's, which draws the regular ones 300 heavier */
+  pango_font_description_set_weight (font, weight >= 700 ? vibeos_font_weight (weight - 300) : weight);
   pango_layout_set_font_description (layout, font);
   return layout;
 }

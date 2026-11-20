@@ -7,7 +7,7 @@ add_project_arguments('-DNS_REKEY="@0@"'.format(get_option('prefix') / get_optio
 
 gnome = import('gnome')
 cc = meson.get_compiler('c')
-deps = [dependency('gtk4', version: '>= 4.14'), dependency('libadwaita-1', version: '>= 1.5'),
+deps = [dependency('gtk4', version: '>= 4.14'), dependency('vibeos-1'),
         dependency('json-glib-1.0'), dependency('goa-backend-1.0'), dependency('gio-unix-2.0'), dependency('gmodule-2.0'),
         dependency('libnm'), dependency('libdrm'), dependency('libpulse-mainloop-glib'),
         # the pattern dialog checks the current password the way the lock screen does
@@ -20,12 +20,20 @@ if spongy.found()
 endif
 resources = gnome.compile_resources('ns-resources', 'src/vibeos-settings.gresource.xml', source_dir: 'src')
 
+# the displays as mutter has them and the configurations Display asks it for: the app's and the tests'
+gio = dependency('gio-2.0')
+monitors = static_library('monitors', 'src/ns-monitors.c', dependencies: [gio, cc.find_library('m', required: false)])
+
 executable('vibeos-settings',
   'src/main.c', 'src/ns-ui.c', 'src/ns-pages.c', 'src/ns-parallax.c', 'src/ns-net.c', 'src/ns-bt.c',
   'src/ns-sound.c', 'src/ns-apps.c', 'src/ns-shell.c', 'src/ns-pattern.c', 'src/ns-privacy.c', 'src/ns-system.c',
+  'src/ns-displays.c',
   resources,
+  link_with: monitors,
   dependencies: deps,
   install: true)
+test('monitors', executable('test-monitors', 'tests/test-monitors.c', link_with: monitors, dependencies: gio,
+                            c_args: '-DTEST_DATA="@0@"'.format(meson.current_source_dir() / 'tests')))
 install_data('data/vibeos.Settings.desktop', install_dir: get_option('datadir') / 'applications')
 install_data('data/vibeos.Settings.svg', install_dir: get_option('datadir') / 'icons' / 'hicolor' / 'scalable' / 'apps')
 install_data('data/vibeos-keyring-rekey', install_dir: get_option('libexecdir'), install_mode: 'rwxr-xr-x')

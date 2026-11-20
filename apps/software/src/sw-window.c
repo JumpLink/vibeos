@@ -322,6 +322,14 @@ on_updates_changed (SwUpdates *updates, GtkWidget *window)
   vibeos_nav_bar_set_badge (VIBEOS_NAV_BAR (win->nav), SW_TAB_MINE, count);
 }
 
+/* back in front after a while: the updates may be old */
+static void
+on_active_changed (GtkWindow *window, GParamSpec *pspec, gpointer data)
+{
+  if (gtk_window_is_active (window))
+    sw_updates_check_if_stale (sw_updates_get_default ());
+}
+
 static void
 on_account_notice (SwAccount *account, const char *text, GtkWidget *window)
 {
@@ -840,6 +848,7 @@ sw_window_new (GtkApplication *app)
   gtk_widget_add_controller (window, shortcuts);
 
   g_signal_connect_after (window, "realize", G_CALLBACK (frames_watch), NULL);
+  g_signal_connect (window, "notify::is-active", G_CALLBACK (on_active_changed), NULL);
   g_signal_connect_object (sw_installer_get_default (), "finished", G_CALLBACK (on_job_finished), window, 0);
   g_signal_connect_object (sw_updates_get_default (), "changed", G_CALLBACK (on_updates_changed), window, 0);
   g_signal_connect_object (sw_account_get_default (), "notice", G_CALLBACK (on_account_notice), window, 0);

@@ -12,7 +12,6 @@
 #define EDGE            8       /* closer than this to the window's edge, it is flush with it */
 #define ENTER_MS        250     /* the clip reveal and the fade in */
 #define EXIT_MS         150
-#define BACKGROUND      0x181c1d
 
 typedef struct
 {
@@ -227,7 +226,7 @@ dialer_popup_menu_append (DialerPopupMenu *self, const char *label, PopupMenuAct
   gtk_widget_set_margin_start (text, TEXT_PAD);
   gtk_widget_set_margin_end (text, TEXT_PAD);
   gtk_widget_add_css_class (text, "popup-menu-text");
-  vibeos_label_set_font_padding (text, 16);
+  vibeos_label_set_font_padding_sp (text, 16);
   if (!action)
     {
       gtk_widget_add_css_class (text, "disabled");
@@ -239,7 +238,6 @@ dialer_popup_menu_append (DialerPopupMenu *self, const char *label, PopupMenuAct
   item = vibeos_pressable_new (text);
   gtk_widget_set_size_request (item, -1, ROW_HEIGHT);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (item), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (item), &(GdkRGBA) { 1, 1, 1, 0.06 });
   g_object_set_data (G_OBJECT (item), "menu-row", GUINT_TO_POINTER (self->rows->len));
   g_signal_connect (item, "clicked", G_CALLBACK (on_row_clicked), self);
   gtk_box_append (GTK_BOX (self->card), item);

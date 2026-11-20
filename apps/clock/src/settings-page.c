@@ -75,7 +75,7 @@ add_category (SettingsPage *self, const char *title)
     }
   gtk_label_set_xalign (GTK_LABEL (label), 0);
   /* the font padding first: it sets the margins, and the category's spacing goes on top of it */
-  vibeos_label_set_font_padding (label, 14);
+  vibeos_label_set_font_padding_sp (label, 14);
   gtk_widget_set_margin_top (label, gtk_widget_get_margin_top (label) + (first ? 24 : 23));
   gtk_widget_set_margin_bottom (label, gtk_widget_get_margin_bottom (label) + 8);
   gtk_widget_set_margin_start (label, 16);
@@ -108,7 +108,7 @@ add_row (SettingsPage *self, const char *title, GtkWidget **summary, GtkWidget *
   gtk_label_set_xalign (GTK_LABEL (label), 0);
   gtk_label_set_wrap (GTK_LABEL (label), TRUE);
   gtk_widget_add_css_class (label, "settings-title");
-  vibeos_label_set_font_padding (label, 16);
+  vibeos_label_set_font_padding_sp (label, 16);
   gtk_box_append (GTK_BOX (column), label);
   if (summary)
     {
@@ -116,7 +116,7 @@ add_row (SettingsPage *self, const char *title, GtkWidget **summary, GtkWidget *
       gtk_label_set_xalign (GTK_LABEL (*summary), 0);
       gtk_label_set_wrap (GTK_LABEL (*summary), TRUE);
       gtk_widget_add_css_class (*summary, "settings-summary");
-      vibeos_label_set_font_padding (*summary, 14);
+      vibeos_label_set_font_padding_sp (*summary, 14);
       gtk_box_append (GTK_BOX (column), *summary);
     }
   gtk_box_append (GTK_BOX (box), column);
@@ -382,7 +382,7 @@ add_volume (SettingsPage *self)
   gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
   gtk_widget_set_margin_start (label, 12);
   gtk_widget_add_css_class (label, "settings-title");
-  vibeos_label_set_font_padding (label, 16);
+  vibeos_label_set_font_padding_sp (label, 16);
   gtk_box_append (GTK_BOX (column), label);
   self->slider = volume_slider_new (VOLUME_STEPS - 1);
   gtk_accessible_update_property (GTK_ACCESSIBLE (self->slider), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Alarm volume"),
@@ -415,12 +415,12 @@ add_brightness (SettingsPage *self)
   gtk_widget_set_margin_bottom (column, 8);
   gtk_label_set_xalign (GTK_LABEL (label), 0);
   gtk_widget_add_css_class (label, "settings-title");
-  vibeos_label_set_font_padding (label, 16);
+  vibeos_label_set_font_padding_sp (label, 16);
   gtk_box_append (GTK_BOX (column), label);
   self->brightness_summary = gtk_label_new (NULL);
   gtk_label_set_xalign (GTK_LABEL (self->brightness_summary), 0);
   gtk_widget_add_css_class (self->brightness_summary, "settings-summary");
-  vibeos_label_set_font_padding (self->brightness_summary, 14);
+  vibeos_label_set_font_padding_sp (self->brightness_summary, 14);
   gtk_box_append (GTK_BOX (column), self->brightness_summary);
   /* negative margins take back the slider's own inset, so its track's ends line up with the text */
   self->brightness = volume_slider_new (100);

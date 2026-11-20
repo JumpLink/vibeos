@@ -29,12 +29,9 @@ static GtkWidget *
 summary_label (const char *text)
 {
   GtkWidget *label = nb_label (text, 14, "nb-pref-summary", FALSE);
-  PangoAttrList *attrs = pango_attr_list_copy (gtk_label_get_attributes (GTK_LABEL (label)));
 
   /* a fixed line pitch (the last line keeps the font's own height) */
-  pango_attr_list_insert (attrs, pango_attr_line_height_new_absolute (20 * PANGO_SCALE));
-  gtk_label_set_attributes (GTK_LABEL (label), attrs);
-  pango_attr_list_unref (attrs);
+  nb_label_set_line_height (label, 20);
   gtk_widget_set_margin_top (label, 0);
   gtk_widget_set_margin_bottom (label, 0);
   gtk_label_set_wrap (GTK_LABEL (label), TRUE);

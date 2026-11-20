@@ -4,6 +4,7 @@
 #include "inst-view.h"
 
 #include <glib/gi18n.h>
+#include <spongy-gtk.h>
 #include <vibeos.h>
 
 typedef struct {
@@ -240,7 +241,7 @@ static GtkWidget *
 start_page (Win *win)
 {
   GtkWidget *page = page_new (_("App Installer"), FALSE, win, NULL);
-  GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0), *icon, *title, *text, *more, *button;
+  GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0), *icon, *title, *text, *more, *button, *scroll;
 
   gtk_widget_add_css_class (box, "inst-start");
   gtk_widget_set_vexpand (box, TRUE);
@@ -278,7 +279,11 @@ start_page (Win *win)
   gtk_widget_add_css_class (more, "inst-start-more");
   gtk_box_append (GTK_BOX (box), more);
 
-  gtk_box_append (GTK_BOX (page), box);
+  /* centred in the page, and scrolled where a large font size makes it taller than the page */
+  scroll = spongy_scroll_view_new ();
+  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), box);
+  gtk_widget_set_vexpand (scroll, TRUE);
+  gtk_box_append (GTK_BOX (page), scroll);
   return page;
 }
 

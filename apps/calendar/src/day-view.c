@@ -59,6 +59,7 @@ struct _CalDayView {
   GPtrArray *timed;             /* those drawn in the grid, laid out together */
   GPtrArray *all_day;           /* those drawn in the all-day area, laid out together */
   gboolean staggered;           /* Staggered display */
+  double header_widest;         /* the week header's widest weekday or date at 1 sp to the px; 0: not measured */
 
   double cell_height;           /* one hour, px, without the gap */
   double view_start_y;          /* the grid's scroll, px */
@@ -96,27 +97,27 @@ enum { EVENT_ACTIVATED, CREATE_EVENT, DAY_ACTIVATED, PAGE, CELL_HEIGHT_CHANGED, 
 static guint signals[N_SIGNALS];
 
 /* --- fonts: regular or bold as asked; the phone's Bold text setting does not reach text this view draws
- * itself */
+ * itself, its Font size does */
 
-static PangoFontDescription *
-font (double size, int weight)
-{
-  PangoFontDescription *description = pango_font_description_from_string ("VibeOS Roboto, Roboto");
-
-  pango_font_description_set_absolute_size (description, size * PANGO_SCALE);
-  pango_font_description_set_weight (description, weight);
-  return description;
-}
-
+/* text @px px high, whatever the Font size */
 static PangoLayout *
-make_layout (CalDayView *self, const char *text, double size, int weight)
+layout_px (CalDayView *self, const char *text, double px, int weight)
 {
   PangoLayout *layout = gtk_widget_create_pango_layout (GTK_WIDGET (self), text);
-  PangoFontDescription *description = font (size, weight);
+  PangoFontDescription *description = pango_font_description_from_string ("VibeOS Roboto, Roboto");
 
+  pango_font_description_set_absolute_size (description, px * PANGO_SCALE);
+  pango_font_description_set_weight (description, weight);
   pango_layout_set_font_description (layout, description);
   pango_font_description_free (description);
   return layout;
+}
+
+/* text of @size sp */
+static PangoLayout *
+make_layout (CalDayView *self, const char *text, double size, int weight)
+{
+  return layout_px (self, text, vibeos_sp (size), weight);
 }
 
 /* the height of a line of event text: Roboto's bounding box (1.327 em) in whole device pixels, plus one */
@@ -132,6 +133,7 @@ typedef struct {
   double px;
   double width, height;
   double header_height;
+  double header_scale;          /* the header's text: its sizes times this */
   double hours_width;
   double pitch;                 /* an hour with its gap */
   double min_unexpanded;        /* the least height of an event */
@@ -166,6 +168,32 @@ page_all_day_rows (CalDayView *self, int first_day)
   return rows;
 }
 
+/* the week header's text: as large as the Font size makes it, but no larger than lets the widest weekday and date
+ * fit their column (seven of them on a phone leave little room); never smaller than at the default size */
+static double
+header_text_scale (CalDayView *self, int first_day, const Metrics *m)
+{
+  double column = (m->width - m->hours_width) / self->num_days - 2 * DAY_HEADER_RIGHT_MARGIN;
+
+  if (self->header_widest <= 0)
+    {
+      g_autoptr(PangoLayout) number = layout_px (self, "30", DATE_HEADER_FONT_SIZE, PANGO_WEIGHT_BOLD);
+      int width;
+
+      pango_layout_get_pixel_size (number, &width, NULL);
+      self->header_widest = width;
+      for (int i = 0; i < 7; i++)
+        {
+          g_autofree char *text = cal_format_weekday_short (first_day + i);
+          g_autoptr(PangoLayout) name = layout_px (self, text, DAY_HEADER_FONT_SIZE, PANGO_WEIGHT_NORMAL);
+
+          pango_layout_get_pixel_size (name, &width, NULL);
+          self->header_widest = MAX (self->header_widest, width);
+        }
+    }
+  return MIN (vibeos_font_scale (), MAX (column / self->header_widest, 1.0));
+}
+
 static void
 measure_page (CalDayView *self, int first_day, Metrics *m)
 {
@@ -175,9 +203,13 @@ measure_page (CalDayView *self, int first_day, Metrics *m)
   m->px = 1.0 / MAX (scale, 1);
   m->width = gtk_widget_get_width (GTK_WIDGET (self));
   m->height = gtk_widget_get_height (GTK_WIDGET (self));
-  m->header_height = self->num_days > 1 ? MULTI_DAY_HEADER_HEIGHT : 0;
   /* the widest label rounded to a whole device pixel, not up to a whole px */
   m->hours_width = HOURS_LEFT_MARGIN + round (self->hours_text_width * MAX (scale, 1)) * m->px + HOURS_RIGHT_MARGIN;
+  /* a larger header text makes the header taller by as much */
+  m->header_scale = self->num_days > 1 ? header_text_scale (self, first_day, m) : 1;
+  m->header_height = self->num_days > 1 ? MULTI_DAY_HEADER_HEIGHT + (DATE_HEADER_FONT_SIZE + DAY_HEADER_FONT_SIZE)
+                                                                    * MAX (m->header_scale - 1, 0)
+                                        : 0;
   m->pitch = self->cell_height + m->px;
   m->event_text_size = self->num_days > 1 ? WEEK_EVENT_TEXT_SIZE : DAY_EVENT_TEXT_SIZE;
   /* the least height of an event: a line of event text and its margins */
@@ -245,6 +277,14 @@ update_hour_labels (CalDayView *self)
       widest = MAX (widest, (double) logical.width / PANGO_SCALE);
     }
   self->hours_text_width = widest;
+}
+
+static void
+on_text_changed (CalDayView *self)
+{
+  self->header_widest = 0;
+  update_hour_labels (self);
+  gtk_widget_queue_resize (GTK_WIDGET (self));
 }
 
 /* --- drawing */
@@ -620,9 +660,10 @@ draw_header (CalDayView *self, GtkSnapshot *snapshot, const Metrics *m, int firs
       g_autoptr(GDateTime) date = g_date_time_new_from_unix_local (cal_day_start (day));
       g_autofree char *number = g_strdup_printf ("%d", g_date_time_get_day_of_month (date));
       g_autofree char *name = cal_format_weekday_short (day);
-      g_autoptr(PangoLayout) number_layout = make_layout (self, number, DATE_HEADER_FONT_SIZE,
-                                                          day == today ? PANGO_WEIGHT_BOLD : PANGO_WEIGHT_NORMAL);
-      g_autoptr(PangoLayout) name_layout = make_layout (self, name, DAY_HEADER_FONT_SIZE, PANGO_WEIGHT_NORMAL);
+      g_autoptr(PangoLayout) number_layout = layout_px (self, number, DATE_HEADER_FONT_SIZE * m->header_scale,
+                                                        day == today ? PANGO_WEIGHT_BOLD : PANGO_WEIGHT_NORMAL);
+      g_autoptr(PangoLayout) name_layout = layout_px (self, name, DAY_HEADER_FONT_SIZE * m->header_scale,
+                                                      PANGO_WEIGHT_NORMAL);
       double x = day_left (m, self->num_days, index) + DAY_HEADER_RIGHT_MARGIN;
       double y = m->header_height - DAY_HEADER_BOTTOM_MARGIN;
       /* today's in the today colour; Saturday and Sunday in theirs, the rest in the label colour */
@@ -630,7 +671,7 @@ draw_header (CalDayView *self, GtkSnapshot *snapshot, const Metrics *m, int firs
                       : weekday == 0 || weekday == 6 ? CAL_WEEKEND_LABEL : CAL_DAY_LABEL;
 
       draw_text (snapshot, number_layout, x, y, color);
-      draw_text (snapshot, name_layout, x, y - DATE_HEADER_FONT_SIZE, color);
+      draw_text (snapshot, name_layout, x, y - DATE_HEADER_FONT_SIZE * m->header_scale, color);
     }
 }
 
@@ -1298,6 +1339,9 @@ cal_day_view_new (int num_days)
   self->num_days = num_days;
   self->first_day = cal_day_number (g_get_real_time () / G_USEC_PER_SEC);
   update_hour_labels (self);
+  /* a new font size: the hours' labels again, and the column as wide as they need */
+  g_signal_connect_object (vibeos_text_get_default (), "changed", G_CALLBACK (on_text_changed), self,
+                           G_CONNECT_SWAPPED);
   return GTK_WIDGET (self);
 }
 

@@ -19,8 +19,13 @@
 
 #define FAB_SIZE        56      /* the round dialpad button over the page's corner */
 #define FAB_MARGIN      16
-#define FAB_COLOR       0xb8ebf3        /* light: the button is not darkened with the rest of the app */
+#define FAB_COLOR       VIBEOS_PRIMARY_CONTAINER        /* the theme's, read as the button draws */
 #define SEEN_AFTER_MS   3000    /* on Recents this long, the missed calls are seen */
+#define RAIL_W          80      /* the tablet's navigation rail (libvibeos's) */
+#define LIST_PANE_RATIO 0.4     /* the tablet's call log beside its details: this share of the width */
+#define LIST_PANE_MIN   360     /* as wide as a phone at least */
+#define LIST_PANE_MAX   480
+#define DIALPAD_MAX     412     /* the tablet's dialpad: over the list column, as wide as a big phone at most */
 
 enum { TAB_FAVORITES, TAB_RECENTS, TAB_CONTACTS, N_TABS };
 
@@ -31,6 +36,11 @@ typedef struct
   Contacts *contacts;
   GtkWidget *toolbar;           /* a revealer: the toolbar slides up out of the way under the dialpad */
   GtkWidget *search_bar, *stack, *pages[N_TABS], *search, *fab, *nav;
+  GtkWidget *tab_children[N_TABS];      /* the stack's child for a tab: the page, or Recents in its list-detail */
+  GtkWidget *nav_rail, *rail_fab;       /* the tablet's navigation, the dialpad button at its top */
+  GtkWidget *recents_ld;                /* Recents and a call's details beside it on a tablet */
+  GtkWidget *details_empty;             /* what the details pane shows with no call open */
+  VibeosLayout *layout;
   GtkWidget *sheet;
   GPtrArray *screens;           /* Call history, Call details, Settings over it all, the top one last */
   gboolean searching;           /* the search UI is up (regular or the dialpad's) */
@@ -46,6 +56,9 @@ shell_free (gpointer data)
   Shell *shell = data;
 
   g_signal_handlers_disconnect_by_data (calls_client_get (), shell);
+  if (shell->layout)
+    g_signal_handlers_disconnect_by_data (shell->layout, shell);
+  g_clear_object (&shell->layout);
   g_clear_pointer (&shell->screens, g_ptr_array_unref);
   g_clear_object (&shell->contacts);
   g_clear_object (&shell->settings);
@@ -63,8 +76,12 @@ shell_of (GtkWidget *window)
 static void
 update_badge (Shell *shell)
 {
-  dialer_nav_bar_set_count (DIALER_NAV_BAR (shell->nav), TAB_RECENTS,
-                            calls_client_get_missed_count (calls_client_get ()));
+  guint missed = calls_client_get_missed_count (calls_client_get ());
+  g_autofree char *text = missed > 9 ? g_strdup (C_("bottom_nav_count_9_plus", "9+"))
+                                     : missed ? g_strdup_printf ("%u", missed) : NULL;
+
+  dialer_nav_bar_set_count (DIALER_NAV_BAR (shell->nav), TAB_RECENTS, missed);
+  vibeos_nav_rail_set_badge (VIBEOS_NAV_RAIL (shell->nav_rail), TAB_RECENTS, text);
 }
 
 static void
@@ -99,6 +116,9 @@ on_active (GtkWindow *window, GParamSpec *pspec, Shell *shell)
 
 /* ---- the tabs ------------------------------------------------------------------------------------------------ */
 
+static void close_search (Shell *shell);
+static void on_show_details (Shell *shell, const char *number, int presentation, GArray *ids);
+
 static void
 show_tab (Shell *shell, int tab)
 {
@@ -106,8 +126,9 @@ show_tab (Shell *shell, int tab)
     mark_seen (shell);
   shell->tab = tab;
   /* a plain show and hide: no transition, and each list keeps where it was scrolled to */
-  gtk_stack_set_visible_child (GTK_STACK (shell->stack), shell->pages[tab]);
+  gtk_stack_set_visible_child (GTK_STACK (shell->stack), shell->tab_children[tab]);
   dialer_nav_bar_set_selected (DIALER_NAV_BAR (shell->nav), tab);
+  vibeos_nav_rail_set_selected (VIBEOS_NAV_RAIL (shell->nav_rail), tab);
   g_settings_set_enum (shell->settings, "selected-tab", tab);
   if (gtk_window_is_active (GTK_WINDOW (shell->window)))
     start_tab_timer (shell);
@@ -116,6 +137,13 @@ show_tab (Shell *shell, int tab)
 static void
 on_tab_selected (DialerNavBar *nav, int index, Shell *shell)
 {
+  show_tab (shell, index);
+}
+
+static void
+on_rail_selected (VibeosNavRail *rail, int index, Shell *shell)
+{
+  close_search (shell);
   show_tab (shell, index);
 }
 
@@ -134,8 +162,8 @@ static void
 show_search (Shell *shell, gboolean shown)
 {
   shell->searching = shown;
-  gtk_widget_set_visible (shell->nav, !shown);
-  gtk_stack_set_visible_child (GTK_STACK (shell->stack), shown ? shell->search : shell->pages[shell->tab]);
+  gtk_widget_set_visible (shell->nav, !shown && !(shell->layout && vibeos_layout_is_tablet (shell->layout)));
+  gtk_stack_set_visible_child (GTK_STACK (shell->stack), shown ? shell->search : shell->tab_children[shell->tab]);
 }
 
 /* a tap on the collapsed bar: regular search, the keyboard up */
@@ -329,6 +357,30 @@ push_screen (Shell *shell, GtkWidget *screen)
   gtk_widget_grab_focus (screen);
 }
 
+static void
+on_detail_closed (Shell *shell)
+{
+  vibeos_list_detail_close_detail (VIBEOS_LIST_DETAIL (shell->recents_ld));
+}
+
+/* Recents' "Call details": on a tablet in the pane beside the call log, on a phone a screen of its own */
+static void
+on_recents_details (Shell *shell, const char *number, int presentation, GArray *ids)
+{
+  GtkWidget *details;
+
+  if (!vibeos_list_detail_is_split (VIBEOS_LIST_DETAIL (shell->recents_ld)))
+    {
+      on_show_details (shell, number, presentation, ids);
+      return;
+    }
+  details = call_details_new (shell->contacts, shell->snackbar, number, presentation, (const gint64 *) ids->data,
+                              ids->len);
+  g_signal_connect_swapped (details, "edit-number", G_CALLBACK (on_history_edit_number), shell);
+  g_signal_connect_swapped (details, "closed", G_CALLBACK (on_detail_closed), shell);
+  vibeos_list_detail_show (VIBEOS_LIST_DETAIL (shell->recents_ld), details);
+}
+
 /* an entry's "Call details", from Recents or from Call history (over it, so Back goes back to it) */
 static void
 on_show_details (Shell *shell, const char *number, int presentation, GArray *ids)
@@ -410,15 +462,13 @@ static GtkWidget *
 make_fab (Shell *shell)
 {
   GtkWidget *icon = gtk_image_new_from_icon_name ("dialer-dialpad-symbolic");
-  GdkRGBA fill = { ((FAB_COLOR >> 16) & 0xff) / 255.0, ((FAB_COLOR >> 8) & 0xff) / 255.0, (FAB_COLOR & 0xff) / 255.0,
-                   1 };
   GtkWidget *fab;
 
   gtk_image_set_pixel_size (GTK_IMAGE (icon), 24);
-  gtk_widget_add_css_class (icon, "dial-icon");
+  gtk_widget_add_css_class (icon, "dialpad-fab-icon");
   fab = vibeos_pressable_new (icon);
   gtk_widget_set_size_request (fab, FAB_SIZE, FAB_SIZE);
-  vibeos_pressable_set_fill (VIBEOS_PRESSABLE (fab), &fill, TRUE);
+  vibeos_pressable_set_fill_role (VIBEOS_PRESSABLE (fab), FAB_COLOR, TRUE);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (fab), VIBEOS_RIPPLE_CIRCLE, FAB_SIZE / 2.0);
   gtk_widget_set_halign (fab, GTK_ALIGN_END);
   gtk_widget_set_valign (fab, GTK_ALIGN_END);
@@ -429,11 +479,74 @@ make_fab (Shell *shell)
   return fab;
 }
 
+/* a tablet (upright too): the rail with the dialpad button for the bottom navigation and the corner button, and a
+ * call's details beside Recents; the dialpad over the list column rather than the whole width */
+static void
+update_layout (Shell *shell)
+{
+  gboolean tablet = vibeos_layout_is_tablet (shell->layout);
+  int list = (int) CLAMP ((vibeos_layout_get_width (shell->layout) - RAIL_W) * LIST_PANE_RATIO, LIST_PANE_MIN,
+                          LIST_PANE_MAX);
+
+  gtk_widget_set_visible (shell->nav_rail, tablet);
+  gtk_widget_set_visible (shell->nav, !tablet && !shell->searching);
+  gtk_widget_set_visible (shell->fab, !tablet);
+  vibeos_list_detail_set_list_width (VIBEOS_LIST_DETAIL (shell->recents_ld), list);
+  gtk_widget_set_halign (shell->sheet, tablet ? GTK_ALIGN_START : GTK_ALIGN_FILL);
+  gtk_widget_set_margin_start (shell->sheet, tablet ? RAIL_W : 0);
+  gtk_widget_set_size_request (shell->sheet, tablet ? MIN (list, DIALPAD_MAX) : -1, -1);
+}
+
+static void
+on_layout_changed (VibeosLayout *layout, Shell *shell)
+{
+  update_layout (shell);
+}
+
+/* one pane again (a display-size change): the call open beside the list closes rather than covering it */
+static void
+on_split (GObject *ld, GParamSpec *pspec, Shell *shell)
+{
+  gboolean split = vibeos_list_detail_is_split (VIBEOS_LIST_DETAIL (ld));
+
+  /* the placeholder's picture and line only with a side to show them on: one pane gives it no width */
+  gtk_widget_set_visible (shell->details_empty, split);
+  if (!split)
+    vibeos_list_detail_close_detail (VIBEOS_LIST_DETAIL (ld));
+}
+
+/* what the details pane shows with no call open: a picture and a line, in a box that can be no width at all */
+static GtkWidget *
+details_placeholder (Shell *shell)
+{
+  GtkWidget *outer = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 16);
+  GtkWidget *icon = gtk_image_new_from_icon_name ("dialer-access-time-symbolic");
+  GtkWidget *text = gtk_label_new (_("Choose a call to see its details"));
+
+  gtk_image_set_pixel_size (GTK_IMAGE (icon), 64);
+  gtk_widget_add_css_class (icon, "dialer-empty-image");
+  gtk_widget_add_css_class (text, "dialer-empty-text");
+  gtk_label_set_wrap (GTK_LABEL (text), TRUE);
+  gtk_label_set_justify (GTK_LABEL (text), GTK_JUSTIFY_CENTER);
+  gtk_box_append (GTK_BOX (box), icon);
+  gtk_box_append (GTK_BOX (box), text);
+  gtk_widget_set_valign (box, GTK_ALIGN_CENTER);
+  gtk_widget_set_halign (box, GTK_ALIGN_CENTER);
+  gtk_widget_set_vexpand (box, TRUE);
+  gtk_widget_set_margin_start (box, 32);
+  gtk_widget_set_margin_end (box, 32);
+  gtk_box_append (GTK_BOX (outer), box);
+  shell->details_empty = box;
+  return outer;
+}
+
 GtkWidget *
 dialer_window_new (GtkApplication *app, GSettings *settings)
 {
   Shell *shell = g_new0 (Shell, 1);
   GtkWidget *window = vibeos_window_new (app);
+  GtkWidget *row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *page = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *content = gtk_overlay_new ();
   GtkOverlay *overlay;
@@ -446,7 +559,26 @@ dialer_window_new (GtkApplication *app, GSettings *settings)
   gtk_window_set_title (GTK_WINDOW (window), _("Phone"));
   gtk_widget_add_css_class (window, "dialer");
   gtk_widget_add_css_class (page, "dialer-page");
-  vibeos_window_set_content (GTK_WINDOW (window), page);
+  /* the tablet's rail at the start, the page beside it */
+  shell->nav_rail = vibeos_nav_rail_new ();
+  gtk_widget_add_css_class (shell->nav_rail, "dialer-rail");
+  vibeos_nav_rail_append (VIBEOS_NAV_RAIL (shell->nav_rail), "dialer-star-outline-symbolic",
+                          C_("tab_title_speed_dial", "Favorites"));
+  vibeos_nav_rail_append (VIBEOS_NAV_RAIL (shell->nav_rail), "dialer-access-time-symbolic",
+                          C_("tab_title_call_history", "Recents"));
+  vibeos_nav_rail_append (VIBEOS_NAV_RAIL (shell->nav_rail), "dialer-people-outline-symbolic",
+                          C_("tab_all_contacts", "Contacts"));
+  shell->rail_fab = make_fab (shell);
+  gtk_widget_set_halign (shell->rail_fab, GTK_ALIGN_CENTER);
+  gtk_widget_set_valign (shell->rail_fab, GTK_ALIGN_START);
+  gtk_widget_set_margin_end (shell->rail_fab, 0);
+  gtk_widget_set_margin_bottom (shell->rail_fab, 0);
+  vibeos_nav_rail_set_header (VIBEOS_NAV_RAIL (shell->nav_rail), shell->rail_fab);
+  g_signal_connect (shell->nav_rail, "selected", G_CALLBACK (on_rail_selected), shell);
+  gtk_box_append (GTK_BOX (row), shell->nav_rail);
+  gtk_widget_set_hexpand (page, TRUE);
+  gtk_box_append (GTK_BOX (row), page);
+  vibeos_window_set_content (GTK_WINDOW (window), row);
   overlay = vibeos_window_get_overlay (window);
   shell->snackbar = VIBEOS_SNACKBAR (vibeos_snackbar_new ());
 
@@ -471,12 +603,22 @@ dialer_window_new (GtkApplication *app, GSettings *settings)
   shell->pages[TAB_RECENTS] = recents_page_new (shell->contacts, shell->snackbar);
   shell->pages[TAB_CONTACTS] = contacts_page_new (shell->contacts, shell->snackbar);
   shell->search = search_page_new (shell->contacts, settings, shell->snackbar);
+  /* Recents in a list-detail: a call's details beside it on a tablet */
+  shell->recents_ld = vibeos_list_detail_new ();
+  gtk_widget_add_css_class (shell->recents_ld, "dialer-recents");
+  vibeos_list_detail_set_list (VIBEOS_LIST_DETAIL (shell->recents_ld), shell->pages[TAB_RECENTS]);
+  vibeos_list_detail_set_placeholder (VIBEOS_LIST_DETAIL (shell->recents_ld), details_placeholder (shell));
+  g_signal_connect (shell->recents_ld, "notify::split", G_CALLBACK (on_split), shell);
+  on_split (G_OBJECT (shell->recents_ld), NULL, shell);
   for (int i = 0; i < N_TABS; i++)
-    gtk_stack_add_child (GTK_STACK (shell->stack), shell->pages[i]);
+    {
+      shell->tab_children[i] = i == TAB_RECENTS ? shell->recents_ld : shell->pages[i];
+      gtk_stack_add_child (GTK_STACK (shell->stack), shell->tab_children[i]);
+    }
   gtk_stack_add_child (GTK_STACK (shell->stack), shell->search);
   g_signal_connect_swapped (shell->pages[TAB_RECENTS], "open-dialpad", G_CALLBACK (on_open_dialpad), shell);
   g_signal_connect_swapped (shell->pages[TAB_RECENTS], "edit-number", G_CALLBACK (on_edit_number), shell);
-  g_signal_connect_swapped (shell->pages[TAB_RECENTS], "show-details", G_CALLBACK (on_show_details), shell);
+  g_signal_connect_swapped (shell->pages[TAB_RECENTS], "show-details", G_CALLBACK (on_recents_details), shell);
   g_signal_connect_swapped (shell->search, "call-placed", G_CALLBACK (on_search_call_placed), shell);
   g_signal_connect_swapped (shell->search, "touched", G_CALLBACK (on_search_touched), shell);
   gtk_overlay_set_child (GTK_OVERLAY (content), shell->stack);
@@ -511,9 +653,13 @@ dialer_window_new (GtkApplication *app, GSettings *settings)
   shell->tab = g_settings_get_enum (settings, "selected-tab");
   if (shell->tab < 0 || shell->tab >= N_TABS)
     shell->tab = TAB_FAVORITES;
-  gtk_stack_set_visible_child (GTK_STACK (shell->stack), shell->pages[shell->tab]);
+  gtk_stack_set_visible_child (GTK_STACK (shell->stack), shell->tab_children[shell->tab]);
   dialer_nav_bar_set_selected (DIALER_NAV_BAR (shell->nav), shell->tab);
+  vibeos_nav_rail_set_selected (VIBEOS_NAV_RAIL (shell->nav_rail), shell->tab);
   update_badge (shell);
+  shell->layout = g_object_ref (vibeos_layout_get_for_window (GTK_WINDOW (window)));
+  g_signal_connect (shell->layout, "changed", G_CALLBACK (on_layout_changed), shell);
+  update_layout (shell);
   return window;
 }
 

@@ -9,6 +9,7 @@ import {ScreenshotChord} from './chord.js';
 import {CollectWhenStill} from './gc.js';
 import {Cutout, CutoutBand} from './cutout.js';
 import {Desktop, isDesktopSession} from './dock.js';
+import {DisplayChangeOnPanel} from './displaychange.js';
 import {EndMark} from './endmark.js';
 import {syncGtkCss} from './gtkcss.js';
 import {HeadsUp} from './headsup.js';
@@ -149,6 +150,8 @@ export default class VibeosExtension extends Extension {
         // an app's window over the lock screen: the ringing alarm, a call coming in
         this._whenLocked = new WhenLocked(this._keyguard);
         this._rotation.follow(this._keyguard, this._home);
+        // the shell's "Keep these display settings?" on the built-in panel, where a finger can answer it
+        this._displayChange = new DisplayChangeOnPanel();
         // the volume keys show the volume dialog, over the shade and the lock screen too
         this._volume = new VolumeDialog();
         // ... unless the app in front took them (a ringing timer stops on one)
@@ -254,6 +257,8 @@ export default class VibeosExtension extends Extension {
         this._powerMenu = null;
         this._volume?.destroy();
         this._volume = null;
+        this._displayChange?.destroy();
+        this._displayChange = null;
         this._chord?.destroy();
         this._chord = null;
         this._whenLocked?.destroy();

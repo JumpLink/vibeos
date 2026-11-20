@@ -40,8 +40,7 @@ lock_show (Lock *l)
   guint i = lock_index (l);
   ns_row_pick_select (l->type, i);
   gtk_widget_set_visible (l->change, i != 0);
-  gtk_label_set_text (GTK_LABEL (g_object_get_data (G_OBJECT (l->change), "ns-title-label")),
-                      i == 1 ? "Change pattern" : "Change PIN");
+  ns_row_set_title (l->change, i == 1 ? "Change pattern" : "Change PIN");
 }
 
 typedef struct {
@@ -82,7 +81,7 @@ lock_picked (GtkWidget *row, guint i, gpointer data)
    * not keep the password there is: the lock screen's PIN pad types digits only, and a password with a letter in it
    * could not be typed there to unlock. */
   if (i != 0) {
-    adw_navigation_view_pop (ADW_NAVIGATION_VIEW (gtk_widget_get_ancestor (row, ADW_TYPE_NAVIGATION_VIEW)));
+    ns_pop (row);
     secret_dialog (l, row, i);
     lock_show (l);
     return;
@@ -138,7 +137,7 @@ ns_page_lock_screen (GtkWidget *row, gpointer data)
     return;
   }
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Lock screen", &c);
+  NsPage *page = ns_page_new ("Lock screen", &c);
   Lock *l = g_new0 (Lock, 1);
   l->vibeos = vibeos;
   g_object_set_data_full (G_OBJECT (page), "ns-lock", l, (GDestroyNotify) lock_free);
@@ -288,10 +287,10 @@ layout_name (Layouts *l, const char *type, const char *id)
   return id;
 }
 
-static void layouts_fill (AdwNavigationPage *page);
+static void layouts_fill (NsPage *page);
 
 static void
-layout_remove (GtkButton *btn, AdwNavigationPage *page)
+layout_remove (GtkButton *btn, NsPage *page)
 {
   Layouts *l = g_object_get_data (G_OBJECT (page), "ns-layouts");
   guint drop = GPOINTER_TO_UINT (g_object_get_data (G_OBJECT (btn), "ns-index"));
@@ -308,7 +307,7 @@ layout_remove (GtkButton *btn, AdwNavigationPage *page)
 static void
 layout_added (GtkWidget *row, gpointer data)
 {
-  AdwNavigationPage *page = g_object_get_data (G_OBJECT (row), "ns-page");
+  NsPage *page = g_object_get_data (G_OBJECT (row), "ns-page");
   Layouts *l = g_object_get_data (G_OBJECT (page), "ns-layouts");
   Layout *add = l->all->pdata[GPOINTER_TO_UINT (data)];
   g_autoptr (GVariant) v = g_settings_get_value (l->src, "sources");
@@ -318,7 +317,7 @@ layout_added (GtkWidget *row, gpointer data)
     g_variant_builder_add_value (&b, g_variant_get_child_value (v, i));
   g_variant_builder_add (&b, "(ss)", "xkb", add->id);
   g_settings_set_value (l->src, "sources", g_variant_builder_end (&b));
-  adw_navigation_view_pop (ADW_NAVIGATION_VIEW (gtk_widget_get_ancestor (row, ADW_TYPE_NAVIGATION_VIEW)));
+  ns_pop (row);
 }
 
 static gboolean
@@ -338,7 +337,7 @@ layout_add (GtkWidget *row, gpointer page)
 {
   Layouts *l = g_object_get_data (G_OBJECT (page), "ns-layouts");
   GtkWidget *c;
-  AdwNavigationPage *add = ns_page_new ("Add a layout", &c);
+  NsPage *add = ns_page_new ("Add a layout", &c);
   GtkWidget *g = ns_group (c, NULL);
   g_autoptr (GVariant) v = g_settings_get_value (l->src, "sources");
   for (guint i = 0; i < l->all->len; i++) {
@@ -353,7 +352,7 @@ layout_add (GtkWidget *row, gpointer page)
 }
 
 static void
-layouts_fill (AdwNavigationPage *page)
+layouts_fill (NsPage *page)
 {
   Layouts *l = g_object_get_data (G_OBJECT (page), "ns-layouts");
   ns_group_clear (l->group);
@@ -364,10 +363,8 @@ layouts_fill (AdwNavigationPage *page)
     g_variant_get_child (v, i, "(&s&s)", &t, &id);
     GtkWidget *r = ns_row (l->group, NULL, NULL, layout_name (l, t, id), i == 0 ? "Used first" : NULL);
     if (n > 1) {
-      GtkWidget *x = gtk_button_new_from_icon_name ("user-trash-symbolic");
-      gtk_widget_add_css_class (x, "flat");
-      gtk_widget_add_css_class (x, "circular");
-      gtk_widget_set_tooltip_text (x, "Remove");
+      GtkWidget *x = vibeos_icon_button_new ("user-trash-symbolic");
+      gtk_accessible_update_property (GTK_ACCESSIBLE (x), GTK_ACCESSIBLE_PROPERTY_LABEL, "Remove", -1);
       g_object_set_data (G_OBJECT (x), "ns-index", GUINT_TO_POINTER (i));
       g_signal_connect (x, "clicked", G_CALLBACK (layout_remove), page);
       ns_row_suffix (r, x);
@@ -378,7 +375,7 @@ layouts_fill (AdwNavigationPage *page)
 }
 
 static void
-layouts_rows (AdwNavigationPage *page, GtkWidget *c)
+layouts_rows (NsPage *page, GtkWidget *c)
 {
   GSettings *src = ns_page_settings (page, "org.gnome.desktop.input-sources");
   if (!src)
@@ -400,7 +397,7 @@ void
 ns_page_keyboard (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Keyboard", &c);
+  NsPage *page = ns_page_new ("Keyboard", &c);
   GSettings *shell = ns_page_settings (page, "vibeos.Shell");
   if (ns_has_key (shell, "keyboard")) {
     static const char *const keyboards[] = { "vibeos", "gnome", NULL };

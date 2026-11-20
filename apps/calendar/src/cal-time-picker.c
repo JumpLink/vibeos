@@ -650,7 +650,7 @@ combo (Picker *picker, gboolean minutes)
   gtk_widget_add_controller (text, keys);
 
   gtk_label_set_xalign (GTK_LABEL (label), 0);
-  vibeos_label_set_font_padding (label, 12);
+  vibeos_label_set_font_padding_sp (label, 12);
   gtk_widget_add_css_class (label, "cal-time-input-label");
   gtk_box_append (GTK_BOX (box), label);
   if (minutes)
@@ -762,7 +762,7 @@ cal_time_picker_show (GtkWidget *parent, int hour, int minute, CalTimeChosen cho
   picker->data = data;
 
   gtk_label_set_xalign (GTK_LABEL (title), 0);
-  vibeos_label_set_font_padding (title, 12);
+  vibeos_label_set_font_padding_sp (title, 12);
   gtk_widget_add_css_class (title, "cal-time-title");
   gtk_box_append (GTK_BOX (content), title);
 

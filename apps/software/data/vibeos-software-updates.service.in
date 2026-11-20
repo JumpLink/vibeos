@@ -1,0 +1,14 @@
+# Software's look for updates without its window: it asks the store once and suggests the versions it has not
+# suggested before in one notification (vibeos-software --check-updates). vibeos.Software update-mode decides whether
+# it asks at all ("never") and on which network ("wifi": not on a metered one). Started by the timer.
+[Unit]
+Description=Look for app updates in the VibeOS store
+Documentation=man:vibeos-software(1)
+ConditionUser=!@system
+
+[Service]
+Type=oneshot
+ExecStart=@bindir@/vibeos-software --check-updates
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=3min
