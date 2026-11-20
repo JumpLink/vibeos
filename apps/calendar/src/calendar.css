@@ -418,6 +418,17 @@ cal-spinner {
 
 /* --- pages (event info, the editor, settings) */
 
+/* a tablet's dialog over the views (the event's info): the page in a rounded card */
+.cal-dialog-card {
+  border-radius: 28dp;
+  background-color: @vibeos_surface_container_high;
+}
+
+.cal-dialog-card > .cal-page,
+.cal-dialog-card > .cal-page .cal-toolbar {
+  background-color: @vibeos_surface_container_high;
+}
+
 .cal-page {
   background-color: @vibeos_surface;
 }
