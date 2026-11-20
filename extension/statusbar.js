@@ -389,7 +389,10 @@ export const StatusBar = GObject.registerClass({
 
         // turned with the panel: across its whole width, the clock after the hole when it is at the bar's start
         cutout.connectObject('changed', () => this._relayout(), this);
-        Main.layoutManager.connectObject('monitors-changed', () => this._relayout(), this);
+        Main.layoutManager.connectObject('monitors-changed', () => {
+            this._relayout();
+            this._queueSyncMode();      // the windows on its screen may be others now
+        }, this);
         this._relayout();
 
         this._sources = new Set();
@@ -404,6 +407,8 @@ export const StatusBar = GObject.registerClass({
             'restacked', () => this._queueSyncMode(),
             'in-fullscreen-changed', () => this._queueSyncMode(),
             'notify::focus-window', () => this._queueSyncMode(),
+            'window-entered-monitor', () => this._queueSyncMode(),
+            'window-left-monitor', () => this._queueSyncMode(),
             this);
         global.window_manager.connectObject(
             'minimize', () => this._queueSyncMode(),
@@ -564,9 +569,13 @@ export const StatusBar = GObject.registerClass({
     }
 
     _syncMode() {
+        // the windows on its own screen only: a fullscreen game on a plugged-in TV does not hide it on the device's
+        // panel, nor does an app there make it black over the launcher
+        const here = Main.layoutManager.primaryIndex;
         const workspace = global.workspace_manager.get_active_workspace();
         const apps = workspace.list_windows().filter(w =>
-            !w.minimized && !this._home.isHome(w) && w.get_window_type() === Meta.WindowType.NORMAL);
+            !w.minimized && !this._home.isHome(w) && w.get_window_type() === Meta.WindowType.NORMAL &&
+            w.get_monitor() === here);
         const overApp = this._overAppOverride ?? apps.length > 0;
         const fullscreen = apps.some(w => w.is_fullscreen());
         // an ease is 1.5-7 ms of the shell's frame here, and this runs on every restack and focus change
