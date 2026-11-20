@@ -7,6 +7,7 @@
 #include "ns-ui.h"
 
 #include <fcntl.h>
+#include <gio/gdesktopappinfo.h>
 #include <json-glib/json-glib.h>
 #include <math.h>
 #include <sys/utsname.h>
@@ -1624,24 +1625,48 @@ ns_page_home (GtkWidget *row, gpointer data)
   ns_push (page);
 }
 
-/* ---- General management ---- */
+/* ---- System ---- */
+
+/* System updates: Software's list of updates (VibeOS's store), or GNOME Software's where that is what there is */
+static void
+updates_tapped (GtkWidget *row, gpointer data)
+{
+  g_autoptr (GDesktopAppInfo) sw = g_desktop_app_info_new ("vibeos.Software.desktop");
+  g_autoptr (GDBusConnection) bus = sw ? g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, NULL) : NULL;
+  if (bus) {
+    g_dbus_connection_call (bus, "vibeos.Software", "/vibeos/Software", "org.freedesktop.Application",
+                            "ActivateAction", g_variant_new_parsed ("('show-updates', @av [], @a{sv} {})"), NULL,
+                            G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
+    return;
+  }
+  ns_spawn ((const char *const[]) { "gnome-software", "--mode=updates", NULL });
+}
+
+static gboolean
+have_updates (void)
+{
+  g_autoptr (GDesktopAppInfo) sw = g_desktop_app_info_new ("vibeos.Software.desktop");
+  g_autofree char *gs = sw ? NULL : g_find_program_in_path ("gnome-software");
+  return sw || gs;
+}
 
 void
 ns_page_general (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("General management", &c);
+  NsPage *page = ns_page_new ("System", &c);
   GtkWidget *g = ns_group (c, NULL);
-  page_row (g, "preferences-desktop-locale-symbolic", "Language and region", "Language • Formats",
-            ns_page_language);
-  page_row (g, "preferences-system-time-symbolic", "Date and time", "Automatic time • Time zone",
-            ns_page_datetime);
+  page_row (g, "preferences-desktop-locale-symbolic", "Language & region", "Language • Formats", ns_page_language);
   page_row (g, "input-keyboard-symbolic", "Keyboard", "On-screen keyboard • Layouts", ns_page_keyboard);
-  page_row (g, "input-mouse-symbolic", "Mouse and touchpad", "Pointer speed • Hardware keyboard",
-            ns_page_mouse);
+  page_row (g, "input-mouse-symbolic", "Mouse & touchpad", "Pointer speed • Hardware keyboard", ns_page_mouse);
+  page_row (g, "preferences-system-time-symbolic", "Date & time", "Automatic time • Time zone", ns_page_datetime);
+  if (have_updates ()) {
+    g = ns_group (c, NULL);
+    GtkWidget *r = ns_row (g, "software-update-available-symbolic", "System updates", "Download and install");
+    ns_row_on_activate (r, updates_tapped, NULL);
+  }
   g = ns_group (c, NULL);
   page_row (g, "system-users-symbolic", "Users", "Your account • Password", ns_page_users);
-  page_row (g, "view-grid-symbolic", "Default apps", "Browser • Email • Music", ns_page_default_apps);
   ns_push (page);
 }
 
