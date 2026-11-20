@@ -20,6 +20,7 @@ import * as Signals from 'resource:///org/gnome/shell/misc/signals.js';
 import {Aod, Panel} from './aod.js';
 import {HardwareKeys} from './keys.js';
 import {animate, bezier, LINEAR} from './motion.js';
+import {displayConfig, STATE_TYPE} from './rotation.js';
 import {geometry, TABLET} from './units.js';
 
 Gio._promisify(Gio.DBusProxy.prototype, 'call');
@@ -148,6 +149,12 @@ export class Power extends Signals.EventEmitter {
         this._idleWatch = 0;
         this._inhibited = false;
         this._watchInhibitors();
+        // A display plugged in, anything but the device's own panel: docked. Docked it sleeps when told to (the power
+        // key, the cover) and never on a timeout (owner, 11-20): a sleep on a timeout took the TV down with it.
+        this._docked = false;
+        this._dockCheck = 0;
+        Main.layoutManager.connectObject('monitors-changed', () => this._checkDocked(), this);
+        this._checkDocked();
         keyguard.connectObject('changed', () => this._syncTimeout(), this);
 
         this._exportScreenSaver();
@@ -329,13 +336,13 @@ export class Power extends Signals.EventEmitter {
     }
 
     // --- the screen timeout: the lock screen's own, else the session's idle delay (0: never) unless an app inhibits
-    // idle; after any input
+    // idle; after any input. None while docked.
 
     _syncTimeout() {
         if (this._idleWatch)
             this._idleMonitor.remove_watch(this._idleWatch);
         this._idleWatch = 0;
-        if (!this.interactive)
+        if (!this.interactive || this._docked)
             return;
         let ms;
         if (this._keyguard.showing)
@@ -356,6 +363,24 @@ export class Power extends Signals.EventEmitter {
             this.goToSleep('timeout');
         });
         this._idleWatch = id;
+    }
+
+    async _checkDocked() {
+        const check = ++this._dockCheck;
+        let docked;
+        try {
+            const [, monitors] = (await displayConfig('GetCurrentState', null, STATE_TYPE)).recursiveUnpack();
+            docked = monitors.some(([, , props]) => !props['is-builtin']);
+        } catch (e) {
+            logError(e, 'vibeos: the displays plugged in');
+            return;
+        }
+        // only the latest answer counts: a plug and an unplug in quick succession
+        if (this._destroyed || check !== this._dockCheck || docked === this._docked)
+            return;
+        this._docked = docked;
+        log(`vibeos: ${docked ? 'docked, no screen timeout' : 'undocked'}`);
+        this._syncTimeout();
     }
 
     _watchInhibitors() {
@@ -486,8 +511,10 @@ export class Power extends Signals.EventEmitter {
             GLib.source_remove(this._activeId);
         this._activeId = 0;
         this._fadeAnim?.stop();
+        this._destroyed = true;
         if (this._idleWatch)
             this._idleMonitor.remove_watch(this._idleWatch);
+        Main.layoutManager.disconnectObject(this);
         this._sessionManager?.disconnectObject(this);
         this._keyguard.disconnectObject(this);
         geometry.disconnectObject(this);

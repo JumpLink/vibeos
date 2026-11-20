@@ -55,7 +55,7 @@ const STARTING_MS = 10000;
 // its window, or a dialog of its own between two of its windows)
 const SETTLE_MS = 400;
 
-const STATE_TYPE = '(ua((ssss)a(siiddada{sv})a{sv})a(iiduba(ssss)a{sv})a{sv})';
+export const STATE_TYPE = '(ua((ssss)a(siiddada{sv})a{sv})a(iiduba(ssss)a{sv})a{sv})';
 
 const LOCK_KEY = 'orientation-lock';
 // the user's orientation lock while the panel is held with it: 'true' or 'false'
@@ -120,7 +120,7 @@ export function setUserOrientationLock(settings, locked) {
     }
 }
 
-function displayConfig(method, params, type = null) {
+export function displayConfig(method, params, type = null) {
     return new Promise((resolve, reject) => Gio.DBus.session.call('org.gnome.Mutter.DisplayConfig',
         '/org/gnome/Mutter/DisplayConfig', 'org.gnome.Mutter.DisplayConfig', method, params,
         type ? new GLib.VariantType(type) : null, Gio.DBusCallFlags.NONE, -1, null, (bus, res) => {
