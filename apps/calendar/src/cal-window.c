@@ -24,6 +24,9 @@ static const char *view_titles[N_VIEWS] = { N_("Day"), N_("Week"), N_("Month"), 
 
 #define DRAWER_WIDTH 296.0
 #define TABLET_DRAWER_WIDTH 360.0
+#define INFO_DIALOG_WIDTH 500                   /* a tablet: the event's info in a dialog this large, over the views */
+#define INFO_DIALOG_HEIGHT 600
+#define INFO_DIALOG_MARGIN 24                   /* ... at least this far from the window's edges */
 #define LIST_SHARE 0.4                  /* a tablet's Agenda: the list's share of the width, the event's pane the rest */
 #define DRAWER_MS 250                   /* the drawer opening or closing, at most */
 #define VIEW_FADE_MS 150                /* one view fading into another */
@@ -1127,41 +1130,127 @@ on_page_transition_done (GObject *stack, GParamSpec *pspec, Shell *shell)
     }
 }
 
-void
-cal_window_push (GtkWidget *window, GtkWidget *page)
+/* --- a tablet's dialog: a pushed page in a card over the views and a scrim, rather than in place of them */
+
+/* the dialog a pushed page is in, or NULL for a page in the stack */
+static GtkWidget *
+dialog_of (GtkWidget *page)
+{
+  return g_object_get_data (G_OBJECT (page), "cal-dialog");
+}
+
+/* the card as large as the dialog is, or as the window leaves room for, centred */
+static gboolean
+on_dialog_position (GtkOverlay *overlay, GtkWidget *child, GdkRectangle *rect, gpointer data)
+{
+  int width = gtk_widget_get_width (GTK_WIDGET (overlay)), height = gtk_widget_get_height (GTK_WIDGET (overlay));
+
+  rect->width = MIN (INFO_DIALOG_WIDTH, MAX (width - 2 * INFO_DIALOG_MARGIN, 0));
+  rect->height = MIN (INFO_DIALOG_HEIGHT, MAX (height - 2 * INFO_DIALOG_MARGIN, 0));
+  rect->x = (width - rect->width) / 2;
+  rect->y = (height - rect->height) / 2;
+  return TRUE;
+}
+
+/* a tap on the scrim is Back for the page in the card */
+static void
+on_dialog_scrim (GtkGestureClick *click, int n, double x, double y, GtkWidget *page)
+{
+  cal_page_back (CAL_PAGE (page));
+}
+
+static GtkWidget *
+dialog_new (GtkWidget *page)
+{
+  GtkWidget *dialog = gtk_overlay_new ();
+  GtkWidget *scrim = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  GtkWidget *card = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  GtkGesture *click = gtk_gesture_click_new ();
+
+  gtk_widget_add_css_class (scrim, "vibeos-scrim");
+  gtk_widget_add_controller (scrim, GTK_EVENT_CONTROLLER (click));
+  g_signal_connect (click, "released", G_CALLBACK (on_dialog_scrim), page);
+  gtk_overlay_set_child (GTK_OVERLAY (dialog), scrim);
+  gtk_widget_add_css_class (card, "cal-dialog-card");
+  gtk_widget_set_overflow (card, GTK_OVERFLOW_HIDDEN);
+  gtk_widget_set_vexpand (page, TRUE);
+  gtk_box_append (GTK_BOX (card), page);
+  gtk_overlay_add_overlay (GTK_OVERLAY (dialog), card);
+  g_signal_connect (dialog, "get-child-position", G_CALLBACK (on_dialog_position), NULL);
+  g_object_set_data (G_OBJECT (page), "cal-dialog", dialog);
+  return dialog;
+}
+
+/* the stack shows the top page that is not in a dialog, and only the top dialog shows */
+static void
+show_top (Shell *shell)
+{
+  GtkWidget *shown = shell->main;
+
+  for (guint i = 0; i < shell->pushed->len; i++)
+    {
+      GtkWidget *page = shell->pushed->pdata[i], *dialog = dialog_of (page);
+
+      if (dialog)
+        gtk_widget_set_visible (dialog, i == shell->pushed->len - 1);
+      else
+        shown = page;
+    }
+  gtk_stack_set_visible_child (GTK_STACK (shell->pages), shown);
+}
+
+/* `page` in a dialog over the views on a tablet, and pushed like any page on a phone */
+static void
+push (GtkWidget *window, GtkWidget *page, gboolean dialog)
 {
   Shell *shell = shell_of (window);
-  g_autofree char *name = g_strdup_printf ("page-%u", ++shell->page_serial);
 
   close_menu (shell);
   /* A page opens with nothing focused: with the focus still in the stack, GtkStack would hand it to the new page's
    * first entry, which selects its text and calls up the keyboard. */
   gtk_window_set_focus (GTK_WINDOW (window), NULL);
-  gtk_stack_add_named (GTK_STACK (shell->pages), page, name);
+  if (dialog && shell->tablet)
+    gtk_overlay_add_overlay (vibeos_window_get_overlay (window), dialog_new (page));
+  else
+    {
+      g_autofree char *name = g_strdup_printf ("page-%u", ++shell->page_serial);
+
+      gtk_stack_add_named (GTK_STACK (shell->pages), page, name);
+    }
   g_ptr_array_add (shell->pushed, page);
-  gtk_stack_set_visible_child (GTK_STACK (shell->pages), page);
+  show_top (shell);
+}
+
+void
+cal_window_push (GtkWidget *window, GtkWidget *page)
+{
+  push (window, page, FALSE);
 }
 
 void
 cal_window_pop (GtkWidget *window)
 {
   Shell *shell = shell_of (window);
-  GtkWidget *page;
+  GtkWidget *page, *dialog;
 
   if (!shell->pushed->len)
     return;
   page = g_ptr_array_steal_index (shell->pushed, shell->pushed->len - 1);
-  g_object_set_data (G_OBJECT (page), "cal-popped", GINT_TO_POINTER (TRUE));
-  gtk_stack_set_visible_child (GTK_STACK (shell->pages),
-                               shell->pushed->len ? shell->pushed->pdata[shell->pushed->len - 1] : shell->main);
+  dialog = dialog_of (page);
+  if (dialog)
+    gtk_overlay_remove_overlay (vibeos_window_get_overlay (window), dialog);
+  else
+    g_object_set_data (G_OBJECT (page), "cal-popped", GINT_TO_POINTER (TRUE));
+  show_top (shell);
   if (!gtk_stack_get_transition_running (GTK_STACK (shell->pages)))
     on_page_transition_done (G_OBJECT (shell->pages), NULL, shell);
 }
 
+/* on a tablet in a dialog over the views, as a page of its own on a phone */
 void
 cal_window_show_event (GtkWidget *window, CalEvent *event)
 {
-  cal_window_push (window, event_info_new (window, event));
+  push (window, event_info_new (window, event), TRUE);
 }
 
 void

@@ -346,12 +346,16 @@ on_lift (VibeosSnackbar *snackbar, GParamSpec *pspec, Shell *shell)
   gtk_widget_queue_allocate (shell->content);
 }
 
-/* a tablet in landscape: the pages end where the buttons' column starts */
+/* a tablet: its own text sizes (clock.css); in landscape the pages end where the buttons' column starts */
 static void
 on_layout_changed (VibeosLayout *layout, Shell *shell)
 {
   gboolean column = vibeos_layout_is_tablet (layout) && vibeos_layout_is_landscape (layout);
 
+  if (vibeos_layout_is_tablet (layout))
+    gtk_widget_add_css_class (shell->window, "tablet");
+  else
+    gtk_widget_remove_css_class (shell->window, "tablet");
   if (column == shell->column)
     return;
   shell->column = column;

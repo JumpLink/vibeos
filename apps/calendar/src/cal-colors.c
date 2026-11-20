@@ -63,6 +63,7 @@ compute (CalPalette *p, CalLook look)
     .agenda_declined_title = argb (VIBEOS_OUTLINE, 1), .agenda_declined_when = argb (VIBEOS_ON_SURFACE_VARIANT, 0.5),
     .selected_number = argb (VIBEOS_ON_PRIMARY, 1),
     .switch_thumb_off = argb (VIBEOS_OUTLINE, 1), .switch_track_off = argb (VIBEOS_SURFACE_CONTAINER_HIGHEST, 1),
+    .disabled = argb (VIBEOS_ON_SURFACE, 0.38),
     .dark = vibeos_theme_get_dark (vibeos_theme_get_default ()),
   };
 }

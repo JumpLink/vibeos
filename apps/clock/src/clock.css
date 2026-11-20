@@ -80,6 +80,24 @@
   color: @vibeos_on_surface;
 }
 
+/* a tablet: the big clock larger (at 100 sp and more it no longer grows with Font size), the date and the next alarm
+ * a size up; the title and the tab bar's labels keep their size whatever the Font size, as their bars do */
+window.tablet .main-clock {
+  font-size: 125sp;
+}
+
+window.tablet clock-page .body {
+  font-size: 18sp;
+}
+
+window.tablet .vibeos-app-bar-title {
+  font-size: 22dp;
+}
+
+window.tablet .vibeos-nav-label {
+  font-size: 12dp;
+}
+
 /* --- the Timer tab */
 
 /* the keypad's time ("00h 00m 00s"), which timer-setup.c lays out and sizes itself */
@@ -213,6 +231,11 @@ timer-setup {
   margin: 8dp 16dp 0 16dp;
 }
 
+/* a tablet held sideways: the time above the name */
+.world-card.stacked {
+  padding: 22dp 16dp;
+}
+
 /* a city's time, in the light weight */
 .world-clock-time {
   font-size: 48sp;
@@ -316,7 +339,7 @@ timer-setup {
 /* the shadow under the bar, shown once the list scrolls */
 .city-drop-shadow {
   min-height: 8dp;
-  background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.3), transparent);
+  background-image: linear-gradient(to bottom, alpha(@vibeos_shadow, 0.3), alpha(@vibeos_shadow, 0));
 }
 
 /* the expanded search field, and its hint */

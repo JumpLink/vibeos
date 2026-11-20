@@ -70,7 +70,7 @@
 .cal-tz-dropdown {                        /* the suggestions' drop-down, under the field and as wide */
   background-color: @vibeos_surface_container;
   border-radius: 4dp;
-  box-shadow: 0 3dp 8dp alpha(black, 0.35);
+  box-shadow: 0 3dp 8dp alpha(@vibeos_shadow, 0.35);
 }
 
 .cal-tz-suggestion {                      /* a suggestion in the drop-down */

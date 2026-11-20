@@ -135,7 +135,7 @@ cal-day-view {
   min-height: 56dp;
   border-radius: 16dp;
   margin: 0 16dp 16dp 0;
-  color: white;
+  color: @vibeos_on_primary;
 }
 
 /* --- the drawer */
@@ -188,7 +188,7 @@ cal-day-view {
 .cal-menu {
   background-color: @vibeos_surface_container;
   border-radius: 4dp;
-  box-shadow: 0 2dp 6dp rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2dp 6dp alpha(@vibeos_shadow, 0.3);
   padding: 8dp 0;
 }
 
@@ -239,7 +239,7 @@ cal-spinner {
   min-height: 48dp;
   border-radius: 28dp;
   background-color: @vibeos_surface_container_high;
-  box-shadow: 0 1dp 3dp rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1dp 3dp alpha(@vibeos_shadow, 0.3);
 }
 
 .cal-toast-icon {
@@ -418,6 +418,17 @@ cal-spinner {
 
 /* --- pages (event info, the editor, settings) */
 
+/* a tablet's dialog over the views (the event's info): the page in a rounded card */
+.cal-dialog-card {
+  border-radius: 28dp;
+  background-color: @vibeos_surface_container_high;
+}
+
+.cal-dialog-card > .cal-page,
+.cal-dialog-card > .cal-page .cal-toolbar {
+  background-color: @vibeos_surface_container_high;
+}
+
 .cal-page {
   background-color: @vibeos_surface;
 }
@@ -441,14 +452,14 @@ cal-spinner {
 .cal-info-title {
   font-size: 24sp;
   font-weight: 600;                      /* bold */
-  color: white;
+  color: @vibeos_white;
 }
 
 .cal-info-when,
 .cal-info-where {
   margin-top: 4dp;
   font-size: 14sp;
-  color: white;
+  color: @vibeos_white;
 }
 
 .cal-info-repeat {

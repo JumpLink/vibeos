@@ -19,6 +19,10 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE (CalcDisplay, calc_display, CALC, DISPLAY, GtkWidget)
 
 GtkWidget   *calc_display_new            (gboolean one_line);
+/* ... on a tablet (`tablet`): larger text and wider paddings */
+GtkWidget   *calc_display_new_full       (gboolean one_line, gboolean tablet);
+/* the formula's padding, px */
+void         calc_display_get_formula_padding (CalcDisplay *self, double *top, double *bottom, double *end);
 CalcFormula *calc_display_get_formula    (CalcDisplay *self);
 CalcResult  *calc_display_get_result     (CalcDisplay *self);
 /* the ⋮ button ("clicked") */

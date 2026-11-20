@@ -483,9 +483,8 @@ static GtkWidget *
 pill_new (GtkWidget *child, VibeosColor fill, int height)
 {
   GtkWidget *pill = vibeos_pressable_new (child);
-  GdkRGBA color = vibeos_color (fill);
 
-  vibeos_pressable_set_fill (VIBEOS_PRESSABLE (pill), &color, FALSE);
+  vibeos_pressable_set_fill_role (VIBEOS_PRESSABLE (pill), fill, FALSE);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (pill), VIBEOS_RIPPLE_BOUNDED, height / 2.0);
   return pill;
 }

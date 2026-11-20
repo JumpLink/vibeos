@@ -70,7 +70,8 @@ clock_popup_menu_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gtk_snapshot_push_opacity (snapshot, self->closing ? self->shown : MIN (1, self->shown * 2));
   /* elevation level 2: a faint shadow */
   gsk_rounded_rect_init_from_rect (&shape, &card, CORNER);
-  gtk_snapshot_append_outset_shadow (snapshot, &shape, &(GdkRGBA) { 0, 0, 0, 0.3f }, 0, 2, 0, 6);
+  gtk_snapshot_append_outset_shadow (snapshot, &shape, (GdkRGBA[]) { vibeos_color_alpha (VIBEOS_SHADOW, 0.3f) },
+                                     0, 2, 0, 6);
   /* the clip reveal: from the top edge down */
   gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (card.origin.x, card.origin.y, card.size.width,
                                                          card.size.height * reveal));

@@ -175,9 +175,8 @@ set_top_week (CalMonthView *self, double top_week)
 static void
 draw_header (CalMonthView *self, GtkSnapshot *snapshot, int scale, double width)
 {
-  /* the 1 px line under the names: the same light grey in every look (the theme only reaches colours read in
-   * code) */
-  GdkRGBA line = cal_argb (0xffcccccc);
+  /* the 1 px line under the names, as the grid's lines */
+  GdkRGBA line = cal_argb (CAL_MONTH_GRID_LINE);
   double baseline;
 
   /* the weekday names (700: regular with Bold text on), uppercase, at the end of each column less a margin */
@@ -1260,11 +1259,11 @@ draw_week (CalMonthView *self, GtkSnapshot *snapshot, int scale, int first_day, 
   /* the events */
   draw_events (self, snapshot, scale, first_day, height);
 
-  /* the tapped day in blue at half alpha */
+  /* the tapped day in the primary colour at half alpha */
   if (self->clicked_day >= first_day && self->clicked_day < first_day + 7)
     {
       int i = self->clicked_day - first_day;
-      GdkRGBA clicked = cal_argb (0xff33b5e5);
+      GdkRGBA clicked = cal_argb (CAL_PRIMARY);
 
       clicked.alpha = CLICKED_ALPHA;
       cal_fill_rect (snapshot, scale, day_left (self, i), SEPARATOR_WIDTH, day_left (self, i + 1) - day_left (self, i),
