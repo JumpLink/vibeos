@@ -27,6 +27,7 @@
 
 /* the button grid and the end-call button */
 #define GRID_MARGIN     24
+#define TABLET_MAX      412     /* a tablet's buttons and keypad: a big phone's width at most, in the middle */
 #define ROW_GAP         32
 #define END_SIZE        64
 #define END_MARGIN      36
@@ -548,7 +549,9 @@ static void
 incall_view_size_allocate (GtkWidget *widget, int width, int height, int baseline)
 {
   InCallView *self = INCALL_VIEW (widget);
-  double column = (width - 2.0 * GRID_MARGIN) / 3, button_height = 0, top, bottom, y;
+  VibeosLayout *layout = vibeos_layout_get (widget);
+  double inner = layout && vibeos_layout_is_tablet (layout) ? MIN (width, TABLET_MAX) : width;
+  double x0 = round ((width - inner) / 2), column = (inner - 2.0 * GRID_MARGIN) / 3, button_height = 0, top, bottom, y;
   double dialpad_top, end_top = height - END_MARGIN - END_SIZE;
   int min, nat;
 
@@ -582,11 +585,11 @@ incall_view_size_allocate (GtkWidget *widget, int width, int height, int baselin
   for (int p = 0; p < GRID_POSITIONS; p++)
     if (self->placed[p] != NO_BUTTON)
       {
-        double x = round (GRID_MARGIN + (p % 3) * column);
+        double x = round (x0 + GRID_MARGIN + (p % 3) * column);
 
         gtk_widget_size_allocate (self->buttons[self->placed[p]],
                                   &(GtkAllocation) { (int) x, (int) (y + (p / 3) * (button_height + ROW_GAP)),
-                                                     (int) (round (GRID_MARGIN + (p % 3 + 1) * column) - x),
+                                                     (int) (round (x0 + GRID_MARGIN + (p % 3 + 1) * column) - x),
                                                      (int) button_height }, -1);
       }
 
@@ -595,10 +598,10 @@ incall_view_size_allocate (GtkWidget *widget, int width, int height, int baselin
   if (gtk_widget_get_visible (self->dialpad))
     {
       double h = height - dialpad_top;
-      GskTransform *t = gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (0, dialpad_top
+      GskTransform *t = gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (x0, dialpad_top
                                                                             + round ((1 - self->dialpad_progress) * h)));
 
-      gtk_widget_allocate (self->dialpad, width, (int) h, -1, t);
+      gtk_widget_allocate (self->dialpad, (int) inner, (int) h, -1, t);
     }
 
   gtk_widget_size_allocate (self->end_button, &(GtkAllocation) { (width - END_SIZE) / 2, (int) end_top, END_SIZE,
