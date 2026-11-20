@@ -616,7 +616,9 @@ pad_draw (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer dat
   gtk_widget_get_color (w, &fg);
   GdkRGBA pressed_fill = vibeos_color (VIBEOS_PRIMARY_CONTAINER), pressed_ink = vibeos_color (VIBEOS_ON_PRIMARY_CONTAINER);
   PangoLayout *layout = gtk_widget_create_pango_layout (w, NULL);
-  PangoFontDescription *font = pango_font_description_from_string ("Google Sans Flex Semi-Bold");
+  /* the lock screen's digits: a size that fits the key whatever Font size is, a weight that follows Bold text */
+  PangoFontDescription *font = pango_font_description_from_string ("Google Sans Flex");
+  pango_font_description_set_weight (font, vibeos_font_weight (300));
   pango_font_description_set_absolute_size (font, PAD_DIGIT_PX * PANGO_SCALE);
   pango_layout_set_font_description (layout, font);
 
@@ -850,6 +852,8 @@ ns_pattern_dialog_present (GtkWidget *parent, gboolean pin, NsPatternDone callba
   gtk_widget_set_vexpand (pd->pad, TRUE);
   gtk_widget_set_valign (pd->pad, GTK_ALIGN_CENTER);
   gtk_drawing_area_set_draw_func (GTK_DRAWING_AREA (pd->pad), pad_draw, pd, NULL);
+  g_signal_connect_object (vibeos_text_get_default (), "changed", G_CALLBACK (gtk_widget_queue_draw), pd->pad,
+                           G_CONNECT_SWAPPED);
   {
     GtkGesture *click = gtk_gesture_click_new ();
     g_signal_connect (click, "pressed", G_CALLBACK (pad_pressed), pd);

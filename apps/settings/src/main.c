@@ -3,6 +3,7 @@
  * tablet the menu and the chosen entry's page are side by side. The services the pages follow (NetworkManager,
  * BlueZ, the sound server) are connected at start, in the background. */
 #include "ns-bt.h"
+#include "ns-caps.h"
 #include "ns-net.h"
 #include "ns-pages.h"
 #include "ns-sound.h"
@@ -32,58 +33,49 @@ typedef struct {
   const char *icon;
   Category    category;
   const char *title, *subtitle, *keywords;
-  NsActivate  page;            /* our own page, or */
-  const char *const *argv;     /* another app */
+  NsActivate  page;            /* our own page */
   const char *needs_schema;    /* shown only if this settings schema is installed */
+  NsCap       needs;           /* shown only while the device has this (a battery) */
 } Entry;
 
-static const char *const software[] = { "gnome-software", "--mode=updates", NULL };
-
-/* NULL title: the next card */
+/* The main menu, in Android's order and with its names. NULL title: the next card. Network & internet's summary
+ * and About's title follow the device (entry_texts). */
 static const Entry entries[] = {
-  { "network-wireless-symbolic", CAT_NETWORK, "Connections", "Wi-Fi • Bluetooth • Mobile network",
-    "wlan wifi internet sim data vpn hotspot flight airplane", ns_page_connections },
-  { "bluetooth-symbolic", CAT_NETWORK, "Connected devices", "Bluetooth • Pair headphones and more",
-    "pair headphones speaker watch", ns_page_bluetooth },
+  { "network-wireless-symbolic", CAT_NETWORK, "Network & internet", "Wi-Fi, hotspot",
+    "wlan wifi internet sim mobile data apn vpn hotspot tethering flight airplane proxy wired", ns_page_connections },
+  { "bluetooth-symbolic", CAT_NETWORK, "Connected devices", "Bluetooth, pairing",
+    "pair headphones speaker watch sharing visible device name printers printing", ns_page_connected_devices },
   { NULL },
-  { "audio-volume-high-symbolic", CAT_NOTIFICATIONS, "Sounds and vibration", "Sound mode • Volume • Ringtone",
-    "ringtone speaker microphone vibrate mute silent haptic", ns_page_sound },
+  { "view-app-grid-symbolic", CAT_APPS, "Apps", "Default apps, app settings",
+    "permissions storage default browser email", ns_page_apps },
   { "preferences-system-notifications-symbolic", CAT_NOTIFICATIONS, "Notifications",
-    "App notifications • Do not disturb", "dnd banner pop-up lock screen emergency alerts", ns_page_notifications },
-  { NULL },
-  { "display-brightness-symbolic", CAT_DISPLAY, "Display", "Brightness • Dark mode • Font size",
+    "App notifications, do not disturb", "dnd banner pop-up lock screen emergency alerts", ns_page_notifications },
+  { "audio-volume-high-symbolic", CAT_NOTIFICATIONS, "Sound & vibration", "Volume, vibration, ringtone",
+    "ringtone alarm sound speaker microphone vibrate mute silent haptic dial pad tones", ns_page_sound },
+  { "display-brightness-symbolic", CAT_DISPLAY, "Display", "Dark theme, font size, brightness",
     "screen timeout adaptive brightness night light intensity warm amber rotate scale always on aod display size "
-    "text bold zoom", ns_page_display },
-  { "battery-full-symbolic", CAT_BATTERY, "Battery", "Charge • Power and screen blank",
-    "power dim health temperature voltage capacity", ns_page_battery },
+    "text bold zoom lock screen", ns_page_display },
+  { "preferences-desktop-wallpaper-symbolic", CAT_DISPLAY, "Wallpaper & style", "Wallpapers, colours, home screen",
+    "background accent dark theme colour color parallax launcher grid columns rows layout icon size pack shape "
+    "app names labels drawer", ns_page_wallpaper },
   { NULL },
-  { "preferences-desktop-wallpaper-symbolic", CAT_DISPLAY, "Wallpaper and style",
-    "Wallpapers • Parallax • Colour palette", "background accent dark theme colour color", ns_page_wallpaper },
-  { "view-app-grid-symbolic", CAT_DISPLAY, "Home screen", "Grid • Icon size • Icon pack",
-    "launcher vibeos grid columns rows layout icon size pack shape app names labels drawer search", ns_page_home, NULL,
-    "vibeos.Shell" },
-  { "system-lock-screen-symbolic", CAT_SECURITY, "Lock screen", "Screen lock type • Notifications",
-    "pattern pin swipe password unlock", ns_page_lock_screen, NULL, "vibeos.Shell" },
+  { "battery-full-symbolic", CAT_BATTERY, "Battery", "Charge, power and screen blank",
+    "power dim health temperature voltage capacity", ns_page_battery, NULL, NS_CAP_BATTERY },
+  { "preferences-system-symbolic", CAT_SYSTEM, "System", "Languages, keyboard, time",
+    "region locale language keyboard clock date time users mouse touchpad updates software upgrade",
+    ns_page_general },
+  { "help-about-symbolic", CAT_SYSTEM, "About phone", "Device name, versions",
+    "phone tablet model kernel version memory storage name about", ns_page_about },
   { NULL },
-  { "security-high-symbolic", CAT_SECURITY, "Security and privacy", "Screen lock • Permissions • Usage",
-    "password pin camera microphone history trash", ns_page_privacy },
-  { "find-location-symbolic", CAT_SECURITY, "Location", "Location services • App access",
-    "gps geoclue", ns_page_location, NULL, "org.gnome.system.location" },
-  { NULL },
+  { "security-high-symbolic", CAT_SECURITY, "Security & privacy", "Screen lock, permissions",
+    "password pin pattern swipe unlock lock screen camera microphone history trash", ns_page_privacy },
+  { "find-location-symbolic", CAT_SECURITY, "Location", "Location services, app access",
+    "gps geoclue", ns_page_location, "org.gnome.system.location" },
   { "avatar-default-symbolic", CAT_SECURITY, "Accounts", "Online accounts",
     "google nextcloud email", ns_page_accounts },
   { NULL },
-  { "view-grid-symbolic", CAT_APPS, "Apps", "Default apps • App settings",
-    "permissions storage", ns_page_apps },
-  { "preferences-system-symbolic", CAT_SYSTEM, "General management", "Language and keyboard • Date and time",
-    "region locale clock users mouse touchpad", ns_page_general },
-  { "preferences-desktop-accessibility-symbolic", CAT_ACCESSIBILITY, "Accessibility", "Vision • Interaction",
+  { "preferences-desktop-accessibility-symbolic", CAT_ACCESSIBILITY, "Accessibility", "Display, interaction",
     "zoom contrast screen reader animations font size bold text display size", ns_page_accessibility },
-  { NULL },
-  { "software-update-available-symbolic", CAT_SYSTEM, "Software update", "Download and install",
-    "upgrade packages", NULL, software },
-  { "help-about-symbolic", CAT_SYSTEM, "About device", "Status • Legal information • Device name",
-    "phone tablet model kernel version memory storage name", ns_page_about },
 };
 
 static GtkWidget *window, *search_bar;
@@ -94,16 +86,7 @@ static GtkWidget *selected;      /* the entry whose page shows beside the menu *
 static gboolean
 installed (const Entry *e)
 {
-  if (e->needs_schema) {
-    g_autoptr (GSettings) s = ns_settings (e->needs_schema);
-    if (!s)
-      return FALSE;
-  }
-  if (e->argv) {
-    g_autofree char *path = g_find_program_in_path (e->argv[0]);
-    return path != NULL;
-  }
-  return TRUE;
+  return !e->needs_schema || ns_settings_exists (e->needs_schema);
 }
 
 static void
@@ -141,12 +124,8 @@ open_entry (const Entry *e, GtkWidget *row)
 {
   if (ns_busy ())
     return;
-  if (e->page) {
-    select_row (row);
-    ns_open_entry (e->page, row, NULL);
-  } else if (e->argv) {
-    ns_spawn (e->argv);
-  }
+  select_row (row);
+  ns_open_entry (e->page, row, NULL);
 }
 
 static void
@@ -219,9 +198,10 @@ search_changed (VibeosSearchView *view, const char *text, GtkWidget *results)
     return;
   for (guint i = 0; i < menu_rows->len; i++) {
     const Entry *e = g_object_get_data (menu_rows->pdata[i], "ns-entry");
-    if (!matches (e, words))
+    /* an entry the device has no use for (no battery) is not found either */
+    if (!gtk_widget_get_visible (menu_rows->pdata[i]) || !matches (e, words))
       continue;
-    GtkWidget *r = ns_row (results, NULL, NULL, e->title, e->subtitle);
+    GtkWidget *r = ns_row (results, NULL, e->page == ns_page_about ? ns_about_title () : e->title, e->subtitle);
     set_circle (r, e);
     ns_row_on_activate (r, result_clicked, (gpointer) e);
   }
@@ -242,6 +222,24 @@ search_open (VibeosSearchBar *bar, gpointer data)
 }
 
 /* ---- the main menu: the search pill pinned over the scrolled cards ---- */
+
+/* the texts that follow the device: a modem adds Mobile to Network & internet and the ringtone to Sound &
+ * vibration, a tablet is About tablet */
+static void
+entry_texts (void)
+{
+  for (guint i = 0; menu_rows && i < menu_rows->len; i++) {
+    VibeosListRow *r = menu_rows->pdata[i];
+    const Entry *e = g_object_get_data (G_OBJECT (r), "ns-entry");
+    if (e->page == ns_page_connections)
+      vibeos_list_row_set_summary (r, ns_caps_has (NS_CAP_MODEM) ? "Mobile, Wi-Fi, hotspot" : "Wi-Fi, VPN");
+    else if (e->page == ns_page_sound)
+      vibeos_list_row_set_summary (r, ns_caps_has (NS_CAP_MODEM) ? "Volume, vibration, ringtone"
+                                                                 : "Volume, alarm sound");
+    else if (e->page == ns_page_about)
+      vibeos_list_row_set_title (r, ns_about_title ());
+  }
+}
 
 static void
 theme_changed (VibeosTheme *theme, gpointer data)
@@ -282,10 +280,14 @@ main_page (void)
     GtkWidget *r = vibeos_list_row_new (e->title, e->subtitle);
     g_object_set_data (G_OBJECT (r), "ns-entry", (gpointer) e);
     set_circle (r, e);
+    if (e->needs)
+      ns_caps_bind_visible (r, e->needs);
     g_signal_connect (r, "clicked", G_CALLBACK (menu_row_clicked), (gpointer) e);
     vibeos_card_list_append (VIBEOS_CARD_LIST (list), r);
     g_ptr_array_add (menu_rows, r);
   }
+  entry_texts ();
+  ns_caps_on_changed (G_CALLBACK (entry_texts), list);
   GtkWidget *sc = ns_scroller_new (list);
   gtk_widget_set_vexpand (sc, TRUE);
   gtk_box_append (GTK_BOX (page), sc);
@@ -338,6 +340,9 @@ activate (GtkApplication *app, gpointer data)
   g_signal_connect (ld, "detail-closed", G_CALLBACK (detail_closed), NULL);
   vibeos_window_set_content (GTK_WINDOW (window), ld);
   g_signal_connect_object (vibeos_theme_get_default (), "changed", G_CALLBACK (theme_changed), window, 0);
+  /* About phone or About tablet: a display-size change can make one the other */
+  g_signal_connect_swapped (vibeos_layout_get_for_window (GTK_WINDOW (window)), "changed", G_CALLBACK (entry_texts),
+                            NULL);
   theme_changed (NULL, NULL);
   add_back (window);
   gtk_window_present (GTK_WINDOW (window));
@@ -364,44 +369,55 @@ startup (GApplication *app, gpointer data)
   ns_net_init ();
   ns_bt_init ();
   ns_sound_init ();
+  ns_caps_init ();
   g_autoptr (GTask) t = g_task_new (NULL, NULL, NULL, NULL);
   g_task_run_in_thread (t, apps_thread);
 }
 
 /* a page by name: `--page home` (the launcher's "Settings" opens the home screen's), the panel names vibeos asks
  * for (a quick settings tile's long press, the volume panel's and the notification shade's settings buttons) and
- * GNOME Settings' names, which other apps ask for. "network" is the flight mode tile's: Connections has the switch. */
+ * GNOME Settings' names, which other apps ask for. "network" is the flight mode tile's: Network & internet has the
+ * switch. A page that is not a menu entry itself opens as one, its entry's row selected (`entry`), or, `deep`, over
+ * its entry's page. */
 static const struct {
   const char *name;
   NsActivate  page;
-  NsActivate  parent;       /* a page that opens from another one, not from the menu: the menu's entry it is under */
+  NsActivate  entry;        /* the menu's entry the page is under, NULL for an entry's own page */
+  gboolean    deep;         /* the entry's page opens first and this one over it */
 } direct[] = {
-  { "home", ns_page_home }, { "multitasking", ns_page_home },
+  { "home", ns_page_home, ns_page_wallpaper }, { "multitasking", ns_page_home, ns_page_wallpaper },
   { "wallpaper", ns_page_wallpaper }, { "background", ns_page_wallpaper }, { "appearance", ns_page_wallpaper },
-  { "wifi", ns_page_wifi }, { "wlan", ns_page_wifi },
-  { "hotspot", ns_page_hotspot }, { "wifi-hotspot", ns_page_hotspot },
-  { "wwan", ns_page_mobile }, { "mobile-broadband", ns_page_mobile }, { "mobile", ns_page_mobile },
-  { "network", ns_page_connections }, { "vpn", ns_page_network }, { "wired", ns_page_network },
-  { "bluetooth", ns_page_bluetooth }, { "connections", ns_page_connections },
-  { "sharing", ns_page_sharing }, { "printers", ns_page_printers },
+  { "wifi", ns_page_wifi, ns_page_connections }, { "wlan", ns_page_wifi, ns_page_connections },
+  { "hotspot", ns_page_hotspot, ns_page_connections }, { "wifi-hotspot", ns_page_hotspot, ns_page_connections },
+  { "wwan", ns_page_mobile, ns_page_connections }, { "mobile-broadband", ns_page_mobile, ns_page_connections },
+  { "mobile", ns_page_mobile, ns_page_connections },
+  { "network", ns_page_connections }, { "connections", ns_page_connections },
+  { "vpn", ns_page_network, ns_page_connections }, { "wired", ns_page_network, ns_page_connections },
+  { "bluetooth", ns_page_bluetooth, ns_page_connected_devices },
+  { "sharing", ns_page_sharing, ns_page_connected_devices },
+  { "printers", ns_page_printers, ns_page_connected_devices },
   { "sound", ns_page_sound }, { "feedback", ns_page_sound },
   { "notifications", ns_page_notifications },
   { "power", ns_page_battery }, { "battery", ns_page_battery },
-  { "battery-info", ns_page_battery_info, ns_page_battery },
-  { "battery-information", ns_page_battery_info, ns_page_battery },
+  { "battery-info", ns_page_battery_info, ns_page_battery, TRUE },
+  { "battery-information", ns_page_battery_info, ns_page_battery, TRUE },
   { "display", ns_page_display }, { "displays", ns_page_display }, { "compositor", ns_page_display },
-  { "display-size", ns_page_display_size, ns_page_display }, { "font-size", ns_page_display_size, ns_page_display },
-  { "night-light", ns_page_night_light, ns_page_display }, { "nightlight", ns_page_night_light, ns_page_display },
-  { "lockscreen", ns_page_lock_screen }, { "lock-screen", ns_page_lock_screen }, { "screen-lock", ns_page_lock_screen },
-  { "keyboard", ns_page_keyboard }, { "osk", ns_page_keyboard }, { "mouse", ns_page_mouse },
+  { "display-size", ns_page_display_size, ns_page_display, TRUE },
+  { "font-size", ns_page_display_size, ns_page_display, TRUE },
+  { "night-light", ns_page_night_light, ns_page_display, TRUE },
+  { "nightlight", ns_page_night_light, ns_page_display, TRUE },
+  { "lockscreen", ns_page_lock_screen, ns_page_privacy }, { "lock-screen", ns_page_lock_screen, ns_page_privacy },
+  { "screen-lock", ns_page_lock_screen, ns_page_privacy },
+  { "keyboard", ns_page_keyboard, ns_page_general }, { "osk", ns_page_keyboard, ns_page_general },
+  { "mouse", ns_page_mouse, ns_page_general },
   /* "privacy" comes from the location tile only */
   { "privacy", ns_page_location }, { "location", ns_page_location },
   { "online-accounts", ns_page_accounts }, { "accounts", ns_page_accounts },
   { "applications", ns_page_apps }, { "apps", ns_page_apps }, { "overview", ns_page_apps },
-  { "default-apps", ns_page_default_apps },
-  { "region", ns_page_language }, { "language", ns_page_language },
-  { "datetime", ns_page_datetime }, { "date-time", ns_page_datetime },
-  { "users", ns_page_users }, { "user-accounts", ns_page_users },
+  { "default-apps", ns_page_default_apps, ns_page_apps },
+  { "region", ns_page_language, ns_page_general }, { "language", ns_page_language, ns_page_general },
+  { "datetime", ns_page_datetime, ns_page_general }, { "date-time", ns_page_datetime, ns_page_general },
+  { "users", ns_page_users, ns_page_general }, { "user-accounts", ns_page_users, ns_page_general },
   { "system", ns_page_general },
   { "universal-access", ns_page_accessibility }, { "accessibility", ns_page_accessibility },
   { "info-overview", ns_page_about }, { "about", ns_page_about },
@@ -419,16 +435,15 @@ open_page (GApplication *app, const char *name, const char *arg)
   }
   for (guint i = 0; name && *name && i < G_N_ELEMENTS (direct); i++)
     if (g_str_equal (name, direct[i].name)) {
-      if (direct[i].parent) {
-        GtkWidget *row = row_for_page (direct[i].parent);
-        select_row (row);
-        ns_open_entry (direct[i].parent, row, NULL);
-        direct[i].page (NULL, NULL);
-        return;
-      }
-      GtkWidget *row = row_for_page (direct[i].page);
+      NsActivate entry = direct[i].entry ? direct[i].entry : direct[i].page;
+      GtkWidget *row = row_for_page (entry);
       select_row (row);
-      ns_open_entry (direct[i].page, row, NULL);
+      if (direct[i].deep) {
+        ns_open_entry (entry, row, NULL);
+        direct[i].page (NULL, NULL);
+      } else {
+        ns_open_entry (direct[i].page, row, NULL);
+      }
       return;
     }
   if (name && *name)

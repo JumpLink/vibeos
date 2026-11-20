@@ -51,8 +51,8 @@ GtkWidget *ns_scroller_new (GtkWidget *child);
 
 /* a card of rows; `title` (or NULL) goes above it, in the accent colour */
 GtkWidget *ns_group (GtkWidget *content, const char *title);
-/* `icon` NULL: no icon. `color` is not used: a page's rows have plain icons; the main menu's circles are its own */
-GtkWidget *ns_row (GtkWidget *group, const char *icon, const char *color, const char *title, const char *subtitle);
+/* `icon` NULL: no icon. A page's rows have plain icons in the theme's colours; the main menu's circles are its own */
+GtkWidget *ns_row (GtkWidget *group, const char *icon, const char *title, const char *subtitle);
 void       ns_row_on_activate (GtkWidget *row, NsActivate cb, gpointer data);
 /* something at the row's end: a button takes its own taps, anything else is only shown */
 void       ns_row_suffix (GtkWidget *row, GtkWidget *suffix);
@@ -71,8 +71,7 @@ GtkWidget *ns_row_choice (GtkWidget *group, const char *title, GSettings *s, con
                           const char *const *values, const char *const *labels);
 
 /* a switch row with an icon, for a switch the caller drives (ns_switch_quiet sets it without its handler acting) */
-GtkWidget *ns_row_toggle (GtkWidget *group, const char *icon, const char *color, const char *title,
-                          const char *subtitle);
+GtkWidget *ns_row_toggle (GtkWidget *group, const char *icon, const char *title, const char *subtitle);
 void       ns_switch_quiet (GtkWidget *sw, gboolean on);
 gboolean   ns_switch_syncing (GtkWidget *sw);
 gboolean   ns_switch_get_active (GtkWidget *sw);

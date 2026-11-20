@@ -11,7 +11,6 @@ Build-Depends: debhelper-compat (= 13),
                libglib2.0-dev (>= 2.76),
                libgtk-4-dev (>= 4.14),
                gir1.2-gtk-4.0-dev,
-               libadwaita-1-dev (>= 1.5),
                libvulkan-dev,
                libegl-dev,
                libgles-dev,
@@ -473,8 +472,8 @@ Description: settings app for VibeOS
  Bluetooth, mobile network, hotspot), sounds, notifications, display, battery,
  wallpaper and parallax sets, the home screen's icon pack and shapes, the lock
  screen (PIN, pattern, password), location, accounts, apps, language, date and
- time, accessibility and the phone's details. VibeOS opens it wherever
- GNOME opens a Settings panel.
+ time, accessibility and the device's details, on phones and tablets alike.
+ VibeOS opens it wherever GNOME opens a Settings panel.
 
 Package: vibeos-weather
 Architecture: any

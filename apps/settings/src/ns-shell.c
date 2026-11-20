@@ -108,8 +108,8 @@ lock_free (Lock *l)
  * them in their low power mode, where the panel itself keeps the picture at a few nits and ticks the clock. That
  * mode is the `lpm` attribute of the panel's DSI device, which only an OLED panel's driver has (the S10e's); an LCD
  * (the POCO's) would light its whole backlight for a black screen, so it gets no switch (owner, 2026-11-12). */
-static gboolean
-panel_is_oled (void)
+gboolean
+ns_panel_is_oled (void)
 {
   g_autoptr (GDir) d = g_dir_open ("/sys/bus/mipi-dsi/devices", 0, NULL);
   for (const char *n; d && (n = g_dir_read_name (d));) {
@@ -144,7 +144,7 @@ ns_page_lock_screen (GtkWidget *row, gpointer data)
 
   GtkWidget *g = ns_group (c, NULL);
   l->type = ns_row_pick (g, "Screen lock type", lock_labels, lock_index (l), lock_picked, l);
-  l->change = ns_row (g, NULL, NULL, "Change PIN", "It is also your password");
+  l->change = ns_row (g, NULL, "Change PIN", "It is also your password");
   ns_row_on_activate (l->change, change_tapped, l);
   g_signal_connect_swapped (vibeos, "changed::lock-type", G_CALLBACK (lock_show), l);
   lock_show (l);
@@ -154,7 +154,7 @@ ns_page_lock_screen (GtkWidget *row, gpointer data)
   g = ns_group (c, "On the lock screen");
   GSettings *n = ns_page_settings (page, "org.gnome.desktop.notifications");
   ns_row_switch (g, "Notifications", "Their apps' icons below the clock", n, "show-in-lock-screen");
-  if (ns_has_key (vibeos, "aod") && panel_is_oled ())
+  if (ns_has_key (vibeos, "aod") && ns_panel_is_oled ())
     ns_row_switch (g, "Always On Display", "The time, the date and notifications while the screen is off", vibeos,
                    "aod");
   ns_push (page);
@@ -344,7 +344,7 @@ layout_add (GtkWidget *row, gpointer page)
     Layout *one = l->all->pdata[i];
     if (has_source (v, one->id))
       continue;
-    GtkWidget *r = ns_row (g, NULL, NULL, one->name, NULL);
+    GtkWidget *r = ns_row (g, NULL, one->name, NULL);
     g_object_set_data (G_OBJECT (r), "ns-page", page);
     ns_row_on_activate (r, layout_added, GUINT_TO_POINTER (i));
   }
@@ -361,7 +361,7 @@ layouts_fill (NsPage *page)
   for (guint i = 0; i < n; i++) {
     const char *t, *id;
     g_variant_get_child (v, i, "(&s&s)", &t, &id);
-    GtkWidget *r = ns_row (l->group, NULL, NULL, layout_name (l, t, id), i == 0 ? "Used first" : NULL);
+    GtkWidget *r = ns_row (l->group, NULL, layout_name (l, t, id), i == 0 ? "Used first" : NULL);
     if (n > 1) {
       GtkWidget *x = vibeos_icon_button_new ("user-trash-symbolic");
       gtk_accessible_update_property (GTK_ACCESSIBLE (x), GTK_ACCESSIBLE_PROPERTY_LABEL, "Remove", -1);

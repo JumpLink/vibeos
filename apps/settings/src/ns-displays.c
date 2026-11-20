@@ -22,6 +22,7 @@
  *
  * For screenshots without a display to plug in: NS_DISPLAYS_STATE=FILE shows the displays of FILE (a GetCurrentState
  * answer as gdbus prints it), asks mutter nothing and applies nothing (it logs what it would apply). */
+#include "ns-caps.h"
 #include "ns-monitors.h"
 #include "ns-pages.h"
 #include "ns-ui.h"
@@ -379,7 +380,7 @@ display_open (GtkWidget *row, gpointer data)
 static GtkWidget *
 choice_row (GtkWidget *g, const char *title, const char *subtitle, gboolean on, NsActivate picked, gpointer data)
 {
-  GtkWidget *r = ns_row (g, NULL, NULL, title, subtitle);
+  GtkWidget *r = ns_row (g, NULL, title, subtitle);
   GtkWidget *mark = gtk_image_new_from_icon_name ("object-select-symbolic");
   gtk_widget_add_css_class (mark, "ns-accent");
   gtk_widget_set_opacity (mark, on);
@@ -459,8 +460,7 @@ fill_cards (Displays *d)
   for (guint i = 0; i < m->monitors->len; i++) {
     NsMonitor *mon = m->monitors->pdata[i];
     g_autofree char *sub = summary (m, mon);
-    GtkWidget *r = ns_row (d->list, mon->builtin ? "phone-symbolic" : "video-display-symbolic",
-                           mon->builtin ? "lime" : "blue", mon->name, sub);
+    GtkWidget *r = ns_row (d->list, mon->builtin ? "phone-symbolic" : "video-display-symbolic", mon->name, sub);
     /* the built-in panel has a page only while it is off: its scale is below, and it has one mode */
     if (!mon->builtin || !mon->logical) {
       g_object_set_data_full (G_OBJECT (r), "ns-connector", g_strdup (mon->connector), g_free);
@@ -625,6 +625,15 @@ fill_size (Displays *d)
 {
   if (!d->size_group)
     return;
+  /* not applied yet: the steps a phone or a tablet has, at the default one, following nothing */
+  if (!d->size_enabled) {
+    if (!d->size_row) {
+      gboolean tablet = g_str_equal (ns_device_noun (), "tablet");
+      d->size_row = ns_row_steps (d->size_group, "Display size", tablet ? 7 : 5, 3, &d->size_scale);
+      gtk_widget_set_sensitive (d->size_row, FALSE);
+    }
+    return;
+  }
   NsMonitor *mon = d->state ? scaled_monitor (d->state) : NULL;
   g_autoptr (NsConfig) c = mon && mon->logical ? ns_config_current (d->state) : NULL;
   g_autoptr (GArray) scales = c ? ns_config_scales (c, mon) : NULL;
@@ -654,9 +663,6 @@ fill_size (Displays *d)
     g_signal_connect (d->size_scale, "value-changed", G_CALLBACK (size_moved), d);
     g_clear_pointer (&d->size_stops, g_array_unref);
     d->size_stops = g_array_ref (stops);
-    gtk_widget_set_sensitive (d->size_row, d->size_enabled);
-    if (!d->size_enabled)
-      ns_row_steps_set_value_text (d->size_row, "Not available yet");
   } else if (!d->size_timer) {
     g_object_set_data (G_OBJECT (d->size_scale), "ns-syncing", GINT_TO_POINTER (1));
     gtk_range_set_value (GTK_RANGE (d->size_scale), sel);
