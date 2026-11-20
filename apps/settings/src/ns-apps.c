@@ -87,7 +87,7 @@ app_notify_page (GtkWidget *row, gpointer app)
     rows[n++] = ns_row_switch (g, "Show on the lock screen", "The app's icon below the clock", s,
                                "show-in-lock-screen");
   /* No "Sound" switch (enable-sound-alerts): GNOME Shell honours it, but only for a notification that names a
-   * sound, and no app here sends one (Sounds and vibration says more). */
+   * sound, and no app here sends one (Sound & vibration says more). */
   for (guint i = 0; i < n; i++)
     g_settings_bind (s, "enable", rows[i], "sensitive", G_SETTINGS_BIND_GET);
   ns_push (page);
@@ -404,7 +404,7 @@ app_page (GAppInfo *app)
     g_signal_connect_object (ns, "changed::enable", G_CALLBACK (allowed_changed), r, 0);
     ns_row_on_activate (r, app_notify_page, app);
   }
-  /* No per-app "Sounds and vibration" (feedbackd's per-app profile): feedbackd applies it to the events an app
+  /* No per-app "Sound & vibration" (feedbackd's per-app profile): feedbackd applies it to the events an app
    * sends it, and apps here send none (the Phone and the Clock use its Haptic interface, which the profile does
    * not touch). No "Scale to fit" either: that was phoc's; mutter has no such thing. */
 

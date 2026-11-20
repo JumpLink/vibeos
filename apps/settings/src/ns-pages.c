@@ -24,9 +24,9 @@ page_row (GtkWidget *g, const char *icon, const char *title, const char *sub, Ns
   return r;
 }
 
-/* ---- Connections ---- */
+/* ---- Network & internet ---- */
 
-/* Flight mode is gnome-settings-daemon's rfkill switch */
+/* Airplane mode is gnome-settings-daemon's rfkill switch */
 static void
 airplane_set (GtkWidget *sw, GParamSpec *ps, gpointer data)
 {
@@ -61,12 +61,14 @@ void
 ns_page_connections (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Connections", &c);
+  NsPage *page = ns_page_new ("Network & internet", &c);
   GtkWidget *g = ns_group (c, NULL);
   page_row (g, "network-wireless-symbolic", "Wi-Fi", "Networks • Saved networks", ns_page_wifi);
-  page_row (g, "bluetooth-symbolic", "Bluetooth", "Pair • Connected devices", ns_page_bluetooth);
-  GtkWidget *air = ns_row (g, "airplane-mode-symbolic", "Flight mode",
-                           "Turn off calls, messages and mobile data");
+  /* a SIM's mobile data and a hotspot that shares it: with a modem only */
+  GtkWidget *r = page_row (g, "network-cellular-symbolic", "SIMs", "Mobile data • Access points", ns_page_mobile);
+  ns_caps_bind_visible (r, NS_CAP_MODEM);
+  GtkWidget *air = ns_row (g, "airplane-mode-symbolic", "Airplane mode",
+                           "Turn off Wi-Fi, Bluetooth and the mobile network");
   GtkWidget *sw = ns_row_add_switch (air, FALSE);
   g_signal_connect (sw, "notify::active", G_CALLBACK (airplane_set), NULL);
   gtk_widget_set_visible (air, FALSE);
@@ -77,18 +79,28 @@ ns_page_connections (GtkWidget *row, gpointer data)
                             g_variant_new ("(ss)", "org.gnome.SettingsDaemon.Rfkill", "AirplaneMode"),
                             G_VARIANT_TYPE ("(v)"), G_DBUS_CALL_FLAGS_NONE, 3000, NULL, airplane_got,
                             g_object_ref (air));
+  r = page_row (g, "network-wireless-hotspot-symbolic", "Wi-Fi hotspot", "Share the mobile data", ns_page_hotspot);
+  ns_caps_bind_visible (r, NS_CAP_MODEM);
   g = ns_group (c, NULL);
-  page_row (g, "network-cellular-symbolic", "Mobile network", "Mobile data • Access points • SIM",
-            ns_page_mobile);
-  page_row (g, "network-wireless-hotspot-symbolic", "Mobile hotspot", "Share the mobile data",
-            ns_page_hotspot);
-  page_row (g, "network-wired-symbolic", "Network and VPN", "VPN • USB • Proxy", ns_page_network);
-  g = ns_group (c, NULL);
+  page_row (g, "network-vpn-symbolic", "Network & VPN", "VPN • Wired • Proxy", ns_page_network);
+  ns_push (page);
+}
+
+/* ---- Connected devices ---- */
+
+void
+ns_page_connected_devices (GtkWidget *row, gpointer data)
+{
+  GtkWidget *c;
+  NsPage *page = ns_page_new ("Connected devices", &c);
+  GtkWidget *g = ns_group (c, NULL);
+  page_row (g, "bluetooth-symbolic", "Bluetooth", "Pair new device • Paired devices", ns_page_bluetooth);
+  g = ns_group (c, "Connection preferences");
   page_row (g, "emblem-shared-symbolic", "Sharing", "Device name • Visibility", ns_page_sharing);
   /* printing needs CUPS, which a phone rarely has: GNOME Settings' page, only when it is there */
   g_autofree char *cups = g_find_program_in_path ("lpstat");
   if (cups)
-    page_row (g, "printer-symbolic", "Printers", NULL, ns_page_printers);
+    page_row (g, "printer-symbolic", "Printing", NULL, ns_page_printers);
   ns_push (page);
 }
 
@@ -1675,7 +1687,7 @@ ns_page_general (GtkWidget *row, gpointer data)
   ns_push (page);
 }
 
-/* ---- About device ---- */
+/* ---- About phone, About tablet ---- */
 
 static char *
 first_line_after (const char *file, const char *key)
@@ -1713,7 +1725,7 @@ void
 ns_page_about (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("About device", &c);
+  NsPage *page = ns_page_new (ns_about_title (), &c);
 
   g_autofree char *model = NULL;
   g_file_get_contents ("/sys/firmware/devicetree/base/model", &model, NULL, NULL);

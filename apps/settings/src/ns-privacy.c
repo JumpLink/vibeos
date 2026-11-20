@@ -57,7 +57,7 @@ void
 ns_page_privacy (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Security and privacy", &c);
+  NsPage *page = ns_page_new ("Security & privacy", &c);
   GtkWidget *g = ns_group (c, NULL);
   GtkWidget *r = ns_row (g, "system-lock-screen-symbolic", "Lock screen", "Screen lock type • Notifications");
   ns_row_on_activate (r, ns_page_lock_screen, NULL);
@@ -486,7 +486,7 @@ ns_page_accessibility (GtkWidget *row, gpointer data)
     ns_row_switch (g, "High contrast", "Stronger colours and outlines", a11y, "high-contrast");
   if (ns_has_key (iface, "enable-animations"))
     inverted (g, "Reduce animations", "Less movement on screen", iface, "enable-animations");
-  GtkWidget *r = ns_row (g, NULL, "Display size and text", "Font size • Bold text • Display size");
+  GtkWidget *r = ns_row (g, NULL, "Display size & text", "Font size • Bold text • Display size");
   ns_row_on_activate (r, ns_page_display_size, NULL);
   if (ns_has_key (iface, "cursor-size"))
     int_row (g, "Pointer size", iface, "cursor-size", cursors, cursor_labels);
