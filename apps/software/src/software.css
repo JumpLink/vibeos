@@ -264,7 +264,7 @@ window.sw-window,
 
 .sw-banner-text {
   padding: 16dp 20dp;
-  background-image: linear-gradient(to bottom, transparent, alpha(black, 0.6));
+  background-image: linear-gradient(to bottom, transparent, alpha(@vibeos_scrim, 0.6));
   border-radius: 0 0 20dp 20dp;
 }
 
