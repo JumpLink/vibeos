@@ -65,7 +65,7 @@ struct _ConversationView {
   GtkWidget *box, *bar, *select_bar, *call_action, *title_avatar, *title_row;
   GtkWidget *forward_action, *copy_action, *resend_action;
   GtkWidget *container, *messages_area, *scroll, *messages;
-  GtkWidget *compose, *note, *field, *hint, *send, *counter;
+  GtkWidget *compose, *note, *field, *field_scroll, *hint, *send, *counter;
   GPtrArray *bubbles;           /* MsgBubble, for their widths */
   int max_width;
   VibeosAnim *reveal;
@@ -807,6 +807,14 @@ conversation_view_save_draft (ConversationView *self)
   sms_client_set_draft (self->client, self->id, text);
 }
 
+/* the field grows to a few lines of its text, then scrolls: as many lines at the font size in effect */
+static void
+update_field_height (ConversationView *self)
+{
+  gtk_scrolled_window_set_max_content_height (GTK_SCROLLED_WINDOW (self->field_scroll),
+                                              (int) round (FIELD_MAX_LINES * vibeos_sp (24) + 32));
+}
+
 static void
 update_send_fill (ConversationView *self)
 {
@@ -851,10 +859,10 @@ make_compose (ConversationView *self)
   g_signal_connect (gtk_text_view_get_buffer (GTK_TEXT_VIEW (self->field)), "changed",
                     G_CALLBACK (on_text_changed), self);
   /* a few lines, then it scrolls */
+  self->field_scroll = field_scroll;
   gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (field_scroll), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
   gtk_scrolled_window_set_propagate_natural_height (GTK_SCROLLED_WINDOW (field_scroll), TRUE);
-  gtk_scrolled_window_set_max_content_height (GTK_SCROLLED_WINDOW (field_scroll),
-                                              (int) round (FIELD_MAX_LINES * vibeos_sp (24) + 32));
+  update_field_height (self);
   gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (field_scroll), self->field);
   gtk_overlay_set_child (GTK_OVERLAY (field_box), field_scroll);
   self->hint = gtk_label_new (_("Text message"));
@@ -1139,6 +1147,7 @@ conversation_view_dispose (GObject *object)
   if (self->contacts)
     g_signal_handlers_disconnect_by_data (self->contacts, self);
   g_signal_handlers_disconnect_by_data (vibeos_theme_get_default (), self);
+  g_signal_handlers_disconnect_by_data (vibeos_text_get_default (), self);
   g_clear_pointer (&self->reveal, vibeos_anim_free);
   g_clear_object (&self->client);
   g_clear_object (&self->contacts);
@@ -1259,6 +1268,7 @@ conversation_view_new (SmsClient *client, Contacts *contacts, gint64 conversatio
   g_signal_connect (self, "map", G_CALLBACK (on_map), NULL);
   g_signal_connect (vibeos_theme_get_default (), "changed", G_CALLBACK (on_theme_changed), self);
   g_signal_connect_swapped (vibeos_theme_get_default (), "changed", G_CALLBACK (update_send_fill), self);
+  g_signal_connect_swapped (vibeos_text_get_default (), "changed", G_CALLBACK (update_field_height), self);
   g_signal_connect (client, "changed", G_CALLBACK (on_changed), self);
   /* the network's country and the address book can come in after the conversation opens (a notification's tap) */
   g_signal_connect_swapped (client, "notify::country", G_CALLBACK (reload), self);
