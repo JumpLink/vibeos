@@ -644,19 +644,25 @@ export const Shade = GObject.registerClass({
         }
     }
 
-    // A tablet's shade: the screen behind neither blurs nor zooms. An opaque scrim fades in over the first part of
-    // the pull. The quick settings and the notification panel come down with the finger, from a whole pull above
-    // their places, out from under the header, fading in; a fast fling takes them a little past, they spring back,
-    // and closing they go back up the same way. Upright the second pull takes the panel on down off the screen as it
-    // fades. With no notifications there is no panel: "No notifications" on the scrim.
+    // A tablet's shade: the screen behind neither blurs nor zooms. An opaque scrim comes down from the top as a sheet
+    // whose edge follows the pull. The quick settings and the notification panel come down with the finger, from a
+    // whole pull above their places, out from under the header, fading in; a fast fling takes them a little past, they
+    // spring back, and closing they go back up the same way. Upright the second pull takes the panel on down off the
+    // screen as it fades. With no notifications there is no panel: "No notifications" on the scrim.
     _applyTablet() {
         const f = this._f, q = this._q, m = this._mirror, layout = this._layout;
         this.visible = f > 0 || this._tracking;
         const content = FAST_OUT_SLOW_IN(clamp((f - TABLET_FADE_FROM) / (TABLET_FADE_TO - TABLET_FADE_FROM)));
         const slide = (f - 1) * H + this._over;
 
+        // The scrim is a sheet that comes down from the top as the phone's panel does, not the whole screen going
+        // grey at once: the shade shows only above its edge, which follows the pull (and a fling's overshoot) from
+        // the header's bottom (the clock and the icons are there from the start) to the screen's
+        const {panel, header} = layout;
+        const edge = Math.max(f * this.height + px(this._over), px(header.height));
+        this.set_clip(0, 0, this.width, Math.min(edge, this.height));
         const scrim = notificationScrimAlpha(f);
-        this._tint.opacity = Math.round(255 * scrim * (1 - m));
+        this._tint.opacity = Math.round(255 * (1 - m));
         this._qs.layoutFor({q, squish: 1, contentAlpha: content, mirror: m, slide});
         // the header draws the status bar's clock and icons at their places while the shade shows, the bar's own
         // hidden under them; the rest of the bar fades as the scrim comes
@@ -665,7 +671,6 @@ export const Shade = GObject.registerClass({
             this._statusBar.setLineHidden(this.visible);
         }
 
-        const {panel, header} = layout;
         const top = panel.top + slide + q * (HEIGHT - panel.top);
         this._stackY = top;
         const alpha = content * (1 - m) * (1 - q);
