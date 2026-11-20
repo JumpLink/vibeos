@@ -64,7 +64,7 @@
   background-color: @vibeos_surface_container_highest;
   border-radius: 12dp;
   padding: 0 4dp;
-  box-shadow: 0 2dp 8dp rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2dp 8dp alpha(@vibeos_shadow, 0.5);
 }
 
 .dictate-selection-bar .vibeos-text-button {
