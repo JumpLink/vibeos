@@ -266,6 +266,10 @@ rebuild (void)
     gtk_grid_remove (GTK_GRID (nb->switcher_grid), child);
   for (guint i = 0; i < n; i++)
     gtk_grid_attach (GTK_GRID (nb->switcher_grid), card_new (nb->tabs->pdata[i], width), i % cols, i / cols, 1, 1);
+  /* a wide window's few tabs keep to their columns' width rather than spreading over the row (a phone's one tab
+   * takes the row, as it always has) */
+  for (int i = n; cols > 2 && i > 0 && i < cols; i++)
+    gtk_grid_attach (GTK_GRID (nb->switcher_grid), gtk_box_new (GTK_ORIENTATION_VERTICAL, 0), i, 0, 1, 1);
   g_autofree char *title = n == 1 ? g_strdup ("1 tab") : g_strdup_printf ("%u tabs", n);
   gtk_label_set_text (GTK_LABEL (nb->switcher_title), n ? title : "Tabs");
   gtk_widget_set_visible (switcher_scroll, n > 0);
