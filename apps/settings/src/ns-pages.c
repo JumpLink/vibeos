@@ -649,7 +649,7 @@ ns_page_display (GtkWidget *row, gpointer data)
   ns_push (page);
 }
 
-/* ---- Display size and text ---- */
+/* ---- Display size & text ---- */
 
 /* the Font size step closest to the factor there is (GNOME's own settings take any) */
 static guint
@@ -661,14 +661,6 @@ text_step (GSettings *iface)
     if (fabs (text_scales[i] - f) < fabs (text_scales[best] - f))
       best = i;
   return best;
-}
-
-static void
-text_show (GtkWidget *row, GSettings *iface)
-{
-  double f = g_settings_get_double (iface, "text-scaling-factor");
-  g_autofree char *pct = g_strdup_printf ("%.0f%%", f * 100);
-  ns_row_steps_set_value_text (row, fabs (f - 1) < 0.005 ? "Default" : pct);
 }
 
 static void
@@ -688,7 +680,6 @@ text_changed (GSettings *iface, const char *key, GtkWidget *row)
   g_object_set_data (G_OBJECT (sc), "ns-syncing", GINT_TO_POINTER (1));
   gtk_range_set_value (GTK_RANGE (sc), text_step (iface));
   g_object_set_data (G_OBJECT (sc), "ns-syncing", NULL);
-  text_show (row, iface);
 }
 
 static void
@@ -705,56 +696,251 @@ size_reset (gboolean yes, gpointer page)
 }
 
 static void
-size_reset_tapped (GtkWidget *row, gpointer page)
+size_reset_tapped (GtkWidget *button, gpointer page)
 {
-  ns_confirm (row, "Reset display size and text?", "Font size, Display size and Bold text go back to how they were at first.",
-              "Reset", FALSE, size_reset, page);
+  ns_confirm (button, "Reset display size and text?",
+              "Font size, Display size and Bold text go back to how they were at first.", "Reset", FALSE, size_reset,
+              page);
 }
 
-/* Font size, Display size and Bold text, over a preview that follows them */
+/* ---- the preview: a home screen, a message and an email, in the text the settings make ---- */
+
+static GtkWidget *
+preview_text (const char *text, const char *css)
+{
+  GtkWidget *l = gtk_label_new (text);
+  gtk_label_set_xalign (GTK_LABEL (l), 0);
+  gtk_label_set_wrap (GTK_LABEL (l), TRUE);
+  gtk_label_set_wrap_mode (GTK_LABEL (l), PANGO_WRAP_WORD_CHAR);
+  gtk_widget_add_css_class (l, css);
+  return l;
+}
+
+static GtkWidget *
+preview_page (const char *title)
+{
+  GtkWidget *v = gtk_box_new (GTK_ORIENTATION_VERTICAL, 12);
+  gtk_widget_add_css_class (v, "ns-preview-page");
+  GtkWidget *t = preview_text (title, "ns-preview-title");
+  gtk_label_set_xalign (GTK_LABEL (t), 0.5);
+  gtk_box_append (GTK_BOX (v), t);
+  return v;
+}
+
+/* six of the apps, as the home screen shows them: the icon, and its name under it */
+static GtkWidget *
+preview_home (void)
+{
+  static const struct {
+    const char *icon, *name;
+  } apps[] = {
+    { "vibeos.Clock", "Clock" }, { "vibeos.Contacts", "Contacts" }, { "vibeos.Messaging", "Messages" },
+    { "vibeos.Dialer", "Phone" }, { "vibeos.Software", "Software" }, { "vibeos.Settings", "Settings" },
+  };
+  GtkWidget *v = preview_page ("Home screen");
+  GtkWidget *grid = gtk_grid_new ();
+  gtk_grid_set_column_homogeneous (GTK_GRID (grid), TRUE);
+  gtk_grid_set_row_spacing (GTK_GRID (grid), 12);
+  gtk_grid_set_column_spacing (GTK_GRID (grid), 8);
+  GtkIconTheme *theme = gtk_icon_theme_get_for_display (gdk_display_get_default ());
+  for (guint i = 0; i < G_N_ELEMENTS (apps); i++) {
+    GtkWidget *cell = gtk_box_new (GTK_ORIENTATION_VERTICAL, 6);
+    GtkWidget *img = gtk_image_new_from_icon_name (gtk_icon_theme_has_icon (theme, apps[i].icon)
+                                                   ? apps[i].icon : "application-x-executable");
+    gtk_image_set_pixel_size (GTK_IMAGE (img), 48);
+    gtk_box_append (GTK_BOX (cell), img);
+    GtkWidget *name = gtk_label_new (apps[i].name);
+    /* one line, as the launcher's labels: a longer name ends in an ellipsis */
+    gtk_label_set_ellipsize (GTK_LABEL (name), PANGO_ELLIPSIZE_END);
+    gtk_label_set_single_line_mode (GTK_LABEL (name), TRUE);
+    gtk_widget_add_css_class (name, "ns-preview-app");
+    gtk_box_append (GTK_BOX (cell), name);
+    gtk_grid_attach (GTK_GRID (grid), cell, i % 3, i / 3, 1, 1);
+  }
+  gtk_box_append (GTK_BOX (v), grid);
+  return v;
+}
+
+static GtkWidget *
+preview_bubble (const char *text, gboolean mine)
+{
+  GtkWidget *l = preview_text (text, "ns-preview-body");
+  gtk_widget_add_css_class (l, "ns-preview-bubble");
+  gtk_widget_add_css_class (l, mine ? "ns-mine" : "ns-theirs");
+  gtk_widget_set_halign (l, mine ? GTK_ALIGN_END : GTK_ALIGN_START);
+  gtk_label_set_max_width_chars (GTK_LABEL (l), 24);
+  return l;
+}
+
+static GtkWidget *
+preview_message (void)
+{
+  GtkWidget *v = preview_page ("Message");
+  gtk_box_append (GTK_BOX (v), preview_bubble ("Are we still on for lunch tomorrow?", FALSE));
+  gtk_box_append (GTK_BOX (v), preview_bubble ("Yes! See you at noon by the river.", TRUE));
+  gtk_box_append (GTK_BOX (v), preview_bubble ("Great, I'll book a table.", FALSE));
+  return v;
+}
+
+static GtkWidget *
+preview_email (void)
+{
+  GtkWidget *v = preview_page ("Email");
+  gtk_box_append (GTK_BOX (v), preview_text ("Photos from the weekend", "ns-preview-subject"));
+  gtk_box_append (GTK_BOX (v), preview_text ("Sam · to me", "ns-preview-meta"));
+  gtk_box_append (GTK_BOX (v), preview_text ("Hi! Here are the pictures from the hike. The view from the top was "
+                                             "worth every step. Let's do it again next month.", "ns-preview-body"));
+  return v;
+}
+
+typedef struct {
+  GtkWidget *stack, *prev, *next, *dots;
+  guint      at, n;
+} Preview;
+
+static void
+preview_show (Preview *p, guint at)
+{
+  p->at = MIN (at, p->n - 1);
+  GtkWidget *child = gtk_widget_get_first_child (p->stack);
+  for (guint i = 0; i < p->at; i++)
+    child = gtk_widget_get_next_sibling (child);
+  gtk_stack_set_visible_child (GTK_STACK (p->stack), child);
+  gtk_widget_set_sensitive (p->prev, p->at > 0);
+  gtk_widget_set_sensitive (p->next, p->at + 1 < p->n);
+  guint i = 0;
+  for (GtkWidget *d = gtk_widget_get_first_child (p->dots); d; d = gtk_widget_get_next_sibling (d), i++)
+    if (i == p->at)
+      gtk_widget_add_css_class (d, "ns-on");
+    else
+      gtk_widget_remove_css_class (d, "ns-on");
+}
+
+static void
+preview_step (GtkWidget *button, Preview *p)
+{
+  if (button == p->next)
+    preview_show (p, p->at + 1);
+  else if (p->at > 0)
+    preview_show (p, p->at - 1);
+}
+
+/* a swipe across the card turns the page, as the arrows do */
+static void
+preview_swiped (GtkGestureSwipe *swipe, double vx, double vy, Preview *p)
+{
+  if (fabs (vx) < 300 || fabs (vx) < fabs (vy))
+    return;
+  if (vx < 0)
+    preview_show (p, p->at + 1);
+  else if (p->at > 0)
+    preview_show (p, p->at - 1);
+}
+
+/* "Preview", the card with its pages, and ‹ • • • › under it */
+static GtkWidget *
+preview_pager (void)
+{
+  Preview *p = g_new0 (Preview, 1);
+  GtkWidget *v = gtk_box_new (GTK_ORIENTATION_VERTICAL, 8);
+  gtk_widget_add_css_class (v, "ns-preview");
+  g_object_set_data_full (G_OBJECT (v), "ns-preview", p, g_free);
+  GtkWidget *l = gtk_label_new ("Preview");
+  gtk_widget_add_css_class (l, "ns-preview-label");
+  gtk_box_append (GTK_BOX (v), l);
+
+  p->stack = gtk_stack_new ();
+  gtk_stack_set_transition_type (GTK_STACK (p->stack), GTK_STACK_TRANSITION_TYPE_SLIDE_LEFT_RIGHT);
+  gtk_stack_set_transition_duration (GTK_STACK (p->stack), 250);
+  /* each page as tall as its own content: the card's height is fixed, and what does not fit in it is cut */
+  gtk_stack_set_vhomogeneous (GTK_STACK (p->stack), FALSE);
+  gtk_stack_add_child (GTK_STACK (p->stack), preview_home ());
+  gtk_stack_add_child (GTK_STACK (p->stack), preview_message ());
+  gtk_stack_add_child (GTK_STACK (p->stack), preview_email ());
+  p->n = 3;
+  GtkWidget *card = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  gtk_widget_add_css_class (card, "ns-preview-card");
+  gtk_widget_set_overflow (card, GTK_OVERFLOW_HIDDEN);
+  gtk_widget_set_size_request (card, -1, 240);
+  /* a fixed height: a larger font size fills it rather than growing it */
+  GtkWidget *clip = gtk_scrolled_window_new ();
+  gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (clip), GTK_POLICY_NEVER, GTK_POLICY_EXTERNAL);
+  gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (clip), p->stack);
+  gtk_widget_set_can_target (clip, FALSE);
+  gtk_widget_set_vexpand (clip, TRUE);
+  gtk_box_append (GTK_BOX (card), clip);
+  GtkGesture *swipe = gtk_gesture_swipe_new ();
+  g_signal_connect (swipe, "swipe", G_CALLBACK (preview_swiped), p);
+  gtk_widget_add_controller (card, GTK_EVENT_CONTROLLER (swipe));
+  gtk_box_append (GTK_BOX (v), card);
+
+  GtkWidget *h = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 8);
+  gtk_widget_set_halign (h, GTK_ALIGN_CENTER);
+  p->prev = vibeos_icon_button_new ("go-previous-symbolic");
+  p->next = vibeos_icon_button_new ("go-next-symbolic");
+  gtk_accessible_update_property (GTK_ACCESSIBLE (p->prev), GTK_ACCESSIBLE_PROPERTY_LABEL, "Previous preview", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (p->next), GTK_ACCESSIBLE_PROPERTY_LABEL, "Next preview", -1);
+  p->dots = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 8);
+  gtk_widget_set_valign (p->dots, GTK_ALIGN_CENTER);
+  for (guint i = 0; i < p->n; i++) {
+    GtkWidget *dot = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_widget_add_css_class (dot, "ns-preview-dot");
+    gtk_widget_set_valign (dot, GTK_ALIGN_CENTER);
+    gtk_box_append (GTK_BOX (p->dots), dot);
+  }
+  for (GtkWidget **b = (GtkWidget *[]) { p->prev, p->next, NULL }; *b; b++) {
+    gtk_widget_add_css_class (*b, "ns-step");
+    g_signal_connect (*b, "clicked", G_CALLBACK (preview_step), p);
+  }
+  gtk_box_append (GTK_BOX (h), p->prev);
+  gtk_box_append (GTK_BOX (h), p->dots);
+  gtk_box_append (GTK_BOX (h), p->next);
+  gtk_box_append (GTK_BOX (v), h);
+  preview_show (p, 0);
+  return v;
+}
+
+/* Font size, Display size and Bold text, under a preview that follows them */
 void
 ns_page_display_size (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Display size and text", &c);
+  NsPage *page = ns_page_new ("Display size & text", &c);
   GSettings *iface = ns_page_settings (page, "org.gnome.desktop.interface");
   GSettings *vi = ns_page_settings (page, "vibeos.Interface");
   g_object_set_data (G_OBJECT (page), "ns-iface", iface);
   g_object_set_data (G_OBJECT (page), "ns-vibeos-iface", vi);
 
-  GtkWidget *g = ns_group (c, NULL);
-  GtkWidget *preview = gtk_box_new (GTK_ORIENTATION_VERTICAL, 8);
-  gtk_widget_add_css_class (preview, "ns-preview");
-  GtkWidget *l = gtk_label_new ("Preview");
-  gtk_label_set_xalign (GTK_LABEL (l), 0);
-  gtk_widget_add_css_class (l, "vibeos-title-large");
-  gtk_box_append (GTK_BOX (preview), l);
-  l = gtk_label_new ("Font size makes text bigger or smaller. Display size makes everything on the screen bigger or "
-                     "smaller, text and pictures alike.");
-  gtk_label_set_xalign (GTK_LABEL (l), 0);
-  gtk_label_set_wrap (GTK_LABEL (l), TRUE);
-  gtk_widget_add_css_class (l, "vibeos-body-large");
-  gtk_box_append (GTK_BOX (preview), l);
-  ns_row_widget (g, NULL, preview);
+  gtk_box_append (GTK_BOX (c), preview_pager ());
 
-  g = ns_group (c, NULL);
+  GtkWidget *g = ns_group (c, "Size options");
   GtkWidget *sc;
   GtkWidget *font = ns_row_steps (g, "Font size", G_N_ELEMENTS (text_scales), text_step (iface), &sc);
   g_object_set_data (G_OBJECT (font), "ns-scale", sc);
-  text_show (font, iface);
   g_signal_connect (sc, "value-changed", G_CALLBACK (text_moved), iface);
   g_signal_connect_object (iface, "changed::text-scaling-factor", G_CALLBACK (text_changed), font, 0);
   /* the shell keeps the size it started at until it can follow a new one: Display size shows, without changing,
    * unless NS_DISPLAY_SIZE=1 asks for it */
-  ns_displays_size_row (GTK_WIDGET (page), g, !g_strcmp0 (g_getenv ("NS_DISPLAY_SIZE"), "1"));
+  gboolean sizes = !g_strcmp0 (g_getenv ("NS_DISPLAY_SIZE"), "1");
+  ns_displays_size_row (GTK_WIDGET (page), g, sizes);
+  if (!sizes)
+    ns_note (c, "Display size can't be changed yet.");
 
   if (vi && ns_has_key (vi, "bold-text")) {
-    g = ns_group (c, NULL);
-    ns_row_switch (g, "Bold text", "Heavier text in the VibeOS apps", vi, "bold-text");
+    g = ns_group (c, "Style options");
+    ns_row_switch (g, "Bold text", NULL, vi, "bold-text");
   }
 
-  g = ns_group (c, NULL);
-  ns_row_button (g, "Reset settings", FALSE, size_reset_tapped, page);
+  GtkWidget *reset = ns_button_new ("Reset settings", FALSE);
+  GtkWidget *inner = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 8);
+  GtkWidget *icon = gtk_image_new_from_icon_name ("edit-undo-symbolic");
+  gtk_box_append (GTK_BOX (inner), icon);
+  gtk_box_append (GTK_BOX (inner), gtk_label_new ("Reset settings"));
+  gtk_button_set_child (GTK_BUTTON (reset), inner);
+  gtk_widget_add_css_class (reset, "ns-reset");
+  gtk_widget_set_halign (reset, GTK_ALIGN_START);
+  g_signal_connect (reset, "clicked", G_CALLBACK (size_reset_tapped), page);
+  gtk_box_append (GTK_BOX (c), reset);
   ns_push (page);
 }
 

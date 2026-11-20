@@ -258,9 +258,92 @@ window.ns-window button.ns-uninstall {
   color: @vibeos_on_surface_variant;
 }
 
-/* Display size and text: the sample the settings are tried on */
+/* ---- Display size & text: the preview the settings are tried on ---- */
+
 .ns-preview {
-  padding: 8dp 8dp 12dp 8dp;
+  margin: 8dp 16dp 8dp 16dp;
+}
+
+.ns-preview-label {
+  font-size: 14sp;
+  font-weight: 500;
+  color: @vibeos_on_surface_variant;
+}
+
+.ns-preview-card {
+  background-color: @vibeos_surface_bright;
+  border-radius: 28dp;
+}
+
+.ns-preview-page {
+  padding: 16dp 20dp 16dp 20dp;
+}
+
+/* which preview it is: the home screen, a message, an email */
+.ns-preview-title {
+  font-size: 12sp;
+  font-weight: 500;
+  color: @vibeos_on_surface_variant;
+}
+
+.ns-preview-app {
+  font-size: 12sp;
+  color: @vibeos_on_surface;
+}
+
+.ns-preview-subject {
+  font-size: 22sp;
+  color: @vibeos_on_surface;
+}
+
+.ns-preview-meta {
+  font-size: 14sp;
+  color: @vibeos_on_surface_variant;
+}
+
+.ns-preview-body {
+  font-size: 16sp;
+  color: @vibeos_on_surface;
+}
+
+.ns-preview-bubble {
+  padding: 10dp 16dp;
+  border-radius: 20dp;
+}
+
+.ns-preview-bubble.ns-theirs {
+  background-color: @vibeos_surface_container_high;
+}
+
+.ns-preview-bubble.ns-mine {
+  background-color: @vibeos_primary_container;
+  color: @vibeos_on_primary_container;
+}
+
+/* the pages' dots between ‹ and ›: the one shown long and in the primary colour */
+.ns-preview-dot {
+  min-width: 8dp;
+  min-height: 8dp;
+  border-radius: 999px;
+  background-color: @vibeos_outline_variant;
+}
+
+.ns-preview-dot.ns-on {
+  min-width: 20dp;
+  background-color: @vibeos_primary;
+}
+
+.ns-preview .ns-step {
+  color: @vibeos_on_surface_variant;
+}
+
+.ns-preview .ns-step:disabled {
+  color: alpha(@vibeos_on_surface, 0.38);
+}
+
+/* Reset settings: a tonal pill under the last card */
+window.ns-window button.ns-reset {
+  margin: 16dp 16dp 24dp 16dp;
 }
 
 /* ---- pictures and colours to pick ---- */
