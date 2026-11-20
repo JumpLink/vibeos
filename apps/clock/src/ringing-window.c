@@ -509,7 +509,7 @@ draw_text (GtkSnapshot *snapshot, PangoLayout *layout, double width, double y, d
 {
   gtk_snapshot_save (snapshot);
   gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (round ((width - layout_width (layout)) / 2), y));
-  gtk_snapshot_append_layout (snapshot, layout, &(GdkRGBA) { 1, 1, 1, alpha });
+  gtk_snapshot_append_layout (snapshot, layout, (GdkRGBA[]) { vibeos_color_alpha (VIBEOS_WHITE, alpha) });
   gtk_snapshot_restore (snapshot);
 }
 
@@ -556,8 +556,11 @@ draw_content (RingingView *self, GtkSnapshot *snapshot, const Geometry *g, doubl
 
   /* the pulse: a white circle growing from nothing to a radius of 128 px, fading as it grows */
   if (self->pulse_value > 0 && self->pulse_value < 1)
-    clock_snapshot_dot (snapshot, g->handle_x, g->cy, PULSE_RADIUS * self->pulse_value,
-                        &(GdkRGBA) { 1, 1, 1, 1 - self->pulse_value });
+    {
+      GdkRGBA pulse = vibeos_color_alpha (VIBEOS_WHITE, 1 - self->pulse_value);
+
+      clock_snapshot_dot (snapshot, g->handle_x, g->cy, PULSE_RADIUS * self->pulse_value, &pulse);
+    }
 
   draw_button (self, snapshot, g->snooze_x, g->cy, self->snooze, TARGET_SNOOZE);
   draw_button (self, snapshot, g->dismiss_x, g->cy, self->dismiss, TARGET_DISMISS);
@@ -565,11 +568,13 @@ draw_content (RingingView *self, GtkSnapshot *snapshot, const Geometry *g, doubl
   /* the handle shrinks away as either button is reached */
   if (handle_scale > 0)
     {
+      GdkRGBA white = vibeos_color (VIBEOS_WHITE);
+
       gtk_snapshot_save (snapshot);
       gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (g->handle_x + self->shift, g->cy));
       gtk_snapshot_scale (snapshot, handle_scale, handle_scale);
       vibeos_snapshot_icon (snapshot, GTK_WIDGET (self), "clock-fab-alarm-symbolic", -HANDLE / 2.0, -HANDLE / 2.0, HANDLE,
-                         &(GdkRGBA) { 1, 1, 1, 1 });
+                         &white);
       gtk_snapshot_restore (snapshot);
     }
 
