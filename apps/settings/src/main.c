@@ -223,7 +223,8 @@ search_open (VibeosSearchBar *bar, gpointer data)
 
 /* ---- the main menu: the search pill pinned over the scrolled cards ---- */
 
-/* the texts that follow the device: a modem adds Mobile to Network & internet, a tablet is About tablet */
+/* the texts that follow the device: a modem adds Mobile to Network & internet and the ringtone to Sound &
+ * vibration, a tablet is About tablet */
 static void
 entry_texts (void)
 {
@@ -232,6 +233,9 @@ entry_texts (void)
     const Entry *e = g_object_get_data (G_OBJECT (r), "ns-entry");
     if (e->page == ns_page_connections)
       vibeos_list_row_set_summary (r, ns_caps_has (NS_CAP_MODEM) ? "Mobile, Wi-Fi, hotspot" : "Wi-Fi, VPN");
+    else if (e->page == ns_page_sound)
+      vibeos_list_row_set_summary (r, ns_caps_has (NS_CAP_MODEM) ? "Volume, vibration, ringtone"
+                                                                 : "Volume, alarm sound");
     else if (e->page == ns_page_about)
       vibeos_list_row_set_title (r, ns_about_title ());
   }
