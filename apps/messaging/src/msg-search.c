@@ -432,6 +432,10 @@ msg_search_new (SmsClient *client, Contacts *contacts)
   gtk_box_append (GTK_BOX (results_page), scroll);
   gtk_stack_add_named (GTK_STACK (self->pages), results_page, "results");
   gtk_widget_set_vexpand (self->pages, TRUE);
+  /* the filters and the results under the field: in the list's pane on a tablet, a pane of their own as the list's
+   * rows are (messaging.css) */
+  gtk_widget_add_css_class (self->pages, "msg-search-content");
+  gtk_widget_set_overflow (self->pages, GTK_OVERFLOW_HIDDEN);
   gtk_box_append (GTK_BOX (self->box), self->pages);
   return GTK_WIDGET (self);
 }
