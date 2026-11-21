@@ -3,6 +3,12 @@ LatinIME, as LineageOS ships it (lineage-23.2): the *.combined.gz word lists in 
 lists its own binary dictionaries are compiled from. Each keeps the language's 80,000 most frequent words with
 their frequencies, and its whitelist corrections; words LatinIME marks possibly offensive are left out.
 
+Each list's last part, the words that most often follow a word (for the next word's suggestions), is counted by the
+same tool in the sentences of Tatoeba (https://tatoeba.org, the per-language exports of 21 November 2026), as
+LatinIME's own dictionaries ship without such pairs. Only the counts are kept, of words the list has, no sentence.
+Tatoeba's sentences are licensed under the Creative Commons Attribution 2.0 France license (CC BY 2.0 FR,
+https://creativecommons.org/licenses/by/2.0/fr/); its contributors are credited at https://tatoeba.org.
+
    Copyright (c) 2008, The Android Open Source Project
    Copyright (C) The LineageOS Project
 

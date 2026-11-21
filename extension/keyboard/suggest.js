@@ -1,7 +1,9 @@
 // Word suggestions for the suggestion strip, as the AOSP keyboard makes them: the word being typed completed, or
 // corrected by one slip (a letter missed, doubled, swapped or wrong), from the language's word list (words/, made by
 // tools/latinime-words from LatinIME's own lists) ranked by how often each word is used; and the words this user
-// types, learnt as they are typed (their frequency, and which word follows which, for the next word's suggestions).
+// types, learnt as they are typed (their frequency, and which word follows which). Between words, the next word: the
+// ones this user types after the last, then the list's (counted in Tatoeba's sentences). And the auto-correction a
+// space or a mark makes, as LatinIME's: the word typed, where it is no word, put right.
 // No Shell imports, so that it can be checked outside the shell.
 
 // a learnt word or pair counts this much more each time it is typed, up to its cap (on LatinIME's 0-255 scale)
@@ -22,6 +24,15 @@ const PER_EXTRA_LETTER = 2;
 // how many of the learnt words and pairs are kept (the least typed go first)
 const MAX_LEARNT_WORDS = 5000;
 const MAX_LEARNT_PAIRS = 10000;
+// a word the list has after the previous one counts this much more, the first of them most, less by step for each next
+const NEXT_WORD = {first: 60, step: 8};
+// the list's next words at a sentence's start are under this form
+const SENTENCE_START = '.';
+// auto-correction: a correction the list spells differently (accents, an apostrophe) where the word is this frequent;
+// one slip put right only in words of this many letters, scoring this much at least (frequency less the slip's
+// cost) in a word of that length, perLetter less for each letter more down to least (one slip in a long word is
+// more likely a slip), and this much more than the next likeliest (two as likely: no telling which was meant)
+const AUTOCORRECT = {form: 40, letters: 3, score: 120, perLetter: 10, least: 40, margin: 12};
 
 // The form words are matched in: lower case, no accents, no apostrophes (dont finds don't, cafe café)
 export function fold(s) {
@@ -50,7 +61,10 @@ export class Lexicon {
         this.freqs = [];
         this.freqOf = new Map();
         this.shortcuts = new Map();
-        this._inShortcuts = false;
+        // the words that follow a word, by its form (SENTENCE_START: a sentence's first), most often first
+        this.next = new Map();
+        // the file's part being read: the words, the corrections, the next words (each after a line "=")
+        this._part = 0;
         // the letters the language's words are made of, for the corrections; which keys are next to which
         // (neighboursOf), once the keyboard's layout is known
         this.letters = [];
@@ -62,13 +76,17 @@ export class Lexicon {
         for (let i = from; i < to; i++) {
             const line = lines[i];
             if (line === '=') {
-                this._inShortcuts = true;
+                this._part++;
                 continue;
             }
             const parts = line.split('\t');
             if (!parts[0] || parts.length < 2)
                 continue;
-            if (this._inShortcuts) {
+            if (this._part === 2) {
+                this.next.set(parts[0], parts.slice(1));
+                continue;
+            }
+            if (this._part === 1) {
                 this.shortcuts.set(fold(parts[0]), parts[1]);
                 continue;
             }
@@ -111,6 +129,11 @@ export class Lexicon {
     exact(key, fn) {
         for (let i = lowerBound(this.keys, key); i < this.keys.length && this.keys[i] === key; i++)
             fn(this.words[i], this.freqs[i]);
+    }
+
+    // the words that most often follow @previous (null: at a sentence's start), most often first
+    followers(previous) {
+        return this.next.get(previous === null ? SENTENCE_START : fold(previous)) ?? [];
     }
 
     // the words that start with @key (it not included), most frequent first, at most @n
@@ -245,22 +268,37 @@ function prune(map, max) {
         map.delete(k);
 }
 
+// How much more likely @word is for following @previous in the list (null previous: at a sentence's start, @start)
+function nextBoost(lexicon, previous, start, word) {
+    if (!lexicon || (previous === null && !start))
+        return 0;
+    const i = lexicon.followers(previous).indexOf(word);
+    return i < 0 ? 0 : Math.max(0, NEXT_WORD.first - NEXT_WORD.step * i);
+}
+
 // The suggestions for @typed (the word before the cursor, '' between words) after @previous (the word before it, or
-// null), best first, at most @n. @capitalise: the field wants a capital here (the start of a sentence).
-export function suggest(lexicon, learnt, typed, previous, n = 3, capitalise = false) {
+// null), best first, at most @n. @capitalise: the field wants a capital here (the start of a sentence). @next: the
+// next word's suggestions are on (between words, and the list's next words count while typing); @start: the cursor is
+// at a sentence's start (no previous word there, but the list knows how sentences start).
+export function suggest(lexicon, learnt, typed, previous, n = 3, capitalise = false, {next = true, start = false} = {}) {
     const scores = new Map();
     const offer = (word, score) => {
         if (scores.has(word) && scores.get(word) >= score)
             return;
         scores.set(word, score);
     };
-    const boost = word => (learnt?.wordBoost(word) ?? 0) + (learnt?.pairBoost(previous, word) ?? 0);
+    const boost = word => (learnt?.wordBoost(word) ?? 0) + (learnt?.pairBoost(previous, word) ?? 0) +
+        (next ? nextBoost(lexicon, previous, start, word) : 0);
 
     if (!typed) {
-        // between words: the words this user has typed after the previous one
-        if (!previous || !learnt)
+        // between words: the words this user has typed after the previous one, then the ones the list has after it
+        if (!next || (previous === null && !start))
             return [];
-        return learnt.followers(previous, n).map(s => inCase(s.word, '', capitalise));
+        const words = [];
+        if (previous && learnt)
+            words.push(...learnt.followers(previous, n).map(s => s.word));
+        words.push(...lexicon?.followers(previous) ?? []);
+        return [...new Set(words.map(w => inCase(w, '', capitalise)))].slice(0, n);
     }
 
     const key = fold(typed);
@@ -294,10 +332,69 @@ export function suggest(lexicon, learnt, typed, previous, n = 3, capitalise = fa
     return [...new Set(ranked)].slice(0, n);
 }
 
+// What a space or a mark typed after @typed makes of it (null: it stays as typed), as LatinIME's auto-correction: a
+// correction the list has for it (dont: don't), the list's word with its accents or apostrophe (fur: für, in German),
+// or one slip put right (teh: the) where @typed is no word, neither in the list nor typed by this user, and the
+// correction is a common one, clearly likelier than any other. Not a word with capitals inside or at its start where
+// none was asked for (a name): only the list's own corrections there. The first letter is taken as typed, but for two
+// swapped there (hte: the).
+export function autocorrection(lexicon, learnt, typed, previous, capitalise = false, {next = true, start = false} = {}) {
+    if (!lexicon || !typed)
+        return null;
+    const chars = [...typed];
+    if (chars.slice(1).some(ch => ch !== ch.toLowerCase()))
+        return null;
+    const key = fold(typed);
+    const lower = typed.toLowerCase();
+    let valid = false;
+    let form = null;
+    // typed as the list has it, or in capitals where the list has it in lower case (The, THE); the list's capitals
+    // otherwise (i: I, monday: Monday)
+    lexicon.exact(key, (word, f) => {
+        if (word === typed || (word === lower && word === word.toLowerCase()))
+            valid = true;
+        else if (!form || f > form.f)
+            form = {word, f};
+    });
+    if (valid || learnt?.words.has(typed) || learnt?.words.has(lower))
+        return null;
+    const to = lexicon.shortcuts.get(key);
+    if (to)
+        return inCase(to, typed, capitalise);
+    if (form && form.f >= AUTOCORRECT.form)
+        return inCase(form.word, typed, capitalise);
+    if ((chars[0] !== chars[0].toLowerCase() && !capitalise) || [...key].length < AUTOCORRECT.letters)
+        return null;
+    const k = [...key];
+    const scored = new Map();
+    for (const [slip, cost] of slips(key, lexicon.letters, lexicon.near)) {
+        const s = [...slip];
+        if (s[0] !== k[0] && !(s[0] === k[1] && s[1] === k[0]))
+            continue;
+        lexicon.exact(slip, (word, f) => {
+            const score = f - cost + (learnt?.wordBoost(word) ?? 0) + (learnt?.pairBoost(previous, word) ?? 0) +
+                (next ? nextBoost(lexicon, previous, start, word) : 0);
+            if (!(scored.get(word) >= score))
+                scored.set(word, score);
+        });
+    }
+    const [best, second] = [...scored].sort((a, b) => b[1] - a[1]);
+    const least = Math.max(AUTOCORRECT.least, AUTOCORRECT.score - AUTOCORRECT.perLetter * (k.length - AUTOCORRECT.letters));
+    if (!best || best[1] < least || (second && best[1] - second[1] < AUTOCORRECT.margin))
+        return null;
+    return inCase(best[0], typed, capitalise);
+}
+
 // Where the suggestions go in the strip's three places, [left, middle, right]: the best in the middle, the next on its
 // left, the third on its right (as LatinIME places them)
 export function placeInStrip(suggestions) {
     return [suggestions[1] ?? null, suggestions[0] ?? null, suggestions[2] ?? null];
+}
+
+// Whether @before (the field's text before the word being typed) ends where a sentence starts: nothing, or only marks
+// and spaces, or a sentence's end and a space
+export function atSentenceStart(before) {
+    return /^[^\p{L}\p{N}]*$/u.test(before) || /[.!?\u2026]["'\u201d\u00bb)]*\s+$/u.test(before);
 }
 
 // The word being typed and the one before it, from the field's text before the cursor: [typed, previous]. Only

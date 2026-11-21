@@ -324,11 +324,13 @@ class MoreKeysPanel extends ScreenCanvas {
 // words' places and the words (setWords). The microphone stays off until dictation is there.
 export const StripCanvas = GObject.registerClass(
 class StripCanvas extends ScreenCanvas {
-    // @words: [left, middle, right], null where there is none
-    setWords(words) {
-        if (JSON.stringify(words) === JSON.stringify(this._words ?? [null, null, null]))
+    // @words: [left, middle, right], null where there is none; @bold: the place whose word is in bold (the one a
+    // space will put in: an auto-correction), -1 for none
+    setWords(words, bold = -1) {
+        if (JSON.stringify(words) === JSON.stringify(this._words ?? [null, null, null]) && bold === (this._bold ?? -1))
             return;
         this._words = words;
+        this._bold = bold;
         this.queue_repaint();
     }
 
@@ -359,7 +361,7 @@ class StripCanvas extends ScreenCanvas {
             const word = this._words?.[i];
             if (!word)
                 return;
-            const t = text(word, size, false);
+            const t = text(word, size, i === this._bold);
             const room = w - 2 * m.suggestionPadding;
             const squeeze = Math.max(MIN_SUGGESTION_SCALE, Math.min(1, room / t.width));
             cr.save();

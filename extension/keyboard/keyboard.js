@@ -27,7 +27,7 @@ import {SCALE} from '../units.js';
 import {formFactor, keyAt, measure, moreKeyAt, placeKeys, placeMoreKeys, stripSlots} from './geometry.js';
 import {KeyboardPalette} from './palette.js';
 import {KeysCanvas, labelWidth, MoreKeysPanel, NavCanvas, PressedKey, StripCanvas} from './renderer.js';
-import {Learnt, Lexicon, neighboursOf, placeInStrip, suggest, wordsBefore} from './suggest.js';
+import {atSentenceStart, autocorrection, Learnt, Lexicon, neighboursOf, placeInStrip, suggest, wordsBefore} from './suggest.js';
 
 // shown, the keyboard slides up decelerating; hidden, it slides down accelerating
 const SHOW_MS = 200;
@@ -79,6 +79,8 @@ const LEARNT_DIR = GLib.build_filenamev([GLib.get_user_data_dir(), 'vibeos', 'ke
 const LEARNT_SAVE_MS = 10000;
 // typed after a suggestion was picked (and its space added), these go before that space: "word, " not "word ,"
 const SPACE_SWALLOWERS = /^[.,!?;:)\]}%]$/;
+// typed after a word, these end it, and make its auto-correction (Enter too)
+const SEPARATORS = /^[ .,!?;:)\]}"\u2026\n]$/u;
 
 // the language the strip suggests in: one at a time, loaded when the keyboard first needs it
 const words = {locale: null, lexicon: null, learnt: null, waiters: [], loadId: 0, saveId: 0, generation: 0};
@@ -951,12 +953,14 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
     }
 
     // The words for the strip, from the field's text before the cursor: the word being typed completed or corrected,
-    // or between words the ones this user types next. None in the middle of a word or with text selected, nor where
-    // the field does not tell its text.
+    // or between words the next one. None in the middle of a word or with text selected, nor where the field does not
+    // tell its text. Where a space will correct the word, its correction is in the middle, in bold, and the word as
+    // typed on its left (as LatinIME has them). Settings > Keyboard turns each part off.
     _kbSuggest() {
         if (!this._kb || !this._kbStrip)
             return;
         let shown = [null, null, null];
+        let bold = -1;
         this._kb.suggestion = null;
         const [text, cursor, anchor] = Main.inputMethod.getSurroundingText();
         if (this._kbSuggestOn() && typeof text === 'string' && cursor !== null && (anchor ?? cursor) === cursor) {
@@ -968,11 +972,57 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
                     w.lexicon.near = neighboursOf(this._kb.letterRows);
                 const [typed, previous] = wordsBefore(before);
                 const capitalise = !typed && this._kb.page === 'alphabet-shifted';
-                shown = placeInStrip(suggest(w.lexicon, w.learnt, typed, previous, 3, capitalise));
+                const start = !previous && atSentenceStart(before.slice(0, before.length - typed.length));
+                const opts = {next: textCorrection('keyboard-next-word'), start};
+                let words = suggest(w.lexicon, w.learnt, typed, previous, 3, capitalise, opts);
+                const fix = typed && textCorrection('keyboard-autocorrect')
+                    ? autocorrection(w.lexicon, w.learnt, typed, previous, start, opts) : null;
+                if (fix && fix !== typed)
+                    words = [fix, typed, ...words.filter(x => x !== fix && x !== typed)].slice(0, 3);
+                bold = fix && fix !== typed ? 1 : -1;
+                shown = textCorrection('keyboard-suggestions') ? placeInStrip(words) : [null, null, null];
                 this._kb.suggestion = {typed, previous, words: shown};
             }
         }
-        this._kbStrip.setWords(shown);
+        this._kbStrip.setWords(shown, shown[1] ? bold : -1);
+    }
+
+    // The auto-correction a space, a mark or Enter (@str) makes of the word just typed: {typed, fixed, previous}, or
+    // null. Worked out again from the field's text, as the strip may not have caught up with fast typing.
+    _kbFixFor(str) {
+        if (this._kb.picking || !SEPARATORS.test(str) || !this._kbSuggestOn() || !textCorrection('keyboard-autocorrect'))
+            return null;
+        const [text, cursor, anchor] = Main.inputMethod.getSurroundingText();
+        if (typeof text !== 'string' || cursor === null || (anchor ?? cursor) !== cursor ||
+            /^[\p{L}\p{M}]/u.test(GLib.utf8_substring(text, cursor, -1)))
+            return null;
+        const before = GLib.utf8_substring(text, 0, cursor);
+        const [typed, previous] = wordsBefore(before);
+        const w = wordsFor(this._kb.locale);
+        if (!typed || !w.lexicon)
+            return null;
+        const start = !previous && atSentenceStart(before.slice(0, before.length - typed.length));
+        const fixed = autocorrection(w.lexicon, w.learnt, typed, previous, start,
+            {next: textCorrection('keyboard-next-word'), start});
+        return fixed && fixed !== typed ? {typed, fixed, previous} : null;
+    }
+
+    // Backspace right after an auto-correction takes it back: the word as typed, with the space or mark after it, and
+    // the word is learnt, so that it is not corrected again (as on LatinIME). False where the field has moved on.
+    _kbRevert(fix) {
+        const [text, cursor] = Main.inputMethod.getSurroundingText();
+        const done = fix.fixed + fix.sep;
+        const n = [...done].length;
+        if (typeof text !== 'string' || cursor === null || cursor < n ||
+            GLib.utf8_substring(text, cursor - n, cursor) !== done)
+            return false;
+        click();
+        Main.inputMethod.delete_surrounding(-n, n);
+        this._kbLearn(fix.previous, fix.typed);
+        this._kb.picking = true;
+        this._kbCommit(fix.typed + fix.sep);
+        this._kb.picking = false;
+        return true;
     }
 
     // a tap on the strip: the word in the place it landed in
@@ -1009,9 +1059,9 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         this._kb.pickedSpace = true;
     }
 
-    // text typed: a space or a mark after a word makes it a word this user types; a full stop or a comma right after
-    // a picked suggestion goes before its space
-    _kbWordEnds(str) {
+    // text typed: a space or a mark after a word makes it a word this user types (its correction, where @fix made
+    // one); a full stop or a comma right after a picked suggestion goes before its space
+    _kbWordEnds(str, fix = null) {
         const picked = this._kb.pickedSpace;
         this._kb.pickedSpace = false;
         if (this._kb.picking)
@@ -1023,7 +1073,9 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
             this._kbAfterCommit = ' ';
         }
         const s = this._kb.suggestion;
-        if (s?.typed && !/[\p{L}\p{M}'\u2019]/u.test(str) && this._kbSuggestOn())
+        if (fix)
+            this._kbLearn(fix.previous, fix.fixed);
+        else if (s?.typed && !/[\p{L}\p{M}'\u2019]/u.test(str) && this._kbSuggestOn())
             this._kbLearn(s.previous, s.typed);
     }
 
@@ -1051,19 +1103,29 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
     // text typed: a capital takes the letters back to lower case, and once the text is in, the field's capitals
     // apply again (a new sentence starts in capitals)
     _kbCommit(str) {
-        this._kbWordEnds(str);
+        const fix = this._kbFixFor(str);
+        this._kbWordEnds(str, fix);
         this._kb.manualShift = false;
         if (this._kb.page === 'alphabet-shifted')
             this._kbSetPage('alphabet');
         const after = this._kbAfterCommit ?? '';
         this._kbAfterCommit = null;
-        this._keyboardController.commit(str + after, this._modifiers)
+        // the auto-correction: the word as typed goes, its correction comes with the space or mark
+        let out = str + after;
+        if (fix) {
+            const n = [...fix.typed].length;
+            Main.inputMethod.delete_surrounding(-n, n);
+            out = fix.fixed + out;
+        }
+        this._kb.lastFix = fix ? {...fix, sep: str + after} : null;
+        this._keyboardController.commit(out, this._modifiers)
             .then(() => this._updateLevelFromHints(true))
             .catch(logError);
     }
 
     _kbKeyval(keyval) {
         this._kb.pickedSpace = false;
+        this._kb.lastFix = null;
         this._kb.manualShift = false;
         this._keyboardController.keyvalPress(keyval);
         this._keyboardController.keyvalRelease(keyval);
@@ -1102,6 +1164,10 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
                 this._updateLevelFromHints(false);
             break;
         case 'delete': {
+            const fix = this._kb.lastFix;
+            this._kb.lastFix = null;
+            if (fix && this._kbRevert(fix))
+                break;
             // as the shell's own backspace: key events, or the text input's delete for an Android window
             const alien = this._focusWindow?.is_alien?.();
             this._kb.pickedSpace = false;
@@ -1112,9 +1178,21 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
             break;
         }
         case 'enter':
-        case 'shift_enter':
-            this._kbKeyval(Clutter.KEY_Return);
+        case 'shift_enter': {
+            // the word before is corrected first, as a space would
+            const fix = this._kbFixFor('\n');
+            if (!fix) {
+                this._kbKeyval(Clutter.KEY_Return);
+                break;
+            }
+            this._kbWordEnds('\n', fix);
+            const n = [...fix.typed].length;
+            Main.inputMethod.delete_surrounding(-n, n);
+            this._keyboardController.commit(fix.fixed, this._modifiers)
+                .then(() => this._kbKeyval(Clutter.KEY_Return))
+                .catch(logError);
             break;
+        }
         case 'tab':
             this._kbKeyval(Clutter.KEY_Tab);
             break;
@@ -1151,6 +1229,14 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
 function vibeosSettings() {
     const schema = Gio.SettingsSchemaSource.get_default()?.lookup('vibeos.Shell', true);
     return schema?.has_key('keyboard') ? new Gio.Settings({settings_schema: schema}) : null;
+}
+
+// Settings > Keyboard > Text correction: the strip's words, auto-correction and the next word's suggestions (on where
+// the schema has no such key yet)
+let correctionSettings = null;
+function textCorrection(key) {
+    correctionSettings ??= vibeosSettings();
+    return correctionSettings?.settings_schema.has_key(key) ? correctionSettings.get_boolean(key) : true;
 }
 
 // The swipe home begun: the keyboard goes at once, with the app. Its touches let go first: a gesture that takes a

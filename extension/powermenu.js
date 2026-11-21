@@ -7,8 +7,14 @@
 // The items are the reference's that this phone can back: Lockdown, shown only with a PIN or a pattern
 // set (the lock screen at once, its notifications kept off it until the next unlock), Power off and Restart
 // (logind's: gnome-session 51 has only its dialog's Shutdown and Reboot, no RequestShutdown/RequestReboot any more).
-// Emergency is left out: nothing here can place an emergency call. Between them, this phone's own: Android, a restart
-// into the LineageOS it dual-boots with (the kernel's syscon-reboot-mode "android"; a plain restart comes back here).
+// Emergency is left out: nothing here can place an emergency call. Between them, this device's own: Android, a restart
+// into the LineageOS it dual-boots with, the way its device package writes in /etc/vibeos/android (a plain restart
+// comes back here):
+//   reboot=<mode>   logind's restart with this reboot parameter, the kernel's reboot mode ("android" on the Galaxy
+//                   S10e; "recovery" on the S20 FE, whose recovery partition holds LineageOS's boot image)
+//   helper=<path>   a program run through pkexec instead, for a device that also has to set the bootloader message
+//                   in misc (the Tab S5e, the POCO X3); its polkit action lets the active session run it
+// A device without the file (no Android beside VibeOS) has no Android item.
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Shell from 'gi://Shell';
@@ -63,6 +69,35 @@ async function logind(method, mode = '') {
     } catch (e) {
         log(`vibeos: ${method}: ${e.message}`);
     }
+}
+
+const ANDROID_CONF = '/etc/vibeos/android';
+
+// the Android item's action, or null without one
+function androidRestart() {
+    let conf;
+    try {
+        const [, bytes] = GLib.file_get_contents(ANDROID_CONF);
+        conf = new TextDecoder().decode(bytes);
+    } catch {
+        return null;
+    }
+    const keys = {};
+    for (const line of conf.split('\n')) {
+        const m = line.match(/^\s*(reboot|helper)\s*=\s*(\S+)\s*$/);
+        if (m)
+            keys[m[1]] = m[2];
+    }
+    if (keys.helper) {
+        return () => {
+            try {
+                Gio.Subprocess.new(['pkexec', keys.helper], Gio.SubprocessFlags.NONE);
+            } catch (e) {
+                log(`vibeos: ${keys.helper}: ${e.message}`);
+            }
+        };
+    }
+    return keys.reboot ? () => logind('Reboot', keys.reboot) : null;
 }
 
 export class PowerMenu {
@@ -143,7 +178,9 @@ export class PowerMenu {
         if (this._secure())
             items.push(['Lockdown', 'ic_lock_lockdown_round', () => this._lockdown()]);
         items.push(['Power off', 'ic_lock_power_off_round', () => logind('PowerOff')]);
-        items.push(['Android', 'ic_android', () => logind('Reboot', 'android')]);
+        const android = androidRestart();
+        if (android)
+            items.push(['Android', 'ic_android', android]);
         items.push(['Restart', 'ic_restart_round', () => logind('Reboot')]);
 
         const labels = items.map(([label]) =>
