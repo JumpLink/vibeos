@@ -1,6 +1,7 @@
 /* Security and privacy, Location, Accounts and Accessibility. GSettings for most of it; the apps that may use
  * the location from the portal's permission store, the online accounts from GNOME Online Accounts' object
  * manager, both asked in the background. */
+#include "ns-caps.h"
 #include "ns-pages.h"
 #include "ns-ui.h"
 
@@ -157,7 +158,8 @@ ns_page_location (GtkWidget *row, gpointer data)
   if (!loc)
     return;
   GtkWidget *g = ns_group (c, NULL);
-  ns_row_switch (g, "Use location", "Apps may ask where the phone is", loc, "enabled");
+  g_autofree char *where = g_strdup_printf ("Apps may ask where the %s is", ns_device_noun ());
+  ns_row_switch (g, "Use location", where, loc, "enabled");
   if (ns_has_key (loc, "max-accuracy-level")) {
     GtkWidget *r = ns_row_choice (g, "Accuracy", loc, "max-accuracy-level", accuracy, accuracy_labels);
     g_settings_bind (loc, "enabled", r, "sensitive", G_SETTINGS_BIND_GET);
@@ -214,8 +216,9 @@ goa_removed (gboolean yes, gpointer row)
 static void
 goa_remove (GtkWidget *row, gpointer data)
 {
-  ns_confirm (row, "Remove this account?", "Its mail, calendars and contacts leave the phone. The account itself "
-              "stays with its provider.", "Remove", TRUE, goa_removed, row);
+  g_autofree char *leave = g_strdup_printf ("Its mail, calendars and contacts leave the %s. The account itself stays "
+                                            "with its provider.", ns_device_noun ());
+  ns_confirm (row, "Remove this account?", leave, "Remove", TRUE, goa_removed, row);
 }
 
 /* signing in is GOA's own: its backend library brings each provider's dialog (a web page for most), shown over

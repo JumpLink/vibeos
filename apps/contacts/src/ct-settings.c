@@ -150,7 +150,27 @@ on_my_info (VibeosPressable *row, Settings *s)
     ct_window_edit_contact (s->window, CT_PROFILE_UID);
 }
 
-/* GNOME Settings' Online Accounts panel, through its "launch-panel" action (as GNOME Shell opens its panels) */
+/* the platform data of an activation of Settings: the token that lets its window come to the front (xdg-activation;
+ * without it a Settings already running behind this app only posted "Settings is ready") */
+static GVariant *
+settings_platform_data (GtkWidget *from)
+{
+  g_autoptr (GDesktopAppInfo) info = g_desktop_app_info_new ("vibeos.Settings.desktop");
+  g_autoptr (GdkAppLaunchContext) context = gdk_display_get_app_launch_context (gtk_widget_get_display (from));
+  g_autofree char *token = info ? g_app_launch_context_get_startup_notify_id (G_APP_LAUNCH_CONTEXT (context),
+                                                                             G_APP_INFO (info), NULL) : NULL;
+  GVariantBuilder builder;
+
+  g_variant_builder_init (&builder, G_VARIANT_TYPE_VARDICT);
+  if (token) {
+    g_variant_builder_add (&builder, "{sv}", "activation-token", g_variant_new_string (token));
+    g_variant_builder_add (&builder, "{sv}", "desktop-startup-id", g_variant_new_string (token));
+  }
+  return g_variant_builder_end (&builder);
+}
+
+/* Settings' Online Accounts page, through GNOME Settings' "launch-panel" action (as GNOME Shell opens its panels;
+ * VibeOS Settings answers for GNOME Settings) */
 static void
 on_accounts (VibeosPressable *row, Settings *s)
 {
@@ -163,7 +183,8 @@ on_accounts (VibeosPressable *row, Settings *s)
   g_variant_builder_add (&args, "v", g_variant_new ("(sav)", "online-accounts", NULL));
   g_dbus_connection_call (bus, "org.gnome.Settings", "/org/gnome/Settings", "org.freedesktop.Application",
                           "ActivateAction",
-                          g_variant_new ("(sava{sv})", "launch-panel", &args, NULL),
+                          g_variant_new ("(sav@a{sv})", "launch-panel", &args,
+                                         settings_platform_data (GTK_WIDGET (row))),
                           NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 }
 

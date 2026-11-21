@@ -264,7 +264,8 @@ night_show (Night *n)
     /* gsd falls back to the custom times while it does not know where the phone is */
     g_autofree char *from = night_time (n->iface, g_settings_get_double (n->color, "night-light-schedule-from"));
     g_autofree char *to = night_time (n->iface, g_settings_get_double (n->color, "night-light-schedule-to"));
-    g_autofree char *line = g_strdup_printf ("The phone's location is not known yet: %s to %s until it is", from, to);
+    g_autofree char *line = g_strdup_printf ("The %s's location is not known yet: %s to %s until it is",
+                                             ns_device_noun (), from, to);
     ns_row_set_subtitle (n->schedule, line);
   }
 
@@ -1196,7 +1197,8 @@ ns_page_battery_info (GtkWidget *row, gpointer data)
     gtk_widget_set_visible (b->rows[i], FALSE);
   }
   ns_group_set_visible (g, FALSE);
-  b->none = ns_note (c, "This phone's battery reports none of these.");
+  g_autofree char *no_info = g_strdup_printf ("This %s's battery reports none of these.", ns_device_noun ());
+  b->none = ns_note (c, no_info);
   gtk_widget_set_visible (b->none, FALSE);
   /* shown once read: the first reading comes before the page has slid in */
   ns_push (page);

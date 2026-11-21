@@ -2,6 +2,7 @@
  * for the phone's name. While the Bluetooth page is open the phone looks for devices, is visible to them, and
  * answers pairing requests: it is BlueZ's agent then, and asks in a dialog when a code has to be compared or
  * typed. */
+#include "ns-caps.h"
 #include "ns-bt.h"
 #include "ns-pages.h"
 #include "ns-ui.h"
@@ -413,8 +414,9 @@ bt_fill (NsPage *page)
     bt->scanning = FALSE;
   }
   g_autofree char *alias = prop_string (bt->adapter, "Alias");
+  g_autofree char *this_device = g_strdup_printf ("this %s", ns_device_noun ());
   g_autofree char *vis = g_strdup_printf ("Visible as “%s” to nearby devices while this page is open.",
-                                          alias ? alias : "this phone");
+                                          alias ? alias : this_device);
   gtk_label_set_text (GTK_LABEL (bt->visible), vis);
   gtk_widget_set_visible (bt->visible, on);
   gtk_widget_set_visible (bt->off, !on);
@@ -592,8 +594,8 @@ ns_page_sharing (GtkWidget *row, gpointer data)
   ns_later_init (page, visible_fill);
   GtkWidget *g = ns_group (c, NULL);
   ns_bt_name_row (g);
-  GtkWidget *r = ns_row_switch (g, "Visible to Bluetooth devices", "Others can find the phone and pair with it",
-                                NULL, NULL);
+  g_autofree char *others = g_strdup_printf ("Others can find the %s and pair with it", ns_device_noun ());
+  GtkWidget *r = ns_row_switch (g, "Visible to Bluetooth devices", others, NULL, NULL);
   g_signal_connect (ns_row_get_switch (r), "notify::active", G_CALLBACK (visible_set), NULL);
   gtk_widget_set_visible (r, FALSE);
   g_object_set_data (G_OBJECT (page), "ns-visible", r);
