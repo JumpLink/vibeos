@@ -1,0 +1,101 @@
+#!/usr/bin/python3 -I
+"""latinime-words: the keyboard's word lists (extension/keyboard/words) from AOSP LatinIME's dictionaries.
+
+  latinime-words TREE OUTDIR
+
+TREE is a LatinIME checkout (LineageOS's android_packages_inputmethods_LatinIME; only its dictionaries/ directory is
+read: the *.combined.gz word lists its binary dictionaries are compiled from). For each of the keyboard's languages
+OUTDIR gets <locale>.txt.gz: the language's most frequent words, one a line as "word<TAB>frequency" (LatinIME's 1-255)
+or, where the form the keyboard matches typing against differs from the word, "word<TAB>frequency<TAB>form"; in the
+order of the forms (then most frequent first), so that the shell reads them without sorting. A line "=" ends them,
+and the language's corrections follow, "typed<TAB>replacement" (LatinIME's whitelist shortcuts: alot -> a lot).
+The form is extension/keyboard/suggest.js's fold(): lower case, no accents, no apostrophes; the two must agree.
+
+As the AOSP keyboard leaves them out of its suggestions by default ("Block offensive words"), words LatinIME marks
+possibly offensive are not written, nor those it marks as not words except as a correction's typed form.
+"""
+import gzip
+import os
+import re
+import sys
+import unicodedata
+
+# the keyboard's layouts (extension/keyboard/layouts) and the word list each one's language has in LatinIME
+LISTS = {
+    'en_US': 'en_US_wordlist', 'en_GB': 'en_GB_wordlist', 'de': 'de_wordlist', 'es': 'es_wordlist',
+    'fr': 'fr_wordlist', 'it': 'it_wordlist', 'iw': 'iw_wordlist', 'ru': 'ru_wordlist', 'uk': 'uk_wordlist',
+}
+# the most frequent this many words of each language: the shell holds one language's in memory
+MAX_WORDS = 80000
+
+
+def fold(word):
+    """suggest.js's fold(): lower case, decomposed, its combining accents and apostrophes taken out"""
+    return re.sub("[\u0300-\u036f'\u2019]", '', unicodedata.normalize('NFD', word.lower()))
+
+
+def attributes(line):
+    out = {}
+    for part in line.strip().split(','):
+        key, _, value = part.partition('=')
+        out[key] = value
+    return out
+
+
+def read(path):
+    words, shortcuts = [], []
+    entry = None
+    with gzip.open(path, 'rt', encoding='utf-8') as f:
+        for line in f:
+            if line.startswith(' word='):
+                a = attributes(line)
+                entry = a
+                try:
+                    freq = int(a.get('f', '0'))
+                except ValueError:
+                    freq = 0
+                if a.get('possibly_offensive') == 'true' or 'offensive' in a.get('flags', '').split(':'):
+                    continue
+                if a.get('not_a_word') == 'true' or freq <= 0:
+                    continue
+                words.append((a['word'], freq))
+            elif line.startswith('  shortcut=') and entry is not None:
+                a = attributes(line)
+                if a.get('f') == 'whitelist' and a['shortcut'] != entry.get('word') and \
+                        entry.get('possibly_offensive') != 'true':
+                    shortcuts.append((entry['word'], a['shortcut']))
+    return words, shortcuts
+
+
+def main():
+    if len(sys.argv) != 3:
+        sys.exit(__doc__)
+    tree, outdir = sys.argv[1:]
+    os.makedirs(outdir, exist_ok=True)
+    for locale, name in LISTS.items():
+        words, shortcuts = read(os.path.join(tree, 'dictionaries', name + '.combined.gz'))
+        seen = set()
+        kept = []
+        # most frequent first; a word listed twice keeps its higher frequency
+        for word, freq in sorted(words, key=lambda wf: (-wf[1], wf[0])):
+            if word in seen or '\t' in word:
+                continue
+            seen.add(word)
+            kept.append((word, freq))
+            if len(kept) == MAX_WORDS:
+                break
+        lines = []
+        for w, f in sorted(kept, key=lambda wf: (fold(wf[0]), -wf[1], wf[0])):
+            k = fold(w)
+            lines.append(f'{w}\t{f}\n' if k == w else f'{w}\t{f}\t{k}\n')
+        lines.append('=\n')
+        lines += [f'{typed}\t{to}\n' for typed, to in sorted(set(shortcuts)) if '\t' not in typed + to]
+        out = os.path.join(outdir, locale + '.txt.gz')
+        # mtime 0: the same lists make the same files
+        with open(out, 'wb') as raw, gzip.GzipFile(fileobj=raw, mode='wb', mtime=0, filename='') as f:
+            f.write(''.join(lines).encode('utf-8'))
+        print(f'{locale}: {len(kept)} words, {len(set(shortcuts))} corrections, {os.path.getsize(out)} bytes')
+
+
+if __name__ == '__main__':
+    main()

@@ -75,8 +75,12 @@ export class SingleStack {
     _maximize(win) {
         if (win.get_window_type() !== Meta.WindowType.NORMAL || win.get_transient_for())
             return;
+        // Not while the keyboard has it: with the keyboard up, the shell unmaximizes the focused window and fits it
+        // from the top down to the keys (keyboard.js _animateWindow, which marks it __keyboardMoved), and maximizes it
+        // again as the keyboard goes. Held maximized through that, the window stayed under the keys, and so did the
+        // dialog centred in it: Settings' "Add a printer" and Wi-Fi password fields typed blind (owner, 11-21).
         const maximize = () => {
-            if (!win.is_maximized() && !win.fullscreen && win.can_maximize())
+            if (!win.is_maximized() && !win.fullscreen && win.can_maximize() && !win.__keyboardMoved)
                 win.maximize();
         };
         maximize();

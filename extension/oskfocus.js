@@ -143,9 +143,13 @@ export class TouchFocusKeyboard {
     _onEvent(event) {
         const type = event.type();
         if (type === Clutter.EventType.TOUCH_BEGIN) {
-            // a finger alone may tap
+            // a finger alone may tap, and not on the keyboard: its hide chevron puts it away on the lift, the window
+            // grows back under the spot, and the terminal check found the tap on the terminal and opened the
+            // keyboard again (owner, 11-21)
             const [x, y] = event.get_coords();
-            this._tap = this._touches === 0
+            const actor = global.stage.get_event_actor(event);
+            const onKeys = !!actor && Main.layoutManager.keyboardBox.contains(actor);
+            this._tap = this._touches === 0 && !onKeys
                 ? {x, y, time: event.get_time(), focus: Main.inputMethod.currentFocus} : null;
             this._touches++;
             this._stop();
