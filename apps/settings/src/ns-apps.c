@@ -168,22 +168,38 @@ app_switched (GtkWidget *sw, GParamSpec *ps, GAppInfo *app)
     g_settings_set_boolean (s, "enable", ns_switch_get_active (sw));
 }
 
+static void app_notifications_page (GtkWidget *row, gpointer data);
+
 void
 ns_page_notifications (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
   NsPage *page = ns_page_new ("Notifications", &c);
   GSettings *n = ns_page_settings (page, "org.gnome.desktop.notifications");
-  GtkWidget *g = ns_group (c, NULL);
-  GtkWidget *r = ns_row_switch (g, "Do not disturb", "No pop-ups: notifications wait in the list", NULL, NULL);
+  /* Android 17's groups: the apps' own settings on a page of their own, then what the lock screen shows */
+  GtkWidget *g = ns_group (c, "Manage");
+  GtkWidget *r = ns_row (g, NULL, "App notifications", "Control notifications from individual apps");
+  ns_row_on_activate (r, app_notifications_page, NULL);
+  g = ns_group (c, "Privacy");
+  ns_row_switch (g, "Notifications on lock screen", "Their apps' icons below the clock", n, "show-in-lock-screen");
+  g = ns_group (c, NULL);
+  r = ns_row_switch (g, "Do not disturb", "No pop-ups: notifications wait in the list", NULL, NULL);
   g_settings_bind (n, "show-banners", ns_row_get_switch (r), "active", G_SETTINGS_BIND_INVERT_BOOLEAN);
-  ns_row_switch (g, "Show on the lock screen", "Their apps' icons below the clock", n, "show-in-lock-screen");
   /* No "Wake the screen" (Phosh's wakeup-screen-* keys): vibeos leaves the screen off for a notification.
    * Besides the power key and a double tap, only a full-screen app (an incoming call, a ringing alarm: service.js
    * LaunchFullScreen) turns it on. */
   alerts_row (g);
+  ns_push (page);
+}
 
-  g = ns_group (c, "App notifications");
+/* each app that notifies, with its switch; a tap opens the app's own page */
+static void
+app_notifications_page (GtkWidget *row, gpointer data)
+{
+  GtkWidget *c;
+  NsPage *page = ns_page_new ("App notifications", &c);
+  GSettings *n = ns_page_settings (page, "org.gnome.desktop.notifications");
+  GtkWidget *g = ns_group (c, NULL);
   g_auto (GStrv) kids = g_settings_get_strv (n, "application-children");
   GList *all = g_app_info_get_all ();
   all = g_list_sort_with_data (all, by_name, NULL);
