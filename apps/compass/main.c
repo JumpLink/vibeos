@@ -185,6 +185,16 @@ watch_display (Compass *c)
   read_display (c);
 }
 
+/* what the status line says when the sensor service could not be asked: the D-Bus error itself goes to the log */
+static const char *
+sensor_error_text (const GError *error)
+{
+  if (g_error_matches (error, G_DBUS_ERROR, G_DBUS_ERROR_SERVICE_UNKNOWN)
+      || g_error_matches (error, G_DBUS_ERROR, G_DBUS_ERROR_NAME_HAS_NO_OWNER))
+    return "The sensor service is not running, so the compass cannot be read.";
+  return "The compass cannot be read right now.";
+}
+
 static void
 on_claimed (GObject *src, GAsyncResult *res, gpointer data)
 {
@@ -195,11 +205,10 @@ on_claimed (GObject *src, GAsyncResult *res, gpointer data)
   if (!ret) {
     c->claimed = FALSE;
     g_message ("compass: claim failed: %s", error->message);
-    g_autofree char *text = g_strdup_printf ("Could not use the compass: %s", error->message);
-    set_status (c, text);
+    set_status (c, sensor_error_text (error));
     return;
   }
-  set_status (c, "Hold the phone flat, away from metal. Move it in a figure 8 to calibrate.");
+  set_status (c, "Hold the device flat, away from metal. Move it in a figure 8 to calibrate.");
 }
 
 static void
@@ -220,13 +229,13 @@ on_sensor_proxy (GObject *src, GAsyncResult *res, gpointer data)
   c->sensor = g_dbus_proxy_new_for_bus_finish (res, &error);
   c->sensor_asked = FALSE;
   if (!c->sensor) {
-    g_autofree char *text = g_strdup_printf ("No sensor service: %s", error->message);
-    set_status (c, text);
+    g_message ("compass: no sensor service: %s", error->message);
+    set_status (c, sensor_error_text (error));
     return;
   }
   g_autoptr (GVariant) has = g_dbus_proxy_get_cached_property (c->sensor, "HasCompass");
   if (has && !g_variant_get_boolean (has)) {
-    set_status (c, "This phone reports no compass.");
+    set_status (c, "This device has no compass.");
     g_clear_object (&c->sensor);
     return;
   }
