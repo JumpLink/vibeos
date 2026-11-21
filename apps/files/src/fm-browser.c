@@ -767,7 +767,7 @@ on_activate (FmList *list, FmItem *item, FmBrowser *b)
 
       g_hash_table_replace (b->names, g_steal_pointer (&uri), g_strdup (item->name));
     }
-  fm_shell_open_item_location (b->shell, location, fm_item_is_folder (item));
+  fm_shell_open_item_from (b->shell, location, fm_item_is_folder (item), fm_list_get_activated_icon (list));
 }
 
 /* a search result's long press: Open, Open location */

@@ -18,6 +18,7 @@ Build-Depends: debhelper-compat (= 13),
                libxkbcommon-dev,
                wayland-protocols,
                libgdk-pixbuf-2.0-dev,
+               libgnome-desktop-4-dev,
                librsvg2-dev,
                libcairo2-dev,
                libfreetype-dev,
@@ -521,6 +522,8 @@ Depends: ${shlibs:Depends},
 Recommends: gvfs-backends,
             gvfs-fuse,
             xdg-desktop-portal-gnome,
+            ffmpegthumbnailer,
+            libgdk-pixbuf2.0-bin,
 Description: file manager for VibeOS
  VibeOS Files is File Manager+ rebuilt in GTK 4 on GIO and GVfs: the phone's
  storage, removable media, the recycle bin, recent files, the local network

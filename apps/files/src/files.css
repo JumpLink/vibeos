@@ -168,8 +168,9 @@ window.fm-window,
   margin: 0 4dp;
 }
 
-/* the grid: the original's grid padding and column gap, split between a margin round the grid and one round each
- * tile */
+/* the grid: the original's grid padding, split between a margin round the grid and one round each tile; the
+ * columns at least 104 dp apart, so the icons have air between them and the names room to read (owner, 11-21: "too
+ * dense") */
 .fm-grid-view,
 .fm-grid-view > child {
   margin: 0;
@@ -186,11 +187,11 @@ window.fm-window,
 }
 
 .fm-grid-view > child {
-  padding: 1dp;
+  padding: 1dp 4dp;
 }
 
 .fm-grid-tile {
-  min-width: 64dp;
+  min-width: 96dp;
   padding: 2dp 0;
   border-radius: 2dp;
 }

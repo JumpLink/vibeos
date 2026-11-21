@@ -341,17 +341,6 @@ launch_failed (GtkWidget *window, const GError *error)
     fm_shell_toast (shell, error->message);
 }
 
-static void
-on_launched (GObject *source, GAsyncResult *result, gpointer data)
-{
-  GtkWidget *window = data;
-  g_autoptr(GError) error = NULL;
-
-  if (!g_app_info_launch_default_for_uri_finish (result, &error))
-    launch_failed (window, error);
-  g_object_unref (window);
-}
-
 static gboolean
 launch_files (GtkWidget *window, GAppInfo *app, GList *files)
 {
@@ -365,49 +354,124 @@ launch_files (GtkWidget *window, GAppInfo *app, GList *files)
   return FALSE;
 }
 
+/* ---- opening a file: as an app opens from its icon ----------------------------------------------------------------- */
+
+/* A file opens in the app for its type, which gets its URI or GVfs's FUSE path for a server's file. The shell starts
+ * the app (vibeos.Shell.Open): out of the file's icon as an app out of its icon on the home screen, its splash until
+ * the window is there, and back at the window's root flies it back into the file. A shell without Open: the app is
+ * started here, as it was. */
+typedef struct {
+  GtkWidget *window;
+  GFile *file;
+  GAppInfo *app;
+  double box[4];        /* the icon it opens out of, in the window's surface px; no size: none */
+} OpenRequest;
+
+static void
+open_request_free (OpenRequest *r)
+{
+  g_object_unref (r->window);
+  g_object_unref (r->file);
+  g_clear_object (&r->app);
+  g_free (r);
+}
+
+static void
+open_here (OpenRequest *r)
+{
+  GList files = { r->file, NULL, NULL };
+
+  launch_files (r->window, r->app, &files);
+}
+
+static void
+on_shell_open (GObject *source, GAsyncResult *result, gpointer data)
+{
+  OpenRequest *r = data;
+  g_autoptr(GError) error = NULL;
+  g_autoptr(GVariant) ret = g_dbus_connection_call_finish (G_DBUS_CONNECTION (source), result, &error);
+
+  if (!ret)
+    {
+      g_debug ("vibeos.Shell.Open: %s", error->message);
+      open_here (r);
+    }
+  open_request_free (r);
+}
+
 static void
 on_default_handler (GObject *source, GAsyncResult *result, gpointer data)
 {
-  GtkWidget *window = data;
+  OpenRequest *r = data;
   g_autoptr(GError) error = NULL;
-  g_autoptr(GAppInfo) app = g_file_query_default_handler_finish (G_FILE (source), result, &error);
+  GDBusConnection *bus;
+  g_autofree char *uri = NULL;
+  const char *id;
 
-  if (!app)
-    launch_failed (window, error);
-  else
+  r->app = g_file_query_default_handler_finish (G_FILE (source), result, &error);
+  if (!r->app)
     {
-      GList files = { source, NULL, NULL };
-
-      launch_files (window, app, &files);
+      launch_failed (r->window, error);
+      open_request_free (r);
+      return;
     }
-  g_object_unref (window);
+  id = g_app_info_get_id (r->app);
+  bus = g_application_get_dbus_connection (g_application_get_default ());
+  if (!id || !bus)
+    {
+      open_here (r);
+      open_request_free (r);
+      return;
+    }
+  uri = g_file_get_uri (r->file);
+  g_dbus_connection_call (bus, "vibeos.Shell", "/vibeos/Shell", "vibeos.Shell", "Open",
+                          g_variant_new ("(ss(dddd))", uri, id, r->box[0], r->box[1], r->box[2], r->box[3]),
+                          NULL, G_DBUS_CALL_FLAGS_NO_AUTO_START, 5000, NULL, on_shell_open, r);
 }
 
-/* a local file by its URI, which goes through the OpenURI portal when the app is sandboxed; a server's file by the
- * app for its type, which gets the URI or GVfs's FUSE path for it */
+/* @from's box in its window's surface (what the shell places windows by) */
 static void
-open_file (FmShell *shell, GFile *file)
+surface_box (GtkWidget *from, double box[4])
 {
-  if (g_file_is_native (file))
-    {
-      g_autofree char *uri = g_file_get_uri (file);
-      g_autoptr(GAppLaunchContext) context = G_APP_LAUNCH_CONTEXT (gdk_display_get_app_launch_context (
-        gtk_widget_get_display (shell->window)));
+  GtkNative *native;
+  graphene_rect_t r;
+  double sx, sy;
 
-      g_app_info_launch_default_for_uri_async (uri, context, NULL, on_launched, g_object_ref (shell->window));
-    }
+  box[0] = box[1] = box[2] = box[3] = 0;
+  if (!from || !(native = gtk_widget_get_native (from))
+      || !gtk_widget_compute_bounds (from, GTK_WIDGET (native), &r))
+    return;
+  gtk_native_get_surface_transform (native, &sx, &sy);
+  box[0] = r.origin.x + sx;
+  box[1] = r.origin.y + sy;
+  box[2] = r.size.width;
+  box[3] = r.size.height;
+}
+
+static void
+open_file (FmShell *shell, GFile *file, GtkWidget *from)
+{
+  OpenRequest *r = g_new0 (OpenRequest, 1);
+
+  r->window = g_object_ref (shell->window);
+  r->file = g_object_ref (file);
+  surface_box (from, r->box);
+  g_file_query_default_handler_async (file, G_PRIORITY_DEFAULT, NULL, on_default_handler, r);
+}
+
+void
+fm_shell_open_item_from (FmShell *shell, GFile *location, gboolean is_folder, GtkWidget *from)
+{
+  if (is_folder)
+    fm_shell_open_location (shell, location);
   else
-    g_file_query_default_handler_async (file, G_PRIORITY_DEFAULT, NULL, on_default_handler,
-                                        g_object_ref (shell->window));
+    open_file (shell, location, from);
 }
 
 void
 fm_shell_open_item_location (FmShell *shell, GFile *location, gboolean is_folder)
 {
-  if (is_folder)
-    fm_shell_open_location (shell, location);
-  else
-    open_file (shell, location);
+  fm_shell_open_item_from (shell, location, is_folder, NULL);
 }
 
 /* ---- the selection's actions --------------------------------------------------------------------------------------- */
