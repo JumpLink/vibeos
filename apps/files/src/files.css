@@ -726,16 +726,25 @@ fm-drawer > .fm-drawer-scrim {
 
 /* ---- the popup menu ---- */
 
+/* the rows reach the card's top and bottom, as File Manager+'s menus do */
 .fm-popup {
   background-color: @vibeos_surface_container;
   border-radius: 2dp;
-  padding: 8dp 0;
   box-shadow: 0 2dp 8dp alpha(@vibeos_shadow, 0.5);
 }
 
 .fm-popup-item {
   min-height: 48dp;
   padding: 0 16dp;
+}
+
+/* an icon 8dp in, its label 9dp after it */
+.fm-popup-item.fm-popup-item-icon {
+  padding: 0 16dp 0 8dp;
+}
+
+.fm-popup-icon {
+  color: @vibeos_on_surface;
 }
 
 .fm-popup-text {

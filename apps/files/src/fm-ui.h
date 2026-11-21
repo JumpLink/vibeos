@@ -52,6 +52,9 @@ typedef enum {
 } FmPopupPlace;
 void       fm_popup_show    (GtkWidget *anchor, const char *const *labels, int n_labels, FmPopupPlace place,
                              double x, double y, FmPopupChosen chosen, gpointer data);
+/* the same with an icon before each label (@icons: n_labels icon names), as File Manager+'s selection menu has */
+void       fm_popup_show_icons (GtkWidget *anchor, const char *const *labels, const char *const *icons, int n_labels,
+                                FmPopupPlace place, double x, double y, FmPopupChosen chosen, gpointer data);
 /* closes the menu of @widget's window if one shows; TRUE when it did */
 gboolean   fm_popup_dismiss (GtkWidget *widget);
 
