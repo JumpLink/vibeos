@@ -251,7 +251,7 @@ tiles_load (int cols, int rows)
   g_autoptr (GHashTable) apps = apps_installed ();
   N.tiles = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, (GDestroyNotify) tile_free);
   N.sorted = g_ptr_array_new ();
-  N.label_font = text_font_axes ("Google Sans Flex", 700, dp (N.tablet ? TAB_LABEL_SP : LABEL_SP), "opsz=72,ROND=100");
+  N.label_font = text_font_axes ("VibeOS Roboto", 700, dp (N.tablet ? TAB_LABEL_SP : LABEL_SP), "opsz=72,ROND=100");
 
   N.model = model_new (cols, rows, N.tablet ? TAB_DOCK_SLOTS : DOCK_SLOTS);
   model_set_reserved (N.model, cols);                 /* the clock widget's row on the first page */

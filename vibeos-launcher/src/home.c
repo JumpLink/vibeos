@@ -149,8 +149,8 @@ home_layout (void)
   H.page = CLAMP (H.page, 0, n_pages () - 1);
   H.scroll = H.page * H.pitch;
   if (!H.time_font) {
-    H.time_font = text_font_axes ("Google Sans Flex", 600, dp (CLOCK_TIME_DP), "opsz=144,wdth=86");
-    H.date_font = text_font_axes ("Google Sans Flex", 700, dp (CLOCK_DATE_DP), "opsz=18,ROND=100");
+    H.time_font = text_font_axes ("VibeOS Roboto", 600, dp (CLOCK_TIME_DP), "opsz=144,wdth=86");
+    H.date_font = text_font_axes ("VibeOS Roboto", 700, dp (CLOCK_DATE_DP), "opsz=18,ROND=100");
   }
   home_clock_tick ();
 }

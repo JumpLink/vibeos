@@ -191,7 +191,7 @@ drawer_layout (void)
 {
   if (!D.hint) {
     D.query = g_string_new (NULL);
-    D.search_font = text_font_axes ("Google Sans Flex", 400, dp (SEARCH_TEXT_SP), "opsz=16");
+    D.search_font = text_font_axes ("VibeOS Roboto", 400, dp (SEARCH_TEXT_SP), "opsz=16");
     D.hint = text_layout (D.search_font, "Search apps", 0, 1, TEXT_LEFT);
     int px = (int) lroundf (dp (24));
     RsvgHandle *h = rsvg_handle_new_from_data ((const guint8 *) SEARCH_SVG, sizeof SEARCH_SVG - 1, NULL);

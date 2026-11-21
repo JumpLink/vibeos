@@ -47,7 +47,7 @@
 #define BAR_STROKE_DP     2
 #define BAR_HIT_BELOW_DP  20
 #define BAR_MIN_PATH_DP   30
-#define CAP_HEIGHT        0.716f      /* Google Sans Flex */
+#define CAP_HEIGHT        0.711f      /* VibeOS Roboto: capHeight 1456 / 2048 */
 #define HOVER_ALPHA       0.65f
 #define ACCENT_RGB        0xB8EBF3    /* the drop bar's ink and the drop preview */
 #define ON_ACCENT_RGB     0x001F23    /* the ink over a hovered drop target's fill */
@@ -650,7 +650,7 @@ static TextLayout *
 bar_label (void)
 {
   if (!G.font) {
-    G.font = text_font_axes ("Google Sans Flex", 600, dp (BAR_TEXT_SP), "opsz=16");
+    G.font = text_font_axes ("VibeOS Roboto", 600, dp (BAR_TEXT_SP), "opsz=16");
     G.remove = text_layout (G.font, "Remove", 0, 1, TEXT_LEFT);
     G.cancel = text_layout (G.font, "Cancel", 0, 1, TEXT_LEFT);
     G.glyph = svg_texture (REMOVE_SVG, (int) lroundf (dp (BAR_ICON_DP)));

@@ -27,7 +27,7 @@
 #define TEXT_X_DP         54
 #define TEXT_END_DP       16
 #define TEXT_SP           14
-#define CAP_HEIGHT        0.716f        /* Google Sans Flex: capHeight 1432 / 2000 */
+#define CAP_HEIGHT        0.711f        /* VibeOS Roboto: capHeight 1456 / 2048 */
 #define APP_ICON_DP       32            /* a shortcut's row shows the app's icon */
 #define APP_ICON_X_DP     11.5
 #define ABOVE_GAP_DP      15
@@ -119,7 +119,7 @@ load_icons (void)
 {
   if (P.font)
     return;
-  P.font = text_font_axes ("Google Sans Flex", 600, dp (TEXT_SP), "opsz=14");
+  P.font = text_font_axes ("VibeOS Roboto", 600, dp (TEXT_SP), "opsz=14");
   int px = (int) lroundf (dp (SYS_ICON_DP));
   for (int i = 0; i < N_ICONS; i++)
     P.icons[i] = svg_texture (SVGS[i], px);
