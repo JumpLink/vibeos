@@ -350,6 +350,8 @@ apps_thread (GTask *task, gpointer src, gpointer data, GCancellable *cancel)
   g_task_return_boolean (task, TRUE);
 }
 
+static void own_gnome_settings_name (GApplication *app);
+
 static void
 startup (GApplication *app, gpointer data)
 {
@@ -363,6 +365,7 @@ startup (GApplication *app, gpointer data)
   ns_bt_init ();
   ns_sound_init ();
   ns_caps_init ();
+  own_gnome_settings_name (app);
   g_autoptr (GTask) t = g_task_new (NULL, NULL, NULL, NULL);
   g_task_run_in_thread (t, apps_thread);
 }
@@ -414,6 +417,9 @@ static const struct {
   { "system", ns_page_general },
   { "universal-access", ns_page_accessibility }, { "accessibility", ns_page_accessibility },
   { "info-overview", ns_page_about }, { "about", ns_page_about },
+  /* GNOME Settings' panels VibeOS has no page of its own for: the nearest one */
+  { "color", ns_page_display }, { "wacom", ns_page_mouse, ns_page_general },
+  { "thunderbolt", ns_page_connected_devices },
 };
 
 static void
@@ -456,6 +462,73 @@ launch_panel (GSimpleAction *action, GVariant *param, gpointer app)
   const char *arg = inner && g_variant_is_of_type (inner, G_VARIANT_TYPE_STRING) ? g_variant_get_string (inner, NULL)
                                                                                    : NULL;
   open_page (app, name, arg);
+}
+
+/* ---- GNOME Settings' name. VibeOS Settings replaces GNOME Settings (gnome-control-center): it owns
+ * org.gnome.Settings on the session bus too and answers org.freedesktop.Application there, so whatever opens a GNOME
+ * Settings panel the D-Bus way (GNOME Shell's network menu, an app's Online Accounts or Date & Time button:
+ * ActivateAction ("launch-panel", [<(panel, [args])>], platform data) at /org/gnome/Settings) opens this app's page.
+ * Its desktop files and gnome-control-center command are this package's too (data/). */
+#define GNOME_SETTINGS_NAME "org.gnome.Settings"
+#define GNOME_SETTINGS_PATH "/org/gnome/Settings"
+
+static const char gnome_settings_xml[] =
+  "<node><interface name='org.freedesktop.Application'>"
+  "<method name='Activate'><arg type='a{sv}' direction='in'/></method>"
+  "<method name='Open'><arg type='as' direction='in'/><arg type='a{sv}' direction='in'/></method>"
+  "<method name='ActivateAction'><arg type='s' direction='in'/><arg type='av' direction='in'/>"
+  "<arg type='a{sv}' direction='in'/></method>"
+  "</interface></node>";
+
+static void
+gnome_settings_call (GDBusConnection *bus, const char *sender, const char *path, const char *iface, const char *method,
+                     GVariant *params, GDBusMethodInvocation *call, gpointer app)
+{
+  GApplicationClass *klass = G_APPLICATION_GET_CLASS (app);
+  /* the platform data is each method's last argument; its activation token gives the window the focus */
+  g_autoptr (GVariant) platform = g_variant_get_child_value (params, g_variant_n_children (params) - 1);
+  g_autoptr (GVariant) value = NULL;
+  const char *action = NULL;
+
+  if (g_str_equal (method, "ActivateAction")) {
+    g_autoptr (GVariant) args = g_variant_get_child_value (params, 1);
+    g_variant_get_child (params, 0, "&s", &action);
+    if (g_variant_n_children (args)) {
+      g_autoptr (GVariant) boxed = g_variant_get_child_value (args, 0);
+      value = g_variant_get_variant (boxed);
+    }
+    const GVariantType *type = NULL;
+    gboolean enabled = FALSE;
+    if (!g_action_group_query_action (G_ACTION_GROUP (app), action, &enabled, &type, NULL, NULL, NULL) || !enabled ||
+        (type == NULL) != (value == NULL) || (type && !g_variant_is_of_type (value, type))) {
+      g_dbus_method_invocation_return_error (call, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+                                             "VibeOS Settings has no action '%s' taking that parameter", action);
+      return;
+    }
+  }
+  klass->before_emit (G_APPLICATION (app), platform);
+  if (action)
+    g_action_group_activate_action (G_ACTION_GROUP (app), action, value);
+  else
+    g_application_activate (G_APPLICATION (app));
+  klass->after_emit (G_APPLICATION (app), platform);
+  g_dbus_method_invocation_return_value (call, NULL);
+}
+
+static void
+own_gnome_settings_name (GApplication *app)
+{
+  GDBusConnection *bus = g_application_get_dbus_connection (app);
+  if (!bus)
+    return;
+  static const GDBusInterfaceVTable vtable = { gnome_settings_call, NULL, NULL, { NULL } };
+  g_autoptr (GDBusNodeInfo) node = g_dbus_node_info_new_for_xml (gnome_settings_xml, NULL);
+  g_autoptr (GError) error = NULL;
+  if (!g_dbus_connection_register_object (bus, GNOME_SETTINGS_PATH, node->interfaces[0], &vtable, app, NULL, &error)) {
+    g_warning ("cannot answer for GNOME Settings: %s", error->message);
+    return;
+  }
+  g_bus_own_name_on_connection (bus, GNOME_SETTINGS_NAME, G_BUS_NAME_OWNER_FLAGS_NONE, NULL, NULL, NULL, NULL);
 }
 
 static int

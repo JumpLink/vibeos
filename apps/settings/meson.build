@@ -45,3 +45,21 @@ service = configuration_data()
 service.set('bindir', get_option('prefix') / get_option('bindir'))
 configure_file(input: 'data/vibeos.Settings.service.in', output: 'vibeos.Settings.service',
                configuration: service, install_dir: get_option('datadir') / 'dbus-1' / 'services')
+
+# VibeOS Settings replaces GNOME Settings (gnome-control-center): GNOME's desktop files (the app's, and one per panel,
+# which GNOME Shell's menus open), its name on the session bus (src/main.c answers it) and its command all open
+# VibeOS Settings, at the panel's page
+gnome_panels = ['about', 'applications', 'background', 'bluetooth', 'color', 'datetime', 'display', 'keyboard',
+                'mouse', 'multitasking', 'network', 'notifications', 'online-accounts', 'power', 'printers', 'privacy',
+                'region', 'search', 'sharing', 'sound', 'system', 'thunderbolt', 'universal-access', 'users', 'wacom',
+                'wellbeing', 'wifi', 'wwan']
+foreach panel : gnome_panels
+  panel_conf = configuration_data()
+  panel_conf.set('panel', panel)
+  configure_file(input: 'data/gnome-panel.desktop.in', output: 'gnome-@0@-panel.desktop'.format(panel),
+                 configuration: panel_conf, install_dir: get_option('datadir') / 'applications')
+endforeach
+install_data('data/org.gnome.Settings.desktop', install_dir: get_option('datadir') / 'applications')
+configure_file(input: 'data/org.gnome.Settings.service.in', output: 'org.gnome.Settings.service',
+               configuration: service, install_dir: get_option('datadir') / 'dbus-1' / 'services')
+install_data('data/gnome-control-center', install_dir: get_option('bindir'), install_mode: 'rwxr-xr-x')
