@@ -47,7 +47,7 @@ typedef struct {
   GtkWidget *color_button, *tz_row, *tz_button, *guests;
   GtkWidget *location, *description, *url, *repeat_row, *repeat, *reminders, *add_reminder;
   GtkWidget *availability, *access;
-  GtkWidget *scroll, *content;
+  GtkWidget *scroll, *content, *clamp;
   gboolean saving;
 } Editor;
 
@@ -1072,8 +1072,9 @@ build (Editor *editor)
   }
 
   editor->content = content;
+  editor->clamp = vibeos_clamp_new (content, -1);
   editor->scroll = spongy_scroll_view_new ();
-  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (editor->scroll), content);
+  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (editor->scroll), editor->clamp);
   gtk_widget_set_vexpand (editor->scroll, TRUE);
   gtk_box_append (GTK_BOX (page), editor->scroll);
 }
@@ -1086,16 +1087,15 @@ focus_title (GtkWidget *title)
   gtk_editable_set_position (GTK_EDITABLE (title), -1);
 }
 
-/* a tablet's editor fills the screen, its fields a centred column */
+/* a tablet's editor fills the screen, its fields a centred column (a clamp, not margins: margins worked out from the
+ * width held the window too wide to turn upright) */
 static void
 on_layout_changed (VibeosLayout *layout, GtkWidget *page)
 {
   Editor *editor = g_object_get_data (G_OBJECT (page), "cal-editor");
   int cap = vibeos_layout_is_landscape (layout) ? TABLET_WIDE_WIDTH : TABLET_WIDTH;
-  int margin = vibeos_layout_is_tablet (layout) ? MAX (0, (vibeos_layout_get_width (layout) - cap) / 2) : 0;
 
-  gtk_widget_set_margin_start (editor->content, margin);
-  gtk_widget_set_margin_end (editor->content, margin);
+  vibeos_clamp_set_maximum (VIBEOS_CLAMP (editor->clamp), vibeos_layout_is_tablet (layout) ? cap : -1);
 }
 
 static GtkWidget *
