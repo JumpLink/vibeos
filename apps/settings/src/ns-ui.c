@@ -889,6 +889,7 @@ ns_row_flag (GtkWidget *group, const char *title, const char *subtitle, GSetting
 
 typedef struct {
   char     **labels;
+  char     **summaries;         /* or NULL: the labels */
   guint      selected;
   NsPicked   picked;
   gpointer   data;
@@ -927,6 +928,7 @@ static void
 pick_free (Pick *p)
 {
   g_strfreev (p->labels);
+  g_strfreev (p->summaries);
   g_free (p);
 }
 
@@ -951,8 +953,20 @@ void
 ns_row_pick_select (GtkWidget *row, guint selected)
 {
   Pick *p = g_object_get_data (G_OBJECT (row), "ns-pick");
+  char **says = p->summaries ? p->summaries : p->labels;
+
   p->selected = selected;
-  ns_row_set_subtitle (row, selected < g_strv_length (p->labels) ? p->labels[selected] : NULL);
+  ns_row_set_subtitle (row, selected < g_strv_length (says) ? says[selected] : NULL);
+}
+
+void
+ns_row_pick_set_summaries (GtkWidget *row, const char *const *summaries)
+{
+  Pick *p = g_object_get_data (G_OBJECT (row), "ns-pick");
+
+  g_strfreev (p->summaries);
+  p->summaries = g_strdupv ((char **) summaries);
+  ns_row_pick_select (row, p->selected);
 }
 
 /* ---- a typed value ---- */

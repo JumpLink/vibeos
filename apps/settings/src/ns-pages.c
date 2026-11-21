@@ -572,7 +572,7 @@ adaptive_row (GtkWidget *g, GSettings *power)
 {
   if (!ns_has_key (power, "ambient-enabled"))
     return;
-  GtkWidget *r = ns_row_switch (g, "Adaptive brightness", "Follows the light around you", power, "ambient-enabled");
+  GtkWidget *r = ns_row_switch (g, "Adaptive brightness", NULL, power, "ambient-enabled");
   gtk_widget_set_visible (r, FALSE);
   g_autoptr (GDBusConnection) bus = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, NULL);
   if (bus)
@@ -595,20 +595,44 @@ dark_set (const GValue *value, const GVariantType *type, gpointer data)
   return g_variant_new_string (g_value_get_boolean (value) ? "prefer-dark" : "default");
 }
 
+/* Android's summary: what a schedule would do, and there is none */
+static void
+dark_say (GSettings *iface, const char *key, GtkWidget *row)
+{
+  g_autofree char *scheme = g_settings_get_string (iface, "color-scheme");
+
+  ns_row_set_subtitle (row, !g_strcmp0 (scheme, "prefer-dark") ? "Will never turn off automatically"
+                                                                 : "Will never turn on automatically");
+}
+
 static GtkWidget *
 dark_row (GtkWidget *g, GSettings *iface)
 {
-  GtkWidget *r = ns_row_switch (g, "Dark theme", "Dark backgrounds for apps and the system", NULL, NULL);
+  GtkWidget *r = ns_row_switch (g, "Dark theme", NULL, NULL, NULL);
   g_settings_bind_with_mapping (iface, "color-scheme", ns_row_get_switch (r), "active", G_SETTINGS_BIND_DEFAULT,
                                 dark_get, dark_set, NULL, NULL);
+  g_signal_connect_object (iface, "changed::color-scheme", G_CALLBACK (dark_say), r, 0);
+  dark_say (iface, NULL, r);
   return r;
 }
 
 /* Font size: org.gnome.desktop.interface text-scaling-factor, which GNOME's apps follow too */
 static const double text_scales[] = { 0.85, 1.0, 1.15, 1.3, 1.5, 1.8, 2.0 };
-static const guint timeouts[] = { 30, 60, 120, 300, 600, 0 };
-static const char *const timeout_labels[] = { "30 seconds", "1 minute", "2 minutes", "5 minutes", "10 minutes",
-                                              "Never", NULL };
+static const guint timeouts[] = { 15, 30, 60, 120, 300, 600, 1800, 0 };
+static const char *const timeout_labels[] = { "15 seconds", "30 seconds", "1 minute", "2 minutes", "5 minutes",
+                                              "10 minutes", "30 minutes", "Never", NULL };
+static const char *const timeout_summaries[] = {
+  "After 15 seconds of inactivity", "After 30 seconds of inactivity", "After 1 minute of inactivity",
+  "After 2 minutes of inactivity", "After 5 minutes of inactivity", "After 10 minutes of inactivity",
+  "After 30 minutes of inactivity", "Never", NULL };
+
+/* the lock screen row's summary: what the lock screen shows of notifications, as Android's says */
+static void
+lock_say (GSettings *notifications, const char *key, GtkWidget *row)
+{
+  ns_row_set_subtitle (row, g_settings_get_boolean (notifications, "show-in-lock-screen")
+                              ? "Show notification icons" : "Don't show any notifications");
+}
 
 
 static void
@@ -635,17 +659,24 @@ ns_page_display (GtkWidget *row, gpointer data)
 
   g = ns_group (c, "Lock display");
   GSettings *vibeos = ns_page_settings (page, "vibeos.Shell");
-  if (vibeos && ns_has_key (vibeos, "lock-type"))
-    page_row (g, NULL, "Lock screen", "Screen lock type, what it shows", ns_page_lock_screen);
+  if (vibeos && ns_has_key (vibeos, "lock-type")) {
+    GtkWidget *lock = page_row (g, NULL, "Lock screen", NULL, ns_page_lock_screen);
+    GSettings *notifications = ns_page_settings (page, "org.gnome.desktop.notifications");
+    if (notifications) {
+      g_signal_connect_object (notifications, "changed::show-in-lock-screen", G_CALLBACK (lock_say), lock, 0);
+      lock_say (notifications, NULL, lock);
+    }
+  }
   if (vibeos && ns_has_key (vibeos, "aod") && ns_panel_is_oled ())
     ns_row_switch (g, "Always On Display", "The time, battery and notifications on a black screen while it is off",
                    vibeos, "aod");
   GSettings *session = ns_page_settings (page, "org.gnome.desktop.session");
-  guint idle = g_settings_get_uint (session, "idle-delay"), sel = 1;
+  guint idle = g_settings_get_uint (session, "idle-delay"), sel = 2;
   for (guint i = 0; i < G_N_ELEMENTS (timeouts); i++)
     if (timeouts[i] == idle)
       sel = i;
-  ns_row_pick (g, "Screen timeout", timeout_labels, sel, timeout_picked, session);
+  GtkWidget *timeout = ns_row_pick (g, "Screen timeout", timeout_labels, sel, timeout_picked, session);
+  ns_row_pick_set_summaries (timeout, timeout_summaries);
 
   g = ns_group (c, "Appearance");
   dark_row (g, iface);

@@ -103,6 +103,9 @@ typedef void (*NsPicked) (GtkWidget *row, guint index, gpointer data);
 GtkWidget *ns_row_pick (GtkWidget *group, const char *title, const char *const *labels, guint selected,
                         NsPicked picked, gpointer data);
 void       ns_row_pick_select (GtkWidget *row, guint selected);
+/* what the row says under its title for each choice, in place of the choice's label ("After 1 minute of
+ * inactivity" for "1 minute"); copied, as many as the labels */
+void       ns_row_pick_set_summaries (GtkWidget *row, const char *const *summaries);
 /* a check mark at a picker row's end: shown on the row picked */
 GtkWidget *ns_mark_new (gboolean on);
 /* a string or integer key, typed in a dialog */
