@@ -7,6 +7,7 @@
 #include <glib/gi18n.h>
 #include <spongy-gtk.h>
 #include <stdlib.h>
+#include <vibeos.h>
 
 /* --- rows: an icon (its space kept without one), the title, the summary under it, an optional widget at the
  * end */
@@ -151,7 +152,8 @@ cal_pref_page (GtkWidget *window, const char *title, GtkWidget **list)
   gtk_box_append (GTK_BOX (page), cal_page_toolbar (CAL_PAGE (page), title, NULL));
   *list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (*list, "cal-pref-list");
-  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), *list);
+  /* on a tablet the rows are a column in the middle */
+  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), vibeos_clamp_new (*list, VIBEOS_CLAMP_SETTINGS));
   gtk_widget_set_vexpand (scroll, TRUE);
   gtk_box_append (GTK_BOX (page), scroll);
   return page;
