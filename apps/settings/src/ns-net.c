@@ -1090,7 +1090,8 @@ ns_page_hotspot (GtkWidget *row, gpointer data)
   GtkWidget *g = ns_group (c, NULL);
   h->power = ns_row_toggle (g, NULL, "Use Wi-Fi hotspot", "Off");
   g_signal_connect (ns_row_get_switch (h->power), "notify::active", G_CALLBACK (hot_power), page);
-  h->none = ns_note (c, "This phone's Wi-Fi cannot be an access point.");
+  g_autofree char *no_hotspot = g_strdup_printf ("This %s's Wi-Fi cannot be an access point.", ns_device_noun ());
+  h->none = ns_note (c, no_hotspot);
   gtk_widget_set_visible (h->none, FALSE);
 
   g = ns_group (c, NULL);
@@ -1102,7 +1103,9 @@ ns_page_hotspot (GtkWidget *row, gpointer data)
 
   h->clients = ns_group (c, "Connected devices");
   ns_group_set_visible (h->clients, FALSE);
-  ns_note (c, "Other devices use the phone's mobile data. Wi-Fi is off while the hotspot is on.");
+  g_autofree char *shared = g_strdup_printf ("Other devices use the %s's mobile data. Wi-Fi is off while the hotspot "
+                                             "is on.", ns_device_noun ());
+  ns_note (c, shared);
   h->poll = g_timeout_add_seconds (5, hot_clients, page);
   with_client (page, hot_fill);
   ns_push (page);
@@ -1265,8 +1268,10 @@ ns_page_mobile (GtkWidget *row, gpointer data)
   m->data = ns_row_toggle (g, NULL, "Mobile data", NULL);
   g_signal_connect (ns_row_get_switch (m->data), "notify::active", G_CALLBACK (mobile_data), NULL);
   GSettings *wwan = ns_page_settings (page, "org.gnome.settings-daemon.plugins.wwan");
-  if (ns_has_key (wwan, "unlock-sim"))
-    ns_row_switch (g, "Ask for the SIM PIN", "When the phone starts", wwan, "unlock-sim");
+  if (ns_has_key (wwan, "unlock-sim")) {
+    g_autofree char *when = g_strdup_printf ("When the %s starts", ns_device_noun ());
+    ns_row_switch (g, "Ask for the SIM PIN", when, wwan, "unlock-sim");
+  }
   m->apns = ns_group (c, "Access point names");
   ns_group_set_visible (m->apns, FALSE);
   m->info = ns_group (c, "SIM and network");

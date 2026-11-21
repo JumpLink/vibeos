@@ -1,6 +1,7 @@
 /* Language and region, Date and time, Users, Power, Wallpapers and Software information. The system services
  * (AccountsService, localed, timedated) are asked in the background; what needs the administrator's password asks
  * through polkit, whose prompt GNOME Shell shows. */
+#include "ns-caps.h"
 #include "ns-bt.h"
 #include "ns-pages.h"
 #include "ns-ui.h"
@@ -552,8 +553,10 @@ ns_page_datetime (GtkWidget *row, gpointer data)
   t->ntp = ns_row_switch (g, "Automatic date and time", "From the network", NULL, NULL);
   g_signal_connect (ns_row_get_switch (t->ntp), "notify::active", G_CALLBACK (ntp_set), NULL);
   GSettings *dt = ns_page_settings (page, "org.gnome.desktop.datetime");
-  if (ns_has_key (dt, "automatic-timezone"))
-    ns_row_switch (g, "Automatic time zone", "From the phone's location", dt, "automatic-timezone");
+  if (ns_has_key (dt, "automatic-timezone")) {
+    g_autofree char *from = g_strdup_printf ("From the %s's location", ns_device_noun ());
+    ns_row_switch (g, "Automatic time zone", from, dt, "automatic-timezone");
+  }
   t->zone = ns_row (g, NULL, "Time zone", NULL);
   ns_row_on_activate (t->zone, zones_page, page);
 
@@ -776,8 +779,9 @@ ns_page_power (GtkWidget *row, gpointer data)
     g = ns_group (c, "Automatic suspend");
     sleep_row (g, power, "On battery", "battery");
     sleep_row (g, power, "Plugged in", "ac");
-    ns_note (c, "Suspend saves the most power, but calls, messages and alarms can be missed while the phone "
-                "sleeps.");
+    g_autofree char *missed = g_strdup_printf ("Suspend saves the most power, but calls, messages and alarms can be "
+                                              "missed while the %s sleeps.", ns_device_noun ());
+    ns_note (c, missed);
   }
   g = ns_group (c, NULL);
   /* gnome-settings-daemon dims the backlight through the shell a little before the screen timeout */
@@ -789,8 +793,10 @@ ns_page_power (GtkWidget *row, gpointer data)
                     G_FILE_TEST_EXISTS) ||
        g_file_test ("/usr/share/dbus-1/system-services/net.hadess.PowerProfiles.service", G_FILE_TEST_EXISTS)))
     ns_row_switch (g, "Power saving on low battery", NULL, power, "power-saver-profile-on-low-battery");
-  if (ns_screen_off_sleeper ())
-    ns_note (c, "This phone sleeps as soon as its screen is off.");
+  if (ns_screen_off_sleeper ()) {
+    g_autofree char *sleeps = g_strdup_printf ("This %s sleeps as soon as its screen is off.", ns_device_noun ());
+    ns_note (c, sleeps);
+  }
   ns_push (page);
 }
 
