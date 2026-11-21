@@ -495,7 +495,8 @@ ct_settings_new (GtkWidget *window)
   gtk_widget_set_visible (s->about_rows, FALSE);
   gtk_box_append (GTK_BOX (content), s->about_rows);
 
-  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), content);
+  /* on a tablet the rows are a column in the middle */
+  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), vibeos_clamp_new (content, VIBEOS_CLAMP_SETTINGS));
   gtk_overlay_set_child (GTK_OVERLAY (overlay), scroll);
   gtk_widget_add_css_class (shadow, "ct-toolbar-shadow");
   gtk_widget_add_css_class (shadow, "settings");
@@ -678,7 +679,7 @@ customize_new (GtkWidget *window, GtkWidget *filter_page)
       gtk_box_append (GTK_BOX (c->rows), row);
     }
   c->initial = customize_state (c);
-  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), c->rows);
+  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), vibeos_clamp_new (c->rows, VIBEOS_CLAMP_SETTINGS));
   gtk_widget_set_vexpand (scroll, TRUE);
   gtk_box_append (GTK_BOX (page), scroll);
   return page;
