@@ -55,6 +55,16 @@ vibeos_clamp_size_allocate (GtkWidget *widget, int width, int height, int baseli
                        gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT ((width - child) / 2, 0)));
 }
 
+/* the child's expand is the clamp's (GtkWidget's own compute_expand does not look at the children) */
+static void
+vibeos_clamp_compute_expand (GtkWidget *widget, gboolean *hexpand, gboolean *vexpand)
+{
+  VibeosClamp *self = VIBEOS_CLAMP (widget);
+
+  *hexpand = self->child && gtk_widget_compute_expand (self->child, GTK_ORIENTATION_HORIZONTAL);
+  *vexpand = self->child && gtk_widget_compute_expand (self->child, GTK_ORIENTATION_VERTICAL);
+}
+
 static GtkSizeRequestMode
 vibeos_clamp_get_request_mode (GtkWidget *widget)
 {
@@ -79,6 +89,7 @@ vibeos_clamp_class_init (VibeosClampClass *klass)
   widget_class->measure = vibeos_clamp_measure;
   widget_class->size_allocate = vibeos_clamp_size_allocate;
   widget_class->get_request_mode = vibeos_clamp_get_request_mode;
+  widget_class->compute_expand = vibeos_clamp_compute_expand;
   gtk_widget_class_set_css_name (widget_class, "vibeos-clamp");
 }
 
