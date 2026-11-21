@@ -4,11 +4,18 @@
  * The heading comes from iio-sensor-proxy (net.hadess.SensorProxy.Compass, fed by the sensor hub's
  * bcm4775-compass); the dial turns so its N points at magnetic north. The position comes from GeoClue.
  *
+ * The sensor's heading is where the device's top edge points. The screen may be turned (a tablet on its side): the
+ * dial shows where the screen's top points, the heading less the turn, read from Mutter's DisplayConfig.
+ *
  * Both are claimed only while the window is in front: in the background the sensor hub stops streaming (several
  * DSP and CPU wakeups a second) and the GPS is let go. iio-sensor-proxy crashes on a quick claim / release / claim
  * of the compass, so the sensor is released only after 3 s in the background, and coming back within that time
- * keeps it. */
-#include <adwaita.h>
+ * keeps it.
+ *
+ * The window and its colours are libvibeos's: the dial is drawn in the theme's colours, light or dark, with north
+ * and the pointer in its error red. The dial's text grows with the dial; the line under it follows Font size, and
+ * all of it Bold text. */
+#include <vibeos.h>
 #include <math.h>
 
 #define APP_ID      "vibeos.Compass"
@@ -21,6 +28,7 @@
 /* the needle closes 15 % of the gap per 60 Hz frame in the GJS app; as a time constant it is the same at 120 Hz */
 #define EASE_TAU_US 102600.0
 #define GEO_EXACT   8          /* GClueAccuracyLevel: exact (the dial prints tenths of a second) */
+#define PHONE_RADIUS 155.0     /* the dial's radius on an upright phone, which the ticks and pointer are drawn for */
 
 static const char *const NAMES[] = {"N", "NE", "E", "SE", "S", "SW", "W", "NW"};
 
@@ -32,7 +40,11 @@ typedef struct {
   GDBusProxy   *sensor;
   gboolean      sensor_asked;   /* the proxy is being made */
   gboolean      claimed;
-  double        heading;        /* degrees, < 0 = no reading yet */
+  double        heading;        /* degrees, < 0 = no reading yet: where the screen's top points */
+  double        sensor_heading; /* ... where the device's top points, as the sensor gives it */
+  int           rotation;       /* the screen's clockwise turn from the device's own upright, degrees */
+  GDBusConnection *session;
+  guint         display_signal;
   double        shown;          /* where the dial is drawn, easing towards heading */
   guint         tick_id;
   gint64        last_frame;
@@ -106,8 +118,71 @@ on_sensor_props (GDBusProxy *proxy, GVariant *changed, GStrv invalidated, gpoint
 
   if (!g_variant_lookup (changed, "CompassHeading", "d", &h) || h < 0)   /* -1: not known yet */
     return;
-  c->heading = h;
+  c->sensor_heading = h;
+  c->heading = fmod (h - c->rotation + 360.0, 360.0);
   start_tick (c);
+}
+
+/* ---- the screen's turn (Mutter's DisplayConfig) ---- */
+
+/* GetCurrentState's logical monitors: (x, y, scale, transform, primary, monitors, properties). The transform is
+ * Mutter's: 1 is a 90° turn, a device with its left edge up, so its quarter turns are the device's clockwise turn
+ * the screen is laid out for; the flipped transforms (4…7) count as their turn. Without DisplayConfig (another
+ * compositor) the screen is taken as upright. */
+static void
+on_display_state (GObject *object, GAsyncResult *result, gpointer data)
+{
+  Compass *c = data;
+  g_autoptr (GVariant) reply = g_dbus_connection_call_finish (G_DBUS_CONNECTION (object), result, NULL);
+  g_autoptr (GVariant) logical = NULL;
+  GVariantIter iter;
+  guint32 transform, chosen = 0;
+  gboolean primary, found = FALSE;
+
+  if (!reply)
+    return;
+  logical = g_variant_get_child_value (reply, 2);
+  g_variant_iter_init (&iter, logical);
+  while (g_variant_iter_next (&iter, "(iiduba(ssss)@a{sv})", NULL, NULL, NULL, &transform, &primary, NULL, NULL))
+    if (!found || primary) {
+      chosen = transform;
+      found = TRUE;
+      if (primary)
+        break;
+    }
+  c->rotation = (int) (chosen % 4) * 90;
+  if (c->heading >= 0) {
+    c->heading = fmod (c->sensor_heading - c->rotation + 360.0, 360.0);
+    start_tick (c);
+  }
+}
+
+static void
+read_display (Compass *c)
+{
+  g_dbus_connection_call (c->session, "org.gnome.Mutter.DisplayConfig", "/org/gnome/Mutter/DisplayConfig",
+                          "org.gnome.Mutter.DisplayConfig", "GetCurrentState", NULL, NULL, G_DBUS_CALL_FLAGS_NONE,
+                          -1, NULL, on_display_state, c);
+}
+
+static void
+on_monitors_changed (GDBusConnection *connection, const char *sender, const char *path, const char *interface,
+                     const char *signal, GVariant *parameters, gpointer data)
+{
+  read_display (data);
+}
+
+static void
+watch_display (Compass *c)
+{
+  c->session = g_application_get_dbus_connection (g_application_get_default ());
+  if (!c->session)
+    return;
+  g_object_ref (c->session);
+  c->display_signal = g_dbus_connection_signal_subscribe (c->session, NULL, "org.gnome.Mutter.DisplayConfig",
+                                                          "MonitorsChanged", "/org/gnome/Mutter/DisplayConfig", NULL,
+                                                          G_DBUS_SIGNAL_FLAGS_NONE, on_monitors_changed, c, NULL);
+  read_display (c);
 }
 
 static void
@@ -370,15 +445,17 @@ rad (double d)
   return d * G_PI / 180.0;
 }
 
-/* text in the dial's font, size in px; returns its ink extents through ink */
+/* text in the window's font, size in px, regular or (bold) a little heavier, both as Bold text draws them;
+ * returns its ink extents through ink */
 static PangoLayout *
 text_layout (GtkWidget *w, const char *text, double size, gboolean bold, PangoRectangle *ink)
 {
   PangoLayout *layout = gtk_widget_create_pango_layout (w, text);
-  PangoFontDescription *font = pango_font_description_from_string ("Sans");
+  PangoContext *context = pango_layout_get_context (layout);
+  PangoFontDescription *font = pango_font_description_copy (pango_context_get_font_description (context));
 
   pango_font_description_set_absolute_size (font, size * PANGO_SCALE);
-  pango_font_description_set_weight (font, bold ? PANGO_WEIGHT_BOLD : PANGO_WEIGHT_NORMAL);
+  pango_font_description_set_weight (font, vibeos_font_weight (bold ? 600 : 400));
   pango_layout_set_font_description (layout, font);
   pango_font_description_free (font);
   pango_layout_get_pixel_extents (layout, ink, NULL);
@@ -400,15 +477,16 @@ centred (cairo_t *cr, GtkWidget *w, const char *text, double size, gboolean bold
 /* text along the dial: centred on its own middle at dist from the centre, turned to angle a */
 static void
 along (cairo_t *cr, GtkWidget *w, double a, double dist, const char *text, double size, gboolean bold,
-       double r, double g, double b)
+       VibeosColor color)
 {
   PangoRectangle ink;
   g_autoptr (PangoLayout) layout = text_layout (w, text, size, bold, &ink);
+  GdkRGBA rgba = vibeos_color (color);
 
   cairo_save (cr);
   cairo_rotate (cr, rad (a));
   cairo_translate (cr, 0, -dist);
-  cairo_set_source_rgb (cr, r, g, b);
+  gdk_cairo_set_source_rgba (cr, &rgba);
   cairo_move_to (cr, -ink.width / 2.0 - ink.x, -ink.height / 2.0 - ink.y);
   pango_cairo_show_layout (cr, layout);
   cairo_restore (cr);
@@ -425,8 +503,17 @@ dms (char *out, gsize n, double v, const char *pos, const char *neg)
   g_snprintf (out, n, "%d°%02d'%.1f\"%s", d, m, s, v >= 0 ? pos : neg);
 }
 
-/* A round dark dial: ticks and degrees on the rim, N/E/S/W and the intercardinals inside, all turning with the
- * heading; a red pointer fixed at the top; the heading and where you are in the middle. */
+static void
+source (cairo_t *cr, VibeosColor color, double alpha)
+{
+  GdkRGBA rgba = vibeos_color_alpha (color, alpha);
+
+  gdk_cairo_set_source_rgba (cr, &rgba);
+}
+
+/* A round dial a shade off the window's background: ticks and degrees on the rim, N/E/S/W and the intercardinals
+ * inside, all turning with the heading; a red pointer fixed at the top; the heading and where you are in the
+ * middle. Every colour is the theme's, read as the dial draws. */
 static void
 draw (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
 {
@@ -434,15 +521,16 @@ draw (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
   GtkWidget *wd = GTK_WIDGET (area);
   double R = MIN (w, h) / 2.0 * 0.86, cx = w / 2.0, cy = h / 2.0;   /* a margin round the dial */
   double rim = R * 0.80;                                           /* where the ticks start */
+  double u = MAX (1.0, R / PHONE_RADIUS);                           /* the ticks and pointer grow with the dial */
 
-  /* body: a dark disc with a lighter rim band */
-  cairo_set_source_rgb (cr, 0.16, 0.16, 0.17);
+  /* body: a disc with a rim band a shade further from the window's background */
+  source (cr, VIBEOS_SURFACE_CONTAINER_HIGHEST, 1);
   cairo_arc (cr, cx, cy, R, 0, 2 * G_PI);
   cairo_fill (cr);
-  cairo_set_source_rgb (cr, 0.11, 0.11, 0.12);
+  source (cr, VIBEOS_SURFACE_CONTAINER, 1);
   cairo_arc (cr, cx, cy, rim - 2, 0, 2 * G_PI);
   cairo_fill (cr);
-  cairo_set_source_rgba (cr, 1, 1, 1, 0.08);
+  source (cr, VIBEOS_ON_SURFACE, 0.08);
   cairo_set_line_width (cr, 1);
   cairo_arc (cr, cx, cy, rim * 0.72, 0, 2 * G_PI);
   cairo_stroke (cr);
@@ -450,15 +538,15 @@ draw (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
   cairo_save (cr);
   cairo_translate (cr, cx, cy);
   cairo_rotate (cr, -rad (c->shown));
-  /* rim ticks: every 2°, longer every 10°, white and longest at the cardinals */
+  /* rim ticks: every 2°, longer every 10°, strongest and longest at the cardinals */
   for (int a = 0; a < 360; a += 2) {
     gboolean card = a % 90 == 0, ten = a % 10 == 0;
     cairo_save (cr);
     cairo_rotate (cr, rad (a));
-    cairo_set_source_rgba (cr, 1, 1, 1, card ? 1 : ten ? 0.85 : 0.45);
-    cairo_set_line_width (cr, card ? 3 : ten ? 1.8 : 1);
-    cairo_move_to (cr, 0, -R + 4);
-    cairo_line_to (cr, 0, -R + (card ? 22 : ten ? 15 : 10));
+    source (cr, VIBEOS_ON_SURFACE, card ? 1 : ten ? 0.85 : 0.45);
+    cairo_set_line_width (cr, (card ? 3 : ten ? 1.8 : 1) * u);
+    cairo_move_to (cr, 0, -R + 4 * u);
+    cairo_line_to (cr, 0, -R + (card ? 22 : ten ? 15 : 10) * u);
     cairo_stroke (cr);
     cairo_restore (cr);
   }
@@ -466,28 +554,29 @@ draw (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
   for (int a = 0; a < 360; a += 30) {
     char deg[8];
     g_snprintf (deg, sizeof deg, "%d", a);
-    along (cr, wd, a, R - 38, deg, R * 0.075, FALSE, 0.92, 0.92, 0.94);
+    along (cr, wd, a, R - 38 * u, deg, R * 0.075, FALSE, VIBEOS_ON_SURFACE);
   }
   static const struct { int a; const char *t; } cardinals[] = {{0, "N"}, {90, "E"}, {180, "S"}, {270, "W"}},
                                                  inter[] = {{45, "NE"}, {135, "SE"}, {225, "SW"}, {315, "NW"}};
   for (guint i = 0; i < G_N_ELEMENTS (cardinals); i++) {
     gboolean north = cardinals[i].a == 0;
-    along (cr, wd, cardinals[i].a, rim * 0.80, cardinals[i].t, R * 0.14, TRUE, 1, north ? 0.18 : 1, north ? 0.15 : 1);
+    along (cr, wd, cardinals[i].a, rim * 0.80, cardinals[i].t, R * 0.14, TRUE,
+           north ? VIBEOS_ERROR : VIBEOS_ON_SURFACE);
   }
   for (guint i = 0; i < G_N_ELEMENTS (inter); i++)
-    along (cr, wd, inter[i].a, rim * 0.80, inter[i].t, R * 0.065, FALSE, 0.75, 0.75, 0.78);
+    along (cr, wd, inter[i].a, rim * 0.80, inter[i].t, R * 0.065, FALSE, VIBEOS_ON_SURFACE_VARIANT);
   cairo_restore (cr);
 
   /* the fixed red pointer at the top: where the phone points */
-  cairo_set_source_rgb (cr, 1, 0.18, 0.15);
-  cairo_move_to (cr, cx, cy - R + 14);
-  cairo_line_to (cr, cx - 10, cy - R - 6);
-  cairo_line_to (cr, cx + 10, cy - R - 6);
+  source (cr, VIBEOS_ERROR, 1);
+  cairo_move_to (cr, cx, cy - R + 14 * u);
+  cairo_line_to (cr, cx - 10 * u, cy - R - 6 * u);
+  cairo_line_to (cr, cx + 10 * u, cy - R - 6 * u);
   cairo_close_path (cr);
   cairo_fill (cr);
-  cairo_set_line_width (cr, 2.5);
-  cairo_move_to (cr, cx, cy - R + 10);
-  cairo_line_to (cr, cx, cy - R + 30);
+  cairo_set_line_width (cr, 2.5 * u);
+  cairo_move_to (cr, cx, cy - R + 10 * u);
+  cairo_line_to (cr, cx, cy - R + 30 * u);
   cairo_stroke (cr);
 
   /* the middle: heading, a divider, where you are */
@@ -496,9 +585,9 @@ draw (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
     g_strlcpy (hd, "—", sizeof hd);
   else
     g_snprintf (hd, sizeof hd, "%d°%s", (int) lround (c->heading) % 360, NAMES[(int) lround (c->heading / 45) % 8]);
-  cairo_set_source_rgb (cr, 1, 1, 1);
+  source (cr, VIBEOS_ON_SURFACE, 1);
   centred (cr, wd, hd, R * 0.24, FALSE, cx, cy - R * 0.04);
-  cairo_set_source_rgba (cr, 1, 1, 1, 0.35);
+  source (cr, VIBEOS_ON_SURFACE, 0.35);
   cairo_set_line_width (cr, 1);
   cairo_move_to (cr, cx - R * 0.30, cy + R * 0.06);
   cairo_line_to (cr, cx + R * 0.30, cy + R * 0.06);
@@ -506,15 +595,15 @@ draw (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
 
   /* a location pin */
   double py = cy + R * 0.17, pr = R * 0.045;
-  cairo_set_source_rgb (cr, 0.92, 0.92, 0.94);
+  source (cr, VIBEOS_ON_SURFACE, 1);
   cairo_arc (cr, cx, py, pr, G_PI, 0);
   cairo_line_to (cr, cx, py + pr * 2.2);
   cairo_close_path (cr);
   cairo_fill (cr);
-  cairo_set_source_rgb (cr, 0.11, 0.11, 0.12);
+  source (cr, VIBEOS_SURFACE_CONTAINER, 1);
   cairo_arc (cr, cx, py, pr * 0.42, 0, 2 * G_PI);
   cairo_fill (cr);
-  cairo_set_source_rgb (cr, 0.92, 0.92, 0.94);
+  source (cr, VIBEOS_ON_SURFACE, 1);
   centred (cr, wd, "Location", R * 0.07, TRUE, cx, cy + R * 0.38);
   if (c->have_position) {
     char lat[32], lon[32];
@@ -523,16 +612,17 @@ draw (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
     centred (cr, wd, lat, R * 0.062, FALSE, cx, cy + R * 0.49);
     centred (cr, wd, lon, R * 0.062, FALSE, cx, cy + R * 0.59);
   } else {
-    cairo_set_source_rgba (cr, 1, 1, 1, 0.5);
+    source (cr, VIBEOS_ON_SURFACE_VARIANT, 1);
     centred (cr, wd, c->geo_error ? c->geo_error : "Locating…", R * 0.062, FALSE, cx, cy + R * 0.49);
   }
 }
 
 /* ---- the window ---- */
 
+/* text in sp, sizes in dp: libvibeos converts them for Font size */
 static const char CSS[] =
-  "window.compass, window.compass .compass-bg { background: #000; color: #fff; }"
-  ".compass-status { color: #8e8e93; font-size: 13px; }";
+  "window.compass, window.compass .compass-bg { background-color: @vibeos_surface; color: @vibeos_on_surface; }"
+  ".compass-status { color: @vibeos_on_surface_variant; font-size: 13sp; font-weight: 400; }";
 
 static void
 on_activate (GtkApplication *app, gpointer data)
@@ -543,17 +633,11 @@ on_activate (GtkApplication *app, gpointer data)
     gtk_window_present (GTK_WINDOW (c->win));
     return;
   }
-  adw_style_manager_set_color_scheme (adw_style_manager_get_default (), ADW_COLOR_SCHEME_FORCE_DARK);
-  GtkCssProvider *css = gtk_css_provider_new ();
-  gtk_css_provider_load_from_string (css, CSS);
-  gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (css),
-                                              GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-  g_object_unref (css);
-
-  c->win = adw_application_window_new (app);
+  c->win = vibeos_window_new (app);
   gtk_window_set_title (GTK_WINDOW (c->win), "Compass");
-  gtk_window_set_default_size (GTK_WINDOW (c->win), 360, 720);
   gtk_widget_add_css_class (c->win, "compass");
+  /* the window's size from the start: the dial is laid out once for it */
+  vibeos_layout_get_for_window (GTK_WINDOW (c->win));
 
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (box, "compass-bg");
@@ -570,23 +654,36 @@ on_activate (GtkApplication *app, gpointer data)
   gtk_widget_set_margin_bottom (c->status, 40);
   gtk_box_append (GTK_BOX (box), c->area);
   gtk_box_append (GTK_BOX (box), c->status);
-  adw_application_window_set_content (ADW_APPLICATION_WINDOW (c->win), box);
+  vibeos_window_set_content (GTK_WINDOW (c->win), box);
 
   g_signal_connect (c->win, "close-request", G_CALLBACK (on_close), c);
   g_signal_connect (c->win, "notify::is-active", G_CALLBACK (on_window_notify), c);
   g_signal_connect (c->win, "notify::suspended", G_CALLBACK (on_window_notify), c);
   gtk_window_present (GTK_WINDOW (c->win));
+  watch_display (c);
   sync_active (c);
+}
+
+/* libvibeos's colours and text, which follow the theme and Font size */
+static void
+on_startup (GApplication *app, gpointer data)
+{
+  vibeos_init_full (VIBEOS_INIT_SCALED_TEXT);
+  vibeos_css_load_string (CSS, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
 }
 
 int
 main (int argc, char **argv)
 {
   Compass c = {.heading = -1};
-  g_autoptr (AdwApplication) app = adw_application_new (APP_ID, G_APPLICATION_DEFAULT_FLAGS);
+  g_autoptr (GtkApplication) app = gtk_application_new (APP_ID, G_APPLICATION_DEFAULT_FLAGS);
 
+  g_signal_connect (app, "startup", G_CALLBACK (on_startup), NULL);
   g_signal_connect (app, "activate", G_CALLBACK (on_activate), &c);
   int status = g_application_run (G_APPLICATION (app), argc, argv);
+  if (c.display_signal)
+    g_dbus_connection_signal_unsubscribe (c.session, c.display_signal);
+  g_clear_object (&c.session);
   g_clear_object (&c.sensor);
   g_clear_object (&c.system);
   g_free (c.geo_error);

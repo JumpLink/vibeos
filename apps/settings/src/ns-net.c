@@ -1,6 +1,7 @@
-/* Wi-Fi, Mobile network, Network and VPN: NetworkManager through libnm. The client is made once, at start, in the
+/* Wi-Fi, SIMs, Network & VPN: NetworkManager through libnm. The client is made once, at start, in the
  * background (ns_net_init); a page opened before it is ready fills itself when it is. The lists are rebuilt a
  * moment after NetworkManager says something changed, so a burst of signals is one rebuild. */
+#include "ns-caps.h"
 #include "ns-net.h"
 #include "ns-pages.h"
 #include "ns-ui.h"
@@ -19,7 +20,7 @@ client_ready (GObject *src, GAsyncResult *res, gpointer data)
   if (!client)
     g_warning ("NetworkManager: %s", err->message);
   for (guint i = 0; waiting && i + 1 < waiting->len; i += 2) {
-    AdwNavigationPage *page = waiting->pdata[i];
+    NsPage *page = waiting->pdata[i];
     NsFill fill = (NsFill) waiting->pdata[i + 1];
     if (client)
       fill (page);
@@ -35,7 +36,7 @@ ns_net_init (void)
 }
 
 static void
-with_client (AdwNavigationPage *page, NsFill fill)
+with_client (NsPage *page, NsFill fill)
 {
   if (client) {
     fill (page);
@@ -183,7 +184,7 @@ static void hidden_tapped (GtkWidget *row, gpointer data);
 static void
 ap_tapped (GtkWidget *row, gpointer data)
 {
-  AdwNavigationPage *page = g_object_get_data (G_OBJECT (row), "ns-page");
+  NsPage *page = g_object_get_data (G_OBJECT (row), "ns-page");
   Wifi *w = g_object_get_data (G_OBJECT (page), "wifi");
   const char *path = g_object_get_data (G_OBJECT (row), "ns-ap");
   NMAccessPoint *ap = NULL;
@@ -223,13 +224,15 @@ ap_tapped (GtkWidget *row, gpointer data)
 }
 
 static GtkWidget *
-ap_row (GtkWidget *g, AdwNavigationPage *page, NMAccessPoint *ap, const char *sub)
+ap_row (GtkWidget *g, NsPage *page, NMAccessPoint *ap, const char *sub)
 {
   g_autofree char *ssid = ap_ssid (ap);
-  GtkWidget *r = ns_row (g, signal_icon (nm_access_point_get_strength (ap)), "blue", ssid, sub);
+  GtkWidget *r = ns_row (g, signal_icon (nm_access_point_get_strength (ap)), ssid, sub);
   if (ap_secured (ap)) {
     GtkWidget *lock = gtk_image_new_from_icon_name ("system-lock-screen-symbolic");
-    gtk_widget_set_opacity (lock, 0.5);
+    gtk_image_set_pixel_size (GTK_IMAGE (lock), 24);
+    gtk_widget_add_css_class (lock, "vibeos-list-row-icon");
+    gtk_accessible_update_property (GTK_ACCESSIBLE (lock), GTK_ACCESSIBLE_PROPERTY_LABEL, "Secured", -1);
     ns_row_suffix (r, lock);
   }
   g_object_set_data (G_OBJECT (r), "ns-page", page);
@@ -244,7 +247,7 @@ by_strength (gconstpointer a, gconstpointer b)
 }
 
 static void
-wifi_fill (AdwNavigationPage *page)
+wifi_fill (NsPage *page)
 {
   Wifi *w = g_object_get_data (G_OBJECT (page), "wifi");
   if (!w->dev) {
@@ -309,10 +312,10 @@ wifi_fill (AdwNavigationPage *page)
 }
 
 static void
-wifi_power (GtkSwitch *sw, GParamSpec *ps, gpointer data)
+wifi_power (GtkWidget *sw, GParamSpec *ps, gpointer data)
 {
   if (!ns_switch_syncing (GTK_WIDGET (sw)) && client)
-    set_nm_property ("WirelessEnabled", gtk_switch_get_active (sw));
+    set_nm_property ("WirelessEnabled", ns_switch_get_active (sw));
 }
 
 static gboolean
@@ -361,15 +364,16 @@ forget_answered (gboolean yes, gpointer row)
   Net *n = g_object_get_data (G_OBJECT (row), "ns-net");
   if (yes && n->conn) {
     nm_remote_connection_delete_async (n->conn, NULL, forgotten, g_object_ref (row));
-    adw_navigation_view_pop (ADW_NAVIGATION_VIEW (gtk_widget_get_ancestor (row, ADW_TYPE_NAVIGATION_VIEW)));
+    ns_pop (row);
   }
 }
 
 static void
 forget (GtkWidget *row, gpointer data)
 {
-  ns_confirm (row, "Forget this network?", "Its password is deleted and the phone no longer joins it by itself.",
-              "Forget", TRUE, forget_answered, row);
+  g_autofree char *body = g_strdup_printf ("Its password is deleted and the %s no longer joins it by itself.",
+                                           ns_device_noun ());
+  ns_confirm (row, "Forget this network?", body, "Forget", TRUE, forget_answered, row);
 }
 
 static void
@@ -387,17 +391,17 @@ disconnect (GtkWidget *row, gpointer data)
   Net *n = g_object_get_data (G_OBJECT (row), "ns-net");
   if (n->dev) {
     nm_device_disconnect_async (n->dev, NULL, disconnected, g_object_ref (row));
-    adw_navigation_view_pop (ADW_NAVIGATION_VIEW (gtk_widget_get_ancestor (row, ADW_TYPE_NAVIGATION_VIEW)));
+    ns_pop (row);
   }
 }
 
 static void
-autoconnect_set (GtkSwitch *sw, GParamSpec *ps, NMRemoteConnection *conn)
+autoconnect_set (GtkWidget *sw, GParamSpec *ps, NMRemoteConnection *conn)
 {
   NMSettingConnection *s = nm_connection_get_setting_connection (NM_CONNECTION (conn));
-  if (!s || nm_setting_connection_get_autoconnect (s) == gtk_switch_get_active (sw))
+  if (!s || nm_setting_connection_get_autoconnect (s) == ns_switch_get_active (sw))
     return;
-  g_object_set (s, NM_SETTING_CONNECTION_AUTOCONNECT, gtk_switch_get_active (sw), NULL);
+  g_object_set (s, NM_SETTING_CONNECTION_AUTOCONNECT, ns_switch_get_active (sw), NULL);
   nm_remote_connection_commit_changes_async (conn, TRUE, NULL, NULL, NULL);
 }
 
@@ -405,7 +409,7 @@ static void
 net_page (const char *title, NMRemoteConnection *conn, NMDevice *dev, NMAccessPoint *ap)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new (title, &c);
+  NsPage *page = ns_page_new (title, &c);
   Net *n = g_new0 (Net, 1);
   n->conn = conn ? g_object_ref (conn) : NULL;
   n->dev = dev ? g_object_ref (dev) : NULL;
@@ -435,7 +439,7 @@ net_page (const char *title, NMRemoteConnection *conn, NMDevice *dev, NMAccessPo
   if (s) {
     GtkWidget *r = ns_row_switch (g, "Auto reconnect", "Join this network when it is in reach", NULL, NULL);
     GtkWidget *sw = ns_row_get_switch (r);
-    gtk_switch_set_active (GTK_SWITCH (sw), nm_setting_connection_get_autoconnect (s));
+    ns_switch_set_active (sw, nm_setting_connection_get_autoconnect (s));
     g_signal_connect_object (sw, "notify::active", G_CALLBACK (autoconnect_set), conn, 0);
   }
   if (dev) {
@@ -452,7 +456,7 @@ net_page (const char *title, NMRemoteConnection *conn, NMDevice *dev, NMAccessPo
 static void
 wifi_details (GtkWidget *row, gpointer data)
 {
-  AdwNavigationPage *page = g_object_get_data (G_OBJECT (row), "ns-page");
+  NsPage *page = g_object_get_data (G_OBJECT (row), "ns-page");
   Wifi *w = g_object_get_data (G_OBJECT (page), "wifi");
   NMAccessPoint *ap = nm_device_wifi_get_active_access_point (w->dev);
   NMActiveConnection *ac = nm_device_get_active_connection (NM_DEVICE (w->dev));
@@ -469,7 +473,7 @@ saved_tapped (GtkWidget *row, gpointer conn)
 }
 
 static void
-saved_fill (AdwNavigationPage *page)
+saved_fill (NsPage *page)
 {
   GtkWidget *g = g_object_get_data (G_OBJECT (page), "ns-list");
   ns_group_clear (g);
@@ -479,7 +483,7 @@ saved_fill (AdwNavigationPage *page)
     NMConnection *conn = all->pdata[i];
     if (g_strcmp0 (nm_connection_get_connection_type (conn), NM_SETTING_WIRELESS_SETTING_NAME))
       continue;
-    GtkWidget *r = ns_row (g, "network-wireless-symbolic", "blue", nm_connection_get_id (conn), NULL);
+    GtkWidget *r = ns_row (g, "network-wireless-symbolic", nm_connection_get_id (conn), NULL);
     g_object_set_data_full (G_OBJECT (r), "ns-conn", g_object_ref (conn), g_object_unref);
     ns_row_on_activate (r, saved_tapped, conn);
     n++;
@@ -492,7 +496,7 @@ static void
 saved_page (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Saved networks", &c);
+  NsPage *page = ns_page_new ("Saved networks", &c);
   GtkWidget *g = ns_group (c, NULL);
   g_object_set_data (G_OBJECT (page), "ns-list", g);
   GtkWidget *empty = ns_note (c, "No saved networks.");
@@ -509,28 +513,30 @@ void
 ns_page_wifi (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Wi-Fi", &c);
+  NsPage *page = ns_page_new ("Wi-Fi", &c);
   Wifi *w = g_new0 (Wifi, 1);
   g_object_set_data_full (G_OBJECT (page), "wifi", w, (GDestroyNotify) wifi_free);
   ns_later_init (page, wifi_fill);
 
   GtkWidget *g = ns_group (c, NULL);
-  w->power = ns_row_toggle (g, NULL, NULL, "Wi-Fi", NULL);
+  w->power = ns_row_toggle (g, NULL, "Wi-Fi", NULL);
   g_signal_connect (ns_row_get_switch (w->power), "notify::active", G_CALLBACK (wifi_power), NULL);
-  w->none = ns_note (c, "This phone has no Wi-Fi adapter.");
+  g_autofree char *none = g_strdup_printf ("This %s has no Wi-Fi adapter.", ns_device_noun ());
+  w->none = ns_note (c, none);
   gtk_widget_set_visible (w->none, FALSE);
   w->cur = ns_group (c, "Current network");
   ns_group_set_visible (w->cur, FALSE);
   w->avail = ns_group (c, "Available networks");
   ns_group_set_visible (w->avail, FALSE);
   g = ns_group (c, NULL);
-  w->saved = ns_row (g, NULL, NULL, "Saved networks", "Forget • Auto reconnect");
+  w->saved = ns_row (g, NULL, "Saved networks", "Forget • Auto reconnect");
   ns_row_on_activate (w->saved, saved_page, NULL);
-  GtkWidget *add = ns_row (g, NULL, NULL, "Add network", "A hidden network, or one not in reach");
+  GtkWidget *add = ns_row (g, NULL, "Add network", "A hidden network, or one not in reach");
   g_object_set_data (G_OBJECT (add), "ns-page", page);
   ns_row_on_activate (add, hidden_tapped, NULL);
-  ns_row_on_activate (ns_row (g, NULL, NULL, "Mobile hotspot", "Share the mobile data over Wi-Fi"), ns_page_hotspot,
-                      NULL);
+  GtkWidget *hot = ns_row (g, NULL, "Wi-Fi hotspot", "Share the mobile data over Wi-Fi");
+  ns_row_on_activate (hot, ns_page_hotspot, NULL);
+  ns_caps_bind_visible (hot, NS_CAP_MODEM);
   w->scan = g_timeout_add_seconds (20, wifi_scan, page);
   with_client (page, wifi_fill);
   ns_push (page);
@@ -583,8 +589,6 @@ form_update (Form *f)
   gtk_widget_set_visible (f->key, tls);
   gtk_widget_set_visible (f->keypass, tls);
   ns_group_set_visible (f->certs, eap && f->eap_i != EAP_PWD);
-  gtk_list_box_invalidate_headers (GTK_LIST_BOX (gtk_widget_get_parent (f->pass)));
-  gtk_list_box_invalidate_headers (GTK_LIST_BOX (f->certs));
 }
 
 static void
@@ -674,9 +678,7 @@ form_added (GObject *src, GAsyncResult *res, gpointer status)
   g_autoptr (GError) err = NULL;
   g_autoptr (NMActiveConnection) ac = nm_client_add_and_activate_connection_finish (NM_CLIENT (src), res, &err);
   if (ac) {
-    AdwNavigationView *nav = ADW_NAVIGATION_VIEW (gtk_widget_get_ancestor (status, ADW_TYPE_NAVIGATION_VIEW));
-    if (nav)
-      adw_navigation_view_pop (nav);
+    ns_pop (status);
   } else {
     row_error (status, "Could not connect", err);
   }
@@ -776,7 +778,7 @@ join_form (NMDevice *dev, const char *ap_path, const char *ssid)
 {
   GtkWidget *c;
   g_autofree char *title = ssid ? g_strdup (ssid) : g_strdup ("Add network");
-  AdwNavigationPage *page = ns_page_new (title, &c);
+  NsPage *page = ns_page_new (title, &c);
   Form *f = g_new0 (Form, 1);
   f->dev = g_object_ref (dev);
   f->ap_path = g_strdup (ap_path);
@@ -799,9 +801,9 @@ join_form (NMDevice *dev, const char *ap_path, const char *ssid)
   g = f->certs = ns_group (c, NULL);
   f->ca = ns_row_pick (g, "CA certificate", ca_labels, f->ca_i, ca_picked, f);
   f->domain = ns_row_value (g, "Domain", NULL, FALSE, NULL, NULL);
-  f->cert = ns_row (g, NULL, NULL, "Your certificate", "Choose a file");
+  f->cert = ns_row (g, NULL, "Your certificate", "Choose a file");
   ns_row_on_activate (f->cert, cert_tapped, f);
-  f->key = ns_row (g, NULL, NULL, "Private key", "Choose a file");
+  f->key = ns_row (g, NULL, "Private key", "Choose a file");
   ns_row_on_activate (f->key, key_tapped, f);
   f->keypass = ns_row_value (g, "Private key password", NULL, TRUE, NULL, NULL);
 
@@ -814,13 +816,13 @@ join_form (NMDevice *dev, const char *ap_path, const char *ssid)
 static void
 hidden_tapped (GtkWidget *row, gpointer data)
 {
-  AdwNavigationPage *page = g_object_get_data (G_OBJECT (row), "ns-page");
+  NsPage *page = g_object_get_data (G_OBJECT (row), "ns-page");
   Wifi *w = g_object_get_data (G_OBJECT (page), "wifi");
   if (w->dev)
     join_form (NM_DEVICE (w->dev), NULL, NULL);
 }
 
-/* ---- Mobile hotspot ---- */
+/* ---- Wi-Fi hotspot ---- */
 
 /* The hotspot is the first access-point Wi-Fi connection the device can take, whatever it is called: one set up
  * earlier, by this page or by another app (Phosh's hotspot tile named its "Phosh Hotspot"), stays the phone's
@@ -906,7 +908,7 @@ hot_clients (gpointer page)
       g_auto (GStrv) f = g_strsplit (lines[i], " ", 5);
       if (g_strv_length (f) < 4)
         continue;
-      ns_row (h->clients, "computer-symbolic", "grey", g_strcmp0 (f[3], "*") ? f[3] : f[2], f[2]);
+      ns_row (h->clients, "computer-symbolic", g_strcmp0 (f[3], "*") ? f[3] : f[2], f[2]);
       n++;
     }
   }
@@ -915,7 +917,7 @@ hot_clients (gpointer page)
 }
 
 static void
-hot_fill (AdwNavigationPage *page)
+hot_fill (NsPage *page)
 {
   Hot *h = g_object_get_data (G_OBJECT (page), "hot");
   if (!h->dev) {
@@ -989,13 +991,13 @@ hot_new (Hot *h)
 }
 
 static void
-hot_power (GtkSwitch *sw, GParamSpec *ps, gpointer page)
+hot_power (GtkWidget *sw, GParamSpec *ps, gpointer page)
 {
   Hot *h = g_object_get_data (page, "hot");
   if (ns_switch_syncing (GTK_WIDGET (sw)) || !h->dev)
     return;
   NMActiveConnection *ac = hot_active (h);
-  if (!gtk_switch_get_active (sw)) {
+  if (!ns_switch_get_active (sw)) {
     if (ac)
       nm_client_deactivate_connection_async (client, ac, NULL, NULL, NULL);
     return;
@@ -1026,7 +1028,7 @@ hot_committed (GObject *src, GAsyncResult *res, gpointer page)
 }
 
 static void
-hot_save (AdwNavigationPage *page)
+hot_save (NsPage *page)
 {
   Hot *h = g_object_get_data (G_OBJECT (page), "hot");
   if (!h->conn)
@@ -1080,13 +1082,13 @@ void
 ns_page_hotspot (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Mobile hotspot", &c);
+  NsPage *page = ns_page_new ("Wi-Fi hotspot", &c);
   Hot *h = g_new0 (Hot, 1);
   g_object_set_data_full (G_OBJECT (page), "hot", h, (GDestroyNotify) hot_free);
   ns_later_init (page, hot_fill);
 
   GtkWidget *g = ns_group (c, NULL);
-  h->power = ns_row_toggle (g, NULL, NULL, "Mobile hotspot", "Off");
+  h->power = ns_row_toggle (g, NULL, "Use Wi-Fi hotspot", "Off");
   g_signal_connect (ns_row_get_switch (h->power), "notify::active", G_CALLBACK (hot_power), page);
   h->none = ns_note (c, "This phone's Wi-Fi cannot be an access point.");
   gtk_widget_set_visible (h->none, FALSE);
@@ -1106,7 +1108,7 @@ ns_page_hotspot (GtkWidget *row, gpointer data)
   ns_push (page);
 }
 
-/* ---- Mobile network ---- */
+/* ---- SIMs: the mobile network ---- */
 
 typedef struct {
   GtkWidget *data, *apns, *info;
@@ -1131,7 +1133,7 @@ apn_tapped (GtkWidget *row, gpointer conn)
 }
 
 static void
-mobile_fill (AdwNavigationPage *page)
+mobile_fill (NsPage *page)
 {
   Mobile *m = g_object_get_data (G_OBJECT (page), "mobile");
   gboolean on = nm_client_wwan_get_enabled (client);
@@ -1150,12 +1152,9 @@ mobile_fill (AdwNavigationPage *page)
     if (!gsm)
       continue;
     const char *apn = nm_setting_gsm_get_apn (gsm);
-    GtkWidget *r = ns_row (m->apns, NULL, NULL, nm_connection_get_id (conn),
+    GtkWidget *r = ns_row (m->apns, NULL, nm_connection_get_id (conn),
                            cur == all->pdata[i] ? "In use" : apn && *apn ? apn : "Automatic APN");
-    GtkWidget *mark = gtk_image_new_from_icon_name ("object-select-symbolic");
-    gtk_widget_add_css_class (mark, "ns-accent");
-    gtk_widget_set_opacity (mark, cur == all->pdata[i]);
-    ns_row_suffix (r, mark);
+    ns_row_suffix (r, ns_mark_new (cur == all->pdata[i]));
     g_object_set_data_full (G_OBJECT (r), "ns-conn", g_object_ref (conn), g_object_unref);
     if (dev)
       ns_row_on_activate (r, apn_tapped, conn);
@@ -1165,10 +1164,10 @@ mobile_fill (AdwNavigationPage *page)
 }
 
 static void
-mobile_data (GtkSwitch *sw, GParamSpec *ps, gpointer data)
+mobile_data (GtkWidget *sw, GParamSpec *ps, gpointer data)
 {
   if (!ns_switch_syncing (GTK_WIDGET (sw)) && client)
-    set_nm_property ("WwanEnabled", gtk_switch_get_active (sw));
+    set_nm_property ("WwanEnabled", ns_switch_get_active (sw));
 }
 
 static const char *
@@ -1237,7 +1236,7 @@ modems_got (GObject *src, GAsyncResult *res, gpointer page)
 }
 
 static void
-mobile_connect (AdwNavigationPage *page)
+mobile_connect (NsPage *page)
 {
   g_signal_connect_object (client, "notify::wwan-enabled", G_CALLBACK (ns_later), page, G_CONNECT_SWAPPED);
   g_signal_connect_object (client, "notify::active-connections", G_CALLBACK (ns_later), page, G_CONNECT_SWAPPED);
@@ -1247,7 +1246,7 @@ mobile_connect (AdwNavigationPage *page)
 
 /* mobile_fill runs once the client is there; its signals are hooked up the first time */
 static void
-mobile_first (AdwNavigationPage *page)
+mobile_first (NsPage *page)
 {
   mobile_connect (page);
   mobile_fill (page);
@@ -1257,13 +1256,13 @@ void
 ns_page_mobile (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Mobile network", &c);
+  NsPage *page = ns_page_new ("SIMs", &c);
   Mobile *m = g_new0 (Mobile, 1);
   g_object_set_data_full (G_OBJECT (page), "mobile", m, g_free);
   ns_later_init (page, mobile_fill);
 
   GtkWidget *g = ns_group (c, NULL);
-  m->data = ns_row_toggle (g, NULL, NULL, "Mobile data", NULL);
+  m->data = ns_row_toggle (g, NULL, "Mobile data", NULL);
   g_signal_connect (ns_row_get_switch (m->data), "notify::active", G_CALLBACK (mobile_data), NULL);
   GSettings *wwan = ns_page_settings (page, "org.gnome.settings-daemon.plugins.wwan");
   if (ns_has_key (wwan, "unlock-sim"))
@@ -1283,7 +1282,7 @@ ns_page_mobile (GtkWidget *row, gpointer data)
   ns_push (page);
 }
 
-/* ---- Network and VPN ---- */
+/* ---- Network & VPN ---- */
 
 typedef struct {
   GtkWidget *vpn, *other, *novpn;
@@ -1300,21 +1299,21 @@ active_for (NMConnection *conn)
 }
 
 static void
-conn_switched (GtkSwitch *sw, GParamSpec *ps, NMConnection *conn)
+conn_switched (GtkWidget *sw, GParamSpec *ps, NMConnection *conn)
 {
   if (ns_switch_syncing (GTK_WIDGET (sw)))
     return;
   NMActiveConnection *ac = active_for (conn);
-  if (gtk_switch_get_active (sw) && !ac)
+  if (ns_switch_get_active (sw) && !ac)
     nm_client_activate_connection_async (client, conn, NULL, NULL, NULL, activated,
                                          g_object_ref (gtk_widget_get_ancestor (GTK_WIDGET (sw),
                                                                                 GTK_TYPE_LIST_BOX_ROW)));
-  else if (!gtk_switch_get_active (sw) && ac)
+  else if (!ns_switch_get_active (sw) && ac)
     nm_client_deactivate_connection_async (client, ac, NULL, NULL, NULL);
 }
 
 static void
-network_fill (AdwNavigationPage *page)
+network_fill (NsPage *page)
 {
   Network *n = g_object_get_data (G_OBJECT (page), "network");
   ns_group_clear (n->vpn);
@@ -1331,10 +1330,10 @@ network_fill (AdwNavigationPage *page)
     NMActiveConnection *ac = active_for (conn);
     NMActiveConnectionState st = ac ? nm_active_connection_get_state (ac) : NM_ACTIVE_CONNECTION_STATE_UNKNOWN;
     GtkWidget *r = ns_row_toggle (vpn ? n->vpn : n->other, vpn ? "network-vpn-symbolic" : "network-wired-symbolic",
-                               vpn ? "violet" : "grey", nm_connection_get_id (conn),
-                               st == NM_ACTIVE_CONNECTION_STATE_ACTIVATED ? "Connected"
-                               : st == NM_ACTIVE_CONNECTION_STATE_ACTIVATING ? "Connecting…"
-                               : vpn ? "VPN" : "Wired");
+                                  nm_connection_get_id (conn),
+                                  st == NM_ACTIVE_CONNECTION_STATE_ACTIVATED ? "Connected"
+                                  : st == NM_ACTIVE_CONNECTION_STATE_ACTIVATING ? "Connecting…"
+                                  : vpn ? "VPN" : "Wired");
     GtkWidget *sw = ns_row_get_switch (r);
     ns_switch_quiet (sw, ac != NULL);
     g_object_set_data_full (G_OBJECT (r), "ns-conn", g_object_ref (conn), g_object_unref);
@@ -1358,11 +1357,10 @@ proxy_mode (GSettings *s, const char *key, GtkWidget *group)
     if (only)
       gtk_widget_set_visible (r, !g_strcmp0 (only, m));
   }
-  gtk_list_box_invalidate_headers (GTK_LIST_BOX (group));
 }
 
 static void
-proxy_rows (AdwNavigationPage *page, GtkWidget *c)
+proxy_rows (NsPage *page, GtkWidget *c)
 {
   GSettings *proxy = ns_page_settings (page, "org.gnome.system.proxy");
   GSettings *http = ns_page_settings (page, "org.gnome.system.proxy.http");
@@ -1448,7 +1446,7 @@ vpn_import (GtkWidget *row, gpointer data)
 }
 
 static void
-network_connect (AdwNavigationPage *page)
+network_connect (NsPage *page)
 {
   g_signal_connect_object (client, "notify::active-connections", G_CALLBACK (ns_later), page, G_CONNECT_SWAPPED);
   g_signal_connect_object (client, "connection-added", G_CALLBACK (ns_later), page, G_CONNECT_SWAPPED);
@@ -1460,7 +1458,7 @@ void
 ns_page_network (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Network and VPN", &c);
+  NsPage *page = ns_page_new ("Network & VPN", &c);
   Network *n = g_new0 (Network, 1);
   g_object_set_data_full (G_OBJECT (page), "network", n, g_free);
   ns_later_init (page, network_fill);
@@ -1468,7 +1466,7 @@ ns_page_network (GtkWidget *row, gpointer data)
   ns_group_set_visible (n->vpn, FALSE);
   n->novpn = ns_note (c, "No VPN is set up yet.");
   GtkWidget *imp = ns_group (c, NULL);
-  ns_row_on_activate (ns_row (imp, "document-open-symbolic", "violet", "Import VPN file",
+  ns_row_on_activate (ns_row (imp, "document-open-symbolic", "Import VPN file",
                               has_openvpn () ? "WireGuard (.conf) • OpenVPN (.ovpn)" : "WireGuard (.conf)"),
                       vpn_import, NULL);
   n->other = ns_group (c, "Wired and USB");
@@ -1497,7 +1495,7 @@ pk_done (GObject *src, GAsyncResult *res, gpointer row)
     ns_row_set_subtitle (row, msg);
   else {
     ns_row_set_subtitle (row, "Done");
-    AdwNavigationPage *page = g_object_get_data (G_OBJECT (row), "ns-list-page");
+    NsPage *page = g_object_get_data (G_OBJECT (row), "ns-list-page");
     if (page)
       ns_later (page);
   }
@@ -1576,9 +1574,9 @@ printer_page (GtkWidget *row, gpointer data)
 {
   const char *name = g_object_get_data (G_OBJECT (row), "ns-name");
   gboolean added = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (row), "ns-added"));
-  AdwNavigationPage *list = g_object_get_data (G_OBJECT (row), "ns-list-page");
+  NsPage *list = g_object_get_data (G_OBJECT (row), "ns-list-page");
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new (name, &c);
+  NsPage *page = ns_page_new (name, &c);
   g_object_set_data_full (G_OBJECT (page), "ns-name", g_strdup (name), g_free);
   name = g_object_get_data (G_OBJECT (page), "ns-name");
   GtkWidget *g = ns_group (c, NULL);
@@ -1661,7 +1659,7 @@ printers_got (GObject *src, GAsyncResult *res, gpointer page)
     const char *say = !st ? "On the network" : strstr (st, "idle") ? "Ready" : strstr (st, "printing") ? "Printing"
                     : strstr (st, "disabled") ? "Paused" : "Ready";
     g_autofree char *sub = !g_strcmp0 (name, p->def) ? g_strdup_printf ("Default • %s", say) : g_strdup (say);
-    GtkWidget *r = ns_row (g, "printer-symbolic", "grey", name, sub);
+    GtkWidget *r = ns_row (g, "printer-symbolic", name, sub);
     g_object_set_data_full (G_OBJECT (r), "ns-name", g_strdup (name), g_free);
     g_object_set_data_full (G_OBJECT (r), "ns-state", g_strdup (say), g_free);
     g_object_set_data (G_OBJECT (r), "ns-added", GINT_TO_POINTER (g_hash_table_contains (p->added, name)));
@@ -1677,7 +1675,7 @@ printers_got (GObject *src, GAsyncResult *res, gpointer page)
 }
 
 static void
-printers_fill (AdwNavigationPage *page)
+printers_fill (NsPage *page)
 {
   g_autoptr (GTask) t = g_task_new (NULL, NULL, printers_got, g_object_ref (page));
   g_task_run_in_thread (t, printers_thread);
@@ -1711,7 +1709,7 @@ void
 ns_page_printers (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Printers", &c);
+  NsPage *page = ns_page_new ("Printers", &c);
   GtkWidget *g = ns_group (c, NULL);
   g_object_set_data (G_OBJECT (page), "ns-list", g);
   ns_group_set_visible (g, FALSE);

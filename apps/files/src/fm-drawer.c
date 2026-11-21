@@ -1,5 +1,6 @@
 /* The drawer (fm-drawer.h). */
 #include "fm-drawer.h"
+#include "fm-browser.h"
 #include "fm-dialogs.h"
 #include "fm-icon.h"
 #include "fm-ui.h"
@@ -11,6 +12,8 @@
 #include <spongy-gtk.h>
 
 #define DRAWER_W        280
+#define DOCKED_W        256     /* the sidebar of a tablet held sideways */
+#define RAIL_W          144     /* the rail of a tablet held upright */
 #define EDGE_W          20      /* the band at the left edge a swipe opens it from */
 #define TOUCH_SLOP      8
 #define SETTLE_BASE_MS  256     /* a settle takes (fraction + 1) x 256 ms */
@@ -25,6 +28,9 @@ struct _FmDrawer {
   Tab tab;
   VibeosAnim *anim;
   double open, drag_from;
+  gboolean docked;              /* the panel in the window's row, not over the content */
+  GtkWidget *rail_box;          /* the upright tablet's rail, in a box the window places */
+  GPtrArray *rail_places;       /* each rail item's location (GFile), or the item for Home (NULL) */
   gboolean editing_bookmarks;
   GCancellable *cancellable;    /* the storage and Recycle Bin sizes being asked */
 };
@@ -55,6 +61,8 @@ fm_drawer_layer_size_allocate (GtkWidget *widget, int width, int height, int bas
   int sheet_w = MIN (DRAWER_W, width);
 
   gtk_widget_allocate (drawer->scrim, width, height, -1, NULL);
+  if (drawer->docked)
+    return;                     /* the panel is in the window's row */
   gtk_widget_allocate (drawer->sheet, sheet_w, height, -1,
                        gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT ((float) round (-sheet_w * (1 - drawer->open)),
                                                                             0)));
@@ -111,7 +119,7 @@ fm_drawer_open (FmDrawer *drawer, gboolean open)
   double to = open ? 1 : 0;
   double distance = fabs (to - drawer->open);
 
-  if (distance <= 0 && !vibeos_anim_is_running (drawer->anim))
+  if (drawer->docked || (distance <= 0 && !vibeos_anim_is_running (drawer->anim)))
     return;
   if (open)
     {
@@ -128,6 +136,42 @@ gboolean
 fm_drawer_is_open (FmDrawer *drawer)
 {
   return drawer->open > 0 && !(vibeos_anim_is_running (drawer->anim) && vibeos_anim_get_to (drawer->anim) == 0);
+}
+
+void
+fm_drawer_set_docked (FmDrawer *drawer, GtkWidget *dock, gboolean docked)
+{
+  if (!docked == !drawer->docked)
+    return;
+  g_object_ref (drawer->sheet);
+  if (docked)
+    {
+      /* closed at once, then out of the layer */
+      vibeos_anim_stop (drawer->anim);
+      drawer->open = 0;
+      place (drawer);
+      drawer->docked = TRUE;
+      gtk_widget_unparent (drawer->sheet);
+      gtk_widget_set_size_request (drawer->sheet, DOCKED_W, -1);
+      gtk_widget_add_css_class (drawer->sheet, "docked");
+      gtk_box_prepend (GTK_BOX (dock), drawer->sheet);
+      fm_drawer_refresh (drawer);
+    }
+  else
+    {
+      gtk_box_remove (GTK_BOX (dock), drawer->sheet);
+      gtk_widget_set_size_request (drawer->sheet, -1, -1);
+      gtk_widget_remove_css_class (drawer->sheet, "docked");
+      drawer->docked = FALSE;
+      gtk_widget_set_parent (drawer->sheet, drawer->layer);
+    }
+  g_object_unref (drawer->sheet);
+}
+
+gboolean
+fm_drawer_is_docked (FmDrawer *drawer)
+{
+  return drawer->docked;
 }
 
 static void
@@ -168,8 +212,8 @@ on_edge_drag_begin (GtkGestureDrag *gesture, double x, double y, FmDrawer *drawe
 {
   FmShell *shell = drawer->shell;
 
-  /* not over a dialog or a menu, nor while selecting or searching (the toolbar is not ☰ then) */
-  if (x > EDGE_W || drawer->open > 0 || g_strcmp0 (gtk_stack_get_visible_child_name (GTK_STACK (shell->toolbar)),
+  /* not over a dialog or a menu, nor while selecting or searching (the toolbar is not ☰ then); never docked */
+  if (x > EDGE_W || drawer->open > 0 || drawer->docked || g_strcmp0 (gtk_stack_get_visible_child_name (GTK_STACK (shell->toolbar)),
                                                    "normal"))
     {
       gtk_gesture_set_state (GTK_GESTURE (gesture), GTK_EVENT_SEQUENCE_DENIED);
@@ -237,13 +281,11 @@ static GtkWidget *
 row_new (FmDrawer *drawer, GtkWidget *content, GFile *location, const char *name, const char *css_class)
 {
   GtkWidget *row = vibeos_pressable_new (content);
-  GdkRGBA ripple = fm_rgba (FM_C_RIPPLE);
 
   gtk_widget_add_css_class (row, "fm-nav-row");
   if (css_class)
     gtk_widget_add_css_class (row, css_class);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
   if (location)
     g_object_set_data_full (G_OBJECT (row), "fm-file", g_object_ref (location), g_object_unref);
   gtk_accessible_update_property (GTK_ACCESSIBLE (row), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);
@@ -269,14 +311,14 @@ static void
 draw_storage_bar (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer data)
 {
   double used = *(double *) data;
-
   /* the used part over the rest: a bar 4 device px tall at the foot of its allocation */
   double bar = MIN (height, 4 / 3.0);
+  GdkRGBA track = vibeos_color (VIBEOS_OUTLINE_VARIANT), fill = vibeos_color (VIBEOS_PRIMARY);
 
-  cairo_set_source_rgb (cr, 0x47 / 255.0, 0x4f / 255.0, 0x58 / 255.0);
+  gdk_cairo_set_source_rgba (cr, &track);
   cairo_rectangle (cr, 0, height - bar, width, bar);
   cairo_fill (cr);
-  cairo_set_source_rgb (cr, 0x3c / 255.0, 0x87 / 255.0, 0xee / 255.0);
+  gdk_cairo_set_source_rgba (cr, &fill);
   cairo_rectangle (cr, 0, height - bar, width * used, bar);
   cairo_fill (cr);
 }
@@ -320,8 +362,9 @@ fixed_row (FmDrawer *drawer, FmGlyph glyph, const char *name, GFile *location, g
   gtk_widget_set_valign (icon, GTK_ALIGN_CENTER);
   gtk_widget_set_hexpand (label, TRUE);
   gtk_label_set_xalign (GTK_LABEL (description), 1);
-  /* the description at the top, beside the name */
+  /* the description at the top, beside the name, and apart from it where a large font size fills the row */
   gtk_widget_set_valign (description, GTK_ALIGN_START);
+  gtk_widget_set_margin_start (description, 8);
   gtk_box_append (GTK_BOX (top), label);
   gtk_box_append (GTK_BOX (top), description);
   gtk_box_append (GTK_BOX (text), top);
@@ -784,11 +827,13 @@ draw_tab_line (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointe
   FmDrawer *drawer = data;
   double w = width / (double) N_TABS;
 
-  /* a grey line at the bottom; the accent indicator over it, under the selected tab */
-  cairo_set_source_rgb (cr, 0x66 / 255.0, 0x66 / 255.0, 0x66 / 255.0);
+  GdkRGBA line = vibeos_color (VIBEOS_OUTLINE_VARIANT), indicator = vibeos_color (VIBEOS_PRIMARY);
+
+  /* a thin line at the bottom; the accent indicator over it, under the selected tab */
+  gdk_cairo_set_source_rgba (cr, &line);
   cairo_rectangle (cr, 0, height - 1, width, 1);
   cairo_fill (cr);
-  cairo_set_source_rgb (cr, 0x80 / 255.0, 0xcb / 255.0, 0xc4 / 255.0);
+  gdk_cairo_set_source_rgba (cr, &indicator);
   cairo_rectangle (cr, round (w * drawer->tab), height - 4, round (w), 4);
   cairo_fill (cr);
 }
@@ -829,10 +874,149 @@ page (GtkWidget **box, const char *css_class)
 static gboolean
 on_sheet_key (GtkEventControllerKey *keys, guint keyval, guint keycode, GdkModifierType state, FmDrawer *drawer)
 {
-  if (keyval != GDK_KEY_Escape && keyval != GDK_KEY_Back)
+  if (drawer->docked || (keyval != GDK_KEY_Escape && keyval != GDK_KEY_Back))
     return FALSE;
   fm_drawer_open (drawer, FALSE);
   return TRUE;
+}
+
+/* ---- the rail: an upright tablet's places, ☰ over them --------------------------------------------------------- */
+
+static const char *
+rail_icon (FmGlyph glyph)
+{
+  switch (glyph)
+    {
+    case FM_GLYPH_HOME:    return "user-home-symbolic";
+    case FM_GLYPH_STORAGE: return "drive-harddisk-symbolic";
+    case FM_GLYPH_SD:      return "media-flash-symbolic";
+    case FM_GLYPH_USB:     return "drive-removable-media-symbolic";
+    case FM_GLYPH_SYSTEM:  return "drive-harddisk-system-symbolic";
+    case FM_GLYPH_TRASH:   return "user-trash-symbolic";
+    default:               return "folder-symbolic";
+    }
+}
+
+static void
+unref_place (gpointer location)
+{
+  if (location)
+    g_object_unref (location);
+}
+
+static void
+rail_add (FmDrawer *drawer, VibeosNavRail *rail, FmGlyph glyph, const char *name, GFile *location)
+{
+  vibeos_nav_rail_append (rail, rail_icon (glyph), name);
+  g_ptr_array_add (drawer->rail_places, location ? g_object_ref (location) : NULL);
+}
+
+static void
+on_rail_selected (VibeosNavRail *rail, int index, FmDrawer *drawer)
+{
+  GFile *location = index >= 0 && (guint) index < drawer->rail_places->len ? drawer->rail_places->pdata[index] : NULL;
+
+  if (location)
+    go (drawer, location);
+  else
+    {
+      fm_drawer_open (drawer, FALSE);
+      fm_shell_show_page (drawer->shell, FM_PAGE_HOME);
+    }
+}
+
+static void
+on_rail_menu (VibeosPressable *button, FmDrawer *drawer)
+{
+  fm_drawer_open (drawer, TRUE);
+}
+
+/* the rail made again with the places there are now: Home, Main storage, the media, System, the Recycle Bin */
+static void
+build_rail (FmDrawer *drawer)
+{
+  FmShell *shell = drawer->shell;
+  GtkWidget *rail, *menu, *child;
+  g_autoptr(GFile) home = g_file_new_for_path (g_get_home_dir ());
+  g_autoptr(GFile) trash = g_file_new_for_uri ("trash:///");
+  GList *mounts;
+
+  if (!drawer->rail_box)
+    return;
+  rail = vibeos_nav_rail_new ();
+  mounts = fm_shell_mounts (shell);
+  while ((child = gtk_widget_get_first_child (drawer->rail_box)))
+    gtk_box_remove (GTK_BOX (drawer->rail_box), child);
+  g_ptr_array_set_size (drawer->rail_places, 0);
+  menu = fm_icon_button ("open-menu-symbolic", _("Navigation menu"), 56, 56);
+  /* ☰ a little lower than the rail's own header: the places start under it where DocumentsUI's do */
+  gtk_widget_set_margin_top (menu, 16);
+  g_signal_connect (menu, "clicked", G_CALLBACK (on_rail_menu), drawer);
+  vibeos_nav_rail_set_header (VIBEOS_NAV_RAIL (rail), menu);
+  vibeos_nav_rail_set_top_aligned (VIBEOS_NAV_RAIL (rail), TRUE);
+  rail_add (drawer, VIBEOS_NAV_RAIL (rail), FM_GLYPH_HOME, _("Home"), NULL);
+  rail_add (drawer, VIBEOS_NAV_RAIL (rail), FM_GLYPH_STORAGE, _("Main storage"), home);
+  for (GList *l = mounts; l; l = l->next)
+    {
+      g_autoptr(GFile) root = NULL;
+      g_autofree char *label = NULL;
+      FmGlyph glyph;
+
+      if (!fm_mount_is_media (l->data))
+        continue;
+      root = g_mount_get_root (l->data);
+      label = fm_mount_label (l->data, &glyph);
+      rail_add (drawer, VIBEOS_NAV_RAIL (rail), glyph, label, root);
+    }
+  g_list_free_full (mounts, g_object_unref);
+  if (g_settings_get_boolean (shell->settings, "show-system"))
+    {
+      g_autoptr(GFile) slash = g_file_new_for_path ("/");
+
+      rail_add (drawer, VIBEOS_NAV_RAIL (rail), FM_GLYPH_SYSTEM, _("System"), slash);
+    }
+  rail_add (drawer, VIBEOS_NAV_RAIL (rail), FM_GLYPH_TRASH, _("Recycle Bin"), trash);
+  gtk_widget_set_size_request (rail, RAIL_W, -1);
+  gtk_widget_set_vexpand (rail, TRUE);
+  g_signal_connect (rail, "selected", G_CALLBACK (on_rail_selected), drawer);
+  g_signal_connect (rail, "reselected", G_CALLBACK (on_rail_selected), drawer);
+  gtk_box_append (GTK_BOX (drawer->rail_box), rail);
+  fm_drawer_sync_rail (drawer);
+}
+
+GtkWidget *
+fm_drawer_get_rail (FmDrawer *drawer)
+{
+  if (!drawer->rail_box)
+    {
+      drawer->rail_box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+      gtk_widget_add_css_class (drawer->rail_box, "fm-rail");
+      drawer->rail_places = g_ptr_array_new_with_free_func (unref_place);
+      build_rail (drawer);
+    }
+  return drawer->rail_box;
+}
+
+void
+fm_drawer_sync_rail (FmDrawer *drawer)
+{
+  FmShell *shell = drawer->shell;
+  GtkWidget *rail = drawer->rail_box ? gtk_widget_get_first_child (drawer->rail_box) : NULL;
+  int index = -1;
+
+  if (!rail)
+    return;
+  if (shell->page == FM_PAGE_HOME)
+    index = 0;
+  else if (shell->page == FM_PAGE_BROWSER)
+    {
+      FmPlace *place = fm_browser_get_place (shell->browser);
+
+      for (guint i = 1; place && place->root && i < drawer->rail_places->len; i++)
+        if (drawer->rail_places->pdata[i] && g_file_equal (drawer->rail_places->pdata[i], place->root))
+          index = (int) i;
+    }
+  vibeos_nav_rail_set_selected (VIBEOS_NAV_RAIL (rail), index);
 }
 
 void
@@ -846,6 +1030,7 @@ fm_drawer_refresh (FmDrawer *drawer)
   build_locations (drawer);
   build_bookmarks (drawer);
   build_history (drawer);
+  build_rail (drawer);
 }
 
 FmDrawer *
@@ -878,13 +1063,11 @@ fm_drawer_new (FmShell *shell)
   for (int i = 0; i < N_TABS; i++)
     {
       GtkWidget *image = gtk_image_new_from_icon_name (icons[i]);
-      GdkRGBA ripple = fm_rgba (FM_C_RIPPLE);
 
       gtk_image_set_pixel_size (GTK_IMAGE (image), 20);
       drawer->tabs[i] = vibeos_pressable_new (image);
       gtk_widget_add_css_class (drawer->tabs[i], "fm-nav-tab");
       vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (drawer->tabs[i]), VIBEOS_RIPPLE_BOUNDED, 0);
-      vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (drawer->tabs[i]), &ripple);
       g_object_set_data (G_OBJECT (drawer->tabs[i]), "fm-tab", GINT_TO_POINTER (i));
       g_signal_connect (drawer->tabs[i], "clicked", G_CALLBACK (on_tab), drawer);
       gtk_accessible_update_property (GTK_ACCESSIBLE (drawer->tabs[i]), GTK_ACCESSIBLE_PROPERTY_LABEL, names[i], -1);
@@ -936,5 +1119,6 @@ fm_drawer_free (FmDrawer *drawer)
     g_cancellable_cancel (drawer->cancellable);
   g_clear_object (&drawer->cancellable);
   g_clear_pointer (&drawer->anim, vibeos_anim_free);
+  g_clear_pointer (&drawer->rail_places, g_ptr_array_unref);
   g_free (drawer);
 }

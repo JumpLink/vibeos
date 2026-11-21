@@ -1,4 +1,4 @@
-/* Sounds and vibration. The media and microphone volumes and the output device through libpulse (PipeWire's pulse
+/* Sound & vibration. The media and microphone volumes and the output device through libpulse (PipeWire's pulse
  * server here), connected once at start (ns_sound_init) and followed by its subscription. The sound mode and the
  * vibration strength are feedbackd's settings, which the volume panel, the Phone and the Clock all follow.
  *
@@ -7,6 +7,7 @@
  * vibeos.Clock default-alarm-ringtone at alarm-volume; both set the speaker to that volume while they ring. The
  * sounds to pick from are the ones those apps list: sounds/android/ringtones and sounds/android/alarms in the
  * system data dirs. */
+#include "ns-caps.h"
 #include "ns-pages.h"
 #include "ns-sound.h"
 #include "ns-ui.h"
@@ -294,6 +295,12 @@ preview_page_left (GtkWidget *page, gpointer data)
 }
 
 static void
+sound_back (NsPage *page)
+{
+  preview_stop ();
+}
+
+static void
 preview_play (const char *uri)
 {
   preview_stop ();
@@ -416,13 +423,14 @@ level_set (const GValue *value, const GVariantType *type, gpointer data)
   return g_variant_new_double (g_value_get_double (value) / 100.0);
 }
 
-static void
+static GtkWidget *
 level_row (GtkWidget *g, const char *title, const char *icon, GSettings *s, const char *key)
 {
   GtkWidget *scale;
-  ns_row_scale (g, title, icon, 0, 100, 1, &scale);
+  GtkWidget *row = ns_row_scale (g, title, icon, 0, 100, 1, &scale);
   g_settings_bind_with_mapping (s, key, gtk_range_get_adjustment (GTK_RANGE (scale)), "value",
                                 G_SETTINGS_BIND_DEFAULT, level_get, level_set, NULL, NULL);
+  return row;
 }
 
 /* ---- the page ---- */
@@ -456,13 +464,13 @@ void
 ns_page_sound (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Sounds and vibration", &c);
+  NsPage *page = ns_page_new ("Sound & vibration", &c);
   Sound *s = g_new0 (Sound, 1);
   s->names = g_ptr_array_new_with_free_func (g_free);
   g_object_set_data_full (G_OBJECT (page), "sound", s, (GDestroyNotify) sound_free);
   shown = s;
   /* back from a ringtone picker (or gone): its preview stops */
-  g_signal_connect (page, "showing", G_CALLBACK (preview_page_left), NULL);
+  ns_page_on_back (page, sound_back);
   g_signal_connect (page, "destroy", G_CALLBACK (preview_page_left), NULL);
 
   GSettings *fb = ns_page_settings (page, "org.sigxcpu.feedbackd");
@@ -478,12 +486,13 @@ ns_page_sound (GtkWidget *row, gpointer data)
   double top = snd && ns_has_key (snd, "allow-volume-above-100-percent")
                && g_settings_get_boolean (snd, "allow-volume-above-100-percent") ? 150 : 100;
   g = ns_group (c, "Volume");
+  /* what is for calls shows with a modem only */
   if (ns_has_key (phone, "ring-volume"))
-    level_row (g, "Ringtone", "call-start-symbolic", phone, "ring-volume");
-  ns_row_scale (g, "Media", "audio-volume-high-symbolic", 0, top, 1, &s->media);
+    ns_caps_bind_visible (level_row (g, "Ring volume", "call-start-symbolic", phone, "ring-volume"), NS_CAP_MODEM);
+  ns_row_scale (g, "Media volume", "audio-volume-high-symbolic", 0, top, 1, &s->media);
   g_signal_connect (s->media, "value-changed", G_CALLBACK (volume_set), NULL);
   if (ns_has_key (clock, "alarm-volume"))
-    level_row (g, "Alarms", "alarm-symbolic", clock, "alarm-volume");
+    level_row (g, "Alarm volume", "alarm-symbolic", clock, "alarm-volume");
   GtkWidget *mr = ns_row_scale (g, "Microphone", "audio-input-microphone-symbolic", 0, 100, 1, &s->mic);
   gtk_widget_set_visible (mr, FALSE);
   g_signal_connect (s->mic, "value-changed", G_CALLBACK (volume_set), GINT_TO_POINTER (1));
@@ -499,17 +508,28 @@ ns_page_sound (GtkWidget *row, gpointer data)
       g_signal_connect (scale, "value-changed", G_CALLBACK (haptic_set), fb);
     }
     if (ns_has_key (phone, "vibrate-when-ringing"))
-      ns_row_switch (g, "Vibrate while ringing", "Calls vibrate as well as ring in Sound mode", phone,
-                     "vibrate-when-ringing");
+      ns_caps_bind_visible (ns_row_switch (g, "Vibrate while ringing", "Calls vibrate as well as ring in Sound mode",
+                                           phone, "vibrate-when-ringing"), NS_CAP_MODEM);
+    /* nothing but the calls' row in it: the card goes with it */
+    if (!ns_has_key (fb, "max-haptic-strength"))
+      ns_caps_bind_visible (g, NS_CAP_MODEM);
   }
 
   if (phone || clock) {
-    g = ns_group (c, "Ringtones");
+    g = ns_group (c, "Sound patterns");
     /* the defaults are the apps' own (ringer.c DEFAULT_RINGTONE, alarm-klaxon.c's kinds[]) */
     if (ns_has_key (phone, "ringtone"))
-      tone_row (g, "Ringtone", phone, "ringtone", "sounds/android/ringtones", "Orion", "none");
+      ns_caps_bind_visible (tone_row (g, "Phone ringtone", phone, "ringtone", "sounds/android/ringtones", "Orion",
+                                      "none"), NS_CAP_MODEM);
     if (ns_has_key (clock, "default-alarm-ringtone"))
-      tone_row (g, "Alarm sound", clock, "default-alarm-ringtone", "sounds/android/alarms", "Hassium", NULL);
+      tone_row (g, "Default alarm sound", clock, "default-alarm-ringtone", "sounds/android/alarms", "Hassium", NULL);
+  }
+
+  /* the Phone's key tones: a phone's only system sound VibeOS has a switch for */
+  if (ns_has_key (phone, "dtmf-tone-when-dialing")) {
+    g = ns_group (c, "System sounds");
+    ns_row_switch (g, "Dial pad tones", NULL, phone, "dtmf-tone-when-dialing");
+    ns_caps_bind_visible (g, NS_CAP_MODEM);
   }
 
   if (ns_has_key (snd, "allow-volume-above-100-percent")) {

@@ -1,41 +1,41 @@
-/* The Files styles, over libvibeos's (vibeos.css): File Manager+'s dark theme, its dark dialogs and popups. Sizes are GTK
- * px; most of the geometry is set in C, so this file is mainly colours, fonts and paddings. The weights are Bold
- * text's: regular 700, medium 800. */
+/* The Files styles, over libvibeos's (vibeos.css): File Manager+'s layout in the theme's colours, light or dark, every
+ * one a role of the theme. Text sizes are sp and every other size dp (libvibeos converts them for Font size); weights
+ * are the usual ones, and Bold text draws each 300 heavier. Most of the geometry is set in C. */
 
 window.fm-window,
 .fm-home,
 .fm-browser,
 .fm-remote-page,
 .fm-settings {
-  background-color: #121212;
+  background-color: @vibeos_surface;
 }
 
 /* ---- the toolbar ---- */
 
 .fm-toolbar {
-  min-height: 56px;
-  background-color: #1f1f1f;
+  min-height: 56dp;
+  background-color: @vibeos_surface_container;
 }
 
 /* the action mode bar, with a line at its bottom */
 .fm-toolbar.fm-cab {
-  background-color: #002e3e;
-  box-shadow: inset 0 -2.67px #33b5e5;
+  background-color: @vibeos_primary_container;
+  box-shadow: inset 0 -2.67dp @vibeos_primary;
 }
 
 .fm-title {
-  font-size: 18px;
-  font-weight: 800;
-  color: #ffffff;
-  margin-top: 1px;
+  font-size: 18sp;
+  font-weight: 500;
+  color: @vibeos_on_surface;
+  margin-top: 1dp;
 }
 
 .fm-icon-button image {
-  color: #ffffff;
+  color: @vibeos_on_surface;
 }
 
 .fm-icon-button:disabled image {
-  color: rgba(255, 255, 255, 0.3);
+  color: alpha(@vibeos_on_surface, 0.38);
 }
 
 .fm-search-entry {
@@ -43,76 +43,76 @@ window.fm-window,
   border: none;
   box-shadow: none;
   outline: none;
-  min-height: 40px;
+  min-height: 40dp;
   padding: 0;
-  margin-left: 16px;
-  font-size: 18px;
-  font-weight: 700;
-  color: #ffffff;
-  caret-color: #80cbc4;
+  margin-left: 16dp;
+  font-size: 18sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
+  caret-color: @vibeos_primary;
 }
 
 .fm-search-entry placeholder,
 .fm-search-entry text placeholder {
-  color: rgba(255, 255, 255, 0.5);
+  color: @vibeos_on_surface_variant;
 }
 
 .fm-search-entry selection {
-  background-color: rgba(128, 203, 196, 0.4);
+  background-color: alpha(@vibeos_primary, 0.4);
 }
 
 .fm-search-spinner {
-  color: #80cbc4;
-  margin: 0 13px;
+  color: @vibeos_primary;
+  margin: 0 13dp;
 }
 
 /* ---- the path bar ---- */
 
 .fm-pathbar {
-  min-height: 44px;
-  background-color: #1f1f1f;
+  min-height: 44dp;
+  background-color: @vibeos_surface_container;
 }
 
 .fm-crumbs {
-  padding: 0 4px;
+  padding: 0 4dp;
 }
 
 .fm-crumb {
-  min-height: 44px;
-  padding: 0 8px;
+  min-height: 44dp;
+  padding: 0 8dp;
 }
 
 .fm-crumb-home {
-  margin-left: 2px;
+  margin-left: 2dp;
 }
 
 .fm-crumb-chevron {
-  color: #888888;
+  color: @vibeos_on_surface_variant;
 }
 
 .fm-crumb-text {
-  font-size: 18px;
-  font-weight: 700;
-  color: #a0a0a0;
+  font-size: 18sp;
+  font-weight: 400;
+  color: @vibeos_on_surface_variant;
 }
 
 .fm-crumb.last .fm-crumb-text {
-  color: #eeeeee;
+  color: @vibeos_on_surface;
 }
 
 .fm-free {
-  font-size: 14px;
-  font-weight: 700;
-  color: #eeeeee;
-  padding: 0 9px 0 10px;
+  font-size: 14sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
+  padding: 0 9dp 0 10dp;
 }
 
 .fm-up {
-  margin-right: 5px;
+  margin-right: 5dp;
 }
 
 .fm-up image {
-  color: #cccccc;
+  color: @vibeos_on_surface_variant;
 }
 
 /* ---- the file list ---- */
@@ -130,46 +130,47 @@ window.fm-window,
 }
 
 .fm-list-view {
-  background-color: #121212;
+  background-color: @vibeos_surface;
 }
 
 .fm-row {
-  min-height: 56px;
-  padding: 0 4px;
-  border-bottom: 1px solid #272727;
+  min-height: 56dp;
+  padding: 0 4dp;
+  border-bottom: 1dp solid @vibeos_surface_container_high;
 }
 
 .fm-row.selected {
-  background-color: #00796b;
+  background-color: @vibeos_secondary_container;
 }
 
 .fm-row-icon {
-  margin: 0 4px;
+  margin: 0 4dp;
 }
 
 .fm-row-text {
-  margin: 1px 4px 0 4px;
+  margin: 1dp 4dp 0 4dp;
 }
 
 .fm-row-name {
-  font-size: 18px;
-  font-weight: 700;
-  color: #dbdbdb;
+  font-size: 18sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
 }
 
 .fm-row-sub,
 .fm-row-where {
-  font-size: 14px;
-  font-weight: 700;
-  color: #a7a7a7;
+  font-size: 14sp;
+  font-weight: 400;
+  color: @vibeos_on_surface_variant;
 }
 
 .fm-row-check {
-  margin: 0 4px;
+  margin: 0 4dp;
 }
 
-/* the grid: the original's grid padding and column gap, split between a margin round the grid and one round each
- * tile */
+/* the grid: the original's grid padding, split between a margin round the grid and one round each tile; the
+ * columns at least 104 dp apart, so the icons have air between them and the names room to read (owner, 11-21: "too
+ * dense") */
 .fm-grid-view,
 .fm-grid-view > child {
   margin: 0;
@@ -181,58 +182,58 @@ window.fm-window,
 }
 
 .fm-grid-view {
-  background-color: #121212;
-  padding: 5px;
+  background-color: @vibeos_surface;
+  padding: 5dp;
 }
 
 .fm-grid-view > child {
-  padding: 1px;
+  padding: 1dp 4dp;
 }
 
 .fm-grid-tile {
-  min-width: 64px;
-  padding: 2px 0;
-  border-radius: 2px;
+  min-width: 96dp;
+  padding: 2dp 0;
+  border-radius: 2dp;
 }
 
 .fm-grid-tile.selected {
-  background-color: #00796b;
+  background-color: @vibeos_secondary_container;
 }
 
 .fm-grid-tile-name {
-  font-size: 14px;
-  font-weight: 700;
-  color: #dbdbdb;
-  margin: 0 2px;
+  font-size: 14sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
+  margin: 0 2dp;
 }
 
 .fm-list-message {
-  font-size: 18px;
-  font-weight: 700;
-  color: #dbdbdb;
-  margin: 0 24px;
+  font-size: 18sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
+  margin: 0 24dp;
 }
 
 /* ---- the selection and paste bar ---- */
 
 .fm-bottom {
-  background-color: #002e3e;
-  box-shadow: inset 0 2.67px #33b5e5;
+  background-color: @vibeos_primary_container;
+  box-shadow: inset 0 2.67dp @vibeos_primary;
 }
 
 .fm-bottom-items {
-  min-height: 50px;
-  padding: 5px 0;
+  min-height: 50dp;
+  padding: 5dp 0;
 }
 
 .fm-bottom-icon {
-  color: #ffffff;
+  color: @vibeos_on_primary_container;
 }
 
 .fm-bottom-text {
-  font-size: 14px;
-  font-weight: 700;
-  color: #ffffff;
+  font-size: 14sp;
+  font-weight: 400;
+  color: @vibeos_on_primary_container;
 }
 
 .fm-bottom-item:disabled {
@@ -242,523 +243,523 @@ window.fm-window,
 /* ---- Home ---- */
 
 .fm-home-grid {
-  padding: 8px;
+  padding: 8dp;
 }
 
 .fm-tile {
-  padding: 5px;
+  padding: 5dp;
 }
 
 .fm-tile-name {
-  font-size: 16px;
-  font-weight: 700;
-  color: #dbdbdb;
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
 }
 
 .fm-tile-info {
-  font-size: 12px;
-  font-weight: 700;
-  color: #a7a7a7;
+  font-size: 12sp;
+  font-weight: 400;
+  color: @vibeos_on_surface_variant;
 }
 
 /* ---- the Remote page ---- */
 
 .fm-remote-footer {
-  min-height: 64px;
-  border-bottom: 1px solid #313131;     /* a line under it only */
+  min-height: 64dp;
+  border-bottom: 1dp solid @vibeos_outline_variant;     /* a line under it only */
 }
 
 .fm-footer-text {
-  font-size: 18px;
-  font-weight: 700;
-  color: #dbdbdb;
+  font-size: 18sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
 }
 
 .fm-footer-plus {
-  color: #dbdbdb;
+  color: @vibeos_on_surface;
 }
 
 .fm-remote-more image {
-  color: #a7a7a7;
+  color: @vibeos_on_surface_variant;
 }
 
 /* ---- the drawer ---- */
 
 fm-drawer > .fm-drawer-scrim {
-  background-color: rgba(0, 0, 0, 0.6);
+  background-color: alpha(@vibeos_scrim, 0.6);
 }
 
 .fm-drawer-sheet {
-  background-color: #222222;
+  background-color: @vibeos_surface_container_low;
 }
 
 .fm-nav-tabs {
-  min-height: 56px;
-  background-color: #282828;
+  min-height: 56dp;
+  background-color: @vibeos_surface_container;
 }
 
 .fm-nav-tab image {
-  color: #555555;
+  color: alpha(@vibeos_on_surface_variant, 0.6);
 }
 
 .fm-nav-tab.selected image {
-  color: #e5e5e5;
+  color: @vibeos_on_surface;
 }
 
 .fm-nav-fixed {
-  min-height: 48px;
-  padding: 2px;
+  min-height: 48dp;
+  padding: 2dp;
 }
 
 .fm-nav-icon {
-  margin: 4px;
+  margin: 4dp;
 }
 
 .fm-nav-text {
-  margin: 0 6px 0 4px;
+  margin: 0 6dp 0 4dp;
 }
 
 .fm-nav-name {
-  font-size: 16px;
-  font-weight: 700;
-  color: #e4e4e4;
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
 }
 
 .fm-nav-description,
 .fm-nav-path,
 .fm-nav-path-main {
-  font-size: 14px;
-  font-weight: 700;
-  color: #808080;
+  font-size: 14sp;
+  font-weight: 400;
+  color: @vibeos_on_surface_variant;
 }
 
 .fm-nav-location {
-  font-size: 12px;
-  font-weight: 700;
-  color: #808080;
+  font-size: 12sp;
+  font-weight: 400;
+  color: @vibeos_on_surface_variant;
 }
 
 .fm-nav-storage .fm-nav-text {
-  margin-top: 7px;
+  margin-top: 7dp;
 }
 
 .fm-nav-bar {
-  margin-top: 8px;
+  margin-top: 8dp;
 }
 
 .fm-nav-fixed .fm-nav-description {
-  margin-top: 1px;
+  margin-top: 1dp;
 }
 
 .fm-nav-gap {
-  min-height: 1px;
+  min-height: 1dp;
 }
 
 .fm-nav-divider {
-  min-height: 1px;
-  background-color: #3b3b3b;
+  min-height: 1dp;
+  background-color: @vibeos_outline_variant;
 }
 
 .fm-nav-separator {
-  min-height: 3px;
-  background-color: #444444;
+  min-height: 3dp;
+  background-color: @vibeos_outline_variant;
 }
 
 .fm-nav-separator-2 {
-  min-height: 2px;
-  background-color: #444444;
+  min-height: 2dp;
+  background-color: @vibeos_outline_variant;
 }
 
 .fm-nav-opened {
-  min-height: 49px;
-  padding: 2px 0 2px 2px;
+  min-height: 49dp;
+  padding: 2dp 0 2dp 2dp;
 }
 
 .fm-nav-opened-text {
-  margin-left: 4px;
+  margin-left: 4dp;
 }
 
 .fm-nav-pin {
-  color: #808080;
-  margin-left: 4px;
+  color: @vibeos_on_surface_variant;
+  margin-left: 4dp;
 }
 
 .fm-nav-more {
-  margin-right: 2px;
+  margin-right: 2dp;
 }
 
 .fm-nav-more image {
-  color: #a0a0a0;
+  color: @vibeos_on_surface_variant;
 }
 
 .fm-nav-bookmark {
-  min-height: 48px;
-  padding: 4px 0 4px 2px;
+  min-height: 48dp;
+  padding: 4dp 0 4dp 2dp;
 }
 
 .fm-nav-bookmark .fm-nav-name {
-  margin-left: 4px;
+  margin-left: 4dp;
 }
 
 .fm-nav-bookmark .fm-nav-location {
-  margin-left: 4px;
+  margin-left: 4dp;
 }
 
 .fm-nav-band {
-  background-color: #303030;
-  padding: 3px 6px;
+  background-color: @vibeos_surface_container_highest;
+  padding: 3dp 6dp;
 }
 
 .fm-nav-band-text {
-  font-size: 12px;
-  font-weight: 700;
-  color: #e4e4e4;
-  margin-left: 6px;
+  font-size: 12sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
+  margin-left: 6dp;
 }
 
 .fm-nav-history-line {
-  padding: 2px 2px;
+  padding: 2dp 2dp;
 }
 
 .fm-nav-history-line .fm-nav-path-main {
-  margin-left: 4px;
+  margin-left: 4dp;
 }
 
 .fm-nav-empty {
-  font-size: 16px;
-  font-weight: 700;
-  color: rgba(228, 228, 228, 0.6);
-  margin: 32px 0;
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_on_surface_variant;
+  margin: 32dp 0;
 }
 
 .fm-nav-button {
-  margin: 0 8px;
+  margin: 0 8dp;
 }
 
 /* ---- buttons, checks and fields ---- */
 
 .fm-text-button {
-  min-width: 64px;
-  min-height: 48px;
-  padding: 0 8px;
+  min-width: 64dp;
+  min-height: 48dp;
+  padding: 0 8dp;
 }
 
 .fm-text-button label {
-  font-size: 14px;
-  font-weight: 800;
-  color: #80cbc4;
+  font-size: 14sp;
+  font-weight: 500;
+  color: @vibeos_primary;
 }
 
 .fm-text-button:disabled label {
-  color: rgba(128, 203, 196, 0.4);
+  color: alpha(@vibeos_primary, 0.38);
 }
 
 .fm-check-row {
-  min-height: 48px;
+  min-height: 48dp;
 }
 
 .fm-check-text {
-  font-size: 16px;
-  font-weight: 700;
-  color: #ffffff;
-  margin-left: 8px;
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
+  margin-left: 8dp;
 }
 
 /* the View dialog's List and Grid: the radio, the view's glyph, its name */
 .fm-view-type-icon {
-  color: #ffffff;
-  margin-left: 8px;
+  color: @vibeos_on_surface;
+  margin-left: 8dp;
 }
 
 .fm-view-types {
-  margin-bottom: 4px;
+  margin-bottom: 4dp;
 }
 
 .fm-entry,
 .vibeos-entry.fm-entry {
-  font-size: 16px;
-  font-weight: 700;
-  color: #ffffff;
-  caret-color: #80cbc4;
-  min-height: 40px;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.7);
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
+  caret-color: @vibeos_primary;
+  min-height: 40dp;
+  border-bottom: 2dp solid @vibeos_on_surface_variant;
 }
 
 .vibeos-entry.fm-entry:focus-within {
-  border-bottom-color: #80cbc4;
+  border-bottom-color: @vibeos_primary;
 }
 
 .vibeos-entry.fm-entry placeholder,
 .vibeos-entry.fm-entry text placeholder {
-  color: rgba(255, 255, 255, 0.5);
+  color: @vibeos_on_surface_variant;
 }
 
 .vibeos-entry.fm-entry selection {
-  background-color: rgba(128, 203, 196, 0.4);
+  background-color: alpha(@vibeos_primary, 0.4);
 }
 
 .fm-field-error {
-  font-size: 12px;
-  font-weight: 700;
-  color: #ef5350;
-  margin-top: 4px;
+  font-size: 12sp;
+  font-weight: 400;
+  color: @vibeos_error;
+  margin-top: 4dp;
 }
 
 /* ---- the dialogs: a dark alert dialog ---- */
 
 .fm-window .vibeos-dialog {
-  background-color: #424242;
-  border-radius: 2px;
+  background-color: @vibeos_surface_container_high;
+  border-radius: 2dp;
   padding: 0;
-  margin: 0 1px;
+  margin: 0 1dp;
 }
 
 .fm-window .vibeos-dialog-buttons {
   margin: 0;
-  padding: 4px 18px 7px 12px;
+  padding: 4dp 18dp 7dp 12dp;
   border-spacing: 0;
 }
 
 .fm-window .vibeos-dialog .vibeos-text-button {
-  min-width: 64px;
-  min-height: 48px;
-  padding: 0 5px;
-  color: #80cbc4;
-  font-size: 14px;
-  font-weight: 800;
+  min-width: 64dp;
+  min-height: 48dp;
+  padding: 0 5dp;
+  color: @vibeos_primary;
+  font-size: 14sp;
+  font-weight: 500;
 }
 
 .fm-dialog-content {
-  padding: 17px 24px 0 24px;
+  padding: 17dp 24dp 0 24dp;
 }
 
 .fm-dialog-content.untitled {
-  padding-top: 24px;
+  padding-top: 24dp;
 }
 
 .fm-dialog-title {
-  font-size: 20px;
-  font-weight: 800;
-  color: #ffffff;
-  margin-bottom: 12px;
+  font-size: 20sp;
+  font-weight: 500;
+  color: @vibeos_on_surface;
+  margin-bottom: 12dp;
 }
 
 .fm-dialog-message {
-  font-size: 16px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.7);
-  margin-bottom: 8px;
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_on_surface_variant;
+  margin-bottom: 8dp;
 }
 
 .fm-dialog-count {
-  font-size: 14px;
-  font-weight: 700;
-  color: #a7a7a7;
-  margin-bottom: 8px;
+  font-size: 14sp;
+  font-weight: 400;
+  color: @vibeos_on_surface_variant;
+  margin-bottom: 8dp;
 }
 
 .fm-dialog-subtitle {
-  font-size: 14px;
-  font-weight: 800;
-  color: #80cbc4;
-  margin: 4px 0;
+  font-size: 14sp;
+  font-weight: 500;
+  color: @vibeos_primary;
+  margin: 4dp 0;
 }
 
 .fm-form-row {
-  min-height: 48px;
-  margin-left: 2px;
+  min-height: 48dp;
+  margin-left: 2dp;
 }
 
 .fm-form-label {
-  font-size: 16px;
-  font-weight: 700;
-  color: #ffffff;
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
 }
 
 .fm-form-check {
-  margin-left: 79px;
+  margin-left: 79dp;
 }
 
 /* a list to pick from: the rows reach the card's edges */
 .fm-dialog-content.fm-list-dialog {
-  padding: 17px 0 8px 0;
+  padding: 17dp 0 8dp 0;
 }
 
 .fm-list-dialog .fm-dialog-title {
-  margin: 0 24px 8px 24px;
+  margin: 0 24dp 8dp 24dp;
 }
 
 .fm-list-dialog-row {
-  min-height: 48px;
-  padding: 0 24px;
+  min-height: 48dp;
+  padding: 0 24dp;
 }
 
 .fm-list-dialog-text {
-  font-size: 16px;
-  font-weight: 700;
-  color: #ffffff;
-  margin-left: 12px;
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
+  margin-left: 12dp;
 }
 
 /* the Local Network scan */
 .fm-dialog-content.fm-scan-dialog {
-  padding: 17px 0 0 0;
+  padding: 17dp 0 0 0;
 }
 
 .fm-scan-dialog .fm-dialog-title {
-  margin: 0 24px 0 24px;
+  margin: 0 24dp 0 24dp;
 }
 
 .fm-scan-area {
-  min-height: 203px;
-  margin-top: 18px;
+  min-height: 203dp;
+  margin-top: 18dp;
 }
 
 .fm-scan-progress {
-  margin: 0 24px;
+  margin: 0 24dp;
 }
 
 .fm-scan-row {
-  min-height: 48px;
+  min-height: 48dp;
 }
 
 .fm-scan-line {
-  margin: 0 24px;
-  box-shadow: inset 0 -1px #595959;
+  margin: 0 24dp;
+  box-shadow: inset 0 -1dp @vibeos_outline_variant;
 }
 
 .fm-scan-name {
-  font-size: 18px;
-  font-weight: 700;
-  color: #e2e2e2;
-  margin-left: 9px;
+  font-size: 18sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
+  margin-left: 9dp;
 }
 
 .fm-scan-empty {
-  font-size: 16px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_on_surface_variant;
 }
 
 /* Properties */
 .fm-property-label,
 .fm-property-value {
-  font-size: 14px;
-  font-weight: 700;
-  color: #a7a7a7;
+  font-size: 14sp;
+  font-weight: 400;
+  color: @vibeos_on_surface_variant;
 }
 
 .fm-properties {
-  padding-bottom: 8px;
+  padding-bottom: 8dp;
 }
 
 /* the progress of a job */
 .fm-progress-head .fm-dialog-title {
-  margin-bottom: 8px;
+  margin-bottom: 8dp;
 }
 
 .fm-progress-percent {
-  font-size: 16px;
-  font-weight: 700;
-  color: #ffffff;
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
 }
 
 .fm-progress-text {
-  font-size: 14px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 14sp;
+  font-weight: 400;
+  color: @vibeos_on_surface_variant;
 }
 
 .fm-progress-bar {
-  margin: 8px 0;
+  margin: 8dp 0;
 }
 
 /* Overwrite / Rename / Skip: full-width coloured buttons */
 .fm-conflict-button {
-  background-color: #80cbc4;
-  border-radius: 2px;
-  min-height: 40px;
-  margin: 4px 0;
+  background-color: @vibeos_primary;
+  border-radius: 2dp;
+  min-height: 40dp;
+  margin: 4dp 0;
 }
 
 .fm-conflict-button label {
-  color: #00332e;
+  color: @vibeos_on_primary;
 }
 
 /* ---- the popup menu ---- */
 
 .fm-popup {
-  background-color: #424242;
-  border-radius: 2px;
-  padding: 8px 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  background-color: @vibeos_surface_container;
+  border-radius: 2dp;
+  padding: 8dp 0;
+  box-shadow: 0 2dp 8dp alpha(@vibeos_shadow, 0.5);
 }
 
 .fm-popup-item {
-  min-height: 48px;
-  padding: 0 16px;
+  min-height: 48dp;
+  padding: 0 16dp;
 }
 
 .fm-popup-text {
-  font-size: 16px;
-  font-weight: 700;
-  color: #ffffff;
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
 }
 
 /* ---- Settings ---- */
 
 .fm-pref-category {
-  font-size: 14px;
-  font-weight: 800;
-  color: #80cbc4;
-  padding: 16px 16px 8px 16px;
+  font-size: 14sp;
+  font-weight: 500;
+  color: @vibeos_primary;
+  padding: 16dp 16dp 8dp 16dp;
 }
 
 .fm-pref-row {
-  min-height: 72px;
-  padding: 0 16px;
+  min-height: 72dp;
+  padding: 0 16dp;
 }
 
 .fm-pref-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: #ffffff;
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
 }
 
 /* ---- the snackbar and the toast ---- */
 
 .fm-snackbar .vibeos-snackbar {
-  background-color: #2f2f2f;
+  background-color: @vibeos_inverse_surface;
   border-radius: 0;
 }
 
 .fm-snackbar .vibeos-snackbar-text {
-  font-size: 14px;
-  font-weight: 700;
-  color: #ffffff;
+  font-size: 14sp;
+  font-weight: 400;
+  color: @vibeos_inverse_on_surface;
 }
 
 .fm-snackbar .vibeos-text-button {
-  color: #80cbc4;
+  color: @vibeos_primary;
 }
 
 /* the toast: the system's colours, not the app's */
 .fm-toast {
-  margin: 0 16px 48px 16px;
-  padding: 0 16px;
-  min-height: 48px;
-  border-radius: 28px;
+  margin: 0 16dp 48dp 16dp;
+  padding: 0 16dp;
+  min-height: 48dp;
+  border-radius: 28dp;
   background-color: @vibeos_surface_container_high;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1dp 3dp alpha(@vibeos_shadow, 0.3);
 }
 
 .fm-toast-icon {
-  margin: 10px 10px 10px 0;
+  margin: 10dp 10dp 10dp 0;
 }
 
 .fm-toast-text {
-  padding: 12px 0;
-  font-size: 14px;
-  font-weight: 700;
+  padding: 12dp 0;
+  font-size: 14sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }

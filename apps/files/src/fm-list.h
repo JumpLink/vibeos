@@ -38,6 +38,7 @@ gboolean    fm_list_get_selecting      (FmList *self);
 void        fm_list_set_selected       (FmList *self, FmItem *item, gboolean selected);
 /* the selected rows that show, in their order (FmItem, a new array) */
 GPtrArray  *fm_list_get_selected       (FmList *self);
+GtkWidget  *fm_list_get_activated_icon (FmList *self);
 guint       fm_list_count_selected     (FmList *self);
 void        fm_list_select_all         (FmList *self);
 /* every row between the first selected and the last (Select a range) */

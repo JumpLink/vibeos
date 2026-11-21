@@ -2,29 +2,171 @@
 #include "ns-ui.h"
 
 #include <math.h>
+#include <stdlib.h>
+#include <string.h>
 
 #ifdef HAVE_SPONGY
 #include <spongy-gtk.h>
 #endif
 
-static AdwNavigationView *nav;
+static VibeosListDetail *ld;
 static gint64 tapped;          /* when a row was tapped: NS_TIMING logs how long its page took to build */
+static gboolean opening_entry; /* the next page pushed is a main-menu entry's */
+static GtkWidget *entry_row;   /* the entry's row */
+static GtkWidget *first_level; /* the entry's page now open (weak) */
 
-void
-ns_ui_init (AdwNavigationView *n)
+/* ---- navigation ---- */
+
+static void
+set_bar_back (NsPage *page, gboolean back)
 {
-  nav = n;
+  GtkWidget *bar = g_object_get_data (G_OBJECT (page), "ns-bar");
+  if (bar)
+    vibeos_top_bar_set_back (VIBEOS_TOP_BAR (bar), back);
+}
+
+/* an entry's page beside the menu has no back arrow (Back there leaves the app); over the menu it has one */
+static void
+split_changed (GObject *o, GParamSpec *ps, gpointer data)
+{
+  if (first_level)
+    set_bar_back (first_level, !vibeos_list_detail_is_split (ld));
 }
 
 void
-ns_push (AdwNavigationPage *page)
+ns_ui_init (VibeosListDetail *l)
+{
+  ld = l;
+  g_signal_connect (ld, "notify::split", G_CALLBACK (split_changed), NULL);
+}
+
+VibeosListDetail *
+ns_ui_get_list_detail (void)
+{
+  return ld;
+}
+
+void
+ns_push (NsPage *page)
 {
   if (tapped && g_getenv ("NS_TIMING"))
-    g_message ("%s: built in %.1f ms", adw_navigation_page_get_title (page),
-               (g_get_monotonic_time () - tapped) / 1000.0);
+    g_message ("%s: built in %.1f ms", ns_page_get_title (page), (g_get_monotonic_time () - tapped) / 1000.0);
   tapped = 0;
-  adw_navigation_view_push (nav, page);
+  if (opening_entry) {
+    opening_entry = FALSE;
+    g_set_weak_pointer (&first_level, page);
+    set_bar_back (page, !vibeos_list_detail_is_split (ld));
+    if (entry_row)
+      vibeos_list_detail_show_from (ld, page, entry_row);
+    else
+      vibeos_list_detail_show (ld, page);
+    return;
+  }
+  vibeos_list_detail_push (ld, page);
 }
+
+void
+ns_open_entry (NsActivate page, GtkWidget *row, gpointer data)
+{
+  opening_entry = TRUE;
+  entry_row = row;
+  tapped = g_get_monotonic_time ();
+  page (row, data);
+  opening_entry = FALSE;
+  entry_row = NULL;
+}
+
+NsPage *
+ns_top_page (void)
+{
+  VibeosPageStack *detail = vibeos_list_detail_get_detail_stack (ld);
+  if (vibeos_list_detail_is_split (ld) && vibeos_page_stack_get_depth (detail) > 0)
+    return vibeos_page_stack_get_top (detail);
+  return vibeos_page_stack_get_top (vibeos_list_detail_get_list_stack (ld));
+}
+
+static void
+back_on (NsPage *page)
+{
+  NsPageBack cb = page ? g_object_get_data (G_OBJECT (page), "ns-on-back") : NULL;
+  if (cb)
+    cb (page);
+}
+
+gboolean
+ns_back (void)
+{
+  if (ns_busy ())
+    return TRUE;
+  if (!vibeos_list_detail_back (ld))
+    return FALSE;
+  back_on (ns_top_page ());
+  return TRUE;
+}
+
+NsPage *
+ns_page_of (GtkWidget *widget)
+{
+  for (GtkWidget *w = widget; w; w = gtk_widget_get_parent (w))
+    if (g_object_get_data (G_OBJECT (w), "ns-is-page"))
+      return w;
+  return NULL;
+}
+
+void
+ns_pop (GtkWidget *widget)
+{
+  NsPage *page = ns_page_of (widget);
+  if (page && page == ns_top_page ())
+    ns_back ();
+}
+
+void
+ns_pop_to (NsPage *page)
+{
+  NsPage *top;
+  while ((top = ns_top_page ()) && top != page) {
+    if (!vibeos_list_detail_back (ld) || ns_top_page () == top)
+      break;
+  }
+  back_on (ns_top_page ());
+}
+
+void
+ns_pop_all (void)
+{
+  vibeos_list_detail_close_detail (ld);
+}
+
+const char *
+ns_page_get_title (NsPage *page)
+{
+  return g_object_get_data (G_OBJECT (page), "ns-page-title");
+}
+
+void
+ns_page_set_busy (NsPage *page, gboolean busy)
+{
+  g_object_set_data (G_OBJECT (page), "ns-busy", GINT_TO_POINTER (busy));
+  GtkWidget *bar = g_object_get_data (G_OBJECT (page), "ns-bar");
+  if (bar)
+    gtk_widget_set_sensitive (bar, !busy);
+}
+
+gboolean
+ns_busy (void)
+{
+  NsPage *top = ld ? ns_top_page () : NULL;
+  return top && g_object_get_data (G_OBJECT (top), "ns-busy");
+}
+
+void
+ns_page_on_back (NsPage *page, NsPageBack back)
+{
+  g_object_set_data (G_OBJECT (page), "ns-on-back", back);
+}
+
+/* ---- pages ---- */
 
 GtkWidget *
 ns_scroller_new (GtkWidget *child)
@@ -40,273 +182,76 @@ ns_scroller_new (GtkWidget *child)
   return sc;
 }
 
-/* ---- the page's title: big in the page, small in the bar ----
- *
- * A page opens with the title big, above the first card, and only the back arrow in the bar. Scrolled, the big
- * title goes up with the cards and fades out; once it is under the bar, the bar's own small title fades in. The
- * timing was measured frame by frame on a Galaxy S10e's Settings, over the 168 px it takes the big title's block
- * to go under the bar:
- *   the big title   fully there until a quarter of the way, gone at 62.5 %
- *   the small title  appears at 62.5 %, fully there at the end
- * (the big title fades from a quarter of the way to halfway between that and the end; the small title over the
- * rest.) The bar keeps its colour all along.
- *
- * Here the big title is the first thing in the scrolled column, so it moves with the content for nothing; only
- * the two opacities follow the scroll offset, which redraws but lays nothing out again. It comes back only with
- * the top of the page. A finger let go with the block part way under the bar finishes the move (a snap): to the
- * closer end, once the scrolling has stopped.
- *
- * Every page can scroll its title all the way under the bar, however short it is: the page below the title is
- * made at least as tall as the scroller's view. Without that, a page of a few rows (Software information) ran out of
- * scrolling with the block a quarter of the way still to go, and the bar's title stayed a third faded in. */
-
-#define TITLE_FADE_START   0.25
-#define TITLE_FADE_SWITCH  0.625   /* TITLE_FADE_START + (1 - TITLE_FADE_START) / 2 */
-
-typedef struct {
-  GtkWidget     *block, *small;   /* the big title's block (first in the column), the bar's title: held */
-  GtkWidget     *body;            /* the page under it, at least as tall as the view: held */
-  GtkWidget     *scroller;
-  GtkAdjustment *adj;
-  AdwAnimation  *snap;
-  guint          settle;          /* waits for the scrolling to stop, then snaps */
-  guint          fill;            /* sets the body's height after a layout */
-  int            touches;         /* fingers (or buttons) down on the page */
-} Title;
-
+/* the bar's back arrow: the page before, or out of Settings */
 static void
-title_free (Title *t)
+bar_back (VibeosTopBar *bar, gpointer data)
 {
-  g_clear_handle_id (&t->settle, g_source_remove);
-  g_clear_handle_id (&t->fill, g_source_remove);
-  if (t->snap)
-    adw_animation_pause (t->snap);
-  g_clear_object (&t->snap);
-  g_signal_handlers_disconnect_by_data (t->adj, t);
-  g_object_unref (t->adj);
-  g_object_unref (t->block);
-  g_object_unref (t->small);
-  g_object_unref (t->body);
-  g_free (t);
+  GtkRoot *root = gtk_widget_get_root (GTK_WIDGET (bar));
+  if (!ns_back () && GTK_IS_WINDOW (root))
+    gtk_window_close (GTK_WINDOW (root));
 }
 
-/* how far the block can go: its own height, from the top of the column */
-static double
-title_range (Title *t)
+static NsPage *
+page_with (const char *title, GtkWidget *child, gboolean scroll)
 {
-  graphene_rect_t b;
-  if (!gtk_widget_compute_bounds (t->block, gtk_widget_get_parent (t->block), &b))
-    return 0;
-  return b.origin.y + b.size.height;
-}
-
-/* 0 up to `from`, 1 from `to`, a straight line between */
-static double
-ramp (double from, double to, double x)
-{
-  return x <= from ? 0 : x >= to ? 1 : (x - from) / (to - from);
-}
-
-static void
-title_fade (Title *t)
-{
-  /* the page is going: the scroller lets go of its column first, and moves its adjustment after */
-  if (!gtk_widget_get_parent (t->block))
-    return;
-  double range = title_range (t);
-  double f = range > 0 ? gtk_adjustment_get_value (t->adj) / range : 0;
-  gtk_widget_set_opacity (gtk_widget_get_first_child (t->block), 1 - ramp (TITLE_FADE_START, TITLE_FADE_SWITCH, f));
-  gtk_widget_set_opacity (t->small, ramp (TITLE_FADE_SWITCH, 1, f));
-}
-
-static gboolean
-title_snap (gpointer data)
-{
-  Title *t = data;
-  t->settle = 0;
-  if (!gtk_widget_get_parent (t->block))
-    return G_SOURCE_REMOVE;
-  double range = title_range (t), at = gtk_adjustment_get_value (t->adj);
-  if (t->touches || range <= 0 || at <= 0 || at >= range)
-    return G_SOURCE_REMOVE;
-  double to = at < range / 2 ? 0 : range;
-  /* the snap: 150 ms, and up to 150 more for a longer way; slowing down at the end */
-  guint ms = (guint) (150 * (1 + fabs (to - at) / range));
-  if (t->snap)
-    adw_animation_pause (t->snap);
-  g_clear_object (&t->snap);
-  t->snap = adw_timed_animation_new (t->scroller, at, to, ms,
-                                     adw_property_animation_target_new (G_OBJECT (t->adj), "value"));
-  adw_timed_animation_set_easing (ADW_TIMED_ANIMATION (t->snap), ADW_EASE_OUT_CUBIC);
-  adw_animation_play (t->snap);
-  return G_SOURCE_REMOVE;
-}
-
-/* scrolling stopped when the offset has not moved for a moment with no finger down */
-static void
-title_settle_later (Title *t)
-{
-  g_clear_handle_id (&t->settle, g_source_remove);
-  if (!t->touches)
-    t->settle = g_timeout_add (120, title_snap, t);
-}
-
-static void
-title_scrolled (GtkAdjustment *adj, Title *t)
-{
-  title_fade (t);
-  /* the snap's own moves are not a scroll to wait for */
-  if (!t->snap || adw_animation_get_state (t->snap) != ADW_ANIMATION_PLAYING)
-    title_settle_later (t);
-}
-
-/* The view's height is the adjustment's page size, which the scroller sets while it lays the page out; the body
- * takes it after that layout, not in the middle of it. It changes when the window does (the keyboard, a turn), and
- * the height set is the same again after the next layout, so this settles at once. */
-static gboolean
-title_fill (gpointer data)
-{
-  Title *t = data;
-  t->fill = 0;
-  if (!gtk_widget_get_parent (t->body))
-    return G_SOURCE_REMOVE;
-  int view = (int) ceil (gtk_adjustment_get_page_size (t->adj)), now;
-  gtk_widget_get_size_request (t->body, NULL, &now);
-  if (view > 0 && view != now)
-    gtk_widget_set_size_request (t->body, -1, view);
-  return G_SOURCE_REMOVE;
-}
-
-static void
-title_resized (GtkAdjustment *adj, Title *t)
-{
-  if (!t->fill)
-    t->fill = g_idle_add (title_fill, t);
-}
-
-/* a finger down stops a snap, and holds the next one off until it is lifted */
-static gboolean
-title_touch (GtkEventControllerLegacy *c, GdkEvent *e, Title *t)
-{
-  switch (gdk_event_get_event_type (e)) {
-  case GDK_BUTTON_PRESS:
-  case GDK_TOUCH_BEGIN:
-    t->touches++;
-    if (t->snap)
-      adw_animation_pause (t->snap);
-    g_clear_handle_id (&t->settle, g_source_remove);
-    break;
-  case GDK_BUTTON_RELEASE:
-  case GDK_TOUCH_END:
-  case GDK_TOUCH_CANCEL:
-    t->touches = MAX (t->touches - 1, 0);
-    title_settle_later (t);
-    break;
-  default:
-    break;
-  }
-  return GDK_EVENT_PROPAGATE;
-}
-
-static GtkAdjustment *
-scroller_vadjustment (GtkWidget *sc)
-{
-#ifdef HAVE_SPONGY
-  return spongy_scroll_view_get_vadjustment (SPONGY_SCROLL_VIEW (sc));
-#else
-  return gtk_scrolled_window_get_vadjustment (GTK_SCROLLED_WINDOW (sc));
-#endif
-}
-
-static AdwNavigationPage *
-page_with (const char *title, GtkWidget *child)
-{
-  GtkWidget *tv = adw_toolbar_view_new ();
-  GtkWidget *bar = adw_header_bar_new ();
-  /* One UI: the title next to the back arrow, not centred */
-  adw_header_bar_set_title_widget (ADW_HEADER_BAR (bar), gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0));
-  Title *t = g_new0 (Title, 1);
-  t->small = gtk_label_new (title);
-  gtk_widget_add_css_class (t->small, "ns-head");
-  gtk_label_set_ellipsize (GTK_LABEL (t->small), PANGO_ELLIPSIZE_END);
-  gtk_widget_set_opacity (t->small, 0);
-  adw_header_bar_pack_start (ADW_HEADER_BAR (bar), t->small);
-  gtk_widget_add_css_class (bar, "flat");
-  adw_toolbar_view_add_top_bar (ADW_TOOLBAR_VIEW (tv), bar);
-
-  /* the column: the big title's block, then the page */
-  GtkWidget *col = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  t->block = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  gtk_widget_add_css_class (t->block, "ns-big-title-block");
-  GtkWidget *big = gtk_label_new (title);
-  gtk_label_set_wrap (GTK_LABEL (big), TRUE);
-  gtk_label_set_lines (GTK_LABEL (big), 3);
-  gtk_label_set_ellipsize (GTK_LABEL (big), PANGO_ELLIPSIZE_END);
-  gtk_label_set_xalign (GTK_LABEL (big), 0);
-  gtk_widget_add_css_class (big, "ns-big-title");
-  gtk_box_append (GTK_BOX (t->block), big);
-  gtk_box_append (GTK_BOX (col), t->block);
-  /* the page at the top of a box of its own, which is made as tall as the view (title_fill) */
-  t->body = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  gtk_box_append (GTK_BOX (t->body), child);
-  gtk_box_append (GTK_BOX (col), t->body);
-
-  t->scroller = ns_scroller_new (col);
-  /* held: the snap's animation holds it too, and may let go of it after the scroller has gone */
-  t->adj = g_object_ref (scroller_vadjustment (t->scroller));
-  g_object_ref (t->block);
-  g_object_ref (t->small);
-  g_object_ref (t->body);
-  g_object_set_data_full (G_OBJECT (t->scroller), "ns-title", t, (GDestroyNotify) title_free);
-  g_signal_connect (t->adj, "value-changed", G_CALLBACK (title_scrolled), t);
-  g_signal_connect (t->adj, "changed", G_CALLBACK (title_resized), t);
-  GtkEventController *touch = gtk_event_controller_legacy_new ();
-  gtk_event_controller_set_propagation_phase (touch, GTK_PHASE_CAPTURE);
-  g_signal_connect (touch, "event", G_CALLBACK (title_touch), t);
-  gtk_widget_add_controller (t->scroller, touch);
-  adw_toolbar_view_set_content (ADW_TOOLBAR_VIEW (tv), t->scroller);
-
-  AdwNavigationPage *page = adw_navigation_page_new (tv, title);
-  gtk_widget_add_css_class (GTK_WIDGET (page), "ns-root");
+  GtkWidget *page = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  gtk_widget_add_css_class (page, "ns-page");
+  GtkWidget *bar = vibeos_top_bar_new (title);
+  vibeos_top_bar_set_compact (VIBEOS_TOP_BAR (bar), TRUE);
+  vibeos_top_bar_set_back (VIBEOS_TOP_BAR (bar), TRUE);
+  g_signal_connect (bar, "back", G_CALLBACK (bar_back), NULL);
+  gtk_box_append (GTK_BOX (page), bar);
+  GtkWidget *sc = scroll ? ns_scroller_new (child) : child;
+  gtk_widget_set_vexpand (sc, TRUE);
+  gtk_box_append (GTK_BOX (page), sc);
+  g_object_set_data (G_OBJECT (page), "ns-is-page", GINT_TO_POINTER (1));
+  g_object_set_data (G_OBJECT (page), "ns-bar", bar);
+  g_object_set_data_full (G_OBJECT (page), "ns-page-title", g_strdup (title), g_free);
   return page;
 }
 
-AdwNavigationPage *
+NsPage *
 ns_page_new (const char *title, GtkWidget **content)
 {
   GtkWidget *col = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (col, "ns-column");
   *content = col;
-  return page_with (title, col);
+  return page_with (title, col, TRUE);
 }
 
-AdwNavigationPage *
+NsPage *
 ns_page_new_list (const char *title, GtkWidget *list)
 {
   gtk_widget_add_css_class (list, "ns-list");
-  return page_with (title, list);
+  return page_with (title, list, TRUE);
+}
+
+NsPage *
+ns_page_new_fixed (const char *title, GtkWidget *child)
+{
+  return page_with (title, child, FALSE);
 }
 
 /* ---- groups and rows ---- */
 
-static void
-inset_lines (GtkListBoxRow *row, GtkListBoxRow *before, gpointer data)
+GtkWidget *
+ns_group (GtkWidget *content, const char *title)
 {
-  if (!before || !gtk_widget_get_visible (GTK_WIDGET (before))) {
-    gtk_list_box_row_set_header (row, NULL);
-    return;
+  GtkWidget *list = vibeos_card_list_new ();
+  /* a card under another without a title has the gap between groups over it; a title brings its own */
+  gboolean first = gtk_widget_get_first_child (content) == NULL;
+  vibeos_card_list_set_margins (VIBEOS_CARD_LIST (list), first || title ? 0 : 16, 0);
+  if (title) {
+    vibeos_card_list_add_group (VIBEOS_CARD_LIST (list), title);
+    g_object_set_data_full (G_OBJECT (list), "ns-group-title", g_strdup (title), g_free);
   }
-  GtkWidget *sep = gtk_list_box_row_get_header (row);
-  if (sep)
-    return;
-  sep = gtk_separator_new (GTK_ORIENTATION_HORIZONTAL);
-  /* from where the text starts: past the icon, if the row has one */
-  gtk_widget_add_css_class (sep, g_object_get_data (G_OBJECT (row), "ns-icon") ? "ns-inset-icon" : "ns-inset");
-  gtk_list_box_row_set_header (row, sep);
+  gtk_widget_add_css_class (list, "ns-group");
+  gtk_box_append (GTK_BOX (content), list);
+  return list;
 }
 
 static void
-activated (GtkListBox *box, GtkListBoxRow *row, gpointer data)
+row_clicked (VibeosListRow *row, gpointer data)
 {
   NsActivate cb = g_object_get_data (G_OBJECT (row), "ns-cb");
   tapped = g_get_monotonic_time ();
@@ -315,71 +260,21 @@ activated (GtkListBox *box, GtkListBoxRow *row, gpointer data)
 }
 
 GtkWidget *
-ns_group (GtkWidget *content, const char *title)
+ns_row (GtkWidget *group, const char *icon, const char *title, const char *subtitle)
 {
-  if (title) {
-    GtkWidget *l = gtk_label_new (title);
-    gtk_label_set_xalign (GTK_LABEL (l), 0);
-    gtk_widget_add_css_class (l, "ns-group-title");
-    gtk_box_append (GTK_BOX (content), l);
-  }
-  GtkWidget *box = gtk_list_box_new ();
-  if (title)
-    g_object_set_data (G_OBJECT (box), "ns-group-title", gtk_widget_get_last_child (content));
-  gtk_list_box_set_selection_mode (GTK_LIST_BOX (box), GTK_SELECTION_NONE);
-  gtk_list_box_set_header_func (GTK_LIST_BOX (box), inset_lines, NULL, NULL);
-  gtk_widget_set_overflow (box, GTK_OVERFLOW_HIDDEN);
-  gtk_widget_add_css_class (box, "ns-card");
-  g_signal_connect (box, "row-activated", G_CALLBACK (activated), NULL);
-  gtk_box_append (GTK_BOX (content), box);
-  return box;
-}
-
-GtkWidget *
-ns_row (GtkWidget *group, const char *icon, const char *color, const char *title, const char *subtitle)
-{
-  GtkWidget *row = gtk_list_box_row_new ();
-  gtk_list_box_row_set_activatable (GTK_LIST_BOX_ROW (row), FALSE);
-  gtk_widget_add_css_class (row, "ns-row");
-  GtkWidget *h = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 18);
-  if (icon) {
-    GtkWidget *bubble = gtk_image_new_from_icon_name (icon);
-    gtk_image_set_pixel_size (GTK_IMAGE (bubble), 20);
-    gtk_widget_set_valign (bubble, GTK_ALIGN_CENTER);
-    gtk_widget_add_css_class (bubble, "ns-icon");
-    g_autofree char *cls = g_strconcat ("ns-", color ? color : "blue", NULL);
-    gtk_widget_add_css_class (bubble, cls);
-    gtk_box_append (GTK_BOX (h), bubble);
-    g_object_set_data (G_OBJECT (row), "ns-icon", bubble);
-  }
-  GtkWidget *v = gtk_box_new (GTK_ORIENTATION_VERTICAL, 2);
-  gtk_widget_set_hexpand (v, TRUE);
-  gtk_widget_set_valign (v, GTK_ALIGN_CENTER);
-  GtkWidget *t = gtk_label_new (title);
-  gtk_label_set_xalign (GTK_LABEL (t), 0);
-  gtk_label_set_wrap (GTK_LABEL (t), TRUE);
-  gtk_widget_add_css_class (t, "ns-title");
-  gtk_box_append (GTK_BOX (v), t);
-  g_object_set_data (G_OBJECT (row), "ns-title-label", t);
-  GtkWidget *s = gtk_label_new (subtitle);
-  gtk_label_set_xalign (GTK_LABEL (s), 0);
-  gtk_label_set_wrap (GTK_LABEL (s), TRUE);
-  gtk_widget_add_css_class (s, "ns-sub");
-  gtk_widget_set_visible (s, subtitle && *subtitle);
-  gtk_box_append (GTK_BOX (v), s);
-  gtk_box_append (GTK_BOX (h), v);
-  gtk_list_box_row_set_child (GTK_LIST_BOX_ROW (row), h);
-  g_object_set_data (G_OBJECT (row), "ns-box", h);
-  g_object_set_data (G_OBJECT (row), "ns-subtitle", s);
-  g_object_set_data_full (G_OBJECT (row), "ns-text", g_strconcat (title, " ", subtitle ? subtitle : "", NULL), g_free);
-  gtk_list_box_append (GTK_LIST_BOX (group), row);
+  GtkWidget *row = vibeos_list_row_new (title, subtitle && *subtitle ? subtitle : NULL);
+  if (icon)
+    vibeos_list_row_set_icon (VIBEOS_LIST_ROW (row), icon);
+  vibeos_list_row_set_activatable (VIBEOS_LIST_ROW (row), FALSE);
+  g_signal_connect (row, "clicked", G_CALLBACK (row_clicked), NULL);
+  vibeos_card_list_append (VIBEOS_CARD_LIST (group), row);
   return row;
 }
 
 void
 ns_row_on_activate (GtkWidget *row, NsActivate cb, gpointer data)
 {
-  gtk_list_box_row_set_activatable (GTK_LIST_BOX_ROW (row), TRUE);
+  vibeos_list_row_set_activatable (VIBEOS_LIST_ROW (row), TRUE);
   g_object_set_data (G_OBJECT (row), "ns-cb", cb);
   g_object_set_data (G_OBJECT (row), "ns-data", data);
 }
@@ -387,54 +282,206 @@ ns_row_on_activate (GtkWidget *row, NsActivate cb, gpointer data)
 void
 ns_row_suffix (GtkWidget *row, GtkWidget *suffix)
 {
-  gtk_widget_set_valign (suffix, GTK_ALIGN_CENTER);
-  gtk_box_append (GTK_BOX (g_object_get_data (G_OBJECT (row), "ns-box")), suffix);
+  /* a button takes its taps; a mark, a label or a spinner only shows, and a tap on it is the row's */
+  if (!GTK_IS_BUTTON (suffix) && !VIBEOS_IS_PRESSABLE (suffix))
+    gtk_widget_set_can_target (suffix, FALSE);
+  vibeos_list_row_set_end_widget (VIBEOS_LIST_ROW (row), suffix);
+}
+
+/* ---- the loading indicator: Material 3's indeterminate circular progress indicator, at a row's size. An arc in the
+ * primary colour turns steadily; its head runs ahead (10° to 270°) in the first half of each cycle and its tail
+ * catches up in the second, so the arc grows and shrinks as it goes round. It draws only while mapped. */
+
+#define SPINNER_SIZE     24
+#define SPINNER_STROKE   3
+#define SPINNER_TURN_MS  1568.0    /* the whole turns once in this */
+#define SPINNER_CYCLE_MS 1333.0    /* the head runs ahead and the tail catches up once in this */
+#define SPINNER_MIN_DEG  10.0
+#define SPINNER_MAX_DEG  270.0
+
+struct _NsSpinner {
+  GtkWidget parent;
+  guint     tick;
+  gint64    start;
+};
+
+G_DECLARE_FINAL_TYPE (NsSpinner, ns_spinner, NS, SPINNER, GtkWidget)
+G_DEFINE_FINAL_TYPE (NsSpinner, ns_spinner, GTK_TYPE_WIDGET)
+
+static gboolean
+spinner_tick (GtkWidget *widget, GdkFrameClock *clock, gpointer unused)
+{
+  gtk_widget_queue_draw (widget);
+  return G_SOURCE_CONTINUE;
+}
+
+static void
+ns_spinner_map (GtkWidget *widget)
+{
+  NsSpinner *self = NS_SPINNER (widget);
+  GTK_WIDGET_CLASS (ns_spinner_parent_class)->map (widget);
+  self->tick = gtk_widget_add_tick_callback (widget, spinner_tick, NULL, NULL);
+}
+
+static void
+ns_spinner_unmap (GtkWidget *widget)
+{
+  NsSpinner *self = NS_SPINNER (widget);
+  if (self->tick)
+    gtk_widget_remove_tick_callback (widget, self->tick);
+  self->tick = 0;
+  GTK_WIDGET_CLASS (ns_spinner_parent_class)->unmap (widget);
+}
+
+static void
+ns_spinner_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, int *minimum, int *natural,
+                    int *minimum_baseline, int *natural_baseline)
+{
+  *minimum = *natural = SPINNER_SIZE;
+}
+
+static double
+spinner_ease (double x)
+{
+  return x * x * (3 - 2 * x);
+}
+
+static void
+ns_spinner_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
+{
+  NsSpinner *self = NS_SPINNER (widget);
+  GdkFrameClock *clock = gtk_widget_get_frame_clock (widget);
+  gint64 now = clock ? gdk_frame_clock_get_frame_time (clock) : g_get_monotonic_time ();
+  if (!self->start)
+    self->start = now;
+  double ms = (now - self->start) / 1000.0;
+  double cycles = floor (ms / SPINNER_CYCLE_MS), p = fmod (ms, SPINNER_CYCLE_MS) / SPINNER_CYCLE_MS;
+  double run = SPINNER_MAX_DEG - SPINNER_MIN_DEG;
+  /* each cycle leaves the tail `run` further on */
+  double base = fmod (cycles * run + ms / SPINNER_TURN_MS * 360.0, 360.0);
+  double tail = base, head = base + SPINNER_MAX_DEG;
+  if (p < 0.5)
+    head = base + SPINNER_MIN_DEG + run * spinner_ease (p * 2);
+  else
+    tail = base + run * spinner_ease ((p - 0.5) * 2);
+
+  double w = gtk_widget_get_width (widget), h = gtk_widget_get_height (widget);
+  double r = (MIN (w, h) - SPINNER_STROKE) / 2.0, cx = w / 2.0, cy = h / 2.0;
+  double a0 = tail * G_PI / 180.0, a1 = head * G_PI / 180.0;   /* 0 at the top, clockwise */
+  g_autoptr (GskPathBuilder) b = gsk_path_builder_new ();
+  gsk_path_builder_move_to (b, cx + r * sin (a0), cy - r * cos (a0));
+  gsk_path_builder_svg_arc_to (b, r, r, 0, head - tail > 180, TRUE, cx + r * sin (a1), cy - r * cos (a1));
+  g_autoptr (GskPath) path = gsk_path_builder_to_path (b);
+  GskStroke *stroke = gsk_stroke_new (SPINNER_STROKE);
+  gsk_stroke_set_line_cap (stroke, GSK_LINE_CAP_ROUND);
+  GdkRGBA ink = vibeos_color (VIBEOS_PRIMARY);
+  gtk_snapshot_append_stroke (snapshot, path, stroke, &ink);
+  gsk_stroke_free (stroke);
+}
+
+static void
+ns_spinner_class_init (NsSpinnerClass *klass)
+{
+  GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
+  widget_class->map = ns_spinner_map;
+  widget_class->unmap = ns_spinner_unmap;
+  widget_class->measure = ns_spinner_measure;
+  widget_class->snapshot = ns_spinner_snapshot;
+  gtk_widget_class_set_accessible_role (widget_class, GTK_ACCESSIBLE_ROLE_PROGRESS_BAR);
+}
+
+static void
+ns_spinner_init (NsSpinner *self)
+{
+  gtk_widget_set_valign (GTK_WIDGET (self), GTK_ALIGN_CENTER);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (self), GTK_ACCESSIBLE_PROPERTY_LABEL, "Loading", -1);
+}
+
+GtkWidget *
+ns_spinner_new (void)
+{
+  return g_object_new (ns_spinner_get_type (), NULL);
+}
+
+void
+ns_row_set_title (GtkWidget *row, const char *title)
+{
+  vibeos_list_row_set_title (VIBEOS_LIST_ROW (row), title);
 }
 
 void
 ns_row_set_subtitle (GtkWidget *row, const char *subtitle)
 {
-  GtkWidget *s = g_object_get_data (G_OBJECT (row), "ns-subtitle");
-  gtk_label_set_text (GTK_LABEL (s), subtitle ? subtitle : "");
-  gtk_widget_set_visible (s, subtitle && *subtitle);
+  vibeos_list_row_set_summary (VIBEOS_LIST_ROW (row), subtitle && *subtitle ? subtitle : NULL);
 }
 
-static void
-toggle_switch (GtkWidget *row, gpointer sw)
+GtkWidget *
+ns_switch_new (void)
 {
-  gtk_switch_set_active (sw, !gtk_switch_get_active (sw));
+  return vibeos_switch_new ();
+}
+
+gboolean
+ns_switch_get_active (GtkWidget *sw)
+{
+  return vibeos_switch_get_active (VIBEOS_SWITCH (sw));
+}
+
+void
+ns_switch_set_active (GtkWidget *sw, gboolean on)
+{
+  vibeos_switch_set_active (VIBEOS_SWITCH (sw), on);
+}
+
+GtkWidget *
+ns_row_add_switch (GtkWidget *row, gboolean split)
+{
+  GtkWidget *sw = vibeos_list_row_set_switch (VIBEOS_LIST_ROW (row), split);
+  /* a whole-row switch: a tap anywhere toggles it */
+  if (!split)
+    vibeos_list_row_set_activatable (VIBEOS_LIST_ROW (row), TRUE);
+  g_object_set_data (G_OBJECT (row), "ns-switch", sw);
+  return sw;
 }
 
 GtkWidget *
 ns_row_switch (GtkWidget *group, const char *title, const char *subtitle, GSettings *s, const char *key)
 {
-  GtkWidget *row = ns_row (group, NULL, NULL, title, subtitle);
-  GtkWidget *sw = gtk_switch_new ();
+  GtkWidget *row = ns_row (group, NULL, title, subtitle);
+  GtkWidget *sw = ns_row_add_switch (row, FALSE);
   if (s)
     g_settings_bind (s, key, sw, "active", G_SETTINGS_BIND_DEFAULT);
-  ns_row_suffix (row, sw);
-  ns_row_on_activate (row, toggle_switch, sw);
   return row;
+}
+
+/* a card of the app's own: the card list rounds its corners where its group starts and ends */
+static GtkWidget *
+card_item (void)
+{
+  GtkWidget *v = gtk_box_new (GTK_ORIENTATION_VERTICAL, 8);
+  gtk_widget_add_css_class (v, "ns-card-item");
+  return v;
+}
+
+static GtkWidget *
+row_title (const char *title)
+{
+  GtkWidget *t = gtk_label_new (title);
+  gtk_label_set_xalign (GTK_LABEL (t), 0);
+  gtk_label_set_wrap (GTK_LABEL (t), TRUE);
+  gtk_widget_add_css_class (t, "vibeos-list-row-title");
+  return t;
 }
 
 GtkWidget *
 ns_row_widget (GtkWidget *group, const char *title, GtkWidget *child)
 {
-  GtkWidget *row = gtk_list_box_row_new ();
-  gtk_list_box_row_set_activatable (GTK_LIST_BOX_ROW (row), FALSE);
-  gtk_widget_add_css_class (row, "ns-row");
-  GtkWidget *v = gtk_box_new (GTK_ORIENTATION_VERTICAL, 10);
-  if (title) {
-    GtkWidget *t = gtk_label_new (title);
-    gtk_label_set_xalign (GTK_LABEL (t), 0);
-    gtk_widget_add_css_class (t, "ns-title");
-    gtk_box_append (GTK_BOX (v), t);
-  }
+  GtkWidget *v = card_item ();
+  if (title)
+    gtk_box_append (GTK_BOX (v), row_title (title));
   gtk_box_append (GTK_BOX (v), child);
-  gtk_list_box_row_set_child (GTK_LIST_BOX_ROW (row), v);
-  g_object_set_data_full (G_OBJECT (row), "ns-text", g_strdup (title ? title : ""), g_free);
-  gtk_list_box_append (GTK_LIST_BOX (group), row);
-  return row;
+  vibeos_card_list_append (VIBEOS_CARD_LIST (group), v);
+  return v;
 }
 
 /* ---- a stepper for an integer key ---- */
@@ -457,9 +504,9 @@ spin_show (Spin *sp)
 }
 
 static void
-spin_step (GtkButton *b, Spin *sp)
+spin_step (GtkWidget *b, Spin *sp)
 {
-  int d = GTK_WIDGET (b) == sp->plus ? 1 : -1;
+  int d = b == sp->plus ? 1 : -1;
   g_settings_set_int (sp->s, sp->key, CLAMP (g_settings_get_int (sp->s, sp->key) + d, sp->lo, sp->hi));
 }
 
@@ -480,32 +527,66 @@ spin_free (Spin *sp)
 GtkWidget *
 ns_row_spin (GtkWidget *group, const char *title, GSettings *s, const char *key, int lo, int hi)
 {
-  GtkWidget *row = ns_row (group, NULL, NULL, title, NULL);
+  GtkWidget *row = ns_row (group, NULL, title, NULL);
   Spin *sp = g_new0 (Spin, 1);
   sp->s = s;
   sp->key = g_strdup (key);
   sp->lo = lo;
   sp->hi = hi;
-  GtkWidget *h = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 6);
-  sp->minus = gtk_button_new_from_icon_name ("list-remove-symbolic");
-  sp->plus = gtk_button_new_from_icon_name ("list-add-symbolic");
+  GtkWidget *h = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+  sp->minus = vibeos_icon_button_new ("list-remove-symbolic");
+  sp->plus = vibeos_icon_button_new ("list-add-symbolic");
+  gtk_accessible_update_property (GTK_ACCESSIBLE (sp->minus), GTK_ACCESSIBLE_PROPERTY_LABEL, "Less", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (sp->plus), GTK_ACCESSIBLE_PROPERTY_LABEL, "More", -1);
   sp->value = gtk_label_new ("");
   gtk_label_set_width_chars (GTK_LABEL (sp->value), 2);
-  gtk_widget_add_css_class (sp->value, "ns-title");
+  gtk_widget_add_css_class (sp->value, "vibeos-list-row-title");
   for (GtkWidget **b = (GtkWidget *[]) { sp->minus, sp->plus, NULL }; *b; b++) {
-    gtk_widget_add_css_class (*b, "circular");
-    gtk_widget_add_css_class (*b, "flat");
+    gtk_widget_add_css_class (*b, "ns-step");
     g_signal_connect (*b, "clicked", G_CALLBACK (spin_step), sp);
   }
   gtk_box_append (GTK_BOX (h), sp->minus);
   gtk_box_append (GTK_BOX (h), sp->value);
   gtk_box_append (GTK_BOX (h), sp->plus);
-  ns_row_suffix (row, h);
+  vibeos_list_row_set_end_widget (VIBEOS_LIST_ROW (row), h);
   g_autofree char *sig = g_strconcat ("changed::", key, NULL);
   g_signal_connect (s, sig, G_CALLBACK (spin_changed), sp);
   g_object_set_data_full (G_OBJECT (row), "ns-own", sp, (GDestroyNotify) spin_free);
   spin_show (sp);
   return row;
+}
+
+/* ---- check marks of a picker ---- */
+
+GtkWidget *
+ns_mark_new (gboolean on)
+{
+  GtkWidget *mark = gtk_image_new_from_icon_name ("object-select-symbolic");
+  gtk_image_set_pixel_size (GTK_IMAGE (mark), 24);
+  gtk_widget_add_css_class (mark, "ns-mark");
+  gtk_widget_set_opacity (mark, on);
+  return mark;
+}
+
+static GtkWidget *
+mark_row (GtkWidget *g, const char *label, gboolean on)
+{
+  GtkWidget *r = ns_row (g, NULL, label, NULL);
+  GtkWidget *mark = ns_mark_new (on);
+  ns_row_suffix (r, mark);
+  g_object_set_data (G_OBJECT (r), "ns-mark", mark);
+  return r;
+}
+
+static void
+mark_only (GtkWidget *row)
+{
+  GtkWidget *box = gtk_widget_get_parent (row);
+  for (GtkWidget *r = gtk_widget_get_first_child (box); r; r = gtk_widget_get_next_sibling (r)) {
+    GtkWidget *mark = g_object_get_data (G_OBJECT (r), "ns-mark");
+    if (mark)
+      gtk_widget_set_opacity (mark, r == row ? 1 : 0);
+  }
 }
 
 /* ---- a choice from a list ---- */
@@ -533,12 +614,7 @@ choice_picked (GtkWidget *row, gpointer data)
   Choice *c = g_object_get_data (G_OBJECT (row), "ns-choice");
   g_settings_set_string (c->s, c->key, data);
   ns_row_set_subtitle (c->row, choice_label (c));
-  GtkWidget *box = gtk_widget_get_parent (row);
-  for (GtkWidget *r = gtk_widget_get_first_child (box); r; r = gtk_widget_get_next_sibling (r)) {
-    GtkWidget *mark = g_object_get_data (G_OBJECT (r), "ns-mark");
-    if (mark)
-      gtk_widget_set_opacity (mark, r == row ? 1 : 0);
-  }
+  mark_only (row);
 }
 
 static void
@@ -547,16 +623,13 @@ choice_open (GtkWidget *row, gpointer data)
   Choice *c = data;
   GtkWidget *content;
   const char *title = g_object_get_data (G_OBJECT (row), "ns-title");
-  AdwNavigationPage *page = ns_page_new (title, &content);
+  NsPage *page = ns_page_new (title, &content);
+  /* the row (and with it the choice) lives as long as its picker */
+  g_object_set_data_full (G_OBJECT (page), "ns-pick-row", g_object_ref (row), g_object_unref);
   GtkWidget *g = ns_group (content, NULL);
   g_autofree char *v = g_settings_get_string (c->s, c->key);
   for (guint i = 0; c->values[i]; i++) {
-    GtkWidget *r = ns_row (g, NULL, NULL, c->labels[i], NULL);
-    GtkWidget *mark = gtk_image_new_from_icon_name ("object-select-symbolic");
-    gtk_widget_add_css_class (mark, "ns-accent");
-    gtk_widget_set_opacity (mark, !g_strcmp0 (v, c->values[i]));
-    ns_row_suffix (r, mark);
-    g_object_set_data (G_OBJECT (r), "ns-mark", mark);
+    GtkWidget *r = mark_row (g, c->labels[i], !g_strcmp0 (v, c->values[i]));
     g_object_set_data (G_OBJECT (r), "ns-choice", c);
     ns_row_on_activate (r, choice_picked, (gpointer) c->values[i]);
   }
@@ -579,7 +652,7 @@ ns_row_choice (GtkWidget *group, const char *title, GSettings *s, const char *ke
   c->key = g_strdup (key);
   c->values = values;
   c->labels = labels;
-  c->row = ns_row (group, NULL, NULL, title, NULL);
+  c->row = ns_row (group, NULL, title, NULL);
   g_object_set_data_full (G_OBJECT (c->row), "ns-title", g_strdup (title), g_free);
   ns_row_set_subtitle (c->row, choice_label (c));
   ns_row_on_activate (c->row, choice_open, c);
@@ -588,12 +661,10 @@ ns_row_choice (GtkWidget *group, const char *title, GSettings *s, const char *ke
 }
 
 GtkWidget *
-ns_row_toggle (GtkWidget *group, const char *icon, const char *color, const char *title, const char *subtitle)
+ns_row_toggle (GtkWidget *group, const char *icon, const char *title, const char *subtitle)
 {
-  GtkWidget *r = ns_row (group, icon, color, title, subtitle);
-  GtkWidget *sw = gtk_switch_new ();
-  ns_row_suffix (r, sw);
-  ns_row_on_activate (r, toggle_switch, sw);
+  GtkWidget *r = ns_row (group, icon, title, subtitle);
+  ns_row_add_switch (r, FALSE);
   return r;
 }
 
@@ -601,7 +672,7 @@ void
 ns_switch_quiet (GtkWidget *sw, gboolean on)
 {
   g_object_set_data (G_OBJECT (sw), "ns-syncing", GINT_TO_POINTER (1));
-  gtk_switch_set_active (GTK_SWITCH (sw), on);
+  ns_switch_set_active (sw, on);
   g_object_set_data (G_OBJECT (sw), "ns-syncing", NULL);
 }
 
@@ -614,18 +685,17 @@ ns_switch_syncing (GtkWidget *sw)
 GtkWidget *
 ns_row_get_switch (GtkWidget *row)
 {
-  return gtk_widget_get_last_child (g_object_get_data (G_OBJECT (row), "ns-box"));
+  return g_object_get_data (G_OBJECT (row), "ns-switch");
 }
 
 GtkWidget *
 ns_row_app (GtkWidget *group, GAppInfo *app, const char *subtitle)
 {
-  GtkWidget *row = ns_row (group, NULL, NULL, g_app_info_get_display_name (app), subtitle);
+  GtkWidget *row = ns_row (group, NULL, g_app_info_get_display_name (app), subtitle);
   GIcon *gi = g_app_info_get_icon (app);
   GtkWidget *img = gi ? gtk_image_new_from_gicon (gi) : gtk_image_new_from_icon_name ("application-x-executable");
   gtk_image_set_pixel_size (GTK_IMAGE (img), 40);
-  gtk_widget_set_valign (img, GTK_ALIGN_CENTER);
-  gtk_box_prepend (GTK_BOX (g_object_get_data (G_OBJECT (row), "ns-box")), img);
+  vibeos_list_row_set_start_widget (VIBEOS_LIST_ROW (row), img);
   g_object_set_data (G_OBJECT (row), "ns-icon", img);
   return row;
 }
@@ -633,16 +703,14 @@ ns_row_app (GtkWidget *group, GAppInfo *app, const char *subtitle)
 GtkWidget *
 ns_row_info (GtkWidget *group, const char *title, const char *value)
 {
-  GtkWidget *r = ns_row (group, NULL, NULL, title, value && *value ? value : "–");
-  gtk_widget_set_focusable (r, FALSE);
-  return r;
+  return ns_row (group, NULL, title, value && *value ? value : "–");
 }
 
 GtkWidget *
 ns_row_button (GtkWidget *group, const char *title, gboolean destructive, NsActivate cb, gpointer data)
 {
-  GtkWidget *r = ns_row (group, NULL, NULL, title, NULL);
-  gtk_widget_add_css_class (g_object_get_data (G_OBJECT (r), "ns-title-label"), destructive ? "ns-danger" : "ns-accent");
+  GtkWidget *r = ns_row (group, NULL, title, NULL);
+  gtk_widget_add_css_class (r, destructive ? "ns-danger" : "ns-accent");
   ns_row_on_activate (r, cb, data);
   return r;
 }
@@ -651,15 +719,108 @@ GtkWidget *
 ns_row_scale (GtkWidget *group, const char *title, const char *icon, double lo, double hi, double step,
               GtkWidget **scale)
 {
-  GtkWidget *h = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 10);
-  if (icon)
-    gtk_box_append (GTK_BOX (h), gtk_image_new_from_icon_name (icon));
+  /* the icon at the start, the title and the slider under it after it */
+  GtkWidget *item = card_item ();
+  gtk_orientable_set_orientation (GTK_ORIENTABLE (item), GTK_ORIENTATION_HORIZONTAL);
+  gtk_widget_add_css_class (item, "ns-scale-row");
+  if (icon) {
+    GtkWidget *img = gtk_image_new_from_icon_name (icon);
+    gtk_image_set_pixel_size (GTK_IMAGE (img), 24);
+    gtk_widget_set_valign (img, GTK_ALIGN_CENTER);
+    gtk_widget_add_css_class (img, "vibeos-list-row-icon");
+    gtk_widget_add_css_class (img, "ns-scale-icon");
+    gtk_box_append (GTK_BOX (item), img);
+  } else {
+    gtk_widget_add_css_class (item, "ns-no-icon");
+  }
+  GtkWidget *v = gtk_box_new (GTK_ORIENTATION_VERTICAL, 4);
+  gtk_widget_set_hexpand (v, TRUE);
+  if (title)
+    gtk_box_append (GTK_BOX (v), row_title (title));
   GtkWidget *sc = gtk_scale_new_with_range (GTK_ORIENTATION_HORIZONTAL, lo, hi, step);
   gtk_scale_set_draw_value (GTK_SCALE (sc), FALSE);
   gtk_widget_set_hexpand (sc, TRUE);
-  gtk_box_append (GTK_BOX (h), sc);
+  if (title)
+    gtk_accessible_update_property (GTK_ACCESSIBLE (sc), GTK_ACCESSIBLE_PROPERTY_LABEL, title, -1);
+  gtk_box_append (GTK_BOX (v), sc);
+  gtk_box_append (GTK_BOX (item), v);
+  vibeos_card_list_append (VIBEOS_CARD_LIST (group), item);
   *scale = sc;
-  return ns_row_widget (group, title, h);
+  return item;
+}
+
+/* ---- a choice of steps on a slider ---- */
+
+static void
+steps_step (GtkWidget *b, GtkWidget *sc)
+{
+  double v = gtk_range_get_value (GTK_RANGE (sc));
+  gtk_range_set_value (GTK_RANGE (sc), round (v) + GPOINTER_TO_INT (g_object_get_data (G_OBJECT (b), "ns-by")));
+}
+
+static void
+steps_ends (GtkRange *sc, GtkWidget *row)
+{
+  GtkAdjustment *a = gtk_range_get_adjustment (sc);
+  double v = round (gtk_adjustment_get_value (a));
+  GtkWidget *minus = g_object_get_data (G_OBJECT (row), "ns-minus"), *plus = g_object_get_data (G_OBJECT (row), "ns-plus");
+  gtk_widget_set_sensitive (minus, v > gtk_adjustment_get_lower (a));
+  gtk_widget_set_sensitive (plus, v < gtk_adjustment_get_upper (a));
+}
+
+GtkWidget *
+ns_row_steps (GtkWidget *group, const char *title, guint n, guint selected, GtkWidget **scale)
+{
+  GtkWidget *item = card_item ();
+  gtk_widget_add_css_class (item, "ns-steps-row");
+  gtk_box_append (GTK_BOX (item), row_title (title));
+  GtkWidget *value = gtk_label_new (NULL);
+  gtk_label_set_xalign (GTK_LABEL (value), 0);
+  gtk_label_set_wrap (GTK_LABEL (value), TRUE);
+  gtk_widget_add_css_class (value, "vibeos-list-row-summary");
+  gtk_widget_set_visible (value, FALSE);
+  gtk_box_append (GTK_BOX (item), value);
+  GtkWidget *h = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 4);
+  GtkWidget *minus = vibeos_icon_button_new ("list-remove-symbolic");
+  GtkWidget *plus = vibeos_icon_button_new ("list-add-symbolic");
+  g_autofree char *less = g_strdup_printf ("%s smaller", title);
+  g_autofree char *more = g_strdup_printf ("%s larger", title);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (minus), GTK_ACCESSIBLE_PROPERTY_LABEL, less, -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (plus), GTK_ACCESSIBLE_PROPERTY_LABEL, more, -1);
+  GtkWidget *sc = gtk_scale_new_with_range (GTK_ORIENTATION_HORIZONTAL, 0, MAX (n, 2) - 1, 1);
+  gtk_scale_set_draw_value (GTK_SCALE (sc), FALSE);
+  gtk_range_set_round_digits (GTK_RANGE (sc), 0);
+  gtk_range_set_value (GTK_RANGE (sc), MIN (selected, MAX (n, 1) - 1));
+  gtk_widget_set_hexpand (sc, TRUE);
+  gtk_widget_set_valign (sc, GTK_ALIGN_CENTER);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (sc), GTK_ACCESSIBLE_PROPERTY_LABEL, title, -1);
+  g_object_set_data (G_OBJECT (minus), "ns-by", GINT_TO_POINTER (-1));
+  g_object_set_data (G_OBJECT (plus), "ns-by", GINT_TO_POINTER (1));
+  for (GtkWidget **b = (GtkWidget *[]) { minus, plus, NULL }; *b; b++) {
+    gtk_widget_add_css_class (*b, "ns-step");
+    gtk_widget_set_valign (*b, GTK_ALIGN_CENTER);
+    g_signal_connect (*b, "clicked", G_CALLBACK (steps_step), sc);
+  }
+  gtk_box_append (GTK_BOX (h), minus);
+  gtk_box_append (GTK_BOX (h), sc);
+  gtk_box_append (GTK_BOX (h), plus);
+  gtk_box_append (GTK_BOX (item), h);
+  g_object_set_data (G_OBJECT (item), "ns-minus", minus);
+  g_object_set_data (G_OBJECT (item), "ns-plus", plus);
+  g_object_set_data (G_OBJECT (item), "ns-value", value);
+  g_signal_connect (sc, "value-changed", G_CALLBACK (steps_ends), item);
+  steps_ends (GTK_RANGE (sc), item);
+  vibeos_card_list_append (VIBEOS_CARD_LIST (group), item);
+  *scale = sc;
+  return item;
+}
+
+void
+ns_row_steps_set_value_text (GtkWidget *row, const char *text)
+{
+  GtkWidget *value = g_object_get_data (G_OBJECT (row), "ns-value");
+  gtk_label_set_text (GTK_LABEL (value), text ? text : "");
+  gtk_widget_set_visible (value, text && *text);
 }
 
 /* ---- one flag of a flags key ---- */
@@ -676,12 +837,12 @@ flag_show (GSettings *s, const char *key, Flag *f)
 {
   g_auto (GStrv) v = g_settings_get_strv (f->s, f->key);
   f->syncing = TRUE;
-  gtk_switch_set_active (GTK_SWITCH (f->sw), g_strv_contains ((const char *const *) v, f->flag));
+  ns_switch_set_active (f->sw, g_strv_contains ((const char *const *) v, f->flag));
   f->syncing = FALSE;
 }
 
 static void
-flag_toggled (GtkSwitch *sw, GParamSpec *ps, Flag *f)
+flag_toggled (GtkWidget *sw, GParamSpec *ps, Flag *f)
 {
   if (f->syncing)
     return;
@@ -690,7 +851,7 @@ flag_toggled (GtkSwitch *sw, GParamSpec *ps, Flag *f)
   for (guint i = 0; v[i]; i++)
     if (g_strcmp0 (v[i], f->flag))
       g_strv_builder_add (b, v[i]);
-  if (gtk_switch_get_active (sw))
+  if (ns_switch_get_active (sw))
     g_strv_builder_add (b, f->flag);
   g_auto (GStrv) nv = g_strv_builder_end (b);
   g_strv_builder_unref (b);
@@ -735,29 +896,6 @@ typedef struct {
 } Pick;
 
 static void
-mark_only (GtkWidget *row)
-{
-  GtkWidget *box = gtk_widget_get_parent (row);
-  for (GtkWidget *r = gtk_widget_get_first_child (box); r; r = gtk_widget_get_next_sibling (r)) {
-    GtkWidget *mark = g_object_get_data (G_OBJECT (r), "ns-mark");
-    if (mark)
-      gtk_widget_set_opacity (mark, r == row ? 1 : 0);
-  }
-}
-
-static GtkWidget *
-mark_row (GtkWidget *g, const char *label, gboolean on)
-{
-  GtkWidget *r = ns_row (g, NULL, NULL, label, NULL);
-  GtkWidget *mark = gtk_image_new_from_icon_name ("object-select-symbolic");
-  gtk_widget_add_css_class (mark, "ns-accent");
-  gtk_widget_set_opacity (mark, on);
-  ns_row_suffix (r, mark);
-  g_object_set_data (G_OBJECT (r), "ns-mark", mark);
-  return r;
-}
-
-static void
 pick_picked (GtkWidget *row, gpointer index)
 {
   Pick *p = g_object_get_data (G_OBJECT (row), "ns-pick");
@@ -772,7 +910,10 @@ pick_open (GtkWidget *row, gpointer data)
 {
   Pick *p = data;
   GtkWidget *content;
-  AdwNavigationPage *page = ns_page_new (g_object_get_data (G_OBJECT (row), "ns-title"), &content);
+  NsPage *page = ns_page_new (g_object_get_data (G_OBJECT (row), "ns-title"), &content);
+  /* the row (and with it the labels and the choice) lives as long as its picker: a card filled again behind the
+   * picker drops the row it was opened from */
+  g_object_set_data_full (G_OBJECT (page), "ns-pick-row", g_object_ref (row), g_object_unref);
   GtkWidget *g = ns_group (content, NULL);
   for (guint i = 0; p->labels[i]; i++) {
     GtkWidget *r = mark_row (g, p->labels[i], i == p->selected);
@@ -797,7 +938,7 @@ ns_row_pick (GtkWidget *group, const char *title, const char *const *labels, gui
   p->labels = g_strdupv ((char **) labels);
   p->picked = picked;
   p->data = data;
-  p->row = ns_row (group, NULL, NULL, title, NULL);
+  p->row = ns_row (group, NULL, title, NULL);
   g_object_set_data_full (G_OBJECT (p->row), "ns-title", g_strdup (title), g_free);
   g_object_set_data (G_OBJECT (p->row), "ns-pick", p);
   ns_row_pick_select (p->row, selected);
@@ -878,7 +1019,7 @@ ns_row_entry (GtkWidget *group, const char *title, GSettings *s, const char *key
   Entry *e = g_new0 (Entry, 1);
   e->s = s;
   e->key = g_strdup (key);
-  e->row = ns_row (group, NULL, NULL, title, NULL);
+  e->row = ns_row (group, NULL, title, NULL);
   g_object_set_data_full (G_OBJECT (e->row), "ns-title", g_strdup (title), g_free);
   entry_show (s, key, e);
   g_autofree char *sig = g_strconcat ("changed::", key, NULL);
@@ -936,7 +1077,7 @@ ns_row_value (GtkWidget *group, const char *title, const char *value, gboolean s
               gpointer data)
 {
   Value *v = g_new0 (Value, 1);
-  v->row = ns_row (group, NULL, NULL, title, NULL);
+  v->row = ns_row (group, NULL, title, NULL);
   v->title = g_strdup (title);
   v->value = g_strdup (value);
   v->secret = secret;
@@ -980,16 +1121,30 @@ ns_note (GtkWidget *content, const char *text)
 void
 ns_group_clear (GtkWidget *group)
 {
-  gtk_list_box_remove_all (GTK_LIST_BOX (group));
+  const char *title = g_object_get_data (G_OBJECT (group), "ns-group-title");
+  vibeos_card_list_remove_all (VIBEOS_CARD_LIST (group));
+  if (title)
+    vibeos_card_list_add_group (VIBEOS_CARD_LIST (group), title);
 }
 
 void
 ns_group_set_visible (GtkWidget *group, gboolean visible)
 {
-  GtkWidget *t = g_object_get_data (G_OBJECT (group), "ns-group-title");
   gtk_widget_set_visible (group, visible);
-  if (t)
-    gtk_widget_set_visible (t, visible);
+}
+
+void
+ns_group_remove (GtkWidget *group, GtkWidget *row)
+{
+  vibeos_card_list_remove (VIBEOS_CARD_LIST (group), row);
+}
+
+GtkWidget *
+ns_button_new (const char *label, gboolean filled)
+{
+  GtkWidget *b = gtk_button_new_with_label (label);
+  gtk_widget_add_css_class (b, filled ? "ns-filled" : "ns-tonal");
+  return b;
 }
 
 /* ---- lists that follow a service ---- */
@@ -1009,7 +1164,7 @@ later_run (gpointer page)
 }
 
 void
-ns_later (AdwNavigationPage *page)
+ns_later (NsPage *page)
 {
   Later *l = g_object_get_data (G_OBJECT (page), "ns-later");
   if (l->timer)
@@ -1026,7 +1181,7 @@ later_free (Later *l)
 }
 
 void
-ns_later_init (AdwNavigationPage *page, NsFill fill)
+ns_later_init (NsPage *page, NsFill fill)
 {
   Later *l = g_new0 (Later, 1);
   l->fill = fill;
@@ -1043,26 +1198,53 @@ typedef struct {
 } Ask;
 
 static void
-ask_response (AdwAlertDialog *d, const char *response, Ask *a)
+ask_response (VibeosDialog *d, int response, Ask *a)
 {
-  gboolean ok = !g_strcmp0 (response, "ok");
+  gboolean ok = response == VIBEOS_RESPONSE_OK;
   if (a->done)
     a->done (ok ? gtk_editable_get_text (GTK_EDITABLE (a->entry)) : NULL, a->data);
   else if (a->answered)
     a->answered (ok, a->data);
 }
 
-static AdwDialog *
-alert (const char *heading, const char *body, const char *ok, gboolean destructive, Ask *a)
+static void
+ask_free (Ask *a)
 {
-  AdwDialog *d = adw_alert_dialog_new (heading, body);
-  adw_alert_dialog_add_responses (ADW_ALERT_DIALOG (d), "cancel", "Cancel", "ok", ok, NULL);
-  adw_alert_dialog_set_response_appearance (ADW_ALERT_DIALOG (d), "ok",
-                                            destructive ? ADW_RESPONSE_DESTRUCTIVE : ADW_RESPONSE_SUGGESTED);
-  adw_alert_dialog_set_default_response (ADW_ALERT_DIALOG (d), "ok");
-  adw_alert_dialog_set_close_response (ADW_ALERT_DIALOG (d), "cancel");
-  g_signal_connect_data (d, "response", G_CALLBACK (ask_response), a, (GClosureNotify) (void (*) (void)) g_free, 0);
+  g_clear_object (&a->entry);
+  g_free (a);
+}
+
+/* a dialog over the page it belongs to: centred on the detail pane beside the menu */
+static VibeosDialog *
+alert (GtkWidget *parent, const char *heading, const char *body, const char *ok, Ask *a)
+{
+  VibeosDialog *d = vibeos_dialog_new (heading);
+  if (body)
+    vibeos_dialog_set_message (d, body);
+  if (a->entry)
+    vibeos_dialog_set_content (d, a->entry);
+  vibeos_dialog_add_button (d, "Cancel", VIBEOS_RESPONSE_CANCEL);
+  vibeos_dialog_add_button (d, ok, VIBEOS_RESPONSE_OK);
+  g_signal_connect_data (d, "response", G_CALLBACK (ask_response), a, (GClosureNotify) (void (*) (void)) ask_free, 0);
+  if (ld && vibeos_list_detail_is_split (ld) && parent
+      && gtk_widget_is_ancestor (parent, vibeos_list_detail_get_detail_pane (ld)))
+    vibeos_dialog_set_anchor (d, vibeos_list_detail_get_detail_pane (ld));
   return d;
+}
+
+static GtkWidget *
+dialog_parent (GtkWidget *parent)
+{
+  /* a row of a page that has closed has no window: the dialog goes over the window still there */
+  if (parent && gtk_widget_get_root (parent))
+    return parent;
+  return ld ? GTK_WIDGET (ld) : parent;
+}
+
+static void
+entry_activated (GtkWidget *entry, VibeosDialog *d)
+{
+  vibeos_dialog_respond (d, VIBEOS_RESPONSE_OK);
 }
 
 void
@@ -1072,27 +1254,35 @@ ns_ask (GtkWidget *parent, const char *heading, const char *body, const char *in
   Ask *a = g_new0 (Ask, 1);
   a->done = done;
   a->data = data;
-  a->entry = secret ? gtk_password_entry_new () : gtk_entry_new ();
+  a->entry = g_object_ref_sink (secret ? gtk_password_entry_new () : gtk_entry_new ());
   if (secret)
     gtk_password_entry_set_show_peek_icon (GTK_PASSWORD_ENTRY (a->entry), TRUE);
-  g_object_set (a->entry, "activates-default", TRUE, NULL);
+  gtk_widget_add_css_class (a->entry, "vibeos-entry");
   gtk_editable_set_text (GTK_EDITABLE (a->entry), initial ? initial : "");
-  AdwDialog *d = alert (heading, body, ok, FALSE, a);
-  adw_alert_dialog_set_extra_child (ADW_ALERT_DIALOG (d), a->entry);
-  adw_dialog_present (d, parent);
+  parent = dialog_parent (parent);
+  VibeosDialog *d = alert (parent, heading, body, ok, a);
+  g_signal_connect_object (a->entry, "activate", G_CALLBACK (entry_activated), d, 0);
+  vibeos_dialog_present (d, parent);
   gtk_widget_grab_focus (a->entry);
 }
 
-AdwDialog *
+GtkWidget *
 ns_confirm (GtkWidget *parent, const char *heading, const char *body, const char *yes, gboolean destructive,
             NsAnswered done, gpointer data)
 {
   Ask *a = g_new0 (Ask, 1);
   a->answered = done;
   a->data = data;
-  AdwDialog *d = alert (heading, body, yes, destructive, a);
-  adw_dialog_present (d, parent);
-  return d;
+  parent = dialog_parent (parent);
+  VibeosDialog *d = alert (parent, heading, body, yes, a);
+  vibeos_dialog_present (d, parent);
+  return GTK_WIDGET (d);
+}
+
+void
+ns_dialog_close (GtkWidget *dialog)
+{
+  vibeos_dialog_respond (VIBEOS_DIALOG (dialog), VIBEOS_RESPONSE_CANCEL);
 }
 
 /* ---- the rest ---- */
@@ -1131,7 +1321,7 @@ ns_munge_app_id (const char *id)
 }
 
 GSettings *
-ns_page_settings (AdwNavigationPage *page, const char *schema)
+ns_page_settings (NsPage *page, const char *schema)
 {
   GSettings *s = ns_settings (schema);
   if (s)

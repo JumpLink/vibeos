@@ -67,6 +67,8 @@ void        fm_shell_open_location (FmShell *shell, GFile *location);
 void        fm_shell_show_page    (FmShell *shell, FmPageKind page);
 /* a file: its default app; a folder: open_location */
 void        fm_shell_open_item_location (FmShell *shell, GFile *location, gboolean is_folder);
+/* ... a file opening out of @from (its icon in a row, or NULL), as an app out of its icon on the home screen */
+void        fm_shell_open_item_from (FmShell *shell, GFile *location, gboolean is_folder, GtkWidget *from);
 /* Back: the popup, the drawer, selection, search, then the place before; FALSE when there is none */
 gboolean    fm_shell_back         (FmShell *shell);
 

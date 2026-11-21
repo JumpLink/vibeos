@@ -6,11 +6,13 @@
 
 #include <gdk-pixbuf/gdk-pixbuf.h>
 #include <glib/gi18n.h>
+#define GNOME_DESKTOP_USE_UNSTABLE_API
+#include <libgnome-desktop/gnome-desktop-thumbnail.h>
 #include <vibeos.h>
 #include <spongy-gtk.h>
 
 #define THUMB_PX       132      /* device px, a list row's icon on the phone (a tile's decodes at twice this) */
-#define THUMB_MAX_SIZE (40 * 1000 * 1000)
+#define THUMB_MAX_SIZE (40 * 1000 * 1000)   /* an image read whole for its thumbnail */
 
 struct _FmList {
   GtkWidget parent;
@@ -24,6 +26,7 @@ struct _FmList {
   GtkCustomFilter *filter;
   char *needle;                 /* the filter, case-folded */
   gboolean selecting, thumbnails;
+  GtkWidget *activated_icon;    /* the icon of the row being activated, while "activate" runs */
   /* thumbnails: one decoded at a time, the last asked first (the rows on screen) */
   GQueue *thumb_queue;
   gboolean thumb_busy;
@@ -35,7 +38,7 @@ G_DEFINE_FINAL_TYPE (FmList, fm_list, GTK_TYPE_WIDGET)
 enum { ACTIVATE, LONG_PRESS, SELECTION_CHANGED, N_SIGNALS };
 static guint signals[N_SIGNALS];
 
-static void thumb_request (FmList *self, FmItem *item);
+static void thumb_request (FmList *self, FmItem *item, gboolean video);
 
 /* ---- a row ------------------------------------------------------------------------------------------------------ */
 
@@ -102,8 +105,8 @@ row_fill (Row *row)
     fm_icon_set_gicon (FM_ICON (row->icon), content_icon (item->content_type));
   fm_icon_set_texture (FM_ICON (row->icon), row->list->thumbnails ? thumb : NULL);
   fm_icon_set_dimmed (FM_ICON (row->icon), item->hidden);
-  if (row->list->thumbnails && glyph == FM_GLYPH_IMAGE && !thumb)
-    thumb_request (row->list, item);
+  if (row->list->thumbnails && (glyph == FM_GLYPH_IMAGE || glyph == FM_GLYPH_VIDEO) && !thumb)
+    thumb_request (row->list, item, glyph == FM_GLYPH_VIDEO);
   set_text (row->name, item->name);
   set_text (row->count, count);
   /* the Recycle Bin dates its rows by the deletion */
@@ -143,7 +146,11 @@ on_row_clicked (VibeosPressable *pressable, Row *row)
   if (row->list->selecting)
     toggle (row->list, row->item);
   else
-    g_signal_emit (row->list, signals[ACTIVATE], 0, row->item);
+    {
+      row->list->activated_icon = row->icon;
+      g_signal_emit (row->list, signals[ACTIVATE], 0, row->item);
+      row->list->activated_icon = NULL;
+    }
 }
 
 static void
@@ -179,7 +186,6 @@ on_setup (GtkSignalListItemFactory *factory, GtkListItem *list_item, FmList *sel
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *text = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *sub = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  GdkRGBA ripple = fm_rgba (FM_C_RIPPLE);
 
   row->list = self;
   row->icon = fm_icon_new (FM_GLYPH_FOLDER, 44);
@@ -209,7 +215,6 @@ on_setup (GtkSignalListItemFactory *factory, GtkListItem *list_item, FmList *sel
   row->pressable = vibeos_pressable_new (box);
   gtk_widget_add_css_class (row->pressable, "fm-row");
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row->pressable), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row->pressable), &ripple);
   g_signal_connect (row->pressable, "clicked", G_CALLBACK (on_row_clicked), row);
   g_signal_connect (row->pressable, "long-pressed", G_CALLBACK (on_row_long_pressed), row);
   g_object_set_data_full (G_OBJECT (row->pressable), "fm-row", row, row_free);
@@ -227,7 +232,6 @@ on_setup_tile (GtkSignalListItemFactory *factory, GtkListItem *list_item, FmList
   Row *row = g_new0 (Row, 1);
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *frame = gtk_overlay_new ();
-  GdkRGBA ripple = fm_rgba (FM_C_RIPPLE);
 
   row->list = self;
   row->icon = fm_icon_new (FM_GLYPH_FOLDER, 64);
@@ -250,7 +254,6 @@ on_setup_tile (GtkSignalListItemFactory *factory, GtkListItem *list_item, FmList
   row->pressable = vibeos_pressable_new (box);
   gtk_widget_add_css_class (row->pressable, "fm-grid-tile");
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row->pressable), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row->pressable), &ripple);
   g_signal_connect (row->pressable, "clicked", G_CALLBACK (on_row_clicked), row);
   g_signal_connect (row->pressable, "long-pressed", G_CALLBACK (on_row_long_pressed), row);
   g_object_set_data_full (G_OBJECT (row->pressable), "fm-row", row, row_free);
@@ -285,24 +288,87 @@ on_unbind (GtkSignalListItemFactory *factory, GtkListItem *list_item, FmList *se
 
 /* ---- thumbnails ------------------------------------------------------------------------------------------------- */
 
+/* Thumbnails of photos and videos, on a server too, through GNOME's thumbnail factory: the thumbnails are kept in
+ * ~/.cache/thumbnails as other apps keep theirs (the freedesktop.org cache, valid while the file's time is the same),
+ * a video's made by its thumbnailer (ffmpegthumbnailer), each in its sandbox. A local photo with no thumbnailer for
+ * it is decoded here, as before. */
+typedef struct {
+  GFile *file;
+  char *uri, *content_type;
+  gint64 mtime;
+} ThumbJob;
+
+static void
+thumb_job_free (ThumbJob *job)
+{
+  g_object_unref (job->file);
+  g_free (job->uri);
+  g_free (job->content_type);
+  g_free (job);
+}
+
+static GnomeDesktopThumbnailFactory *
+thumb_factory (void)
+{
+  static GnomeDesktopThumbnailFactory *factory;
+  static gsize once;
+
+  if (g_once_init_enter (&once))
+    {
+      factory = gnome_desktop_thumbnail_factory_new (GNOME_DESKTOP_THUMBNAIL_SIZE_LARGE);
+      g_once_init_leave (&once, 1);
+    }
+  return factory;
+}
+
+static GdkPixbuf *
+thumb_pixbuf (ThumbJob *job, GCancellable *cancellable)
+{
+  GnomeDesktopThumbnailFactory *factory = thumb_factory ();
+  g_autofree char *cached = NULL;
+  g_autofree char *path = NULL;
+  g_autoptr(GdkPixbuf) made = NULL;
+  g_autoptr(GError) error = NULL;
+  gboolean native = g_file_is_native (job->file);
+
+  /* kept from before */
+  if ((cached = gnome_desktop_thumbnail_factory_lookup (factory, job->uri, job->mtime)))
+    return gdk_pixbuf_new_from_file_at_scale (cached, THUMB_PX * 2, THUMB_PX * 2, TRUE, NULL);
+  if (gnome_desktop_thumbnail_factory_has_valid_failed_thumbnail (factory, job->uri, job->mtime))
+    return NULL;
+  if (job->content_type && job->mtime
+      && gnome_desktop_thumbnail_factory_can_thumbnail (factory, job->uri, job->content_type, job->mtime))
+    {
+      made = gnome_desktop_thumbnail_factory_generate_thumbnail (factory, job->uri, job->content_type, cancellable,
+                                                                 &error);
+      if (made)
+        gnome_desktop_thumbnail_factory_save_thumbnail (factory, made, job->uri, job->mtime, NULL, NULL);
+      /* a local file its thumbnailer cannot read is remembered as such; a server's may just have been slow */
+      else if (native && !g_cancellable_is_cancelled (cancellable))
+        gnome_desktop_thumbnail_factory_create_failed_thumbnail (factory, job->uri, job->mtime, NULL, NULL);
+      if (made)
+        return gdk_pixbuf_scale_simple (made,
+                                        MAX (1, gdk_pixbuf_get_width (made) * THUMB_PX * 2
+                                                    / MAX (gdk_pixbuf_get_width (made), gdk_pixbuf_get_height (made))),
+                                        MAX (1, gdk_pixbuf_get_height (made) * THUMB_PX * 2
+                                                    / MAX (gdk_pixbuf_get_width (made), gdk_pixbuf_get_height (made))),
+                                        GDK_INTERP_BILINEAR);
+      return NULL;
+    }
+  /* no thumbnailer: a local photo decoded here (the loaders decode JPEGs at the reduced scale straight away) */
+  if (!native || !(path = g_file_get_path (job->file)))
+    return NULL;
+  return gdk_pixbuf_new_from_file_at_scale (path, THUMB_PX * 2, THUMB_PX * 2, TRUE, NULL);
+}
+
 static void
 thumb_thread (GTask *task, gpointer source, gpointer data, GCancellable *cancellable)
 {
-  GFile *file = data;
-  g_autofree char *path = g_file_get_path (file);
-  g_autoptr(GError) error = NULL;
   g_autoptr(GdkPixbuf) pixbuf = NULL, oriented = NULL;
   GBytes *bytes;
   GdkTexture *texture;
 
-  if (!path || g_cancellable_is_cancelled (cancellable))
-    {
-      g_task_return_pointer (task, NULL, NULL);
-      return;
-    }
-  /* the loaders decode JPEGs at the reduced scale straight away */
-  pixbuf = gdk_pixbuf_new_from_file_at_scale (path, THUMB_PX * 2, THUMB_PX * 2, TRUE, &error);
-  if (!pixbuf)
+  if (g_cancellable_is_cancelled (cancellable) || !(pixbuf = thumb_pixbuf (data, cancellable)))
     {
       g_task_return_pointer (task, NULL, NULL);
       return;
@@ -345,24 +411,29 @@ static void
 thumb_next (FmList *self)
 {
   FmItem *item;
+  ThumbJob *job;
   g_autoptr(GTask) task = NULL;
 
   if (self->thumb_busy || !(item = g_queue_pop_tail (self->thumb_queue)))
     return;
   self->thumb_busy = TRUE;
+  job = g_new0 (ThumbJob, 1);
+  job->file = g_object_ref (item->file);
+  job->uri = g_file_get_uri (item->file);
+  job->content_type = g_strdup (item->content_type);
+  job->mtime = item->mtime;
   task = g_task_new (NULL, self->thumb_cancel, on_thumb, item);
   g_object_set_data (G_OBJECT (task), "fm-list", g_object_ref (self));
-  g_task_set_task_data (task, g_object_ref (item->file), g_object_unref);
+  g_task_set_task_data (task, job, (GDestroyNotify) thumb_job_free);
   g_task_set_priority (task, G_PRIORITY_LOW);
   g_task_run_in_thread (task, thumb_thread);
 }
 
+/* a photo or a video; a photo so big it is better not read whole is left out (a video's thumbnailer reads a frame) */
 static void
-thumb_request (FmList *self, FmItem *item)
+thumb_request (FmList *self, FmItem *item, gboolean video)
 {
-  /* local files only: a remote image would be read whole over the network for its thumbnail */
-  if (g_object_get_data (G_OBJECT (item), "fm-thumb-asked") || !g_file_is_native (item->file)
-      || item->size > THUMB_MAX_SIZE)
+  if (g_object_get_data (G_OBJECT (item), "fm-thumb-asked") || (!video && item->size > THUMB_MAX_SIZE))
     return;
   g_object_set_data (G_OBJECT (item), "fm-thumb-asked", GINT_TO_POINTER (1));
   g_queue_push_tail (self->thumb_queue, g_object_ref (item));
@@ -626,6 +697,13 @@ fm_list_set_selected (FmList *self, FmItem *item, gboolean selected)
   item->selected = !!selected;
   fm_item_changed (item);
   g_signal_emit (self, signals[SELECTION_CHANGED], 0);
+}
+
+/* in an "activate" handler: the activated row's icon (a file opens out of it), else NULL */
+GtkWidget *
+fm_list_get_activated_icon (FmList *self)
+{
+  return self->activated_icon;
 }
 
 GPtrArray *

@@ -20,48 +20,40 @@
 #define APP_ID "vibeos.Calendar"
 
 static GSettings *settings;
-static GSettings *interface;            /* org.gnome.desktop.interface, where installed: "System default" */
 static CalStore *store;
 
 static void
 load_style (void)
 {
-  /* the app's sheet, then the pickers', the search screen's and the account screens' over it */
+  /* the app's sheet, then the pickers', the search screen's and the account screens' over it, each in sp and dp */
   static const char *sheets[] = { "calendar.css", "calendar-pickers.css", "calendar-search.css",
                                   "calendar-accounts.css", "calendar-recurrence.css", "calendar-alerts.css" };
 
   for (guint i = 0; i < G_N_ELEMENTS (sheets); i++)
     {
-      GtkCssProvider *provider = gtk_css_provider_new ();
       g_autofree char *path = g_strconcat ("/vibeos/Calendar/", sheets[i], NULL);
 
-      gtk_css_provider_load_from_resource (provider, path);
       /* over libvibeos's, which is at APPLICATION priority too: the later provider wins at equal priority */
-      gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (provider),
-                                                  GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
-      g_object_unref (provider);
+      vibeos_css_load_resource (path, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
     }
 }
 
-/* Theme: light, dark, or the system's, read where GNOME keeps it (color-scheme "prefer-dark"; "default" and
- * "prefer-light" are light); Pure black night mode makes a dark look the black one. On a change every window is
- * redrawn in the new colours. */
+/* Theme: light, dark, or the system's, as libvibeos's scheme for the app (the system's follows color-scheme); Pure
+ * black night mode makes a dark look the black one. On a change, of these or of the theme, every window is redrawn
+ * in the new colours. */
 static void
 apply_look (GApplication *app)
 {
   g_autofree char *theme = g_settings_get_string (settings, "theme");
-  g_autofree char *scheme = interface ? g_settings_get_string (interface, "color-scheme") : NULL;
-  gboolean dark = g_str_equal (theme, "dark")
-                  || (g_str_equal (theme, "system") && g_strcmp0 (scheme, "prefer-dark") == 0);
-  CalLook look = !dark ? CAL_LOOK_LIGHT : g_settings_get_boolean (settings, "pure-black") ? CAL_LOOK_BLACK
-                                                                                            : CAL_LOOK_DARK;
-  gboolean light = g_str_equal (theme, "light");
-  static gboolean applied;
+  VibeosTheme *vibeos = vibeos_theme_get_default ();
+  gboolean dark;
+  CalLook look;
 
-  if (applied && look == cal_palette_look () && light == cal_theme_light)
-    return;
-  applied = TRUE;
-  cal_theme_light = light;
+  vibeos_theme_set_scheme (vibeos, g_str_equal (theme, "light") ? VIBEOS_SCHEME_LIGHT
+                                   : g_str_equal (theme, "dark") ? VIBEOS_SCHEME_DARK : VIBEOS_SCHEME_SYSTEM);
+  dark = vibeos_theme_get_dark (vibeos);
+  look = !dark ? CAL_LOOK_LIGHT : g_settings_get_boolean (settings, "pure-black") ? CAL_LOOK_BLACK : CAL_LOOK_DARK;
+  cal_theme_light = g_str_equal (theme, "light");
   cal_palette_set (look);
   for (GList *l = gtk_application_get_windows (GTK_APPLICATION (app)); l; l = l->next)
     cal_palette_restyle (l->data);
@@ -76,20 +68,13 @@ on_look_changed (GSettings *source, const char *key, gpointer app)
 static void
 on_startup (GApplication *app, gpointer data)
 {
-  GSettingsSchemaSource *schemas = g_settings_schema_source_get_default ();
-  g_autoptr(GSettingsSchema) schema = schemas ? g_settings_schema_source_lookup (schemas,
-                                                                                 "org.gnome.desktop.interface", TRUE)
-                                              : NULL;
-
-  vibeos_init ();
+  /* the text follows Font size and Bold text */
+  vibeos_init_full (VIBEOS_INIT_SCALED_TEXT);
   load_style ();
-  if (schema && g_settings_schema_has_key (schema, "color-scheme"))
-    {
-      interface = g_settings_new ("org.gnome.desktop.interface");
-      g_signal_connect (interface, "changed::color-scheme", G_CALLBACK (on_look_changed), app);
-    }
   g_signal_connect (settings, "changed::theme", G_CALLBACK (on_look_changed), app);
   g_signal_connect (settings, "changed::pure-black", G_CALLBACK (on_look_changed), app);
+  /* the theme's colours, or light or dark, changed: the palette again from them */
+  g_signal_connect_swapped (vibeos_theme_get_default (), "changed", G_CALLBACK (apply_look), app);
   apply_look (app);
   store = cal_store_new (FALSE);
 }
@@ -98,7 +83,6 @@ static void
 on_shutdown (GApplication *app, gpointer data)
 {
   g_clear_object (&store);
-  g_clear_object (&interface);
 }
 
 static GtkWidget *

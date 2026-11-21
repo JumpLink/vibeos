@@ -111,12 +111,10 @@ static GtkWidget *
 crumb (FmBrowser *b, GtkWidget *child, GFile *target, const char *css_class)
 {
   GtkWidget *button = vibeos_pressable_new (child);
-  GdkRGBA ripple = fm_rgba (FM_C_RIPPLE);
 
   gtk_widget_add_css_class (button, "fm-crumb");
   gtk_widget_add_css_class (button, css_class);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (button), &ripple);
   if (target)
     {
       g_object_set_data_full (G_OBJECT (button), "fm-file", g_object_ref (target), g_object_unref);
@@ -769,7 +767,7 @@ on_activate (FmList *list, FmItem *item, FmBrowser *b)
 
       g_hash_table_replace (b->names, g_steal_pointer (&uri), g_strdup (item->name));
     }
-  fm_shell_open_item_location (b->shell, location, fm_item_is_folder (item));
+  fm_shell_open_item_from (b->shell, location, fm_item_is_folder (item), fm_list_get_activated_icon (list));
 }
 
 /* a search result's long press: Open, Open location */

@@ -51,11 +51,12 @@
 #define ACTION_ICON     24
 
 /* the bars' colours: incoming, outgoing, missed and blocked calls, then the rest of the bar */
-#define BAR_INCOMING    0xff00a8ff
-#define BAR_OUTGOING    0xff00c853
-#define BAR_MISSED      0xfffb6a51
-#define BAR_BLOCKED     0xffa3a7ac
-#define BAR_REST        0x88888888
+/* the colour bar's parts: the theme's roles, the outgoing part in libvibeos's fixed call green */
+#define BAR_INCOMING    VIBEOS_PRIMARY
+#define BAR_OUTGOING    VIBEOS_CALL
+#define BAR_MISSED      VIBEOS_ERROR
+#define BAR_BLOCKED     VIBEOS_ON_SURFACE_VARIANT
+#define BAR_REST        VIBEOS_OUTLINE_VARIANT
 
 static const char *
 country (void)
@@ -74,7 +75,7 @@ text_label (const char *text, const char *css_class, double size)
   gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
   gtk_label_set_single_line_mode (GTK_LABEL (label), TRUE);
   gtk_widget_add_css_class (label, css_class);
-  vibeos_label_set_font_padding (label, size);
+  vibeos_label_set_font_padding_sp (label, size);
   return label;
 }
 
@@ -238,22 +239,13 @@ struct _StatsBar
 
 G_DEFINE_FINAL_TYPE (StatsBar, stats_bar, GTK_TYPE_WIDGET)
 
-static void
-rgba_from (guint32 argb, GdkRGBA *rgba)
-{
-  rgba->red = ((argb >> 16) & 0xff) / 255.0;
-  rgba->green = ((argb >> 8) & 0xff) / 255.0;
-  rgba->blue = (argb & 0xff) / 255.0;
-  rgba->alpha = ((argb >> 24) & 0xff) / 255.0;
-}
-
 /* the bar: the four parts from the start, each end cut to the whole pixel, then the rest of the
  * width in the background colour, all inside a pill (the clip path's radius is half the height) */
 static void
 stats_bar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   StatsBar *self = STATS_BAR (widget);
-  static const guint32 colors[5] = { BAR_INCOMING, BAR_OUTGOING, BAR_MISSED, BAR_BLOCKED, BAR_REST };
+  static const VibeosColor colors[5] = { BAR_INCOMING, BAR_OUTGOING, BAR_MISSED, BAR_BLOCKED, BAR_REST };
   double width = gtk_widget_get_width (widget), height = gtk_widget_get_height (widget);
   int scale = vibeos_device_scale (widget), pixels = (int) round (width * scale), left = 0, right = 0;
   GskRoundedRect clip;
@@ -264,12 +256,11 @@ stats_bar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gtk_snapshot_push_rounded_clip (snapshot, &clip);
   for (int i = 0; i < 5; i++)
     {
-      GdkRGBA color;
+      GdkRGBA color = vibeos_color (colors[i]);
 
       right = i < 4 ? right + (int) (pixels * self->ratios[i]) : pixels;
       if (left >= right)
         continue;
-      rgba_from (colors[i], &color);
       gtk_snapshot_append_color (snapshot, &color,
                                  &GRAPHENE_RECT_INIT ((double) left / scale, 0, (double) (right - left) / scale,
                                                       height));
@@ -396,7 +387,6 @@ make_caller (StatsDetail *self)
                      is_contact ? contact->photo : NULL);
   badge = vibeos_pressable_new (avatar);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (badge), VIBEOS_RIPPLE_CIRCLE, PHOTO / 2.0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (badge), &(GdkRGBA) { 1, 1, 1, 0.06 });
   gtk_widget_set_valign (badge, GTK_ALIGN_CENTER);
   gtk_widget_set_sensitive (badge, is_contact);
   if (is_contact)
@@ -423,7 +413,6 @@ make_caller (StatsDetail *self)
       gtk_widget_set_size_request (call, BUTTON, BUTTON);
       gtk_widget_set_valign (call, GTK_ALIGN_CENTER);
       gtk_widget_add_css_class (call, "dialer-icon");
-      vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (call), &(GdkRGBA) { 1, 1, 1, 0.06 });
       gtk_accessible_update_property (GTK_ACCESSIBLE (call), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Call"), -1);
       g_signal_connect_swapped (call, "clicked", G_CALLBACK (on_detail_call), self);
       gtk_box_append (GTK_BOX (caller), call);
@@ -656,7 +645,6 @@ action_row (StatsDetail *self, const char *icon_name, const char *text, GCallbac
   gtk_box_append (GTK_BOX (box), label);
   row = vibeos_pressable_new (box);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &(GdkRGBA) { 1, 1, 1, 0.06 });
   g_signal_connect_swapped (row, "clicked", callback, self);
   return row;
 }
@@ -676,8 +664,8 @@ on_detail_edit (StatsDetail *self)
   g_signal_emit (self, detail_signals[DETAIL_EDIT_NUMBER], 0, self->stat->number);
 }
 
-/* the separator (#12000000: black, so on this dark theme all but invisible) and the two rows, for a number that can
- * be called; a SIP address has no Edit number before call */
+/* the separator (a faint line in the theme's outline) and the two rows, for a number that can be called; a SIP
+ * address has no Edit number before call */
 static void
 add_actions (StatsDetail *self, GtkWidget *list)
 {
@@ -979,8 +967,8 @@ make_row (CallStats *self, const Stat *stat, const Stat *first)
   gtk_widget_set_valign (badge, GTK_ALIGN_START);
   gtk_widget_set_margin_end (badge, INFO_START);
   /* a contact's opens its card; anyone else's (no contact URI: a disabled badge) takes the tap and does nothing */
-  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (badge), VIBEOS_RIPPLE_CIRCLE, PHOTO / 2.0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (badge), &(GdkRGBA) { 1, 1, 1, is_contact ? 0.06 : 0 });
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (badge), is_contact ? VIBEOS_RIPPLE_CIRCLE : VIBEOS_RIPPLE_NONE,
+                               PHOTO / 2.0);
   if (is_contact)
     {
       gtk_accessible_update_property (GTK_ACCESSIBLE (badge), GTK_ACCESSIBLE_PROPERTY_LABEL, contact->name, -1);
@@ -1030,7 +1018,6 @@ make_row (CallStats *self, const Stat *stat, const Stat *first)
   /* a bounded ripple; a tap the number's statistics, a long press the context menu */
   row = vibeos_pressable_new (box);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &(GdkRGBA) { 1, 1, 1, 0.06 });
   data = g_new0 (RowData, 1);
   data->page = self;
   data->stat = stat_copy (stat);

@@ -19,8 +19,8 @@
 
 
 #include "ns-pattern.h"
+#include "ns-ui.h"
 
-#include <adwaita.h>
 #include <math.h>
 #include <pango/pangocairo.h>
 #include <security/pam_appl.h>
@@ -65,7 +65,7 @@ typedef enum {
 } Stage;
 
 typedef struct {
-  AdwDialog      *dialog;
+  GtkWidget      *dialog;       /* the page it is on */
   GtkWidget      *area;
   GtkWidget      *entry;        /* a current password that is not digits ("Use password") */
   GtkWidget      *pad;          /* the PIN pad: a current PIN, a new one */
@@ -174,11 +174,10 @@ draw_func (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer da
 
   geometry (w, &x0, &y0, &cell);
   gtk_widget_get_color (w, &fg);
+  GdkRGBA line = vibeos_color_alpha (pd->error ? VIBEOS_ERROR : VIBEOS_PRIMARY, 0.9f);
+  GdkRGBA on_dot = vibeos_color (pd->error ? VIBEOS_ERROR : VIBEOS_PRIMARY);
   if (pd->len > 0) {
-    if (pd->error)
-      cairo_set_source_rgba (cr, 0.88, 0.11, 0.14, 0.9);
-    else
-      cairo_set_source_rgba (cr, 0.21, 0.52, 0.89, 0.9);
+    gdk_cairo_set_source_rgba (cr, &line);
     cairo_set_line_width (cr, cell * 0.05);
     cairo_set_line_cap (cr, CAIRO_LINE_CAP_ROUND);
     cairo_set_line_join (cr, CAIRO_LINE_JOIN_ROUND);
@@ -197,10 +196,8 @@ draw_func (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer da
     gboolean on = has_dot (pd, dot);
 
     dot_center (w, dot, &cx, &cy);
-    if (on && pd->error)
-      cairo_set_source_rgba (cr, 0.88, 0.11, 0.14, 1.0);
-    else if (on)
-      cairo_set_source_rgba (cr, 0.21, 0.52, 0.89, 1.0);
+    if (on)
+      gdk_cairo_set_source_rgba (cr, &on_dot);
     else
       cairo_set_source_rgba (cr, fg.red, fg.green, fg.blue, 0.85);
     cairo_arc (cr, cx, cy, cell * (on ? 0.08 : 0.055), 0, 2 * G_PI);
@@ -338,7 +335,8 @@ finish (PatternDialog *pd, gboolean ok)
   pd->done = TRUE;
   if (pd->callback)
     pd->callback (ok, pd->user_data);
-  adw_dialog_force_close (pd->dialog);
+  ns_page_set_busy (pd->dialog, FALSE);
+  ns_pop (pd->dialog);
 }
 
 
@@ -469,7 +467,7 @@ on_checked (GObject *source, GAsyncResult *res, gpointer data)
 {
   PatternDialog *pd = data;
 
-  adw_dialog_set_can_close (pd->dialog, TRUE);
+  ns_page_set_busy (pd->dialog, FALSE);
   gtk_widget_set_sensitive (pd->cancel, TRUE);
   gtk_widget_set_sensitive (pd->pad, TRUE);
   if (g_task_propagate_boolean (G_TASK (res), NULL)) {
@@ -496,8 +494,8 @@ check_current (PatternDialog *pd)
   gtk_widget_set_sensitive (pd->cancel, FALSE);
   gtk_widget_set_sensitive (pd->pad, FALSE);
   gtk_label_set_text (GTK_LABEL (pd->message), "Checking…");
-  /* the dialog stays until the answer is in: on_checked writes to it */
-  adw_dialog_set_can_close (pd->dialog, FALSE);
+  /* the page stays until the answer is in: on_checked writes to it */
+  ns_page_set_busy (pd->dialog, TRUE);
   g_task_set_task_data (task, g_strdup (pd->current), g_free);
   g_task_run_in_thread (task, check_thread);
 }
@@ -616,8 +614,11 @@ pad_draw (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer dat
   GtkWidget *w = GTK_WIDGET (area);
   GdkRGBA fg;
   gtk_widget_get_color (w, &fg);
+  GdkRGBA pressed_fill = vibeos_color (VIBEOS_PRIMARY_CONTAINER), pressed_ink = vibeos_color (VIBEOS_ON_PRIMARY_CONTAINER);
   PangoLayout *layout = gtk_widget_create_pango_layout (w, NULL);
-  PangoFontDescription *font = pango_font_description_from_string ("Google Sans Flex Semi-Bold");
+  /* the lock screen's digits: a size that fits the key whatever Font size is, a weight that follows Bold text */
+  PangoFontDescription *font = pango_font_description_from_string ("Google Sans Flex");
+  pango_font_description_set_weight (font, vibeos_font_weight (300));
   pango_font_description_set_absolute_size (font, PAD_DIGIT_PX * PANGO_SCALE);
   pango_layout_set_font_description (layout, font);
 
@@ -627,7 +628,7 @@ pad_draw (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer dat
     pad_center (w, k, &cx, &cy);
     squircle (cr, cx, cy, PAD_KEY / 2, pressed ? 5 : 4);
     if (pressed)
-      cairo_set_source_rgb (cr, 16 / 255.0, 78 / 255.0, 86 / 255.0);          /* primary container */
+      gdk_cairo_set_source_rgba (cr, &pressed_fill);
     else
       cairo_set_source_rgba (cr, fg.red, fg.green, fg.blue, action ? 0.10 : 0.14);
     cairo_fill (cr);
@@ -662,7 +663,7 @@ pad_draw (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer dat
     } else {
       int tw, th;
       if (pressed)
-        cairo_set_source_rgb (cr, 184 / 255.0, 235 / 255.0, 243 / 255.0);     /* accent1_100 */
+        gdk_cairo_set_source_rgba (cr, &pressed_ink);
       pango_layout_set_text (layout, pad_keys[k], -1);
       pango_layout_get_pixel_size (layout, &tw, &th);
       cairo_move_to (cr, cx - tw / 2.0, cy - th / 2.0);
@@ -789,7 +790,7 @@ void
 ns_pattern_dialog_present (GtkWidget *parent, gboolean pin, NsPatternDone callback, gpointer user_data)
 {
   PatternDialog *pd = g_new0 (PatternDialog, 1);
-  GtkWidget *box, *buttons, *toolbar, *header;
+  GtkWidget *box, *buttons;
   GtkGesture *drag;
 
   pd->callback = callback;
@@ -809,14 +810,8 @@ ns_pattern_dialog_present (GtkWidget *parent, gboolean pin, NsPatternDone callba
       g_settings_schema_unref (schema);
     }
   }
-  pd->dialog = ADW_DIALOG (adw_dialog_new ());
-  /* floating, not a bottom sheet: a sheet is dragged down to close, the same stroke that draws a pattern */
-  adw_dialog_set_presentation_mode (pd->dialog, ADW_DIALOG_FLOATING);
-  adw_dialog_set_title (pd->dialog, pin ? "Set PIN" : "Set pattern");
-  adw_dialog_set_content_width (pd->dialog, 360);
-  adw_dialog_set_content_height (pd->dialog, 620);
-
   box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 18);
+  gtk_widget_add_css_class (box, "ns-pattern");
   gtk_widget_set_margin_start (box, 18);
   gtk_widget_set_margin_end (box, 18);
   gtk_widget_set_margin_top (box, 12);
@@ -839,6 +834,7 @@ ns_pattern_dialog_present (GtkWidget *parent, gboolean pin, NsPatternDone callba
   gtk_box_append (GTK_BOX (box), pd->area);
 
   pd->entry = gtk_password_entry_new ();
+  gtk_widget_add_css_class (pd->entry, "vibeos-entry");
   gtk_password_entry_set_show_peek_icon (GTK_PASSWORD_ENTRY (pd->entry), TRUE);
   gtk_widget_set_valign (pd->entry, GTK_ALIGN_START);
   gtk_widget_set_vexpand (pd->entry, TRUE);
@@ -856,6 +852,8 @@ ns_pattern_dialog_present (GtkWidget *parent, gboolean pin, NsPatternDone callba
   gtk_widget_set_vexpand (pd->pad, TRUE);
   gtk_widget_set_valign (pd->pad, GTK_ALIGN_CENTER);
   gtk_drawing_area_set_draw_func (GTK_DRAWING_AREA (pd->pad), pad_draw, pd, NULL);
+  g_signal_connect_object (vibeos_text_get_default (), "changed", G_CALLBACK (gtk_widget_queue_draw), pd->pad,
+                           G_CONNECT_SWAPPED);
   {
     GtkGesture *click = gtk_gesture_click_new ();
     g_signal_connect (click, "pressed", G_CALLBACK (pad_pressed), pd);
@@ -866,30 +864,24 @@ ns_pattern_dialog_present (GtkWidget *parent, gboolean pin, NsPatternDone callba
   gtk_box_append (GTK_BOX (box), pd->pad);
 
   pd->use_text = gtk_button_new_with_label ("Use password");
-  gtk_widget_add_css_class (pd->use_text, "flat");
+  gtk_widget_add_css_class (pd->use_text, "vibeos-text-button");
   gtk_widget_set_halign (pd->use_text, GTK_ALIGN_CENTER);
   g_signal_connect_swapped (pd->use_text, "clicked", G_CALLBACK (on_use_text), pd);
   gtk_box_append (GTK_BOX (box), pd->use_text);
 
   buttons = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 12);
   gtk_box_set_homogeneous (GTK_BOX (buttons), TRUE);
-  pd->cancel = gtk_button_new_with_label ("Cancel");
-  gtk_widget_add_css_class (pd->cancel, "pill");
-  pd->next = gtk_button_new_with_label ("Continue");
-  gtk_widget_add_css_class (pd->next, "pill");
-  gtk_widget_add_css_class (pd->next, "suggested-action");
+  pd->cancel = ns_button_new ("Cancel", FALSE);
+  pd->next = ns_button_new ("Continue", TRUE);
   g_signal_connect_swapped (pd->cancel, "clicked", G_CALLBACK (on_cancel), pd);
   g_signal_connect_swapped (pd->next, "clicked", G_CALLBACK (on_next), pd);
   gtk_box_append (GTK_BOX (buttons), pd->cancel);
   gtk_box_append (GTK_BOX (buttons), pd->next);
   gtk_box_append (GTK_BOX (box), buttons);
 
-  toolbar = adw_toolbar_view_new ();
-  header = adw_header_bar_new ();
-  adw_toolbar_view_add_top_bar (ADW_TOOLBAR_VIEW (toolbar), header);
-  adw_toolbar_view_set_content (ADW_TOOLBAR_VIEW (toolbar), box);
-  adw_dialog_set_child (pd->dialog, toolbar);
-  g_signal_connect_swapped (pd->dialog, "closed", G_CALLBACK (on_closed), pd);
+  /* a page of its own that does not scroll: a scrolling page would take the stroke that draws a pattern */
+  pd->dialog = ns_page_new_fixed (pin ? "Set PIN" : "Set pattern", box);
+  g_signal_connect_swapped (pd->dialog, "destroy", G_CALLBACK (on_closed), pd);
   {
     GtkEventController *keys = gtk_event_controller_key_new ();
     g_signal_connect (keys, "key-pressed", G_CALLBACK (pad_key_pressed), pd);
@@ -897,5 +889,5 @@ ns_pattern_dialog_present (GtkWidget *parent, gboolean pin, NsPatternDone callba
   }
 
   set_stage (pd, STAGE_CURRENT);
-  adw_dialog_present (pd->dialog, parent);
+  ns_push (pd->dialog);
 }

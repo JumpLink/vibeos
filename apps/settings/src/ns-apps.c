@@ -74,7 +74,7 @@ app_notify_page (GtkWidget *row, gpointer app)
   if (!s)
     return;
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new (g_app_info_get_display_name (app), &c);
+  NsPage *page = ns_page_new (g_app_info_get_display_name (app), &c);
   g_object_set_data_full (G_OBJECT (page), "ns-notify", s, g_object_unref);
   GtkWidget *g = ns_group (c, NULL);
   ns_row_switch (g, "Allow notifications", NULL, s, "enable");
@@ -87,7 +87,7 @@ app_notify_page (GtkWidget *row, gpointer app)
     rows[n++] = ns_row_switch (g, "Show on the lock screen", "The app's icon below the clock", s,
                                "show-in-lock-screen");
   /* No "Sound" switch (enable-sound-alerts): GNOME Shell honours it, but only for a notification that names a
-   * sound, and no app here sends one (Sounds and vibration says more). */
+   * sound, and no app here sends one (Sound & vibration says more). */
   for (guint i = 0; i < n; i++)
     g_settings_bind (s, "enable", rows[i], "sensitive", G_SETTINGS_BIND_GET);
   ns_push (page);
@@ -120,7 +120,6 @@ cbc_got (GObject *src, GAsyncResult *res, gpointer row)
     }
   }
   gtk_widget_set_visible (row, any);
-  gtk_list_box_invalidate_headers (GTK_LIST_BOX (gtk_widget_get_parent (row)));
   g_object_unref (row);
 }
 
@@ -128,7 +127,7 @@ static void
 alerts_page (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Emergency alerts", &c);
+  NsPage *page = ns_page_new ("Emergency alerts", &c);
   GSettings *cbd = ns_page_settings (page, "org.freedesktop.cbd");
   GtkWidget *g = ns_group (c, "Alerts from the mobile network");
   ns_row_flag (g, "Extreme threats", "To life and safety", cbd, "levels", "extreme");
@@ -146,7 +145,7 @@ alerts_row (GtkWidget *g)
 {
   if (!ns_settings_exists ("org.freedesktop.cbd"))
     return;
-  GtkWidget *r = ns_row (g, NULL, NULL, "Emergency alerts", "Cell broadcast warnings");
+  GtkWidget *r = ns_row (g, NULL, "Emergency alerts", "Cell broadcast warnings");
   ns_row_on_activate (r, alerts_page, NULL);
   gtk_widget_set_visible (r, FALSE);
   g_autoptr (GDBusConnection) bus = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, NULL);
@@ -160,20 +159,20 @@ alerts_row (GtkWidget *g)
 /* ---- Notifications ---- */
 
 static void
-app_switched (GtkSwitch *sw, GParamSpec *ps, GAppInfo *app)
+app_switched (GtkWidget *sw, GParamSpec *ps, GAppInfo *app)
 {
   if (ns_switch_syncing (GTK_WIDGET (sw)))
     return;
   g_autoptr (GSettings) s = notify_settings (app);
   if (s)
-    g_settings_set_boolean (s, "enable", gtk_switch_get_active (sw));
+    g_settings_set_boolean (s, "enable", ns_switch_get_active (sw));
 }
 
 void
 ns_page_notifications (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Notifications", &c);
+  NsPage *page = ns_page_new ("Notifications", &c);
   GSettings *n = ns_page_settings (page, "org.gnome.desktop.notifications");
   GtkWidget *g = ns_group (c, NULL);
   GtkWidget *r = ns_row_switch (g, "Do not disturb", "No pop-ups: notifications wait in the list", NULL, NULL);
@@ -198,11 +197,10 @@ ns_page_notifications (GtkWidget *row, gpointer data)
     g_autofree char *path = g_strconcat ("/org/gnome/desktop/notifications/application/", id, "/", NULL);
     g_autoptr (GSettings) s = g_settings_new_full (sc, NULL, path);
     GtkWidget *ar = ns_row_app (g, app, NULL);
-    GtkWidget *sw = gtk_switch_new ();
+    GtkWidget *sw = ns_row_add_switch (ar, TRUE);
     ns_switch_quiet (sw, g_settings_get_boolean (s, "enable"));
     g_object_set_data_full (G_OBJECT (ar), "ns-app", g_object_ref (app), g_object_unref);
     g_signal_connect (sw, "notify::active", G_CALLBACK (app_switched), app);
-    ns_row_suffix (ar, sw);
     ns_row_on_activate (ar, app_notify_page, app);
   }
   g_list_free_full (all, g_object_unref);
@@ -277,9 +275,7 @@ uninstall_done (GObject *src, GAsyncResult *res, gpointer data)
   Uninstall *u = data;
   g_autoptr (GError) err = NULL;
   if (g_subprocess_wait_check_finish (G_SUBPROCESS (src), res, &err)) {
-    GtkWidget *nav = gtk_widget_get_ancestor (u->button, ADW_TYPE_NAVIGATION_VIEW);
-    if (nav)
-      adw_navigation_view_pop (ADW_NAVIGATION_VIEW (nav));
+    ns_pop (u->button);
   } else {
     int st = g_subprocess_get_if_exited (G_SUBPROCESS (src)) ? g_subprocess_get_exit_status (G_SUBPROCESS (src)) : -1;
     /* 126: the password was not given (pkexec's "not authorized"), nothing to report */
@@ -351,8 +347,7 @@ uninstall_button (GtkWidget *c, GAppInfo *app)
   const char *file = G_IS_DESKTOP_APP_INFO (app) ? g_desktop_app_info_get_filename (G_DESKTOP_APP_INFO (app)) : NULL;
   if (!file || !g_str_has_prefix (file, "/usr/share/"))
     return;
-  GtkWidget *b = gtk_button_new_with_label ("Uninstall");
-  gtk_widget_add_css_class (b, "destructive-action");
+  GtkWidget *b = ns_button_new ("Uninstall", FALSE);
   gtk_widget_add_css_class (b, "ns-uninstall");
   gtk_widget_set_visible (b, FALSE);
   gtk_box_append (GTK_BOX (c), b);
@@ -374,7 +369,7 @@ static void
 app_page (GAppInfo *app)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new (g_app_info_get_display_name (app), &c);
+  NsPage *page = ns_page_new (g_app_info_get_display_name (app), &c);
   g_object_set_data_full (G_OBJECT (page), "ns-app", g_object_ref (app), g_object_unref);
 
   GtkWidget *head = gtk_box_new (GTK_ORIENTATION_VERTICAL, 8);
@@ -404,12 +399,12 @@ app_page (GAppInfo *app)
   GSettings *ns = app_settings (NOTIFY_APP, "/org/gnome/desktop/notifications/application/", app);
   if (ns) {
     g_object_set_data_full (G_OBJECT (page), "ns-notify", ns, g_object_unref);
-    GtkWidget *r = ns_row (g, "preferences-system-notifications-symbolic", "orange", "Notifications", NULL);
+    GtkWidget *r = ns_row (g, "preferences-system-notifications-symbolic", "Notifications", NULL);
     allowed_changed (ns, NULL, r);
     g_signal_connect_object (ns, "changed::enable", G_CALLBACK (allowed_changed), r, 0);
     ns_row_on_activate (r, app_notify_page, app);
   }
-  /* No per-app "Sounds and vibration" (feedbackd's per-app profile): feedbackd applies it to the events an app
+  /* No per-app "Sound & vibration" (feedbackd's per-app profile): feedbackd applies it to the events an app
    * sends it, and apps here send none (the Phone and the Clock use its Haptic interface, which the profile does
    * not touch). No "Scale to fit" either: that was phoc's; mutter has no such thing. */
 
@@ -433,59 +428,6 @@ ns_page_app (const char *id)
     app_page (G_APP_INFO (app));
   else
     ns_page_apps (NULL, NULL);
-}
-
-/* the list's first row is "Default apps" (o NULL) on a card of its own, then one card of all apps */
-static GtkWidget *
-app_item_new (GAppInfo *app, gboolean first, gboolean last)
-{
-  GtkWidget *v = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  gtk_widget_add_css_class (v, "ns-li");
-  if (first)
-    gtk_widget_add_css_class (v, "ns-li-first");
-  if (last)
-    gtk_widget_add_css_class (v, "ns-li-last");
-  if (!first)
-    gtk_box_append (GTK_BOX (v), gtk_separator_new (GTK_ORIENTATION_HORIZONTAL));
-  GtkWidget *h = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 18);
-  gtk_widget_add_css_class (h, "ns-li-row");
-  GtkWidget *icon;
-  const char *title, *sub;
-  if (app) {
-    GIcon *gi = g_app_info_get_icon (app);
-    icon = gi ? gtk_image_new_from_gicon (gi) : gtk_image_new_from_icon_name ("application-x-executable");
-    gtk_image_set_pixel_size (GTK_IMAGE (icon), 40);
-    title = g_app_info_get_display_name (app);
-    sub = g_app_info_get_description (app);
-  } else {
-    icon = gtk_image_new_from_icon_name ("view-grid-symbolic");
-    gtk_image_set_pixel_size (GTK_IMAGE (icon), 20);
-    gtk_widget_add_css_class (icon, "ns-icon");
-    gtk_widget_add_css_class (icon, "ns-blue");
-    title = "Default apps";
-    sub = "Browser • Email • Music • Photos";
-  }
-  gtk_widget_set_valign (icon, GTK_ALIGN_CENTER);
-  gtk_box_append (GTK_BOX (h), icon);
-  g_object_set_data (G_OBJECT (v), "ns-icon", icon);
-  GtkWidget *t = gtk_box_new (GTK_ORIENTATION_VERTICAL, 2);
-  gtk_widget_set_valign (t, GTK_ALIGN_CENTER);
-  gtk_widget_set_hexpand (t, TRUE);
-  GtkWidget *l = gtk_label_new (title);
-  gtk_label_set_xalign (GTK_LABEL (l), 0);
-  gtk_label_set_ellipsize (GTK_LABEL (l), PANGO_ELLIPSIZE_END);
-  gtk_widget_add_css_class (l, "ns-title");
-  gtk_box_append (GTK_BOX (t), l);
-  if (sub && *sub) {
-    l = gtk_label_new (sub);
-    gtk_label_set_xalign (GTK_LABEL (l), 0);
-    gtk_label_set_ellipsize (GTK_LABEL (l), PANGO_ELLIPSIZE_END);
-    gtk_widget_add_css_class (l, "ns-sub");
-    gtk_box_append (GTK_BOX (t), l);
-  }
-  gtk_box_append (GTK_BOX (h), t);
-  gtk_box_append (GTK_BOX (v), h);
-  return v;
 }
 
 /* App icons as textures, each drawn once at the screen's size: GTK draws a scalable (SVG) icon from its paths on
@@ -551,44 +493,52 @@ weak_ref_free (GWeakRef *ref)
 }
 
 static void
-app_activated (GtkListBox *list, GtkListBoxRow *row, gpointer data)
+default_apps_tapped (GtkWidget *row, gpointer data)
 {
-  GAppInfo *app = g_object_get_data (G_OBJECT (row), "ns-app");
-  if (app)
-    app_page (app);
-  else
-    ns_page_default_apps (NULL, NULL);
+  ns_page_default_apps (row, NULL);
 }
 
+static void
+app_tapped (GtkWidget *row, gpointer app)
+{
+  app_page (app);
+}
+
+/* "Default apps" on a card of its own, then one card of all apps */
 void
 ns_page_apps (GtkWidget *row, gpointer data)
 {
   GList *all = g_app_info_get_all ();
   all = g_list_sort_with_data (all, by_name, NULL);
-  GPtrArray *shown = g_ptr_array_new ();
-  for (GList *l = all; l; l = l->next)
-    if (g_app_info_should_show (l->data))
-      g_ptr_array_add (shown, l->data);
-
-  GtkWidget *list = gtk_list_box_new ();
-  gtk_list_box_set_selection_mode (GTK_LIST_BOX (list), GTK_SELECTION_NONE);
-  gtk_list_box_append (GTK_LIST_BOX (list), app_item_new (NULL, TRUE, TRUE));
+  GtkWidget *c;
+  NsPage *page = ns_page_new ("Apps", &c);
+  GtkWidget *g = ns_group (c, NULL);
+  GtkWidget *r = ns_row (g, "view-grid-symbolic", "Default apps", "Browser • Email • Music • Photos");
+  ns_row_on_activate (r, default_apps_tapped, NULL);
+  g = ns_group (c, NULL);
   IconBake *bake = g_new0 (IconBake, 1);
   bake->images = g_ptr_array_new_with_free_func ((GDestroyNotify) weak_ref_free);
-  for (guint i = 0; i < shown->len; i++) {
-    GtkWidget *item = app_item_new (shown->pdata[i], i == 0, i == shown->len - 1);
-    gtk_list_box_append (GTK_LIST_BOX (list), item);
-    g_object_set_data_full (G_OBJECT (gtk_widget_get_parent (item)), "ns-app", g_object_ref (shown->pdata[i]),
-                            g_object_unref);
+  for (GList *l = all; l; l = l->next) {
+    GAppInfo *app = l->data;
+    if (!g_app_info_should_show (app))
+      continue;
+    GtkWidget *ar = ns_row_app (g, app, NULL);
+    /* the row holds the app its page opens */
+    g_object_set_data_full (G_OBJECT (ar), "ns-app", g_object_ref (app), g_object_unref);
+    ns_row_on_activate (ar, app_tapped, app);
     GWeakRef *ref = g_new0 (GWeakRef, 1);
-    g_weak_ref_init (ref, g_object_get_data (G_OBJECT (item), "ns-icon"));
+    g_weak_ref_init (ref, g_object_get_data (G_OBJECT (ar), "ns-icon"));
     g_ptr_array_add (bake->images, ref);
   }
   g_idle_add_full (G_PRIORITY_DEFAULT_IDLE, icon_bake_step, bake, (GDestroyNotify) icon_bake_free);
-  g_ptr_array_free (shown, TRUE);
   g_list_free_full (all, g_object_unref);
-  g_signal_connect (list, "row-activated", G_CALLBACK (app_activated), NULL);
-  ns_push (ns_page_new_list ("Apps", list));
+  ns_push (page);
+}
+
+void
+ns_page_app_row (GtkWidget *row, gpointer id)
+{
+  ns_page_app (id);
 }
 
 /* ---- Default apps ---- */
@@ -627,7 +577,7 @@ void
 ns_page_default_apps (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Default apps", &c);
+  NsPage *page = ns_page_new ("Default apps", &c);
   GtkWidget *g = ns_group (c, NULL);
   for (guint k = 0; k < G_N_ELEMENTS (kinds); k++) {
     GList *all = g_app_info_get_all_for_type (kinds[k].types[0]);

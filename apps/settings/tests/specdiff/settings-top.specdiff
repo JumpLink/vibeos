@@ -1,0 +1,48 @@
+# Settings' main menu on a phone, held against the reference phone's Settings top level:
+#
+#   vibeos-specdiff settings-top.specdiff ours.xml
+#
+# with ours dumped (`vibeos-headless dump`) from vibeos-settings on a 360 x 721 display at 3x, at the default font
+# size, and the reference the top-level page scrolled to the top (tools/specdiff-refs/settings-top.xml). The menu's
+# groups are ours, not the reference's: only the first two groups' rows are held against each other.
+
+ref-offset 0,116
+ref-density 3
+tolerance 1
+
+# the search pill, pinned at the top
+pill left           | x0('css=vibeos-search-pill')  | x0('class=CardView')                | 16
+pill right          | x1('css=vibeos-search-pill')  | x1('class=CardView')                | 344
+pill top            | y0('css=vibeos-search-pill')  | y0('class=CardView')                | 8
+pill bottom         | y1('css=vibeos-search-pill')  | y1('class=CardView')                | 80
+pill hint           | x0('css=vibeos-search-hint')  | x0('id=search_bar_title')           | 72
+
+# the cards
+card left           | x0('class=VibeosListRow#0')   | x0('id=icon_frame#0')               | 16
+card right          | x1('class=VibeosListRow#0')   | x1('id=text_frame#0')               | 344
+first row top       | y0('class=VibeosListRow#0')   | y0('id=icon_frame#0/..')            | 94
+
+# the rows, two lines each
+row 0 height        | h('class=VibeosListRow#0')    | h('id=icon_frame#0/..')             | 74.667
+row 1 height        | h('class=VibeosListRow#1')    | h('id=icon_frame#1/..')             | 74.667
+row 2 height        | h('class=VibeosListRow#2')    | h('id=icon_frame#2/..')             | 74.667
+
+# the gaps: inside a group, between groups
+gap in group 1      | y0('class=VibeosListRow#1') - y1('class=VibeosListRow#0') |
+                      y0('id=icon_frame#1/..') - y1('id=icon_frame#0/..') | 2
+gap between groups  | y0('class=VibeosListRow#2') - y1('class=VibeosListRow#1') |
+                      y0('id=icon_frame#2/..') - y1('id=icon_frame#1/..') | 16
+gap in group 2      | y0('class=VibeosListRow#3') - y1('class=VibeosListRow#2') |
+                      y0('id=icon_frame#3/..') - y1('id=icon_frame#2/..') | 2
+
+# the icon circle, and the text after it
+icon left           | x0('css=vibeos-list-row-icon-circle#0') | x0('id=icon#0')             | 32
+icon width          | w('css=vibeos-list-row-icon-circle#0')  | w('id=icon#0')              | 40
+icon centre         | cy('css=vibeos-list-row-icon-circle#0') - y0('class=VibeosListRow#0') |
+                      cy('id=icon#0') - y0('id=icon_frame#0/..') | 37.333
+title left          | x0('css=vibeos-list-row-title#0')       | x0('id=title#0')            | 84
+title top           | y0('css=vibeos-list-row-title#0') - y0('class=VibeosListRow#0') |
+                      y0('id=title#0') - y0('id=icon_frame#0/..') | 16
+summary left        | x0('css=vibeos-list-row-summary#0')     | x0('id=summary#0')          | 84
+summary top         | y0('css=vibeos-list-row-summary#0') - y0('class=VibeosListRow#0') |
+                      y0('id=summary#0') - y0('id=icon_frame#0/..') | 38.667

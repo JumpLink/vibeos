@@ -104,19 +104,29 @@ alarm_day_init (AlarmDay *self)
   g_object_set_data (G_OBJECT (self), "vibeos-tappable", GINT_TO_POINTER (TRUE));
 }
 
+/* the letter: 18 px in its fixed circle, regular, which Bold text draws 300 heavier */
+static void
+alarm_day_set_font (AlarmDay *self)
+{
+  PangoFontDescription *font = pango_font_description_from_string ("VibeOS Roboto");
+
+  pango_font_description_set_weight (font, vibeos_font_weight (400));
+  pango_font_description_set_absolute_size (font, 18 * PANGO_SCALE);
+  pango_layout_set_font_description (self->letter, font);
+  pango_font_description_free (font);
+  gtk_widget_queue_draw (GTK_WIDGET (self));
+}
+
 static GtkWidget *
 alarm_day_new (int index)
 {
   AlarmDay *self = g_object_new (ALARM_TYPE_DAY, NULL);
   g_autofree char *letter = clock_weekday_letter (index);
-  PangoFontDescription *font = pango_font_description_from_string ("VibeOS Roboto");
 
-  /* 700, not 400: the phone's Bold text setting is on */
-  pango_font_description_set_weight (font, 700);
-  pango_font_description_set_absolute_size (font, 18 * PANGO_SCALE);
   self->letter = gtk_widget_create_pango_layout (GTK_WIDGET (self), letter);
-  pango_layout_set_font_description (self->letter, font);
-  pango_font_description_free (font);
+  alarm_day_set_font (self);
+  g_signal_connect_object (vibeos_text_get_default (), "changed", G_CALLBACK (alarm_day_set_font), self,
+                           G_CONNECT_SWAPPED);
   return GTK_WIDGET (self);
 }
 
@@ -758,7 +768,7 @@ body_label (const char *css)
   gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
   gtk_label_set_single_line_mode (GTK_LABEL (label), TRUE);
   /* centred in its row */
-  vibeos_label_set_font_padding (label, 14);
+  vibeos_label_set_font_padding_sp (label, 14);
   gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
   gtk_widget_add_css_class (label, "body");
   if (css)
@@ -853,7 +863,7 @@ alarm_card_init (AlarmCard *self)
   /* the time: display_time, a plain ripple over it */
   self->time_text = gtk_label_new (NULL);
   gtk_widget_add_css_class (self->time_text, "alarm-time");
-  vibeos_label_set_font_padding (self->time_text, TIME_SIZE);
+  vibeos_label_set_font_padding_sp (self->time_text, TIME_SIZE);
   self->time = vibeos_pressable_new (self->time_text);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->time), VIBEOS_RIPPLE_BOUNDED, 0);
   g_signal_connect (self->time, "clicked", G_CALLBACK (on_time), self);

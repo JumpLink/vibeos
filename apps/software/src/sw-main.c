@@ -39,18 +39,6 @@
 static GSettings *settings;
 static gboolean held;
 
-static void
-load_style (void)
-{
-  GtkCssProvider *provider = gtk_css_provider_new ();
-
-  gtk_css_provider_load_from_resource (provider, "/vibeos/Software/software.css");
-  /* over libvibeos's, which is at APPLICATION priority too */
-  gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (provider),
-                                              GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
-  g_object_unref (provider);
-}
-
 /* Software's own light or dark, from its setting */
 static void
 apply_scheme (void)
@@ -113,8 +101,9 @@ on_startup (GApplication *app, gpointer data)
 {
   GSettingsSchema *schema;
 
-  vibeos_init ();
-  load_style ();
+  /* the text follows Font size and Bold text; the stylesheet in sp and dp, over libvibeos's */
+  vibeos_init_full (VIBEOS_INIT_SCALED_TEXT);
+  vibeos_css_load_resource ("/vibeos/Software/software.css", GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
   schema = g_settings_schema_source_lookup (g_settings_schema_source_get_default (), SW_APP_ID, TRUE);
   if (schema)
     {

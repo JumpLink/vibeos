@@ -147,8 +147,8 @@ calc_history_row_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   double y = DIVIDER_PAD;
 
   if (self->divider == DIVIDER_VISIBLE) {
-    /* a faint white line */
-    GdkRGBA divider = { 1, 1, 1, 0x1f / 255.0 };
+    /* a faint line of the text colour */
+    GdkRGBA divider = vibeos_color_alpha (VIBEOS_ON_SURFACE, 0x1f / 255.0);
 
     gtk_snapshot_append_color (snapshot, &divider, &GRAPHENE_RECT_INIT (0, y + DIVIDER_PAD, w, DIVIDER));
   }

@@ -2,10 +2,15 @@
 #pragma once
 
 #include <gtk/gtk.h>
+#include "ns-ui.h"
 
 /* ns-pages.c: the hubs and the small pages */
+/* Network & internet, Connected devices */
 void ns_page_connections (GtkWidget *row, gpointer data);
+void ns_page_connected_devices (GtkWidget *row, gpointer data);
 void ns_page_display (GtkWidget *row, gpointer data);
+/* Display size and text: Font size, Display size, Bold text */
+void ns_page_display_size (GtkWidget *row, gpointer data);
 void ns_page_night_light (GtkWidget *row, gpointer data);
 void ns_page_battery (GtkWidget *row, gpointer data);
 void ns_page_battery_info (GtkWidget *row, gpointer data);
@@ -33,10 +38,14 @@ void ns_page_notifications (GtkWidget *row, gpointer data);
 void ns_page_apps (GtkWidget *row, gpointer data);
 void ns_page_default_apps (GtkWidget *row, gpointer data);
 void ns_page_app (const char *id);
+/* the same as a page function: `id` is the app's desktop file id */
+void ns_page_app_row (GtkWidget *row, gpointer id);
 
 /* ns-shell.c: the lock screen (VibeOS's keyguard), the on-screen keyboard (GNOME Shell's) */
 void ns_page_lock_screen (GtkWidget *row, gpointer data);
 void ns_page_keyboard (GtkWidget *row, gpointer data);
+/* whether the screen is an OLED panel with a low power mode: the always-on display is offered only there */
+gboolean ns_panel_is_oled (void);
 
 /* ns-privacy.c */
 void ns_page_privacy (GtkWidget *row, gpointer data);
@@ -56,5 +65,15 @@ void ns_page_mouse (GtkWidget *row, gpointer data);
 void ns_page_wallpapers (GtkWidget *row, gpointer data);
 void ns_wallpaper_ask (GtkWidget *w, const char *path, const char *dark);
 void ns_page_software (GtkWidget *row, gpointer data);
-/* the "Screen scale" row of Display: filled in once the compositor has answered */
-void ns_page_scale_row (GtkWidget *group);
+
+/* ns-displays.c: Display's displays, through the compositor's DisplayConfig. The cards of the connected displays
+ * (Join or Mirror, the main display, each display's own page), added to `content` and shown while more than one
+ * display is connected; and the "Screen scale" row, added to `group` once the compositor has answered. `page` is the
+ * Display page, which both follow the compositor for. */
+void ns_displays_cards (GtkWidget *page, GtkWidget *content);
+void ns_displays_scale_row (GtkWidget *page, GtkWidget *group);
+/* Display size: the built-in panel's scale in steps from its own (vibeos.Interface display-size); `enabled` FALSE
+ * shows it without letting it change */
+void ns_displays_size_row (GtkWidget *page, GtkWidget *group, gboolean enabled);
+/* Display size back at the screen's own scale (step 0), when the page's row can change it */
+void ns_displays_size_reset (GtkWidget *page);

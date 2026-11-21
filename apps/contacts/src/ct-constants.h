@@ -117,7 +117,11 @@
 #define CT_ED_KIND_ICON_TOP_DP           14.0f
 #define CT_ED_KIND_ICON_COL_DP           68.0f       /* the kind's icon with its margins */
 #define CT_ED_KIND_ICON_START_DP         16.0f
-#define CT_ED_PHOTO_RATIO                 1.96f      /* height = width / 1.96 */
+#define CT_ED_COLUMN_MAX_DP               600        /* on a tablet the form keeps to a column this wide */
+#define CT_ED_PHOTO_DP                    160        /* the photo: a square this big, in the middle (not the
+                                                       * screen-wide width / 1.96 band: "nobody has landscape
+                                                       * avatars", owner 11-21) */
+#define CT_ED_PHOTO_TOP_DP                 16        /* above it */
 #define CT_ED_TYPE_LABEL_W_DP           150.0f
 #define CT_ED_END_COLUMN_DP              56.0f       /* the ✕ / chevron column */
 #define CT_ED_SPINNER_EXTRA_DP           56.0f       /* spinner = widest label + this (its padding and caret) */
@@ -137,7 +141,6 @@
 #define CT_POPUP_ENTER_FADE_MS          100          /* from alpha 0.1 */
 #define CT_POPUP_EXIT_MS                300
 #define CT_DIALOG_W_DP                  320.0f       /* CT_DIALOG_FRAMEWORK dialogs */
-#define CT_DIALOG_MIN_W_FRAC              0.95f      /* CT_DIALOG_APPCOMPAT dialogs: at least this much of the width */
 #define CT_DIALOG_TITLE_SP               20.0f
 #define CT_TOAST_SHORT_MS              2000
 

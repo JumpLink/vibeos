@@ -15,6 +15,9 @@
 #define ANALOG_SIZE      294    /* the main analog clock: a fixed size, not the half of the width its layout seems to
                                  * ask for (that applies only to a stretched width, and the clock keeps its own) */
 #define CITY_ANALOG      56     /* a city card's analog clock: its square less the padding at its start */
+#define PHONE_LINE       14     /* the date and the next alarm, sp */
+#define TABLET_LINE      18
+#define LEFT_PANE        550    /* a tablet held sideways: the main clock in a pane this wide, the cities beside it */
 
 /* one world clock: a city's card, or Home's */
 typedef struct
@@ -27,7 +30,9 @@ struct _ClockPage
 {
   GtkWidget parent;
   GSettings *settings;
-  GtkWidget *scroller, *list;
+  GtkWidget *row, *left, *scroller, *list;   /* the row: the main clock's pane (split only), the scrolled list */
+  VibeosLayout *layout;
+  gboolean split;               /* the main clock on the left, the cities on the right */
   GtkWidget *frame, *time, *analog, *line, *date, *alarm_icon, *alarm;
   GPtrArray *cards;
   gboolean home_shown;
@@ -170,7 +175,8 @@ card_free (gpointer data)
 }
 
 /* a city's card: the name over the difference at the start, the time (its AM/PM smaller) or an analog clock
- * without its second hand at the end */
+ * without its second hand at the end; in a tablet's sideways split the time (or the clock) on top, the name and
+ * the difference under it */
 static Card *
 make_card (ClockPage *self, const char *name, GTimeZone *tz)
 {
@@ -190,7 +196,7 @@ make_card (ClockPage *self, const char *name, GTimeZone *tz)
   gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
   gtk_label_set_single_line_mode (GTK_LABEL (label), TRUE);
   gtk_widget_add_css_class (label, "body");
-  vibeos_label_set_font_padding (label, 14);
+  vibeos_label_set_font_padding_sp (label, 14);
   gtk_box_append (GTK_BOX (column), label);
   card->hours = gtk_label_new (NULL);
   gtk_label_set_xalign (GTK_LABEL (card->hours), 0);
@@ -198,11 +204,16 @@ make_card (ClockPage *self, const char *name, GTimeZone *tz)
   gtk_label_set_lines (GTK_LABEL (card->hours), 2);
   gtk_label_set_ellipsize (GTK_LABEL (card->hours), PANGO_ELLIPSIZE_END);
   gtk_widget_add_css_class (card->hours, "secondary-label");
-  vibeos_label_set_font_padding (card->hours, 14);
+  vibeos_label_set_font_padding_sp (card->hours, 14);
   gtk_widget_set_margin_top (card->hours, gtk_widget_get_margin_top (card->hours) + 3);
   gtk_box_append (GTK_BOX (column), card->hours);
   gtk_box_append (GTK_BOX (row), column);
 
+  if (self->split)
+    {
+      gtk_orientable_set_orientation (GTK_ORIENTABLE (row), GTK_ORIENTATION_VERTICAL);
+      gtk_widget_add_css_class (row, "stacked");
+    }
   if (is_analog (self))
     {
       GtkWidget *analog = analog_clock_new (CITY_ANALOG);
@@ -213,7 +224,14 @@ make_card (ClockPage *self, const char *name, GTimeZone *tz)
       gtk_widget_set_margin_start (analog, 24);
       gtk_widget_set_margin_bottom (analog, 6);
       gtk_widget_set_valign (analog, GTK_ALIGN_CENTER);
-      gtk_box_append (GTK_BOX (row), analog);
+      if (self->split)
+        {
+          gtk_widget_set_margin_start (analog, 0);
+          gtk_widget_set_halign (analog, GTK_ALIGN_START);
+          gtk_box_prepend (GTK_BOX (row), analog);
+        }
+      else
+        gtk_box_append (GTK_BOX (row), analog);
     }
   else
     {
@@ -221,8 +239,15 @@ make_card (ClockPage *self, const char *name, GTimeZone *tz)
       gtk_widget_set_margin_start (card->time, 24);
       gtk_widget_set_valign (card->time, GTK_ALIGN_CENTER);
       gtk_widget_add_css_class (card->time, "world-clock-time");
-      vibeos_label_set_font_padding (card->time, 48);
-      gtk_box_append (GTK_BOX (row), card->time);
+      vibeos_label_set_font_padding_sp (card->time, 48);
+      if (self->split)
+        {
+          gtk_widget_set_margin_start (card->time, 0);
+          gtk_widget_set_halign (card->time, GTK_ALIGN_START);
+          gtk_box_prepend (GTK_BOX (row), card->time);
+        }
+      else
+        gtk_box_append (GTK_BOX (row), card->time);
     }
   return card;
 }
@@ -331,6 +356,69 @@ clock_page_tab_init (ClockTabInterface *iface)
 
 /* --- the widget */
 
+/* a tablet held sideways: the main clock moves out of the list into its own pane on the left, and the list beside it
+ * has the cities only; otherwise the main clock heads the list */
+static void
+on_layout_changed (VibeosLayout *layout, ClockPage *self)
+{
+  gboolean split = vibeos_layout_is_tablet (layout) && vibeos_layout_is_landscape (layout);
+  /* the date and the next alarm are a size up on a tablet (clock.css) */
+  double line_size = vibeos_layout_is_tablet (layout) ? TABLET_LINE : PHONE_LINE;
+
+  vibeos_label_set_font_padding_sp (self->date, line_size);
+  vibeos_label_set_font_padding_sp (self->alarm, line_size);
+  gtk_image_set_pixel_size (GTK_IMAGE (self->alarm_icon), (int) line_size);
+  if (split == self->split)
+    return;
+  self->split = split;
+  g_object_ref (self->frame);
+  if (split)
+    {
+      gtk_box_remove (GTK_BOX (self->list), self->frame);
+      gtk_box_append (GTK_BOX (self->left), self->frame);
+    }
+  else
+    {
+      gtk_box_remove (GTK_BOX (self->left), self->frame);
+      gtk_box_prepend (GTK_BOX (self->list), self->frame);
+    }
+  g_object_unref (self->frame);
+  gtk_widget_set_visible (self->left, split);
+  gtk_widget_set_margin_start (self->frame, split ? 16 : 24);
+  /* the cards' time moves above their name, or back */
+  show_cards (self);
+  if (gtk_widget_get_mapped (GTK_WIDGET (self)))
+    update (self);
+}
+
+static void
+clock_page_root (GtkWidget *widget)
+{
+  ClockPage *self = CLOCK_PAGE (widget);
+
+  GTK_WIDGET_CLASS (clock_page_parent_class)->root (widget);
+  self->layout = vibeos_layout_get (widget);
+  if (self->layout)
+    {
+      g_object_ref (self->layout);
+      g_signal_connect (self->layout, "changed", G_CALLBACK (on_layout_changed), self);
+      on_layout_changed (self->layout, self);
+    }
+}
+
+static void
+clock_page_unroot (GtkWidget *widget)
+{
+  ClockPage *self = CLOCK_PAGE (widget);
+
+  if (self->layout)
+    {
+      g_signal_handlers_disconnect_by_data (self->layout, self);
+      g_clear_object (&self->layout);
+    }
+  GTK_WIDGET_CLASS (clock_page_parent_class)->unroot (widget);
+}
+
 static void
 clock_page_map (GtkWidget *widget)
 {
@@ -360,7 +448,8 @@ clock_page_dispose (GObject *object)
 
   g_clear_handle_id (&self->tick, g_source_remove);
   g_signal_handlers_disconnect_by_data (alarms_client_get (), self);
-  g_clear_pointer (&self->scroller, gtk_widget_unparent);
+  g_clear_pointer (&self->row, gtk_widget_unparent);
+  self->scroller = NULL;
   g_clear_pointer (&self->cards, g_ptr_array_unref);
   if (self->settings)
     g_signal_handlers_disconnect_by_data (self->settings, self);
@@ -376,6 +465,8 @@ clock_page_class_init (ClockPageClass *klass)
   G_OBJECT_CLASS (klass)->dispose = clock_page_dispose;
   widget_class->map = clock_page_map;
   widget_class->unmap = clock_page_unmap;
+  widget_class->root = clock_page_root;
+  widget_class->unroot = clock_page_unroot;
   gtk_widget_class_set_layout_manager_type (widget_class, GTK_TYPE_BIN_LAYOUT);
   gtk_widget_class_set_css_name (widget_class, "clock-page");
   signals[SHOW_CITIES] = g_signal_new ("show-cities", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
@@ -410,7 +501,14 @@ clock_page_init (ClockPage *self)
   gtk_widget_set_margin_bottom (self->list, FAB_HEIGHT);
   self->scroller = spongy_scroll_view_new ();
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->scroller), self->list);
-  gtk_widget_set_parent (self->scroller, GTK_WIDGET (self));
+  gtk_widget_set_hexpand (self->scroller, TRUE);
+  self->left = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  gtk_widget_set_size_request (self->left, LEFT_PANE, -1);
+  gtk_widget_set_visible (self->left, FALSE);
+  self->row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+  gtk_box_append (GTK_BOX (self->row), self->left);
+  gtk_box_append (GTK_BOX (self->row), self->scroller);
+  gtk_widget_set_parent (self->row, GTK_WIDGET (self));
 
   /* the main clock's frame */
   self->frame = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
@@ -439,15 +537,15 @@ clock_page_init (ClockPage *self)
   self->line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   self->date = gtk_label_new (NULL);
   gtk_widget_add_css_class (self->date, "body");
-  vibeos_label_set_font_padding (self->date, 14);
+  vibeos_label_set_font_padding_sp (self->date, PHONE_LINE);
   self->alarm_icon = gtk_image_new_from_icon_name ("clock-alarm-small-symbolic");
-  gtk_image_set_pixel_size (GTK_IMAGE (self->alarm_icon), 14);
+  gtk_image_set_pixel_size (GTK_IMAGE (self->alarm_icon), PHONE_LINE);
   gtk_widget_set_margin_start (self->alarm_icon, 6);
   gtk_widget_set_margin_end (self->alarm_icon, 6);
   gtk_widget_add_css_class (self->alarm_icon, "next-alarm");
   self->alarm = gtk_label_new (NULL);
   gtk_widget_add_css_class (self->alarm, "body");
-  vibeos_label_set_font_padding (self->alarm, 14);
+  vibeos_label_set_font_padding_sp (self->alarm, PHONE_LINE);
   gtk_box_append (GTK_BOX (self->line), self->date);
   gtk_box_append (GTK_BOX (self->line), self->alarm_icon);
   gtk_box_append (GTK_BOX (self->line), self->alarm);

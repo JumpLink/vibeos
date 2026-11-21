@@ -10,8 +10,9 @@ Build-Depends: debhelper-compat (= 13),
                gir1.2-glib-2.0-dev,
                libglib2.0-dev (>= 2.76),
                libgtk-4-dev (>= 4.14),
+               libmpv-dev,
+               libepoxy-dev,
                gir1.2-gtk-4.0-dev,
-               libadwaita-1-dev (>= 1.5),
                libvulkan-dev,
                libegl-dev,
                libgles-dev,
@@ -19,6 +20,7 @@ Build-Depends: debhelper-compat (= 13),
                libxkbcommon-dev,
                wayland-protocols,
                libgdk-pixbuf-2.0-dev,
+               libgnome-desktop-4-dev,
                librsvg2-dev,
                libcairo2-dev,
                libfreetype-dev,
@@ -473,8 +475,8 @@ Description: settings app for VibeOS
  Bluetooth, mobile network, hotspot), sounds, notifications, display, battery,
  wallpaper and parallax sets, the home screen's icon pack and shapes, the lock
  screen (PIN, pattern, password), location, accounts, apps, language, date and
- time, accessibility and the phone's details. VibeOS opens it wherever
- GNOME opens a Settings panel.
+ time, accessibility and the device's details, on phones and tablets alike.
+ VibeOS opens it wherever GNOME opens a Settings panel.
 
 Package: vibeos-weather
 Architecture: any
@@ -522,6 +524,8 @@ Depends: ${shlibs:Depends},
 Recommends: gvfs-backends,
             gvfs-fuse,
             xdg-desktop-portal-gnome,
+            ffmpegthumbnailer,
+            libgdk-pixbuf2.0-bin,
 Description: file manager for VibeOS
  VibeOS Files is File Manager+ rebuilt in GTK 4 on GIO and GVfs: the phone's
  storage, removable media, the recycle bin, recent files, the local network
@@ -780,3 +784,17 @@ Description: transitional package for vibeos-weather
  neo-weather is vibeos-weather now. This empty package takes the old one's
  place in an upgrade from gnome-phone, so that the app keeps its place on the
  home screen; it can be removed afterwards.
+
+Package: vibeos-video
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+Recommends: gvfs-fuse,
+Description: video player for VibeOS
+ VibeOS Video Player plays videos with mpv (libmpv, drawn through its OpenGL
+ renderer) under an Android player's controls: back and the title at the top,
+ skip back, play/pause and skip forward in the middle, the time and a seek bar
+ at the bottom. A tap shows or hides them, a double tap on either side skips
+ 10 seconds, and where a film was left is remembered. Files on a share play
+ through GVfs's FUSE path, the share mounted on demand. It is the default
+ application for videos.

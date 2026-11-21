@@ -4,7 +4,8 @@
 /* bands, chained bottom-up from the window's bottom edge */
 #define CAM_MODE_SELECTOR_H        80       /* padding, a mode button, padding */
 #define CAM_MODE_PAD               16
-#define CAM_MODE_BUTTON_W          88
+#define CAM_MODE_BUTTON_W          88       /* at least: wider for a label that needs it */
+#define CAM_MODE_LABEL_PAD         12       /* each side of a label, in a button widened for it */
 #define CAM_MODE_BUTTON_H          48
 #define CAM_MODE_COLUMN_W          104      /* landscape: the buttons with a margin each side */
 #define CAM_MODE_PILL_H            40       /* the highlight pill, inset in its button */
@@ -54,7 +55,8 @@
 #define CAM_SP_COUNTDOWN           125      /* the self-timer's countdown */
 #define CAM_DP_SLIDER_TEXT         10
 
-/* colours (standard contrast) */
+/* the camera's own colours, the same in every theme: the controls over the picture are black and white with these
+ * fixed greys, red and yellow (camera.css names the few its labels use). The rest of the app is in the theme's roles */
 #define CAM_C_REC_RED              0xE95950
 #define CAM_C_GRAY_10              0xF6FAFA
 #define CAM_C_GRAY_60              0x2A3232

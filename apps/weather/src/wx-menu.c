@@ -70,7 +70,8 @@ wx_menu_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gtk_snapshot_push_opacity (snapshot, self->closing ? self->shown : MIN (1, self->shown * 2));
   /* elevation level 2: a faint shadow */
   gsk_rounded_rect_init_from_rect (&shape, &card, CORNER);
-  gtk_snapshot_append_outset_shadow (snapshot, &shape, &(GdkRGBA) { 0, 0, 0, 0.3f }, 0, 2, 0, 6);
+  gtk_snapshot_append_outset_shadow (snapshot, &shape, (GdkRGBA[]) { vibeos_color_alpha (VIBEOS_SHADOW, 0.3f) },
+                                     0, 2, 0, 6);
   /* the clip reveal: from the top edge down */
   gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (card.origin.x, card.origin.y, card.size.width,
                                                          card.size.height * reveal));
@@ -203,7 +204,7 @@ wx_menu_append (WxMenu *self, const char *label, WxMenuAction action, gpointer d
   gtk_widget_set_margin_start (text, TEXT_PAD);
   gtk_widget_set_margin_end (text, TEXT_PAD);
   gtk_widget_add_css_class (text, "wx-menu-text");
-  vibeos_label_set_font_padding (text, 16);
+  vibeos_label_set_font_padding_sp (text, 16);
   item = vibeos_pressable_new (text);
   gtk_widget_set_size_request (item, -1, ROW_HEIGHT);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (item), VIBEOS_RIPPLE_BOUNDED, 0);

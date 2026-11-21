@@ -13,51 +13,51 @@ window.vibeos.calculator {
 /* licenses.html in a browser's default styles: black on white, inside the body's margin (a page without a doctype:
  * quirks mode, so the first and last elements' own margins go at the body's edges) */
 .calc-licenses-page {
-  background-color: #ffffff;
-  padding: 8px;
+  background-color: @vibeos_surface;
+  padding: 8dp;
 }
 
 .calc-licenses-page label {
-  color: #000000;
+  color: @vibeos_on_surface;
   font-family: "VibeOS Roboto", sans-serif;
   font-weight: 400;
 }
 
 /* the elements' own rules under the page's label rule, which is more specific than a class alone */
 .calc-licenses-page label.calc-licenses-h3 {
-  font-size: 18.72px;
-  font-weight: 700;
-  margin-bottom: 18.72px;
+  font-size: 18.72sp;
+  font-weight: 400;
+  margin-bottom: 18.72dp;
 }
 
 .calc-licenses-li {
-  margin-bottom: 16px;
+  margin-bottom: 16dp;
 }
 
 .calc-licenses-li label {
-  font-size: 16px;
+  font-size: 16sp;
 }
 
 .calc-licenses-bullet {
-  margin-left: 22px;
-  min-width: 18px;
+  margin-left: 22dp;
+  min-width: 18dp;
 }
 
 .calc-licenses-page label.calc-licenses-pre {
   font-family: monospace;
-  font-size: 13px;
-  background-color: #eeeeee;
-  padding: 13px;
+  font-size: 13sp;
+  background-color: @vibeos_surface_container_high;
+  padding: 13dp;
 }
 
 /* a dialog's message sits a little further out at the sides, and further from the title and the buttons, than
  * VibeosDialog's own text; the margins make up the difference */
 label.calc-dialog-message {
-  font-size: 18px;
+  font-size: 18sp;
   color: @vibeos_on_surface;
-  margin: 4px -4px 2px -4px;
+  margin: 4dp -4dp 2dp -4dp;
 }
 
 label.calc-dialog-message.untitled {
-  margin-top: -4px;
+  margin-top: -4dp;
 }

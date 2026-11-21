@@ -23,6 +23,7 @@
 /* the top bar */
 #define BAR_AVATAR 40
 #define BAR_AVATAR_GAP 8        /* from the back arrow to the avatar */
+#define BAR_AVATAR_ALONE 16     /* and from the bar's start, with no back arrow */
 #define BAR_TITLE_GAP 12        /* from the avatar to the name */
 #define MENU_CORNER 20
 /* the messages */
@@ -48,6 +49,12 @@
 #define SEND 56
 #define SEND_GAP 8
 #define FIELD_MAX_LINES 6
+/* A window this short is a phone on its side with the keyboard up (about 130 dp of 332): the bar and the compose bar
+ * have to fit in it, so the bar is a dense one and the field stays one line high (it scrolls). The bar stays: its
+ * back arrow is what the back gesture presses */
+#define SHORT_HEIGHT 240
+#define SHORT_BAR 48
+#define SHORT_FIELD_LINES 1
 #define COUNTER_THRESHOLD 10    /* characters left when the counter shows */
 #define REVEAL_MS 200           /* the send button coming or going */
 #define NOTE_H 96               /* "can't reply": its band */
@@ -65,7 +72,7 @@ struct _ConversationView {
   GtkWidget *box, *bar, *select_bar, *call_action, *title_avatar, *title_row;
   GtkWidget *forward_action, *copy_action, *resend_action;
   GtkWidget *container, *messages_area, *scroll, *messages;
-  GtkWidget *compose, *note, *field, *hint, *send, *counter;
+  GtkWidget *compose, *note, *field, *field_scroll, *hint, *send, *counter;
   GPtrArray *bubbles;           /* MsgBubble, for their widths */
   int max_width;
   VibeosAnim *reveal;
@@ -74,7 +81,8 @@ struct _ConversationView {
   gint64 newest;                /* the newest message shown, for "New message" */
   gboolean at_bottom;
   gboolean loading;
-  guint refresh_id, draw_id, width_id;
+  gboolean short_window;        /* under SHORT_HEIGHT: a dense bar, a one-line field */
+  guint refresh_id, draw_id, width_id, short_id;
 };
 
 G_DEFINE_FINAL_TYPE (ConversationView, conversation_view, GTK_TYPE_WIDGET)
@@ -807,6 +815,17 @@ conversation_view_save_draft (ConversationView *self)
   sms_client_set_draft (self->client, self->id, text);
 }
 
+/* the field grows to a few lines of its text, then scrolls: as many lines at the font size in effect (fewer in a
+ * short window) */
+static void
+update_field_height (ConversationView *self)
+{
+  int lines = self->short_window ? SHORT_FIELD_LINES : FIELD_MAX_LINES;
+
+  gtk_scrolled_window_set_max_content_height (GTK_SCROLLED_WINDOW (self->field_scroll),
+                                              (int) round (lines * vibeos_sp (24) + 32));
+}
+
 static void
 update_send_fill (ConversationView *self)
 {
@@ -851,10 +870,10 @@ make_compose (ConversationView *self)
   g_signal_connect (gtk_text_view_get_buffer (GTK_TEXT_VIEW (self->field)), "changed",
                     G_CALLBACK (on_text_changed), self);
   /* a few lines, then it scrolls */
+  self->field_scroll = field_scroll;
   gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (field_scroll), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
   gtk_scrolled_window_set_propagate_natural_height (GTK_SCROLLED_WINDOW (field_scroll), TRUE);
-  gtk_scrolled_window_set_max_content_height (GTK_SCROLLED_WINDOW (field_scroll),
-                                              (int) round (FIELD_MAX_LINES * vibeos_sp (24) + 32));
+  update_field_height (self);
   gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (field_scroll), self->field);
   gtk_overlay_set_child (GTK_OVERLAY (field_box), field_scroll);
   self->hint = gtk_label_new (_("Text message"));
@@ -1085,6 +1104,15 @@ make_title_row (ConversationView *self)
   return row;
 }
 
+void
+conversation_view_set_back_shown (ConversationView *self, gboolean shown)
+{
+  g_return_if_fail (MSG_IS_CONVERSATION_VIEW (self));
+
+  gtk_widget_set_visible (msg_action_bar_get_up (self->bar), shown);
+  gtk_widget_set_margin_start (self->title_row, shown ? BAR_AVATAR_GAP : BAR_AVATAR_ALONE);
+}
+
 /* --- the page */
 
 /* the messages come a moment after the bar, as the page draws */
@@ -1107,6 +1135,38 @@ on_map (GtkWidget *widget, gpointer data)
     self->draw_id = g_timeout_add (REVEAL_DRAW_MS, on_draw_messages, self);
 }
 
+/* a bar SHORT_BAR high, or as high as it was made */
+static void
+set_dense (GtkWidget *bar, gboolean dense)
+{
+  int height = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (bar), "msg-bar-height"));
+
+  if (!height)
+    {
+      gtk_widget_get_size_request (bar, NULL, &height);
+      g_object_set_data (G_OBJECT (bar), "msg-bar-height", GINT_TO_POINTER (height));
+    }
+  gtk_widget_set_size_request (bar, -1, dense ? SHORT_BAR : height);
+}
+
+/* a short window or a tall one again: the bars dense or not (not while allocating) */
+static gboolean
+update_short (gpointer data)
+{
+  ConversationView *self = data;
+  int height = gtk_widget_get_height (GTK_WIDGET (self));
+  gboolean short_window = height > 0 && height < SHORT_HEIGHT;
+
+  self->short_id = 0;
+  if (short_window == self->short_window)
+    return G_SOURCE_REMOVE;
+  self->short_window = short_window;
+  set_dense (self->bar, short_window);
+  set_dense (self->select_bar, short_window);
+  update_field_height (self);
+  return G_SOURCE_REMOVE;
+}
+
 static void
 conversation_view_size_allocate (GtkWidget *widget, int width, int height, int baseline)
 {
@@ -1116,6 +1176,8 @@ conversation_view_size_allocate (GtkWidget *widget, int width, int height, int b
   gtk_widget_allocate (self->box, width, height, baseline, NULL);
   if (MIN (messages_width - BUBBLE_MARGIN, BUBBLE_MAX) != self->max_width && !self->width_id)
     self->width_id = g_idle_add (update_widths, self);
+  if ((height < SHORT_HEIGHT) != self->short_window && !self->short_id)
+    self->short_id = g_idle_add (update_short, self);
 }
 
 static void
@@ -1134,11 +1196,13 @@ conversation_view_dispose (GObject *object)
   g_clear_handle_id (&self->refresh_id, g_source_remove);
   g_clear_handle_id (&self->draw_id, g_source_remove);
   g_clear_handle_id (&self->width_id, g_source_remove);
+  g_clear_handle_id (&self->short_id, g_source_remove);
   if (self->client)
     g_signal_handlers_disconnect_by_data (self->client, self);
   if (self->contacts)
     g_signal_handlers_disconnect_by_data (self->contacts, self);
   g_signal_handlers_disconnect_by_data (vibeos_theme_get_default (), self);
+  g_signal_handlers_disconnect_by_data (vibeos_text_get_default (), self);
   g_clear_pointer (&self->reveal, vibeos_anim_free);
   g_clear_object (&self->client);
   g_clear_object (&self->contacts);
@@ -1259,6 +1323,7 @@ conversation_view_new (SmsClient *client, Contacts *contacts, gint64 conversatio
   g_signal_connect (self, "map", G_CALLBACK (on_map), NULL);
   g_signal_connect (vibeos_theme_get_default (), "changed", G_CALLBACK (on_theme_changed), self);
   g_signal_connect_swapped (vibeos_theme_get_default (), "changed", G_CALLBACK (update_send_fill), self);
+  g_signal_connect_swapped (vibeos_text_get_default (), "changed", G_CALLBACK (update_field_height), self);
   g_signal_connect (client, "changed", G_CALLBACK (on_changed), self);
   /* the network's country and the address book can come in after the conversation opens (a notification's tap) */
   g_signal_connect_swapped (client, "notify::country", G_CALLBACK (reload), self);

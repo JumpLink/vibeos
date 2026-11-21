@@ -1,29 +1,12 @@
 /* The Calendar's look.
  *
- * The colour roles libvibeos's stylesheet uses are redefined here with the Calendar's own values; this provider is
- * above libvibeos's, and named colours resolve through the cascade. cal-colors.h holds the same values for what is
- * drawn in C.
- *
- * Weights are the effective ones with "Bold text" on (+300; vibeos.css). */
+ * Every colour is a role of libvibeos's theme, light or dark (cal-colors.h names the same roles for what is drawn in
+ * C). Text sizes are sp and every other size dp (libvibeos converts them for Font size); weights are the usual ones,
+ * and Bold text draws each 300 heavier. */
 
-@define-color vibeos_primary #4d7f86;
-@define-color vibeos_on_primary #381e72;
-@define-color vibeos_primary_container #4f378b;
-@define-color vibeos_on_primary_container #eaddff;
-@define-color vibeos_secondary_container #00363c;
-@define-color vibeos_on_secondary_container #e8def8;
-@define-color vibeos_surface #141218;
-@define-color vibeos_surface_container_low #1d1b20;
-@define-color vibeos_surface_container #211f26;
-@define-color vibeos_surface_container_high #2b2930;
-@define-color vibeos_surface_container_highest #36343b;
-@define-color vibeos_on_surface #e6e0e9;
-@define-color vibeos_on_surface_variant #cac4d0;
-@define-color vibeos_outline #938f99;
-
-@define-color cal_separator #555555;     /* the editor's section separators */
-@define-color cal_divider #312f34;       /* event info's dividers, the editor's CANCEL | DONE divider */
-@define-color cal_hint #928d96;          /* the editor's hints */
+@define-color cal_separator @vibeos_outline;            /* the editor's section separators */
+@define-color cal_divider @vibeos_outline_variant;      /* event info's dividers, the editor's CANCEL | DONE divider */
+@define-color cal_hint @vibeos_outline;                 /* the editor's hints */
 
 window.vibeos.cal-window {
   background-color: @vibeos_surface;
@@ -33,7 +16,7 @@ window.vibeos.cal-window {
 /* --- the toolbars */
 
 .cal-toolbar {
-  min-height: 64px;
+  min-height: 64dp;
   background-color: @vibeos_surface;
 }
 
@@ -41,73 +24,132 @@ window.vibeos.cal-window {
 .cal-toolbar-back,
 .cal-action.cal-toolbar-back {           /* the navigation button (a page's too: its back
                                           * button is also a .cal-action, which this outweighs) */
-  min-width: 56px;
-  min-height: 56px;
+  min-width: 56dp;
+  min-height: 56dp;
   color: @vibeos_on_surface_variant;
 }
 
 /* the title and the subtitle, just after the navigation button */
 .cal-toolbar-titles,
 .cal-toolbar > .cal-toolbar-title {
-  margin-left: 4px;
+  margin-left: 4dp;
 }
 
 .cal-toolbar-title {
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 22sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }
 
 .cal-toolbar-subtitle {
-  font-size: 16px;
-  font-weight: 800;
+  font-size: 16sp;
+  font-weight: 500;
   color: @vibeos_on_surface;
 }
 
 .cal-toolbar-more {                      /* the overflow button, narrower than the others */
-  min-width: 40px;
+  min-width: 40dp;
   color: @vibeos_on_surface_variant;
 }
 
 /* its icon nearer the start than the end, the ripple still on the whole button */
 .cal-toolbar-more > image {
-  margin-left: 6px;
-  margin-right: 10px;
+  margin-left: 6dp;
+  margin-right: 10dp;
+}
+
+/* a tablet: TODAY spelled out after the icon */
+.cal-today-text {
+  margin: 0 8dp 0 4dp;
+  font-size: 14sp;
+  font-weight: 500;
+  color: @vibeos_on_surface_variant;
+}
+
+/* a tablet's date row under the toolbar: the date, then the weekday or the week's number, smaller */
+.cal-date-row {
+  min-height: 42dp;
+  padding-left: 20dp;
+  padding-right: 16dp;
+}
+
+.cal-date-row-date {
+  font-size: 24sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
+}
+
+.cal-date-row-extra {
+  margin-left: 8dp;
+  font-size: 18sp;
+  font-weight: 400;
+  color: @vibeos_on_surface_variant;
+}
+
+/* a tablet's side controls beside Day and Week, a divider between them and the view */
+cal-side {
+  background-color: @vibeos_surface_container_low;
+  border-left: 1px solid @vibeos_outline_variant;
+}
+
+cal-side.strip {
+  border-left: none;
+  border-top: 1px solid @vibeos_outline_variant;
+}
+
+.cal-side-calendar-name {
+  font-size: 14sp;
+  color: @vibeos_on_surface;
+}
+
+/* a tablet's Agenda: the tapped event's info beside the list */
+.cal-agenda-pane {
+  background-color: @vibeos_surface_container_low;
+  border-left: 1px solid @vibeos_outline_variant;
+}
+
+.cal-page.cal-info-pane,
+.cal-info-pane > .cal-toolbar {
+  background-color: transparent;
+}
+
+.cal-info-pane .cal-info-headline {       /* the headline a card inset from the pane's sides */
+  margin: 0 16dp;
 }
 
 /* the Week and Day views: a strip above the header, which the view paints in its past-day colour */
 cal-day-view {
-  padding-top: 1px;
+  padding-top: 1dp;
 }
 
 .cal-action {                            /* event info's action buttons */
-  min-width: 48px;
-  min-height: 48px;
+  min-width: 48dp;
+  min-height: 48dp;
   color: @vibeos_on_surface_variant;
 }
 
 /* --- the floating add button, in the bottom corner */
 
 .cal-fab {
-  min-width: 56px;
-  min-height: 56px;
-  border-radius: 16px;
-  margin: 0 16px 16px 0;
-  color: white;
+  min-width: 56dp;
+  min-height: 56dp;
+  border-radius: 16dp;
+  margin: 0 16dp 16dp 0;
+  color: @vibeos_on_primary;
 }
 
 /* --- the drawer */
 
 .cal-drawer {
   background-color: @vibeos_surface_container_low;
-  border-radius: 0 16px 16px 0;
-  padding-top: 8px;
+  border-radius: 0 16dp 16dp 0;
+  padding-top: 8dp;
 }
 
 .cal-drawer-item {                       /* an item's pill, inset from the sheet's edges */
-  margin: 0 12px;
-  min-height: 48px;
-  border-radius: 24px;
+  margin: 0 12dp;
+  min-height: 48dp;
+  border-radius: 24dp;
 }
 
 .cal-drawer-item.selected {
@@ -115,7 +157,7 @@ cal-day-view {
 }
 
 .cal-drawer-row {
-  padding-left: 16px;
+  padding-left: 16dp;
 }
 
 .cal-drawer-icon {
@@ -123,10 +165,10 @@ cal-day-view {
 }
 
 .cal-drawer-label {                      /* the item's name, after its icon */
-  margin-left: 12px;
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: 0.1px;
+  margin-left: 12dp;
+  font-size: 14sp;
+  font-weight: 500;
+  letter-spacing: 0.1sp;
   color: @vibeos_on_surface_variant;
 }
 
@@ -136,8 +178,8 @@ cal-day-view {
 }
 
 .cal-drawer-divider {
-  min-height: 1px;
-  margin: 8px 28px;
+  min-height: 1dp;
+  margin: 8dp 28dp;
   background-color: @vibeos_outline;
 }
 
@@ -145,31 +187,31 @@ cal-day-view {
 
 .cal-menu {
   background-color: @vibeos_surface_container;
-  border-radius: 4px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-  padding: 8px 0;
+  border-radius: 4dp;
+  box-shadow: 0 2dp 6dp alpha(@vibeos_shadow, 0.3);
+  padding: 8dp 0;
 }
 
 .cal-overflow-menu {                     /* the toolbar's menu, near the screen's top end */
-  margin: 8px 4px 0 0;
-  min-width: 196px;
+  margin: 8dp 4dp 0 0;
+  min-width: 196dp;
 }
 
 /* a popup menu's items */
 .cal-overflow-menu .cal-menu-item label,
 .cal-overflow-menu-items .cal-menu-item label {
-  letter-spacing: 0.5px;
+  letter-spacing: 0.5sp;
 }
 
 .cal-menu-item {
-  min-height: 48px;
-  padding: 0 16px;
-  font-size: 16px;
+  min-height: 48dp;
+  padding: 0 16dp;
+  font-size: 16sp;
   color: @vibeos_on_surface;
 }
 
 .cal-menu-item label {
-  font-size: 16px;
+  font-size: 16sp;
 }
 
 .cal-menu-item.selected {
@@ -177,11 +219,11 @@ cal-day-view {
 }
 
 cal-spinner {
-  min-height: 48px;
+  min-height: 48dp;
 }
 
 .cal-spinner-text {
-  font-size: 16px;
+  font-size: 16sp;
   color: @vibeos_on_surface;
 }
 
@@ -192,21 +234,21 @@ cal-spinner {
 /* --- toasts */
 
 .cal-toast {
-  margin: 0 16px 48px 16px;              /* lifted off the screen's bottom edge */
-  padding: 0 16px;
-  min-height: 48px;
-  border-radius: 28px;
+  margin: 0 16dp 48dp 16dp;              /* lifted off the screen's bottom edge */
+  padding: 0 16dp;
+  min-height: 48dp;
+  border-radius: 28dp;
   background-color: @vibeos_surface_container_high;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1dp 3dp alpha(@vibeos_shadow, 0.3);
 }
 
 .cal-toast-icon {
-  margin: 10px 10px 10px 0;
+  margin: 10dp 10dp 10dp 0;
 }
 
 .cal-toast-text {
-  padding: 12px 0;
-  font-size: 14px;
+  padding: 12dp 0;
+  font-size: 14sp;
   color: @vibeos_on_surface;
 }
 
@@ -221,22 +263,22 @@ cal-spinner {
 }
 
 .cal-dialog-list {
-  margin: 0 -24px;
+  margin: 0 -24dp;
 }
 
 .cal-dialog-item {
-  min-height: 48px;
-  padding: 0 24px;
-  font-size: 16px;
+  min-height: 48dp;
+  padding: 0 24dp;
+  font-size: 16sp;
   color: @vibeos_on_surface;
 }
 
 .cal-dialog-item label {
-  font-size: 16px;
+  font-size: 16sp;
 }
 
 .cal-radio {
-  margin-right: 16px;
+  margin-right: 16dp;
   color: @vibeos_on_surface_variant;
 }
 
@@ -247,57 +289,57 @@ cal-spinner {
 }
 
 .cal-date-card .vibeos-dialog-buttons {
-  margin: 2px 8px 2px 8px;
+  margin: 2dp 8dp 2dp 8dp;
 }
 
 .cal-date-card .vibeos-text-button {
-  min-width: 40px;
+  min-width: 40dp;
 }
 
 .cal-date-header {
-  min-height: 120px;
-  padding: 0 12px 0 24px;
+  min-height: 120dp;
+  padding: 0 12dp 0 24dp;
 }
 
 .cal-date-title {
-  margin-top: 16px;
-  font-size: 14px;
-  font-weight: 800;
+  margin-top: 16dp;
+  font-size: 14sp;
+  font-weight: 500;
   color: @vibeos_on_surface_variant;
 }
 
 .cal-date-selection {                    /* the chosen date, under the title */
-  margin-bottom: 12px;
-  font-size: 32px;
-  font-weight: 700;
+  margin-bottom: 12dp;
+  font-size: 32sp;
+  font-weight: 400;
   color: @vibeos_on_surface_variant;
 }
 
 .cal-date-nav {
-  min-height: 56px;
-  padding: 0 12px;
+  min-height: 56dp;
+  padding: 0 12dp;
 }
 
 .cal-date-month-toggle {
-  min-height: 48px;
-  padding: 0 8px;
-  border-radius: 24px;
+  min-height: 48dp;
+  padding: 0 8dp;
+  border-radius: 24dp;
 }
 
 .cal-date-month {
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 14sp;
+  font-weight: 500;
   color: @vibeos_on_surface_variant;
 }
 
 .cal-date-arrow {
-  min-width: 48px;
-  min-height: 48px;
+  min-width: 48dp;
+  min-height: 48dp;
   color: @vibeos_on_surface_variant;
 }
 
 .cal-date-days {                          /* a gap between the weeks and the buttons */
-  margin-bottom: 8px;
+  margin-bottom: 8dp;
 }
 
 /* the time picker (24-hour clock) */
@@ -307,31 +349,31 @@ cal-spinner {
 }
 
 .cal-time-card .vibeos-dialog-buttons {      /* on the card's bottom edge */
-  margin: 0 8px 0 8px;
+  margin: 0 8dp 0 8dp;
 }
 
 .cal-time-card .vibeos-text-button {
-  min-width: 40px;
+  min-width: 40dp;
 }
 
 .cal-time-picker {
-  padding-bottom: 26px;                   /* the face's end to the buttons */
+  padding-bottom: 26dp;                   /* the face's end to the buttons */
 }
 
 .cal-time-title {                         /* the dialog's title; the label's font padding is a
                                            * widget margin, on top of this one */
-  margin: 16px 24px 0 24px;
-  font-size: 12px;
-  font-weight: 800;
+  margin: 16dp 24dp 0 24dp;
+  font-size: 12sp;
+  font-weight: 500;
   color: @vibeos_on_surface_variant;
 }
 
 .cal-time-display {                       /* the hour and minute boxes */
-  margin-top: 19px;
+  margin-top: 19dp;
 }
 
 .cal-time-box {
-  border-radius: 8px;
+  border-radius: 8dp;
   background-color: @vibeos_surface_container_highest;
   color: @vibeos_on_surface;
 }
@@ -343,8 +385,8 @@ cal-spinner {
 
 .cal-time-text,
 .cal-time-colon {
-  font-size: 57px;
-  font-weight: 700;
+  font-size: 57sp;
+  font-weight: 400;
 }
 
 .cal-time-colon {
@@ -352,20 +394,20 @@ cal-spinner {
 }
 
 .cal-time-face {                          /* the clock face, under the boxes */
-  margin-top: 36px;
+  margin-top: 36dp;
 }
 
 .cal-year {                               /* a year in the year list, a pill */
-  min-width: 72px;
-  min-height: 36px;
-  margin: 8px 0;
-  border-radius: 18px;
-  font-size: 16px;
+  min-width: 72dp;
+  min-height: 36dp;
+  margin: 8dp 0;
+  border-radius: 18dp;
+  font-size: 16sp;
   color: @vibeos_on_surface_variant;
 }
 
 .cal-year.today {                         /* this year: a ring, inside the pill */
-  box-shadow: inset 0 0 0 1px @vibeos_primary;
+  box-shadow: inset 0 0 0 1dp @vibeos_primary;
   color: @vibeos_primary;
 }
 
@@ -376,6 +418,17 @@ cal-spinner {
 
 /* --- pages (event info, the editor, settings) */
 
+/* a tablet's dialog over the views (the event's info): the page in a rounded card */
+.cal-dialog-card {
+  border-radius: 28dp;
+  background-color: @vibeos_surface_container_high;
+}
+
+.cal-dialog-card > .cal-page,
+.cal-dialog-card > .cal-page .cal-toolbar {
+  background-color: @vibeos_surface_container_high;
+}
+
 .cal-page {
   background-color: @vibeos_surface;
 }
@@ -384,65 +437,65 @@ cal-spinner {
 
 /* the headline's colour is drawn on its content box (CalColorBox), so the spacing is the labels' own */
 .cal-info-headline > label {
-  margin-left: 16px;
-  margin-right: 16px;
+  margin-left: 16dp;
+  margin-right: 16dp;
 }
 
 .cal-info-headline > label:last-child {     /* the last one shown: GTK skips hidden nodes */
-  margin-bottom: 16px;
+  margin-bottom: 16dp;
 }
 
 .cal-info-title {
-  margin-top: 8px;
+  margin-top: 8dp;
 }
 
 .cal-info-title {
-  font-size: 24px;
-  font-weight: 900;                      /* bold */
-  color: white;
+  font-size: 24sp;
+  font-weight: 600;                      /* bold */
+  color: @vibeos_white;
 }
 
 .cal-info-when,
 .cal-info-where {
-  margin-top: 4px;
-  font-size: 14px;
-  color: white;
+  margin-top: 4dp;
+  font-size: 14sp;
+  color: @vibeos_white;
 }
 
 .cal-info-repeat {
-  margin-top: -3px;
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.7);
+  margin-top: -3dp;
+  font-size: 14sp;
+  color: @vibeos_on_surface_variant;
 }
 
 .cal-info-body {
-  margin-top: 8px;
-  padding: 0 16px;
+  margin-top: 8dp;
+  padding: 0 16dp;
 }
 
 .cal-info-small {
-  font-size: 14px;
+  font-size: 14sp;
   color: @vibeos_on_surface_variant;
 }
 
 .cal-info-calendar-name {
-  margin-left: 2px;
+  margin-left: 2dp;
 }
 
 .cal-info-description {
-  margin-top: 8px;
+  margin-top: 8dp;
   color: @vibeos_on_surface;
 }
 
 .cal-list-separator {                    /* a heading in caps, a line under it */
-  min-height: 30px;                      /* the padding puts the text 2 px lower than GTK centres a label: */
-  margin: 4px 8px 0 8px;                 /* centred with its font padding */
-  padding: 2px 8px 0 8px;
-  font-size: 14px;
-  font-weight: 900;
+  min-height: 30dp;                      /* the padding puts the text 2 px lower than GTK centres a label: */
+  margin: 4dp 8dp 0 8dp;                 /* centred with its font padding */
+  padding: 2dp 8dp 0 8dp;
+  font-size: 14sp;
+  font-weight: 600;
   color: @vibeos_on_surface_variant;
   /* the line along the bottom, inside the height; the text is centred over the whole height */
-  box-shadow: inset 0 -2px @cal_divider;
+  box-shadow: inset 0 -2dp @cal_divider;
 }
 
 /* the guests: a heading per response (yes, no, maybe, no response), a row per guest */
@@ -451,57 +504,57 @@ cal-spinner {
 }
 
 .cal-guest {
-  margin-left: 7px;
-  padding-left: 4px;
+  margin-left: 7dp;
+  padding-left: 4dp;
 }
 
 .cal-guest-line {
-  min-height: 48px;
-  margin-right: 8px;
+  min-height: 48dp;
+  margin-right: 8dp;
 }
 
 .cal-guest-name {
-  margin: 0 12px;
-  padding-left: 12px;
-  font-size: 16px;
+  margin: 0 12dp;
+  padding-left: 12dp;
+  font-size: 16sp;
   color: @vibeos_on_surface;
 }
 
 .cal-guest-separator {                   /* between two guests in a group */
-  min-height: 1px;
-  margin: 0 8px;
+  min-height: 1dp;
+  margin: 0 8dp;
   background-color: @cal_divider;
 }
 
 .cal-email-guests {                      /* the email-guests button */
-  min-height: 50px;
-  margin: 0 8px 0 6px;
-  font-size: 16px;
+  min-height: 50dp;
+  margin: 0 8dp 0 6dp;
+  font-size: 16sp;
   color: @vibeos_on_surface_variant;
 }
 
 .cal-email-guests label {
-  font-size: 16px;
+  font-size: 16sp;
 }
 
 .cal-add-reminder {                      /* the add-reminder button */
-  margin: 4px 12px 12px 12px;
-  padding: 12px 8px 12px 8px;
-  font-size: 18px;
+  margin: 4dp 12dp 12dp 12dp;
+  padding: 12dp 8dp 12dp 8dp;
+  font-size: 18sp;
   color: @vibeos_on_surface;
 }
 
 .cal-add-reminder label {
-  font-size: 18px;
+  font-size: 18sp;
 }
 
 .cal-reminder-row {
-  min-height: 48px;
-  padding-left: 12px;
+  min-height: 48dp;
+  padding-left: 12dp;
 }
 
 .cal-reminder-minutes {
-  min-width: 160px;
+  min-width: 160dp;
 }
 
 .cal-reminder-remove {
@@ -511,37 +564,37 @@ cal-spinner {
 /* the event editor */
 
 .cal-edit-bar {
-  min-height: 64px;
-  padding-left: 16px;
+  min-height: 64dp;
+  padding-left: 16dp;
   background-color: @vibeos_surface;
 }
 
 .cal-edit-action-icon {                  /* the CANCEL and DONE icons */
-  margin-right: 5px;
+  margin-right: 5dp;
   color: @vibeos_on_surface_variant;
 }
 
 .cal-edit-action-text {
-  font-size: 16px;
-  font-weight: 800;
+  font-size: 16sp;
+  font-weight: 500;
   color: @vibeos_on_surface;
 }
 
 .cal-edit-action-divider {               /* the line between CANCEL and DONE */
-  min-width: 1px;
-  margin: 14px 0;
+  min-width: 1dp;
+  margin: 14dp 0;
   background-color: @cal_divider;
 }
 
 .cal-edit-title {                        /* the event's title, in line with the rows' text */
-  margin: 4px 32px 0 48px;
-  min-height: 40px;
+  margin: 4dp 32dp 0 48dp;
+  min-height: 40dp;
   padding: 0;
   background: none;
   border: none;
   box-shadow: none;
   outline: none;
-  font-size: 20px;
+  font-size: 20sp;
   color: @vibeos_on_surface;
   caret-color: @vibeos_primary;
 }
@@ -551,107 +604,107 @@ cal-spinner {
 }
 
 .cal-edit-separator {                    /* between the editor's sections */
-  min-height: 2px;
-  margin: 4px 12px;
+  min-height: 2dp;
+  margin: 4dp 12dp;
   background-color: @cal_separator;
 }
 
 .cal-edit-separator-tz {
-  margin-top: 8px;
+  margin-top: 8dp;
 }
 
 .cal-edit-row {
-  padding-left: 12px;
-  min-height: 48px;
+  padding-left: 12dp;
+  min-height: 48dp;
 }
 
 .cal-edit-icon {
-  margin-right: 12px;
+  margin-right: 12dp;
   color: @vibeos_on_surface_variant;
 }
 
 .cal-edit-calendar {                     /* the calendar row: the spinner and the colour */
   min-height: 0;                         /* button centred on the icon */
-  padding-top: 7px;
-  padding-bottom: 2px;
+  padding-top: 7dp;
+  padding-bottom: 2dp;
 }
 
 .cal-edit-calendar-icon {
-  margin-right: 12px;
-  margin-top: 2px;                       /* the icon's centre on the spinner's, below the box's middle */
+  margin-right: 12dp;
+  margin-top: 2dp;                       /* the icon's centre on the spinner's, below the box's middle */
 }
 
 .cal-edit-calendar-icon > .cal-edit-icon {
   margin-right: 0;
-  margin-bottom: 2px;
+  margin-bottom: 2dp;
 }
 
 .cal-edit-all-day {
   min-height: 0;
-  padding-top: 12px;
-  padding-bottom: 8px;
+  padding-top: 12dp;
+  padding-bottom: 8dp;
 }
 
 .cal-edit-all-day-switch {               /* VibeosSwitch is the track inside a taller touch target */
-  margin-top: 1px;
-  margin-right: 24px;
+  margin-top: 1dp;
+  margin-right: 24dp;
 }
 
 .cal-edit-calendar-name {
-  font-size: 18px;
+  font-size: 18sp;
   color: @vibeos_on_surface;
 }
 
 .cal-edit-calendar-account {
-  font-size: 14px;
+  font-size: 14sp;
   color: @vibeos_on_surface_variant;
 }
 
 .cal-edit-label {
-  font-size: 18px;
+  font-size: 18sp;
   color: @vibeos_on_surface;
 }
 
 .cal-edit-dates {
-  margin-left: 48px;
+  margin-left: 48dp;
 }
 
 .cal-outlined {                          /* an outlined pill button, its margins making a taller touch target */
-  min-height: 38px;
-  margin: 4px 16px 4px 0;
-  padding: 0 12px;
-  border: 1px solid @vibeos_outline;
-  border-radius: 20px;
-  font-size: 14px;
-  font-weight: 800;
+  min-height: 38dp;
+  margin: 4dp 16dp 4dp 0;
+  padding: 0 12dp;
+  border: 1dp solid @vibeos_outline;
+  border-radius: 20dp;
+  font-size: 14sp;
+  font-weight: 500;
   color: @vibeos_primary;
 }
 
 .cal-outlined label {
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 14sp;
+  font-weight: 500;
 }
 
 .cal-edit-field {                        /* the outlined text fields */
-  margin-right: 24px;
+  margin-right: 24dp;
 }
 
 .cal-edit-field-icon {
-  margin-bottom: 14px;
+  margin-bottom: 14dp;
 }
 
 .cal-field-text,                         /* the text in an outlined field (cal-outlined-field.c draws the rest) */
 .cal-field-body {
   padding: 0;
   background: none;
-  font-size: 18px;
+  font-size: 18sp;
   color: @vibeos_on_surface;
   caret-color: @vibeos_primary;
 }
 
 .cal-field-body {
-  font-size: 16px;
-  letter-spacing: 0.5px;
+  font-size: 16sp;
+  letter-spacing: 0.5sp;
 }
 
 .cal-field-body text {
@@ -659,140 +712,140 @@ cal-spinner {
 }
 
 .cal-edit-guests {                       /* the guests field */
-  margin-top: 4px;
+  margin-top: 4dp;
 }
 
 .cal-edit-url {                          /* the URL field */
-  margin-bottom: 8px;
+  margin-bottom: 8dp;
 }
 
 .cal-edit-repeat {
-  padding-top: 4px;
-  padding-bottom: 4px;
+  padding-top: 4dp;
+  padding-bottom: 4dp;
 }
 
 .cal-edit-repeat-button {
-  margin-right: 24px;
+  margin-right: 24dp;
 }
 
 .cal-edit-reminders {
-  padding-top: 8px;
+  padding-top: 8dp;
 }
 
 .cal-edit-color {                        /* the colour button */
-  min-width: 48px;
-  min-height: 48px;
-  margin-right: 20px;
-  margin-top: 3px;                       /* centred on the spinner, not the row */
+  min-width: 48dp;
+  min-height: 48dp;
+  margin-right: 20dp;
+  margin-top: 3dp;                       /* centred on the spinner, not the row */
   color: @vibeos_on_surface_variant;
 }
 
 .cal-edit-tz {                           /* the time zone button: two lines */
-  margin-right: 24px;
-  padding-top: 5px;                      /* less the border, which GTK adds outside the padding */
-  padding-bottom: 3px;                   /* and less the last line's half leading */
+  margin-right: 24dp;
+  padding-top: 5dp;                      /* less the border, which GTK adds outside the padding */
+  padding-bottom: 3dp;                   /* and less the last line's half leading */
 }
 
 .cal-edit-tz label {
-  font-weight: 800;
-  line-height: 20.4px;                   /* the font's line and 4 px between the lines */
+  font-weight: 500;
+  line-height: 20.4sp;                   /* the font's line and 4 px between the lines */
 }
 
 .cal-text-helper {                       /* a text field's helper text, under the box, in */
-  margin: 4px 24px 0 63px;               /* line with the field's text */
-  font-size: 12px;
-  letter-spacing: 0.4px;
+  margin: 4dp 24dp 0 63dp;               /* line with the field's text */
+  font-size: 12sp;
+  letter-spacing: 0.4sp;
   color: @vibeos_on_surface_variant;
 }
 
 .cal-edit-spinner-row {                  /* availability, visibility */
-  padding-top: 16px;
-  padding-right: 16px;
+  padding-top: 16dp;
+  padding-right: 16dp;
 }
 
 .cal-edit-last {
-  padding-bottom: 20px;
+  padding-bottom: 20dp;
 }
 
 /* settings */
 
 .cal-pref {                               /* a settings row */
-  min-height: 48px;
-  padding: 0 16px 0 0;
+  min-height: 48dp;
+  padding: 0 16dp 0 0;
 }
 
 .cal-pref-texts {                         /* the row's height comes from the text's padding, not
                                             the icon's or the switch's; a pixel more under a title alone, its
                                             line rounding down here */
-  padding: 16px 0 17px 0;
+  padding: 16dp 0 17dp 0;
 }
 
 .cal-pref-texts.summary {
-  padding-bottom: 16px;
+  padding-bottom: 16dp;
 }
 
 .cal-pref-icon-frame {
-  min-width: 72px;                       /* kept without an icon too: the titles line up */
+  min-width: 72dp;                       /* kept without an icon too: the titles line up */
 }
 
 .cal-pref-icon {
-  margin-left: 16px;
+  margin-left: 16dp;
   color: @vibeos_on_surface_variant;
 }
 
 .cal-pref-title {
-  font-size: 16px;
-  letter-spacing: 0.15px;
+  font-size: 16sp;
+  letter-spacing: 0.15sp;
   color: @vibeos_on_surface;
 }
 
 .cal-pref-summary {                       /* the summary under a title */
-  font-size: 14px;
-  line-height: 20px;
-  letter-spacing: 0.25px;
+  font-size: 14sp;
+  line-height: 20sp;
+  letter-spacing: 0.25sp;
   color: @vibeos_on_surface_variant;
 }
 
 .cal-pref-widget {
-  margin-left: 16px;
+  margin-left: 16dp;
 }
 
 .cal-pref-category {                      /* a section's heading, the divider at the top of the gap */
-  border-top: 1px solid @cal_divider;
-  padding: 23px 16px 8px 0;
+  border-top: 1dp solid @cal_divider;
+  padding: 23dp 16dp 8dp 0;
 }
 
 .cal-pref-category-icon {
-  margin-bottom: 6px;
+  margin-bottom: 6dp;
 }
 
 .cal-pref-category.first {
   border-top: none;
-  padding-top: 24px;
+  padding-top: 24dp;
 }
 
 .cal-pref-category-title {
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 14sp;
+  font-weight: 500;
   color: @vibeos_primary;
 }
 
 .cal-about-icon {
-  margin: 16px;
+  margin: 16dp;
 }
 
 /* the text field in a settings dialog (a quick response) */
 .cal-dialog-entry {
-  margin: 0 24px 8px 24px;
-  min-height: 48px;
-  padding: 0 4px;
+  margin: 0 24dp 8dp 24dp;
+  min-height: 48dp;
+  padding: 0 4dp;
   background: none;
   border: none;
-  border-bottom: 2px solid @vibeos_primary;
+  border-bottom: 2dp solid @vibeos_primary;
   border-radius: 0;
   box-shadow: none;
   outline: none;
-  font-size: 18px;
+  font-size: 18sp;
   color: @vibeos_on_surface;
   caret-color: @vibeos_primary;
 }

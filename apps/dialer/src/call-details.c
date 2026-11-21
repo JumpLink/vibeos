@@ -76,7 +76,7 @@ text_label (const char *text, const char *css_class, double size)
   gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
   gtk_label_set_single_line_mode (GTK_LABEL (label), TRUE);
   gtk_widget_add_css_class (label, css_class);
-  vibeos_label_set_font_padding (label, size);
+  vibeos_label_set_font_padding_sp (label, size);
   return label;
 }
 
@@ -157,7 +157,6 @@ make_header (CallDetails *self)
   gtk_widget_set_margin_bottom (avatar, BADGE_PAD);
   badge = vibeos_pressable_new (avatar);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (badge), VIBEOS_RIPPLE_CIRCLE, BADGE / 2.0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (badge), &(GdkRGBA) { 1, 1, 1, 0.06 });
   gtk_widget_set_valign (badge, GTK_ALIGN_CENTER);
   gtk_widget_set_sensitive (badge, is_contact);
   if (is_contact)
@@ -192,7 +191,6 @@ make_header (CallDetails *self)
       gtk_widget_set_size_request (call, BUTTON, BUTTON);
       gtk_widget_set_valign (call, GTK_ALIGN_CENTER);
       gtk_widget_add_css_class (call, "dialer-icon");
-      vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (call), &(GdkRGBA) { 1, 1, 1, 0.06 });
       gtk_accessible_update_property (GTK_ACCESSIBLE (call), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Call"), -1);
       g_signal_connect_swapped (call, "clicked", G_CALLBACK (on_call), self);
       gtk_box_append (GTK_BOX (header), call);
@@ -344,7 +342,6 @@ action_row (CallDetails *self, const char *icon_name, const char *text, GCallbac
   gtk_box_append (GTK_BOX (box), label);
   row = vibeos_pressable_new (box);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &(GdkRGBA) { 1, 1, 1, 0.06 });
   g_signal_connect_swapped (row, "clicked", callback, self);
   return row;
 }

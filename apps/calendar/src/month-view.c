@@ -175,9 +175,8 @@ set_top_week (CalMonthView *self, double top_week)
 static void
 draw_header (CalMonthView *self, GtkSnapshot *snapshot, int scale, double width)
 {
-  /* the 1 px line under the names: the same light grey in every look (the theme only reaches colours read in
-   * code) */
-  GdkRGBA line = cal_argb (0xffcccccc);
+  /* the 1 px line under the names, as the grid's lines */
+  GdkRGBA line = cal_argb (CAL_MONTH_GRID_LINE);
   double baseline;
 
   /* the weekday names (700: regular with Bold text on), uppercase, at the end of each column less a margin */
@@ -539,7 +538,7 @@ static void
 pre_format (CalMonthView *self, const Px *px, Formatted *formatted, const Details *details, int span)
 {
   g_autofree char *text = base_text (self, px, formatted, details);
-  g_autoptr(PangoLayout) layout = cal_text_layout (GTK_WIDGET (self), text, EVENT_TITLE_SIZE, 700);
+  g_autoptr(PangoLayout) layout = cal_paint_layout (GTK_WIDGET (self), text, EVENT_TITLE_SIZE, 700);
   GSList *lines;
 
   pango_layout_set_width (layout, (int) (MAX (1, text_width (px, formatted->bounds, span)) * PANGO_SCALE
@@ -1018,7 +1017,7 @@ static void
 draw_line (CalMonthView *self, GtkSnapshot *snapshot, const Px *px, const char *text, double size, int weight,
            int x, int baseline, int ellipsize_width, gboolean strike, guint32 argb)
 {
-  g_autoptr(PangoLayout) layout = cal_text_layout (GTK_WIDGET (self), text, size, weight);
+  g_autoptr(PangoLayout) layout = cal_paint_layout (GTK_WIDGET (self), text, size, weight);
   GdkRGBA color = cal_argb (argb);
 
   if (ellipsize_width >= 0)
@@ -1225,7 +1224,7 @@ draw_week (CalMonthView *self, GtkSnapshot *snapshot, int scale, int first_day, 
       g_date_clear (&date, 1);
       g_date_set_julian (&date, day);
       number = g_strdup_printf ("%d", g_date_get_day (&date));
-      layout = cal_text_layout (GTK_WIDGET (self), number, MONTH_NUMBER_SIZE, day == today ? 700 : 400);
+      layout = cal_paint_layout (GTK_WIDGET (self), number, MONTH_NUMBER_SIZE, day == today ? 700 : 400);
       cal_text_draw (snapshot, layout, day_left (self, i + 1) - MONTH_NUMBER_SIDE, number_ascent + MONTH_NUMBER_TOP, 1,
                      &color);
     }
@@ -1238,7 +1237,7 @@ draw_week (CalMonthView *self, GtkSnapshot *snapshot, int scale, int first_day, 
       int monday = first_day + (1 - self->week_start + 7) % 7;
       g_autoptr(GDateTime) time = g_date_time_new_from_unix_local (cal_day_start (monday) + 12 * 3600);
       g_autofree char *number = g_strdup_printf ("%d", g_date_time_get_week_of_year (time));
-      g_autoptr(PangoLayout) layout = cal_text_layout (GTK_WIDGET (self), number, WEEK_NUMBER_SIZE, 400);
+      g_autoptr(PangoLayout) layout = cal_paint_layout (GTK_WIDGET (self), number, WEEK_NUMBER_SIZE, 400);
       GdkRGBA color = cal_argb (CAL_MONTH_WEEK_NUMBER);
 
       cal_paint_line (WEEK_NUMBER_SIZE, scale, &ascent, &line_height);
@@ -1260,11 +1259,11 @@ draw_week (CalMonthView *self, GtkSnapshot *snapshot, int scale, int first_day, 
   /* the events */
   draw_events (self, snapshot, scale, first_day, height);
 
-  /* the tapped day in blue at half alpha */
+  /* the tapped day in the primary colour at half alpha */
   if (self->clicked_day >= first_day && self->clicked_day < first_day + 7)
     {
       int i = self->clicked_day - first_day;
-      GdkRGBA clicked = cal_argb (0xff33b5e5);
+      GdkRGBA clicked = cal_argb (CAL_PRIMARY);
 
       clicked.alpha = CLICKED_ALPHA;
       cal_fill_rect (snapshot, scale, day_left (self, i), SEPARATOR_WIDTH, day_left (self, i + 1) - day_left (self, i),

@@ -1,0 +1,70 @@
+#!/usr/bin/python3 -I
+# vibeos-specdiff-redact: a reference phone's view dump made fit for the repo. Every text, description and hint goes
+# (they hold the phone's contacts, messages, accounts and network names, and the reference app's own wording), so what
+# is left is the layout alone: the nodes in their order, their classes, ids, states and bounds.
+#
+#   vibeos-specdiff-redact IN.xml OUT.xml [--keep TEXT]...
+#
+# --keep leaves a text that a rule picks a node by ("text=For you"): a label of the app's own, never anything of the
+# user's. The nodes keep their order, so a rule's "class=TextView#11" finds the same node as in the dump taken.
+#
+# It refuses a dump with an attribute it does not know, rather than pass on something it was not written to check.
+import argparse
+import sys
+import xml.etree.ElementTree as ET
+
+TEXT = ('text', 'content-desc', 'hint', 'tooltip-text', 'pane-title', 'state-description', 'title')
+LAYOUT = ('index', 'resource-id', 'class', 'package', 'checkable', 'checked', 'clickable', 'enabled', 'focusable',
+          'focused', 'scrollable', 'long-clickable', 'password', 'selected', 'bounds', 'drawing-order', 'visible-to-user',
+          'display-id', 'important-for-accessibility')
+# what holds the nodes: one window's hierarchy, or in a dump of the whole screen its displays and their windows (a
+# window's title, the app's or a notification's words, counts as text)
+FRAME = {
+    'hierarchy': {'rotation', 'density'},
+    'displays': set(),
+    'display': {'id'},
+    'window': {'index', 'bounds', 'active', 'focused', 'accessibility-focused', 'id', 'layer', 'type'},
+}
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Remove the text from a view dump, keeping its layout.')
+    parser.add_argument('dump')
+    parser.add_argument('out')
+    parser.add_argument('--keep', action='append', default=[], metavar='TEXT')
+    args = parser.parse_args()
+
+    tree = ET.parse(args.dump)
+    root = tree.getroot()
+    kept = removed = 0
+    for node in root.iter():
+        if node.tag not in FRAME and node.tag != 'node':
+            sys.exit(f'vibeos-specdiff-redact: {args.dump}: an element <{node.tag}>, not a view dump')
+        known = FRAME[node.tag] if node.tag in FRAME else set(LAYOUT)
+        unknown = set(node.attrib) - set(TEXT) - known
+        if unknown:
+            sys.exit(f'vibeos-specdiff-redact: {args.dump}: attributes {sorted(unknown)} are neither text nor layout')
+        # an id that is a sentence (a Compose test tag made of the app's own words) goes too
+        if any(c.isspace() for c in node.get('resource-id', '')):
+            node.set('resource-id', '')
+            removed += 1
+        for key in TEXT:
+            value = node.get(key)
+            if not value:
+                continue
+            if key == 'text' and value in args.keep:
+                kept += 1
+                continue
+            node.set(key, '')
+            removed += 1
+    ET.indent(tree, space=' ')
+    with open(args.out, 'wb') as out:
+        out.write(b"<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>\n")
+        out.write(b'<!-- a reference view dump with its text removed (vibeos-specdiff-redact): the layout only -->\n')
+        tree.write(out, encoding='utf-8', xml_declaration=False)
+        out.write(b'\n')
+    print(f'{args.out}: {removed} texts removed, {kept} kept', file=sys.stderr)
+
+
+if __name__ == '__main__':
+    main()

@@ -1,25 +1,26 @@
-/* The Clock's own styles, over libvibeos's (vibeos.css). Weights sit 300 over the nominal ones (400 as 700, 500 as 800):
- * the phone's Bold text setting is on (vibeos.css says how). */
+/* The Clock's own styles, over libvibeos's (vibeos.css), in the theme's colour roles, light or dark. Text sizes are sp
+ * and every other size dp (libvibeos converts them for Font size); weights are the usual ones, and Bold text draws
+ * each 300 heavier. */
 
 /* most of the app's text */
 .body {
-  font-size: 14px;
-  font-weight: 800;
-  color: white;
+  font-size: 14sp;
+  font-weight: 500;
+  color: @vibeos_on_surface;
 }
 
 /* --- the Alarm tab; alarm-card.c draws the card itself */
 
 /* an alarm's time, bold while the alarm is on */
 .alarm-time {
-  font-size: 56px;
-  font-weight: 700;
+  font-size: 56sp;
+  font-weight: 400;
   font-feature-settings: "tnum" 1;
-  color: white;
+  color: @vibeos_on_surface;
 }
 
 .alarm-time.enabled {
-  font-weight: 900;
+  font-weight: 600;
 }
 
 /* the label row's icon, and the "Add label" hint */
@@ -33,7 +34,7 @@
 
 /* the ringtone row; the vibrate row, its check accented once ticked */
 .ringtone image {
-  color: white;
+  color: @vibeos_on_surface;
 }
 
 .body.vibrate-text {
@@ -50,47 +51,65 @@
 
 /* Delete and Dismiss: borderless buttons with the body text's look */
 .vibeos-text-button.alarm-text-button {
-  font-size: 14px;
-  font-weight: 800;
-  padding: 0 12px 0 4px;
+  font-size: 14sp;
+  font-weight: 500;
+  padding: 0 12dp 0 4dp;
 }
 
 /* the empty list: the picture over "No Alarms", both faint */
 .no-alarms {
-  color: alpha(white, 0.3);
+  color: alpha(@vibeos_on_surface, 0.38);
 }
 
 .no-alarms label {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 16sp;
+  font-weight: 400;
 }
 
 /* --- the Clock tab */
 
 /* the big digital clock */
 .main-clock {
-  font-size: 90px;
-  font-weight: 700;
+  font-size: 90sp;
+  font-weight: 400;
   font-feature-settings: "tnum" 1;
-  color: white;
+  color: @vibeos_on_surface;
 }
 
 .next-alarm {
-  color: white;
+  color: @vibeos_on_surface;
+}
+
+/* a tablet: the big clock larger (at 100 sp and more it no longer grows with Font size), the date and the next alarm
+ * a size up; the title and the tab bar's labels keep their size whatever the Font size, as their bars do */
+window.tablet .main-clock {
+  font-size: 125sp;
+}
+
+window.tablet clock-page .body {
+  font-size: 18sp;
+}
+
+window.tablet .vibeos-app-bar-title {
+  font-size: 22dp;
+}
+
+window.tablet .vibeos-nav-label {
+  font-size: 12dp;
 }
 
 /* --- the Timer tab */
 
 /* the keypad's time ("00h 00m 00s"), which timer-setup.c lays out and sizes itself */
 timer-setup {
-  font-weight: 700;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }
 
 /* a digit key's label, and ⌫ */
 .timer-digit {
-  font-size: 36px;
-  font-weight: 800;
+  font-size: 36sp;
+  font-weight: 500;
   color: @vibeos_on_surface;
 }
 
@@ -100,8 +119,8 @@ timer-setup {
 
 /* a timer card's label, and its "Label" hint */
 .timer-label {
-  font-size: 20px;
-  font-weight: 800;
+  font-size: 20sp;
+  font-weight: 500;
   color: @vibeos_secondary;
 }
 
@@ -113,13 +132,13 @@ timer-setup {
 .timer-close {
   background-color: @vibeos_outline;
   border-radius: 50%;
-  color: white;
+  color: @vibeos_white;
 }
 
 /* a timer card's time */
 .timer-time {
-  font-size: 40px;
-  font-weight: 700;
+  font-size: 40sp;
+  font-weight: 400;
   font-feature-settings: "tnum" 1;
   color: @vibeos_on_surface;
 }
@@ -130,8 +149,8 @@ timer-setup {
 
 /* "+ 1:00" and play/pause, on their filled buttons */
 .timer-add {
-  font-size: 20px;
-  font-weight: 800;
+  font-size: 20sp;
+  font-weight: 500;
   color: @vibeos_on_primary;
 }
 
@@ -143,15 +162,15 @@ timer-setup {
 
 /* the time and its smaller hundredths; accented while the ring is held */
 .stopwatch-main {
-  font-size: 72px;
-  font-weight: 700;
+  font-size: 72sp;
+  font-weight: 400;
   font-feature-settings: "tnum" 1;
   color: @vibeos_on_surface;
 }
 
 .stopwatch-hundredths {
-  font-size: 42px;
-  font-weight: 700;
+  font-size: 42sp;
+  font-weight: 400;
   font-feature-settings: "tnum" 1;
   color: @vibeos_on_surface;
 }
@@ -161,31 +180,31 @@ timer-setup {
   color: @vibeos_secondary;
 }
 
-/* a lap row: the number accented, the lap and total times in white */
+/* a lap row: the number accented, the lap and total times in the text colour */
 .lap-number {
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 14sp;
+  font-weight: 500;
   font-feature-settings: "tnum" 1;
   color: @vibeos_secondary;
 }
 
 .lap-time {
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 14sp;
+  font-weight: 500;
   font-feature-settings: "tnum" 1;
-  color: white;
+  color: @vibeos_on_surface;
 }
 
 /* --- the cities picker's overflow menu (clock-popup-menu.c) */
 .clock-popup-menu {
   background-color: @vibeos_surface_container;
-  border-radius: 4px;
-  padding: 8px 0;
+  border-radius: 4dp;
+  padding: 8dp 0;
 }
 
 .clock-popup-menu-text {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 16sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }
 
@@ -193,36 +212,41 @@ timer-setup {
 
 /* a city's name, and the line with its time or its hours ahead or behind */
 .primary-label {
-  font-size: 14px;
-  font-weight: 800;
-  color: white;
+  font-size: 14sp;
+  font-weight: 500;
+  color: @vibeos_on_surface;
 }
 
 .secondary-label {
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 14sp;
+  font-weight: 500;
   color: @vibeos_secondary;
 }
 
 /* a city's card, as round as an alarm's */
 .world-card {
   background-color: @vibeos_surface_container_highest;
-  border-radius: 28px;
-  padding: 24px 16px;
-  margin: 8px 16px 0 16px;
+  border-radius: 28dp;
+  padding: 24dp 16dp;
+  margin: 8dp 16dp 0 16dp;
+}
+
+/* a tablet held sideways: the time above the name */
+.world-card.stacked {
+  padding: 22dp 16dp;
 }
 
 /* a city's time, in the light weight */
 .world-clock-time {
-  font-size: 48px;
-  font-weight: 600;
+  font-size: 48sp;
+  font-weight: 300;
   font-feature-settings: "tnum" 1;
-  color: white;
+  color: @vibeos_on_surface;
 }
 
-/* the app bar's gear (the menu's Settings item): white like the tab title */
+/* the app bar's gear (the menu's Settings item): the text colour, like the tab title */
 .clock-settings-button {
-  color: white;
+  color: @vibeos_on_surface;
 }
 
 /* --- second-level pages' bars (clock-bar.c): Up and the action icons, then the title */
@@ -231,14 +255,14 @@ timer-setup {
 }
 
 .clock-bar-title {
-  font-size: 20px;
-  font-weight: 800;
+  font-size: 20sp;
+  font-weight: 500;
   color: @vibeos_on_surface;
 }
 
 /* the cities picker's icons are dimmer than the other bars' */
 .clock-bar.cities .clock-bar-icon {
-  color: #899192;
+  color: @vibeos_on_surface_variant;
 }
 
 /* Settings and the sound picker: the bar turns a shade lighter once the list scrolls under it, fading over
@@ -259,24 +283,24 @@ timer-setup {
 
 /* the index: larger for a letter than for a GMT offset */
 .city-index {
-  font-weight: 900;
-  color: white;
+  font-weight: 600;
+  color: @vibeos_on_surface;
 }
 
 .city-index.letter {
-  font-size: 24px;
+  font-size: 24sp;
 }
 
 .city-index.offset {
-  font-size: 14px;
+  font-size: 14sp;
 }
 
 /* a city's check box: an outlined square; checked, filled round a check */
 .city-check {
-  min-width: 14px;
-  min-height: 14px;
-  border: 2px solid @vibeos_on_surface_variant;
-  border-radius: 2px;
+  min-width: 14dp;
+  min-height: 14dp;
+  border: 2dp solid @vibeos_on_surface_variant;
+  border-radius: 2dp;
 }
 
 .city-check image {
@@ -294,18 +318,18 @@ timer-setup {
 
 /* the "Selected Cities" header */
 .city-header {
-  font-size: 20px;
-  font-weight: 700;
-  color: white;
-  min-height: 32px;
-  margin-top: 24px;
-  margin-bottom: 8px;
-  padding-left: 20px;
+  font-size: 20sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
+  min-height: 32dp;
+  margin-top: 24dp;
+  margin-bottom: 8dp;
+  padding-left: 20dp;
 }
 
 /* the fast scroller: its track and the thumb */
 .city-fast-track {
-  background-color: #2C3333;
+  background-color: @vibeos_surface_container_high;
 }
 
 .city-fast-thumb {
@@ -314,14 +338,14 @@ timer-setup {
 
 /* the shadow under the bar, shown once the list scrolls */
 .city-drop-shadow {
-  min-height: 8px;
-  background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.3), transparent);
+  min-height: 8dp;
+  background-image: linear-gradient(to bottom, alpha(@vibeos_shadow, 0.3), alpha(@vibeos_shadow, 0));
 }
 
 /* the expanded search field, and its hint */
 .city-search {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 16sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
   caret-color: @vibeos_primary;
 }
@@ -334,27 +358,27 @@ timer-setup {
 
 /* the line over each category after the first */
 .settings-divider {
-  background-color: #24292A;
-  min-height: 1px;
+  background-color: @vibeos_surface_container_highest;
+  min-height: 1dp;
 }
 
 /* a category's title */
 .settings-category {
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 14sp;
+  font-weight: 500;
   color: @vibeos_secondary;
 }
 
 /* a row's title and summary */
 .settings-title {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 16sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }
 
 .settings-summary {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 14sp;
+  font-weight: 400;
   color: @vibeos_on_surface_variant;
 }
 
@@ -364,27 +388,27 @@ timer-setup {
 }
 
 .settings-volume-icon {
-  color: white;
+  color: @vibeos_on_surface;
 }
 
 /* --- the list dialogs (clock-dialogs.c): single-choice items, edge to edge of the card. The scroller takes back
  * the card's padding, not the list inside it, which the scroller would clip */
 .clock-dialog-scroll {
-  margin: 0 -24px;
+  margin: 0 -24dp;
 }
 
 .clock-dialog-item {
-  min-height: 48px;
-  padding: 0 24px 0 20px;
-  font-size: 16px;
-  font-weight: 700;
+  min-height: 48dp;
+  padding: 0 24dp 0 20dp;
+  font-size: 16sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }
 
 /* the radio, accented when on */
 .clock-radio {
   color: @vibeos_on_surface_variant;
-  margin-right: 20px;
+  margin-right: 20dp;
 }
 
 .clock-radio.checked {
@@ -395,25 +419,25 @@ timer-setup {
 
 /* a section's header, accented */
 .ringtone-header {
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 15sp;
+  font-weight: 400;
   color: @vibeos_secondary;
-  padding: 16px 15px;
+  padding: 16dp 15dp;
 }
 
-/* the selected sound: a faint white behind it */
+/* the selected sound: a faint wash of the text colour behind it */
 .ringtone-row.selected {
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: alpha(@vibeos_on_surface, 0.08);
 }
 
 /* a sound's row: its icon, its name, the check and ⋮ */
 .ringtone-icon {
-  color: white;
+  color: @vibeos_on_surface;
 }
 
 .ringtone-name {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 16sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }
 
@@ -425,9 +449,9 @@ timer-setup {
   color: @vibeos_on_surface;
 }
 
-/* "Add new": a black + on a filled circle */
+/* "Add new": a + on a circle filled with the primary colour */
 .ringtone-add {
-  color: black;
+  color: @vibeos_on_primary;
   background-color: @vibeos_primary;
   border-radius: 50%;
 }
@@ -440,7 +464,7 @@ window.vibeos.clock-screensaver {
 
 /* the screen saver's clock: the thin weight, which Bold text makes 400 */
 .saver-time {
-  font-size: 80px;
-  font-weight: 400;
+  font-size: 80sp;
+  font-weight: 100;
   color: white;
 }

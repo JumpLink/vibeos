@@ -1,37 +1,39 @@
-/* Dictate's own styles, over libvibeos's (vibeos.css): the app bar is libvibeos's, the document is the app's. */
+/* Dictate's own styles, over libvibeos's (vibeos.css): the app bar is libvibeos's, the document is the app's. Text
+ * sizes are sp and every other size dp (libvibeos converts them for Font size); Bold text draws each weight 300
+ * heavier. */
 
 .dictate-bar-end {                       /* the last action, off the screen's edge as in the Calendar */
-  margin-right: 4px;
+  margin-right: 4dp;
 }
 
 /* the language button: its code in a key cap's outline, as the keyboard's language key */
 .dictate-language label {
-  font-size: 12px;
-  font-weight: 800;
+  font-size: 12sp;
+  font-weight: 500;
   color: @vibeos_on_surface;
-  border: 2px solid @vibeos_on_surface;
-  border-radius: 6px;
-  padding: 1px 4px;
+  border: 2dp solid @vibeos_on_surface;
+  border-radius: 6dp;
+  padding: 1dp 4dp;
 }
 
 /* the language dialog's rows, as the Calendar's list dialogs: edge to edge, the checked radio in the primary
    colour */
 .dictate-dialog-list {
-  margin: 0 -24px;
+  margin: 0 -24dp;
 }
 
 .dictate-dialog-item {
-  min-height: 48px;
-  padding: 0 24px;
+  min-height: 48dp;
+  padding: 0 24dp;
   color: @vibeos_on_surface;
 }
 
 .dictate-dialog-item label {
-  font-size: 16px;
+  font-size: 16sp;
 }
 
 .dictate-radio {
-  margin-right: 16px;
+  margin-right: 16dp;
   color: @vibeos_on_surface_variant;
 }
 
@@ -47,8 +49,8 @@
 }
 
 .dictate-document {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 18sp;
+  font-weight: 400;
   caret-color: @vibeos_primary;
 }
 
@@ -60,9 +62,9 @@
 /* the selection's floating toolbar: a raised surface, its actions in the text colour (Android's) */
 .dictate-selection-bar {
   background-color: @vibeos_surface_container_highest;
-  border-radius: 12px;
-  padding: 0 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  border-radius: 12dp;
+  padding: 0 4dp;
+  box-shadow: 0 2dp 8dp alpha(@vibeos_shadow, 0.5);
 }
 
 .dictate-selection-bar .vibeos-text-button {
@@ -71,13 +73,13 @@
 
 /* what to do while the document is empty, centred over the FAB's row */
 .dictate-hint {
-  font-size: 16px;
+  font-size: 16sp;
   color: @vibeos_on_surface_variant;
-  margin: 0 48px 120px 48px;
+  margin: 0 48dp 120dp 48dp;
 }
 
 /* over the document's last 120 px, the FAB's row: the text fades into the surface */
 .dictate-fade {
-  min-height: 120px;
+  min-height: 120dp;
   background-image: linear-gradient(to bottom, alpha(@vibeos_surface, 0), @vibeos_surface 70%);
 }

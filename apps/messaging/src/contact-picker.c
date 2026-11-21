@@ -434,6 +434,7 @@ contact_picker_new (SmsClient *client, Contacts *contacts)
 {
   ContactPicker *self = g_object_new (MSG_TYPE_CONTACT_PICKER, NULL);
   GtkWidget *all_page = gtk_overlay_new ();
+  GtkWidget *content;
 
   self->client = g_object_ref (client);
   self->contacts = g_object_ref (contacts);
@@ -445,7 +446,13 @@ contact_picker_new (SmsClient *client, Contacts *contacts)
   gtk_widget_add_css_class (self->bar, "msg-page-bar");
   g_signal_connect_swapped (msg_action_bar_get_up (self->bar), "clicked", G_CALLBACK (on_back), self);
   gtk_box_append (GTK_BOX (self->box), self->bar);
-  gtk_box_append (GTK_BOX (self->box), make_to (self));
+  /* To: and the contacts under the bar: beside the list on a tablet they are a pane of their own (messaging.css) */
+  content = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  gtk_widget_add_css_class (content, "msg-picker-content");
+  gtk_widget_set_overflow (content, GTK_OVERFLOW_HIDDEN);
+  gtk_widget_set_vexpand (content, TRUE);
+  gtk_box_append (GTK_BOX (self->box), content);
+  gtk_box_append (GTK_BOX (content), make_to (self));
 
   self->pages = gtk_stack_new ();
   gtk_stack_set_transition_type (GTK_STACK (self->pages), GTK_STACK_TRANSITION_TYPE_NONE);
@@ -458,7 +465,7 @@ contact_picker_new (SmsClient *client, Contacts *contacts)
   self->results = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_stack_add_named (GTK_STACK (self->pages), scrolled (self->results), "results");
   gtk_widget_set_vexpand (self->pages, TRUE);
-  gtk_box_append (GTK_BOX (self->box), self->pages);
+  gtk_box_append (GTK_BOX (content), self->pages);
 
   g_signal_connect (contacts, "changed", G_CALLBACK (on_contacts_changed), self);
   fill_all (self);

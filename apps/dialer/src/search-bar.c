@@ -17,8 +17,8 @@
 #define EXPAND_MS       200
 #define MARGIN_FRACTION 0.8     /* where the expand animation starts the margins from */
 
-#define BACKGROUND      0x2c3132
-#define BAR_ICON        0xfefefe
+#define BACKGROUND      VIBEOS_SURFACE_CONTAINER_HIGHEST
+#define BAR_ICON        VIBEOS_ON_SURFACE_VARIANT
 
 #define HINT_STYLE      ((TextStyle) { TEXT_GSF, 16, 700 })     /* the collapsed bar's "Search contacts" */
 
@@ -85,6 +85,9 @@ dialer_search_bar_size_allocate (GtkWidget *widget, int width, int height, int b
                        gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (right - BUTTON, collapsed_y)));
   gtk_widget_allocate (self->mic, BUTTON, BUTTON, -1,
                        gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (right - 2 * BUTTON, collapsed_y)));
+  /* the collapsed hint ends short of the mic, ellipsized at a large font size */
+  pango_layout_set_width (self->hint, MAX (0, (int) ((right - 2 * BUTTON - x - TEXT_START) * PANGO_SCALE)));
+  pango_layout_set_ellipsize (self->hint, PANGO_ELLIPSIZE_END);
   /* expanded: the row at the bar's top, its views centred in it */
   gtk_widget_allocate (self->back, BUTTON, BUTTON, -1,
                        gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (x + START, expanded_y)));
@@ -104,6 +107,14 @@ dialer_search_bar_measure (GtkWidget *widget, GtkOrientation orientation, int fo
   *minimum = *natural = orientation == GTK_ORIENTATION_VERTICAL ? TOOLBAR_HEIGHT : 0;
 }
 
+/* a new font size: the hint in it */
+static void
+on_text_changed (DialerSearchBar *self)
+{
+  text_layout_set_style (self->hint, HINT_STYLE);
+  gtk_widget_queue_draw (GTK_WIDGET (self));
+}
+
 /* ---- drawing -------------------------------------------------------------------------------------------------- */
 
 static void
@@ -119,9 +130,13 @@ dialer_search_bar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gsk_rounded_rect_init_from_rect (&shape, &bar, self->rounded ? MIN (CORNER, bar.size.height / 2) : 0);
   gtk_snapshot_push_rounded_clip (snapshot, &shape);
   gtk_snapshot_append_color (snapshot, &background, &bar);
-  /* the bar's ripple, faint white */
+  /* the bar's ripple, the theme's */
   if (vibeos_ripple_is_active (&self->ripple))
-    vibeos_ripple_snapshot (&self->ripple, snapshot, &bar, &(GdkRGBA) { 1, 1, 1, 0.06 });
+    {
+      GdkRGBA ripple = vibeos_ripple_default_color ();
+
+      vibeos_ripple_snapshot (&self->ripple, snapshot, &bar, &ripple);
+    }
   gtk_snapshot_pop (snapshot);
 
   if (self->progress < 1)
@@ -371,6 +386,8 @@ dialer_search_bar_init (DialerSearchBar *self)
   self->fraction = 1;
   self->rounded = TRUE;
   self->hint = text_layout (GTK_WIDGET (self), HINT_STYLE, _("Search contacts"), 0);
+  g_signal_connect_object (vibeos_text_get_default (), "changed", G_CALLBACK (on_text_changed), self,
+                           G_CONNECT_SWAPPED);
 
   self->mic = icon_button (self, "dialer-mic-symbolic", "search-bar-icon", _("Start voice search"));
   self->menu = icon_button (self, "dialer-more-symbolic", "search-bar-icon", _("More options"));

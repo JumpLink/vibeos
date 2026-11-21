@@ -41,7 +41,7 @@
 #define MAX_ACCELERATION  1.2       /* progress / s²: the settle after a drag */
 #define MAX_VELOCITY      4.0       /* progress / s */
 #define TOUCH_SLOP        8         /* px: the move that starts a drag */
-#define ERROR_COLOR       0xB00020  /* the formula and the result after an error */
+#define ERROR_COLOR       VIBEOS_ERROR      /* the formula and the result after an error */
 #define N_INVERTIBLE      6
 
 typedef enum {
@@ -96,6 +96,8 @@ struct _CalcMain {
   GtkWidget          parent;
   Evaluator         *evaluator;
   gboolean           one_line;          /* landscape: the one-line display and pads */
+  gboolean           tablet;            /* a tablet: the same layouts with a tablet's sizes */
+  VibeosLayout      *layout;            /* the window's, while the view is in it */
   /* the owner of the listener the evaluator calls back: a new one for each layout, so that what was asked for
    * an old layout does not reach the new one */
   GObject           *generation;
@@ -165,12 +167,6 @@ static gboolean
 have_unprocessed (CalcMain *self)
 {
   return self->unprocessed && *self->unprocessed;
-}
-
-static GdkRGBA
-rgb (guint32 rgb)
-{
-  return (GdkRGBA) { ((rgb >> 16) & 0xff) / 255.0f, ((rgb >> 8) & 0xff) / 255.0f, (rgb & 0xff) / 255.0f, 1 };
 }
 
 /* ------------------------------------------------------------------------------------------------------------ */
@@ -395,9 +391,7 @@ show_formula_toolbar (CalcMain *self)
   /* the toolbar points at the formula inside its padding, over its rightmost 10 % */
   w = gtk_widget_get_width (GTK_WIDGET (self->formula));
   h = gtk_widget_get_height (GTK_WIDGET (self->formula));
-  top = self->one_line ? 8 : 16;
-  bottom = self->one_line ? 28 : 8;
-  end = 16;
+  calc_display_get_formula_padding (CALC_DISPLAY (self->display), &top, &bottom, &end);
   right = w - end;
   graphene_rect_init (&rect, right * 0.9, top, right * 0.1, MAX (0, h - top - bottom));
   calc_text_toolbar_present (toolbar, GTK_WIDGET (self->formula), &rect);
@@ -519,7 +513,7 @@ static void
 set_state (CalcMain *self, CalcState state)
 {
   GdkRGBA formula_color = vibeos_color (VIBEOS_ON_SURFACE), result_color = vibeos_color (VIBEOS_TERTIARY);
-  GdkRGBA error = rgb (ERROR_COLOR);
+  GdkRGBA error = vibeos_color (ERROR_COLOR);
 
   if (self->state == state)
     return;
@@ -1484,27 +1478,32 @@ make_pad (CalcMain *self, const Key *keys, int n_keys, gboolean advanced)
   static const double land_advanced_columns[] = { 0.33, 0.67 }, land_advanced_rows[] = { 0.25, 0.5, 0.75 };
   static const double land_input_columns[] = { 0.2, 0.4, 0.6, 0.8 }, land_input_rows[] = { 0.25, 0.5, 0.75 };
   gboolean land = self->one_line;
+  /* the pads' edge and inner paddings, the keys' margins and the delete icon: a tablet's are larger, the same
+   * upright and sideways */
+  int edge = self->tablet ? 16 : 8, intra = self->tablet ? 8 : 4;
+  int small_margin = self->tablet ? 4 : land ? 0 : 2, key_margin = self->tablet ? 6 : 4;
+  int icon = self->tablet ? 42 : land ? 22 : 48;
   GtkWidget *pad;
   int margin;
 
   if (advanced) {
     pad = land ? calc_pad_new (land_advanced_columns, 3, land_advanced_rows, 4)
                : calc_pad_new (portrait_advanced_columns, 4, portrait_advanced_rows, 3);
-    /* the advanced pad's padding, and the keys' margin (none in landscape) */
+    /* the advanced pad's padding, and the keys' margin (none in landscape on a phone) */
     if (land)
-      calc_pad_set_padding (CALC_PAD (pad), 8, 8, 8, 4);
+      calc_pad_set_padding (CALC_PAD (pad), edge, edge, edge, intra);
     else
-      calc_pad_set_padding (CALC_PAD (pad), 8, 4, 8, 8);
-    margin = land ? 0 : 2;
+      calc_pad_set_padding (CALC_PAD (pad), edge, intra, edge, edge);
+    margin = small_margin;
   } else {
     pad = land ? calc_pad_new (land_input_columns, 5, land_input_rows, 4)
                : calc_pad_new (portrait_input_columns, 4, portrait_input_rows, 5);
     /* the input pad's padding, and the keys' margin */
     if (land)
-      calc_pad_set_padding (CALC_PAD (pad), 8, 8, 4, 8);
+      calc_pad_set_padding (CALC_PAD (pad), edge, edge, intra, edge);
     else
-      calc_pad_set_padding (CALC_PAD (pad), 4, 8, 8, 8);
-    margin = 4;
+      calc_pad_set_padding (CALC_PAD (pad), intra, edge, edge, edge);
+    margin = key_margin;
   }
 
   for (int i = 0; i < n_keys; i++) {
@@ -1513,7 +1512,7 @@ make_pad (CalcMain *self, const Key *keys, int n_keys, gboolean advanced)
 
     if (key->id == BTN_DEL) {
       /* the icon smaller in landscape, where the keys are shorter */
-      button = calc_button_new_icon ("calc-del-symbolic", land ? 22 : 48, key->theme);
+      button = calc_button_new_icon ("calc-del-symbolic", icon, key->theme);
       gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, _("delete"), -1);
       g_signal_connect (button, "long-pressed", G_CALLBACK (on_delete_long_pressed), self);
     } else {
@@ -1538,13 +1537,14 @@ make_pad (CalcMain *self, const Key *keys, int n_keys, gboolean advanced)
 }
 
 static void
-build (CalcMain *self, gboolean one_line)
+build (CalcMain *self, gboolean one_line, gboolean tablet)
 {
   self->one_line = one_line;
+  self->tablet = tablet;
   self->generation = g_object_new (G_TYPE_OBJECT, NULL);
   self->listener = (EvaluationListener) { &listener_funcs, self, self->generation };
 
-  self->display = calc_display_new (one_line);
+  self->display = calc_display_new_full (one_line, tablet);
   self->formula = calc_display_get_formula (CALC_DISPLAY (self->display));
   self->result = calc_display_get_result (CALC_DISPLAY (self->display));
   calc_formula_set_scroll_to_end (self->formula, TRUE);
@@ -1617,20 +1617,31 @@ restore_display (CalcMain *self)
   }
 }
 
-/* a rotation: the layout is made again (the one-line display and pads in landscape) from its saved state */
+/* a tablet: the window's layout says so */
+static gboolean
+on_tablet (CalcMain *self)
+{
+  VibeosLayout *layout = vibeos_layout_get (GTK_WIDGET (self));
+
+  return layout && vibeos_layout_is_tablet (layout);
+}
+
+/* a rotation, or a display size that makes the screen a tablet or no longer one: the layout is made again (the
+ * one-line display and pads in landscape, a tablet's sizes) from its saved state */
 static gboolean
 rebuild_idle (gpointer data)
 {
   CalcMain *self = data;
   int width = gtk_widget_get_width (GTK_WIDGET (self)), height = gtk_widget_get_height (GTK_WIDGET (self));
+  gboolean tablet = on_tablet (self);
   SavedState saved = { 0 };
 
   self->rebuild_idle = 0;
-  if ((width > height) == self->one_line)
+  if ((width > height) == self->one_line && tablet == self->tablet)
     return G_SOURCE_REMOVE;
   save_instance_state (self, &saved);
   teardown (self);
-  build (self, width > height);
+  build (self, width > height, tablet);
   restore_instance_state (self, &saved);
   restore_display (self);
   gtk_widget_queue_allocate (GTK_WIDGET (self));
@@ -1718,7 +1729,8 @@ calc_main_size_allocate (GtkWidget *widget, int width, int height, int baseline)
   Box display, advanced, input, history;
   double travel;
 
-  if ((width > height) != self->one_line && !self->rebuild_idle && width > 0 && height > 0)
+  if (((width > height) != self->one_line || on_tablet (self) != self->tablet) && !self->rebuild_idle && width > 0
+      && height > 0)
     self->rebuild_idle = g_idle_add (rebuild_idle, self);
   if (!self->display)
     return;
@@ -1759,6 +1771,40 @@ calc_main_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
     gtk_widget_snapshot_child (widget, self->advanced, snapshot);
     gtk_widget_snapshot_child (widget, self->input, snapshot);
   }
+}
+
+/* the window found to be a tablet (or no longer one) after it was laid out: made again, as for a rotation */
+static void
+on_layout_changed (VibeosLayout *layout, CalcMain *self)
+{
+  if (vibeos_layout_is_tablet (layout) != self->tablet && !self->rebuild_idle)
+    self->rebuild_idle = g_idle_add (rebuild_idle, self);
+}
+
+static void
+calc_main_root (GtkWidget *widget)
+{
+  CalcMain *self = CALC_MAIN (widget);
+
+  GTK_WIDGET_CLASS (calc_main_parent_class)->root (widget);
+  self->layout = vibeos_layout_get (widget);
+  if (self->layout) {
+    g_object_ref (self->layout);
+    g_signal_connect (self->layout, "changed", G_CALLBACK (on_layout_changed), self);
+    on_layout_changed (self->layout, self);
+  }
+}
+
+static void
+calc_main_unroot (GtkWidget *widget)
+{
+  CalcMain *self = CALC_MAIN (widget);
+
+  if (self->layout) {
+    g_signal_handlers_disconnect_by_data (self->layout, self);
+    g_clear_object (&self->layout);
+  }
+  GTK_WIDGET_CLASS (calc_main_parent_class)->unroot (widget);
 }
 
 /* ------------------------------------------------------------------------------------------------------------ */
@@ -1870,6 +1916,8 @@ calc_main_class_init (CalcMainClass *klass)
   widget_class->measure = calc_main_measure;
   widget_class->size_allocate = calc_main_size_allocate;
   widget_class->snapshot = calc_main_snapshot;
+  widget_class->root = calc_main_root;
+  widget_class->unroot = calc_main_unroot;
   gtk_widget_class_set_css_name (widget_class, "calc-main");
 }
 
@@ -1895,7 +1943,7 @@ calc_main_new (GSettings *settings)
 
   self->evaluator = evaluator_new (db, settings);
   evaluator_set_callback (self->evaluator, &evaluator_callback, self);
-  build (self, FALSE);
+  build (self, FALSE, FALSE);
   /* a new start: an empty display */
   set_state (self, STATE_INPUT);
   evaluator_clear_main (self->evaluator);

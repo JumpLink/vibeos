@@ -1,5 +1,5 @@
-/* Text as the Dialer's views draw it: two families, at the weights the phone's Bold text setting makes
- * of them, in line boxes with font padding.
+/* Text as the Dialer's views draw it: two families, in sizes that follow Font size and weights that follow Bold
+ * text (vibeos-text.h), in line boxes with font padding.
  *
  * A line here is as tall as the font's bounding box, not its ascent and descent, so
  * text sits lower in its box than a GtkLabel puts it. The lists measure against these boxes; these helpers
@@ -7,6 +7,7 @@
 #pragma once
 
 #include <gtk/gtk.h>
+#include <vibeos.h>
 
 G_BEGIN_DECLS
 
@@ -17,7 +18,7 @@ typedef enum {
 
 typedef struct {
   TextFamily family;
-  double size;                  /* px */
+  double size;                  /* sp: px at a font size of 1 */
   int weight;                   /* as drawn with Bold text on: 700 for a 400, 800 for a 500 */
 } TextStyle;
 
@@ -26,13 +27,16 @@ typedef struct {
 #define TEXT_SECONDARY    ((TextStyle) { TEXT_GSF, 14, 700 })     /* a row's second line */
 #define TEXT_OVERLINE     ((TextStyle) { TEXT_GSF, 14, 800 })     /* a section header */
 
-/* text and icon colours */
-#define COLOR_TEXT_PRIMARY    0xf6f7fb
-#define COLOR_TEXT_SECONDARY  0xa3a7ac
-#define COLOR_ICON            0xeff0f2
-#define COLOR_ACCENT_TEXT     0x81b5bc
+/* text and icon colours: the theme's roles */
+#define COLOR_TEXT_PRIMARY    VIBEOS_ON_SURFACE
+#define COLOR_TEXT_SECONDARY  VIBEOS_ON_SURFACE_VARIANT
+#define COLOR_ICON            VIBEOS_ON_SURFACE
+#define COLOR_ACCENT_TEXT     VIBEOS_PRIMARY
 
-GdkRGBA      text_rgb (guint32 value);
+/* the theme's colour for a role, as it is now: read it as you draw */
+GdkRGBA      text_rgb (VibeosColor color);
+/* the px of the style's text at the font size in effect */
+double       text_px (TextStyle style);
 
 /* a single-line layout in @style; @width > 0 ellipsizes it at the end to that width */
 PangoLayout *text_layout (GtkWidget *widget, TextStyle style, const char *text, double width);
