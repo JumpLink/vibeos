@@ -1,0 +1,13 @@
+[Unit]
+Description=VibeOS: grow the root file system to fill its partition or image file (first boot)
+ConditionPathExists=!/var/lib/vibeos/root-grown
+After=local-fs.target
+DefaultDependencies=no
+Before=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/vibeos-growroot
+
+[Install]
+WantedBy=multi-user.target

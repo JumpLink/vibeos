@@ -1,0 +1,46 @@
+# image/local.conf: this machine's settings for the image tools (copy this file to local.conf; git ignores it).
+# Every script in image/ reads it (a shell file). A line VAR=value here wins over the environment; write it as
+# VAR=${VAR:-value} to let the environment win, as for a test build elsewhere.
+
+# where builds, work files (work/, tmp/) and logs go: OUT/system, OUT/DEVICE, ...
+VIBEOS_OUT=/srv/vibeos-images/0.1.3
+
+# ---- build-system.sh: the system image
+VDEBS=/srv/vibeos-debs/0.1.3		# VibeOS's own .debs, version 1:0.1.3 (dpkg-buildpackage of this repository)
+MUTTER=/srv/vibeos-debs/mutter		# mutter 51.0-3+gp1: Debian's mutter 51.0-3 with patches/mutter
+SPEECH=/srv/vibeos-debs/speech		# the vibeos-dictate-* packages: tools/vibeos-dictate-speech/build-debs.sh
+MOBILE=/srv/gnome-mobile.tar		# GNOME Shell mobile with patches/gnome-shell, as a tar of opt/gnome-mobile
+STAGE=					# the S10e device stage the 0.1.3 base came with (its files are removed)
+BASE_ORIG=				# the base image itself: build-system.sh refuses to work on it, only on a copy
+# ART=					# the third-party icon packs and parallax sets: not in this repository, left out unset
+# KIT=					# the home screen and app list (default: image/kit)
+# FORBID_EXTRA=				# more names no image may contain (gsm2sip and waydroid always)
+
+# ---- build-zips.sh
+# UPDATE_BINARY=			# LineageOS's updater (default: image/zip/update-binary, get-update-binary.sh)
+# VIBEOS_PART=				# the GPT tool (default: image/src/s10e-part, make -C image/src)
+# STRICT=1				# refuse any update-binary or vibeos-part but the 0.1.3 zips' own
+# CHUNK_MB=1024				# the system image's part size in the zip (LineageOS's updater: under 4 GiB each)
+# SYS_DIR=				# where rootfs.img is (default: OUT/system)
+
+# ---- build-device.sh: our four devices, from their device stages (none of them is in this repository: each holds
+# a kernel build and firmware read from our own phones)
+S10E_STAGE=				# Galaxy S10e: device stage (root/ with /boot/s10e, modules, units...)
+S10E_KIT=				# its kit: clean/60-s10e-gpu.conf, tools/s10e-logo, boot-logo/*.jpg
+S10E_VENDOR_FW=				# Samsung's firmware from its vendor partition (usr/lib/firmware of a root copy)
+S10E_CALLAUDIO_FW=			# optional: the call-audio kit's firmware, compared with the above
+S10E_UBOOT=				# U-Boot image for recovery (its first 4 MiB are taken)
+POCO_STAGE=				# POCO X3 NFC: device stage
+POCO_K22_IMG=				# its 0.1.1 ROM image (the ESP is read from it)
+POCO_K22_ZIP=				# its 0.1.1 ROM zip (recovery-uboot.img)
+S5E_STAGE=				# Galaxy Tab S5e: device stage
+S5E_TABK=				# the tablet's recovery backup, linux-k11-uc.img and later device files
+S5E_MODULES=				# its kernel build's modules_install tree (lib/modules)
+S5E_KIT_TOOLS=				# extents, keepmisc and dmlinear (static aarch64 helpers)
+S20_DIR=				# Galaxy S20 FE: its kit (build/, kit/rootfs, kit/modem, quietboot/rootfs)
+S20_SLEEP=				# its sleep helper sources
+
+# ---- test/zip-test.sh, test/setup-test.sh
+# UP_PARAM_IMG=				# a copy of an S10e's up_param (default: a stand-in tar)
+# OUT/work/test needs sda-real.img (a sparse copy of an S10e's sda holding only its GPT) and r/ (LineageOS's
+# recovery ramdisk, from nura/test/recovery-chroot.py RECOVERY.img OUT/work/test/r)

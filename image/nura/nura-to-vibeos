@@ -1,0 +1,1212 @@
+#!/usr/bin/python3 -I
+"""nura-to-vibeos: a Nura (postmarketOS) device build -> a VibeOS device zip, flashed from LineageOS recovery after
+the VibeOS system zip (step 2 of VibeOS's two-step install).
+
+  nura-to-vibeos [options] https://images.nura.eco/bpo/edge/oneplus-fajita/gnome-mobile/20261114-0517/
+  nura-to-vibeos [options] ...-oneplus-fajita-boot.img.xz ...-oneplus-fajita.img.xz
+  nura-to-vibeos [options] --device xiaomi-surya --panel huaxing ...-qcom-sm7150.img.xz
+
+It keeps Nura's kernel and DTB as Nura boots them (the boot.img header version, addresses, page size and the
+command line the kernel needs; pmOS's own parameters dropped) and replaces postmarketOS's initramfs with VibeOS's,
+which only finds the VibeOS root and starts it. The kernel's modules and all of the device's firmware go into the
+zip's payload, with the device's settings a Debian/systemd VibeOS can use (UCM, udev rules, the sensors' mount
+matrix, hexagonrpcd's firmware directory, the units pmOS disables) and Debian's builds of the Qualcomm daemons
+(rmtfs, tqftpserv, hexagonrpcd, qrtr, qbootctl, 81voltd) for the first boot to install. Nothing from the images is
+run: they are read as data (debugfs, mtools, python), never mounted.
+
+A generic SoC image (qcom-sm7150: U-Boot and systemd-boot boot it, so it has no boot.img) needs --device: the boot
+image is then built from the image's vmlinuz and the phone's DTB, in the header layout data/devices.txt gives, and
+only that phone's firmware is carried. Where a phone came with different panels (POCO X3 NFC: Huaxing, Tianma),
+--panel picks the DTB, and the zip refuses a phone whose bootloader names another panel.
+
+In recovery the zip asks (volume keys, power) whether the boot image goes to this slot's boot (A/B phones; on
+others, recovery) or nowhere, for a first start with "fastboot boot"; --boot-target fixes the answer. The partition
+it overwrites is saved first, into the VibeOS root: /var/lib/vibeos/device/backup/.
+
+Output, in --out (default: the current directory):
+  vibeos-device-<nura-device>_<build>.zip     the device zip
+  vibeos-device-<nura-device>_<build>-boot.img  its boot image, for "fastboot boot" (a first test writes nothing)
+  vibeos-device-<nura-device>_<build>.txt     the report: inputs, boot image, what was carried over and what not
+  nura-download/<device>-<flavour>-<build>/   a URL's downloads, kept (checked against the listing's sha256)
+
+Needs (Debian 12 or later): python3, xz-utils, zstd, e2fsprogs (debugfs), mtools, dpkg (dpkg-deb), zip, gpgv and
+debian-archive-keyring (the Debian packages are checked against the archive's signature); about 12 GB free in
+--out while it runs. No root, no loop mounts, nothing written to a phone.
+"""
+import argparse, fnmatch, gzip, hashlib, html, json, os, re, shutil, stat, struct, subprocess, sys, tarfile, time
+import urllib.request
+
+HERE = os.path.dirname(os.path.realpath(__file__))
+sys.path.insert(0, os.path.join(HERE, 'lib'))
+import apkdb, bootimg, cpio, debfetch, debver, extract  # noqa: E402
+
+VERSION = '0.1.3-nura1'
+EPOCH = 1795262400  # 2026-11-21 12:00 UTC, as the 0.1.3 zips: every timestamp in the zip
+UA = {'User-Agent': 'nura-to-vibeos/0.1'}
+
+# pmOS package -> the Debian packages that do its job on VibeOS
+DEBIAN_FOR = {
+    'rmtfs': ['rmtfs', 'libqrtr1'],
+    'tqftpserv': ['tqftpserv', 'libqrtr1'],
+    'qrtr': ['qrtr-tools', 'libqrtr1'], 'qrtr-libs': ['qrtr-tools', 'libqrtr1'],
+    'hexagonrpcd': ['hexagonrpcd', 'libhexagonrpc0.4'],
+    'qbootctl': ['qbootctl'],
+    '81voltd': ['81voltd', 'libqrtr1'],
+    'pd-mapper': ['protection-domain-mapper', 'libqrtr1'],
+}
+# pmOS userspace a Debian system has no package for (Alpine binaries cannot be carried)
+NO_DEBIAN = {
+    'q6voiced': 'call audio routing (q6voice): not in Debian (Mobian has q6voiced)',
+    'msm-modem-uim-selection': 'SIM slot selection for the msm modem: not in Debian',
+    'bootmac': 'Wi-Fi/Bluetooth MAC addresses from the boot serial: not in Debian (Mobian has bootmac); '
+               'Bluetooth may come up without an address',
+    'swclock-offset': 'keeps the RTC offset across boots: not in Debian',
+    'soc-qcom-pulseaudio': 'call_audio_idle_suspend_workaround (PulseAudio; VibeOS runs PipeWire)',
+    'droid-juicer': 'not needed: the firmware is in the payload',
+}
+# device trees a payload may write to, and how
+CARRY = [
+    ('usr/share/alsa/ucm2/', 'ucm'),
+    ('usr/lib/udev/rules.d/', 'udev'), ('etc/udev/rules.d/', 'udev'),
+    ('usr/lib/udev/hwdb.d/', 'hwdb'), ('etc/udev/hwdb.d/', 'hwdb'),
+    ('usr/lib/modprobe.d/', 'conf'), ('etc/modprobe.d/', 'conf'),
+    ('usr/lib/modules-load.d/', 'conf'), ('etc/modules-load.d/', 'conf'),
+    ('etc/UPower/', 'conf'), ('usr/share/wireplumber/', 'conf'), ('etc/wireplumber/', 'conf'),
+    ('etc/environment.d/', 'conf'), ('usr/lib/environment.d/', 'conf'),
+    ('usr/share/feedbackd/themes/', 'conf'), ('usr/share/iio-sensor-proxy/', 'conf'),
+    ('usr/share/qcom/', 'qcom'), ('usr/lib/firmware/', 'firmware'),
+]
+FIRST_BOOT_UNITS_FROM_PRESET = re.compile(r'^\s*(enable|disable)\s+(\S+)')
+# commands a device package's systemd unit may run that the system image has, by its Debian package
+SYSTEM_CMDS = {'qmicli': 'libqmi-utils', 'mmcli': 'modemmanager', 'modprobe': 'kmod', 'sh': 'dash', 'sleep': 'coreutils',
+               'echo': 'coreutils', 'udevadm': 'udev', 'systemctl': 'systemd', 'rfkill': 'rfkill'}
+
+
+def unit_commands(text):
+    """the programs a unit file runs (Exec* lines, systemd's prefixes stripped)"""
+    out = []
+    for line in text.splitlines():
+        m = re.match(r'\s*Exec(Start|StartPre|StartPost|Stop|StopPost|Reload|Condition)\s*=\s*(.*)', line)
+        if m and m.group(2).strip():
+            out.append(re.sub(r'^[-@:+!|]+', '', m.group(2).split()[0]))
+    return out
+
+
+def log(*a):
+    print(*a, flush=True)
+
+
+def die(msg):
+    raise SystemExit('nura-to-vibeos: ' + msg)
+
+
+def sha256f(p):
+    h = hashlib.sha256()
+    with open(p, 'rb') as f:
+        for b in iter(lambda: f.read(1 << 20), b''):
+            h.update(b)
+    return h.hexdigest()
+
+
+def run(cmd, **kw):
+    r = subprocess.run(cmd, capture_output=True, **kw)
+    if r.returncode:
+        die('%s failed: %s' % (cmd[0], (r.stderr or b'').decode(errors='replace')[-800:]))
+    return r.stdout
+
+
+def need_tools():
+    miss = [t for t, p in (('xz', 'xz-utils'), ('zstd', 'zstd'), ('mcopy', 'mtools'), ('dpkg-deb', 'dpkg'),
+                           ('zip', 'zip'), ('gpgv', 'gpgv')) if not shutil.which(t)]
+    if not os.path.exists(extract.DEBUGFS):
+        miss.append('debugfs')
+    if miss:
+        die('missing tools: %s (apt install xz-utils zstd mtools e2fsprogs dpkg zip gpgv)' % ' '.join(miss))
+
+
+# ---------------------------------------------------------------- inputs
+def fetch_listing(url, dest):
+    """a Nura build directory: its -boot.img.xz and .img.xz, each checked against the listing's sha256"""
+    if not url.endswith('/'):
+        url += '/'
+    with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=60) as r:
+        page = r.read().decode('utf-8', 'replace')
+    files = {}
+    for m in re.finditer(r'href="([^"/]+\.img\.xz)\.sha256"\s*>\s*sha256\s*(?:</a>)?\s*:\s*([0-9a-f]{64})', page):
+        files[html.unescape(m.group(1))] = m.group(2)
+    if not files:
+        die('no .img.xz with a sha256 in %s' % url)
+    os.makedirs(dest, exist_ok=True)
+    out = []
+    for name, sha in sorted(files.items()):
+        p = os.path.join(dest, name)
+        if os.path.isfile(p) and not os.path.islink(p) and sha256f(p) == sha:
+            log('  %s: downloaded before, sha256 as listed' % name)
+            out.append(p)
+            continue
+        log('  downloading %s' % name)
+        with urllib.request.urlopen(urllib.request.Request(url + name, headers=UA), timeout=600) as r, \
+                open(p + '.part', 'wb') as f:
+            shutil.copyfileobj(r, f, 1 << 20)
+        if sha256f(p + '.part') != sha:
+            die('%s: sha256 differs from the listing' % name)
+        os.rename(p + '.part', p)
+        out.append(p)
+    return out, url
+
+
+def build_stamp(names):
+    for n in names:
+        m = re.search(r'(\d{8}-\d{4})', os.path.basename(n))
+        if m:
+            return m.group(1)
+    return time.strftime('%Y%m%d')
+
+
+# ---------------------------------------------------------------- the image
+class Nura:
+    def __init__(self, work):
+        self.w = work
+        self.notes, self.carried, self.not_carried = [], [], []
+
+    def unpack(self, files):
+        self.bootimg = self.disk = None
+        for f in files:
+            base = os.path.basename(f)
+            if re.search(r'-boot\.img(\.xz)?$', base):
+                dst = os.path.join(self.w, 'nura-boot.img')
+                extract.unxz(f, dst)
+                self.bootimg = dst
+            elif re.search(r'\.img(\.xz)?$', base):
+                dst = os.path.join(self.w, 'nura-disk.img')
+                kind = extract.unxz(f, dst)
+                self.disk = dst
+                log('  %s: %s image, %d MiB' % (base, kind, os.path.getsize(dst) >> 20))
+            else:
+                die('%s: neither a -boot.img(.xz) nor an .img(.xz)' % base)
+        if not self.disk:
+            die('the full image (.img.xz) is needed: the modules, firmware and device files are in it')
+        parts = extract.partitions(self.disk)
+        if not parts:
+            die('%s: no partition table' % self.disk)
+        self.parts = parts
+        roots = [p for p in parts if p['label'] == 'pmOS_root'] or \
+                [p for p in parts if p['fs'] in ('ext4', 'btrfs') and p['type'] in ('root-arm64', 'linux')]
+        boots = [p for p in parts if p['label'] == 'pmOS_boot'] or \
+                [p for p in parts if p['fs'] in ('vfat', 'ext4') and p['type'] in ('esp', 'xbootldr', 'linux')
+                 and p not in roots]
+        if not roots or not boots:
+            die('no pmOS boot and root partitions: %s' % [(p['name'], p['fs'], p['label']) for p in parts])
+        self.root, self.boot = max(roots, key=lambda p: p['size']), boots[0]
+        if self.root['fs'] != 'ext4':
+            die('the root is %s: only ext4 roots are read (debugfs)' % self.root['fs'])
+        self.spec = extract.ext4_spec(self.disk, self.root['offset'])
+
+    def read_root(self):
+        s = self.spec
+        db = None
+        for p in ('/lib/apk/db/installed', '/usr/lib/apk/db/installed'):
+            b = extract.ext4_cat(s, extract.resolve(s, p))
+            if b:
+                db = b.decode('utf-8', 'replace'); break
+        if not db:
+            die('no apk database in the root (/lib/apk/db/installed)')
+        self.pkgs = apkdb.parse(db)
+        di = ''
+        for p in ('/usr/share/deviceinfo/deviceinfo', '/etc/deviceinfo'):
+            b = extract.ext4_cat(s, extract.resolve(s, p))
+            if b:
+                di += b.decode('utf-8', 'replace') + '\n'
+        self.deviceinfo_text = di
+        self.di = extract.deviceinfo(di)
+        if not self.di.get('codename'):
+            die('no deviceinfo in the root')
+        self.codename = self.di['codename']
+        # the trees, each into a new directory of its own
+        R = self.rootdir = os.path.join(self.w, 'root')
+        os.makedirs(R)
+        self.trees = {}
+        for t in ('/usr/lib/modules', '/usr/lib/firmware', '/usr/share/qcom', '/usr/share/alsa', '/usr/lib/udev',
+                  '/etc/udev', '/usr/lib/modprobe.d', '/etc/modprobe.d', '/usr/lib/modules-load.d',
+                  '/etc/modules-load.d', '/etc/UPower', '/usr/share/wireplumber', '/etc/wireplumber',
+                  '/etc/environment.d', '/usr/lib/environment.d', '/usr/share/feedbackd', '/usr/share/iio-sensor-proxy',
+                  '/usr/lib/systemd/system-preset', '/usr/lib/systemd/system', '/usr/lib/systemd/user',
+                  '/usr/share/hexagonrpcd', '/usr/share/q6voiced', '/usr/lib/kernel-cmdline.d', '/usr/share/mkinitfs',
+                  '/usr/share/deviceinfo'):
+            d = extract.ext4_rdump(s, t, os.path.join(R, t.strip('/').replace('/', '_')))
+            if d:
+                self.trees[t.strip('/')] = d
+        md = self.trees.get('usr/lib/modules')
+        self.kvers = sorted(k for k in os.listdir(md) if os.path.isfile(os.path.join(md, k, 'modules.dep'))) if md else []
+        mi = extract.ext4_cat(s, extract.resolve(s, '/etc/machine-info'))
+        self.machine_info = mi.decode('utf-8', 'replace') if mi else ''
+
+    def tree_file(self, rel):
+        """a path of the root (no leading /) -> its dumped copy, or None"""
+        for t, d in self.trees.items():
+            if rel == t or rel.startswith(t + '/'):
+                p = os.path.join(d, rel[len(t):].lstrip('/'))
+                return p if os.path.lexists(p) else None
+        return None
+
+    def read_boot(self):
+        b = self.boot
+        dest = os.path.join(self.w, 'bootpart')
+        if b['fs'] == 'vfat':
+            extract.fat_copy(self.disk, b['offset'], dest)
+            self.bootdir = dest
+        else:
+            self.bootdir = extract.ext4_rdump(extract.ext4_spec(self.disk, b['offset']), '/', dest) or dest
+        entries = []
+        ld = os.path.join(self.bootdir, 'loader', 'entries')
+        if os.path.isdir(ld):
+            for n in sorted(os.listdir(ld)):
+                p = os.path.join(ld, n)
+                if os.path.isfile(p) and not os.path.islink(p):
+                    entries.append(extract.read_nofollow(p).decode('utf-8', 'replace'))
+        self.loader_entries = entries
+        if not self.bootimg:
+            p = os.path.join(self.bootdir, 'boot.img')
+            if os.path.isfile(p) and not os.path.islink(p):
+                self.bootimg = p
+                self.notes.append('boot.img: from the image\'s boot partition (no -boot.img.xz given)')
+
+
+# ---------------------------------------------------------------- the boot image
+def clean_cmdline(c):
+    keep, dropped = [], []
+    for t in c.split():
+        if t.startswith(('pmos_', 'pmos.')) or t.split('=')[0] in ('root', 'rootfstype', 'rootflags', 'init',
+                                                                     'initrd', 'rw', 'ro'):
+            dropped.append(t)
+        else:
+            keep.append(t)
+    return ' '.join(keep), dropped
+
+
+def device_row(nura_dev):
+    p = os.path.join(HERE, 'data', 'devices.txt')
+    for line in open(p, encoding='utf-8'):
+        f = line.split()
+        if f and not f[0].startswith('#') and f[0] == nura_dev:
+            return {'android': f[1].split(','), 'dtb': None if f[2] == '-' else f[2],
+                    'layout': None if f[3] == '-' else f[3],
+                    'panels': [] if len(f) < 5 or f[4] == '-' else f[4].split(',')}
+    return None
+
+
+def kernel_from_vmlinuz(v):
+    """an Image.gz for the ABL from pmOS's vmlinuz: as it is when gzip or a plain Image (then gzipped), the
+    payload of an EFI zboot image otherwise"""
+    if v[:2] == b'\x1f\x8b':
+        return v, 'vmlinuz (Image.gz)'
+    if v[56:60] == b'ARM\x64':
+        return gzip.compress(v, 9, mtime=0), 'vmlinuz (Image, gzipped here)'
+    if v[:2] == b'MZ' and v[4:8] == b'zimg':
+        off, size = struct.unpack_from('<II', v, 8)
+        comp = v[24:56].split(b'\0')[0].decode()
+        payload = v[off:off + size]
+        if comp == 'gzip':
+            img = gzip.decompress(payload)
+        elif comp == 'zstd':
+            img = subprocess.run(['zstd', '-dc'], input=payload, capture_output=True, check=True).stdout
+        else:
+            die('vmlinuz: EFI zboot with %s: not supported' % comp)
+        return gzip.compress(img, 9, mtime=0), 'vmlinuz (EFI zboot %s, its Image gzipped here)' % comp
+    die('vmlinuz: not an arm64 Image, Image.gz or EFI zboot image')
+
+
+def plan_boot(nura, args, row):
+    """the header (addresses, page size, version, os_version, dtb...) and the kernel section of the new image"""
+    r = {}
+    if nura.bootimg:
+        d = open(nura.bootimg, 'rb').read()
+        h = bootimg.parse(d)
+        if h['header_version'] > 2:
+            die('Nura\'s boot.img is header v%d (vendor_boot devices): not supported yet' % h['header_version'])
+        r.update(source='Nura boot.img', header=h, kernel=h['kernel'], cmdline=h['cmdline'].decode())
+        fmt, img, clen, dtbs = bootimg.split_kernel(h['kernel'])
+        r.update(kfmt=fmt, image=img, dtbs=dtbs)
+        if h.get('dtb'):
+            r['dtb_section'] = h['dtb']
+        return r
+    # no boot.img: built from the boot partition and deviceinfo (or the device table's layout)
+    di = nura.di
+    v = os.path.join(nura.bootdir, 'vmlinuz')
+    if not os.path.isfile(v):
+        die('no boot.img and no vmlinuz in the boot partition')
+    kgz, how = kernel_from_vmlinuz(extract.read_nofollow(v))
+    want = args.dtb or (row and row['dtb']) or (di.get('dtb', '').split() or [None])[0]
+    if not want:
+        die('which DTB? (--dtb qcom/NAME.dtb)')
+    if not want.endswith('.dtb') and '*' not in want:
+        want += '.dtb'
+    cands = []
+    for rel, st in extract.walk(os.path.join(nura.bootdir, 'dtbs')):
+        if stat.S_ISREG(st.st_mode) and fnmatch.fnmatch(rel, want):
+            cands.append(rel)
+    if not cands:
+        alln = sorted(rel for rel, st in extract.walk(os.path.join(nura.bootdir, 'dtbs')) if rel.endswith('.dtb'))
+        die('no DTB %s in the image\'s dtbs/ (it has %d: %s)' % (want, len(alln), ' '.join(alln)))
+    panels = (row or {}).get('panels') or []
+    phone = re.sub(r'\s*\([^)]*\)$', '', bootimg.dtb_model(extract.read_nofollow(os.path.join(nura.bootdir, 'dtbs', cands[0])))[0] or '')
+    r['model'] = phone or nura.di.get('name', 'phone')
+    if len(cands) > 1 and args.panel:
+        cands = [c for c in cands if args.panel.lower() in os.path.basename(c).lower()]
+        if not cands:
+            die('no DTB for the %s panel among %s' % (args.panel, want))
+    if len(cands) > 1:
+        if panels:
+            die('the %s comes with different panels, one DTB each: %s. Which panel this phone has: in LineageOS '
+                'recovery (adb shell) or Android, "cat /proc/cmdline" names it in msm_drm.dsi_display0=... '
+                '(e.g. dsi_nt36672c_huaxing_fhd_video_display: huaxing). Then --panel %s'
+                % (r['model'], ' '.join(cands), '|'.join(panels)))
+        die('more than one DTB matches %s: %s (--dtb picks one)' % (want, ' '.join(cands)))
+    r['panel'] = next((pn for pn in panels if pn in os.path.basename(cands[0]).lower()), None)
+    dtb = extract.read_nofollow(os.path.join(nura.bootdir, 'dtbs', cands[0]))
+    if row and row['layout']:
+        hv, ps, ka, ra, sa, ta, da = row['layout'].split(':')
+        lay = dict(header_version=int(hv), page_size=int(ps), kernel_addr=int(ka, 16), ramdisk_addr=int(ra, 16),
+                   second_addr=int(sa, 16), tags_addr=int(ta, 16), dtb_addr=int(da, 16))
+        lsrc = 'the device table (data/devices.txt)'
+        if args.header is not None and args.header != lay['header_version']:
+            lay['header_version'] = args.header
+            lsrc += ', header v%d by --header' % args.header
+    elif di.get('flash_offset_kernel'):
+        base = int(di.get('flash_offset_base', '0'), 16)
+        lay = dict(header_version=int(di.get('header_version', '0')), page_size=int(di.get('flash_pagesize', '2048')),
+                   kernel_addr=base + int(di['flash_offset_kernel'], 16),
+                   ramdisk_addr=base + int(di['flash_offset_ramdisk'], 16),
+                   second_addr=base + int(di.get('flash_offset_second', '0'), 16),
+                   tags_addr=base + int(di['flash_offset_tags'], 16),
+                   dtb_addr=base + int(di.get('flash_offset_dtb', '0'), 16))
+        lsrc = 'deviceinfo'
+    else:
+        die('no boot.img, and neither deviceinfo nor data/devices.txt gives the boot image layout')
+    h = dict(lay, name=b'\0' * 16, os_version=0, second=b'', recovery_dtbo=b'', dtb=b'')
+    append = di.get('append_dtb', 'false') == 'true' or lay['header_version'] < 2
+    if lay['header_version'] >= 2 and not append:
+        h['dtb'] = dtb
+        kernel = kgz
+    else:
+        kernel = kgz + dtb
+    cmd = ''
+    for e in nura.loader_entries:
+        m = re.search(r'^options\s+(.*)$', e, re.M)
+        if m:
+            cmd = m.group(1).strip(); break
+    if not cmd:
+        cmd = di.get('kernel_cmdline', '')
+        nura.notes.append('command line: deviceinfo_kernel_cmdline (no systemd-boot entry)')
+    fmt, img, clen, dtbs = bootimg.split_kernel(kernel)
+    r.update(source='built here: %s, DTB %s, layout from %s' % (how, cands[0], lsrc), header=h, kernel=kernel,
+             cmdline=cmd, kfmt=fmt, image=img, dtbs=dtbs, dtb_name=cands[0])
+    if h['dtb']:
+        r['dtb_section'] = h['dtb']
+    return r
+
+
+# ---------------------------------------------------------------- modules
+def mod_name(path):
+    return re.sub(r'\.ko(\.(zst|xz|gz))?$', '', os.path.basename(path)).replace('-', '_')
+
+
+def unzst(b):
+    if b[:4] == b'\x28\xb5\x2f\xfd':
+        return subprocess.run(['zstd', '-dcq'], input=b, capture_output=True, check=True).stdout
+    if b[:6] == b'\xfd7zXZ\0':
+        import lzma
+        return lzma.decompress(b)
+    if b[:2] == b'\x1f\x8b':
+        return gzip.decompress(b)
+    return b
+
+
+def vermagic(ko):
+    i = ko.find(b'vermagic=')
+    return ko[i + 9:ko.index(b'\0', i)].decode(errors='replace') if i >= 0 else None
+
+
+def check_modules(moddir, kver, sample=None):
+    """(count, mismatches) of the modules' vermagic against kver (each module decompressed, nothing loaded)"""
+    files = [os.path.join(r, f) for r, _, fs in os.walk(moddir) for f in fs if re.search(r'\.ko(\.\w+)?$', f)]
+    bad, n = [], 0
+    # all zstd modules in one zstd run per batch: decompressing 1000+ one by one is slow
+    for f in files if sample is None else files[:sample]:
+        vm = vermagic(unzst(extract.read_nofollow(f)))
+        n += 1
+        if not vm or vm.split()[0] != kver:
+            bad.append((os.path.relpath(f, moddir), vm))
+    return n, bad
+
+
+# ---------------------------------------------------------------- the initramfs
+def initramfs(nura, kver, moddir, busybox, out_conf, comp, skip=frozenset()):
+    """our initramfs: busybox, vibeos-loop, /init; the modules and firmware pmOS's initramfs had, plus the USB
+    gadget and loop/ext4 ones (with what they depend on), decompressed for busybox's modprobe"""
+    W = cpio.Writer()
+    for d in ('bin', 'dev', 'etc', 'lib', 'lib/modules', 'proc', 'run', 'sys', 'tmp', 'newroot', 'sbin', 'usr',
+              'usr/bin', 'usr/sbin'):
+        W.dir(d)
+    W.chardev('dev/console', 0o600, 5, 1)
+    W.chardev('dev/null', 0o666, 1, 3)
+    W.file('init', open(os.path.join(HERE, 'initramfs', 'init'), 'rb').read(), 0o755)
+    W.file('bin/busybox', busybox, 0o755)
+    W.file('bin/vibeos-loop', open(os.path.join(HERE, 'initramfs', 'vibeos-loop.aarch64'), 'rb').read(), 0o755)
+    W.file('etc/mdev.conf', b'$MODALIAS=.*\t0:0 0660 @modprobe -q -b "$MODALIAS"\n')
+    W.file('etc/vibeos-initramfs.conf', out_conf.encode())
+    # pmOS's initramfs: what it loads and carries
+    pm = None
+    for p in (os.path.join(nura.bootdir, 'initramfs'),):
+        if os.path.isfile(p) and not os.path.islink(p):
+            pm = cpio.read(unzst(extract.read_nofollow(p)))
+    if pm is None:
+        nura.notes.append('initramfs: the boot partition has no pmOS initramfs to take the early module list from')
+        pm = []
+    early_load, pm_mods, pm_fw = [], set(), {}
+    for name, mode, body in pm:
+        n = name.lstrip('./')
+        if n.endswith('lib/modules/initramfs.load'):
+            early_load = [l.strip() for l in body.decode(errors='replace').splitlines() if l.strip()]
+        elif re.search(r'\.ko(\.\w+)?$', n) and stat.S_ISREG(mode):
+            pm_mods.add(mod_name(n))
+        elif re.match(r'(usr/)?lib/firmware/', n) and stat.S_ISREG(mode):
+            if 'usr/lib/firmware/' + re.sub(r'^(usr/)?lib/firmware/', '', n) not in skip:
+                pm_fw[re.sub(r'^(usr/)?lib/firmware/', '', n)] = body
+    dep = {}
+    for line in open(os.path.join(moddir, 'modules.dep'), encoding='utf-8', errors='replace'):
+        k, _, v = line.partition(':')
+        dep[k.strip()] = v.split()
+    byname = {mod_name(k): k for k in dep}
+    want = set(pm_mods) | {mod_name(m) for m in early_load} | {
+        'libcomposite', 'usb_f_ncm', 'usb_f_rndis', 'usb_f_acm', 'u_ether', 'u_serial', 'loop', 'dm_mod', 'ext4',
+        'jbd2', 'mbcache', 'crc16', 'crc32c_generic', 'f2fs', 'nls_utf8'}
+    todo, take = [byname[m] for m in sorted(want) if m in byname], set()
+    while todo:
+        k = todo.pop()
+        if k in take:
+            continue
+        take.add(k)
+        todo.extend(dep.get(k, []))
+    base = 'lib/modules/%s' % kver
+    W.dir(base)
+    made = set()
+    for k in sorted(take):
+        parts = k.split('/')
+        for i in range(1, len(parts)):
+            d = base + '/' + '/'.join(parts[:i])
+            if d not in made:
+                W.dir(d); made.add(d)
+        W.file(base + '/' + re.sub(r'\.(zst|xz|gz)$', '', k), unzst(extract.read_nofollow(os.path.join(moddir, k))))
+    plain = lambda k: re.sub(r'\.(zst|xz|gz)$', '', k)
+    W.file(base + '/modules.dep', ''.join('%s: %s\n' % (plain(k), ' '.join(plain(x) for x in dep[k]))
+                                         for k in sorted(take)).encode())
+    names = {mod_name(k) for k in take}
+    al = []
+    p = os.path.join(moddir, 'modules.alias')
+    if os.path.isfile(p):
+        for line in open(p, encoding='utf-8', errors='replace'):
+            f = line.split()
+            if len(f) == 3 and f[0] == 'alias' and f[2].replace('-', '_') in names:
+                al.append(line)
+    W.file(base + '/modules.alias', ''.join(al).encode())
+    for f in ('modules.builtin', 'modules.builtin.modinfo', 'modules.order'):
+        p = os.path.join(moddir, f)
+        if os.path.isfile(p) and not os.path.islink(p):
+            W.file(base + '/' + f, extract.read_nofollow(p))
+    W.file('lib/modules/initramfs.load', ''.join(m + '\n' for m in early_load).encode())
+    fwd = set()
+    for rel in sorted(pm_fw):
+        rel2 = re.sub(r'^postmarketos/', 'updates/', rel)
+        parts = ('lib/firmware/' + rel2).split('/')
+        for i in range(2, len(parts)):
+            d = '/'.join(parts[:i])
+            if d not in fwd:
+                W.dir(d); fwd.add(d)
+        W.file('lib/firmware/' + rel2, pm_fw[rel])
+    raw = W.bytes()
+    if comp == 'zstd':
+        data = subprocess.run(['zstd', '-q', '-19', '-c'], input=raw, capture_output=True, check=True).stdout
+    elif comp == 'xz':
+        import lzma
+        data = lzma.compress(raw, check=lzma.CHECK_CRC32)
+    else:
+        data = gzip.compress(raw, 9, mtime=0)
+    info = {'modules': sorted(plain(k) for k in take), 'early_load': early_load, 'firmware': sorted(pm_fw),
+            'raw_size': len(raw), 'size': len(data), 'compression': comp}
+    return data, info
+
+
+def initramfs_compression(nura):
+    p = os.path.join(nura.bootdir, 'initramfs')
+    if os.path.isfile(p) and not os.path.islink(p):
+        h = open(p, 'rb').read(6)
+        if h[:4] == b'\x28\xb5\x2f\xfd':
+            return 'zstd'
+        if h[:6] == b'\xfd7zXZ\0':
+            return 'xz'
+    return 'gzip'
+
+
+# ---------------------------------------------------------------- the device layer
+class Payload:
+    def __init__(self, P, system_files, nura):
+        self.P, self.sys, self.nura = P, system_files, nura
+        self.carried, self.kept_system, self.not_carried = [], [], []
+
+    def add(self, src, rel, why):
+        """src (a dumped file or symlink) -> /rel, unless the system image's packages own /rel"""
+        if '/' + rel in self.sys:
+            self.kept_system.append((rel, why))
+            extract.copy_entry(src, os.path.join(self.P, 'usr/share/vibeos-device/nura/system-has', rel))
+            return False
+        extract.copy_entry(src, os.path.join(self.P, rel))
+        self.carried.append((rel, why))
+        return True
+
+
+def merged_usr(f):
+    """an apk database path as it is on pmOS's merged-/usr root (/lib -> usr/lib, /bin and /sbin -> usr/bin)"""
+    for a, b in (('lib/', 'usr/lib/'), ('bin/', 'usr/bin/'), ('sbin/', 'usr/bin/'), ('usr/sbin/', 'usr/bin/')):
+        if f.startswith(a):
+            return b + f[len(a):]
+    return f
+
+
+def device_packages(nura):
+    c = nura.codename
+    out = []
+    for n, p in nura.pkgs.items():
+        if n == 'device-' + c or n.startswith('device-' + c + '-') or n.startswith(('firmware-', 'soc-', 'alsa-ucm-conf-')) \
+                or n.startswith('linux-firmware'):
+            out.append(n)
+    return sorted(out)
+
+
+def ucm_relevant(rel, words):
+    low = rel.lower()
+    return any(w in low for w in words)
+
+
+def other_phones_files(nura, dev):
+    """a generic SoC image carries the firmware of every phone it boots (firmware-<vendor>-<phone>): the files of
+    the packages for phones other than dev, by the phones its dtbs/ names"""
+    phones = set()
+    for rel, st in extract.walk(os.path.join(nura.bootdir, 'dtbs')):
+        m = re.match(r'(?:.*/)?[a-z]+\d+-([a-z0-9]+)-([a-z0-9]+)', rel)
+        if m:
+            phones.add('%s-%s' % m.groups())
+    skip, pkgs = set(), []
+    for n, p in nura.pkgs.items():
+        m = re.match(r'firmware-([a-z0-9]+-[a-z0-9]+)$', n)
+        if m and m.group(1) in phones and m.group(1) != dev:
+            pkgs.append(n)
+            skip.update(merged_usr(f) for f in p['files'])
+    return skip, sorted(pkgs)
+
+
+def build_payload(nura, args, P, kver, moddir, system_files, soc, skip=frozenset(), system=None):
+    pl = Payload(P, system_files, nura)
+    # the kernel's modules, as Nura has them (its modules.* indexes too; depmod runs again on the device)
+    dst = os.path.join(P, 'usr/lib/modules', kver)
+    for rel, st in extract.walk(moddir):
+        if rel in ('build', 'source'):
+            continue
+        extract.copy_entry(os.path.join(moddir, rel), os.path.join(dst, rel))
+    # every firmware file of the image (postmarketos/ is pmOS's override path: the kernel's own is updates/)
+    fwroot = nura.trees.get('usr/lib/firmware')
+    nfw = 0
+    if fwroot:
+        for rel, st in extract.walk(fwroot):
+            if stat.S_ISDIR(st.st_mode) or 'usr/lib/firmware/' + rel in skip:
+                continue
+            rel2 = re.sub(r'^postmarketos/', 'updates/', rel)
+            if pl.add(os.path.join(fwroot, rel), 'usr/lib/firmware/' + rel2, 'firmware'):
+                nfw += 1
+    # the device's DSP files (hexagonrpcd's sensor registry, the ADSP/CDSP libraries, the audio calibration)
+    qroot = nura.trees.get('usr/share/qcom')
+    if qroot:
+        for rel, st in extract.walk(qroot):
+            if not stat.S_ISDIR(st.st_mode) and 'usr/share/qcom/' + rel not in skip:
+                pl.add(os.path.join(qroot, rel), 'usr/share/qcom/' + rel, 'DSP files (/usr/share/qcom)')
+    # the files of the device's own packages
+    words = {w.lower() for w in re.split(r'[-_ ]', nura.codename + ' ' + nura.dev) if len(w) > 2}
+    words |= {soc.lower()} if soc else set()
+    model = nura.di.get('name', '')
+    if model:
+        words.add(model.lower())
+    words.discard('google'); words.discard('xiaomi'); words.discard('oneplus')
+    dev_words = {nura.codename.split('-', 1)[-1].lower(), model.lower()} - {''}
+    phone = nura.dev.split('-', 1)[-1].lower()
+    sys_ucm = sorted({m.group(1) for m in (re.match(r'(/usr/share/alsa/ucm2/[^/]+/%s)(/|$)' % re.escape(phone), f.lower())
+                                          for f in system_files) if m})
+    owned = {}
+    for n in device_packages(nura):
+        for f in nura.pkgs[n]['files']:
+            owned.setdefault(merged_usr(f), n)
+    mask, hexa, presets, units = [], {}, [], []
+    for rel in sorted(owned):
+        pkg = owned[rel]
+        if rel.startswith(('usr/lib/firmware/', 'usr/lib/modules/', 'boot/', 'usr/share/qcom/')):
+            continue  # whole trees above / the kernel
+        src = nura.tree_file(rel)
+        kind = next((k for pre, k in CARRY if rel.startswith(pre)), None)
+        if rel.startswith('usr/lib/systemd/system-preset/') and src:
+            for line in extract.read_nofollow(src).decode(errors='replace').splitlines():
+                m = FIRST_BOOT_UNITS_FROM_PRESET.match(line)
+                if m:
+                    presets.append((m.group(1), m.group(2), pkg))
+            continue
+        if rel.startswith('usr/share/hexagonrpcd/') and src and os.path.isfile(src) and not os.path.islink(src):
+            for k, v in extract.deviceinfo(re.sub(r'^hexagonrpcd_', 'deviceinfo_hexagonrpcd_',
+                                                  extract.read_nofollow(src).decode(errors='replace'), flags=re.M)).items():
+                hexa[k] = v
+            pl.carried.append((rel + ' -> hexagonrpcd.service drop-in', pkg))
+            continue
+        if rel == 'etc/machine-info' or rel.startswith(('usr/share/deviceinfo/', 'usr/lib/kernel-cmdline.d/',
+                                                        'usr/share/mkinitfs/')):
+            continue  # identity, the boot image, the initramfs: used above
+        if kind is None and src and re.match(r'usr/lib/systemd/(system|user)/[^/]+\.(service|timer|path)$', rel) \
+                and pkg.startswith(('device-', 'soc-')) and not any(pkg.startswith(k) for k in NO_DEBIAN) \
+                and os.path.isfile(src) and not os.path.islink(src):
+            units.append((rel, src, pkg))
+            continue
+        if kind is None or src is None:
+            pl.not_carried.append((rel, pkg))
+            continue
+        if kind == 'ucm' and sys_ucm:
+            continue  # the system's alsa-ucm-conf has this phone: none of pmOS's fork, not to mix the two
+        if kind == 'ucm' and pkg.startswith('alsa-ucm-conf') and not ucm_relevant(rel, words | dev_words):
+            continue  # pmOS's alsa-ucm-conf fork: only this device's and its SoC's parts
+        pl.add(src, rel, pkg)
+    ucm_fork = ([n for n in device_packages(nura) if n.startswith('alsa-ucm-conf')], sys_ucm)
+    # a device package's own units: carried when what they run is here, a shell script of the same packages or a
+    # program the system has; enabled by the package's postinst when they have an [Install] section
+    enable = []
+    for rel, src, pkg in units:
+        text = extract.read_nofollow(src).decode('utf-8', 'replace')
+        why, scripts = None, []
+        for c in unit_commands(text):
+            if c.startswith('/'):
+                r2 = merged_usr(c.lstrip('/'))
+                body = b''
+                if owned.get(r2):  # one of the device packages' files: read from the image (regular files only)
+                    body = extract.ext4_cat(nura.spec, extract.resolve(nura.spec, '/' + r2)) or b''
+                if body.startswith((b'#!/bin/sh', b'#!/usr/bin/env sh')) and len(body) < 65536:
+                    scripts.append((r2, body))
+                    continue
+                base = os.path.basename(c) if os.path.dirname(r2) in ('usr/bin', 'usr/sbin') else None
+            else:
+                base = c
+            dp = SYSTEM_CMDS.get(base or '')
+            if not dp or system is None or dp not in system.ver:
+                why = 'runs %s: not in the system image%s' % (c, '' if c.startswith('/') else ' (or not known here)')
+                break
+        if why:
+            pl.not_carried.append(('%s (%s)' % (rel, why), pkg))
+            continue
+        for r2, body in scripts:
+            os.makedirs(os.path.dirname(os.path.join(P, r2)), exist_ok=True)
+            with open(os.path.join(P, r2), 'wb') as f:
+                f.write(body)
+            os.chmod(os.path.join(P, r2), 0o755)
+            pl.carried.append((r2, pkg))
+            pl.not_carried[:] = [x for x in pl.not_carried if x[0] != r2]
+        if pl.add(src, rel, pkg) and re.search(r'^\s*WantedBy\s*=', text, re.M):
+            enable.append(('--user ' if '/user/' in rel else '') + os.path.basename(rel))
+    nura.enable_units = enable
+    # no pmOS config naming the DSP files' directory (a generic image's hexagonrpcd finds it itself; Debian's
+    # wrapper passes -R, by default a droid-juicer path): this phone's directory under /usr/share/qcom
+    if 'hexagonrpcd_fw_dir' not in hexa and 'hexagonrpcd' in nura.pkgs:
+        q = os.path.join(P, 'usr/share/qcom')
+        cand = sorted(os.path.join('/usr/share/qcom', rel) for rel, st in extract.walk(q)
+                      if rel.count('/') == 2 and rel.split('/')[2].lower() == phone and
+                      os.path.isdir(os.path.join(q, rel))) if os.path.isdir(q) else []
+        if len(cand) == 1:
+            hexa['hexagonrpcd_fw_dir'] = cand[0]
+            pl.carried.append(('hexagonrpcd_fw_dir=%s (this phone\'s DSP files; the image has no hexagonrpcd config)' % cand[0], 'hexagonrpcd'))
+        else:
+            pl.not_carried.append(('hexagonrpcd: no config and %d directories for %s under /usr/share/qcom: the sensors '
+                                   'may stay off' % (len(cand), phone), 'hexagonrpcd'))
+    # Debian's hexagonrpcd reads hexagonrpcd_* from its environment (the same names pmOS's config uses)
+    drop = os.path.join(P, 'etc/systemd/system/hexagonrpcd.service.d/50-vibeos-nura.conf')
+    if hexa:
+        os.makedirs(os.path.dirname(drop), exist_ok=True)
+        with open(drop, 'w') as f:
+            f.write('# from Nura\'s %s (pmOS hexagonrpcd config)\n[Service]\n' % nura.codename)
+            for k, v in sorted(hexa.items()):
+                f.write('Environment=%s=%s\n' % (k, v))
+    # the units pmOS's presets disable: masked. An empty unit file masks as a link to /dev/null does (systemd.unit(5)),
+    # and unlike that link it can be unpacked over itself: toybox tar in recovery refuses to replace a symlink that
+    # points out of the tree, so a second install would stop there
+    for what, unit, pkg in presets:
+        if what == 'disable' and unit.endswith(('.service', '.socket', '.timer')) and '*' not in unit:
+            d = os.path.join(P, 'etc/systemd/system')
+            os.makedirs(d, exist_ok=True)
+            if os.path.lexists(os.path.join(d, unit)):
+                continue
+            open(os.path.join(d, unit), 'wb').close()
+            mask.append(unit)
+            pl.carried.append(('preset "disable %s" -> masked' % unit, pkg))
+        else:
+            pl.not_carried.append(('preset "%s %s"' % (what, unit), pkg))
+    return pl, nfw, mask, hexa, ucm_fork
+
+
+def debian_debs(nura, args, out_dir, system):
+    want, why = [], {}
+    for n in sorted(nura.pkgs):
+        for d in DEBIAN_FOR.get(n, []):
+            if d not in want:
+                want.append(d); why[d] = n
+    if 'rmtfs' in nura.pkgs and 'qrtr-tools' not in want:
+        want += ['qrtr-tools']; why['qrtr-tools'] = 'rmtfs (qrtr tools)'
+    if args.no_qbootctl and 'qbootctl' in want:
+        want.remove('qbootctl')
+    gaps = [(n, t) for n, t in NO_DEBIAN.items() if n in nura.pkgs]
+    os.makedirs(out_dir, exist_ok=True)
+    got = []
+    if args.debs:
+        for f in sorted(os.listdir(args.debs)):
+            if f.endswith('.deb'):
+                p = os.path.join(args.debs, f)
+                name = run(['dpkg-deb', '-f', p, 'Package']).decode().strip()
+                if name in want:
+                    shutil.copy(p, os.path.join(out_dir, f))
+                    got.append((name, os.path.join(out_dir, f)))
+    else:
+        arch = debfetch.Archive(os.path.join(args.cache, 'debian'), suite=args.suite, log=log)
+        for n in want:
+            fn, s = arch.fetch(n, out_dir)
+            got.append((n, fn))
+    # every dependency must be in the system image or among these (the first boot has no network)
+    ps = debver.PackageSet()
+    for n, v in system.ver.items():
+        ps.ver[n] = v
+    ps.prov = dict(system.prov)
+    fields = {}
+    for n, fn in got:
+        f = run(['dpkg-deb', '-f', fn, 'Package', 'Version', 'Depends', 'Pre-Depends', 'Provides', 'Architecture']).decode()
+        d = {k: v.strip() for k, _, v in (l.partition(':') for l in f.splitlines()) if k}
+        fields[n] = (fn, d)
+        ps.add(n, d.get('Version', ''), d.get('Provides', ''))
+    ok, dropped = [], []
+    changed = True
+    while changed:
+        changed = False
+        for n in list(fields):
+            fn, d = fields[n]
+            miss = ps.missing(', '.join(x for x in (d.get('Depends', ''), d.get('Pre-Depends', '')) if x))
+            if d.get('Architecture') not in ('arm64', 'all'):
+                miss.append('architecture %s' % d.get('Architecture'))
+            if miss:
+                dropped.append((n, miss)); os.unlink(fn); del fields[n]; ps.ver.pop(n, None); changed = True
+    for n, (fn, d) in sorted(fields.items()):
+        ok.append((n, d.get('Version'), why.get(n, ''), os.path.basename(fn)))
+    return ok, dropped, gaps, [w for w in want if w not in {g[0] for g in got}]
+
+
+def write_deb(P, name, ver, desc, kver, mask, depends, out, enable=()):
+    os.makedirs(os.path.join(P, 'DEBIAN'), exist_ok=True)
+    hwdb = any(r.startswith(('usr/lib/udev/hwdb.d', 'etc/udev/hwdb.d')) for r, _ in extract.walk(P))
+    with open(os.path.join(P, 'DEBIAN/control'), 'w') as f:
+        f.write('Package: %s\nVersion: %s\nArchitecture: arm64\nMaintainer: VibeOS (nura-to-vibeos)\n'
+                'Section: kernel\nPriority: optional\nProvides: vibeos-device\nConflicts: vibeos-device\n%sDescription: VibeOS device layer from a Nura build: %s\n'
+                ' %s.\n The device zip unpacks these files into the system zip\'s root file system;\n'
+                ' the first boot registers them (vibeos-device-setup).\n'
+                % (name, ver, ('Recommends: %s\n' % ', '.join(depends)) if depends else '', desc.split(':')[0], desc))
+    with open(os.path.join(P, 'DEBIAN/postinst'), 'w') as f:
+        f.write('#!/bin/sh\nset -e\nif [ "$1" = configure ]; then\n'
+                '\t# the device\'s name, while the system image\'s generic one is set\n'
+                '\tif [ "$(cat /etc/hostname 2>/dev/null)" = vibeos ]; then\n'
+                '\t\tcp /usr/share/vibeos-device/hostname /etc/hostname\n'
+                '\t\tsed -i "s/^127\\.0\\.1\\.1[[:space:]].*/127.0.1.1\\t$(cat /etc/hostname)/" /etc/hosts\n'
+                '\t\tcp /usr/share/vibeos-device/machine-info /etc/machine-info\n\tfi\n'
+                '\tdepmod -a %s || true\n%s%s'
+                '\tglib-compile-schemas /usr/share/glib-2.0/schemas 2>/dev/null || true\nfi\nexit 0\n'
+                % (kver, '\tsystemd-hwdb update || true\n' if hwdb else '',
+                   ''.join('\tsystemctl %senable %s 2>/dev/null || true\n' % ('--global ' if u.startswith('--user ') else '',
+                                                                           u.split()[-1]) for u in enable)))
+    os.chmod(os.path.join(P, 'DEBIAN/postinst'), 0o755)
+    # directories 755, files 644 or 755, owned by root in the package
+    for r, ds, fs in os.walk(P):
+        for d in ds:
+            p = os.path.join(r, d)
+            if not os.path.islink(p):
+                os.chmod(p, 0o755)
+    # mtimes clamped (SOURCE_DATE_EPOCH): the same inputs make the same zip
+    run(['dpkg-deb', '--root-owner-group', '-Zzstd', '-z9', '-b', P, out], env=dict(os.environ, SOURCE_DATE_EPOCH=str(EPOCH)))
+
+
+def payload_tar(debs_to_unpack, x, out):
+    """the device package's files (and firmware packages'), as dpkg would unpack them, owned by root; only named
+    top directories of a merged-/usr root (never ".", never lib/bin/sbin: they are the root's symlinks)"""
+    os.makedirs(x)
+    for d in debs_to_unpack:
+        run(['dpkg-deb', '-x', d, x])
+    tops = sorted(os.listdir(x))
+    for t in tops:
+        if t not in ('etc', 'usr', 'var', 'opt') or os.path.islink(os.path.join(x, t)):
+            die('payload: /%s at the top' % t)
+
+    def norm(ti):
+        ti.uid = ti.gid = 0
+        ti.uname = ti.gname = 'root'
+        ti.mtime = EPOCH
+        if ti.isdir():
+            ti.mode = 0o755
+        elif ti.isfile():
+            ti.mode &= 0o755
+        elif ti.issym() and ti.linkname.startswith('/'):
+            # relative, so that it stays inside the root it is unpacked into (see the masks above)
+            ti.linkname = os.path.relpath(ti.linkname, '/' + os.path.dirname(ti.name))
+        return ti
+    with tarfile.open(out, 'w', format=tarfile.GNU_FORMAT) as t:
+        for top in tops:
+            t.add(os.path.join(x, top), arcname=top, filter=norm, recursive=True)
+
+
+# ---------------------------------------------------------------- the zip
+def make_zip(Z, out, files):
+    for r, ds, fs in os.walk(Z):
+        for n in ds + fs:
+            os.utime(os.path.join(r, n), (EPOCH, EPOCH), follow_symlinks=False)
+    run(['zip', '-q', '-0', '-r', '-X', out + '.part'] + files, cwd=Z)
+    os.rename(out + '.part', out)
+
+
+def updater_script(name, codes, assert_devices, target_text):
+    if assert_devices:
+        cond = ' ||\n       '.join('getprop("ro.product.device") == "%s" || getprop("ro.build.product") == "%s"' % (d, d)
+                                    for d in assert_devices)
+        a = 'assert(%s ||\n       abort("This package is for the %s (%s); this device is " + getprop("ro.product.device") + "."););\n' % (
+            cond, name, codes)
+    else:
+        a = ''
+    return '''ui_print("VibeOS device layer for the %(name)s, from Nura: kernel, firmware, settings.");
+%(assert)sshow_progress(1.000000, 0);
+package_extract_file("vibeos-lib.sh", "/tmp/vibeos-lib.sh");
+package_extract_file("install.sh", "/tmp/vibeos-dinstall.sh");
+package_extract_file("device-sums.txt", "/tmp/vibeos-dsums.txt");
+package_extract_file("nura-device.prop", "/tmp/vibeos-nura.prop");
+if run_program("/system/bin/sh", "/tmp/vibeos-dinstall.sh", "find") != 0 then
+    abort("ERROR: " + file_getprop("/tmp/vibeos.prop", "error"));
+endif;
+set_progress(0.050000);
+ui_print("- unpacking the device files");
+package_extract_file("payload.tar", "/tmp/vibeos-payload.tar") ||
+    abort("ERROR: could not unpack payload.tar");
+package_extract_dir("debs", "/tmp/vibeos-debs") ||
+    abort("ERROR: could not unpack the device packages");
+set_progress(0.400000);
+ui_print("- putting them into the system");
+if run_program("/system/bin/sh", "/tmp/vibeos-dinstall.sh", "install") != 0 then
+    abort("ERROR: " + file_getprop("/tmp/vibeos.prop", "error"));
+endif;
+set_progress(0.800000);
+package_extract_file("boot.img", "/tmp/vibeos-boot.img") || abort("ERROR: could not unpack boot.img");
+ui_print("- boot");
+if run_program("/system/bin/sh", "/tmp/vibeos-dinstall.sh", "boot") != 0 then
+    abort("ERROR: " + file_getprop("/tmp/vibeos.prop", "error"));
+endif;
+set_progress(1.000000);
+ui_print("Done. Login: user, password 147147.");
+ui_print("First boot: the device packages install, then one restart.");
+ui_print(file_getprop("/tmp/vibeos.prop", "done"));
+''' % {'name': name, 'assert': a}
+
+
+# ---------------------------------------------------------------- main
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0], formatter_class=argparse.RawDescriptionHelpFormatter,
+                                 epilog=__doc__.split('\n\n', 1)[1])
+    ap.add_argument('source', nargs='+', help='a Nura build directory URL, or its -boot.img.xz and .img.xz')
+    ap.add_argument('-o', '--out', default='.', help='where the zip goes (default: .)')
+    ap.add_argument('--work', help='work directory (default: OUT/nura-work-<device>-<build>; kept with --keep)')
+    ap.add_argument('--cache', default=os.path.expanduser('~/.cache/nura-to-vibeos'), help='Debian package cache')
+    ap.add_argument('--device', help='the phone, for a generic SoC image (e.g. xiaomi-surya for qcom-sm7150)')
+    ap.add_argument('--dtb', help='the DTB under dtbs/ (generic images; a glob is fine)')
+    ap.add_argument('--panel', help='the display panel, where a phone has more than one DTB (POCO X3 NFC: huaxing or '
+                                    'tianma); the zip then refuses a phone whose bootloader names another panel')
+    ap.add_argument('--header', type=int, choices=[0, 2], help='generic images: the boot image header version '
+                    '(0: DTB appended to the kernel; 2: DTB in its own section), instead of the device table\'s')
+    ap.add_argument('--boot-target', default='ask', choices=['ask', 'auto', 'boot', 'recovery', 'other-slot', 'none'],
+                    help='where the zip writes the boot image: auto = the running slot\'s boot on A/B devices, '
+                         'recovery on devices with one (Android keeps boot), else boot; none = nothing '
+                         '(fastboot boot the -boot.img); ask (default) = recovery shows a menu of auto\'s choice '
+                         'and none (volume keys and power)')
+    ap.add_argument('--android-device', help='LineageOS device names the zip accepts (comma-separated), or "any"')
+    ap.add_argument('--debs', help='take the Debian packages from this directory instead of the archive')
+    ap.add_argument('--busybox', help='busybox-static arm64 .deb (default: from the Debian archive)')
+    ap.add_argument('--suite', default='sid', help='Debian suite for the packages (default: sid, as the system)')
+    ap.add_argument('--system-packages', default=os.path.join(HERE, 'data', 'system-packages.txt'))
+    ap.add_argument('--system-files', default=os.path.join(HERE, 'data', 'system-files.txt'))
+    ap.add_argument('--cmdline-add', default='', help='extra kernel parameters')
+    ap.add_argument('--no-qbootctl', action='store_true', help='leave qbootctl out (A/B slot marking)')
+    ap.add_argument('--keep', action='store_true', help='keep the work directory')
+    args = ap.parse_args()
+    need_tools()
+    os.makedirs(args.out, exist_ok=True)
+    out = os.path.abspath(args.out)
+    t0 = time.time()
+
+    srcs, url = args.source, None
+    stamp = build_stamp(srcs)
+    tmpw = args.work or os.path.join(out, 'nura-work-%s-%d' % (stamp, os.getpid()))
+    if os.path.exists(tmpw):
+        die('%s exists: move it aside first' % tmpw)
+    os.makedirs(tmpw)
+    try:
+        convert(args, out, srcs, url, stamp, tmpw, t0)
+    except BaseException:
+        if not args.keep:
+            shutil.rmtree(tmpw, ignore_errors=True)
+        raise
+
+
+def convert(args, out, srcs, url, stamp, tmpw, t0):
+    if len(srcs) == 1 and re.match(r'https?://', srcs[0]):
+        log('Nura build: %s' % srcs[0])
+        parts = [x for x in srcs[0].split('/') if x]
+        dl = os.path.join(out, 'nura-download', '-'.join(parts[-3:-1] + parts[-1:]) if len(parts) >= 3 else 'build')
+        srcs, url = fetch_listing(srcs[0], dl)
+        log('  kept in %s' % dl)
+        stamp = build_stamp(srcs)
+    inputs = [(os.path.basename(s), sha256f(s)) for s in srcs]
+
+    nura = Nura(tmpw)
+    log('unpacking %s' % ', '.join(os.path.basename(s) for s in srcs))
+    nura.unpack(srcs)
+    log('  partitions: %s' % ', '.join('%s %s "%s" %d MiB' % (p['index'], p['fs'], p['label'], p['size'] >> 20) for p in nura.parts))
+    log('reading the root (debugfs) and the boot partition (%s)' % nura.boot['fs'])
+    nura.read_root()
+    nura.read_boot()
+    generic = nura.codename.startswith('qcom-') or nura.codename.startswith('generic-')
+    dev = args.device or nura.codename
+    if generic and not args.device:
+        die('%s is a generic SoC image: --device NAME (e.g. xiaomi-surya) says which phone' % nura.codename)
+    row = device_row(dev)
+    nura.dev = dev
+    log('  device: %s (%s), deviceinfo %s; kernels %s' % (dev, nura.di.get('name', '?'), nura.codename, ' '.join(nura.kvers)))
+
+    # ---- the boot image
+    plan = plan_boot(nura, args, row)
+    if generic and plan.get('model'):
+        # the phone's name from its DTB (the image's deviceinfo names the SoC)
+        nura.notes.append('name: "%s" from the DTB (the image\'s deviceinfo says "%s")' % (plan['model'], nura.di.get('name')))
+        nura.di['name'] = plan['model']
+        nura.machine_info = 'PRETTY_HOSTNAME="%s"\nCHASSIS=handset\n' % plan['model']
+    kver = bootimg.linux_version(plan['image']) if plan['image'] else None
+    if not kver:
+        die('cannot read the kernel version from the kernel (%s)' % plan['kfmt'])
+    if kver not in nura.kvers:
+        die('the kernel is %s, the root has modules for %s' % (kver, ' '.join(nura.kvers)))
+    moddir = os.path.join(nura.trees['usr/lib/modules'], kver)
+    # what the initramfs needs from the kernel, built in or as a module
+    have = set()
+    for f in ('modules.builtin', 'modules.dep'):
+        p = os.path.join(moddir, f)
+        if os.path.isfile(p):
+            have |= {mod_name(l.split(':')[0].strip()) for l in open(p, encoding='utf-8', errors='replace') if l.strip()}
+    for m, what in (('ext4', 'the VibeOS root is ext4'), ('loop', 'nested and image roots need loop devices'),
+                    ('libcomposite', 'the USB shell of a failed boot'), ('usb_f_ncm', 'the USB shell (NCM)')):
+        if m not in have:
+            nura.notes.append('WARNING: the kernel has no %s (neither built in nor a module): %s' % (m, what))
+    dtbs = plan['dtbs'] + ([plan['dtb_section']] if plan.get('dtb_section') else [])
+    models = [bootimg.dtb_model(d) for d in dtbs if d[:4] == bootimg.FDT]
+    log('  kernel %s (%s), boot image from %s; DTB: %s' % (kver, plan['kfmt'], plan['source'],
+                                                          '; '.join('%s %s' % (m, c[:2]) for m, c in models) or 'none'))
+    soc = None
+    for m, c in models:
+        for x in c:
+            if x.startswith('qcom,') and re.match(r'qcom,(sd|sm|sc|msm|apq)\w*\d', x):
+                soc = x.split(',')[1]
+    cmd, dropped = clean_cmdline(plan['cmdline'])
+    if args.cmdline_add:
+        cmd = (cmd + ' ' + args.cmdline_add).strip()
+    comp = initramfs_compression(nura)
+    android = args.android_device.split(',') if args.android_device and args.android_device != 'any' else \
+        ([] if args.android_device == 'any' else (row['android'] if row else [dev.split('-', 1)[-1]]))
+    conf = 'NAME="%s"\nCODENAME=%s\nKVER=%s\nVERSION=%s\n' % (nura.di.get('name', dev).replace('"', ''), dev, kver, VERSION)
+    if args.busybox:
+        bbdeb = args.busybox
+    elif args.debs and any(f.startswith('busybox-static_') for f in os.listdir(args.debs)):
+        bbdeb = os.path.join(args.debs, sorted(f for f in os.listdir(args.debs) if f.startswith('busybox-static_'))[-1])
+    else:
+        bbdeb, _ = debfetch.Archive(os.path.join(args.cache, 'debian'), suite=args.suite, log=log).fetch(
+            'busybox-static', os.path.join(tmpw, 'bb'))
+    if run(['dpkg-deb', '-f', bbdeb, 'Package', 'Architecture']).decode().split() != ['Package:', 'busybox-static', 'Architecture:', 'arm64']:
+        die('%s is not busybox-static for arm64' % bbdeb)
+    bx = os.path.join(tmpw, 'bbx'); run(['dpkg-deb', '-x', bbdeb, bx])
+    busybox = extract.read_nofollow(os.path.join(bx, 'usr/bin/busybox'))
+    log('building the initramfs (%s)' % comp)
+    skip, others = other_phones_files(nura, dev) if generic else (set(), [])
+    if others:
+        nura.notes.append('firmware of the other phones the image boots, left out: %s (%d files)' % (', '.join(others), len(skip)))
+    rd, rdinfo = initramfs(nura, kver, moddir, busybox, conf, comp, skip)
+    h = dict(plan['header'])
+    new = bootimg.build(h, plan['kernel'], rd, cmd.encode())
+    # read back: everything but the ramdisk and the command line is Nura's
+    nh = bootimg.parse(new)
+    for k in ('header_version', 'page_size', 'kernel_addr', 'ramdisk_addr', 'second_addr', 'tags_addr', 'os_version',
+              'kernel', 'second', 'recovery_dtbo', 'dtb', 'dtb_addr', 'name'):
+        if k in ('dtb', 'dtb_addr') and h['header_version'] < 2 or k == 'recovery_dtbo' and h['header_version'] < 1:
+            continue  # not in this header version
+        empty = b'' if k in ('kernel', 'second', 'recovery_dtbo', 'dtb') else 0
+        if k in h and (nh.get(k) or empty) != (h.get(k) or empty):
+            die('the new boot image differs from %s in %s' % ('Nura\'s' if nura.bootimg else 'the plan', k))
+    if nh['ramdisk'] != rd or nh['cmdline'] != cmd.encode():
+        die('the new boot image does not read back')
+    n, bad = check_modules(moddir, kver)
+    if bad:
+        die('%d of %d modules are not for %s: %s' % (len(bad), n, kver, bad[:5]))
+    log('  modules: %d, vermagic %s for all' % (n, kver))
+
+    # ---- the device layer
+    log('the device layer')
+    system = debver.PackageSet.from_list(args.system_packages)
+    sysfiles = {l.strip() for l in open(args.system_files, encoding='utf-8') if l.startswith('/')}
+    P = os.path.join(tmpw, 'pkg')
+    pl, nfw, mask, hexa, ucm_fork = build_payload(nura, args, P, kver, moddir, sysfiles, soc, skip, system)
+    host = dev.split('-', 1)[-1]
+    mi = nura.machine_info or 'PRETTY_HOSTNAME="%s"\nCHASSIS=handset\n' % nura.di.get('name', dev)
+    for path, body in (('usr/share/vibeos-device/hostname', host + '\n'), ('usr/share/vibeos-device/machine-info', mi),
+                       ('usr/share/vibeos-device/nura/deviceinfo', nura.deviceinfo_text),
+                       ('usr/share/vibeos-device/nura/cmdline', cmd + '\n')):
+        os.makedirs(os.path.dirname(os.path.join(P, path)), exist_ok=True)
+        open(os.path.join(P, path), 'w').write(body)
+    debsdir = os.path.join(tmpw, 'debs')
+    log('Debian packages for the first boot')
+    ok, ddropped, gaps, missing = debian_debs(nura, args, debsdir, system)
+    pkgname = 'vibeos-device-nura-%s' % dev
+    pver = '0.1.3+nura%s' % stamp.replace('-', '.')
+    desc = '%s (%s): Nura\'s kernel %s modules, %d firmware files, the device\'s settings' % (
+        nura.di.get('name', dev), dev, kver, nfw)
+    deb = os.path.join(debsdir, '%s_%s_arm64.deb' % (pkgname, pver))
+    log('  %s' % os.path.basename(deb))
+    write_deb(P, pkgname, pver, desc, kver, mask, [n for n, *_ in ok], deb, getattr(nura, 'enable_units', []))
+    # forbidden content, as build-device.sh refuses it
+    for rel, st in extract.walk(P):
+        if re.search('|'.join(['gsm2sip', 'waydroid'] + os.environ.get('FORBID_EXTRA', '').split()), rel, re.I):
+            die('forbidden file in the payload: %s' % rel)
+
+    # ---- the zip
+    name = 'vibeos-device-%s_%s' % (dev, stamp)
+    Z = os.path.join(tmpw, 'zip')
+    os.makedirs(os.path.join(Z, 'META-INF/com/google/android'))
+    ub = os.environ.get('UPDATE_BINARY') or os.path.join(HERE, '..', 'zip', 'update-binary')
+    if not os.path.isfile(ub):
+        die('no %s: image/get-update-binary.sh LINEAGEOS.zip makes it (or set UPDATE_BINARY)' % ub)
+    shutil.copy(ub, os.path.join(Z, 'META-INF/com/google/android/update-binary'))
+    open(os.path.join(Z, 'META-INF/com/google/android/updater-script'), 'w').write(
+        updater_script(nura.di.get('name', dev), ', '.join(android) or dev, android, args.boot_target))
+    shutil.copy(os.path.join(HERE, '..', 'zip', 'vibeos-lib.sh'), os.path.join(Z, 'vibeos-lib.sh'))
+    inst = open(os.path.join(HERE, 'zip/nura-install.sh')).read()
+    open(os.path.join(Z, 'install.sh'), 'w').write(inst)
+    os.makedirs(os.path.join(Z, 'debs'))
+    for f in os.listdir(debsdir):
+        shutil.copy(os.path.join(debsdir, f), os.path.join(Z, 'debs', f))
+    log('  payload.tar')
+    payload_tar([deb], os.path.join(tmpw, 'x'), os.path.join(Z, 'payload.tar'))
+    open(os.path.join(Z, 'boot.img'), 'wb').write(new)
+    with open(os.path.join(Z, 'nura-device.prop'), 'w') as f:
+        f.write('device=nura-%s\nname=%s\nkver=%s\nboot_target=%s\nheader=%d\nsource=%s\n' % (
+            dev, nura.di.get('name', dev), kver, args.boot_target, h['header_version'], url or 'local files'))
+        if plan.get('panel'):
+            f.write('panel=%s\n' % plan['panel'])
+    with open(os.path.join(Z, 'device-sums.txt'), 'w') as f:
+        for n_, p_ in (('payload', 'payload.tar'), ('bootimg', 'boot.img')):
+            f.write('%s %d %s\n' % (n_, os.path.getsize(os.path.join(Z, p_)), sha256f(os.path.join(Z, p_))))
+        for d in sorted(os.listdir(os.path.join(Z, 'debs'))):
+            f.write('deb %s %s\n' % (d, sha256f(os.path.join(Z, 'debs', d))))
+    for s in ('install.sh', 'vibeos-lib.sh'):
+        r = subprocess.run(['sh', '-n', os.path.join(Z, s)])
+        if r.returncode:
+            die('%s does not parse' % s)
+    zpath = os.path.join(out, name + '.zip')
+    if os.path.exists(zpath):
+        die('%s exists: move it aside first' % zpath)
+    make_zip(Z, zpath, ['META-INF', 'vibeos-lib.sh', 'install.sh', 'nura-device.prop', 'device-sums.txt',
+                        'payload.tar', 'debs', 'boot.img'])
+    bpath = os.path.join(out, name + '-boot.img')
+    open(bpath, 'wb').write(new)
+
+    # ---- the report
+    nmod = sum(1 for r, _, fs in os.walk(moddir) for f in fs if re.search(r'\.ko(\.\w+)?$', f))
+    R = []
+    R.append('VibeOS device zip from Nura: %s (%s)' % (nura.di.get('name', dev), dev))
+    R.append('made %s by nura-to-vibeos %s in %d s' % (time.strftime('%Y-%m-%d %H:%M'), VERSION, time.time() - t0))
+    R.append('')
+    R.append('inputs: %s' % (url or 'local files'))
+    for n_, s_ in inputs:
+        R.append('  %s  sha256 %s' % (n_, s_))
+    R.append('')
+    R.append('zip: %s  %d MiB  sha256 %s' % (os.path.basename(zpath), os.path.getsize(zpath) >> 20, sha256f(zpath)))
+    R.append('boot image: %s  sha256 %s' % (os.path.basename(bpath), sha256f(bpath)))
+    R.append('  from: %s' % plan['source'])
+    R.append('  header v%d, page %d, kernel 0x%x, ramdisk 0x%x, second 0x%x, tags 0x%x%s, os_version 0x%x' % (
+        h['header_version'], h['page_size'], h['kernel_addr'], h['ramdisk_addr'], h['second_addr'], h['tags_addr'],
+        (', dtb 0x%x' % h['dtb_addr']) if h['header_version'] >= 2 else '', h.get('os_version', 0)))
+    R.append('  kernel: %s, %d bytes, %s; DTB: %s' % (plan['kfmt'], len(plan['kernel']), kver,
+             ('%d appended' % len(plan['dtbs'])) if plan['dtbs'] else ('the dtb section' if plan.get('dtb_section') else 'none')))
+    for m, c in models:
+        R.append('    DTB model "%s", compatible %s' % (m, ' '.join(c)))
+    R.append('  kernel and DTB byte for byte Nura\'s: %s' % ('yes (read back)' if nura.bootimg else 'kernel from vmlinuz, DTB from dtbs/'))
+    R.append('  cmdline: %s' % cmd)
+    R.append('  dropped (pmOS): %s' % (' '.join(dropped) or '-'))
+    R.append('  initramfs: VibeOS\'s, %s, %d KiB (%d KiB unpacked): busybox-static %s, %d modules, %d firmware files; early: %s' % (
+        rdinfo['compression'], rdinfo['size'] >> 10, rdinfo['raw_size'] >> 10, os.path.basename(bbdeb),
+        len(rdinfo['modules']), len(rdinfo['firmware']), ' '.join(rdinfo['early_load']) or '-'))
+    R.append('  boot target in the zip: %s' % args.boot_target)
+    if plan.get('panel'):
+        R.append('  panel: %s (the zip refuses a phone whose bootloader names another panel)' % plan['panel'])
+    R.append('')
+    R.append('kernel modules: %d (vermagic %s, all checked)' % (nmod, kver))
+    R.append('firmware files: %d (postmarketos/ moved to the kernel\'s updates/)' % nfw)
+    R.append('device package: %s %s' % (pkgname, pver))
+    R.append('Debian packages for the first boot: %s' % (', '.join('%s %s' % (n_, v_) for n_, v_, *_ in ok) or '-'))
+    for n_, miss in ddropped:
+        R.append('  LEFT OUT %s: dependencies not in the system image: %s' % (n_, ', '.join(miss)))
+    for n_ in missing:
+        R.append('  NOT FOUND in Debian: %s' % n_)
+    R.append('')
+    R.append('carried over (%d):' % len(pl.carried))
+    groups = {}
+    for rel, why in pl.carried:
+        if rel.startswith('usr/lib/firmware/'):
+            continue
+        groups.setdefault(why, []).append(rel)
+    for why, rels in sorted(groups.items()):
+        R.append('  %s: %s' % (why, ', '.join(rels)))
+    if hexa:
+        R.append('  hexagonrpcd: %s' % ' '.join('%s=%s' % kv for kv in sorted(hexa.items())))
+    R.append('the system image has these already (kept the system\'s; Nura\'s copy in /usr/share/vibeos-device/nura/system-has):')
+    for rel, why in pl.kept_system:
+        R.append('  /%s (%s)' % (rel, why))
+    fork, sys_ucm = ucm_fork
+    if fork and sys_ucm:
+        R.append('  UCM: the system\'s alsa-ucm-conf has this phone (%s): none of %s carried, not to mix the two' % (
+            ' '.join(sys_ucm), ', '.join(fork)))
+    elif fork:
+        R.append('  (UCM: only the %s parts of %s were looked at)' % (', '.join(sorted({w for w in re.split(r'[-_ ]', dev) if len(w) > 2} | ({soc} if soc else set()))), ', '.join(fork)))
+    R.append('not carried over:')
+    for n_, t_ in gaps:
+        R.append('  %s: %s' % (n_, t_))
+    for rel, pkg in pl.not_carried:
+        R.append('  /%s (%s)' % (rel, pkg))
+    for n_ in sorted(nura.pkgs):
+        if n_.endswith('-systemd') and (n_.startswith('device-' + nura.codename) or n_.startswith('soc-')):
+            pass
+    R.extend('note: ' + x for x in nura.notes)
+    rep = os.path.join(out, name + '.txt')
+    open(rep, 'w').write('\n'.join(R) + '\n')
+    log('\n'.join(R[:20]))
+    log('report: %s' % rep)
+    if not args.keep:
+        shutil.rmtree(tmpw)
+    else:
+        log('work directory kept: %s' % tmpw)
+
+
+if __name__ == '__main__':
+    main()

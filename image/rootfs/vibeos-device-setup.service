@@ -1,0 +1,13 @@
+[Unit]
+Description=VibeOS: register the device package with dpkg (first boot after a device zip, before GDM)
+ConditionDirectoryNotEmpty=/var/lib/vibeos/device/debs
+After=local-fs.target vibeos-growroot.service
+Before=display-manager.service gdm.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/vibeos-device-setup
+TimeoutStartSec=15min
+
+[Install]
+WantedBy=multi-user.target

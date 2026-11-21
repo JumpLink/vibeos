@@ -217,6 +217,13 @@ dpkg-buildpackage -b -uc -us
 Each part (`libvibeos`, `libspongy`, `extension`, `session`, `vibeos-launcher`, `migrate-ids`, `apps/*`) is its own
 meson project, and `debian/rules` builds them in order.
 
+## Installer images
+
+The installer images on [vibeos.top/releases](https://vibeos.top/releases) (one system zip for every phone, and a
+device zip for each phone, both installed from LineageOS's recovery) are made with the tools in
+[`image/`](image/README.md). [`image/nura/`](image/nura/README.md) makes a device zip for a phone that
+[Nura](https://nura.eco) (postmarketOS) has a build for, whichever flavour it runs.
+
 ## License
 
 VibeOS's own code is under the [MIT license](LICENSE). Icons, images and the world-clock table converted from AOSP

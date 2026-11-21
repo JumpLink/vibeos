@@ -1,0 +1,23 @@
+# Nura device -> what the converter cannot read from the image itself.
+#   nura      the Nura/postmarketOS device (deviceinfo_codename), or for a generic SoC image
+#             (qcom-sm7150) the phone the zip is for (--device)
+#   android   the LineageOS names the zip's assert accepts (ro.product.device / ro.build.product)
+#   dtb       generic images only: the DTB (under the image's dtbs/) of this phone; a glob
+#   layout    generic images only: the Android boot image header the phone's ABL boots, as
+#             hv:PAGE:KERNEL:RAMDISK:SECOND:TAGS:DTB (header version, page size, load addresses),
+#             when the image's deviceinfo has none
+#   panels    phones sold with different panels, one DTB each: the words that tell them apart, in the
+#             DTB's name and in msm_drm.dsi_display0= on the bootloader's command line (--panel)
+# nura               android                          dtb                                   layout                                       panels
+oneplus-fajita       fajita,OnePlus6T,OnePlus6TSingle -                                     -                                            -
+oneplus-enchilada    enchilada,OnePlus6               -                                     -                                            -
+google-sargo         sargo                            -                                     -                                            -
+google-bonito        bonito                           -                                     -                                            -
+xiaomi-nabu          nabu                             -                                     -                                            -
+xiaomi-beryllium     beryllium                        -                                     -                                            -
+# The POCO X3 NFC from the generic qcom-sm7150 image (booted by U-Boot and systemd-boot there, so it has no boot.img
+# and no flash offsets). Header v0, page 4096, the DTB appended to the gzipped kernel: the form this phone's ABL
+# already boots with a mainline surya DTB (sm7150-mainline's U-Boot image, our POCO since 10-12). LineageOS
+# 22.2's recovery-20261102.img is v2 (os_version 0x1e0001aa, DTB at 0x1f00000, recovery_dtbo): --header 2 gives that
+# form, with the mainline DTB in the dtb section and no recovery_dtbo.
+xiaomi-surya         surya,karna                      qcom/sm7150-xiaomi-surya*.dtb          0:4096:0x8000:0x1000000:0x0:0x100:0x1f00000  huaxing,tianma

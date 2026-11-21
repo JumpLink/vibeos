@@ -1,0 +1,197 @@
+#!/bin/busybox sh
+# /init of the VibeOS initramfs that nura-to-vibeos puts beside a Nura (postmarketOS) kernel. It finds the VibeOS
+# root where the VibeOS system zip wrote it, mounts it read-only (systemd checks it and remounts it read-write, as
+# the fstab says) and starts its systemd. Nothing else: no splash, no unlock, no resizing (vibeos-growroot grows
+# the root on the first boot).
+#
+# Where the root is, in the order the device zip's find_root looks:
+#   1. a partition named linux or vibeos: carrying a GPT of its own (the POCO's layout), the Linux root entry of
+#      that GPT; else the partition itself (ext4, label vibeos)
+#   2. Android's data (the partition named userdata, ext4): /lost+found/vibeos/rootfs.img, through a loop device
+#   3. any ext4 labelled vibeos
+# vibeos.root=part:NAME | nested:NAME | image:PATH-IN-USERDATA | label:LABEL on the command line picks one.
+# vibeos.debug=1: the USB network and a telnet shell first (172.16.42.1), boot continues after 2 minutes or
+# "touch /run/vibeos/continue". With no root: the reason on the screen and in the kernel log, the same USB shell.
+# The log: /run/vibeos/initramfs.log (kept in the booted system's /run).
+
+/bin/busybox mkdir -p /proc /sys /dev /run /tmp /newroot /sbin /usr/bin /usr/sbin
+/bin/busybox --install -s /bin
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin
+
+mount -t proc -o nosuid,nodev,noexec proc /proc
+mount -t sysfs -o nosuid,nodev,noexec sysfs /sys
+mount -t devtmpfs -o mode=0755,nosuid devtmpfs /dev 2>/dev/null
+mkdir -p /dev/pts && mount -t devpts devpts /dev/pts
+mount -t tmpfs -o mode=0755,nosuid,nodev tmpfs /run
+mkdir -p /run/vibeos
+
+. /etc/vibeos-initramfs.conf
+LOG=/run/vibeos/initramfs.log
+QUIET=
+log() {
+	[ -z "$QUIET" ] || return 0
+	echo "vibeos-initramfs: $*" > /dev/kmsg 2>/dev/null
+	echo "VibeOS: $*" > /dev/tty0 2>/dev/null
+	echo "$(cut -d' ' -f1 /proc/uptime) $*" >> $LOG
+}
+log "kernel $(uname -r) on $NAME ($CODENAME), initramfs of nura-to-vibeos $VERSION"
+[ "$(uname -r)" = "$KVER" ] || log "WARNING: this initramfs was made for kernel $KVER"
+
+# the root's choice, the debug switch
+WANT= DEBUG=
+for x in $(cat /proc/cmdline); do
+	case $x in
+	vibeos.root=*) WANT=${x#vibeos.root=} ;;
+	vibeos.debug=1) DEBUG=1 ;;
+	esac
+done
+
+# modules: each device's alias as it appears (mdev as the kernel's hotplug helper, pmOS's way), then the ones
+# postmarketOS loads early on this device (initramfs.load)
+echo /bin/mdev > /proc/sys/kernel/hotplug
+mdev -s
+for m in $(cat /lib/modules/initramfs.load 2>/dev/null); do modprobe -q -b "$m" || log "no module $m"; done
+coldplug() { find /sys/devices -name modalias -exec cat {} + 2>/dev/null | sort -u | xargs -r modprobe -a -q -b 2>/dev/null; }
+coldplug
+
+# ---- the USB network for a shell (pmOS's address: 172.16.42.1, the PC gets 172.16.42.2 by DHCP)
+USBNET=
+usb_net() {
+	[ -z "$USBNET" ] || return 0
+	USBNET=1
+	for m in libcomposite usb_f_ncm usb_f_rndis usb_f_acm; do modprobe -q $m; done
+	mount -t configfs configfs /sys/kernel/config 2>/dev/null
+	G=/sys/kernel/config/usb_gadget/vibeos
+	mkdir -p $G/strings/0x409 $G/configs/c.1/strings/0x409 || { log "no USB gadget (configfs)"; return 1; }
+	echo 0x18d1 > $G/idVendor; echo 0xd001 > $G/idProduct
+	echo VibeOS > $G/strings/0x409/manufacturer
+	echo "VibeOS initramfs ($CODENAME)" > $G/strings/0x409/product
+	echo vibeos > $G/strings/0x409/serialnumber
+	echo "NCM+RNDIS" > $G/configs/c.1/strings/0x409/configuration
+	for f in ncm.usb0 rndis.usb0; do
+		mkdir -p $G/functions/$f 2>/dev/null && ln -s $G/functions/$f $G/configs/c.1/ 2>/dev/null
+	done
+	i=0; while [ -z "$(ls /sys/class/udc 2>/dev/null)" ] && [ $i -lt 20 ]; do sleep 1; i=$((i + 1)); done
+	UDC=$(ls /sys/class/udc 2>/dev/null | head -n1)
+	[ -n "$UDC" ] || { log "no USB device controller"; return 1; }
+	echo $UDC > $G/UDC || { log "USB gadget: cannot bind $UDC"; return 1; }
+	sleep 1
+	for n in usb0 usb1; do ip link set $n up 2>/dev/null && ip addr add 172.16.42.1/16 dev $n 2>/dev/null && break; done
+	printf 'start 172.16.42.2\nend 172.16.42.2\ninterface %s\noption subnet 255.255.0.0\nlease_file /run/vibeos/udhcpd.leases\n' $n > /run/vibeos/udhcpd.conf
+	: > /run/vibeos/udhcpd.leases
+	udhcpd /run/vibeos/udhcpd.conf
+	telnetd -b 172.16.42.1 -l /bin/sh
+	log "USB network up: telnet 172.16.42.1"
+}
+fail() {
+	log "$*"
+	log "no VibeOS root: nothing was started. USB shell: telnet 172.16.42.1. Hold Power to restart."
+	usb_net
+	while :; do sleep 3600; done
+}
+
+if [ -n "$DEBUG" ]; then
+	usb_net
+	log "vibeos.debug=1: boot continues in 2 minutes, or: touch /run/vibeos/continue"
+	i=0; while [ ! -e /run/vibeos/continue ] && [ $i -lt 120 ]; do sleep 1; i=$((i + 1)); done
+fi
+
+# ---- finding the root
+partname() { sed -n 's/^PARTNAME=//p' /sys/class/block/$1/uevent 2>/dev/null; }
+bypart() {	# the block device of the partition named $1
+	for b in /sys/class/block/*; do
+		[ -e $b/partition ] || continue
+		[ "$(partname ${b##*/})" = "$1" ] && { echo /dev/${b##*/}; return 0; }
+	done
+	return 1
+}
+u32() { set -- $(od -An -tu4 -j "$2" -N 4 "$1" 2>/dev/null); echo "${1:-}"; }
+ext4label() {	# the label of the ext4 at $1 (offset $2 bytes), or failure
+	dd if=$1 of=/tmp/sb bs=1024 skip=$(( ${2:-0} / 1024 + 1 )) count=1 2>/dev/null
+	[ "$(od -An -tx1 -j 56 -N 2 /tmp/sb | tr -d ' \n')" = 53ef ] || return 1
+	dd if=/tmp/sb bs=1 skip=120 count=16 2>/dev/null | tr -d '\000'
+}
+nested() {	# "OFFSET SIZE" (bytes) of the Linux root entry in the GPT the partition $1 itself carries
+	for ss in 4096 512; do
+		[ "$(dd if="$1" bs=$ss skip=1 count=1 2>/dev/null | head -c 8)" = "EFI PART" ] || continue
+		dd if="$1" bs=$ss skip=1 count=1 of=/tmp/gpt-hdr 2>/dev/null
+		lba=$(u32 /tmp/gpt-hdr 72); n=$(u32 /tmp/gpt-hdr 80); esz=$(u32 /tmp/gpt-hdr 84)
+		[ -n "$lba" ] && [ "$n" -gt 0 ] && [ "$n" -le 256 ] && [ "$esz" -ge 128 ] || return 1
+		dd if="$1" bs=$ss skip=$lba count=$(((n * esz + ss - 1) / ss)) of=/tmp/gpt-ent 2>/dev/null
+		i=0
+		while [ $i -lt $n ]; do
+			o=$((i * esz))
+			case $(od -An -tx1 -j $o -N 16 /tmp/gpt-ent | tr -d ' \n') in
+			45b021b9f01dc341af444c6f280d3fae|af3dc60f838472478e793d69d8477de4)
+				f=$(u32 /tmp/gpt-ent $((o + 32))); l=$(u32 /tmp/gpt-ent $((o + 40)))
+				echo "$((f * ss)) $(((l - f + 1) * ss))"; return 0 ;;
+			esac
+			i=$((i + 1))
+		done
+		return 1
+	done
+	return 1
+}
+ROOT= ROOTKIND=
+try_part() {	# a partition named $1: nested, or the root itself
+	d=$(bypart $1) || return 1
+	if set -- $(nested $d) && [ $# = 2 ]; then
+		[ "$(ext4label $d $1)" = vibeos ] || log "partition $d carries a GPT, its root entry has no ext4 labelled vibeos"
+		ROOT=$(vibeos-loop $d $1 $2) || { log "cannot map the root inside $d"; return 1; }
+		ROOTKIND="nested: the root inside $d (byte $1, $2 bytes)"; return 0
+	fi
+	l=$(ext4label $d) || { log "partition $d: no ext4"; return 1; }
+	[ "$l" = vibeos ] || log "partition $d: ext4 labelled '$l', not vibeos"
+	ROOT=$d ROOTKIND="partition $d"; return 0
+}
+try_image() {	# Android's data, the file $1 in it
+	d=$(bypart userdata) || return 1
+	ext4label $d > /dev/null || return 1
+	mkdir -p /run/vibeos/userdata
+	grep -q ' /run/vibeos/userdata ' /proc/mounts || mount -t ext4 -o rw,noatime,nosuid,nodev $d /run/vibeos/userdata 2>> $LOG || { log "cannot mount $d (userdata)"; return 1; }
+	f=/run/vibeos/userdata/${1#/}
+	[ -s $f ] || { umount /run/vibeos/userdata; return 1; }
+	ROOT=$(vibeos-loop $f 0 0) || { log "cannot map $f"; return 1; }
+	ROOTKIND="image file $1 in $d"; return 0
+}
+try_label() {
+	d=$(findfs LABEL=$1 2>/dev/null) || return 1
+	ROOT=$d ROOTKIND="$d (label $1)"; return 0
+}
+find_root() {
+	case $WANT in
+	part:*|nested:*) try_part ${WANT#*:}; return ;;
+	image:*) try_image ${WANT#image:}; return ;;
+	label:*) try_label ${WANT#label:}; return ;;
+	''|auto) ;;
+	*) log "vibeos.root=$WANT: not understood, looking everywhere" ;;
+	esac
+	try_part linux || try_part vibeos || try_image /lost+found/vibeos/rootfs.img || try_label vibeos
+}
+# up to 60 s of the clock (storage drivers may still be probing): the search's reasons are logged on its first pass
+up() { cut -d. -f1 /proc/uptime; }
+T0=$(up) i=0
+until find_root; do
+	[ $i = 0 ] && log "no root yet: waiting for the storage (up to 60 s)"
+	i=$((i + 1))
+	[ $(($(up) - T0)) -lt 60 ] || { QUIET=; fail "no root after 60 s (partitions: $(for b in /sys/class/block/*; do [ -e $b/partition ] && printf '%s ' "$(partname ${b##*/})"; done))"; }
+	QUIET=1
+	sleep 1
+	coldplug
+done
+QUIET=
+log "root: $ROOTKIND"
+mount -t ext4 -o ro,noatime $ROOT /newroot 2>> $LOG || fail "cannot mount $ROOT ($ROOTKIND)"
+[ -s /newroot/etc/vibeos/system-image ] || log "WARNING: $ROOT is not a VibeOS system (no /etc/vibeos/system-image)"
+INIT=/sbin/init
+[ -e /newroot$INIT ] || [ -L /newroot$INIT ] || INIT=/lib/systemd/systemd
+[ -e /newroot$INIT ] || [ -L /newroot$INIT ] || { umount /newroot; fail "$ROOTKIND has no /sbin/init"; }
+
+# hand over: the hotplug helper off (udev takes over), the shell stopped, the mounts moved into the root
+echo > /proc/sys/kernel/hotplug
+killall telnetd udhcpd mdev 2>/dev/null
+log "starting $INIT"
+for m in /dev /proc /sys /run; do mount --move $m /newroot$m 2>/dev/null || mount -o bind $m /newroot$m; done
+exec switch_root /newroot $INIT
+echo "switch_root failed" > /dev/kmsg
+while :; do sleep 3600; done
