@@ -399,6 +399,9 @@ field_new (const char *hint, const char *text, gboolean multiline, GtkInputPurpo
     }
   gtk_widget_set_vexpand (input, TRUE);
   gtk_box_append (GTK_BOX (field), input);
+  /* the input fills the field, but the field takes none of the page's spare height: on a tablet held upright the page
+   * is taller than the form, and every field grew to share it */
+  gtk_widget_set_vexpand (field, FALSE);
   {
     GtkEventController *touch = gtk_event_controller_legacy_new ();
 
