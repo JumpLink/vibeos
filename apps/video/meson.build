@@ -9,3 +9,5 @@ deps = [dependency('gtk4', version: '>= 4.14'), dependency('vibeos-1'), dependen
 executable('vibeos-video', 'main.c', dependencies: deps, install: true)
 install_data('data/vibeos.Video.desktop', install_dir: get_option('datadir') / 'applications')
 install_data('data/vibeos.Video.svg', install_dir: get_option('datadir') / 'icons/hicolor/scalable/apps')
+# the default app for videos (read before Debian's /usr/share/applications/gnome-mimeapps.list)
+install_data('data/mimeapps.list', install_dir: get_option('sysconfdir') / 'xdg')

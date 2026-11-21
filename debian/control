@@ -10,6 +10,8 @@ Build-Depends: debhelper-compat (= 13),
                gir1.2-glib-2.0-dev,
                libglib2.0-dev (>= 2.76),
                libgtk-4-dev (>= 4.14),
+               libmpv-dev,
+               libepoxy-dev,
                gir1.2-gtk-4.0-dev,
                libvulkan-dev,
                libegl-dev,
@@ -782,3 +784,17 @@ Description: transitional package for vibeos-weather
  neo-weather is vibeos-weather now. This empty package takes the old one's
  place in an upgrade from gnome-phone, so that the app keeps its place on the
  home screen; it can be removed afterwards.
+
+Package: vibeos-video
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+Recommends: gvfs-fuse,
+Description: video player for VibeOS
+ VibeOS Video Player plays videos with mpv (libmpv, drawn through its OpenGL
+ renderer) under an Android player's controls: back and the title at the top,
+ skip back, play/pause and skip forward in the middle, the time and a seek bar
+ at the bottom. A tap shows or hides them, a double tap on either side skips
+ 10 seconds, and where a film was left is remembered. Files on a share play
+ through GVfs's FUSE path, the share mounted on demand. It is the default
+ application for videos.
