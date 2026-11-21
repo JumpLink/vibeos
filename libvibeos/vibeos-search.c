@@ -26,7 +26,7 @@ struct _VibeosSearchBar {
   GtkWidget *target;           /* the pill's tap target, with the ripple */
   GtkWidget *hint, *end;
   GdkRGBA    fill;
-  gboolean   has_fill;
+  gboolean   has_fill, outlined;
   int        height, side, icon_x, text_x;
 };
 
@@ -101,9 +101,17 @@ vibeos_search_bar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 
   gsk_rounded_rect_init_from_rect (&round, &pill, self->height / 2.0);
   gtk_snapshot_push_rounded_clip (snapshot, &round);
-  gtk_snapshot_append_color (snapshot, &fill, &pill);
+  if (self->has_fill || !self->outlined)
+    gtk_snapshot_append_color (snapshot, &fill, &pill);
   gtk_widget_snapshot_child (widget, self->target, snapshot);
   gtk_snapshot_pop (snapshot);
+  if (self->outlined)
+    {
+      GdkRGBA line = vibeos_color (VIBEOS_OUTLINE_VARIANT);
+
+      gtk_snapshot_append_border (snapshot, &round, (float[4]) { 1, 1, 1, 1 },
+                                  (GdkRGBA[4]) { line, line, line, line });
+    }
   vibeos_snapshot_icon (snapshot, widget, "system-search-symbolic", pill.origin.x + self->icon_x,
                         (self->height - ICON) / 2.0, ICON, &icon);
   gtk_widget_snapshot_child (widget, self->hint, snapshot);
@@ -141,6 +149,13 @@ vibeos_search_bar_set_fill (VibeosSearchBar *self, const GdkRGBA *fill)
   self->has_fill = fill != NULL;
   if (fill)
     self->fill = *fill;
+  gtk_widget_queue_draw (GTK_WIDGET (self));
+}
+
+void
+vibeos_search_bar_set_outlined (VibeosSearchBar *self, gboolean outlined)
+{
+  self->outlined = outlined;
   gtk_widget_queue_draw (GTK_WIDGET (self));
 }
 

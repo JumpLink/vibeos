@@ -24,6 +24,9 @@ void       vibeos_search_bar_set_hint     (VibeosSearchBar *self, const char *hi
 void       vibeos_search_bar_set_geometry (VibeosSearchBar *self, int height, int side, int icon_x, int text_x);
 /* the pill's colour (NULL: the default container colour) */
 void       vibeos_search_bar_set_fill     (VibeosSearchBar *self, const GdkRGBA *fill);
+/* an outlined pill, as Android 17's Settings has: a 1 px line of the outline-variant colour round what is behind it
+ * (a fill set with set_fill still shows inside) */
+void       vibeos_search_bar_set_outlined (VibeosSearchBar *self, gboolean outlined);
 /* a widget at the pill's end, or NULL */
 void       vibeos_search_bar_set_end      (VibeosSearchBar *self, GtkWidget *end);
 
