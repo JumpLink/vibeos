@@ -1,12 +1,15 @@
 /* vibeos-video: the video player. mpv plays the video (libmpv: its demuxers, decoders and seeking, which play every
  * file the owner tried, over a Samba share too, and skip anywhere at once), drawn by its OpenGL renderer into a
- * GtkGLArea; the controls over it are an Android player's: a back arrow and the title at the top, replay 10 s,
+ * GtkGLArea; the controls over it are an Android player's: a back arrow, the title and ⋮ at the top, replay 10 s,
  * play/pause and forward 10 s in the middle, the time, the seek bar and the length at the bottom. A tap shows or hides
  * them (they hide by themselves after a few seconds of playing); a double tap on the left or right third skips 10 s.
  *
  * A file opened from a share (smb://…) is played from GVfs's FUSE path to it: mpv's FFmpeg cannot open smb:// itself.
  * Where a film was left is remembered (mpv's watch-later files, in the user's state directory), and it carries on
- * from there the next time. */
+ * from there the next time.
+ *
+ * ⋮ opens the menu: Audio track and Subtitles (when the film has any) open a sheet listing the film's tracks (mpv's
+ * track-list), the one playing ticked; About is VibeOS's About sheet. */
 #include <epoxy/egl.h>
 #include <epoxy/gl.h>
 #include <gtk/gtk.h>
@@ -14,6 +17,7 @@
 #include <math.h>
 #include <mpv/client.h>
 #include <mpv/render_gl.h>
+#include <spongy-gtk.h>
 #include <vibeos.h>
 
 #define APP_ID "vibeos.Video"
@@ -24,11 +28,11 @@
 #define SIDE_BUTTON_DP 56
 #define TOP_BUTTON_DP 48
 
-typedef enum { ICON_BACK, ICON_PLAY, ICON_PAUSE, ICON_REPLAY, ICON_FORWARD } Icon;
+typedef enum { ICON_BACK, ICON_PLAY, ICON_PAUSE, ICON_REPLAY, ICON_FORWARD, ICON_MORE } Icon;
 
 typedef struct {
   GtkApplication *app;
-  GtkWidget *win, *area, *controls, *title, *play, *position, *length, *seek, *spinner, *message;
+  GtkWidget *win, *area, *controls, *title, *more, *play, *position, *length, *seek, *spinner, *message;
   mpv_handle *mpv;
   mpv_render_context *render;
   gboolean paused, buffering, ended, have_file, dragging, setting_seek, named;
@@ -46,7 +50,7 @@ draw_icon (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
   Icon icon = GPOINTER_TO_INT (data);
   Player *p = g_object_get_data (G_OBJECT (area), "player");
   double s = MIN (w, h), cx = w / 2.0, cy = h / 2.0;
-  gboolean round = icon != ICON_BACK;
+  gboolean round = icon != ICON_BACK && icon != ICON_MORE;
 
   if (icon == ICON_PLAY && p && p->have_file && !p->paused && !p->ended)
     icon = ICON_PAUSE;
@@ -66,6 +70,14 @@ draw_icon (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
     cairo_move_to (cr, 20, 11); cairo_line_to (cr, 7.83, 11); cairo_line_to (cr, 13.42, 5.41);
     cairo_line_to (cr, 12, 4); cairo_line_to (cr, 4, 12); cairo_line_to (cr, 12, 20); cairo_line_to (cr, 13.41, 18.59);
     cairo_line_to (cr, 7.83, 13); cairo_line_to (cr, 20, 13); cairo_close_path (cr);
+    cairo_fill (cr);
+    break;
+  case ICON_MORE:
+    /* Material's more_vert: three dots in a column */
+    for (int i = 0; i < 3; i++) {
+      cairo_new_sub_path (cr);
+      cairo_arc (cr, 12, 6 + 6 * i, 2, 0, 2 * G_PI);
+    }
     cairo_fill (cr);
     break;
   case ICON_PLAY:
@@ -474,6 +486,241 @@ go_back (Player *p)
   gtk_window_close (GTK_WINDOW (p->win));
 }
 
+/* ---- the ⋮ menu: the audio track, the subtitles, About ---- */
+
+static const VibeosAboutSection video_legal[] = {
+  { "mpv", "Videos are played by <a href=\"https://mpv.io/\">mpv</a> (libmpv), under the GNU GPL 2.0 or later." },
+  { "FFmpeg", "<a href=\"https://ffmpeg.org/\">FFmpeg</a> reads and decodes them, under the GNU LGPL 2.1 or later "
+              "(the GPL 2.0 or later as Debian builds it)." },
+  { NULL }
+};
+
+static const VibeosAboutInfo video_about = { .name = "Video Player", .icon_name = APP_ID, .legal = video_legal };
+
+/* the languages films name their tracks in most (ISO 639-2 and -1 codes), by their English names */
+static const char *const languages[][2] = {
+  { "eng", "English" }, { "en", "English" }, { "deu", "German" }, { "ger", "German" }, { "de", "German" },
+  { "fra", "French" }, { "fre", "French" }, { "fr", "French" }, { "spa", "Spanish" }, { "es", "Spanish" },
+  { "ita", "Italian" }, { "it", "Italian" }, { "rus", "Russian" }, { "ru", "Russian" }, { "ukr", "Ukrainian" },
+  { "uk", "Ukrainian" }, { "por", "Portuguese" }, { "pt", "Portuguese" }, { "nld", "Dutch" }, { "dut", "Dutch" },
+  { "nl", "Dutch" }, { "pol", "Polish" }, { "pl", "Polish" }, { "ces", "Czech" }, { "cze", "Czech" },
+  { "cs", "Czech" }, { "swe", "Swedish" }, { "sv", "Swedish" }, { "nor", "Norwegian" }, { "nob", "Norwegian" },
+  { "no", "Norwegian" }, { "dan", "Danish" }, { "da", "Danish" }, { "fin", "Finnish" }, { "fi", "Finnish" },
+  { "hun", "Hungarian" }, { "hu", "Hungarian" }, { "ell", "Greek" }, { "gre", "Greek" }, { "el", "Greek" },
+  { "tur", "Turkish" }, { "tr", "Turkish" }, { "heb", "Hebrew" }, { "he", "Hebrew" }, { "ara", "Arabic" },
+  { "ar", "Arabic" }, { "hin", "Hindi" }, { "hi", "Hindi" }, { "jpn", "Japanese" }, { "ja", "Japanese" },
+  { "kor", "Korean" }, { "ko", "Korean" }, { "zho", "Chinese" }, { "chi", "Chinese" }, { "zh", "Chinese" },
+  { "ron", "Romanian" }, { "rum", "Romanian" }, { "ro", "Romanian" }, { "bul", "Bulgarian" }, { "bg", "Bulgarian" },
+  { "hrv", "Croatian" }, { "hr", "Croatian" }, { "srp", "Serbian" }, { "sr", "Serbian" }, { "tha", "Thai" },
+  { "vie", "Vietnamese" }, { "ind", "Indonesian" }, { "und", NULL },
+};
+
+static const char *
+language_name (const char *code)
+{
+  for (guint i = 0; code && i < G_N_ELEMENTS (languages); i++)
+    if (!g_ascii_strcasecmp (code, languages[i][0]))
+      return languages[i][1];
+  return code && *code ? code : NULL;
+}
+
+typedef struct {
+  gint64 id;
+  char *name, *details;
+  gboolean selected;
+} Track;
+
+static void
+track_clear (gpointer data)
+{
+  Track *t = data;
+  g_free (t->name);
+  g_free (t->details);
+}
+
+static const mpv_node *
+node_get (const mpv_node *map, const char *key)
+{
+  if (map->format != MPV_FORMAT_NODE_MAP)
+    return NULL;
+  for (int i = 0; i < map->u.list->num; i++)
+    if (g_str_equal (map->u.list->keys[i], key))
+      return &map->u.list->values[i];
+  return NULL;
+}
+
+static const char *
+node_string (const mpv_node *map, const char *key)
+{
+  const mpv_node *n = node_get (map, key);
+  return n && n->format == MPV_FORMAT_STRING ? n->u.string : NULL;
+}
+
+static gint64
+node_int (const mpv_node *map, const char *key)
+{
+  const mpv_node *n = node_get (map, key);
+  return n && n->format == MPV_FORMAT_INT64 ? n->u.int64 : 0;
+}
+
+static gboolean
+node_flag (const mpv_node *map, const char *key)
+{
+  const mpv_node *n = node_get (map, key);
+  return n && n->format == MPV_FORMAT_FLAG && n->u.flag;
+}
+
+/* mpv's codec name as players show it: the usual name of the common subtitle and sound formats, else in capitals */
+static char *
+codec_label (const char *codec)
+{
+  static const struct { const char *mpv, *label; } names[] = {
+    { "subrip", "SRT" }, { "webvtt", "WebVTT" }, { "hdmv_pgs_subtitle", "PGS" }, { "dvd_subtitle", "VobSub" },
+    { "dvb_subtitle", "DVB" }, { "mov_text", "Timed text" }, { "eac3", "E-AC-3" }, { "ac3", "AC-3" },
+    { "truehd", "TrueHD" }, { "vorbis", "Vorbis" }, { "opus", "Opus" },
+  };
+  for (guint i = 0; i < G_N_ELEMENTS (names); i++)
+    if (!g_strcmp0 (codec, names[i].mpv))
+      return g_strdup (names[i].label);
+  return g_ascii_strup (codec, -1);
+}
+
+/* The film's tracks of `type` ("audio", "sub"), as the sheet lists them: the track's own title, else its language,
+ * else "Track n"; under it the language (when the title is the name), the codec and, for sound, the channels */
+static GArray *
+tracks_of (Player *p, const char *type)
+{
+  GArray *tracks = g_array_new (FALSE, TRUE, sizeof (Track));
+  g_array_set_clear_func (tracks, track_clear);
+  mpv_node list;
+  if (!p->mpv || mpv_get_property (p->mpv, "track-list", MPV_FORMAT_NODE, &list) < 0)
+    return tracks;
+  if (list.format == MPV_FORMAT_NODE_ARRAY) {
+    for (int i = 0; i < list.u.list->num; i++) {
+      const mpv_node *t = &list.u.list->values[i];
+      if (g_strcmp0 (node_string (t, "type"), type))
+        continue;
+      const char *title = node_string (t, "title"), *lang = language_name (node_string (t, "lang"));
+      const char *codec = node_string (t, "codec");
+      gint64 channels = node_int (t, "demux-channel-count");
+      GPtrArray *parts = g_ptr_array_new_with_free_func (g_free);
+      Track track = { .id = node_int (t, "id"), .selected = node_flag (t, "selected") };
+      if (title && *title) {
+        track.name = g_strdup (title);
+        if (lang)
+          g_ptr_array_add (parts, g_strdup (lang));
+      } else if (lang) {
+        track.name = g_strdup (lang);
+      } else {
+        track.name = g_strdup_printf ("Track %u", tracks->len + 1);
+      }
+      if (codec && *codec)
+        g_ptr_array_add (parts, codec_label (codec));
+      if (channels == 1)
+        g_ptr_array_add (parts, g_strdup ("Mono"));
+      else if (channels == 2)
+        g_ptr_array_add (parts, g_strdup ("Stereo"));
+      else if (channels > 2)
+        g_ptr_array_add (parts, g_strdup_printf ("%" G_GINT64_FORMAT ".1", channels - 1));
+      if (node_flag (t, "external"))
+        g_ptr_array_add (parts, g_strdup ("From a file"));
+      g_ptr_array_add (parts, NULL);
+      track.details = g_strjoinv (" · ", (char **) parts->pdata);
+      g_ptr_array_unref (parts);
+      g_array_append_val (tracks, track);
+    }
+  }
+  mpv_free_node_contents (&list);
+  return tracks;
+}
+
+typedef struct {
+  Player *p;
+  const char *property;   /* "aid" or "sid" */
+  gint64 id;              /* 0: off */
+} Choice;
+
+static void
+on_track_chosen (GtkWidget *row, gpointer data)
+{
+  Choice *choice = data;
+  char id[32];
+  if (choice->id)
+    g_snprintf (id, sizeof id, "%" G_GINT64_FORMAT, choice->id);
+  else
+    g_strlcpy (id, "no", sizeof id);
+  const char *args[] = {"set", choice->property, id, NULL};
+  command (choice->p, args);
+  GtkWidget *sheet = gtk_widget_get_ancestor (row, VIBEOS_TYPE_SHEET);
+  if (sheet)
+    vibeos_sheet_close (VIBEOS_SHEET (sheet));
+}
+
+static void
+add_choice (Player *p, GtkWidget *list, const char *property, gint64 id, const char *name, const char *details,
+            gboolean selected)
+{
+  GtkWidget *row = vibeos_list_row_new (name, details && *details ? details : NULL);
+  Choice *choice = g_new0 (Choice, 1);
+  *choice = (Choice) { p, property, id };
+  g_object_set_data_full (G_OBJECT (row), "choice", choice, g_free);
+  if (selected)
+    vibeos_list_row_set_end_icon (VIBEOS_LIST_ROW (row), "object-select-symbolic");
+  vibeos_list_row_set_activatable (VIBEOS_LIST_ROW (row), TRUE);
+  g_signal_connect (row, "clicked", G_CALLBACK (on_track_chosen), choice);
+  vibeos_card_list_append (VIBEOS_CARD_LIST (list), row);
+}
+
+/* a sheet of the film's tracks of `type`; the subtitles' starts with Off */
+static void
+choose_track (Player *p, const char *title, const char *type, const char *property)
+{
+  g_autoptr (GArray) tracks = tracks_of (p, type);
+  gboolean sub = g_str_equal (type, "sub"), any = FALSE;
+  GtkWidget *list = vibeos_card_list_new ();
+  vibeos_card_list_set_margins (VIBEOS_CARD_LIST (list), 0, 16);
+  for (guint i = 0; i < tracks->len; i++)
+    any |= g_array_index (tracks, Track, i).selected;
+  if (sub)
+    add_choice (p, list, property, 0, "Off", NULL, !any);
+  for (guint i = 0; i < tracks->len; i++) {
+    Track *t = &g_array_index (tracks, Track, i);
+    add_choice (p, list, property, t->id, t->name, t->details, t->selected);
+  }
+  GtkWidget *sheet = vibeos_sheet_new (title);
+  GtkWidget *scroll = spongy_scroll_view_new ();
+  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), list);
+  vibeos_sheet_set_content (VIBEOS_SHEET (sheet), scroll);
+  vibeos_sheet_present (VIBEOS_SHEET (sheet), p->win);
+}
+
+static void
+choose_audio (gpointer data)
+{
+  choose_track (data, "Audio track", "audio", "aid");
+}
+
+static void
+choose_subtitles (gpointer data)
+{
+  choose_track (data, "Subtitles", "sub", "sid");
+}
+
+static void
+open_menu (Player *p)
+{
+  g_autoptr (GArray) audio = tracks_of (p, "audio");
+  g_autoptr (GArray) subs = tracks_of (p, "sub");
+  VibeosMenu *menu = vibeos_menu_new ();
+  if (audio->len > 0)
+    vibeos_menu_append (menu, "Audio track", choose_audio, p);
+  if (subs->len > 0)
+    vibeos_menu_append (menu, "Subtitles", choose_subtitles, p);
+  vibeos_menu_append_about (menu, &video_about);
+  vibeos_menu_present (menu, p->more);
+  show_controls (p, TRUE);
+}
+
 /* the seek bar moved by the finger: mpv goes there (to the keyframe while dragging, exactly once let go) */
 static gboolean
 on_seek (GtkRange *range, GtkScrollType scroll, double value, Player *p)
@@ -633,6 +880,8 @@ build (Player *p)
   gtk_label_set_xalign (GTK_LABEL (p->title), 0);
   gtk_widget_set_hexpand (p->title, TRUE);
   gtk_box_append (GTK_BOX (top), p->title);
+  p->more = icon_button (p, ICON_MORE, TOP_BUTTON_DP, "More options", G_CALLBACK (open_menu));
+  gtk_box_append (GTK_BOX (top), p->more);
   gtk_box_append (GTK_BOX (p->controls), top);
 
   GtkWidget *middle = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 48);
