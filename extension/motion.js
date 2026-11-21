@@ -1,6 +1,7 @@
 // The shell's motion, run on Clutter's frame clock: easing curves, fling durations, springs, a velocity tracker,
 // and an animator that calls back once per frame.
 import Clutter from 'gi://Clutter';
+import GLib from 'gi://GLib';
 
 export const lerp = (a, b, t) => a + (b - a) * t;
 export const clamp = (v, lo = 0, hi = 1) => Math.min(Math.max(v, lo), hi);
@@ -276,21 +277,25 @@ export class VelocityTracker {
 }
 
 // Calls onFrame(dtSeconds, elapsedSeconds) once per frame of @actor's frame clock until stop() or onFrame returns
-// false; onDone runs after the last frame (not after stop())
+// false; onDone runs after the last frame, or at finish() (not after stop())
 export class Animator {
     constructor(actor, onFrame, onDone = null) {
         this._onFrame = onFrame;
         this._onDone = onDone;
         this._last = 0;
-        this._timeline = new Clutter.Timeline({actor, duration: 1000, repeat_count: -1});
+        this._done = false;
+        // An actor on no screen (not on the stage yet, or under a hidden parent) has no frame clock, and a timeline on
+        // it waits for one, maybe for ever: its done never comes. Such an actor's animation runs on the stage's clock.
+        this._timeline = new Clutter.Timeline({actor: actor.mapped ? actor : global.stage, duration: 1000,
+            repeat_count: -1});
         this._elapsed = 0;
+        this._frameTime = GLib.get_monotonic_time();
         this._timeline.connect('new-frame', () => {
+            this._frameTime = GLib.get_monotonic_time();
             const delta = this._timeline.get_delta() / 1000;
             this._elapsed += delta;
-            if (this._onFrame(delta, this._elapsed) === false) {
-                this.stop();
-                this._onDone?.();
-            }
+            if (this._onFrame(delta, this._elapsed) === false)
+                this._end();
         });
         this._timeline.start();
         // a timeline outlives its actor and would go on calling onFrame on a disposed object, every frame
@@ -299,6 +304,14 @@ export class Animator {
             this._actor = null;
             this.stop();
         });
+    }
+
+    _end() {
+        this.stop();
+        if (this._done)
+            return;
+        this._done = true;
+        this._onDone?.();
     }
 
     stop() {
@@ -315,6 +328,26 @@ export class Animator {
 
     get running() {
         return !!this._timeline;
+    }
+
+    // An animation that will not end by itself: stopped under its owner (its actor destroyed), or no frame for
+    // @us microseconds (its clock stopped: the screen off does that too)
+    stalled(us) {
+        return !this._done && (!this._timeline || GLib.get_monotonic_time() - this._frameTime > us);
+    }
+
+    // Ends it now: one last frame far past its end while it still has its actors, then its done
+    finish() {
+        if (this._done)
+            return;
+        if (this._timeline) {
+            try {
+                this._onFrame(1, this._elapsed + 10);
+            } catch (e) {
+                logError(e, 'vibeos: the last frame of a finished animation');
+            }
+        }
+        this._end();
     }
 }
 

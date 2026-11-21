@@ -22,7 +22,7 @@ import {SidewaysGestures, sideways} from './sideways.js';
 import {capturing} from './capture.js';
 import {FlagFile} from './flagfile.js';
 import {VelocityTracker} from './motion.js';
-import {geometry, SCALE, SCREEN_SCALE} from './units.js';
+import {geometry, SCALE, SCREEN_SCALE, TABLET} from './units.js';
 import {forgetClosing, HINT_SCRIM, PAGER_SNAP_MS, Recents, SETTLE_MS, warmUp} from './recents.js';
 import {
     ACCELERATE, DECELERATE, DECELERATE_3, FRAME_MS, FloatingIcon, HOME_ICON_PX, LINEAR,
@@ -37,6 +37,8 @@ const DRAG_LENGTH = 540;                // H − the recents card's bottom
 let MAX_SHIFT;
 const FLING_PX_MS = 1.5;
 const MAX_SWIPE_MS = 350;
+const WATCH_MS = 3000;                  // after a swipe or the recents key: everything it started has ended by then
+const STALL_US = 1000000;               // an animation without a frame for this long has stopped
 const DURATION_MULT = 1 / 0.7;
 const RESIST_TRANS_END = -551.6;
 
@@ -194,8 +196,14 @@ export class Navigation {
             'should-handle-sequence', (_g, event) => this._shouldHandle(event),
             'recognize', () => this._begin(),
             'pan-update', () => this._move(),
-            'end', () => this._release(false),
-            'cancel', () => this._release(true),
+            'end', () => {
+                this._release(false);
+                this._watch();
+            },
+            'cancel', () => {
+                this._release(true);
+                this._watch();
+            },
             this);
         global.stage.add_action_full('vibeos-swipe-up', Clutter.EventPhase.CAPTURE, this._gesture);
 
@@ -312,6 +320,8 @@ export class Navigation {
     // The recents key (the Bixby key, keys.js) toggles recents: an app settles into its card as
     // a paused swipe lets it, the home screen goes HINT → OVERVIEW as after a pause, and in recents it's back again
     toggleRecents() {
+        this._unstick();
+        this._watch();
         if (this._recents?.shown) {
             this._recents.back();
             return;
@@ -327,7 +337,6 @@ export class Navigation {
             this.taskbar?.unstash();
             const recents = this._newRecents(win);
             this._g = {win, recents, shift: 0, rect: [0, 0, SCREEN_W, SCREEN_H], r: 0, x: 0};
-            recents.attach();
             recents.toGrid(SETTLE_MS);
             this._settle(1, null, OVERSHOOT_1_2, () => {
                 this._g = null;
@@ -454,6 +463,8 @@ export class Navigation {
         if (event.type() !== Clutter.EventType.TOUCH_BEGIN)
             return false;
         const [x, y] = event.get_coords();
+        if (this._g || this._anim || this._recents)
+            this._unstick();
         const refusal = this._refusal(y);
         if (refusal) {
             if (this._swipeLog.on && inHomeStrip(y, this.scale))
@@ -545,8 +556,10 @@ export class Navigation {
         this._pause.disallow = up < PAUSE_MIN_UP || g.likelyQuickSwitch;
         if (fresh)
             this._pause.add(this._tracker.velocityY / 1000);
-        // the other tasks beside the app from the pause on, or for as long as the swipe runs along the bar
-        if (this._pause.everPaused || g.likelyQuickSwitch)
+        // the other tasks beside the app from the pause on, or for as long as the swipe runs along the bar. A tablet's
+        // swipe up shows the app alone: letting go into recents forms the grid in place (recents.toGrid), with no row
+        // of other apps sliding in over it first (owner, 11-21); only a swipe along the bar brings the row
+        if ((this._pause.everPaused && !TABLET) || g.likelyQuickSwitch)
             g.recents.attach();
         else
             g.recents.detach();
@@ -586,7 +599,7 @@ export class Navigation {
     _paused() {
         if (this._g?.home)
             this._homeToOverview();
-        else
+        else if (!TABLET)
             this._g?.recents.attach();
     }
 
@@ -938,9 +951,69 @@ export class Navigation {
         }, done);
     }
 
+    // ---- a swipe that never ended --------------------------------------------------------------------------------
+
+    // A swipe holds _g (with its recents) and _anim until its animation's done, refusing every other swipe and the
+    // recents key till then. A done that never came (S20, 11-20 and 21) left a window's card halfway home on the screen
+    // and recents and the drawer dead until the shell restarted. A while after each swipe and recents key, and at the
+    // next touch, whatever is still held with nothing moving is ended.
+    _watch() {
+        if (this._watchId)
+            GLib.source_remove(this._watchId);
+        this._watchId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, WATCH_MS, () => {
+            this._watchId = 0;
+            if (this._unstick())
+                this._watch();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    // true while something still moves (a finger, an animation): watched again later
+    _unstick() {
+        const state = this._gesture.state;
+        if (state === Clutter.GestureState.POSSIBLE || state === Clutter.GestureState.RECOGNIZING)
+            return true;
+        const moving = a => !!a && !a.stalled(STALL_US);
+        const recents = this._g?.recents ?? this._recents;
+        if (moving(this._anim) || moving(this._g?.anim) || recents?.moving)
+            return true;
+        // an animation stopped short of its end: ended now, its done run (which may start the next step)
+        const stopped = [this._anim, this._g?.anim].filter(a => a?.stalled(STALL_US));
+        for (const anim of stopped) {
+            console.warn('vibeos: navigation: an animation stopped short of its end, ended now');
+            try {
+                anim.finish();
+            } catch (e) {
+                logError(e, 'vibeos: ending a stopped animation');
+            }
+        }
+        if (stopped.length)
+            return true;
+        // held with nothing left to end it: dropped, the launcher at rest
+        if (this._g || this._anim) {
+            console.warn('vibeos: navigation: a swipe held with nothing moving, dropped');
+            const g = this._g;
+            this._anim?.stop();
+            this._anim = null;
+            this._g = null;
+            g?.recents?.destroy();
+            this.launcherState('normal');
+            this.statusBarOverApp(null);
+        }
+        // recents in a transition out that no longer moves, or neither shown nor part of a swipe
+        if (this._recents?.stuck || (this._recents && !this._recents.shown && !this._g)) {
+            console.warn('vibeos: navigation: recents stuck, closed');
+            this._recents.abandon();
+        }
+        return false;
+    }
+
     destroy() {
         if (this._warmId)
             GLib.source_remove(this._warmId);
+        if (this._watchId)
+            GLib.source_remove(this._watchId);
+        this._watchId = 0;
         this._anim?.stop();
         this._anim = null;
         this._g?.anim?.stop();

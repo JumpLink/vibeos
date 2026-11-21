@@ -1,6 +1,8 @@
 // A tablet's taskbar: Android 17's transient taskbar, as it is on the Galaxy Tab S5e.
 //
-// Over an app it is stashed: a handle, 220 × 4 dp, centred 16 dp above the screen's bottom. A swipe up from the bottom
+// Over an app it is stashed: nothing shows. Android draws a handle there, 220 × 4 dp, centred 16 dp above the screen's
+// bottom; here it covered the bottom of every app (a list's last row, Dictate's mic button) and the owner had it gone
+// (11-21): its place is kept as where the pill grows from and shrinks back to, unseen. A swipe up from the bottom
 // unstashes it as the swipe begins (navigation.js says so): a pill 77 dp high, its bottom 24 dp above the screen's,
 // with the all-apps button, a divider, the dock's apps (the launcher's layout) and, after another divider, the apps
 // running that are not in the dock, the most recent first. It stays out while recents is up, and over the app a swipe
@@ -28,6 +30,7 @@ import {animate, appGicon, clamp, lerp, lerpRect} from './task.js';
 import {dp, geometry} from './units.js';
 
 const HANDLE_W = 220, HANDLE_H = 4, HANDLE_ABOVE = 16;     // the handle's centre above the screen's bottom
+const HANDLE_SHOWN = false;             // the stashed handle is not drawn (and the screen under it never read)
 const PILL_H = 77, PILL_BOTTOM = 24;
 // along the pill from its left edge: the all-apps button's centre, the divider after it, the first app's centre;
 // then an app every PITCH, a divider half way to the next group, and the right edge half a pitch past the last
@@ -292,8 +295,8 @@ export class Taskbar {
             actor.set_position(x0, y0);
             actor.set_size(x1 - x0, y1 - y0);
         }
-        this._handle.opacity = Math.round(255 * this._alpha * (1 - solid));
-        this._sampleWhile(this._mode === Mode.STASHED && this._alpha > 0);
+        this._handle.opacity = HANDLE_SHOWN ? Math.round(255 * this._alpha * (1 - solid)) : 0;
+        this._sampleWhile(HANDLE_SHOWN && this._mode === Mode.STASHED && this._alpha > 0);
         this._pill.opacity = Math.round(255 * this._alpha * solid);
         this._pill.reactive = this._mode === Mode.UNSTASHED;
         this._content.set_position(pill[0], pill[1]);

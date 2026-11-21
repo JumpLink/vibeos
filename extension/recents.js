@@ -991,7 +991,8 @@ export class Recents {
             return r;
         };
         this._tasks.forEach((task, i) => {
-            const shove = (i >= first ? push : 0) + this._exitTx;
+            const direct = this._gridDirect && i >= first;
+            const shove = (i >= first && !direct ? push : 0) + this._exitTx;
             let rect, cs, r;
             if (g < 1) {
                 const x = left(i) + (this._gridMode ? 0 : task.dx * s) + shove;
@@ -1004,9 +1005,10 @@ export class Recents {
                 const slot = this._slot(i, task);
                 slot[0] += shove;
                 slot[2] += shove;
-                rect = g < 1 ? lerpRect(rect, slot, g) : slot;
-                cs = g < 1 ? lerp(cs, 1, g) : 1;
-                r = g < 1 ? lerp(r, task.radius ?? TASK_CORNER_R, g) : task.radius ?? TASK_CORNER_R;
+                const tween = g < 1 && !direct;
+                rect = tween ? lerpRect(rect, slot, g) : slot;
+                cs = tween ? lerp(cs, 1, g) : 1;
+                r = tween ? lerp(r, task.radius ?? TASK_CORNER_R, g) : task.radius ?? TASK_CORNER_R;
             }
             rect = place(rect);
             const alpha = (i >= first ? this._content : 1) * task.alpha;
@@ -1496,7 +1498,14 @@ export class Recents {
         this._scroll = clamp(Math.floor(page / 2) * GRID.colPitch, 0, this._maxScroll());
         this._overPage = this._nearestPage();
         this._stripPivot = GRID.pivot;
-        this._tween('grid', ms, t => (this._grid = t));
+        // the other cards: when they were not beside the app (a swipe up), in their places at once, fading in as the
+        // grid forms, rather than coming in from the left over the app
+        const content = this._content;
+        this._gridDirect = content < 1;
+        this._tween('grid', ms, t => {
+            this._grid = t;
+            this._content = lerp(content, 1, t);
+        });
     }
 
     // done() once the strip is at rest: no scroll, no stretch
@@ -2047,6 +2056,23 @@ export class Recents {
         this.layer.add_child(flash);
         flash.ease({opacity: 180, duration: 60, onComplete: () =>
             flash.ease({opacity: 0, duration: 200, onComplete: () => flash.destroy()})});
+    }
+
+    // something in it animating, on a clock that still ticks
+    get moving() {
+        return !this._destroyed && !!this._ticker && !this._ticker.stalled(1000000);
+    }
+
+    // a transition out (to an app, home, or all cleared) that no longer moves: its end never comes (navigation's watch)
+    get stuck() {
+        return this._busy && !this._destroyed && !this.moving;
+    }
+
+    // closed at once, the launcher at rest, as the transition would have left it
+    abandon() {
+        this._nav.launcherState('normal');
+        this._nav.statusBarOverApp(null);
+        this.destroy();
     }
 
     destroy() {
