@@ -1,17 +1,19 @@
-// Quick Settings in the shade: the header (clock, date, carrier, system icons), the tile grid
-// whose first two rows are the QQS, the brightness slider, the build row and the footer. The shade lays it out once
-// per frame from its expansion f and the QS expansion q; tiles act on SystemState.
+// Quick Settings in the shade: the header (clock, date, carrier, system icons), the tile grid whose first two rows
+// are the QQS, the brightness and volume sliders, the build row and the footer. The shade lays it out once per frame
+// from its expansion f and the QS expansion q; tiles act on SystemState.
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GnomeDesktop from 'gi://GnomeDesktop';
 import GObject from 'gi://GObject';
+import Gvc from 'gi://Gvc';
 import Pango from 'gi://Pango';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as SystemActions from 'resource:///org/gnome/shell/misc/systemActions.js';
+import * as Volume from 'resource:///org/gnome/shell/ui/status/volume.js';
 
 import {addEndMark} from './endmark.js';
 import {Canvas, hasIcon, paintIcon, VectorIcon} from './icons.js';
@@ -44,6 +46,7 @@ const FOOTER_FADE_FROM = 0.9;
 const SLIDER_X = 54;
 const SLIDER_END = 867;                 // then a gap and the auto-brightness button
 const SLIDER_CY = 500;                  // QS position
+const VOLUME_ROW = 180;                 // the volume row under it, and the tiles that far further down
 const TRACK_H = 120;
 const TRACK_RADIUS = 36;                // TRACK_INNER_RADIUS next to the thumb
 const TRACK_INNER_RADIUS = 6;
@@ -430,14 +433,21 @@ class Tile extends St.Button {
     }
 });
 
-// --- brightness
+// --- the brightness and volume rows
 
-const BrightnessSlider = GObject.registerClass(
-class BrightnessSlider extends St.Widget {
-    constructor(state, shade) {
+// A row of the shade's quick settings: a track whose thumb sets a level, the level's icon on the track, and a round
+// button at the row's end that turns into a rounded square while its option is on. Brightness's button is adaptive
+// brightness (a LineageOS addition); volume's, below it, mutes the speaker. @spec:
+//   get(): the level, 0..1, or null while there is none; set(v): sets it from the thumb
+//   icon(v): the track's icon at level v
+//   button: {name, icons: [off, on], on(): whether the option is on, toggle()}
+//   dragging(d): the thumb taken (true) and let go (false), if the shade does something about it
+// sync() takes up the level and the option when they change.
+const LevelSlider = GObject.registerClass(
+class LevelSlider extends St.Widget {
+    constructor(spec) {
         super({width: px(SCREEN_W), height: px(THUMB_H), reactive: false});
-        this._state = state;
-        this._shade = shade;
+        this._spec = spec;
         // the track's ends and the auto button's size, screen px of the row; a tablet's layout moves them
         this._x0 = SLIDER_X;
         this._x1 = SLIDER_END;
@@ -450,7 +460,7 @@ class BrightnessSlider extends St.Widget {
         this._track.draw = cr => this._paintTrack(cr);
         this.add_child(this._track);
 
-        this._value = state.brightness ?? 0.5;
+        this._value = spec.get() ?? 0.5;
         this._dragging = false;
 
         // press or drag anywhere on the track: with no threshold it takes the touch at once, so the shade's own
@@ -462,27 +472,23 @@ class BrightnessSlider extends St.Widget {
         pan.connect('cancel', () => this._endDrag());
         this._track.add_action(pan);
 
-        // the auto-brightness button (a LineageOS addition): a circle when off, a rounded square when on
+        // the button: a circle when off, a rounded square when on
         this._auto = new St.Button({
             x: px(AUTO_X), y: px((THUMB_H - AUTO_SIZE) / 2), width: px(AUTO_SIZE), height: px(AUTO_SIZE),
-            reactive: true, can_focus: true, accessible_name: 'Adaptive brightness',
+            reactive: true, can_focus: true, accessible_name: spec.button.name,
         });
-        this._autoIcon = new VectorIcon('ic_qs_brightness_auto_off', px(72), Color.onSurface);
+        this._autoIcon = new VectorIcon(spec.button.icons[0], px(72), Color.onSurface);
         this._auto.set_child(this._autoIcon);
-        this._auto.connect('clicked', () => {
-            state.autoBrightness = !state.autoBrightness;
-        });
+        this._auto.connect('clicked', () => spec.button.toggle());
         this.add_child(this._auto);
-        this._autoT = state.autoBrightness ? 1 : 0;
-        this._autoOn = state.autoBrightness;
+        this._autoOn = !!spec.button.on();
+        this._autoT = this._autoOn ? 1 : 0;
         this._styleAuto();
 
         // the track icon cross-fades between the two segments (appear 100 ms after 33, disappear 50 ms)
         this._iconOnActive = false;
         this._activeIconAlpha = 0;
         this._inactiveIconAlpha = 1;
-
-        state.connectObject('changed', () => this._sync(), this);
     }
 
     get dragging() {
@@ -505,16 +511,17 @@ class BrightnessSlider extends St.Widget {
         this._track.queue_repaint();
     }
 
-    _sync() {
+    sync() {
         if (!this._dragging) {
-            const v = this._state.brightness;
+            const v = this._spec.get();
             if (v !== null && Math.abs(v - this._value) > 1e-4) {
                 this._value = v;
                 this._track.queue_repaint();
             }
         }
-        if (this._state.autoBrightness !== this._autoOn) {
-            this._autoOn = this._state.autoBrightness;
+        const on = !!this._spec.button.on();
+        if (on !== this._autoOn) {
+            this._autoOn = on;
             this._autoSpring?.stop();
             const from = this._autoT;
             const spring = new Spring({stiffness: 1500, dampingRatio: 1, value: from, target: this._autoOn ? 1 : 0});
@@ -534,7 +541,7 @@ class BrightnessSlider extends St.Widget {
         const radius = lerp(this._autoSize / 2, TRACK_RADIUS, t);
         this._auto.style = `background-color: ${colorStyle(bg)}; border-radius: ${px(radius).toFixed(2)}px;`;
         this._autoIcon.setColor(fg);
-        this._autoIcon.name = this._autoOn ? 'ic_qs_brightness_auto_on' : 'ic_qs_brightness_auto_off';
+        this._autoIcon.name = this._spec.button.icons[this._autoOn ? 1 : 0];
     }
 
     _dragTo(gesture) {
@@ -543,10 +550,10 @@ class BrightnessSlider extends St.Widget {
         const v = clamp((point.x * SCALE - THUMB_W / 2) / (w - THUMB_W));
         if (!this._dragging) {
             this._dragging = true;
-            this._shade.setBrightnessDragging?.(true);
+            this._spec.dragging?.(true);
         }
         this._value = v;
-        this._state.brightness = v;
+        this._spec.set(v);
         this._track.queue_repaint();
     }
 
@@ -554,7 +561,9 @@ class BrightnessSlider extends St.Widget {
         if (!this._dragging)
             return;
         this._dragging = false;
-        this._shade.setBrightnessDragging?.(false);
+        this._spec.dragging?.(false);
+        // what the level settled on, if it is not where the finger left it (the volume's steps)
+        this.sync();
     }
 
     _setIconSide(onActive) {
@@ -614,8 +623,7 @@ class BrightnessSlider extends St.Widget {
         cr.fill();
 
         // the icon at the end of the inactive segment while it fits there, else at the end of the active one
-        const pct = this._value * 100;
-        const icon = pct <= 20 ? 'ic_brightness_low' : pct >= 80 ? 'ic_brightness_full' : 'ic_brightness_medium';
+        const icon = this._spec.icon(this._value);
         const fitsInactive = TRACK_ICON < w - inactiveStart - 2 * TRACK_ICON_PAD;
         const fitsActive = TRACK_ICON < activeEnd - 2 * TRACK_ICON_PAD;
         if (fitsInactive)
@@ -639,6 +647,71 @@ class BrightnessSlider extends St.Widget {
         super.destroy();
     }
 });
+
+// brightness: the backlight through SystemState; dragging it fades the shade around it (the brightness mirror)
+function brightnessSlider(state, shade) {
+    const slider = new LevelSlider({
+        get: () => state.brightness,
+        set: v => {
+            state.brightness = v;
+        },
+        icon: v => v <= 0.2 ? 'ic_brightness_low' : v >= 0.8 ? 'ic_brightness_full' : 'ic_brightness_medium',
+        button: {
+            name: 'Adaptive brightness',
+            icons: ['ic_qs_brightness_auto_off', 'ic_qs_brightness_auto_on'],
+            on: () => state.autoBrightness,
+            toggle: () => {
+                state.autoBrightness = !state.autoBrightness;
+            },
+        },
+        dragging: d => shade.setBrightnessDragging?.(d),
+    });
+    state.connectObject('changed', () => slider.sync(), slider);
+    return slider;
+}
+
+// volume: the default output's, as the volume keys set it (volume.js); the button mutes it, and a level above none
+// unmutes it again. Below the brightness row, its look (owner, 11-21).
+function volumeSlider() {
+    const control = Volume.getMixerControl();
+    let stream = null;
+    const slider = new LevelSlider({
+        get: () => {
+            if (!stream)
+                return null;
+            return stream.is_muted ? 0 : clamp(stream.volume / control.get_vol_max_norm());
+        },
+        set: v => {
+            if (!stream)
+                return;
+            if (v > 0 && stream.is_muted)
+                stream.change_is_muted(false);
+            stream.volume = Math.round(control.get_vol_max_norm() * v);
+            stream.push_volume();
+        },
+        icon: v => v <= 0 ? 'ic_volume_media_mute' : 'ic_volume_media',
+        button: {
+            name: 'Mute',
+            icons: ['ic_volume_media', 'ic_volume_media_mute'],
+            on: () => !!stream?.is_muted,
+            toggle: () => stream?.change_is_muted(!stream.is_muted),
+        },
+    });
+    const syncStream = () => {
+        const s = control.get_state() === Gvc.MixerControlState.READY ? control.get_default_sink() : null;
+        if (s !== stream) {
+            stream?.disconnectObject(slider);
+            stream = s;
+            stream?.connectObject('notify::volume', () => slider.sync(), 'notify::is-muted', () => slider.sync(),
+                slider);
+        }
+        slider.sync();
+    };
+    control.connectObject('default-sink-changed', syncStream, 'state-changed', syncStream, slider);
+    slider.connect('destroy', () => stream?.disconnectObject(slider));
+    syncStream();
+    return slider;
+}
 
 // --- footer: settings and power, and on a tablet the active apps' pill
 
@@ -951,8 +1024,10 @@ class QSPanel extends St.Widget {
         this._header = new ShadeHeader(state);
         this.add_child(this._header);
 
-        this._brightness = new BrightnessSlider(state, shade);
+        this._brightness = brightnessSlider(state, shade);
         this.add_child(this._brightness);
+        this._volume = volumeSlider();
+        this.add_child(this._volume);
 
         // tiles in reading order; a wide tile that does not fit the row wraps
         this._tiles = [];
@@ -1045,6 +1120,7 @@ class QSPanel extends St.Widget {
         });
         this._tilePitch = tileW + ROW_GAP;
         this._brightness.setSpan(qs.left, qs.trackEnd, qs.left + qs.width, qs.autoSize, TABLET_TILE);
+        this._volume.setSpan(qs.left, qs.trackEnd, qs.left + qs.width, qs.autoSize, TABLET_TILE);
         this._footer.set_size(px(layout.width), px(FOOTER_BUTTON));
         this._settingsButton.x = px(qs.settingsCX - FOOTER_BUTTON / 2);
         this._powerButton.x = px(qs.powerCX - FOOTER_BUTTON / 2);
@@ -1080,7 +1156,7 @@ class QSPanel extends St.Widget {
             const qqs = tile._row < QQS_ROWS;
             // squished rows close up from the top; rows below the QQS follow the QS layout
             const qqsY = GRID_TOP + tile._row * (tileH + ROW_GAP);
-            const qsY = GRID_TOP + QS_SHIFT + tile._row * (TILE_H + ROW_GAP);
+            const qsY = GRID_TOP + QS_SHIFT + VOLUME_ROW + tile._row * (TILE_H + ROW_GAP);
             const y = qqs ? lerp(qqsY, qsY, q) : qsY + shift;
             tile.set_position(px(GRID_X + tile._col * COL_PITCH), px(y));
             tile.setHeightPx(qqs ? lerp(tileH, TILE_H, q) : TILE_H);
@@ -1092,6 +1168,10 @@ class QSPanel extends St.Widget {
         this._brightness.set_position(0, px(SLIDER_CY - THUMB_H / 2 + shift));
         this._brightness.opacity = Math.round(255 * content);
         this._brightness.visible = content > 0;
+        // the volume row fades with the rest while the brightness is dragged
+        this._volume.set_position(0, px(SLIDER_CY + VOLUME_ROW - THUMB_H / 2 + shift));
+        this._volume.opacity = Math.round(255 * content * keep);
+        this._volume.visible = content * keep > 0;
 
         const ink = this._buildInk ??= inkBox(this._build);
         this._build.set_position(px(BUILD_INK_X) - ink.x, px(BUILD_INK_TOP + shift) - ink.y);
@@ -1137,6 +1217,11 @@ class QSPanel extends St.Widget {
         this._brightness.opacity = Math.round(255 * content * contentAlpha);
         this._brightness.visible = content * contentAlpha > 0;
         clipAbove(this._brightness, under);
+
+        this._volume.set_position(0, px(qs.volumeCY - THUMB_H / 2 + shift + slide));
+        this._volume.opacity = Math.round(255 * content * contentAlpha * keep);
+        this._volume.visible = content * contentAlpha * keep > 0;
+        clipAbove(this._volume, under);
 
         this._footer.set_position(0, px(qs.footerCY - FOOTER_BUTTON / 2 + slide));
         this._footer.opacity = Math.round(255 * footer * contentAlpha * keep);

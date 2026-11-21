@@ -1,8 +1,9 @@
 // Where the parts of a tablet's shade go (a smallest width of 600 dp or more), for the screen as it is turned now.
-// Turned sideways the shade is split: the quick settings fill the left half (the brightness row, every tile, the
-// footer at the bottom) and the notifications sit in a rounded panel on the right half, under a header row that spans
-// the screen; a second pull adds nothing. Upright it is one centred column 640 dp wide: two rows of tiles over the
-// notification panel, and the rest of the quick settings on a second pull, which takes the panel down off the screen.
+// Turned sideways the shade is split: the quick settings fill the left half (the brightness and volume rows, every
+// tile, the footer at the bottom) and the notifications sit in a rounded panel on the right half, under a header row
+// that spans the screen; a second pull adds nothing. Upright it is one centred column 640 dp wide: two rows of tiles
+// over the notification panel, and the rest of the quick settings on a second pull, which takes the panel down off the
+// screen.
 // Screen px (3 to a dp); null on a phone.
 import {HEIGHT, TABLET, WIDTH} from './units.js';
 
@@ -14,6 +15,7 @@ const ROW_INSET_LAND = 16 * DP;         // the cards' inset in the notification 
 const ROW_INSET_PORT = 40 * DP;
 const ROW_END_INSET = 16 * DP;          // the stack scrolls to end this far above the panel's bottom
 const AUTO_SIZE = 52 * DP;              // the auto-brightness button
+const VOLUME_ROW = 60 * DP;             // the volume row under the brightness one, and the tiles that far down
 const AUTO_GAP = 13 * DP;               // between the track and the button
 const FOOTER_PITCH = 48 * DP;           // between the footer's buttons
 
@@ -38,7 +40,8 @@ export function tabletShade() {
             header,
             qs: {
                 left, width, trackEnd: left + width - AUTO_SIZE - AUTO_GAP, autoSize: AUTO_SIZE,
-                qqsRows: 0, qqsTop: 160 * DP, gridTop: 160 * DP, brightnessCY: 120 * DP,
+                qqsRows: 0, qqsTop: 160 * DP + VOLUME_ROW, gridTop: 160 * DP + VOLUME_ROW, brightnessCY: 120 * DP,
+                volumeCY: 120 * DP + VOLUME_ROW,
                 footerCY: H - 60 * DP, powerCX, settingsCX: powerCX - FOOTER_PITCH,
             },
             panel: {...panel, width: panel.right - panel.x, height: panel.bottom - panel.top, radius: PANEL_RADIUS,
@@ -68,7 +71,8 @@ export function tabletShade() {
         header,
         qs: {
             left, width, trackEnd: left + width - AUTO_SIZE - AUTO_GAP, autoSize: AUTO_SIZE,
-            qqsRows: 2, qqsTop: 56 * DP, gridTop: 152 * DP, brightnessCY: 112 * DP,
+            qqsRows: 2, qqsTop: 56 * DP, gridTop: 152 * DP + VOLUME_ROW, brightnessCY: 112 * DP,
+            volumeCY: 112 * DP + VOLUME_ROW,
             footerCY: H - 62 * DP, powerCX, settingsCX: powerCX - FOOTER_PITCH,
         },
         panel: {x: columnX, top: 248 * DP, width: columnW, height: H, radius: PANEL_RADIUS, roundBottom: false},
