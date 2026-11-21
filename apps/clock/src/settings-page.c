@@ -16,6 +16,7 @@
 #include "clock-format.h"
 #include "volume-slider.h"
 
+#include <gio/gdesktopappinfo.h>
 #include <glib/gi18n.h>
 #include <math.h>
 #include <vibeos.h>
@@ -452,6 +453,25 @@ on_date_time_done (GObject *source, GAsyncResult *result, gpointer data)
                           NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, on_date_time_done, GINT_TO_POINTER (1));
 }
 
+/* the platform data of an activation of Settings: the token that lets its window come to the front (xdg-activation;
+ * without it a Settings already running behind this app only posted "Settings is ready") */
+static GVariant *
+settings_platform_data (GtkWidget *from)
+{
+  g_autoptr (GDesktopAppInfo) info = g_desktop_app_info_new ("vibeos.Settings.desktop");
+  g_autoptr (GdkAppLaunchContext) context = gdk_display_get_app_launch_context (gtk_widget_get_display (from));
+  g_autofree char *token = info ? g_app_launch_context_get_startup_notify_id (G_APP_LAUNCH_CONTEXT (context),
+                                                                             G_APP_INFO (info), NULL) : NULL;
+  GVariantBuilder builder;
+
+  g_variant_builder_init (&builder, G_VARIANT_TYPE_VARDICT);
+  if (token) {
+    g_variant_builder_add (&builder, "{sv}", "activation-token", g_variant_new_string (token));
+    g_variant_builder_add (&builder, "{sv}", "desktop-startup-id", g_variant_new_string (token));
+  }
+  return g_variant_builder_end (&builder);
+}
+
 /* "Change date & time" (ACTION_DATE_SETTINGS): the phone's Settings app on its Date & Time page */
 static void
 on_date_time (VibeosPressable *row, SettingsPage *self)
@@ -460,8 +480,10 @@ on_date_time (VibeosPressable *row, SettingsPage *self)
 
   if (bus)
     g_dbus_connection_call (bus, "vibeos.Settings", "/vibeos/Settings", "org.freedesktop.Application",
-                            "ActivateAction", g_variant_new_parsed ("('launch-panel', [<('datetime', @av [])>], "
-                                                                    "@a{sv} {})"),
+                            "ActivateAction",
+                            g_variant_new ("(s@av@a{sv})", "launch-panel",
+                                           g_variant_new_parsed ("[<('datetime', @av [])>]"),
+                                           settings_platform_data (GTK_WIDGET (row))),
                             NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, on_date_time_done, NULL);
 }
 
