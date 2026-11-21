@@ -20,7 +20,7 @@ import {VectorIcon} from './icons.js';
 import {animate, bezier, LINEAR} from './motion.js';
 import {Color, cogl, rgba} from './palette.js';
 import {AndroidText} from './text.js';
-import {px, SCREEN_H, SCREEN_W} from './units.js';
+import {HEIGHT, px, WIDTH} from './units.js';
 
 Gio._promisify(Gio.DBusConnection.prototype, 'call');
 
@@ -74,9 +74,9 @@ export class PowerMenu {
         this._grab = null;
         this._anim = null;
 
-        this.layer = new St.Widget({width: px(SCREEN_W), height: px(SCREEN_H), visible: false});
+        this.layer = new St.Widget({visible: false});
         // the dim, which a tap closes the menu on
-        this._scrim = new St.Button({width: px(SCREEN_W), height: px(SCREEN_H), button_mask: St.ButtonMask.PRIMARY});
+        this._scrim = new St.Button({button_mask: St.ButtonMask.PRIMARY});
         this._scrim.connect('clicked', () => this.close());
         this.layer.add_child(this._scrim);
         this._panel = new St.Widget({reactive: true, style: shapeStyle(Color.surfaceContainerLow, CORNER)});
@@ -153,7 +153,12 @@ export class PowerMenu {
         const rows = Math.ceil(items.length / COLUMNS);
         const w = PAD + columns * (BUTTON + PAD);
         const h = PAD + rows * (cellH + PAD);
-        this._panel.set_position(px(Math.round((SCREEN_W - w) / 2)), px(Math.round((SCREEN_H - h) / 2)));
+        // over the whole screen as it is turned now, the panel in its middle
+        const monitor = Main.layoutManager.primaryMonitor;
+        this.layer.set_position(monitor.x, monitor.y);
+        this.layer.set_size(monitor.width, monitor.height);
+        this._scrim.set_size(monitor.width, monitor.height);
+        this._panel.set_position(px(Math.round((WIDTH - w) / 2)), px(Math.round((HEIGHT - h) / 2)));
         this._panel.set_size(px(w), px(h));
         items.forEach(([label, icon, action], i) => {
             const row = Math.floor(i / COLUMNS);

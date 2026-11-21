@@ -13,8 +13,7 @@ const TABLET_MIN_WIDTH_DP = 600;
 const TABLET_LAND_HEIGHT_RATIO = 0.78;
 // a tablet keeps a taskbar's height out of the app area its keyboard's maximum height is a share of
 const TABLET_TASKBAR_DP = 32;
-// under the keys, the tablet's keyboard draws its own navigation bar: the hide chevron, the input switcher, the
-// gesture handle
+// under the keys, the tablet's keyboard draws its own navigation bar: the hide chevron and the input switcher
 const TABLET_NAV_BAR_DP = 56;
 // the suggestion strip's dividers between its three words
 const STRIP_DIVIDER_DP = {width: 1, height: 24};
@@ -72,8 +71,12 @@ export function measure(g, form, {monitorWidth, monitorHeight, density, insetLef
     const keyHeight = rowHeight - vgap;
     const size = ratio => trunc(ratio * keyHeight);
 
-    const strip = pixels(g.stripHeight * density);
     const navBar = tablet ? pixels(TABLET_NAV_BAR_DP * density) : 0;
+    // the strip a pixel or two higher where that makes the whole keyboard a whole number of logical pixels: the shell
+    // fits the app above it in logical pixels, and half of one left a line of what is behind between the two
+    let strip = pixels(g.stripHeight * density);
+    if (Number.isInteger(density) && density > 1)
+        strip += (density - (strip + height + navBar) % density) % density;
     return {
         form, tablet, land, density,
         monitorWidth, monitorHeight, insetLeft, insetRight, width,
@@ -97,6 +100,7 @@ export function measure(g, form, {monitorWidth, monitorHeight, density, insetLef
         stripMargin: pixels(g.stripMargin * density),
         stripEdgeKey: pixels(g.stripEdgeKeyWidth * density),
         suggestionPadding: pixels(g.suggestionPadding * density),
+        suggestionText: pixels(g.suggestionTextSize * density),
         suggestionsCount: g.suggestionsCount,
         centerSuggestion: g.centerSuggestion,
         divider: {width: pixels(STRIP_DIVIDER_DP.width * density), height: pixels(STRIP_DIVIDER_DP.height * density)},
@@ -338,13 +342,22 @@ export function stripDividers(m) {
     return xs;
 }
 
-// The tablet's navigation bar: where its hide chevron and input switcher centre, and its gesture handle, in the
-// bar's screen pixels
+// The suggestion strip's three words' places, left to right: [x, w] of each, in the strip's screen pixels from the
+// keyboard's left edge (before a right-to-left language mirrors them), each between its dividers
+export function stripSlots(m) {
+    const xs = stripDividers(m);
+    const edges = [m.stripMargin, ...xs.flatMap(x => [x, x + m.divider.width]), m.width - m.stripMargin];
+    const slots = [];
+    for (let i = 0; i < edges.length; i += 2)
+        slots.push([edges[i], edges[i + 1] - edges[i]]);
+    return slots;
+}
+
+// The tablet's navigation bar: where its hide chevron and input switcher centre, in the bar's screen pixels
 export function navBarParts(m) {
     const d = m.density;
     return {
         hide: {cx: 42.75 * d, cy: 25.5 * d, size: 28 * d},
         switcher: {cx: m.monitorWidth - 43.25 * d, cy: 25.5 * d, size: 20 * d},
-        handle: {w: 220 * d, h: 4 * d, y: 38 * d},
     };
 }

@@ -34,6 +34,49 @@
 #define PAGE_DOT_DP              6
 #define PAGE_DOT_GAP_DP          4
 
+/* A tablet (a smallest width of 600 dp or more), as Android 17's launcher lays out the Galaxy Tab S5e: a 6 x 5 grid by
+ * default and a 6-cell dock, both centred, their columns a fixed pitch apart; larger icons and labels; the rows a
+ * fixed pitch apart from a first row at a fixed height, the dock and the page dots a fixed height above the bottom.
+ * Landscape and portrait each have their own. */
+#define TABLET_SW_DP             600
+#define TAB_STATUS_BAR_DP        28
+#define TAB_COLS                 6
+#define TAB_ROWS                 5
+#define TAB_DOCK_SLOTS           6
+#define TAB_ICON_DP              60
+#define TAB_LABEL_SP             14
+#define TAB_LABEL_BASELINE_DP    80.25         /* below the icon's top */
+#define TAB_CONTENT_DP           85            /* icon, gap and label: the icon's top in a cell is (pitch − this)/2 */
+typedef struct {
+  float pitch_x, pitch_y;          /* from one column / row to the next */
+  float first_icon_top;            /* the first row's icons' top */
+  float dock_above_bottom;         /* the dock's icons' bottom above the screen's */
+  float dots_above_bottom;         /* the page dots' centre above the screen's bottom */
+  float label_max;                 /* a label's room */
+} TabletGrid;
+static const TabletGrid TABLET_LAND = { 184, 120, 58, 40.5f, 112, 120 };
+static const TabletGrid TABLET_PORT = { 118, 184, 159.5f, 76.5f, 148, 102 };
+
+/* A tablet's drawer, as Android 17's launcher lays it out on the Galaxy Tab S5e: a sheet of its own width, centred,
+ * under the status bar, opaque over the grey scrim and nothing blurred; the search pill and the cells in from its
+ * sides, 6 columns sharing its width between the insets, the rows a fixed pitch apart. The pill, the list's top and
+ * a label's baseline below its icon are the same either way the screen is turned. */
+typedef struct {
+  float sheet_w;                   /* the sheet's width */
+  float search_side;               /* the search pill in from the sheet's sides */
+  float first_icon_top;            /* the first row's icons' top below the list's */
+  float row;                       /* from one row to the next */
+} TabletDrawer;
+static const TabletDrawer TAB_DRAWER_LAND = { 868, 19.5f, 72.5f, 142 };
+static const TabletDrawer TAB_DRAWER_PORT = { 648, 21, 80.5f, 158 };
+#define TAB_DRAWER_COLS          6
+#define TAB_SEARCH_TOP_DP        28
+#define TAB_SEARCH_H_DP          52.5
+#define TAB_LIST_TOP_DP          74.5
+#define TAB_LIST_SIDE_DP         16            /* the cells in from the sheet's sides */
+#define TAB_LIST_LABEL_BASELINE_DP 78          /* below the icon's top */
+#define TAB_LABEL_SIDE_DP        8             /* a label's room: its cell less this on each side */
+
 #define WALLPAPER_ZOOM           1.10f         /* the wallpaper at home, about the screen centre */
 #define CONTENT_SCALE            0.97f         /* workspace + dock behind the drawer and behind a launch */
 
@@ -78,6 +121,8 @@ typedef struct {
   Wl          *wl;
   int          W, H;
   double       dp;
+  bool         tablet;            /* a smallest width of TABLET_SW_DP or more, whichever way it is turned */
+  float        status_dp;         /* the shell's status bar: STATUS_BAR_DP, a tablet's TAB_STATUS_BAR_DP */
   double       now;               /* ms, the frame being drawn */
   GHashTable  *tiles;             /* id -> Tile* */
   GPtrArray   *sorted;            /* Tile*, the drawer's A→Z order */
@@ -147,6 +192,7 @@ float  home_label_width  (void);                         /* px */
 int    home_n_pages      (void);                         /* with the extra page */
 int    home_page         (void);
 bool   home_snapping     (void);
+bool   home_dragging     (void);                         /* a finger moves the pages */
 void   home_snap         (int page, double ms);          /* ms 0: the scroller's 750 */
 void   home_set_extra_page (bool on);
 int    home_page_at      (float x);
@@ -179,6 +225,7 @@ void   drawer_layout     (void);
 float  drawer_progress   (void);                         /* f: 0 home, 1 all apps */
 bool   drawer_frame      (void);
 void   drawer_draw       (void);
+bool   drawer_cover      (float r[4]);                   /* the screen rect the sheet covers whole this frame */
 bool   drawer_is_open    (void);
 /* a drag handed over from home (finger moved up past the slop); y_down is where it went down */
 void   drawer_drag_begin (float y_down, float y, double t);

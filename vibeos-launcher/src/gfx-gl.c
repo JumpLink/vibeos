@@ -30,6 +30,7 @@
 #include "blur_down_frag_gles.h"
 #include "blur_up_frag_gles.h"
 #include "stretch_frag_gles.h"
+#include "opaque_frag_gles.h"
 
 #define MAX_UPLOAD (4u << 20)        /* as the Vulkan backend: a larger write goes at once */
 #define RING       3                 /* instance buffers, a frame each */
@@ -242,7 +243,8 @@ setup (struct wl_display *display, struct wl_surface *surface, int w, int h)
   bool ok = make_pipe (&L.pipes[GFX_PIPE_QUAD], vert, quad_frag_gles, "quad.frag", true) &&
             make_pipe (&L.pipes[GFX_PIPE_BLUR_DOWN], vert, blur_down_frag_gles, "blur_down.frag", false) &&
             make_pipe (&L.pipes[GFX_PIPE_BLUR_UP], vert, blur_up_frag_gles, "blur_up.frag", false) &&
-            make_pipe (&L.pipes[GFX_PIPE_STRETCH], vert, stretch_frag_gles, "stretch.frag", true);
+            make_pipe (&L.pipes[GFX_PIPE_STRETCH], vert, stretch_frag_gles, "stretch.frag", true) &&
+            make_pipe (&L.pipes[GFX_PIPE_OPAQUE], vert, opaque_frag_gles, "opaque.frag", false);
   glDeleteShader (vert);
   if (!ok)
     return false;

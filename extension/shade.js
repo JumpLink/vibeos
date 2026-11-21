@@ -14,14 +14,15 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {animate, Animator, clamp, FAST_OUT_SLOW_IN, fling, lerp, MIN_FLING_VELOCITY, Spring,
     VelocityTracker} from './motion.js';
 import {NotificationStack} from './notifications.js';
-import {Color, rgba, SHADE_PANEL} from './palette.js';
-import {QQS_HEIGHT, QSPanel} from './qs.js';
+import {Color, rgba, SHADE_PANEL, TabletShade} from './palette.js';
+import {clipAbove, QQS_HEIGHT, QSPanel} from './qs.js';
 import {wholeFrames} from './redraws.js';
-import {px, SCALE, SCREEN_H} from './units.js';
+import {tabletShade} from './shadelayout.js';
+import {geometry, HEIGHT, px, SCALE, SCREEN_H, TABLET} from './units.js';
 
 // --- the shade's geometry and motion, screen px
-const H = 2190;                         // the height the finger tracks over
-const QS_TRAVEL = 1680;                 // the stack's way from the QQS (644) to below the screen, q 0 -> 1
+let H = 2190;                           // the height the finger tracks over (a tablet's layout sets its own)
+let QS_TRAVEL = 1680;                   // the stack's way from the QQS (644) to below the screen, q 0 -> 1
 const OVERSHOOT = 48;                   // at 4500 px/s and above; 20 % of it at rest
 const OVERSHOOT_FULL_VELOCITY = 4500;
 const SPRING_BACK_MS = 400;
@@ -41,6 +42,8 @@ const BLUR_VELOCITY_MAX = 3000;
 const ZOOM_LAUNCHER = 0.05;
 const ZOOM_APP = 0.025;
 const MIRROR_MS = 150;                  // the shade fading away around the brightness slider
+const TABLET_FADE_FROM = 0.15;          // a tablet's quick settings and panel fade in over this part of the pull...
+const TABLET_FADE_TO = 0.7;             // ... as they come down
 
 // the content's alpha over the expansion f: 0 below f 0.417, 0.164 at 0.5, 0.837 at 0.7
 export function contentAlpha(f) {
@@ -107,6 +110,10 @@ export const Shade = GObject.registerClass({
         this._stack = new NotificationStack(this);
         this.add_child(this._stack);
 
+        // a turned screen: the shade and its full-screen layers cover it as it is now
+        geometry.connectObject('changed', () => this._fit(), this);
+        this._layout = null;            // a tablet's (shadelayout.js)
+
         // expansion: f (0..1), the overshoot in px, the QS expansion q (0..1)
         this._f = 0;
         this._over = 0;
@@ -138,9 +145,12 @@ export const Shade = GObject.registerClass({
         this._pull.connect('cancel', () => this._endDrag(true));
         statusBar.add_action(this._pull);
         // at shutdown the status bar may go first
-        statusBar.connectObject('destroy', () => {
-            this._statusBar = null;
-        }, this);
+        statusBar.connectObject(
+            'destroy', () => {
+                this._statusBar = null;
+            },
+            'content-changed', () => this._syncBarLine(),
+            this);
 
         // drags on the open shade: down expands the QS, up collapses QS and then the shade
         this._pan = new Clutter.PanGesture({
@@ -160,12 +170,16 @@ export const Shade = GObject.registerClass({
             const point = g.get_point_coords(0);
             const target = global.stage.get_actor_at_pos(Clutter.PickMode.REACTIVE,
                 this.x + point.x, this.y + point.y);
-            if (target === this && point.y * SCALE > this._stackY)
+            // a tablet's: on the scrim anywhere under the header
+            const below = this._layout ? this._layout.header.height : this._stackY;
+            if (target === this && point.y * SCALE > below)
                 this.close();
         });
         this.add_action(this._tap);
 
         this.connect('destroy', () => this._onDestroy());
+        if (TABLET)
+            this._fitTablet();
     }
 
     get expansion() {
@@ -183,7 +197,7 @@ export const Shade = GObject.registerClass({
 
     // where the stack's first row is, screen px, and whether it shows @notification expanded
     get notificationsTop() {
-        return this._stackY + SCRIM_TOP_PADDING;
+        return this._stackY + (this._layout ? this._layout.rows.top : SCRIM_TOP_PADDING);
     }
 
     rowExpanded(notification) {
@@ -214,7 +228,7 @@ export const Shade = GObject.registerClass({
     _setPosition(p, maxP) {
         p = clamp(p, 0, maxP);
         this._f = Math.min(p, H) / H;
-        this._q = Math.max(p - H, 0) / QS_TRAVEL;
+        this._q = QS_TRAVEL > 0 ? Math.max(p - H, 0) / QS_TRAVEL : 0;
         this._queueApply();
     }
 
@@ -224,7 +238,8 @@ export const Shade = GObject.registerClass({
         if (open && this._f === 1 && this._q === 0 && !this._anim) {
             const begin = gesture.get_begin_centroid_abs().y;
             const up = gesture.get_centroid_abs().y < begin;
-            if (this._stack.canScroll(begin * SCALE, up)) {
+            const x = this._layout ? (gesture.get_begin_centroid_abs().x - this.x) * SCALE : null;
+            if (this._stack.canScroll(begin * SCALE, up, x)) {
                 this._scrolling = true;
                 this._dragStartY = gesture.get_centroid_abs().y;
                 this._velocity.clear();
@@ -427,6 +442,12 @@ export const Shade = GObject.registerClass({
         this._queueApply();
     }
 
+    // the stack's "No notifications" came or went: a tablet's panel goes or comes with it
+    stackEmptyChanged() {
+        if (this._layout)
+            this._queueApply();
+    }
+
     _closed() {
         this._f = 0;
         this._q = 0;
@@ -504,6 +525,10 @@ export const Shade = GObject.registerClass({
     }
 
     _apply() {
+        if (this._layout) {
+            this._applyTablet();
+            return;
+        }
         const f = this._f, q = this._q, over = this._over, m = this._mirror;
         const shown = f > 0;
         this.visible = shown || this._tracking;
@@ -619,7 +644,86 @@ export const Shade = GObject.registerClass({
         }
     }
 
+    // A tablet's shade: the screen behind neither blurs nor zooms. An opaque scrim comes down from the top as a sheet
+    // whose edge follows the pull. The quick settings and the notification panel come down with the finger, from a
+    // whole pull above their places, out from under the header, fading in; a fast fling takes them a little past, they
+    // spring back, and closing they go back up the same way. Upright the second pull takes the panel on down off the
+    // screen as it fades. With no notifications there is no panel: "No notifications" on the scrim.
+    _applyTablet() {
+        const f = this._f, q = this._q, m = this._mirror, layout = this._layout;
+        this.visible = f > 0 || this._tracking;
+        const content = FAST_OUT_SLOW_IN(clamp((f - TABLET_FADE_FROM) / (TABLET_FADE_TO - TABLET_FADE_FROM)));
+        const slide = (f - 1) * H + this._over;
+
+        // The scrim is a sheet that comes down from the top as the phone's panel does, not the whole screen going
+        // grey at once: the shade shows only above its edge, which follows the pull (and a fling's overshoot) from
+        // the header's bottom (the clock and the icons are there from the start) to the screen's
+        const {panel, header} = layout;
+        const edge = Math.max(f * this.height + px(this._over), px(header.height));
+        this.set_clip(0, 0, this.width, Math.min(edge, this.height));
+        const scrim = notificationScrimAlpha(f);
+        this._tint.opacity = Math.round(255 * (1 - m));
+        this._qs.layoutFor({q, squish: 1, contentAlpha: content, mirror: m, slide});
+        // the header draws the status bar's clock and icons at their places while the shade shows, the bar's own
+        // hidden under them; the rest of the bar fades as the scrim comes
+        if (this._statusBar) {
+            this._statusBar.opacity = Math.round(255 * (1 - scrim * (1 - m)));
+            this._statusBar.setLineHidden(this.visible);
+        }
+
+        const top = panel.top + slide + q * (HEIGHT - panel.top);
+        this._stackY = top;
+        const alpha = content * (1 - m) * (1 - q);
+        this._scrim.set_position(px(panel.x), px(top));
+        this._scrim.opacity = Math.round(255 * alpha * (1 - this._stack.emptyAlpha));
+        this._scrim.visible = this._scrim.opacity > 0;
+        clipAbove(this._scrim, px(header.height));
+        this._stack.layoutFor({stackY: top, ratio: lerp(STACK_START_FRACTION, 1, f), alpha,
+            endShift: panel.roundBottom ? slide : 0, clipTop: header.height});
+        this.emit('expansion-changed');
+    }
+
+    _fit() {
+        const monitor = Main.layoutManager.primaryMonitor;
+        this.set_position(monitor.x, monitor.y);
+        this.set_size(monitor.width, monitor.height);
+        this._blurLayer.set_size(monitor.width, monitor.height);
+        this._tint.set_size(monitor.width, monitor.height);
+        this._scrim.width = monitor.width;
+        if (TABLET)
+            this._fitTablet();
+    }
+
+    // a tablet's layout for the screen as it is turned now: a turn to landscape leaves no second pull to be in
+    _fitTablet() {
+        const layout = this._layout = tabletShade();
+        H = layout.travel;
+        QS_TRAVEL = layout.qsTravel;
+        if (QS_TRAVEL === 0)
+            this._q = 0;
+        this._tint.style = `background-color: ${rgba(TabletShade.scrim)};`;
+        const {panel} = layout;
+        const r = px(panel.radius).toFixed(2);
+        this._scrim.style = `background-color: ${rgba(TabletShade.panel)}; ` +
+            `border-radius: ${panel.roundBottom ? `${r}px` : `${r}px ${r}px 0 0`};`;
+        // a panel that runs off the bottom of the screen is a pull longer, so its end never shows on the way down
+        this._scrim.set_size(px(panel.width), px(panel.height + (panel.roundBottom ? 0 : H)));
+        this._qs.remove_clip();
+        this._qs.setTablet(layout);
+        this._syncBarLine();
+        this._stack.setFrame(layout.rows);
+        this._queueApply();
+    }
+
+    // a tablet's header: the clock and the icons where the status bar has them, as it lays them out again (a turn,
+    // the clock's minute)
+    _syncBarLine() {
+        if (this._layout && this._statusBar)
+            this._qs.setBarLine(this._statusBar.contentLine);
+    }
+
     _onDestroy() {
+        geometry.disconnectObject(this);
         wholeFrames(this, false);
         this._stopAnimation();
         this._blurAnim?.stop();
@@ -628,6 +732,10 @@ export const Shade = GObject.registerClass({
             global.compositor.get_laters().remove(this._applyId);
         this._ungrab();
         this._statusBar?.remove_action(this._pull);
+        if (this._statusBar) {
+            this._statusBar.opacity = 255;
+            this._statusBar.setLineHidden(false);
+        }
         global.window_group.set_scale(1, 1);
         global.window_group.set_translation(0, 0, 0);
     }

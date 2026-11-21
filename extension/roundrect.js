@@ -5,7 +5,7 @@ import Clutter from 'gi://Clutter';
 import Cogl from 'gi://Cogl';
 import GObject from 'gi://GObject';
 
-import {SCALE} from './units.js';
+import {SCREEN_SCALE} from './units.js';
 
 const DECLARATIONS = `
 uniform vec2 size;      // the actor's, in its own units
@@ -82,7 +82,7 @@ class RoundRect extends Clutter.Actor {
         p.set_uniform_float(size, 2, 1, [w, h]);
         p.set_uniform_float(radii, 4, 1, this._radii.map(v => v * fit));
         p.set_uniform_float(color, 4, 1, [r * alpha, g * alpha, b * alpha, alpha]);
-        p.set_uniform_1f(aa, 1 / SCALE);
+        p.set_uniform_1f(aa, 1 / SCREEN_SCALE);
         const node = Clutter.PipelineNode.new(p);
         node.add_rectangle(new Clutter.ActorBox({x1: 0, y1: 0, x2: w, y2: h}));
         root.add_child(node);

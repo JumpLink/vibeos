@@ -8,6 +8,7 @@
 //     black 0.8 scrim blurred 90 → 10 px; on release it flies into its icon from rest, the scrim fading in 233 ms
 //   a dialog, or an app the probe cannot read (Waydroid's: Android takes Escape as BACK): Escape
 //   recents: as its own Escape; the launcher's drawer: closed
+//   the keyboard up, over any of these: the keyboard goes down, and that is all (Android's back with the IME shown)
 //
 // The gesture: a strip EDGE_W wide on either side above the gesture bar; the swipe starts when it is more
 // across than along past SLOP, and gives the touch back to the app after 250 ms without that.
@@ -20,16 +21,21 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {BackProbe} from './a11y.js';
 import {BackPanelController} from './backpanel.js';
-import {cubic} from './launch.js';
+import {dismissKeyboard} from './keyboard/keyboard.js';
+import {cubic, openerOf} from './launch.js';
 import {Animator} from './motion.js';
 import {overWindows} from './scanout.js';
 import {NAV_GESTURE_H, SCREEN_H, SCREEN_W, Spring, TaskView, clamp, lerp} from './task.js';
+import {geometry} from './units.js';
 import {sideways} from './sideways.js';
 
 const EDGE_W = 30 * 3;                  // the edge strip a back swipe starts in
 const SLOP = 8 * 3 * 0.75;              // touch slop × 0.75
 const LONG_PRESS_MS = 250;              // min(back_timeout, the long press timeout)
-const MAX_DISTANCE = SCREEN_W;          // progress = dx / the display's width, linear
+let MAX_DISTANCE = SCREEN_W;            // progress = dx / the display's width, linear
+geometry.connect('changed', () => {
+    MAX_DISTANCE = SCREEN_W;
+});
 const PROGRESS_SPRING = [1500, 1];      // the progress follows the finger on a medium, unbouncy spring
 const PROBE_WAIT_MS = 600;              // released before the app answered: how long to wait for it
 // The window first follows the finger 150 ms after it came down (the launcher is started first, and the
@@ -55,13 +61,25 @@ const BACK_GESTURE = (() => {
 })();
 const DECELERATE = t => 1 - (1 - t) * (1 - t);
 
+// back into the file a window was opened from (launch.js openerOf): it lands on the file's box in FILE_MS, emphasized
+// decelerate, its corners those of the file's thumbnail, and fades out over the last part of the way
+const FILE_MS = 400;
+const FILE_FADE_FROM_MS = 220;
+const FILE_CORNER_R = 12 * 3;
+const FILE_CURVE = cubic(0.05, 0.7, 0.1, 1);
+const CLOSE_WAIT_MS = 1500;             // a window still there by then refused to close (unsaved changes): it is back
+
 // ---- back to home: the window under the finger, then into its icon ------------------------------------------------
+// A window a file was opened in (a photo from Files) goes back to the app it came from instead: that app's window is
+// under it all along, with no scrim, and on release the window lands on the file and closes (Android finishing the
+// viewer back to the activity that started it).
 
 class BackToHome {
     constructor(nav, win, left) {
         this._nav = nav;
         this._win = win;
         this._left = left;
+        this._opener = openerOf(win);
         this._scale = nav.scale;
         const m = Main.layoutManager.primaryMonitor;
         this.layer = new Clutter.Actor({name: 'vibeosBack', x: m.x, y: m.y, width: m.width, height: m.height});
@@ -77,6 +95,11 @@ class BackToHome {
         this.rect = [0, 0, SCREEN_W, SCREEN_H];
         this.r = 0;
 
+        if (this._opener) {
+            // the app it came from right under it, whatever was opened over it since
+            this._opener.from.raise();
+            return;
+        }
         const app = Shell.WindowTracker.get_default().get_window_app(win);
         // the workspace at 0.85 at once, the depth of an app in front with its blur held, the app's icon hidden
         nav.launcherState('back', 0, app?.get_id() ?? '');
@@ -95,6 +118,8 @@ class BackToHome {
         this.rect = [left, top, left + w, top + h];
         this.r = lerp(0, END_CORNER_R, p);
         this._task.place(this.rect, this.r, 1);
+        if (this._opener)
+            return;
         const blur = Math.round(lerp(MAX_BLUR, MIN_BLUR_PRE_COMMIT, p));
         if (blur !== this._lastBlur)
             this._nav.launcher('Scrim', new GLib.Variant('(dd)', [SCRIM_ALPHA, blur]));
@@ -104,6 +129,10 @@ class BackToHome {
     // released: into the icon from rest, the launcher's reveal without its fade, and its scrim and blur gone in 233 ms
     // (the launcher's, from the flight's start)
     commit(done) {
+        if (this._opener) {
+            this._intoFile(done);
+            return;
+        }
         this._nav.flight(this._win, this._task, this.rect, this.r, {x: 0, y: 0}, {state: 'back-reveal', cropTop: true},
             () => {
                 this.destroy();
@@ -111,8 +140,53 @@ class BackToHome {
             });
     }
 
-    // the progress came back to 0: the window is whole again, the launcher back to rest
+    // into the file: the app it came from takes the focus at once, the window closes once it is out of sight
+    _intoFile(done) {
+        const {from, box} = this._opener;
+        const m = Main.layoutManager.primaryMonitor;
+        const sc = this._scale;
+        const end = [(box.x - m.x) * sc, (box.y - m.y) * sc, (box.x - m.x + box.w) * sc, (box.y - m.y + box.h) * sc];
+        const start = this.rect, r0 = this.r;
+        const win = this._win;
+        from.activate(global.get_current_time());
+        this._fly = new Animator(global.stage, (dt, elapsed) => {
+            const ms = elapsed * 1000;
+            const p = FILE_CURVE.get(clamp(ms / FILE_MS, 0, 1));
+            const rect = start.map((v, i) => lerp(v, end[i], p));
+            const alpha = 1 - clamp((ms - FILE_FADE_FROM_MS) / (FILE_MS - FILE_FADE_FROM_MS), 0, 1);
+            this._task.place(rect, lerp(r0, FILE_CORNER_R, p), alpha);
+            return ms < FILE_MS;
+        }, () => {
+            this._fly = null;
+            const actor = win.get_compositor_private();
+            this.destroy();
+            if (actor) {
+                // hidden until it is gone, rather than whole again for the moment the app takes to close it
+                actor.opacity = 0;
+                Main.wm.skipNextEffect(actor);
+                win.delete(global.get_current_time());
+                const id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, CLOSE_WAIT_MS, () => {
+                    const still = win.get_compositor_private();
+                    if (still) {
+                        still.opacity = 255;
+                        win.activate(global.get_current_time());
+                    }
+                    return GLib.SOURCE_REMOVE;
+                });
+                actor.connect('destroy', () => GLib.source_remove(id));
+            }
+            done();
+        });
+    }
+
+    // the progress came back to 0: the window is whole again, the launcher back to rest (or it back over the app it
+    // came from)
     cancel() {
+        if (this._opener) {
+            this._win.raise();
+            this.destroy();
+            return;
+        }
         this._nav.launcherState('normal');
         this._nav.statusBarOverApp(null);
         this.destroy();
@@ -122,6 +196,7 @@ class BackToHome {
         if (this._destroyed)
             return;
         this._destroyed = true;
+        this._fly?.stop();
         this._task.destroy();
         this.layer.destroy();
     }
@@ -220,12 +295,15 @@ export class EdgeBack {
     // what back means for what is in front now: {kind, win} or null
     _target() {
         const nav = this._nav;
+        const focus = global.display.focus_window;
+        const launcher = !focus || nav.home.isHome(focus);
+        if (Main.keyboard.visible)
+            return {kind: 'keyboard', launcher};
         if (nav.recentsShown)
             return {kind: 'recents'};
         if (nav.bouncerShown)
             return {kind: 'keyguard'};
-        const focus = global.display.focus_window;
-        if (!focus || nav.home.isHome(focus))
+        if (launcher)
             return {kind: nav.drawerOpen ? 'drawer' : 'home-screen'};
         if (focus.get_transient_for() || focus.get_window_type() !== Meta.WindowType.NORMAL)
             return {kind: 'key', win: focus};
@@ -312,7 +390,7 @@ export class EdgeBack {
         g.started = true;
         // the finger is back's now: the launcher under it lets go (Android pilfers it), so the drawer's list
         // neither scrolls nor opens the app it started on
-        if (g.target.kind === 'drawer' || g.target.kind === 'home-screen')
+        if (g.target.kind === 'drawer' || g.target.kind === 'home-screen' || g.target.launcher)
             this._nav.launcher('Cancel', null);
         this._move();
     }
@@ -506,6 +584,11 @@ export class EdgeBack {
             break;
         case 'drawer':
             nav.launcher('Back', null);
+            break;
+        case 'keyboard':
+            // (the gesture had the touch: the key it may have begun on is let go, and the close is not held for a lift
+            // the stage never sees)
+            dismissKeyboard();
             break;
         case 'home-screen':
             break;

@@ -18,7 +18,7 @@ import {Animator, animate, bezier, clamp, FAST_OUT_LINEAR_IN, FAST_OUT_SLOW_IN, 
     LINEAR_OUT_SLOW_IN} from './motion.js';
 import {Color, setSource, SurfaceEffect} from './palette.js';
 import {AndroidText} from './text.js';
-import {px, SCALE, SCREEN_H, SCREEN_W, screenPixels} from './units.js';
+import {HEIGHT, landscape, px, SCALE, screenPixels, TABLET, WIDTH} from './units.js';
 
 const STANDARD = bezier(0.2, 0, 0, 1);
 const STANDARD_DECELERATE = bezier(0, 0, 0, 1);
@@ -31,6 +31,30 @@ const PRIMARY_CONTAINER = [16, 78, 86];
 const MESSAGE_BASELINE = 288;
 const SECONDARY_BASELINE = 390;
 const SECONDARY_LINE = 56;
+
+// A tablet's bouncer, as Android 17 lays it out on the Galaxy Tab S5e: the phone's, in a column centred on the left
+// half of the screen in landscape and on the screen in portrait; the message a little lower, the entry field and the
+// keys moved down, the keys' bottom row a fixed distance above the screen's bottom. The keys and their pitch are the
+// phone's.
+const TABLET_MESSAGE_BASELINE = 300;
+const TABLET_FIELD_Y = {land: 736.5, port: 1423.5};
+const TABLET_LAST_ROW_ABOVE_BOTTOM = {land: 354, port: 420};
+const PHONE_COLUMN = 540;
+
+// how far the phone's layout moves on this screen, as it is turned now: dx, and dy of the messages, the field and the
+// keys (the pattern's grid: dy of the keys' middle)
+export function bouncerOffsets() {
+    if (!TABLET)
+        return {dx: 0, message: 0, field: 0, keys: 0};
+    const land = landscape();
+    const o = land ? 'land' : 'port';
+    return {
+        dx: (land ? WIDTH / 4 : WIDTH / 2) - PHONE_COLUMN,
+        message: TABLET_MESSAGE_BASELINE - MESSAGE_BASELINE,
+        field: TABLET_FIELD_Y[o] - DOT_Y,
+        keys: HEIGHT - TABLET_LAST_ROW_ABOVE_BOTTOM[o] - KEY_ROWS[3],
+    };
+}
 
 export const Strings = {
     pin: {
@@ -62,11 +86,18 @@ function mixColour([c0, a0], [c1, a1], t) {
 function centredText(parent, sizeSp, wght, cx, baseline) {
     const text = new AndroidText('', sizeSp, wght, {colour: Color.onSurface});
     parent.add_child(text);
+    let [dx, dy] = [0, 0];
     const place = () => {
-        text.set_position(px(cx - text.inset - text.textWidth / 2), px(baseline - text.inset - text.baseline));
+        text.set_position(px(cx + dx - text.inset - text.textWidth / 2),
+            px(baseline + dy - text.inset - text.baseline));
     };
     return {
         actor: text,
+        // moved by (x, y) from where it was made for
+        moveBy: (x, y) => {
+            [dx, dy] = [x, y];
+            place();
+        },
         set: s => {
             // each digit typed sets the prompt again: the same text is not drawn and uploaded again
             if (s === text.shown)
@@ -103,6 +134,11 @@ class Messages {
 
     get actors() {
         return [this._primary.actor, ...this._secondary.map(line => line.actor)];
+    }
+
+    moveBy(dx, dy) {
+        for (const line of [this._primary, ...this._secondary])
+            line.moveBy(dx, dy);
     }
 }
 
@@ -430,8 +466,9 @@ export const PinView = GObject.registerClass({
     Signals: {'submit': {param_types: [GObject.TYPE_STRING]}},
 }, class PinView extends St.Widget {
     constructor() {
-        super({width: px(SCREEN_W), height: px(SCREEN_H)});
+        super();
         this.kind = 'pin';
+        this._offsets = bouncerOffsets();
         this._digits = [];
         this._dots = [];
         this._enabled = true;
@@ -460,6 +497,17 @@ export const PinView = GObject.registerClass({
         // the shake's order: 1-9, delete, 0, enter
         this._shakeOrder = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'delete', '0', 'enter']
             .map(n => this._keys.find(k => k.name === n));
+        this.relayout();
+    }
+
+    // over the screen as it is turned now
+    relayout() {
+        const o = this._offsets = bouncerOffsets();
+        this.set_size(px(WIDTH), px(HEIGHT));
+        this._messages.moveBy(o.dx, o.message);
+        this._field.set_position(px(FIELD[0] + o.dx), px(DOT_Y - DOT_CELL / 2 + o.field));
+        this._keys.forEach((key, i) => key.set_position(px(KEY_COLUMNS[i % 3] + o.dx - KEY / 2),
+            px(KEY_ROWS[Math.floor(i / 3)] + o.keys - KEY / 2)));
     }
 
     _wireKey(key) {
@@ -698,8 +746,9 @@ export const PinView = GObject.registerClass({
 
     // a touch on the keys or the field is the bouncer's own; elsewhere it may be a swipe
     ownsPoint(x, y) {
-        return y >= px(DOT_Y - DOT_CELL / 2) && y <= px(KEY_ROWS[3] + KEY / 2) &&
-            x >= px(KEY_COLUMNS[0] - KEY / 2) && x <= px(KEY_COLUMNS[2] + KEY / 2);
+        const o = this._offsets;
+        return y >= px(DOT_Y - DOT_CELL / 2 + o.field) && y <= px(KEY_ROWS[3] + KEY / 2 + o.keys) &&
+            x >= px(KEY_COLUMNS[0] - KEY / 2 + o.dx) && x <= px(KEY_COLUMNS[2] + KEY / 2 + o.dx);
     }
 
     destroy() {
@@ -743,8 +792,9 @@ export const PatternView = GObject.registerClass({
     Signals: {'submit': {param_types: [GObject.TYPE_STRING]}},
 }, class PatternView extends St.Widget {
     constructor() {
-        super({width: px(SCREEN_W), height: px(SCREEN_H)});
+        super();
         this.kind = 'pattern';
+        this._offsets = bouncerOffsets();
         this._messages = new Messages(this);
         this._enabled = true;
         this._wrong = false;
@@ -752,10 +802,10 @@ export const PatternView = GObject.registerClass({
         this._segments = [];        // {bar, done (ms) or null}
         this._clearId = 0;
 
-        // the grid, so it can rise as one
-        this._grid = new St.Widget({width: px(SCREEN_W), height: px(SCREEN_H)});
+        // the grid, so it can rise as one; laid out as on the phone, and moved as one on a tablet
+        this._grid = new St.Widget();
         this.add_child(this._grid);
-        this._lines = new St.Widget({width: px(SCREEN_W), height: px(SCREEN_H)});
+        this._lines = new St.Widget();
         this._grid.add_child(this._lines);
         this._cells = [];
         for (let i = 0; i < 9; i++) {
@@ -776,6 +826,19 @@ export const PatternView = GObject.registerClass({
         this._down = null;
         this.connect('event', (a, event) => this._onEvent(event));
         this._frames = new Animator(this, () => this._fadeSegments());
+        this.relayout();
+    }
+
+    // over the screen as it is turned now; the grid's middle where the PIN pad's is
+    relayout() {
+        const o = this._offsets = bouncerOffsets();
+        this.set_size(px(WIDTH), px(HEIGHT));
+        this._messages.moveBy(o.dx, o.message);
+        const dy = (KEY_ROWS[0] + KEY_ROWS[3]) / 2 + o.keys - CELL_Y[1];
+        this._gridOffset = TABLET ? [o.dx, dy] : [0, 0];
+        this._grid.set_position(px(this._gridOffset[0]), px(this._gridOffset[1]));
+        for (const actor of [this._grid, this._lines])
+            actor.set_size(px(WIDTH), px(HEIGHT));
     }
 
     // --- the dots
@@ -823,7 +886,7 @@ export const PatternView = GObject.registerClass({
                 return Clutter.EVENT_PROPAGATE;
             this._down = isTouch ? seq : 'pointer';
             this._start();
-            this._move(x, y);
+            this._move(...this._onGrid(x, y));
             return Clutter.EVENT_STOP;
         }
         const mine = this._down !== null && (isTouch ? this._down !== 'pointer' && this._down === seq
@@ -832,7 +895,7 @@ export const PatternView = GObject.registerClass({
             return Clutter.EVENT_PROPAGATE;
         const [x, y] = this._local(event);
         if (type === Clutter.EventType.TOUCH_UPDATE || type === Clutter.EventType.MOTION) {
-            this._move(x, y);
+            this._move(...this._onGrid(x, y));
         } else {
             this._down = null;
             this._finish(type !== Clutter.EventType.TOUCH_CANCEL);
@@ -845,6 +908,11 @@ export const PatternView = GObject.registerClass({
         const [sx, sy] = event.get_coords();
         const [, x, y] = this.transform_stage_point(sx, sy);
         return [x * SCALE, y * SCALE];
+    }
+
+    // from this view's coordinates to the grid's
+    _onGrid(x, y) {
+        return [x - this._gridOffset[0], y - this._gridOffset[1]];
     }
 
     _start() {
@@ -1062,7 +1130,8 @@ export const PatternView = GObject.registerClass({
 
     ownsPoint(x, y) {
         const half = PITCH * 1.5;
-        return x >= px(540 - half) && x <= px(540 + half) && y >= px(1320 - half) && y <= px(1320 + half);
+        const [cx, cy] = [CELL_X[1] + this._gridOffset[0], CELL_Y[1] + this._gridOffset[1]];
+        return x >= px(cx - half) && x <= px(cx + half) && y >= px(cy - half) && y <= px(cy + half);
     }
 
     destroy() {

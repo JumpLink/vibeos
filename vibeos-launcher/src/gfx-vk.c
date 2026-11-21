@@ -12,6 +12,7 @@
 #include "blur_down_frag.h"
 #include "blur_up_frag.h"
 #include "stretch_frag.h"
+#include "opaque_frag.h"
 
 #define STAGING_BYTES (8u << 20)     /* per frame in flight; larger uploads go their own way */
 #define MAX_SETS      2048
@@ -192,6 +193,7 @@ setup (void)
   V.pipes[GFX_PIPE_BLUR_DOWN] = make_pipeline (blur_down_frag, sizeof blur_down_frag, false);
   V.pipes[GFX_PIPE_BLUR_UP] = make_pipeline (blur_up_frag, sizeof blur_up_frag, false);
   V.pipes[GFX_PIPE_STRETCH] = make_pipeline (stretch_frag, sizeof stretch_frag, true);
+  V.pipes[GFX_PIPE_OPAQUE] = make_pipeline (opaque_frag, sizeof opaque_frag, false);
   for (int i = 0; i < GFX_N_PIPES; i++)
     if (!V.pipes[i])
       return false;

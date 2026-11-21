@@ -123,8 +123,12 @@ export class Brightness {
         this._easeId = 0;
 
         // a new choice of auto starts it from its curve
+        this._fromCurve = false;
         this._power = new Gio.Settings({schema_id: 'org.gnome.settings-daemon.plugins.power'});
-        this._power.connectObject('changed::ambient-enabled', () => (this._offset = 0), this);
+        this._power.connectObject('changed::ambient-enabled', () => {
+            this._offset = 0;
+            this._fromCurve = true;
+        }, this);
 
         const target = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(this._manager), 'autoBrightnessTarget');
         this._setShellTarget = v => {
@@ -200,12 +204,24 @@ export class Brightness {
         if (!this._active)
             return;
         const goal = Math.clamp(LUX_ZERO + LUX_DECADE * Math.log10(1 + Math.max(lux, 0)), 0, 1);
-        if (this._luxGoal >= 0 && Math.abs(goal - this._luxGoal) < LUX_HYSTERESIS)
+        // The first reading since the screen came on (or the shell started) leaves the brightness as it was when
+        // the screen went off, or as it was saved (owner, 11-20): auto keeps that distance from its curve and follows
+        // the light from there. Only turning auto on starts it from the curve, at once.
+        if (this._luxGoal < 0) {
+            this._luxGoal = goal;
+            if (this._fromCurve || !this._scale) {
+                this._fromCurve = false;
+                this._easeTo(Math.clamp(goal + this._offset, 0, 1), true);
+            } else {
+                this._offset = this._scale.value - goal;
+            }
             return;
-        // the screen coming on, or auto: at once; the light changing: eased
-        const first = this._luxGoal < 0;
+        }
+        if (Math.abs(goal - this._luxGoal) < LUX_HYSTERESIS)
+            return;
+        // the light changing: eased
         this._luxGoal = goal;
-        this._easeTo(Math.clamp(goal + this._offset, 0, 1), first);
+        this._easeTo(Math.clamp(goal + this._offset, 0, 1), false);
     }
 
     // the owner moved the slider (or something set the backlight): auto keeps that distance from its curve

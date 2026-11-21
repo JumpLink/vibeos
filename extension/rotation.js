@@ -1,5 +1,8 @@
 // A phone turns its apps, not itself: the lock screen is portrait and so is the home screen (a launcher's "Allow home
-// screen rotation" is off by default on a phone). With GNOME's orientation lock
+// screen rotation" is off by default on a phone). A tablet turns everything: the lock screen, home and the drawer
+// follow the sensor as its apps do (Launcher3 rotates its home screen on a tablet whatever its setting says), and
+// "portrait" and "landscape" are its panel's natural shape or the other one, whichever that is (the Galaxy Tab S5e's
+// panel is landscape at rotation 0). With GNOME's orientation lock
 // (Android's auto-rotate) off, the panel follows the phone only while an app is in front; locked, at home or in the app
 // drawer it is upright, and an app going away turns it back. An app opens the way the panel is now and turns when the
 // phone is turned after that: the sensor's last reading may be older than the hold (the phone lay flat, or was
@@ -27,10 +30,22 @@ import Shell from 'gi://Shell';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
+import {TABLET} from './units.js';
+
 const NORMAL = 0;               // MtkMonitorTransform
 const SEASCAPE = 1;             // 90: the phone turned right, its left side up
 const LANDSCAPE = 3;            // 270: turned left, its right side up (what an app asking for landscape gets)
 const FOLLOW = -1;              // not a transform: the panel follows the phone
+// a tablet's, not transforms: which one is found when the panel turns (_resolve), from its natural shape
+const PORTRAIT = 'portrait';
+const LANDSCAPE_ANY = 'landscape';
+// the sensor's reading as the transform mutter would give the panel for it
+const SENSOR_TRANSFORMS = new Map([
+    [Meta.Orientation.NORMAL, 0],
+    [Meta.Orientation.LEFT_UP, 1],
+    [Meta.Orientation.BOTTOM_UP, 2],
+    [Meta.Orientation.RIGHT_UP, 3],
+]);
 const TEMPORARY = 1;            // MetaMonitorsConfigMethod
 // a shell started sideways is built anyway if the panel has not turned by then
 const UPRIGHT_TIMEOUT_MS = 2000;
@@ -40,7 +55,7 @@ const STARTING_MS = 10000;
 // its window, or a dialog of its own between two of its windows)
 const SETTLE_MS = 400;
 
-const STATE_TYPE = '(ua((ssss)a(siiddada{sv})a{sv})a(iiduba(ssss)a{sv})a{sv})';
+export const STATE_TYPE = '(ua((ssss)a(siiddada{sv})a{sv})a(iiduba(ssss)a{sv})a{sv})';
 
 const LOCK_KEY = 'orientation-lock';
 // the user's orientation lock while the panel is held with it: 'true' or 'false'
@@ -105,7 +120,7 @@ export function setUserOrientationLock(settings, locked) {
     }
 }
 
-function displayConfig(method, params, type = null) {
+export function displayConfig(method, params, type = null) {
     return new Promise((resolve, reject) => Gio.DBus.session.call('org.gnome.Mutter.DisplayConfig',
         '/org/gnome/Mutter/DisplayConfig', 'org.gnome.Mutter.DisplayConfig', method, params,
         type ? new GLib.VariantType(type) : null, Gio.DBusCallFlags.NONE, -1, null, (bus, res) => {
@@ -149,10 +164,10 @@ export class Rotation {
         Main.layoutManager.connectObject('monitors-changed', () => this._monitorsChanged(), this);
     }
 
-    // the panel upright, or not ours to turn
+    // the panel upright, or not ours to turn; a tablet's lays out whichever way it is turned
     get upright() {
         const monitors = Main.layoutManager.monitors;
-        if (monitors.length !== 1)
+        if (monitors.length !== 1 || TABLET)
             return true;
         return monitors[0].height >= monitors[0].width;
     }
@@ -243,10 +258,12 @@ export class Rotation {
         }
         if (!front && this._forced && !this._keyguard.showing && this._settle())
             return;
-        if (!front || wanted === 'portrait')
-            this.hold();
+        if (wanted === 'portrait')
+            this.holdPortrait();
         else if (wanted === 'landscape')
             this.holdSideways();
+        else if (!front)
+            this.holdHome();
         else
             this.release();
     }
@@ -271,9 +288,31 @@ export class Rotation {
         this._want(NORMAL);
     }
 
+    // the lock screen's and home's: upright on a phone, the sensor's on a tablet
+    holdHome() {
+        if (TABLET)
+            this.release();
+        else
+            this.hold();
+    }
+
+    // portrait, whichever way the device is held: a phone upright; a tablet's panel turned to portrait, the way it
+    // is held if it is
+    holdPortrait() {
+        if (!TABLET)
+            this.hold();
+        else if (this._wanted !== PORTRAIT)
+            this._want(PORTRAIT);
+    }
+
     // sideways, whichever way the phone is held: the way it is turned if it is (Android's sensorLandscape, read as
-    // it starts), else Android's landscape
+    // it starts), else Android's landscape. A tablet: landscape, the way it is held if it is.
     holdSideways() {
+        if (TABLET) {
+            if (this._wanted !== LANDSCAPE_ANY)
+                this._want(LANDSCAPE_ANY);
+            return;
+        }
         if (this._wanted === LANDSCAPE || this._wanted === SEASCAPE)
             return;
         const turnedRight = !this._held && this._sensor.get_orientation() === Meta.Orientation.LEFT_UP;
@@ -304,9 +343,10 @@ export class Rotation {
                 this._again = false;
                 const wanted = this._wanted;
                 if (wanted === FOLLOW) {
-                    // held sideways for an app: upright first, as the phone lying flat has no way of its own
+                    // held sideways for an app: upright first, as the phone lying flat has no way of its own; a
+                    // tablet turns the way it is held (mutter turns the panel on the sensor's next change only)
                     if (this._forced && this._held)
-                        await this._turnTo(NORMAL);
+                        await this._turnTo(TABLET ? this._sensorTransform() : NORMAL);
                     if (this._again)
                         continue;
                     this._forced = false;
@@ -376,15 +416,41 @@ export class Rotation {
         }
     }
 
-    async _turnTo(transform) {
+    // the transform the sensor's reading would turn the panel to, null without one (lying flat)
+    _sensorTransform() {
+        return SENSOR_TRANSFORMS.get(this._sensor.get_orientation()) ?? null;
+    }
+
+    // A tablet's portrait or landscape as a transform: none if the panel is that way already; else the way the
+    // device is held if the sensor says it is, else the first of the two. The panel's natural shape is its mode's.
+    _resolve(target, mode, current) {
+        const naturalLandscape = mode[1] > mode[2];
+        const sideways = current === 1 || current === 3;
+        const isLandscape = naturalLandscape !== sideways;
+        if ((target === LANDSCAPE_ANY) === isLandscape)
+            return current;
+        const fromSensor = this._sensorTransform();
+        const turned = (target === LANDSCAPE_ANY) !== naturalLandscape;
+        if (fromSensor !== null && (fromSensor === 1 || fromSensor === 3) === turned)
+            return fromSensor;
+        return turned ? 1 : 0;
+    }
+
+    // @target: a transform, null for none, or a tablet's PORTRAIT or LANDSCAPE_ANY
+    async _turnTo(target) {
+        if (target === null)
+            return;
         const [serial, monitors, logical] = (await displayConfig('GetCurrentState', null, STATE_TYPE))
             .recursiveUnpack();
-        if (logical.length !== 1 || logical[0][3] === transform || !this._held)
+        if (logical.length !== 1 || logical[0][3] === target || !this._held)
             return;
-        const [, , scale, , , specs] = logical[0];
+        const [, , scale, current, , specs] = logical[0];
         const connector = specs[0][0];
         const mode = monitors.find(([spec]) => spec[0] === connector)?.[1].find(m => m[6]['is-current']);
         if (!mode)
+            return;
+        const transform = typeof target === 'number' ? target : this._resolve(target, mode, current);
+        if (transform === current)
             return;
         await displayConfig('ApplyMonitorsConfig', new GLib.Variant('(uua(iiduba(ssa{sv}))a{sv})',
             [serial, TEMPORARY, [[0, 0, scale, transform, true, [[connector, mode[0], {}]]]], {}]));

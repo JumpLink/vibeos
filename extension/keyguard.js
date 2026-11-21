@@ -1,5 +1,6 @@
 // The keyguard: the lock screen over everything while the phone is locked, its bouncer, and the unlock
-// (in screen px of the 1080x2280 reference).
+// (in screen px of the 1080x2280 reference). A tablet's is laid out as Android 17 lays out the Galaxy Tab S5e's,
+// either way it is turned, and again whenever it turns.
 //
 // Locked, the shell is in the 'unlock-dialog' session mode, as GNOME's own screen shield puts it: windows hidden,
 // gestures, heads-ups and keybindings off, and this view holds a modal grab. It locks when the screen goes off
@@ -31,7 +32,7 @@ import {chargingText} from './state.js';
 import {notificationIcon, SystemIcons, systemEnd} from './statusbar.js';
 import {AndroidText} from './text.js';
 import {wholeFrames} from './redraws.js';
-import {px, screenPixels, SCALE, SCREEN_H, SCREEN_W} from './units.js';
+import {geometry, HEIGHT, landscape, px, screenPixels, SCALE, SCREEN_SCALE, TABLET, WIDTH} from './units.js';
 
 Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
 Gio._promisify(Gio.File.prototype, 'load_contents_async');
@@ -60,6 +61,30 @@ const INDICATION_SIZE = 14;
 const INDICATION_WGHT = 700;
 const INDICATION_INK_TOP = 2083;
 
+// A tablet's (screen px; W and H the screen as it is turned now). Text Android places by its logical box is placed
+// here so that a sample's ink lands where Android's did: the font may not be Android's.
+const TABLET_DATE_SAMPLE = 'Mon, Nov 16';
+const TABLET_CLOCK_SAMPLE = '12:28';
+// landscape: the date at the top left; the large clock in two lines, hours over minutes, centred on the left half;
+// the notification icons' pill at the top right
+const TABLET_LAND = {
+    date: {sampleInkLeft: 172.5, inkTop: 249},
+    largeClock: {inkTop: 766.5, pitch: 429, digitHeight: 395.25},
+    pillRightGap: 120, pillY: 216,
+    lockIconAboveBottom: 288,
+    indicationAboveBottom: 162,
+};
+// portrait: the small clock with the date under it, as on a phone, further in; the pill under them
+const TABLET_PORT = {
+    clock: {sampleInkLeft: 457.5, inkTop: 400.5},
+    date: {sampleInkLeft: 472.5, inkTop: 699},
+    pillX: 360, pillY: 1144.5,
+    lockIconAboveBottom: 330,
+    indicationAboveBottom: 183,
+};
+const TABLET_SYSTEM_END = 74;           // from the end, as the home status bar's
+const TABLET_STATUS_CENTRE_Y = 42;
+
 // --- the swipe up: f is the panel's expansion, 1 at rest; f = 1 - (d + 142) / 1590 for a drag of d px
 const SLOP = 24;
 const F_OFFSET = 142;
@@ -79,7 +104,7 @@ const GONE_MS = 500;
 const SURFACE_DELAY_MS = 67;
 const SURFACE_MS = 300;
 const SURFACE_SCALE = 0.95;
-const SURFACE_SHIFT = Math.round(SCREEN_H * 0.05);   // 5 % of the screen's height: 114 on 2280
+const SURFACE_SHIFT = 0.05;             // of the screen's height: 114 on 2280
 const SURFACE_PIVOT_Y = 0.66;
 // swipe (no secret): dismissing past 0.3 unlocks; the content fades out by 0.18 and rises up to SWIPE_RISE
 const SWIPE_FINISH = 0.3;
@@ -118,12 +143,23 @@ function placeText(text, {left, centre, inkTop}) {
     text.set_position(px(x - text.inset), px(inkTop - text.inset - text.ink.y));
 }
 
+// the logical start that puts @sample's ink, in @text's font, at @inkLeft; @text is left showing @sample
+function sampleLeft(text, sample, inkLeft) {
+    text.setText(sample);
+    return inkLeft - text.ink.x;
+}
+
 const LockIcon = GObject.registerClass(
 class LockIcon extends Canvas {
     constructor() {
         super({width: px(LOCK_ICON.size), height: px(LOCK_ICON.size), reactive: true});
-        this.set_position(px(LOCK_ICON.cx - LOCK_ICON.size / 2), px(LOCK_ICON.cy - LOCK_ICON.size / 2));
+        this.place(LOCK_ICON.cx, LOCK_ICON.cy);
         this._name = 'keyguard_ic_lock';
+    }
+
+    // centred on (cx, cy)
+    place(cx, cy) {
+        this.set_position(px(cx - LOCK_ICON.size / 2), px(cy - LOCK_ICON.size / 2));
     }
 
     set unlocked(on) {
@@ -141,6 +177,12 @@ class LockIcon extends Canvas {
 });
 
 
+// the screen as it is turned now in its own pixels: what a wallpaper is decoded for
+function panelPixels() {
+    const k = SCREEN_SCALE / SCALE;
+    return [Math.round(WIDTH * k), Math.round(HEIGHT * k)];
+}
+
 // GNOME's wallpaper as a picture St can draw. A slideshow (an .xml: Debian's default, desktop-base's
 // desktop-background.xml, is one) is its picture for now at the panel's size, as the shell's own background takes it;
 // St would try to load the XML as an image on every frame.
@@ -150,7 +192,7 @@ function pictureUri(uri) {
     try {
         const show = new GnomeBG.BGSlideShow({file: Gio.File.new_for_uri(uri)});
         show.load();
-        const [, , , file] = show.get_current_slide(SCREEN_W, SCREEN_H);
+        const [, , , file] = show.get_current_slide(...panelPixels());
         return file ? Gio.File.new_for_path(file).get_uri() : '';
     } catch (e) {
         logError(e, `vibeos: the wallpaper slideshow ${uri}`);
@@ -255,15 +297,25 @@ export class Keyguard extends Signals.EventEmitter {
         this._wallpaperContent = null;
         this._wallpaperStyle = null;
         this._wallpaperLoad = null;
+        this._wallpaperShape = '';
+        this._covers = new Map();       // the decoded wallpaper by the screen's shape it covers ("WxH")
         this.wallpaperLoaded = Promise.resolve();
         this._loadThrottle();
 
         this._build();
+        this._layout();
+        // GNOME's screen shield stays out of the way: the session going idle (gnome-session's presence) faded its
+        // lightbox in and locked it under this keyguard, which has the screen timeout (power.js) and the lock. Its
+        // handler is stubbed on the instance while this runs; destroy() gives the prototype's back.
+        if (Main.screenShield)
+            Main.screenShield._onStatusChanged = () => {};
+        // turned: laid out again, the wallpaper covering the screen as it is now
+        geometry.connectObject('changed', () => this._layout(), this);
         this._wallClock = new GnomeDesktop.WallClock({time_only: true});
         this._wallClock.connectObject('notify::clock', () => this._syncClock(), this);
         this._interface.connectObject('changed::clock-format', () => this._syncClock(),
-            'changed::color-scheme', () => this._syncWallpaper(), this);
-        this._background.connectObject('changed', () => this._syncWallpaper(), this);
+            'changed::color-scheme', () => this._syncWallpaper(true), this);
+        this._background.connectObject('changed', () => this._syncWallpaper(true), this);
         this._notificationSettings.connectObject('changed::show-in-lock-screen', () => this._syncPill(), this);
         state.connectObject('changed', () => this._syncState(), this);
         // another lock type: the next lock builds its bouncer
@@ -298,15 +350,10 @@ export class Keyguard extends Signals.EventEmitter {
     // --- the view
 
     _build() {
-        const monitor = Main.layoutManager.primaryMonitor;
         this.actor = new St.Widget({
             name: 'vibeosKeyguard',
             reactive: true,
             visible: false,
-            x: monitor.x,
-            y: monitor.y,
-            width: monitor.width,
-            height: monitor.height,
         });
         // The same children first and last, always shown: what shows and hides between them (the bouncer, the
         // wallpaper) never changes the first or last visible child. St restyles a child that gains or loses
@@ -315,24 +362,27 @@ export class Keyguard extends Signals.EventEmitter {
         // First, black under the wallpaper. The unlock takes it away (opacity: no restyle) with the wallpaper, and
         // the screen behind shows through: as the keyguard's own background it stayed over the launcher coming up,
         // and every unlock went black for half a second (2026-11-13).
-        this._black = new St.Widget({width: monitor.width, height: monitor.height, style: 'background-color: black;'});
+        this._black = new St.Widget({style: 'background-color: black;'});
         this.actor.add_child(this._black);
-        this._wallpaper = new St.Widget({width: monitor.width, height: monitor.height});
+        this._wallpaper = new St.Widget();
         this.actor.add_child(this._wallpaper);
 
         // the bouncer's backdrop: the wallpaper blurred, under the shade panel's tint; in the unlock, the screen coming
-        // up behind. Drawn in whole frames while it shows (redraws.js).
-        this._blurLayer = new St.Widget({width: monitor.width, height: monitor.height});
+        // up behind. Drawn in whole frames while it shows (redraws.js). A tablet's is the tint alone, opaque, as
+        // Android has it where the GPU does no blur (the Galaxy Tab S5e's).
+        this._blurLayer = new St.Widget();
         this._blur = new Shell.BlurEffect({mode: Shell.BlurMode.BACKGROUND, radius: 0, brightness: 1});
         this._blur.enabled = false;
         this._blurLayer.add_effect(this._blur);
         this.actor.add_child(this._blurLayer);
-        this._scrim = new St.Widget({width: monitor.width, height: monitor.height, opacity: 0,
-            style: `background-color: ${rgba(SHADE_PANEL[0].map(Math.round), SHADE_PANEL[1])};`});
+        const flat = SHADE_PANEL[0].map(v => Math.round(v * SHADE_PANEL[1]));
+        this._scrim = new St.Widget({opacity: 0,
+            style: TABLET ? `background-color: rgb(${flat.join(', ')});`
+                : `background-color: ${rgba(SHADE_PANEL[0].map(Math.round), SHADE_PANEL[1])};`});
         this.actor.add_child(this._scrim);
 
         // what the lock screen shows
-        this._content = new St.Widget({width: monitor.width, height: monitor.height});
+        this._content = new St.Widget();
         this.actor.add_child(this._content);
         this._carrier = new AndroidText('', 14, 700, {colour: Color.white, opsz: 16});
         this._content.add_child(this._carrier);
@@ -341,6 +391,19 @@ export class Keyguard extends Signals.EventEmitter {
         this._cutout.connectObject('changed', () => this._systemIcons.setEnd(this._systemEnd()), this);
         this._clock = new AndroidText('', CLOCK_SIZE, CLOCK_WGHT, {colour: CLOCK_COLOUR});
         this._content.add_child(this._clock);
+        // a tablet's large clock, turned to landscape: hours over minutes, each line centred
+        this._largeClock = [];
+        if (TABLET) {
+            // its size: the digits as tall as Android's in this font
+            const probe = new AndroidText('27', 100, CLOCK_WGHT, {colour: CLOCK_COLOUR});
+            const size = 100 * TABLET_LAND.largeClock.digitHeight / probe.ink.height;
+            probe.destroy();
+            this._largeClock = [0, 1].map(() => {
+                const line = new AndroidText('', size, CLOCK_WGHT, {colour: CLOCK_COLOUR});
+                this._content.add_child(line);
+                return line;
+            });
+        }
         this._date = new AndroidText('', DATE_SIZE, DATE_WGHT, {colour: Color.white});
         this._content.add_child(this._date);
         this._pill = new St.Widget({x: px(PILL.x), y: px(PILL.y), height: px(PILL.h), visible: false,
@@ -357,7 +420,7 @@ export class Keyguard extends Signals.EventEmitter {
         this._indication = new AndroidText('', INDICATION_SIZE, INDICATION_WGHT, {colour: Color.white, opsz: 16});
         this._content.add_child(this._indication);
 
-        this._bouncerBox = new St.Widget({width: monitor.width, height: monitor.height, opacity: 0, visible: false});
+        this._bouncerBox = new St.Widget({opacity: 0, visible: false});
         this.actor.add_child(this._bouncerBox);
         this.actor.add_child(new Clutter.Actor());
 
@@ -367,8 +430,25 @@ export class Keyguard extends Signals.EventEmitter {
     }
 
     // The wallpaper loads off the main loop (loadCover()); the one before stays until it is in. wallpaperLoaded
-    // resolves once it is on, or once it failed and the CSS background took its place.
-    _syncWallpaper() {
+    // resolves once it is on, or once it failed and the CSS background took its place. Each shape of the screen gets
+    // its own cover, kept while the picture stays: a turned tablet has its other one at once. @changed: another
+    // picture, every cover made again.
+    _syncWallpaper(changed = false) {
+        const [w, h] = panelPixels();
+        const shape = `${w}x${h}`;
+        if (changed)
+            this._covers.clear();
+        else if (shape === this._wallpaperShape)
+            return;
+        this._wallpaperShape = shape;
+        const cover = this._covers.get(shape);
+        if (cover) {
+            this._wallpaperLoad?.cancel();
+            this._wallpaperLoad = null;
+            this._setWallpaper(cover, null);
+            this.wallpaperLoaded = Promise.resolve();
+            return;
+        }
         const dark = this._interface.get_string('color-scheme') === 'prefer-dark';
         const uri = pictureUri((dark && this._background.get_string('picture-uri-dark')) ||
             this._background.get_string('picture-uri'));
@@ -381,9 +461,11 @@ export class Keyguard extends Signals.EventEmitter {
         }
         const cancellable = new Gio.Cancellable();
         this._wallpaperLoad = cancellable;
-        this.wallpaperLoaded = loadCover(uri, SCREEN_W, SCREEN_H, cancellable).then(content => {
-            if (!cancellable.is_cancelled())
-                this._setWallpaper(content, null);
+        this.wallpaperLoaded = loadCover(uri, w, h, cancellable).then(content => {
+            if (cancellable.is_cancelled())
+                return;
+            this._covers.set(shape, content);
+            this._setWallpaper(content, null);
         }, e => {
             if (cancellable.is_cancelled())
                 return;
@@ -406,10 +488,77 @@ export class Keyguard extends Signals.EventEmitter {
     _syncClock() {
         const now = GLib.DateTime.new_now_local();
         const h24 = this._interface.get_string('clock-format') === '24h';
-        this._clock.setText(now.format(h24 ? '%H:%M' : '%-I:%M'));
-        placeText(this._clock, {left: CLOCK_LEFT, inkTop: CLOCK_INK_TOP});
+        const time = now.format(h24 ? '%H:%M' : '%-I:%M');
+        this._clock.setText(time);
         this._date.setText(now.format('%a, %b %-e'));
-        placeText(this._date, {left: CLOCK_LEFT, inkTop: DATE_INK_TOP});
+        const L = this._L;
+        if (!L) {
+            placeText(this._clock, {left: CLOCK_LEFT, inkTop: CLOCK_INK_TOP});
+            placeText(this._date, {left: CLOCK_LEFT, inkTop: DATE_INK_TOP});
+            return;
+        }
+        placeText(this._date, {left: L.dateLeft, inkTop: L.date.inkTop});
+        const large = !!L.largeClock;
+        this._clock.visible = !large;
+        for (const line of this._largeClock)
+            line.visible = large;
+        if (large) {
+            const [hours, minutes] = time.split(':');
+            const {inkTop, pitch} = L.largeClock;
+            [hours, minutes].forEach((part, i) => {
+                this._largeClock[i].setText(part);
+                placeText(this._largeClock[i], {centre: L.largeClockCentre, inkTop: inkTop + pitch * i});
+            });
+        } else {
+            placeText(this._clock, {left: L.clockLeft, inkTop: L.clock.inkTop});
+        }
+    }
+
+    // --- laying out for the screen as it is now
+
+    // Everything over the whole screen, and on a tablet the lock screen's parts where Android has them for the way
+    // it is turned. The phone's are where it was built with them (the phone's lock screen is always upright).
+    _layout() {
+        const monitor = Main.layoutManager.primaryMonitor;
+        if (!monitor)
+            return;
+        this.actor.set_position(monitor.x, monitor.y);
+        this.actor.set_size(monitor.width, monitor.height);
+        for (const layer of [this._black, this._wallpaper, this._blurLayer, this._scrim, this._content,
+            this._bouncerBox])
+            layer.set_size(monitor.width, monitor.height);
+        this._bouncer?.relayout();
+        this._syncWallpaper();
+        if (!TABLET) {
+            this._L = null;
+            return;
+        }
+        const W = WIDTH, H = HEIGHT;
+        const land = landscape();
+        const T = land ? TABLET_LAND : TABLET_PORT;
+        this._L = {
+            ...T,
+            dateLeft: sampleLeft(this._date, TABLET_DATE_SAMPLE, T.date.sampleInkLeft),
+            clockLeft: T.clock ? sampleLeft(this._clock, TABLET_CLOCK_SAMPLE, T.clock.sampleInkLeft) : 0,
+            largeClockCentre: W / 4,
+            pill: land ? {right: W - T.pillRightGap, y: T.pillY} : {x: T.pillX, y: T.pillY},
+        };
+        // no carrier line: a tablet has no SIM to name
+        this._carrier.visible = false;
+        this._systemIcons.setEnd(W - TABLET_SYSTEM_END);
+        this._systemIcons.setCenterY(TABLET_STATUS_CENTRE_Y);
+        this._lockIcon.place(W / 2, H - T.lockIconAboveBottom);
+        this._indicationAt = {centre: W / 2, inkTop: H - T.indicationAboveBottom};
+        placeText(this._indication, this._indicationAt);
+        this._placePill();
+        this._syncClock();
+    }
+
+    _placePill() {
+        const pill = this._L?.pill;
+        if (!pill)
+            return;
+        this._pill.set_position(px(pill.right !== undefined ? pill.right - (this._pillWidth ?? 0) : pill.x), px(pill.y));
     }
 
     _syncState() {
@@ -420,7 +569,7 @@ export class Keyguard extends Signals.EventEmitter {
         if (wifi.connected && wifi.name)
             names.push(wifi.name);
         const carrier = names.join(' | ');
-        if (carrier !== this._carrierText) {
+        if (carrier !== this._carrierText && !TABLET) {
             this._carrierText = carrier;
             this._carrier.setText(carrier);
             placeText(this._carrier, {left: CARRIER_LEFT, inkTop: CARRIER_INK_TOP});
@@ -434,7 +583,7 @@ export class Keyguard extends Signals.EventEmitter {
             this._indicationText = indication;
             this._indication.setText(indication);
             this._indication.visible = !!indication;
-            placeText(this._indication, {centre: 540, inkTop: INDICATION_INK_TOP});
+            placeText(this._indication, this._indicationAt ?? {centre: 540, inkTop: INDICATION_INK_TOP});
         }
     }
 
@@ -457,7 +606,9 @@ export class Keyguard extends Signals.EventEmitter {
         this._pill.visible = n > 0;
         if (!n)
             return;
-        this._pill.width = px((26 + 22 * n) * 3);
+        this._pillWidth = (26 + 22 * n) * 3;
+        this._pill.width = px(this._pillWidth);
+        this._placePill();
         sources.slice(0, sources.length > PILL.max + 1 ? PILL.max : n).forEach((source, k) => {
             const icon = notificationIcon(source, px(PILL.icon));
             icon.opacity = 255;
@@ -483,6 +634,8 @@ export class Keyguard extends Signals.EventEmitter {
         }
         this.showing = true;
         this._unlocking?.stop();
+        // whatever the screen did since the last lock
+        this._layout();
         this._lockIcon.unlocked = !this._secure;
         this._syncClock();
         this._syncState();
@@ -566,6 +719,7 @@ export class Keyguard extends Signals.EventEmitter {
     wokeUp() {
         if (!this.showing)
             return;
+        this._layout();
         this._syncClock();
         this._syncState();
     }
@@ -588,7 +742,7 @@ export class Keyguard extends Signals.EventEmitter {
                 return Clutter.EVENT_STOP;
             const [x, y] = this._local(event);
             // a touch stopped here cancels the back gesture before it can recognize
-            if (this.bouncerShowing && isTouch && (x < BACK_EDGE || x > SCREEN_W - BACK_EDGE))
+            if (this.bouncerShowing && isTouch && (x < BACK_EDGE || x > WIDTH - BACK_EDGE))
                 return Clutter.EVENT_PROPAGATE;
             this._settle?.stop();
             this._settle = null;
@@ -706,7 +860,7 @@ export class Keyguard extends Signals.EventEmitter {
     }
 
     _setBackdrop(p) {
-        const blur = Math.trunc(lerp(0, BLUR_MAX, p));
+        const blur = TABLET ? 0 : Math.trunc(lerp(0, BLUR_MAX, p));
         this._blur.enabled = blur > 0;
         wholeFrames(this, blur > 0);
         if (blur > 0 && this._blur.radius !== blur)
@@ -1027,7 +1181,7 @@ export class Keyguard extends Signals.EventEmitter {
         const surface = a => {
             group.opacity = Math.round(255 * a);
             group.scale_x = group.scale_y = lerp(SURFACE_SCALE, 1, a);
-            group.translation_y = px(SURFACE_SHIFT * (1 - a));
+            group.translation_y = px(Math.round(HEIGHT * SURFACE_SHIFT) * (1 - a));
         };
         surface(0);
         this._leaveLockMode();
@@ -1083,12 +1237,17 @@ export class Keyguard extends Signals.EventEmitter {
         this._goingAway();
     }
 
-    // where the status icons end, screen px: as the home status bar's on the upright panel, less SYSTEM_INSET
+    // where the status icons end, screen px: as the home status bar's on the upright panel, less SYSTEM_INSET; on a
+    // tablet TABLET_SYSTEM_END from the end whichever way it is turned (_relayout), a turn's cutout change included
     _systemEnd() {
+        if (TABLET)
+            return WIDTH - TABLET_SYSTEM_END;
         return systemEnd(this._cutout.upright, SCREEN_W) - SYSTEM_INSET;
     }
 
     destroy() {
+        if (Main.screenShield)
+            delete Main.screenShield._onStatusChanged;
         this._wallpaperLoad?.cancel();
         this._wallpaperLoad = null;
         this._settle?.stop();

@@ -44,7 +44,7 @@ endforeach
 executable('vibeos-launcher',
   'src/main.c', 'src/vk.c', 'src/gfx.c', 'src/gfx-vk.c', 'src/gfx-gl.c', 'src/wl.c', 'src/text.c', 'src/image.c',
   'src/parallax.c', 'src/apps.c', 'src/icons.c', 'src/model.c', 'src/tiles.c', 'src/home.c', 'src/drawer.c',
-  'src/nav.c', 'src/popup.c', 'src/drag.c',
+  'src/nav.c', 'src/popup.c', 'src/drag.c', 'src/pieces.c',
   proto_src,
   include_directories: include_directories('src', 'shaders'),
   c_args: '-DMIGRATE_IDS="@0@"'.format(migrate_ids_path),
@@ -71,6 +71,11 @@ install_data('parallax/vibeos-parallax-solar-system.xml', install_dir: get_optio
 test('legacy-ids', executable('test-legacy-ids', 'tests/test-legacy-ids.c', 'src/model.c', 'src/apps.c',
                               include_directories: include_directories('src'),
                               dependencies: [dependency('gio-unix-2.0'), dependency('json-glib-1.0'), legacy_ids_dep]))
+
+# the parts of a parallax layer it draws: all it shows, nothing twice
+test('pieces', executable('test-pieces', 'tests/test-pieces.c', 'src/pieces.c',
+                          include_directories: include_directories('src'),
+                          dependencies: [dependency('glib-2.0'), libm]))
 
 gnome = import('gnome')
 gnome.post_install(glib_compile_schemas: true)

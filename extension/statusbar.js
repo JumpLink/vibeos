@@ -1,6 +1,7 @@
 // The status bar: 116 px tall, clock and notification icons on the left, mobile signal, Wi-Fi and the
 // unified battery on the right, ending where a camera hole at the bar's end begins (the S10e's), or clear of a punch
-// hole in its middle (the S20 FE's). It replaces the mobile shell's top
+// hole in its middle (the S20 FE's). A tablet's is 84 px tall whichever way it is turned, as a phone's turned one.
+// It replaces the mobile shell's top
 // panel, reserves its height for maximized windows (strut), is transparent with white icons over the launcher and
 // black over an app, and hides under a fullscreen app.
 import Clutter from 'gi://Clutter';
@@ -16,7 +17,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {Canvas, paintIcon} from './icons.js';
 import {Color, cogl, font, setSource, Type} from './palette.js';
-import {px, screenPixels, SCALE, SCREEN_W} from './units.js';
+import {px, screenPixels, SCALE, SCREEN_W, TABLET} from './units.js';
 
 // --- geometry, screen px of the 1080x2280 reference
 export const BAR_HEIGHT = 116;
@@ -39,7 +40,8 @@ const LAND_BAR_HEIGHT = 84;
 const LAND_RAISE = 16;
 const PAD_START = 25;
 const OPEN_END = 85;
-const SYSTEM_SPAN = 300;                // signal, Wi-Fi and the widest battery (228) end to end, and room
+const TABLET_END = 74;                  // a tablet's: the battery's charging bolt ends this far from the edge
+export const SYSTEM_SPAN = 300;         // signal, Wi-Fi and the widest battery (228) end to end, and room
 const ICONS_TAIL = 2;                   // the battery's antialiased edge past its end
 const ICON_GAP = 19;                    // between signal, Wi-Fi and battery
 const ICON_H = 36;                      // signal and Wi-Fi
@@ -66,9 +68,10 @@ export function holePlace([x, y, w, h], W, height = BAR_HEIGHT) {
 }
 
 // Where the system icons end in a status row W px wide, screen px: CUTOUT_GAP before a hole at the row's end, else
-// OPEN_END short of the edge. Upright on the S10e (hole from 931) 889, on the S20 FE (hole in the middle) 995.
+// OPEN_END short of the edge (TABLET_END on a tablet). Upright on the S10e (hole from 931) 889, on the S20 FE (hole
+// in the middle) 995.
 export function systemEnd(hole, W, height = BAR_HEIGHT) {
-    return holePlace(hole, W, height) === 'end' ? hole[0] - CUTOUT_GAP : W - OPEN_END;
+    return holePlace(hole, W, height) === 'end' ? hole[0] - CUTOUT_GAP : W - (TABLET ? TABLET_END : OPEN_END);
 }
 
 const FILL = {
@@ -320,7 +323,15 @@ class SystemIcons extends Canvas {
         }, this);
     }
 
-    // the icons' vertical centre, screen px of the area
+    // where the icons end and their vertical centre, screen px of the area
+    get end() {
+        return this._end;
+    }
+
+    get centerY() {
+        return this._centerY;
+    }
+
     setCenterY(centerY) {
         if (centerY === this._centerY)
             return;
@@ -328,13 +339,15 @@ class SystemIcons extends Canvas {
         this.queue_repaint();
     }
 
-    // where the icons end, screen px of the area
+    // where the icons end, screen px of the area; without a span the canvas runs from 0 to there
     setEnd(end) {
         this._end = end;
         if (this._span) {
             this._left = Math.max(0, end - this._span);
             this.set_position(px(this._left), 0);
             this.set_width(px(end + ICONS_TAIL - this._left));
+        } else if (TABLET) {
+            this.set_width(px(end + ICONS_TAIL));
         }
         this.queue_repaint();
     }
@@ -347,8 +360,10 @@ class SystemIcons extends Canvas {
     }
 });
 
-export const StatusBar = GObject.registerClass(
-class StatusBar extends St.Widget {
+export const StatusBar = GObject.registerClass({
+    // the clock's text or the bar's layout changed (contentLine)
+    Signals: {'content-changed': {}},
+}, class StatusBar extends St.Widget {
     constructor(state, home, cutout) {
         const monitor = Main.layoutManager.primaryMonitor;
         super({
@@ -398,7 +413,10 @@ class StatusBar extends St.Widget {
 
         // turned with the panel: across its whole width, the clock after the hole when it is at the bar's start
         cutout.connectObject('changed', () => this._relayout(), this);
-        Main.layoutManager.connectObject('monitors-changed', () => this._relayout(), this);
+        Main.layoutManager.connectObject('monitors-changed', () => {
+            this._relayout();
+            this._queueSyncMode();      // the windows on its screen may be others now
+        }, this);
         this._relayout();
 
         this._sources = new Set();
@@ -413,6 +431,8 @@ class StatusBar extends St.Widget {
             'restacked', () => this._queueSyncMode(),
             'in-fullscreen-changed', () => this._queueSyncMode(),
             'notify::focus-window', () => this._queueSyncMode(),
+            'window-entered-monitor', () => this._queueSyncMode(),
+            'window-left-monitor', () => this._queueSyncMode(),
             this);
         global.window_manager.connectObject(
             'minimize', () => this._queueSyncMode(),
@@ -435,6 +455,7 @@ class StatusBar extends St.Widget {
         this._clock.set_position(px(this._clockInkX) - ink.x, px(CLOCK_INK_TOP - this._raise) - ink.y);
         this._clockInkRight = this._clockInkX + ink.width * SCALE;
         this._layoutNotifications();
+        this.emit('content-changed');
     }
 
     // Upright the hole is at the bar's end (the S10e: the battery ends CUTOUT_GAP before it) or in its middle (the S20
@@ -445,7 +466,7 @@ class StatusBar extends St.Widget {
         const m = Main.layoutManager.primaryMonitor;
         if (!m)
             return;
-        const turned = m.width > m.height;
+        const turned = TABLET || m.width > m.height;
         const height = turned ? LAND_BAR_HEIGHT : BAR_HEIGHT;
         this._raise = turned ? LAND_RAISE : 0;
         this.set_position(m.x, m.y);
@@ -461,7 +482,27 @@ class StatusBar extends St.Widget {
         this._syncClock();
     }
 
-    // the bar's height in screen px: 116 upright, 84 turned
+    // Where the clock and the system icons are, for a tablet's shade header to draw its own at the same place: the
+    // clock's text and font, its ink's start and top, the icons' end and centre line (screen px)
+    get contentLine() {
+        return {
+            clockText: this._clock.text,
+            clockFont: this._clock.font_name,
+            clockInkX: this._clockInkX,
+            clockInkTop: CLOCK_INK_TOP - this._raise,
+            systemEnd: this._system.end,
+            centerY: this._system.centerY,
+        };
+    }
+
+    // The clock and the system icons hidden while a tablet's shade draws them over the bar at the same place: one
+    // set drawn over the other would thicken their edges
+    setLineHidden(hidden) {
+        this._clock.visible = !hidden;
+        this._system.visible = !hidden;
+    }
+
+    // the bar's height in screen px: 116 upright, 84 turned or on a tablet
     get barHeight() {
         return this._raise ? LAND_BAR_HEIGHT : BAR_HEIGHT;
     }
@@ -568,9 +609,13 @@ class StatusBar extends St.Widget {
     }
 
     _syncMode() {
+        // the windows on its own screen only: a fullscreen game on a plugged-in TV does not hide it on the device's
+        // panel, nor does an app there make it black over the launcher
+        const here = Main.layoutManager.primaryIndex;
         const workspace = global.workspace_manager.get_active_workspace();
         const apps = workspace.list_windows().filter(w =>
-            !w.minimized && !this._home.isHome(w) && w.get_window_type() === Meta.WindowType.NORMAL);
+            !w.minimized && !this._home.isHome(w) && w.get_window_type() === Meta.WindowType.NORMAL &&
+            w.get_monitor() === here);
         const overApp = this._overAppOverride ?? apps.length > 0;
         const fullscreen = apps.some(w => w.is_fullscreen());
         // an ease is 1.5-7 ms of the shell's frame here, and this runs on every restack and focus change

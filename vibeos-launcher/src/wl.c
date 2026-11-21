@@ -50,6 +50,7 @@ struct Wl {
   bool               pending_suspended, suspended;
   double             scale;                    /* fractional (n/120) or the integer buffer scale */
   int                buffer_scale;
+  int                transform;                /* the output's, as the compositor would like buffers (wl_output) */
   int                width, height;            /* pixels */
   bool               configured;
 
@@ -166,7 +167,17 @@ surface_preferred_scale (void *data, struct wl_surface *s, int32_t factor)
   }
 }
 
-static void surface_preferred_transform (void *data, struct wl_surface *s, uint32_t t) {}
+/* The window is not drawn turned (the compositor turns it with the screen), but the parallax needs to know: its
+ * accelerometer is on the panel's axes, the picture on the screen's (wl_surface 6) */
+static void
+surface_preferred_transform (void *data, struct wl_surface *s, uint32_t t)
+{
+  Wl *wl = data;
+  if (wl->transform == (int) t)
+    return;
+  wl->transform = t;
+  wl_schedule (wl);
+}
 
 static const struct wl_surface_listener surface_listener = {
   surface_enter, surface_leave, surface_preferred_scale, surface_preferred_transform,
@@ -854,6 +865,12 @@ wl_get_size (Wl *wl, int *width, int *height, double *scale)
   *width = wl->width;
   *height = wl->height;
   *scale = wl->scale;
+}
+
+int
+wl_get_transform (Wl *wl)
+{
+  return wl->transform;
 }
 
 void

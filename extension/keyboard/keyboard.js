@@ -23,9 +23,11 @@ import {click} from '../haptics.js';
 import {gestureTookTouches} from '../oskfocus.js';
 import {openSettings} from '../settings.js';
 import {inHomeStrip} from '../task.js';
-import {formFactor, keyAt, measure, moreKeyAt, placeKeys, placeMoreKeys} from './geometry.js';
+import {SCALE} from '../units.js';
+import {formFactor, keyAt, measure, moreKeyAt, placeKeys, placeMoreKeys, stripSlots} from './geometry.js';
 import {KeyboardPalette} from './palette.js';
 import {KeysCanvas, labelWidth, MoreKeysPanel, NavCanvas, PressedKey, StripCanvas} from './renderer.js';
+import {Learnt, Lexicon, neighboursOf, placeInStrip, suggest, wordsBefore} from './suggest.js';
 
 // shown, the keyboard slides up decelerating; hidden, it slides down accelerating
 const SHOW_MS = 200;
@@ -56,6 +58,128 @@ const RTL = new Set(['iw']);
 
 const DIR = GLib.path_get_dirname(GLib.filename_from_uri(import.meta.url)[0]);
 const data = new Map();
+
+// Turned on a tablet, the letters' second row starts half a key in (where a laptop's Caps Lock is): a Tab key goes
+// in that space (owner, 11-21), as wide as it is, on the letter pages of every layout that leaves it.
+const TAB_KEY_MIN_SPACE = 3;                // % of the keyboard's width
+function withTabKey(form, page, rows) {
+    const row = rows[1];
+    if (form !== 'tablet-land' || !page.startsWith('alphabet') || !row?.length || row[0].x < TAB_KEY_MIN_SPACE)
+        return rows;
+    const tab = {a: ['noPreview'], b: 'functional', c: 'tab', i: 'tab_key', w: row[0].x, x: 0};
+    return rows.map((r, i) => i === 1 ? [tab, ...r] : r);
+}
+
+// ---- the suggestion strip's words ----
+
+// A language's word list is read this many lines at a time, between frames
+const WORDS_SLICE = 6000;
+// what this user types is kept here, a file per language, written this long after the last word learnt
+const LEARNT_DIR = GLib.build_filenamev([GLib.get_user_data_dir(), 'vibeos', 'keyboard']);
+const LEARNT_SAVE_MS = 10000;
+// typed after a suggestion was picked (and its space added), these go before that space: "word, " not "word ,"
+const SPACE_SWALLOWERS = /^[.,!?;:)\]}%]$/;
+
+// the language the strip suggests in: one at a time, loaded when the keyboard first needs it
+const words = {locale: null, lexicon: null, learnt: null, waiters: [], loadId: 0, saveId: 0, generation: 0};
+
+function learntPath(locale) {
+    return GLib.build_filenamev([LEARNT_DIR, `learnt-${locale}.json`]);
+}
+
+function saveLearnt() {
+    if (words.saveId) {
+        GLib.source_remove(words.saveId);
+        words.saveId = 0;
+    }
+    if (!words.learnt || !words.learnt.dirty)
+        return;
+    words.learnt.dirty = false;
+    try {
+        GLib.mkdir_with_parents(LEARNT_DIR, 0o700);
+        const bytes = new TextEncoder().encode(JSON.stringify(words.learnt));
+        GLib.file_set_contents(learntPath(words.locale), bytes);
+    } catch (e) {
+        logError(e, 'keyboard: the learnt words were not saved');
+    }
+}
+
+function learnSoon() {
+    words.learnt.dirty = true;
+    if (!words.saveId) {
+        words.saveId = GLib.timeout_add(GLib.PRIORITY_LOW, LEARNT_SAVE_MS, () => {
+            words.saveId = 0;
+            saveLearnt();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+}
+
+function readLearnt(locale) {
+    try {
+        const [ok, bytes] = GLib.file_get_contents(learntPath(locale));
+        if (ok)
+            return new Learnt(JSON.parse(new TextDecoder().decode(bytes)));
+    } catch {
+        // none yet
+    }
+    return new Learnt(null);
+}
+
+// The words of @locale's language: {lexicon (null while it loads, or where the language has no list), learnt}, the
+// list read in slices off the main loop's idle time; @onReady() once it is in
+function wordsFor(locale, onReady) {
+    if (words.locale !== locale) {
+        saveLearnt();
+        if (words.loadId)
+            GLib.source_remove(words.loadId);
+        words.loadId = 0;
+        words.generation++;
+        Object.assign(words, {locale, lexicon: null, learnt: readLearnt(locale), waiters: []});
+        loadLexicon(locale, words.generation);
+    }
+    if (!words.lexicon && onReady && !words.waiters.includes(onReady))
+        words.waiters.push(onReady);
+    return words;
+}
+
+function loadLexicon(locale, generation) {
+    const file = Gio.File.new_for_path(GLib.build_filenamev([DIR, 'words', `${locale}.txt.gz`]));
+    file.load_contents_async(null, (_f, result) => {
+        if (generation !== words.generation)
+            return;
+        let lines;
+        try {
+            const [, bytes] = file.load_contents_finish(result);
+            const gz = Gio.ConverterInputStream.new(Gio.MemoryInputStream.new_from_bytes(new GLib.Bytes(bytes)),
+                Gio.ZlibDecompressor.new(Gio.ZlibCompressorFormat.GZIP));
+            const out = Gio.MemoryOutputStream.new_resizable();
+            out.splice(gz, Gio.OutputStreamSpliceFlags.CLOSE_SOURCE | Gio.OutputStreamSpliceFlags.CLOSE_TARGET, null);
+            lines = new TextDecoder().decode(out.steal_as_bytes().toArray()).split('\n');
+        } catch (e) {
+            // a language with no list: the strip has only the words this user types
+            if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_FOUND))
+                logError(e, `keyboard: no words for ${locale}`);
+            return;
+        }
+        const lexicon = new Lexicon();
+        let at = 0;
+        words.loadId = GLib.idle_add(GLib.PRIORITY_LOW, () => {
+            if (generation !== words.generation)
+                return GLib.SOURCE_REMOVE;
+            const to = Math.min(lines.length, at + WORDS_SLICE);
+            lexicon.add(lines, at, to);
+            at = to;
+            if (at < lines.length)
+                return GLib.SOURCE_CONTINUE;
+            words.loadId = 0;
+            words.lexicon = lexicon.done();
+            for (const ready of words.waiters.splice(0))
+                ready();
+            return GLib.SOURCE_REMOVE;
+        });
+    });
+}
 
 function layoutData(name) {
     if (!data.has(name)) {
@@ -133,18 +257,36 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         this._kbKeys.connect('motion-event', (_actor, event) => this._onMotion(event));
         this._kbNav.connect('touch-event', (_actor, event) => this._onNavEvent(event));
         this._kbNav.connect('button-release-event', (_actor, event) => this._onNavEvent(event));
-        // the strip has nothing to tap yet, but a tap there stays on the keyboard
+        // a word in the strip is tapped: it takes the place of the word being typed (any tap there stays on the
+        // keyboard)
         this._kbStrip.connect('button-press-event', () => Clutter.EVENT_STOP);
+        this._kbStrip.connect('button-release-event', (_actor, event) => {
+            this._kbStripTap(event);
+            return Clutter.EVENT_STOP;
+        });
+        this._kbStrip.connect('touch-event', (_actor, event) => {
+            if (event.type() === Clutter.EventType.TOUCH_END)
+                this._kbStripTap(event);
+            return Clutter.EVENT_STOP;
+        });
 
         this._kbPalette = new KeyboardPalette(() => this._kbRebuild());
         // turned, a camera hole's band takes a side of the work area, and the keys stay clear of it
         global.display.connectObject('workareas-changed', () => this._kbRebuild(), this);
         // the field reports its text after every key and every move of the cursor: the capitals follow
-        Main.inputMethod.connectObject('surrounding-text-set', () => this._updateLevelFromHints(false), this);
+        Main.inputMethod.connectObject('surrounding-text-set', () => {
+            this._updateLevelFromHints(false);
+            this._kbSuggestSoon();
+        }, 'notify::content-purpose', () => this._kbSuggestSoon(),
+        'notify::content-hints', () => this._kbSuggestSoon(), this);
         this._kbRebuild();
     }
 
     _onDestroy() {
+        if (this._kbSuggestId)
+            GLib.source_remove(this._kbSuggestId);
+        this._kbSuggestId = 0;
+        saveLearnt();
         this._kbReleaseAll();
         this._kbMore?.destroy();
         this._kbMore = null;
@@ -164,6 +306,7 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         this._emojiVisible = this._shouldShowEmoji();
         this._modifiers.clear();
         this._kbRebuild();
+        this._kbSuggestSoon();
     }
 
     // 'default' and 'shift' are the letters, lower and upper case (the shell's automatic capitals ask for them);
@@ -248,11 +391,30 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         return [h, h];
     }
 
+    // A terminal is fitted above the keys at once, and grows back at once: the shell's size-change animation of the
+    // unmaximize and the maximize after it stretched Console's text down the screen and back. (Left full screen with
+    // the keyboard over it instead, a terminal full of output had its prompt under the keys: owner, 11-21, "shrink
+    // console above keyboard".) Other windows keep the animation.
+    _animateWindow(window, show) {
+        const actor = window?.get_compositor_private();
+        if (show && actor && window.maximized_vertically && !window.__keyboardMoved && !window.is_alien() &&
+            Main.inputMethod.content_purpose === Clutter.InputContentPurpose.TERMINAL) {
+            Main.wm.skipNextEffect(actor);
+            window.__keyboardTerminal = true;
+        } else if (!show && actor && window.__keyboardMoved && window.__keyboardTerminal) {
+            Main.wm.skipNextEffect(actor);
+        }
+        if (!show)
+            delete window?.__keyboardTerminal;
+        super._animateWindow(window, show);
+    }
+
     // opened on the letters, in capitals where the field asks for them (at its start, after a full stop)
     _open() {
         super._open();
         if (this._keyboardRequested)
             this._updateLevelFromHints(false);
+        this._kbSuggestSoon();
     }
 
     // the strip, the keys and the navigation bar one under the other at their exact heights: a box layout rounds
@@ -358,7 +520,7 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         const layout = layoutData(this._kb.locale);
         const pages = layout.forms[form];
         const ids = pages[this._kbPageName()] ?? pages[this._kb.page] ?? pages.alphabet;
-        const rows = placeKeys(m, ids.map(i => layout.rows[i]));
+        const rows = placeKeys(m, withTabKey(form, this._kb.page, ids.map(i => layout.rows[i])));
         const view = {
             m, rows, scale, colors: this._kbPalette.colors,
             enterIcon: this._kb.purpose === Clutter.InputContentPurpose.URL ? 'go_key' : null,
@@ -367,6 +529,7 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
             switcher: inputSources().length > 1,
         };
         this._kb.view = view;
+        this._kb.letterRows = (pages.alphabet ?? []).map(i => layout.rows[i]);
         this._kbStrip.set_height(m.strip / scale);
         this._kbKeys.set_height(m.height / scale);
         // a canvas's surface is its size rounded to whole logical pixels, then scaled: the keys' canvas is made a
@@ -754,13 +917,126 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         if (type === Clutter.EventType.TOUCH_BEGIN) {
             const [, y] = event.get_coords();
             this._kb.passOn.delete(id);
-            if (inHomeStrip(y, global.display.get_monitor_scale(Main.layoutManager.primaryIndex)))
+            if (inHomeStrip(y, SCALE))
                 this._kb.passOn.add(id);
         }
         const passOn = this._kb.passOn.has(id);
         if (type === Clutter.EventType.TOUCH_END || type === Clutter.EventType.TOUCH_CANCEL)
             this._kb.passOn.delete(id);
         return passOn;
+    }
+
+    // ---- the suggestion strip ----
+
+    // Fields that get suggestions: not passwords or PINs, numbers, addresses (web or mail) or a terminal's prompt, as
+    // the AOSP keyboard offers none there either
+    _kbSuggestOn() {
+        const P = Clutter.InputContentPurpose, H = Clutter.InputContentHintFlags;
+        const none = [P.DIGITS, P.NUMBER, P.PHONE, P.URL, P.EMAIL, P.PASSWORD, P.PIN, P.TERMINAL, P.DATE, P.TIME,
+            P.DATETIME].filter(v => v !== undefined);
+        const hints = this._contentHints ?? 0;
+        return !none.includes(Main.inputMethod.content_purpose ?? this._kb.purpose) &&
+            !(hints & (H.HIDDEN_TEXT | H.SENSITIVE_DATA)) && !!Main.inputMethod.currentFocus;
+    }
+
+    // once the events now pending are handled: the field reports its text after each key
+    _kbSuggestSoon() {
+        if (this._kbSuggestId || !this._kb)
+            return;
+        this._kbSuggestId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            this._kbSuggestId = 0;
+            this._kbSuggest();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    // The words for the strip, from the field's text before the cursor: the word being typed completed or corrected,
+    // or between words the ones this user types next. None in the middle of a word or with text selected, nor where
+    // the field does not tell its text.
+    _kbSuggest() {
+        if (!this._kb || !this._kbStrip)
+            return;
+        let shown = [null, null, null];
+        this._kb.suggestion = null;
+        const [text, cursor, anchor] = Main.inputMethod.getSurroundingText();
+        if (this._kbSuggestOn() && typeof text === 'string' && cursor !== null && (anchor ?? cursor) === cursor) {
+            const before = GLib.utf8_substring(text, 0, cursor);
+            const after = GLib.utf8_substring(text, cursor, -1);
+            if (!/^[\p{L}\p{M}]/u.test(after)) {
+                const w = wordsFor(this._kb.locale, () => this._kbSuggestSoon());
+                if (w.lexicon && !w.lexicon.near && this._kb.letterRows)
+                    w.lexicon.near = neighboursOf(this._kb.letterRows);
+                const [typed, previous] = wordsBefore(before);
+                const capitalise = !typed && this._kb.page === 'alphabet-shifted';
+                shown = placeInStrip(suggest(w.lexicon, w.learnt, typed, previous, 3, capitalise));
+                this._kb.suggestion = {typed, previous, words: shown};
+            }
+        }
+        this._kbStrip.setWords(shown);
+    }
+
+    // a tap on the strip: the word in the place it landed in
+    _kbStripTap(event) {
+        const view = this._kb?.view;
+        const words = this._kb?.suggestion?.words;
+        if (!view || !words)
+            return;
+        const [sx, sy] = event.get_coords();
+        const [ok, ax] = this._kbStrip.transform_stage_point(sx, sy);
+        if (!ok)
+            return;
+        const {m} = view;
+        let x = ax * view.scale - m.insetLeft;
+        if (view.rtl)
+            x = m.width - x;
+        const slot = stripSlots(m).findIndex(([left, w]) => x >= left && x < left + w);
+        if (slot >= 0 && words[slot])
+            this._kbPick(words[slot]);
+    }
+
+    // A suggestion picked: it takes the place of the word being typed, and a space follows (taken back if the next key
+    // is a full stop or a comma, which then goes before it)
+    _kbPick(word) {
+        const s = this._kb.suggestion;
+        click();
+        const n = [...s.typed].length;
+        if (n > 0)
+            Main.inputMethod.delete_surrounding(-n, n);
+        this._kbLearn(s.previous, word);
+        this._kb.picking = true;
+        this._kbCommit(`${word} `);
+        this._kb.picking = false;
+        this._kb.pickedSpace = true;
+    }
+
+    // text typed: a space or a mark after a word makes it a word this user types; a full stop or a comma right after
+    // a picked suggestion goes before its space
+    _kbWordEnds(str) {
+        const picked = this._kb.pickedSpace;
+        this._kb.pickedSpace = false;
+        if (this._kb.picking)
+            return;
+        const [text, cursor] = Main.inputMethod.getSurroundingText();
+        const spaceBefore = typeof text === 'string' && cursor > 0 && GLib.utf8_substring(text, cursor - 1, cursor) === ' ';
+        if (picked && spaceBefore && SPACE_SWALLOWERS.test(str) && Main.inputMethod.currentFocus) {
+            Main.inputMethod.delete_surrounding(-1, 1);
+            this._kbAfterCommit = ' ';
+        }
+        const s = this._kb.suggestion;
+        if (s?.typed && !/[\p{L}\p{M}'\u2019]/u.test(str) && this._kbSuggestOn())
+            this._kbLearn(s.previous, s.typed);
+    }
+
+    _kbLearn(previous, word) {
+        const w = wordsFor(this._kb.locale);
+        if (!w.learnt || !this._kbSuggestOn())
+            return;
+        // a word capitalised only for starting a sentence is learnt as the list has it
+        const lower = word.toLowerCase();
+        if (word === lower.charAt(0).toUpperCase() + lower.slice(1) && w.lexicon?.freqOf.has(lower))
+            word = lower;
+        w.learnt.add(previous, word);
+        learnSoon();
     }
 
     _kbNextSource() {
@@ -775,15 +1051,19 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
     // text typed: a capital takes the letters back to lower case, and once the text is in, the field's capitals
     // apply again (a new sentence starts in capitals)
     _kbCommit(str) {
+        this._kbWordEnds(str);
         this._kb.manualShift = false;
         if (this._kb.page === 'alphabet-shifted')
             this._kbSetPage('alphabet');
-        this._keyboardController.commit(str, this._modifiers)
+        const after = this._kbAfterCommit ?? '';
+        this._kbAfterCommit = null;
+        this._keyboardController.commit(str + after, this._modifiers)
             .then(() => this._updateLevelFromHints(true))
             .catch(logError);
     }
 
     _kbKeyval(keyval) {
+        this._kb.pickedSpace = false;
         this._kb.manualShift = false;
         this._keyboardController.keyvalPress(keyval);
         this._keyboardController.keyvalRelease(keyval);
@@ -824,6 +1104,7 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         case 'delete': {
             // as the shell's own backspace: key events, or the text input's delete for an Android window
             const alien = this._focusWindow?.is_alien?.();
+            this._kb.pickedSpace = false;
             this._kb.manualShift = false;
             this._keyboardController.toggleDelete(true, alien);
             this._keyboardController.toggleDelete(false, alien);
