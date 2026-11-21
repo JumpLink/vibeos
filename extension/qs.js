@@ -1,6 +1,6 @@
-// Quick Settings in the shade: the header (clock, date, carrier, system icons), the tile grid whose first two rows
-// are the QQS, the brightness and volume sliders, the build row and the footer. The shade lays it out once per frame
-// from its expansion f and the QS expansion q; tiles act on SystemState.
+// Quick Settings in the shade: the header (clock, date, carrier, system icons), the tiles whose first two rows show on
+// the first pull, the brightness row (and a tablet's volume row) and the footer. The shade lays it out once per frame
+// from its expansion f and the QS expansion q, as its layout (shadelayout.js) places it; tiles act on SystemState.
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
@@ -20,33 +20,27 @@ import {Canvas, hasIcon, paintIcon, VectorIcon} from './icons.js';
 import {animate, animateSpring, clamp, lerp, Spring} from './motion.js';
 import {Color, cogl, font, mix, rgba, setSource, SurfaceEffect, TabletShade} from './palette.js';
 import {openSettings} from './settings.js';
-import {BAR_HEIGHT, inkBox, SYSTEM_SPAN, SystemIcons, systemEnd} from './statusbar.js';
+import {BAR_HEIGHT, inkBox, SYSTEM_SPAN, SystemIcons} from './statusbar.js';
 import {px, screenPixels, SCALE, SCREEN_H, SCREEN_W, TABLET} from './units.js';
 
 // --- geometry, screen px
-export const QQS_HEIGHT = 644;          // the stack's top padding: 116 + 2 x 216 + 24 + 72
-export const QS_SHIFT = 504;            // the QQS rows move 116 -> 620 as q goes 0 -> 1
-const GRID_X = 48;
-const GRID_TOP = 116;
+export const QQS_HEIGHT = 644;          // a phone's notification panel's top on the first pull: 116 + 2 x 240 - 24 + 72
 const TILE_W = 228;
 const TILE_H = 216;
-const COL_PITCH = 252;
 const ROW_GAP = 24;
-const COLUMNS = 4;
 const TABLET_COLUMNS = 3;
-const QQS_ROWS = 2;
 const ICON = 96;
 const LARGE_ICON = 84;                  // a wide tile's icon, centred on LARGE_ICON_CX
 const LARGE_ICON_CX = 108;
 const LARGE_TEXT_X = 210;               // a wide tile's labels, past its icon
-const TILE_RADIUS = 72;                 // on or off: an off tile is a rounded square too, not a pill
+const TILE_RADIUS = 72;                 // an active tile's corners
 const CONTENT_FADE_FROM = 0.43;         // QS content fades in over q 0.43..1, the footer over 0.9..1
 const FOOTER_FADE_FROM = 0.9;
 
-const SLIDER_X = 54;
-const SLIDER_END = 867;                 // then a gap and the auto-brightness button
-const SLIDER_CY = 500;                  // QS position
-const VOLUME_ROW = 180;                 // the volume row under it, and the tiles that far further down
+// the brightness row as it is made; the layout sets where it goes (LevelSlider.setSpan)
+const SLIDER_X = 48;
+const SLIDER_END = 837;
+const AUTO_X = 876;
 const TRACK_H = 120;
 const TRACK_RADIUS = 36;                // TRACK_INNER_RADIUS next to the thumb
 const TRACK_INNER_RADIUS = 6;
@@ -55,53 +49,28 @@ const THUMB_H = 156;
 const THUMB_GAP = 18;                   // each side of the thumb
 const TRACK_ICON = 84;                  // TRACK_ICON_PAD from the segment's end
 const TRACK_ICON_PAD = 18;
-const AUTO_X = 897;
-const AUTO_SIZE = 135;
+const AUTO_SIZE = 156;
 
-const BUILD_INK_X = 49;
-const BUILD_INK_TOP = 1612;
-const FOOTER_CY = 2195.5;
 const FOOTER_BUTTON = 120;              // circles
-const POWER_X = 912;
-const SETTINGS_X = 768;
 const FOOTER_ICON = 60;
 
-// header: ink positions of the QQS row (q = 0) and the QS layout (q = 1)
-const CLOCK_QQS = [50, 24];
-const CLOCK_QS = [53, 80];
-const CLOCK_SCALE = 2.57;
-const DATE_QQS = [198, 24];
-const DATE_QS = [49, 189];
-const ICONS_QQS = [912, 42];            // the cluster's right end and centre line (the end follows the hole: _qqsEnd)
-const QQS_OUTSET = 23;                  // the collapsed header's icons end this much right of the status bar's
-const ICONS_QS = [1031, 204];
-const CARRIER_END = 1019;
-const CARRIER_QQS_TOP = 24;
-const CARRIER_QS_TOP = 110;
-const HEADER_FADE_OUT = 0.14;           // over q the header fades out by here, moving a tenth of its way,
-const HEADER_FADE_IN = 0.58;            // and fades back in from here at its QS place
+const HEADER_FADE_OUT = 0.14;           // over q a phone's date and icons fade out by here, moving a tenth of their
+const HEADER_FADE_IN = 0.58;            // way, and fade back in from here at their QS places
 const HEADER_DISPLACEMENT = 0.1066;
 // a tablet's header: a 56 dp row, the date 8 dp past the clock
 const TABLET_HEADER_H = 168;
 const TABLET_DATE_GAP = 24;
+const PHONE_HEADER_H = 360;             // a phone's header with all the quick settings: the big clock and the date
 
 // fonts (Google Sans Flex, rounded)
 const TILE_LABEL_FONT = font(14, 600);
 const TILE_SECONDARY_FONT = font(12, 500);
 const CLOCK_FONT = font(14, 650);
-const CLOCK_BIG_FONT = font(14 * CLOCK_SCALE, 650, {opsz: 14});
+const CLOCK_BIG_FONT = font(36, 650, {opsz: 36});
 const DATE_FONT = font(14, 600);
 const CARRIER_FONT = font(14, 550);
-const BUILD_FONT = font(12, 500);
 
 const CAP_HEIGHT = 0.73;                // cap height / em of the font (0.72-0.74)
-
-// Tile colours: [background rgb, alpha], foreground [rgb, alpha]
-const TILE_COLORS = {
-    active: {bg: [Color.primary, 1], fg: [Color.onPrimary, 1]},
-    inactive: {bg: SurfaceEffect[1], fg: [Color.onSurface, 1]},
-    unavailable: {bg: [Color.surface, 0.18], fg: [Color.onSurfaceVariant, 0.38]},
-};
 
 // A tablet's tiles are pills with the icon and the labels side by side, on an opaque scrim. On is a rounded rectangle
 // in the primary colour; off and unavailable are full pills.
@@ -128,18 +97,41 @@ const TABLET_DUAL_COLORS = {
 const DUAL_TARGET = new Set(['wifi', 'bluetooth', 'dnd']);
 const TABLET_TEXT_END = 24;             // the labels end this far from the tile's end
 
+// A phone's tiles are translucent over the blurred screen. The large ones are pills with the icon on a target of its
+// own (a rounded square in the primary colour when on, a translucent circle when off) and the labels past it; the
+// small ones show their icon only, a pill when off and a rounded square in the primary colour when on.
+const PHONE_TILE = SurfaceEffect[1];
+const PHONE_UNAVAILABLE = [Color.surface, 0.18];
+const PHONE_LARGE_COLORS = {
+    active: {bg: PHONE_TILE, fg: [Color.onSurface, 1], target: [Color.primary, 1], glyph: [Color.onPrimary, 1],
+        radius: TILE_H / 2, targetRadius: TABLET_TARGET_RADIUS},
+    inactive: {bg: PHONE_TILE, fg: [Color.onSurface, 1], target: SurfaceEffect[2], glyph: [Color.onSurface, 1],
+        radius: TILE_H / 2, targetRadius: TABLET_TARGET / 2},
+    unavailable: {bg: PHONE_UNAVAILABLE, fg: TABLET_DIM, target: [Color.surface, 0], glyph: TABLET_DIM,
+        radius: TILE_H / 2, targetRadius: TABLET_TARGET / 2},
+};
+const PHONE_SMALL_COLORS = {
+    active: {bg: [Color.primary, 1], fg: [Color.onPrimary, 1], radius: TILE_RADIUS},
+    inactive: {bg: PHONE_TILE, fg: [Color.onSurface, 1], radius: TILE_H / 2},
+    unavailable: {bg: PHONE_UNAVAILABLE, fg: TABLET_DIM, radius: TILE_H / 2},
+};
+// a phone's tiles in their order: the large ones (the first two rows on the first pull), then the small ones
+const PHONE_LARGE = ['wifi', 'bluetooth', 'mobile', 'dnd'];
+const PHONE_SMALL = ['airplane', 'rotation', 'flashlight', 'saver', 'location', 'dark', 'nightlight'];
+
 const MOBILE_ICONS = ['ic_signal_cellular_0_4_bar', 'ic_signal_cellular_1_4_bar', 'ic_signal_cellular_2_4_bar',
     'ic_signal_cellular_3_4_bar', 'ic_signal_cellular_4_4_bar'];
 
-
-// The tiles of this phone, in the reference's default order (no power-profiles-daemon: battery saver shows unavailable)
-// state: 'active' | 'inactive' | 'unavailable'
+// The tiles, in a tablet's order (a phone's is PHONE_LARGE, PHONE_SMALL; no power-profiles-daemon: battery saver shows
+// unavailable). state: 'active' | 'inactive' | 'unavailable'. A phone's large tile shows phoneLabel and phoneSecondary
+// where a spec has them.
 const TILES = [
     {
         id: 'wifi', label: 'Wi-Fi', panel: 'wifi',
         icon: s => !s.wifi.enabled ? 'ic_signal_wifi_off'
             : s.wifi.connected ? `ic_wifi_${[0, 1, 2, 2, 3][s.wifi.level] ?? 0}` : 'ic_wifi_0',
         state: s => !s.wifi.available ? 'unavailable' : s.wifi.enabled ? 'active' : 'inactive',
+        phoneSecondary: s => s.wifi.enabled && s.wifi.connected ? s.wifi.name : '',
         toggle: s => s.setWifiEnabled(!s.wifi.enabled),
     },
     {
@@ -147,6 +139,7 @@ const TILES = [
         icon: s => !s.bluetooth.powered ? 'qs_bluetooth_icon_off'
             : s.bluetooth.connected ? 'qs_bluetooth_icon_on' : 'qs_bluetooth_icon_disconnected',
         state: s => !s.bluetooth.available ? 'unavailable' : s.bluetooth.powered ? 'active' : 'inactive',
+        phoneSecondary: s => s.bluetooth.powered && s.bluetooth.connected ? s.bluetooth.name : '',
         toggle: s => s.setBluetooth(!s.bluetooth.powered),
     },
     {
@@ -159,6 +152,9 @@ const TILES = [
         id: 'dnd', label: 'Do Not Disturb', panel: 'notifications',
         icon: () => 'ic_qs_dnd_on',                 // the filled glyph in both states, as on the device
         state: s => s.dnd ? 'active' : 'inactive',
+        // a phone's is Android's Modes tile, Do Not Disturb its one mode
+        phoneLabel: 'Modes',
+        phoneSecondary: s => s.dnd ? 'Do Not Disturb' : '',
         toggle: s => {
             s.dnd = !s.dnd;
         },
@@ -170,11 +166,12 @@ const TILES = [
         toggle: s => s.setAirplane(!s.airplane),
     },
     {
-        id: 'mobile', label: 'Mobile data', panel: 'wwan', wide: true,
+        id: 'mobile', label: 'Mobile data', panel: 'wwan',
         icon: s => !s.mobile.present ? 'ic_qs_no_sim'
             : s.mobile.dataEnabled ? MOBILE_ICONS[s.mobile.level] ?? MOBILE_ICONS[0] : 'ic_signal_mobile_data_off',
         state: s => !s.mobile.present || s.airplane ? 'unavailable' : s.mobile.dataEnabled ? 'active' : 'inactive',
         secondary: s => !s.mobile.present ? 'No SIM' : s.mobile.dataEnabled ? s.mobile.operator || 'On' : 'Off',
+        phoneSecondary: s => !s.mobile.present ? 'No SIM' : s.mobile.dataEnabled ? s.mobile.operator : '',
         toggle: s => s.setMobileData(!s.mobile.dataEnabled),
     },
     {
@@ -236,9 +233,10 @@ function placeCapCentered(text, x, capCenterY, sizePx) {
 
 const Tile = GObject.registerClass(
 class Tile extends St.Button {
-    // @tablet: a tablet's pill tile, its width set by the layout (setWidthPx)
-    constructor(spec, state, onActivated, tablet = false) {
-        const w = tablet || spec.wide ? 2 * TILE_W + ROW_GAP : TILE_W;
+    // @kind: 'tablet', a tablet's pill tile; 'large', a phone's pill tile with a target; 'small', a phone's tile with
+    // only its icon. The layout sets its width (setWidthPx).
+    constructor(spec, state, onActivated, kind) {
+        const w = kind === 'small' ? TILE_W : 2 * TILE_W + ROW_GAP;
         super({
             reactive: true,
             can_focus: true,
@@ -248,24 +246,29 @@ class Tile extends St.Button {
         });
         this._spec = spec;
         this._state = state;
-        this._tablet = tablet;
         this._w = w;
-        this.wide = tablet || !!spec.wide;
-        this.accessible_name = spec.label;
-        this._palette = !tablet ? TILE_COLORS : DUAL_TARGET.has(spec.id) ? TABLET_DUAL_COLORS : TABLET_TILE_COLORS;
+        this.wide = kind !== 'small';
+        this._phone = kind !== 'tablet';
+        const label = this._phone ? spec.phoneLabel ?? spec.label : spec.label;
+        this._secondaryText = (this._phone ? spec.phoneSecondary : null) ?? spec.secondary;
+        this.accessible_name = label;
+        if (kind === 'tablet')
+            this._palette = DUAL_TARGET.has(spec.id) ? TABLET_DUAL_COLORS : TABLET_TILE_COLORS;
+        else
+            this._palette = kind === 'large' ? PHONE_LARGE_COLORS : PHONE_SMALL_COLORS;
 
         this._content = new St.Widget({x_expand: true, y_expand: true});
         this.set_child(this._content);
 
-        if (this._palette === TABLET_DUAL_COLORS) {
+        if (this._palette.active.target) {
             this._target = new St.Widget({width: px(TABLET_TARGET), height: px(TABLET_TARGET)});
             this._content.add_child(this._target);
         }
         this._icon = new VectorIcon(spec.icon(state), px(this.wide ? LARGE_ICON : ICON), Color.onSurface);
         this._content.add_child(this._icon);
         if (this.wide) {
-            const ellipsize = tablet ? Pango.EllipsizeMode.END : Pango.EllipsizeMode.NONE;
-            this._label = new Clutter.Text({font_name: TILE_LABEL_FONT, text: spec.label, ellipsize});
+            const ellipsize = Pango.EllipsizeMode.END;
+            this._label = new Clutter.Text({font_name: TILE_LABEL_FONT, text: label, ellipsize});
             this._secondary = new Clutter.Text({font_name: TILE_SECONDARY_FONT, ellipsize});
             this._content.add_child(this._label);
             this._content.add_child(this._secondary);
@@ -281,8 +284,8 @@ class Tile extends St.Button {
             this._highlight.opacity = this.pressed ? 255 : 0;
         });
 
-        // A two-target tile (a tablet's Wi-Fi, Bluetooth, Do Not Disturb): its icon's square toggles it, the rest of
-        // it opens its details, the setting's page, as a long press does
+        // A two-target tile (a tablet's Wi-Fi, Bluetooth, Do Not Disturb, a phone's large tiles): its icon's square
+        // toggles it, the rest of it opens its details, the setting's page, as a long press does
         this._onTarget = true;
         if (this._target && spec.panel) {
             this.connect('captured-event', (_a, event) => {
@@ -327,7 +330,7 @@ class Tile extends St.Button {
         const spec = this._spec, state = this._state;
         this._icon.name = spec.icon(state);
         if (this.wide)
-            this._secondary.text = spec.secondary?.(state) ?? '';
+            this._secondary.text = this._secondaryText?.(state) ?? '';
 
         const mode = spec.state(state);
         this.reactive = mode !== 'unavailable' || !!spec.panel;
@@ -356,13 +359,11 @@ class Tile extends St.Button {
     _colors() {
         const t = clamp(this._colorT, 0, 1), a = this._from, b = this._to;
         const colors = {bg: mixColor(a.bg, b.bg, t), fg: mixColor(a.fg, b.fg, t)};
-        if (this._tablet) {
-            colors.glyph = mixColor(a.glyph ?? a.fg, b.glyph ?? b.fg, t);
-            colors.radius = lerp(a.radius, b.radius, t);
-            if (a.target) {
-                colors.target = mixColor(a.target, b.target, t);
-                colors.targetRadius = lerp(a.targetRadius, b.targetRadius, t);
-            }
+        colors.glyph = mixColor(a.glyph ?? a.fg, b.glyph ?? b.fg, t);
+        colors.radius = lerp(a.radius, b.radius, t);
+        if (a.target) {
+            colors.target = mixColor(a.target, b.target, t);
+            colors.targetRadius = lerp(a.targetRadius, b.targetRadius, t);
         }
         return colors;
     }
@@ -383,21 +384,12 @@ class Tile extends St.Button {
         }
     }
 
-    // a tablet tile's width (screen px), from the layout
+    // the tile's width (screen px), from the layout
     setWidthPx(w) {
         if (Math.abs(w - this._w) < 0.01)
             return;
         this._w = w;
         this.width = px(w);
-        this._layoutContent();
-    }
-
-    // the squished height (screen px); the content stays centred and unscaled
-    setHeightPx(h) {
-        if (Math.abs(h - this._heightPx) < 0.01)
-            return;
-        this._heightPx = h;
-        this.height = px(h);
         this._layoutContent();
     }
 
@@ -412,11 +404,9 @@ class Tile extends St.Button {
         }
         this._icon.set_position(px(LARGE_ICON_CX - LARGE_ICON / 2), px(cy - LARGE_ICON / 2));
         this._target?.set_position(px(TABLET_TARGET_INSET), px(cy - TABLET_TARGET / 2));
-        if (this._tablet) {
-            const textW = px(Math.max(w - LARGE_TEXT_X - TABLET_TEXT_END, 0));
-            this._label.width = textW;
-            this._secondary.width = textW;
-        }
+        const textW = px(Math.max(w - LARGE_TEXT_X - TABLET_TEXT_END, 0));
+        this._label.width = textW;
+        this._secondary.width = textW;
         const labelSize = 14 * 3, secondarySize = 12 * 3;
         if (this._secondary.text) {
             // the label and the secondary line, centred together
@@ -672,7 +662,7 @@ function brightnessSlider(state, shade) {
 }
 
 // volume: the default output's, as the volume keys set it (volume.js); the button mutes it, and a level above none
-// unmutes it again. Below the brightness row, its look (owner, 11-21).
+// unmutes it again. Below a tablet's brightness row, its look (owner, 11-21); a phone's quick settings have none.
 function volumeSlider() {
     const control = Volume.getMixerControl();
     let stream = null;
@@ -859,23 +849,19 @@ class FooterButton extends St.Button {
 
 const ShadeHeader = GObject.registerClass(
 class ShadeHeader extends St.Widget {
-    // @cutout: the camera hole the collapsed header's icons keep clear of, as the status bar's do
-    constructor(state, cutout) {
-        super({width: px(SCREEN_W), height: px(260)});
+    constructor(state) {
+        super({width: px(SCREEN_W), height: px(TABLET_HEADER_H)});
         this._state = state;
-        this._cutout = cutout;
-        this._qqsEnd = ICONS_QQS[0];
 
         this._clock = new Clutter.Text({font_name: CLOCK_FONT, color: cogl(Color.white)});
         this._bigClock = new Clutter.Text({font_name: CLOCK_BIG_FONT, color: cogl(Color.white), visible: false});
         this._date = new Clutter.Text({font_name: DATE_FONT, color: cogl(Color.white)});
         this._carrier = new Clutter.Text({font_name: CARRIER_FONT, color: cogl(Color.white), opacity: 0});
-        // a tablet's icons are the status bar's, on a canvas of its size: a drawing area of a fractional size
-        // stretches its whole-pixel texture over it, and two sizes would draw the same icons a fraction apart
-        this._icons = new SystemIcons(state, TABLET
-            ? {end: ICONS_QQS[0], centerY: ICONS_QQS[1], height: BAR_HEIGHT, span: SYSTEM_SPAN}
-            : {end: ICONS_QQS[0], centerY: ICONS_QQS[1], height: 116});
+        // the icons are the status bar's, on a canvas of its size: a drawing area of a fractional size stretches its
+        // whole-pixel texture over it, and two sizes would draw the same icons a fraction apart
+        this._icons = new SystemIcons(state, {height: BAR_HEIGHT, span: SYSTEM_SPAN});
         this._tabletHeader = null;
+        this._phoneHeader = null;
         this._barLine = null;
         for (const child of [this._icons, this._clock, this._bigClock, this._date, this._carrier])
             this.add_child(child);
@@ -883,20 +869,19 @@ class ShadeHeader extends St.Widget {
         this._wallClock = new GnomeDesktop.WallClock({time_only: true});
         this._wallClock.connectObject('notify::clock', () => this._syncTime(), this);
         state.connectObject('changed', () => this._syncCarrier(), this);
-        cutout?.connectObject('changed', () => this._syncHole(), this);
         this._q = 0;
-        this._syncHole();
         this._syncTime();
         this._syncCarrier();
     }
 
     _syncTime() {
         const now = GLib.DateTime.new_now_local();
-        const time = now.format('%H:%M');
-        this._bigClock.text = time;
-        // a tablet's clock is the status bar's (setBarLine)
-        if (!this._barLine)
+        // the clocks are the status bar's (setBarLine) once there is one
+        if (!this._barLine) {
+            const time = now.format('%H:%M');
             this._clock.text = time;
+            this._bigClock.text = time;
+        }
         this._date.text = now.format('%a, %b %-d');
         this._clockInk = inkBox(this._clock);
         this._bigInk = inkBox(this._bigClock);
@@ -904,19 +889,12 @@ class ShadeHeader extends St.Widget {
         this.setProgress(this._q);
     }
 
-    // collapsed, the icons end as the status bar's do, QQS_OUTSET further right: 912 on the S10e (before its hole),
-    // 1018 on the S20 FE (its hole is in the middle)
-    _syncHole() {
-        this._qqsEnd = this._cutout ? systemEnd(this._cutout.upright, SCREEN_W) + QQS_OUTSET : ICONS_QQS[0];
-        if (this._clockInk)             // laid out (_syncTime) already
-            this.setProgress(this._q);
-    }
-
     _syncCarrier() {
         const {mobile} = this._state;
         const text = mobile.present ? mobile.operator || '' : 'No SIM';
         if (this._carrier.text !== text) {
             this._carrier.text = text;
+            this._carrierInk = inkBox(this._carrier);
             this.setProgress(this._q);
         }
     }
@@ -925,18 +903,35 @@ class ShadeHeader extends St.Widget {
     // (setBarLine), and the date follows the clock
     setTablet(header) {
         this._tabletHeader = header;
+        this._phoneHeader = null;
         this.set_size(px(header.width), px(TABLET_HEADER_H));
         this.opacity = 255;
+        this._icons.set_translation(0, 0, 0);
         this.setProgress(this._q);
     }
 
-    // A tablet's clock and icons are drawn where the status bar has its own, in its clock's text and font, so they
-    // stay in place all the while the shade opens over the bar and closes (@line: StatusBar.contentLine)
+    // A phone's (@header: shadelayout.js): the status bar's clock and icons with the date past the clock on the first
+    // pull, and with all the quick settings a big clock with the date under it and the carrier over the icons at the
+    // right
+    setPhone(header) {
+        this._phoneHeader = header;
+        this._tabletHeader = null;
+        this.set_size(px(header.width), px(PHONE_HEADER_H));
+        this.setProgress(this._q);
+    }
+
+    // The clock and the icons are drawn where the status bar has its own, in its clock's text and font, so a tablet's
+    // stay in place all the while the shade opens over the bar and closes, and a phone's are where the bar's were
+    // (@line: StatusBar.contentLine)
     setBarLine(line) {
         this._barLine = line;
         this._clock.font_name = line.clockFont;
         this._clock.text = line.clockText;
         this._clockInk = inkBox(this._clock);
+        if (this._bigClock.text !== line.clockText) {
+            this._bigClock.text = line.clockText;
+            this._bigInk = inkBox(this._bigClock);
+        }
         if (this._icons.end !== line.systemEnd)
             this._icons.setEnd(line.systemEnd);
         this._icons.setCenterY(line.centerY);
@@ -970,50 +965,63 @@ class ShadeHeader extends St.Widget {
         this._icons.opacity = 255;
     }
 
-    // q: the QS expansion; the header moves linearly between its keyframes (HEADER_*)
-    setProgress(q) {
-        this._q = q;
-        if (this._tabletHeader) {
-            this._layoutTablet();
+    // A phone's over the QS expansion q: the big clock grows out of the bar's clock's digits and moves to its place;
+    // the date and the icons fade out by 14 %, moving a tenth of their way, and back in from 58 % at their places; the
+    // carrier fades in from 58 %. Logical px.
+    _layoutPhone(q) {
+        const line = this._barLine, header = this._phoneHeader;
+        for (const child of [this._clock, this._bigClock, this._date, this._icons, this._carrier])
+            child.visible = !!line;
+        if (!line)
             return;
-        }
-        // the clock grows x2.57 from its ink corner; a crisp small copy at rest
-        const [x0, y0] = CLOCK_QQS, [x1, y1] = CLOCK_QS;
-        const x = lerp(x0, x1, q), y = lerp(y0, y1, q);
-        const scale = lerp(1, CLOCK_SCALE, q);
+        const small = this._clockInk;
+        const clockX = px(line.clockInkX), clockY = px(line.clockInkTop);
         this._clock.visible = q <= 0;
         this._bigClock.visible = q > 0;
         if (q <= 0) {
-            this._clock.set_position(px(x) - this._clockInk.x, px(y) - this._clockInk.y);
+            this._clock.set_position(clockX - small.x, clockY - small.y);
         } else {
-            const k = scale / CLOCK_SCALE;
+            const big = this._bigInk;
+            const k = lerp(small.height / big.height, 1, q);
+            const x = lerp(clockX, px(header.clockX) + big.x, q), y = lerp(clockY, px(header.clockInkTop), q);
             this._bigClock.set_scale(k, k);
-            this._bigClock.set_position(px(x) - this._bigInk.x * k, px(y) - this._bigInk.y * k);
+            this._bigClock.set_position(x - big.x * k, y - big.y * k);
         }
 
-        // date and icons: fade out by 14 %, back in from 58 %, displaced 0.1066 on the way out
         // the spring overshoots q past 1 (and under 0): alpha is kept to 0..1, or opacity 256 throws mid-layout
-        const keyed = ([sx, sy], [ex, ey]) => {
+        const keyed = (sx, sy, ex, ey) => {
             if (q <= HEADER_FADE_OUT) {
                 const t = q / HEADER_FADE_OUT;
-                return {x: sx, y: sy + t * HEADER_DISPLACEMENT * (ey - sy), alpha: Math.min(1, 1 - t)};
+                return {x: sx, y: sy + t * HEADER_DISPLACEMENT * (ey - sy), alpha: clamp(1 - t)};
             }
             if (q < HEADER_FADE_IN)
                 return {x: ex, y: lerp(sy, ey, q), alpha: 0};
-            return {x: ex, y: lerp(sy, ey, q), alpha: Math.min(1, (q - HEADER_FADE_IN) / (1 - HEADER_FADE_IN))};
+            return {x: ex, y: lerp(sy, ey, q), alpha: clamp((q - HEADER_FADE_IN) / (1 - HEADER_FADE_IN))};
         };
-        const date = keyed(DATE_QQS, DATE_QS);
-        this._date.set_position(px(date.x) - this._dateInk.x, px(date.y) - this._dateInk.y);
+        // the date's ink: on the clock's baseline past its digits, then under the big clock
+        const dateInk = this._dateInk;
+        const dateBaseline = this._date.get_layout().get_baseline() / 1024 / this._date.get_resource_scale();
+        const date = keyed(clockX + small.width + px(header.dateGap), clockY + small.height - dateBaseline + dateInk.y,
+            px(header.dateX) + dateInk.x, px(header.dateInkTop));
+        this._date.set_position(date.x - dateInk.x, date.y - dateInk.y);
         this._date.opacity = Math.round(255 * date.alpha);
-        const icons = keyed([this._qqsEnd, ICONS_QQS[1]], ICONS_QS);
-        this._icons.set_position(px(icons.x - ICONS_QQS[0]), px(icons.y - ICONS_QQS[1]));
+        const icons = keyed(0, 0, px(header.iconsEnd - line.systemEnd), px(header.iconsCY - line.centerY));
+        this._icons.set_position(this._icons.x, 0);
+        this._icons.set_translation(icons.x, icons.y, 0);
         this._icons.opacity = Math.round(255 * icons.alpha);
 
-        // the carrier only fades in, from 58 %
-        const ink = inkBox(this._carrier);
-        const ctop = lerp(CARRIER_QQS_TOP, CARRIER_QS_TOP, q);
-        this._carrier.set_position(px(CARRIER_END) - ink.x - ink.width, px(ctop) - ink.y);
+        const ink = this._carrierInk ??= inkBox(this._carrier);
+        this._carrier.set_position(px(header.carrierEnd) - ink.x - ink.width, px(header.carrierInkTop) - ink.y);
         this._carrier.opacity = Math.round(255 * clamp((q - HEADER_FADE_IN) / (1 - HEADER_FADE_IN)));
+    }
+
+    // q: the QS expansion
+    setProgress(q) {
+        this._q = q;
+        if (this._tabletHeader)
+            this._layoutTablet();
+        else if (this._phoneHeader)
+            this._layoutPhone(q);
     }
 });
 
@@ -1030,62 +1038,40 @@ export function clipAbove(actor, y) {
 
 export const QSPanel = GObject.registerClass(
 class QSPanel extends St.Widget {
-    // @cutout: the camera hole (cutout.js)
-    constructor(state, shade, cutout) {
+    constructor(state, shade) {
         super({width: px(SCREEN_W), height: px(SCREEN_H), clip_to_allocation: false});
         this._state = state;
         this._shade = shade;
 
-        this._header = new ShadeHeader(state, cutout);
+        this._header = new ShadeHeader(state);
         this.add_child(this._header);
 
         this._brightness = brightnessSlider(state, shade);
         this.add_child(this._brightness);
-        this._volume = volumeSlider();
-        this.add_child(this._volume);
+        // a tablet's volume row under it
+        this._volume = TABLET ? volumeSlider() : null;
+        if (this._volume)
+            this.add_child(this._volume);
 
-        // tiles in reading order; a wide tile that does not fit the row wraps
-        this._tiles = [];
-        let col = 0, row = 0;
-        for (const spec of TILES) {
-            const span = spec.wide ? 2 : 1;
-            if (col + span > COLUMNS) {
-                col = 0;
-                row++;
-            }
-            const tile = new Tile(spec, state, (t, longPress) => shade.onTileActivated?.(t, longPress), TABLET);
-            tile._row = row;
-            tile._col = col;
-            this._tiles.push(tile);
+        // the tiles: in a tablet's order, or a phone's large ones and then its small ones
+        const byId = id => TILES.find(spec => spec.id === id);
+        const specs = TABLET ? TILES.map(spec => [spec, 'tablet'])
+            : [...PHONE_LARGE.map(id => [byId(id), 'large']), ...PHONE_SMALL.map(id => [byId(id), 'small'])];
+        this._tiles = specs.map(([spec, kind]) => {
+            const tile = new Tile(spec, state, (t, longPress) => shade.onTileActivated?.(t, longPress), kind);
+            tile.kind = kind;
             this.add_child(tile);
-            col += span;
-            if (col >= COLUMNS) {
-                col = 0;
-                row++;
-            }
-        }
-
-        // the build row: the OS's name where Android shows its build number (tap copies it, as Android does). Not
-        // selectable: a Clutter.Text is by default, and a swipe closing the shade from this row painted the selection
-        // over it, a pale box.
-        const build = GLib.get_os_info('PRETTY_NAME') ?? 'GNOME';
-        this._build = new Clutter.Text({font_name: BUILD_FONT, color: cogl(Color.onSurface), text: build,
-            reactive: true, selectable: false});
-        const copy = new Clutter.ClickGesture();
-        copy.connect('recognize', () => {
-            St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, build);
+            return tile;
         });
-        this._build.add_action(copy);
-        this.add_child(this._build);
 
         this._footer = new St.Widget({width: px(SCREEN_W), height: px(FOOTER_BUTTON)});
-        const settings = new FooterButton('ic_qs_footer_settings', SurfaceEffect[1], Color.onSurface, SETTINGS_X,
+        const settings = new FooterButton('ic_qs_footer_settings', SurfaceEffect[1], Color.onSurface, 0,
             'Settings');
         settings.connect('clicked', () => {
             shade.close?.();
             openSettings();
         });
-        const power = new FooterButton('ic_qs_footer_power', [Color.primary, 1], Color.onPrimary, POWER_X,
+        const power = new FooterButton('ic_qs_footer_power', [Color.primary, 1], Color.onPrimary, 0,
             'Power menu');
         power.connect('clicked', () => {
             shade.close?.();
@@ -1105,25 +1091,30 @@ class QSPanel extends St.Widget {
         this.add_child(this._footer);
         addEndMark(this);
 
-        this._tablet = null;
-        this._f = -1;
+        this._layout = null;
         this._q = -1;
-        this._squish = -1;
-        this.layoutFor({f: 1, q: 0, squish: 1, contentAlpha: 1});
     }
 
     get brightnessDragging() {
         return this._brightness.dragging;
     }
 
-    // a tablet's: where the status bar has its clock and icons (StatusBar.contentLine)
+    // where the status bar has its clock and icons (StatusBar.contentLine)
     setBarLine(line) {
         this._header.setBarLine(line);
     }
 
-    // a tablet's layout (shadelayout.js) for the screen as it is turned now
-    setTablet(layout) {
-        this._tablet = layout;
+    // the shade's layout (shadelayout.js) for the screen as it is turned now
+    setLayout(layout) {
+        this._layout = layout;
+        if (layout.phone)
+            this._setPhone(layout);
+        else
+            this._setTablet(layout);
+        this._q = -1;
+    }
+
+    _setTablet(layout) {
         const {qs} = layout;
         this.set_size(px(layout.width), px(layout.height));
         this._header.setTablet(layout.header);
@@ -1145,60 +1136,78 @@ class QSPanel extends St.Widget {
         }
         this._settingsButton.style = `background-color: ${colorStyle(TABLET_TILE)}; ` +
             `border-radius: ${px(FOOTER_BUTTON / 2)}px;`;
-        this._build.visible = false;
-        this._q = -1;
     }
 
-    // @squish: the tiles' height factor while the shade opens (0.1..1); @contentAlpha: the header's;
-    // @mirror: all but the brightness slider fade while it is dragged; @slide: a tablet's quick settings on their way
-    // down, how far above their places they are (screen px, 0 or less)
-    layoutFor({q, squish, contentAlpha, mirror = 0, slide = 0}) {
-        if (this._tablet) {
-            this._layoutTablet(q, contentAlpha, 1 - mirror, slide);
-            return;
+    // A phone's: the large tiles two to a row, the small ones four to a row under them
+    _setPhone(layout) {
+        const {qs} = layout;
+        this.set_size(px(layout.width), px(layout.height));
+        this._header.setPhone(layout.header);
+        const largeW = (qs.width - (qs.columns - 1) * qs.gap) / qs.columns;
+        const smallW = (qs.width - (qs.smallColumns - 1) * qs.gap) / qs.smallColumns;
+        const largeRows = Math.ceil(this._tiles.filter(tile => tile.kind === 'large').length / qs.columns);
+        let large = 0, small = 0;
+        for (const tile of this._tiles) {
+            if (tile.kind === 'large') {
+                tile._row = Math.floor(large / qs.columns);
+                tile._x = qs.left + large % qs.columns * (largeW + qs.gap);
+                tile.setWidthPx(largeW);
+                large++;
+            } else {
+                tile._row = largeRows + Math.floor(small / qs.smallColumns);
+                tile._x = qs.left + small % qs.smallColumns * (smallW + qs.gap);
+                tile.setWidthPx(smallW);
+                small++;
+            }
         }
-        const keep = 1 - mirror;
-        const shift = (q - 1) * QS_SHIFT;           // everything below the header moves with q
-        const content = clamp((q - CONTENT_FADE_FROM) / (1 - CONTENT_FADE_FROM));
-        const footer = clamp((q - FOOTER_FADE_FROM) / (1 - FOOTER_FADE_FROM));
+        this._brightness.setSpan(qs.left, qs.trackEnd, qs.left + qs.width, qs.autoSize, SurfaceEffect[1]);
+        this._footer.set_size(px(layout.width), px(FOOTER_BUTTON));
+        this._settingsButton.x = px(qs.settingsCX - FOOTER_BUTTON / 2);
+        this._powerButton.x = px(qs.powerCX - FOOTER_BUTTON / 2);
+    }
 
+    // @contentAlpha: the header's; @mirror: all but the brightness slider fade while it is dragged; @slide: a tablet's
+    // quick settings on their way down, how far above their places they are (screen px, 0 or less)
+    layoutFor({q, contentAlpha, mirror = 0, slide = 0}) {
+        if (!this._layout)
+            return;
+        if (this._layout.phone)
+            this._layoutPhone(q, contentAlpha, 1 - mirror);
+        else
+            this._layoutTablet(q, contentAlpha, 1 - mirror, slide);
+    }
+
+    // A phone's quick settings on the first pull are the first two rows of tiles, where they stay as the notification
+    // panel comes down and uncovers them (the shade cuts them at its top), and the header, fading in with the shade's
+    // content. The second pull moves those rows down to make room for the brightness row while the header turns into
+    // the big clock's, and the other rows, the brightness row and the footer fade in.
+    _layoutPhone(q, contentAlpha, keep) {
+        const {qs} = this._layout;
         if (q !== this._q)
             this._header.setProgress(q);
         this._header.opacity = Math.round(255 * contentAlpha * keep);
 
-        const tileH = TILE_H * (0.1 + 0.9 * squish);
+        const content = clamp((q - CONTENT_FADE_FROM) / (1 - CONTENT_FADE_FROM));
+        const footer = clamp((q - FOOTER_FADE_FROM) / (1 - FOOTER_FADE_FROM));
+        const shift = (q - 1) * (qs.gridTop - qs.qqsTop);
         for (const tile of this._tiles) {
-            const qqs = tile._row < QQS_ROWS;
-            // squished rows close up from the top; rows below the QQS follow the QS layout
-            const qqsY = GRID_TOP + tile._row * (tileH + ROW_GAP);
-            const qsY = GRID_TOP + QS_SHIFT + VOLUME_ROW + tile._row * (TILE_H + ROW_GAP);
-            const y = qqs ? lerp(qqsY, qsY, q) : qsY + shift;
-            tile.set_position(px(GRID_X + tile._col * COL_PITCH), px(y));
-            tile.setHeightPx(qqs ? lerp(tileH, TILE_H, q) : TILE_H);
+            const qqs = tile._row < qs.qqsRows;
+            const qsY = qs.gridTop + tile._row * qs.pitch;
+            const y = qqs ? lerp(qs.qqsTop + tile._row * qs.pitch, qsY, q) : qsY + shift;
+            tile.set_position(px(tile._x), px(y));
             const alpha = (qqs ? 1 : content) * keep;
             tile.opacity = Math.round(255 * alpha);
             tile.visible = alpha > 0;
         }
 
-        this._brightness.set_position(0, px(SLIDER_CY - THUMB_H / 2 + shift));
+        this._brightness.set_position(0, px(qs.brightnessCY - THUMB_H / 2 + shift));
         this._brightness.opacity = Math.round(255 * content);
         this._brightness.visible = content > 0;
-        // the volume row fades with the rest while the brightness is dragged
-        this._volume.set_position(0, px(SLIDER_CY + VOLUME_ROW - THUMB_H / 2 + shift));
-        this._volume.opacity = Math.round(255 * content * keep);
-        this._volume.visible = content * keep > 0;
 
-        const ink = this._buildInk ??= inkBox(this._build);
-        this._build.set_position(px(BUILD_INK_X) - ink.x, px(BUILD_INK_TOP + shift) - ink.y);
-        this._build.opacity = Math.round(255 * content * keep);
-        this._build.visible = content > 0;
-
-        this._footer.set_position(0, px(FOOTER_CY - FOOTER_BUTTON / 2 + shift));
+        this._footer.set_position(0, px(qs.footerCY - FOOTER_BUTTON / 2));
         this._footer.opacity = Math.round(255 * footer * keep);
         this._footer.visible = footer > 0;
-
         this._q = q;
-        this._squish = squish;
     }
 
     // A tablet's quick settings come down with the shade, fading in, rather than squish; the header stays and they
@@ -1206,7 +1215,7 @@ class QSPanel extends St.Widget {
     // second pull moves them down to make room for the brightness row, and the other rows and the footer fade in as
     // on a phone.
     _layoutTablet(q, contentAlpha, keep, slide) {
-        const {qs, landscape, header} = this._tablet;
+        const {qs, landscape, header} = this._layout;
         const under = px(header.height);
         if (landscape)
             q = 1;
