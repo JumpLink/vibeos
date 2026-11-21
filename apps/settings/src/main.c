@@ -158,7 +158,58 @@ detail_closed (VibeosListDetail *l, gpointer data)
   select_row (NULL);
 }
 
-/* ---- search: every word somewhere in an entry's title, subtitle or keywords ---- */
+/* ---- search: every word somewhere in an entry's title, subtitle or keywords, then the same for the pages and
+ * settings inside the entries (as Android's search finds those too) ---- */
+
+static gboolean show_panel (const char *name);
+static const char *entry_summary (const Entry *e);
+
+/* A page or setting inside an entry: its title, words it is searched by, the panel name that opens it (show_panel:
+ * the page it is on), and the entry it is under, whose title is shown below it as where it is and whose icon it has.
+ * `need`: what the device must have for it to be there. */
+typedef struct {
+  const char *title, *keywords, *panel;
+  NsActivate  entry;
+  NsCap       need;
+} Inner;
+
+static const Inner inner[] = {
+  { "Wi-Fi", "wlan wireless networks saved password ssid internet", "wifi", ns_page_connections },
+  { "Wi-Fi hotspot", "access point tethering share mobile data", "hotspot", ns_page_connections, NS_CAP_MODEM },
+  { "SIMs", "sim mobile data roaming apn carrier operator pin", "mobile", ns_page_connections, NS_CAP_MODEM },
+  { "Airplane mode", "flight mode offline radios", "network", ns_page_connections },
+  { "Network & VPN", "vpn wired ethernet proxy", "vpn", ns_page_connections },
+  { "Bluetooth", "pair pairing headphones headset speaker watch earbuds", "bluetooth", ns_page_connected_devices },
+  { "Sharing", "device name visible visibility", "sharing", ns_page_connected_devices },
+  { "Printers", "print printing printer", "printers", ns_page_connected_devices },
+  { "Default apps", "browser email music photos video open with", "default-apps", ns_page_apps },
+  { "Do not disturb", "dnd silence quiet pop-ups", "notifications", ns_page_notifications },
+  { "Volume", "media alarm ring ringtone loudness mute", "sound", ns_page_sound },
+  { "Vibration", "haptic haptics vibrate intensity", "sound", ns_page_sound },
+  { "Brightness", "adaptive brightness dim light", "display", ns_page_display },
+  { "Screen timeout", "sleep screen off timeout", "display", ns_page_display },
+  { "Dark theme", "dark mode night black", "display", ns_page_display },
+  { "Display size & text", "font size bold text zoom scale bigger smaller", "display-size", ns_page_display },
+  { "Night light", "warm amber blue light filter evening", "night-light", ns_page_display },
+  { "Wallpapers", "background picture photo parallax", "wallpapers", ns_page_wallpaper },
+  { "Home screen", "launcher grid columns rows icons drawer app names", "home", ns_page_wallpaper },
+  { "Battery information", "health temperature capacity voltage", "battery-info", ns_page_battery, NS_CAP_BATTERY },
+  { "Power and screen blank", "suspend sleep dim screen blank power saving", "screen-blank", ns_page_battery,
+    NS_CAP_BATTERY },
+  { "Language & region", "language region locale formats translation", "language", ns_page_general },
+  { "Keyboard", "on-screen keyboard osk layouts input typing", "keyboard", ns_page_general },
+  { "Mouse & touchpad", "pointer speed scrolling cursor", "mouse", ns_page_general },
+  { "Date & time", "clock time zone timezone 24-hour automatic", "datetime", ns_page_general },
+  { "Users", "user account password name avatar picture", "users", ns_page_general },
+  { "Software information", "version build kernel device name", "software-information", ns_page_about },
+  { "Lock screen", "screen lock password pin pattern swipe unlock", "lock-screen", ns_page_privacy },
+  { "Camera & microphone", "permission access", "security", ns_page_privacy },
+  { "Recent files", "history remember clean up trash", "security", ns_page_privacy },
+  { "Screen reader", "orca talkback speech read aloud blind", "accessibility", ns_page_accessibility },
+  { "High contrast", "contrast colours colors outlines", "accessibility", ns_page_accessibility },
+  { "Reduce animations", "motion animations movement", "accessibility", ns_page_accessibility },
+  { "Sticky keys", "hardware keyboard slow keys bounce keys", "accessibility", ns_page_accessibility },
+};
 
 static gboolean
 matches (const Entry *e, char **words)
@@ -169,6 +220,27 @@ matches (const Entry *e, char **words)
     if (!strstr (text, words[w]))
       return FALSE;
   return TRUE;
+}
+
+static gboolean
+words_in (const char *a, const char *b, const char *d, char **words)
+{
+  g_autofree char *joined = g_strjoin (" ", a, b, d, NULL);
+  g_autofree char *text = g_utf8_strdown (joined, -1);
+  for (guint w = 0; words && words[w]; w++)
+    if (!strstr (text, words[w]))
+      return FALSE;
+  return TRUE;
+}
+
+static void
+inner_clicked (GtkWidget *row, gpointer data)
+{
+  GtkWidget *view = gtk_widget_get_ancestor (row, VIBEOS_TYPE_SEARCH_VIEW);
+  const Inner *p = data;
+  if (view)
+    vibeos_search_view_close (VIBEOS_SEARCH_VIEW (view));
+  show_panel (p->panel);
 }
 
 static void
@@ -194,9 +266,23 @@ search_changed (VibeosSearchView *view, const char *text, GtkWidget *results)
     /* an entry the device has no use for (no battery) is not found either */
     if (!gtk_widget_get_visible (menu_rows->pdata[i]) || !matches (e, words))
       continue;
-    GtkWidget *r = ns_row (results, NULL, e->page == ns_page_about ? ns_about_title () : e->title, e->subtitle);
+    GtkWidget *r = ns_row (results, NULL, e->page == ns_page_about ? ns_about_title () : e->title, entry_summary (e));
     set_circle (r, e);
     ns_row_on_activate (r, result_clicked, (gpointer) e);
+  }
+  /* then the pages and settings inside the entries: under an entry the device shows, if it has what they need */
+  for (guint i = 0; i < G_N_ELEMENTS (inner); i++) {
+    const Inner *p = &inner[i];
+    GtkWidget *under = row_for_page (p->entry);
+    if (!under || !gtk_widget_get_visible (under) || (p->need && !ns_caps_has (p->need)))
+      continue;
+    const Entry *e = g_object_get_data (G_OBJECT (under), "ns-entry");
+    const char *where = e->page == ns_page_about ? ns_about_title () : e->title;
+    if (!words_in (p->title, p->keywords, where, words))
+      continue;
+    GtkWidget *r = ns_row (results, NULL, p->title, where);
+    set_circle (r, e);
+    ns_row_on_activate (r, inner_clicked, (gpointer) p);
   }
 }
 
@@ -218,18 +304,24 @@ search_open (VibeosSearchBar *bar, gpointer data)
 
 /* the texts that follow the device: a modem adds Mobile to Network & internet and the ringtone to Sound &
  * vibration, a tablet is About tablet */
+static const char *
+entry_summary (const Entry *e)
+{
+  if (e->page == ns_page_connections)
+    return ns_caps_has (NS_CAP_MODEM) ? "Mobile, Wi-Fi, hotspot" : "Wi-Fi, VPN";
+  if (e->page == ns_page_sound)
+    return ns_caps_has (NS_CAP_MODEM) ? "Volume, vibration, ringtone" : "Volume, alarm sound";
+  return e->subtitle;
+}
+
 static void
 entry_texts (void)
 {
   for (guint i = 0; menu_rows && i < menu_rows->len; i++) {
     VibeosListRow *r = menu_rows->pdata[i];
     const Entry *e = g_object_get_data (G_OBJECT (r), "ns-entry");
-    if (e->page == ns_page_connections)
-      vibeos_list_row_set_summary (r, ns_caps_has (NS_CAP_MODEM) ? "Mobile, Wi-Fi, hotspot" : "Wi-Fi, VPN");
-    else if (e->page == ns_page_sound)
-      vibeos_list_row_set_summary (r, ns_caps_has (NS_CAP_MODEM) ? "Volume, vibration, ringtone"
-                                                                 : "Volume, alarm sound");
-    else if (e->page == ns_page_about)
+    vibeos_list_row_set_summary (r, entry_summary (e));
+    if (e->page == ns_page_about)
       vibeos_list_row_set_title (r, ns_about_title ());
   }
 }
@@ -417,21 +509,18 @@ static const struct {
   { "system", ns_page_general },
   { "universal-access", ns_page_accessibility }, { "accessibility", ns_page_accessibility },
   { "info-overview", ns_page_about }, { "about", ns_page_about },
+  { "screen-blank", ns_page_power, ns_page_battery, TRUE }, { "wallpapers", ns_page_wallpapers, ns_page_wallpaper, TRUE },
+  { "software-information", ns_page_software, ns_page_about, TRUE }, { "security", ns_page_privacy },
   /* GNOME Settings' panels VibeOS has no page of its own for: the nearest one */
   { "color", ns_page_display }, { "wacom", ns_page_mouse, ns_page_general },
   { "thunderbolt", ns_page_connected_devices },
 };
 
-static void
-open_page (GApplication *app, const char *name, const char *arg)
+/* the page a panel name opens, over the menu (FALSE: no page has that name) */
+static gboolean
+show_panel (const char *name)
 {
-  g_application_activate (app);
   ns_pop_all ();
-  if (arg && *arg && (!g_strcmp0 (name, "applications") || !g_strcmp0 (name, "apps"))) {
-    select_row (row_for_page (ns_page_apps));
-    ns_open_entry (ns_page_app_row, NULL, (gpointer) arg);
-    return;
-  }
   for (guint i = 0; name && *name && i < G_N_ELEMENTS (direct); i++)
     if (g_str_equal (name, direct[i].name)) {
       NsActivate entry = direct[i].entry ? direct[i].entry : direct[i].page;
@@ -443,9 +532,22 @@ open_page (GApplication *app, const char *name, const char *arg)
       } else {
         ns_open_entry (direct[i].page, row, NULL);
       }
-      return;
+      return TRUE;
     }
-  if (name && *name)
+  return FALSE;
+}
+
+static void
+open_page (GApplication *app, const char *name, const char *arg)
+{
+  g_application_activate (app);
+  ns_pop_all ();
+  if (arg && *arg && (!g_strcmp0 (name, "applications") || !g_strcmp0 (name, "apps"))) {
+    select_row (row_for_page (ns_page_apps));
+    ns_open_entry (ns_page_app_row, NULL, (gpointer) arg);
+    return;
+  }
+  if (!show_panel (name) && name && *name)
     g_message ("no page for the panel '%s': the main menu", name);
 }
 
