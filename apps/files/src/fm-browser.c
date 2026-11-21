@@ -756,8 +756,7 @@ on_activate (FmList *list, FmItem *item, FmBrowser *b)
   /* a file in the Recycle Bin is not opened from there: a tap selects it, to restore or delete */
   if (b->place->kind == FM_PLACE_TRASH)
     {
-      fm_list_set_selecting (list, TRUE);
-      fm_list_set_selected (list, item, TRUE);
+      fm_list_start_selection (list, item);
       fm_shell_update_bars (b->shell);
       return;
     }
@@ -811,8 +810,7 @@ on_long_press (FmList *list, FmItem *item, double x, double y, FmBrowser *b)
       fm_popup_show (GTK_WIDGET (list), labels, 2, FM_POPUP_AT, x, y, on_result_menu, item);
       return;
     }
-  fm_list_set_selecting (list, TRUE);
-  fm_list_set_selected (list, item, TRUE);
+  fm_list_start_selection (list, item);
   fm_shell_update_bars (b->shell);
 }
 

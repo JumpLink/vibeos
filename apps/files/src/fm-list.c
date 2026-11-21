@@ -699,6 +699,20 @@ fm_list_set_selected (FmList *self, FmItem *item, gboolean selected)
   g_signal_emit (self, signals[SELECTION_CHANGED], 0);
 }
 
+void
+fm_list_start_selection (FmList *self, FmItem *item)
+{
+  if (self->selecting)
+    {
+      fm_list_set_selected (self, item, TRUE);
+      return;
+    }
+  self->selecting = TRUE;
+  item->selected = TRUE;
+  changed_all (self);
+  g_signal_emit (self, signals[SELECTION_CHANGED], 0);
+}
+
 /* in an "activate" handler: the activated row's icon (a file opens out of it), else NULL */
 GtkWidget *
 fm_list_get_activated_icon (FmList *self)
@@ -722,6 +736,12 @@ fm_list_get_selected (FmList *self)
         g_object_unref (item);
     }
   return selected;
+}
+
+guint
+fm_list_count_items (FmList *self)
+{
+  return g_list_model_get_n_items (G_LIST_MODEL (self->filtered));
 }
 
 guint

@@ -31,6 +31,7 @@ executable('vibeos-files', 'src/fm-main.c', 'src/fm-window.c', 'src/fm-ui.c', 's
            'src/fm-mount.c', 'src/fm-jobs.c', 'src/fm-settings.c', 'src/fm-share.c', resources,
            link_with: core, install: true,
            dependencies: [gio, m, gtk, secret, dependency('gdk-pixbuf-2.0'), dependency('vibeos-1'),
+                          dependency('libarchive'),
                           dependency('gnome-desktop-4'),
                           dependency('spongy-gtk-1')])
 

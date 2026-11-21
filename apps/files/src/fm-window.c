@@ -653,6 +653,92 @@ on_rename_done (const char *text, gpointer data)
   rename_request_free (request);
 }
 
+/* Batch Rename: each item's new name from the pattern, its stem for %% and its place in the selection for ## */
+typedef struct {
+  FmShell *shell;
+  GPtrArray *items;             /* FmItem */
+} BatchRequest;
+
+/* the items' new names, in their order */
+static GStrv
+batch_names (const char *pattern, const char *extension, gpointer data)
+{
+  BatchRequest *request = data;
+  g_autoptr(GStrvBuilder) builder = g_strv_builder_new ();
+
+  for (guint i = 0; i < request->items->len; i++)
+    {
+      FmItem *item = request->items->pdata[i];
+      const char *name = item->edit_name ? item->edit_name : item->name;
+      gboolean folder = fm_item_is_folder (item);
+      g_autofree char *stem = NULL, *renamed = NULL;
+      int end = -1;
+
+      fm_stem_range (name, folder, &end);
+      stem = g_utf8_substring (name, 0, end);
+      renamed = fm_batch_name (pattern, stem, i + 1);
+      /* a file takes the extension typed; one left empty, or a folder, keeps its own */
+      if (*extension && !folder)
+        g_strv_builder_take (builder, g_strconcat (renamed, ".", extension, NULL));
+      else
+        g_strv_builder_take (builder, g_strconcat (renamed, g_utf8_offset_to_pointer (name, end), NULL));
+    }
+  return g_strv_builder_end (builder);
+}
+
+static void
+on_batch_done (const char *pattern, const char *extension, gpointer data)
+{
+  BatchRequest *request = data;
+
+  if (pattern)
+    {
+      g_autoptr(GPtrArray) files = locations_of (request->items);
+      g_auto(GStrv) names = batch_names (pattern, extension, request);
+
+      fm_jobs_rename (request->shell, files, names);
+      end_selection (request->shell);
+    }
+  g_ptr_array_unref (request->items);
+  g_free (request);
+}
+
+static void
+batch_rename (FmShell *shell, GPtrArray *items)
+{
+  BatchRequest *request = g_new0 (BatchRequest, 1);
+  g_autofree const char **names = g_new0 (const char *, items->len + 1);
+  g_autofree char *common = NULL;
+  gboolean mixed = FALSE;
+
+  request->shell = shell;
+  request->items = g_ptr_array_ref (items);
+  /* the extension field starts with the one all the files share, empty when they differ or a folder is there */
+  for (guint i = 0; i < items->len; i++)
+    {
+      FmItem *item = items->pdata[i];
+      const char *name = item->edit_name ? item->edit_name : item->name;
+      int end = -1;
+      const char *extension;
+
+      names[i] = name;
+      if (fm_item_is_folder (item))
+        {
+          mixed = TRUE;
+          continue;
+        }
+      fm_stem_range (name, FALSE, &end);
+      extension = g_utf8_offset_to_pointer (name, end);
+      extension = *extension == '.' ? extension + 1 : extension;
+      if (!common)
+        common = g_strdup (extension);
+      else if (strcmp (common, extension))
+        mixed = TRUE;
+    }
+  fm_batch_rename_dialog (shell->window, names, items->len, mixed || !common ? "" : common, batch_names, on_batch_done,
+                          request);
+}
+
 static void
 rename_selected (FmShell *shell)
 {
@@ -661,6 +747,11 @@ rename_selected (FmShell *shell)
   const char *name;
   int end = -1;
 
+  if (items->len > 1)
+    {
+      batch_rename (shell, items);
+      return;
+    }
   if (items->len != 1)
     return;
   request = g_new0 (RenameRequest, 1);
@@ -747,15 +838,91 @@ add_bookmark (FmShell *shell, FmItem *item)
     fm_shell_toast (shell, _("This folder is already bookmarked"));
 }
 
+/* Compress: the name of the .zip, made in the folder of the first item */
+typedef struct {
+  FmShell *shell;
+  GPtrArray *files;             /* GFile */
+  GFile *folder;
+  gboolean here;                /* the folder is the one listed: its names are known without asking */
+} CompressRequest;
+
+static const char *
+check_compress (const char *text, gpointer data)
+{
+  CompressRequest *request = data;
+  FmNameCheck check = fm_check_name (text);
+  g_autofree char *name = NULL;
+
+  if (check != FM_NAME_OK)
+    return fm_name_check_message (check);
+  name = g_strconcat (text, ".zip", NULL);
+  if (request->here && fm_browser_has_name (request->shell->browser, name))
+    return _("File or folder already exists");
+  return NULL;
+}
+
+static void
+on_compress_done (const char *text, gpointer data)
+{
+  CompressRequest *request = data;
+
+  if (text)
+    {
+      g_autofree char *name = g_strconcat (text, ".zip", NULL);
+      g_autoptr(GFile) target = g_file_get_child_for_display_name (request->folder, name, NULL);
+
+      if (target)
+        fm_jobs_compress (request->shell, request->files, target);
+      end_selection (request->shell);
+    }
+  g_ptr_array_unref (request->files);
+  g_object_unref (request->folder);
+  g_free (request);
+}
+
+static void
+compress_selected (FmShell *shell, GPtrArray *items)
+{
+  CompressRequest *request;
+  FmItem *first = items->pdata[0];
+  const char *name = first->edit_name ? first->edit_name : first->name;
+  GFile *listed = fm_browser_get_location (shell->browser);
+  g_autoptr(GFile) location = fm_item_get_location (first);
+  g_autofree char *stem = NULL;
+  int end = -1;
+
+  request = g_new0 (CompressRequest, 1);
+  request->shell = shell;
+  request->files = locations_of (items);
+  request->folder = fm_parent (location);
+  if (!request->folder)
+    {
+      fm_shell_toast (shell, _("Failed to compress"));
+      g_ptr_array_unref (request->files);
+      g_free (request);
+      return;
+    }
+  request->here = listed && !fm_browser_is_virtual (shell->browser) && g_file_equal (listed, request->folder);
+  /* the first item's name, a file's without its extension */
+  fm_stem_range (name, fm_item_is_folder (first), &end);
+  stem = g_utf8_substring (name, 0, end);
+  fm_text_dialog_suffix (shell->window, _("Compress"), stem, -1, ".zip", check_compress, on_compress_done, request);
+}
+
 typedef enum {
   MORE_SHARE,
   MORE_BOOKMARK,
+  MORE_COMPRESS,
   MORE_OPEN_WITH,
   MORE_PROPERTIES,
+  MORE_SETTINGS,
 } MoreChoice;
 
-/* More: Share, Add Bookmark (a folder), Open with (a file), Properties. The popup's scrim
- * keeps the selection as it is while it shows, so the choice is found again from it. */
+#define MORE_MAX 6
+
+/* More: Share, Add Bookmark (a folder), Compress, Open with (a file), Properties, Settings, as File Manager+'s. A
+ * bookmark is a place to go to, so a file gets none. The popup's scrim keeps the selection as it is while it shows,
+ * so the choice is found again from it. */
 static int
 more_choices (FmShell *shell, GPtrArray *items, MoreChoice *choices, const char **labels)
 {
@@ -772,13 +939,17 @@ more_choices (FmShell *shell, GPtrArray *items, MoreChoice *choices, const char 
       choices[n] = MORE_BOOKMARK;
       labels[n++] = _("Add Bookmark");
     }
-  else if (items->len == 1)
+  choices[n] = MORE_COMPRESS;
+  labels[n++] = _("Compress");
+  if (items->len == 1 && !fm_item_is_folder (items->pdata[0]))
     {
       choices[n] = MORE_OPEN_WITH;
       labels[n++] = _("Open with");
     }
   choices[n] = MORE_PROPERTIES;
   labels[n++] = _("Properties");
+  choices[n] = MORE_SETTINGS;
+  labels[n++] = _("Settings");
   return n;
 }
 
@@ -788,8 +959,8 @@ on_more (int index, gpointer data)
   FmShell *shell = data;
   g_autoptr(GPtrArray) items = selected_items (shell);
   g_autoptr(GPtrArray) files = locations_of (items);
-  MoreChoice choices[4];
-  const char *labels[4];
+  MoreChoice choices[MORE_MAX];
+  const char *labels[MORE_MAX];
   int n;
 
   if (!items->len)
@@ -811,8 +982,15 @@ on_more (int index, gpointer data)
       open_with (shell, items->pdata[0]);
       end_selection (shell);
       break;
+    case MORE_COMPRESS:
+      compress_selected (shell, items);
+      break;
     case MORE_PROPERTIES:
       fm_properties_dialog (shell->window, items);
+      break;
+    case MORE_SETTINGS:
+      end_selection (shell);
+      fm_shell_show_page (shell, FM_PAGE_SETTINGS);
       break;
     }
 }
@@ -821,8 +999,8 @@ static void
 show_more (FmShell *shell, GtkWidget *anchor)
 {
   g_autoptr(GPtrArray) items = selected_items (shell);
-  MoreChoice choices[4];
-  const char *labels[4];
+  MoreChoice choices[MORE_MAX];
+  const char *labels[MORE_MAX];
   int n;
 
   if (!items->len)
@@ -966,13 +1144,17 @@ typedef enum {
   OVERFLOW_NEW_FOLDER,
   OVERFLOW_REFRESH,
   OVERFLOW_SETTINGS,
+  OVERFLOW_ABOUT,
 } OverflowChoice;
+
+/* About: VibeOS's About sheet, as every VibeOS app has it */
+static const VibeosAboutInfo fm_about = { .name = "Files", .icon_name = "vibeos.Files" };
 
 static void
 on_overflow_chosen (int index, gpointer data)
 {
   FmShell *shell = data;
-  OverflowChoice choices[3];
+  OverflowChoice choices[4];
   int n = 0;
 
   /* the same list on_overflow made */
@@ -980,7 +1162,10 @@ on_overflow_chosen (int index, gpointer data)
     choices[n++] = OVERFLOW_NEW_FOLDER;
   choices[n++] = OVERFLOW_REFRESH;
   if (shell->page == FM_PAGE_HOME)
-    choices[n++] = OVERFLOW_SETTINGS;
+    {
+      choices[n++] = OVERFLOW_SETTINGS;
+      choices[n++] = OVERFLOW_ABOUT;
+    }
   if (index < 0 || index >= n)
     return;
   switch (choices[index])
@@ -994,21 +1179,27 @@ on_overflow_chosen (int index, gpointer data)
     case OVERFLOW_SETTINGS:
       fm_shell_show_page (shell, FM_PAGE_SETTINGS);
       break;
+    case OVERFLOW_ABOUT:
+      vibeos_about_present (shell->window, &fm_about);
+      break;
     }
 }
 
-/* the overflow: Home has Refresh and Settings; a folder New folder and Refresh; the Recycle Bin Refresh */
+/* the overflow: Home has Refresh, Settings and About; a folder New folder and Refresh; the Recycle Bin Refresh */
 static void
 on_overflow (VibeosPressable *button, FmShell *shell)
 {
-  const char *labels[3];
+  const char *labels[4];
   int n = 0;
 
   if (shell->page == FM_PAGE_BROWSER && !fm_browser_is_virtual (shell->browser))
     labels[n++] = _("New folder");
   labels[n++] = _("Refresh");
   if (shell->page == FM_PAGE_HOME)
-    labels[n++] = _("Settings");
+    {
+      labels[n++] = _("Settings");
+      labels[n++] = _("About");
+    }
   fm_popup_show (GTK_WIDGET (button), labels, n, FM_POPUP_OVER_END, 0, 0, on_overflow_chosen, shell);
 }
 
@@ -1042,7 +1233,6 @@ typedef enum {
   BOTTOM_MORE,
   BOTTOM_RESTORE,
   BOTTOM_CANCEL,
-  BOTTOM_NEW_FOLDER,
   BOTTOM_PASTE,
 } BottomItem;
 
@@ -1073,9 +1263,6 @@ on_bottom_item (VibeosPressable *button, FmShell *shell)
       break;
     case BOTTOM_CANCEL:
       fm_shell_set_clip (shell, NULL, FALSE);
-      break;
-    case BOTTOM_NEW_FOLDER:
-      new_folder (shell);
       break;
     case BOTTOM_PASTE:
       {
@@ -1129,7 +1316,7 @@ update_bottom (FmShell *shell, gboolean selecting, guint selected)
   GtkWidget *child;
 
   if (selecting)
-    mode = g_strdup_printf ("select:%d:%d", trash, selected == 1);
+    mode = g_strdup_printf ("select:%d", trash);
   else if (shell->clip)
     mode = g_strdup_printf ("paste:%d", can_paste);
   gtk_widget_set_visible (shell->bottom, mode != NULL);
@@ -1148,17 +1335,16 @@ update_bottom (FmShell *shell, gboolean selecting, guint selected)
     }
   else if (selecting)
     {
+      /* File Manager+'s action bar: Rename with several selected is Batch Rename */
       bottom_item (shell, BOTTOM_COPY, "edit-copy-symbolic", _("Copy"), TRUE);
-      bottom_item (shell, BOTTOM_CUT, "edit-cut-symbolic", _("Cut"), TRUE);
+      bottom_item (shell, BOTTOM_CUT, "edit-cut-symbolic", _("Move"), TRUE);
+      bottom_item (shell, BOTTOM_RENAME, "insert-text-symbolic", _("Rename"), TRUE);
       bottom_item (shell, BOTTOM_DELETE, "user-trash-symbolic", _("Delete"), TRUE);
-      if (selected == 1)
-        bottom_item (shell, BOTTOM_RENAME, "document-edit-symbolic", _("Rename"), TRUE);
       bottom_item (shell, BOTTOM_MORE, "view-more-symbolic", _("More"), TRUE);
     }
   else
     {
       bottom_item (shell, BOTTOM_CANCEL, "window-close-symbolic", _("Cancel"), TRUE);
-      bottom_item (shell, BOTTOM_NEW_FOLDER, "folder-new-symbolic", _("New folder"), can_paste);
       bottom_item (shell, BOTTOM_PASTE, "edit-paste-symbolic", _("Paste"), can_paste);
     }
 }
@@ -1215,7 +1401,7 @@ fm_shell_update_bars (FmShell *shell)
   gtk_widget_remove_css_class (shell->toolbar, "fm-cab");
   if (selecting)
     {
-      g_autofree char *title = g_strdup_printf (ngettext ("%d selected", "%d selected", selected), selected);
+      g_autofree char *title = g_strdup_printf ("%u/%u", selected, fm_list_count_items (list));
 
       gtk_widget_add_css_class (shell->toolbar, "fm-cab");
       gtk_label_set_text (GTK_LABEL (shell->select_title), title);
