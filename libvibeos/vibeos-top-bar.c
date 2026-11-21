@@ -9,7 +9,7 @@
 #define BAR_H          64
 #define COMPACT_H      56
 #define BACK           40     /* the back button's circle */
-#define TABLET_BACK    56     /* and on a tablet */
+#define TABLET_BACK    44     /* and on a tablet: 56 filled the 64 bar and touched the card under it (owner, 11-21) */
 #define BACK_CENTRE_X  44     /* the circle's centre, whatever its size */
 #define TITLE_GAP      20     /* from the circle to the title */
 #define TITLE_X        24     /* the title without a back button */
