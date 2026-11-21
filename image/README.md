@@ -67,6 +67,9 @@ shrinks the image. It refuses any development version, a relaxed version pin on 
 file named in `FORBID`. The third-party icon packs and parallax sets the 0.1.3 zip carries (`ART`) are not in this
 repository; left unset, the image has VibeOS's own icons and the NASA solar-system wallpaper only.
 
+`build-zips.sh` from this tree gives the system zip and the S10e zip on Releases byte for byte (the same sha256) from
+their rootfs.img and device folders: the zip stores fixed timestamps and, with its own `umask 022`, the same modes.
+
 **Not yet from sources alone.** The 0.1.3 image was made from a copy of the clean image of our own S10e:
 `build-system.sh` removes that phone's device layer (`STAGE`: every file its device stage added) before it installs
 VibeOS. A base builder that starts from the Debian and Mobian archives is the next step; until it is here, the
