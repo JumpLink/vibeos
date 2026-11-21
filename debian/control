@@ -460,13 +460,17 @@ Description: web browser for VibeOS
 Package: vibeos-settings
 Architecture: any
 Breaks: neo-settings (<< 1:0.1.0~)
-Replaces: neo-settings (<< 1:0.1.0~)
+Conflicts: gnome-control-center
+Replaces: neo-settings (<< 1:0.1.0~),
+          gnome-control-center,
+Provides: gnome-control-center (= 1:99),
 Depends: python3,
          python3-gi,
          gir1.2-glib-2.0,
          ${shlibs:Depends},
          ${misc:Depends},
 Recommends: accountsservice,
+            gnome-control-center-data,
             network-manager,
             gnome-keyring,
             pkexec,
