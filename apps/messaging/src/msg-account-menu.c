@@ -151,6 +151,7 @@ msg_account_menu_new (MsgAccountMenuFunc func, gpointer data)
   group = stack ();
   msg_card_group_append (group, item_row (menu, "msg-settings-symbolic", _("Messages settings"),
                                           MSG_ACCOUNT_MENU_SETTINGS));
+  msg_card_group_append (group, item_row (menu, "msg-info-symbolic", _("About"), MSG_ACCOUNT_MENU_ABOUT));
   gtk_box_append (GTK_BOX (content), group);
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), content);
   gtk_widget_set_vexpand (scroll, TRUE);

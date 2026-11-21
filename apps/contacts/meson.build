@@ -2,8 +2,7 @@ project('vibeos-contacts', 'c', version: '1.0', meson_version: '>= 1.0',
         default_options: ['warning_level=2', 'c_std=gnu11', 'buildtype=release'])
 add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers',
                       '-DGETTEXT_PACKAGE="vibeos-contacts"',
-                      '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir')),
-                      '-DCT_VERSION="@0@"'.format(meson.project_version()), language: 'c')
+                      '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir')), language: 'c')
 
 gnome = import('gnome')
 gio = dependency('gio-unix-2.0', version: '>= 2.76')

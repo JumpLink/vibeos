@@ -12,6 +12,9 @@ deps = [dependency('gtk4', version: '>= 4.14'), dependency('vibeos-1'),
         # the colour swatches show what the theme engine makes of each seed
         dependency('tonal-1'),
         dependency('libnm'), dependency('libdrm'), dependency('libpulse-mainloop-glib'),
+        # the account pages check a server the way GOA's dialogs do (libsoup), and hand Kerberos passwords to
+        # goa-identity-service the way GOA does (gcr's secret exchange)
+        dependency('libsoup-3.0'), dependency('gcr-4'),
         # the pattern dialog checks the current password the way the lock screen does
         cc.find_library('pam'), cc.find_library('m', required: false)]
 # the lists scroll the way the launcher's drawer does (VibeOS's libspongy), where it is installed
@@ -29,7 +32,7 @@ monitors = static_library('monitors', 'src/ns-monitors.c', dependencies: [gio, c
 executable('vibeos-settings',
   'src/main.c', 'src/ns-ui.c', 'src/ns-pages.c', 'src/ns-parallax.c', 'src/ns-net.c', 'src/ns-bt.c',
   'src/ns-sound.c', 'src/ns-apps.c', 'src/ns-shell.c', 'src/ns-pattern.c', 'src/ns-privacy.c', 'src/ns-system.c',
-  'src/ns-displays.c', 'src/ns-caps.c', 'src/ns-charge.c',
+  'src/ns-displays.c', 'src/ns-caps.c', 'src/ns-charge.c', 'src/ns-accounts.c', 'src/ns-accounts-net.c',
   resources,
   link_with: monitors,
   dependencies: deps,

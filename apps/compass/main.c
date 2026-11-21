@@ -14,7 +14,9 @@
  *
  * The window and its colours are libvibeos's: the dial is drawn in the theme's colours, light or dark, with north
  * and the pointer in its error red. The dial's text grows with the dial; the line under it follows Font size, and
- * all of it Bold text. */
+ * all of it Bold text.
+ *
+ * ⋮ in the top end corner, over the dial, opens the menu: About, VibeOS's About sheet. */
 #include <vibeos.h>
 #include <math.h>
 
@@ -624,6 +626,16 @@ static const char CSS[] =
   "window.compass, window.compass .compass-bg { background-color: @vibeos_surface; color: @vibeos_on_surface; }"
   ".compass-status { color: @vibeos_on_surface_variant; font-size: 13sp; font-weight: 400; }";
 
+static const VibeosAboutInfo compass_about = { .name = "Compass", .icon_name = APP_ID };
+
+static void
+on_more (GtkWidget *button, gpointer data)
+{
+  VibeosMenu *menu = vibeos_menu_new ();
+  vibeos_menu_append_about (menu, &compass_about);
+  vibeos_menu_present (menu, button);
+}
+
 static void
 on_activate (GtkApplication *app, gpointer data)
 {
@@ -654,7 +666,17 @@ on_activate (GtkApplication *app, gpointer data)
   gtk_widget_set_margin_bottom (c->status, 40);
   gtk_box_append (GTK_BOX (box), c->area);
   gtk_box_append (GTK_BOX (box), c->status);
-  vibeos_window_set_content (GTK_WINDOW (c->win), box);
+  GtkWidget *over = gtk_overlay_new ();
+  gtk_overlay_set_child (GTK_OVERLAY (over), box);
+  GtkWidget *more = vibeos_icon_button_new ("view-more-symbolic");
+  gtk_accessible_update_property (GTK_ACCESSIBLE (more), GTK_ACCESSIBLE_PROPERTY_LABEL, "More options", -1);
+  gtk_widget_set_halign (more, GTK_ALIGN_END);
+  gtk_widget_set_valign (more, GTK_ALIGN_START);
+  gtk_widget_set_margin_top (more, 4);
+  gtk_widget_set_margin_end (more, 4);
+  g_signal_connect (more, "clicked", G_CALLBACK (on_more), NULL);
+  gtk_overlay_add_overlay (GTK_OVERLAY (over), more);
+  vibeos_window_set_content (GTK_WINDOW (c->win), over);
 
   g_signal_connect (c->win, "close-request", G_CALLBACK (on_close), c);
   g_signal_connect (c->win, "notify::is-active", G_CALLBACK (on_window_notify), c);

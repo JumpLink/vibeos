@@ -489,6 +489,9 @@ replace_menu (Shell *shell, GtkWidget *page)
   g_object_unref (page);
 }
 
+/* About: VibeOS's About sheet, as every VibeOS app has it */
+static const VibeosAboutInfo msg_about = { .name = "Messaging", .icon_name = "vibeos.Messaging" };
+
 static void
 on_menu (MsgAccountMenuItem item, gpointer data)
 {
@@ -503,6 +506,10 @@ on_menu (MsgAccountMenuItem item, gpointer data)
     case MSG_ACCOUNT_MENU_MARK_ALL_READ:
       conversation_list_mark_all_read (shell->client);
       close_page (shell, shell->menu);
+      return;
+    case MSG_ACCOUNT_MENU_ABOUT:
+      close_page (shell, shell->menu);
+      vibeos_about_present (shell->window, &msg_about);
       return;
     case MSG_ACCOUNT_MENU_ARCHIVED:
       page = make_list (shell, TRUE);

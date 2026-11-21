@@ -1381,7 +1381,24 @@ menu_licenses (gpointer data)
   gtk_widget_grab_focus (self->licenses);
 }
 
-/* the ⋮: History; with a result, its leading digits, and its fraction when it is rational */
+static const VibeosAboutSection calc_legal[] = {
+  { "CRCalc", "The exact real arithmetic is Hans-J. Boehm's constructive reals (com.hp.creals, as Android's "
+              "Calculator uses them): copyright 1999 Silicon Graphics, Inc., 2001-2004 Hewlett-Packard Development "
+              "Company, L.P., under its own permissive licence (Open source licenses in the ⋮ menu)." },
+  { NULL }
+};
+
+static const VibeosAboutInfo calc_about = { .name = "Calculator", .icon_name = "vibeos.Calculator",
+                                            .legal = calc_legal };
+
+static void
+menu_about (gpointer data)
+{
+  vibeos_about_present (GTK_WIDGET (data), &calc_about);
+}
+
+/* the ⋮: History; with a result, its leading digits, and its fraction when it is rational; then the licences and
+ * About, VibeOS's About sheet */
 static void
 on_overflow_clicked (GtkWidget *button, CalcMain *self)
 {
@@ -1394,6 +1411,7 @@ on_overflow_clicked (GtkWidget *button, CalcMain *self)
   if (self->state == STATE_RESULT && result && real_exactly_displayable (result))
     calc_popup_menu_append (menu, _("Answer as fraction"), menu_fraction, self);
   calc_popup_menu_append (menu, _("Open source licenses"), menu_licenses, self);
+  calc_popup_menu_append (menu, _("About"), menu_about, self);
   calc_popup_menu_present (menu, button);
 }
 

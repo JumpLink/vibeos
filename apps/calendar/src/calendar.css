@@ -830,10 +830,6 @@ cal-spinner {
   color: @vibeos_primary;
 }
 
-.cal-about-icon {
-  margin: 16dp;
-}
-
 /* the text field in a settings dialog (a quick response) */
 .cal-dialog-entry {
   margin: 0 24dp 8dp 24dp;

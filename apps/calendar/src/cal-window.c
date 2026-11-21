@@ -650,11 +650,14 @@ on_settings_item (VibeosPressable *item, Shell *shell)
   cal_window_push (shell->window, cal_settings_page_new (shell->window));
 }
 
+/* About, from the drawer or the ⋮ menu: VibeOS's About sheet, as every VibeOS app has it */
+static const VibeosAboutInfo cal_about = { .name = "Calendar", .icon_name = "vibeos.Calendar" };
+
 static void
 on_about_item (VibeosPressable *item, Shell *shell)
 {
   open_drawer (shell, FALSE);
-  cal_window_push (shell->window, cal_about_page_new (shell->window));
+  vibeos_about_present (shell->window, &cal_about);
 }
 
 static void
@@ -837,6 +840,13 @@ on_refreshed (GObject *client, GAsyncResult *result, gpointer data)
 }
 
 static void
+on_menu_about (VibeosPressable *item, Shell *shell)
+{
+  close_menu (shell);
+  vibeos_about_present (shell->window, &cal_about);
+}
+
+static void
 on_menu_refresh (VibeosPressable *item, Shell *shell)
 {
   GPtrArray *calendars = cal_store_get_calendars (shell->store);
@@ -952,6 +962,7 @@ on_more (VibeosPressable *button, Shell *shell)
   /* View settings: the Month view only */
   if (shell->view == VIEW_MONTH)
     gtk_box_append (GTK_BOX (menu), menu_item (shell, _("View settings"), G_CALLBACK (on_menu_view_settings)));
+  gtk_box_append (GTK_BOX (menu), menu_item (shell, _("About"), G_CALLBACK (on_menu_about)));
   gtk_overlay_add_overlay (GTK_OVERLAY (layer), menu);
   shell->menu = layer;
   gtk_overlay_add_overlay (vibeos_window_get_overlay (shell->window), layer);

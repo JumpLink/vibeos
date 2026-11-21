@@ -468,6 +468,28 @@ action (const char *icon, const char *name, GCallback callback, Window *self)
   return button;
 }
 
+/* ⋮: About, VibeOS's About sheet, as every VibeOS app has it */
+static const VibeosAboutSection dictate_legal[] = {
+  { "Moonshine", "English, German and Spanish are heard by <a href=\"https://github.com/moonshine-ai/moonshine\">"
+                 "Moonshine</a> and its tiny streaming models, under the MIT License, on Microsoft's ONNX Runtime "
+                 "(MIT)." },
+  { "Vosk", "French, Italian and Russian are heard by <a href=\"https://alphacephei.com/vosk/\">Vosk</a> and its "
+            "small models, under the Apache License 2.0." },
+  { NULL }
+};
+
+static const VibeosAboutInfo dictate_about = { .name = "Dictate", .icon_name = "vibeos.Dictate",
+                                               .legal = dictate_legal };
+
+static void
+on_more (VibeosPressable *button, Window *self)
+{
+  VibeosMenu *menu = vibeos_menu_new ();
+
+  vibeos_menu_append_about (menu, &dictate_about);
+  vibeos_menu_present (menu, GTK_WIDGET (button));
+}
+
 /* --- the selection's bar: Android's floating text toolbar, over the selected text */
 
 #define BAR_GAP 8       /* between the bar and the selected text, and the page's edges */
@@ -863,8 +885,13 @@ dictate_window_new (GtkApplication *app)
   self->copy = action ("dictate-copy-symbolic", _("Copy"), G_CALLBACK (on_copy), self);
   gtk_box_append (GTK_BOX (bar), self->copy);
   self->clear = action ("dictate-delete-symbolic", _("Clear"), G_CALLBACK (on_clear), self);
-  gtk_widget_add_css_class (self->clear, "dictate-bar-end");
   gtk_box_append (GTK_BOX (bar), self->clear);
+  {
+    GtkWidget *more = action ("view-more-symbolic", _("More options"), G_CALLBACK (on_more), self);
+
+    gtk_widget_add_css_class (more, "dictate-bar-end");
+    gtk_box_append (GTK_BOX (bar), more);
+  }
   gtk_box_append (GTK_BOX (content), bar);
 
   /* the document */

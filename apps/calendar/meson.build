@@ -9,8 +9,7 @@ m = meson.get_compiler('c').find_library('m')
 bindir = get_option('prefix') / get_option('bindir')
 datadir = get_option('prefix') / get_option('datadir')
 gettext_args = ['-DGETTEXT_PACKAGE="vibeos-calendar"',
-                '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir')),
-                '-DCAL_VERSION="@0@"'.format(meson.project_version())]
+                '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir'))]
 
 # the events and their rules (cal-model), their text (cal-format) and evolution-data-server (cal-store): shared by
 # the app, the reminder service and the tests

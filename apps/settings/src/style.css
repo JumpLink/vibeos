@@ -230,6 +230,31 @@ window.ns-window button.ns-uninstall {
   margin: 8dp 32dp 16dp 32dp;
 }
 
+/* an account's sign-in page: the line saying what is being checked, or the server's answer, and the buttons */
+.ns-form-status {
+  font-size: 14sp;
+  color: @vibeos_on_surface_variant;
+  margin: 16dp 32dp 0 32dp;
+}
+
+.ns-form-status.ns-form-error {
+  color: @vibeos_error;
+}
+
+.ns-form-buttons {
+  margin: 16dp 16dp 24dp 16dp;
+}
+
+/* an account's provider icon over its page, with what the page is for or who the account is */
+.ns-account-head {
+  padding: 8dp 32dp 16dp 32dp;
+}
+
+.ns-account-who {
+  font-size: 22sp;
+  color: @vibeos_on_surface;
+}
+
 /* ---- heads and big numbers ---- */
 
 /* a big head on a page: an app's icon and name, the device's name */

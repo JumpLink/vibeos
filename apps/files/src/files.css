@@ -498,6 +498,44 @@ fm-drawer > .fm-drawer-scrim {
   background-color: alpha(@vibeos_primary, 0.4);
 }
 
+/* ".zip" after Compress's field, "." between Batch Rename's two */
+.fm-field-suffix {
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
+  margin: 0 4dp 10dp 4dp;
+}
+
+/* Batch Rename: the names in their box, the token buttons */
+.fm-batch-names {
+  margin-bottom: 12dp;
+}
+
+.fm-batch-name {
+  font-size: 16sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
+  background-color: alpha(@vibeos_on_surface, 0.06);
+  min-height: 29dp;
+  padding: 0 8dp;
+  margin-bottom: 2dp;
+}
+
+.fm-batch-tokens {
+  margin-bottom: 12dp;
+}
+
+.fm-batch-token {
+  min-height: 40dp;
+  border-radius: 2dp;
+  background-color: @vibeos_primary;
+  color: @vibeos_on_primary;
+}
+
+.fm-batch-row {
+  margin-bottom: 8dp;
+}
+
 .fm-field-error {
   font-size: 12sp;
   font-weight: 400;

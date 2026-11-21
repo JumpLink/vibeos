@@ -26,6 +26,22 @@ typedef void (*FmTextDone) (const char *text, gpointer data);
 void        fm_text_dialog        (GtkWidget *parent, const char *title, const char *text, int select_end,
                                    FmTextCheck check, FmTextDone done, gpointer data);
 
+/* the same with @suffix after the field on its line (Compress: ".zip") */
+void        fm_text_dialog_suffix (GtkWidget *parent, const char *title, const char *text, int select_end,
+                                   const char *suffix, FmTextCheck check, FmTextDone done, gpointer data);
+
+/* Batch Rename: @names as they are, the new name's field, "." and the extension's field (@extension, "" for none);
+ * MORE shows the buttons that put the old name and the number at the cursor. While a pattern is typed the list shows
+ * the names @preview makes of it (n_names of them). @done gets the pattern and the extension, or NULLs when
+ * cancelled. fm_batch_name makes an item's name from the pattern. */
+#define FM_BATCH_NAME   "%%"
+#define FM_BATCH_NUMBER "##"
+typedef GStrv (*FmBatchNames) (const char *pattern, const char *extension, gpointer data);
+typedef void (*FmBatchDone) (const char *pattern, const char *extension, gpointer data);
+void        fm_batch_rename_dialog (GtkWidget *parent, const char *const *names, guint n_names,
+                                    const char *extension, FmBatchNames preview, FmBatchDone done, gpointer data);
+char       *fm_batch_name         (const char *pattern, const char *stem, guint number);
+
 typedef void (*FmConfirmDone) (gboolean ok, gpointer data);
 void        fm_confirm_dialog     (GtkWidget *parent, const char *title, const char *message, FmConfirmDone done,
                                    gpointer data);

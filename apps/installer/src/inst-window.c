@@ -167,15 +167,31 @@ on_job_finished (InstJob *job, Win *win)
   notify_end (win);
 }
 
+/* ⋮: About, VibeOS's About sheet, as every VibeOS app has it */
+static const VibeosAboutInfo inst_about = { .name = "App Installer", .icon_name = "vibeos.Installer" };
+
+static void
+on_more (VibeosPressable *button, Win *win)
+{
+  VibeosMenu *menu = vibeos_menu_new ();
+
+  vibeos_menu_append_about (menu, &inst_about);
+  vibeos_menu_present (menu, GTK_WIDGET (button));
+}
+
 static GtkWidget *
 page_new (const char *title, gboolean back, Win *win, GtkWidget **bar_out)
 {
   GtkWidget *page = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *bar = vibeos_top_bar_new (title);
+  GtkWidget *more;
 
   gtk_widget_add_css_class (page, "inst-page");
   vibeos_top_bar_set_back (VIBEOS_TOP_BAR (bar), back);
   g_signal_connect (bar, "back", G_CALLBACK (on_top_bar_back), win);
+  more = vibeos_top_bar_add_action (VIBEOS_TOP_BAR (bar), "view-more-symbolic");
+  gtk_accessible_update_property (GTK_ACCESSIBLE (more), GTK_ACCESSIBLE_PROPERTY_LABEL, _("More options"), -1);
+  g_signal_connect (more, "clicked", G_CALLBACK (on_more), win);
   gtk_box_append (GTK_BOX (page), bar);
   if (bar_out)
     *bar_out = bar;
