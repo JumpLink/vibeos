@@ -2,6 +2,7 @@
  * (ns-net.c, ns-bt.c, ns-sound.c, ns-apps.c, ns-shell.c, ns-privacy.c, ns-system.c). Nothing here blocks: D-Bus
  * answers fill the page when they come. */
 #include "ns-caps.h"
+#include "ns-charge.h"
 #include "ns-pages.h"
 #include "ns-parallax.h"
 #include "ns-ui.h"
@@ -1189,6 +1190,8 @@ ns_page_battery_info (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
   NsPage *page = ns_page_new ("Battery information", &c);
+  /* the charge since it was last full, first */
+  ns_row_widget (ns_group (c, "Since last full charge"), NULL, ns_charge_history_new ());
   BatInfo *b = g_new0 (BatInfo, 1);
   GtkWidget *g = ns_group (c, NULL);
   g_object_set_data_full (G_OBJECT (g), "ns-batinfo", b, (GDestroyNotify) bat_info_free);
