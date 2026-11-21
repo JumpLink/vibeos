@@ -37,7 +37,7 @@ static const Entry entries[] = {
   { "bluetooth-symbolic", TINT_BLUE, "Connected devices", "Bluetooth, pairing",
     "pair headphones speaker watch sharing visible device name printers printing", ns_page_connected_devices },
   { NULL },
-  { "view-app-grid-symbolic", TINT_BLUE, "Apps", "Default apps, app settings",
+  { "view-app-grid-symbolic", TINT_BLUE, "Apps", "Recent apps, default apps",
     "permissions storage default browser email", ns_page_apps },
   { "preferences-system-notifications-symbolic", TINT_ORANGE, "Notifications",
     "App notifications, do not disturb", "dnd banner pop-up lock screen emergency alerts", ns_page_notifications },
@@ -308,9 +308,45 @@ search_open (VibeosSearchBar *bar, gpointer data)
 
 /* the texts that follow the device: a modem adds Mobile to Network and Internet and the ringtone to Sound and
  * vibration, a tablet is About tablet */
+/* the battery's level for its row ("84%"), once UPower has said it */
+static char *battery_text;
+
+static void entry_texts (void);
+
+static void
+battery_level (GDBusProxy *upower)
+{
+  g_autoptr (GVariant) present = g_dbus_proxy_get_cached_property (upower, "IsPresent");
+  g_autoptr (GVariant) level = g_dbus_proxy_get_cached_property (upower, "Percentage");
+  g_clear_pointer (&battery_text, g_free);
+  if (present && g_variant_get_boolean (present) && level)
+    battery_text = g_strdup_printf ("%.0f%%", g_variant_get_double (level));
+  entry_texts ();
+}
+
+static void
+battery_changed (GDBusProxy *upower, GVariant *changed, GStrv invalidated, gpointer data)
+{
+  battery_level (upower);
+}
+
+static void
+battery_proxy_got (GObject *src, GAsyncResult *res, gpointer data)
+{
+  GDBusProxy *upower = g_dbus_proxy_new_for_bus_finish (res, NULL);
+  if (!upower)
+    return;
+  /* held for the app's life, as the menu is */
+  g_signal_connect (upower, "g-properties-changed", G_CALLBACK (battery_changed), NULL);
+  battery_level (upower);
+}
+
 static const char *
 entry_summary (const Entry *e)
 {
+  /* Android's Battery row says the level */
+  if (e->page == ns_page_battery && battery_text)
+    return battery_text;
   if (e->page == ns_page_connections)
     return ns_caps_has (NS_CAP_MODEM) ? "Mobile, Wi-Fi, hotspot" : "Wi-Fi, VPN";
   if (e->page == ns_page_sound)
@@ -377,6 +413,9 @@ main_page (void)
   }
   entry_texts ();
   ns_caps_on_changed (G_CALLBACK (entry_texts), list);
+  g_dbus_proxy_new_for_bus (G_BUS_TYPE_SYSTEM, G_DBUS_PROXY_FLAGS_GET_INVALIDATED_PROPERTIES, NULL,
+                            "org.freedesktop.UPower", "/org/freedesktop/UPower/devices/DisplayDevice",
+                            "org.freedesktop.UPower.Device", NULL, battery_proxy_got, NULL);
   GtkWidget *sc = ns_scroller_new (list);
   gtk_widget_set_vexpand (sc, TRUE);
   gtk_box_append (GTK_BOX (page), sc);
