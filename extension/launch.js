@@ -153,6 +153,29 @@ class CropEffect extends Clutter.ShaderEffect {
     }
 });
 
+// ---- the windows files were opened in -----------------------------------------------------------------------------
+
+// A window an app's file opened in (Files' photo, video or text): the app's window it was opened from and the file's
+// box there, stage px. Back at its root goes back into the file rather than home (back.js), as Android's back goes to
+// the activity that started the viewer.
+const openers = new Map();
+
+function remember(win, from, box) {
+    if (!from || win === from)
+        return;
+    if (!openers.has(win))
+        win.connectObject('unmanaged', () => openers.delete(win), openers);
+    openers.set(win, {from, box});
+}
+
+// {from, box} while the window it was opened from is there to go back to, else null
+export function openerOf(win) {
+    const o = win ? openers.get(win) : null;
+    if (!o || !o.from.get_compositor_private() || o.from.minimized)
+        return null;
+    return o;
+}
+
 // ---- the transition -----------------------------------------------------------------------------------------------
 
 export class LaunchTransition {
@@ -214,6 +237,15 @@ export class LaunchTransition {
             this._warm(app, win, box, icon);
         else
             this._cold(app, box, icon);
+    }
+
+    // A file opened from an app (Files): its app starts with it, or a running one takes it, out of the file's box
+    // (stage px) as from an icon: the splash with the app's icon until the window is there
+    open(app, box, uri, opener) {
+        this._finish();
+        this._launched = app;
+        this._launchedAt = GLib.get_monotonic_time();
+        this._cold(app, box, '', [uri], opener);
     }
 
     // a window of app's the shell opened without a launch to animate (Settings from a recents card's menu): raised
@@ -330,7 +362,7 @@ export class LaunchTransition {
 
     // ---- a cold start: the splash grows, the window arrives under it, the splash vanishes
 
-    _cold(app, box, icon) {
+    _cold(app, box, icon, uris = null, opener = null) {
         const area = Main.layoutManager.getWorkAreaForMonitor(Main.layoutManager.primaryIndex);
         const splash = new Clutter.Actor({
             background_color: new Cogl.Color({red: SPLASH_RGB[0], green: SPLASH_RGB[1], blue: SPLASH_RGB[2],
@@ -370,6 +402,7 @@ export class LaunchTransition {
             if (owner && owner !== app)
                 return;
             run.window = win;
+            remember(win, opener, box);
             const actor = win.get_compositor_private();
             Main.wm.skipNextEffect(actor);
             actor.opacity = 0;
@@ -382,6 +415,24 @@ export class LaunchTransition {
                 this._maybeExit(run);
             }, run);
         }, run);
+        // A running app may take the file in a window it has (a player, one window): that one coming to the front is
+        // the app ready
+        if (uris && app.get_windows().length) {
+            global.display.connectObject('notify::focus-window', () => {
+                const win = global.display.focus_window;
+                if (run.window || !win || win.get_window_type() !== Meta.WindowType.NORMAL ||
+                    tracker.get_window_app(win) !== app)
+                    return;
+                run.window = win;
+                remember(win, opener, box);
+                run.windowActor = win.get_compositor_private();
+                run.drawn = true;
+                if (run.timeoutId)
+                    GLib.source_remove(run.timeoutId);
+                run.timeoutId = 0;
+                this._maybeExit(run);
+            }, run);
+        }
         const timeout = SPLASH_TIMEOUT_MS * St.Settings.get().slow_down_factor;
         run.timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, timeout, () => {
             run.timeoutId = 0;
@@ -400,15 +451,28 @@ export class LaunchTransition {
             }
             splash.destroy();
         };
-        this._activate(app, run);
+        this._activate(app, run, uris);
     }
 
     // A D-Bus activatable app is started through its bus name first: app.activate() only logs a service that cannot
     // start (masked: the GSM gateway masks Calls and Chatty), and the splash waited its whole timeout for a window
     // that never came, the gestures dead under it (2026-11-04)
-    _activate(app, run) {
+    // (uris: the app opens them, a file opened from an app)
+    _activate(app, run, uris = null) {
+        const start = () => {
+            if (!uris) {
+                app.activate();
+                return;
+            }
+            try {
+                app.get_app_info().launch_uris(uris, global.create_app_launch_context(0, -1));
+            } catch (e) {
+                if (this._running === run)
+                    this._failed(run, app, e);
+            }
+        };
         if (!app.get_app_info()?.get_boolean('DBusActivatable')) {
-            app.activate();
+            start();
             return;
         }
         const name = app.get_id().replace(/\.desktop$/, '');
@@ -423,7 +487,7 @@ export class LaunchTransition {
                     return;
                 }
                 if (this._running === run)
-                    app.activate();
+                    start();
             });
     }
 

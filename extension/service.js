@@ -1,7 +1,10 @@
 // vibeos.Shell on the session bus: what the launcher asks of the shell.
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
+
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {dismissKeyboard} from './keyboard/keyboard.js';
 import {LaunchTransition} from './launch.js';
@@ -16,6 +19,14 @@ const IFACE = `<node>
       <arg type="s" name="app_id" direction="in"/>
       <arg type="(dddd)" name="from" direction="in"/>
       <arg type="s" name="icon" direction="in"/>
+    </method>
+    <!-- open a file in an app as a launch out of the file's box: an app opening one of its files (Files). uri: the
+         file; app_id: the app for it (a desktop file id); from: the file's box in the caller's window, in its
+         surface's px. Back at the root of the window it opens in takes it back into the file (back.js) -->
+    <method name="Open">
+      <arg type="s" name="uri" direction="in"/>
+      <arg type="s" name="app_id" direction="in"/>
+      <arg type="(dddd)" name="from" direction="in"/>
     </method>
     <!-- the icons on the launcher's current page and dock: app id, the icon's box on screen in pixels, its picture
          (a PNG, or '') -->
@@ -71,6 +82,37 @@ export class Service {
             return;
         }
         this._launch.launch(app, from, icon);
+    }
+
+    // The caller is known by its bus name's process: its window holds the box, at the window's surface. No window
+    // of the caller's (it has none, or gave none): from a small box in the screen's middle.
+    OpenAsync([uri, appId, from], invocation) {
+        const app = Shell.AppSystem.get_default().lookup_app(appId);
+        if (!app) {
+            invocation.return_dbus_error('org.freedesktop.DBus.Error.InvalidArgs', `No app ${appId}`);
+            return;
+        }
+        Gio.DBus.session.call('org.freedesktop.DBus', '/org/freedesktop/DBus', 'org.freedesktop.DBus',
+            'GetConnectionUnixProcessID', new GLib.Variant('(s)', [invocation.get_sender()]),
+            new GLib.VariantType('(u)'), Gio.DBusCallFlags.NONE, -1, null, (bus, res) => {
+                let pid = -1;
+                try {
+                    [pid] = bus.call_finish(res).deepUnpack();
+                } catch {}
+                const wins = global.display.get_tab_list(Meta.TabList.NORMAL, null).filter(w => w.get_pid() === pid);
+                const opener = wins.find(w => w.has_focus()) ?? wins[0] ?? null;
+                let box;
+                if (opener && from[2] > 0 && from[3] > 0) {
+                    const buf = opener.get_buffer_rect();
+                    box = {x: buf.x + from[0], y: buf.y + from[1], w: from[2], h: from[3]};
+                } else {
+                    const area = Main.layoutManager.getWorkAreaForMonitor(Main.layoutManager.primaryIndex);
+                    const s = Math.min(area.width, area.height) / 5;
+                    box = {x: area.x + (area.width - s) / 2, y: area.y + (area.height - s) / 2, w: s, h: s};
+                }
+                this._launch.open(app, box, uri, opener);
+                invocation.return_value(null);
+            });
     }
 
     // the navigation (a tablet's taskbar works with it)
