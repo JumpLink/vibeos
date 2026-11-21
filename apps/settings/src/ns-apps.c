@@ -504,33 +504,184 @@ app_tapped (GtkWidget *row, gpointer app)
   app_page (app);
 }
 
-/* "Default apps" on a card of its own, then one card of all apps */
+/* an app's row that opens its page, its icon baked later with the others */
+static GtkWidget *
+app_row (GtkWidget *g, GAppInfo *app, const char *subtitle, IconBake *bake)
+{
+  GtkWidget *ar = ns_row_app (g, app, subtitle);
+  /* the row holds the app its page opens */
+  g_object_set_data_full (G_OBJECT (ar), "ns-app", g_object_ref (app), g_object_unref);
+  ns_row_on_activate (ar, app_tapped, app);
+  GWeakRef *ref = g_new0 (GWeakRef, 1);
+  g_weak_ref_init (ref, g_object_get_data (G_OBJECT (ar), "ns-icon"));
+  g_ptr_array_add (bake->images, ref);
+  return ar;
+}
+
+static IconBake *
+icon_bake_new (void)
+{
+  IconBake *bake = g_new0 (IconBake, 1);
+  bake->images = g_ptr_array_new_with_free_func ((GDestroyNotify) weak_ref_free);
+  return bake;
+}
+
+static void
+icon_bake_start (IconBake *bake)
+{
+  g_idle_add_full (G_PRIORITY_DEFAULT_IDLE, icon_bake_step, bake, (GDestroyNotify) icon_bake_free);
+}
+
+/* the apps a launcher shows, by name */
+static GList *
+shown_apps (guint *n)
+{
+  GList *all = g_list_sort_with_data (g_app_info_get_all (), by_name, NULL), *shown = NULL;
+  *n = 0;
+  for (GList *l = all; l; l = l->next)
+    if (g_app_info_should_show (l->data)) {
+      shown = g_list_prepend (shown, g_object_ref (l->data));
+      (*n)++;
+    }
+  g_list_free_full (all, g_object_unref);
+  return g_list_reverse (shown);
+}
+
+/* ---- the apps opened last: GNOME Shell's record of when each app was last in use ---- */
+
+typedef struct {
+  char  *id;
+  gint64 seen;
+} Seen;
+
+static void
+seen_free (Seen *s)
+{
+  if (!s)
+    return;             /* moved to the recent list */
+  g_free (s->id);
+  g_free (s);
+}
+
+static void
+state_element (GMarkupParseContext *ctx, const char *name, const char **keys, const char **values, gpointer data,
+               GError **error)
+{
+  if (g_strcmp0 (name, "application"))
+    return;
+  const char *id = NULL, *seen = NULL;
+  for (guint i = 0; keys[i]; i++) {
+    if (!g_strcmp0 (keys[i], "id"))
+      id = values[i];
+    else if (!g_strcmp0 (keys[i], "last-seen"))
+      seen = values[i];
+  }
+  if (!id || !seen)
+    return;
+  Seen *s = g_new0 (Seen, 1);
+  s->id = g_strdup (id);
+  s->seen = g_ascii_strtoll (seen, NULL, 10);
+  g_ptr_array_add (data, s);
+}
+
+static int
+by_seen (gconstpointer a, gconstpointer b)
+{
+  gint64 x = (*(Seen **) a)->seen, y = (*(Seen **) b)->seen;
+  return x < y ? 1 : x > y ? -1 : 0;
+}
+
+/* "2 minutes ago", as Android's list has it */
+static char *
+seen_ago (gint64 seen)
+{
+  gint64 s = MAX (g_get_real_time () / G_USEC_PER_SEC - seen, 0);
+  if (s < 3600) {
+    int m = (int) (s / 60);
+    return g_strdup_printf (m == 1 ? "%d minute ago" : "%d minutes ago", m);
+  }
+  if (s < 86400) {
+    int h = (int) (s / 3600);
+    return g_strdup_printf (h == 1 ? "%d hour ago" : "%d hours ago", h);
+  }
+  int d = (int) (s / 86400);
+  return g_strdup_printf (d == 1 ? "%d day ago" : "%d days ago", d);
+}
+
+/* up to `max` apps, newest first, that a launcher shows; Settings itself is left out, as Android's is */
+static GPtrArray *
+recent_apps (guint max)
+{
+  g_autofree char *path = g_build_filename (g_get_user_data_dir (), "gnome-shell", "application_state", NULL);
+  g_autofree char *text = NULL;
+  gsize len;
+  GPtrArray *recent = g_ptr_array_new_with_free_func ((GDestroyNotify) seen_free);
+  if (!g_file_get_contents (path, &text, &len, NULL))
+    return recent;
+  g_autoptr (GPtrArray) all = g_ptr_array_new_with_free_func ((GDestroyNotify) seen_free);
+  GMarkupParser parser = { .start_element = state_element };
+  g_autoptr (GMarkupParseContext) ctx = g_markup_parse_context_new (&parser, 0, all, NULL);
+  g_markup_parse_context_parse (ctx, text, len, NULL);
+  g_ptr_array_sort (all, by_seen);
+  const char *self = g_application_get_application_id (g_application_get_default ());
+  g_autofree char *self_desktop = self ? g_strconcat (self, ".desktop", NULL) : NULL;
+  for (guint i = 0; i < all->len && recent->len < max; i++) {
+    Seen *s = all->pdata[i];
+    if (s->seen <= 0 || !g_strcmp0 (s->id, self_desktop))
+      continue;
+    g_autoptr (GDesktopAppInfo) app = g_desktop_app_info_new (s->id);
+    if (!app || !g_app_info_should_show (G_APP_INFO (app)))
+      continue;
+    g_ptr_array_add (recent, g_steal_pointer (&all->pdata[i]));
+  }
+  return recent;
+}
+
+static void ns_page_all_apps (GtkWidget *row, gpointer data);
+
+/* Android 17's: the apps opened last and a row to all of them, then the general settings */
 void
 ns_page_apps (GtkWidget *row, gpointer data)
 {
-  GList *all = g_app_info_get_all ();
-  all = g_list_sort_with_data (all, by_name, NULL);
   GtkWidget *c;
   NsPage *page = ns_page_new ("Apps", &c);
-  GtkWidget *g = ns_group (c, NULL);
-  GtkWidget *r = ns_row (g, "view-grid-symbolic", "Default apps", "Browser, email, music, photos");
-  ns_row_on_activate (r, default_apps_tapped, NULL);
-  g = ns_group (c, NULL);
-  IconBake *bake = g_new0 (IconBake, 1);
-  bake->images = g_ptr_array_new_with_free_func ((GDestroyNotify) weak_ref_free);
-  for (GList *l = all; l; l = l->next) {
-    GAppInfo *app = l->data;
-    if (!g_app_info_should_show (app))
-      continue;
-    GtkWidget *ar = ns_row_app (g, app, NULL);
-    /* the row holds the app its page opens */
-    g_object_set_data_full (G_OBJECT (ar), "ns-app", g_object_ref (app), g_object_unref);
-    ns_row_on_activate (ar, app_tapped, app);
-    GWeakRef *ref = g_new0 (GWeakRef, 1);
-    g_weak_ref_init (ref, g_object_get_data (G_OBJECT (ar), "ns-icon"));
-    g_ptr_array_add (bake->images, ref);
+  IconBake *bake = icon_bake_new ();
+  g_autoptr (GPtrArray) recent = recent_apps (3);
+  guint n;
+  GList *all = shown_apps (&n);
+  g_list_free_full (all, g_object_unref);
+
+  GtkWidget *g = ns_group (c, recent->len ? "Recently opened apps" : NULL);
+  for (guint i = 0; i < recent->len; i++) {
+    Seen *s = recent->pdata[i];
+    g_autoptr (GDesktopAppInfo) app = g_desktop_app_info_new (s->id);
+    g_autofree char *ago = seen_ago (s->seen);
+    app_row (g, G_APP_INFO (app), ago, bake);
   }
-  g_idle_add_full (G_PRIORITY_DEFAULT_IDLE, icon_bake_step, bake, (GDestroyNotify) icon_bake_free);
+  g_autofree char *see = g_strdup_printf ("See all %u apps", n);
+  GtkWidget *r = ns_row (g, "go-next-symbolic", see, NULL);
+  ns_row_on_activate (r, ns_page_all_apps, NULL);
+
+  g = ns_group (c, "General");
+  r = ns_row (g, NULL, "Default apps", "Browser, email, music, photos");
+  ns_row_on_activate (r, default_apps_tapped, NULL);
+  icon_bake_start (bake);
+  ns_push (page);
+}
+
+/* every app a launcher shows, by name */
+static void
+ns_page_all_apps (GtkWidget *row, gpointer data)
+{
+  GtkWidget *c;
+  NsPage *page = ns_page_new ("All apps", &c);
+  GtkWidget *g = ns_group (c, NULL);
+  IconBake *bake = icon_bake_new ();
+  guint n;
+  GList *all = shown_apps (&n);
+  for (GList *l = all; l; l = l->next)
+    app_row (g, l->data, NULL, bake);
+  icon_bake_start (bake);
   g_list_free_full (all, g_object_unref);
   ns_push (page);
 }
