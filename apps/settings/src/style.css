@@ -57,6 +57,19 @@ window.ns-window *:focus-visible:not(entry):not(text) {
   margin-right: 24dp;
 }
 
+/* Android 17's volume row: the slider ends 48dp short of the card's padding, the icon centred in that */
+.ns-volume-row {
+  padding-top: 16dp;
+  padding-bottom: 8dp;
+}
+
+.ns-volume-icon {
+  margin: 0 0 0 12dp;
+  min-width: 24dp;
+  padding: 0 0 0 12dp;
+  color: @vibeos_on_surface_variant;
+}
+
 .ns-steps-row .ns-step {
   color: @vibeos_on_surface_variant;
 }

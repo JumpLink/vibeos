@@ -749,6 +749,31 @@ ns_row_scale (GtkWidget *group, const char *title, const char *icon, double lo, 
   return item;
 }
 
+GtkWidget *
+ns_row_volume (GtkWidget *group, const char *title, const char *icon, double lo, double hi, double step,
+               GtkWidget **scale)
+{
+  GtkWidget *item = card_item ();
+  gtk_widget_add_css_class (item, "ns-volume-row");
+  gtk_box_append (GTK_BOX (item), row_title (title));
+  GtkWidget *line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+  GtkWidget *sc = gtk_scale_new_with_range (GTK_ORIENTATION_HORIZONTAL, lo, hi, step);
+  gtk_scale_set_draw_value (GTK_SCALE (sc), FALSE);
+  gtk_widget_set_hexpand (sc, TRUE);
+  gtk_widget_set_valign (sc, GTK_ALIGN_CENTER);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (sc), GTK_ACCESSIBLE_PROPERTY_LABEL, title, -1);
+  gtk_box_append (GTK_BOX (line), sc);
+  GtkWidget *img = gtk_image_new_from_icon_name (icon);
+  gtk_image_set_pixel_size (GTK_IMAGE (img), 24);
+  gtk_widget_set_valign (img, GTK_ALIGN_CENTER);
+  gtk_widget_add_css_class (img, "ns-volume-icon");
+  gtk_box_append (GTK_BOX (line), img);
+  gtk_box_append (GTK_BOX (item), line);
+  vibeos_card_list_append (VIBEOS_CARD_LIST (group), item);
+  *scale = sc;
+  return item;
+}
+
 /* ---- a choice of steps on a slider ---- */
 
 static void

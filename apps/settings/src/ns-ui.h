@@ -92,6 +92,9 @@ GtkWidget *ns_row_button (GtkWidget *group, const char *title, gboolean destruct
 /* a slider from `lo` to `hi` under the title, an icon in front; the GtkScale is returned in `scale` */
 GtkWidget *ns_row_scale (GtkWidget *group, const char *title, const char *icon, double lo, double hi, double step,
                          GtkWidget **scale);
+/* Android 17's volume row: the title, then the slider with the icon at its end */
+GtkWidget *ns_row_volume (GtkWidget *group, const char *title, const char *icon, double lo, double hi, double step,
+                          GtkWidget **scale);
 /* a choice of `n` steps on a slider under the title (Font size, Display size), with − and + at its ends; the
  * GtkScale (0 to n − 1, in whole steps) is returned in `scale` */
 GtkWidget *ns_row_steps (GtkWidget *group, const char *title, guint n, guint selected, GtkWidget **scale);
