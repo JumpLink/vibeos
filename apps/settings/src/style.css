@@ -278,6 +278,55 @@ window.ns-window button.ns-uninstall {
   color: @vibeos_on_surface;
 }
 
+/* ---- Battery's head, as Android 17's: the level, a 40dp bar, what the battery does ---- */
+
+.ns-battery-head {
+  margin-bottom: 20dp;
+}
+
+.ns-battery-level {
+  margin: 0 24dp;
+}
+
+.ns-battery-number {
+  font-size: 57sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
+}
+
+.ns-battery-percent {
+  font-size: 16sp;
+  color: @vibeos_on_surface;
+  margin-left: 4dp;
+}
+
+.ns-battery-mah {
+  font-size: 14sp;
+  color: @vibeos_on_surface;
+}
+
+.ns-battery-bar {
+  min-height: 40dp;
+  margin: 4dp 16dp 0 16dp;
+}
+
+.ns-battery-state {
+  font-size: 16sp;
+  color: @vibeos_on_surface;
+  margin: 12dp 24dp 0 24dp;
+}
+
+/* a page's footnote under an info mark (Battery's) */
+.ns-footnote {
+  font-size: 14sp;
+  color: @vibeos_on_surface_variant;
+  margin: 16dp 24dp 24dp 24dp;
+}
+
+.ns-footnote image {
+  margin-bottom: 12dp;
+}
+
 .ns-sub {
   font-size: 14sp;
   color: @vibeos_on_surface_variant;

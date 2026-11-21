@@ -1012,8 +1012,67 @@ duration (gint64 s)
 }
 
 typedef struct {
-  GtkWidget *big, *bar, *state;
+  GtkWidget *big, *bar, *state, *mah;
+  double level;                 /* the charge, 0 to 100 */
 } Charge;
+
+/* Android 17's battery bar: the charge in the primary colour, then a 2 px gap and the rest in the secondary
+ * container with a dot near its end, the whole bar's corners rounded */
+static void
+charge_bar_draw (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
+{
+  Charge *ch = data;
+  GdkRGBA full = vibeos_color (VIBEOS_PRIMARY), rest = vibeos_color (VIBEOS_SECONDARY_CONTAINER);
+  double r = 12, split = round (w * CLAMP (ch->level, 0, 100) / 100.0);
+
+  cairo_new_sub_path (cr);
+  cairo_arc (cr, w - r, r, r, -G_PI / 2, 0);
+  cairo_arc (cr, w - r, h - r, r, 0, G_PI / 2);
+  cairo_arc (cr, r, h - r, r, G_PI / 2, G_PI);
+  cairo_arc (cr, r, r, r, G_PI, 3 * G_PI / 2);
+  cairo_close_path (cr);
+  cairo_clip (cr);
+  gdk_cairo_set_source_rgba (cr, &full);
+  cairo_rectangle (cr, 0, 0, split, h);
+  cairo_fill (cr);
+  if (split + 2 >= w)
+    return;
+  gdk_cairo_set_source_rgba (cr, &rest);
+  cairo_rectangle (cr, split + 2, 0, w - split - 2, h);
+  cairo_fill (cr);
+  if (split + 2 < w - 12) {
+    gdk_cairo_set_source_rgba (cr, &full);
+    cairo_arc (cr, w - 6, h / 2.0, 2, 0, 2 * G_PI);
+    cairo_fill (cr);
+  }
+}
+
+/* the charge in the battery now, in mAh, as Android's battery page has it next to the level: the gauge's charge
+ * counter, or its charge_now; a thread's work (a fuel gauge answers over I2C) */
+static char *battery_dir (void);
+static gboolean supply_number (const char *dir, const char *file, gint64 *out);
+
+static void
+charge_mah_read (GTask *task, gpointer src, gpointer data, GCancellable *cancel)
+{
+  g_autofree char *dir = battery_dir ();
+  gint64 uah = 0;
+  if (dir && (supply_number (dir, "charge_counter", &uah) || supply_number (dir, "charge_now", &uah)) && uah > 0)
+    g_task_return_pointer (task, g_strdup_printf ("%d mAh", (int) (uah / 1000)), g_free);
+  else
+    g_task_return_pointer (task, NULL, NULL);
+}
+
+static void
+charge_mah_got (GObject *src, GAsyncResult *res, gpointer page)
+{
+  Charge *ch = g_object_get_data (page, "charge");
+  g_autofree char *mah = g_task_propagate_pointer (G_TASK (res), NULL);
+  if (mah)
+    gtk_label_set_text (GTK_LABEL (ch->mah), mah);
+  gtk_widget_set_visible (ch->mah, mah != NULL);
+  g_object_unref (page);
+}
 
 static void
 charge_got (GObject *src, GAsyncResult *res, gpointer page)
@@ -1032,9 +1091,10 @@ charge_got (GObject *src, GAsyncResult *res, gpointer page)
     g_variant_lookup (props, "TimeToEmpty", "x", &empty);
     g_variant_lookup (props, "TimeToFull", "x", &full);
   }
-  g_autofree char *big = g_strdup_printf ("%.0f%%", p);
+  g_autofree char *big = g_strdup_printf ("%.0f", p);
   gtk_label_set_text (GTK_LABEL (ch->big), big);
-  gtk_level_bar_set_value (GTK_LEVEL_BAR (ch->bar), p);
+  ch->level = p;
+  gtk_widget_queue_draw (ch->bar);
   g_autofree char *left = duration (empty);
   g_autofree char *tofull = duration (full);
   g_autofree char *say = st == 1 ? (tofull ? g_strdup_printf ("Charging • full in %s", tofull) : g_strdup ("Charging"))
@@ -1113,20 +1173,27 @@ charger_health (void)
   return NULL;
 }
 
+/* the phone's own battery: a supply of type Battery that is not a device's (scope Device), or NULL */
+static char *
+battery_dir (void)
+{
+  g_autoptr (GDir) d = g_dir_open (POWER_SUPPLY, 0, NULL);
+  for (const char *name; d && (name = g_dir_read_name (d));) {
+    g_autofree char *path = g_build_filename (POWER_SUPPLY, name, NULL);
+    g_autofree char *type = supply_read (path, "type");
+    g_autofree char *scope = supply_read (path, "scope");
+    if (!g_strcmp0 (type, "Battery") && g_strcmp0 (scope, "Device"))
+      return g_steal_pointer (&path);
+  }
+  return NULL;
+}
+
 /* the six values, NULL where the battery has none; a thread's work */
 static void
 battery_read (GTask *task, gpointer src, gpointer data, GCancellable *cancel)
 {
   char **v = g_new0 (char *, BAT_ROWS + 1);
-  g_autofree char *dir = NULL;
-  g_autoptr (GDir) d = g_dir_open (POWER_SUPPLY, 0, NULL);
-  for (const char *name; d && !dir && (name = g_dir_read_name (d));) {
-    g_autofree char *path = g_build_filename (POWER_SUPPLY, name, NULL);
-    g_autofree char *type = supply_read (path, "type");
-    g_autofree char *scope = supply_read (path, "scope");
-    if (!g_strcmp0 (type, "Battery") && g_strcmp0 (scope, "Device"))
-      dir = g_steal_pointer (&path);
-  }
+  g_autofree char *dir = battery_dir ();
   if (!dir) {
     g_task_return_pointer (task, v, (GDestroyNotify) g_strfreev);
     return;
@@ -1221,8 +1288,6 @@ ns_page_battery_info (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
   NsPage *page = ns_page_new ("Battery information", &c);
-  /* the charge since it was last full, first */
-  ns_row_widget (ns_group (c, "Since last full charge"), NULL, ns_charge_history_new ());
   BatInfo *b = g_new0 (BatInfo, 1);
   GtkWidget *g = ns_group (c, NULL);
   g_object_set_data_full (G_OBJECT (g), "ns-batinfo", b, (GDestroyNotify) bat_info_free);
@@ -1241,6 +1306,17 @@ ns_page_battery_info (GtkWidget *row, gpointer data)
   b->timer = g_timeout_add_seconds (2, bat_info_tick, g);
 }
 
+/* Battery usage: the charge since the battery was last full (Android's page lists the apps that used it; there is
+ * no per-app count here) */
+void
+ns_page_battery_usage (GtkWidget *row, gpointer data)
+{
+  GtkWidget *c;
+  NsPage *page = ns_page_new ("Battery usage", &c);
+  ns_row_widget (ns_group (c, "Since last full charge"), NULL, ns_charge_history_new ());
+  ns_push (page);
+}
+
 void
 ns_page_battery (GtkWidget *row, gpointer data)
 {
@@ -1249,19 +1325,39 @@ ns_page_battery (GtkWidget *row, gpointer data)
   Charge *ch = g_new0 (Charge, 1);
   g_object_set_data_full (G_OBJECT (page), "charge", ch, g_free);
 
-  GtkWidget *g = ns_group (c, NULL);
-  GtkWidget *v = gtk_box_new (GTK_ORIENTATION_VERTICAL, 8);
+  /* Android 17's head, on the page itself: the level large with a small %, the charge in mAh at the end, a thick
+   * bar and what the battery is doing */
+  GtkWidget *head = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  gtk_widget_add_css_class (head, "ns-battery-head");
+  GtkWidget *line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+  gtk_widget_add_css_class (line, "ns-battery-level");
   ch->big = gtk_label_new ("–");
-  gtk_label_set_xalign (GTK_LABEL (ch->big), 0);
-  gtk_widget_add_css_class (ch->big, "ns-huge");
-  gtk_box_append (GTK_BOX (v), ch->big);
-  ch->bar = gtk_level_bar_new_for_interval (0, 100);
-  gtk_box_append (GTK_BOX (v), ch->bar);
+  gtk_widget_add_css_class (ch->big, "ns-battery-number");
+  gtk_widget_set_valign (ch->big, GTK_ALIGN_BASELINE_FILL);
+  gtk_box_append (GTK_BOX (line), ch->big);
+  GtkWidget *pct = gtk_label_new ("%");
+  gtk_widget_add_css_class (pct, "ns-battery-percent");
+  gtk_widget_set_valign (pct, GTK_ALIGN_BASELINE_FILL);
+  gtk_box_append (GTK_BOX (line), pct);
+  ch->mah = gtk_label_new (NULL);
+  gtk_widget_add_css_class (ch->mah, "ns-battery-mah");
+  gtk_widget_set_valign (ch->mah, GTK_ALIGN_BASELINE_FILL);
+  gtk_widget_set_hexpand (ch->mah, TRUE);
+  gtk_label_set_xalign (GTK_LABEL (ch->mah), 1);
+  gtk_widget_set_visible (ch->mah, FALSE);
+  gtk_box_append (GTK_BOX (line), ch->mah);
+  gtk_box_append (GTK_BOX (head), line);
+  ch->bar = gtk_drawing_area_new ();
+  gtk_widget_add_css_class (ch->bar, "ns-battery-bar");
+  gtk_drawing_area_set_draw_func (GTK_DRAWING_AREA (ch->bar), charge_bar_draw, ch, NULL);
+  gtk_box_append (GTK_BOX (head), ch->bar);
   ch->state = gtk_label_new ("");
   gtk_label_set_xalign (GTK_LABEL (ch->state), 0);
-  gtk_widget_add_css_class (ch->state, "ns-sub");
-  gtk_box_append (GTK_BOX (v), ch->state);
-  ns_row_widget (g, NULL, v);
+  gtk_widget_add_css_class (ch->state, "ns-battery-state");
+  gtk_box_append (GTK_BOX (head), ch->state);
+  gtk_box_append (GTK_BOX (c), head);
+  g_autoptr (GTask) mah = g_task_new (NULL, NULL, charge_mah_got, g_object_ref (page));
+  g_task_run_in_thread (mah, charge_mah_read);
   g_autoptr (GDBusConnection) bus = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, NULL);
   if (bus)
     g_dbus_connection_call (bus, "org.freedesktop.UPower", "/org/freedesktop/UPower/devices/DisplayDevice",
@@ -1272,10 +1368,25 @@ ns_page_battery (GtkWidget *row, gpointer data)
   /* No "Show battery percentage" (org.gnome.desktop.interface show-battery-percentage): the status bar's battery
    * (statusbar.js paintBattery) has no number in it yet. It needs the level drawn into the battery's body when the
    * key is on. */
-  g = ns_group (c, NULL);
-  page_row (g, NULL, "Battery information", "Health, temperature, capacity", ns_page_battery_info);
+  GtkWidget *g = ns_group (c, NULL);
+  page_row (g, NULL, "Battery usage", "View usage since last full charge", ns_page_battery_usage);
   page_row (g, NULL, "Power and screen blank",
             ns_screen_off_sleeper () ? "Dim the screen" : "Automatic suspend, dim the screen", ns_page_power);
+  g = ns_group (c, NULL);
+  page_row (g, NULL, "Battery information", "Health, temperature, capacity", ns_page_battery_info);
+
+  /* Android's footnote, under an info mark */
+  GtkWidget *foot = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  gtk_widget_add_css_class (foot, "ns-footnote");
+  GtkWidget *mark = gtk_image_new_from_icon_name ("help-about-symbolic");
+  gtk_image_set_pixel_size (GTK_IMAGE (mark), 20);
+  gtk_widget_set_halign (mark, GTK_ALIGN_START);
+  gtk_box_append (GTK_BOX (foot), mark);
+  GtkWidget *note = gtk_label_new ("Remaining battery life is approximate and may change based on usage");
+  gtk_label_set_wrap (GTK_LABEL (note), TRUE);
+  gtk_label_set_xalign (GTK_LABEL (note), 0);
+  gtk_box_append (GTK_BOX (foot), note);
+  gtk_box_append (GTK_BOX (c), foot);
   ns_push (page);
 }
 

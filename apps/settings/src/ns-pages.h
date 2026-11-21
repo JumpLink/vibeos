@@ -14,6 +14,7 @@ void ns_page_display_size (GtkWidget *row, gpointer data);
 void ns_page_night_light (GtkWidget *row, gpointer data);
 void ns_page_battery (GtkWidget *row, gpointer data);
 void ns_page_battery_info (GtkWidget *row, gpointer data);
+void ns_page_battery_usage (GtkWidget *row, gpointer data);
 void ns_page_wallpaper (GtkWidget *row, gpointer data);
 void ns_page_home (GtkWidget *row, gpointer data);
 void ns_page_general (GtkWidget *row, gpointer data);
