@@ -9,7 +9,11 @@ vibeos (1:0.1.3) unstable; urgency=medium
     the Installer.
   * Video Player, a new app (vibeos-video): videos on libmpv under an
     Android player's controls; the default application for videos.
-  * Files: thumbnails for videos and images, files open from their icon.
+  * Video Player: the ⋮ menu, with the audio and subtitle tracks.
+  * Files: thumbnails for videos and images, files open from their icon,
+    and a long-press bar and menu with Compress and Batch Rename.
+  * Every app has About in its ⋮ menu, and sheets float as cards on a
+    tablet.
   * Settings: one app for phones and tablets, in Android's sections and
     names, showing only the rows the device has hardware for; Display in
     Android's sections, Display size & text with a preview. It replaces
@@ -17,14 +21,16 @@ vibeos (1:0.1.3) unstable; urgency=medium
     page, and installing it removes gnome-control-center. On a tablet it
     says "tablet", and opened from Clock or Contacts it comes to the front.
     Battery information charts the charge since the last full charge, and
-    search finds the pages and settings inside the entries.
+    search finds the pages and settings inside the entries. Online
+    accounts have pages of their own.
   * Every app takes its colours from the theme.
   * Keyboard: word suggestions in the strip, auto-correction and next-word
     suggestions as Android's keyboard has them (switches in Settings), a
     Tab key on the tablet, and a terminal keeps its screen.
   * Power menu: Android restarts into Android the way the device says
     (/etc/vibeos/android, from the device package).
-  * Shade: a volume slider below the brightness slider.
+  * Shade: a phone's shade is Android 17's, with a volume slider below the
+    brightness slider.
   * Launcher: draws with OpenGL ES where the GPU has no Vulkan driver, the
     wallpaper redraws only when it moves by a whole pixel, the parallax
     follows the sensor's mount matrix, labels in VibeOS Roboto.
