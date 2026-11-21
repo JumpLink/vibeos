@@ -477,7 +477,7 @@
   color: @vibeos_on_surface_variant;
 }
 
-/* --- two panes, on an expanded window (messaging-window.c): the list and the conversation are rounded panes on the
+/* --- two panes, on a tablet (messaging-window.c): the list and the conversation are rounded panes on the
  * window's surface, 16 dp from its sides and bottom and 16 dp apart, each under its own top bar on that surface (the
  * list's title, search and account over the list; the person, Call and the menu over the conversation). What the
  * list opens (search, the account menu and its places) opens in the list's pane; New chat and the details in the

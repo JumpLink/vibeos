@@ -15,8 +15,8 @@
 #include <vibeos.h>
 
 #define ROW_HIGHLIGHT_MS 120    /* a tapped row's press highlight before its conversation opens */
-/* Two panes on an expanded window (840 dp and more: a tablet on its side), one on a medium one (a tablet upright) or a
- * compact one. In two, the list and the conversation are rounded panes on the window's surface, PANE_EDGE from its
+/* Two panes on a tablet, upright too (owner, 11-21: "two panes upright too"), as every app's list and detail are
+ * (VibeosListDetail's default); one on a phone. In two, the list and the conversation are rounded panes on the window's surface, PANE_EDGE from its
  * sides and bottom and PANE_GAP apart (messaging.css draws them: .msg-split) */
 #define LIST_RATIO 0.36         /* the list pane's share of the width */
 #define LIST_MIN   360          /* as wide as a phone at least */
@@ -797,8 +797,6 @@ messaging_window_new (GtkApplication *app)
   g_signal_connect (shell->list, "show-account", G_CALLBACK (on_account), shell);
   shell->home = vibeos_list_detail_new ();
   gtk_widget_add_css_class (shell->home, "msg-home");
-  /* two panes from an expanded width on: a tablet upright is one */
-  vibeos_list_detail_set_min_split_width (home (shell), VIBEOS_EXPANDED_MIN_WIDTH);
   vibeos_list_detail_set_list (home (shell), shell->list);
   vibeos_list_detail_set_placeholder (home (shell), make_placeholder (shell));
   vibeos_page_stack_set_highlight_time (vibeos_list_detail_get_list_stack (home (shell)), ROW_HIGHLIGHT_MS);
