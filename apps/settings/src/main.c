@@ -198,6 +198,8 @@ static const Inner inner[] = {
     NS_CAP_BATTERY },
   { "Language & region", "language region locale formats translation", "language", ns_page_general },
   { "Keyboard", "on-screen keyboard osk layouts input typing", "keyboard", ns_page_general },
+  { "Auto-correction", "autocorrect spelling typos suggestions next word prediction text correction", "keyboard",
+    ns_page_general },
   { "Mouse & touchpad", "pointer speed scrolling cursor", "mouse", ns_page_general },
   { "Date & time", "clock time zone timezone 24-hour automatic", "datetime", ns_page_general },
   { "Users", "user account password name avatar picture", "users", ns_page_general },
