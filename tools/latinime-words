@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -I
 """latinime-words: the keyboard's word lists (extension/keyboard/words) from AOSP LatinIME's dictionaries.
 
-  latinime-words TREE OUTDIR
+  latinime-words TREE OUTDIR [TATOEBA]
 
 TREE is a LatinIME checkout (LineageOS's android_packages_inputmethods_LatinIME; only its dictionaries/ directory is
 read: the *.combined.gz word lists its binary dictionaries are compiled from). For each of the keyboard's languages
@@ -11,9 +11,19 @@ order of the forms (then most frequent first), so that the shell reads them with
 and the language's corrections follow, "typed<TAB>replacement" (LatinIME's whitelist shortcuts: alot -> a lot).
 The form is extension/keyboard/suggest.js's fold(): lower case, no accents, no apostrophes; the two must agree.
 
+With TATOEBA, a directory of Tatoeba's sentence exports (<lang>_sentences.tsv.bz2, from
+https://downloads.tatoeba.org/exports/per_language/), a second "=" line follows, then the words that follow which,
+for the next word's suggestions: "form<TAB>word<TAB>word...", the words most often typed after a word whose form is
+form (or after a sentence's start, form "."), most often first. LatinIME's own dictionaries have no such pairs (the
+AOSP ones ship without), so they are counted in Tatoeba's everyday sentences: only words the list has, next to each
+other with nothing but a space between. Names are not suggested: words with a capital, but in German (whose nouns have
+one) and English's I, and Tatoeba's stock names (Tom and Mary, in every language).
+
 As the AOSP keyboard leaves them out of its suggestions by default ("Block offensive words"), words LatinIME marks
 possibly offensive are not written, nor those it marks as not words except as a correction's typed form.
 """
+import bz2
+import collections
 import gzip
 import os
 import re
@@ -27,6 +37,33 @@ LISTS = {
 }
 # the most frequent this many words of each language: the shell holds one language's in memory
 MAX_WORDS = 80000
+# each list's language in Tatoeba
+TATOEBA = {
+    'en_US': 'eng', 'en_GB': 'eng', 'de': 'deu', 'es': 'spa', 'fr': 'fra', 'it': 'ita', 'iw': 'heb', 'ru': 'rus',
+    'uk': 'ukr',
+}
+# the words kept after each: this many at most, each seen at least MIN_PAIR times, for the MAX_PREVIOUS commonest
+MAX_FOLLOWERS = 6
+MIN_PAIR = 2
+MAX_PREVIOUS = 30000
+SENTENCE_START = '.'
+# Tatoeba's sentences are about the same few people: the stock names (and their forms) in each language, in lower
+# case, as a name at a sentence's start is lowered where the list has the word (том is a volume). A word with a
+# capital is left out anyway, except in German; Hebrew adds its prefix letters to them (לתום).
+_PEOPLE = {'tom', 'toms', 'mary', 'marys', 'john', 'johns', 'boston', 'layla', 'rima', 'skura', 'ziri', 'sami',
+           'mennad', 'baya', 'yanni', 'tatoeba'}
+STOCK_NAMES = {
+    'en_US': _PEOPLE, 'en_GB': _PEOPLE,
+    'de': _PEOPLE | {'maria', 'marias', 'australien'},
+    'es': _PEOPLE | {'maría', 'tomás'},
+    'fr': _PEOPLE | {'marie', 'thomas'},
+    'it': _PEOPLE | {'maria'},
+    'iw': {'תום', 'טום', 'מרי', 'ג׳ון', "ג'ון", 'בוסטון', 'סמי', 'ליילה', 'טטואבה'},
+    'ru': {'том', 'тома', 'тому', 'томом', 'томе', 'мэри', 'джон', 'джона', 'бостон', 'бостоне', 'татоэба'},
+    'uk': {'том', 'тома', 'тому', 'томом', 'томе', 'томові', 'мері', 'джон', 'джона', 'бостон', 'бостоні'},
+}
+HEBREW_PREFIXES = 'ולבמהשכ'
+WORD = re.compile(r"[^\W\d_]+(?:'[^\W\d_]+)*")
 
 
 def fold(word):
@@ -67,10 +104,68 @@ def read(path):
     return words, shortcuts
 
 
+def named(token, word, locale, start):
+    """a name not to suggest (@token as typed, @word the list's): a stock one, or one with a capital in the list or in
+    the middle of a sentence (but German's nouns have one, and English's I is no name)"""
+    stock = STOCK_NAMES.get(locale, set())
+    for w in (token.lower(), word.lower()):
+        if w in stock or (locale == 'iw' and w[:1] in HEBREW_PREFIXES and w[1:] in stock):
+            return True
+    if locale == 'de' or word == 'I' or word.startswith("I'"):
+        return False
+    return word[:1] != word[:1].lower() or (not start and token[:1] != token[:1].lower())
+
+
+def pairs(path, freqs, locale):
+    """the next words' lines for @locale from the Tatoeba export @path, of the words in @freqs ({word: frequency})"""
+    follow = collections.defaultdict(collections.Counter)
+
+    def form(token, start):
+        # the list's word for a token: lower case at a sentence's start where the list has it so more often
+        # (The is the, but Tom stays Tom); in capitals, the list's form
+        lower = token.lower()
+        if start and lower in freqs and freqs[lower] >= freqs.get(token, -1):
+            return lower
+        if token in freqs:
+            return token
+        return lower if lower in freqs else None
+
+    with bz2.open(path, 'rt', encoding='utf-8') as f:
+        for line in f:
+            fields = line.rstrip('\n').split('\t')
+            if len(fields) < 3:
+                continue
+            text = unicodedata.normalize('NFC', fields[2]).replace('\u2019', "'")
+            previous, end, first = None, 0, True
+            for m in WORD.finditer(text):
+                between = text[end:m.start()]
+                end = m.end()
+                start = first and not any(c.isalnum() for c in between) or any(c in '.!?\u2026' for c in between)
+                first = False
+                word = form(m.group(), start)
+                if word is None:
+                    previous = None
+                    continue
+                if not named(m.group(), word, locale, start):
+                    if start:
+                        follow[SENTENCE_START][word] += 1
+                    elif previous is not None and between and between.isspace():
+                        follow[fold(previous)][word] += 1
+                previous = word
+    totals = sorted(follow, key=lambda k: (-sum(follow[k].values()), k))
+    lines = []
+    for key in sorted(totals[:MAX_PREVIOUS]):
+        best = [w for w, n in sorted(follow[key].items(), key=lambda wn: (-wn[1], wn[0])) if n >= MIN_PAIR]
+        if best and '\t' not in key:
+            lines.append(key + '\t' + '\t'.join(best[:MAX_FOLLOWERS]) + '\n')
+    return lines
+
+
 def main():
-    if len(sys.argv) != 3:
+    if len(sys.argv) not in (3, 4):
         sys.exit(__doc__)
-    tree, outdir = sys.argv[1:]
+    tree, outdir = sys.argv[1:3]
+    tatoeba = sys.argv[3] if len(sys.argv) == 4 else None
     os.makedirs(outdir, exist_ok=True)
     for locale, name in LISTS.items():
         words, shortcuts = read(os.path.join(tree, 'dictionaries', name + '.combined.gz'))
@@ -90,11 +185,17 @@ def main():
             lines.append(f'{w}\t{f}\n' if k == w else f'{w}\t{f}\t{k}\n')
         lines.append('=\n')
         lines += [f'{typed}\t{to}\n' for typed, to in sorted(set(shortcuts)) if '\t' not in typed + to]
+        nexts = []
+        if tatoeba:
+            nexts = pairs(os.path.join(tatoeba, TATOEBA[locale] + '_sentences.tsv.bz2'), dict(kept), locale)
+            lines.append('=\n')
+            lines += nexts
         out = os.path.join(outdir, locale + '.txt.gz')
         # mtime 0: the same lists make the same files
         with open(out, 'wb') as raw, gzip.GzipFile(fileobj=raw, mode='wb', mtime=0, filename='') as f:
             f.write(''.join(lines).encode('utf-8'))
-        print(f'{locale}: {len(kept)} words, {len(set(shortcuts))} corrections, {os.path.getsize(out)} bytes')
+        print(f'{locale}: {len(kept)} words, {len(set(shortcuts))} corrections, {len(nexts)} next words, '
+              f'{os.path.getsize(out)} bytes')
 
 
 if __name__ == '__main__':
