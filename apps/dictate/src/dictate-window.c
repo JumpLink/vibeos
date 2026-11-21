@@ -23,6 +23,8 @@
 #include <spongy-gtk.h>
 
 #define FAB_ROW         120     /* the FAB's row at the bottom: the document's last line scrolls up out of it */
+#define FAB_ROW_TABLET  168     /* and on a tablet: 16 px under the FAB put it on the screen's bottom edge, where
+                                 * the swipe home starts (owner, 11-21); 40 px there */
 #define FAB_SIZE        88
 #define SAVE_DELAY_MS   1000    /* after the last change, the document is written */
 #define TEXT_MARGIN     24      /* the document's margins on a phone */
@@ -32,6 +34,7 @@ typedef struct {
   GtkWidget *window;
   GtkWidget *page, *scroller, *view, *hint, *mic, *language, *copy, *clear;
   GtkWidget *selection_bar, *select_all;
+  int fab_row;                  /* FAB_ROW or FAB_ROW_TABLET, by the device */
   guint place_id;               /* the selection bar is placed when idle */
   GtkTextMark *anchor_start, *anchor_end;     /* the word a finger's selection began on */
   gboolean selecting;           /* a finger is selecting: the bar waits until it lifts */
@@ -194,7 +197,7 @@ static void
 follow (Window *self)
 {
   int height = gtk_widget_get_height (self->scroller);
-  double margin = height > 0 ? MIN (0.45, (double) (FAB_ROW + 16) / height) : 0;
+  double margin = height > 0 ? MIN (0.45, (double) (self->fab_row + 16) / height) : 0;
 
   gtk_text_view_scroll_to_mark (GTK_TEXT_VIEW (self->view), self->to, margin, FALSE, 0, 0);
 }
@@ -498,7 +501,7 @@ place_selection_bar (gpointer data)
       !gtk_widget_compute_point (self->view, self->page, &GRAPHENE_POINT_INIT (last.x, last.y), &bottom))
     return G_SOURCE_REMOVE;
   /* scrolled out of sight: the bar comes back with it */
-  if (bottom.y < 0 || top.y > page_height - FAB_ROW)
+  if (bottom.y < 0 || top.y > page_height - self->fab_row)
     {
       gtk_widget_set_visible (self->selection_bar, FALSE);
       return G_SOURCE_REMOVE;
@@ -516,7 +519,7 @@ place_selection_bar (gpointer data)
   y = top.y - BAR_GAP - height;
   if (y < BAR_GAP)
     y = bottom.y + BAR_GAP;
-  y = CLAMP (y, BAR_GAP, MAX (BAR_GAP, page_height - FAB_ROW - height));
+  y = CLAMP (y, BAR_GAP, MAX (BAR_GAP, page_height - self->fab_row - height));
   /* over the middle of a selection on one line, else the page's */
   centre = first.y == last.y - last.height ? (top.x + bottom.x) / 2 : page_width / 2.0;
   x = CLAMP ((int) centre - width / 2, BAR_GAP, MAX (BAR_GAP, page_width - BAR_GAP - width));
@@ -755,7 +758,7 @@ static void
 on_lift (GObject *snackbar, GParamSpec *pspec, Window *self)
 {
   /* the FAB rises with the snackbar, which never covers it */
-  gtk_widget_set_margin_bottom (self->mic, (FAB_ROW - FAB_SIZE) / 2 + (int) vibeos_snackbar_get_lift (self->snackbar));
+  gtk_widget_set_margin_bottom (self->mic, (self->fab_row - FAB_SIZE) / 2 + (int) vibeos_snackbar_get_lift (self->snackbar));
 }
 
 static gboolean
@@ -775,7 +778,8 @@ on_close_request (GtkWindow *window, Window *self)
   return TRUE;
 }
 
-/* the document's margins: the phone's, or wider so that the text keeps to a readable column in the middle */
+/* the document's margins: the phone's, or wider so that the text keeps to a readable column in the middle; and the
+ * FAB's row, higher on a tablet */
 static void
 update_margins (Window *self)
 {
@@ -784,6 +788,10 @@ update_margins (Window *self)
 
   gtk_text_view_set_left_margin (GTK_TEXT_VIEW (self->view), margin);
   gtk_text_view_set_right_margin (GTK_TEXT_VIEW (self->view), margin);
+
+  self->fab_row = vibeos_layout_is_tablet (layout) ? FAB_ROW_TABLET : FAB_ROW;
+  gtk_text_view_set_bottom_margin (GTK_TEXT_VIEW (self->view), self->fab_row + 16);
+  gtk_widget_set_margin_bottom (self->mic, (self->fab_row - FAB_SIZE) / 2 + (int) vibeos_snackbar_get_lift (self->snackbar));
 }
 
 /* the theme changed: the words still being recognised in its colour */
@@ -867,7 +875,6 @@ dictate_window_new (GtkApplication *app)
   gtk_text_view_set_left_margin (GTK_TEXT_VIEW (self->view), TEXT_MARGIN);
   gtk_text_view_set_right_margin (GTK_TEXT_VIEW (self->view), TEXT_MARGIN);
   gtk_text_view_set_top_margin (GTK_TEXT_VIEW (self->view), 8);
-  gtk_text_view_set_bottom_margin (GTK_TEXT_VIEW (self->view), FAB_ROW + 16);
   gtk_text_view_set_pixels_inside_wrap (GTK_TEXT_VIEW (self->view), 4);
   gtk_text_view_set_pixels_below_lines (GTK_TEXT_VIEW (self->view), 4);
   /* read only: selectable, but nothing to type, so no keyboard */
@@ -923,7 +930,6 @@ dictate_window_new (GtkApplication *app)
   self->mic = dictate_mic_new (self->engine);
   gtk_widget_set_halign (self->mic, GTK_ALIGN_CENTER);
   gtk_widget_set_valign (self->mic, GTK_ALIGN_END);
-  gtk_widget_set_margin_bottom (self->mic, (FAB_ROW - FAB_SIZE) / 2);
   g_signal_connect (self->mic, "clicked", G_CALLBACK (on_mic), self);
   gtk_overlay_add_overlay (GTK_OVERLAY (page), self->mic);
 
