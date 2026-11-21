@@ -391,8 +391,8 @@ layouts_rows (NsPage *page, GtkWidget *c)
 }
 
 /* Not on this page, and why: Phosh's keyboards (Stevia or Squeekboard), their word suggestions and sizes, and how
- * long a press on the home bar opens one (Phosh's osk-unfold-delay). The shell's keyboards replaced them all, and
- * have no settings of their own besides which one, the switch and the layouts. */
+ * long a press on the home bar opens one (Phosh's osk-unfold-delay). The shell's keyboards replaced them all. The
+ * VibeOS keyboard's text correction is LatinIME's: its three switches, worded as LatinIME words them. */
 void
 ns_page_keyboard (GtkWidget *row, gpointer data)
 {
@@ -404,6 +404,15 @@ ns_page_keyboard (GtkWidget *row, gpointer data)
     static const char *const keyboard_labels[] = { "VibeOS keyboard", "GNOME keyboard", NULL };
     GtkWidget *g = ns_group (c, NULL);
     ns_row_choice (g, "On-screen keyboard", shell, "keyboard", keyboards, keyboard_labels);
+  }
+  if (ns_has_key (shell, "keyboard-autocorrect")) {
+    GtkWidget *g = ns_group (c, "Text correction");
+    ns_row_switch (g, "Auto-correction", "Spacebar and punctuation automatically correct mistyped words", shell,
+                   "keyboard-autocorrect");
+    ns_row_switch (g, "Show correction suggestions", "Display suggested words while typing", shell,
+                   "keyboard-suggestions");
+    ns_row_switch (g, "Next-word suggestions", "Use previous word in making suggestions", shell,
+                   "keyboard-next-word");
   }
   GSettings *a11y = ns_page_settings (page, "org.gnome.desktop.a11y.applications");
   if (ns_has_key (a11y, "screen-keyboard-enabled")) {
