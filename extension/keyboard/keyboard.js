@@ -391,12 +391,21 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         return [h, h];
     }
 
-    // A terminal keeps its whole screen: the keyboard comes up over it. Fitted above the keys, Console was unmaximized
-    // and the shell's resize animation stretched its text down the screen and back (owner, 11-21: "it should open on
-    // top leaving console fullscreen"). Every other window is still fitted, so its field and dialogs clear the keys.
+    // A terminal is fitted above the keys at once, and grows back at once: the shell's size-change animation of the
+    // unmaximize and the maximize after it stretched Console's text down the screen and back. (Left full screen with
+    // the keyboard over it instead, a terminal full of output had its prompt under the keys: owner, 11-21, "shrink
+    // console above keyboard".) Other windows keep the animation.
     _animateWindow(window, show) {
-        if (show && Main.inputMethod.content_purpose === Clutter.InputContentPurpose.TERMINAL)
-            return;
+        const actor = window?.get_compositor_private();
+        if (show && actor && window.maximized_vertically && !window.__keyboardMoved && !window.is_alien() &&
+            Main.inputMethod.content_purpose === Clutter.InputContentPurpose.TERMINAL) {
+            Main.wm.skipNextEffect(actor);
+            window.__keyboardTerminal = true;
+        } else if (!show && actor && window.__keyboardMoved && window.__keyboardTerminal) {
+            Main.wm.skipNextEffect(actor);
+        }
+        if (!show)
+            delete window?.__keyboardTerminal;
         super._animateWindow(window, show);
     }
 
