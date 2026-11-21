@@ -7,6 +7,10 @@
  * for bottom sheets, damping ratio 0.8 and stiffness 400: it is nearly in place in 200 ms, rises past it by 1.5 % and
  * settles in about 450 ms; it goes down the same way, without going past the bottom.
  *
+ * Where libadwaita shows a dialog floating rather than as a bottom sheet, on a window more than 450 px wide and 360
+ * px tall (a tablet's), it is a card in the middle with all its corners rounded: 360 px wide
+ * (vibeos_sheet_set_content_width), as tall as its first page needs, growing from 80 % of its size as it fades in.
+ *
  * Each page has a bar on top (a compact VibeosTopBar): the first page a title or none, a page pushed over it a back
  * arrow and its title. A close button, an X in a tonal circle, ends every bar. A pushed page slides in from the right
  * over the page under it, which dims as it is covered, and slides back out on back: libadwaita's navigation spring,
@@ -40,6 +44,8 @@ void       vibeos_sheet_set_content     (VibeosSheet *self, GtkWidget *content);
 /* as tall as the window lets it be, whatever its content needs: a sheet whose content changes as it is used (a list
  * of results), and one that has to stay put over the on-screen keyboard */
 void       vibeos_sheet_set_full_height (VibeosSheet *self, gboolean full_height);
+/* the width of the card it is in the middle of a large window (360 px unless set) */
+void       vibeos_sheet_set_content_width (VibeosSheet *self, int width);
 /* a page over the one on top, with a back arrow and `title`, sliding in */
 void       vibeos_sheet_push            (VibeosSheet *self, const char *title, GtkWidget *content);
 /* the top page slides out, back to the one under it; FALSE when the first page is on top */

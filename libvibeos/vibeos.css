@@ -140,6 +140,13 @@ window.vibeos label {
   background-color: alpha(@vibeos_scrim, 0.6);
 }
 
+/* the ⋮ overflow menu (vibeos-menu.c): Android's popup menu, surface container, 4dp corners, rows edge to edge */
+.vibeos-menu {
+  background-color: @vibeos_surface_container;
+  border-radius: 4dp;
+}
+.vibeos-menu-text { font-size: 16sp; font-weight: 400; color: @vibeos_on_surface; }
+
 .vibeos-dialog {
   background-color: @vibeos_surface_container_highest;
   border-radius: 28dp;
