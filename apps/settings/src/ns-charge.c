@@ -222,7 +222,9 @@ show (Charge *c)
   guint valid = 0;
   for (guint i = 0; c->points && i < c->points->len; i++)
     valid += g_array_index (c->points, Point, i).state != STATE_UNKNOWN;
-  gboolean some = valid >= 2;
+  /* UPower stores a level when it changes: one point is a level held since, which the chart carries on to now (a
+   * tablet that stays on its charger at 100%) */
+  gboolean some = valid >= 1;
   gtk_widget_set_visible (c->area, some);
   gtk_widget_set_visible (c->empty, !some);
   if (some) {
