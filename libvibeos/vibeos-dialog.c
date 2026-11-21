@@ -21,6 +21,7 @@ struct _VibeosDialog {
   VibeosAnim   *anim;
   gboolean   closing;
   gboolean   flush;
+  GtkWidget *focus_before;    /* weak: what had the window's focus before the dialog came */
 };
 
 G_DEFINE_FINAL_TYPE (VibeosDialog, vibeos_dialog, GTK_TYPE_WIDGET)
@@ -92,8 +93,13 @@ on_anim (VibeosAnim *anim, double value, gpointer data)
   gtk_widget_queue_draw (GTK_WIDGET (self));
   if (self->closing && !vibeos_anim_is_running (anim)) {
     GtkWidget *overlay = gtk_widget_get_parent (GTK_WIDGET (self));
+    GtkWidget *focus = self->focus_before ? g_object_ref (self->focus_before) : NULL;
     if (overlay)
       gtk_overlay_remove_overlay (GTK_OVERLAY (overlay), GTK_WIDGET (self));
+    /* the focus back where it was before the dialog took it */
+    if (focus && gtk_widget_get_root (focus))
+      gtk_widget_grab_focus (focus);
+    g_clear_object (&focus);
   }
 }
 
@@ -114,15 +120,20 @@ void
 vibeos_dialog_present (VibeosDialog *self, GtkWidget *parent)
 {
   GtkOverlay *overlay = vibeos_window_get_overlay (parent);
+  GtkRoot *root = gtk_widget_get_root (parent);
   g_return_if_fail (overlay != NULL);
+  g_set_weak_pointer (&self->focus_before, root ? gtk_root_get_focus (root) : NULL);
   gtk_overlay_add_overlay (overlay, GTK_WIDGET (self));
   /* the scrim covers the whole window and takes every touch outside the card */
   gtk_overlay_set_measure_overlay (overlay, GTK_WIDGET (self), FALSE);
   gtk_overlay_set_clip_overlay (overlay, GTK_WIDGET (self), TRUE);
   /* in: alpha 0 -> 1 and up 20 px -> 0 over 220 ms, standard (0.2, 0, 0, 1) */
   vibeos_anim_start_cubic (self->anim, 0, 1, ENTER_MS, 0, 0.2f, 0, 0, 1);
-  /* the first field takes the keyboard focus (and on the phone opens the keyboard), as the label dialog's does */
-  gtk_widget_child_focus (self->card, GTK_DIR_TAB_FORWARD);
+  /* the first field takes the keyboard focus (and on the phone opens the keyboard), as the label dialog's does; a
+   * dialog with nothing to focus takes it itself. Either way the keys come to the dialog: Escape, which the shell's
+   * back gesture sends over a dialog, closes it instead of reaching the page under the scrim */
+  if (!gtk_widget_child_focus (self->card, GTK_DIR_TAB_FORWARD))
+    gtk_widget_grab_focus (GTK_WIDGET (self));
 }
 
 static void
@@ -159,6 +170,7 @@ vibeos_dialog_dispose (GObject *object)
 {
   VibeosDialog *self = VIBEOS_DIALOG (object);
   vibeos_dialog_set_anchor (self, NULL);
+  g_clear_weak_pointer (&self->focus_before);
   g_clear_pointer (&self->anim, vibeos_anim_free);
   g_clear_pointer (&self->card, gtk_widget_unparent);
   G_OBJECT_CLASS (vibeos_dialog_parent_class)->dispose (object);
@@ -184,6 +196,8 @@ vibeos_dialog_class_init (VibeosDialogClass *klass)
 static void
 vibeos_dialog_init (VibeosDialog *self)
 {
+  /* focusable, for a dialog with no field to hold the keys itself */
+  gtk_widget_set_focusable (GTK_WIDGET (self), TRUE);
   self->card = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (self->card, "vibeos-dialog");
   gtk_widget_set_overflow (self->card, GTK_OVERFLOW_HIDDEN);
