@@ -89,14 +89,54 @@ ns_page_connections (GtkWidget *row, gpointer data)
 
 /* ---- Connected devices ---- */
 
+/* the name other devices see, in the footnote: the pretty hostname (what Sharing sets), or the hostname */
+static void
+visible_as_got (GObject *src, GAsyncResult *res, gpointer label)
+{
+  g_autoptr (GVariant) v = g_dbus_connection_call_finish (G_DBUS_CONNECTION (src), res, NULL);
+  g_autoptr (GVariant) hn = NULL;
+  if (v)
+    g_variant_get (v, "(v)", &hn);
+  const char *pretty = hn ? g_variant_get_string (hn, NULL) : "";
+  g_autofree char *text = g_strdup_printf ("Visible as “%s” to other devices", *pretty ? pretty : g_get_host_name ());
+  gtk_label_set_text (GTK_LABEL (label), text);
+  g_object_unref (label);
+}
+
+/* Android 17's: pairing and the saved devices first, the connections' settings on a page of their own, and the
+ * name the others see at the end */
 void
 ns_page_connected_devices (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
   NsPage *page = ns_page_new ("Connected devices", &c);
+  GtkWidget *g = ns_group (c, "Other devices");
+  page_row (g, "list-add-symbolic", "Pair new device", NULL, ns_page_bluetooth);
+  g = ns_group (c, "Saved devices");
+  page_row (g, "go-next-symbolic", "See all", NULL, ns_page_bluetooth);
+  g = ns_group (c, NULL);
+  g_autofree char *cups = g_find_program_in_path ("lpstat");
+  page_row (g, NULL, "Connection preferences", cups ? "Bluetooth, sharing, printing" : "Bluetooth, sharing",
+            ns_page_connection_preferences);
+  g_autofree char *name = g_strdup_printf ("Visible as “%s” to other devices", g_get_host_name ());
+  GtkWidget *foot = ns_footnote (c, name);
+  g_autoptr (GDBusConnection) bus = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, NULL);
+  if (bus)
+    g_dbus_connection_call (bus, "org.freedesktop.hostname1", "/org/freedesktop/hostname1",
+                            "org.freedesktop.DBus.Properties", "Get",
+                            g_variant_new ("(ss)", "org.freedesktop.hostname1", "PrettyHostname"),
+                            G_VARIANT_TYPE ("(v)"), G_DBUS_CALL_FLAGS_NONE, 3000, NULL, visible_as_got,
+                            g_object_ref (foot));
+  ns_push (page);
+}
+
+void
+ns_page_connection_preferences (GtkWidget *row, gpointer data)
+{
+  GtkWidget *c;
+  NsPage *page = ns_page_new ("Connection preferences", &c);
   GtkWidget *g = ns_group (c, NULL);
-  page_row (g, "bluetooth-symbolic", "Bluetooth", "Pair new device, paired devices", ns_page_bluetooth);
-  g = ns_group (c, "Connection preferences");
+  page_row (g, "bluetooth-symbolic", "Bluetooth", NULL, ns_page_bluetooth);
   page_row (g, "emblem-shared-symbolic", "Sharing", "Device name, visibility", ns_page_sharing);
   /* printing needs CUPS, which a phone rarely has: GNOME Settings' page, only when it is there */
   g_autofree char *cups = g_find_program_in_path ("lpstat");
@@ -1375,18 +1415,7 @@ ns_page_battery (GtkWidget *row, gpointer data)
   g = ns_group (c, NULL);
   page_row (g, NULL, "Battery information", "Health, temperature, capacity", ns_page_battery_info);
 
-  /* Android's footnote, under an info mark */
-  GtkWidget *foot = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  gtk_widget_add_css_class (foot, "ns-footnote");
-  GtkWidget *mark = gtk_image_new_from_icon_name ("help-about-symbolic");
-  gtk_image_set_pixel_size (GTK_IMAGE (mark), 20);
-  gtk_widget_set_halign (mark, GTK_ALIGN_START);
-  gtk_box_append (GTK_BOX (foot), mark);
-  GtkWidget *note = gtk_label_new ("Remaining battery life is approximate and may change based on usage");
-  gtk_label_set_wrap (GTK_LABEL (note), TRUE);
-  gtk_label_set_xalign (GTK_LABEL (note), 0);
-  gtk_box_append (GTK_BOX (foot), note);
-  gtk_box_append (GTK_BOX (c), foot);
+  ns_footnote (c, "Remaining battery life is approximate and may change based on usage");
   ns_push (page);
 }
 

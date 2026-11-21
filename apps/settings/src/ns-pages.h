@@ -8,6 +8,7 @@
 /* Network and Internet, Connected devices */
 void ns_page_connections (GtkWidget *row, gpointer data);
 void ns_page_connected_devices (GtkWidget *row, gpointer data);
+void ns_page_connection_preferences (GtkWidget *row, gpointer data);
 void ns_page_display (GtkWidget *row, gpointer data);
 /* Display size and text: Font size, Display size, Bold text */
 void ns_page_display_size (GtkWidget *row, gpointer data);

@@ -124,6 +124,8 @@ void        ns_row_value_set (GtkWidget *row, const char *value);
 
 /* a dim line of text below the cards so far */
 GtkWidget *ns_note (GtkWidget *content, const char *text);
+/* Android's footnote at a page's end: an info mark, the text under it; the label is returned */
+GtkWidget *ns_footnote (GtkWidget *content, const char *text);
 /* removes a card's rows (a list that is rebuilt); shows or hides a card with its title */
 void       ns_group_clear (GtkWidget *group);
 void       ns_group_set_visible (GtkWidget *group, gboolean visible);

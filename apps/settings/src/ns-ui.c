@@ -1157,6 +1157,23 @@ ns_note (GtkWidget *content, const char *text)
   return l;
 }
 
+GtkWidget *
+ns_footnote (GtkWidget *content, const char *text)
+{
+  GtkWidget *foot = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  gtk_widget_add_css_class (foot, "ns-footnote");
+  GtkWidget *mark = gtk_image_new_from_icon_name ("help-about-symbolic");
+  gtk_image_set_pixel_size (GTK_IMAGE (mark), 20);
+  gtk_widget_set_halign (mark, GTK_ALIGN_START);
+  gtk_box_append (GTK_BOX (foot), mark);
+  GtkWidget *l = gtk_label_new (text);
+  gtk_label_set_wrap (GTK_LABEL (l), TRUE);
+  gtk_label_set_xalign (GTK_LABEL (l), 0);
+  gtk_box_append (GTK_BOX (foot), l);
+  gtk_box_append (GTK_BOX (content), foot);
+  return l;
+}
+
 void
 ns_group_clear (GtkWidget *group)
 {
