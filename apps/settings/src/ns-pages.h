@@ -50,8 +50,10 @@ gboolean ns_panel_is_oled (void);
 /* ns-privacy.c */
 void ns_page_privacy (GtkWidget *row, gpointer data);
 void ns_page_location (GtkWidget *row, gpointer data);
-void ns_page_accounts (GtkWidget *row, gpointer data);
 void ns_page_accessibility (GtkWidget *row, gpointer data);
+
+/* ns-accounts.c */
+void ns_page_accounts (GtkWidget *row, gpointer data);
 
 /* ns-system.c */
 void ns_page_language (GtkWidget *row, gpointer data);
