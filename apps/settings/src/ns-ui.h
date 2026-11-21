@@ -56,6 +56,8 @@ GtkWidget *ns_row (GtkWidget *group, const char *icon, const char *title, const 
 void       ns_row_on_activate (GtkWidget *row, NsActivate cb, gpointer data);
 /* something at the row's end: a button takes its own taps, anything else is only shown */
 void       ns_row_suffix (GtkWidget *row, GtkWidget *suffix);
+/* a small loading indicator (Material 3's indeterminate circular one), for a row's end while its value loads */
+GtkWidget *ns_spinner_new (void);
 void       ns_row_set_title (GtkWidget *row, const char *title);
 void       ns_row_set_subtitle (GtkWidget *row, const char *subtitle);
 GtkWidget *ns_row_switch (GtkWidget *group, const char *title, const char *subtitle, GSettings *s, const char *key);

@@ -288,6 +288,121 @@ ns_row_suffix (GtkWidget *row, GtkWidget *suffix)
   vibeos_list_row_set_end_widget (VIBEOS_LIST_ROW (row), suffix);
 }
 
+/* ---- the loading indicator: Material 3's indeterminate circular progress indicator, at a row's size. An arc in the
+ * primary colour turns steadily; its head runs ahead (10° to 270°) in the first half of each cycle and its tail
+ * catches up in the second, so the arc grows and shrinks as it goes round. It draws only while mapped. */
+
+#define SPINNER_SIZE     24
+#define SPINNER_STROKE   3
+#define SPINNER_TURN_MS  1568.0    /* the whole turns once in this */
+#define SPINNER_CYCLE_MS 1333.0    /* the head runs ahead and the tail catches up once in this */
+#define SPINNER_MIN_DEG  10.0
+#define SPINNER_MAX_DEG  270.0
+
+struct _NsSpinner {
+  GtkWidget parent;
+  guint     tick;
+  gint64    start;
+};
+
+G_DECLARE_FINAL_TYPE (NsSpinner, ns_spinner, NS, SPINNER, GtkWidget)
+G_DEFINE_FINAL_TYPE (NsSpinner, ns_spinner, GTK_TYPE_WIDGET)
+
+static gboolean
+spinner_tick (GtkWidget *widget, GdkFrameClock *clock, gpointer unused)
+{
+  gtk_widget_queue_draw (widget);
+  return G_SOURCE_CONTINUE;
+}
+
+static void
+ns_spinner_map (GtkWidget *widget)
+{
+  NsSpinner *self = NS_SPINNER (widget);
+  GTK_WIDGET_CLASS (ns_spinner_parent_class)->map (widget);
+  self->tick = gtk_widget_add_tick_callback (widget, spinner_tick, NULL, NULL);
+}
+
+static void
+ns_spinner_unmap (GtkWidget *widget)
+{
+  NsSpinner *self = NS_SPINNER (widget);
+  if (self->tick)
+    gtk_widget_remove_tick_callback (widget, self->tick);
+  self->tick = 0;
+  GTK_WIDGET_CLASS (ns_spinner_parent_class)->unmap (widget);
+}
+
+static void
+ns_spinner_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, int *minimum, int *natural,
+                    int *minimum_baseline, int *natural_baseline)
+{
+  *minimum = *natural = SPINNER_SIZE;
+}
+
+static double
+spinner_ease (double x)
+{
+  return x * x * (3 - 2 * x);
+}
+
+static void
+ns_spinner_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
+{
+  NsSpinner *self = NS_SPINNER (widget);
+  GdkFrameClock *clock = gtk_widget_get_frame_clock (widget);
+  gint64 now = clock ? gdk_frame_clock_get_frame_time (clock) : g_get_monotonic_time ();
+  if (!self->start)
+    self->start = now;
+  double ms = (now - self->start) / 1000.0;
+  double cycles = floor (ms / SPINNER_CYCLE_MS), p = fmod (ms, SPINNER_CYCLE_MS) / SPINNER_CYCLE_MS;
+  double run = SPINNER_MAX_DEG - SPINNER_MIN_DEG;
+  /* each cycle leaves the tail `run` further on */
+  double base = fmod (cycles * run + ms / SPINNER_TURN_MS * 360.0, 360.0);
+  double tail = base, head = base + SPINNER_MAX_DEG;
+  if (p < 0.5)
+    head = base + SPINNER_MIN_DEG + run * spinner_ease (p * 2);
+  else
+    tail = base + run * spinner_ease ((p - 0.5) * 2);
+
+  double w = gtk_widget_get_width (widget), h = gtk_widget_get_height (widget);
+  double r = (MIN (w, h) - SPINNER_STROKE) / 2.0, cx = w / 2.0, cy = h / 2.0;
+  double a0 = tail * G_PI / 180.0, a1 = head * G_PI / 180.0;   /* 0 at the top, clockwise */
+  g_autoptr (GskPathBuilder) b = gsk_path_builder_new ();
+  gsk_path_builder_move_to (b, cx + r * sin (a0), cy - r * cos (a0));
+  gsk_path_builder_svg_arc_to (b, r, r, 0, head - tail > 180, TRUE, cx + r * sin (a1), cy - r * cos (a1));
+  g_autoptr (GskPath) path = gsk_path_builder_to_path (b);
+  GskStroke *stroke = gsk_stroke_new (SPINNER_STROKE);
+  gsk_stroke_set_line_cap (stroke, GSK_LINE_CAP_ROUND);
+  GdkRGBA ink = vibeos_color (VIBEOS_PRIMARY);
+  gtk_snapshot_append_stroke (snapshot, path, stroke, &ink);
+  gsk_stroke_free (stroke);
+}
+
+static void
+ns_spinner_class_init (NsSpinnerClass *klass)
+{
+  GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
+  widget_class->map = ns_spinner_map;
+  widget_class->unmap = ns_spinner_unmap;
+  widget_class->measure = ns_spinner_measure;
+  widget_class->snapshot = ns_spinner_snapshot;
+  gtk_widget_class_set_accessible_role (widget_class, GTK_ACCESSIBLE_ROLE_PROGRESS_BAR);
+}
+
+static void
+ns_spinner_init (NsSpinner *self)
+{
+  gtk_widget_set_valign (GTK_WIDGET (self), GTK_ALIGN_CENTER);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (self), GTK_ACCESSIBLE_PROPERTY_LABEL, "Loading", -1);
+}
+
+GtkWidget *
+ns_spinner_new (void)
+{
+  return g_object_new (ns_spinner_get_type (), NULL);
+}
+
 void
 ns_row_set_title (GtkWidget *row, const char *title)
 {

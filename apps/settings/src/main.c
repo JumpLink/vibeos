@@ -11,27 +11,18 @@
 
 #include <string.h>
 
-/* the circle colours of the entries' families */
-typedef enum {
-  CAT_NETWORK, CAT_APPS, CAT_NOTIFICATIONS, CAT_DISPLAY, CAT_BATTERY, CAT_SYSTEM, CAT_SECURITY, CAT_ACCESSIBILITY,
-} Category;
+/* The entries' circles: S20's colours (0.1.2's Settings), darker, the glyph white on them (owner, 11-21: "the
+ * darker colors with white on color"), not Android 16's pale tonal circles with a dark glyph */
+typedef enum { TINT_BLUE, TINT_VIOLET, TINT_PURPLE, TINT_GREEN, TINT_LIME, TINT_ORANGE, TINT_PINK, TINT_GREY } Tint;
 
-static const VibeosColor category_fill[] = {
-  [CAT_NETWORK] = VIBEOS_CATEGORY_NETWORK, [CAT_APPS] = VIBEOS_CATEGORY_APPS,
-  [CAT_NOTIFICATIONS] = VIBEOS_CATEGORY_NOTIFICATIONS, [CAT_DISPLAY] = VIBEOS_CATEGORY_DISPLAY,
-  [CAT_BATTERY] = VIBEOS_CATEGORY_BATTERY, [CAT_SYSTEM] = VIBEOS_CATEGORY_SYSTEM,
-  [CAT_SECURITY] = VIBEOS_CATEGORY_SECURITY, [CAT_ACCESSIBILITY] = VIBEOS_CATEGORY_ACCESSIBILITY,
-};
-static const VibeosColor category_glyph[] = {
-  [CAT_NETWORK] = VIBEOS_ON_CATEGORY_NETWORK, [CAT_APPS] = VIBEOS_ON_CATEGORY_APPS,
-  [CAT_NOTIFICATIONS] = VIBEOS_ON_CATEGORY_NOTIFICATIONS, [CAT_DISPLAY] = VIBEOS_ON_CATEGORY_DISPLAY,
-  [CAT_BATTERY] = VIBEOS_ON_CATEGORY_BATTERY, [CAT_SYSTEM] = VIBEOS_ON_CATEGORY_SYSTEM,
-  [CAT_SECURITY] = VIBEOS_ON_CATEGORY_SECURITY, [CAT_ACCESSIBILITY] = VIBEOS_ON_CATEGORY_ACCESSIBILITY,
+static const char *const tint_fill[] = {
+  [TINT_BLUE] = "#3e7bf0", [TINT_VIOLET] = "#6f63d8", [TINT_PURPLE] = "#7a5af0", [TINT_GREEN] = "#42b05a",
+  [TINT_LIME] = "#8cc63f", [TINT_ORANGE] = "#ef7d2c", [TINT_PINK] = "#e35a7a", [TINT_GREY] = "#6c6c80",
 };
 
 typedef struct {
   const char *icon;
-  Category    category;
+  Tint        tint;
   const char *title, *subtitle, *keywords;
   NsActivate  page;            /* our own page */
   const char *needs_schema;    /* shown only if this settings schema is installed */
@@ -41,40 +32,40 @@ typedef struct {
 /* The main menu, in Android's order and with its names. NULL title: the next card. Network & internet's summary
  * and About's title follow the device (entry_texts). */
 static const Entry entries[] = {
-  { "network-wireless-symbolic", CAT_NETWORK, "Network & internet", "Wi-Fi, hotspot",
+  { "network-wireless-symbolic", TINT_BLUE, "Network & internet", "Wi-Fi, hotspot",
     "wlan wifi internet sim mobile data apn vpn hotspot tethering flight airplane proxy wired", ns_page_connections },
-  { "bluetooth-symbolic", CAT_NETWORK, "Connected devices", "Bluetooth, pairing",
+  { "bluetooth-symbolic", TINT_BLUE, "Connected devices", "Bluetooth, pairing",
     "pair headphones speaker watch sharing visible device name printers printing", ns_page_connected_devices },
   { NULL },
-  { "view-app-grid-symbolic", CAT_APPS, "Apps", "Default apps, app settings",
+  { "view-app-grid-symbolic", TINT_BLUE, "Apps", "Default apps, app settings",
     "permissions storage default browser email", ns_page_apps },
-  { "preferences-system-notifications-symbolic", CAT_NOTIFICATIONS, "Notifications",
+  { "preferences-system-notifications-symbolic", TINT_ORANGE, "Notifications",
     "App notifications, do not disturb", "dnd banner pop-up lock screen emergency alerts", ns_page_notifications },
-  { "audio-volume-high-symbolic", CAT_NOTIFICATIONS, "Sound & vibration", "Volume, vibration, ringtone",
+  { "audio-volume-high-symbolic", TINT_VIOLET, "Sound & vibration", "Volume, vibration, ringtone",
     "ringtone alarm sound speaker microphone vibrate mute silent haptic dial pad tones", ns_page_sound },
-  { "display-brightness-symbolic", CAT_DISPLAY, "Display", "Dark theme, font size, brightness",
+  { "display-brightness-symbolic", TINT_LIME, "Display", "Dark theme, font size, brightness",
     "screen timeout adaptive brightness night light intensity warm amber rotate scale always on aod display size "
     "text bold zoom lock screen", ns_page_display },
-  { "preferences-desktop-wallpaper-symbolic", CAT_DISPLAY, "Wallpaper & style", "Wallpapers, colours, home screen",
+  { "preferences-desktop-wallpaper-symbolic", TINT_PINK, "Wallpaper & style", "Wallpapers, colours, home screen",
     "background accent dark theme colour color parallax launcher grid columns rows layout icon size pack shape "
     "app names labels drawer", ns_page_wallpaper },
   { NULL },
-  { "battery-full-symbolic", CAT_BATTERY, "Battery", "Charge, power and screen blank",
+  { "battery-full-symbolic", TINT_GREEN, "Battery", "Charge, power and screen blank",
     "power dim health temperature voltage capacity", ns_page_battery, NULL, NS_CAP_BATTERY },
-  { "preferences-system-symbolic", CAT_SYSTEM, "System", "Languages, keyboard, time",
+  { "preferences-system-symbolic", TINT_VIOLET, "System", "Languages, keyboard, time",
     "region locale language keyboard clock date time users mouse touchpad updates software upgrade",
     ns_page_general },
-  { "help-about-symbolic", CAT_SYSTEM, "About phone", "Device name, versions",
+  { "help-about-symbolic", TINT_GREY, "About phone", "Device name, versions",
     "phone tablet model kernel version memory storage name about", ns_page_about },
   { NULL },
-  { "security-high-symbolic", CAT_SECURITY, "Security & privacy", "Screen lock, permissions",
+  { "security-high-symbolic", TINT_PURPLE, "Security & privacy", "Screen lock, permissions",
     "password pin pattern swipe unlock lock screen camera microphone history trash", ns_page_privacy },
-  { "find-location-symbolic", CAT_SECURITY, "Location", "Location services, app access",
+  { "find-location-symbolic", TINT_PURPLE, "Location", "Location services, app access",
     "gps geoclue", ns_page_location, "org.gnome.system.location" },
-  { "avatar-default-symbolic", CAT_SECURITY, "Accounts", "Online accounts",
+  { "avatar-default-symbolic", TINT_BLUE, "Accounts", "Online accounts",
     "google nextcloud email", ns_page_accounts },
   { NULL },
-  { "preferences-desktop-accessibility-symbolic", CAT_ACCESSIBILITY, "Accessibility", "Display, interaction",
+  { "preferences-desktop-accessibility-symbolic", TINT_GREEN, "Accessibility", "Display, interaction",
     "zoom contrast screen reader animations font size bold text display size", ns_page_accessibility },
 };
 
@@ -92,7 +83,9 @@ installed (const Entry *e)
 static void
 set_circle (GtkWidget *row, const Entry *e)
 {
-  GdkRGBA fill = vibeos_color (category_fill[e->category]), glyph = vibeos_color (category_glyph[e->category]);
+  GdkRGBA fill, glyph = { 1, 1, 1, 1 };
+
+  gdk_rgba_parse (&fill, tint_fill[e->tint]);
   vibeos_list_row_set_icon_circle (VIBEOS_LIST_ROW (row), e->icon, &fill, &glyph);
 }
 

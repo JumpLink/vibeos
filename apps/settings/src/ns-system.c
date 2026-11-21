@@ -61,19 +61,129 @@ locale_name (Names *n, const char *locale)
   return country ? g_strdup_printf ("%s (%s)", lang, country) : g_strdup (lang);
 }
 
+/* What the page shows: the installed UTF-8 locales, their names (labels: NULL-terminated, as ns_row_pick takes them)
+ * and the user's language. Finding them out is slow: localectl reads every installed locale (0.7 s, and seconds for
+ * the first look after a boot), AccountsService answers after that, and the Language row stood empty all the while
+ * (owner, 11-21). So the last answer is kept, for the app's life and in ~/.cache/vibeos-settings/language, and the
+ * page shows it at once; each time it opens it asks again in the background and redraws only if something changed.
+ * With nothing kept yet (the first look ever), the Language row shows a loading indicator until the answer comes. */
 typedef struct {
   GPtrArray *locales, *labels;
+  char      *language;               /* AccountsService's Language for the user, "" when it has none */
+} Known;
+
+static Known *known;                 /* the last answer, or NULL */
+static gboolean known_read;          /* the cache file was read (once) */
+
+static void
+known_free (Known *k)
+{
+  if (!k)
+    return;
+  g_clear_pointer (&k->locales, g_ptr_array_unref);
+  g_clear_pointer (&k->labels, g_ptr_array_unref);
+  g_free (k->language);
+  g_free (k);
+}
+
+static Known *
+known_new (void)
+{
+  Known *k = g_new0 (Known, 1);
+  k->locales = g_ptr_array_new_with_free_func (g_free);
+  k->labels = g_ptr_array_new_with_free_func (g_free);
+  return k;
+}
+
+static char *
+known_file (void)
+{
+  return g_build_filename (g_get_user_cache_dir (), "vibeos-settings", "language", NULL);
+}
+
+/* the cache: "language\t<it>", then "<locale>\t<its name>" a line each. A few kilobytes, read once. */
+static Known *
+known_get (void)
+{
+  if (known_read)
+    return known;
+  known_read = TRUE;
+  g_autofree char *file = known_file (), *text = NULL;
+  if (!g_file_get_contents (file, &text, NULL, NULL))
+    return NULL;
+  g_auto (GStrv) lines = g_strsplit (text, "\n", -1);
+  if (!lines[0] || !g_str_has_prefix (lines[0], "language\t"))
+    return NULL;
+  Known *k = known_new ();
+  k->language = g_strdup (lines[0] + strlen ("language\t"));
+  for (guint i = 1; lines[i]; i++) {
+    char *tab = strchr (lines[i], '\t');
+    if (!tab || tab == lines[i] || !tab[1])
+      continue;
+    g_ptr_array_add (k->locales, g_strndup (lines[i], tab - lines[i]));
+    g_ptr_array_add (k->labels, g_strdup (tab + 1));
+  }
+  g_ptr_array_add (k->labels, NULL);
+  known = k;
+  return known;
+}
+
+static void
+known_written (GObject *src, GAsyncResult *res, gpointer unused)
+{
+  g_autoptr (GError) error = NULL;
+  if (!g_file_replace_contents_finish (G_FILE (src), res, NULL, &error))
+    g_debug ("the language cache: %s", error->message);
+}
+
+/* keeps @k (taking it) as the last answer, and writes it out in the background */
+static void
+known_keep (Known *k)
+{
+  if (k != known) {
+    known_free (known);
+    known = k;
+  }
+  known_read = TRUE;
+  GString *out = g_string_new (NULL);
+  g_string_append_printf (out, "language\t%s\n", k->language ? k->language : "");
+  for (guint i = 0; i < k->locales->len; i++)
+    g_string_append_printf (out, "%s\t%s\n", (char *) k->locales->pdata[i], (char *) k->labels->pdata[i]);
+  g_autofree char *file = known_file ();
+  g_autofree char *dir = g_path_get_dirname (file);
+  g_mkdir_with_parents (dir, 0700);
+  g_autoptr (GFile) f = g_file_new_for_path (file);
+  g_autoptr (GBytes) bytes = g_string_free_to_bytes (out);
+  g_file_replace_contents_bytes_async (f, bytes, NULL, FALSE, G_FILE_CREATE_REPLACE_DESTINATION, NULL, known_written,
+                                       NULL);
+}
+
+static gboolean
+same_strings (GPtrArray *a, GPtrArray *b)
+{
+  if (!a || !b || a->len != b->len)
+    return FALSE;
+  for (guint i = 0; i < a->len; i++)
+    if (g_strcmp0 (a->pdata[i], b->pdata[i]))
+      return FALSE;
+  return TRUE;
+}
+
+typedef struct {
+  GPtrArray *locales, *labels;       /* what the rows were made from (refs of a Known's) */
+  char      *shown;                  /* the language they show */
   char      *path;                   /* the user in AccountsService */
+  Known     *fresh;                  /* the background look, until AccountsService has answered */
   GtkWidget *group, *logout;
 } Lang;
 
 static void
 lang_free (Lang *l)
 {
-  if (l->locales)
-    g_ptr_array_unref (l->locales);
-  if (l->labels)
-    g_ptr_array_unref (l->labels);
+  g_clear_pointer (&l->locales, g_ptr_array_unref);
+  g_clear_pointer (&l->labels, g_ptr_array_unref);
+  known_free (l->fresh);
+  g_free (l->shown);
   g_free (l->path);
   g_free (l);
 }
@@ -103,6 +213,13 @@ lang_picked (GtkWidget *row, guint i, gpointer data)
    * next log in. Not the system's: Debian's systemd keeps localed read-only (org.freedesktop.locale1.read-only.conf
    * denies SetLocale to everyone, root too), so the SetLocale this page used to send was refused every time. */
   gtk_widget_set_visible (l->logout, TRUE);
+  g_free (l->shown);
+  l->shown = g_strdup (loc);
+  if (known && same_strings (known->locales, l->locales)) {
+    g_free (known->language);
+    known->language = g_strdup (loc);
+    known_keep (known);
+  }
 }
 
 static void
@@ -123,23 +240,28 @@ logout (GtkWidget *row, gpointer data)
                             "Logout", g_variant_new ("(u)", 0), NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 }
 
+/* the Language and Formats rows, from @k */
 static void
-lang_rows (NsPage *page, const char *current)
+lang_rows (NsPage *page, Known *k)
 {
   Lang *l = g_object_get_data (G_OBJECT (page), "ns-lang");
-  if (!l->locales)
-    return;
-  g_autofree char *cur_lang = g_strdup (current && *current ? current : g_getenv ("LANG"));
+  g_clear_pointer (&l->locales, g_ptr_array_unref);
+  g_clear_pointer (&l->labels, g_ptr_array_unref);
+  l->locales = g_ptr_array_ref (k->locales);
+  l->labels = g_ptr_array_ref (k->labels);
+  g_free (l->shown);
+  l->shown = g_strdup (k->language ? k->language : "");
+  const char *current = k->language && *k->language ? k->language : g_getenv ("LANG");
   guint sel = G_MAXUINT;
   for (guint i = 0; i < l->locales->len; i++)
-    if (cur_lang && !g_strcmp0 (l->locales->pdata[i], cur_lang))
+    if (current && !g_strcmp0 (l->locales->pdata[i], current))
       sel = i;
   ns_group_clear (l->group);
   GtkWidget *r = ns_row_pick (l->group, "Language", (const char *const *) l->labels->pdata, sel, lang_picked, l);
   /* "C.UTF-8" and the like: no language chosen yet, programs speak their own (English) */
   if (sel == G_MAXUINT)
-    ns_row_set_subtitle (r, !cur_lang || g_str_has_prefix (cur_lang, "C.") || !g_strcmp0 (cur_lang, "C")
-                            || !g_strcmp0 (cur_lang, "POSIX") ? "System default (English)" : cur_lang);
+    ns_row_set_subtitle (r, !current || g_str_has_prefix (current, "C.") || !g_strcmp0 (current, "C")
+                            || !g_strcmp0 (current, "POSIX") ? "System default (English)" : current);
   GSettings *s = ns_page_settings (page, "org.gnome.system.locale");
   if (s) {
     g_autoptr (GPtrArray) rl = g_ptr_array_new ();
@@ -157,6 +279,32 @@ lang_rows (NsPage *page, const char *current)
   }
 }
 
+/* the background look is complete: kept, and the rows redrawn if it differs from what they show */
+static void
+lang_fresh (NsPage *page, const char *language)
+{
+  Lang *l = g_object_get_data (G_OBJECT (page), "ns-lang");
+  Known *k = g_steal_pointer (&l->fresh);
+  k->language = g_strdup (language ? language : "");
+  /* localectl gave nothing: the last answer's list stays; with none, the rows show the language without a list,
+   * and nothing is kept */
+  if (!k->locales->len) {
+    if (!known) {
+      lang_rows (page, k);
+      known_free (k);
+      return;
+    }
+    g_free (known->language);
+    known->language = g_strdup (k->language);
+    known_free (k);
+    k = known;
+  }
+  gboolean same = same_strings (l->locales, k->locales) && !g_strcmp0 (l->shown, k->language);
+  known_keep (k);
+  if (!same)
+    lang_rows (page, known);
+}
+
 static void
 user_lang_got (GObject *src, GAsyncResult *res, gpointer page)
 {
@@ -164,7 +312,7 @@ user_lang_got (GObject *src, GAsyncResult *res, gpointer page)
   g_autoptr (GVariant) lang = NULL;
   if (v)
     g_variant_get (v, "(v)", &lang);
-  lang_rows (page, lang ? g_variant_get_string (lang, NULL) : NULL);
+  lang_fresh (page, lang ? g_variant_get_string (lang, NULL) : NULL);
   g_object_unref (page);
 }
 
@@ -174,10 +322,11 @@ user_found (GObject *src, GAsyncResult *res, gpointer page)
   Lang *l = g_object_get_data (page, "ns-lang");
   g_autoptr (GVariant) v = g_dbus_connection_call_finish (G_DBUS_CONNECTION (src), res, NULL);
   if (!v) {
-    lang_rows (page, NULL);
+    lang_fresh (page, NULL);
     g_object_unref (page);
     return;
   }
+  g_free (l->path);
   g_variant_get (v, "(o)", &l->path);
   g_dbus_connection_call (G_DBUS_CONNECTION (src), "org.freedesktop.Accounts", l->path,
                           "org.freedesktop.DBus.Properties", "Get",
@@ -185,35 +334,48 @@ user_found (GObject *src, GAsyncResult *res, gpointer page)
                           G_DBUS_CALL_FLAGS_NONE, 3000, NULL, user_lang_got, page);
 }
 
+/* in a thread: the installed locales from localectl, the UTF-8 ones that name a language, with their names */
+static void
+locales_thread (GTask *task, gpointer src, gpointer data, GCancellable *cancel)
+{
+  const char *argv[] = { "localectl", "list-locales", "--no-pager", NULL };
+  g_autofree char *out = NULL;
+  g_spawn_sync (NULL, (char **) argv, NULL, G_SPAWN_SEARCH_PATH | G_SPAWN_STDERR_TO_DEV_NULL, NULL, NULL, &out, NULL,
+                NULL, NULL);
+  Names n = { iso_table ("/usr/share/iso-codes/json/iso_639-2.json", "639-2", "alpha_2"),
+              iso_table ("/usr/share/iso-codes/json/iso_3166-1.json", "3166-1", "alpha_2") };
+  Known *k = known_new ();
+  g_auto (GStrv) lines = g_strsplit (out ? out : "", "\n", -1);
+  for (guint i = 0; lines[i]; i++) {
+    const char *loc = g_strstrip (lines[i]);
+    if (!*loc || !strstr (loc, "UTF-8") || g_str_has_prefix (loc, "C."))
+      continue;
+    g_ptr_array_add (k->locales, g_strdup (loc));
+    g_ptr_array_add (k->labels, locale_name (&n, loc));
+  }
+  g_ptr_array_add (k->labels, NULL);
+  g_hash_table_unref (n.langs);
+  g_hash_table_unref (n.countries);
+  g_task_return_pointer (task, k, (GDestroyNotify) known_free);
+}
+
 static void
 locales_listed (GObject *src, GAsyncResult *res, gpointer page)
 {
   Lang *l = g_object_get_data (page, "ns-lang");
-  g_autofree char *out = NULL;
-  g_subprocess_communicate_utf8_finish (G_SUBPROCESS (src), res, &out, NULL, NULL);
-  Names n = { iso_table ("/usr/share/iso-codes/json/iso_639-2.json", "639-2", "alpha_2"),
-              iso_table ("/usr/share/iso-codes/json/iso_3166-1.json", "3166-1", "alpha_2") };
-  l->locales = g_ptr_array_new_with_free_func (g_free);
-  l->labels = g_ptr_array_new_with_free_func (g_free);
-  g_auto (GStrv) lines = g_strsplit (out ? out : "", "\n", -1);
-  for (guint i = 0; lines[i]; i++) {
-    const char *loc = g_strstrip (lines[i]);
-    /* the UTF-8 ones that name a language */
-    if (!*loc || !strstr (loc, "UTF-8") || g_str_has_prefix (loc, "C."))
-      continue;
-    g_ptr_array_add (l->locales, g_strdup (loc));
-    g_ptr_array_add (l->labels, locale_name (&n, loc));
-  }
-  g_ptr_array_add (l->labels, NULL);
-  g_hash_table_unref (n.langs);
-  g_hash_table_unref (n.countries);
+  known_free (l->fresh);
+  l->fresh = g_task_propagate_pointer (G_TASK (res), NULL);
+  if (!l->fresh)
+    l->fresh = known_new ();
   g_autoptr (GDBusConnection) sys = bus (G_BUS_TYPE_SYSTEM);
   if (sys)
     g_dbus_connection_call (sys, "org.freedesktop.Accounts", "/org/freedesktop/Accounts", "org.freedesktop.Accounts",
                             "FindUserById", g_variant_new ("(x)", (gint64) getuid ()), G_VARIANT_TYPE ("(o)"),
                             G_DBUS_CALL_FLAGS_NONE, 3000, NULL, user_found, page);
-  else
+  else {
+    lang_fresh (page, known ? known->language : NULL);
     g_object_unref (page);
+  }
 }
 
 void
@@ -224,15 +386,17 @@ ns_page_language (GtkWidget *row, gpointer data)
   Lang *l = g_new0 (Lang, 1);
   g_object_set_data_full (G_OBJECT (page), "ns-lang", l, (GDestroyNotify) lang_free);
   l->group = ns_group (c, NULL);
-  ns_row_info (l->group, "Language", "…");
+  Known *k = known_get ();
+  if (k)
+    lang_rows (page, k);
+  else
+    ns_row_suffix (ns_row (l->group, NULL, "Language", NULL), ns_spinner_new ());
   ns_note (c, "A new language or format shows in apps after you log out and in again.");
   GtkWidget *g = ns_group (c, NULL);
   l->logout = ns_row_button (g, "Log out now", FALSE, logout, NULL);
   gtk_widget_set_visible (l->logout, FALSE);
-  g_autoptr (GSubprocess) p = g_subprocess_new (G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_SILENCE,
-                                                NULL, "localectl", "list-locales", "--no-pager", NULL);
-  if (p)
-    g_subprocess_communicate_utf8_async (p, NULL, NULL, locales_listed, g_object_ref (page));
+  g_autoptr (GTask) t = g_task_new (NULL, NULL, locales_listed, g_object_ref (page));
+  g_task_run_in_thread (t, locales_thread);
   ns_push (page);
 }
 
