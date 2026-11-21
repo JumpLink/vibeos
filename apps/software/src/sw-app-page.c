@@ -29,6 +29,10 @@
 
 #include <math.h>
 
+/* the page's column on a tablet: the head, the Install button and the details in the middle, rather than a button
+ * across the whole screen. A phone is narrower, so there the column keeps the screen's width */
+#define PAGE_MAX 840
+
 typedef struct {
   GtkWidget  *page, *status, *column, *icon, *ring, *name, *developer;
   GtkWidget  *action, *details, *review_box, *previews, *more_button;
@@ -1055,7 +1059,7 @@ sw_app_page_new (const char *app_id, JsonObject *summary)
   p->status = sw_status_new (p->details);
   gtk_widget_set_vexpand (p->status, FALSE);
   gtk_box_append (GTK_BOX (p->column), p->status);
-  top = sw_scroll_new (p->column);
+  top = sw_scroll_new (vibeos_clamp_new (p->column, PAGE_MAX));
   sw_page_set_body (p->page, top);
 
   if (summary)
