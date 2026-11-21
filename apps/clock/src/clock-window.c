@@ -260,6 +260,18 @@ on_settings_button (VibeosPressable *button, Shell *shell)
   show_settings (shell);
 }
 
+/* ⋮: About, VibeOS's About sheet, as every VibeOS app has it */
+static const VibeosAboutInfo clock_about = { .name = "Clock", .icon_name = "vibeos.Clock" };
+
+static void
+on_more_button (VibeosPressable *button, Shell *shell)
+{
+  VibeosMenu *menu = vibeos_menu_new ();
+
+  vibeos_menu_append_about (menu, &clock_about);
+  vibeos_menu_present (menu, GTK_WIDGET (button));
+}
+
 static void
 on_picker_settings (GtkWidget *picker, Shell *shell)
 {
@@ -399,7 +411,8 @@ clock_window_new (GtkApplication *app, GSettings *settings)
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *bar = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *gear = gtk_image_new_from_icon_name ("clock-settings-symbolic");
-  GtkWidget *settings_button;
+  GtkWidget *more = gtk_image_new_from_icon_name ("clock-more-symbolic");
+  GtkWidget *settings_button, *more_button;
   GtkEventController *key, *shortcuts;
 
   shell->window = window;
@@ -427,6 +440,17 @@ clock_window_new (GtkApplication *app, GSettings *settings)
                                   -1);
   g_signal_connect (settings_button, "clicked", G_CALLBACK (on_settings_button), shell);
   gtk_box_append (GTK_BOX (bar), settings_button);
+  /* then ⋮, the same size, for the menu */
+  gtk_image_set_pixel_size (GTK_IMAGE (more), 24);
+  more_button = vibeos_pressable_new (more);
+  gtk_widget_set_size_request (more_button, 48, 48);
+  gtk_widget_set_valign (more_button, GTK_ALIGN_CENTER);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (more_button), VIBEOS_RIPPLE_CIRCLE, 20);
+  gtk_widget_add_css_class (more_button, "clock-settings-button");
+  gtk_accessible_update_property (GTK_ACCESSIBLE (more_button), GTK_ACCESSIBLE_PROPERTY_LABEL, _("More options"),
+                                  -1);
+  g_signal_connect (more_button, "clicked", G_CALLBACK (on_more_button), shell);
+  gtk_box_append (GTK_BOX (bar), more_button);
   gtk_box_append (GTK_BOX (box), bar);
 
   /* the content: the pages, then the row of buttons and the snackbar over their bottom */

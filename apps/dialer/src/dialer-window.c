@@ -430,6 +430,17 @@ on_settings (gpointer data)
   push_screen (shell, dialer_settings_new (shell->settings));
 }
 
+/* About: VibeOS's About sheet, as every VibeOS app has it */
+static const VibeosAboutInfo dialer_about = { .name = "Phone", .icon_name = "vibeos.Dialer" };
+
+static void
+on_about (gpointer data)
+{
+  Shell *shell = data;
+
+  vibeos_about_present (shell->window, &dialer_about);
+}
+
 /* Helplines is a screen still to be written (its list is Lineage's, by country); Clear frequents never shows,
  * Favorites keeping no frequents */
 static void
@@ -439,6 +450,7 @@ on_menu_clicked (Shell *shell)
 
   dialer_popup_menu_append (menu, _("Call history"), on_call_history, shell);
   dialer_popup_menu_append (menu, _("Settings"), on_settings, shell);
+  dialer_popup_menu_append (menu, _("About"), on_about, shell);
   dialer_popup_menu_present (menu, dialer_search_bar_get_menu_button (DIALER_SEARCH_BAR (shell->search_bar)),
                              POPUP_MENU_END);
 }

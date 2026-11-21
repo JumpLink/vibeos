@@ -209,6 +209,21 @@ row (GtkWidget *list, const char *title, const char *summary_text, GtkWidget **s
   return pressable;
 }
 
+/* About: VibeOS's About sheet, as every VibeOS app has it */
+static const VibeosAboutSection cam_legal[] = {
+  { "libcamera", "The cameras are driven by <a href=\"https://libcamera.org/\">libcamera</a>, under the GNU LGPL 2.1 "
+                 "or later." },
+  { NULL }
+};
+
+static const VibeosAboutInfo cam_about = { .name = "Camera", .icon_name = "vibeos.Camera", .legal = cam_legal };
+
+static void
+on_about (VibeosPressable *pressable, CamSettings *self)
+{
+  vibeos_about_present (GTK_WIDGET (self), &cam_about);
+}
+
 static void
 on_switch_row (VibeosPressable *pressable, VibeosSwitch *toggle)
 {
@@ -548,6 +563,9 @@ build (CamSettings *self)
   gtk_box_append (GTK_BOX (list), self->video);
   category (self->video, C_("settings", "Video"));
   list_row (self, self->video, "video-mirror-mode", _("Enable video mirroring"), mirror_labels, mirror_values, 3);
+  /* last, About: the camera has no ⋮ (its top corners are the flash's and the flip's), so it is here */
+  category (list, _("About"));
+  g_signal_connect (row (list, _("About Camera"), NULL, NULL, NULL), "clicked", G_CALLBACK (on_about), self);
 
   /* Gestures: one category per key the phone has; a GNOME phone has the volume keys */
   self->pages[1] = page (self, 1);

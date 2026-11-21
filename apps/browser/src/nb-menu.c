@@ -161,8 +161,17 @@ nb_popup_init (NbPopup *self)
 typedef enum {
   OPT_BACK, OPT_FORWARD, OPT_REFRESH, OPT_ADD_TO_FAVORITE, OPT_SHARE, OPT_NEW_TAB, OPT_NEW_PRIVATE_TAB,
   OPT_FAVORITES, OPT_HISTORY, OPT_DOWNLOADS, OPT_ADD_TO_HOME_SCREEN, OPT_FIND_IN_PAGE, OPT_DESKTOP_VIEW, OPT_PRINT,
-  OPT_DESKTOP_SHORTCUTS, OPT_SETTINGS,
+  OPT_DESKTOP_SHORTCUTS, OPT_SETTINGS, OPT_ABOUT,
 } Option;
+
+/* About: VibeOS's About sheet, as every VibeOS app has it; the pages are WebKitGTK's */
+static const VibeosAboutSection nb_legal[] = {
+  { "WebKitGTK", "Web pages are shown by <a href=\"https://webkitgtk.org/\">WebKitGTK</a>, under the GNU LGPL 2.1 "
+                 "and BSD licences." },
+  { NULL }
+};
+
+static const VibeosAboutInfo nb_about = { .name = "Browser", .icon_name = "vibeos.Browser", .legal = nb_legal };
 
 static gboolean
 share_later (gpointer data)
@@ -233,6 +242,9 @@ run_option (NbTab *t, Option o)
     break;
   case OPT_SETTINGS:
     nb_tab_push_page (t, nb_settings_page_new (t));
+    break;
+  case OPT_ABOUT:
+    vibeos_about_present (t->win, &nb_about);
     break;
   }
 }
@@ -371,6 +383,7 @@ nb_menu_open (NbTab *t)
   gtk_box_append (GTK_BOX (list), divider ());
   gtk_box_append (GTK_BOX (list), item (t, "jelly-desktop-symbolic", "Desktop shortcuts", OPT_DESKTOP_SHORTCUTS));
   gtk_box_append (GTK_BOX (list), item (t, "jelly-settings-symbolic", "Settings", OPT_SETTINGS));
+  gtk_box_append (GTK_BOX (list), item (t, "jelly-info-symbolic", "About", OPT_ABOUT));
 
   /* the scroller: the list at its natural height, scrolled when the window is shorter */
   GtkWidget *scroll = spongy_scroll_view_new ();

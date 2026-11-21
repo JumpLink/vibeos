@@ -28,9 +28,6 @@
 #include <spongy-gtk.h>
 #include <string.h>
 
-#ifndef CT_VERSION
-#define CT_VERSION "1.0"
-#endif
 
 /* ===== a preference row ========================================================================================= */
 
@@ -71,7 +68,6 @@ typedef struct {
   GtkWidget *page, *window, *title;
   CtStore *store;
   GSettings *settings;
-  GtkWidget *main_rows, *about_rows;
   GtkWidget *my_info, *my_info_summary, *default_summary, *filter_summary, *sort_summary, *format_summary;
   GtkWidget *phonetic_summary, *default_row, *export_row;
 } Settings;
@@ -422,31 +418,20 @@ on_export (VibeosPressable *row, Settings *s)
   ct_export_all (s->window, s->page);
 }
 
-/* --- About Contacts: the rows in the screen's place, the title "About Contacts" */
+/* --- About Contacts: VibeOS's About sheet, as every VibeOS app has it */
 
-static void
-show_about (Settings *s, gboolean about)
+static const VibeosAboutInfo ct_about = { .name = "Contacts", .icon_name = "vibeos.Contacts" };
+
+void
+ct_settings_present_about (GtkWidget *window)
 {
-  gtk_widget_set_visible (s->main_rows, !about);
-  gtk_widget_set_visible (s->about_rows, about);
-  gtk_label_set_label (GTK_LABEL (s->title), about ? _("About Contacts") : _("Settings"));
+  vibeos_about_present (window, &ct_about);
 }
 
 static void
 on_about (VibeosPressable *row, Settings *s)
 {
-  show_about (s, TRUE);
-}
-
-static gboolean
-on_back (CtPage *page, gpointer data)
-{
-  Settings *s = data;
-
-  if (!gtk_widget_get_visible (s->about_rows))
-    return FALSE;
-  show_about (s, FALSE);
-  return TRUE;
+  ct_settings_present_about (s->window);
 }
 
 GtkWidget *
@@ -466,11 +451,10 @@ ct_settings_new (GtkWidget *window)
   s->settings = g_object_ref (ct_window_get_settings (window));
   g_object_set_data_full (G_OBJECT (page), "ct-settings", s, settings_free);
   gtk_widget_add_css_class (page, "ct-settings");
-  ct_page_set_back_handler (CT_PAGE (page), on_back, s);
   gtk_box_append (GTK_BOX (page), ct_page_toolbar (CT_PAGE (page), NULL, "ct-arrow-back-symbolic", _("Back"),
                                                    _("Settings"), NULL, &s->title));
 
-  rows = s->main_rows = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  rows = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   s->my_info = pref_row (_("My info"), NULL, &s->my_info_summary, G_CALLBACK (on_my_info), s);
   gtk_box_append (GTK_BOX (rows), s->my_info);
   if (have_gnome_settings ())
@@ -490,10 +474,6 @@ ct_settings_new (GtkWidget *window)
   gtk_box_append (GTK_BOX (rows), pref_row (_("About Contacts"), NULL, NULL, G_CALLBACK (on_about), s));
   gtk_box_append (GTK_BOX (content), rows);
 
-  s->about_rows = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  gtk_box_append (GTK_BOX (s->about_rows), pref_row (_("Build version"), CT_VERSION, NULL, NULL, NULL));
-  gtk_widget_set_visible (s->about_rows, FALSE);
-  gtk_box_append (GTK_BOX (content), s->about_rows);
 
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), content);
   gtk_overlay_set_child (GTK_OVERLAY (overlay), scroll);
