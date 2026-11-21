@@ -906,6 +906,8 @@ const Footer = GObject.registerClass(
 class Footer extends St.Widget {
     constructor(stack) {
         super({width: px(SCREEN_W), height: px(FOOTER_H)});
+        this._pillH = FOOTER_PILL_H;
+        this._fill = SurfaceEffect[1];
         const history = this._button(HISTORY_X, ICON_BUTTON_W, 'Notification history',
             new VectorIcon('notif_footer_btn_history', px(FOOTER_ICON), Color.onSurface));
         // a Clutter.Text right inside a button would take the button's theme font
@@ -947,10 +949,21 @@ class Footer extends St.Widget {
 
     // the pills' fill, [rgb, alpha]
     setFill(fill) {
+        this._fill = fill;
         for (const button of this._buttons) {
             button.style = `background-color: ${rgba(...fill)}; ` +
-                `border-radius: ${px(FOOTER_PILL_H / 2).toFixed(2)}px;`;
+                `border-radius: ${px(this._pillH / 2).toFixed(2)}px;`;
         }
+    }
+
+    // the pills' top in the footer and their height (a phone's are taller, nearer the last card)
+    setPill(y, h) {
+        this._pillH = h;
+        for (const button of this._buttons) {
+            button.y = px(y);
+            button.height = px(h);
+        }
+        this.setFill(this._fill);
     }
 
     // under rows of @rowW: Clear all takes what the two icon buttons leave
@@ -978,7 +991,7 @@ class NotificationStack extends St.Widget {
         this._ratio = 1;
         this._scroll = 0;
         this._clearing = false;
-        this._frame = null;             // a tablet's panel (setFrame); the phone's full width without one
+        this._frame = null;             // the notification panel (setFrame); the screen less its margins before
         this._rowColors = {};           // ... and its cards' colours
         this._endShift = 0;             // a tablet's panel on its way in: how far above its place it is now
         this._clipTop = 0;              // ... and the line it comes out from under
@@ -1014,8 +1027,8 @@ class NotificationStack extends St.Widget {
         return this._emptyAlpha.now;
     }
 
-    // Where the rows go and where the stack ends, screen px: the phone's screen less its margins, or a tablet's
-    // notification panel, which the stack is cut to (where it is now, on its way in)
+    // Where the rows go and where the stack ends, screen px: the notification panel, which the stack is cut to (a
+    // tablet's where it is now, on its way in), or the screen less its margins before the shade has set one
     get _bounds() {
         if (!this._frame) {
             return {top: TOP_PADDING, left: SIDE, width: ROW_W, end: SCREEN_H, scrollEnd: SCREEN_H - BOTTOM_INSET,
@@ -1027,10 +1040,12 @@ class NotificationStack extends St.Widget {
             scrollEnd: this._frame.scrollEnd + this._endShift};
     }
 
-    // a tablet's panel (shadelayout.js: rows) for the screen as it is turned now; the rows wrap their text again
+    // the notification panel (shadelayout.js: rows) for the screen as it is turned now; the rows wrap their text again.
+    // A tablet's cards are opaque, a phone's translucent over the blurred screen.
     setFrame(frame) {
         this._frame = frame;
-        this._rowColors = {card: [TabletShade.card, 1], glyph: TabletShade.card};
+        this._rowColors = frame.translucent ? {card: SurfaceEffect[1], glyph: GLYPH_COLOR}
+            : {card: [TabletShade.card, 1], glyph: TabletShade.card};
         this.set_size(px(WIDTH), px(HEIGHT));
         const rows = new Set([...this._rows.values(), ...[...this._layout.keys()].filter(a => a instanceof Row)]);
         for (const row of rows) {
@@ -1040,6 +1055,7 @@ class NotificationStack extends St.Widget {
         this._header.setRowWidth(frame.width);
         this._footer.setRowWidth(frame.width);
         this._footer.setFill(this._rowColors.card);
+        this._footer.setPill(frame.footerPillY ?? FOOTER_PILL_Y, frame.footerPillH ?? FOOTER_PILL_H);
         this._relayout(false);
     }
 
@@ -1341,7 +1357,7 @@ class NotificationStack extends St.Widget {
         this._scroll = clamp(this._scroll, 0, this._maxScroll);
         const bounds = this._bounds;
         if (bounds.clipX !== null) {
-            // a tablet's panel: the stack never shows past it
+            // the panel: the stack never shows past it
             const clipY = Math.max(this._stackY, this._clipTop);
             this.set_clip(px(bounds.clipX), px(clipY), px(bounds.clipW), px(Math.max(bounds.end - clipY, 0)));
         } else if (this._scroll > 0) {
