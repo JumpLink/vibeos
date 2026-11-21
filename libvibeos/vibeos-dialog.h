@@ -32,6 +32,9 @@ void       vibeos_dialog_set_message  (VibeosDialog *self, const char *message);
 void       vibeos_dialog_set_content  (VibeosDialog *self, GtkWidget *content);
 /* buttons are added from the start: Android puts the negative one before the positive one */
 GtkWidget *vibeos_dialog_add_button   (VibeosDialog *self, const char *label, int response);
+/* a button at the row's start, apart from the others: Android's neutral button (Batch Rename's MORE). It does not
+ * answer or close the dialog; connect to its "clicked". Hiding it leaves the others where they are */
+GtkWidget *vibeos_dialog_add_neutral_button (VibeosDialog *self, const char *label);
 /* the card's own padding off (the time picker draws its header to the edges) */
 void       vibeos_dialog_set_flush    (VibeosDialog *self, gboolean flush);
 /* shows it over the window `parent` is in */

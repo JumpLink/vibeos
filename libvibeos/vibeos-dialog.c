@@ -259,6 +259,22 @@ vibeos_dialog_add_button (VibeosDialog *self, const char *label, int response)
   return button;
 }
 
+GtkWidget *
+vibeos_dialog_add_neutral_button (VibeosDialog *self, const char *label)
+{
+  GtkWidget *button = vibeos_text_button_new (label);
+  GtkWidget *space = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+
+  /* the row spans the card: this one at its start, then room that keeps the others at the end, also once this one
+   * is hidden */
+  gtk_widget_set_halign (self->buttons, GTK_ALIGN_FILL);
+  gtk_widget_set_hexpand (space, TRUE);
+  gtk_box_prepend (GTK_BOX (self->buttons), space);
+  gtk_box_prepend (GTK_BOX (self->buttons), button);
+  gtk_widget_set_visible (self->buttons, TRUE);
+  return button;
+}
+
 void
 vibeos_dialog_set_flush (VibeosDialog *self, gboolean flush)
 {
