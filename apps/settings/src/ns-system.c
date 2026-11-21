@@ -383,7 +383,7 @@ void
 ns_page_language (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Language & region", &c);
+  NsPage *page = ns_page_new ("Language and region", &c);
   Lang *l = g_new0 (Lang, 1);
   g_object_set_data_full (G_OBJECT (page), "ns-lang", l, (GDestroyNotify) lang_free);
   l->group = ns_group (c, NULL);
@@ -546,7 +546,7 @@ void
 ns_page_datetime (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Date & time", &c);
+  NsPage *page = ns_page_new ("Date and time", &c);
   Time *t = g_new0 (Time, 1);
   g_object_set_data_full (G_OBJECT (page), "ns-time", t, (GDestroyNotify) time_free);
   GtkWidget *g = ns_group (c, NULL);
@@ -1106,7 +1106,7 @@ void
 ns_page_mouse (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Mouse & touchpad", &c);
+  NsPage *page = ns_page_new ("Mouse and touchpad", &c);
   GSettings *mouse = ns_page_settings (page, "org.gnome.desktop.peripherals.mouse");
   GSettings *pad = ns_page_settings (page, "org.gnome.desktop.peripherals.touchpad");
   GSettings *kbd = ns_page_settings (page, "org.gnome.desktop.peripherals.keyboard");

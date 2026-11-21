@@ -29,10 +29,10 @@ typedef struct {
   NsCap       needs;           /* shown only while the device has this (a battery) */
 } Entry;
 
-/* The main menu, in Android's order and with its names. NULL title: the next card. Network & internet's summary
+/* The main menu, in Android's order and with its names. NULL title: the next card. Network and Internet's summary
  * and About's title follow the device (entry_texts). */
 static const Entry entries[] = {
-  { "network-wireless-symbolic", TINT_BLUE, "Network & internet", "Wi-Fi, hotspot",
+  { "network-wireless-symbolic", TINT_BLUE, "Network and Internet", "Wi-Fi, hotspot",
     "wlan wifi internet sim mobile data apn vpn hotspot tethering flight airplane proxy wired", ns_page_connections },
   { "bluetooth-symbolic", TINT_BLUE, "Connected devices", "Bluetooth, pairing",
     "pair headphones speaker watch sharing visible device name printers printing", ns_page_connected_devices },
@@ -41,12 +41,12 @@ static const Entry entries[] = {
     "permissions storage default browser email", ns_page_apps },
   { "preferences-system-notifications-symbolic", TINT_ORANGE, "Notifications",
     "App notifications, do not disturb", "dnd banner pop-up lock screen emergency alerts", ns_page_notifications },
-  { "audio-volume-high-symbolic", TINT_VIOLET, "Sound & vibration", "Volume, vibration, ringtone",
+  { "audio-volume-high-symbolic", TINT_VIOLET, "Sound and vibration", "Volume, vibration, ringtone",
     "ringtone alarm sound speaker microphone vibrate mute silent haptic dial pad tones", ns_page_sound },
   { "display-brightness-symbolic", TINT_LIME, "Display", "Dark theme, font size, brightness",
     "screen timeout adaptive brightness night light intensity warm amber rotate scale always on aod display size "
     "text bold zoom lock screen", ns_page_display },
-  { "preferences-desktop-wallpaper-symbolic", TINT_PINK, "Wallpaper & style", "Wallpapers, colours, home screen",
+  { "preferences-desktop-wallpaper-symbolic", TINT_PINK, "Wallpaper and style", "Wallpapers, colours, home screen",
     "background accent dark theme colour color parallax launcher grid columns rows layout icon size pack shape "
     "app names labels drawer", ns_page_wallpaper },
   { NULL },
@@ -58,7 +58,7 @@ static const Entry entries[] = {
   { "help-about-symbolic", TINT_GREY, "About phone", "Device name, versions",
     "phone tablet model kernel version memory storage name about", ns_page_about },
   { NULL },
-  { "security-high-symbolic", TINT_PURPLE, "Security & privacy", "Screen lock, permissions",
+  { "security-high-symbolic", TINT_PURPLE, "Security and privacy", "Screen lock, permissions",
     "password pin pattern swipe unlock lock screen camera microphone history trash", ns_page_privacy },
   { "find-location-symbolic", TINT_PURPLE, "Location", "Location services, app access",
     "gps geoclue", ns_page_location, "org.gnome.system.location" },
@@ -178,7 +178,7 @@ static const Inner inner[] = {
   { "Wi-Fi hotspot", "access point tethering share mobile data", "hotspot", ns_page_connections, NS_CAP_MODEM },
   { "SIMs", "sim mobile data roaming apn carrier operator pin", "mobile", ns_page_connections, NS_CAP_MODEM },
   { "Airplane mode", "flight mode offline radios", "network", ns_page_connections },
-  { "Network & VPN", "vpn wired ethernet proxy", "vpn", ns_page_connections },
+  { "Network and VPN", "vpn wired ethernet proxy", "vpn", ns_page_connections },
   { "Bluetooth", "pair pairing headphones headset speaker watch earbuds", "bluetooth", ns_page_connected_devices },
   { "Sharing", "device name visible visibility", "sharing", ns_page_connected_devices },
   { "Printers", "print printing printer", "printers", ns_page_connected_devices },
@@ -189,23 +189,23 @@ static const Inner inner[] = {
   { "Brightness", "adaptive brightness dim light", "display", ns_page_display },
   { "Screen timeout", "sleep screen off timeout", "display", ns_page_display },
   { "Dark theme", "dark mode night black", "display", ns_page_display },
-  { "Display size & text", "font size bold text zoom scale bigger smaller", "display-size", ns_page_display },
+  { "Display size and text", "font size bold text zoom scale bigger smaller", "display-size", ns_page_display },
   { "Night light", "warm amber blue light filter evening", "night-light", ns_page_display },
   { "Wallpapers", "background picture photo parallax", "wallpapers", ns_page_wallpaper },
   { "Home screen", "launcher grid columns rows icons drawer app names", "home", ns_page_wallpaper },
   { "Battery information", "health temperature capacity voltage", "battery-info", ns_page_battery, NS_CAP_BATTERY },
   { "Power and screen blank", "suspend sleep dim screen blank power saving", "screen-blank", ns_page_battery,
     NS_CAP_BATTERY },
-  { "Language & region", "language region locale formats translation", "language", ns_page_general },
+  { "Language and region", "language region locale formats translation", "language", ns_page_general },
   { "Keyboard", "on-screen keyboard osk layouts input typing", "keyboard", ns_page_general },
   { "Auto-correction", "autocorrect spelling typos suggestions next word prediction text correction", "keyboard",
     ns_page_general },
-  { "Mouse & touchpad", "pointer speed scrolling cursor", "mouse", ns_page_general },
-  { "Date & time", "clock time zone timezone 24-hour automatic", "datetime", ns_page_general },
+  { "Mouse and touchpad", "pointer speed scrolling cursor", "mouse", ns_page_general },
+  { "Date and time", "clock time zone timezone 24-hour automatic", "datetime", ns_page_general },
   { "Users", "user account password name avatar picture", "users", ns_page_general },
   { "Software information", "version build kernel device name", "software-information", ns_page_about },
   { "Lock screen", "screen lock password pin pattern swipe unlock", "lock-screen", ns_page_privacy },
-  { "Camera & microphone", "permission access", "security", ns_page_privacy },
+  { "Camera and microphone", "permission access", "security", ns_page_privacy },
   { "Recent files", "history remember clean up trash", "security", ns_page_privacy },
   { "Screen reader", "orca talkback speech read aloud blind", "accessibility", ns_page_accessibility },
   { "High contrast", "contrast colours colors outlines", "accessibility", ns_page_accessibility },
@@ -291,7 +291,7 @@ search_changed (VibeosSearchView *view, const char *text, GtkWidget *results)
 static void
 search_open (VibeosSearchBar *bar, gpointer data)
 {
-  GtkWidget *view = vibeos_search_view_new ("Search Settings");
+  GtkWidget *view = vibeos_search_view_new ("Search settings");
   GtkWidget *results = vibeos_card_list_new ();
   vibeos_card_list_set_margins (VIBEOS_CARD_LIST (results), 8, 16);
   gtk_widget_add_css_class (results, "ns-search-results");
@@ -304,7 +304,7 @@ search_open (VibeosSearchBar *bar, gpointer data)
 
 /* ---- the main menu: the search pill pinned over the scrolled cards ---- */
 
-/* the texts that follow the device: a modem adds Mobile to Network & internet and the ringtone to Sound &
+/* the texts that follow the device: a modem adds Mobile to Network and Internet and the ringtone to Sound and
  * vibration, a tablet is About tablet */
 static const char *
 entry_summary (const Entry *e)
@@ -331,8 +331,6 @@ entry_texts (void)
 static void
 theme_changed (VibeosTheme *theme, gpointer data)
 {
-  GdkRGBA pill = vibeos_color (VIBEOS_SURFACE_CONTAINER_LOWEST);
-  vibeos_search_bar_set_fill (VIBEOS_SEARCH_BAR (search_bar), &pill);
   for (guint i = 0; i < menu_rows->len; i++)
     set_circle (menu_rows->pdata[i], g_object_get_data (menu_rows->pdata[i], "ns-entry"));
 }
@@ -343,8 +341,10 @@ main_page (void)
   GtkWidget *page = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (page, "ns-main");
 
-  search_bar = vibeos_search_bar_new ("Search Settings");
+  search_bar = vibeos_search_bar_new ("Search settings");
   vibeos_search_bar_set_geometry (VIBEOS_SEARCH_BAR (search_bar), 72, 16, 24, 56);
+  /* Android 17's: a line round the page's own colour, not a filled pill */
+  vibeos_search_bar_set_outlined (VIBEOS_SEARCH_BAR (search_bar), TRUE);
   gtk_widget_add_css_class (search_bar, "ns-search-pill");
   g_signal_connect (search_bar, "activated", G_CALLBACK (search_open), NULL);
   gtk_box_append (GTK_BOX (page), search_bar);
@@ -466,7 +466,7 @@ startup (GApplication *app, gpointer data)
 
 /* a page by name: `--page home` (the launcher's "Settings" opens the home screen's), the panel names vibeos asks
  * for (a quick settings tile's long press, the volume panel's and the notification shade's settings buttons) and
- * GNOME Settings' names, which other apps ask for. "network" is the flight mode tile's: Network & internet has the
+ * GNOME Settings' names, which other apps ask for. "network" is the flight mode tile's: Network and Internet has the
  * switch. A page that is not a menu entry itself opens as one, its entry's row selected (`entry`), or, `deep`, over
  * its entry's page. */
 static const struct {

@@ -1,4 +1,4 @@
-/* Sound & vibration. The media and microphone volumes and the output device through libpulse (PipeWire's pulse
+/* Sound and vibration. The media and microphone volumes and the output device through libpulse (PipeWire's pulse
  * server here), connected once at start (ns_sound_init) and followed by its subscription. The sound mode and the
  * vibration strength are feedbackd's settings, which the volume panel, the Phone and the Clock all follow.
  *
@@ -464,7 +464,7 @@ void
 ns_page_sound (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Sound & vibration", &c);
+  NsPage *page = ns_page_new ("Sound and vibration", &c);
   Sound *s = g_new0 (Sound, 1);
   s->names = g_ptr_array_new_with_free_func (g_free);
   g_object_set_data_full (G_OBJECT (page), "sound", s, (GDestroyNotify) sound_free);

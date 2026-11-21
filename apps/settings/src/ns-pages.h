@@ -5,7 +5,7 @@
 #include "ns-ui.h"
 
 /* ns-pages.c: the hubs and the small pages */
-/* Network & internet, Connected devices */
+/* Network and Internet, Connected devices */
 void ns_page_connections (GtkWidget *row, gpointer data);
 void ns_page_connected_devices (GtkWidget *row, gpointer data);
 void ns_page_display (GtkWidget *row, gpointer data);

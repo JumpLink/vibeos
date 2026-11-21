@@ -25,7 +25,7 @@ page_row (GtkWidget *g, const char *icon, const char *title, const char *sub, Ns
   return r;
 }
 
-/* ---- Network & internet ---- */
+/* ---- Network and Internet ---- */
 
 /* Airplane mode is gnome-settings-daemon's rfkill switch */
 static void
@@ -62,11 +62,11 @@ void
 ns_page_connections (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Network & internet", &c);
+  NsPage *page = ns_page_new ("Network and Internet", &c);
   GtkWidget *g = ns_group (c, NULL);
-  page_row (g, "network-wireless-symbolic", "Wi-Fi", "Networks • Saved networks", ns_page_wifi);
+  page_row (g, "network-wireless-symbolic", "Wi-Fi", "Networks, saved networks", ns_page_wifi);
   /* a SIM's mobile data and a hotspot that shares it: with a modem only */
-  GtkWidget *r = page_row (g, "network-cellular-symbolic", "SIMs", "Mobile data • Access points", ns_page_mobile);
+  GtkWidget *r = page_row (g, "network-cellular-symbolic", "SIMs", "Mobile data, access points", ns_page_mobile);
   ns_caps_bind_visible (r, NS_CAP_MODEM);
   GtkWidget *air = ns_row (g, "airplane-mode-symbolic", "Airplane mode",
                            "Turn off Wi-Fi, Bluetooth and the mobile network");
@@ -83,7 +83,7 @@ ns_page_connections (GtkWidget *row, gpointer data)
   r = page_row (g, "network-wireless-hotspot-symbolic", "Wi-Fi hotspot", "Share the mobile data", ns_page_hotspot);
   ns_caps_bind_visible (r, NS_CAP_MODEM);
   g = ns_group (c, NULL);
-  page_row (g, "network-vpn-symbolic", "Network & VPN", "VPN • Wired • Proxy", ns_page_network);
+  page_row (g, "network-vpn-symbolic", "Network and VPN", "VPN, wired, proxy", ns_page_network);
   ns_push (page);
 }
 
@@ -95,9 +95,9 @@ ns_page_connected_devices (GtkWidget *row, gpointer data)
   GtkWidget *c;
   NsPage *page = ns_page_new ("Connected devices", &c);
   GtkWidget *g = ns_group (c, NULL);
-  page_row (g, "bluetooth-symbolic", "Bluetooth", "Pair new device • Paired devices", ns_page_bluetooth);
+  page_row (g, "bluetooth-symbolic", "Bluetooth", "Pair new device, paired devices", ns_page_bluetooth);
   g = ns_group (c, "Connection preferences");
-  page_row (g, "emblem-shared-symbolic", "Sharing", "Device name • Visibility", ns_page_sharing);
+  page_row (g, "emblem-shared-symbolic", "Sharing", "Device name, visibility", ns_page_sharing);
   /* printing needs CUPS, which a phone rarely has: GNOME Settings' page, only when it is there */
   g_autofree char *cups = g_find_program_in_path ("lpstat");
   if (cups)
@@ -636,7 +636,7 @@ ns_page_display (GtkWidget *row, gpointer data)
   g = ns_group (c, "Lock display");
   GSettings *vibeos = ns_page_settings (page, "vibeos.Shell");
   if (vibeos && ns_has_key (vibeos, "lock-type"))
-    page_row (g, NULL, "Lock screen", "Screen lock type • What it shows", ns_page_lock_screen);
+    page_row (g, NULL, "Lock screen", "Screen lock type, what it shows", ns_page_lock_screen);
   if (vibeos && ns_has_key (vibeos, "aod") && ns_panel_is_oled ())
     ns_row_switch (g, "Always On Display", "The time, battery and notifications on a black screen while it is off",
                    vibeos, "aod");
@@ -649,7 +649,7 @@ ns_page_display (GtkWidget *row, gpointer data)
 
   g = ns_group (c, "Appearance");
   dark_row (g, iface);
-  page_row (g, NULL, "Display size & text", "Font size • Bold text • Display size", ns_page_display_size);
+  page_row (g, NULL, "Display size and text", "Font size, display size, bold text", ns_page_display_size);
   ns_displays_scale_row (GTK_WIDGET (page), g);
 
   GSettings *color = ns_page_settings (page, "org.gnome.settings-daemon.plugins.color");
@@ -672,7 +672,7 @@ ns_page_display (GtkWidget *row, gpointer data)
   ns_push (page);
 }
 
-/* ---- Display size & text ---- */
+/* ---- Display size and text ---- */
 
 /* the Font size step closest to the factor there is (GNOME's own settings take any) */
 static guint
@@ -930,7 +930,7 @@ void
 ns_page_display_size (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Display size & text", &c);
+  NsPage *page = ns_page_new ("Display size and text", &c);
   GSettings *iface = ns_page_settings (page, "org.gnome.desktop.interface");
   GSettings *vi = ns_page_settings (page, "vibeos.Interface");
   g_object_set_data (G_OBJECT (page), "ns-iface", iface);
@@ -1242,13 +1242,13 @@ ns_page_battery (GtkWidget *row, gpointer data)
    * (statusbar.js paintBattery) has no number in it yet. It needs the level drawn into the battery's body when the
    * key is on. */
   g = ns_group (c, NULL);
-  page_row (g, NULL, "Battery information", "Health • Temperature • Capacity", ns_page_battery_info);
+  page_row (g, NULL, "Battery information", "Health, temperature, capacity", ns_page_battery_info);
   page_row (g, NULL, "Power and screen blank",
-            ns_screen_off_sleeper () ? "Dim the screen" : "Automatic suspend • Dim the screen", ns_page_power);
+            ns_screen_off_sleeper () ? "Dim the screen" : "Automatic suspend, dim the screen", ns_page_power);
   ns_push (page);
 }
 
-/* ---- Wallpaper & style ---- */
+/* ---- Wallpaper and style ---- */
 
 /* the colours offered for the system's colours: seeds for vibeos.Theme (each swatch shows the primary colour the
  * theme engine makes of its seed), and the GNOME accent each comes closest to, for GTK apps that follow
@@ -1376,7 +1376,7 @@ void
 ns_page_wallpaper (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Wallpaper & style", &c);
+  NsPage *page = ns_page_new ("Wallpaper and style", &c);
   GSettings *bg = ns_page_settings (page, "org.gnome.desktop.background");
   GSettings *iface = ns_page_settings (page, "org.gnome.desktop.interface");
 
@@ -1410,7 +1410,7 @@ ns_page_wallpaper (GtkWidget *row, gpointer data)
   /* the launcher's own options: its grid, its icons */
   if (vibeos) {
     g = ns_group (c, "Home screen");
-    page_row (g, "view-app-grid-symbolic", "Home screen", "Grid • Icon size • Icon pack", ns_page_home);
+    page_row (g, "view-app-grid-symbolic", "Home screen", "Grid, icon size, icon pack", ns_page_home);
   }
   ns_push (page);
 }
@@ -1680,17 +1680,17 @@ ns_page_general (GtkWidget *row, gpointer data)
   GtkWidget *c;
   NsPage *page = ns_page_new ("System", &c);
   GtkWidget *g = ns_group (c, NULL);
-  page_row (g, "preferences-desktop-locale-symbolic", "Language & region", "Language • Formats", ns_page_language);
-  page_row (g, "input-keyboard-symbolic", "Keyboard", "On-screen keyboard • Layouts", ns_page_keyboard);
-  page_row (g, "input-mouse-symbolic", "Mouse & touchpad", "Pointer speed • Hardware keyboard", ns_page_mouse);
-  page_row (g, "preferences-system-time-symbolic", "Date & time", "Automatic time • Time zone", ns_page_datetime);
+  page_row (g, "preferences-desktop-locale-symbolic", "Language and region", "Language, formats", ns_page_language);
+  page_row (g, "input-keyboard-symbolic", "Keyboard", "On-screen keyboard, layouts", ns_page_keyboard);
+  page_row (g, "input-mouse-symbolic", "Mouse and touchpad", "Pointer speed, hardware keyboard", ns_page_mouse);
+  page_row (g, "preferences-system-time-symbolic", "Date and time", "Automatic time, time zone", ns_page_datetime);
   if (have_updates ()) {
     g = ns_group (c, NULL);
     GtkWidget *r = ns_row (g, "software-update-available-symbolic", "System updates", "Download and install");
     ns_row_on_activate (r, updates_tapped, NULL);
   }
   g = ns_group (c, NULL);
-  page_row (g, "system-users-symbolic", "Users", "Your account • Password", ns_page_users);
+  page_row (g, "system-users-symbolic", "Users", "Your account, password", ns_page_users);
   ns_push (page);
 }
 
@@ -1781,6 +1781,6 @@ ns_page_about (GtkWidget *row, gpointer data)
   ns_row_info (g, "Processor", cpus);
 
   g = ns_group (c, NULL);
-  page_row (g, NULL, "Software information", "Device name • Versions", ns_page_software);
+  page_row (g, NULL, "Software information", "Device name, versions", ns_page_software);
   ns_push (page);
 }
