@@ -209,9 +209,15 @@ on_insert (GSimpleAction *action, GVariant *parameter, gpointer app)
 {
   GtkWidget *window = contacts_window (app);
   g_autoptr(EContact) prefill = prefill_from (parameter);
+  GtkWidget *top = ct_window_top (window);
 
   gtk_window_present (GTK_WINDOW (window));
+  /* an editor an earlier request opened and nobody touched makes way: stacked, each Discard showed the one under
+   * it and the editor seemed never to close (owner, 11-21) */
+  if (ct_editor_is_untouched_external (top))
+    ct_window_pop (window, top);
   ct_window_new_contact (window, prefill);
+  ct_editor_set_external (ct_window_top (window));
 }
 
 static void
@@ -221,7 +227,10 @@ on_insert_picked (GPtrArray *uids, gpointer data)
   GtkWidget *window = g_object_get_data (G_OBJECT (prefill), "ct-window");
 
   if (uids->len)
-    ct_window_push (window, ct_editor_new (window, uids->pdata[0], prefill));
+    {
+      ct_window_push (window, ct_editor_new (window, uids->pdata[0], prefill));
+      ct_editor_set_external (ct_window_top (window));
+    }
 }
 
 static void
@@ -229,7 +238,10 @@ on_insert_new (gpointer data)
 {
   EContact *prefill = data;
 
-  ct_window_new_contact (g_object_get_data (G_OBJECT (prefill), "ct-window"), prefill);
+  GtkWidget *window = g_object_get_data (G_OBJECT (prefill), "ct-window");
+
+  ct_window_new_contact (window, prefill);
+  ct_editor_set_external (ct_window_top (window));
 }
 
 /* insert-or-edit: "Choose a contact" with "Create new contact" first */

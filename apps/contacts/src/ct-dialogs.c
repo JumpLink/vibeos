@@ -43,17 +43,41 @@ on_button (VibeosPressable *button, VibeosDialog *vibeos)
   vibeos_dialog_respond (vibeos, GPOINTER_TO_INT (g_object_get_data (G_OBJECT (button), "ct-response")));
 }
 
+/* An AppCompat dialog's least width, a share of the screen's (windowMinWidthMajor in landscape, Minor upright) by the
+ * screen's size: 65 % / 95 % on a phone (values), 55 % / 80 % from 640 x 480 dp (values-large), 45 % / 72 % from
+ * 960 x 720 dp (values-xlarge). At a phone's 95 % the tablet's "Discard changes?" ran across the whole landscape
+ * screen (owner, 11-21). */
+static int
+appcompat_width (GtkWidget *root)
+{
+  int w = gtk_widget_get_width (root), h = gtk_widget_get_height (root);
+  int big, small;
+  double share;
+
+  if (w <= 0 || h <= 0)
+    return (int) (0.95 * 360);
+  big = MAX (w, h);
+  small = MIN (w, h);
+  if (big >= 960 && small >= 720)
+    share = w > h ? 0.45 : 0.72;
+  else if (big >= 640 && small >= 480)
+    share = w > h ? 0.55 : 0.80;
+  else
+    share = w > h ? 0.65 : 0.95;
+  return (int) (share * w);
+}
+
 /* the card: the content box the dialog's parts go in, as wide as the dialog kind says */
 static GtkWidget *
 dialog_card (GtkWidget *parent, VibeosDialog *vibeos, CtDialogWidth width, const char *title)
 {
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  int screen = gtk_widget_get_width (GTK_WIDGET (gtk_widget_get_root (parent)));
 
   vibeos_dialog_set_flush (vibeos, TRUE);
   gtk_widget_add_css_class (box, "ct-dialog");
-  gtk_widget_set_size_request (box, width == CT_DIALOG_FRAMEWORK ? (int) CT_DIALOG_W_DP
-                                                                 : (int) (CT_DIALOG_MIN_W_FRAC * (screen > 0 ? screen : 360)),
+  gtk_widget_set_size_request (box, width == CT_DIALOG_FRAMEWORK
+                                      ? (int) CT_DIALOG_W_DP
+                                      : appcompat_width (GTK_WIDGET (gtk_widget_get_root (parent))),
                                -1);
   if (title)
     {
