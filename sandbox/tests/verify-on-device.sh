@@ -85,6 +85,15 @@ portal () {   # location|camera
 reach () {   # bus name, object path
   inside "gdbus introspect --session --dest $1 --object-path $2 >/dev/null 2>&1 && echo reachable || echo unreachable"
 }
+# whether the bus lists a name to the app at all (ListNames from inside: only the names are compared)
+listed () {   # bus name
+  inside "gdbus call --session --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus --method org.freedesktop.DBus.ListNames 2>/dev/null | tr -d \"[]'(),\" | tr ' ' '\\n' | grep -qx '$1' && echo listed || echo invisible"
+}
+# whether the name is on the bus at all, seen from outside
+owned () {   # bus name
+  as_user gdbus call --session --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus \
+    --method org.freedesktop.DBus.NameHasOwner "$1" 2>/dev/null | grep -q true && echo yes || echo no
+}
 # how many PipeWire nodes of a class the app sees
 pw_count () {   # media.class prefix
   inside "pw-dump 2>/dev/null | grep -c '\"media.class\": \"$1' || true"
@@ -270,6 +279,14 @@ fi
 echo "-- contacts, calendar"
 set_perm contacts deny
 set_perm calendar deny
+for n in org.gnome.evolution.dataserver.AddressBook10 org.gnome.evolution.dataserver.Sources5 \
+         org.gnome.evolution.dataserver.Calendar8; do
+  if [ "$(owned $n)" = yes ]; then
+    check "denied: $n on the bus, not listed" "invisible" "$(listed $n)"
+  else
+    echo "SKIP  denied: $n is not on the bus now"
+  fi
+done
 check "contacts denied: address books" "unreachable" "$(reach org.gnome.evolution.dataserver.AddressBook10 /org/gnome/evolution/dataserver/AddressBookFactory)"
 check "contacts denied: the source list" "unreachable" "$(reach org.gnome.evolution.dataserver.Sources5 /org/gnome/evolution/dataserver/SourceManager)"
 check "calendar denied: calendars" "unreachable" "$(reach org.gnome.evolution.dataserver.Calendar8 /org/gnome/evolution/dataserver/CalendarFactory)"
@@ -287,14 +304,23 @@ set_perm calendar deny
 echo "-- phone, SMS"
 set_perm phone deny
 set_perm sms deny
+for n in vibeos.Dialer.Calls vibeos.Messaging.Sms; do
+  if [ "$(owned $n)" = yes ]; then
+    check "denied: $n on the bus, not listed" "invisible" "$(listed $n)"
+  else
+    echo "SKIP  denied: $n is not on the bus now"
+  fi
+done
 check "phone denied: the call service" "unreachable" "$(reach vibeos.Dialer.Calls /vibeos/Dialer/Calls)"
 check "SMS denied: the SMS service" "unreachable" "$(reach vibeos.Messaging.Sms /vibeos/Messaging/Sms)"
 set_perm phone allow
 check "phone allowed: the call service" "reachable" "$(reach vibeos.Dialer.Calls /vibeos/Dialer/Calls)"
+check "phone allowed: the call service listed" "listed" "$(listed vibeos.Dialer.Calls)"
 check "phone allowed: SMS still" "unreachable" "$(reach vibeos.Messaging.Sms /vibeos/Messaging/Sms)"
 set_perm phone deny
 set_perm sms allow
 check "SMS allowed: the SMS service" "reachable" "$(reach vibeos.Messaging.Sms /vibeos/Messaging/Sms)"
+check "SMS allowed: the SMS service listed" "listed" "$(listed vibeos.Messaging.Sms)"
 set_perm sms deny
 
 echo "-- files"
