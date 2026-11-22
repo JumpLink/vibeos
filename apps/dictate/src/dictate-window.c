@@ -17,7 +17,8 @@
  * says is a bubble on the right, the model's reply (dictate-talk.h) one on the left, written as it comes and spoken
  * sentence by sentence. The engine listens for one turn (dictate_engine_set_turns: voice activity detection
  * finds where the user has finished) and what they said goes to the model; once the reply has been spoken it
- * listens again. The FAB sends at once while listening, and stops a reply being written or spoken, and listens. */
+ * listens again. While it listens or a reply is written or spoken, the FAB is a stop square and stops all of it: the
+ * reply ends where it is, what was heard and not yet sent is dropped, and nothing listens until the next tap. */
 #include "dictate-window.h"
 #include "dictate-engine.h"
 #include "dictate-mic.h"
@@ -58,6 +59,7 @@ typedef struct {
   char *speaking;               /* the language of the dictation going on, for its casing */
   gboolean close_when_idle;     /* closed while listening: it closes once the last words are in */
   gboolean restart_when_idle;   /* the language changed while listening: listening goes on in the new one */
+  gboolean drop_when_idle;      /* Talk: stopped by the user while listening: what was heard is not sent */
   /* Talk */
   GtkWidget *title, *stack, *talk_scroller, *talk_list, *speak;
   DictateTalk *talk;
@@ -467,6 +469,19 @@ talk_heard (Window *self, char **finished, const char *partial)
     }
 }
 
+/* the user stopped the listening: what was heard is not sent, and its bubble goes */
+static void
+talk_drop (Window *self)
+{
+  g_string_truncate (self->heard, 0);
+  g_clear_pointer (&self->said, g_free);
+  if (self->mine)
+    {
+      gtk_box_remove (GTK_BOX (self->talk_list), self->mine);
+      self->mine = NULL;
+    }
+}
+
 /* listening has ended: what was said goes to the model, or its empty bubble goes */
 static void
 talk_send (Window *self)
@@ -551,30 +566,31 @@ on_talk_error (DictateTalk *talk, const char *message, Window *self)
   vibeos_snackbar_show (self->snackbar, message, NULL, NULL, NULL, VIBEOS_SNACKBAR_LONG);
 }
 
-/* the FAB in Talk: listen; while listening, send now; while a reply is written or spoken, stop it and listen */
+/* the FAB in Talk: idle, it listens; otherwise it is the stop square and stops everything: the reply being written
+ * or spoken, and the listening, whose words so far are dropped (not sent); then nothing listens until the next tap */
 static void
 talk_mic (Window *self)
 {
-  if (dictate_talk_get_state (self->talk) != DICTATE_TALK_IDLE)
+  DictateState state = dictate_engine_get_state (self->engine);
+  gboolean replying = dictate_talk_get_state (self->talk) != DICTATE_TALK_IDLE;
+
+  if (!replying && state == DICTATE_IDLE)
+    {
+      talk_listen (self);
+      return;
+    }
+  if (replying)
     {
       self->stopping_reply = TRUE;
       dictate_talk_stop (self->talk);
       self->stopping_reply = FALSE;
-      talk_listen (self);
-      return;
     }
-  switch (dictate_engine_get_state (self->engine))
+  if (state == DICTATE_STARTING || state == DICTATE_LISTENING)
     {
-    case DICTATE_IDLE:
-      talk_listen (self);
-      break;
-    case DICTATE_STARTING:
-    case DICTATE_LISTENING:
+      self->drop_when_idle = TRUE;
       dictate_engine_stop (self->engine);
-      break;
-    case DICTATE_STOPPING:
-      break;
     }
+  show_state (self);
 }
 
 /* a new conversation: the bubbles go, and the model forgets */
@@ -613,6 +629,13 @@ on_state_changed (DictateEngine *engine, Window *self)
           /* the language changed while listening: what was said is dropped, listening goes on in the new one */
           self->restart_when_idle = FALSE;
           talk_listen (self);
+          return;
+        }
+      if (self->drop_when_idle)
+        {
+          self->drop_when_idle = FALSE;
+          talk_drop (self);
+          show_state (self);
           return;
         }
       talk_send (self);
