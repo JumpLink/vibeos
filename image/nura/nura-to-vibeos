@@ -7,9 +7,9 @@ the VibeOS system zip (step 2 of VibeOS's two-step install).
   nura-to-vibeos [options] --device xiaomi-surya --panel huaxing ...-qcom-sm7150.img.xz
 
 It keeps Nura's kernel and DTB as Nura boots them (the boot.img header version, addresses, page size and the
-command line the kernel needs; pmOS's own parameters dropped) and replaces postmarketOS's initramfs with VibeOS's,
-which only finds the VibeOS root and starts it. The kernel's modules and all of the device's firmware go into the
-zip's payload, with the device's settings a Debian/systemd VibeOS can use (UCM, udev rules, the sensors' mount
+command line the kernel needs; pmOS's own parameters dropped, Plymouth off) and replaces postmarketOS's initramfs
+with VibeOS's, which only finds the VibeOS root and starts it. The kernel's modules and all of the device's firmware
+go into the zip's payload, with the device's settings a Debian/systemd VibeOS can use (UCM, udev rules, the sensors' mount
 matrix, hexagonrpcd's firmware directory, the units pmOS disables) and Debian's builds of the Qualcomm daemons
 (rmtfs, tqftpserv, hexagonrpcd, qrtr, qbootctl, 81voltd) for the first boot to install. Nothing from the images is
 run: they are read as data (debugfs, mtools, python), never mounted.
@@ -274,14 +274,17 @@ class Nura:
 
 # ---------------------------------------------------------------- the boot image
 def clean_cmdline(c):
+    """Nura's command line without pmOS's own parameters, and with Plymouth off: Nura's splash settings are for
+    pmOS's boot, and Debian's plymouthd they start in VibeOS crashed the OnePlus 6T's first boot (it stopped at a
+    maps: dump of /usr/sbin/plymouthd)"""
     keep, dropped = [], []
     for t in c.split():
-        if t.startswith(('pmos_', 'pmos.')) or t.split('=')[0] in ('root', 'rootfstype', 'rootflags', 'init',
-                                                                     'initrd', 'rw', 'ro'):
+        if t.startswith(('pmos_', 'pmos.', 'plymouth.')) or t.split('=')[0] in ('root', 'rootfstype', 'rootflags',
+                                                                                'init', 'initrd', 'rw', 'ro', 'splash'):
             dropped.append(t)
         else:
             keep.append(t)
-    return ' '.join(keep), dropped
+    return ' '.join(keep + ['plymouth.enable=0']), dropped
 
 
 def device_row(nura_dev):
