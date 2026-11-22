@@ -291,7 +291,8 @@ def device_row(nura_dev):
         if f and not f[0].startswith('#') and f[0] == nura_dev:
             return {'android': f[1].split(','), 'dtb': None if f[2] == '-' else f[2],
                     'layout': None if f[3] == '-' else f[3],
-                    'panels': [] if len(f) < 5 or f[4] == '-' else f[4].split(',')}
+                    'panels': [] if len(f) < 5 or f[4] == '-' else f[4].split(','),
+                    'dtbo': 'clear' if len(f) > 5 and f[5] == 'clear' else None}
     return None
 
 
@@ -1114,6 +1115,8 @@ def convert(args, out, srcs, url, stamp, tmpw, t0):
             dev, nura.di.get('name', dev), kver, args.boot_target, h['header_version'], url or 'local files'))
         if plan.get('panel'):
             f.write('panel=%s\n' % plan['panel'])
+        if row and row['dtbo']:
+            f.write('dtbo=%s\n' % row['dtbo'])
     with open(os.path.join(Z, 'device-sums.txt'), 'w') as f:
         for n_, p_ in (('payload', 'payload.tar'), ('bootimg', 'boot.img')):
             f.write('%s %d %s\n' % (n_, os.path.getsize(os.path.join(Z, p_)), sha256f(os.path.join(Z, p_))))
@@ -1158,6 +1161,8 @@ def convert(args, out, srcs, url, stamp, tmpw, t0):
         rdinfo['compression'], rdinfo['size'] >> 10, rdinfo['raw_size'] >> 10, os.path.basename(bbdeb),
         len(rdinfo['modules']), len(rdinfo['firmware']), ' '.join(rdinfo['early_load']) or '-'))
     R.append('  boot target in the zip: %s' % args.boot_target)
+    if row and row['dtbo']:
+        R.append('  dtbo: the boot slot\'s cleared after boot is written (its old content saved in the system)')
     if plan.get('panel'):
         R.append('  panel: %s (the zip refuses a phone whose bootloader names another panel)' % plan['panel'])
     R.append('')

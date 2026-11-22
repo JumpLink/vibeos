@@ -8,8 +8,11 @@
 #             when the image's deviceinfo has none
 #   panels    phones sold with different panels, one DTB each: the words that tell them apart, in the
 #             DTB's name and in msm_drm.dsi_display0= on the bootloader's command line (--panel)
-# nura               android                          dtb                                   layout                                       panels
-oneplus-fajita       fajita,OnePlus6T,OnePlus6TSingle -                                     -                                            -
+#   dtbo      clear: the zip zeroes the dtbo partition of the slot it boots from, once boot is written. The ABL lays
+#             that partition's overlays (Android's, for its own kernel) over the DTB of every boot image; on a
+#             mainline DTB that fails, and the ABL drops to fastboot without a word (OnePlus 6T)
+# nura               android                          dtb                                   layout                                       panels          dtbo
+oneplus-fajita       fajita,OnePlus6T,OnePlus6TSingle -                                     -                                            -               clear
 oneplus-enchilada    enchilada,OnePlus6               -                                     -                                            -
 google-sargo         sargo                            -                                     -                                            -
 google-bonito        bonito                           -                                     -                                            -

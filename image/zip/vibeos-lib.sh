@@ -236,3 +236,14 @@ check() {
 	blockdev --flushbufs "$1" 2>/dev/null
 	[ "$(head -c $4 "$1" | sha256sum | cut -d' ' -f1)" = "$5" ] || die "$2 was not written correctly to $1"
 }
+# dtbo_for BT: the dtbo partition the ABL lays over the DTB of what boot partition BT boots (boot_a: dtbo_a), if
+# the device has one; nothing for recovery or none
+dtbo_for() { case $1 in boot|boot_a|boot_b) part dtbo${1#boot} > /dev/null && echo dtbo${1#boot} ;; esac; }
+# zero DEV: DEV all zeros, read back
+zero() {
+	nz=$(($(blocks4k "$1") * 4096))
+	dd if=/dev/zero of="$1" bs=4096 count=$((nz / 4096)) conv=notrunc 2>/dev/null || return 1
+	sync
+	blockdev --flushbufs "$1" 2>/dev/null
+	[ "$(head -c $nz "$1" | sha256sum | cut -d' ' -f1)" = "$(head -c $nz /dev/zero | sha256sum | cut -d' ' -f1)" ]
+}

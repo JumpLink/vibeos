@@ -1,0 +1,49 @@
+#!/bin/sh
+# dtbo-test.sh: dtbo_for and zero of zip/vibeos-lib.sh on the host (no root), as nura-install.sh runs them on a device
+# whose table row says dtbo clear: a by-name directory of files stands in for /dev/block/by-name. dtbo_for must name
+# the boot slot's dtbo (boot_a: dtbo_a) and nothing for recovery, none, or a device without dtbo; zero must leave the
+# partition all zeros and its neighbour untouched. Also: nura-to-vibeos reads the column (fajita clear, others not).
+set -u
+T=$(cd "$(dirname "$0")/.." && pwd)
+W=$(mktemp -d)
+trap 'rm -rf "$W"' EXIT
+FAILS=0
+ok() { echo "  ok: $*"; }
+bad() { echo "  FAIL: $*"; FAILS=$((FAILS + 1)); }
+
+B=$W/by-name
+mkdir -p $B $W/tmp
+for n in boot_a boot_b dtbo_a dtbo_b; do head -c 1048576 /dev/urandom > $B/$n; done
+SUM_B=$(sha256sum < $B/dtbo_b)
+lib() {
+	. $T/zip/vibeos-lib.sh
+	BY=$B P=$W/vibeos.prop T=$W/tmp/vibeos
+	sectors512() { echo $(($(stat -c %s "$1") / 512)); }
+	blockdev() { :; }
+}
+
+echo "dtbo_for:"
+for c in boot_a:dtbo_a boot_b:dtbo_b recovery: none: boot:; do
+	X=$( lib; dtbo_for ${c%%:*} )
+	[ "$X" = "${c#*:}" ] && ok "${c%%:*} -> '${X}'" || bad "${c%%:*} -> '$X', want '${c#*:}'"
+done
+X=$( lib; BY=$W/none; dtbo_for boot_a )
+[ -z "$X" ] && ok "no dtbo partition -> ''" || bad "no dtbo partition -> '$X'"
+
+echo "zero:"
+( lib; zero $(part dtbo_a) ) > $W/out 2>&1 && ok "zero dtbo_a" || bad "zero: $(cat $W/out)"
+[ "$(tr -d '\0' < $B/dtbo_a | wc -c)" = 0 ] && ok "dtbo_a all zeros" || bad "dtbo_a not zero"
+[ "$(stat -c %s $B/dtbo_a)" = 1048576 ] && ok "its size kept" || bad "dtbo_a's size changed"
+[ "$(sha256sum < $B/dtbo_b)" = "$SUM_B" ] && ok "dtbo_b untouched" || bad "dtbo_b changed"
+
+echo "the device table:"
+python3 -I - $T/nura/nura-to-vibeos > $W/out 2>&1 <<'EOF' && ok "$(cat $W/out)" || bad "$(cat $W/out)"
+import importlib.machinery, importlib.util, sys
+spec = importlib.util.spec_from_loader('n', importlib.machinery.SourceFileLoader('n', sys.argv[1]))
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+got = {d: m.device_row(d)['dtbo'] for d in ('oneplus-fajita', 'oneplus-enchilada', 'xiaomi-surya')}
+assert got == {'oneplus-fajita': 'clear', 'oneplus-enchilada': None, 'xiaomi-surya': None}, got
+assert m.device_row('xiaomi-surya')['panels'] == ['huaxing', 'tianma']
+print('dtbo column: %s' % got)
+EOF
+[ $FAILS = 0 ] && echo "all ok" || { echo "$FAILS failed"; exit 1; }

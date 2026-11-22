@@ -88,12 +88,16 @@ find)
 	none) ;;
 	*) die "boot target $(nget boot_target): not possible here (slot '$SLOT')" ;;
 	esac
-	put kind $KIND; put name "$NAME"; put image "$IMGF"; put dev "$DEVP"; put boot_target $BT
+	# the boot slot's dtbo, on a device whose table row says clear (nura-device.prop's dtbo)
+	DT=; [ "$(nget dtbo)" != clear ] || DT=$(dtbo_for $BT)
+	[ -z "$DT" ] || guard $(part $DT)
+	put kind $KIND; put name "$NAME"; put image "$IMGF"; put dev "$DEVP"; put boot_target $BT; put dtbo_target "$DT"
 	say "  the system: $(case $KIND in image) echo "$IMGF" ;; nested) echo "the root inside '$NAME'" ;; *) echo "partition '$NAME'" ;; esac)"
 	say "  the boot image goes to: $(case $BT in none) echo "nowhere (fastboot boot it)" ;; *) echo "$BT" ;; esac)"
+	[ -z "$DT" ] || say "  $DT is cleared after it (Android's overlays stop this kernel from booting)"
 	;;
 install)
-	KIND=$(get kind) NAME=$(get name) IMGF=$(get image) DEVP=$(get dev) BT=$(get boot_target)
+	KIND=$(get kind) NAME=$(get name) IMGF=$(get image) DEVP=$(get dev) BT=$(get boot_target) DT=$(get dtbo_target)
 	[ -s $T-payload.tar ] || die "payload.tar was not unpacked"
 	check $T-payload.tar payload $SUMS
 	open_root
@@ -111,9 +115,10 @@ install)
 		grep '^vibeos-device-' | grep -v -x "vibeos-device-$DEV" | head -n 1)
 	[ -z "$OTHER" ] || fail "this system has another device layer installed ($OTHER): install the VibeOS system zip again first. Nothing was changed"
 	umount -D $ROOT || die "cannot unmount the system"
-	# room for the payload, the debs, a boot partition's copy, and 256 MiB (the first boot grows the root)
+	# room for the payload, the debs, the copies of a boot partition and its dtbo, and 256 MiB (the first boot grows
+	# the root)
 	K=0; for k in $(du -sk $T-payload.tar $T-debs | cut -f1); do K=$((K + k)); done
-	BB=0; [ $BT = none ] || BB=$(($(sectors512 $(part $BT)) / 2))
+	BB=0; for x in $BT $DT; do [ $x = none ] || BB=$((BB + $(sectors512 $(part $x)) / 2)); done
 	grow $RDEV $(((K + BB) / 4 + 65536))
 	mount -t ext4 -o noatime $RDEV $ROOT || die "cannot mount the system"
 	say "  kernel modules, firmware, device settings"
@@ -132,19 +137,20 @@ install)
 		n=$((n + 1))
 	done
 	[ $n = $(ls $D/debs | wc -l) ] || fail "the packages copied are not the zip's ($n in its sums)"
-	# the boot partition as it is now (Android's, or LineageOS recovery's), kept once: the first install's copy
-	# is the one to go back to
-	if [ $BT != none ]; then
+	# the boot partition as it is now (Android's, or LineageOS recovery's), and the dtbo cleared after it, kept
+	# once: the first install's copy is the one to go back to
+	for x in $BT $DT; do
+		[ $x != none ] || continue
 		mkdir -p $D/backup && chmod 700 $D/backup
-		if [ ! -s $D/backup/$BT.img ]; then
-			say "  saving $BT (to /var/lib/vibeos/device/backup/$BT.img in the system)"
-			dd if=$(part $BT) of=$D/backup/$BT.img bs=1048576 2>/dev/null || fail "cannot save $BT"
-			sha256sum < $D/backup/$BT.img | cut -d' ' -f1 > $D/backup/$BT.img.sha256
-			[ "$(sha256sum < $(part $BT) | cut -d' ' -f1)" = "$(cat $D/backup/$BT.img.sha256)" ] || fail "the copy of $BT differs"
+		if [ ! -s $D/backup/$x.img ]; then
+			say "  saving $x (to /var/lib/vibeos/device/backup/$x.img in the system)"
+			dd if=$(part $x) of=$D/backup/$x.img bs=1048576 2>/dev/null || fail "cannot save $x"
+			sha256sum < $D/backup/$x.img | cut -d' ' -f1 > $D/backup/$x.img.sha256
+			[ "$(sha256sum < $(part $x) | cut -d' ' -f1)" = "$(cat $D/backup/$x.img.sha256)" ] || fail "the copy of $x differs"
 		else
-			say "  $BT was saved by an earlier install: kept"
+			say "  $x was saved by an earlier install: kept"
 		fi
-	fi
+	done
 	echo "device=$DEV" > $ROOT/etc/vibeos/device || fail "cannot write /etc/vibeos/device"
 	{ echo "boot_target=$BT"; echo "slot=$SLOT"; grep -v '^boot_target=' $NP; } > $ROOT/etc/vibeos/device-nura || fail "cannot write /etc/vibeos/device-nura"
 	sync
@@ -154,7 +160,7 @@ install)
 	say "  $n packages for the first boot"
 	;;
 boot)
-	BT=$(get boot_target)
+	BT=$(get boot_target) DT=$(get dtbo_target)
 	[ -s $T-boot.img ] || die "boot.img was not unpacked"
 	check $T-boot.img bootimg $SUMS
 	case $BT in
@@ -174,11 +180,17 @@ boot)
 		S=$(((BI + 4095) / 4096))
 		dd if=/dev/zero of=$b bs=4096 seek=$S count=$((n - S)) 2>/dev/null || die "cannot clear the rest of $BT"
 		check $b bootimg $SUMS
+		# only now: until boot holds VibeOS's kernel, what is in it may need this dtbo (LineageOS recovery does)
+		if [ -n "$DT" ]; then
+			say "  clearing $DT"
+			guard $(part $DT)
+			zero $(part $DT) || die "cannot clear $DT: fastboot erase $DT, or VibeOS stops at the fastboot screen"
+		fi
 		case $BT in
 		recovery) put done "Restart to recovery starts VibeOS; a normal start, Android. What recovery held is saved in VibeOS: /var/lib/vibeos/device/backup/recovery.img (to flash zips again: fastboot boot a LineageOS recovery)" ;;
 		boot) put done "Reboot system now starts VibeOS. Android's boot is saved in VibeOS: /var/lib/vibeos/device/backup/boot.img" ;;
 		*) if [ "boot$SLOT" = $BT ]; then
-			put done "Reboot system now starts VibeOS (slot $SLOT). LineageOS (and its recovery) is saved in VibeOS: /var/lib/vibeos/device/backup/$BT.img"
+			put done "Reboot system now starts VibeOS (slot $SLOT). LineageOS (and its recovery) is saved in VibeOS: /var/lib/vibeos/device/backup/$BT.img${DT:+, and $DT, which it needs back too: $DT.img}"
 		   else
 			put done "VibeOS is in $BT, the other slot: fastboot --set-active=${BT#boot_} starts it; fastboot --set-active=${SLOT#_} goes back"
 		   fi ;;
