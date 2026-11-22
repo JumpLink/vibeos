@@ -380,7 +380,7 @@ main_page (void)
   gtk_widget_add_css_class (page, "ns-main");
 
   search_bar = vibeos_search_bar_new ("Search settings");
-  vibeos_search_bar_set_geometry (VIBEOS_SEARCH_BAR (search_bar), 72, 16, 24, 56);
+  vibeos_search_bar_set_geometry (VIBEOS_SEARCH_BAR (search_bar), 52, 16, 24, 56);
   /* Android 17's: a line round the page's own colour, not a filled pill */
   vibeos_search_bar_set_outlined (VIBEOS_SEARCH_BAR (search_bar), TRUE);
   gtk_widget_add_css_class (search_bar, "ns-search-pill");

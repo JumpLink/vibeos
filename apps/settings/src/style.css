@@ -475,11 +475,11 @@ window.ns-window button.ns-swatch {
 
 /* the main menu's search bar: a little below the status bar, and as far above the first card */
 .ns-search-pill {
-  margin-top: 8dp;
-  margin-bottom: 8dp;
+  margin-top: 6dp;
+  margin-bottom: 6dp;
 }
 
-/* Android 17's hint is larger than a row's title */
+/* the owner wants the bar compact: its hint at the size of a row's title (owner 2026-11-22) */
 .ns-search-pill .vibeos-search-hint {
-  font-size: 20sp;
+  font-size: 16sp;
 }
