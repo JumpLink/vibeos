@@ -1,0 +1,3 @@
+Package: phosh* phoc* mobian-phosh* squeekboard* phosh-* gnome-shell-mobile* mutter-mobile*
+Pin: release *
+Pin-Priority: -1

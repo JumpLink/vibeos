@@ -1,22 +1,27 @@
 #!/bin/sh
 # build-system.sh: the generic VibeOS 0.1.3 system image (arm64, no kernel, no modules, no device firmware), made
-# from a COPY of the S10e clean r7 image the way the S20 FE's root was (G780F/kit/rootfs/build-rootfs.sh): the
-# S10e's device layer comes out, VibeOS goes in.
+# from a COPY of a base image: VibeOS goes in.
 #
 #   sudo image/build-system.sh WORK.img
 #
-# WORK.img: a copy of the S10e clean r7 image (never the original: BASE_ORIG names it, and is refused).
+# WORK.img: a copy of a base image (never the original: BASE_ORIG names it, and is refused), either
+#   - build-base.sh's, from the Debian and Mobian archives alone (/etc/vibeos/base says so): step 2 has nothing to do
+#   - the S10e clean r7 image, the 0.1.3 release's base, the way the S20 FE's root was made
+#     (G780F/kit/rootfs/build-rootfs.sh): its S10e device layer comes out in step 2 (STAGE needed)
 # Inputs (environment, defaults below): VDEBS the 0.1.3 build's .debs; MUTTER, SPEECH (mutter 51.0-3+gp1 and the
-# speech models, carried since 0.1.1); ART (the third-party icon packs and parallax sets: ROM only, never in the
-# repo or a release); STAGE (the S10e device stage, whose every file is the device layer to remove); MOBILE (GNOME
-# Shell mobile with libshell patch 0005, as on the S10e and the Poco since 11-17); KIT (the Poco kit: home layout,
+# speech models, carried since 0.1.1: build-mutter.sh, tools/vibeos-dictate-speech/build-debs.sh); ART (the
+# third-party icon packs and parallax sets: ROM only, never in the repo or a release; optional); STAGE (the S10e
+# device stage, whose every file is the device layer to remove: the r7 base only); MOBILE (GNOME Shell mobile with
+# libshell patch 0005, as on the S10e and the Poco since 11-17: build-mobile.sh); KIT (the Poco kit: home layout,
 # drawer override, the shell drop-in, the list of GNOME apps to remove).
 #
 #   1. grows the copy to 12 GiB (room for apt)
-#   2. removes the S10e device layer: every file of the device stage, the kernel and modules, the boot glue, the
-#      S10e's first-boot units and the enablement links of all of them; the sleep-target masks (a device decides)
-#   3. generic identity: fstab LABEL=vibeos, hostname vibeos, no machine-info, no SSH host keys (made on the first
-#      boot), the first-boot units every device shares (grow the root; install the device package)
+#   2. (the r7 base) removes the S10e device layer: every file of the device stage, the kernel and modules, the boot
+#      glue, the S10e's first-boot units and the enablement links of all of them; the sleep-target masks (a device
+#      decides)
+#   3. generic identity: fstab LABEL=vibeos, hostname vibeos, no machine-info, no SSH host keys and no snakeoil
+#      key (made on the first boot), nothing of the machine the base was built on (its resolv.conf, its name in
+#      exim4's settings); the first-boot units every device shares (grow the root; install the device package)
 #   4. VibeOS 0.1.3 (apt in an arm64 chroot, local .debs + Debian for new dependencies: mpv, libmpv2): every
 #      package of the build except -dev, -dbgsym and the neo-* transitional ones; mutter gp1 held; GNOME's own
 #      apps out (the ROM list), Showtime out, GNOME Settings out (vibeos-settings replaces it), Files and Vim
@@ -27,6 +32,12 @@
 set -eu
 IMG=${1:?WORK.img}
 [ "$(id -u)" = 0 ] || { echo "run as root (sudo)" >&2; exit 1; }
+# the build runs under the host name vibeos (its own UTS namespace): maintainer scripts write the host name they see
+# into the image (exim4's mail name, ssl-cert), and the build machine's has no place there. Its mounts are its own (a
+# private mount namespace): a service that starts during the build copies the host's mounts into a namespace of its
+# own, where the image would stay mounted, and its loop device busy, until that service exits
+[ -n "${VIBEOS_BUILD_UTS:-}" ] || exec env VIBEOS_BUILD_UTS=1 VIBEOS_BUILD_HOST="$(hostname -s 2>/dev/null || hostname)" \
+	unshare --uts --mount --propagation private sh -c 'hostname vibeos && exec sh "$0" "$@"' "$0" "$@"
 T=$(cd "$(dirname "$0")" && pwd)
 [ ! -f "$T/local.conf" ] || . "$T/local.conf"	# this machine's settings (local.conf.example)
 [ -z "${BASE_ORIG:-}" ] || [ "$(readlink -f "$IMG")" != "$(readlink -f "$BASE_ORIG")" ] || { echo "refusing: $IMG is BASE_ORIG (work on a copy)" >&2; exit 1; }
@@ -35,7 +46,7 @@ VDEBS=${VDEBS:?set VDEBS: the directory with the 1:0.1.3 .debs}
 MUTTER=${MUTTER:?set MUTTER: the directory with mutter 51.0-3+gp1}
 SPEECH=${SPEECH:?set SPEECH: the directory with the vibeos-dictate-* .debs}
 ART=${ART:-}	# the third-party icon packs and parallax sets (not in this repository): left out when unset
-STAGE=${STAGE:?set STAGE: the S10e device stage}
+STAGE=${STAGE:-}	# the S10e device stage: needed only for the r7 base
 MOBILE=${MOBILE:?set MOBILE: the GNOME Shell mobile tar (opt/gnome-mobile)}
 KIT=${KIT:-$T/kit}
 FORBID="gsm2sip waydroid ${FORBID_EXTRA:-}"	# never in an image: these package and file names
@@ -47,7 +58,6 @@ add() { echo "$*" >> "$L/added.txt"; }
 for f in "$MOBILE" "$KIT/home-layout.json" "$KIT/90-rom-home.gschema.override" "$KIT/50-mobile.conf" "$KIT/ourapps-remove"; do
 	[ -s "$f" ] || { echo "missing $f" >&2; exit 1; }
 done
-[ -d "$STAGE/root/boot/s10e" ] || { echo "no S10e stage at $STAGE" >&2; exit 1; }
 if losetup -a | grep -qF "($(readlink -f "$IMG"))"; then echo "a loop device already holds $IMG" >&2; exit 1; fi
 mountpoint -q "$M" 2>/dev/null && { echo "$M is mounted already" >&2; exit 1; }
 
@@ -88,59 +98,81 @@ cleanup() {
 	umount "$M" 2>/dev/null || true
 }
 trap cleanup EXIT
-[ "$(cat "$M/etc/hostname")" = s10e ] || { echo "not the S10e clean image (hostname)" >&2; exit 1; }
-
-# 2. the S10e's device layer
-rmv() { for p; do [ -e "$M$p" ] || [ -L "$M$p" ] || continue; rm -rf "$M$p" && echo "$p" >> "$L/removed.txt"; done; }
-# every file the device stage put in (device.sh: kernel, modules, firmware, units, udev, modprobe, UCM, splash...)
-# (a path some package of the image owns stays: the stage only ever adds device files)
-cat "$M"/var/lib/dpkg/info/*.list | LC_ALL=C sort -u > "$L/packaged.txt"
-(cd "$STAGE/root" && find . ! -type d | sed 's/^\.//') | LC_ALL=C sort -u > "$L/stage-files.txt"
-LC_ALL=C comm -12 "$L/stage-files.txt" "$L/packaged.txt" > "$L/stage-packaged-kept.txt"
-LC_ALL=C comm -23 "$L/stage-files.txt" "$L/packaged.txt" | while read -r f; do rmv "$f"; done
-# and what build.sh added around it
-rmv /boot/s10e /usr/lib/modules/7.2.15-s10e /var/lib/initramfs-tools/7.2.15-s10e /var/lib/s10e /var/lib/exynos-cp /usr/local/share/s10e-gnome-phone \
-	/usr/local/sbin/s10e-gnome-phone-setup /etc/systemd/system/s10e-gnome-phone-setup.service \
-	/etc/systemd/system/s10e-ssh-keygen.service /etc/environment.d/60-s10e-gpu.conf /etc/machine-info
-for f in "$M"/usr/local/sbin/s10e-* "$M"/usr/local/sbin/exynos-* "$M"/usr/local/bin/exynos-*; do rmv "${f#$M}"; done
-# enablement links whose unit is gone, and any S10e/Exynos unit or link left
-find "$M/etc/systemd" -xdev -type l | while read -r l; do
-	n=${l##*/}
-	case $n in s10e-*|exynos-*) rmv "${l#$M}"; continue ;; esac
-	t=$(readlink "$l")
-	case $t in /dev/null) continue ;; esac
-	case $t in /*) [ -e "$M$t" ] || rmv "${l#$M}" ;; *) [ -e "${l%/*}/$t" ] || rmv "${l#$M}" ;; esac
-done
-# the sleep targets: the S10e masked them (s10e-sleepd sleeps the phone); a device package decides
-for u in sleep suspend hibernate hybrid-sleep suspend-then-hibernate; do
-	[ "$(readlink "$M/etc/systemd/system/$u.target" 2>/dev/null)" = /dev/null ] && rmv /etc/systemd/system/$u.target
-done
-rmdir "$M"/usr/lib/firmware/brcm "$M"/usr/lib/firmware/samsung "$M"/boot/s10e 2>/dev/null || true
-# whatever still names the device outside the packages: listed, then removed
 CH="chroot $M /usr/bin/env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin HOME=/root LC_ALL=C.UTF-8 DEBIAN_FRONTEND=noninteractive"
-find "$M/etc" "$M/usr/local" "$M/usr/lib/firmware" "$M/usr/share/alsa" "$M/var/lib" "$M/usr/share/glib-2.0/schemas" \
-	-xdev \( -iname '*s10e*' -o -iname '*exynos*' -o -iname '*beyond0*' \) 2>/dev/null | sed "s|^$M||" > "$L/leftover.txt"
-LC_ALL=C sort -u "$L/leftover.txt" | LC_ALL=C comm -12 - "$L/packaged.txt" > "$L/leftover-kept.txt"
-LC_ALL=C sort -u "$L/leftover.txt" | LC_ALL=C comm -23 - "$L/packaged.txt" | while read -r f; do rmv "$f"; done
+rmv() { for p; do [ -e "$M$p" ] || [ -L "$M$p" ] || continue; rm -rf "$M$p" && echo "$p" >> "$L/removed.txt"; done; }
+cat "$M"/var/lib/dpkg/info/*.list | LC_ALL=C sort -u > "$L/packaged.txt"
+# which base: build-base.sh's (/etc/vibeos/base) or the S10e clean r7 image (hostname s10e, its stage in STAGE)
+if grep -qx 'BASE=archives' "$M/etc/vibeos/base" 2>/dev/null; then
+	BASEKIND=archives
+	BASE="from the archives (build-base.sh, $(sed -n 's/^BUILT=//p' "$M/etc/vibeos/base"))"
+elif [ "$(cat "$M/etc/hostname")" = s10e ]; then
+	BASEKIND=s10e
+	BASE="s10e-clean-20261117-r7 (device layer removed)"
+	[ -d "$STAGE/root/boot/s10e" ] || { echo "the S10e clean image needs its device stage: no S10e stage at STAGE=$STAGE" >&2; exit 1; }
+else
+	echo "neither build-base.sh's base (/etc/vibeos/base) nor the S10e clean image (hostname)" >&2; exit 1
+fi
+log "base: $BASE"
+
+# 2. the S10e's device layer (the r7 base; build-base.sh's has none)
+if [ "$BASEKIND" = s10e ]; then
+	# every file the device stage put in (device.sh: kernel, modules, firmware, units, udev, modprobe, UCM, splash...)
+	# (a path some package of the image owns stays: the stage only ever adds device files)
+	(cd "$STAGE/root" && find . ! -type d | sed 's/^\.//') | LC_ALL=C sort -u > "$L/stage-files.txt"
+	LC_ALL=C comm -12 "$L/stage-files.txt" "$L/packaged.txt" > "$L/stage-packaged-kept.txt"
+	LC_ALL=C comm -23 "$L/stage-files.txt" "$L/packaged.txt" | while read -r f; do rmv "$f"; done
+	# and what build.sh added around it
+	rmv /boot/s10e /usr/lib/modules/7.2.15-s10e /var/lib/initramfs-tools/7.2.15-s10e /var/lib/s10e /var/lib/exynos-cp /usr/local/share/s10e-gnome-phone \
+		/usr/local/sbin/s10e-gnome-phone-setup /etc/systemd/system/s10e-gnome-phone-setup.service \
+		/etc/systemd/system/s10e-ssh-keygen.service /etc/environment.d/60-s10e-gpu.conf /etc/machine-info
+	for f in "$M"/usr/local/sbin/s10e-* "$M"/usr/local/sbin/exynos-* "$M"/usr/local/bin/exynos-*; do rmv "${f#$M}"; done
+	# enablement links whose unit is gone, and any S10e/Exynos unit or link left
+	find "$M/etc/systemd" -xdev -type l | while read -r l; do
+		n=${l##*/}
+		case $n in s10e-*|exynos-*) rmv "${l#$M}"; continue ;; esac
+		t=$(readlink "$l")
+		case $t in /dev/null) continue ;; esac
+		case $t in /*) [ -e "$M$t" ] || rmv "${l#$M}" ;; *) [ -e "${l%/*}/$t" ] || rmv "${l#$M}" ;; esac
+	done
+	# the sleep targets: the S10e masked them (s10e-sleepd sleeps the phone); a device package decides
+	for u in sleep suspend hibernate hybrid-sleep suspend-then-hibernate; do
+		[ "$(readlink "$M/etc/systemd/system/$u.target" 2>/dev/null)" = /dev/null ] && rmv /etc/systemd/system/$u.target
+	done
+	rmdir "$M"/usr/lib/firmware/brcm "$M"/usr/lib/firmware/samsung "$M"/boot/s10e 2>/dev/null || true
+	# whatever still names the device outside the packages: listed, then removed
+	find "$M/etc" "$M/usr/local" "$M/usr/lib/firmware" "$M/usr/share/alsa" "$M/var/lib" "$M/usr/share/glib-2.0/schemas" \
+		-xdev \( -iname '*s10e*' -o -iname '*exynos*' -o -iname '*beyond0*' \) 2>/dev/null | sed "s|^$M||" > "$L/leftover.txt"
+	LC_ALL=C sort -u "$L/leftover.txt" | LC_ALL=C comm -12 - "$L/packaged.txt" > "$L/leftover-kept.txt"
+	LC_ALL=C sort -u "$L/leftover.txt" | LC_ALL=C comm -23 - "$L/packaged.txt" | while read -r f; do rmv "$f"; done
+	log "S10e device layer removed: $(wc -l < "$L/removed.txt") paths"
+else
+	log "no device layer to remove (a base from the archives)"
+fi
 [ -z "$(ls -A "$M/usr/lib/modules" 2>/dev/null)" ] || { echo "modules left in /usr/lib/modules" >&2; exit 1; }
 [ -z "$(ls -A "$M/boot" 2>/dev/null)" ] || { echo "/boot is not empty: $(ls "$M/boot")" >&2; exit 1; }
-log "S10e device layer removed: $(wc -l < "$L/removed.txt") paths"
 
 # 3. generic identity
 printf '# the root file system, by its ext4 label: every VibeOS device boots the partition or image file the\n# system zip wrote, labelled vibeos (its kernel and initramfs come with the device package)\nLABEL=vibeos  /  ext4  defaults,noatime  0 1\n' > "$M/etc/fstab"
 echo vibeos > "$M/etc/hostname"
 printf '127.0.0.1\tlocalhost\n127.0.1.1\tvibeos\n::1\tlocalhost ip6-localhost ip6-loopback\n' > "$M/etc/hosts"
 add "/etc/fstab LABEL=vibeos /; hostname vibeos (a device package may rename it)"
+# nothing of the machine the base was built on: systemd-resolved's copy of the resolv.conf it found (that machine's
+# search domain and name servers), ssl-cert's snakeoil key and certificate (one key in every image, with that
+# machine's name in it: each device makes its own on the first boot, as with the SSH host keys); exim4's mail name
+# is set again in step 4
+rmv /etc/.resolv.conf.systemd-resolved.bak /etc/ssl/private/ssl-cert-snakeoil.key
+for c in "$M"/etc/ssl/certs/*.0; do [ "$(readlink "$c" 2>/dev/null)" = ssl-cert-snakeoil.pem ] && rmv "${c#$M}"; done
+rmv /etc/ssl/certs/ssl-cert-snakeoil.pem
 # the boot splash is a device's (sized for its screen): the S10e's debian-swirl went with its stage
 install -d "$M/usr/local/sbin" "$M/etc/vibeos" "$M/var/lib/vibeos/device"
 install -m 755 "$T/rootfs/vibeos-growroot" "$M/usr/local/sbin/vibeos-growroot"
 install -m 755 "$T/rootfs/vibeos-device-setup" "$M/usr/local/sbin/vibeos-device-setup"
-for u in vibeos-growroot vibeos-device-setup vibeos-ssh-keygen; do
+for u in vibeos-growroot vibeos-device-setup vibeos-ssh-keygen vibeos-ssl-cert; do
 	install -m 644 "$T/rootfs/$u.service" "$M/etc/systemd/system/$u.service"
 	mkdir -p "$M/etc/systemd/system/multi-user.target.wants"
 	ln -sf ../$u.service "$M/etc/systemd/system/multi-user.target.wants/$u.service"
 done
-add "first boot: vibeos-growroot (root fills its partition or file), vibeos-device-setup (the device package, offline, before GDM), vibeos-ssh-keygen"
+add "first boot: vibeos-growroot (root fills its partition or file), vibeos-device-setup (the device package, offline, before GDM), vibeos-ssh-keygen, vibeos-ssl-cert"
 
 # 4. VibeOS, in an arm64 chroot (qemu binfmt)
 for d in proc sys dev dev/pts run; do mkdir -p "$M/$d"; done
@@ -153,6 +185,17 @@ rm -rf "$M/tmp/vibeos-debs"; mkdir -p "$M/tmp/vibeos-debs"; cp "$P"/*.deb "$M/tm
 OURS=$(for f in "$P"/*.deb; do dpkg-deb -f "$f" Package; done)
 LOCAL=$(for f in "$P"/*.deb; do echo "/tmp/vibeos-debs/${f##*/}"; done)
 NEW="mpv libmpv2 gdisk cloud-guest-utils"
+# exim4's mail name and local domains: the host name, vibeos (the base's say the build machine's when it was made
+# under that machine's name, as the r7 base was). exim4-config's own settings file wins over debconf on a
+# reconfigure, so it is set first; the reconfigure then writes debconf and config.autogenerated from it
+if [ -f "$M/etc/exim4/update-exim4.conf.conf" ]; then
+	sed -i "s/^dc_other_hostnames=.*/dc_other_hostnames='vibeos'/" "$M/etc/exim4/update-exim4.conf.conf"
+	printf 'exim4-config exim4/mailname string vibeos\nexim4-config exim4/dc_other_hostnames string vibeos\n' | $CH debconf-set-selections
+	echo vibeos > "$M/etc/mailname"
+	$CH dpkg-reconfigure -f noninteractive exim4-config > "$L/exim4.txt" 2>&1 || { cat "$L/exim4.txt" >&2; exit 1; }
+	rm -f "$M"/var/cache/debconf/*.dat-old
+	add "exim4: mail name and local domain vibeos"
+fi
 $CH apt-get -q update > "$L/apt-update.txt" 2>&1 || { tail "$L/apt-update.txt" >&2; exit 1; }
 # the Debian/Mobian packages the two Qualcomm devices run and this generic image does not carry, at the versions
 # their verified images had (the POCO's k22 ROM of 11-17, the S5e's clean image): fetched here, through apt's
@@ -237,6 +280,7 @@ tar -C "$M" --no-same-owner -xpf "$MOBILE" opt/gnome-mobile
 install -D -m 644 "$KIT/50-mobile.conf" "$M/etc/systemd/user/org.gnome.Shell@vibeos.service.d/50-mobile.conf"
 add "/opt/gnome-mobile from $(basename "$MOBILE") (libshell-51.so $(sha256sum "$M/opt/gnome-mobile/lib/gnome-shell/libshell-51.so" | cut -c1-16))"
 # the home screen: the POCO ROM's (11-18 kit), with Video Player where Showtime was
+mkdir -p "$M/etc/xdg/vibeos-launcher"	# (the r7 base had one: the S10e kit's)
 python3 -I - "$KIT/home-layout.json" "$M/etc/xdg/vibeos-launcher/layout.json" <<'EOF'
 import json, sys
 d = json.load(open(sys.argv[1]))
@@ -260,7 +304,7 @@ else sed -i '/^\[User\]/a Session=vibeos' "$F"; fi
 chmod 600 "$F"; add "user's session: vibeos (AccountsService)"
 $CH glib-compile-schemas /usr/share/glib-2.0/schemas
 # what the image says about itself
-{ echo "VERSION=1:0.1.3"; echo "BUILT=$(date -u +%Y-%m-%dT%H:%MZ)"; echo "BASE=s10e-clean-20261117-r7 (device layer removed)"; } > "$M/etc/vibeos/system-image"
+{ echo "VERSION=1:0.1.3"; echo "BUILT=$(date -u +%Y-%m-%dT%H:%MZ)"; echo "BASE=$BASE"; } > "$M/etc/vibeos/system-image"
 $CH dpkg-query -W -f '${Package} ${Version} ${db:Status-Abbrev}\n' > "$L/installed.txt"
 # every file the image's packages own: build-device.sh diverts the ones a device package ships too (SYSFILES)
 cat "$M"/var/lib/dpkg/info/*.list | LC_ALL=C sort -u > "$L/packaged-final.txt"
@@ -276,6 +320,13 @@ rm -rf "$M"/var/lib/swcatalog/icons/debian-* "$M"/var/lib/swcatalog/yaml/*
 for w in $FORBID; do find "$M" -xdev -iname "*$w*"; done > "$L/forbidden.txt"
 [ ! -s "$L/forbidden.txt" ] || { echo "forbidden files, see $L/forbidden.txt" >&2; exit 1; }
 grep -q '^video/mp4=vibeos.Video.desktop' "$M/etc/xdg/mimeapps.list" || { echo "Video Player is not the default for video/mp4" >&2; exit 1; }
+# the build machine's name: in no setting a maintainer script writes it to
+case ${VIBEOS_BUILD_HOST:-} in ""|vibeos|localhost|debian) ;; *)
+	for f in etc/mailname etc/hosts etc/exim4/update-exim4.conf.conf var/lib/exim4/config.autogenerated var/cache/debconf/config.dat; do
+		[ ! -f "$M/$f" ] || ! grep -q -w -F "$VIBEOS_BUILD_HOST" "$M/$f" || { echo "/$f names the build machine" >&2; exit 1; }
+	done ;;
+esac
+[ ! -e "$M/etc/.resolv.conf.systemd-resolved.bak" ] && [ ! -e "$M/etc/ssl/private/ssl-cert-snakeoil.key" ] || { echo "a resolv.conf copy or a snakeoil key in the image" >&2; exit 1; }
 
 # 5. clean up, unmount, check, label, shrink
 $CH apt-get -q clean

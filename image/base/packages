@@ -1,0 +1,61 @@
+# base/packages: what build-base.sh asks mmdebstrap for (--variant=important, Recommends installed, as any Debian
+# GNOME install). The 0.1.3 base's `apt-mark showmanual`, less what Priority required/important brings anyway; apt
+# resolves the rest (1435 packages in the 0.1.3 base). build-system.sh then removes the GNOME apps the ROM leaves out
+# (kit/ourapps-remove), Showtime and GNOME Settings, and installs VibeOS.
+
+# Mobian's base, without any UI metapackage (mobian-phosh*, mobian-plasma-mobile*: pinned out, base/overlay)
+mobian-archive-keyring
+mobian-base
+mobian-phone-base
+# GNOME as Debian ships it: gnome-core is GDM, the Shell and GNOME's core apps; GNOME Web is the browser (without it
+# gnome-core's browser recommendation pulls firefox-esr)
+gnome-core
+epiphany-browser
+gnome-software-plugin-deb
+# a phone's hardware through the standard services: modem, rotation/light/proximity, cameras, swap in RAM
+modemmanager
+gir1.2-modemmanager-1.0
+iio-sensor-proxy
+pipewire-libcamera
+gstreamer1.0-libcamera
+libcamera-v4l2
+systemd-zram-generator
+# what the device packages' scripts run and do not depend on (the S10e's modem, call audio and sleep daemons:
+# Python, GLib, evdev, nft, bluetoothctl; its firmware import: debugfs; HDMI CEC: cec-ctl)
+python3
+python3-gi
+python3-evdev
+nftables
+v4l-utils
+e2fsprogs
+bluez
+alsa-utils
+psmisc
+# ssh (off: build-base.sh disables it; the first boot makes the host keys)
+openssh-server
+# what VibeOS's packages recommend: haptics and sounds, gmobile (panel data, camera hole), gamepads
+feedbackd
+feedbackd-common
+libfeedback-0.0-0
+feedbackd-device-themes
+libgmobile0
+libgmobile-common
+gir1.2-gm-0
+gir1.2-manette-0.2
+# what GNOME Shell mobile (/opt/gnome-mobile) imports and Debian's gnome-shell does not pull in, and the terminal
+gir1.2-camel-1.2
+gir1.2-colord-1.0
+gir1.2-ecal-2.0
+gir1.2-edataserver-1.2
+gir1.2-gck-1
+gir1.2-gmenu-3.0
+gir1.2-gnomeautoar-0.1
+gir1.2-gnomedesktop-3.0
+gir1.2-goa-1.0
+gir1.2-gsound-1.0
+gir1.2-gtk4layershell-1.0
+gir1.2-ical-3.0
+gir1.2-lfb-0.0
+libgnome-desktop-3-21
+libgnome-menu-3-0
+gnome-console

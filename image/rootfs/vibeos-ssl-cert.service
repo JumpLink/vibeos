@@ -1,0 +1,12 @@
+[Unit]
+Description=VibeOS: make this device's snakeoil TLS key and certificate (first boot)
+ConditionPathExists=/usr/sbin/make-ssl-cert
+ConditionPathExists=!/etc/ssl/private/ssl-cert-snakeoil.key
+After=vibeos-device-setup.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/make-ssl-cert generate-default-snakeoil
+
+[Install]
+WantedBy=multi-user.target
