@@ -257,6 +257,11 @@ for o in objs:
   check "microphone allowed: PulseAudio recording" "recorded" \
     "$(inside "timeout 3 parecord --raw --rate 8000 --channels 1 /tmp/r.raw >/dev/null 2>&1; $RECORDED")"
   check "microphone allowed: still no links of its own" "refused" "$(own_link "")"
+  # with the microphone too, what the phone plays stays out of reach (a sink's monitor), as on Android
+  check "microphone allowed: recording what plays" "nothing" \
+    "$(inside "timeout 3 pw-record -P '{ stream.capture.sink = true }' --rate 8000 --channels 1 /tmp/r.wav >/dev/null 2>&1; $RECORDED")"
+  check "microphone allowed: PulseAudio, what plays" "nothing" \
+    "$(inside "d=\$(pactl get-default-sink 2>/dev/null); timeout 3 parecord -d \"\$d.monitor\" --raw --rate 8000 --channels 1 /tmp/r.raw >/dev/null 2>&1; $RECORDED")"
   set_perm microphone deny
 else
   echo "SKIP  microphone: WirePlumber started before the script was installed (needs a session restart)"

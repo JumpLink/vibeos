@@ -204,9 +204,9 @@ check ("node: pulse app's sink", added (node { ["media.class"] = "Audio/Sink", [
 check ("node: host's sink", added (node { ["media.class"] = "Audio/Sink", ["client.id"] = "53" }), "kept")
 check ("node: device sink", added (node { ["media.class"] = "Audio/Sink" }), "kept")
 check ("node: no class", added (node { ["client.id"] = "50" }), "kept")
-local function target_after (t)
+local function target_after (t, subject)
   local data = { target = t }
-  local event = { get_subject = function () return node {} end,
+  local event = { get_subject = function () return subject or node {} end,
                   get_data = function (_, k) return data[k] end,
                   set_data = function (_, k, v) data[k] = v end }
   hooks["linking/vibeos-sandbox-target"].execute (event)
@@ -216,6 +216,24 @@ check ("target: game's sink", target_after (node { ["media.class"] = "Audio/Sink
 check ("target: device sink", target_after (speaker), "kept")
 check ("target: host's sink", target_after (node { ["media.class"] = "Audio/Sink", ["client.id"] = "53" }), "kept")
 check ("target: none found", target_after (nil), "none")
+-- a capture stream of a sandboxed app records a microphone or a camera, with the permission too; never what plays
+local rec_capture = node { ["media.class"] = "Stream/Input/Audio", ["client.id"] = "51" }
+check ("target: recorder's capture, the microphone", target_after (mic, rec_capture), "kept")
+check ("target: recorder's capture, a duplex device", target_after (duplex, rec_capture), "kept")
+check ("target: recorder's capture, a sink's monitor", target_after (speaker, rec_capture), "none")
+check ("target: recorder's capture, a call's stream", target_after (call_stream, rec_capture), "none")
+check ("target: recorder's capture, no class", target_after (node { ["client.id"] = "30" }, rec_capture), "none")
+local host_capture = node { ["media.class"] = "Stream/Input/Audio", ["client.id"] = "53" }
+check ("target: host's capture, a sink's monitor", target_after (speaker, host_capture), "kept")
+check ("target: game's playback, the speaker",
+       target_after (speaker, node { ["media.class"] = "Stream/Output/Audio", ["client.id"] = "50" }), "kept")
+local cam_capture = node { ["media.class"] = "Stream/Input/Video", ["client.id"] = "56" }
+check ("target: video with the camera, the camera", target_after (camera, cam_capture), "kept")
+check ("target: video with the camera, a screen cast", target_after (screen, cam_capture), "none")
+check ("target: screen cast portal's video, the screen",
+       target_after (screen, node { ["media.class"] = "Stream/Input/Video", ["client.id"] = "57" }), "kept")
+check ("target: host's video, a screen cast",
+       target_after (screen, node { ["media.class"] = "Stream/Input/Video", ["client.id"] = "53" }), "kept")
 
 -- granting it follows at once
 pps_handlers["changed"] (pps, "vibeos-sandbox", "microphone", false,

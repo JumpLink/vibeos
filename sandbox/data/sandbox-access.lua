@@ -15,7 +15,10 @@
 -- The camera portal's remote for one of these apps (pipewire.access = "portal") gets the same.
 -- And a sound capture stream of an app without the microphone permission is never linked to anything, so it cannot
 -- record what the phone plays either; nor is a video capture stream of its own (not the portal's: a screen cast)
--- without the camera permission. When the permission store changes, the permissions follow at once.
+-- without the camera permission. With the permission, its sound capture is linked to a microphone only, never to
+-- what plays (a sink's monitor, another app's stream), and its own video capture to a camera only, never to a
+-- screen cast: Android keeps both from an app with the permission too (a screen cast goes through the portal,
+-- which asks). When the permission store changes, the permissions follow at once.
 -- Such an app makes streams only: a node of its own that says it is something else (a sink, a source, a camera),
 -- which other apps' sound or pictures would be routed to, is destroyed, and never a target in the meantime.
 --
@@ -274,7 +277,32 @@ SimpleEventHook {
   end
 }:register ()
 
--- whatever found the target, never one of those
+-- what a sandboxed app's capture stream may be linked to, whatever its permissions: sound from a microphone,
+-- pictures (on the app's own connection) from a camera. Not what plays: a sink's monitor, another app's stream
+local function capture_target_refused (si, target)
+  local props = si.properties
+  local class = props["media.class"]
+  local audio = class ~= nil and class:find ("^Stream/Input/Audio") ~= nil
+  local video = class ~= nil and class:find ("^Stream/Input/Video") ~= nil
+  if not audio and not video then
+    return false
+  end
+  local client = sandboxed_owner (props)
+  if client == nil then
+    return false
+  end
+  local tclass = target.properties["media.class"]
+  if audio then
+    return not is_mic (tclass)
+  end
+  -- the portals' remotes (a screen cast the user chose) are linked to what the portal granted
+  if cutils.get_client_access (client.properties) ~= "flatpak" then
+    return false
+  end
+  return not (tclass == "Video/Source" and target.properties["media.role"] == "Camera")
+end
+
+-- whatever found the target, never one of those, and nothing a capture stream may not record
 SimpleEventHook {
   name = "linking/vibeos-sandbox-target",
   after = { "linking/find-defined-target", "linking/find-filter-target", "linking/find-audio-group-target",
@@ -294,6 +322,12 @@ SimpleEventHook {
     local ok, bad = pcall (function () return posing (target.properties) end)
     if ok and bad then
       log:info (event:get_subject (), "vibeos-sandbox: a sandboxed app's node is no target")
+      event:set_data ("target", nil)
+      return
+    end
+    ok, bad = pcall (capture_target_refused, event:get_subject (), target)
+    if ok and bad then
+      log:info (event:get_subject (), "vibeos-sandbox: a sandboxed app records a microphone or a camera only")
       event:set_data ("target", nil)
     end
   end
