@@ -544,8 +544,14 @@ permissions (Page *p)
                                        : "What the app asks for. VibeOS enforces these permissions: the app runs in "
                                          "a sandbox, and you allow or deny each one in Settings. Taking one away "
                                          "stops the app.", "sw-caption"));
+  /* an app that names none in its package may be given any: vibeos-sandbox's defaults hold until the user changes
+   * them (the network allowed; the location, the camera and running in the background asked for; nothing else) */
   if (!list || !json_array_get_length (list))
-    gtk_box_append (GTK_BOX (p->details), sw_label_new ("The app declares no permissions.", "sw-body-text"));
+    gtk_box_append (GTK_BOX (p->details),
+                    sw_label_new (system ? "The app declares no permissions."
+                                         : "The app declares no permissions. Until you change them in Settings, it "
+                                           "may use the network, and you are asked before it gets your location or "
+                                           "the camera, or runs in the background.", "sw-body-text"));
   else
     {
       cards = vibeos_card_list_new ();
