@@ -235,9 +235,11 @@ struct NaviMapImpl final : public mln::MapObserver {
             gdk_frame_clock_request_phase(clock, GDK_FRAME_CLOCK_PHASE_LAYOUT);
     }
 
+    // the display's refresh period, from the frames presented so far (the current frame's own timings
+    // do not have it yet; GDK assumes 60 Hz until a frame has been presented)
     static gint64 refresh_us(GdkFrameClock* c) {
-        GdkFrameTimings* t = gdk_frame_clock_get_current_timings(c);
-        gint64 r = t ? gdk_frame_timings_get_refresh_interval(t) : 0;
+        gint64 r = 0, presented = 0;
+        gdk_frame_clock_get_refresh_info(c, gdk_frame_clock_get_frame_time(c), &r, &presented);
         return r > 0 ? r : 16667;
     }
 
