@@ -387,7 +387,10 @@ entry_end (struct gpt *g, uint32_t i)
 }
 
 /* Every used entry inside the usable range and start <= end: anything
-   else means a table this tool does not understand.  */
+   else means a table this tool does not understand.  An entry at LBA
+   0-0 holds no data (LBA 0 is the protective MBR) and is left as it
+   is: an earlier multiboot layout leaves such entries on a OnePlus 6T,
+   with a type but no name, and Linux ignores them too.  */
 static void
 check_entries (struct gpt *g)
 {
@@ -396,6 +399,8 @@ check_entries (struct gpt *g)
       {
         uint64_t s = entry_start (g, i), e = entry_end (g, i);
 
+        if (s == 0 && e == 0)
+          continue;
         if (s > e || s < g->first || e > g->last)
           die (1, "partition %u (%" PRIu64 "-%" PRIu64 ") lies outside"
                " the usable range", i + 1, s, e);
