@@ -66,3 +66,8 @@
  *
  *   vibeos-original-colors.h  the theme's colours by Material 3's original rules, for apps that draw parts in them
  *   vibeos-extended-fab.h     the extended floating action button, which collapses to its icon on scroll */
+#include "vibeos-unified-push.h"
+
+/* Push messages:
+ *
+ *   vibeos-unified-push.h     an app's push messages, through the system's UnifiedPush distributor */
