@@ -32,7 +32,7 @@ import {chargingText} from './state.js';
 import {notificationIcon, SystemIcons, systemEnd} from './statusbar.js';
 import {AndroidText} from './text.js';
 import {wholeFrames} from './redraws.js';
-import {geometry, HEIGHT, landscape, px, screenPixels, SCALE, SCREEN_SCALE, TABLET, WIDTH} from './units.js';
+import {geometry, HEIGHT, landscape, px, screenPixels, SCALE, SCREEN_SCALE, SCREEN_W, TABLET, WIDTH} from './units.js';
 
 Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
 Gio._promisify(Gio.File.prototype, 'load_contents_async');
