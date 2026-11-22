@@ -8,7 +8,7 @@ extdir = get_option('datadir') / 'gnome-shell' / 'extensions' / uuid
 bindir = get_option('prefix') / get_option('bindir')
 
 install_subdir('.', install_dir: extdir, strip_directory: true,
-  exclude_directories: ['tools', '__pycache__'],
+  exclude_directories: ['tools', 'tests', '__pycache__'],
   exclude_files: ['meson.build', 'home.js', 'appmem.py'])
 
 # appmem.py runs as a program of its own (recents.js)
@@ -17,3 +17,10 @@ install_data('appmem.py', install_dir: extdir, install_mode: 'rwxr-xr-x')
 # home.js starts the launcher by its path; a hand-installed launcher lives in /usr/local, the packaged one in bindir
 configure_file(input: 'home.js', output: 'home.js', install_dir: extdir,
   command: ['sed', '-e', 's|/usr/local/bin/vibeos-launcher|' + bindir + '/vibeos-launcher|', '@INPUT@'], capture: true)
+
+# every name a module uses is declared or imported (tests/undefined-names.sh); needs TypeScript's checker
+tsc = find_program('tsc', required: false)
+if tsc.found()
+  test('undefined-names', find_program('tests/undefined-names.sh'), args: [meson.current_source_dir(), tsc],
+       timeout: 900)
+endif
