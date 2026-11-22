@@ -1213,3 +1213,112 @@ dictate_download_init (DictateDownload *self)
   self->cancellable = g_cancellable_new ();
   self->root = g_build_filename (g_get_user_data_dir (), "vibeos-dictate", NULL);
 }
+
+/* ---------------- what was downloaded ---------------- */
+
+/* the bytes of `name` in `dir` and all in it, links not followed (nor counted) */
+static guint64
+size_at (int dir, const char *name)
+{
+  struct stat st;
+  guint64 size = 0;
+
+  if (fstatat (dir, name, &st, AT_SYMLINK_NOFOLLOW) != 0)
+    return 0;
+  if (S_ISREG (st.st_mode))
+    return st.st_size;
+  if (S_ISDIR (st.st_mode))
+    {
+      int fd = openat (dir, name, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+      DIR *list = fd >= 0 ? fdopendir (fd) : NULL;
+      struct dirent *entry;
+
+      if (!list)
+        {
+          if (fd >= 0)
+            close (fd);
+          return 0;
+        }
+      while ((entry = readdir (list)))
+        if (strcmp (entry->d_name, ".") != 0 && strcmp (entry->d_name, "..") != 0)
+          size += size_at (dirfd (list), entry->d_name);
+      closedir (list);
+    }
+  return size;
+}
+
+guint64
+dictate_download_downloaded_size (const char *language)
+{
+  g_autofree char *root = g_build_filename (g_get_user_data_dir (), "vibeos-dictate", NULL);
+  guint64 size = 0;
+
+  for (int kind = DICTATE_PACK_MODEL; kind <= DICTATE_PACK_VOICE; kind++)
+    {
+      const DictatePack *pack = dictate_pack_find (language, kind);
+      g_autofree char *dest = pack ? g_build_filename (root, pack->place, NULL) : NULL;
+
+      if (!pack)
+        continue;
+      if (kind == DICTATE_PACK_MODEL)
+        size += size_at (AT_FDCWD, dest);
+      else
+        /* a voice's directory may hold others the user put there: only the pack's files are its */
+        for (const DictateFile *f = pack->files; f->name; f++)
+          {
+            g_autofree char *path = g_build_filename (dest, f->name, NULL);
+            size += size_at (AT_FDCWD, path);
+          }
+    }
+  return size;
+}
+
+gboolean
+dictate_download_remove (const char *language, GError **error)
+{
+  g_autofree char *root = g_build_filename (g_get_user_data_dir (), "vibeos-dictate", NULL);
+  const DictatePack *model = dictate_pack_find (language, DICTATE_PACK_MODEL);
+  const DictatePack *voice = dictate_pack_find (language, DICTATE_PACK_VOICE);
+
+  if (model)
+    {
+      g_autofree char *dest = g_build_filename (root, model->place, NULL);
+      g_autofree char *downloads = g_build_filename (root, ".downloads", NULL);
+      g_autofree char *aside = g_strdup_printf ("%s/%s-%d-XXXXXX", downloads, language, (int) getpid ());
+      g_autofree char *moved = NULL;
+      struct stat st;
+
+      /* out of where it is found first, in one rename: a removal cut short leaves no half model there (and what
+       * is left in .downloads goes with the next download's sweep) */
+      if (lstat (dest, &st) == 0)
+        {
+          if (g_mkdir_with_parents (downloads, 0700) != 0 || !g_mkdtemp_full (aside, 0700))
+            return install_error (error, downloads);
+          moved = g_build_filename (aside, "model", NULL);
+          if (rename (dest, moved) != 0)
+            return install_error (error, dest);
+          g_debug ("download: %s removed", dest);
+          if (!dictate_download_remove_tree (aside, error))
+            return FALSE;
+        }
+    }
+  if (voice)
+    {
+      g_autofree char *dest = g_build_filename (root, voice->place, NULL);
+
+      /* the model first: without it the voice is not found */
+      for (guint last = 0; last < 2; last++)
+        for (const DictateFile *f = voice->files; f->name; f++)
+          if (g_str_has_suffix (f->name, ".onnx") == (last == 0))
+            {
+              g_autofree char *path = g_build_filename (dest, f->name, NULL);
+
+              if (unlink (path) != 0 && errno != ENOENT)
+                return install_error (error, path);
+            }
+      /* its language's directory, if nothing else is in it */
+      if (rmdir (dest) == 0)
+        g_debug ("download: %s removed", dest);
+    }
+  return TRUE;
+}

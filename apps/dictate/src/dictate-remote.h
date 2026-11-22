@@ -19,6 +19,7 @@ void           dictate_remote_free        (DictateRemote *self);
  * as fast as the rest; a failure is only logged (the first question tries again) */
 void           dictate_remote_warm        (DictateRemote *self);
 void           dictate_remote_reset       (DictateRemote *self, const char *system);
+void           dictate_remote_set_system  (DictateRemote *self, const char *system);
 char          *dictate_remote_reply       (DictateRemote *self, const char *text, DictateBrainPiece piece,
                                            gpointer data, GCancellable *cancellable, GError **error);
 void           dictate_remote_last_timing (DictateRemote *self, int *read, int *written, double *read_ms,

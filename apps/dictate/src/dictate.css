@@ -170,3 +170,8 @@ progressbar.dictate-progress progress {
   background-color: @vibeos_primary;
   border: none;
 }
+
+/* Agent's Settings: rows on cards, on the colour the system's Settings pages have */
+.dictate-settings {
+  background-color: @vibeos_surface_container;
+}

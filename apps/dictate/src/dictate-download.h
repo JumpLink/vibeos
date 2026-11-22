@@ -94,4 +94,10 @@ gboolean  dictate_download_unpack      (const char *archive, const char *dir, co
 /* `path` and all in it, without following a link */
 gboolean  dictate_download_remove_tree (const char *path, GError **error);
 
+/* what was downloaded for `language` and is in its place under the user's data directory (its model's directory, its
+ * voice's files), in bytes; 0 when nothing (what the system has is not counted) */
+guint64   dictate_download_downloaded_size (const char *language);
+/* takes that off the phone again, without following a link */
+gboolean  dictate_download_remove          (const char *language, GError **error);
+
 G_END_DECLS

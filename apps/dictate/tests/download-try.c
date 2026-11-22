@@ -2,12 +2,14 @@
  * them elsewhere), as the app fetches them; not run by meson test, it needs the network.
  *
  *   download-try [--voice-only | --model-only] [--bad-sum] [--cancel-after BYTES] LANGUAGE…
+ *   download-try --remove LANGUAGE…
  *
  * For each LANGUAGE, its speech model's pack and its voice's, in one download. --bad-sum changes the last file's
  * pinned sum, so the download must fail at the end with nothing left; --cancel-after cancels it once that many bytes
  * have come. Afterwards: what is in vibeos-dictate (models, voices, and .downloads, which must be empty). The exit
  * status is 0 when the download ended as asked (done, failed for --bad-sum, cancelled for --cancel-after) and left
- * the directories so. */
+ * the directories so. With --remove, nothing is fetched: what was downloaded for each LANGUAGE is removed as
+ * Agent's settings remove it, its size shown before and after (0 after, or the exit status is 1). */
 #include "dictate-download.h"
 
 #include <glib/gstdio.h>
@@ -84,13 +86,14 @@ show_tree (const char *dir, const char *indent, guint *count)
 int
 main (int argc, char **argv)
 {
-  gboolean voice_only = FALSE, model_only = FALSE, bad_sum = FALSE;
+  gboolean voice_only = FALSE, model_only = FALSE, bad_sum = FALSE, remove = FALSE;
   gint64 cancel_after = 0;
   GOptionEntry options[] = {
     { "voice-only", 0, 0, G_OPTION_ARG_NONE, &voice_only, "Only the voices", NULL },
     { "model-only", 0, 0, G_OPTION_ARG_NONE, &model_only, "Only the speech models", NULL },
     { "bad-sum", 0, 0, G_OPTION_ARG_NONE, &bad_sum, "Pin a wrong sum for the last file", NULL },
     { "cancel-after", 0, 0, G_OPTION_ARG_INT64, &cancel_after, "Cancel after BYTES", "BYTES" },
+    { "remove", 0, 0, G_OPTION_ARG_NONE, &remove, "Remove what was downloaded", NULL },
     { NULL }
   };
   g_autoptr (GOptionContext) context = g_option_context_new ("LANGUAGE…");
@@ -110,6 +113,27 @@ main (int argc, char **argv)
     {
       fprintf (stderr, "%s\n", error ? error->message : "usage: download-try [OPTION…] LANGUAGE…");
       return 2;
+    }
+  if (remove)
+    {
+      int status = 0;
+
+      for (int i = 1; i < argc; i++)
+        {
+          g_autoptr (GError) failed = NULL;
+          guint64 before = dictate_download_downloaded_size (argv[i]), after;
+
+          if (!dictate_download_remove (argv[i], &failed))
+            printf ("%s: %s\n", argv[i], failed->message);
+          after = dictate_download_downloaded_size (argv[i]);
+          printf ("%s: %" G_GUINT64_FORMAT " bytes downloaded, %" G_GUINT64_FORMAT " after removing\n", argv[i],
+                  before, after);
+          if (failed || after)
+            status = 1;
+        }
+      printf ("%s:\n", root);
+      show_tree (root, "  ", &count);
+      return status;
     }
   for (int i = 1; i < argc; i++)
     for (int kind = 0; kind < 2; kind++)

@@ -30,7 +30,8 @@ download_deps = [dependency('glib-2.0'), dependency('gio-2.0'), dependency('libs
 executable('vibeos-dictate', 'src/dictate-main.c', 'src/dictate-window.c', 'src/dictate-mic.c',
            'src/dictate-engine.c', 'src/dictate-models.c', 'src/dictate-moonshine.c', 'src/dictate-vosk.c',
            'src/dictate-vad.c', 'src/dictate-talk.c', 'src/dictate-voice.c', 'src/dictate-phonemes.c', brain_sources,
-           'src/dictate-download.c', 'src/dictate-download-dialog.c', resources, link_with: text, install: true,
+           'src/dictate-download.c', 'src/dictate-download-dialog.c', 'src/dictate-access.c',
+           'src/dictate-settings.c', resources, link_with: text, install: true,
            c_args: ['-DGETTEXT_PACKAGE="vibeos-dictate"',
                     '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir')),
                     '-DLIBRARY_DIR="@0@"'.format(library_dir)],
@@ -58,14 +59,15 @@ executable('brain-bench', 'tests/brain-bench.c', brain_sources, include_director
 # Agent's whole loop on recorded questions, timed (tests/talk-bench.c)
 executable('talk-bench', 'tests/talk-bench.c', 'src/dictate-engine.c', 'src/dictate-models.c',
            'src/dictate-moonshine.c', 'src/dictate-vosk.c', 'src/dictate-vad.c', 'src/dictate-talk.c',
-           'src/dictate-voice.c', 'src/dictate-phonemes.c', brain_sources, include_directories: 'src',
+           'src/dictate-access.c', 'src/dictate-voice.c', 'src/dictate-phonemes.c', brain_sources,
+           include_directories: 'src',
            c_args: ['-DGETTEXT_PACKAGE="vibeos-dictate"', '-DLIBRARY_DIR="@0@"'.format(library_dir)],
            dependencies: [dependency('gio-2.0'), dependency('gstreamer-1.0'), dependency('gstreamer-app-1.0'),
                           dependency('json-glib-1.0'), cc.find_library('m'), cc.find_library('dl')] + agent_deps
                           + remote_deps)
 
 # Agent's loop from typed text: the model's reply spoken on the speaker (tests/agent-say.c)
-executable('agent-say', 'tests/agent-say.c', 'src/dictate-talk.c',
+executable('agent-say', 'tests/agent-say.c', 'src/dictate-talk.c', 'src/dictate-access.c',
            'src/dictate-voice.c', 'src/dictate-phonemes.c', brain_sources, include_directories: 'src',
            c_args: ['-DGETTEXT_PACKAGE="vibeos-dictate"', '-DLIBRARY_DIR="@0@"'.format(library_dir)],
            dependencies: [dependency('gio-2.0'), dependency('gstreamer-1.0'), dependency('gstreamer-app-1.0'),
@@ -78,6 +80,14 @@ test('text', executable('test-text', 'tests/test-text.c', include_directories: '
 test('download', executable('test-download', 'tests/test-download.c', 'src/dictate-download.c',
                             include_directories: 'src', c_args: '-DGETTEXT_PACKAGE="vibeos-dictate"',
                             dependencies: download_deps))
+
+# what Agent is told it can use, from the settings' switches (the schema compiled here, a memory backend)
+schemas = custom_target('schemas', input: 'data/vibeos.Dictate.gschema.xml', output: 'gschemas.compiled',
+                        command: [find_program('glib-compile-schemas'), '--strict', '--targetdir=@OUTDIR@',
+                                  meson.current_source_dir() / 'data'])
+test('access', executable('test-access', 'tests/test-access.c', 'src/dictate-access.c', include_directories: 'src',
+                          c_args: '-DGETTEXT_PACKAGE="vibeos-dictate"', dependencies: dependency('gio-2.0')),
+     depends: schemas, env: ['GSETTINGS_SCHEMA_DIR=' + meson.current_build_dir(), 'GSETTINGS_BACKEND=memory'])
 
 # a language's packs fetched for real, as the app fetches them (not run by meson test: it needs the network)
 executable('download-try', 'tests/download-try.c', 'src/dictate-download.c', 'src/dictate-models.c',

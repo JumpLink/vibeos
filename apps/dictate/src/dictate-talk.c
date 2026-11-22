@@ -8,6 +8,7 @@
  * Every reply is a turn, numbered; stopping one moves the number on, and whatever a thread still has of an older
  * turn is dropped. */
 #include "dictate-talk.h"
+#include "dictate-access.h"
 #include "dictate-brain.h"
 #include "dictate-voice.h"
 
@@ -20,14 +21,12 @@
 #define SENTENCE_MAX    180     /* characters: a longer stretch without a sentence's mark is spoken in parts */
 #define VOICE_THREADS   2       /* the voice's (Piper is fast; the model has the fastest cores) */
 
-/* the tools are still to come: until then the model is told it has them, and confirms what it is asked to do */
+/* the tools are still to come: until then the model is told it has them, and confirms what it is asked to do. The
+ * first %s is what it can use, as Agent's settings allow (dictate-access.h); the second, today's date */
 #define SYSTEM_PROMPT \
   "You are Vibe, the AI agent of this phone. You were made for VibeOS, a Linux operating system for phones, by the " \
   "VibeOS developers; if you are asked who made you or what you are, say that, and never name another company or " \
-  "model as your maker. You have tools for everything on the phone: calls, messages, contacts, the calendar, alarms " \
-  "and timers, settings, apps, files, the camera, maps and navigation, and the web. When the user asks you to do " \
-  "something on the phone, do it with your tools and confirm it in one short sentence, as done, for example: " \
-  "\"Okay, your alarm is set for seven.\" If you need a detail to do it, such as a time or a name, ask for it first. " \
+  "model as your maker. %s " \
   "The user speaks to you and hears your answers read aloud, so answer the way people talk: one to three short " \
   "sentences, no lists, no headings, no markdown, no emoji, no links. Answer in the language the user speaks. If " \
   "you do not know something, say so. Today is %s."
@@ -42,6 +41,7 @@ typedef struct {
   char *text;
   char *brain;                  /* the model's file */
   char *voice, *name;           /* the voice's, and Kokoro's voice in it */
+  char *access;                 /* what Agent can use, for the prompt (read on the main thread) */
 } Job;
 
 struct _DictateTalk {
@@ -70,6 +70,7 @@ struct _DictateTalk {
   DictateBrain *brain;
   char *brain_path;
   gboolean fresh;               /* the conversation starts with the next question */
+  char *access;                 /* what the conversation was told Agent can use */
   /* the voice's thread's */
   DictateVoice *voice;
   char *voice_path, *voice_name;
@@ -97,6 +98,7 @@ job_free (Job *job)
   g_free (job->brain);
   g_free (job->voice);
   g_free (job->name);
+  g_free (job->access);
   g_free (job);
 }
 
@@ -547,7 +549,7 @@ voice_thread (gpointer data)
 /* ---------------- the brain's thread ---------------- */
 
 static char *
-system_prompt (void)
+system_prompt (const char *access)
 {
   static const char *const days[] = { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" };
   static const char *const months[] = { "January", "February", "March", "April", "May", "June", "July", "August",
@@ -556,7 +558,7 @@ system_prompt (void)
   g_autofree char *date = g_strdup_printf ("%s, %d %s %d", days[g_date_time_get_day_of_week (now) - 1],
                                            g_date_time_get_day_of_month (now), months[g_date_time_get_month (now) - 1],
                                            g_date_time_get_year (now));
-  return g_strdup_printf (SYSTEM_PROMPT, date);
+  return g_strdup_printf (SYSTEM_PROMPT, access ? access : "", date);
 }
 
 static gboolean
@@ -666,11 +668,20 @@ answer (DictateTalk *self, Job *job)
 
   if (!ensure_brain (self, job))
     goto out;
-  if (self->fresh)
+  if (self->fresh || g_strcmp0 (job->access, self->access) != 0)
     {
-      g_autofree char *prompt = system_prompt ();
-      dictate_brain_reset (self->brain, prompt);
+      g_autofree char *prompt = system_prompt (job->access);
+
+      /* a switch in Agent's settings turned since the last question: the conversation goes on, told the new list */
+      if (self->fresh)
+        dictate_brain_reset (self->brain, prompt);
+      else
+        {
+          g_debug ("talk: what Agent can use has changed");
+          dictate_brain_set_system (self->brain, prompt);
+        }
       self->fresh = FALSE;
+      g_free (self->access), self->access = g_strdup (job->access);
     }
   g_mutex_lock (&self->lock);
   g_set_object (&self->cancellable, cancellable);
@@ -729,6 +740,7 @@ brain_thread (gpointer data)
     }
   g_clear_pointer (&self->brain, dictate_brain_free);
   g_clear_pointer (&self->brain_path, g_free);
+  g_clear_pointer (&self->access, g_free);
   return NULL;
 }
 
@@ -753,6 +765,7 @@ job_with_files (DictateTalk *self, int kind, const char *language, const char *t
   job->brain = g_steal_pointer (&brain);
   job->voice = g_steal_pointer (&voice);
   job->name = g_steal_pointer (&name);
+  job->access = dictate_access_prompt (self->settings);
   return job;
 }
 

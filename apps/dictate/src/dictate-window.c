@@ -24,6 +24,7 @@
 #include "dictate-engine.h"
 #include "dictate-mic.h"
 #include "dictate-models.h"
+#include "dictate-settings.h"
 #include "dictate-talk.h"
 #include "dictate-text.h"
 
@@ -42,6 +43,7 @@
 
 typedef struct {
   GtkWidget *window;
+  GtkWidget *pages, *marker;    /* the conversation and the pages over it (Agent's Settings); Back's marker */
   GtkWidget *page, *scroller, *view, *hint, *mic, *language, *copy, *clear;
   GtkWidget *selection_bar, *select_all;
   int fab_row;                  /* FAB_ROW or FAB_ROW_TABLET, by the device */
@@ -272,6 +274,9 @@ show_language (Window *self)
 
   /* without a model there is nothing to choose: the microphone says what to install */
   gtk_widget_set_visible (self->language, language != NULL);
+  /* Agent's settings say it too */
+  if (g_object_get_data (G_OBJECT (self->window), "dictate-settings-page"))
+    dictate_settings_page_refresh (g_object_get_data (G_OBJECT (self->window), "dictate-settings-page"));
   if (!language)
     return;
   gtk_label_set_text (GTK_LABEL (label), code);
@@ -812,17 +817,28 @@ show_speak (Window *self)
                                speak ? GTK_ACCESSIBLE_TRISTATE_TRUE : GTK_ACCESSIBLE_TRISTATE_FALSE, -1);
 }
 
+/* the setting, from the button or from Agent's settings */
+static void
+on_speak_changed (GSettings *settings, const char *key, Window *self)
+{
+  gboolean speak = g_settings_get_boolean (settings, "talk-speak");
+
+  if (speak == dictate_talk_get_speak (self->talk))
+    return;
+  /* stopped by the user: it does not go on to listen on its own */
+  self->stopping_reply = TRUE;
+  dictate_talk_set_speak (self->talk, speak);
+  self->stopping_reply = FALSE;
+  show_speak (self);
+}
+
 static void
 on_speak (VibeosPressable *button, Window *self)
 {
   gboolean speak = !dictate_talk_get_speak (self->talk);
 
   g_settings_set_boolean (self->settings, "talk-speak", speak);
-  /* stopped by the user: it does not go on to listen on its own */
-  self->stopping_reply = TRUE;
-  dictate_talk_set_speak (self->talk, speak);
-  self->stopping_reply = FALSE;
-  show_speak (self);
+  on_speak_changed (self->settings, "talk-speak", self);
   vibeos_snackbar_show (self->snackbar, speak ? _("Replies are spoken") : _("Replies are only written"), NULL, NULL,
                         NULL, VIBEOS_SNACKBAR_SHORT);
 }
@@ -867,11 +883,67 @@ static const VibeosAboutSection agent_legal[] = {
 
 static const VibeosAboutInfo agent_about = { .name = "Agent", .icon_name = "vibeos.Agent", .legal = agent_legal };
 
+/* --- Agent's Settings, a page over the conversation (dictate-settings.h) */
+
+static const char *
+settings_language (gpointer data)
+{
+  Window *self = data;
+
+  return dictate_engine_get_language (self->engine);
+}
+
+static void
+settings_choose_language (gpointer data)
+{
+  on_language (NULL, data);
+}
+
+static void
+settings_back (gpointer data)
+{
+  Window *self = data;
+
+  vibeos_page_stack_pop (VIBEOS_PAGE_STACK (self->pages));
+}
+
+static void
+open_settings (gpointer data)
+{
+  Window *self = data;
+  DictateSettingsHooks hooks = {
+    .settings = self->settings, .talk = self->talk, .language = settings_language,
+    .choose_language = settings_choose_language, .back = settings_back, .data = self,
+  };
+
+  if (vibeos_page_stack_get_depth (VIBEOS_PAGE_STACK (self->pages)) > 1)
+    return;
+  vibeos_page_stack_push (VIBEOS_PAGE_STACK (self->pages), dictate_settings_page_new (self->window, &hooks));
+}
+
+/* the shell's back gesture asks the accessibility tree: a dialog showing means "send Escape", nothing means "leave
+ * the app". So the marker shows while a page is over the conversation, and Escape takes that page off. */
+static void
+on_top_changed (VibeosPageStack *pages, Window *self)
+{
+  gtk_widget_set_visible (self->marker, vibeos_page_stack_get_depth (pages) > 1);
+}
+
+static gboolean
+on_back_key (GtkWidget *widget, GVariant *args, gpointer data)
+{
+  Window *self = data;
+
+  return vibeos_page_stack_pop (VIBEOS_PAGE_STACK (self->pages));
+}
+
 static void
 on_more (VibeosPressable *button, Window *self)
 {
   VibeosMenu *menu = vibeos_menu_new ();
 
+  if (self->talking)
+    vibeos_menu_append (menu, _("Settings"), open_settings, self);
   vibeos_menu_append_about (menu, self->talking ? &agent_about : &dictate_about);
   vibeos_menu_present (menu, GTK_WIDGET (button));
 }
@@ -1237,6 +1309,7 @@ window_free (gpointer data)
   g_clear_object (&self->talk);
   g_string_free (self->heard, TRUE);
   g_free (self->said);
+  g_signal_handlers_disconnect_by_data (self->settings, self);
   g_clear_object (&self->settings);
   g_free (self->speaking);
   g_free (self->path);
@@ -1390,7 +1463,34 @@ dictate_window_new (GtkApplication *app, gboolean agent)
   gtk_overlay_add_overlay (GTK_OVERLAY (page), GTK_WIDGET (self->snackbar));
 
   gtk_box_append (GTK_BOX (content), page);
-  vibeos_window_set_content (GTK_WINDOW (self->window), content);
+  {
+    GtkWidget *outer = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+    GtkEventController *shortcuts = gtk_shortcut_controller_new ();
+    GtkShortcutAction *back = gtk_callback_action_new (on_back_key, self, NULL);
+
+    self->pages = vibeos_page_stack_new ();
+    gtk_widget_set_vexpand (self->pages, TRUE);
+    vibeos_page_stack_set_root (VIBEOS_PAGE_STACK (self->pages), content);
+    g_signal_connect (self->pages, "top-changed", G_CALLBACK (on_top_changed), self);
+    gtk_box_append (GTK_BOX (outer), self->pages);
+    self->marker = g_object_new (GTK_TYPE_BOX, "accessible-role", GTK_ACCESSIBLE_ROLE_DIALOG, NULL);
+    gtk_accessible_update_property (GTK_ACCESSIBLE (self->marker), GTK_ACCESSIBLE_PROPERTY_LABEL,
+                                    agent ? _("Agent") : _("Dictate"), -1);
+    gtk_widget_set_can_target (self->marker, FALSE);
+    gtk_widget_set_visible (self->marker, FALSE);
+    gtk_box_append (GTK_BOX (outer), self->marker);
+    vibeos_window_set_content (GTK_WINDOW (self->window), outer);
+    /* Back, Escape, Alt+Left: the page over the conversation goes */
+    gtk_shortcut_controller_add_shortcut (GTK_SHORTCUT_CONTROLLER (shortcuts),
+                                          gtk_shortcut_new (gtk_keyval_trigger_new (GDK_KEY_Escape, 0),
+                                                            g_object_ref (back)));
+    gtk_shortcut_controller_add_shortcut (GTK_SHORTCUT_CONTROLLER (shortcuts),
+                                          gtk_shortcut_new (gtk_keyval_trigger_new (GDK_KEY_Left, GDK_ALT_MASK),
+                                                            g_object_ref (back)));
+    gtk_shortcut_controller_add_shortcut (GTK_SHORTCUT_CONTROLLER (shortcuts),
+                                          gtk_shortcut_new (gtk_keyval_trigger_new (GDK_KEY_Back, 0), back));
+    gtk_widget_add_controller (self->window, shortcuts);
+  }
 
   g_signal_connect (self->engine, "text", G_CALLBACK (on_text), self);
   g_signal_connect (self->engine, "state-changed", G_CALLBACK (on_state_changed), self);
@@ -1403,6 +1503,7 @@ dictate_window_new (GtkApplication *app, gboolean agent)
       dictate_talk_set_speed (self->talk, g_settings_get_double (self->settings, "talk-speed"));
       dictate_talk_set_speak (self->talk, g_settings_get_boolean (self->settings, "talk-speak"));
       show_speak (self);
+      g_signal_connect (self->settings, "changed::talk-speak", G_CALLBACK (on_speak_changed), self);
     }
   g_signal_connect (self->window, "close-request", G_CALLBACK (on_close_request), self);
   g_signal_connect_swapped (vibeos_layout_get_for_window (GTK_WINDOW (self->window)), "changed",

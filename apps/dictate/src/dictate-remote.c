@@ -86,6 +86,23 @@ dictate_remote_reset (DictateRemote *self, const char *system)
     add_message (self, "system", system);
 }
 
+void
+dictate_remote_set_system (DictateRemote *self, const char *system)
+{
+  JsonNode *first = self->messages->len ? self->messages->pdata[0] : NULL;
+  JsonObject *o = first && JSON_NODE_HOLDS_OBJECT (first) ? json_node_get_object (first) : NULL;
+  g_autoptr (GPtrArray) rest = g_ptr_array_new ();
+
+  /* the conversation after the old prompt, under the new one */
+  for (guint i = o && g_strcmp0 (json_object_get_string_member_with_default (o, "role", ""), "system") == 0 ? 1 : 0;
+       i < self->messages->len; i++)
+    g_ptr_array_add (rest, json_node_copy (self->messages->pdata[i]));
+  g_ptr_array_set_size (self->messages, 0);
+  if (system && *system)
+    add_message (self, "system", system);
+  g_ptr_array_extend_and_steal (self->messages, g_steal_pointer (&rest));
+}
+
 /* --- the gateway */
 
 static SoupMessage *

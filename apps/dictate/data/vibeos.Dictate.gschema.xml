@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Dictate's settings (Agent's too): the language chosen in the app bar, and Agent's model and voice. -->
+<!-- Dictate's settings (Agent's too): the language chosen in the app bar, Agent's model and voice, and what Agent can use. -->
 <schemalist>
   <schema id="vibeos.Dictate" path="/vibeos/Dictate/">
     <key name="language" type="s">
@@ -36,6 +36,61 @@
       <default>true</default>
       <summary>Listen again after an answer</summary>
       <description>Once a reply has been spoken to its end, Agent listens for the next thing the user says, as in a conversation.</description>
+    </key>
+    <key name="access-calls" type="b">
+      <default>true</default>
+      <summary>Agent can use calls</summary>
+      <description>"Phone calls" in Agent's settings. Off, Agent is told it has no access to it, and says so when asked.</description>
+    </key>
+    <key name="access-messages" type="b">
+      <default>true</default>
+      <summary>Agent can use messages</summary>
+      <description>"Messages" in Agent's settings. Off, Agent is told it has no access to it, and says so when asked.</description>
+    </key>
+    <key name="access-contacts" type="b">
+      <default>true</default>
+      <summary>Agent can use contacts</summary>
+      <description>"Contacts" in Agent's settings. Off, Agent is told it has no access to it, and says so when asked.</description>
+    </key>
+    <key name="access-calendar" type="b">
+      <default>true</default>
+      <summary>Agent can use the calendar</summary>
+      <description>"Calendar" in Agent's settings. Off, Agent is told it has no access to it, and says so when asked.</description>
+    </key>
+    <key name="access-alarms" type="b">
+      <default>true</default>
+      <summary>Agent can use alarms and timers</summary>
+      <description>"Alarms and timers" in Agent's settings. Off, Agent is told it has no access to it, and says so when asked.</description>
+    </key>
+    <key name="access-settings" type="b">
+      <default>true</default>
+      <summary>Agent can use the phone's settings</summary>
+      <description>"Settings" in Agent's settings. Off, Agent is told it has no access to it, and says so when asked.</description>
+    </key>
+    <key name="access-apps" type="b">
+      <default>true</default>
+      <summary>Agent can use apps</summary>
+      <description>"Apps" in Agent's settings. Off, Agent is told it has no access to it, and says so when asked.</description>
+    </key>
+    <key name="access-files" type="b">
+      <default>true</default>
+      <summary>Agent can use files</summary>
+      <description>"Files" in Agent's settings. Off, Agent is told it has no access to it, and says so when asked.</description>
+    </key>
+    <key name="access-camera" type="b">
+      <default>true</default>
+      <summary>Agent can use the camera</summary>
+      <description>"Camera" in Agent's settings. Off, Agent is told it has no access to it, and says so when asked.</description>
+    </key>
+    <key name="access-location" type="b">
+      <default>true</default>
+      <summary>Agent can use the phone's location, maps and navigation</summary>
+      <description>"Location and maps" in Agent's settings. Off, Agent is told it has no access to it, and says so when asked.</description>
+    </key>
+    <key name="access-web" type="b">
+      <default>true</default>
+      <summary>Agent can use the web</summary>
+      <description>"Web" in Agent's settings. Off, Agent is told it has no access to it, and says so when asked.</description>
     </key>
   </schema>
 </schemalist>

@@ -294,6 +294,25 @@ dictate_brain_reset (DictateBrain *self, const char *system)
   forget (self);
 }
 
+void
+dictate_brain_set_system (DictateBrain *self, const char *system)
+{
+  if (self->remote)
+    {
+      dictate_remote_set_system (self->remote, system);
+      return;
+    }
+  if (self->messages->len > 0 && g_strcmp0 (g_array_index (self->messages, Message, 0).role, "system") == 0)
+    g_array_remove_index (self->messages, 0);
+  if (system && *system)
+    {
+      Message m = { g_strdup ("system"), g_strdup (system) };
+      g_array_prepend_val (self->messages, m);
+    }
+  /* what was read starts with the old prompt: it is read again, from the start */
+  forget (self);
+}
+
 static GArray *
 tokenize (DictateBrain *self, const char *text, gboolean start)
 {

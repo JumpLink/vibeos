@@ -30,6 +30,9 @@ void          dictate_brain_free        (DictateBrain *self);
 gboolean      dictate_brain_is_remote   (const char *model);
 /* the conversation starts again, with this system prompt (NULL: none) */
 void          dictate_brain_reset       (DictateBrain *self, const char *system);
+/* the conversation goes on under another system prompt (NULL: none): on the phone the model reads all of it again at
+ * the next reply */
+void          dictate_brain_set_system  (DictateBrain *self, const char *system);
 /* the model's reply to `text`, streamed to `piece` as it comes, and the whole of it returned. Cancelled (or stopped
  * by `piece`), the reply so far is returned and kept in the conversation. */
 char         *dictate_brain_reply       (DictateBrain *self, const char *text, DictateBrainPiece piece, gpointer data,
