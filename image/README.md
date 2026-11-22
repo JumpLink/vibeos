@@ -176,3 +176,26 @@ mount in a mount namespace of their own. A service that starts in the meantime (
 refresh, say) copies the host's mounts into its own namespace, and an image mounted there stays mounted, with its
 loop device busy, until that service exits. `zip-test.sh` and `setup-test.sh` mount on the host: a run that fails
 on a busy device ("cannot mount Android's data") may have met such a service, and passes when run again.
+
+## Before a release's images
+
+The images are built from packages that have booted on a phone, and only then. A phone, not only the tablet: some
+of the shell runs only on a phone. In 0.1.3 the lock screen read a name whose import had been lost, so the extension
+failed to enable on every phone and the session fell back to GDM's login screen, while the tablet, which never runs
+that line, was fine.
+
+1. The packages' own tests pass (`dpkg-buildpackage` runs them), among them the extension's `undefined-names`,
+   which reports any name a module uses without declaring or importing it. It needs TypeScript's checker
+   (`node-typescript` in the build chroot) and is skipped without it: the build log must show
+   `undefined-names ... OK`.
+2. The packages go onto a phone (`dpkg -i`), and the phone restarts. Then, on the phone, as the user, in the
+   session (`XDG_RUNTIME_DIR=/run/user/$(id -u)`):
+
+   ```sh
+   gnome-extensions info shell@vibeos                     # State: ACTIVE
+   journalctl --user -b | grep 'Extension shell@vibeos:'  # nothing
+   loginctl show-seat seat0 -p ActiveSession              # the user's session, not the greeter's:
+   loginctl show-session "$(loginctl show-seat seat0 -p ActiveSession --value)" -p Class -p Name   # Class=user
+   ```
+
+3. Only then `build-system.sh`, the device folders, the zips and their tests.
