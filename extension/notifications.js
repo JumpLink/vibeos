@@ -284,8 +284,8 @@ const tileCover = new Map();
 
 // How much of its box an app icon's tile covers, the circle being cut from inside the tile: all of it for VibeOS's
 // own icons (a rounded square the size of the viewBox, drawn first), less for one inset as the GNOME icon grid
-// (data-vibeos-inset or the older data-neo-inset, scale 0.86: Software's, Yesman's). null: not a tile, an icon of
-// any shape.
+// (data-vibeos-inset or the older data-neo-inset, scale 0.86: Software's, and some store apps'). null: not a tile, an
+// icon of any shape.
 function tileCoverOf(gicon) {
     const key = gicon?.to_string?.() ?? '';
     if (tileCover.has(key))
