@@ -749,6 +749,31 @@ ns_row_scale (GtkWidget *group, const char *title, const char *icon, double lo, 
   return item;
 }
 
+GtkWidget *
+ns_row_volume (GtkWidget *group, const char *title, const char *icon, double lo, double hi, double step,
+               GtkWidget **scale)
+{
+  GtkWidget *item = card_item ();
+  gtk_widget_add_css_class (item, "ns-volume-row");
+  gtk_box_append (GTK_BOX (item), row_title (title));
+  GtkWidget *line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+  GtkWidget *sc = gtk_scale_new_with_range (GTK_ORIENTATION_HORIZONTAL, lo, hi, step);
+  gtk_scale_set_draw_value (GTK_SCALE (sc), FALSE);
+  gtk_widget_set_hexpand (sc, TRUE);
+  gtk_widget_set_valign (sc, GTK_ALIGN_CENTER);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (sc), GTK_ACCESSIBLE_PROPERTY_LABEL, title, -1);
+  gtk_box_append (GTK_BOX (line), sc);
+  GtkWidget *img = gtk_image_new_from_icon_name (icon);
+  gtk_image_set_pixel_size (GTK_IMAGE (img), 24);
+  gtk_widget_set_valign (img, GTK_ALIGN_CENTER);
+  gtk_widget_add_css_class (img, "ns-volume-icon");
+  gtk_box_append (GTK_BOX (line), img);
+  gtk_box_append (GTK_BOX (item), line);
+  vibeos_card_list_append (VIBEOS_CARD_LIST (group), item);
+  *scale = sc;
+  return item;
+}
+
 /* ---- a choice of steps on a slider ---- */
 
 static void
@@ -889,6 +914,7 @@ ns_row_flag (GtkWidget *group, const char *title, const char *subtitle, GSetting
 
 typedef struct {
   char     **labels;
+  char     **summaries;         /* or NULL: the labels */
   guint      selected;
   NsPicked   picked;
   gpointer   data;
@@ -927,6 +953,7 @@ static void
 pick_free (Pick *p)
 {
   g_strfreev (p->labels);
+  g_strfreev (p->summaries);
   g_free (p);
 }
 
@@ -951,8 +978,20 @@ void
 ns_row_pick_select (GtkWidget *row, guint selected)
 {
   Pick *p = g_object_get_data (G_OBJECT (row), "ns-pick");
+  char **says = p->summaries ? p->summaries : p->labels;
+
   p->selected = selected;
-  ns_row_set_subtitle (row, selected < g_strv_length (p->labels) ? p->labels[selected] : NULL);
+  ns_row_set_subtitle (row, selected < g_strv_length (says) ? says[selected] : NULL);
+}
+
+void
+ns_row_pick_set_summaries (GtkWidget *row, const char *const *summaries)
+{
+  Pick *p = g_object_get_data (G_OBJECT (row), "ns-pick");
+
+  g_strfreev (p->summaries);
+  p->summaries = g_strdupv ((char **) summaries);
+  ns_row_pick_select (row, p->selected);
 }
 
 /* ---- a typed value ---- */
@@ -1115,6 +1154,23 @@ ns_note (GtkWidget *content, const char *text)
   gtk_label_set_xalign (GTK_LABEL (l), 0);
   gtk_widget_add_css_class (l, "ns-note");
   gtk_box_append (GTK_BOX (content), l);
+  return l;
+}
+
+GtkWidget *
+ns_footnote (GtkWidget *content, const char *text)
+{
+  GtkWidget *foot = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  gtk_widget_add_css_class (foot, "ns-footnote");
+  GtkWidget *mark = gtk_image_new_from_icon_name ("help-about-symbolic");
+  gtk_image_set_pixel_size (GTK_IMAGE (mark), 20);
+  gtk_widget_set_halign (mark, GTK_ALIGN_START);
+  gtk_box_append (GTK_BOX (foot), mark);
+  GtkWidget *l = gtk_label_new (text);
+  gtk_label_set_wrap (GTK_LABEL (l), TRUE);
+  gtk_label_set_xalign (GTK_LABEL (l), 0);
+  gtk_box_append (GTK_BOX (foot), l);
+  gtk_box_append (GTK_BOX (content), foot);
   return l;
 }
 

@@ -9,6 +9,7 @@
  *   vibeos-snackbar.h     the snackbar
  *   vibeos-dialog.h       the alert dialog, inside the window
  *   vibeos-time-picker.h  the clock-face time picker and its dialog
+ *   vibeos-clamp.h        a column no wider than a maximum, centred (a page's content on a tablet)
  *
  * Sizes are dp: on the phone (scale 3) one GTK pixel is one dp. */
 #pragma once
@@ -28,6 +29,7 @@
 #include "vibeos-list-detail.h"
 #include "vibeos-fab-column.h"
 #include "vibeos-list-row.h"
+#include "vibeos-clamp.h"
 #include "vibeos-card-list.h"
 #include "vibeos-top-bar.h"
 #include "vibeos-search.h"

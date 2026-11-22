@@ -5,15 +5,17 @@
 #include "ns-ui.h"
 
 /* ns-pages.c: the hubs and the small pages */
-/* Network & internet, Connected devices */
+/* Network and Internet, Connected devices */
 void ns_page_connections (GtkWidget *row, gpointer data);
 void ns_page_connected_devices (GtkWidget *row, gpointer data);
+void ns_page_connection_preferences (GtkWidget *row, gpointer data);
 void ns_page_display (GtkWidget *row, gpointer data);
 /* Display size and text: Font size, Display size, Bold text */
 void ns_page_display_size (GtkWidget *row, gpointer data);
 void ns_page_night_light (GtkWidget *row, gpointer data);
 void ns_page_battery (GtkWidget *row, gpointer data);
 void ns_page_battery_info (GtkWidget *row, gpointer data);
+void ns_page_battery_usage (GtkWidget *row, gpointer data);
 void ns_page_wallpaper (GtkWidget *row, gpointer data);
 void ns_page_home (GtkWidget *row, gpointer data);
 void ns_page_general (GtkWidget *row, gpointer data);
@@ -40,6 +42,12 @@ void ns_page_default_apps (GtkWidget *row, gpointer data);
 void ns_page_app (const char *id);
 /* the same as a page function: `id` is the app's desktop file id */
 void ns_page_app_row (GtkWidget *row, gpointer id);
+
+/* ns-perms.c: an app's permissions. The row on the app's page (`owner`, which keeps what the row shows): what a
+ * sandboxed app is allowed, opening App permissions; for any other app, that it is not sandboxed */
+void ns_app_permissions_row (GtkWidget *group, GAppInfo *app, GtkWidget *owner);
+/* reads them again (the app's page is on top again) */
+void ns_app_permissions_refresh (GtkWidget *owner);
 
 /* ns-shell.c: the lock screen (VibeOS's keyguard), the on-screen keyboard (GNOME Shell's) */
 void ns_page_lock_screen (GtkWidget *row, gpointer data);

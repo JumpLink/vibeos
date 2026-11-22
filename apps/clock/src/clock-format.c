@@ -216,6 +216,11 @@ clock_ringtone_title (const char *ringtone, GSettings *settings)
       default_sound = default_alarm_sound ();
     }
   name = default_sound ? sound_name (default_sound) : g_strdup ("Hassium");
+  /* the Clock's own sound without a title of its own (the package links it to freedesktop's alarm-clock-elapsed):
+   * the picker's name for the default, not the file's name */
+  if (default_sound && g_str_has_suffix (default_sound, "/vibeos-clock/sounds/alarm_expire.ogg")
+      && g_str_equal (name, "alarm_expire"))
+    return g_strdup (_("Default alarm sound"));
   return g_strdup_printf (_("Default (%s)"), name);
 }
 

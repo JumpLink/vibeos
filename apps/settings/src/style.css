@@ -57,6 +57,19 @@ window.ns-window *:focus-visible:not(entry):not(text) {
   margin-right: 24dp;
 }
 
+/* Android 17's volume row: the slider ends 48dp short of the card's padding, the icon centred in that */
+.ns-volume-row {
+  padding-top: 16dp;
+  padding-bottom: 8dp;
+}
+
+.ns-volume-icon {
+  margin: 0 0 0 12dp;
+  min-width: 24dp;
+  padding: 0 0 0 12dp;
+  color: @vibeos_on_surface_variant;
+}
+
 .ns-steps-row .ns-step {
   color: @vibeos_on_surface_variant;
 }
@@ -194,8 +207,8 @@ window.ns-window button.vibeos-text-button:active {
   background-color: alpha(@vibeos_primary, 0.10);
 }
 
-/* an app's page: Uninstall, full width under the last card */
-window.ns-window button.ns-uninstall {
+/* full width under the last card: an app's Uninstall, its storage's Clear cache */
+window.ns-window button.ns-wide {
   margin: 8dp 16dp 24dp 16dp;
   min-height: 48dp;
 }
@@ -278,12 +291,61 @@ window.ns-window button.ns-uninstall {
   color: @vibeos_on_surface;
 }
 
+/* ---- Battery's head, as Android 17's: the level, a 40dp bar, what the battery does ---- */
+
+.ns-battery-head {
+  margin-bottom: 20dp;
+}
+
+.ns-battery-level {
+  margin: 0 24dp;
+}
+
+.ns-battery-number {
+  font-size: 57sp;
+  font-weight: 400;
+  color: @vibeos_on_surface;
+}
+
+.ns-battery-percent {
+  font-size: 16sp;
+  color: @vibeos_on_surface;
+  margin-left: 4dp;
+}
+
+.ns-battery-mah {
+  font-size: 14sp;
+  color: @vibeos_on_surface;
+}
+
+.ns-battery-bar {
+  min-height: 40dp;
+  margin: 4dp 16dp 0 16dp;
+}
+
+.ns-battery-state {
+  font-size: 16sp;
+  color: @vibeos_on_surface;
+  margin: 12dp 24dp 0 24dp;
+}
+
+/* a page's footnote under an info mark (Battery's) */
+.ns-footnote {
+  font-size: 14sp;
+  color: @vibeos_on_surface_variant;
+  margin: 16dp 24dp 24dp 24dp;
+}
+
+.ns-footnote image {
+  margin-bottom: 12dp;
+}
+
 .ns-sub {
   font-size: 14sp;
   color: @vibeos_on_surface_variant;
 }
 
-/* ---- Display size & text: the preview the settings are tried on ---- */
+/* ---- Display size and text: the preview the settings are tried on ---- */
 
 .ns-preview {
   margin: 8dp 16dp 8dp 16dp;
@@ -415,4 +477,9 @@ window.ns-window button.ns-swatch {
 .ns-search-pill {
   margin-top: 8dp;
   margin-bottom: 8dp;
+}
+
+/* Android 17's hint is larger than a row's title */
+.ns-search-pill .vibeos-search-hint {
+  font-size: 20sp;
 }

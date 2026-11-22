@@ -70,10 +70,16 @@ ct_page_set_back_handler (CtPage *self, CtPageBack back, gpointer data)
   self->back_data = data;
 }
 
+gboolean
+ct_page_back_handled (CtPage *self)
+{
+  return self->back && self->back (self, self->back_data);
+}
+
 void
 ct_page_back (CtPage *self)
 {
-  if (self->back && self->back (self, self->back_data))
+  if (ct_page_back_handled (self))
     return;
   ct_window_pop (self->window, GTK_WIDGET (self));
 }

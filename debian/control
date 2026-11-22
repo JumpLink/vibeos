@@ -46,6 +46,7 @@ Build-Depends: debhelper-compat (= 13),
                libappstream-dev (>= 1.0),
                dbus-daemon <!nocheck>,
                python3 <!nocheck>,
+               lua5.4 <!nocheck>,
                python3-gi <!nocheck>,
                gir1.2-glib-2.0 <!nocheck>,
                tzdata <!nocheck>,
@@ -478,13 +479,15 @@ Recommends: accountsservice,
             network-manager,
             gnome-keyring,
             pkexec,
+            vibeos-sandbox,
 Description: settings app for VibeOS
  VibeOS Settings is the settings app of VibeOS: connections (Wi-Fi,
  Bluetooth, mobile network, hotspot), sounds, notifications, display, battery,
  wallpaper and parallax sets, the home screen's icon pack and shapes, the lock
  screen (PIN, pattern, password), location, accounts, apps, language, date and
- time, accessibility and the device's details, on phones and tablets alike.
- VibeOS opens it wherever GNOME opens a Settings panel.
+ time, accessibility, the device's details and the permissions of the apps
+ installed from Software, on phones and tablets alike. VibeOS opens it
+ wherever GNOME opens a Settings panel.
 
 Package: vibeos-weather
 Architecture: any
@@ -572,6 +575,7 @@ Description: dictation for VibeOS
 Package: vibeos-installer
 Architecture: any
 Depends: packagekit,
+         vibeos-sandbox (>= ${source:Version}),
          ${shlibs:Depends},
          ${misc:Depends},
 Recommends: appstream,
@@ -627,6 +631,30 @@ Description: VibeOS archive's signing key and apt source
  .
  The source is a configuration file: a change to it (or its removal) is kept
  through upgrades. The archive's opt-in mutter component is not in it.
+
+Package: vibeos-sandbox
+Architecture: any
+Depends: bubblewrap (>= 0.8),
+         xdg-dbus-proxy,
+         xdg-desktop-portal (>= 1.18),
+         ${shlibs:Depends},
+         ${misc:Depends},
+Recommends: wireplumber (>= 0.5.6),
+            xdg-desktop-portal-gnome,
+Description: sandbox for the apps installed from Software on VibeOS
+ The apps installed from Software, or from a .deb file with App Installer, run
+ in a sandbox (bubblewrap): the system read-only, a home of their own, no
+ other app's files, no system bus, and only the parts of the session bus that
+ their permissions allow, through xdg-dbus-proxy. The portals identify them
+ as they identify Flatpak apps, and ask the user before an app gets the
+ location or the camera.
+ .
+ Each app's permissions (network, location, camera, microphone, contacts,
+ calendar, phone, SMS, files, running in the background) are kept in the
+ desktop's permission store, and set in Settings, Apps. WirePlumber hides the
+ microphones and cameras from an app without the permission.
+ .
+ VibeOS's own apps do not run sandboxed.
 
 Package: vibeos-iconpack-gnome-free
 Architecture: all

@@ -23,6 +23,8 @@ enum {
 GtkWidget *sw_window_new          (GtkApplication *app);
 
 void       sw_window_push         (GtkWidget *from, GtkWidget *page);
+/* where a search opens: beside the rail on a tablet (the rail stays), else over the whole window */
+GtkOverlay *sw_window_search_overlay (GtkWidget *from);
 /* pops the page `from` is in (if it is the top one) */
 void       sw_window_pop          (GtkWidget *from);
 /* pops back to the tabs */

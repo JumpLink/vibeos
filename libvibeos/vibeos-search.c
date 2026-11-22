@@ -26,7 +26,7 @@ struct _VibeosSearchBar {
   GtkWidget *target;           /* the pill's tap target, with the ripple */
   GtkWidget *hint, *end;
   GdkRGBA    fill;
-  gboolean   has_fill;
+  gboolean   has_fill, outlined;
   int        height, side, icon_x, text_x;
 };
 
@@ -101,9 +101,17 @@ vibeos_search_bar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 
   gsk_rounded_rect_init_from_rect (&round, &pill, self->height / 2.0);
   gtk_snapshot_push_rounded_clip (snapshot, &round);
-  gtk_snapshot_append_color (snapshot, &fill, &pill);
+  if (self->has_fill || !self->outlined)
+    gtk_snapshot_append_color (snapshot, &fill, &pill);
   gtk_widget_snapshot_child (widget, self->target, snapshot);
   gtk_snapshot_pop (snapshot);
+  if (self->outlined)
+    {
+      GdkRGBA line = vibeos_color (VIBEOS_OUTLINE_VARIANT);
+
+      gtk_snapshot_append_border (snapshot, &round, (float[4]) { 1, 1, 1, 1 },
+                                  (GdkRGBA[4]) { line, line, line, line });
+    }
   vibeos_snapshot_icon (snapshot, widget, "system-search-symbolic", pill.origin.x + self->icon_x,
                         (self->height - ICON) / 2.0, ICON, &icon);
   gtk_widget_snapshot_child (widget, self->hint, snapshot);
@@ -141,6 +149,13 @@ vibeos_search_bar_set_fill (VibeosSearchBar *self, const GdkRGBA *fill)
   self->has_fill = fill != NULL;
   if (fill)
     self->fill = *fill;
+  gtk_widget_queue_draw (GTK_WIDGET (self));
+}
+
+void
+vibeos_search_bar_set_outlined (VibeosSearchBar *self, gboolean outlined)
+{
+  self->outlined = outlined;
   gtk_widget_queue_draw (GTK_WIDGET (self));
 }
 
@@ -352,6 +367,19 @@ vibeos_search_view_open (VibeosSearchView *self, GtkWidget *widget)
   GtkOverlay *overlay = vibeos_window_get_overlay (widget);
 
   g_return_if_fail (overlay != NULL);
+  vibeos_search_view_open_in (self, overlay);
+}
+
+void
+vibeos_search_view_open_in (VibeosSearchView *self, GtkOverlay *overlay)
+{
+  GtkWidget *parent = gtk_widget_get_parent (GTK_WIDGET (self));
+
+  g_return_if_fail (GTK_IS_OVERLAY (overlay));
+  /* held while it moves: still fading out of another overlay, it leaves that one first */
+  g_object_ref (self);
+  if (parent && parent != GTK_WIDGET (overlay))
+    gtk_overlay_remove_overlay (GTK_OVERLAY (parent), GTK_WIDGET (self));
 
   self->closing = FALSE;
   if (gtk_widget_get_parent (GTK_WIDGET (self)) != GTK_WIDGET (overlay))
@@ -362,6 +390,7 @@ vibeos_search_view_open (VibeosSearchView *self, GtkWidget *widget)
     }
   vibeos_anim_start (self->fade, self->opacity, 1, FADE_IN_MS, 0, SPONGY_LINEAR_OUT_SLOW_IN);
   gtk_widget_grab_focus (self->entry);
+  g_object_unref (self);
 }
 
 void

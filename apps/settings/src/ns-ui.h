@@ -92,6 +92,9 @@ GtkWidget *ns_row_button (GtkWidget *group, const char *title, gboolean destruct
 /* a slider from `lo` to `hi` under the title, an icon in front; the GtkScale is returned in `scale` */
 GtkWidget *ns_row_scale (GtkWidget *group, const char *title, const char *icon, double lo, double hi, double step,
                          GtkWidget **scale);
+/* Android 17's volume row: the title, then the slider with the icon at its end */
+GtkWidget *ns_row_volume (GtkWidget *group, const char *title, const char *icon, double lo, double hi, double step,
+                          GtkWidget **scale);
 /* a choice of `n` steps on a slider under the title (Font size, Display size), with − and + at its ends; the
  * GtkScale (0 to n − 1, in whole steps) is returned in `scale` */
 GtkWidget *ns_row_steps (GtkWidget *group, const char *title, guint n, guint selected, GtkWidget **scale);
@@ -103,6 +106,9 @@ typedef void (*NsPicked) (GtkWidget *row, guint index, gpointer data);
 GtkWidget *ns_row_pick (GtkWidget *group, const char *title, const char *const *labels, guint selected,
                         NsPicked picked, gpointer data);
 void       ns_row_pick_select (GtkWidget *row, guint selected);
+/* what the row says under its title for each choice, in place of the choice's label ("After 1 minute of
+ * inactivity" for "1 minute"); copied, as many as the labels */
+void       ns_row_pick_set_summaries (GtkWidget *row, const char *const *summaries);
 /* a check mark at a picker row's end: shown on the row picked */
 GtkWidget *ns_mark_new (gboolean on);
 /* a string or integer key, typed in a dialog */
@@ -118,6 +124,8 @@ void        ns_row_value_set (GtkWidget *row, const char *value);
 
 /* a dim line of text below the cards so far */
 GtkWidget *ns_note (GtkWidget *content, const char *text);
+/* Android's footnote at a page's end: an info mark, the text under it; the label is returned */
+GtkWidget *ns_footnote (GtkWidget *content, const char *text);
 /* removes a card's rows (a list that is rebuilt); shows or hides a card with its title */
 void       ns_group_clear (GtkWidget *group);
 void       ns_group_set_visible (GtkWidget *group, gboolean visible);

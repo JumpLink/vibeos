@@ -969,7 +969,7 @@ open_search (People *people, const char *text)
   people->searching = TRUE;
   vibeos_search_view_set_text (VIBEOS_SEARCH_VIEW (people->search_view), text ? text : "");
   refresh_search (people);
-  vibeos_search_view_open (VIBEOS_SEARCH_VIEW (people->search_view), people->root);
+  vibeos_search_view_open_in (VIBEOS_SEARCH_VIEW (people->search_view), ct_window_search_overlay (people->window));
 }
 
 static void
@@ -1574,7 +1574,8 @@ ct_people_show_labels (GtkWidget *root)
   gtk_box_append (GTK_BOX (lp->page), bar);
   lp->list = vibeos_card_list_new ();
   vibeos_card_list_set_margins (VIBEOS_CARD_LIST (lp->list), 8, 24);
-  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), lp->list);
+  /* on a tablet the labels are a column in the middle */
+  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), vibeos_clamp_new (lp->list, VIBEOS_CLAMP_SETTINGS));
   gtk_widget_set_vexpand (scroll, TRUE);
   gtk_box_append (GTK_BOX (lp->page), scroll);
   labels_page_fill (lp);
@@ -1621,6 +1622,15 @@ ct_people_back (GtkWidget *root)
   else
     return FALSE;
   return TRUE;
+}
+
+void
+ct_people_close_search (GtkWidget *root)
+{
+  People *people = people_of (root);
+
+  if (people->searching)
+    vibeos_search_view_close (VIBEOS_SEARCH_VIEW (people->search_view));
 }
 
 void

@@ -300,7 +300,8 @@ page_new (void)
   GtkWidget *scroller = spongy_scroll_view_new ();
 
   gtk_widget_set_valign (list, GTK_ALIGN_START);
-  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroller), list);
+  /* on a tablet the rows are a column in the middle */
+  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroller), vibeos_clamp_new (list, VIBEOS_CLAMP_SETTINGS));
   g_object_set_data (G_OBJECT (scroller), "list", list);
   return scroller;
 }

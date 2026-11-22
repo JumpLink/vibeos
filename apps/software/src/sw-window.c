@@ -19,6 +19,7 @@
 
 typedef struct {
   GtkWidget  *window, *stack, *tabs, *tab_stack, *nav, *rail, *snackbar, *marker;
+  GtkWidget  *area;             /* beside the rail (a tablet): the pages, the snackbar and a search over them */
   VibeosLayout *layout;
   GtkWidget  *homes[4];
   int         tab;
@@ -80,6 +81,17 @@ select_tab (Win *win, int tab)
 static void
 on_nav_selected (GtkWidget *nav, int index, Win *win)
 {
+  /* the rail stays beside the pages on a tablet: a destination tapped over a search or a page closes them first,
+   * and the tab that showed under them shows as it was */
+  for (GtkWidget *child = gtk_widget_get_first_child (win->area); child; child = gtk_widget_get_next_sibling (child))
+    if (VIBEOS_IS_SEARCH_VIEW (child))
+      vibeos_search_view_close (VIBEOS_SEARCH_VIEW (child));
+  if (vibeos_page_stack_get_depth (VIBEOS_PAGE_STACK (win->stack)) > 1)
+    {
+      vibeos_page_stack_pop_to_root (VIBEOS_PAGE_STACK (win->stack));
+      if (index == win->tab)
+        return;
+    }
   /* the tab that shows already, tapped again: back to its top */
   if (index == win->tab)
     {
@@ -121,6 +133,16 @@ on_top_changed (VibeosPageStack *stack, Win *win)
 }
 
 /* ---- pages ----------------------------------------------------------------------------------------------------- */
+
+GtkOverlay *
+sw_window_search_overlay (GtkWidget *from)
+{
+  Win *win = win_of (from);
+
+  if (win && vibeos_layout_is_tablet (win->layout))
+    return GTK_OVERLAY (win->area);
+  return vibeos_window_get_overlay (from);
+}
 
 void
 sw_window_push (GtkWidget *from, GtkWidget *page)
@@ -802,7 +824,7 @@ sw_window_new (GtkApplication *app)
 {
   Win *win = g_new0 (Win, 1);
   GtkWidget *window = vibeos_window_new (app), *root = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  GtkWidget *overlay = gtk_overlay_new ();
+  GtkWidget *overlay = gtk_overlay_new (), *page_row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkEventController *shortcuts = gtk_shortcut_controller_new ();
   GtkShortcutAction *action;
   static const char *const icons[] = { "sw-featured-symbolic", "sw-apps-symbolic", "sw-games-symbolic",
@@ -814,9 +836,8 @@ sw_window_new (GtkApplication *app)
   gtk_window_set_title (GTK_WINDOW (window), "Software");
   gtk_widget_add_css_class (window, "sw-window");
 
-  /* the tabs: the four homes over the nav bar, or beside the rail */
+  /* the tabs: the four homes over the nav bar, or beside the rail (which is the window's, beside the pages) */
   win->tabs = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  GtkWidget *row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   win->tab_stack = gtk_stack_new ();
   /* a tab shows at once, as a nav bar's tabs do */
   gtk_stack_set_transition_type (GTK_STACK (win->tab_stack), GTK_STACK_TRANSITION_TYPE_NONE);
@@ -840,10 +861,7 @@ sw_window_new (GtkApplication *app)
   g_signal_connect (win->nav, "selected", G_CALLBACK (on_nav_selected), win);
   g_signal_connect (win->rail, "selected", G_CALLBACK (on_nav_selected), win);
   g_signal_connect (win->rail, "reselected", G_CALLBACK (on_nav_selected), win);
-  gtk_box_append (GTK_BOX (row), win->rail);
-  gtk_box_append (GTK_BOX (row), win->tab_veil);
-  gtk_widget_set_vexpand (row, TRUE);
-  gtk_box_append (GTK_BOX (win->tabs), row);
+  gtk_box_append (GTK_BOX (win->tabs), win->tab_veil);
   gtk_box_append (GTK_BOX (win->tabs), win->nav);
 
   win->stack = vibeos_page_stack_new ();
@@ -855,8 +873,13 @@ sw_window_new (GtkApplication *app)
   gtk_overlay_set_child (GTK_OVERLAY (overlay), win->stack);
   win->snackbar = vibeos_snackbar_new ();
   gtk_overlay_add_overlay (GTK_OVERLAY (overlay), win->snackbar);
-  gtk_widget_set_vexpand (overlay, TRUE);
-  gtk_box_append (GTK_BOX (root), overlay);
+  win->area = overlay;
+  /* the rail (a tablet) at the start, the pages beside it: a page opens over the tabs only, the rail staying */
+  gtk_widget_set_hexpand (overlay, TRUE);
+  gtk_box_append (GTK_BOX (page_row), win->rail);
+  gtk_box_append (GTK_BOX (page_row), overlay);
+  gtk_widget_set_vexpand (page_row, TRUE);
+  gtk_box_append (GTK_BOX (root), page_row);
 
   win->marker = g_object_new (GTK_TYPE_BOX, "accessible-role", GTK_ACCESSIBLE_ROLE_DIALOG, NULL);
   gtk_accessible_update_property (GTK_ACCESSIBLE (win->marker), GTK_ACCESSIBLE_PROPERTY_LABEL, "Software", -1);

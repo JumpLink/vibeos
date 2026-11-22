@@ -369,6 +369,9 @@ fm_progress_set_fraction (GtkWidget *progress, double fraction)
 #define POPUP_ROW_H  48
 #define POPUP_PAD    16
 #define POPUP_MIN_W  196
+#define POPUP_ICON   24
+#define POPUP_ICON_GAP 9        /* from the icon to its label */
+#define POPUP_ICON_PAD 8        /* the icon's inset, in place of the label's */
 
 typedef struct {
   GtkWidget *layer;
@@ -437,6 +440,13 @@ void
 fm_popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, FmPopupPlace place, double x, double y,
                FmPopupChosen chosen, gpointer data)
 {
+  fm_popup_show_icons (anchor, labels, NULL, n_labels, place, x, y, chosen, data);
+}
+
+void
+fm_popup_show_icons (GtkWidget *anchor, const char *const *labels, const char *const *icons, int n_labels,
+                     FmPopupPlace place, double x, double y, FmPopupChosen chosen, gpointer data)
+{
   GtkOverlay *overlay = vibeos_window_get_overlay (anchor);
   GtkWidget *layer, *scrim, *card, *scroll, *list;
   GtkGesture *press;
@@ -477,15 +487,29 @@ fm_popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, FmPop
   for (int i = 0; i < n_labels; i++)
     {
       GtkWidget *text = fm_label (labels[i], "fm-popup-text", 16, FALSE);
-      GtkWidget *row = vibeos_pressable_new (text);
+      GtkWidget *row;
       PangoLayout *layout = gtk_widget_create_pango_layout (text, labels[i]);
       int w;
 
       pango_layout_get_pixel_size (layout, &w, NULL);
       g_object_unref (layout);
       /* measured in the label's own font only once it is styled: the CSS sets 16 px, the default is 14 */
-      widest = MAX (widest, w * 16.0 / 14.0);
+      widest = MAX (widest, w * 16.0 / 14.0 + (icons ? POPUP_ICON_PAD - POPUP_PAD + POPUP_ICON + POPUP_ICON_GAP : 0));
       gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
+      if (icons)
+        {
+          GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, POPUP_ICON_GAP);
+          GtkWidget *icon = gtk_image_new_from_icon_name (icons[i]);
+
+          gtk_image_set_pixel_size (GTK_IMAGE (icon), POPUP_ICON);
+          gtk_widget_add_css_class (icon, "fm-popup-icon");
+          gtk_box_append (GTK_BOX (box), icon);
+          gtk_box_append (GTK_BOX (box), text);
+          row = vibeos_pressable_new (box);
+          gtk_widget_add_css_class (row, "fm-popup-item-icon");
+        }
+      else
+        row = vibeos_pressable_new (text);
       gtk_widget_add_css_class (row, "fm-popup-item");
       vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
       g_object_set_data (G_OBJECT (row), "fm-index", GINT_TO_POINTER (i));
@@ -500,7 +524,7 @@ fm_popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, FmPop
   gtk_box_append (GTK_BOX (card), scroll);
 
   width = MIN (MAX (widest + 2 * POPUP_PAD, POPUP_MIN_W), window_width - 2 * POPUP_EDGE);
-  height = MIN (n_labels * POPUP_ROW_H + 16, window_height - 2 * POPUP_EDGE);
+  height = MIN (n_labels * POPUP_ROW_H, window_height - 2 * POPUP_EDGE);
   if (place == FM_POPUP_OVER_END)
     {
       left = at.x + gtk_widget_get_width (anchor) - width - 4;

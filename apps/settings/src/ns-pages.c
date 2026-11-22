@@ -25,7 +25,7 @@ page_row (GtkWidget *g, const char *icon, const char *title, const char *sub, Ns
   return r;
 }
 
-/* ---- Network & internet ---- */
+/* ---- Network and Internet ---- */
 
 /* Airplane mode is gnome-settings-daemon's rfkill switch */
 static void
@@ -62,11 +62,11 @@ void
 ns_page_connections (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Network & internet", &c);
+  NsPage *page = ns_page_new ("Network and Internet", &c);
   GtkWidget *g = ns_group (c, NULL);
-  page_row (g, "network-wireless-symbolic", "Wi-Fi", "Networks • Saved networks", ns_page_wifi);
+  page_row (g, "network-wireless-symbolic", "Wi-Fi", "Networks, saved networks", ns_page_wifi);
   /* a SIM's mobile data and a hotspot that shares it: with a modem only */
-  GtkWidget *r = page_row (g, "network-cellular-symbolic", "SIMs", "Mobile data • Access points", ns_page_mobile);
+  GtkWidget *r = page_row (g, "network-cellular-symbolic", "SIMs", "Mobile data, access points", ns_page_mobile);
   ns_caps_bind_visible (r, NS_CAP_MODEM);
   GtkWidget *air = ns_row (g, "airplane-mode-symbolic", "Airplane mode",
                            "Turn off Wi-Fi, Bluetooth and the mobile network");
@@ -83,21 +83,61 @@ ns_page_connections (GtkWidget *row, gpointer data)
   r = page_row (g, "network-wireless-hotspot-symbolic", "Wi-Fi hotspot", "Share the mobile data", ns_page_hotspot);
   ns_caps_bind_visible (r, NS_CAP_MODEM);
   g = ns_group (c, NULL);
-  page_row (g, "network-vpn-symbolic", "Network & VPN", "VPN • Wired • Proxy", ns_page_network);
+  page_row (g, "network-vpn-symbolic", "Network and VPN", "VPN, wired, proxy", ns_page_network);
   ns_push (page);
 }
 
 /* ---- Connected devices ---- */
 
+/* the name other devices see, in the footnote: the pretty hostname (what Sharing sets), or the hostname */
+static void
+visible_as_got (GObject *src, GAsyncResult *res, gpointer label)
+{
+  g_autoptr (GVariant) v = g_dbus_connection_call_finish (G_DBUS_CONNECTION (src), res, NULL);
+  g_autoptr (GVariant) hn = NULL;
+  if (v)
+    g_variant_get (v, "(v)", &hn);
+  const char *pretty = hn ? g_variant_get_string (hn, NULL) : "";
+  g_autofree char *text = g_strdup_printf ("Visible as “%s” to other devices", *pretty ? pretty : g_get_host_name ());
+  gtk_label_set_text (GTK_LABEL (label), text);
+  g_object_unref (label);
+}
+
+/* Android 17's: pairing and the saved devices first, the connections' settings on a page of their own, and the
+ * name the others see at the end */
 void
 ns_page_connected_devices (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
   NsPage *page = ns_page_new ("Connected devices", &c);
+  GtkWidget *g = ns_group (c, "Other devices");
+  page_row (g, "list-add-symbolic", "Pair new device", NULL, ns_page_bluetooth);
+  g = ns_group (c, "Saved devices");
+  page_row (g, "go-next-symbolic", "See all", NULL, ns_page_bluetooth);
+  g = ns_group (c, NULL);
+  g_autofree char *cups = g_find_program_in_path ("lpstat");
+  page_row (g, NULL, "Connection preferences", cups ? "Bluetooth, sharing, printing" : "Bluetooth, sharing",
+            ns_page_connection_preferences);
+  g_autofree char *name = g_strdup_printf ("Visible as “%s” to other devices", g_get_host_name ());
+  GtkWidget *foot = ns_footnote (c, name);
+  g_autoptr (GDBusConnection) bus = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, NULL);
+  if (bus)
+    g_dbus_connection_call (bus, "org.freedesktop.hostname1", "/org/freedesktop/hostname1",
+                            "org.freedesktop.DBus.Properties", "Get",
+                            g_variant_new ("(ss)", "org.freedesktop.hostname1", "PrettyHostname"),
+                            G_VARIANT_TYPE ("(v)"), G_DBUS_CALL_FLAGS_NONE, 3000, NULL, visible_as_got,
+                            g_object_ref (foot));
+  ns_push (page);
+}
+
+void
+ns_page_connection_preferences (GtkWidget *row, gpointer data)
+{
+  GtkWidget *c;
+  NsPage *page = ns_page_new ("Connection preferences", &c);
   GtkWidget *g = ns_group (c, NULL);
-  page_row (g, "bluetooth-symbolic", "Bluetooth", "Pair new device • Paired devices", ns_page_bluetooth);
-  g = ns_group (c, "Connection preferences");
-  page_row (g, "emblem-shared-symbolic", "Sharing", "Device name • Visibility", ns_page_sharing);
+  page_row (g, "bluetooth-symbolic", "Bluetooth", NULL, ns_page_bluetooth);
+  page_row (g, "emblem-shared-symbolic", "Sharing", "Device name, visibility", ns_page_sharing);
   /* printing needs CUPS, which a phone rarely has: GNOME Settings' page, only when it is there */
   g_autofree char *cups = g_find_program_in_path ("lpstat");
   if (cups)
@@ -572,7 +612,7 @@ adaptive_row (GtkWidget *g, GSettings *power)
 {
   if (!ns_has_key (power, "ambient-enabled"))
     return;
-  GtkWidget *r = ns_row_switch (g, "Adaptive brightness", "Follows the light around you", power, "ambient-enabled");
+  GtkWidget *r = ns_row_switch (g, "Adaptive brightness", NULL, power, "ambient-enabled");
   gtk_widget_set_visible (r, FALSE);
   g_autoptr (GDBusConnection) bus = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, NULL);
   if (bus)
@@ -595,20 +635,44 @@ dark_set (const GValue *value, const GVariantType *type, gpointer data)
   return g_variant_new_string (g_value_get_boolean (value) ? "prefer-dark" : "default");
 }
 
+/* Android's summary: what a schedule would do, and there is none */
+static void
+dark_say (GSettings *iface, const char *key, GtkWidget *row)
+{
+  g_autofree char *scheme = g_settings_get_string (iface, "color-scheme");
+
+  ns_row_set_subtitle (row, !g_strcmp0 (scheme, "prefer-dark") ? "Will never turn off automatically"
+                                                                 : "Will never turn on automatically");
+}
+
 static GtkWidget *
 dark_row (GtkWidget *g, GSettings *iface)
 {
-  GtkWidget *r = ns_row_switch (g, "Dark theme", "Dark backgrounds for apps and the system", NULL, NULL);
+  GtkWidget *r = ns_row_switch (g, "Dark theme", NULL, NULL, NULL);
   g_settings_bind_with_mapping (iface, "color-scheme", ns_row_get_switch (r), "active", G_SETTINGS_BIND_DEFAULT,
                                 dark_get, dark_set, NULL, NULL);
+  g_signal_connect_object (iface, "changed::color-scheme", G_CALLBACK (dark_say), r, 0);
+  dark_say (iface, NULL, r);
   return r;
 }
 
 /* Font size: org.gnome.desktop.interface text-scaling-factor, which GNOME's apps follow too */
 static const double text_scales[] = { 0.85, 1.0, 1.15, 1.3, 1.5, 1.8, 2.0 };
-static const guint timeouts[] = { 30, 60, 120, 300, 600, 0 };
-static const char *const timeout_labels[] = { "30 seconds", "1 minute", "2 minutes", "5 minutes", "10 minutes",
-                                              "Never", NULL };
+static const guint timeouts[] = { 15, 30, 60, 120, 300, 600, 1800, 0 };
+static const char *const timeout_labels[] = { "15 seconds", "30 seconds", "1 minute", "2 minutes", "5 minutes",
+                                              "10 minutes", "30 minutes", "Never", NULL };
+static const char *const timeout_summaries[] = {
+  "After 15 seconds of inactivity", "After 30 seconds of inactivity", "After 1 minute of inactivity",
+  "After 2 minutes of inactivity", "After 5 minutes of inactivity", "After 10 minutes of inactivity",
+  "After 30 minutes of inactivity", "Never", NULL };
+
+/* the lock screen row's summary: what the lock screen shows of notifications, as Android's says */
+static void
+lock_say (GSettings *notifications, const char *key, GtkWidget *row)
+{
+  ns_row_set_subtitle (row, g_settings_get_boolean (notifications, "show-in-lock-screen")
+                              ? "Show notification icons" : "Don't show any notifications");
+}
 
 
 static void
@@ -635,21 +699,28 @@ ns_page_display (GtkWidget *row, gpointer data)
 
   g = ns_group (c, "Lock display");
   GSettings *vibeos = ns_page_settings (page, "vibeos.Shell");
-  if (vibeos && ns_has_key (vibeos, "lock-type"))
-    page_row (g, NULL, "Lock screen", "Screen lock type • What it shows", ns_page_lock_screen);
+  if (vibeos && ns_has_key (vibeos, "lock-type")) {
+    GtkWidget *lock = page_row (g, NULL, "Lock screen", NULL, ns_page_lock_screen);
+    GSettings *notifications = ns_page_settings (page, "org.gnome.desktop.notifications");
+    if (notifications) {
+      g_signal_connect_object (notifications, "changed::show-in-lock-screen", G_CALLBACK (lock_say), lock, 0);
+      lock_say (notifications, NULL, lock);
+    }
+  }
   if (vibeos && ns_has_key (vibeos, "aod") && ns_panel_is_oled ())
     ns_row_switch (g, "Always On Display", "The time, battery and notifications on a black screen while it is off",
                    vibeos, "aod");
   GSettings *session = ns_page_settings (page, "org.gnome.desktop.session");
-  guint idle = g_settings_get_uint (session, "idle-delay"), sel = 1;
+  guint idle = g_settings_get_uint (session, "idle-delay"), sel = 2;
   for (guint i = 0; i < G_N_ELEMENTS (timeouts); i++)
     if (timeouts[i] == idle)
       sel = i;
-  ns_row_pick (g, "Screen timeout", timeout_labels, sel, timeout_picked, session);
+  GtkWidget *timeout = ns_row_pick (g, "Screen timeout", timeout_labels, sel, timeout_picked, session);
+  ns_row_pick_set_summaries (timeout, timeout_summaries);
 
   g = ns_group (c, "Appearance");
   dark_row (g, iface);
-  page_row (g, NULL, "Display size & text", "Font size • Bold text • Display size", ns_page_display_size);
+  page_row (g, NULL, "Display size and text", "Font size, display size, bold text", ns_page_display_size);
   ns_displays_scale_row (GTK_WIDGET (page), g);
 
   GSettings *color = ns_page_settings (page, "org.gnome.settings-daemon.plugins.color");
@@ -672,7 +743,7 @@ ns_page_display (GtkWidget *row, gpointer data)
   ns_push (page);
 }
 
-/* ---- Display size & text ---- */
+/* ---- Display size and text ---- */
 
 /* the Font size step closest to the factor there is (GNOME's own settings take any) */
 static guint
@@ -930,7 +1001,7 @@ void
 ns_page_display_size (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Display size & text", &c);
+  NsPage *page = ns_page_new ("Display size and text", &c);
   GSettings *iface = ns_page_settings (page, "org.gnome.desktop.interface");
   GSettings *vi = ns_page_settings (page, "vibeos.Interface");
   g_object_set_data (G_OBJECT (page), "ns-iface", iface);
@@ -981,8 +1052,67 @@ duration (gint64 s)
 }
 
 typedef struct {
-  GtkWidget *big, *bar, *state;
+  GtkWidget *big, *bar, *state, *mah;
+  double level;                 /* the charge, 0 to 100 */
 } Charge;
+
+/* Android 17's battery bar: the charge in the primary colour, then a 2 px gap and the rest in the secondary
+ * container with a dot near its end, the whole bar's corners rounded */
+static void
+charge_bar_draw (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
+{
+  Charge *ch = data;
+  GdkRGBA full = vibeos_color (VIBEOS_PRIMARY), rest = vibeos_color (VIBEOS_SECONDARY_CONTAINER);
+  double r = 12, split = round (w * CLAMP (ch->level, 0, 100) / 100.0);
+
+  cairo_new_sub_path (cr);
+  cairo_arc (cr, w - r, r, r, -G_PI / 2, 0);
+  cairo_arc (cr, w - r, h - r, r, 0, G_PI / 2);
+  cairo_arc (cr, r, h - r, r, G_PI / 2, G_PI);
+  cairo_arc (cr, r, r, r, G_PI, 3 * G_PI / 2);
+  cairo_close_path (cr);
+  cairo_clip (cr);
+  gdk_cairo_set_source_rgba (cr, &full);
+  cairo_rectangle (cr, 0, 0, split, h);
+  cairo_fill (cr);
+  if (split + 2 >= w)
+    return;
+  gdk_cairo_set_source_rgba (cr, &rest);
+  cairo_rectangle (cr, split + 2, 0, w - split - 2, h);
+  cairo_fill (cr);
+  if (split + 2 < w - 12) {
+    gdk_cairo_set_source_rgba (cr, &full);
+    cairo_arc (cr, w - 6, h / 2.0, 2, 0, 2 * G_PI);
+    cairo_fill (cr);
+  }
+}
+
+/* the charge in the battery now, in mAh, as Android's battery page has it next to the level: the gauge's charge
+ * counter, or its charge_now; a thread's work (a fuel gauge answers over I2C) */
+static char *battery_dir (void);
+static gboolean supply_number (const char *dir, const char *file, gint64 *out);
+
+static void
+charge_mah_read (GTask *task, gpointer src, gpointer data, GCancellable *cancel)
+{
+  g_autofree char *dir = battery_dir ();
+  gint64 uah = 0;
+  if (dir && (supply_number (dir, "charge_counter", &uah) || supply_number (dir, "charge_now", &uah)) && uah > 0)
+    g_task_return_pointer (task, g_strdup_printf ("%d mAh", (int) (uah / 1000)), g_free);
+  else
+    g_task_return_pointer (task, NULL, NULL);
+}
+
+static void
+charge_mah_got (GObject *src, GAsyncResult *res, gpointer page)
+{
+  Charge *ch = g_object_get_data (page, "charge");
+  g_autofree char *mah = g_task_propagate_pointer (G_TASK (res), NULL);
+  if (mah)
+    gtk_label_set_text (GTK_LABEL (ch->mah), mah);
+  gtk_widget_set_visible (ch->mah, mah != NULL);
+  g_object_unref (page);
+}
 
 static void
 charge_got (GObject *src, GAsyncResult *res, gpointer page)
@@ -1001,9 +1131,10 @@ charge_got (GObject *src, GAsyncResult *res, gpointer page)
     g_variant_lookup (props, "TimeToEmpty", "x", &empty);
     g_variant_lookup (props, "TimeToFull", "x", &full);
   }
-  g_autofree char *big = g_strdup_printf ("%.0f%%", p);
+  g_autofree char *big = g_strdup_printf ("%.0f", p);
   gtk_label_set_text (GTK_LABEL (ch->big), big);
-  gtk_level_bar_set_value (GTK_LEVEL_BAR (ch->bar), p);
+  ch->level = p;
+  gtk_widget_queue_draw (ch->bar);
   g_autofree char *left = duration (empty);
   g_autofree char *tofull = duration (full);
   g_autofree char *say = st == 1 ? (tofull ? g_strdup_printf ("Charging • full in %s", tofull) : g_strdup ("Charging"))
@@ -1082,20 +1213,27 @@ charger_health (void)
   return NULL;
 }
 
+/* the phone's own battery: a supply of type Battery that is not a device's (scope Device), or NULL */
+static char *
+battery_dir (void)
+{
+  g_autoptr (GDir) d = g_dir_open (POWER_SUPPLY, 0, NULL);
+  for (const char *name; d && (name = g_dir_read_name (d));) {
+    g_autofree char *path = g_build_filename (POWER_SUPPLY, name, NULL);
+    g_autofree char *type = supply_read (path, "type");
+    g_autofree char *scope = supply_read (path, "scope");
+    if (!g_strcmp0 (type, "Battery") && g_strcmp0 (scope, "Device"))
+      return g_steal_pointer (&path);
+  }
+  return NULL;
+}
+
 /* the six values, NULL where the battery has none; a thread's work */
 static void
 battery_read (GTask *task, gpointer src, gpointer data, GCancellable *cancel)
 {
   char **v = g_new0 (char *, BAT_ROWS + 1);
-  g_autofree char *dir = NULL;
-  g_autoptr (GDir) d = g_dir_open (POWER_SUPPLY, 0, NULL);
-  for (const char *name; d && !dir && (name = g_dir_read_name (d));) {
-    g_autofree char *path = g_build_filename (POWER_SUPPLY, name, NULL);
-    g_autofree char *type = supply_read (path, "type");
-    g_autofree char *scope = supply_read (path, "scope");
-    if (!g_strcmp0 (type, "Battery") && g_strcmp0 (scope, "Device"))
-      dir = g_steal_pointer (&path);
-  }
+  g_autofree char *dir = battery_dir ();
   if (!dir) {
     g_task_return_pointer (task, v, (GDestroyNotify) g_strfreev);
     return;
@@ -1190,8 +1328,6 @@ ns_page_battery_info (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
   NsPage *page = ns_page_new ("Battery information", &c);
-  /* the charge since it was last full, first */
-  ns_row_widget (ns_group (c, "Since last full charge"), NULL, ns_charge_history_new ());
   BatInfo *b = g_new0 (BatInfo, 1);
   GtkWidget *g = ns_group (c, NULL);
   g_object_set_data_full (G_OBJECT (g), "ns-batinfo", b, (GDestroyNotify) bat_info_free);
@@ -1210,6 +1346,17 @@ ns_page_battery_info (GtkWidget *row, gpointer data)
   b->timer = g_timeout_add_seconds (2, bat_info_tick, g);
 }
 
+/* Battery usage: the charge since the battery was last full (Android's page lists the apps that used it; there is
+ * no per-app count here) */
+void
+ns_page_battery_usage (GtkWidget *row, gpointer data)
+{
+  GtkWidget *c;
+  NsPage *page = ns_page_new ("Battery usage", &c);
+  ns_row_widget (ns_group (c, "Since last full charge"), NULL, ns_charge_history_new ());
+  ns_push (page);
+}
+
 void
 ns_page_battery (GtkWidget *row, gpointer data)
 {
@@ -1218,19 +1365,39 @@ ns_page_battery (GtkWidget *row, gpointer data)
   Charge *ch = g_new0 (Charge, 1);
   g_object_set_data_full (G_OBJECT (page), "charge", ch, g_free);
 
-  GtkWidget *g = ns_group (c, NULL);
-  GtkWidget *v = gtk_box_new (GTK_ORIENTATION_VERTICAL, 8);
+  /* Android 17's head, on the page itself: the level large with a small %, the charge in mAh at the end, a thick
+   * bar and what the battery is doing */
+  GtkWidget *head = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  gtk_widget_add_css_class (head, "ns-battery-head");
+  GtkWidget *line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+  gtk_widget_add_css_class (line, "ns-battery-level");
   ch->big = gtk_label_new ("–");
-  gtk_label_set_xalign (GTK_LABEL (ch->big), 0);
-  gtk_widget_add_css_class (ch->big, "ns-huge");
-  gtk_box_append (GTK_BOX (v), ch->big);
-  ch->bar = gtk_level_bar_new_for_interval (0, 100);
-  gtk_box_append (GTK_BOX (v), ch->bar);
+  gtk_widget_add_css_class (ch->big, "ns-battery-number");
+  gtk_widget_set_valign (ch->big, GTK_ALIGN_BASELINE_FILL);
+  gtk_box_append (GTK_BOX (line), ch->big);
+  GtkWidget *pct = gtk_label_new ("%");
+  gtk_widget_add_css_class (pct, "ns-battery-percent");
+  gtk_widget_set_valign (pct, GTK_ALIGN_BASELINE_FILL);
+  gtk_box_append (GTK_BOX (line), pct);
+  ch->mah = gtk_label_new (NULL);
+  gtk_widget_add_css_class (ch->mah, "ns-battery-mah");
+  gtk_widget_set_valign (ch->mah, GTK_ALIGN_BASELINE_FILL);
+  gtk_widget_set_hexpand (ch->mah, TRUE);
+  gtk_label_set_xalign (GTK_LABEL (ch->mah), 1);
+  gtk_widget_set_visible (ch->mah, FALSE);
+  gtk_box_append (GTK_BOX (line), ch->mah);
+  gtk_box_append (GTK_BOX (head), line);
+  ch->bar = gtk_drawing_area_new ();
+  gtk_widget_add_css_class (ch->bar, "ns-battery-bar");
+  gtk_drawing_area_set_draw_func (GTK_DRAWING_AREA (ch->bar), charge_bar_draw, ch, NULL);
+  gtk_box_append (GTK_BOX (head), ch->bar);
   ch->state = gtk_label_new ("");
   gtk_label_set_xalign (GTK_LABEL (ch->state), 0);
-  gtk_widget_add_css_class (ch->state, "ns-sub");
-  gtk_box_append (GTK_BOX (v), ch->state);
-  ns_row_widget (g, NULL, v);
+  gtk_widget_add_css_class (ch->state, "ns-battery-state");
+  gtk_box_append (GTK_BOX (head), ch->state);
+  gtk_box_append (GTK_BOX (c), head);
+  g_autoptr (GTask) mah = g_task_new (NULL, NULL, charge_mah_got, g_object_ref (page));
+  g_task_run_in_thread (mah, charge_mah_read);
   g_autoptr (GDBusConnection) bus = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, NULL);
   if (bus)
     g_dbus_connection_call (bus, "org.freedesktop.UPower", "/org/freedesktop/UPower/devices/DisplayDevice",
@@ -1241,14 +1408,18 @@ ns_page_battery (GtkWidget *row, gpointer data)
   /* No "Show battery percentage" (org.gnome.desktop.interface show-battery-percentage): the status bar's battery
    * (statusbar.js paintBattery) has no number in it yet. It needs the level drawn into the battery's body when the
    * key is on. */
-  g = ns_group (c, NULL);
-  page_row (g, NULL, "Battery information", "Health • Temperature • Capacity", ns_page_battery_info);
+  GtkWidget *g = ns_group (c, NULL);
+  page_row (g, NULL, "Battery usage", "View usage since last full charge", ns_page_battery_usage);
   page_row (g, NULL, "Power and screen blank",
-            ns_screen_off_sleeper () ? "Dim the screen" : "Automatic suspend • Dim the screen", ns_page_power);
+            ns_screen_off_sleeper () ? "Dim the screen" : "Automatic suspend, dim the screen", ns_page_power);
+  g = ns_group (c, NULL);
+  page_row (g, NULL, "Battery information", "Health, temperature, capacity", ns_page_battery_info);
+
+  ns_footnote (c, "Remaining battery life is approximate and may change based on usage");
   ns_push (page);
 }
 
-/* ---- Wallpaper & style ---- */
+/* ---- Wallpaper and style ---- */
 
 /* the colours offered for the system's colours: seeds for vibeos.Theme (each swatch shows the primary colour the
  * theme engine makes of its seed), and the GNOME accent each comes closest to, for GTK apps that follow
@@ -1376,7 +1547,7 @@ void
 ns_page_wallpaper (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Wallpaper & style", &c);
+  NsPage *page = ns_page_new ("Wallpaper and style", &c);
   GSettings *bg = ns_page_settings (page, "org.gnome.desktop.background");
   GSettings *iface = ns_page_settings (page, "org.gnome.desktop.interface");
 
@@ -1410,7 +1581,7 @@ ns_page_wallpaper (GtkWidget *row, gpointer data)
   /* the launcher's own options: its grid, its icons */
   if (vibeos) {
     g = ns_group (c, "Home screen");
-    page_row (g, "view-app-grid-symbolic", "Home screen", "Grid • Icon size • Icon pack", ns_page_home);
+    page_row (g, "view-app-grid-symbolic", "Home screen", "Grid, icon size, icon pack", ns_page_home);
   }
   ns_push (page);
 }
@@ -1680,17 +1851,17 @@ ns_page_general (GtkWidget *row, gpointer data)
   GtkWidget *c;
   NsPage *page = ns_page_new ("System", &c);
   GtkWidget *g = ns_group (c, NULL);
-  page_row (g, "preferences-desktop-locale-symbolic", "Language & region", "Language • Formats", ns_page_language);
-  page_row (g, "input-keyboard-symbolic", "Keyboard", "On-screen keyboard • Layouts", ns_page_keyboard);
-  page_row (g, "input-mouse-symbolic", "Mouse & touchpad", "Pointer speed • Hardware keyboard", ns_page_mouse);
-  page_row (g, "preferences-system-time-symbolic", "Date & time", "Automatic time • Time zone", ns_page_datetime);
+  page_row (g, "preferences-desktop-locale-symbolic", "Language and region", "Language, formats", ns_page_language);
+  page_row (g, "input-keyboard-symbolic", "Keyboard", "On-screen keyboard, layouts", ns_page_keyboard);
+  page_row (g, "input-mouse-symbolic", "Mouse and touchpad", "Pointer speed, hardware keyboard", ns_page_mouse);
+  page_row (g, "preferences-system-time-symbolic", "Date and time", "Automatic time, time zone", ns_page_datetime);
   if (have_updates ()) {
     g = ns_group (c, NULL);
     GtkWidget *r = ns_row (g, "software-update-available-symbolic", "System updates", "Download and install");
     ns_row_on_activate (r, updates_tapped, NULL);
   }
   g = ns_group (c, NULL);
-  page_row (g, "system-users-symbolic", "Users", "Your account • Password", ns_page_users);
+  page_row (g, "system-users-symbolic", "Users", "Your account, password", ns_page_users);
   ns_push (page);
 }
 
@@ -1781,6 +1952,6 @@ ns_page_about (GtkWidget *row, gpointer data)
   ns_row_info (g, "Processor", cpus);
 
   g = ns_group (c, NULL);
-  page_row (g, NULL, "Software information", "Device name • Versions", ns_page_software);
+  page_row (g, NULL, "Software information", "Device name, versions", ns_page_software);
   ns_push (page);
 }

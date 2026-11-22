@@ -7,7 +7,11 @@
  *           under it shows through in the dark colour.
  *
  * Dragging on the dial picks a value (hours snap to the hour, minutes to the minute); lifting the finger off the
- * hours goes on to the minutes, cross-fading the dials over 500 ms. */
+ * hours goes on to the minutes, cross-fading the dials over 500 ms.
+ *
+ * The dialog's picker has Cancel and OK in its corner under the dial. In a window wider than tall (a tablet or a phone
+ * held sideways) it is laid out as Android's landscape picker: the time in a column at the start, the card's full
+ * height, AM over PM under it, and a smaller dial beside it; it changes over when the window turns. */
 #pragma once
 
 #include <gtk/gtk.h>

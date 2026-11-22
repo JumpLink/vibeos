@@ -3,6 +3,8 @@
 #include "vibeos-time-picker.h"
 #include "vibeos-anim.h"
 #include "vibeos-dialog.h"
+#include "vibeos-layout.h"
+#include "vibeos-pressable.h"
 #include "vibeos-style.h"
 #include "vibeos-text.h"
 
@@ -25,9 +27,17 @@
 #define TEXT_OUTER      16      /* the outer ring's numbers, in sp */
 #define TEXT_INNER      12      /* the inner ring's */
 #define FADE_MS         500     /* the hours <-> minutes cross-fade */
-
-#define WIDTH  (DIAL + 2 * DIAL_SIDE)
-#define HEIGHT (HEADER_H + DIAL_TOP + DIAL)
+/* sideways (a window wider than tall), as Android's landscape picker: the time in a column at the start, the picker's
+ * full height, and a smaller dial beside it */
+#define HEADER_W        168
+#define DIAL_SIDEWAYS   224
+#define DIAL_GAP        24      /* either side of the sideways dial */
+#define AMPM_GAP        8       /* sideways: AM and PM under the time, and between them */
+/* the dialog's Cancel and OK, in the picker's corner under the dial */
+#define BUTTONS_GAP     8
+#define BUTTONS_TOP     4
+#define BUTTONS_END     12
+#define BUTTONS_BOTTOM  8
 
 enum { HOURS, MINUTES };
 
@@ -39,6 +49,9 @@ struct _VibeosTimePicker {
   double       to_minutes;             /* the cross-fade: 0 hours .. 1 minutes */
   VibeosAnim     *fade;
   gboolean     dragging;               /* a touch that began on the dial */
+  gboolean     sideways;               /* the time in a column at the start, the dial beside it */
+  int          dial;                   /* the dial's diameter: DIAL, or DIAL_SIDEWAYS */
+  GtkWidget   *buttons;                /* the dialog's Cancel and OK (the dialog's picker only) */
 
   /* the ring numbers: [0] 12 1 2 .. 11, [1] 00 13 .. 23 (24-hour), [2] 00 05 .. 55 */
   PangoLayout *rings[3][12];
@@ -135,8 +148,14 @@ draw_centred (GtkSnapshot *snapshot, PangoLayout *layout, double x, double y, co
 static void
 dial_centre (VibeosTimePicker *self, double *cx, double *cy)
 {
+  if (self->sideways)
+    {
+      *cx = HEADER_W + DIAL_GAP + self->dial / 2.0;
+      *cy = DIAL_TOP + self->dial / 2.0;
+      return;
+    }
   *cx = gtk_widget_get_width (GTK_WIDGET (self)) / 2.0;
-  *cy = HEADER_H + DIAL_TOP + DIAL / 2.0;
+  *cy = HEADER_H + DIAL_TOP + self->dial / 2.0;
 }
 
 /* the selector of `which`: its angle (degrees clockwise from 12) and its distance from the centre */
@@ -146,10 +165,10 @@ selector_of (VibeosTimePicker *self, int which, double *degrees, double *distanc
   if (which == HOURS) {
     *degrees = (self->hour % 12) * 30;
     gboolean inner = self->use_24h && (self->hour == 0 || self->hour > 12);
-    *distance = DIAL / 2.0 - (inner ? INSET_INNER : INSET_OUTER);
+    *distance = self->dial / 2.0 - (inner ? INSET_INNER : INSET_OUTER);
   } else {
     *degrees = self->minute * 6;
-    *distance = DIAL / 2.0 - INSET_OUTER;
+    *distance = self->dial / 2.0 - INSET_OUTER;
   }
 }
 
@@ -172,11 +191,11 @@ draw_numbers (VibeosTimePicker *self, GtkSnapshot *snapshot, int which, gboolean
   GdkRGBA outer = activated ? vibeos_color_alpha (VIBEOS_SURFACE, alpha) : vibeos_color_alpha (VIBEOS_ON_SURFACE, alpha);
   GdkRGBA inner = activated ? vibeos_color_alpha (VIBEOS_SURFACE, alpha) : vibeos_color_alpha (VIBEOS_ON_SURFACE_VARIANT, alpha);
   if (which == HOURS) {
-    draw_ring (self, snapshot, 0, DIAL / 2.0 - INSET_OUTER, &outer);
+    draw_ring (self, snapshot, 0, self->dial / 2.0 - INSET_OUTER, &outer);
     if (self->use_24h)
-      draw_ring (self, snapshot, 1, DIAL / 2.0 - INSET_INNER, &inner);
+      draw_ring (self, snapshot, 1, self->dial / 2.0 - INSET_INNER, &inner);
   } else {
-    draw_ring (self, snapshot, 2, DIAL / 2.0 - INSET_OUTER, &outer);
+    draw_ring (self, snapshot, 2, self->dial / 2.0 - INSET_OUTER, &outer);
   }
 }
 
@@ -223,6 +242,54 @@ draw_dial (VibeosTimePicker *self, GtkSnapshot *snapshot, int which, float alpha
   gtk_snapshot_append_stroke (snapshot, line, stroke, &selector);
   gsk_stroke_free (stroke);
   gsk_path_unref (line);
+}
+
+/* sideways: the column at the start, the time in its middle with AM over PM under it in 12-hour mode */
+static void
+draw_header_sideways (VibeosTimePicker *self, GtkSnapshot *snapshot, double height)
+{
+  GdkRGBA header = vibeos_color (VIBEOS_SURFACE_CONTAINER_HIGHEST);
+  GdkRGBA on = vibeos_color (VIBEOS_ON_SURFACE), off = vibeos_color (VIBEOS_ON_SURFACE_VARIANT);
+  PangoRectangle h, m, s, a, p;
+  gboolean pm = self->hour >= 12;
+
+  gtk_snapshot_append_color (snapshot, &header, &GRAPHENE_RECT_INIT (0, 0, HEADER_W, height));
+  pango_layout_get_pixel_extents (self->time_hours, NULL, &h);
+  pango_layout_get_pixel_extents (self->time_minutes, NULL, &m);
+  pango_layout_get_pixel_extents (self->separator, NULL, &s);
+  pango_layout_get_pixel_extents (self->am, NULL, &a);
+  pango_layout_get_pixel_extents (self->pm, NULL, &p);
+  double group = h.height + (self->use_24h ? 0 : 2 * AMPM_GAP + a.height + p.height);
+  double y = round ((height - group) / 2), sx = round ((HEADER_W - s.width) / 2.0);
+  self->hours_box = GRAPHENE_RECT_INIT (sx - SEPARATOR_PAD - h.width, y, h.width, h.height);
+  self->minutes_box = GRAPHENE_RECT_INIT (sx + s.width + SEPARATOR_PAD, y, m.width, m.height);
+
+  gtk_snapshot_save (snapshot);
+  gtk_snapshot_translate (snapshot, &self->hours_box.origin);
+  gtk_snapshot_append_layout (snapshot, self->time_hours, self->showing == HOURS ? &on : &off);
+  gtk_snapshot_restore (snapshot);
+  gtk_snapshot_save (snapshot);
+  gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (sx, y));
+  gtk_snapshot_append_layout (snapshot, self->separator, &off);
+  gtk_snapshot_restore (snapshot);
+  gtk_snapshot_save (snapshot);
+  gtk_snapshot_translate (snapshot, &self->minutes_box.origin);
+  gtk_snapshot_append_layout (snapshot, self->time_minutes, self->showing == MINUTES ? &on : &off);
+  gtk_snapshot_restore (snapshot);
+  if (self->use_24h)
+    return;
+
+  double w = MAX (a.width, p.width), ax = round ((HEADER_W - w) / 2.0);
+  self->am_box = GRAPHENE_RECT_INIT (ax, y + h.height + AMPM_GAP, w, a.height);
+  self->pm_box = GRAPHENE_RECT_INIT (ax, y + h.height + 2 * AMPM_GAP + a.height, w, p.height);
+  gtk_snapshot_save (snapshot);
+  gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (round ((HEADER_W - a.width) / 2.0), self->am_box.origin.y));
+  gtk_snapshot_append_layout (snapshot, self->am, pm ? &off : &on);
+  gtk_snapshot_restore (snapshot);
+  gtk_snapshot_save (snapshot);
+  gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (round ((HEADER_W - p.width) / 2.0), self->pm_box.origin.y));
+  gtk_snapshot_append_layout (snapshot, self->pm, pm ? &on : &off);
+  gtk_snapshot_restore (snapshot);
 }
 
 static void
@@ -282,12 +349,16 @@ vibeos_time_picker_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   double width = gtk_widget_get_width (widget);
   GdkRGBA surface = vibeos_color (VIBEOS_SURFACE);
   gtk_snapshot_append_color (snapshot, &surface, &GRAPHENE_RECT_INIT (0, 0, width, gtk_widget_get_height (widget)));
-  draw_header (self, snapshot, width);
+  if (self->sideways)
+    draw_header_sideways (self, snapshot, gtk_widget_get_height (widget));
+  else
+    draw_header (self, snapshot, width);
 
   double cx, cy;
   dial_centre (self, &cx, &cy);
   GskRoundedRect disc;
-  gsk_rounded_rect_init_from_rect (&disc, &GRAPHENE_RECT_INIT (cx - DIAL / 2.0, cy - DIAL / 2.0, DIAL, DIAL), DIAL / 2.0);
+  gsk_rounded_rect_init_from_rect (&disc, &GRAPHENE_RECT_INIT (cx - self->dial / 2.0, cy - self->dial / 2.0, self->dial,
+                                                               self->dial), self->dial / 2.0);
   GdkRGBA background = vibeos_color (VIBEOS_SURFACE_CONTAINER_HIGHEST);
   gtk_snapshot_push_rounded_clip (snapshot, &disc);
   gtk_snapshot_append_color (snapshot, &background, &disc.bounds);
@@ -303,13 +374,65 @@ vibeos_time_picker_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gtk_snapshot_push_rounded_clip (snapshot, &dot);
   gtk_snapshot_append_color (snapshot, &selector, &dot.bounds);
   gtk_snapshot_pop (snapshot);
+  if (self->buttons)
+    gtk_widget_snapshot_child (widget, self->buttons, snapshot);
+}
+
+/* the band under the dial that the buttons take, with their margins (none without them) */
+static int
+buttons_band (VibeosTimePicker *self)
+{
+  int height = 0;
+
+  if (!self->buttons)
+    return 0;
+  gtk_widget_measure (self->buttons, GTK_ORIENTATION_VERTICAL, -1, NULL, &height, NULL, NULL);
+  return BUTTONS_TOP + height + BUTTONS_BOTTOM;
 }
 
 static void
 vibeos_time_picker_measure (GtkWidget *widget, GtkOrientation orientation, int for_size,
                          int *minimum, int *natural, int *minimum_baseline, int *natural_baseline)
 {
-  *minimum = *natural = orientation == GTK_ORIENTATION_HORIZONTAL ? WIDTH : HEIGHT;
+  VibeosTimePicker *self = VIBEOS_TIME_PICKER (widget);
+
+  if (orientation == GTK_ORIENTATION_HORIZONTAL)
+    *minimum = *natural = self->sideways ? HEADER_W + 2 * DIAL_GAP + self->dial : self->dial + 2 * DIAL_SIDE;
+  else
+    *minimum = *natural = (self->sideways ? 0 : HEADER_H) + DIAL_TOP + self->dial + buttons_band (self);
+}
+
+/* the buttons in the corner under the dial, at the end */
+static void
+vibeos_time_picker_size_allocate (GtkWidget *widget, int width, int height, int baseline)
+{
+  VibeosTimePicker *self = VIBEOS_TIME_PICKER (widget);
+  int w, h;
+
+  if (!self->buttons)
+    return;
+  gtk_widget_measure (self->buttons, GTK_ORIENTATION_HORIZONTAL, -1, NULL, &w, NULL, NULL);
+  gtk_widget_measure (self->buttons, GTK_ORIENTATION_VERTICAL, w, NULL, &h, NULL, NULL);
+  gtk_widget_allocate (self->buttons, w, h, -1,
+                       gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (width - BUTTONS_END - w,
+                                                                            height - BUTTONS_BOTTOM - h)));
+}
+
+static void
+set_sideways (VibeosTimePicker *self, gboolean sideways)
+{
+  if (sideways == self->sideways)
+    return;
+  self->sideways = sideways;
+  self->dial = sideways ? DIAL_SIDEWAYS : DIAL;
+  gtk_widget_queue_resize (GTK_WIDGET (self));
+}
+
+/* the window turned: sideways when it is wider than tall */
+static void
+on_layout_changed (VibeosLayout *layout, VibeosTimePicker *self)
+{
+  set_sideways (self, vibeos_layout_is_landscape (layout));
 }
 
 /* ---- input ----------------------------------------------------------------------------------------------------- */
@@ -340,7 +463,7 @@ pick (VibeosTimePicker *self, double x, double y, gboolean force)
   double cx, cy;
   dial_centre (self, &cx, &cy);
   double dx = x - cx, dy = y - cy, distance = hypot (dx, dy);
-  double outer = DIAL / 2.0 - INSET_OUTER, inner = DIAL / 2.0 - INSET_INNER;
+  double outer = self->dial / 2.0 - INSET_OUTER, inner = self->dial / 2.0 - INSET_INNER;
   gboolean on_inner = FALSE;
   if (self->showing == HOURS && self->use_24h) {
     if (!force && (distance < inner - SELECTOR_R || distance > outer + SELECTOR_R))
@@ -385,7 +508,7 @@ on_pressed (GtkGestureClick *click, int n_press, double x, double y, VibeosTimeP
     if (self->hour < 12)
       self->hour += 12;
     update_header (self);
-  } else if (y > HEADER_H && pick (self, x, y, FALSE)) {
+  } else if ((self->sideways ? x > HEADER_W : y > HEADER_H) && pick (self, x, y, FALSE)) {
     /* the dial has the touch: the dialog's scrim and anything else keep out of it */
     self->dragging = TRUE;
     vibeos_anim_finish (self->fade);
@@ -419,6 +542,7 @@ vibeos_time_picker_dispose (GObject *object)
 {
   VibeosTimePicker *self = VIBEOS_TIME_PICKER (object);
   g_clear_pointer (&self->fade, vibeos_anim_free);
+  g_clear_pointer (&self->buttons, gtk_widget_unparent);
   for (int r = 0; r < 3; r++)
     for (int i = 0; i < 12; i++)
       g_clear_object (&self->rings[r][i]);
@@ -438,6 +562,7 @@ vibeos_time_picker_class_init (VibeosTimePickerClass *klass)
   object_class->dispose = vibeos_time_picker_dispose;
   widget_class->snapshot = vibeos_time_picker_snapshot;
   widget_class->measure = vibeos_time_picker_measure;
+  widget_class->size_allocate = vibeos_time_picker_size_allocate;
   gtk_widget_class_set_css_name (widget_class, "vibeos-time-picker");
 }
 
@@ -445,6 +570,7 @@ static void
 vibeos_time_picker_init (VibeosTimePicker *self)
 {
   self->fade = vibeos_anim_new (GTK_WIDGET (self), on_fade, self);
+  self->dial = DIAL;
 
   GtkGesture *click = gtk_gesture_click_new ();
   g_signal_connect (click, "pressed", G_CALLBACK (on_pressed), self);
@@ -519,17 +645,47 @@ on_response (VibeosDialog *dialog, int response, Pending *pending)
   }
 }
 
+static void
+on_button (GtkWidget *button, VibeosDialog *dialog)
+{
+  vibeos_dialog_respond (dialog, GPOINTER_TO_INT (g_object_get_data (G_OBJECT (button), "vibeos-response")));
+}
+
+static void
+add_button (GtkWidget *row, VibeosDialog *dialog, const char *label, int response)
+{
+  GtkWidget *button = vibeos_text_button_new (label);
+
+  g_object_set_data (G_OBJECT (button), "vibeos-response", GINT_TO_POINTER (response));
+  g_signal_connect (button, "clicked", G_CALLBACK (on_button), dialog);
+  gtk_box_append (GTK_BOX (row), button);
+}
+
 void
 vibeos_time_picker_dialog (GtkWidget *parent, int hour, int minute, VibeosTimeChosen chosen, gpointer data,
                         GDestroyNotify destroy)
 {
   VibeosDialog *dialog = vibeos_dialog_new (NULL);
+  GtkRoot *root = gtk_widget_get_root (parent);
   /* the picker reaches the card's edges, on the plain surface colour */
   vibeos_dialog_set_flush (dialog, TRUE);
   GtkWidget *picker = vibeos_time_picker_new (hour, minute, vibeos_clock_uses_24h ());
+  VibeosTimePicker *self = VIBEOS_TIME_PICKER (picker);
+  /* Cancel and OK in the picker's corner rather than in a row of the dialog's under it, so that sideways the time's
+   * column reaches the card's bottom beside them */
+  self->buttons = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, BUTTONS_GAP);
+  add_button (self->buttons, dialog, "Cancel", VIBEOS_RESPONSE_CANCEL);
+  add_button (self->buttons, dialog, "OK", VIBEOS_RESPONSE_OK);
+  gtk_widget_set_parent (self->buttons, picker);
+  /* sideways in a window wider than tall (a tablet or a phone held sideways), and turned with the window */
+  if (GTK_IS_WINDOW (root))
+    {
+      VibeosLayout *layout = vibeos_layout_get_for_window (GTK_WINDOW (root));
+
+      set_sideways (self, vibeos_layout_is_landscape (layout));
+      g_signal_connect_object (layout, "changed", G_CALLBACK (on_layout_changed), picker, 0);
+    }
   vibeos_dialog_set_content (dialog, picker);
-  vibeos_dialog_add_button (dialog, "Cancel", VIBEOS_RESPONSE_CANCEL);
-  vibeos_dialog_add_button (dialog, "OK", VIBEOS_RESPONSE_OK);
   Pending *pending = g_new (Pending, 1);
   *pending = (Pending) { chosen, data, destroy, VIBEOS_TIME_PICKER (picker) };
   g_signal_connect_data (dialog, "response", G_CALLBACK (on_response), pending, pending_free, 0);

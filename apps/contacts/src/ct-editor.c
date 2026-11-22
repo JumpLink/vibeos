@@ -399,6 +399,9 @@ field_new (const char *hint, const char *text, gboolean multiline, GtkInputPurpo
     }
   gtk_widget_set_vexpand (input, TRUE);
   gtk_box_append (GTK_BOX (field), input);
+  /* the input fills the field, but the field takes none of the page's spare height: on a tablet held upright the page
+   * is taller than the form, and every field grew to share it */
+  gtk_widget_set_vexpand (field, FALSE);
   {
     GtkEventController *touch = gtk_event_controller_legacy_new ();
 
@@ -1933,15 +1936,15 @@ load_rows (Editor *editor, EContact *contact, EContact *extra)
     }
 }
 
-/* The form on a tablet: the phone's, in a column in the middle. At the window's full width the fields ran 1200 dp
- * wide (owner, 11-21). A phone keeps the full width. */
+/* The form on a tablet: the phone's, in a column in the middle of the page beside the rail. At the window's full
+ * width the fields ran 1200 dp wide (owner, 11-21). A phone keeps the full width. */
 static void
 fit_column (GtkWidget *content)
 {
   Editor *editor = g_object_get_data (G_OBJECT (content), "ct-editor");
   VibeosLayout *layout = vibeos_layout_get_for_window (GTK_WINDOW (editor->window));
-  int margin = vibeos_layout_is_tablet (layout)
-                 ? MAX (0, (vibeos_layout_get_width (layout) - CT_ED_COLUMN_MAX_DP) / 2) : 0;
+  int page = vibeos_layout_get_width (layout) - (int) CT_RAIL_W_DP;
+  int margin = vibeos_layout_is_tablet (layout) ? MAX (0, (page - CT_ED_COLUMN_MAX_DP) / 2) : 0;
 
   gtk_widget_set_margin_start (content, margin);
   gtk_widget_set_margin_end (content, margin);

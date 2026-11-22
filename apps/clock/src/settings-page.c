@@ -649,7 +649,9 @@ settings_page_init (SettingsPage *self)
   gtk_widget_set_margin_end (self->list, 12);
   self->scroller = spongy_scroll_view_new ();
   gtk_widget_set_vexpand (self->scroller, TRUE);
-  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->scroller), self->list);
+  /* on a tablet the rows are a column in the middle */
+  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->scroller),
+                                vibeos_clamp_new (self->list, VIBEOS_CLAMP_SETTINGS));
   g_signal_connect (spongy_scroll_view_get_vadjustment (SPONGY_SCROLL_VIEW (self->scroller)), "value-changed",
                     G_CALLBACK (on_scrolled), self);
   gtk_box_append (GTK_BOX (self->box), self->scroller);

@@ -19,23 +19,28 @@ ct-page.translucent {
 
 /* ---- the home page: the tabs and their navigation ---- */
 
-.ct-home .vibeos-nav-item {
+/* the bar is the home page's; the rail (a tablet) the window's, beside the pages */
+.ct-home .vibeos-nav-item,
+.ct-rail .vibeos-nav-item {
   color: @vibeos_on_surface_variant;
 }
 
-.ct-home .vibeos-nav-item.selected {
+.ct-home .vibeos-nav-item.selected,
+.ct-rail .vibeos-nav-item.selected {
   color: @vibeos_on_surface;
 }
 
-.ct-home image.vibeos-nav-item.selected {
+.ct-home image.vibeos-nav-item.selected,
+.ct-rail image.vibeos-nav-item.selected {
   color: @vibeos_on_secondary_container;
 }
 
-.ct-home .vibeos-nav-label.selected {
+.ct-home .vibeos-nav-label.selected,
+.ct-rail .vibeos-nav-label.selected {
   font-weight: 600;
 }
 
-.ct-home .vibeos-nav-rail {
+.vibeos-nav-rail.ct-rail {
   background-color: @vibeos_surface_container;
 }
 

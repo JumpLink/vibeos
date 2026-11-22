@@ -1,0 +1,14 @@
+# Keeps the apps installed from Software in their sandbox: as the session starts (before the shell reads the apps),
+# and whenever dpkg installs, updates or removes something (vibeos-sandbox-sync.path).
+[Unit]
+Description=Keep the apps from Software in their sandbox
+Before=graphical-session-pre.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+ExecStart=@path@ sync
+TimeoutStartSec=120
+
+[Install]
+WantedBy=graphical-session-pre.target

@@ -924,7 +924,7 @@ typedef enum {
  * bookmark is a place to go to, so a file gets none. The popup's scrim keeps the selection as it is while it shows,
  * so the choice is found again from it. */
 static int
-more_choices (FmShell *shell, GPtrArray *items, MoreChoice *choices, const char **labels)
+more_choices (FmShell *shell, GPtrArray *items, MoreChoice *choices, const char **labels, const char **icons)
 {
   g_autoptr(GPtrArray) files = locations_of (items);
   int n = 0;
@@ -932,23 +932,29 @@ more_choices (FmShell *shell, GPtrArray *items, MoreChoice *choices, const char 
   if (fm_share_possible (files))
     {
       choices[n] = MORE_SHARE;
+      icons[n] = "send-to-symbolic";
       labels[n++] = _("Share");
     }
   if (items->len == 1 && fm_item_is_folder (items->pdata[0]))
     {
       choices[n] = MORE_BOOKMARK;
+      icons[n] = "user-bookmarks-symbolic";
       labels[n++] = _("Add Bookmark");
     }
   choices[n] = MORE_COMPRESS;
+  icons[n] = "package-x-generic-symbolic";
   labels[n++] = _("Compress");
   if (items->len == 1 && !fm_item_is_folder (items->pdata[0]))
     {
       choices[n] = MORE_OPEN_WITH;
+      icons[n] = "document-open-symbolic";
       labels[n++] = _("Open with");
     }
   choices[n] = MORE_PROPERTIES;
+  icons[n] = "help-about-symbolic";
   labels[n++] = _("Properties");
   choices[n] = MORE_SETTINGS;
+  icons[n] = "emblem-system-symbolic";
   labels[n++] = _("Settings");
   return n;
 }
@@ -960,12 +966,12 @@ on_more (int index, gpointer data)
   g_autoptr(GPtrArray) items = selected_items (shell);
   g_autoptr(GPtrArray) files = locations_of (items);
   MoreChoice choices[MORE_MAX];
-  const char *labels[MORE_MAX];
+  const char *labels[MORE_MAX], *icons[MORE_MAX];
   int n;
 
   if (!items->len)
     return;
-  n = more_choices (shell, items, choices, labels);
+  n = more_choices (shell, items, choices, labels, icons);
   if (index < 0 || index >= n)
     return;
   switch (choices[index])
@@ -1000,16 +1006,15 @@ show_more (FmShell *shell, GtkWidget *anchor)
 {
   g_autoptr(GPtrArray) items = selected_items (shell);
   MoreChoice choices[MORE_MAX];
-  const char *labels[MORE_MAX];
+  const char *labels[MORE_MAX], *icons[MORE_MAX];
   int n;
 
   if (!items->len)
     return;
-  n = more_choices (shell, items, choices, labels);
-  /* above the bar, its bottom on the bar's top and its end at the item's; the menu is 48 px a row and 8 px at each
-   * end */
-  fm_popup_show (anchor, labels, n, FM_POPUP_AT, gtk_widget_get_width (anchor) - 196, -(double) (n * 48 + 16),
-                 on_more, shell);
+  n = more_choices (shell, items, choices, labels, icons);
+  /* above the bar, its bottom on the bar's top and its end at the item's; the menu is 48 px a row */
+  fm_popup_show_icons (anchor, labels, icons, n, FM_POPUP_AT, gtk_widget_get_width (anchor) - 196, -(double) (n * 48),
+                       on_more, shell);
 }
 
 /* ---- the toolbar's actions ----------------------------------------------------------------------------------------- */

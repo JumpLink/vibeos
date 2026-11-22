@@ -31,6 +31,7 @@ struct _FmBrowser {
   GHashTable *names;            /* a folder's URI -> the name it was listed under (the crumbs) */
   gboolean searching, search_shown, search_busy;
   gboolean scanning;            /* the Local Network's subnet scan is running */
+  guint crumbs_source;          /* the idle that scrolls the crumbs to their end */
 };
 
 static void load_start (FmBrowser *b, gboolean keep_offset);
@@ -129,8 +130,18 @@ scroll_crumbs_to_end (gpointer data)
   FmBrowser *b = data;
   GtkAdjustment *adjustment = gtk_scrolled_window_get_hadjustment (GTK_SCROLLED_WINDOW (b->crumb_scroll));
 
+  b->crumbs_source = 0;
   gtk_adjustment_set_value (adjustment, gtk_adjustment_get_upper (adjustment));
   return G_SOURCE_REMOVE;
+}
+
+/* once the layout is done: a value set while the crumbs are being allocated scrolls nothing until the next layout,
+ * which left a phone's last crumb under the free space */
+static void
+queue_scroll_crumbs (FmBrowser *b)
+{
+  if (!b->crumbs_source)
+    b->crumbs_source = g_idle_add (scroll_crumbs_to_end, b);
 }
 
 static void
@@ -138,7 +149,7 @@ on_crumbs_changed (GtkAdjustment *adjustment, FmBrowser *b)
 {
   /* the last crumb stays in view: a deep path shows its end, also when the free space comes in beside it and
    * narrows the crumbs */
-  gtk_adjustment_set_value (adjustment, gtk_adjustment_get_upper (adjustment));
+  queue_scroll_crumbs (b);
 }
 
 static void
@@ -185,7 +196,7 @@ pathbar_build (FmBrowser *b)
   gtk_widget_add_css_class (last, "last");
   gtk_widget_set_visible (b->up, !at_root);
   gtk_widget_set_visible (b->free_label, FALSE);
-  g_idle_add (scroll_crumbs_to_end, b);
+  queue_scroll_crumbs (b);
 }
 
 static GtkWidget *
@@ -1130,6 +1141,7 @@ fm_browser_new (FmShell *shell)
 void
 fm_browser_free (FmBrowser *b)
 {
+  g_clear_handle_id (&b->crumbs_source, g_source_remove);
   cancel_all (b);
   if (b->monitor)
     {

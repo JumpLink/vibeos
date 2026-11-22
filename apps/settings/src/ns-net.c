@@ -1,4 +1,4 @@
-/* Wi-Fi, SIMs, Network & VPN: NetworkManager through libnm. The client is made once, at start, in the
+/* Wi-Fi, SIMs, Network and VPN: NetworkManager through libnm. The client is made once, at start, in the
  * background (ns_net_init); a page opened before it is ready fills itself when it is. The lists are rebuilt a
  * moment after NetworkManager says something changed, so a burst of signals is one rebuild. */
 #include "ns-caps.h"
@@ -529,7 +529,7 @@ ns_page_wifi (GtkWidget *row, gpointer data)
   w->avail = ns_group (c, "Available networks");
   ns_group_set_visible (w->avail, FALSE);
   g = ns_group (c, NULL);
-  w->saved = ns_row (g, NULL, "Saved networks", "Forget • Auto reconnect");
+  w->saved = ns_row (g, NULL, "Saved networks", "Forget, auto reconnect");
   ns_row_on_activate (w->saved, saved_page, NULL);
   GtkWidget *add = ns_row (g, NULL, "Add network", "A hidden network, or one not in reach");
   g_object_set_data (G_OBJECT (add), "ns-page", page);
@@ -1287,7 +1287,7 @@ ns_page_mobile (GtkWidget *row, gpointer data)
   ns_push (page);
 }
 
-/* ---- Network & VPN ---- */
+/* ---- Network and VPN ---- */
 
 typedef struct {
   GtkWidget *vpn, *other, *novpn;
@@ -1463,7 +1463,7 @@ void
 ns_page_network (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Network & VPN", &c);
+  NsPage *page = ns_page_new ("Network and VPN", &c);
   Network *n = g_new0 (Network, 1);
   g_object_set_data_full (G_OBJECT (page), "network", n, g_free);
   ns_later_init (page, network_fill);

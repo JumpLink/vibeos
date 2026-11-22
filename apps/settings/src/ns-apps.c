@@ -87,7 +87,7 @@ app_notify_page (GtkWidget *row, gpointer app)
     rows[n++] = ns_row_switch (g, "Show on the lock screen", "The app's icon below the clock", s,
                                "show-in-lock-screen");
   /* No "Sound" switch (enable-sound-alerts): GNOME Shell honours it, but only for a notification that names a
-   * sound, and no app here sends one (Sound & vibration says more). */
+   * sound, and no app here sends one (Sound and vibration says more). */
   for (guint i = 0; i < n; i++)
     g_settings_bind (s, "enable", rows[i], "sensitive", G_SETTINGS_BIND_GET);
   ns_push (page);
@@ -168,22 +168,38 @@ app_switched (GtkWidget *sw, GParamSpec *ps, GAppInfo *app)
     g_settings_set_boolean (s, "enable", ns_switch_get_active (sw));
 }
 
+static void app_notifications_page (GtkWidget *row, gpointer data);
+
 void
 ns_page_notifications (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
   NsPage *page = ns_page_new ("Notifications", &c);
   GSettings *n = ns_page_settings (page, "org.gnome.desktop.notifications");
-  GtkWidget *g = ns_group (c, NULL);
-  GtkWidget *r = ns_row_switch (g, "Do not disturb", "No pop-ups: notifications wait in the list", NULL, NULL);
+  /* Android 17's groups: the apps' own settings on a page of their own, then what the lock screen shows */
+  GtkWidget *g = ns_group (c, "Manage");
+  GtkWidget *r = ns_row (g, NULL, "App notifications", "Control notifications from individual apps");
+  ns_row_on_activate (r, app_notifications_page, NULL);
+  g = ns_group (c, "Privacy");
+  ns_row_switch (g, "Notifications on lock screen", "Their apps' icons below the clock", n, "show-in-lock-screen");
+  g = ns_group (c, NULL);
+  r = ns_row_switch (g, "Do not disturb", "No pop-ups: notifications wait in the list", NULL, NULL);
   g_settings_bind (n, "show-banners", ns_row_get_switch (r), "active", G_SETTINGS_BIND_INVERT_BOOLEAN);
-  ns_row_switch (g, "Show on the lock screen", "Their apps' icons below the clock", n, "show-in-lock-screen");
   /* No "Wake the screen" (Phosh's wakeup-screen-* keys): vibeos leaves the screen off for a notification.
    * Besides the power key and a double tap, only a full-screen app (an incoming call, a ringing alarm: service.js
    * LaunchFullScreen) turns it on. */
   alerts_row (g);
+  ns_push (page);
+}
 
-  g = ns_group (c, "App notifications");
+/* each app that notifies, with its switch; a tap opens the app's own page */
+static void
+app_notifications_page (GtkWidget *row, gpointer data)
+{
+  GtkWidget *c;
+  NsPage *page = ns_page_new ("App notifications", &c);
+  GSettings *n = ns_page_settings (page, "org.gnome.desktop.notifications");
+  GtkWidget *g = ns_group (c, NULL);
   g_auto (GStrv) kids = g_settings_get_strv (n, "application-children");
   GList *all = g_app_info_get_all ();
   all = g_list_sort_with_data (all, by_name, NULL);
@@ -219,6 +235,30 @@ open_app (GtkWidget *row, gpointer app)
     ns_row_set_subtitle (row, err->message);
 }
 
+/* the desktop file its package installed: a sandboxed app's desktop file is vibeos-sandbox's copy, and names it */
+static char *
+package_file (GAppInfo *app)
+{
+  if (!G_IS_DESKTOP_APP_INFO (app))
+    return NULL;
+  char *source = g_desktop_app_info_get_string (G_DESKTOP_APP_INFO (app), "X-VibeOS-Sandbox-Source");
+  if (source && *source)
+    return source;
+  g_free (source);
+  return g_strdup (g_desktop_app_info_get_filename (G_DESKTOP_APP_INFO (app)));
+}
+
+/* the app id it runs sandboxed as, or NULL: not sandboxed */
+static char *
+sandbox_id (GAppInfo *app)
+{
+  char *id = G_IS_DESKTOP_APP_INFO (app) ? g_desktop_app_info_get_string (G_DESKTOP_APP_INFO (app), "X-VibeOS-Sandbox")
+                                         : NULL;
+  if (id && !*id)
+    g_clear_pointer (&id, g_free);
+  return id;
+}
+
 /* its package and version: dpkg-query, in the background */
 static void
 version_got (GObject *src, GAsyncResult *res, gpointer row)
@@ -236,7 +276,7 @@ version_got (GObject *src, GAsyncResult *res, gpointer row)
 static void
 version_row (GtkWidget *g, GAppInfo *app)
 {
-  const char *file = G_IS_DESKTOP_APP_INFO (app) ? g_desktop_app_info_get_filename (G_DESKTOP_APP_INFO (app)) : NULL;
+  g_autofree char *file = package_file (app);
   if (!file || !g_str_has_prefix (file, "/usr/"))
     return;
   GtkWidget *r = ns_row_info (g, "Version", NULL);
@@ -249,10 +289,12 @@ version_row (GtkWidget *g, GAppInfo *app)
     g_subprocess_communicate_utf8_async (p, NULL, NULL, version_got, g_object_ref (r));
 }
 
-/* Uninstall: the package that owns the app's desktop file, removed with apt behind pkexec (GNOME Shell's polkit prompt asks
- * for the password). apt-get -s first, as the user: the button shows only when apt would remove something, and the
- * question names every package that goes (a game can take a meta package with it). Essential packages make apt
- * refuse the simulation, so they get no button. Apps not from a package (/usr/local, Flatpak) get none either. */
+/* Uninstall: only an app the user installed (from Software or App Installer: those run sandboxed); VibeOS's own apps
+ * and the rest of the system get no button, as system apps on Android. The package that owns the app's desktop file
+ * is removed with apt behind pkexec (GNOME Shell's polkit prompt asks for the password). apt-get -s first, as the
+ * user: the button shows only when apt would remove something, and the question names every package that goes (a
+ * game can take a meta package with it). The app's data goes with it (vibeos-sandbox deletes it once dpkg has removed
+ * the package), and the question says so. */
 typedef struct {
   GtkWidget *button;
   char      *name, *pkg;
@@ -313,8 +355,8 @@ uninstall_tapped (GtkButton *b, Uninstall *u)
   g_autofree char *list = g_strjoinv (", ", u->removes);
   g_autofree char *heading = g_strdup_printf ("Uninstall %s?", u->name);
   g_autofree char *body = g_strv_length (u->removes) > 1
-    ? g_strdup_printf ("These packages will be removed: %s.", list)
-    : g_strdup_printf ("The package %s will be removed.", list);
+    ? g_strdup_printf ("These packages will be removed: %s. The app's data will be deleted.", list)
+    : g_strdup_printf ("The package %s will be removed. The app's data will be deleted.", list);
   Uninstall *q = g_new0 (Uninstall, 1);
   q->button = g_object_ref (u->button);
   q->pkg = g_strdup (u->pkg);
@@ -344,11 +386,12 @@ uninstall_got (GObject *src, GAsyncResult *res, gpointer data)
 static void
 uninstall_button (GtkWidget *c, GAppInfo *app)
 {
-  const char *file = G_IS_DESKTOP_APP_INFO (app) ? g_desktop_app_info_get_filename (G_DESKTOP_APP_INFO (app)) : NULL;
-  if (!file || !g_str_has_prefix (file, "/usr/share/"))
+  g_autofree char *sandboxed = sandbox_id (app);
+  g_autofree char *file = package_file (app);
+  if (!sandboxed || !file || !g_str_has_prefix (file, "/usr/share/"))
     return;
   GtkWidget *b = ns_button_new ("Uninstall", FALSE);
-  gtk_widget_add_css_class (b, "ns-uninstall");
+  gtk_widget_add_css_class (b, "ns-wide");
   gtk_widget_set_visible (b, FALSE);
   gtk_box_append (GTK_BOX (c), b);
   g_autoptr (GSubprocess) p = g_subprocess_new (G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_SILENCE,
@@ -363,6 +406,208 @@ uninstall_button (GtkWidget *c, GAppInfo *app)
   u->button = g_object_ref (b);
   u->name = g_strdup (g_app_info_get_display_name (app));
   g_subprocess_communicate_utf8_async (p, NULL, NULL, uninstall_got, u);
+}
+
+/* ---- Storage and cache: what the app takes, as on Android: its package (dpkg's Installed-Size; not the libraries it
+ * pulled in, which only apt could tell, and slowly) and, for an app that runs sandboxed, its home in
+ * ~/.local/share/vibeos-sandbox/data/<package>, the cache in it (.cache) apart. du measures them in the background;
+ * the rows read "Calculating…" until then. VibeOS's own apps have no home of their own there: the package alone. ---- */
+
+typedef struct {
+  char      *file;               /* the desktop file its package installed */
+  gboolean   sandboxed;
+  gboolean   known;
+  gboolean   measuring, again;   /* du is running; something changed meanwhile: measure once more */
+  char      *pkg;
+  guint64    app, data, cache;   /* bytes; data without the cache */
+  GtkWidget *row;                /* the app page's row (weak) */
+  GtkWidget *rows[4];            /* the open storage page's App size, User data, Cache, Total (weak) */
+  GtkWidget *clear;              /* its Clear cache (weak) */
+} Storage;
+
+/* keeps *where pointing at `w` while it lives */
+static void
+track (GtkWidget **where, GtkWidget *w)
+{
+  if (*where)
+    g_object_remove_weak_pointer (G_OBJECT (*where), (gpointer *) where);
+  *where = w;
+  if (w)
+    g_object_add_weak_pointer (G_OBJECT (w), (gpointer *) where);
+}
+
+static void
+storage_free (Storage *st)
+{
+  track (&st->row, NULL);
+  for (guint i = 0; i < G_N_ELEMENTS (st->rows); i++)
+    track (&st->rows[i], NULL);
+  track (&st->clear, NULL);
+  g_free (st->file);
+  g_free (st->pkg);
+  g_free (st);
+}
+
+static void
+storage_show (Storage *st)
+{
+  if (!st->known)
+    return;
+  guint64 total = st->app + st->data + st->cache;
+  if (st->row) {
+    g_autofree char *size = g_format_size (total);
+    g_autofree char *used = g_strdup_printf ("%s used", size);
+    ns_row_set_subtitle (st->row, used);
+  }
+  guint64 values[4] = { st->app, st->data, st->cache, total };
+  for (guint i = 0; i < G_N_ELEMENTS (st->rows); i++)
+    if (st->rows[i]) {
+      g_autofree char *v = g_format_size (values[i]);
+      ns_row_set_subtitle (st->rows[i], v);
+    }
+  if (st->clear) {
+    gtk_button_set_label (GTK_BUTTON (st->clear), "Clear cache");
+    gtk_widget_set_sensitive (st->clear, st->cache > 0);
+  }
+}
+
+static void measure (GObject *owner);
+
+/* the package's name, its Installed-Size (KiB), then the home's and its cache's (KiB, du) when sandboxed */
+static void
+measured (GObject *src, GAsyncResult *res, gpointer data)
+{
+  g_autoptr (GObject) owner = data;
+  Storage *st = g_object_get_data (owner, "ns-storage");
+  g_autofree char *out = NULL;
+  gboolean ok = g_subprocess_communicate_utf8_finish (G_SUBPROCESS (src), res, &out, NULL, NULL);
+  if (!st)
+    return;
+  st->measuring = FALSE;
+  if (st->again) {
+    st->again = FALSE;
+    measure (owner);
+    return;
+  }
+  if (!ok || !out)
+    return;
+  g_auto (GStrv) l = g_strsplit (g_strstrip (out), "\n", -1);
+  if (g_strv_length (l) < 2 || !*l[0]) {
+    if (st->row)
+      ns_row_set_subtitle (st->row, "–");
+    return;
+  }
+  g_free (st->pkg);
+  st->pkg = g_strdup (l[0]);
+  st->app = g_ascii_strtoull (l[1], NULL, 10) * 1024;
+  guint64 home = l[2] ? g_ascii_strtoull (l[2], NULL, 10) * 1024 : 0;
+  st->cache = l[2] && l[3] ? g_ascii_strtoull (l[3], NULL, 10) * 1024 : 0;
+  st->data = home > st->cache ? home - st->cache : 0;
+  st->known = TRUE;
+  storage_show (st);
+}
+
+/* in the background, once at a time; the row and an open storage page show the answer */
+static void
+measure (GObject *owner)
+{
+  Storage *st = g_object_get_data (owner, "ns-storage");
+  if (!st)
+    return;
+  if (st->measuring) {
+    st->again = TRUE;
+    return;
+  }
+  g_autofree char *homes = st->sandboxed ? g_build_filename (g_get_user_data_dir (), "vibeos-sandbox", "data", NULL)
+                                         : g_strdup ("");
+  g_autoptr (GSubprocess) p = g_subprocess_new (G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_SILENCE,
+                                                NULL, "sh", "-c",
+                                                "p=$(dpkg-query -S \"$1\" 2>/dev/null | head -n1 | cut -d: -f1) && "
+                                                "[ -n \"$p\" ] || exit 1; echo \"$p\"; "
+                                                "s=$(dpkg-query -W -f='${Installed-Size}\\n' \"$p\" | head -n1); "
+                                                "echo \"${s:-0}\"; [ -n \"$2\" ] || exit 0; "
+                                                "for d in \"$2/$p\" \"$2/$p/.cache\"; do "
+                                                "if [ -d \"$d\" ] && [ ! -L \"$d\" ]; then du -skx \"$d\" | cut -f1; "
+                                                "else echo 0; fi; done",
+                                                "sh", st->file, homes, NULL);
+  if (!p)
+    return;
+  st->measuring = TRUE;
+  g_subprocess_communicate_utf8_async (p, NULL, NULL, measured, g_object_ref (owner));
+}
+
+static void
+cache_cleared (GObject *src, GAsyncResult *res, gpointer data)
+{
+  g_autoptr (GObject) owner = data;
+  g_subprocess_wait_finish (G_SUBPROCESS (src), res, NULL);
+  measure (owner);
+}
+
+static void
+clear_cache (GtkButton *b, GObject *owner)
+{
+  Storage *st = g_object_get_data (owner, "ns-storage");
+  if (!st || !st->pkg)
+    return;
+  gtk_button_set_label (b, "Clearing…");
+  gtk_widget_set_sensitive (GTK_WIDGET (b), FALSE);
+  g_autoptr (GSubprocess) p = g_subprocess_new (G_SUBPROCESS_FLAGS_STDOUT_SILENCE | G_SUBPROCESS_FLAGS_STDERR_SILENCE,
+                                                NULL, "vibeos-sandbox", "clear-cache", st->pkg, NULL);
+  if (p)
+    g_subprocess_wait_async (p, NULL, cache_cleared, g_object_ref (owner));
+  else
+    measure (owner);
+}
+
+static void
+storage_page (GtkWidget *row, gpointer data)
+{
+  GObject *owner = data;
+  Storage *st = g_object_get_data (owner, "ns-storage");
+  GtkWidget *c;
+  NsPage *page = ns_page_new ("Storage and cache", &c);
+  /* the storage page keeps the app's page (and the Storage) while it is open */
+  g_object_set_data_full (G_OBJECT (page), "ns-storage-owner", g_object_ref (owner), g_object_unref);
+  GtkWidget *g = ns_group (c, "Space used");
+  static const char *const titles[] = { "App size", "User data", "Cache", "Total" };
+  for (guint i = 0; i < G_N_ELEMENTS (titles); i++)
+    track (&st->rows[i], ns_row_info (g, titles[i], "Calculating…"));
+  GtkWidget *b = ns_button_new ("Clear cache", FALSE);
+  gtk_widget_add_css_class (b, "ns-wide");
+  gtk_widget_set_sensitive (b, FALSE);
+  g_signal_connect_object (b, "clicked", G_CALLBACK (clear_cache), owner, 0);
+  gtk_box_append (GTK_BOX (c), b);
+  track (&st->clear, b);
+  storage_show (st);
+  ns_push (page);
+  measure (owner);
+}
+
+static void
+storage_row (GtkWidget *g, GAppInfo *app, GtkWidget *owner)
+{
+  g_autofree char *file = package_file (app);
+  if (!file || !g_str_has_prefix (file, "/usr/"))
+    return;
+  g_autofree char *sandboxed = sandbox_id (app);
+  Storage *st = g_new0 (Storage, 1);
+  st->file = g_steal_pointer (&file);
+  st->sandboxed = sandboxed != NULL;
+  g_object_set_data_full (G_OBJECT (owner), "ns-storage", st, (GDestroyNotify) storage_free);
+  track (&st->row, ns_row (g, "drive-harddisk-symbolic", "Storage and cache", "Calculating…"));
+  /* only a sandboxed app has data and a cache of its own to show and clear */
+  if (st->sandboxed)
+    ns_row_on_activate (st->row, storage_page, owner);
+  measure (G_OBJECT (owner));
+}
+
+/* the app's page is on top again (back from its permissions or its storage): what they are now */
+static void
+app_page_back (NsPage *page)
+{
+  measure (G_OBJECT (page));
+  ns_app_permissions_refresh (page);
 }
 
 static void
@@ -404,7 +649,10 @@ app_page (GAppInfo *app)
     g_signal_connect_object (ns, "changed::enable", G_CALLBACK (allowed_changed), r, 0);
     ns_row_on_activate (r, app_notify_page, app);
   }
-  /* No per-app "Sound & vibration" (feedbackd's per-app profile): feedbackd applies it to the events an app
+  ns_app_permissions_row (g, app, page);
+  storage_row (g, app, page);
+  ns_page_on_back (page, app_page_back);
+  /* No per-app "Sound and vibration" (feedbackd's per-app profile): feedbackd applies it to the events an app
    * sends it, and apps here send none (the Phone and the Clock use its Haptic interface, which the profile does
    * not touch). No "Scale to fit" either: that was phoc's; mutter has no such thing. */
 
@@ -504,33 +752,184 @@ app_tapped (GtkWidget *row, gpointer app)
   app_page (app);
 }
 
-/* "Default apps" on a card of its own, then one card of all apps */
+/* an app's row that opens its page, its icon baked later with the others */
+static GtkWidget *
+app_row (GtkWidget *g, GAppInfo *app, const char *subtitle, IconBake *bake)
+{
+  GtkWidget *ar = ns_row_app (g, app, subtitle);
+  /* the row holds the app its page opens */
+  g_object_set_data_full (G_OBJECT (ar), "ns-app", g_object_ref (app), g_object_unref);
+  ns_row_on_activate (ar, app_tapped, app);
+  GWeakRef *ref = g_new0 (GWeakRef, 1);
+  g_weak_ref_init (ref, g_object_get_data (G_OBJECT (ar), "ns-icon"));
+  g_ptr_array_add (bake->images, ref);
+  return ar;
+}
+
+static IconBake *
+icon_bake_new (void)
+{
+  IconBake *bake = g_new0 (IconBake, 1);
+  bake->images = g_ptr_array_new_with_free_func ((GDestroyNotify) weak_ref_free);
+  return bake;
+}
+
+static void
+icon_bake_start (IconBake *bake)
+{
+  g_idle_add_full (G_PRIORITY_DEFAULT_IDLE, icon_bake_step, bake, (GDestroyNotify) icon_bake_free);
+}
+
+/* the apps a launcher shows, by name */
+static GList *
+shown_apps (guint *n)
+{
+  GList *all = g_list_sort_with_data (g_app_info_get_all (), by_name, NULL), *shown = NULL;
+  *n = 0;
+  for (GList *l = all; l; l = l->next)
+    if (g_app_info_should_show (l->data)) {
+      shown = g_list_prepend (shown, g_object_ref (l->data));
+      (*n)++;
+    }
+  g_list_free_full (all, g_object_unref);
+  return g_list_reverse (shown);
+}
+
+/* ---- the apps opened last: GNOME Shell's record of when each app was last in use ---- */
+
+typedef struct {
+  char  *id;
+  gint64 seen;
+} Seen;
+
+static void
+seen_free (Seen *s)
+{
+  if (!s)
+    return;             /* moved to the recent list */
+  g_free (s->id);
+  g_free (s);
+}
+
+static void
+state_element (GMarkupParseContext *ctx, const char *name, const char **keys, const char **values, gpointer data,
+               GError **error)
+{
+  if (g_strcmp0 (name, "application"))
+    return;
+  const char *id = NULL, *seen = NULL;
+  for (guint i = 0; keys[i]; i++) {
+    if (!g_strcmp0 (keys[i], "id"))
+      id = values[i];
+    else if (!g_strcmp0 (keys[i], "last-seen"))
+      seen = values[i];
+  }
+  if (!id || !seen)
+    return;
+  Seen *s = g_new0 (Seen, 1);
+  s->id = g_strdup (id);
+  s->seen = g_ascii_strtoll (seen, NULL, 10);
+  g_ptr_array_add (data, s);
+}
+
+static int
+by_seen (gconstpointer a, gconstpointer b)
+{
+  gint64 x = (*(Seen **) a)->seen, y = (*(Seen **) b)->seen;
+  return x < y ? 1 : x > y ? -1 : 0;
+}
+
+/* "2 minutes ago", as Android's list has it */
+static char *
+seen_ago (gint64 seen)
+{
+  gint64 s = MAX (g_get_real_time () / G_USEC_PER_SEC - seen, 0);
+  if (s < 3600) {
+    int m = (int) (s / 60);
+    return g_strdup_printf (m == 1 ? "%d minute ago" : "%d minutes ago", m);
+  }
+  if (s < 86400) {
+    int h = (int) (s / 3600);
+    return g_strdup_printf (h == 1 ? "%d hour ago" : "%d hours ago", h);
+  }
+  int d = (int) (s / 86400);
+  return g_strdup_printf (d == 1 ? "%d day ago" : "%d days ago", d);
+}
+
+/* up to `max` apps, newest first, that a launcher shows; Settings itself is left out, as Android's is */
+static GPtrArray *
+recent_apps (guint max)
+{
+  g_autofree char *path = g_build_filename (g_get_user_data_dir (), "gnome-shell", "application_state", NULL);
+  g_autofree char *text = NULL;
+  gsize len;
+  GPtrArray *recent = g_ptr_array_new_with_free_func ((GDestroyNotify) seen_free);
+  if (!g_file_get_contents (path, &text, &len, NULL))
+    return recent;
+  g_autoptr (GPtrArray) all = g_ptr_array_new_with_free_func ((GDestroyNotify) seen_free);
+  GMarkupParser parser = { .start_element = state_element };
+  g_autoptr (GMarkupParseContext) ctx = g_markup_parse_context_new (&parser, 0, all, NULL);
+  g_markup_parse_context_parse (ctx, text, len, NULL);
+  g_ptr_array_sort (all, by_seen);
+  const char *self = g_application_get_application_id (g_application_get_default ());
+  g_autofree char *self_desktop = self ? g_strconcat (self, ".desktop", NULL) : NULL;
+  for (guint i = 0; i < all->len && recent->len < max; i++) {
+    Seen *s = all->pdata[i];
+    if (s->seen <= 0 || !g_strcmp0 (s->id, self_desktop))
+      continue;
+    g_autoptr (GDesktopAppInfo) app = g_desktop_app_info_new (s->id);
+    if (!app || !g_app_info_should_show (G_APP_INFO (app)))
+      continue;
+    g_ptr_array_add (recent, g_steal_pointer (&all->pdata[i]));
+  }
+  return recent;
+}
+
+static void ns_page_all_apps (GtkWidget *row, gpointer data);
+
+/* Android 17's: the apps opened last and a row to all of them, then the general settings */
 void
 ns_page_apps (GtkWidget *row, gpointer data)
 {
-  GList *all = g_app_info_get_all ();
-  all = g_list_sort_with_data (all, by_name, NULL);
   GtkWidget *c;
   NsPage *page = ns_page_new ("Apps", &c);
-  GtkWidget *g = ns_group (c, NULL);
-  GtkWidget *r = ns_row (g, "view-grid-symbolic", "Default apps", "Browser • Email • Music • Photos");
-  ns_row_on_activate (r, default_apps_tapped, NULL);
-  g = ns_group (c, NULL);
-  IconBake *bake = g_new0 (IconBake, 1);
-  bake->images = g_ptr_array_new_with_free_func ((GDestroyNotify) weak_ref_free);
-  for (GList *l = all; l; l = l->next) {
-    GAppInfo *app = l->data;
-    if (!g_app_info_should_show (app))
-      continue;
-    GtkWidget *ar = ns_row_app (g, app, NULL);
-    /* the row holds the app its page opens */
-    g_object_set_data_full (G_OBJECT (ar), "ns-app", g_object_ref (app), g_object_unref);
-    ns_row_on_activate (ar, app_tapped, app);
-    GWeakRef *ref = g_new0 (GWeakRef, 1);
-    g_weak_ref_init (ref, g_object_get_data (G_OBJECT (ar), "ns-icon"));
-    g_ptr_array_add (bake->images, ref);
+  IconBake *bake = icon_bake_new ();
+  g_autoptr (GPtrArray) recent = recent_apps (3);
+  guint n;
+  GList *all = shown_apps (&n);
+  g_list_free_full (all, g_object_unref);
+
+  GtkWidget *g = ns_group (c, recent->len ? "Recently opened apps" : NULL);
+  for (guint i = 0; i < recent->len; i++) {
+    Seen *s = recent->pdata[i];
+    g_autoptr (GDesktopAppInfo) app = g_desktop_app_info_new (s->id);
+    g_autofree char *ago = seen_ago (s->seen);
+    app_row (g, G_APP_INFO (app), ago, bake);
   }
-  g_idle_add_full (G_PRIORITY_DEFAULT_IDLE, icon_bake_step, bake, (GDestroyNotify) icon_bake_free);
+  g_autofree char *see = g_strdup_printf ("See all %u apps", n);
+  GtkWidget *r = ns_row (g, "go-next-symbolic", see, NULL);
+  ns_row_on_activate (r, ns_page_all_apps, NULL);
+
+  g = ns_group (c, "General");
+  r = ns_row (g, NULL, "Default apps", "Browser, email, music, photos");
+  ns_row_on_activate (r, default_apps_tapped, NULL);
+  icon_bake_start (bake);
+  ns_push (page);
+}
+
+/* every app a launcher shows, by name */
+static void
+ns_page_all_apps (GtkWidget *row, gpointer data)
+{
+  GtkWidget *c;
+  NsPage *page = ns_page_new ("All apps", &c);
+  GtkWidget *g = ns_group (c, NULL);
+  IconBake *bake = icon_bake_new ();
+  guint n;
+  GList *all = shown_apps (&n);
+  for (GList *l = all; l; l = l->next)
+    app_row (g, l->data, NULL, bake);
+  icon_bake_start (bake);
   g_list_free_full (all, g_object_unref);
   ns_push (page);
 }
