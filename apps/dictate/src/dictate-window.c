@@ -741,22 +741,22 @@ on_clear_response (VibeosDialog *dialog, int response, Window *self)
 {
   if (response != VIBEOS_RESPONSE_OK)
     return;
-  gtk_text_buffer_set_text (self->buffer, "", -1);
+  if (self->talking)
+    talk_clear (self);
+  else
+    gtk_text_buffer_set_text (self->buffer, "", -1);
 }
 
+/* the bin: asked first, in Dictate the text goes, in Agent the conversation (and the model forgets it) */
 static void
 on_clear (VibeosPressable *button, Window *self)
 {
   VibeosDialog *dialog;
 
-  if (self->talking)
-    {
-      talk_clear (self);
-      return;
-    }
-  dialog = vibeos_dialog_new (_("Clear the text?"));
+  dialog = vibeos_dialog_new (self->talking ? _("Clear the conversation?") : _("Clear the text?"));
 
-  vibeos_dialog_set_message (dialog, _("All of the text is deleted."));
+  vibeos_dialog_set_message (dialog, self->talking ? _("All of the conversation is deleted, and Agent forgets it.")
+                                                   : _("All of the text is deleted."));
   vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
   vibeos_dialog_add_button (dialog, _("Clear"), VIBEOS_RESPONSE_OK);
   g_signal_connect (dialog, "response", G_CALLBACK (on_clear_response), self);
