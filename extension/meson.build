@@ -19,7 +19,9 @@ configure_file(input: 'home.js', output: 'home.js', install_dir: extdir,
   command: ['sed', '-e', 's|/usr/local/bin/vibeos-launcher|' + bindir + '/vibeos-launcher|', '@INPUT@'], capture: true)
 
 # every name a module uses is declared or imported (tests/undefined-names.sh); needs TypeScript's checker
-tsc = find_program('tsc', required: false)
+# TypeScript 5 or later: tests/tsconfig.json's moduleResolution "bundler" is 5.0's (4.x refuses the configuration, and
+# 6 no longer reads 4.x's "node"); an older checker leaves the test out
+tsc = find_program('tsc', required: false, version: '>= 5.0')
 if tsc.found()
   test('undefined-names', find_program('tests/undefined-names.sh'), args: [meson.current_source_dir(), tsc],
        timeout: 900)
