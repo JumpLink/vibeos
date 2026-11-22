@@ -41,6 +41,18 @@ check () {   # name, what was expected, what came out
   fi
 }
 
+# the PulseAudio checks need pactl and parecord (pulseaudio-utils), which a phone may not have: without them each one
+# would pass whatever the sandbox does, so it is skipped and says so
+HAVE_PULSE=0
+command -v pactl >/dev/null && command -v parecord >/dev/null && HAVE_PULSE=1
+pulse_check () {   # as check
+  if [ "$HAVE_PULSE" = 1 ]; then
+    check "$@"
+  else
+    printf 'SKIP  %-46s no pactl/parecord on this phone\n' "$1"
+  fi
+}
+
 # a portal request from inside: prints the response code (0 granted, 1 cancelled, 2 refused) and, for the location,
 # only whether a location came
 PORTAL_PY='
@@ -197,12 +209,16 @@ check "camera denied: the portal" "refused" "$(portal camera | grep -q '^respons
 set_perm camera allow
 check "camera allowed: devices" "present" "$(inside 'ls /dev/video* >/dev/null 2>&1 && echo present || echo none')"
 check "camera allowed: the portal" "granted" "$(portal camera | grep -q '^response 0' && echo granted || echo refused)"
-# WirePlumber loads the script as it starts: live only when it started after the script was installed
+# WirePlumber loads the script as it starts: live only when it started after the script was installed. The script's
+# ctime is when dpkg put it there (its mtime is the build's); the process started at the boot time plus its start in
+# clock ticks, which a clock set after boot (a phone without a working RTC boots in 1970) moves with it, unlike
+# /proc/PID's own time.
 WP_LIVE=0
 WP_PID=$(pgrep -u "$USER_NAME" -x wireplumber | head -n1)
-if [ -n "$WP_PID" ] && [ -e /usr/share/wireplumber/scripts/vibeos/sandbox-access.lua ] && \
-   [ "$(stat -c %Y /usr/share/wireplumber/scripts/vibeos/sandbox-access.lua)" -lt "$(stat -c %Y /proc/$WP_PID)" ]; then
-  WP_LIVE=1
+WP_SCRIPT=/usr/share/wireplumber/scripts/vibeos/sandbox-access.lua
+if [ -n "$WP_PID" ] && [ -e "$WP_SCRIPT" ]; then
+  WP_STARTED=$(( $(awk '/^btime/ { print $2 }' /proc/stat) + $(awk '{ print $22 }' "/proc/$WP_PID/stat") / $(getconf CLK_TCK) ))
+  [ "$(stat -c %Z "$WP_SCRIPT")" -lt "$WP_STARTED" ] && WP_LIVE=1
 fi
 set_perm camera deny
 if [ "$WP_LIVE" = 1 ]; then
@@ -223,11 +239,11 @@ if [ "$WP_LIVE" = 1 ]; then
     "$(inside "timeout 3 pw-record --rate 8000 --channels 1 /tmp/r.wav >/dev/null 2>&1; $RECORDED")"
   check "microphone denied: recording what plays" "nothing" \
     "$(inside "timeout 3 pw-record -P '{ stream.capture.sink = true }' --rate 8000 --channels 1 /tmp/r.wav >/dev/null 2>&1; $RECORDED")"
-  check "microphone denied: PulseAudio sources" "0" \
+  pulse_check "microphone denied: PulseAudio sources" "0" \
     "$(inside 'pactl list short sources 2>/dev/null | grep -vc "\.monitor" || true')"
-  check "microphone denied: PulseAudio recording" "nothing" \
+  pulse_check "microphone denied: PulseAudio recording" "nothing" \
     "$(inside "timeout 3 parecord --raw --rate 8000 --channels 1 /tmp/r.raw >/dev/null 2>&1; $RECORDED")"
-  check "microphone denied: PulseAudio, what plays" "nothing" \
+  pulse_check "microphone denied: PulseAudio, what plays" "nothing" \
     "$(inside "d=\$(pactl get-default-sink 2>/dev/null); timeout 3 parecord -d \"\$d.monitor\" --raw --rate 8000 --channels 1 /tmp/r.raw >/dev/null 2>&1; $RECORDED")"
   # the microphone's port, from outside (the probe does not see it): the probe tries to link it all the same
   MIC_PORT=$(as_user pw-dump 2>/dev/null | python3 -c '
@@ -250,7 +266,7 @@ for o in objs:
     "$(inside "pw-cli create-node adapter '{ factory.name = support.null-audio-sink node.name = vs-probe-node media.class = Audio/Sink }' 2>&1 | grep -q 'error\\|unknown' && echo refused || echo made")"
   check "capture: a sink of its own" "gone" \
     "$(inside "pw-record -P '{ media.class = Audio/Sink node.name = vs-probe-sink priority.session = 5000 }' /tmp/s.wav >/dev/null 2>&1 & p=\$!; sleep 3; n=\$(pw-dump 2>/dev/null | grep -c '\"node.name\": \"vs-probe-sink\"'); kill \$p 2>/dev/null; rm -f /tmp/s.wav; [ \"\$n\" = 0 ] && echo gone || echo kept")"
-  check "capture: a PulseAudio module" "refused" \
+  pulse_check "capture: a PulseAudio module" "refused" \
     "$(inside 'pactl load-module module-null-sink sink_name=vs_probe_null >/dev/null 2>&1 && echo loaded || echo refused')"
   as_user pactl list short modules 2>/dev/null | awk '/vs_probe_null/ { print $1 }' | while read -r m; do as_user pactl unload-module "$m"; done
   # silence, played: sound still works without the microphone
@@ -263,13 +279,13 @@ for o in objs:
   check "microphone allowed: PipeWire sources" "nonzero" "$( [ "$(pw_count Audio/Source)" -gt 0 ] && echo nonzero || echo 0)"
   check "microphone allowed: recording" "recorded" \
     "$(inside "timeout 3 pw-record --rate 8000 --channels 1 /tmp/r.wav >/dev/null 2>&1; $RECORDED")"
-  check "microphone allowed: PulseAudio recording" "recorded" \
+  pulse_check "microphone allowed: PulseAudio recording" "recorded" \
     "$(inside "timeout 3 parecord --raw --rate 8000 --channels 1 /tmp/r.raw >/dev/null 2>&1; $RECORDED")"
   check "microphone allowed: still no links of its own" "refused" "$(own_link "")"
   # with the microphone too, what the phone plays stays out of reach (a sink's monitor), as on Android
   check "microphone allowed: recording what plays" "nothing" \
     "$(inside "timeout 3 pw-record -P '{ stream.capture.sink = true }' --rate 8000 --channels 1 /tmp/r.wav >/dev/null 2>&1; $RECORDED")"
-  check "microphone allowed: PulseAudio, what plays" "nothing" \
+  pulse_check "microphone allowed: PulseAudio, what plays" "nothing" \
     "$(inside "d=\$(pactl get-default-sink 2>/dev/null); timeout 3 parecord -d \"\$d.monitor\" --raw --rate 8000 --channels 1 /tmp/r.raw >/dev/null 2>&1; $RECORDED")"
   set_perm microphone deny
 else
