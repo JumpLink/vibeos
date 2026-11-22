@@ -24,17 +24,19 @@ agent_deps = [dependency('llama'), onnxruntime, dependency('espeak-ng')]
 # a model on a server instead (dictate-remote.c): the Agent's gateway, an OpenAI-style API
 remote_deps = [dependency('libsoup-3.0'), dependency('json-glib-1.0')]
 brain_sources = ['src/dictate-brain.c', 'src/dictate-remote.c', 'src/dictate-device.c']
+# a language's model and voice downloaded (dictate-download.c): libsoup for the files, libarchive for Vosk's zips
+download_deps = [dependency('glib-2.0'), dependency('gio-2.0'), dependency('libsoup-3.0'), dependency('libarchive')]
 
 executable('vibeos-dictate', 'src/dictate-main.c', 'src/dictate-window.c', 'src/dictate-mic.c',
            'src/dictate-engine.c', 'src/dictate-models.c', 'src/dictate-moonshine.c', 'src/dictate-vosk.c',
            'src/dictate-vad.c', 'src/dictate-talk.c', 'src/dictate-voice.c', 'src/dictate-phonemes.c', brain_sources,
-           resources, link_with: text, install: true,
+           'src/dictate-download.c', 'src/dictate-download-dialog.c', resources, link_with: text, install: true,
            c_args: ['-DGETTEXT_PACKAGE="vibeos-dictate"',
                     '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir')),
                     '-DLIBRARY_DIR="@0@"'.format(library_dir)],
            dependencies: [dependency('gtk4', version: '>= 4.14'), dependency('vibeos-1'), dependency('spongy-gtk-1'),
                           dependency('gstreamer-1.0'), dependency('gstreamer-app-1.0'), dependency('json-glib-1.0'),
-                          cc.find_library('m'), cc.find_library('dl')] + agent_deps + remote_deps)
+                          cc.find_library('m'), cc.find_library('dl')] + agent_deps + remote_deps + download_deps)
 
 foreach id : ['vibeos.Dictate', 'vibeos.Agent']
   configure_file(input: 'data' / id + '.service.in', output: id + '.service',
@@ -72,3 +74,11 @@ executable('agent-say', 'tests/agent-say.c', 'src/dictate-talk.c',
 
 test('text', executable('test-text', 'tests/test-text.c', include_directories: 'src', link_with: text,
                         dependencies: dependency('glib-2.0')))
+# what a download unpacks and removes (archives made by the test, nothing fetched), and the table of packs
+test('download', executable('test-download', 'tests/test-download.c', 'src/dictate-download.c',
+                            include_directories: 'src', c_args: '-DGETTEXT_PACKAGE="vibeos-dictate"',
+                            dependencies: download_deps))
+
+# a language's packs fetched for real, as the app fetches them (not run by meson test: it needs the network)
+executable('download-try', 'tests/download-try.c', 'src/dictate-download.c', 'src/dictate-models.c',
+           include_directories: 'src', c_args: '-DGETTEXT_PACKAGE="vibeos-dictate"', dependencies: download_deps)

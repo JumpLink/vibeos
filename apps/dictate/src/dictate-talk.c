@@ -205,6 +205,15 @@ find_voice (DictateTalk *self, const char *language, char **name)
 }
 
 gboolean
+dictate_talk_has_voice (DictateTalk *self, const char *language)
+{
+  g_autofree char *name = NULL;
+  g_autofree char *voice = find_voice (self, language, &name);
+
+  return voice != NULL;
+}
+
+gboolean
 dictate_talk_available (DictateTalk *self, const char *language, char **reason)
 {
   g_autofree char *brain = find_brain (self);

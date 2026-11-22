@@ -22,6 +22,8 @@ G_DECLARE_FINAL_TYPE (DictateTalk, dictate_talk, DICTATE, TALK, GObject)
 DictateTalk     *dictate_talk_new       (void);
 /* FALSE, with the reason for the user, when there is no model or no voice for `language` on the phone */
 gboolean         dictate_talk_available (DictateTalk *self, const char *language, char **reason);
+/* there is a voice for `language` (the talk-voice setting's, else one in vibeos-dictate/voices/LANGUAGE) */
+gboolean         dictate_talk_has_voice (DictateTalk *self, const char *language);
 /* the model and the voice loaded now, in the background, so that the first answer comes sooner */
 void             dictate_talk_prepare   (DictateTalk *self, const char *language);
 /* the user said `text` (in `language`): the reply follows */

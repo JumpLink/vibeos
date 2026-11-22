@@ -20,6 +20,7 @@
  * listens again. While it listens or a reply is written or spoken, the FAB is a stop square and stops all of it: the
  * reply ends where it is, what was heard and not yet sent is dropped, and nothing listens until the next tap. */
 #include "dictate-window.h"
+#include "dictate-download-dialog.h"
 #include "dictate-engine.h"
 #include "dictate-mic.h"
 #include "dictate-models.h"
@@ -291,21 +292,21 @@ choose_language (Window *self)
 
 static void start (Window *self);
 
+/* the language chosen, with its model (and Agent's voice) on the phone */
 static void
-on_language_chosen (VibeosDialog *dialog, int response, Window *self)
+on_language_ready (const char *language, gpointer data)
 {
-  GPtrArray *models = g_object_get_data (G_OBJECT (dialog), "dictate-models");
-  const DictateModel *model;
+  Window *self = data;
   DictateState state;
 
-  if (response < 100 || response - 100 >= (int) models->len)
+  g_settings_set_string (self->settings, "language", language);
+  if (g_strcmp0 (language, dictate_engine_get_language (self->engine)) == 0)
     return;
-  model = models->pdata[response - 100];
-  g_settings_set_string (self->settings, "language", model->language);
-  if (g_strcmp0 (model->language, dictate_engine_get_language (self->engine)) == 0)
-    return;
-  dictate_engine_set_language (self->engine, model->language);
+  dictate_engine_set_language (self->engine, language);
   show_language (self);
+  /* Agent's voice for it loads now, while nothing is said: its first reply is sooner */
+  if (self->talk && dictate_talk_get_state (self->talk) == DICTATE_TALK_IDLE)
+    dictate_talk_prepare (self->talk, language);
   /* listening: what was said goes in in the old language, then listening goes on in the new one */
   state = dictate_engine_get_state (self->engine);
   if (state == DICTATE_STARTING || state == DICTATE_LISTENING)
@@ -316,30 +317,44 @@ on_language_chosen (VibeosDialog *dialog, int response, Window *self)
 }
 
 static void
+on_language_chosen (VibeosDialog *dialog, int response, Window *self)
+{
+  guint n;
+  const DictateLanguage *languages = dictate_languages (&n);
+
+  if (response < 100 || response - 100 >= (int) n)
+    return;
+  /* what it lacks is downloaded first, if the user wants it; until it is all in, the language stays as it was */
+  dictate_download_ensure (self->window, languages[response - 100].code, self->talk, on_language_ready, self);
+}
+
+static void
 on_language_row (VibeosPressable *row, VibeosDialog *dialog)
 {
   /* a row answers with its index, offset past the standard responses */
   vibeos_dialog_respond (dialog, 100 + GPOINTER_TO_INT (g_object_get_data (G_OBJECT (row), "dictate-index")));
 }
 
-/* Android's single-choice list: a radio row for each language with a model, the current one checked; a tap on one
- * chooses it */
+/* Android's single-choice list: a radio row for each language, the current one checked, and under one that is not
+ * on the phone yet what it lacks (dictate-download-dialog.h); a tap on one chooses it */
 static void
 on_language (VibeosPressable *button, Window *self)
 {
-  GPtrArray *models = dictate_models_installed ();
+  guint n;
+  const DictateLanguage *languages = dictate_languages (&n);
   VibeosDialog *dialog = vibeos_dialog_new (_("Language"));
   GtkWidget *list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   const char *current = dictate_engine_get_language (self->engine);
 
-  for (guint i = 0; i < models->len; i++)
+  for (guint i = 0; i < n; i++)
     {
-      const DictateModel *model = models->pdata[i];
-      gboolean checked = g_strcmp0 (model->language, current) == 0;
+      gboolean checked = g_strcmp0 (languages[i].code, current) == 0;
+      g_autofree char *note = dictate_download_note (languages[i].code, self->talk);
       GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
       GtkWidget *mark = gtk_image_new_from_icon_name (checked ? "dictate-radio-on-symbolic"
                                                               : "dictate-radio-off-symbolic");
-      GtkWidget *text = gtk_label_new (dictate_language_lookup (model->language)->name);
+      GtkWidget *texts = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+      GtkWidget *text = gtk_label_new (languages[i].name);
       GtkWidget *row;
 
       gtk_image_set_pixel_size (GTK_IMAGE (mark), 24);
@@ -348,10 +363,23 @@ on_language (VibeosPressable *button, Window *self)
         gtk_widget_add_css_class (mark, "dictate-radio-checked");
       gtk_box_append (GTK_BOX (box), mark);
       gtk_label_set_xalign (GTK_LABEL (text), 0);
-      gtk_widget_set_hexpand (text, TRUE);
-      gtk_box_append (GTK_BOX (box), text);
+      gtk_box_append (GTK_BOX (texts), text);
+      if (note)
+        {
+          GtkWidget *under = gtk_label_new (note);
+
+          gtk_label_set_xalign (GTK_LABEL (under), 0);
+          gtk_label_set_wrap (GTK_LABEL (under), TRUE);
+          gtk_widget_add_css_class (under, "dictate-dialog-note");
+          gtk_box_append (GTK_BOX (texts), under);
+        }
+      gtk_widget_set_hexpand (texts, TRUE);
+      gtk_widget_set_valign (texts, GTK_ALIGN_CENTER);
+      gtk_box_append (GTK_BOX (box), texts);
       row = vibeos_pressable_new (box);
       gtk_widget_add_css_class (row, "dictate-dialog-item");
+      if (note)
+        gtk_widget_add_css_class (row, "dictate-dialog-item-two");
       vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
       g_object_set_data (G_OBJECT (row), "dictate-index", GINT_TO_POINTER (i));
       g_signal_connect (row, "clicked", G_CALLBACK (on_language_row), dialog);
@@ -360,7 +388,6 @@ on_language (VibeosPressable *button, Window *self)
   gtk_widget_add_css_class (list, "dictate-dialog-list");
   vibeos_dialog_set_content (dialog, list);
   vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
-  g_object_set_data_full (G_OBJECT (dialog), "dictate-models", models, (GDestroyNotify) g_ptr_array_unref);
   g_signal_connect (dialog, "response", G_CALLBACK (on_language_chosen), self);
   vibeos_dialog_present (dialog, self->window);
 }
@@ -807,6 +834,9 @@ static const VibeosAboutSection dictate_legal[] = {
                  "(MIT)." },
   { "Vosk", "French, Italian and Russian are heard by <a href=\"https://alphacephei.com/vosk/\">Vosk</a> and its "
             "small models, under the Apache License 2.0." },
+  { "Downloads", "A language that is not installed can be downloaded in the app: its model comes from Moonshine's "
+                 "server (download.moonshine.ai) or Vosk's (alphacephei.com), the same files as the language "
+                 "packages', and each file is checked against its SHA-256 before it is used." },
   { NULL }
 };
 
@@ -825,6 +855,13 @@ static const VibeosAboutSection agent_legal[] = {
              "(MIT License), its sounds from <a href=\"https://github.com/espeak-ng/espeak-ng\">eSpeak NG</a> (GNU "
              "General Public License 3.0 or later), and the end of what is said is found by the "
              "<a href=\"https://github.com/snakers4/silero-vad\">Silero VAD</a> (MIT License)." },
+  { "Downloads", "A language that is not installed can be downloaded in the app, each file checked against its "
+                 "SHA-256 before it is used: its model from Moonshine's server (download.moonshine.ai) or Vosk's "
+                 "(alphacephei.com), and its voice from <a href=\"https://huggingface.co/rhasspy/piper-voices\">"
+                 "rhasspy/piper-voices</a> (MIT License). The voices' recordings: Thorsten-Voice (German), Davefx "
+                 "(Spanish), Paola (Italian) and Denis (Russian), CC0; LJ Speech (English), public domain; the SIWIS "
+                 "French speech synthesis database, CC BY 4.0. The French and Italian voices are trained from the "
+                 "Hi-Fi TTS voice of Cori Samuel (NVIDIA, CC BY 4.0)." },
   { NULL }
 };
 
