@@ -27,7 +27,7 @@ brain_sources = ['src/dictate-brain.c', 'src/dictate-remote.c', 'src/dictate-dev
 
 executable('vibeos-dictate', 'src/dictate-main.c', 'src/dictate-window.c', 'src/dictate-mic.c',
            'src/dictate-engine.c', 'src/dictate-models.c', 'src/dictate-moonshine.c', 'src/dictate-vosk.c',
-           'src/dictate-vad.c', 'src/dictate-talk.c', 'src/dictate-voice.c', brain_sources,
+           'src/dictate-vad.c', 'src/dictate-talk.c', 'src/dictate-voice.c', 'src/dictate-phonemes.c', brain_sources,
            resources, link_with: text, install: true,
            c_args: ['-DGETTEXT_PACKAGE="vibeos-dictate"',
                     '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir')),
@@ -46,7 +46,7 @@ install_data('data/vibeos.Dictate.gschema.xml', install_dir: datadir / 'glib-2.0
 gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
 
 # the voices and the model, timed on the phone (not run by meson test: they need models)
-executable('voice-bench', 'tests/voice-bench.c', 'src/dictate-voice.c', include_directories: 'src',
+executable('voice-bench', 'tests/voice-bench.c', 'src/dictate-voice.c', 'src/dictate-phonemes.c', include_directories: 'src',
            dependencies: [dependency('glib-2.0'), dependency('gio-2.0'), dependency('json-glib-1.0'),
                           cc.find_library('m'), onnxruntime, dependency('espeak-ng')])
 executable('brain-bench', 'tests/brain-bench.c', brain_sources, include_directories: 'src',
@@ -56,7 +56,15 @@ executable('brain-bench', 'tests/brain-bench.c', brain_sources, include_director
 # Agent's whole loop on recorded questions, timed (tests/talk-bench.c)
 executable('talk-bench', 'tests/talk-bench.c', 'src/dictate-engine.c', 'src/dictate-models.c',
            'src/dictate-moonshine.c', 'src/dictate-vosk.c', 'src/dictate-vad.c', 'src/dictate-talk.c',
-           'src/dictate-voice.c', brain_sources, include_directories: 'src',
+           'src/dictate-voice.c', 'src/dictate-phonemes.c', brain_sources, include_directories: 'src',
+           c_args: ['-DGETTEXT_PACKAGE="vibeos-dictate"', '-DLIBRARY_DIR="@0@"'.format(library_dir)],
+           dependencies: [dependency('gio-2.0'), dependency('gstreamer-1.0'), dependency('gstreamer-app-1.0'),
+                          dependency('json-glib-1.0'), cc.find_library('m'), cc.find_library('dl')] + agent_deps
+                          + remote_deps)
+
+# Agent's loop from typed text: the model's reply spoken on the speaker (tests/agent-say.c)
+executable('agent-say', 'tests/agent-say.c', 'src/dictate-talk.c',
+           'src/dictate-voice.c', 'src/dictate-phonemes.c', brain_sources, include_directories: 'src',
            c_args: ['-DGETTEXT_PACKAGE="vibeos-dictate"', '-DLIBRARY_DIR="@0@"'.format(library_dir)],
            dependencies: [dependency('gio-2.0'), dependency('gstreamer-1.0'), dependency('gstreamer-app-1.0'),
                           dependency('json-glib-1.0'), cc.find_library('m'), cc.find_library('dl')] + agent_deps
