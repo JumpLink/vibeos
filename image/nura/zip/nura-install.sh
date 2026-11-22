@@ -117,7 +117,7 @@ install)
 	grow $RDEV $(((K + BB) / 4 + 65536))
 	mount -t ext4 -o noatime $RDEV $ROOT || die "cannot mount the system"
 	say "  kernel modules, firmware, device settings"
-	tar -C $ROOT -xf $T-payload.tar || fail "cannot unpack the device files"
+	unpack $T-payload.tar $ROOT || fail "cannot unpack the device files"
 	[ -L $ROOT/lib ] || fail "the payload replaced /lib (the root's symlink)"
 	D=$ROOT/var/lib/vibeos/device
 	rm -rf $D/debs

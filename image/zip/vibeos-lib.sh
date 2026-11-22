@@ -236,3 +236,14 @@ check() {
 	blockdev --flushbufs "$1" 2>/dev/null
 	[ "$(head -c $4 "$1" | sha256sum | cut -d' ' -f1)" = "$5" ] || die "$2 was not written correctly to $1"
 }
+# unpack TAR DIR: TAR into DIR, where a regular file in TAR first replaces a symlink at its place in DIR. toybox tar
+# writes a file through a symlink that is there; an absolute one points into recovery's own tree, and tar refuses it:
+# the system's usr/lib/firmware/regulatory.db{,.p7s} are links to /etc/alternatives/... (wireless-regdb), the OnePlus
+# 6T's payload ships them as files, and its device zip stopped at "not under '/tmp/vibeos-mnt'"
+unpack() {
+	tar -tvf "$1" > $T-tarlist || return 1
+	sed -n 's/^-[^ ]*  *[^ ]*  *[^ ]*  *[^ ]*  *[^ ]*  *//p' $T-tarlist | while IFS= read -r f; do
+		if [ -L "$2/$f" ]; then rm -f "$2/$f"; fi
+	done
+	tar -C "$2" -xf "$1"
+}
