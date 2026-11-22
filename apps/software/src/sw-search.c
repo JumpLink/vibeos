@@ -357,7 +357,8 @@ sw_search_open (GtkWidget *from, const char *type, const char *text)
   g_signal_connect (s->view, "search-changed", G_CALLBACK (on_changed), s);
   g_signal_connect (s->view, "search-activated", G_CALLBACK (on_activated), s);
   g_signal_connect (s->view, "closed", G_CALLBACK (on_closed), s);
-  vibeos_search_view_open (VIBEOS_SEARCH_VIEW (s->view), from);
+  /* beside the rail on a tablet, which stays */
+  vibeos_search_view_open_in (VIBEOS_SEARCH_VIEW (s->view), sw_window_search_overlay (from));
   if (text && *text)
     vibeos_search_view_set_text (VIBEOS_SEARCH_VIEW (s->view), text);
   else
