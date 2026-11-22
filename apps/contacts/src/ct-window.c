@@ -279,6 +279,7 @@ typedef struct {
   CtPager *pager;
   GtkWidget *home, *tabs, *list_detail, *detail_empty, *people, *highlights, *organize;
   GtkWidget *nav_bar, *nav_rail, *rail_fab, *back_marker;
+  GtkWidget *area;              /* beside the rail (a tablet): the pages, and a search over them */
   VibeosLayout *layout;
   GtkWidget *toast, *toast_label;
   VibeosAnim *toast_anim;
@@ -342,6 +343,16 @@ GtkWidget *
 ct_window_home (GtkWidget *window)
 {
   return shell_of (window)->home;
+}
+
+GtkOverlay *
+ct_window_search_overlay (GtkWidget *window)
+{
+  Shell *shell = shell_of (window);
+
+  if (vibeos_layout_is_tablet (shell->layout))
+    return GTK_OVERLAY (shell->area);
+  return vibeos_window_get_overlay (shell->window);
 }
 
 GtkWidget *
@@ -521,6 +532,43 @@ on_nav_selected (GtkWidget *nav, int index, Shell *shell)
   ct_window_select_tab (shell->window, index);
 }
 
+/* A rail destination tapped over pages (on a tablet the rail stays beside them): back to the home page, and TRUE.
+ * An editor among them (a contact's, or Customize view's) is not thrown away: the top page gets a Back, which asks
+ * when there are changes to lose, and FALSE */
+static gboolean
+close_pages (Shell *shell)
+{
+  CtPager *pager = shell->pager;
+
+  if (pager->pages->len < 2)
+    return TRUE;
+  for (guint i = 1; i < pager->pages->len; i++)
+    {
+      GObject *page = G_OBJECT (g_array_index (pager->pages, Placed, i).page);
+
+      if (g_object_get_data (page, "ct-editor") || g_object_get_data (page, "ct-customize"))
+        {
+          ct_page_back (CT_PAGE (pager_top (pager)));
+          return FALSE;
+        }
+    }
+  ct_popup_dismiss (shell->window);
+  gtk_window_set_focus (GTK_WINDOW (shell->window), NULL);
+  pager_pop (pager, g_array_index (pager->pages, Placed, 1).page);
+  return TRUE;
+}
+
+/* the rail's destinations, the one showing too: the search and the pages beside the rail close first */
+static void
+on_rail_selected (VibeosNavRail *rail, int index, Shell *shell)
+{
+  ct_people_close_search (shell->people);
+  if (close_pages (shell))
+    ct_window_select_tab (shell->window, index);
+  else
+    vibeos_nav_rail_set_selected (rail, current_tab (shell));
+}
+
 static void
 on_rail_fab (VibeosPressable *fab, Shell *shell)
 {
@@ -628,9 +676,10 @@ make_home (Shell *shell)
       vibeos_nav_rail_append (VIBEOS_NAV_RAIL (shell->nav_rail), icons[i], labels[i]);
     }
   g_signal_connect (shell->nav_bar, "selected", G_CALLBACK (on_nav_selected), shell);
-  g_signal_connect (shell->nav_rail, "selected", G_CALLBACK (on_nav_selected), shell);
+  g_signal_connect (shell->nav_rail, "selected", G_CALLBACK (on_rail_selected), shell);
+  g_signal_connect (shell->nav_rail, "reselected", G_CALLBACK (on_rail_selected), shell);
 
-  gtk_box_append (GTK_BOX (row), shell->nav_rail);
+  /* the rail is the window's, beside the pages (ct_window_new): it stays when a page opens over the home page */
   gtk_box_append (GTK_BOX (row), shell->tabs);
   gtk_widget_set_vexpand (row, TRUE);
   gtk_box_append (GTK_BOX (home), row);
@@ -669,7 +718,7 @@ ct_window_new (GtkApplication *app, CtStore *store, GSettings *settings)
 {
   Shell *shell = g_new0 (Shell, 1);
   GtkWidget *window = vibeos_window_new (app);
-  GtkWidget *root = gtk_overlay_new ();
+  GtkWidget *root = gtk_overlay_new (), *row;
   GtkEventController *shortcuts = gtk_shortcut_controller_new ();
 
   shell->window = window;
@@ -679,8 +728,16 @@ ct_window_new (GtkApplication *app, CtStore *store, GSettings *settings)
   gtk_window_set_title (GTK_WINDOW (window), _("Contacts"));
   gtk_widget_add_css_class (window, "ct-window");
 
+  /* the rail (a tablet) at the start, beside the pages: a page opens over the home page only, the rail staying */
   shell->pager = g_object_new (CT_TYPE_PAGER, NULL);
-  gtk_overlay_set_child (GTK_OVERLAY (root), GTK_WIDGET (shell->pager));
+  row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+  shell->area = gtk_overlay_new ();
+  /* a page sliding in or out stays off the rail */
+  gtk_widget_set_overflow (shell->area, GTK_OVERFLOW_HIDDEN);
+  gtk_widget_set_hexpand (shell->area, TRUE);
+  gtk_overlay_set_child (GTK_OVERLAY (shell->area), GTK_WIDGET (shell->pager));
+  gtk_box_append (GTK_BOX (row), shell->area);
+  gtk_overlay_set_child (GTK_OVERLAY (root), row);
   /* the snackbar is edge to edge on a phone */
   shell->snackbar = vibeos_snackbar_new ();
   vibeos_snackbar_set_margin (VIBEOS_SNACKBAR (shell->snackbar), 0);
@@ -690,6 +747,7 @@ ct_window_new (GtkApplication *app, CtStore *store, GSettings *settings)
   vibeos_window_set_content (GTK_WINDOW (window), root);
 
   pager_push (shell->pager, make_home (shell));
+  gtk_box_prepend (GTK_BOX (row), shell->nav_rail);
   /* the window's own, which goes with the window: held until the shell goes */
   shell->layout = g_object_ref (vibeos_layout_get_for_window (GTK_WINDOW (window)));
   g_signal_connect (shell->layout, "changed", G_CALLBACK (on_layout_changed), shell);

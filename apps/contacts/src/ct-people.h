@@ -15,6 +15,8 @@ GtkWidget *ct_people_new  (GtkWidget *window);
 gboolean   ct_people_back (GtkWidget *people);
 /* the list as the launcher opens it: no search, selection, label or filter */
 void       ct_people_reset (GtkWidget *people);
+/* the search closes, if it is open (a rail destination tapped beside it) */
+void       ct_people_close_search (GtkWidget *people);
 
 /* another search pill like the list's, for the other tabs: it opens the same search and the same account sheet */
 GtkWidget *ct_people_new_pill (GtkWidget *people);

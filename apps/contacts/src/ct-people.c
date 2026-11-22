@@ -969,7 +969,7 @@ open_search (People *people, const char *text)
   people->searching = TRUE;
   vibeos_search_view_set_text (VIBEOS_SEARCH_VIEW (people->search_view), text ? text : "");
   refresh_search (people);
-  vibeos_search_view_open (VIBEOS_SEARCH_VIEW (people->search_view), people->root);
+  vibeos_search_view_open_in (VIBEOS_SEARCH_VIEW (people->search_view), ct_window_search_overlay (people->window));
 }
 
 static void
@@ -1622,6 +1622,15 @@ ct_people_back (GtkWidget *root)
   else
     return FALSE;
   return TRUE;
+}
+
+void
+ct_people_close_search (GtkWidget *root)
+{
+  People *people = people_of (root);
+
+  if (people->searching)
+    vibeos_search_view_close (VIBEOS_SEARCH_VIEW (people->search_view));
 }
 
 void
