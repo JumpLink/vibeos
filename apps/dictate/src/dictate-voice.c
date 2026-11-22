@@ -11,8 +11,17 @@
 #define KOKORO_RATE     24000
 #define KOKORO_STYLE    256     /* a style row's floats */
 #define KOKORO_MAX      510     /* phonemes per run: the model's context less its two pads */
+#define CLUSTER_MAX     4       /* phonemes in a Piper vowel cluster */
 
 typedef enum { KOKORO, PIPER } Kind;
+
+/* Piper 1.5's vowel clusters: phonemes that follow each other (a, ɪ) read as one id, the id of their joined name
+ * (aɪ) in the phoneme map, as Piper's phonemizer merges them (phonemize_espeak.py, _merge_known_vowel_clusters) */
+typedef struct {
+  gunichar phonemes[CLUSTER_MAX];
+  guint length;
+  gint64 id;
+} Cluster;
 
 struct _DictateVoice {
   Kind kind;
@@ -32,6 +41,7 @@ struct _DictateVoice {
   gint64 pad, bos, eos;
   float noise_scale, length_scale, noise_w;
   gboolean has_sid;
+  GArray *clusters;             /* Cluster, the longest first */
 };
 
 static const OrtApi *ort;
@@ -223,6 +233,54 @@ load_kokoro (DictateVoice *self, const char *model, const char *voice, GError **
   return TRUE;
 }
 
+static gint
+longer_first (gconstpointer a, gconstpointer b)
+{
+  return (int) ((const Cluster *) b)->length - (int) ((const Cluster *) a)->length;
+}
+
+/* the config's vowel_clusters ([["a", "ɪ"], …]: one phoneme each), those whose joined name has an id */
+static void
+read_clusters (DictateVoice *self, JsonObject *config, JsonObject *map)
+{
+  JsonArray *list = json_object_has_member (config, "vowel_clusters")
+                    ? json_object_get_array_member (config, "vowel_clusters") : NULL;
+
+  for (guint i = 0; list && i < json_array_get_length (list); i++)
+    {
+      JsonNode *node = json_array_get_element (list, i);
+      JsonArray *parts = JSON_NODE_HOLDS_ARRAY (node) ? json_node_get_array (node) : NULL;
+      g_autoptr (GString) name = g_string_new (NULL);
+      Cluster cluster = { 0 };
+      JsonArray *ids;
+      guint n = parts ? json_array_get_length (parts) : 0;
+
+      if (n < 2 || n > CLUSTER_MAX)
+        continue;
+      for (guint j = 0; j < n; j++)
+        {
+          JsonNode *part = json_array_get_element (parts, j);
+          const char *phoneme = JSON_NODE_HOLDS_VALUE (part) && json_node_get_value_type (part) == G_TYPE_STRING
+                                ? json_node_get_string (part) : NULL;
+
+          if (!phoneme || g_utf8_strlen (phoneme, -1) != 1)
+            break;
+          cluster.phonemes[cluster.length++] = g_utf8_get_char (phoneme);
+          g_string_append (name, phoneme);
+        }
+      ids = cluster.length == n && json_object_has_member (map, name->str)
+            ? json_object_get_array_member (map, name->str) : NULL;
+      if (!ids || json_array_get_length (ids) == 0)
+        continue;
+      cluster.id = json_array_get_int_element (ids, 0);
+      if (!self->clusters)
+        self->clusters = g_array_new (FALSE, FALSE, sizeof (Cluster));
+      g_array_append_val (self->clusters, cluster);
+    }
+  if (self->clusters)
+    g_array_sort (self->clusters, longer_first);
+}
+
 static gboolean
 load_piper (DictateVoice *self, const char *model, const char *config, GError **error)
 {
@@ -266,6 +324,7 @@ load_piper (DictateVoice *self, const char *model, const char *config, GError **
   self->length_scale = part ? json_object_get_double_member_with_default (part, "length_scale", 1.0) : 1.0;
   self->noise_w = part ? json_object_get_double_member_with_default (part, "noise_w", 0.8) : 0.8;
   self->has_sid = has_input (self, "sid");
+  read_clusters (self, o, map);
   if (!has_input (self, "input") || !has_input (self, "input_lengths") || !has_input (self, "scales"))
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA, "%s does not take input, input_lengths and scales",
@@ -308,6 +367,8 @@ dictate_voice_free (DictateVoice *self)
   g_free (self->language);
   g_hash_table_unref (self->ids);
   g_free (self->styles);
+  if (self->clusters)
+    g_array_unref (self->clusters);
   g_free (self);
 }
 
@@ -443,14 +504,32 @@ ids_for (DictateVoice *self, const gunichar *phonemes, gsize from, gsize to)
     }
   else
     {
-      /* ^ _ p _ p _ … $ */
+      /* ^ _ p _ p _ … $, a vowel cluster one p */
       g_array_append_val (ids, self->bos);
       g_array_append_val (ids, self->pad);
-      for (gsize i = from; i < to; i++)
+      for (gsize i = from; i < to;)
         {
+          guint length = 1;
+
           id = id_of (self, phonemes[i]);
+          for (guint c = 0; self->clusters && c < self->clusters->len; c++)
+            {
+              const Cluster *cluster = &g_array_index (self->clusters, Cluster, c);
+              guint k = 0;
+
+              if (i + cluster->length > to)
+                continue;
+              while (k < cluster->length && phonemes[i + k] == cluster->phonemes[k])
+                k++;
+              if (k == cluster->length)
+                {
+                  id = cluster->id, length = cluster->length;
+                  break;
+                }
+            }
           g_array_append_val (ids, id);
           g_array_append_val (ids, self->pad);
+          i += length;
         }
       g_array_append_val (ids, self->eos);
     }
