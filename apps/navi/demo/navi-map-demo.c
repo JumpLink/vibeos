@@ -2,7 +2,11 @@
  * optional drive along a GeoJSON line. Prints frame statistics once a second.
  *
  *   navi-map-demo STYLE_URL [--route FILE.geojson] [--drive] [--speed KMH] [--zoom Z] [--pitch DEG]
- *                 [--seconds N] [--fullscreen] [--cache FILE]
+ *                 [--render-scale S] [--tile-lod RADIUS,SCALE,PITCH,SHIFT] [--pace N] [--seconds N]
+ *                 [--fullscreen] [--cache FILE]
+ *
+ * --pace N shows a frame every N display refreshes (default: the widget's automatic pacing).
+ * NAVI_DEMO_TRACE=1 prints every frame-clock cycle's frame time and presentation time (TRACE lines).
  *
  * Driving runs on the display's frame clock: every frame the car moves on by speed x elapsed time along
  * the line, the camera is set straight to it (no easing between steps), and the camera's bearing turns
@@ -265,6 +269,13 @@ count_shown (Demo *d, GdkFrameClock *clock)
     gint64 shown = gdk_frame_timings_get_presentation_time (t), refresh = gdk_frame_timings_get_refresh_interval (t);
     if (refresh)
       d->refresh_ms = refresh / 1000.0;
+    static int trace = -1;
+    if (trace < 0)
+      trace = g_getenv ("NAVI_DEMO_TRACE") != NULL;
+    if (trace)
+      g_print ("TRACE %" G_GINT64_FORMAT " frame %.2f shown %.2f predicted %.2f\n", i,
+               gdk_frame_timings_get_frame_time (t) / 1000.0, shown / 1000.0,
+               gdk_frame_timings_get_predicted_presentation_time (t) / 1000.0);
     if (!shown)
       continue;
     if (d->last_shown_us) {
@@ -505,6 +516,8 @@ main (int argc, char **argv)
   Demo d = { .zoom = 16.5, .pitch = 52, .speed_mps = 50 / 3.6, .mode = MODE_FOLLOW };
   const char *style = NULL, *route = NULL, *cache = NULL;
   gboolean drive = FALSE, fullscreen = FALSE;
+  double render_scale = 1, lod[4] = { 3, 1, 60, 0 };
+  int pace = 0;
   for (int i = 1; i < argc; i++) {
     const char *a = argv[i];
     const char *v = i + 1 < argc ? argv[i + 1] : NULL;
@@ -514,12 +527,17 @@ main (int argc, char **argv)
     else if (!strcmp (a, "--zoom") && v) d.zoom = g_ascii_strtod (v, NULL), i++;
     else if (!strcmp (a, "--pitch") && v) d.pitch = g_ascii_strtod (v, NULL), i++;
     else if (!strcmp (a, "--seconds") && v) d.quit_after = atoi (v), i++;
+    else if (!strcmp (a, "--render-scale") && v) render_scale = g_ascii_strtod (v, NULL), i++;
+    else if (!strcmp (a, "--tile-lod") && v &&
+             sscanf (v, "%lf,%lf,%lf,%lf", &lod[0], &lod[1], &lod[2], &lod[3]) == 4) i++;
     else if (!strcmp (a, "--fullscreen")) fullscreen = TRUE;
+    else if (!strcmp (a, "--pace") && v) pace = atoi (v), i++;
     else if (!strcmp (a, "--cache") && v) cache = v, i++;
     else if (a[0] != '-' && !style) style = a;
     else {
       g_printerr ("usage: %s STYLE_URL [--route FILE.geojson] [--drive] [--speed KMH] [--zoom Z] "
-                  "[--pitch DEG] [--seconds N] [--fullscreen] [--cache FILE]\n", argv[0]);
+                  "[--pitch DEG] [--render-scale S] [--tile-lod RADIUS,SCALE,PITCH,SHIFT] [--pace N] [--seconds N] "
+                  "[--fullscreen] [--cache FILE]\n", argv[0]);
       return 2;
     }
   }
@@ -559,6 +577,9 @@ main (int argc, char **argv)
   if (cache)
     navi_map_set_cache_path (d.map, cache);
   navi_map_set_focus (d.map, 0.5, 0.75); /* the car a quarter of the height above the bottom */
+  navi_map_set_render_scale (d.map, render_scale);
+  navi_map_set_frame_pacing (d.map, pace);
+  navi_map_set_tile_lod (d.map, lod[0], lod[1], lod[2], lod[3]);
   NaviCamera cam = { d.car_lat, d.car_lng, d.zoom, d.zoom >= NORTH_UP_BELOW_ZOOM ? d.heading : 0, d.pitch };
   navi_map_jump_to (d.map, &cam);
   navi_map_set_style_url (d.map, style);

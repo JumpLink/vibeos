@@ -10,6 +10,8 @@
 #include <mln/map/map.hpp>
 #include <mln/map/map_observer.hpp>
 #include <mln/map/map_options.hpp>
+#include <mln/map/mode.hpp>
+#include <mln/gfx/rendering_stats.hpp>
 #include <mln/renderer/query.hpp>
 #include <mln/renderer/renderer.hpp>
 #include <mln/storage/resource_options.hpp>
@@ -18,6 +20,7 @@
 #include <mln/style/conversion/layer.hpp>
 #include <mln/style/layer.hpp>
 #include <mln/style/sources/geojson_source.hpp>
+#include <mln/style/sources/tile_source.hpp>
 #include <mln/style/style.hpp>
 #include <mln/util/client_options.hpp>
 #include <mln/util/geo.hpp>
@@ -108,13 +111,23 @@ struct NaviMapImpl final : public mln::MapObserver {
     std::unique_ptr<navi::Backend> backend;
     std::unique_ptr<navi::Frontend> frontend;
     std::unique_ptr<mln::Map> map;
-    float pixel_ratio = 1;
+    float pixel_ratio = 1;    // device pixels MapLibre draws per widget pixel: the display's scale x render_scale
+    double render_scale = 1;
     std::string cache_path;
 
     // the style and what the app added to it, replayed after every style load
     enum class StyleKind { None, Url, Json } style_kind = StyleKind::None;
     std::string style;
     bool style_loaded = false;
+
+    // Style layers taken out while their tile source's bounds are far outside the view. A style with one
+    // source per region repeats every layer per region, and MapLibre spends time on every layer every
+    // frame, with tiles or without, even hidden: 1300 layers cost 12 ms a frame on an SDM670, the same
+    // layers with all but one region's hidden 9.7 ms, the 28 of one region 4 ms.
+    std::vector<std::string> style_order; // the style's own layers, bottom to top, as it loaded
+    std::vector<std::string> culled_sources;
+    std::vector<std::pair<size_t, std::unique_ptr<mln::style::Layer>>> parked; // index in style_order
+    bool cull = g_strcmp0(g_getenv("NAVI_MAP_NO_CULL"), "1") != 0; // NAVI_MAP_NO_CULL=1: a measuring aid
     struct SourceRec {
         std::string id;
         std::optional<mln::GeoJSON> data;
@@ -128,6 +141,8 @@ struct NaviMapImpl final : public mln::MapObserver {
     // camera state kept while there is no map
     mln::CameraOptions camera;
     double max_pitch = 60, min_zoom = 0, max_zoom = 22;
+    // tile level of detail (MapLibre's defaults: 3 tiles, 1, 60 degrees, 0)
+    double lod_radius = 3, lod_scale = 1, lod_pitch = 60, lod_zoom_shift = 0;
     bool use_focus = false;
     double focus_x = 0.5, focus_y = 0.5;
     mln::EdgeInsets padding;
@@ -139,6 +154,29 @@ struct NaviMapImpl final : public mln::MapObserver {
     // request: it is held here and re-issued at the next frame clock tick
     bool in_render = false, render_again = false;
     guint render_tick = 0;
+
+    // Frame pacing. With pace N > 1 the map shows a new frame every N display refreshes, so a map that
+    // cannot make every refresh moves at an even rhythm instead of an uneven mix of one and two. Each
+    // frame is drawn a cycle ahead, into the backend's own buffer, in the frame clock's layout phase
+    // (after every tick callback has moved the camera), and shown in the next cycle, where it costs the
+    // GPU one copy: how long the GPU took over it no longer decides which refresh it makes. Drawn and
+    // shown in one cycle, a frame that takes about one refresh lands on the first or the second at
+    // random. (Drawn straight after the cycle that showed the one before, its GPU work holds up the
+    // compositor's frame instead: more frames come late.) Auto (0) starts at one frame per refresh up to 60 Hz and two on a 120 Hz display, and
+    // goes one slower when over two seconds of drawing more than a quarter of the frames come late.
+    int pace_setting = 0, pace = 1;
+    bool pace_known = false;      // auto: the display's rate seen
+    bool paced_pending = false;   // MapLibre wants a frame
+    bool ahead = false;           // a frame drawn ahead waits to be shown
+    bool presenting = false;      // the next "render" shows it
+    bool in_layout = false, want_cycle = false;
+    gint64 last_present_us = 0;   // the frame clock's time of the cycle that last showed a frame
+    GdkFrameClock* clock = nullptr;
+    gulong clock_layout = 0, clock_after_paint = 0;
+    // auto pacing's measure: the frame counters of the cycles that showed a map frame, not yet presented
+    std::vector<gint64> shown_frames;
+    gint64 last_shown_us = 0, pace_measure_from = 0;
+    int pace_frames = 0, pace_late = 0, pace_late_windows = 0;
 
     // gestures
     bool gestures_enabled = true;
@@ -177,13 +215,174 @@ struct NaviMapImpl final : public mln::MapObserver {
     void request_frame() {
         if (in_render)
             render_again = true;
+        else if (pace > 1 && clock)
+            request_paced();
         else
             gtk_gl_area_queue_render(GTK_GL_AREA(self));
     }
 
+    void request_paced() {
+        paced_pending = true;
+        next_cycle();
+    }
+
+    // the layout phase of this cycle, or of the next when this one's is under way (a layout phase that
+    // asks for itself again runs again in the same cycle, and GDK gives up after four)
+    void next_cycle() {
+        if (in_layout)
+            want_cycle = true;
+        else
+            gdk_frame_clock_request_phase(clock, GDK_FRAME_CLOCK_PHASE_LAYOUT);
+    }
+
+    static gint64 refresh_us(GdkFrameClock* c) {
+        GdkFrameTimings* t = gdk_frame_clock_get_current_timings(c);
+        gint64 r = t ? gdk_frame_timings_get_refresh_interval(t) : 0;
+        return r > 0 ? r : 16667;
+    }
+
+    void on_clock_layout() {
+        if (!paced_pending && !ahead) return;
+        if (pace < 2) { // pacing went off with a frame waiting
+            paced_pending = ahead = false;
+            gtk_gl_area_queue_render(GTK_GL_AREA(self));
+            return;
+        }
+        in_layout = true;
+        gint64 now = gdk_frame_clock_get_frame_time(clock);
+        double since = double(now - last_present_us) / refresh_us(clock); // refreshes since a frame was shown
+        if (ahead) {
+            if (since < pace - 0.5) {
+                want_cycle = true;
+            } else { // show it: GtkGLArea's "render" in this cycle's paint phase copies it over
+                ahead = false;
+                presenting = true;
+                last_present_us = now;
+                gtk_gl_area_queue_render(GTK_GL_AREA(self));
+                if (paced_pending) want_cycle = true;
+            }
+        } else if (since < pace - 1.5) {
+            want_cycle = true;
+        } else { // the cycle before the one that shows it
+            paced_pending = false;
+            draw_ahead();
+            if (ahead) want_cycle = true;
+        }
+        in_layout = false;
+    }
+
+    void on_clock_after_paint() {
+        if (!want_cycle) return;
+        want_cycle = false;
+        gdk_frame_clock_request_phase(clock, GDK_FRAME_CLOCK_PHASE_LAYOUT);
+    }
+
+    void draw_ahead() {
+        if (!frontend || !gtk_widget_get_mapped(widget())) return;
+        GtkGLArea* area = GTK_GL_AREA(self);
+        gtk_gl_area_make_current(area);
+        if (gtk_gl_area_get_error(area)) return;
+        gint64 t0 = g_get_monotonic_time();
+        backend->beginFrame();
+        in_render = true;
+        bool drew = frontend->render();
+        after_render();
+        if (!drew) return;
+        glFlush(); // the GPU starts on it now, a cycle before it is shown
+        ahead = true;
+        g_signal_emit(self, signals[SIGNAL_FRAME_RENDERED], 0, (g_get_monotonic_time() - t0) / 1000.0);
+    }
+
+    // a map frame goes to the screen in this cycle (auto pacing measures when it got there)
+    void note_shown() {
+        if (!clock || pace_setting != 0) return;
+        if (shown_frames.size() >= 32) shown_frames.erase(shown_frames.begin());
+        shown_frames.push_back(gdk_frame_clock_get_frame_counter(clock));
+    }
+
+    void check_pacing() {
+        if (!clock || pace_setting != 0) return;
+        gint64 history = gdk_frame_clock_get_history_start(clock);
+        size_t done = 0;
+        for (; done < shown_frames.size(); done++) {
+            if (shown_frames[done] < history) continue; // its timings are gone
+            GdkFrameTimings* t = gdk_frame_clock_get_timings(clock, shown_frames[done]);
+            if (!t || !gdk_frame_timings_get_complete(t)) break;
+            gint64 shown = gdk_frame_timings_get_presentation_time(t), r = gdk_frame_timings_get_refresh_interval(t);
+            if (!shown || r <= 0) continue;
+            if (!pace_known) { // the display's rate: one frame a refresh up to about 60 Hz, two at 120
+                pace_known = true;
+                set_pace(std::max(1, static_cast<int>(1e6 / r / 60 + 0.25)));
+                pace_measure_from = shown + 3 * G_USEC_PER_SEC; // not while the map starts up
+            }
+            double gap = double(shown - last_shown_us) / r;
+            if (last_shown_us && shown >= pace_measure_from && gap < 2.5 * pace + 0.5) { // longer: a pause
+                pace_frames++;
+                if (gap > pace + 0.5) pace_late++;
+            }
+            last_shown_us = shown;
+        }
+        shown_frames.erase(shown_frames.begin(), shown_frames.begin() + done);
+        if (pace_frames < 120 / pace) return;
+        pace_late_windows = pace_late * 4 > pace_frames ? pace_late_windows + 1 : 0;
+        pace_frames = pace_late = 0;
+        if (pace_late_windows >= 2 && pace < 4) {
+            g_message("NaviMap: frames keep missing every %s refresh; drawing one every %d",
+                      pace == 1 ? "single" : pace == 2 ? "second" : "third", pace + 1);
+            set_pace(pace + 1);
+            pace_late_windows = 0;
+        }
+    }
+
+    void set_pace(int n) {
+        pace = n;
+        if (backend) backend->setOffscreen(pace > 1);
+        update_area_buffers();
+    }
+
+    // MapLibre needs depth and stencil buffers: the GL area's own when it draws there, none when it
+    // draws into the backend's
+    void update_area_buffers() {
+        bool own = render_scale >= 1 && pace < 2;
+        GtkGLArea* area = GTK_GL_AREA(self);
+        if (gtk_gl_area_get_has_depth_buffer(area) != own) gtk_gl_area_set_has_depth_buffer(area, own);
+        if (gtk_gl_area_get_has_stencil_buffer(area) != own) gtk_gl_area_set_has_stencil_buffer(area, own);
+    }
+
+    void attach_clock() {
+        clock = gtk_widget_get_frame_clock(widget());
+        if (!clock) return;
+        g_object_ref(clock);
+        clock_layout = g_signal_connect_swapped(clock, "layout", G_CALLBACK(+[](NaviMapImpl* impl) {
+                                                    impl->on_clock_layout();
+                                                }),
+                                                this);
+        clock_after_paint = g_signal_connect_swapped(clock, "after-paint", G_CALLBACK(+[](NaviMapImpl* impl) {
+                                                         impl->on_clock_after_paint();
+                                                     }),
+                                                     this);
+    }
+
+    void detach_clock() {
+        if (!clock) return;
+        g_signal_handler_disconnect(clock, clock_layout);
+        g_signal_handler_disconnect(clock, clock_after_paint);
+        g_clear_object(&clock);
+        clock_layout = clock_after_paint = 0;
+        paced_pending = ahead = presenting = want_cycle = false;
+        shown_frames.clear();
+        last_shown_us = 0;
+    }
+
     void after_render() {
         in_render = false;
-        if (!render_again || render_tick) return;
+        if (!render_again) return;
+        if (pace > 1 && clock) {
+            render_again = false;
+            request_paced();
+            return;
+        }
+        if (render_tick) return;
         render_again = false;
         render_tick = gtk_widget_add_tick_callback(
             widget(),
@@ -201,7 +400,7 @@ struct NaviMapImpl final : public mln::MapObserver {
         GtkWidget* w = widget();
         GtkNative* native = gtk_widget_get_native(w);
         GdkSurface* surface = native ? gtk_native_get_surface(native) : nullptr;
-        pixel_ratio = surface ? static_cast<float>(gdk_surface_get_scale(surface)) : 1.0f;
+        pixel_ratio = static_cast<float>((surface ? gdk_surface_get_scale(surface) : 1.0) * render_scale);
         uint32_t width = std::max(1, gtk_widget_get_width(w));
         uint32_t height = std::max(1, gtk_widget_get_height(w));
 
@@ -210,8 +409,11 @@ struct NaviMapImpl final : public mln::MapObserver {
         g_free(dir);
 
         backend = std::make_unique<navi::Backend>(GTK_GL_AREA(w));
-        backend->setFramebufferSize({static_cast<uint32_t>(std::ceil(width * pixel_ratio)),
-                                     static_cast<uint32_t>(std::ceil(height * pixel_ratio))});
+        backend->setRenderScale(render_scale);
+        backend->setOffscreen(pace > 1);
+        double scale = surface ? gdk_surface_get_scale(surface) : 1.0;
+        backend->setFramebufferSize({static_cast<uint32_t>(std::ceil(width * scale)),
+                                     static_cast<uint32_t>(std::ceil(height * scale))});
         frontend = std::make_unique<navi::Frontend>(*backend, pixel_ratio, [this] { request_frame(); });
 
         mln::ResourceOptions resources;
@@ -223,6 +425,7 @@ struct NaviMapImpl final : public mln::MapObserver {
         map = std::make_unique<mln::Map>(*frontend, *this, options, resources,
                                          mln::ClientOptions().withName("vibeos-navi").withVersion("0.1"));
         apply_bounds();
+        apply_tile_lod();
         update_padding();
         mln::CameraOptions start = camera;
         start.padding = padding;
@@ -241,6 +444,15 @@ struct NaviMapImpl final : public mln::MapObserver {
         frontend.reset();
         backend.reset();
         style_loaded = false;
+        forget_culled();
+    }
+
+    void apply_tile_lod() {
+        if (!map) return;
+        map->setTileLodMinRadius(lod_radius);
+        map->setTileLodScale(lod_scale);
+        map->setTileLodPitchThreshold(lod_pitch * M_PI / 180);
+        map->setTileLodZoomShift(lod_zoom_shift);
     }
 
     void apply_bounds() {
@@ -260,6 +472,7 @@ struct NaviMapImpl final : public mln::MapObserver {
     void load_style() {
         if (!map) return;
         style_loaded = false;
+        forget_culled();
         try {
             if (style_kind == StyleKind::Url)
                 map->getStyle().loadURL(style);
@@ -362,6 +575,84 @@ struct NaviMapImpl final : public mln::MapObserver {
         if (o.pitch) camera.pitch = o.pitch;
     }
 
+    // takes out the style layers of tile sources whose bounds do not reach the view (with a margin of the
+    // view's own size, at least 0.1 degrees, so they are back before they come into sight), and puts
+    // them back where they were when they do; layers added through the API are never taken out
+    void cull_sources() {
+        if (!cull || !map || !style_loaded) return;
+        mln::LatLngBounds view = map->latLngBoundsForCamera(map->getCameraOptions());
+        double dlat = std::max(view.north() - view.south(), 0.1), dlng = std::max(view.east() - view.west(), 0.1);
+        mln::LatLngBounds near = mln::LatLngBounds::hull(
+            mln::LatLng(std::max(view.south() - dlat, -90.0), view.west() - dlng),
+            mln::LatLng(std::min(view.north() + dlat, 90.0), view.east() + dlng));
+        auto& style = map->getStyle();
+        std::vector<std::string> far;
+        for (const mln::style::Source* src : std::as_const(style).getSources()) {
+            mln::style::SourceType t = src->getType();
+            if (t != mln::style::SourceType::Vector && t != mln::style::SourceType::Raster &&
+                t != mln::style::SourceType::RasterDEM)
+                continue;
+            const auto& u = static_cast<const mln::style::TileSource*>(src)->getURLOrTileset();
+            if (!u.is<mln::Tileset>()) continue; // a TileJSON URL: its bounds are not known here
+            const auto& bounds = u.get<mln::Tileset>().bounds;
+            if (bounds && !bounds->intersects(near)) far.push_back(src->getID());
+        }
+        std::sort(far.begin(), far.end());
+        if (far == culled_sources) return;
+        culled_sources = std::move(far);
+        auto is_far = [&](const std::string& id) {
+            return std::binary_search(culled_sources.begin(), culled_sources.end(), id);
+        };
+        std::sort(parked.begin(), parked.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+        decltype(parked) still;
+        for (auto& p : parked) { // back in reach, bottom to top
+            if (is_far(p.second->getSourceID()))
+                still.push_back(std::move(p));
+            else
+                put_back(p.first, std::move(p.second));
+        }
+        parked = std::move(still);
+        for (size_t i = 0; i < style_order.size(); i++) { // newly out of reach
+            mln::style::Layer* layer = style.getLayer(style_order[i]);
+            if (!layer || !is_far(layer->getSourceID())) continue;
+            if (auto removed = style.removeLayer(style_order[i])) parked.emplace_back(i, std::move(removed));
+        }
+    }
+
+    // a style layer back in, just above the nearest style layer below it that is in the style
+    void put_back(size_t index, std::unique_ptr<mln::style::Layer> layer) {
+        auto& style = map->getStyle();
+        std::vector<mln::style::Layer*> now = style.getLayers();
+        std::optional<std::string> before;
+        if (!now.empty()) before = now.front()->getID();
+        for (size_t j = index; j-- > 0;) {
+            if (!style.getLayer(style_order[j])) continue;
+            auto it = std::find_if(now.begin(), now.end(), [&](auto* l) { return l->getID() == style_order[j]; });
+            if (it != now.end()) before = it + 1 == now.end() ? std::nullopt : std::optional((*(it + 1))->getID());
+            break;
+        }
+        try {
+            style.addLayer(std::move(layer), before);
+        } catch (const std::exception& e) {
+            g_warning("NaviMap: layer %s: %s", style_order[index].c_str(), e.what());
+        }
+    }
+
+    // every style layer back in (the layer calls of the API see the whole style)
+    void restore_culled() {
+        if (!map || !style_loaded || parked.empty()) return;
+        std::sort(parked.begin(), parked.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+        for (auto& p : parked) put_back(p.first, std::move(p.second));
+        parked.clear();
+        culled_sources.clear(); // the next camera change takes them out again
+    }
+
+    void forget_culled() {
+        style_order.clear();
+        culled_sources.clear();
+        parked.clear();
+    }
+
     void schedule_camera_changed() {
         if (camera_tick) return;
         camera_tick = gtk_widget_add_tick_callback(
@@ -369,6 +660,7 @@ struct NaviMapImpl final : public mln::MapObserver {
             [](GtkWidget* w, GdkFrameClock*, gpointer) -> gboolean {
                 NaviMap* m = NAVI_MAP(w);
                 m->impl->camera_tick = 0;
+                m->impl->cull_sources();
                 g_signal_emit(m, signals[SIGNAL_CAMERA_CHANGED], 0);
                 return G_SOURCE_REMOVE;
             },
@@ -628,6 +920,9 @@ struct NaviMapImpl final : public mln::MapObserver {
 
     void onDidFinishLoadingStyle() override {
         style_loaded = true;
+        forget_culled();
+        for (const mln::style::Layer* layer : std::as_const(map->getStyle()).getLayers())
+            style_order.push_back(layer->getID());
         for (const auto& s : sources) push_source(s);
         for (const auto& l : layers) {
             GError* error = nullptr;
@@ -636,7 +931,31 @@ struct NaviMapImpl final : public mln::MapObserver {
                 g_error_free(error);
             }
         }
+        cull_sources();
         g_signal_emit(self, signals[SIGNAL_STYLE_LOADED], 0);
+    }
+
+    // NAVI_MAP_STATS=1 prints what MapLibre drew, over 60 frames (a measuring aid). The draw calls are
+    // counted per frame; the update counters only ever grow, so their growth is what a frame added.
+    struct {
+        int frames = 0;
+        double draws = 0;
+        double texture_updates = 0, buffer_bytes = 0; // the counters at the window's start
+    } stats;
+    void onDidFinishRenderingFrame(const RenderFrameStatus& status) override {
+        static const bool on = g_strcmp0(g_getenv("NAVI_MAP_STATS"), "1") == 0;
+        if (!on || !status.renderingStats) return;
+        const mln::gfx::RenderingStats& r = *status.renderingStats;
+        if (stats.frames == 0) {
+            stats.texture_updates = r.numTextureUpdates;
+            stats.buffer_bytes = static_cast<double>(r.bufferUpdateBytes);
+        }
+        stats.draws += r.numDrawCalls;
+        if (++stats.frames < 60) return;
+        g_message("NaviMap: per frame %.0f draw calls, %.1f texture updates, %.0f KiB of buffer updates",
+                  stats.draws / 60, (r.numTextureUpdates - stats.texture_updates) / 59,
+                  (static_cast<double>(r.bufferUpdateBytes) - stats.buffer_bytes) / 59 / 1024);
+        stats = {};
     }
 
     void onDidFailLoadingMap(mln::MapLoadError, const std::string& message) override {
@@ -661,11 +980,13 @@ static void navi_map_realize(GtkWidget* widget) {
         return;
     }
     navi::ensure_main_run_loop();
+    NAVI_MAP(widget)->impl->attach_clock();
     NAVI_MAP(widget)->impl->create_map();
 }
 
 static void navi_map_unrealize(GtkWidget* widget) {
     NaviMapImpl* impl = NAVI_MAP(widget)->impl;
+    impl->detach_clock();
     if (impl->map) {
         gtk_gl_area_make_current(GTK_GL_AREA(widget));
         impl->destroy_map();
@@ -692,16 +1013,28 @@ static void navi_map_resize(GtkGLArea* area, int width, int height) {
 static gboolean navi_map_render(GtkGLArea* area, GdkGLContext*) {
     NaviMapImpl* impl = NAVI_MAP(area)->impl;
     if (!impl->frontend) return FALSE;
+    impl->check_pacing();
+    if (impl->presenting) {
+        impl->presenting = false;
+        if (impl->backend->presentAhead()) {
+            impl->note_shown();
+            return TRUE;
+        }
+        // the area changed size since it was drawn: draw it again
+    }
+    impl->ahead = false; // drawn now, into the same buffer when there is one
     gint64 t0 = g_get_monotonic_time();
     impl->backend->beginFrame();
     impl->in_render = true;
     bool drew = impl->frontend->render();
     impl->after_render();
-    if (!drew) {
-        glClearColor(0.93f, 0.93f, 0.91f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
-        return TRUE;
-    }
+    impl->backend->endFrame(drew);
+    if (!drew) return TRUE;
+    impl->note_shown();
+    // NAVI_MAP_FINISH=1 waits for the GPU here, so render_ms measures the frame's GPU time too (a
+    // measuring aid: it stalls the pipeline)
+    static const bool finish = g_strcmp0(g_getenv("NAVI_MAP_FINISH"), "1") == 0;
+    if (finish) glFinish();
     double ms = (g_get_monotonic_time() - t0) / 1000.0;
     g_signal_emit(area, signals[SIGNAL_FRAME_RENDERED], 0, ms);
     return TRUE;
@@ -939,6 +1272,7 @@ gboolean navi_map_add_layer_json(NaviMap* self, const char* json, const char* be
             return FALSE;
         }
     NaviMapImpl::LayerRec rec{id, json, before ? before : ""};
+    if (before) impl->restore_culled(); // `before` may be a layer that is out
     if (!impl->push_layer(rec, error)) return FALSE;
     impl->layers.push_back(std::move(rec));
     return TRUE;
@@ -947,6 +1281,7 @@ gboolean navi_map_add_layer_json(NaviMap* self, const char* json, const char* be
 gboolean navi_map_remove_layer(NaviMap* self, const char* id, GError** error) {
     g_return_val_if_fail(NAVI_IS_MAP(self) && id, FALSE);
     NaviMapImpl* impl = self->impl;
+    impl->restore_culled();
     auto it = std::find_if(impl->layers.begin(), impl->layers.end(), [&](const auto& l) { return l.id == id; });
     bool known = it != impl->layers.end();
     if (known) impl->layers.erase(it);
@@ -962,6 +1297,7 @@ char** navi_map_list_layers(NaviMap* self, const char* type) {
     g_return_val_if_fail(NAVI_IS_MAP(self), nullptr);
     NaviMapImpl* impl = self->impl;
     if (!impl->map || !impl->style_loaded) return nullptr;
+    impl->restore_culled();
     GStrvBuilder* ids = g_strv_builder_new();
     for (const mln::style::Layer* layer : impl->map->getStyle().getLayers())
         if (!type || g_strcmp0(layer->getTypeInfo()->type, type) == 0) g_strv_builder_add(ids, layer->getID().c_str());
@@ -1133,6 +1469,41 @@ char* navi_map_query_features(NaviMap* self, double x, double y, double radius, 
     }
     std::string text = mapbox::geojson::stringify(collection);
     return g_strdup(text.c_str());
+}
+
+void navi_map_set_tile_lod(NaviMap* self, double min_radius, double scale, double pitch_threshold,
+                           double zoom_shift) {
+    g_return_if_fail(NAVI_IS_MAP(self));
+    NaviMapImpl* impl = self->impl;
+    impl->lod_radius = std::max(0.0, min_radius);
+    impl->lod_scale = std::max(0.1, scale);
+    impl->lod_pitch = std::clamp(pitch_threshold, 0.0, 180.0);
+    impl->lod_zoom_shift = std::min(0.0, zoom_shift);
+    impl->apply_tile_lod();
+}
+
+void navi_map_set_frame_pacing(NaviMap* self, int refreshes_per_frame) {
+    g_return_if_fail(NAVI_IS_MAP(self));
+    NaviMapImpl* impl = self->impl;
+    impl->pace_setting = std::clamp(refreshes_per_frame, 0, 4);
+    impl->pace_known = false;
+    impl->pace_frames = impl->pace_late = impl->pace_late_windows = 0;
+    impl->set_pace(std::max(impl->pace_setting, 1));
+}
+
+void navi_map_set_render_scale(NaviMap* self, double scale) {
+    g_return_if_fail(NAVI_IS_MAP(self));
+    NaviMapImpl* impl = self->impl;
+    scale = std::clamp(scale, 0.25, 1.0);
+    if (scale == impl->render_scale) return;
+    impl->render_scale = scale;
+    impl->update_area_buffers();
+    GtkGLArea* area = GTK_GL_AREA(self);
+    if (impl->map) { // the pixel ratio is fixed at creation: make the map again (style and sources come back)
+        gtk_gl_area_make_current(area);
+        impl->destroy_map();
+        impl->create_map();
+    }
 }
 
 void navi_map_set_gestures_enabled(NaviMap* self, gboolean enabled) {

@@ -25,9 +25,24 @@ public:
     ~Backend() override;
 
     // the GL area's buffer, in device pixels
-    void setFramebufferSize(mln::Size size) { setRenderableSize(size); }
-    // GtkGLArea binds its own framebuffer object before "render": remember which one it is
+    void setFramebufferSize(mln::Size size);
+    // Below 1, MapLibre draws into a buffer of its own at this fraction of the GL area's size, which
+    // endFrame() stretches onto the GL area's buffer: fewer pixels to fill for a GPU that cannot fill
+    // the whole display at the display's rate.
+    void setRenderScale(double scale);
+    double getRenderScale() const { return renderScale; }
+    // MapLibre draws into a buffer of its own at full size too: needed to draw a frame ahead, outside
+    // GtkGLArea's "render", and show it in a later one
+    void setOffscreen(bool on) { offscreen = on; }
+    bool usesOffscreen() const { return offscreen || renderScale < 1; }
+    // GtkGLArea binds its own framebuffer object before "render": remember which one it is, and bind
+    // the one MapLibre draws into
     void beginFrame();
+    // after MapLibre's frame (drew = false: it had nothing yet, so the GL area gets a plain colour)
+    void endFrame(bool drew);
+    // inside "render": the frame drawn ahead (beginFrame() and MapLibre's render outside "render") onto
+    // the GL area's framebuffer; false when there is none at the area's present size
+    bool presentAhead();
     uint32_t framebuffer() const { return fbo; }
 
     mln::gfx::Renderable& getDefaultRenderable() override { return *this; }
@@ -39,8 +54,19 @@ protected:
     void updateAssumedState() override;
 
 private:
+    void releaseOffscreen();
+    void blitOffscreen();
+
     GtkGLArea* area;
-    uint32_t fbo = 0;
+    uint32_t fbo = 0;         // where MapLibre draws this frame
+    uint32_t areaFbo = 0;     // the GL area's
+    mln::Size areaSize{1, 1}; // and its size
+    double renderScale = 1;
+    bool offscreen = false;
+    // MapLibre's own buffer: a framebuffer with colour and depth-stencil renderbuffers
+    uint32_t offFbo = 0, offColor = 0, offDepth = 0;
+    mln::Size offSize{0, 0};      // its size
+    mln::Size offAreaSize{0, 0};  // the GL area's size when it was last drawn
 };
 
 class Frontend final : public mln::RendererFrontend {

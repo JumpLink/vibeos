@@ -58,7 +58,11 @@ void navi_map_set_cache_path (NaviMap *map, const char *path);
 /* ---- style ---- */
 
 /* Loads a style by URL (https://, file://) or from JSON text. Sources and layers added with the calls
- * below belong to the current style: setting a new style drops them. */
+ * below belong to the current style: setting a new style drops them.
+ * While a tile source's "bounds" lie far outside the view, the style's layers that draw it are taken
+ * out of the style, and put back when the view comes near (MapLibre spends time on every layer every
+ * frame, drawn or not, which adds up in a style with one source per region). The layer calls below
+ * put them all back first, so they always see the whole style. */
 void navi_map_set_style_url (NaviMap *map, const char *url);
 void navi_map_set_style_json (NaviMap *map, const char *json);
 gboolean navi_map_is_style_loaded (NaviMap *map);
@@ -85,6 +89,26 @@ gboolean navi_map_remove_layer (NaviMap *map, const char *layer_id, GError **err
  * NULL before the style has loaded. The first "symbol" layer is where a route goes to stay under the
  * labels. g_strfreev() it. */
 char **navi_map_list_layers (NaviMap *map, const char *type);
+
+/* Draws the map at this fraction of the display's resolution (0.25 to 1) and lets the GPU stretch it
+ * over the widget: 0.75 fills 56 % of the pixels, for a GPU that cannot fill a large display at its
+ * refresh rate. 1, the default, draws every device pixel. Changing it on a shown map reloads the map. */
+void navi_map_set_render_scale (NaviMap *map, double scale);
+
+/* Shows a new frame every `refreshes_per_frame` display refreshes (1 to 4), or 0, the default: one a
+ * refresh up to 60 Hz, one every other refresh at 120 Hz, and one refresh slower whenever more than a
+ * quarter of the frames miss for two seconds. A map that needs a little more than one refresh per
+ * frame otherwise alternates between one and two, and that uneven rhythm looks rougher than a steady
+ * half rate. Above 1 each frame is drawn a frame-clock cycle ahead and shown in the next one. */
+void navi_map_set_frame_pacing (NaviMap *map, int refreshes_per_frame);
+
+/* Coarser tiles toward the horizon of a tilted map, which is where most of a tilted map's tiles are:
+ * beyond `min_radius` tiles from the center, tiles drop zoom levels as their distance x `scale` grows,
+ * once the pitch is over `pitch_threshold` degrees; a negative `zoom_shift` lowers the detail
+ * everywhere (-1 is a quarter of the tiles). MapLibre's defaults, (3, 1, 60, 0), leave a camera tilted
+ * less than 60 degrees at full detail. */
+void navi_map_set_tile_lod (NaviMap *map, double min_radius, double scale, double pitch_threshold,
+                            double zoom_shift);
 
 /* ---- camera ---- */
 

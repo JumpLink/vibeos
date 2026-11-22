@@ -8,6 +8,9 @@
 #include <EGL/egl.h>
 #include <GLES3/gl3.h>
 
+#include <algorithm>
+#include <cmath>
+
 namespace navi {
 
 namespace {
@@ -37,16 +40,96 @@ Backend::Backend(GtkGLArea* area_)
       mln::gfx::Renderable({1, 1}, std::make_unique<Resource>(*this)),
       area(area_) {}
 
-Backend::~Backend() = default;
+Backend::~Backend() {
+    // the widget makes its context current before the map goes (unrealize)
+    releaseOffscreen();
+}
+
+void Backend::releaseOffscreen() {
+    if (offFbo) glDeleteFramebuffers(1, &offFbo);
+    if (offColor) glDeleteRenderbuffers(1, &offColor);
+    if (offDepth) glDeleteRenderbuffers(1, &offDepth);
+    offFbo = offColor = offDepth = 0;
+    offSize = offAreaSize = {0, 0};
+}
+
+void Backend::setFramebufferSize(mln::Size size) {
+    areaSize = size;
+    if (renderScale >= 1) {
+        setRenderableSize(size);
+        return;
+    }
+    setRenderableSize({std::max(1u, static_cast<uint32_t>(std::lround(size.width * renderScale))),
+                       std::max(1u, static_cast<uint32_t>(std::lround(size.height * renderScale)))});
+}
+
+void Backend::setRenderScale(double scale) {
+    renderScale = std::clamp(scale, 0.25, 1.0);
+    setFramebufferSize(areaSize);
+}
 
 void Backend::beginFrame() {
     GLint bound = 0;
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &bound);
-    fbo = static_cast<uint32_t>(bound);
+    areaFbo = fbo = static_cast<uint32_t>(bound);
+    const mln::Size size = getSize();
+    if (usesOffscreen()) {
+        if (size != offSize) {
+            releaseOffscreen();
+            glGenRenderbuffers(1, &offColor);
+            glBindRenderbuffer(GL_RENDERBUFFER, offColor);
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, size.width, size.height);
+            glGenRenderbuffers(1, &offDepth);
+            glBindRenderbuffer(GL_RENDERBUFFER, offDepth);
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, size.width, size.height);
+            glGenFramebuffers(1, &offFbo);
+            glBindFramebuffer(GL_FRAMEBUFFER, offFbo);
+            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, offColor);
+            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, offDepth);
+            offSize = size;
+        }
+        offAreaSize = areaSize;
+        fbo = offFbo;
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    }
     // GtkGLArea binds its framebuffer but leaves the viewport at whatever it was (0x0 on a new context),
     // and updateAssumedState() tells MapLibre the viewport is already the full buffer: make that true,
     // or every draw lands in an empty viewport while clears still fill the buffer
-    glViewport(0, 0, static_cast<GLsizei>(getSize().width), static_cast<GLsizei>(getSize().height));
+    glViewport(0, 0, static_cast<GLsizei>(size.width), static_cast<GLsizei>(size.height));
+}
+
+// one copy (a linear stretch when scaled) onto the GL area's buffer, which GTK then composites as it is
+void Backend::blitOffscreen() {
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, areaFbo);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, offFbo);
+    glDisable(GL_SCISSOR_TEST);
+    glBlitFramebuffer(0, 0, static_cast<GLint>(offSize.width), static_cast<GLint>(offSize.height), 0, 0,
+                      static_cast<GLint>(areaSize.width), static_cast<GLint>(areaSize.height), GL_COLOR_BUFFER_BIT,
+                      offSize == areaSize ? GL_NEAREST : GL_LINEAR);
+    glBindFramebuffer(GL_FRAMEBUFFER, areaFbo);
+}
+
+void Backend::endFrame(bool drew) {
+    if (fbo != areaFbo) {
+        if (drew)
+            blitOffscreen();
+        else
+            glBindFramebuffer(GL_FRAMEBUFFER, areaFbo);
+    }
+    if (!drew) {
+        glViewport(0, 0, static_cast<GLsizei>(areaSize.width), static_cast<GLsizei>(areaSize.height));
+        glClearColor(0.93f, 0.93f, 0.91f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+    }
+}
+
+bool Backend::presentAhead() {
+    if (!offFbo || offAreaSize != areaSize) return false;
+    GLint bound = 0;
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &bound);
+    areaFbo = static_cast<uint32_t>(bound);
+    blitOffscreen();
+    return true;
 }
 
 void Backend::activate() {
