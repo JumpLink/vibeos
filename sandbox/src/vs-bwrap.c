@@ -369,6 +369,10 @@ vs_proxy_rules (const VsSandbox *sb)
   add (a, "--broadcast=org.freedesktop.portal.*=@/org/freedesktop/portal/*");
   /* notifications: the shell's own notification policy applies */
   add (a, "--talk=org.freedesktop.Notifications");
+  /* push messages: UnifiedPush distributors; each app only receives what is sent to its own registration, encrypted
+   * to it. The messages come in as calls on the app's own name, which the proxy does not filter (it filters only
+   * what the app sends, and broadcast signals) */
+  add (a, "--talk=org.unifiedpush.Distributor.*");
   /* the contacts and the calendars: evolution-data-server's address books and calendars run in its factories */
   if (vs_grants_allowed (&sb->grants, VS_PERM_CONTACTS) || vs_grants_allowed (&sb->grants, VS_PERM_CALENDAR))
     add (a, "--talk=org.gnome.evolution.dataserver.Sources5");

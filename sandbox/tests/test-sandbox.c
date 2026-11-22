@@ -456,6 +456,7 @@ test_proxy_rules (void)
   g_assert_true (has (r, "--own=org.mpris.MediaPlayer2.foo-player"));
   g_assert_true (has (r, "--talk=org.freedesktop.portal.*"));
   g_assert_true (has (r, "--talk=org.freedesktop.Notifications"));
+  g_assert_true (has (r, "--talk=org.unifiedpush.Distributor.*"));
   /* nothing of the user's data by default */
   g_assert_false (has_prefix (r, "--talk=org.gnome.evolution"));
   g_assert_false (has_prefix (r, "--talk=vibeos."));
