@@ -39,11 +39,13 @@ typedef struct
   GtkWidget *search_bar, *stack, *pages[N_TABS], *search, *fab, *nav;
   GtkWidget *tab_children[N_TABS];      /* the stack's child for a tab: the page, or Recents in its list-detail */
   GtkWidget *nav_rail, *rail_fab;       /* the rail (a tablet, a sideways phone), with the dialpad button */
+  GtkWidget *area;                      /* beside the rail: the page, and on a tablet the screens over it */
   GtkWidget *recents_ld;                /* Recents and a call's details beside it on a tablet */
   GtkWidget *details_empty;             /* what the details pane shows with no call open */
   VibeosLayout *layout;
   GtkWidget *sheet;
-  GPtrArray *screens;           /* Call history, Call details, Settings over it all, the top one last */
+  GPtrArray *screens;           /* Call history, Call details, Settings over the page (a tablet) or it all, the top
+                                 * one last */
   gboolean searching;           /* the search UI is up (regular or the dialpad's) */
   gboolean fab_shown;
   VibeosSnackbar *snackbar;
@@ -148,9 +150,13 @@ on_tab_selected (DialerNavBar *nav, int index, Shell *shell)
   show_tab (shell, index);
 }
 
+static void close_screens (Shell *shell);
+
+/* on a tablet the rail stays beside Call history, Settings and the rest: a destination tapped closes them */
 static void
 on_rail_selected (VibeosNavRail *rail, int index, Shell *shell)
 {
+  close_screens (shell);
   close_search (shell);
   show_tab (shell, index);
 }
@@ -269,9 +275,11 @@ on_sheet_visible (GtkWidget *sheet, GParamSpec *pspec, Shell *shell)
     set_fab_shown (shell, TRUE);
 }
 
+/* the dialpad comes up over the main screen: on a tablet the rail's button closes the screens beside the rail first */
 static void
 on_fab_clicked (Shell *shell)
 {
+  close_screens (shell);
   dialpad_sheet_show (DIALPAD_SHEET (shell->sheet), NULL);
 }
 
@@ -317,7 +325,7 @@ static void
 remove_screen (Shell *shell, GtkWidget *screen)
 {
   g_signal_handlers_disconnect_by_data (screen, shell);
-  gtk_overlay_remove_overlay (vibeos_window_get_overlay (shell->window), screen);
+  gtk_overlay_remove_overlay (GTK_OVERLAY (gtk_widget_get_parent (screen)), screen);
   g_ptr_array_remove (shell->screens, screen);
   if (shell->screens->len)
     gtk_widget_grab_focus (g_ptr_array_index (shell->screens, shell->screens->len - 1));
@@ -355,13 +363,22 @@ on_history_edit_number (Shell *shell, const char *number)
 }
 
 /* a screen of its own over the main one, its dialpad and the screens under it, under the snackbar, which a call
- * that fails from it uses */
+ * that fails from it uses. On a tablet it covers the page beside the rail, which stays (the dialpad, which would be
+ * over it there, goes) */
 static void
 push_screen (Shell *shell, GtkWidget *screen)
 {
   g_ptr_array_add (shell->screens, screen);
   g_signal_connect (screen, "closed", G_CALLBACK (on_screen_closed), shell);
-  gtk_widget_insert_before (screen, GTK_WIDGET (vibeos_window_get_overlay (shell->window)), GTK_WIDGET (shell->snackbar));
+  if (shell->layout && vibeos_layout_is_tablet (shell->layout))
+    {
+      if (dialpad_sheet_get_shown (DIALPAD_SHEET (shell->sheet)))
+        dialpad_sheet_hide (DIALPAD_SHEET (shell->sheet));
+      gtk_overlay_add_overlay (GTK_OVERLAY (shell->area), screen);
+    }
+  else
+    gtk_widget_insert_before (screen, GTK_WIDGET (vibeos_window_get_overlay (shell->window)),
+                              GTK_WIDGET (shell->snackbar));
   gtk_widget_grab_focus (screen);
 }
 
@@ -599,9 +616,12 @@ dialer_window_new (GtkApplication *app, GSettings *settings)
   gtk_widget_set_margin_bottom (shell->rail_fab, 0);
   vibeos_nav_rail_set_header (VIBEOS_NAV_RAIL (shell->nav_rail), shell->rail_fab);
   g_signal_connect (shell->nav_rail, "selected", G_CALLBACK (on_rail_selected), shell);
+  g_signal_connect (shell->nav_rail, "reselected", G_CALLBACK (on_rail_selected), shell);
   gtk_box_append (GTK_BOX (row), shell->nav_rail);
-  gtk_widget_set_hexpand (page, TRUE);
-  gtk_box_append (GTK_BOX (row), page);
+  shell->area = gtk_overlay_new ();
+  gtk_widget_set_hexpand (shell->area, TRUE);
+  gtk_overlay_set_child (GTK_OVERLAY (shell->area), page);
+  gtk_box_append (GTK_BOX (row), shell->area);
   vibeos_window_set_content (GTK_WINDOW (window), row);
   overlay = vibeos_window_get_overlay (window);
   shell->snackbar = VIBEOS_SNACKBAR (vibeos_snackbar_new ());
