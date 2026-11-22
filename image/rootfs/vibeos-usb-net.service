@@ -1,0 +1,12 @@
+[Unit]
+Description=VibeOS: USB network (172.16.42.1) on the gadget port, a way in without Wi-Fi
+After=local-fs.target systemd-modules-load.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/vibeos-usb-net start
+ExecStop=/usr/local/sbin/vibeos-usb-net stop
+
+[Install]
+WantedBy=multi-user.target

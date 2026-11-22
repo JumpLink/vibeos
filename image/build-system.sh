@@ -167,12 +167,14 @@ rmv /etc/ssl/certs/ssl-cert-snakeoil.pem
 install -d "$M/usr/local/sbin" "$M/etc/vibeos" "$M/var/lib/vibeos/device"
 install -m 755 "$T/rootfs/vibeos-growroot" "$M/usr/local/sbin/vibeos-growroot"
 install -m 755 "$T/rootfs/vibeos-device-setup" "$M/usr/local/sbin/vibeos-device-setup"
-for u in vibeos-growroot vibeos-device-setup vibeos-ssh-keygen vibeos-ssl-cert; do
+install -m 755 "$T/rootfs/vibeos-usb-net" "$M/usr/local/sbin/vibeos-usb-net"
+install -D -m 644 "$T/rootfs/vibeos-usb-net.nm.conf" "$M/etc/NetworkManager/conf.d/vibeos-usb-net.conf"
+for u in vibeos-growroot vibeos-device-setup vibeos-ssh-keygen vibeos-ssl-cert vibeos-usb-net; do
 	install -m 644 "$T/rootfs/$u.service" "$M/etc/systemd/system/$u.service"
 	mkdir -p "$M/etc/systemd/system/multi-user.target.wants"
 	ln -sf ../$u.service "$M/etc/systemd/system/multi-user.target.wants/$u.service"
 done
-add "first boot: vibeos-growroot (root fills its partition or file), vibeos-device-setup (the device package, offline, before GDM), vibeos-ssh-keygen, vibeos-ssl-cert"
+add "first boot: vibeos-growroot (root fills its partition or file), vibeos-device-setup (the device package, offline, before GDM), vibeos-ssh-keygen, vibeos-ssl-cert; every boot: vibeos-usb-net (USB network 172.16.42.1)"
 
 # 4. VibeOS, in an arm64 chroot (qemu binfmt)
 for d in proc sys dev dev/pts run; do mkdir -p "$M/$d"; done
