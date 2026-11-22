@@ -42,6 +42,16 @@ void ns_page_default_apps (GtkWidget *row, gpointer data);
 void ns_page_app (const char *id);
 /* the same as a page function: `id` is the app's desktop file id */
 void ns_page_app_row (GtkWidget *row, gpointer id);
+/* the apps a launcher shows, by name: a list of GAppInfo, the list and the apps the caller's */
+GList *ns_apps_shown (void);
+/* `images` (GtkImage, with an app's icon) drawn once each as a texture at the screen's size, a few at a time in idle
+ * time, as the Apps list's are: a long list of scalable icons scrolls smoothly then */
+void ns_apps_bake_icons (GPtrArray *images);
+
+/* ns-buttons.c: System > Gestures, what a double press of the power key and the side button open */
+void ns_page_gestures (GtkWidget *row, gpointer data);
+/* whether the shell has the keys (the gschema installed is new enough) */
+gboolean ns_gestures_available (void);
 
 /* ns-perms.c: an app's permissions. The row on the app's page (`owner`, which keeps what the row shows): what a
  * sandboxed app is allowed, opening App permissions; for any other app, that it is not sandboxed */

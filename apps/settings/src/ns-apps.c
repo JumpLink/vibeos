@@ -795,6 +795,25 @@ shown_apps (guint *n)
   return g_list_reverse (shown);
 }
 
+GList *
+ns_apps_shown (void)
+{
+  guint n;
+  return shown_apps (&n);
+}
+
+void
+ns_apps_bake_icons (GPtrArray *images)
+{
+  IconBake *bake = icon_bake_new ();
+  for (guint i = 0; i < images->len; i++) {
+    GWeakRef *ref = g_new0 (GWeakRef, 1);
+    g_weak_ref_init (ref, images->pdata[i]);
+    g_ptr_array_add (bake->images, ref);
+  }
+  icon_bake_start (bake);
+}
+
 /* ---- the apps opened last: GNOME Shell's record of when each app was last in use ---- */
 
 typedef struct {

@@ -1853,6 +1853,11 @@ ns_page_general (GtkWidget *row, gpointer data)
   GtkWidget *g = ns_group (c, NULL);
   page_row (g, "preferences-desktop-locale-symbolic", "Language and region", "Language, formats", ns_page_language);
   page_row (g, "input-keyboard-symbolic", "Keyboard", "On-screen keyboard, layouts", ns_page_keyboard);
+  /* Android 17's place for it, after Keyboard */
+  if (ns_gestures_available ())
+    page_row (g, "phone-symbolic", "Gestures",
+              ns_caps_has (NS_CAP_SIDE_KEY) ? "Power button, side button" : "Double-press power button",
+              ns_page_gestures);
   page_row (g, "input-mouse-symbolic", "Mouse and touchpad", "Pointer speed, hardware keyboard", ns_page_mouse);
   page_row (g, "preferences-system-time-symbolic", "Date and time", "Automatic time, time zone", ns_page_datetime);
   if (have_updates ()) {
