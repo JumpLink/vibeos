@@ -16,7 +16,8 @@
 #   prepare  new, whole: unmount Android's data (refused while something reads from it, such as this zip on the
 #            internal storage), then carve or take over the partition; image: make room for the file. Points
 #            /tmp/vibeos-root at where the root goes (a partition, or the root partition inside a "linux" that
-#            carries its own GPT, through a loop device)
+#            carries its own GPT, through a loop device) and clears its first and last MiB (wipe_ends: an earlier
+#            system's GPT or file system there must not outlive the install)
 #   chunks   maps each part of rootfs.img (rootfs.img.0, .1, ...: LineageOS's updater cannot extract a zip entry
 #            of 4 GiB or more) to /tmp/vibeos-root.N, a loop device over its bytes of the root's place (the
 #            partition, or the image file, made to the root's size first)
@@ -213,6 +214,7 @@ prepare)
 			mknod $RDEV b ${MM%%:*} ${MM##*:} || die "cannot make $RDEV"
 		fi
 		guard "$RDEV"
+		wipe_ends "$RDEV"
 		ln -sf $RDEV $T-root || die "cannot link $RDEV"
 		put dev "${ODEV:-$RDEV}"; put loop "$LOOP"
 	fi
