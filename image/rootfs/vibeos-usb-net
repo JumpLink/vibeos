@@ -3,6 +3,7 @@
 # uses (vibeos.debug=1): this side 172.16.42.1/16, the PC gets 172.16.42.2 by DHCP. The way in when Wi-Fi is not
 # there (the modem DSP runs the WLAN firmware on some phones). It offers no service of its own: ssh, telnet or
 # anything else answers on 172.16.42.1 only if it is running and listens there.
+# In developer images only (build-system.sh with VIBEOS_DEV=1): a release image has neither this nor its unit.
 # Off with `vibeos.usbnet=0` on the kernel command line, or with the file /etc/vibeos/no-usbnet.
 # Harmless where there is nothing to do (no USB device controller, USB in host mode, another gadget bound): it
 # says so and exits 0. Run twice it changes nothing. The paths can be moved for the test (test/usbnet-test.sh).

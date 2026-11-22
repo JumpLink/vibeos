@@ -24,6 +24,7 @@ STAGE=					# only for the S10e r7 base (the 0.1.3 release's): its device stage, 
 BASE_ORIG=				# the base image itself: build-system.sh refuses to work on it, only on a copy
 # ART=					# the third-party icon packs and parallax sets: not in this repository, left out unset
 # KIT=					# the home screen and app list (default: image/kit)
+# VIBEOS_DEV=0				# 1: a developer image (USB network on the gadget port); 0: a release image, without
 # FORBID_EXTRA=				# more names no image may contain (gsm2sip and waydroid always)
 
 # ---- build-zips.sh

@@ -21,13 +21,14 @@
 #      decides)
 #   3. generic identity: fstab LABEL=vibeos, hostname vibeos, no machine-info, no SSH host keys and no snakeoil
 #      key (made on the first boot), nothing of the machine the base was built on (its resolv.conf, its name in
-#      exim4's settings); the first-boot units every device shares (grow the root; install the device package)
+#      exim4's settings); the first-boot units every device shares (grow the root; install the device package);
+#      a developer image only (VIBEOS_DEV=1): the USB network on the gadget port, which a release image never has
 #   4. VibeOS 0.1.3 (apt in an arm64 chroot, local .debs + Debian for new dependencies: mpv, libmpv2): every
 #      package of the build except -dev, -dbgsym and the neo-* transitional ones; mutter gp1 held; GNOME's own
 #      apps out (the ROM list), Showtime out, GNOME Settings out (vibeos-settings replaces it), Files and Vim
 #      hidden; the home screen and the drawer list of the POCO ROM (Showtime's place: Video Player); user's
 #      session vibeos
-#   5. checks, cleans up, labels the file system vibeos (new UUID), shrinks it.
+#   5. checks (a release image: no developer unit in it), cleans up, labels the file system vibeos (new UUID), shrinks it.
 # Logs: LOGS/system-<time>/.
 set -eu
 IMG=${1:?WORK.img}
@@ -49,6 +50,8 @@ ART=${ART:-}	# the third-party icon packs and parallax sets (not in this reposit
 STAGE=${STAGE:-}	# the S10e device stage: needed only for the r7 base
 MOBILE=${MOBILE:?set MOBILE: the GNOME Shell mobile tar (opt/gnome-mobile)}
 KIT=${KIT:-$T/kit}
+DEV=${VIBEOS_DEV:-0}	# 1: a developer image, with the debugging ways in (vibeos-usb-net); 0: a release image, without
+case $DEV in 0) VARIANT=release ;; 1) VARIANT=dev ;; *) echo "VIBEOS_DEV is 0 or 1, not $DEV" >&2; exit 1 ;; esac
 FORBID="gsm2sip waydroid ${FORBID_EXTRA:-}"	# never in an image: these package and file names
 L=$O/logs/system-$(date +%Y%m%d-%H%M%S); mkdir -p "$L"
 M=$O/work/mnt-rw
@@ -113,6 +116,7 @@ else
 	echo "neither build-base.sh's base (/etc/vibeos/base) nor the S10e clean image (hostname)" >&2; exit 1
 fi
 log "base: $BASE"
+log "variant: $VARIANT (VIBEOS_DEV=$DEV)"
 
 # 2. the S10e's device layer (the r7 base; build-base.sh's has none)
 if [ "$BASEKIND" = s10e ]; then
@@ -167,14 +171,21 @@ rmv /etc/ssl/certs/ssl-cert-snakeoil.pem
 install -d "$M/usr/local/sbin" "$M/etc/vibeos" "$M/var/lib/vibeos/device"
 install -m 755 "$T/rootfs/vibeos-growroot" "$M/usr/local/sbin/vibeos-growroot"
 install -m 755 "$T/rootfs/vibeos-device-setup" "$M/usr/local/sbin/vibeos-device-setup"
-install -m 755 "$T/rootfs/vibeos-usb-net" "$M/usr/local/sbin/vibeos-usb-net"
-install -D -m 644 "$T/rootfs/vibeos-usb-net.nm.conf" "$M/etc/NetworkManager/conf.d/vibeos-usb-net.conf"
-for u in vibeos-growroot vibeos-device-setup vibeos-ssh-keygen vibeos-ssl-cert vibeos-usb-net; do
+UNITS="vibeos-growroot vibeos-device-setup vibeos-ssh-keygen vibeos-ssl-cert"
+# a developer image only: the USB network (172.16.42.1 on the gadget port, a DHCP server for the PC) is a way in
+# that needs no Wi-Fi and no unlocked screen, which a release image must not open
+if [ "$DEV" = 1 ]; then
+	install -m 755 "$T/rootfs/vibeos-usb-net" "$M/usr/local/sbin/vibeos-usb-net"
+	install -D -m 644 "$T/rootfs/vibeos-usb-net.nm.conf" "$M/etc/NetworkManager/conf.d/vibeos-usb-net.conf"
+	UNITS="$UNITS vibeos-usb-net"
+fi
+for u in $UNITS; do
 	install -m 644 "$T/rootfs/$u.service" "$M/etc/systemd/system/$u.service"
 	mkdir -p "$M/etc/systemd/system/multi-user.target.wants"
 	ln -sf ../$u.service "$M/etc/systemd/system/multi-user.target.wants/$u.service"
 done
-add "first boot: vibeos-growroot (root fills its partition or file), vibeos-device-setup (the device package, offline, before GDM), vibeos-ssh-keygen, vibeos-ssl-cert; every boot: vibeos-usb-net (USB network 172.16.42.1)"
+add "first boot: vibeos-growroot (root fills its partition or file), vibeos-device-setup (the device package, offline, before GDM), vibeos-ssh-keygen, vibeos-ssl-cert"
+[ "$DEV" = 0 ] || add "developer image: every boot vibeos-usb-net (USB network 172.16.42.1)"
 
 # 4. VibeOS, in an arm64 chroot (qemu binfmt)
 for d in proc sys dev dev/pts run; do mkdir -p "$M/$d"; done
@@ -306,7 +317,7 @@ else sed -i '/^\[User\]/a Session=vibeos' "$F"; fi
 chmod 600 "$F"; add "user's session: vibeos (AccountsService)"
 $CH glib-compile-schemas /usr/share/glib-2.0/schemas
 # what the image says about itself
-{ echo "VERSION=1:0.1.3"; echo "BUILT=$(date -u +%Y-%m-%dT%H:%MZ)"; echo "BASE=$BASE"; } > "$M/etc/vibeos/system-image"
+{ echo "VERSION=1:0.1.3"; echo "BUILT=$(date -u +%Y-%m-%dT%H:%MZ)"; echo "BASE=$BASE"; echo "VARIANT=$VARIANT"; } > "$M/etc/vibeos/system-image"
 $CH dpkg-query -W -f '${Package} ${Version} ${db:Status-Abbrev}\n' > "$L/installed.txt"
 # every file the image's packages own: build-device.sh diverts the ones a device package ships too (SYSFILES)
 cat "$M"/var/lib/dpkg/info/*.list | LC_ALL=C sort -u > "$L/packaged-final.txt"
@@ -321,6 +332,11 @@ done
 rm -rf "$M"/var/lib/swcatalog/icons/debian-* "$M"/var/lib/swcatalog/yaml/*
 for w in $FORBID; do find "$M" -xdev -iname "*$w*"; done > "$L/forbidden.txt"
 [ ! -s "$L/forbidden.txt" ] || { echo "forbidden files, see $L/forbidden.txt" >&2; exit 1; }
+# a release image: none of the developer image's ways in, under any name the units or their files have
+if [ "$DEV" = 0 ]; then
+	find "$M" -xdev -name 'vibeos-usb-net*' > "$L/dev-only.txt"
+	[ ! -s "$L/dev-only.txt" ] || { echo "a release image with developer files, see $L/dev-only.txt" >&2; exit 1; }
+fi
 grep -q '^video/mp4=vibeos.Video.desktop' "$M/etc/xdg/mimeapps.list" || { echo "Video Player is not the default for video/mp4" >&2; exit 1; }
 # the build machine's name: in no setting a maintainer script writes it to
 case ${VIBEOS_BUILD_HOST:-} in ""|vibeos|localhost|debian) ;; *)
