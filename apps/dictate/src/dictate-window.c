@@ -870,12 +870,16 @@ static const VibeosAboutSection agent_legal[] = {
   { "Voice", "The replies are spoken on the phone by a <a href=\"https://github.com/rhasspy/piper\">Piper</a> voice "
              "(MIT License), its sounds from <a href=\"https://github.com/espeak-ng/espeak-ng\">eSpeak NG</a> (GNU "
              "General Public License 3.0 or later), and the end of what is said is found by the "
-             "<a href=\"https://github.com/snakers4/silero-vad\">Silero VAD</a> (MIT License)." },
+             "<a href=\"https://github.com/snakers4/silero-vad\">Silero VAD</a> (MIT License). The English voice, "
+             "Lessac, is trained on the Lessac recordings of the Blizzard Challenge 2013, which are under the "
+             "<a href=\"https://www.cstr.ed.ac.uk/projects/blizzard/2013/lessac_blizzard2013/license.html\">"
+             "Blizzard 2013 Lessac licence</a>: research use, no commercial use." },
   { "Downloads", "A language that is not installed can be downloaded in the app, each file checked against its "
                  "SHA-256 before it is used: its model from Moonshine's server (download.moonshine.ai) or Vosk's "
                  "(alphacephei.com), and its voice from <a href=\"https://huggingface.co/rhasspy/piper-voices\">"
                  "rhasspy/piper-voices</a> (MIT License). The voices' recordings: Thorsten-Voice (German), Davefx "
-                 "(Spanish), Paola (Italian) and Denis (Russian), CC0; LJ Speech (English), public domain; the SIWIS "
+                 "(Spanish), Paola (Italian) and Denis (Russian), CC0; Lessac (English), the Blizzard 2013 Lessac "
+                 "licence (research use, no commercial use); the SIWIS "
                  "French speech synthesis database, CC BY 4.0. The French and Italian voices are trained from the "
                  "Hi-Fi TTS voice of Cori Samuel (NVIDIA, CC BY 4.0)." },
   { NULL }

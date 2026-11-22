@@ -85,10 +85,12 @@ static const DictateFile VOSK_RU[] = {
   { NULL }
 };
 
-/* Piper's voices at one revision of rhasspy/piper-voices (2026-11-20), a medium one per language, none of them
- * under a non-commercial licence (each voice's MODEL_CARD names its dataset's): the voices are MIT, as the
- * repository is. The .onnx sums are Hugging Face's (its LFS ids), the .onnx.json ones taken of the files whose git
- * ids are the revision's. Piper 1.5's voices merge vowel clusters (dictate-voice.c). */
+/* Piper's voices at one revision of rhasspy/piper-voices (2026-11-20), a medium one per language: the voices are
+ * MIT, as the repository is, and each voice's MODEL_CARD names its dataset and the dataset's licence. All but the
+ * English one are public domain, CC0 or CC BY 4.0. English is Lessac, the voice the app has had from the start:
+ * its recordings are under the Blizzard 2013 Lessac licence (research use; no commercial use), and the owner chose
+ * to keep this voice and handle the licence. The .onnx sums are Hugging Face's (its LFS ids), the .onnx.json ones
+ * taken of the files whose git ids are the revision's. Piper 1.5's voices merge vowel clusters (dictate-voice.c). */
 #define PIPER "https://huggingface.co/rhasspy/piper-voices/resolve/e9c8a39444359388adaa94255becb37a5a2b8e51/"
 
 static const DictateFile PIPER_DE[] = {
@@ -98,8 +100,8 @@ static const DictateFile PIPER_DE[] = {
 };
 
 static const DictateFile PIPER_EN[] = {
-  { "en_US-ljspeech-medium.onnx", 63531379, "6f52a751e2349abe7a76735eb09dc1875298c77ea2342ffd2fef79ff81b87f22" },
-  { "en_US-ljspeech-medium.onnx.json", 4972, "141d612cc0a95ed7efc1ca936b845c2364967f2e9217c5dbfcf69fc4d6c65860" },
+  { "en_US-lessac-medium.onnx", 63201294, "5efe09e69902187827af646e1a6e9d269dee769f9877d17b16b1b46eeaaf019f" },
+  { "en_US-lessac-medium.onnx.json", 4885, "efe19c417bed055f2d69908248c6ba650fa135bc868b0e6abb3da181dab690a0" },
   { NULL }
 };
 
@@ -145,8 +147,8 @@ static const DictatePack PACKS[] = {
   VOSK_PACK ("ru", VOSK_RU),
   PIPER_PACK ("de", "Piper voice Thorsten", "MIT; Thorsten-Voice recordings, CC0", "de/de_DE/thorsten/medium",
               PIPER_DE),
-  PIPER_PACK ("en", "Piper voice LJ Speech", "MIT; LJ Speech recordings, public domain",
-              "en/en_US/ljspeech/medium", PIPER_EN),
+  PIPER_PACK ("en", "Piper voice Lessac", "MIT; Lessac recordings, Blizzard 2013 licence, no commercial use",
+              "en/en_US/lessac/medium", PIPER_EN),
   PIPER_PACK ("es", "Piper voice Davefx", "MIT; recordings CC0", "es/es_ES/davefx/medium", PIPER_ES),
   PIPER_PACK ("fr", "Piper voice SIWIS", "MIT; SIWIS recordings, CC BY 4.0; trained from Hi-Fi TTS, CC BY 4.0",
               "fr/fr_FR/siwis/medium", PIPER_FR),
