@@ -32,6 +32,9 @@ void             dictate_talk_stop      (DictateTalk *self);
 void             dictate_talk_reset     (DictateTalk *self);
 DictateTalkState dictate_talk_get_state (DictateTalk *self);
 void             dictate_talk_set_speed (DictateTalk *self, double speed);
+/* the replies spoken (TRUE, at first) or only written; turned off while one is spoken, it stops speaking at once */
+void             dictate_talk_set_speak (DictateTalk *self, gboolean speak);
+gboolean         dictate_talk_get_speak (DictateTalk *self);
 
 /* Signals, all on the main thread:
  *   "reply" (const char *text): the reply as written so far (the whole of it each time)

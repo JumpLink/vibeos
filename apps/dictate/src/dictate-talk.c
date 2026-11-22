@@ -48,6 +48,7 @@ struct _DictateTalk {
   GMutex lock;                  /* the reply's cancellable, the speed */
   GCancellable *cancellable;
   double speed;
+  int speak;                    /* atomic: the replies spoken, or only written */
   GMainContext *main;
   GSettings *settings;
   /* the main thread's: the playback of the turn `playing` */
@@ -56,6 +57,7 @@ struct _DictateTalk {
   guint playing;
   guint64 played;               /* samples pushed */
   guint rate;
+  guint ended;                  /* the last turn whose reply has been written to its end */
   char *reply;                  /* the reply as written, for "reply" */
   guint test_answers;           /* DICTATE_TEST_OUTPUT's files so far */
   gboolean disposed;
@@ -251,8 +253,11 @@ post (DictateTalk *self, GSourceFunc func, Post *p)
 static void
 set_state (DictateTalk *self, DictateTalkState state)
 {
+  static const char *const names[] = { "idle", "thinking", "speaking" };
+
   if (self->state == state)
     return;
+  g_debug ("talk: %s -> %s", names[self->state], names[state]);
   self->state = state;
   g_signal_emit (self, signals[SIGNAL_STATE_CHANGED], 0);
 }
@@ -376,6 +381,7 @@ start_playback (DictateTalk *self, guint rate)
   self->bus_watch = gst_bus_add_watch (bus, on_bus, self);
   self->rate = rate;
   self->played = 0;
+  g_debug ("talk: playing at %u Hz to %s", rate, test ? file : pulse ? "pulsesink" : "autoaudiosink");
   gst_element_set_state (self->pipeline, GST_STATE_PLAYING);
   return TRUE;
 }
@@ -388,7 +394,7 @@ on_audio (gpointer data)
 
   if (!current (self, p->turn))
     return G_SOURCE_REMOVE;
-  if (p->samples && p->n)
+  if (p->samples && p->n && g_atomic_int_get (&self->speak))
     {
       GstBuffer *buffer;
 
@@ -414,6 +420,7 @@ on_audio (gpointer data)
     }
   if (p->end)
     {
+      self->ended = p->turn;
       if (self->pipeline && self->playing == p->turn)
         gst_app_src_end_of_stream (GST_APP_SRC (self->src));
       else
@@ -495,7 +502,7 @@ voice_thread (gpointer data)
         }
       if (say->kind == SAY_PREPARE)
         ensure_voice (self, say);
-      else if (!current (self, say->turn))
+      else if (!current (self, say->turn) || (say->kind == SAY_TEXT && !g_atomic_int_get (&self->speak)))
         ;
       else if (say->kind == SAY_END)
         post_audio (self, say->turn, NULL, 0, 0, TRUE);
@@ -578,6 +585,8 @@ say_for (Job *job, int kind, const char *text)
 static void
 say (Writing *w, const char *text)
 {
+  if (!g_atomic_int_get (&w->self->speak))
+    return;
   g_async_queue_push (w->self->says, say_for (w->job, SAY_TEXT, text));
 }
 
@@ -788,6 +797,26 @@ dictate_talk_get_state (DictateTalk *self)
   return self->state;
 }
 
+gboolean
+dictate_talk_get_speak (DictateTalk *self)
+{
+  return g_atomic_int_get (&self->speak);
+}
+
+/* off: what is being said stops at once, the reply goes on being written */
+void
+dictate_talk_set_speak (DictateTalk *self, gboolean speak)
+{
+  guint turn = g_atomic_int_get (&self->turn);
+
+  g_atomic_int_set (&self->speak, speak != FALSE);
+  if (speak || self->state != DICTATE_TALK_SPEAKING)
+    return;
+  stop_playback (self);
+  /* written to its end: nothing more to wait for; else the model is still writing it */
+  set_state (self, self->ended == turn ? DICTATE_TALK_IDLE : DICTATE_TALK_THINKING);
+}
+
 void
 dictate_talk_set_speed (DictateTalk *self, double speed)
 {
@@ -850,6 +879,7 @@ dictate_talk_init (DictateTalk *self)
 {
   g_mutex_init (&self->lock);
   self->speed = 1.0;
+  self->speak = TRUE;
   self->main = g_main_context_ref_thread_default ();
   self->settings = g_settings_new ("vibeos.Dictate");
   self->jobs = g_async_queue_new ();

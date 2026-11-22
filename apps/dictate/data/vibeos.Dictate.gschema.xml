@@ -27,6 +27,11 @@
       <default>1.0</default>
       <summary>How fast Agent speaks</summary>
     </key>
+    <key name="talk-speak" type="b">
+      <default>true</default>
+      <summary>Agent speaks its replies</summary>
+      <description>Off, the replies are only written: the speaker button in Agent's bar.</description>
+    </key>
     <key name="talk-listen-again" type="b">
       <default>true</default>
       <summary>Listen again after an answer</summary>

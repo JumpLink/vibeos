@@ -59,7 +59,7 @@ typedef struct {
   gboolean close_when_idle;     /* closed while listening: it closes once the last words are in */
   gboolean restart_when_idle;   /* the language changed while listening: listening goes on in the new one */
   /* Talk */
-  GtkWidget *title, *stack, *talk_scroller, *talk_list;
+  GtkWidget *title, *stack, *talk_scroller, *talk_list, *speak;
   DictateTalk *talk;
   gboolean talking;             /* Agent's window: the Talk page */
   GtkWidget *mine, *reply;      /* the bubbles being filled: what the user says, the model's answer */
@@ -750,6 +750,33 @@ action (const char *icon, const char *name, GCallback callback, Window *self)
   return button;
 }
 
+/* Agent's speaker: the replies spoken, or only written; kept in the settings */
+static void
+show_speak (Window *self)
+{
+  gboolean speak = dictate_talk_get_speak (self->talk);
+
+  gtk_image_set_from_icon_name (GTK_IMAGE (vibeos_pressable_get_child (VIBEOS_PRESSABLE (self->speak))),
+                                speak ? "dictate-speak-symbolic" : "dictate-speak-off-symbolic");
+  gtk_accessible_update_state (GTK_ACCESSIBLE (self->speak), GTK_ACCESSIBLE_STATE_PRESSED,
+                               speak ? GTK_ACCESSIBLE_TRISTATE_TRUE : GTK_ACCESSIBLE_TRISTATE_FALSE, -1);
+}
+
+static void
+on_speak (VibeosPressable *button, Window *self)
+{
+  gboolean speak = !dictate_talk_get_speak (self->talk);
+
+  g_settings_set_boolean (self->settings, "talk-speak", speak);
+  /* stopped by the user: it does not go on to listen on its own */
+  self->stopping_reply = TRUE;
+  dictate_talk_set_speak (self->talk, speak);
+  self->stopping_reply = FALSE;
+  show_speak (self);
+  vibeos_snackbar_show (self->snackbar, speak ? _("Replies are spoken") : _("Replies are only written"), NULL, NULL,
+                        NULL, VIBEOS_SNACKBAR_SHORT);
+}
+
 /* ⋮: About, VibeOS's About sheet, as every VibeOS app has it */
 static const VibeosAboutSection dictate_legal[] = {
   { "Moonshine", "English, German and Spanish are heard by <a href=\"https://github.com/moonshine-ai/moonshine\">"
@@ -763,12 +790,29 @@ static const VibeosAboutSection dictate_legal[] = {
 static const VibeosAboutInfo dictate_about = { .name = "Dictate", .icon_name = "vibeos.Dictate",
                                                .legal = dictate_legal };
 
+static const VibeosAboutSection agent_legal[] = {
+  { "Hearing", "What is said is heard on the phone: English, German and Spanish by "
+               "<a href=\"https://github.com/moonshine-ai/moonshine\">Moonshine</a> and its tiny streaming models (MIT "
+               "License), French, Italian and Russian by <a href=\"https://alphacephei.com/vosk/\">Vosk</a> and its "
+               "small models (Apache License 2.0), on Microsoft's ONNX Runtime (MIT)." },
+  { "Replies", "The replies are written by a language model on VibeOS's server, which the phone reaches with its "
+               "own device id, or by a GGUF model on the phone itself with "
+               "<a href=\"https://github.com/ggml-org/llama.cpp\">llama.cpp</a> (MIT License)." },
+  { "Voice", "The replies are spoken on the phone by a <a href=\"https://github.com/rhasspy/piper\">Piper</a> voice "
+             "(MIT License), its sounds from <a href=\"https://github.com/espeak-ng/espeak-ng\">eSpeak NG</a> (GNU "
+             "General Public License 3.0 or later), and the end of what is said is found by the "
+             "<a href=\"https://github.com/snakers4/silero-vad\">Silero VAD</a> (MIT License)." },
+  { NULL }
+};
+
+static const VibeosAboutInfo agent_about = { .name = "Agent", .icon_name = "vibeos.Agent", .legal = agent_legal };
+
 static void
 on_more (VibeosPressable *button, Window *self)
 {
   VibeosMenu *menu = vibeos_menu_new ();
 
-  vibeos_menu_append_about (menu, &dictate_about);
+  vibeos_menu_append_about (menu, self->talking ? &agent_about : &dictate_about);
   vibeos_menu_present (menu, GTK_WIDGET (button));
 }
 
@@ -1182,12 +1226,18 @@ dictate_window_new (GtkApplication *app, gboolean agent)
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->language), VIBEOS_RIPPLE_CIRCLE, 20);
   g_signal_connect (self->language, "clicked", G_CALLBACK (on_language), self);
   gtk_box_append (GTK_BOX (bar), self->language);
+  if (agent)
+    {
+      self->speak = action ("dictate-speak-symbolic", _("Speak the replies"), G_CALLBACK (on_speak), self);
+      gtk_box_append (GTK_BOX (bar), self->speak);
+    }
   self->copy = action ("dictate-copy-symbolic", _("Copy"), G_CALLBACK (on_copy), self);
   gtk_box_append (GTK_BOX (bar), self->copy);
   self->clear = action ("dictate-delete-symbolic", _("Clear"), G_CALLBACK (on_clear), self);
   gtk_box_append (GTK_BOX (bar), self->clear);
   {
-    GtkWidget *more = action ("view-more-symbolic", _("More options"), G_CALLBACK (on_more), self);
+    /* Material's ⋮, as the other actions' glyphs (Adwaita's view-more is a size larger beside them) */
+    GtkWidget *more = action ("dictate-more-symbolic", _("More options"), G_CALLBACK (on_more), self);
 
     gtk_widget_add_css_class (more, "dictate-bar-end");
     gtk_box_append (GTK_BOX (bar), more);
@@ -1291,6 +1341,8 @@ dictate_window_new (GtkApplication *app, gboolean agent)
       g_signal_connect (self->talk, "state-changed", G_CALLBACK (on_talk_state), self);
       g_signal_connect (self->talk, "error", G_CALLBACK (on_talk_error), self);
       dictate_talk_set_speed (self->talk, g_settings_get_double (self->settings, "talk-speed"));
+      dictate_talk_set_speak (self->talk, g_settings_get_boolean (self->settings, "talk-speak"));
+      show_speak (self);
     }
   g_signal_connect (self->window, "close-request", G_CALLBACK (on_close_request), self);
   g_signal_connect_swapped (vibeos_layout_get_for_window (GTK_WINDOW (self->window)), "changed",
