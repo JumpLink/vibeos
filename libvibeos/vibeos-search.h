@@ -42,6 +42,8 @@ const char *vibeos_search_view_get_text    (VibeosSearchView *self);
 void        vibeos_search_view_set_text    (VibeosSearchView *self, const char *text);
 /* over everything in `widget`'s window, fading in, the entry focused */
 void        vibeos_search_view_open        (VibeosSearchView *self, GtkWidget *widget);
+/* the same over `overlay` only: an app's pages beside its rail on a tablet, the rail staying beside the search */
+void        vibeos_search_view_open_in     (VibeosSearchView *self, GtkOverlay *overlay);
 /* fades out and leaves the window; emits "closed" */
 void        vibeos_search_view_close       (VibeosSearchView *self);
 

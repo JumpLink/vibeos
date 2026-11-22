@@ -367,6 +367,19 @@ vibeos_search_view_open (VibeosSearchView *self, GtkWidget *widget)
   GtkOverlay *overlay = vibeos_window_get_overlay (widget);
 
   g_return_if_fail (overlay != NULL);
+  vibeos_search_view_open_in (self, overlay);
+}
+
+void
+vibeos_search_view_open_in (VibeosSearchView *self, GtkOverlay *overlay)
+{
+  GtkWidget *parent = gtk_widget_get_parent (GTK_WIDGET (self));
+
+  g_return_if_fail (GTK_IS_OVERLAY (overlay));
+  /* held while it moves: still fading out of another overlay, it leaves that one first */
+  g_object_ref (self);
+  if (parent && parent != GTK_WIDGET (overlay))
+    gtk_overlay_remove_overlay (GTK_OVERLAY (parent), GTK_WIDGET (self));
 
   self->closing = FALSE;
   if (gtk_widget_get_parent (GTK_WIDGET (self)) != GTK_WIDGET (overlay))
@@ -377,6 +390,7 @@ vibeos_search_view_open (VibeosSearchView *self, GtkWidget *widget)
     }
   vibeos_anim_start (self->fade, self->opacity, 1, FADE_IN_MS, 0, SPONGY_LINEAR_OUT_SLOW_IN);
   gtk_widget_grab_focus (self->entry);
+  g_object_unref (self);
 }
 
 void
