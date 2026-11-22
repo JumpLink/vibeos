@@ -1,0 +1,2 @@
+option('maplibre_stage', type: 'string', value: '',
+       description: 'the stage directory maplibre/build-maplibre.sh made (lib/, include/, maplibre.*)')
