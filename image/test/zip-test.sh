@@ -16,21 +16,23 @@ T=$(cd "$(dirname "$0")/.." && pwd)
 [ ! -f "$T/local.conf" ] || . "$T/local.conf"
 O=${VIBEOS_OUT:?set VIBEOS_OUT (image/local.conf): the directory builds, work files and logs go to}
 W=$O/work/test
-R=$W/r
-D=$W/disk.img
+ID=${ZT_ID:-}	# ZT_ID=NAME: a run beside others, with a chroot copy, a disk and a work folder of its own
+R=$W/r${ID:+-$ID}
+D=$W/disk${ID:+-$ID}.img
 SYSZIP=$(realpath $1) DEVZIP=$2 PRE=$3; shift 3
 KEYS=
 while [ $# -gt 0 ] && [ "$1" != -- ]; do KEYS="$KEYS $1"; shift; done
 shift; DEVICE=${1:--}
 [ "$DEVZIP" = - ] || DEVZIP=$(realpath $DEVZIP)
 HOST=$W/s10e-part-x86static
-F=$W/t; rm -rf $F; mkdir -p $F
+F=$W/t${ID:+-$ID}; rm -rf $F; mkdir -p $F
+[ -z "$ID" ] || [ -d $R ] || { sudo -n rsync -a --exclude='/sideload/*' --exclude='/tmp/*' $W/r/ $R.new/ && sudo -n mv $R.new $R; } || exit 1
 FAILS=0
 ok() { echo "  ok: $*"; }
 bad() { echo "  FAIL: $*"; FAILS=$((FAILS + 1)); }
 L= WATCH=
 VTD=vtdata$$ VTM=vtmeta$$ VTT=vibeostest$$	# dm names of this run only
-inchroot() { sudo -n sh -c 'for p in /proc/[0-9]*; do case "$(readlink $p/root 2>/dev/null)" in '"$R"'*) echo ${p#/proc/} ;; esac; done'; }
+inchroot() { sudo -n sh -c 'for p in /proc/[0-9]*; do case "$(readlink $p/root 2>/dev/null)" in '"$R"'|'"$R"'/*) echo ${p#/proc/} ;; esac; done'; }
 cleanup() {
 	set +e
 	[ -n "$WATCH" ] && kill $WATCH 2>/dev/null

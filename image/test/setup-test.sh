@@ -56,6 +56,10 @@ grep -q "update-initramfs: Generating" "$W/setup.out" && bad "update-initramfs g
 ls "$M/boot" > "$W/boot-after.txt"
 cmp -s "$W/boot-after-payload.txt" "$W/boot-after.txt" && ok "/boot as the payload left it" || bad "/boot changed: $(diff "$W/boot-after-payload.txt" "$W/boot-after.txt" | tr '\n' ' ')"
 [ -z "$(ls -A "$M/var/lib/vibeos/device/debs")" ] && ok "debs moved to installed/" || bad "debs left in debs/"
+# the regulatory database these kernels accept: wireless-regdb's upstream-signed copy, chosen by hand
+RL=$(readlink "$M/etc/alternatives/regulatory.db" || true)
+[ "$RL" = /lib/firmware/regulatory.db-upstream ] && [ "$(head -n 1 "$M/var/lib/dpkg/alternatives/regulatory.db")" = manual ] &&
+	ok "regulatory.db -> $RL (manual)" || bad "regulatory.db -> $RL ($(head -n 1 "$M/var/lib/dpkg/alternatives/regulatory.db"))"
 grep -E -i "error|warning" "$W/setup.out" | grep -v -E "^$" | head -n 10 | sed 's/^/  (setup.out) /'
 echo "== $DEV: $F failures"
 [ $F = 0 ]

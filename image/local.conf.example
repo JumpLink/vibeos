@@ -44,11 +44,14 @@ POCO_STAGE=				# POCO X3 NFC: device stage
 POCO_K22_IMG=				# its 0.1.1 ROM image (the ESP is read from it)
 POCO_K22_ZIP=				# its 0.1.1 ROM zip (recovery-uboot.img)
 S5E_STAGE=				# Galaxy Tab S5e: device stage
-S5E_TABK=				# the tablet's recovery backup, linux-k11-uc.img and later device files
+S5E_TABK=				# the tablet's recovery backup, linux-k11-uc.img, its kernel Image-uc.gz, repack-v2.py
+					# (rewrites a boot image v2 with a new ramdisk) and later device files
 S5E_MODULES=				# its kernel build's modules_install tree (lib/modules)
 S5E_KIT_TOOLS=				# extents, keepmisc and dmlinear (static aarch64 helpers)
 S20_DIR=				# Galaxy S20 FE: its kit (build/, kit/rootfs, kit/modem, quietboot/rootfs)
 S20_SLEEP=				# its sleep helper sources
+# SYSIMG=				# the system image whose upstream-signed regulatory.db goes into the initramfs of a
+					# kernel with cfg80211 built in (default: OUT/system/rootfs.img)
 
 # ---- test/zip-test.sh, test/setup-test.sh
 # UP_PARAM_IMG=				# a copy of an S10e's up_param (default: a stand-in tar)

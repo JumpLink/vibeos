@@ -67,7 +67,49 @@ repack() {
 	dpkg-deb --root-owner-group -Zxz -b "$R" "$W/debs/${1}_$(sed -n 's/^Version: //p' "$R/DEBIAN/control" | sed 's/^[0-9]*://')_all.deb" > /dev/null
 	rm -rf "${R:?}" "$R.files"
 }
-DEPS= DESC= KVER= POSTINST_EXTRA= POSTINST_SH=
+# Wi-Fi's regulatory database. cfg80211 checks regulatory.db against the signers built into the kernel. These
+# kernels have the upstream signers only (sforshee, wens), and Debian's wireless-regdb defaults to its own re-signed
+# copy (regulatory.db-debian, see its README.Debian), so the postinst selects regulatory.db-upstream. A cfg80211
+# built into the kernel asks for the database once, at late_initcall, before any root is mounted, and never again by
+# itself (dmesg "failed to load regulatory.db", then the world domain, whatever cfg80211.ieee80211_regdom says):
+# that kernel's initramfs must carry it. regdb_cpio makes $W/regdb.cpio, a newc archive of lib/firmware/regulatory.db
+# and .p7s (the system image's upstream-signed pair, checked against wireless-regdb's md5sums); regdb_append FILE
+# adds it to an initramfs after zeros to a 4-byte boundary, where the kernel looks for the next archive (it
+# unpacks concatenated archives, compressed or not, one after another).
+SYSIMG=${SYSIMG:-$O/system/rootfs.img}
+signers() {	# FILE: the wireless-regdb signers a cfg80211.ko[.zst|.xz] or a kernel Image (raw or .gz) trusts
+	case $1 in *.zst) zstd -dcq "$1" ;; *.xz) xz -dc "$1" ;; *.gz) gzip -dc "$1" ;; *) cat "$1" ;; esac > "$W/signers.bin"
+	if grep -aq 'benh@debian.org' "$W/signers.bin"; then echo debian
+	elif grep -aq -e sforshee -e wens "$W/signers.bin"; then echo upstream
+	else echo none; fi
+	rm -f "$W/signers.bin"
+}
+regdb_cpio() {
+	RG=$W/regdb; rm -rf "$RG"; mkdir -p "$RG/lib/firmware"
+	[ -s "$SYSIMG" ] || { echo "no $SYSIMG (the system image, for its wireless-regdb)" >&2; exit 1; }
+	debugfs -R "cat /var/lib/dpkg/info/wireless-regdb.md5sums" "$SYSIMG" 2> /dev/null > "$RG.md5"
+	RV=$(debugfs -R "cat /var/lib/dpkg/status" "$SYSIMG" 2> /dev/null | awk '/^Package: wireless-regdb$/ {f = 1} f && /^Version:/ {print $2; exit}')
+	for f in regulatory.db regulatory.db.p7s; do
+		debugfs -R "dump /usr/lib/firmware/$f-upstream $RG/lib/firmware/$f" "$SYSIMG" 2> /dev/null
+		m=$(awk -v p="usr/lib/firmware/$f-upstream" '$2 == p {print $1}' "$RG.md5")
+		[ -n "$m" ] && [ "$(md5sum < "$RG/lib/firmware/$f" | cut -d' ' -f1)" = "$m" ] || { echo "$f-upstream: not wireless-regdb's" >&2; exit 1; }
+		echo "initramfs: lib/firmware/$f = /usr/lib/firmware/$f-upstream of wireless-regdb $RV $(sha256sum < "$RG/lib/firmware/$f" | cut -c1-16) $SYSIMG" >> "$L/firmware.txt"
+	done
+	chmod 755 "$RG/lib/firmware"; chmod 644 "$RG/lib/firmware/regulatory.db" "$RG/lib/firmware/regulatory.db.p7s"
+	touch -d @0 "$RG/lib/firmware/regulatory.db" "$RG/lib/firmware/regulatory.db.p7s" "$RG/lib/firmware"
+	(cd "$RG" && printf '%s\n' lib/firmware lib/firmware/regulatory.db lib/firmware/regulatory.db.p7s |
+		cpio -o -H newc -R 0:0 --reproducible --quiet) > "$W/regdb.cpio"
+	rm -rf "${RG:?}" "$RG.md5"
+}
+regdb_append() {
+	[ -s "$W/regdb.cpio" ] || regdb_cpio
+	n=$(stat -c %s "$1")
+	head -c $(((4 - n % 4) % 4)) /dev/zero >> "$1"
+	cat "$W/regdb.cpio" >> "$1"
+	log "initramfs $(basename "$1"): regulatory.db and .p7s appended (at byte $n, padded to $(((n + 3) / 4 * 4)))"
+	REGDB_RD=done
+}
+DEPS= DESC= KVER= POSTINST_EXTRA= POSTINST_SH= REGDB_KERNEL= REGDB_RD=
 
 case $DEV in
 s10e)
@@ -81,6 +123,8 @@ s10e)
 	KVER=7.2.15-s10e
 	depmod -b "$P/usr" $KVER 2>> "$L/depmod.txt"
 	cp "$P/boot/s10e/Image" "$P/boot/s10e/Image.prev"		# U-Boot's second menu entry
+	REGDB_KERNEL=$P/boot/s10e/Image
+	regdb_append "$P/boot/s10e/initramfs.cpio.gz"	# both entries' initramfs (U-Boot passes its file size)
 	sed -i 's| dyndbg="[^"]*"||' "$P/boot/s10e/bootargs.env"
 	# Samsung's firmware from the vendor partition (audio DSP, Wi-Fi, Bluetooth, the video codec): what
 	# s10e-firstboot copies on a first boot, bundled here (11-21). Source: a root copy of our S10e (s10e-firstboot's
@@ -116,6 +160,27 @@ poco)
 	KIMG=${POCO_K22_IMG:?set POCO_K22_IMG}
 	[ -d "$KR/usr/lib/modules/7.2.15-surya" ] || { echo "mount the k22 root at $KR first" >&2; exit 1; }
 	(cd "$ST/root" && tar -cf - .) | tar -C "$P" -xpf - --no-same-owner
+	# The stage's /var/lib/hexagonrpc/surya/persist is our POCO's own sensor registry (copied from its persist
+	# partition on 10-05, then written by its ADSP: calibration among it): never shipped. The directory goes in
+	# empty. On the first boot the postinst seeds it from the registry the payload ships anyway (sensors/registry:
+	# Nura's qcom-sm7150 set, byte for byte, as are the 46 sensors/config files) and gives it to fastrpc (made by
+	# hexagonrpcd's sysusers.d), the user hexagonrpcd-adsp-sensorspd runs as. Its hexagonrpcd (the PR#27 build)
+	# serves sensors/persist, a link to it, read-write; the ADSP crash-loops (audio too) when its registry cannot be
+	# written.
+	SR=usr/share/qcom/sm7150/Xiaomi/surya/sensors
+	rm -rf "${P:?}/var/lib/hexagonrpc/surya/persist" && install -d -m 755 "$P/var/lib/hexagonrpc/surya/persist" || exit 1
+	[ "$(readlink "$P/$SR/persist")" = /var/lib/hexagonrpc/surya/persist ] || { echo "$SR/persist: not the link to the state" >&2; exit 1; }
+	[ "$(ls "$P/$SR/registry" | wc -l)" -gt 100 ] && [ "$(ls "$P/$SR/config" | wc -l)" -gt 10 ] || { echo "no sensor registry or config in $SR" >&2; exit 1; }
+	[ -z "$(find "$P/var" -mindepth 1 ! -type d | head -n 1)" ] || { echo "state left in the stage's /var: $(find "$P/var" -mindepth 1 ! -type d | head -n 3 | tr '\n' ' ')" >&2; exit 1; }
+	# the UCM file's header named the build machine's kernel tree; it names the kernel instead
+	sed -i 's|^# /home/[^ ]*/surya-kernel:$|# the POCO kernel (7.2.15-surya):|' "$P/usr/share/alsa/ucm2/Xiaomi/surya/HiFi.conf"
+	grep -q '^# the POCO kernel (7.2.15-surya):$' "$P/usr/share/alsa/ucm2/Xiaomi/surya/HiFi.conf" || { echo "HiFi.conf: header not changed" >&2; exit 1; }
+	POSTINST_SH='# the sensor registry: a copy the ADSP may write, seeded once from the shipped one, never replaced
+	S=/var/lib/hexagonrpc/surya/persist
+	if getent passwd fastrpc > /dev/null; then
+		[ -n "$(ls -A $S 2> /dev/null)" ] || { mkdir -p $S/registry && cp -a /usr/share/qcom/sm7150/Xiaomi/surya/sensors/registry/. $S/registry/; }
+		chown -R fastrpc:fastrpc $S
+	fi'
 	KVER=7.2.15-surya
 	rm -rf "$P/usr/lib/modules"; modules $KVER "$KR/usr/lib/modules"
 	# the files the k22 root's packages do not own under the stage's firmware are the stage's own (PAYLOAD);
@@ -217,8 +282,29 @@ s5e)
 	B=$TK/recovery-partition-before-k11-20261119.img
 	[ "$(sha256sum < "$B" | cut -c1-16)" = 0ae284819ec38554 ] || { echo "$B: not the 11-19 recovery backup" >&2; exit 1; }
 	[ "$(sha256sum < "$TK/linux-k11-uc.img" | cut -c1-16)" = e57e083136ad5cb8 ] || { echo "linux-k11-uc.img: not e57e0831" >&2; exit 1; }
+	# the slot image with regulatory.db in its ramdisk (cfg80211 is built in): its kernel must be tabk/Image-uc.gz,
+	# and the kit's repack-v2.py must give the image back byte for byte before it changes the ramdisk
+	SL=$W/slot; mkdir -p "$SL"
+	python3 -I - "$TK/linux-k11-uc.img" "$SL" <<'EOF'
+import struct, sys
+b = open(sys.argv[1], 'rb').read()
+assert b[:8] == b'ANDROID!'
+ks, ka, rs = struct.unpack_from('<III', b, 8)
+ps, = struct.unpack_from('<I', b, 36)
+o = ps + -(-ks // ps) * ps
+open(sys.argv[2] + '/kernel', 'wb').write(b[ps:ps + ks])
+open(sys.argv[2] + '/ramdisk', 'wb').write(b[o:o + rs])
+EOF
+	cmp -s "$SL/kernel" "$TK/Image-uc.gz" || { echo "linux-k11-uc.img: its kernel is not tabk/Image-uc.gz" >&2; exit 1; }
+	python3 -I "$TK/repack-v2.py" "$TK/linux-k11-uc.img" "$SL/same.img" && cmp -s "$SL/same.img" "$TK/linux-k11-uc.img" ||
+		{ echo "repack-v2.py does not give linux-k11-uc.img back" >&2; exit 1; }
+	REGDB_KERNEL=$TK/Image-uc.gz
+	regdb_append "$SL/ramdisk"
+	python3 -I "$TK/repack-v2.py" "$TK/linux-k11-uc.img" "$SL/linux-k11-uc-regdb.img" --ramdisk "$SL/ramdisk"
 	head -c $((34 * 1048576)) "$B" > "$W/boot/recovery.img"
-	cat "$TK/linux-k11-uc.img" >> "$W/boot/recovery.img"
+	cat "$SL/linux-k11-uc-regdb.img" >> "$W/boot/recovery.img"
+	log "recovery.img: linux-k11-uc.img with regulatory.db in its ramdisk ($(sha256sum < "$SL/linux-k11-uc-regdb.img" | cut -c1-16))"
+	rm -rf "${SL:?}"
 	[ $(stat -c %s "$W/boot/recovery.img") -le $((72744960 - 524288)) ] || { echo "recovery.img does not leave 512 KiB for the extents" >&2; exit 1; }
 	cp "${S5E_KIT_TOOLS:?set S5E_KIT_TOOLS}/extents" "$S5E_KIT_TOOLS/keepmisc" "$S5E_KIT_TOOLS/dmlinear" "$W/boot/"
 	DESC="Galaxy Tab S5e (gts4lv): kernel 7.2.15-gts4lv-uc modules (the kernel is in the recovery partition behind U-Boot), the tablet's firmware, modem, audio, touch, power key, USB/OTG, sensors and boot settings"
@@ -231,6 +317,7 @@ s20)
 	G=${S20_DIR:?set S20_DIR}
 	KVER=7.2.15-r8s+
 	[ "$(sha256sum < "$G/build/arch/arm64/boot/Image" | cut -c1-16)" = beedd01959941df2 ] || { echo "build/ Image is not #51" >&2; exit 1; }
+	REGDB_KERNEL=$G/build/arch/arm64/boot/Image
 	MS=$W/modstage/lib/modules/$KVER
 	mkdir -p "$MS"
 	while read -r o; do
@@ -261,6 +348,28 @@ s20)
 *) echo "unknown device $DEV" >&2; exit 1 ;;
 esac
 
+# the regulatory database (see regdb_cpio): the signers this kernel's cfg80211 trusts, and a built-in cfg80211 must
+# have its initramfs carry the database. The S20's initramfs is built into its kernel (BOOT 4a82c5e3, not rebuilt
+# here): it boots in the world domain until a kernel with CONFIG_EXTRA_FIRMWARE or a ramdisk in its FIT
+CF=$(find "$P/usr/lib/modules/$KVER" -name 'cfg80211.ko*' | head -n 1)
+if grep -Eq '(^|/)net/wireless/cfg80211\.ko$' "$P/usr/lib/modules/$KVER/modules.builtin"; then
+	RB=built-in; RK=$REGDB_KERNEL
+	[ -n "$RK" ] || { echo "cfg80211 is built in: no REGDB_KERNEL for $DEV" >&2; exit 1; }
+else
+	RB=module; RK=$CF
+	[ -n "$RK" ] || { echo "no cfg80211.ko for $KVER" >&2; exit 1; }
+fi
+RS=$(signers "$RK")
+[ "$RS" = upstream ] || { echo "cfg80211 ($RB) trusts the $RS signers: the postinst assumes the upstream ones only" >&2; exit 1; }
+log "cfg80211: $RB, trusts the upstream wireless-regdb signers: the postinst selects regulatory.db-upstream"
+if [ $RB = built-in ] && [ "$REGDB_RD" != done ]; then
+	[ $DEV = s20 ] || { echo "cfg80211 is built in, and no initramfs got regulatory.db" >&2; exit 1; }
+	log "NOTE: cfg80211 is built in, and the S20's initramfs is inside its kernel: no regulatory.db at boot (the world domain)"
+fi
+REGDB_SH='# Wi-Fi: this kernel trusts the upstream wireless-regdb signers only, not Debian'"'"'s re-signed copy
+	if [ -e /lib/firmware/regulatory.db-upstream ]; then
+		update-alternatives --set regulatory.db /lib/firmware/regulatory.db-upstream || true
+	fi'
 # a file both this package and a firmware package of debs/ ship would stop dpkg on the first boot ("trying to
 # overwrite"): the firmware package keeps it, when the two are the same bytes (a stage copy of a packaged file)
 for f in "$W"/debs/firmware-*.deb; do
@@ -305,6 +414,7 @@ if [ "\$1" = configure ]; then
 	done
 	depmod -a $KVER || true
 	$POSTINST_SH
+	$REGDB_SH
 	glib-compile-schemas /usr/share/glib-2.0/schemas 2>/dev/null || true
 fi
 exit 0
@@ -387,14 +497,25 @@ if [ -s "$L/diverted.txt" ] || [ $DEV = poco ]; then
 		[ $DEV != poco ] || printf '\tdpkg-divert --package vibeos-device-poco --local --rename --divert /etc/kernel/zz-qcom-bootimg.off --add /etc/kernel/postinst.d/zz-qcom-bootimg > /dev/null\n'
 		printf 'fi\nexit 0\n'
 	} > "$P/DEBIAN/preinst"
-	{
-		printf '#!/bin/sh\nset -e\nif [ "$1" = remove ] || [ "$1" = abort-install ]; then\n'
-		dv remove
-		printf '\t:\nfi\nexit 0\n'
-	} > "$P/DEBIAN/postrm"
-	chmod 755 "$P/DEBIAN/preinst" "$P/DEBIAN/postrm"
-	sh -n "$P/DEBIAN/preinst" && sh -n "$P/DEBIAN/postrm"
+	chmod 755 "$P/DEBIAN/preinst"
+	sh -n "$P/DEBIAN/preinst"
 fi
+{
+	printf '#!/bin/sh\nset -e\nif [ "$1" = remove ] || [ "$1" = abort-install ]; then\n'
+	dv remove
+	printf '\t:\nfi\n'
+	# Debian's choice of wireless-regdb again
+	printf 'if [ "$1" = remove ] || [ "$1" = purge ]; then\n\tupdate-alternatives --auto regulatory.db 2> /dev/null || true\nfi\nexit 0\n'
+} > "$P/DEBIAN/postrm"
+chmod 755 "$P/DEBIAN/postrm"
+sh -n "$P/DEBIAN/postrm" && sh -n "$P/DEBIAN/postinst"
+# no build machine in a text file: its host name, or the home directory of one of its users (a vendor's own path,
+# such as the /home/qca_main/ in Qualcomm's firmware notices, is not this machine's)
+H=$(hostname -s)
+if grep -rIlwi -e "$H" "$P" | grep .; then echo "the build host's name is in these files" >&2; exit 1; fi
+for u in $(ls /home); do
+	if grep -rIlF "/home/$u/" "$P" | grep .; then echo "this machine's /home/$u is in these files" >&2; exit 1; fi
+done
 # no forbidden content (FORBID), and no identifiers baked in
 if for w in $FORBID; do find "$P" -iname "*$w*"; done | grep .; then echo "forbidden files in the payload" >&2; exit 1; fi
 D=$W/debs/vibeos-device-${DEV}_${V}_arm64.deb

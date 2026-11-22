@@ -12,7 +12,9 @@ T=$(cd "$(dirname "$0")" && pwd)
 O=${VIBEOS_OUT:?set VIBEOS_OUT (image/local.conf): the directory builds, work files and logs go to}
 FORBID="gsm2sip waydroid ${FORBID_EXTRA:-}"	# never in an image: these package and file names
 Z=$T/zip
-# STRICT=1: only the exact binaries the 0.1.3 zips have (LineageOS 22.2's update-binary 3748b295, vibeos-part fe0cd129)
+# STRICT=1: only the exact binaries the 0.1.3 zips have (LineageOS 22.2's update-binary 3748b295, vibeos-part ead00bed:
+# make -C src with Debian's aarch64-linux-gnu-gcc 14.2.0; the same build of 1370fac's s10e-part.c gives fe0cd129, the
+# first 0.1.3 system zip's)
 same() {	# FILE SUM16 WHAT
 	[ "$(sha256sum < "$1" | cut -c1-16)" = "$2" ] && return 0
 	[ -z "${STRICT:-}" ] || { echo "$3 is not the 0.1.3 zips' ($2)" >&2; exit 1; }
@@ -32,11 +34,11 @@ system)
 	[ -s "$S/rootfs.img" ] || { echo "no $S/rootfs.img" >&2; exit 1; }
 	cp "$Z/system-install.sh" "$W/install.sh"
 	cp "$Z/system/updater-script" "$W/META-INF/com/google/android/updater-script"
-	# the kits' GPT tool (s10e-part = poco-part fe0cd129: the r7 and 0.1.1 zips' binary), from src/ (make -C src)
+	# the GPT tool, from src/ (make -C src)
 	VP=${VIBEOS_PART:-$T/src/s10e-part}
 	[ -s "$VP" ] || { echo "no $VP: make -C image/src" >&2; exit 1; }
 	cp "$VP" "$W/vibeos-part"
-	same "$W/vibeos-part" fe0cd129c637a8f0 vibeos-part
+	same "$W/vibeos-part" ead00bed84ff82f5 vibeos-part
 	# rootfs.img in parts of CHUNK_MB (1 GiB): LineageOS's updater cannot extract an entry of 4 GiB or more (32-bit
 	# ZipEntry), and the image is bigger than that. install.sh chunks maps each part's place; the updater writes it
 	CB=$((${CHUNK_MB:-1024} * 1048576))

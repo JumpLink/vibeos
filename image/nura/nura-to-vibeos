@@ -40,7 +40,7 @@ HERE = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, os.path.join(HERE, 'lib'))
 import apkdb, bootimg, cpio, debfetch, debver, extract  # noqa: E402
 
-VERSION = '0.1.3-nura1'
+VERSION = '0.1.3-nura3'
 EPOCH = 1795262400  # 2026-11-21 12:00 UTC, as the 0.1.3 zips: every timestamp in the zip
 UA = {'User-Agent': 'nura-to-vibeos/0.1'}
 
@@ -408,6 +408,29 @@ def plan_boot(nura, args, row):
     if h['dtb']:
         r['dtb_section'] = h['dtb']
     return r
+
+
+# cfg80211 checks /lib/firmware/regulatory.db against the signers built into it. A kernel not built by Debian has the
+# upstream wireless-regdb signers only, and Debian's wireless-regdb defaults to its own re-signed copy
+# (regulatory.db-debian, README.Debian): such a kernel needs the system's regulatory.db-upstream
+REGDB_UPSTREAM = (b'sforshee', b'wens')
+REGDB_DEBIAN = b'benh@debian.org'
+
+
+def regdb_signers(moddir, image):
+    """'upstream', 'debian' or 'none' (cfg80211 names no signer), or None when there is no cfg80211"""
+    body = None
+    for rel, st in extract.walk(moddir):
+        if re.search(r'(^|/)cfg80211\.ko(\.\w+)?$', rel) and stat.S_ISREG(st.st_mode):
+            body = unzst(extract.read_nofollow(os.path.join(moddir, rel)))
+            break
+    if body is None and image and b'regulatory.db' in image:
+        body = image  # built in
+    if body is None:
+        return None
+    if REGDB_DEBIAN in body:
+        return 'debian'
+    return 'upstream' if any(k in body for k in REGDB_UPSTREAM) else 'none'
 
 
 # ---------------------------------------------------------------- modules
@@ -810,7 +833,7 @@ def debian_debs(nura, args, out_dir, system):
     return ok, dropped, gaps, [w for w in want if w not in {g[0] for g in got}]
 
 
-def write_deb(P, name, ver, desc, kver, mask, depends, out, enable=()):
+def write_deb(P, name, ver, desc, kver, mask, depends, out, enable=(), regdb_upstream=False):
     os.makedirs(os.path.join(P, 'DEBIAN'), exist_ok=True)
     hwdb = any(r.startswith(('usr/lib/udev/hwdb.d', 'etc/udev/hwdb.d')) for r, _ in extract.walk(P))
     with open(os.path.join(P, 'DEBIAN/control'), 'w') as f:
@@ -826,12 +849,19 @@ def write_deb(P, name, ver, desc, kver, mask, depends, out, enable=()):
                 '\t\tcp /usr/share/vibeos-device/hostname /etc/hostname\n'
                 '\t\tsed -i "s/^127\\.0\\.1\\.1[[:space:]].*/127.0.1.1\\t$(cat /etc/hostname)/" /etc/hosts\n'
                 '\t\tcp /usr/share/vibeos-device/machine-info /etc/machine-info\n\tfi\n'
-                '\tdepmod -a %s || true\n%s%s'
+                '\tdepmod -a %s || true\n%s%s%s'
                 '\tglib-compile-schemas /usr/share/glib-2.0/schemas 2>/dev/null || true\nfi\nexit 0\n'
                 % (kver, '\tsystemd-hwdb update || true\n' if hwdb else '',
                    ''.join('\tsystemctl %senable %s 2>/dev/null || true\n' % ('--global ' if u.startswith('--user ') else '',
-                                                                           u.split()[-1]) for u in enable)))
+                                                                           u.split()[-1]) for u in enable),
+                   REGDB_POSTINST if regdb_upstream else ''))
     os.chmod(os.path.join(P, 'DEBIAN/postinst'), 0o755)
+    if regdb_upstream:
+        with open(os.path.join(P, 'DEBIAN/postrm'), 'w') as f:
+            f.write('#!/bin/sh\nset -e\nif [ "$1" = remove ] || [ "$1" = purge ]; then\n'
+                    '\t# back to Debian\'s choice of wireless-regdb\n'
+                    '\tupdate-alternatives --auto regulatory.db 2>/dev/null || true\nfi\nexit 0\n')
+        os.chmod(os.path.join(P, 'DEBIAN/postrm'), 0o755)
     # directories 755, files 644 or 755, owned by root in the package
     for r, ds, fs in os.walk(P):
         for d in ds:
@@ -840,6 +870,11 @@ def write_deb(P, name, ver, desc, kver, mask, depends, out, enable=()):
                 os.chmod(p, 0o755)
     # mtimes clamped (SOURCE_DATE_EPOCH): the same inputs make the same zip
     run(['dpkg-deb', '--root-owner-group', '-Zzstd', '-z9', '-b', P, out], env=dict(os.environ, SOURCE_DATE_EPOCH=str(EPOCH)))
+
+
+REGDB_POSTINST = ('\t# the kernel trusts the upstream wireless-regdb signers only (cfg80211), not Debian\'s\n'
+                  '\tif [ -e /lib/firmware/regulatory.db-upstream ]; then\n'
+                  '\t\tupdate-alternatives --set regulatory.db /lib/firmware/regulatory.db-upstream || true\n\tfi\n')
 
 
 def payload_tar(debs_to_unpack, x, out):
@@ -1083,12 +1118,23 @@ def convert(args, out, srcs, url, stamp, tmpw, t0):
     log('Debian packages for the first boot')
     ok, ddropped, gaps, missing = debian_debs(nura, args, debsdir, system)
     pkgname = 'vibeos-device-nura-%s' % dev
-    pver = '0.1.3+nura%s' % stamp.replace('-', '.')
+    # the converter's revision too: a later converter's package for the same Nura build is a newer version
+    pver = '0.1.3+nura%s-%s' % (stamp.replace('-', '.'), VERSION.rsplit('nura', 1)[1])
     desc = '%s (%s): Nura\'s kernel %s modules, %d firmware files, the device\'s settings' % (
         nura.di.get('name', dev), dev, kver, nfw)
     deb = os.path.join(debsdir, '%s_%s_arm64.deb' % (pkgname, pver))
     log('  %s' % os.path.basename(deb))
-    write_deb(P, pkgname, pver, desc, kver, mask, [n for n, *_ in ok], deb, getattr(nura, 'enable_units', []))
+    regdb = regdb_signers(moddir, plan.get('image'))
+    if '/usr/lib/firmware/regulatory.db' not in sysfiles:
+        regdb = None  # no wireless-regdb in the system image: Nura's database, if any, is in the payload
+    for n_, v_, *_ in ok:
+        if n_ == 'hexagonrpcd' and v_.startswith('0.4.'):
+            nura.notes.append('hexagonrpcd %s is Debian\'s. On the POCO X3 NFC that version refused the DSP\'s '
+                              'sensor-registry writes, and the DSP restarted over and over with the sensors and the '
+                              'audio off (the POCO runs a newer hexagonrpcd and a writable copy of the registry). '
+                              'Not checked on this phone.' % v_)
+    write_deb(P, pkgname, pver, desc, kver, mask, [n for n, *_ in ok], deb, getattr(nura, 'enable_units', []),
+              regdb == 'upstream')
     # forbidden content, as build-device.sh refuses it
     for rel, st in extract.walk(P):
         if re.search('|'.join(['gsm2sip', 'waydroid'] + os.environ.get('FORBID_EXTRA', '').split()), rel, re.I):
@@ -1172,6 +1218,12 @@ def convert(args, out, srcs, url, stamp, tmpw, t0):
     R.append('kernel modules: %d (vermagic %s, all checked)' % (nmod, kver))
     R.append('firmware files: %d (postmarketos/ moved to the kernel\'s updates/)' % nfw)
     R.append('device package: %s %s' % (pkgname, pver))
+    R.append('wireless-regdb: %s' % {
+        'upstream': 'the system\'s; the kernel\'s cfg80211 trusts the upstream signers only, so the postinst selects '
+                    'regulatory.db-upstream (Debian\'s default is its own re-signed copy)',
+        'debian': 'the system\'s default; the kernel trusts Debian\'s signer',
+        'none': 'the system\'s default; the kernel\'s cfg80211 names no signer',
+        None: 'not the system\'s (no cfg80211, or no wireless-regdb in the system image)'}[regdb])
     R.append('Debian packages for the first boot: %s' % (', '.join('%s %s' % (n_, v_) for n_, v_, *_ in ok) or '-'))
     for n_, miss in ddropped:
         R.append('  LEFT OUT %s: dependencies not in the system image: %s' % (n_, ', '.join(miss)))
