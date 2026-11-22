@@ -207,8 +207,8 @@ window.ns-window button.vibeos-text-button:active {
   background-color: alpha(@vibeos_primary, 0.10);
 }
 
-/* an app's page: Uninstall, full width under the last card */
-window.ns-window button.ns-uninstall {
+/* full width under the last card: an app's Uninstall, its storage's Clear cache */
+window.ns-window button.ns-wide {
   margin: 8dp 16dp 24dp 16dp;
   min-height: 48dp;
 }

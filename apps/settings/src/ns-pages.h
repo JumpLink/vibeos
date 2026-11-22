@@ -43,6 +43,12 @@ void ns_page_app (const char *id);
 /* the same as a page function: `id` is the app's desktop file id */
 void ns_page_app_row (GtkWidget *row, gpointer id);
 
+/* ns-perms.c: an app's permissions. The row on the app's page (`owner`, which keeps what the row shows): what a
+ * sandboxed app is allowed, opening App permissions; for any other app, that it is not sandboxed */
+void ns_app_permissions_row (GtkWidget *group, GAppInfo *app, GtkWidget *owner);
+/* reads them again (the app's page is on top again) */
+void ns_app_permissions_refresh (GtkWidget *owner);
+
 /* ns-shell.c: the lock screen (VibeOS's keyguard), the on-screen keyboard (GNOME Shell's) */
 void ns_page_lock_screen (GtkWidget *row, gpointer data);
 void ns_page_keyboard (GtkWidget *row, gpointer data);
