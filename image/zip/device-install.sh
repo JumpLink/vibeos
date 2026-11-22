@@ -74,7 +74,7 @@ install)
 	fail() { cd /; umount -D $ROOT; close_root; die "$@"; }
 	[ -s $ROOT/etc/vibeos/system-image ] || fail "this is not a VibeOS system"
 	say "  kernel modules, firmware, device settings"
-	tar -C $ROOT -xf $T-payload.tar || fail "cannot unpack the device files"
+	unpack $T-payload.tar $ROOT || fail "cannot unpack the device files"
 	D=$ROOT/var/lib/vibeos/device
 	rm -rf $D/debs
 	mkdir -p $D/debs || fail "cannot create /var/lib/vibeos/device"
