@@ -236,3 +236,20 @@ check() {
 	blockdev --flushbufs "$1" 2>/dev/null
 	[ "$(head -c $4 "$1" | sha256sum | cut -d' ' -f1)" = "$5" ] || die "$2 was not written correctly to $1"
 }
+# wipe_ends DEV: the first and last MiB of DEV zeroed and its cached blocks dropped, before a root goes there. What
+# was there before must not outlive the install: postmarketOS flashes userdata with a disk image (a GPT of boot +
+# root), and a OnePlus 6T installed "whole" over it kept that GPT at blocks 1-2 and its backup in the last block;
+# the initramfs then took the partition for one carrying its own GPT and could not find the root
+wipe_ends() {
+	nb=$(blocks4k "$1")
+	[ $nb -gt 512 ] || die "$1 is too small for a root"
+	dd if=/dev/zero of="$1" bs=4096 count=256 conv=notrunc 2>/dev/null &&
+		dd if=/dev/zero of="$1" bs=4096 seek=$((nb - 256)) count=256 conv=notrunc 2>/dev/null ||
+		die "cannot clear the start and end of $1"
+	sync
+	blockdev --flushbufs "$1" 2>/dev/null
+	for ss in 4096 512; do
+		[ "$(dd if="$1" bs=$ss skip=1 count=1 2>/dev/null | head -c 8)" != "EFI PART" ] ||
+			die "$1 still carries a GPT after clearing it"
+	done
+}
