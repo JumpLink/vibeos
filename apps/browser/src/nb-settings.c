@@ -342,7 +342,8 @@ nb_settings_page_new (NbTab *t)
   gtk_box_append (GTK_BOX (content), list);
 
   s->scroll = spongy_scroll_view_new ();
-  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (s->scroll), content);
+  /* on a tablet the rows are a column in the middle */
+  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (s->scroll), vibeos_clamp_new (content, VIBEOS_CLAMP_SETTINGS));
   gtk_overlay_set_child (GTK_OVERLAY (s->page), s->scroll);
   GtkAdjustment *adj = spongy_scroll_view_get_vadjustment (SPONGY_SCROLL_VIEW (s->scroll));
   g_signal_connect (adj, "value-changed", G_CALLBACK (on_scrolled), s);

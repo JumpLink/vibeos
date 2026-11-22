@@ -87,6 +87,7 @@ typedef struct {
   char     *unprocessed;
   GBytes   *eval_state;
   gboolean  inverse;
+  gboolean  history;      /* the history was open (or opening) */
 } SavedState;
 
 #define CALC_TYPE_MAIN (calc_main_get_type ())
@@ -1606,6 +1607,7 @@ save_instance_state (CalcMain *self, SavedState *saved)
   saved->unprocessed = g_strdup (self->unprocessed);
   saved->eval_state = evaluator_save_state (self->evaluator);
   saved->inverse = self->inverse_mode;
+  saved->history = self->history && self->progress >= 0.5;
 }
 
 static void
@@ -1662,6 +1664,9 @@ rebuild_idle (gpointer data)
   build (self, width > height, tablet);
   restore_instance_state (self, &saved);
   restore_display (self);
+  /* turned with the history open: it is open again, at once */
+  if (saved.history)
+    set_progress (self, 1);
   gtk_widget_queue_allocate (GTK_WIDGET (self));
   return G_SOURCE_REMOVE;
 }

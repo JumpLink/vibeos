@@ -17,7 +17,8 @@
 #define CITY_ANALOG      56     /* a city card's analog clock: its square less the padding at its start */
 #define PHONE_LINE       14     /* the date and the next alarm, sp */
 #define TABLET_LINE      18
-#define LEFT_PANE        550    /* a tablet held sideways: the main clock in a pane this wide, the cities beside it */
+#define LEFT_PANE        550    /* a tablet held sideways: the main clock in a pane this wide (at most), the cities
+                                 * beside it */
 
 /* one world clock: a city's card, or Home's */
 typedef struct
@@ -441,6 +442,52 @@ clock_page_unmap (GtkWidget *widget)
   GTK_WIDGET_CLASS (clock_page_parent_class)->unmap (widget);
 }
 
+/* The row of the left pane and the list. Sideways on a tablet the pane is LEFT_PANE wide where the row has room for
+ * it and the list's minimum beside it, and narrower (down to its own minimum) where it has not. The row asks for no
+ * more than the two minimums: a LEFT_PANE minimum made the window too wide to turn upright (mutter keeps a maximized
+ * window at its size when its minimum is wider than the monitor, so it never got the upright size) */
+static void
+row_measure (GtkWidget *row, GtkOrientation orientation, int for_size, int *minimum, int *natural,
+             int *minimum_baseline, int *natural_baseline)
+{
+  *minimum = *natural = 0;
+  for (GtkWidget *child = gtk_widget_get_first_child (row); child; child = gtk_widget_get_next_sibling (child))
+    {
+      int child_min, child_nat;
+
+      if (!gtk_widget_should_layout (child))
+        continue;
+      gtk_widget_measure (child, orientation, -1, &child_min, &child_nat, NULL, NULL);
+      if (orientation == GTK_ORIENTATION_HORIZONTAL)
+        {
+          *minimum += child_min;
+          *natural += child_nat;
+        }
+      else
+        {
+          *minimum = MAX (*minimum, child_min);
+          *natural = MAX (*natural, child_nat);
+        }
+    }
+}
+
+static void
+row_allocate (GtkWidget *row, int width, int height, int baseline)
+{
+  GtkWidget *left = gtk_widget_get_first_child (row), *list = gtk_widget_get_next_sibling (left);
+  int left_width = 0, left_min, list_min;
+
+  gtk_widget_measure (list, GTK_ORIENTATION_HORIZONTAL, -1, &list_min, NULL, NULL, NULL);
+  if (gtk_widget_should_layout (left))
+    {
+      gtk_widget_measure (left, GTK_ORIENTATION_HORIZONTAL, -1, &left_min, NULL, NULL, NULL);
+      left_width = MAX (left_min, MIN (LEFT_PANE, width - list_min));
+      gtk_widget_allocate (left, left_width, height, -1, NULL);
+    }
+  gtk_widget_allocate (list, MAX (width - left_width, list_min), height, -1,
+                       gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (left_width, 0)));
+}
+
 static void
 clock_page_dispose (GObject *object)
 {
@@ -503,9 +550,9 @@ clock_page_init (ClockPage *self)
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->scroller), self->list);
   gtk_widget_set_hexpand (self->scroller, TRUE);
   self->left = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  gtk_widget_set_size_request (self->left, LEFT_PANE, -1);
   gtk_widget_set_visible (self->left, FALSE);
   self->row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+  gtk_widget_set_layout_manager (self->row, gtk_custom_layout_new (NULL, row_measure, row_allocate));
   gtk_box_append (GTK_BOX (self->row), self->left);
   gtk_box_append (GTK_BOX (self->row), self->scroller);
   gtk_widget_set_parent (self->row, GTK_WIDGET (self));

@@ -9,8 +9,7 @@
 #define CONTENT_MAX 640   /* on a wider window (a tablet) a page's content keeps to this, centred, under its bar */
 
 typedef struct {
-  GtkWidget *window, *stack, *start, *start_box, *job_page, *top_bar, *view, *marker;
-  VibeosLayout *layout;
+  GtkWidget *window, *stack, *start, *job_page, *top_bar, *view, *marker;
   InstJob   *job;
   gboolean   ran;    /* the job has started installing or removing (only then is its end worth a notification) */
 } Win;
@@ -39,31 +38,15 @@ win_free (gpointer data)
   if (win->job && !inst_job_is_finished (win->job) && inst_job_get_phase (win->job) != INST_PHASE_RUNNING)
     inst_job_cancel (win->job);
   drop_job (win);
-  if (win->layout)
-    {
-      g_signal_handlers_disconnect_by_data (win->layout, win);
-      g_object_unref (win->layout);
-    }
   g_free (win);
 }
 
-/* a page's content across a phone's width; on a wider window CONTENT_MAX wide in the middle */
-static void
-cap_width (Win *win, GtkWidget *content)
+/* a page's content across a phone's width; on a wider window CONTENT_MAX wide in the middle (a clamp, not margins
+ * worked out from the width: those held the window too wide to turn upright) */
+static GtkWidget *
+cap_width (GtkWidget *content)
 {
-  int side = win->layout ? MAX (0, (vibeos_layout_get_width (win->layout) - CONTENT_MAX) / 2) : 0;
-
-  if (!content)
-    return;
-  gtk_widget_set_margin_start (content, side);
-  gtk_widget_set_margin_end (content, side);
-}
-
-static void
-on_layout_changed (VibeosLayout *layout, Win *win)
-{
-  cap_width (win, win->start_box);
-  cap_width (win, win->view);
+  return vibeos_clamp_new (content, CONTENT_MAX);
 }
 
 gboolean
@@ -219,9 +202,8 @@ inst_window_show_job (GtkWidget *window, InstJob *job, gboolean over_start)
   page = page_new (_("App Installer"), over_start, win, &win->top_bar);
   win->view = inst_view_new (job, INST_VIEW_PAGE);
   gtk_widget_set_vexpand (win->view, TRUE);
-  cap_width (win, win->view);
   g_signal_connect (win->view, "done", G_CALLBACK (on_view_done), win);
-  gtk_box_append (GTK_BOX (page), win->view);
+  gtk_box_append (GTK_BOX (page), cap_width (win->view));
   win->job_page = page;
   g_signal_connect (job, "changed", G_CALLBACK (on_job_changed), win);
   g_signal_connect (job, "finished", G_CALLBACK (on_job_finished), win);
@@ -231,7 +213,7 @@ inst_window_show_job (GtkWidget *window, InstJob *job, gboolean over_start)
     {
       /* no start page under it: Back leaves the window */
       vibeos_page_stack_set_root (VIBEOS_PAGE_STACK (win->stack), page);
-      win->start = win->start_box = NULL;
+      win->start = NULL;
     }
   /* the back gesture: Escape (handled above) rather than leaving the app unasked */
   gtk_widget_set_visible (win->marker, TRUE);
@@ -323,10 +305,8 @@ start_page (Win *win)
   gtk_box_append (GTK_BOX (box), more);
 
   /* centred in the page, and scrolled where a large font size makes it taller than the page */
-  win->start_box = box;
-  cap_width (win, box);
   scroll = spongy_scroll_view_new ();
-  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), box);
+  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), cap_width (box));
   gtk_widget_set_vexpand (scroll, TRUE);
   gtk_box_append (GTK_BOX (page), scroll);
   return page;
@@ -368,9 +348,6 @@ inst_window_new (GtkApplication *app)
   gtk_widget_set_visible (win->marker, FALSE);
   gtk_box_append (GTK_BOX (root), win->marker);
   vibeos_window_set_content (GTK_WINDOW (window), root);
-  /* the window's own layout, which goes with the window: held until the window's state goes */
-  win->layout = g_object_ref (vibeos_layout_get_for_window (GTK_WINDOW (window)));
-  g_signal_connect (win->layout, "changed", G_CALLBACK (on_layout_changed), win);
 
   action = gtk_callback_action_new (on_back_key, win, NULL);
   gtk_shortcut_controller_add_shortcut (GTK_SHORTCUT_CONTROLLER (shortcuts),
