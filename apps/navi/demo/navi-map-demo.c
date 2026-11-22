@@ -1,13 +1,16 @@
 /* navi-map-demo: the NaviMap widget at a navigation camera (tilted, the car low on the screen), with an
- * optional drive along a GeoJSON line. Prints frames per second once a second.
+ * optional drive along a GeoJSON line. Prints frame statistics once a second.
  *
  *   navi-map-demo STYLE_URL [--route FILE.geojson] [--drive] [--speed KMH] [--zoom Z] [--pitch DEG]
  *                 [--seconds N] [--fullscreen] [--cache FILE]
  *
- * Driving, the camera eases to the car's position and heading every 100 ms with a linear curve, so the
- * eases join into one steady motion; at the end of the line it starts over. Touching the map leaves
- * follow mode ("user-moved"); 5 s later the camera flies back to the car (650 ms ease-out) and follows
- * again. Keys: r re-centres, d starts or stops the drive, q quits.
+ * Driving runs on the display's frame clock: every frame the car moves on by speed x elapsed time along
+ * the line, the camera is set straight to it (no easing between steps), and the camera's bearing turns
+ * toward the route 20 m ahead through a critically damped spring, so a corner turns the map smoothly.
+ * While following, the car is drawn fixed at the focus point, pointing up. Touching the map leaves follow
+ * mode ("user-moved") and pins the car to its place on the map; 5 s later the camera flies back to it
+ * (650 ms ease-out) and follows again. At the end of the line the drive starts over.
+ * Keys: r re-centres, d starts or stops the drive, q quits.
  */
 #include "navi-map.h"
 
@@ -16,17 +19,23 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define TICK_MS 100
-#define EASE_MS 120 /* a little longer than a tick: a late tick never leaves the camera standing */
 #define RECENTER_MS 650
 #define RECENTER_AFTER_S 5
 #define NORTH_UP_BELOW_ZOOM 13.0
+#define LOOK_AHEAD_M 20.0 /* the camera turns toward the route this far ahead of the car */
+#define TURN_SMOOTH_S 0.6 /* and gets there through a critically damped spring this slow */
 #define CAR_PX 56
 
 typedef struct {
   double lat, lng;
   double dist; /* metres from the start */
 } RoutePoint;
+
+typedef enum {
+  MODE_FOLLOW,   /* the camera rides with the car; the car sits still at the focus point */
+  MODE_RECENTER, /* the flight back to the car */
+  MODE_FREE,     /* the user has the map; the car is pinned to its place on it */
+} Mode;
 
 typedef struct {
   NaviMap *map;
@@ -35,17 +44,26 @@ typedef struct {
   RoutePoint *route;
   guint n_route;
   double zoom, pitch, speed_mps;
-  gboolean driving, following;
+  gboolean driving;
+  Mode mode;
   double travelled; /* metres */
-  gint64 last_tick_us;
-  double car_lat, car_lng, car_heading;
-  double cam_bearing;
-  guint drive_source, recenter_source, follow_again_source;
-  /* frame statistics */
+  double car_lat, car_lng;
+  double heading, heading_rate; /* the smoothed heading (the camera's bearing) and its rate, deg and deg/s */
+  double car_turn;              /* the arrow's rotation on screen, degrees */
+  guint tick, recenter_source;
+  gint64 last_frame_us, flight_t0;
+  NaviCamera flight_from;
+  /* frame statistics, per second */
   guint frames;
   double render_ms_sum, render_ms_max;
-  guint seconds;
-  guint drive_frames, drive_seconds;
+  gint64 timings_done, last_shown_us;
+  double refresh_ms;
+  guint shown, vblanks[4]; /* gaps of 1, 2, 3 and 4+ refresh intervals */
+  double gap_sum, gap_max;
+  gboolean steady;         /* following all through this second */
+  /* and over the drive's steady seconds, after the first 5 s */
+  guint seconds, drive_seconds, drive_frames, drive_shown, drive_vblanks[4];
+  double drive_gap_sum, drive_gap_max, drive_jitter_sum;
   int quit_after;
 } Demo;
 
@@ -88,16 +106,30 @@ point_at (Demo *d, double s, double *lat, double *lng)
   *lng = d->route[d->n_route - 1].lng;
 }
 
-/* the heading a driver looks along: from the car to a point 12 m further on the route */
+/* where the road goes: from the car to the point LOOK_AHEAD_M further on (near the end, the last stretch) */
 static double
-heading_at (Demo *d, double s)
+route_heading (Demo *d, double s)
 {
-  double la, lo, lb, lob;
-  point_at (d, s, &la, &lo);
-  point_at (d, s + 12, &lb, &lob);
-  if (dist_m (la, lo, lb, lob) < 0.5)
-    return d->car_heading;
-  return heading_deg (la, lo, lb, lob);
+  double total = d->route[d->n_route - 1].dist;
+  double s1 = MIN (s + LOOK_AHEAD_M, total), s0 = MIN (s, s1 - 1), la, lo, lb, lob;
+  point_at (d, s0, &la, &lo);
+  point_at (d, s1, &lb, &lob);
+  return dist_m (la, lo, lb, lob) < 0.5 ? d->heading : heading_deg (la, lo, lb, lob);
+}
+
+/* One step of a critically damped spring from `current` toward `target` (degrees, the short way round),
+ * `rate` its speed in degrees a second; reaches the target in about `smooth_s` without overshooting.
+ * The closed form of the spring (as Unity's SmoothDamp has it), so a long frame is as stable as a short. */
+static double
+smooth_angle (double current, double target, double *rate, double smooth_s, double dt)
+{
+  target = current + remainder (target - current, 360);
+  double omega = 2 / smooth_s, x = omega * dt;
+  double k = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x);
+  double change = current - target;
+  double temp = (*rate + omega * change) * dt;
+  *rate = (*rate - omega * temp) * k;
+  return fmod (target + (change + temp) * k + 720, 360);
 }
 
 static gboolean
@@ -140,21 +172,24 @@ load_route (Demo *d, const char *path, GError **error)
 
 /* ---- the car ---- */
 
+static gboolean
+heading_up (Demo *d)
+{
+  return d->zoom >= NORTH_UP_BELOW_ZOOM;
+}
+
 static void
 draw_car (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer user_data)
 {
   Demo *d = user_data;
-  NaviCamera cam;
-  navi_map_get_camera (d->map, &cam);
-  double turn = (d->car_heading - (isnan (cam.bearing) ? 0 : cam.bearing)) * G_PI / 180;
   double r = MIN (w, h) / 2.0 - 2;
   cairo_translate (cr, w / 2.0, h / 2.0);
   /* flattened by the tilt, as a marker lying on the road would be */
-  cairo_scale (cr, 1, isnan (cam.pitch) ? 1 : 0.55 + 0.45 * cos (cam.pitch * G_PI / 180));
+  cairo_scale (cr, 1, 0.55 + 0.45 * cos (d->pitch * G_PI / 180));
   cairo_arc (cr, 0, 0, r, 0, 2 * G_PI);
   cairo_set_source_rgba (cr, 0.35, 0.37, 0.40, 0.16);
   cairo_fill (cr);
-  cairo_rotate (cr, turn);
+  cairo_rotate (cr, d->car_turn * G_PI / 180);
   double a = r * 0.78;
   cairo_move_to (cr, 0, -a);
   cairo_line_to (cr, a * 0.72, a * 0.8);
@@ -169,6 +204,8 @@ draw_car (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer user_data)
   cairo_stroke (cr);
 }
 
+/* Following, the car is the focus point itself, so it cannot drift against the map. Otherwise it sits on
+ * its place on the map, which the camera's own frame moves. */
 static gboolean
 place_car (GtkOverlay *overlay, GtkWidget *child, GdkRectangle *alloc, gpointer user_data)
 {
@@ -176,7 +213,10 @@ place_car (GtkOverlay *overlay, GtkWidget *child, GdkRectangle *alloc, gpointer 
   if (child != d->car)
     return FALSE;
   double x, y;
-  navi_map_geo_to_screen (d->map, d->car_lat, d->car_lng, &x, &y);
+  if (d->mode == MODE_FOLLOW)
+    navi_map_get_focus_point (d->map, &x, &y);
+  else
+    navi_map_geo_to_screen (d->map, d->car_lat, d->car_lng, &x, &y);
   if (isnan (x) || isnan (y))
     x = y = -1000;
   alloc->width = alloc->height = CAR_PX;
@@ -185,44 +225,139 @@ place_car (GtkOverlay *overlay, GtkWidget *child, GdkRectangle *alloc, gpointer 
   return TRUE;
 }
 
+/* after the camera or the car moved: the arrow points along the smoothed heading, which is straight up
+ * while the camera follows heading-up */
+static void
+update_car (Demo *d)
+{
+  double turn = 0;
+  if (d->mode != MODE_FOLLOW || !heading_up (d)) {
+    NaviCamera cam;
+    navi_map_get_camera (d->map, &cam);
+    turn = remainder (d->heading - (isnan (cam.bearing) ? 0 : cam.bearing), 360);
+  }
+  if (fabs (turn - d->car_turn) > 0.05) {
+    d->car_turn = turn;
+    gtk_widget_queue_draw (d->car);
+  }
+  if (d->mode != MODE_FOLLOW)
+    gtk_widget_queue_allocate (d->overlay);
+}
+
 static void
 on_camera_changed (NaviMap *map, Demo *d)
 {
-  gtk_widget_queue_allocate (d->overlay);
-  gtk_widget_queue_draw (d->car);
+  update_car (d);
 }
 
-/* ---- following ---- */
+/* ---- the frame clock: the car, the camera and the statistics ---- */
 
-static double
-follow_bearing (Demo *d, double zoom)
+/* the gaps between frames that reached the screen, from the compositor's presentation times */
+static void
+count_shown (Demo *d, GdkFrameClock *clock)
 {
-  return zoom < NORTH_UP_BELOW_ZOOM ? 0 : d->car_heading;
+  gint64 now = gdk_frame_clock_get_frame_counter (clock);
+  for (gint64 i = MAX (d->timings_done + 1, gdk_frame_clock_get_history_start (clock)); i < now; i++) {
+    GdkFrameTimings *t = gdk_frame_clock_get_timings (clock, i);
+    if (!t || !gdk_frame_timings_get_complete (t))
+      break;
+    d->timings_done = i;
+    gint64 shown = gdk_frame_timings_get_presentation_time (t), refresh = gdk_frame_timings_get_refresh_interval (t);
+    if (refresh)
+      d->refresh_ms = refresh / 1000.0;
+    if (!shown)
+      continue;
+    if (d->last_shown_us) {
+      double gap = (shown - d->last_shown_us) / 1000.0;
+      d->shown++;
+      d->gap_sum += gap;
+      d->gap_max = MAX (d->gap_max, gap);
+      if (d->refresh_ms > 0)
+        d->vblanks[CLAMP ((int) lround (gap / d->refresh_ms), 1, 4) - 1]++;
+    }
+    d->last_shown_us = shown;
+  }
+}
+
+static void
+set_camera (Demo *d, gint64 now)
+{
+  if (d->mode == MODE_FOLLOW) {
+    NaviCamera cam = { d->car_lat, d->car_lng, NAN, heading_up (d) ? d->heading : 0, NAN };
+    navi_map_jump_to (d->map, &cam);
+  } else if (d->mode == MODE_RECENTER) {
+    /* a 650 ms ease-out from where the user left the camera to the car as it is in this frame, so the
+     * flight lands exactly on the moving car and following takes over without a step */
+    double k = MIN (1.0, (now - d->flight_t0) / (RECENTER_MS * 1000.0)), e = 1 - pow (1 - k, 3);
+    const NaviCamera *f = &d->flight_from;
+    double bearing = heading_up (d) ? d->heading : 0;
+    NaviCamera cam = { f->latitude + (d->car_lat - f->latitude) * e, f->longitude + (d->car_lng - f->longitude) * e,
+                       f->zoom + (d->zoom - f->zoom) * e, f->bearing + remainder (bearing - f->bearing, 360) * e,
+                       f->pitch + (d->pitch - f->pitch) * e };
+    navi_map_jump_to (d->map, &cam);
+    if (k >= 1) {
+      d->mode = MODE_FOLLOW;
+      gtk_widget_queue_allocate (d->overlay);
+    }
+    d->steady = FALSE;
+  }
 }
 
 static gboolean
-follow_again (gpointer user_data)
+frame_tick (GtkWidget *widget, GdkFrameClock *clock, gpointer user_data)
 {
   Demo *d = user_data;
-  d->follow_again_source = 0;
-  d->following = TRUE;
+  gint64 now = gdk_frame_clock_get_frame_time (clock);
+  /* a stall (the window hidden) moves the car on by at most a quarter second */
+  double dt = d->last_frame_us ? CLAMP ((now - d->last_frame_us) / 1e6, 0.0, 0.25) : 0;
+  d->last_frame_us = now;
+  count_shown (d, clock);
+
+  if (d->driving) {
+    double total = d->route[d->n_route - 1].dist;
+    d->travelled += d->speed_mps * dt;
+    gboolean wrapped = d->travelled >= total;
+    if (wrapped)
+      d->travelled = fmod (d->travelled, total);
+    point_at (d, d->travelled, &d->car_lat, &d->car_lng);
+    double target = route_heading (d, d->travelled);
+    if (wrapped) { /* back at the start: no spin all the way round from the last heading */
+      d->heading = target;
+      d->heading_rate = 0;
+    } else {
+      d->heading = smooth_angle (d->heading, target, &d->heading_rate, TURN_SMOOTH_S, dt);
+    }
+  }
+  set_camera (d, now);
+  update_car (d);
+
+  if (d->driving || d->mode == MODE_RECENTER)
+    return G_SOURCE_CONTINUE;
+  d->tick = 0;
+  d->last_frame_us = d->last_shown_us = 0;
   return G_SOURCE_REMOVE;
 }
+
+static void
+ensure_tick (Demo *d)
+{
+  if (!d->tick)
+    d->tick = gtk_widget_add_tick_callback (GTK_WIDGET (d->map), frame_tick, d, NULL);
+}
+
+/* ---- following ---- */
 
 static void
 recenter (Demo *d)
 {
   g_clear_handle_id (&d->recenter_source, g_source_remove);
-  g_clear_handle_id (&d->follow_again_source, g_source_remove);
-  /* fly to where the car will be when the flight ends, then take up the 100 ms eases from there */
-  double s = d->travelled + (d->driving ? d->speed_mps * RECENTER_MS / 1000.0 : 0), lat, lng;
-  if (d->route)
-    point_at (d, s, &lat, &lng);
-  else
-    lat = d->car_lat, lng = d->car_lng;
-  NaviCamera cam = { lat, lng, d->zoom, follow_bearing (d, d->zoom), d->pitch };
-  navi_map_ease_to (d->map, &cam, RECENTER_MS, NAVI_EASING_EASE_OUT_CUBIC);
-  d->follow_again_source = g_timeout_add (RECENTER_MS, follow_again, d);
+  navi_map_cancel_transitions (d->map);
+  navi_map_get_camera (d->map, &d->flight_from);
+  GdkFrameClock *clock = gtk_widget_get_frame_clock (GTK_WIDGET (d->map));
+  d->flight_t0 = clock ? gdk_frame_clock_get_frame_time (clock) : g_get_monotonic_time ();
+  d->mode = MODE_RECENTER;
+  d->last_shown_us = 0; /* the map stood still till now: that pause is no late frame */
+  ensure_tick (d);
 }
 
 static gboolean
@@ -237,48 +372,12 @@ recenter_timeout (gpointer user_data)
 static void
 on_user_moved (NaviMap *map, Demo *d)
 {
-  d->following = FALSE;
-  g_clear_handle_id (&d->follow_again_source, g_source_remove);
+  d->mode = MODE_FREE;
+  d->steady = FALSE;
   g_clear_handle_id (&d->recenter_source, g_source_remove);
   d->recenter_source = g_timeout_add_seconds (RECENTER_AFTER_S, recenter_timeout, d);
+  update_car (d);
   g_print ("user moved the map: follow off, re-centre in %d s\n", RECENTER_AFTER_S);
-}
-
-static gboolean
-drive_tick (gpointer user_data)
-{
-  Demo *d = user_data;
-  gint64 now = g_get_monotonic_time ();
-  double dt = d->last_tick_us ? (now - d->last_tick_us) / 1e6 : TICK_MS / 1000.0;
-  d->last_tick_us = now;
-  d->travelled += d->speed_mps * dt;
-  gboolean wrapped = d->travelled > d->route[d->n_route - 1].dist;
-  if (wrapped) { /* round again from the start */
-    d->travelled = 0;
-    d->car_heading = heading_at (d, 0);
-  }
-  point_at (d, d->travelled, &d->car_lat, &d->car_lng);
-  /* the car turns at most 90 degrees a second, and its heading leads the corner a little */
-  double target = heading_at (d, d->travelled);
-  double diff = remainder (target - d->car_heading, 360);
-  double max = 90 * dt;
-  d->car_heading = fmod (d->car_heading + CLAMP (diff, -max, max) + 360, 360);
-
-  if (d->following) {
-    NaviCamera cam = NAVI_CAMERA_UNSET, now_cam;
-    navi_map_get_camera (d->map, &now_cam);
-    cam.latitude = d->car_lat;
-    cam.longitude = d->car_lng;
-    cam.bearing = follow_bearing (d, now_cam.zoom);
-    if (wrapped)
-      navi_map_jump_to (d->map, &cam);
-    else
-      navi_map_ease_to (d->map, &cam, EASE_MS, NAVI_EASING_LINEAR);
-  } else {
-    gtk_widget_queue_allocate (d->overlay); /* the car moves on screen */
-    gtk_widget_queue_draw (d->car);
-  }
-  return G_SOURCE_CONTINUE;
 }
 
 static void
@@ -287,12 +386,8 @@ set_driving (Demo *d, gboolean on)
   if (!d->route || d->driving == on)
     return;
   d->driving = on;
-  if (on) {
-    d->last_tick_us = 0;
-    d->drive_source = g_timeout_add (TICK_MS, drive_tick, d);
-  } else {
-    g_clear_handle_id (&d->drive_source, g_source_remove);
-  }
+  if (on)
+    ensure_tick (d);
   g_print ("drive %s\n", on ? "on" : "off");
 }
 
@@ -345,20 +440,38 @@ print_fps (gpointer user_data)
   NaviCamera cam;
   navi_map_get_camera (d->map, &cam);
   d->seconds++;
-  g_print ("fps %3u  render avg %5.2f ms max %6.2f ms  zoom %.2f pitch %.0f bearing %.0f%s\n", d->frames,
-           d->frames ? d->render_ms_sum / d->frames : 0.0, d->render_ms_max, cam.zoom, cam.pitch, cam.bearing,
-           d->driving ? (d->following ? "  driving" : "  driving, not following") : "");
-  /* the drive average leaves out the first 5 s (style, tiles and shaders arrive then) */
-  if (d->driving && d->following && d->seconds > 5) {
-    d->drive_frames += d->frames;
+  double gap = d->shown ? d->gap_sum / d->shown : 0;
+  static const char *const modes[] = { "following", "re-centring", "free" };
+  /* "shown" counts the frames that reached the screen, by the compositor's presentation times; the gap
+   * between two of them, in refresh intervals, is 1 when every refresh got a new frame */
+  g_print ("fps %3u  render avg %5.2f max %6.2f ms  shown %3u gap avg %5.2f max %6.2f jitter %5.2f ms"
+           "  refreshes 1:%u 2:%u 3:%u 4+:%u  zoom %.2f pitch %.0f bearing %.0f  %s%s\n",
+           d->frames, d->frames ? d->render_ms_sum / d->frames : 0.0, d->render_ms_max, d->shown, gap, d->gap_max,
+           d->shown ? d->gap_max - gap : 0.0, d->vblanks[0], d->vblanks[1], d->vblanks[2], d->vblanks[3], cam.zoom,
+           cam.pitch, cam.bearing, modes[d->mode], d->driving ? ", driving" : "");
+  /* the drive figures take the seconds spent following from start to end, after the first 5 s (style,
+   * tiles and shaders arrive then) */
+  if (d->driving && d->steady && d->mode == MODE_FOLLOW && d->seconds > 5 && d->shown) {
     d->drive_seconds++;
+    d->drive_frames += d->frames;
+    d->drive_shown += d->shown;
+    for (int i = 0; i < 4; i++)
+      d->drive_vblanks[i] += d->vblanks[i];
+    d->drive_gap_sum += d->gap_sum;
+    d->drive_gap_max = MAX (d->drive_gap_max, d->gap_max);
+    d->drive_jitter_sum += d->gap_max - gap;
   }
-  d->frames = 0;
-  d->render_ms_sum = d->render_ms_max = 0;
+  d->steady = d->mode == MODE_FOLLOW;
+  d->frames = d->shown = 0;
+  memset (d->vblanks, 0, sizeof d->vblanks);
+  d->render_ms_sum = d->render_ms_max = d->gap_sum = d->gap_max = 0;
   if (d->quit_after > 0 && (int) d->seconds >= d->quit_after) {
     if (d->drive_seconds)
-      g_print ("drive average: %.1f fps over %u s\n", (double) d->drive_frames / d->drive_seconds,
-               d->drive_seconds);
+      g_print ("drive over %u s: %.1f fps, shown every %.2f ms (refresh %.2f ms), worst gap %.2f ms, mean jitter "
+               "%.2f ms; gaps of 1/2/3/4+ refreshes: %u/%u/%u/%u\n",
+               d->drive_seconds, (double) d->drive_frames / d->drive_seconds, d->drive_gap_sum / d->drive_shown,
+               d->refresh_ms, d->drive_gap_max, d->drive_jitter_sum / d->drive_seconds, d->drive_vblanks[0],
+               d->drive_vblanks[1], d->drive_vblanks[2], d->drive_vblanks[3]);
     gtk_window_destroy (GTK_WINDOW (d->window));
     return G_SOURCE_REMOVE;
   }
@@ -389,7 +502,7 @@ print_display (GtkWidget *window, Demo *d)
 int
 main (int argc, char **argv)
 {
-  Demo d = { .zoom = 16.5, .pitch = 52, .speed_mps = 50 / 3.6, .following = TRUE };
+  Demo d = { .zoom = 16.5, .pitch = 52, .speed_mps = 50 / 3.6, .mode = MODE_FOLLOW };
   const char *style = NULL, *route = NULL, *cache = NULL;
   gboolean drive = FALSE, fullscreen = FALSE;
   for (int i = 1; i < argc; i++) {
@@ -422,11 +535,11 @@ main (int argc, char **argv)
     }
     d.car_lat = d.route[0].lat;
     d.car_lng = d.route[0].lng;
-    d.car_heading = heading_at (&d, 0);
+    d.heading = route_heading (&d, 0);
     g_print ("route: %u points, %.0f m\n", d.n_route, d.route[d.n_route - 1].dist);
   } else {
     d.car_lat = 52.5009, d.car_lng = 13.3469; /* nowhere in particular: a Berlin junction */
-    d.car_heading = 45;
+    d.heading = 45;
   }
 
   gtk_init ();
@@ -446,7 +559,7 @@ main (int argc, char **argv)
   if (cache)
     navi_map_set_cache_path (d.map, cache);
   navi_map_set_focus (d.map, 0.5, 0.75); /* the car a quarter of the height above the bottom */
-  NaviCamera cam = { d.car_lat, d.car_lng, d.zoom, d.car_heading, d.pitch };
+  NaviCamera cam = { d.car_lat, d.car_lng, d.zoom, d.zoom >= NORTH_UP_BELOW_ZOOM ? d.heading : 0, d.pitch };
   navi_map_jump_to (d.map, &cam);
   navi_map_set_style_url (d.map, style);
   g_signal_connect (d.map, "style-loaded", G_CALLBACK (on_style_loaded), &d);
