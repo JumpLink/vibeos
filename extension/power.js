@@ -37,6 +37,9 @@ const DECELERATE = t => 1 - (1 - t) * (1 - t);
 const KEYGUARD_TIMEOUT_MS = 10000;
 // a press of the power key held this long is a long press (the power menu)
 const LONG_PRESS_MS = 500;
+// a press whose down comes less than this after a short press's down is a double press (keylaunch.js), as Android's
+// GestureLauncherService counts one, down to down
+const DOUBLE_PRESS_MS = 300;
 // a sleep this soon after waking is taken as a bounce of the key. The tablet's panel lights about half a second after
 // the wake: a press made then, by someone who saw nothing happen yet (a wake held for the floor below shows nothing
 // for up to a second and a half), turned it straight off again (11-20), so there a press counts only once it is lit.
@@ -83,6 +86,11 @@ export class Power extends Signals.EventEmitter {
         this._menu = menu;
         this._chord = chord;
         this._longPressId = 0;
+        // keylaunch.js's KeyLaunch, set by the extension: what a double press of the key opens
+        this.doublePress = null;
+        this._tapAt = 0;            // the last short press's down (the event's time, ms), for a double press
+        this._doublePressed = false;// the press held now was a double press: its up does nothing
+        this._lockId = 0;           // a sleep's lock that waits for the screen to be dark (_lockWhenDark)
         this._state = State.AWAKE;
         this._sleptAt = 0;
         this._wokeAt = GLib.get_monotonic_time();
@@ -173,8 +181,15 @@ export class Power extends Signals.EventEmitter {
 
     _powerKey(pressed, time) {
         const now = GLib.get_monotonic_time();
+        // the event's own time where it has one: the gap between two presses as the keys made it
+        const at = time || now / 1000;
+        if (pressed && this._isDoublePress(at)) {
+            this._doublePressDown(now);
+            return;
+        }
         if (pressed) {
             this._pressedAt = now;
+            this._pressedTime = at;
             // with volume down, a screenshot (chord.js); the press then does nothing more
             this._chord?.powerDown(this.interactive);
             // a press with the menu up closes it; the key then does what it would have
@@ -199,6 +214,12 @@ export class Power extends Signals.EventEmitter {
         const held = (now - (this._pressedAt ?? now)) / 1000;
         this._pressedAt = null;
         const chord = this._chord?.powerUp();
+        if (this._doublePressed) {
+            this._doublePressed = false;
+            return;
+        }
+        // a short press: a second one soon after it is a double press, whatever this one did
+        this._tapAt = !chord && held < LONG_PRESS_MS ? this._pressedTime : 0;
         // ... and goes to sleep on its up, if the down did not wake it and the press was short
         if (chord || this._wokeByPress || held >= LONG_PRESS_MS)
             return;
@@ -211,6 +232,32 @@ export class Power extends Signals.EventEmitter {
         if (this._longPressId)
             GLib.source_remove(this._longPressId);
         this._longPressId = 0;
+    }
+
+    // A down within DOUBLE_PRESS_MS of a short press's down, while a double press opens something. The first press
+    // already did what a single press does (the screen off or on): the double press takes nothing from it.
+    _isDoublePress(at) {
+        const gap = at - this._tapAt;
+        const tapped = this._tapAt !== 0;
+        this._tapAt = 0;
+        // gap < 0: the event clock (32-bit ms) wrapped between the presses; a missed double press, never a false one
+        return tapped && gap >= 0 && gap < DOUBLE_PRESS_MS && !!this.doublePress?.doublePressArmed;
+    }
+
+    // the double press: the screen on, unlocked if the first press's sleep had not locked it yet, and the app; the
+    // press neither opens the power menu when held nor sleeps on its up
+    _doublePressDown(now) {
+        this._pressedAt = now;
+        this._doublePressed = true;
+        this._cancelLongPress();
+        this._chord?.powerDown(false);
+        this._menu?.closeNow();
+        log('vibeos: power key double press');
+        this._cancelLock();
+        if (!this.interactive)
+            this.wakeUp('power double press');
+        haptic();
+        this.doublePress.doublePress();
     }
 
     _doubleTap() {
@@ -242,7 +289,12 @@ export class Power extends Signals.EventEmitter {
         this._state = this._aodEnabled ? State.DOZING : State.ASLEEP;
         this._sleptAt = GLib.get_monotonic_time();
         this._menu?.closeNow();
-        this._keyguard.lock();
+        // As Android's KeyguardViewMediator has a pending lock: a sleep by the power key, while a double press opens an
+        // app, locks once the screen is dark, and a double press before that wakes the phone still unlocked
+        if (reason === 'power' && this.doublePress?.doublePressArmed)
+            this._lockWhenDark();
+        else
+            this._keyguard.lock();
 
         this._aod.visible = this._state === State.DOZING;
         this._aod.prepare();
@@ -284,6 +336,9 @@ export class Power extends Signals.EventEmitter {
             }
         }
         log(`vibeos: waking up (${reason})`);
+        // the sleep's lock still waiting: now, before anything shows (a double press took it back before this)
+        if (this._lockId)
+            this._lockNow();
         const from = this._state;
         this._state = State.AWAKE;
         this._wokeAt = GLib.get_monotonic_time();
@@ -333,6 +388,35 @@ export class Power extends Signals.EventEmitter {
         if (this._grab)
             Main.popModal(this._grab);
         this._grab = null;
+    }
+
+    // the lock once the sleep's fade is over (SLEEP_MS, longer than DOUBLE_PRESS_MS), whether animations run or not
+    _lockWhenDark() {
+        this._cancelLock();
+        this._lockId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, SLEEP_MS, () => {
+            this._lockId = 0;
+            this._lockNow();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    _cancelLock() {
+        if (this._lockId)
+            GLib.source_remove(this._lockId);
+        this._lockId = 0;
+    }
+
+    // Locked now. The black layer's grab stays the top one (it went up before the keyguard's, the other way round from
+    // a sleep that locks at once): touches on the dark screen still go nowhere.
+    _lockNow() {
+        this._cancelLock();
+        const grabbed = !!this._grab;
+        if (grabbed)
+            Main.popModal(this._grab);
+        this._grab = null;
+        this._keyguard.lock();
+        if (grabbed)
+            this._grab = Main.pushModal(this.layer, {actionMode: Main.actionMode});
     }
 
     // --- the screen timeout: the lock screen's own, else the session's idle delay (0: never) unless an app inhibits
@@ -504,6 +588,7 @@ export class Power extends Signals.EventEmitter {
 
     destroy() {
         this._cancelLongPress();
+        this._cancelLock();
         if (this._wakeWaitId)
             GLib.source_remove(this._wakeWaitId);
         this._wakeWaitId = 0;
