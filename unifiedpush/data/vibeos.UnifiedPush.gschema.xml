@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The push distributor, vibeos-unifiedpush: which push server it keeps its stream open to. -->
+<schemalist>
+  <schema id="vibeos.UnifiedPush" path="/vibeos/UnifiedPush/">
+    <key name="server-url" type="s">
+      <default>"https://push.vibeos.top"</default>
+      <summary>The push server</summary>
+      <description>An ntfy server that lets anyone subscribe to and send to topics that start with "up", by http or
+        https, without a path's last "/". Every endpoint is this URL, a topic and "?up=1": another server gives every
+        app a new endpoint, which the app passes on to its own server.</description>
+    </key>
+    <key name="keepalive-interval" type="u">
+      <range min="10" max="3600"/>
+      <default>45</default>
+      <summary>The push server's keepalive interval, in seconds</summary>
+      <description>How often the server sends a keepalive on a stream that has nothing else to send (ntfy's
+        keepalive-interval, 45 s by default). A stream that sends nothing for twice this and 15 s is taken for dead
+        and opened again.</description>
+    </key>
+  </schema>
+</schemalist>

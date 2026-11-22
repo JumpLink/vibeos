@@ -1,0 +1,72 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+ "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<!--
+  vibeos.UnifiedPush1: the push distributor's own interface, for Settings and for the sleep hooks, on the session bus.
+
+  Bus name org.unifiedpush.Distributor.vibeos (the distributor's, see org.unifiedpush.Distributor2), object
+  /vibeos/UnifiedPush. The distributor runs from login (the systemd user unit vibeos-unifiedpush.service) and is
+  D-Bus activatable.
+
+  Apps never use this interface: they register through org.unifiedpush.Distributor2 at /org/unifiedpush/Distributor,
+  the UnifiedPush D-Bus spec 0.3.0 (libvibeos's VibeosUnifiedPush does that for them). Nothing here gives away an
+  app's token, topic or endpoint: whoever knows the topic can send to the app.
+
+  A registration, in ListRegistrations (a{sv}):
+    "id"            s   a handle for it: RemoveRegistration takes it
+    "service"       s   the app's D-Bus name (its app id), where its messages go
+    "description"   s   what the app said the registration is for; "" when it said nothing
+    "vapid"         b   the app server gave a VAPID key. The push server does not check it
+    "created"       x   when it registered, Unix seconds
+    "last-message"  x   when the last message was delivered, Unix seconds; 0 for none
+    "messages"      t   how many messages were delivered
+    "pending"       u   how many wait to be delivered (the app is starting, or was not found)
+    "active"        b   the push server has subscribed it, so its endpoint takes messages. Until then (no network
+                        since it registered, or a new server) the app has not been given its endpoint
+    "activatable"   b   the app has a D-Bus service file, so a message can start it. One without gets messages only
+                        while it runs
+-->
+<node>
+  <interface name="vibeos.UnifiedPush1">
+    <!-- "idle": nothing is registered, so there is no stream; "offline": no network; "connecting"; "connected": the
+         stream is open, messages arrive as they are sent; "waiting": the stream failed (Error says why) and is
+         tried again after a pause, which doubles each time up to 5 minutes -->
+    <property name="State" type="s" access="read"/>
+    <!-- why the stream last failed, while State is "waiting"; "" otherwise -->
+    <property name="Error" type="s" access="read"/>
+    <!-- the push server, an ntfy server (GSettings vibeos.UnifiedPush server-url). Setting another gives every
+         registration a new endpoint, which its app gets once the new server has subscribed it -->
+    <property name="ServerUrl" type="s" access="readwrite"/>
+    <!-- the stream's TCP connection, while there is one: the push server's address and port, and this device's.
+         For a sleep hook that lets a packet from the push server wake the device (a wake-on-WLAN pattern). Empty
+         and 0 while there is no connection. They change whenever the stream connects again -->
+    <property name="StreamRemoteAddress" type="s" access="read"/>
+    <property name="StreamRemotePort" type="q" access="read"/>
+    <property name="StreamLocalAddress" type="s" access="read"/>
+    <property name="StreamLocalPort" type="q" access="read"/>
+
+    <!-- the registrations, in the order they were made (see above) -->
+    <method name="ListRegistrations">
+      <arg name="registrations" type="aa{sv}" direction="out"/>
+    </method>
+    <!-- removes one registration, as Unregister would, and tells its app (Unregistered, which starts the app if it
+         does not run). The app registers again at its next start unless it is told not to.
+         Error vibeos.UnifiedPush1.Error.NotFound: no registration has that id -->
+    <method name="RemoveRegistration">
+      <arg name="id" type="s" direction="in"/>
+    </method>
+    <!-- collects everything the push server holds that has not been delivered yet, on a connection of its own, and
+         returns when the apps have it, with the number of messages delivered meanwhile. For a device that woke on a
+         timer: it can sleep again once this returns. A stream that may have died while the device slept is opened
+         again too. An app that cannot be reached at once (it is not installed any more, or keeps failing to start)
+         is not waited for.
+         Error vibeos.UnifiedPush1.Error.Failed: no network, the server could not be reached, or it took more than
+         20 s -->
+    <method name="Collect">
+      <arg name="delivered" type="u" direction="out"/>
+    </method>
+    <!-- opens the stream again now, without waiting for the pause -->
+    <method name="Reconnect"/>
+    <!-- a registration came, went, or changed -->
+    <signal name="RegistrationsChanged"/>
+  </interface>
+</node>

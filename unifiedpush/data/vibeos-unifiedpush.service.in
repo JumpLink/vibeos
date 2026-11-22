@@ -1,0 +1,17 @@
+# The push distributor: from login, whether or not an app that uses push runs (a message starts the app)
+[Unit]
+Description=Push messages for apps (UnifiedPush)
+Documentation=man:vibeos-unifiedpush(8)
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=dbus
+BusName=org.unifiedpush.Distributor.vibeos
+ExecStart=@path@
+# a crash must not leave the apps without their messages: it comes back and goes on from the last one it handed over
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target

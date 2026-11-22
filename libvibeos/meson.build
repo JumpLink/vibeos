@@ -51,6 +51,8 @@ vibeos_headers = files(
   'vibeos-extended-fab.h',
   'vibeos-clamp.h',
 )
+# VibeosUnifiedPush, push messages (vibeos-unified-push.h)
+subdir('unifiedpush')
 vibeos_lib = shared_library('vibeos-1',
   'vibeos-style.c',
   'vibeos-anim.c',
@@ -81,6 +83,7 @@ vibeos_lib = shared_library('vibeos-1',
   'vibeos-extended-fab.c',
   vibeos_resources,
   c_args: ['-DVIBEOS_RELEASE="@0@"'.format(vibeos_release)],
+  link_whole: vibeos_unified_push_lib,
   dependencies: [gtk4, libm, spongy_dep, spongy_gtk_dep, tonal_dep],
   version: '0.1.0',
   install: true)

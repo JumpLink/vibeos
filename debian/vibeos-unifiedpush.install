@@ -1,0 +1,5 @@
+usr/libexec/vibeos-unifiedpush
+usr/lib/systemd/user/vibeos-unifiedpush.service
+usr/share/dbus-1/services/org.unifiedpush.Distributor.vibeos.service
+usr/share/dbus-1/interfaces/vibeos.UnifiedPush1.xml
+usr/share/glib-2.0/schemas/vibeos.UnifiedPush.gschema.xml
