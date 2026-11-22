@@ -10,11 +10,19 @@
  * it, so the next one follows it.
  *
  * The language listened in is the app bar's button, showing its code: the user's choice (GSettings vibeos.Dictate
- * language) while its model is installed, else the first of the user's languages with one, else English. */
+ * language) while its model is installed, else the first of the user's languages with one, else English.
+ *
+ * Started as Agent (vibeos-dictate --agent, dictate_window_new's `agent`), the page is Talk, a conversation
+ * instead of a document: what the user
+ * says is a bubble on the right, the model's reply (dictate-talk.h) one on the left, written as it comes and spoken
+ * sentence by sentence. The engine listens for one turn (dictate_engine_set_turns: voice activity detection
+ * finds where the user has finished) and what they said goes to the model; once the reply has been spoken it
+ * listens again. The FAB sends at once while listening, and stops a reply being written or spoken, and listens. */
 #include "dictate-window.h"
 #include "dictate-engine.h"
 #include "dictate-mic.h"
 #include "dictate-models.h"
+#include "dictate-talk.h"
 #include "dictate-text.h"
 
 #include <errno.h>
@@ -50,6 +58,15 @@ typedef struct {
   char *speaking;               /* the language of the dictation going on, for its casing */
   gboolean close_when_idle;     /* closed while listening: it closes once the last words are in */
   gboolean restart_when_idle;   /* the language changed while listening: listening goes on in the new one */
+  /* Talk */
+  GtkWidget *title, *stack, *talk_scroller, *talk_list;
+  DictateTalk *talk;
+  gboolean talking;             /* Agent's window: the Talk page */
+  GtkWidget *mine, *reply;      /* the bubbles being filled: what the user says, the model's answer */
+  GString *heard;               /* the user's finished sentences so far */
+  char *said;                   /* and the one being spoken */
+  gboolean stopping_reply;      /* the user stopped the reply: it does not listen again on its own */
+  DictateTalkState talk_state;  /* the last one seen */
 } Window;
 
 /* --- the document's file */
@@ -76,11 +93,15 @@ document_text (Window *self)
 static void
 save (Window *self)
 {
-  g_autofree char *text = document_text (self);
+  g_autofree char *text = NULL;
   g_autofree char *dir = g_path_get_dirname (self->path);
   g_autoptr (GError) error = NULL;
 
   g_clear_handle_id (&self->save_id, g_source_remove);
+  /* Agent's window has no document: Dictate's is not its to write */
+  if (self->talking)
+    return;
+  text = document_text (self);
   if (g_mkdir_with_parents (dir, 0700) != 0 || !g_file_set_contents_full (self->path, text, -1,
                                                                            G_FILE_SET_CONTENTS_CONSISTENT, 0600,
                                                                            &error))
@@ -116,14 +137,23 @@ show_state (Window *self)
 {
   DictateState state = dictate_engine_get_state (self->engine);
   gboolean listening = state == DICTATE_STARTING || state == DICTATE_LISTENING;
-  gboolean empty = gtk_text_buffer_get_char_count (self->buffer) == 0;
+  gboolean replying = self->talk && dictate_talk_get_state (self->talk) != DICTATE_TALK_IDLE;
+  gboolean empty = self->talking ? gtk_widget_get_first_child (self->talk_list) == NULL
+                                 : gtk_text_buffer_get_char_count (self->buffer) == 0;
 
-  dictate_mic_set_listening (DICTATE_MIC (self->mic), listening || state == DICTATE_STOPPING);
+  /* in Talk the stop square also stops a reply */
+  dictate_mic_set_listening (DICTATE_MIC (self->mic), listening || state == DICTATE_STOPPING ||
+                                                      (self->talking && replying));
   gtk_widget_set_sensitive (self->mic, state != DICTATE_STOPPING);
-  gtk_label_set_text (GTK_LABEL (self->hint), listening ? _("Listening…") : _("Tap the microphone and start talking"));
+  gtk_label_set_text (GTK_LABEL (self->hint), listening ? _("Listening…")
+                                              : self->talking ? _("Tap the microphone and talk")
+                                              : _("Tap the microphone and start talking"));
   gtk_widget_set_visible (self->hint, empty);
+  gtk_widget_set_visible (self->copy, !self->talking);
   gtk_widget_set_sensitive (self->copy, !empty);
   gtk_widget_set_sensitive (self->clear, !empty);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (self->clear), GTK_ACCESSIBLE_PROPERTY_LABEL,
+                                  self->talking ? _("New conversation") : _("Clear"), -1);
 }
 
 static void
@@ -202,10 +232,18 @@ follow (Window *self)
   gtk_text_view_scroll_to_mark (GTK_TEXT_VIEW (self->view), self->to, margin, FALSE, 0, 0);
 }
 
+static void talk_heard (Window *self, char **finished, const char *partial);
+
 static void
 on_text (DictateEngine *engine, char **finished, const char *partial, Window *self)
 {
   GtkTextIter to;
+
+  if (self->talking)
+    {
+      talk_heard (self, finished, partial);
+      return;
+    }
 
   for (guint i = 0; finished[i]; i++)
     {
@@ -342,13 +380,244 @@ set_inhibit (Window *self, gboolean on)
     }
 }
 
+/* --- Talk */
+
+static void talk_listen (Window *self);
+
+/* the conversation's end in sight, above the FAB's row, once its new size is laid out */
+static gboolean
+talk_follow_idle (gpointer data)
+{
+  Window *self = data;
+  GtkAdjustment *adjustment = spongy_scroll_view_get_vadjustment (SPONGY_SCROLL_VIEW (self->talk_scroller));
+
+  gtk_adjustment_set_value (adjustment, gtk_adjustment_get_upper (adjustment) -
+                                        gtk_adjustment_get_page_size (adjustment));
+  return G_SOURCE_REMOVE;
+}
+
+static void
+talk_follow (Window *self)
+{
+  g_idle_add_full (G_PRIORITY_LOW, talk_follow_idle, self, NULL);
+}
+
+/* a bubble at the conversation's end: the user's on the right, the model's on the left */
+static GtkWidget *
+talk_bubble (Window *self, gboolean mine, const char *text)
+{
+  GtkWidget *label = gtk_label_new (text);
+
+  gtk_label_set_wrap (GTK_LABEL (label), TRUE);
+  gtk_label_set_wrap_mode (GTK_LABEL (label), PANGO_WRAP_WORD_CHAR);
+  gtk_label_set_xalign (GTK_LABEL (label), 0);
+  /* a bubble is as wide as its text, up to about four fifths of a phone's column */
+  gtk_label_set_max_width_chars (GTK_LABEL (label), 34);
+  gtk_widget_add_css_class (label, "dictate-bubble");
+  gtk_widget_add_css_class (label, mine ? "dictate-bubble-mine" : "dictate-bubble-reply");
+  gtk_widget_set_halign (label, mine ? GTK_ALIGN_END : GTK_ALIGN_START);
+  gtk_box_append (GTK_BOX (self->talk_list), label);
+  talk_follow (self);
+  return label;
+}
+
+/* the screen reader's name for a bubble, once its text is final */
+static void
+talk_name (GtkWidget *bubble, gboolean mine)
+{
+  /* TRANSLATORS: a Talk bubble's name for screen readers; %s is what the user said, or what the model answered */
+  g_autofree char *name = g_strdup_printf (mine ? _("You: %s") : _("Vibe: %s"),
+                                           gtk_label_get_text (GTK_LABEL (bubble)));
+  gtk_accessible_update_property (GTK_ACCESSIBLE (bubble), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);
+}
+
+/* what the user has said so far, as it reads */
+static char *
+talk_said (Window *self)
+{
+  if (self->said && *self->said)
+    {
+      g_autofree char *tidy = dictate_text_tidy (self->said, dictate_text_ends_sentence (self->heard->str),
+                                                 self->speaking);
+      return self->heard->len ? g_strconcat (self->heard->str, " ", tidy, NULL) : g_steal_pointer (&tidy);
+    }
+  return g_strdup (self->heard->str);
+}
+
+static void
+talk_heard (Window *self, char **finished, const char *partial)
+{
+  g_autofree char *said = NULL;
+
+  for (guint i = 0; finished[i]; i++)
+    {
+      g_autofree char *tidy = dictate_text_tidy (finished[i], dictate_text_ends_sentence (self->heard->str),
+                                                 self->speaking);
+      if (self->heard->len)
+        g_string_append_c (self->heard, ' ');
+      g_string_append (self->heard, tidy);
+    }
+  g_free (self->said);
+  self->said = g_strdup (partial);
+  said = talk_said (self);
+  if (self->mine)
+    {
+      gtk_label_set_text (GTK_LABEL (self->mine), *said ? said : "…");
+      talk_follow (self);
+    }
+}
+
+/* listening has ended: what was said goes to the model, or its empty bubble goes */
+static void
+talk_send (Window *self)
+{
+  g_autofree char *said = talk_said (self);
+
+  if (!self->mine)
+    return;
+  if (!*g_strstrip (said))
+    {
+      gtk_box_remove (GTK_BOX (self->talk_list), self->mine);
+      self->mine = NULL;
+      return;
+    }
+  gtk_label_set_text (GTK_LABEL (self->mine), said);
+  talk_name (self->mine, TRUE);
+  self->mine = NULL;
+  self->reply = talk_bubble (self, FALSE, "…");
+  dictate_talk_ask (self->talk, dictate_engine_get_language (self->engine), said);
+}
+
+static void
+talk_listen (Window *self)
+{
+  g_autofree char *reason = NULL;
+
+  choose_language (self);
+  if (!dictate_engine_available (self->engine, &reason) ||
+      !dictate_talk_available (self->talk, dictate_engine_get_language (self->engine), &reason))
+    {
+      vibeos_snackbar_show (self->snackbar, reason, NULL, NULL, NULL, VIBEOS_SNACKBAR_LONG);
+      show_state (self);
+      return;
+    }
+  g_string_truncate (self->heard, 0);
+  g_clear_pointer (&self->said, g_free);
+  g_free (self->speaking);
+  self->speaking = g_strdup (dictate_engine_get_language (self->engine));
+  if (!self->mine)
+    self->mine = talk_bubble (self, TRUE, "…");
+  dictate_engine_set_turns (self->engine, TRUE);
+  dictate_engine_start (self->engine);
+}
+
+static void
+on_talk_reply (DictateTalk *talk, const char *text, Window *self)
+{
+  if (!self->reply)
+    return;
+  gtk_label_set_text (GTK_LABEL (self->reply), *text ? text : "…");
+  talk_follow (self);
+}
+
+static void
+on_talk_state (DictateTalk *talk, Window *self)
+{
+  DictateTalkState state = dictate_talk_get_state (talk), was = self->talk_state;
+
+  self->talk_state = state;
+  set_inhibit (self, state != DICTATE_TALK_IDLE || dictate_engine_get_state (self->engine) != DICTATE_IDLE);
+  if (state == DICTATE_TALK_IDLE && self->reply)
+    {
+      /* the reply is over: nothing written of it, its bubble goes */
+      const char *text = gtk_label_get_text (GTK_LABEL (self->reply));
+      if (g_strcmp0 (text, "…") == 0)
+        gtk_box_remove (GTK_BOX (self->talk_list), self->reply);
+      else
+        talk_name (self->reply, FALSE);
+      self->reply = NULL;
+      /* spoken to its end: the user's turn */
+      if (was == DICTATE_TALK_SPEAKING && !self->stopping_reply && self->talking &&
+          g_settings_get_boolean (self->settings, "talk-listen-again") &&
+          dictate_engine_get_state (self->engine) == DICTATE_IDLE && gtk_widget_get_mapped (self->window))
+        talk_listen (self);
+    }
+  show_state (self);
+}
+
+static void
+on_talk_error (DictateTalk *talk, const char *message, Window *self)
+{
+  vibeos_snackbar_show (self->snackbar, message, NULL, NULL, NULL, VIBEOS_SNACKBAR_LONG);
+}
+
+/* the FAB in Talk: listen; while listening, send now; while a reply is written or spoken, stop it and listen */
+static void
+talk_mic (Window *self)
+{
+  if (dictate_talk_get_state (self->talk) != DICTATE_TALK_IDLE)
+    {
+      self->stopping_reply = TRUE;
+      dictate_talk_stop (self->talk);
+      self->stopping_reply = FALSE;
+      talk_listen (self);
+      return;
+    }
+  switch (dictate_engine_get_state (self->engine))
+    {
+    case DICTATE_IDLE:
+      talk_listen (self);
+      break;
+    case DICTATE_STARTING:
+    case DICTATE_LISTENING:
+      dictate_engine_stop (self->engine);
+      break;
+    case DICTATE_STOPPING:
+      break;
+    }
+}
+
+/* a new conversation: the bubbles go, and the model forgets */
+static void
+talk_clear (Window *self)
+{
+  GtkWidget *child;
+
+  self->stopping_reply = TRUE;
+  dictate_talk_reset (self->talk);
+  self->stopping_reply = FALSE;
+  if (dictate_engine_get_state (self->engine) != DICTATE_IDLE)
+    dictate_engine_stop (self->engine);
+  self->mine = self->reply = NULL;
+  while ((child = gtk_widget_get_first_child (self->talk_list)))
+    gtk_box_remove (GTK_BOX (self->talk_list), child);
+  show_state (self);
+}
+
 static void
 on_state_changed (DictateEngine *engine, Window *self)
 {
   DictateState state = dictate_engine_get_state (engine);
 
-  set_inhibit (self, state != DICTATE_IDLE);
-  if (state == DICTATE_IDLE)
+  set_inhibit (self, state != DICTATE_IDLE ||
+                     (self->talk && dictate_talk_get_state (self->talk) != DICTATE_TALK_IDLE));
+  if (state == DICTATE_IDLE && self->talking)
+    {
+      if (self->close_when_idle)
+        {
+          gtk_window_destroy (GTK_WINDOW (self->window));
+          return;
+        }
+      if (self->restart_when_idle)
+        {
+          /* the language changed while listening: what was said is dropped, listening goes on in the new one */
+          self->restart_when_idle = FALSE;
+          talk_listen (self);
+          return;
+        }
+      talk_send (self);
+    }
+  else if (state == DICTATE_IDLE)
     {
       GtkTextIter to;
 
@@ -398,12 +667,18 @@ start (Window *self)
   gtk_text_buffer_move_mark (self->buffer, self->to, &at);
   g_free (self->speaking);
   self->speaking = g_strdup (dictate_engine_get_language (self->engine));
+  dictate_engine_set_turns (self->engine, FALSE);
   dictate_engine_start (self->engine);
 }
 
 static void
 on_mic (DictateMic *mic, Window *self)
 {
+  if (self->talking)
+    {
+      talk_mic (self);
+      return;
+    }
   switch (dictate_engine_get_state (self->engine))
     {
     case DICTATE_IDLE:
@@ -449,7 +724,14 @@ on_clear_response (VibeosDialog *dialog, int response, Window *self)
 static void
 on_clear (VibeosPressable *button, Window *self)
 {
-  VibeosDialog *dialog = vibeos_dialog_new (_("Clear the text?"));
+  VibeosDialog *dialog;
+
+  if (self->talking)
+    {
+      talk_clear (self);
+      return;
+    }
+  dialog = vibeos_dialog_new (_("Clear the text?"));
 
   vibeos_dialog_set_message (dialog, _("All of the text is deleted."));
   vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
@@ -788,6 +1070,12 @@ on_close_request (GtkWindow *window, Window *self)
 {
   DictateState state = dictate_engine_get_state (self->engine);
 
+  if (self->talk)
+    {
+      self->stopping_reply = TRUE;
+      dictate_talk_stop (self->talk);
+      self->stopping_reply = FALSE;
+    }
   if (state == DICTATE_IDLE)
     {
       save (self);
@@ -810,9 +1098,12 @@ update_margins (Window *self)
 
   gtk_text_view_set_left_margin (GTK_TEXT_VIEW (self->view), margin);
   gtk_text_view_set_right_margin (GTK_TEXT_VIEW (self->view), margin);
+  gtk_widget_set_margin_start (self->talk_list, margin - 8);
+  gtk_widget_set_margin_end (self->talk_list, margin - 8);
 
   self->fab_row = vibeos_layout_is_tablet (layout) ? FAB_ROW_TABLET : FAB_ROW;
   gtk_text_view_set_bottom_margin (GTK_TEXT_VIEW (self->view), self->fab_row + 16);
+  gtk_widget_set_margin_bottom (self->talk_list, self->fab_row + 16);
   gtk_widget_set_margin_bottom (self->mic, (self->fab_row - FAB_SIZE) / 2 + (int) vibeos_snackbar_get_lift (self->snackbar));
 }
 
@@ -837,6 +1128,11 @@ window_free (gpointer data)
   g_signal_handlers_disconnect_by_data (self->engine, self);
   dictate_engine_stop (self->engine);
   g_clear_object (&self->engine);
+  if (self->talk)
+    g_signal_handlers_disconnect_by_data (self->talk, self);
+  g_clear_object (&self->talk);
+  g_string_free (self->heard, TRUE);
+  g_free (self->said);
   g_clear_object (&self->settings);
   g_free (self->speaking);
   g_free (self->path);
@@ -844,23 +1140,27 @@ window_free (gpointer data)
 }
 
 GtkWidget *
-dictate_window_new (GtkApplication *app)
+dictate_window_new (GtkApplication *app, gboolean agent)
 {
   Window *self = g_new0 (Window, 1);
   GtkWidget *content = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *bar = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  GtkWidget *title = gtk_label_new (_("Dictate"));
+  GtkWidget *title;
   GtkWidget *page = self->page = gtk_overlay_new ();
   GtkTextIter start;
 
   self->window = vibeos_window_new (app);
   self->engine = dictate_engine_new ();
+  self->talking = agent;
+  self->talk = agent ? dictate_talk_new () : NULL;
+  self->heard = g_string_new (NULL);
   self->settings = g_settings_new ("vibeos.Dictate");
   self->path = g_build_filename (g_get_user_data_dir (), "vibeos-dictate", "document.txt", NULL);
   g_object_set_data_full (G_OBJECT (self->window), "dictate-window", self, window_free);
-  gtk_window_set_title (GTK_WINDOW (self->window), _("Dictate"));
+  gtk_window_set_title (GTK_WINDOW (self->window), agent ? _("Agent") : _("Dictate"));
 
   /* the app bar */
+  title = self->title = gtk_label_new (agent ? _("Agent") : _("Dictate"));
   gtk_widget_add_css_class (bar, "vibeos-app-bar");
   gtk_widget_add_css_class (title, "vibeos-app-bar-title");
   gtk_label_set_xalign (GTK_LABEL (title), 0);
@@ -919,14 +1219,29 @@ dictate_window_new (GtkApplication *app)
   self->anchor_start = gtk_text_buffer_create_mark (self->buffer, NULL, &start, TRUE);
   self->anchor_end = gtk_text_buffer_create_mark (self->buffer, NULL, &start, FALSE);
   touch_selection (self);
-  load (self);
+  if (!agent)
+    load (self);
   g_signal_connect (self->buffer, "changed", G_CALLBACK (on_changed), self);
   g_signal_connect (self->buffer, "mark-set", G_CALLBACK (on_mark_set), self);
 
   self->scroller = spongy_scroll_view_new ();
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->scroller), self->view);
   gtk_widget_set_vexpand (self->scroller, TRUE);
-  gtk_overlay_set_child (GTK_OVERLAY (page), self->scroller);
+
+  /* Talk's conversation */
+  self->talk_list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 8);
+  gtk_widget_add_css_class (self->talk_list, "dictate-talk");
+  gtk_widget_set_valign (self->talk_list, GTK_ALIGN_END);
+  gtk_widget_set_margin_top (self->talk_list, 8);
+  self->talk_scroller = spongy_scroll_view_new ();
+  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->talk_scroller), self->talk_list);
+  gtk_widget_set_vexpand (self->talk_scroller, TRUE);
+
+  self->stack = gtk_stack_new ();
+  gtk_stack_add_named (GTK_STACK (self->stack), self->scroller, "write");
+  gtk_stack_add_named (GTK_STACK (self->stack), self->talk_scroller, "talk");
+  gtk_stack_set_visible_child_name (GTK_STACK (self->stack), agent ? "talk" : "write");
+  gtk_overlay_set_child (GTK_OVERLAY (page), self->stack);
   g_signal_connect_swapped (spongy_scroll_view_get_vadjustment (SPONGY_SCROLL_VIEW (self->scroller)), "value-changed",
                             G_CALLBACK (queue_place), self);
 
@@ -970,12 +1285,22 @@ dictate_window_new (GtkApplication *app)
   g_signal_connect (self->engine, "text", G_CALLBACK (on_text), self);
   g_signal_connect (self->engine, "state-changed", G_CALLBACK (on_state_changed), self);
   g_signal_connect (self->engine, "error", G_CALLBACK (on_error), self);
+  if (self->talk)
+    {
+      g_signal_connect (self->talk, "reply", G_CALLBACK (on_talk_reply), self);
+      g_signal_connect (self->talk, "state-changed", G_CALLBACK (on_talk_state), self);
+      g_signal_connect (self->talk, "error", G_CALLBACK (on_talk_error), self);
+      dictate_talk_set_speed (self->talk, g_settings_get_double (self->settings, "talk-speed"));
+    }
   g_signal_connect (self->window, "close-request", G_CALLBACK (on_close_request), self);
   g_signal_connect_swapped (vibeos_layout_get_for_window (GTK_WINDOW (self->window)), "changed",
                             G_CALLBACK (update_margins), self);
   g_signal_connect_swapped (vibeos_theme_get_default (), "changed", G_CALLBACK (update_partial), self);
   update_margins (self);
   choose_language (self);
+  /* the model and the voice load while the window comes up: the first answer is sooner */
+  if (self->talk)
+    dictate_talk_prepare (self->talk, dictate_engine_get_language (self->engine));
   show_state (self);
   return self->window;
 }

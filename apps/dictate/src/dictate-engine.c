@@ -7,9 +7,15 @@
  *
  * The worker loads the language's model the first time and keeps it: starting again in the same language is at
  * once, and another language's model takes the place of the one before (0.15 s for Moonshine's tiny models, up to
- * 0.9 s for Vosk's small ones on the reference phones). */
+ * 0.9 s for Vosk's small ones on the reference phones).
+ *
+ * Taking turns (dictate_engine_set_turns), the worker wakes every TURN_WAKE_MS and cuts the speech out of the audio
+ * with the voice activity detector (dictate-vad.h; the loudness when its model is not installed): only speech goes
+ * to the recogniser, from TURN_PREROLL_MS before it starts, and once the speaker has been quiet for TURN_END_MS it
+ * ends the turn by itself, as if stopped. */
 #include "dictate-engine.h"
 #include "dictate-recogniser.h"
+#include "dictate-vad.h"
 
 #include <dlfcn.h>
 #include <glib/gi18n.h>
@@ -21,6 +27,16 @@
 #define UPDATE_MS       300     /* between updates while listening */
 #define QUIET_DB        -55.0   /* loudness: level 0 at or under this (a quiet room is -50 on the phones' mics) */
 #define LOUD_DB         -20.0   /* ... 1 at or over this (speech close to the phone) */
+
+#define TURN_WAKE_MS    64      /* taking turns: between looks at the audio */
+#define TURN_START      0.5     /* a frame this likely speech starts the speech */
+#define TURN_GOING      0.35    /* in speech, a frame under this is a quiet one */
+#define TURN_END_MS     700     /* this long quiet after speech, the turn is over */
+#define TURN_MIN_MS     250     /* shorter speech (a cough, a knock) with no words heard in it does not count */
+#define TURN_PREROLL_MS 300     /* the audio before the speech's start that goes with it: its first sound */
+#define TURN_WAIT_MS    8000    /* nothing said for this long, the turn is over */
+#define TURN_LOUD       0.3     /* without the detector: a frame this loud (as the level) is speech */
+#define FRAME_MS        (DICTATE_VAD_FRAME * 1000 / DICTATE_RATE)
 
 struct _DictateEngine
 {
@@ -43,7 +59,11 @@ struct _DictateEngine
   GCond wake;
   GArray *queued;               /* float samples the recogniser has not had */
   gboolean stop;                /* the worker finishes the stream and ends */
+  gboolean turns;               /* taking turns, for the next start; the worker's copy is its own */
   int level;                    /* atomic: dictate_engine_get_level × 1e6 */
+  /* the worker's: the voice activity detector, loaded the first time turns are taken, kept */
+  DictateVad *vad;
+  gboolean vad_tried;
 };
 
 enum { SIGNAL_TEXT, SIGNAL_STATE_CHANGED, SIGNAL_ERROR, N_SIGNALS };
@@ -212,32 +232,148 @@ load (DictateEngine *self, DictateModel *model)
   return TRUE;
 }
 
-/* the queued audio to the recogniser, and what it heard to the main thread if that is news. `partial` is the
- * unfinished sentence as last passed on. */
-static void
-hear (DictateEngine *self, DictateStream *stream, char **partial)
+static GArray *
+take_queued (DictateEngine *self)
 {
-  const DictateRecogniserClass *recogniser = dictate_recogniser_class (self->loaded->kind);
-  g_autoptr (GArray) audio = NULL;
-  g_autoptr (GPtrArray) finished = g_ptr_array_new_with_free_func (g_free);
-  char *now = NULL;
+  GArray *audio;
 
   g_mutex_lock (&self->lock);
   audio = self->queued;
   self->queued = g_array_new (FALSE, FALSE, sizeof (float));
   g_mutex_unlock (&self->lock);
+  return audio;
+}
+
+/* `audio` to the recogniser, and what it heard to the main thread if that is news. `partial` is the unfinished
+ * sentence as last passed on. TRUE when it heard words: a sentence finished, or one being spoken. */
+static gboolean
+hear_audio (DictateEngine *self, DictateStream *stream, GArray *audio, char **partial)
+{
+  const DictateRecogniserClass *recogniser = dictate_recogniser_class (self->loaded->kind);
+  g_autoptr (GPtrArray) finished = g_ptr_array_new_with_free_func (g_free);
+  char *now = NULL;
+  gboolean words;
+
   if (audio->len == 0)
-    return;
+    return FALSE;
   recogniser->hear (stream, (const float *) audio->data, audio->len, finished, &now);
+  words = finished->len > 0 || *now;
   if (finished->len == 0 && g_str_equal (now, *partial))
     {
       g_free (now);
-      return;
+      return words;
     }
   g_free (*partial);
   *partial = now;
   g_ptr_array_add (finished, NULL);
   post (self, POST_TEXT, (char **) g_ptr_array_steal (finished, NULL), g_strdup (now), 0);
+  return words;
+}
+
+/* the queued audio to the recogniser */
+static void
+hear (DictateEngine *self, DictateStream *stream, char **partial)
+{
+  g_autoptr (GArray) audio = take_queued (self);
+  hear_audio (self, stream, audio, partial);
+}
+
+/* --- taking turns */
+
+typedef struct {
+  GArray *pending;              /* samples short of a whole frame */
+  GArray *preroll;              /* the last TURN_PREROLL_MS before the speech */
+  GArray *speech;               /* for the recogniser */
+  gboolean speaking;            /* in speech now */
+  guint frames, speech_frames, quiet_frames;
+  gboolean over;                /* the turn has ended */
+} Turn;
+
+static void
+turn_init (Turn *t)
+{
+  memset (t, 0, sizeof *t);
+  t->pending = g_array_new (FALSE, FALSE, sizeof (float));
+  t->preroll = g_array_new (FALSE, FALSE, sizeof (float));
+  t->speech = g_array_new (FALSE, FALSE, sizeof (float));
+}
+
+static void
+turn_clear (Turn *t)
+{
+  g_array_unref (t->pending);
+  g_array_unref (t->preroll);
+  g_array_unref (t->speech);
+}
+
+/* how likely `frame` is speech: the detector's answer, else its loudness against TURN_LOUD */
+static float
+speech_likelihood (DictateEngine *self, const float *frame)
+{
+  double sum = 0, db;
+  float p;
+
+  if (self->vad && (p = dictate_vad_frame (self->vad, frame)) >= 0)
+    return p;
+  for (guint i = 0; i < DICTATE_VAD_FRAME; i++)
+    sum += frame[i] * frame[i];
+  db = 10 * log10 (sum / DICTATE_VAD_FRAME + 1e-12);
+  return (db - QUIET_DB) / (LOUD_DB - QUIET_DB) >= TURN_LOUD ? 1 : 0;
+}
+
+/* the new audio frame by frame: speech onto t->speech (with the preroll before it), the turn's end found.
+ * `heard`: the recogniser has words for this turn already */
+static void
+turn_feed (DictateEngine *self, Turn *t, GArray *audio, gboolean heard)
+{
+  guint preroll = TURN_PREROLL_MS * DICTATE_RATE / 1000;
+
+  g_array_append_vals (t->pending, audio->data, audio->len);
+  while (t->pending->len >= DICTATE_VAD_FRAME && !t->over)
+    {
+      const float *frame = (const float *) t->pending->data;
+      float p = speech_likelihood (self, frame);
+
+      t->frames++;
+      if (!t->speaking)
+        {
+          if (p >= TURN_START)
+            {
+              /* speech: what came just before it goes too, for its first sound */
+              t->speaking = TRUE;
+              t->quiet_frames = 0;
+              g_array_append_vals (t->speech, t->preroll->data, t->preroll->len);
+              g_array_set_size (t->preroll, 0);
+              g_array_append_vals (t->speech, frame, DICTATE_VAD_FRAME);
+              t->speech_frames++;
+            }
+          else
+            {
+              g_array_append_vals (t->preroll, frame, DICTATE_VAD_FRAME);
+              if (t->preroll->len > preroll)
+                g_array_remove_range (t->preroll, 0, t->preroll->len - preroll);
+              if (t->speech_frames == 0 && t->frames * FRAME_MS >= TURN_WAIT_MS)
+                t->over = TRUE;
+            }
+        }
+      else
+        {
+          /* the quiet within the speech goes on to the recogniser too: it ends its sentences on it */
+          g_array_append_vals (t->speech, frame, DICTATE_VAD_FRAME);
+          t->speech_frames++;
+          t->quiet_frames = p < TURN_GOING ? t->quiet_frames + 1 : 0;
+          if (t->quiet_frames * FRAME_MS >= TURN_END_MS)
+            {
+              t->speaking = FALSE;
+              /* a blip with no words in it is not a turn: listening goes on */
+              if ((t->speech_frames - t->quiet_frames) * FRAME_MS >= TURN_MIN_MS || heard)
+                t->over = TRUE;
+              else
+                t->speech_frames = 0, t->frames = 0;
+            }
+        }
+      g_array_remove_range (t->pending, 0, DICTATE_VAD_FRAME);
+    }
 }
 
 static gpointer
@@ -250,12 +386,28 @@ work (gpointer data)
   g_autofree char *partial = g_strdup ("");
   g_autofree char *error = NULL;
   gint64 last = 0;
+  gboolean turns, heard = FALSE;
+  Turn turn;
 
   g_mutex_lock (&self->lock);
   model = g_steal_pointer (&self->wanted);
+  turns = self->turns;
   g_mutex_unlock (&self->lock);
+  turn_init (&turn);
   if (!load (self, model))
     goto out;
+  if (turns && !self->vad_tried)
+    {
+      g_autofree char *path = dictate_vad_find ();
+      g_autoptr (GError) vad_error = NULL;
+
+      self->vad_tried = TRUE;
+      self->vad = path ? dictate_vad_load (path, &vad_error) : NULL;
+      if (!self->vad)
+        g_message ("turns are cut by loudness: %s", path ? vad_error->message : "no voice activity model");
+    }
+  if (turns && self->vad)
+    dictate_vad_reset (self->vad);
   recogniser = dictate_recogniser_class (self->loaded->kind);
   stream = recogniser->begin (self->recogniser, &error);
   if (!stream)
@@ -269,7 +421,7 @@ work (gpointer data)
   for (;;)
     {
       gboolean stop;
-      gint64 next = last + UPDATE_MS * G_TIME_SPAN_MILLISECOND;
+      gint64 next = last + (turns ? TURN_WAKE_MS : UPDATE_MS) * G_TIME_SPAN_MILLISECOND;
 
       g_mutex_lock (&self->lock);
       while (!self->stop && g_get_monotonic_time () < next)
@@ -279,11 +431,32 @@ work (gpointer data)
       if (stop)
         break;
       last = g_get_monotonic_time ();
-      hear (self, stream, &partial);
+      if (turns)
+        {
+          g_autoptr (GArray) audio = take_queued (self);
+
+          turn_feed (self, &turn, audio, heard);
+          if (hear_audio (self, stream, turn.speech, &partial))
+            heard = TRUE;
+          g_array_set_size (turn.speech, 0);
+          /* the speaker has finished: the microphone closes as if stopped (on the main thread, at the idle state) */
+          if (turn.over)
+            break;
+        }
+      else
+        hear (self, stream, &partial);
     }
 
-  /* the microphone is closed: what it heard last, then the end of the stream, which finishes the last sentence */
-  hear (self, stream, &partial);
+  /* the microphone is closed: what it heard last, then the end of the stream, which finishes the last sentence.
+   * Taking turns, only the speech goes: what came after the turn's end is not the speaker's */
+  if (!turns)
+    hear (self, stream, &partial);
+  else if (!turn.over)
+    {
+      g_autoptr (GArray) audio = take_queued (self);
+      turn_feed (self, &turn, audio, heard);
+      hear_audio (self, stream, turn.speech, &partial);
+    }
   {
     g_autoptr (GPtrArray) finished = g_ptr_array_new_with_free_func (g_free);
 
@@ -296,6 +469,7 @@ work (gpointer data)
   }
 
 out:
+  turn_clear (&turn);
   post (self, POST_STATE, NULL, NULL, DICTATE_IDLE);
   g_object_unref (self);
   return NULL;
@@ -353,9 +527,14 @@ start_capture (DictateEngine *self)
 {
   /* the user's default source, through PipeWire's PulseAudio server; GStreamer's choice where there is none */
   g_autoptr (GstElementFactory) pulse = gst_element_factory_find ("pulsesrc");
+  /* for tests (tests/talk-bench.c): a sound file instead of the microphone, played in real time */
+  const char *test = g_getenv ("DICTATE_TEST_INPUT");
+  g_autofree char *quoted = test ? g_strescape (test, NULL) : NULL;
+  g_autofree char *source = test ? g_strdup_printf ("filesrc location=\"%s\" ! decodebin", quoted)
+                                 : g_strdup (pulse ? "pulsesrc client-name=Dictate" : "autoaudiosrc");
   g_autofree char *description = g_strdup_printf (
     "%s ! audioconvert ! audioresample ! audio/x-raw,format=F32LE,rate=%d,channels=1,layout=interleaved "
-    "! appsink name=sink sync=false", pulse ? "pulsesrc client-name=Dictate" : "autoaudiosrc", DICTATE_RATE);
+    "! appsink name=sink sync=%s", source, DICTATE_RATE, test ? "true" : "false");
   g_autoptr (GError) error = NULL;
   GstAppSinkCallbacks callbacks = { .new_sample = on_sample };
   GstElement *sink;
@@ -407,6 +586,14 @@ const char *
 dictate_engine_get_language (DictateEngine *self)
 {
   return self->language;
+}
+
+void
+dictate_engine_set_turns (DictateEngine *self, gboolean turns)
+{
+  g_mutex_lock (&self->lock);
+  self->turns = turns;
+  g_mutex_unlock (&self->lock);
 }
 
 void
@@ -477,6 +664,7 @@ dictate_engine_finalize (GObject *object)
     dictate_recogniser_class (self->loaded->kind)->unload (self->recogniser);
   dictate_model_free (self->loaded);
   dictate_model_free (self->wanted);
+  dictate_vad_free (self->vad);
   g_free (self->language);
   g_array_unref (self->queued);
   g_mutex_clear (&self->lock);

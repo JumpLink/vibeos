@@ -83,3 +83,26 @@
   min-height: 120dp;
   background-image: linear-gradient(to bottom, alpha(@vibeos_surface, 0), @vibeos_surface 70%);
 }
+
+/* Agent's conversation: what the user said on the right, the reply on the left, as Messages has them */
+.dictate-talk {
+  padding: 0 0 8dp 0;
+}
+
+.dictate-bubble {
+  font-size: 16sp;
+  padding: 10dp 14dp;
+  border-radius: 20dp;
+}
+
+.dictate-bubble-mine {
+  background-color: @vibeos_secondary_container;
+  color: @vibeos_on_secondary_container;
+  border-bottom-right-radius: 6dp;
+}
+
+.dictate-bubble-reply {
+  background-color: @vibeos_surface_container_high;
+  color: @vibeos_on_surface;
+  border-bottom-left-radius: 6dp;
+}

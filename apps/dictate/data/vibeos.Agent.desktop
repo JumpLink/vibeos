@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Agent
+Comment=Talk with an assistant that runs on the phone
+Exec=vibeos-dictate --agent
+Icon=vibeos.Agent
+Terminal=false
+StartupNotify=false
+DBusActivatable=true
+Categories=Utility;Accessibility;GTK;
+Keywords=Assistant;AI;Voice;Talk;Conversation;Chat;Speech;
+X-Purism-FormFactor=Workstation;Mobile;
