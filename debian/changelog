@@ -64,8 +64,15 @@ vibeos (1:0.1.3) unstable; urgency=medium
     height and closes at once when nothing changed; Compass says in words
     that the sensor service is missing; Files' More menu has icons, and a
     phone's path bar ends on the folder it shows.
+  * Push messages, a new package (vibeos-unifiedpush): a UnifiedPush
+    distributor that keeps one connection to push.vibeos.top for all the
+    apps, hands each message to its app over D-Bus and starts the app if it
+    does not run; messages sent while the phone was offline come once it is
+    back. Apps register directly or through libvibeos's VibeosUnifiedPush,
+    which decrypts their messages, and sandboxed apps may reach it too.
+  * Settings: the main search bar is compact.
 
- -- pulpoff <pashkovsky@gmail.com>  Sun, 22 Nov 2026 19:55:17 +0100
+ -- pulpoff <pashkovsky@gmail.com>  Sun, 22 Nov 2026 21:45:43 +0100
 
 vibeos (1:0.1.2) unstable; urgency=medium
 
