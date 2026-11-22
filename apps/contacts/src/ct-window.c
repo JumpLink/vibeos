@@ -533,8 +533,8 @@ on_nav_selected (GtkWidget *nav, int index, Shell *shell)
 }
 
 /* A rail destination tapped over pages (on a tablet the rail stays beside them): back to the home page, and TRUE.
- * An editor among them (a contact's, or Customize view's) is not thrown away: the top page gets a Back, which asks
- * when there are changes to lose, and FALSE */
+ * An editor among them (a contact's, or Customize view's) with changes is not thrown away: it asks, as its Back
+ * does, and the pages stay (FALSE) */
 static gboolean
 close_pages (Shell *shell)
 {
@@ -542,15 +542,13 @@ close_pages (Shell *shell)
 
   if (pager->pages->len < 2)
     return TRUE;
-  for (guint i = 1; i < pager->pages->len; i++)
+  for (guint i = pager->pages->len - 1; i >= 1; i--)
     {
-      GObject *page = G_OBJECT (g_array_index (pager->pages, Placed, i).page);
+      GtkWidget *page = g_array_index (pager->pages, Placed, i).page;
 
-      if (g_object_get_data (page, "ct-editor") || g_object_get_data (page, "ct-customize"))
-        {
-          ct_page_back (CT_PAGE (pager_top (pager)));
-          return FALSE;
-        }
+      if ((g_object_get_data (G_OBJECT (page), "ct-editor") || g_object_get_data (G_OBJECT (page), "ct-customize"))
+          && ct_page_back_handled (CT_PAGE (page)))
+        return FALSE;
     }
   ct_popup_dismiss (shell->window);
   gtk_window_set_focus (GTK_WINDOW (shell->window), NULL);
@@ -569,10 +567,13 @@ on_rail_selected (VibeosNavRail *rail, int index, Shell *shell)
     vibeos_nav_rail_set_selected (rail, current_tab (shell));
 }
 
+/* the rail's new contact: over the home page, the pages beside the rail closing first as for a destination */
 static void
 on_rail_fab (VibeosPressable *fab, Shell *shell)
 {
-  ct_window_new_contact (shell->window, NULL);
+  ct_people_close_search (shell->people);
+  if (close_pages (shell))
+    ct_window_new_contact (shell->window, NULL);
 }
 
 /* the list pane on a tablet: about a third of the width, as wide as a phone at least */
@@ -666,6 +667,7 @@ make_home (Shell *shell)
   gtk_widget_set_vexpand (shell->tabs, TRUE);
 
   shell->nav_rail = vibeos_nav_rail_new ();
+  gtk_widget_add_css_class (shell->nav_rail, "ct-rail");
   shell->rail_fab = ct_fab_new ();
   g_signal_connect (shell->rail_fab, "clicked", G_CALLBACK (on_rail_fab), shell);
   vibeos_nav_rail_set_header (VIBEOS_NAV_RAIL (shell->nav_rail), shell->rail_fab);
