@@ -103,6 +103,7 @@ shell; the device images do.
 | `vibeos-iconpack-gnome-free` | gnome-free (called Round before): white glyphs on gradient discs |
 | `vibeos-parallax-solar-system` | The default wallpaper: a tilt-parallax solar system from NASA's public-domain images |
 | `sim-apn` | Sets up a mobile data profile for every new SIM |
+| `vibeos-unifiedpush` | Push messages for the apps: one connection to the push server for all of them (UnifiedPush) |
 | `libvibeos-1-0`, `libspongy-1-0`, `libspongy-gtk-1-0`, `gir1.2-spongy-1`, `fonts-vibeos-roboto` | The apps' Material 3 widgets, Android-style scroll physics, and Roboto |
 
 Dictate's speech recognisers are [Moonshine](https://github.com/moonshine-ai/moonshine) (MIT; English, German,

@@ -43,6 +43,7 @@ Build-Depends: debhelper-compat (= 13),
                libpulse-dev,
                libwebkitgtk-6.0-dev (>= 2.46),
                libsoup-3.0-dev,
+               libgnutls28-dev (>= 3.8.2),
                libappstream-dev (>= 1.0),
                dbus-daemon <!nocheck>,
                python3 <!nocheck>,
@@ -67,6 +68,7 @@ Depends: gnome-shell-extension-vibeos (= ${source:Version}),
          ${misc:Depends},
 Recommends: vibeos-session (= ${source:Version}),
             sim-apn (= ${source:Version}),
+            vibeos-unifiedpush (>= ${source:Version}),
             vibeos-dialer (>= ${source:Version}),
             vibeos-messaging (>= ${source:Version}),
             vibeos-clock (>= ${source:Version}),
@@ -179,6 +181,25 @@ Description: VibeOS system helpers
   * vibeos-theme computes the system's colours from a seed colour or the
     wallpaper and stores them in vibeos.Theme (whose schema is here), which
     the apps follow, light or dark.
+
+Package: vibeos-unifiedpush
+Architecture: any
+Section: net
+Depends: glib-networking,
+         ${shlibs:Depends},
+         ${misc:Depends},
+Description: push messages for the apps of VibeOS (UnifiedPush distributor)
+ vibeos-unifiedpush brings apps their push messages, as Android's push
+ service does: one connection to the push server (push.vibeos.top, an ntfy
+ server) for all of them, and each message handed to its app over D-Bus,
+ which starts the app if it does not run. Messages sent while the phone was
+ offline come once it is back.
+ .
+ Apps register through the UnifiedPush D-Bus spec
+ (org.unifiedpush.Distributor2), directly or with libvibeos's
+ VibeosUnifiedPush, and their servers send Web Push messages (RFC 8030,
+ encrypted by RFC 8291) to the endpoint each registration gets. It runs as a
+ systemd user unit from login, and is D-Bus activatable.
 
 Package: sim-apn
 Architecture: all
