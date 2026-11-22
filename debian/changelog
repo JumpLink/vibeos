@@ -38,8 +38,34 @@ vibeos (1:0.1.3) unstable; urgency=medium
     camera hole with a display plugged in, and follows only the windows on
     its own screen. Docked, the screen never times out.
   * The screen coming on keeps the brightness it went off with.
+  * App sandbox, a new package (vibeos-sandbox): the apps installed from
+    Software, or from a .deb file with App Installer, run in a sandbox
+    (bubblewrap) with the system read-only, a home of their own, no other
+    app's files, no system bus, and only the parts of the session bus their
+    permissions allow. The portals ask before an app gets the location or
+    the camera, WirePlumber hides the microphones and cameras from an app
+    without the permission, and VibeOS's own apps do not run sandboxed.
+  * Per-app permissions: Software shows what an app asks for and what an
+    app that declares none still gets; Settings, Apps sets an app's network,
+    location, camera, microphone, contacts, calendar, phone, SMS, files and
+    background permissions, and shows its storage and uninstalls it.
+  * Tablets: the settings rows of Phone, Clock, Contacts, Calendar and the
+    Browser, Calendar's event editor, App Installer's page and an app's page
+    in Software are a column in the middle, so each window turns either way;
+    the rail stays beside the pages and the search in Phone, Contacts and
+    Software. Clock turns upright from sideways, Calculator's history stays
+    open when the tablet is turned, and in a window wider than tall the
+    time picker is Android's landscape picker.
+  * Settings: Android 17's search bar and names, and Display, Battery, Sound
+    and vibration, Connected devices, Apps and Notifications laid out as
+    Android 17's; the menu's Battery row says the level, and Apps the apps
+    used last.
+  * Back closes a dialog with no field; Contacts' editor keeps its fields'
+    height and closes at once when nothing changed; Compass says in words
+    that the sensor service is missing; Files' More menu has icons, and a
+    phone's path bar ends on the folder it shows.
 
- -- pulpoff <pashkovsky@gmail.com>  Sat, 21 Nov 2026 12:36:53 +0100
+ -- pulpoff <pashkovsky@gmail.com>  Sun, 22 Nov 2026 19:55:17 +0100
 
 vibeos (1:0.1.2) unstable; urgency=medium
 
