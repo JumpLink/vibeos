@@ -16,7 +16,9 @@ alt = b"|".join(re.escape(n.encode()) for n in names)
 WORD = re.compile(rb"(?<![A-Za-z0-9_])(?:" + alt + rb")(?![A-Za-z0-9_])", re.I)
 PAIR = re.compile(rb"(?:" + alt + rb")@(?:" + alt + rb")(?![A-Za-z0-9_])", re.I)
 HOME = re.compile(rb"/(?:home|media|run/media)/(?:" + alt + rb")/", re.I)
-PRIV = re.compile(rb"-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----")
+# a PEM or OpenSSH private key: the header, any header lines (an encrypted PEM's), then key data; a library's
+# parser holds the header alone
+PRIV = re.compile(rb"-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----\r?\n(?:[A-Za-z-]+:[^\n]*\r?\n)*\r?\n?[A-Za-z0-9+/=]{40,}")
 KEYFILE = re.compile(r"(?:^|/)(?:authorized_keys2?|ssh_host_\w+_key|dropbear_\w+_host_key|id_rsa|id_ecdsa|id_ed25519)$")
 BANNER = re.compile(rb"Linux version ([!-~]{1,64}) \(([^()\x00\n]{1,80})\)([^\x00\n]{0,240})")
 VER = re.compile(rb"\) (#[!-~]*(?: [ -~]{0,60})?)")

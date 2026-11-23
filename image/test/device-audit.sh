@@ -7,6 +7,7 @@
 #   - an SSH authorized_keys, host key or private key file, or a private key in any file
 #   - a kernel whose banner names this machine, wherever the kernel sits: kernel-names.py decompresses first (an
 #     Android boot image, a recovery partition, an EFI zboot image on a FAT ESP, a FIT image, an initramfs)
+# grep follows the payload's links, and a link to an absolute path dangles here: those errors are dropped.
 # Binary files and compressed modules that hold one of the names as a word are listed to look at, not as leaks: a
 # short host name can be part of a module alias. AUDIT_NAMES adds names (colon separated). Exit 1 on any leak.
 set -u
@@ -41,7 +42,7 @@ for D; do
 	echo "== $D"
 	(cd "$T/x" && find . \( -name '.resolv.conf.systemd-resolved.bak' -o -name 'ssl-cert-snakeoil.*' \) | sed 's|^\./||') > "$T/l"
 	while read -r f; do leak "$f"; done < "$T/l"
-	grep -RIlwi -F -f "$T/names" "$T/x" | sed "s|^$T/x/||" > "$T/l"
+	grep -RIlwi -F -f "$T/names" "$T/x" 2> /dev/null | sed "s|^$T/x/||" > "$T/l"
 	while read -r f; do leak "a build name in the text file $f"; done < "$T/l"
 	# SSH keys: an authorized_keys file lets its key's owner in; host keys and private keys are secrets
 	K="-name authorized_keys* -o -name ssh_host_*_key -o -name dropbear_*_host_key -o -name id_rsa -o -name id_ecdsa -o -name id_ed25519"
@@ -49,11 +50,12 @@ for D; do
 	while read -r f; do leak "an SSH key file: $f"; done < "$T/l"
 	(cd "$T/x" && set -f && find -L . -type f -empty \( $K \) | sed 's|^\./||') > "$T/l"
 	while read -r f; do echo "CHECK an empty SSH key file (no key in it): $f"; c=$((c + 1)); done < "$T/l"
-	grep -RlaE -e '-----BEGIN ([A-Z]+ )?PRIVATE KEY-----' "$T/x" | sed "s|^$T/x/||" > "$T/l"
+	# a private key: its header with key data after it (a TLS or SSH library holds the header alone)
+	grep -RlaPz -e '-----BEGIN ([A-Z0-9]+ )*PRIVATE KEY-----\r?\n([A-Za-z-]+:[^\n]*\r?\n)*\r?\n?[A-Za-z0-9+/=]{40,}' "$T/x" 2> /dev/null | sed "s|^$T/x/||" > "$T/l"
 	while read -r f; do leak "a private key in $f"; done < "$T/l"
-	grep -RlaF -e "/home/$U/" -e "/media/$U/" "$T/x" | sed "s|^$T/x/||" > "$T/l"
+	grep -RlaF -e "/home/$U/" -e "/media/$U/" "$T/x" 2> /dev/null | sed "s|^$T/x/||" > "$T/l"
 	while read -r f; do leak "a /home/$U/ or /media/$U/ path in $f"; done < "$T/l"
-	grep -Rlawi -F -f "$T/names" "$T/x" | sed "s|^$T/x/||" > "$T/l"
+	grep -Rlawi -F -f "$T/names" "$T/x" 2> /dev/null | sed "s|^$T/x/||" > "$T/l"
 	while read -r f; do
 		grep -qIwi -F -f "$T/names" "$T/x/$f" 2> /dev/null && continue	# a text file: above
 		echo "CHECK a build name as a word in the binary $f"; c=$((c + 1))
