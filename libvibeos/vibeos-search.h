@@ -38,6 +38,9 @@ G_DECLARE_FINAL_TYPE (VibeosSearchView, vibeos_search_view, VIBEOS, SEARCH_VIEW,
 GtkWidget  *vibeos_search_view_new         (const char *hint);
 /* what shows under the entry: the results, the recent searches */
 void        vibeos_search_view_set_content (VibeosSearchView *self, GtkWidget *content);
+/* a button at the bar's end while the entry is empty, where the clear button comes once there is text (Google's
+ * microphone), or NULL */
+void        vibeos_search_view_set_end     (VibeosSearchView *self, GtkWidget *end);
 const char *vibeos_search_view_get_text    (VibeosSearchView *self);
 void        vibeos_search_view_set_text    (VibeosSearchView *self, const char *text);
 /* over everything in `widget`'s window, fading in, the entry focused */
