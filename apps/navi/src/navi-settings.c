@@ -3,6 +3,7 @@
 #include "navi-geo.h"
 
 #define RECENT_MAX 20
+#define SAVED_MAX  200
 
 static NaviSettings *the_settings;
 static guint save_source;
@@ -27,6 +28,14 @@ read_place (GKeyFile *kf, const char *group)
                                  g_key_file_get_double (kf, group, "lng", NULL));
   p->category = g_key_file_get_string (kf, group, "category", NULL);
   return p;
+}
+
+static void
+saved_free (NaviSaved *saved)
+{
+  navi_place_free (saved->place);
+  g_free (saved->label);
+  g_free (saved);
 }
 
 static void
@@ -57,6 +66,7 @@ navi_settings_load (void)
   s->cameras = TRUE; /* the owner's choice, 2026-11-23 (see navi-cameras.c for where they stay off) */
   s->speeding = NAVI_SPEEDING_PLUS_5;
   s->recent = g_ptr_array_new_with_free_func ((GDestroyNotify) navi_place_free);
+  s->saved = g_ptr_array_new_with_free_func ((GDestroyNotify) saved_free);
   g_autoptr (GKeyFile) kf = g_key_file_new ();
   g_autofree char *file = path ();
   if (!g_key_file_load_from_file (kf, file, G_KEY_FILE_NONE, NULL))
@@ -107,6 +117,16 @@ navi_settings_load (void)
     if (p)
       g_ptr_array_add (s->recent, p);
   }
+  for (int i = 0; i < SAVED_MAX; i++) {
+    g_autofree char *group = g_strdup_printf ("saved-%d", i);
+    NaviPlace *p = read_place (kf, group);
+    if (!p)
+      continue;
+    NaviSaved *saved = g_new0 (NaviSaved, 1);
+    saved->place = p;
+    saved->label = g_key_file_get_string (kf, group, "label", NULL);
+    g_ptr_array_add (s->saved, saved);
+  }
   return s;
 }
 
@@ -141,6 +161,13 @@ navi_settings_flush (NaviSettings *s)
   for (guint i = 0; i < s->recent->len; i++) {
     g_autofree char *group = g_strdup_printf ("recent-%u", i);
     write_place (kf, group, s->recent->pdata[i]);
+  }
+  for (guint i = 0; i < s->saved->len; i++) {
+    NaviSaved *saved = s->saved->pdata[i];
+    g_autofree char *group = g_strdup_printf ("saved-%u", i);
+    write_place (kf, group, saved->place);
+    if (saved->label)
+      g_key_file_set_string (kf, group, "label", saved->label);
   }
   g_autofree char *file = path ();
   g_autofree char *dir = g_path_get_dirname (file);
@@ -181,4 +208,53 @@ navi_settings_add_recent (NaviSettings *s, const NaviPlace *place)
   if (s->recent->len > RECENT_MAX)
     g_ptr_array_set_size (s->recent, RECENT_MAX);
   navi_settings_save (s);
+}
+
+int
+navi_settings_find_saved (NaviSettings *s, const NaviPlace *place)
+{
+  for (guint i = 0; i < s->saved->len; i++) {
+    NaviPlace *p = ((NaviSaved *) s->saved->pdata[i])->place;
+    if (navi_geo_distance (p->lat, p->lng, place->lat, place->lng) < 30)
+      return i;
+  }
+  return -1;
+}
+
+void
+navi_settings_add_saved (NaviSettings *s, const NaviPlace *place)
+{
+  if (!place->name || !*place->name || navi_settings_find_saved (s, place) >= 0 || s->saved->len >= SAVED_MAX)
+    return;
+  NaviSaved *saved = g_new0 (NaviSaved, 1);
+  saved->place = navi_place_copy (place);
+  g_ptr_array_add (s->saved, saved);
+  navi_settings_save (s);
+}
+
+void
+navi_settings_remove_saved (NaviSettings *s, guint index)
+{
+  if (index >= s->saved->len)
+    return;
+  g_ptr_array_remove_index (s->saved, index);
+  navi_settings_save (s);
+}
+
+void
+navi_settings_rename_saved (NaviSettings *s, guint index, const char *label)
+{
+  if (index >= s->saved->len)
+    return;
+  NaviSaved *saved = s->saved->pdata[index];
+  g_autofree char *trimmed = label ? g_strstrip (g_strdup (label)) : NULL;
+  g_free (saved->label);
+  saved->label = trimmed && *trimmed && g_strcmp0 (trimmed, saved->place->name) ? g_steal_pointer (&trimmed) : NULL;
+  navi_settings_save (s);
+}
+
+const char *
+navi_saved_name (const NaviSaved *saved)
+{
+  return saved->label ? saved->label : saved->place->name;
 }

@@ -68,7 +68,14 @@ typedef struct {
   double last_lat, last_lng; /* where the map opens (to a kilometre); its zoom is the browsing one, as the camera
                               * follows the car at that zoom from the first fix on */
   GPtrArray *recent;      /* NaviPlace, newest first, at most 20 */
+  GPtrArray *saved;       /* NaviSaved: the places starred on their cards, in the order they were saved */
 } NaviSettings;
+
+/* a saved place: the place as it was found, and the name the user gave it */
+typedef struct {
+  NaviPlace *place;
+  char *label; /* NULL: the place's own name */
+} NaviSaved;
 
 NaviSettings *navi_settings_load (void);
 /* writes them out (a little later, so a burst of changes is one write) */
@@ -76,5 +83,13 @@ void navi_settings_save (NaviSettings *settings);
 /* writes now, when the app quits */
 void navi_settings_flush (NaviSettings *settings);
 void navi_settings_add_recent (NaviSettings *settings, const NaviPlace *place);
+/* the saved place `place` is (one within 30 m), or -1 */
+int  navi_settings_find_saved   (NaviSettings *settings, const NaviPlace *place);
+void navi_settings_add_saved    (NaviSettings *settings, const NaviPlace *place);
+void navi_settings_remove_saved (NaviSettings *settings, guint index);
+/* a new name for the saved place at `index` (NULL or empty: back to its own) */
+void navi_settings_rename_saved (NaviSettings *settings, guint index, const char *label);
+/* the name a saved place goes by */
+const char *navi_saved_name (const NaviSaved *saved);
 
 G_END_DECLS

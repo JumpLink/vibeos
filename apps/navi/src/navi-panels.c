@@ -68,6 +68,8 @@ struct _NaviPanels {
   GCancellable *shell_cancel;
   guint keyboard;          /* that: logical px from the window's bottom, 0 when the keyboard is down */
   GtkWidget *search_host;  /* a tablet's: the card over the map the search opens in */
+  GtkWidget *place_star;   /* the place card's Save: a star, filled once the place is saved */
+  NaviPlace *saved_target; /* the saved place a row's menu was opened for */
   GObject *dictation;      /* the search's microphone (a DictateEngine), NULL without a speech model */
   GtkWidget *search_mic;
   GString *dictated;       /* the sentences heard since the microphone was tapped */
@@ -220,6 +222,7 @@ static const char *const CSS =
   ".navi-action label { color: #0099FF; font-size: 13sp; font-weight: 600; }"
   ".navi-sheet .navi-action label { color: #0099FF; }"
   ".navi-action image { color: #0099FF; }"
+  ".navi-action image.navi-starred, image.navi-starred { color: #FFB300; }"
   /* the search's chips */
   ".navi-category { background: #F1F2F6; border-radius: 14dp; min-height: 64dp; }"
   ".night .navi-category { background: #2C323A; }"
@@ -507,7 +510,147 @@ place_row_full (NaviPanels *p, const NaviPlace *place, const char *icon, const c
   return row;
 }
 
-/* the search's first view: Home, Work, the places driven to lately */
+/* ---- the saved places: starred on their cards, listed in the search, renamed and removed from there ---- */
+
+static void fill_saved (NaviPanels *p);
+
+static void
+saved_place_clicked (GtkWidget *row, NaviPanels *p)
+{
+  Navi *n = p->navi;
+  const NaviSaved *saved = g_object_get_data (G_OBJECT (row), "navi-saved");
+  g_autoptr (NaviPlace) copy = navi_place_copy (saved->place);
+  /* the drive is to it by the name it was given */
+  if (saved->label) {
+    g_free (copy->name);
+    copy->name = g_strdup (saved->label);
+  }
+  close_search (p);
+  if (n->mode == NAVI_MODE_DRIVE)
+    navi_panels_ask_route_change (p, copy);
+  else
+    navi_preview_routes (n, copy);
+}
+
+/* the saved place a menu was opened for, by where it is (the list may have changed under the menu), or -1 */
+static int
+saved_target_index (NaviPanels *p)
+{
+  return p->saved_target ? navi_settings_find_saved (p->navi->settings, p->saved_target) : -1;
+}
+
+static void
+saved_list_changed (NaviPanels *p)
+{
+  if (p->search_view && p->choosing == CHOOSE_NONE &&
+      !*vibeos_search_view_get_text (VIBEOS_SEARCH_VIEW (p->search_view)))
+    fill_saved (p);
+}
+
+static void
+rename_answered (VibeosDialog *d, int response, NaviPanels *p)
+{
+  int i = saved_target_index (p);
+  if (response != VIBEOS_RESPONSE_OK || i < 0)
+    return;
+  GtkWidget *entry = g_object_get_data (G_OBJECT (d), "navi-entry");
+  navi_settings_rename_saved (p->navi->settings, i, gtk_editable_get_text (GTK_EDITABLE (entry)));
+  saved_list_changed (p);
+}
+
+static void
+rename_activated (GtkWidget *entry, VibeosDialog *d)
+{
+  vibeos_dialog_respond (d, VIBEOS_RESPONSE_OK);
+}
+
+static gboolean
+rename_focus (gpointer data)
+{
+  GtkWidget *entry = data;
+  if (gtk_widget_get_root (entry)) {
+    gtk_widget_grab_focus (entry);
+    gtk_editable_select_region (GTK_EDITABLE (entry), 0, -1);
+  }
+  g_object_unref (entry);
+  return G_SOURCE_REMOVE;
+}
+
+static void
+rename_saved (gpointer data)
+{
+  NaviPanels *p = data;
+  int i = saved_target_index (p);
+  if (i < 0)
+    return;
+  const NaviSaved *saved = p->navi->settings->saved->pdata[i];
+  VibeosDialog *d = vibeos_dialog_new (_("Rename"));
+  GtkWidget *entry = gtk_entry_new ();
+  gtk_widget_add_css_class (entry, "vibeos-entry");
+  gtk_editable_set_text (GTK_EDITABLE (entry), navi_saved_name (saved));
+  gtk_entry_set_placeholder_text (GTK_ENTRY (entry), saved->place->name);
+  gtk_widget_set_margin_top (entry, 8);
+  vibeos_dialog_set_content (d, entry);
+  vibeos_dialog_add_button (d, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  vibeos_dialog_add_button (d, _("Save"), VIBEOS_RESPONSE_OK);
+  g_object_set_data (G_OBJECT (d), "navi-entry", entry);
+  g_signal_connect (entry, "activate", G_CALLBACK (rename_activated), d);
+  g_signal_connect (d, "response", G_CALLBACK (rename_answered), p);
+  vibeos_dialog_present (d, p->navi->win);
+  /* after the dialog's own focus */
+  g_idle_add (rename_focus, g_object_ref (entry));
+}
+
+static void
+remove_saved (gpointer data)
+{
+  NaviPanels *p = data;
+  int i = saved_target_index (p);
+  if (i < 0)
+    return;
+  navi_settings_remove_saved (p->navi->settings, i);
+  saved_list_changed (p);
+  if (p->place && p->place_star)
+    navi_panels_show_place (p, p->place);
+}
+
+static void
+saved_more_clicked (GtkWidget *button, NaviPanels *p)
+{
+  const NaviSaved *saved = g_object_get_data (G_OBJECT (button), "navi-saved");
+  g_clear_pointer (&p->saved_target, navi_place_free);
+  p->saved_target = navi_place_copy (saved->place);
+  VibeosMenu *menu = vibeos_menu_new ();
+  vibeos_menu_append (menu, _("Rename"), rename_saved, p);
+  vibeos_menu_append (menu, _("Remove"), remove_saved, p);
+  vibeos_menu_present (menu, button);
+}
+
+/* a saved place in the search's list: its name over where it is (its own name too, once renamed), its menu at the
+ * end */
+static GtkWidget *
+saved_row (NaviPanels *p, const NaviSaved *saved)
+{
+  const NaviPlace *place = saved->place;
+  g_autofree char *subtitle = !saved->label ? g_strdup (place->detail)
+                              : place->detail ? g_strdup_printf ("%s, %s", place->name, place->detail)
+                                              : g_strdup (place->name);
+  GtkWidget *row = vibeos_list_row_new (navi_saved_name (saved), subtitle);
+  GtkWidget *star = image_new ("starred-symbolic", 24);
+  gtk_widget_add_css_class (star, "navi-starred");
+  vibeos_list_row_set_start_widget (VIBEOS_LIST_ROW (row), star);
+  GtkWidget *more = vibeos_icon_button_new ("view-more-symbolic");
+  gtk_accessible_update_property (GTK_ACCESSIBLE (more), GTK_ACCESSIBLE_PROPERTY_LABEL, _("More options"), -1);
+  /* the rows are made again whenever the list changes, so the place itself is safe to point at */
+  g_object_set_data (G_OBJECT (more), "navi-saved", (gpointer) saved);
+  g_signal_connect (more, "clicked", G_CALLBACK (saved_more_clicked), p);
+  vibeos_list_row_set_end_widget (VIBEOS_LIST_ROW (row), more);
+  g_object_set_data (G_OBJECT (row), "navi-saved", (gpointer) saved);
+  g_signal_connect (row, "clicked", G_CALLBACK (saved_place_clicked), p);
+  return row;
+}
+
+/* the search's first view: Home, Work, the saved places, the places driven to lately */
 static void
 fill_saved (NaviPanels *p)
 {
@@ -530,6 +673,11 @@ fill_saved (NaviPanels *p)
     g_object_set_data (G_OBJECT (row), "navi-home", GINT_TO_POINTER (k == 0));
     g_signal_connect (row, "clicked", G_CALLBACK (saved_clicked), p);
     vibeos_card_list_append (list, row);
+  }
+  if (n->settings->saved->len) {
+    vibeos_card_list_add_group (list, _("Saved"));
+    for (guint i = 0; i < n->settings->saved->len; i++)
+      vibeos_card_list_append (list, saved_row (p, n->settings->saved->pdata[i]));
   }
   if (n->settings->recent->len) {
     vibeos_card_list_add_group (list, _("Recent"));
@@ -1558,20 +1706,46 @@ save_as_clicked (GtkWidget *w, NaviPanels *p)
   set_text (label, home ? _("Saved as Home") : _("Saved as Work"));
 }
 
+/* the star: the place saved, or no longer */
+static void
+star_clicked (GtkWidget *w, NaviPanels *p)
+{
+  if (!p->place)
+    return;
+  NaviSettings *st = p->navi->settings;
+  int i = navi_settings_find_saved (st, p->place);
+  if (i >= 0)
+    navi_settings_remove_saved (st, i);
+  else
+    navi_settings_add_saved (st, p->place);
+  navi_panels_show_place (p, p->place);
+}
+
 static GtkWidget *
-action_button (NaviPanels *p, GtkWidget *icon, const char *text, gboolean home)
+action_button_full (NaviPanels *p, GtkWidget *icon, const char *text, GCallback clicked)
 {
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 4);
   gtk_widget_set_valign (box, GTK_ALIGN_CENTER);
   gtk_widget_set_halign (icon, GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (box), icon);
   GtkWidget *label = label_new (text, NULL, 0.5);
+  gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
   gtk_box_append (GTK_BOX (box), label);
-  GtkWidget *b = pressable (box, "navi-action", NULL, G_CALLBACK (save_as_clicked), p);
+  GtkWidget *b = pressable (box, "navi-action", NULL, clicked, p);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (b), VIBEOS_RIPPLE_BOUNDED, 14);
   gtk_widget_set_hexpand (b, TRUE);
-  g_object_set_data (G_OBJECT (b), "navi-home", GINT_TO_POINTER (home));
+  /* three to a row, each a third whatever its label */
+  gtk_widget_set_size_request (b, 1, -1);
   g_object_set_data (G_OBJECT (b), "navi-label", label);
+  g_object_set_data (G_OBJECT (b), "navi-icon", icon);
+  return b;
+}
+
+static GtkWidget *
+action_button (NaviPanels *p, GtkWidget *icon, const char *text, gboolean home)
+{
+  GtkWidget *b = action_button_full (p, icon, text, G_CALLBACK (save_as_clicked));
+  g_object_set_data (G_OBJECT (b), "navi-home", GINT_TO_POINTER (home));
   return b;
 }
 
@@ -1615,6 +1789,9 @@ build_place (NaviPanels *p)
   GtkWidget *work = navi_icon_new (NAVI_ICON_WORK, 22);
   GdkRGBA blue = { 0, 0.6, 1, 1 };
   navi_icon_set_color (work, &blue);
+  gtk_box_set_homogeneous (GTK_BOX (actions), TRUE);
+  p->place_star = action_button_full (p, image_new ("non-starred-symbolic", 22), _("Save"), G_CALLBACK (star_clicked));
+  gtk_box_append (GTK_BOX (actions), p->place_star);
   gtk_box_append (GTK_BOX (actions), action_button (p, image_new ("user-home-symbolic", 22), _("Set as Home"), TRUE));
   gtk_box_append (GTK_BOX (actions), action_button (p, work, _("Set as Work"), FALSE));
   gtk_box_append (GTK_BOX (page), actions);
@@ -2230,6 +2407,7 @@ navi_panels_free (NaviPanels *p)
   stop_countdown (p);
   if (p->go_fill)
     g_object_remove_weak_pointer (G_OBJECT (p->go_fill), (gpointer *) &p->go_fill);
+  g_clear_pointer (&p->saved_target, navi_place_free);
   if (p->dictation)
     g_signal_handlers_disconnect_by_data (p->dictation, p);
   g_clear_object (&p->dictation);
@@ -2402,9 +2580,16 @@ navi_panels_show_place (NaviPanels *p, const NaviPlace *place)
   place_chip (p);
   set_text (p->place_go_label, place->kind == NAVI_PLACE_POINT ? _("Drive here") : poi ? _("Go") : _("View routes"));
   /* the Set as buttons say what they do again; the place that already is Home (Work) says so instead */
-  GtkWidget *actions = gtk_widget_get_prev_sibling (p->place_go);
+  gboolean starred = navi_settings_find_saved (p->navi->settings, place) >= 0;
+  GtkWidget *star = g_object_get_data (G_OBJECT (p->place_star), "navi-icon");
+  gtk_image_set_from_icon_name (GTK_IMAGE (star), starred ? "starred-symbolic" : "non-starred-symbolic");
+  if (starred)
+    gtk_widget_add_css_class (star, "navi-starred");
+  else
+    gtk_widget_remove_css_class (star, "navi-starred");
+  set_text (g_object_get_data (G_OBJECT (p->place_star), "navi-label"), starred ? _("Saved") : _("Save"));
   int k = 0;
-  for (GtkWidget *b = gtk_widget_get_first_child (actions); b; b = gtk_widget_get_next_sibling (b), k++) {
+  for (GtkWidget *b = gtk_widget_get_next_sibling (p->place_star); b; b = gtk_widget_get_next_sibling (b), k++) {
     NaviPlace *saved = k == 0 ? p->navi->settings->home : p->navi->settings->work;
     gboolean is = saved && navi_geo_distance (saved->lat, saved->lng, place->lat, place->lng) < 30;
     set_text (g_object_get_data (G_OBJECT (b), "navi-label"), is ? (k == 0 ? _("Your Home") : _("Your Work"))
