@@ -556,7 +556,7 @@ main (int argc, char **argv)
     d.heading = route_heading (&d, 0);
     g_print ("route: %u points, %.0f m\n", d.n_route, d.route[d.n_route - 1].dist);
   } else {
-    d.car_lat = 52.5009, d.car_lng = 13.3469; /* nowhere in particular: a Berlin junction */
+    d.car_lat = 52.5145, d.car_lng = 13.3501; /* the Großer Stern in Berlin, a roundabout */
     d.heading = 45;
   }
 

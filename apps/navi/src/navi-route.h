@@ -73,8 +73,8 @@ typedef struct {
 
 typedef struct {
   NaviTurn type;
-  char *instruction;   /* written: "Turn left onto Fuggerstraße." */
-  char *verbal_alert;  /* spoken well before it: "Turn left onto Fuggerstraße." (Navi adds the distance) */
+  char *instruction;   /* written: "Turn right onto Hardenbergstraße." */
+  char *verbal_alert;  /* spoken well before it: "Turn right onto Hardenbergstraße." (Navi adds the distance) */
   char *verbal_pre;    /* spoken right before it, with "Then ..." when the next one follows at once */
   char *verbal_post;   /* spoken right after it: "Continue for 800 meters." */
   char *street;        /* the street it leads onto (or the exit's toward), NULL when none */
@@ -96,7 +96,7 @@ typedef struct {
   guint n_maneuvers;
   double length; /* metres */
   double time;   /* seconds */
-  char *via;     /* "Via B 96 - Lützowplatz": the streets most of it runs on */
+  char *via;     /* "Via Straße des 17. Juni - B 2": the streets most of it runs on */
   gboolean toll, highway, ferry;
   double stop_s;  /* where the route reaches its stop (the first leg's end): metres from the start; < 0 without one */
   double min_lat, min_lng, max_lat, max_lng;

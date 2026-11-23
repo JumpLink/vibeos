@@ -25,7 +25,7 @@ typedef enum {
 
 typedef struct {
   NaviPlaceKind kind;
-  char *name;     /* "Kulturbrauerei", "Bergmannstraße 5" */
+  char *name;     /* "Kulturbrauerei", "Rathausstraße 15" */
   char *detail;   /* where it is: "Schönhauser Allee, Prenzlauer Berg" (may be NULL) */
   char *category; /* a point of interest's group (navi-poi.h: "fuel", "food"), or its OSM value; else NULL */
   double lat, lng;

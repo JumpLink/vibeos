@@ -1,5 +1,5 @@
 /* Tests of Navi's logic: paths, Valhalla's answer, the guidance along a route and its prompts, the tile reader,
- * the search's folding and Photon's answer, the sun. No GTK, no network: the route is a saved answer (Kleiststraße
+ * the search's folding and Photon's answer, the sun. No GTK, no network: the route is a saved answer (Bahnhof Zoo
  * to Potsdamer Platz in Berlin) and the drive is made-up fixes along it. */
 #include "navi-geo.h"
 #include "navi-guidance.h"
@@ -28,7 +28,7 @@ load_route_file (const char *name)
 static GPtrArray *
 load_routes (void)
 {
-  return load_route_file ("route-kleiststrasse-potsdamer-platz.json");
+  return load_route_file ("route-zoo-potsdamer-platz.json");
 }
 
 static void
@@ -108,18 +108,18 @@ test_route_parse (void)
   g_autoptr (GPtrArray) routes = load_routes ();
   g_assert_cmpuint (routes->len, >=, 1);
   NaviRoute *r = routes->pdata[0];
-  g_assert_cmpfloat (fabs (r->length - 3007), <, 40);
-  g_assert_cmpfloat (r->time, >, 200);
-  g_assert_cmpuint (r->n_maneuvers, ==, 7);
-  g_assert_cmpint (r->maneuvers[0].type, ==, NAVI_TURN_START);
-  g_assert_cmpint (r->maneuvers[1].type, ==, NAVI_TURN_LEFT);
-  g_assert_cmpstr (r->maneuvers[1].street, ==, "Fuggerstraße");
-  g_assert_cmpstr (r->maneuvers[1].instruction, ==, "Turn left onto Fuggerstraße.");
+  g_assert_cmpfloat (fabs (r->length - 5071), <, 60);
+  g_assert_cmpfloat (r->time, >, 300);
+  g_assert_cmpuint (r->n_maneuvers, ==, 10);
+  g_assert_cmpint (r->maneuvers[0].type, ==, NAVI_TURN_START_RIGHT); /* the station is on the right */
+  g_assert_cmpint (r->maneuvers[1].type, ==, NAVI_TURN_RIGHT);
+  g_assert_cmpstr (r->maneuvers[1].street, ==, "Hardenbergstraße");
+  g_assert_cmpstr (r->maneuvers[1].instruction, ==, "Turn right onto Hardenbergstraße.");
   g_assert_nonnull (r->maneuvers[1].verbal_pre);
   /* a name before the road number */
-  g_assert_cmpstr (r->maneuvers[4].street, ==, "Potsdamer Straße");
-  g_assert_cmpstr (r->maneuvers[4].ref, ==, "B 1");
-  g_assert_cmpint (r->maneuvers[6].type, ==, NAVI_TURN_DESTINATION);
+  g_assert_cmpstr (r->maneuvers[4].street, ==, "Straße des 17. Juni");
+  g_assert_cmpstr (r->maneuvers[4].ref, ==, "B 2");
+  g_assert_cmpint (r->maneuvers[9].type, ==, NAVI_TURN_DESTINATION_RIGHT);
   /* the manoeuvres in order along the path, their lengths adding up */
   double sum = 0;
   for (guint i = 0; i < r->n_maneuvers; i++) {
@@ -129,8 +129,8 @@ test_route_parse (void)
   }
   g_assert_cmpfloat (fabs (sum - r->length), <, 1);
   g_assert_nonnull (r->via);
-  g_assert_true (strstr (r->via, "Lützowplatz") || strstr (r->via, "Martin-Luther-Straße"));
-  g_assert_cmpstr (navi_route_street_at (r, r->maneuvers[2].s + 10), ==, "Martin-Luther-Straße");
+  g_assert_true (strstr (r->via, "Straße des 17. Juni") != NULL);
+  g_assert_cmpstr (navi_route_street_at (r, r->maneuvers[2].s + 10), ==, "Fasanenstraße");
   g_assert_cmpfloat (fabs (navi_route_time_left (r, 0) - r->time), <, 5);
   g_assert_cmpfloat (navi_route_time_left (r, r->length), <, 1);
 
@@ -140,30 +140,30 @@ test_route_parse (void)
   g_assert_error (error, NAVI_ROUTE_ERROR, NAVI_ROUTE_ERROR_NO_ROAD);
 }
 
-/* the same streets asked with "turn_lanes", to a point off the road on its right: the lanes up to the turns, and
- * the destination's side said in its last metres */
+/* the route was asked with "turn_lanes", to a point off the road on its right: the lanes up to the turns, and the
+ * destination's side said in its last metres */
 static void
 test_lanes_and_side (void)
 {
-  g_autoptr (GPtrArray) routes = load_route_file ("route-lanes-destination-right.json");
+  g_autoptr (GPtrArray) routes = load_routes ();
   NaviRoute *r = routes->pdata[0];
-  g_assert_cmpuint (r->n_maneuvers, ==, 7);
+  g_assert_cmpuint (r->n_maneuvers, ==, 10);
   /* no lanes in the map, or none to take: nothing */
   g_assert_null (r->maneuvers[1].lanes);
   g_assert_cmpuint (r->maneuvers[1].n_lanes, ==, 0);
-  /* Lützowplatz: two lanes straight on, one straight on or right, one right; the right two to take */
-  const NaviManeuver *m = &r->maneuvers[3];
-  g_assert_cmpstr (m->street, ==, "Lützowplatz");
+  /* Fasanenstraße: one lane left, one straight on, two straight on or right; the right two to take */
+  const NaviManeuver *m = &r->maneuvers[2];
+  g_assert_cmpstr (m->street, ==, "Fasanenstraße");
   g_assert_cmpuint (m->n_lanes, ==, 4);
-  g_assert_cmpuint (m->lanes[0].directions, ==, NAVI_LANE_THROUGH);
+  g_assert_cmpuint (m->lanes[0].directions, ==, NAVI_LANE_LEFT);
   g_assert_cmpuint (m->lanes[0].active, ==, 0);
   g_assert_cmpuint (m->lanes[2].directions, ==, NAVI_LANE_THROUGH | NAVI_LANE_RIGHT);
   g_assert_cmpuint (m->lanes[2].active, ==, NAVI_LANE_RIGHT);
   g_assert_cmpuint (m->lanes[3].active, ==, NAVI_LANE_RIGHT);
-  /* the left turn onto Potsdamer Straße from the leftmost lane */
-  g_assert_cmpuint (r->maneuvers[4].n_lanes, ==, 4);
-  g_assert_cmpuint (r->maneuvers[4].lanes[0].active, ==, NAVI_LANE_LEFT);
-  g_assert_cmpint (r->maneuvers[6].type, ==, NAVI_TURN_DESTINATION_RIGHT);
+  /* the right turn onto Straße des 17. Juni from the rightmost lane */
+  g_assert_cmpuint (r->maneuvers[4].n_lanes, ==, 2);
+  g_assert_cmpuint (r->maneuvers[4].lanes[1].active, ==, NAVI_LANE_RIGHT);
+  g_assert_cmpint (r->maneuvers[9].type, ==, NAVI_TURN_DESTINATION_RIGHT);
 
   /* driven at 10 m/s: the side is said once, in the instruction's metres before the end */
   g_autoptr (NaviGuidance) g = navi_guidance_new (r);
@@ -233,18 +233,19 @@ test_guidance (void)
   g_assert_cmpuint (unforeseen, ==, 0);
   /* the start, each turn's instruction, the arrival: each once */
   g_assert_cmpuint (prompts->len, >=, 6);
-  g_assert_cmpstr (prompts->pdata[0], ==, "Drive south. Then Turn left onto Fuggerstraße.");
-  guint lutzow = 0;
+  g_assert_cmpstr (prompts->pdata[0], ==, "Drive southwest on Hardenbergplatz. Then Turn right onto Hardenbergstraße.");
+  guint mitte = 0;
   for (guint i = 0; i < prompts->len; i++)
-    if (strstr (prompts->pdata[i], "Lützowplatz"))
-      lutzow++;
-  g_assert_cmpuint (lutzow, ==, 2); /* the alert 400 m before it, then the instruction */
+    if (strstr (prompts->pdata[i], "toward Mitte"))
+      mitte++;
+  g_assert_cmpuint (mitte, ==, 2); /* the alert 400 m before it, then the instruction */
   gboolean alert = FALSE;
   for (guint i = 0; i < prompts->len; i++)
-    if (g_str_has_prefix (prompts->pdata[i], "In 400 meters, bear right onto Lützowplatz"))
+    if (g_str_has_prefix (prompts->pdata[i], "In 400 meters, turn right toward Mitte"))
       alert = TRUE;
   g_assert_true (alert);
-  g_assert_cmpstr (prompts->pdata[prompts->len - 1], ==, "You have arrived at your destination.");
+  /* the destination is off the road on the right: the side is the last word */
+  g_assert_cmpstr (prompts->pdata[prompts->len - 1], ==, "Your destination is on the right.");
 }
 
 /* a drive at `speed` (m/s, a fix a second), the prompts made ahead at `ahead_speed`: how many said were not made */
@@ -325,8 +326,8 @@ test_off_route (void)
 static void
 test_alert_text (void)
 {
-  char *s = navi_guidance_alert_text ("de-DE", 410, "Links auf Fuggerstraße abbiegen.");
-  g_assert_cmpstr (s, ==, "In 400 Metern: Links auf Fuggerstraße abbiegen.");
+  char *s = navi_guidance_alert_text ("de-DE", 410, "Rechts auf Hardenbergstraße abbiegen.");
+  g_assert_cmpstr (s, ==, "In 400 Metern: Rechts auf Hardenbergstraße abbiegen.");
   g_free (s);
   s = navi_guidance_alert_text ("de-DE", 1480, "Ausfahrt nehmen.");
   g_assert_cmpstr (s, ==, "In 1,5 Kilometern: Ausfahrt nehmen.");
@@ -375,7 +376,7 @@ on_feature (const char *layer, const NaviMvtFeature *f, gpointer data)
   Seen *seen = data;
   seen->count++;
   if (!strcmp (layer, "transportation_name")) {
-    g_assert_cmpstr (navi_mvt_feature_get (f, "name"), ==, "Bergmannstraße");
+    g_assert_cmpstr (navi_mvt_feature_get (f, "name"), ==, "Rathausstraße");
     g_assert_cmpint (navi_mvt_feature_type (f), ==, NAVI_MVT_LINE);
     guint n, n_parts;
     const guint *parts;
@@ -428,7 +429,7 @@ test_mvt (void)
   guint line[] = { (1 << 3) | 1, zz (100), zz (200), (1 << 3) | 2, zz (200), zz (-50) };
   guint point[] = { (1 << 3) | 1, zz (120), zz (210) };
   g_autoptr (GByteArray) tile = g_byte_array_new ();
-  g_autoptr (GByteArray) l1 = make_layer ("transportation_name", "name", "Bergmannstraße", 2, line, 6);
+  g_autoptr (GByteArray) l1 = make_layer ("transportation_name", "name", "Rathausstraße", 2, line, 6);
   g_autoptr (GByteArray) l2 = make_layer ("housenumber", "housenumber", "5", 1, point, 3);
   g_autoptr (GByteArray) l3 = make_layer ("building", "colour", "#fff", 1, point, 3);
   put_bytes (tile, 3, l1->data, l1->len);
@@ -444,23 +445,23 @@ test_mvt (void)
   g_assert_false (navi_mvt_read (junk, sizeof junk, NULL, on_feature, &seen));
 
   int x, y;
-  navi_mvt_tile_at (14, 52.4890, 13.3920, &x, &y);
-  g_assert_cmpint (x, ==, 8801);
-  g_assert_cmpint (y, ==, 5375);
+  navi_mvt_tile_at (14, 52.5186, 13.4083, &x, &y);
+  g_assert_cmpint (x, ==, 8802);
+  g_assert_cmpint (y, ==, 5373);
   double lat, lng;
   navi_mvt_to_lat_lng (14, x, y, 4096, 2048, 2048, &lat, &lng);
-  g_assert_cmpfloat (fabs (lat - 52.4890), <, 0.02);
-  g_assert_cmpfloat (fabs (lng - 13.3920), <, 0.02);
+  g_assert_cmpfloat (fabs (lat - 52.5186), <, 0.02);
+  g_assert_cmpfloat (fabs (lng - 13.4083), <, 0.02);
 }
 
 static void
 test_fold (void)
 {
-  char *f = navi_search_fold ("Bergmannstraße 5");
-  g_assert_cmpstr (f, ==, "bergmannstrasse 5");
+  char *f = navi_search_fold ("Rathausstraße 15");
+  g_assert_cmpstr (f, ==, "rathausstrasse 15");
   g_free (f);
-  f = navi_search_fold ("Bergmannstr. 5");
-  g_assert_cmpstr (f, ==, "bergmannstrasse 5");
+  f = navi_search_fold ("Rathausstr. 15");
+  g_assert_cmpstr (f, ==, "rathausstrasse 15");
   g_free (f);
   f = navi_search_fold ("  Café  Müller-Lüdenscheidt ");
   g_assert_cmpstr (f, ==, "cafe muller ludenscheidt");
@@ -476,15 +477,15 @@ test_photon (void)
     "\"properties\":{\"osm_key\":\"amenity\",\"osm_value\":\"theatre\",\"type\":\"house\",\"name\":\"Kulturbrauerei\","
     "\"street\":\"Schönhauser Allee\",\"housenumber\":\"36\",\"postcode\":\"10435\",\"city\":\"Berlin\","
     "\"district\":\"Prenzlauer Berg\"}},"
-    "{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[13.3920,52.4890]},"
-    "\"properties\":{\"osm_key\":\"building\",\"osm_value\":\"yes\",\"type\":\"house\",\"street\":\"Bergmannstraße\","
-    "\"housenumber\":\"5\",\"postcode\":\"10961\",\"city\":\"Berlin\",\"district\":\"Kreuzberg\"}},"
-    "{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[13.39,52.49]},"
+    "{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[13.4083,52.5186]},"
+    "\"properties\":{\"osm_key\":\"building\",\"osm_value\":\"yes\",\"type\":\"house\",\"street\":\"Rathausstraße\","
+    "\"housenumber\":\"15\",\"postcode\":\"10178\",\"city\":\"Berlin\",\"district\":\"Mitte\"}},"
+    "{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[13.407,52.518]},"
     "\"properties\":{\"osm_key\":\"highway\",\"osm_value\":\"residential\",\"type\":\"street\","
-    "\"name\":\"Bergmannstraße\",\"city\":\"Berlin\",\"district\":\"Kreuzberg\"}},"
-    "{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[13.391,52.491]},"
+    "\"name\":\"Rathausstraße\",\"city\":\"Berlin\",\"district\":\"Mitte\"}},"
+    "{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[13.408,52.519]},"
     "\"properties\":{\"osm_key\":\"highway\",\"osm_value\":\"residential\",\"type\":\"street\","
-    "\"name\":\"Bergmannstraße\",\"city\":\"Berlin\",\"district\":\"Kreuzberg\"}},"
+    "\"name\":\"Rathausstraße\",\"city\":\"Berlin\",\"district\":\"Mitte\"}},"
     "{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[13.4,52.5]},"
     "\"properties\":{\"osm_key\":\"place\",\"osm_value\":\"city\",\"type\":\"city\",\"name\":\"Berlin\","
     "\"state\":\"Berlin\",\"country\":\"Deutschland\"}}]}";
@@ -500,11 +501,11 @@ test_photon (void)
   g_assert_cmpfloat (fabs (p->lat - 52.5389), <, 1e-9);
   p = places->pdata[1];
   g_assert_cmpint (p->kind, ==, NAVI_PLACE_ADDRESS);
-  g_assert_cmpstr (p->name, ==, "Bergmannstraße 5");
-  g_assert_cmpstr (p->detail, ==, "Kreuzberg, 10961 Berlin");
+  g_assert_cmpstr (p->name, ==, "Rathausstraße 15");
+  g_assert_cmpstr (p->detail, ==, "Mitte, 10178 Berlin");
   p = places->pdata[2];
   g_assert_cmpint (p->kind, ==, NAVI_PLACE_STREET);
-  g_assert_cmpstr (p->detail, ==, "Kreuzberg, Berlin");
+  g_assert_cmpstr (p->detail, ==, "Mitte, Berlin");
   p = places->pdata[3];
   g_assert_cmpint (p->kind, ==, NAVI_PLACE_LOCALITY);
   g_assert_cmpstr (p->detail, ==, "Berlin");

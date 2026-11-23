@@ -3,7 +3,7 @@
  * The tile backend: a search loads the zoom-14 tiles around the point (5 x 5 of them, about 7 km across in Germany,
  * then 7 x 7 when that found little), decodes each once in a worker thread into an index (named streets with their
  * lines, house numbers, points of interest, places), and matches the folded text against the names, also in a
- * thread: the map keeps its frames. "Bergmannstraße 5" is a street and a number: the house numbers near that
+ * thread: the map keeps its frames. "Rathausstraße 15" is a street and a number: the house numbers near that
  * street's lines. A tile's index stays in memory for later searches (the most recent 150). */
 #include "navi-search.h"
 #include "navi-poi.h"
@@ -983,7 +983,7 @@ locate_received (GObject *source, GAsyncResult *res, gpointer data)
   g_autoptr (GBytes) bytes = soup_session_send_and_read_finish (SOUP_SESSION (source), res, NULL);
   char *street = NULL;
   if (bytes) {
-    /* [{"edges": [{"edge_info": {"names": ["Fuggerstraße"]}}]}] */
+    /* [{"edges": [{"edge_info": {"names": ["Hardenbergstraße"]}}]}] */
     g_autoptr (JsonParser) parser = json_parser_new ();
     gsize len;
     const char *text = g_bytes_get_data (bytes, &len);
