@@ -158,6 +158,10 @@ s10e)
 			"# starting; past this it is stopped and the boot goes on (owner 11-23: nothing stops the boot to the GUI)." \
 			"[Service]" "TimeoutStartSec=${u#*:}" "TimeoutStopSec=15s" > "$P/etc/systemd/system/${u%%:*}.service.d/boot-not-held.conf"
 	done
+	printf '%s\n' "# Wanted by sysinit.target, and a oneshot goes inactive when it ends: every later start job that pulls in" \
+		'# sysinit.target (nearly every service at boot) started it again, until "start-limit-hit" marked it failed and' \
+		"# the system degraded. Run once; a failed run is still retried that way." \
+		"[Service]" "RemainAfterExit=yes" > "$P/etc/systemd/system/s10e-touch-bind.service.d/run-once.conf"
 	sed -i 's| dyndbg="[^"]*"||' "$P/boot/s10e/bootargs.env"
 	# Samsung's firmware from the vendor partition (audio DSP, Wi-Fi, Bluetooth, the video codec): what
 	# s10e-firstboot copies on a first boot, bundled here (11-21). Source: a root copy of our S10e (s10e-firstboot's
