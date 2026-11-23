@@ -130,7 +130,22 @@ s10e)
 	fi
 	cp "$P/boot/s10e/Image" "$P/boot/s10e/Image.prev"		# U-Boot's second menu entry
 	REGDB_KERNEL=$P/boot/s10e/Image
+	# the initramfs's /init <- s10e/init (11-23, owner: nothing stops the boot to the GUI): Mobian always boots,
+	# a boot-attempt marker left by a boot that died (a brown-out) is only logged, a root that does not mount gets
+	# e2fsck -fy and then a read-only mount; only U-Boot's Rescue entry (s10e.stay) or a root that cannot be started
+	# at all keeps the phone in it. The same initramfs as the 11-23 phone's (cfd2a954); every other member byte for byte.
+	python3 -I "$T/replace-init.py" "$P/boot/s10e/initramfs.cpio.gz" \
+		8587b5dece736170db39596a131f0584d71836e3188f606ceae941cefdaf384f "$T/s10e/init" "$W/initramfs-s10e.cpio.gz"
+	install -m 644 "$W/initramfs-s10e.cpio.gz" "$P/boot/s10e/initramfs.cpio.gz"; rm -f "$W/initramfs-s10e.cpio.gz"
+	log "initramfs: /init <- s10e/init ($(sha256sum < "$T/s10e/init" | cut -c1-16))"
 	regdb_append "$P/boot/s10e/initramfs.cpio.gz"	# both entries' initramfs (U-Boot passes its file size)
+	# the oneshots ordered before gdm wait for ever by default: a hang in one kept the GUI from ever starting
+	for u in s10e-firstboot:5min s10e-gpu-load:2min s10e-touch-bind:1min; do
+		install -d "$P/etc/systemd/system/${u%%:*}.service.d"
+		printf '%s\n' "# Ordered before gdm. A oneshot waits for ever by default, so a hang here would keep the GUI from ever" \
+			"# starting; past this it is stopped and the boot goes on (owner 11-23: nothing stops the boot to the GUI)." \
+			"[Service]" "TimeoutStartSec=${u#*:}" "TimeoutStopSec=15s" > "$P/etc/systemd/system/${u%%:*}.service.d/boot-not-held.conf"
+	done
 	sed -i 's| dyndbg="[^"]*"||' "$P/boot/s10e/bootargs.env"
 	# Samsung's firmware from the vendor partition (audio DSP, Wi-Fi, Bluetooth, the video codec): what
 	# s10e-firstboot copies on a first boot, bundled here (11-21). Source: a root copy of our S10e (s10e-firstboot's
