@@ -153,8 +153,9 @@ elsewhere. The S20 FE has no device zip: it installs from a PC over its rescue s
 `vibeos-device-DEVICE` (version 0.1.3+1 in the 0.1.3 zips, no epoch) into `vibeos-device-DEVICE` 1:0.1.4 (firmware,
 units, settings, `vibeos-kernel-install`), `vibeos-kernel-KVER` (the kernel's modules: one package per `uname -r`, so
 a later kernel's modules never replace the ones an older kernel still needs) and `vibeos-kernel-DEVICE`, which
-depends on the current one. The modules change package without being deleted (Replaces and Breaks). Nothing in
-them writes where a boot loader reads a kernel: that is the device zip's. The S10e's `/boot/s10e` files stay byte for
+depends on the current one. The modules change package without being deleted: the kernel package Replaces the old
+device package and is unpacked first (the new device package Pre-Depends on it). Nothing in them writes where a
+boot loader reads a kernel: that is the device zip's. The S10e's `/boot/s10e` files stay byte for
 byte and belong to no package after the upgrade (its preinst diverts them while dpkg would delete them). The POCO's
 loses the ESP hooks (an initrd built on the phone, copied to the ESP, kills the modem) and sets
 `update_initramfs=no`. Never the S20: its kernel goes only through kexec-tested BOOT writes.
@@ -167,13 +168,19 @@ recovery runs them, on a loop device with 4096-byte sectors holding an S10e-shap
 the zips may write and that the others are untouched, the root's file system and its sums, the boot pieces byte for
 byte, and that nothing identifying was printed. It needs `OUT/work/test/sda-real.img` (a sparse copy of an S10e's
 `sda` with only its GPT) and `OUT/work/test/r` (`nura/test/recovery-chroot.py RECOVERY.img OUT/work/test/r` from a
-LineageOS recovery image), qemu-user-static with binfmt, and `sudo -n`.
+LineageOS recovery image), qemu-user-static with binfmt, and `sudo -n`. Two second sessions on the same disk:
+`AGAIN=KEYS` runs the system zip alone (after an S5e image install, the old extent list at the end of recovery must
+be gone and the rest of recovery untouched; `TAIL_OUT` keeps that tail for `init-test.sh`), and `NEWDEV=ZIP` runs a
+newer device zip alone over the system the first session installed, as on a phone already on VibeOS: a file in
+`/home/user` and a NetworkManager connection planted in between must stay as they were, and the root's payload, its
+debs and the boot pieces must be the new zip's.
 
 `test/zip-test-poco.sh SYSZIP DEVZIP CASE` does the same for the POCO X3 NFC, as root, in the POCO's own LineageOS
 recovery (`OUT/work/test/rpoco`, made the same way from LineageOS surya's `recovery.img`), on two LUNs with the
 POCO's partition layout: `stock` (userdata becomes `linux`), `existing` (an earlier install's `linux` is reused),
-`again` (stock, then both zips once more), `rc3` (the GPT change stopped by a failed BLKPG, then a restart) and
-`abort` (existing, but part 1 of the root cannot be written, then a restart). It checks that no key is read, the
+`again` (stock, then both zips once more), `rc3` (the GPT change stopped by a failed BLKPG, then a restart),
+`abort` (existing, but part 1 of the root cannot be written, then a restart) and `devonly` (stock, then a restart and
+the device zip `NEWDEV` alone, the planted files kept, its loader entry in the ESP). It checks that no key is read, the
 tables and the GPT inside `linux`, that only `linux`, `boot`, `dtbo` and `vbmeta` change, and the root and the boot
 pieces byte for byte. One case at a time.
 
@@ -186,7 +193,21 @@ each zip, SELinux must be enforcing again.
 
 `test/setup-test.sh DEVICE` runs the first boot's `vibeos-device-setup` on a copy of the system image with the
 device's payload in it, offline in a chroot, and checks that every package installs and nothing is removed or
-downloaded.
+downloaded. With `OLD=DIR` it is an upgrade: an earlier device folder is set up first, then the new payload and
+debs go in as the device zip puts them, and the setup must install the new versions with `dpkg --audit` clean,
+restart once, and leave none of the files only the old device package had. With `OLD=DIR APT=DIR` the upgrade is
+the archive's instead: after the old folder's first boot, apt-get installs `build-apt-device.sh`'s packages
+offline. They must install, the modules' package must be unpacked before the device package, the modules and
+depmod's files must be the kernel package's, `modinfo` must find the device's key modules, and the S10e's
+`/boot/s10e` must be byte for byte as before and nobody's (the POCO: no ESP hooks, `update_initramfs=no`).
+
+`test/init-test.sh DEVDIR...` runs the initramfs `/init` a device folder ships (the S10e's from its payload, the Tab
+S5e's from the slot image in `boot/recovery.img`) under qemu-user in user, mount and network namespaces, with stubs
+for everything that touches hardware (`test/init-case.py` runs one case). A normal start and one after a start that
+died (a leftover boot-attempt marker or pstore record) must reach Mobian, the rescue entry must stay. On the S5e's
+image layout a list that holds and maps an ext4 file system that fits it must start; no list (`INIT_RECOVERY_TAIL`:
+the tail `zip-test.sh` kept), a list past the end of userdata and a list that maps no file system must stay, say to
+install the device zip, and never check, mount or grow anything.
 
 `test/compare-rootfs.sh NEW.img REF.img OUTDIR` mounts two system images read-only and writes what differs to
 OUTDIR: the packages and their versions, the manually installed ones, `/etc` and `/opt/gnome-mobile` file by file

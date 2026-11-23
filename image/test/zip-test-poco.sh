@@ -23,6 +23,10 @@
 #         rc3       stock, but the GPT tool's whole ends with exit 3 after writing the table (what it does when
 #                   BLKPG fails): the system zip stops with the restart message; a restart, both zips again: the
 #                   "linux" without a GPT of its own gets one, then as stock
+#         devonly   stock, then a restart and the device zip NEWDEV (environment) alone, as on a phone already on
+#                   VibeOS: a file in /home/user and a NetworkManager connection planted in between must stay as
+#                   they were; the root gets NEWDEV's payload and debs, the ESP its esp.img (the loader entry
+#                   checked for fsck.repair=yes when NEWDEV's has it); dtbo, vbmeta there already
 #         abort     existing, but part 1's loop device is read-only, so its write fails (as every loop device's did
 #                   on a POCO while SELinux was enforcing): the system zip stops at part 1 with its loop devices let
 #                   go and SELinux as it found it; a restart, both zips again: as existing
@@ -44,10 +48,11 @@ T=$(cd "$(dirname "$0")/.." && pwd)
 [ ! -f "$T/local.conf" ] || . "$T/local.conf"
 O=${VIBEOS_OUT:?set VIBEOS_OUT (image/local.conf): the directory builds, work files and logs go to}
 W=$O/work/test
-[ $# = 3 ] || { echo "usage: zip-test-poco.sh SYSZIP DEVZIP stock|existing|again|rc3|abort" >&2; exit 2; }
+[ $# = 3 ] || { echo "usage: zip-test-poco.sh SYSZIP DEVZIP stock|existing|again|rc3|abort|devonly" >&2; exit 2; }
 SYSZIP=$(realpath $1) DEVZIP=$(realpath $2) CASE=$3
-case $CASE in stock|existing|again|rc3|abort) ;; *) echo "CASE: stock | existing | again | rc3 | abort" >&2; exit 2 ;; esac
+case $CASE in stock|existing|again|rc3|abort|devonly) ;; *) echo "CASE: stock | existing | again | rc3 | abort | devonly" >&2; exit 2 ;; esac
 PRE=$CASE; [ $CASE != abort ] || PRE=existing	# the layout it starts from and ends with
+[ $CASE != devonly ] || { PRE=stock; NEWDEV=$(realpath ${NEWDEV:?devonly: set NEWDEV, the device zip for the second session}); }
 [ "$(id -u)" = 0 ] || { echo "run it as root, in a mount namespace of its own" >&2; exit 2; }
 [ -d $W/rpoco/system/bin ] || { echo "no $W/rpoco: nura/test/recovery-chroot.py LINEAGEOS-SURYA-recovery.img $W/rpoco" >&2; exit 1; }
 F=$W/poco-$CASE
@@ -89,7 +94,7 @@ detach() {
 cleanup() {
 	end_session last
 	detach
-	rm -f $DA $DE $R/sideload/sys.zip $R/sideload/dev.zip
+	rm -f $DA $DE $R/sideload/sys.zip $R/sideload/dev.zip $R/sideload/dev2.zip
 	[ -z "${SUDO_UID:-}" ] || chown -R $SUDO_UID:${SUDO_GID:-$SUDO_UID} $F $R/t 2>/dev/null
 }
 trap cleanup EXIT
@@ -159,7 +164,7 @@ p=sys.argv[1]; s=open(p).read()
 a='\t\t[ -e "$b/$n" ] && { BY=$b; break 2; }\n\tdone\ndone\n'
 assert s.count(a)==1; s=s.replace(a,a+'BY=/t/by-name\n')
 a='SEF=/sys/fs/selinux/enforce\n'
-assert s.count(a)==1; s=s.replace(a,'SEF=/t/selinux-enforce\n'); open(p,'w').write(s)
+assert s.count(a)<=1; s=s.replace(a,'SEF=/t/selinux-enforce\n'); open(p,'w').write(s)	# none: a zip from before the switch
 EOF
 }
 TZ=$W/poco-zips-$(echo "$SYSZIP $(stat -c '%s %Y' $SYSZIP)" | md5sum | cut -c1-8)
@@ -186,21 +191,27 @@ EOF
 	cp $SYSZIP $TZ/sys.zip.new && (cd $TZ/sys && zip -q $TZ/sys.zip.new vibeos-lib.sh vibeos-part) && mv $TZ/sys.zip.new $TZ/sys.zip || exit 1
 fi
 flock -u 9
-exec 9> $TD.lock; flock 9
-if [ ! -s $TD/dev.zip ]; then
-	echo "  (making the test copy of the device zip)"
-	rm -rf $TD/dev; mkdir -p $TD/dev
-	(cd $TD/dev && unzip -q -o $DEVZIP vibeos-lib.sh META-INF/com/google/android/updater-script) && redirect_lib $TD/dev/vibeos-lib.sh || exit 1
-	U=$TD/dev/META-INF/com/google/android/updater-script
-	sed -i -e 's#^assert(.*#assert("x" == "x" ||#' \
-		-e 's#^run_program("/system/bin/setprop", "sys.powerctl", "reboot");$#run_program("/system/bin/echo", "TEST: here recovery would restart");#' $U
-	grep -q '^assert("x" == "x" ||' $U && ! grep -q setprop $U || { echo "updater-script not redirected" >&2; exit 1; }
-	cp $DEVZIP $TD/dev.zip.new && (cd $TD/dev && zip -q -0 $TD/dev.zip.new vibeos-lib.sh META-INF/com/google/android/updater-script) &&
-		mv $TD/dev.zip.new $TD/dev.zip || exit 1
-fi
-flock -u 9; exec 9>&-
+devcopy() {	# ZIP: the test copy of a device zip, TD/dev.zip
+	TD=$W/poco-zips-dev-$(echo "$1 $(stat -c '%s %Y' $1)" | md5sum | cut -c1-8)
+	mkdir -p $TD
+	exec 9> $TD.lock; flock 9
+	if [ ! -s $TD/dev.zip ]; then
+		echo "  (making the test copy of $(basename $1))"
+		rm -rf $TD/dev; mkdir -p $TD/dev
+		(cd $TD/dev && unzip -q -o $1 vibeos-lib.sh META-INF/com/google/android/updater-script) && redirect_lib $TD/dev/vibeos-lib.sh || exit 1
+		U=$TD/dev/META-INF/com/google/android/updater-script
+		sed -i -e 's#^assert(.*#assert("x" == "x" ||#' \
+			-e 's#^run_program("/system/bin/setprop", "sys.powerctl", "reboot");$#run_program("/system/bin/echo", "TEST: here recovery would restart");#' $U
+		grep -q '^assert("x" == "x" ||' $U && ! grep -q setprop $U || { echo "updater-script not redirected" >&2; exit 1; }
+		cp $1 $TD/dev.zip.new && (cd $TD/dev && zip -q -0 $TD/dev.zip.new vibeos-lib.sh META-INF/com/google/android/updater-script) &&
+			mv $TD/dev.zip.new $TD/dev.zip || exit 1
+	fi
+	flock -u 9; exec 9>&-
+}
 mkdir -p $R/sideload
+devcopy $DEVZIP
 ln -f $TZ/sys.zip $R/sideload/sys.zip && ln -f $TD/dev.zip $R/sideload/dev.zip || exit 1
+[ $CASE != devonly ] || { devcopy $NEWDEV; ln -f $TD/dev.zip $R/sideload/dev2.zip || exit 1; }
 mkdir -p $R/t/bin $R/t/by-name
 cp $F/vibeos-part-x86 $R/t/bin/vibeos-part-x86
 cat > $R/t/bin/getprop <<'EOF'
@@ -382,6 +393,49 @@ if [ $CASE = again ]; then
 	fi
 	leftover
 fi
+# the root inside linux, read-write (between sessions): RW
+root_rw() {
+	local NL s
+	NL=$(losetup -f --show -b 4096 $(pa $LX)) || return 1
+	set -- $(sfdisk -d $NL 2>/dev/null | sed -n "s|^${NL}p2 : start= *\([0-9]*\), size= *\([0-9]*\).*|\1 \2|p") 0 0
+	losetup -d $NL
+	[ $1 != 0 ] && RW=$(losetup -f --show -o $(($1 * 4096)) --sizelimit $(($2 * 4096)) $(pa $LX))
+}
+marks() {	# the planted files and two of the system's, with owner, mode and content, from the root mounted at $X/m
+	(cd $X/m && for f in home/user/vibeos-test-marker etc/NetworkManager/system-connections/vibeos-test.nmconnection \
+		etc/vibeos/installed-to etc/vibeos/system-image; do echo "$f $(stat -c '%u:%g %a' $f) $(sha256sum < $f | cut -d' ' -f1)"; done)
+}
+if [ $CASE = devonly ]; then
+	echo "  -- restart; then $(basename $NEWDEV) alone, over the system session 1 installed"
+	end_session s1
+	mkdir -p $X/m
+	if [ "${DRC:-}" = 0 ] && root_rw && mount -t ext4 $RW $X/m; then
+		echo "vibeos test file $$" > $X/m/home/user/vibeos-test-marker
+		chown 1000:1000 $X/m/home/user/vibeos-test-marker; chmod 600 $X/m/home/user/vibeos-test-marker
+		printf '[connection]\nid=vibeos-test\ntype=wifi\n\n[wifi]\nssid=vibeos-test\n' > $X/m/etc/NetworkManager/system-connections/vibeos-test.nmconnection
+		chmod 600 $X/m/etc/NetworkManager/system-connections/vibeos-test.nmconnection
+		marks > $F/marks-before.txt
+		umount $X/m; losetup -d $RW
+		echo "  planted: home/user/vibeos-test-marker, a NetworkManager connection"
+	else
+		bad "devonly: no installed root to plant files in"
+	fi
+	detach; attach
+	: > $R/t/vp.log
+	start_session
+	run dev2.zip device2; DRC=$?
+	echo "  prop: $(tr '\n' ' ' < $R/tmp/vibeos.prop)"
+	[ $DRC = 0 ] && ok "devonly: the device zip alone succeeded" || bad "devonly: device zip failed: $(grep '^error=' $R/tmp/vibeos.prop)"
+	screen device2 | grep -q '^  SELinux permissive while VibeOS is written' && ok "devonly: says SELinux is permissive meanwhile" || bad "devonly: no SELinux line"
+	se_check "devonly device zip"
+	screen device2 | grep -q "dtbo in dtbo: there already" && screen device2 | grep -q "vbmeta in vbmeta: there already" &&
+		ok "devonly: dtbo and vbmeta there already" || bad "devonly: dtbo/vbmeta: $(screen device2 | grep -E 'dtbo|vbmeta' | tr '\n' ';')"
+	echo "  devonly: $(screen device2 | grep -E 'U-Boot' | tr '\n' ';')"
+	! screen device2 | grep -q NOTE && ok "devonly: no recovery note" || bad "devonly: a recovery note on a LineageOS recovery"
+	[ ! -s $R/t/vp.log ] && ok "devonly: the GPT tool did not run" || bad "devonly: GPT tool calls: $(tr '\n' ';' < $R/t/vp.log)"
+	leftover
+	D1=device2; DEVZIP=$NEWDEV	# the checks below: against the new zip
+fi
 [ ! -s $R/t/getevent.log ] && ok "no key read" || bad "keys were read: $(tr '\n' ';' < $R/t/getevent.log)"
 [ ! -s $R/t/se.log ] && ok "no loop device set up while SELinux was enforcing" || bad "loop devices while enforcing: $(tr '\n' ';' < $R/t/se.log)"
 BYN=$(ls $R/t/by-name | tr '\n' ' ')
@@ -447,6 +501,13 @@ if [ -n "$NL" ]; then
 		EB=$(unzip -p $DEVZIP esp.img | wc -c)
 		[ "$(dd if=$(pa $LX) bs=4096 skip=2048 count=$((EB / 4096)) status=none | sha256sum)" = "$(unzip -p $DEVZIP esp.img | sha256sum)" ] &&
 			ok "the ESP inside linux = esp.img" || bad "ESP"
+		dd if=$(pa $LX) bs=4096 skip=2048 count=$((EB / 4096)) status=none of=$F/esp-after.img
+		LE_=$(mtype -i $F/esp-after.img ::/loader/entries/mobian.conf 2>/dev/null | grep '^options')
+		echo "  loader entry: $(echo "$LE_" | cut -c1-80)..."
+		if unzip -p $DEVZIP esp.img > $F/esp-zip.img && mtype -i $F/esp-zip.img ::/loader/entries/mobian.conf 2>/dev/null | grep -q 'fsck.repair=yes'; then
+			echo "$LE_" | grep -q ' root=LABEL=vibeos fsck.repair=yes ' && ok "loader entry: root=LABEL=vibeos fsck.repair=yes" || bad "loader entry: no fsck.repair=yes"
+		fi
+		rm -f $F/esp-after.img $F/esp-zip.img
 	fi
 	LBL=$(blkid -o value -s LABEL $RD); [ "$LBL" = vibeos ] && ok "root: label vibeos" || bad "root label '$LBL'"
 	e2fsck -fn $RD > $F/fsck.log 2>&1 && ok "root: e2fsck -fn clean" || bad "e2fsck: $(tail -n 3 $F/fsck.log)"
@@ -470,6 +531,23 @@ if [ -n "$NL" ]; then
 			/usr/share/polkit-1/actions/vibeos.surya.boot-android.policy; do dbg "stat $f" | grep -q '^Inode:' && { bad "$f is in the root"; n=1; }; done
 		[ $n = 0 ] && ok "no Android entry, no restart into recovery (none of the four files)"
 		dbg "ls -l /var/lib/vibeos/device/result" | grep -q result && bad "a result file is there" || ok "no result yet (the first boot writes it)"
+	fi
+	if [ $CASE = devonly ]; then
+		mkdir -p $X/m && mount -o ro,noload $RD $X/m && { marks > $F/marks-after.txt; umount $X/m; }
+		cmp -s $F/marks-before.txt $F/marks-after.txt && ok "devonly: the user's file and NetworkManager connection kept (owner, mode, content), installed-to and system-image too" ||
+			bad "devonly: $(diff $F/marks-before.txt $F/marks-after.txt 2>&1 | tr '\n' ' ')"
+		# the payload's files: 30 at random, compared byte for byte with the new zip's
+		unzip -p $DEVZIP payload.tar > $F/newpayload.tar
+		python3 -I - $F/newpayload.tar > $F/newpayload.sums <<'EOF'
+import hashlib, random, sys, tarfile
+t = tarfile.open(sys.argv[1])
+regs = [m for m in t.getmembers() if m.isreg() and ' ' not in m.name]
+for m in random.Random(1).sample(regs, min(30, len(regs))):
+    print(hashlib.sha256(t.extractfile(m).read()).hexdigest(), m.name[1:])
+EOF
+		miss=0; while read -r h x; do [ "$(dbg "cat $x" | sha256sum | cut -d' ' -f1)" = "$h" ] || { miss=$((miss + 1)); echo "    differs: $x"; }; done < $F/newpayload.sums
+		[ $miss = 0 ] && ok "devonly: the payload's files are the new zip's ($(wc -l < $F/newpayload.sums) compared)" || bad "devonly: $miss payload files not the new zip's"
+		rm -f $F/newpayload.tar
 	fi
 	losetup -d $RD; losetup -d $NL
 fi
