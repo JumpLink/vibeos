@@ -10,6 +10,7 @@ import {CollectWhenStill} from './gc.js';
 import {Cutout, CutoutBand} from './cutout.js';
 import {Desktop, isDesktopSession} from './dock.js';
 import {DisplayChangeOnPanel} from './displaychange.js';
+import {HighContrast} from './contrast.js';
 import {EndMark} from './endmark.js';
 import {FrameLog} from './framelog.js';
 import {syncGtkCss} from './gtkcss.js';
@@ -45,6 +46,13 @@ export default class VibeosExtension extends Extension {
         // the screen's geometry first: every module lays out with it, and its monitors-changed handler runs before
         // theirs
         geometry.start();
+        // Accessibility's High contrast: the colours the extension draws with, before anything is drawn with them
+        try {
+            this._highContrast = new HighContrast();
+        } catch (e) {
+            logError(e, 'vibeos: High contrast');
+            this._highContrast = null;
+        }
 
         // ~/.config/vibeos/debug: the shell's Eval and Screenshot D-Bus calls are open to every client, for
         // development only
@@ -285,6 +293,8 @@ export default class VibeosExtension extends Extension {
         this._volume = null;
         this._displayChange?.destroy();
         this._displayChange = null;
+        this._highContrast?.destroy();
+        this._highContrast = null;
         this._chord?.destroy();
         this._chord = null;
         this._whenLocked?.destroy();
