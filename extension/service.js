@@ -265,9 +265,25 @@ export class Service {
             null, Gio.DBusCallFlags.NONE, -1, null, null);
     }
 
-    // the Bixby key (keys.js AppSwitchKey)
+    // the side button's recents (keylaunch.js)
     toggleRecents() {
         this._nav.toggleRecents();
+    }
+
+    // An app a key opens (keylaunch.js), with the launch's animation out of a box in the screen's middle, as an app
+    // opened from another; one already in front only stays there
+    launchApp(app) {
+        const focus = global.display.focus_window;
+        if (focus && Shell.WindowTracker.get_default().get_window_app(focus) === app) {
+            Main.activateWindow(focus);
+            return;
+        }
+        const index = Main.layoutManager.primaryIndex;
+        const area = Main.layoutManager.getWorkAreaForMonitor(index);
+        const scale = global.display.get_monitor_scale(index);
+        const s = Math.min(area.width, area.height) / 5;
+        this._launch.launch(app, [(area.x + (area.width - s) / 2) * scale, (area.y + (area.height - s) / 2) * scale,
+            s * scale, s * scale], '');
     }
 
     destroy() {

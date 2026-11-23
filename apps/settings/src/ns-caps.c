@@ -1,8 +1,11 @@
 /* What the device has (see ns-caps.h). A modem is any object ModemManager has with its Modem interface, followed
  * through its object manager (a modem that shows up late, or goes, changes the rows); ModemManager is not started for
- * this. A battery is UPower's display device when it is present and a battery. */
+ * this. A battery is UPower's display device when it is present and a battery. A side button is a key an input device
+ * reports as KEY_APPSELECT, in the key bits the kernel gives each input device in sysfs. */
 #include "ns-caps.h"
 
+#include <linux/input-event-codes.h>
+#include <stdlib.h>
 #include <vibeos.h>
 
 #define NS_TYPE_CAPS_WATCH (ns_caps_watch_get_type ())
@@ -113,6 +116,36 @@ battery_got (GObject *src, GAsyncResult *res, gpointer data)
   battery_read ();
 }
 
+/* ---- a side button ---- */
+
+/* whether `code` is among an input device's capabilities/key: hexadecimal longs, the most significant first, the
+ * leading zero ones left out */
+static gboolean
+has_key_bit (char *bits, guint code)
+{
+  g_auto (GStrv) words = g_strsplit (g_strstrip (bits), " ", -1);
+  guint n = g_strv_length (words), per = sizeof (unsigned long) * 8, w = code / per;
+  if (w >= n)
+    return FALSE;
+  return (strtoul (words[n - 1 - w], NULL, 16) >> (code % per)) & 1;
+}
+
+static gboolean
+side_key_present (void)
+{
+  g_autoptr (GDir) dir = g_dir_open ("/sys/class/input", 0, NULL);
+  const char *name;
+  while (dir && (name = g_dir_read_name (dir))) {
+    if (!g_str_has_prefix (name, "input"))
+      continue;
+    g_autofree char *path = g_build_filename ("/sys/class/input", name, "capabilities", "key", NULL);
+    g_autofree char *bits = NULL;
+    if (g_file_get_contents (path, &bits, NULL, NULL) && has_key_bit (bits, KEY_APPSELECT))
+      return TRUE;
+  }
+  return FALSE;
+}
+
 /* ---- the app's side ---- */
 
 void
@@ -125,9 +158,12 @@ ns_caps_init (void)
   if (fake) {
     g_auto (GStrv) names = g_strsplit (fake, ",", -1);
     caps->caps = (g_strv_contains ((const char *const *) names, "modem") ? NS_CAP_MODEM : 0)
-                 | (g_strv_contains ((const char *const *) names, "battery") ? NS_CAP_BATTERY : 0);
+                 | (g_strv_contains ((const char *const *) names, "battery") ? NS_CAP_BATTERY : 0)
+                 | (g_strv_contains ((const char *const *) names, "side-key") ? NS_CAP_SIDE_KEY : 0);
     return;
   }
+  if (side_key_present ())
+    caps->caps |= NS_CAP_SIDE_KEY;
   g_dbus_object_manager_client_new_for_bus (G_BUS_TYPE_SYSTEM, G_DBUS_OBJECT_MANAGER_CLIENT_FLAGS_DO_NOT_AUTO_START,
                                             "org.freedesktop.ModemManager1", "/org/freedesktop/ModemManager1", NULL,
                                             NULL, NULL, NULL, modems_got, NULL);

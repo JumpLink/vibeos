@@ -335,7 +335,7 @@ class VolumeDialog extends St.Widget {
             this);
         this._syncStream();
 
-        this.chord = null;                  // chord.js's, which volume down goes through
+        this.chord = null;                  // chord.js's, which the volume keys go through
         this._takeVolumeKeys();
         this.connect('destroy', () => this._onDestroy());
     }
@@ -379,9 +379,10 @@ class VolumeDialog extends St.Widget {
                 this._takenKeys.add(action);
                 return;
             }
-            // volume down waits for the power key: the two are a screenshot (chord.js)
-            if (direction < 0 && this.chord)
-                this.chord.volumeDown(() => this.volumeKey(direction, repeat), repeat);
+            // a volume key waits for the power key: with volume down the two are a screenshot, with volume up the
+            // power menu (chord.js)
+            if (this.chord)
+                this.chord.volumeKey(direction, () => this.volumeKey(direction, repeat), repeat);
             else
                 this.volumeKey(direction, repeat);
         };
@@ -390,8 +391,8 @@ class VolumeDialog extends St.Widget {
                 return;
             if (!this._volumeActions.has(action))
                 deactivated.call(dbus, action, device, timestamp);
-            else if (this._volumeActions.get(action) < 0)
-                this.chord?.volumeUp();
+            else
+                this.chord?.volumeRelease();
         };
     }
 

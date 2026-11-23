@@ -186,6 +186,8 @@ export class Navigation {
         this._recents = null;
         // a tablet's taskbar (taskbar.js), told when a swipe or recents takes the screen and when it hands it back
         this.taskbar = null;
+        // what the side button does (keylaunch.js), for recents, which takes the key while it is open
+        this.sideKey = null;
 
         this._gesture = new Clutter.PanGesture({
             name: 'vibeos swipe up',

@@ -112,6 +112,21 @@
       <summary>Double tap to wake</summary>
       <description>While the screen is off the touchscreen waits in its low power mode for a double tap, which wakes the screen.</description>
     </key>
+    <key name="power-double-press-app" type="s">
+      <default>'vibeos.Agent.desktop'</default>
+      <summary>Double-press power button to open</summary>
+      <description>The app (a desktop file id) that a second press of the power key within 300 ms of the first opens, waking the screen; a locked phone asks for the unlock first. Empty: off, and the key only turns the screen off and on. An app that is not installed counts as off.</description>
+    </key>
+    <key name="power-hold-agent" type="b">
+      <default>true</default>
+      <summary>Hold power button for Agent</summary>
+      <description>On: holding the power key for half a second has Agent listen until the key is let go (on a locked phone Agent only reads until the phone is unlocked), and the power menu is the power key and volume up together. Off: holding the power key opens the power menu, as it did before. Without the Agent app installed, holding the key opens the power menu.</description>
+    </key>
+    <key name="side-key-app" type="s">
+      <default>'vibeos.Camera.desktop'</default>
+      <summary>Side button opens</summary>
+      <description>What a press of the side button (a key that reports KEY_APPSELECT, such as a button of its own under the volume keys) does with the screen on: 'recents' opens recent apps, a desktop file id opens that app (a locked phone asks for the unlock first), empty does nothing. An app that is not installed opens recent apps.</description>
+    </key>
     <key name="aod" type="b">
       <default>false</default>
       <summary>Always On Display</summary>

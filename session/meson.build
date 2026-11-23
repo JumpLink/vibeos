@@ -31,6 +31,8 @@ install_data('90-vibeos-internal-storage.rules', install_dir: prefix / 'lib' / '
 install_data('pam.d/vibeos', install_dir: get_option('sysconfdir') / 'pam.d')
 # vibeos-wakeup's bus name
 install_data('vibeos.Wakeup.conf', install_dir: datadir / 'dbus-1' / 'system.d')
+# logind leaves the power key's long press to the shell (see the file)
+install_data('logind.conf.d/vibeos-power-key.conf', install_dir: prefix / 'lib' / 'systemd' / 'logind.conf.d')
 
 # VibeOS as a session a display manager offers (gdm/): GNOME's own session with the shell in the vibeos
 # mode, whose only difference is the extension, always on

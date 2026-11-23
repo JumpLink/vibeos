@@ -53,7 +53,8 @@ static const Entry entries[] = {
   { "battery-full-symbolic", TINT_GREEN, "Battery", "Charge, power and screen blank",
     "power dim health temperature voltage capacity", ns_page_battery, NULL, NS_CAP_BATTERY },
   { "preferences-system-symbolic", TINT_VIOLET, "System", "Languages, keyboard, time",
-    "region locale language keyboard clock date time users mouse touchpad updates software upgrade",
+    "region locale language keyboard clock date time users mouse touchpad updates software upgrade gestures power "
+    "button",
     ns_page_general },
   { "help-about-symbolic", TINT_GREY, "About phone", "Device name, versions",
     "phone tablet model kernel version memory storage name about", ns_page_about },
@@ -202,6 +203,10 @@ static const Inner inner[] = {
   { "Keyboard", "on-screen keyboard osk layouts input typing", "keyboard", ns_page_general },
   { "Auto-correction", "autocorrect spelling typos suggestions next word prediction text correction", "keyboard",
     ns_page_general },
+  { "Gestures", "buttons keys shortcut quick launch", "gestures", ns_page_general },
+  { "Double-press power button", "power key twice double press open app camera agent shortcut", "gestures",
+    ns_page_general },
+  { "Side button", "side key button app recents camera shortcut", "gestures", ns_page_general, NS_CAP_SIDE_KEY },
   { "Mouse and touchpad", "pointer speed scrolling cursor", "mouse", ns_page_general },
   { "Date and time", "clock time zone timezone 24-hour automatic", "datetime", ns_page_general },
   { "Users", "user account password name avatar picture", "users", ns_page_general },
@@ -543,6 +548,7 @@ static const struct {
   { "screen-lock", ns_page_lock_screen, ns_page_privacy },
   { "keyboard", ns_page_keyboard, ns_page_general }, { "osk", ns_page_keyboard, ns_page_general },
   { "mouse", ns_page_mouse, ns_page_general },
+  { "gestures", ns_page_gestures, ns_page_general, TRUE }, { "buttons", ns_page_gestures, ns_page_general, TRUE },
   /* GNOME Settings' "Privacy & Security" (Files' "Trash Settings…" opens it at "usage", its file history and trash):
    * the page with the camera, microphone, history and trash rows. The location tile asks for "location". */
   { "privacy", ns_page_privacy }, { "usage", ns_page_privacy }, { "camera", ns_page_privacy },
