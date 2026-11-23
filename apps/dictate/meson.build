@@ -26,9 +26,9 @@ remote_deps = [dependency('libsoup-3.0'), dependency('json-glib-1.0')]
 brain_sources = ['src/dictate-brain.c', 'src/dictate-remote.c', 'src/dictate-device.c']
 # what the model can use on the phone (dictate-tools.h): Contacts and Calendar through EDS, the call log and the
 # messages from their apps' SQLite stores
-tools_sources = ['src/dictate-tools.c', 'src/dictate-tools-phone.c']
+tools_sources = ['src/dictate-tools.c', 'src/dictate-tools-phone.c', 'src/dictate-actions.c']
 tools_deps = [dependency('libebook-1.2'), dependency('libecal-2.0'), dependency('sqlite3'),
-              dependency('libsoup-3.0'), dependency('json-glib-1.0')]
+              dependency('libsoup-3.0'), dependency('json-glib-1.0'), cc.find_library('m')]
 # a language's model and voice downloaded (dictate-download.c): libsoup for the files, libarchive for Vosk's zips
 download_deps = [dependency('glib-2.0'), dependency('gio-2.0'), dependency('libsoup-3.0'), dependency('libarchive')]
 

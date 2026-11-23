@@ -1,11 +1,16 @@
 /* test-tools: a switch in "What Agent can use" that is off takes that area's tools away from the model, and a call
  * the model makes to one anyway is refused before anything is read. Phone calls first: with Calls off, the call log
- * and the call card are not offered. Nothing here reads the phone: a refused call returns before its tool runs. */
+ * and the call card are not offered. Nothing here reads the phone: a refused call returns before its tool runs.
+ * And Agent's action log (dictate-actions.c), in a directory of the test's own: kept private, newest first, trimmed,
+ * and read back by get_action_log and undo_last_action. */
 #include "dictate-access.h"
+#include "dictate-actions.h"
 #include "dictate-tools.h"
 
+#include <glib/gstdio.h>
 #include <json-glib/json-glib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 /* the areas with one switched off (an access-* key), or all on (NULL) */
 static guint32
@@ -105,10 +110,84 @@ test_refused (void)
   g_assert_nonnull (strstr (none, "no such tool"));
 }
 
+static const char *const SERVER_ONLY[] = { DICTATE_SENT_SERVER, NULL };
+
+/* the log: private (0600), newest first, ids counting up, an undo marked, the oldest dropped past its size */
+static void
+test_log (void)
+{
+  g_autofree char *path = g_build_filename (g_get_user_data_dir (), "vibeos-dictate", "agent-log.jsonl", NULL);
+  g_autoptr (GPtrArray) entries = NULL;
+  gint64 alarm, undo;
+  GStatBuf st;
+
+  dictate_actions_forget ();
+  g_assert_cmpint (dictate_actions_record ("question", DICTATE_TIER_READ, "answered", SERVER_ONLY, NULL, 0), ==, 1);
+  alarm = dictate_actions_record ("set_alarm", DICTATE_TIER_UNDOABLE, "done", SERVER_ONLY,
+                                  json_from_string ("{\"delete_alarm\": 7, \"about\": \"the alarm at 06:30\"}", NULL),
+                                  0);
+  g_assert_cmpint (alarm, ==, 2);
+  g_assert_cmpint (g_stat (path, &st), ==, 0);
+  g_assert_cmpint (st.st_mode & 0777, ==, 0600);
+  entries = dictate_actions_recent (10);
+  g_assert_cmpuint (entries->len, ==, 2);
+  g_assert_cmpstr (json_object_get_string_member (entries->pdata[0], "tool"), ==, "set_alarm");
+  g_assert_false (dictate_actions_undone (entries, alarm));
+  g_clear_pointer (&entries, g_ptr_array_unref);
+  undo = dictate_actions_record ("undo_last_action", DICTATE_TIER_UNDOABLE, "done", SERVER_ONLY, NULL, alarm);
+  entries = dictate_actions_recent (10);
+  g_assert_true (dictate_actions_undone (entries, alarm));
+  g_assert_false (dictate_actions_undone (entries, undo));
+  g_clear_pointer (&entries, g_ptr_array_unref);
+  for (guint i = 0; i < 400; i++)
+    dictate_actions_record ("get_time", DICTATE_TIER_READ, "done", SERVER_ONLY, NULL, 0);
+  entries = dictate_actions_recent (1000);
+  g_assert_cmpuint (entries->len, <=, 300);
+  g_assert_cmpint (json_object_get_int_member (entries->pdata[0], "id"), ==, 403);
+  g_assert_cmpint (g_stat (path, &st), ==, 0);
+  g_assert_cmpint (st.st_mode & 0777, ==, 0600);
+  dictate_actions_forget ();
+  g_assert_false (g_file_test (path, G_FILE_TEST_EXISTS));
+}
+
+/* "what did you just do?" and "undo": read from the log, with what went where */
+static void
+test_log_tools (void)
+{
+  DictateToolContext ctx = { .areas = G_MAXUINT32, .language = "en" };
+  g_autofree char *empty = NULL, *nothing = NULL, *log = NULL, *card = NULL;
+  const char *const sms[] = { "the message, by SMS to its recipient", NULL };
+
+  dictate_actions_forget ();
+  empty = dictate_tools_run ("get_action_log", "{}", &ctx, 1000);
+  g_assert_nonnull (strstr (empty, "has not done anything yet"));
+  g_assert_nonnull (strstr (empty, "model server"));
+  nothing = dictate_tools_run ("undo_last_action", "{}", &ctx, 1000);
+  g_assert_nonnull (strstr (nothing, "\"error\""));
+  g_assert_nonnull (strstr (nothing, "nothing"));
+  dictate_actions_record ("question", DICTATE_TIER_READ, "answered", SERVER_ONLY, NULL, 0);
+  dictate_actions_record ("propose_message", DICTATE_TIER_CONFIRMED, "the user tapped it, and it was done", sms,
+                          NULL, 0);
+  log = dictate_tools_run ("get_action_log", "{}", &ctx, 1000);
+  g_assert_nonnull (strstr (log, "a text message, on a card"));
+  g_assert_nonnull (strstr (log, "by SMS"));
+  g_assert_nonnull (strstr (log, "\"questions_answered_meanwhile\":1"));
+  /* reading the log is not an entry of its own */
+  {
+    g_autoptr (GPtrArray) last = dictate_actions_recent (1);
+    g_assert_cmpstr (json_object_get_string_member (last->pdata[0], "tool"), ==, "propose_message");
+  }
+  card = dictate_tools_run ("undo_last_action", "{}", &ctx, 1000);
+  g_assert_nonnull (strstr (card, "cannot undo"));
+  dictate_actions_forget ();
+}
+
 int
 main (int argc, char **argv)
 {
-  g_test_init (&argc, &argv, NULL);
+  g_test_init (&argc, &argv, G_TEST_OPTION_ISOLATE_DIRS, NULL);
+  g_test_add_func ("/tools/log", test_log);
+  g_test_add_func ("/tools/log-tools", test_log_tools);
   g_test_add_func ("/tools/calls-off", test_calls_off);
   g_test_add_func ("/tools/every-area", test_every_area);
   g_test_add_func ("/tools/refused", test_refused);

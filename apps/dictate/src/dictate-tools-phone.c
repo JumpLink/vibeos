@@ -14,6 +14,8 @@
 #include <libebook/libebook.h>
 #include <libecal/libecal.h>
 #include <libsoup/soup.h>
+#include <glib/gstdio.h>
+#include <math.h>
 #include <sqlite3.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -174,6 +176,7 @@ typedef struct {
   char *nickname;               /* "Mama", or NULL: what the user may call them */
   GPtrArray *tels;              /* Tel */
   GPtrArray *emails;            /* char * */
+  char *note;                   /* the contact's note, or NULL: what the user wrote, or whoever sent the card */
 } Person;
 
 static void
@@ -192,6 +195,7 @@ person_free (Person *p)
   g_free (p->nickname);
   g_ptr_array_unref (p->tels);
   g_ptr_array_unref (p->emails);
+  g_free (p->note);
   g_free (p);
 }
 
@@ -273,6 +277,11 @@ person_from_contact (EContact *contact)
         g_free (value);
     }
   g_list_free_full (attrs, (GDestroyNotify) e_vcard_attribute_free);
+  {
+    const char *note = e_contact_get_const (contact, E_CONTACT_NOTE);
+    if (note && *note)
+      p->note = g_strdup (note);
+  }
   return p;
 }
 
@@ -556,6 +565,7 @@ find_contacts (JsonObject *args, ToolRun *run, GError **error)
   const char *name = tool_arg_string (args, "name");
   gboolean numbers = tool_arg_bool (args, "include_numbers", FALSE);
   gboolean emails = tool_arg_bool (args, "include_emails", FALSE);
+  gboolean notes = tool_arg_bool (args, "include_note", FALSE);
   g_autoptr (GPtrArray) found = NULL;
   g_autoptr (JsonBuilder) b = json_builder_new ();
 
@@ -603,6 +613,10 @@ find_contacts (JsonObject *args, ToolRun *run, GError **error)
         }
       else if (p->emails->len)
         add_bool (b, "has_email", TRUE);
+      if (p->note && notes)
+        add_string (b, "note", p->note);
+      else if (p->note)
+        add_bool (b, "has_note", TRUE);
       json_builder_end_object (b);
     }
   json_builder_end_array (b);
@@ -868,6 +882,7 @@ propose_call (JsonObject *args, ToolRun *run, GError **error)
     about = g_strdup_printf ("the call to %s", named);
     action = dictate_action_new ("place a call", _("Call"), lines, _("Call"), _("Calling…"), about, place_call,
                                  number, NULL);
+    dictate_action_set_log (action, "propose_call", "a phone call, over the mobile network");
   }
   tool_run_propose (run, action);
   json_builder_begin_object (b);
@@ -1090,6 +1105,7 @@ propose_message (JsonObject *args, ToolRun *run, GError **error)
     about = g_strdup_printf ("the message to %s", named);
     action = dictate_action_new ("send a message", _("Send a message"), lines, _("Send"), _("Sent"), about,
                                  send_message, number, text);
+    dictate_action_set_log (action, "propose_message", "the message, by SMS to its recipient");
   }
   tool_run_propose (run, action);
   json_builder_begin_object (b);
@@ -1226,14 +1242,116 @@ get_wifi_bluetooth (JsonObject *args, ToolRun *run, GError **error)
   return finish (b);
 }
 
+/* the path of BlueZ's first adapter in `objects`, or NULL */
+static const char *
+bluez_adapter (GVariant *objects)
+{
+  GVariantIter iter;
+  const char *path, *adapter = NULL;
+  GVariant *interfaces;
+
+  if (!objects)
+    return NULL;
+  g_variant_iter_init (&iter, objects);
+  while (!adapter && g_variant_iter_next (&iter, "{&o@a{sa{sv}}}", &path, &interfaces))
+    {
+      g_autoptr (GVariant) a = g_variant_lookup_value (interfaces, "org.bluez.Adapter1", NULL);
+      if (a)
+        adapter = path;
+      g_variant_unref (interfaces);
+    }
+  return adapter;
+}
+
+/* whether Wi-Fi ("wifi") or Bluetooth is on now; FALSE with the error when that cannot be told */
+static gboolean
+radio_on (const char *radio, ToolRun *run, gboolean *on, GError **error)
+{
+  *on = FALSE;
+  if (!g_ascii_strcasecmp (radio, "wifi"))
+    {
+      g_autoptr (GVariant) props = dbus_properties (G_BUS_TYPE_SYSTEM, NM, NM_PATH, NM, run, error);
+      return props && g_variant_lookup (props, "WirelessEnabled", "b", on);
+    }
+  {
+    g_autoptr (GVariant) objects = bluez_objects (run, error);
+    GVariantIter iter;
+    const char *path;
+    GVariant *interfaces;
+    gboolean found = FALSE;
+
+    if (!objects)
+      return FALSE;
+    g_variant_iter_init (&iter, objects);
+    while (!found && g_variant_iter_next (&iter, "{&o@a{sa{sv}}}", &path, &interfaces))
+      {
+        g_autoptr (GVariant) a = g_variant_lookup_value (interfaces, "org.bluez.Adapter1", NULL);
+        if (a)
+          found = g_variant_lookup (a, "Powered", "b", on);
+        g_variant_unref (interfaces);
+      }
+    if (!found)
+      tool_error (error, "This phone has no Bluetooth that can be turned on.");
+    return found;
+  }
+}
+
+/* Wi-Fi ("wifi") or Bluetooth turned on or off, as Settings' switches do; the model's error otherwise */
+static gboolean
+set_radio (const char *radio, gboolean on, ToolRun *run, GError **error)
+{
+  GError *failure = NULL;
+
+  if (!g_ascii_strcasecmp (radio, "wifi"))
+    {
+      if (dbus_set (G_BUS_TYPE_SYSTEM, NM, NM_PATH, NM, "WirelessEnabled", g_variant_new_boolean (on), run,
+                    &failure))
+        return TRUE;
+      tool_error (error, "Wi-Fi could not be turned %s: %s", on ? "on" : "off", plain (failure));
+      g_error_free (failure);
+      return FALSE;
+    }
+  {
+    g_autoptr (GVariant) objects = bluez_objects (run, NULL);
+    const char *adapter = bluez_adapter (objects);
+
+    if (!adapter)
+      {
+        tool_error (error, "This phone has no Bluetooth that can be turned on.");
+        return FALSE;
+      }
+    if (dbus_set (G_BUS_TYPE_SYSTEM, BLUEZ, adapter, "org.bluez.Adapter1", "Powered", g_variant_new_boolean (on),
+                  run, &failure))
+      return TRUE;
+    if (strstr (failure->message, "rfkill"))
+      tool_error (error, "Bluetooth is blocked: airplane mode is on.");
+    else
+      tool_error (error, "Bluetooth could not be turned %s: %s", on ? "on" : "off", plain (failure));
+    g_error_free (failure);
+    return FALSE;
+  }
+}
+
+/* what undoing a change needs, for the action log: {"KEY": value, "about": "…"} */
+static JsonNode *
+undo_int (const char *key, gint64 value, const char *about)
+{
+  g_autoptr (JsonBuilder) b = json_builder_new ();
+
+  json_builder_begin_object (b);
+  add_int (b, key, value);
+  add_string (b, "about", about);
+  return finish (b);
+}
+
 static JsonNode *
 set_wifi_bluetooth (JsonObject *args, ToolRun *run, GError **error)
 {
   const char *radio = tool_arg_string (args, "radio");
   JsonNode *on_node = json_object_get_member (args, "on");
-  gboolean on = tool_arg_bool (args, "on", FALSE);
+  gboolean on = tool_arg_bool (args, "on", FALSE), was = FALSE, known;
   g_autoptr (JsonBuilder) b = json_builder_new ();
-  GError *failure = NULL;
+  const char *name;
 
   if (!radio || (g_ascii_strcasecmp (radio, "wifi") && g_ascii_strcasecmp (radio, "bluetooth")))
     {
@@ -1245,53 +1363,31 @@ set_wifi_bluetooth (JsonObject *args, ToolRun *run, GError **error)
       tool_error (error, "Whether to turn it on or off is missing.");
       return NULL;
     }
-  if (!g_ascii_strcasecmp (radio, "wifi"))
+  name = g_ascii_strcasecmp (radio, "wifi") ? "bluetooth" : "wifi";
+  /* as it was, for undo */
+  known = radio_on (name, run, &was, NULL);
+  if (!set_radio (name, on, run, error))
+    return NULL;
+  json_builder_begin_object (b);
+  add_string (b, name, on ? "on" : "off");
+  if (known && was == on)
     {
-      /* as Settings' switch does */
-      if (!dbus_set (G_BUS_TYPE_SYSTEM, NM, NM_PATH, NM, "WirelessEnabled", g_variant_new_boolean (on), run,
-                     &failure))
-        {
-          tool_error (error, "Wi-Fi could not be turned %s: %s", on ? "on" : "off", plain (failure));
-          g_error_free (failure);
-          return NULL;
-        }
+      add_string (b, "note", on ? "It was already on." : "It was already off.");
+      tool_run_set_unchanged (run);
     }
   else
     {
-      g_autoptr (GVariant) objects = bluez_objects (run, NULL);
-      GVariantIter iter;
-      const char *path, *adapter = NULL;
-      GVariant *interfaces;
+      g_autoptr (JsonBuilder) u = json_builder_new ();
+      g_autofree char *about = g_strdup_printf ("%s turned %s", strcmp (name, "wifi") ? "Bluetooth" : "Wi-Fi",
+                                                on ? "on" : "off");
 
-      if (objects)
-        {
-          g_variant_iter_init (&iter, objects);
-          while (!adapter && g_variant_iter_next (&iter, "{&o@a{sa{sv}}}", &path, &interfaces))
-            {
-              g_autoptr (GVariant) a = g_variant_lookup_value (interfaces, "org.bluez.Adapter1", NULL);
-              if (a)
-                adapter = path;
-              g_variant_unref (interfaces);
-            }
-        }
-      if (!adapter)
-        {
-          tool_error (error, "This phone has no Bluetooth that can be turned on.");
-          return NULL;
-        }
-      if (!dbus_set (G_BUS_TYPE_SYSTEM, BLUEZ, adapter, "org.bluez.Adapter1", "Powered", g_variant_new_boolean (on),
-                     run, &failure))
-        {
-          if (strstr (failure->message, "rfkill"))
-            tool_error (error, "Bluetooth is blocked: airplane mode is on.");
-          else
-            tool_error (error, "Bluetooth could not be turned %s: %s", on ? "on" : "off", plain (failure));
-          g_error_free (failure);
-          return NULL;
-        }
+      json_builder_begin_object (u);
+      add_string (u, "radio", name);
+      add_bool (u, "on", !on);
+      add_string (u, "about", about);
+      tool_run_set_undo (run, finish (u));
+      add_bool (b, "can_undo", TRUE);
     }
-  json_builder_begin_object (b);
-  add_string (b, g_ascii_strcasecmp (radio, "wifi") ? "bluetooth" : "wifi", on ? "on" : "off");
   return finish (b);
 }
 
@@ -1505,6 +1601,14 @@ set_alarm (JsonObject *args, ToolRun *run, GError **error)
   add_string (b, "repeats", repeats);
   if ((next = rings_in (hour, minute, days)))
     add_string (b, "rings", next);
+  {
+    guint32 id;
+    g_autofree char *about = g_strdup_printf ("the alarm at %s", at);
+
+    g_variant_get (reply, "(u)", &id);
+    tool_run_set_undo (run, undo_int ("delete_alarm", id, about));
+    add_bool (b, "can_undo", TRUE);
+  }
   return finish (b);
 }
 
@@ -1541,6 +1645,11 @@ set_timer (JsonObject *args, ToolRun *run, GError **error)
   end = g_date_time_add_seconds (now, seconds);
   ends = g_date_time_format (end, "%H:%M");
   add_string (b, "ends_at", ends);
+  {
+    g_autofree char *about = g_strdup_printf ("the %s timer", length);
+    tool_run_set_undo (run, undo_int ("delete_timer", id, about));
+    add_bool (b, "can_undo", TRUE);
+  }
   return finish (b);
 }
 
@@ -1570,18 +1679,35 @@ by_start (gconstpointer a, gconstpointer b)
 typedef struct {
   GPtrArray *events;
   ICalTimezone *zone;
+  gint64 from;                  /* the asked range's start */
 } Collect;
+
+/* an all-day event's day as the phone's local midnight: the time zone EDS was given (or none) does not move it */
+static gint64
+local_midnight (ICalTime *t)
+{
+  g_autoptr (GDateTime) day = g_date_time_new_local (i_cal_time_get_year (t), i_cal_time_get_month (t),
+                                                    i_cal_time_get_day (t), 0, 0, 0);
+
+  return day ? g_date_time_to_unix (day) : 0;
+}
 
 static gboolean
 collect (ICalComponent *comp, ICalTime *start, ICalTime *end, gpointer data, GCancellable *c, GError **error)
 {
   Collect *col = data;
-  Event *e = g_new0 (Event, 1);
+  Event *e;
   const char *summary = i_cal_component_get_summary (comp), *location = i_cal_component_get_location (comp);
+  gboolean all_day = i_cal_time_is_date (start);
+  gint64 to = all_day ? local_midnight (end) : i_cal_time_as_timet_with_zone (end, i_cal_time_get_timezone (end));
 
-  e->all_day = i_cal_time_is_date (start);
-  e->start = i_cal_time_as_timet_with_zone (start, e->all_day ? col->zone : i_cal_time_get_timezone (start));
-  e->end = i_cal_time_as_timet_with_zone (end, e->all_day ? col->zone : i_cal_time_get_timezone (end));
+  /* the day before's all-day event ends at the asked day's midnight: EDS gives it, it is not on that day */
+  if (to <= col->from)
+    return TRUE;
+  e = g_new0 (Event, 1);
+  e->all_day = all_day;
+  e->start = all_day ? local_midnight (start) : i_cal_time_as_timet_with_zone (start, i_cal_time_get_timezone (start));
+  e->end = to;
   e->summary = g_strdup (summary && *summary ? summary : "(no title)");
   e->location = location && *location ? g_strdup (location) : NULL;
   g_ptr_array_add (col->events, e);
@@ -1599,7 +1725,7 @@ get_events (JsonObject *args, ToolRun *run, GError **error)
   g_autoptr (JsonBuilder) b = json_builder_new ();
   g_autoptr (GTimeZone) local = g_time_zone_new_local ();
   const char *zone_id = g_time_zone_get_identifier (local);
-  Collect col = { events, NULL };
+  Collect col = { events, NULL, 0 };
   GList *sources;
   int y, m, d;
 
@@ -1622,6 +1748,7 @@ get_events (JsonObject *args, ToolRun *run, GError **error)
                                                               tool_run_cancellable (run), &failure);
       gint64 start = g_date_time_to_unix (from);
 
+      col.from = start;
       if (!client)
         {
           g_debug ("tools: a calendar: %s", failure->message);
@@ -1878,6 +2005,7 @@ navigate_to (JsonObject *args, ToolRun *run, GError **error)
       tool_error (error, "Navi, the maps app, is not installed on this phone.");
       return NULL;
     }
+  tool_run_add_sent (run, "the place's name, to Navi's place search on VibeOS's server");
   if (!geocode (place, run, &name, &lat, &lon, error))
     return NULL;
   if (tool_run_dry (run))
@@ -1905,25 +2033,1223 @@ navigate_to (JsonObject *args, ToolRun *run, GError **error)
   return finish (b);
 }
 
+/* ---------------- removing an alarm or a timer, and putting it back ---------------- */
+
+/* the Clock's alarms (GetAlarms' array), or NULL with the error */
+static GVariant *
+clock_alarms (ToolRun *run, GError **error)
+{
+  g_autoptr (GVariant) reply = dbus_call (G_BUS_TYPE_SESSION, CLOCK, "/vibeos/Clock/Alarms", "vibeos.Clock.Alarms",
+                                          "GetAlarms", NULL, "(aa{sv})", run, error);
+  return reply ? g_variant_get_child_value (reply, 0) : NULL;
+}
+
+/* "06:45 on weekdays (Work)", for the model to ask which */
+static char *
+alarm_text (GVariant *a)
+{
+  gint32 hour = 0, minute = 0;
+  guint32 days = 0;
+  gboolean enabled = TRUE;
+  const char *label = NULL;
+  g_autofree char *repeats = NULL;
+
+  g_variant_lookup (a, "hour", "i", &hour);
+  g_variant_lookup (a, "minute", "i", &minute);
+  g_variant_lookup (a, "days", "u", &days);
+  g_variant_lookup (a, "enabled", "b", &enabled);
+  g_variant_lookup (a, "label", "&s", &label);
+  repeats = days_text (days);
+  return g_strdup_printf ("%02d:%02d %s%s%s%s%s", hour, minute, repeats, label && *label ? " (" : "",
+                          label && *label ? label : "", label && *label ? ")" : "", enabled ? "" : ", off");
+}
+
+static JsonNode *
+cancel_alarm (JsonObject *args, ToolRun *run, GError **error)
+{
+  const char *time = tool_arg_string (args, "time"), *label = tool_arg_string (args, "label");
+  g_autoptr (GVariant) list = NULL;
+  g_autoptr (GPtrArray) exact = g_ptr_array_new_with_free_func ((GDestroyNotify) g_variant_unref);
+  g_autoptr (GPtrArray) twelve = g_ptr_array_new_with_free_func ((GDestroyNotify) g_variant_unref);
+  g_autoptr (JsonBuilder) b = json_builder_new ();
+  g_autoptr (JsonBuilder) u = json_builder_new ();
+  g_autoptr (GVariant) deleted = NULL;
+  g_autofree char *at = NULL, *repeats = NULL, *about = NULL;
+  GPtrArray *matching;
+  GVariant *a;
+  gint32 hour = 0, minute = 0;
+  guint32 id = 0, days = 0;
+  gboolean enabled = TRUE, vibrate = TRUE, has_vibrate;
+  const char *alarm_label = NULL, *ringtone = NULL;
+  int want_hour = -1, want_minute = -1;
+
+  if (time && !parse_time (time, &want_hour, &want_minute))
+    {
+      tool_error (error, "The time is not HH:MM: ask the user which alarm.");
+      return NULL;
+    }
+  if (!(list = clock_alarms (run, error)))
+    return NULL;
+  for (gsize i = 0; i < g_variant_n_children (list); i++)
+    {
+      g_autoptr (GVariant) one = g_variant_get_child_value (list, i);
+      const char *l = NULL;
+
+      g_variant_lookup (one, "hour", "i", &hour);
+      g_variant_lookup (one, "minute", "i", &minute);
+      g_variant_lookup (one, "label", "&s", &l);
+      if (label && !(l && strcasestr (l, label)))
+        continue;
+      if (!time || (hour == want_hour && minute == want_minute))
+        g_ptr_array_add (exact, g_variant_ref (one));
+      else if (hour % 12 == want_hour % 12 && minute == want_minute)
+        /* "half past six" given as 06:30 for an alarm at 18:30 */
+        g_ptr_array_add (twelve, g_variant_ref (one));
+    }
+  matching = exact->len ? exact : twelve;
+  if (matching->len != 1)
+    {
+      GString *all = g_string_new (NULL);
+      GPtrArray *named = matching->len ? matching : NULL;
+      gsize n = named ? named->len : g_variant_n_children (list);
+
+      for (gsize i = 0; i < n && i < ROWS_MAX; i++)
+        {
+          g_autoptr (GVariant) one = named ? g_variant_ref (named->pdata[i]) : g_variant_get_child_value (list, i);
+          g_autofree char *text = alarm_text (one);
+          g_string_append_printf (all, "%s%s", i ? "; " : "", text);
+        }
+      if (g_variant_n_children (list) == 0)
+        tool_error (error, "There are no alarms.");
+      else if (matching->len == 0)
+        tool_error (error, "No alarm matches that. The alarms are: %s. Ask the user which one.", all->str);
+      else
+        tool_error (error, "Several alarms match: %s. Ask the user which one.", all->str);
+      g_string_free (all, TRUE);
+      return NULL;
+    }
+  a = matching->pdata[0];
+  g_variant_lookup (a, "id", "u", &id);
+  g_variant_lookup (a, "hour", "i", &hour);
+  g_variant_lookup (a, "minute", "i", &minute);
+  g_variant_lookup (a, "days", "u", &days);
+  g_variant_lookup (a, "enabled", "b", &enabled);
+  g_variant_lookup (a, "label", "&s", &alarm_label);
+  g_variant_lookup (a, "ringtone", "&s", &ringtone);
+  has_vibrate = g_variant_lookup (a, "vibrate", "b", &vibrate);
+  deleted = dbus_call (G_BUS_TYPE_SESSION, CLOCK, "/vibeos/Clock/Alarms", "vibeos.Clock.Alarms", "DeleteAlarm",
+                       g_variant_new ("(u)", id), NULL, run, error);
+  if (!deleted)
+    return NULL;
+  at = g_strdup_printf ("%02d:%02d", hour, minute);
+  about = g_strdup_printf ("the alarm at %s", at);
+  /* what putting it back needs: AddAlarm's keys */
+  json_builder_begin_object (u);
+  json_builder_set_member_name (u, "add_alarm");
+  json_builder_begin_object (u);
+  add_int (u, "hour", hour);
+  add_int (u, "minute", minute);
+  add_int (u, "days", days);
+  add_bool (u, "enabled", enabled);
+  add_string (u, "label", alarm_label ? alarm_label : "");
+  if (has_vibrate)
+    add_bool (u, "vibrate", vibrate);
+  if (ringtone)
+    add_string (u, "ringtone", ringtone);
+  json_builder_end_object (u);
+  add_string (u, "about", about);
+  tool_run_set_undo (run, finish (u));
+  json_builder_begin_object (b);
+  add_string (b, "alarm_removed", at);
+  repeats = days_text (days);
+  add_string (b, "repeats", repeats);
+  if (alarm_label && *alarm_label)
+    add_string (b, "label", alarm_label);
+  add_bool (b, "can_undo", TRUE);
+  return finish (b);
+}
+
+/* a timer's time left now (ms): its remaining as of its last start for a running one (timer-service.c) */
+static gint64
+timer_left (GVariant *t)
+{
+  guint32 state = 0;
+  gint64 remaining = 0, last_start = 0;
+
+  g_variant_lookup (t, "state", "u", &state);
+  g_variant_lookup (t, "remaining", "x", &remaining);
+  g_variant_lookup (t, "last-start", "x", &last_start);
+  if (state == 1 && last_start > 0)
+    {
+      struct timespec now;
+      clock_gettime (CLOCK_BOOTTIME, &now);
+      remaining -= (gint64) now.tv_sec * 1000 + now.tv_nsec / 1000000 - last_start;
+    }
+  return MAX (remaining, 0);
+}
+
+static JsonNode *
+cancel_timer (JsonObject *args, ToolRun *run, GError **error)
+{
+  const char *label = tool_arg_string (args, "label");
+  g_autoptr (GVariant) reply = dbus_call (G_BUS_TYPE_SESSION, CLOCK, "/vibeos/Clock/Timers", "vibeos.Clock.Timers",
+                                          "GetTimers", NULL, "(aa{sv})", run, error);
+  g_autoptr (GVariant) list = NULL, deleted = NULL;
+  g_autoptr (GPtrArray) matching = g_ptr_array_new_with_free_func ((GDestroyNotify) g_variant_unref);
+  g_autoptr (JsonBuilder) b = json_builder_new ();
+  g_autoptr (JsonBuilder) u = json_builder_new ();
+  g_autofree char *left = NULL, *about = NULL;
+  const char *timer_label = NULL;
+  guint32 id = 0, state = 0;
+  gint64 ms;
+  GVariant *t;
+
+  if (!reply)
+    return NULL;
+  list = g_variant_get_child_value (reply, 0);
+  for (gsize i = 0; i < g_variant_n_children (list); i++)
+    {
+      g_autoptr (GVariant) one = g_variant_get_child_value (list, i);
+      const char *l = NULL;
+
+      g_variant_lookup (one, "state", "u", &state);
+      g_variant_lookup (one, "label", "&s", &l);
+      /* running (1) or paused (2) */
+      if ((state == 1 || state == 2) && (!label || (l && strcasestr (l, label))))
+        g_ptr_array_add (matching, g_variant_ref (one));
+    }
+  if (matching->len != 1)
+    {
+      GString *all = g_string_new (NULL);
+
+      for (guint i = 0; i < matching->len && i < ROWS_MAX; i++)
+        {
+          const char *l = NULL;
+          g_autofree char *d = duration_text (timer_left (matching->pdata[i]) / 1000);
+          g_variant_lookup (matching->pdata[i], "label", "&s", &l);
+          g_string_append_printf (all, "%s%s left%s%s%s", i ? "; " : "", d, l && *l ? " (" : "", l && *l ? l : "",
+                                  l && *l ? ")" : "");
+        }
+      if (!matching->len)
+        tool_error (error, label ? "No timer called \"%s\" is running." : "No timer is running.", label);
+      else
+        tool_error (error, "Several timers are running: %s. Ask the user which one.", all->str);
+      g_string_free (all, TRUE);
+      return NULL;
+    }
+  t = matching->pdata[0];
+  g_variant_lookup (t, "id", "u", &id);
+  g_variant_lookup (t, "state", "u", &state);
+  g_variant_lookup (t, "label", "&s", &timer_label);
+  ms = timer_left (t);
+  deleted = dbus_call (G_BUS_TYPE_SESSION, CLOCK, "/vibeos/Clock/Timers", "vibeos.Clock.Timers", "Delete",
+                       g_variant_new ("(u)", id), NULL, run, error);
+  if (!deleted)
+    return NULL;
+  left = duration_text ((ms + 999) / 1000);
+  about = g_strdup_printf ("the timer with %s left", left);
+  json_builder_begin_object (u);
+  json_builder_set_member_name (u, "add_timer");
+  json_builder_begin_object (u);
+  add_int (u, "ms", ms);
+  add_string (u, "label", timer_label ? timer_label : "");
+  add_bool (u, "running", state == 1);
+  json_builder_end_object (u);
+  add_string (u, "about", about);
+  tool_run_set_undo (run, finish (u));
+  json_builder_begin_object (b);
+  add_string (b, "timer_stopped", left);
+  add_string (b, "time_it_had_left", left);
+  if (timer_label && *timer_label)
+    add_string (b, "label", timer_label);
+  add_bool (b, "can_undo", TRUE);
+  return finish (b);
+}
+
+/* ---------------- the action log, and undo (dictate-actions.h) ---------------- */
+
+static JsonNode *
+get_action_log (JsonObject *args, ToolRun *run, GError **error)
+{
+  gint64 count = CLAMP (tool_arg_int (args, "count", 5), 1, ROWS_MAX);
+  g_autoptr (GPtrArray) entries = dictate_actions_recent (200);
+  g_autoptr (JsonBuilder) b = json_builder_new ();
+  guint n = 0, questions = 0;
+
+  json_builder_begin_object (b);
+  json_builder_set_member_name (b, "actions");
+  json_builder_begin_array (b);
+  for (guint i = 0; i < entries->len && n < count; i++)
+    {
+      JsonObject *e = entries->pdata[i];
+      const char *tool = json_object_get_string_member_with_default (e, "tool", "");
+      const DictateTool *t = dictate_tools_find (tool);
+      JsonObject *undo = json_object_has_member (e, "undo") ? json_object_get_object_member (e, "undo") : NULL;
+      JsonArray *sent = json_object_has_member (e, "sent") ? json_object_get_array_member (e, "sent") : NULL;
+      g_autofree char *when = tool_when (json_object_get_int_member_with_default (e, "t", 0) * 1000, TRUE);
+      g_autofree char *what = NULL;
+      gint64 id = json_object_get_int_member_with_default (e, "id", 0);
+      guint others = 0;
+
+      if (!strcmp (tool, "question"))
+        {
+          questions++;
+          continue;
+        }
+      if (undo && json_object_has_member (undo, "about"))
+        what = g_strdup_printf ("%s (%s)", t ? t->did : tool, json_object_get_string_member (undo, "about"));
+      else
+        what = g_strdup (t ? t->did : tool);
+      json_builder_begin_object (b);
+      add_string (b, "what", what);
+      add_string (b, "when", when);
+      add_int (b, "tier", json_object_get_int_member_with_default (e, "tier", 0));
+      add_string (b, "outcome", json_object_get_string_member_with_default (e, "outcome", ""));
+      for (guint j = 0; sent && j < json_array_get_length (sent); j++)
+        if (g_strcmp0 (json_array_get_string_element (sent, j), DICTATE_SENT_SERVER))
+          {
+            if (!others++)
+              {
+                json_builder_set_member_name (b, "also_sent_to");
+                json_builder_begin_array (b);
+              }
+            json_builder_add_string_value (b, json_array_get_string_element (sent, j));
+          }
+      if (others)
+        json_builder_end_array (b);
+      if (dictate_actions_undone (entries, id))
+        add_bool (b, "undone", TRUE);
+      json_builder_end_object (b);
+      n++;
+    }
+  json_builder_end_array (b);
+  if (questions)
+    add_int (b, "questions_answered_meanwhile", questions);
+  add_string (b, "where_things_went",
+              "Every question the user asks Agent, and what each tool finds, goes to VibeOS's own model server, "
+              "which writes the answers; it goes nowhere else unless also_sent_to says so. What was done (an alarm, "
+              "a setting) was done on the phone itself.");
+  if (!n)
+    add_string (b, "note", "Agent has not done anything yet.");
+  return finish (b);
+}
+
+static JsonNode *
+undo_last_action (JsonObject *args, ToolRun *run, GError **error)
+{
+  g_autoptr (GPtrArray) entries = dictate_actions_recent (100);
+  gint64 now = g_get_real_time () / G_USEC_PER_SEC, id = 0;
+  g_autoptr (JsonBuilder) b = json_builder_new ();
+  g_autofree char *done = NULL;
+  JsonObject *target = NULL, *undo;
+  const DictateTool *tool;
+  const char *about;
+
+  for (guint i = 0; i < entries->len && !target; i++)
+    {
+      JsonObject *e = entries->pdata[i];
+      const char *name = json_object_get_string_member_with_default (e, "tool", "");
+      const char *outcome = json_object_get_string_member_with_default (e, "outcome", "");
+
+      if (now - json_object_get_int_member_with_default (e, "t", 0) > 24 * 3600)
+        break;
+      /* reads, undoing itself, and what did nothing (failed, cancelled, a card still waiting, a switch already as
+       * asked) are passed over */
+      if (json_object_get_int_member_with_default (e, "tier", 0) < DICTATE_TIER_UNDOABLE
+          || !strcmp (name, "undo_last_action") || g_str_has_prefix (outcome, "failed")
+          || strstr (outcome, "cancelled") || strstr (outcome, "waiting") || strstr (outcome, "nothing changed"))
+        continue;
+      if (dictate_actions_undone (entries, json_object_get_int_member_with_default (e, "id", 0)))
+        continue;
+      target = e;
+    }
+  if (!target)
+    {
+      tool_error (error, "Agent has done nothing in the last day that could be undone.");
+      return NULL;
+    }
+  tool = dictate_tools_find (json_object_get_string_member (target, "tool"));
+  undo = json_object_has_member (target, "undo") ? json_object_get_object_member (target, "undo") : NULL;
+  if (!undo)
+    {
+      if (json_object_get_int_member_with_default (target, "tier", 0) >= DICTATE_TIER_CONFIRMED)
+        tool_error (error, "The last thing done was this: %s, done when the user tapped its card. Agent cannot "
+                    "undo that.", tool ? tool->did : "an action");
+      else
+        tool_error (error, "The last thing done was this: %s. That cannot be undone from here%s.",
+                    tool ? tool->did : "an action",
+                    tool && !strcmp (tool->name, "open_app") ? "; the app can be closed in the recent apps" : "");
+      return NULL;
+    }
+  about = json_object_get_string_member_with_default (undo, "about", "it");
+  id = json_object_get_int_member_with_default (target, "id", 0);
+  if (json_object_has_member (undo, "radio"))
+    {
+      const char *radio = json_object_get_string_member (undo, "radio");
+      gboolean on = json_object_get_boolean_member_with_default (undo, "on", TRUE);
+
+      if (!tool_run_area_on (run, "access-settings"))
+        {
+          tool_error (error, "No access: the user has turned off the phone's settings in Agent's settings.");
+          return NULL;
+        }
+      if (!set_radio (radio, on, run, error))
+        return NULL;
+      done = g_strdup_printf ("%s is %s again", strcmp (radio, "wifi") ? "Bluetooth" : "Wi-Fi", on ? "on" : "off");
+    }
+  else
+    {
+      g_autoptr (GVariant) reply = NULL;
+
+      if (!tool_run_area_on (run, "access-alarms"))
+        {
+          tool_error (error, "No access: the user has turned off alarms and timers in Agent's settings.");
+          return NULL;
+        }
+      if (json_object_has_member (undo, "delete_alarm"))
+        {
+          reply = dbus_call (G_BUS_TYPE_SESSION, CLOCK, "/vibeos/Clock/Alarms", "vibeos.Clock.Alarms", "DeleteAlarm",
+                             g_variant_new ("(u)", (guint32) json_object_get_int_member (undo, "delete_alarm")),
+                             NULL, run, error);
+          done = g_strdup_printf ("%s is removed", about);
+        }
+      else if (json_object_has_member (undo, "delete_timer"))
+        {
+          reply = dbus_call (G_BUS_TYPE_SESSION, CLOCK, "/vibeos/Clock/Timers", "vibeos.Clock.Timers", "Delete",
+                             g_variant_new ("(u)", (guint32) json_object_get_int_member (undo, "delete_timer")),
+                             NULL, run, error);
+          done = g_strdup_printf ("%s is stopped and removed", about);
+        }
+      else if (json_object_has_member (undo, "add_alarm"))
+        {
+          JsonObject *a = json_object_get_object_member (undo, "add_alarm");
+          GVariantBuilder alarm;
+
+          g_variant_builder_init (&alarm, G_VARIANT_TYPE_VARDICT);
+          g_variant_builder_add (&alarm, "{sv}", "hour",
+                                 g_variant_new_int32 (json_object_get_int_member_with_default (a, "hour", 0)));
+          g_variant_builder_add (&alarm, "{sv}", "minute",
+                                 g_variant_new_int32 (json_object_get_int_member_with_default (a, "minute", 0)));
+          g_variant_builder_add (&alarm, "{sv}", "days",
+                                 g_variant_new_uint32 (json_object_get_int_member_with_default (a, "days", 0)));
+          g_variant_builder_add (&alarm, "{sv}", "enabled",
+                                 g_variant_new_boolean (json_object_get_boolean_member_with_default (a, "enabled",
+                                                                                                     TRUE)));
+          g_variant_builder_add (&alarm, "{sv}", "label",
+                                 g_variant_new_string (json_object_get_string_member_with_default (a, "label", "")));
+          if (json_object_has_member (a, "vibrate"))
+            g_variant_builder_add (&alarm, "{sv}", "vibrate",
+                                   g_variant_new_boolean (json_object_get_boolean_member (a, "vibrate")));
+          if (json_object_has_member (a, "ringtone"))
+            g_variant_builder_add (&alarm, "{sv}", "ringtone",
+                                   g_variant_new_string (json_object_get_string_member (a, "ringtone")));
+          reply = dbus_call (G_BUS_TYPE_SESSION, CLOCK, "/vibeos/Clock/Alarms", "vibeos.Clock.Alarms", "AddAlarm",
+                             g_variant_new ("(a{sv})", &alarm), "(u)", run, error);
+          done = g_strdup_printf ("%s is back", about);
+        }
+      else if (json_object_has_member (undo, "add_timer"))
+        {
+          JsonObject *t = json_object_get_object_member (undo, "add_timer");
+          gint64 ms = json_object_get_int_member_with_default (t, "ms", 0);
+          guint32 timer;
+
+          reply = dbus_call (G_BUS_TYPE_SESSION, CLOCK, "/vibeos/Clock/Timers", "vibeos.Clock.Timers", "AddTimer",
+                             g_variant_new ("(xsb)", MAX (ms, 1000),
+                                            json_object_get_string_member_with_default (t, "label", ""), TRUE),
+                             "(u)", run, error);
+          if (reply && json_object_get_boolean_member_with_default (t, "running", TRUE))
+            {
+              g_autoptr (GVariant) started = NULL;
+              g_variant_get (reply, "(u)", &timer);
+              started = dbus_call (G_BUS_TYPE_SESSION, CLOCK, "/vibeos/Clock/Timers", "vibeos.Clock.Timers", "Start",
+                                   g_variant_new ("(u)", timer), NULL, run, error);
+              if (!started)
+                g_clear_pointer (&reply, g_variant_unref);
+            }
+          done = g_strdup_printf ("%s runs again", about);
+        }
+      else
+        {
+          tool_error (error, "That cannot be undone.");
+          return NULL;
+        }
+      if (!reply)
+        return NULL;
+    }
+  tool_run_set_undid (run, id);
+  json_builder_begin_object (b);
+  add_string (b, "undone", tool ? tool->did : "the last action");
+  add_string (b, "now", done);
+  return finish (b);
+}
+
+/* ---------------- the mobile network (ModemManager, NetworkManager) ---------------- */
+
+#define MM "org.freedesktop.ModemManager1"
+
+static const char *
+generation (guint32 tech)
+{
+  /* MMModemAccessTechnology: 5G NR, LTE, the UMTS family, the GSM family */
+  return tech & (1u << 15) ? "5G" : tech & (1u << 14) ? "4G" : tech & 0x3e0 ? "3G" : tech & 0x1e ? "2G" : NULL;
+}
+
+static JsonNode *
+get_mobile_network (JsonObject *args, ToolRun *run, GError **error)
+{
+  g_autoptr (GVariant) reply = dbus_call (G_BUS_TYPE_SYSTEM, MM, "/org/freedesktop/ModemManager1",
+                                          "org.freedesktop.DBus.ObjectManager", "GetManagedObjects", NULL,
+                                          "(a{oa{sa{sv}}})", run, NULL);
+  g_autoptr (GVariant) objects = reply ? g_variant_get_child_value (reply, 0) : NULL;
+  g_autoptr (GVariant) modem = NULL, gpp = NULL, nm = NULL;
+  g_autoptr (JsonBuilder) b = json_builder_new ();
+  GVariantIter iter;
+  const char *path, *sim = NULL, *op = NULL;
+  GVariant *interfaces;
+  gint32 state = 0;
+  guint32 quality = 0, tech = 0, registration = 0;
+  gboolean recent = FALSE, wwan = FALSE;
+
+  /* only these: nothing that names the phone or the SIM (the IMEI, the IMSI, the number) is read */
+  if (objects)
+    {
+      g_variant_iter_init (&iter, objects);
+      while (!modem && g_variant_iter_next (&iter, "{&o@a{sa{sv}}}", &path, &interfaces))
+        {
+          modem = g_variant_lookup_value (interfaces, MM ".Modem", G_VARIANT_TYPE_VARDICT);
+          if (modem)
+            gpp = g_variant_lookup_value (interfaces, MM ".Modem.Modem3gpp", G_VARIANT_TYPE_VARDICT);
+          g_variant_unref (interfaces);
+        }
+    }
+  json_builder_begin_object (b);
+  if (!modem)
+    {
+      add_bool (b, "modem", FALSE);
+      add_string (b, "note", reply ? "This device has no mobile network: it has no modem."
+                                   : "The mobile network cannot be read: ModemManager does not answer.");
+      return finish (b);
+    }
+  g_variant_lookup (modem, "Sim", "&o", &sim);
+  g_variant_lookup (modem, "State", "i", &state);
+  g_variant_lookup (modem, "SignalQuality", "(ub)", &quality, &recent);
+  g_variant_lookup (modem, "AccessTechnologies", "u", &tech);
+  if (gpp)
+    {
+      g_variant_lookup (gpp, "OperatorName", "&s", &op);
+      g_variant_lookup (gpp, "RegistrationState", "u", &registration);
+    }
+  add_bool (b, "sim", sim && g_strcmp0 (sim, "/"));
+  /* MMModemState: -1 failed, 2 locked (the SIM's PIN), 3 disabled, 6 enabled, 7 searching, 8 registered,
+   * 10 connecting, 11 connected */
+  add_string (b, "state", state < 0 ? "failed" : state == 2 ? "the SIM is locked (its PIN is needed)"
+                          : state < 6 ? "off" : state == 6 ? "on, but on no network"
+                          : state == 7 ? "searching for a network" : "on a network");
+  if (op && *op && state >= 8)
+    add_string (b, "operator", op);
+  if (state >= 8)
+    {
+      /* bars as Android draws them: four, a quarter of the quality each */
+      add_int (b, "signal_bars", quality >= 75 ? 4 : quality >= 50 ? 3 : quality >= 25 ? 2 : quality > 0 ? 1 : 0);
+      add_int (b, "signal_bars_of", 4);
+      add_int (b, "signal_percent", quality);
+      if (generation (tech))
+        add_string (b, "network_type", generation (tech));
+      /* MMModem3gppRegistrationState: roaming, roaming SMS only, roaming CSFB not preferred */
+      add_bool (b, "roaming", registration == 5 || registration == 7 || registration == 10);
+    }
+  nm = dbus_properties (G_BUS_TYPE_SYSTEM, NM, NM_PATH, NM, run, NULL);
+  if (nm && g_variant_lookup (nm, "WwanEnabled", "b", &wwan))
+    add_bool (b, "mobile_data_on", wwan);
+  add_bool (b, "data_connected", state == 11);
+  return finish (b);
+}
+
+/* ---------------- the weather (Open-Meteo, as the Weather app) ---------------- */
+
+/* a GET's JSON, or NULL with the model's error `failed` */
+static JsonNode *
+http_json (const char *url, ToolRun *run, const char *failed, GError **error)
+{
+  g_autoptr (SoupSession) session = soup_session_new_with_options ("timeout", 8, "user-agent",
+                                                                   "vibeos-agent/1.0 (VibeOS)", NULL);
+  g_autoptr (SoupMessage) msg = soup_message_new ("GET", url);
+  g_autoptr (GBytes) body = NULL;
+  g_autoptr (JsonParser) parser = json_parser_new ();
+
+  body = msg ? soup_session_send_and_read (session, msg, tool_run_cancellable (run), NULL) : NULL;
+  if (!body || soup_message_get_status (msg) != SOUP_STATUS_OK
+      || !json_parser_load_from_data (parser, g_bytes_get_data (body, NULL), g_bytes_get_size (body), NULL)
+      || !JSON_NODE_HOLDS_OBJECT (json_parser_get_root (parser)))
+    {
+      tool_error (error, "%s", failed);
+      return NULL;
+    }
+  return json_node_copy (json_parser_get_root (parser));
+}
+
+/* WMO's weather codes, as Open-Meteo gives them */
+static const char *
+sky (gint64 code)
+{
+  switch (code)
+    {
+    case 0: return "clear sky";
+    case 1: return "mainly clear";
+    case 2: return "partly cloudy";
+    case 3: return "overcast";
+    case 45: case 48: return "fog";
+    case 51: case 53: case 55: return "drizzle";
+    case 56: case 57: return "freezing drizzle";
+    case 61: return "light rain";
+    case 63: return "rain";
+    case 65: return "heavy rain";
+    case 66: case 67: return "freezing rain";
+    case 71: return "light snow";
+    case 73: return "snow";
+    case 75: return "heavy snow";
+    case 77: return "snow grains";
+    case 80: case 81: return "rain showers";
+    case 82: return "heavy rain showers";
+    case 85: case 86: return "snow showers";
+    case 95: return "thunderstorms";
+    case 96: case 99: return "thunderstorms with hail";
+    default: return "unknown";
+    }
+}
+
+static double
+number_at (JsonObject *o, const char *array, guint i, double fallback)
+{
+  JsonArray *a = o && json_object_has_member (o, array) ? json_object_get_array_member (o, array) : NULL;
+  JsonNode *n = a && i < json_array_get_length (a) ? json_array_get_element (a, i) : NULL;
+
+  return n && JSON_NODE_HOLDS_VALUE (n) ? json_node_get_double (n) : fallback;
+}
+
+/* the place the Weather app shows (and its home screen widget): ~/.cache/vibeos-launcher/weather.json, else the city
+ * chosen in it */
+static gboolean
+weather_place (double *lat, double *lon, char **name)
+{
+  g_autofree char *path = g_build_filename (g_get_user_cache_dir (), "vibeos-launcher", "weather.json", NULL);
+  g_autoptr (JsonParser) parser = json_parser_new ();
+
+  if (json_parser_load_from_file (parser, path, NULL) && JSON_NODE_HOLDS_OBJECT (json_parser_get_root (parser)))
+    {
+      JsonObject *o = json_node_get_object (json_parser_get_root (parser));
+      *lat = json_object_get_double_member_with_default (o, "lat", 0);
+      *lon = json_object_get_double_member_with_default (o, "lon", 0);
+      *name = g_strdup (json_object_get_string_member_with_default (o, "place", ""));
+      if (*lat || *lon)
+        return TRUE;
+      g_clear_pointer (name, g_free);
+    }
+  {
+    GSettingsSchemaSource *source = g_settings_schema_source_get_default ();
+    g_autoptr (GSettingsSchema) schema = source ? g_settings_schema_source_lookup (source, "vibeos.Weather", TRUE)
+                                                : NULL;
+    g_autoptr (GSettings) settings = schema ? g_settings_new_full (schema, NULL, NULL) : NULL;
+    g_autofree char *city = NULL;
+
+    if (!settings)
+      return FALSE;
+    g_settings_get (settings, "city", "(sdd)", &city, lat, lon);
+    if (!*city)
+      return FALSE;
+    *name = g_steal_pointer (&city);
+    return TRUE;
+  }
+}
+
+/* the Weather app's last forecast, if it is for here and less than half an hour old */
+static JsonNode *
+weather_cached (double lat, double lon)
+{
+  g_autofree char *path = g_build_filename (g_get_user_cache_dir (), "vibeos-launcher", "forecast.json", NULL);
+  g_autoptr (JsonParser) parser = json_parser_new ();
+  GStatBuf st;
+  JsonObject *o;
+
+  if (g_stat (path, &st) != 0 || time (NULL) - st.st_mtime > 30 * 60
+      || !json_parser_load_from_file (parser, path, NULL) || !JSON_NODE_HOLDS_OBJECT (json_parser_get_root (parser)))
+    return NULL;
+  o = json_node_get_object (json_parser_get_root (parser));
+  if (fabs (json_object_get_double_member_with_default (o, "latitude", 999) - lat) > 0.2
+      || fabs (json_object_get_double_member_with_default (o, "longitude", 999) - lon) > 0.2)
+    return NULL;
+  return json_node_copy (json_parser_get_root (parser));
+}
+
+static JsonNode *
+get_weather (JsonObject *args, ToolRun *run, GError **error)
+{
+  const char *place = tool_arg_string (args, "place");
+  gint64 days = CLAMP (tool_arg_int (args, "days", 2), 1, 7);
+  const char *server = g_getenv ("DICTATE_WEATHER_SERVER");
+  g_autoptr (JsonNode) forecast = NULL;
+  g_autoptr (JsonBuilder) b = json_builder_new ();
+  g_autoptr (GDateTime) now = g_date_time_new_now_local ();
+  g_autofree char *name = NULL, *today = g_date_time_format (now, "%Y-%m-%d");
+  JsonObject *f, *current, *daily;
+  JsonArray *dates;
+  double lat, lon;
+  guint n = 0;
+
+  if (place)
+    {
+      /* a town named: found by Open-Meteo's place search, as Weather's Set City finds it */
+      g_autofree char *escaped = g_uri_escape_string (place, NULL, FALSE);
+      g_autofree char *url = g_strdup_printf ("https://geocoding-api.open-meteo.com/v1/search?name=%s&count=1"
+                                              "&language=en&format=json", escaped);
+      g_autoptr (JsonNode) found = http_json (url, run, "Places cannot be looked up right now.", error);
+      JsonObject *first;
+      JsonArray *results;
+
+      if (!found)
+        return NULL;
+      tool_run_add_sent (run, "the place's name, to Open-Meteo's place search");
+      results = json_object_has_member (json_node_get_object (found), "results")
+                ? json_object_get_array_member (json_node_get_object (found), "results") : NULL;
+      if (!results || !json_array_get_length (results))
+        {
+          tool_error (error, "No place called \"%s\" was found.", place);
+          return NULL;
+        }
+      first = json_array_get_object_element (results, 0);
+      lat = json_object_get_double_member_with_default (first, "latitude", 0);
+      lon = json_object_get_double_member_with_default (first, "longitude", 0);
+      name = g_strdup_printf ("%s, %s", json_object_get_string_member_with_default (first, "name", place),
+                              json_object_get_string_member_with_default (first, "country", ""));
+    }
+  else
+    {
+      if (!weather_place (&lat, &lon, &name))
+        {
+          tool_error (error, "Where the phone is is not known yet: the user can open the Weather app once, or name a "
+                      "town.");
+          return NULL;
+        }
+      forecast = weather_cached (lat, lon);
+    }
+  if (!forecast)
+    {
+      /* the town, not the street: the position to a tenth of a degree, about 10 km */
+      char la[G_ASCII_DTOSTR_BUF_SIZE], lo[G_ASCII_DTOSTR_BUF_SIZE];
+      g_autofree char *url = NULL;
+
+      g_ascii_formatd (la, sizeof la, "%.1f", lat);
+      g_ascii_formatd (lo, sizeof lo, "%.1f", lon);
+      url = g_strdup_printf ("%s/v1/forecast?latitude=%s&longitude=%s&timezone=auto&forecast_days=%d"
+                             "&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m"
+                             "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
+                             server && *server ? server : "https://api.open-meteo.com", la, lo, (int) days);
+      if (!(forecast = http_json (url, run, "The weather service does not answer right now.", error)))
+        return NULL;
+      tool_run_add_sent (run, "the town's rough position (to about 10 km), to Open-Meteo, the weather service");
+    }
+  f = json_node_get_object (forecast);
+  current = json_object_has_member (f, "current") ? json_object_get_object_member (f, "current") : NULL;
+  daily = json_object_has_member (f, "daily") ? json_object_get_object_member (f, "daily") : NULL;
+  dates = daily && json_object_has_member (daily, "time") ? json_object_get_array_member (daily, "time") : NULL;
+  json_builder_begin_object (b);
+  if (name && *name)
+    add_string (b, "place", name);
+  if (current)
+    {
+      /* what the forecast has of these: the Weather app asks for more, an older one for fewer */
+      static const struct { const char *from, *to; } NOW[] = {
+        { "temperature_2m", "temperature_c" }, { "apparent_temperature", "feels_like_c" },
+        { "wind_speed_10m", "wind_kmh" },
+      };
+
+      json_builder_set_member_name (b, "now");
+      json_builder_begin_object (b);
+      for (guint i = 0; i < G_N_ELEMENTS (NOW); i++)
+        if (json_object_has_member (current, NOW[i].from))
+          add_int (b, NOW[i].to, (gint64) floor (json_object_get_double_member (current, NOW[i].from) + 0.5));
+      if (json_object_has_member (current, "weather_code"))
+        add_string (b, "sky", sky (json_object_get_int_member (current, "weather_code")));
+      json_builder_end_object (b);
+    }
+  json_builder_set_member_name (b, "days");
+  json_builder_begin_array (b);
+  for (guint i = 0; dates && i < json_array_get_length (dates) && n < days; i++)
+    {
+      const char *date = json_array_get_string_element (dates, i);
+      int y, m, d;
+      g_autoptr (GDateTime) noon = NULL;
+      g_autofree char *day = NULL;
+
+      /* the Weather app's forecast starts with yesterday */
+      if (!date || strcmp (date, today) < 0 || sscanf (date, "%d-%d-%d", &y, &m, &d) != 3)
+        continue;
+      noon = g_date_time_new_local (y, m, d, 12, 0, 0);
+      day = tool_when (g_date_time_to_unix (noon) * 1000, FALSE);
+      json_builder_begin_object (b);
+      add_string (b, "day", day);
+      add_string (b, "sky", sky ((gint64) number_at (daily, "weather_code", i, -1)));
+      add_int (b, "high_c", (gint64) floor (number_at (daily, "temperature_2m_max", i, 0) + 0.5));
+      add_int (b, "low_c", (gint64) floor (number_at (daily, "temperature_2m_min", i, 0) + 0.5));
+      add_int (b, "rain_chance_percent", (gint64) number_at (daily, "precipitation_probability_max", i, 0));
+      json_builder_end_object (b);
+      n++;
+    }
+  json_builder_end_array (b);
+  return finish (b);
+}
+
+/* ---------------- what the user missed ---------------- */
+
+typedef struct {
+  char *who;
+  guint n;
+  gint64 last;                  /* ms */
+  char *text;                   /* the newest one's, when asked for */
+} Missed;
+
+static void
+missed_free (Missed *m)
+{
+  g_free (m->who);
+  g_free (m->text);
+  g_free (m);
+}
+
+/* the entry for `who` in `list`, new if there is none */
+static Missed *
+missed_for (GPtrArray *list, const char *who)
+{
+  Missed *m;
+
+  for (guint i = 0; i < list->len; i++)
+    if (!g_strcmp0 (((Missed *) list->pdata[i])->who, who))
+      return list->pdata[i];
+  m = g_new0 (Missed, 1);
+  m->who = g_strdup (who);
+  g_ptr_array_add (list, m);
+  return m;
+}
+
+static void
+add_missed (JsonBuilder *b, const char *name, const char *who_key, const char *count_key, GPtrArray *list)
+{
+  json_builder_set_member_name (b, name);
+  json_builder_begin_array (b);
+  for (guint i = 0; i < list->len && i < ROWS_MAX; i++)
+    {
+      Missed *m = list->pdata[i];
+      g_autofree char *when = tool_when (m->last, TRUE);
+
+      json_builder_begin_object (b);
+      add_string (b, who_key, m->who);
+      add_int (b, count_key, m->n);
+      add_string (b, "latest", when);
+      if (m->text)
+        add_string (b, "text", m->text);
+      json_builder_end_object (b);
+    }
+  json_builder_end_array (b);
+}
+
+/* who a number is: a contact's name, or what the store has */
+static char *
+caller (GPtrArray *all, const char *number, int presentation)
+{
+  Person *p = number && *number ? person_for (all, number, NULL) : NULL;
+
+  if (p)
+    return g_strdup (p->name);
+  if (number && *number && presentation == 1)
+    return g_strdup (number);
+  return g_strdup ("a hidden number");
+}
+
+static JsonNode *
+what_did_i_miss (JsonObject *args, ToolRun *run, GError **error)
+{
+  gboolean with_text = tool_arg_bool (args, "include_text", FALSE);
+  gint64 now = g_get_real_time () / G_USEC_PER_SEC, since = dictate_actions_missed_since ();
+  g_autoptr (GPtrArray) all = people_with_numbers (run);
+  g_autoptr (JsonBuilder) b = json_builder_new ();
+  g_autofree char *from = NULL;
+  gboolean first = since <= 0 || now - since > 7 * 24 * 3600;
+
+  /* the first time, or after a week: the last day */
+  if (first)
+    since = now - 24 * 3600;
+  json_builder_begin_object (b);
+  from = tool_when (since * 1000, TRUE);
+  add_string (b, "since", from);
+  if (first)
+    add_string (b, "since_note", "Agent was not asked this before (or not for a week): the last 24 hours.");
+
+  /* missed calls since then */
+  if (!tool_run_area_on (run, "access-calls"))
+    add_string (b, "missed_calls", "no access: calls are turned off in Agent's settings");
+  else
+    {
+      g_autoptr (GPtrArray) calls = g_ptr_array_new_with_free_func ((GDestroyNotify) missed_free);
+      sqlite3 *db = open_store ("vibeos-dialer", "calls.db", NULL);
+      sqlite3_stmt *rows = NULL;
+      guint total = 0;
+
+      if (db && sqlite3_prepare_v2 (db, "SELECT number, date, presentation FROM calls WHERE type = 3 AND date >= ?"
+                                        " ORDER BY date DESC LIMIT 100", -1, &rows, NULL) == SQLITE_OK)
+        {
+          sqlite3_bind_int64 (rows, 1, since * 1000);
+          while (sqlite3_step (rows) == SQLITE_ROW)
+            {
+              g_autofree char *who = caller (all, (const char *) sqlite3_column_text (rows, 0),
+                                             sqlite3_column_int (rows, 2));
+              Missed *m = missed_for (calls, who);
+              if (!m->n++)
+                m->last = sqlite3_column_int64 (rows, 1);
+              total++;
+            }
+        }
+      sqlite3_finalize (rows);
+      sqlite3_close (db);
+      add_int (b, "missed_call_count", total);
+      add_missed (b, "missed_calls", "from", "calls", calls);
+    }
+
+  /* unread messages, whenever they came */
+  if (!tool_run_area_on (run, "access-messages"))
+    add_string (b, "unread_messages", "no access: messages are turned off in Agent's settings");
+  else
+    {
+      g_autoptr (GPtrArray) messages = g_ptr_array_new_with_free_func ((GDestroyNotify) missed_free);
+      sqlite3 *db = open_store ("vibeos-messaging", "bugle_db", NULL);
+      sqlite3_stmt *rows = NULL;
+      guint total = 0;
+
+      if (db && sqlite3_prepare_v2 (db,
+            "SELECT c.participant_normalized_destination, c.name, m.received_timestamp,"
+            " (SELECT group_concat(p.text, '') FROM parts p WHERE p.message_id = m._id)"
+            " FROM messages m JOIN conversations c ON c._id = m.conversation_id"
+            " WHERE m.read = 0 AND m.message_status >= 100 AND c.archive_status = 0"
+            " ORDER BY m.received_timestamp DESC LIMIT 200", -1, &rows, NULL) == SQLITE_OK)
+        while (sqlite3_step (rows) == SQLITE_ROW)
+          {
+            Conversation c = { 0, (char *) sqlite3_column_text (rows, 0), (char *) sqlite3_column_text (rows, 1) };
+            g_autofree char *owned = NULL;
+            Missed *m = missed_for (messages, conversation_who (&c, all, &owned));
+
+            if (!m->n++)
+              {
+                m->last = sqlite3_column_int64 (rows, 2);
+                if (with_text && sqlite3_column_text (rows, 3))
+                  m->text = g_strdup ((const char *) sqlite3_column_text (rows, 3));
+              }
+            total++;
+          }
+      sqlite3_finalize (rows);
+      sqlite3_close (db);
+      add_int (b, "unread_message_count", total);
+      add_missed (b, "unread_messages", "from", "messages", messages);
+    }
+
+  /* the notifications still in the shade since then, from the other apps (the calls' and the messages' are above) */
+  if (!tool_run_area_on (run, "access-apps"))
+    add_string (b, "notifications", "no access: apps are turned off in Agent's settings");
+  else
+    {
+      g_autoptr (GVariant) reply = dbus_call (G_BUS_TYPE_SESSION, "vibeos.Shell", "/vibeos/Shell", "vibeos.Shell",
+                                              "Notifications", NULL, "(a(ssssx))", run, NULL);
+      if (!reply)
+        add_string (b, "notifications", "this phone's shell cannot tell its notifications yet");
+      else
+        {
+          g_autoptr (GVariant) list = g_variant_get_child_value (reply, 0);
+          g_autoptr (GPtrArray) apps = g_ptr_array_new_with_free_func ((GDestroyNotify) missed_free);
+          guint total = 0;
+
+          for (gsize i = 0; i < g_variant_n_children (list); i++)
+            {
+              const char *id, *app, *title, *body;
+              gint64 when;
+              Missed *m;
+
+              g_variant_get_child (list, i, "(&s&s&s&sx)", &id, &app, &title, &body, &when);
+              if (when < since || g_str_has_prefix (id, "vibeos.Messaging") || g_str_has_prefix (id, "vibeos.Dialer")
+                  || g_str_has_prefix (id, "vibeos.Agent"))
+                continue;
+              m = missed_for (apps, *app ? app : id);
+              if (!m->n++)
+                {
+                  m->last = when * 1000;
+                  if (with_text)
+                    m->text = g_strdup_printf ("%s%s%s", title, *title && *body ? ": " : "", body);
+                }
+              total++;
+            }
+          add_int (b, "notification_count", total);
+          add_missed (b, "notifications", "app", "notifications", apps);
+        }
+    }
+  /* the next "what did I miss?" starts from here; a test of the private phone starts from scratch each time */
+  dictate_actions_set_missed_since (now);
+  return finish (b);
+}
+
+/* ---------------- a new contact, a new event (cards) ---------------- */
+
+/* a store's EDS client: the default address book or calendar, connected */
+static EClient *
+default_store (gboolean calendar, GError **error)
+{
+  g_autoptr (ESourceRegistry) r = e_source_registry_new_sync (NULL, error);
+  g_autoptr (ESource) source = NULL;
+
+  if (!r)
+    return NULL;
+  source = calendar ? e_source_registry_ref_default_calendar (r) : e_source_registry_ref_default_address_book (r);
+  if (!source)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND, _("There is nowhere to keep it"));
+      return NULL;
+    }
+  return calendar ? e_cal_client_connect_sync (source, E_CAL_CLIENT_SOURCE_TYPE_EVENTS, EDS_NO_WAIT, NULL, error)
+                  : e_book_client_connect_sync (source, EDS_NO_WAIT, NULL, error);
+}
+
+/* the card's Add: the contact, as a vCard in `text` */
+static gboolean
+add_contact (const char *unused, const char *text, GError **error)
+{
+  g_autoptr (GMainContext) context = g_main_context_new ();
+  g_autoptr (EContact) contact = e_contact_new_from_vcard (text);
+  g_autoptr (EClient) client = NULL;
+  gboolean ok;
+
+  g_main_context_push_thread_default (context);
+  client = default_store (FALSE, error);
+  ok = client && e_book_client_add_contact_sync (E_BOOK_CLIENT (client), contact, E_BOOK_OPERATION_FLAG_NONE, NULL,
+                                                 NULL, error);
+  g_main_context_pop_thread_default (context);
+  return ok;
+}
+
+static JsonNode *
+propose_contact (JsonObject *args, ToolRun *run, GError **error)
+{
+  const char *name = tool_arg_string (args, "name"), *number = tool_arg_string (args, "number");
+  const char *type = tool_arg_string (args, "number_type"), *email = tool_arg_string (args, "email");
+  g_autoptr (EContact) contact = NULL;
+  g_autoptr (DictateAction) action = NULL;
+  g_autoptr (JsonBuilder) b = json_builder_new ();
+  g_autoptr (GPtrArray) lines = g_ptr_array_new_with_free_func (g_free);
+  g_autoptr (GPtrArray) same = NULL;
+  g_autofree char *vcard = NULL, *about = NULL;
+
+  if (!name)
+    {
+      tool_error (error, "The name is missing: ask the user.");
+      return NULL;
+    }
+  if (!number && !email)
+    {
+      tool_error (error, "A number or an email address is missing: ask the user.");
+      return NULL;
+    }
+  if (number && !looks_like_number (number))
+    {
+      tool_error (error, "\"%s\" is not a phone number: ask the user for it.", number);
+      return NULL;
+    }
+  if (!type || (strcmp (type, "home") && strcmp (type, "work")))
+    type = "mobile";
+  contact = e_contact_new ();
+  e_contact_set (contact, E_CONTACT_FULL_NAME, name);
+  {
+    EContactName *parts = e_contact_name_from_string (name);
+    e_contact_set (contact, E_CONTACT_NAME, parts);
+    e_contact_name_free (parts);
+  }
+  g_ptr_array_add (lines, g_strdup (name));
+  if (number)
+    {
+      EVCardAttribute *attr = e_vcard_attribute_new (NULL, EVC_TEL);
+      e_vcard_attribute_add_param_with_value (attr, e_vcard_attribute_param_new (EVC_TYPE),
+                                              !strcmp (type, "home") ? "HOME" : !strcmp (type, "work") ? "WORK"
+                                                                                                     : "CELL");
+      e_vcard_append_attribute_with_value (E_VCARD (contact), attr, number);
+      g_ptr_array_add (lines, g_strdup_printf ("%s · %s", _(type), number));
+    }
+  if (email)
+    {
+      e_vcard_append_attribute_with_value (E_VCARD (contact), e_vcard_attribute_new (NULL, EVC_EMAIL), email);
+      g_ptr_array_add (lines, g_strdup (email));
+    }
+  g_ptr_array_add (lines, NULL);
+  vcard = e_vcard_to_string (E_VCARD (contact), EVC_FORMAT_VCARD_30);
+  about = g_strdup_printf ("the new contact %s", name);
+  action = dictate_action_new ("add a contact", _("Add a contact"), (const char *const *) lines->pdata, _("Add"),
+                               _("Added"), about, add_contact, NULL, vcard);
+  dictate_action_set_log (action, "propose_contact", NULL);
+  tool_run_propose (run, action);
+  json_builder_begin_object (b);
+  add_string (b, "shown", "A card on the screen with the new contact and an Add button.");
+  add_string (b, "status", "Not added yet: it is added only when the user taps Add.");
+  same = tool_run_area_on (run, "access-contacts") ? people_named (name, run, NULL) : NULL;
+  if (same && same->len)
+    add_string (b, "note", "There is already a contact with that name.");
+  return finish (b);
+}
+
+/* the card's Add: the event, as iCalendar in `text` */
+static gboolean
+add_event (const char *unused, const char *text, GError **error)
+{
+  g_autoptr (GMainContext) context = g_main_context_new ();
+  ICalComponent *comp = i_cal_component_new_from_string (text);
+  g_autoptr (EClient) client = NULL;
+  gboolean ok;
+
+  if (!comp)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA, _("The event could not be made"));
+      return FALSE;
+    }
+  g_main_context_push_thread_default (context);
+  client = default_store (TRUE, error);
+  ok = client && e_cal_client_create_object_sync (E_CAL_CLIENT (client), comp, E_CAL_OPERATION_FLAG_NONE, NULL, NULL,
+                                                  error);
+  g_main_context_pop_thread_default (context);
+  g_object_unref (comp);
+  return ok;
+}
+
+static JsonNode *
+propose_event (JsonObject *args, ToolRun *run, GError **error)
+{
+  const char *title = tool_arg_string (args, "title"), *date = tool_arg_string (args, "date");
+  const char *time = tool_arg_string (args, "time"), *where = tool_arg_string (args, "where");
+  gint64 minutes = CLAMP (tool_arg_int (args, "minutes", 60), 5, 24 * 60);
+  gint64 reminder = tool_arg_int (args, "reminder_minutes", -1);
+  g_autoptr (GDateTime) start = NULL, end = NULL;
+  g_autoptr (DictateAction) action = NULL;
+  g_autoptr (JsonBuilder) b = json_builder_new ();
+  g_autoptr (GPtrArray) lines = g_ptr_array_new_with_free_func (g_free);
+  g_autofree char *uid = NULL, *ical = NULL, *about = NULL, *when = NULL;
+  ICalComponent *comp;
+  ICalTime *t0, *t1;
+  int y, m, d, hour = 0, minute = 0;
+
+  if (!title)
+    {
+      tool_error (error, "What it is called is missing: ask the user.");
+      return NULL;
+    }
+  if (!date || sscanf (date, "%d-%d-%d", &y, &m, &d) != 3 || !(start = g_date_time_new_local (y, m, d, 0, 0, 0)))
+    {
+      tool_error (error, "The day is missing or not YYYY-MM-DD: ask the user which day.");
+      return NULL;
+    }
+  if (time && !parse_time (time, &hour, &minute))
+    {
+      tool_error (error, "The time is not HH:MM: ask the user when.");
+      return NULL;
+    }
+  comp = i_cal_component_new_vevent ();
+  uid = e_util_generate_uid ();
+  i_cal_component_set_uid (comp, uid);
+  i_cal_component_set_summary (comp, title);
+  if (where)
+    i_cal_component_set_location (comp, where);
+  if (time)
+    {
+      g_autoptr (GDateTime) at = g_date_time_new_local (y, m, d, hour, minute, 0);
+      g_autofree char *from = g_date_time_format (at, "%A %e %B, %H:%M");
+
+      g_clear_pointer (&start, g_date_time_unref);
+      start = g_steal_pointer (&at);
+      end = g_date_time_add_minutes (start, minutes);
+      t0 = i_cal_time_new_from_timet_with_zone (g_date_time_to_unix (start), FALSE, i_cal_timezone_get_utc_timezone ());
+      t1 = i_cal_time_new_from_timet_with_zone (g_date_time_to_unix (end), FALSE, i_cal_timezone_get_utc_timezone ());
+      {
+        g_autofree char *until = g_date_time_format (end, "%H:%M");
+        when = g_strdup_printf ("%s–%s", g_strstrip (from), until);
+      }
+    }
+  else
+    {
+      t0 = i_cal_time_new_null_time ();
+      i_cal_time_set_date (t0, y, m, d);
+      i_cal_time_set_is_date (t0, TRUE);
+      t1 = i_cal_time_clone (t0);
+      i_cal_time_adjust (t1, 1, 0, 0, 0);
+      when = g_date_time_format (start, "%A %e %B");
+      g_strstrip (when);
+    }
+  i_cal_component_set_dtstart (comp, t0);
+  i_cal_component_set_dtend (comp, t1);
+  g_object_unref (t0);
+  g_object_unref (t1);
+  if (reminder >= 0)
+    {
+      /* a notification at the time, or so many minutes before it */
+      ICalComponent *alarm = i_cal_component_new_valarm ();
+      ICalTrigger *trigger = i_cal_trigger_new_from_string ("-PT0M");
+      ICalDuration *before = i_cal_duration_new_from_int (-(int) MIN (reminder, 7 * 24 * 60) * 60);
+
+      i_cal_trigger_set_duration (trigger, before);
+      ICalProperty *action_p = i_cal_property_new_action (I_CAL_ACTION_DISPLAY);
+
+      i_cal_component_take_property (alarm, action_p);
+      i_cal_component_take_property (alarm, i_cal_property_new_trigger (trigger));
+      i_cal_component_take_property (alarm, i_cal_property_new_description (title));
+      i_cal_component_take_component (comp, alarm);
+      g_object_unref (trigger);
+      g_object_unref (before);
+    }
+  ical = i_cal_component_as_ical_string (comp);
+  g_object_unref (comp);
+  g_ptr_array_add (lines, g_strdup (title));
+  g_ptr_array_add (lines, g_strdup (when));
+  if (where)
+    g_ptr_array_add (lines, g_strdup (where));
+  if (reminder == 0)
+    g_ptr_array_add (lines, g_strdup (_("A reminder at the time")));
+  else if (reminder > 0)
+    g_ptr_array_add (lines, g_strdup_printf (_("A reminder %d minutes before"), (int) reminder));
+  g_ptr_array_add (lines, NULL);
+  about = g_strdup_printf ("the calendar event \"%s\"", title);
+  action = dictate_action_new ("add a calendar event", _("Add to the calendar"), (const char *const *) lines->pdata,
+                               _("Add"), _("Added"), about, add_event, NULL, ical);
+  dictate_action_set_log (action, "propose_event", NULL);
+  tool_run_propose (run, action);
+  json_builder_begin_object (b);
+  add_string (b, "shown", "A card on the screen with the event and an Add button.");
+  add_string (b, "when", when);
+  add_string (b, "status", "Not added yet: it is added only when the user taps Add.");
+  return finish (b);
+}
+
 /* ---------------- the table ---------------- */
 
 static const DictateTool TOOLS[] = {
   { "get_time", NULL, NULL,
     "The current time, date, weekday and time zone on the phone.",
-    "{\"type\":\"object\",\"properties\":{}}", get_time },
+    "{\"type\":\"object\",\"properties\":{}}", get_time,
+    DICTATE_TIER_READ, "told the time", FALSE },
   { "get_battery", NULL, N_("Checking the battery…"),
     "The battery's charge in percent, whether it is charging, and how long it lasts.",
-    "{\"type\":\"object\",\"properties\":{}}", get_battery },
+    "{\"type\":\"object\",\"properties\":{}}", get_battery,
+    DICTATE_TIER_READ, "read the battery", FALSE },
   { "get_storage", NULL, N_("Checking the storage…"),
     "How much storage space is free and used on the phone, in GB.",
-    "{\"type\":\"object\",\"properties\":{}}", get_storage },
+    "{\"type\":\"object\",\"properties\":{}}", get_storage,
+    DICTATE_TIER_READ, "read the storage", FALSE },
   { "get_recent_calls", "access-calls", N_("Checking your calls…"),
     "The phone's call history, newest first: who called or was called, whether it was missed, when, and how long.",
     "{\"type\":\"object\",\"properties\":{"
     "\"count\":{\"type\":\"integer\",\"description\":\"How many calls, 1 to 10. Default 5.\"},"
     "\"missed_only\":{\"type\":\"boolean\",\"description\":\"Only missed calls.\"},"
     "\"contact\":{\"type\":\"string\",\"description\":\"Only calls with this person: a contact's name or a number.\"}"
-    "}}", get_recent_calls },
+    "}}", get_recent_calls,
+    DICTATE_TIER_READ, "read the call history", FALSE },
   { "propose_call", "access-calls", N_("Getting the call ready…"),
     "Prepares a phone call: shows the user a card with whom it will call. The call starts only when the user taps "
     "Call on the card; this tool never calls by itself.",
@@ -1931,16 +3257,19 @@ static const DictateTool TOOLS[] = {
     "\"to\":{\"type\":\"string\",\"description\":\"A contact's name, or a phone number.\"},"
     "\"number_type\":{\"type\":\"string\",\"enum\":[\"mobile\",\"home\",\"work\"],"
     "\"description\":\"Which of the contact's numbers, only if the user said.\"}"
-    "},\"required\":[\"to\"]}", propose_call },
+    "},\"required\":[\"to\"]}", propose_call,
+    DICTATE_TIER_CONFIRMED, "a phone call, on a card", FALSE },
   { "find_contacts", "access-contacts", N_("Looking in your contacts…"),
     "Looks people up in the phone's contacts by name. Gives their names and the kinds of numbers they have "
-    "(mobile, home, work); the numbers and emails themselves only when asked for with include_numbers or "
-    "include_emails.",
+    "(mobile, home, work); the numbers, emails and notes themselves only when asked for with include_numbers, "
+    "include_emails or include_note.",
     "{\"type\":\"object\",\"properties\":{"
     "\"name\":{\"type\":\"string\",\"description\":\"A name or part of one.\"},"
     "\"include_numbers\":{\"type\":\"boolean\",\"description\":\"Only when the user wants to know a number.\"},"
-    "\"include_emails\":{\"type\":\"boolean\",\"description\":\"Only when the user wants to know an email address.\"}"
-    "},\"required\":[\"name\"]}", find_contacts },
+    "\"include_emails\":{\"type\":\"boolean\",\"description\":\"Only when the user wants to know an email address.\"},"
+    "\"include_note\":{\"type\":\"boolean\",\"description\":\"Only when the user asks what the contact's note says.\"}"
+    "},\"required\":[\"name\"]}", find_contacts,
+    DICTATE_TIER_READ, "looked in the contacts", TRUE },
   { "get_messages", "access-messages", N_("Checking your messages…"),
     "Text messages (SMS), the user's and the notices companies send by text: a parcel's delivery, a code, an "
     "appointment. Without contact: the latest conversations, with whom, when, and how many are unread. With "
@@ -1951,23 +3280,27 @@ static const DictateTool TOOLS[] = {
     "\"count\":{\"type\":\"integer\",\"description\":\"How many, 1 to 10.\"},"
     "\"unread_only\":{\"type\":\"boolean\",\"description\":\"Only unread messages.\"},"
     "\"include_text\":{\"type\":\"boolean\",\"description\":\"Include what the messages say.\"}"
-    "}}", get_messages },
+    "}}", get_messages,
+    DICTATE_TIER_READ, "read the messages", TRUE },
   { "propose_message", "access-messages", N_("Writing the message…"),
     "Prepares a text message (SMS): shows the user a card with the recipient and the text. It is sent only when the "
     "user taps Send on the card; this tool never sends by itself.",
     "{\"type\":\"object\",\"properties\":{"
     "\"to\":{\"type\":\"string\",\"description\":\"A contact's name, or a phone number.\"},"
     "\"text\":{\"type\":\"string\",\"description\":\"The message, as the user wants it written.\"}"
-    "},\"required\":[\"to\",\"text\"]}", propose_message },
+    "},\"required\":[\"to\",\"text\"]}", propose_message,
+    DICTATE_TIER_CONFIRMED, "a text message, on a card", FALSE },
   { "get_events", "access-calendar", N_("Checking your calendar…"),
     "The events in the phone's calendar on a day, or on several days from it.",
     "{\"type\":\"object\",\"properties\":{"
     "\"date\":{\"type\":\"string\",\"description\":\"The first day, YYYY-MM-DD. Default today.\"},"
     "\"days\":{\"type\":\"integer\",\"description\":\"How many days, 1 to 14. Default 1.\"}"
-    "}}", get_events },
+    "}}", get_events,
+    DICTATE_TIER_READ, "read the calendar", TRUE },
   { "get_alarms", "access-alarms", N_("Checking your alarms…"),
     "The alarms set in the Clock app, and the timers running.",
-    "{\"type\":\"object\",\"properties\":{}}", get_alarms },
+    "{\"type\":\"object\",\"properties\":{}}", get_alarms,
+    DICTATE_TIER_READ, "read the alarms", FALSE },
   { "set_alarm", "access-alarms", N_("Setting the alarm…"),
     "Sets an alarm in the Clock app.",
     "{\"type\":\"object\",\"properties\":{"
@@ -1976,37 +3309,118 @@ static const DictateTool TOOLS[] = {
     "\"thursday\",\"friday\",\"saturday\",\"sunday\"]},"
     "\"description\":\"The days it repeats on; leave it out for an alarm that rings once.\"},"
     "\"label\":{\"type\":\"string\",\"description\":\"A name for it, only if the user gave one.\"}"
-    "},\"required\":[\"time\"]}", set_alarm },
+    "},\"required\":[\"time\"]}", set_alarm,
+    DICTATE_TIER_UNDOABLE, "set an alarm", FALSE },
   { "set_timer", "access-alarms", N_("Starting the timer…"),
     "Starts a countdown timer in the Clock app.",
     "{\"type\":\"object\",\"properties\":{"
     "\"minutes\":{\"type\":\"number\",\"description\":\"How long, in minutes.\"},"
     "\"seconds\":{\"type\":\"integer\",\"description\":\"Seconds, added to the minutes.\"},"
     "\"label\":{\"type\":\"string\",\"description\":\"A name for it, only if the user gave one.\"}"
-    "}}", set_timer },
+    "}}", set_timer,
+    DICTATE_TIER_UNDOABLE, "started a timer", FALSE },
   { "get_wifi_bluetooth", "access-settings", N_("Checking Wi-Fi and Bluetooth…"),
     "Whether Wi-Fi and Bluetooth are on, the Wi-Fi network the phone is connected to, and the Bluetooth devices "
     "connected.",
-    "{\"type\":\"object\",\"properties\":{}}", get_wifi_bluetooth },
+    "{\"type\":\"object\",\"properties\":{}}", get_wifi_bluetooth,
+    DICTATE_TIER_READ, "read Wi-Fi and Bluetooth", TRUE },
   { "set_wifi_bluetooth", "access-settings", N_("Changing the setting…"),
     "Turns Wi-Fi or Bluetooth on or off.",
     "{\"type\":\"object\",\"properties\":{"
     "\"radio\":{\"type\":\"string\",\"enum\":[\"wifi\",\"bluetooth\"]},"
     "\"on\":{\"type\":\"boolean\",\"description\":\"true to turn it on, false to turn it off.\"}"
-    "},\"required\":[\"radio\",\"on\"]}", set_wifi_bluetooth },
+    "},\"required\":[\"radio\",\"on\"]}", set_wifi_bluetooth,
+    DICTATE_TIER_UNDOABLE, "changed a setting", FALSE },
   { "get_running_apps", "access-apps", N_("Checking your apps…"),
     "The apps open on the phone right now, as in the recent apps.",
-    "{\"type\":\"object\",\"properties\":{}}", get_running_apps },
+    "{\"type\":\"object\",\"properties\":{}}", get_running_apps,
+    DICTATE_TIER_READ, "read the open apps", FALSE },
   { "open_app", "access-apps", N_("Opening the app…"),
     "Opens an app on the phone.",
     "{\"type\":\"object\",\"properties\":{"
     "\"name\":{\"type\":\"string\",\"description\":\"The app's name, such as Camera, Clock or Settings.\"}"
-    "},\"required\":[\"name\"]}", open_app },
+    "},\"required\":[\"name\"]}", open_app,
+    DICTATE_TIER_UNDOABLE, "opened an app", FALSE },
   { "navigate_to", "access-location", N_("Finding the way…"),
     "Opens Navi, the maps app, with routes to a place: an address or the name of a place.",
     "{\"type\":\"object\",\"properties\":{"
     "\"place\":{\"type\":\"string\",\"description\":\"The address or the place's name, with the town if known.\"}"
-    "},\"required\":[\"place\"]}", navigate_to },
+    "},\"required\":[\"place\"]}", navigate_to,
+    DICTATE_TIER_UNDOABLE, "opened Navi with routes", FALSE },
+  { "cancel_alarm", "access-alarms", N_("Removing the alarm…"),
+    "Removes an alarm from the Clock app. It can be undone. Without time and label when the user means their only "
+    "alarm.",
+    "{\"type\":\"object\",\"properties\":{"
+    "\"time\":{\"type\":\"string\",\"description\":\"The alarm's time, HH:MM, 24-hour.\"},"
+    "\"label\":{\"type\":\"string\",\"description\":\"Its name, only if the user said it.\"}"
+    "}}", cancel_alarm,
+    DICTATE_TIER_UNDOABLE, "removed an alarm", FALSE },
+  { "cancel_timer", "access-alarms", N_("Stopping the timer…"),
+    "Stops and removes a running timer in the Clock app. It can be undone.",
+    "{\"type\":\"object\",\"properties\":{"
+    "\"label\":{\"type\":\"string\",\"description\":\"Its name, only if the user said it.\"}"
+    "}}", cancel_timer,
+    DICTATE_TIER_UNDOABLE, "stopped a timer", FALSE },
+  { "undo_last_action", NULL, N_("Undoing it…"),
+    "Undoes the last thing Agent did that can be undone, within a day: removes the alarm or timer it set, puts back "
+    "an alarm or timer it removed, or turns Wi-Fi or Bluetooth back as they were. For \"undo\", \"undo that\", "
+    "\"take that back\", \"put it back\".",
+    "{\"type\":\"object\",\"properties\":{}}", undo_last_action,
+    DICTATE_TIER_UNDOABLE, "undid the last action", FALSE },
+  { "get_action_log", NULL, N_("Checking what I did…"),
+    "What Agent itself did lately, newest first: the actions it took or offered on a card (an alarm, a setting, a "
+    "message), when, how each went, whether it was undone, and where anything went off the phone. For \"what did "
+    "you just do?\" and \"did that go to the server?\".",
+    "{\"type\":\"object\",\"properties\":{"
+    "\"count\":{\"type\":\"integer\",\"description\":\"How many actions, 1 to 10. Default 5.\"}"
+    "}}", get_action_log,
+    DICTATE_TIER_READ, "read Agent's log", FALSE },
+  { "get_mobile_network", "access-settings", N_("Checking the mobile network…"),
+    "The mobile network: whether there is a SIM, the operator, the signal in bars (of 4), the network type (4G, "
+    "5G), whether the phone is roaming, and whether mobile data is on.",
+    "{\"type\":\"object\",\"properties\":{}}", get_mobile_network,
+    DICTATE_TIER_READ, "read the mobile network", FALSE },
+  { "get_weather", "access-location", N_("Checking the weather…"),
+    "The weather now and the forecast for the next days: the temperature, the sky, the wind, the chance of rain. "
+    "Where the phone is (the town the Weather app shows), or in a town the user names.",
+    "{\"type\":\"object\",\"properties\":{"
+    "\"place\":{\"type\":\"string\",\"description\":\"A town, only if the user named one.\"},"
+    "\"days\":{\"type\":\"integer\",\"description\":\"How many days from today, 1 to 7. Default 2.\"}"
+    "}}", get_weather,
+    DICTATE_TIER_READ, "looked up the weather", FALSE },
+  { "what_did_i_miss", NULL, N_("Checking what you missed…"),
+    "What the user missed since they last asked this: missed calls, unread text messages, and the other apps' "
+    "notifications, as counts and from whom or which app. Tell only that much: who and how many. What the messages "
+    "and notifications say only with include_text.",
+    "{\"type\":\"object\",\"properties\":{"
+    "\"include_text\":{\"type\":\"boolean\",\"description\":\"Only when the user's own words ask to have them "
+    "read out (\\\"read them to me\\\"); never for \\\"what did I miss?\\\" alone.\"}"
+    "}}", what_did_i_miss,
+    DICTATE_TIER_READ, "read what was missed", TRUE },
+  { "propose_contact", "access-contacts", N_("Getting the contact ready…"),
+    "Prepares a new contact: shows the user a card with the name and the number or email. It is added only when the "
+    "user taps Add on the card; this tool never adds by itself.",
+    "{\"type\":\"object\",\"properties\":{"
+    "\"name\":{\"type\":\"string\",\"description\":\"The person's name.\"},"
+    "\"number\":{\"type\":\"string\",\"description\":\"Their phone number, as the user said it.\"},"
+    "\"number_type\":{\"type\":\"string\",\"enum\":[\"mobile\",\"home\",\"work\"]},"
+    "\"email\":{\"type\":\"string\"}"
+    "},\"required\":[\"name\"]}", propose_contact,
+    DICTATE_TIER_CONFIRMED, "a new contact, on a card", FALSE },
+  { "propose_event", "access-calendar", N_("Getting the event ready…"),
+    "Prepares a calendar event or a reminder: shows the user a card with what, when and where. It is added only "
+    "when the user taps Add on the card; this tool never adds by itself. A reminder is an event with "
+    "reminder_minutes.",
+    "{\"type\":\"object\",\"properties\":{"
+    "\"title\":{\"type\":\"string\",\"description\":\"What it is.\"},"
+    "\"date\":{\"type\":\"string\",\"description\":\"The day, YYYY-MM-DD.\"},"
+    "\"time\":{\"type\":\"string\",\"description\":\"When it starts, HH:MM, 24-hour; leave it out for the whole day.\"},"
+    "\"minutes\":{\"type\":\"integer\",\"description\":\"How long, in minutes. Default 60.\"},"
+    "\"where\":{\"type\":\"string\",\"description\":\"Where, only if the user said.\"},"
+    "\"reminder_minutes\":{\"type\":\"integer\",\"description\":\"A notification this many minutes before it (0: at "
+    "the time); leave it out for none.\"}"
+    "},\"required\":[\"title\",\"date\"]}", propose_event,
+    DICTATE_TIER_CONFIRMED, "a calendar event, on a card", FALSE },
 };
 
 const DictateTool *
