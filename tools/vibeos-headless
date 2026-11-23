@@ -48,7 +48,8 @@
 #   - the display's own bus as their session bus and as their system bus, so they reach no service of the session's
 #     or the system's (a network list, the accounts, the battery come back empty: test data only);
 #   - their settings in a keyfile under the state directory (GSETTINGS_BACKEND=keyfile), their HOME and XDG data,
-#     config and cache directories there too; no accessibility bus (NO_AT_BRIDGE=1, GTK_A11Y=none).
+#     config and cache directories there too; no accessibility bus (NO_AT_BRIDGE=1, GTK_A11Y=none). The display's
+#     own processes (the bus and what it starts, mutter, the input tool) run in that HOME as well.
 #   An app that is not installed gets what it needs from the command line `run` is given, before the app:
 #   `vibeos-headless run env GSETTINGS_SCHEMA_DIR=... LD_LIBRARY_PATH=... ./app`.
 #   VIBEOS_HEADLESS_HOSTNAME=NAME runs the apps with that host name (a user namespace of their own), for pictures
@@ -130,6 +131,15 @@ DUMP=$STATE/dump.xml
 BUS=unix:path=$STATE/bus.socket
 IN_BUS=unix:path=$IN_STATE/bus.socket
 
+# With PRIVATE=1, the HOME and XDG directories under a state directory (the display's own, $1) that the display's
+# processes run with: mutter and the input tool too, or they read and write the session user's home (mutter's
+# session.gvdb, a GL shader cache)
+private_home() {
+    if [ "$PRIVATE" = 1 ]; then
+        echo HOME="$1/home" XDG_CONFIG_HOME="$1/config" XDG_DATA_HOME="$1/data" XDG_CACHE_HOME="$1/cache"
+    fi
+}
+
 # a command as the session user (as root on the phone: through sudo)
 as_user() {
     if [ "$(id -u)" = 0 ]; then
@@ -210,8 +220,9 @@ start)
         as_display dbus-daemon --session --address="$IN_BUS" --fork --print-pid=1 </dev/null >"$STATE/bus.pid"
     fi
     if [ "$PRIVATE" = 1 ]; then
-        # mutter's own settings stay with it too
-        set -- env GSETTINGS_BACKEND=memory NO_AT_BRIDGE=1
+        # mutter's own settings and files stay with it too
+        # shellcheck disable=SC2046 # words without spaces
+        set -- env GSETTINGS_BACKEND=memory NO_AT_BRIDGE=1 $(private_home "$IN_STATE")
         [ -n "${VIBEOS_HEADLESS_PIPEWIRE:-}" ] && set -- "$@" PIPEWIRE_RUNTIME_DIR="${VIBEOS_HEADLESS_PIPEWIRE#"$CHROOT"}"
     else
         # PipeWire is the session's, wherever the display's runtime directory is: mutter's RemoteDesktop (taps,
@@ -230,7 +241,8 @@ start)
     fi
     # a keyboard for the seat, or no window on it is ever active (see vibeos-headless-input); the script goes in as an
     # argument, read by root, since the daemon's stdin is /dev/null
-    as_user_daemon keyboard env VIBEOS_HEADLESS_BUS="$BUS" \
+    # shellcheck disable=SC2046 # words without spaces
+    as_user_daemon keyboard env $(private_home "$STATE") VIBEOS_HEADLESS_BUS="$BUS" \
         python3 -c "$(cat "$HERE/vibeos-headless-input")" keyboard
     # A phone that suspends under the display stops mutter, the app and the ssh that drives them alike, so the
     # phone stays awake for as long as mutter runs (a logind inhibitor, which s10e-sleepd honours)
@@ -286,7 +298,9 @@ shot | dump)
     ;;
 tap | swipe)
     # the script goes in on stdin, read by root: the session user cannot read it where it is (root's home)
-    as_user env VIBEOS_HEADLESS_BUS="$(cat "$STATE/bus")" python3 - "$@" <"$HERE/vibeos-headless-input"
+    # shellcheck disable=SC2046 # words without spaces
+    as_user env $(private_home "$STATE") VIBEOS_HEADLESS_BUS="$(cat "$STATE/bus")" python3 - "$@" \
+        <"$HERE/vibeos-headless-input"
     ;;
 stop)
     for p in app keyboard mutter bus; do
