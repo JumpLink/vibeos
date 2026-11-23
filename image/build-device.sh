@@ -176,11 +176,15 @@ s10e)
 	ln -s nvram.txt_CS01_semco_b1 "$P/usr/lib/firmware/brcm/brcmfmac4375b1-pcie.txt"
 	[ -z "${S10E_CALLAUDIO_FW:-}" ] || cmp -s "$YF/AP_AUDIO_SLSI.bin" "$S10E_CALLAUDIO_FW/AP_AUDIO_SLSI.bin" || log "NOTE: AP_AUDIO_SLSI.bin differs from kit/callaudio/fw"
 	install -D -m 644 "$K/clean/60-s10e-gpu.conf" "$P/etc/environment.d/60-s10e-gpu.conf"
+	# Wi-Fi back when its chip drops off PCIe (a brown-out at low battery froze the phone, 11-23): reloads the RC and
+	# brcmfmac as s10e-minimal does, under its lock (s10e-minimal comes from the stage)
+	install -D -m 755 "$T/s10e/s10e-wifi-revive" "$P/usr/local/sbin/s10e-wifi-revive"
+	install -D -m 644 "$T/s10e/s10e-wifi-revive.service" "$P/etc/systemd/system/s10e-wifi-revive.service"
 	install -d -m 700 "$P/var/lib/exynos-cp"; install -d "$P/var/lib/s10e"
 	identity s10e "Galaxy S10e" Samsung "Galaxy S10e"
 	enable exynos-modem.service s10e-sleepd.service s10e-gpu-load.service s10e-touch-bind.service \
 		s10e-bt-addr.service s10e-arm-reset.service s10e-boot-ok.service s10e-usb-net.service s10e-usb-watch.service \
-		s10e-firstboot.service s10e-dp-audio.service s10e-cec-recheck.timer
+		s10e-firstboot.service s10e-dp-audio.service s10e-cec-recheck.timer s10e-wifi-revive.service
 	mask sleep.target suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
 	# boot: U-Boot (recovery, and boot for a whole-phone install): the first 4 MiB of v51-pinsleep (the S10e
 	# kit's default since 11-1x, r7's zip); the kernel, initramfs and arguments are in /boot/s10e above
