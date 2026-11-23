@@ -27,6 +27,7 @@ struct _DictateRemote {
   SoupSession *session;
   GPtrArray *messages;          /* JsonNode *, {role, content} */
   gboolean enrolled;            /* this run */
+  gboolean again;               /* a step asked once more (dictate_remote_step ()) */
   int read, written;
   double read_ms, first_ms, total_ms;
 };
@@ -215,7 +216,8 @@ network_error (GError **error, GError *cause)
     }
   g_warning ("agent: %s", cause->message);
   g_error_free (cause);
-  user_error (error, _("The assistant cannot be reached. Is the phone online?"));
+  g_set_error_literal (error, DICTATE_BRAIN_ERROR, DICTATE_BRAIN_ERROR_OFFLINE,
+                       _("The assistant cannot be reached. Is the phone online?"));
 }
 
 /* the phone made known to the gateway: its id, its secret and what it is */
@@ -350,7 +352,8 @@ call (DictateRemote *self, SoupMessage **msg, const char *method, const char *ur
                                _("I'm getting too many requests, give me a moment."));
         }
       else if (status >= 500)
-        user_error (error, _("The assistant is not working right now. Try again later."));
+        g_set_error_literal (error, DICTATE_BRAIN_ERROR, DICTATE_BRAIN_ERROR_OFFLINE,
+                             _("The assistant is not working right now. Try again later."));
       else
         g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "%s: HTTP %u", url, status);
       return NULL;
@@ -603,6 +606,19 @@ dictate_remote_step (DictateRemote *self, const char *text, const char *tools, D
         g_ptr_array_remove_index (calls, i - 1);
       else if (!c->id || !*c->id)
         g_free (c->id), c->id = g_strdup_printf ("call-%u", i - 1);
+    }
+  /* nothing came of it, no reply and no call: the model wrote to its length in what the stream does not pass on (a
+   * call the server could not read, seen with "Call him." and nobody named). Asked once more, the same request: it
+   * nearly always answers then. The user saw nothing of the first, so nothing is taken back */
+  if (reply->len == 0 && calls->len == 0 && !self->again && !g_cancellable_is_cancelled (cancellable))
+    {
+      char *again;
+
+      g_debug ("agent: an empty reply (%d written), asked again", self->written);
+      self->again = TRUE;
+      again = dictate_remote_step (self, NULL, tools, piece, data, calls_out, cancellable, error);
+      self->again = FALSE;
+      return again;
     }
   if (calls->len)
     add_calls (self, reply->str, calls);

@@ -2,6 +2,7 @@
  * dictate-tools-phone.c (what each tool reads or does on the phone). */
 #pragma once
 
+#include "dictate-actions.h"
 #include "dictate-tools.h"
 
 #include <json-glib/json-glib.h>
@@ -20,6 +21,9 @@ typedef struct {
   const char *description;      /* for the model */
   const char *parameters;       /* a JSON schema, for the model */
   ToolFunc func;
+  DictateTier tier;             /* its risk tier (dictate-actions.h) */
+  const char *did;              /* what it did, for the action log's reader: "set an alarm" */
+  gboolean others;              /* its result can hold what others wrote (a message, a note, an event's title) */
 } DictateTool;
 
 const DictateTool *dictate_tools_table (guint *n);
@@ -28,9 +32,18 @@ const DictateTool *dictate_tools_table (guint *n);
 gboolean      tool_run_area_on   (ToolRun *run, const char *area);
 /* DICTATE_TEST_DRY_RUN: what reaches outside (an app opened, a message, a call) is only logged */
 gboolean      tool_run_dry       (ToolRun *run);
+/* private mode with the answer on the speaker: no message or notification texts (DictateToolContext) */
+gboolean      tool_run_private   (ToolRun *run);
 GCancellable *tool_run_cancellable (ToolRun *run);
 /* hands a proposal to the window (once the model's turn may still use it) */
 void          tool_run_propose   (ToolRun *run, DictateAction *action);
+/* for the action log: what undoing this needs (a JSON object, taken), somewhere else something went besides the
+ * model's server ("the town's rough position, to Open-Meteo"), and the entry it undid */
+void          tool_run_set_undo  (ToolRun *run, JsonNode *undo);
+void          tool_run_add_sent  (ToolRun *run, const char *where);
+void          tool_run_set_undid (ToolRun *run, gint64 id);
+/* it ran, and nothing changed (a switch already as asked): nothing for undo */
+void          tool_run_set_unchanged (ToolRun *run);
 
 /* what a proposal does when the user taps its button, on a thread of its own */
 typedef gboolean (*DictateActionFunc) (const char *destination, const char *text, GError **error);
@@ -40,6 +53,12 @@ typedef gboolean (*DictateActionFunc) (const char *destination, const char *text
 DictateAction *dictate_action_new (const char *kind, const char *title, const char *const *lines,
                                    const char *button, const char *done, const char *about,
                                    DictateActionFunc func, const char *destination, const char *text);
+/* for the action log, once the user has decided: the tool that proposed it, and where its doing sends something
+ * ("the message, by SMS to its recipient"; NULL: it stays on the phone) */
+void           dictate_action_set_log (DictateAction *action, const char *tool, const char *sent);
+
+/* the tools' table entry called `name`, or NULL */
+const DictateTool *dictate_tools_find (const char *name);
 
 /* arguments */
 const char *tool_arg_string  (JsonObject *args, const char *name);
