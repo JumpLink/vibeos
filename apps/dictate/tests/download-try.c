@@ -3,14 +3,20 @@
  *
  *   download-try [--voice-only | --model-only] [--bad-sum] [--cancel-after BYTES] LANGUAGE…
  *   download-try --remove LANGUAGE…
+ *   download-try --package NAME [--install]
  *
  * For each LANGUAGE, its speech model's pack and its voice's, in one download. --bad-sum changes the last file's
  * pinned sum, so the download must fail at the end with nothing left; --cancel-after cancels it once that many bytes
  * have come. Afterwards: what is in vibeos-dictate (models, voices, and .downloads, which must be empty). The exit
  * status is 0 when the download ended as asked (done, failed for --bad-sum, cancelled for --cancel-after) and left
  * the directories so. With --remove, nothing is fetched: what was downloaded for each LANGUAGE is removed as
- * Agent's settings remove it, its size shown before and after (0 after, or the exit status is 1). */
+ * Agent's settings remove it, its size shown before and after (0 after, or the exit status is 1).
+ *
+ * With --package, a recogniser's package as the download dialog installs it (dictate-package.h): looked up through
+ * PackageKit, its version and size shown, and with --install installed (only-trusted; polkit may ask). The exit
+ * status is 0 when it ends installed (or, without --install, found). */
 #include "dictate-download.h"
+#include "dictate-package.h"
 
 #include <glib/gstdio.h>
 #include <sys/stat.h>
@@ -83,12 +89,70 @@ show_tree (const char *dir, const char *indent, guint *count)
     }
 }
 
+typedef struct {
+  GMainLoop *loop;
+  gboolean install;
+  int last_state;
+  gint64 started;
+  char *last_status;
+} PackageTry;
+
+static void
+on_package (DictatePackage *package, PackageTry *p)
+{
+  static const char *const names[] = { "looking up", "found", "installing", "installed", "failed" };
+  DictatePackageState state = dictate_package_get_state (package);
+  double s = (g_get_monotonic_time () - p->started) / 1e6;
+
+  if ((int) state != p->last_state)
+    {
+      p->last_state = state;
+      printf ("%6.1f s  %s", s, names[state]);
+      if (state == DICTATE_PACKAGE_FOUND || state == DICTATE_PACKAGE_INSTALLED)
+        printf (" %s %s, %" G_GUINT64_FORMAT " bytes to download", dictate_package_get_name (package),
+                dictate_package_get_version (package) ?: "?", dictate_package_get_size (package));
+      if (state == DICTATE_PACKAGE_FAILED)
+        printf (": %s", dictate_package_get_error (package));
+      printf ("\n");
+    }
+  else if (state == DICTATE_PACKAGE_INSTALLING && g_strcmp0 (p->last_status, dictate_package_get_status (package)))
+    {
+      g_free (p->last_status), p->last_status = g_strdup (dictate_package_get_status (package));
+      printf ("%6.1f s    %s (%.0f%%)\n", s, p->last_status, dictate_package_get_fraction (package) * 100);
+    }
+  if (state == DICTATE_PACKAGE_FOUND && p->install)
+    dictate_package_install (package);
+  else if (state == DICTATE_PACKAGE_INSTALLED || state == DICTATE_PACKAGE_FAILED ||
+           (state == DICTATE_PACKAGE_FOUND && !p->install))
+    g_main_loop_quit (p->loop);
+}
+
+static int
+try_package (const char *name, gboolean install)
+{
+  PackageTry p = { g_main_loop_new (NULL, FALSE), install, -1, g_get_monotonic_time (), NULL };
+  g_autoptr (DictatePackage) package = dictate_package_new (name);
+  DictatePackageState state;
+
+  g_signal_connect (package, "changed", G_CALLBACK (on_package), &p);
+  on_package (package, &p);
+  g_main_loop_run (p.loop);
+  state = dictate_package_get_state (package);
+  g_main_loop_unref (p.loop);
+  g_free (p.last_status);
+  return state == DICTATE_PACKAGE_INSTALLED || (!install && state == DICTATE_PACKAGE_FOUND) ? 0 : 1;
+}
+
 int
 main (int argc, char **argv)
 {
   gboolean voice_only = FALSE, model_only = FALSE, bad_sum = FALSE, remove = FALSE;
   gint64 cancel_after = 0;
+  g_autofree char *package = NULL;
+  gboolean install = FALSE;
   GOptionEntry options[] = {
+    { "package", 0, 0, G_OPTION_ARG_STRING, &package, "A recogniser's package, looked up", "NAME" },
+    { "install", 0, 0, G_OPTION_ARG_NONE, &install, "With --package: installed", NULL },
     { "voice-only", 0, 0, G_OPTION_ARG_NONE, &voice_only, "Only the voices", NULL },
     { "model-only", 0, 0, G_OPTION_ARG_NONE, &model_only, "Only the speech models", NULL },
     { "bad-sum", 0, 0, G_OPTION_ARG_NONE, &bad_sum, "Pin a wrong sum for the last file", NULL },
@@ -109,7 +173,9 @@ main (int argc, char **argv)
   guint left = 0, count = 0;
 
   g_option_context_add_main_entries (context, options, NULL);
-  if (!g_option_context_parse (context, &argc, &argv, &error) || argc < 2)
+  if (g_option_context_parse (context, &argc, &argv, &error) && package)
+    return try_package (package, install);
+  if (error || argc < 2)
     {
       fprintf (stderr, "%s\n", error ? error->message : "usage: download-try [OPTION…] LANGUAGE…");
       return 2;

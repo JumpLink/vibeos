@@ -3,8 +3,9 @@
  * A language is ready when its speech model is installed (dictate-models.h) with its recogniser's library and, in
  * Agent, there is a voice for it (dictate-talk.h). What it lacks of the models and voices comes from
  * dictate-download.h: a dialog names the language, what would be downloaded, from where and how much, with Cancel
- * and Download; then a dialog with the progress and Cancel; on a failure one that says why, with Retry. A library
- * that is not installed is only named, with its package: code never comes this way. */
+ * and Download; then a dialog with the progress and Cancel; on a failure one that says why, with Retry. A
+ * recogniser's library that is not installed (Vosk's) is code: it comes only as its signed package from the VibeOS
+ * archive, installed by the system's package manager (dictate-package.h) in the same run, before the files. */
 #pragma once
 
 #include "dictate-talk.h"

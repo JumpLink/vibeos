@@ -30,8 +30,8 @@ download_deps = [dependency('glib-2.0'), dependency('gio-2.0'), dependency('libs
 executable('vibeos-dictate', 'src/dictate-main.c', 'src/dictate-window.c', 'src/dictate-mic.c',
            'src/dictate-engine.c', 'src/dictate-models.c', 'src/dictate-moonshine.c', 'src/dictate-vosk.c',
            'src/dictate-vad.c', 'src/dictate-talk.c', 'src/dictate-voice.c', 'src/dictate-phonemes.c', brain_sources,
-           'src/dictate-download.c', 'src/dictate-download-dialog.c', 'src/dictate-access.c',
-           'src/dictate-settings.c', resources, link_with: text, install: true,
+           'src/dictate-download.c', 'src/dictate-download-dialog.c', 'src/dictate-pk.c', 'src/dictate-package.c',
+           'src/dictate-access.c', 'src/dictate-settings.c', resources, link_with: text, install: true,
            c_args: ['-DGETTEXT_PACKAGE="vibeos-dictate"',
                     '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir')),
                     '-DLIBRARY_DIR="@0@"'.format(library_dir)],
@@ -91,4 +91,5 @@ test('access', executable('test-access', 'tests/test-access.c', 'src/dictate-acc
 
 # a language's packs fetched for real, as the app fetches them (not run by meson test: it needs the network)
 executable('download-try', 'tests/download-try.c', 'src/dictate-download.c', 'src/dictate-models.c',
+           'src/dictate-pk.c', 'src/dictate-package.c',
            include_directories: 'src', c_args: '-DGETTEXT_PACKAGE="vibeos-dictate"', dependencies: download_deps)
