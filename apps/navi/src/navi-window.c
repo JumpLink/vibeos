@@ -1014,6 +1014,18 @@ place_drive_ready (GObject *src, GAsyncResult *res, gpointer data)
   navi_panels_set_place_drive (n->panels, r->length, r->time);
 }
 
+/* the settings' route options, for every route asked: the first, the alternates, a new one on the way */
+static void
+route_options (Navi *n, NaviRouteRequest *req)
+{
+  NaviSettings *st = n->settings;
+  req->motorbike = st->vehicle == NAVI_VEHICLE_MOTORBIKE;
+  req->avoid_tolls = st->avoid_tolls;
+  req->avoid_highways = st->avoid_highways;
+  req->avoid_ferries = st->avoid_ferries;
+  req->miles = navi_format_uses_miles ();
+}
+
 static void
 ask_place_drive (Navi *n)
 {
@@ -1028,6 +1040,7 @@ ask_place_drive (Navi *n)
   req.from_heading = n->car_speed > 2 ? n->car_heading : -1;
   req.to_lat = n->dest->lat;
   req.to_lng = n->dest->lng;
+  route_options (n, &req);
   navi_route_request_async (&req, n->place_cancel, place_drive_ready, n);
 }
 
@@ -1117,6 +1130,7 @@ request_routes (Navi *n, guint alternates, GAsyncReadyCallback done)
     req.via_lng = n->stop->lng;
   }
   req.alternates = alternates;
+  route_options (n, &req);
   navi_route_request_async (&req, n->route_cancel, done, n);
 }
 

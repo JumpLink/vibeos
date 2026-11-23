@@ -36,6 +36,19 @@ typedef enum {
   NAVI_SPEEDING_PERCENT_10, /* +10 % */
 } NaviSpeeding;
 
+/* what the routes are for: Valhalla's auto or motorcycle costing */
+typedef enum {
+  NAVI_VEHICLE_CAR,
+  NAVI_VEHICLE_MOTORBIKE,
+} NaviVehicle;
+
+/* distances and speeds: the road's country's (miles in the UK and the US), or always one */
+typedef enum {
+  NAVI_UNITS_AUTO,
+  NAVI_UNITS_KM,
+  NAVI_UNITS_MI,
+} NaviUnits;
+
 typedef struct {
   NaviDarkMode dark;
   NaviMapView view;
@@ -45,6 +58,11 @@ typedef struct {
   gboolean cameras;             /* speed camera alerts (and icons) where the country allows them; on by default */
   gboolean cameras_notice_seen; /* the one-time notice of where they are not allowed was shown */
   NaviSpeeding speeding;
+  /* the routes: what they keep off where there is a way round (Valhalla's use_tolls, use_highways, use_ferry 0),
+   * and for what */
+  gboolean avoid_tolls, avoid_highways, avoid_ferries;
+  NaviVehicle vehicle;
+  NaviUnits units;
   NaviPlace *home, *work; /* NULL until set */
   gboolean have_last;
   double last_lat, last_lng; /* where the map opens (to a kilometre); its zoom is the browsing one, as the camera

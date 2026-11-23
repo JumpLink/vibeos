@@ -160,9 +160,32 @@ navi_guidance_alert_text (const char *language, double metres, const char *instr
 {
   gboolean de = language && !g_ascii_strncasecmp (language, "de", 2);
   gboolean en = !language || !g_ascii_strncasecmp (language, "en", 2);
-  /* spoken as people say it: 50 m steps below a kilometre, half kilometres above */
+  /* spoken as people say it: 50 m steps below a kilometre, half kilometres above; in miles, 100 ft steps below a
+   * quarter mile, quarters up to a mile, halves above */
   g_autofree char *amount = NULL;
-  if (metres < 950) {
+  if (navi_format_uses_miles ()) {
+    double mi = metres / 1609.344;
+    if (mi < 0.2) {
+      long ft = MAX (100L, lround (metres * 3.2808399 / 100) * 100);
+      amount = de ? g_strdup_printf ("%ld Fuß", ft) : g_strdup_printf ("%ld feet", ft);
+    } else {
+      double q = mi < 0.875 ? round (mi * 4) / 4 : round (mi * 2) / 2;
+      if (de) {
+        g_autofree char *n = g_strdup_printf (q == floor (q) ? "%.0f" : "%.2g", q);
+        g_strdelimit (n, ".", ',');
+        amount = q == 1 ? g_strdup ("einer Meile") : g_strdup_printf ("%s Meilen", n);
+      } else if (q == 0.25)
+        amount = g_strdup ("a quarter mile");
+      else if (q == 0.5)
+        amount = g_strdup ("half a mile");
+      else if (q == 0.75)
+        amount = g_strdup ("three quarters of a mile");
+      else if (q == 1)
+        amount = g_strdup ("1 mile");
+      else
+        amount = g_strdup_printf (q == floor (q) ? "%.0f miles" : "%.1f miles", q);
+    }
+  } else if (metres < 950) {
     long m = MAX (50L, lround (metres / 50) * 50);
     amount = de ? g_strdup_printf ("%ld Metern", m) : g_strdup_printf ("%ld meters", m);
   } else {

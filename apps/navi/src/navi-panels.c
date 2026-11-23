@@ -43,7 +43,9 @@ struct _NaviPanels {
   GtkWidget *limit_sign, *alert_card, *alert_title, *alert_detail;
   int limit_kmh;            /* the road's (NAVI_LIMIT_*), shown on the sign */
   double speed;             /* m/s, < 0 unknown */
-  gboolean mph;             /* speeds in miles an hour: the road's country's (else the locale's) */
+  gboolean mph;             /* speeds in miles an hour: the units setting's, else the road's country's (else the
+                             * locale's); distances follow */
+  char units_country[4];    /* the road's country last heard, "" none yet */
   gboolean us_signs;        /* the limit on a US-style board */
   gboolean moving;          /* driving without a route: the speedometer shows while browsing too */
   gint64 slow_since;
@@ -967,7 +969,7 @@ static const VibeosAboutInfo about_info = {
 typedef struct {
   NaviPanels *p;
   GtkWidget *sheet;
-  GtkWidget *dark_row, *view_row, *voice_row, *home_row, *work_row, *speeding_row;
+  GtkWidget *dark_row, *view_row, *voice_row, *home_row, *work_row, *speeding_row, *vehicle_row, *units_row;
 } SettingsPage;
 
 static const char *
@@ -1004,6 +1006,22 @@ voice_name (NaviVoiceMode v)
 static gboolean units_mph; /* the speedometer's units now (navi_panels_set_units) */
 
 static const char *
+vehicle_name (NaviVehicle v)
+{
+  return v == NAVI_VEHICLE_MOTORBIKE ? _("Motorcycle") : _("Car");
+}
+
+static const char *
+units_name (NaviUnits u)
+{
+  switch (u) {
+  case NAVI_UNITS_KM: return _("Kilometers");
+  case NAVI_UNITS_MI: return _("Miles");
+  default: return _("Auto");
+  }
+}
+
+static const char *
 speeding_name (NaviSpeeding v)
 {
   gboolean mph = units_mph;
@@ -1027,6 +1045,10 @@ settings_refresh (SettingsPage *s)
                                                           : _("Flat while browsing, 3D while driving"));
   vibeos_list_row_set_value (VIBEOS_LIST_ROW (s->voice_row), voice_name (st->voice));
   vibeos_list_row_set_value (VIBEOS_LIST_ROW (s->speeding_row), speeding_name (st->speeding));
+  vibeos_list_row_set_value (VIBEOS_LIST_ROW (s->vehicle_row), vehicle_name (st->vehicle));
+  vibeos_list_row_set_value (VIBEOS_LIST_ROW (s->units_row), units_name (st->units));
+  vibeos_list_row_set_summary (VIBEOS_LIST_ROW (s->units_row),
+                               st->units == NAVI_UNITS_AUTO ? _("Miles in the UK and the US, else kilometers") : NULL);
   /* a saved place has a clear button at its end, and a tap asks before forgetting it; an unset one opens the
    * search to set it */
   for (int k = 0; k < 2; k++) {
@@ -1052,6 +1074,7 @@ choice_clicked (GtkWidget *row, SettingsPage *s)
   navi_update_night (s->p->navi);
   navi_apply_view (s->p->navi); /* the map view at once, not at the camera's next move */
   navi_panels_sync_sound (s->p);
+  navi_panels_set_units (s->p, NULL);
   vibeos_sheet_back (VIBEOS_SHEET (s->sheet));
 }
 
@@ -1092,6 +1115,19 @@ speeding_clicked (GtkWidget *row, SettingsPage *s)
 {
   push_choices (s, _("Speeding warning"), (int *) &s->p->navi->settings->speeding,
                 (const char *(*) (int)) speeding_name, 4);
+}
+
+static void
+vehicle_clicked (GtkWidget *row, SettingsPage *s)
+{
+  push_choices (s, _("Vehicle type"), (int *) &s->p->navi->settings->vehicle,
+                (const char *(*) (int)) vehicle_name, 2);
+}
+
+static void
+units_clicked (GtkWidget *row, SettingsPage *s)
+{
+  push_choices (s, _("Units"), (int *) &s->p->navi->settings->units, (const char *(*) (int)) units_name, 3);
 }
 
 static void
@@ -1185,6 +1221,27 @@ open_settings (gpointer data)
     GtkWidget *sw = vibeos_list_row_set_switch (VIBEOS_LIST_ROW (row), FALSE);
     vibeos_switch_set_active (VIBEOS_SWITCH (sw), *switches[i].field);
     g_object_set_data (G_OBJECT (sw), "navi-field", switches[i].field);
+    g_signal_connect (sw, "notify::active", G_CALLBACK (switch_changed), s);
+    vibeos_card_list_append (VIBEOS_CARD_LIST (list), row);
+  }
+  s->units_row = vibeos_list_row_new (_("Units"), NULL);
+  g_signal_connect (s->units_row, "clicked", G_CALLBACK (units_clicked), s);
+  vibeos_card_list_append (VIBEOS_CARD_LIST (list), s->units_row);
+  /* Waze's Navigation: the next route, and a new one on the way, follow them */
+  vibeos_card_list_add_group (VIBEOS_CARD_LIST (list), _("Navigation"));
+  s->vehicle_row = vibeos_list_row_new (_("Vehicle type"), NULL);
+  g_signal_connect (s->vehicle_row, "clicked", G_CALLBACK (vehicle_clicked), s);
+  vibeos_card_list_append (VIBEOS_CARD_LIST (list), s->vehicle_row);
+  struct { const char *title; gboolean *field; } avoids[] = {
+    { _("Avoid toll roads"), &st->avoid_tolls },
+    { _("Avoid highways"), &st->avoid_highways },
+    { _("Avoid ferries"), &st->avoid_ferries },
+  };
+  for (guint i = 0; i < G_N_ELEMENTS (avoids); i++) {
+    GtkWidget *row = vibeos_list_row_new (avoids[i].title, NULL);
+    GtkWidget *sw = vibeos_list_row_set_switch (VIBEOS_LIST_ROW (row), FALSE);
+    vibeos_switch_set_active (VIBEOS_SWITCH (sw), *avoids[i].field);
+    g_object_set_data (G_OBJECT (sw), "navi-field", avoids[i].field);
     g_signal_connect (sw, "notify::active", G_CALLBACK (switch_changed), s);
     vibeos_card_list_append (VIBEOS_CARD_LIST (list), row);
   }
@@ -1943,8 +2000,13 @@ navi_panels_new (Navi *n)
   gtk_box_append (GTK_BOX (p->speed_column), p->alert_card);
   p->limit_kmh = NAVI_LIMIT_UNKNOWN;
   p->speed = -1;
-  p->mph = units_mph = navi_speed_in_mph ();
-  p->us_signs = p->mph && g_getenv ("LANG") && strstr (g_getenv ("LANG"), "_US");
+  /* metric until a road's country says otherwise: a British phone in Berlin showed miles, and asked its first
+   * route's directions in them */
+  p->mph = units_mph = p->navi->settings->units == NAVI_UNITS_MI ||
+                       (p->navi->settings->units == NAVI_UNITS_AUTO && g_getenv ("NAVI_SPEED_UNITS") &&
+                        navi_speed_in_mph ());
+  p->us_signs = FALSE;
+  navi_format_set_miles (p->mph);
   p->limit_sign = gtk_drawing_area_new ();
   gtk_drawing_area_set_content_width (GTK_DRAWING_AREA (p->limit_sign), 54);
   gtk_drawing_area_set_content_height (GTK_DRAWING_AREA (p->limit_sign), 54);
@@ -2413,12 +2475,22 @@ draw_limit_sign (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
                         p->us_signs);
 }
 
-/* the speeds the road's signs give: miles an hour in the UK and the US, else kilometres, whatever the language */
+/* the speeds the road's signs give: miles an hour in the UK and the US, else kilometres, whatever the language;
+ * unless the units setting says one. Distances follow. */
 void
 navi_panels_set_units (NaviPanels *p, const char *country)
 {
-  gboolean mph = g_getenv ("NAVI_SPEED_UNITS") ? navi_speed_in_mph () : navi_country_uses_mph (country);
+  if (country && *country)
+    g_strlcpy (p->units_country, country, sizeof p->units_country);
+  country = p->units_country;
+  NaviUnits setting = p->navi->settings->units;
+  gboolean mph = setting == NAVI_UNITS_MI     ? TRUE
+                 : setting == NAVI_UNITS_KM   ? FALSE
+                 : g_getenv ("NAVI_SPEED_UNITS") ? navi_speed_in_mph ()
+                                              : navi_country_uses_mph (country);
+  /* the US's white board where the road is the US's (an mph setting in Germany keeps the round sign) */
   gboolean us = mph && navi_country_uses_us_signs (country);
+  navi_format_set_miles (mph);
   if (mph == p->mph && us == p->us_signs)
     return;
   p->mph = units_mph = mph;

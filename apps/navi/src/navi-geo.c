@@ -189,11 +189,43 @@ navi_smooth_angle (double current, double target, double *rate, double smooth_s,
 
 /* ---- what the driver reads ---- */
 
+static gboolean miles;
+
+void
+navi_format_set_miles (gboolean use_miles)
+{
+  miles = use_miles;
+}
+
+gboolean
+navi_format_uses_miles (void)
+{
+  return miles;
+}
+
+#define METRES_PER_MILE 1609.344
+#define FEET_PER_METRE  3.2808399
+
 void
 navi_format_distance_parts (double m, char **number, const char **unit)
 {
   if (m < 0)
     m = 0;
+  if (miles) {
+    /* feet to a tenth of a mile, as the US's signs and Waze there: 50 ft steps */
+    double mi = m / METRES_PER_MILE;
+    if (mi < 0.1) {
+      *number = g_strdup_printf ("%ld", MAX (50L, lround (m * FEET_PER_METRE / 50) * 50));
+      *unit = "ft";
+    } else if (mi < 9.95) {
+      *number = g_strdup_printf ("%.1f", mi);
+      *unit = "mi";
+    } else {
+      *number = g_strdup_printf ("%ld", lround (mi));
+      *unit = "mi";
+    }
+    return;
+  }
   if (m < 950) {
     /* 10 m steps under 300 m (the turns), 50 m above */
     long v = m < 300 ? lround (m / 10) * 10 : lround (m / 50) * 50;

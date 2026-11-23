@@ -88,6 +88,11 @@ navi_settings_load (void)
   if (!e)
     s->speeding = CLAMP (v, 0, NAVI_SPEEDING_PERCENT_10);
   g_clear_error (&e);
+  s->avoid_tolls = g_key_file_get_boolean (kf, "route", "avoid-tolls", NULL);
+  s->avoid_highways = g_key_file_get_boolean (kf, "route", "avoid-highways", NULL);
+  s->avoid_ferries = g_key_file_get_boolean (kf, "route", "avoid-ferries", NULL);
+  s->vehicle = CLAMP (g_key_file_get_integer (kf, "route", "vehicle", NULL), 0, NAVI_VEHICLE_MOTORBIKE);
+  s->units = CLAMP (g_key_file_get_integer (kf, "general", "units", NULL), 0, NAVI_UNITS_MI);
   s->home = read_place (kf, "home");
   s->work = read_place (kf, "work");
   if (g_key_file_has_key (kf, "map", "last-lat", NULL)) {
@@ -122,6 +127,15 @@ navi_settings_flush (NaviSettings *s)
   g_key_file_set_boolean (kf, "alerts", "speed-cameras", s->cameras);
   g_key_file_set_boolean (kf, "alerts", "camera-notice-seen", s->cameras_notice_seen);
   g_key_file_set_integer (kf, "alerts", "speeding", s->speeding);
+  /* the route options and units only once one is not the default: an ini nobody changed stays as it was */
+  if (s->avoid_tolls || s->avoid_highways || s->avoid_ferries || s->vehicle != NAVI_VEHICLE_CAR) {
+    g_key_file_set_boolean (kf, "route", "avoid-tolls", s->avoid_tolls);
+    g_key_file_set_boolean (kf, "route", "avoid-highways", s->avoid_highways);
+    g_key_file_set_boolean (kf, "route", "avoid-ferries", s->avoid_ferries);
+    g_key_file_set_integer (kf, "route", "vehicle", s->vehicle);
+  }
+  if (s->units != NAVI_UNITS_AUTO)
+    g_key_file_set_integer (kf, "general", "units", s->units);
   write_place (kf, "home", s->home);
   write_place (kf, "work", s->work);
   for (guint i = 0; i < s->recent->len; i++) {

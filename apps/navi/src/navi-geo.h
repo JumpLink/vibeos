@@ -48,7 +48,8 @@ double navi_smooth_angle (double current, double target, double *rate, double sm
 /* the same for a plain number */
 double navi_smooth_value (double current, double target, double *rate, double smooth_s, double dt);
 
-/* "110 m", "450 m", "1.2 km", "15 km": as a driver reads it, rounded more the farther it is */
+/* "110 m", "450 m", "1.2 km", "15 km": as a driver reads it, rounded more the farther it is; in miles "500 ft",
+ * "0.3 mi", "15 mi" */
 char *navi_format_distance (double metres);
 /* the number and unit apart, for a banner that sets them in two sizes */
 void navi_format_distance_parts (double metres, char **number, const char **unit);
@@ -58,5 +59,8 @@ char *navi_format_duration (double seconds);
 char *navi_format_eta (double seconds_from_now);
 /* the clock navi_format_eta writes: 24-hour (the default) or 12-hour */
 void navi_format_set_24h (gboolean use_24h);
+/* distances in miles and feet (the UK's and the US's roads, or the units setting), else metres and kilometres */
+void navi_format_set_miles (gboolean miles);
+gboolean navi_format_uses_miles (void);
 
 G_END_DECLS

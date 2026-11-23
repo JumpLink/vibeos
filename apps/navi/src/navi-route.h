@@ -112,6 +112,9 @@ typedef struct {
   gboolean have_via;   /* a stop on the way (Valhalla routes no alternates then) */
   double via_lat, via_lng;
   guint alternates;    /* 0 to 2 */
+  gboolean motorbike;  /* Valhalla's motorcycle costing, else auto */
+  gboolean avoid_tolls, avoid_highways, avoid_ferries; /* kept off where there is a way round */
+  gboolean miles;      /* Valhalla's spoken distances in miles ("Continue for 2 miles") */
   const char *language; /* Valhalla's: "de-DE", "en-US"; NULL picks it from the UI language */
 } NaviRouteRequest;
 

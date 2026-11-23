@@ -497,10 +497,36 @@ navi_route_request_async (const NaviRouteRequest *rq, GCancellable *cancellable,
   json_builder_add_double_value (b, rq->to_lng);
   json_builder_end_object (b);
   json_builder_end_array (b);
+  const char *costing = rq->motorbike ? "motorcycle" : "auto";
   json_builder_set_member_name (b, "costing");
-  json_builder_add_string_value (b, "auto");
+  json_builder_add_string_value (b, costing);
+  if (rq->avoid_tolls || rq->avoid_highways || rq->avoid_ferries) {
+    /* 0: as little of them as the way allows (a ferry to an island stays) */
+    json_builder_set_member_name (b, "costing_options");
+    json_builder_begin_object (b);
+    json_builder_set_member_name (b, costing);
+    json_builder_begin_object (b);
+    if (rq->avoid_tolls) {
+      json_builder_set_member_name (b, "use_tolls");
+      json_builder_add_double_value (b, 0);
+    }
+    if (rq->avoid_highways) {
+      json_builder_set_member_name (b, "use_highways");
+      json_builder_add_double_value (b, 0);
+    }
+    if (rq->avoid_ferries) {
+      json_builder_set_member_name (b, "use_ferry");
+      json_builder_add_double_value (b, 0);
+    }
+    json_builder_end_object (b);
+    json_builder_end_object (b);
+  }
+  g_debug ("route: %s%s%s%s, %u alternates%s", costing, rq->avoid_tolls ? ", no tolls" : "",
+           rq->avoid_highways ? ", no highways" : "", rq->avoid_ferries ? ", no ferries" : "",
+           rq->have_via ? 0 : rq->alternates, rq->miles ? ", miles" : "");
+  /* the lengths are measured on the shape (parse_trip), so the units only change what is said */
   json_builder_set_member_name (b, "units");
-  json_builder_add_string_value (b, "kilometers");
+  json_builder_add_string_value (b, rq->miles ? "miles" : "kilometers");
   json_builder_set_member_name (b, "language");
   json_builder_add_string_value (b, rq->language ? rq->language : navi_route_language ());
   /* the default directions type, "instructions": "maneuvers" leaves every text out */
