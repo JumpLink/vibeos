@@ -390,7 +390,8 @@ dictate_settings_page_new (GtkWidget *window, const DictateSettingsHooks *hooks)
     }
 
   vibeos_card_list_set_margins (VIBEOS_CARD_LIST (cards), 8, 24);
-  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), cards);
+  /* on a tablet the rows are a column in the middle, their switches near their text */
+  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), vibeos_clamp_new (cards, VIBEOS_CLAMP_SETTINGS));
   gtk_widget_set_vexpand (scroll, TRUE);
   gtk_box_append (GTK_BOX (p->page), scroll);
   g_signal_connect (p->hooks.settings, "changed", G_CALLBACK (on_setting_changed), p);
