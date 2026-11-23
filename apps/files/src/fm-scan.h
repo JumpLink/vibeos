@@ -3,8 +3,8 @@
  * gadget link to a computer, a link-local address or a virtual bridge without hardware under it), at most the /24
  * around the address: TCP 445 on every address at once (a capped number in flight, each given up after a short
  * time), and 139 on the ones that refused 445. A host that answers is named by its NetBIOS node status (UDP 137),
- * else by its reverse DNS name (the host's part: "am6.fritz.box" is "am6"), else by its address written as
- * "192-168-10-1". The device's own address is tried too: a phone serving files is on the network as well.
+ * else by its reverse DNS name (the host's part: "host.home.arpa" is "host"), else by its address written as
+ * "192-0-2-1". The device's own address is tried too: a phone serving files is on the network as well.
  *
  * No GTK: the tests link it alone. */
 #pragma once
@@ -13,7 +13,7 @@
 
 G_BEGIN_DECLS
 
-/* a host with a file server: its address ("192.168.10.1") and its name */
+/* a host with a file server: its address ("192.0.2.1") and its name */
 typedef void (*FmScanFound) (const char *address, const char *name, gpointer data);
 /* every address tried and every host named */
 typedef void (*FmScanDone) (gpointer data);
@@ -32,7 +32,7 @@ GBytes    *fm_scan_nbstat_request   (guint16 id);
 /* the machine's name from a node status response: its unique file server (<20>) or workstation (<00>) name, the
  * trailing blanks cut; NULL when the response is not one */
 char      *fm_scan_nbstat_name      (const guint8 *data, gsize size);
-/* "192.168.10.1" as "192-168-10-1" */
+/* "192.0.2.1" as "192-0-2-1" */
 char      *fm_scan_address_name     (const char *address);
 
 G_END_DECLS

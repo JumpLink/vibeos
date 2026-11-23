@@ -58,8 +58,8 @@ test_formats (void)
 static void
 test_paths (void)
 {
-  g_autoptr(GFile) root = g_file_new_for_uri ("smb://plex/");
-  g_autoptr(GFile) video = g_file_new_for_uri ("smb://plex/VIDEO/a%20b");
+  g_autoptr(GFile) root = g_file_new_for_uri ("smb://nas/");
+  g_autoptr(GFile) video = g_file_new_for_uri ("smb://nas/VIDEO/a%20b");
   g_autoptr(GFile) local = g_file_new_for_path ("/home/user/x");
   g_autoptr(GFile) secret = g_file_new_for_uri ("ftp://me:pw@host/dir%20x/");
   g_autofree char *rel = fm_relative_path (root, video);
@@ -74,14 +74,14 @@ test_paths (void)
   g_assert_null (strstr (safe, "pw"));
   {
     g_autoptr(GFile) up = fm_parent (video);
-    g_autoptr(GFile) share = g_file_new_for_uri ("smb://plex/VIDEO/");
+    g_autoptr(GFile) share = g_file_new_for_uri ("smb://nas/VIDEO/");
     g_autoptr(GFile) server = fm_parent (share);
     g_autoptr(GFile) none = fm_parent (root);
     g_autofree char *up_uri = g_file_get_uri (up);
     g_autofree char *server_uri = g_file_get_uri (server);
 
-    g_assert_cmpint (g_ascii_strcasecmp (up_uri, "smb://plex/VIDEO/"), ==, 0);
-    g_assert_cmpstr (server_uri, ==, "smb://plex/");
+    g_assert_cmpint (g_ascii_strcasecmp (up_uri, "smb://nas/VIDEO/"), ==, 0);
+    g_assert_cmpstr (server_uri, ==, "smb://nas/");
     g_assert_null (none);
     g_assert_true (fm_file_is_under (video, root));
     g_assert_true (fm_file_is_under (share, root));

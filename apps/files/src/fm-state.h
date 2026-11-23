@@ -17,7 +17,7 @@ typedef struct {
 
 typedef struct {
   char *uri;                    /* the folder */
-  char *root_name;              /* its location's name ("Main storage", "PLEX") */
+  char *root_name;              /* its location's name ("Main storage", "NAS") */
   gint64 time;                  /* g_get_real_time: microseconds */
 } FmHistoryEntry;
 
