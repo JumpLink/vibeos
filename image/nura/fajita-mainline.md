@@ -36,5 +36,5 @@ so the stream goes over the USB network (`vibeos-usb-net`, PR #7):
 | Modem | visible in ModemManager; SIM and calls to test |
 | Camera focus (lc89821x) | works: the actuators share the CCI bus whose pull-ups hang on `cam_vio_1p8`, which their node did not request (`-110` while the sensor slept). With `vio-supply` (linux-fajita `175fde03c`, `c7f666693`) focus moves on both cameras with runtime PM on |
 | DSI PLL warning at probe | fixed: the clock core enabled the 10nm PLL before the PHY's digital top was powered, so the lock failed and the count went unbalanced. linux-fajita `e9ac0107b` powers digtop with the PLL bias, as on 7nm; no WARN at boot, display and touch fine |
-| ramoops | broken: nothing written to pmsg or kmsg survives a normal reboot, and every boot reports header ECC errors. The region at `0xac300000` does not overlap other reserved memory, so the bootloader probably clears or uses it; to investigate |
+| ramoops | broken: nothing written to pmsg or kmsg survives a normal reboot. `ecc-size = <0>` (as downstream) silences the header ECC error but the region still comes back empty, so the bootloader probably clears or uses `0xac300000`; to investigate ([linux-fajita#4](https://github.com/JumpLink/linux-fajita/issues/4)) |
 | Vibration, audio playback, suspend, Plymouth | to test |
