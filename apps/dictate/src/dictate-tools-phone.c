@@ -125,8 +125,8 @@ plain (GError *error)
   return error->message;
 }
 
-/* only the digits; the last 9 of two numbers being the same makes them the same number ("+49 176 1234567" and
- * "0176 1234567"), shorter ones must match whole */
+/* only the digits; the last 9 of two numbers being the same makes them the same number ("+44 7700 900123" and
+ * "07700 900123"), shorter ones must match whole */
 static char *
 digits_of (const char *number)
 {
