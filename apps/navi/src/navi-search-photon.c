@@ -86,11 +86,14 @@ navi_search_photon_new (const char *base_url, NaviSearch *fallback)
 static const char *
 photon_language (void)
 {
-  const char *lang = navi_route_language ();
+  /* the UI's (the voice's language may be another, navi_route_language) */
   static const char *const known[] = { "de", "en", "fr", "it", NULL };
-  for (guint i = 0; known[i]; i++)
-    if (!g_ascii_strncasecmp (lang, known[i], 2))
-      return known[i];
+  const char *const *names = g_get_language_names ();
+  for (guint n = 0; names[n]; n++)
+    for (guint i = 0; known[i]; i++)
+      if (!g_ascii_strncasecmp (names[n], known[i], 2) && (names[n][2] == '\0' || names[n][2] == '_' ||
+                                                           names[n][2] == '.' || names[n][2] == '@'))
+        return known[i];
   return "default";
 }
 

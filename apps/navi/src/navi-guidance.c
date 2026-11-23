@@ -155,11 +155,86 @@ navi_guidance_pre_distance (double speed)
 }
 
 
+/* Navi's own words for each language it speaks, in navi_route_language's order of codes; English first */
+static const struct {
+  const char *code;
+  const char *words[NAVI_SAY_DANGER_ZONE + 1];
+} SAYINGS[] = {
+  { "en", { "You have arrived at your destination.", "You have reached your stop.", "Speed camera ahead.",
+            "Red light camera ahead.", "Section control ahead.", "Danger zone ahead." } },
+  { "de", { "Du hast dein Ziel erreicht.", "Du hast deinen Zwischenstopp erreicht.", "Blitzer voraus.",
+            "Rotlichtblitzer voraus.", "Abschnittskontrolle voraus.", "Gefahrenzone voraus." } },
+  { "fr", { "Vous êtes arrivé à destination.", "Vous avez atteint votre étape.", "Radar en approche.",
+            "Radar de feu rouge en approche.", "Radar tronçon en approche.", "Zone de danger en approche." } },
+  { "it", { "Sei arrivato a destinazione.", "Hai raggiunto la tua tappa.", "Autovelox più avanti.",
+            "Telecamera semaforica più avanti.", "Tutor più avanti.", "Zona di pericolo più avanti." } },
+  { "es", { "Has llegado a tu destino.", "Has llegado a tu parada.", "Radar de velocidad más adelante.",
+            "Cámara de semáforo más adelante.", "Control de tramo más adelante.", "Zona de peligro más adelante." } },
+  { "ru", { "Вы прибыли в пункт назначения.", "Вы прибыли в промежуточную точку.",
+            "Впереди камера контроля скорости.", "Впереди камера на светофоре.",
+            "Впереди контроль средней скорости.", "Впереди опасный участок." } },
+};
+
+static guint
+saying_language (const char *language)
+{
+  for (guint i = 0; language && i < G_N_ELEMENTS (SAYINGS); i++)
+    if (!g_ascii_strncasecmp (language, SAYINGS[i].code, 2))
+      return i;
+  return 0;
+}
+
+const char *
+navi_guidance_saying (NaviSaying what, const char *language)
+{
+  g_return_val_if_fail (what <= NAVI_SAY_DANGER_ZONE, NULL);
+  return SAYINGS[saying_language (language)].words[what];
+}
+
+/* Russian's count words: 1 километр, 2 километра, 5 километров; a fraction takes the second (1,5 километра) */
+static const char *
+ru_count (double n, const char *one, const char *few, const char *many)
+{
+  if (n != floor (n))
+    return few;
+  long k = lround (n) % 100;
+  if (k % 10 == 1 && k != 11)
+    return one;
+  if (k % 10 >= 2 && k % 10 <= 4 && (k < 12 || k > 14))
+    return few;
+  return many;
+}
+
+/* a number as `code` writes it: 1.5 or 1,5 */
+static char *
+number (const char *code, double n, const char *format)
+{
+  char *s = g_strdup_printf (format, n);
+  if (strcmp (code, "en"))
+    g_strdelimit (s, ".", ',');
+  return s;
+}
+
+/* the instruction after the distance, its first letter lower case: "In 400 meters, turn left ..." */
+static char *
+lower_first (const char *text)
+{
+  if (!text || !*text || !g_utf8_validate (text, -1, NULL))
+    return g_strdup (text ? text : "");
+  gunichar c = g_utf8_get_char (text);
+  if (!g_unichar_isupper (c))
+    return g_strdup (text);
+  char first[8];
+  first[g_unichar_to_utf8 (g_unichar_tolower (c), first)] = '\0';
+  return g_strconcat (first, g_utf8_next_char (text), NULL);
+}
+
 char *
 navi_guidance_alert_text (const char *language, double metres, const char *instruction)
 {
-  gboolean de = language && !g_ascii_strncasecmp (language, "de", 2);
-  gboolean en = !language || !g_ascii_strncasecmp (language, "en", 2);
+  const char *code = SAYINGS[saying_language (language)].code;
+  gboolean de = !strcmp (code, "de"), fr = !strcmp (code, "fr"), it = !strcmp (code, "it"),
+           es = !strcmp (code, "es"), ru = !strcmp (code, "ru");
   /* spoken as people say it: 50 m steps below a kilometre, half kilometres above; in miles, 100 ft steps below a
    * quarter mile, quarters up to a mile, halves above */
   g_autofree char *amount = NULL;
@@ -167,14 +242,22 @@ navi_guidance_alert_text (const char *language, double metres, const char *instr
     double mi = metres / 1609.344;
     if (mi < 0.2) {
       long ft = MAX (100L, lround (metres * 3.2808399 / 100) * 100);
-      amount = de ? g_strdup_printf ("%ld Fuß", ft) : g_strdup_printf ("%ld feet", ft);
+      amount = g_strdup_printf ("%ld %s", ft, de ? "Fuß" : fr ? "pieds" : it ? "piedi" : es ? "pies"
+                                               : ru ? ru_count (ft, "фут", "фута", "футов") : "feet");
     } else {
       double q = mi < 0.875 ? round (mi * 4) / 4 : round (mi * 2) / 2;
-      if (de) {
-        g_autofree char *n = g_strdup_printf (q == floor (q) ? "%.0f" : "%.2g", q);
-        g_strdelimit (n, ".", ',');
+      g_autofree char *n = number (code, q, q == floor (q) ? "%.0f" : "%.2g");
+      if (de)
         amount = q == 1 ? g_strdup ("einer Meile") : g_strdup_printf ("%s Meilen", n);
-      } else if (q == 0.25)
+      else if (fr)
+        amount = g_strdup_printf (q < 2 ? "%s mile" : "%s miles", n);
+      else if (it)
+        amount = g_strdup_printf (q == 1 ? "%s miglio" : "%s miglia", n);
+      else if (es)
+        amount = g_strdup_printf (q == 1 ? "%s milla" : "%s millas", n);
+      else if (ru)
+        amount = g_strdup_printf ("%s %s", n, ru_count (q, "милю", "мили", "миль"));
+      else if (q == 0.25)
         amount = g_strdup ("a quarter mile");
       else if (q == 0.5)
         amount = g_strdup ("half a mile");
@@ -187,28 +270,31 @@ navi_guidance_alert_text (const char *language, double metres, const char *instr
     }
   } else if (metres < 950) {
     long m = MAX (50L, lround (metres / 50) * 50);
-    amount = de ? g_strdup_printf ("%ld Metern", m) : g_strdup_printf ("%ld meters", m);
+    amount = g_strdup_printf ("%ld %s", m, de ? "Metern" : fr ? "mètres" : it ? "metri" : es ? "metros"
+                                          : ru ? ru_count (m, "метр", "метра", "метров") : "meters");
   } else {
     double km = round (metres / 500) * 0.5;
-    if (km == 1)
-      amount = g_strdup (de ? "einem Kilometer" : "1 kilometer");
-    else if (de) {
-      g_autofree char *n = g_strdup_printf (km == floor (km) ? "%.0f" : "%.1f", km);
-      g_strdelimit (n, ".", ',');
-      amount = g_strdup_printf ("%s Kilometern", n);
-    } else
-      amount = g_strdup_printf (km == floor (km) ? "%.0f kilometers" : "%.1f kilometers", km);
+    g_autofree char *n = number (code, km, km == floor (km) ? "%.0f" : "%.1f");
+    if (de)
+      amount = km == 1 ? g_strdup ("einem Kilometer") : g_strdup_printf ("%s Kilometern", n);
+    else if (fr)
+      amount = g_strdup_printf (km < 2 ? "%s kilomètre" : "%s kilomètres", n);
+    else if (it)
+      amount = g_strdup_printf (km == 1 ? "%s chilometro" : "%s chilometri", n);
+    else if (es)
+      amount = g_strdup_printf (km == 1 ? "%s kilómetro" : "%s kilómetros", n);
+    else if (ru)
+      amount = g_strdup_printf ("%s %s", n, ru_count (km, "километр", "километра", "километров"));
+    else
+      amount = g_strdup_printf (km == 1 ? "%s kilometer" : "%s kilometers", n);
   }
   if (de)
     return g_strdup_printf ("In %s: %s", amount, instruction);
-  if (en) {
-    /* "Turn left onto X." follows "In 400 meters, " in lower case */
-    g_autofree char *rest = g_strdup (instruction);
-    if (rest[0] && g_ascii_isupper (rest[0]))
-      rest[0] = g_ascii_tolower (rest[0]);
-    return g_strdup_printf ("In %s, %s", amount, rest);
-  }
-  return g_strdup (instruction);
+  /* "Turn left onto X." follows "In 400 meters, " in lower case */
+  g_autofree char *rest = lower_first (instruction);
+  if (ru)
+    return g_strdup_printf ("Через %s %s", amount, rest);
+  return g_strdup_printf ("%s %s, %s", fr ? "Dans" : it ? "Tra" : es ? "En" : "In", amount, rest);
 }
 
 static void

@@ -809,3 +809,151 @@ msgstr "Markierter Ort"
 #: src/navi-window.c:1609
 msgid "Place"
 msgstr "Ort"
+
+#: src/navi-panels.c
+msgid "Voice language"
+msgstr "Sprache der Ansagen"
+
+#. TRANSLATORS: under a language in the list; %s is a speech recogniser (Vosk)
+#: ../dictate/src/dictate-download-dialog.c
+msgid "Needs %s, which is not installed"
+msgstr "Braucht %s, das nicht installiert ist"
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "Not available on this phone"
+msgstr "Auf diesem Telefon nicht verfügbar"
+
+#. TRANSLATORS: under a language in the list; the first %s is a speech recogniser (Vosk), the second a size
+#: ../dictate/src/dictate-download-dialog.c
+msgid "%s and %s to download"
+msgstr "%s und %s zum Herunterladen"
+
+#. TRANSLATORS: under a language in the list; %s is a speech recogniser (Vosk)
+#: ../dictate/src/dictate-download-dialog.c
+msgid "%s to install"
+msgstr "%s zum Installieren"
+
+#. TRANSLATORS: under a language in the list; %s is a size: 90.4 MB
+#: ../dictate/src/dictate-download-dialog.c
+msgid "%s to download"
+msgstr "%s zum Herunterladen"
+
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself (Deutsch)
+#: ../dictate/src/dictate-download-dialog.c
+msgid "%s was not downloaded"
+msgstr "%s wurde nicht heruntergeladen"
+
+#. TRANSLATORS: the first %s is what went wrong, the second a speech recogniser (Vosk)
+#: ../dictate/src/dictate-download-dialog.c
+msgid "%s. %s was installed, but none of the files were kept on the phone."
+msgstr ""
+"%s. %s wurde installiert, aber keine der Dateien blieb auf dem Telefon."
+
+#. TRANSLATORS: %s is what went wrong
+#: ../dictate/src/dictate-download-dialog.c
+msgid "%s. Nothing of it was kept on the phone."
+msgstr "%s. Nichts davon blieb auf dem Telefon."
+
+#. TRANSLATORS: the progress, two sizes: 12.3 MB of 90.4 MB
+#: ../dictate/src/dictate-download-dialog.c
+msgid "%s of %s"
+msgstr "%s von %s"
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "Unpacking and installing…"
+msgstr "Entpacken und installieren …"
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "Installing…"
+msgstr "Installieren …"
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "Voice"
+msgstr "Stimme"
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "Speech recognition"
+msgstr "Spracherkennung"
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "The files came, but the language is still not ready"
+msgstr "Die Dateien sind da, aber die Sprache ist noch nicht bereit"
+
+#. TRANSLATORS: in the progress dialog; %s is a speech recogniser (Vosk)
+#: ../dictate/src/dictate-download-dialog.c
+msgid "%s speech recogniser"
+msgstr "Spracherkennung %s"
+
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself (Deutsch)
+#: ../dictate/src/dictate-download-dialog.c
+msgid "Downloading %s"
+msgstr "%s wird heruntergeladen"
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "The package was installed, but the language is still not ready"
+msgstr "Das Paket ist installiert, aber die Sprache ist noch nicht bereit"
+
+#. TRANSLATORS: the sum of the sizes in the download dialog; %s is a size: 90.4 MB
+#: ../dictate/src/dictate-download-dialog.c
+msgid "%s in all"
+msgstr "%s insgesamt"
+
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself (Deutsch)
+#: ../dictate/src/dictate-download-dialog.c
+msgid "Download %s?"
+msgstr "%s herunterladen?"
+
+#. TRANSLATORS: the first %s is the language's name for itself (Deutsch), the second an app's name (Navi)
+#: ../dictate/src/dictate-download-dialog.c
+msgid "To speak %s, %s needs this on the phone:"
+msgstr "Um %s zu sprechen, braucht %s dies auf dem Telefon:"
+
+#. TRANSLATORS: under what is downloaded: what it is, its licence and where it comes from
+#: ../dictate/src/dictate-download-dialog.c
+msgid "%s · %s · from %s"
+msgstr "%s · %s · von %s"
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "Download"
+msgstr "Herunterladen"
+
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself (Français)
+#: ../dictate/src/dictate-download-dialog.c
+msgid "%s is not available"
+msgstr "%s ist nicht verfügbar"
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "There is nothing to download for it."
+msgstr "Dafür gibt es nichts herunterzuladen."
+
+#: ../dictate/src/dictate-download.c
+msgid "The download failed: %s"
+msgstr "Das Herunterladen ist fehlgeschlagen: %s"
+
+#: ../dictate/src/dictate-download.c
+msgid "The files could not be put in place: %s"
+msgstr "Die Dateien konnten nicht an ihren Platz gelegt werden: %s"
+
+#: ../dictate/src/dictate-download.c
+msgid "%s did not come whole"
+msgstr "%s kam nicht vollständig an"
+
+#: ../dictate/src/dictate-download.c
+msgid "%s is not the file it should be: its checksum does not match"
+msgstr "%s ist nicht die erwartete Datei: die Prüfsumme stimmt nicht"
+
+#: ../dictate/src/dictate-download.c
+msgid "%s is larger than it should be"
+msgstr "%s ist größer als erwartet"
+
+#: ../dictate/src/dictate-download.c
+msgid "The server did not give %s: %u %s"
+msgstr "Der Server hat %s nicht geliefert: %u %s"
+
+#: ../dictate/src/dictate-download.c
+msgid "%s is not the size it should be: it has changed on the server"
+msgstr "%s hat nicht die erwartete Größe: die Datei hat sich auf dem Server geändert"
+
+#: ../dictate/src/dictate-download.c
+msgid "There is not enough space on the phone: %s are needed, %s are free"
+msgstr "Auf dem Telefon ist nicht genug Platz: %s werden gebraucht, %s sind frei"

@@ -1276,7 +1276,7 @@ check_stop (Navi *n, NaviRoute *r)
   if (!n->stop || !r || r->stop_s < 0 || n->car_s < r->stop_s - 30)
     return;
   g_clear_pointer (&n->stop, navi_place_free);
-  navi_panels_say (n->panels, _("You have reached your stop."), TRUE);
+  navi_panels_say (n->panels, navi_guidance_saying (NAVI_SAY_STOP_REACHED, navi_route_language ()), TRUE);
   update_route_layers (n);
 }
 

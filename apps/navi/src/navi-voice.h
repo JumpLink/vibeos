@@ -29,6 +29,8 @@ void navi_voice_prepare (NaviVoice *self, const char *text, const char *language
 void navi_voice_say (NaviVoice *self, const char *text, const char *language);
 /* stops what is being said, and drops what is waiting */
 void navi_voice_stop (NaviVoice *self);
+/* the voices looked for again (one was just downloaded) */
+void navi_voice_rescan (NaviVoice *self);
 /* what speaks `language`, for Settings: "Piper voice Lessac", "eSpeak NG voices" or "No voice on this phone" */
 const char *navi_voice_describe (NaviVoice *self, const char *language);
 /* each Piper prompt's timings printed (--stats): how long it took to make, how soon it was heard; never its words */

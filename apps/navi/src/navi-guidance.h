@@ -57,4 +57,18 @@ double navi_guidance_pre_distance (double speed);
  * (`language` as Valhalla's, "de-DE"), for the prompt and the tests */
 char *navi_guidance_alert_text (const char *language, double metres, const char *instruction);
 
+/* Navi's own spoken words, beside Valhalla's narrative */
+typedef enum {
+  NAVI_SAY_ARRIVED,         /* "You have arrived at your destination." */
+  NAVI_SAY_STOP_REACHED,    /* "You have reached your stop." */
+  NAVI_SAY_SPEED_CAMERA,    /* "Speed camera ahead." */
+  NAVI_SAY_RED_LIGHT_CAMERA,
+  NAVI_SAY_SECTION_CONTROL,
+  NAVI_SAY_DANGER_ZONE,
+} NaviSaying;
+/* those words in `language` (Valhalla's tag or two letters), one of the six Navi speaks (navi_route_language), else
+ * in English. They are not the UI's translations: the voice may speak another language than the UI shows, and a
+ * phone has the UI's locale only */
+const char *navi_guidance_saying (NaviSaying what, const char *language);
+
 G_END_DECLS

@@ -335,6 +335,65 @@ test_alert_text (void)
   s = navi_guidance_alert_text ("en-US", 1000, "Turn right.");
   g_assert_cmpstr (s, ==, "In 1 kilometer, turn right.");
   g_free (s);
+  /* the other languages Navi speaks: their words for the distance, the instruction after it in lower case */
+  s = navi_guidance_alert_text ("fr-FR", 410, "Tournez à droite sur Rue de Rivoli.");
+  g_assert_cmpstr (s, ==, "Dans 400 mètres, tournez à droite sur Rue de Rivoli.");
+  g_free (s);
+  s = navi_guidance_alert_text ("fr-FR", 1480, "Prenez la sortie.");
+  g_assert_cmpstr (s, ==, "Dans 1,5 kilomètre, prenez la sortie.");
+  g_free (s);
+  s = navi_guidance_alert_text ("it-IT", 1000, "Svolta a sinistra.");
+  g_assert_cmpstr (s, ==, "Tra 1 chilometro, svolta a sinistra.");
+  g_free (s);
+  s = navi_guidance_alert_text ("es-ES", 2020, "Gire a la izquierda.");
+  g_assert_cmpstr (s, ==, "En 2 kilómetros, gire a la izquierda.");
+  g_free (s);
+  s = navi_guidance_alert_text ("ru-RU", 390, "Поверните направо.");
+  g_assert_cmpstr (s, ==, "Через 400 метров поверните направо.");
+  g_free (s);
+  s = navi_guidance_alert_text ("ru-RU", 2100, "Поверните налево.");
+  g_assert_cmpstr (s, ==, "Через 2 километра поверните налево.");
+  g_free (s);
+  s = navi_guidance_alert_text ("ru-RU", 1000, "Держитесь правее.");
+  g_assert_cmpstr (s, ==, "Через 1 километр держитесь правее.");
+  g_free (s);
+  s = navi_guidance_alert_text ("ru-RU", 5100, "Съезд.");
+  g_assert_cmpstr (s, ==, "Через 5 километров съезд.");
+  g_free (s);
+  /* a language Navi does not speak: English */
+  s = navi_guidance_alert_text ("pl-PL", 200, "Turn left.");
+  g_assert_cmpstr (s, ==, "In 200 meters, turn left.");
+  g_free (s);
+}
+
+static void
+test_spoken_language (void)
+{
+  /* Navi's own words in the voice's language, English for any other */
+  g_assert_cmpstr (navi_guidance_saying (NAVI_SAY_SPEED_CAMERA, "de-DE"), ==, "Blitzer voraus.");
+  g_assert_cmpstr (navi_guidance_saying (NAVI_SAY_ARRIVED, "fr"), ==, "Vous êtes arrivé à destination.");
+  g_assert_cmpstr (navi_guidance_saying (NAVI_SAY_DANGER_ZONE, "ru-RU"), ==, "Впереди опасный участок.");
+  g_assert_cmpstr (navi_guidance_saying (NAVI_SAY_STOP_REACHED, "nl-NL"), ==, "You have reached your stop.");
+  for (NaviSaying w = NAVI_SAY_ARRIVED; w <= NAVI_SAY_DANGER_ZONE; w++)
+    for (guint i = 0; navi_spoken_language_code (i); i++)
+      g_assert_nonnull (navi_guidance_saying (w, navi_spoken_language_code (i)));
+  /* the six, each with Valhalla's tag once chosen */
+  static const char *const tags[] = { "en-US", "de-DE", "fr-FR", "it-IT", "es-ES", "ru-RU" };
+  guint n = 0;
+  for (const char *code; (code = navi_spoken_language_code (n)); n++) {
+    navi_route_set_language (code);
+    g_assert_cmpstr (navi_route_spoken_code (), ==, code);
+    if (n > 0) /* English may be British, as the system's is */
+      g_assert_cmpstr (navi_route_language (), ==, tags[n]);
+  }
+  g_assert_cmpuint (n, ==, 6);
+  g_assert_cmpstr (navi_spoken_language_name ("ru"), ==, "Русский");
+  g_assert_null (navi_spoken_language_name ("pl"));
+  /* none chosen, or one Navi does not speak: the system's (the tests' LANGUAGE is en_US) */
+  navi_route_set_language ("pl");
+  g_assert_cmpstr (navi_route_spoken_code (), ==, "en");
+  navi_route_set_language (NULL);
+  g_assert_cmpstr (navi_route_language (), ==, "en-US");
 }
 
 /* ---- a vector tile made by hand ---- */
@@ -637,6 +696,7 @@ main (int argc, char **argv)
   g_test_add_func ("/navi/guidance/upcoming", test_upcoming);
   g_test_add_func ("/navi/guidance/off-route", test_off_route);
   g_test_add_func ("/navi/guidance/alert-text", test_alert_text);
+  g_test_add_func ("/navi/guidance/spoken-language", test_spoken_language);
   g_test_add_func ("/navi/mvt", test_mvt);
   g_test_add_func ("/navi/search/fold", test_fold);
   g_test_add_func ("/navi/search/photon", test_photon);

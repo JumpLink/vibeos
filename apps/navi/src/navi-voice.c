@@ -252,8 +252,8 @@ push (NaviVoice *self, JobKind kind, const char *model, const char *language, co
 
 /* ---- the voices on the phone ---- */
 
-/* the Piper voice for `language` (short) in vibeos-dictate/voices/LANGUAGE, the user's first: NAME.onnx with
- * NAME.onnx.json beside it, as Agent looks for it; NULL for none */
+/* the Piper voice for `language` (short) where Agent's voices are (dictate_voice_find_piper): a voice downloaded in
+ * either app; NULL for none. The answers are kept until navi_voice_rescan (). */
 static const char *
 find_model (NaviVoice *self, const char *language)
 {
@@ -261,25 +261,7 @@ find_model (NaviVoice *self, const char *language)
   const char *known = g_hash_table_lookup (self->models, language);
   if (known)
     return *known ? known : NULL;
-  g_autoptr (GPtrArray) dirs = g_ptr_array_new_with_free_func (g_free);
-  g_ptr_array_add (dirs, g_build_filename (g_get_user_data_dir (), "vibeos-dictate", "voices", language, NULL));
-  for (const char *const *d = g_get_system_data_dirs (); *d; d++)
-    g_ptr_array_add (dirs, g_build_filename (*d, "vibeos-dictate", "voices", language, NULL));
-  char *found = NULL;
-  for (guint i = 0; i < dirs->len && !found; i++) {
-    g_autoptr (GDir) dir = g_dir_open (dirs->pdata[i], 0, NULL);
-    g_autoptr (GPtrArray) names = g_ptr_array_new_with_free_func (g_free);
-    for (const char *n; dir && (n = g_dir_read_name (dir));)
-      if (g_str_has_suffix (n, ".onnx"))
-        g_ptr_array_add (names, g_strdup (n));
-    g_ptr_array_sort_values (names, (GCompareFunc) g_strcmp0);
-    for (guint j = 0; j < names->len && !found; j++) {
-      g_autofree char *path = g_build_filename (dirs->pdata[i], names->pdata[j], NULL);
-      g_autofree char *config = g_strconcat (path, ".json", NULL);
-      if (g_file_test (config, G_FILE_TEST_IS_REGULAR))
-        found = g_steal_pointer (&path);
-    }
-  }
+  char *found = dictate_voice_find_piper (language);
   g_autofree char *name = found ? g_path_get_basename (found) : NULL;
   g_debug ("voice: %s: %s", language, name ? name : "no Piper voice");
   g_hash_table_insert (self->models, g_strdup (language), found ? found : g_strdup (""));
@@ -287,6 +269,12 @@ find_model (NaviVoice *self, const char *language)
 #else
   return NULL;
 #endif
+}
+
+void
+navi_voice_rescan (NaviVoice *self)
+{
+  g_hash_table_remove_all (self->models);
 }
 
 /* ---- Piper's prompts, played ---- */

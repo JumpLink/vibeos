@@ -7,3 +7,6 @@ src/navi-panels.c
 src/navi-plan.c
 src/navi-voice.c
 src/navi-window.c
+# Agent's download dialogs, built into Navi for its voices (the meson option voice_src)
+../dictate/src/dictate-download-dialog.c
+../dictate/src/dictate-download.c

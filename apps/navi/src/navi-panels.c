@@ -18,6 +18,9 @@
 #ifdef HAVE_DICTATION
 #include "dictate-engine.h"
 #include "dictate-models.h"
+#ifdef HAVE_PIPER
+#include "dictate-download-dialog.h"
+#endif
 
 #include <gst/gst.h>
 #endif
@@ -1296,7 +1299,10 @@ typedef struct {
   NaviPanels *p;
   GtkWidget *sheet;
   GtkWidget *dark_row, *view_row, *voice_row, *home_row, *work_row, *speeding_row, *vehicle_row, *units_row;
+  GtkWidget *language_row;
 } SettingsPage;
+
+static GtkWidget *settings_sheet; /* weak: the Settings sheet while it is open */
 
 static const char *
 dark_name (NaviDarkMode m)
@@ -1371,6 +1377,8 @@ settings_refresh (SettingsPage *s)
                                : st->view == NAVI_VIEW_2D ? _("Flat, always")
                                                           : _("Flat while browsing, 3D while driving"));
   vibeos_list_row_set_value (VIBEOS_LIST_ROW (s->voice_row), voice_name (st->voice));
+  vibeos_list_row_set_summary (VIBEOS_LIST_ROW (s->voice_row), navi_voice_describe (s->p->voice, navi_route_language ()));
+  vibeos_list_row_set_value (VIBEOS_LIST_ROW (s->language_row), navi_spoken_language_name (navi_route_spoken_code ()));
   vibeos_list_row_set_value (VIBEOS_LIST_ROW (s->speeding_row), speeding_name (st->speeding));
   vibeos_list_row_set_value (VIBEOS_LIST_ROW (s->vehicle_row), vehicle_name (st->vehicle));
   vibeos_list_row_set_value (VIBEOS_LIST_ROW (s->units_row), units_name (st->units));
@@ -1475,6 +1483,65 @@ voice_clicked (GtkWidget *row, SettingsPage *s)
                 (const char *(*) (int)) voice_name, 3);
 }
 
+/* The voice's language: Valhalla's narrative, the voice and Navi's own words in it from the next route on. Its voice
+ * downloaded first when it is not on the phone (Agent's, dictate-download-dialog.h: the same voices, in the same
+ * place), or the language stays as it was. */
+static void
+voice_language_ready (const char *language, gpointer data)
+{
+  NaviPanels *p = data;
+  NaviSettings *st = p->navi->settings;
+  g_free (st->voice_language);
+  st->voice_language = g_strdup (language);
+  navi_settings_save (st);
+  navi_route_set_language (language);
+  navi_voice_rescan (p->voice);
+  g_message ("voice: speaking %s", language);
+  SettingsPage *s = settings_sheet ? g_object_get_data (G_OBJECT (settings_sheet), "navi-settings") : NULL;
+  if (s) {
+    settings_refresh (s);
+    vibeos_sheet_back (VIBEOS_SHEET (s->sheet));
+  }
+}
+
+static void
+language_chosen (GtkWidget *row, SettingsPage *s)
+{
+  const char *code = g_object_get_data (G_OBJECT (row), "navi-language");
+#ifdef HAVE_PIPER
+  dictate_download_ensure_voice (s->p->navi->win, code, "Navi", voice_language_ready, s->p);
+#else
+  voice_language_ready (code, s->p);
+#endif
+}
+
+static void
+language_clicked (GtkWidget *row, SettingsPage *s)
+{
+  GtkWidget *list = vibeos_card_list_new ();
+  vibeos_card_list_set_margins (VIBEOS_CARD_LIST (list), 8, 16);
+  const char *now = navi_route_spoken_code ();
+  const char *code;
+  for (guint i = 0; (code = navi_spoken_language_code (i)); i++) {
+#ifdef HAVE_PIPER
+    /* what is not on the phone yet: "60.3 MB to download" */
+    g_autofree char *note = dictate_download_voice_note (code);
+#else
+    const char *note = NULL;
+#endif
+    GtkWidget *item = vibeos_list_row_new (navi_spoken_language_name (code), note);
+    if (!strcmp (code, now)) {
+      GtkWidget *check = image_new ("object-select-symbolic", 20);
+      gtk_widget_set_can_target (check, FALSE);
+      vibeos_list_row_set_end_widget (VIBEOS_LIST_ROW (item), check);
+    }
+    g_object_set_data (G_OBJECT (item), "navi-language", (gpointer) code);
+    g_signal_connect (item, "clicked", G_CALLBACK (language_chosen), s);
+    vibeos_card_list_append (VIBEOS_CARD_LIST (list), item);
+  }
+  vibeos_sheet_push (VIBEOS_SHEET (s->sheet), _("Voice language"), list);
+}
+
 static void
 switch_changed (GObject *sw, GParamSpec *pspec, SettingsPage *s)
 {
@@ -1530,6 +1597,7 @@ open_settings (gpointer data)
   s->sheet = vibeos_sheet_new (_("Settings"));
   vibeos_sheet_set_full_height (VIBEOS_SHEET (s->sheet), TRUE);
   g_object_set_data_full (G_OBJECT (s->sheet), "navi-settings", s, g_free);
+  g_set_weak_pointer (&settings_sheet, s->sheet);
   GtkWidget *list = vibeos_card_list_new ();
   vibeos_card_list_set_margins (VIBEOS_CARD_LIST (list), 8, 24);
   vibeos_card_list_add_group (VIBEOS_CARD_LIST (list), _("Map display"));
@@ -1576,6 +1644,9 @@ open_settings (gpointer data)
   s->voice_row = vibeos_list_row_new (_("Spoken directions"), navi_voice_describe (p->voice, navi_route_language ()));
   g_signal_connect (s->voice_row, "clicked", G_CALLBACK (voice_clicked), s);
   vibeos_card_list_append (VIBEOS_CARD_LIST (list), s->voice_row);
+  s->language_row = vibeos_list_row_new (_("Voice language"), NULL);
+  g_signal_connect (s->language_row, "clicked", G_CALLBACK (language_clicked), s);
+  vibeos_card_list_append (VIBEOS_CARD_LIST (list), s->language_row);
   vibeos_card_list_add_group (VIBEOS_CARD_LIST (list), _("Alerts"));
   GtkWidget *cams = vibeos_list_row_new (_("Speed camera alerts"),
                                          _("Where the law allows them: never in Switzerland, only danger zones in "
@@ -2374,6 +2445,10 @@ navi_panels_new (Navi *n)
                             G_DBUS_PROXY_FLAGS_DO_NOT_CONNECT_SIGNALS, NULL, "vibeos.Shell", "/vibeos/Shell",
                             "vibeos.Shell", p->shell_cancel, shell_ready, p);
   vibeos_css_load_string (CSS, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
+#ifdef HAVE_PIPER
+  /* Agent's download dialogs (Voice language) look as they do in Agent */
+  vibeos_css_load_resource ("/vibeos/Navi/dictate.css", GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
+#endif
 
   p->stack = gtk_stack_new ();
   gtk_stack_set_vhomogeneous (GTK_STACK (p->stack), FALSE);
@@ -2685,7 +2760,7 @@ navi_panels_set_mode (NaviPanels *p, NaviMode mode)
     const char *side = r && r->n_maneuvers ? destination_side (r->maneuvers[r->n_maneuvers - 1].type) : NULL;
     set_text (p->arrived_side, side);
     gtk_widget_set_visible (p->arrived_side, side != NULL);
-    navi_panels_say (p, _("You have arrived at your destination."), TRUE);
+    navi_panels_say (p, navi_guidance_saying (NAVI_SAY_ARRIVED, navi_route_language ()), TRUE);
   }
   update_floating (p);
   /* again once the sheet has its new height */

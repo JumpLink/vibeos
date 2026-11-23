@@ -237,10 +237,11 @@ alert_camera (NaviAlerts *a, const NaviSpeedCam *cam, double ahead, gboolean fir
   a->showing = TRUE;
   if (!first)
     return;
-  g_autofree char *words = cam->kind == NAVI_CAM_RED_LIGHT ? g_strdup (_("Red light camera ahead."))
-                           : cam->kind == NAVI_CAM_SECTION ? g_strdup (_("Section control ahead."))
-                                                           : g_strdup (_("Speed camera ahead."));
-  navi_panels_say_alert (a->n->panels, words);
+  /* in the voice's language, which may not be the UI's */
+  NaviSaying words = cam->kind == NAVI_CAM_RED_LIGHT ? NAVI_SAY_RED_LIGHT_CAMERA
+                     : cam->kind == NAVI_CAM_SECTION ? NAVI_SAY_SECTION_CONTROL
+                                                     : NAVI_SAY_SPEED_CAMERA;
+  navi_panels_say_alert (a->n->panels, navi_guidance_saying (words, navi_route_language ()));
 }
 
 static void
@@ -281,7 +282,7 @@ check_cameras (NaviAlerts *a, const NaviFix *fix, double s)
     navi_panels_show_alert (a->n->panels, _("Danger zone"), NULL);
     a->showing = TRUE;
     if (first)
-      navi_panels_say_alert (a->n->panels, _("Danger zone ahead."));
+      navi_panels_say_alert (a->n->panels, navi_guidance_saying (NAVI_SAY_DANGER_ZONE, navi_route_language ()));
     a->alerted = a->next_cam + 1;
     return;
   }
@@ -381,7 +382,7 @@ check_cameras_around (NaviAlerts *a, const NaviFix *fix, gint64 now)
         g_hash_table_add (a->spoken, g_memdup2 (&key, sizeof key));
         if (!st->cameras_notice_seen)
           navi_panels_camera_notice (a->n->panels);
-        navi_panels_say_alert (a->n->panels, _("Danger zone ahead."));
+        navi_panels_say_alert (a->n->panels, navi_guidance_saying (NAVI_SAY_DANGER_ZONE, navi_route_language ()));
       }
       a->zone_until = now + ZONE_LINGER_US;
     }

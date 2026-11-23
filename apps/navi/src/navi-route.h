@@ -151,7 +151,18 @@ void navi_route_request_async (const NaviRouteRequest *request, GCancellable *ca
 /* the routes, best first (a GPtrArray of NaviRoute), or NULL with the error */
 GPtrArray *navi_route_request_finish (GAsyncResult *result, GError **error);
 
-/* Valhalla's language for the UI's: "de-DE" for German, "en-US" for English, ... */
+/* The language Navi speaks in: its voice, Valhalla's narrative and Navi's own spoken words. One of six (English,
+ * German, French, Italian, Spanish, Russian): the one chosen in Settings, else the system's first of them, else
+ * English. */
+/* the i-th of the six, two letters ("de"); NULL past the last */
+const char *navi_spoken_language_code (guint i);
+/* its name for itself ("Deutsch"); NULL for a code that is none of them */
+const char *navi_spoken_language_name (const char *code);
+/* the one chosen (`code` one of the six), or NULL for the system's */
+void navi_route_set_language (const char *code);
+/* the one spoken, two letters: "de" */
+const char *navi_route_spoken_code (void);
+/* the same as Valhalla's tag: "de-DE" ("en-GB" where the system's English is British) */
 const char *navi_route_language (void);
 
 /* a debug build prints these to its console; a release build never says where anyone is or goes */

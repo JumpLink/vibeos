@@ -1,6 +1,7 @@
 /* navi-settings: see navi-settings.h. */
 #include "navi-settings.h"
 #include "navi-geo.h"
+#include "navi-route.h"
 
 #define RECENT_MAX 20
 #define SAVED_MAX  200
@@ -89,6 +90,9 @@ navi_settings_load (void)
   if (!e)
     s->voice = CLAMP (v, 0, NAVI_VOICE_OFF);
   g_clear_error (&e);
+  s->voice_language = g_key_file_get_string (kf, "voice", "language", NULL);
+  if (!navi_spoken_language_name (s->voice_language))
+    g_clear_pointer (&s->voice_language, g_free);
   b = g_key_file_get_boolean (kf, "alerts", "speed-cameras", &e);
   if (!e)
     s->cameras = b;
@@ -144,6 +148,8 @@ navi_settings_flush (NaviSettings *s)
     g_key_file_set_double (kf, "map", "last-lng", s->last_lng);
   }
   g_key_file_set_integer (kf, "voice", "mode", s->voice);
+  if (s->voice_language)
+    g_key_file_set_string (kf, "voice", "language", s->voice_language);
   g_key_file_set_boolean (kf, "alerts", "speed-cameras", s->cameras);
   g_key_file_set_boolean (kf, "alerts", "camera-notice-seen", s->cameras_notice_seen);
   g_key_file_set_integer (kf, "alerts", "speeding", s->speeding);

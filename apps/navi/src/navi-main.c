@@ -251,6 +251,8 @@ activate (GtkApplication *app, gpointer data)
   Navi *n = the_navi = g_new0 (Navi, 1);
   n->app = app;
   n->settings = navi_settings_load ();
+  /* the voice, the route's narrative and Navi's own words in the language chosen in Settings */
+  navi_route_set_language (n->settings->voice_language);
   n->data_dir = g_strdup (g_getenv ("NAVI_DATA_DIR") ? g_getenv ("NAVI_DATA_DIR") : PKGDATADIR);
   n->stats = g_getenv ("NAVI_STATS") != NULL;
   n->simulate = opts.simulate;

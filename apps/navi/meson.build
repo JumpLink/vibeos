@@ -5,6 +5,7 @@ add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers'
 
 fs = import('fs')
 i18n = import('i18n')
+gnome = import('gnome')
 
 # MapLibre Native, built and staged by maplibre/build-maplibre.sh: static archives, headers, and the
 # definitions and link line its core was built with
@@ -117,6 +118,17 @@ if voice_src != ''
                    meson.get_compiler('c').find_library('dl')])
   voice_deps += declare_dependency(link_with: dictation)
   app_args += '-DHAVE_DICTATION'
+  # a voice not on the phone, downloaded as Agent downloads it (Settings' Voice language): Agent's packs, its dialogs
+  # and its stylesheet, into its voices, where either app finds it. Built without Agent's conversation.
+  voice_download = static_library('navi-voice-download',
+    files(voice_src / 'dictate-download.c', voice_src / 'dictate-download-dialog.c', voice_src / 'dictate-pk.c',
+          voice_src / 'dictate-package.c'),
+    c_args: ['-DDICTATE_WITHOUT_TALK', '-I' + voice_src],
+    dependencies: [dependency('gtk4'), dependency('vibeos-1'), dependency('gio-2.0'), dependency('json-glib-1.0'),
+                   dependency('libsoup-3.0'), dependency('libarchive')])
+  voice_deps += declare_dependency(link_with: voice_download, dependencies: dependency('libarchive'))
+  voice_sources += gnome.compile_resources('navi-voice-resources', 'data/navi-voice.gresource.xml',
+                                           source_dir: voice_src, c_name: 'navi_voice_resources')
   # a test's: TEXT spoken into a WAV file, for the microphone's test input (DICTATE_TEST_INPUT)
   executable('navi-say', 'tests/navi-say.c', voice_sources, c_args: ['-I' + voice_src],
              dependencies: [dependency('gio-2.0'), dependency('json-glib-1.0'), meson.get_compiler('c').find_library('m')] +

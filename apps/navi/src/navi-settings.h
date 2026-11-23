@@ -55,6 +55,7 @@ typedef struct {
   gboolean north_up;
   gboolean auto_zoom;
   NaviVoiceMode voice;
+  char *voice_language;         /* what the voice speaks, two letters (navi_route_set_language); NULL: the system's */
   gboolean cameras;             /* speed camera alerts (and icons) where the country allows them; on by default */
   gboolean cameras_notice_seen; /* the one-time notice of where they are not allowed was shown */
   NaviSpeeding speeding;

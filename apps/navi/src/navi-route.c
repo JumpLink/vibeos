@@ -386,36 +386,77 @@ navi_http_session (void)
   return G_OBJECT (session);
 }
 
+/* the languages Navi speaks: Valhalla's narrative in each, a Piper voice for each (Agent's), Navi's own words in each
+ * (navi_guidance_saying) */
+static const struct { const char *code, *tag, *name; } SPOKEN[] = {
+  { "en", "en-US", "English" }, { "de", "de-DE", "Deutsch" }, { "fr", "fr-FR", "Français" },
+  { "it", "it-IT", "Italiano" }, { "es", "es-ES", "Español" }, { "ru", "ru-RU", "Русский" },
+};
+static char *spoken_chosen; /* navi_route_set_language's: a code of SPOKEN, or NULL */
+
+const char *
+navi_spoken_language_code (guint i)
+{
+  return i < G_N_ELEMENTS (SPOKEN) ? SPOKEN[i].code : NULL;
+}
+
+const char *
+navi_spoken_language_name (const char *code)
+{
+  for (guint i = 0; code && i < G_N_ELEMENTS (SPOKEN); i++)
+    if (!strcmp (SPOKEN[i].code, code))
+      return SPOKEN[i].name;
+  return NULL;
+}
+
+void
+navi_route_set_language (const char *code)
+{
+  g_clear_pointer (&spoken_chosen, g_free);
+  if (navi_spoken_language_name (code))
+    spoken_chosen = g_strdup (code);
+}
+
+/* the system's first language that Navi speaks; `tag`: as the system has it ("en_GB.UTF-8"), else NULL */
+static const char *
+system_spoken (char **tag)
+{
+  const char *const *names = g_get_language_names ();
+  for (guint i = 0; names[i]; i++) {
+    if (!strcmp (names[i], "C") || !strcmp (names[i], "POSIX"))
+      continue;
+    for (guint k = 0; k < G_N_ELEMENTS (SPOKEN); k++)
+      if (!g_ascii_strncasecmp (names[i], SPOKEN[k].code, 2) && (names[i][2] == '\0' || names[i][2] == '_' ||
+                                                                  names[i][2] == '.' || names[i][2] == '@')) {
+        if (tag)
+          *tag = g_strdup (names[i]);
+        return SPOKEN[k].code;
+      }
+  }
+  return NULL;
+}
+
+const char *
+navi_route_spoken_code (void)
+{
+  const char *code = spoken_chosen ? spoken_chosen : system_spoken (NULL);
+  return code ? code : "en";
+}
+
 const char *
 navi_route_language (void)
 {
-  /* the languages Valhalla's narrative has (valhalla/locales), by the UI's first language */
-  static const char *const known[] = {
-    "bg-BG", "ca-ES", "cs-CZ", "da-DK", "de-DE", "el-GR", "en-GB", "en-US", "eo", "es-ES", "et-EE", "fi-FI",
-    "fr-FR", "hi-IN", "hu-HU", "it-IT", "ja-JP", "nb-NO", "nl-NL", "pl-PL", "pt-BR", "pt-PT", "ro-RO", "ru-RU",
-    "sk-SK", "sl-SI", "sv-SE", "tr-TR", "uk-UA", NULL
-  };
-  static char *chosen;
-  if (chosen)
-    return chosen;
-  const char *const *names = g_get_language_names ();
-  for (guint i = 0; names[i] && !chosen; i++) {
-    if (!strcmp (names[i], "C") || !strcmp (names[i], "POSIX"))
-      continue;
-    g_autofree char *tag = g_strdup (names[i]);
-    g_strdelimit (tag, ".@", '\0');
-    g_strdelimit (tag, "_", '-');
-    /* the exact language and country first, then the language anywhere */
-    for (guint k = 0; known[k] && !chosen; k++)
-      if (!g_ascii_strcasecmp (known[k], tag))
-        chosen = g_strdup (known[k]);
-    for (guint k = 0; known[k] && !chosen; k++)
-      if (!g_ascii_strncasecmp (known[k], tag, 2) && (tag[2] == '\0' || tag[2] == '-'))
-        chosen = g_strdup (known[k]);
+  const char *code = navi_route_spoken_code ();
+  /* British English where the system's English is (Valhalla's en-GB: "metres", "motorway") */
+  if (!strcmp (code, "en")) {
+    g_autofree char *tag = NULL;
+    if (!g_strcmp0 (system_spoken (&tag), "en") && tag && !g_ascii_strncasecmp (tag, "en_GB", 5))
+      return "en-GB";
   }
-  if (!chosen)
-    chosen = g_strdup ("en-US");
-  return chosen;
+  for (guint k = 0; k < G_N_ELEMENTS (SPOKEN); k++)
+    if (!strcmp (SPOKEN[k].code, code))
+      return SPOKEN[k].tag;
+  return "en-US";
 }
 
 typedef struct {
