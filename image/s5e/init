@@ -125,20 +125,39 @@ part() {
 		grep -qx "PARTNAME=$1" "$u" && { echo /dev/$(basename $(dirname $u)); return; }
 	done
 }
-# Where rootfs.img lies on userdata. The sideload zip's installer writes the list
-# into the last 512 KiB of the recovery partition, after a "GTS4LV-EXTENTS 1"
-# line and up to an "END" line; a build for one tablet carries it in /etc.
+# Where rootfs.img lies on userdata: the list the device zip's installer writes into the last 512 KiB of the
+# recovery partition, after a "GTS4LV-EXTENTS 1" line and up to an "END" line. That list only, and only whole:
+# lines of "logical physical length flags" in bytes, contiguous from 0, in 512-byte sectors, all inside userdata
+# ($U). A list from anywhere else (an /etc copy, an earlier install) maps blocks that a new rootfs.img freed and
+# Android's files may hold by now: mounting or checking that writes into them. Prints the list's path, or
+# nothing.
 extents() {
 	r=$(part recovery)
-	if [ -n "$r" ]; then
-		n=$(cat /sys/class/block/${r#/dev/}/size)
-		dd if=$r bs=512 skip=$((n - 1024)) count=1024 2>/dev/null | tr -d '\000' > /run/tail.txt
-		if [ "$(head -n1 /run/tail.txt)" = "GTS4LV-EXTENTS 1" ] && grep -qx END /run/tail.txt; then
-			sed -n '2,/^END$/p' /run/tail.txt | grep -vx END > /run/rootfs-extents.txt
-			echo /run/rootfs-extents.txt; return
-		fi
+	[ -n "$r" ] || { log "mobian: no recovery partition, so no extent list"; return; }
+	n=$(cat /sys/class/block/${r#/dev/}/size)
+	dd if=$r bs=512 skip=$((n - 1024)) count=1024 2>/dev/null | tr -d '\000' > /run/tail.txt
+	if [ "$(head -n1 /run/tail.txt)" != "GTS4LV-EXTENTS 1" ] || ! grep -qx END /run/tail.txt; then
+		log "mobian: no extent list at the end of $r"; return
 	fi
-	echo /etc/rootfs-extents.txt
+	sed -n '2,/^END$/p' /run/tail.txt | grep -vx END > /run/rootfs-extents.txt
+	awk -v usz=$(( $(cat /sys/class/block/${U#/dev/}/size) * 512 )) '
+		BEGIN { at = 0; n = 0 }
+		NF != 4 || $1 !~ /^[0-9]+$/ || $2 !~ /^[0-9]+$/ || $3 !~ /^[0-9]+$/ { bad = 1; exit }
+		$1 != at || $3 == 0 || $2 % 512 || $3 % 512 || $2 + $3 > usz { bad = 1; exit }
+		{ at = $1 + $3; n++ }
+		END { exit bad || !n }' /run/rootfs-extents.txt || {
+		log "mobian: the extent list at the end of $r is not whole, or runs outside userdata"; return; }
+	echo /run/rootfs-extents.txt
+}
+# fits DEV BYTES: DEV starts with an ext4 superblock whose file system is no bigger than BYTES. What a list maps
+# once its blocks are something else holds neither, as a rule. (Superblock at 1024: s_blocks_count_lo +4,
+# s_log_block_size +24, s_magic +56, s_feature_incompat +96 (64bit 0x80), s_blocks_count_hi +336.)
+u32() { dd if=$1 bs=1 skip=$2 count=4 2>/dev/null | od -An -tu4 | tr -d ' \n'; }
+fits() {
+	[ "$(dd if=$1 bs=1 skip=1080 count=2 2>/dev/null | od -An -tx1 | tr -d ' \n')" = 53ef ] || return 1
+	lo=$(u32 $1 1028) lbs=$(u32 $1 1048) hi=0
+	[ $(( $(u32 $1 1120) & 128 )) = 0 ] || hi=$(u32 $1 1360)
+	[ -n "$lo" ] && [ -n "$lbs" ] && [ "$lbs" -le 6 ] && [ $(( (hi * 4294967296 + lo) * (1024 << lbs) )) -le $2 ]
 }
 # The ext4 volume label of a partition (superblock at 1024, s_volume_name at +120).
 fslabel() { dd if=$1 bs=1 skip=1144 count=16 2>/dev/null | tr -d '\000'; }
@@ -155,10 +174,17 @@ mobian() {
 		[ $r -le 1 ] || log "mobian: e2fsck -p $U exited $r (/run/e2fsck.log)"
 		echo userdata > /run/gts4lv-root
 	else
+		# rootfs.img inside Android's userdata, mapped by its extent list. No list that holds, or a mapping
+		# without the file system on it: nothing is mounted or checked, the tablet stays here.
+		[ -n "$U" ] || { log "mobian: no userdata partition"; return 1; }
 		X=$(extents)
+		[ -n "$X" ] || { log "mobian: no extent list for rootfs.img that holds: install the device zip (sideload it) again"; return 1; }
 		[ -b /dev/dm-0 ] || dmlinear mobian $U $X > /run/mobian.dev || {
 			log "mobian: dmlinear failed (userdata: '$U', extents $X)"; return 1; }
 		ROOTDEV=/dev/dm-0
+		fits $ROOTDEV $(awk '{ s += $3 } END { printf "%.0f", s }' $X) || {
+			log "mobian: the extent list maps no rootfs.img (no ext4 file system that fits it): install the device zip (sideload it) again"
+			return 1; }
 		# Android stays beside it: the system's dual-boot parts (keep Linux the default boot, the
 		# "Android" app) start on this marker, an executable file so a .desktop TryExec can test it
 		echo image > /run/gts4lv-root
@@ -166,7 +192,8 @@ mobian() {
 	fi
 	mkdir -p /mnt/root
 	# A root that does not mount is checked and repaired (e2fsck -y), then mounted again; failing that,
-	# Mobian boots from it read-only. Only a root that mounts in no way at all keeps the tablet here.
+	# Mobian boots from it read-only. Only a root that mounts in no way at all keeps the tablet here. (The
+	# image's root gets here only through a list that held and a file system that fits its mapping.)
 	if ! mount -t ext4 -o rw,noatime $ROOTDEV /mnt/root 2>/dev/null; then
 		log "mobian: cannot mount $ROOTDEV, running e2fsck -fy (log in /run/e2fsck-y.log)"
 		e2fsck -fy $ROOTDEV > /run/e2fsck-y.log 2>&1
