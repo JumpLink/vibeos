@@ -267,7 +267,11 @@ check() {
 # 6T's payload ships them as files, and its device zip stopped at "not under '/tmp/vibeos-mnt'"
 unpack() {
 	tar -tvf "$1" > $T-tarlist || return 1
-	sed -n 's/^-[^ ]*  *[^ ]*  *[^ ]*  *[^ ]*  *[^ ]*  *//p' $T-tarlist | while IFS= read -r f; do
+	# every file and symlink of the archive: an old symlink there goes first. A file must not be written through
+	# one, and toybox tar (0.8.12) refuses an absolute symlink where one is already ("/dev/null not under ..."):
+	# the second run of a device zip over its own masks and .wants links stopped there. Directories are left
+	sed -n -e 's/^-[^ ]*  *[^ ]*  *[^ ]*  *[^ ]*  *[^ ]*  *//p' \
+		-e 's/^l[^ ]*  *[^ ]*  *[^ ]*  *[^ ]*  *[^ ]*  *\(.*\) -> .*$/\1/p' $T-tarlist | while IFS= read -r f; do
 		if [ -L "$2/$f" ]; then rm -f "$2/$f"; fi
 	done
 	tar -C "$2" -xf "$1"
