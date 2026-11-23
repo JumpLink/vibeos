@@ -45,6 +45,9 @@ Build-Depends: debhelper-compat (= 13),
                libsoup-3.0-dev,
                libgnutls28-dev (>= 3.8.2),
                libappstream-dev (>= 1.0),
+               libespeak-ng-dev,
+               libllama-dev,
+               libonnxruntime-dev,
                dbus-daemon <!nocheck>,
                python3 <!nocheck>,
                node-typescript (>= 5.0) <!nocheck>,
@@ -585,6 +588,11 @@ Description: dictation for VibeOS
  anywhere. The document is plain text, edited and copied as any other. It
  hears English, German, Spanish, French, Italian and Russian, the language
  chosen in its app bar.
+ .
+ Agent, in the same package, is a spoken conversation: it listens, answers
+ from a language model (VibeOS's server, or a GGUF file on the phone through
+ llama.cpp) and speaks the answer with a Piper voice, downloaded with the
+ language when it is chosen.
  .
  The recognisers are not part of VibeOS: vibeos-dictate loads Moonshine's
  (English, German, Spanish) and Vosk's (French, Italian, Russian) libraries
