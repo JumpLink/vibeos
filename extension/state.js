@@ -16,6 +16,7 @@ import {BroadbandModem} from 'resource:///org/gnome/shell/misc/modemManager.js';
 import {getRfkillManager} from 'resource:///org/gnome/shell/ui/status/rfkill.js';
 
 import {Brightness} from './brightness.js';
+import {PrivacySwitches} from './privacy.js';
 import {setUserOrientationLock, userOrientationLock} from './rotation.js';
 
 Gio._promisify(NM.Client, 'new_async');
@@ -197,6 +198,8 @@ export const SystemState = GObject.registerClass({
         this.airplane = false;
         this.torch = null;              // null: no torch LED
         this._torch = findTorch();
+        // Settings' Microphone and Camera switches, for every app (privacy.js): true while one is off
+        this._privacy = new PrivacySwitches(() => this._changed());
 
         this._cancellable = new Gio.Cancellable();
         this._changedId = 0;
@@ -674,7 +677,16 @@ export const SystemState = GObject.registerClass({
             scale.value = v;
     }
 
+    get micOff() {
+        return this._privacy.micOff;
+    }
+
+    get cameraOff() {
+        return this._privacy.cameraOff;
+    }
+
     destroy() {
+        this._privacy.destroy();
         this._cancellable.cancel();
         if (this._changedId)
             global.compositor.get_laters().remove(this._changedId);
