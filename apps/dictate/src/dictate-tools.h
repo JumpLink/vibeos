@@ -29,14 +29,16 @@ typedef struct {
   void (*propose) (DictateAction *action, gpointer data);       /* takes a reference */
   gpointer data;
   gboolean private_speaker;     /* private mode, the answer on the speaker: no texts of messages or notifications */
+  gboolean locked;              /* the phone is locked (Agent asked by holding the power key): reading tools only */
 } DictateToolContext;
 
 /* the areas that are on, as DictateToolContext.areas, from Agent's settings */
 guint32      dictate_tools_areas       (GSettings *settings);
 /* whether `area` (an access-* key) has tools */
 gboolean     dictate_tools_area_has_tools (const char *area);
-/* the tools of the areas in `areas`, as an OpenAI "tools" JSON array; NULL when there are none */
-char        *dictate_tools_definitions (guint32 areas);
+/* the tools of the areas in `areas`, as an OpenAI "tools" JSON array; NULL when there are none. `locked`: only the
+ * ones that read (tier 0), for a locked phone */
+char        *dictate_tools_definitions (guint32 areas, gboolean locked);
 /* the line shown while `name` runs, such as "Checking your calendar…" (translated); NULL for no such tool */
 const char  *dictate_tools_status      (const char *name);
 /* runs `name` with `arguments` (JSON), at most `timeout_ms`: its result for the model, as JSON (an error is

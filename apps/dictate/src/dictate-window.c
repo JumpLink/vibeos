@@ -84,6 +84,8 @@ typedef struct {
   guint ringing;                /* the call being announced, while it rings */
   gboolean announcing;          /* the announcement is being said: then Agent listens for the answer */
   gboolean answer_listening;    /* and listens for it */
+  gboolean held;                /* listening while the power key is held (dictate_window_hold) */
+  gboolean hold_turn;           /* the last turn was the power key's: no listening again after the reply */
   GCancellable *caller;         /* the caller being looked up */
 } Window;
 
@@ -566,8 +568,9 @@ talk_send (Window *self)
   dictate_talk_ask (self->talk, dictate_engine_get_language (self->engine), said);
 }
 
+/* listening: for a turn whose end is found in what is said (`turns`), or until it is stopped (the power key held) */
 static void
-talk_listen (Window *self)
+talk_listen_for (Window *self, gboolean turns)
 {
   g_autofree char *reason = NULL;
 
@@ -587,8 +590,15 @@ talk_listen (Window *self)
     self->mine = talk_bubble (self, TRUE, "…");
   /* the cue plays while the microphone opens: it is over before the first words are heard */
   dictate_cue_play (self->settings, DICTATE_CUE_LISTENING);
-  dictate_engine_set_turns (self->engine, TRUE);
+  self->hold_turn = !turns;
+  dictate_engine_set_turns (self->engine, turns);
   dictate_engine_start (self->engine);
+}
+
+static void
+talk_listen (Window *self)
+{
+  talk_listen_for (self, TRUE);
 }
 
 static void
@@ -748,7 +758,7 @@ on_talk_state (DictateTalk *talk, Window *self)
           self->answer_listening = TRUE;
         }
       /* spoken to its end: the user's turn (whose cue says it is over) */
-      else if (was == DICTATE_TALK_SPEAKING && !self->stopping_reply && self->talking &&
+      else if (was == DICTATE_TALK_SPEAKING && !self->stopping_reply && self->talking && !self->hold_turn &&
           g_settings_get_boolean (self->settings, "talk-listen-again") &&
           dictate_engine_get_state (self->engine) == DICTATE_IDLE && gtk_widget_get_mapped (self->window))
         talk_listen (self);
@@ -962,17 +972,66 @@ dictate_window_toggle_dictation (GtkWidget *window)
   on_mic (DICTATE_MIC (self->mic), self);
 }
 
+/* --- the power key held (dictate-main.c "hold") */
+
+void
+dictate_window_hold (GtkWidget *window, gboolean held, gboolean locked)
+{
+  Window *self = g_object_get_data (G_OBJECT (window), "dictate-window");
+  DictateState state;
+
+  if (!self || !self->talk)
+    return;
+  state = dictate_engine_get_state (self->engine);
+  if (held)
+    {
+      g_message ("window: the power key is held: listening%s", locked ? ", the phone locked" : "");
+      dictate_talk_set_locked (self->talk, locked);
+      /* Agent stops speaking at once: the user wants to speak */
+      if (dictate_talk_get_state (self->talk) != DICTATE_TALK_IDLE)
+        {
+          self->stopping_reply = TRUE;
+          dictate_talk_stop (self->talk);
+          self->stopping_reply = FALSE;
+        }
+      self->held = TRUE;
+      self->drop_when_idle = FALSE;
+      if (state == DICTATE_IDLE)
+        talk_listen_for (self, FALSE);
+      else
+        self->hold_turn = TRUE;
+    }
+  else if (self->held)
+    {
+      /* let go: what was said goes to the model */
+      self->held = FALSE;
+      if (state == DICTATE_STARTING || state == DICTATE_LISTENING)
+        dictate_engine_stop (self->engine);
+    }
+  show_state (self);
+  maybe_close (self);
+}
+
+void
+dictate_window_unlocked (GtkWidget *window)
+{
+  Window *self = g_object_get_data (G_OBJECT (window), "dictate-window");
+
+  if (self && self->talk)
+    dictate_talk_set_locked (self->talk, FALSE);
+}
+
 /* --- calls (dictate-calls.h): the app tells the window of them */
 
-/* a window made only to announce a call, never shown: it goes once the call has stopped ringing and all is quiet,
- * and with it the models it loaded */
+/* a window made only to announce a call, or for the power key held on a locked phone, never shown: it goes once the
+ * call has stopped ringing (the key is let go) and all is quiet, and with it the models it loaded */
 static gboolean
 close_idle (gpointer data)
 {
   GtkWidget *window = data;
   Window *self = g_object_get_data (G_OBJECT (window), "dictate-window");
 
-  if (self && !gtk_widget_get_visible (window) && !self->ringing && !self->announcing
+  if (self && !gtk_widget_get_visible (window) && !self->ringing && !self->announcing && !self->held
       && dictate_engine_get_state (self->engine) == DICTATE_IDLE
       && dictate_talk_get_state (self->talk) == DICTATE_TALK_IDLE)
     gtk_window_destroy (GTK_WINDOW (window));
@@ -994,7 +1053,7 @@ static void
 caller_thread (GTask *task, gpointer source, gpointer data, GCancellable *cancellable)
 {
   guint64 bits = *(guint64 *) data;
-  DictateToolContext ctx = { (guint32) bits, NULL, NULL, NULL, FALSE };
+  DictateToolContext ctx = { (guint32) bits, NULL, NULL, NULL, FALSE, FALSE };
 
   ctx.private_speaker = (bits & CALLER_PRIVATE) && !dictate_output_headphones (NULL);
 

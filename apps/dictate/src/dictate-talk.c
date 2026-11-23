@@ -70,6 +70,7 @@ typedef struct {
   char *said;                   /* what the user said, as said (`text` may have more before it): for offline */
   gboolean private_mode;        /* talk-private (read on the main thread) */
   gboolean private_speaker;     /* and the answer plays on the speaker (found on the brain's thread) */
+  gboolean locked;              /* the phone is locked: reading tools only (dictate_talk_set_locked) */
 } Job;
 
 struct _DictateTalk {
@@ -97,6 +98,7 @@ struct _DictateTalk {
   guint test_answers;           /* DICTATE_TEST_OUTPUT's files so far */
   GPtrArray *proposals;         /* DictateAction: shown, what became of them not yet told to the model */
   char *context;                /* what goes on (a call ringing), told to the model with each question */
+  gboolean locked;              /* the phone is locked: the questions from now on may only read */
   gboolean disposed;
   /* the brain's thread's */
   DictateBrain *brain;
@@ -862,7 +864,8 @@ static char *
 offline_run (const char *name, const char *arguments, gpointer data)
 {
   Writing *w = data;
-  DictateToolContext ctx = { w->job->areas, w->job->language, talk_propose, w, w->job->private_speaker };
+  DictateToolContext ctx = { w->job->areas, w->job->language, talk_propose, w, w->job->private_speaker,
+                             w->job->locked };
   const char *status = dictate_tools_status (name);
   gint64 t0 = g_get_monotonic_time ();
   char *result;
@@ -896,7 +899,7 @@ answer_offline (DictateTalk *self, Job *job, Writing *w)
 static gboolean
 run_calls (DictateTalk *self, Job *job, Writing *w, GPtrArray *calls, guint *used)
 {
-  DictateToolContext ctx = { job->areas, job->language, talk_propose, w, job->private_speaker };
+  DictateToolContext ctx = { job->areas, job->language, talk_propose, w, job->private_speaker, job->locked };
   gboolean going = TRUE;
 
   for (guint i = 0; i < calls->len; i++)
@@ -987,7 +990,7 @@ answer (DictateTalk *self, Job *job)
   if (!current (self, job->turn))
     goto out;
   if (dictate_brain_has_tools (self->brain))
-    tools = dictate_tools_definitions (job->areas);
+    tools = dictate_tools_definitions (job->areas, job->locked);
   /* no network at all: no use trying the server */
   if (job->remote && job->said && !g_network_monitor_get_network_available (g_network_monitor_get_default ()))
     g_set_error_literal (&error, DICTATE_BRAIN_ERROR, DICTATE_BRAIN_ERROR_OFFLINE, "no network");
@@ -1209,6 +1212,12 @@ dictate_talk_ask (DictateTalk *self, const char *language, const char *text)
   dictate_talk_stop (self);
   before = outcomes (self);
   now = self->context ? g_strdup_printf ("(Now on the phone: %s.)\n", self->context) : NULL;
+  if (self->locked)
+    {
+      g_autofree char *was = g_steal_pointer (&now);
+      now = g_strconcat (was ? was : "", "(The phone is locked: you can only look things up, not change or send "
+                         "anything, until the user unlocks it.)\n", NULL);
+    }
   asked = g_strconcat (before ? before : "", now ? now : "", text, NULL);
   job = job_with_files (self, JOB_ASK, language, asked, &reason);
   if (!job)
@@ -1217,6 +1226,7 @@ dictate_talk_ask (DictateTalk *self, const char *language, const char *text)
       return;
     }
   job->said = g_strdup (text);
+  job->locked = self->locked;
   g_clear_pointer (&self->reply, g_free);
   set_state (self, DICTATE_TALK_THINKING);
   g_async_queue_push (self->jobs, job);
@@ -1238,6 +1248,14 @@ dictate_talk_announce (DictateTalk *self, const char *language, const char *text
   g_clear_pointer (&self->reply, g_free);
   set_state (self, DICTATE_TALK_THINKING);
   g_async_queue_push (self->jobs, job);
+}
+
+void
+dictate_talk_set_locked (DictateTalk *self, gboolean locked)
+{
+  if (self->locked != !!locked)
+    g_message ("talk: the phone is %s", locked ? "locked: reading only" : "unlocked");
+  self->locked = !!locked;
 }
 
 void

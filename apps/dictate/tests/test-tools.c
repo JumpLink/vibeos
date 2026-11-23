@@ -6,6 +6,7 @@
 #include "dictate-access.h"
 #include "dictate-actions.h"
 #include "dictate-tools.h"
+#include "dictate-tools-private.h"
 
 #include <glib/gstdio.h>
 #include <json-glib/json-glib.h>
@@ -26,11 +27,11 @@ areas_without (const char *key)
   return areas;
 }
 
-/* the names of the tools the model is offered */
+/* the names of the tools the model is offered (`locked`: the phone locked) */
 static GPtrArray *
-offered (guint32 areas)
+offered_as (guint32 areas, gboolean locked)
 {
-  g_autofree char *json = dictate_tools_definitions (areas);
+  g_autofree char *json = dictate_tools_definitions (areas, locked);
   g_autoptr (JsonNode) root = json_from_string (json, NULL);
   GPtrArray *names = g_ptr_array_new_with_free_func (g_free);
   JsonArray *tools;
@@ -44,6 +45,12 @@ offered (guint32 areas)
       g_ptr_array_add (names, g_strdup (json_object_get_string_member (function, "name")));
     }
   return names;
+}
+
+static GPtrArray *
+offered (guint32 areas)
+{
+  return offered_as (areas, FALSE);
 }
 
 static gboolean
@@ -108,6 +115,36 @@ test_refused (void)
   g_assert_nonnull (strstr (calls, "No access"));
   g_assert_nonnull (strstr (card, "No access"));
   g_assert_nonnull (strstr (none, "no such tool"));
+}
+
+/* a locked phone (Agent asked by holding the power key): only reading tools are offered, and the others refused */
+static void
+test_locked (void)
+{
+  g_autoptr (GPtrArray) all = offered (areas_without (NULL));
+  g_autoptr (GPtrArray) locked = offered_as (areas_without (NULL), TRUE);
+  DictateToolContext ctx = { .areas = areas_without (NULL), .language = "en", .locked = TRUE };
+  g_autofree char *alarm = dictate_tools_run ("set_alarm", "{\"time\":\"06:30\"}", &ctx, 1000);
+  g_autofree char *card = dictate_tools_run ("propose_message", "{\"to\":\"Anna\",\"text\":\"Hi\"}", &ctx, 1000);
+  g_autofree char *hang = dictate_tools_run ("call_control", "{\"action\":\"hang_up\"}", &ctx, 1000);
+  g_autofree char *undo = dictate_tools_run ("undo_last_action", "{}", &ctx, 1000);
+
+  g_assert_cmpuint (locked->len, <, all->len);
+  g_assert_true (has (locked, "get_time"));
+  g_assert_true (has (locked, "get_messages"));
+  g_assert_true (has (locked, "get_action_log"));
+  g_assert_false (has (locked, "set_alarm"));
+  g_assert_false (has (locked, "propose_message"));
+  g_assert_false (has (locked, "propose_call"));
+  g_assert_false (has (locked, "call_control"));
+  g_assert_false (has (locked, "undo_last_action"));
+  g_assert_false (has (locked, "set_wifi_bluetooth"));
+  for (guint i = 0; i < locked->len; i++)
+    g_assert_cmpint (dictate_tools_find (locked->pdata[i])->tier, ==, DICTATE_TIER_READ);
+  g_assert_nonnull (strstr (alarm, "locked"));
+  g_assert_nonnull (strstr (card, "locked"));
+  g_assert_nonnull (strstr (hang, "locked"));
+  g_assert_nonnull (strstr (undo, "locked"));
 }
 
 static const char *const SERVER_ONLY[] = { DICTATE_SENT_SERVER, NULL };
@@ -191,5 +228,6 @@ main (int argc, char **argv)
   g_test_add_func ("/tools/calls-off", test_calls_off);
   g_test_add_func ("/tools/every-area", test_every_area);
   g_test_add_func ("/tools/refused", test_refused);
+  g_test_add_func ("/tools/locked", test_locked);
   return g_test_run ();
 }

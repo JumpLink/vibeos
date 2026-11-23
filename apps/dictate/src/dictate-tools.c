@@ -70,7 +70,7 @@ dictate_tools_find (const char *name)
 }
 
 char *
-dictate_tools_definitions (guint32 areas)
+dictate_tools_definitions (guint32 areas, gboolean locked)
 {
   guint n;
   const DictateTool *tools = dictate_tools_table (&n);
@@ -83,7 +83,7 @@ dictate_tools_definitions (guint32 areas)
     {
       g_autoptr (JsonNode) parameters = NULL;
 
-      if (!area_on (areas, tools[i].area))
+      if (!area_on (areas, tools[i].area) || (locked && tools[i].tier != DICTATE_TIER_READ))
         continue;
       parameters = json_from_string (tools[i].parameters, NULL);
       g_return_val_if_fail (parameters, NULL);
@@ -368,6 +368,10 @@ dictate_tools_run (const char *name, const char *arguments, const DictateToolCon
                                                   i >= 0 ? list[i].named : tool->area);
       return error_json (message);
     }
+  /* a locked phone: Agent reads, nothing more, until it is unlocked (asked anyway: refused here) */
+  if (ctx->locked && tool->tier != DICTATE_TIER_READ)
+    return error_json ("The phone is locked: Agent can only read until the user unlocks it. Say so, and that it can "
+                       "be done once the phone is unlocked.");
   args = json_from_string (arguments && *arguments ? arguments : "{}", NULL);
   if (!args || !JSON_NODE_HOLDS_OBJECT (args))
     return error_json ("The arguments are not a JSON object.");

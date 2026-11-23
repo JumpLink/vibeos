@@ -7,7 +7,10 @@
  *
  * Agent also watches the phone's calls (dictate-calls.h): one that rings is said aloud while Agent's window is open,
  * or always with Announce calls on, when Agent keeps running with no window (--background starts it so, with the
- * session, data/vibeos.Agent-announce.desktop). */
+ * session, data/vibeos.Agent-announce.desktop).
+ *
+ * The shell has Agent listen while the power key is held (its "hold" action: extension/keylaunch.js), its window
+ * opened, or on a locked phone with no window, answering aloud and only reading until the phone is unlocked. */
 #include "dictate-calls.h"
 #include "dictate-device.h"
 #include "dictate-window.h"
@@ -126,7 +129,32 @@ on_activate (GApplication *app, gpointer data)
     window = GTK_WINDOW (agent_window (GTK_APPLICATION (app)));
   if (!window)
     window = GTK_WINDOW (dictate_window_new (GTK_APPLICATION (app), agent));
+  /* opened as an app: only on an unlocked phone (the shell asks for the unlock first) */
+  if (agent)
+    dictate_window_unlocked (GTK_WIDGET (window));
   gtk_window_present (window);
+}
+
+/* "hold" (bb): the power key held (pressed) and let go, the phone locked or not (the shell's extension/keylaunch.js).
+ * Held, Agent listens until it is let go: its window opened on an unlocked phone (the shell opens it too), none on a
+ * locked one, where Agent answers aloud and only reads */
+static void
+on_hold (GSimpleAction *action, GVariant *parameter, gpointer data)
+{
+  GtkApplication *app = data;
+  GtkWidget *window = agent_window (app);
+  gboolean pressed, locked;
+
+  if (!agent)
+    return;
+  g_variant_get (parameter, "(bb)", &pressed, &locked);
+  if (!window && !pressed)
+    return;
+  if (!window)
+    window = dictate_window_new (app, TRUE);
+  if (pressed && !locked)
+    gtk_window_present (GTK_WINDOW (window));
+  dictate_window_hold (window, pressed, locked);
 }
 
 /* "dictate": the FAB's start and stop, for other programs over D-Bus (org.gtk.Actions on /vibeos/Dictate) */
@@ -179,6 +207,7 @@ main (int argc, char **argv)
   {
     static const GActionEntry actions[] = {
       { .name = "dictate", .activate = on_dictate },
+      { .name = "hold", .activate = on_hold, .parameter_type = "(bb)" },
     };
 
     g_action_map_add_action_entries (G_ACTION_MAP (app), actions, G_N_ELEMENTS (actions), app);
