@@ -57,9 +57,13 @@ gnome_panels = ['about', 'applications', 'background', 'bluetooth', 'color', 'da
                 'mouse', 'multitasking', 'network', 'notifications', 'online-accounts', 'power', 'printers', 'privacy',
                 'region', 'search', 'sharing', 'sound', 'system', 'thunderbolt', 'universal-access', 'users', 'wacom',
                 'wellbeing', 'wifi', 'wwan']
+# the page a panel's desktop file opens, where it is not the panel's own name: GNOME Shell opens "network" for VPN,
+# wired and Bluetooth network settings (Network and VPN), the quick-settings airplane tile for Connections
+panel_pages = {'network': 'vpn'}
 foreach panel : gnome_panels
   panel_conf = configuration_data()
   panel_conf.set('panel', panel)
+  panel_conf.set('page', panel_pages.get(panel, panel))
   configure_file(input: 'data/gnome-panel.desktop.in', output: 'gnome-@0@-panel.desktop'.format(panel),
                  configuration: panel_conf, install_dir: get_option('datadir') / 'applications')
 endforeach

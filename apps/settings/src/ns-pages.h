@@ -62,6 +62,8 @@ void ns_page_accessibility (GtkWidget *row, gpointer data);
 
 /* ns-accounts.c */
 void ns_page_accounts (GtkWidget *row, gpointer data);
+/* opens the account with GOA id `id` (account_…) over the Accounts page that is open, once its list has loaded */
+void ns_accounts_show (const char *id);
 
 /* ns-system.c */
 void ns_page_language (GtkWidget *row, gpointer data);

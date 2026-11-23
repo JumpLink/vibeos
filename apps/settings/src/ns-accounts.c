@@ -2442,11 +2442,29 @@ accounts_got (GObject *src, GAsyncResult *res, gpointer group)
       g_object_set_data_full (G_OBJECT (r), "ns-ifaces", ifaces, (GDestroyNotify) g_variant_unref);
       ns_row_on_activate (r, account_page, NULL);
       n++;
+      const char *id = prop_str (ifaces, GOA_ACCOUNT_IFACE, "Id");
+      NsPage *page = ns_page_of (group);
+      const char *wanted = page ? g_object_get_data (G_OBJECT (page), "ns-show") : NULL;
+      if (wanted && !g_strcmp0 (id, wanted) && page == ns_top_page ()) {
+        g_object_set_data (G_OBJECT (page), "ns-show", NULL);
+        account_page (r, NULL);
+      }
     }
   }
+  /* asked for once: an account that is not there leaves the list open */
+  NsPage *page = ns_page_of (group);
+  if (page)
+    g_object_set_data (G_OBJECT (page), "ns-show", NULL);
   ns_group_set_visible (group, n > 0);
   gtk_widget_set_visible (g_object_get_data (group, "ns-none"), n == 0);
   g_object_unref (group);
+}
+
+void
+ns_accounts_show (const char *id)
+{
+  if (accounts_list && accounts_list == ns_top_page ())
+    g_object_set_data_full (G_OBJECT (accounts_list), "ns-show", g_strdup (id), g_free);
 }
 
 static void
