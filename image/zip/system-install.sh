@@ -97,13 +97,16 @@ image_room() {
 # mounting (or checking with e2fsck -fy) blocks that are now Android's. A recovery partition without the list (any
 # other device) is not touched.
 clear_extents() {
-	r=$(part recovery) || return 0
-	n=$(sectors512 $r) && [ "$n" -gt 1024 ] || return 0
-	[ "$(dd if=$r bs=512 skip=$((n - 1024)) count=1 2>/dev/null | head -c 14)" = GTS4LV-EXTENTS ] || return 0
-	guard $r
-	dd if=/dev/zero of=$r bs=512 seek=$((n - 1024)) count=1024 conv=notrunc 2>/dev/null || die "cannot clear the old extent list at the end of recovery"
+	# ce_*: guard and sysname set n, x and d in this shell, as every function here shares its variables
+	ce_r=$(part recovery) || return 0
+	guard $ce_r
+	ce_n=$(sectors512 $ce_r) && [ "$ce_n" -gt 1024 ] || return 0
+	ce_at=$((ce_n - 1024))
+	[ "$(dd if=$ce_r bs=512 skip=$ce_at count=1 2>/dev/null | head -c 14)" = GTS4LV-EXTENTS ] || return 0
+	dd if=/dev/zero of=$ce_r bs=512 seek=$ce_at count=1024 conv=notrunc 2>$T-ce.err ||
+		die "cannot clear the old extent list at the end of recovery ($(cat $T-ce.err))"
 	sync
-	[ -z "$(dd if=$r bs=512 skip=$((n - 1024)) count=1024 2>/dev/null | tr -d '\000' | head -c 1)" ] ||
+	[ -z "$(dd if=$ce_r bs=512 skip=$ce_at count=1024 2>/dev/null | tr -d '\000' | head -c 1)" ] ||
 		die "the old extent list at the end of recovery was not cleared"
 	say "  the old image's extent list cleared: VibeOS starts again once the device zip has run"
 }
