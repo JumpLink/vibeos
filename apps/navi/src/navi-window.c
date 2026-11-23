@@ -30,7 +30,7 @@
 #define PIN_W            34
 #define PIN_H            46
 #define BUBBLE_MARGIN    8  /* a time bubble from the map's free part's edges */
-#define FIX_STALE_S      5  /* no fix for this long: the speed shows as unknown ("--", none while browsing) */
+#define FIX_STALE_S      5  /* no fix for this long while moving: the speed is unknown ("--", none while browsing) */
 #define HEADING_SMOOTH_S 0.6
 #define HEADING_AHEAD_M  20.0
 #define ZOOM_SMOOTH_S    1.6
@@ -1360,6 +1360,9 @@ on_fix (NaviPosition *position, NaviFix *fix, Navi *n)
 {
   gboolean first = !n->have_fix;
   gint64 t0 = g_get_monotonic_time ();
+  /* where the arrow is drawn against where the fix says the car is, as a distance only */
+  if (n->car_known)
+    g_debug ("car: %.1f m from the new fix", navi_geo_distance (n->car_lat, n->car_lng, fix->lat, fix->lng));
   n->fix = *fix;
   n->have_fix = TRUE;
   n->fix_time = g_get_monotonic_time ();
@@ -1375,8 +1378,9 @@ on_fix (NaviPosition *position, NaviFix *fix, Navi *n)
                                    : approximate ? _("No GPS – showing your approximate location")
                                                  : NULL);
   navi_panels_set_speed (n->panels, fix->kind == NAVI_FIX_LAST_KNOWN ? -1 : fix->speed);
+  /* a moving car's fixes keep coming; a standing one's may not (GeoClue sends one when the position changes) */
   g_clear_handle_id (&n->fix_stale, g_source_remove);
-  if (fix->kind != NAVI_FIX_LAST_KNOWN)
+  if (fix->kind != NAVI_FIX_LAST_KNOWN && fix->speed > 1.5)
     n->fix_stale = g_timeout_add_seconds (FIX_STALE_S, fix_stale, n);
 
   if (n->guidance && n->mode == NAVI_MODE_DRIVE) {

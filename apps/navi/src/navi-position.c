@@ -1,5 +1,6 @@
 /* NaviPosition: see navi-position.h. */
 #include "navi-position.h"
+#include "navi-geo.h"
 
 #include <math.h>
 #include <string.h>
@@ -62,6 +63,12 @@ real_fix (NaviPosition *self, double lat, double lng, double accuracy, double sp
     return; /* the drive has the position */
   NaviFix f = { lat, lng, accuracy, speed, heading, g_get_monotonic_time (),
                 accuracy <= APPROXIMATE_M ? NAVI_FIX_GPS : NAVI_FIX_APPROXIMATE };
+  /* how good the fixes are, never where: their accuracy, speed, and how far and how long from the last one */
+  if (self->have_fix && self->fix.kind != NAVI_FIX_SIMULATED && self->fix.kind != NAVI_FIX_LAST_KNOWN)
+    g_debug ("position: +-%.0f m, %.1f m/s, %.1f m and %.1f s from the last fix", accuracy, speed,
+             navi_geo_distance (self->fix.lat, self->fix.lng, lat, lng), (f.time_us - self->fix.time_us) / 1e6);
+  else
+    g_debug ("position: first fix, +-%.0f m, %.1f m/s", accuracy, speed);
   emit_fix (self, &f);
 }
 
