@@ -782,12 +782,9 @@ msgid "Navigating"
 msgstr "Navigation läuft"
 
 #: src/navi-window.c:1102
-msgid ""
-"Navi cannot reach a road there right now. Outside Germany, routes may be "
-"unavailable for a while."
+msgid "Navi cannot reach a road there. Choose a place on a road in Europe."
 msgstr ""
-"Navi erreicht dort gerade keine Straße. Außerhalb Deutschlands können Routen "
-"eine Zeit lang nicht verfügbar sein."
+"Navi erreicht dort keine Straße. Wähle einen Ort an einer Straße in Europa."
 
 #: src/navi-window.c:1104
 msgid "No route found there. Choose a place on a road."

@@ -120,7 +120,7 @@ GPtrArray *navi_route_parse (const char *json, gssize length, GError **error);
 #define NAVI_ROUTE_ERROR (navi_route_error_quark ())
 typedef enum {
   NAVI_ROUTE_ERROR_NO_ROAD,  /* no road the routes reach near the start or the destination (Valhalla's 171): off the
-                              * roads, or outside the area the server routes in (Germany, while Europe is down) */
+                              * roads, or outside the area the server routes in (Europe) */
   NAVI_ROUTE_ERROR_NO_ROUTE, /* roads at both ends, no way between them */
   NAVI_ROUTE_ERROR_SERVER,   /* the server failed */
 } NaviRouteError;

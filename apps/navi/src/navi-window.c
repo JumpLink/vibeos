@@ -1099,7 +1099,7 @@ routes_ready (GObject *src, GAsyncResult *res, gpointer data)
     g_message ("route: %s", error->message);
     const char *why;
     if (g_error_matches (error, NAVI_ROUTE_ERROR, NAVI_ROUTE_ERROR_NO_ROAD))
-      why = _("Navi cannot reach a road there right now. Outside Germany, routes may be unavailable for a while.");
+      why = _("Navi cannot reach a road there. Choose a place on a road in Europe.");
     else if (g_error_matches (error, NAVI_ROUTE_ERROR, NAVI_ROUTE_ERROR_NO_ROUTE))
       why = _("No route found there. Choose a place on a road.");
     else
