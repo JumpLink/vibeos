@@ -197,7 +197,18 @@ start)
     echo "$SCALE" | as_user tee "$STATE/scale" >/dev/null
     # the private bus, and mutter on it
     echo "$BUS" | as_user tee "$STATE/bus" >/dev/null
-    as_display dbus-daemon --session --address="$IN_BUS" --fork --print-pid=1 </dev/null >"$STATE/bus.pid"
+    if [ "$PRIVATE" = 1 ]; then
+        # What the bus starts on demand (the clock's alarm service, the address book, the portals) gets the
+        # environment of the bus, not the app's: without these it ran in the session user's own HOME, read and
+        # rewrote their alarms and could ring them a second time (11-23)
+        as_user mkdir -p "$STATE/config" "$STATE/data" "$STATE/cache"
+        as_display env HOME="$IN_STATE/home" XDG_CONFIG_HOME="$IN_STATE/config" XDG_DATA_HOME="$IN_STATE/data" \
+            XDG_CACHE_HOME="$IN_STATE/cache" GSETTINGS_BACKEND=keyfile NO_AT_BRIDGE=1 GTK_A11Y=none \
+            DBUS_SYSTEM_BUS_ADDRESS="$IN_BUS" \
+            dbus-daemon --session --address="$IN_BUS" --fork --print-pid=1 </dev/null >"$STATE/bus.pid"
+    else
+        as_display dbus-daemon --session --address="$IN_BUS" --fork --print-pid=1 </dev/null >"$STATE/bus.pid"
+    fi
     if [ "$PRIVATE" = 1 ]; then
         # mutter's own settings stay with it too
         set -- env GSETTINGS_BACKEND=memory NO_AT_BRIDGE=1
