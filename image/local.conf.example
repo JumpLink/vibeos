@@ -42,7 +42,10 @@ S10E_CALLAUDIO_FW=			# optional: the call-audio kit's firmware, compared with th
 S10E_UBOOT=				# U-Boot image for recovery (its first 4 MiB are taken)
 POCO_STAGE=				# POCO X3 NFC: device stage
 POCO_K22_IMG=				# its 0.1.1 ROM image (the ESP is read from it)
-POCO_K22_ZIP=				# its 0.1.1 ROM zip (recovery-uboot.img)
+POCO_K22_ZIP=				# its 0.1.1 ROM zip (recovery-uboot.img, which POCO_UBOOT must make again)
+POCO_LINEAGE_ZIP=			# LineageOS 22.2 surya 20261102 (its boot.img, dtbo.img, vbmeta.img, recovery.img)
+POCO_UBOOT=				# u-boot.bin of the POCO's U-Boot (env qcom-phone-linuxpart.env: it boots "linux")
+POCO_AVB=				# a folder with AOSP's avbtool.py and testkey_rsa4096.pem (external/avb)
 S5E_STAGE=				# Galaxy Tab S5e: device stage
 S5E_TABK=				# the tablet's recovery backup, linux-k11-uc.img, its kernel Image-uc.gz, repack-v2.py
 					# (rewrites a boot image v2 with a new ramdisk) and later device files

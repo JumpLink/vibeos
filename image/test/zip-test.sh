@@ -6,7 +6,8 @@
 #   PRE      fresh | existing (an empty "linux" #32 of 40 GiB) | nested (#32 carries a GPT: ESP + root, the POCO's
 #            layout) | wholed (userdata is "linux" already)
 #   SYSKEYS  the keys the system zip's menus read: UP DOWN POWER
-#   DEVICE   s10e | s5e | poco (DEVZIP's device; "-" runs no device zip)
+#   DEVICE   s10e | s5e (DEVZIP's device; "-" runs no device zip). The POCO's zips: zip-test-poco.sh (its device
+#            zip writes boot, dtbo and vbmeta of the POCO's sizes, which this S10e table cannot hold)
 # The test zips differ from the real ones in: vibeos-part (an x86-64 static build of the same source: qemu-user does
 # not pass BLKPG_RESIZE_PARTITION), one line of vibeos-lib.sh (BY: the loop device's by-name links), and in the
 # device zip's updater-script the device check and the final setprop. Touches only work/test and its loop/dm devices.
@@ -23,6 +24,11 @@ SYSZIP=$(realpath $1) DEVZIP=$2 PRE=$3; shift 3
 KEYS=
 while [ $# -gt 0 ] && [ "$1" != -- ]; do KEYS="$KEYS $1"; shift; done
 shift; DEVICE=${1:--}
+case $DEVICE in
+s10e|s5e|-) ;;
+poco) echo "the POCO's zips: zip-test-poco.sh (a POCO-shaped disk; its case existing is this table's nested)" >&2; exit 2 ;;
+*) echo "DEVICE: s10e | s5e | -" >&2; exit 2 ;;
+esac
 [ "$DEVZIP" = - ] || DEVZIP=$(realpath $DEVZIP)
 HOST=$W/s10e-part-x86static
 F=$W/t${ID:+-$ID}; rm -rf $F; mkdir -p $F
@@ -114,7 +120,6 @@ sudo -n mkdir -p $R/t/bin $R/t/by-name; sudo -n chown -R $(id -u):$(id -g) $R/t 
 sudo -n sh -c "rm -rf $R/t/by-name/*"
 # by-name as ueventd made it at boot: a partition the install makes or renames gets no link in this session
 BYN="3:efs 5:up_param 7:sec_efs 14:boot 15:recovery 16:radio 19:misc 29:omr 31:userdata"
-[ $DEVICE = poco ] && BYN="3:efs 5:up_param 7:sec_efs 14:boot 26:recovery 16:radio 19:misc 29:omr 31:userdata"
 case $PRE in existing|nested) BYN="$BYN 32:linux" ;; wholed) BYN=$(echo $BYN | sed 's/31:userdata/31:linux/') ;; esac
 for n in $BYN; do ln -sfn $(p ${n%%:*}) $R/t/by-name/${n#*:}; done
 cat > $R/t/bin/getevent <<'EOF'
@@ -245,10 +250,6 @@ if [ "$DRC" = 0 ]; then
 		RB=$(unzip -p $DEVZIP recovery.img | wc -c)
 		same $(p 15) recovery.img $RB && ok "recovery = U-Boot + LineageOS recovery + Linux ($RB bytes)" || bad "recovery"
 		[ "$(sudo -n dd if=$(p 19) bs=32 count=1 status=none | tr -d '\000')" = boot-recovery ] && ok "misc: boot-recovery (keepmisc)" || bad "misc" ;;
-	poco)
-		EB=$(unzip -p $DEVZIP esp.img | wc -c)
-		[ "$(sudo -n dd if=$(p 32) bs=4096 skip=2048 count=$((EB / 4096)) status=none | sha256sum)" = "$(unzip -p $DEVZIP esp.img | sha256sum)" ] && ok "the ESP inside linux = esp.img" || bad "ESP"
-		same $(p 26) recovery-uboot.img 134217728 && ok "recovery (#26 here) = U-Boot" || bad "recovery" ;;
 	esac
 fi
 echo "== $FAILS failures"

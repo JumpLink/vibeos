@@ -12,9 +12,9 @@ T=$(cd "$(dirname "$0")" && pwd)
 O=${VIBEOS_OUT:?set VIBEOS_OUT (image/local.conf): the directory builds, work files and logs go to}
 FORBID="gsm2sip waydroid ${FORBID_EXTRA:-}"	# never in an image: these package and file names
 Z=$T/zip
-# STRICT=1: only the exact binaries the 0.1.3 zips have (LineageOS 22.2's update-binary 3748b295, vibeos-part ead00bed:
-# make -C src with Debian's aarch64-linux-gnu-gcc 14.2.0; the same build of 1370fac's s10e-part.c gives fe0cd129, the
-# first 0.1.3 system zip's)
+# STRICT=1: only the exact binaries the 0.1.3 zips have (LineageOS 22.2's update-binary 3748b295, vibeos-part d108d33d:
+# make -C src with Debian's aarch64-linux-gnu-gcc 14.2.0, the source with "nest" (the POCO's own GPT, 2026-11-23); the
+# source before it gives ead00bed, the 11-22 and 11-23 system zips', and 1370fac's fe0cd129, the first 0.1.3 one's)
 same() {	# FILE SUM16 WHAT
 	[ "$(sha256sum < "$1" | cut -c1-16)" = "$2" ] && return 0
 	[ -z "${STRICT:-}" ] || { echo "$3 is not the 0.1.3 zips' ($2)" >&2; exit 1; }
@@ -38,7 +38,7 @@ system)
 	VP=${VIBEOS_PART:-$T/src/s10e-part}
 	[ -s "$VP" ] || { echo "no $VP: make -C image/src" >&2; exit 1; }
 	cp "$VP" "$W/vibeos-part"
-	same "$W/vibeos-part" ead00bed84ff82f5 vibeos-part
+	same "$W/vibeos-part" d108d33dd19bfd05 vibeos-part
 	# rootfs.img in parts of CHUNK_MB (1 GiB): LineageOS's updater cannot extract an entry of 4 GiB or more (32-bit
 	# ZipEntry), and the image is bigger than that. install.sh chunks maps each part's place; the updater writes it
 	CB=$((${CHUNK_MB:-1024} * 1048576))
@@ -85,15 +85,19 @@ run_program("/system/bin/setprop", "sys.powerctl", "reboot,recovery");'
 	poco)
 		NAME="POCO X3 NFC" CODES="surya, karna"
 		ASSERT='getprop("ro.product.device") == "surya" || getprop("ro.build.product") == "surya" || getprop("ro.product.device") == "karna" || getprop("ro.build.product") == "karna"'
-		cp "$D/boot/esp.img" "$D/boot/recovery-uboot.img" "$W/"
-		sum esp "$W/esp.img" >> "$W/device-sums.txt"; sum recovery "$W/recovery-uboot.img" >> "$W/device-sums.txt"
+		# U-Boot in BOOT (boot.img), with LineageOS's dtbo and vbmeta of its build; the recovery partition stays
+		# LineageOS's (oldrecovery: only the sum of the U-Boot an earlier install put there)
+		cp "$D/boot/esp.img" "$D/boot/boot.img" "$D/boot/dtbo.img" "$D/boot/vbmeta.img" "$W/"
+		for f in esp boot dtbo vbmeta; do sum $f "$W/$f.img" >> "$W/device-sums.txt"; done
+		grep -E '^oldrecovery [0-9]+ [0-9a-f]{64}$' "$D/boot/oldrecovery.sum" >> "$W/device-sums.txt"
 		TOOLS=
 		BOOTFILES='package_extract_file("esp.img", "/tmp/vibeos-esp.img") || abort("ERROR: could not unpack the ESP");
-package_extract_file("recovery-uboot.img", "/tmp/vibeos-recovery.img") || abort("ERROR: could not unpack U-Boot");'
-		DONE='ui_print("In LineageOS, turn off Developer options > Update recovery, or it removes U-Boot.");
-ui_print("Power on starts Android; Restart to recovery starts Linux. Restarting into it.");
-run_program("/system/bin/setprop", "sys.powerctl", "reboot,recovery");'
-		BOOTF="esp.img recovery-uboot.img" ;;
+package_extract_file("boot.img", "/tmp/vibeos-boot.img") || abort("ERROR: could not unpack U-Boot");
+package_extract_file("dtbo.img", "/tmp/vibeos-dtbo.img") || abort("ERROR: could not unpack dtbo");
+package_extract_file("vbmeta.img", "/tmp/vibeos-vbmeta.img") || abort("ERROR: could not unpack vbmeta");'
+		DONE='ui_print("Power on starts VibeOS; Volume Up + Power starts LineageOS recovery. Restarting.");
+run_program("/system/bin/setprop", "sys.powerctl", "reboot");'
+		BOOTF="esp.img boot.img dtbo.img vbmeta.img" ;;
 	s5e)
 		NAME="Galaxy Tab S5e Wi-Fi" CODES=gts4lvwifi
 		ASSERT='getprop("ro.product.device") == "gts4lvwifi" || getprop("ro.build.product") == "gts4lvwifi"'

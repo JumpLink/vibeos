@@ -8,6 +8,7 @@
      s10e-part [--sector-size N] apply      DISK LINUX_GIB
      s10e-part [--sector-size N] plan-whole DISK
      s10e-part [--sector-size N] whole      DISK
+     s10e-part [--sector-size N] nest       PARTITION ESP_MIB
 
    It is deliberately narrow.  apply only ever shrinks the last partition,
    'userdata', and adds one partition, 'linux', in the space freed behind
@@ -22,6 +23,10 @@
    Output the installer reads: apply prints "created N START LEN" (bytes)
    or "exists N"; whole prints "deleted M" for an earlier linux, then
    "whole N START LEN" (N keeps userdata's number).
+
+   nest writes a partition table INSIDE a partition (the POCO's 'linux':
+   an ESP and a root, as U-Boot and its initramfs map it) and touches
+   nothing outside that partition; see cmd_nest.
 
    Phone facts this relies on:
    - The logical sector size is 4096, so it is asked for (BLKSSZGET),
@@ -863,6 +868,151 @@ cmd_whole (struct disk *d, int apply)
   return 0;
 }
 
+/* ---- nest -------------------------------------------------------------- */
+
+/* nest DEV ESP_MIB: a partition table of DEV's own, the POCO's layout as its
+   k22 image has it: a protective MBR, 128 entries, #1 the EFI system
+   partition of ESP_MIB MiB at 8 MiB, #2 a Linux root (arm64) partition from
+   behind it to the last usable LBA, both named "primary", and the backup
+   table at DEV's end.  DEV is the partition named 'linux' (or an image
+   file): the disk's own table is neither read nor written.  Refused when
+   DEV carries a GPT already (as 512- or 4096-byte sectors): the installer
+   clears DEV's first and last MiB first.  Prints "nest ESP_OFF ESP_LEN
+   ROOT_OFF ROOT_LEN", in bytes from DEV's start.  */
+
+static const uint8_t esp_type[16] = {
+  0x28, 0x73, 0x2a, 0xc1, 0x1f, 0xf8, 0xd2, 0x11,
+  0xba, 0x4b, 0x00, 0xa0, 0xc9, 0x3e, 0xc9, 0x3b
+};
+
+/* B921B045-1DF0-41C3-AF44-4C6F280D3FAE, Linux root (64-bit ARM) */
+static const uint8_t root_arm64_type[16] = {
+  0x45, 0xb0, 0x21, 0xb9, 0xf0, 0x1d, 0xc3, 0x41,
+  0xaf, 0x44, 0x4c, 0x6f, 0x28, 0x0d, 0x3f, 0xae
+};
+
+static void
+random_guid (uint8_t g[16])
+{
+  fill_random (g, 16);
+  g[7] = (uint8_t) ((g[7] & 0x0f) | 0x40);      /* version 4 */
+  g[8] = (uint8_t) ((g[8] & 0x3f) | 0x80);      /* RFC 4122 variant */
+}
+
+static void
+nest_entry (uint8_t *e, const uint8_t type[16], uint64_t first,
+            uint64_t last)
+{
+  static const char nm[] = "primary";
+
+  memcpy (e, type, 16);
+  random_guid (e + 16);
+  put64 (e + 32, first);
+  put64 (e + 40, last);
+  for (size_t k = 0; nm[k]; k++)
+    e[56 + 2 * k] = (uint8_t) nm[k];
+}
+
+static void
+nest_header (uint8_t *h, uint64_t me, uint64_t alt, uint64_t first,
+             uint64_t last, const uint8_t disk_guid[16], uint64_t ent_lba,
+             uint32_t ecrc)
+{
+  memcpy (h, "EFI PART", 8);
+  put32 (h + 8, 0x00010000);
+  put32 (h + 12, 92);
+  put64 (h + 24, me);
+  put64 (h + 32, alt);
+  put64 (h + 40, first);
+  put64 (h + 48, last);
+  memcpy (h + 56, disk_guid, 16);
+  put64 (h + 72, ent_lba);
+  put32 (h + 80, 128);
+  put32 (h + 84, 128);
+  put32 (h + 88, ecrc);
+  put32 (h + 16, 0);
+  put32 (h + 16, crc32 (h, 92));
+}
+
+static int
+cmd_nest (struct disk *d, const char *mib_arg)
+{
+  char *endp;
+  unsigned long long mib;
+  uint8_t *s, *pri, *bak, *ent, *mbr, dg[16];
+  uint64_t ent_sects, first, last, esp0, esp1, root0, root1;
+  uint32_t ecrc;
+
+  errno = 0;
+  mib = strtoull (mib_arg, &endp, 10);
+  if (errno || endp == mib_arg || *endp || mib_arg[0] == '-' || mib < 32
+      || mib > 4096)
+    die (1, "ESP_MIB '%s' is not a whole number from 32 to 4096", mib_arg);
+
+  /* a table there already (its header at byte 512 or 4096): not ours to
+     replace */
+  s = xcalloc (8);
+  for (off_t o = 512; o <= 4096; o += 3584)
+    if (pread (d->fd, s, 8, o) == 8 && memcmp (s, "EFI PART", 8) == 0)
+      die (1, "%s carries a GPT already (a header at byte %ld)", d->path,
+           (long) o);
+  free (s);
+
+  ent_sects = (128 * 128 + d->ss - 1) / d->ss;
+  if (d->nsect < 2 * (2 + ent_sects))
+    die (1, "%s is too small", d->path);
+  first = 2 + ent_sects;
+  last = d->nsect - 2 - ent_sects;
+  esp0 = 8 * MIB / d->ss;
+  esp1 = esp0 + mib * MIB / d->ss - 1;
+  root0 = esp1 + 1;
+  root1 = last;
+  if (esp0 < first || root1 <= root0
+      || (root1 - root0 + 1) * d->ss < MIN_LINUX_GIB * GIB)
+    die (1, "%s (%" PRIu64 " sectors of %u bytes) has no room for a %llu"
+         " MiB ESP and a root of %d GiB", d->path, d->nsect, d->ss, mib,
+         MIN_LINUX_GIB);
+
+  ent = xcalloc (ent_sects * d->ss);
+  nest_entry (ent, esp_type, esp0, esp1);
+  nest_entry (ent + 128, root_arm64_type, root0, root1);
+  ecrc = crc32 (ent, 128 * 128);
+  random_guid (dg);
+  pri = xcalloc (d->ss);
+  bak = xcalloc (d->ss);
+  nest_header (pri, 1, d->nsect - 1, first, last, dg, 2, ecrc);
+  nest_header (bak, d->nsect - 1, 1, first, last, dg,
+               d->nsect - 1 - ent_sects, ecrc);
+  mbr = xcalloc (d->ss);
+  mbr[446 + 1] = 0x00;
+  mbr[446 + 2] = 0x02;
+  mbr[446 + 4] = 0xee;
+  mbr[446 + 5] = mbr[446 + 6] = mbr[446 + 7] = 0xff;
+  put32 (mbr + 446 + 8, 1);
+  put32 (mbr + 446 + 12, d->nsect - 1 > 0xffffffffu ? 0xffffffffu
+                                                     : (uint32_t) (d->nsect - 1));
+  mbr[510] = 0x55;
+  mbr[511] = 0xaa;
+
+  /* the backup first, then the primary's entries, its header, the MBR */
+  write_at (d, d->nsect - 1 - ent_sects, ent, ent_sects * d->ss);
+  write_at (d, d->nsect - 1, bak, d->ss);
+  write_at (d, 2, ent, ent_sects * d->ss);
+  write_at (d, 1, pri, d->ss);
+  write_at (d, 0, mbr, d->ss);
+  if (fsync (d->fd) < 0)
+    die (2, "fsync: %s", strerror (errno));
+
+  printf ("nest %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 "\n",
+          esp0 * d->ss, (esp1 - esp0 + 1) * d->ss, root0 * d->ss,
+          (root1 - root0 + 1) * d->ss);
+  free (ent);
+  free (pri);
+  free (bak);
+  free (mbr);
+  return 0;
+}
+
 /* ---- main -------------------------------------------------------------- */
 
 static void __attribute__ ((noreturn))
@@ -873,6 +1023,7 @@ usage (void)
          "       s10e-part [--sector-size N] apply DISK LINUX_GIB\n"
          "       s10e-part [--sector-size N] plan-whole DISK\n"
          "       s10e-part [--sector-size N] whole DISK\n"
+         "       s10e-part [--sector-size N] nest PARTITION ESP_MIB\n"
          "--sector-size only applies to image files (default 4096);\n"
          "a block device's own size is always used.\n", stderr);
   exit (1);
@@ -924,6 +1075,11 @@ main (int argc, char **argv)
     {
       disk_open (&d, argv[a + 1], 1, ss_opt);
       return cmd_whole (&d, 1);
+    }
+  if (strcmp (argv[a], "nest") == 0 && argc - a == 3)
+    {
+      disk_open (&d, argv[a + 1], 1, ss_opt);
+      return cmd_nest (&d, argv[a + 2]);
     }
   usage ();
 }

@@ -219,6 +219,13 @@ poco)
 	grep -q 'options root=LABEL=vibeos ' "$P/usr/local/sbin/surya-esp-update" && ! grep -q b2b58066 "$P/usr/local/sbin/surya-esp-update" ||
 		{ echo "surya-esp-update: root= not changed" >&2; exit 1; }
 	[ ! -e "$P/boot" ] || { echo "the POCO stage has a /boot: $(ls "$P/boot")" >&2; exit 1; }
+	# U-Boot is in BOOT (since 2026-11-23: VibeOS on the whole phone): every power-on starts VibeOS, and the
+	# recovery partition is LineageOS's recovery again. So no restart names recovery any more: the stage's
+	# tmpfiles.d line did that at every boot, for U-Boot in recovery (and no "Restart into Android", below)
+	[ -f "$P/etc/tmpfiles.d/surya-reboot-linux.conf" ] || { echo "no surya-reboot-linux.conf in the POCO stage" >&2; exit 1; }
+	rm -f "${P:?}/etc/tmpfiles.d/surya-reboot-linux.conf"
+	! grep -rl -E 'reboot-param|surya-boot-android' "$P/etc" "$P/usr/local" "$P/usr/lib/systemd" 2>/dev/null ||
+		{ echo "the POCO stage still names a reboot parameter or the Android restart" >&2; exit 1; }
 	identity poco "POCO X3 NFC" Xiaomi "POCO X3 NFC"
 	DEPS="gdisk, cloud-guest-utils, hexagonrpcd, rmtfs, qrtr-tools, tqftpserv, qcom-phone-utils"
 	# the extra Debian/Mobian packages (k22 versions, fetched by build-system.sh) and the POCO's own builds
@@ -243,12 +250,30 @@ poco)
 		case ${f##*/} in linux-image-*) continue ;; gstreamer1.0-libcamera_*) continue ;; esac	# kernel: files only; gst: system's +surya21
 		cp "$f" "$W/debs/"
 	done
-	# boot: U-Boot in recovery (the kit's recovery-uboot.img, byte for byte the 11-11 zip's) and the k22 ESP,
-	# with one change: the kernel finds the root by its label (root=LABEL=vibeos), not the k22 root's UUID
+	# boot: U-Boot for BOOT, made here by poco/mkrecovery.py from LineageOS 22.2 surya 20261102's boot.img (its
+	# header and DTB byte for byte, gzip(u-boot.bin) as the kernel) and POCO_UBOOT, the U-Boot build whose recovery
+	# image the k22 zip carried (POCOs ran it from recovery since 11-09): checked first, by making that
+	# image again, byte for byte, from LineageOS's recovery.img. With it that build's dtbo.img and vbmeta.img (flags
+	# 3), which ABL reads beside BOOT. The k22 zip's recovery image is not shipped, only its sum (oldrecovery: the
+	# device zip says so when a POCO's recovery partition still holds it). And the k22 ESP, with one change: the
+	# kernel finds the root by its label (root=LABEL=vibeos), not the k22 root's UUID
+	LZ=${POCO_LINEAGE_ZIP:?set POCO_LINEAGE_ZIP}
+	UBB=${POCO_UBOOT:?set POCO_UBOOT}
+	AVB=${POCO_AVB:?set POCO_AVB}
 	ZK=$(mktemp -d "$O/tmp/k22zip.XXXXXX")
-	unzip -q -d "$ZK" "${POCO_K22_ZIP:?set POCO_K22_ZIP}" recovery-uboot.img poco-sums.txt 2>/dev/null ||
-		unzip -q -d "$ZK" "$POCO_K22_ZIP" recovery-uboot.img
-	mv "$ZK/recovery-uboot.img" "$W/boot/recovery-uboot.img"; rm -rf "${ZK:?}"
+	unzip -q -d "$ZK" "${POCO_K22_ZIP:?set POCO_K22_ZIP}" recovery-uboot.img
+	mkdir "$ZK/lin" && unzip -q -d "$ZK/lin" "$LZ" boot.img dtbo.img vbmeta.img recovery.img
+	python3 -I "$T/poco/mkrecovery.py" "$ZK/lin/recovery.img" "$UBB" "$ZK/recovery-again.img" "$AVB/avbtool.py" \
+		"$AVB/testkey_rsa4096.pem" > "$L/mkrecovery.txt"
+	cmp -s "$ZK/recovery-again.img" "$ZK/recovery-uboot.img" ||
+		{ echo "$UBB and LineageOS's recovery.img do not make the k22 zip's recovery-uboot.img again" >&2; exit 1; }
+	python3 -I "$T/poco/mkrecovery.py" "$ZK/lin/boot.img" "$UBB" "$W/boot/boot.img" "$AVB/avbtool.py" >> "$L/mkrecovery.txt"
+	[ "$(od -An -tx1 -j 120 -N 4 "$ZK/lin/vbmeta.img" | tr -d ' \n')" = 00000003 ] ||
+		{ echo "LineageOS's vbmeta.img does not have flags 3" >&2; exit 1; }
+	cp "$ZK/lin/dtbo.img" "$ZK/lin/vbmeta.img" "$W/boot/"
+	echo "oldrecovery $(stat -c %s "$ZK/recovery-uboot.img") $(sha256sum < "$ZK/recovery-uboot.img" | cut -d' ' -f1)" > "$W/boot/oldrecovery.sum"
+	log "BOOT U-Boot $(sha256sum < "$W/boot/boot.img" | cut -c1-16) from $(basename "$LZ")'s boot.img and $(sha256sum < "$UBB" | cut -c1-16)"
+	rm -rf "${ZK:?}"
 	dd if="$KIMG" of="$W/boot/esp.img" bs=4096 skip=2048 count=122880 status=none
 	ME=$(mktemp -d "$O/tmp/esp.XXXXXX")
 	mcopy -i "$W/boot/esp.img" ::/loader/entries/mobian.conf "$ME/mobian.conf"
@@ -536,58 +561,15 @@ exit 0
 EOF
 chmod 755 "$P/DEBIAN/postinst"
 # /etc/vibeos/android: how the shell's power menu restarts into Android (one line; no file, no menu item):
-# reboot=ARG (systemctl reboot --reboot-argument=ARG) or helper=PATH (run with pkexec). The POCO's helper is the
-# one its "Android" app had on 11-10 (gnome/device/boot-android, POCO branch), under device-named ids
+# reboot=ARG (systemctl reboot --reboot-argument=ARG) or helper=PATH (run with pkexec). The POCO has none since
+# 2026-11-23 (VibeOS on the whole phone); its helper until then (surya-boot-android) is in git history
 case $DEV in
 s10e) A=reboot=android ;;		# S-Boot's normal boot (DT reboot-mode mode-android), LineageOS in boot
 s20)  A=reboot=recovery ;;		# its RECOVERY partition holds LineageOS's boot image
 s5e)  A=helper=/usr/local/sbin/gts4lv-boot-android	# the stage's, polkit de.gts4lv.boot-android
       [ -x "$P/usr/local/sbin/gts4lv-boot-android" ] && [ -f "$P/usr/share/polkit-1/actions/de.gts4lv.boot-android.policy" ] ||
 	{ echo "no gts4lv-boot-android in the S5e stage" >&2; exit 1; } ;;
-poco) A=helper=/usr/local/sbin/surya-boot-android
-      install -d "$P/usr/local/sbin" "$P/usr/share/polkit-1/actions"
-      cat > "$P/usr/local/sbin/surya-boot-android" <<'EOF'
-#!/bin/sh
-# Restart into LineageOS (the boot partition), once. Run as root (pkexec, from the shell's power menu).
-# U-Boot, and so Linux, is in the recovery partition, and two things send a restart there:
-#  - the bootloader message in misc ("boot-recovery"): cleared here;
-#  - the restart reason: the PMIC's PON reason, and Linux names "recovery" at every restart
-#    (/run/systemd/reboot-param, from surya-reboot-linux.conf). That file is set aside, so this restart names
-#    nothing and ABL starts the boot partition.
-# Back to Linux from LineageOS: Restart -> Recovery.
-set -eu
-M=/dev/disk/by-partlabel/misc
-[ -b "$M" ] || { echo "no misc partition" >&2; exit 1; }
-case "$(tr -d '\0' < /proc/device-tree/compatible)" in
-*surya*|*karna*) ;;
-*) echo "not a POCO X3 NFC" >&2; exit 1 ;;
-esac
-head -c 32 /dev/zero | dd of="$M" bs=32 count=1 conv=notrunc,fsync status=none
-[ ! -e /run/systemd/reboot-param ] || mv /run/systemd/reboot-param /run/systemd/reboot-param.linux
-exec systemctl reboot
-EOF
-      chmod 755 "$P/usr/local/sbin/surya-boot-android"
-      cat > "$P/usr/share/polkit-1/actions/vibeos.surya.boot-android.policy" <<'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
- "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
-<policyconfig>
-  <action id="vibeos.surya.boot-android">
-    <description>Restart into Android</description>
-    <message>Authentication is required to restart into Android</message>
-    <defaults>
-      <!-- like an ordinary restart: the user at the phone may, others must authenticate -->
-      <allow_any>auth_admin</allow_any>
-      <allow_inactive>auth_admin</allow_inactive>
-      <allow_active>yes</allow_active>
-    </defaults>
-    <annotate key="org.freedesktop.policykit.exec.path">/usr/local/sbin/surya-boot-android</annotate>
-  </action>
-</policyconfig>
-EOF
-      chmod 644 "$P/usr/share/polkit-1/actions/vibeos.surya.boot-android.policy"
-      sh -n "$P/usr/local/sbin/surya-boot-android"
-      [ -f "$P/etc/tmpfiles.d/surya-reboot-linux.conf" ] || { echo "no surya-reboot-linux.conf in the POCO package" >&2; exit 1; } ;;
+poco) A= ;;			# U-Boot in BOOT, Android gone or never started (since 2026-11-23): no Android entry
 *)    A= ;;
 esac
 [ -z "$A" ] || { install -d "$P/etc/vibeos"; echo "$A" > "$P/etc/vibeos/android"; chmod 644 "$P/etc/vibeos/android"; log "/etc/vibeos/android: $A"; }

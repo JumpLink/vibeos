@@ -158,6 +158,13 @@ byte, and that nothing identifying was printed. It needs `OUT/work/test/sda-real
 `sda` with only its GPT) and `OUT/work/test/r` (`nura/test/recovery-chroot.py RECOVERY.img OUT/work/test/r` from a
 LineageOS recovery image), qemu-user-static with binfmt, and `sudo -n`.
 
+`test/zip-test-poco.sh SYSZIP DEVZIP CASE` does the same for the POCO X3 NFC, as root, in the POCO's own LineageOS
+recovery (`OUT/work/test/rpoco`, made the same way from LineageOS surya's `recovery.img`), on two LUNs with the
+POCO's partition layout: `stock` (userdata becomes `linux`), `existing` (an earlier install's `linux` is reused),
+`again` (stock, then both zips once more) and `rc3` (the GPT change stopped by a failed BLKPG, then a restart). It
+checks that no key is read, the tables and the GPT inside `linux`, that only `linux`, `boot`, `dtbo` and `vbmeta`
+change, and the root and the boot pieces byte for byte. One case at a time.
+
 `test/setup-test.sh DEVICE` runs the first boot's `vibeos-device-setup` on a copy of the system image with the
 device's payload in it, offline in a chroot, and checks that every package installs and nothing is removed or
 downloaded.

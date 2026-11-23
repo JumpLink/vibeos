@@ -13,11 +13,16 @@
 #            2. size:   new and image only (GB)
 #            Only what this device's zip can boot is offered (devices this zip knows; any other: everything).
 #            Nothing pressed for two minutes: cancel, nothing written.
+#            The POCO X3 NFC asks nothing: a partition "linux" that carries its own GPT (an earlier install's) is used
+#            as it is (existing: only the root in it is replaced, the table and Android's data are not touched); with
+#            none, all of userdata becomes "linux" (whole) and gets that GPT, as the POCO's U-Boot boots it: Android
+#            and its data are gone. A "linux" without a GPT of its own (an install cut short between the two) gets it.
 #   prepare  new, whole: unmount Android's data (refused while something reads from it, such as this zip on the
 #            internal storage), then carve or take over the partition; image: make room for the file. Points
 #            /tmp/vibeos-root at where the root goes (a partition, or the root partition inside a "linux" that
 #            carries its own GPT, through a loop device) and clears its first and last MiB (wipe_ends: an earlier
-#            system's GPT or file system there must not outlive the install)
+#            system's GPT or file system there must not outlive the install). The POCO's whole: the GPT tool writes
+#            the partition's own GPT (nest: the ESP of ESP_MIB, the root behind it to the end) first
 #   chunks   maps each part of rootfs.img (rootfs.img.0, .1, ...: LineageOS's updater cannot extract a zip entry
 #            of 4 GiB or more) to /tmp/vibeos-root.N, a loop device over its bytes of the root's place (the
 #            partition, or the image file, made to the root's size first)
@@ -39,14 +44,16 @@ DEVICE=$(getprop ro.product.device); [ -n "$DEVICE" ] || DEVICE=$(getprop ro.bui
 # linux partition (which only the POCO's own zip makes); the Tab S5e's initramfs a file in Android's data, mapped
 # by its extents; the S20 FE's U-Boot the partition named vibeos (it has no zip of its own: no LineageOS recovery
 # runs on it, s20-install-from-pc.sh installs it). Any other device: everything is offered.
+AUTO=
 case $DEVICE in
 beyond0lte|beyond0) KINDS="existing new whole" ;;
-surya|karna)        KINDS="nested" ;;
+surya|karna)        KINDS="nested"; AUTO=1 ;;	# no questions (owner, 2026-11-23): see choose
 gts4lvwifi|gts4lv)  KINDS="image" ;;
 r8s|r8sxx)          KINDS="existing" ;;	# the S20 FE: its partition named vibeos only (userdata is Lineage's)
 *)                  KINDS="existing nested new image whole" ;;
 esac
 can() { case " $KINDS " in *" $1 "*) return 0 ;; esac; return 1; }
+ESP_MIB=480	# the POCO's ESP, as its k22 image has it (blocks 2048-124927 of 4 KiB): the device zip writes esp.img there
 VP=$T-part
 # the root file system's size in the zip, as a string (over 2 GiB)
 RB=$(grep '^rootfs ' $SUMS 2>/dev/null | cut -d' ' -f2)
@@ -81,6 +88,42 @@ image_room() {
 	for f in $OLD_IMGS; do [ -f $f ] && { OLDIMG="$OLDIMG $f"; FREE=$((FREE + $(stat -c %b $f) / 2097152)); }; done
 	return 0
 }
+# auto_choose: the POCO's choice, made without a question (see the top)
+other() { if [ -e $BY/userdata ]; then say "No other partition is changed: Android's data stays as it is."; else say "No other partition is changed."; fi; }
+auto_choose() {
+	existing
+	[ -z "$EX" ] || [ $EX = linux ] || die "a partition named '$EX' is there: the POCO boots only one named linux. Nothing was changed"
+	if [ -n "$EX" ] && [ $EXK = nested ]; then
+		fits $EXB || die "the partition $EX has room for $(expr $EXB / 1048576) MiB, the system needs $(expr $RB / 1048576) MiB"
+		printf 'mode=existing\nkind=nested\nname=%s\n' $EX >> $P
+		say "VibeOS goes into the partition '$EX' of an earlier install ($(expr $EXB / 1073741824) GB): its system is replaced."
+		other
+	elif [ -n "$EX" ]; then
+		fits $(expr $EXB - 536870912) || die "the partition $EX has room for $(expr $EXB / 1048576) MiB, the system needs $(expr $RB / 1048576) MiB and the boot partition 480"
+		printf 'mode=existing\nkind=nested\nname=%s\nnest=1\n' $EX >> $P
+		say "VibeOS goes into the partition '$EX' of an earlier install: what it holds is ERASED."
+		other
+	else
+		[ -e $BY/userdata ] || die "no userdata and no linux partition"
+		DISK=$(disk_of $BY/userdata)
+		$VP plan-whole $DISK > $T-whole.txt 2> $T-whole.err || die "VibeOS cannot take this phone's userdata: $(cat $T-whole.err | tr '\n' ' ')"
+		printf 'mode=whole\nkind=nested\nname=linux\n' >> $P
+		say "VibeOS takes all of Android's data partition, as a new partition 'linux'."
+		say "Android, its apps and its data are ERASED. With the device zip, every power-on starts VibeOS."
+	fi
+	say "$SEP"
+}
+# nest_root PARTITION: the POCO's layout in PARTITION (a GPT of its own: the ESP, then the root to its end, as the k22
+# image has it), its old start and end cleared first; RDEV the root inside it (a loop device), ODEV the partition
+nest_root() {
+	wipe_ends "$1"
+	OUT=$($VP nest "$1" $ESP_MIB 2> $T-nest.err) || die "cannot write the partition table inside '$NAME': $(cat $T-nest.err)"
+	set -- $1 $OUT
+	[ "${2:-}" = nest ] || die "the partition tool said: $OUT"
+	blockdev --flushbufs "$1" 2>/dev/null
+	KIND=nested DEVP=$1
+	open_root
+}
 gbytes() {	# literal byte counts (mksh math is 32-bit)
 	case $1 in
 	10) echo 10737418240 ;; 20) echo 21474836480 ;; 30) echo 32212254720 ;; 40) echo 42949672960 ;;
@@ -96,6 +139,7 @@ choose)
 	[ -s $SUMS ] && [ -n "$RB" ] || die "the zip's sums are missing"
 	say " "
 	say "VibeOS system for: ${DEVICE:-an unknown device}"
+	if [ -n "$AUTO" ]; then auto_choose; exit 0; fi
 	OPTS= GB= OLD= DISK=
 	existing
 	if [ -n "$EX" ]; then
@@ -165,10 +209,18 @@ prepare)
 	case $MODE in
 	existing)
 		existing
-		[ "$EX" = "$(get name)" ] && [ "$EXK" = "$(get kind)" ] || die "the partition chosen is gone"
-		NAME=$EX KIND=$EXK
-		open_root
-		guard "$ODEV"
+		if [ "$(get nest)" = 1 ]; then
+			# the POCO's "linux" without its own GPT: it gets one
+			[ "$EX" = "$(get name)" ] && [ "$EXK" = part ] || die "the partition chosen is gone"
+			NAME=$EX
+			guard "$(part $EX)"
+			nest_root "$(part $EX)"
+		else
+			[ "$EX" = "$(get name)" ] && [ "$EXK" = "$(get kind)" ] || die "the partition chosen is gone"
+			NAME=$EX KIND=$EXK
+			open_root
+			guard "$ODEV"
+		fi
 		;;
 	new)
 		DISK=$(disk_of $BY/userdata)
@@ -186,11 +238,20 @@ prepare)
 		unmount_android
 		OUT=$($VP whole $DISK 2> $T-part.err)
 		RC=$?
+		[ $RC = 3 ] && [ -n "$AUTO" ] && die "$(cat $T-part.err). userdata is \"linux\" in the table now: restart into recovery and install again"
 		[ $RC = 3 ] && die "$(cat $T-part.err). userdata is \"linux\" in the table now: restart into recovery, install again and choose the existing partition"
 		[ $RC = 0 ] || die "partitioning failed ($RC): $(cat $T-part.err)"
 		set -- $(echo "$OUT" | grep '^whole ')
 		[ "${1:-}" = whole ] || die "the partition tool said: $OUT"
 		RDEV=$(pdev $2)
+		if [ "$(get kind)" = nested ]; then
+			# the POCO: the partition (no by-name link in this session) gets its own GPT, the root goes inside it
+			i=0; while [ ! -b $RDEV ] && [ $i -lt 10 ]; do sleep 1; i=$((i + 1)); done
+			[ -b $RDEV ] || die "no $RDEV"
+			NAME=linux
+			guard "$RDEV"
+			nest_root "$RDEV"
+		fi
 		;;
 	image)
 		image_room || die "Android's data cannot be mounted, is not ext4 or has no lost+found"
