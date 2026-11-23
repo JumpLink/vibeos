@@ -3390,8 +3390,8 @@ static const DictateTool TOOLS[] = {
     DICTATE_TIER_READ, "looked up the weather", FALSE },
   { "what_did_i_miss", NULL, N_("Checking what you missed…"),
     "What the user missed since they last asked this: missed calls, unread text messages, and the other apps' "
-    "notifications, as counts and from whom or which app. Tell only that much: who and how many. What the messages "
-    "and notifications say only with include_text.",
+    "notifications, as counts and from whom or which app. Tell the user that much, the names with the counts (\"a "
+    "missed call from Anna\"). What the messages and notifications say only with include_text.",
     "{\"type\":\"object\",\"properties\":{"
     "\"include_text\":{\"type\":\"boolean\",\"description\":\"Only when the user's own words ask to have them "
     "read out (\\\"read them to me\\\"); never for \\\"what did I miss?\\\" alone.\"}"
