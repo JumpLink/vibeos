@@ -59,7 +59,7 @@ NO_DEBIAN = {
     'q6voiced': 'call audio routing (q6voice): not in Debian (Mobian has q6voiced)',
     'msm-modem-uim-selection': 'SIM slot selection for the msm modem: not in Debian',
     'bootmac': 'Wi-Fi/Bluetooth MAC addresses from the boot serial: not in Debian (Mobian has bootmac); '
-               'Bluetooth may come up without an address',
+               'the payload sets the Bluetooth address itself (vibeos-bt-addr), Wi-Fi keeps the driver\'s',
     'swclock-offset': 'keeps the RTC offset across boots: not in Debian',
     'soc-qcom-pulseaudio': 'call_audio_idle_suspend_workaround (PulseAudio; VibeOS runs PipeWire)',
     'droid-juicer': 'not needed: the firmware is in the payload',
@@ -718,6 +718,15 @@ def build_payload(nura, args, P, kver, moddir, system_files, soc, skip=frozenset
             pl.not_carried[:] = [x for x in pl.not_carried if x[0] != r2]
         if pl.add(src, rel, pkg) and re.search(r'^\s*WantedBy\s*=', text, re.M):
             enable.append(('--user ' if '/user/' in rel else '') + os.path.basename(rel))
+    # bootmac is not in Debian: its Bluetooth half is vibeos-bt-addr (a QCA controller without an address stays hidden)
+    if 'bootmac' in nura.pkgs:
+        for name, dst, mode in (('vibeos-bt-addr', 'usr/libexec/vibeos-bt-addr', 0o755),
+                                ('vibeos-bt-addr.service', 'usr/lib/systemd/system/vibeos-bt-addr.service', 0o644)):
+            os.makedirs(os.path.dirname(os.path.join(P, dst)), exist_ok=True)
+            shutil.copy(os.path.join(HERE, 'data', 'bt-addr', name), os.path.join(P, dst))
+            os.chmod(os.path.join(P, dst), mode)
+            pl.carried.append((dst, 'bootmac (replaced by vibeos-bt-addr)'))
+        enable.append('vibeos-bt-addr.service')
     nura.enable_units = enable
     # no pmOS config naming the DSP files' directory (a generic image's hexagonrpcd finds it itself; Debian's
     # wrapper passes -R, by default a droid-juicer path): this phone's directory under /usr/share/qcom

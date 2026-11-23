@@ -42,8 +42,8 @@ It writes, in `--out` (default: the current directory):
 - **Nothing in the images is run.** They are read as data (debugfs, mtools, Python), never mounted.
 
 Not carried, because Debian has no package for them and Alpine binaries cannot run on Debian: `q6voiced` (call
-audio on Qualcomm phones), `msm-modem-uim-selection` (SIM slot), `bootmac` (Wi-Fi and Bluetooth addresses: Bluetooth
-may come up without one), `swclock-offset`. The report lists what was left out for the build you converted.
+audio on Qualcomm phones), `msm-modem-uim-selection` (SIM slot), `bootmac` (Wi-Fi and Bluetooth addresses; the payload's `vibeos-bt-addr` sets the Bluetooth one from the boot
+serial), `swclock-offset`. The report lists what was left out for the build you converted.
 
 ## In recovery
 

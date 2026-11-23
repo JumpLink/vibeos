@@ -1,0 +1,13 @@
+[Unit]
+Description=Set the Bluetooth public address from the device serial
+After=sys-subsystem-bluetooth-devices-hci0.device
+BindsTo=sys-subsystem-bluetooth-devices-hci0.device
+Before=bluetooth.service
+
+[Service]
+Type=oneshot
+TimeoutStartSec=45
+ExecStart=/usr/libexec/vibeos-bt-addr
+
+[Install]
+WantedBy=sys-subsystem-bluetooth-devices-hci0.device
