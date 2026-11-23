@@ -7,12 +7,13 @@ sdm845-mainline `v7.4-wip` branch (7.4.0-rc2), until it is good enough for its o
 
 - Base: [sdm845-mainline](https://gitlab.com/sdm845-mainline/linux) `v7.4-wip`, Nura's config plus
   `INPUT_QCOM_PMI8998_HAPTICS=m` (vibration) and `VIDEO_LC89821X=m` (the focus actuators).
-- Two extra commits: `arm64: dts: qcom: sdm845-oneplus: wire up the focus actuators` and
-  `interconnect: qcom: sdm845: keep MM1 voted in the sleep set` (the display-off reset, below).
+- Extra commits on top: the focus actuators wired up with their `vio` supply, `interconnect: qcom: sdm845:
+  keep MM1 voted in the sleep set` (the display-off reset, below) and the 10nm DSI PLL digtop fix.
+  Tree: [JumpLink/linux-fajita](https://github.com/JumpLink/linux-fajita) branch `fajita`.
 - Test variants ran with `fastboot boot` against the installed VibeOS 0.1.3 root. They differ only in the
   command line (`module_blacklist=…`), repacked with mkbootimg: header v0, base 0, kernel offset 0x8000,
   ramdisk offset 0x1000000, tags offset 0x100, page size 4096.
-- Since 2026-11-24 the MM1-fixed kernel lives in `boot_a` for daily use, written with `dd` from the
+- Since 2026-11-24 the kernel with these fixes lives in `boot_a` for daily use, written with `dd` from the
   running system and read back. Never switch slots with `qbootctl -s` on the 6T: it gave `boot_b` the
   GUID of `abl_b`, and the bootloader then refused both slots until the GPT attributes were repaired over EDL.
 
@@ -33,7 +34,7 @@ so the stream goes over the USB network (`vibeos-usb-net`, PR #7):
 | Bluetooth | works once the controller has an address: the 6T DT and bootloader give none, so the QCA chip stays "unconfigured" and BlueZ hides it. A boot service sets one derived from `androidboot.serialno` (`btmgmt public-addr`, retried until the firmware download finished) |
 | Battery (bq27411), WLAN, sound cards | detected |
 | Modem | visible in ModemManager; SIM and calls to test |
-| Camera focus (lc89821x) | `failed to set DAC: -110` while the sensor sleeps: the actuators share the CCI bus whose pull-ups hang on `cam_vio_1p8`, which their node did not request. Held on at runtime, focus moves without error on both cameras. Fix (`vio-supply`) committed, boot test pending |
-| DSI PLL warning at probe | the clock core enables the 10nm PLL before the PHY's digital top is powered, the lock fails and the unbalanced count warns. Fix (power up digtop with the PLL bias, as on 7nm) committed as linux-fajita `e9ac0107b`, boot test pending |
-| ramoops header ECC error | no overlap with other reserved memory, layout as on other sdm845 boards; expected for uninitialised zones after a cold boot. Whether it repeats on warm reboots is still to check |
+| Camera focus (lc89821x) | works: the actuators share the CCI bus whose pull-ups hang on `cam_vio_1p8`, which their node did not request (`-110` while the sensor slept). With `vio-supply` (linux-fajita `175fde03c`, `c7f666693`) focus moves on both cameras with runtime PM on |
+| DSI PLL warning at probe | fixed: the clock core enabled the 10nm PLL before the PHY's digital top was powered, so the lock failed and the count went unbalanced. linux-fajita `e9ac0107b` powers digtop with the PLL bias, as on 7nm; no WARN at boot, display and touch fine |
+| ramoops | broken: nothing written to pmsg or kmsg survives a normal reboot, and every boot reports header ECC errors. The region at `0xac300000` does not overlap other reserved memory, so the bootloader probably clears or uses it; to investigate |
 | Vibration, audio playback, suspend, Plymouth | to test |
