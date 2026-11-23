@@ -95,6 +95,8 @@ NaviSearch *navi_search_photon_new (const char *base_url, NaviSearch *fallback);
 gboolean navi_search_photon_is_down (NaviSearch *search);
 /* Photon's GeoJSON answer as places (for the tests) */
 GPtrArray *navi_search_photon_parse (const char *json, gssize length, GError **error);
+/* a text search's places as shown: a settlement named as the text first, the rest as Photon ranked them */
+void navi_search_photon_rank (GPtrArray *places, const char *text);
 
 /* text folded for matching: lower case, no accents, ß as ss, "str." as "strasse" */
 char *navi_search_fold (const char *text);

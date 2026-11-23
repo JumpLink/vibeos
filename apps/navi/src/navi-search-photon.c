@@ -1,9 +1,14 @@
 /* navi-search-photon: NaviSearch over our own Photon geocoder (see navi-search.h).
  *
- * Photon is at navi.vibeos.top/photon (Germany for now; GET only, five requests a second from an address, a burst of
- * twenty: the sheet waits for a pause in the typing and cancels what it asked before).
- * Photon's API: GET /api?q=TEXT&lat=&lon=&limit=&lang= finds places as the text is typed, nearer ones first with
- * the position given; GET /reverse?lat=&lon= names a point. Both answer a GeoJSON FeatureCollection whose features
+ * Photon is at navi.vibeos.top/photon (GET only, five requests a second from an address, a burst of twenty: the
+ * sheet waits for a pause in the typing and cancels what it asked before).
+ * Photon's API: GET /api?q=TEXT&lat=&lon=&zoom=&location_bias_scale=&limit=&lang= finds places as the text is typed;
+ * the position given favours places near it, zoom says how near (16, Photon's default, is a few streets), and
+ * location_bias_scale how much a place's prominence counts against that (0: not at all; Photon's default 0.2). A
+ * text search asks with zoom 12 and 0.5: what is in the town comes first, and a city typed by its name is found from
+ * anywhere (with the defaults "Berlin" asked in Munich found Munich's Berliner Straße but not Berlin), and a
+ * settlement whose name is the text goes first of all (navi_search_photon_rank). GET /reverse?lat=&lon= names a
+ * point. Both answer a GeoJSON FeatureCollection whose features
  * are points with the OSM object's name, street, housenumber, postcode, city, district, osm_key/osm_value (its
  * kind: amenity/fuel) and type (house, street, city, ...). A category chip asks without text for Photon's
  * categories (include=osm.amenity.fuel), nearest first (zoom=16, location_bias_scale=0), inside a box around the
@@ -24,6 +29,7 @@
 
 #define LIMIT 10
 #define CATEGORY_BOX_DEG 0.06 /* about 6 km around the position */
+#define TEXT_BIAS "&zoom=12&location_bias_scale=0.5" /* a text search's location bias (see above) */
 
 #define NAVI_TYPE_SEARCH_PHOTON (navi_search_photon_get_type ())
 G_DECLARE_FINAL_TYPE (NaviSearchPhoton, navi_search_photon, NAVI, SEARCH_PHOTON, GObject)
@@ -201,6 +207,29 @@ navi_search_photon_parse (const char *json, gssize length, GError **error)
   return places;
 }
 
+/* A settlement whose name is the text first ("Paris": the city, before Paris Street and a shop called Paris), the
+ * rest in Photon's order. Several such (Frankfurt am Main, Frankfurt (Oder) for "Frankfurt" are not: their names
+ * are not the text) keep theirs too. */
+void
+navi_search_photon_rank (GPtrArray *places, const char *text)
+{
+  g_autofree char *want = navi_search_fold (text);
+  if (!places || !want || !*want)
+    return;
+  g_autoptr (GPtrArray) first = g_ptr_array_new (), rest = g_ptr_array_new ();
+  for (guint i = 0; i < places->len; i++) {
+    NaviPlace *p = places->pdata[i];
+    g_autofree char *name = p->kind == NAVI_PLACE_LOCALITY && p->name ? navi_search_fold (p->name) : NULL;
+    g_ptr_array_add (name && !strcmp (name, want) ? first : rest, p);
+  }
+  if (!first->len)
+    return;
+  for (guint i = 0; i < first->len; i++)
+    places->pdata[i] = first->pdata[i];
+  for (guint i = 0; i < rest->len; i++)
+    places->pdata[first->len + i] = rest->pdata[i];
+}
+
 /* ---- asking ---- */
 
 typedef struct {
@@ -316,6 +345,8 @@ received (GObject *source, GAsyncResult *res, gpointer data)
     if (a->category != NAVI_CATEGORY_NONE && !*a->text) {
       /* nearest first, as the chip's list says */
       g_ptr_array_sort_values_with_data (places, by_distance, a);
+    } else {
+      navi_search_photon_rank (places, a->text);
     }
     g_task_return_pointer (task, places, (GDestroyNotify) g_ptr_array_unref);
   }
@@ -368,7 +399,8 @@ photon_search_async (NaviSearch *search, const char *text, NaviCategory category
                      LIMIT, photon_language ());
   } else {
     g_autofree char *escaped = g_uri_escape_string (a->text, NULL, FALSE);
-    g_string_printf (url, "%s/api?q=%s&limit=%d&lang=%s", self->base, escaped, LIMIT, photon_language ());
+    g_string_printf (url, "%s/api?q=%s" TEXT_BIAS "&limit=%d&lang=%s", self->base, escaped, LIMIT,
+                     photon_language ());
   }
   add_coord (url, "lat", near_lat);
   add_coord (url, "lon", near_lng);

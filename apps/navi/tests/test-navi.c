@@ -511,6 +511,34 @@ test_photon (void)
   g_assert_cmpstr (p->detail, ==, "Berlin");
   GPtrArray *bad = navi_search_photon_parse ("{\"message\":\"missing q\"}", -1, &error);
   g_assert_null (bad);
+  g_clear_error (&error);
+
+  /* "Paris" typed far from it: the city first, the rest as Photon had them */
+  const char *paris =
+    "{\"type\":\"FeatureCollection\",\"features\":["
+    "{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[11.55,48.14]},"
+    "\"properties\":{\"osm_key\":\"highway\",\"osm_value\":\"residential\",\"type\":\"street\","
+    "\"name\":\"Pariser Straße\",\"city\":\"München\"}},"
+    "{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[11.56,48.13]},"
+    "\"properties\":{\"osm_key\":\"shop\",\"osm_value\":\"shoes\",\"type\":\"house\",\"name\":\"Paris\","
+    "\"city\":\"München\"}},"
+    "{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[2.3488,48.8534]},"
+    "\"properties\":{\"osm_key\":\"place\",\"osm_value\":\"city\",\"type\":\"city\",\"name\":\"Paris\","
+    "\"state\":\"Île-de-France\",\"country\":\"France\"}},"
+    "{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[-95.55,33.66]},"
+    "\"properties\":{\"osm_key\":\"place\",\"osm_value\":\"town\",\"type\":\"city\",\"name\":\"Paris\","
+    "\"state\":\"Texas\",\"country\":\"United States\"}}]}";
+  g_autoptr (GPtrArray) found = navi_search_photon_parse (paris, -1, &error);
+  g_assert_no_error (error);
+  navi_search_photon_rank (found, " paris ");
+  g_assert_cmpuint (found->len, ==, 4);
+  g_assert_cmpstr (((NaviPlace *) found->pdata[0])->detail, ==, "Île-de-France");
+  g_assert_cmpstr (((NaviPlace *) found->pdata[1])->detail, ==, "Texas");
+  g_assert_cmpstr (((NaviPlace *) found->pdata[2])->name, ==, "Pariser Straße");
+  g_assert_cmpint (((NaviPlace *) found->pdata[3])->kind, ==, NAVI_PLACE_POI);
+  /* no settlement of that name: Photon's order stands */
+  navi_search_photon_rank (found, "Pariser");
+  g_assert_cmpstr (((NaviPlace *) found->pdata[0])->detail, ==, "Île-de-France");
 }
 
 static void
