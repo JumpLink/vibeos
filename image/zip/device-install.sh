@@ -27,7 +27,16 @@ esac
 
 # the Tab S5e's root, an image file in Android's data, is opened the way its initramfs opens it: dm-linear over the
 # file's extents on userdata, never through Android's file system (Linux writes to those blocks directly, and the
-# file system still calls the ones fallocate gave it unwritten: read through it they are zeros)
+# file system still calls the ones fallocate gave it unwritten: read through it they are zeros). The map holds
+# userdata: while it exists /data cannot be mounted in this recovery session (this zip again, the system zip's image
+# choice, recovery itself), so close_image_raw removes it at the end and on every way out
+DMN=
+close_image_raw() {
+	[ -n "$DMN" ] || return 0
+	cd /
+	$T-dmlinear -r $DMN 2> $T-dmr.err || return 1
+	DMN=; rm -f $T-dm
+}
 open_image_raw() {
 	mount_data || die "cannot mount Android's data"
 	[ -s "$IMGF" ] || die "no $IMGF"
@@ -41,6 +50,8 @@ open_image_raw() {
 	umount /data 2>/dev/null; umount /data 2>/dev/null
 	! data_mounted || die "Android's data is still mounted"
 	MM=$($T-dmlinear vibeos$$ "$(readlink -f $BY/userdata)" $T-extents.map 2> $T-dm.err) || die "dmlinear: $(cat $T-dm.err)"
+	DMN=vibeos$$
+	trap close_image_raw EXIT
 	rm -f $T-dm; mknod $T-dm b ${MM%%:*} ${MM##*:} || die "cannot make the root's device node"
 	RDEV=$T-dm
 }
@@ -94,7 +105,11 @@ install)
 	sync
 	umount -D $ROOT || die "cannot unmount the system"
 	fsck_root $RDEV
-	[ $KIND = image ] || close_root
+	if [ $KIND = image ]; then
+		close_image_raw || die "cannot remove the map over Android's data ($(cat $T-dmr.err)): restart recovery before anything else uses /data"
+	else
+		close_root
+	fi
 	loops_off
 	say "  $n packages for the first boot"
 	;;
