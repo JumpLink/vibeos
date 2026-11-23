@@ -48,6 +48,7 @@ S5E_TABK=				# the tablet's recovery backup, linux-k11-uc.img, its kernel Image-
 					# (rewrites a boot image v2 with a new ramdisk) and later device files
 S5E_MODULES=				# its kernel build's modules_install tree (lib/modules)
 S5E_KIT_TOOLS=				# extents, keepmisc and dmlinear (static aarch64 helpers)
+S5E_UBOOT=				# its dual-boot U-Boot, u-boot-nodtb.bin as s5e/build-uboot.sh builds it (s5e/uboot.env)
 S20_DIR=				# Galaxy S20 FE: its kit (build/, kit/rootfs, kit/modem, quietboot/rootfs)
 S20_SLEEP=				# its sleep helper sources
 # SYSIMG=				# the system image whose upstream-signed regulatory.db goes into the initramfs of a

@@ -1,6 +1,7 @@
 #!/bin/busybox sh
 # gts4lv bring-up initramfs: USB network (NCM + RNDIS) and a serial console
-# (ACM) on the gadget, telnet + SSH on 172.16.42.1, DHCP for the host.
+# (ACM) on the gadget, DHCP for the host; with gts4lv.debug on the command line,
+# root shells on them: telnet + SSH on 172.16.42.1 and the serial console.
 # Nothing here writes to eMMC.
 
 /bin/busybox mkdir -p /bin /sbin /usr/bin /usr/sbin /proc /sys /dev /tmp /run /mnt
@@ -91,16 +92,24 @@ EOF
 touch /tmp/udhcpd.leases
 udhcpd /tmp/udhcpd.conf
 
-telnetd -l /bin/sh -b $IP
-mkdir -p /etc/dropbear
-dropbear -R -B -p $IP:22 && log "ssh root@$IP"
+# The login shells, root without a password: telnet and SSH on $IP, and a shell
+# on the ACM serial port. Only with gts4lv.debug on the command line, which
+# U-Boot's "rescue shell" entry passes (Volume Down at power-on); without it
+# nothing here takes a login.
+SHELLS=
+if grep -qw gts4lv.debug /proc/cmdline; then
+	SHELLS=1
+	telnetd -l /bin/sh -b $IP
+	mkdir -p /etc/dropbear
+	dropbear -R -B -p $IP:22 && log "ssh root@$IP"
 
-# Serial console on the ACM function, respawned.
-( while true; do
-	[ -c /dev/ttyGS0 ] && setsid sh -c 'exec sh </dev/ttyGS0 >/dev/ttyGS0 2>&1'
-	sleep 1
-done ) &
-CONSOLE_LOOP=$!
+	# Serial console on the ACM function, respawned.
+	( while true; do
+		[ -c /dev/ttyGS0 ] && setsid sh -c 'exec sh </dev/ttyGS0 >/dev/ttyGS0 2>&1'
+		sleep 1
+	done ) &
+	CONSOLE_LOOP=$!
+fi
 
 [ -n "$(ls /sys/fs/pstore 2>/dev/null)" ] && log "pstore has records: /sys/fs/pstore"
 log "ready"
@@ -182,6 +191,7 @@ mobian
 # Staying here: show the log on VT2, the first VT fbcon draws.
 chvt 2 2>/dev/null
 log "staying in the initramfs (console on VT2)"
+[ -n "$SHELLS" ] || log "no login here. For a root shell over USB (telnet or ssh root@$IP): restart holding Volume Down, pick \"Linux: rescue shell in the initramfs\""
 
 # Wi-Fi, if this DT has the modem + WCN3990 nodes; logs to /dev/kmsg.
 wifi-up > /run/wifi-up.log 2>&1 &

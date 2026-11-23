@@ -333,10 +333,90 @@ EOF
 	# banner, in the slot image instead of tabk/Image-uc.gz
 	KG=${S5E_KERNEL:-$TK/Image-uc.gz}
 	REGDB_KERNEL=$KG
+	# the ramdisk's /init <- s5e/init (11-23): the root shells over USB (telnet, SSH, the ACM serial console) only
+	# with gts4lv.debug on the command line, which only U-Boot's rescue entry passes (S5E_UBOOT below). Every other
+	# member of the cpio stays byte for byte; rewritten unchanged, the ramdisk must come back byte for byte first.
+	python3 -I - "$SL/ramdisk" "$T/s5e/init" <<'EOF'
+import subprocess, sys, hashlib, zlib
+rd, new = sys.argv[1:3]
+raw = open(rd, 'rb').read()
+z = zlib.decompressobj(31)
+c = z.decompress(raw)
+assert z.eof and not z.unused_data, "the ramdisk is not one gzip member"
+def members(c):
+    i, out = 0, []
+    while True:
+        h = c[i:i + 110]
+        assert h[:6] == b'070701', "not a newc cpio at %d" % i
+        f = [int(h[6 + 8 * k:14 + 8 * k], 16) for k in range(13)]
+        ns, fs = f[11], f[6]
+        name = c[i + 110:i + 110 + ns - 1]
+        d0 = (i + 110 + ns + 3) & ~3
+        out.append([f, name, c[d0:d0 + fs]])
+        i = (d0 + fs + 3) & ~3
+        if name == b'TRAILER!!!':
+            return out, c[i:]
+def cpio(ms):
+    b = bytearray()
+    for f, name, data in ms:
+        f = f[:6] + [len(data)] + f[7:]
+        b += b'070701' + b''.join(b'%08X' % x for x in f) + name + b'\0'
+        b += b'\0' * (-len(b) % 4) + data
+        b += b'\0' * (-len(b) % 4)
+    return bytes(b + b'\0' * (-len(b) % 512))
+def gz(b):
+    return subprocess.run(['gzip', '-9n'], input=b, stdout=subprocess.PIPE, check=True).stdout
+ms, rest = members(c)
+assert not rest.strip(b'\0') and cpio(ms) == c, "the cpio does not come back byte for byte"
+assert gz(c) == raw, "gzip -9n does not give the ramdisk back byte for byte"
+init = [m for m in ms if m[1] == b'init']
+assert len(init) == 1 and hashlib.sha256(init[0][2]).hexdigest() == \
+    '37febcd00efbb64ec2f66df7cdf83b24eb3b0762475b6c412bfd62ec16d05e48', "the ramdisk's /init is not the 11-11 one"
+init[0][2] = open(new, 'rb').read()
+assert b'gts4lv.debug' in init[0][2]
+open(rd, 'wb').write(gz(cpio(ms)))
+EOF
+	log "initramfs: /init <- s5e/init ($(sha256sum < "$T/s5e/init" | cut -c1-16)): the root shells over USB only with gts4lv.debug"
 	regdb_append "$SL/ramdisk"
 	python3 -I "$TK/repack-v2.py" "$TK/linux-k11-uc.img" "$SL/linux-k11-uc-regdb.img" --ramdisk "$SL/ramdisk" --kernel "$KG"
 	[ -z "${S5E_KERNEL:-}" ] || log "slot image kernel <- $S5E_KERNEL ($(sha256sum < "$S5E_KERNEL" | cut -c1-16))"
 	head -c $((34 * 1048576)) "$B" > "$W/boot/recovery.img"
+	# S5E_UBOOT: the dual-boot U-Boot built by s5e/build-uboot.sh, whose default environment must be s5e/uboot.env
+	# (its rescue entry passes gts4lv.debug), in place of the backup's in the first 4 MiB: the DTB appended to it,
+	# the recovery_dtbo and the header stay (as the kit's swap-uboot.py does it); put back in unchanged, the old
+	# U-Boot must give the backup's 4 MiB back byte for byte first
+	python3 -I - "$W/boot/recovery.img" "${S5E_UBOOT:?set S5E_UBOOT: U-Boot from s5e/build-uboot.sh}" "$T/s5e/uboot.env" <<'EOF'
+import gzip, struct, sys, zlib
+rec, new, envf = sys.argv[1:4]
+PAGE, LIN = 4096, 4 << 20
+d = open(rec, 'rb').read()
+assert d[:8] == b'ANDROID!'
+ks, kaddr, rs, raddr, ss, saddr, taddr, ps, hv = struct.unpack_from('<9I', d, 8)
+assert ps == PAGE and hv == 1 and rs == 0 and ss == 0
+dtbo_size, dtbo_off = struct.unpack_from('<IQ', d, 1632)
+pad = lambda n: n + (-n) % PAGE
+z = zlib.decompressobj(31)
+old = z.decompress(d[PAGE:PAGE + ks])
+dtb = z.unused_data
+assert dtb[:4] == b'\xd0\x0d\xfe\xed' and struct.unpack('>I', dtb[4:8])[0] == len(dtb), "no single DTB after U-Boot"
+assert dtbo_off == PAGE + pad(ks)
+dtbo = d[dtbo_off:dtbo_off + dtbo_size]
+def head(u):
+    k = gzip.compress(u, 9, mtime=0) + dtb
+    h = bytearray(d[:PAGE])
+    struct.pack_into('<I', h, 8, len(k))
+    struct.pack_into('<Q', h, 1636, PAGE + pad(len(k)))
+    img = bytes(h) + k + b'\0' * ((-len(k)) % PAGE) + dtbo + b'\0' * ((-len(dtbo)) % PAGE)
+    assert len(img) <= LIN
+    return img + b'\0' * (LIN - len(img))
+assert head(old) == d[:LIN], "the old U-Boot does not give the first 4 MiB back"
+u = open(new, 'rb').read()
+env = [l for l in open(envf).read().split('\n') if l and not l.startswith('#')]
+assert u.count(b'\0'.join(e.encode() for e in env) + b'\0\0') == 1, "U-Boot's default environment is not s5e/uboot.env"
+assert any(e.startswith('linux_rescue=') and 'gts4lv.debug' in e for e in env)
+open(rec, 'r+b').write(head(u))
+EOF
+	log "recovery.img: U-Boot <- $S5E_UBOOT ($(sha256sum < "$S5E_UBOOT" | cut -c1-16)), environment s5e/uboot.env ($(sha256sum < "$T/s5e/uboot.env" | cut -c1-16))"
 	cat "$SL/linux-k11-uc-regdb.img" >> "$W/boot/recovery.img"
 	log "recovery.img: linux-k11-uc.img with regulatory.db in its ramdisk ($(sha256sum < "$SL/linux-k11-uc-regdb.img" | cut -c1-16))"
 	rm -rf "${SL:?}"
