@@ -2334,6 +2334,32 @@ build_banner (NaviPanels *p)
 
 /* ---- the public part ---- */
 
+#define STREET_GAP 10 /* dp between the speed and the street */
+
+/* The street the car is on: centred under the map as Waze has it, but never over the speed at the left. A name too
+ * long to sit centred clear of it starts right of the speed instead, and one longer still ends in "…" short of the
+ * other edge (the label ellipsizes in what it is given). */
+static gboolean
+place_street (GtkOverlay *overlay, GtkWidget *child, GdkRectangle *alloc, NaviPanels *p)
+{
+  if (child != p->street_pill)
+    return FALSE;
+  int w = gtk_widget_get_width (GTK_WIDGET (overlay)), h = gtk_widget_get_height (GTK_WIDGET (overlay));
+  int clear = 0, min, nat;
+  if (gtk_widget_get_visible (p->speed_column)) {
+    gtk_widget_measure (p->speedo, GTK_ORIENTATION_HORIZONTAL, -1, &min, &nat, NULL, NULL);
+    clear = gtk_widget_get_margin_start (p->speed_column) + nat + STREET_GAP;
+  }
+  gtk_widget_measure (child, GTK_ORIENTATION_HORIZONTAL, -1, &min, &nat, NULL, NULL);
+  /* the pill's own alignment and margins place it inside what it is given: the whole map, or the part of it right
+   * of the speed */
+  if (w - nat >= 2 * clear)
+    *alloc = (GdkRectangle) { 0, 0, w, h };
+  else
+    *alloc = (GdkRectangle) { clear, 0, MAX (w - clear - STREET_GAP, 0), h };
+  return TRUE;
+}
+
 NaviPanels *
 navi_panels_new (Navi *n)
 {
@@ -2490,6 +2516,7 @@ navi_panels_new (Navi *n)
   gtk_box_append (GTK_BOX (p->street_pill), p->street_label);
   gtk_widget_set_visible (p->street_pill, FALSE);
   gtk_overlay_add_overlay (ov, p->street_pill);
+  g_signal_connect (ov, "get-child-position", G_CALLBACK (place_street), p);
 
   p->note = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_widget_add_css_class (p->note, "navi-note");
