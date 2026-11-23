@@ -122,6 +122,12 @@ s10e)
 	echo "stage firmware: $(wc -l < "$L/stage-firmware.txt") files from $ST/root: $(tr '\n' ' ' < "$L/stage-firmware.txt")" >> "$L/firmware.txt"
 	KVER=7.2.15-s10e
 	depmod -b "$P/usr" $KVER 2>> "$L/depmod.txt"
+	# S10E_IMAGE: the same kernel built again (7.2.15-s10e, the stage's modules are its own), e.g. with a neutral
+	# banner, shipped instead of the stage's
+	if [ -n "${S10E_IMAGE:-}" ]; then
+		install -m 755 "$S10E_IMAGE" "$P/boot/s10e/Image"
+		log "/boot/s10e/Image <- $S10E_IMAGE ($(sha256sum < "$S10E_IMAGE" | cut -c1-16))"
+	fi
 	cp "$P/boot/s10e/Image" "$P/boot/s10e/Image.prev"		# U-Boot's second menu entry
 	REGDB_KERNEL=$P/boot/s10e/Image
 	regdb_append "$P/boot/s10e/initramfs.cpio.gz"	# both entries' initramfs (U-Boot passes its file size)
@@ -251,6 +257,31 @@ poco)
 	mcopy -o -i "$W/boot/esp.img" "$ME/new.conf" ::/loader/entries/mobian.conf
 	mcopy -i "$W/boot/esp.img" ::/loader/entries/mobian.conf - | diff "$ME/mobian.conf" - > "$L/esp-entry.diff" || true
 	rm -rf "${ME:?}"
+	# POCO_ESP_KERNEL: the same kernel built again (7.2.15-surya, its EFI zboot vmlinuz.efi), e.g. with a neutral
+	# banner, on the ESP instead of the k22 ROM's. Written over the old file's own clusters, so the FAT, the
+	# directory entry and FSInfo stay as they were: it must be the same size, in one run of clusters
+	if [ -n "${POCO_ESP_KERNEL:-}" ]; then
+		[ "$(mcopy -i "$W/boot/esp.img" ::/vmlinuz-mobian - | wc -c)" = "$(stat -c %s "$POCO_ESP_KERNEL")" ] ||
+			{ echo "ESP: $POCO_ESP_KERNEL is not vmlinuz-mobian's size" >&2; exit 1; }
+		python3 -I - "$W/boot/esp.img" "$POCO_ESP_KERNEL" "$(mshowfat -i "$W/boot/esp.img" ::/vmlinuz-mobian)" <<-'PYEOF'
+		import re, struct, sys
+		img, new, chain = sys.argv[1:4]
+		m = re.fullmatch(r"\S+ <(\d+)-(\d+)>", chain.strip())
+		assert m, "vmlinuz-mobian is not one run of clusters: " + chain
+		first, last = int(m[1]), int(m[2])
+		with open(img, "r+b") as f:
+		    bs = f.read(512)
+		    sec, spc, res, nfat = struct.unpack_from("<HBHB", bs, 11)
+		    fatsz = struct.unpack_from("<I", bs, 36)[0]
+		    clus = sec * spc
+		    data = open(new, "rb").read()
+		    assert len(data) <= (last - first + 1) * clus
+		    f.seek((res + nfat * fatsz) * sec + (first - 2) * clus)
+		    f.write(data)
+		PYEOF
+		mcopy -i "$W/boot/esp.img" ::/vmlinuz-mobian - | cmp -s - "$POCO_ESP_KERNEL" || { echo "ESP: vmlinuz-mobian not replaced" >&2; exit 1; }
+		log "ESP vmlinuz-mobian <- $POCO_ESP_KERNEL ($(sha256sum < "$POCO_ESP_KERNEL" | cut -c1-16)), in its own clusters"
+	fi
 	DESC="POCO X3 NFC (surya): kernel 7.2.15-22surya modules (the kernel and initramfs are on the ESP), the POCO's firmware, hexagonrpcd, sensors, UCM, sleep, cameras and tuning"
 	;;
 s5e)
@@ -298,9 +329,13 @@ EOF
 	cmp -s "$SL/kernel" "$TK/Image-uc.gz" || { echo "linux-k11-uc.img: its kernel is not tabk/Image-uc.gz" >&2; exit 1; }
 	python3 -I "$TK/repack-v2.py" "$TK/linux-k11-uc.img" "$SL/same.img" && cmp -s "$SL/same.img" "$TK/linux-k11-uc.img" ||
 		{ echo "repack-v2.py does not give linux-k11-uc.img back" >&2; exit 1; }
-	REGDB_KERNEL=$TK/Image-uc.gz
+	# S5E_KERNEL: the same kernel built again (7.2.15-gts4lv-uc, gzip -9n of its Image), e.g. with a neutral
+	# banner, in the slot image instead of tabk/Image-uc.gz
+	KG=${S5E_KERNEL:-$TK/Image-uc.gz}
+	REGDB_KERNEL=$KG
 	regdb_append "$SL/ramdisk"
-	python3 -I "$TK/repack-v2.py" "$TK/linux-k11-uc.img" "$SL/linux-k11-uc-regdb.img" --ramdisk "$SL/ramdisk"
+	python3 -I "$TK/repack-v2.py" "$TK/linux-k11-uc.img" "$SL/linux-k11-uc-regdb.img" --ramdisk "$SL/ramdisk" --kernel "$KG"
+	[ -z "${S5E_KERNEL:-}" ] || log "slot image kernel <- $S5E_KERNEL ($(sha256sum < "$S5E_KERNEL" | cut -c1-16))"
 	head -c $((34 * 1048576)) "$B" > "$W/boot/recovery.img"
 	cat "$SL/linux-k11-uc-regdb.img" >> "$W/boot/recovery.img"
 	log "recovery.img: linux-k11-uc.img with regulatory.db in its ramdisk ($(sha256sum < "$SL/linux-k11-uc-regdb.img" | cut -c1-16))"
