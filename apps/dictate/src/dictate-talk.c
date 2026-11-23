@@ -22,14 +22,17 @@
 #define VOICE_THREADS   2       /* the voice's (Piper is fast; the model has the fastest cores) */
 
 /* the tools are still to come: until then the model is told it has them, and confirms what it is asked to do. The
- * first %s is what it can use, as Agent's settings allow (dictate-access.h); the second, today's date */
+ * first %s is what it can use, as Agent's settings allow (dictate-access.h); the second, today's date; the third,
+ * the language it answers in, last, where it weighs most: the one chosen in Agent, not the one the question happens
+ * to be in (a model told only to answer in the user's language falls back to English, the prompt's) */
 #define SYSTEM_PROMPT \
   "You are Vibe, the AI agent of this phone. You were made for VibeOS, a Linux operating system for phones, by the " \
   "VibeOS developers; if you are asked who made you or what you are, say that, and never name another company or " \
   "model as your maker. %s " \
   "The user speaks to you and hears your answers read aloud, so answer the way people talk: one to three short " \
-  "sentences, no lists, no headings, no markdown, no emoji, no links. Answer in the language the user speaks. If " \
-  "you do not know something, say so. Today is %s."
+  "sentences, no lists, no headings, no markdown, no emoji, no links. If you do not know something, say so. " \
+  "Today is %s. Always answer in %s, even when the user's words, or something you are given, are in another " \
+  "language; names stay as they are."
 
 typedef enum { JOB_PREPARE, JOB_ASK, JOB_RESET, JOB_QUIT } JobKind;
 typedef enum { SAY_PREPARE, SAY_TEXT, SAY_END, SAY_QUIT } SayKind;
@@ -71,6 +74,7 @@ struct _DictateTalk {
   char *brain_path;
   gboolean fresh;               /* the conversation starts with the next question */
   char *access;                 /* what the conversation was told Agent can use */
+  char *answers_in;             /* and the language it was told to answer in */
   /* the voice's thread's */
   DictateVoice *voice;
   char *voice_path, *voice_name;
@@ -498,6 +502,11 @@ ensure_voice (DictateTalk *self, Job *say)
     }
   g_free (self->voice_path), self->voice_path = g_strdup (say->voice);
   g_free (self->voice_name), self->voice_name = g_strdup (say->name);
+  {
+    /* which voice, for the log: its file's name ("de_DE-thorsten-medium.onnx") */
+    g_autofree char *file = g_path_get_basename (say->voice);
+    g_message ("talk: voice %s for %s loaded", file, say->language ? say->language : "?");
+  }
   return TRUE;
 }
 
@@ -548,17 +557,55 @@ voice_thread (gpointer data)
 
 /* ---------------- the brain's thread ---------------- */
 
-static char *
-system_prompt (const char *access)
+/* the languages Agent speaks: the name the model is told to answer in, and today's date as said in it */
+typedef struct {
+  const char *code;
+  const char *name;
+  const char *days[7];          /* Monday first */
+  const char *months[12];       /* as in a date ("ноября") */
+  const char *date;             /* weekday, day, month, year */
+} Speech;
+
+static const Speech SPEECH[] = {
+  { "en", "English", { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" },
+    { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November",
+      "December" }, "%s, %d %s %d" },
+  { "de", "German (Deutsch)", { "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag" },
+    { "Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November",
+      "Dezember" }, "%s, %d. %s %d" },
+  { "es", "Spanish (español)", { "lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo" },
+    { "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre",
+      "diciembre" }, "%s, %d de %s de %d" },
+  { "fr", "French (français)", { "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche" },
+    { "janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre",
+      "décembre" }, "%s %d %s %d" },
+  { "it", "Italian (italiano)", { "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica" },
+    { "gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre",
+      "novembre", "dicembre" }, "%s %d %s %d" },
+  { "ru", "Russian (русский)", { "понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье" },
+    { "января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября",
+      "декабря" }, "%s, %d %s %d" },
+};
+
+static const Speech *
+speech_of (const char *language)
 {
-  static const char *const days[] = { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" };
-  static const char *const months[] = { "January", "February", "March", "April", "May", "June", "July", "August",
-                                        "September", "October", "November", "December" };
+  for (guint i = 0; i < G_N_ELEMENTS (SPEECH); i++)
+    if (!g_strcmp0 (SPEECH[i].code, language))
+      return &SPEECH[i];
+  return &SPEECH[0];
+}
+
+static char *
+system_prompt (const char *access, const char *language)
+{
+  const Speech *speech = speech_of (language);
   g_autoptr (GDateTime) now = g_date_time_new_now_local ();
-  g_autofree char *date = g_strdup_printf ("%s, %d %s %d", days[g_date_time_get_day_of_week (now) - 1],
-                                           g_date_time_get_day_of_month (now), months[g_date_time_get_month (now) - 1],
+  g_autofree char *date = g_strdup_printf (speech->date, speech->days[g_date_time_get_day_of_week (now) - 1],
+                                           g_date_time_get_day_of_month (now),
+                                           speech->months[g_date_time_get_month (now) - 1],
                                            g_date_time_get_year (now));
-  return g_strdup_printf (SYSTEM_PROMPT, access ? access : "", date);
+  return g_strdup_printf (SYSTEM_PROMPT, access ? access : "", date, speech->name);
 }
 
 static gboolean
@@ -668,20 +715,24 @@ answer (DictateTalk *self, Job *job)
 
   if (!ensure_brain (self, job))
     goto out;
-  if (self->fresh || g_strcmp0 (job->access, self->access) != 0)
+  if (self->fresh || g_strcmp0 (job->access, self->access) != 0 || g_strcmp0 (job->language, self->answers_in) != 0)
     {
-      g_autofree char *prompt = system_prompt (job->access);
+      g_autofree char *prompt = system_prompt (job->access, job->language);
 
-      /* a switch in Agent's settings turned since the last question: the conversation goes on, told the new list */
+      /* a switch in Agent's settings turned, or the language changed, since the last question: the conversation
+       * goes on, told the new list and the language to answer in from now on */
       if (self->fresh)
         dictate_brain_reset (self->brain, prompt);
       else
         {
-          g_debug ("talk: what Agent can use has changed");
+          g_debug ("talk: what Agent can use, or the language, has changed");
           dictate_brain_set_system (self->brain, prompt);
         }
+      if (g_strcmp0 (job->language, self->answers_in) != 0)
+        g_message ("talk: answers in %s", speech_of (job->language)->code);
       self->fresh = FALSE;
       g_free (self->access), self->access = g_strdup (job->access);
+      g_free (self->answers_in), self->answers_in = g_strdup (job->language);
     }
   g_mutex_lock (&self->lock);
   g_set_object (&self->cancellable, cancellable);
@@ -741,6 +792,7 @@ brain_thread (gpointer data)
   g_clear_pointer (&self->brain, dictate_brain_free);
   g_clear_pointer (&self->brain_path, g_free);
   g_clear_pointer (&self->access, g_free);
+  g_clear_pointer (&self->answers_in, g_free);
   return NULL;
 }
 

@@ -4,6 +4,8 @@
  *
  *   agent-say [-l LANGUAGE] [-o PREFIX] [-w SECONDS] TEXT…
  *
+ * A TEXT that starts with "[xx] " switches the language to xx from that turn on, as choosing it in the app does.
+ *
  * The model and the voice are loaded first, as the window does (-w: how long that is given, 8 s), so that the first
  * reply is not timed with the load. For each turn: when the first of the reply was written, when the reply started
  * to sound and when the whole of it had been spoken, from the moment it was asked; then the reply. The exit status
@@ -12,6 +14,7 @@
 
 #include <gst/gst.h>
 #include <stdio.h>
+#include <string.h>
 
 #define TURN_LIMIT_S 180
 
@@ -19,6 +22,7 @@ typedef struct {
   GMainLoop *loop;
   DictateTalk *talk;
   const char *language;
+  char *switched;               /* the language a turn switched to */
   char **texts;
   guint next;
   /* this turn's */
@@ -116,7 +120,15 @@ ask_next (Say *s)
   s->written = s->sounded = 0;
   s->failed = FALSE;
   g_clear_pointer (&s->reply, g_free);
-  printf ("\nsaid: %s\n", text);
+  /* "[de] …": the language switched to German from this turn on, as in the app's language list */
+  if (text[0] == '[' && strlen (text) > 4 && text[3] == ']')
+    {
+      g_free (s->switched);
+      s->switched = g_strndup (text + 1, 2);
+      s->language = s->switched;
+      text += text[4] == ' ' ? 5 : 4;
+    }
+  printf ("\nsaid (%s): %s\n", s->language, text);
   fflush (stdout);
   s->waiting = TRUE;
   s->asked = g_get_monotonic_time ();

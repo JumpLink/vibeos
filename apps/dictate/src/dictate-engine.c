@@ -229,6 +229,11 @@ load (DictateEngine *self, DictateModel *model)
       return FALSE;
     }
   self->loaded = model;
+  {
+    /* which model listens now, for the log: its directory's name ("tiny-streaming-de") */
+    g_autofree char *dir = g_path_get_basename (model->dir);
+    g_message ("engine: %s model %s loaded", recogniser->name, dir);
+  }
   return TRUE;
 }
 

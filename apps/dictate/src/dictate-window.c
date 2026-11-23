@@ -283,35 +283,26 @@ show_language (Window *self)
   gtk_accessible_update_property (GTK_ACCESSIBLE (self->language), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);
 }
 
-/* the language to listen in, as the models installed now allow */
+/* The language is now `code`. Every path that changes it comes here, so that all three follow it at once, in the
+ * running window: listening (the engine loads that language's model at its next start, Moonshine or Vosk), the
+ * reply (Agent's model is told to answer in it with its next question: dictate-talk.c rebuilds its prompt when the
+ * language a question comes with changes) and the voice (Agent's for that language, loaded now). */
 static void
-choose_language (Window *self)
+language_changed (Window *self, const char *code)
 {
-  g_autofree char *chosen = g_settings_get_string (self->settings, "language");
-  g_autoptr (DictateModel) model = *chosen ? dictate_model_find (chosen) : NULL;
-  g_autofree char *code = model ? g_strdup (chosen) : dictate_language_default ();
-
-  dictate_engine_set_language (self->engine, code);
-  show_language (self);
-}
-
-static void start (Window *self);
-
-/* the language chosen, with its model (and Agent's voice) on the phone */
-static void
-on_language_ready (const char *language, gpointer data)
-{
-  Window *self = data;
   DictateState state;
 
-  g_settings_set_string (self->settings, "language", language);
-  if (g_strcmp0 (language, dictate_engine_get_language (self->engine)) == 0)
-    return;
-  dictate_engine_set_language (self->engine, language);
+  if (g_strcmp0 (code, dictate_engine_get_language (self->engine)) == 0)
+    {
+      show_language (self);
+      return;
+    }
+  g_message ("language: now %s", code);
+  dictate_engine_set_language (self->engine, code);
   show_language (self);
   /* Agent's voice for it loads now, while nothing is said: its first reply is sooner */
   if (self->talk && dictate_talk_get_state (self->talk) == DICTATE_TALK_IDLE)
-    dictate_talk_prepare (self->talk, language);
+    dictate_talk_prepare (self->talk, code);
   /* listening: what was said goes in in the old language, then listening goes on in the new one */
   state = dictate_engine_get_state (self->engine);
   if (state == DICTATE_STARTING || state == DICTATE_LISTENING)
@@ -319,6 +310,30 @@ on_language_ready (const char *language, gpointer data)
       self->restart_when_idle = TRUE;
       dictate_engine_stop (self->engine);
     }
+}
+
+/* the language to listen in, as the models installed now allow: the chosen one, or the default when its model has
+ * gone */
+static void
+choose_language (Window *self)
+{
+  g_autofree char *chosen = g_settings_get_string (self->settings, "language");
+  g_autoptr (DictateModel) model = *chosen ? dictate_model_find (chosen) : NULL;
+  g_autofree char *code = model ? g_strdup (chosen) : dictate_language_default ();
+
+  language_changed (self, code);
+}
+
+static void start (Window *self);
+
+/* the language chosen, with its model (and Agent's voice) on the phone: already there, or downloaded just now */
+static void
+on_language_ready (const char *language, gpointer data)
+{
+  Window *self = data;
+
+  g_settings_set_string (self->settings, "language", language);
+  language_changed (self, language);
 }
 
 static void
@@ -1514,10 +1529,8 @@ dictate_window_new (GtkApplication *app, gboolean agent)
                             G_CALLBACK (update_margins), self);
   g_signal_connect_swapped (vibeos_theme_get_default (), "changed", G_CALLBACK (update_partial), self);
   update_margins (self);
+  /* and Agent's model and voice load while the window comes up (language_changed): the first answer is sooner */
   choose_language (self);
-  /* the model and the voice load while the window comes up: the first answer is sooner */
-  if (self->talk)
-    dictate_talk_prepare (self->talk, dictate_engine_get_language (self->engine));
   show_state (self);
   return self->window;
 }
