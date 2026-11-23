@@ -14,6 +14,12 @@
 #include "navi-poi.h"
 #include "navi-roadinfo.h"
 #include "navi-voice.h"
+#ifdef HAVE_DICTATION
+#include "dictate-engine.h"
+#include "dictate-models.h"
+
+#include <gst/gst.h>
+#endif
 
 #include <glib/gi18n.h>
 #include <math.h>
@@ -62,6 +68,9 @@ struct _NaviPanels {
   GCancellable *shell_cancel;
   guint keyboard;          /* that: logical px from the window's bottom, 0 when the keyboard is down */
   GtkWidget *search_host;  /* a tablet's: the card over the map the search opens in */
+  GObject *dictation;      /* the search's microphone (a DictateEngine), NULL without a speech model */
+  GtkWidget *search_mic;
+  GString *dictated;       /* the sentences heard since the microphone was tapped */
   GCancellable *search_cancel;
   guint search_source;
   NaviCategory category;
@@ -719,9 +728,123 @@ search_activated (VibeosSearchView *view, const char *text, NaviPanels *p)
   run_search (p);
 }
 
+/* ---- the search's microphone: a place said instead of typed ---- */
+
+#ifdef HAVE_DICTATION
+/* the language heard: the app's (the one Valhalla speaks) where its model is installed, else Dictate's choice (the
+ * user's first language with one, else English) */
+static char *
+dictation_language (void)
+{
+  char code[3];
+  g_strlcpy (code, navi_route_language (), sizeof code);
+  g_autoptr (DictateModel) model = dictate_model_find (code);
+  return model ? g_strdup (code) : dictate_language_default ();
+}
+
+static void
+mic_text (GObject *engine, GStrv finished, const char *partial, NaviPanels *p)
+{
+  if (!p->search_view)
+    return;
+  for (guint i = 0; finished && finished[i]; i++) {
+    if (p->dictated->len)
+      g_string_append_c (p->dictated, ' ');
+    g_string_append (p->dictated, finished[i]);
+  }
+  g_autoptr (GString) text = g_string_new (p->dictated->str);
+  if (partial && *partial)
+    g_string_append_printf (text, "%s%s", text->len ? " " : "", partial);
+  /* a place, not a sentence: Moonshine's full stop goes */
+  while (text->len && strchr (".!?,;: ", text->str[text->len - 1]))
+    g_string_truncate (text, text->len - 1);
+  if (text->len)
+    vibeos_search_view_set_text (VIBEOS_SEARCH_VIEW (p->search_view), text->str);
+}
+
+static void
+mic_state (GObject *engine, NaviPanels *p)
+{
+  DictateState state = dictate_engine_get_state (DICTATE_ENGINE (engine));
+  gboolean on = state == DICTATE_STARTING || state == DICTATE_LISTENING;
+  if (p->search_mic)
+    gtk_image_set_from_icon_name (GTK_IMAGE (vibeos_pressable_get_child (VIBEOS_PRESSABLE (p->search_mic))),
+                                  on ? "media-playback-stop-symbolic" : "audio-input-microphone-symbolic");
+  if (!p->search_status)
+    return;
+  if (on) {
+    set_text (p->search_status, state == DICTATE_STARTING ? _("Getting ready…") : _("Say where to go"));
+    gtk_widget_set_visible (p->search_status, TRUE);
+  } else if (p->choosing == CHOOSE_NONE && !g_strcmp0 (gtk_label_get_text (GTK_LABEL (p->search_status)),
+                                                         _("Say where to go"))) {
+    gtk_widget_set_visible (p->search_status, FALSE);
+  }
+}
+
+static void
+mic_error (GObject *engine, const char *message, NaviPanels *p)
+{
+  if (!p->search_status)
+    return;
+  set_text (p->search_status, message);
+  gtk_widget_set_visible (p->search_status, TRUE);
+}
+
+static void
+mic_clicked (GtkWidget *button, NaviPanels *p)
+{
+  DictateEngine *engine = DICTATE_ENGINE (p->dictation);
+  if (dictate_engine_get_state (engine) != DICTATE_IDLE) {
+    dictate_engine_stop (engine);
+    return;
+  }
+  g_autofree char *reason = NULL;
+  if (!dictate_engine_available (engine, &reason)) {
+    mic_error (p->dictation, reason, p);
+    return;
+  }
+  g_string_truncate (p->dictated, 0);
+  dictate_engine_start (engine);
+}
+
+/* the microphone for the search's bar, NULL where no speech model is installed */
+static GtkWidget *
+search_mic (NaviPanels *p)
+{
+  if (!p->dictation) {
+    g_autofree char *language = dictation_language ();
+    if (!language)
+      return NULL; /* no model at all */
+    gst_init (NULL, NULL); /* the microphone is read through GStreamer (the voice may not have started it yet) */
+    p->dictation = G_OBJECT (dictate_engine_new ());
+    p->dictated = g_string_new (NULL);
+    dictate_engine_set_language (DICTATE_ENGINE (p->dictation), language);
+    /* one turn: it stops by itself once the place has been said */
+    dictate_engine_set_turns (DICTATE_ENGINE (p->dictation), TRUE);
+    g_signal_connect (p->dictation, "text", G_CALLBACK (mic_text), p);
+    g_signal_connect (p->dictation, "state-changed", G_CALLBACK (mic_state), p);
+    g_signal_connect (p->dictation, "error", G_CALLBACK (mic_error), p);
+  }
+  g_autofree char *reason = NULL;
+  if (!dictate_engine_available (DICTATE_ENGINE (p->dictation), &reason)) {
+    g_debug ("search: no microphone: %s", reason);
+    return NULL;
+  }
+  GtkWidget *mic = vibeos_icon_button_new ("audio-input-microphone-symbolic");
+  gtk_accessible_update_property (GTK_ACCESSIBLE (mic), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Search by voice"), -1);
+  g_signal_connect (mic, "clicked", G_CALLBACK (mic_clicked), p);
+  return mic;
+}
+#endif
+
 static void
 search_closed (VibeosSearchView *view, NaviPanels *p)
 {
+#ifdef HAVE_DICTATION
+  if (p->dictation && dictate_engine_get_state (DICTATE_ENGINE (p->dictation)) != DICTATE_IDLE)
+    dictate_engine_stop (DICTATE_ENGINE (p->dictation));
+  p->search_mic = NULL;
+#endif
   g_clear_handle_id (&p->search_source, g_source_remove);
   g_cancellable_cancel (p->search_cancel);
   if (p->along) {
@@ -844,6 +967,11 @@ open_search (NaviPanels *p, const char *text)
   g_signal_connect (view, "search-changed", G_CALLBACK (search_changed), p);
   g_signal_connect (view, "search-activated", G_CALLBACK (search_activated), p);
   g_signal_connect (view, "closed", G_CALLBACK (search_closed), p);
+#ifdef HAVE_DICTATION
+  p->search_mic = search_mic (p);
+  if (p->search_mic)
+    vibeos_search_view_set_end (VIBEOS_SEARCH_VIEW (view), p->search_mic);
+#endif
   fill_saved (p);
   if (p->search_host) {
     gtk_widget_set_visible (p->search_host, TRUE);
@@ -2090,6 +2218,10 @@ navi_panels_quiet (NaviPanels *p)
   stop_countdown (p);
   navi_voice_stop (p->voice);
   navi_voice_rest (p->voice);
+#ifdef HAVE_DICTATION
+  if (p->dictation && dictate_engine_get_state (DICTATE_ENGINE (p->dictation)) != DICTATE_IDLE)
+    dictate_engine_stop (DICTATE_ENGINE (p->dictation));
+#endif
 }
 
 void
@@ -2098,6 +2230,11 @@ navi_panels_free (NaviPanels *p)
   stop_countdown (p);
   if (p->go_fill)
     g_object_remove_weak_pointer (G_OBJECT (p->go_fill), (gpointer *) &p->go_fill);
+  if (p->dictation)
+    g_signal_handlers_disconnect_by_data (p->dictation, p);
+  g_clear_object (&p->dictation);
+  if (p->dictated)
+    g_string_free (p->dictated, TRUE);
   g_clear_handle_id (&p->search_source, g_source_remove);
   g_cancellable_cancel (p->search_cancel);
   g_clear_object (&p->search_cancel);

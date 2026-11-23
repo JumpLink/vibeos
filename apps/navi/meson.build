@@ -103,6 +103,24 @@ if voice_src != ''
   voice_sources = files(voice_src / 'dictate-voice.c', voice_src / 'dictate-phonemes.c')
   voice_deps = [onnxruntime, dependency('espeak-ng'), dependency('gstreamer-1.0'), dependency('gstreamer-app-1.0')]
   app_args += ['-DHAVE_PIPER', '-I' + voice_src]
+  # the search's microphone: Agent's and Dictate's speech recognition (Moonshine, Vosk, the voice activity detector),
+  # built from the same sources, its models and recognisers the ones vibeos-dictate's language packages install.
+  # Its messages stay in Dictate's translation domain.
+  dictation = static_library('navi-dictation',
+    files(voice_src / 'dictate-engine.c', voice_src / 'dictate-models.c', voice_src / 'dictate-moonshine.c',
+          voice_src / 'dictate-vosk.c', voice_src / 'dictate-vad.c'),
+    c_args: ['-DGETTEXT_PACKAGE="vibeos-dictate"', '-DLIBRARY_DIR="@0@"'.format(get_option('dictate_library_dir')),
+             '-I' + voice_src],
+    dependencies: [dependency('gio-2.0'), dependency('json-glib-1.0'), dependency('gstreamer-1.0'),
+                   dependency('gstreamer-app-1.0'), onnxruntime, meson.get_compiler('c').find_library('m'),
+                   meson.get_compiler('c').find_library('dl')])
+  voice_deps += declare_dependency(link_with: dictation)
+  app_args += '-DHAVE_DICTATION'
+  # a test's: TEXT spoken into a WAV file, for the microphone's test input (DICTATE_TEST_INPUT)
+  executable('navi-say', 'tests/navi-say.c', voice_sources, c_args: ['-I' + voice_src],
+             dependencies: [dependency('gio-2.0'), dependency('json-glib-1.0'), meson.get_compiler('c').find_library('m')] +
+                           voice_deps,
+             install: false)
 endif
 executable('vibeos-navi', 'src/navi-main.c', 'src/navi-window.c', 'src/navi-alerts.c', 'src/navi-panels.c', 'src/navi-draw.c',
            'src/navi-settings.c', 'src/navi-voice.c', voice_sources,

@@ -4,6 +4,9 @@ option('debug_privacy', type: 'boolean', value: false,
        description: 'print positions, routes and searches to the console (never in a release: Navi logs no places)')
 option('server', type: 'string', value: 'https://navi.vibeos.top',
        description: 'the map server: tiles and glyphs (the routes and places come from NAVI_SERVER or this too)')
+option('dictate_library_dir', type: 'string', value: '/usr/lib/vibeos-dictate',
+       description: 'where vibeos-dictate\'s speech recognisers (libmoonshine.so, libvosk.so) are installed: the ' +
+                    'search\'s microphone loads them from here first, as Dictate does')
 option('voice_src', type: 'string', value: '',
        description: 'Agent\'s voice sources (dictate-voice.c and dictate-phonemes.c, apps/dictate/src of the voice ' +
                     'branch): Navi speaks with its Piper voices; without them, through Speech Dispatcher')
