@@ -252,9 +252,12 @@ poco)
 	# ON the phone, where its hooks pull in qcom_q6v5_pas without modem.mbn and the modem stays off; with none,
 	# update-initramfs finds nothing to update. surya-esp-update (the kernel hooks) still names the k22 root's
 	# UUID: it names the root by its label, as the ESP's entry does, should it ever run (with fsck.repair=yes: below).
-	sed -i 's/root=UUID=b2b58066-08bc-40ed-95e7-8da4eac5d02f/root=LABEL=vibeos fsck.repair=yes/' "$P/usr/local/sbin/surya-esp-update"
-	grep -q 'options root=LABEL=vibeos fsck.repair=yes ' "$P/usr/local/sbin/surya-esp-update" && ! grep -q b2b58066 "$P/usr/local/sbin/surya-esp-update" ||
+	sed -i 's/root=UUID=b2b58066-08bc-40ed-95e7-8da4eac5d02f rw /root=LABEL=vibeos fsck.repair=yes fsck.mode=skip ro /' "$P/usr/local/sbin/surya-esp-update"
+	grep -q 'options root=LABEL=vibeos fsck.repair=yes fsck.mode=skip ro ' "$P/usr/local/sbin/surya-esp-update" && ! grep -q b2b58066 "$P/usr/local/sbin/surya-esp-update" ||
 		{ echo "surya-esp-update: root= not changed" >&2; exit 1; }
+	# The root is checked by systemd-fsck-root, not by the initramfs (the ESP's entry: ro fsck.mode=skip, below);
+	# this unit's own credential overrides the command line's skip, and nothing it finds stops the boot
+	install -D -m 644 "$T/poco/vibeos-fsck-in-root.conf" "$P/etc/systemd/system/systemd-fsck-root.service.d/vibeos-fsck-in-root.conf"
 	[ ! -e "$P/boot" ] || { echo "the POCO stage has a /boot: $(ls "$P/boot")" >&2; exit 1; }
 	# U-Boot is in BOOT (since 2026-11-23: VibeOS on the whole phone): every power-on starts VibeOS, and the
 	# recovery partition is LineageOS's recovery again. So no restart names recovery any more: the stage's
@@ -315,11 +318,15 @@ poco)
 	ME=$(mktemp -d "$O/tmp/esp.XXXXXX")
 	mcopy -i "$W/boot/esp.img" ::/loader/entries/mobian.conf "$ME/mobian.conf"
 	# fsck.repair=yes (2026-11-23: nothing but an unmountable root stops the boot): the initramfs (initramfs-tools'
-	# init, the k22 ROM's) checks the root with fsck -a, and where that cannot fix it (a journal a brown-out left) it
-	# stopped in its shell, "requires a manual fsck"; with it, fsck -y (and systemd-fsck-root answers yes too). The
-	# initrd itself stays the k22 ROM's, byte for byte (rebuilt on the phone it loses the modem)
-	sed 's/root=UUID=[0-9a-f-]*/root=LABEL=vibeos fsck.repair=yes/' "$ME/mobian.conf" > "$ME/new.conf"
-	grep -q 'root=LABEL=vibeos fsck.repair=yes ' "$ME/new.conf" || { echo "ESP: no root= to change" >&2; exit 1; }
+	# init, the k22 ROM's) checked the root with fsck -a, and where that could not fix it (a journal a brown-out
+	# left) it stopped in its shell, "requires a manual fsck". And no check runs there any more (fsck.mode=skip, the
+	# root mounted ro): U-Boot leaves the APSS watchdog running and nothing pets it until qcom_wdt loads from the
+	# root, so a long fsck in the initramfs would reset the phone mid-run, at every boot. The kernel still replays
+	# the journal at the ro mount; systemd-fsck-root then checks the root with fsck -y while PID 1 pets the watchdog
+	# (vibeos-fsck-in-root.conf, above) and systemd-remount-fs makes it read-write. The initrd itself stays the k22
+	# ROM's, byte for byte (rebuilt on the phone it loses the modem)
+	sed 's/root=UUID=[0-9a-f-]* rw /root=LABEL=vibeos fsck.repair=yes fsck.mode=skip ro /' "$ME/mobian.conf" > "$ME/new.conf"
+	grep -q 'root=LABEL=vibeos fsck.repair=yes fsck.mode=skip ro ' "$ME/new.conf" || { echo "ESP: no root= to change" >&2; exit 1; }
 	mcopy -o -i "$W/boot/esp.img" "$ME/new.conf" ::/loader/entries/mobian.conf
 	mcopy -i "$W/boot/esp.img" ::/loader/entries/mobian.conf - | diff "$ME/mobian.conf" - > "$L/esp-entry.diff" || true
 	rm -rf "${ME:?}"
