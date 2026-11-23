@@ -539,6 +539,27 @@ test_photon (void)
   /* no settlement of that name: Photon's order stands */
   navi_search_photon_rank (found, "Pariser");
   g_assert_cmpstr (((NaviPlace *) found->pdata[0])->detail, ==, "Île-de-France");
+  /* Photon's index has Russia, Navi does not: its places are not in the answer, none left is no answer */
+  const char *moskau =
+    "{\"type\":\"FeatureCollection\",\"features\":["
+    "{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[37.6175,55.7504]},"
+    "\"properties\":{\"osm_key\":\"place\",\"osm_value\":\"city\",\"type\":\"city\",\"name\":\"Москва\","
+    "\"countrycode\":\"RU\",\"country\":\"Россия\"}},"
+    "{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[13.40,52.52]},"
+    "\"properties\":{\"osm_key\":\"highway\",\"osm_value\":\"residential\",\"type\":\"street\","
+    "\"name\":\"Moskauer Straße\",\"countrycode\":\"DE\",\"city\":\"Berlin\"}}]}";
+  g_autoptr (GPtrArray) moscow = navi_search_photon_parse (moskau, -1, &error);
+  g_assert_no_error (error);
+  g_assert_cmpuint (moscow->len, ==, 1);
+  g_assert_cmpstr (((NaviPlace *) moscow->pdata[0])->name, ==, "Moskauer Straße");
+  const char *only =
+    "{\"type\":\"FeatureCollection\",\"features\":["
+    "{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[30.3141,59.9386]},"
+    "\"properties\":{\"osm_key\":\"place\",\"osm_value\":\"city\",\"type\":\"city\","
+    "\"name\":\"Санкт-Петербург\",\"countrycode\":\"RU\"}}]}";
+  g_autoptr (GPtrArray) none = navi_search_photon_parse (only, -1, &error);
+  g_assert_no_error (error);
+  g_assert_cmpuint (none->len, ==, 0);
 }
 
 static void

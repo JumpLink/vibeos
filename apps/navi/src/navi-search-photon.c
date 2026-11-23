@@ -17,7 +17,11 @@
  * Whatever Photon cannot answer (no connection, an error status such as its 503 "search is unavailable right now",
  * an answer that is no GeoJSON) goes to the fallback backend, so the sheet always shows something, and says that
  * search is down (navi_search_photon_is_down ()). Nothing is logged: the text and the position stay
- * between the app and our server. */
+ * between the app and our server.
+ *
+ * Navi has no maps or routes for Russia, but Photon's index (Europe's OpenStreetMap extract) has its places: a place
+ * whose countrycode is RU is left out of every answer, the search list and the name of a point alike. A text that
+ * finds nothing else finds nothing. */
 #include "navi-search.h"
 #include "navi-geo.h"
 #include "navi-poi.h"
@@ -116,6 +120,8 @@ feature_place (JsonObject *f)
   JsonObject *p = json_object_has_member (f, "properties") ? json_object_get_object_member (f, "properties") : NULL;
   JsonArray *c = g && json_object_has_member (g, "coordinates") ? json_object_get_array_member (g, "coordinates") : NULL;
   if (!p || !c || json_array_get_length (c) < 2)
+    return NULL;
+  if (!g_strcmp0 (prop (p, "countrycode"), "RU"))
     return NULL;
   double lng = json_array_get_double_element (c, 0), lat = json_array_get_double_element (c, 1);
   const char *type = prop (p, "type"), *key = prop (p, "osm_key"), *value = prop (p, "osm_value");
