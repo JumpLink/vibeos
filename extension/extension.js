@@ -177,7 +177,7 @@ export default class VibeosExtension extends Extension {
         this._volume.keysTaker = () => this._service.volumeKeysTaker();
         Main.layoutManager.addTopChrome(this._volume);
         overWindows(this._volume);
-        // power and volume down together: a screenshot
+        // power and volume down together: a screenshot; power and volume up: the power menu (power.js)
         this._chord = new ScreenshotChord();
         this._volume.chord = this._chord;
         // the power menu a long press of the power key opens, over the lock screen too
@@ -195,7 +195,7 @@ export default class VibeosExtension extends Extension {
         // ... and while it is off, the volume keys do nothing (an app that took them still gets them: a call)
         this._volume.screenOff = () => this._power && !this._power.interactive;
         // the apps a double press of the power key and the side button open (Settings > System > Gestures), or the
-        // side button's recents
+        // side button's recents; and Agent, listening while the power key is held
         this._keyLaunch = new KeyLaunch({service: this._service, keyguard: this._keyguard, power: this._power,
             shade: this._shade});
         this._power.doublePress = this._keyLaunch;

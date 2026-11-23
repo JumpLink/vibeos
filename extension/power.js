@@ -35,7 +35,8 @@ const WAKE_FROM_OFF_MS = 667;
 const DECELERATE = t => 1 - (1 - t) * (1 - t);
 // the lock screen's and the bouncer's own screen timeout: shorter than the session's, nobody is using the phone
 const KEYGUARD_TIMEOUT_MS = 10000;
-// a press of the power key held this long is a long press (the power menu)
+// a press of the power key held this long is a long press: Agent listens while it is held on (keylaunch.js), else the
+// power menu
 const LONG_PRESS_MS = 500;
 // a press whose down comes less than this after a short press's down is a double press (keylaunch.js), as Android's
 // GestureLauncherService counts one, down to down
@@ -79,13 +80,16 @@ function vibeosSettings() {
 
 export class Power extends Signals.EventEmitter {
     // @keyguard: lock() as the screen goes off, .showing, .bouncerShowing; @state: the SystemState; @menu: the power
-    // menu a long press opens
+    // menu a long press opens, or power and volume up together (@chord)
     constructor(keyguard, state, menu, chord) {
         super();
         this._keyguard = keyguard;
         this._menu = menu;
         this._chord = chord;
+        if (chord)
+            chord.onPowerMenu = () => this._chordMenu();
         this._longPressId = 0;
+        this._agentHeld = false;    // the key held now has Agent listening (keylaunch.js hold): its up ends that
         // keylaunch.js's KeyLaunch, set by the extension: what a double press of the key opens
         this.doublePress = null;
         this._tapAt = 0;            // the last short press's down (the event's time, ms), for a double press
@@ -198,14 +202,12 @@ export class Power extends Signals.EventEmitter {
             this._wokeByPress = !this.interactive;
             if (this._wokeByPress)
                 this.wakeUp('power');
-            // ... and held, opens the power menu, with a long-press tick
+            // ... and held, has Agent listen until it is let go (Settings > System > Gestures, on by default; on a
+            // locked phone too, where Agent only reads), else opens the power menu; either with a long-press tick
             this._cancelLongPress();
             this._longPressId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, LONG_PRESS_MS, () => {
                 this._longPressId = 0;
-                if (!this.interactive || this._chord?.powerTaken)
-                    return GLib.SOURCE_REMOVE;
-                haptic();
-                this._menu?.open();
+                this._longPress();
                 return GLib.SOURCE_REMOVE;
             });
             return;
@@ -214,6 +216,12 @@ export class Power extends Signals.EventEmitter {
         const held = (now - (this._pressedAt ?? now)) / 1000;
         this._pressedAt = null;
         const chord = this._chord?.powerUp();
+        // the hold's end: Agent stops listening, and the key does nothing more
+        if (this._agentHeld) {
+            this._agentHeld = false;
+            this.doublePress?.hold(false);
+            return;
+        }
         if (this._doublePressed) {
             this._doublePressed = false;
             return;
@@ -226,6 +234,32 @@ export class Power extends Signals.EventEmitter {
         if ((now - this._wokeAt) / 1000 < MIN_AWAKE_MS)
             return;
         this.goToSleep('power');
+    }
+
+    // the key held LONG_PRESS_MS, neither part of a chord nor a double press
+    _longPress() {
+        if (this._chord?.powerTaken)
+            return;
+        // the screen may still be dark here (a tablet's wake waits for its floor): Agent listens all the same
+        if (this.doublePress?.holdArmed) {
+            haptic();
+            this._agentHeld = true;
+            this.doublePress.hold(true);
+            return;
+        }
+        if (!this.interactive)
+            return;
+        haptic();
+        this._menu?.open();
+    }
+
+    // power and volume up together (chord.js): the power menu, and the key held on does nothing more
+    _chordMenu() {
+        this._cancelLongPress();
+        if (!this.interactive)
+            return;
+        haptic();
+        this._menu?.open();
     }
 
     _cancelLongPress() {
@@ -588,6 +622,10 @@ export class Power extends Signals.EventEmitter {
 
     destroy() {
         this._cancelLongPress();
+        // a hold under way ends with the extension: Agent stops listening
+        if (this._agentHeld)
+            this.doublePress?.hold(false);
+        this._agentHeld = false;
         this._cancelLock();
         if (this._wakeWaitId)
             GLib.source_remove(this._wakeWaitId);
