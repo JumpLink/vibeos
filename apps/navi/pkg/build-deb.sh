@@ -13,9 +13,12 @@
 #   ROOT             the arm64 root filesystem (the sysroot of both builds), entered with sudo chroot
 #   OUTDIR           where the .deb goes; the package is put together in OUTDIR/vibeos-navi.work
 #
+# LIBDIRS=DIR[:DIR…]: libraries ROOT does not have (libtonal, from the same tree's top-level build), for
+# dpkg-shlibdeps to find; their packages' versions are in pkg/shlibs.local.
+#
 # Everything private goes to /usr/lib/vibeos-navi, found through the RUNPATH: no system library is replaced.
 set -eu
-[ $# -eq 5 ] || { sed -n '2,15p' "$0"; exit 2; }
+[ $# -eq 5 ] || { sed -n "2,18p" "$0"; exit 2; }
 navi_build=$(realpath "$1"); vibeos_build=$(realpath "$2"); maplibre_src=$(realpath "$3"); root=$(realpath "$4")
 outdir=$(realpath "$5")
 pkgdir=$(cd "$(dirname "$0")" && pwd)
@@ -79,6 +82,10 @@ vibeos-navi ($version) unstable; urgency=medium
 EOF
 gzip -9n < "$work/debian/changelog" > "$p/usr/share/doc/vibeos-navi/changelog.gz"
 chmod -R u+rwX,go+rX,go-w "$p"
+mkdir -p "$work/libs"
+for d in $(echo "${LIBDIRS:-}" | tr ':' ' '); do
+    for f in "$d"/*.so.*; do [ -d "$f" ] || cp -P "$f" "$work/libs/"; done
+done
 
 # the dependencies and the package, inside the arm64 root (where its libraries and their shlibs are)
 inside=/build/vibeos-navi-deb
@@ -92,7 +99,8 @@ esac
 sudo -n chroot --userspec="$(id -u):$(id -g)" "$root" env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin LC_ALL=C.UTF-8 \
     HOME=/tmp sh -euc '
 cd "$1"
-dpkg-shlibdeps -Tdebian/vibeos-navi.substvars debian/vibeos-navi/usr/bin/vibeos-navi \
+mkdir -p debian/vibeos-navi/DEBIAN
+dpkg-shlibdeps -Tdebian/vibeos-navi.substvars -ldebian/vibeos-navi/usr/lib/vibeos-navi -llibs debian/vibeos-navi/usr/bin/vibeos-navi \
     debian/vibeos-navi/usr/lib/vibeos-navi/libvibeos-navi-map.so.0 debian/vibeos-navi/usr/lib/vibeos-navi/libvibeos-1.so.0.*
 dpkg-gencontrol -pvibeos-navi -Pdebian/vibeos-navi -Tdebian/vibeos-navi.substvars
 (cd debian/vibeos-navi && find usr -type f -print0 | sort -z | xargs -0 md5sum > DEBIAN/md5sums)
