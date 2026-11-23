@@ -51,8 +51,10 @@ function readPanelFile(Gm, compatibles) {
     return null;
 }
 
-// The hole on the upright panel, screen px: [x, y, width, height] around every cutout in the panel's top half, or
-// null. gmobile gives them in the panel's own pixels (x-res wide), scaled here to the mode it runs at.
+// The hole on the upright panel: {box: [x, y, width, height] around every cutout in the panel's top half, in the
+// panel's own pixels (gmobile's), xRes: the panel's width in them}, or null. Scaled to screen px as it is read (rect,
+// upright): a screen px is a reference px, and how many of them the panel is across changes with the scale (Display
+// size).
 async function readHole() {
     let Gm;
     try {
@@ -69,7 +71,6 @@ async function readHole() {
     const panel = new Gm.DeviceInfo({compatibles}).get_display_panel() ?? readPanelFile(Gm, compatibles);
     if (!panel)
         return null;
-    const k = panel.get_x_res() > 0 ? SCREEN_W / panel.get_x_res() : 1;
     const cutouts = panel.get_cutouts();
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (let i = 0; i < cutouts.get_n_items(); i++) {
@@ -83,7 +84,7 @@ async function readHole() {
     }
     if (x1 <= x0)
         return null;
-    return [x0 * k, y0 * k, (x1 - x0) * k, (y1 - y0) * k].map(Math.round);
+    return {box: [x0, y0, x1 - x0, y1 - y0], xRes: panel.get_x_res()};
 }
 
 export const Cutout = GObject.registerClass({
@@ -92,7 +93,7 @@ export const Cutout = GObject.registerClass({
     constructor() {
         super();
         this._transform = 0;
-        this._hole = null;              // [x, y, width, height] on the upright panel, screen px
+        this._hole = null;              // readHole()'s
         readHole().then(hole => {
             if (this._destroyed || !hole)
                 return;
@@ -113,12 +114,16 @@ export const Cutout = GObject.registerClass({
 
     // the hole on the upright panel, screen px: [x, y, width, height] ([0, 0, 0, 0]: none)
     get upright() {
-        return this._hole ?? [0, 0, 0, 0];
+        if (!this._hole)
+            return [0, 0, 0, 0];
+        const k = this._hole.xRes > 0 ? SCREEN_W / this._hole.xRes : 1;
+        return this._hole.box.map(v => Math.round(v * k));
     }
 
     // how far the hole reaches in from the upright panel's top edge, screen px (0: no hole)
     get depth() {
-        return this._hole ? this._hole[1] + this._hole[3] : 0;
+        const [, y, , h] = this.upright;
+        return y + h;
     }
 
     // how far content keeps off each edge for the hole, screen px (Android's safe insets)
@@ -138,7 +143,7 @@ export const Cutout = GObject.registerClass({
         if (!this._hole || !m)
             return [0, 0, 0, 0];
         const W = m.width * SCALE, H = m.height * SCALE;
-        const [x, y, w, h] = this._hole;
+        const [x, y, w, h] = this.upright;
         switch (this.side) {
         case 'top':
             return [x, y, w, h];
