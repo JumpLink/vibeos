@@ -10,28 +10,39 @@ and every layer under the first label (where the app puts its route, navi-window
 SERVER is the tile and glyph server, https://navi.vibeos.top by default."""
 import json, sys
 
-COUNTRIES = [  # name, bounds (west, south, east, north)
-    ('germany', [5.8, 47.2, 15.1, 55.1]), ('poland', [14.0, 48.9, 24.2, 55.0]),
-    ('czech-republic', [12.0, 48.5, 18.9, 51.1]), ('netherlands', [3.3, 50.7, 7.3, 53.7]),
-    ('switzerland', [5.9, 45.8, 10.5, 47.9]), ('austria', [9.4, 46.3, 17.2, 49.1]),
-    ('slovakia', [16.8, 47.7, 22.6, 49.7]), ('great-britain', [-8.7, 49.8, 1.8, 61.1]),
-    ('ukraine', [22.1, 44.3, 40.3, 52.4]), ('israel-and-palestine', [34.2, 29.4, 35.9, 33.4]),
-    ('spain', [-18.3, 27.5, 4.4, 43.9]), ('france', [-7.0, 41.2, 10.1, 51.5]), ('italy', [6.6, 35.0, 19.2, 47.2]),
+COUNTRIES = [  # name, bounds (west, south, east, north): the map server's archives, one per Geofabrik extract,
+    # each bounds from its archive's own header, rounded out to a tenth of a degree. The US's header spans every
+    # longitude (the Aleutians cross the antimeridian), which would have the map ask it for every tile at those
+    # latitudes, Europe's too: its west of the Atlantic only
+    ('germany', [5.8, 47.2, 15.1, 55.2]), ('poland', [13.9, 48.9, 24.2, 55.3]),
+    ('czech-republic', [12.0, 48.5, 18.9, 51.1]), ('netherlands', [2.9, 50.7, 7.3, 54.1]),
+    ('switzerland', [5.9, 45.8, 10.5, 47.9]), ('austria', [9.5, 46.3, 17.2, 49.1]),
+    ('slovakia', [16.8, 47.7, 22.6, 49.7]), ('great-britain', [-15.4, 49.5, 2.6, 62.0]),
+    ('ukraine', [22.1, 44.0, 40.3, 52.4]), ('israel-and-palestine', [33.9, 29.4, 36.0, 33.5]),
+    ('spain', [-9.8, 35.1, 5.1, 44.2]), ('france', [-7.0, 41.2, 10.1, 51.5]), ('italy', [6.6, 35.0, 19.2, 47.2]),
     ('us', [-180.0, 15.9, -64.5, 73.0]), ('japan', [122.5, 20.0, 154.5, 45.9]), ('belgium', [2.3, 49.4, 6.5, 51.6]),
     ('portugal', [-33.7, 29.2, -6.1, 42.2]), ('sweden', [10.5, 55.0, 24.3, 69.1]),
     ('denmark', [7.7, 54.4, 15.7, 58.1]), ('norway', [-11.4, 57.5, 35.6, 81.1]), ('serbia', [18.8, 42.2, 23.1, 46.2]),
     ('slovenia', [13.3, 45.4, 16.7, 46.9]), ('belarus', [23.1, 51.2, 32.8, 56.2]),
-    ('bulgaria', [22.3, 41.2, 29.2, 44.3]), ('estonia', [20.8, 57.4, 28.3, 60.0]), ('latvia', [19.7, 55.6, 28.3, 58.1]),
-    ('lithuania', [20.6, 53.8, 26.9, 56.5]), ('andorra', [1.4, 42.4, 1.8, 42.7]), ('moldova', [26.6, 45.4, 30.2, 48.5]),
-    ('finland', [19.0, 59.2, 31.7, 70.1]), ('albania', [18.8, 39.6, 21.1, 42.7]),
-    ('bosnia-herzegovina', [15.7, 42.5, 19.7, 45.3]), ('croatia', [13.0, 42.1, 19.5, 46.6]),
-    ('cyprus', [31.9, 34.2, 35.0, 36.1]), ('greece', [18.9, 34.5, 29.7, 41.8]), ('hungary', [16.1, 45.7, 23.0, 48.6]),
-    ('iceland', [-25.8, 62.8, -12.4, 67.6]), ('ireland-and-northern-ireland', [-16.4, 47.9, -5.0, 56.9]),
-    ('kosovo', [20.0, 41.8, 21.8, 43.3]), ('liechtenstein', [9.4, 47.0, 9.7, 47.3]),
-    ('luxembourg', [5.7, 49.4, 6.6, 50.2]), ('macedonia', [20.4, 40.8, 23.1, 42.4]), ('malta', [13.8, 35.5, 14.9, 36.4]),
-    ('monaco', [7.4, 43.4, 7.6, 43.8]), ('montenegro', [18.1, 41.6, 20.4, 43.6]), ('romania', [20.2, 43.6, 30.3, 48.3]),
+    ('bulgaria', [22.3, 41.2, 29.2, 44.3]), ('estonia', [20.8, 57.4, 28.3, 60.0]),
+    ('latvia', [19.7, 55.6, 28.3, 58.1]), ('lithuania', [20.6, 53.8, 26.9, 56.5]),
+    ('andorra', [1.4, 42.4, 1.8, 42.7]), ('moldova', [26.6, 45.4, 30.2, 48.5]), ('finland', [19.0, 59.2, 31.7, 70.1]),
+    ('albania', [18.8, 39.6, 21.1, 42.7]), ('bosnia-herzegovina', [15.7, 42.5, 19.7, 45.3]),
+    ('croatia', [13.0, 42.1, 19.5, 46.6]), ('cyprus', [31.9, 34.2, 35.0, 36.1]), ('greece', [18.9, 34.5, 29.7, 41.8]),
+    ('hungary', [16.1, 45.7, 23.0, 48.6]), ('iceland', [-25.8, 62.8, -12.4, 67.6]),
+    ('ireland-and-northern-ireland', [-16.4, 47.9, -5.0, 56.9]), ('kosovo', [20.0, 41.8, 21.8, 43.3]),
+    ('liechtenstein', [9.4, 47.0, 9.7, 47.3]), ('luxembourg', [5.7, 49.4, 6.6, 50.2]),
+    ('macedonia', [20.4, 40.8, 23.1, 42.4]), ('malta', [13.8, 35.5, 14.9, 36.4]), ('monaco', [7.4, 43.4, 7.6, 43.8]),
+    ('montenegro', [18.1, 41.6, 20.4, 43.6]), ('romania', [20.2, 43.6, 30.3, 48.3]),
     ('turkey', [25.5, 35.7, 44.9, 43.1]), ('australia', [68.1, -57.1, 169.1, -8.8]),
     ('malaysia-singapore-brunei', [99.2, 0.8, 119.7, 7.8]), ('new-zealand', [-180.0, -56.8, 180.0, -28.4]),
+    ('guernsey-jersey', [-3.6, 48.8, -1.7, 50.1]), ('isle-of-man', [-5.5, 53.7, -3.6, 54.7]),
+    # not built yet when these were listed (2026-11-23): Geofabrik's bounding boxes of the regions (index-v1.json); a
+    # missing archive answers 404 or 204 until it is there. Russia is Geofabrik's federal districts: its European ones
+    ('faroe-islands', [-8.7, 60.9, -5.5, 62.9]), ('georgia', [39.9, 41.1, 46.7, 43.6]),
+    ('central-fed-district', [30.7, 49.5, 47.7, 59.7]), ('north-caucasus-fed-district', [40.7, 41.1, 48.9, 46.2]),
+    ('northwestern-fed-district', [19.4, 54.3, 72.6, 82.5]), ('south-fed-district', [36.5, 43.2, 49.9, 51.3]),
+    ('volga-fed-district', [41.7, 49.8, 61.7, 61.7]),
 ]
 
 PALETTES = {
