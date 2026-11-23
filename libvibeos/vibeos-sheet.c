@@ -420,7 +420,6 @@ page_new (VibeosSheet *self, const char *title, gboolean back, GtkWidget *conten
   GtkWidget *page = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *bar = vibeos_top_bar_new (title);
   GtkWidget *close;
-  GdkRGBA tonal = vibeos_color (VIBEOS_SURFACE_CONTAINER_HIGHEST);
 
   gtk_widget_add_css_class (page, "vibeos-sheet-page");
   vibeos_top_bar_set_compact (VIBEOS_TOP_BAR (bar), TRUE);
@@ -430,7 +429,9 @@ page_new (VibeosSheet *self, const char *title, gboolean back, GtkWidget *conten
   close = vibeos_top_bar_add_action (VIBEOS_TOP_BAR (bar), "window-close-symbolic");
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (close), VIBEOS_RIPPLE_CIRCLE, CLOSE_RADIUS);
   gtk_image_set_pixel_size (GTK_IMAGE (vibeos_pressable_get_child (VIBEOS_PRESSABLE (close))), CLOSE_ICON);
-  vibeos_pressable_set_fill (VIBEOS_PRESSABLE (close), &tonal, FALSE);
+  /* the theme's colour as it is when it draws: taken once, a sheet open while an app turned dark kept the light
+   * circle (and a light one, the dark circle) under an X in the new theme's colour */
+  vibeos_pressable_set_fill_role (VIBEOS_PRESSABLE (close), VIBEOS_SURFACE_CONTAINER_HIGHEST, FALSE);
   gtk_accessible_update_property (GTK_ACCESSIBLE (close), GTK_ACCESSIBLE_PROPERTY_LABEL, "Close", -1);
   g_signal_connect (close, "clicked", G_CALLBACK (on_close_clicked), self);
   gtk_box_append (GTK_BOX (page), bar);

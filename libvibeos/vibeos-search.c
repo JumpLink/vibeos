@@ -226,7 +226,7 @@ vibeos_search_bar_new (const char *hint)
 
 struct _VibeosSearchView {
   GtkWidget   parent;
-  GtkWidget  *back, *entry, *clear, *content;
+  GtkWidget  *back, *entry, *clear, *end, *content;
   VibeosAnim *fade;
   double      opacity;
   gboolean    closing;
@@ -252,6 +252,8 @@ vibeos_search_view_size_allocate (GtkWidget *widget, int width, int height, int 
 
   put (self->back, VIEW_BACK_X, (VIEW_BAR_H - BUTTON) / 2.0, BUTTON, BUTTON);
   put (self->clear, width - VIEW_BACK_X - BUTTON, (VIEW_BAR_H - BUTTON) / 2.0, BUTTON, BUTTON);
+  if (self->end)
+    put (self->end, width - VIEW_BACK_X - BUTTON, (VIEW_BAR_H - BUTTON) / 2.0, BUTTON, BUTTON);
   entry_w = MAX (width - VIEW_TEXT_X - VIEW_BACK_X - BUTTON, 1);
   natural (self->entry, entry_w, &w, &h);
   put (self->entry, VIEW_TEXT_X, (VIEW_BAR_H - h) / 2.0, entry_w, h);
@@ -308,6 +310,8 @@ on_text_changed (GtkEditable *entry, VibeosSearchView *self)
   const char *text = gtk_editable_get_text (entry);
 
   gtk_widget_set_visible (self->clear, text && *text);
+  if (self->end)
+    gtk_widget_set_visible (self->end, !text || !*text);
   g_signal_emit (self, view_signals[VIEW_CHANGED], 0, text);
 }
 
@@ -347,6 +351,19 @@ vibeos_search_view_set_content (VibeosSearchView *self, GtkWidget *content)
   self->content = content;
   if (content)
     gtk_widget_set_parent (content, GTK_WIDGET (self));
+}
+
+void
+vibeos_search_view_set_end (VibeosSearchView *self, GtkWidget *end)
+{
+  const char *text = gtk_editable_get_text (GTK_EDITABLE (self->entry));
+
+  g_clear_pointer (&self->end, gtk_widget_unparent);
+  self->end = end;
+  if (!end)
+    return;
+  gtk_widget_set_parent (end, GTK_WIDGET (self));
+  gtk_widget_set_visible (end, !text || !*text);
 }
 
 const char *
@@ -413,6 +430,7 @@ vibeos_search_view_dispose (GObject *object)
   g_clear_pointer (&self->back, gtk_widget_unparent);
   g_clear_pointer (&self->entry, gtk_widget_unparent);
   g_clear_pointer (&self->clear, gtk_widget_unparent);
+  g_clear_pointer (&self->end, gtk_widget_unparent);
   G_OBJECT_CLASS (vibeos_search_view_parent_class)->dispose (object);
 }
 

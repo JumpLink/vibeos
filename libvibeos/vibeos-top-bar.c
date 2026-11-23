@@ -380,14 +380,13 @@ vibeos_top_bar_init (VibeosTopBar *self)
 {
   GtkWidget *widget = GTK_WIDGET (self);
   GtkWidget *arrow = gtk_image_new_from_icon_name ("go-previous-symbolic");
-  GdkRGBA tonal = vibeos_color (VIBEOS_SURFACE_CONTAINER_HIGHEST);
 
   gtk_widget_add_css_class (widget, "vibeos-top-bar");
 
   gtk_image_set_pixel_size (GTK_IMAGE (arrow), 24);
   self->back = vibeos_pressable_new (arrow);
   gtk_widget_add_css_class (self->back, "vibeos-top-bar-back");
-  vibeos_pressable_set_fill (VIBEOS_PRESSABLE (self->back), &tonal, FALSE);
+  vibeos_pressable_set_fill_role (VIBEOS_PRESSABLE (self->back), VIBEOS_SURFACE_CONTAINER_HIGHEST, FALSE);
   gtk_accessible_update_property (GTK_ACCESSIBLE (self->back), GTK_ACCESSIBLE_PROPERTY_LABEL, "Back", -1);
   g_signal_connect (self->back, "clicked", G_CALLBACK (on_back_clicked), self);
   gtk_widget_set_parent (self->back, widget);

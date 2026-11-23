@@ -12,6 +12,7 @@ import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
+import Shell from 'gi://Shell';
 import St from 'gi://St';
 
 import * as Signals from 'resource:///org/gnome/shell/misc/signals.js';
@@ -206,6 +207,17 @@ function touchId(event) {
     return event.get_event_sequence()?.get_slot?.() ?? event.get_event_sequence();
 }
 
+// An app whose desktop file says X-Vibeos-Keyboard=overlay keeps its window as it is when the keyboard comes up: the
+// keys go over it, as over a full-screen map (Navi), instead of the window being fitted above them. It learns how
+// much of it the keys cover from vibeos.Shell's KeyboardOverlap (service.js) and makes room itself. Other apps are
+// fitted above the keys, as before.
+const OVERLAY_KEY = 'X-Vibeos-Keyboard';
+
+export function keyboardOverlays(window) {
+    const info = window && Shell.WindowTracker.get_default().get_window_app(window)?.get_app_info();
+    return info instanceof Gio.DesktopAppInfo && info.has_key(OVERLAY_KEY) && info.get_string(OVERLAY_KEY) === 'overlay';
+}
+
 export const VibeosKeyboard = GObject.registerClass(
 class VibeosKeyboard extends KeyboardUI.Keyboard {
     // The shell's keyboard is set up, then its looks are taken away and ours put in
@@ -398,6 +410,9 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
     // the keyboard over it instead, a terminal full of output had its prompt under the keys: owner, 11-21, "shrink
     // console above keyboard".) Other windows keep the animation.
     _animateWindow(window, show) {
+        // an app that has the keys over its window (keyboardOverlays): left as it is
+        if (show && keyboardOverlays(window))
+            return;
         const actor = window?.get_compositor_private();
         if (show && actor && window.maximized_vertically && !window.__keyboardMoved && !window.is_alien() &&
             Main.inputMethod.content_purpose === Clutter.InputContentPurpose.TERMINAL) {

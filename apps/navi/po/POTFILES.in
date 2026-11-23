@@ -1,0 +1,9 @@
+# the files with translatable strings
+data/vibeos.Navi.desktop.in
+src/navi-alerts.c
+src/navi-geo.c
+src/navi-main.c
+src/navi-panels.c
+src/navi-plan.c
+src/navi-voice.c
+src/navi-window.c

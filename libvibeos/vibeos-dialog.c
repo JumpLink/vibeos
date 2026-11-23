@@ -94,10 +94,14 @@ on_anim (VibeosAnim *anim, double value, gpointer data)
   if (self->closing && !vibeos_anim_is_running (anim)) {
     GtkWidget *overlay = gtk_widget_get_parent (GTK_WIDGET (self));
     GtkWidget *focus = self->focus_before ? g_object_ref (self->focus_before) : NULL;
+    /* the focus back where it was before the dialog took it, unless the answer put it somewhere else meanwhile (a
+     * search field the answer opened: taken back, it lost the keyboard the tap on the button had brought up) */
+    GtkRoot *root = gtk_widget_get_root (GTK_WIDGET (self));
+    GtkWidget *now = root ? gtk_root_get_focus (root) : NULL;
+    gboolean ours = !now || now == GTK_WIDGET (self) || gtk_widget_is_ancestor (now, GTK_WIDGET (self));
     if (overlay)
       gtk_overlay_remove_overlay (GTK_OVERLAY (overlay), GTK_WIDGET (self));
-    /* the focus back where it was before the dialog took it */
-    if (focus && gtk_widget_get_root (focus))
+    if (ours && focus && gtk_widget_get_root (focus))
       gtk_widget_grab_focus (focus);
     g_clear_object (&focus);
   }

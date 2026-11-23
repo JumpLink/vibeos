@@ -6,7 +6,7 @@ import Shell from 'gi://Shell';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
-import {dismissKeyboard} from './keyboard/keyboard.js';
+import {dismissKeyboard, keyboardOverlays} from './keyboard/keyboard.js';
 import {LaunchTransition} from './launch.js';
 import {Navigation} from './navigation.js';
 import {setExpectWindow} from './settings.js';
@@ -54,6 +54,11 @@ const IFACE = `<node>
       <arg type="s" name="app_id" direction="in"/>
       <arg type="b" name="take" direction="in"/>
     </method>
+    <!-- how much of the window in front the on-screen keyboard covers: the logical pixels from the keys' top edge down
+         to the window's bottom, 0 when the keyboard is down. A window the shell fits above the keys (most apps) is
+         never covered; one whose app's desktop file says X-Vibeos-Keyboard=overlay is, and the app makes room itself
+         (keyboard.js). Changes are announced as the keyboard starts to come up and to go down. -->
+    <property name="KeyboardOverlap" type="u" access="read"/>
   </interface>
 </node>`;
 
@@ -69,6 +74,9 @@ export class Service {
         };
         setExpectWindow(app => this._launch.expect(app));
         this._volumeKeys = new Map();   // app id -> {sender, watch}: who took the volume keys
+        this._overlap = 0;
+        this._sizedKeyboard = null;     // the keyboard whose height is watched
+        Main.keyboard.connectObject('visibility-changed', () => this._updateOverlap(), this);
         this._impl = Gio.DBusExportedObject.wrapJSObject(IFACE, this);
         this._impl.export(Gio.DBus.session, '/vibeos/Shell');
         this._nameId = Gio.bus_own_name(Gio.BusType.SESSION, 'vibeos.Shell',
@@ -113,6 +121,35 @@ export class Service {
                 this._launch.open(app, box, uri, opener);
                 invocation.return_value(null);
             });
+    }
+
+    get KeyboardOverlap() {
+        return this._overlap;
+    }
+
+    // The keys' top edge against the bottom of the window in front. The keyboard is measured, not where it is in its
+    // slide: the app hears the end of the slide at its start, and moves with it.
+    _updateOverlap() {
+        const keyboard = Main.keyboard._keyboard ?? null;
+        if (keyboard !== this._sizedKeyboard) {
+            this._sizedKeyboard?.disconnectObject(this);
+            this._sizedKeyboard = keyboard;
+            keyboard?.connectObject('notify::height', () => this._updateOverlap(), 'destroy', () => {
+                this._sizedKeyboard = null;
+            }, this);
+        }
+        let overlap = 0;
+        const window = global.display.focus_window;
+        const monitor = Main.layoutManager.keyboardMonitor;
+        if (Main.keyboard.visible && keyboard && monitor && window && keyboardOverlays(window)) {
+            const top = monitor.y + monitor.height - keyboard.height;
+            const frame = window.get_frame_rect();
+            overlap = Math.max(0, Math.round(frame.y + frame.height - top));
+        }
+        if (overlap === this._overlap)
+            return;
+        this._overlap = overlap;
+        this._impl.emit_property_changed('KeyboardOverlap', GLib.Variant.new_uint32(overlap));
     }
 
     // the navigation (a tablet's taskbar works with it)
@@ -192,6 +229,8 @@ export class Service {
     }
 
     destroy() {
+        Main.keyboard.disconnectObject(this);
+        this._sizedKeyboard?.disconnectObject(this);
         setExpectWindow(null);
         this._launch.destroy();
         this._nav.destroy();

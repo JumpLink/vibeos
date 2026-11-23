@@ -1,5 +1,5 @@
-/* The overflow menu: see vibeos-menu.h. The card's clip grows down from the anchor while it fades in, as the Clock's
- * and the Dialer's menus open. */
+/* The overflow menu: see vibeos-menu.h. It opens next to its anchor, never over it: below it, or above it when there is
+ * no room below. The card's clip grows away from the anchor (down below it, up above it) while it fades in. */
 #include "vibeos-menu.h"
 
 #include "vibeos-anim.h"
@@ -15,7 +15,8 @@
 #define MIN_WIDTH       196     /* Android's popup menu rows are never narrower */
 #define TEXT_PAD        16      /* the text's inset at both ends */
 #define CORNER          4
-#define END_MARGIN      4       /* the card's end, this far in from the window's */
+#define END_MARGIN      4       /* the card's ends, at least this far in from the window's */
+#define ANCHOR_GAP      4       /* between the anchor's edge and the card's */
 #define ENTER_MS        250     /* the clip reveal and the fade in */
 #define EXIT_MS         150
 
@@ -33,6 +34,7 @@ struct _VibeosMenu
   graphene_rect_t anchor_bounds;
   VibeosAnim *anim;
   double shown;                 /* 0 … 1 */
+  gboolean upward;              /* it opened above the anchor */
   gboolean closing;
 };
 
@@ -54,13 +56,27 @@ vibeos_menu_size_allocate (GtkWidget *widget, int width, int height, int baselin
   double x, y;
 
   gtk_widget_measure (self->card, GTK_ORIENTATION_HORIZONTAL, -1, &min, &nat, NULL, NULL);
+  double below, above;
+
   w = MIN (MAX (nat, MIN_WIDTH), width - 2 * END_MARGIN);
   gtk_widget_measure (self->card, GTK_ORIENTATION_VERTICAL, w, &min, &nat, NULL, NULL);
   h = MIN (nat, height);
-  x = MIN (a->origin.x + a->size.width, width - END_MARGIN) - w;
-  x = MAX (x, 0);
-  /* over the anchor: its top on the anchor's; one that would run off the foot goes up as far as it must */
-  y = MIN (a->origin.y, height - h);
+  /* lined up with the anchor on the side it is on: its right edge for an anchor in the window's right half (a
+   * header's ⋮), its left edge for one in the left half (a rail's menu button) */
+  if (a->origin.x + a->size.width / 2 > width / 2.0)
+    x = a->origin.x + a->size.width - w;
+  else
+    x = a->origin.x;
+  x = CLAMP (x, END_MARGIN, MAX (END_MARGIN, width - END_MARGIN - w));
+  /* below the anchor, never over it; above it when it does not fit below; only when it fits neither way is it pushed
+   * onto the anchor, from the side with more room */
+  below = height - END_MARGIN - (a->origin.y + a->size.height + ANCHOR_GAP);
+  above = a->origin.y - ANCHOR_GAP - END_MARGIN;
+  self->upward = h > below && (h <= above || above > below);
+  if (!self->upward)
+    y = MIN (a->origin.y + a->size.height + ANCHOR_GAP, height - END_MARGIN - h);
+  else
+    y = MAX (a->origin.y - ANCHOR_GAP - h, END_MARGIN);
   y = MAX (y, 0);
   gtk_widget_allocate (self->card, w, h, -1, gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (x, y)));
 }
@@ -80,9 +96,10 @@ vibeos_menu_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gsk_rounded_rect_init_from_rect (&shape, &card, CORNER);
   gtk_snapshot_append_outset_shadow (snapshot, &shape, (GdkRGBA[]) { vibeos_color_alpha (VIBEOS_SHADOW, 0.3f) },
                                      0, 2, 0, 6);
-  /* the clip reveal: from the top edge down */
-  gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (card.origin.x, card.origin.y, card.size.width,
-                                                         card.size.height * reveal));
+  /* the clip reveal, away from the anchor: from the top edge down, or for a menu above it from the foot up */
+  gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (card.origin.x,
+                                                         card.origin.y + (self->upward ? card.size.height * (1 - reveal) : 0),
+                                                         card.size.width, card.size.height * reveal));
   gtk_widget_snapshot_child (widget, self->card, snapshot);
   gtk_snapshot_pop (snapshot);
   gtk_snapshot_pop (snapshot);
