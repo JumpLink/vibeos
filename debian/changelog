@@ -1,3 +1,74 @@
+vibeos (1:0.1.4) unstable; urgency=medium
+
+  * Agent, a new app in vibeos-dictate (vibeos.Agent): a spoken
+    conversation with VibeOS's model server, answered in the language
+    chosen (English, German, Spanish, French, Italian or Russian) with a
+    Piper voice; a language not on the phone is downloaded when it is
+    chosen, from pinned addresses with each file's size and SHA-256
+    checked.
+  * Agent: tools on the phone. It reads the call log, contacts, messages,
+    calendar, alarms, battery, storage, the mobile network, Wi-Fi and
+    Bluetooth, the weather, the open apps and what was missed; sets and
+    cancels alarms and timers, switches Wi-Fi and Bluetooth, opens an app
+    and starts a route in Navi. A call, a message, a new contact or an
+    event stops at a card and happens only on the user's tap. "What Agent
+    can use" switches each kind of data off. What a tool reads is data,
+    never an instruction.
+  * Agent: a log of what it did (vibeos-dictate/agent-log.jsonl, nothing
+    said or read in it) and undo of its last action; in a call it says who
+    is calling, and switches the speaker, the microphone and hold, hangs
+    up, answers and declines; the core commands work offline in six
+    languages; private mode and quiet hours; speech rate, answer length and
+    state cues in its settings, a column on a tablet.
+  * Holding the power key talks to Agent for as long as it is held, on by
+    default (Settings, System, Gestures). On a locked phone Agent only
+    reads until the phone is unlocked. The power menu is now power and
+    volume up together, and logind leaves the power key's long press to
+    the shell (/usr/lib/systemd/logind.conf.d/vibeos-power-key.conf, read at
+    the next boot): Mobian's 5 s hold no longer powers the phone off.
+  * Gestures: a double press of the power key opens an app (Agent at
+    first), and the side button opens any app (Camera at first) or
+    recents.
+  * Settings: Display size changes the display's scale, and the shell keeps
+    it without asking; the volume keys and the quick settings slider go
+    above 100% where Settings allows it; the Microphone and Camera switches
+    block every app (WirePlumber's permissions for every PipeWire client,
+    the Camera app's own check), and the status bar shows them off; High
+    contrast in the apps (libvibeos) and the shell.
+  * Settings: Set PIN and Set pattern ask for the old one on Settings' own
+    screen (vibeos-set-own-password through pkexec, for the active local
+    user only). Its PAM service is in /usr/lib/pam.d, which Debian's
+    libpam 1.7.0 reads but does not promise to keep reading (#1140029).
+  * Settings: an account's "Use for" lists Calendar, Contacts and Files;
+    Uninstall goes through App Installer; Default apps offers every app of
+    a kind; Tap to wake only with a touchscreen that wakes the screen,
+    Vibration only with a motor; an uninstalled app leaves the lists; a
+    page shows what changed elsewhere while it is open; GNOME Settings'
+    privacy and network panels open the matching page.
+  * Files opens folders: the session's default apps
+    (/etc/xdg/gnome-mimeapps.list) move from vibeos-installer to
+    vibeos-session.
+  * Every menu opens below its button (or above it when it does not fit),
+    VibeosMenu's and the ones eight apps draw themselves.
+  * Tablets: Clock has the rail in both orientations, Contacts' detail
+    pane a centred photo and name, Weather's Set City a card, and
+    Software's carousel whole columns.
+  * Shell: an app can have the keyboard come up over its window
+    (X-Vibeos-Keyboard=overlay, vibeos.Shell's KeyboardOverlap);
+    vibeos.Shell tells which apps are open and lists the notifications;
+    Home minimizes only the phone screen's windows, so a game on a
+    plugged-in TV stays open.
+  * App Installer has no icon in the launcher.
+  * libvibeos: a sheet's close and a bar's back circle follow the theme, a
+    search view can have a button at the bar's end, and a dialog gives
+    the focus back only if its answer left it there.
+  * Dictate: a language that needs Vosk installs it with its files, and
+    Piper 1.5 voices read their vowel clusters as one phoneme.
+  * Navi, the car navigation app, is released with this version as a
+    package of its own (vibeos-navi, apps/navi/pkg/build-deb.sh).
+
+ -- pulpoff <pashkovsky@gmail.com>  Mon, 23 Nov 2026 19:40:00 +0100
+
 vibeos (1:0.1.3) unstable; urgency=medium
 
   * Tablets: the shell and the launcher laid out for a tablet either way up,
