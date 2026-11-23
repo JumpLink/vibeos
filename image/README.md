@@ -161,9 +161,17 @@ LineageOS recovery image), qemu-user-static with binfmt, and `sudo -n`.
 `test/zip-test-poco.sh SYSZIP DEVZIP CASE` does the same for the POCO X3 NFC, as root, in the POCO's own LineageOS
 recovery (`OUT/work/test/rpoco`, made the same way from LineageOS surya's `recovery.img`), on two LUNs with the
 POCO's partition layout: `stock` (userdata becomes `linux`), `existing` (an earlier install's `linux` is reused),
-`again` (stock, then both zips once more) and `rc3` (the GPT change stopped by a failed BLKPG, then a restart). It
-checks that no key is read, the tables and the GPT inside `linux`, that only `linux`, `boot`, `dtbo` and `vbmeta`
-change, and the root and the boot pieces byte for byte. One case at a time.
+`again` (stock, then both zips once more), `rc3` (the GPT change stopped by a failed BLKPG, then a restart) and
+`abort` (existing, but part 1 of the root cannot be written, then a restart). It checks that no key is read, the
+tables and the GPT inside `linux`, that only `linux`, `boot`, `dtbo` and `vbmeta` change, and the root and the boot
+pieces byte for byte. One case at a time.
+
+It also models the SELinux of a real LineageOS recovery, which the chroot does not have. There the recovery domain
+is permissive but the kernel's is enforcing, so a loop device fails every read and write: its worker thread may not
+use the backing file that recovery's `losetup` opened. The zips therefore make SELinux permissive while their loop
+devices exist (`loops_on` and `loops_off` in `zip/vibeos-lib.sh`). In the harness, a file stands for
+`/sys/fs/selinux/enforce`, and its `losetup` refuses to set up a loop device while that file says enforcing. After
+each zip, SELinux must be enforcing again.
 
 `test/setup-test.sh DEVICE` runs the first boot's `vibeos-device-setup` on a copy of the system image with the
 device's payload in it, offline in a chroot, and checks that every package installs and nothing is removed or

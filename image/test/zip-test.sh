@@ -142,7 +142,9 @@ redirect_lib() {
 import sys
 p=sys.argv[1]; s=open(p).read()
 a='\t\t[ -e "$b/$n" ] && { BY=$b; break 2; }\n\tdone\ndone\n'
-assert s.count(a)==1; s=s.replace(a,a+'BY=/t/by-name\n'); open(p,'w').write(s)
+assert s.count(a)==1; s=s.replace(a,a+'BY=/t/by-name\n')
+a='SEF=/sys/fs/selinux/enforce\n'	# never the host's SELinux switch (zip-test-poco.sh models recovery's)
+assert s.count(a)==1; s=s.replace(a,'SEF=/t/no-selinux\n'); open(p,'w').write(s)
 EOF
 }
 Z=$F/sys; mkdir -p $Z

@@ -27,6 +27,7 @@
 #            of 4 GiB or more) to /tmp/vibeos-root.N, a loop device over its bytes of the root's place (the
 #            partition, or the image file, made to the root's size first)
 #   (updater-script then writes each part there)
+#   abort    after a part could not be written: the loop devices released, SELinux as prepare found it
 #   finish   read the root back against the zip's sums, e2fsck it, record where it went (/etc/vibeos/installed-to
 #            in it, /tmp/vibeos.prop for the device zip); image: the file grown to its size and pinned (chattr +i);
 #            new: Android's data and /metadata formatted as LineageOS's "Format data" does.
@@ -206,6 +207,7 @@ choose)
 prepare)
 	chmod 755 $VP
 	MODE=$(get mode)
+	loops_on	# before anything is written: the root's loop devices, here and in chunks and finish, need it
 	case $MODE in
 	existing)
 		existing
@@ -304,6 +306,14 @@ chunks)
 		i=$((i + 1))
 	done
 	;;
+abort)
+	# a part of the root could not be written, and updater-script stops after this: the loop devices let go, and
+	# SELinux as it was
+	for L in $(cat $T-chunkloops 2>/dev/null); do losetup -d $L 2>/dev/null; done
+	rm -f $T-chunkloops $T-root.[0-9]*
+	LOOP=$(get loop); close_root
+	loops_off
+	;;
 finish)
 	KIND=$(get kind) NAME=$(get name) MODE=$(get mode)
 	# the parts' loop devices: flushed and gone before the root is read back from its own device or file
@@ -364,9 +374,10 @@ finish)
 			break
 		done
 	fi
+	loops_off
 	put done 1
 	say "  the system is in: $(case $KIND in image) echo "$IMG" ;; nested) echo "the root inside '$NAME'" ;; *) echo "partition '$NAME'" ;; esac)"
 	;;
-*) die "usage: install.sh choose|prepare|chunks|finish" ;;
+*) die "usage: install.sh choose|prepare|chunks|finish|abort" ;;
 esac
 exit 0

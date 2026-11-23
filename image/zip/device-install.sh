@@ -60,6 +60,8 @@ install)
 	KIND=$(get kind) NAME=$(get name) IMGF=$(get image) DEVP=$(get dev)
 	[ -s $T-payload.tar ] || die "payload.tar was not unpacked"
 	check $T-payload.tar payload $SUMS
+	# nested: the root is a loop device over its place in the partition (loops_on: see vibeos-lib.sh)
+	[ $KIND != nested ] || loops_on
 	if [ $KIND = image ]; then open_image_raw; else open_root; fi
 	[ $KIND = image ] || guard "$ODEV"
 	say "  checking the system"
@@ -93,6 +95,7 @@ install)
 	umount -D $ROOT || die "cannot unmount the system"
 	fsck_root $RDEV
 	[ $KIND = image ] || close_root
+	loops_off
 	say "  $n packages for the first boot"
 	;;
 boot)

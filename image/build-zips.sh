@@ -52,7 +52,7 @@ system)
 		"$(cut -d' ' -f3 "$W/vibeos-sums.txt")" ] || { echo "the parts do not make rootfs.img" >&2; exit 1; }
 	echo "chunks $NCH $CB" >> "$W/vibeos-sums.txt"
 	WRITE=$(i=0; while [ $i -lt $NCH ]; do
-		printf 'ui_print("  part %d of %d");\npackage_extract_file("rootfs.img.%d", "/tmp/vibeos-root.%d") ||\n    abort("ERROR: could not write part %d of %d of the system");\n' \
+		printf 'ui_print("  part %d of %d");\npackage_extract_file("rootfs.img.%d", "/tmp/vibeos-root.%d") ||\n    (run_program("/system/bin/sh", "/tmp/vibeos-install.sh", "abort"); abort("ERROR: could not write part %d of %d of the system"));\n' \
 			$((i + 1)) $NCH $i $i $((i + 1)) $NCH
 		[ $((i + 1)) = $NCH ] || printf 'set_progress(%s);\n' "$(awk -v i=$i -v n=$NCH 'BEGIN {printf "%.6f", 0.02 + 0.88 * (i + 1) / n}')"
 		i=$((i + 1)); done)

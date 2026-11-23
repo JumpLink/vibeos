@@ -23,9 +23,17 @@
 #         rc3       stock, but the GPT tool's whole ends with exit 3 after writing the table (what it does when
 #                   BLKPG fails): the system zip stops with the restart message; a restart, both zips again: the
 #                   "linux" without a GPT of its own gets one, then as stock
+#         abort     existing, but part 1's loop device is read-only, so its write fails (as every loop device's did
+#                   on a POCO while SELinux was enforcing): the system zip stops at part 1 with its loop devices let
+#                   go and SELinux as it found it; a restart, both zips again: as existing
+# SELinux as on the phone: LineageOS recovery's kernel domain is enforcing, and a loop device then fails every read and
+# write ("avc: denied { use } ... tclass=fd"). Here /t/selinux-enforce stands for /sys/fs/selinux/enforce (1 at
+# every session start), and the test copies' losetup refuses to set up a loop device while it says 1: every such
+# attempt is a failure. After each zip, SELinux must be enforcing again.
 # The test copies differ from the real zips in: vibeos-part (a wrapper around an x86-64 static build of the same
-# source, image/src/s10e-part.c, logging every call: qemu-user does not pass BLKPG), one line of vibeos-lib.sh (BY:
-# the fake by-name links), and in the device zip's updater-script the device check and the final restart. Run it as
+# source, image/src/s10e-part.c, logging every call: qemu-user does not pass BLKPG), two lines of vibeos-lib.sh (BY:
+# the fake by-name links; SEF: the fake SELinux switch), and in the device zip's updater-script the device check and
+# the final restart. The chroot's PATH starts with /t/bin: getprop, getevent and losetup there. Run it as
 # root in a mount namespace of its own (sudo unshare -m --propagation private bash zip-test-poco.sh ...), so that no
 # service starting meanwhile copies its mounts. Touches only work/test/poco-*, work/test/rpoco-CASE and its own loop
 # and dm devices. One case at a time: the installers pick a free loop device by themselves (as on a phone, where
@@ -36,9 +44,10 @@ T=$(cd "$(dirname "$0")/.." && pwd)
 [ ! -f "$T/local.conf" ] || . "$T/local.conf"
 O=${VIBEOS_OUT:?set VIBEOS_OUT (image/local.conf): the directory builds, work files and logs go to}
 W=$O/work/test
-[ $# = 3 ] || { echo "usage: zip-test-poco.sh SYSZIP DEVZIP stock|existing|again|rc3" >&2; exit 2; }
+[ $# = 3 ] || { echo "usage: zip-test-poco.sh SYSZIP DEVZIP stock|existing|again|rc3|abort" >&2; exit 2; }
 SYSZIP=$(realpath $1) DEVZIP=$(realpath $2) CASE=$3
-case $CASE in stock|existing|again|rc3) ;; *) echo "CASE: stock | existing | again | rc3" >&2; exit 2 ;; esac
+case $CASE in stock|existing|again|rc3|abort) ;; *) echo "CASE: stock | existing | again | rc3 | abort" >&2; exit 2 ;; esac
+PRE=$CASE; [ $CASE != abort ] || PRE=existing	# the layout it starts from and ends with
 [ "$(id -u)" = 0 ] || { echo "run it as root, in a mount namespace of its own" >&2; exit 2; }
 [ -d $W/rpoco/system/bin ] || { echo "no $W/rpoco: nura/test/recovery-chroot.py LINEAGEOS-SURYA-recovery.img $W/rpoco" >&2; exit 1; }
 F=$W/poco-$CASE
@@ -101,7 +110,7 @@ table_in "$SDA" | sfdisk -q --sector-size 4096 $DA > /dev/null 2>&1 || { echo "s
 table_in "$SDE" | sfdisk -q --sector-size 4096 $DE > /dev/null 2>&1 || { echo "sfdisk sde failed" >&2; exit 1; }
 LAST=$(sfdisk --sector-size 4096 -d $DA | sed -n 's/^last-lba: *//p')
 [ "$LAST" = 30119930 ] && [ "$(sfdisk --sector-size 4096 -d $DA | grep -c 'name=')" = 16 ] || { echo "sda: last usable $LAST, not the POCO's" >&2; exit 1; }
-[ $CASE = existing ] && { $F/vibeos-part-x86 --sector-size 4096 apply $DA 40 | tail -n1 | sed 's/^/  pre: /'; }
+[ $PRE = existing ] && { $F/vibeos-part-x86 --sector-size 4096 apply $DA 40 | tail -n1 | sed 's/^/  pre: /'; }
 attach() {
 	LA=$(losetup -f --show -P --sector-size 4096 $DA) && LE=$(losetup -f --show -P --sector-size 4096 $DE) || exit 1
 	case $LA$LE in /dev/loop[0-9]*/dev/loop[0-9]*) ;; *) echo "losetup gave $LA $LE" >&2; exit 1 ;; esac
@@ -110,11 +119,11 @@ attach() {
 attach
 echo "  (disks: sda $LA, sde $LE)"
 U0=$(sfdisk -d $LA | sed -n "s|^$(pa $UD) : start= *\([0-9]*\), size= *\([0-9]*\).*|\1 \2|p")
-case $CASE:$U0 in existing:2640408\ *|*:"2640408 27479523") ;; *) echo "sda: userdata at $U0, not the POCO's blocks" >&2; exit 1 ;; esac
+case $PRE:$U0 in existing:2640408\ *|*:"2640408 27479523") ;; *) echo "sda: userdata at $U0, not the POCO's blocks" >&2; exit 1 ;; esac
 for x in $SDA; do n=${x%%:*}; case $n in $UD|$MD) continue ;; esac; dd if=/dev/urandom of=$(pa $n) bs=1M count=4 status=none 2>/dev/null; done
 for x in $SDE; do dd if=/dev/urandom of=$(pe ${x%%:*}) bs=1M status=none 2>/dev/null; done
 X=$F/x; mkdir -p $X
-if [ $CASE = existing ]; then
+if [ $PRE = existing ]; then
 	# what the 0.1.1 zip left: the k22 image's GPT in linux (#17), its old root and ESP; dtbo and vbmeta LineageOS
 	# 20261102's (vbmeta padded with zeros, as fastboot leaves it), recovery the k22 zip's U-Boot
 	LX=17
@@ -148,7 +157,9 @@ redirect_lib() {
 import sys
 p=sys.argv[1]; s=open(p).read()
 a='\t\t[ -e "$b/$n" ] && { BY=$b; break 2; }\n\tdone\ndone\n'
-assert s.count(a)==1; s=s.replace(a,a+'BY=/t/by-name\n'); open(p,'w').write(s)
+assert s.count(a)==1; s=s.replace(a,a+'BY=/t/by-name\n')
+a='SEF=/sys/fs/selinux/enforce\n'
+assert s.count(a)==1; s=s.replace(a,'SEF=/t/selinux-enforce\n'); open(p,'w').write(s)
 EOF
 }
 TZ=$W/poco-zips-$(echo "$SYSZIP $(stat -c '%s %Y' $SYSZIP)" | md5sum | cut -c1-8)
@@ -205,8 +216,20 @@ cat > $R/t/bin/getevent <<'EOF'
 echo "getevent $*" >> /t/getevent.log
 exec sleep 1000
 EOF
+# SELinux enforcing: no loop device (see the top); /t/abort1: part 1's loop device (offset 0) read-only
+cat > $R/t/bin/losetup <<'EOF'
+#!/system/bin/sh
+case " $* " in *" -d "*|*" -a "*|" -f ") exec /system/bin/losetup "$@" ;; esac
+if [ "$(cat /t/selinux-enforce 2>/dev/null)" != 0 ]; then
+	echo "losetup $* (SELinux enforcing)" >> /t/se.log
+	echo "losetup: harness: SELinux is enforcing, this loop device would fail every read and write" >&2
+	exit 1
+fi
+if [ -e /t/abort1 ] && [ "$1" = -o ] && [ "$2" = 0 ]; then rm -f /t/abort1; exec /system/bin/losetup -r "$@"; fi
+exec /system/bin/losetup "$@"
+EOF
 chmod 755 $R/t/bin/*
-: > $R/t/vp.log; : > $R/t/getevent.log; rm -f $R/t/rc3
+: > $R/t/vp.log; : > $R/t/getevent.log; : > $R/t/se.log; rm -f $R/t/rc3 $R/t/abort1
 # dm2 NAME DEV: a dm device over DEV in two linear halves, split at a 4 KiB boundary (the LUNs' logical block size)
 dm2() { local n=$(blockdev --getsz $2) h; h=$((n / 16 * 8)); printf '0 %s linear %s 0\n%s %s linear %s %s\n' $h $2 $h $((n - h)) $2 $h | dmsetup create $1; }
 # ---- a recovery session: by-name as ueventd made it at boot, /data and /metadata mounted, a fresh /tmp
@@ -233,6 +256,7 @@ start_session() {
 	  done ) &
 	WATCH=$!
 	mount -t tmpfs -o size=3g,mode=1777 tmpfs $R/tmp
+	echo 1 > $R/t/selinux-enforce	# a fresh boot of recovery: enforcing
 	unzip -p $SYSZIP META-INF/com/google/android/update-binary > $R/tmp/update-binary; chmod 755 $R/tmp/update-binary
 	for m in proc sys dev; do mount --bind /$m $R/$m; done
 	echo "  (by-name: $(ls $R/t/by-name | tr '\n' ' '))"
@@ -254,14 +278,24 @@ leftover() {
 	done
 }
 screen() { sed -n 's/^ui_print \?//p' $F/$1.screen; }
+se_check() {	# LABEL: after a zip, SELinux enforcing again and no mode kept for later
+	[ "$(cat $R/t/selinux-enforce)" = 1 ] && [ ! -e $R/tmp/vibeos-selinux ] && ok "$1: SELinux enforcing again" ||
+		bad "$1: SELinux left at '$(cat $R/t/selinux-enforce)'$( [ ! -e $R/tmp/vibeos-selinux ] || echo ', its mode kept in /tmp')"
+}
 both() {	# LABEL: the system zip, then the device zip, in the session running
 	run sys.zip system$1; SRC=$?
 	echo "  prop: $(tr '\n' ' ' < $R/tmp/vibeos.prop)"
 	[ $SRC = 0 ] && ok "system zip succeeded" || bad "system zip failed: $(grep '^error=' $R/tmp/vibeos.prop)"
+	screen system$1 | grep -q '^  SELinux permissive while VibeOS is written' && ok "system zip: says SELinux is permissive meanwhile" ||
+		bad "system zip: no SELinux line"
+	se_check "system zip"
 	DRC=-
 	if [ $SRC = 0 ]; then
 		run dev.zip device$1; DRC=$?
 		[ $DRC = 0 ] && ok "device zip succeeded" || bad "device zip failed: $(grep '^error=' $R/tmp/vibeos.prop)"
+		screen device$1 | grep -q '^  SELinux permissive while VibeOS is written' && ok "device zip: says SELinux is permissive meanwhile" ||
+			bad "device zip: no SELinux line"
+		se_check "device zip"
 	fi
 	echo "  vibeos-part calls: $(tr '\n' ';' < $R/t/vp.log)"
 }
@@ -274,6 +308,7 @@ if [ $CASE = rc3 ]; then
 	[ $SRC != 0 ] && grep -q 'restart into recovery and install again' $R/tmp/vibeos.prop &&
 		ok "system zip stopped on exit 3 with the restart message" || bad "system zip on exit 3: rc $SRC, $(grep '^error=' $R/tmp/vibeos.prop)"
 	grep -q '^whole .* rc=3$' $R/t/vp.log && ok "the GPT tool's whole exited 3 (forced)" || bad "no forced exit 3"
+	se_check "stopped system zip"
 	leftover
 	echo "  -- restart: both LUNs attached again, by-name from the new table"
 	end_session s1
@@ -283,14 +318,31 @@ if [ $CASE = rc3 ]; then
 	both 2
 	grep -q '^nest .* 480 rc=0$' $R/t/vp.log && ok "linux without its own GPT got one (nest)" || bad "no nest call"
 	! grep -q -E '^(plan-whole|whole) ' $R/t/vp.log && ok "no second whole" || bad "whole ran again"
+elif [ $CASE = abort ]; then
+	touch $R/t/abort1
+	run sys.zip system1; SRC=$?
+	echo "  prop: $(tr '\n' ' ' < $R/tmp/vibeos.prop)"
+	[ ! -e $R/t/abort1 ] && ok "part 1's loop device was made read-only" || bad "part 1's loop device was not set up as expected"
+	[ $SRC != 0 ] && grep -q 'could not write part 1 of' $F/system1.screen $F/system1.err &&
+		ok "system zip stopped: could not write part 1" || bad "system zip with part 1 unwritable: rc $SRC"
+	se_check "stopped system zip"
+	n=$(losetup -a | grep -c -F -e "($R/" -e "(${LA}p")
+	[ $n = 0 ] && ok "its loop devices let go before it stopped" || bad "$n of its loop devices still attached"
+	leftover
+	echo "  -- restart: both LUNs attached again; both zips again"
+	end_session s1
+	detach; attach
+	: > $R/t/vp.log
+	start_session
+	both 2
 else
 	both 1
 fi
-EXP_MODE=whole; case $CASE in existing|rc3) EXP_MODE=existing ;; esac
+EXP_MODE=whole; case $PRE in existing|rc3) EXP_MODE=existing ;; esac
 [ "$(prop mode)" = $EXP_MODE ] && [ "$(prop kind)" = nested ] && [ "$(prop name)" = linux ] && ok "mode $EXP_MODE, kind nested, name linux" ||
 	bad "prop: mode '$(prop mode)' kind '$(prop kind)' name '$(prop name)'"
-S1=system1; D1=device1; [ $CASE = rc3 ] && S1=system2 D1=device2
-case $CASE in
+S1=system1; D1=device1; case $CASE in rc3|abort) S1=system2 D1=device2 ;; esac
+case $PRE in
 stock|again) grep -q '^plan-whole .* rc=0$' $R/t/vp.log && grep -q '^whole .* rc=0$' $R/t/vp.log && grep -q '^nest .* 480 rc=0$' $R/t/vp.log &&
 		ok "GPT tool: plan-whole, whole, nest" || bad "GPT tool calls: $(tr '\n' ';' < $R/t/vp.log)"
 	screen $S1 | grep -q 'ERASED' && ok "the system zip says Android's data is erased" || bad "no erase notice" ;;
@@ -299,7 +351,7 @@ existing) [ ! -s $R/t/vp.log ] && ok "the GPT tool did not run" || bad "GPT tool
 		ok "the system zip says it replaces the earlier install's system, and Android's data stays" || bad "no notice" ;;
 esac
 if [ "${DRC:-}" = 0 ]; then
-	case $CASE in
+	case $PRE in
 	existing)
 		screen $D1 | grep -q "dtbo in dtbo: there already" && screen $D1 | grep -q "vbmeta in vbmeta: there already" &&
 			ok "dtbo and vbmeta: there already, not written" || bad "dtbo/vbmeta written"
@@ -331,6 +383,7 @@ if [ $CASE = again ]; then
 	leftover
 fi
 [ ! -s $R/t/getevent.log ] && ok "no key read" || bad "keys were read: $(tr '\n' ';' < $R/t/getevent.log)"
+[ ! -s $R/t/se.log ] && ok "no loop device set up while SELinux was enforcing" || bad "loop devices while enforcing: $(tr '\n' ';' < $R/t/se.log)"
 BYN=$(ls $R/t/by-name | tr '\n' ' ')
 end_session end
 # ---- checks from the host (each partition's own cache dropped: /data went through a dm device over it)
@@ -340,7 +393,7 @@ grep -q '"sys.powerctl", "reboot");' <(unzip -p $DEVZIP META-INF/com/google/andr
 	! unzip -p $DEVZIP META-INF/com/google/android/updater-script | grep -q 'reboot,recovery' &&
 	ok "the device zip restarts plainly (not into recovery)" || bad "the device zip's restart"
 table > $F/table-after.txt
-if [ $CASE = existing ]; then
+if [ $PRE = existing ]; then
 	cmp -s $F/table-before.txt $F/table-after.txt && ok "sda table unchanged" || bad "sda table: $(diff $F/table-before.txt $F/table-after.txt | tr '\n' ' ')"
 else
 	D=$(diff $F/table-before.txt $F/table-after.txt | grep '^>' | cut -c3-)
@@ -358,7 +411,7 @@ for x in $SDA; do n=${x%%:*}; case $n in $UD|$MD|$LX) continue ;; esac
 [ "$(sumof $(pa $RC) 134217728)" = "${BEFORE[rc]}" ] || bad "recovery changed"
 [ $FAILS = $F0 ] && ok "sda1-15 untouched (persist, misc, recovery, super among them; metadata below)"
 e2fsck -fn $(pa $MD) > /dev/null 2>&1 && ok "metadata: still a clean ext4 (mounted and unmounted, as recovery does)" || bad "metadata"
-if [ $CASE = existing ]; then
+if [ $PRE = existing ]; then
 	mkdir -p $X/m && mount -o ro $(pa $UD) $X/m && { [ "$(cat $X/m/android-marker)" = android ] && ok "userdata: Android's data still there" ||
 		bad "userdata: the marker is gone"; umount $X/m; } || bad "userdata does not mount"
 	e2fsck -fn $(pa $UD) > /dev/null 2>&1 && ok "userdata: a clean ext4" || bad "userdata does not check"
@@ -371,7 +424,7 @@ if [ "${DRC:-}" = 0 ]; then
 	same $(pe 1) vbmeta.img && ok "vbmeta = the zip's vbmeta.img (LineageOS 20261102's), the rest zeros" || bad "vbmeta"
 	same $(pe 2) dtbo.img && ok "dtbo = the zip's dtbo.img" || bad "dtbo"
 	same $(pe 3) boot.img && ok "boot = the zip's boot.img (U-Boot)" || bad "boot"
-	[ $CASE != existing ] || { [ "$(sumof $(pe 1) 134217728)" = "${BEFORE[e1]}" ] && [ "$(sumof $(pe 2) 134217728)" = "${BEFORE[e2]}" ] &&
+	[ $PRE != existing ] || { [ "$(sumof $(pe 1) 134217728)" = "${BEFORE[e1]}" ] && [ "$(sumof $(pe 2) 134217728)" = "${BEFORE[e2]}" ] &&
 		ok "vbmeta and dtbo byte for byte as before" || bad "vbmeta/dtbo bytes changed"; }
 fi
 # the GPT inside linux, and what it holds
@@ -379,7 +432,7 @@ NL=$(losetup -f --show -r -b 4096 $(pa $LX)) || { bad "cannot map linux"; NL=; }
 if [ -n "$NL" ]; then
 	sfdisk -d $NL 2>/dev/null | grep -v -E '^(label-id|device|unit|sector-size):' | sed "s|^${NL}p|n|" | sed -E 's/, uuid=[0-9A-F-]+//' > $F/nested-after.txt
 	NB=$(($(blockdev --getsz $NL) / 8))
-	if [ $CASE = existing ]; then
+	if [ $PRE = existing ]; then
 		cmp -s $F/nested-before.txt $F/nested-after.txt && ok "the GPT inside linux unchanged" || bad "nested GPT: $(diff $F/nested-before.txt $F/nested-after.txt | tr '\n' ' ')"
 	else
 		grep -q '^n1 : start= *2048, size= *122880, type=C12A7328-F81F-11D2-BA4B-00A0C93EC93B, name="primary"$' $F/nested-after.txt &&
