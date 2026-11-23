@@ -34,5 +34,6 @@ so the stream goes over the USB network (`vibeos-usb-net`, PR #7):
 | Battery (bq27411), WLAN, sound cards | detected |
 | Modem | visible in ModemManager; SIM and calls to test |
 | Camera focus (lc89821x) | `failed to set DAC: -110` while the sensor sleeps: the actuators share the CCI bus whose pull-ups hang on `cam_vio_1p8`, which their node did not request. Held on at runtime, focus moves without error on both cameras. Fix (`vio-supply`) committed, boot test pending |
-| Known warnings | DSI PLL clock disabled twice at probe; ramoops header ECC error |
+| DSI PLL warning at probe | the clock core enables the 10nm PLL before the PHY's digital top is powered, the lock fails and the unbalanced count warns. Fix (power up digtop with the PLL bias, as on 7nm) committed as linux-fajita `e9ac0107b`, boot test pending |
+| ramoops header ECC error | no overlap with other reserved memory, layout as on other sdm845 boards; expected for uninitialised zones after a cold boot. Whether it repeats on warm reboots is still to check |
 | Vibration, audio playback, suspend, Plymouth | to test |
