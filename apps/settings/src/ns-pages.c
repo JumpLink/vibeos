@@ -43,19 +43,62 @@ airplane_set (GtkWidget *sw, GParamSpec *ps, gpointer data)
 }
 
 static void
+airplane_show (GtkWidget *row, gboolean on)
+{
+  GtkWidget *sw = ns_row_get_switch (row);
+  g_object_set_data (G_OBJECT (sw), "ns-syncing", GINT_TO_POINTER (1));
+  ns_switch_set_active (sw, on);
+  g_object_set_data (G_OBJECT (sw), "ns-syncing", NULL);
+}
+
+static void
 airplane_got (GObject *src, GAsyncResult *res, gpointer row)
 {
   g_autoptr (GVariant) v = g_dbus_connection_call_finish (G_DBUS_CONNECTION (src), res, NULL);
   g_autoptr (GVariant) on = NULL;
   if (v) {
     g_variant_get (v, "(v)", &on);
-    GtkWidget *sw = ns_row_get_switch (row);
-    g_object_set_data (G_OBJECT (sw), "ns-syncing", GINT_TO_POINTER (1));
-    ns_switch_set_active (sw, g_variant_get_boolean (on));
-    g_object_set_data (G_OBJECT (sw), "ns-syncing", NULL);
+    airplane_show (row, g_variant_get_boolean (on));
     gtk_widget_set_visible (row, TRUE);
   }
   g_object_unref (row);
+}
+
+/* the switch follows gsd's, whoever turns it (the shade's Airplane mode tile) while the page is open */
+static void
+airplane_changed (GDBusConnection *bus, const char *sender, const char *path, const char *iface, const char *signal,
+                  GVariant *params, gpointer ref)
+{
+  /* a weak reference: GDBus may still deliver a change after the row has gone and unsubscribed */
+  g_autoptr (GtkWidget) row = g_weak_ref_get (ref);
+  const char *which;
+  g_autoptr (GVariant) changed = NULL;
+  gboolean on;
+  if (!row || !g_variant_is_of_type (params, G_VARIANT_TYPE ("(sa{sv}as)")))
+    return;
+  g_variant_get (params, "(&s@a{sv}@as)", &which, &changed, NULL);
+  if (g_variant_lookup (changed, "AirplaneMode", "b", &on))
+    airplane_show (row, on);
+}
+
+static void
+weak_ref_free (GWeakRef *ref)
+{
+  g_weak_ref_clear (ref);
+  g_free (ref);
+}
+
+typedef struct {
+  GDBusConnection *bus;
+  guint            id;
+} Subscription;
+
+static void
+subscription_free (Subscription *s)
+{
+  g_dbus_connection_signal_unsubscribe (s->bus, s->id);
+  g_object_unref (s->bus);
+  g_free (s);
 }
 
 void
@@ -74,12 +117,24 @@ ns_page_connections (GtkWidget *row, gpointer data)
   g_signal_connect (sw, "notify::active", G_CALLBACK (airplane_set), NULL);
   gtk_widget_set_visible (air, FALSE);
   g_autoptr (GDBusConnection) bus = g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, NULL);
-  if (bus)
+  if (bus) {
+    /* the row is the subscription's: it ends with the row, so no change comes to a row that is gone */
+    Subscription *sub = g_new0 (Subscription, 1);
+    GWeakRef *ref = g_new0 (GWeakRef, 1);
+    g_weak_ref_init (ref, air);
+    sub->bus = g_object_ref (bus);
+    sub->id = g_dbus_connection_signal_subscribe (bus, "org.gnome.SettingsDaemon.Rfkill",
+                                                  "org.freedesktop.DBus.Properties", "PropertiesChanged",
+                                                  "/org/gnome/SettingsDaemon/Rfkill",
+                                                  "org.gnome.SettingsDaemon.Rfkill", G_DBUS_SIGNAL_FLAGS_NONE,
+                                                  airplane_changed, ref, (GDestroyNotify) weak_ref_free);
+    g_object_set_data_full (G_OBJECT (air), "ns-airplane", sub, (GDestroyNotify) subscription_free);
     g_dbus_connection_call (bus, "org.gnome.SettingsDaemon.Rfkill", "/org/gnome/SettingsDaemon/Rfkill",
                             "org.freedesktop.DBus.Properties", "Get",
                             g_variant_new ("(ss)", "org.gnome.SettingsDaemon.Rfkill", "AirplaneMode"),
                             G_VARIANT_TYPE ("(v)"), G_DBUS_CALL_FLAGS_NONE, 3000, NULL, airplane_got,
                             g_object_ref (air));
+  }
   r = page_row (g, "network-wireless-hotspot-symbolic", "Wi-Fi hotspot", "Share the mobile data", ns_page_hotspot);
   ns_caps_bind_visible (r, NS_CAP_MODEM);
   g = ns_group (c, NULL);

@@ -192,6 +192,14 @@ ns_page_notifications (GtkWidget *row, gpointer data)
   ns_push (page);
 }
 
+/* an app's switch follows its key: turned off on the app's own page, or elsewhere, the list says so when it is
+ * shown again */
+static void
+app_enable_changed (GSettings *s, const char *key, GtkWidget *sw)
+{
+  ns_switch_quiet (sw, g_settings_get_boolean (s, key));
+}
+
 /* each app that notifies, with its switch; a tap opens the app's own page */
 static void
 app_notifications_page (GtkWidget *row, gpointer data)
@@ -211,10 +219,12 @@ app_notifications_page (GtkWidget *row, gpointer data)
       continue;
     g_autofree char *id = ns_munge_app_id (g_app_info_get_id (app));
     g_autofree char *path = g_strconcat ("/org/gnome/desktop/notifications/application/", id, "/", NULL);
-    g_autoptr (GSettings) s = g_settings_new_full (sc, NULL, path);
+    GSettings *s = g_settings_new_full (sc, NULL, path);
     GtkWidget *ar = ns_row_app (g, app, NULL);
     GtkWidget *sw = ns_row_add_switch (ar, TRUE);
     ns_switch_quiet (sw, g_settings_get_boolean (s, "enable"));
+    g_object_set_data_full (G_OBJECT (ar), "ns-notify", s, g_object_unref);
+    g_signal_connect_object (s, "changed::enable", G_CALLBACK (app_enable_changed), sw, 0);
     g_object_set_data_full (G_OBJECT (ar), "ns-app", g_object_ref (app), g_object_unref);
     g_signal_connect (sw, "notify::active", G_CALLBACK (app_switched), app);
     ns_row_on_activate (ar, app_notify_page, app);

@@ -643,6 +643,16 @@ choice_free (Choice *c)
   g_free (c);
 }
 
+/* the key changed elsewhere (the shell's ringer sets feedbackd's profile, its keyboard menu the keyboard): the row
+ * says the new choice */
+static void
+choice_changed (GSettings *s, const char *key, GtkWidget *row)
+{
+  Choice *c = g_object_get_data (G_OBJECT (row), "ns-own");
+  if (c)
+    ns_row_set_subtitle (row, choice_label (c));
+}
+
 GtkWidget *
 ns_row_choice (GtkWidget *group, const char *title, GSettings *s, const char *key,
                const char *const *values, const char *const *labels)
@@ -657,6 +667,8 @@ ns_row_choice (GtkWidget *group, const char *title, GSettings *s, const char *ke
   ns_row_set_subtitle (c->row, choice_label (c));
   ns_row_on_activate (c->row, choice_open, c);
   g_object_set_data_full (G_OBJECT (c->row), "ns-own", c, (GDestroyNotify) choice_free);
+  g_autofree char *signal = g_strconcat ("changed::", key, NULL);
+  g_signal_connect_object (s, signal, G_CALLBACK (choice_changed), c->row, 0);
   return c->row;
 }
 
