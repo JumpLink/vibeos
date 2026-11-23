@@ -20,6 +20,7 @@
  * listens again. While it listens or a reply is written or spoken, the FAB is a stop square and stops all of it: the
  * reply ends where it is, what was heard and not yet sent is dropped, and nothing listens until the next tap. */
 #include "dictate-window.h"
+#include "dictate-cues.h"
 #include "dictate-download-dialog.h"
 #include "dictate-engine.h"
 #include "dictate-mic.h"
@@ -72,6 +73,7 @@ typedef struct {
   GString *heard;               /* the user's finished sentences so far */
   char *said;                   /* and the one being spoken */
   gboolean stopping_reply;      /* the user stopped the reply: it does not listen again on its own */
+  gboolean reply_failed;        /* the reply going on failed: its end is no "done" */
   DictateTalkState talk_state;  /* the last one seen */
 } Window;
 
@@ -548,6 +550,8 @@ talk_send (Window *self)
   talk_name (self->mine, TRUE);
   self->mine = NULL;
   self->reply = talk_bubble (self, FALSE, "…");
+  self->reply_failed = FALSE;
+  dictate_cue_play (self->settings, DICTATE_CUE_WORKING);
   dictate_talk_ask (self->talk, dictate_engine_get_language (self->engine), said);
 }
 
@@ -570,6 +574,8 @@ talk_listen (Window *self)
   self->speaking = g_strdup (dictate_engine_get_language (self->engine));
   if (!self->mine)
     self->mine = talk_bubble (self, TRUE, "…");
+  /* the cue plays while the microphone opens: it is over before the first words are heard */
+  dictate_cue_play (self->settings, DICTATE_CUE_LISTENING);
   dictate_engine_set_turns (self->engine, TRUE);
   dictate_engine_start (self->engine);
 }
@@ -717,11 +723,13 @@ on_talk_state (DictateTalk *talk, Window *self)
       else
         talk_name (self->reply, FALSE);
       self->reply = NULL;
-      /* spoken to its end: the user's turn */
+      /* spoken to its end: the user's turn (whose cue says it is over) */
       if (was == DICTATE_TALK_SPEAKING && !self->stopping_reply && self->talking &&
           g_settings_get_boolean (self->settings, "talk-listen-again") &&
           dictate_engine_get_state (self->engine) == DICTATE_IDLE && gtk_widget_get_mapped (self->window))
         talk_listen (self);
+      else if (was != DICTATE_TALK_IDLE && !self->stopping_reply && !self->reply_failed && self->talking)
+        dictate_cue_play (self->settings, DICTATE_CUE_DONE);
     }
   show_state (self);
 }
@@ -729,7 +737,31 @@ on_talk_state (DictateTalk *talk, Window *self)
 static void
 on_talk_error (DictateTalk *talk, const char *message, Window *self)
 {
+  /* told before the reply ends (dictate-talk.c): its end then plays no "done" */
+  self->reply_failed = TRUE;
+  dictate_cue_play (self->settings, DICTATE_CUE_FAILED);
   vibeos_snackbar_show (self->snackbar, message, NULL, NULL, NULL, VIBEOS_SNACKBAR_LONG);
+}
+
+/* the server had too many questions: its reply says so, and the cue is the failed one */
+static void
+on_talk_busy (DictateTalk *talk, Window *self)
+{
+  self->reply_failed = TRUE;
+  dictate_cue_play (self->settings, DICTATE_CUE_FAILED);
+}
+
+/* a tap on the conversation while Agent speaks: it stops speaking at once, the reply goes on being written. Only a
+ * tap: a scroll moves past the click's threshold and cancels it */
+static void
+on_talk_tap (GtkGestureClick *gesture, int n, double x, double y, Window *self)
+{
+  if (self->talk && dictate_talk_get_state (self->talk) == DICTATE_TALK_SPEAKING)
+    {
+      self->stopping_reply = TRUE;
+      dictate_talk_hush (self->talk);
+      self->stopping_reply = FALSE;
+    }
 }
 
 /* the FAB in Talk: idle, it listens; otherwise it is the stop square and stops everything: the reply being written
@@ -887,8 +919,20 @@ dictate_window_toggle_dictation (GtkWidget *window)
 {
   Window *self = g_object_get_data (G_OBJECT (window), "dictate-window");
 
-  if (self)
-    on_mic (DICTATE_MIC (self->mic), self);
+  if (!self)
+    return;
+  /* push-to-talk while Agent answers: it stops at once and listens, the user wants to speak */
+  if (self->talking && self->talk && dictate_talk_get_state (self->talk) != DICTATE_TALK_IDLE
+      && dictate_engine_get_state (self->engine) == DICTATE_IDLE)
+    {
+      self->stopping_reply = TRUE;
+      dictate_talk_stop (self->talk);
+      self->stopping_reply = FALSE;
+      talk_listen (self);
+      show_state (self);
+      return;
+    }
+  on_mic (DICTATE_MIC (self->mic), self);
 }
 
 /* --- the app bar's actions */
@@ -964,6 +1008,13 @@ on_speak_changed (GSettings *settings, const char *key, Window *self)
   dictate_talk_set_speak (self->talk, speak);
   self->stopping_reply = FALSE;
   show_speak (self);
+}
+
+/* Speech rate in Agent's settings: the next sentence is at the new pace */
+static void
+on_speed_changed (GSettings *settings, const char *key, Window *self)
+{
+  dictate_talk_set_speed (self->talk, g_settings_get_double (settings, "talk-speed"));
 }
 
 static void
@@ -1640,10 +1691,20 @@ dictate_window_new (GtkApplication *app, gboolean agent)
       g_signal_connect (self->talk, "error", G_CALLBACK (on_talk_error), self);
       g_signal_connect (self->talk, "status", G_CALLBACK (on_talk_status), self);
       g_signal_connect (self->talk, "propose", G_CALLBACK (on_talk_propose), self);
+      g_signal_connect (self->talk, "busy", G_CALLBACK (on_talk_busy), self);
       dictate_talk_set_speed (self->talk, g_settings_get_double (self->settings, "talk-speed"));
       dictate_talk_set_speak (self->talk, g_settings_get_boolean (self->settings, "talk-speak"));
       show_speak (self);
       g_signal_connect (self->settings, "changed::talk-speak", G_CALLBACK (on_speak_changed), self);
+      g_signal_connect (self->settings, "changed::talk-speed", G_CALLBACK (on_speed_changed), self);
+      {
+        /* in the capture phase, never claimed: the bubbles and the cards' buttons still get their taps */
+        GtkGesture *tap = gtk_gesture_click_new ();
+
+        gtk_event_controller_set_propagation_phase (GTK_EVENT_CONTROLLER (tap), GTK_PHASE_CAPTURE);
+        g_signal_connect (tap, "released", G_CALLBACK (on_talk_tap), self);
+        gtk_widget_add_controller (self->talk_scroller, GTK_EVENT_CONTROLLER (tap));
+      }
     }
   g_signal_connect (self->window, "close-request", G_CALLBACK (on_close_request), self);
   g_signal_connect_swapped (vibeos_layout_get_for_window (GTK_WINDOW (self->window)), "changed",

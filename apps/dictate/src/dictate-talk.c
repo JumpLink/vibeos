@@ -15,6 +15,7 @@
  * user decided goes to the model with the next question. */
 #include "dictate-talk.h"
 #include "dictate-access.h"
+#include "dictate-actions.h"
 #include "dictate-brain.h"
 #include "dictate-tools.h"
 #include "dictate-voice.h"
@@ -38,8 +39,8 @@
   "You are Vibe, the AI agent of this phone. You were made for VibeOS, a Linux operating system for phones, by the " \
   "VibeOS developers; if you are asked who made you or what you are, say that, and never name another company or " \
   "model as your maker. %s " \
-  "The user speaks to you and hears your answers read aloud, so answer the way people talk: one to three short " \
-  "sentences, no lists, no headings, no markdown, no emoji, no links. If you do not know something, say so. " \
+  "The user speaks to you and hears your answers read aloud, so answer the way people talk: %s, no lists, no " \
+  "headings, no markdown, no emoji, no links. If you do not know something, say so. " \
   "Today is %s. Always answer in %s, even when the user's words, or something you are given, are in another " \
   "language; names stay as they are."
 
@@ -55,6 +56,8 @@ typedef struct {
   char *voice, *name;           /* the voice's, and Kokoro's voice in it */
   char *access;                 /* what Agent can use, for the prompt (read on the main thread) */
   guint32 areas;                /* the same, for the tools */
+  char *verbosity;              /* how much to say: "short", "normal", "detailed" (talk-verbosity) */
+  gboolean remote;              /* the model is a server's: the question leaves the phone */
 } Job;
 
 struct _DictateTalk {
@@ -73,6 +76,7 @@ struct _DictateTalk {
   GstElement *pipeline, *src;
   guint bus_watch;
   guint playing;
+  guint hushed;                 /* atomic: the turn the user hushed (tapped): its reply is only written from then */
   guint64 played;               /* samples pushed */
   guint rate;
   guint ended;                  /* the last turn whose reply has been written to its end */
@@ -86,6 +90,7 @@ struct _DictateTalk {
   gboolean fresh;               /* the conversation starts with the next question */
   char *access;                 /* what the conversation was told Agent can use */
   char *answers_in;             /* and the language it was told to answer in */
+  char *verbosity;              /* and how much to say */
   /* the voice's thread's */
   DictateVoice *voice;
   char *voice_path, *voice_name;
@@ -115,6 +120,7 @@ job_free (Job *job)
   g_free (job->voice);
   g_free (job->name);
   g_free (job->access);
+  g_free (job->verbosity);
   g_free (job);
 }
 
@@ -377,8 +383,9 @@ on_error_post (gpointer data)
     {
       g_atomic_int_inc (&self->turn);
       stop_playback (self);
-      set_state (self, DICTATE_TALK_IDLE);
+      /* told first: whoever sees the turn end then knows it failed */
       g_signal_emit (self, signals[SIGNAL_ERROR], 0, p->text);
+      set_state (self, DICTATE_TALK_IDLE);
     }
   return G_SOURCE_REMOVE;
 }
@@ -427,8 +434,8 @@ on_bus (GstBus *bus, GstMessage *message, gpointer data)
         stop_playback (self);
         if (current (self, self->playing))
           {
-            set_state (self, DICTATE_TALK_IDLE);
             g_signal_emit (self, signals[SIGNAL_ERROR], 0, _("The answer could not be played"));
+            set_state (self, DICTATE_TALK_IDLE);
           }
         return G_SOURCE_REMOVE;
       }
@@ -484,7 +491,7 @@ on_audio (gpointer data)
 
   if (!current (self, p->turn))
     return G_SOURCE_REMOVE;
-  if (p->samples && p->n && g_atomic_int_get (&self->speak))
+  if (p->samples && p->n && g_atomic_int_get (&self->speak) && (guint) g_atomic_int_get (&self->hushed) != p->turn)
     {
       GstBuffer *buffer;
 
@@ -495,8 +502,8 @@ on_audio (gpointer data)
           if (!start_playback (self, p->rate))
             {
               g_atomic_int_inc (&self->turn);
-              set_state (self, DICTATE_TALK_IDLE);
               g_signal_emit (self, signals[SIGNAL_ERROR], 0, _("The answer could not be played"));
+              set_state (self, DICTATE_TALK_IDLE);
               return G_SOURCE_REMOVE;
             }
           self->playing = p->turn;
@@ -597,7 +604,9 @@ voice_thread (gpointer data)
         }
       if (say->kind == SAY_PREPARE)
         ensure_voice (self, say);
-      else if (!current (self, say->turn) || (say->kind == SAY_TEXT && !g_atomic_int_get (&self->speak)))
+      else if (!current (self, say->turn) || (say->kind == SAY_TEXT && (!g_atomic_int_get (&self->speak)
+                                                                         || (guint) g_atomic_int_get (&self->hushed)
+                                                                              == say->turn)))
         ;
       else if (say->kind == SAY_END)
         post_audio (self, say->turn, NULL, 0, 0, TRUE);
@@ -666,8 +675,19 @@ speech_of (const char *language)
   return &SPEECH[0];
 }
 
+/* how much Agent says (talk-verbosity), for the prompt */
+static const char *
+how_much (const char *verbosity)
+{
+  if (!g_strcmp0 (verbosity, "short"))
+    return "one short sentence, two at the most";
+  if (!g_strcmp0 (verbosity, "detailed"))
+    return "up to five or six sentences when the question needs them, each still short";
+  return "one to three short sentences";
+}
+
 static char *
-system_prompt (const char *access, const char *language)
+system_prompt (const char *access, const char *language, const char *verbosity)
 {
   const Speech *speech = speech_of (language);
   g_autoptr (GDateTime) now = g_date_time_new_now_local ();
@@ -675,7 +695,7 @@ system_prompt (const char *access, const char *language)
                                            g_date_time_get_day_of_month (now),
                                            speech->months[g_date_time_get_month (now) - 1],
                                            g_date_time_get_year (now));
-  return g_strdup_printf (SYSTEM_PROMPT, access ? access : "", date, speech->name);
+  return g_strdup_printf (SYSTEM_PROMPT, access ? access : "", how_much (verbosity), date, speech->name);
 }
 
 static gboolean
@@ -719,7 +739,7 @@ say_for (Job *job, int kind, const char *text)
 static void
 say (Writing *w, const char *text)
 {
-  if (!g_atomic_int_get (&w->self->speak))
+  if (!g_atomic_int_get (&w->self->speak) || (guint) g_atomic_int_get (&w->self->hushed) == w->turn)
     return;
   g_async_queue_push (w->self->says, say_for (w->job, SAY_TEXT, text));
 }
@@ -856,12 +876,13 @@ answer (DictateTalk *self, Job *job)
 
   if (!ensure_brain (self, job))
     goto out;
-  if (self->fresh || g_strcmp0 (job->access, self->access) != 0 || g_strcmp0 (job->language, self->answers_in) != 0)
+  if (self->fresh || g_strcmp0 (job->access, self->access) != 0 || g_strcmp0 (job->language, self->answers_in) != 0
+      || g_strcmp0 (job->verbosity, self->verbosity) != 0)
     {
-      g_autofree char *prompt = system_prompt (job->access, job->language);
+      g_autofree char *prompt = system_prompt (job->access, job->language, job->verbosity);
 
-      /* a switch in Agent's settings turned, or the language changed, since the last question: the conversation
-       * goes on, told the new list and the language to answer in from now on */
+      /* a switch in Agent's settings turned, the language or how much to say changed, since the last question: the
+       * conversation goes on, told the new list, the language to answer in and how much to say from now on */
       if (self->fresh)
         dictate_brain_reset (self->brain, prompt);
       else
@@ -874,6 +895,7 @@ answer (DictateTalk *self, Job *job)
       self->fresh = FALSE;
       g_free (self->access), self->access = g_strdup (job->access);
       g_free (self->answers_in), self->answers_in = g_strdup (job->language);
+      g_free (self->verbosity), self->verbosity = g_strdup (job->verbosity);
     }
   g_mutex_lock (&self->lock);
   g_set_object (&self->cancellable, cancellable);
@@ -939,6 +961,11 @@ answer (DictateTalk *self, Job *job)
       g_async_queue_push (self->says, say_for (job, SAY_END, NULL));
     }
 out:
+  {
+    /* the action log has every question too (not its words): it went to the model's server, if the model is one */
+    const char *sent[] = { job->remote ? DICTATE_SENT_SERVER : NULL, NULL };
+    dictate_actions_record ("question", DICTATE_TIER_READ, reply ? "answered" : "not answered", sent, NULL, 0);
+  }
   g_string_free (w.reply, TRUE);
   g_string_free (w.sentence, TRUE);
 }
@@ -967,6 +994,7 @@ brain_thread (gpointer data)
   g_clear_pointer (&self->brain_path, g_free);
   g_clear_pointer (&self->access, g_free);
   g_clear_pointer (&self->answers_in, g_free);
+  g_clear_pointer (&self->verbosity, g_free);
   return NULL;
 }
 
@@ -992,6 +1020,8 @@ job_with_files (DictateTalk *self, int kind, const char *language, const char *t
   job->access = dictate_access_prompt (self->settings,
                                        dictate_brain_is_remote (brain) ? dictate_tools_area_has_tools : NULL);
   job->areas = dictate_tools_areas (self->settings);
+  job->verbosity = g_settings_get_string (self->settings, "talk-verbosity");
+  job->remote = dictate_brain_is_remote (brain);
   job->brain = g_steal_pointer (&brain);
   job->voice = g_steal_pointer (&voice);
   job->name = g_steal_pointer (&name);
@@ -1106,6 +1136,19 @@ dictate_talk_set_speak (DictateTalk *self, gboolean speak)
   set_state (self, self->ended == turn ? DICTATE_TALK_IDLE : DICTATE_TALK_THINKING);
 }
 
+/* a tap while it speaks: the voice stops at once, the reply goes on being written */
+void
+dictate_talk_hush (DictateTalk *self)
+{
+  guint turn = g_atomic_int_get (&self->turn);
+
+  if (self->state != DICTATE_TALK_SPEAKING)
+    return;
+  g_atomic_int_set (&self->hushed, turn);
+  stop_playback (self);
+  set_state (self, self->ended == turn ? DICTATE_TALK_IDLE : DICTATE_TALK_THINKING);
+}
+
 void
 dictate_talk_set_speed (DictateTalk *self, double speed)
 {
@@ -1178,6 +1221,7 @@ dictate_talk_init (DictateTalk *self)
   g_mutex_init (&self->lock);
   self->speed = 1.0;
   self->speak = TRUE;
+  self->hushed = G_MAXUINT;     /* no turn */
   self->main = g_main_context_ref_thread_default ();
   self->settings = g_settings_new ("vibeos.Dictate");
   self->proposals = g_ptr_array_new_with_free_func ((GDestroyNotify) dictate_action_unref);

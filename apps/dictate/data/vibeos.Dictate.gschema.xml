@@ -23,9 +23,30 @@
       <description>The voice file's name in the model's voices directory (af_heart). Empty: the first there is. Piper voices have one speaker each and ignore it.</description>
     </key>
     <key name="talk-speed" type="d">
-      <range min="0.5" max="2.0"/>
+      <range min="0.5" max="3.0"/>
       <default>1.0</default>
       <summary>How fast Agent speaks</summary>
+      <description>"Speech rate" in Agent's settings: 1.0 is the voice's own pace, up to 3.0 for people used to fast speech.</description>
+    </key>
+    <key name="talk-verbosity" type="s">
+      <choices>
+        <choice value="short"/>
+        <choice value="normal"/>
+        <choice value="detailed"/>
+      </choices>
+      <default>"normal"</default>
+      <summary>How much Agent says</summary>
+      <description>"Answers" in Agent's settings: short (a sentence), normal (one to three), or detailed. The model is told it.</description>
+    </key>
+    <key name="cue-sounds" type="b">
+      <default>true</default>
+      <summary>Sounds for Agent's states</summary>
+      <description>A short sound when Agent starts listening, starts working on an answer, is done, or failed; only when the phone's sound is on.</description>
+    </key>
+    <key name="cue-haptics" type="b">
+      <default>true</default>
+      <summary>Vibrations for Agent's states</summary>
+      <description>A short vibration when Agent starts listening, starts working on an answer, is done, or failed; not in Silent mode.</description>
     </key>
     <key name="talk-speak" type="b">
       <default>true</default>

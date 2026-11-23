@@ -36,7 +36,8 @@ executable('vibeos-dictate', 'src/dictate-main.c', 'src/dictate-window.c', 'src/
            'src/dictate-engine.c', 'src/dictate-models.c', 'src/dictate-moonshine.c', 'src/dictate-vosk.c',
            'src/dictate-vad.c', 'src/dictate-talk.c', 'src/dictate-voice.c', 'src/dictate-phonemes.c', brain_sources,
            'src/dictate-download.c', 'src/dictate-download-dialog.c', 'src/dictate-pk.c', 'src/dictate-package.c',
-           'src/dictate-access.c', 'src/dictate-settings.c', tools_sources, resources, link_with: text, install: true,
+           'src/dictate-access.c', 'src/dictate-settings.c', 'src/dictate-cues.c', tools_sources, resources,
+           link_with: text, install: true,
            c_args: ['-DGETTEXT_PACKAGE="vibeos-dictate"',
                     '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir')),
                     '-DLIBRARY_DIR="@0@"'.format(library_dir)],
@@ -52,6 +53,9 @@ foreach id : ['vibeos.Dictate', 'vibeos.Agent']
   install_data('data' / id + '.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
 endforeach
 install_data('data/vibeos.Dictate.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
+# Agent's state cues (dictate-cues.c; data/sounds/make-sounds.sh makes them)
+install_data('data/sounds/agent-listening.wav', 'data/sounds/agent-working.wav', 'data/sounds/agent-done.wav',
+             'data/sounds/agent-failed.wav', install_dir: datadir / 'vibeos-dictate/sounds')
 gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
 
 # the voices and the model, timed on the phone (not run by meson test: they need models)
