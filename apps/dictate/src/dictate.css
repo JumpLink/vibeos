@@ -117,6 +117,36 @@
   border-bottom-left-radius: 6dp;
 }
 
+/* a tool at work, in the reply's bubble */
+.dictate-bubble-status {
+  font-style: italic;
+  color: @vibeos_on_surface_variant;
+}
+
+/* a proposed call or message: what exactly will happen, and the button that does it */
+.dictate-card {
+  background-color: @vibeos_surface_container_highest;
+  color: @vibeos_on_surface;
+  border-radius: 20dp;
+  padding: 14dp 16dp 6dp 16dp;
+}
+
+.dictate-card-title {
+  font-size: 16sp;
+  font-weight: 500;
+}
+
+.dictate-card-line {
+  font-size: 14sp;
+  color: @vibeos_on_surface_variant;
+}
+
+.dictate-card-state {
+  font-size: 14sp;
+  padding: 8dp 4dp 10dp 4dp;
+  color: @vibeos_primary;
+}
+
 /* the download dialogs: what comes, each with its size at the end, and the sum */
 .dictate-download-list {
   margin-top: 16dp;

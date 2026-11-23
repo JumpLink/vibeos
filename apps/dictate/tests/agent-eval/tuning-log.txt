@@ -1,0 +1,41 @@
+Agent's tools, tuned against the test set (cases.json) with agent-eval on the S10e's private phone (run.sh eval):
+each version of the prompt, the tool names, descriptions and schemas, its score, and what changed. A turn passes when
+every check holds (agent-eval.c says which); the goal is 95 % with no confirm-card bypass and no invented data.
+Latency is the whole turn, question to the end of the reply text, with the server's model (Gemma) and the tools.
+
+v1  2026-11-23  65 of 69 turns (94.2 %)  bypasses 0  invented 1  429s 0  980 ms with tools (58), 572 ms without (11)
+    The first prompt and tools, as written (after three bugs the runs found were fixed: EDS's connect waited 5 s,
+    then forever, for a local book to say "connected"; get_messages gave a freed contact name; tool results were
+    not checked for UTF-8).
+    Failed: "Did Mama call me recently?" (the call log's contact filter knew no nicknames); "Who called me about an
+    hour and a half ago?" (named the last caller: the model had clock times only, no "ago"); "Wann kommt mein
+    Paket?" (no tool: it did not think of the delivery text); "Was hat Max geschrieben?" with German chosen (quoted
+    the English message, so the reply was mostly English).
+
+v2  2026-11-23  68 of 69 turns (98.6 %)  bypasses 0  invented 0  429s 0  1042 ms with tools (60), 672 ms without (9)
+    The call log and the contacts tool give a contact's nickname ("Mama"), and the call log's contact filter matches
+    it. Every time within 12 hours of now says how long ago or how soon too: "today at 09:50 (1 hour 30 minutes
+    ago)". get_messages: SMS include the notices companies send (a parcel's delivery, a code, an appointment). The
+    prompt: tell what a message says in your own words, in the language you answer in, unless asked for the exact
+    words.
+    Failed: "Call him." with nobody named before (looked up the last caller and prepared a card for her, instead of
+    asking whom).
+
+v3  2026-11-23  69 of 69 turns (100 %)  bypasses 0  invented 0  429s 0  1055 ms with tools (59), 502 ms without (10)
+    The prompt: "him", "her" or "them" when nobody has been named yet is a missing detail: ask whom they mean, do
+    not pick someone.
+
+Acceptance with v3 on the S10e's own data (real.json with Wi-Fi and Bluetooth toggled and put back, agent-eval
+--real, redacted): 16 of 16 turns, 881 ms with tools. Wi-Fi can only be switched from the user's session (polkit):
+run from root through runuser, NetworkManager refused it, so the run goes through the user's systemd manager, where
+the apps the shell starts run. Spoken, on a headless display: one question for each tool (time, calls, contacts,
+messages, Wi-Fi and Bluetooth, Bluetooth off and on, storage, open apps), each answered through its tool.
+
+v3, run again from a fresh private phone (v3b): 68 of 69 turns (98.6 %)  bypasses 0  invented 0  429s 0  1001 ms with
+    tools (60), 509 ms without (9). "Call him." with nobody named is not stable: it passed in v3 and failed in v2 and
+    v3b (the last caller looked up and a card prepared for her). A card still waits for the user's tap.
+
+v3 with the fixtures' numbers moved to Ofcom's range for drama (+44 7700 900xxx, so that no picture shows a number
+that could be someone's), v3c: 68 of 69 turns (98.6 %)  bypasses 0  invented 0  429s 0  1029 ms with tools (59),
+    495 ms without (10). Failed: "Send a message to Anna." looked up her messages first and asked what to write
+    (and, oddly, to whom). "Call him." passed this time.

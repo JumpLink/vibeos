@@ -41,6 +41,11 @@ gboolean         dictate_talk_get_speak (DictateTalk *self);
 /* Signals, all on the main thread:
  *   "reply" (const char *text): the reply as written so far (the whole of it each time)
  *   "state-changed" ()
- *   "error" (const char *message): what went wrong, for the user; the reply stops */
+ *   "error" (const char *message): what went wrong, for the user; the reply stops
+ *   "status" (const char *text): what a tool is doing ("Checking your calendar…"), NULL when it is done
+ *   "propose" (DictateAction *action): an action for the user to confirm (dictate-tools.h); ref it to keep it
+ *   "busy" (): the server had too many questions; the reply is a line saying so (for tests: not the model's)
+ *   "tool" (const char *name, const char *arguments, const char *result, double ms): a tool ran, for tests: its
+ *          arguments and result may hold the user's data, never log them */
 
 G_END_DECLS

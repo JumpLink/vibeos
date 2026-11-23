@@ -208,6 +208,14 @@ dictate_settings_page_new (GtkWidget *window, const DictateSettingsHooks *hooks)
 
   /* what it can use */
   vibeos_card_list_add_group (VIBEOS_CARD_LIST (cards), _("What Agent can use"));
+  {
+    /* where what it reads goes, before the switches */
+    GtkWidget *note = vibeos_list_row_new (_("Only to VibeOS"),
+                                           _("What Agent reads on the phone goes only to VibeOS's own model server, "
+                                             "never to anyone else"));
+    gtk_widget_set_can_target (note, FALSE);
+    vibeos_card_list_append (VIBEOS_CARD_LIST (cards), note);
+  }
   for (guint i = 0; i < n; i++)
     switch_row (p, cards, _(access[i].title), NULL, access[i].key);
 

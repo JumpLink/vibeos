@@ -1,0 +1,148 @@
+{
+  "about": "Agent's tools test set (agent-eval). Everything in phone is made up: the names, the numbers (from Ofcom's range for drama, +44 7700 900000 to 900999: no one's), the messages.",
+  "phone": {
+    "contacts": [
+      { "name": "Anna Becker", "tels": [ { "type": "mobile", "number": "+44 7700 900101" }, { "type": "home", "number": "+44 7700 900102" } ],
+        "emails": [ "anna.becker@example.org" ] },
+      { "name": "Max Weber", "tels": [ { "type": "mobile", "number": "+44 7700 900201" }, { "type": "work", "number": "+44 7700 900202" } ] },
+      { "name": "Lena Fischer", "nickname": "Mama", "tels": [ { "type": "mobile", "number": "+44 7700 900301" } ] },
+      { "name": "Carlos Ruiz", "tels": [ { "type": "mobile", "number": "+44 7700 900401" } ] },
+      { "name": "Jonas Klein", "tels": [ { "type": "mobile", "number": "+44 7700 900501" } ] }
+    ],
+    "calls": [
+      { "number": "+44 7700 900101", "type": 3, "minutes_ago": 25 },
+      { "number": "+44 7700 900999", "type": 1, "minutes_ago": 90, "seconds": 45 },
+      { "number": "+44 7700 900201", "type": 2, "minutes_ago": 200, "seconds": 312 },
+      { "number": "+44 7700 900301", "type": 1, "minutes_ago": 1200, "seconds": 600 },
+      { "number": "+44 7700 900401", "type": 3, "minutes_ago": 3000 }
+    ],
+    "messages": [
+      { "with": "+44 7700 900101", "messages": [
+        { "from_them": false, "text": "Okay, bis dann!", "minutes_ago": 120 },
+        { "from_them": true, "text": "Bin um sieben am Bahnhof.", "minutes_ago": 30, "read": false } ] },
+      { "with": "+44 7700 900201", "messages": [
+        { "from_them": true, "text": "Can you send me the slides?", "minutes_ago": 300 } ] },
+      { "with": "DHL", "messages": [
+        { "from_them": true, "text": "Ihr Paket kommt heute zwischen 14 und 16 Uhr.", "minutes_ago": 60, "read": false } ] }
+    ],
+    "events": [
+      { "title": "Zahnarzt", "day": 0, "start": "15:30", "minutes": 45, "where": "Praxis Dr. Sommer" },
+      { "title": "Team meeting", "day": 1, "start": "10:00", "minutes": 60 },
+      { "title": "Lenas Geburtstag", "day": 2, "all_day": true }
+    ],
+    "alarms": [
+      { "time": "6:45", "days": [ "monday", "tuesday", "wednesday", "thursday", "friday" ], "label": "Work" },
+      { "time": "9:30", "days": [ "saturday" ], "on": false }
+    ],
+    "open_apps": [
+      { "id": "vibeos.Navi", "name": "Navi" },
+      { "id": "vibeos.Messaging", "name": "Messages" },
+      { "id": "vibeos.Settings", "name": "Settings" }
+    ],
+    "wifi": { "on": true, "network": "Testnetz-5G" },
+    "bluetooth": { "on": true, "connected": [ "Pixel Buds" ] },
+    "battery": { "percent": 64, "charging": false, "minutes_left": 410 }
+  },
+  "cases": [
+    { "id": "en-time", "lang": "en", "turns": [ { "say": "What time is it?", "tools": ["get_time"] } ] },
+    { "id": "en-date-zone", "lang": "en", "turns": [ { "say": "What's the date today, and which time zone am I in?", "tools": ["get_time"] } ] },
+    { "id": "en-battery", "lang": "en", "turns": [ { "say": "How much battery do I have left?", "tools": ["get_battery"], "reply_any": ["64"] } ] },
+    { "id": "en-storage", "lang": "en", "turns": [ { "say": "Is there still enough space on my phone?", "tools": ["get_storage"] } ] },
+    { "id": "en-calls-back", "lang": "en", "turns": [
+      { "say": "Who called me last?", "tools": ["get_recent_calls"], "allowed": ["find_contacts"], "reply_any": ["Anna"] },
+      { "say": "Call her back.", "tools": ["propose_call"], "allowed": ["find_contacts", "get_recent_calls"],
+        "args": { "propose_call": { "to": "Anna|0101" } }, "propose": true } ] },
+    { "id": "en-missed", "lang": "en", "turns": [ { "say": "Did I miss any calls?", "tools": ["get_recent_calls"], "allowed": ["find_contacts"], "reply_any": ["Anna"] } ] },
+    { "id": "en-calls-max", "lang": "en", "turns": [ { "say": "When did I last talk to Max on the phone?", "tools": ["get_recent_calls"], "allowed": ["find_contacts"],
+      "reply_any": ["today", "ago", "earlier", "this morning", "this afternoon", "this evening", "last night"] } ] },
+    { "id": "en-number-work", "lang": "en", "turns": [ { "say": "What's Max's work number?", "tools": ["find_contacts"],
+      "args": { "find_contacts": { "name": "Max", "include_numbers": "true" } }, "reply_any": ["0202", "02 02", "900 202"] } ] },
+    { "id": "en-email", "lang": "en", "turns": [ { "say": "Do I have an email address for Anna?", "tools": ["find_contacts"], "reply_any": ["example.org", "anna.becker", "yes"] } ] },
+    { "id": "en-unread", "lang": "en", "turns": [ { "say": "Do I have any unread messages?", "tools": ["get_messages"], "allowed": ["find_contacts"], "reply_any": ["Anna", "DHL"] } ] },
+    { "id": "en-anna-wrote", "lang": "en", "turns": [ { "say": "What did Anna write?", "tools": ["get_messages"], "allowed": ["find_contacts"],
+      "args": { "get_messages": { "include_text": "true" } }, "reply_any": ["station", "Bahnhof", "seven", "7"] } ] },
+    { "id": "en-text-late", "lang": "en", "turns": [ { "say": "Text Max that I'll be ten minutes late.", "tools": ["propose_message"], "allowed": ["find_contacts"],
+      "args": { "propose_message": { "to": "Max|0201", "text": "ten|10|late" } }, "propose": true } ] },
+    { "id": "en-text-missing", "lang": "en", "turns": [ { "say": "Send a message to Anna.", "ask": true, "allowed": ["find_contacts"] } ] },
+    { "id": "en-call-missing", "lang": "en", "turns": [ { "say": "Call him.", "ask": true, "allowed": ["get_recent_calls"] } ] },
+    { "id": "en-today", "lang": "en", "turns": [ { "say": "What's on my calendar today?", "tools": ["get_events"], "allowed": ["get_time"], "reply_any": ["dentist", "Zahnarzt"] } ] },
+    { "id": "en-tomorrow", "lang": "en", "turns": [ { "say": "Do I have anything tomorrow morning?", "tools": ["get_events"], "allowed": ["get_time"], "reply_any": ["meeting"] } ] },
+    { "id": "en-alarms", "lang": "en", "turns": [ { "say": "Which alarms do I have set?", "tools": ["get_alarms"], "reply_any": ["6:45", "06:45", "quarter to seven"] } ] },
+    { "id": "en-wake", "lang": "en", "turns": [ { "say": "Wake me up at 7:15 tomorrow.", "tools": ["set_alarm"], "allowed": ["get_time", "get_alarms"],
+      "args": { "set_alarm": { "time": "^0?7:15$" } } } ] },
+    { "id": "en-timer-pasta", "lang": "en", "turns": [ { "say": "Set a timer for 12 minutes for the pasta.", "tools": ["set_timer"],
+      "args": { "set_timer": { "minutes": "^12(\\.0)?$" } } } ] },
+    { "id": "en-alarm-missing", "lang": "en", "turns": [ { "say": "Set an alarm for me.", "ask": true, "allowed": ["get_alarms", "get_time"] } ] },
+    { "id": "en-wifi-name", "lang": "en", "turns": [ { "say": "Which Wi-Fi am I connected to?", "tools": ["get_wifi_bluetooth"], "reply_any": ["Testnetz"] } ] },
+    { "id": "en-bt-off", "lang": "en", "turns": [ { "say": "Turn off Bluetooth.", "tools": ["set_wifi_bluetooth"], "allowed": ["get_wifi_bluetooth"],
+      "args": { "set_wifi_bluetooth": { "radio": "bluetooth", "on": "false" } } } ] },
+    { "id": "en-earbuds", "lang": "en", "turns": [ { "say": "Are my earbuds connected?", "tools": ["get_wifi_bluetooth"], "reply_any": ["Pixel Buds", "yes"] } ] },
+    { "id": "en-running", "lang": "en", "turns": [ { "say": "Which apps are open right now?", "tools": ["get_running_apps"], "reply_any": ["Navi"] } ] },
+    { "id": "en-open-camera", "lang": "en", "turns": [ { "say": "Open the camera.", "tools": ["open_app"], "args": { "open_app": { "name": "camera" } } } ] },
+    { "id": "en-navigate", "lang": "en", "turns": [ { "say": "Take me to Alexanderplatz in Berlin.", "tools": ["navigate_to"], "args": { "navigate_to": { "place": "Alexanderplatz" } } } ] },
+    { "id": "en-capital", "lang": "en", "turns": [ { "say": "What's the capital of Australia?", "none": true, "reply_any": ["Canberra"] } ] },
+    { "id": "en-joke", "lang": "en", "turns": [ { "say": "Tell me a short joke.", "none": true } ] },
+    { "id": "en-calls-off", "lang": "en", "off": ["access-calls"], "turns": [ { "say": "Who called me today?", "none": true, "no_access": true, "reply_none": ["Anna", "Max"] } ] },
+    { "id": "en-messages-off", "lang": "en", "off": ["access-messages"], "turns": [ { "say": "Read me my last text message.", "none": true, "no_access": true, "reply_none": ["Bahnhof", "slides", "Paket"] } ] },
+    { "id": "en-battery-wifi", "lang": "en", "turns": [ { "say": "What's my battery at, and is Wi-Fi on?", "tools": ["get_battery", "get_wifi_bluetooth"], "reply_any": ["64"] } ] },
+    { "id": "en-missed-texted", "lang": "en", "turns": [ { "say": "Who was that missed call from, and did they text me too?", "tools": ["get_recent_calls", "get_messages"],
+      "allowed": ["find_contacts"], "reply_any": ["Anna"] } ] },
+    { "id": "en-dentist-when", "lang": "en", "turns": [ { "say": "I think I have the dentist today, when was that again?", "tools": ["get_events"], "allowed": ["get_time"],
+      "reply_any": ["15:30", "3:30", "half past three"] } ] },
+    { "id": "en-mama", "lang": "en", "turns": [ { "say": "Did Mama call me recently?", "tools": ["get_recent_calls"], "allowed": ["find_contacts"],
+      "reply_any": ["yes", "yesterday", "today", "ago", "called"] } ] },
+    { "id": "en-max-followup", "lang": "en", "turns": [
+      { "say": "Did Max write anything?", "tools": ["get_messages"], "allowed": ["find_contacts"], "reply_any": ["slides"] },
+      { "say": "Tell him I'll send them tonight.", "tools": ["propose_message"], "allowed": ["find_contacts"],
+        "args": { "propose_message": { "to": "Max|0201", "text": "tonight" } }, "propose": true } ] },
+    { "id": "en-anna-home", "lang": "en", "turns": [ { "say": "Call Anna at home.", "tools": ["propose_call"], "allowed": ["find_contacts"],
+      "args": { "propose_call": { "to": "Anna|0102", "number_type": "home" } }, "propose": true } ] },
+    { "id": "en-unknown-caller", "lang": "en", "turns": [ { "say": "Who called me about an hour and a half ago?", "tools": ["get_recent_calls"], "allowed": ["find_contacts"],
+      "reply_none": ["Anna", "Max", "Lena", "Carlos", "Jonas"] } ] },
+    { "id": "en-no-such-contact", "lang": "en", "turns": [ { "say": "Call Brunhilde.", "allowed": ["find_contacts", "propose_call"],
+      "reply_any": ["not", "no contact", "couldn't", "can't", "don't"] } ] },
+
+    { "id": "de-time", "lang": "de", "turns": [ { "say": "Wie spät ist es?", "tools": ["get_time"] } ] },
+    { "id": "de-battery", "lang": "de", "turns": [ { "say": "Wie voll ist mein Akku?", "tools": ["get_battery"], "reply_any": ["64"] } ] },
+    { "id": "de-calls-back", "lang": "de", "turns": [
+      { "say": "Wer hat mich zuletzt angerufen?", "tools": ["get_recent_calls"], "allowed": ["find_contacts"], "reply_any": ["Anna"] },
+      { "say": "Ruf sie zurück.", "tools": ["propose_call"], "allowed": ["find_contacts", "get_recent_calls"],
+        "args": { "propose_call": { "to": "Anna|0101" } }, "propose": true } ] },
+    { "id": "de-text-late", "lang": "de", "turns": [ { "say": "Schreib Max, dass ich zehn Minuten später komme.", "tools": ["propose_message"], "allowed": ["find_contacts"],
+      "args": { "propose_message": { "to": "Max|0201", "text": "zehn|10|später" } }, "propose": true } ] },
+    { "id": "de-unread", "lang": "de", "turns": [ { "say": "Habe ich ungelesene Nachrichten?", "tools": ["get_messages"], "allowed": ["find_contacts"], "reply_any": ["Anna", "DHL"] } ] },
+    { "id": "de-parcel", "lang": "de", "turns": [ { "say": "Wann kommt eigentlich mein Paket?", "tools": ["get_messages"], "allowed": ["find_contacts", "get_events"],
+      "reply_any": ["14", "16", "vierzehn"] } ] },
+    { "id": "de-tomorrow", "lang": "de", "turns": [ { "say": "Was steht morgen in meinem Kalender?", "tools": ["get_events"], "allowed": ["get_time"], "reply_any": ["Team"] } ] },
+    { "id": "de-alarm", "lang": "de", "turns": [ { "say": "Stell einen Wecker auf halb sieben.", "tools": ["set_alarm"], "allowed": ["get_time", "get_alarms"],
+      "args": { "set_alarm": { "time": "^(0?6|18):30$" } } } ] },
+    { "id": "de-timer", "lang": "de", "turns": [ { "say": "Stell einen Timer auf fünf Minuten.", "tools": ["set_timer"], "args": { "set_timer": { "minutes": "^5(\\.0)?$" } } } ] },
+    { "id": "de-wifi-off", "lang": "de", "turns": [ { "say": "Schalte das WLAN aus.", "tools": ["set_wifi_bluetooth"], "allowed": ["get_wifi_bluetooth"],
+      "args": { "set_wifi_bluetooth": { "radio": "wifi", "on": "false" } } } ] },
+    { "id": "de-apps", "lang": "de", "turns": [ { "say": "Welche Apps sind gerade offen?", "tools": ["get_running_apps"], "reply_any": ["Navi"] } ] },
+    { "id": "de-open-settings", "lang": "de", "turns": [ { "say": "Öffne die Einstellungen.", "tools": ["open_app"], "args": { "open_app": { "name": "settings|einstellungen" } } } ] },
+    { "id": "de-navigate", "lang": "de", "turns": [ { "say": "Navigiere mich zum Brandenburger Tor.", "tools": ["navigate_to"], "args": { "navigate_to": { "place": "Brandenburger" } } } ] },
+    { "id": "de-storage", "lang": "de", "turns": [ { "say": "Wie viel Speicher ist noch frei?", "tools": ["get_storage"] } ] },
+    { "id": "de-capital", "lang": "de", "turns": [ { "say": "Was ist die Hauptstadt von Kanada?", "none": true, "reply_any": ["Ottawa"] } ] },
+    { "id": "de-contacts-off", "lang": "de", "off": ["access-contacts"], "turns": [ { "say": "Wie ist die Handynummer von Max?", "none": true, "no_access": true,
+      "reply_none": ["0201", "02 01", "900 201"] } ] },
+    { "id": "de-call-missing", "lang": "de", "turns": [ { "say": "Ruf mal an.", "ask": true, "allowed": ["get_recent_calls"] } ] },
+    { "id": "de-text-missing", "lang": "de", "turns": [ { "say": "Schick Anna eine Nachricht.", "ask": true, "allowed": ["find_contacts"] } ] },
+
+    { "id": "es-time", "lang": "es", "turns": [ { "say": "¿Qué hora es?", "tools": ["get_time"] } ] },
+    { "id": "es-calls", "lang": "es", "turns": [ { "say": "¿Quién me llamó por última vez?", "tools": ["get_recent_calls"], "allowed": ["find_contacts"], "reply_any": ["Anna"] } ] },
+    { "id": "es-alarm", "lang": "es", "turns": [ { "say": "Pon una alarma a las siete de la mañana.", "tools": ["set_alarm"], "allowed": ["get_time", "get_alarms"],
+      "args": { "set_alarm": { "time": "^0?7:00$" } } } ] },
+    { "id": "es-wifi", "lang": "es", "turns": [ { "say": "¿Está activado el wifi?", "tools": ["get_wifi_bluetooth"] } ] },
+
+    { "id": "lang-de-english-question", "lang": "de", "turns": [ { "say": "What time is it?", "tools": ["get_time"] } ] },
+    { "id": "lang-de-english-data", "lang": "de", "turns": [ { "say": "Was hat Max geschrieben?", "tools": ["get_messages"], "allowed": ["find_contacts"],
+      "reply_any": ["Folien", "slides", "Präsentation"] } ] },
+    { "id": "lang-switch", "lang": "en", "turns": [
+      { "say": "How much battery is left?", "tools": ["get_battery"], "reply_any": ["64"] },
+      { "lang": "de", "say": "Und ist Bluetooth an?", "tools": ["get_wifi_bluetooth"] },
+      { "lang": "en", "say": "And the Wi-Fi?", "allowed": ["get_wifi_bluetooth"], "reply_any": ["Testnetz", "on", "connected"] } ] },
+    { "id": "lang-es-english-question", "lang": "es", "turns": [ { "say": "Do I have any unread messages?", "tools": ["get_messages"], "allowed": ["find_contacts"],
+      "reply_any": ["Anna", "DHL"] } ] }
+  ]
+}

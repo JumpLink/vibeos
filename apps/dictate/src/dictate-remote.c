@@ -2,7 +2,11 @@
  *
  * The conversation is kept here as messages and sent whole with each turn (the server keeps nothing between
  * them). The reply comes as server-sent events, "data: {…}" lines each with a piece of it in
- * choices[0].delta.content, up to "data: [DONE]". The model's name is the server's first in /models, asked once. */
+ * choices[0].delta.content, up to "data: [DONE]". The model's name is the server's first in /models, asked once.
+ *
+ * Given tools (OpenAI function definitions), the model may answer with calls to them instead: they come in
+ * choices[0].delta.tool_calls, each by its index, its id and name first and its arguments in pieces. The calls
+ * stay in the conversation as the assistant's message, and each one's result follows as a "tool" message. */
 #include "dictate-remote.h"
 #include "dictate-device.h"
 
@@ -14,6 +18,7 @@
 #define REPLY_MAX 400           /* tokens: a spoken answer is a few sentences */
 #define TIMEOUT_S 60            /* no answer from the server for this long: it is not there */
 #define TOO_MANY  429           /* libsoup has no name for it */
+#define RETRY_WAIT_MAX 6        /* s: a 429 asking for longer is not waited out */
 
 struct _DictateRemote {
   char *base;                   /* https://host:port/v1 */
@@ -64,6 +69,17 @@ dictate_remote_free (DictateRemote *self)
   g_free (self);
 }
 
+void
+dictate_brain_call_free (DictateBrainCall *call)
+{
+  if (!call)
+    return;
+  g_free (call->id);
+  g_free (call->name);
+  g_free (call->arguments);
+  g_free (call);
+}
+
 static void
 add_message (DictateRemote *self, const char *role, const char *content)
 {
@@ -74,6 +90,61 @@ add_message (DictateRemote *self, const char *role, const char *content)
   json_builder_add_string_value (b, role);
   json_builder_set_member_name (b, "content");
   json_builder_add_string_value (b, content);
+  json_builder_end_object (b);
+  g_ptr_array_add (self->messages, json_builder_get_root (b));
+}
+
+/* the model's turn that called tools: what it wrote before them, if anything, and the calls */
+static void
+add_calls (DictateRemote *self, const char *content, GPtrArray *calls)
+{
+  g_autoptr (JsonBuilder) b = json_builder_new ();
+
+  json_builder_begin_object (b);
+  json_builder_set_member_name (b, "role");
+  json_builder_add_string_value (b, "assistant");
+  json_builder_set_member_name (b, "content");
+  if (content && *content)
+    json_builder_add_string_value (b, content);
+  else
+    json_builder_add_null_value (b);
+  json_builder_set_member_name (b, "tool_calls");
+  json_builder_begin_array (b);
+  for (guint i = 0; i < calls->len; i++)
+    {
+      DictateBrainCall *c = calls->pdata[i];
+
+      json_builder_begin_object (b);
+      json_builder_set_member_name (b, "id");
+      json_builder_add_string_value (b, c->id);
+      json_builder_set_member_name (b, "type");
+      json_builder_add_string_value (b, "function");
+      json_builder_set_member_name (b, "function");
+      json_builder_begin_object (b);
+      json_builder_set_member_name (b, "name");
+      json_builder_add_string_value (b, c->name);
+      json_builder_set_member_name (b, "arguments");
+      json_builder_add_string_value (b, c->arguments && *c->arguments ? c->arguments : "{}");
+      json_builder_end_object (b);
+      json_builder_end_object (b);
+    }
+  json_builder_end_array (b);
+  json_builder_end_object (b);
+  g_ptr_array_add (self->messages, json_builder_get_root (b));
+}
+
+void
+dictate_remote_add_result (DictateRemote *self, const char *call_id, const char *result)
+{
+  g_autoptr (JsonBuilder) b = json_builder_new ();
+
+  json_builder_begin_object (b);
+  json_builder_set_member_name (b, "role");
+  json_builder_add_string_value (b, "tool");
+  json_builder_set_member_name (b, "tool_call_id");
+  json_builder_add_string_value (b, call_id);
+  json_builder_set_member_name (b, "content");
+  json_builder_add_string_value (b, result);
   json_builder_end_object (b);
   g_ptr_array_add (self->messages, json_builder_get_root (b));
 }
@@ -201,12 +272,37 @@ enroll (DictateRemote *self, GCancellable *cancellable, GError **error)
   return TRUE;
 }
 
+/* how long a 429 asks to wait: its Retry-After (seconds), kept between 2 and RETRY_WAIT_MAX */
+static guint
+retry_after (SoupMessage *msg)
+{
+  const char *value = soup_message_headers_get_one (soup_message_get_response_headers (msg), "Retry-After");
+  guint64 s = value ? g_ascii_strtoull (value, NULL, 10) : 0;
+
+  return CLAMP (s, 2, RETRY_WAIT_MAX);
+}
+
+/* `seconds` waited, unless the reply is stopped first */
+static gboolean
+wait_out (guint seconds, GCancellable *cancellable, GError **error)
+{
+  for (guint i = 0; i < seconds * 10; i++)
+    {
+      if (g_cancellable_set_error_if_cancelled (cancellable, error))
+        return FALSE;
+      g_usleep (100000);
+    }
+  return TRUE;
+}
+
 /* `msg` sent; a gateway that does not know the phone (401) has it enroll, and the message is sent again, once.
  * The stream of the answer, or NULL with the error */
 static GInputStream *
 call (DictateRemote *self, SoupMessage **msg, const char *method, const char *url, GBytes *json,
       GCancellable *cancellable, GError **error)
 {
+  gboolean waited = FALSE;
+
   for (int attempt = 0;; attempt++)
     {
       GError *failure = NULL;
@@ -232,10 +328,27 @@ call (DictateRemote *self, SoupMessage **msg, const char *method, const char *ur
             return NULL;
           continue;
         }
+      /* too many requests: the gateway says when to come back; a short wait is waited out once, quietly */
+      if (status == TOO_MANY && !waited)
+        {
+          guint wait_s = retry_after (*msg);
+
+          g_message ("remote: 429, again in %u s", wait_s);
+          g_clear_object (msg);
+          if (!wait_out (wait_s, cancellable, error))
+            return NULL;
+          waited = TRUE;
+          attempt--;
+          continue;
+        }
       if (status == SOUP_STATUS_FORBIDDEN)
         user_error (error, _("This phone may not use the assistant."));
       else if (status == TOO_MANY)
-        user_error (error, _("Too many questions at once. Wait a minute, then ask again."));
+        {
+          g_message ("remote: 429 again: busy");
+          g_set_error_literal (error, DICTATE_BRAIN_ERROR, DICTATE_BRAIN_ERROR_BUSY,
+                               _("I'm getting too many requests, give me a moment."));
+        }
       else if (status >= 500)
         user_error (error, _("The assistant is not working right now. Try again later."));
       else
@@ -285,7 +398,7 @@ dictate_remote_warm (DictateRemote *self)
 /* --- a turn */
 
 static GBytes *
-chat_body (DictateRemote *self)
+chat_body (DictateRemote *self, JsonNode *tools)
 {
   g_autoptr (JsonBuilder) b = json_builder_new ();
 
@@ -303,7 +416,14 @@ chat_body (DictateRemote *self)
   json_builder_set_member_name (b, "max_tokens");
   json_builder_add_int_value (b, REPLY_MAX);
   json_builder_set_member_name (b, "temperature");
-  json_builder_add_double_value (b, 0.7);
+  json_builder_add_double_value (b, tools ? 0.3 : 0.7);
+  if (tools)
+    {
+      json_builder_set_member_name (b, "tools");
+      json_builder_add_value (b, json_node_copy (tools));
+      json_builder_set_member_name (b, "tool_choice");
+      json_builder_add_string_value (b, "auto");
+    }
   json_builder_set_member_name (b, "messages");
   json_builder_begin_array (b);
   for (guint i = 0; i < self->messages->len; i++)
@@ -313,9 +433,53 @@ chat_body (DictateRemote *self)
   return to_bytes (b);
 }
 
-/* one event's piece of the reply ("" when it has none), or NULL at the end */
+/* an event's pieces of tool calls into `calls`, by their index */
+static void
+event_calls (JsonObject *delta, GPtrArray *calls)
+{
+  JsonArray *list = json_object_has_member (delta, "tool_calls") &&
+                    JSON_NODE_HOLDS_ARRAY (json_object_get_member (delta, "tool_calls"))
+                    ? json_object_get_array_member (delta, "tool_calls") : NULL;
+
+  for (guint i = 0; list && i < json_array_get_length (list); i++)
+    {
+      JsonObject *t = JSON_NODE_HOLDS_OBJECT (json_array_get_element (list, i))
+                      ? json_array_get_object_element (list, i) : NULL;
+      JsonObject *f;
+      DictateBrainCall *c;
+      gint64 index;
+
+      if (!t)
+        continue;
+      index = json_object_get_int_member_with_default (t, "index", calls->len ? calls->len - 1 : 0);
+      if (index < 0 || index > 15)
+        continue;
+      while ((gint64) calls->len <= index)
+        {
+          c = g_new0 (DictateBrainCall, 1);
+          c->arguments = g_strdup ("");
+          g_ptr_array_add (calls, c);
+        }
+      c = calls->pdata[index];
+      if (json_object_has_member (t, "id") && JSON_NODE_HOLDS_VALUE (json_object_get_member (t, "id")))
+        g_free (c->id), c->id = g_strdup (json_object_get_string_member (t, "id"));
+      f = json_object_has_member (t, "function") && JSON_NODE_HOLDS_OBJECT (json_object_get_member (t, "function"))
+          ? json_object_get_object_member (t, "function") : NULL;
+      if (!f)
+        continue;
+      if (json_object_has_member (f, "name") && JSON_NODE_HOLDS_VALUE (json_object_get_member (f, "name")))
+        g_free (c->name), c->name = g_strdup (json_object_get_string_member (f, "name"));
+      if (json_object_has_member (f, "arguments") && JSON_NODE_HOLDS_VALUE (json_object_get_member (f, "arguments")))
+        {
+          char *more = g_strconcat (c->arguments, json_object_get_string_member (f, "arguments"), NULL);
+          g_free (c->arguments), c->arguments = more;
+        }
+    }
+}
+
+/* one event's piece of the reply ("" when it has none), or NULL at the end; its pieces of tool calls into `calls` */
 static char *
-event_piece (const char *json, gboolean *usage, int *prompt_tokens, int *completion_tokens)
+event_piece (const char *json, gboolean *usage, int *prompt_tokens, int *completion_tokens, GPtrArray *calls)
 {
   g_autoptr (JsonParser) parser = json_parser_new ();
   JsonObject *root, *delta;
@@ -336,6 +500,8 @@ event_piece (const char *json, gboolean *usage, int *prompt_tokens, int *complet
     return g_strdup ("");
   delta = json_object_has_member (json_array_get_object_element (choices, 0), "delta")
           ? json_object_get_object_member (json_array_get_object_element (choices, 0), "delta") : NULL;
+  if (delta)
+    event_calls (delta, calls);
   if (!delta || !json_object_has_member (delta, "content") || JSON_NODE_HOLDS_NULL (json_object_get_member (delta, "content")))
     return g_strdup ("");
   return g_strdup (json_object_get_string_member (delta, "content"));
@@ -345,6 +511,17 @@ char *
 dictate_remote_reply (DictateRemote *self, const char *text, DictateBrainPiece piece, gpointer data,
                       GCancellable *cancellable, GError **error)
 {
+  g_autoptr (GPtrArray) calls = NULL;
+
+  return dictate_remote_step (self, text, NULL, piece, data, &calls, cancellable, error);
+}
+
+char *
+dictate_remote_step (DictateRemote *self, const char *text, const char *tools, DictateBrainPiece piece,
+                     gpointer data, GPtrArray **calls_out, GCancellable *cancellable, GError **error)
+{
+  g_autoptr (GPtrArray) calls = g_ptr_array_new_with_free_func ((GDestroyNotify) dictate_brain_call_free);
+  g_autoptr (JsonNode) tool_list = tools ? json_from_string (tools, NULL) : NULL;
   gint64 t0 = g_get_monotonic_time ();
   g_autofree char *url = g_strconcat (self->base, "/chat/completions", NULL);
   g_autoptr (SoupMessage) msg = NULL;
@@ -357,15 +534,18 @@ dictate_remote_reply (DictateRemote *self, const char *text, DictateBrainPiece p
 
   self->read = self->written = 0;
   self->read_ms = self->first_ms = self->total_ms = -1;
+  *calls_out = NULL;
   if (!self->model && !find_model (self, cancellable, error))
     return NULL;
-  add_message (self, "user", text);
-  body = chat_body (self);
+  if (text)
+    add_message (self, "user", text);
+  body = chat_body (self, tool_list && JSON_NODE_HOLDS_ARRAY (tool_list) ? tool_list : NULL);
   in = call (self, &msg, "POST", url, body, cancellable, error);
   if (!in)
     {
       /* the question was not asked: it is not part of the conversation */
-      g_ptr_array_remove_index (self->messages, self->messages->len - 1);
+      if (text)
+        g_ptr_array_remove_index (self->messages, self->messages->len - 1);
       return NULL;
     }
   self->read_ms = (g_get_monotonic_time () - t0) / 1000.0;
@@ -383,10 +563,11 @@ dictate_remote_reply (DictateRemote *self, const char *text, DictateBrainPiece p
            * it is the reply, as with a stop */
           if (failure && !g_error_matches (failure, G_IO_ERROR, G_IO_ERROR_CANCELLED))
             {
-              if (reply->len == 0)
+              if (reply->len == 0 && calls->len == 0)
                 {
                   network_error (error, failure);
-                  g_ptr_array_remove_index (self->messages, self->messages->len - 1);
+                  if (text)
+                    g_ptr_array_remove_index (self->messages, self->messages->len - 1);
                   return NULL;
                 }
               g_warning ("agent: the reply was cut off: %s", failure->message);
@@ -399,7 +580,7 @@ dictate_remote_reply (DictateRemote *self, const char *text, DictateBrainPiece p
         continue;
       if (g_str_equal (g_strstrip (line + 5), "[DONE]"))
         break;
-      part = event_piece (line + 5, &usage, &prompt_tokens, &completion_tokens);
+      part = event_piece (line + 5, &usage, &prompt_tokens, &completion_tokens, calls);
       if (!*part)
         continue;
       pieces++;
@@ -414,7 +595,20 @@ dictate_remote_reply (DictateRemote *self, const char *text, DictateBrainPiece p
   self->read = usage ? prompt_tokens : 0;
   self->written = usage ? completion_tokens : pieces;
   self->total_ms = (g_get_monotonic_time () - t0) / 1000.0;
-  add_message (self, "assistant", reply->str);
+  /* a call the stream did not finish (no name) is not one */
+  for (guint i = calls->len; i > 0; i--)
+    {
+      DictateBrainCall *c = calls->pdata[i - 1];
+      if (!c->name || !*c->name)
+        g_ptr_array_remove_index (calls, i - 1);
+      else if (!c->id || !*c->id)
+        g_free (c->id), c->id = g_strdup_printf ("call-%u", i - 1);
+    }
+  if (calls->len)
+    add_calls (self, reply->str, calls);
+  else
+    add_message (self, "assistant", reply->str);
+  *calls_out = g_steal_pointer (&calls);
   return g_string_free (g_steal_pointer (&reply), FALSE);
 }
 

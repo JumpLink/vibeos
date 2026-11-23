@@ -22,6 +22,11 @@ void           dictate_remote_reset       (DictateRemote *self, const char *syst
 void           dictate_remote_set_system  (DictateRemote *self, const char *system);
 char          *dictate_remote_reply       (DictateRemote *self, const char *text, DictateBrainPiece piece,
                                            gpointer data, GCancellable *cancellable, GError **error);
+/* as dictate_brain_step () */
+char          *dictate_remote_step        (DictateRemote *self, const char *text, const char *tools,
+                                           DictateBrainPiece piece, gpointer data, GPtrArray **calls,
+                                           GCancellable *cancellable, GError **error);
+void           dictate_remote_add_result  (DictateRemote *self, const char *call_id, const char *result);
 void           dictate_remote_last_timing (DictateRemote *self, int *read, int *written, double *read_ms,
                                            double *first_ms, double *total_ms);
 

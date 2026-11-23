@@ -17,6 +17,7 @@ typedef struct _DictateBrain DictateBrain;
 GQuark dictate_brain_error_quark (void);
 typedef enum {
   DICTATE_BRAIN_ERROR_USER,
+  DICTATE_BRAIN_ERROR_BUSY,     /* the server has had too many questions from this phone: said, not shown */
 } DictateBrainError;
 
 /* a piece of the reply as it is written, on the replying thread: return FALSE to stop the reply there */
@@ -37,6 +38,24 @@ void          dictate_brain_set_system  (DictateBrain *self, const char *system)
  * by `piece`), the reply so far is returned and kept in the conversation. */
 char         *dictate_brain_reply       (DictateBrain *self, const char *text, DictateBrainPiece piece, gpointer data,
                                          GCancellable *cancellable, GError **error);
+/* a tool the model asked for (dictate-tools.h runs it): the call's id, the tool's name, its arguments (JSON) */
+typedef struct {
+  char *id;
+  char *name;
+  char *arguments;
+} DictateBrainCall;
+
+void          dictate_brain_call_free   (DictateBrainCall *call);
+/* whether the model can be given tools: a server's can, the one on the phone cannot */
+gboolean      dictate_brain_has_tools   (DictateBrain *self);
+/* one step of the model's turn: `text` is the user's (NULL: the turn goes on after the tools' results), `tools`
+ * the functions it may call (an OpenAI "tools" JSON array; NULL: none, it answers). Returns what it wrote, as
+ * dictate_brain_reply (); *calls is set to the DictateBrainCall it asked for, empty when that was its answer. Each
+ * call's result must be added (dictate_brain_add_result ()) before the next step. */
+char         *dictate_brain_step        (DictateBrain *self, const char *text, const char *tools,
+                                         DictateBrainPiece piece, gpointer data, GPtrArray **calls,
+                                         GCancellable *cancellable, GError **error);
+void          dictate_brain_add_result  (DictateBrain *self, const char *call_id, const char *result);
 /* for the log: the last reply's tokens read (the prompt's new part), written, and the times (ms) to read them and to
  * the first written token */
 void          dictate_brain_last_timing (DictateBrain *self, int *read, int *written, double *read_ms,

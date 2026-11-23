@@ -383,6 +383,7 @@ dictate_brain_reply (DictateBrain *self, const char *text, DictateBrainPiece pie
   if (self->remote)
     return dictate_remote_reply (self->remote, text, piece, data, cancellable, error);
   ctx_size = llama_n_ctx (self->ctx);
+  g_return_val_if_fail (text != NULL, NULL);
 
   /* this thread, and the threads llama.cpp starts from it, on the fastest cores */
   if (CPU_COUNT (&self->cores) > 0)
@@ -479,6 +480,35 @@ dictate_brain_reply (DictateBrain *self, const char *text, DictateBrainPiece pie
   self->total_ms = (g_get_monotonic_time () - t0) / 1000.0;
   self->cancellable = NULL;
   return g_string_free (g_steal_pointer (&reply), FALSE);
+}
+
+gboolean
+dictate_brain_has_tools (DictateBrain *self)
+{
+  return self->remote != NULL;
+}
+
+char *
+dictate_brain_step (DictateBrain *self, const char *text, const char *tools, DictateBrainPiece piece, gpointer data,
+                    GPtrArray **calls, GCancellable *cancellable, GError **error)
+{
+  char *reply;
+
+  if (self->remote)
+    return dictate_remote_step (self->remote, text, tools, piece, data, calls, cancellable, error);
+  /* the model on the phone has no tools: each step is a reply */
+  *calls = NULL;
+  reply = dictate_brain_reply (self, text, piece, data, cancellable, error);
+  if (reply)
+    *calls = g_ptr_array_new_with_free_func ((GDestroyNotify) dictate_brain_call_free);
+  return reply;
+}
+
+void
+dictate_brain_add_result (DictateBrain *self, const char *call_id, const char *result)
+{
+  if (self->remote)
+    dictate_remote_add_result (self->remote, call_id, result);
 }
 
 void

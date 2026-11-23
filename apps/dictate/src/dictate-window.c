@@ -27,6 +27,7 @@
 #include "dictate-settings.h"
 #include "dictate-talk.h"
 #include "dictate-text.h"
+#include "dictate-tools.h"
 
 #include <errno.h>
 #include <glib/gi18n.h>
@@ -578,7 +579,125 @@ on_talk_reply (DictateTalk *talk, const char *text, Window *self)
 {
   if (!self->reply)
     return;
+  /* a tool's line stays until the reply has words */
+  if (!*text && gtk_widget_has_css_class (self->reply, "dictate-bubble-status"))
+    return;
+  gtk_widget_remove_css_class (self->reply, "dictate-bubble-status");
   gtk_label_set_text (GTK_LABEL (self->reply), *text ? text : "…");
+  talk_follow (self);
+}
+
+/* a tool runs: what it does in the reply's bubble ("Checking your calendar…"), until the reply writes */
+static void
+on_talk_status (DictateTalk *talk, const char *text, Window *self)
+{
+  if (!self->reply)
+    return;
+  if (text)
+    {
+      gtk_label_set_text (GTK_LABEL (self->reply), text);
+      gtk_widget_add_css_class (self->reply, "dictate-bubble-status");
+    }
+  else if (gtk_widget_has_css_class (self->reply, "dictate-bubble-status"))
+    {
+      gtk_widget_remove_css_class (self->reply, "dictate-bubble-status");
+      gtk_label_set_text (GTK_LABEL (self->reply), "…");
+    }
+}
+
+/* ---- a proposed action: a card with exactly what will happen, and its button; nothing runs without the tap ---- */
+
+typedef struct {
+  DictateAction *action;
+  GtkWidget *buttons, *state;   /* the card's: its row of buttons, and what became of it */
+} Card;
+
+static void
+card_free (gpointer data)
+{
+  Card *card = data;
+  dictate_action_unref (card->action);
+  g_free (card);
+}
+
+static void
+card_settle (Card *card, const char *state)
+{
+  gtk_widget_set_visible (card->buttons, FALSE);
+  gtk_label_set_text (GTK_LABEL (card->state), state);
+  gtk_widget_set_visible (card->state, TRUE);
+}
+
+static void
+on_card_done (GObject *source, GAsyncResult *result, gpointer data)
+{
+  GtkWidget *widget = data;
+  Card *card = g_object_get_data (G_OBJECT (widget), "dictate-card");
+  g_autoptr (GError) error = NULL;
+  g_autofree char *done = dictate_action_run_finish (card->action, result, &error);
+
+  card_settle (card, done ? done : error->message);
+  g_object_unref (widget);
+}
+
+static void
+on_card_do (VibeosPressable *button, GtkWidget *widget)
+{
+  Card *card = g_object_get_data (G_OBJECT (widget), "dictate-card");
+
+  gtk_widget_set_sensitive (card->buttons, FALSE);
+  dictate_action_run (card->action, NULL, on_card_done, g_object_ref (widget));
+}
+
+static void
+on_card_cancel (VibeosPressable *button, GtkWidget *widget)
+{
+  Card *card = g_object_get_data (G_OBJECT (widget), "dictate-card");
+
+  dictate_action_cancel (card->action);
+  card_settle (card, _("Cancelled"));
+}
+
+static void
+on_talk_propose (DictateTalk *talk, DictateAction *action, Window *self)
+{
+  GtkWidget *widget = gtk_box_new (GTK_ORIENTATION_VERTICAL, 4);
+  GtkWidget *title = gtk_label_new (dictate_action_get_title (action));
+  GtkWidget *cancel = vibeos_text_button_new (_("Cancel"));
+  GtkWidget *go = vibeos_text_button_new (dictate_action_get_button (action));
+  const char *const *lines = dictate_action_get_lines (action);
+  Card *card = g_new0 (Card, 1);
+
+  card->action = dictate_action_ref (action);
+  gtk_widget_add_css_class (widget, "dictate-card");
+  gtk_widget_set_halign (widget, GTK_ALIGN_FILL);
+  gtk_widget_add_css_class (title, "dictate-card-title");
+  gtk_label_set_xalign (GTK_LABEL (title), 0);
+  gtk_box_append (GTK_BOX (widget), title);
+  for (guint i = 0; lines && lines[i]; i++)
+    {
+      GtkWidget *line = gtk_label_new (lines[i]);
+
+      gtk_label_set_wrap (GTK_LABEL (line), TRUE);
+      gtk_label_set_wrap_mode (GTK_LABEL (line), PANGO_WRAP_WORD_CHAR);
+      gtk_label_set_xalign (GTK_LABEL (line), 0);
+      gtk_widget_add_css_class (line, "dictate-card-line");
+      gtk_box_append (GTK_BOX (widget), line);
+    }
+  card->buttons = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 8);
+  gtk_widget_set_halign (card->buttons, GTK_ALIGN_END);
+  gtk_box_append (GTK_BOX (card->buttons), cancel);
+  gtk_box_append (GTK_BOX (card->buttons), go);
+  gtk_box_append (GTK_BOX (widget), card->buttons);
+  card->state = gtk_label_new (NULL);
+  gtk_label_set_xalign (GTK_LABEL (card->state), 1);
+  gtk_widget_add_css_class (card->state, "dictate-card-state");
+  gtk_widget_set_visible (card->state, FALSE);
+  gtk_box_append (GTK_BOX (widget), card->state);
+  g_object_set_data_full (G_OBJECT (widget), "dictate-card", card, card_free);
+  g_signal_connect (go, "clicked", G_CALLBACK (on_card_do), widget);
+  g_signal_connect (cancel, "clicked", G_CALLBACK (on_card_cancel), widget);
+  gtk_box_append (GTK_BOX (self->talk_list), widget);
   talk_follow (self);
 }
 
@@ -593,7 +712,7 @@ on_talk_state (DictateTalk *talk, Window *self)
     {
       /* the reply is over: nothing written of it, its bubble goes */
       const char *text = gtk_label_get_text (GTK_LABEL (self->reply));
-      if (g_strcmp0 (text, "…") == 0)
+      if (g_strcmp0 (text, "…") == 0 || gtk_widget_has_css_class (self->reply, "dictate-bubble-status"))
         gtk_box_remove (GTK_BOX (self->talk_list), self->reply);
       else
         talk_name (self->reply, FALSE);
@@ -1519,6 +1638,8 @@ dictate_window_new (GtkApplication *app, gboolean agent)
       g_signal_connect (self->talk, "reply", G_CALLBACK (on_talk_reply), self);
       g_signal_connect (self->talk, "state-changed", G_CALLBACK (on_talk_state), self);
       g_signal_connect (self->talk, "error", G_CALLBACK (on_talk_error), self);
+      g_signal_connect (self->talk, "status", G_CALLBACK (on_talk_status), self);
+      g_signal_connect (self->talk, "propose", G_CALLBACK (on_talk_propose), self);
       dictate_talk_set_speed (self->talk, g_settings_get_double (self->settings, "talk-speed"));
       dictate_talk_set_speak (self->talk, g_settings_get_boolean (self->settings, "talk-speak"));
       show_speak (self);
