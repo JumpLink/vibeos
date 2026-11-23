@@ -132,11 +132,15 @@ void    vibeos_snapshot_icon (GtkSnapshot *snapshot, GtkWidget *widget, const ch
  * stylesheet, redraws every window and emits VibeosTheme::changed: widgets that draw with vibeos_color () at draw
  * time follow by themselves; one that keeps a colour (an app's own GdkRGBA, a fill set once) re-reads it there.
  *
+ * Accessibility's High contrast (org.gnome.desktop.a11y.interface high-contrast) is followed the same way: the scheme
+ * at Material's high contrast level whatever vibeos.Theme's contrast, and GTK's gtk-interface-contrast set to "more",
+ * so a stylesheet's @media (prefers-contrast: more) rules apply (vibeos.css outlines its cards, dialogs and menus).
+ *
  * Without the vibeos.Theme schema (libvibeos on a system without VibeOS's settings) the apps are dark, in the
  * colours of vibeos.Theme's default seed.
  *
  * For tests and development, the environment overrides the settings: VIBEOS_COLOR_SCHEME=light or dark, VIBEOS_SEED
- * (#RRGGBB) and VIBEOS_CONTRAST (-1 to 1). */
+ * (#RRGGBB), VIBEOS_CONTRAST (-1 to 1) and VIBEOS_HIGH_CONTRAST (1 or 0). */
 
 typedef enum {
   VIBEOS_INIT_DEFAULT     = 0,

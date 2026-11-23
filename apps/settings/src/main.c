@@ -543,8 +543,10 @@ static const struct {
   { "screen-lock", ns_page_lock_screen, ns_page_privacy },
   { "keyboard", ns_page_keyboard, ns_page_general }, { "osk", ns_page_keyboard, ns_page_general },
   { "mouse", ns_page_mouse, ns_page_general },
-  /* "privacy" comes from the location tile only */
-  { "privacy", ns_page_location }, { "location", ns_page_location },
+  /* GNOME Settings' "Privacy & Security" (Files' "Trash Settings…" opens it at "usage", its file history and trash):
+   * the page with the camera, microphone, history and trash rows. The location tile asks for "location". */
+  { "privacy", ns_page_privacy }, { "usage", ns_page_privacy }, { "camera", ns_page_privacy },
+  { "microphone", ns_page_privacy }, { "location", ns_page_location },
   { "online-accounts", ns_page_accounts }, { "accounts", ns_page_accounts },
   { "applications", ns_page_apps }, { "apps", ns_page_apps }, { "overview", ns_page_apps },
   { "default-apps", ns_page_default_apps, ns_page_apps },
@@ -556,10 +558,20 @@ static const struct {
   { "info-overview", ns_page_about }, { "about", ns_page_about },
   { "screen-blank", ns_page_power, ns_page_battery, TRUE }, { "wallpapers", ns_page_wallpapers, ns_page_wallpaper, TRUE },
   { "software-information", ns_page_software, ns_page_about, TRUE }, { "security", ns_page_privacy },
-  /* GNOME Settings' panels VibeOS has no page of its own for: the nearest one */
+  /* GNOME Settings' panels VibeOS has no page of its own for: the nearest one. None is near enough for "search"
+   * (the overview's search providers, the folders indexed for Files) or "wellbeing" (screen time, breaks): those
+   * open the main page, whose search bar is at its top. */
   { "color", ns_page_display }, { "wacom", ns_page_mouse, ns_page_general },
   { "thunderbolt", ns_page_connected_devices },
 };
+
+/* GNOME Settings' panels that are a list of others, which take the one to open as their parameter
+ * (("privacy", ["location"])) */
+static gboolean
+is_hub (const char *name)
+{
+  return !g_strcmp0 (name, "privacy") || !g_strcmp0 (name, "system");
+}
 
 /* the page a panel name opens, over the menu (FALSE: no page has that name) */
 static gboolean
@@ -590,6 +602,13 @@ open_page (GApplication *app, const char *name, const char *arg)
   if (arg && *arg && (!g_strcmp0 (name, "applications") || !g_strcmp0 (name, "apps"))) {
     select_row (row_for_page (ns_page_apps));
     ns_open_entry (ns_page_app_row, NULL, (gpointer) arg);
+    return;
+  }
+  if (arg && *arg && is_hub (name) && show_panel (arg))
+    return;
+  /* an account's id (goa-daemon's "Account Action Required" notification): its own page, over the list */
+  if (arg && *arg && (!g_strcmp0 (name, "online-accounts") || !g_strcmp0 (name, "accounts")) && show_panel (name)) {
+    ns_accounts_show (arg);
     return;
   }
   if (!show_panel (name) && name && *name)

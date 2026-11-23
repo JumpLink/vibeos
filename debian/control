@@ -141,7 +141,10 @@ Description: GNOME Shell extension of VibeOS, the shell for touch devices
 Package: vibeos-session
 Architecture: all
 Conflicts: gnome-phone-session
-Replaces: gnome-phone-session
+# /etc/xdg/gnome-mimeapps.list was vibeos-installer's
+Breaks: vibeos-installer (<< 1:0.1.3+audit3~)
+Replaces: gnome-phone-session,
+          vibeos-installer (<< 1:0.1.3+audit3~),
 Provides: gnome-phone-session
 Depends: gnome-session (>= 51~),
          gnome-shell-extension-vibeos (= ${source:Version}),
@@ -159,6 +162,8 @@ Description: VibeOS session
  A udev rule keeps the phone's own storage (UFS or eMMC: Android's partitions
  and the system's) out of Files and the file picker; SD cards and USB drives
  still show.
+ .
+ The session's default apps: App Installer for .deb files, Files for folders.
 
 Package: vibeos-daemons
 Architecture: any
@@ -505,6 +510,7 @@ Recommends: accountsservice,
             gnome-keyring,
             pkexec,
             vibeos-sandbox,
+            vibeos-installer,
 Description: settings app for VibeOS
  VibeOS Settings is the settings app of VibeOS: connections (Wi-Fi,
  Bluetooth, mobile network, hotspot), sounds, notifications, display, battery,

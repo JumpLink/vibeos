@@ -41,7 +41,8 @@ const LAND_RAISE = 16;
 const PAD_START = 25;
 const OPEN_END = 85;
 const TABLET_END = 74;                  // a tablet's: the battery's charging bolt ends this far from the edge
-export const SYSTEM_SPAN = 300;         // signal, Wi-Fi and the widest battery (228) end to end, and room
+export const SYSTEM_SPAN = 410;         // the microphone and camera off icons, signal, Wi-Fi and the widest battery
+                                        // (228) end to end, and room
 const ICONS_TAIL = 2;                   // the battery's antialiased edge past its end
 const ICON_GAP = 19;                    // between signal, Wi-Fi and battery
 const ICON_H = 36;                      // signal and Wi-Fi
@@ -50,6 +51,7 @@ const SIGNAL_PAD = 6;
 const SIGNAL_BASE = 18;
 const SIGNAL_STEP = 6;
 const WIFI_W = ICON_H * 16.21 / 12;     // ic_wifi_N viewport 16.21 x 12
+const PRIVACY_W = 42;                   // ic_mic_off, ic_device_camera_off: 24 x 24 icons, the size Android draws them
 const BATTERY_H = 39;                   // the body's vector is 24 x 13 units, r 4: BATTERY_VP px a unit
 const BATTERY_VP = BATTERY_H / 13;
 
@@ -279,7 +281,7 @@ export function notificationIcon(source, size) {
 // The right-hand system icons: mobile signal, Wi-Fi, battery, right-aligned at @end (screen px) and centred on
 // @centerY; the shade header draws the same cluster
 export function paintSystemIcons(cr, state, end, centerY) {
-    const {wifi, mobile, battery, powerSave} = state;
+    const {wifi, mobile, battery, powerSave, micOff, cameraOff} = state;
     let x = end;
     if (battery.present) {
         x -= BATTERY_WIDTH(battery);
@@ -294,15 +296,24 @@ export function paintSystemIcons(cr, state, end, centerY) {
     if (mobile.present) {
         x -= SIGNAL_W;
         paintSignal(cr, x, centerY + ICON_H / 2, mobile.level, Color.white);
+        x -= ICON_GAP;
+    }
+    // Settings' Camera and Microphone switches off: no app gets them (privacy.js)
+    for (const [off, icon] of [[cameraOff, 'ic_device_camera_off'], [micOff, 'ic_mic_off']]) {
+        if (!off)
+            continue;
+        x -= PRIVACY_W;
+        paintIcon(cr, icon, x, centerY - PRIVACY_W / 2, PRIVACY_W, Color.white);
+        x -= ICON_GAP;
     }
 }
 
 // What paintSystemIcons draws. The state changes far more often than that (an access point's strength within a bar,
 // UPower's energy rate), and a repaint is a texture across the whole bar converted on the CPU on its way to the GPU:
 // 15 ms of the shell's frame, wherever it lands in an animation
-function systemIconsKey({wifi, mobile, battery, powerSave}) {
+function systemIconsKey({wifi, mobile, battery, powerSave, micOff, cameraOff}) {
     return [battery.present, battery.level, battery.plugged, !!powerSave, wifi.connected, wifi.level, mobile.present,
-        mobile.level].join();
+        mobile.level, !!micOff, !!cameraOff].join();
 }
 
 export const SystemIcons = GObject.registerClass(

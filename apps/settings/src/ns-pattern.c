@@ -2,16 +2,18 @@
  * "Set pattern" / "Set PIN" (Lock screen): draw an unlock pattern, draw it again to confirm, and it becomes
  * the user's password: the dots joined in order as digits ("1478"), which VibeOS's lock screen (keyguard.js,
  * bouncer.js) hands vibeos-auth, and vibeos-auth to PAM, when the same pattern is drawn there. The current pattern (or
- * PIN/password) comes first, checked through PAM like the lock screen does; the password is then set through
- * AccountsService (a polkit rule of ours lets the active local user do that without polkit's own text prompt, which
- * wanted the pattern typed as digits). The login keyring then gets the same password (vibeos-keyring-rekey), so that
+ * PIN/password) comes first, on this page, checked through PAM like the lock screen does (as Android asks for the
+ * current PIN before a new one). The password is then set by vibeos-set-own-password, run through pkexec: polkit lets
+ * the active local session run that helper, and only it, without a prompt, and the helper checks the current secret
+ * through PAM again before PAM sets the new one (see vibeos-set-own-password.c). No polkit text prompt, which
+ * AccountsService's SetPassword brought up (auth_admin) and which wanted the pattern typed as digits.
+ * The login keyring then gets the same password (vibeos-keyring-rekey), so that
  * unlocking the lock screen unlocks it too (pam_gnome_keyring) and apps find their secrets. A PIN (or a password)
  * goes the same way, typed instead of drawn: on the lock screen's PIN pad, not the keyboard (owner, 2026-11-12: the
  * current PIN and a new one are typed on "the same numeric keyboard like on lock screen", the phone's first password
  * being a PIN). A current password that is not digits still has a text field, behind "Use password".
  *
- * Taken from a Mobile Settings plugin written for the Poco X3 (ms-plugin-surya). libcrypt is opened at run time: the
- * phone has the library but not its header.
+ * Taken from a Mobile Settings plugin written for the Poco X3 (ms-plugin-surya).
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
@@ -38,25 +40,6 @@
 #define PAD_DIGIT_PX 30
 #define PAD_KEYS 12
 static const char *const pad_keys[PAD_KEYS] = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "delete", "0", "enter" };
-
-/* libcrypt's crypt_gensalt and crypt, found at run time */
-static char *
-hash_password (const char *password)
-{
-  static GModule *lib;
-  static char *(*gensalt) (const char *, unsigned long, const char *, int);
-  static char *(*crypt_) (const char *, const char *);
-  if (!lib) {
-    lib = g_module_open ("libcrypt.so.1", G_MODULE_BIND_LAZY);
-    if (!lib || !g_module_symbol (lib, "crypt_gensalt", (gpointer *) &gensalt)
-        || !g_module_symbol (lib, "crypt", (gpointer *) &crypt_))
-      return NULL;
-  }
-  /* yescrypt, as passwd writes it */
-  const char *salt = gensalt ("$y$", 0, NULL, 0);
-  const char *h = salt ? crypt_ (password, salt) : NULL;
-  return h && h[0] != '*' ? g_strdup (h) : NULL;
-}
 
 typedef enum {
   STAGE_CURRENT,
@@ -340,7 +323,7 @@ finish (PatternDialog *pd, gboolean ok)
 }
 
 
-/* --- setting the password through AccountsService ------------------------------------------------------------- */
+/* --- setting the password: vibeos-set-own-password, through pkexec ------------------------------------------ */
 
 /* The account password is set either way; a keyring left on the old password only means apps ask for it. */
 static void
@@ -379,52 +362,69 @@ rekey_keyring (PatternDialog *pd)
 }
 
 
+/* the helper's input: the current secret, a NUL, the new one, a NUL; wiped when the subprocess is done with it */
+#define SECRETS_SIZE (2 * sizeof ((PatternDialog *) 0)->current)
+
+static void
+secrets_free (gpointer data)
+{
+  explicit_bzero (data, SECRETS_SIZE);
+  g_free (data);
+}
+
 static void
 on_password_set (GObject *source, GAsyncResult *res, gpointer data)
 {
   PatternDialog *pd = data;
+  GSubprocess *proc = G_SUBPROCESS (source);
   g_autoptr (GError) error = NULL;
-  g_autoptr (GVariant) ret = g_dbus_connection_call_finish (G_DBUS_CONNECTION (source), res, &error);
+  g_autoptr (GBytes) err_out = NULL;
+  int status = -1;
 
-  if (!ret) {
-    g_warning ("Setting the password failed: %s", error->message);
-    gtk_label_set_text (GTK_LABEL (pd->message), "The password was not changed (not authorized?). Try again.");
-    gtk_widget_set_sensitive (pd->next, TRUE);
-    gtk_widget_set_sensitive (pd->cancel, TRUE);
+  if (g_subprocess_communicate_finish (proc, res, NULL, &err_out, &error))
+    status = g_subprocess_get_if_exited (proc) ? g_subprocess_get_exit_status (proc) : -1;
+  else
+    g_warning ("vibeos-set-own-password: %s", error->message);
+  if (status == 0) {
+    rekey_keyring (pd);
     return;
   }
-  rekey_keyring (pd);
+  if (err_out && g_bytes_get_size (err_out))
+    g_warning ("vibeos-set-own-password: %.*s", (int) g_bytes_get_size (err_out),
+               (const char *) g_bytes_get_data (err_out, NULL));
+  /* 1: the current secret changed since this page checked it; 126, 127: pkexec, polkit said no (not the active
+   * session on this device) */
+  gtk_label_set_text (GTK_LABEL (pd->message),
+                      status == 1                     ? "The current one was not accepted: nothing changed."
+                      : status == 126 || status == 127 ? "Only the person using the phone can change it: nothing changed."
+                                                       : "The password was not changed. Try again.");
+  gtk_widget_set_sensitive (pd->next, TRUE);
+  gtk_widget_set_sensitive (pd->cancel, TRUE);
 }
 
 
 static void
-on_user_found (GObject *source, GAsyncResult *res, gpointer data)
+set_password (PatternDialog *pd)
 {
-  PatternDialog *pd = data;
   g_autoptr (GError) error = NULL;
-  g_autoptr (GVariant) ret = g_dbus_connection_call_finish (G_DBUS_CONNECTION (source), res, &error);
-  g_autofree char *hashed = NULL;
-  const char *path;
+  g_autoptr (GSubprocess) proc = NULL;
+  g_autoptr (GBytes) input = NULL;
+  char *secrets = g_malloc0 (SECRETS_SIZE);
+  size_t current = strlen (pd->current), first = strlen (pd->first);
 
-  if (!ret) {
-    g_warning ("AccountsService has no user: %s", error->message);
-    gtk_label_set_text (GTK_LABEL (pd->message), "AccountsService is not available: the password was not changed.");
+  memcpy (secrets, pd->current, current + 1);
+  memcpy (secrets + current + 1, pd->first, first + 1);
+  input = g_bytes_new_with_free_func (secrets, current + 1 + first + 1, secrets_free, secrets);
+  proc = g_subprocess_new (G_SUBPROCESS_FLAGS_STDIN_PIPE | G_SUBPROCESS_FLAGS_STDOUT_SILENCE |
+                           G_SUBPROCESS_FLAGS_STDERR_PIPE, &error,
+                           "pkexec", NS_SET_PASSWORD, NULL);
+  if (!proc) {
+    g_warning ("pkexec: %s", error->message);
+    gtk_label_set_text (GTK_LABEL (pd->message), "pkexec is not installed: the password was not changed.");
     gtk_widget_set_sensitive (pd->cancel, TRUE);
     return;
   }
-  g_variant_get (ret, "(&o)", &path);
-  hashed = hash_password (pd->first);
-  if (!hashed) {
-    gtk_label_set_text (GTK_LABEL (pd->message), "Could not hash the password.");
-    gtk_widget_set_sensitive (pd->cancel, TRUE);
-    return;
-  }
-  /* AccountsService's polkit policy may ask for the current password (GNOME Shell's polkit prompt) */
-  g_dbus_connection_call (G_DBUS_CONNECTION (source), "org.freedesktop.Accounts", path,
-                          "org.freedesktop.Accounts.User", "SetPassword",
-                          g_variant_new ("(ss)", hashed, ""), NULL,
-                          G_DBUS_CALL_FLAGS_ALLOW_INTERACTIVE_AUTHORIZATION, 120000, NULL,
-                          on_password_set, pd);
+  g_subprocess_communicate_async (proc, input, NULL, on_password_set, pd);
 }
 
 
@@ -519,8 +519,6 @@ update_next (PatternDialog *pd)
 static void
 on_next (PatternDialog *pd)
 {
-  g_autoptr (GDBusConnection) bus = NULL;
-
   if (pd->stage == STAGE_CURRENT) {
     if (gtk_widget_get_sensitive (pd->next))
       check_current (pd);
@@ -541,17 +539,9 @@ on_next (PatternDialog *pd)
   }
   gtk_widget_set_sensitive (pd->next, FALSE);
   gtk_widget_set_sensitive (pd->cancel, FALSE);
-  gtk_label_set_text (GTK_LABEL (pd->message), "Setting the pattern as your password…");
-  bus = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, NULL);
-  if (!bus) {
-    gtk_label_set_text (GTK_LABEL (pd->message), "No system bus: the password was not changed.");
-    gtk_widget_set_sensitive (pd->cancel, TRUE);
-    return;
-  }
-  g_dbus_connection_call (bus, "org.freedesktop.Accounts", "/org/freedesktop/Accounts",
-                          "org.freedesktop.Accounts", "FindUserById",
-                          g_variant_new ("(x)", (gint64) getuid ()), G_VARIANT_TYPE ("(o)"),
-                          G_DBUS_CALL_FLAGS_NONE, -1, NULL, on_user_found, pd);
+  gtk_label_set_text (GTK_LABEL (pd->message), pd->pin ? "Setting the PIN as your password…"
+                                                         : "Setting the pattern as your password…");
+  set_password (pd);
 }
 
 

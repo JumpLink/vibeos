@@ -483,3 +483,10 @@ window.ns-window button.ns-swatch {
 .ns-search-pill .vibeos-search-hint {
   font-size: 16sp;
 }
+
+/* High contrast (libvibeos hands GTK the setting): each row of a card outlined, as libvibeos outlines its cards */
+@media (prefers-contrast: more) {
+  .ns-card-item {
+    box-shadow: inset 0 0 0 1dp @vibeos_outline;
+  }
+}

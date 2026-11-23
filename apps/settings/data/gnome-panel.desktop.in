@@ -2,7 +2,7 @@
 # GNOME Settings' @panel@ panel, which VibeOS Settings replaces: its page in VibeOS Settings
 Name=Settings
 Comment=Phone settings
-Exec=vibeos-settings --page @panel@
+Exec=vibeos-settings --page @page@
 Icon=vibeos.Settings
 Terminal=false
 Type=Application

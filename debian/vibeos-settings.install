@@ -7,3 +7,7 @@ usr/bin/gnome-control-center
 usr/share/applications/gnome-*-panel.desktop
 usr/share/applications/org.gnome.Settings.desktop
 usr/share/dbus-1/services/org.gnome.Settings.service
+usr/libexec/vibeos-set-own-password
+usr/lib/pam.d/vibeos-set-own-password
+usr/share/polkit-1/actions/org.vibeos.set-own-password.policy
+usr/share/polkit-1/rules.d/50-vibeos-set-own-password.rules

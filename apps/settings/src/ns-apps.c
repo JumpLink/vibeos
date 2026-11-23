@@ -8,6 +8,10 @@
 #include "ns-ui.h"
 
 #include <gio/gdesktopappinfo.h>
+#ifdef GDK_WINDOWING_WAYLAND
+#include <gdk/wayland/gdkwayland.h>
+#endif
+#include <string.h>
 
 #define NOTIFY_APP "org.gnome.desktop.notifications.application"
 
@@ -192,6 +196,14 @@ ns_page_notifications (GtkWidget *row, gpointer data)
   ns_push (page);
 }
 
+/* an app's switch follows its key: turned off on the app's own page, or elsewhere, the list says so when it is
+ * shown again */
+static void
+app_enable_changed (GSettings *s, const char *key, GtkWidget *sw)
+{
+  ns_switch_quiet (sw, g_settings_get_boolean (s, key));
+}
+
 /* each app that notifies, with its switch; a tap opens the app's own page */
 static void
 app_notifications_page (GtkWidget *row, gpointer data)
@@ -211,10 +223,12 @@ app_notifications_page (GtkWidget *row, gpointer data)
       continue;
     g_autofree char *id = ns_munge_app_id (g_app_info_get_id (app));
     g_autofree char *path = g_strconcat ("/org/gnome/desktop/notifications/application/", id, "/", NULL);
-    g_autoptr (GSettings) s = g_settings_new_full (sc, NULL, path);
+    GSettings *s = g_settings_new_full (sc, NULL, path);
     GtkWidget *ar = ns_row_app (g, app, NULL);
     GtkWidget *sw = ns_row_add_switch (ar, TRUE);
     ns_switch_quiet (sw, g_settings_get_boolean (s, "enable"));
+    g_object_set_data_full (G_OBJECT (ar), "ns-notify", s, g_object_unref);
+    g_signal_connect_object (s, "changed::enable", G_CALLBACK (app_enable_changed), sw, 0);
     g_object_set_data_full (G_OBJECT (ar), "ns-app", g_object_ref (app), g_object_unref);
     g_signal_connect (sw, "notify::active", G_CALLBACK (app_switched), app);
     ns_row_on_activate (ar, app_notify_page, app);
@@ -291,76 +305,135 @@ version_row (GtkWidget *g, GAppInfo *app)
 
 /* Uninstall: only an app the user installed (from Software or App Installer: those run sandboxed); VibeOS's own apps
  * and the rest of the system get no button, as system apps on Android. The package that owns the app's desktop file
- * is removed with apt behind pkexec (GNOME Shell's polkit prompt asks for the password). apt-get -s first, as the
- * user: the button shows only when apt would remove something, and the question names every package that goes (a
- * game can take a meta package with it). The app's data goes with it (vibeos-sandbox deletes it once dpkg has removed
- * the package), and the question says so. */
+ * goes through App Installer (vibeos.Installer1 RemovePackage, as Software's Uninstall does), which does the rest by
+ * its own rules: its sheet over this window asks first, naming every package that goes with it and saying the app's
+ * data is deleted (vibeos-sandbox deletes it once dpkg has removed the package); it refuses part of VibeOS; polkit
+ * asks for the password; PackageKit removes it. The button follows the job to its end. */
+#define INSTALLER_NAME  "vibeos.Installer"
+#define INSTALLER_PATH  "/vibeos/Installer"
+#define INSTALLER_IFACE "vibeos.Installer1"
+
 typedef struct {
-  GtkWidget *button;
-  char      *name, *pkg;
-  char     **removes;
+  GtkWidget       *button;
+  char            *pkg;
+  GDBusConnection *bus;
+  guint            job, sub;
 } Uninstall;
 
 static void
 uninstall_free (Uninstall *u)
 {
+  if (u->sub)
+    g_dbus_connection_signal_unsubscribe (u->bus, u->sub);
+  g_clear_object (&u->bus);
   g_object_unref (u->button);
-  g_free (u->name);
   g_free (u->pkg);
-  g_strfreev (u->removes);
   g_free (u);
 }
 
+/* the job ended: "done" leaves the app's page (the app is gone), anything else gives the button back */
 static void
-uninstall_done (GObject *src, GAsyncResult *res, gpointer data)
+uninstall_end (Uninstall *u, const char *result, const char *message)
 {
-  Uninstall *u = data;
-  g_autoptr (GError) err = NULL;
-  if (g_subprocess_wait_check_finish (G_SUBPROCESS (src), res, &err)) {
-    ns_pop (u->button);
+  if (!g_strcmp0 (result, "done")) {
+    if (gtk_widget_get_root (u->button))
+      ns_pop (u->button);
   } else {
-    int st = g_subprocess_get_if_exited (G_SUBPROCESS (src)) ? g_subprocess_get_exit_status (G_SUBPROCESS (src)) : -1;
-    /* 126: the password was not given (pkexec's "not authorized"), nothing to report */
-    gtk_button_set_label (GTK_BUTTON (u->button), st == 126 ? "Uninstall" : "Could not uninstall, try again");
+    /* "cancelled": the sheet or the password was declined, nothing to report */
+    gtk_button_set_label (GTK_BUTTON (u->button),
+                          !g_strcmp0 (result, "cancelled") || !message || !*message ? "Uninstall" : message);
     gtk_widget_set_sensitive (u->button, TRUE);
   }
   uninstall_free (u);
 }
 
 static void
-uninstall_answered (gboolean yes, gpointer data)
+uninstall_signal (GDBusConnection *bus, const char *sender, const char *path, const char *iface, const char *signal,
+                  GVariant *params, gpointer data)
 {
-  Uninstall *u = data;                   /* the question's own copy: button and package */
-  if (!yes) {
-    uninstall_free (u);
+  Uninstall *u = data;
+  guint job;
+  const char *result, *message;
+  if (!u->job || strcmp (signal, "Finished") || !g_variant_is_of_type (params, G_VARIANT_TYPE ("(uss)")))
     return;
-  }
-  g_autoptr (GError) err = NULL;
-  g_autoptr (GSubprocess) p = g_subprocess_new (G_SUBPROCESS_FLAGS_STDOUT_SILENCE | G_SUBPROCESS_FLAGS_STDERR_SILENCE,
-                                                &err, "pkexec", "env", "DEBIAN_FRONTEND=noninteractive",
-                                                "apt-get", "-y", "remove", u->pkg, NULL);
-  if (!p) {
-    gtk_button_set_label (GTK_BUTTON (u->button), err->message);
-    uninstall_free (u);
-    return;
-  }
-  gtk_button_set_label (GTK_BUTTON (u->button), "Uninstalling…");
-  gtk_widget_set_sensitive (u->button, FALSE);
-  g_subprocess_wait_check_async (p, NULL, uninstall_done, u);
+  g_variant_get (params, "(u&s&s)", &job, &result, &message);
+  if (job == u->job)
+    uninstall_end (u, result, message);
 }
 
 static void
-uninstall_tapped (GtkButton *b, Uninstall *u)
+uninstall_started (GObject *src, GAsyncResult *res, gpointer data)
 {
-  g_autofree char *list = g_strjoinv (", ", u->removes);
-  g_autofree char *heading = g_strdup_printf ("Uninstall %s?", u->name);
-  g_autofree char *body = g_strv_length (u->removes) > 1
-    ? g_strdup_printf ("These packages will be removed: %s. The app's data will be deleted.", list)
-    : g_strdup_printf ("The package %s will be removed. The app's data will be deleted.", list);
-  Uninstall *q = g_new0 (Uninstall, 1);
-  q->button = g_object_ref (u->button);
-  q->pkg = g_strdup (u->pkg);
-  ns_confirm (GTK_WIDGET (b), heading, body, "Uninstall", TRUE, uninstall_answered, q);
+  Uninstall *u = data;
+  g_autoptr (GError) err = NULL;
+  g_autoptr (GVariant) r = g_dbus_connection_call_finish (G_DBUS_CONNECTION (src), res, &err);
+  if (!r) {
+    gboolean missing = g_error_matches (err, G_DBUS_ERROR, G_DBUS_ERROR_SERVICE_UNKNOWN);
+    uninstall_end (u, "failed", missing ? "App Installer is not installed: it uninstalls apps"
+                                        : "Could not uninstall, try again");
+    return;
+  }
+  g_variant_get (r, "(u)", &u->job);
+}
+
+static void
+uninstall_call (Uninstall *u, const char *handle)
+{
+  GVariantBuilder options;
+  g_variant_builder_init (&options, G_VARIANT_TYPE_VARDICT);
+  if (handle) {
+    g_autofree char *parent = g_strconcat ("wayland:", handle, NULL);
+    g_variant_builder_add (&options, "{sv}", "parent-window", g_variant_new_string (parent));
+  }
+  /* the job's signals go to the caller alone, from App Installer's path: subscribed before the call, so Finished
+   * cannot come first. App Installer is D-Bus activatable: the call starts it */
+  u->sub = g_dbus_connection_signal_subscribe (u->bus, INSTALLER_NAME, INSTALLER_IFACE, NULL, INSTALLER_PATH, NULL,
+                                               G_DBUS_SIGNAL_FLAGS_NONE, uninstall_signal, u, NULL);
+  g_dbus_connection_call (u->bus, INSTALLER_NAME, INSTALLER_PATH, INSTALLER_IFACE, "RemovePackage",
+                          g_variant_new ("(sa{sv})", u->pkg, &options), G_VARIANT_TYPE ("(u)"),
+                          G_DBUS_CALL_FLAGS_NONE, 60000, NULL, uninstall_started, u);
+}
+
+#ifdef GDK_WINDOWING_WAYLAND
+static void
+uninstall_exported (GdkToplevel *toplevel, const char *handle, gpointer data)
+{
+  /* the handle stays exported while the window lives: App Installer's sheet is made transient for it */
+  uninstall_call (data, handle);
+}
+#endif
+
+static void
+uninstall_tapped (GtkButton *b, Uninstall *proto)
+{
+  g_autoptr (GError) err = NULL;
+  GDBusConnection *bus = g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, &err);
+  if (!bus) {
+    gtk_button_set_label (b, err->message);
+    return;
+  }
+  Uninstall *u = g_new0 (Uninstall, 1);
+  u->button = g_object_ref (proto->button);
+  u->pkg = g_strdup (proto->pkg);
+  u->bus = bus;
+  gtk_button_set_label (b, "Uninstalling…");
+  gtk_widget_set_sensitive (GTK_WIDGET (b), FALSE);
+#ifdef GDK_WINDOWING_WAYLAND
+  GtkNative *native = gtk_widget_get_native (GTK_WIDGET (b));
+  GdkSurface *surface = native ? gtk_native_get_surface (native) : NULL;
+  if (surface && GDK_IS_WAYLAND_TOPLEVEL (surface) &&
+      gdk_wayland_toplevel_export_handle (GDK_TOPLEVEL (surface), uninstall_exported, u, NULL))
+    return;
+#endif
+  uninstall_call (u, NULL);
+}
+
+static void
+uninstall_proto_free (Uninstall *u)
+{
+  g_object_unref (u->button);
+  g_free (u->pkg);
+  g_free (u);
 }
 
 static void
@@ -368,19 +441,16 @@ uninstall_got (GObject *src, GAsyncResult *res, gpointer data)
 {
   Uninstall *u = data;
   g_autofree char *out = NULL;
-  /* the package on the first line, then what apt would remove, one per line */
-  if (g_subprocess_communicate_utf8_finish (G_SUBPROCESS (src), res, &out, NULL, NULL) && out) {
-    g_auto (GStrv) l = g_strsplit (g_strstrip (out), "\n", -1);
-    if (l[0] && *l[0] && l[1] && *l[1]) {
-      u->pkg = g_strdup (l[0]);
-      u->removes = g_strdupv (l + 1);
-      g_signal_connect_data (u->button, "clicked", G_CALLBACK (uninstall_tapped), u,
-                             (GClosureNotify) (void (*) (void)) uninstall_free, 0);
-      gtk_widget_set_visible (u->button, TRUE);
-      return;
-    }
+  /* the package that owns the desktop file */
+  if (g_subprocess_communicate_utf8_finish (G_SUBPROCESS (src), res, &out, NULL, NULL) && out &&
+      *g_strstrip (out) && !strchr (out, '\n')) {
+    u->pkg = g_strdup (out);
+    g_signal_connect_data (u->button, "clicked", G_CALLBACK (uninstall_tapped), u,
+                           (GClosureNotify) (void (*) (void)) uninstall_proto_free, 0);
+    gtk_widget_set_visible (u->button, TRUE);
+    return;
   }
-  uninstall_free (u);
+  uninstall_proto_free (u);
 }
 
 static void
@@ -396,15 +466,12 @@ uninstall_button (GtkWidget *c, GAppInfo *app)
   gtk_box_append (GTK_BOX (c), b);
   g_autoptr (GSubprocess) p = g_subprocess_new (G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_SILENCE,
                                                 NULL, "sh", "-c",
-                                                "p=$(dpkg-query -S \"$1\" 2>/dev/null | head -n1 | cut -d: -f1) && "
-                                                "[ -n \"$p\" ] && echo \"$p\" && "
-                                                "LC_ALL=C apt-get -s remove \"$p\" 2>/dev/null | sed -n 's/^Remv \\([^ ]*\\).*/\\1/p'",
+                                                "dpkg-query -S \"$1\" 2>/dev/null | head -n1 | cut -d: -f1",
                                                 "sh", file, NULL);
   if (!p)
     return;
   Uninstall *u = g_new0 (Uninstall, 1);
   u->button = g_object_ref (b);
-  u->name = g_strdup (g_app_info_get_display_name (app));
   g_subprocess_communicate_utf8_async (p, NULL, NULL, uninstall_got, u);
 }
 
@@ -886,6 +953,7 @@ recent_apps (guint max)
 }
 
 static void ns_page_all_apps (GtkWidget *row, gpointer data);
+static void apps_back (NsPage *page);
 
 /* Android 17's: the apps opened last and a row to all of them, then the general settings */
 void
@@ -914,7 +982,30 @@ ns_page_apps (GtkWidget *row, gpointer data)
   r = ns_row (g, NULL, "Default apps", "Browser, email, music, photos");
   ns_row_on_activate (r, default_apps_tapped, NULL);
   icon_bake_start (bake);
+  ns_page_on_back (page, apps_back);
   ns_push (page);
+}
+
+/* Back from an app's page that uninstalled it: its row goes from the lists under it (an app's row holds the app,
+ * "ns-app"; the desktop file is what is gone, GIO's own list may not know it yet) */
+static void
+hide_gone (GtkWidget *w)
+{
+  for (GtkWidget *c = gtk_widget_get_first_child (w); c; c = gtk_widget_get_next_sibling (c)) {
+    GObject *app = g_object_get_data (G_OBJECT (c), "ns-app");
+    const char *file = app && G_IS_DESKTOP_APP_INFO (app) ? g_desktop_app_info_get_filename (G_DESKTOP_APP_INFO (app))
+                                                          : NULL;
+    if (file && !g_file_test (file, G_FILE_TEST_EXISTS))
+      gtk_widget_set_visible (c, FALSE);
+    else
+      hide_gone (c);
+  }
+}
+
+static void
+apps_back (NsPage *page)
+{
+  hide_gone (GTK_WIDGET (page));
 }
 
 /* every app a launcher shows, by name */
@@ -931,6 +1022,7 @@ ns_page_all_apps (GtkWidget *row, gpointer data)
     app_row (g, l->data, NULL, bake);
   icon_bake_start (bake);
   g_list_free_full (all, g_object_unref);
+  ns_page_on_back (page, apps_back);
   ns_push (page);
 }
 
@@ -962,14 +1054,31 @@ static const Kind kinds[] = {
   { "Photos", photos },
 };
 
+/* The app picked becomes the default for the kind's types it opens, as GNOME Settings does it (its
+ * extra_type_filter): a music player that plays no FLAC is not made FLAC's. The browser is the exception: it is
+ * also made the handler of about: and of the schemes nothing else handles, as GNOME's is. */
 static void
 default_picked (GtkWidget *row, guint i, gpointer kind)
 {
   const Kind *k = kind;
   GPtrArray *apps = g_object_get_data (G_OBJECT (row), "ns-apps");
   GAppInfo *app = apps->pdata[i];
+  const char *const *supported = g_app_info_get_supported_types (app);
   for (guint t = 0; k->types[t]; t++)
-    g_app_info_set_as_default_for_type (app, k->types[t], NULL);
+    if (k->types == web || (supported && g_strv_contains (supported, k->types[t])))
+      g_app_info_set_as_default_for_type (app, k->types[t], NULL);
+}
+
+/* the default for the kind: its first type's, or the first of the others that has one */
+static GAppInfo *
+default_for_kind (const Kind *k)
+{
+  for (guint t = 0; k->types[t]; t++) {
+    GAppInfo *def = g_app_info_get_default_for_type (k->types[t], FALSE);
+    if (def)
+      return def;
+  }
+  return NULL;
 }
 
 void
@@ -979,21 +1088,28 @@ ns_page_default_apps (GtkWidget *row, gpointer data)
   NsPage *page = ns_page_new ("Default apps", &c);
   GtkWidget *g = ns_group (c, NULL);
   for (guint k = 0; k < G_N_ELEMENTS (kinds); k++) {
-    GList *all = g_app_info_get_all_for_type (kinds[k].types[0]);
-    g_autoptr (GAppInfo) def = g_app_info_get_default_for_type (kinds[k].types[0], FALSE);
+    g_autoptr (GAppInfo) def = default_for_kind (&kinds[k]);
     GPtrArray *apps = g_ptr_array_new_with_free_func (g_object_unref);
     g_autoptr (GPtrArray) labels = g_ptr_array_new ();
+    g_autoptr (GHashTable) seen = g_hash_table_new (g_str_hash, g_str_equal);
     guint sel = G_MAXUINT;
-    for (GList *l = all; l; l = l->next) {
-      if (!g_app_info_should_show (l->data))
-        continue;
-      if (def && g_app_info_equal (def, l->data))
-        sel = apps->len;
-      g_ptr_array_add (labels, (gpointer) g_app_info_get_display_name (l->data));
-      g_ptr_array_add (apps, g_object_ref (l->data));
+    /* the apps that open any of the kind's types (a player of MP3s alone is a music player too), once each */
+    for (guint t = 0; kinds[k].types[t]; t++) {
+      GList *all = g_app_info_get_all_for_type (kinds[k].types[t]);
+      for (GList *l = all; l; l = l->next) {
+        const char *id = g_app_info_get_id (l->data);
+        if (!g_app_info_should_show (l->data) || !id || g_hash_table_contains (seen, id))
+          continue;
+        if (def && g_app_info_equal (def, l->data))
+          sel = apps->len;
+        g_ptr_array_add (labels, (gpointer) g_app_info_get_display_name (l->data));
+        g_ptr_array_add (apps, g_object_ref (l->data));
+        /* the id stays valid: the app is in `apps` */
+        g_hash_table_add (seen, (gpointer) g_app_info_get_id (apps->pdata[apps->len - 1]));
+      }
+      g_list_free_full (all, g_object_unref);
     }
     g_ptr_array_add (labels, NULL);
-    g_list_free_full (all, g_object_unref);
     GtkWidget *r;
     if (apps->len) {
       r = ns_row_pick (g, kinds[k].title, (const char *const *) labels->pdata, sel, default_picked,

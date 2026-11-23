@@ -9,3 +9,4 @@ usr/share/gnome-session/sessions/vibeos.session
 usr/lib/systemd/user/gnome-session@vibeos.target.d
 usr/share/wayland-sessions/vibeos.desktop
 usr/share/glib-2.0/schemas/90_vibeos.gschema.override
+etc/xdg/gnome-mimeapps.list

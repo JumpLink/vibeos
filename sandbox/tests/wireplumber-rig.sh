@@ -131,6 +131,54 @@ sleep 3
 echo "org.example.Game sees: $(sees org.example.Game)"
 as_app org.example.Game timeout 6 pw-record --target fakemic $R/g2.wav >/dev/null 2>&1 & P=$!
 sleep 4; echo "game recording the microphone: $(links_from fakemic) links"; wait $P
+echo "--- Settings' Microphone and Camera switches: every client"
+# an unrestricted client sees every node from the moment it connects until WirePlumber has set its permissions (a
+# few ms; a sandboxed one sees none until then): this one watches for two seconds and says what it sees after them
+host_sees () {
+  timeout 2 pw-dump -m 2>/dev/null | python3 -c '
+import json, sys
+text, decoder, at, seen = sys.stdin.read(), json.JSONDecoder(), 0, {}
+while True:
+    while at < len(text) and text[at].isspace():
+        at += 1
+    if at >= len(text):
+        break
+    update, at = decoder.raw_decode(text, at)
+    for o in update:
+        if o.get("info") is None:
+            seen.pop(o["id"], None)
+        elif o.get("type", "").endswith("Node"):
+            seen[o["id"]] = o["info"].get("props", {}).get("node.name", "")
+print(" ".join(chr(34) + n + chr(34) for n in sorted(seen.values()) if n.startswith("fake")), end=" ")
+'
+}
+timeout 14 pw-record --target fakemic $R/hb.wav >/dev/null 2>&1 & P=$!
+sleep 3; echo "host recording the microphone before: $(links_from fakemic) links"
+ps_set vibeos-privacy microphone all blocked
+sleep 3
+echo "microphone blocked: that recording now has $(links_from fakemic) links"
+wait $P
+echo "host sees: $(host_sees)"
+timeout 8 pw-record -P '{ node.autoconnect=false }' $R/hl.wav >/dev/null 2>&1 & P=$!
+sleep 2; PORT=$(pw-link -i 2>/dev/null | grep -m1 "pw-record:input")
+pw-link fakemic:capture_MONO "$PORT" >/dev/null 2>&1; sleep 1
+echo "a host app linking the microphone itself: $(links_from fakemic) links"; kill $P 2>/dev/null; wait $P
+timeout 6 pw-record --target fakemic $R/hb2.wav >/dev/null 2>&1 & P=$!
+sleep 4; echo "host recording the microphone: $(links_from fakemic) links"; wait $P
+as_app org.example.Game timeout 6 pw-record --target fakemic $R/gb.wav >/dev/null 2>&1 & P=$!
+sleep 4; echo "game (granted) recording the microphone: $(links_from fakemic) links"; wait $P
+timeout 6 pw-record -P '{ stream.capture.sink=true }' $R/hm.wav >/dev/null 2>&1 & P=$!
+sleep 4; echo "host recording what plays (sink monitor): $(links_from fakespeaker) links"; wait $P
+ps_set vibeos-privacy camera all blocked
+sleep 3
+echo "camera blocked too, host sees: $(host_sees)"
+echo "org.example.Scanner (granted the camera) sees: $(sees org.example.Scanner)"
+ps_set vibeos-privacy microphone all allowed
+ps_set vibeos-privacy camera all allowed
+sleep 3
+echo "both allowed again, host sees: $(host_sees)"
+timeout 6 pw-record --target fakemic $R/ha.wav >/dev/null 2>&1 & P=$!
+sleep 4; echo "host recording the microphone: $(links_from fakemic) links"; wait $P
 kill $WP $PW 2>/dev/null
 wait $WP $PW 2>/dev/null
-grep -iE "vibeos|sandbox|error" $R/wp.log | grep -v "permissions for" | head -12
+grep -iE "vibeos|sandbox|error" $R/wp.log | grep -v "permissions for" | head -24

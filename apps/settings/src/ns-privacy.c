@@ -70,11 +70,14 @@ ns_page_privacy (GtkWidget *row, gpointer data)
     ns_push (page);
     return;
   }
+  /* Off, no app gets the camera or the microphone, VibeOS's own included: the shell hands the switches to WirePlumber,
+   * which hides them from every PipeWire client (vibeos-sandbox's sandbox-access.lua), the camera portal refuses,
+   * Camera keeps to it itself, and the status bar shows that they are off */
   g = ns_group (c, "Permissions");
   if (ns_has_key (p, "disable-camera"))
-    inverted (g, "Camera", "Apps that ask through the system may use it", p, "disable-camera");
+    inverted (g, "Camera access", "For all apps and services", p, "disable-camera");
   if (ns_has_key (p, "disable-microphone"))
-    inverted (g, "Microphone", "Apps that ask through the system may use it", p, "disable-microphone");
+    inverted (g, "Microphone access", "For all apps and services", p, "disable-microphone");
 
   g = ns_group (c, "History");
   ns_row_switch (g, "Remember recent files", "Apps show what you opened lately", p, "remember-recent-files");

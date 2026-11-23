@@ -391,3 +391,24 @@ cursor-handle.bottom.insertion-cursor {
   min-height: 26.556dp;
   -gtk-icon-source: -gtk-recolor(url("resource:///vibeos/libvibeos/handles/text-handle-insertion-symbolic.svg"));
 }
+
+/* --- High contrast (Accessibility; org.gnome.desktop.a11y.interface high-contrast, which vibeos-style.c follows and
+ * hands GTK as gtk-interface-contrast): the colours are already the theme's at Material's high contrast level; on top
+ * of that, what floats on the background is outlined, so it stands out by more than a shade, and fields and
+ * secondary text use the full-strength text colour */
+@media (prefers-contrast: more) {
+  .vibeos-card,
+  .vibeos-dialog,
+  .vibeos-menu,
+  .vibeos-snackbar {
+    box-shadow: inset 0 0 0 1dp @vibeos_outline;
+  }
+  .vibeos-entry {
+    border-bottom-color: @vibeos_on_surface;
+  }
+  .vibeos-dialog-message,
+  .vibeos-snackbar-text,
+  .vibeos-list-row-value {
+    color: @vibeos_on_surface;
+  }
+}
