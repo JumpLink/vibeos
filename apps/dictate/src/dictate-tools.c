@@ -164,6 +164,12 @@ tool_run_dry (ToolRun *run)
   return g_getenv ("DICTATE_TEST_DRY_RUN") != NULL;
 }
 
+gboolean
+tool_run_private (ToolRun *run)
+{
+  return run->ctx.private_speaker;
+}
+
 GCancellable *
 tool_run_cancellable (ToolRun *run)
 {
@@ -222,6 +228,67 @@ error_json (const char *message)
   return json_to_string (root, FALSE);
 }
 
+/* --- private mode, the answer playing on the speaker: no names of people read out */
+
+/* the tools that say who called or wrote */
+static gboolean
+names_tool (const char *name)
+{
+  static const char *const TOOLS[] = { "get_recent_calls", "get_messages", "what_did_i_miss", "get_current_call" };
+
+  for (guint i = 0; i < G_N_ELEMENTS (TOOLS); i++)
+    if (!strcmp (name, TOOLS[i]))
+      return TRUE;
+  return FALSE;
+}
+
+/* a person's name or number, where a result says who: "who", "with", "from", "nickname", "number". What only says
+ * what kind of caller ("a hidden number", "the user", "them") stays */
+static void
+withhold_in (JsonNode *node)
+{
+  static const char *const KEYS[] = { "who", "with", "from", "nickname", "number" };
+
+  if (JSON_NODE_HOLDS_ARRAY (node))
+    {
+      JsonArray *a = json_node_get_array (node);
+      for (guint i = 0; i < json_array_get_length (a); i++)
+        withhold_in (json_array_get_element (a, i));
+    }
+  else if (JSON_NODE_HOLDS_OBJECT (node))
+    {
+      JsonObject *o = json_node_get_object (node);
+      g_autoptr (GList) members = json_object_get_members (o);
+
+      for (GList *l = members; l; l = l->next)
+        {
+          JsonNode *value = json_object_get_member (o, l->data);
+          gboolean person = FALSE;
+
+          for (guint i = 0; i < G_N_ELEMENTS (KEYS); i++)
+            person = person || !strcmp (l->data, KEYS[i]);
+          if (person && JSON_NODE_HOLDS_VALUE (value) && json_node_get_value_type (value) == G_TYPE_STRING)
+            {
+              const char *v = json_node_get_string (value);
+              if (!g_str_has_prefix (v, "a ") && !g_str_has_prefix (v, "an ") && strcmp (v, "the user")
+                  && strcmp (v, "them"))
+                json_object_set_string_member (o, l->data, "someone");
+            }
+          else
+            withhold_in (value);
+        }
+    }
+}
+
+static void
+withhold_names (JsonNode *node)
+{
+  withhold_in (node);
+  json_object_set_string_member (json_node_get_object (node), "names_withheld",
+                                 "Private mode is on and the answer plays out loud: who it is is not given. Say only "
+                                 "how many, and that the names can be heard with headphones on.");
+}
+
 static gpointer
 run_thread (gpointer data)
 {
@@ -252,6 +319,8 @@ run_thread (gpointer data)
         json_object_set_member (wrapped, member, json_node_copy (value));
       json_node_take_object (node, wrapped);
     }
+  if (node && run->ctx.private_speaker && JSON_NODE_HOLDS_OBJECT (node) && names_tool (run->tool->name))
+    withhold_names (node);
   result = node ? json_to_string (node, FALSE) : error_json (error ? error->message : "It did not work.");
   /* the action log: what ran, never what it read; reading the log is not an action of its own */
   if (strcmp (run->tool->name, "get_action_log") != 0)

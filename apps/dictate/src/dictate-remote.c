@@ -216,7 +216,8 @@ network_error (GError **error, GError *cause)
     }
   g_warning ("agent: %s", cause->message);
   g_error_free (cause);
-  user_error (error, _("The assistant cannot be reached. Is the phone online?"));
+  g_set_error_literal (error, DICTATE_BRAIN_ERROR, DICTATE_BRAIN_ERROR_OFFLINE,
+                       _("The assistant cannot be reached. Is the phone online?"));
 }
 
 /* the phone made known to the gateway: its id, its secret and what it is */
@@ -351,7 +352,8 @@ call (DictateRemote *self, SoupMessage **msg, const char *method, const char *ur
                                _("I'm getting too many requests, give me a moment."));
         }
       else if (status >= 500)
-        user_error (error, _("The assistant is not working right now. Try again later."));
+        g_set_error_literal (error, DICTATE_BRAIN_ERROR, DICTATE_BRAIN_ERROR_OFFLINE,
+                             _("The assistant is not working right now. Try again later."));
       else
         g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "%s: HTTP %u", url, status);
       return NULL;

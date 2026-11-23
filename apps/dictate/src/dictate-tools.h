@@ -28,6 +28,7 @@ typedef struct {
   const char *language;         /* the user's, for names of days and the like */
   void (*propose) (DictateAction *action, gpointer data);       /* takes a reference */
   gpointer data;
+  gboolean private_speaker;     /* private mode, the answer on the speaker: no texts of messages or notifications */
 } DictateToolContext;
 
 /* the areas that are on, as DictateToolContext.areas, from Agent's settings */

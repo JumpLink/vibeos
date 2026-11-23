@@ -58,6 +58,26 @@
       <summary>Listen again after an answer</summary>
       <description>Once a reply has been spoken to its end, Agent listens for the next thing the user says, as in a conversation.</description>
     </key>
+    <key name="talk-private" type="b">
+      <default>false</default>
+      <summary>Private mode</summary>
+      <description>Agent's replies play only in headphones or earbuds when they are connected; on the speaker they are short, with no names, numbers or message texts read aloud.</description>
+    </key>
+    <key name="announce-calls" type="b">
+      <default>false</default>
+      <summary>Announce calls</summary>
+      <description>Agent says who is calling, even when it is not open, and listens for "answer" or "decline". Open, it always does. It starts with the session while this is on.</description>
+    </key>
+    <key name="quiet-hours" type="s">
+      <default>''</default>
+      <summary>Quiet hours</summary>
+      <description>A time range, "HH:MM-HH:MM" (it may go over midnight), in which Agent says nothing and plays no cue on its own; '' for none.</description>
+    </key>
+    <key name="quiet-calls" type="b">
+      <default>false</default>
+      <summary>Calls in quiet hours</summary>
+      <description>Calls are still announced in the quiet hours.</description>
+    </key>
     <key name="access-calls" type="b">
       <default>true</default>
       <summary>Agent can use calls</summary>

@@ -12,7 +12,7 @@
 typedef struct {
   DictateSettingsHooks hooks;
   GtkWidget *window;
-  GtkWidget *page, *language, *rate, *verbosity;
+  GtkWidget *page, *language, *rate, *verbosity, *quiet;
   GPtrArray *languages;         /* their rows, in dictate_languages' order */
 } Page;
 
@@ -86,6 +86,12 @@ static const struct { const char *value, *label, *summary; } VERBOSITY[] = {
   { "detailed", N_("Detailed"), N_("More, when the question needs it") },
 };
 
+/* when Agent says nothing on its own (quiet-hours) */
+static const struct { const char *value, *label; } QUIET[] = {
+  { "", N_("Off") }, { "22:00-07:00", "22:00–07:00" }, { "23:00-07:00", "23:00–07:00" },
+  { "21:00-06:00", "21:00–06:00" }, { "00:00-08:00", "00:00–08:00" },
+};
+
 static guint
 rate_index (GSettings *settings)
 {
@@ -109,12 +115,28 @@ verbosity_index (GSettings *settings)
   return 1;
 }
 
+/* the quiet hours' row, or -1 for a range not among them (set some other way) */
+static int
+quiet_index (GSettings *settings)
+{
+  g_autofree char *value = g_settings_get_string (settings, "quiet-hours");
+
+  for (guint i = 0; i < G_N_ELEMENTS (QUIET); i++)
+    if (!g_strcmp0 (QUIET[i].value, value))
+      return i;
+  return -1;
+}
+
 static void
 show_choices (Page *p)
 {
+  int quiet = quiet_index (p->hooks.settings);
+  g_autofree char *range = quiet < 0 ? g_settings_get_string (p->hooks.settings, "quiet-hours") : NULL;
+
   vibeos_list_row_set_value (VIBEOS_LIST_ROW (p->rate), _(RATES[rate_index (p->hooks.settings)].label));
   vibeos_list_row_set_value (VIBEOS_LIST_ROW (p->verbosity),
                              _(VERBOSITY[verbosity_index (p->hooks.settings)].label));
+  vibeos_list_row_set_value (VIBEOS_LIST_ROW (p->quiet), quiet < 0 ? range : _(QUIET[quiet].label));
 }
 
 static void
@@ -123,7 +145,7 @@ on_setting_changed (GSettings *settings, const char *key, Page *p)
   /* the language is the window's to say (dictate_settings_page_refresh): its setting changes before the engine's */
   if (g_str_equal (key, "talk-voice"))
     refresh (p);
-  else if (g_str_equal (key, "talk-speed") || g_str_equal (key, "talk-verbosity"))
+  else if (g_str_equal (key, "talk-speed") || g_str_equal (key, "talk-verbosity") || g_str_equal (key, "quiet-hours"))
     show_choices (p);
 }
 
@@ -227,6 +249,27 @@ on_verbosity (VibeosListRow *row, Page *p)
     labels[i] = _(VERBOSITY[i].label), summaries[i] = _(VERBOSITY[i].summary);
   choose (p, _("Answers"), labels, summaries, G_N_ELEMENTS (VERBOSITY), verbosity_index (p->hooks.settings),
           G_CALLBACK (on_verbosity_chosen));
+}
+
+static void
+on_quiet_chosen (VibeosDialog *dialog, int response, GtkWidget *window)
+{
+  GtkWidget *page = g_object_get_data (G_OBJECT (window), "dictate-settings-page");
+  Page *p = page ? g_object_get_data (G_OBJECT (page), "dictate-settings") : NULL;
+
+  if (p && response >= 100 && response - 100 < (int) G_N_ELEMENTS (QUIET))
+    g_settings_set_string (p->hooks.settings, "quiet-hours", QUIET[response - 100].value);
+}
+
+static void
+on_quiet (VibeosListRow *row, Page *p)
+{
+  const char *labels[G_N_ELEMENTS (QUIET)];
+
+  for (guint i = 0; i < G_N_ELEMENTS (QUIET); i++)
+    labels[i] = _(QUIET[i].label);
+  choose (p, _("Quiet hours"), labels, NULL, G_N_ELEMENTS (QUIET), MAX (quiet_index (p->hooks.settings), 0),
+          G_CALLBACK (on_quiet_chosen));
 }
 
 static void
@@ -361,6 +404,19 @@ dictate_settings_page_new (GtkWidget *window, const DictateSettingsHooks *hooks)
               "talk-listen-again");
   switch_row (p, cards, _("Sounds"), _("A short sound when Agent listens, works, is done or fails"), "cue-sounds");
   switch_row (p, cards, _("Vibration"), _("A short vibration at the same moments"), "cue-haptics");
+
+  /* calls, and when and where it speaks */
+  vibeos_card_list_add_group (VIBEOS_CARD_LIST (cards), _("Calls and privacy"));
+  switch_row (p, cards, _("Announce calls"),
+              _("Agent says who is calling and listens for answer or decline, also when it is closed"),
+              "announce-calls");
+  switch_row (p, cards, _("Private mode"),
+              _("Replies only in headphones; on the speaker short, with no names or messages read out"),
+              "talk-private");
+  p->quiet = vibeos_list_row_new (_("Quiet hours"), _("Agent says nothing and plays no sound on its own"));
+  g_signal_connect (p->quiet, "clicked", G_CALLBACK (on_quiet), p);
+  vibeos_card_list_append (VIBEOS_CARD_LIST (cards), p->quiet);
+  switch_row (p, cards, _("Calls in quiet hours"), _("Calls are still announced"), "quiet-calls");
 
   /* what it can use */
   vibeos_card_list_add_group (VIBEOS_CARD_LIST (cards), _("What Agent can use"));

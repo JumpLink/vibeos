@@ -7,6 +7,7 @@
  * They return few fields: a name and the kind of number rather than the number, a message's text only when asked
  * for, at most a few rows. Nothing here logs what it read. */
 #define _GNU_SOURCE             /* strcasestr */
+#include "dictate-calls.h"
 #include "dictate-tools-private.h"
 
 #include <gio/gdesktopappinfo.h>
@@ -917,7 +918,7 @@ static JsonNode *
 get_messages (JsonObject *args, ToolRun *run, GError **error)
 {
   const char *contact = tool_arg_string (args, "contact");
-  gboolean with_text = tool_arg_bool (args, "include_text", FALSE);
+  gboolean with_text = tool_arg_bool (args, "include_text", FALSE) && !tool_run_private (run);
   gboolean unread_only = tool_arg_bool (args, "unread_only", FALSE);
   gint64 count = CLAMP (tool_arg_int (args, "count", contact ? 3 : 5), 1, ROWS_MAX);
   g_autoptr (GPtrArray) all = people_with_numbers (run);
@@ -933,6 +934,9 @@ get_messages (JsonObject *args, ToolRun *run, GError **error)
       return NULL;
     }
   json_builder_begin_object (b);
+  if (!with_text && tool_arg_bool (args, "include_text", FALSE))
+    add_string (b, "private_mode", "What they say is not given: private mode is on and the answer plays out loud on "
+                                   "the speaker. Say that the user can hear it with headphones on.");
   if (!contact)
     {
       /* the latest conversations */
@@ -2302,6 +2306,7 @@ get_action_log (JsonObject *args, ToolRun *run, GError **error)
         what = g_strdup (t ? t->did : tool);
       json_builder_begin_object (b);
       add_string (b, "what", what);
+      add_string (b, "tool", tool);
       add_string (b, "when", when);
       add_int (b, "tier", json_object_get_int_member_with_default (e, "tier", 0));
       add_string (b, "outcome", json_object_get_string_member_with_default (e, "outcome", ""));
@@ -2333,6 +2338,9 @@ get_action_log (JsonObject *args, ToolRun *run, GError **error)
     add_string (b, "note", "Agent has not done anything yet.");
   return finish (b);
 }
+
+/* call_control's actions, for undoing one (the call going on, further down) */
+static gboolean call_do (const char *action, ToolRun *run, gboolean *changed, char **about, GError **error);
 
 static JsonNode *
 undo_last_action (JsonObject *args, ToolRun *run, GError **error)
@@ -2396,6 +2404,20 @@ undo_last_action (JsonObject *args, ToolRun *run, GError **error)
       if (!set_radio (radio, on, run, error))
         return NULL;
       done = g_strdup_printf ("%s is %s again", strcmp (radio, "wifi") ? "Bluetooth" : "Wi-Fi", on ? "on" : "off");
+    }
+  else if (json_object_has_member (undo, "call_action"))
+    {
+      g_autofree char *again = NULL;
+      gboolean changed;
+
+      if (!tool_run_area_on (run, "access-calls"))
+        {
+          tool_error (error, "No access: the user has turned off calls in Agent's settings.");
+          return NULL;
+        }
+      if (!call_do (json_object_get_string_member (undo, "call_action"), run, &changed, &again, error))
+        return NULL;
+      done = g_strdup_printf ("undone: %s", about);
     }
   else
     {
@@ -2868,7 +2890,7 @@ caller (GPtrArray *all, const char *number, int presentation)
 static JsonNode *
 what_did_i_miss (JsonObject *args, ToolRun *run, GError **error)
 {
-  gboolean with_text = tool_arg_bool (args, "include_text", FALSE);
+  gboolean with_text = tool_arg_bool (args, "include_text", FALSE) && !tool_run_private (run);
   gint64 now = g_get_real_time () / G_USEC_PER_SEC, since = dictate_actions_missed_since ();
   g_autoptr (GPtrArray) all = people_with_numbers (run);
   g_autoptr (JsonBuilder) b = json_builder_new ();
@@ -2879,6 +2901,9 @@ what_did_i_miss (JsonObject *args, ToolRun *run, GError **error)
   if (first)
     since = now - 24 * 3600;
   json_builder_begin_object (b);
+  if (!with_text && tool_arg_bool (args, "include_text", FALSE))
+    add_string (b, "private_mode", "What they say is not given: private mode is on and the answer plays out loud on "
+                                   "the speaker. Say that the user can hear it with headphones on.");
   from = tool_when (since * 1000, TRUE);
   add_string (b, "since", from);
   if (first)
@@ -3227,6 +3252,373 @@ propose_event (JsonObject *args, ToolRun *run, GError **error)
   return finish (b);
 }
 
+/* ---------------- the call going on (the Phone's call service, dictate-calls.h) ---------------- */
+
+static GVariant *
+dialer_call (const char *method, GVariant *parameters, ToolRun *run, GError **error)
+{
+  g_autoptr (GDBusConnection) bus = dictate_calls_bus (tool_run_cancellable (run), error);
+
+  if (!bus)
+    {
+      if (parameters)
+        g_variant_unref (g_variant_ref_sink (parameters));
+      return NULL;
+    }
+  return g_dbus_connection_call_sync (bus, DICTATE_CALLS_NAME, DICTATE_CALLS_PATH, DICTATE_CALLS_INTERFACE, method,
+                                      parameters, NULL, G_DBUS_CALL_FLAGS_NO_AUTO_START, DBUS_TIMEOUT_MS,
+                                      tool_run_cancellable (run), error);
+}
+
+/* the service's properties: the calls not over (DictateCall), and the microphone and the speaker */
+static GPtrArray *
+dialer_calls (ToolRun *run, gboolean *muted, gboolean *speaker, gboolean *can_hold, GError **error)
+{
+  g_autoptr (GDBusConnection) bus = dictate_calls_bus (tool_run_cancellable (run), error);
+  g_autoptr (GVariant) reply = NULL, props = NULL, calls = NULL;
+  g_autofree const char **features = NULL;
+
+  if (!bus)
+    return NULL;
+  reply = g_dbus_connection_call_sync (bus, DICTATE_CALLS_NAME, DICTATE_CALLS_PATH, "org.freedesktop.DBus.Properties",
+                                       "GetAll", g_variant_new ("(s)", DICTATE_CALLS_INTERFACE),
+                                       G_VARIANT_TYPE ("(a{sv})"), G_DBUS_CALL_FLAGS_NO_AUTO_START, DBUS_TIMEOUT_MS,
+                                       tool_run_cancellable (run), error);
+  if (!reply)
+    {
+      g_clear_error (error);
+      tool_error (error, "The Phone's call service is not running, so there is no call.");
+      return NULL;
+    }
+  props = g_variant_get_child_value (reply, 0);
+  calls = g_variant_lookup_value (props, "Calls", G_VARIANT_TYPE ("aa{sv}"));
+  if (muted && !g_variant_lookup (props, "Muted", "b", muted))
+    *muted = FALSE;
+  if (speaker && !g_variant_lookup (props, "Speaker", "b", speaker))
+    *speaker = FALSE;
+  if (can_hold)
+    {
+      *can_hold = FALSE;
+      if (g_variant_lookup (props, "Features", "^a&s", &features))
+        *can_hold = g_strv_contains (features, "hold");
+    }
+  return dictate_calls_parse (calls);
+}
+
+/* who a call is with, for the model: a contact's name, never the number (`known`: in the contacts) */
+static char *
+call_with (DictateCall *call, GPtrArray *all, gboolean *known)
+{
+  Person *p = call->number && *call->number ? person_for (all, call->number, NULL) : NULL;
+
+  *known = p != NULL;
+  if (p)
+    return g_strdup (p->name);
+  if (call->presentation == 2)
+    return g_strdup ("a private number");
+  if (!call->number || !*call->number)
+    return g_strdup ("an unknown caller");
+  return g_strdup ("an unknown number (not in the contacts)");
+}
+
+static const char *
+call_state (DictateCall *call)
+{
+  switch (call->state)
+    {
+    case DICTATE_CALL_CONNECTING:
+    case DICTATE_CALL_DIALING:
+      return "calling, not answered yet";
+    case DICTATE_CALL_INCOMING:
+      return "ringing";
+    case DICTATE_CALL_WAITING:
+      return "ringing while another call goes on";
+    case DICTATE_CALL_ACTIVE:
+      return "going on";
+    case DICTATE_CALL_ONHOLD:
+      return "on hold";
+    default:
+      return "ending";
+    }
+}
+
+/* the call `pick` means: the one ringing, or the one going on (else the one on hold), or any */
+typedef enum { PICK_RINGING, PICK_TALKING } Pick;
+
+static DictateCall *
+pick_call (GPtrArray *calls, Pick pick)
+{
+  DictateCall *held = NULL, *dialing = NULL;
+
+  for (guint i = 0; calls && i < calls->len; i++)
+    {
+      DictateCall *c = calls->pdata[i];
+      if (pick == PICK_RINGING && dictate_call_is_ringing (c))
+        return c;
+      if (pick == PICK_TALKING && c->state == DICTATE_CALL_ACTIVE)
+        return c;
+      if (c->state == DICTATE_CALL_ONHOLD && !held)
+        held = c;
+      if ((c->state == DICTATE_CALL_DIALING || c->state == DICTATE_CALL_CONNECTING) && !dialing)
+        dialing = c;
+    }
+  if (pick == PICK_TALKING)
+    return dialing ? dialing : held;
+  return NULL;
+}
+
+static JsonNode *
+get_current_call (JsonObject *args, ToolRun *run, GError **error)
+{
+  gboolean muted = FALSE, speaker = FALSE, can_hold = FALSE;
+  g_autoptr (GPtrArray) calls = dialer_calls (run, &muted, &speaker, &can_hold, error);
+  g_autoptr (GPtrArray) all = NULL;
+  g_autoptr (JsonBuilder) b = json_builder_new ();
+  gint64 now = g_get_real_time () / 1000;
+
+  if (!calls)
+    return NULL;
+  json_builder_begin_object (b);
+  if (!calls->len)
+    {
+      add_string (b, "note", "No call is ringing or going on.");
+      return finish (b);
+    }
+  all = people_with_numbers (run);
+  json_builder_set_member_name (b, "calls");
+  json_builder_begin_array (b);
+  for (guint i = 0; i < calls->len; i++)
+    {
+      DictateCall *c = calls->pdata[i];
+      gboolean known;
+      g_autofree char *with = call_with (c, all, &known);
+
+      json_builder_begin_object (b);
+      add_string (b, "with", with);
+      add_bool (b, "in_contacts", known);
+      if (c->presentation == 2)
+        add_bool (b, "private_number", TRUE);
+      add_string (b, "state", call_state (c));
+      add_string (b, "direction", c->direction == 1 ? "incoming" : "outgoing");
+      if (c->connected > 0 && c->state != DICTATE_CALL_INCOMING)
+        {
+          g_autofree char *length = duration_text ((now - c->connected) / 1000);
+          add_string (b, "for", length);
+        }
+      /* the digits only when the user asked for the number */
+      if (tool_arg_bool (args, "include_number", FALSE) && c->presentation == 1 && c->number && *c->number)
+        add_string (b, "number", c->number);
+      json_builder_end_object (b);
+    }
+  json_builder_end_array (b);
+  add_bool (b, "microphone_muted", muted);
+  add_bool (b, "speaker_on", speaker);
+  add_bool (b, "can_hold", can_hold);
+  return finish (b);
+}
+
+/* what call_control's undo does: the opposite, while the call is still there */
+static const char *
+call_opposite (const char *action)
+{
+  static const char *const pairs[][2] = { { "speaker_on", "speaker_off" }, { "mute", "unmute" },
+                                          { "hold", "resume" } };
+
+  for (guint i = 0; i < G_N_ELEMENTS (pairs); i++)
+    {
+      if (!strcmp (action, pairs[i][0]))
+        return pairs[i][1];
+      if (!strcmp (action, pairs[i][1]))
+        return pairs[i][0];
+    }
+  return NULL;
+}
+
+/* one of call_control's actions on the call going on; `about` what was done, for the model */
+static gboolean
+call_do (const char *action, ToolRun *run, gboolean *changed, char **about, GError **error)
+{
+  gboolean muted = FALSE, speaker = FALSE, can_hold = FALSE;
+  g_autoptr (GPtrArray) calls = dialer_calls (run, &muted, &speaker, &can_hold, error);
+  g_autoptr (GVariant) reply = NULL;
+  DictateCall *call;
+
+  if (!calls)
+    return FALSE;
+  *changed = TRUE;
+  call = pick_call (calls, PICK_TALKING);
+  if (!call && !strcmp (action, "hang_up"))
+    call = pick_call (calls, PICK_RINGING);
+  if (!call)
+    {
+      tool_error (error, "No call is going on.");
+      return FALSE;
+    }
+  if (!strcmp (action, "speaker_on") || !strcmp (action, "speaker_off"))
+    {
+      gboolean on = !strcmp (action, "speaker_on");
+      *changed = on != speaker;
+      reply = dialer_call ("SetSpeaker", g_variant_new ("(b)", on), run, error);
+      *about = g_strdup (on ? "the speaker turned on" : "the speaker turned off");
+    }
+  else if (!strcmp (action, "mute") || !strcmp (action, "unmute"))
+    {
+      gboolean on = !strcmp (action, "mute");
+      *changed = on != muted;
+      reply = dialer_call ("SetMuted", g_variant_new ("(b)", on), run, error);
+      *about = g_strdup (on ? "the microphone muted" : "the microphone on again");
+    }
+  else if (!strcmp (action, "hold") || !strcmp (action, "resume"))
+    {
+      gboolean on = !strcmp (action, "hold");
+      if (!can_hold)
+        {
+          tool_error (error, "This phone cannot hold calls.");
+          return FALSE;
+        }
+      *changed = on != (call->state == DICTATE_CALL_ONHOLD);
+      reply = dialer_call ("SetHeld", g_variant_new ("(ub)", call->id, on), run, error);
+      *about = g_strdup (on ? "the call put on hold" : "the call taken off hold");
+    }
+  else if (!strcmp (action, "hang_up"))
+    {
+      reply = dialer_call ("Hangup", g_variant_new ("(u)", call->id), run, error);
+      *about = g_strdup ("the call hung up");
+    }
+  else
+    {
+      tool_error (error, "action must be one of speaker_on, speaker_off, mute, unmute, hold, resume, hang_up.");
+      return FALSE;
+    }
+  if (!reply && error && *error)
+    g_dbus_error_strip_remote_error (*error);
+  return reply != NULL;
+}
+
+static JsonNode *
+call_control (JsonObject *args, ToolRun *run, GError **error)
+{
+  const char *action = tool_arg_string (args, "action");
+  g_autoptr (JsonBuilder) b = json_builder_new ();
+  g_autofree char *about = NULL;
+  gboolean changed;
+
+  if (!action)
+    {
+      tool_error (error, "Which action is missing.");
+      return NULL;
+    }
+  if (!call_do (action, run, &changed, &about, error))
+    return NULL;
+  json_builder_begin_object (b);
+  add_string (b, "done", about);
+  if (!strcmp (action, "hang_up"))
+    add_string (b, "note", "Hung up at once; that cannot be undone. Say that it is done.");
+  else if (!changed)
+    {
+      add_string (b, "note", "It was like that already.");
+      tool_run_set_unchanged (run);
+    }
+  else
+    {
+      g_autoptr (JsonBuilder) u = json_builder_new ();
+
+      json_builder_begin_object (u);
+      add_string (u, "call_action", call_opposite (action));
+      add_string (u, "about", about);
+      tool_run_set_undo (run, finish (u));
+      add_bool (b, "can_undo", TRUE);
+    }
+  return finish (b);
+}
+
+static JsonNode *
+answer_call (JsonObject *args, ToolRun *run, GError **error)
+{
+  g_autoptr (GPtrArray) calls = dialer_calls (run, NULL, NULL, NULL, error);
+  g_autoptr (GPtrArray) all = NULL;
+  g_autoptr (GVariant) reply = NULL;
+  g_autoptr (JsonBuilder) b = json_builder_new ();
+  g_autofree char *with = NULL;
+  DictateCall *call;
+  gboolean known;
+
+  if (!calls)
+    return NULL;
+  if (!(call = pick_call (calls, PICK_RINGING)))
+    {
+      tool_error (error, "No call is ringing.");
+      return NULL;
+    }
+  if (!(reply = dialer_call ("Answer", g_variant_new ("(u)", call->id), run, error)))
+    {
+      g_dbus_error_strip_remote_error (*error);
+      return NULL;
+    }
+  all = people_with_numbers (run);
+  with = call_with (call, all, &known);
+  json_builder_begin_object (b);
+  add_string (b, "answered", with);
+  add_string (b, "note", "Answered at once; the call is going on now.");
+  return finish (b);
+}
+
+static JsonNode *
+decline_call (JsonObject *args, ToolRun *run, GError **error)
+{
+  const char *text = tool_arg_string (args, "text");
+  g_autoptr (GPtrArray) calls = dialer_calls (run, NULL, NULL, NULL, error);
+  g_autoptr (GPtrArray) all = NULL;
+  g_autoptr (GVariant) reply = NULL;
+  g_autoptr (JsonBuilder) b = json_builder_new ();
+  g_autofree char *with = NULL, *number = NULL;
+  DictateCall *call;
+  gboolean known;
+
+  if (!calls)
+    return NULL;
+  if (!(call = pick_call (calls, PICK_RINGING)))
+    {
+      tool_error (error, "No call is ringing.");
+      return NULL;
+    }
+  number = g_strdup (call->number);
+  if (!(reply = dialer_call ("Decline", g_variant_new ("(u)", call->id), run, error)))
+    {
+      g_dbus_error_strip_remote_error (*error);
+      return NULL;
+    }
+  all = people_with_numbers (run);
+  with = call_with (call, all, &known);
+  json_builder_begin_object (b);
+  add_string (b, "declined", with);
+  if (text && *text)
+    {
+      if (!number || !*number || call->presentation != 1)
+        add_string (b, "message", "Not prepared: the caller's number did not come with the call.");
+      else if (!tool_run_area_on (run, "access-messages"))
+        add_string (b, "message", "Not prepared: the user has turned off messages in Agent's settings.");
+      else
+        {
+          Person *p = person_for (all, number, NULL);
+          g_autofree char *line = p ? g_strdup_printf ("%s · %s", p->name, number) : g_strdup (number);
+          g_autofree char *quoted = g_strdup_printf ("“%s”", text);
+          g_autofree char *about = g_strdup_printf ("the message to %s", known ? with : "the caller");
+          const char *lines[] = { line, quoted, NULL };
+          g_autoptr (DictateAction) action = dictate_action_new ("send a message", _("Send a message"), lines,
+                                                                 _("Send"), _("Sent"), about, send_message, number,
+                                                                 text);
+
+          dictate_action_set_log (action, "propose_message", "the message, by SMS to its recipient");
+          tool_run_propose (run, action);
+          add_string (b, "message_to", known ? with : "the caller");
+          add_string (b, "message", "A card on the screen with the message and a Send button. Not sent yet: it is "
+                                    "sent only when the user taps Send.");
+        }
+    }
+  return finish (b);
+}
+
 /* ---------------- the table ---------------- */
 
 static const DictateTool TOOLS[] = {
@@ -3363,14 +3755,15 @@ static const DictateTool TOOLS[] = {
     DICTATE_TIER_UNDOABLE, "stopped a timer", FALSE },
   { "undo_last_action", NULL, N_("Undoing it…"),
     "Undoes the last thing Agent did that can be undone, within a day: removes the alarm or timer it set, puts back "
-    "an alarm or timer it removed, or turns Wi-Fi or Bluetooth back as they were. For \"undo\", \"undo that\", "
-    "\"take that back\", \"put it back\".",
+    "an alarm or timer it removed, turns Wi-Fi or Bluetooth back as they were, or puts a call's speaker, microphone or "
+    "hold back. For \"undo\", \"undo that\", \"take that back\", \"put it back\".",
     "{\"type\":\"object\",\"properties\":{}}", undo_last_action,
     DICTATE_TIER_UNDOABLE, "undid the last action", FALSE },
   { "get_action_log", NULL, N_("Checking what I did…"),
     "What Agent itself did lately, newest first: the actions it took or offered on a card (an alarm, a setting, a "
-    "message), when, how each went, whether it was undone, and where anything went off the phone. For \"what did "
-    "you just do?\" and \"did that go to the server?\".",
+    "message), when, how each went, whether it was undone, and where anything went off the phone. Always call it "
+    "for \"what did you just do?\", \"what have you done?\" and \"did that go to the server?\", even when you "
+    "think you remember: the conversation does not hold what was done before it, or on a card.",
     "{\"type\":\"object\",\"properties\":{"
     "\"count\":{\"type\":\"integer\",\"description\":\"How many actions, 1 to 10. Default 5.\"}"
     "}}", get_action_log,
@@ -3421,6 +3814,35 @@ static const DictateTool TOOLS[] = {
     "the time); leave it out for none.\"}"
     "},\"required\":[\"title\",\"date\"]}", propose_event,
     DICTATE_TIER_CONFIRMED, "a calendar event, on a card", FALSE },
+  { "get_current_call", "access-calls", N_("Checking the call…"),
+    "The phone call ringing or going on now: who it is with (a contact's name, or that the number is not in the "
+    "contacts or is private), whether it rings, goes on or is on hold, for how long, and whether the microphone is "
+    "muted and the speaker on. For \"who is this?\" and \"who is calling?\". Never say a number's digits unless "
+    "the user asked for the number; then call it with include_number.",
+    "{\"type\":\"object\",\"properties\":{"
+    "\"include_number\":{\"type\":\"boolean\",\"description\":\"Only when the user asks for the number.\"}"
+    "}}", get_current_call,
+    DICTATE_TIER_READ, "checked the call", FALSE },
+  { "call_control", "access-calls", N_("Changing the call…"),
+    "Changes the call going on, at once: the speaker on or off, the microphone muted or on again, the call put on "
+    "hold or taken off it, or the call hung up. Hanging up cannot be undone; say that it is done. The others can be "
+    "undone.",
+    "{\"type\":\"object\",\"properties\":{"
+    "\"action\":{\"type\":\"string\",\"enum\":[\"speaker_on\",\"speaker_off\",\"mute\",\"unmute\","
+    "\"hold\",\"resume\",\"hang_up\"]}"
+    "},\"required\":[\"action\"]}", call_control,
+    DICTATE_TIER_UNDOABLE, "changed the call", FALSE },
+  { "answer_call", "access-calls", N_("Answering…"),
+    "Answers the call ringing now, at once. Only when the user says to answer it.",
+    "{\"type\":\"object\",\"properties\":{}}", answer_call,
+    DICTATE_TIER_UNDOABLE, "answered a call", FALSE },
+  { "decline_call", "access-calls", N_("Declining…"),
+    "Declines the call ringing now, at once. With text, a text message to the caller is then prepared on a card "
+    "(\"decline and text I'll call back\"); it is sent only when the user taps Send.",
+    "{\"type\":\"object\",\"properties\":{"
+    "\"text\":{\"type\":\"string\",\"description\":\"A message to send the caller, only if the user said one.\"}"
+    "}}", decline_call,
+    DICTATE_TIER_UNDOABLE, "declined a call", FALSE },
 };
 
 const DictateTool *

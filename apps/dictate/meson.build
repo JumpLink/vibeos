@@ -25,9 +25,12 @@ agent_deps = [dependency('llama'), onnxruntime, dependency('espeak-ng')]
 remote_deps = [dependency('libsoup-3.0'), dependency('json-glib-1.0')]
 brain_sources = ['src/dictate-brain.c', 'src/dictate-remote.c', 'src/dictate-device.c']
 # what the model can use on the phone (dictate-tools.h): Contacts and Calendar through EDS, the call log and the
-# messages from their apps' SQLite stores
-tools_sources = ['src/dictate-tools.c', 'src/dictate-tools-phone.c', 'src/dictate-actions.c']
-tools_deps = [dependency('libebook-1.2'), dependency('libecal-2.0'), dependency('sqlite3'),
+# messages from their apps' SQLite stores, the calls from the Phone's call service; and the fixed grammar that runs
+# them when the model cannot be reached
+tools_sources = ['src/dictate-tools.c', 'src/dictate-tools-phone.c', 'src/dictate-actions.c', 'src/dictate-offline.c',
+                 'src/dictate-calls.c', 'src/dictate-output.c']
+# (and the sound server, asked where a reply would play for private mode)
+tools_deps = [dependency('libebook-1.2'), dependency('libecal-2.0'), dependency('sqlite3'), dependency('libpulse'),
               dependency('libsoup-3.0'), dependency('json-glib-1.0'), cc.find_library('m')]
 # a language's model and voice downloaded (dictate-download.c): libsoup for the files, libarchive for Vosk's zips
 download_deps = [dependency('glib-2.0'), dependency('gio-2.0'), dependency('libsoup-3.0'), dependency('libarchive')]
@@ -53,6 +56,8 @@ foreach id : ['vibeos.Dictate', 'vibeos.Agent']
   install_data('data' / id + '.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
 endforeach
 install_data('data/vibeos.Dictate.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
+# Agent running with no window while Announce calls is on: the session starts it, and stops it when that goes off
+install_data('data/vibeos.Agent-announce.desktop', install_dir: get_option('sysconfdir') / 'xdg/autostart')
 # Agent's state cues (dictate-cues.c; data/sounds/make-sounds.sh makes them)
 install_data('data/sounds/agent-listening.wav', 'data/sounds/agent-working.wav', 'data/sounds/agent-done.wav',
              'data/sounds/agent-failed.wav', install_dir: datadir / 'vibeos-dictate/sounds')
@@ -113,6 +118,15 @@ test('access', executable('test-access', 'tests/test-access.c', 'src/dictate-acc
 test('tools', executable('test-tools', 'tests/test-tools.c', 'src/dictate-access.c', tools_sources,
                          include_directories: 'src', c_args: '-DGETTEXT_PACKAGE="vibeos-dictate"',
                          dependencies: [dependency('gio-2.0')] + tools_deps))
+
+# what Agent says when a call rings, and when it may (the settings in memory)
+test('calls', executable('test-calls', 'tests/test-calls.c', 'src/dictate-calls.c', include_directories: 'src',
+                         dependencies: [dependency('gio-2.0'), dependency('json-glib-1.0')]),
+     depends: schemas, env: ['GSETTINGS_SCHEMA_DIR=' + meson.current_build_dir(), 'GSETTINGS_BACKEND=memory'])
+
+# the offline grammar: each command in each language to its tool, and the replies from made-up results
+test('offline', executable('test-offline', 'tests/test-offline.c', 'src/dictate-offline.c', include_directories: 'src',
+                           dependencies: [dependency('glib-2.0'), dependency('json-glib-1.0')]))
 
 # a language's packs fetched for real, as the app fetches them (not run by meson test: it needs the network)
 executable('download-try', 'tests/download-try.c', 'src/dictate-download.c', 'src/dictate-models.c',

@@ -32,6 +32,8 @@ const DictateTool *dictate_tools_table (guint *n);
 gboolean      tool_run_area_on   (ToolRun *run, const char *area);
 /* DICTATE_TEST_DRY_RUN: what reaches outside (an app opened, a message, a call) is only logged */
 gboolean      tool_run_dry       (ToolRun *run);
+/* private mode with the answer on the speaker: no message or notification texts (DictateToolContext) */
+gboolean      tool_run_private   (ToolRun *run);
 GCancellable *tool_run_cancellable (ToolRun *run);
 /* hands a proposal to the window (once the model's turn may still use it) */
 void          tool_run_propose   (ToolRun *run, DictateAction *action);
