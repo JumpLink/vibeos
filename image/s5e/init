@@ -117,10 +117,9 @@ log "ready"
 # --- Mobian ---------------------------------------------------------------
 # Its rootfs is /data/lost+found/mobian/rootfs.img on Android's userdata (that
 # directory is never encrypted). dm-linear maps the file's extents, so /data
-# itself is never mounted here. Boot it unless:
-#   - the command line has gts4lv.stay (U-Boot's "rescue shell" entry), or
-#   - the previous boot switched to Mobian and never reported GTS4LV-MOBIAN-OK
-#     (pstore), so a broken rootfs cannot loop.
+# itself is never mounted here. Boot it unless the command line has gts4lv.stay
+# (U-Boot's "rescue shell" entry). A previous boot that switched to Mobian and
+# never reported GTS4LV-MOBIAN-OK (pstore) is only logged.
 part() {
 	for u in /sys/class/block/*/uevent; do
 		grep -qx "PARTNAME=$1" "$u" && { echo /dev/$(basename $(dirname $u)); return; }
@@ -166,16 +165,31 @@ mobian() {
 		mkdir -p /run/gts4lv && : > /run/gts4lv/dualboot && chmod 755 /run/gts4lv/dualboot
 	fi
 	mkdir -p /mnt/root
-	mount -t ext4 -o rw,noatime $ROOTDEV /mnt/root 2>/dev/null || { log "mobian: no filesystem on $ROOTDEV"; return 1; }
+	# A root that does not mount is checked and repaired (e2fsck -y), then mounted again; failing that,
+	# Mobian boots from it read-only. Only a root that mounts in no way at all keeps the tablet here.
+	if ! mount -t ext4 -o rw,noatime $ROOTDEV /mnt/root 2>/dev/null; then
+		log "mobian: cannot mount $ROOTDEV, running e2fsck -fy (log in /run/e2fsck-y.log)"
+		e2fsck -fy $ROOTDEV > /run/e2fsck-y.log 2>&1
+		log "mobian: e2fsck -fy $ROOTDEV exited $?"
+		if mount -t ext4 -o rw,noatime $ROOTDEV /mnt/root 2>/dev/null; then
+			log "mobian: $ROOTDEV mounted after e2fsck"
+		elif mount -t ext4 -o ro,noatime $ROOTDEV /mnt/root 2>/dev/null; then
+			log "mobian: $ROOTDEV mounted READ-ONLY, booting it so"
+		else
+			log "mobian: no file system on $ROOTDEV that mounts, read-write or read-only"
+			return 1
+		fi
+	fi
 	# The zip ships the file system shrunk to its content: grow it to the whole file or partition
 	# (a no-op once it fills it). Online, so no fsck first; resize2fs reads /etc/mtab.
 	ln -sf /proc/mounts /etc/mtab
 	resize2fs $ROOTDEV > /run/resize2fs.log 2>&1 || log "mobian: resize2fs failed"
 	[ -x /mnt/root/lib/systemd/systemd ] || { log "mobian: rootfs has no systemd"; umount /mnt/root; return 1; }
-	if grep -qs GTS4LV-SWITCHROOT /sys/fs/pstore/* && ! grep -qs GTS4LV-MOBIAN-OK /sys/fs/pstore/*; then
-		log "mobian: the last boot into it never came up (pstore), staying here"
-		umount /mnt/root; return 1
-	fi
+	# Logged, never a reason to stay: the S10e's init stayed on its "last boot never finished" marker and kept
+	# the phone out of Linux on every boot after a brown-out on a flat battery (11-20, 11-23). The way into
+	# the rescue shell is U-Boot's rescue entry (gts4lv.stay).
+	grep -qs GTS4LV-SWITCHROOT /sys/fs/pstore/* && ! grep -qs GTS4LV-MOBIAN-OK /sys/fs/pstore/* &&
+		log "mobian: the last boot into it never reported GTS4LV-MOBIAN-OK (pstore)"
 	# No wait: the rescue shell is asked for up front, from U-Boot's menu (Volume Down at power-on).
 	grep -qw gts4lv.stay /proc/cmdline && { log "mobian: staying (gts4lv.stay)"; umount /mnt/root; return 1; }
 	log "GTS4LV-SWITCHROOT"
