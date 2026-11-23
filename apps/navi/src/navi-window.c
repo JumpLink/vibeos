@@ -1056,6 +1056,11 @@ routes_ready (GObject *src, GAsyncResult *res, gpointer data)
   if (g_object_get_data (G_OBJECT (n->win), "navi-go")) {
     g_object_set_data (G_OBJECT (n->win), "navi-go", NULL);
     navi_start_drive (n);
+  } else if (g_object_get_data (G_OBJECT (n->win), "navi-free") && n->simulate) {
+    /* a test's drive without a route (--free): the simulated car drives the route's line, Navi stays browsing */
+    g_object_set_data (G_OBJECT (n->win), "navi-free", NULL);
+    navi_position_simulate (n->position, current_route (n), n->sim_speed, 1000);
+    navi_back_to_browse (n);
   }
 }
 

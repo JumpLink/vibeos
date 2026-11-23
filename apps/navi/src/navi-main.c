@@ -1,11 +1,12 @@
 /* Navi: a car navigator for VibeOS. See navi-app.h for its parts.
  *
- *   vibeos-navi [--simulate [--sim-speed F] [--sim-detour]] [--from LAT,LNG] [--to LAT,LNG[,NAME]] [--go]
+ *   vibeos-navi [--simulate [--sim-speed F] [--sim-detour]] [--from LAT,LNG] [--to LAT,LNG[,NAME]] [--go | --free]
  *               [--search TEXT] [--night | --day] [--seconds N] [--stats]
  *
  * The options are for testing on a phone without a GPS: --from puts the car somewhere (as a last known position),
  * --to asks for routes there, --go drives the best one at once, --simulate drives it (F times as fast; --sim-detour
- * takes the second route, so the guidance has to find a new one), --seconds quits after N seconds and --stats prints
+ * takes the second route, so the guidance has to find a new one), --free drives the best one's line simulated
+ * without a route (Navi browsing while the car moves), --seconds quits after N seconds and --stats prints
  * the frame pacing every second and over the drive. NAVI_SERVER and NAVI_PHOTON_URL point at a test server. */
 #include "navi-app.h"
 #include "navi-alerts.h"
@@ -16,7 +17,7 @@
 #include <string.h>
 
 typedef struct {
-  gboolean simulate, sim_detour, go, have_from, have_to;
+  gboolean simulate, sim_detour, go, free, have_from, have_to;
   double sim_speed;
   double from_lat, from_lng, to_lat, to_lng;
   char *to_name, *search;
@@ -178,6 +179,8 @@ start_test_drive (gpointer data)
                                                NULL, opts.to_lat, opts.to_lng);
     if (opts.go)
       g_object_set_data (G_OBJECT (n->win), "navi-go", GINT_TO_POINTER (1));
+    else if (opts.free)
+      g_object_set_data (G_OBJECT (n->win), "navi-free", GINT_TO_POINTER (1));
     navi_preview_routes (n, to);
   }
   return G_SOURCE_REMOVE;
@@ -296,6 +299,8 @@ main (int argc, char **argv)
       opts.sim_speed = g_ascii_strtod (v, NULL), i++;
     else if (!strcmp (a, "--go"))
       opts.go = TRUE;
+    else if (!strcmp (a, "--free"))
+      opts.simulate = opts.free = TRUE;
     else if (!strcmp (a, "--from") && v && parse_pair (v, &opts.from_lat, &opts.from_lng, NULL))
       opts.have_from = TRUE, i++;
     else if (!strcmp (a, "--to") && v && parse_pair (v, &opts.to_lat, &opts.to_lng, &opts.to_name))

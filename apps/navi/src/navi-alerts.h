@@ -4,7 +4,8 @@
  * On a route both come for the whole route at once when it starts (and each new route): the limits and countries
  * from Valhalla's trace_attributes (navi-roadinfo.h), the cameras from the overlay tiles (navi-cameras.h). Off a
  * route (browsing while moving, or off the route while a new one comes) the limit is the road's where the last half
- * minute of fixes ends, map-matched every 12 s. A limit nobody knows shows no sign.
+ * minute of fixes ends, map-matched every 12 s, and the cameras are those of the overlay tiles around the car that lie
+ * on the line it heads along. A limit nobody knows shows no sign.
  *
  * The map's camera and signal icons are navi-window.c's (navi_window_update_overlay): this only says the country. */
 #pragma once
