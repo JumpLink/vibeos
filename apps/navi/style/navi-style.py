@@ -37,12 +37,7 @@ COUNTRIES = [  # name, bounds (west, south, east, north): the map server's archi
     ('turkey', [25.5, 35.7, 44.9, 43.1]), ('australia', [68.1, -57.1, 169.1, -8.8]),
     ('malaysia-singapore-brunei', [99.2, 0.8, 119.7, 7.8]), ('new-zealand', [-180.0, -56.8, 180.0, -28.4]),
     ('guernsey-jersey', [-3.6, 48.8, -1.7, 50.1]), ('isle-of-man', [-5.5, 53.7, -3.6, 54.7]),
-    # not built yet when these were listed (2026-11-23): Geofabrik's bounding boxes of the regions (index-v1.json); a
-    # missing archive answers 404 or 204 until it is there. Russia is Geofabrik's federal districts: its European ones
-    ('faroe-islands', [-8.7, 60.9, -5.5, 62.9]), ('georgia', [39.9, 41.1, 46.7, 43.6]),
-    ('central-fed-district', [30.7, 49.5, 47.7, 59.7]), ('north-caucasus-fed-district', [40.7, 41.1, 48.9, 46.2]),
-    ('northwestern-fed-district', [19.4, 54.3, 72.6, 82.5]), ('south-fed-district', [36.5, 43.2, 49.9, 51.3]),
-    ('volga-fed-district', [41.7, 49.8, 61.7, 61.7]),
+    ('faroe-islands', [-8.7, 60.8, -5.5, 63.0]), ('georgia', [39.8, 41.0, 46.8, 43.6]),
 ]
 
 PALETTES = {
