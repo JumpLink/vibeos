@@ -70,6 +70,7 @@ struct _NaviPanels {
 
   /* a place */
   GtkWidget *place_name, *place_detail, *place_distance, *place_go, *place_go_label, *place_icon;
+  double place_drive_m, place_drive_s; /* the drive there by road, 0 while unknown */
   NaviPlace *place;
 
   /* the routes */
@@ -1598,6 +1599,9 @@ build_routes (NaviPanels *p)
   gtk_box_append (GTK_BOX (buttons), text_button (_("Leave later"), "navi-later", G_CALLBACK (later_clicked), p));
   GtkWidget *go = gtk_overlay_new ();
   p->go_fill = gtk_drawing_area_new ();
+  /* weak: the window's "destroy" comes after its widgets went, and Exit's quiet () stops the countdown then, which
+   * drew a fill already gone (a Gtk-CRITICAL on every Exit) */
+  g_object_add_weak_pointer (G_OBJECT (p->go_fill), (gpointer *) &p->go_fill);
   gtk_drawing_area_set_draw_func (GTK_DRAWING_AREA (p->go_fill), draw_go_fill, p, NULL);
   gtk_overlay_set_child (GTK_OVERLAY (go), p->go_fill);
   GtkWidget *go_label = gtk_label_new (_("Go now"));
@@ -2030,6 +2034,8 @@ void
 navi_panels_free (NaviPanels *p)
 {
   stop_countdown (p);
+  if (p->go_fill)
+    g_object_remove_weak_pointer (G_OBJECT (p->go_fill), (gpointer *) &p->go_fill);
   g_clear_handle_id (&p->search_source, g_source_remove);
   g_cancellable_cancel (p->search_cancel);
   g_clear_object (&p->search_cancel);
@@ -2141,10 +2147,39 @@ navi_panels_set_cam (NaviPanels *p, NaviCam cam)
   update_floating (p);
 }
 
+static void
+place_chip (NaviPanels *p)
+{
+  if (!p->place)
+    return;
+  g_autofree char *chip = NULL;
+  if (p->place_drive_m > 0) {
+    /* by road, as a drive */
+    g_autofree char *t = navi_format_duration (p->place_drive_s);
+    g_autofree char *d = km_text (p->place_drive_m);
+    chip = g_strdup_printf ("🚗 %s · %s", t, d);
+  } else {
+    /* as the crow flies, until the road's is known: no car on it */
+    chip = km_text (navi_distance_from_car (p->navi, p->place->lat, p->place->lng));
+  }
+  set_text (p->place_distance, chip);
+}
+
+void
+navi_panels_set_place_drive (NaviPanels *p, double metres, double seconds)
+{
+  p->place_drive_m = metres;
+  p->place_drive_s = seconds;
+  place_chip (p);
+}
+
 void
 navi_panels_show_place (NaviPanels *p, const NaviPlace *place)
 {
   if (p->place != place) {
+    /* the same place again (its address came): the drive there stays */
+    if (!p->place || navi_geo_distance (p->place->lat, p->place->lng, place->lat, place->lng) > 1)
+      p->place_drive_m = p->place_drive_s = 0;
     g_clear_pointer (&p->place, navi_place_free);
     p->place = navi_place_copy (place);
   }
@@ -2165,9 +2200,7 @@ navi_panels_show_place (NaviPanels *p, const NaviPlace *place)
   if (marker)
     gtk_box_append (GTK_BOX (p->place_icon), marker);
   gtk_widget_set_visible (p->place_icon, marker != NULL);
-  g_autofree char *d = km_text (navi_distance_from_car (p->navi, place->lat, place->lng));
-  g_autofree char *chip = g_strdup_printf ("🚗 %s", d);
-  set_text (p->place_distance, chip);
+  place_chip (p);
   set_text (p->place_go_label, place->kind == NAVI_PLACE_POINT ? _("Drive here") : poi ? _("Go") : _("View routes"));
   /* the Set as buttons say what they do again; the place that already is Home (Work) says so instead */
   GtkWidget *actions = gtk_widget_get_prev_sibling (p->place_go);

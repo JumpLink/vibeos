@@ -94,7 +94,6 @@ navi_settings_load (void)
     s->have_last = TRUE;
     s->last_lat = g_key_file_get_double (kf, "map", "last-lat", NULL);
     s->last_lng = g_key_file_get_double (kf, "map", "last-lng", NULL);
-    s->last_zoom = g_key_file_get_double (kf, "map", "last-zoom", NULL);
   }
   /* a bad entry (no name: an older build saved a nameless place) is skipped, the rest kept */
   for (int i = 0; i < RECENT_MAX * 2 && s->recent->len < RECENT_MAX; i++) {
@@ -118,7 +117,6 @@ navi_settings_flush (NaviSettings *s)
   if (s->have_last) {
     g_key_file_set_double (kf, "map", "last-lat", s->last_lat);
     g_key_file_set_double (kf, "map", "last-lng", s->last_lng);
-    g_key_file_set_double (kf, "map", "last-zoom", s->last_zoom);
   }
   g_key_file_set_integer (kf, "voice", "mode", s->voice);
   g_key_file_set_boolean (kf, "alerts", "speed-cameras", s->cameras);

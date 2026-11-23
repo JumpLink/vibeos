@@ -93,6 +93,7 @@ typedef struct {
   char **poi_layers;        /* the style's point-of-interest layers, for a tap */
   int poi_scale;            /* the scale their markers were drawn at */
   guint poi_seq;            /* the point of interest tapped last, for its address coming back */
+  gint64 poi_tapped_at;     /* when a tap last opened a place's card (on_double_tap ()) */
   guint keep_awake;         /* the idle inhibitor while a route is driven (gtk_application_inhibit), 0 when none */
   double ahead_s;           /* where the route ahead was last drawn from (trim_ahead ()) */
   gint64 ahead_time;
@@ -104,6 +105,7 @@ typedef struct {
   GPtrArray *routes;        /* NaviRoute, best first */
   guint selected;
   GCancellable *route_cancel;
+  GCancellable *place_cancel; /* the drive to the place card's place, asked for its time and length */
   NaviGuidance *guidance;
   guint rerouting;          /* a new route is on its way */
   gboolean reroute_failed;  /* off the route and the last new route failed: it is asked again */
@@ -164,6 +166,8 @@ void navi_panels_free (NaviPanels *panels);
 void navi_panels_set_mode (NaviPanels *panels, NaviMode mode);
 void navi_panels_set_cam (NaviPanels *panels, NaviCam cam);
 void navi_panels_show_place (NaviPanels *panels, const NaviPlace *place);
+/* the place card's drive there by road, once a route to it is known: its chip then shows that */
+void navi_panels_set_place_drive (NaviPanels *panels, double metres, double seconds);
 void navi_panels_set_routes (NaviPanels *panels, GPtrArray *routes, guint selected, const char *error);
 void navi_panels_update_drive (NaviPanels *panels, const NaviProgress *progress, NaviRoute *route);
 void navi_panels_set_speed (NaviPanels *panels, double speed);

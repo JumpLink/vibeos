@@ -47,7 +47,8 @@ typedef struct {
   NaviSpeeding speeding;
   NaviPlace *home, *work; /* NULL until set */
   gboolean have_last;
-  double last_lat, last_lng, last_zoom;
+  double last_lat, last_lng; /* where the map opens (to a kilometre); its zoom is the browsing one, as the camera
+                              * follows the car at that zoom from the first fix on */
   GPtrArray *recent;      /* NaviPlace, newest first, at most 20 */
 } NaviSettings;
 

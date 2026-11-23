@@ -997,6 +997,40 @@ navi_back_to_browse (Navi *n)
   navi_panels_rest_voice (n->panels);
 }
 
+/* the drive to the place card's place: the card's chip had the distance as the crow flies, with a car, as though
+ * it were the drive (across a river, twice as long by road) */
+static void
+place_drive_ready (GObject *src, GAsyncResult *res, gpointer data)
+{
+  g_autoptr (GError) error = NULL;
+  g_autoptr (GPtrArray) routes = navi_route_request_finish (res, &error);
+  if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
+    return;
+  Navi *n = data;
+  g_clear_object (&n->place_cancel);
+  if (!routes || !routes->len || n->mode != NAVI_MODE_PLACE)
+    return; /* the card keeps the straight distance */
+  NaviRoute *r = routes->pdata[0];
+  navi_panels_set_place_drive (n->panels, r->length, r->time);
+}
+
+static void
+ask_place_drive (Navi *n)
+{
+  g_cancellable_cancel (n->place_cancel);
+  g_clear_object (&n->place_cancel);
+  if (!n->have_fix)
+    return; /* from nowhere known */
+  n->place_cancel = g_cancellable_new ();
+  NaviRouteRequest req = { 0 };
+  gboolean approx;
+  navi_where_am_i (n, &req.from_lat, &req.from_lng, &approx);
+  req.from_heading = n->car_speed > 2 ? n->car_heading : -1;
+  req.to_lat = n->dest->lat;
+  req.to_lng = n->dest->lng;
+  navi_route_request_async (&req, n->place_cancel, place_drive_ready, n);
+}
+
 void
 navi_show_place (Navi *n, const NaviPlace *place)
 {
@@ -1008,6 +1042,7 @@ navi_show_place (Navi *n, const NaviPlace *place)
   set_cam (n, NAVI_CAM_FIXED);
   navi_panels_show_place (n->panels, place);
   navi_window_set_mode (n, NAVI_MODE_PLACE);
+  ask_place_drive (n);
   /* once the card's height is known */
   fit_point (n, place->lat, place->lng, PLACE_ZOOM, RECENTER_MS);
 }
@@ -1528,11 +1563,28 @@ tap_poi (Navi *n, double x, double y)
   return TRUE;
 }
 
+/* A double tap on a place opens its card, as Waze does; elsewhere it zooms in. The first tap opened the card
+ * already (a tap on a place does, at once); the second one zoomed in behind it, and its press stopped the camera's
+ * flight to the place half way. So the zoom is not made, and the flight starts again. */
+static gboolean
+on_double_tap (NaviMap *map, double x, double y, Navi *n)
+{
+  int wait = 400;
+  g_object_get (gtk_widget_get_settings (GTK_WIDGET (map)), "gtk-double-click-time", &wait, NULL);
+  if (n->mode != NAVI_MODE_PLACE || !n->dest || !n->poi_tapped_at ||
+      g_get_monotonic_time () - n->poi_tapped_at > (gint64) wait * 2 * 1000)
+    return FALSE;
+  n->poi_tapped_at = 0;
+  set_cam (n, NAVI_CAM_FIXED);
+  fit_point (n, n->dest->lat, n->dest->lng, PLACE_ZOOM, RECENTER_MS);
+  return TRUE;
+}
+
 static void
 on_tap (GtkGestureClick *gesture, int n_press, double x, double y, Navi *n)
 {
   if (n_press == 1 && (n->mode == NAVI_MODE_BROWSE || n->mode == NAVI_MODE_PLACE)) {
-    tap_poi (n, x, y);
+    n->poi_tapped_at = tap_poi (n, x, y) ? g_get_monotonic_time () : 0;
     return;
   }
   if (n_press != 1 || n->mode != NAVI_MODE_ROUTES || !n->routes || n->routes->len < 2)
@@ -1617,6 +1669,7 @@ navi_window_build_map (Navi *n)
   gtk_widget_add_controller (GTK_WIDGET (n->map), GTK_EVENT_CONTROLLER (press));
   GtkGesture *tap = gtk_gesture_click_new ();
   g_signal_connect (tap, "released", G_CALLBACK (on_tap), n);
+  g_signal_connect (n->map, "double-tap", G_CALLBACK (on_double_tap), n);
   gtk_widget_add_controller (GTK_WIDGET (n->map), GTK_EVENT_CONTROLLER (tap));
 
   n->position = navi_position_new ();
