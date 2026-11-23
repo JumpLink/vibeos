@@ -162,6 +162,8 @@ s10e)
 		'# sysinit.target (nearly every service at boot) started it again, until "start-limit-hit" marked it failed and' \
 		"# the system degraded. Run once; a failed run is still retried that way." \
 		"[Service]" "RemainAfterExit=yes" > "$P/etc/systemd/system/s10e-touch-bind.service.d/run-once.conf"
+	install -d "$P/etc/systemd/system/s10e-arm-reset.service.d"	# the same trap: sysinit.target, oneshot, re-run
+	cp "$P/etc/systemd/system/s10e-touch-bind.service.d/run-once.conf" "$P/etc/systemd/system/s10e-arm-reset.service.d/"
 	sed -i 's| dyndbg="[^"]*"||' "$P/boot/s10e/bootargs.env"
 	# Samsung's firmware from the vendor partition (audio DSP, Wi-Fi, Bluetooth, the video codec): what
 	# s10e-firstboot copies on a first boot, bundled here (11-21). Source: a root copy of our S10e (s10e-firstboot's
