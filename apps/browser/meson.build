@@ -6,6 +6,7 @@ add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers'
 gnome = import('gnome')
 deps = [dependency('gtk4', version: '>= 4.14'), dependency('webkitgtk-6.0', version: '>= 2.46'),
         dependency('libsoup-3.0'), dependency('json-glib-1.0'), dependency('vibeos-1'), dependency('spongy-gtk-1'),
+        dependency('gstreamer-1.0'),
         meson.get_compiler('c').find_library('m')]
 
 # EasyList for the first start (copied in beside the app: it is not in git)
