@@ -2,14 +2,18 @@
  *
  *   vibeos-navi [--simulate [--sim-speed F] [--sim-detour]] [--from LAT,LNG] [--to LAT,LNG[,NAME]] [--go | --free]
  *               [--search TEXT] [--night | --day] [--seconds N] [--stats]
+ *   vibeos-navi --leave-reminder
  *
  * The options are for testing on a phone without a GPS: --from puts the car somewhere (as a last known position),
  * --to asks for routes there, --go drives the best one at once, --simulate drives it (F times as fast; --sim-detour
  * takes the second route, so the guidance has to find a new one), --free drives the best one's line simulated
  * without a route (Navi browsing while the car moves), --seconds quits after N seconds and --stats prints
- * the frame pacing every second and over the drive. NAVI_SERVER and NAVI_PHOTON_URL point at a test server. */
+ * the frame pacing every second and over the drive. NAVI_SERVER and NAVI_PHOTON_URL point at a test server.
+ *
+ * --leave-reminder is the planned drive's timer's (navi-plan.h): it posts "Time to leave" and exits, no window. */
 #include "navi-app.h"
 #include "navi-alerts.h"
+#include "navi-plan.h"
 
 #include <glib/gi18n.h>
 #include <json-glib/json-glib.h>
@@ -25,6 +29,7 @@ typedef struct {
 } Options;
 
 static Options opts = { .sim_speed = 1 };
+static Navi *the_navi; /* the window's, once there is one */
 
 static gboolean
 parse_pair (const char *text, double *a, double *b, char **rest)
@@ -210,6 +215,27 @@ on_destroy (GtkWidget *win, Navi *n)
   g_clear_pointer (&n->alerts, navi_alerts_free);
   navi_settings_flush (n->settings);
   navi_position_stop (n->position);
+  if (the_navi == n)
+    the_navi = NULL;
+}
+
+/* ---- the planned drive's reminder, tapped ---- */
+
+/* "app.planned-drive" (the plan's time): the routes to the planned place, from where the car is now. Navi may have
+ * been started for it (D-Bus activation): then the window comes first. While driving, the drive goes on. */
+static void
+planned_drive (GSimpleAction *action, GVariant *param, gpointer app)
+{
+  g_application_activate (G_APPLICATION (app));
+  Navi *n = the_navi;
+  g_autoptr (NaviPlan) plan = navi_plan_load ();
+  if (!n || !plan || (param && g_variant_get_int64 (param) != plan->time))
+    return;
+  if (n->mode == NAVI_MODE_DRIVE)
+    return;
+  /* this was its time: the plan is done with */
+  navi_plan_cancel ();
+  navi_preview_routes (n, plan->place);
 }
 
 /* ---- the window ---- */
@@ -222,7 +248,7 @@ activate (GtkApplication *app, gpointer data)
     gtk_window_present (have);
     return;
   }
-  Navi *n = g_new0 (Navi, 1);
+  Navi *n = the_navi = g_new0 (Navi, 1);
   n->app = app;
   n->settings = navi_settings_load ();
   n->data_dir = g_strdup (g_getenv ("NAVI_DATA_DIR") ? g_getenv ("NAVI_DATA_DIR") : PKGDATADIR);
@@ -278,6 +304,8 @@ activate (GtkApplication *app, gpointer data)
     navi_position_start (n->position);
   if (opts.have_to || opts.search)
     g_timeout_add (1500, start_test_drive, n);
+  /* a planned drive's reminder again, in case a reboot took it */
+  navi_plan_rearm ();
   if (opts.seconds > 0)
     g_timeout_add_seconds (opts.seconds, quit_after, n);
 }
@@ -294,6 +322,8 @@ main (int argc, char **argv)
   bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
   bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
   textdomain (GETTEXT_PACKAGE);
+  if (argc == 2 && !strcmp (argv[1], "--leave-reminder"))
+    return navi_plan_remind ();
 
   GPtrArray *rest = g_ptr_array_new ();
   g_ptr_array_add (rest, argv[0]);
@@ -333,6 +363,9 @@ main (int argc, char **argv)
   g_autoptr (GtkApplication) app = gtk_application_new ("vibeos.Navi", flags);
   g_signal_connect (app, "startup", G_CALLBACK (vibeos_init), NULL);
   g_signal_connect (app, "activate", G_CALLBACK (activate), NULL);
+  g_autoptr (GSimpleAction) planned = g_simple_action_new ("planned-drive", G_VARIANT_TYPE_INT64);
+  g_signal_connect (planned, "activate", G_CALLBACK (planned_drive), app);
+  g_action_map_add_action (G_ACTION_MAP (app), G_ACTION (planned));
   int status = g_application_run (G_APPLICATION (app), rest->len, (char **) rest->pdata);
   g_ptr_array_free (rest, TRUE);
   return status;

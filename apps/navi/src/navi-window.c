@@ -31,6 +31,7 @@
 #define PIN_H            46
 #define BUBBLE_MARGIN    8  /* a time bubble from the map's free part's edges */
 #define FIX_STALE_S      5  /* no fix for this long while moving: the speed is unknown ("--", none while browsing) */
+#define CAR_JUMP_M       500 /* metres: the car jumps to a fix this far off, rather than glide there */
 #define HEADING_SMOOTH_S 0.6
 #define HEADING_AHEAD_M  20.0
 #define ZOOM_SMOOTH_S    1.6
@@ -266,7 +267,7 @@ advance_car (Navi *n, gint64 now, double dt)
     double tlat = n->fix.lat, tlng = n->fix.lng;
     if (speed > 0.5 && n->fix.heading >= 0)
       navi_geo_offset (n->fix.lat, n->fix.lng, n->fix.heading, speed * age, &tlat, &tlng);
-    if (!n->car_known || navi_geo_distance (n->car_lat, n->car_lng, tlat, tlng) > 500) {
+    if (!n->car_known || navi_geo_distance (n->car_lat, n->car_lng, tlat, tlng) > CAR_JUMP_M) {
       n->car_lat = tlat;
       n->car_lng = tlng;
     } else {
@@ -1134,6 +1135,7 @@ request_routes (Navi *n, guint alternates, GAsyncReadyCallback done)
   NaviRouteRequest req = { 0 };
   gboolean approx;
   navi_where_am_i (n, &req.from_lat, &req.from_lng, &approx);
+  n->routes_approx = approx;
   req.from_heading = n->car_speed > 2 ? n->car_heading : -1;
   req.to_lat = n->dest->lat;
   req.to_lng = n->dest->lng;
@@ -1363,10 +1365,13 @@ on_fix (NaviPosition *position, NaviFix *fix, Navi *n)
   /* where the arrow is drawn against where the fix says the car is, as a distance only */
   if (n->car_known)
     g_debug ("car: %.1f m from the new fix", navi_geo_distance (n->car_lat, n->car_lng, fix->lat, fix->lng));
+  /* far from where the car was guessed to be (the last known position, a coarse first fix): it goes straight there
+   * now, as the next frame would take it (tick), so what is asked from here on starts where the car is */
+  gboolean far = n->car_known && navi_geo_distance (n->car_lat, n->car_lng, fix->lat, fix->lng) > CAR_JUMP_M;
   n->fix = *fix;
   n->have_fix = TRUE;
   n->fix_time = g_get_monotonic_time ();
-  if (first || !n->car_known) {
+  if (first || !n->car_known || far) {
     n->car_lat = fix->lat;
     n->car_lng = fix->lng;
     if (fix->heading >= 0)
@@ -1378,6 +1383,10 @@ on_fix (NaviPosition *position, NaviFix *fix, Navi *n)
                                    : approximate ? _("No GPS – showing your approximate location")
                                                  : NULL);
   navi_panels_set_speed (n->panels, fix->kind == NAVI_FIX_LAST_KNOWN ? -1 : fix->speed);
+  /* routes asked before there was a position (the reminder's tap started Navi): again, from where the car is */
+  if (n->mode == NAVI_MODE_ROUTES && n->routes_approx && n->dest && fix->kind != NAVI_FIX_LAST_KNOWN &&
+      fix->kind != NAVI_FIX_APPROXIMATE)
+    navi_preview_routes (n, n->dest);
   /* a moving car's fixes keep coming; a standing one's may not (GeoClue sends one when the position changes) */
   g_clear_handle_id (&n->fix_stale, g_source_remove);
   if (fix->kind != NAVI_FIX_LAST_KNOWN && fix->speed > 1.5)

@@ -11,6 +11,7 @@
  * by day, dark by night (the window's "night" class). */
 #include "navi-app.h"
 #include "navi-draw.h"
+#include "navi-plan.h"
 #include "navi-poi.h"
 #include "navi-roadinfo.h"
 #include "navi-voice.h"
@@ -91,13 +92,14 @@ struct _NaviPanels {
   NaviPlace *place;
 
   /* the routes */
-  GtkWidget *routes_box, *routes_list, *routes_more, *routes_status, *routes_spinner, *leave_note, *routes_from;
+  GtkWidget *routes_box, *routes_list, *routes_more, *routes_status, *routes_spinner, *routes_from;
+  GtkWidget *leave_note, *leave_label, *leave_cancel; /* the reminder to leave for this place, when there is one */
   GtkWidget *routes_retry;
   GtkWidget *go_button, *go_fill;
   double countdown;        /* 0 to 1, or < 0 when not counting */
   guint countdown_tick;
   gint64 countdown_t0;
-  int leave_hour, leave_minute; /* -1 when leaving now */
+  gboolean plan_ahead;          /* the place shown has a reminder still to come: no counting down to Go */
   guint shown_selected;    /* the route selected when the list was last made */
 
   /* driving */
@@ -519,6 +521,7 @@ place_row_full (NaviPanels *p, const NaviPlace *place, const char *icon, const c
 /* ---- the saved places: starred on their cards, listed in the search, renamed and removed from there ---- */
 
 static void fill_saved (NaviPanels *p);
+static void update_floating (NaviPanels *p);
 
 static void
 saved_place_clicked (GtkWidget *row, NaviPanels *p)
@@ -656,7 +659,42 @@ saved_row (NaviPanels *p, const NaviSaved *saved)
   return row;
 }
 
-/* the search's first view: Home, Work, the saved places, the places driven to lately */
+/* the planned drive's row: the routes there; its button cancels the reminder */
+static void
+plan_row_clicked (GtkWidget *row, NaviPanels *p)
+{
+  g_autoptr (NaviPlan) plan = navi_plan_load ();
+  if (!plan)
+    return;
+  close_search (p);
+  if (p->navi->mode == NAVI_MODE_DRIVE)
+    navi_panels_ask_route_change (p, plan->place);
+  else
+    navi_preview_routes (p->navi, plan->place);
+}
+
+static void
+plan_cancel_clicked (GtkWidget *button, NaviPanels *p)
+{
+  navi_plan_cancel ();
+  fill_saved (p);
+}
+
+static GtkWidget *
+plan_row (NaviPanels *p, const NaviPlan *plan)
+{
+  g_autofree char *subtitle = navi_plan_describe (plan->time, vibeos_clock_uses_24h ());
+  GtkWidget *row = vibeos_list_row_new (plan->place->name, subtitle);
+  vibeos_list_row_set_icon (VIBEOS_LIST_ROW (row), "alarm-symbolic");
+  GtkWidget *cancel = vibeos_icon_button_new ("window-close-symbolic");
+  gtk_accessible_update_property (GTK_ACCESSIBLE (cancel), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Cancel reminder"), -1);
+  g_signal_connect (cancel, "clicked", G_CALLBACK (plan_cancel_clicked), p);
+  vibeos_list_row_set_end_widget (VIBEOS_LIST_ROW (row), cancel);
+  g_signal_connect (row, "clicked", G_CALLBACK (plan_row_clicked), p);
+  return row;
+}
+
+/* the search's first view: Home, Work, the planned drive, the saved places, the places driven to lately */
 static void
 fill_saved (NaviPanels *p)
 {
@@ -679,6 +717,12 @@ fill_saved (NaviPanels *p)
     g_object_set_data (G_OBJECT (row), "navi-home", GINT_TO_POINTER (k == 0));
     g_signal_connect (row, "clicked", G_CALLBACK (saved_clicked), p);
     vibeos_card_list_append (list, row);
+  }
+  /* until an hour after its time: the reminder may have come while the phone lay unseen */
+  g_autoptr (NaviPlan) plan = navi_plan_load ();
+  if (plan && plan->time > g_get_real_time () / G_USEC_PER_SEC - 3600) {
+    vibeos_card_list_add_group (list, _("Planned drive"));
+    vibeos_card_list_append (list, plan_row (p, plan));
   }
   if (n->settings->saved->len) {
     vibeos_card_list_add_group (list, _("Saved"));
@@ -1851,13 +1895,63 @@ go_clicked (GtkWidget *w, NaviPanels *p)
   navi_start_drive (p->navi);
 }
 
+/* the reminder to leave for the place shown, when there is one still to come: "Reminder at 08:15", and Cancel */
+static void
+update_leave_note (NaviPanels *p)
+{
+  Navi *n = p->navi;
+  g_autoptr (NaviPlan) plan = navi_plan_load ();
+  gboolean show = plan && n->dest && plan->time > g_get_real_time () / G_USEC_PER_SEC &&
+                  navi_geo_distance (plan->place->lat, plan->place->lng, n->dest->lat, n->dest->lng) < 30;
+  p->plan_ahead = show;
+  if (show) {
+    g_autofree char *text = navi_plan_describe (plan->time, vibeos_clock_uses_24h ());
+    set_text (p->leave_label, text);
+  }
+  gtk_widget_set_visible (p->leave_cancel, TRUE);
+  gtk_widget_set_visible (p->leave_note, show);
+  update_floating (p);
+}
+
+static void
+plan_armed (gboolean armed, gpointer data)
+{
+  NaviPanels *p = data;
+  if (armed) {
+    update_leave_note (p);
+    return;
+  }
+  /* no systemd user session to keep the timer (Navi in a sandbox, say): no reminder, and no plan */
+  navi_plan_cancel ();
+  p->plan_ahead = FALSE;
+  set_text (p->leave_label, _("Reminders cannot be set here"));
+  gtk_widget_set_visible (p->leave_cancel, FALSE);
+  gtk_widget_set_visible (p->leave_note, TRUE);
+  update_floating (p);
+}
+
+/* Leave later: a reminder at the time picked (today, or tomorrow when that time has gone by today) */
 static void
 leave_chosen (int hour, int minute, gpointer data)
 {
   NaviPanels *p = data;
-  p->leave_hour = hour;
-  p->leave_minute = minute;
-  navi_panels_set_routes (p, p->navi->routes, p->navi->selected, NULL);
+  Navi *n = p->navi;
+  if (!n->dest)
+    return;
+  g_autoptr (GDateTime) now = g_date_time_new_now_local ();
+  g_autoptr (GDateTime) today = g_date_time_new_local (g_date_time_get_year (now), g_date_time_get_month (now),
+                                                       g_date_time_get_day_of_month (now), hour, minute, 0);
+  g_autoptr (GDateTime) at = g_date_time_compare (today, now) > 0 ? g_date_time_ref (today)
+                                                                   : g_date_time_add_days (today, 1);
+  p->plan_ahead = TRUE;
+  navi_plan_set (n->dest, g_date_time_to_unix (at), plan_armed, p);
+}
+
+static void
+leave_cancel_clicked (GtkWidget *w, NaviPanels *p)
+{
+  navi_plan_cancel ();
+  update_leave_note (p);
 }
 
 static void
@@ -1954,9 +2048,20 @@ build_routes (NaviPanels *p)
   gtk_revealer_set_transition_type (GTK_REVEALER (p->routes_more), GTK_REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
   gtk_revealer_set_transition_duration (GTK_REVEALER (p->routes_more), 250);
   gtk_box_append (GTK_BOX (page), p->routes_more);
-  p->leave_note = label_new ("", "navi-dim", 0);
+  p->leave_note = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 10);
   gtk_widget_set_margin_start (p->leave_note, 20);
-  gtk_widget_set_margin_bottom (p->leave_note, 6);
+  gtk_widget_set_margin_end (p->leave_note, 16);
+  gtk_widget_set_margin_bottom (p->leave_note, 2);
+  GtkWidget *alarm = image_new ("alarm-symbolic", 20);
+  gtk_widget_add_css_class (alarm, "navi-dim");
+  gtk_box_append (GTK_BOX (p->leave_note), alarm);
+  p->leave_label = label_new ("", "navi-dim", 0);
+  gtk_widget_set_hexpand (p->leave_label, TRUE);
+  gtk_label_set_ellipsize (GTK_LABEL (p->leave_label), PANGO_ELLIPSIZE_END);
+  gtk_box_append (GTK_BOX (p->leave_note), p->leave_label);
+  p->leave_cancel = text_button (_("Cancel"), "navi-later", G_CALLBACK (leave_cancel_clicked), p);
+  gtk_widget_set_valign (p->leave_cancel, GTK_ALIGN_CENTER);
+  gtk_box_append (GTK_BOX (p->leave_note), p->leave_cancel);
   gtk_widget_set_visible (p->leave_note, FALSE);
   gtk_box_append (GTK_BOX (page), p->leave_note);
   GtkWidget *buttons = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 12);
@@ -2235,7 +2340,6 @@ navi_panels_new (Navi *n)
   NaviPanels *p = g_new0 (NaviPanels, 1);
   p->navi = n;
   p->countdown = -1;
-  p->leave_hour = -1;
   p->voice = navi_voice_new ();
   navi_voice_set_stats (p->voice, n->stats);
   /* a shell without the property (or none) leaves it 0 */
@@ -2540,8 +2644,6 @@ navi_panels_set_mode (NaviPanels *p, NaviMode mode)
   static const char *const pages[] = { "browse", "place", "routes", "drive", "arrived" };
   if (mode != NAVI_MODE_ROUTES)
     stop_countdown (p);
-  if (mode != NAVI_MODE_ROUTES)
-    p->leave_hour = -1;
   gtk_stack_set_visible_child_name (GTK_STACK (p->stack), pages[mode]);
   set_expanded (p, FALSE);
   /* a tablet's map is clean while browsing: Search is in the rail */
@@ -2677,22 +2779,7 @@ navi_panels_set_routes (NaviPanels *p, GPtrArray *routes, guint selected, const 
     gtk_box_append (GTK_BOX (i == selected ? p->routes_list : others), row);
   }
   gtk_revealer_set_child (GTK_REVEALER (p->routes_more), others);
-  if (p->leave_hour >= 0) {
-    NaviRoute *r = routes->pdata[selected];
-    g_autoptr (GDateTime) now = g_date_time_new_now_local ();
-    g_autoptr (GDateTime) leave = g_date_time_new_local (g_date_time_get_year (now), g_date_time_get_month (now),
-                                                         g_date_time_get_day_of_month (now), p->leave_hour,
-                                                         p->leave_minute, 0);
-    g_autoptr (GDateTime) arrive = g_date_time_add_seconds (leave, r->time);
-    gboolean h24 = vibeos_clock_uses_24h ();
-    g_autofree char *l = g_date_time_format (leave, h24 ? "%H:%M" : "%-l:%M %p");
-    g_autofree char *a = g_date_time_format (arrive, h24 ? "%H:%M" : "%-l:%M %p");
-    g_autofree char *text = g_strdup_printf (_("Leave at %s, arrive at %s"), g_strstrip (l), g_strstrip (a));
-    set_text (p->leave_note, text);
-    gtk_widget_set_visible (p->leave_note, TRUE);
-  } else {
-    gtk_widget_set_visible (p->leave_note, FALSE);
-  }
+  update_leave_note (p);
   /* where the routes start: the car, or without a position the map's centre (navi_where_am_i) */
   Navi *n = p->navi;
   gboolean located = n->have_fix && n->fix.kind != NAVI_FIX_LAST_KNOWN;
@@ -2700,7 +2787,7 @@ navi_panels_set_routes (NaviPanels *p, GPtrArray *routes, guint selected, const 
   /* a fresh preview starts Go now's countdown (not without a position: the drive would start from nowhere);
    * picking another route stops it */
   if (!g_object_get_data (G_OBJECT (p->routes_box), "navi-counting") && p->navi->mode == NAVI_MODE_ROUTES &&
-      selected == 0 && p->leave_hour < 0 && located && !g_getenv ("NAVI_NO_COUNTDOWN")) {
+      selected == 0 && !p->plan_ahead && located && !g_getenv ("NAVI_NO_COUNTDOWN")) {
     g_object_set_data (G_OBJECT (p->routes_box), "navi-counting", GINT_TO_POINTER (1));
     start_countdown (p);
   }

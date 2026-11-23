@@ -9,5 +9,6 @@ Categories=Utility;Maps;
 Keywords=map;navigation;route;directions;drive;
 StartupNotify=false
 X-Purism-FormFactor=Workstation;Mobile;
-X-GNOME-UsesNotifications=false
+X-GNOME-UsesNotifications=true
+DBusActivatable=true
 X-Vibeos-Keyboard=overlay

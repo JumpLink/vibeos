@@ -92,4 +92,9 @@ void navi_settings_rename_saved (NaviSettings *settings, guint index, const char
 /* the name a saved place goes by */
 const char *navi_saved_name (const NaviSaved *saved);
 
+/* a place in a key file's `group`, as navi.ini keeps them (kind, name, detail, category, lat, lng); NULL without a
+ * name */
+NaviPlace *navi_settings_read_place (GKeyFile *kf, const char *group);
+void navi_settings_write_place (GKeyFile *kf, const char *group, const NaviPlace *place);
+
 G_END_DECLS

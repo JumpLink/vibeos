@@ -124,7 +124,7 @@ if voice_src != ''
              install: false)
 endif
 executable('vibeos-navi', 'src/navi-main.c', 'src/navi-window.c', 'src/navi-alerts.c', 'src/navi-panels.c', 'src/navi-draw.c',
-           'src/navi-settings.c', 'src/navi-voice.c', voice_sources,
+           'src/navi-settings.c', 'src/navi-voice.c', 'src/navi-plan.c', voice_sources,
            c_args: app_args,
            dependencies: [core_dep, navi_map_dep, dependency('vibeos-1'), dependency('spongy-gtk-1'),
                           dependency('librsvg-2.0'), speechd] +
@@ -135,6 +135,11 @@ executable('vibeos-navi', 'src/navi-main.c', 'src/navi-window.c', 'src/navi-aler
 i18n.merge_file(input: 'data/vibeos.Navi.desktop.in', output: 'vibeos.Navi.desktop', type: 'desktop', po_dir: 'po',
                 install: true, install_dir: get_option('datadir') / 'applications')
 subdir('po')
+# D-Bus activation (DBusActivatable): the launcher opens Navi through it, and so does a tap on the planned drive's
+# reminder when Navi is not running (its "app.planned-drive" action)
+configure_file(input: 'data/vibeos.Navi.service.in', output: 'vibeos.Navi.service',
+               configuration: configuration_data({'bindir': get_option('prefix') / get_option('bindir')}),
+               install_dir: get_option('datadir') / 'dbus-1' / 'services')
 install_data('data/vibeos.Navi.svg', install_dir: get_option('datadir') / 'icons' / 'hicolor' / 'scalable' / 'apps')
 # the points of interest's icons: Maki's (CC0), drawn on the markers by the app
 install_subdir('data/poi', install_dir: datadir)

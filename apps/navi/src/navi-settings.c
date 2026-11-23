@@ -14,8 +14,8 @@ path (void)
   return g_build_filename (g_get_user_config_dir (), "vibeos-navi", "navi.ini", NULL);
 }
 
-static NaviPlace *
-read_place (GKeyFile *kf, const char *group)
+NaviPlace *
+navi_settings_read_place (GKeyFile *kf, const char *group)
 {
   if (!g_key_file_has_group (kf, group))
     return NULL;
@@ -38,8 +38,8 @@ saved_free (NaviSaved *saved)
   g_free (saved);
 }
 
-static void
-write_place (GKeyFile *kf, const char *group, const NaviPlace *p)
+void
+navi_settings_write_place (GKeyFile *kf, const char *group, const NaviPlace *p)
 {
   if (!p || !p->name || !*p->name)
     return;
@@ -103,8 +103,8 @@ navi_settings_load (void)
   s->avoid_ferries = g_key_file_get_boolean (kf, "route", "avoid-ferries", NULL);
   s->vehicle = CLAMP (g_key_file_get_integer (kf, "route", "vehicle", NULL), 0, NAVI_VEHICLE_MOTORBIKE);
   s->units = CLAMP (g_key_file_get_integer (kf, "general", "units", NULL), 0, NAVI_UNITS_MI);
-  s->home = read_place (kf, "home");
-  s->work = read_place (kf, "work");
+  s->home = navi_settings_read_place (kf, "home");
+  s->work = navi_settings_read_place (kf, "work");
   if (g_key_file_has_key (kf, "map", "last-lat", NULL)) {
     s->have_last = TRUE;
     s->last_lat = g_key_file_get_double (kf, "map", "last-lat", NULL);
@@ -113,13 +113,13 @@ navi_settings_load (void)
   /* a bad entry (no name: an older build saved a nameless place) is skipped, the rest kept */
   for (int i = 0; i < RECENT_MAX * 2 && s->recent->len < RECENT_MAX; i++) {
     g_autofree char *group = g_strdup_printf ("recent-%d", i);
-    NaviPlace *p = read_place (kf, group);
+    NaviPlace *p = navi_settings_read_place (kf, group);
     if (p)
       g_ptr_array_add (s->recent, p);
   }
   for (int i = 0; i < SAVED_MAX; i++) {
     g_autofree char *group = g_strdup_printf ("saved-%d", i);
-    NaviPlace *p = read_place (kf, group);
+    NaviPlace *p = navi_settings_read_place (kf, group);
     if (!p)
       continue;
     NaviSaved *saved = g_new0 (NaviSaved, 1);
@@ -156,16 +156,16 @@ navi_settings_flush (NaviSettings *s)
   }
   if (s->units != NAVI_UNITS_AUTO)
     g_key_file_set_integer (kf, "general", "units", s->units);
-  write_place (kf, "home", s->home);
-  write_place (kf, "work", s->work);
+  navi_settings_write_place (kf, "home", s->home);
+  navi_settings_write_place (kf, "work", s->work);
   for (guint i = 0; i < s->recent->len; i++) {
     g_autofree char *group = g_strdup_printf ("recent-%u", i);
-    write_place (kf, group, s->recent->pdata[i]);
+    navi_settings_write_place (kf, group, s->recent->pdata[i]);
   }
   for (guint i = 0; i < s->saved->len; i++) {
     NaviSaved *saved = s->saved->pdata[i];
     g_autofree char *group = g_strdup_printf ("saved-%u", i);
-    write_place (kf, group, saved->place);
+    navi_settings_write_place (kf, group, saved->place);
     if (saved->label)
       g_key_file_set_string (kf, group, "label", saved->label);
   }

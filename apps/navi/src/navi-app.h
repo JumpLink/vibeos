@@ -105,6 +105,7 @@ typedef struct {
   GtkWidget *back;          /* the unseen "Back" the shell's back gesture presses while there is a route or a card */
   GPtrArray *routes;        /* NaviRoute, best first */
   guint selected;
+  gboolean routes_approx;   /* asked from a guess (no fix yet): asked again at the first fix */
   GCancellable *route_cancel;
   GCancellable *place_cancel; /* the drive to the place card's place, asked for its time and length */
   NaviGuidance *guidance;
