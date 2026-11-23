@@ -4,6 +4,9 @@ add_project_arguments('-DNS_VERSION="@0@"'.format(meson.project_version()), lang
 # the keyring helper the pattern dialog runs, where this project installs it
 add_project_arguments('-DNS_REKEY="@0@"'.format(get_option('prefix') / get_option('libexecdir') / 'vibeos-keyring-rekey'),
                       language: 'c')
+# and the helper that sets the new password (through pkexec)
+add_project_arguments('-DNS_SET_PASSWORD="@0@"'.format(get_option('prefix') / get_option('libexecdir') /
+                                                       'vibeos-set-own-password'), language: 'c')
 
 gnome = import('gnome')
 cc = meson.get_compiler('c')
@@ -45,6 +48,18 @@ test('monitors', executable('test-monitors', 'tests/test-monitors.c', link_with:
 install_data('data/vibeos.Settings.desktop', install_dir: get_option('datadir') / 'applications')
 install_data('data/vibeos.Settings.svg', install_dir: get_option('datadir') / 'icons' / 'hicolor' / 'scalable' / 'apps')
 install_data('data/vibeos-keyring-rekey', install_dir: get_option('libexecdir'), install_mode: 'rwxr-xr-x')
+# Set PIN / Set pattern: the helper that changes the user's own password after checking the current one, run through
+# pkexec without a prompt for the active local session only (see src/vibeos-set-own-password.c), and its PAM service
+# (in libpam's vendor directory: an administrator's /etc/pam.d/vibeos-set-own-password comes first)
+executable('vibeos-set-own-password', 'src/vibeos-set-own-password.c', dependencies: cc.find_library('pam'),
+           install: true, install_dir: get_option('libexecdir'))
+policy = configuration_data()
+policy.set('libexecdir', get_option('prefix') / get_option('libexecdir'))
+configure_file(input: 'data/org.vibeos.set-own-password.policy.in', output: 'org.vibeos.set-own-password.policy',
+               configuration: policy, install_dir: get_option('datadir') / 'polkit-1' / 'actions')
+install_data('data/50-vibeos-set-own-password.rules', install_dir: get_option('datadir') / 'polkit-1' / 'rules.d')
+install_data('data/vibeos-set-own-password.pam', rename: 'vibeos-set-own-password',
+             install_dir: get_option('prefix') / 'lib' / 'pam.d')
 # D-Bus activation (DBusActivatable=true): whatever opens a page through GApplication's "launch-panel" action,
 # GNOME's way of opening a Settings panel, starts the app when it is not running
 service = configuration_data()
