@@ -1,6 +1,9 @@
 /* navi-geo: see navi-geo.h. */
 #include "navi-geo.h"
 
+#include <glib/gi18n.h>
+#include <langinfo.h>
+#include <locale.h>
 #include <math.h>
 #include <string.h>
 
@@ -206,6 +209,38 @@ navi_format_uses_miles (void)
 #define METRES_PER_MILE 1609.344
 #define FEET_PER_METRE  3.2808399
 
+/* the user's decimal separator ("," in German): the app's own LC_NUMERIC stays "C" (navi-main.c), so it is read from
+ * the environment's */
+static const char *
+decimal_point (void)
+{
+  static char *point;
+  if (!point) {
+    locale_t user = newlocale (LC_NUMERIC_MASK, "", (locale_t) 0);
+    const char *radix = user ? nl_langinfo_l (RADIXCHAR, user) : NULL;
+    point = g_strdup (radix && *radix ? radix : ".");
+    if (user)
+      freelocale (user);
+  }
+  return point;
+}
+
+/* "%.1f" of v with the user's decimal separator */
+static char *
+one_decimal (double v)
+{
+  char buf[G_ASCII_DTOSTR_BUF_SIZE];
+  g_ascii_formatd (buf, sizeof buf, "%.1f", v);
+  const char *point = decimal_point ();
+  if (!strcmp (point, "."))
+    return g_strdup (buf);
+  char *dot = strchr (buf, '.');
+  if (!dot)
+    return g_strdup (buf);
+  *dot = '\0';
+  return g_strconcat (buf, point, dot + 1, NULL);
+}
+
 void
 navi_format_distance_parts (double m, char **number, const char **unit)
 {
@@ -218,7 +253,7 @@ navi_format_distance_parts (double m, char **number, const char **unit)
       *number = g_strdup_printf ("%ld", MAX (50L, lround (m * FEET_PER_METRE / 50) * 50));
       *unit = "ft";
     } else if (mi < 9.95) {
-      *number = g_strdup_printf ("%.1f", mi);
+      *number = one_decimal (mi);
       *unit = "mi";
     } else {
       *number = g_strdup_printf ("%ld", lround (mi));
@@ -232,7 +267,7 @@ navi_format_distance_parts (double m, char **number, const char **unit)
     *number = g_strdup_printf ("%ld", v);
     *unit = "m";
   } else if (m < 9950) {
-    *number = g_strdup_printf ("%.1f", m / 1000);
+    *number = one_decimal (m / 1000);
     *unit = "km";
   } else {
     *number = g_strdup_printf ("%ld", lround (m / 1000));
@@ -254,10 +289,11 @@ navi_format_duration (double seconds)
 {
   long min = MAX (1L, lround (seconds / 60));
   if (min < 60)
-    return g_strdup_printf ("%ld min", min);
+    return g_strdup_printf (_("%ld min"), min);
   if (min % 60 == 0)
-    return g_strdup_printf ("%ld h", min / 60);
-  return g_strdup_printf ("%ld h %ld min", min / 60, min % 60);
+    return g_strdup_printf (_("%ld h"), min / 60);
+  /* TRANSLATORS: hours and minutes, "1 h 37 min" */
+  return g_strdup_printf (_("%ld h %ld min"), min / 60, min % 60);
 }
 
 static gboolean clock_24h = TRUE;

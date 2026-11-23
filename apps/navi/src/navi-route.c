@@ -521,9 +521,10 @@ navi_route_request_async (const NaviRouteRequest *rq, GCancellable *cancellable,
     json_builder_end_object (b);
     json_builder_end_object (b);
   }
-  g_debug ("route: %s%s%s%s, %u alternates%s", costing, rq->avoid_tolls ? ", no tolls" : "",
+  g_debug ("route: %s%s%s%s, %u alternates%s, in %s", costing, rq->avoid_tolls ? ", no tolls" : "",
            rq->avoid_highways ? ", no highways" : "", rq->avoid_ferries ? ", no ferries" : "",
-           rq->have_via ? 0 : rq->alternates, rq->miles ? ", miles" : "");
+           rq->have_via ? 0 : rq->alternates, rq->miles ? ", miles" : "",
+           rq->language ? rq->language : navi_route_language ());
   /* the lengths are measured on the shape (parse_trip), so the units only change what is said */
   json_builder_set_member_name (b, "units");
   json_builder_add_string_value (b, rq->miles ? "miles" : "kilometers");

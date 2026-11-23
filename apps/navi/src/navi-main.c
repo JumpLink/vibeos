@@ -123,7 +123,7 @@ add_back_button (Navi *n)
 {
   GtkWidget *label = gtk_label_new (NULL);
   n->back = vibeos_pressable_new (label);
-  gtk_accessible_update_property (GTK_ACCESSIBLE (n->back), GTK_ACCESSIBLE_PROPERTY_LABEL, "Back", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (n->back), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Back"), -1);
   gtk_widget_set_size_request (n->back, 1, 1);
   gtk_widget_set_halign (n->back, GTK_ALIGN_START);
   gtk_widget_set_valign (n->back, GTK_ALIGN_START);
@@ -284,7 +284,12 @@ activate (GtkApplication *app, gpointer data)
 int
 main (int argc, char **argv)
 {
+  /* the user's language, but numbers in C's notation: printf's %f goes into the requests' JSON and URLs, MapLibre's
+   * parsing and the like, where a German "52,5" breaks them; the few decimals shown are written with the user's
+   * separator (navi-geo.c). GTK would set it all again from the environment. */
   setlocale (LC_ALL, "");
+  setlocale (LC_NUMERIC, "C");
+  gtk_disable_setlocale ();
   bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
   bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
   textdomain (GETTEXT_PACKAGE);

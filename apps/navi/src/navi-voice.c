@@ -280,6 +280,8 @@ find_model (NaviVoice *self, const char *language)
         found = g_steal_pointer (&path);
     }
   }
+  g_autofree char *name = found ? g_path_get_basename (found) : NULL;
+  g_debug ("voice: %s: %s", language, name ? name : "no Piper voice");
   g_hash_table_insert (self->models, g_strdup (language), found ? found : g_strdup (""));
   return found;
 #else

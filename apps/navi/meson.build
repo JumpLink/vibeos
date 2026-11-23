@@ -4,6 +4,7 @@ project('vibeos-navi', 'c', 'cpp', version: '0.1', meson_version: '>= 1.1',
 add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers', language: ['c', 'cpp'])
 
 fs = import('fs')
+i18n = import('i18n')
 
 # MapLibre Native, built and staged by maplibre/build-maplibre.sh: static archives, headers, and the
 # definitions and link line its core was built with
@@ -130,7 +131,10 @@ executable('vibeos-navi', 'src/navi-main.c', 'src/navi-window.c', 'src/navi-aler
                          voice_deps,
            install_rpath: '$ORIGIN/../lib/vibeos-navi',
            install: true)
-install_data('data/vibeos.Navi.desktop', install_dir: get_option('datadir') / 'applications')
+# the launcher's entry, its name and comment translated from po/
+i18n.merge_file(input: 'data/vibeos.Navi.desktop.in', output: 'vibeos.Navi.desktop', type: 'desktop', po_dir: 'po',
+                install: true, install_dir: get_option('datadir') / 'applications')
+subdir('po')
 install_data('data/vibeos.Navi.svg', install_dir: get_option('datadir') / 'icons' / 'hicolor' / 'scalable' / 'apps')
 # the points of interest's icons: Maki's (CC0), drawn on the markers by the app
 install_subdir('data/poi', install_dir: datadir)

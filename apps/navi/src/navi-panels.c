@@ -1304,6 +1304,7 @@ speeding_name (NaviSpeeding v)
   switch (v) {
   case NAVI_SPEEDING_AT_LIMIT: return _("At the limit");
   case NAVI_SPEEDING_PLUS_10: return mph ? _("5 mph over") : _("10 km/h over");
+  /* xgettext:no-c-format */
   case NAVI_SPEEDING_PERCENT_10: return _("10 % over");
   default: return mph ? _("3 mph over") : _("5 km/h over");
   }

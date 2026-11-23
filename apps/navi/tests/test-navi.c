@@ -519,6 +519,9 @@ main (int argc, char **argv)
 {
   g_setenv ("LANGUAGE", "en_US", TRUE);
   g_setenv ("LANG", "en_US.UTF-8", TRUE);
+  /* English's decimal point (navi_format_distance writes the user's) */
+  g_unsetenv ("LC_ALL");
+  g_unsetenv ("LC_NUMERIC");
   g_test_init (&argc, &argv, NULL);
   g_test_add_func ("/navi/geo", test_geo);
   g_test_add_func ("/navi/route/parse", test_route_parse);
