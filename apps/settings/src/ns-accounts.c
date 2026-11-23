@@ -2089,24 +2089,17 @@ add_account (GtkWidget *row, gpointer data)
 
 /* ---- an account's page: what it is used for, its servers, signing in again, removing it ---- */
 
-/* GOA's features in the order its account dialog lists them */
+/* What an account is used for, of what GOA offers, in the order its account dialog lists them: only what a VibeOS
+ * app takes from an account. Calendar and Contacts (and the Phone and Messages, through Contacts) read them from
+ * evolution-data-server's GOA module, Files from gvfs's; nothing here reads mail, chat, documents, music, photos,
+ * network resources, read-later lists, printers, maps or to-do lists from an account, so those are not shown. */
 static const struct {
   GoaProviderFeatures feature;
   const char         *prop, *label;
 } features[] = {
-  { GOA_PROVIDER_FEATURE_MAIL, "MailDisabled", "Mail" },
   { GOA_PROVIDER_FEATURE_CALENDAR, "CalendarDisabled", "Calendar" },
   { GOA_PROVIDER_FEATURE_CONTACTS, "ContactsDisabled", "Contacts" },
-  { GOA_PROVIDER_FEATURE_CHAT, "ChatDisabled", "Chat" },
-  { GOA_PROVIDER_FEATURE_DOCUMENTS, "DocumentsDisabled", "Documents" },
-  { GOA_PROVIDER_FEATURE_MUSIC, "MusicDisabled", "Music" },
-  { GOA_PROVIDER_FEATURE_PHOTOS, "PhotosDisabled", "Photos" },
   { GOA_PROVIDER_FEATURE_FILES, "FilesDisabled", "Files" },
-  { GOA_PROVIDER_FEATURE_TICKETING, "TicketingDisabled", "Network resources" },
-  { GOA_PROVIDER_FEATURE_READ_LATER, "ReadLaterDisabled", "Read later" },
-  { GOA_PROVIDER_FEATURE_PRINTERS, "PrintersDisabled", "Printers" },
-  { GOA_PROVIDER_FEATURE_MAPS, "MapsDisabled", "Maps" },
-  { GOA_PROVIDER_FEATURE_TODO, "TodoDisabled", "To do" },
 };
 
 typedef struct {
@@ -2296,7 +2289,7 @@ acct_fill (Acct *a)
   if (attention) {
     GtkWidget *g = ns_group (a->body, NULL);
     GtkWidget *r = ns_row (g, "dialog-warning-symbolic", "Sign in again",
-                           "The account could not sign in. Its mail, calendars and contacts wait until it does.");
+                           "The account could not sign in. Its calendars, contacts and files wait until it does.");
     g_object_set_data_full (G_OBJECT (r), "ns-path", g_strdup (a->path), g_free);
     ns_row_on_activate (r, sign_in_again, NULL);
   }
@@ -2488,7 +2481,7 @@ ns_page_accounts (GtkWidget *row, gpointer data)
   GtkWidget *g = ns_group (c, "Online accounts");
   ns_group_set_visible (g, FALSE);
   g_object_set_data (G_OBJECT (page), "ns-accounts", g);
-  GtkWidget *none = ns_note (c, "No online accounts yet. Add one to get its mail, calendars and contacts here.");
+  GtkWidget *none = ns_note (c, "No online accounts yet. Add one to get its calendars, contacts and files here.");
   gtk_widget_set_visible (none, FALSE);
   g_object_set_data (G_OBJECT (g), "ns-none", none);
   GtkWidget *a = ns_group (c, NULL);
