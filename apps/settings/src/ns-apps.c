@@ -972,14 +972,31 @@ static const Kind kinds[] = {
   { "Photos", photos },
 };
 
+/* The app picked becomes the default for the kind's types it opens, as GNOME Settings does it (its
+ * extra_type_filter): a music player that plays no FLAC is not made FLAC's. The browser is the exception: it is
+ * also made the handler of about: and of the schemes nothing else handles, as GNOME's is. */
 static void
 default_picked (GtkWidget *row, guint i, gpointer kind)
 {
   const Kind *k = kind;
   GPtrArray *apps = g_object_get_data (G_OBJECT (row), "ns-apps");
   GAppInfo *app = apps->pdata[i];
+  const char *const *supported = g_app_info_get_supported_types (app);
   for (guint t = 0; k->types[t]; t++)
-    g_app_info_set_as_default_for_type (app, k->types[t], NULL);
+    if (k->types == web || (supported && g_strv_contains (supported, k->types[t])))
+      g_app_info_set_as_default_for_type (app, k->types[t], NULL);
+}
+
+/* the default for the kind: its first type's, or the first of the others that has one */
+static GAppInfo *
+default_for_kind (const Kind *k)
+{
+  for (guint t = 0; k->types[t]; t++) {
+    GAppInfo *def = g_app_info_get_default_for_type (k->types[t], FALSE);
+    if (def)
+      return def;
+  }
+  return NULL;
 }
 
 void
@@ -989,21 +1006,28 @@ ns_page_default_apps (GtkWidget *row, gpointer data)
   NsPage *page = ns_page_new ("Default apps", &c);
   GtkWidget *g = ns_group (c, NULL);
   for (guint k = 0; k < G_N_ELEMENTS (kinds); k++) {
-    GList *all = g_app_info_get_all_for_type (kinds[k].types[0]);
-    g_autoptr (GAppInfo) def = g_app_info_get_default_for_type (kinds[k].types[0], FALSE);
+    g_autoptr (GAppInfo) def = default_for_kind (&kinds[k]);
     GPtrArray *apps = g_ptr_array_new_with_free_func (g_object_unref);
     g_autoptr (GPtrArray) labels = g_ptr_array_new ();
+    g_autoptr (GHashTable) seen = g_hash_table_new (g_str_hash, g_str_equal);
     guint sel = G_MAXUINT;
-    for (GList *l = all; l; l = l->next) {
-      if (!g_app_info_should_show (l->data))
-        continue;
-      if (def && g_app_info_equal (def, l->data))
-        sel = apps->len;
-      g_ptr_array_add (labels, (gpointer) g_app_info_get_display_name (l->data));
-      g_ptr_array_add (apps, g_object_ref (l->data));
+    /* the apps that open any of the kind's types (a player of MP3s alone is a music player too), once each */
+    for (guint t = 0; kinds[k].types[t]; t++) {
+      GList *all = g_app_info_get_all_for_type (kinds[k].types[t]);
+      for (GList *l = all; l; l = l->next) {
+        const char *id = g_app_info_get_id (l->data);
+        if (!g_app_info_should_show (l->data) || !id || g_hash_table_contains (seen, id))
+          continue;
+        if (def && g_app_info_equal (def, l->data))
+          sel = apps->len;
+        g_ptr_array_add (labels, (gpointer) g_app_info_get_display_name (l->data));
+        g_ptr_array_add (apps, g_object_ref (l->data));
+        /* the id stays valid: the app is in `apps` */
+        g_hash_table_add (seen, (gpointer) g_app_info_get_id (apps->pdata[apps->len - 1]));
+      }
+      g_list_free_full (all, g_object_unref);
     }
     g_ptr_array_add (labels, NULL);
-    g_list_free_full (all, g_object_unref);
     GtkWidget *r;
     if (apps->len) {
       r = ns_row_pick (g, kinds[k].title, (const char *const *) labels->pdata, sel, default_picked,
