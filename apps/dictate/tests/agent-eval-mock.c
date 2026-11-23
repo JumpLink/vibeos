@@ -6,13 +6,16 @@
  *  - the stores the tools read, written where the apps keep them: the Dialer's calls.db and Messaging's bugle_db in
  *    XDG_DATA_HOME, the contacts and the events in EDS's built-in address book and calendar (EDS started on the
  *    private bus by D-Bus activation, its files in the private XDG directories);
- *  - the services the tools ask, stood in for on the private bus: NetworkManager, BlueZ and UPower (as on the
- *    system bus), the Clock's alarms and timers and the shell's open apps (on the session bus). Turning Wi-Fi or
- *    Bluetooth off, setting an alarm, starting a timer change only these. */
+ *  - the services the tools ask, stood in for on the private bus: NetworkManager, BlueZ, UPower and ModemManager (as
+ *    on the system bus), the Clock's alarms and timers and the shell's open apps and notifications (on the session
+ *    bus). Turning Wi-Fi or Bluetooth off, setting or removing an alarm or a timer change only these;
+ *  - the Weather app's last place and forecast, in the private cache directory, so that the weather is read from
+ *    there and never fetched. */
 #include "agent-eval-mock.h"
 
 #include <glib/gstdio.h>
 #include <libebook/libebook.h>
+#include <time.h>
 #include <libecal/libecal.h>
 #include <sqlite3.h>
 #include <string.h>
@@ -22,9 +25,12 @@ static JsonObject *fixture;     /* the fixtures' "phone" */
 /* ---------------- the services ---------------- */
 
 static gboolean wifi_on, bt_on;
-static GVariant *alarms;        /* aa{sv} */
+static GPtrArray *alarms;       /* GVariant a{sv} */
 static GPtrArray *timers;       /* GVariant a{sv} */
+static guint32 next_id;         /* the next alarm's or timer's */
 static guint launched;
+
+static void write_weather (JsonObject *weather);
 
 static const char NM_XML[] =
   "<node>"
@@ -35,6 +41,7 @@ static const char NM_XML[] =
   "  <property name='ActiveConnections' type='ao' access='read'/>"
   "  <property name='Connectivity' type='u' access='read'/>"
   "  <property name='State' type='u' access='read'/>"
+  "  <property name='WwanEnabled' type='b' access='read'/>"
   " </interface>"
   " <interface name='org.freedesktop.NetworkManager.Connection.Active'>"
   "  <property name='Type' type='s' access='read'/>"
@@ -50,6 +57,13 @@ static const char BLUEZ_XML[] =
   " </interface>"
   " <interface name='org.bluez.Adapter1'>"
   "  <property name='Powered' type='b' access='readwrite'/>"
+  " </interface>"
+  "</node>";
+
+static const char MM_XML[] =
+  "<node>"
+  " <interface name='org.freedesktop.DBus.ObjectManager'>"
+  "  <method name='GetManagedObjects'><arg type='a{oa{sa{sv}}}' direction='out'/></method>"
   " </interface>"
   "</node>";
 
@@ -69,12 +83,14 @@ static const char CLOCK_XML[] =
   " <interface name='vibeos.Clock.Alarms'>"
   "  <method name='GetAlarms'><arg type='aa{sv}' direction='out'/></method>"
   "  <method name='AddAlarm'><arg type='a{sv}' direction='in'/><arg type='u' direction='out'/></method>"
+  "  <method name='DeleteAlarm'><arg type='u' direction='in'/></method>"
   " </interface>"
   " <interface name='vibeos.Clock.Timers'>"
   "  <method name='GetTimers'><arg type='aa{sv}' direction='out'/></method>"
   "  <method name='AddTimer'><arg type='x' direction='in'/><arg type='s' direction='in'/>"
   "   <arg type='b' direction='in'/><arg type='u' direction='out'/></method>"
   "  <method name='Start'><arg type='u' direction='in'/></method>"
+  "  <method name='Delete'><arg type='u' direction='in'/></method>"
   " </interface>"
   "</node>";
 
@@ -82,6 +98,7 @@ static const char SHELL_XML[] =
   "<node>"
   " <interface name='vibeos.Shell'>"
   "  <method name='RunningApps'><arg type='a(ss)' direction='out'/></method>"
+  "  <method name='Notifications'><arg type='a(ssssx)' direction='out'/></method>"
   "  <method name='Launch'><arg type='s' direction='in'/><arg type='(dddd)' direction='in'/>"
   "   <arg type='s' direction='in'/></method>"
   " </interface>"
@@ -143,7 +160,50 @@ nm_get (GDBusConnection *c, const char *sender, const char *path, const char *in
     }
   if (!strcmp (property, "Connectivity"))
     return g_variant_new_uint32 (4);
+  if (!strcmp (property, "WwanEnabled"))
+    return g_variant_new_boolean (member_bool (member_object (fixture, "mobile"), "data_on", TRUE));
   return g_variant_new_uint32 (70);
+}
+
+/* the modem, as ModemManager has it: with what names the phone and its SIM (the number, the IMEI) among its
+ * properties, as a real modem's, so that the test set sees that the tool never reads them */
+static void
+mm_call (GDBusConnection *c, const char *sender, const char *path, const char *interface, const char *method,
+         GVariant *parameters, GDBusMethodInvocation *invocation, gpointer data)
+{
+  JsonObject *m = member_object (fixture, "mobile");
+  GVariantBuilder objects, modem, gpp, interfaces;
+  const char *numbers[] = { member_string (m, "own_number", ""), NULL };
+
+  g_variant_builder_init (&objects, G_VARIANT_TYPE ("a{oa{sa{sv}}}"));
+  if (m)
+    {
+      g_variant_builder_init (&modem, G_VARIANT_TYPE_VARDICT);
+      g_variant_builder_add (&modem, "{sv}", "State", g_variant_new_int32 (member_int (m, "state", 8)));
+      g_variant_builder_add (&modem, "{sv}", "SignalQuality",
+                             g_variant_new ("(ub)", (guint32) member_int (m, "signal", 60), TRUE));
+      g_variant_builder_add (&modem, "{sv}", "AccessTechnologies",
+                             g_variant_new_uint32 (member_int (m, "technology", 1 << 14)));
+      g_variant_builder_add (&modem, "{sv}", "Sim",
+                             g_variant_new_object_path (member_bool (m, "sim", TRUE)
+                                                        ? "/org/freedesktop/ModemManager1/SIM/0" : "/"));
+      g_variant_builder_add (&modem, "{sv}", "OwnNumbers", g_variant_new_strv (numbers, -1));
+      g_variant_builder_add (&modem, "{sv}", "EquipmentIdentifier",
+                             g_variant_new_string (member_string (m, "imei", "")));
+      g_variant_builder_init (&gpp, G_VARIANT_TYPE_VARDICT);
+      g_variant_builder_add (&gpp, "{sv}", "OperatorName", g_variant_new_string (member_string (m, "operator", "")));
+      g_variant_builder_add (&gpp, "{sv}", "RegistrationState",
+                             g_variant_new_uint32 (member_bool (m, "roaming", FALSE) ? 5 : 1));
+      g_variant_builder_add (&gpp, "{sv}", "Imei", g_variant_new_string (member_string (m, "imei", "")));
+      g_variant_builder_init (&interfaces, G_VARIANT_TYPE ("a{sa{sv}}"));
+      g_variant_builder_add (&interfaces, "{s@a{sv}}", "org.freedesktop.ModemManager1.Modem",
+                             g_variant_builder_end (&modem));
+      g_variant_builder_add (&interfaces, "{s@a{sv}}", "org.freedesktop.ModemManager1.Modem.Modem3gpp",
+                             g_variant_builder_end (&gpp));
+      g_variant_builder_add (&objects, "{o@a{sa{sv}}}", "/org/freedesktop/ModemManager1/Modem/0",
+                             g_variant_builder_end (&interfaces));
+    }
+  g_dbus_method_invocation_return_value (invocation, g_variant_new ("(a{oa{sa{sv}}})", &objects));
 }
 
 static gboolean
@@ -216,52 +276,123 @@ upower_get (GDBusConnection *c, const char *sender, const char *path, const char
   return g_variant_new_boolean (TRUE);
 }
 
+/* a list's entries, as an aa{sv} */
+static GVariant *
+listed (GPtrArray *list)
+{
+  GVariantBuilder all;
+
+  g_variant_builder_init (&all, G_VARIANT_TYPE ("aa{sv}"));
+  for (guint i = 0; i < list->len; i++)
+    g_variant_builder_add_value (&all, list->pdata[i]);
+  return g_variant_builder_end (&all);
+}
+
+/* the entry with that id gone from a list; FALSE when there is none */
+static gboolean
+remove_id (GPtrArray *list, guint32 id)
+{
+  for (guint i = 0; i < list->len; i++)
+    {
+      guint32 has = 0;
+      g_variant_lookup (list->pdata[i], "id", "u", &has);
+      if (has == id)
+        {
+          g_ptr_array_remove_index (list, i);
+          return TRUE;
+        }
+    }
+  return FALSE;
+}
+
+/* now on CLOCK_BOOTTIME, in ms: the Clock's timers count on it */
+static gint64
+boottime_ms (void)
+{
+  struct timespec now;
+
+  clock_gettime (CLOCK_BOOTTIME, &now);
+  return (gint64) now.tv_sec * 1000 + now.tv_nsec / 1000000;
+}
+
+static GVariant *
+timer_new (guint32 id, guint32 state, gint64 length, gint64 remaining, gint64 started, const char *label)
+{
+  return g_variant_ref_sink (g_variant_new_parsed (
+    "{'id': <%u>, 'state': <%u>, 'length': <%x>, 'total-length': <%x>, 'remaining': <%x>, 'last-start': <%x>,"
+    " 'label': <%s>}", id, state, length, length, remaining, started, label));
+}
+
 static void
 clock_call (GDBusConnection *c, const char *sender, const char *path, const char *interface, const char *method,
             GVariant *parameters, GDBusMethodInvocation *invocation, gpointer data)
 {
   if (!strcmp (method, "GetAlarms"))
-    g_dbus_method_invocation_return_value (invocation, g_variant_new_tuple (&alarms, 1));
+    g_dbus_method_invocation_return_value (invocation, g_variant_new_tuple ((GVariant *[]) { listed (alarms) }, 1));
   else if (!strcmp (method, "AddAlarm"))
     {
-      GVariantBuilder all;
-      GVariantIter iter;
-      GVariant *a;
       g_autoptr (GVariant) added = g_variant_get_child_value (parameters, 0);
+      GVariantDict alarm;
+      guint32 id = next_id++;
 
-      g_variant_builder_init (&all, G_VARIANT_TYPE ("aa{sv}"));
-      g_variant_iter_init (&iter, alarms);
-      while ((a = g_variant_iter_next_value (&iter)))
-        {
-          g_variant_builder_add_value (&all, a);
-          g_variant_unref (a);
-        }
-      g_variant_builder_add_value (&all, added);
-      g_variant_unref (alarms);
-      alarms = g_variant_ref_sink (g_variant_builder_end (&all));
+      g_variant_dict_init (&alarm, added);
+      g_variant_dict_insert (&alarm, "id", "u", id);
+      g_ptr_array_add (alarms, g_variant_ref_sink (g_variant_dict_end (&alarm)));
       g_message ("mock: an alarm added");
-      g_dbus_method_invocation_return_value (invocation, g_variant_new ("(u)", 100 + g_variant_n_children (alarms)));
+      g_dbus_method_invocation_return_value (invocation, g_variant_new ("(u)", id));
+    }
+  else if (!strcmp (method, "DeleteAlarm") || !strcmp (method, "Delete"))
+    {
+      guint32 id;
+
+      g_variant_get (parameters, "(u)", &id);
+      if (!remove_id (strcmp (method, "Delete") ? alarms : timers, id))
+        {
+          g_dbus_method_invocation_return_dbus_error (invocation, "vibeos.Clock.Error.NotFound", "No such id");
+          return;
+        }
+      g_message ("mock: %s removed", strcmp (method, "Delete") ? "an alarm" : "a timer");
+      g_dbus_method_invocation_return_value (invocation, NULL);
     }
   else if (!strcmp (method, "GetTimers"))
-    {
-      GVariantBuilder all;
-      g_variant_builder_init (&all, G_VARIANT_TYPE ("aa{sv}"));
-      for (guint i = 0; i < timers->len; i++)
-        g_variant_builder_add_value (&all, timers->pdata[i]);
-      g_dbus_method_invocation_return_value (invocation, g_variant_new ("(aa{sv})", &all));
-    }
+    g_dbus_method_invocation_return_value (invocation, g_variant_new_tuple ((GVariant *[]) { listed (timers) }, 1));
   else if (!strcmp (method, "AddTimer"))
     {
       gint64 length;
       const char *label;
       gboolean once;
+      guint32 id = next_id++;
 
       g_variant_get (parameters, "(x&sb)", &length, &label, &once);
-      g_ptr_array_add (timers, g_variant_ref_sink (g_variant_new_parsed (
-        "{'id': <%u>, 'state': <uint32 4>, 'length': <%x>, 'remaining': <%x>, 'label': <%s>}", timers->len + 1, length,
-        length, label)));
+      /* 4: reset, until it is started */
+      g_ptr_array_add (timers, timer_new (id, 4, length, length, 0, label));
       g_message ("mock: a timer added");
-      g_dbus_method_invocation_return_value (invocation, g_variant_new ("(u)", timers->len));
+      g_dbus_method_invocation_return_value (invocation, g_variant_new ("(u)", id));
+    }
+  else if (!strcmp (method, "Start"))
+    {
+      guint32 id;
+
+      g_variant_get (parameters, "(u)", &id);
+      for (guint i = 0; i < timers->len; i++)
+        {
+          guint32 has = 0;
+          gint64 length = 0, remaining = 0;
+          const char *label = "";
+
+          g_variant_lookup (timers->pdata[i], "id", "u", &has);
+          if (has != id)
+            continue;
+          g_variant_lookup (timers->pdata[i], "length", "x", &length);
+          g_variant_lookup (timers->pdata[i], "remaining", "x", &remaining);
+          g_variant_lookup (timers->pdata[i], "label", "&s", &label);
+          {
+            GVariant *started = timer_new (id, 1, length, remaining, boottime_ms (), label);
+            g_variant_unref (timers->pdata[i]);
+            timers->pdata[i] = started;
+          }
+        }
+      g_dbus_method_invocation_return_value (invocation, NULL);
     }
   else
     g_dbus_method_invocation_return_value (invocation, NULL);
@@ -283,6 +414,23 @@ shell_call (GDBusConnection *c, const char *sender, const char *path, const char
           g_variant_builder_add (&apps, "(ss)", member_string (app, "id", ""), member_string (app, "name", ""));
         }
       g_dbus_method_invocation_return_value (invocation, g_variant_new ("(a(ss))", &apps));
+      return;
+    }
+  if (!strcmp (method, "Notifications"))
+    {
+      GVariantBuilder all;
+      JsonArray *list = member_array (fixture, "notifications");
+      gint64 now = g_get_real_time () / G_USEC_PER_SEC;
+
+      g_variant_builder_init (&all, G_VARIANT_TYPE ("a(ssssx)"));
+      for (guint i = 0; list && i < json_array_get_length (list); i++)
+        {
+          JsonObject *n = json_array_get_object_element (list, i);
+          g_variant_builder_add (&all, "(ssssx)", member_string (n, "app_id", ""), member_string (n, "app", ""),
+                                 member_string (n, "title", ""), member_string (n, "body", ""),
+                                 now - member_int (n, "minutes_ago", 0) * 60);
+        }
+      g_dbus_method_invocation_return_value (invocation, g_variant_new ("(a(ssssx))", &all));
       return;
     }
   launched++;
@@ -347,27 +495,13 @@ mock_services_start (void)
   g_autoptr (GDBusConnection) system = session ? g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, &error) : NULL;
   static const GDBusInterfaceVTable nm = { NULL, nm_get, nm_set }, bluez_om = { bluez_call },
                                     bluez_adapter = { NULL, bluez_get, bluez_set }, upower = { NULL, upower_get },
-                                    clock = { clock_call }, shell = { shell_call };
-  JsonArray *list = member_array (fixture, "alarms");
-  GVariantBuilder all;
+                                    clock = { clock_call }, shell = { shell_call }, mm = { mm_call };
 
   if (!system)
     g_error ("mock: no bus: %s", error->message);
-  wifi_on = member_bool (member_object (fixture, "wifi"), "on", TRUE);
-  bt_on = member_bool (member_object (fixture, "bluetooth"), "on", TRUE);
-  g_variant_builder_init (&all, G_VARIANT_TYPE ("aa{sv}"));
-  for (guint i = 0; list && i < json_array_get_length (list); i++)
-    {
-      JsonObject *a = json_array_get_object_element (list, i);
-      int hour = 0, minute = 0;
-
-      sscanf (member_string (a, "time", "7:00"), "%d:%d", &hour, &minute);
-      g_variant_builder_add_value (&all, g_variant_new_parsed (
-        "{'id': <%u>, 'hour': <%i>, 'minute': <%i>, 'days': <%u>, 'enabled': <%b>, 'label': <%s>}", i + 1, hour,
-        minute, days_of (member_array (a, "days")), member_bool (a, "on", TRUE), member_string (a, "label", "")));
-    }
-  alarms = g_variant_ref_sink (g_variant_builder_end (&all));
+  alarms = g_ptr_array_new_with_free_func ((GDestroyNotify) g_variant_unref);
   timers = g_ptr_array_new_with_free_func ((GDestroyNotify) g_variant_unref);
+  mock_services_reset ();
 
   serve (system, NM_XML, "/org/freedesktop/NetworkManager",
          (const char *const[]) { "org.freedesktop.NetworkManager", NULL }, &nm);
@@ -377,6 +511,8 @@ mock_services_start (void)
   serve (system, BLUEZ_XML, "/org/bluez/hci0", (const char *const[]) { "org.bluez.Adapter1", NULL }, &bluez_adapter);
   serve (system, UPOWER_XML, "/org/freedesktop/UPower/devices/DisplayDevice",
          (const char *const[]) { "org.freedesktop.UPower.Device", NULL }, &upower);
+  serve (system, MM_XML, "/org/freedesktop/ModemManager1",
+         (const char *const[]) { "org.freedesktop.DBus.ObjectManager", NULL }, &mm);
   serve (session, CLOCK_XML, "/vibeos/Clock/Alarms", (const char *const[]) { "vibeos.Clock.Alarms", NULL }, &clock);
   serve (session, CLOCK_XML, "/vibeos/Clock/Timers", (const char *const[]) { "vibeos.Clock.Timers", NULL }, &clock);
   serve (session, SHELL_XML, "/vibeos/Shell", (const char *const[]) { "vibeos.Shell", NULL }, &shell);
@@ -384,6 +520,7 @@ mock_services_start (void)
   own (system, "org.freedesktop.NetworkManager");
   own (system, "org.bluez");
   own (system, "org.freedesktop.UPower");
+  own (system, "org.freedesktop.ModemManager1");
   own (session, "vibeos.Clock.Alarms");
   own (session, "vibeos.Shell");
   /* both connections stay open for the rest of the run */
@@ -394,9 +531,36 @@ mock_services_start (void)
 void
 mock_services_reset (void)
 {
-  /* each case starts from the fixtures' state */
+  JsonArray *list = member_array (fixture, "alarms");
+
+  /* each case starts from the fixtures' state: Wi-Fi, Bluetooth, the alarms and the timers, and a forecast the
+   * Weather app has just fetched (a long run outlasts the half hour Agent takes one to be new) */
+  write_weather (member_object (fixture, "weather"));
   wifi_on = member_bool (member_object (fixture, "wifi"), "on", TRUE);
   bt_on = member_bool (member_object (fixture, "bluetooth"), "on", TRUE);
+  g_ptr_array_set_size (alarms, 0);
+  g_ptr_array_set_size (timers, 0);
+  next_id = 1;
+  for (guint i = 0; list && i < json_array_get_length (list); i++)
+    {
+      JsonObject *a = json_array_get_object_element (list, i);
+      int hour = 0, minute = 0;
+
+      sscanf (member_string (a, "time", "7:00"), "%d:%d", &hour, &minute);
+      g_ptr_array_add (alarms, g_variant_ref_sink (g_variant_new_parsed (
+        "{'id': <%u>, 'hour': <%i>, 'minute': <%i>, 'days': <%u>, 'enabled': <%b>, 'label': <%s>}", next_id++, hour,
+        minute, days_of (member_array (a, "days")), member_bool (a, "on", TRUE), member_string (a, "label", ""))));
+    }
+  list = member_array (fixture, "timers");
+  for (guint i = 0; list && i < json_array_get_length (list); i++)
+    {
+      JsonObject *t = json_array_get_object_element (list, i);
+      gint64 left = member_int (t, "minutes_left", 5) * 60000;
+      gboolean running = member_bool (t, "running", TRUE);
+
+      g_ptr_array_add (timers, timer_new (next_id++, running ? 1 : 2, member_int (t, "minutes", 10) * 60000, left,
+                                          running ? boottime_ms () : 0, member_string (t, "label", "")));
+    }
 }
 
 /* ---------------- the stores ---------------- */
@@ -624,6 +788,8 @@ write_contacts (ESourceRegistry *registry, JsonArray *contacts)
       e_contact_set (contact, E_CONTACT_FULL_NAME, member_string (c, "name", ""));
       if (json_object_has_member (c, "nickname"))
         e_contact_set (contact, E_CONTACT_NICKNAME, member_string (c, "nickname", ""));
+      if (json_object_has_member (c, "note"))
+        e_contact_set (contact, E_CONTACT_NOTE, member_string (c, "note", ""));
       for (guint j = 0; tels && j < json_array_get_length (tels); j++)
         {
           JsonObject *t = json_array_get_object_element (tels, j);
@@ -703,6 +869,74 @@ write_events (ESourceRegistry *registry, JsonArray *events)
         g_error ("fixtures: an event: %s", error->message);
       g_object_unref (comp);
     }
+}
+
+/* the Weather app's cache (apps/weather): the place it shows, and its forecast, fetched "just now", from yesterday on
+ * as Open-Meteo gives it with past_days=1 */
+static void
+write_weather (JsonObject *weather)
+{
+  g_autofree char *dir = g_build_filename (g_get_user_cache_dir (), "vibeos-launcher", NULL);
+  g_autofree char *place = NULL, *forecast = NULL, *at = NULL;
+  g_autoptr (JsonBuilder) b = json_builder_new ();
+  g_autoptr (JsonNode) root = NULL;
+  g_autoptr (GDateTime) now = g_date_time_new_now_local ();
+  JsonObject *current = member_object (weather, "now");
+  JsonArray *days = member_array (weather, "days");
+  const char *daily[] = { "weather_code", "temperature_2m_max", "temperature_2m_min",
+                          "precipitation_probability_max" };
+  const char *keys[] = { "code", "high", "low", "rain" };
+
+  if (!weather)
+    return;
+  g_mkdir_with_parents (dir, 0700);
+  at = g_build_filename (dir, "weather.json", NULL);
+  place = g_strdup_printf ("{\"lat\": %g, \"lon\": %g, \"place\": \"%s\"}",
+                           json_object_get_double_member (weather, "lat"), json_object_get_double_member (weather, "lon"),
+                           member_string (weather, "place", ""));
+  g_file_set_contents (at, place, -1, NULL);
+  json_builder_begin_object (b);
+  json_builder_set_member_name (b, "latitude");
+  json_builder_add_double_value (b, json_object_get_double_member (weather, "lat"));
+  json_builder_set_member_name (b, "longitude");
+  json_builder_add_double_value (b, json_object_get_double_member (weather, "lon"));
+  json_builder_set_member_name (b, "current");
+  json_builder_begin_object (b);
+  json_builder_set_member_name (b, "temperature_2m");
+  json_builder_add_double_value (b, member_int (current, "temperature", 10));
+  json_builder_set_member_name (b, "apparent_temperature");
+  json_builder_add_double_value (b, member_int (current, "feels_like", 8));
+  json_builder_set_member_name (b, "weather_code");
+  json_builder_add_int_value (b, member_int (current, "code", 3));
+  json_builder_set_member_name (b, "wind_speed_10m");
+  json_builder_add_double_value (b, member_int (current, "wind", 12));
+  json_builder_end_object (b);
+  json_builder_set_member_name (b, "daily");
+  json_builder_begin_object (b);
+  json_builder_set_member_name (b, "time");
+  json_builder_begin_array (b);
+  for (guint i = 0; days && i <= json_array_get_length (days); i++)
+    {
+      g_autoptr (GDateTime) day = g_date_time_add_days (now, (int) i - 1);
+      g_autofree char *date = g_date_time_format (day, "%Y-%m-%d");
+      json_builder_add_string_value (b, date);
+    }
+  json_builder_end_array (b);
+  for (guint k = 0; k < G_N_ELEMENTS (daily); k++)
+    {
+      json_builder_set_member_name (b, daily[k]);
+      json_builder_begin_array (b);
+      /* yesterday: as today */
+      for (guint i = 0; days && i <= json_array_get_length (days); i++)
+        json_builder_add_int_value (b, member_int (json_array_get_object_element (days, i ? i - 1 : 0), keys[k], 0));
+      json_builder_end_array (b);
+    }
+  json_builder_end_object (b);
+  json_builder_end_object (b);
+  root = json_builder_get_root (b);
+  forecast = json_to_string (root, FALSE);
+  g_free (at), at = g_build_filename (dir, "forecast.json", NULL);
+  g_file_set_contents (at, forecast, -1, NULL);
 }
 
 void
