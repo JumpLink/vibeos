@@ -89,6 +89,7 @@ typedef struct {
   NaviCamera flight_from;
   gint64 flight_t0;
   guint tick, recenter_source;
+  guint fix_stale;   /* no fix for a while: the speed is no longer known */
   gint64 last_frame_us;
   char **poi_layers;        /* the style's point-of-interest layers, for a tap */
   int poi_scale;            /* the scale their markers were drawn at */

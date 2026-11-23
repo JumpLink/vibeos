@@ -29,6 +29,8 @@
 #define CAR_DP           64
 #define PIN_W            34
 #define PIN_H            46
+#define BUBBLE_MARGIN    8  /* a time bubble from the map's free part's edges */
+#define FIX_STALE_S      5  /* no fix for this long: the speed shows as unknown ("--", none while browsing) */
 #define HEADING_SMOOTH_S 0.6
 #define HEADING_AHEAD_M  20.0
 #define ZOOM_SMOOTH_S    1.6
@@ -558,10 +560,21 @@ place_child (GtkOverlay *overlay, GtkWidget *child, GdkRectangle *alloc, gpointe
       x = y = -1000;
     alloc->width = nw;
     alloc->height = nh;
-    /* its corner on the route, the bubble up and to the side away from the middle */
-    int mid = gtk_widget_get_width (GTK_WIDGET (overlay)) / 2;
-    alloc->x = x < mid ? (int) lround (x) - nw + 6 : (int) lround (x) - 6;
-    alloc->y = (int) lround (y) - nh + 4;
+    /* its corner on the route, the bubble up and to the side away from the middle; turned to the other side (and
+     * below) where it would leave the part of the map the panels leave, and kept inside it */
+    int ow = gtk_widget_get_width (GTK_WIDGET (overlay)), oh = gtk_widget_get_height (GTK_WIDGET (overlay));
+    int px = (int) lround (x), py = (int) lround (y);
+    int left = px - nw + 6, right = px - 6;
+    int top = (int) navi_panels_top_inset (n->panels) + BUBBLE_MARGIN;
+    int bottom = oh - (int) navi_panels_bottom_inset (n->panels) - BUBBLE_MARGIN;
+    gboolean to_left = px < ow / 2;
+    if (to_left && left < BUBBLE_MARGIN)
+      to_left = FALSE;
+    else if (!to_left && right + nw > ow - BUBBLE_MARGIN)
+      to_left = TRUE;
+    alloc->x = CLAMP (to_left ? left : right, BUBBLE_MARGIN, MAX (BUBBLE_MARGIN, ow - nw - BUBBLE_MARGIN));
+    alloc->y = py - nh + 4 < top ? py - 4 : py - nh + 4;
+    alloc->y = CLAMP (alloc->y, top, MAX (top, bottom - nh));
     return TRUE;
   }
   return FALSE;
@@ -1332,6 +1345,16 @@ arrive (Navi *n)
 
 /* ---- the position ---- */
 
+/* the fixes stopped (the GPS lost, a simulated drive over): the last speed is not the car's any more */
+static gboolean
+fix_stale (gpointer data)
+{
+  Navi *n = data;
+  n->fix_stale = 0;
+  navi_panels_set_speed (n->panels, -1);
+  return G_SOURCE_REMOVE;
+}
+
 static void
 on_fix (NaviPosition *position, NaviFix *fix, Navi *n)
 {
@@ -1352,6 +1375,9 @@ on_fix (NaviPosition *position, NaviFix *fix, Navi *n)
                                    : approximate ? _("No GPS – showing your approximate location")
                                                  : NULL);
   navi_panels_set_speed (n->panels, fix->kind == NAVI_FIX_LAST_KNOWN ? -1 : fix->speed);
+  g_clear_handle_id (&n->fix_stale, g_source_remove);
+  if (fix->kind != NAVI_FIX_LAST_KNOWN)
+    n->fix_stale = g_timeout_add_seconds (FIX_STALE_S, fix_stale, n);
 
   if (n->guidance && n->mode == NAVI_MODE_DRIVE) {
     const NaviProgress *p = navi_guidance_update (n->guidance, fix->lat, fix->lng, fix->accuracy, fix->speed,

@@ -133,6 +133,10 @@ enum {
 guint signals[N_SIGNALS];
 
 constexpr double PAN_SLOP = 6;           // px a finger moves before a press becomes a pan
+// VibeOS's back gesture: a swipe in across from a strip this wide at either side of the screen (the shell's back.js).
+// The shell claims it without cancelling the touch the app had begun to see, so a drag from there sideways is left
+// to it: it would pan the map under the back's question. Along the edge it still pans.
+constexpr double BACK_EDGE = 30;
 constexpr double FLING_MIN = 250;        // px/s at release below which the map just stops
 constexpr double FLING_MAX = 6000;       // px/s
 constexpr double FLING_SECONDS = 0.3;    // a fling coasts this long, slowing to a stop
@@ -241,6 +245,7 @@ struct NaviMapImpl final : public mln::MapObserver {
     bool moved_this_gesture = false;
     // one finger
     bool pan_started = false;
+    bool from_edge = false, edge_ignored = false; // a drag begun on the back gesture's strip; sideways, left to it
     double drag_x0 = 0, drag_y0 = 0, drag_px = 0, drag_py = 0;
     struct Sample {
         gint64 t;
@@ -863,6 +868,15 @@ struct NaviMapImpl final : public mln::MapObserver {
     void on_drag_begin(double x, double y) {
         gesture_begin();
         pan_started = false;
+        edge_ignored = false;
+        // the screen's edges: the window's (a phone's and a tablet's fill the screen), not the map's (a rail beside it)
+        from_edge = false;
+        GtkRoot* root = gtk_widget_get_root(widget());
+        graphene_point_t in = GRAPHENE_POINT_INIT(float(x), float(y)), out;
+        if (root && gtk_widget_compute_point(widget(), GTK_WIDGET(root), &in, &out)) {
+            int rw = gtk_widget_get_width(GTK_WIDGET(root));
+            from_edge = out.x < BACK_EDGE || out.x > rw - BACK_EDGE;
+        }
         drag_x0 = drag_px = x;
         drag_y0 = drag_py = y;
         samples.clear();
@@ -876,8 +890,13 @@ struct NaviMapImpl final : public mln::MapObserver {
             samples.clear();
             return;
         }
+        if (edge_ignored) return;
         if (!pan_started) {
             if (std::hypot(ox, oy) < PAN_SLOP) return;
+            if (from_edge && std::abs(ox) > std::abs(oy)) {
+                edge_ignored = true;
+                return;
+            }
             pan_started = true;
         }
         pan_ground(drag_px, drag_py, x, y);

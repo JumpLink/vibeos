@@ -204,6 +204,7 @@ on_destroy (GtkWidget *win, Navi *n)
     n->keep_awake = 0;
   }
   navi_panels_quiet (n->panels);
+  g_clear_handle_id (&n->fix_stale, g_source_remove);
   g_cancellable_cancel (n->place_cancel);
   g_clear_object (&n->place_cancel);
   g_clear_pointer (&n->alerts, navi_alerts_free);
