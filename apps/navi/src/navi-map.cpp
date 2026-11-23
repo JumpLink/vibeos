@@ -24,6 +24,7 @@
 #include <mln/style/style.hpp>
 #include <mln/util/client_options.hpp>
 #include <mln/util/geo.hpp>
+#include <mln/util/logging.hpp>
 #include <mln/util/projection.hpp>
 #include <mln/util/tile_server_options.hpp>
 #include <mln/util/unitbezier.hpp>
@@ -40,6 +41,50 @@
 #include <vector>
 
 namespace {
+
+// ---- MapLibre's log ----
+
+// MapLibre logs a tile it could not load by its z/x/y (in the message and the URL): where the map was. Outside a
+// debug build those become "z/x/y", and the rest of the message stays.
+std::string scrub_tiles(const std::string& msg) {
+#ifdef NAVI_DEBUG
+    return msg;
+#else
+    std::string out;
+    size_t i = 0;
+    while (i < msg.size()) {
+        // a run of digits, '/', digits, '/', digits
+        size_t j = i, parts = 0;
+        while (j < msg.size()) {
+            size_t k = j;
+            while (k < msg.size() && g_ascii_isdigit(msg[k])) k++;
+            if (k == j) break;
+            parts++;
+            j = k;
+            if (parts == 3 || j >= msg.size() || msg[j] != '/') break;
+            j++;
+        }
+        if (parts == 3 && (i == 0 || !g_ascii_isdigit(msg[i - 1]))) {
+            out += "z/x/y";
+            i = j;
+        } else {
+            out += msg[i++];
+        }
+    }
+    return out;
+#endif
+}
+
+class NaviLog : public mln::Log::Observer {
+    bool onRecord(mln::EventSeverity severity, mln::Event event, int64_t code, const std::string& msg) override {
+        const char* level = severity == mln::EventSeverity::Error     ? "error"
+                            : severity == mln::EventSeverity::Warning ? "warning"
+                                                                      : "info";
+        if (severity == mln::EventSeverity::Debug) return true;
+        g_printerr("maplibre %s (%d): %s\n", level, int(event), scrub_tiles(msg).c_str());
+        return true;
+    }
+};
 
 // ---- Web Mercator in [0, 1] world units: panning is done on the ground plane in these ----
 
@@ -146,6 +191,10 @@ struct NaviMapImpl final : public mln::MapObserver {
     bool use_focus = false;
     double focus_x = 0.5, focus_y = 0.5;
     mln::EdgeInsets padding;
+    // the camera move under way (easeTo, flyTo): a new padding (the widget resized) stops it, and it goes on
+    std::optional<mln::CameraOptions> moving_to;
+    gint64 moving_until = 0;
+    bool moving_fly = false;
 
     guint camera_tick = 0;
 
@@ -468,7 +517,28 @@ struct NaviMapImpl final : public mln::MapObserver {
             double dx = (2 * focus_x - 1) * w, dy = (2 * focus_y - 1) * h;
             padding = mln::EdgeInsets(std::max(dy, 0.0), std::max(dx, 0.0), std::max(-dy, 0.0), std::max(-dx, 0.0));
         }
-        if (map) map->jumpTo(mln::CameraOptions().withPadding(padding));
+        if (!map) return;
+        map->jumpTo(mln::CameraOptions().withPadding(padding));
+        // the keyboard leaving resizes the window while a place is being flown to: the move goes on from here
+        gint64 left = moving_until - g_get_monotonic_time();
+        if (moving_to && left > 0) {
+            mln::AnimationOptions anim{std::chrono::milliseconds(left / 1000)};
+            if (moving_fly)
+                map->flyTo(*moving_to, anim);
+            else
+                map->easeTo(*moving_to, anim);
+        }
+    }
+
+    void moving(const mln::CameraOptions& to, guint ms, bool fly) {
+        moving_to = to;
+        moving_until = g_get_monotonic_time() + gint64(ms) * 1000;
+        moving_fly = fly;
+    }
+
+    void stopped_moving() {
+        moving_to.reset();
+        moving_until = 0;
     }
 
     void load_style() {
@@ -675,6 +745,7 @@ struct NaviMapImpl final : public mln::MapObserver {
         if (active_gestures++ == 0) {
             moved_this_gesture = false;
             stop_fling();
+            stopped_moving();
             if (map) {
                 map->cancelTransitions();
                 map->setGestureInProgress(true);
@@ -880,6 +951,7 @@ struct NaviMapImpl final : public mln::MapObserver {
         if (tap && map) {
             // a two-finger tap zooms out one step around the focus point: fast start, long tail
             note_moved();
+            stopped_moving();
             double zoom = map->getCameraOptions().zoom.value_or(0);
             mln::AnimationOptions anim{std::chrono::milliseconds(700)};
             anim.easing.emplace(easing_curve(NAVI_EASING_EASE_OUT_CUBIC));
@@ -889,6 +961,7 @@ struct NaviMapImpl final : public mln::MapObserver {
 
     void zoom_in_at(double x, double y) {
         if (!map) return;
+        stopped_moving();
         double zoom = map->getCameraOptions().zoom.value_or(0);
         mln::AnimationOptions anim{std::chrono::milliseconds(300)};
         anim.easing.emplace(easing_curve(NAVI_EASING_EASE_OUT_CUBIC));
@@ -899,6 +972,7 @@ struct NaviMapImpl final : public mln::MapObserver {
     void on_scroll(double dy, bool wheel) {
         if (!map) return;
         stop_fling();
+        stopped_moving();
         double x = pointer_x >= 0 ? pointer_x : gtk_widget_get_width(widget()) / 2.0;
         double y = pointer_y >= 0 ? pointer_y : gtk_widget_get_height(widget()) / 2.0;
         moved_this_gesture = false;
@@ -1056,6 +1130,7 @@ static void navi_map_finalize(GObject* object) {
 }
 
 static void navi_map_class_init(NaviMapClass* klass) {
+    mln::Log::setObserver(std::make_unique<NaviLog>());
     GObjectClass* object_class = G_OBJECT_CLASS(klass);
     GtkWidgetClass* widget_class = GTK_WIDGET_CLASS(klass);
     GtkGLAreaClass* area_class = GTK_GL_AREA_CLASS(klass);
@@ -1324,6 +1399,7 @@ void navi_map_jump_to(NaviMap* self, const NaviCamera* camera) {
     auto o = impl->to_options(camera);
     if (!o) return;
     impl->stop_fling();
+    impl->stopped_moving();
     if (impl->map)
         impl->map->jumpTo(*o);
     else
@@ -1342,6 +1418,7 @@ static void ease(NaviMap* self, const NaviCamera* camera, guint ms, mln::util::U
     mln::AnimationOptions anim{std::chrono::milliseconds(ms)};
     anim.easing.emplace(curve); // UnitBezier has const members: no assignment
     impl->map->easeTo(*o, anim);
+    impl->moving(*o, ms, false);
 }
 
 void navi_map_ease_to(NaviMap* self, const NaviCamera* camera, guint ms, NaviEasing easing) {
@@ -1368,11 +1445,13 @@ void navi_map_fly_to(NaviMap* self, const NaviCamera* camera, guint ms) {
     mln::AnimationOptions anim;
     if (ms) anim.duration = std::chrono::milliseconds(ms);
     impl->map->flyTo(*o, anim);
+    impl->moving(*o, ms ? ms : 1500, true);
 }
 
 void navi_map_cancel_transitions(NaviMap* self) {
     g_return_if_fail(NAVI_IS_MAP(self));
     self->impl->stop_fling();
+    self->impl->stopped_moving();
     if (self->impl->map) self->impl->map->cancelTransitions();
 }
 
