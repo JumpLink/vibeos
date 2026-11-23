@@ -708,9 +708,22 @@ struct NaviMapImpl final : public mln::MapObserver {
         }
     }
 
-    // a style layer back in, just above the nearest style layer below it that is in the style
+    // a style layer back in, just above the nearest style layer below it that is in the style; a label, just
+    // under the nearest one above it instead, so it stays over the layers the app put under the style's labels (the
+    // route), which sit between the ground and the labels
     void put_back(size_t index, std::unique_ptr<mln::style::Layer> layer) {
         auto& style = map->getStyle();
+        if (g_strcmp0(layer->getTypeInfo()->type, "symbol") == 0) {
+            for (size_t j = index + 1; j < style_order.size(); j++) {
+                if (!style.getLayer(style_order[j])) continue;
+                try {
+                    style.addLayer(std::move(layer), style_order[j]);
+                } catch (const std::exception& e) {
+                    g_warning("NaviMap: layer %s: %s", style_order[index].c_str(), e.what());
+                }
+                return;
+            }
+        }
         std::vector<mln::style::Layer*> now = style.getLayers();
         std::optional<std::string> before;
         if (!now.empty()) before = now.front()->getID();

@@ -4,7 +4,10 @@
 Day: a near-white ground, grey raised roads, mint parks, cyan water, grey labels. Night: a navy ground, blue-grey
 streets, dark green parks. Street names stand upright on the screen, as Waze's do. One set of layers per country
 source (the map server keeps one tile archive per country); the map takes a source's layers out of the style while
-the view is far from its bounds. SERVER is the tile and glyph server, https://navi.vibeos.top by default."""
+the view is far from its bounds. The sets are interleaved, layer by layer: every country's water, then every country's
+roads, and so on, with every country's labels last, so a country's ground never covers another's roads at a border,
+and every layer under the first label (where the app puts its route, navi-window.c) is ground of every country.
+SERVER is the tile and glyph server, https://navi.vibeos.top by default."""
 import json, sys
 
 COUNTRIES = [  # name, bounds (west, south, east, north)
@@ -81,13 +84,15 @@ POI_TIERS = [  # (tier, min zoom, filter), the most important first
                      ['<=', 'rank', 80]]),
 ]
 
-layers = [{'id': 'background', 'type': 'background', 'paint': {'background-color': C['ground']}}]
 sources = {}
+per_country = []          # each country's layers, bottom to top, all in the same order
 for n, bounds in COUNTRIES:
     sources[n] = {'type': 'vector', 'tiles': [f'{server}/tiles/{n}/{{z}}/{{x}}/{{y}}.mvt'], 'minzoom': 0,
                   'maxzoom': 14, 'bounds': bounds,
                   'attribution': '© OpenMapTiles © OpenStreetMap contributors'}
     s = lambda layer, **kw: dict(source=n, **{'source-layer': layer}, **kw)
+    layers = []
+    per_country.append(layers)
     layers += [
         {'id': f'wood--{n}', 'type': 'fill', **s('landcover'), 'filter': ['in', 'class', 'wood', 'forest'],
          'paint': {'fill-color': C['wood']}},
@@ -176,6 +181,14 @@ for n, bounds in COUNTRIES:
                                       'text-pitch-alignment': 'viewport'} if tier == 'fuel' else {})},
                        'paint': {'text-color': C['label'], 'text-halo-color': C['label_halo'],
                                  'text-halo-width': 1.5} if tier == 'fuel' else {}})
+
+# one country's layer after another's of the same kind (the same id less the country), labels above all ground
+layers = [{'id': 'background', 'type': 'background', 'paint': {'background-color': C['ground']}}]
+for kind in zip(*per_country):
+    assert len({l['id'].rsplit('--', 1)[0] for l in kind}) == 1, kind[0]['id']
+    layers += kind
+first_label = next(i for i, l in enumerate(layers) if l['type'] == 'symbol')
+assert all(l['type'] == 'symbol' for l in layers[first_label:]), 'ground above a label'
 
 # Navi's point overlay (traffic signals, speed cameras): the app adds its layers while driving (navi-window.c)
 sources['navi-overlay'] = {'type': 'vector', 'tiles': [f'{server}/tiles/navi-overlay/{{z}}/{{x}}/{{y}}.mvt'],
