@@ -40,3 +40,5 @@ install_data('gdm/vibeos.session.conf', install_dir: systemd_user / 'gnome-sessi
 install_data('gdm/vibeos.desktop', install_dir: datadir / 'wayland-sessions')
 # GNOME's own screen lock off: the keyguard is the lock screen (see the file)
 install_data('90_vibeos.gschema.override', install_dir: datadir / 'glib-2.0' / 'schemas')
+# the session's default apps: App Installer for .deb files, Files for folders (see the file)
+install_data('gnome-mimeapps.list', install_dir: get_option('sysconfdir') / 'xdg')
