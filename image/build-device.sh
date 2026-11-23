@@ -25,6 +25,10 @@ OUT=${TEST_OUT:-$O/$DEV}	# TEST_OUT, TEST_W: a test build elsewhere, without the
 W=${TEST_W:-$O/work/device-$DEV}
 L=$O/logs/device-$DEV-$(date +%Y%m%d-%H%M%S); mkdir -p "$L"
 V=0.1.3
+# 0.1.3+1 (2026-11-23): the S10e's and the S5e's initramfs always start Mobian, the oneshots ahead of gdm get start
+# timeouts, and the POCO's package lost the restart into recovery and Android and checks its root with fsck -y.
+# Above the archive's 0.1.3, whose POCO package would bring that restart back (every restart into recovery)
+case $DEV in s10e|s5e|poco) V=0.1.3+1 ;; esac
 P=$W/pkg
 log() { echo "build-device $DEV: $*" | tee -a "$L/build.txt"; }
 [ ! -e "$OUT" ] || { echo "$OUT exists: move it aside first" >&2; exit 1; }
@@ -35,6 +39,14 @@ case "$(readlink -f "$W")" in */research-dl/*) exit 1 ;; esac
 # enable UNIT...: the links "systemctl enable" makes, made in the package's own tree (the zip has no systemctl)
 enable() { systemctl --root="$P" enable "$@" > "$L/enable.txt" 2>&1 || { cat "$L/enable.txt" >&2; exit 1; }; }
 mask() { for u; do mkdir -p "$P/etc/systemd/system"; ln -sfn /dev/null "$P/etc/systemd/system/$u"; done; }
+# not_held UNIT TIME WHY: a start timeout for a oneshot the GUI waits for (they wait for ever by default; a hang
+# would keep gdm from ever starting). Past TIME it is stopped and the boot goes on
+not_held() {
+	install -d "$P/etc/systemd/system/$1.d"
+	printf '%s\n' "# $3" "# A oneshot waits for ever by default, so a hang here would keep the GUI from ever starting; past this" \
+		"# it is stopped and the boot goes on (nothing stops the boot to the GUI)." \
+		"[Service]" "TimeoutStartSec=$2" "TimeoutStopSec=15s" > "$P/etc/systemd/system/$1.d/boot-not-held.conf"
+}
 # fw SRC DST...: firmware files, mode 644
 fw() { s=$1; shift; for f; do install -D -m 644 "$s/$f" "$P/usr/lib/firmware/$f"; echo "$f $(sha256sum < "$s/$f" | cut -c1-16) $s" >> "$L/firmware.txt"; done; }
 # modules KVER SRCDIR: SRCDIR/lib/modules/KVER (a modules_install tree) into the package, depmod'ed
@@ -229,9 +241,9 @@ poco)
 	# initrd.img-7.2.15-surya in /boot, the first boot's firmware packages would have update-initramfs rebuild it
 	# ON the phone, where its hooks pull in qcom_q6v5_pas without modem.mbn and the modem stays off; with none,
 	# update-initramfs finds nothing to update. surya-esp-update (the kernel hooks) still names the k22 root's
-	# UUID: it names the root by its label, as the ESP's entry does, should it ever run.
-	sed -i 's/root=UUID=b2b58066-08bc-40ed-95e7-8da4eac5d02f/root=LABEL=vibeos/' "$P/usr/local/sbin/surya-esp-update"
-	grep -q 'options root=LABEL=vibeos ' "$P/usr/local/sbin/surya-esp-update" && ! grep -q b2b58066 "$P/usr/local/sbin/surya-esp-update" ||
+	# UUID: it names the root by its label, as the ESP's entry does, should it ever run (with fsck.repair=yes: below).
+	sed -i 's/root=UUID=b2b58066-08bc-40ed-95e7-8da4eac5d02f/root=LABEL=vibeos fsck.repair=yes/' "$P/usr/local/sbin/surya-esp-update"
+	grep -q 'options root=LABEL=vibeos fsck.repair=yes ' "$P/usr/local/sbin/surya-esp-update" && ! grep -q b2b58066 "$P/usr/local/sbin/surya-esp-update" ||
 		{ echo "surya-esp-update: root= not changed" >&2; exit 1; }
 	[ ! -e "$P/boot" ] || { echo "the POCO stage has a /boot: $(ls "$P/boot")" >&2; exit 1; }
 	# U-Boot is in BOOT (since 2026-11-23: VibeOS on the whole phone): every power-on starts VibeOS, and the
@@ -292,8 +304,12 @@ poco)
 	dd if="$KIMG" of="$W/boot/esp.img" bs=4096 skip=2048 count=122880 status=none
 	ME=$(mktemp -d "$O/tmp/esp.XXXXXX")
 	mcopy -i "$W/boot/esp.img" ::/loader/entries/mobian.conf "$ME/mobian.conf"
-	sed 's/root=UUID=[0-9a-f-]*/root=LABEL=vibeos/' "$ME/mobian.conf" > "$ME/new.conf"
-	grep -q 'root=LABEL=vibeos ' "$ME/new.conf" || { echo "ESP: no root= to change" >&2; exit 1; }
+	# fsck.repair=yes (2026-11-23: nothing but an unmountable root stops the boot): the initramfs (initramfs-tools'
+	# init, the k22 ROM's) checks the root with fsck -a, and where that cannot fix it (a journal a brown-out left) it
+	# stopped in its shell, "requires a manual fsck"; with it, fsck -y (and systemd-fsck-root answers yes too). The
+	# initrd itself stays the k22 ROM's, byte for byte (rebuilt on the phone it loses the modem)
+	sed 's/root=UUID=[0-9a-f-]*/root=LABEL=vibeos fsck.repair=yes/' "$ME/mobian.conf" > "$ME/new.conf"
+	grep -q 'root=LABEL=vibeos fsck.repair=yes ' "$ME/new.conf" || { echo "ESP: no root= to change" >&2; exit 1; }
 	mcopy -o -i "$W/boot/esp.img" "$ME/new.conf" ::/loader/entries/mobian.conf
 	mcopy -i "$W/boot/esp.img" ::/loader/entries/mobian.conf - | diff "$ME/mobian.conf" - > "$L/esp-entry.diff" || true
 	rm -rf "${ME:?}"
@@ -462,6 +478,11 @@ EOF
 	rm -rf "${SL:?}"
 	[ $(stat -c %s "$W/boot/recovery.img") -le $((72744960 - 524288)) ] || { echo "recovery.img does not leave 512 KiB for the extents" >&2; exit 1; }
 	cp "${S5E_KIT_TOOLS:?set S5E_KIT_TOOLS}/extents" "$S5E_KIT_TOOLS/keepmisc" "$S5E_KIT_TOOLS/dmlinear" "$W/boot/"
+	# gdm starts after systemd-user-sessions, which waits for network.target, which waits for NetworkManager: these
+	# two oneshots, ordered ahead of them, hold the GUI too
+	for u in gts4lv-usbnet gts4lv-wifi-mac; do [ -f "$P/etc/systemd/system/$u.service" ] || { echo "no $u.service in the S5e stage" >&2; exit 1; }; done
+	not_held gts4lv-usbnet.service 1min "Ordered before network.target, which gdm waits for (systemd-user-sessions)."
+	not_held gts4lv-wifi-mac.service 1min "Ordered before NetworkManager, which gdm waits for (network.target, systemd-user-sessions)."
 	DESC="Galaxy Tab S5e (gts4lv): kernel 7.2.15-gts4lv-uc modules (the kernel is in the recovery partition behind U-Boot), the tablet's firmware, modem, audio, touch, power key, USB/OTG, sensors and boot settings"
 	;;
 s20)
@@ -575,6 +596,10 @@ fi
 exit 0
 EOF
 chmod 755 "$P/DEBIAN/postinst"
+# vibeos-growroot (the system's, the first boot) is a oneshot, and vibeos-device-setup, ordered before gdm, waits for it
+case $DEV in s10e|s5e|poco)
+	not_held vibeos-growroot.service 10min "The system's first-boot grow; vibeos-device-setup, ordered before gdm, comes after it." ;;
+esac
 # /etc/vibeos/android: how the shell's power menu restarts into Android (one line; no file, no menu item):
 # reboot=ARG (systemctl reboot --reboot-argument=ARG) or helper=PATH (run with pkexec). The POCO has none since
 # 2026-11-23 (VibeOS on the whole phone); its helper until then (surya-boot-android) is in git history
