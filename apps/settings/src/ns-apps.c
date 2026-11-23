@@ -896,6 +896,7 @@ recent_apps (guint max)
 }
 
 static void ns_page_all_apps (GtkWidget *row, gpointer data);
+static void apps_back (NsPage *page);
 
 /* Android 17's: the apps opened last and a row to all of them, then the general settings */
 void
@@ -924,7 +925,30 @@ ns_page_apps (GtkWidget *row, gpointer data)
   r = ns_row (g, NULL, "Default apps", "Browser, email, music, photos");
   ns_row_on_activate (r, default_apps_tapped, NULL);
   icon_bake_start (bake);
+  ns_page_on_back (page, apps_back);
   ns_push (page);
+}
+
+/* Back from an app's page that uninstalled it: its row goes from the lists under it (an app's row holds the app,
+ * "ns-app"; the desktop file is what is gone, GIO's own list may not know it yet) */
+static void
+hide_gone (GtkWidget *w)
+{
+  for (GtkWidget *c = gtk_widget_get_first_child (w); c; c = gtk_widget_get_next_sibling (c)) {
+    GObject *app = g_object_get_data (G_OBJECT (c), "ns-app");
+    const char *file = app && G_IS_DESKTOP_APP_INFO (app) ? g_desktop_app_info_get_filename (G_DESKTOP_APP_INFO (app))
+                                                          : NULL;
+    if (file && !g_file_test (file, G_FILE_TEST_EXISTS))
+      gtk_widget_set_visible (c, FALSE);
+    else
+      hide_gone (c);
+  }
+}
+
+static void
+apps_back (NsPage *page)
+{
+  hide_gone (GTK_WIDGET (page));
 }
 
 /* every app a launcher shows, by name */
@@ -941,6 +965,7 @@ ns_page_all_apps (GtkWidget *row, gpointer data)
     app_row (g, l->data, NULL, bake);
   icon_bake_start (bake);
   g_list_free_full (all, g_object_unref);
+  ns_page_on_back (page, apps_back);
   ns_push (page);
 }
 
