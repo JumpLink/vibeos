@@ -6,7 +6,8 @@
 # to the real session bus (its services, its settings) but draws on the headless display, where it gets frames as
 # on a lit screen: its animations run. Pictures come from the app itself (libvibeos's VIBEOS_SHOT, at the scale of
 # the screen the size stands for: 3x for the phone's); touches go in through mutter's RemoteDesktop API
-# (vibeos-headless-input), which also keeps a keyboard plugged in, so its windows are active as on the phone.
+# (vibeos-headless-input), which also keeps a keyboard and a touchscreen plugged in, as on the phone: its windows
+# are active, and its touches never lose their device.
 #
 #   vibeos-headless start                  the display: the phone's app area under its status bar, in dp: 360 x 721
 #                                       on the Galaxy S10e, 360 x 761 on the POCO X3 (VIBEOS_HEADLESS_SIZE to choose:
@@ -217,10 +218,14 @@ start)
         echo "vibeos-headless: mutter did not start, see $STATE/mutter.log" >&2
         exit 1
     fi
-    # a keyboard for the seat, or no window on it is ever active (see vibeos-headless-input); the script goes in as an
-    # argument, read by root, since the daemon's stdin is /dev/null
+    # a keyboard for the seat, or no window on it is ever active, and a touchscreen that stays (see
+    # vibeos-headless-input); the script goes in as an argument, read by root, since the daemon's stdin is /dev/null.
+    # Its touch must come before any app's window, so `start` returns once it is there.
     as_user_daemon keyboard env VIBEOS_HEADLESS_BUS="$BUS" \
         python3 -c "$(cat "$HERE/vibeos-headless-input")" keyboard
+    for _ in $(seq 100); do grep -q ready "$STATE/keyboard.log" 2>/dev/null && break; sleep 0.1; done
+    grep -q ready "$STATE/keyboard.log" 2>/dev/null ||
+        echo "vibeos-headless: no keyboard or touchscreen yet, see $STATE/keyboard.log" >&2
     # A phone that suspends under the display stops mutter, the app and the ssh that drives them alike, so the
     # phone stays awake for as long as mutter runs (a logind inhibitor, which s10e-sleepd honours)
     if [ "$(id -u)" = 0 ]; then
