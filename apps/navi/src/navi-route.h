@@ -75,6 +75,7 @@ typedef struct {
   double time;   /* seconds */
   char *via;     /* "Via B 96 - Lützowplatz": the streets most of it runs on */
   gboolean toll, highway, ferry;
+  double stop_s;  /* where the route reaches its stop (the first leg's end): metres from the start; < 0 without one */
   double min_lat, min_lng, max_lat, max_lng;
 } NaviRoute;
 
@@ -108,6 +109,8 @@ typedef struct {
   double from_lat, from_lng;
   double from_heading; /* the car's heading, or < 0 when unknown: Valhalla then starts in any direction */
   double to_lat, to_lng;
+  gboolean have_via;   /* a stop on the way (Valhalla routes no alternates then) */
+  double via_lat, via_lng;
   guint alternates;    /* 0 to 2 */
   const char *language; /* Valhalla's: "de-DE", "en-US"; NULL picks it from the UI language */
 } NaviRouteRequest;

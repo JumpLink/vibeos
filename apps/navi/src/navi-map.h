@@ -85,6 +85,11 @@ gboolean navi_map_remove_source (NaviMap *map, const char *source_id, GError **e
 gboolean navi_map_add_layer_json (NaviMap *map, const char *layer_json, const char *before_layer_id,
                                   GError **error);
 gboolean navi_map_remove_layer (NaviMap *map, const char *layer_id, GError **error);
+/* An image for the style's symbols ("icon-image": `id`), kept across style loads: `width` x `height` pixels of
+ * premultiplied RGBA, rows `stride` bytes apart, drawn at `pixel_ratio` pixels to a point. The same id again
+ * replaces it. */
+void navi_map_add_image (NaviMap *map, const char *id, const guint8 *rgba, int width, int height, int stride,
+                         double pixel_ratio);
 /* The style's layer ids, bottom to top, of one type ("symbol", "line", "fill", ...) or of all (NULL).
  * NULL before the style has loaded. The first "symbol" layer is where a route goes to stay under the
  * labels. g_strfreev() it. */

@@ -5,14 +5,17 @@
  * Photon's API: GET /api?q=TEXT&lat=&lon=&limit=&lang= finds places as the text is typed, nearer ones first with
  * the position given; GET /reverse?lat=&lon= names a point. Both answer a GeoJSON FeatureCollection whose features
  * are points with the OSM object's name, street, housenumber, postcode, city, district, osm_key/osm_value (its
- * kind: amenity/fuel) and type (house, street, city, ...). A category chip is a search for the category's word with
- * Photon's osm_tag filter, inside a box around the position.
+ * kind: amenity/fuel) and type (house, street, city, ...). A category chip asks without text for Photon's
+ * categories (include=osm.amenity.fuel), nearest first (zoom=16, location_bias_scale=0), inside a box around the
+ * position: a fuel station is found by what it is, not by "Tankstelle" in its name.
  *
  * Whatever Photon cannot answer (no connection, an error status such as its 503 "search is unavailable right now",
  * an answer that is no GeoJSON) goes to the fallback backend, so the sheet always shows something, and says that
  * search is down (navi_search_photon_is_down ()). Nothing is logged: the text and the position stay
  * between the app and our server. */
 #include "navi-search.h"
+#include "navi-geo.h"
+#include "navi-poi.h"
 #include "navi-route.h"
 
 #include <json-glib/json-glib.h>
@@ -159,8 +162,10 @@ feature_place (JsonObject *f)
       append (detail, state ? state : country);
   }
   NaviPlace *place = navi_place_new (kind, title, detail->len ? detail->str : NULL, lat, lng);
-  if (kind == NAVI_PLACE_POI)
-    place->category = g_strdup (value);
+  if (kind == NAVI_PLACE_POI) {
+    const char *group = navi_poi_group (key, value);
+    place->category = g_strdup (group ? group : value);
+  }
   return place;
 }
 
@@ -258,6 +263,16 @@ use_fallback (GTask *task, GError *error)
                               fallback_searched, g_object_ref (task));
 }
 
+static int
+by_distance (gconstpointer a, gconstpointer b, gpointer data)
+{
+  const NaviPlace *x = a, *y = b;
+  const Ask *from = data;
+  double dx = navi_geo_distance (from->lat, from->lng, x->lat, x->lng);
+  double dy = navi_geo_distance (from->lat, from->lng, y->lat, y->lng);
+  return (dx > dy) - (dx < dy);
+}
+
 static void
 received (GObject *source, GAsyncResult *res, gpointer data)
 {
@@ -284,14 +299,24 @@ received (GObject *source, GAsyncResult *res, gpointer data)
   }
   NAVI_SEARCH_PHOTON (g_task_get_source_object (task))->down = FALSE;
   if (a->reverse) {
-    NaviPlace *p = places->len ? navi_place_copy (places->pdata[0])
-                               : navi_place_new (NAVI_PLACE_POINT, NULL, NULL, a->lat, a->lng);
+    NaviPlace *first = places->len ? places->pdata[0] : NULL;
+    if (!first || !first->name || !*first->name) {
+      /* nothing named there (water, or outside the area Photon covers): the caller keeps what it has */
+      g_ptr_array_unref (places);
+      g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_NOT_FOUND, "no address there");
+      return;
+    }
+    NaviPlace *p = navi_place_copy (first);
     /* the point pressed, not the house's centre */
     p->lat = a->lat;
     p->lng = a->lng;
     g_ptr_array_unref (places);
     g_task_return_pointer (task, p, (GDestroyNotify) navi_place_free);
   } else {
+    if (a->category != NAVI_CATEGORY_NONE && !*a->text) {
+      /* nearest first, as the chip's list says */
+      g_ptr_array_sort_values_with_data (places, by_distance, a);
+    }
     g_task_return_pointer (task, places, (GDestroyNotify) g_ptr_array_unref);
   }
 }
@@ -317,22 +342,6 @@ send (GTask *task, GString *url)
   g_object_unref (msg);
 }
 
-/* the category's word in the UI's language and its OSM tags */
-static const char *
-category_query (NaviCategory c, const char *const **tags)
-{
-  static const char *const fuel[] = { "amenity:fuel", NULL };
-  static const char *const food[] = { "amenity:restaurant", "amenity:fast_food", "amenity:cafe", NULL };
-  static const char *const parking[] = { "amenity:parking", NULL };
-  gboolean de = !g_ascii_strncasecmp (navi_route_language (), "de", 2);
-  switch (c) {
-  case NAVI_CATEGORY_FUEL: *tags = fuel; return de ? "Tankstelle" : "fuel";
-  case NAVI_CATEGORY_FOOD: *tags = food; return de ? "Restaurant" : "restaurant";
-  case NAVI_CATEGORY_PARKING: *tags = parking; return de ? "Parkplatz" : "parking";
-  default: *tags = NULL; return NULL;
-  }
-}
-
 static void
 photon_search_async (NaviSearch *search, const char *text, NaviCategory category, double near_lat, double near_lng,
                      GCancellable *cancellable, GAsyncReadyCallback callback, gpointer user_data)
@@ -346,22 +355,24 @@ photon_search_async (NaviSearch *search, const char *text, NaviCategory category
   a->lat = near_lat;
   a->lng = near_lng;
   g_task_set_task_data (task, a, ask_free);
-  const char *const *tags = NULL;
-  const char *word = category_query (category, &tags);
-  const char *q = *a->text ? a->text : word;
-  if (!q) {
+  const char *categories = *a->text ? NULL : navi_poi_photon_categories (category);
+  if (!*a->text && !categories) {
     g_task_return_pointer (task, g_ptr_array_new_with_free_func ((GDestroyNotify) navi_place_free),
                            (GDestroyNotify) g_ptr_array_unref);
     return;
   }
-  g_autofree char *escaped = g_uri_escape_string (q, NULL, FALSE);
   g_autoptr (GString) url = g_string_new (NULL);
-  g_string_printf (url, "%s/api?q=%s&limit=%d&lang=%s", self->base, escaped, LIMIT, photon_language ());
+  if (categories) {
+    /* what the places are, nearest first: zoom 16's bias, the place's prominence not counted */
+    g_string_printf (url, "%s/api?include=%s&zoom=16&location_bias_scale=0&limit=%d&lang=%s", self->base, categories,
+                     LIMIT, photon_language ());
+  } else {
+    g_autofree char *escaped = g_uri_escape_string (a->text, NULL, FALSE);
+    g_string_printf (url, "%s/api?q=%s&limit=%d&lang=%s", self->base, escaped, LIMIT, photon_language ());
+  }
   add_coord (url, "lat", near_lat);
   add_coord (url, "lon", near_lng);
-  if (tags) {
-    for (guint i = 0; tags[i]; i++)
-      g_string_append_printf (url, "&osm_tag=%s", tags[i]);
+  if (categories) {
     /* nearby ones only: minLon,minLat,maxLon,maxLat */
     char b[4][G_ASCII_DTOSTR_BUF_SIZE];
     g_string_append_printf (url, "&bbox=%s,%s,%s,%s",

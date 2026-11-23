@@ -90,11 +90,17 @@ typedef struct {
   gint64 flight_t0;
   guint tick, recenter_source;
   gint64 last_frame_us;
+  char **poi_layers;        /* the style's point-of-interest layers, for a tap */
+  int poi_scale;            /* the scale their markers were drawn at */
+  guint poi_seq;            /* the point of interest tapped last, for its address coming back */
+  guint keep_awake;         /* the idle inhibitor while a route is driven (gtk_application_inhibit), 0 when none */
   double ahead_s;           /* where the route ahead was last drawn from (trim_ahead ()) */
   gint64 ahead_time;
 
   /* the routes */
   NaviPlace *dest;
+  NaviPlace *stop;
+  GtkWidget *back;          /* the unseen "Back" the shell's back gesture presses while there is a route or a card */          /* a stop on the way while driving, NULL when none (or once it is reached) */
   GPtrArray *routes;        /* NaviRoute, best first */
   guint selected;
   GCancellable *route_cancel;
@@ -129,6 +135,8 @@ void navi_select_route (Navi *navi, guint index);
 void navi_start_drive (Navi *navi);
 /* Stop, or the end of the drive: back to browsing */
 void navi_stop_drive (Navi *navi);
+/* while driving: the route goes on to the destination through `place` */
+void navi_add_stop (Navi *navi, const NaviPlace *place);
 void navi_back_to_browse (Navi *navi);
 void navi_recenter (Navi *navi);
 void navi_overview (Navi *navi);
@@ -139,7 +147,11 @@ void navi_update_night (Navi *navi);
 double navi_distance_from_car (Navi *navi, double lat, double lng);
 
 /* navi-panels.c */
+/* a point of interest's kind in words, "Gas station", from its group (navi-poi.h); NULL for an unknown one */
+const char *navi_poi_label (const char *group);
 NaviPanels *navi_panels_new (Navi *navi);
+/* the voice and the countdowns stop: the window is going */
+void navi_panels_quiet (NaviPanels *panels);
 void navi_panels_free (NaviPanels *panels);
 void navi_panels_set_mode (NaviPanels *panels, NaviMode mode);
 void navi_panels_set_cam (NaviPanels *panels, NaviCam cam);
@@ -166,5 +178,11 @@ void navi_panels_rest_voice (NaviPanels *panels);
 void navi_panels_open_menu (NaviPanels *panels, GtkWidget *anchor);
 /* the search, opened with this text (for tests: --search) */
 void navi_panels_open_search (NaviPanels *panels, const char *text);
+/* a route is being previewed or driven: asks whether to cancel it. With `place` (a new destination chosen while
+ * driving) the answers are Add a stop and New destination (a tap outside keeps the drive); without (Back), Keep
+ * driving (Keep route) and Cancel route, which then opens the search for a new address */
+void navi_panels_ask_route_change (NaviPanels *panels, const NaviPlace *place);
+/* Back for what the panels show over the map (the search): TRUE when it closed something */
+gboolean navi_panels_back (NaviPanels *panels);
 
 G_END_DECLS

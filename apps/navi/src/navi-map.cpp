@@ -18,6 +18,7 @@
 #include <mln/style/conversion/geojson.hpp>
 #include <mln/style/conversion/json.hpp>
 #include <mln/style/conversion/layer.hpp>
+#include <mln/style/image.hpp>
 #include <mln/style/layer.hpp>
 #include <mln/style/sources/geojson_source.hpp>
 #include <mln/style/sources/tile_source.hpp>
@@ -182,6 +183,12 @@ struct NaviMapImpl final : public mln::MapObserver {
         std::string id, json, before;
     };
     std::vector<LayerRec> layers;
+    struct ImageRec {
+        std::string id;
+        mln::PremultipliedImage image;
+        float pixel_ratio;
+    };
+    std::vector<ImageRec> images;
 
     // camera state kept while there is no map
     mln::CameraOptions camera;
@@ -593,6 +600,11 @@ struct NaviMapImpl final : public mln::MapObserver {
         return true;
     }
 
+    void push_image(const ImageRec& rec) {
+        if (!map || !style_loaded) return;
+        map->getStyle().addImage(std::make_unique<mln::style::Image>(rec.id, rec.image.clone(), rec.pixel_ratio));
+    }
+
     SourceRec* find_source(const std::string& id) {
         for (auto& s : sources)
             if (s.id == id) return &s;
@@ -1000,6 +1012,7 @@ struct NaviMapImpl final : public mln::MapObserver {
         for (const mln::style::Layer* layer : std::as_const(map->getStyle()).getLayers())
             style_order.push_back(layer->getID());
         for (const auto& s : sources) push_source(s);
+        for (const auto& i : images) push_image(i);
         for (const auto& l : layers) {
             GError* error = nullptr;
             if (!push_layer(l, &error)) {
@@ -1353,6 +1366,22 @@ gboolean navi_map_add_layer_json(NaviMap* self, const char* json, const char* be
     if (!impl->push_layer(rec, error)) return FALSE;
     impl->layers.push_back(std::move(rec));
     return TRUE;
+}
+
+void navi_map_add_image(NaviMap* self, const char* id, const guint8* rgba, int width, int height, int stride,
+                        double pixel_ratio) {
+    g_return_if_fail(NAVI_IS_MAP(self) && id && rgba && width > 0 && height > 0 && stride >= 4 * width);
+    NaviMapImpl* impl = self->impl;
+    mln::PremultipliedImage image({static_cast<uint32_t>(width), static_cast<uint32_t>(height)});
+    for (int y = 0; y < height; y++) memcpy(image.data.get() + size_t(y) * width * 4, rgba + size_t(y) * stride, width * 4);
+    NaviMapImpl::ImageRec rec{id, std::move(image), static_cast<float>(pixel_ratio > 0 ? pixel_ratio : 1)};
+    impl->push_image(rec);
+    for (auto& i : impl->images)
+        if (i.id == rec.id) {
+            i = std::move(rec);
+            return;
+        }
+    impl->images.push_back(std::move(rec));
 }
 
 gboolean navi_map_remove_layer(NaviMap* self, const char* id, GError** error) {

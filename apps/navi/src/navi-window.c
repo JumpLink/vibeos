@@ -11,9 +11,11 @@
  * untouched, flies back in 650 ms, landing on the car as it is in that frame so following takes over without a step. */
 #include "navi-app.h"
 #include "navi-draw.h"
+#include "navi-poi.h"
 #include "navi-sun.h"
 
 #include <glib/gi18n.h>
+#include <json-glib/json-glib.h>
 #include <math.h>
 #include <string.h>
 
@@ -392,7 +394,8 @@ recenter_later (gpointer data)
 {
   Navi *n = data;
   n->recenter_source = 0;
-  if (n->mode == NAVI_MODE_DRIVE && n->cam == NAVI_CAM_FREE)
+  /* a drive goes back to following the car after a pan (FREE) or the overview (FIXED) */
+  if (n->mode == NAVI_MODE_DRIVE && (n->cam == NAVI_CAM_FREE || n->cam == NAVI_CAM_FIXED))
     navi_recenter (n);
   return G_SOURCE_REMOVE;
 }
@@ -575,6 +578,44 @@ add_layer (Navi *n, const char *json, const char *below)
     g_message ("map layer: %s", error->message);
 }
 
+/* the style's point-of-interest markers ("navi-poi-fuel", ...), drawn at the screen's scale */
+static void
+add_poi_images (Navi *n)
+{
+  int scale = gtk_widget_get_scale_factor (GTK_WIDGET (n->map));
+  if (n->poi_scale == scale)
+    return; /* the map keeps them across style loads */
+  guint count;
+  const NaviPoiKind *kinds = navi_poi_kinds (&count);
+  for (guint i = 0; i < count; i++) {
+    g_autofree char *file = g_strdup_printf ("%s.svg", kinds[i].icon);
+    g_autofree char *path = g_build_filename (n->data_dir, "poi", file, NULL);
+    cairo_surface_t *marker = navi_draw_poi_marker (path, kinds[i].color, kinds[i].prominent ? 30 : 24, scale);
+    if (!marker)
+      continue;
+    int w = cairo_image_surface_get_width (marker), h = cairo_image_surface_get_height (marker);
+    int stride = cairo_image_surface_get_stride (marker);
+    const guint8 *argb = cairo_image_surface_get_data (marker);
+    /* cairo's native-endian ARGB words to the map's RGBA bytes, both premultiplied */
+    g_autofree guint8 *rgba = g_malloc ((gsize) w * h * 4);
+    for (int y = 0; y < h; y++) {
+      const guint32 *row = (const guint32 *) (argb + (gsize) y * stride);
+      for (int x = 0; x < w; x++) {
+        guint32 v = row[x];
+        guint8 *o = rgba + ((gsize) y * w + x) * 4;
+        o[0] = (v >> 16) & 0xff;
+        o[1] = (v >> 8) & 0xff;
+        o[2] = v & 0xff;
+        o[3] = v >> 24;
+      }
+    }
+    g_autofree char *id = g_strconcat ("navi-poi-", kinds[i].group, NULL);
+    navi_map_add_image (n->map, id, rgba, w, h, w * 4, scale);
+    cairo_surface_destroy (marker);
+  }
+  n->poi_scale = scale;
+}
+
 static void
 on_style_loaded (NaviMap *map, Navi *n)
 {
@@ -586,6 +627,7 @@ on_style_loaded (NaviMap *map, Navi *n)
   navi_map_add_geojson_source (map, "navi-route", NULL, NULL);
   navi_map_add_geojson_source (map, "navi-turn", NULL, NULL);
   navi_map_add_geojson_source (map, "navi-turn-head", NULL, NULL);
+  navi_map_add_geojson_source (map, "navi-stop", NULL, NULL);
   const char *edge_w = "[\"interpolate\",[\"exponential\",1.6],[\"zoom\"],8,3,12,5,15,9,17,19,19,64]";
   const char *fill_w = "[\"interpolate\",[\"exponential\",1.6],[\"zoom\"],8,1.8,12,3.4,15,6.5,17,14.5,19,52]";
   g_autofree char *alt_e = g_strdup_printf (
@@ -628,6 +670,14 @@ on_style_loaded (NaviMap *map, Navi *n)
   add_layer (n,
              "{\"id\":\"navi-turn-head\",\"type\":\"fill\",\"source\":\"navi-turn-head\",\"minzoom\":15,"
              "\"paint\":{\"fill-color\":\"#FFFFFF\"}}", below);
+  /* a stop on the way: a white-ringed dot in the route's colour */
+  g_autofree char *stop = g_strdup_printf (
+    "{\"id\":\"navi-stop\",\"type\":\"circle\",\"source\":\"navi-stop\",\"paint\":{\"circle-color\":\"%s\","
+    "\"circle-radius\":9,\"circle-stroke-color\":\"#FFFFFF\",\"circle-stroke-width\":3,"
+    "\"circle-pitch-alignment\":\"viewport\"}}", route_edge[night]);
+  add_layer (n, stop, NULL);
+  add_poi_images (n);
+  g_clear_pointer (&n->poi_layers, g_strfreev);
   update_route_layers (n);
 }
 
@@ -709,6 +759,14 @@ update_route_layers (Navi *n)
   } else {
     navi_map_set_geojson (n->map, "navi-route", empty, NULL);
     navi_map_set_geojson (n->map, "navi-done", empty, NULL);
+  }
+  if (n->stop && n->mode == NAVI_MODE_DRIVE) {
+    g_autoptr (GString) pt = g_string_new ("{\"type\":\"Point\",\"coordinates\":");
+    append_coord (pt, n->stop->lat, n->stop->lng);
+    g_string_append_c (pt, '}');
+    navi_map_set_geojson (n->map, "navi-stop", pt->str, NULL);
+  } else {
+    navi_map_set_geojson (n->map, "navi-stop", empty, NULL);
   }
   if (n->mode == NAVI_MODE_DRIVE && n->guidance)
     update_turn_arrow (n, r, navi_guidance_get_progress (n->guidance)->next);
@@ -821,9 +879,20 @@ void
 navi_window_set_mode (Navi *n, NaviMode mode)
 {
   n->mode = mode;
+  /* the screen stays on while a route is driven, as long as the window is shown */
+  gboolean awake = mode == NAVI_MODE_DRIVE || mode == NAVI_MODE_ARRIVED;
+  if (awake && !n->keep_awake)
+    n->keep_awake = gtk_application_inhibit (n->app, GTK_WINDOW (n->win), GTK_APPLICATION_INHIBIT_IDLE,
+                                             _("Navigating"));
+  else if (!awake && n->keep_awake) {
+    gtk_application_uninhibit (n->app, n->keep_awake);
+    n->keep_awake = 0;
+  }
   gtk_widget_set_visible (n->pin, n->dest && (mode == NAVI_MODE_PLACE || mode == NAVI_MODE_ROUTES ||
                                               mode == NAVI_MODE_DRIVE || mode == NAVI_MODE_ARRIVED));
   navi_panels_set_mode (n->panels, mode);
+  if (n->back)
+    gtk_widget_set_visible (n->back, mode != NAVI_MODE_BROWSE);
   update_route_layers (n);
   update_bubbles (n);
   ensure_tick (n);
@@ -836,6 +905,7 @@ navi_back_to_browse (Navi *n)
   g_clear_object (&n->route_cancel);
   g_clear_pointer (&n->routes, g_ptr_array_unref);
   g_clear_pointer (&n->dest, navi_place_free);
+  g_clear_pointer (&n->stop, navi_place_free);
   navi_window_set_mode (n, NAVI_MODE_BROWSE);
   navi_recenter (n);
   navi_panels_rest_voice (n->panels);
@@ -915,6 +985,11 @@ request_routes (Navi *n, guint alternates, GAsyncReadyCallback done)
   req.from_heading = n->car_speed > 2 ? n->car_heading : -1;
   req.to_lat = n->dest->lat;
   req.to_lng = n->dest->lng;
+  if (n->stop) {
+    req.have_via = TRUE;
+    req.via_lat = n->stop->lat;
+    req.via_lng = n->stop->lng;
+  }
   req.alternates = alternates;
   navi_route_request_async (&req, n->route_cancel, done, n);
 }
@@ -962,6 +1037,8 @@ apply_progress (Navi *n, const NaviProgress *p)
   navi_panels_update_drive (n->panels, p, r);
 }
 
+static void navi_reroute_now (Navi *n);
+
 static void
 reroute_ready (GObject *src, GAsyncResult *res, gpointer data)
 {
@@ -1005,10 +1082,43 @@ reroute (Navi *n)
   gint64 now = g_get_monotonic_time ();
   if (n->rerouting || now - n->last_reroute < REROUTE_GAP_US)
     return;
+  navi_reroute_now (n);
+}
+
+/* a new route from the car now (a stop added, or off the route) */
+static void
+navi_reroute_now (Navi *n)
+{
+  gint64 now = g_get_monotonic_time ();
+  if (n->rerouting)
+    g_cancellable_cancel (n->route_cancel);
   n->rerouting = 1;
   n->last_reroute = now;
   navi_panels_set_rerouting (n->panels, TRUE);
   request_routes (n, 0, reroute_ready);
+}
+
+void
+navi_add_stop (Navi *n, const NaviPlace *place)
+{
+  if (n->mode != NAVI_MODE_DRIVE || !n->dest)
+    return;
+  g_clear_pointer (&n->stop, navi_place_free);
+  n->stop = navi_place_copy (place);
+  navi_settings_add_recent (n->settings, place);
+  update_route_layers (n);
+  navi_reroute_now (n);
+}
+
+/* the stop passed: from now on a new route goes straight to the destination */
+static void
+check_stop (Navi *n, NaviRoute *r)
+{
+  if (!n->stop || !r || r->stop_s < 0 || n->car_s < r->stop_s - 30)
+    return;
+  g_clear_pointer (&n->stop, navi_place_free);
+  navi_panels_say (n->panels, _("You have reached your stop."), TRUE);
+  update_route_layers (n);
 }
 
 void
@@ -1105,6 +1215,7 @@ on_fix (NaviPosition *position, NaviFix *fix, Navi *n)
       g_free (words);
     }
     apply_progress (n, p);
+    check_stop (n, navi_guidance_get_route (n->guidance));
     if (p->arrived)
       arrive (n);
     else if (p->off_route)
@@ -1200,8 +1311,8 @@ reversed (GObject *src, GAsyncResult *res, gpointer data)
 {
   Navi *n = data;
   g_autoptr (NaviPlace) place = navi_search_reverse_finish (NAVI_SEARCH (src), res, NULL);
-  if (!place || n->mode != NAVI_MODE_PLACE || !n->dest)
-    return;
+  if (!place || !place->name || !*place->name || n->mode != NAVI_MODE_PLACE || !n->dest)
+    return; /* no address: it stays a "Dropped pin" */
   /* still the point that was pressed */
   if (n->dest->kind != NAVI_PLACE_POINT)
     return;
@@ -1226,9 +1337,101 @@ on_long_press (GtkGestureLongPress *gesture, double x, double y, Navi *n)
   navi_search_reverse_async (n->search, lat, lng, NULL, reversed, n);
 }
 
+/* a point of interest's address, once Photon (or the tiles) named the point */
+typedef struct {
+  Navi *n;
+  guint seq;
+} PoiAsk;
+
+static void
+poi_reversed (GObject *src, GAsyncResult *res, gpointer data)
+{
+  PoiAsk *ask = data;
+  Navi *n = ask->n;
+  gboolean same = ask->seq == n->poi_seq;
+  g_free (ask);
+  g_autoptr (NaviPlace) found = navi_search_reverse_finish (NAVI_SEARCH (src), res, NULL);
+  if (!found || !found->name || !same || n->mode != NAVI_MODE_PLACE || !n->dest || n->dest->kind != NAVI_PLACE_POI || n->dest->detail)
+    return; /* another place by now */
+  /* the street and number with where it is; for the point of interest itself, where it is */
+  g_autofree char *address = NULL;
+  if (found->kind == NAVI_PLACE_ADDRESS || found->kind == NAVI_PLACE_STREET)
+    address = found->detail ? g_strdup_printf ("%s, %s", found->name, found->detail) : g_strdup (found->name);
+  else
+    address = g_strdup (found->detail);
+  if (!address)
+    return;
+  n->dest->detail = g_steal_pointer (&address);
+  navi_panels_show_place (n->panels, n->dest);
+}
+
+/* the point of interest under a tap, the nearest one in reach */
+static gboolean
+tap_poi (Navi *n, double x, double y)
+{
+  if (!n->poi_layers) {
+    g_auto (GStrv) symbols = navi_map_list_layers (n->map, "symbol");
+    g_autoptr (GStrvBuilder) b = g_strv_builder_new ();
+    for (guint i = 0; symbols && symbols[i]; i++)
+      if (g_str_has_prefix (symbols[i], "poi-"))
+        g_strv_builder_add (b, symbols[i]);
+    n->poi_layers = g_strv_builder_end (b);
+  }
+  if (!n->poi_layers[0])
+    return FALSE;
+  g_autofree char *hit = navi_map_query_features (n->map, x, y, 18, (const char *const *) n->poi_layers);
+  if (!hit)
+    return FALSE;
+  g_autoptr (JsonParser) parser = json_parser_new ();
+  if (!json_parser_load_from_data (parser, hit, -1, NULL))
+    return FALSE;
+  JsonNode *root = json_parser_get_root (parser);
+  JsonArray *features = JSON_NODE_HOLDS_OBJECT (root) && json_object_has_member (json_node_get_object (root), "features")
+                          ? json_object_get_array_member (json_node_get_object (root), "features") : NULL;
+  JsonObject *best = NULL;
+  double best_d = G_MAXDOUBLE, best_lat = 0, best_lng = 0;
+  for (guint i = 0; features && i < json_array_get_length (features); i++) {
+    JsonObject *f = json_array_get_object_element (features, i);
+    JsonObject *g = f && json_object_has_member (f, "geometry") ? json_object_get_object_member (f, "geometry") : NULL;
+    JsonArray *c = g && json_object_has_member (g, "coordinates") ? json_object_get_array_member (g, "coordinates")
+                                                                    : NULL;
+    if (!c || json_array_get_length (c) < 2 || !json_object_has_member (f, "properties"))
+      continue;
+    double lng = json_array_get_double_element (c, 0), lat = json_array_get_double_element (c, 1), sx, sy;
+    navi_map_geo_to_screen (n->map, lat, lng, &sx, &sy);
+    double d = hypot (sx - x, sy - y);
+    if (d < best_d) {
+      best_d = d;
+      best = json_object_get_object_member (f, "properties");
+      best_lat = lat;
+      best_lng = lng;
+    }
+  }
+  if (!best)
+    return FALSE;
+  const char *cls = json_object_get_string_member_with_default (best, "class", NULL);
+  const char *group = navi_poi_group (cls, json_object_get_string_member_with_default (best, "subclass", NULL));
+  const char *name = json_object_get_string_member_with_default (best, "name:latin", NULL);
+  if (!name)
+    name = json_object_get_string_member_with_default (best, "name", NULL);
+  const char *title = name ? name : navi_poi_label (group);
+  g_autoptr (NaviPlace) place = navi_place_new (NAVI_PLACE_POI, title ? title : _("Place"), NULL, best_lat, best_lng);
+  place->category = g_strdup (group ? group : cls);
+  navi_show_place (n, place);
+  PoiAsk *ask = g_new (PoiAsk, 1);
+  ask->n = n;
+  ask->seq = ++n->poi_seq;
+  navi_search_reverse_async (n->search, best_lat, best_lng, NULL, poi_reversed, ask);
+  return TRUE;
+}
+
 static void
 on_tap (GtkGestureClick *gesture, int n_press, double x, double y, Navi *n)
 {
+  if (n_press == 1 && (n->mode == NAVI_MODE_BROWSE || n->mode == NAVI_MODE_PLACE)) {
+    tap_poi (n, x, y);
+    return;
+  }
   if (n_press != 1 || n->mode != NAVI_MODE_ROUTES || !n->routes || n->routes->len < 2)
     return;
   /* a tap on another route selects it */

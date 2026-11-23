@@ -212,6 +212,7 @@ parse_trip (JsonObject *trip, GError **error)
   NaviRoute *r = &box->route;
   g_autoptr (GArray) points = g_array_new (FALSE, FALSE, sizeof (NaviPathPoint));
   g_autoptr (GArray) mans = g_array_new (FALSE, TRUE, sizeof (NaviManeuver));
+  gint stop_point = -1; /* the point where the first of several legs ends: the stop */
   for (guint l = 0; l < json_array_get_length (legs); l++) {
     JsonObject *leg = json_array_get_object_element (legs, l);
     guint base = points->len ? points->len - 1 : 0; /* a leg starts where the one before ended */
@@ -224,6 +225,8 @@ parse_trip (JsonObject *trip, GError **error)
     }
     g_array_append_vals (points, (NaviPathPoint *) leg_points->data + (points->len ? 1 : 0),
                          leg_points->len - (points->len ? 1 : 0));
+    if (l == 0 && json_array_get_length (legs) > 1)
+      stop_point = points->len - 1;
     JsonArray *ms = json_object_get_array_member (leg, "maneuvers");
     for (guint i = 0; ms && i < json_array_get_length (ms); i++) {
       JsonObject *mo = json_array_get_object_element (ms, i);
@@ -268,6 +271,7 @@ parse_trip (JsonObject *trip, GError **error)
     r->maneuvers[i].length = (i + 1 < r->n_maneuvers ? r->maneuvers[i + 1].s : r->points[r->n_points - 1].s) -
                              r->maneuvers[i].s;
   r->length = r->points[r->n_points - 1].s;
+  r->stop_s = stop_point >= 0 ? r->points[stop_point].s : -1;
   JsonObject *sum = json_object_has_member (trip, "summary") ? json_object_get_object_member (trip, "summary") : NULL;
   r->time = sum ? json_object_get_double_member_with_default (sum, "time", 0) : 0;
   if (sum) {
@@ -475,6 +479,17 @@ navi_route_request_async (const NaviRouteRequest *rq, GCancellable *cancellable,
     json_builder_add_int_value (b, 45);
   }
   json_builder_end_object (b);
+  if (rq->have_via) {
+    /* a stop: a break, where the route may turn round */
+    json_builder_begin_object (b);
+    json_builder_set_member_name (b, "lat");
+    json_builder_add_double_value (b, rq->via_lat);
+    json_builder_set_member_name (b, "lon");
+    json_builder_add_double_value (b, rq->via_lng);
+    json_builder_set_member_name (b, "type");
+    json_builder_add_string_value (b, "break");
+    json_builder_end_object (b);
+  }
   json_builder_begin_object (b);
   json_builder_set_member_name (b, "lat");
   json_builder_add_double_value (b, rq->to_lat);
@@ -489,7 +504,7 @@ navi_route_request_async (const NaviRouteRequest *rq, GCancellable *cancellable,
   json_builder_set_member_name (b, "language");
   json_builder_add_string_value (b, rq->language ? rq->language : navi_route_language ());
   /* the default directions type, "instructions": "maneuvers" leaves every text out */
-  if (rq->alternates) {
+  if (rq->alternates && !rq->have_via) {
     json_builder_set_member_name (b, "alternates");
     json_builder_add_int_value (b, MIN (rq->alternates, 2u));
   }

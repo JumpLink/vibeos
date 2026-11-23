@@ -27,7 +27,7 @@ typedef struct {
   NaviPlaceKind kind;
   char *name;     /* "Kulturbrauerei", "Bergmannstraße 5" */
   char *detail;   /* where it is: "Schönhauser Allee, Prenzlauer Berg" (may be NULL) */
-  char *category; /* a point of interest's class ("fuel", "restaurant"), else NULL */
+  char *category; /* a point of interest's group (navi-poi.h: "fuel", "food"), or its OSM value; else NULL */
   double lat, lng;
 } NaviPlace;
 
@@ -40,8 +40,16 @@ G_DEFINE_AUTOPTR_CLEANUP_FUNC (NaviPlace, navi_place_free)
 typedef enum {
   NAVI_CATEGORY_NONE,
   NAVI_CATEGORY_FUEL,
-  NAVI_CATEGORY_FOOD,
+  NAVI_CATEGORY_CHARGING,
   NAVI_CATEGORY_PARKING,
+  NAVI_CATEGORY_FOOD, /* restaurants and fast food */
+  NAVI_CATEGORY_COFFEE,
+  NAVI_CATEGORY_GROCERY,
+  NAVI_CATEGORY_PHARMACY,
+  NAVI_CATEGORY_HOSPITAL,
+  NAVI_CATEGORY_ATM, /* ATMs and banks */
+  NAVI_CATEGORY_HOTEL,
+  NAVI_CATEGORY_TOILETS,
 } NaviCategory;
 
 #define NAVI_TYPE_SEARCH (navi_search_get_type ())

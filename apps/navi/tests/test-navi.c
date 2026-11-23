@@ -6,6 +6,7 @@
 #include "navi-mvt.h"
 #include "navi-route.h"
 #include "navi-search.h"
+#include "navi-poi.h"
 #include "navi-sun.h"
 
 #include <math.h>
@@ -476,6 +477,43 @@ test_sun (void)
   g_date_time_unref (after);
 }
 
+/* the map's poi classes and Photon's OSM tags land in the same groups, which the chips find */
+static void
+test_poi_groups (void)
+{
+  g_assert_cmpstr (navi_poi_group ("fuel", "fuel"), ==, "fuel");
+  g_assert_cmpstr (navi_poi_group ("fuel", "charging_station"), ==, "charging");
+  g_assert_cmpstr (navi_poi_group ("amenity", "fuel"), ==, "fuel");
+  g_assert_cmpstr (navi_poi_group ("amenity", "charging_station"), ==, "charging");
+  g_assert_cmpstr (navi_poi_group ("lodging", "guest_house"), ==, "hotel");
+  g_assert_cmpstr (navi_poi_group ("tourism", "hotel"), ==, "hotel");
+  g_assert_cmpstr (navi_poi_group ("grocery", "supermarket"), ==, "grocery");
+  g_assert_cmpstr (navi_poi_group ("shop", "supermarket"), ==, "grocery");
+  g_assert_null (navi_poi_group ("grocery", "deli"));
+  g_assert_null (navi_poi_group ("bollard", "bollard"));
+  g_assert_true (navi_poi_in_category (NAVI_CATEGORY_FOOD, "fast_food"));
+  g_assert_true (navi_poi_in_category (NAVI_CATEGORY_ATM, "bank"));
+  g_assert_false (navi_poi_in_category (NAVI_CATEGORY_FUEL, "charging"));
+  g_assert_cmpstr (navi_poi_photon_categories (NAVI_CATEGORY_FUEL), ==, "osm.amenity.fuel");
+  g_assert_null (navi_poi_photon_categories (NAVI_CATEGORY_NONE));
+  /* every group has a marker, every chip a Photon category */
+  guint n;
+  const NaviPoiKind *kinds = navi_poi_kinds (&n);
+  for (guint i = 0; i < n; i++) {
+    g_assert_true (navi_poi_kind (kinds[i].group) == &kinds[i]);
+    g_assert_nonnull (navi_poi_photon_categories (kinds[i].category));
+  }
+  /* Photon's fuel station is a "fuel" */
+  const char *json = "{\"type\":\"FeatureCollection\",\"features\":[{\"type\":\"Feature\",\"geometry\":"
+                     "{\"type\":\"Point\",\"coordinates\":[13.33,52.5]},\"properties\":{\"osm_key\":\"amenity\","
+                     "\"osm_value\":\"fuel\",\"type\":\"house\",\"name\":\"Aral\",\"street\":\"Kantstra\u00dfe\"}}]}";
+  g_autoptr (GPtrArray) places = navi_search_photon_parse (json, -1, NULL);
+  g_assert_cmpuint (places->len, ==, 1);
+  NaviPlace *p = places->pdata[0];
+  g_assert_cmpint (p->kind, ==, NAVI_PLACE_POI);
+  g_assert_cmpstr (p->category, ==, "fuel");
+}
+
 int
 main (int argc, char **argv)
 {
@@ -492,6 +530,7 @@ main (int argc, char **argv)
   g_test_add_func ("/navi/mvt", test_mvt);
   g_test_add_func ("/navi/search/fold", test_fold);
   g_test_add_func ("/navi/search/photon", test_photon);
+  g_test_add_func ("/navi/search/poi-groups", test_poi_groups);
   g_test_add_func ("/navi/sun", test_sun);
   return g_test_run ();
 }

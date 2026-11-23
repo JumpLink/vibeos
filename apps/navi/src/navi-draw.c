@@ -1,6 +1,8 @@
 /* navi-draw: see navi-draw.h. Every shape here is Navi's own: thick round strokes in a unit box. */
 #include "navi-draw.h"
 
+#include <librsvg/rsvg.h>
+
 #include <math.h>
 
 #define DEG (G_PI / 180)
@@ -359,6 +361,7 @@ typedef struct {
   NaviTurn turn;
   int exit_number;
   GdkRGBA color;
+  gboolean follow; /* drawn in the widget's CSS colour */
 } Icon;
 
 static void
@@ -366,6 +369,8 @@ draw_icon (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
 {
   Icon *icon = data;
   double size = MIN (w, h);
+  if (icon->follow)
+    gtk_widget_get_color (GTK_WIDGET (area), &icon->color);
   cairo_translate (cr, (w - size) / 2, (h - size) / 2);
   switch (icon->kind) {
   case NAVI_ICON_TURN: navi_draw_turn (cr, size, icon->turn, icon->exit_number, &icon->color); break;
@@ -409,11 +414,85 @@ navi_icon_set_turn (GtkWidget *area, NaviTurn type, int roundabout_exit)
 }
 
 void
+navi_icon_follow_ink (GtkWidget *area)
+{
+  Icon *icon = g_object_get_data (G_OBJECT (area), "navi-icon");
+  icon->follow = TRUE;
+  gtk_widget_add_css_class (area, "navi-ink");
+  gtk_widget_queue_draw (area);
+}
+
+void
 navi_icon_set_color (GtkWidget *area, const GdkRGBA *color)
 {
   Icon *icon = g_object_get_data (G_OBJECT (area), "navi-icon");
+  icon->follow = FALSE;
   if (gdk_rgba_equal (&icon->color, color))
     return;
   icon->color = *color;
   gtk_widget_queue_draw (area);
+}
+
+/* ---- points of interest ---- */
+
+cairo_surface_t *
+navi_draw_poi_marker (const char *svg_path, guint32 color, double size, int scale)
+{
+  g_autoptr (GError) error = NULL;
+  g_autoptr (GObject) svg_ref = G_OBJECT (rsvg_handle_new_from_file (svg_path, &error));
+  RsvgHandle *svg = (RsvgHandle *) svg_ref;
+  if (!svg) {
+    g_message ("poi icon: %s", error->message);
+    return NULL;
+  }
+  int px = (int) ceil ((size + 4) * scale);
+  cairo_surface_t *out = cairo_image_surface_create (CAIRO_FORMAT_ARGB32, px, px);
+  cairo_t *cr = cairo_create (out);
+  cairo_scale (cr, scale, scale);
+  double c = (size + 4) / 2, r = size / 2;
+  /* the shadow, a little below */
+  cairo_arc (cr, c, c + 0.9, r + 0.4, 0, 2 * G_PI);
+  cairo_set_source_rgba (cr, 0, 0, 0, 0.26);
+  cairo_fill (cr);
+  /* the white ring, the disc */
+  cairo_arc (cr, c, c, r, 0, 2 * G_PI);
+  cairo_set_source_rgb (cr, 1, 1, 1);
+  cairo_fill (cr);
+  double ring = MAX (1.5, size * 0.075);
+  cairo_arc (cr, c, c, r - ring, 0, 2 * G_PI);
+  cairo_set_source_rgb (cr, ((color >> 16) & 0xff) / 255.0, ((color >> 8) & 0xff) / 255.0, (color & 0xff) / 255.0);
+  cairo_fill (cr);
+  /* the icon in white: drawn alone, then its shape used as a mask */
+  double g = (r - ring) * 2 * 0.62;
+  int gpx = (int) ceil (g * scale);
+  cairo_surface_t *glyph = cairo_image_surface_create (CAIRO_FORMAT_ARGB32, gpx, gpx);
+  cairo_t *gc = cairo_create (glyph);
+  RsvgRectangle viewport = { 0, 0, gpx, gpx };
+  gboolean drawn = rsvg_handle_render_document (svg, gc, &viewport, &error);
+  cairo_destroy (gc);
+  if (drawn) {
+    cairo_identity_matrix (cr);
+    cairo_set_source_rgb (cr, 1, 1, 1);
+    cairo_mask_surface (cr, glyph, round ((c - g / 2) * scale), round ((c - g / 2) * scale));
+  } else {
+    g_message ("poi icon: %s", error->message);
+  }
+  cairo_surface_destroy (glyph);
+  cairo_destroy (cr);
+  cairo_surface_flush (out);
+  return out;
+}
+
+GdkTexture *
+navi_poi_marker_texture (const char *svg_path, guint32 color, double size, int scale)
+{
+  cairo_surface_t *s = navi_draw_poi_marker (svg_path, color, size, scale);
+  if (!s)
+    return NULL;
+  int w = cairo_image_surface_get_width (s), h = cairo_image_surface_get_height (s);
+  int stride = cairo_image_surface_get_stride (s);
+  g_autoptr (GBytes) bytes = g_bytes_new (cairo_image_surface_get_data (s), (gsize) stride * h);
+  cairo_surface_destroy (s);
+  /* cairo's ARGB32 is a native-endian word: B, G, R, A in memory on these little-endian machines */
+  return gdk_memory_texture_new (w, h, GDK_MEMORY_DEFAULT, bytes, stride);
 }

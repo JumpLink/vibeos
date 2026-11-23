@@ -25,6 +25,13 @@ void navi_draw_routes (cairo_t *cr, double size, const GdkRGBA *color);
 /* the compass needle, north turned to `bearing` degrees clockwise on the screen */
 void navi_draw_compass (cairo_t *cr, double size, double bearing, const GdkRGBA *color);
 
+/* A point of interest's marker, `size` points across at `scale` pixels a point: a white-ringed disc in `color`
+ * (0xRRGGBB) on a soft shadow, with the SVG icon at `svg_path` in white on it. A new ARGB32 surface of
+ * (size + 4) * scale pixels square, the disc in its middle; NULL when the icon cannot be read. */
+cairo_surface_t *navi_draw_poi_marker (const char *svg_path, guint32 color, double size, int scale);
+/* the same as a texture, for a widget */
+GdkTexture *navi_poi_marker_texture (const char *svg_path, guint32 color, double size, int scale);
+
 /* A GtkDrawingArea that draws one of these at its size: the turn, the routes, the crosshair */
 typedef enum {
   NAVI_ICON_TURN,
@@ -41,6 +48,8 @@ GtkWidget *navi_icon_new (NaviIconKind kind, int size);
 /* a turn icon's manoeuvre */
 void navi_icon_set_turn (GtkWidget *icon, NaviTurn type, int roundabout_exit);
 /* its colour (white unless set) */
+/* the icon takes its colour from CSS (class navi-ink: dark by day, light at night) */
+void navi_icon_follow_ink (GtkWidget *icon);
 void navi_icon_set_color (GtkWidget *icon, const GdkRGBA *color);
 
 G_END_DECLS

@@ -63,6 +63,24 @@ ROADS = [   # (name, filter, min zoom, widths of the fill by zoom, fill, edge)
     ('motorway', ['==', 'class', 'motorway'], 5, z(5, 0.5, 9, 1.6, 13, 4, 15, 11, 17, 32, 19, 100), C['motorway'], C['motorway_edge']),
 ]
 
+# a poi's group (navi-poi.c), from its class and subclass
+POI_GROUP = ['match', ['get', 'subclass'],
+             'fuel', 'fuel', 'charging_station', 'charging', 'supermarket', 'grocery', 'hospital', 'hospital',
+             ['hotel', 'motel', 'hostel', 'guest_house'], 'hotel',
+             ['match', ['get', 'class'], 'parking', 'parking', 'restaurant', 'food', 'fast_food', 'fast_food',
+              'cafe', 'cafe', 'pharmacy', 'pharmacy', 'atm', 'atm', 'bank', 'bank', 'toilets', 'toilets', 'none']]
+POI_TIERS = [  # (tier, min zoom, filter), the most important first
+    ('fuel', 14, ['==', 'subclass', 'fuel']),
+    ('major', 15, ['any', ['==', 'subclass', 'charging_station'], ['all', ['==', 'class', 'hospital'], ['==', 'subclass', 'hospital']],
+                   ['all', ['==', 'class', 'parking'], ['has', 'name']]]),
+    ('shops', 16, ['any', ['all', ['in', 'class', 'grocery', 'shop'], ['==', 'subclass', 'supermarket']],
+                   ['all', ['==', 'class', 'pharmacy'], ['==', 'subclass', 'pharmacy']],
+                   ['all', ['==', 'class', 'lodging'], ['in', 'subclass', 'hotel', 'motel', 'hostel', 'guest_house']]]),
+    # the tile's own ranking (1 is its most important) keeps the busiest streets readable
+    ('minor', 16.5, ['all', ['in', 'class', 'restaurant', 'fast_food', 'cafe', 'atm', 'bank', 'toilets'],
+                     ['<=', 'rank', 80]]),
+]
+
 layers = [{'id': 'background', 'type': 'background', 'paint': {'background-color': C['ground']}}]
 sources = {}
 for n, bounds in COUNTRIES:
@@ -138,6 +156,26 @@ for n, bounds in COUNTRIES:
          'layout': {'text-field': ['get', 'name'], 'text-font': ['Noto Sans Bold'], 'text-size': 16},
          'paint': {'text-color': C['city'], 'text-halo-color': C['label_halo'], 'text-halo-width': 2}},
     ]
+
+    # Points of interest, from the poi layer's zoom-14 tiles (the only zoom that has them). Each is a round marker the
+    # app draws ("navi-poi-GROUP", navi-poi.c's groups), upright on the screen. Fuel from zoom 14 with its name, the
+    # rest later and nameless, so the map stays clean at the driving pitch: charging, hospitals and named car parks
+    # from 15, supermarkets, pharmacies and hotels from 16, the tile's first 80 of food, cafés, ATMs and toilets
+    # from 16.5 (browsing's zoom). Fuel is placed
+    # first (the topmost layer wins a collision), then each tier by the tile's rank.
+    for tier, mz, flt in reversed(POI_TIERS):
+        layers.append({'id': f'poi-{tier}--{n}', 'type': 'symbol', **s('poi'), 'minzoom': mz, 'filter': flt,
+                       'layout': {'icon-image': ['concat', 'navi-poi-', POI_GROUP],
+                                  'icon-size': ['interpolate', ['linear'], ['zoom'], 14, 0.72, 16, 0.88, 18, 1],
+                                  'icon-pitch-alignment': 'viewport', 'icon-rotation-alignment': 'viewport',
+                                  'icon-padding': 4, 'symbol-sort-key': ['get', 'rank'],
+                                  **({'text-field': ['step', ['zoom'], '', 15,
+                                                     ['coalesce', ['get', 'name:latin'], ['get', 'name']]],
+                                      'text-font': ['Noto Sans Bold'], 'text-size': 12, 'text-anchor': 'top',
+                                      'text-offset': [0, 1.2], 'text-optional': True, 'text-max-width': 8,
+                                      'text-pitch-alignment': 'viewport'} if tier == 'fuel' else {})},
+                       'paint': {'text-color': C['label'], 'text-halo-color': C['label_halo'],
+                                 'text-halo-width': 1.5} if tier == 'fuel' else {}})
 
 style = {'version': 8, 'name': f'navi-{mode}', 'glyphs': f'{server}/glyphs/{{fontstack}}/{{range}}.pbf',
          'sources': sources, 'layers': layers}

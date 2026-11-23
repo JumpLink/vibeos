@@ -19,7 +19,7 @@ read_place (GKeyFile *kf, const char *group)
   if (!g_key_file_has_group (kf, group))
     return NULL;
   g_autofree char *name = g_key_file_get_string (kf, group, "name", NULL);
-  if (!name)
+  if (!name || !*name)
     return NULL;
   g_autofree char *detail = g_key_file_get_string (kf, group, "detail", NULL);
   NaviPlace *p = navi_place_new (g_key_file_get_integer (kf, group, "kind", NULL), name, detail,
@@ -32,7 +32,7 @@ read_place (GKeyFile *kf, const char *group)
 static void
 write_place (GKeyFile *kf, const char *group, const NaviPlace *p)
 {
-  if (!p)
+  if (!p || !p->name || !*p->name)
     return;
   g_key_file_set_integer (kf, group, "kind", p->kind);
   g_key_file_set_string (kf, group, "name", p->name);
@@ -85,12 +85,12 @@ navi_settings_load (void)
     s->last_lng = g_key_file_get_double (kf, "map", "last-lng", NULL);
     s->last_zoom = g_key_file_get_double (kf, "map", "last-zoom", NULL);
   }
-  for (int i = 0; i < RECENT_MAX; i++) {
+  /* a bad entry (no name: an older build saved a nameless place) is skipped, the rest kept */
+  for (int i = 0; i < RECENT_MAX * 2 && s->recent->len < RECENT_MAX; i++) {
     g_autofree char *group = g_strdup_printf ("recent-%d", i);
     NaviPlace *p = read_place (kf, group);
-    if (!p)
-      break;
-    g_ptr_array_add (s->recent, p);
+    if (p)
+      g_ptr_array_add (s->recent, p);
   }
   return s;
 }
@@ -142,6 +142,8 @@ navi_settings_save (NaviSettings *s)
 void
 navi_settings_add_recent (NaviSettings *s, const NaviPlace *place)
 {
+  if (!place->name || !*place->name)
+    return;
   for (guint i = 0; i < s->recent->len; i++) {
     NaviPlace *p = s->recent->pdata[i];
     if (!g_strcmp0 (p->name, place->name) && navi_geo_distance (p->lat, p->lng, place->lat, place->lng) < 30) {

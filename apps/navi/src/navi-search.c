@@ -6,6 +6,7 @@
  * thread: the map keeps its frames. "Bergmannstraße 5" is a street and a number: the house numbers near that
  * street's lines. A tile's index stays in memory for later searches (the most recent 150). */
 #include "navi-search.h"
+#include "navi-poi.h"
 #include "navi-geo.h"
 #include "navi-mvt.h"
 #include "navi-route.h"
@@ -271,7 +272,10 @@ index_feature (const char *layer, const NaviMvtFeature *f, gpointer data)
     g_array_append_val (t->streets, s);
     return;
   }
-  Named nm = { g_strdup (name), navi_search_fold (name), g_strdup (navi_mvt_feature_get (f, "class")) };
+  const char *cls = navi_mvt_feature_get (f, "class");
+  /* a point of interest's group (navi-poi.h), as Photon's answers have it */
+  const char *group = !strcmp (layer, "poi") ? navi_poi_group (cls, navi_mvt_feature_get (f, "subclass")) : NULL;
+  Named nm = { g_strdup (name), navi_search_fold (name), g_strdup (group ? group : cls) };
   feature_point (t, f, &nm.lat, &nm.lng);
   if (isnan (nm.lat)) {
     named_clear (&nm);
@@ -386,16 +390,7 @@ match_score (const Query *q, const char *folded)
 static gboolean
 in_category (NaviCategory c, const char *cls)
 {
-  if (!cls)
-    return FALSE;
-  switch (c) {
-  case NAVI_CATEGORY_FUEL: return !strcmp (cls, "fuel");
-  case NAVI_CATEGORY_FOOD:
-    return !strcmp (cls, "restaurant") || !strcmp (cls, "fast_food") || !strcmp (cls, "cafe") ||
-           !strcmp (cls, "ice_cream") || !strcmp (cls, "bakery");
-  case NAVI_CATEGORY_PARKING: return !strcmp (cls, "parking");
-  default: return FALSE;
-  }
+  return navi_poi_in_category (c, cls);
 }
 
 typedef struct {

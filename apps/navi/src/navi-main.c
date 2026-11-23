@@ -72,37 +72,64 @@ make_search (Navi *n)
   return search;
 }
 
-/* ---- back: Escape and VibeOS's back swipe (Alt+Left) ---- */
+/* ---- back: Escape, the Back key and VibeOS's back swipe (Alt+Left) ---- */
 
-static gboolean
-on_back (GtkWidget *widget, GVariant *args, gpointer data)
+static void
+go_back (Navi *n)
 {
-  Navi *n = data;
+  /* the search over the map goes first (Settings, About and dialogs take their own keys) */
+  if (navi_panels_back (n->panels))
+    return;
   switch (n->mode) {
   case NAVI_MODE_PLACE:
     navi_back_to_browse (n);
     break;
   case NAVI_MODE_ROUTES:
-    if (n->dest)
-      navi_show_place (n, n->dest);
-    else
-      navi_back_to_browse (n);
+  case NAVI_MODE_DRIVE:
+    /* a route: asked first, never dropped by a stray swipe */
+    navi_panels_ask_route_change (n->panels, NULL);
     break;
   case NAVI_MODE_ARRIVED:
     navi_stop_drive (n);
     break;
-  case NAVI_MODE_DRIVE:
-    if (n->cam != NAVI_CAM_FOLLOW)
-      navi_recenter (n);
-    break;
   case NAVI_MODE_BROWSE:
+    /* never quits: the menu's Exit does */
     if (n->cam != NAVI_CAM_FOLLOW && n->car_known)
       navi_recenter (n);
-    else
-      gtk_window_close (GTK_WINDOW (n->win));
     break;
   }
+}
+
+static gboolean
+on_back (GtkWidget *widget, GVariant *args, gpointer data)
+{
+  go_back (data);
   return TRUE;
+}
+
+/* The shell's back swipe asks the app what Back means (extension/a11y.js): it presses a "Back" button in the
+ * window's top 40 px, and sends an app without one home. Navi has somewhere to go back to while a place, a route or
+ * a drive shows: an unseen one-pixel "Back" at the top says so (navi_window_set_mode shows it), and runs go_back */
+static void
+back_clicked (GtkWidget *button, Navi *n)
+{
+  go_back (n);
+}
+
+static void
+add_back_button (Navi *n)
+{
+  GtkWidget *label = gtk_label_new (NULL);
+  n->back = vibeos_pressable_new (label);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (n->back), GTK_ACCESSIBLE_PROPERTY_LABEL, "Back", -1);
+  gtk_widget_set_size_request (n->back, 1, 1);
+  gtk_widget_set_halign (n->back, GTK_ALIGN_START);
+  gtk_widget_set_valign (n->back, GTK_ALIGN_START);
+  gtk_widget_set_opacity (n->back, 0);
+  gtk_widget_set_can_target (n->back, FALSE);
+  gtk_widget_set_visible (n->back, FALSE);
+  g_signal_connect (n->back, "clicked", G_CALLBACK (back_clicked), n);
+  gtk_overlay_add_overlay (GTK_OVERLAY (n->map_overlay), n->back);
 }
 
 static void
@@ -113,7 +140,9 @@ add_back (Navi *n)
   gtk_shortcut_controller_add_shortcut (
     GTK_SHORTCUT_CONTROLLER (keys),
     gtk_shortcut_new (gtk_alternative_trigger_new (gtk_shortcut_trigger_parse_string ("<Alt>Left"),
-                                                   gtk_shortcut_trigger_parse_string ("Escape")),
+                                                   gtk_alternative_trigger_new (
+                                                     gtk_shortcut_trigger_parse_string ("Escape"),
+                                                     gtk_shortcut_trigger_parse_string ("Back"))),
                       gtk_callback_action_new (on_back, n, NULL)));
   gtk_widget_add_controller (n->win, keys);
 }
@@ -166,6 +195,11 @@ on_destroy (GtkWidget *win, Navi *n)
 {
   if (n->mode == NAVI_MODE_DRIVE)
     navi_stop_drive (n);
+  if (n->keep_awake) {
+    gtk_application_uninhibit (n->app, n->keep_awake);
+    n->keep_awake = 0;
+  }
+  navi_panels_quiet (n->panels);
   navi_settings_flush (n->settings);
   navi_position_stop (n->position);
 }
@@ -199,6 +233,7 @@ activate (GtkApplication *app, gpointer data)
 
   navi_window_build_map (n);
   n->panels = navi_panels_new (n);
+  add_back_button (n);
   if (n->tablet) {
     /* the rail and the map */
     GtkWidget *frame = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);

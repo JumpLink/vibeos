@@ -11,6 +11,7 @@
  * by day, dark by night (the window's "night" class). */
 #include "navi-app.h"
 #include "navi-draw.h"
+#include "navi-poi.h"
 #include "navi-voice.h"
 
 #include <glib/gi18n.h>
@@ -50,9 +51,11 @@ struct _NaviPanels {
   NaviCategory category;
   char *category_text;
   Choosing choosing;
+  GHashTable *markers;     /* "fuel@30x2" -> GdkTexture: the points of interest's markers, for the widgets */
+  struct Along *along;     /* a category's search along the route, while driving */
 
   /* a place */
-  GtkWidget *place_name, *place_detail, *place_distance, *place_go, *place_go_label;
+  GtkWidget *place_name, *place_detail, *place_distance, *place_go, *place_go_label, *place_icon;
   NaviPlace *place;
 
   /* the routes */
@@ -100,6 +103,9 @@ static const char *const CSS =
   ".night .navi-round { background: #2A3038; }"
   ".navi-round image { color: #191A1C; }"
   ".night .navi-round image { color: #F2F4F7; }"
+  /* the drawn icons on the cards and the round buttons (the crosshairs, Overview): ink by day, light at night */
+  ".navi-ink { color: #3A3F45; }"
+  ".night .navi-ink { color: #E0E4E9; }"
   ".navi-square { border-radius: 14dp; }"
   /* the note: no GPS */
   ".navi-note { background: rgba(0,0,0,0.82); border-radius: 14dp; padding: 6dp 14dp; margin: 12dp; }"
@@ -253,6 +259,51 @@ set_text (GtkWidget *label, const char *text)
     gtk_label_set_text (GTK_LABEL (label), text ? text : "");
 }
 
+/* ---- points of interest ---- */
+
+const char *
+navi_poi_label (const char *group)
+{
+  static const struct {
+    const char *group, *label;
+  } labels[] = {
+    { "fuel", N_ ("Gas station") }, { "charging", N_ ("EV charging") }, { "parking", N_ ("Parking") },
+    { "food", N_ ("Restaurant") },  { "fast_food", N_ ("Fast food") },  { "cafe", N_ ("Café") },
+    { "grocery", N_ ("Supermarket") }, { "pharmacy", N_ ("Pharmacy") }, { "hospital", N_ ("Hospital") },
+    { "atm", N_ ("ATM") },          { "bank", N_ ("Bank") },            { "hotel", N_ ("Hotel") },
+    { "toilets", N_ ("Toilets") },
+  };
+  for (guint i = 0; group && i < G_N_ELEMENTS (labels); i++)
+    if (!strcmp (labels[i].group, group))
+      return _(labels[i].label);
+  return NULL;
+}
+
+/* a point of interest's marker as on the map, `size` points across, for a widget; NULL for no known group */
+static GtkWidget *
+poi_marker (NaviPanels *p, const char *group, int size)
+{
+  const NaviPoiKind *k = navi_poi_kind (group);
+  if (!k)
+    return NULL;
+  int scale = gtk_widget_get_scale_factor (p->navi->win);
+  g_autofree char *key = g_strdup_printf ("%s@%dx%d", k->group, size, scale);
+  if (!p->markers)
+    p->markers = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_object_unref);
+  GdkTexture *t = g_hash_table_lookup (p->markers, key);
+  if (!t) {
+    g_autofree char *file = g_strdup_printf ("%s.svg", k->icon);
+    g_autofree char *path = g_build_filename (p->navi->data_dir, "poi", file, NULL);
+    t = navi_poi_marker_texture (path, k->color, size, scale);
+    if (!t)
+      return NULL;
+    g_hash_table_insert (p->markers, g_steal_pointer (&key), t);
+  }
+  GtkWidget *image = gtk_image_new_from_paintable (GDK_PAINTABLE (t));
+  gtk_image_set_pixel_size (GTK_IMAGE (image), size + 4);
+  return image;
+}
+
 static void
 stop_countdown (NaviPanels *p)
 {
@@ -289,9 +340,31 @@ sheet_drag_end (GtkGestureDrag *drag, double dx, double dy, NaviPanels *p)
 }
 
 static void
-handle_clicked (GtkGestureClick *click, int n, double x, double y, NaviPanels *p)
+toggle_sheet (NaviPanels *p)
 {
   set_expanded (p, !p->expanded);
+  stop_countdown (p);
+}
+
+/* the handle: a click gesture's "released" */
+static void
+handle_released (GtkGestureClick *click, int n, double x, double y, NaviPanels *p)
+{
+  toggle_sheet (p);
+}
+
+/* the drive bar's middle (the arrival time): a pressable's "clicked" */
+static void
+eta_clicked (GtkWidget *button, NaviPanels *p)
+{
+  toggle_sheet (p);
+}
+
+/* the expanded drive card's Continue: back to the drive */
+static void
+continue_clicked (GtkWidget *button, NaviPanels *p)
+{
+  set_expanded (p, FALSE);
   stop_countdown (p);
 }
 
@@ -321,8 +394,10 @@ pick_place (NaviPanels *p, const NaviPlace *place)
     navi_preview_routes (n, place);
     return;
   }
-  if (n->mode == NAVI_MODE_DRIVE)
-    navi_stop_drive (n);
+  if (n->mode == NAVI_MODE_DRIVE) {
+    navi_panels_ask_route_change (p, place);
+    return;
+  }
   navi_show_place (n, place);
 }
 
@@ -346,8 +421,9 @@ saved_clicked (GtkWidget *row, NaviPanels *p)
     g_autoptr (NaviPlace) copy = navi_place_copy (place);
     close_search (p);
     if (n->mode == NAVI_MODE_DRIVE)
-      navi_stop_drive (n);
-    navi_preview_routes (n, copy);
+      navi_panels_ask_route_change (p, copy);
+    else
+      navi_preview_routes (n, copy);
     return;
   }
   /* "Set once and go": the next place picked is it */
@@ -366,27 +442,29 @@ place_icon (const NaviPlace *place)
   }
 }
 
+static GtkWidget *place_row_full (NaviPanels *p, const NaviPlace *place, const char *icon, const char *subtitle,
+                                  const char *value);
+
 static GtkWidget *
 place_row (NaviPanels *p, const NaviPlace *place, const char *icon, gboolean distance)
 {
-  GtkWidget *row = vibeos_list_row_new (place->name, place->detail);
-  if (place->category && !strcmp (place->category, "fuel")) {
-    GtkWidget *i = navi_icon_new (NAVI_ICON_FUEL, 24);
-    GdkRGBA c = vibeos_color (VIBEOS_ON_SURFACE_VARIANT);
-    navi_icon_set_color (i, &c);
-    vibeos_list_row_set_start_widget (VIBEOS_LIST_ROW (row), i);
-  } else if (place->category && !strcmp (place->category, "parking")) {
-    GtkWidget *i = navi_icon_new (NAVI_ICON_PARKING, 24);
-    GdkRGBA c = vibeos_color (VIBEOS_ON_SURFACE_VARIANT);
-    navi_icon_set_color (i, &c);
-    vibeos_list_row_set_start_widget (VIBEOS_LIST_ROW (row), i);
+  g_autofree char *d = distance ? km_text (navi_distance_from_car (p->navi, place->lat, place->lng)) : NULL;
+  return place_row_full (p, place, icon, place->detail, d);
+}
+
+/* a place in a list: its marker or `icon`, its name over `subtitle`, `value` at the end */
+static GtkWidget *
+place_row_full (NaviPanels *p, const NaviPlace *place, const char *icon, const char *subtitle, const char *value)
+{
+  GtkWidget *row = vibeos_list_row_new (place->name, subtitle);
+  GtkWidget *marker = place->kind == NAVI_PLACE_POI ? poi_marker (p, place->category, 26) : NULL;
+  if (marker) {
+    vibeos_list_row_set_start_widget (VIBEOS_LIST_ROW (row), marker);
   } else {
     vibeos_list_row_set_icon (VIBEOS_LIST_ROW (row), icon ? icon : place_icon (place));
   }
-  if (distance) {
-    g_autofree char *d = km_text (navi_distance_from_car (p->navi, place->lat, place->lng));
-    vibeos_list_row_set_value (VIBEOS_LIST_ROW (row), d);
-  }
+  if (value)
+    vibeos_list_row_set_value (VIBEOS_LIST_ROW (row), value);
   g_object_set_data_full (G_OBJECT (row), "navi-place", navi_place_copy (place), (GDestroyNotify) navi_place_free);
   g_signal_connect (row, "clicked", G_CALLBACK (row_clicked), p);
   return row;
@@ -449,6 +527,119 @@ search_done (GObject *src, GAsyncResult *res, gpointer data)
     vibeos_card_list_append (list, place_row (p, places->pdata[i], NULL, TRUE));
 }
 
+/* ---- a category along the route, while driving ---- */
+
+#define ALONG_OFF_M 1500 /* how far from the route a place may be */
+
+struct Along {
+  NaviPanels *p;
+  int pending;      /* the searches still out */
+  GPtrArray *found; /* NaviPlace */
+  gboolean down;
+};
+
+typedef struct {
+  NaviPlace *place;
+  double off, ahead; /* metres from the route; along it from the car */
+} AlongHit;
+
+static int
+by_detour (gconstpointer a, gconstpointer b)
+{
+  const AlongHit *x = a, *y = b;
+  /* within a few hundred metres of each other off the route, the nearer one ahead first */
+  int ox = (int) (x->off / 300), oy = (int) (y->off / 300);
+  if (ox != oy)
+    return ox - oy;
+  return (x->ahead > y->ahead) - (x->ahead < y->ahead);
+}
+
+static void
+along_show (NaviPanels *p, struct Along *a)
+{
+  Navi *n = p->navi;
+  if (!p->search_list || !n->guidance)
+    return;
+  NaviRoute *r = navi_guidance_get_route (n->guidance);
+  g_autoptr (GArray) hits = g_array_new (FALSE, FALSE, sizeof (AlongHit));
+  g_autoptr (GHashTable) seen = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+  for (guint i = 0; i < a->found->len; i++) {
+    NaviPlace *place = a->found->pdata[i];
+    double s, bearing;
+    double off = navi_path_project (r->points, r->n_points, place->lat, place->lng, n->car_s, G_MAXDOUBLE, &s, &bearing);
+    if (off > ALONG_OFF_M || s < n->car_s)
+      continue;
+    /* the samples' boxes overlap: each place once */
+    g_autofree char *key = g_strdup_printf ("%s:%d:%d", place->name, (int) floor (place->lat / 0.0005),
+                                            (int) floor (place->lng / 0.0008));
+    if (!g_hash_table_add (seen, g_steal_pointer (&key)))
+      continue;
+    AlongHit h = { place, off, s - n->car_s };
+    g_array_append_val (hits, h);
+  }
+  g_array_sort (hits, by_detour);
+  VibeosCardList *list = VIBEOS_CARD_LIST (p->search_list);
+  vibeos_card_list_remove_all (list);
+  if (!hits->len) {
+    set_text (p->search_status, a->down ? _("Search is unavailable right now") : _("None along the route"));
+    gtk_widget_set_visible (p->search_status, TRUE);
+    return;
+  }
+  set_text (p->search_status, _("Along the route"));
+  gtk_widget_set_visible (p->search_status, TRUE);
+  for (guint i = 0; i < hits->len && i < 15; i++) {
+    AlongHit *h = &g_array_index (hits, AlongHit, i);
+    g_autofree char *ahead = km_text (h->ahead);
+    g_autofree char *sub = h->place->detail ? g_strdup_printf (_("%s ahead · %s"), ahead, h->place->detail)
+                                            : g_strdup_printf (_("%s ahead"), ahead);
+    /* the way there and back, by road about 1.4 times the straight line, at town speed: an estimate */
+    int minutes = (int) lround (2 * h->off * 1.4 / 8.3 / 60);
+    g_autofree char *detour = h->off < 60 ? g_strdup (_("On the route")) : g_strdup_printf (_("+%d min"), MAX (1, minutes));
+    vibeos_card_list_append (list, place_row_full (p, h->place, NULL, sub, detour));
+  }
+}
+
+static void
+along_found (GObject *src, GAsyncResult *res, gpointer data)
+{
+  struct Along *a = data;
+  g_autoptr (GError) error = NULL;
+  g_autoptr (GPtrArray) places = navi_search_search_finish (NAVI_SEARCH (src), res, &error);
+  for (guint i = 0; places && i < places->len; i++)
+    g_ptr_array_add (a->found, navi_place_copy (places->pdata[i]));
+  if (navi_search_photon_is_down (NAVI_SEARCH (src)))
+    a->down = TRUE;
+  if (--a->pending > 0)
+    return;
+  if (a->p && a->p->along == a) {
+    a->p->along = NULL;
+    along_show (a->p, a);
+  }
+  g_ptr_array_unref (a->found);
+  g_free (a);
+}
+
+/* the category near points ahead on the route: soon, in a few kilometres, further on */
+static void
+search_along (NaviPanels *p, NaviCategory category)
+{
+  Navi *n = p->navi;
+  NaviRoute *r = navi_guidance_get_route (n->guidance);
+  static const double ahead[] = { 800, 4000, 10000, 25000 };
+  struct Along *a = p->along = g_new0 (struct Along, 1);
+  a->p = p;
+  a->found = g_ptr_array_new_with_free_func ((GDestroyNotify) navi_place_free);
+  guint hint = 0;
+  for (guint i = 0; i < G_N_ELEMENTS (ahead); i++) {
+    double s = MIN (n->car_s + ahead[i], r->length), lat, lng;
+    navi_path_point_at (r->points, r->n_points, s, &lat, &lng, &hint);
+    a->pending++;
+    navi_search_search_async (n->search, "", category, lat, lng, p->search_cancel, along_found, a);
+    if (s >= r->length)
+      break;
+  }
+}
+
 static gboolean
 run_search (gpointer data)
 {
@@ -461,6 +652,14 @@ run_search (gpointer data)
   g_cancellable_cancel (p->search_cancel);
   g_clear_object (&p->search_cancel);
   p->search_cancel = g_cancellable_new ();
+  if (p->along) {
+    p->along->p = NULL; /* what it finds now shows nowhere */
+    p->along = NULL;
+  }
+  if (category != NAVI_CATEGORY_NONE && p->navi->mode == NAVI_MODE_DRIVE && p->navi->guidance) {
+    search_along (p, category);
+    return G_SOURCE_REMOVE;
+  }
   double lat, lng;
   gboolean approx;
   navi_where_am_i (p->navi, &lat, &lng, &approx);
@@ -497,6 +696,10 @@ search_closed (VibeosSearchView *view, NaviPanels *p)
 {
   g_clear_handle_id (&p->search_source, g_source_remove);
   g_cancellable_cancel (p->search_cancel);
+  if (p->along) {
+    p->along->p = NULL;
+    p->along = NULL;
+  }
   p->search_view = p->search_list = p->search_status = NULL;
   p->choosing = CHOOSE_NONE;
   if (p->search_host)
@@ -522,7 +725,7 @@ category_chip (NaviPanels *p, NaviCategory category, const char *label, GtkWidge
   gtk_box_append (GTK_BOX (box), label_new (label, NULL, 0.5));
   GtkWidget *chip = pressable (box, "navi-category", NULL, G_CALLBACK (category_clicked), p);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (chip), VIBEOS_RIPPLE_BOUNDED, 14);
-  gtk_widget_set_hexpand (chip, TRUE);
+  gtk_widget_set_size_request (chip, 80, -1);
   g_object_set_data (G_OBJECT (chip), "navi-category", GINT_TO_POINTER (category));
   g_object_set_data_full (G_OBJECT (chip), "navi-label", g_strdup (label), g_free);
   return chip;
@@ -536,20 +739,32 @@ open_search (NaviPanels *p, const char *text)
   Navi *n = p->navi;
   GtkWidget *view = p->search_view = vibeos_search_view_new (_("Where to?"));
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 8);
-  /* the categories: fuel, food, parking near the car */
-  GtkWidget *chips = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 10);
+  /* the categories near the car (along the route while driving), in a row that scrolls sideways */
+  static const struct {
+    NaviCategory category;
+    const char *group, *label;
+  } chip_kinds[] = {
+    { NAVI_CATEGORY_FUEL, "fuel", N_ ("Gas") },         { NAVI_CATEGORY_CHARGING, "charging", N_ ("Charging") },
+    { NAVI_CATEGORY_PARKING, "parking", N_ ("Parking") }, { NAVI_CATEGORY_FOOD, "food", N_ ("Food") },
+    { NAVI_CATEGORY_COFFEE, "cafe", N_ ("Coffee") },    { NAVI_CATEGORY_GROCERY, "grocery", N_ ("Groceries") },
+    { NAVI_CATEGORY_PHARMACY, "pharmacy", N_ ("Pharmacy") }, { NAVI_CATEGORY_HOSPITAL, "hospital", N_ ("Hospital") },
+    { NAVI_CATEGORY_ATM, "atm", N_ ("ATM") },           { NAVI_CATEGORY_HOTEL, "hotel", N_ ("Hotel") },
+    { NAVI_CATEGORY_TOILETS, "toilets", N_ ("Toilets") },
+  };
+  GtkWidget *chips = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 8);
   gtk_widget_set_margin_start (chips, 16);
   gtk_widget_set_margin_end (chips, 16);
-  gtk_widget_set_margin_top (chips, 8);
-  GdkRGBA c = vibeos_color (VIBEOS_ON_SURFACE);
-  GtkWidget *fuel = navi_icon_new (NAVI_ICON_FUEL, 26), *parking = navi_icon_new (NAVI_ICON_PARKING, 26);
-  navi_icon_set_color (fuel, &c);
-  navi_icon_set_color (parking, &c);
-  gtk_box_append (GTK_BOX (chips), category_chip (p, NAVI_CATEGORY_FUEL, _("Gas"), fuel));
-  gtk_box_append (GTK_BOX (chips), category_chip (p, NAVI_CATEGORY_FOOD, _("Food"),
-                                                   image_new ("emoji-food-symbolic", 26)));
-  gtk_box_append (GTK_BOX (chips), category_chip (p, NAVI_CATEGORY_PARKING, _("Parking"), parking));
-  gtk_box_append (GTK_BOX (box), chips);
+  for (guint i = 0; i < G_N_ELEMENTS (chip_kinds); i++) {
+    GtkWidget *icon = poi_marker (p, chip_kinds[i].group, 28);
+    if (!icon)
+      icon = image_new ("mark-location-symbolic", 28);
+    gtk_box_append (GTK_BOX (chips), category_chip (p, chip_kinds[i].category, _(chip_kinds[i].label), icon));
+  }
+  GtkWidget *chip_scroll = gtk_scrolled_window_new ();
+  gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (chip_scroll), GTK_POLICY_EXTERNAL, GTK_POLICY_NEVER);
+  gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (chip_scroll), chips);
+  gtk_widget_set_margin_top (chip_scroll, 8);
+  gtk_box_append (GTK_BOX (box), chip_scroll);
   p->search_status = label_new ("", "navi-dim", 0);
   gtk_widget_set_margin_start (p->search_status, 24);
   gtk_widget_set_margin_top (p->search_status, 8);
@@ -587,11 +802,89 @@ where_clicked (GtkWidget *w, NaviPanels *p)
   open_search (p, NULL);
 }
 
+/* ---- a route to change or cancel ---- */
+
+enum { RESPONSE_ADD_STOP = 2 };
+
+typedef struct {
+  NaviPanels *p;
+  NaviPlace *place; /* the new destination, or NULL for Back */
+} RouteAsk;
+
+static void
+route_ask_answered (VibeosDialog *d, int response, RouteAsk *a)
+{
+  NaviPanels *p = a->p;
+  Navi *n = p->navi;
+  gboolean active = n->mode == NAVI_MODE_DRIVE || n->mode == NAVI_MODE_ROUTES;
+  if (active && response == RESPONSE_ADD_STOP && a->place && n->mode == NAVI_MODE_DRIVE) {
+    navi_add_stop (n, a->place);
+  } else if (active && response == VIBEOS_RESPONSE_OK) {
+    if (n->mode == NAVI_MODE_DRIVE)
+      navi_stop_drive (n);
+    else
+      navi_back_to_browse (n);
+    if (a->place)
+      navi_preview_routes (n, a->place);
+    else
+      open_search (p, NULL); /* a new address can be typed at once */
+  }
+  g_clear_pointer (&a->place, navi_place_free);
+  g_free (a);
+}
+
+static void
+add_stop_clicked (GtkWidget *button, VibeosDialog *d)
+{
+  vibeos_dialog_respond (d, RESPONSE_ADD_STOP);
+}
+
+void
+navi_panels_ask_route_change (NaviPanels *p, const NaviPlace *place)
+{
+  gboolean drive = p->navi->mode == NAVI_MODE_DRIVE;
+  RouteAsk *a = g_new0 (RouteAsk, 1);
+  a->p = p;
+  a->place = place ? navi_place_copy (place) : NULL;
+  VibeosDialog *d;
+  if (place) {
+    /* Waze's two choices; a tap outside or Back keeps the drive as it is (three buttons do not fit a phone) */
+    g_autofree char *title = g_strdup_printf (_("Drive to %s?"), place->name ? place->name : _("this place"));
+    d = vibeos_dialog_new (title);
+    vibeos_dialog_set_message (d, _("Add it as a stop on the way, or make it the new destination and cancel the "
+                                    "current route."));
+    if (drive) {
+      GtkWidget *stop = vibeos_dialog_add_neutral_button (d, _("Add a stop"));
+      g_signal_connect (stop, "clicked", G_CALLBACK (add_stop_clicked), d);
+    }
+    vibeos_dialog_add_button (d, _("New destination"), VIBEOS_RESPONSE_OK);
+  } else {
+    d = vibeos_dialog_new (_("Cancel the current route?"));
+    vibeos_dialog_add_button (d, drive ? _("Keep driving") : _("Keep route"), VIBEOS_RESPONSE_CANCEL);
+    vibeos_dialog_add_button (d, _("Cancel route"), VIBEOS_RESPONSE_OK);
+  }
+  g_signal_connect (d, "response", G_CALLBACK (route_ask_answered), a);
+  vibeos_dialog_present (d, p->navi->win);
+}
+
+gboolean
+navi_panels_back (NaviPanels *p)
+{
+  if (p->search_view) {
+    close_search (p);
+    return TRUE;
+  }
+  return FALSE;
+}
+
 /* ---- the menu and settings ---- */
 
 static const VibeosAboutSection about_credits[] = {
   { "Font Awesome", "The app's icon is Font Awesome's \"diamond-turn-right\" by Fonticons, Inc., under "
                     "<a href=\"https://creativecommons.org/licenses/by/4.0/\">CC BY 4.0</a>." },
+  { "Maki", "The points of interest's icons are <a href=\"https://github.com/mapbox/maki\">Maki</a> by Mapbox, "
+            "dedicated to the public domain under "
+            "<a href=\"https://creativecommons.org/publicdomain/zero/1.0/\">CC0 1.0</a>." },
   { NULL, NULL },
 };
 static const VibeosAboutSection about_legal[] = {
@@ -789,12 +1082,46 @@ open_settings (gpointer data)
   vibeos_sheet_present (VIBEOS_SHEET (s->sheet), p->navi->win);
 }
 
+/* Exit: Navi goes, nothing of it stays behind. The window's end stops the drive, the voice, the position and the
+ * keep-awake (navi-main.c's on_destroy), then the application quits */
+static void
+exit_navi (Navi *n)
+{
+  GApplication *app = G_APPLICATION (n->app);
+  gtk_window_destroy (GTK_WINDOW (n->win));
+  g_application_quit (app);
+}
+
+static void
+exit_answered (VibeosDialog *d, int response, Navi *n)
+{
+  if (response == VIBEOS_RESPONSE_OK)
+    exit_navi (n);
+}
+
+static void
+exit_clicked (gpointer data)
+{
+  NaviPanels *p = data;
+  if (p->navi->mode != NAVI_MODE_DRIVE) {
+    exit_navi (p->navi);
+    return;
+  }
+  VibeosDialog *d = vibeos_dialog_new (NULL);
+  vibeos_dialog_set_message (d, _("Stop navigation and exit?"));
+  vibeos_dialog_add_button (d, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  vibeos_dialog_add_button (d, _("Exit"), VIBEOS_RESPONSE_OK);
+  g_signal_connect (d, "response", G_CALLBACK (exit_answered), p->navi);
+  vibeos_dialog_present (d, p->navi->win);
+}
+
 static void
 menu_clicked (GtkWidget *button, NaviPanels *p)
 {
   VibeosMenu *menu = vibeos_menu_new ();
   vibeos_menu_append (menu, _("Settings"), open_settings, p);
   vibeos_menu_append_about (menu, &about_info);
+  vibeos_menu_append (menu, _("Exit"), exit_clicked, p);
   vibeos_menu_present (menu, button);
 }
 
@@ -909,6 +1236,11 @@ build_place (NaviPanels *p)
   gtk_widget_set_margin_end (page, 20);
   gtk_widget_set_margin_bottom (page, 18);
   GtkWidget *top = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 8);
+  /* a point of interest's marker */
+  p->place_icon = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+  gtk_widget_set_valign (p->place_icon, GTK_ALIGN_START);
+  gtk_widget_set_visible (p->place_icon, FALSE);
+  gtk_box_append (GTK_BOX (top), p->place_icon);
   GtkWidget *texts = gtk_box_new (GTK_ORIENTATION_VERTICAL, 2);
   gtk_widget_set_hexpand (texts, TRUE);
   p->place_name = label_new ("", "navi-place-name", 0);
@@ -1168,12 +1500,12 @@ build_drive (NaviPanels *p)
   p->drive_sub = label_new ("", "navi-sub", 0.5);
   gtk_box_append (GTK_BOX (mid), p->drive_eta);
   gtk_box_append (GTK_BOX (mid), p->drive_sub);
-  GtkWidget *mid_press = pressable (mid, NULL, NULL, G_CALLBACK (handle_clicked), p);
+  GtkWidget *mid_press = pressable (mid, NULL, NULL, G_CALLBACK (eta_clicked), p);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (mid_press), VIBEOS_RIPPLE_NONE, 0);
   gtk_widget_set_hexpand (mid_press, TRUE);
   gtk_box_append (GTK_BOX (p->drive_main), mid_press);
   GtkWidget *routes_icon = navi_icon_new (NAVI_ICON_ROUTES, 24);
-  g_object_set_data (G_OBJECT (page), "navi-routes-icon", routes_icon);
+  navi_icon_follow_ink (routes_icon);
   GtkWidget *overview = pressable (routes_icon, "navi-tonal", NULL, NULL, NULL);
   g_signal_connect_swapped (overview, "clicked", G_CALLBACK (navi_overview), p->navi);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (overview), VIBEOS_RIPPLE_CIRCLE, 24);
@@ -1188,7 +1520,7 @@ build_drive (NaviPanels *p)
   gtk_widget_set_margin_bottom (p->drive_free, 14);
   GtkWidget *rc = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 12);
   GtkWidget *cross = navi_icon_new (NAVI_ICON_CROSSHAIR, 34);
-  g_object_set_data (G_OBJECT (page), "navi-cross", cross);
+  navi_icon_follow_ink (cross);
   gtk_box_append (GTK_BOX (rc), cross);
   GtkWidget *rc_text = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_box_append (GTK_BOX (rc_text), label_new (_("Re-center"), "navi-route-via", 0));
@@ -1231,7 +1563,7 @@ build_drive (NaviPanels *p)
   g_signal_connect_swapped (stop, "clicked", G_CALLBACK (navi_stop_drive), p->navi);
   gtk_box_append (GTK_BOX (buttons), stop);
   GtkWidget *resume = text_button (_("Continue"), "navi-go", NULL, NULL);
-  g_signal_connect_swapped (resume, "clicked", G_CALLBACK (handle_clicked), p);
+  g_signal_connect (resume, "clicked", G_CALLBACK (continue_clicked), p);
   gtk_box_append (GTK_BOX (buttons), resume);
   gtk_box_append (GTK_BOX (more), buttons);
   gtk_revealer_set_child (GTK_REVEALER (p->drive_more), more);
@@ -1347,7 +1679,7 @@ navi_panels_new (Navi *n)
   gtk_widget_set_halign (p->handle, GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (p->sheet), p->handle);
   GtkGesture *click = gtk_gesture_click_new ();
-  g_signal_connect (click, "released", G_CALLBACK (handle_clicked), p);
+  g_signal_connect (click, "released", G_CALLBACK (handle_released), p);
   gtk_widget_add_controller (p->handle, GTK_EVENT_CONTROLLER (click));
   gtk_widget_set_margin_top (p->handle, 8);
   gtk_box_append (GTK_BOX (p->sheet), p->stack);
@@ -1367,9 +1699,7 @@ navi_panels_new (Navi *n)
     gtk_overlay_add_overlay (ov, p->menu_button);
   }
   GtkWidget *cross = navi_icon_new (NAVI_ICON_CROSSHAIR, 28);
-  GdkRGBA ink = { 0.1, 0.1, 0.11, 1 };
-  navi_icon_set_color (cross, &ink);
-  g_object_set_data (G_OBJECT (n->map_overlay), "navi-cross", cross);
+  navi_icon_follow_ink (cross);
   p->recenter_button = round_button (NULL, cross, _("Re-center"), G_CALLBACK (recenter_clicked), p);
   gtk_widget_set_halign (p->recenter_button, GTK_ALIGN_START);
   gtk_widget_set_valign (p->recenter_button, GTK_ALIGN_END);
@@ -1468,6 +1798,14 @@ navi_panels_new (Navi *n)
 }
 
 void
+navi_panels_quiet (NaviPanels *p)
+{
+  stop_countdown (p);
+  navi_voice_stop (p->voice);
+  navi_voice_rest (p->voice);
+}
+
+void
 navi_panels_free (NaviPanels *p)
 {
   stop_countdown (p);
@@ -1476,6 +1814,9 @@ navi_panels_free (NaviPanels *p)
   g_clear_object (&p->search_cancel);
   g_clear_pointer (&p->place, navi_place_free);
   g_free (p->category_text);
+  g_clear_pointer (&p->markers, g_hash_table_unref);
+  if (p->along)
+    p->along->p = NULL;
   navi_voice_free (p->voice);
   g_free (p);
 }
@@ -1582,12 +1923,26 @@ navi_panels_show_place (NaviPanels *p, const NaviPlace *place)
     p->place = navi_place_copy (place);
   }
   set_text (p->place_name, place->name);
-  set_text (p->place_detail, place->detail);
-  gtk_widget_set_visible (p->place_detail, place->detail != NULL);
+  /* a point of interest: its marker, what it is, then where */
+  gboolean poi = place->kind == NAVI_PLACE_POI;
+  const char *what = poi ? navi_poi_label (place->category) : NULL;
+  if (what && !g_strcmp0 (what, place->name))
+    what = NULL; /* unnamed: its kind is the title already */
+  g_autofree char *detail = what && place->detail ? g_strdup_printf ("%s · %s", what, place->detail)
+                                                  : g_strdup (what ? what : place->detail);
+  set_text (p->place_detail, detail);
+  gtk_widget_set_visible (p->place_detail, detail != NULL);
+  GtkWidget *old = gtk_widget_get_first_child (p->place_icon);
+  if (old)
+    gtk_box_remove (GTK_BOX (p->place_icon), old);
+  GtkWidget *marker = poi ? poi_marker (p, place->category, 34) : NULL;
+  if (marker)
+    gtk_box_append (GTK_BOX (p->place_icon), marker);
+  gtk_widget_set_visible (p->place_icon, marker != NULL);
   g_autofree char *d = km_text (navi_distance_from_car (p->navi, place->lat, place->lng));
   g_autofree char *chip = g_strdup_printf ("🚗 %s", d);
   set_text (p->place_distance, chip);
-  set_text (p->place_go_label, place->kind == NAVI_PLACE_POINT ? _("Drive here") : _("View routes"));
+  set_text (p->place_go_label, place->kind == NAVI_PLACE_POINT ? _("Drive here") : poi ? _("Go") : _("View routes"));
   /* the Set as buttons say what they do again */
   GtkWidget *actions = gtk_widget_get_prev_sibling (p->place_go);
   int k = 0;

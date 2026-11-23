@@ -62,7 +62,7 @@ core_deps = [dependency('gio-2.0', version: '>= 2.76'), dependency('json-glib-1.
              meson.get_compiler('c').find_library('m')]
 core = static_library('navi-core',
   'src/navi-geo.c', 'src/navi-route.c', 'src/navi-guidance.c', 'src/navi-mvt.c', 'src/navi-search.c',
-  'src/navi-search-photon.c', 'src/navi-position.c', 'src/navi-sun.c',
+  'src/navi-search-photon.c', 'src/navi-poi.c', 'src/navi-roadinfo.c', 'src/navi-position.c', 'src/navi-sun.c',
   c_args: get_option('debug_privacy') ? ['-DNAVI_DEBUG'] : [],
   dependencies: core_deps)
 core_dep = declare_dependency(link_with: core, include_directories: include_directories('src'),
@@ -107,9 +107,12 @@ endif
 executable('vibeos-navi', 'src/navi-main.c', 'src/navi-window.c', 'src/navi-panels.c', 'src/navi-draw.c',
            'src/navi-settings.c', 'src/navi-voice.c', voice_sources,
            c_args: app_args,
-           dependencies: [core_dep, navi_map_dep, dependency('vibeos-1'), dependency('spongy-gtk-1'), speechd] +
+           dependencies: [core_dep, navi_map_dep, dependency('vibeos-1'), dependency('spongy-gtk-1'),
+                          dependency('librsvg-2.0'), speechd] +
                          voice_deps,
            install_rpath: '$ORIGIN/../lib/vibeos-navi',
            install: true)
 install_data('data/vibeos.Navi.desktop', install_dir: get_option('datadir') / 'applications')
 install_data('data/vibeos.Navi.svg', install_dir: get_option('datadir') / 'icons' / 'hicolor' / 'scalable' / 'apps')
+# the points of interest's icons: Maki's (CC0), drawn on the markers by the app
+install_subdir('data/poi', install_dir: datadir)
