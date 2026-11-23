@@ -64,6 +64,12 @@ const IFACE = `<node>
     <method name="RunningApps">
       <arg type="a(ss)" name="apps" direction="out"/>
     </method>
+    <!-- the notifications in the shade now, the newest first: each one's app id (its desktop file's, without
+         ".desktop", or the sender's name), the app's name, the title, the body, and when it came (Unix seconds). For
+         Agent, which answers "what did I miss?" with counts and app names, and reads them only when asked -->
+    <method name="Notifications">
+      <arg type="a(ssssx)" name="notifications" direction="out"/>
+    </method>
   </interface>
 </node>`;
 
@@ -211,6 +217,19 @@ export class Service {
             apps.push([id, app.get_name()]);
         }
         return apps;
+    }
+
+    Notifications() {
+        const list = [];
+        for (const source of Main.messageTray.getSources()) {
+            const id = (source.app?.get_id() ?? source.policy?.id ?? '').replace(/\.desktop$/, '');
+            for (const n of source.notifications) {
+                const when = n.datetime?.to_unix() ?? 0;
+                list.push([id, source.title ?? '', n.title ?? '', n.body ?? n.bannerBodyText ?? '', when]);
+            }
+        }
+        list.sort((a, b) => b[4] - a[4]);
+        return list;
     }
 
     TakeVolumeKeysAsync([appId, take], invocation) {
