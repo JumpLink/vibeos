@@ -11,6 +11,7 @@
 #include "dictate-models.h"
 #include "dictate-package.h"
 #include "dictate-recogniser.h"
+#include "dictate-voice.h"
 
 #include <glib/gi18n.h>
 #include <string.h>
@@ -25,14 +26,40 @@ typedef struct {
   gboolean nothing;                             /* something it lacks has no download */
 } Needs;
 
-static void
-find_needs (const char *language, DictateTalk *talk, Needs *needs)
+/* Agent's voice: one in its voices, or the one chosen in its settings */
+static gboolean
+talk_has_voice (DictateTalk *talk, const char *language)
 {
-  g_autoptr (DictateModel) model = dictate_model_find (language);
-  const DictatePack *model_pack = dictate_pack_find (language, DICTATE_PACK_MODEL);
+#ifdef DICTATE_WITHOUT_TALK
+  /* an app built without Agent's conversation only ever asks for a voice alone (voice_only) */
+  g_return_val_if_reached (FALSE);
+#else
+  return dictate_talk_has_voice (talk, language);
+#endif
+}
+
+/* `voice_only`: an app that only speaks (Navi), which needs the language's Piper voice and nothing else */
+static void
+find_needs (const char *language, DictateTalk *talk, gboolean voice_only, Needs *needs)
+{
+  g_autoptr (DictateModel) model = NULL;
+  const DictatePack *model_pack = NULL;
   const DictateRecogniserClass *recogniser;
 
   memset (needs, 0, sizeof *needs);
+  if (voice_only)
+    {
+      g_autofree char *voice = dictate_voice_find_piper (language);
+      const DictatePack *pack = voice ? NULL : dictate_pack_find (language, DICTATE_PACK_VOICE);
+
+      if (pack)
+        needs->packs[needs->n++] = pack;
+      else if (!voice)
+        needs->nothing = TRUE;
+      return;
+    }
+  model = dictate_model_find (language);
+  model_pack = dictate_pack_find (language, DICTATE_PACK_MODEL);
   recogniser = dictate_recogniser_class (model ? model->kind : model_pack ? model_pack->recogniser
                                                                           : DICTATE_MOONSHINE);
   /* code only from its package, installed by the system's package manager */
@@ -48,7 +75,7 @@ find_needs (const char *language, DictateTalk *talk, Needs *needs)
       else
         needs->nothing = TRUE;
     }
-  if (talk && !dictate_talk_has_voice (talk, language))
+  if (talk && !talk_has_voice (talk, language))
     {
       const DictatePack *voice = dictate_pack_find (language, DICTATE_PACK_VOICE);
 
@@ -77,12 +104,12 @@ language_name (const char *language)
   return known ? known->name : language;
 }
 
-char *
-dictate_download_note (const char *language, DictateTalk *talk)
+static char *
+note (const char *language, DictateTalk *talk, gboolean voice_only)
 {
   Needs needs;
 
-  find_needs (language, talk, &needs);
+  find_needs (language, talk, voice_only, &needs);
   if (needs.library && !needs.package)
     /* TRANSLATORS: under a language in the list; %s is a speech recogniser (Vosk) */
     return g_strdup_printf (_("Needs %s, which is not installed"), needs.library->name);
@@ -108,12 +135,25 @@ dictate_download_note (const char *language, DictateTalk *talk)
   return NULL;
 }
 
+char *
+dictate_download_note (const char *language, DictateTalk *talk)
+{
+  return note (language, talk, FALSE);
+}
+
+char *
+dictate_download_voice_note (const char *language)
+{
+  return note (language, NULL, TRUE);
+}
+
 /* ---------------- the offer ---------------- */
 
 typedef struct {
   GtkWidget *window;            /* weak */
   char *language;
   DictateTalk *talk;
+  char *app;                    /* an app that only speaks (dictate_download_ensure_voice): its name */
   Needs needs;
   DictateLanguageReady ready;
   gpointer data;
@@ -144,6 +184,7 @@ offer_clear (Offer *offer)
   g_clear_weak_pointer (&offer->package_size);
   g_clear_weak_pointer (&offer->total);
   g_clear_object (&offer->talk);
+  g_free (offer->app);
   g_free (offer->language);
 }
 
@@ -273,7 +314,7 @@ on_finished (DictateDownload *download, Offer *offer)
     show_failure (offer, dictate_download_get_error (download));
   else if (state == DICTATE_DOWNLOAD_DONE && offer->window)
     {
-      find_needs (offer->language, offer->talk, &left);
+      find_needs (offer->language, offer->talk, offer->app != NULL, &left);
       if (left.n || left.library || left.nothing)
         show_failure (offer, _("The files came, but the language is still not ready"));
       else
@@ -431,7 +472,7 @@ start_files (Offer *offer)
       Offer *keep = g_rc_box_acquire (offer);
 
       vibeos_dialog_respond (dialog, VIBEOS_RESPONSE_OK);
-      find_needs (offer->language, offer->talk, &left);
+      find_needs (offer->language, offer->talk, offer->app != NULL, &left);
       if (offer->window && !left.library && !left.n && !left.nothing)
         offer->ready (offer->language, offer->data);
       else if (offer->window)
@@ -504,7 +545,10 @@ ask (Offer *offer)
   VibeosDialog *dialog = vibeos_dialog_new (title);
   GtkWidget *list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0), *sum;
 
-  if (offer->talk)
+  if (offer->app)
+    /* TRANSLATORS: the first %s is the language's name for itself (Deutsch), the second an app's name (Navi) */
+    message = g_strdup_printf (_("To speak %s, %s needs this on the phone:"), name, offer->app);
+  else if (offer->talk)
     /* TRANSLATORS: %s is the language's name for itself (Deutsch) */
     message = g_strdup_printf (_("To hear and speak %s, Agent needs these on the phone:"), name);
   else
@@ -553,18 +597,19 @@ ask (Offer *offer)
   vibeos_dialog_present (dialog, offer->window);
 }
 
-void
-dictate_download_ensure (GtkWidget *window, const char *language, DictateTalk *talk, DictateLanguageReady ready,
-                         gpointer data)
+static void
+ensure (GtkWidget *window, const char *language, DictateTalk *talk, const char *app, DictateLanguageReady ready,
+        gpointer data)
 {
   const char *name = language_name (language);
   Offer *offer;
 
   offer = g_rc_box_new0 (Offer);
-  find_needs (language, talk, &offer->needs);
+  find_needs (language, talk, app != NULL, &offer->needs);
   g_set_weak_pointer (&offer->window, window);
   offer->language = g_strdup (language);
   offer->talk = talk ? g_object_ref (talk) : NULL;
+  offer->app = g_strdup (app);
   offer->ready = ready;
   offer->data = data;
 
@@ -591,4 +636,18 @@ dictate_download_ensure (GtkWidget *window, const char *language, DictateTalk *t
   else
     ask (offer);
   offer_release (offer);
+}
+
+void
+dictate_download_ensure (GtkWidget *window, const char *language, DictateTalk *talk, DictateLanguageReady ready,
+                         gpointer data)
+{
+  ensure (window, language, talk, NULL, ready, data);
+}
+
+void
+dictate_download_ensure_voice (GtkWidget *window, const char *language, const char *app, DictateLanguageReady ready,
+                               gpointer data)
+{
+  ensure (window, language, NULL, app, ready, data);
 }

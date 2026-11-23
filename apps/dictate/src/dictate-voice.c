@@ -581,3 +581,42 @@ dictate_voice_speak (DictateVoice *self, const char *text, double speed, gsize *
   *n = out->len;
   return (float *) g_array_free (out, FALSE);
 }
+
+static gint
+compare_names (gconstpointer a, gconstpointer b)
+{
+  return g_strcmp0 (*(char *const *) a, *(char *const *) b);
+}
+
+char *
+dictate_voice_find_piper (const char *language)
+{
+  g_autoptr (GPtrArray) dirs = g_ptr_array_new_with_free_func (g_free);
+  const char *const *system = g_get_system_data_dirs ();
+
+  if (!language || !*language || strchr (language, '/') || strstr (language, ".."))
+    return NULL;
+  g_ptr_array_add (dirs, g_build_filename (g_get_user_data_dir (), "vibeos-dictate", "voices", language, NULL));
+  for (guint i = 0; system[i]; i++)
+    g_ptr_array_add (dirs, g_build_filename (system[i], "vibeos-dictate", "voices", language, NULL));
+  for (guint i = 0; i < dirs->len; i++)
+    {
+      g_autoptr (GDir) dir = g_dir_open (dirs->pdata[i], 0, NULL);
+      g_autoptr (GPtrArray) names = g_ptr_array_new_with_free_func (g_free);
+      const char *name;
+
+      while (dir && (name = g_dir_read_name (dir)))
+        if (g_str_has_suffix (name, ".onnx"))
+          g_ptr_array_add (names, g_strdup (name));
+      g_ptr_array_sort (names, compare_names);
+      for (guint j = 0; j < names->len; j++)
+        {
+          g_autofree char *path = g_build_filename (dirs->pdata[i], names->pdata[j], NULL);
+          g_autofree char *config = g_strconcat (path, ".json", NULL);
+
+          if (g_file_test (path, G_FILE_TEST_IS_REGULAR) && g_file_test (config, G_FILE_TEST_IS_REGULAR))
+            return g_steal_pointer (&path);
+        }
+    }
+  return NULL;
+}

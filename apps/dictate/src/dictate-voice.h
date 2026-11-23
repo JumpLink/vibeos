@@ -27,4 +27,10 @@ char         *dictate_voice_phonemes (DictateVoice *self, const char *text, GErr
 /* `text` spoken, at `speed` (1 normal, 2 twice as fast): *n mono samples, -1..1, at the voice's rate */
 float        *dictate_voice_speak    (DictateVoice *self, const char *text, double speed, gsize *n, GError **error);
 
+/* the Piper voice for `language` (two letters) where the voices are kept, the downloaded ones (dictate-download.h) and
+ * the packaged ones: vibeos-dictate/voices/LANGUAGE in the user's data directory, then in the system's; in each the
+ * first NAME.onnx, by name, with NAME.onnx.json beside it. NULL when there is none. For an app that speaks with Agent's
+ * voices (Navi) */
+char         *dictate_voice_find_piper (const char *language);
+
 G_END_DECLS
