@@ -13,12 +13,14 @@
 #   ROOT             the arm64 root filesystem (the sysroot of both builds), entered with sudo chroot
 #   OUTDIR           where the .deb goes; the package is put together in OUTDIR/vibeos-navi.work
 #
+# NAVI_VERSION=VERSION: the package's version, for a release (1:0.1.4) instead of the project's and the commit's.
+#
 # LIBDIRS=DIR[:DIR…]: libraries ROOT does not have (libtonal, from the same tree's top-level build), for
 # dpkg-shlibdeps to find; their packages' versions are in pkg/shlibs.local.
 #
 # Everything private goes to /usr/lib/vibeos-navi, found through the RUNPATH: no system library is replaced.
 set -eu
-[ $# -eq 5 ] || { sed -n "2,18p" "$0"; exit 2; }
+[ $# -eq 5 ] || { sed -n "2,20p" "$0"; exit 2; }
 navi_build=$(realpath "$1"); vibeos_build=$(realpath "$2"); maplibre_src=$(realpath "$3"); root=$(realpath "$4")
 outdir=$(realpath "$5")
 pkgdir=$(cd "$(dirname "$0")" && pwd)
@@ -31,7 +33,7 @@ git -C "$srcdir" diff --quiet HEAD -- . ../../libvibeos || [ -n "${ALLOW_DIRTY:-
 project=$(meson introspect --projectinfo "$navi_build" | python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])')
 stamp=$(git -C "$srcdir" log -1 --format=%cd --date=format:%Y%m%d%H%M)
 commit=$(git -C "$srcdir" rev-parse --short=7 HEAD)
-version="$project~git$stamp.$commit"
+version=${NAVI_VERSION:-$project~git$stamp.$commit}
 prefix=$(meson introspect --buildoptions "$navi_build" |
          python3 -c 'import json,sys; print([o["value"] for o in json.load(sys.stdin) if o["name"] == "prefix"][0])')
 [ "$prefix" = /usr ] || { echo "$navi_build is configured for $prefix, not /usr"; exit 1; }
@@ -108,4 +110,4 @@ chmod 644 debian/vibeos-navi/DEBIAN/md5sums
 dpkg-deb --root-owner-group -Zxz --build debian/vibeos-navi .
 ' sh "$inside"
 mv "$work"/vibeos-navi_*.deb "$outdir/"
-echo "$outdir/vibeos-navi_${version}_arm64.deb"
+echo "$outdir/vibeos-navi_${version#*:}_arm64.deb"
