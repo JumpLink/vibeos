@@ -2432,11 +2432,13 @@ navi_panels_show_alert (NaviPanels *p, const char *title, const char *detail)
   gtk_widget_set_visible (p->alert_card, TRUE);
 }
 
+#define RESPONSE_TURN_OFF 3 /* the notice's Turn off: not CANCEL, which Back and a tap beside the card give too */
+
 static void
 notice_answered (VibeosDialog *d, int response, NaviPanels *p)
 {
   p->notice_open = FALSE;
-  if (response == VIBEOS_RESPONSE_CANCEL) {
+  if (response == RESPONSE_TURN_OFF) {
     p->navi->settings->cameras = FALSE;
     navi_panels_show_alert (p, NULL, NULL);
     navi_window_update_overlay (p->navi);
@@ -2457,7 +2459,7 @@ navi_panels_camera_notice (NaviPanels *p)
   vibeos_dialog_set_message (d, _("Not allowed everywhere. In Germany the driver may not use them while driving "
                                   "(§23 (1c) StVO); a passenger may. In Switzerland Navi never shows them, and in "
                                   "France only danger zones.\n\nYou can turn them off in Settings at any time."));
-  vibeos_dialog_add_button (d, _("Turn off"), VIBEOS_RESPONSE_CANCEL);
+  vibeos_dialog_add_button (d, _("Turn off"), RESPONSE_TURN_OFF);
   vibeos_dialog_add_button (d, _("OK"), VIBEOS_RESPONSE_OK);
   g_signal_connect (d, "response", G_CALLBACK (notice_answered), p);
   vibeos_dialog_present (d, p->navi->win);

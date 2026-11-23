@@ -194,7 +194,7 @@ attributes_body (const char *shape_member, const char *shape, JsonNode *shape_ar
     json_builder_add_string_value (b, shape);
   } else {
     json_builder_set_member_name (b, shape_member);
-    json_builder_add_value (b, shape_array);
+    json_builder_add_value (b, json_node_ref (shape_array)); /* the builder takes the reference it is given */
   }
   json_builder_set_member_name (b, "costing");
   json_builder_add_string_value (b, "auto");
