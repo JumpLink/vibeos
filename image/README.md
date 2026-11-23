@@ -27,12 +27,20 @@ same session, with `adb sideload`.
    a partition named `linux` from an earlier install (only its system is replaced), a new partition cut from Android's
    data (10–50 GB, erases Android's data), the whole data partition (renamed `linux`, a second press to confirm), or
    an image file in Android's data (10–100 GB, Android and its data stay). It offers only what the phone's device zip
-   can boot. The root file system is in the zip in 1 GiB parts, because LineageOS's updater cannot extract an entry of
-   4 GiB or more; each part is checked against `vibeos-sums.txt` after it is written. It leaves `/tmp/vibeos.prop`
-   (where it wrote the system) for the device zip, and says to install the device zip next.
+   can boot. On the POCO X3 NFC it asks nothing: VibeOS takes the whole phone, in a partition named `linux` if
+   there is one (its contents erased), or else in Android's data partition, renamed `linux` (Android and its data
+   erased); `linux` gets a partition table of its own, an ESP and the root, as the POCO's boot needs. Where the
+   recovery's kernel enforces SELinux (LineageOS 22.2 on the POCO), both zips make it permissive while their loop
+   devices exist, and enforcing again after. The root file system is in the zip in 1 GiB parts, because LineageOS's
+   updater cannot extract an entry of 4 GiB or more; each part is checked against `vibeos-sums.txt` after it is
+   written. It leaves `/tmp/vibeos.prop` (where it wrote the system) for the device zip, and says to install the
+   device zip next.
 2. **The device zip** (`zip/device-install.sh`, or `nura/zip/nura-install.sh` for a converted one) finds that root,
    unpacks its payload into it (the kernel's modules, all the firmware, the device's settings, its Debian packages
-   for the first boot), and writes the boot image where the phone starts it.
+   for the first boot), and writes the boot image where the phone starts it: on the POCO X3 NFC the ESP inside
+   `linux`, LineageOS 20261102's `dtbo` and `vbmeta` where others are there, and U-Boot in `boot`, so that every
+   power-on starts VibeOS (LineageOS's recovery stays). Sideloaded alone onto an installed VibeOS, it replaces its
+   own files and keeps the user's.
 3. **The first start**: `vibeos-growroot` grows the file system to its partition or image file;
    `vibeos-device-setup` installs the device's packages offline, before GDM, and restarts once. Login: `user`,
    password `147147`.
