@@ -49,6 +49,10 @@ char *navi_guidance_take_prompt (NaviGuidance *self, double speed);
  * NULL-terminated array, for g_strfreev (). */
 char **navi_guidance_upcoming_prompts (NaviGuidance *self, double speed);
 
+/* where a manoeuvre's own instruction is said, in metres before it, at `speed` (m/s; < 0 unknown): about six
+ * seconds ahead, never closer than 50 m. The banner shows the destination's side from there on. */
+double navi_guidance_pre_distance (double speed);
+
 /* the alert's words before an instruction: "In 400 meters, turn left ..." in the route's language
  * (`language` as Valhalla's, "de-DE"), for the prompt and the tests */
 char *navi_guidance_alert_text (const char *language, double metres, const char *instruction);

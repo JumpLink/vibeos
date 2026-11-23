@@ -11,6 +11,9 @@ G_BEGIN_DECLS
 
 /* the turn arrow for a manoeuvre, in `color` (the banner's white); a roundabout shows its exit number */
 void navi_draw_turn (cairo_t *cr, double size, NaviTurn type, int roundabout_exit, const GdkRGBA *color);
+/* the lanes up to a manoeuvre, as Waze shows them under the banner: each lane's arrows in a row, centred in
+ * `width` x `height`, the ones to take in white, those that may be taken too a little dimmer, the rest grey */
+void navi_draw_lanes (cairo_t *cr, double width, double height, const NaviLane *lanes, guint n);
 /* the car: an arrow pointing up, turned by `rotation` degrees, flattened to `squash` of its height (a car lying on a
  * tilted map), on its soft shadow */
 void navi_draw_car (cairo_t *cr, double size, double rotation, double squash, gboolean night);

@@ -44,6 +44,10 @@ struct _NaviPanels {
   GtkWidget *menu_button, *recenter_button, *compass, *compass_area, *note;
   GtkWidget *routes_header, *routes_header_to;
   GtkWidget *banner, *banner_turn, *banner_distance, *banner_street, *then_box, *then_turn, *banner_note;
+  GtkWidget *banner_side;   /* "Your destination is on the right", the last metres */
+  GtkWidget *banner_lanes;  /* the lanes up to the turn */
+  NaviLane lanes[16];       /* what it draws */
+  guint n_lanes;
   GtkWidget *speedo, *speedo_value, *speedo_unit, *street_pill, *street_label, *sound_button;
   GtkWidget *speed_column;  /* the alert card, the limit sign and the speedometer, bottom left */
   GtkWidget *limit_sign, *alert_card, *alert_title, *alert_detail;
@@ -103,7 +107,7 @@ struct _NaviPanels {
   double progress_fraction;
 
   /* arrived */
-  GtkWidget *arrived_name;
+  GtkWidget *arrived_name, *arrived_side;
 
   int sheet_height;
 };
@@ -145,6 +149,8 @@ static const char *const CSS =
   ".navi-banner-street { color: #33CCFF; font-size: 26sp; font-weight: 700; }"
   ".navi-then { background: #141414; padding: 6dp 16dp 8dp 16dp; }"
   ".navi-then label { color: #C9CDD2; font-size: 15sp; }"
+  ".navi-banner-side { color: #FFFFFF; font-size: 19sp; font-weight: 600; padding-top: 2dp; }"
+  ".navi-lanes { background: #000000; padding: 0 12dp 10dp 12dp; }"
   ".navi-banner-note { color: #FFD43B; font-size: 14sp; font-weight: 600; padding-top: 6dp; }"
   ".navi-tablet .navi-banner, .navi-tablet .navi-then { border-radius: 0 0 16dp 0; }"
   /* the speed and the street */
@@ -2138,6 +2144,10 @@ build_arrived (NaviPanels *p)
   p->arrived_name = label_new ("", "navi-dim", 0);
   gtk_label_set_wrap (GTK_LABEL (p->arrived_name), TRUE);
   gtk_box_append (GTK_BOX (texts), p->arrived_name);
+  p->arrived_side = label_new ("", NULL, 0);
+  gtk_label_set_wrap (GTK_LABEL (p->arrived_side), TRUE);
+  gtk_widget_set_visible (p->arrived_side, FALSE);
+  gtk_box_append (GTK_BOX (texts), p->arrived_side);
   gtk_box_append (GTK_BOX (top), texts);
   gtk_box_append (GTK_BOX (page), top);
   GtkWidget *done = text_button (_("Done"), "navi-go", G_CALLBACK (arrived_done_clicked), p);
@@ -2147,6 +2157,24 @@ build_arrived (NaviPanels *p)
 }
 
 /* ---- the banner ---- */
+
+/* "Your destination is on the right" for a destination on the right or left of the road, else NULL */
+static const char *
+destination_side (NaviTurn type)
+{
+  if (type == NAVI_TURN_DESTINATION_RIGHT)
+    return _("Your destination is on the right");
+  if (type == NAVI_TURN_DESTINATION_LEFT)
+    return _("Your destination is on the left");
+  return NULL;
+}
+
+static void
+draw_lanes (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer data)
+{
+  NaviPanels *p = data;
+  navi_draw_lanes (cr, width, height, p->lanes, p->n_lanes);
+}
 
 static GtkWidget *
 build_banner (NaviPanels *p)
@@ -2166,13 +2194,25 @@ build_banner (NaviPanels *p)
   gtk_label_set_wrap (GTK_LABEL (p->banner_street), TRUE);
   gtk_label_set_lines (GTK_LABEL (p->banner_street), 2);
   gtk_label_set_ellipsize (GTK_LABEL (p->banner_street), PANGO_ELLIPSIZE_END);
+  p->banner_side = label_new ("", "navi-banner-side", 0);
+  gtk_label_set_wrap (GTK_LABEL (p->banner_side), TRUE);
+  gtk_widget_set_visible (p->banner_side, FALSE);
   p->banner_note = label_new ("", "navi-banner-note", 0);
   gtk_widget_set_visible (p->banner_note, FALSE);
   gtk_box_append (GTK_BOX (texts), p->banner_distance);
   gtk_box_append (GTK_BOX (texts), p->banner_street);
+  gtk_box_append (GTK_BOX (texts), p->banner_side);
   gtk_box_append (GTK_BOX (texts), p->banner_note);
   gtk_box_append (GTK_BOX (main), texts);
   gtk_box_append (GTK_BOX (box), main);
+  /* the lanes up to the turn, the ones to take lit, as Waze's: only where the map has them */
+  p->banner_lanes = gtk_drawing_area_new ();
+  gtk_widget_add_css_class (p->banner_lanes, "navi-lanes");
+  gtk_drawing_area_set_content_height (GTK_DRAWING_AREA (p->banner_lanes), 46);
+  gtk_drawing_area_set_draw_func (GTK_DRAWING_AREA (p->banner_lanes), draw_lanes, p, NULL);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (p->banner_lanes), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Lanes"), -1);
+  gtk_widget_set_visible (p->banner_lanes, FALSE);
+  gtk_box_append (GTK_BOX (box), p->banner_lanes);
   /* "and then": the turn right after this one */
   p->then_box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 8);
   gtk_widget_add_css_class (p->then_box, "navi-then");
@@ -2512,6 +2552,10 @@ navi_panels_set_mode (NaviPanels *p, NaviMode mode)
     set_text (p->routes_header_to, p->navi->dest->name);
   if (mode == NAVI_MODE_ARRIVED && p->navi->dest) {
     set_text (p->arrived_name, p->navi->dest->name);
+    NaviRoute *r = p->navi->guidance ? navi_guidance_get_route (p->navi->guidance) : NULL;
+    const char *side = r && r->n_maneuvers ? destination_side (r->maneuvers[r->n_maneuvers - 1].type) : NULL;
+    set_text (p->arrived_side, side);
+    gtk_widget_set_visible (p->arrived_side, side != NULL);
     navi_panels_say (p, _("You have arrived at your destination."), TRUE);
   }
   update_floating (p);
@@ -2664,6 +2708,25 @@ navi_panels_set_routes (NaviPanels *p, GPtrArray *routes, guint selected, const 
   g_idle_add (update_floating_later, p);
 }
 
+/* the lanes coming up to the turn: from 1.5 km on a motorway's exits and forks (their lanes are signposted that
+ * far ahead), 500 m in town; none where the map has none */
+static void
+update_lanes (NaviPanels *p, const NaviManeuver *m, double to_next)
+{
+  gboolean motorway = (m->type >= NAVI_TURN_RAMP_STRAIGHT && m->type <= NAVI_TURN_MERGE) ||
+                      m->type == NAVI_TURN_MERGE_RIGHT || m->type == NAVI_TURN_MERGE_LEFT;
+  gboolean show = m->n_lanes > 0 && to_next <= (motorway ? 1500 : 500);
+  if (show && (p->n_lanes != m->n_lanes || memcmp (p->lanes, m->lanes, m->n_lanes * sizeof (NaviLane)))) {
+    p->n_lanes = MIN (m->n_lanes, G_N_ELEMENTS (p->lanes));
+    memcpy (p->lanes, m->lanes, p->n_lanes * sizeof (NaviLane));
+    gtk_widget_queue_draw (p->banner_lanes);
+  }
+  if (gtk_widget_get_visible (p->banner_lanes) != show) {
+    gtk_widget_set_visible (p->banner_lanes, show);
+    update_floating (p);
+  }
+}
+
 /* the banner: the next turn, its distance and street, and "and then" */
 static void
 update_banner (NaviPanels *p, const NaviProgress *pr, NaviRoute *r, guint next)
@@ -2676,6 +2739,8 @@ update_banner (NaviPanels *p, const NaviProgress *pr, NaviRoute *r, guint next)
     set_text (p->banner_distance, "");
     set_text (p->banner_street, n->rerouting ? _("Finding a new route…") : _("No route from here yet. Trying again…"));
     gtk_widget_set_visible (p->then_box, FALSE);
+    gtk_widget_set_visible (p->banner_side, FALSE);
+    gtk_widget_set_visible (p->banner_lanes, FALSE);
     return;
   }
   g_autofree char *dist = navi_format_distance (pr->to_next);
@@ -2692,6 +2757,13 @@ update_banner (NaviPanels *p, const NaviProgress *pr, NaviRoute *r, guint next)
       instruction[len - 1] = 0;
   }
   set_text (p->banner_street, street ? street : instruction);
+  /* the last metres: which side of the road the destination is on, from where the voice says it */
+  const char *side = destination_side (m->type);
+  double speed = n->have_fix ? n->fix.speed : -1;
+  gboolean near = side && pr->to_next <= navi_guidance_pre_distance (speed);
+  set_text (p->banner_side, near ? side : NULL);
+  gtk_widget_set_visible (p->banner_side, near);
+  update_lanes (p, m, pr->to_next);
   /* "and then", when the next two come close together */
   gboolean then = next + 1 < r->n_maneuvers && r->maneuvers[next + 1].s - m->s < 150 && pr->to_next < 600;
   if (then)
@@ -2917,6 +2989,8 @@ navi_panels_set_rerouting (NaviPanels *p, gboolean rerouting)
     set_text (p->banner_distance, "");
     set_text (p->banner_street, _("Finding a new route…"));
     gtk_widget_set_visible (p->then_box, FALSE);
+    gtk_widget_set_visible (p->banner_side, FALSE);
+    gtk_widget_set_visible (p->banner_lanes, FALSE);
   }
 }
 

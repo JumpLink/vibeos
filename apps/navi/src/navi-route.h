@@ -50,6 +50,27 @@ typedef enum {
   NAVI_TURN_MERGE_LEFT = 38,
 } NaviTurn;
 
+/* A lane's arrows on the road (Valhalla's turn lanes, baldr/turnlanes.h), as bits */
+enum {
+  NAVI_LANE_NONE = 1 << 0, /* no arrows */
+  NAVI_LANE_THROUGH = 1 << 1,
+  NAVI_LANE_SHARP_LEFT = 1 << 2,
+  NAVI_LANE_LEFT = 1 << 3,
+  NAVI_LANE_SLIGHT_LEFT = 1 << 4,
+  NAVI_LANE_SLIGHT_RIGHT = 1 << 5,
+  NAVI_LANE_RIGHT = 1 << 6,
+  NAVI_LANE_SHARP_RIGHT = 1 << 7,
+  NAVI_LANE_REVERSE = 1 << 8,
+  NAVI_LANE_MERGE_TO_LEFT = 1 << 9,
+  NAVI_LANE_MERGE_TO_RIGHT = 1 << 10,
+};
+
+/* a lane up to a manoeuvre: its arrows, and of them the one this manoeuvre may take it for (`valid`) or should
+ * (`active`: it suits the manoeuvre after too). Valhalla marks a lane one or the other, never both. */
+typedef struct {
+  guint16 directions, valid, active;
+} NaviLane;
+
 typedef struct {
   NaviTurn type;
   char *instruction;   /* written: "Turn left onto Fuggerstraße." */
@@ -64,6 +85,8 @@ typedef struct {
   double s;            /* where it is: metres from the start (the path's point `begin`) */
   double length;       /* metres from it to the next manoeuvre */
   double time;         /* seconds from it to the next manoeuvre */
+  NaviLane *lanes;     /* the lanes up to it, left to right; NULL where the map has none, or none to take */
+  guint n_lanes;
 } NaviManeuver;
 
 typedef struct {

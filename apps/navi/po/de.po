@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-navi\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-23 03:50+0100\n"
+"POT-Creation-Date: 2026-11-23 04:31+0100\n"
 "PO-Revision-Date: 2026-11-23 04:00+0100\n"
 "Last-Translator: pulpoff\n"
 "Language-Team: German\n"
@@ -85,599 +85,617 @@ msgstr "Zurück"
 msgid "Destination"
 msgstr "Ziel"
 
-#: src/navi-main.c:249 src/navi-panels.c:2245
+#: src/navi-main.c:250 src/navi-panels.c:2285
 msgid "Menu"
 msgstr "Menü"
 
-#: src/navi-main.c:251
+#: src/navi-main.c:252
 msgid "Drive"
 msgstr "Fahren"
 
-#: src/navi-main.c:252 src/navi-panels.c:2041
+#: src/navi-main.c:253 src/navi-panels.c:2047
 msgid "Search"
 msgstr "Suchen"
 
-#: src/navi-panels.c:310
+#: src/navi-panels.c:316
 msgid "Gas station"
 msgstr "Tankstelle"
 
-#: src/navi-panels.c:310
+#: src/navi-panels.c:316
 msgid "EV charging"
 msgstr "Ladestation"
 
-#: src/navi-panels.c:310 src/navi-panels.c:1081
+#: src/navi-panels.c:316 src/navi-panels.c:1087
 msgid "Parking"
 msgstr "Parkplatz"
 
-#: src/navi-panels.c:311
+#: src/navi-panels.c:317
 msgid "Restaurant"
 msgstr "Restaurant"
 
-#: src/navi-panels.c:311
+#: src/navi-panels.c:317
 msgid "Fast food"
 msgstr "Fast Food"
 
-#: src/navi-panels.c:311
+#: src/navi-panels.c:317
 msgid "Café"
 msgstr "Café"
 
-#: src/navi-panels.c:312
+#: src/navi-panels.c:318
 msgid "Supermarket"
 msgstr "Supermarkt"
 
-#: src/navi-panels.c:312 src/navi-panels.c:1083
+#: src/navi-panels.c:318 src/navi-panels.c:1089
 msgid "Pharmacy"
 msgstr "Apotheke"
 
-#: src/navi-panels.c:312 src/navi-panels.c:1083
+#: src/navi-panels.c:318 src/navi-panels.c:1089
 msgid "Hospital"
 msgstr "Krankenhaus"
 
-#: src/navi-panels.c:313 src/navi-panels.c:1084
+#: src/navi-panels.c:319 src/navi-panels.c:1090
 msgid "ATM"
 msgstr "Geldautomat"
 
-#: src/navi-panels.c:313
+#: src/navi-panels.c:319
 msgid "Bank"
 msgstr "Bank"
 
-#: src/navi-panels.c:313 src/navi-panels.c:1084
+#: src/navi-panels.c:319 src/navi-panels.c:1090
 msgid "Hotel"
 msgstr "Hotel"
 
-#: src/navi-panels.c:314 src/navi-panels.c:1085
+#: src/navi-panels.c:320 src/navi-panels.c:1091
 msgid "Toilets"
 msgstr "Toiletten"
 
-#: src/navi-panels.c:472 src/navi-panels.c:1460
+#: src/navi-panels.c:478 src/navi-panels.c:1466
 msgid "Search for your home address"
 msgstr "Suche nach deiner Wohnadresse"
 
-#: src/navi-panels.c:472 src/navi-panels.c:1460
+#: src/navi-panels.c:478 src/navi-panels.c:1466
 msgid "Search for your work address"
 msgstr "Suche nach deiner Arbeitsadresse"
 
-#: src/navi-panels.c:587 src/navi-panels.c:624
+#: src/navi-panels.c:593 src/navi-panels.c:630
 msgid "Rename"
 msgstr "Umbenennen"
 
-#: src/navi-panels.c:594 src/navi-panels.c:1466 src/navi-panels.c:1587
+#: src/navi-panels.c:600 src/navi-panels.c:1472 src/navi-panels.c:1593
 msgid "Cancel"
 msgstr "Abbrechen"
 
-#: src/navi-panels.c:595 src/navi-panels.c:1794 src/navi-panels.c:2591
+#: src/navi-panels.c:601 src/navi-panels.c:1800 src/navi-panels.c:2635
 msgid "Save"
 msgstr "Speichern"
 
-#: src/navi-panels.c:625
+#: src/navi-panels.c:631
 msgid "Remove"
 msgstr "Entfernen"
 
-#: src/navi-panels.c:643
+#: src/navi-panels.c:649
 msgid "More options"
 msgstr "Weitere Optionen"
 
-#: src/navi-panels.c:662 src/navi-panels.c:1541
+#: src/navi-panels.c:668 src/navi-panels.c:1547
 msgid "Home"
 msgstr "Zuhause"
 
-#: src/navi-panels.c:662 src/navi-panels.c:1545
+#: src/navi-panels.c:668 src/navi-panels.c:1551
 msgid "Work"
 msgstr "Arbeit"
 
-#: src/navi-panels.c:664
+#: src/navi-panels.c:670
 msgid "Set once and go"
 msgstr "Einmal festlegen und losfahren"
 
-#: src/navi-panels.c:678 src/navi-panels.c:2591
+#: src/navi-panels.c:684 src/navi-panels.c:2635
 msgid "Saved"
 msgstr "Gespeichert"
 
-#: src/navi-panels.c:683
+#: src/navi-panels.c:689
 msgid "Recent"
 msgstr "Zuletzt"
 
-#: src/navi-panels.c:703 src/navi-panels.c:769
+#: src/navi-panels.c:709 src/navi-panels.c:775
 msgid "Search is unavailable right now"
 msgstr "Die Suche ist gerade nicht verfügbar"
 
-#: src/navi-panels.c:703
+#: src/navi-panels.c:709
 msgid "No results"
 msgstr "Keine Ergebnisse"
 
-#: src/navi-panels.c:709
+#: src/navi-panels.c:715
 msgid "Search is unavailable right now. These are from the map, nearby."
-msgstr "Die Suche ist gerade nicht verfügbar. Diese Orte in der Nähe stammen aus der Karte."
+msgstr ""
+"Die Suche ist gerade nicht verfügbar. Diese Orte in der Nähe stammen aus der "
+"Karte."
 
-#: src/navi-panels.c:769
+#: src/navi-panels.c:775
 msgid "None along the route"
 msgstr "Keine entlang der Route"
 
-#: src/navi-panels.c:773
+#: src/navi-panels.c:779
 msgid "Along the route"
 msgstr "Entlang der Route"
 
-#: src/navi-panels.c:778
+#: src/navi-panels.c:784
 #, c-format
 msgid "%s ahead · %s"
 msgstr "in %s · %s"
 
-#: src/navi-panels.c:779
+#: src/navi-panels.c:785
 #, c-format
 msgid "%s ahead"
 msgstr "in %s"
 
-#: src/navi-panels.c:782
+#: src/navi-panels.c:788
 msgid "On the route"
 msgstr "Auf der Route"
 
-#: src/navi-panels.c:782
+#: src/navi-panels.c:788
 #, c-format
 msgid "+%d min"
 msgstr "+%d Min."
 
-#: src/navi-panels.c:924
+#: src/navi-panels.c:930
 msgid "Getting ready…"
 msgstr "Wird vorbereitet …"
 
-#: src/navi-panels.c:924 src/navi-panels.c:927
+#: src/navi-panels.c:930 src/navi-panels.c:933
 msgid "Say where to go"
 msgstr "Sag, wohin es gehen soll"
 
-#: src/navi-panels.c:982
+#: src/navi-panels.c:988
 msgid "Search by voice"
 msgstr "Sprachsuche"
 
-#: src/navi-panels.c:1073 src/navi-panels.c:1674
+#: src/navi-panels.c:1079 src/navi-panels.c:1680
 msgid "Where to?"
 msgstr "Wohin?"
 
-#: src/navi-panels.c:1080
+#: src/navi-panels.c:1086
 msgid "Gas"
 msgstr "Tanken"
 
-#: src/navi-panels.c:1080
+#: src/navi-panels.c:1086
 msgid "Charging"
 msgstr "Laden"
 
-#: src/navi-panels.c:1081
+#: src/navi-panels.c:1087
 msgid "Food"
 msgstr "Essen"
 
-#: src/navi-panels.c:1082
+#: src/navi-panels.c:1088
 msgid "Coffee"
 msgstr "Kaffee"
 
-#: src/navi-panels.c:1082
+#: src/navi-panels.c:1088
 msgid "Groceries"
 msgstr "Lebensmittel"
 
 #. Waze's two choices; a tap outside or Back keeps the drive as it is (three buttons do not fit a phone)
-#: src/navi-panels.c:1192
+#: src/navi-panels.c:1198
 #, c-format
 msgid "Drive to %s?"
 msgstr "Zu %s fahren?"
 
-#: src/navi-panels.c:1192
+#: src/navi-panels.c:1198
 msgid "this place"
 msgstr "diesem Ort"
 
-#: src/navi-panels.c:1194
+#: src/navi-panels.c:1200
 msgid ""
 "Add it as a stop on the way, or make it the new destination and cancel the "
 "current route."
-msgstr "Füge ihn als Zwischenstopp hinzu, oder mach ihn zum neuen Ziel und brich die aktuelle Route ab."
+msgstr ""
+"Füge ihn als Zwischenstopp hinzu, oder mach ihn zum neuen Ziel und brich die "
+"aktuelle Route ab."
 
-#: src/navi-panels.c:1197
+#: src/navi-panels.c:1203
 msgid "Add a stop"
 msgstr "Zwischenstopp"
 
-#: src/navi-panels.c:1200
+#: src/navi-panels.c:1206
 msgid "New destination"
 msgstr "Neues Ziel"
 
-#: src/navi-panels.c:1202
+#: src/navi-panels.c:1208
 msgid "Cancel the current route?"
 msgstr "Aktuelle Route abbrechen?"
 
-#: src/navi-panels.c:1203
+#: src/navi-panels.c:1209
 msgid "Keep driving"
 msgstr "Weiterfahren"
 
-#: src/navi-panels.c:1203
+#: src/navi-panels.c:1209
 msgid "Keep route"
 msgstr "Route behalten"
 
-#: src/navi-panels.c:1204
+#: src/navi-panels.c:1210
 msgid "Cancel route"
 msgstr "Route abbrechen"
 
-#: src/navi-panels.c:1255
+#: src/navi-panels.c:1261
 msgid "Always on"
 msgstr "Immer an"
 
-#: src/navi-panels.c:1256 src/navi-panels.c:1277
+#: src/navi-panels.c:1262 src/navi-panels.c:1283
 msgid "Off"
 msgstr "Aus"
 
-#: src/navi-panels.c:1257
+#: src/navi-panels.c:1263
 msgid "As the system"
 msgstr "Wie das System"
 
-#: src/navi-panels.c:1258
+#: src/navi-panels.c:1264
 msgid "Only at night"
 msgstr "Nur nachts"
 
-#: src/navi-panels.c:1266
+#: src/navi-panels.c:1272
 msgid "3D"
 msgstr "3D"
 
-#: src/navi-panels.c:1267
+#: src/navi-panels.c:1273
 msgid "2D"
 msgstr "2D"
 
-#: src/navi-panels.c:1268 src/navi-panels.c:1296
+#: src/navi-panels.c:1274 src/navi-panels.c:1302
 msgid "Auto"
 msgstr "Automatisch"
 
-#: src/navi-panels.c:1276 src/navi-panels.c:1650
+#: src/navi-panels.c:1282 src/navi-panels.c:1656
 msgid "Alerts only"
 msgstr "Nur Warnungen"
 
-#: src/navi-panels.c:1278
+#: src/navi-panels.c:1284
 msgid "On"
 msgstr "An"
 
-#: src/navi-panels.c:1287
+#: src/navi-panels.c:1293
 msgid "Motorcycle"
 msgstr "Motorrad"
 
-#: src/navi-panels.c:1287
+#: src/navi-panels.c:1293
 msgid "Car"
 msgstr "Auto"
 
-#: src/navi-panels.c:1294
+#: src/navi-panels.c:1300
 msgid "Kilometers"
 msgstr "Kilometer"
 
-#: src/navi-panels.c:1295
+#: src/navi-panels.c:1301
 msgid "Miles"
 msgstr "Meilen"
 
-#: src/navi-panels.c:1305
+#: src/navi-panels.c:1311
 msgid "At the limit"
 msgstr "Ab dem Tempolimit"
 
-#: src/navi-panels.c:1306
+#: src/navi-panels.c:1312
 msgid "5 mph over"
 msgstr "5 mph darüber"
 
-#: src/navi-panels.c:1306
+#: src/navi-panels.c:1312
 msgid "10 km/h over"
 msgstr "10 km/h darüber"
 
-#: src/navi-panels.c:1308
+#: src/navi-panels.c:1314
 #, no-c-format
 msgid "10 % over"
 msgstr "10 % darüber"
 
-#: src/navi-panels.c:1309
+#: src/navi-panels.c:1315
 msgid "3 mph over"
 msgstr "3 mph darüber"
 
-#: src/navi-panels.c:1309
+#: src/navi-panels.c:1315
 msgid "5 km/h over"
 msgstr "5 km/h darüber"
 
-#: src/navi-panels.c:1320
+#: src/navi-panels.c:1326
 msgid "Tilted, always"
 msgstr "Immer geneigt"
 
-#: src/navi-panels.c:1321
+#: src/navi-panels.c:1327
 msgid "Flat, always"
 msgstr "Immer flach"
 
-#: src/navi-panels.c:1322
+#: src/navi-panels.c:1328
 msgid "Flat while browsing, 3D while driving"
 msgstr "Flach beim Erkunden, 3D beim Fahren"
 
-#: src/navi-panels.c:1328
+#: src/navi-panels.c:1334
 msgid "Miles in the UK and the US, else kilometers"
 msgstr "Meilen in Großbritannien und den USA, sonst Kilometer"
 
-#: src/navi-panels.c:1334
+#: src/navi-panels.c:1340
 msgid "Not set: tap to search for it"
 msgstr "Nicht festgelegt: Tippe, um danach zu suchen"
 
-#: src/navi-panels.c:1381 src/navi-panels.c:1486
+#: src/navi-panels.c:1387 src/navi-panels.c:1492
 msgid "Dark mode"
 msgstr "Dunkles Design"
 
-#: src/navi-panels.c:1387 src/navi-panels.c:1489
+#: src/navi-panels.c:1393 src/navi-panels.c:1495
 msgid "Map view"
 msgstr "Kartenansicht"
 
-#: src/navi-panels.c:1393 src/navi-panels.c:1537
+#: src/navi-panels.c:1399 src/navi-panels.c:1543
 msgid "Speeding warning"
 msgstr "Tempowarnung"
 
-#: src/navi-panels.c:1400 src/navi-panels.c:1509
+#: src/navi-panels.c:1406 src/navi-panels.c:1515
 msgid "Vehicle type"
 msgstr "Fahrzeugtyp"
 
-#: src/navi-panels.c:1407 src/navi-panels.c:1504
+#: src/navi-panels.c:1413 src/navi-panels.c:1510
 msgid "Units"
 msgstr "Einheiten"
 
-#: src/navi-panels.c:1424 src/navi-panels.c:1526
+#: src/navi-panels.c:1430 src/navi-panels.c:1532
 msgid "Spoken directions"
 msgstr "Gesprochene Anweisungen"
 
-#: src/navi-panels.c:1464
+#: src/navi-panels.c:1470
 msgid "Forget Home?"
 msgstr "Zuhause vergessen?"
 
-#: src/navi-panels.c:1464
+#: src/navi-panels.c:1470
 msgid "Forget Work?"
 msgstr "Arbeit vergessen?"
 
-#: src/navi-panels.c:1467
+#: src/navi-panels.c:1473
 msgid "Forget"
 msgstr "Vergessen"
 
-#: src/navi-panels.c:1480 src/navi-panels.c:1597
+#: src/navi-panels.c:1486 src/navi-panels.c:1603
 msgid "Settings"
 msgstr "Einstellungen"
 
-#: src/navi-panels.c:1485
+#: src/navi-panels.c:1491
 msgid "Map display"
 msgstr "Kartendarstellung"
 
-#: src/navi-panels.c:1489
+#: src/navi-panels.c:1495
 msgid "Auto: flat while browsing, 3D while driving"
 msgstr "Automatisch: flach beim Erkunden, 3D beim Fahren"
 
-#: src/navi-panels.c:1493
+#: src/navi-panels.c:1499
 msgid "Keep map north up"
 msgstr "Karte nach Norden ausrichten"
 
-#: src/navi-panels.c:1494
+#: src/navi-panels.c:1500
 msgid "Auto zoom"
 msgstr "Automatischer Zoom"
 
-#: src/navi-panels.c:1494
+#: src/navi-panels.c:1500
 msgid "Zoom out as the car goes faster"
 msgstr "Bei höherem Tempo herauszoomen"
 
 #. Waze's Navigation: the next route, and a new one on the way, follow them
-#: src/navi-panels.c:1508
+#: src/navi-panels.c:1514
 msgid "Navigation"
 msgstr "Navigation"
 
-#: src/navi-panels.c:1513
+#: src/navi-panels.c:1519
 msgid "Avoid toll roads"
 msgstr "Mautstraßen vermeiden"
 
-#: src/navi-panels.c:1514
+#: src/navi-panels.c:1520
 msgid "Avoid highways"
 msgstr "Autobahnen vermeiden"
 
-#: src/navi-panels.c:1515
+#: src/navi-panels.c:1521
 msgid "Avoid ferries"
 msgstr "Fähren vermeiden"
 
-#: src/navi-panels.c:1525
+#: src/navi-panels.c:1531
 msgid "Voice and sound"
 msgstr "Stimme und Ton"
 
-#: src/navi-panels.c:1529
+#: src/navi-panels.c:1535
 msgid "Alerts"
 msgstr "Warnungen"
 
-#: src/navi-panels.c:1530 src/navi-panels.c:2886
+#: src/navi-panels.c:1536 src/navi-panels.c:2958
 msgid "Speed camera alerts"
 msgstr "Blitzerwarnungen"
 
-#: src/navi-panels.c:1531
+#: src/navi-panels.c:1537
 msgid ""
 "Where the law allows them: never in Switzerland, only danger zones in "
 "France, and in Germany not for the driver while driving"
-msgstr "Wo das Gesetz sie erlaubt: nie in der Schweiz, in Frankreich nur Gefahrenzonen und in Deutschland nicht für den Fahrer während der Fahrt"
+msgstr ""
+"Wo das Gesetz sie erlaubt: nie in der Schweiz, in Frankreich nur "
+"Gefahrenzonen und in Deutschland nicht für den Fahrer während der Fahrt"
 
-#: src/navi-panels.c:1537
+#: src/navi-panels.c:1543
 msgid "The speedometer turns red above the limit"
 msgstr "Der Tacho wird über dem Tempolimit rot"
 
-#: src/navi-panels.c:1540
+#: src/navi-panels.c:1546
 msgid "Saved places"
 msgstr "Gespeicherte Orte"
 
-#: src/navi-panels.c:1586
+#: src/navi-panels.c:1592
 msgid "Stop navigation and exit?"
 msgstr "Navigation beenden und Navi schließen?"
 
-#: src/navi-panels.c:1588 src/navi-panels.c:1599
+#: src/navi-panels.c:1594 src/navi-panels.c:1605
 msgid "Exit"
 msgstr "Beenden"
 
-#: src/navi-panels.c:1649
+#: src/navi-panels.c:1655
 msgid "Sound off"
 msgstr "Ton aus"
 
-#: src/navi-panels.c:1651 src/navi-panels.c:2272
+#: src/navi-panels.c:1657 src/navi-panels.c:2312
 msgid "Sound on"
 msgstr "Ton an"
 
-#: src/navi-panels.c:1707
+#: src/navi-panels.c:1713
 msgid "Saved as Home"
 msgstr "Als Zuhause gespeichert"
 
-#: src/navi-panels.c:1707
+#: src/navi-panels.c:1713
 msgid "Saved as Work"
 msgstr "Als Arbeit gespeichert"
 
-#: src/navi-panels.c:1779
+#: src/navi-panels.c:1785
 msgid "Close"
 msgstr "Schließen"
 
-#: src/navi-panels.c:1796 src/navi-panels.c:2597
+#: src/navi-panels.c:1802 src/navi-panels.c:2641
 msgid "Set as Home"
 msgstr "Als Zuhause"
 
-#: src/navi-panels.c:1797 src/navi-panels.c:2597
+#: src/navi-panels.c:1803 src/navi-panels.c:2641
 msgid "Set as Work"
 msgstr "Als Arbeit"
 
-#: src/navi-panels.c:1799 src/navi-panels.c:2582
+#: src/navi-panels.c:1805 src/navi-panels.c:2626
 msgid "View routes"
 msgstr "Routen anzeigen"
 
-#: src/navi-panels.c:1897 src/navi-panels.c:2655
+#: src/navi-panels.c:1903 src/navi-panels.c:2699
 msgid "Your location"
 msgstr "Dein Standort"
 
 #. after a failure: ask again
-#: src/navi-panels.c:1937
+#: src/navi-panels.c:1943
 msgid "Retry"
 msgstr "Wiederholen"
 
-#: src/navi-panels.c:1962
+#: src/navi-panels.c:1968
 msgid "Leave later"
 msgstr "Später losfahren"
 
-#: src/navi-panels.c:1970
+#: src/navi-panels.c:1976
 msgid "Go now"
 msgstr "Jetzt los"
 
-#: src/navi-panels.c:2002 src/navi-panels.c:2724
+#: src/navi-panels.c:2008 src/navi-panels.c:2796
 #, c-format
 msgid "Via %s"
 msgstr "Über %s"
 
-#: src/navi-panels.c:2007
+#: src/navi-panels.c:2013
 msgid "Best route"
 msgstr "Beste Route"
 
-#: src/navi-panels.c:2009
+#: src/navi-panels.c:2015
 msgid "Toll road"
 msgstr "Mautstraße"
 
-#: src/navi-panels.c:2011
+#: src/navi-panels.c:2017
 msgid "Ferry"
 msgstr "Fähre"
 
-#: src/navi-panels.c:2060 src/navi-panels.c:2081
+#: src/navi-panels.c:2066 src/navi-panels.c:2087
 msgid "Overview"
 msgstr "Übersicht"
 
-#: src/navi-panels.c:2073 src/navi-panels.c:2255
+#: src/navi-panels.c:2079 src/navi-panels.c:2295
 msgid "Re-center"
 msgstr "Zentrieren"
 
-#: src/navi-panels.c:2109
+#: src/navi-panels.c:2115
 msgid "Stop"
 msgstr "Beenden"
 
-#: src/navi-panels.c:2112
+#: src/navi-panels.c:2118
 msgid "Continue"
 msgstr "Weiter"
 
-#: src/navi-panels.c:2137
+#: src/navi-panels.c:2143
 msgid "You have arrived"
 msgstr "Du bist angekommen"
 
-#: src/navi-panels.c:2143
+#: src/navi-panels.c:2153
 msgid "Done"
 msgstr "Fertig"
 
-#: src/navi-panels.c:2180
+#: src/navi-panels.c:2166
+msgid "Your destination is on the right"
+msgstr "Ihr Ziel befindet sich rechts"
+
+#: src/navi-panels.c:2168
+msgid "Your destination is on the left"
+msgstr "Ihr Ziel befindet sich links"
+
+#: src/navi-panels.c:2213
+msgid "Lanes"
+msgstr "Fahrspuren"
+
+#: src/navi-panels.c:2220
 msgid "and then"
 msgstr "dann"
 
-#: src/navi-panels.c:2265
+#: src/navi-panels.c:2305
 msgid "North up"
 msgstr "Norden oben"
 
-#: src/navi-panels.c:2515
+#: src/navi-panels.c:2559
 msgid "You have arrived at your destination."
 msgstr "Du hast dein Ziel erreicht."
 
-#: src/navi-panels.c:2582
+#: src/navi-panels.c:2626
 msgid "Drive here"
 msgstr "Hierhin fahren"
 
-#: src/navi-panels.c:2582
+#: src/navi-panels.c:2626
 msgid "Go"
 msgstr "Los"
 
-#: src/navi-panels.c:2596
+#: src/navi-panels.c:2640
 msgid "Your Home"
 msgstr "Dein Zuhause"
 
-#: src/navi-panels.c:2596
+#: src/navi-panels.c:2640
 msgid "Your Work"
 msgstr "Deine Arbeit"
 
-#: src/navi-panels.c:2619
+#: src/navi-panels.c:2663
 msgid "Finding the best routes…"
 msgstr "Die besten Routen werden gesucht …"
 
-#: src/navi-panels.c:2646
+#: src/navi-panels.c:2690
 #, c-format
 msgid "Leave at %s, arrive at %s"
 msgstr "Abfahrt %s, Ankunft %s"
 
-#: src/navi-panels.c:2655
+#: src/navi-panels.c:2699
 msgid "The map's centre"
 msgstr "Kartenmitte"
 
-#: src/navi-panels.c:2677 src/navi-panels.c:2918
+#: src/navi-panels.c:2740 src/navi-panels.c:2990
 msgid "Finding a new route…"
 msgstr "Neue Route wird gesucht …"
 
-#: src/navi-panels.c:2677
+#: src/navi-panels.c:2740
 msgid "No route from here yet. Trying again…"
 msgstr "Von hier noch keine Route. Neuer Versuch …"
 
-#: src/navi-panels.c:2686
+#: src/navi-panels.c:2751
 msgid "Your destination"
 msgstr "Dein Ziel"
 
-#: src/navi-panels.c:2839
+#: src/navi-panels.c:2911
 #, c-format
 msgid "Speed limit %d mph"
 msgstr "Tempolimit %d mph"
 
-#: src/navi-panels.c:2839
+#: src/navi-panels.c:2911
 #, c-format
 msgid "Speed limit %d km/h"
 msgstr "Tempolimit %d km/h"
 
-#: src/navi-panels.c:2844
+#: src/navi-panels.c:2916
 msgid "No speed limit"
 msgstr "Kein Tempolimit"
 
-#: src/navi-panels.c:2887
+#: src/navi-panels.c:2959
 msgid ""
 "Not allowed everywhere. In Germany the driver may not use them while driving "
 "(§23 (1c) StVO); a passenger may. In Switzerland Navi never shows them, and "
@@ -685,73 +703,77 @@ msgid ""
 "\n"
 "You can turn them off in Settings at any time."
 msgstr ""
-"Nicht überall erlaubt. In Deutschland darf der Fahrer sie während der Fahrt nicht nutzen (§ 23 Abs. 1c StVO), ein Beifahrer schon. In der Schweiz zeigt Navi sie nie an, in Frankreich nur Gefahrenzonen.\n"
+"Nicht überall erlaubt. In Deutschland darf der Fahrer sie während der Fahrt "
+"nicht nutzen (§ 23 Abs. 1c StVO), ein Beifahrer schon. In der Schweiz zeigt "
+"Navi sie nie an, in Frankreich nur Gefahrenzonen.\n"
 "\n"
 "Du kannst sie jederzeit in den Einstellungen ausschalten."
 
-#: src/navi-panels.c:2890
+#: src/navi-panels.c:2962
 msgid "Turn off"
 msgstr "Ausschalten"
 
-#: src/navi-panels.c:2891
+#: src/navi-panels.c:2963
 msgid "OK"
 msgstr "OK"
 
-#: src/navi-voice.c:698
+#: src/navi-voice.c:700
 #, c-format
 msgid "Piper voice %s, on this device"
 msgstr "Piper-Stimme %s, auf diesem Gerät"
 
-#: src/navi-voice.c:700
+#: src/navi-voice.c:702
 msgid "Piper voice, on this device"
 msgstr "Piper-Stimme, auf diesem Gerät"
 
-#: src/navi-voice.c:706
+#: src/navi-voice.c:708
 msgid "eSpeak NG voices, on this device"
 msgstr "eSpeak-NG-Stimmen, auf diesem Gerät"
 
-#: src/navi-voice.c:708
+#: src/navi-voice.c:710
 msgid "No voice on this phone"
 msgstr "Keine Stimme auf diesem Telefon"
 
-#: src/navi-window.c:698 src/navi-window.c:1351
+#: src/navi-window.c:711 src/navi-window.c:1377
 msgid "The map cannot be loaded. Check the connection."
 msgstr "Die Karte kann nicht geladen werden. Prüfe die Verbindung."
 
-#: src/navi-window.c:925
+#: src/navi-window.c:938
 msgid "Best"
 msgstr "Beste"
 
-#: src/navi-window.c:971
+#: src/navi-window.c:984
 msgid "Navigating"
 msgstr "Navigation läuft"
 
-#: src/navi-window.c:1088
+#: src/navi-window.c:1101
 msgid ""
 "Navi cannot reach a road there right now. Outside Germany, routes may be "
 "unavailable for a while."
-msgstr "Navi erreicht dort gerade keine Straße. Außerhalb Deutschlands können Routen eine Zeit lang nicht verfügbar sein."
+msgstr ""
+"Navi erreicht dort gerade keine Straße. Außerhalb Deutschlands können Routen "
+"eine Zeit lang nicht verfügbar sein."
 
-#: src/navi-window.c:1090
+#: src/navi-window.c:1103
 msgid "No route found there. Choose a place on a road."
 msgstr "Dort wurde keine Route gefunden. Wähle einen Ort an einer Straße."
 
-#: src/navi-window.c:1092
+#: src/navi-window.c:1105
 msgid "The route server cannot be reached. Check the connection."
 msgstr "Der Routenserver ist nicht erreichbar. Prüfe die Verbindung."
 
-#: src/navi-window.c:1264
+#: src/navi-window.c:1277
 msgid "You have reached your stop."
 msgstr "Du hast deinen Zwischenstopp erreicht."
 
-#: src/navi-window.c:1352 src/navi-window.c:1401
+#: src/navi-window.c:1378 src/navi-window.c:1431
 msgid "No GPS – showing your approximate location"
 msgstr "Kein GPS – ungefährer Standort"
 
-#: src/navi-window.c:1487
+#: src/navi-window.c:1517
 msgid "Dropped pin"
 msgstr "Markierter Ort"
 
-#: src/navi-window.c:1570
+#: src/navi-window.c:1600
 msgid "Place"
 msgstr "Ort"

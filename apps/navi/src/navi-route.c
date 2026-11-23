@@ -35,11 +35,40 @@ navi_route_unref (NaviRoute *route)
     g_free (m->street);
     g_free (m->ref);
     g_free (m->exit);
+    g_free (m->lanes);
   }
   g_free (route->maneuvers);
   g_free (route->points);
   g_free (route->via);
   g_free (box);
+}
+
+/* a manoeuvre's lanes ("lanes": [{"directions": 8, "active": 8}, {"directions": 2}]), kept only when one of them
+ * says it is the one to take: lanes that only show the arrows tell the driver nothing */
+static void
+parse_lanes (JsonObject *mo, NaviManeuver *m)
+{
+  JsonArray *lanes = json_object_has_member (mo, "lanes") ? json_object_get_array_member (mo, "lanes") : NULL;
+  guint n = lanes ? json_array_get_length (lanes) : 0;
+  if (!n || n > 16)
+    return;
+  NaviLane *out = g_new0 (NaviLane, n);
+  gboolean guided = FALSE;
+  for (guint i = 0; i < n; i++) {
+    JsonObject *lo = json_array_get_object_element (lanes, i);
+    if (!lo)
+      continue;
+    out[i].directions = json_object_get_int_member_with_default (lo, "directions", 0);
+    out[i].valid = json_object_get_int_member_with_default (lo, "valid", 0);
+    out[i].active = json_object_get_int_member_with_default (lo, "active", 0);
+    guided |= out[i].valid || out[i].active;
+  }
+  if (!guided) {
+    g_free (out);
+    return;
+  }
+  m->lanes = out;
+  m->n_lanes = n;
 }
 
 guint
@@ -248,6 +277,7 @@ parse_trip (JsonObject *trip, GError **error)
       if (!m.street)
         m.street = sign_text (sign, "exit_branch_elements");
       m.roundabout_exit = json_object_get_int_member_with_default (mo, "roundabout_exit_count", 0);
+      parse_lanes (mo, &m);
       m.begin = base + json_object_get_int_member_with_default (mo, "begin_shape_index", 0);
       m.end = base + json_object_get_int_member_with_default (mo, "end_shape_index", 0);
       m.length = json_object_get_double_member_with_default (mo, "length", 0) * 1000; /* km */
@@ -530,6 +560,9 @@ navi_route_request_async (const NaviRouteRequest *rq, GCancellable *cancellable,
   json_builder_add_string_value (b, rq->miles ? "miles" : "kilometers");
   json_builder_set_member_name (b, "language");
   json_builder_add_string_value (b, rq->language ? rq->language : navi_route_language ());
+  /* the lanes up to each manoeuvre, where the map has turn:lanes */
+  json_builder_set_member_name (b, "turn_lanes");
+  json_builder_add_boolean_value (b, TRUE);
   /* the default directions type, "instructions": "maneuvers" leaves every text out */
   if (rq->alternates && !rq->have_via) {
     json_builder_set_member_name (b, "alternates");

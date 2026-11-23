@@ -146,14 +146,14 @@ alert_distance (double speed)
   return speed < 15 ? 400 : speed < 25 ? 800 : 1500;
 }
 
-/* where the instruction itself comes: about six seconds ahead, never closer than 50 m */
-static double
-pre_distance (double speed)
+double
+navi_guidance_pre_distance (double speed)
 {
   if (speed < 0)
     speed = 10;
   return CLAMP (speed * 6, 50.0, 300.0);
 }
+
 
 char *
 navi_guidance_alert_text (const char *language, double metres, const char *instruction)
@@ -248,7 +248,8 @@ navi_guidance_upcoming_prompts (NaviGuidance *self, double speed)
           at[1] = self->p.to_next - MAX (speeds[k], 0.0);
         }
         for (guint j = 0; j < 2; j++)
-          if (i > 0 && !sp->alert && words && stretch > at[j] && at[j] > pre_distance (speeds[k]) + 100)
+          if (i > 0 && !sp->alert && words && stretch > at[j] &&
+              at[j] > navi_guidance_pre_distance (speeds[k]) + 100)
             add_unique (out, is_destination (m->type) ? g_strdup (words)
                                                       : navi_guidance_alert_text (self->language, at[j], words));
       }
@@ -285,7 +286,7 @@ navi_guidance_take_prompt (NaviGuidance *self, double speed)
   guint i = p->next;
   NaviManeuver *m = &r->maneuvers[i];
   Spoken *sp = &self->spoken[i];
-  double pre = pre_distance (speed), alert = alert_distance (speed);
+  double pre = navi_guidance_pre_distance (speed), alert = alert_distance (speed);
   /* a turn followed at once by another is announced with it ("Then ..."): its own alert would only crowd it */
   if (!sp->pre && p->to_next <= pre) {
     sp->pre = sp->alert = TRUE;

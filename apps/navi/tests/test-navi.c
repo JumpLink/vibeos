@@ -13,9 +13,9 @@
 #include <string.h>
 
 static GPtrArray *
-load_routes (void)
+load_route_file (const char *name)
 {
-  g_autofree char *path = g_test_build_filename (G_TEST_DIST, "data", "route-kleiststrasse-potsdamer-platz.json", NULL);
+  g_autofree char *path = g_test_build_filename (G_TEST_DIST, "data", name, NULL);
   g_autofree char *json = NULL;
   gsize len;
   g_autoptr (GError) error = NULL;
@@ -23,6 +23,12 @@ load_routes (void)
   GPtrArray *routes = navi_route_parse (json, len, &error);
   g_assert_no_error (error);
   return routes;
+}
+
+static GPtrArray *
+load_routes (void)
+{
+  return load_route_file ("route-kleiststrasse-potsdamer-platz.json");
 }
 
 static void
@@ -132,6 +138,56 @@ test_route_parse (void)
   GPtrArray *none = navi_route_parse ("{\"error_code\":171,\"error\":\"No suitable edges near location\"}", -1, &error);
   g_assert_null (none);
   g_assert_error (error, NAVI_ROUTE_ERROR, NAVI_ROUTE_ERROR_NO_ROAD);
+}
+
+/* the same streets asked with "turn_lanes", to a point off the road on its right: the lanes up to the turns, and
+ * the destination's side said in its last metres */
+static void
+test_lanes_and_side (void)
+{
+  g_autoptr (GPtrArray) routes = load_route_file ("route-lanes-destination-right.json");
+  NaviRoute *r = routes->pdata[0];
+  g_assert_cmpuint (r->n_maneuvers, ==, 7);
+  /* no lanes in the map, or none to take: nothing */
+  g_assert_null (r->maneuvers[1].lanes);
+  g_assert_cmpuint (r->maneuvers[1].n_lanes, ==, 0);
+  /* Lützowplatz: two lanes straight on, one straight on or right, one right; the right two to take */
+  const NaviManeuver *m = &r->maneuvers[3];
+  g_assert_cmpstr (m->street, ==, "Lützowplatz");
+  g_assert_cmpuint (m->n_lanes, ==, 4);
+  g_assert_cmpuint (m->lanes[0].directions, ==, NAVI_LANE_THROUGH);
+  g_assert_cmpuint (m->lanes[0].active, ==, 0);
+  g_assert_cmpuint (m->lanes[2].directions, ==, NAVI_LANE_THROUGH | NAVI_LANE_RIGHT);
+  g_assert_cmpuint (m->lanes[2].active, ==, NAVI_LANE_RIGHT);
+  g_assert_cmpuint (m->lanes[3].active, ==, NAVI_LANE_RIGHT);
+  /* the left turn onto Potsdamer Straße from the leftmost lane */
+  g_assert_cmpuint (r->maneuvers[4].n_lanes, ==, 4);
+  g_assert_cmpuint (r->maneuvers[4].lanes[0].active, ==, NAVI_LANE_LEFT);
+  g_assert_cmpint (r->maneuvers[6].type, ==, NAVI_TURN_DESTINATION_RIGHT);
+
+  /* driven at 10 m/s: the side is said once, in the instruction's metres before the end */
+  g_autoptr (NaviGuidance) g = navi_guidance_new (r);
+  gint64 t = 1000000;
+  guint hint = 0, said = 0;
+  double said_at = -1;
+  for (double s = 0; s <= r->length + 20; s += 10, t += 1000000) {
+    double lat, lng;
+    navi_path_point_at (r->points, r->n_points, MIN (s, r->length), &lat, &lng, &hint);
+    double heading = navi_path_heading_at (r->points, r->n_points, MIN (s, r->length), 10);
+    const NaviProgress *p = navi_guidance_update (g, lat, lng, 5, 10, heading, t);
+    char *words;
+    while ((words = navi_guidance_take_prompt (g, 10))) {
+      if (!strcmp (words, "Your destination is on the right.")) {
+        said++;
+        said_at = p->to_next;
+      }
+      g_free (words);
+    }
+  }
+  g_assert_cmpuint (said, ==, 1);
+  g_assert_cmpfloat (said_at, <=, navi_guidance_pre_distance (10));
+  g_assert_cmpfloat (navi_guidance_pre_distance (10), ==, 60);
+  g_assert_cmpfloat (navi_guidance_pre_distance (3), ==, 50);
 }
 
 /* drives the route at 10 m/s with a fix a second, `drift` metres to the side from `drift_from` on */
@@ -526,6 +582,7 @@ main (int argc, char **argv)
   g_test_add_func ("/navi/geo", test_geo);
   g_test_add_func ("/navi/route/parse", test_route_parse);
   g_test_add_func ("/navi/route/errors", test_route_errors);
+  g_test_add_func ("/navi/route/lanes-and-side", test_lanes_and_side);
   g_test_add_func ("/navi/guidance/drive", test_guidance);
   g_test_add_func ("/navi/guidance/upcoming", test_upcoming);
   g_test_add_func ("/navi/guidance/off-route", test_off_route);

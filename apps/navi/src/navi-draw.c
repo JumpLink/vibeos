@@ -84,6 +84,132 @@ roundabout (cairo_t *cr, int exit_number, const GdkRGBA *color)
   }
 }
 
+/* one of a lane's arrows in the unit box, from the top of its stem (0.5, 0.6): straight on, a bend of `angle` degrees
+ * to the right (negative: to the left), back (a U-turn, to the left), or over into the next lane */
+static void
+lane_arrow (cairo_t *cr, guint16 bit)
+{
+  const double sx = 0.5, sy = 0.6;
+  double ex, ey, dx, dy;
+  gboolean mirror = bit & (NAVI_LANE_SHARP_LEFT | NAVI_LANE_LEFT | NAVI_LANE_SLIGHT_LEFT | NAVI_LANE_MERGE_TO_LEFT);
+  cairo_save (cr);
+  if (mirror) {
+    cairo_translate (cr, 1, 0);
+    cairo_scale (cr, -1, 1);
+  }
+  cairo_set_line_cap (cr, CAIRO_LINE_CAP_ROUND);
+  cairo_set_line_join (cr, CAIRO_LINE_JOIN_ROUND);
+  cairo_set_line_width (cr, 0.11);
+  if (bit & NAVI_LANE_REVERSE) {
+    /* up, over to the left, and back down */
+    cairo_move_to (cr, sx, sy);
+    cairo_line_to (cr, sx, 0.36);
+    cairo_arc_negative (cr, sx - 0.15, 0.36, 0.15, 0, G_PI);
+    cairo_line_to (cr, sx - 0.3, 0.5);
+    cairo_stroke (cr);
+    head (cr, sx - 0.3, 0.5, 0, 1, 0.2, 0.15);
+    cairo_restore (cr);
+    return;
+  }
+  if (bit & (NAVI_LANE_MERGE_TO_LEFT | NAVI_LANE_MERGE_TO_RIGHT)) {
+    ex = 0.74, ey = 0.3, dx = 0.45, dy = -0.89;
+  } else if (bit & (NAVI_LANE_SLIGHT_LEFT | NAVI_LANE_SLIGHT_RIGHT)) {
+    ex = 0.68, ey = 0.32, dx = 0.707, dy = -0.707;
+  } else if (bit & (NAVI_LANE_LEFT | NAVI_LANE_RIGHT)) {
+    ex = 0.72, ey = 0.4, dx = 1, dy = 0;
+  } else if (bit & (NAVI_LANE_SHARP_LEFT | NAVI_LANE_SHARP_RIGHT)) {
+    ex = 0.7, ey = 0.6, dx = 0.707, dy = 0.707;
+  } else { /* straight on, or a lane without arrows */
+    ex = sx, ey = 0.26, dx = 0, dy = -1;
+  }
+  cairo_move_to (cr, sx, sy);
+  if (ex == sx)
+    cairo_line_to (cr, ex, ey);
+  else
+    cairo_curve_to (cr, sx, sy - 0.18, ex - dx * 0.16, ey - dy * 0.16, ex, ey);
+  cairo_stroke (cr);
+  head (cr, ex, ey, dx, dy, 0.2, 0.15);
+  cairo_restore (cr);
+}
+
+void
+navi_draw_lanes (cairo_t *cr, double width, double height, const NaviLane *lanes, guint n)
+{
+  if (!n)
+    return;
+  gboolean any_active = FALSE;
+  for (guint i = 0; i < n; i++)
+    any_active |= lanes[i].active != 0;
+  double cell = MIN (height, (width - 16) / n);
+  double x0 = (width - cell * n) / 2, y0 = (height - cell) / 2;
+  /* the lane lines between them */
+  cairo_save (cr);
+  cairo_set_source_rgba (cr, 1, 1, 1, 0.22);
+  cairo_set_line_width (cr, 1.5);
+  double dash[] = { 4, 4 };
+  cairo_set_dash (cr, dash, 2, 0);
+  for (guint i = 1; i < n; i++) {
+    cairo_move_to (cr, round (x0 + cell * i) + 0.5, y0 + cell * 0.1);
+    cairo_line_to (cr, round (x0 + cell * i) + 0.5, y0 + cell * 0.95);
+  }
+  cairo_stroke (cr);
+  cairo_restore (cr);
+  for (guint i = 0; i < n; i++) {
+    const NaviLane *l = &lanes[i];
+    guint16 dirs = l->directions & 0x7ff;
+    if (!dirs || dirs == NAVI_LANE_NONE)
+      dirs = NAVI_LANE_THROUGH;
+    /* to take: the active ones (or the valid ones where none is active); may be taken: valid */
+    guint16 take = any_active ? l->active : l->valid;
+    guint16 may = l->valid | l->active;
+    if (take & NAVI_LANE_NONE)
+      take |= NAVI_LANE_THROUGH;
+    if (may & NAVI_LANE_NONE)
+      may |= NAVI_LANE_THROUGH;
+    double x = x0 + cell * i;
+    if (take & dirs) {
+      /* a lane to take sits on a light tile */
+      double r = cell * 0.16, tx = x + 3, ty = y0 + 1, tw = cell - 6, th = cell - 2;
+      cairo_new_sub_path (cr);
+      cairo_arc (cr, tx + tw - r, ty + r, r, -G_PI / 2, 0);
+      cairo_arc (cr, tx + tw - r, ty + th - r, r, 0, G_PI / 2);
+      cairo_arc (cr, tx + r, ty + th - r, r, G_PI / 2, G_PI);
+      cairo_arc (cr, tx + r, ty + r, r, G_PI, 3 * G_PI / 2);
+      cairo_close_path (cr);
+      cairo_set_source_rgba (cr, 1, 1, 1, 0.14);
+      cairo_fill (cr);
+    }
+    int stem = take & dirs ? 2 : may & dirs ? 1 : 0;
+    /* each brightness drawn whole and then laid on at once, so strokes crossing do not add up: the grey arrows
+     * first, the white ones over them; the stem in its brightest arrow's */
+    for (int level = 0; level < 3; level++) {
+      gboolean any = stem == level;
+      for (guint16 bit = NAVI_LANE_THROUGH; bit <= NAVI_LANE_MERGE_TO_RIGHT; bit <<= 1)
+        any |= (dirs & bit) && (take & bit ? 2 : may & bit ? 1 : 0) == level;
+      if (!any)
+        continue;
+      cairo_save (cr);
+      cairo_translate (cr, x + cell * 0.08, y0 + cell * 0.04);
+      cairo_scale (cr, cell * 0.84, cell * 0.84);
+      cairo_push_group (cr);
+      cairo_set_source_rgb (cr, 1, 1, 1);
+      if (stem == level) {
+        cairo_set_line_cap (cr, CAIRO_LINE_CAP_ROUND);
+        cairo_set_line_width (cr, 0.11);
+        cairo_move_to (cr, 0.5, 0.96);
+        cairo_line_to (cr, 0.5, 0.6);
+        cairo_stroke (cr);
+      }
+      for (guint16 bit = NAVI_LANE_THROUGH; bit <= NAVI_LANE_MERGE_TO_RIGHT; bit <<= 1)
+        if ((dirs & bit) && (take & bit ? 2 : may & bit ? 1 : 0) == level)
+          lane_arrow (cr, bit);
+      cairo_pop_group_to_source (cr);
+      cairo_paint_with_alpha (cr, level == 2 ? 1 : level == 1 ? 0.62 : 0.3);
+      cairo_restore (cr);
+    }
+  }
+}
+
 void
 navi_draw_finish (cairo_t *cr, double size)
 {
