@@ -1460,6 +1460,8 @@ on_pause (CamPause *pause, CamView *self)
 
 /* ---- the shutter ----------------------------------------------------------------------------------------------- */
 
+static void on_encoder (gpointer data);
+
 static void
 shutter (CamView *self)
 {
@@ -1484,7 +1486,12 @@ shutter (CamView *self)
       else if (self->state == ST_IDLE)
         {
           if (!cam_encoder_get ())
-            return;       /* the encoder is still being measured (first start only) */
+            {
+              /* not measured yet: do it now that a recording is wanted; on_encoder() then falls back to PHOTO if
+               * nothing can record, or rebinds the camera at the video size, and the next press records */
+              cam_encoder_probe (G_CALLBACK (on_encoder), g_object_ref (self));
+              return;
+            }
           cam_shutter_set_recording (CAM_SHUTTER (self->shutter), TRUE, TRUE);
           slide_pro (self, FALSE);
           start_timer_and_run (self);
@@ -2377,11 +2384,12 @@ on_setup_done (GPtrArray *cameras, CamPipeline *pipeline, GError *error, gpointe
       /* the saved facing, mode and the rest, now that there are cameras to choose from */
       restore (self);
       update_settings_rows (self);
-      /* the encoder: measured once per kernel and GStreamer, in the background */
+      /* the encoder is only read from the cache here, never probed: the probe opens the hardware encoder, and on
+       * the OnePlus 6T the Venus driver hangs in its STREAMOFF and takes UFS, and with it the phone, down. Opening
+       * the app or taking photos must not touch it. The first press of the record button measures it (see
+       * shutter()). */
       if (cam_encoder_get ())
         on_encoder (g_object_ref (self));
-      else
-        cam_encoder_probe (G_CALLBACK (on_encoder), g_object_ref (self));
       sync_running (self);
     }
   else
