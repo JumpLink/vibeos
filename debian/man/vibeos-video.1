@@ -6,8 +6,11 @@ vibeos-video \- video player for VibeOS
 .RI [ FILE | URI ]
 .SH DESCRIPTION
 Plays a video with mpv (libmpv) under an Android player's controls. A tap shows or hides the controls, which also go
-by themselves 2 seconds into playing; a double tap on the left or right third skips 10 seconds back or on. Space or
-k plays and pauses, Left and Right skip, Escape closes. A file on a GVfs share (smb://, sftp://) plays through its
+by themselves 2 seconds into playing; a double tap on the left or right third skips 10 seconds back or on. The button
+beside the menu puts the player full screen and takes it out again. On a screen wider than tall it opens full screen,
+and turning the screen chooses again: sideways full screen, upright not. Full screen, a film shot the way the screen
+is turned fills it, its edges cropped to the screen's shape; one shot the other way stays whole. Space or k plays and
+pauses, Left and Right skip, f or F11 goes full screen and back, Escape closes. A file on a GVfs share (smb://, sftp://) plays through its
 FUSE path, and the share is mounted first if it is not yet. Where each film was left is kept in
 ~/.local/state/vibeos/video/watch-later and playback resumes there.
 .SH ENVIRONMENT

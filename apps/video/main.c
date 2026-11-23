@@ -9,7 +9,13 @@
  * from there the next time.
  *
  * ⋮ opens the menu: Audio track and Subtitles (when the film has any) open a sheet listing the film's tracks (mpv's
- * track-list), the one playing ticked; About is VibeOS's About sheet. */
+ * track-list), the one playing ticked; About is VibeOS's About sheet.
+ *
+ * The button beside ⋮ puts the player full screen (no status bar) and takes it out again. On a screen wider than tall
+ * (a phone or tablet turned sideways, a TV) it opens full screen, and turning the screen chooses again: sideways full
+ * screen, upright not; the button changes that until the next turn. Full screen, a film shot the way the screen is
+ * turned fills it, cropped to the screen's shape (mpv's pan-and-scan), as Android's players zoom a film to fill; one
+ * shot the other way (a wide film on an upright phone) stays whole: filled, most of it would be cut away. */
 #include <epoxy/egl.h>
 #include <epoxy/gl.h>
 #include <gtk/gtk.h>
@@ -28,16 +34,20 @@
 #define SIDE_BUTTON_DP 56
 #define TOP_BUTTON_DP 48
 
-typedef enum { ICON_BACK, ICON_PLAY, ICON_PAUSE, ICON_REPLAY, ICON_FORWARD, ICON_MORE } Icon;
+typedef enum { ICON_BACK, ICON_PLAY, ICON_PAUSE, ICON_REPLAY, ICON_FORWARD, ICON_MORE, ICON_FULLSCREEN } Icon;
 
 typedef struct {
   GtkApplication *app;
-  GtkWidget *win, *area, *controls, *title, *more, *play, *position, *length, *seek, *spinner, *message;
+  GtkWidget *win, *area, *controls, *title, *full, *more, *play, *position, *length, *seek, *spinner, *message;
   mpv_handle *mpv;
   mpv_render_context *render;
-  gboolean paused, buffering, ended, have_file, dragging, setting_seek, named;
+  gboolean paused, buffering, ended, have_file, dragging, setting_seek, named, fullscreen, cropped;
   double time, duration;
-  guint hide_id, tap_id, events_id;
+  double aspect;          /* the film's picture as it is shown, width / height (0: no picture) */
+  gint64 rotate;          /* and the turn it is shown at (a phone's video filmed upright: 90) */
+  int width, height;      /* the window's size */
+  int landscape;          /* the screen the window is on is wider than tall: 1, or 0; -1 not known yet */
+  guint hide_id, tap_id, events_id, shape_id;
   guint inhibit;
   double tap_x;
 } Player;
@@ -50,7 +60,7 @@ draw_icon (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
   Icon icon = GPOINTER_TO_INT (data);
   Player *p = g_object_get_data (G_OBJECT (area), "player");
   double s = MIN (w, h), cx = w / 2.0, cy = h / 2.0;
-  gboolean round = icon != ICON_BACK && icon != ICON_MORE;
+  gboolean round = icon != ICON_BACK && icon != ICON_MORE && icon != ICON_FULLSCREEN;
 
   if (icon == ICON_PLAY && p && p->have_file && !p->paused && !p->ended)
     icon = ICON_PAUSE;
@@ -80,6 +90,22 @@ draw_icon (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
     }
     cairo_fill (cr);
     break;
+  case ICON_FULLSCREEN: {
+    /* Material's fullscreen (four corners pointing out), fullscreen_exit when full screen (pointing in), as bars */
+    static const double out[8][4] = {
+      {5, 5, 5, 2}, {5, 5, 2, 5}, {14, 5, 5, 2}, {17, 5, 2, 5},
+      {5, 17, 5, 2}, {5, 14, 2, 5}, {14, 17, 5, 2}, {17, 14, 2, 5},
+    };
+    static const double in[8][4] = {
+      {5, 8, 5, 2}, {8, 5, 2, 5}, {14, 8, 5, 2}, {14, 5, 2, 5},
+      {5, 14, 5, 2}, {8, 14, 2, 5}, {14, 14, 5, 2}, {14, 14, 2, 5},
+    };
+    const double (*bars)[4] = p && p->fullscreen ? in : out;
+    for (int i = 0; i < 8; i++)
+      cairo_rectangle (cr, bars[i][0], bars[i][1], bars[i][2], bars[i][3]);
+    cairo_fill (cr);
+    break;
+  }
   case ICON_PLAY:
     cairo_move_to (cr, 8, 5); cairo_line_to (cr, 8, 19); cairo_line_to (cr, 19, 12); cairo_close_path (cr);
     cairo_fill (cr);
@@ -188,6 +214,21 @@ sync_time (Player *p)
   }
 }
 
+/* Full screen, a film shot the way the screen is turned is cropped to fill it (mpv's pan-and-scan, all the way: the
+ * picture scaled until no black bar is left, its overflow cut evenly from both sides); else it is fitted, whole */
+static void
+sync_crop (Player *p, gboolean again)
+{
+  double film = p->aspect > 0 && p->rotate % 180 == 90 ? 1 / p->aspect : p->aspect;
+  double screen = p->height > 0 ? (double) p->width / p->height : 0;
+  gboolean crop = p->fullscreen && film > 0 && screen > 0 && (film > 1) == (screen > 1) && film != 1 && screen != 1;
+  if (!p->mpv || (crop == p->cropped && !again))
+    return;
+  p->cropped = crop;
+  const char *args[] = {"set", "panscan", crop ? "1" : "0", NULL};
+  command (p, args);
+}
+
 static void
 on_property (Player *p, mpv_event_property *prop)
 {
@@ -222,6 +263,12 @@ on_property (Player *p, mpv_event_property *prop)
       p->buffering = on;
     gtk_widget_set_visible (p->spinner, p->buffering);
     gtk_spinner_set_spinning (GTK_SPINNER (p->spinner), p->buffering);
+  } else if (g_str_equal (prop->name, "video-params/aspect")) {
+    p->aspect = prop->format == MPV_FORMAT_DOUBLE ? *(double *) prop->data : 0;
+    sync_crop (p, FALSE);
+  } else if (g_str_equal (prop->name, "video-params/rotate")) {
+    p->rotate = prop->format == MPV_FORMAT_INT64 ? *(gint64 *) prop->data : 0;
+    sync_crop (p, FALSE);
   } else if (g_str_equal (prop->name, "media-title") && prop->format == MPV_FORMAT_STRING && !p->named) {
     /* a web stream's own title (a file keeps its name: a film's title tag is often another film's) */
     const char *title = *(char **) prop->data;
@@ -246,6 +293,8 @@ drain_events (gpointer data)
     case MPV_EVENT_FILE_LOADED:
       p->ended = FALSE;
       gtk_widget_set_visible (p->message, FALSE);
+      /* the crop is the player's, whatever a film's watch-later file says */
+      sync_crop (p, TRUE);
       break;
     case MPV_EVENT_END_FILE: {
       mpv_event_end_file *end = ev->data;
@@ -379,6 +428,8 @@ start_mpv (Player *p)
     {"keep-open", "yes"},
     {"save-position-on-quit", "yes"},
     {"watch-later-dir", later},
+    /* (a film left full screen would come back cropped in the window) */
+    {"watch-later-options-remove", "panscan"},
     /* a share's file is read ahead: Wi-Fi that stalls for a moment does not stop the film */
     {"cache", "yes"},
     {"demuxer-readahead-secs", "30"},
@@ -404,6 +455,8 @@ start_mpv (Player *p)
   mpv_observe_property (p->mpv, 0, "eof-reached", MPV_FORMAT_FLAG);
   mpv_observe_property (p->mpv, 0, "paused-for-cache", MPV_FORMAT_FLAG);
   mpv_observe_property (p->mpv, 0, "media-title", MPV_FORMAT_STRING);
+  mpv_observe_property (p->mpv, 0, "video-params/aspect", MPV_FORMAT_DOUBLE);
+  mpv_observe_property (p->mpv, 0, "video-params/rotate", MPV_FORMAT_INT64);
   /* mpv's errors in the journal (VIBEOS_VIDEO_LOG=v for all it says) */
   mpv_request_log_messages (p->mpv, g_getenv ("VIBEOS_VIDEO_LOG") ? g_getenv ("VIBEOS_VIDEO_LOG") : "error");
   mpv_set_wakeup_callback (p->mpv, wakeup, p);
@@ -484,6 +537,99 @@ static void
 go_back (Player *p)
 {
   gtk_window_close (GTK_WINDOW (p->win));
+}
+
+/* ---- full screen ---- */
+
+static void
+toggle_fullscreen (Player *p)
+{
+  if (gtk_window_is_fullscreen (GTK_WINDOW (p->win)))
+    gtk_window_unfullscreen (GTK_WINDOW (p->win));
+  else
+    gtk_window_fullscreen (GTK_WINDOW (p->win));
+  show_controls (p, TRUE);
+}
+
+static void
+on_fullscreen (GtkWindow *win, GParamSpec *pspec, Player *p)
+{
+  p->fullscreen = gtk_window_is_fullscreen (win);
+  gtk_widget_set_tooltip_text (p->full, p->fullscreen ? "Exit full screen" : "Full screen");
+  gtk_widget_queue_draw (gtk_button_get_child (GTK_BUTTON (p->full)));
+  sync_crop (p, FALSE);
+}
+
+/* The screen the window is on (before the window is up, the only screen there is) is wider than tall: 1, or 0; -1
+ * when that is not known. The screen's, not the window's: the window's own shape changes with full screen (and on a
+ * computer as it is dragged), and what counts is how the phone is held. */
+static int
+screen_landscape (Player *p)
+{
+  GdkDisplay *display = gtk_widget_get_display (p->win);
+  GdkSurface *surface = gtk_native_get_surface (GTK_NATIVE (p->win));
+  g_autoptr (GdkMonitor) monitor = NULL;
+  if (surface && gtk_widget_get_mapped (p->win))
+    g_set_object (&monitor, gdk_display_get_monitor_at_surface (display, surface));
+  else if (g_list_model_get_n_items (gdk_display_get_monitors (display)) == 1)
+    monitor = g_list_model_get_item (gdk_display_get_monitors (display), 0);
+  if (!monitor)
+    return -1;
+  GdkRectangle r;
+  gdk_monitor_get_geometry (monitor, &r);
+  if (r.width <= 0 || r.height <= 0)
+    return -1;
+  return r.width > r.height;
+}
+
+/* The screen turned (or the window went to another): sideways the player goes full screen, upright it comes out */
+static gboolean
+check_shape (gpointer data)
+{
+  Player *p = data;
+  p->shape_id = 0;
+  int landscape = screen_landscape (p);
+  if (landscape < 0 || landscape == p->landscape)
+    return G_SOURCE_REMOVE;
+  p->landscape = landscape;
+  if (landscape)
+    gtk_window_fullscreen (GTK_WINDOW (p->win));
+  else
+    gtk_window_unfullscreen (GTK_WINDOW (p->win));
+  return G_SOURCE_REMOVE;
+}
+
+static void
+queue_shape (Player *p)
+{
+  /* (not in the surface's layout: the window's state is not changed under its own layout) */
+  if (!p->shape_id)
+    p->shape_id = g_idle_add (check_shape, p);
+}
+
+static void
+on_layout (GdkSurface *surface, int width, int height, Player *p)
+{
+  if (width == p->width && height == p->height)
+    return;
+  p->width = width;
+  p->height = height;
+  sync_crop (p, FALSE);
+  queue_shape (p);
+}
+
+static void
+on_window_realize (GtkWidget *win, Player *p)
+{
+  GdkSurface *surface = gtk_native_get_surface (GTK_NATIVE (win));
+  g_signal_connect (surface, "layout", G_CALLBACK (on_layout), p);
+  g_signal_connect_swapped (surface, "enter-monitor", G_CALLBACK (queue_shape), p);
+}
+
+static void
+on_window_unrealize (GtkWidget *win, Player *p)
+{
+  g_clear_handle_id (&p->shape_id, g_source_remove);
 }
 
 /* ---- the ⋮ menu: the audio track, the subtitles, About ---- */
@@ -802,6 +948,10 @@ on_key (GtkEventControllerKey *keys, guint keyval, guint keycode, GdkModifierTyp
   case GDK_KEY_Right:
     skip (p, SKIP_S);
     return TRUE;
+  case GDK_KEY_f:
+  case GDK_KEY_F11:
+    toggle_fullscreen (p);
+    return TRUE;
   case GDK_KEY_Escape:
     go_back (p);
     return TRUE;
@@ -880,6 +1030,8 @@ build (Player *p)
   gtk_label_set_xalign (GTK_LABEL (p->title), 0);
   gtk_widget_set_hexpand (p->title, TRUE);
   gtk_box_append (GTK_BOX (top), p->title);
+  p->full = icon_button (p, ICON_FULLSCREEN, TOP_BUTTON_DP, "Full screen", G_CALLBACK (toggle_fullscreen));
+  gtk_box_append (GTK_BOX (top), p->full);
   p->more = icon_button (p, ICON_MORE, TOP_BUTTON_DP, "More options", G_CALLBACK (open_menu));
   gtk_box_append (GTK_BOX (top), p->more);
   gtk_box_append (GTK_BOX (p->controls), top);
@@ -939,6 +1091,9 @@ build (Player *p)
 
   vibeos_window_set_content (GTK_WINDOW (p->win), overlay);
   g_signal_connect (p->win, "notify::suspended", G_CALLBACK (on_suspended), p);
+  g_signal_connect (p->win, "notify::fullscreened", G_CALLBACK (on_fullscreen), p);
+  g_signal_connect (p->win, "realize", G_CALLBACK (on_window_realize), p);
+  g_signal_connect (p->win, "unrealize", G_CALLBACK (on_window_unrealize), p);
   show_controls (p, TRUE);
 }
 
@@ -1000,6 +1155,10 @@ ensure_window (Player *p)
     gtk_label_set_text (GTK_LABEL (p->message), "The player could not start");
     gtk_widget_set_visible (p->message, TRUE);
   }
+  /* on a screen wider than tall it opens full screen (asked before it shows, so that it shows so at once) */
+  p->landscape = screen_landscape (p);
+  if (p->landscape == 1)
+    gtk_window_fullscreen (GTK_WINDOW (p->win));
   gtk_window_present (GTK_WINDOW (p->win));
 }
 
@@ -1035,6 +1194,7 @@ on_shutdown (GApplication *app, Player *p)
   g_clear_handle_id (&p->hide_id, g_source_remove);
   g_clear_handle_id (&p->tap_id, g_source_remove);
   g_clear_handle_id (&p->events_id, g_source_remove);
+  g_clear_handle_id (&p->shape_id, g_source_remove);
   if (p->mpv) {
     /* where the film was left, for next time */
     if (p->have_file) {
@@ -1049,7 +1209,7 @@ on_shutdown (GApplication *app, Player *p)
 int
 main (int argc, char **argv)
 {
-  Player p = {.paused = FALSE};
+  Player p = {.paused = FALSE, .landscape = -1};
   g_autoptr (GtkApplication) app = gtk_application_new (APP_ID, G_APPLICATION_HANDLES_OPEN);
   p.app = app;
   g_signal_connect (app, "startup", G_CALLBACK (on_startup), NULL);
