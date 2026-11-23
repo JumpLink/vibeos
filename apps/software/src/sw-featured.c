@@ -18,7 +18,11 @@
 #include "sw-widgets.h"
 #include "sw-window.h"
 
+#include <spongy-gtk.h>
+
 #define COLUMN_W 296
+#define COLUMN_PEEK 72   /* a wide strip: the next column's icon and the gap after it, peeking in at the end */
+#define STRIP_START 24   /* the strip's padding at its start (software.css, .sw-strip) */
 #define TILE_W   76
 #define BANNER_W 312
 
@@ -49,12 +53,26 @@ on_see_all (GtkWidget *button, gpointer data)
   sw_window_open_list (button, sw_json_string (section, "title"), path);
 }
 
+/* the title as this device says it, once the header is in the window */
+static void
+on_title_map (GtkWidget *label, gpointer data)
+{
+  g_autofree char *title = sw_device_title (label, g_object_get_data (G_OBJECT (label), "sw-title"));
+
+  gtk_label_set_text (GTK_LABEL (label), title);
+}
+
 static GtkWidget *
 section_header (JsonObject *section)
 {
   gboolean more = sw_json_bool (section, "has_more", FALSE);
   GtkWidget *header = sw_section_header_new (sw_json_string (section, "title"), NULL, more ? "See all" : NULL,
                                              G_CALLBACK (on_see_all), NULL);
+  /* the title is the header's first child */
+  GtkWidget *title = gtk_widget_get_first_child (header);
+
+  g_object_set_data_full (G_OBJECT (title), "sw-title", g_strdup (sw_json_string (section, "title")), g_free);
+  g_signal_connect (title, "map", G_CALLBACK (on_title_map), NULL);
 
   if (more)
     {
@@ -67,6 +85,51 @@ section_header (JsonObject *section)
   return header;
 }
 
+/* The columns' width for a strip `view` wide. A phone's are COLUMN_W, the second peeking in. In a wider strip (a
+ * tablet's) as many whole columns as there is room for share it, the next one's icon peeking in after them:
+ * COLUMN_W wide, the strip cut its fourth column through its Install button. */
+static int
+column_width (int view)
+{
+  int n = (view - STRIP_START - COLUMN_PEEK) / (COLUMN_W + SW_STRIP_SPACING);
+
+  return n < 2 ? COLUMN_W : (view - STRIP_START - COLUMN_PEEK) / n - SW_STRIP_SPACING;
+}
+
+static gboolean
+fit_columns (gpointer data)
+{
+  GtkWidget *strip = data;
+  GtkAdjustment *adjustment = spongy_scroll_view_get_hadjustment (SPONGY_SCROLL_VIEW (strip));
+  GtkWidget *box = spongy_scroll_view_get_child (SPONGY_SCROLL_VIEW (strip));
+  int width = column_width ((int) gtk_adjustment_get_page_size (adjustment));
+
+  g_object_set_data (G_OBJECT (strip), "sw-fit", NULL);
+  /* a fling ends with a whole column at the left */
+  sw_strip_snap (strip, width);
+  for (GtkWidget *column = gtk_widget_get_first_child (box); column; column = gtk_widget_get_next_sibling (column))
+    {
+      int now;
+
+      gtk_widget_get_size_request (column, &now, NULL);
+      if (now != width)
+        gtk_widget_set_size_request (column, width, -1);
+    }
+  return G_SOURCE_REMOVE;
+}
+
+/* the strip's width changed (it is told while it is being laid out): the columns follow it once that is over */
+static void
+on_strip_width (GtkAdjustment *adjustment, GParamSpec *pspec, GtkWidget *strip)
+{
+  if (g_object_get_data (G_OBJECT (strip), "sw-fit"))
+    return;
+  g_object_set_data_full (G_OBJECT (strip), "sw-fit",
+                          GUINT_TO_POINTER (g_idle_add_full (G_PRIORITY_HIGH_IDLE, fit_columns, g_object_ref (strip),
+                                                             g_object_unref)),
+                          NULL);
+}
+
 static GtkWidget *
 apps_columns (JsonArray *items)
 {
@@ -75,6 +138,8 @@ apps_columns (JsonArray *items)
   gtk_widget_add_css_class (box, "sw-columns");
   /* a fling ends with a whole column at the left */
   sw_strip_snap (strip, COLUMN_W);
+  g_signal_connect_object (spongy_scroll_view_get_hadjustment (SPONGY_SCROLL_VIEW (strip)), "notify::page-size",
+                           G_CALLBACK (on_strip_width), strip, 0);
   for (guint i = 0; i < json_array_get_length (items); i++)
     {
       JsonObject *app = sw_json_array_object (items, i);
