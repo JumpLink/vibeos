@@ -923,6 +923,13 @@ single_tap (gpointer data)
 static void
 on_video_pressed (GtkGestureClick *click, int n, double x, double y, Player *p)
 {
+  /* A press on one of the controls' buttons is the button's. A button takes the finger only as it lifts, so the press
+   * came here as well, and the tap it began hid the controls a moment after the button had done its work (Full
+   * screen, play, skip) */
+  GtkWidget *hit = gtk_widget_pick (gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (click)), x, y,
+                                    GTK_PICK_DEFAULT);
+  if (hit && gtk_widget_get_ancestor (hit, GTK_TYPE_BUTTON))
+    return;
   int w = gtk_widget_get_width (p->area);
   if (n >= 2 && p->tap_id && (x < w / 3.0 || x > 2 * w / 3.0)) {
     g_clear_handle_id (&p->tap_id, g_source_remove);
