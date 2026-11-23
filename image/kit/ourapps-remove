@@ -1,0 +1,28 @@
+# build-system.sh: GNOME's apps removed from our POCO's ROM (2026-11-12: "only our apps"; kept: Software,
+# Console, Image Viewer, Document Viewer, Video Player). gnome-snapshot goes too: neo-camera replaces it. apt-get remove
+# must take exactly these and nothing else (their dependencies are marked manual first, from ourapps-manual).
+gnome-core
+baobab
+epiphany-browser
+gnome-calculator
+gnome-calendar
+gnome-characters
+gnome-clocks
+gnome-connections
+gnome-contacts
+gnome-disk-utility
+gnome-font-viewer
+gnome-logs
+gnome-maps
+gnome-text-editor
+gnome-tour
+gnome-user-docs
+gnome-weather
+malcontent-gui
+ptyxis
+resources
+simple-scan
+yelp
+nm-connection-editor
+im-config
+gnome-snapshot

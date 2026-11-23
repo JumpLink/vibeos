@@ -1,0 +1,32 @@
+ui_print("VibeOS 0.1.3 for the @NAME@: kernel, firmware, device settings.");
+assert(@ASSERT@ ||
+       abort("This package is for the @NAME@ (@CODES@); this device is " + getprop("ro.product.device") + "."););
+show_progress(1.000000, 0);
+package_extract_file("vibeos-lib.sh", "/tmp/vibeos-lib.sh");
+package_extract_file("install.sh", "/tmp/vibeos-dinstall.sh");
+package_extract_file("device-sums.txt", "/tmp/vibeos-dsums.txt");
+@TOOLS@
+if run_program("/system/bin/sh", "/tmp/vibeos-dinstall.sh", "find") != 0 then
+    abort("ERROR: " + file_getprop("/tmp/vibeos.prop", "error"));
+endif;
+set_progress(0.050000);
+ui_print("- unpacking the device files");
+package_extract_file("payload.tar", "/tmp/vibeos-payload.tar") ||
+    abort("ERROR: could not unpack payload.tar");
+package_extract_dir("debs", "/tmp/vibeos-debs") ||
+    abort("ERROR: could not unpack the device packages");
+set_progress(0.400000);
+ui_print("- putting them into the system");
+if run_program("/system/bin/sh", "/tmp/vibeos-dinstall.sh", "install") != 0 then
+    abort("ERROR: " + file_getprop("/tmp/vibeos.prop", "error"));
+endif;
+set_progress(0.800000);
+@BOOTFILES@
+ui_print("- boot");
+if run_program("/system/bin/sh", "/tmp/vibeos-dinstall.sh", "boot") != 0 then
+    abort("ERROR: " + file_getprop("/tmp/vibeos.prop", "error"));
+endif;
+set_progress(1.000000);
+ui_print("Done. Login: user, password 147147.");
+ui_print("First boot: the device packages install, then one restart.");
+@DONE@

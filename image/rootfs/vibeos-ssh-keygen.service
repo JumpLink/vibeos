@@ -1,0 +1,12 @@
+[Unit]
+Description=VibeOS: make this device's SSH host keys (first boot)
+ConditionPathExists=/usr/bin/ssh-keygen
+ConditionPathExists=!/etc/ssh/ssh_host_ed25519_key
+Before=ssh.service ssh.socket
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/ssh-keygen -A
+
+[Install]
+WantedBy=multi-user.target

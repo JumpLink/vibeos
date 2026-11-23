@@ -1,0 +1,422 @@
+#!/bin/sh
+# build-device.sh DEVICE: one device's half of VibeOS 0.1.3 (s10e, poco, s5e, s20), into OUT/DEVICE/:
+#   vibeos-device-DEVICE_0.1.3_arm64.deb  the device layer as a package: the kernel's modules, ALL the device's
+#                                         firmware, its units, udev/modprobe/UCM/sensor/GPU settings, its splash;
+#                                         the kernel too where it lives in the root file system (S10e: /boot/s10e)
+#   debs/                                 that package, plus the system packages the device runs in its own build
+#                                         (ModemManager, libcamera...) or that a generic image lacks (Qualcomm
+#                                         support: rmtfs, qrtr, pd-mapper, hexagonrpcd, firmware-qcom-*...): the
+#                                         first boot installs them offline (vibeos-device-setup)
+#   payload.tar                           the files of all of them, which the device zip unpacks straight into the
+#                                         root file system so the first boot already finds its hardware
+#   boot/                                 the boot images, byte for byte the device's verified ones (U-Boot, ESP,
+#                                         recovery partition, BOOT)
+# Sources: every input is a device kit, stage or backup of this build machine (never a research-dl folder), named
+# below by its setting in image/local.conf (local.conf.example lists them).
+# Nothing is read from a phone. Run as root (sudo): payload files keep their modes, owned by root.
+set -eu
+DEV=${1:?s10e|poco|s5e|s20}
+[ "$(id -u)" = 0 ] || { echo "run as root (sudo)" >&2; exit 1; }
+T=$(cd "$(dirname "$0")" && pwd)
+[ ! -f "$T/local.conf" ] || . "$T/local.conf"	# this machine's settings (local.conf.example)
+O=${VIBEOS_OUT:?set VIBEOS_OUT (image/local.conf): the directory builds, work files and logs go to}
+FORBID="gsm2sip waydroid ${FORBID_EXTRA:-}"	# never in an image: these package and file names
+OUT=${TEST_OUT:-$O/$DEV}	# TEST_OUT, TEST_W: a test build elsewhere, without the downloaded packages
+W=${TEST_W:-$O/work/device-$DEV}
+L=$O/logs/device-$DEV-$(date +%Y%m%d-%H%M%S); mkdir -p "$L"
+V=0.1.3
+P=$W/pkg
+log() { echo "build-device $DEV: $*" | tee -a "$L/build.txt"; }
+[ ! -e "$OUT" ] || { echo "$OUT exists: move it aside first" >&2; exit 1; }
+[ ! -e "$W" ] || { echo "$W exists: move it aside first" >&2; exit 1; }
+mkdir -p "$P/DEBIAN" "$W/debs" "$W/boot"
+case "$(readlink -f "$W")" in */research-dl/*) exit 1 ;; esac
+
+# enable UNIT...: the links "systemctl enable" makes, made in the package's own tree (the zip has no systemctl)
+enable() { systemctl --root="$P" enable "$@" > "$L/enable.txt" 2>&1 || { cat "$L/enable.txt" >&2; exit 1; }; }
+mask() { for u; do mkdir -p "$P/etc/systemd/system"; ln -sfn /dev/null "$P/etc/systemd/system/$u"; done; }
+# fw SRC DST...: firmware files, mode 644
+fw() { s=$1; shift; for f; do install -D -m 644 "$s/$f" "$P/usr/lib/firmware/$f"; echo "$f $(sha256sum < "$s/$f" | cut -c1-16) $s" >> "$L/firmware.txt"; done; }
+# modules KVER SRCDIR: SRCDIR/lib/modules/KVER (a modules_install tree) into the package, depmod'ed
+modules() {
+	mkdir -p "$P/usr/lib/modules"
+	cp -a "$2/$1" "$P/usr/lib/modules/$1"
+	rm -f "$P/usr/lib/modules/$1/build" "$P/usr/lib/modules/$1/source"
+	depmod -b "$P/usr" "$1" 2>> "$L/depmod.txt" || depmod -b "$P" "$1"
+	echo "modules $1: $(find "$P/usr/lib/modules/$1" -name '*.ko*' | wc -l) from $2" >> "$L/firmware.txt"
+}
+identity() {	# NAME PRETTY VENDOR MODEL
+	install -D -m 644 /dev/stdin "$P/usr/share/vibeos-device/hostname" <<EOF
+$1
+EOF
+	printf 'PRETTY_HOSTNAME="%s"\nCHASSIS=handset\nHARDWARE_VENDOR=%s\nHARDWARE_MODEL="%s"\n' "$2" "$3" "$4" |
+		install -D -m 644 /dev/stdin "$P/usr/share/vibeos-device/machine-info"
+}
+# repack PKG: a .deb of PKG as the mounted k22 root ($KR) has it installed: its status stanza as the control file,
+# its files from its .list, each checked against its .md5sums (for a Debian version the archive no longer has)
+repack() {
+	R=$W/repack-$1; rm -rf "$R"; mkdir -p "$R/DEBIAN"
+	I=$KR/var/lib/dpkg/info
+	[ ! -e "$I/$1.postinst" ] && [ ! -e "$I/$1.preinst" ] && [ ! -e "$I/$1.conffiles" ] || { echo "repack $1: it has scripts or conffiles" >&2; exit 1; }
+	dpkg-query --admindir="$KR/var/lib/dpkg" -s "$1" | grep -v -E '^(Status|Config-Version):' > "$R/DEBIAN/control"
+	(cd "$KR" && while IFS= read -r f; do [ -d ".$f" ] && [ ! -L ".$f" ] || printf '.%s\n' "$f"; done < "$I/$1.list") > "$R.files"
+	tar -C "$KR" --no-recursion -cf - -T "$R.files" | tar -C "$R" -xpf - --no-same-owner
+	(cd "$R" && md5sum -c --quiet "$I/$1.md5sums") || { echo "repack $1: files differ from dpkg's md5sums" >&2; exit 1; }
+	[ "$(grep -c . "$I/$1.md5sums")" = "$(cd "$R" && find . -path ./DEBIAN -prune -o -type f -print | wc -l)" ] || { echo "repack $1: file count" >&2; exit 1; }
+	cp "$I/$1.md5sums" "$R/DEBIAN/md5sums"
+	dpkg-deb --root-owner-group -Zxz -b "$R" "$W/debs/${1}_$(sed -n 's/^Version: //p' "$R/DEBIAN/control" | sed 's/^[0-9]*://')_all.deb" > /dev/null
+	rm -rf "${R:?}" "$R.files"
+}
+DEPS= DESC= KVER= POSTINST_EXTRA= POSTINST_SH=
+
+case $DEV in
+s10e)
+	# The S10e's device stage (device.sh, read from the running phone 11-12..16; kernel 7.2.15-s10e and its 461
+	# modules checked identical to the phone by md5 on 11-16, + updates/exynos9820-decon-kms.ko)
+	ST=${S10E_STAGE:?set S10E_STAGE}
+	K=${S10E_KIT:?set S10E_KIT}
+	(cd "$ST/root" && tar -cf - .) | tar -C "$P" -xpf - --no-same-owner
+	(cd "$P/usr/lib/firmware" 2>/dev/null && find . -type f | sed 's|^\./||' | LC_ALL=C sort) > "$L/stage-firmware.txt"
+	echo "stage firmware: $(wc -l < "$L/stage-firmware.txt") files from $ST/root: $(tr '\n' ' ' < "$L/stage-firmware.txt")" >> "$L/firmware.txt"
+	KVER=7.2.15-s10e
+	depmod -b "$P/usr" $KVER 2>> "$L/depmod.txt"
+	cp "$P/boot/s10e/Image" "$P/boot/s10e/Image.prev"		# U-Boot's second menu entry
+	sed -i 's| dyndbg="[^"]*"||' "$P/boot/s10e/bootargs.env"
+	# Samsung's firmware from the vendor partition (audio DSP, Wi-Fi, Bluetooth, the video codec): what
+	# s10e-firstboot copies on a first boot, bundled here (11-21). Source: a root copy of our S10e (s10e-firstboot's
+	# copies from that phone's vendor partition, 2026-10-29).
+	YF=${S10E_VENDOR_FW:?set S10E_VENDOR_FW}
+	fw "$YF" $(cd "$YF" && ls *_AUDIO_SLSI.bin calliope*.bin calliope*.dt rxse.bin txse*.bin SoundBoosterParam.bin) s5p-mfc-v13.fw \
+		brcm/bcm4375B1_murata.hcd brcm/bcm4375B1_semco.hcd brcm/bcm4375B1_semco_sem.hcd brcm/nvram.txt_CS01_semco_b1 \
+		brcm/nvram.txt_1rh_es43_b1 brcm/brcmfmac4375b1-pcie.bin brcm/brcmfmac4375b1-pcie.clm_blob
+	ln -s bcm4375B1_semco.hcd "$P/usr/lib/firmware/brcm/BCM4362A2.hcd"
+	ln -s nvram.txt_CS01_semco_b1 "$P/usr/lib/firmware/brcm/brcmfmac4375b1-pcie.txt"
+	[ -z "${S10E_CALLAUDIO_FW:-}" ] || cmp -s "$YF/AP_AUDIO_SLSI.bin" "$S10E_CALLAUDIO_FW/AP_AUDIO_SLSI.bin" || log "NOTE: AP_AUDIO_SLSI.bin differs from kit/callaudio/fw"
+	install -D -m 644 "$K/clean/60-s10e-gpu.conf" "$P/etc/environment.d/60-s10e-gpu.conf"
+	install -d -m 700 "$P/var/lib/exynos-cp"; install -d "$P/var/lib/s10e"
+	identity s10e "Galaxy S10e" Samsung "Galaxy S10e"
+	enable exynos-modem.service s10e-sleepd.service s10e-gpu-load.service s10e-touch-bind.service \
+		s10e-bt-addr.service s10e-arm-reset.service s10e-boot-ok.service s10e-usb-net.service s10e-usb-watch.service \
+		s10e-firstboot.service s10e-dp-audio.service s10e-cec-recheck.timer
+	mask sleep.target suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
+	# boot: U-Boot (recovery, and boot for a whole-phone install): the first 4 MiB of v51-pinsleep (the S10e
+	# kit's default since 11-1x, r7's zip); the kernel, initramfs and arguments are in /boot/s10e above
+	head -c 4194304 "${S10E_UBOOT:?set S10E_UBOOT}" > "$W/boot/uboot.img"
+	cp "$K/tools/s10e-logo" "$W/boot/s10e-logo"; mkdir -p "$W/boot/boot-logo"
+	cp "$K/boot-logo/logo.jpg" "$K/boot-logo/svb_orange.jpg" "$K/boot-logo/booting_warning.jpg" "$W/boot/boot-logo/"
+	DESC="Galaxy S10e (beyond0lte): kernel 7.2.15-s10e in /boot/s10e (U-Boot in recovery boots it), its modules, the vendor firmware, modem, sleep, GPU, audio, camera and sensor settings"
+	;;
+poco)
+	# The POCO X3 NFC as its k22 ROM ran on the phone (11-17 hardware check: cameras, speaker/mic, keyboard,
+	# modem, BT, Wi-Fi): stage poco-stage-20261117 (device.sh: the payload's firmware, hexagonrpcd, sensors,
+	# UCM, sleep, tuning...), kernel 7.2.15-22surya, the ROM's ESP. Its modules and the units build.sh enabled
+	# come from that ROM's own root (vibeos-0.1.1-k22, read-only).
+	ST=${POCO_STAGE:?set POCO_STAGE}
+	KR=$O/work/poco-k22-root			# mounted read-only by the caller
+	KIMG=${POCO_K22_IMG:?set POCO_K22_IMG}
+	[ -d "$KR/usr/lib/modules/7.2.15-surya" ] || { echo "mount the k22 root at $KR first" >&2; exit 1; }
+	(cd "$ST/root" && tar -cf - .) | tar -C "$P" -xpf - --no-same-owner
+	KVER=7.2.15-surya
+	rm -rf "$P/usr/lib/modules"; modules $KVER "$KR/usr/lib/modules"
+	# the files the k22 root's packages do not own under the stage's firmware are the stage's own (PAYLOAD);
+	# Debian's firmware-atheros/-qcom-soc/-qcom-dsp come as their packages (debs/), at the k22 versions
+	(cd "$P/usr/lib/firmware" && find . -type f | sed 's|^\./||') > "$L/stage-firmware.txt"
+	echo "stage firmware: $(wc -l < "$L/stage-firmware.txt") files from $ST/root (device.sh PAYLOAD)" >> "$L/firmware.txt"
+	# what build.sh did in the chroot, as files: the units it enabled (and masked), the kernel hooks diverted
+	for u in surya-grow-root.service neo-charge-guard.service neo-gps-unlock.service neo-audio-heal.service \
+		hexagonrpcd-resume.service hexagonrpcd-adsp-rootpd.service hexagonrpcd-adsp-sensorspd.service surya-sleepd.service \
+		surya-cameras.service surya-call-uplink.service touchboost.service; do
+		[ -e "$P/etc/systemd/system/$u" ] || [ -e "$P/usr/lib/systemd/system/$u" ] || [ -e "$P/lib/systemd/system/$u" ] ||
+			{ echo "  $u: not in the stage, postinst enables it" >> "$L/build.txt"; POSTINST_EXTRA="$POSTINST_EXTRA $u"; continue; }
+		enable "$u"
+	done
+	mkdir -p "$P/etc/systemd/user/default.target.wants"
+	for u in surya-call-controls.service surya-mic-boot.service; do
+		[ -e "$P/etc/systemd/user/$u" ] || [ -e "$P/usr/lib/systemd/user/$u" ] || { POSTINST_EXTRA="$POSTINST_EXTRA --global:$u"; continue; }
+		systemctl --root="$P" --global enable "$u" >> "$L/enable.txt" 2>&1
+	done
+	POSTINST_EXTRA="$POSTINST_EXTRA upower.service"
+	mask hexagonrpcd.service hexagonrpcd-suspend.service pd-mapper.service systemd-validatefs@.service qbootctl.service \
+		droid-juicer.service sleep.target suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
+	install -d "$P/var/lib/hexagonrpc"
+	# No kernel or initrd in /boot: the ESP inside "linux" holds them (boot/esp.img, the k22 ROM's). With an
+	# initrd.img-7.2.15-surya in /boot, the first boot's firmware packages would have update-initramfs rebuild it
+	# ON the phone, where its hooks pull in qcom_q6v5_pas without modem.mbn and the modem stays off; with none,
+	# update-initramfs finds nothing to update. surya-esp-update (the kernel hooks) still names the k22 root's
+	# UUID: it names the root by its label, as the ESP's entry does, should it ever run.
+	sed -i 's/root=UUID=b2b58066-08bc-40ed-95e7-8da4eac5d02f/root=LABEL=vibeos/' "$P/usr/local/sbin/surya-esp-update"
+	grep -q 'options root=LABEL=vibeos ' "$P/usr/local/sbin/surya-esp-update" && ! grep -q b2b58066 "$P/usr/local/sbin/surya-esp-update" ||
+		{ echo "surya-esp-update: root= not changed" >&2; exit 1; }
+	[ ! -e "$P/boot" ] || { echo "the POCO stage has a /boot: $(ls "$P/boot")" >&2; exit 1; }
+	identity poco "POCO X3 NFC" Xiaomi "POCO X3 NFC"
+	DEPS="gdisk, cloud-guest-utils, hexagonrpcd, rmtfs, qrtr-tools, tqftpserv, qcom-phone-utils"
+	# the extra Debian/Mobian packages (k22 versions, fetched by build-system.sh) and the POCO's own builds
+	[ -n "${TEST_OUT:-}" ] || cp $O/work/downloads/poco/*.deb "$W/debs/"
+	# Debian's firmware packages at the k22 versions: what the archive no longer has (firmware-atheros and
+	# firmware-qcom-soc 20260916-1, superseded in sid) is packed again from the k22 root's installed files, every
+	# one checked against dpkg's md5sums there (they have no maintainer scripts); a downloaded one must be the
+	# k22 version
+	for fp in firmware-atheros firmware-qcom-soc firmware-qcom-dsp; do
+		kv=$(dpkg-query --admindir="$KR/var/lib/dpkg" -W -f '${Version}' $fp)
+		set -- "$W"/debs/${fp}_*.deb
+		if [ -f "$1" ]; then
+			[ "$(dpkg-deb -f "$1" Version)" = "$kv" ] || { echo "$1: not the k22 version $kv" >&2; exit 1; }
+			echo "$fp $kv: Debian's .deb (downloaded, apt-verified)" >> "$L/firmware.txt"
+			continue
+		fi
+		[ -n "${TEST_OUT:-}" ] && continue
+		repack $fp
+		echo "$fp $kv: packed from the k22 root's installed files ($(wc -l < "$KR/var/lib/dpkg/info/$fp.md5sums") files, md5sums checked)" >> "$L/firmware.txt"
+	done
+	for f in "$ST"/debs/*.deb; do
+		case ${f##*/} in linux-image-*) continue ;; gstreamer1.0-libcamera_*) continue ;; esac	# kernel: files only; gst: system's +surya21
+		cp "$f" "$W/debs/"
+	done
+	# boot: U-Boot in recovery (the kit's recovery-uboot.img, byte for byte the 11-11 zip's) and the k22 ESP,
+	# with one change: the kernel finds the root by its label (root=LABEL=vibeos), not the k22 root's UUID
+	ZK=$(mktemp -d "$O/tmp/k22zip.XXXXXX")
+	unzip -q -d "$ZK" "${POCO_K22_ZIP:?set POCO_K22_ZIP}" recovery-uboot.img poco-sums.txt 2>/dev/null ||
+		unzip -q -d "$ZK" "$POCO_K22_ZIP" recovery-uboot.img
+	mv "$ZK/recovery-uboot.img" "$W/boot/recovery-uboot.img"; rm -rf "${ZK:?}"
+	dd if="$KIMG" of="$W/boot/esp.img" bs=4096 skip=2048 count=122880 status=none
+	ME=$(mktemp -d "$O/tmp/esp.XXXXXX")
+	mcopy -i "$W/boot/esp.img" ::/loader/entries/mobian.conf "$ME/mobian.conf"
+	sed 's/root=UUID=[0-9a-f-]*/root=LABEL=vibeos/' "$ME/mobian.conf" > "$ME/new.conf"
+	grep -q 'root=LABEL=vibeos ' "$ME/new.conf" || { echo "ESP: no root= to change" >&2; exit 1; }
+	mcopy -o -i "$W/boot/esp.img" "$ME/new.conf" ::/loader/entries/mobian.conf
+	mcopy -i "$W/boot/esp.img" ::/loader/entries/mobian.conf - | diff "$ME/mobian.conf" - > "$L/esp-entry.diff" || true
+	rm -rf "${ME:?}"
+	DESC="POCO X3 NFC (surya): kernel 7.2.15-22surya modules (the kernel and initramfs are on the ESP), the POCO's firmware, hexagonrpcd, sensors, UCM, sleep, cameras and tuning"
+	;;
+s5e)
+	# The Tab S5e: device stage device-20261111-dual (device.sh, read from the tablet 11-11; its firmware from
+	# the tablet's vendor/modem partitions), with the tablet's kernel since 11-19 (7.2.15-gts4lv-uc: slot image
+	# linux-k11-uc.img e57e0831, modules from that build's modules_install) and the two device files the tablet
+	# changed since (touchboost.py 4d633e7c, gts4lv-powerkey hand-off) from work-20261119/tabk
+	ST=${S5E_STAGE:?set S5E_STAGE}
+	TK=${S5E_TABK:?set S5E_TABK}
+	(cd "$ST/root" && tar -cf - .) | tar -C "$P" -xpf - --no-same-owner
+	KVER=7.2.15-gts4lv-uc
+	rm -rf "$P/usr/lib/modules"; modules $KVER "${S5E_MODULES:?set S5E_MODULES}"
+	for f in $(cd "$P" && find . -name touchboost.py | sed 's|^\./||'); do install -m 755 "$TK/touchboost.py" "$P/$f"; log "/$f <- tabk/touchboost.py"; done
+	for f in $(cd "$P" && find . -name gts4lv-powerkey -type f | sed 's|^\./||'); do install -m 755 "$TK/gts4lv-powerkey.handoff" "$P/$f"; log "/$f <- tabk/gts4lv-powerkey.handoff"; done
+	(cd "$P/usr/lib/firmware" && find . -type f | sed 's|^\./||') > "$L/stage-firmware.txt"
+	echo "stage firmware: $(wc -l < "$L/stage-firmware.txt") files from $ST/root (the tablet's vendor/modem partitions, 11-11)" >> "$L/firmware.txt"
+	for u in $(sed -e 's/#.*//' "$ST/enable"); do
+		[ -e "$P/etc/systemd/system/$u" ] || [ -e "$P/usr/lib/systemd/system/$u" ] || [ -e "$P/lib/systemd/system/$u" ] ||
+			{ POSTINST_EXTRA="$POSTINST_EXTRA $u"; continue; }
+		enable "$u"
+	done
+	identity gts4lv "Galaxy Tab S5e" Samsung "Galaxy Tab S5e"
+	DEPS="hexagonrpcd, rmtfs, qrtr-tools, tqftpserv"
+	[ -n "${TEST_OUT:-}" ] || cp $O/work/downloads/s5e/*.deb "$W/debs/"
+	cp "$ST"/debs/*.deb "$W/debs/"
+	# boot: the recovery partition as the tablet has it since 11-19 (U-Boot dual + LineageOS recovery in its
+	# first 34 MiB, from the 11-19 backup), with linux-k11-uc.img (kernel + initramfs + DT) at 34 MiB; the
+	# installer writes the extent list at its end. The kit's extents and keepmisc tools.
+	B=$TK/recovery-partition-before-k11-20261119.img
+	[ "$(sha256sum < "$B" | cut -c1-16)" = 0ae284819ec38554 ] || { echo "$B: not the 11-19 recovery backup" >&2; exit 1; }
+	[ "$(sha256sum < "$TK/linux-k11-uc.img" | cut -c1-16)" = e57e083136ad5cb8 ] || { echo "linux-k11-uc.img: not e57e0831" >&2; exit 1; }
+	head -c $((34 * 1048576)) "$B" > "$W/boot/recovery.img"
+	cat "$TK/linux-k11-uc.img" >> "$W/boot/recovery.img"
+	[ $(stat -c %s "$W/boot/recovery.img") -le $((72744960 - 524288)) ] || { echo "recovery.img does not leave 512 KiB for the extents" >&2; exit 1; }
+	cp "${S5E_KIT_TOOLS:?set S5E_KIT_TOOLS}/extents" "$S5E_KIT_TOOLS/keepmisc" "$S5E_KIT_TOOLS/dmlinear" "$W/boot/"
+	DESC="Galaxy Tab S5e (gts4lv): kernel 7.2.15-gts4lv-uc modules (the kernel is in the recovery partition behind U-Boot), the tablet's firmware, modem, audio, touch, power key, USB/OTG, sensors and boot settings"
+	;;
+s20)
+	# The Galaxy S20 FE: BOOT = out/boot-r8s-ub13.img (4a82c5e3; in BOOT since 11-20 19:52 after the #51 check);
+	# its modules = the #51 build tree's own (build/, Image = Image-47 beedd019 byte for byte), as modules_install
+	# would install them; the r8s settings of kit/rootfs/build-rootfs.sh step 3; the Wi-Fi/BT firmware of
+	# kit/wifi-fw (install-radio-fw.sh's set)
+	G=${S20_DIR:?set S20_DIR}
+	KVER=7.2.15-r8s+
+	[ "$(sha256sum < "$G/build/arch/arm64/boot/Image" | cut -c1-16)" = beedd01959941df2 ] || { echo "build/ Image is not #51" >&2; exit 1; }
+	MS=$W/modstage/lib/modules/$KVER
+	mkdir -p "$MS"
+	while read -r o; do
+		k=${o%.o}.ko
+		install -D -m 644 "$G/build/$k" "$MS/kernel/$k"
+		aarch64-linux-gnu-strip --strip-debug "$MS/kernel/$k"
+	done < "$G/build/modules.order"
+	cp "$G/build/modules.order" "$G/build/modules.builtin" "$G/build/modules.builtin.modinfo" "$MS/"
+	sed -i 's/\.o$/.ko/; s|^|kernel/|' "$MS/modules.order"
+	modules "$KVER" "$W/modstage/lib/modules"
+	fw "$G/kit/wifi-fw/linux-firmware" amss.bin m3.bin board-2.bin Notice.txt
+	for f in amss.bin m3.bin board-2.bin Notice.txt; do mkdir -p "$P/usr/lib/firmware/ath11k/QCA6390/hw2.0"; mv "$P/usr/lib/firmware/$f" "$P/usr/lib/firmware/ath11k/QCA6390/hw2.0/$f"; done
+	fw "$G/kit/wifi-fw/vendor" htbtfw20.tlv htnv20.bin
+	mkdir -p "$P/usr/lib/firmware/qca"; mv "$P/usr/lib/firmware/htbtfw20.tlv" "$P/usr/lib/firmware/htnv20.bin" "$P/usr/lib/firmware/qca/"
+	sh "$T/s20-files.sh" "$P"
+	enable r8s-usb-net.service r8s-boot-ok.service r8s-touchlog.service r8s-sleepd.service s5123-modem.service
+	# OpenSSH on port 22 (the S20's way in: the initramfs dropbear stops at switch_root); root by key only, and no
+	# key is in this package (the S20 install script puts the dev PC's in)
+	POSTINST_EXTRA="$POSTINST_EXTRA ssh.service"
+	# no swap line: since 11-20 the S20's old super is Lineage's again, and its fstab has the root only
+	mask console-setup.service keyboard-setup.service exim4.service lm-sensors.service systemd-binfmt.service \
+		proc-sys-fs-binfmt_misc.automount proc-sys-fs-binfmt_misc.mount
+	identity r8s "Galaxy S20 FE" Samsung "Galaxy S20 FE"
+	cp "$G/out/boot-r8s-ub13.img" "$W/boot/boot-r8s-ub13.img"
+	[ "$(sha256sum < "$W/boot/boot-r8s-ub13.img" | cut -c1-16)" = 4a82c5e3c5db7ab4 ] || { echo "ub13 is not 4a82c5e3" >&2; exit 1; }
+	DESC="Galaxy S20 FE (r8s, G780F): the modules of kernel #51 (7.2.15-r8s+, in BOOT with U-Boot ub13), Wi-Fi and Bluetooth firmware, the modem stack, sleep, the quiet boot, the r8s settings (USB network, watchdog, sensors, UCM, panel cutout, GPU)"
+	;;
+*) echo "unknown device $DEV" >&2; exit 1 ;;
+esac
+
+# a file both this package and a firmware package of debs/ ship would stop dpkg on the first boot ("trying to
+# overwrite"): the firmware package keeps it, when the two are the same bytes (a stage copy of a packaged file)
+for f in "$W"/debs/firmware-*.deb; do
+	[ -f "$f" ] || continue
+	FX=$(mktemp -d "$W/fx.XXXXXX"); dpkg-deb -x "$f" "$FX"
+	(cd "$FX" && find . ! -type d | sed 's|^\./||') | while IFS= read -r x; do
+		[ -e "$P/$x" ] || [ -L "$P/$x" ] || continue
+		if cmp -s "$FX/$x" "$P/$x" || { [ -L "$FX/$x" ] && [ "$(readlink "$FX/$x")" = "$(readlink "$P/$x")" ]; }; then
+			rm -f "$P/$x"; echo "/$x: left to $(basename "$f")" >> "$L/build.txt"
+		else
+			echo "/$x: the device's differs from $(basename "$f")" >&2; exit 1
+		fi
+	done || exit 1
+	rm -rf "${FX:?}"
+done
+# the package
+cat > "$P/DEBIAN/control" <<EOF
+Package: vibeos-device-$DEV
+Version: $V
+Architecture: arm64
+Maintainer: pulpoff <pashkovsky@gmail.com>
+Section: kernel
+Priority: optional
+${DEPS:+Depends: $DEPS
+}Description: VibeOS device layer: ${DESC%%:*}
+ $DESC.
+ The device zip unpacks these files into the system zip's root file system;
+ the first boot registers them (vibeos-device-setup).
+EOF
+cat > "$P/DEBIAN/postinst" <<EOF
+#!/bin/sh
+set -e
+if [ "\$1" = configure ]; then
+	# the device's name, while the system image's generic one is set
+	if [ "\$(cat /etc/hostname 2>/dev/null)" = vibeos ]; then
+		cp /usr/share/vibeos-device/hostname /etc/hostname
+		sed -i "s/^127\.0\.1\.1[[:space:]].*/127.0.1.1\t\$(cat /etc/hostname)/" /etc/hosts
+		cp /usr/share/vibeos-device/machine-info /etc/machine-info
+	fi
+	for u in $POSTINST_EXTRA; do
+		case \$u in --global:*) systemctl --global enable "\${u#--global:}" || true ;; *) systemctl enable "\$u" 2>/dev/null || true ;; esac
+	done
+	depmod -a $KVER || true
+	$POSTINST_SH
+	glib-compile-schemas /usr/share/glib-2.0/schemas 2>/dev/null || true
+fi
+exit 0
+EOF
+chmod 755 "$P/DEBIAN/postinst"
+# /etc/vibeos/android: how the shell's power menu restarts into Android (one line; no file, no menu item):
+# reboot=ARG (systemctl reboot --reboot-argument=ARG) or helper=PATH (run with pkexec). The POCO's helper is the
+# one its "Android" app had on 11-10 (gnome/device/boot-android, POCO branch), under device-named ids
+case $DEV in
+s10e) A=reboot=android ;;		# S-Boot's normal boot (DT reboot-mode mode-android), LineageOS in boot
+s20)  A=reboot=recovery ;;		# its RECOVERY partition holds LineageOS's boot image
+s5e)  A=helper=/usr/local/sbin/gts4lv-boot-android	# the stage's, polkit de.gts4lv.boot-android
+      [ -x "$P/usr/local/sbin/gts4lv-boot-android" ] && [ -f "$P/usr/share/polkit-1/actions/de.gts4lv.boot-android.policy" ] ||
+	{ echo "no gts4lv-boot-android in the S5e stage" >&2; exit 1; } ;;
+poco) A=helper=/usr/local/sbin/surya-boot-android
+      install -d "$P/usr/local/sbin" "$P/usr/share/polkit-1/actions"
+      cat > "$P/usr/local/sbin/surya-boot-android" <<'EOF'
+#!/bin/sh
+# Restart into LineageOS (the boot partition), once. Run as root (pkexec, from the shell's power menu).
+# U-Boot, and so Linux, is in the recovery partition, and two things send a restart there:
+#  - the bootloader message in misc ("boot-recovery"): cleared here;
+#  - the restart reason: the PMIC's PON reason, and Linux names "recovery" at every restart
+#    (/run/systemd/reboot-param, from surya-reboot-linux.conf). That file is set aside, so this restart names
+#    nothing and ABL starts the boot partition.
+# Back to Linux from LineageOS: Restart -> Recovery.
+set -eu
+M=/dev/disk/by-partlabel/misc
+[ -b "$M" ] || { echo "no misc partition" >&2; exit 1; }
+case "$(tr -d '\0' < /proc/device-tree/compatible)" in
+*surya*|*karna*) ;;
+*) echo "not a POCO X3 NFC" >&2; exit 1 ;;
+esac
+head -c 32 /dev/zero | dd of="$M" bs=32 count=1 conv=notrunc,fsync status=none
+[ ! -e /run/systemd/reboot-param ] || mv /run/systemd/reboot-param /run/systemd/reboot-param.linux
+exec systemctl reboot
+EOF
+      chmod 755 "$P/usr/local/sbin/surya-boot-android"
+      cat > "$P/usr/share/polkit-1/actions/vibeos.surya.boot-android.policy" <<'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+  <action id="vibeos.surya.boot-android">
+    <description>Restart into Android</description>
+    <message>Authentication is required to restart into Android</message>
+    <defaults>
+      <!-- like an ordinary restart: the user at the phone may, others must authenticate -->
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>yes</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/local/sbin/surya-boot-android</annotate>
+  </action>
+</policyconfig>
+EOF
+      chmod 644 "$P/usr/share/polkit-1/actions/vibeos.surya.boot-android.policy"
+      sh -n "$P/usr/local/sbin/surya-boot-android"
+      [ -f "$P/etc/tmpfiles.d/surya-reboot-linux.conf" ] || { echo "no surya-reboot-linux.conf in the POCO package" >&2; exit 1; } ;;
+*)    A= ;;
+esac
+[ -z "$A" ] || { install -d "$P/etc/vibeos"; echo "$A" > "$P/etc/vibeos/android"; chmod 644 "$P/etc/vibeos/android"; log "/etc/vibeos/android: $A"; }
+# Files the system image's packages own that this package ships too (the device's plymouthd.conf, the POCO's
+# UCM, the S5e's libssc): diverted in preinst, so that dpkg lets this package have them and an upgrade of the
+# other package writes its own to PATH.vibeos-distrib. Not renamed: the device zip has already put this
+# package's file there. (Removing this package leaves the other's file missing until it is reinstalled.)
+SYSFILES=${SYSFILES:-$O/work/system-packaged-files.txt}	# from build-system.sh (packaged-final.txt)
+[ -s "$SYSFILES" ] || { echo "no $SYSFILES (the files the system image's packages own)" >&2; exit 1; }
+(cd "$P" && find . -path ./DEBIAN -prune -o ! -type d -print | sed 's|^\.||') | LC_ALL=C sort > "$L/package-files.txt"
+LC_ALL=C comm -12 "$L/package-files.txt" "$SYSFILES" > "$L/diverted.txt"
+! grep -q "[^A-Za-z0-9_./+@:= -]" "$L/diverted.txt" || { echo "a path to divert has odd characters: $L/diverted.txt" >&2; exit 1; }
+[ ! -s "$L/diverted.txt" ] || log "diverted from the system's packages: $(sed 's/.*/"&"/' "$L/diverted.txt" | tr '\n' ' ')"
+# each path single-quoted in the scripts (the check above leaves no quote in them; the POCO's UCM has a space)
+dv() { while IFS= read -r f; do printf "\tdpkg-divert --package vibeos-device-$DEV --no-rename --$1 --divert '%s.vibeos-distrib' '%s' > /dev/null\n" "$f" "$f"; done < "$L/diverted.txt"; }
+if [ -s "$L/diverted.txt" ] || [ $DEV = poco ]; then
+	{
+		printf '#!/bin/sh\nset -e\nif [ "$1" = install ] || [ "$1" = upgrade ]; then\n'
+		dv add
+		# qcom-phone-utils' kernel hook would repack every kernel into the "boot" partition (LineageOS's):
+		# diverted, as the POCO kit's build.sh did, before anything can run it
+		[ $DEV != poco ] || printf '\tdpkg-divert --package vibeos-device-poco --local --rename --divert /etc/kernel/zz-qcom-bootimg.off --add /etc/kernel/postinst.d/zz-qcom-bootimg > /dev/null\n'
+		printf 'fi\nexit 0\n'
+	} > "$P/DEBIAN/preinst"
+	{
+		printf '#!/bin/sh\nset -e\nif [ "$1" = remove ] || [ "$1" = abort-install ]; then\n'
+		dv remove
+		printf '\t:\nfi\nexit 0\n'
+	} > "$P/DEBIAN/postrm"
+	chmod 755 "$P/DEBIAN/preinst" "$P/DEBIAN/postrm"
+	sh -n "$P/DEBIAN/preinst" && sh -n "$P/DEBIAN/postrm"
+fi
+# no forbidden content (FORBID), and no identifiers baked in
+if for w in $FORBID; do find "$P" -iname "*$w*"; done | grep .; then echo "forbidden files in the payload" >&2; exit 1; fi
+D=$W/debs/vibeos-device-${DEV}_${V}_arm64.deb
+dpkg-deb --root-owner-group -Zxz -b "$P" "$D" > /dev/null
+# no path in two of the debs (dpkg -i of them all at once would stop)
+for f in "$W"/debs/*.deb; do dpkg-deb -c "$f" | awk '$1 !~ /^d/ { n = $6; sub(/^\./, "", n); print n }'; done | LC_ALL=C sort | uniq -d > "$L/shared-paths.txt"
+[ ! -s "$L/shared-paths.txt" ] || { echo "paths in more than one deb ($L/shared-paths.txt): $(head -n 3 "$L/shared-paths.txt" | tr '\n' ' ')" >&2; exit 1; }
+# payload.tar: the device package's files, and those of every deb whose files must be there on the first boot
+# (firmware): extracted the way dpkg would, owned by root
+X=$W/x; rm -rf "$X"; mkdir -p "$X"
+dpkg-deb -x "$D" "$X"
+for f in "$W"/debs/firmware-*.deb; do [ -f "$f" ] && dpkg-deb -x "$f" "$X" && echo "payload: $(basename "$f")" >> "$L/build.txt"; done
+# nothing at the top but real directories of a merged-/usr root: a "lib", "bin" or "sbin" entry would replace the
+# root's symlink with a directory when the zip unpacks it
+for t in $(cd "$X" && ls -A); do
+	case $t in boot|etc|usr|var|opt|root) [ -d "$X/$t" ] && [ ! -L "$X/$t" ] || { echo "payload: /$t is not a directory" >&2; exit 1; } ;;
+	*) echo "payload: /$t at the top (only boot etc usr var opt root)" >&2; exit 1 ;; esac
+done
+(cd "$X" && tar --owner=0 --group=0 --numeric-owner --sort=name -cf "$W/payload.tar" .)
+rm -rf "$X"
+mkdir -p "$OUT"
+mv "$W/debs" "$W/payload.tar" "$W/boot" "$OUT/"
+cp "$L/firmware.txt" "$OUT/firmware-sources.txt"
+(cd "$OUT" && find . -type f ! -name SHA256SUMS | sort | xargs sha256sum) > "$OUT/SHA256SUMS"
+log "done: $OUT ($(du -sh "$OUT" | cut -f1)); deb $(du -h "$OUT/debs/vibeos-device-${DEV}_${V}_arm64.deb" | cut -f1)"

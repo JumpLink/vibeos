@@ -1,0 +1,17 @@
+#!/bin/sh
+# vibeos-growroot: the system zip writes the root file system shrunk to its content. On the first boot it grows to
+# fill whatever holds it: its partition, or the image file a device's boot maps. ext4 grows online; this runs once
+# (a device whose initramfs grows the root already finds nothing to do).
+set -u
+S=/var/lib/vibeos/root-grown
+[ -e $S ] && exit 0
+[ "$(findmnt -n -o FSTYPE /)" = ext4 ] || { echo "vibeos-growroot: / is not ext4, left as it is"; exit 0; }
+DEV=$(findmnt -n -o SOURCE /)
+[ -b "$DEV" ] || { echo "vibeos-growroot: / is on $DEV, not a block device"; exit 0; }
+if resize2fs "$DEV"; then
+	mkdir -p ${S%/*} && touch $S
+	echo "vibeos-growroot: $(df -h --output=size / | tail -n 1 | tr -d ' ') on $DEV"
+else
+	echo "vibeos-growroot: resize2fs $DEV failed; the root keeps its size"
+fi
+exit 0

@@ -1,0 +1,27 @@
+ui_print("VibeOS 0.1.3: the system (Debian, GNOME, VibeOS), for every device.");
+ui_print("Then install this device's VibeOS zip, before restarting.");
+show_progress(1.000000, 0);
+package_extract_file("vibeos-lib.sh", "/tmp/vibeos-lib.sh");
+package_extract_file("install.sh", "/tmp/vibeos-install.sh");
+package_extract_file("vibeos-part", "/tmp/vibeos-part");
+package_extract_file("vibeos-sums.txt", "/tmp/vibeos-sums.txt");
+if run_program("/system/bin/sh", "/tmp/vibeos-install.sh", "choose") != 0 then
+    abort("ERROR: " + file_getprop("/tmp/vibeos.prop", "error"));
+endif;
+if run_program("/system/bin/sh", "/tmp/vibeos-install.sh", "prepare") != 0 then
+    abort("ERROR: " + file_getprop("/tmp/vibeos.prop", "error"));
+endif;
+set_progress(0.020000);
+if run_program("/system/bin/sh", "/tmp/vibeos-install.sh", "chunks") != 0 then
+    abort("ERROR: " + file_getprop("/tmp/vibeos.prop", "error"));
+endif;
+ui_print("- writing the system (several minutes)");
+@WRITE@
+set_progress(0.900000);
+ui_print("- checking it");
+if run_program("/system/bin/sh", "/tmp/vibeos-install.sh", "finish") != 0 then
+    abort("ERROR: " + file_getprop("/tmp/vibeos.prop", "error"));
+endif;
+set_progress(1.000000);
+ui_print("Done. Now: Apply update, this device's VibeOS zip.");
+ui_print("Do not restart before it: the system cannot boot alone.");

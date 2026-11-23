@@ -54,11 +54,14 @@ export class Home {
         Main.layoutManager.disconnectObject(this);
     }
 
-    // Home: every app window on this workspace goes to recents (minimized), the launcher takes the focus
+    // Home: every app window on the phone's own screen goes to recents (minimized), the launcher takes the focus. A
+    // window on a TV or monitor plugged into the phone (a game played there) stays where it is: Home is the phone's.
     goHome() {
         const workspace = global.workspace_manager.get_active_workspace();
+        const phone = Main.layoutManager.primaryIndex;
         for (const win of workspace.list_windows()) {
-            if (win === this._window || win.minimized || win.get_window_type() !== Meta.WindowType.NORMAL)
+            if (win === this._window || win.minimized || win.get_window_type() !== Meta.WindowType.NORMAL ||
+                win.get_monitor() !== phone)
                 continue;
             win.minimize();
         }

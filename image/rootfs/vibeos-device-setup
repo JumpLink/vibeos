@@ -1,0 +1,71 @@
+#!/bin/sh
+# vibeos-device-setup: a device zip unpacks its device package straight into this root (kernel modules, firmware,
+# the device's units and settings), so that the first boot already finds the hardware, and leaves the package
+# itself in /var/lib/vibeos/device/debs, with the builds of system packages that device runs (its ModemManager,
+# libcamera, iio-sensor-proxy...). Once, before GDM, offline, this hands them to dpkg:
+#   1. a dry run: everything they need must be in the image already (no apt lists, no network on a first boot), and
+#      nothing may be removed; otherwise nothing is installed and the files the zip unpacked keep working as they are
+#   2. dpkg -i, all at once; service starts from maintainer scripts held back (policy-rc.d)
+#   3. the system packages a device replaces are held, so an upgrade from the Debian archive keeps the device's
+#      builds; the device package itself is not (its kernel updates come with it)
+#   4. one reboot, so the units its maintainer script enabled start
+# /var/lib/vibeos/device/result says "ok" or "failed: why"; the log is /var/log/vibeos-device-setup.log. The debs
+# move to /var/lib/vibeos/device/installed after a clean install and stay otherwise, to retry:
+#   systemctl start vibeos-device-setup
+set -u
+D=/var/lib/vibeos/device
+LOG=/var/log/vibeos-device-setup.log
+PRC=/usr/sbin/policy-rc.d
+export DEBIAN_FRONTEND=noninteractive LC_ALL=C.UTF-8
+
+run() {
+	log() { echo "vibeos-device-setup: $*"; }
+	done_() { echo "$1" > $D/result; log "result: $1"; exit 0; }
+	fail() { log "FAILED: $*"; done_ "failed: $*"; }
+	cd $D/debs 2>/dev/null || exit 0
+	set -- ./*.deb
+	[ -e "$1" ] || exit 0
+	log "$(date '+%F %T'): $(ls ./*.deb | wc -l) packages in $D/debs"
+	ALL= HOLD=
+	for f; do
+		p=$(dpkg-deb -f "$f" Package) || fail "$f is not a Debian package"
+		ALL="$ALL $p"
+		case $p in vibeos-device-*) ;; *) HOLD="$HOLD $p" ;; esac
+		log "  $p $(dpkg-deb -f "$f" Version)"
+	done
+	# the device's builds may be older than the system's (the POCO's libcamera) and replace held packages
+	apt-get -s -q --no-install-recommends --allow-downgrades --allow-change-held-packages install "$@" > $D/plan.txt 2>&1 || {
+		sed 's/^/  apt: /' $D/plan.txt
+		fail "dependencies missing from the image or in conflict with it"
+	}
+	rm_=$(sed -n 's/^Remv \([^ ]*\).*/\1/p' $D/plan.txt | tr '\n' ' ')
+	[ -z "$rm_" ] || fail "apt would remove $rm_"
+	extra=
+	for p in $(sed -n 's/^Inst \([^ :]*\).*/\1/p' $D/plan.txt); do
+		case " $ALL " in *" $p "*) ;; *) extra="$extra $p" ;; esac
+	done
+	[ -z "$extra" ] || fail "not in the image, apt would download:$extra"
+	MYPRC=
+	if [ ! -e $PRC ]; then
+		printf '#!/bin/sh\n# vibeos-device-setup: no service starts while it installs\nexit 101\n' > $PRC
+		chmod 755 $PRC; MYPRC=1
+	fi
+	dpkg --force-confdef --force-confold --force-hold -i "$@"
+	rc=$?
+	[ $rc = 0 ] || dpkg --force-confdef --force-confold --force-hold --configure -a
+	[ -z "$MYPRC" ] || rm -f $PRC
+	bad=
+	for p in $ALL; do
+		case "$(dpkg-query -W -f '${db:Status-Abbrev}' "$p" 2>/dev/null)" in "ii "|"hi ") ;; *) bad="$bad $p" ;; esac
+	done
+	[ -z "$bad" ] || fail "not installed:$bad (dpkg -i exit $rc)"
+	[ -z "$HOLD" ] || apt-mark hold $HOLD > /dev/null || log "could not hold:$HOLD"
+	mkdir -p $D/installed && mv ./*.deb $D/installed/
+	log "installed:$ALL${HOLD:+ (held:$HOLD)}"
+	echo ok > $D/result
+	sync
+	[ -n "${NOREBOOT:-}" ] || { log "rebooting once"; systemctl --no-block reboot; }
+	exit 0
+}
+run 2>&1 | tee -a $LOG
+exit 0

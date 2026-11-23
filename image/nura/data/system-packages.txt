@@ -1,0 +1,1884 @@
+# the VibeOS system image's packages (generated from s10e-clean-20261117-r7, the 0.1.3 system's base):
+# pkg NAME VERSION | provides NAME VERSION-or-- BY
+pkg accountsservice 26.27.3-2
+pkg acl 2.4.0-1
+pkg adduser 3.159
+pkg adwaita-icon-theme 51.0-1
+provides adwaita-icon-theme-full 51.0-1 adwaita-icon-theme
+provides gnome-icon-theme-symbolic - adwaita-icon-theme
+pkg alsa-topology-conf 1.2.5.1-3
+pkg alsa-ucm-conf 1.2.16.1-1mobian2
+pkg alsa-utils 1.2.16-1
+provides audio-mixer - alsa-utils
+pkg apache2-bin 2.4.70-1
+provides apache2-api-20120211 - apache2-bin
+provides apache2-api-20120211-openssl1.1 - apache2-bin
+pkg appstream 1.2.3-1
+pkg apt 3.3.7
+provides apt-transport-https 3.3.7 apt
+pkg apt-config-icons 1.2.3-1
+pkg apt-utils 3.3.7
+pkg aspell 0.60.8.3-1
+provides aspell-bin - aspell
+pkg aspell-en 2020.12.07-0-1.1
+provides aspell-dictionary - aspell-en
+pkg at-spi2-common 2.62.1-1
+pkg at-spi2-core 2.62.1-1
+pkg avahi-daemon 0.8-18
+pkg baobab 50.0-2
+pkg base-files 14.2
+provides base - base-files
+provides usr-is-merged - base-files
+pkg base-passwd 3.6.8+b1
+pkg bash 5.3-4+b1
+pkg bash-completion 1:2.16.0-8
+provides dh-sequence-bash-completion - bash-completion
+pkg bc 1.07.1-4+b2
+pkg bind9-dnsutils 1:9.20.30-1
+provides dnsutils - bind9-dnsutils
+pkg bind9-host 1:9.20.30-1
+provides host - bind9-host
+pkg bind9-libs 1:9.20.30-1
+pkg bluetooth 5.88-1
+pkg bluez 5.88-1
+pkg bluez-obexd 5.88-1
+pkg bolt 0.9.11-1
+pkg bsd-mailx 8.1.2-0.20220412cvs-1.1+b1
+provides mail-reader - bsd-mailx
+provides mailx - bsd-mailx
+pkg bsdextrautils 2.42.4-1
+pkg bsdutils 1:2.42.4-1
+pkg bubblewrap 0.13.1-1
+pkg busybox 1:1.38.0-3+b2
+pkg bzip2 1.0.8-6+b2
+pkg ca-certificates 20260816+nmu1
+pkg callaudiod 0.1.99-1+b1
+pkg colord 1.4.8-3
+pkg colord-data 1.4.8-3
+pkg console-data 2:1.12-11
+provides console-keymaps - console-data
+provides console-tools-data - console-data
+pkg console-setup 1.249
+pkg console-setup-linux 1.249
+provides console-terminus - console-setup-linux
+pkg coreutils 9.12-0.3
+pkg cpio 2.15+dfsg-2.1
+pkg cpp 4:16.2.0-1
+pkg cpp-16 16.2.0-4
+pkg cpp-16-aarch64-linux-gnu 16.2.0-4
+pkg cpp-aarch64-linux-gnu 4:16.2.0-1
+pkg cracklib-runtime 2.9.6-5.3+b2
+pkg cron 3.0pl1-213
+provides cron-daemon - cron
+pkg cron-daemon-common 3.0pl1-213
+pkg cups 2.4.20-1
+pkg cups-browsed 1.28.17-7+b3
+pkg cups-client 2.4.20-1
+pkg cups-common 2.4.20-1
+pkg cups-core-drivers 2.4.20-1
+pkg cups-daemon 2.4.20-1
+pkg cups-filters 1.28.17-7+b3
+provides foomatic-filters - cups-filters
+provides foomatic-filters-beh - cups-filters
+provides ghostscript-cups - cups-filters
+pkg cups-filters-core-drivers 1.28.17-7+b3
+pkg cups-ipp-utils 2.4.20-1
+pkg cups-pk-helper 0.2.6-2.1+b1
+pkg cups-ppdc 2.4.20-1
+pkg cups-server-common 2.4.20-1
+pkg curl 8.23.0-1
+pkg dash 0.5.12-12+b1
+pkg dbus 1.16.2-8
+provides dbus-system-bus 1.16.2-8 dbus
+provides default-dbus-system-bus - dbus
+pkg dbus-bin 1.16.2-8
+pkg dbus-daemon 1.16.2-8
+pkg dbus-session-bus-common 1.16.2-8
+pkg dbus-system-bus-common 1.16.2-8
+pkg dbus-user-session 1.16.2-8
+provides dbus-session-bus - dbus-user-session
+provides default-dbus-session-bus - dbus-user-session
+pkg dconf-cli 51.0-2
+pkg dconf-gsettings-backend 51.0-2
+provides gsettings-backend - dconf-gsettings-backend
+pkg dconf-service 51.0-2
+pkg debconf 1.5.92
+provides debconf-2.0 - debconf
+pkg debconf-i18n 1.5.92
+pkg debian-archive-keyring 2025.1
+pkg debianutils 5.24
+pkg desktop-base 14.0.0~pre3
+pkg desktop-file-utils 0.28-1+b1
+pkg device-tree-compiler 1.8.1-2
+pkg dhcpcd-base 1:10.5.2-6
+provides dhcp-client - dhcpcd-base
+pkg dialog 1.3-20260721-1
+pkg dictionaries-common 1.31.4
+provides openoffice.org-updatedicts - dictionaries-common
+pkg diffutils 1:3.12-1+b1
+pkg dirmngr 2.4.9-8
+pkg dmidecode 3.7-1
+pkg dmsetup 2:1.02.205-2+b2
+pkg dns-root-data 2025080400
+pkg dnsmasq-base 2.93-3
+provides dnsmasq-base - dnsmasq-base
+pkg docbook-xml 4.5-14
+provides docbk-xml - docbook-xml
+pkg dosfstools 4.2-1.2+b1
+pkg dpkg 1.23.11
+pkg dracut-install 112-8
+pkg e2fsprogs 1.47.4-1+b3
+pkg e2fsprogs-l10n 1.47.4-1
+pkg eject 2.42.4-1
+pkg emacsen-common 3.0.8
+pkg enchant 2.8.16+dfsg-4
+pkg epiphany-browser 51.2-1
+provides gnome-www-browser - epiphany-browser
+provides www-browser - epiphany-browser
+pkg epiphany-browser-data 51.2-1
+pkg espeak-ng-data 1.52.0+dfsg-5+b2
+pkg evolution-data-server 3.56.2-9
+pkg evolution-data-server-common 3.56.2-9
+pkg evolution-ews-core 3.56.2-3
+pkg exfatprogs 1.4.3-1
+pkg exim4-base 4.100.1-4
+pkg exim4-config 4.100.1-4
+provides exim4-config-2 - exim4-config
+pkg exim4-daemon-light 4.100.1-4
+provides default-mta - exim4-daemon-light
+provides exim4-localscanapi-9.1 - exim4-daemon-light
+provides mail-transport-agent - exim4-daemon-light
+pkg f2fs-tools 1.16.0-2+b2
+pkg fdisk 2.42.4-1
+pkg feedbackd 0.8.11-1
+pkg feedbackd-common 0.8.11-1
+pkg feedbackd-device-themes 0.8.10-1
+pkg file 1:5.47-4
+pkg findutils 4.11.0-3
+pkg folks-common 0.15.12-4
+pkg fontconfig 2.17.1-5
+pkg fontconfig-config 2.17.1-5
+pkg fonts-adwaita 51.0+dfsg-1
+pkg fonts-adwaita-sans 51.0+dfsg-1
+pkg fonts-dejavu 2.37-9
+pkg fonts-dejavu-core 2.37-9
+pkg fonts-dejavu-extra 2.37-9
+pkg fonts-dejavu-mono 2.37-9
+pkg fonts-droid-fallback 1:8.1.0r7-1~1.gbp36536b
+pkg fonts-noto-color-emoji 2.051-1
+pkg fonts-noto-mono 20201225-6
+pkg fonts-quicksand 0.2016-2.1
+pkg fonts-urw-base35 20200910-9
+pkg fuse3 3.18.3-1
+provides fuse 3.18.3-1 fuse3
+pkg fwupd 2.1.9-1
+provides fwupdate - fwupd
+pkg fwupd-arm64-signed 1:1.9+3
+provides fwupd-signed - fwupd-arm64-signed
+pkg gawk 1:5.3.2-1+b1
+provides awk - gawk
+pkg gcc-16-base 16.2.0-4
+pkg gcr 3.41.2-6+b1
+pkg gcr4 4.4.1-3
+pkg gdm3 51.1-1+b1
+provides x-display-manager - gdm3
+pkg geoclue-2.0 2.8.2-1
+pkg geocode-glib-common 3.26.4-3
+pkg gettext-base 1.0-5
+pkg ghostscript 10.08.0~dfsg-2
+provides ghostscript-x 10.08.0~dfsg-2 ghostscript
+provides postscript-viewer - ghostscript
+pkg gir1.2-accountsservice-1.0 26.27.3-2
+pkg gir1.2-adw-1 1.10.0-2
+pkg gir1.2-atk-1.0 2.62.1-1
+pkg gir1.2-atspi-2.0 2.62.1-1
+pkg gir1.2-camel-1.2 3.56.2-9
+pkg gir1.2-colord-1.0 1.4.8-3
+pkg gir1.2-ecal-2.0 3.56.2-9
+pkg gir1.2-edataserver-1.2 3.56.2-9
+pkg gir1.2-evince-3.0 48.4+dfsg-2
+provides gir1.2-evincedocument-3.0 48.4+dfsg-2 gir1.2-evince-3.0
+provides gir1.2-evinceview-3.0 48.4+dfsg-2 gir1.2-evince-3.0
+pkg gir1.2-freedesktop 1.86.0-8
+provides gir1.2-cairo-1.0 1.86.0-8 gir1.2-freedesktop
+provides gir1.2-dbus-1.0 1.86.0-8 gir1.2-freedesktop
+provides gir1.2-dbusglib-1.0 1.86.0-8 gir1.2-freedesktop
+provides gir1.2-fontconfig-2.0 1.86.0-8 gir1.2-freedesktop
+provides gir1.2-freetype2-2.0 1.86.0-8 gir1.2-freedesktop
+provides gir1.2-gl-1.0 1.86.0-8 gir1.2-freedesktop
+provides gir1.2-libxml2-2.0 1.86.0-8 gir1.2-freedesktop
+provides gir1.2-vulkan-1.0 1.86.0-8 gir1.2-freedesktop
+provides gir1.2-xfixes-4.0 1.86.0-8 gir1.2-freedesktop
+provides gir1.2-xft-2.0 1.86.0-8 gir1.2-freedesktop
+provides gir1.2-xlib-2.0 1.86.0-8 gir1.2-freedesktop
+provides gir1.2-xrandr-1.3 1.86.0-8 gir1.2-freedesktop
+pkg gir1.2-gck-1 3.41.2-6+b1
+pkg gir1.2-gck-2 4.4.1-3
+pkg gir1.2-gcr-4 4.4.1-3
+pkg gir1.2-gdesktopenums-3.0 51.0-2
+pkg gir1.2-gdkpixbuf-2.0 2.44.8+dfsg-1
+provides gir1.2-gdkpixdata-2.0 2.44.8+dfsg-1 gir1.2-gdkpixbuf-2.0
+pkg gir1.2-gdm-1.0 51.1-1+b1
+pkg gir1.2-geoclue-2.0 2.8.2-1
+pkg gir1.2-geocodeglib-2.0 3.26.4-3+b1
+pkg gir1.2-girepository-3.0 2.90.1-2
+pkg gir1.2-glib-2.0 2.90.1-2
+provides gir1.2-gio-2.0 2.90.1-2 gir1.2-glib-2.0
+provides gir1.2-giounix-2.0 2.90.1-2 gir1.2-glib-2.0
+provides gir1.2-glibunix-2.0 2.90.1-2 gir1.2-glib-2.0
+provides gir1.2-gmodule-2.0 2.90.1-2 gir1.2-glib-2.0
+provides gir1.2-gobject-2.0 2.90.1-2 gir1.2-glib-2.0
+pkg gir1.2-gly-2 2.2.3+ds-1
+pkg gir1.2-gm-0 0.7.5-1
+pkg gir1.2-gmenu-3.0 3.38.1-3
+pkg gir1.2-gnomeautoar-0.1 0.4.5-5
+pkg gir1.2-gnomebg-4.0 51.0-1
+pkg gir1.2-gnomebluetooth-3.0 47.2-1
+pkg gir1.2-gnomedesktop-3.0 51.0-1
+pkg gir1.2-gnomedesktop-4.0 51.0-1
+pkg gir1.2-gnomeqr-4.0 51.0-1
+pkg gir1.2-goa-1.0 3.58.1-2
+pkg gir1.2-graphene-1.0 1.10.8-5+b2
+pkg gir1.2-gsound-1.0 1.0.3-4+b1
+pkg gir1.2-gst-plugins-bad-1.0 1.28.9-1
+provides gir1.2-cudagst-1.0 1.28.9-1 gir1.2-gst-plugins-bad-1.0
+provides gir1.2-gstanalytics-1.0 1.28.9-1 gir1.2-gst-plugins-bad-1.0
+provides gir1.2-gstbadaudio-1.0 1.28.9-1 gir1.2-gst-plugins-bad-1.0
+provides gir1.2-gstcodecparsers-1.0 1.28.9-1 gir1.2-gst-plugins-bad-1.0
+provides gir1.2-gstcodecs-1.0 1.28.9-1 gir1.2-gst-plugins-bad-1.0
+provides gir1.2-gstcuda-1.0 1.28.9-1 gir1.2-gst-plugins-bad-1.0
+provides gir1.2-gstdxva-1.0 1.28.9-1 gir1.2-gst-plugins-bad-1.0
+provides gir1.2-gsthip-1.0 1.28.9-1 gir1.2-gst-plugins-bad-1.0
+provides gir1.2-gsthipgl-1.0 1.28.9-1 gir1.2-gst-plugins-bad-1.0
+provides gir1.2-gstinsertbin-1.0 1.28.9-1 gir1.2-gst-plugins-bad-1.0
+provides gir1.2-gstmpegts-1.0 1.28.9-1 gir1.2-gst-plugins-bad-1.0
+provides gir1.2-gstmse-1.0 1.28.9-1 gir1.2-gst-plugins-bad-1.0
+provides gir1.2-gstplay-1.0 1.28.9-1 gir1.2-gst-plugins-bad-1.0
+provides gir1.2-gstplayer-1.0 1.28.9-1 gir1.2-gst-plugins-bad-1.0
+provides gir1.2-gsttranscoder-1.0 1.28.9-1 gir1.2-gst-plugins-bad-1.0
+provides gir1.2-gstva-1.0 1.28.9-1 gir1.2-gst-plugins-bad-1.0
+provides gir1.2-gstwebrtc-1.0 1.28.9-1 gir1.2-gst-plugins-bad-1.0
+pkg gir1.2-gst-plugins-base-1.0 1.28.9-1
+provides gir1.2-gstallocators-1.0 1.28.9-1 gir1.2-gst-plugins-base-1.0
+provides gir1.2-gstapp-1.0 1.28.9-1 gir1.2-gst-plugins-base-1.0
+provides gir1.2-gstaudio-1.0 1.28.9-1 gir1.2-gst-plugins-base-1.0
+provides gir1.2-gstgl-1.0 1.28.9-1 gir1.2-gst-plugins-base-1.0
+provides gir1.2-gstglegl-1.0 1.28.9-1 gir1.2-gst-plugins-base-1.0
+provides gir1.2-gstglwayland-1.0 1.28.9-1 gir1.2-gst-plugins-base-1.0
+provides gir1.2-gstglx11-1.0 1.28.9-1 gir1.2-gst-plugins-base-1.0
+provides gir1.2-gstpbutils-1.0 1.28.9-1 gir1.2-gst-plugins-base-1.0
+provides gir1.2-gstrtp-1.0 1.28.9-1 gir1.2-gst-plugins-base-1.0
+provides gir1.2-gstrtsp-1.0 1.28.9-1 gir1.2-gst-plugins-base-1.0
+provides gir1.2-gstsdp-1.0 1.28.9-1 gir1.2-gst-plugins-base-1.0
+provides gir1.2-gsttag-1.0 1.28.9-1 gir1.2-gst-plugins-base-1.0
+provides gir1.2-gstvideo-1.0 1.28.9-1 gir1.2-gst-plugins-base-1.0
+pkg gir1.2-gstreamer-1.0 1.28.9-1
+provides gir1.2-gst-1.0 1.28.9-1 gir1.2-gstreamer-1.0
+provides gir1.2-gstbase-1.0 1.28.9-1 gir1.2-gstreamer-1.0
+provides gir1.2-gstcheck-1.0 1.28.9-1 gir1.2-gstreamer-1.0
+provides gir1.2-gstcontroller-1.0 1.28.9-1 gir1.2-gstreamer-1.0
+provides gir1.2-gstnet-1.0 1.28.9-1 gir1.2-gstreamer-1.0
+pkg gir1.2-gtk-3.0 3.24.52-3
+provides gir1.2-gdk-3.0 3.24.52-3 gir1.2-gtk-3.0
+provides gir1.2-gdkx11-3.0 3.24.52-3 gir1.2-gtk-3.0
+pkg gir1.2-gtk-4.0 4.24.1+ds-1
+provides gir1.2-gdk-4.0 4.24.1+ds-1 gir1.2-gtk-4.0
+provides gir1.2-gdkwayland-4.0 4.24.1+ds-1 gir1.2-gtk-4.0
+provides gir1.2-gdkx11-4.0 4.24.1+ds-1 gir1.2-gtk-4.0
+provides gir1.2-gsk-4.0 4.24.1+ds-1 gir1.2-gtk-4.0
+pkg gir1.2-gtk4layershell-1.0 1.3.0-1+b1
+pkg gir1.2-gtksource-4 4.8.4-9+b1
+pkg gir1.2-gudev-1.0 238-7+b2
+pkg gir1.2-gweather-4.0 4.6.0-5
+pkg gir1.2-harfbuzz-0.0 14.4.0+ds-1
+pkg gir1.2-ibus-1.0 1.5.35-1
+pkg gir1.2-ical-3.0 3.0.20-3
+provides gir1.2-icalglib-3.0 3.0.20-3 gir1.2-ical-3.0
+pkg gir1.2-javascriptcoregtk-4.1 2.54.2-2
+provides gir1.2-javascriptcore-4.1 2.54.2-2 gir1.2-javascriptcoregtk-4.1
+pkg gir1.2-json-1.0 1.10.8+ds-2+b1
+pkg gir1.2-lfb-0.0 0.8.11-1
+pkg gir1.2-malcontent-0 0.13.1-5+b1
+pkg gir1.2-manette-0.2 0.2.13-1+b1
+pkg gir1.2-modemmanager-1.0 1.24.2-2+surya3
+pkg gir1.2-mutter-51 51.0-3
+pkg gir1.2-nm-1.0 1.58.1-1+b1
+pkg gir1.2-nma4-1.0 1.10.6-8
+pkg gir1.2-notify-0.7 0.8.9-1
+pkg gir1.2-pango-1.0 1.58.2-1
+provides gir1.2-pangocairo-1.0 1.58.2-1 gir1.2-pango-1.0
+provides gir1.2-pangofc-1.0 1.58.2-1 gir1.2-pango-1.0
+provides gir1.2-pangoft2-1.0 1.58.2-1 gir1.2-pango-1.0
+provides gir1.2-pangoot-1.0 1.58.2-1 gir1.2-pango-1.0
+provides gir1.2-pangoxft-1.0 1.58.2-1 gir1.2-pango-1.0
+pkg gir1.2-polkit-1.0 128-1
+provides gir1.2-polkitagent-1.0 128-1 gir1.2-polkit-1.0
+pkg gir1.2-rest-1.0 0.10.2-1+b2
+pkg gir1.2-rsvg-2.0 2.63.4+dfsg-4
+pkg gir1.2-secret-1 0.21.8.2-2
+pkg gir1.2-shumate-1.0 1.7.0-3
+pkg gir1.2-soup-3.0 3.8.1-1
+pkg gir1.2-upowerglib-1.0 1.91.5-1
+pkg gir1.2-webkit2-4.1 2.54.2-2
+provides gir1.2-webkit2webextension-4.1 2.54.2-2 gir1.2-webkit2-4.1
+pkg gir1.2-wnck-3.0 43.3-1+b2
+pkg gir1.2-xdp-1.0 0.11.0-1
+pkg gjs 1.90.1-1
+pkg glib-networking 2.90.0-2
+pkg glib-networking-common 2.90.0-2
+pkg glib-networking-services 2.90.0-2
+pkg glycin-loaders 2.2.3+ds-1
+pkg glycin-thumbnailers 2.2.3+ds-1
+pkg gnome-backgrounds 51.0.1-1
+pkg gnome-bluetooth-3-common 47.2-1
+pkg gnome-bluetooth-sendto 47.2-1
+pkg gnome-browser-connector 42.1-7
+provides chrome-gnome-shell 42.1-7 gnome-browser-connector
+pkg gnome-calculator 1:51.1-1
+pkg gnome-calendar 51.0-1
+pkg gnome-characters 51.0-1
+pkg gnome-clocks 51.0-1
+pkg gnome-connections 51.0-1
+pkg gnome-console 51.0-2
+provides x-terminal-emulator - gnome-console
+pkg gnome-contacts 51.0-1
+pkg gnome-control-center 1:51.1-2
+pkg gnome-control-center-data 1:51.1-2
+pkg gnome-core 1:51+2
+pkg gnome-desktop3-data 51.0-1
+pkg gnome-disk-utility 46.1-3
+pkg gnome-font-viewer 50.0-2
+pkg gnome-keyring 51.1-3
+pkg gnome-keyring-pkcs11 51.1-3
+pkg gnome-logs 50.0-1
+pkg gnome-maps 51.2-1
+pkg gnome-menus 3.38.1-3
+pkg gnome-online-accounts 3.58.1-2
+pkg gnome-remote-desktop 51.0-1
+pkg gnome-session 51.0-2
+provides x-session-manager - gnome-session
+pkg gnome-session-bin 51.0-2
+pkg gnome-session-common 51.0-2
+pkg gnome-settings-daemon 51.0-2
+pkg gnome-settings-daemon-common 51.0-2
+provides gnome-settings-daemon-schemas 51.0-2 gnome-settings-daemon-common
+pkg gnome-shell 51.0-3
+provides notification-daemon - gnome-shell
+provides polkit-1-auth-agent - gnome-shell
+pkg gnome-shell-common 51.0-3
+pkg gnome-snapshot 51.0-2
+provides snapshot 51.0-2 gnome-snapshot
+pkg gnome-software 51.0-1
+pkg gnome-software-common 51.0-1
+pkg gnome-software-plugin-deb 51.0-1
+provides gnome-software-plugin 51.0-1 gnome-software-plugin-deb
+pkg gnome-software-plugin-fwupd 51.0-1
+pkg gnome-sushi 50.0-1
+pkg gnome-text-editor 51.0-1
+pkg gnome-tour 50.0-2
+pkg gnome-user-docs 51.0-1
+pkg gnome-user-share 48.3-2
+pkg gnome-weather 50.0-3
+pkg gnupg 2.4.9-8
+pkg gnupg-l10n 2.4.9-8
+pkg gnupg-utils 2.4.9-8
+pkg gpg 2.4.9-8
+provides keyboxd 2.4.9-8 gpg
+pkg gpg-agent 2.4.9-8
+provides gnupg-agent - gpg-agent
+pkg gpg-wks-client 2.4.9-8
+pkg gpgconf 2.4.9-8
+pkg gpgsm 2.4.9-8
+pkg gpgv 2.4.9-8
+pkg grep 3.12-1+b1
+provides rgrep - grep
+pkg groff-base 1.25.0-2
+pkg gsettings-desktop-schemas 51.0-2
+pkg gst-audio-thumbnailer 1.1.0-2
+pkg gst-video-thumbnailer 1.1.0-2
+pkg gstreamer1.0-gl 1.28.9-1
+provides gstreamer1.0-videosink - gstreamer1.0-gl
+provides gstreamer1.0-videosource - gstreamer1.0-gl
+pkg gstreamer1.0-gtk3 1.28.9-1
+provides gstreamer1.0-videosink - gstreamer1.0-gtk3
+pkg gstreamer1.0-gtk4 0.15.2-3
+pkg gstreamer1.0-libav 1.28.9-1
+pkg gstreamer1.0-libcamera 0.7.2-1+surya21
+pkg gstreamer1.0-packagekit 1.4.0-1
+pkg gstreamer1.0-pipewire 1.6.9-2
+pkg gstreamer1.0-plugins-bad 1.28.9-1
+provides gstreamer1.0-audiosink - gstreamer1.0-plugins-bad
+provides gstreamer1.0-audiosource - gstreamer1.0-plugins-bad
+provides gstreamer1.0-plugins-bad-faad - gstreamer1.0-plugins-bad
+provides gstreamer1.0-plugins-bad-videoparsers - gstreamer1.0-plugins-bad
+provides gstreamer1.0-videosink - gstreamer1.0-plugins-bad
+provides gstreamer1.0-videosource - gstreamer1.0-plugins-bad
+provides gstreamer1.0-visualization - gstreamer1.0-plugins-bad
+pkg gstreamer1.0-plugins-base 1.28.9-1
+provides gstreamer1.0-audiosource - gstreamer1.0-plugins-base
+provides gstreamer1.0-videosource - gstreamer1.0-plugins-base
+pkg gstreamer1.0-plugins-good 1.28.9-1
+provides gstreamer1.0-audiosink - gstreamer1.0-plugins-good
+provides gstreamer1.0-audiosource - gstreamer1.0-plugins-good
+provides gstreamer1.0-videosink - gstreamer1.0-plugins-good
+provides gstreamer1.0-videosource - gstreamer1.0-plugins-good
+provides gstreamer1.0-visualization - gstreamer1.0-plugins-good
+pkg gstreamer1.0-plugins-ugly 1.28.9-1
+pkg gstreamer1.0-x 1.28.9-1
+provides gstreamer1.0-videosink - gstreamer1.0-x
+pkg gtk-update-icon-cache 4.24.1+ds-1
+pkg gvfs 1.62.0-3
+pkg gvfs-backends 1.62.0-3
+pkg gvfs-common 1.62.0-3
+pkg gvfs-daemons 1.62.0-3
+pkg gvfs-fuse 1.62.0-3
+pkg gvfs-libs 1.62.0-3
+pkg gweather-locations 2026.2-2
+pkg gzip 1.14-1
+pkg heif-gdk-pixbuf 1.23.6-2
+pkg heif-thumbnailer 1.23.6-2
+pkg hicolor-icon-theme 0.18-2
+pkg hostname 3.25+b1
+pkg hunspell-en-us 1:2020.12.07-4
+provides hunspell-dictionary - hunspell-en-us
+provides hunspell-dictionary-en - hunspell-en-us
+provides hunspell-dictionary-en-us - hunspell-en-us
+pkg hwdata 0.413-1
+pkg ibus 1.5.35-1
+pkg ibus-data 1.5.35-1
+pkg ibus-gtk3 1.5.35-1
+pkg ibus-gtk4 1.5.35-1
+pkg ifupdown 0.8.45+nmu1+b1
+pkg iio-sensor-proxy 3.9-1
+pkg im-config 1.1
+provides im-switch - im-config
+pkg imagemagick-7-common 8:7.1.2.35+dfsg1-2
+provides imagemagick-6-common 8:7.1.2.35+dfsg1-2 imagemagick-7-common
+provides imagemagick-common 8:7.1.2.35+dfsg1-2 imagemagick-7-common
+pkg init 1.69+nmu3
+pkg init-system-helpers 1.69+nmu3
+pkg initramfs-tools 0.151
+provides linux-initramfs-tool - initramfs-tools
+pkg initramfs-tools-bin 0.151
+pkg initramfs-tools-core 0.151
+pkg inxi 3.3.41-1-1
+pkg ipp-usb 0.9.31-2
+pkg iproute2 7.3.0-1
+provides arpd - iproute2
+pkg iptables 1.8.13-1
+pkg iputils-ping 3:20250605-1+b1
+provides ping - iputils-ping
+pkg iso-codes 4.20.1-1
+pkg iw 6.17-1+b1
+pkg jq 1.8.2-1
+pkg kbd 2.10.0-1
+provides console-utilities - kbd
+pkg keyboard-configuration 1.249
+pkg klibc-utils 2.0.14-1+b2
+pkg kmod 34.3-3
+pkg krb5-locales 1.22.1-3
+pkg less 710+really668-1
+pkg liba52-0.7.4 0.7.4-22+b1
+pkg libaa1 1.4p5-51.1+b2
+provides aalib1 - libaa1
+pkg libaacs0 0.11.1-4+b2
+pkg libabsl20260526 20260526.0-2+b1
+pkg libaccountsservice1 26.27.3-2
+pkg libacl1 2.4.0-1
+pkg libadwaita-1-0 1.10.0-2
+pkg libao-common 1.2.2+20180113-1.5
+pkg libao4 1.2.2+20180113-1.5
+pkg libaom3 3.14.1-1
+pkg libapache2-mod-dnssd 0.6-7
+pkg libapparmor1 5.0.2-5.1
+pkg libappstream5 1.2.3-1
+pkg libapr1t64 1.7.6-3+b1
+provides libapr1 1.7.6-3+b1 libapr1t64
+pkg libaprutil1-dbd-sqlite3 1.6.6-1
+pkg libaprutil1-ldap 1.6.6-1
+pkg libaprutil1t64 1.6.6-1
+provides libaprutil1 1.6.6-1 libaprutil1t64
+pkg libapt-pkg7.0 3.3.7
+provides libapt-pkg 3.3.7 libapt-pkg7.0
+pkg libarchive13t64 3.8.11-1
+provides libarchive13 3.8.11-1 libarchive13t64
+pkg libasound2-data 1.2.16.1-2
+pkg libasound2t64 1.2.16.1-2
+provides libasound2 1.2.16.1-2 libasound2t64
+pkg libaspell15 0.60.8.3-1
+pkg libass9 1:0.17.5-1+b1
+pkg libassuan9 3.0.2-2+b2
+pkg libasyncns0 0.8-8
+pkg libatasmart4 0.19-6+b2
+pkg libatk-adaptor 2.62.1-1
+provides at-spi - libatk-adaptor
+pkg libatk-bridge2.0-0t64 2.62.1-1
+provides libatk-bridge2.0-0 2.62.1-1 libatk-bridge2.0-0t64
+pkg libatk1.0-0t64 2.62.1-1
+provides libatk1.0-0 2.62.1-1 libatk1.0-0t64
+pkg libatomic1 16.2.0-4
+pkg libatopology2t64 1.2.16.1-2
+provides libatopology2 1.2.16.1-2 libatopology2t64
+pkg libatspi2.0-0t64 2.62.1-1
+provides libatspi2.0-0 2.62.1-1 libatspi2.0-0t64
+pkg libattr1 1:2.6.0-1
+pkg libaudit-common 1:4.2.1-1
+pkg libaudit1 1:4.2.1-1+b1
+pkg libauthen-sasl-perl 2.2000-2
+pkg libavahi-client3 0.8-18
+pkg libavahi-common-data 0.8-18
+pkg libavahi-common3 0.8-18
+pkg libavahi-core7 0.8-18
+pkg libavahi-glib1 0.8-18
+pkg libavcodec63 7:9.0.2-6
+pkg libavfilter12 7:9.0.2-6
+pkg libavformat63 7:9.0.2-6
+pkg libavif16 1.4.2-1
+pkg libavtp0 0.2.0-2+b2
+pkg libavutil61 7:9.0.2-6
+pkg libbdplus0 0.2.0-5
+pkg libblkid1 2.42.4-1
+pkg libblockdev-crypto3 3.5.0-2
+pkg libblockdev-fs3 3.5.0-2
+pkg libblockdev-loop3 3.5.0-2
+pkg libblockdev-mdraid3 3.5.0-2
+pkg libblockdev-nvme3 3.5.0-2
+pkg libblockdev-part3 3.5.0-2
+pkg libblockdev-smart3 3.5.0-2
+pkg libblockdev-swap3 3.5.0-2
+pkg libblockdev-utils3 3.5.0-2
+pkg libblockdev3 3.5.0-2
+pkg libbluetooth3 5.88-1
+pkg libbluray4 1:1.5.0-3
+pkg libboost-filesystem1.92.0 1.92.0-4+b1
+pkg libboost-log1.92.0 1.92.0-4+b1
+pkg libboost-thread1.92.0 1.92.0-4+b1
+pkg libbpf1 1:1.7.0-1
+pkg libbrlapi0.8 6.9.1+repack-3
+pkg libbrotli1 1.2.0-4.1
+pkg libbs2b0 3.1.0+dfsg-8+b2
+pkg libbsd0 0.12.2-3
+pkg libbytesize-common 2.12-3
+pkg libbytesize1 2.12-3
+pkg libbz2-1.0 1.0.8-6+b2
+pkg libc-bin 2.43-7
+pkg libc-gconv-modules-extra 2.43-7
+pkg libc-l10n 2.43-7
+pkg libc6 2.43-7
+pkg libcaca0 0.99.beta20-8
+pkg libcacard0 1:2.8.1-2+b1
+pkg libcairo-gobject-perl 1.005-4+b5
+pkg libcairo-gobject2 1.18.4-3+b1
+pkg libcairo-perl 1.109-5+b3
+pkg libcairo-script-interpreter2 1.18.4-3+b1
+pkg libcairo2 1.18.4-3+b1
+pkg libcamel-1.2-64t64 3.56.2-9
+provides libcamel-1.2-64 3.56.2-9 libcamel-1.2-64t64
+pkg libcamera-ipa 0.7.2-1+surya20
+pkg libcamera-v4l2 0.7.2-1+surya2
+pkg libcamera0.7 0.7.2-1+surya20
+pkg libcanberra-gtk3-0 0.30-20+b1
+provides libcanberra-gtk3-0t64 0.30-20+b1 libcanberra-gtk3-0
+pkg libcanberra-gtk3-module 0.30-20+b1
+pkg libcanberra-pulse 0.30-20+b1
+pkg libcanberra0 0.30-20+b1
+provides libcanberra0t64 0.30-20+b1 libcanberra0
+pkg libcap-ng0 0.9.6-1+b1
+pkg libcap2 1:2.78-1+b2
+pkg libcap2-bin 1:2.78-1+b2
+pkg libcbor0.10 0.10.2-2.2
+pkg libcdio-cdda2t64 10.2+2.0.2-2+b2
+provides libcdio-cdda2 10.2+2.0.2-2+b2 libcdio-cdda2t64
+pkg libcdio-paranoia2t64 10.2+2.0.2-2+b2
+provides libcdio-paranoia2 10.2+2.0.2-2+b2 libcdio-paranoia2t64
+pkg libcdio19t64 2.2.0-4.1
+provides libcdio19 2.2.0-4.1 libcdio19t64
+pkg libcdparanoia0 3.10.2+debian-14+b2
+pkg libchromaprint1 1.6.2-1
+pkg libcjson1 1.7.19-2+b1
+pkg libclass-inspector-perl 1.36-3
+pkg libclone-perl 0.51-1
+pkg libcloudproviders0 0.4.1-1
+pkg libcodec2-1.2 1.2.0-5
+pkg libcolord-gtk4-1t64 0.3.1-2+b1
+provides libcolord-gtk4-1 0.3.1-2+b1 libcolord-gtk4-1t64
+pkg libcolord2 1.4.8-3
+pkg libcolorhug2 1.4.8-3
+pkg libcom-err2 1.47.4-1+b3
+provides libcom-err2t64 1.47.4-1+b3 libcom-err2
+provides libcomerr2 1.47.4-1+b3 libcom-err2
+pkg libcomposefs1 1.0.8-3
+pkg libconfig++15 1.8.2+ds-1
+pkg libcpuinfo0 0.0~git20250905.877328f-1+b1
+pkg libcrack2 2.9.6-5.3+b2
+pkg libcrypt-urandom-perl 0.55-1+b1
+pkg libcrypt1 1:4.5.2+20251210-1
+pkg libcryptsetup12 2:2.8.8-1
+pkg libcue2 2.2.1-4.2+b1
+pkg libcups2t64 2.4.20-1
+provides libcups2 2.4.20-1 libcups2t64
+pkg libcupsfilters1t64 1.28.17-7+b3
+provides libcupsfilters1 1.28.17-7+b3 libcupsfilters1t64
+pkg libcurl3t64-gnutls 8.23.0-1
+pkg libcurl4-gnutls 8.23.0-1
+pkg libcurl4t64 8.23.0-1
+provides libcurl4 8.23.0-1 libcurl4t64
+pkg libdaemon0 0.14-7.1+b4
+pkg libdata-dump-perl 1.25-1
+pkg libdatrie1 0.2.14-2
+pkg libdav1d7 1.5.4-1
+pkg libdb5.3t64 5.3.28+dfsg2-12
+provides libdb5.3 5.3.28+dfsg2-12 libdb5.3t64
+pkg libdbus-1-3 1.16.2-8
+pkg libdbusmenu-glib4 18.10.20180917~bzr492+repack1-4+b2
+pkg libdbusmenu-gtk3-4 18.10.20180917~bzr492+repack1-4+b2
+pkg libdc1394-25 2.2.6-6+b2
+pkg libdca0 0.0.7-3
+pkg libdconf1 51.0-2
+pkg libde265-0 1.1.3-1+b1
+pkg libdebconfclient0 0.283
+pkg libdecor-0-0 0.2.5-1+b1
+pkg libdecor-0-plugin-1-gtk 0.2.5-1+b1
+provides default-libdecor-0-plugin-1 - libdecor-0-plugin-1-gtk
+provides libdecor-0-plugin-1 - libdecor-0-plugin-1-gtk
+pkg libdeflate0 1.25-1
+pkg libdevmapper1.02.1 2:1.02.205-2+b2
+pkg libdialog15 1.3-20260721-1
+pkg libdisplay-info3 0.3.0-1+b1
+pkg libdjvulibre-text 3.5.30.1-1
+pkg libdjvulibre21 3.5.30.1-1
+pkg libdnnl3.6 3.14.2+ds-1
+pkg libdotconf0 1.4.1-2
+pkg libdovi3 3.4.0-2
+pkg libdrm-amdgpu1 2.4.134-3
+pkg libdrm-common 2.4.134-3
+pkg libdrm2 2.4.134-3
+pkg libduktape207 2.7.0-2+b3
+pkg libdv4t64 1.0.0-18
+provides libdv4 1.0.0-18 libdv4t64
+pkg libdvdnav4 7.0.0-2+b1
+pkg libdvdread8t64 7.1.1-1
+provides libdvdread8 7.1.1-1 libdvdread8t64
+pkg libdw1t64 0.196-1
+provides libdw1 0.196-1 libdw1t64
+pkg libebackend-1.2-11t64 3.56.2-9
+provides libebackend-1.2-11 3.56.2-9 libebackend-1.2-11t64
+pkg libebook-1.2-21t64 3.56.2-9
+provides libebook-1.2-21 3.56.2-9 libebook-1.2-21t64
+pkg libebook-contacts-1.2-4t64 3.56.2-9
+provides libebook-contacts-1.2-4 3.56.2-9 libebook-contacts-1.2-4t64
+pkg libebur128-1 1.2.6-2+b2
+pkg libecal-2.0-3 3.56.2-9
+pkg libedata-book-1.2-27t64 3.56.2-9
+provides libedata-book-1.2-27 3.56.2-9 libedata-book-1.2-27t64
+pkg libedata-cal-2.0-2t64 3.56.2-9
+provides libedata-cal-2.0-2 3.56.2-9 libedata-cal-2.0-2t64
+pkg libedataserver-1.2-27t64 3.56.2-9
+provides libedataserver-1.2-27 3.56.2-9 libedataserver-1.2-27t64
+pkg libedataserverui-1.2-4t64 3.56.2-9
+provides libedataserverui-1.2-4 3.56.2-9 libedataserverui-1.2-4t64
+pkg libedataserverui4-1.0-0t64 3.56.2-9
+provides libedataserverui4-1.0-0 3.56.2-9 libedataserverui4-1.0-0t64
+pkg libedit2 3.1-20260512-1
+pkg libeditorconfig0 0.12.10+~0.17.1-3+b1
+pkg libegl-mesa0 26.2.6-1
+provides libegl-vendor - libegl-mesa0
+pkg libegl1 1.7.0-3+b1
+pkg libei1 1.5.0-3+b1
+pkg libeis1 1.5.0-3+b1
+pkg libelf1t64 0.196-1
+provides libelf1 0.196-1 libelf1t64
+pkg libenchant-2-2 2.8.16+dfsg-4
+pkg libencode-locale-perl 1.05-3
+pkg libepoxy0 1.5.10-2+b2
+pkg libespeak-ng1 1.52.0+dfsg-5+b2
+pkg libevdev2 1.14.0+dfsg-1
+pkg libevdocument3-4t64 48.4+dfsg-2
+provides libevdocument3-4 48.4+dfsg-2 libevdocument3-4t64
+pkg libevent-2.1-7t64 2.1.13-stable-1
+provides libevent-2.1-7 2.1.13-stable-1 libevent-2.1-7t64
+pkg libevview3-3t64 48.4+dfsg-2
+provides libevview3-3 48.4+dfsg-2 libevview3-3t64
+pkg libexempi8 2.6.6-3
+pkg libexif12 0.6.26-1
+pkg libexiv2-28 0.28.9+dfsg-1
+pkg libexiv2-data 0.28.9+dfsg-1
+pkg libexpat1 2.10.0-1
+pkg libext2fs2t64 1.47.4-1+b3
+provides e2fslibs 1.47.4-1+b3 libext2fs2t64
+provides libext2fs2 1.47.4-1+b3 libext2fs2t64
+pkg libextutils-depends-perl 0.8002-1
+pkg libfaad2 2.11.4-1
+pkg libfarmhash0 0~git20190513.0d859a8-4+b2
+pkg libfdisk1 2.42.4-1
+pkg libfdt1 1.8.1-2
+pkg libfeedback-0.0-0 0.8.11-1
+pkg libffado2 2.5.0-5+b1
+pkg libffi8 3.8.0-2
+provides libffi8ubuntu1 3.8.0-2 libffi8
+pkg libfftw3-double3 3.3.11-1
+pkg libfftw3-single3 3.3.11-1
+pkg libfido2-1 1.17.0-2
+pkg libfile-basedir-perl 0.09-2
+pkg libfile-desktopentry-perl 0.23-1
+pkg libfile-fcntllock-perl 0.22-4+b6
+pkg libfile-listing-perl 6.16-1
+pkg libfile-mimeinfo-perl 0.37-1
+pkg libfile-sharedir-perl 1.118-3
+pkg libflac14 1.5.0+ds-5+b1
+pkg libflatpak0 1.18.4-1
+pkg libflite1 2.2-7+b2
+pkg libfluidsynth3 2.6.1+dfsg-2
+pkg libfolks-eds26 0.15.12-4
+pkg libfolks26 0.15.12-4
+pkg libfont-afm-perl 1.20-4
+pkg libfontconfig1 2.17.1-5
+provides libfontconfig - libfontconfig1
+pkg libfontembed1t64 1.28.17-7+b3
+provides libfontembed1 1.28.17-7+b3 libfontembed1t64
+pkg libfontenc1 1:1.1.8-1+b3
+pkg libfreeaptx0 0.2.2-1+b2
+pkg libfreerdp-client3-3 3.33.1+dfsg-1
+pkg libfreerdp-server3-3 3.33.1+dfsg-1
+pkg libfreerdp3-3 3.33.1+dfsg-1
+pkg libfreetype6 2.14.3+dfsg-3
+pkg libfribidi0 1.0.16-5+b1
+pkg libfstrm0 0.6.1-1+b4
+pkg libfuse3-4 3.18.3-1
+pkg libfwupd3 2.1.9-1
+pkg libfyaml0 0.9.4-1
+pkg libgav1-2 0.20.0-2+b2
+pkg libgbm1 26.2.6-1
+pkg libgcc-s1 16.2.0-4
+provides libgcc1 1:16.2.0-4 libgcc-s1
+pkg libgck-1-0 3.41.2-6+b1
+pkg libgck-2-2 4.4.1-3
+pkg libgcr-4-4 4.4.1-3
+pkg libgcr-base-3-1 3.41.2-6+b1
+pkg libgcr-ui-3-1 3.41.2-6+b1
+pkg libgcrypt20 1.12.4-2
+pkg libgd3 2.3.3-16
+pkg libgdbm-compat4t64 1.26-1+b2
+provides libgdbm-compat4 1.26-1+b2 libgdbm-compat4t64
+pkg libgdbm6t64 1.26-1+b2
+provides libgdbm6 1.26-1+b2 libgdbm6t64
+pkg libgdk-pixbuf-2.0-0 2.44.8+dfsg-1
+pkg libgdk-pixbuf2.0-bin 2.44.8+dfsg-1
+pkg libgdk-pixbuf2.0-common 2.44.8+dfsg-1
+pkg libgdm1 51.1-1+b1
+pkg libgee-0.8-2 0.20.8-4
+pkg libgeoclue-2-0 2.8.2-1
+pkg libgeocode-glib-2-0 3.26.4-3+b1
+pkg libges-1.0-0 1.28.9-1
+pkg libgexiv2-0.16-4 0.16.2-1
+pkg libgif7 6.1.3-1
+pkg libgirepository-1.0-1 1.86.0-8
+provides libgirepository-1.0-1-with-libffi8 1.86.0-8 libgirepository-1.0-1
+pkg libgirepository-2.0-0 2.90.1-2
+provides libgirepository-2.0-0-with-libffi8 2.90.1-2 libgirepository-2.0-0
+pkg libgjs0 1.90.1-1
+pkg libgl1 1.7.0-3+b1
+pkg libgl1-mesa-dri 26.2.6-1
+pkg libgles2 1.7.0-3+b1
+pkg libglib-object-introspection-perl 0.052-2
+pkg libglib-perl 3:1.329.4-1+b2
+pkg libglib2.0-0t64 2.90.1-2
+provides libgio-2.0-0 2.90.1-2 libglib2.0-0t64
+provides libglib-2.0-0 2.90.1-2 libglib2.0-0t64
+provides libglib2.0-0 2.90.1-2 libglib2.0-0t64
+provides libgmodule-2.0-0 2.90.1-2 libglib2.0-0t64
+provides libgobject-2.0-0 2.90.1-2 libglib2.0-0t64
+provides libgthread-2.0-0 2.90.1-2 libglib2.0-0t64
+pkg libglib2.0-bin 2.90.1-2
+pkg libglib2.0-data 2.90.1-2
+pkg libglu1-mesa 9.0.2-1.1+b4
+provides libglu1 - libglu1-mesa
+pkg libglut3.12 3.4.0-6+b2
+pkg libglvnd0 1.7.0-3+b1
+pkg libglx-mesa0 26.2.6-1
+provides libglx-vendor - libglx-mesa0
+pkg libglx0 1.7.0-3+b1
+pkg libglycin-2-0 2.2.3+ds-1
+pkg libglycin-gtk4-2-0 2.2.3+ds-1
+pkg libgme0 0.6.5-1
+pkg libgmobile-common 0.7.5-1
+pkg libgmobile0 0.7.5-1
+pkg libgmp10 2:6.3.0+dfsg-5+b2
+pkg libgnome-autoar-0-0 0.4.5-5
+pkg libgnome-bg-4-2t64 51.0-1
+provides libgnome-bg-4-2 51.0-1 libgnome-bg-4-2t64
+pkg libgnome-bluetooth-3.0-13 47.2-1
+pkg libgnome-bluetooth-ui-3.0-13 47.2-1
+pkg libgnome-desktop-3-21 51.0-1
+pkg libgnome-desktop-4-2t64 51.0-1
+provides libgnome-desktop-4-2 51.0-1 libgnome-desktop-4-2t64
+pkg libgnome-menu-3-0 3.38.1-3
+pkg libgnome-qr-4-0 51.0-1
+pkg libgnome-qr-gtk-4-0 51.0-1
+pkg libgnutls-dane0t64 3.8.13-1
+provides libgnutls-dane0 3.8.13-1 libgnutls-dane0t64
+pkg libgnutls30t64 3.8.13-1
+provides libgnutls30 3.8.13-1 libgnutls30t64
+pkg libgoa-1.0-0b 3.58.1-2
+pkg libgoa-1.0-common 3.58.1-2
+pkg libgoa-backend-1.0-2 3.58.1-2
+pkg libgomp1 16.2.0-4
+pkg libgpg-error-l10n 1.61-5
+pkg libgpg-error0 1.61-5
+pkg libgpgme45 2.2.0-2
+pkg libgpgmepp7 2.2.0-3
+pkg libgphoto2-6t64 2.5.34-2
+provides libgphoto2-6 2.5.34-2 libgphoto2-6t64
+pkg libgphoto2-l10n 2.5.34-2
+pkg libgphoto2-port12t64 2.5.34-2
+provides libgphoto2-port12 2.5.34-2 libgphoto2-port12t64
+pkg libgpm2 1.20.7-12+b2
+pkg libgraphene-1.0-0 1.10.8-5+b2
+pkg libgraphite2-3 1.3.15-3
+provides libgraphite2-2.0.0 - libgraphite2-3
+pkg libgs-common 10.08.0~dfsg-2
+pkg libgs10 10.08.0~dfsg-2
+pkg libgs10-common 10.08.0~dfsg-2
+pkg libgsf-1-114 1.14.53-1.1+b1
+pkg libgsf-1-common 1.14.53-1.1
+pkg libgsm1 1.0.24-1
+pkg libgsound0t64 1.0.3-4+b1
+provides libgsound0 1.0.3-4+b1 libgsound0t64
+pkg libgspell-1-3 1.14.5-1
+pkg libgspell-1-common 1.14.5-1
+pkg libgssapi-krb5-2 1.22.1-3
+pkg libgssdp-1.6-0 1.6.6-1
+pkg libgstreamer-gl1.0-0 1.28.9-1
+pkg libgstreamer-plugins-bad1.0-0 1.28.9-1
+pkg libgstreamer-plugins-base1.0-0 1.28.9-1
+pkg libgstreamer1.0-0 1.28.9-1
+pkg libgtk-3-0t64 3.24.52-3
+provides gtk3-binver-3.0.0 - libgtk-3-0t64
+provides libgtk-3-0 3.24.52-3 libgtk-3-0t64
+pkg libgtk-3-bin 3.24.52-3
+pkg libgtk-3-common 3.24.52-3
+pkg libgtk-4-1 4.24.1+ds-1
+provides gtk4-binver-4.0.0 - libgtk-4-1
+provides libgtk-4-media-gstreamer 4.24.1+ds-1 libgtk-4-1
+pkg libgtk-4-bin 4.24.1+ds-1
+pkg libgtk-4-common 4.24.1+ds-1
+pkg libgtk-vnc-2.0-0 1.5.0-1+b2
+pkg libgtk3-perl 0.038-3
+pkg libgtksourceview-4-0 4.8.4-9+b1
+pkg libgtksourceview-4-common 4.8.4-9
+pkg libgtksourceview-5-0 5.22.0-2
+pkg libgtksourceview-5-common 5.22.0-2
+pkg libgtop-2.0-11 2.41.3-2+b2
+pkg libgtop2-common 2.41.3-2
+pkg libgudev-1.0-0 238-7+b2
+pkg libgupnp-1.6-0 1.6.10-1
+pkg libgupnp-av-1.0-3 0.14.5-1
+pkg libgupnp-dlna-2.0-4 0.12.0-8
+pkg libgupnp-igd-1.6-0 1.6.0-5+b1
+pkg libgusb2a 0.4.9-8
+pkg libgvnc-1.0-0 1.5.0-1+b2
+pkg libgweather-4-0t64 4.6.0-5
+provides libgweather-4-0 4.6.0-5 libgweather-4-0t64
+pkg libgweather-4-common 4.6.0-5
+pkg libgxps2t64 0.3.2-6+b1
+provides libgxps2 0.3.2-6+b1 libgxps2t64
+pkg libhandy-1-0 1.8.3-6
+pkg libharfbuzz-gobject0 14.4.0+ds-1
+pkg libharfbuzz-icu0 14.4.0+ds-1
+pkg libharfbuzz-subset0 14.4.0+ds-1
+pkg libharfbuzz0b 14.4.0+ds-1
+pkg libheif-plugin-aomenc 1.23.6-2
+pkg libheif-plugin-dav1d 1.23.6-2
+pkg libheif-plugin-libde265 1.23.6-2
+pkg libheif-plugin-x265 1.23.6-2
+pkg libheif1 1.23.6-2
+pkg libhidapi-hidraw0 0.15.0-2+b2
+pkg libhogweed6t64 3.10.2-1+b1
+provides libhogweed6 3.10.2-1+b1 libhogweed6t64
+pkg libhtml-form-perl 6.13-1
+pkg libhtml-format-perl 2.16-2
+provides libhtml-formatter-perl 2.16-2 libhtml-format-perl
+pkg libhtml-parser-perl 3.86-1
+pkg libhtml-tagset-perl 3.24-1
+pkg libhtml-tree-perl 5.07-3
+pkg libhttp-cookies-perl 6.12-2
+pkg libhttp-daemon-perl 6.17-1
+pkg libhttp-date-perl 6.08-1
+pkg libhttp-message-perl 7.04-1
+pkg libhttp-negotiate-perl 6.01-2
+pkg libhunspell-1.7-0 1.7.6-3
+pkg libhwy1t64 1.3.0-5.1
+provides libhwy1 1.3.0-5.1 libhwy1t64
+pkg libhyphen0 2.8.10-2
+pkg libibus-1.0-5 1.5.35-1
+pkg libical3t64 3.0.20-3
+provides libical3 3.0.20-3 libical3t64
+pkg libice6 2:1.1.1-1+b2
+pkg libicu78 78.3-2
+pkg libidn12 1.44-1
+pkg libidn2-0 2.3.8-5
+pkg libiec61883-0 1.2.0-8
+pkg libieee1284-3t64 0.2.11-15
+provides libieee1284-3 0.2.11-15 libieee1284-3t64
+pkg libijs-0.35 0.35-16+b2
+pkg libimagequant0 4.4.1-1+b2
+pkg libimath-3-2-30 3.2.3-5
+pkg libimobiledevice-1.0-6 1.4.0+git20251127-2
+pkg libimobiledevice-glue-1.0-0 1.3.3-2
+pkg libinih1 61-1+b2
+pkg libinireader0 61-1+b2
+pkg libinput-bin 1.31.3-1
+pkg libinput10 1.31.3-1
+pkg libio-compress-brotli-perl 0.019000-1+b1
+pkg libio-html-perl 1.004-3
+pkg libio-socket-ssl-perl 2.099-1
+pkg libio-stringy-perl 2.113-2
+pkg libip4tc2 1.8.13-1
+pkg libip6tc2 1.8.13-1
+pkg libipc-system-simple-perl 1.30-2
+pkg libisl23 0.28-1
+pkg libiw30t64 30~pre9-23
+provides libiw30 30~pre9-23 libiw30t64
+pkg libjack-jackd2-0 1.9.22~dfsg-6
+provides libjack-0.116 - libjack-jackd2-0
+provides libjack-0.125 - libjack-jackd2-0
+pkg libjansson4 2.15.1-1
+pkg libjavascriptcoregtk-4.1-0 2.54.2-2
+pkg libjavascriptcoregtk-6.0-1 2.54.2-2+neo1
+pkg libjbig0 2.1-6.1+b3
+pkg libjbig2dec0 0.20-1+b4
+pkg libjemalloc2 5.3.1-2
+pkg libjim0.84 0.84-3
+pkg libjpeg62-turbo 1:3.1.3-4
+provides libjpeg62 1:3.1.3-4 libjpeg62-turbo
+pkg libjq1 1.8.2-1
+pkg libjson-c5 0.19+ds-1
+pkg libjson-glib-1.0-0 1.10.8+ds-2+b1
+pkg libjson-glib-1.0-common 1.10.8+ds-2
+pkg libjxl-gdk-pixbuf 0.11.2-5.1
+pkg libjxl0.11 0.11.2-5.1
+pkg libjxr-tools 1.2~git20261102.1ef17dd-1
+pkg libjxr0t64 1.2~git20261102.1ef17dd-1
+provides libjxr0 1.2~git20261102.1ef17dd-1 libjxr0t64
+pkg libk5crypto3 1.22.1-3
+pkg libkeyutils1 1.6.3-6+b2
+pkg libklibc 2.0.14-1+b2
+pkg libkmod2 34.3-3
+pkg libkpathsea6 2026.20260303.78225+ds-5
+pkg libkrb5-3 1.22.1-3
+pkg libkrb5support0 1.22.1-3
+pkg libksba8 1.8.1-1
+pkg liblastlog2-2 2.42.4-1
+pkg liblc3-1 1.1.3+dfsg-1+b2
+pkg liblcms2-2 2.19.1-1
+pkg libldacbt-abr2 2.0.2.3+git20200429+ed310a0-5+b2
+pkg libldacbt-enc2 2.0.2.3+git20200429+ed310a0-5+b2
+pkg libldap-common 2.6.14+dfsg-2
+pkg libldap2 2.6.14+dfsg-2
+pkg libldb2 2:2.11.0+samba4.25.1+dfsg-1
+pkg liblerc4 4.3.0+ds-2
+pkg liblilv-0-0 0.28.0-2
+pkg libllvm22 1:22.1.8-3
+pkg liblmdb0 0.9.35-1
+pkg liblocale-gettext-perl 1.07-10+b1
+pkg liblockfile-bin 1.17-2+b2
+pkg liblockfile1 1.17-2+b2
+pkg liblouis-data 3.39.0-1
+pkg liblouis20 3.39.0-1
+pkg liblouisutdml-bin 2.12.0-8+b2
+pkg liblouisutdml-data 2.12.0-8
+pkg liblouisutdml9t64 2.12.0-8+b2
+provides liblouisutdml9 2.12.0-8+b2 liblouisutdml9t64
+pkg liblqr-1-0 0.4.2-2.2+b1
+pkg liblrdf0 0.6.1-5+b2
+pkg liblsof0 4.99.4+dfsg-2+b1
+pkg libltc11 1.3.2-1+b3
+pkg libltdl7 2.6.2-3
+pkg liblttng-ust-common1t64 2.16.0-2
+provides liblttng-ust-common1 2.16.0-2 liblttng-ust-common1t64
+pkg liblttng-ust-ctl6 2.16.0-2
+pkg liblttng-ust1t64 2.16.0-2
+provides liblttng-ust1 2.16.0-2 liblttng-ust1t64
+pkg liblua5.4-0 5.4.9-2
+pkg liblua5.5-0 5.5.1-2
+pkg liblwp-mediatypes-perl 6.05-1
+pkg liblwp-protocol-https-perl 6.17-1
+pkg liblz4-1 1.10.0-10
+pkg liblzma5 5.8.4-1
+pkg liblzo2-2 2.10-3+b2
+pkg libmagic-mgc 1:5.47-4
+pkg libmagic1t64 1:5.47-4
+provides libmagic1 1:5.47-4 libmagic1t64
+pkg libmagickcore-7.q16-10 8:7.1.2.35+dfsg1-2
+pkg libmagickcore-7.q16-10-extra 8:7.1.2.35+dfsg1-2
+provides libmagickcore-extra - libmagickcore-7.q16-10-extra
+pkg libmagickwand-7.q16-10 8:7.1.2.35+dfsg1-2
+pkg libmailtools-perl 2.22-1
+pkg libmalcontent-0-0 0.13.1-5+b1
+pkg libmalcontent-ui-1-1 0.13.1-5+b1
+pkg libmanette-0.2-0 0.2.13-1+b1
+pkg libmaxminddb0 1.13.3-1
+pkg libmbim-glib4 1.34.0-1+b1
+pkg libmbim-proxy 1.34.0-1+b1
+pkg libmbim-utils 1.34.0-1+b1
+pkg libmd0 1.3.0-1
+pkg libmediaart-2.0-0 1.9.7-3
+pkg libmjpegutils-2.2-0 1:2.2.1-3+b1
+pkg libmm-glib0 1.24.2-2+surya3
+pkg libmnl0 1.0.5-3+b2
+pkg libmodplug1 1:0.8.9.0-4
+pkg libmount1 2.42.4-1
+pkg libmozjs-140-0 140.17.0-1
+pkg libmp3lame0 4.0-1
+pkg libmpc3 1.3.1-3
+pkg libmpcdec6 2:0.1~r495-3+b2
+pkg libmpeg2-4 0.5.1-11
+pkg libmpeg2encpp-2.2-0 1:2.2.1-3+b1
+pkg libmpfr6 4.2.2-3
+pkg libmpg123-0t64 1.33.7-1
+provides libmpg123-0 1.33.7-1 libmpg123-0t64
+pkg libmplex2-2.2-0 1:2.2.1-3+b1
+pkg libmsgraph-1-1 0.3.5-1
+pkg libmspack0t64 0.11-2
+provides libmspack0 0.11-2 libmspack0t64
+pkg libmtdev1t64 1.1.7-1+b2
+provides libmtdev1 1.1.7-1+b2 libmtdev1t64
+pkg libmtp-common 1.1.23-1
+pkg libmtp-runtime 1.1.23-1
+pkg libmtp9t64 1.1.23-1
+provides libmtp9 1.1.23-1 libmtp9t64
+pkg libmutter-51-0 51.0-3
+pkg libmysofa1 1.3.5+dfsg-1
+pkg libnautilus-extension4 51.0.1-3
+pkg libncurses6 6.6+20260608-2
+pkg libncursesw6 6.6+20260608-2
+pkg libndp0 1.9-1+b2
+pkg libneon27t64 0.37.1-1
+provides libneon27 0.37.1-1 libneon27t64
+pkg libnet-dbus-perl 1.2.0-2+b5
+pkg libnet-http-perl 6.24-1
+pkg libnet-smtp-ssl-perl 1.04-2
+pkg libnet-ssleay-perl 1.96-2
+pkg libnetfilter-conntrack3 1.1.1-1
+pkg libnettle8t64 3.10.2-1+b1
+provides libnettle8 3.10.2-1+b1 libnettle8t64
+pkg libnewt0.52 0.52.25-2+b2
+pkg libnfnetlink0 1.0.2-3+b2
+pkg libnfs14 5.0.2-1.1
+pkg libnftables1 1.1.7-3
+pkg libnftnl11 1.3.2-1
+pkg libnghttp2-14 1.71.0-1
+pkg libnghttp3-9 1.17.0-1
+pkg libngtcp2-16 1.24.0-1
+pkg libngtcp2-crypto-gnutls8 1.24.0-1
+pkg libngtcp2-crypto-ossl0 1.24.0-1
+pkg libnice10 0.1.23-2+b1
+pkg libnl-3-200 3.12.0-2+b1
+pkg libnl-genl-3-200 3.12.0-2+b1
+pkg libnl-route-3-200 3.12.0-2+b1
+pkg libnm0 1.58.1-1+b1
+pkg libnma-common 1.10.6-8
+pkg libnma-gtk4-0 1.10.6-8
+pkg libnma0 1.10.6-8
+pkg libnorm1t64 1.5.9+dfsg-4+b1
+provides libnorm1 1.5.9+dfsg-4+b1 libnorm1t64
+pkg libnotify4 0.8.9-1
+pkg libnpth0t64 1.8-4
+provides libnpth0 1.8-4 libnpth0t64
+pkg libnspr4 2:4.40-1
+pkg libnss-mdns 0.15.1-5+b1
+pkg libnss-myhostname 262.2-1
+pkg libnss-systemd 262.2-1
+pkg libnss3 2:3.132-1
+pkg libntfs-3g91 1:2026.9.28-2
+pkg libntlm0 1.8-6+b2
+pkg libnuma1 2.0.19-1+b2
+pkg libnvme1t64 1.16.2-1+b1
+provides libnvme1 1.16.2-1+b1 libnvme1t64
+pkg liboeffis1 1.5.0-3+b1
+pkg libogg0 1.3.6-2+b1
+pkg libonig5 6.9.10-1+b1
+pkg libonnx1l 1.20.0-6
+pkg libonnxruntime-providers 1.23.2+dfsg-6.1
+pkg libonnxruntime1.23 1.23.2+dfsg-6.1
+pkg libopenal-data 1:1.25.2-2
+pkg libopenal1 1:1.25.2-2
+pkg libopencore-amrnb0 0.1.6-1+b3
+pkg libopencore-amrwb0 0.1.6-1+b3
+pkg libopenexr-3-4-33 3.4.16+ds-1+b1
+provides libopenexr-3-4-33-imath-3-2 - libopenexr-3-4-33
+pkg libopenfec1 1.4.2.12+dfsg-1+b2
+pkg libopengl0 1.7.0-3+b1
+pkg libopenh264-8 2.6.0+dfsg-2+b2
+pkg libopenjp2-7 2.5.4-1.1
+pkg libopenjph0.33 0.33.0-1
+pkg libopenmpt0t64 0.8.10-1
+provides libopenmpt0 0.8.10-1 libopenmpt0t64
+pkg libopenni2-0 2.2.0.33+dfsg-19+b1
+pkg libopus0 1.6.1-1+b1
+pkg liborc-0.4-0t64 1:0.4.44-1
+provides liborc-0.4-0 1:0.4.44-1 liborc-0.4-0t64
+pkg libosinfo-1.0-0 1.12.0-3+b2
+pkg libosinfo-l10n 1.12.0-3
+pkg libostree-1-1 2026.6-1
+pkg libp11-kit0 0.26.5-1
+pkg libpackagekit-glib2-18 1.4.0-1
+pkg libpam-cap 1:2.78-1+b2
+pkg libpam-gnome-keyring 51.1-3
+pkg libpam-modules 1.7.0-8
+provides libpam-mkhomedir - libpam-modules
+provides libpam-motd - libpam-modules
+provides libpam-umask - libpam-modules
+pkg libpam-modules-bin 1.7.0-8
+pkg libpam-runtime 1.7.0-8
+pkg libpam-systemd 262.2-1
+provides default-logind 262.2-1 libpam-systemd
+provides logind 262.2-1 libpam-systemd
+pkg libpam0g 1.7.0-8
+pkg libpango-1.0-0 1.58.2-1
+pkg libpangocairo-1.0-0 1.58.2-1
+pkg libpangoft2-1.0-0 1.58.2-1
+pkg libpangoxft-1.0-0 1.58.2-1
+pkg libpaper-utils 2.3.0-0.3
+pkg libpaper2 2.3.0-0.3
+provides libpaperg - libpaper2
+pkg libparted2t64 3.8-2
+provides libparted - libparted2t64
+provides libparted2 3.8-2 libparted2t64
+pkg libpcap0.8t64 1.11.0-1
+provides libpcap0.8 1.11.0-1 libpcap0.8t64
+pkg libpcaudio0 1.3-1+b2
+pkg libpci3 1:3.15.0-2
+pkg libpcre2-8-0 10.49-1
+pkg libpcsclite1 2.5.3-1
+pkg libperl5.42 5.42.3-1
+pkg libpgm-5.3-0t64 5.3.128~dfsg-3
+provides libpgm-5.3-0 5.3.128~dfsg-3 libpgm-5.3-0t64
+pkg libphodav-3.0-0 3.0-12
+pkg libphodav-3.0-common 3.0-12
+pkg libphonenumber8 8.13.51+ds-6+b3
+provides libphonenumber8-protobuf32 - libphonenumber8
+provides libphonenumber8t64-protobuf32 - libphonenumber8
+pkg libpipeline1 1.5.8-3
+pkg libpipewire-0.3-0t64 1.6.9-2
+provides libpipewire-0.3-0 1.6.9-2 libpipewire-0.3-0t64
+pkg libpipewire-0.3-common 1.6.9-2
+pkg libpipewire-0.3-modules 1.6.9-2
+pkg libpisp-common 1.7.0-1
+pkg libpisp1 1.7.0-1+b1
+pkg libpixman-1-0 0.46.4-1+b2
+pkg libplacebo387 7.387.0-2
+pkg libplist-2.0-4 2.7.0+git20250820-1+b2
+pkg libplymouth5 26.134.222-1
+pkg libpng16-16t64 1.6.59-1
+provides libpng16-16 1.6.59-1 libpng16-16t64
+pkg libpolkit-agent-1-0 128-1
+pkg libpolkit-gobject-1-0 128-1
+pkg libpoppler-cpp3 26.07.0-4
+pkg libpoppler-glib8t64 26.07.0-4
+provides libpoppler-glib8 26.07.0-4 libpoppler-glib8t64
+pkg libpoppler162 26.07.0-4
+pkg libpopt0 1.19+dfsg-3
+pkg libportal-gtk4-1 0.11.0-1
+pkg libportal1 0.11.0-1
+pkg libppsdocument-4.0-6 49.8-2
+pkg libppsview-4.0-5 49.8-2
+pkg libproc2-1 2:4.0.7-1.1
+pkg libprotobuf-c1 1.5.1-1+b2
+pkg libprotobuf-lite32t64 3.21.12-17
+provides libprotobuf-lite32 3.21.12-17 libprotobuf-lite32t64
+pkg libprotobuf32t64 3.21.12-17
+provides libprotobuf32 3.21.12-17 libprotobuf32t64
+pkg libproxy1v5 0.5.12-3
+pkg libpsl5t64 0.23.3-1
+provides libpsl5 0.23.3-1 libpsl5t64
+pkg libpthreadpool0 0.0~git20251020.0e6ca13-1.1
+pkg libpulse-mainloop-glib0 17.0+dfsg1-3
+pkg libpulse0 17.0+dfsg1-3
+pkg libpwquality-common 1.4.5-5
+pkg libpwquality1 1.4.5-5+b3
+pkg libpython3-stdlib 3.14.8-1
+pkg libpython3.14-minimal 3.14.10-1
+pkg libpython3.14-stdlib 3.14.10-1
+pkg libqmi-glib5 1.38.0-1+b1
+pkg libqmi-proxy 1.38.0-1+b1
+pkg libqmi-utils 1.38.0-1+b1
+pkg libqpdf30 12.4.2-1
+pkg libqrencode4 4.1.1-2+b2
+pkg libqrtr-glib0 1.4.0-1+b1
+pkg librabbitmq4 0.18.1-1
+pkg libraptor2-0 2.0.16-7
+pkg libraqm0 0.10.5-1
+pkg librav1e0.8 0.8.1-12
+pkg libraw1394-11 2.1.2-2.1
+pkg libraw25 0.22.1-1
+pkg libre2-11 20251105-1+b3
+provides libre2-11-absl20260526 - libre2-11
+pkg libreadline8t64 8.3-4
+provides libreadline8 8.3-4 libreadline8t64
+pkg librest-1.0-0 0.10.2-1+b2
+pkg librist4 0.2.20+dfsg-1
+pkg libroc0.4 0.4.0+dfsg-6
+pkg librsvg2-2 2.63.4+dfsg-4
+pkg librsvg2-common 2.63.4+dfsg-4
+pkg librtmp1 2.6-1
+pkg librubberband3 4.0.0+dfsg-4
+pkg librygel-core-2.8-0 46.1-2
+pkg librygel-db-2.8-0 46.1-2
+pkg librygel-renderer-2.8-0 46.1-2
+pkg librygel-renderer-gst-2.8-0 46.1-2
+pkg librygel-server-2.8-0 46.1-2
+pkg libsamplerate0 0.2.2-4+b3
+pkg libsane-common 1.4.0-1
+pkg libsane1 1.4.0-1+b1
+pkg libsasl2-2 2.1.28+dfsg1-12
+pkg libsasl2-modules 2.1.28+dfsg1-12
+pkg libsasl2-modules-db 2.1.28+dfsg1-12
+pkg libsbc1 2.1-1+b2
+pkg libsdl3-0 3.4.20+ds-1
+pkg libseccomp2 2.6.1-1+b2
+pkg libsecret-1-0 0.21.8.2-2
+pkg libsecret-common 0.21.8.2-2
+pkg libselinux1 3.11-2.1+b1
+pkg libsemanage-common 3.11-1
+pkg libsemanage2 3.11-1+b2
+pkg libsensors-config 1:3.6.2-2
+pkg libsensors5 1:3.6.2-2+b2
+pkg libsepol2 3.11-1
+pkg libserd-0-0 0.32.10-2
+pkg libsharpyuv0 1.6.0-0.1
+pkg libshine3 3.1.1-4
+pkg libshout3 2.4.6-1+b6
+pkg libshumate-1.0-1 1.7.0-3
+pkg libshumate-common 1.7.0-3
+pkg libsidplay1v5 1.36.60-3
+pkg libsimdutf35 9.3.0+really9.1.2-1
+pkg libslang2 2.3.3-6
+pkg libsm6 2:1.2.6-1+b2
+pkg libsmartcols1 2.42.4-1
+pkg libsmbclient0 2:4.25.1+dfsg-1
+provides libsmbclient 2:4.25.1+dfsg-1 libsmbclient0
+pkg libsnappy1v5 1.3.1-4
+pkg libsndfile1 1.2.2-4+b1
+pkg libsnmp-base 5.9.5.2+dfsg-3
+pkg libsnmp45 5.9.5.2+dfsg-3
+pkg libsodium26 1.0.22-2
+pkg libsonic0 0.2.0-13+b2
+pkg libsord-0-0 0.16.22-1
+pkg libsoundtouch1 2.4.1+ds-1
+pkg libsoup-3.0-0 3.8.1-1
+pkg libsoup-3.0-common 3.8.1-1
+pkg libsoxr0 0.1.3-4.1+b1
+pkg libspa-0.2-bluetooth 1.6.9-2
+pkg libspa-0.2-libcamera 1.6.9-2
+provides pipewire-libcamera - libspa-0.2-libcamera
+pkg libspa-0.2-modules 1.6.9-2
+pkg libspandsp2t64 0.0.6+dfsg-2.2+b2
+provides libspandsp2 0.0.6+dfsg-2.2+b2 libspandsp2t64
+pkg libspectre1 0.2.12-2
+pkg libspeechd-module0 0.12.1-5
+pkg libspeechd2 0.12.1-5
+pkg libspeex1 1.2.1-3+b2
+pkg libspeexdsp1 1.2.1-4
+pkg libspelling-1-2 0.4.10-2
+pkg libspelling-common 0.4.10-2
+pkg libspice-client-glib-2.0-8 0.42-4+b1
+pkg libspice-client-gtk-3.0-5 0.42-4+b1
+pkg libsqlite3-0 3.54.1-2
+pkg libsratom-0-0 0.6.22-1
+pkg libsrt1.5-gnutls 1.5.7-1
+pkg libsrtp2-1 2.8.0+ds-1
+pkg libss2 1.47.4-1+b3
+provides libss2t64 1.47.4-1+b3 libss2
+pkg libssc2 0.4.4-2
+pkg libssh-4 0.12.2-1
+pkg libssh2-1t64 1.11.1-6
+provides libssh2-1 1.11.1-6 libssh2-1t64
+pkg libssl3t64 3.6.5-1
+provides libssl3 3.6.5-1 libssl3t64
+pkg libsso-mib0 0.10.2-1
+pkg libstartup-notification0 0.12-8+b2
+pkg libstdc++6 16.2.0-4
+pkg libstemmer0d 3.1.1-1
+pkg libsvtav1enc4 4.3.0+dfsg-1
+pkg libswresample7 7:9.0.2-6
+pkg libswscale10 7:9.0.2-6
+pkg libsynctex2 2026.20260303.78225+ds-5
+pkg libsystemd-shared 262.2-1
+pkg libsystemd0 262.2-1
+pkg libtag2 2.3.2-4
+pkg libtalloc2 2:2.5.0+samba4.25.1+dfsg-1
+pkg libtasn1-6 4.21.0-2+b1
+pkg libtdb1 2:1.4.15+samba4.25.1+dfsg-1
+pkg libtensorflow-lite2.14.1 2.14.1+dfsg-3.1+b1
+pkg libtevent0t64 2:0.17.2+samba4.25.1+dfsg-1
+provides libtevent0 2:0.17.2+samba4.25.1+dfsg-1 libtevent0t64
+pkg libtext-charwidth-perl 0.04-12+b1
+pkg libtext-iconv-perl 1.7-9+b1
+pkg libtext-wrapi18n-perl 0.06-11
+pkg libthai-data 0.1.30-3
+pkg libthai0 0.1.30-3
+pkg libtheora1 1.2.0+dfsg-6+b2
+pkg libtheoradec2 1.2.0+dfsg-6+b2
+pkg libtheoraenc2 1.2.0+dfsg-6+b2
+pkg libtie-ixhash-perl 1.23-4
+pkg libtiff6 4.7.2-1
+pkg libtimedate-perl 2.3500-1
+pkg libtinfo6 6.6+20260608-2
+pkg libtinysparql-3.0-0 3.12.0-1
+pkg libtirpc-common 1.3.7+ds-1
+pkg libtirpc3t64 1.3.7+ds-1
+provides libtirpc3 1.3.7+ds-1 libtirpc3t64
+pkg libtotem-plparser-common 3.26.6-3
+pkg libtotem-plparser18 3.26.6-3+b1
+pkg libtry-tiny-perl 0.32-1
+pkg libtss2-esys-3.0.2-0t64 4.2.1-1
+provides libtss2-esys-3.0.2-0 4.2.1-1 libtss2-esys-3.0.2-0t64
+pkg libtss2-mu-4.0.1-0t64 4.2.1-1
+provides libtss2-mu-4.0.1-0 4.2.1-1 libtss2-mu-4.0.1-0t64
+pkg libtss2-rc0t64 4.2.1-1
+provides libtss2-rc0 4.2.1-1 libtss2-rc0t64
+pkg libtss2-sys1t64 4.2.1-1
+provides libtss2-sys1 4.2.1-1 libtss2-sys1t64
+pkg libtss2-tcti-cmd0t64 4.2.1-1
+provides libtss2-tcti-cmd0 4.2.1-1 libtss2-tcti-cmd0t64
+pkg libtss2-tcti-device0t64 4.2.1-1
+provides libtss2-tcti-device0 4.2.1-1 libtss2-tcti-device0t64
+pkg libtss2-tcti-libtpms0t64 4.2.1-1
+provides libtss2-tcti-libtpms0 4.2.1-1 libtss2-tcti-libtpms0t64
+pkg libtss2-tcti-mssim0t64 4.2.1-1
+provides libtss2-tcti-mssim0 4.2.1-1 libtss2-tcti-mssim0t64
+pkg libtss2-tcti-spi-helper0t64 4.2.1-1
+provides libtss2-tcti-spi-helper0 4.2.1-1 libtss2-tcti-spi-helper0t64
+pkg libtss2-tcti-swtpm0t64 4.2.1-1
+provides libtss2-tcti-swtpm0 4.2.1-1 libtss2-tcti-swtpm0t64
+pkg libtss2-tctildr0t64 4.2.1-1
+provides libtss2-tctildr0 4.2.1-1 libtss2-tctildr0t64
+pkg libtwolame0 0.4.0-3
+pkg libuchardet0 0.0.8-2+b2
+pkg libudev1 262.2-1
+pkg libudfread3 1.2.0-3
+pkg libudisks2-0 2.11.2-1
+pkg libunbound8 1.26.2-1
+pkg libunibreak8 8.0-2
+pkg libunistring5 1.4.2-1
+pkg libunwind8 1.8.1-0.4
+pkg libupower-glib3 1.91.5-1
+pkg liburcu8t64 0.15.7-1
+provides liburcu8 0.15.7-1 liburcu8t64
+pkg liburi-perl 5.40-1
+provides liburi-ws-perl 5.40-1 liburi-perl
+pkg liburiparser1 1.0.1+dfsg-1
+pkg libusb-1.0-0 2:1.0.30-1
+pkg libusbmuxd-2.0-7 2.1.1-1+b1
+pkg libusbredirhost1t64 0.15.0-1+b2
+provides libusbredirhost1 0.15.0-1+b2 libusbredirhost1t64
+pkg libusbredirparser1t64 0.15.0-1+b2
+provides libusbredirparser1 0.15.0-1+b2 libusbredirparser1t64
+pkg libuuid1 2.42.4-1
+provides libuuid1t64 2.42.4-1 libuuid1
+pkg libuv1t64 1.53.0-1
+provides libuv1 1.53.0-1 libuv1t64
+pkg libv4l-0t64 1.32.0-5
+provides libv4l-0 1.32.0-5 libv4l-0t64
+pkg libv4l2rds0t64 1.32.0-5
+provides libv4l2rds0 1.32.0-5 libv4l2rds0t64
+pkg libv4lconvert0t64 1.32.0-5
+provides libv4lconvert0 1.32.0-5 libv4lconvert0t64
+pkg libva-drm2 2.24.1-2
+pkg libva-x11-2 2.24.1-2
+pkg libva2 2.24.1-2
+provides libva-driver-abi-1.0 - libva2
+provides libva-driver-abi-1.22 - libva2
+provides libva-driver-abi-1.23 - libva2
+provides libva-driver-abi-1.24 - libva2
+pkg libvdpau1 1.5-4+b1
+pkg libvidstab1.2 1.1.1-4
+pkg libvisual-0.4-0 0.4.2-6
+pkg libvo-aacenc0 0.1.3-3+b2
+pkg libvo-amrwbenc0 0.1.3-2+b3
+pkg libvolume-key1 0.3.12-10+b2
+pkg libvorbis0a 1.3.7-3+b2
+pkg libvorbisenc2 1.3.7-3+b2
+pkg libvorbisfile3 1.3.7-3+b2
+pkg libvpx12 1.17.0-1
+pkg libvte-2.91-common 0.84.1-1+b1
+pkg libvte-2.91-gtk4-0 0.84.1-1+b1
+pkg libvulkan1 1.4.363.0-1
+pkg libwacom-common 2.20.0-1
+pkg libwacom9 2.20.0-1
+pkg libwavpack1 5.9.0-2
+pkg libwayland-client0 1.26.0-1
+pkg libwayland-cursor0 1.26.0-1
+pkg libwayland-egl1 1.26.0-1
+pkg libwayland-server0 1.26.0-1
+pkg libwbclient0 2:4.25.1+dfsg-1
+pkg libwebkit2gtk-4.1-0 2.54.2-2
+pkg libwebkitgtk-6.0-4 2.54.2-2+neo1
+pkg libwebp7 1.6.0-0.1
+pkg libwebpdemux2 1.6.0-0.1
+pkg libwebpmux3 1.6.0-0.1
+pkg libwebrtc-audio-processing-1-3 1.3-3+b3
+pkg libwildmidi2 0.4.6-1+b2
+pkg libwinpr3-3 3.33.1+dfsg-1
+pkg libwireplumber-0.5-0 0.5.19-1
+pkg libwmflite-0.2-7 0.2.14-1
+pkg libwnck-3-0 43.3-1+b2
+pkg libwnck-3-common 43.3-1
+pkg libwrap0 7.6.q-37
+pkg libwtmpdb0 0.75.0-6
+pkg libwww-perl 6.83-1
+pkg libwww-robotrules-perl 6.03-1
+pkg libx11-6 2:1.8.14-1
+pkg libx11-data 2:1.8.14-1
+pkg libx11-protocol-perl 0.56-9
+pkg libx11-xcb1 2:1.8.14-1
+pkg libx264-165 2:0.165.3223+git20250910.0480cb0-1+b1
+pkg libx265-216 4.2-3
+pkg libxau6 1:1.0.11-1+b2
+pkg libxaw7 2:1.0.16-1+b2
+pkg libxcb-dri3-0 1.17.0-2+b2
+pkg libxcb-glx0 1.17.0-2+b2
+pkg libxcb-present0 1.17.0-2+b2
+pkg libxcb-randr0 1.17.0-2+b2
+pkg libxcb-render0 1.17.0-2+b2
+pkg libxcb-res0 1.17.0-2+b2
+pkg libxcb-shape0 1.17.0-2+b2
+pkg libxcb-shm0 1.17.0-2+b2
+pkg libxcb-sync1 1.17.0-2+b2
+pkg libxcb-util1 0.4.1-1+b2
+pkg libxcb-xfixes0 1.17.0-2+b2
+pkg libxcb-xkb1 1.17.0-2+b2
+pkg libxcb1 1.17.0-2+b2
+pkg libxcomposite1 1:0.4.6-1+b2
+pkg libxcursor1 1:1.2.3-1+b2
+pkg libxcvt0 0.1.3-1+b2
+pkg libxdamage1 1:1.1.7-1+b1
+pkg libxdmcp6 1:1.1.5-2+b1
+pkg libxext6 2:1.3.4-1+b4
+pkg libxfixes3 1:6.0.0-2+b5
+pkg libxfont2 1:2.0.9-1
+pkg libxft2 2.3.6-1+b5
+pkg libxi6 2:1.8.4-1
+pkg libxinerama1 2:1.1.4-3+b5
+pkg libxkbcommon-x11-0 1.13.1-1
+pkg libxkbcommon0 1.13.1-1
+pkg libxkbfile1 1:1.1.0-1+b5
+pkg libxkbregistry0 1.13.1-1
+pkg libxml-parser-perl 2.59-1
+pkg libxml-twig-perl 1:3.55-1
+pkg libxml-xpathengine-perl 0.14-2
+pkg libxml2-16 2.15.4+dfsg-1+b1
+pkg libxmlb2 0.3.30-1
+pkg libxmu6 2:1.1.3-4+b1
+pkg libxmuu1 2:1.1.3-4+b1
+pkg libxnnpack0.20241108 0.0~git20241108.4ea82e5-2+b2
+pkg libxpm4 1:3.5.20-1
+pkg libxrandr2 2:1.5.4-1+b4
+pkg libxrender1 1:0.9.13-1
+pkg libxres1 2:1.2.1-2
+pkg libxshmfence1 1.3.3-1+b2
+pkg libxslt1.1 1.1.45-0.1
+pkg libxss1 1:1.2.3-1+b4
+pkg libxt6t64 1:1.2.1-1.3+b2
+provides libxt6 1:1.2.1-1.3+b2 libxt6t64
+pkg libxtables12 1.8.13-1
+pkg libxtst6 2:1.2.6-1
+pkg libxv1 2:1.0.13-1+b1
+pkg libxvidcore4 2:1.3.7-3+b2
+pkg libxxf86dga1 2:1.1.5-1+b4
+pkg libxxf86vm1 1:1.1.4-2+b1
+pkg libxxhash0 0.8.3-2+b2
+pkg libyajl2 2.1.0-7
+pkg libyaml-0-2 0.2.5-2+b1
+pkg libyelp-1-0 49.2-1
+pkg libyuv0 0.0.1974.20261008-1
+provides libyuv - libyuv0
+pkg libz3-4 4.13.3-1.1
+pkg libzbar0t64 0.23.95-2
+provides libzbar0 0.23.95-2 libzbar0t64
+pkg libzimg2 3.0.6+ds1-2
+pkg libzip5 1.12.1-1
+pkg libzix-0-0 0.8.2-1
+pkg libzmq5 4.3.5-1+b8
+pkg libzstd1 1.5.7+dfsg-4
+pkg libzvbi-common 0.2.46-1
+pkg libzvbi0t64 0.2.46-1
+provides libzvbi0 0.2.46-1 libzvbi0t64
+pkg libzxing4 3.1.1+ds-2
+pkg linux-base 4.17
+pkg linux-sysctl-defaults 4.17
+pkg lm-sensors 1:3.6.2-2+b2
+pkg locales 2.43-7
+pkg locales-all 2.43-7
+pkg localsearch 3.12.0-1
+pkg localsearch-extractor-ffmpeg 3.12.0-1
+pkg localsearch-extractor-iso 3.12.0-1
+pkg localsearch-extractor-office 3.12.0-1
+pkg login 1:4.16.0-2+really2.42.4-1
+pkg login.defs 1:4.20.3-1
+pkg logrotate 3.22.0-1+b3
+pkg logsave 1.47.4-1+b3
+pkg loupe 51.0-1
+pkg lsb-release 12.1-2
+pkg lsof 4.99.4+dfsg-2+b1
+pkg luit 2.0.20250912-1+b1
+provides luit - luit
+pkg lynx 2.9.3-2
+provides news-reader - lynx
+provides www-browser - lynx
+pkg lynx-common 2.9.3-2
+pkg mailcap 3.77
+provides run-mailcap - mailcap
+pkg malcontent 0.13.1-5
+pkg malcontent-gui 0.13.1-5+b1
+pkg man-db 2.13.1-1+b1
+provides man - man-db
+provides man-browser - man-db
+pkg manpages 6.20-2
+pkg mawk 1.3.4.20260302-2
+provides awk - mawk
+pkg media-types 14.0.0
+pkg mesa-libgallium 26.2.6-1
+provides libglapi-mesa - mesa-libgallium
+provides mesa-va-drivers - mesa-libgallium
+provides mesa-vdpau-drivers - mesa-libgallium
+provides va-driver - mesa-libgallium
+pkg mesa-utils 9.0.0-2+b3
+provides mesa-utils-extra - mesa-utils
+pkg mesa-utils-bin 9.0.0-2+b3
+pkg mesa-vulkan-drivers 26.2.6-1
+provides vulkan-icd - mesa-vulkan-drivers
+pkg mmc-utils 1.0-2+b1
+pkg mobian-archive-keyring 20251117.0
+pkg mobian-base 0.5.6
+pkg mobian-phone-base 0.5.6
+pkg mobian-tweaks-common 0.6.1
+pkg mobile-broadband-provider-info 20251101-1
+pkg mobile-tweaks-common 8
+pkg modemmanager 1.24.2-2+surya3
+pkg mount 2.42.4-1
+pkg mutter-common 51.0-3
+pkg mutter-common-bin 51.0-3
+pkg nano 9.3-1
+pkg nautilus 51.0.1-3
+pkg nautilus-data 51.0.1-3
+pkg ncurses-base 6.6+20260608-2
+provides ncurses-runtime - ncurses-base
+pkg ncurses-bin 6.6+20260608-2
+pkg ncurses-term 6.6+20260608-2
+provides foot-terminfo 6.6+20260608-2 ncurses-term
+pkg net-tools 2.10-2+b1
+pkg netbase 6.6
+pkg network-manager 1.58.1-1+b1
+pkg network-manager-l10n 1.58.1-1
+pkg network-manager-tui 1.58.1-1+b1
+pkg nftables 1.1.7-3
+pkg nm-connection-editor 1.36.0-5
+pkg ntfs-3g 1:2026.9.28-2
+pkg ocl-icd-libopencl1 2.3.4-1+b1
+provides libopencl-1.1-1 - ocl-icd-libopencl1
+provides libopencl-1.2-1 - ocl-icd-libopencl1
+provides libopencl-2.0-1 - ocl-icd-libopencl1
+provides libopencl-2.1-1 - ocl-icd-libopencl1
+provides libopencl-2.2-1 - ocl-icd-libopencl1
+provides libopencl-3.0-1 - ocl-icd-libopencl1
+provides libopencl1 - ocl-icd-libopencl1
+pkg openssh-client 1:10.6p2-1
+provides ssh-client - openssh-client
+pkg openssh-common 1:10.6p2-1
+pkg openssh-server 1:10.6p2-1
+provides ssh-server - openssh-server
+pkg openssh-sftp-server 1:10.6p2-1
+pkg openssl 3.6.5-1
+pkg openssl-provider-legacy 3.6.5-1
+pkg orca 51.1-1
+pkg osinfo-db 0.20250606-1
+pkg p11-kit 0.26.5-1
+pkg p11-kit-modules 0.26.5-1
+pkg packagekit 1.4.0-1
+pkg papers 49.8-2
+provides djvu-viewer - papers
+provides pdf-viewer - papers
+pkg papers-common 49.8-2
+pkg parted 3.8-2
+pkg passwd 1:4.20.3-1
+pkg patch 2.8.1-1
+pkg pci.ids 0.0~2026.10.24-1
+pkg pciutils 1:3.15.0-2
+pkg perl 5.42.3-1
+provides libansicolor-perl 5.01 perl
+provides libarchive-tar-perl 3.12 perl
+provides libattribute-handlers-perl 1.03 perl
+provides libautodie-perl 2.37 perl
+provides libcompress-raw-bzip2-perl 2.218 perl
+provides libcompress-raw-zlib-perl 2.222 perl
+provides libcompress-zlib-perl 2.223 perl
+provides libcpan-meta-perl 2.150010 perl
+provides libcpan-meta-requirements-perl 2.143 perl
+provides libcpan-meta-yaml-perl 0.020 perl
+provides libdigest-md5-perl 2.59 perl
+provides libdigest-perl 1.20 perl
+provides libdigest-sha-perl 6.04 perl
+provides libencode-perl 3.21 perl
+provides libexperimental-perl 0.035 perl
+provides libextutils-cbuilder-perl 0.280242 perl
+provides libextutils-command-perl 7.76 perl
+provides libextutils-install-perl 2.22 perl
+provides libextutils-parsexs-perl 3.570000 perl
+provides libfile-spec-perl 3.9400 perl
+provides libhttp-tiny-perl 0.096 perl
+provides libi18n-langtags-perl 0.45 perl
+provides libio-compress-base-perl 2.223 perl
+provides libio-compress-bzip2-perl 2.223 perl
+provides libio-compress-perl 2.223 perl
+provides libio-compress-zlib-perl 2.223 perl
+provides libio-zlib-perl 1.15 perl
+provides libjson-pp-perl 4.16000 perl
+provides liblocale-maketext-perl 1.33 perl
+provides liblocale-maketext-simple-perl 0.21.01 perl
+provides libmath-bigint-perl 2.005002 perl
+provides libmath-complex-perl 1.6300 perl
+provides libmime-base64-perl 3.16.01 perl
+provides libmodule-corelist-perl 5.20260802.42 perl
+provides libmodule-load-conditional-perl 0.74 perl
+provides libmodule-load-perl 0.36 perl
+provides libmodule-metadata-perl 1.000038 perl
+provides libnet-perl 1:3.15 perl
+provides libnet-ping-perl 2.76 perl
+provides libparams-check-perl 0.38 perl
+provides libparent-perl 0.244 perl
+provides libparse-cpan-meta-perl 2.150010 perl
+provides libperl-ostype-perl 1.010 perl
+provides libpod-escapes-perl 1.07 perl
+provides libpod-simple-perl 3.45 perl
+provides libstorable-perl 3.37.01 perl
+provides libsys-syslog-perl 0.36 perl
+provides libterm-table-perl 0.024 perl
+provides libtest-harness-perl 3.50 perl
+provides libtest-simple-perl 1.302210 perl
+provides libtest-tester-perl 1.302210 perl
+provides libtest-use-ok-perl 1.302210 perl
+provides libtest2-suite-perl 1.302210 perl
+provides libtext-balanced-perl 2.06 perl
+provides libthread-queue-perl 3.14 perl
+provides libthreads-perl 2.43 perl
+provides libthreads-shared-perl 1.70 perl
+provides libtime-hires-perl 1.9778 perl
+provides libtime-local-perl 1.3500 perl
+provides libtime-piece-perl 1.3600 perl
+provides libunicode-collate-perl 1.31 perl
+provides libversion-perl 1:0.9933 perl
+provides libversion-requirements-perl - perl
+provides podlators-perl 6.0.2 perl
+pkg perl-base 5.42.3-1
+provides libfile-path-perl 2.18 perl-base
+provides libfile-temp-perl 0.2311 perl-base
+provides libio-socket-ip-perl 0.43 perl-base
+provides libscalar-list-utils-perl 1:1.68.01 perl-base
+provides libsocket-perl 2.041 perl-base
+provides libxsloader-perl 0.32 perl-base
+provides perlapi-5.42.2 - perl-base
+provides perlapi-5.42.3 - perl-base
+pkg perl-modules-5.42 5.42.3-1
+provides perl-modules - perl-modules-5.42
+pkg perl-openssl-defaults 7+b2
+provides dh-sequence-perl-openssl - perl-openssl-defaults
+provides perl-openssl-abi-3 - perl-openssl-defaults
+pkg perl-tk 1:804.036+git20260828+dfsg-1
+provides libtk-perl - perl-tk
+provides libtk-png-perl - perl-tk
+pkg pinentry-curses 1.3.3-3
+provides pinentry - pinentry-curses
+pkg pinentry-gnome3 1.3.3-3
+provides pinentry - pinentry-gnome3
+provides pinentry-x11 - pinentry-gnome3
+pkg pipewire 1.6.9-2
+pkg pipewire-alsa 1.6.9-2
+pkg pipewire-audio 1.6.9-2
+pkg pipewire-bin 1.6.9-2
+pkg pipewire-libcamera 1.6.9-2
+pkg pipewire-pulse 1.6.9-2
+pkg pkexec 128-1
+pkg plymouth 26.134.222-1
+pkg plymouth-label 26.134.222-1
+pkg plymouth-theme-mobian 1.1
+provides plymouth-theme - plymouth-theme-mobian
+pkg pnp.ids 0.413-1
+pkg polkitd 128-1
+pkg poppler-data 0.4.12-1
+pkg poppler-utils 26.07.0-4
+provides pdftohtml - poppler-utils
+provides xpdf-utils - poppler-utils
+pkg power-profiles-daemon 0.30-2+b1
+pkg ppp 2.5.5-1+1
+pkg procps 2:4.0.7-1.1
+provides watch - procps
+pkg psmisc 23.7-2+b1
+pkg psutils 3.3.14-1
+pkg ptyxis 50.1-1
+provides x-terminal-emulator - ptyxis
+pkg publicsuffix 20261007.0728-1
+provides publicsuffix-dafsa - publicsuffix
+pkg python-babel-localedata 2.18.0+git2026-08-12-3
+pkg python3 3.14.8-1
+provides python3-profiler - python3
+provides python3-supported-max 3.15 python3
+provides python3-supported-min 3.14 python3
+pkg python3-babel 2.18.0+git2026-08-12-3
+pkg python3-brlapi 6.9.1+repack-3
+pkg python3-cairo 1.29.1-1+b1
+pkg python3-certifi 2026.10.23+ds-1
+pkg python3-chardet 5.2.0+dfsg-2
+pkg python3-charset-normalizer 3.4.7-2+b3
+pkg python3-cups 2.0.4-3+b3
+pkg python3-cupshelpers 1.5.18-6
+pkg python3-dasbus 1.7-2
+pkg python3-dbus 1.5.1-1
+pkg python3-distro 1.9.0-2
+pkg python3-evdev 2.0.0-1+b1
+pkg python3-gi 3.58.1-1+b1
+pkg python3-ibus-1.0 1.5.35-1
+pkg python3-idna 3.20-1
+pkg python3-louis 3.39.0-1
+pkg python3-minimal 3.14.8-1
+pkg python3-olefile 0.47-1
+pkg python3-pil 13.0.0-1+b1
+provides python3-pillow - python3-pil
+pkg python3-psutil 7.2.2-3
+pkg python3-psutils 3.3.14-1
+pkg python3-puremagic 2.2.0-1
+pkg python3-pycryptodome 3.20.0+dfsg-3+b1
+pkg python3-pypdf 7.0.1-1
+pkg python3-requests 2.34.2-1
+pkg python3-setproctitle 1.3.8-1+b1
+pkg python3-smbc 1.0.25.1-1+b8
+pkg python3-speechd 0.12.1-5
+pkg python3-urllib3 2.8.0-2
+pkg python3-xdg 0.28-4
+provides python3-pyxdg - python3-xdg
+pkg python3.14 3.14.10-1
+pkg python3.14-minimal 3.14.10-1
+pkg readline-common 8.3-4
+pkg realmd 0.17.1-3+b4
+pkg resources 51.0+ds-3
+pkg rfkill 2.42.4-1
+pkg rsync 3.5.2+ds1-2
+pkg rtkit 0.14-1
+pkg runit-helper 2.16.7
+pkg rygel 46.1-2
+pkg rygel-localsearch 46.1-2
+pkg rygel-playbin 46.1-2
+pkg samba-libs 2:4.25.1+dfsg-1
+provides libndr5 2:4.25.1+dfsg-1 samba-libs
+provides libndr6 2:4.25.1+dfsg-1 samba-libs
+provides libsmbldap2 2:4.25.1+dfsg-1 samba-libs
+pkg sane-airscan 0.99.37-2
+pkg sane-utils 1.4.0-1+b1
+pkg sed 4.9-3
+pkg selinux-utils 3.11-2.1+b1
+pkg sensible-utils 0.0.26
+pkg sgml-base 1.31+nmu1
+pkg sgml-data 2.0.11+nmu1
+pkg shared-mime-info 2.4-5+b4
+pkg showtime 50.0-2
+pkg simple-scan 50.0-2
+pkg sound-icons 0.1-8
+pkg sound-theme-freedesktop 0.8-7
+pkg speech-dispatcher 0.12.1-5
+pkg speech-dispatcher-audio-plugins 0.12.1-5
+pkg speech-dispatcher-espeak-ng 0.12.1-5
+pkg spice-client-glib-usb-acl-helper 0.42-4+b1
+pkg sqv 1.5.0-1
+pkg ssl-cert 1.2.0
+pkg sudo 1.9.17p2-11
+pkg switcheroo-control 3.0-4
+pkg system-config-printer-common 1.5.18-6
+pkg system-config-printer-udev 1.5.18-6
+pkg systemd 262.2-1
+provides systemd-sysusers 262.2-1 systemd
+provides systemd-tmpfiles 262.2-1 systemd
+pkg systemd-cryptsetup 262.2-1
+pkg systemd-oomd 262.2-1
+pkg systemd-resolved 262.2-1
+provides resolvconf - systemd-resolved
+pkg systemd-sysv 262.2-1
+pkg systemd-timesyncd 262.2-1
+provides time-daemon - systemd-timesyncd
+pkg systemd-tpm 262.2-1
+pkg systemd-userdbd 262.2-1
+pkg systemd-zram-generator 1.2.1-2+b2
+pkg sysvinit-utils 3.18-2
+provides lsb-base 11.1.0 sysvinit-utils
+pkg tar 1.35+dfsg-7
+pkg tecla 51.0-1
+pkg timgm6mb-soundfont 1.3-5
+provides sf2-soundfont-gm - timgm6mb-soundfont
+provides sf3-soundfont-gm - timgm6mb-soundfont
+pkg tinysparql 3.12.0-1
+pkg tpm-udev 4.2.1-1
+pkg tree 2.3.2-1
+pkg tzdata 2026f-1
+provides tzdata-forky - tzdata
+pkg ucf 3.0056
+pkg udev 262.2-1
+pkg udisks2 2.11.2-1
+pkg unzip 6.0-31
+pkg update-inetd 4.54
+pkg upower 1.91.5-1
+pkg usb-modeswitch 2.6.2-2+b1
+pkg usb-modeswitch-data 20251207-1
+provides usb-modeswitch-data-packed - usb-modeswitch-data
+pkg usb.ids 2026.06.26-1
+pkg usbmuxd 1.1.1-7
+pkg usbutils 1:019-1+b1
+pkg user-session-migration 0.5.2
+pkg util-linux 2.42.4-1
+provides hardlink - util-linux
+pkg util-linux-extra 2.42.4-1
+pkg v4l-utils 1.32.0-5
+pkg vim-common 2:9.2.0858-1
+pkg vim-tiny 2:9.2.0858-1
+provides editor - vim-tiny
+pkg wamerican 2020.12.07-4
+provides wordlist - wamerican
+pkg webp-pixbuf-loader 0.2.7-3
+pkg whiptail 0.52.25-2+b2
+pkg wireless-regdb 2026.09.03-1
+pkg wireless-tools 30~pre9-23
+pkg wireplumber 0.5.19-1
+pkg wpasupplicant 2:2.11-7
+pkg x11-common 1:7.7+26
+pkg x11-utils 7.7+7+b1
+pkg x11-xkb-utils 7.7+9+b1
+pkg x11-xserver-utils 7.7+11+b1
+pkg xauth 1:1.1.2-1.1+b1
+pkg xbrlapi 6.9.1+repack-3
+pkg xdg-dbus-proxy 0.1.9-1
+pkg xdg-desktop-portal 1.22.1+ds-1
+pkg xdg-desktop-portal-gnome 51.0-2
+provides xdg-desktop-portal-backend 1.7.1 xdg-desktop-portal-gnome
+pkg xdg-desktop-portal-gtk 1.15.3-2+b1
+provides xdg-desktop-portal-backend 1.14.0 xdg-desktop-portal-gtk
+pkg xdg-terminal-exec 0.14.3-3
+pkg xdg-user-dirs 0.20-1
+pkg xdg-user-dirs-gtk 0.16-1+b1
+pkg xdg-utils 1.2.1-2
+pkg xfonts-base 1:1.0.5+nmu1
+pkg xfonts-encodings 1:1.0.4-2.2
+pkg xfonts-utils 1:7.7+7+b1
+pkg xkb-data 2.48-1
+pkg xkbset 0.8-1+b2
+pkg xml-core 0.21
+pkg xserver-common 2:21.1.26-1
+pkg xwayland 2:24.1.15-1
+pkg xxd 2:9.2.0858-1
+pkg xz-utils 5.8.4-1
+provides lzma - xz-utils
+pkg yelp 49.2-1
+pkg yelp-xsl 49.0-3
+pkg zenity 4.2.2-1
+pkg zenity-common 4.2.2-1
+pkg zlib1g 1:1.3.dfsg+really1.3.2-4
+provides libz1 - zlib1g
+pkg zstd 1.5.7+dfsg-4

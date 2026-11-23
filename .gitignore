@@ -1,2 +1,10 @@
 /build*/
 __pycache__/
+# image/: this machine's settings and what is built or extracted here
+/image/local.conf
+/image/zip/update-binary
+/image/src/s10e-part
+/image/src/s10e-part-host
+/image/src/s10e-logo
+/image/src/s10e-logo-host
+/image/nura/initramfs/vibeos-loop.aarch64
