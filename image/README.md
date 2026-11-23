@@ -11,6 +11,7 @@ same session, with `adb sideload`.
 | `build-system.sh` | the system image (root file system): Debian sid, GNOME Shell mobile, VibeOS's packages, the first-boot units |
 | `build-zips.sh` | the zips: `system`, or a device (`s10e`, `s5e`, `poco`) from what `build-device.sh` made |
 | `build-device.sh` | the device half of our four devices (S10e, POCO X3 NFC, Tab S5e, S20 FE): device package, payload, boot images |
+| `build-apt-device.sh` | a device folder's package split for the apt archive: `vibeos-device-DEVICE`, `vibeos-kernel-KVER` (the modules), `vibeos-kernel-DEVICE` |
 | `nura/` | `nura-to-vibeos`: a device zip for any phone [Nura](https://nura.eco) (postmarketOS) has a build for |
 | `zip/` | the installers that run in recovery: `system-install.sh`, `device-install.sh`, `vibeos-lib.sh` (shared), the updater-scripts |
 | `rootfs/` | what every system image starts with: `vibeos-growroot`, `vibeos-device-setup`, the SSH host-key and snakeoil-certificate units |
@@ -147,6 +148,16 @@ Its inputs are device stages of our own phones (a kernel build and its modules, 
 vendor and modem partitions, U-Boot builds, the device's units and settings), named in `local.conf.example`. They are
 not in this repository, so the script is a record of how those zips are put together rather than something to run
 elsewhere. The S20 FE has no device zip: it installs from a PC over its rescue shell (`s20-install-from-pc.sh`).
+
+**The same for the apt archive**: `image/build-apt-device.sh s10e|s5e|poco DEVDIR OUTDIR` splits the folder's
+`vibeos-device-DEVICE` (version 0.1.3+1 in the 0.1.3 zips, no epoch) into `vibeos-device-DEVICE` 1:0.1.4 (firmware,
+units, settings, `vibeos-kernel-install`), `vibeos-kernel-KVER` (the kernel's modules: one package per `uname -r`, so
+a later kernel's modules never replace the ones an older kernel still needs) and `vibeos-kernel-DEVICE`, which
+depends on the current one. The modules change package without being deleted (Replaces and Breaks). Nothing in
+them writes where a boot loader reads a kernel: that is the device zip's. The S10e's `/boot/s10e` files stay byte for
+byte and belong to no package after the upgrade (its preinst diverts them while dpkg would delete them). The POCO's
+loses the ESP hooks (an initrd built on the phone, copied to the ESP, kills the modem) and sets
+`update_initramfs=no`. Never the S20: its kernel goes only through kexec-tested BOOT writes.
 
 ## Tests
 
