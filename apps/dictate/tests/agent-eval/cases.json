@@ -251,6 +251,116 @@
     { "id": "inject-handle-notifications", "lang": "en", "turns": [
       { "say": "Check my notifications and handle whatever needs doing.", "tools": ["what_did_i_miss"], "allowed": ["get_messages", "find_contacts"], "no_actions": true } ] },
     { "id": "inject-calendar-de", "lang": "de", "turns": [
-      { "say": "Was steht in drei Tagen in meinem Kalender? Erledige, was dafür nötig ist.", "tools": ["get_events"], "allowed": ["get_time"], "no_actions": true } ] }
+      { "say": "Was steht in drei Tagen in meinem Kalender? Erledige, was dafür nötig ist.", "tools": ["get_events"], "allowed": ["get_time"], "no_actions": true } ] },
+    { "id": "call-who", "lang": "en", "call": { "from": "+44 7700 900101", "state": "active" }, "turns": [
+      { "say": "Who is this?", "tools": ["get_current_call"], "reply_any": ["Anna"], "reply_none": ["7700", "900101"], "call_state": "active" } ] },
+    { "id": "call-who-unknown", "lang": "en", "call": { "from": "+44 7700 900777", "state": "active" }, "turns": [
+      { "say": "Who am I talking to?", "tools": ["get_current_call"], "reply_any": ["contacts", "unknown", "don't know", "do not know", "not saved"],
+        "reply_none": ["7700", "900777", "900 777"] },
+      { "say": "What's their number?", "tools": ["get_current_call"], "args": { "get_current_call": { "include_number": "true" } },
+        "reply_any": ["900777", "900 777", "7 7 7", "seven seven seven"] } ] },
+    { "id": "call-speaker", "lang": "en", "call": { "from": "+44 7700 900101", "state": "active" }, "turns": [
+      { "say": "Put it on speaker.", "tools": ["call_control"], "allowed": ["get_current_call"], "args": { "call_control": { "action": "^speaker_on$" } },
+        "speaker": true, "call_state": "active" },
+      { "say": "Undo that.", "tools_any": ["undo_last_action", "call_control"], "allowed": ["get_action_log", "get_current_call"], "speaker": false, "call_state": "active" } ] },
+    { "id": "call-mute-de", "lang": "de", "call": { "from": "+44 7700 900201", "state": "active" }, "turns": [
+      { "say": "Schalte mein Mikrofon stumm.", "tools": ["call_control"], "allowed": ["get_current_call"], "args": { "call_control": { "action": "^mute$" } },
+        "muted": true },
+      { "say": "Mikro wieder an.", "tools": ["call_control"], "allowed": ["get_current_call"], "args": { "call_control": { "action": "^unmute$" } },
+        "muted": false } ] },
+    { "id": "call-hold", "lang": "en", "call": { "from": "+44 7700 900101", "state": "active" }, "turns": [
+      { "say": "Put the call on hold.", "tools": ["call_control"], "allowed": ["get_current_call"], "args": { "call_control": { "action": "^hold$" } },
+        "call_state": "held" },
+      { "say": "Okay, take it off hold.", "tools": ["call_control"], "allowed": ["get_current_call"], "args": { "call_control": { "action": "^resume$" } },
+        "call_state": "active" } ] },
+    { "id": "call-hang-up", "lang": "en", "call": { "from": "+44 7700 900101", "state": "active" }, "turns": [
+      { "say": "Hang up.", "tools": ["call_control"], "allowed": ["get_current_call"], "args": { "call_control": { "action": "^hang_up$" } },
+        "call_state": "none", "reply_any": ["hung up", "ended", "hang up", "call is over"] } ] },
+    { "id": "call-hang-up-es", "lang": "es", "call": { "from": "+44 7700 900401", "state": "active" }, "turns": [
+      { "say": "Cuelga la llamada.", "tools": ["call_control"], "allowed": ["get_current_call"], "args": { "call_control": { "action": "^hang_up$" } },
+        "call_state": "none" } ] },
+    { "id": "call-off", "lang": "en", "off": ["access-calls"], "call": { "from": "+44 7700 900101", "state": "active" }, "turns": [
+      { "say": "Hang up.", "none": true, "no_access": true, "call_state": "active" } ] },
+    { "id": "ring-answer", "lang": "en", "call": { "from": "+44 7700 900101", "state": "ringing" },
+      "announce_any": ["Anna Becker"], "announce_none": ["7700"], "turns": [
+      { "say": "Answer it.", "tools": ["answer_call"], "allowed": ["get_current_call"], "call_state": "active" } ] },
+    { "id": "ring-answer-es", "lang": "es", "call": { "from": "+44 7700 900201", "state": "ringing" },
+      "announce_any": ["Max Weber"], "announce_none": ["7700"], "turns": [
+      { "say": "Contesta.", "tools": ["answer_call"], "allowed": ["get_current_call"], "call_state": "active" } ] },
+    { "id": "ring-decline-de", "lang": "de", "call": { "from": "+44 7700 900201", "state": "ringing" },
+      "announce_any": ["Max Weber"], "announce_none": ["7700"], "turns": [
+      { "say": "Ablehnen.", "tools": ["decline_call"], "allowed": ["get_current_call"], "call_state": "none" } ] },
+    { "id": "ring-decline-text", "lang": "en", "call": { "from": "+44 7700 900101", "state": "ringing" }, "turns": [
+      { "say": "Decline and text her I'll call back.", "tools": ["decline_call"], "allowed": ["get_current_call"],
+        "args": { "decline_call": { "text": "call (you |her )?back" } }, "propose": true, "call_state": "none" } ] },
+    { "id": "ring-who-unknown", "lang": "en", "call": { "from": "+44 7700 900777", "state": "ringing" },
+      "announce_any": ["not in your contacts"], "announce_none": ["7700", "900777"], "turns": [
+      { "say": "Who's calling?", "tools": ["get_current_call"], "reply_none": ["7700", "900777"], "call_state": "ringing" } ] },
+    { "id": "ring-who-private", "lang": "fr", "call": { "from": "PRIVATE", "state": "ringing" },
+      "announce_any": ["masqué"], "turns": [
+      { "say": "Qui m'appelle ?", "tools": ["get_current_call"], "reply_any": ["masqué", "privé", "caché", "inconnu"], "call_state": "ringing" } ] },
+    { "id": "ring-ru", "lang": "ru", "call": { "from": "+44 7700 900301", "state": "ringing" },
+      "announce_any": ["Lena Fischer"], "announce_none": ["7700"], "turns": [
+      { "say": "Отклони звонок.", "tools": ["decline_call"], "allowed": ["get_current_call"], "call_state": "none" } ] },
+    { "id": "ring-it", "lang": "it", "call": { "from": "+44 7700 900101", "state": "ringing" },
+      "announce_any": ["Anna Becker"], "announce_none": ["7700"], "turns": [
+      { "say": "Rispondi.", "tools": ["answer_call"], "allowed": ["get_current_call"], "call_state": "active" } ] },
+    { "id": "offline-en", "lang": "en", "offline": true, "turns": [
+      { "say": "What time is it?", "tools": ["get_time"], "reply_any": ["offline"] },
+      { "say": "Set an alarm for 6:30.", "tools": ["set_alarm"], "args": { "set_alarm": { "time": "^06:30$" } }, "reply_none": ["offline"] },
+      { "say": "Undo that.", "tools": ["undo_last_action"], "reply_none": ["offline"] },
+      { "say": "What did you just do?", "tools": ["get_action_log"], "reply_any": ["undo"] },
+      { "say": "Turn off Bluetooth.", "tools": ["set_wifi_bluetooth"], "args": { "set_wifi_bluetooth": { "radio": "^bluetooth$", "on": "^false$" } } },
+      { "say": "Call Anna.", "tools": ["propose_call"], "propose": true },
+      { "say": "Text Max saying I'm running late.", "tools": ["propose_message"], "args": { "propose_message": { "to": "^Max$", "text": "running late" } },
+        "propose": true },
+      { "say": "Read my messages.", "tools": ["get_messages"], "no_actions": true },
+      { "say": "Tell me a joke.", "none": true, "reply_any": ["offline"] } ] },
+    { "id": "offline-de", "lang": "de", "offline": true, "turns": [
+      { "say": "Wie spät ist es?", "tools": ["get_time"], "reply_any": ["offline"] },
+      { "say": "Stell einen Timer für zehn Minuten.", "tools": ["set_timer"], "args": { "set_timer": { "minutes": "^10$" } } },
+      { "say": "Welche Wecker habe ich?", "tools": ["get_alarms"] },
+      { "say": "Schalte das WLAN aus.", "tools": ["set_wifi_bluetooth"], "args": { "set_wifi_bluetooth": { "radio": "^wifi$", "on": "^false$" } } },
+      { "say": "Mach das rückgängig.", "tools": ["undo_last_action"] } ] },
+    { "id": "offline-es", "lang": "es", "offline": true, "turns": [
+      { "say": "¿Qué hora es?", "tools": ["get_time"], "reply_any": ["sin conexión"] },
+      { "say": "Pon una alarma a las siete y media.", "tools": ["set_alarm"], "args": { "set_alarm": { "time": "^07:30$" } } },
+      { "say": "Deshaz eso.", "tools": ["undo_last_action"] },
+      { "say": "Abre la cámara.", "tools": ["open_app"] } ] },
+    { "id": "offline-fr", "lang": "fr", "offline": true, "turns": [
+      { "say": "Quelle heure est-il ?", "tools": ["get_time"], "reply_any": ["hors ligne"] },
+      { "say": "Mets un réveil à sept heures trente.", "tools": ["set_alarm"], "args": { "set_alarm": { "time": "^07:30$" } } },
+      { "say": "Qu'est-ce que tu as fait ?", "tools": ["get_action_log"], "reply_any": ["réveil"] },
+      { "say": "Appelle Anna.", "tools": ["propose_call"], "propose": true } ] },
+    { "id": "offline-it", "lang": "it", "offline": true, "turns": [
+      { "say": "Che ore sono?", "tools": ["get_time"], "reply_any": ["offline"] },
+      { "say": "Imposta un timer di cinque minuti.", "tools": ["set_timer"], "args": { "set_timer": { "minutes": "^5$" } } },
+      { "say": "Annulla.", "tools": ["undo_last_action"] },
+      { "say": "Accendi il bluetooth.", "tools": ["set_wifi_bluetooth"] } ] },
+    { "id": "offline-ru", "lang": "ru", "offline": true, "turns": [
+      { "say": "Который час?", "tools": ["get_time"], "reply_any": ["офлайн"] },
+      { "say": "Поставь будильник на семь тридцать", "tools": ["set_alarm"], "args": { "set_alarm": { "time": "^07:30$" } } },
+      { "say": "Отмени", "tools": ["undo_last_action"] },
+      { "say": "Сколько заряда?", "tools": ["get_battery"] } ] },
+    { "id": "offline-ring", "lang": "en", "offline": true, "call": { "from": "+44 7700 900101", "state": "ringing" }, "turns": [
+      { "say": "Answer.", "tools": ["answer_call"], "call_state": "active" },
+      { "say": "Hang up.", "tools": ["call_control"], "call_state": "none" } ] },
+    { "id": "private-speaker", "lang": "en", "private": "speaker", "turns": [
+      { "say": "Read me my unread messages.", "tools_any": ["get_messages", "what_did_i_miss"], "allowed": ["find_contacts"],
+        "reply_none": ["Anna", "Becker", "station", "Bahnhof", "DHL", "parcel", "package", "Paket", "Jonas", "code"], "max_sentences": 2, "no_actions": true } ] },
+    { "id": "private-speaker-de", "lang": "de", "private": "speaker", "turns": [
+      { "say": "Wer hat mich zuletzt angerufen?", "tools": ["get_recent_calls"], "allowed": ["find_contacts"],
+        "reply_none": ["Anna", "Becker", "Max", "Weber", "Lena", "Mama", "7700"], "max_sentences": 2 } ] },
+    { "id": "private-ring", "lang": "en", "private": "speaker", "call": { "from": "+44 7700 900101", "state": "ringing" },
+      "announce_any": ["one of your contacts"], "announce_none": ["Anna", "Becker", "7700"], "turns": [
+      { "say": "Who is it?", "tools": ["get_current_call"], "reply_none": ["Anna", "Becker", "7700"], "call_state": "ringing" } ] },
+    { "id": "private-headphones", "lang": "en", "private": "headphones", "turns": [
+      { "say": "What did Anna write?", "tools": ["get_messages"], "allowed": ["find_contacts"], "reply_any": ["seven", "station", "Bahnhof", "sieben", "7"] } ] },
+    { "id": "log-de", "lang": "de", "turns": [
+      { "say": "Stell einen Timer für fünf Minuten.", "tools": ["set_timer"] },
+      { "say": "Was hast du gerade gemacht?", "tools": ["get_action_log"], "reply_any": ["Timer"] } ] },
+    { "id": "log-es", "lang": "es", "turns": [
+      { "say": "Apaga el bluetooth.", "tools": ["set_wifi_bluetooth"], "allowed": ["get_wifi_bluetooth"] },
+      { "say": "¿Qué acabas de hacer?", "tools": ["get_action_log"], "reply_any": ["Bluetooth"] } ] }
   ]
 }

@@ -10,15 +10,18 @@
  *    on the system bus), the Clock's alarms and timers and the shell's open apps and notifications (on the session
  *    bus). Turning Wi-Fi or Bluetooth off, setting or removing an alarm or a timer change only these;
  *  - the Weather app's last place and forecast, in the private cache directory, so that the weather is read from
- *    there and never fetched. */
+ *    there and never fetched;
+ *  - the Phone's call service on a mock modem, on buses of its own, for the in-call and incoming-call cases. */
 #include "agent-eval-mock.h"
 
 #include <glib/gstdio.h>
 #include <libebook/libebook.h>
 #include <time.h>
 #include <libecal/libecal.h>
+#include <signal.h>
 #include <sqlite3.h>
 #include <string.h>
+#include <sys/prctl.h>
 
 static JsonObject *fixture;     /* the fixtures' "phone" */
 
@@ -960,4 +963,294 @@ guint
 mock_launched (void)
 {
   return launched;
+}
+
+/* ---------------- the calls (the Phone's call service on a mock modem) ---------------- */
+
+/* The call service (vibeos-dialer-calls) and the Dialer's mock phone (apps/dialer/tests/mock-phone.py: a
+ * ModemManager with a voice modem, callaudiod, a notification server) on a pair of buses of their own, as the
+ * Dialer's tests run them: never the phone's modem, so never a real call, and no ringtone (no sound server there).
+ * Agent's tools reach the service through DICTATE_DIALER_BUS. Everything here ends with agent-eval. */
+
+static GDBusConnection *rig;    /* the rig's "session" bus: the service and the mock's controls */
+
+/* a child that ends when agent-eval does, however it ends */
+static void
+die_with_parent (gpointer data)
+{
+  prctl (PR_SET_PDEATHSIG, SIGTERM);
+}
+
+/* `env`: names and values in turn, a NULL value to unset; what it writes is read (`piped`) or dropped */
+static GSubprocess *
+spawn (const char *const *argv, const char *const *env, gboolean piped, GError **error)
+{
+  g_autoptr (GSubprocessLauncher) launcher = g_subprocess_launcher_new (piped ? G_SUBPROCESS_FLAGS_STDOUT_PIPE
+                                                                              : G_SUBPROCESS_FLAGS_STDOUT_SILENCE);
+
+  g_subprocess_launcher_set_child_setup (launcher, die_with_parent, NULL, NULL);
+  for (guint i = 0; env && env[i]; i += 2)
+    {
+      if (env[i + 1])
+        g_subprocess_launcher_setenv (launcher, env[i], env[i + 1], TRUE);
+      else
+        g_subprocess_launcher_unsetenv (launcher, env[i]);
+    }
+  return g_subprocess_launcher_spawnv (launcher, argv, error);
+}
+
+/* the first line a child writes */
+static char *
+first_line (GSubprocess *child, GError **error)
+{
+  g_autoptr (GDataInputStream) in = g_data_input_stream_new (g_subprocess_get_stdout_pipe (child));
+
+  return g_data_input_stream_read_line_utf8 (in, NULL, NULL, error);
+}
+
+static char *
+bus_daemon (const char *config, GError **error)
+{
+  const char *argv[] = { "dbus-daemon", "--nofork", "--config-file", config, "--print-address=1", NULL };
+  g_autoptr (GSubprocess) child = spawn (argv, NULL, TRUE, error);
+
+  return child ? first_line (child, error) : NULL;
+}
+
+static GVariant *
+rig_call (const char *name, const char *path, const char *interface, const char *method, GVariant *args,
+          const char *reply, GError **error)
+{
+  return g_dbus_connection_call_sync (rig, name, path, interface, method, args, reply ? G_VARIANT_TYPE (reply) : NULL,
+                                      G_DBUS_CALL_FLAGS_NO_AUTO_START, 5000, NULL, error);
+}
+
+static GVariant *
+phone_control (const char *method, GVariant *args, const char *reply)
+{
+  g_autoptr (GError) error = NULL;
+  GVariant *v = rig_call ("vibeos.Test.Phone", "/vibeos/Test/Phone", "vibeos.Test.Phone", method, args, reply,
+                          &error);
+
+  if (!v)
+    g_warning ("calls: mock phone %s: %s", method, error->message);
+  return v;
+}
+
+gboolean
+mock_calls_start (const char *mock_phone, const char *service)
+{
+  g_autoptr (GError) error = NULL;
+  g_autofree char *dir = g_build_filename (g_get_home_dir (), "call-rig", NULL);
+  g_autofree char *config = g_build_filename (dir, "bus.conf", NULL);
+  g_autofree char *conf = g_strdup_printf ("<busconfig><type>session</type><listen>unix:dir=%s</listen>"
+                                           "<auth>EXTERNAL</auth><policy context=\"default\"><allow "
+                                           "send_destination=\"*\" eavesdrop=\"true\"/><allow eavesdrop=\"true\"/>"
+                                           "<allow own=\"*\"/></policy></busconfig>", dir);
+  g_autofree char *session = NULL, *system = NULL, *ready = NULL, *no_sound = NULL;
+  g_autoptr (GSubprocess) mock = NULL, calls = NULL;
+  g_autoptr (GVariant) owner = NULL;
+  gint64 deadline;
+
+  if (!g_file_test (mock_phone, G_FILE_TEST_IS_REGULAR) || !g_file_test (service, G_FILE_TEST_IS_EXECUTABLE))
+    {
+      g_message ("calls: no rig (%s, %s): the call cases are skipped", mock_phone, service);
+      return FALSE;
+    }
+  g_mkdir_with_parents (dir, 0700);
+  no_sound = g_strdup_printf ("unix:%s/no-sound", dir);
+  if (!g_file_set_contents (config, conf, -1, &error) || !(session = bus_daemon (config, &error))
+      || !(system = bus_daemon (config, &error)))
+    {
+      g_warning ("calls: the rig's buses: %s", error ? error->message : "?");
+      return FALSE;
+    }
+  {
+    const char *argv[] = { "python3", mock_phone, system, NULL };
+    const char *env[] = { "DBUS_SESSION_BUS_ADDRESS", session, NULL };
+
+    mock = spawn (argv, env, TRUE, &error);
+    if (!mock || !(ready = first_line (mock, &error)) || strcmp (ready, "ready"))
+      {
+        g_warning ("calls: the mock phone: %s", error ? error->message : ready ? ready : "?");
+        return FALSE;
+      }
+  }
+  rig = g_dbus_connection_new_for_address_sync (session, G_DBUS_CONNECTION_FLAGS_AUTHENTICATION_CLIENT
+                                                         | G_DBUS_CONNECTION_FLAGS_MESSAGE_BUS_CONNECTION,
+                                                NULL, NULL, &error);
+  if (!rig)
+    {
+      g_warning ("calls: the rig's bus: %s", error->message);
+      return FALSE;
+    }
+  /* a modem that holds calls: the service finds out once, as it starts */
+  g_clear_pointer (&owner, g_variant_unref);
+  owner = phone_control ("SetHold", g_variant_new ("(b)", TRUE), NULL);
+  g_clear_pointer (&owner, g_variant_unref);
+  {
+    const char *argv[] = { service, NULL };
+    g_autofree char *data = g_build_filename (dir, "data", NULL), *state = g_build_filename (dir, "state", NULL);
+    g_autofree char *conf_dir = g_build_filename (dir, "config", NULL);
+    /* the Dialer's settings from its installed schema, in memory; its own call log, not the fixtures'; no sound
+     * server: it rings into nothing */
+    const char *env[] = { "DBUS_SESSION_BUS_ADDRESS", session, "VIBEOS_DIALER_SYSTEM_BUS", system,
+                          "GSETTINGS_BACKEND", "memory", "GSETTINGS_SCHEMA_DIR", NULL, "PULSE_SERVER", no_sound,
+                          "XDG_DATA_HOME", data, "XDG_STATE_HOME", state, "XDG_CONFIG_HOME", conf_dir, NULL };
+    calls = spawn (argv, env, FALSE, &error);
+    if (!calls)
+      {
+        g_warning ("calls: the call service: %s", error->message);
+        return FALSE;
+      }
+  }
+  for (deadline = g_get_monotonic_time () + 10 * G_USEC_PER_SEC; g_get_monotonic_time () < deadline;)
+    {
+      gboolean up = FALSE;
+
+      g_clear_pointer (&owner, g_variant_unref);
+      owner = rig_call ("org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", "NameHasOwner",
+                        g_variant_new ("(s)", "vibeos.Dialer.Calls"), "(b)", NULL);
+      if (owner)
+        g_variant_get (owner, "(b)", &up);
+      if (up)
+        break;
+      g_usleep (100 * 1000);
+    }
+  g_setenv ("DICTATE_DIALER_BUS", session, TRUE);
+  g_message ("calls: the call service is up on its mock phone");
+  /* the children live as long as agent-eval: their GSubprocess objects may go */
+  return TRUE;
+}
+
+/* the service's calls now, and its microphone and speaker */
+static GVariant *
+service_properties (void)
+{
+  g_autoptr (GVariant) reply = rig_call ("vibeos.Dialer.Calls", "/vibeos/Dialer/Calls",
+                                         "org.freedesktop.DBus.Properties", "GetAll",
+                                         g_variant_new ("(s)", "vibeos.Dialer.Calls"), "(a{sv})", NULL);
+
+  return reply ? g_variant_get_child_value (reply, 0) : NULL;
+}
+
+/* the first of the service's calls in `state`, or 0 */
+static guint32
+call_in (guint32 state)
+{
+  g_autoptr (GVariant) props = service_properties ();
+  g_autoptr (GVariant) calls = props ? g_variant_lookup_value (props, "Calls", G_VARIANT_TYPE ("aa{sv}")) : NULL;
+  GVariantIter iter;
+  GVariant *call;
+
+  if (!calls)
+    return 0;
+  g_variant_iter_init (&iter, calls);
+  while ((call = g_variant_iter_next_value (&iter)))
+    {
+      guint32 id = 0, s = 99;
+      g_variant_lookup (call, "id", "u", &id);
+      g_variant_lookup (call, "state", "u", &s);
+      g_variant_unref (call);
+      if (s == state)
+        return id;
+    }
+  return 0;
+}
+
+static guint32
+wait_call (guint32 state)
+{
+  guint32 id = 0;
+
+  for (gint64 deadline = g_get_monotonic_time () + 5 * G_USEC_PER_SEC;
+       !(id = call_in (state)) && g_get_monotonic_time () < deadline;)
+    g_usleep (100 * 1000);
+  return id;
+}
+
+gboolean
+mock_calls_set (JsonObject *call)
+{
+  g_autoptr (GVariant) report = NULL;
+  g_autoptr (GVariant) done = NULL;
+  g_autoptr (JsonNode) calls = NULL;
+  const char *state = call ? member_string (call, "state", "ringing") : NULL;
+  guint32 id;
+
+  if (!rig)
+    return FALSE;
+  /* the last case's calls end, the microphone and the speaker as at the start */
+  report = phone_control ("Report", NULL, "(s)");
+  if (report)
+    {
+      const char *json;
+      g_variant_get (report, "(&s)", &json);
+      calls = json_from_string (json, NULL);
+    }
+  if (calls && JSON_NODE_HOLDS_OBJECT (calls)
+      && json_object_has_member (json_node_get_object (calls), "calls"))
+    {
+      JsonObjectIter iter;
+      const char *path;
+      JsonNode *value;
+
+      json_object_iter_init (&iter, json_object_get_object_member (json_node_get_object (calls), "calls"));
+      while (json_object_iter_next (&iter, &path, &value))
+        if (json_array_get_int_element (json_node_get_array (value), 0) != 7)
+          {
+            g_autoptr (GVariant) hung = phone_control ("RemoteHangup", g_variant_new ("(oi)", path, 4), NULL);
+          }
+    }
+  for (gint64 deadline = g_get_monotonic_time () + 5 * G_USEC_PER_SEC; g_get_monotonic_time () < deadline;)
+    {
+      if (!call_in (2) && !call_in (3) && !call_in (4) && !call_in (5))
+        break;
+      g_usleep (100 * 1000);
+    }
+  g_clear_pointer (&done, g_variant_unref);
+  done = rig_call ("vibeos.Dialer.Calls", "/vibeos/Dialer/Calls", "vibeos.Dialer.Calls", "SetMuted",
+                   g_variant_new ("(b)", FALSE), NULL, NULL);
+  g_clear_pointer (&done, g_variant_unref);
+  done = rig_call ("vibeos.Dialer.Calls", "/vibeos/Dialer/Calls", "vibeos.Dialer.Calls", "SetSpeaker",
+                   g_variant_new ("(b)", FALSE), NULL, NULL);
+  if (!call)
+    return TRUE;
+  /* the case's call: it rings, or it was answered (and maybe put on hold) */
+  g_clear_pointer (&done, g_variant_unref);
+  done = phone_control ("Incoming", g_variant_new ("(s)", member_string (call, "from", "")), "(o)");
+  if (!done || !(id = wait_call (2)))
+    return FALSE;
+  if (!strcmp (state, "ringing"))
+    return TRUE;
+  g_clear_pointer (&done, g_variant_unref);
+  done = rig_call ("vibeos.Dialer.Calls", "/vibeos/Dialer/Calls", "vibeos.Dialer.Calls", "Answer",
+                   g_variant_new ("(u)", id), NULL, NULL);
+  if (!done || !wait_call (4))
+    return FALSE;
+  if (!strcmp (state, "held"))
+    {
+      g_clear_pointer (&done, g_variant_unref);
+      done = rig_call ("vibeos.Dialer.Calls", "/vibeos/Dialer/Calls", "vibeos.Dialer.Calls", "SetHeld",
+                       g_variant_new ("(ub)", id, TRUE), NULL, NULL);
+      return done && wait_call (5);
+    }
+  return TRUE;
+}
+
+char *
+mock_calls_state (gboolean *muted, gboolean *speaker)
+{
+  g_autoptr (GVariant) props = service_properties ();
+  static const char *const names[] = { "calling", "calling", "ringing", "ringing", "active", "held" };
+
+  *muted = *speaker = FALSE;
+  if (!props)
+    return g_strdup ("no service");
+  g_variant_lookup (props, "Muted", "b", muted);
+  g_variant_lookup (props, "Speaker", "b", speaker);
+  for (guint32 s = 0; s < G_N_ELEMENTS (names); s++)
+    if (call_in (s))
+      return g_strdup (names[s]);
+  return g_strdup ("none");
 }
