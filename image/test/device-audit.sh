@@ -3,7 +3,8 @@
 # publish of the machine that built it. A leak is:
 #   - a resolv.conf backup, or an ssl-cert snakeoil key or certificate
 #   - this machine's user or host name as a word in a text file
-#   - a /home/<user>/ path of this machine
+#   - a /home/<user>/ or /media/<user>/ path of this machine
+#   - an SSH authorized_keys, host key or private key file, or a private key in any file
 #   - a kernel whose banner names this machine, wherever the kernel sits: kernel-names.py decompresses first (an
 #     Android boot image, a recovery partition, an EFI zboot image on a FAT ESP, a FIT image, an initramfs)
 # Binary files and compressed modules that hold one of the names as a word are listed to look at, not as leaks: a
@@ -20,9 +21,11 @@ for D; do
 	echo "$AUDIT_NAMES" | tr ':' '\n' | sort -u > "$T/names"
 	mkdir -p "$T/x/payload" "$T/x/deb" "$T/x/boot"
 	tar -C "$T/x/payload" -xf "$D/payload.tar"
-	for d in "$D"/debs/vibeos-device-*.deb; do
+	# every package of debs/, the device's own and the builds it carries, each in deb/NAME
+	for d in "$D"/debs/*.deb; do
 		[ -f "$d" ] || continue
-		dpkg-deb -x "$d" "$T/x/deb"; dpkg-deb -e "$d" "$T/x/deb/DEBIAN"
+		p=$(dpkg-deb -f "$d" Package); mkdir -p "$T/x/deb/$p"
+		dpkg-deb -x "$d" "$T/x/deb/$p"; dpkg-deb -e "$d" "$T/x/deb/$p/DEBIAN"
 	done
 	# boot/: FAT images as their files (an ESP's kernel and initrd), everything else as it is
 	for f in "$D"/boot/*; do
@@ -40,8 +43,16 @@ for D; do
 	while read -r f; do leak "$f"; done < "$T/l"
 	grep -RIlwi -F -f "$T/names" "$T/x" | sed "s|^$T/x/||" > "$T/l"
 	while read -r f; do leak "a build name in the text file $f"; done < "$T/l"
-	grep -RlaF "/home/$U/" "$T/x" | sed "s|^$T/x/||" > "$T/l"
-	while read -r f; do leak "/home/$U/ in $f"; done < "$T/l"
+	# SSH keys: an authorized_keys file lets its key's owner in; host keys and private keys are secrets
+	K="-name authorized_keys* -o -name ssh_host_*_key -o -name dropbear_*_host_key -o -name id_rsa -o -name id_ecdsa -o -name id_ed25519"
+	(cd "$T/x" && set -f && find -L . -type f -size +0 \( $K \) | sed 's|^\./||') > "$T/l"
+	while read -r f; do leak "an SSH key file: $f"; done < "$T/l"
+	(cd "$T/x" && set -f && find -L . -type f -empty \( $K \) | sed 's|^\./||') > "$T/l"
+	while read -r f; do echo "CHECK an empty SSH key file (no key in it): $f"; c=$((c + 1)); done < "$T/l"
+	grep -RlaE -e '-----BEGIN ([A-Z]+ )?PRIVATE KEY-----' "$T/x" | sed "s|^$T/x/||" > "$T/l"
+	while read -r f; do leak "a private key in $f"; done < "$T/l"
+	grep -RlaF -e "/home/$U/" -e "/media/$U/" "$T/x" | sed "s|^$T/x/||" > "$T/l"
+	while read -r f; do leak "a /home/$U/ or /media/$U/ path in $f"; done < "$T/l"
 	grep -Rlawi -F -f "$T/names" "$T/x" | sed "s|^$T/x/||" > "$T/l"
 	while read -r f; do
 		grep -qIwi -F -f "$T/names" "$T/x/$f" 2> /dev/null && continue	# a text file: above
@@ -51,7 +62,7 @@ for D; do
 	while read -r f; do
 		case $f in *.zst) z="zstd -dc" ;; *.xz) z="xz -dc" ;; *) z="gzip -dc" ;; esac
 		$z "$T/x/$f" 2> /dev/null > "$T/ko"
-		if grep -qaF "/home/$U/" "$T/ko"; then leak "/home/$U/ in the module $f"
+		if grep -qaF -e "/home/$U/" -e "/media/$U/" "$T/ko"; then leak "a /home/$U/ or /media/$U/ path in the module $f"
 		elif grep -qawi -F -f "$T/names" "$T/ko"; then echo "CHECK a build name as a word in the module $f"; c=$((c + 1)); fi
 	done < "$T/l"
 	# kernels: the boot pieces, and in the payload and the package the big files and anything named like a kernel,

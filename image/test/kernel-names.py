@@ -4,7 +4,7 @@
 # payload, and in a FIT image's images. Each stream found is searched again, three levels deep. Prints every
 # kernel's banner with the build machine's names masked, every decompressed stream that holds one of them, and lz4
 # streams it could not open. The names come from AUDIT_NAMES (colon separated: the build machine's user and host
-# names). Exit 1 when a kernel's banner names one, or a stream holds "NAME@NAME" or /home/USER/.
+# names). Exit 1 when a kernel's banner names one, or a stream holds "NAME@NAME", /home/NAME/ or /media/NAME/.
 import lzma, mmap, os, re, shutil, struct, subprocess, sys, zlib
 
 MAXOUT = 512 << 20		# no stream is decompressed past this
@@ -15,7 +15,9 @@ if not names:
 alt = b"|".join(re.escape(n.encode()) for n in names)
 WORD = re.compile(rb"(?<![A-Za-z0-9_])(?:" + alt + rb")(?![A-Za-z0-9_])", re.I)
 PAIR = re.compile(rb"(?:" + alt + rb")@(?:" + alt + rb")(?![A-Za-z0-9_])", re.I)
-HOME = re.compile(rb"/home/(?:" + alt + rb")/", re.I)
+HOME = re.compile(rb"/(?:home|media|run/media)/(?:" + alt + rb")/", re.I)
+PRIV = re.compile(rb"-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----")
+KEYFILE = re.compile(r"(?:^|/)(?:authorized_keys2?|ssh_host_\w+_key|dropbear_\w+_host_key|id_rsa|id_ecdsa|id_ed25519)$")
 BANNER = re.compile(rb"Linux version ([!-~]{1,64}) \(([^()\x00\n]{1,80})\)([^\x00\n]{0,240})")
 VER = re.compile(rb"\) (#[!-~]*(?: [ -~]{0,60})?)")
 PROC = re.compile(rb"%s version %s \(([^()\x00\n]{1,80})\)")
@@ -118,6 +120,20 @@ def fdt_images(b):
 	return nodes
 
 
+def cpio_names(b):
+	# the members (name, size) of a newc cpio archive starting at 0, and where the archive ends
+	pos, out = 0, []
+	while pos + 110 <= len(b) and bytes(b[pos:pos + 6]) in (b"070701", b"070702"):
+		h = bytes(b[pos:pos + 110])
+		fs, ns = int(h[54:62], 16), int(h[94:102], 16)
+		name = bytes(b[pos + 110:pos + 110 + ns - 1]).decode("utf-8", "replace")
+		if name == "TRAILER!!!":
+			break
+		out.append((name, fs))
+		pos = (((pos + 110 + ns + 3) & ~3) + fs + 3) & ~3
+	return out, pos
+
+
 def cpio_member(b, at):
 	# the newc cpio member that holds offset AT of an archive starting at 0
 	pos = 0
@@ -160,11 +176,30 @@ def look(b, chain, depth, top):
 		if rest:
 			say("CHECK kernel", chain, f"{len(rest)} more build names in it, e.g. "
 				+ " | ".join(mask(bytes(b[max(0, m.start() - 24):m.end() + 24])).replace("\n", " ") for m in rest[:3]))
-	elif not top:
+	if not top:
+		# SSH keys: by name in every newc cpio archive in the stream (an initramfs, or one built into a kernel
+		# uncompressed), and private keys by content
+		keys, empty, pos = [], [], 0
+		for m in re.finditer(rb"070701[0-9A-Fa-f]{8}", b):
+			if m.start() < pos:
+				continue
+			members, end = cpio_names(mv[m.start():])
+			keys += [n for n, s in members if s and KEYFILE.search(n)]
+			empty += [n for n, s in members if not s and KEYFILE.search(n)]
+			pos = m.start() + max(end, 110)
+		if keys:
+			leaks += 1
+			say("LEAK", chain, "SSH key files in a cpio archive: " + ", ".join(sorted(set(keys))[:8]))
+		if empty:
+			say("CHECK", chain, "empty SSH key files in a cpio archive (no key in them): " + ", ".join(sorted(set(empty))[:8]))
+		if PRIV.search(b):
+			leaks += 1
+			say("LEAK", chain, "a private key in this stream")
+	if not (ban and proc) and not top:
 		pairs, homes, words = PAIR.findall(b), HOME.findall(b), WORD.findall(b)
 		if pairs or homes:
 			leaks += 1
-			say("LEAK", chain, f"{len(pairs)} NAME@NAME and {len(homes)} /home/NAME/ in this stream")
+			say("LEAK", chain, f"{len(pairs)} NAME@NAME and {len(homes)} /home/NAME/ or /media/NAME/ in this stream")
 		if words:
 			where = sorted({cpio_member(b, m.start()) or "?" for m in WORD.finditer(b)})[:8]
 			say("CHECK", chain, f"{len(words)} build names as words in this stream (cpio members: {', '.join(where)})")

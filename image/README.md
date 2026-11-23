@@ -171,14 +171,17 @@ machine (TCG, virtio-gpu, Mesa's software renderer) for `BOOT_WAIT` seconds (def
 journal what a first boot must show: the first-boot units, GDM, the vibeos session's GNOME Shell from `/opt`, the
 home screen drawing, and no crash. It needs `qemu-system-aarch64` and the network (for the kernel).
 
-`test/device-audit.sh DEVDIR...` lists what a device folder (`payload.tar`, `debs/`, `boot/`) would publish of the
-machine that built it: a resolv.conf backup or snakeoil key, the build user's or host's name in a text file, a
-`/home/<user>/` path, and every kernel's banner. `test/kernel-names.py` finds the kernels first, decompressed
-wherever they sit: in an Android boot image or a recovery partition (gzip, xz or zstd at any offset), in an EFI
-zboot image on the ESP, in a FIT image, and an initramfs inside a kernel. A kernel's banner names the user and host
-it was built as unless `KBUILD_BUILD_USER` and `KBUILD_BUILD_HOST` were set. The names come from the machine it
-runs on (`AUDIT_NAMES` adds more). Binary files and compressed modules that hold a name as a word are listed to
-look at, since a short host name can be part of a module alias. It exits 1 on a leak, or when it finds no kernel.
+`test/device-audit.sh DEVDIR...` lists what a device folder (`payload.tar`, every package in `debs/`, `boot/`)
+would publish of the machine that built it: a resolv.conf backup or snakeoil key, the build user's or host's name in
+a text file, a `/home/<user>/` or `/media/<user>/` path, an SSH key file (`authorized_keys`, a host key, a private
+key) or a private key in any file, and every kernel's banner. `test/kernel-names.py` finds the kernels first,
+decompressed wherever they sit: in an Android boot image or a recovery partition (gzip, xz or zstd at any offset),
+in an EFI zboot image on the ESP, in a FIT image, and an initramfs inside a kernel; in every stream it opens it
+looks for the same paths, `user@host` and key files in any cpio archive (an initramfs, an embedded config). A
+kernel's banner names the user and host it was built as unless `KBUILD_BUILD_USER` and `KBUILD_BUILD_HOST` were
+set. The names come from the machine it runs on (`AUDIT_NAMES` adds more). Binary files and compressed modules that
+hold a name as a word are listed to look at, since a short host name can be part of a module alias, and so are
+empty key files. It exits 1 on a leak, or when it finds no kernel.
 
 `build-base.sh`, `build-system.sh`, `build-mutter.sh`, `build-mobile.sh`, `compare-rootfs.sh` and `qemu-boot.sh`
 mount in a mount namespace of their own. A service that starts in the meantime (polkit, started for PackageKit's
