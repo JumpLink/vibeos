@@ -1385,7 +1385,15 @@ ns_munge_app_id (const char *id)
   char *m = g_ascii_strdown (id, -1);
   if (g_str_has_suffix (m, ".desktop"))
     m[strlen (m) - strlen (".desktop")] = 0;
-  return g_strcanon (m, "0123456789abcdefghijklmnopqrstuvwxyz-", '-');
+  g_strcanon (m, "0123456789abcdefghijklmnopqrstuvwxyz-", '-');
+  /* and no two dashes in a row, as GNOME Shell's own (messageTray.js _canonicalizeId), which is what reads the
+   * notification keys: "my--app" would be another app's path to it */
+  char *out = m;
+  for (const char *in = m; *in; in++)
+    if (*in != '-' || out == m || out[-1] != '-')
+      *out++ = *in;
+  *out = 0;
+  return m;
 }
 
 GSettings *
