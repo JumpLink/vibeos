@@ -3756,7 +3756,8 @@ static const DictateTool TOOLS[] = {
   { "undo_last_action", NULL, N_("Undoing it…"),
     "Undoes the last thing Agent did that can be undone, within a day: removes the alarm or timer it set, puts back "
     "an alarm or timer it removed, turns Wi-Fi or Bluetooth back as they were, or puts a call's speaker, microphone or "
-    "hold back. For \"undo\", \"undo that\", \"take that back\", \"put it back\".",
+    "hold back. For \"undo\", \"undo that\", \"take that back\", \"put it back\", \"oops\": call it rather than "
+    "doing the thing again yourself, it puts back exactly what was there.",
     "{\"type\":\"object\",\"properties\":{}}", undo_last_action,
     DICTATE_TIER_UNDOABLE, "undid the last action", FALSE },
   { "get_action_log", NULL, N_("Checking what I did…"),
@@ -3783,8 +3784,9 @@ static const DictateTool TOOLS[] = {
     DICTATE_TIER_READ, "looked up the weather", FALSE },
   { "what_did_i_miss", NULL, N_("Checking what you missed…"),
     "What the user missed since they last asked this: missed calls, unread text messages, and the other apps' "
-    "notifications, as counts and from whom or which app. Tell the user that much, the names with the counts (\"a "
-    "missed call from Anna\"). What the messages and notifications say only with include_text.",
+    "notifications, as counts and from whom or which app. Tell the user that much in two sentences at most, the "
+    "names with the counts (\"A missed call from Kim and two messages from Lee. Two notifications, from Mail and "
+    "News.\"). What the messages and notifications say only with include_text.",
     "{\"type\":\"object\",\"properties\":{"
     "\"include_text\":{\"type\":\"boolean\",\"description\":\"Only when the user's own words ask to have them "
     "read out (\\\"read them to me\\\"); never for \\\"what did I miss?\\\" alone.\"}"
