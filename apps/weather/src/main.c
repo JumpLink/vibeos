@@ -1215,12 +1215,16 @@ page_free (Page *p)
 
 /* ---- Set City: a sheet with a field, and the cities matching what is typed, from Open-Meteo's geocoding ----
  *
- * A bottom sheet as tall as the window lets it be, the field at its top. The on-screen keyboard shrinks the window
- * it opens over (the shell gives the window the space above the keyboard), and the sheet with it: the field stays
- * where it is, the list of cities under it gets shorter and scrolls. A search waits for a pause in the typing; an
- * answer for anything but the latest search is dropped, and the search it was for stopped. */
+ * A bottom sheet as tall as the window lets it be, the field at its top (a card in the middle on a tablet: see
+ * fit_search). The on-screen keyboard shrinks the window it opens over (the shell gives the window the space above
+ * the keyboard), and the sheet with it: the field stays where it is, the list of cities under it gets shorter and
+ * scrolls. A search waits for a pause in the typing; an answer for anything but the latest search is dropped, and
+ * the search it was for stopped. */
 
 #define SEARCH_DELAY_MS 250     /* the pause in the typing that starts a search */
+#define CARD_WIDTH      480     /* a larger window (a tablet's): the sheet is a card in the middle, this wide, */
+#define CARD_LIST       400     /* with its list this tall: five cities, the card one size whatever is found */
+#define CARD_BAR        56      /* the card's bar, a compact VibeosTopBar */
 #define SEARCH_MIN      2       /* the characters a search needs: fewer would match half the world */
 #define SEARCH_COUNT    8
 
@@ -1231,7 +1235,7 @@ typedef struct {
 
 typedef struct {
   Page        *p;
-  GtkWidget   *sheet, *text, *clear, *status, *list;
+  GtkWidget   *sheet, *field, *text, *clear, *status, *list, *scroll;
   GArray      *cities;          /* City: the rows', in order */
   guint        delay;           /* the pause before the search */
   guint        serial;          /* the latest search; an answer to an older one is dropped */
@@ -1276,11 +1280,47 @@ search_stop (CitySearch *s)
   g_clear_object (&s->curl);
 }
 
+/* The sheet's size. A bottom sheet (a phone's) is as tall as the window lets it be. On a larger window libvibeos
+ * floats the sheet as a card in the middle, 360 wide and here as tall as the window: a narrow column, empty under
+ * the field until something is typed. The card is CARD_WIDTH wide instead and as tall as its list's CARD_LIST,
+ * less on a window too short for that (the keyboard is up), and it keeps that size as cities come and go: the
+ * status, when it shows, takes its height from the list's. */
+static void
+fit_search (CitySearch *s)
+{
+  VibeosLayout *layout = vibeos_layout_get_for_window (GTK_WINDOW (s->p->win));
+  int width = vibeos_layout_get_width (layout), height = vibeos_layout_get_height (layout);
+  /* libvibeos's floating sheet: on a window over 450 x 360, with these margins at its top and bottom */
+  gboolean card = width > 450 && height > 360;
+  double ends = 20 + 100 * MAX (0, (height - 720) / 720.0);
+  int field = 0, status = 0, room;
+
+  vibeos_sheet_set_full_height (VIBEOS_SHEET (s->sheet), !card);
+  vibeos_sheet_set_content_width (VIBEOS_SHEET (s->sheet), card ? CARD_WIDTH : 0);
+  if (!card)
+    {
+      gtk_widget_set_size_request (s->scroll, -1, -1);
+      return;
+    }
+  gtk_widget_measure (s->field, GTK_ORIENTATION_VERTICAL, CARD_WIDTH, NULL, &field, NULL, NULL);
+  if (gtk_widget_get_visible (s->status))
+    gtk_widget_measure (s->status, GTK_ORIENTATION_VERTICAL, CARD_WIDTH, NULL, &status, NULL, NULL);
+  room = MIN (height - (int) (2 * ends) - CARD_BAR - field, CARD_LIST);
+  gtk_widget_set_size_request (s->scroll, -1, MAX (room - status, 0));
+}
+
+static void
+on_search_layout (VibeosLayout *layout, CitySearch *s)
+{
+  fit_search (s);
+}
+
 static void
 show_status (CitySearch *s, const char *text)
 {
   gtk_label_set_text (GTK_LABEL (s->status), text ? text : "");
   gtk_widget_set_visible (s->status, text != NULL);
+  fit_search (s);
 }
 
 static void
@@ -1449,6 +1489,7 @@ on_search_destroy (GtkWidget *sheet, CitySearch *s)
 {
   s->gone = TRUE;
   search_stop (s);
+  g_signal_handlers_disconnect_by_func (vibeos_layout_get_for_window (GTK_WINDOW (s->p->win)), on_search_layout, s);
 }
 
 /* the ⋮ menu's Set City */
@@ -1463,10 +1504,11 @@ set_city (gpointer data)
   GtkWidget *scroll = spongy_scroll_view_new ();
 
   s->p = p;
+  s->field = field;
+  s->scroll = scroll;
   s->cities = g_array_new (FALSE, TRUE, sizeof (City));
   g_array_set_clear_func (s->cities, city_clear);
   s->sheet = vibeos_sheet_new ("Set City");
-  vibeos_sheet_set_full_height (VIBEOS_SHEET (s->sheet), TRUE);
   g_object_set_data_full (G_OBJECT (s->sheet), "wx-city-search", s, search_release);
   g_signal_connect (s->sheet, "destroy", G_CALLBACK (on_search_destroy), s);
 
@@ -1507,6 +1549,7 @@ set_city (gpointer data)
 
   vibeos_sheet_set_content (VIBEOS_SHEET (s->sheet), content);
   show_idle (s);
+  g_signal_connect (vibeos_layout_get_for_window (GTK_WINDOW (p->win)), "changed", G_CALLBACK (on_search_layout), s);
   vibeos_sheet_present (VIBEOS_SHEET (s->sheet), p->win);
   /* typing at once: the keyboard comes up for a field focused right after a tap */
   gtk_widget_grab_focus (s->text);

@@ -459,6 +459,11 @@ ct-page.translucent {
   color: @vibeos_white;
 }
 
+/* a detail pane's header is the pane's own colour */
+.ct-qc-actions.pane .ct-icon-button image {
+  color: @vibeos_on_surface_variant;
+}
+
 /* ---- the editor ---- */
 
 .ct-ed-text {

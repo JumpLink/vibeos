@@ -17,11 +17,11 @@ G_DECLARE_FINAL_TYPE (DialerPopupMenu, dialer_popup_menu, DIALER, POPUP_MENU, Gt
 typedef void (*PopupMenuAction) (gpointer data);
 
 typedef enum {
-  POPUP_MENU_START,
-  POPUP_MENU_END,
+  POPUP_MENU_START,             /* a long-pressed tile's: over it, its start on the tile's */
+  POPUP_MENU_END,               /* a menu button's: its end on the button's, below it (above it with no room below) */
   POPUP_MENU_BELOW,             /* a drop-down: under the anchor, its start on the anchor's (the dialpad's ⋮) */
-  POPUP_MENU_OVERFLOW,          /* an action bar's ⋮: its end a little in from the anchor's, its top on the top
-                                 * of an overflow button centred on the anchor */
+  POPUP_MENU_OVERFLOW,          /* an action bar's ⋮: its end a little in from the anchor's, below the anchor
+                                 * (above it with no room below), never over it */
 } PopupMenuGravity;
 
 DialerPopupMenu *dialer_popup_menu_new (void);

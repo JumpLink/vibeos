@@ -6,6 +6,7 @@
 
 #define ROW_HEIGHT 48.0
 #define EDGE 8.0                        /* the popup keeps this far from the window's edges */
+#define ANCHOR_GAP 4.0                  /* an overflow menu, this far from its ⋮ */
 
 typedef struct {
   GtkWidget *layer;
@@ -103,10 +104,18 @@ cal_popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, int 
   gtk_widget_set_overflow (card, GTK_OVERFLOW_HIDDEN);
   gtk_box_append (GTK_BOX (card), scroll);
 
-  /* as tall as the rows (and the card's padding), within the window; over the anchor, moved
-   * up if it would run off the bottom */
+  /* as tall as the rows (and the card's padding), within the window; a spinner's over the anchor, moved up if it
+   * would run off the bottom; an overflow menu next to its ⋮, never over it (libvibeos's VibeosMenu): below it, or
+   * above it when it does not fit below */
   height = MIN (n_labels * ROW_HEIGHT + 16, window_height - 2 * EDGE);
-  top = CLAMP (at.y, EDGE, window_height - EDGE - height);
+  top = at.y;
+  if (end && selected < 0)
+    {
+      top = at.y + gtk_widget_get_height (anchor) + ANCHOR_GAP;
+      if (top + height > window_height - EDGE && at.y - ANCHOR_GAP - height >= EDGE)
+        top = at.y - ANCHOR_GAP - height;
+    }
+  top = CLAMP (top, EDGE, window_height - EDGE - height);
   gtk_widget_set_size_request (card, (int) width, (int) height);
   gtk_widget_set_halign (card, GTK_ALIGN_START);
   gtk_widget_set_valign (card, GTK_ALIGN_START);

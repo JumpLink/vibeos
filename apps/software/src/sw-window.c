@@ -233,7 +233,9 @@ sw_window_open_app (GtkWidget *from, const char *app_id, JsonObject *summary)
 void
 sw_window_open_list (GtkWidget *from, const char *title, const char *path)
 {
-  sw_window_push (from, sw_list_page_new (title, path));
+  g_autofree char *shown = sw_device_title (from, title);
+
+  sw_window_push (from, sw_list_page_new (shown, path));
 }
 
 void

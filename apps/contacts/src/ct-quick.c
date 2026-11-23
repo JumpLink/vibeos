@@ -21,7 +21,11 @@
  *   - tapping an event (the Calendar has no "show this day" entry point) or a relation (a contact search by name);
  *   - the Palette swatch of a photo: a photo contact takes the default tint, the one a photo without a vibrant
  *     swatch gets;
- *   - pulling the sheet down to dismiss it, and the landscape two-panel layout. Back closes it. */
+ *   - pulling the sheet down to dismiss it, and the landscape two-panel layout. Back closes it.
+ *
+ * In a tablet's detail pane (ct_quick_new_embedded) the header is Google Contacts' contact page instead of the
+ * picture: the round photo or letter tile centred under the toolbar and the name centred under it, on the pane's
+ * own colour. A picture as wide as the pane, half its height, was a silhouette 370 dp tall over the cards. */
 #include "ct-quick.h"
 #include "ct-avatar.h"
 #include "ct-dialogs.h"
@@ -37,6 +41,11 @@
 #include <math.h>
 #include <vibeos.h>
 #include <spongy-gtk.h>
+
+/* the detail pane's header (a tablet's): the photo, from it to the name, and from the name to the cards */
+#define PANE_PHOTO_DP   136.0
+#define PANE_GAP_DP     16.0
+#define PANE_BOTTOM_DP  24.0
 
 typedef struct _Quick Quick;
 
@@ -185,6 +194,74 @@ append_gradient (GtkSnapshot *snapshot, double y, double width, double height, d
                                        &GRAPHENE_POINT_INIT (0, (float) (y + height)), stops, 2);
 }
 
+/* the name and the phonetic name under it: their height at full size */
+static double
+title_block (Quick *quick, GtkWidget *widget, double width, PangoLayout **title_out, PangoLayout **phonetic_out)
+{
+  TextStyle title_style = CT_TEXT (CT_QC_TITLE_MAX_DP, CT_WEIGHT_REGULAR);
+  TextStyle phonetic_style = CT_TEXT (CT_QC_PHONETIC_MAX_DP, CT_WEIGHT_REGULAR);
+  PangoLayout *title = text_layout (widget, title_style, quick->name ? quick->name : "", width);
+  PangoLayout *phonetic = quick->phonetic ? text_layout (widget, phonetic_style, quick->phonetic, width) : NULL;
+  double block = text_box_height (title, title_style) + (phonetic ? text_box_height (phonetic, phonetic_style) : 0);
+
+  if (title_out)
+    *title_out = title;
+  else
+    g_object_unref (title);
+  if (phonetic_out)
+    *phonetic_out = phonetic;
+  else if (phonetic)
+    g_object_unref (phonetic);
+  return block;
+}
+
+/* The detail pane's header: the pane's colour, the round photo (or tile) centred under the toolbar and the name
+ * centred under it. As the cards go up the photo goes with them and fades, and the name moves into the bar and
+ * shrinks to the bar's title, on the same curve as over a picture. */
+static void
+pane_header_snapshot (GtkWidget *widget, GtkSnapshot *snapshot, Quick *quick, double width, double height,
+                      double ratio)
+{
+  TextStyle title_style = CT_TEXT (CT_QC_TITLE_MAX_DP, CT_WEIGHT_REGULAR);
+  TextStyle phonetic_style = CT_TEXT (CT_QC_PHONETIC_MAX_DP, CT_WEIGHT_REGULAR);
+  GdkRGBA fill = vibeos_color (VIBEOS_SURFACE_CONTAINER), ink = vibeos_color (VIBEOS_ON_SURFACE);
+  GdkRGBA ink_variant = vibeos_color (VIBEOS_ON_SURFACE_VARIANT);
+  graphene_rect_t bounds = GRAPHENE_RECT_INIT (0, 0, (float) width, (float) height);
+  PangoLayout *title = NULL, *phonetic = NULL;
+  double up = quick->max_h - height, block, box, b, scale, x, top, top_full, top_bar;
+
+  gtk_snapshot_push_clip (snapshot, &bounds);
+  gtk_snapshot_append_color (snapshot, &fill, &bounds);
+  gtk_snapshot_push_opacity (snapshot, CLAMP (ratio, 0, 1));
+  ct_avatar_snapshot (snapshot, widget, width / 2, quick->min_h + PANE_PHOTO_DP / 2 - up, PANE_PHOTO_DP,
+                      quick->tint_uid, quick->name, quick->photo);
+  gtk_snapshot_pop (snapshot);
+
+  block = title_block (quick, widget, width - 2 * CT_QC_TITLE_MARGIN_H_DP, &title, &phonetic);
+  box = text_box_height (title, title_style);
+  b = spongy_interp_get (&quick->title_curve, (float) CLAMP (ratio, 0, 1));
+  scale = (CT_QC_TITLE_PLACEHOLDER_DP + (CT_QC_TITLE_MAX_DP - CT_QC_TITLE_PLACEHOLDER_DP) * b) / CT_QC_TITLE_MAX_DP;
+  /* centred under the photo at full size; in the bar, at its start, at the least */
+  x = CT_QC_TITLE_MARGIN_H_DP + (MAX ((width - text_width (title)) / 2, CT_QC_TITLE_MARGIN_H_DP)
+                                 - CT_QC_TITLE_MARGIN_H_DP) * b;
+  top_full = quick->min_h + PANE_PHOTO_DP + PANE_GAP_DP - up;
+  top_bar = (quick->min_h - block) / 2;
+  top = top_bar + (MAX (top_full, top_bar) - top_bar) * b;
+
+  gtk_snapshot_save (snapshot);
+  gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT ((float) x, (float) (top + block / 2)));
+  gtk_snapshot_scale (snapshot, (float) scale, (float) scale);
+  gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, (float) (-block / 2)));
+  text_draw (snapshot, title, title_style, 0, 0, &ink);
+  if (phonetic)
+    text_draw (snapshot, phonetic, phonetic_style,
+               (text_width (title) - text_width (phonetic)) / 2 * b, box, &ink_variant);
+  gtk_snapshot_restore (snapshot);
+  gtk_snapshot_pop (snapshot);
+  g_object_unref (title);
+  g_clear_object (&phonetic);
+}
+
 static void
 qc_header_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
@@ -212,6 +289,13 @@ qc_header_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
                                            &GRAPHENE_POINT_INIT (0, (float) height),
                                            &GRAPHENE_POINT_INIT (0, (float) (height + CT_QC_TOOLBAR_ELEVATION_DP)),
                                            (GskColorStop[]) { { 0, shade }, { 1, clear } }, 2);
+    }
+
+  if (quick->embedded)
+    {
+      pane_header_snapshot (widget, snapshot, quick, width, height, ratio);
+      gtk_widget_snapshot_child (widget, quick->actions, snapshot);
+      return;
     }
 
   gtk_snapshot_push_clip (snapshot, &bounds);
@@ -309,10 +393,16 @@ struct _QcContent {
 
 G_DEFINE_FINAL_TYPE (QcContent, qc_content, GTK_TYPE_WIDGET)
 
-/* the maximum height: square with the page's width, but never more than half the page's height (a wide pane) */
+/* the maximum height: square with the page's width, but never more than half the page's height (a wide pane); in
+ * a detail pane, the toolbar, the photo and the name (pane_header_snapshot) */
 static double
 max_header_height (Quick *quick, double width)
 {
+  if (quick->embedded)
+    return quick->min_h + PANE_PHOTO_DP + PANE_GAP_DP
+           + title_block (quick, quick->window, MAX (width - 2 * CT_QC_TITLE_MARGIN_H_DP, 1), NULL, NULL)
+           + PANE_BOTTOM_DP;
+
   double limit = quick->view_h > 0 ? quick->view_h / 2 : width;
 
   return MAX (MIN (width, limit), CT_TOOLBAR_H_DP);
@@ -1271,8 +1361,8 @@ quick_new (GtkWidget *window, const char *uid, gboolean embedded)
   quick->uid = g_strdup (uid);
   quick->profile = profile;
   quick->min_h = CT_TOOLBAR_H_DP;
-  quick->max_h = max_header_height (quick, 360);
   quick->embedded = embedded;
+  quick->max_h = max_header_height (quick, 360);
   quick->sheet = embedded ? 0 : 1;
   spongy_interp_cubic (&quick->title_curve, CT_QC_TITLE_CURVE_X1, CT_QC_TITLE_CURVE_Y1, CT_QC_TITLE_CURVE_X2,
                        CT_QC_TITLE_CURVE_Y2);
@@ -1302,6 +1392,8 @@ quick_new (GtkWidget *window, const char *uid, gboolean embedded)
   quick->header = g_object_new (QC_TYPE_HEADER, NULL);
   QC_HEADER (quick->header)->quick = quick;
   quick->actions = make_actions (quick);
+  if (embedded)
+    gtk_widget_add_css_class (quick->actions, "pane");
   gtk_widget_set_parent (quick->actions, quick->header);
   /* the header after the cards: drawn over them, picked before them */
   gtk_widget_set_parent (quick->header, quick->content);

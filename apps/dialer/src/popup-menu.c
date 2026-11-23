@@ -1,4 +1,5 @@
-/* The pop-up menu: see popup-menu.h. On opening, the card's clip grows down from the anchor while it fades in. */
+/* The pop-up menu: see popup-menu.h. On opening, the card's clip grows away from the anchor (down below it, up above
+ * it) while it fades in. */
 #include "popup-menu.h"
 
 #include <vibeos.h>
@@ -8,7 +9,8 @@
 #define TEXT_PAD        16      /* the text's inset at both ends */
 #define CORNER          2
 #define OVERFLOW_INSET  4       /* an overflow menu's end, this far in from its anchor's */
-#define OVERFLOW_HALF   24      /* half an overflow button: the card's top on the button's top */
+#define ANCHOR_GAP      4       /* between a menu button's edge and the card's */
+#define END_MARGIN      4       /* a button's menu, at least this far in from the window's top and foot */
 #define EDGE            8       /* closer than this to the window's edge, it is flush with it */
 #define ENTER_MS        250     /* the clip reveal and the fade in */
 #define EXIT_MS         150
@@ -30,6 +32,7 @@ struct _DialerPopupMenu
   VibeosAnim *anim;
   double shown;                 /* 0 … 1 */
   gboolean closing;
+  gboolean upward;              /* it opened above the anchor */
 };
 
 G_DEFINE_FINAL_TYPE (DialerPopupMenu, dialer_popup_menu, GTK_TYPE_WIDGET)
@@ -41,6 +44,20 @@ dialer_popup_menu_measure (GtkWidget *widget, GtkOrientation orientation, int fo
   *minimum = *natural = 0;      /* it covers the window it is in, to see the taps outside the card */
 }
 
+/* a menu button's menu (libvibeos's VibeosMenu): next to the button, never over it; below it, or above it when it does
+ * not fit below; only when it fits neither way is it pushed onto the button, from the side with more room */
+static double
+next_to_anchor (DialerPopupMenu *self, const graphene_rect_t *a, int h, int height)
+{
+  double below = height - END_MARGIN - (a->origin.y + a->size.height + ANCHOR_GAP);
+  double above = a->origin.y - ANCHOR_GAP - END_MARGIN;
+
+  self->upward = h > below && (h <= above || above > below);
+  if (!self->upward)
+    return MIN (a->origin.y + a->size.height + ANCHOR_GAP, height - END_MARGIN - h);
+  return MAX (a->origin.y - ANCHOR_GAP - h, END_MARGIN);
+}
+
 static void
 dialer_popup_menu_size_allocate (GtkWidget *widget, int width, int height, int baseline)
 {
@@ -49,6 +66,7 @@ dialer_popup_menu_size_allocate (GtkWidget *widget, int width, int height, int b
   int min, nat, w, h;
   double x, y;
 
+  self->upward = FALSE;
   gtk_widget_measure (self->card, GTK_ORIENTATION_HORIZONTAL, -1, &min, &nat, NULL, NULL);
   w = MIN (MAX (nat, MIN_WIDTH), width);
   gtk_widget_measure (self->card, GTK_ORIENTATION_VERTICAL, w, &min, &nat, NULL, NULL);
@@ -57,7 +75,7 @@ dialer_popup_menu_size_allocate (GtkWidget *widget, int width, int height, int b
     {
       /* only kept on the screen, never snapped to its edge: its end stays OVERFLOW_INSET in from the anchor's */
       x = CLAMP (a->origin.x + a->size.width - OVERFLOW_INSET - w, 0, width - w);
-      y = MIN (a->origin.y + a->size.height / 2 - OVERFLOW_HALF, height - h);
+      y = next_to_anchor (self, a, h, height);
       gtk_widget_allocate (self->card, w, h, -1, gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (x, MAX (y, 0))));
       return;
     }
@@ -71,11 +89,18 @@ dialer_popup_menu_size_allocate (GtkWidget *widget, int width, int height, int b
       /* under the anchor; with no room there, over it */
       y = a->origin.y + a->size.height;
       if (y + h > height && a->origin.y - h >= 0)
-        y = a->origin.y - h;
+        {
+          y = a->origin.y - h;
+          self->upward = TRUE;
+        }
       y = MIN (y, height - h);
     }
+  else if (self->gravity == POPUP_MENU_END)
+    /* the ⋮ of the search bar */
+    y = next_to_anchor (self, a, h, height);
   else
-    /* over the anchor: its top on the anchor's; one that would run off the foot goes up as far as it must */
+    /* a long-pressed tile's: over it, its top on the tile's; one that would run off the foot goes up as far as it
+     * must */
     y = MIN (a->origin.y, height - h);
   y = MAX (y, 0);
   gtk_widget_allocate (self->card, w, h, -1, gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (x, y)));
@@ -99,9 +124,10 @@ dialer_popup_menu_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   near = vibeos_color_alpha (VIBEOS_SHADOW, 0.2f);
   gtk_snapshot_append_outset_shadow (snapshot, &shape, &far, 0, 8, 2, 16);
   gtk_snapshot_append_outset_shadow (snapshot, &shape, &near, 0, 2, 0, 4);
-  /* the clip reveal: from the top edge down */
-  gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (card.origin.x, card.origin.y, card.size.width,
-                                                         card.size.height * reveal));
+  /* the clip reveal, away from the anchor: from the top edge down, or for a menu above it from the foot up */
+  gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (card.origin.x,
+                                                         card.origin.y + (self->upward ? card.size.height * (1 - reveal) : 0),
+                                                         card.size.width, card.size.height * reveal));
   gtk_widget_snapshot_child (widget, self->card, snapshot);
   gtk_snapshot_pop (snapshot);
   gtk_snapshot_pop (snapshot);

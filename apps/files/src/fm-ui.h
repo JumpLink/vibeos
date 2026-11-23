@@ -47,7 +47,8 @@ void       fm_progress_set_fraction (GtkWidget *progress, double fraction);
  * given). */
 typedef void (*FmPopupChosen) (int index, gpointer data);
 typedef enum {
-  FM_POPUP_OVER_END,            /* an overflow menu: its top on the anchor's, its end on the anchor's end */
+  FM_POPUP_OVER_END,            /* an overflow menu: below its ⋮ (above it with no room below), never over it, its
+                                 * end on the anchor's end */
   FM_POPUP_AT,                  /* a context menu: its top-left at (x, y) in the anchor */
 } FmPopupPlace;
 void       fm_popup_show    (GtkWidget *anchor, const char *const *labels, int n_labels, FmPopupPlace place,

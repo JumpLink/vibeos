@@ -13,7 +13,7 @@
 #define LETTER_SPACING  0.03125 /* em, between the letters of a row's text */
 #define CORNER          4       /* the card's corners */
 #define END_MARGIN      4       /* between the card and the window's sides */
-#define TOP_OFFSET      1       /* device px: the card's top under the anchor's */
+#define ANCHOR_GAP      4       /* between the anchor's edge and the card's */
 #define ENTER_MS        250
 #define EXIT_MS         150
 
@@ -33,6 +33,7 @@ struct _CalcPopupMenu {
   VibeosAnim        *anim;
   double          shown;
   gboolean        closing;
+  gboolean        upward;       /* it opened above the anchor */
   int             pressed;      /* the row under the finger, -1: none */
 };
 
@@ -61,9 +62,19 @@ calc_popup_menu_size_allocate (GtkWidget *widget, int width, int height, int bas
   }
   double w = MIN (text + 2 * TEXT_PAD, width - 2 * END_MARGIN);
   double h = self->rows->len * ROW_HEIGHT + 2 * LIST_PAD;
-  double x = width - END_MARGIN - w;
-  double y = MIN (self->anchor.origin.y + (double) TOP_OFFSET / scale, height - h);
+  const graphene_rect_t *a = &self->anchor;
+  double x, y, below, above;
 
+  /* next to the anchor, never over it (libvibeos's VibeosMenu): lined up with its end, below it, or above it when it
+   * does not fit below; only when it fits neither way is it pushed onto the anchor, from the side with more room */
+  x = CLAMP (a->origin.x + a->size.width - w, END_MARGIN, MAX (END_MARGIN, width - END_MARGIN - w));
+  below = height - END_MARGIN - (a->origin.y + a->size.height + ANCHOR_GAP);
+  above = a->origin.y - ANCHOR_GAP - END_MARGIN;
+  self->upward = h > below && (h <= above || above > below);
+  if (!self->upward)
+    y = MIN (a->origin.y + a->size.height + ANCHOR_GAP, height - END_MARGIN - h);
+  else
+    y = MAX (a->origin.y - ANCHOR_GAP - h, END_MARGIN);
   graphene_rect_init (&self->card, x, MAX (0, y), w, h);
 }
 
@@ -85,7 +96,9 @@ calc_popup_menu_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   /* a faint shadow, just enough to lift the card off the background */
   gtk_snapshot_append_outset_shadow (snapshot, &shape, (GdkRGBA[]) { vibeos_color_alpha (VIBEOS_SHADOW, 0.3f) },
                                      0, 2, 0, 6);
-  gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (self->card.origin.x, self->card.origin.y,
+  /* the clip reveal, away from the anchor: from the top edge down, or for a menu above it from the foot up */
+  gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (self->card.origin.x, self->card.origin.y +
+                                                         (self->upward ? self->card.size.height * (1 - reveal) : 0),
                                                          self->card.size.width, self->card.size.height * reveal));
   gtk_snapshot_push_rounded_clip (snapshot, &shape);
   gtk_snapshot_append_color (snapshot, &background, &self->card);

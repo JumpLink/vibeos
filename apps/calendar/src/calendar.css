@@ -192,8 +192,8 @@ cal-day-view {
   padding: 8dp 0;
 }
 
-.cal-overflow-menu {                     /* the toolbar's menu, near the screen's top end */
-  margin: 8dp 4dp 0 0;
+.cal-overflow-menu {                     /* the toolbar's menu, under its ⋮ (the top margin is the code's) */
+  margin: 0 4dp 0 0;
   min-width: 196dp;
 }
 

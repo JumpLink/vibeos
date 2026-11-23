@@ -6,6 +6,7 @@
 #include <spongy-gtk.h>
 
 #define EDGE 8.0                /* the menu keeps this far from the window's edges */
+#define ANCHOR_GAP 4.0          /* an overflow menu, this far from its ⋮ */
 
 typedef struct {
   GtkWidget *layer;
@@ -161,9 +162,13 @@ popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, CtPopupP
   switch (place)
     {
     case CT_POPUP_OVER_END:
-      /* over the anchor, with a horizontal offset: the top on the anchor's top, the end a little in */
+      /* next to its ⋮, never over it (libvibeos's VibeosMenu): the end a little in from the anchor's, below the
+       * anchor, or above it when it does not fit below; when it fits neither way, the CLAMP below pushes it onto
+       * the anchor */
       left = at.x + gtk_widget_get_width (anchor) - width + CT_POPUP_H_OFFSET_DP;
-      top = at.y;
+      top = at.y + gtk_widget_get_height (anchor) + ANCHOR_GAP;
+      if (top + height > window_height - EDGE && at.y - ANCHOR_GAP - height >= EDGE)
+        top = at.y - ANCHOR_GAP - height;
       break;
     case CT_POPUP_BELOW:
       left = at.x;
