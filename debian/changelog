@@ -59,6 +59,8 @@ vibeos (1:0.1.4) unstable; urgency=medium
     Home minimizes only the phone screen's windows, so a game on a
     plugged-in TV stays open.
   * App Installer has no icon in the launcher.
+  * Browser: web videos play and loop, decoded in software (the hardware
+    decoder's frames came out black).
   * libvibeos: a sheet's close and a bar's back circle follow the theme, a
     search view can have a button at the bar's end, and a dialog gives
     the focus back only if its answer left it there.
