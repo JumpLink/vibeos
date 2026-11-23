@@ -1,3 +1,9 @@
 # VibeOS's lock screen (vibeos-auth): the PIN or pattern is the user's own password
 @include common-auth
+# The session is started by GDM's auto-login, which has no password, so the login keyring starts locked. The
+# lock screen's PIN is the one moment the password passes through PAM again: pam_gnome_keyring takes it from here
+# and unlocks the keyring through the daemon's control socket in $XDG_RUNTIME_DIR (vibeos-auth runs in the
+# user's session). Optional: a wrong keyring password must not fail an otherwise right PIN. Debian's common-auth
+# does not list the module, only gdm-password and common-session do.
+auth	optional	pam_gnome_keyring.so
 @include common-account
