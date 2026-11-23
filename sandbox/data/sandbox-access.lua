@@ -23,6 +23,16 @@
 -- which other apps' sound or pictures would be routed to, is destroyed, and never a target in the meantime.
 --
 -- When the permission store cannot be read, the microphone and the cameras stay hidden.
+--
+-- And for every client, not only sandboxed apps: Settings' Microphone and Camera switches (Security and privacy:
+-- org.gnome.desktop.privacy disable-microphone and disable-camera, which the shell mirrors into the permission store
+-- as "vibeos-privacy"/"microphone" and "vibeos-privacy"/"camera", app "all" = "blocked"). While one is blocked, the
+-- microphones (or the cameras) are hidden from every client but PipeWire's and WirePlumber's own, VibeOS's own apps,
+-- the portals and the shell included; no capture stream of theirs is linked to one, and the links one had are taken
+-- away at once. A sound capture stream can still record what plays (a sink's monitor), as on Android. PipeWire's
+-- and WirePlumber's own nodes keep theirs: they run the devices, and a call's audio, where it is a loopback in the
+-- daemon, is theirs. A program outside the sandbox can still open the sound and video devices itself, past
+-- PipeWire; a sandboxed app cannot (vibeos-sandbox gives it neither /dev/snd nor /dev/video*).
 
 cutils = require ("common-utils")
 log = Log.open_topic ("s-client")
@@ -54,6 +64,22 @@ local function granted (tbl, id, app_id)
   end
   for _, v in pairs (values) do
     if v == "yes" then
+      return true
+    end
+  end
+  return false
+end
+
+-- Settings' Microphone and Camera switches: "microphone" or "camera" blocked for every client
+local PRIVACY_TABLE = "vibeos-privacy"
+
+local function blocked (id)
+  local values = lookup (PRIVACY_TABLE, id)["all"]
+  if values == nil then
+    return false
+  end
+  for _, v in pairs (values) do
+    if v == "blocked" then
       return true
     end
   end
@@ -96,6 +122,22 @@ local function is_mic (class)
   return class ~= nil and (class:find ("^Audio/Source") ~= nil or class:find ("^Audio/Duplex") ~= nil)
 end
 
+local function is_camera (class, role)
+  return class == "Video/Source" and role == "Camera"
+end
+
+-- a microphone or a camera, by its class and role, that Settings' switches block now
+local function device_blocked (class, role)
+  return (is_mic (class) and blocked ("microphone")) or (is_camera (class, role) and blocked ("camera"))
+end
+
+-- PipeWire's and WirePlumber's own connections: the switches never hide anything from them
+local function exempt (client)
+  local props = client.properties
+  local binary = props ~= nil and props["application.process.binary"] or nil
+  return binary == "pipewire" or binary == "wireplumber"
+end
+
 local clients_om = ObjectManager { Interest { type = "client" } }
 clients_om:activate ()
 
@@ -115,15 +157,21 @@ end
 -- what each node is, by its id, as first seen here: its ports and links get what it gets
 local nodes = {}
 
+-- the node is the client's own: made by this very connection (PipeWire hands a gone client's id to the next one, so
+-- the connection is told by its serial, which is never reused)
+local function own (client, n)
+  return n.client_serial ~= nil and n.client_serial == tostring (prop (client, "object.serial"))
+end
+
 local function node_perm (client, app_id, n)
-  if n.client_id ~= nil and (n.client_id == tostring (client["bound-id"]) or n.app_id == app_id) then
+  if own (client, n) or (n.app_id ~= nil and n.app_id == app_id) then
     return Perm.RX
   end
   if is_mic (n.class) then
-    return granted (MIC_TABLE, MIC_ID, app_id) and Perm.RX or Perm.NONE
+    return (not blocked ("microphone") and granted (MIC_TABLE, MIC_ID, app_id)) and Perm.RX or Perm.NONE
   end
-  if n.class == "Video/Source" and n.role == "Camera" then
-    return granted (CAM_TABLE, CAM_ID, app_id) and Perm.RX or Perm.NONE
+  if is_camera (n.class, n.role) then
+    return (not blocked ("camera") and granted (CAM_TABLE, CAM_ID, app_id)) and Perm.RX or Perm.NONE
   end
   if n.class ~= nil and n.class:find ("^Stream/") ~= nil then
     return Perm.NONE
@@ -139,21 +187,31 @@ local function known_node_perm (client, app_id, node_id)
   return node_perm (client, app_id, n)
 end
 
+-- what a node is (nodes[]), as first seen or after it changed
+local function node_info (node)
+  local id = tonumber (node["bound-id"])
+  local n = id ~= nil and nodes[id] or nil
+  if n == nil or n.client_id ~= prop (node, "client.id") or n.class ~= prop (node, "media.class") then
+    local client_id = prop (node, "client.id")
+    local maker = tonumber (client_id) ~= nil and
+                  clients_om:lookup { Constraint { "bound-id", "=", tonumber (client_id), type = "gobject" } } or nil
+    local serial = maker ~= nil and prop (maker, "object.serial") or nil
+    n = { client_id = client_id ~= nil and tostring (client_id) or nil, app_id = app_of (client_id),
+          client_serial = serial ~= nil and tostring (serial) or nil,
+          class = prop (node, "media.class"), role = prop (node, "media.role") }
+    if id ~= nil then
+      nodes[id] = n
+    end
+  end
+  return n
+end
+
 sandbox_pm = PermissionManager ()
 sandbox_pm:set_default_permissions (Perm.RX)
 
 sandbox_pm:add_interest_match (
   function (_, client, node)
-    local id = tonumber (node["bound-id"])
-    local n = id ~= nil and nodes[id] or nil
-    if n == nil or n.client_id ~= prop (node, "client.id") or n.class ~= prop (node, "media.class") then
-      local client_id = prop (node, "client.id")
-      n = { client_id = client_id ~= nil and tostring (client_id) or nil, app_id = app_of (client_id),
-            class = prop (node, "media.class"), role = prop (node, "media.role") }
-      if id ~= nil then
-        nodes[id] = n
-      end
-    end
+    local n = node_info (node)
     local app_id = sandboxed_app (client)
     if app_id == nil then
       return Perm.RX
@@ -249,10 +307,11 @@ local function capture_denied (si)
   end
   local app_id = sandboxed_app (client)
   if audio then
-    return not granted (MIC_TABLE, MIC_ID, app_id)
+    return blocked ("microphone") or not granted (MIC_TABLE, MIC_ID, app_id)
   end
   -- video through the app's own connection; the portals' remotes (the camera, a screen cast) are theirs to grant
-  return cutils.get_client_access (client.properties) == "flatpak" and not granted (CAM_TABLE, CAM_ID, app_id)
+  return cutils.get_client_access (client.properties) == "flatpak" and
+         (blocked ("camera") or not granted (CAM_TABLE, CAM_ID, app_id))
 end
 
 SimpleEventHook {
@@ -353,11 +412,189 @@ SimpleEventHook {
   end
 }:register ()
 
+-- ---- Settings' Microphone and Camera switches, for every other client ------------------------------------------
+
+-- the client that made a node (its client.id), or nil
+local function owner (node_props)
+  local client_id = tonumber (node_props["client.id"])
+  if client_id == nil then
+    return nil
+  end
+  return clients_om:lookup { Constraint { "bound-id", "=", client_id, type = "gobject" } }
+end
+
+local function privacy_node_perm (client, n, full)
+  if own (client, n) then
+    return full                         -- a node of its own, whatever it says it is
+  end
+  if device_blocked (n.class, n.role) then
+    return Perm.NONE
+  end
+  return full
+end
+
+-- a client's view: everything as WirePlumber would give it (all, or read-only for a "restricted" client) but the
+-- blocked microphones or cameras, their ports and links
+local function make_privacy_pm (full)
+  local pm = PermissionManager ()
+  pm:set_default_permissions (full)
+  pm:add_interest_match (
+    function (_, client, node)
+      return privacy_node_perm (client, node_info (node), full)
+    end,
+    Interest { type = "node" }
+  )
+  local function known (client, node_id)
+    local n = nodes[tonumber (node_id) or -1]
+    if n == nil then
+      return full
+    end
+    return privacy_node_perm (client, n, full)
+  end
+  pm:add_interest_match (
+    function (_, client, port)
+      return known (client, prop (port, "node.id"))
+    end,
+    Interest { type = "port" }
+  )
+  pm:add_interest_match (
+    function (_, client, link)
+      if known (client, prop (link, "link.output.node")) == Perm.NONE or
+         known (client, prop (link, "link.input.node")) == Perm.NONE then
+        return Perm.NONE
+      end
+      return full
+    end,
+    Interest { type = "link" }
+  )
+  return pm
+end
+
+privacy_pm = make_privacy_pm (Perm.ALL)
+privacy_restricted_pm = make_privacy_pm (Perm.RX)
+
+-- every client this script has not given a view already, but PipeWire's and WirePlumber's: the view with the switches
+-- in it, instead of WirePlumber's default one (all, or read-only for a restricted client). Clients the flatpak, portal
+-- and snap rules handle keep theirs (VibeOS has no Flatpak apps; the camera portal refuses while the camera is off).
+SimpleEventHook {
+  name = "client/find-vibeos-privacy-access",
+  after = { "client/find-config-access", "client/find-vibeos-sandbox-access", "client/find-flatpak-access",
+            "client/find-portal-access", "client/find-snap-access" },
+  before = { "client/find-default-access", "client/apply-access" },
+  interests = {
+    EventInterest {
+      Constraint { "event.type", "=", "select-access" },
+    },
+  },
+  execute = function (event)
+    local client = event:get_subject ()
+    if event:get_data ("permission-manager") ~= nil or event:get_data ("default-permissions") ~= nil then
+      return
+    end
+    if exempt (client) then
+      return
+    end
+    local access = cutils.get_client_access (client.properties)
+    if event:get_data ("effective-access") == nil and access ~= nil then
+      event:set_data ("effective-access", access)
+    end
+    event:set_data ("permission-manager", access == "restricted" and privacy_restricted_pm or privacy_pm)
+  end
+}:register ()
+
+-- a capture stream of any client but PipeWire's and WirePlumber's is never linked to a blocked microphone or camera
+local function privacy_target_refused (si, target)
+  local class = si.properties["media.class"]
+  if class == nil or (class:find ("^Stream/Input/Audio") == nil and class:find ("^Stream/Input/Video") == nil) then
+    return false
+  end
+  local tprops = target.properties
+  if not device_blocked (tprops["media.class"], tprops["media.role"]) then
+    return false
+  end
+  local client = owner (si.properties)
+  return client == nil or not exempt (client)
+end
+
+SimpleEventHook {
+  name = "linking/vibeos-privacy-target",
+  after = { "linking/find-defined-target", "linking/find-filter-target", "linking/find-audio-group-target",
+            "linking/find-media-role-target", "linking/find-media-role-sink-target",
+            "linking/find-default-target", "linking/find-best-target", "linking/get-filter-from-target" },
+  before = { "linking/prepare-link", "linking/link-target" },
+  interests = {
+    EventInterest {
+      Constraint { "event.type", "=", "select-target" },
+    },
+  },
+  execute = function (event)
+    local target = event:get_data ("target")
+    if target == nil then
+      return
+    end
+    local ok, refused = pcall (privacy_target_refused, event:get_subject (), target)
+    if ok and refused then
+      log:info (event:get_subject (), "vibeos-privacy: the microphone or the camera is off, not linked")
+      event:set_data ("target", nil)
+    end
+  end
+}:register ()
+
+-- the links a blocked microphone or camera has to anyone but PipeWire and WirePlumber: taken away as it is blocked
+-- (prepare-link would move a stream off it on the rescan, but not one that asked never to be moved), and as one is
+-- made while it is blocked (a host client sees every node for the few milliseconds before its permissions are set, and
+-- could link one itself in them)
+local nodes_om = ObjectManager { Interest { type = "node" } }
+nodes_om:activate ()
+local links_om = ObjectManager { Interest { type = "link" } }
+
+local function unlink_if_blocked (link)
+  local ok, err = pcall (function ()
+    local from = nodes_om:lookup { Constraint { "bound-id", "=", tonumber (prop (link, "link.output.node")) or -1,
+                                                type = "gobject" } }
+    local to = nodes_om:lookup { Constraint { "bound-id", "=", tonumber (prop (link, "link.input.node")) or -1,
+                                              type = "gobject" } }
+    if from == nil or to == nil or not device_blocked (prop (from, "media.class"), prop (from, "media.role")) then
+      return
+    end
+    local client = owner (to.properties)
+    if client ~= nil and exempt (client) then
+      return
+    end
+    log:notice (link, "vibeos-privacy: " .. tostring (prop (from, "node.name")) .. " is off, unlinked from " ..
+                tostring (prop (to, "node.name")))
+    link:request_destroy ()
+  end)
+  if not ok then
+    log:warning ("vibeos-privacy: " .. tostring (err))
+  end
+end
+
+function unlink_blocked ()
+  for link in links_om:iterate () do
+    unlink_if_blocked (link)
+  end
+end
+
+links_om:connect ("object-added", function (_, link)
+  if blocked ("microphone") or blocked ("camera") then
+    unlink_if_blocked (link)
+  end
+end)
+links_om:activate ()
+
 if pps ~= nil then
   pps:connect ("changed", function (_, tbl, id, deleted, permissions)
-    if (tbl == MIC_TABLE and id == MIC_ID) or (tbl == CAM_TABLE and id == CAM_ID) then
-      cache[tbl .. "/" .. id] = permissions or {}
+    local privacy = tbl == PRIVACY_TABLE and (id == "microphone" or id == "camera")
+    if privacy or (tbl == MIC_TABLE and id == MIC_ID) or (tbl == CAM_TABLE and id == CAM_ID) then
+      cache[tbl .. "/" .. id] = (not deleted and permissions) or {}
       sandbox_pm:update_permissions ()
+      if privacy then
+        log:notice ("vibeos-privacy: " .. id .. (blocked (id) and " blocked" or " allowed"))
+        privacy_pm:update_permissions ()
+        privacy_restricted_pm:update_permissions ()
+        unlink_blocked ()
+      end
       local source = Plugin.find ("standard-event-source")
       if source ~= nil then
         source:call ("schedule-rescan", "linking")
@@ -400,3 +637,11 @@ sandbox_pm:activate (Features.ALL, function (_, e)
     log:warning ("vibeos-sandbox: the permission manager did not start: " .. tostring (e))
   end
 end)
+
+for name, pm in pairs ({ ["vibeos-privacy"] = privacy_pm, ["vibeos-privacy-restricted"] = privacy_restricted_pm }) do
+  pm:activate (Features.ALL, function (_, e)
+    if e then
+      log:warning ("vibeos-privacy: the permission manager " .. name .. " did not start: " .. tostring (e))
+    end
+  end)
+end
