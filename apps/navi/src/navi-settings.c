@@ -54,6 +54,8 @@ navi_settings_load (void)
   s->view = NAVI_VIEW_AUTO;
   s->auto_zoom = TRUE;
   s->voice = NAVI_VOICE_ON;
+  s->cameras = TRUE; /* the owner's choice, 2026-11-23 (see navi-cameras.c for where they stay off) */
+  s->speeding = NAVI_SPEEDING_PLUS_5;
   s->recent = g_ptr_array_new_with_free_func ((GDestroyNotify) navi_place_free);
   g_autoptr (GKeyFile) kf = g_key_file_new ();
   g_autofree char *file = path ();
@@ -76,6 +78,15 @@ navi_settings_load (void)
   v = g_key_file_get_integer (kf, "voice", "mode", &e);
   if (!e)
     s->voice = CLAMP (v, 0, NAVI_VOICE_OFF);
+  g_clear_error (&e);
+  b = g_key_file_get_boolean (kf, "alerts", "speed-cameras", &e);
+  if (!e)
+    s->cameras = b;
+  g_clear_error (&e);
+  s->cameras_notice_seen = g_key_file_get_boolean (kf, "alerts", "camera-notice-seen", NULL);
+  v = g_key_file_get_integer (kf, "alerts", "speeding", &e);
+  if (!e)
+    s->speeding = CLAMP (v, 0, NAVI_SPEEDING_PERCENT_10);
   g_clear_error (&e);
   s->home = read_place (kf, "home");
   s->work = read_place (kf, "work");
@@ -110,6 +121,9 @@ navi_settings_flush (NaviSettings *s)
     g_key_file_set_double (kf, "map", "last-zoom", s->last_zoom);
   }
   g_key_file_set_integer (kf, "voice", "mode", s->voice);
+  g_key_file_set_boolean (kf, "alerts", "speed-cameras", s->cameras);
+  g_key_file_set_boolean (kf, "alerts", "camera-notice-seen", s->cameras_notice_seen);
+  g_key_file_set_integer (kf, "alerts", "speeding", s->speeding);
   write_place (kf, "home", s->home);
   write_place (kf, "work", s->work);
   for (guint i = 0; i < s->recent->len; i++) {

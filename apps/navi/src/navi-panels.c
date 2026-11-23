@@ -12,6 +12,7 @@
 #include "navi-app.h"
 #include "navi-draw.h"
 #include "navi-poi.h"
+#include "navi-roadinfo.h"
 #include "navi-voice.h"
 
 #include <glib/gi18n.h>
@@ -21,7 +22,7 @@
 
 #define COUNTDOWN_S     10
 #define SEARCH_DELAY_MS 250
-#define TABLET_CARD_DP  400 /* a tablet's cards over the map: the panel's, the search's */
+#define TABLET_CARD_DP  416 /* a tablet's cards over the map: the panel's, the search's (the routes' buttons need 416) */
 
 typedef enum { CHOOSE_NONE, CHOOSE_HOME, CHOOSE_WORK } Choosing;
 
@@ -37,7 +38,16 @@ struct _NaviPanels {
   GtkWidget *menu_button, *recenter_button, *compass, *compass_area, *note;
   GtkWidget *routes_header, *routes_header_to;
   GtkWidget *banner, *banner_turn, *banner_distance, *banner_street, *then_box, *then_turn, *banner_note;
-  GtkWidget *speedo, *speedo_value, *street_pill, *street_label, *sound_button;
+  GtkWidget *speedo, *speedo_value, *speedo_unit, *street_pill, *street_label, *sound_button;
+  GtkWidget *speed_column;  /* the alert card, the limit sign and the speedometer, bottom left */
+  GtkWidget *limit_sign, *alert_card, *alert_title, *alert_detail;
+  int limit_kmh;            /* the road's (NAVI_LIMIT_*), shown on the sign */
+  double speed;             /* m/s, < 0 unknown */
+  gboolean mph;             /* speeds in miles an hour: the road's country's (else the locale's) */
+  gboolean us_signs;        /* the limit on a US-style board */
+  gboolean moving;          /* driving without a route: the speedometer shows while browsing too */
+  gint64 slow_since;
+  gboolean notice_open;
   double bearing;
 
   /* browse */
@@ -59,7 +69,8 @@ struct _NaviPanels {
   NaviPlace *place;
 
   /* the routes */
-  GtkWidget *routes_box, *routes_list, *routes_more, *routes_status, *routes_spinner, *leave_note;
+  GtkWidget *routes_box, *routes_list, *routes_more, *routes_status, *routes_spinner, *leave_note, *routes_from;
+  GtkWidget *routes_retry;
   GtkWidget *go_button, *go_fill;
   double countdown;        /* 0 to 1, or < 0 when not counting */
   guint countdown_tick;
@@ -121,8 +132,18 @@ static const char *const CSS =
   /* the speed and the street */
   ".navi-speedo { background: #2E3339; border: 3dp solid #FFFFFF; border-radius: 9999px; min-width: 62dp;"
   "  min-height: 62dp; box-shadow: 0 1dp 5dp rgba(0,0,0,0.3); }"
+  ".navi-speedo.navi-speeding { background: #E03131; }"
   ".navi-speedo-value { color: #FFFFFF; font-size: 24sp; font-weight: 700; }"
   ".navi-speedo-unit { color: #FFFFFF; font-size: 10sp; font-weight: 600; }"
+  /* a camera ahead */
+  ".navi-alert { background: #FFFFFF; border-radius: 18dp; padding: 10dp 16dp 10dp 10dp;"
+  "  box-shadow: 0 1dp 6dp rgba(0,0,0,0.3); }"
+  ".navi-alert-disc { background: #F08C00; border-radius: 9999px; min-width: 40dp; min-height: 40dp; }"
+  ".navi-alert-title { color: #191A1C; font-size: 16sp; font-weight: 700; }"
+  ".navi-alert-detail { color: #4A4F55; font-size: 14sp; }"
+  ".night .navi-alert { background: #2A3038; }"
+  ".night .navi-alert-title { color: #F1F3F5; }"
+  ".night .navi-alert-detail { color: #B8BEC6; }"
   ".navi-street-pill { background: #FFFFFF; border-radius: 26dp; padding: 8dp 20dp; min-height: 36dp;"
   "  box-shadow: 0 1dp 5dp rgba(0,0,0,0.28); }"
   ".navi-street-pill label { color: #191A1C; font-size: 17sp; font-weight: 600; }"
@@ -889,7 +910,8 @@ static const VibeosAboutSection about_credits[] = {
 };
 static const VibeosAboutSection about_legal[] = {
   { "OpenStreetMap", "Map data © <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> "
-                     "contributors, under the ODbL. Map tiles in the OpenMapTiles schema." },
+                     "contributors, under the ODbL. Map tiles in the OpenMapTiles schema. The traffic signals and "
+                     "speed cameras, and the speed limits, are OpenStreetMap's too." },
   { "MapLibre Native", "The map is drawn by <a href=\"https://maplibre.org/\">MapLibre Native</a>, under the BSD "
                        "2-Clause License." },
   { "Valhalla and Photon", "Routes by <a href=\"https://github.com/valhalla/valhalla\">Valhalla</a> (MIT) and "
@@ -904,7 +926,7 @@ static const VibeosAboutInfo about_info = {
 typedef struct {
   NaviPanels *p;
   GtkWidget *sheet;
-  GtkWidget *dark_row, *view_row, *voice_row, *home_row, *work_row;
+  GtkWidget *dark_row, *view_row, *voice_row, *home_row, *work_row, *speeding_row;
 } SettingsPage;
 
 static const char *
@@ -932,9 +954,23 @@ static const char *
 voice_name (NaviVoiceMode v)
 {
   switch (v) {
-  case NAVI_VOICE_ALERTS: return _("Only alerts");
+  case NAVI_VOICE_ALERTS: return _("Alerts only");
   case NAVI_VOICE_OFF: return _("Off");
-  default: return _("Normal");
+  default: return _("On");
+  }
+}
+
+static gboolean units_mph; /* the speedometer's units now (navi_panels_set_units) */
+
+static const char *
+speeding_name (NaviSpeeding v)
+{
+  gboolean mph = units_mph;
+  switch (v) {
+  case NAVI_SPEEDING_AT_LIMIT: return _("At the limit");
+  case NAVI_SPEEDING_PLUS_10: return mph ? _("5 mph over") : _("10 km/h over");
+  case NAVI_SPEEDING_PERCENT_10: return _("10 % over");
+  default: return mph ? _("3 mph over") : _("5 km/h over");
   }
 }
 
@@ -944,17 +980,23 @@ settings_refresh (SettingsPage *s)
   NaviSettings *st = s->p->navi->settings;
   vibeos_list_row_set_value (VIBEOS_LIST_ROW (s->dark_row), dark_name (st->dark));
   vibeos_list_row_set_value (VIBEOS_LIST_ROW (s->view_row), view_name (st->view));
+  vibeos_list_row_set_summary (VIBEOS_LIST_ROW (s->view_row),
+                               st->view == NAVI_VIEW_3D   ? _("Tilted, always")
+                               : st->view == NAVI_VIEW_2D ? _("Flat, always")
+                                                          : _("Flat while browsing, 3D while driving"));
   vibeos_list_row_set_value (VIBEOS_LIST_ROW (s->voice_row), voice_name (st->voice));
-  /* a saved place has a clear button at its end; tapping the row forgets it */
+  vibeos_list_row_set_value (VIBEOS_LIST_ROW (s->speeding_row), speeding_name (st->speeding));
+  /* a saved place has a clear button at its end, and a tap asks before forgetting it; an unset one opens the
+   * search to set it */
   for (int k = 0; k < 2; k++) {
     NaviPlace *place = k == 0 ? st->home : st->work;
     GtkWidget *row = k == 0 ? s->home_row : s->work_row;
-    vibeos_list_row_set_summary (VIBEOS_LIST_ROW (row), place ? place->name : _("Not set: search for it in Where to?"));
+    vibeos_list_row_set_summary (VIBEOS_LIST_ROW (row), place ? place->name : _("Not set: tap to search for it"));
     if (place)
       vibeos_list_row_set_end_icon (VIBEOS_LIST_ROW (row), "edit-clear-symbolic");
     else
-      vibeos_list_row_clear_end (VIBEOS_LIST_ROW (row));
-    vibeos_list_row_set_activatable (VIBEOS_LIST_ROW (row), place != NULL);
+      vibeos_list_row_set_chevron (VIBEOS_LIST_ROW (row));
+    vibeos_list_row_set_activatable (VIBEOS_LIST_ROW (row), TRUE);
   }
 }
 
@@ -967,6 +1009,8 @@ choice_clicked (GtkWidget *row, SettingsPage *s)
   navi_settings_save (st);
   settings_refresh (s);
   navi_update_night (s->p->navi);
+  navi_apply_view (s->p->navi); /* the map view at once, not at the camera's next move */
+  navi_panels_sync_sound (s->p);
   vibeos_sheet_back (VIBEOS_SHEET (s->sheet));
 }
 
@@ -1003,6 +1047,24 @@ view_clicked (GtkWidget *row, SettingsPage *s)
 }
 
 static void
+speeding_clicked (GtkWidget *row, SettingsPage *s)
+{
+  push_choices (s, _("Speeding warning"), (int *) &s->p->navi->settings->speeding,
+                (const char *(*) (int)) speeding_name, 4);
+}
+
+static void
+cameras_changed (GObject *sw, GParamSpec *pspec, SettingsPage *s)
+{
+  NaviPanels *p = s->p;
+  p->navi->settings->cameras = vibeos_switch_get_active (VIBEOS_SWITCH (sw));
+  navi_settings_save (p->navi->settings);
+  if (!p->navi->settings->cameras)
+    navi_panels_show_alert (p, NULL, NULL);
+  navi_window_update_overlay (p->navi);
+}
+
+static void
 voice_clicked (GtkWidget *row, SettingsPage *s)
 {
   push_choices (s, _("Spoken directions"), (int *) &s->p->navi->settings->voice,
@@ -1018,16 +1080,40 @@ switch_changed (GObject *sw, GParamSpec *pspec, SettingsPage *s)
 }
 
 static void
-place_setting_clicked (GtkWidget *row, SettingsPage *s)
+forget_answered (VibeosDialog *d, int response, SettingsPage *s)
 {
-  /* tapped: forget it; the search sets it again ("Set once and go") */
-  NaviSettings *st = s->p->navi->settings;
-  NaviPlace **slot = row == s->home_row ? &st->home : &st->work;
-  if (!*slot)
+  if (response != VIBEOS_RESPONSE_OK)
     return;
+  NaviSettings *st = s->p->navi->settings;
+  NaviPlace **slot = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (d), "navi-home")) ? &st->home : &st->work;
   g_clear_pointer (slot, navi_place_free);
   navi_settings_save (st);
   settings_refresh (s);
+}
+
+static void
+place_setting_clicked (GtkWidget *row, SettingsPage *s)
+{
+  NaviPanels *p = s->p;
+  NaviSettings *st = p->navi->settings;
+  gboolean home = row == s->home_row;
+  NaviPlace *place = home ? st->home : st->work;
+  if (!place) {
+    /* not set: the search, ready to set it ("Set once and go") */
+    vibeos_sheet_close (VIBEOS_SHEET (s->sheet));
+    open_search (p, NULL);
+    p->choosing = home ? CHOOSE_HOME : CHOOSE_WORK;
+    set_text (p->search_status, home ? _("Search for your home address") : _("Search for your work address"));
+    gtk_widget_set_visible (p->search_status, TRUE);
+    return;
+  }
+  VibeosDialog *d = vibeos_dialog_new (home ? _("Forget Home?") : _("Forget Work?"));
+  vibeos_dialog_set_message (d, place->name);
+  vibeos_dialog_add_button (d, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  vibeos_dialog_add_button (d, _("Forget"), VIBEOS_RESPONSE_OK);
+  g_object_set_data (G_OBJECT (d), "navi-home", GINT_TO_POINTER (home));
+  g_signal_connect (d, "response", G_CALLBACK (forget_answered), s);
+  vibeos_dialog_present (d, p->navi->win);
 }
 
 static void
@@ -1065,13 +1151,27 @@ open_settings (gpointer data)
   s->voice_row = vibeos_list_row_new (_("Spoken directions"), navi_voice_describe (p->voice, navi_route_language ()));
   g_signal_connect (s->voice_row, "clicked", G_CALLBACK (voice_clicked), s);
   vibeos_card_list_append (VIBEOS_CARD_LIST (list), s->voice_row);
+  vibeos_card_list_add_group (VIBEOS_CARD_LIST (list), _("Alerts"));
+  GtkWidget *cams = vibeos_list_row_new (_("Speed camera alerts"),
+                                         _("Where the law allows them: never in Switzerland, only danger zones in "
+                                           "France, and in Germany not for the driver while driving"));
+  GtkWidget *cams_sw = vibeos_list_row_set_switch (VIBEOS_LIST_ROW (cams), FALSE);
+  vibeos_switch_set_active (VIBEOS_SWITCH (cams_sw), st->cameras);
+  g_signal_connect (cams_sw, "notify::active", G_CALLBACK (cameras_changed), s);
+  vibeos_card_list_append (VIBEOS_CARD_LIST (list), cams);
+  s->speeding_row = vibeos_list_row_new (_("Speeding warning"), _("The speedometer turns red above the limit"));
+  g_signal_connect (s->speeding_row, "clicked", G_CALLBACK (speeding_clicked), s);
+  vibeos_card_list_append (VIBEOS_CARD_LIST (list), s->speeding_row);
   vibeos_card_list_add_group (VIBEOS_CARD_LIST (list), _("Saved places"));
   s->home_row = vibeos_list_row_new (_("Home"), NULL);
   vibeos_list_row_set_icon (VIBEOS_LIST_ROW (s->home_row), "user-home-symbolic");
   g_signal_connect (s->home_row, "clicked", G_CALLBACK (place_setting_clicked), s);
   vibeos_card_list_append (VIBEOS_CARD_LIST (list), s->home_row);
   s->work_row = vibeos_list_row_new (_("Work"), NULL);
-  vibeos_list_row_set_icon (VIBEOS_LIST_ROW (s->work_row), "mark-location-symbolic");
+  /* the briefcase the search's Work row shows */
+  GtkWidget *briefcase = navi_icon_new (NAVI_ICON_WORK, 24);
+  navi_icon_follow_ink (briefcase);
+  vibeos_list_row_set_start_widget (VIBEOS_LIST_ROW (s->work_row), briefcase);
   g_signal_connect (s->work_row, "clicked", G_CALLBACK (place_setting_clicked), s);
   vibeos_card_list_append (VIBEOS_CARD_LIST (list), s->work_row);
   settings_refresh (s);
@@ -1155,17 +1255,38 @@ compass_clicked (GtkWidget *w, NaviPanels *p)
   navi_map_ease_to (p->navi->map, &cam, 400, NAVI_EASING_EASE_OUT_CUBIC);
 }
 
+static const char *
+sound_icon (NaviVoiceMode mode)
+{
+  return mode == NAVI_VOICE_OFF      ? "audio-volume-muted-symbolic"
+         : mode == NAVI_VOICE_ALERTS ? "audio-volume-low-symbolic"
+                                     : "audio-volume-high-symbolic";
+}
+
+/* the sound button shows the Spoken directions setting, wherever it was changed */
+void
+navi_panels_sync_sound (NaviPanels *p)
+{
+  NaviVoiceMode mode = p->navi->settings->voice;
+  GtkWidget *img = vibeos_pressable_get_child (VIBEOS_PRESSABLE (p->sound_button));
+  gtk_image_set_from_icon_name (GTK_IMAGE (img), sound_icon (mode));
+  gtk_accessible_update_property (GTK_ACCESSIBLE (p->sound_button), GTK_ACCESSIBLE_PROPERTY_LABEL,
+                                  mode == NAVI_VOICE_OFF      ? _("Sound off")
+                                  : mode == NAVI_VOICE_ALERTS ? _("Alerts only")
+                                                              : _("Sound on"), -1);
+  if (mode != NAVI_VOICE_ON)
+    navi_voice_stop (p->voice);
+}
+
+/* Waze's three: sound on, alerts only, sound off */
 static void
 sound_clicked (GtkWidget *w, NaviPanels *p)
 {
   NaviSettings *st = p->navi->settings;
-  st->voice = st->voice == NAVI_VOICE_OFF ? NAVI_VOICE_ON : NAVI_VOICE_OFF;
+  st->voice = st->voice == NAVI_VOICE_ON ? NAVI_VOICE_ALERTS : st->voice == NAVI_VOICE_ALERTS ? NAVI_VOICE_OFF
+                                                                                              : NAVI_VOICE_ON;
   navi_settings_save (st);
-  GtkWidget *img = vibeos_pressable_get_child (VIBEOS_PRESSABLE (p->sound_button));
-  gtk_image_set_from_icon_name (GTK_IMAGE (img), st->voice == NAVI_VOICE_OFF ? "audio-volume-muted-symbolic"
-                                                                             : "audio-volume-high-symbolic");
-  if (st->voice == NAVI_VOICE_OFF)
-    navi_voice_stop (p->voice);
+  navi_panels_sync_sound (p);
 }
 
 /* ---- the pages ---- */
@@ -1369,7 +1490,8 @@ build_routes_header (NaviPanels *p)
   gtk_widget_set_valign (dot, GTK_ALIGN_CENTER);
   gtk_widget_set_margin_start (dot, 4);
   gtk_box_append (GTK_BOX (from), dot);
-  gtk_box_append (GTK_BOX (from), label_new (_("Your location"), "navi-header-text", 0));
+  p->routes_from = label_new (_("Your location"), "navi-header-text", 0);
+  gtk_box_append (GTK_BOX (from), p->routes_from);
   GtkWidget *to = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 10);
   GtkWidget *pin = navi_icon_new (NAVI_ICON_PIN, 20);
   gtk_box_append (GTK_BOX (to), pin);
@@ -1380,6 +1502,17 @@ build_routes_header (NaviPanels *p)
   gtk_box_append (GTK_BOX (rows), to);
   gtk_box_append (GTK_BOX (card), rows);
   return card;
+}
+
+static void draw_limit_sign (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data);
+
+static void
+retry_clicked (GtkWidget *w, NaviPanels *p)
+{
+  if (p->navi->dest && p->navi->mode == NAVI_MODE_ROUTES) {
+    g_autoptr (NaviPlace) dest = navi_place_copy (p->navi->dest);
+    navi_preview_routes (p->navi, dest);
+  }
 }
 
 static GtkWidget *
@@ -1394,7 +1527,14 @@ build_routes (NaviPanels *p)
   gtk_box_append (GTK_BOX (status), p->routes_spinner);
   p->routes_status = label_new ("", "navi-sub", 0);
   gtk_label_set_wrap (GTK_LABEL (p->routes_status), TRUE);
+  gtk_widget_set_hexpand (p->routes_status, TRUE);
   gtk_box_append (GTK_BOX (status), p->routes_status);
+  /* after a failure: ask again */
+  p->routes_retry = text_button (_("Retry"), "navi-later", G_CALLBACK (retry_clicked), p);
+  gtk_widget_set_valign (p->routes_retry, GTK_ALIGN_CENTER);
+  gtk_widget_set_margin_end (p->routes_retry, 16);
+  gtk_widget_set_visible (p->routes_retry, FALSE);
+  gtk_box_append (GTK_BOX (status), p->routes_retry);
   g_object_set_data (G_OBJECT (page), "navi-status", status);
   gtk_box_append (GTK_BOX (page), status);
   /* the selected route, then (swiped up) the others */
@@ -1717,31 +1857,67 @@ navi_panels_new (Navi *n)
   gtk_widget_set_margin_top (p->compass, 14);
   gtk_widget_set_visible (p->compass, FALSE);
   gtk_overlay_add_overlay (ov, p->compass);
-  p->sound_button = round_button (n->settings->voice == NAVI_VOICE_OFF ? "audio-volume-muted-symbolic"
-                                                                       : "audio-volume-high-symbolic",
-                                  NULL, _("Spoken directions"), G_CALLBACK (sound_clicked), p);
+  p->sound_button = round_button (sound_icon (n->settings->voice), NULL, _("Sound on"), G_CALLBACK (sound_clicked), p);
   gtk_widget_set_halign (p->sound_button, GTK_ALIGN_END);
   gtk_widget_set_valign (p->sound_button, GTK_ALIGN_START);
   gtk_widget_set_margin_end (p->sound_button, 14);
   gtk_widget_set_visible (p->sound_button, FALSE);
   gtk_overlay_add_overlay (ov, p->sound_button);
 
-  /* the speed and the street, bottom left and middle, while following a drive */
+  /* the speed and the street, bottom left and middle, while following a drive; over the speed the road's limit, and
+   * over that a camera ahead */
+  p->speed_column = gtk_box_new (GTK_ORIENTATION_VERTICAL, 8);
+  gtk_widget_set_halign (p->speed_column, GTK_ALIGN_START);
+  gtk_widget_set_valign (p->speed_column, GTK_ALIGN_END);
+  gtk_widget_set_margin_start (p->speed_column, 14);
+  gtk_widget_set_can_target (p->speed_column, FALSE);
+  p->alert_card = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 12);
+  gtk_widget_add_css_class (p->alert_card, "navi-alert");
+  gtk_widget_set_halign (p->alert_card, GTK_ALIGN_START);
+  GtkWidget *disc = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+  gtk_widget_add_css_class (disc, "navi-alert-disc");
+  gtk_widget_set_valign (disc, GTK_ALIGN_CENTER);
+  GtkWidget *cam = navi_icon_new (NAVI_ICON_CAMERA, 24);
+  gtk_widget_set_halign (cam, GTK_ALIGN_CENTER);
+  gtk_widget_set_valign (cam, GTK_ALIGN_CENTER);
+  gtk_widget_set_hexpand (cam, TRUE);
+  gtk_box_append (GTK_BOX (disc), cam);
+  gtk_box_append (GTK_BOX (p->alert_card), disc);
+  GtkWidget *texts = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  gtk_widget_set_valign (texts, GTK_ALIGN_CENTER);
+  p->alert_title = label_new ("", "navi-alert-title", 0);
+  p->alert_detail = label_new ("", "navi-alert-detail", 0);
+  gtk_box_append (GTK_BOX (texts), p->alert_title);
+  gtk_box_append (GTK_BOX (texts), p->alert_detail);
+  gtk_box_append (GTK_BOX (p->alert_card), texts);
+  gtk_widget_set_visible (p->alert_card, FALSE);
+  gtk_box_append (GTK_BOX (p->speed_column), p->alert_card);
+  p->limit_kmh = NAVI_LIMIT_UNKNOWN;
+  p->speed = -1;
+  p->mph = units_mph = navi_speed_in_mph ();
+  p->us_signs = p->mph && g_getenv ("LANG") && strstr (g_getenv ("LANG"), "_US");
+  p->limit_sign = gtk_drawing_area_new ();
+  gtk_drawing_area_set_content_width (GTK_DRAWING_AREA (p->limit_sign), 54);
+  gtk_drawing_area_set_content_height (GTK_DRAWING_AREA (p->limit_sign), 54);
+  gtk_drawing_area_set_draw_func (GTK_DRAWING_AREA (p->limit_sign), draw_limit_sign, p, NULL);
+  gtk_widget_set_halign (p->limit_sign, GTK_ALIGN_START);
+  gtk_widget_set_margin_start (p->limit_sign, 4);
+  gtk_widget_set_visible (p->limit_sign, FALSE);
+  gtk_box_append (GTK_BOX (p->speed_column), p->limit_sign);
   p->speedo = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (p->speedo, "navi-speedo");
   gtk_widget_set_halign (p->speedo, GTK_ALIGN_START);
-  gtk_widget_set_valign (p->speedo, GTK_ALIGN_END);
-  gtk_widget_set_margin_start (p->speedo, 14);
-  gtk_widget_set_can_target (p->speedo, FALSE);
   GtkWidget *sv = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_valign (sv, GTK_ALIGN_CENTER);
   gtk_widget_set_vexpand (sv, TRUE);
   p->speedo_value = label_new ("--", "navi-speedo-value", 0.5);
   gtk_box_append (GTK_BOX (sv), p->speedo_value);
-  gtk_box_append (GTK_BOX (sv), label_new ("km/h", "navi-speedo-unit", 0.5));
+  p->speedo_unit = label_new (p->mph ? "mph" : "km/h", "navi-speedo-unit", 0.5);
+  gtk_box_append (GTK_BOX (sv), p->speedo_unit);
   gtk_box_append (GTK_BOX (p->speedo), sv);
-  gtk_widget_set_visible (p->speedo, FALSE);
-  gtk_overlay_add_overlay (ov, p->speedo);
+  gtk_box_append (GTK_BOX (p->speed_column), p->speedo);
+  gtk_widget_set_visible (p->speed_column, FALSE);
+  gtk_overlay_add_overlay (ov, p->speed_column);
   p->street_pill = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_widget_add_css_class (p->street_pill, "navi-street-pill");
   gtk_widget_set_halign (p->street_pill, GTK_ALIGN_CENTER);
@@ -1859,8 +2035,8 @@ update_floating (NaviPanels *p)
     gtk_widget_set_visible (p->menu_button, browse);
   gtk_widget_set_visible (p->recenter_button, browse && !follow);
   gtk_widget_set_margin_bottom (p->recenter_button, bottom);
-  gtk_widget_set_visible (p->speedo, drive && follow);
-  gtk_widget_set_margin_bottom (p->speedo, bottom);
+  gtk_widget_set_visible (p->speed_column, follow && (drive || (browse && p->moving)));
+  gtk_widget_set_margin_bottom (p->speed_column, bottom);
   gtk_widget_set_visible (p->street_pill, drive && follow && *gtk_label_get_text (GTK_LABEL (p->street_label)));
   gtk_widget_set_margin_bottom (p->street_pill, bottom + 12);
   gtk_widget_set_visible (p->sound_button, drive && follow);
@@ -1943,11 +2119,16 @@ navi_panels_show_place (NaviPanels *p, const NaviPlace *place)
   g_autofree char *chip = g_strdup_printf ("🚗 %s", d);
   set_text (p->place_distance, chip);
   set_text (p->place_go_label, place->kind == NAVI_PLACE_POINT ? _("Drive here") : poi ? _("Go") : _("View routes"));
-  /* the Set as buttons say what they do again */
+  /* the Set as buttons say what they do again; the place that already is Home (Work) says so instead */
   GtkWidget *actions = gtk_widget_get_prev_sibling (p->place_go);
   int k = 0;
-  for (GtkWidget *b = gtk_widget_get_first_child (actions); b; b = gtk_widget_get_next_sibling (b), k++)
-    set_text (g_object_get_data (G_OBJECT (b), "navi-label"), k == 0 ? _("Set as Home") : _("Set as Work"));
+  for (GtkWidget *b = gtk_widget_get_first_child (actions); b; b = gtk_widget_get_next_sibling (b), k++) {
+    NaviPlace *saved = k == 0 ? p->navi->settings->home : p->navi->settings->work;
+    gboolean is = saved && navi_geo_distance (saved->lat, saved->lng, place->lat, place->lng) < 30;
+    set_text (g_object_get_data (G_OBJECT (b), "navi-label"), is ? (k == 0 ? _("Your Home") : _("Your Work"))
+                                                                  : (k == 0 ? _("Set as Home") : _("Set as Work")));
+    gtk_widget_set_sensitive (b, !is);
+  }
 }
 
 void
@@ -1966,6 +2147,7 @@ navi_panels_set_routes (NaviPanels *p, GPtrArray *routes, guint selected, const 
     gtk_widget_set_visible (p->leave_note, FALSE);
     gtk_spinner_set_spinning (GTK_SPINNER (p->routes_spinner), !error);
     gtk_widget_set_visible (p->routes_spinner, !error);
+    gtk_widget_set_visible (p->routes_retry, error != NULL);
     set_text (p->routes_status, error ? error : _("Finding the best routes…"));
     update_floating (p);
     return;
@@ -1991,17 +2173,22 @@ navi_panels_set_routes (NaviPanels *p, GPtrArray *routes, guint selected, const 
                                                          p->leave_minute, 0);
     g_autoptr (GDateTime) arrive = g_date_time_add_seconds (leave, r->time);
     gboolean h24 = vibeos_clock_uses_24h ();
-    g_autofree char *l = g_date_time_format (leave, h24 ? "%H:%M" : "%l:%M %p");
-    g_autofree char *a = g_date_time_format (arrive, h24 ? "%H:%M" : "%l:%M %p");
+    g_autofree char *l = g_date_time_format (leave, h24 ? "%H:%M" : "%-l:%M %p");
+    g_autofree char *a = g_date_time_format (arrive, h24 ? "%H:%M" : "%-l:%M %p");
     g_autofree char *text = g_strdup_printf (_("Leave at %s, arrive at %s"), g_strstrip (l), g_strstrip (a));
     set_text (p->leave_note, text);
     gtk_widget_set_visible (p->leave_note, TRUE);
   } else {
     gtk_widget_set_visible (p->leave_note, FALSE);
   }
-  /* a fresh preview starts Go now's countdown; picking another route stops it */
+  /* where the routes start: the car, or without a position the map's centre (navi_where_am_i) */
+  Navi *n = p->navi;
+  gboolean located = n->have_fix && n->fix.kind != NAVI_FIX_LAST_KNOWN;
+  set_text (p->routes_from, located ? _("Your location") : _("The map's centre"));
+  /* a fresh preview starts Go now's countdown (not without a position: the drive would start from nowhere);
+   * picking another route stops it */
   if (!g_object_get_data (G_OBJECT (p->routes_box), "navi-counting") && p->navi->mode == NAVI_MODE_ROUTES &&
-      selected == 0 && p->leave_hour < 0 && !g_getenv ("NAVI_NO_COUNTDOWN")) {
+      selected == 0 && p->leave_hour < 0 && located && !g_getenv ("NAVI_NO_COUNTDOWN")) {
     g_object_set_data (G_OBJECT (p->routes_box), "navi-counting", GINT_TO_POINTER (1));
     start_countdown (p);
   }
@@ -2009,15 +2196,20 @@ navi_panels_set_routes (NaviPanels *p, GPtrArray *routes, guint selected, const 
   g_idle_add (update_floating_later, p);
 }
 
-void
-navi_panels_update_drive (NaviPanels *p, const NaviProgress *pr, NaviRoute *r)
+/* the banner: the next turn, its distance and street, and "and then" */
+static void
+update_banner (NaviPanels *p, const NaviProgress *pr, NaviRoute *r, guint next)
 {
   Navi *n = p->navi;
-  if (!r || !r->n_maneuvers)
-    return;
-  guint next = MIN (pr->next, r->n_maneuvers - 1);
   const NaviManeuver *m = &r->maneuvers[next];
   navi_icon_set_turn (p->banner_turn, m->type, m->roundabout_exit);
+  if (!pr->on_route && (n->rerouting || n->reroute_failed)) {
+    /* off the route: what the new route is doing, not the old route's next turn */
+    set_text (p->banner_distance, "");
+    set_text (p->banner_street, n->rerouting ? _("Finding a new route…") : _("No route from here yet. Trying again…"));
+    gtk_widget_set_visible (p->then_box, FALSE);
+    return;
+  }
   g_autofree char *dist = navi_format_distance (pr->to_next);
   set_text (p->banner_distance, dist);
   const char *street = m->street;
@@ -2037,6 +2229,16 @@ navi_panels_update_drive (NaviPanels *p, const NaviProgress *pr, NaviRoute *r)
   if (then)
     navi_icon_set_turn (p->then_turn, r->maneuvers[next + 1].type, r->maneuvers[next + 1].roundabout_exit);
   gtk_widget_set_visible (p->then_box, then);
+}
+
+void
+navi_panels_update_drive (NaviPanels *p, const NaviProgress *pr, NaviRoute *r)
+{
+  Navi *n = p->navi;
+  if (!r || !r->n_maneuvers)
+    return;
+  guint next = MIN (pr->next, r->n_maneuvers - 1);
+  update_banner (p, pr, r, next);
   /* the bar */
   g_autofree char *eta = navi_format_eta (pr->time_left);
   g_autofree char *mins = navi_format_duration (pr->time_left);
@@ -2063,16 +2265,153 @@ navi_panels_update_drive (NaviPanels *p, const NaviProgress *pr, NaviRoute *r)
   }
 }
 
+/* the speedometer red: faster than the limit and the margin Settings give */
+static void
+update_speeding (NaviPanels *p)
+{
+  gboolean over = FALSE;
+  if (p->speed >= 0 && p->limit_kmh > 0) {
+    double shown = p->speed * (p->mph ? 2.2369363 : 3.6);
+    double limit = navi_limit_display (p->limit_kmh, p->mph), margin = 0;
+    switch (p->navi->settings->speeding) {
+    case NAVI_SPEEDING_AT_LIMIT: margin = 0; break;
+    case NAVI_SPEEDING_PLUS_5: margin = p->mph ? 3 : 5; break;
+    case NAVI_SPEEDING_PLUS_10: margin = p->mph ? 5 : 10; break;
+    case NAVI_SPEEDING_PERCENT_10: margin = limit * 0.1; break;
+    }
+    over = lround (shown) > limit + margin;
+  }
+  if (over)
+    gtk_widget_add_css_class (p->speedo, "navi-speeding");
+  else
+    gtk_widget_remove_css_class (p->speedo, "navi-speeding");
+}
+
 void
 navi_panels_set_speed (NaviPanels *p, double speed)
 {
+  p->speed = speed;
+  /* without a route the speedometer shows while the car moves, and stays two minutes after it stops */
+  gint64 now = g_get_monotonic_time ();
+  gboolean was = p->moving;
+  if (speed > 5.5) {
+    p->moving = TRUE;
+    p->slow_since = 0;
+  } else if (speed < 0 || (p->moving && speed < 1.5 && p->slow_since && now - p->slow_since > 120 * G_USEC_PER_SEC)) {
+    p->moving = FALSE;
+  } else if (speed < 1.5 && !p->slow_since) {
+    p->slow_since = now;
+  }
+  if (was != p->moving)
+    update_floating (p);
+  update_speeding (p);
   if (speed < 0) {
     set_text (p->speedo_value, "--");
     return;
   }
   char text[16];
-  g_snprintf (text, sizeof text, "%ld", lround (speed * 3.6));
+  g_snprintf (text, sizeof text, "%ld", lround (speed * (p->mph ? 2.2369363 : 3.6)));
   set_text (p->speedo_value, text);
+}
+
+static void
+draw_limit_sign (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
+{
+  NaviPanels *p = data;
+  if (p->limit_kmh == NAVI_LIMIT_UNKNOWN)
+    return;
+  /* its shadow, then the sign */
+  cairo_save (cr);
+  cairo_arc (cr, w / 2.0, h / 2.0 + 1, MIN (w, h) / 2.0 - 0.5, 0, 2 * G_PI);
+  cairo_set_source_rgba (cr, 0, 0, 0, p->mph ? 0 : 0.25);
+  cairo_fill (cr);
+  cairo_restore (cr);
+  navi_draw_limit_sign (cr, MIN (w, h), p->limit_kmh > 0 ? navi_limit_display (p->limit_kmh, p->mph) : -1,
+                        p->us_signs);
+}
+
+/* the speeds the road's signs give: miles an hour in the UK and the US, else kilometres, whatever the language */
+void
+navi_panels_set_units (NaviPanels *p, const char *country)
+{
+  gboolean mph = g_getenv ("NAVI_SPEED_UNITS") ? navi_speed_in_mph () : navi_country_uses_mph (country);
+  gboolean us = mph && navi_country_uses_us_signs (country);
+  if (mph == p->mph && us == p->us_signs)
+    return;
+  p->mph = units_mph = mph;
+  p->us_signs = us;
+  set_text (p->speedo_unit, mph ? "mph" : "km/h");
+  navi_panels_set_speed (p, p->speed);
+  int kmh = p->limit_kmh;
+  p->limit_kmh = -99; /* none of NAVI_LIMIT_*: the sign is drawn again, in the new units */
+  navi_panels_set_limit (p, kmh);
+}
+
+void
+navi_panels_set_limit (NaviPanels *p, int kmh)
+{
+  /* no limit in the US's way of showing them is no sign at all: there is no such sign there */
+  if (kmh == NAVI_LIMIT_NONE && p->us_signs)
+    kmh = NAVI_LIMIT_UNKNOWN;
+  if (kmh == p->limit_kmh)
+    return;
+  p->limit_kmh = kmh;
+  gtk_widget_set_visible (p->limit_sign, kmh != NAVI_LIMIT_UNKNOWN);
+  if (kmh > 0) {
+    g_autofree char *label = g_strdup_printf (p->mph ? _("Speed limit %d mph") : _("Speed limit %d km/h"),
+                                              navi_limit_display (kmh, p->mph));
+    gtk_accessible_update_property (GTK_ACCESSIBLE (p->limit_sign), GTK_ACCESSIBLE_PROPERTY_LABEL, label, -1);
+  } else if (kmh == NAVI_LIMIT_NONE) {
+    gtk_accessible_update_property (GTK_ACCESSIBLE (p->limit_sign), GTK_ACCESSIBLE_PROPERTY_LABEL,
+                                    _("No speed limit"), -1);
+  }
+  gtk_widget_queue_draw (p->limit_sign);
+  update_speeding (p);
+}
+
+void
+navi_panels_show_alert (NaviPanels *p, const char *title, const char *detail)
+{
+  if (!title) {
+    gtk_widget_set_visible (p->alert_card, FALSE);
+    return;
+  }
+  set_text (p->alert_title, title);
+  set_text (p->alert_detail, detail ? detail : "");
+  gtk_widget_set_visible (p->alert_detail, detail && *detail);
+  gtk_widget_set_visible (p->alert_card, TRUE);
+}
+
+static void
+notice_answered (VibeosDialog *d, int response, NaviPanels *p)
+{
+  p->notice_open = FALSE;
+  if (response == VIBEOS_RESPONSE_CANCEL) {
+    p->navi->settings->cameras = FALSE;
+    navi_panels_show_alert (p, NULL, NULL);
+    navi_window_update_overlay (p->navi);
+  }
+  navi_settings_save (p->navi->settings);
+}
+
+/* once, the first time a camera is shown or alerted: where such alerts are not allowed */
+void
+navi_panels_camera_notice (NaviPanels *p)
+{
+  NaviSettings *st = p->navi->settings;
+  if (st->cameras_notice_seen || p->notice_open)
+    return;
+  st->cameras_notice_seen = TRUE;
+  p->notice_open = TRUE;
+  VibeosDialog *d = vibeos_dialog_new (_("Speed camera alerts"));
+  vibeos_dialog_set_message (d, _("Not allowed everywhere. In Germany the driver may not use them while driving "
+                                  "(§23 (1c) StVO); a passenger may. In Switzerland Navi never shows them, and in "
+                                  "France only danger zones.\n\nYou can turn them off in Settings at any time."));
+  vibeos_dialog_add_button (d, _("Turn off"), VIBEOS_RESPONSE_CANCEL);
+  vibeos_dialog_add_button (d, _("OK"), VIBEOS_RESPONSE_OK);
+  g_signal_connect (d, "response", G_CALLBACK (notice_answered), p);
+  vibeos_dialog_present (d, p->navi->win);
+  navi_settings_save (st);
 }
 
 void
@@ -2118,10 +2457,16 @@ navi_panels_say (NaviPanels *p, const char *text, gboolean alert)
 {
   NaviVoiceMode mode = p->navi->settings->voice;
   NAVI_PRIVATE_DEBUG ("navi: say \"%s\"\n", text);
-  if (mode == NAVI_VOICE_OFF)
+  /* "Alerts only", as Waze's: the road's alerts (navi_panels_say_alert), no directions */
+  if (mode != NAVI_VOICE_ON)
     return;
-  /* only the turns: no "continue for ..." */
-  if (mode == NAVI_VOICE_ALERTS && !alert && (g_str_has_prefix (text, "Continue") || g_str_has_prefix (text, "Weiter")))
+  navi_voice_say (p->voice, text, navi_route_language ());
+}
+
+void
+navi_panels_say_alert (NaviPanels *p, const char *text)
+{
+  if (p->navi->settings->voice == NAVI_VOICE_OFF)
     return;
   navi_voice_say (p->voice, text, navi_route_language ());
 }
@@ -2129,7 +2474,7 @@ navi_panels_say (NaviPanels *p, const char *text, gboolean alert)
 void
 navi_panels_prepare_speech (NaviPanels *p, char **texts)
 {
-  if (p->navi->settings->voice == NAVI_VOICE_OFF)
+  if (p->navi->settings->voice != NAVI_VOICE_ON)
     return;
   for (guint i = 0; texts && texts[i]; i++)
     navi_voice_prepare (p->voice, texts[i], navi_route_language ());

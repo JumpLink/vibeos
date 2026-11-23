@@ -10,6 +10,8 @@
  * Touching the map leaves the car where it is on the map (free); the re-centre button, or ten seconds of driving
  * untouched, flies back in 650 ms, landing on the car as it is in that frame so following takes over without a step. */
 #include "navi-app.h"
+#include "navi-alerts.h"
+#include "navi-cameras.h"
 #include "navi-draw.h"
 #include "navi-poi.h"
 #include "navi-sun.h"
@@ -60,6 +62,14 @@ target_pitch (Navi *n)
   if (n->settings->view == NAVI_VIEW_3D || n->mode == NAVI_MODE_DRIVE)
     return DRIVE_PITCH;
   return 0;
+}
+
+void
+navi_apply_view (Navi *n)
+{
+  NaviCamera cam = NAVI_CAMERA_UNSET;
+  cam.pitch = target_pitch (n);
+  navi_map_ease_to (n->map, &cam, 400, NAVI_EASING_EASE_OUT_CUBIC);
 }
 
 /* the zoom while following: street level, out a little as the car gets faster */
@@ -578,6 +588,30 @@ add_layer (Navi *n, const char *json, const char *below)
     g_message ("map layer: %s", error->message);
 }
 
+/* a cairo surface as the map's image `id` (and gone after) */
+static void
+add_surface_image (Navi *n, const char *id, cairo_surface_t *surface, int scale)
+{
+  int w = cairo_image_surface_get_width (surface), h = cairo_image_surface_get_height (surface);
+  int stride = cairo_image_surface_get_stride (surface);
+  const guint8 *argb = cairo_image_surface_get_data (surface);
+  /* cairo's native-endian ARGB words to the map's RGBA bytes, both premultiplied */
+  g_autofree guint8 *rgba = g_malloc ((gsize) w * h * 4);
+  for (int y = 0; y < h; y++) {
+    const guint32 *row = (const guint32 *) (argb + (gsize) y * stride);
+    for (int x = 0; x < w; x++) {
+      guint32 v = row[x];
+      guint8 *o = rgba + ((gsize) y * w + x) * 4;
+      o[0] = (v >> 16) & 0xff;
+      o[1] = (v >> 8) & 0xff;
+      o[2] = v & 0xff;
+      o[3] = v >> 24;
+    }
+  }
+  navi_map_add_image (n->map, id, rgba, w, h, w * 4, scale);
+  cairo_surface_destroy (surface);
+}
+
 /* the style's point-of-interest markers ("navi-poi-fuel", ...), drawn at the screen's scale */
 static void
 add_poi_images (Navi *n)
@@ -613,12 +647,61 @@ add_poi_images (Navi *n)
     navi_map_add_image (n->map, id, rgba, w, h, w * 4, scale);
     cairo_surface_destroy (marker);
   }
+  /* the overlay's: speed cameras and traffic signals */
+  add_surface_image (n, "navi-camera", navi_draw_camera_marker (26, scale), scale);
+  add_surface_image (n, "navi-signal", navi_draw_signal_marker (22, scale), scale);
   n->poi_scale = scale;
+}
+
+/* Navi's point overlay (navi.vibeos.top/tiles/navi-overlay, see navi-cameras.h): the signals while driving, the
+ * cameras where the car's country lets them show and Settings have them on. The map keeps the layers until the
+ * next style. */
+void
+navi_window_update_overlay (Navi *n)
+{
+  if (!n->map || !navi_map_is_style_loaded (n->map))
+    return;
+  gboolean signals = n->mode == NAVI_MODE_DRIVE || n->mode == NAVI_MODE_ARRIVED;
+  gboolean cams = n->settings->cameras && navi_cameras_policy (navi_alerts_country (n->alerts)) == NAVI_CAMS_ON;
+  if (signals != n->signals_shown) {
+    if (signals)
+      add_layer (n,
+                 "{\"id\":\"navi-signals\",\"type\":\"symbol\",\"source\":\"navi-overlay\",\"source-layer\":"
+                 "\"signals\",\"minzoom\":15,\"layout\":{\"icon-image\":\"navi-signal\",\"icon-allow-overlap\":true,"
+                 "\"icon-ignore-placement\":true,\"icon-pitch-alignment\":\"viewport\",\"icon-size\":"
+                 "[\"interpolate\",[\"linear\"],[\"zoom\"],15,0.7,18,1]}}", NULL);
+    else
+      navi_map_remove_layer (n->map, "navi-signals", NULL);
+    n->signals_shown = signals;
+  }
+  if (cams != n->cams_shown) {
+    if (cams)
+      add_layer (n,
+                 "{\"id\":\"navi-cameras\",\"type\":\"symbol\",\"source\":\"navi-overlay\",\"source-layer\":"
+                 "\"cameras\",\"minzoom\":11,\"layout\":{\"icon-image\":\"navi-camera\",\"icon-allow-overlap\":true,"
+                 "\"icon-ignore-placement\":true,\"icon-pitch-alignment\":\"viewport\",\"icon-size\":"
+                 "[\"interpolate\",[\"linear\"],[\"zoom\"],11,0.6,15,1]}}", NULL);
+    else
+      navi_map_remove_layer (n->map, "navi-cameras", NULL);
+    n->cams_shown = cams;
+    /* the first time cameras show: where they are not allowed */
+    if (cams)
+      navi_panels_camera_notice (n->panels);
+  }
+}
+
+static void
+on_load_error (NaviMap *map, const char *message, Navi *n)
+{
+  g_message ("map: %s", message);
+  n->map_failed = TRUE;
+  navi_panels_set_note (n->panels, _("The map cannot be loaded. Check the connection."));
 }
 
 static void
 on_style_loaded (NaviMap *map, Navi *n)
 {
+  n->map_failed = FALSE;
   g_auto (GStrv) symbols = navi_map_list_layers (map, "symbol");
   const char *below = symbols && symbols[0] ? symbols[0] : NULL;
   int night = n->style_night ? 1 : 0;
@@ -679,6 +762,8 @@ on_style_loaded (NaviMap *map, Navi *n)
   add_poi_images (n);
   g_clear_pointer (&n->poi_layers, g_strfreev);
   update_route_layers (n);
+  n->signals_shown = n->cams_shown = FALSE; /* a new style has none of them */
+  navi_window_update_overlay (n);
 }
 
 /* the arrow at manoeuvre `m`: 25 m of the route before it and 14 m after, a head at its end */
@@ -891,6 +976,7 @@ navi_window_set_mode (Navi *n, NaviMode mode)
   gtk_widget_set_visible (n->pin, n->dest && (mode == NAVI_MODE_PLACE || mode == NAVI_MODE_ROUTES ||
                                               mode == NAVI_MODE_DRIVE || mode == NAVI_MODE_ARRIVED));
   navi_panels_set_mode (n->panels, mode);
+  navi_window_update_overlay (n);
   if (n->back)
     gtk_widget_set_visible (n->back, mode != NAVI_MODE_BROWSE);
   update_route_layers (n);
@@ -1053,11 +1139,15 @@ reroute_ready (GObject *src, GAsyncResult *res, gpointer data)
   if (!routes || n->mode != NAVI_MODE_DRIVE) {
     if (error)
       g_message ("reroute: %s", error->message);
+    /* said on the banner; the next fix off the route asks again (REROUTE_GAP_US on) */
+    n->reroute_failed = n->mode == NAVI_MODE_DRIVE;
     return;
   }
+  n->reroute_failed = FALSE;
   NaviRoute *r = routes->pdata[0];
   g_clear_pointer (&n->guidance, navi_guidance_free);
   n->guidance = navi_guidance_new (r);
+  navi_alerts_set_route (n->alerts, r);
   n->car_s = n->fix_s = 0;
   if (n->have_fix) {
     const NaviProgress *p = navi_guidance_update (n->guidance, n->fix.lat, n->fix.lng, n->fix.accuracy, n->fix.speed,
@@ -1129,7 +1219,9 @@ navi_start_drive (Navi *n)
     return;
   g_clear_pointer (&n->guidance, navi_guidance_free);
   n->guidance = navi_guidance_new (r);
+  navi_alerts_set_route (n->alerts, r);
   n->car_s = n->fix_s = 0;
+  n->reroute_failed = FALSE;
   n->drive_seconds = n->drive_frames = n->drive_shown = 0;
   memset (n->drive_vblanks, 0, sizeof n->drive_vblanks);
   n->drive_gap_sum = n->drive_gap_max = n->drive_jitter_sum = 0;
@@ -1158,6 +1250,7 @@ navi_stop_drive (Navi *n)
 {
   print_drive_stats (n);
   g_clear_pointer (&n->guidance, navi_guidance_free);
+  navi_alerts_set_route (n->alerts, NULL);
   if (n->simulate)
     navi_position_simulate (n->position, NULL, 1, 0);
   n->rerouting = 0;
@@ -1201,7 +1294,9 @@ on_fix (NaviPosition *position, NaviFix *fix, Navi *n)
     n->car_known = TRUE;
   }
   gboolean approximate = fix->kind == NAVI_FIX_APPROXIMATE || fix->kind == NAVI_FIX_LAST_KNOWN;
-  navi_panels_set_note (n->panels, approximate ? _("No GPS – showing your approximate location") : NULL);
+  navi_panels_set_note (n->panels, n->map_failed ? _("The map cannot be loaded. Check the connection.")
+                                   : approximate ? _("No GPS – showing your approximate location")
+                                                 : NULL);
   navi_panels_set_speed (n->panels, fix->kind == NAVI_FIX_LAST_KNOWN ? -1 : fix->speed);
 
   if (n->guidance && n->mode == NAVI_MODE_DRIVE) {
@@ -1215,12 +1310,15 @@ on_fix (NaviPosition *position, NaviFix *fix, Navi *n)
       g_free (words);
     }
     apply_progress (n, p);
+    navi_alerts_fix (n->alerts, fix, p);
     check_stop (n, navi_guidance_get_route (n->guidance));
     if (p->arrived)
       arrive (n);
     else if (p->off_route)
       reroute (n);
   }
+  if (!n->guidance || n->mode != NAVI_MODE_DRIVE)
+    navi_alerts_fix (n->alerts, fix, NULL); /* the limit without a route */
   if (!n->guidance || !navi_guidance_get_progress (n->guidance)->on_route) {
     /* the street the car is on, off a route: none known */
     if (n->mode != NAVI_MODE_DRIVE)
@@ -1462,6 +1560,7 @@ void
 navi_window_build_map (Navi *n)
 {
   n->map = NAVI_MAP (navi_map_new ());
+  n->alerts = navi_alerts_new (n);
   gtk_widget_set_hexpand (GTK_WIDGET (n->map), TRUE);
   gtk_widget_set_vexpand (GTK_WIDGET (n->map), TRUE);
   n->map_overlay = gtk_overlay_new ();
@@ -1502,6 +1601,7 @@ navi_window_build_map (Navi *n)
   g_signal_connect (n->map_overlay, "get-child-position", G_CALLBACK (place_child), n);
 
   g_signal_connect (n->map, "style-loaded", G_CALLBACK (on_style_loaded), n);
+  g_signal_connect (n->map, "load-error", G_CALLBACK (on_load_error), n);
   g_signal_connect (n->map, "user-moved", G_CALLBACK (on_user_moved), n);
   g_signal_connect (n->map, "camera-changed", G_CALLBACK (on_camera_changed), n);
   g_signal_connect (n->map, "frame-rendered", G_CALLBACK (on_frame_rendered), n);

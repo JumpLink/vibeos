@@ -32,6 +32,16 @@ cairo_surface_t *navi_draw_poi_marker (const char *svg_path, guint32 color, doub
 /* the same as a texture, for a widget */
 GdkTexture *navi_poi_marker_texture (const char *svg_path, guint32 color, double size, int scale);
 
+/* a speed camera: a camera's body with its lens, `size` wide, in `color` */
+void navi_draw_camera (cairo_t *cr, double size, const GdkRGBA *color);
+/* the map's speed camera: a white-ringed orange disc with the camera in white; and a traffic signal: three lights
+ * on a dark board. New ARGB32 surfaces at `scale` pixels a point. */
+cairo_surface_t *navi_draw_camera_marker (double size, int scale);
+cairo_surface_t *navi_draw_signal_marker (double height, int scale);
+/* the speed limit sign, `size` across: a red-ringed white disc with the limit (Europe's), or with `mph` a white
+ * board that says SPEED LIMIT over it (the US's); `limit` < 0 is the end of all limits (a disc struck through) */
+void navi_draw_limit_sign (cairo_t *cr, double size, int limit, gboolean mph);
+
 /* A GtkDrawingArea that draws one of these at its size: the turn, the routes, the crosshair */
 typedef enum {
   NAVI_ICON_TURN,
@@ -42,6 +52,7 @@ typedef enum {
   NAVI_ICON_PARKING, /* a P on a sign */
   NAVI_ICON_WORK,    /* a briefcase */
   NAVI_ICON_PIN,     /* the destination's pin */
+  NAVI_ICON_CAMERA,  /* a speed camera */
 } NaviIconKind;
 
 GtkWidget *navi_icon_new (NaviIconKind kind, int size);

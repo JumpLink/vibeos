@@ -2,6 +2,7 @@
 #include "navi-draw.h"
 
 #include <librsvg/rsvg.h>
+#include <pango/pangocairo.h>
 
 #include <math.h>
 
@@ -237,6 +238,178 @@ navi_draw_crosshair (cairo_t *cr, double size, const GdkRGBA *color)
   cairo_restore (cr);
 }
 
+static void
+rounded_rect (cairo_t *cr, double x, double y, double w, double h, double r)
+{
+  cairo_new_sub_path (cr);
+  cairo_arc (cr, x + w - r, y + r, r, -G_PI / 2, 0);
+  cairo_arc (cr, x + w - r, y + h - r, r, 0, G_PI / 2);
+  cairo_arc (cr, x + r, y + h - r, r, G_PI / 2, G_PI);
+  cairo_arc (cr, x + r, y + r, r, G_PI, 1.5 * G_PI);
+  cairo_close_path (cr);
+}
+
+void
+navi_draw_camera (cairo_t *cr, double size, const GdkRGBA *color)
+{
+  cairo_save (cr);
+  cairo_scale (cr, size, size);
+  /* in a group of its own, so that its holes are holes whatever it is drawn on */
+  cairo_push_group (cr);
+  gdk_cairo_set_source_rgba (cr, color);
+  /* the body and its viewfinder on top */
+  rounded_rect (cr, 0.08, 0.3, 0.84, 0.54, 0.1);
+  cairo_fill (cr);
+  rounded_rect (cr, 0.3, 0.18, 0.3, 0.2, 0.05);
+  cairo_fill (cr);
+  /* the lens, a ring with its glass; the flash */
+  cairo_set_operator (cr, CAIRO_OPERATOR_CLEAR);
+  cairo_arc (cr, 0.5, 0.57, 0.17, 0, 2 * G_PI);
+  cairo_fill (cr);
+  cairo_arc (cr, 0.79, 0.41, 0.045, 0, 2 * G_PI);
+  cairo_fill (cr);
+  cairo_set_operator (cr, CAIRO_OPERATOR_OVER);
+  cairo_arc (cr, 0.5, 0.57, 0.1, 0, 2 * G_PI);
+  cairo_fill (cr);
+  cairo_pop_group_to_source (cr);
+  cairo_paint (cr);
+  cairo_restore (cr);
+}
+
+cairo_surface_t *
+navi_draw_camera_marker (double size, int scale)
+{
+  int px = (int) ceil ((size + 4) * scale);
+  cairo_surface_t *out = cairo_image_surface_create (CAIRO_FORMAT_ARGB32, px, px);
+  cairo_t *cr = cairo_create (out);
+  cairo_scale (cr, scale, scale);
+  double c = (size + 4) / 2, r = size / 2;
+  cairo_arc (cr, c, c + 0.9, r + 0.4, 0, 2 * G_PI);
+  cairo_set_source_rgba (cr, 0, 0, 0, 0.28);
+  cairo_fill (cr);
+  cairo_arc (cr, c, c, r, 0, 2 * G_PI);
+  cairo_set_source_rgb (cr, 1, 1, 1);
+  cairo_fill (cr);
+  cairo_arc (cr, c, c, r - MAX (1.5, size * 0.08), 0, 2 * G_PI);
+  cairo_set_source_rgb (cr, 0xF0 / 255.0, 0x8C / 255.0, 0);
+  cairo_fill (cr);
+  /* the camera alone, then into the disc (its lens and flash are holes) */
+  double g = size * 0.58;
+  cairo_translate (cr, c - g / 2, c - g / 2);
+  GdkRGBA white = { 1, 1, 1, 1 };
+  navi_draw_camera (cr, g, &white);
+  cairo_destroy (cr);
+  cairo_surface_flush (out);
+  return out;
+}
+
+cairo_surface_t *
+navi_draw_signal_marker (double height, int scale)
+{
+  double w = height * 0.46;
+  int pw = (int) ceil ((w + 3) * scale), ph = (int) ceil ((height + 3) * scale);
+  cairo_surface_t *out = cairo_image_surface_create (CAIRO_FORMAT_ARGB32, pw, ph);
+  cairo_t *cr = cairo_create (out);
+  cairo_scale (cr, scale, scale);
+  rounded_rect (cr, 1.5, 2.2, w, height, w * 0.3);
+  cairo_set_source_rgba (cr, 0, 0, 0, 0.25);
+  cairo_fill (cr);
+  rounded_rect (cr, 1.5, 1.5, w, height, w * 0.3);
+  cairo_set_source_rgb (cr, 1, 1, 1);
+  cairo_fill (cr);
+  rounded_rect (cr, 2.5, 2.5, w - 2, height - 2, w * 0.26);
+  cairo_set_source_rgb (cr, 0x26 / 255.0, 0x2A / 255.0, 0x30 / 255.0);
+  cairo_fill (cr);
+  static const double lights[3][3] = { { 0.94, 0.24, 0.24 }, { 0.98, 0.69, 0.12 }, { 0.2, 0.78, 0.35 } };
+  double r = (w - 2) * 0.3;
+  for (int i = 0; i < 3; i++) {
+    cairo_arc (cr, 1.5 + w / 2, 1.5 + height * (0.2 + 0.3 * i), r, 0, 2 * G_PI);
+    cairo_set_source_rgb (cr, lights[i][0], lights[i][1], lights[i][2]);
+    cairo_fill (cr);
+  }
+  cairo_destroy (cr);
+  cairo_surface_flush (out);
+  return out;
+}
+
+void
+navi_draw_limit_sign (cairo_t *cr, double size, int limit, gboolean mph)
+{
+  char text[8];
+  g_snprintf (text, sizeof text, "%d", limit);
+  cairo_save (cr);
+  PangoLayout *layout = pango_cairo_create_layout (cr);
+  PangoFontDescription *font = pango_font_description_from_string ("Sans Bold");
+  if (mph && limit > 0) {
+    /* the US's: a white board, a black edge, SPEED LIMIT over the number */
+    double w = size * 0.82, x = (size - w) / 2;
+    rounded_rect (cr, x, 0.5, w, size - 1, size * 0.1);
+    cairo_set_source_rgb (cr, 1, 1, 1);
+    cairo_fill_preserve (cr);
+    cairo_set_source_rgba (cr, 0, 0, 0, 0.35);
+    cairo_set_line_width (cr, 1);
+    cairo_stroke (cr);
+    rounded_rect (cr, x + size * 0.05, size * 0.05, w - size * 0.1, size * 0.9, size * 0.07);
+    cairo_set_source_rgb (cr, 0.1, 0.1, 0.1);
+    cairo_set_line_width (cr, MAX (1.2, size * 0.035));
+    cairo_stroke (cr);
+    pango_font_description_set_absolute_size (font, size * 0.15 * PANGO_SCALE);
+    pango_layout_set_font_description (layout, font);
+    pango_layout_set_alignment (layout, PANGO_ALIGN_CENTER);
+    pango_layout_set_text (layout, "SPEED\nLIMIT", -1);
+    int tw, th;
+    pango_layout_get_pixel_size (layout, &tw, &th);
+    cairo_move_to (cr, (size - tw) / 2.0, size * 0.1);
+    pango_cairo_show_layout (cr, layout);
+    pango_font_description_set_absolute_size (font, size * 0.4 * PANGO_SCALE);
+    pango_layout_set_font_description (layout, font);
+    pango_layout_set_text (layout, text, -1);
+    pango_layout_get_pixel_size (layout, &tw, &th);
+    cairo_move_to (cr, (size - tw) / 2.0, size * 0.45);
+    pango_cairo_show_layout (cr, layout);
+  } else {
+    double c = size / 2, r = size / 2 - 0.5;
+    cairo_arc (cr, c, c, r, 0, 2 * G_PI);
+    cairo_set_source_rgb (cr, 1, 1, 1);
+    cairo_fill (cr);
+    if (limit > 0) {
+      /* Europe's: a red ring */
+      double ring = size * 0.11;
+      cairo_arc (cr, c, c, r - ring / 2 - size * 0.02, 0, 2 * G_PI);
+      cairo_set_source_rgb (cr, 0xD9 / 255.0, 0x1E / 255.0, 0x1E / 255.0);
+      cairo_set_line_width (cr, ring);
+      cairo_stroke (cr);
+      pango_font_description_set_absolute_size (font, size * (limit >= 100 ? 0.33 : 0.42) * PANGO_SCALE);
+      pango_layout_set_font_description (layout, font);
+      pango_layout_set_text (layout, text, -1);
+      int tw, th;
+      pango_layout_get_pixel_size (layout, &tw, &th);
+      cairo_move_to (cr, (size - tw) / 2.0, (size - th) / 2.0);
+      cairo_set_source_rgb (cr, 0.08, 0.08, 0.08);
+      pango_cairo_show_layout (cr, layout);
+    } else {
+      /* no limit: a thin dark edge, struck through by five fine lines */
+      cairo_arc (cr, c, c, r - 0.5, 0, 2 * G_PI);
+      cairo_set_source_rgba (cr, 0, 0, 0, 0.45);
+      cairo_set_line_width (cr, 1);
+      cairo_stroke (cr);
+      cairo_arc (cr, c, c, r * 0.86, 0, 2 * G_PI);
+      cairo_clip (cr);
+      cairo_set_source_rgb (cr, 0.15, 0.15, 0.15);
+      cairo_set_line_width (cr, size * 0.04);
+      for (int i = -2; i <= 2; i++) {
+        double o = i * size * 0.09;
+        cairo_move_to (cr, c - r + o, c + r * 0.6 + o);
+        cairo_line_to (cr, c + r * 0.6 + o, c - r + o);
+      }
+      cairo_stroke (cr);
+    }
+  }
+  pango_font_description_free (font);
+  g_object_unref (layout);
+  cairo_restore (cr);
+}
+
 void
 navi_draw_routes (cairo_t *cr, double size, const GdkRGBA *color)
 {
@@ -384,6 +557,7 @@ draw_icon (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
     cairo_translate (cr, size * 0.2, 0);
     navi_draw_pin (cr, size * 0.6, size);
     break;
+  case NAVI_ICON_CAMERA: navi_draw_camera (cr, size, &icon->color); break;
   }
 }
 

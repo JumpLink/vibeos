@@ -24,9 +24,17 @@ typedef enum {
 
 typedef enum {
   NAVI_VOICE_ON,
-  NAVI_VOICE_ALERTS, /* the turns only, no "continue for ..." */
+  NAVI_VOICE_ALERTS, /* Waze's "alerts only": the road's alerts (speed cameras), no directions */
   NAVI_VOICE_OFF,
 } NaviVoiceMode;
+
+/* when the speedometer turns red: at the limit, or a margin over it */
+typedef enum {
+  NAVI_SPEEDING_AT_LIMIT,
+  NAVI_SPEEDING_PLUS_5,   /* +5 km/h (+3 mph): the default */
+  NAVI_SPEEDING_PLUS_10,  /* +10 km/h (+5 mph) */
+  NAVI_SPEEDING_PERCENT_10, /* +10 % */
+} NaviSpeeding;
 
 typedef struct {
   NaviDarkMode dark;
@@ -34,6 +42,9 @@ typedef struct {
   gboolean north_up;
   gboolean auto_zoom;
   NaviVoiceMode voice;
+  gboolean cameras;             /* speed camera alerts (and icons) where the country allows them; on by default */
+  gboolean cameras_notice_seen; /* the one-time notice of where they are not allowed was shown */
+  NaviSpeeding speeding;
   NaviPlace *home, *work; /* NULL until set */
   gboolean have_last;
   double last_lat, last_lng, last_zoom;

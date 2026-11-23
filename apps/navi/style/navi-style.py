@@ -177,6 +177,10 @@ for n, bounds in COUNTRIES:
                        'paint': {'text-color': C['label'], 'text-halo-color': C['label_halo'],
                                  'text-halo-width': 1.5} if tier == 'fuel' else {}})
 
+# Navi's point overlay (traffic signals, speed cameras): the app adds its layers while driving (navi-window.c)
+sources['navi-overlay'] = {'type': 'vector', 'tiles': [f'{server}/tiles/navi-overlay/{{z}}/{{x}}/{{y}}.mvt'],
+                           'minzoom': 8, 'maxzoom': 14, 'attribution': '© OpenStreetMap contributors'}
+
 style = {'version': 8, 'name': f'navi-{mode}', 'glyphs': f'{server}/glyphs/{{fontstack}}/{{range}}.pbf',
          'sources': sources, 'layers': layers}
 with open(out, 'w') as f:

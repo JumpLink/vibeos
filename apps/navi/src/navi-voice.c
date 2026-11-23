@@ -695,15 +695,15 @@ navi_voice_describe (NaviVoice *self, const char *language)
     g_auto (GStrv) parts = g_strsplit (base, "-", 3);
     if (parts[0] && parts[1]) {
       parts[1][0] = g_ascii_toupper (parts[1][0]);
-      self->description = g_strdup_printf (_("Piper voice %s, on the phone"), parts[1]);
+      self->description = g_strdup_printf (_("Piper voice %s, on this device"), parts[1]);
     } else {
-      self->description = g_strdup (_("Piper voice, on the phone"));
+      self->description = g_strdup (_("Piper voice, on this device"));
     }
     return self->description;
   }
 #ifdef HAVE_SPEECHD
   if (!self->spd_failed)
-    return _("eSpeak NG voices, on the phone");
+    return _("eSpeak NG voices, on this device");
 #endif
   return _("No voice on this phone");
 }

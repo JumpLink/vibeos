@@ -241,5 +241,5 @@ navi_format_eta (double seconds_from_now)
 {
   g_autoptr (GDateTime) now = g_date_time_new_now_local ();
   g_autoptr (GDateTime) t = g_date_time_add_seconds (now, seconds_from_now);
-  return g_date_time_format (t, clock_24h ? "%H:%M" : "%l:%M %p");
+  return g_date_time_format (t, clock_24h ? "%H:%M" : "%-l:%M %p");
 }

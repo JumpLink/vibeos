@@ -99,13 +99,17 @@ typedef struct {
 
   /* the routes */
   NaviPlace *dest;
-  NaviPlace *stop;
-  GtkWidget *back;          /* the unseen "Back" the shell's back gesture presses while there is a route or a card */          /* a stop on the way while driving, NULL when none (or once it is reached) */
+  NaviPlace *stop;          /* a stop on the way while driving, NULL when none (or once it is reached) */
+  GtkWidget *back;          /* the unseen "Back" the shell's back gesture presses while there is a route or a card */
   GPtrArray *routes;        /* NaviRoute, best first */
   guint selected;
   GCancellable *route_cancel;
   NaviGuidance *guidance;
   guint rerouting;          /* a new route is on its way */
+  gboolean reroute_failed;  /* off the route and the last new route failed: it is asked again */
+  gboolean map_failed;      /* the map's style could not be loaded */
+  struct _NaviAlerts *alerts; /* the road's limit and its speed cameras (navi-alerts.c) */
+  gboolean signals_shown, cams_shown; /* the overlay's layers on the map now */
   gint64 last_reroute;
   gboolean night;
   gboolean style_night;     /* the style loaded */
@@ -137,6 +141,10 @@ void navi_start_drive (Navi *navi);
 void navi_stop_drive (Navi *navi);
 /* while driving: the route goes on to the destination through `place` */
 void navi_add_stop (Navi *navi, const NaviPlace *place);
+/* the Map view setting, applied now */
+void navi_apply_view (Navi *navi);
+/* the overlay's icons on the map: traffic signals while driving, speed cameras where they may be shown */
+void navi_window_update_overlay (Navi *navi);
 void navi_back_to_browse (Navi *navi);
 void navi_recenter (Navi *navi);
 void navi_overview (Navi *navi);
@@ -159,6 +167,14 @@ void navi_panels_show_place (NaviPanels *panels, const NaviPlace *place);
 void navi_panels_set_routes (NaviPanels *panels, GPtrArray *routes, guint selected, const char *error);
 void navi_panels_update_drive (NaviPanels *panels, const NaviProgress *progress, NaviRoute *route);
 void navi_panels_set_speed (NaviPanels *panels, double speed);
+/* the road's limit on the sign by the speedometer: km/h, NAVI_LIMIT_NONE, or NAVI_LIMIT_UNKNOWN (no sign) */
+void navi_panels_set_limit (NaviPanels *panels, int kmh);
+/* the units of the road's country ("DE": km/h, "GB": mph) */
+void navi_panels_set_units (NaviPanels *panels, const char *country);
+/* the card over the speedometer for a camera ahead: "Speed camera", "300 m"; a NULL title hides it */
+void navi_panels_show_alert (NaviPanels *panels, const char *title, const char *detail);
+/* once ever: where speed camera alerts are not allowed (Settings' cameras_notice_seen) */
+void navi_panels_camera_notice (NaviPanels *panels);
 void navi_panels_set_street (NaviPanels *panels, const char *street);
 void navi_panels_set_note (NaviPanels *panels, const char *note);
 void navi_panels_set_rerouting (NaviPanels *panels, gboolean rerouting);
@@ -178,6 +194,10 @@ void navi_panels_rest_voice (NaviPanels *panels);
 void navi_panels_open_menu (NaviPanels *panels, GtkWidget *anchor);
 /* the search, opened with this text (for tests: --search) */
 void navi_panels_open_search (NaviPanels *panels, const char *text);
+/* the sound button, after the Spoken directions setting changed */
+void navi_panels_sync_sound (NaviPanels *panels);
+/* a road alert (a speed camera ahead): spoken unless the sound is off, also in "Alerts only" */
+void navi_panels_say_alert (NaviPanels *panels, const char *text);
 /* a route is being previewed or driven: asks whether to cancel it. With `place` (a new destination chosen while
  * driving) the answers are Add a stop and New destination (a tap outside keeps the drive); without (Back), Keep
  * driving (Keep route) and Cancel route, which then opens the search for a new address */

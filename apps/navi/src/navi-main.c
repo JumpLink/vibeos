@@ -8,6 +8,7 @@
  * takes the second route, so the guidance has to find a new one), --seconds quits after N seconds and --stats prints
  * the frame pacing every second and over the drive. NAVI_SERVER and NAVI_PHOTON_URL point at a test server. */
 #include "navi-app.h"
+#include "navi-alerts.h"
 
 #include <glib/gi18n.h>
 #include <json-glib/json-glib.h>
@@ -200,6 +201,7 @@ on_destroy (GtkWidget *win, Navi *n)
     n->keep_awake = 0;
   }
   navi_panels_quiet (n->panels);
+  g_clear_pointer (&n->alerts, navi_alerts_free);
   navi_settings_flush (n->settings);
   navi_position_stop (n->position);
 }

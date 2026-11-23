@@ -16,6 +16,7 @@ navi_road_info_new (void)
   NaviRoadInfo *info = g_new0 (NaviRoadInfo, 1);
   info->limits = g_array_new (FALSE, FALSE, sizeof (NaviLimitSpan));
   info->signals = g_array_new (FALSE, FALSE, sizeof (NaviRoadMark));
+  info->countries = g_array_new (FALSE, FALSE, sizeof (NaviCountryMark));
   return info;
 }
 
@@ -26,6 +27,7 @@ navi_road_info_free (NaviRoadInfo *info)
     return;
   g_array_unref (info->limits);
   g_array_unref (info->signals);
+  g_array_unref (info->countries);
   g_free (info);
 }
 
@@ -45,6 +47,41 @@ navi_road_info_limit_at (const NaviRoadInfo *info, double s)
   }
   const NaviLimitSpan *span = &g_array_index (info->limits, NaviLimitSpan, lo);
   return s >= span->from && s < span->to ? span->kmh : NAVI_LIMIT_UNKNOWN;
+}
+
+const char *
+navi_road_info_country_at (const NaviRoadInfo *info, double s)
+{
+  const char *code = NULL;
+  for (guint i = 0; info && i < info->countries->len; i++) {
+    const NaviCountryMark *c = &g_array_index (info->countries, NaviCountryMark, i);
+    if (c->from > s)
+      break;
+    code = c->code;
+  }
+  return code;
+}
+
+/* the country codes of an answer's "admins", by index */
+static GPtrArray *
+admin_codes (JsonObject *o)
+{
+  GPtrArray *codes = g_ptr_array_new ();
+  JsonArray *admins = json_object_has_member (o, "admins") ? json_object_get_array_member (o, "admins") : NULL;
+  for (guint i = 0; admins && i < json_array_get_length (admins); i++) {
+    JsonObject *a = json_array_get_object_element (admins, i);
+    g_ptr_array_add (codes, (gpointer) (a ? json_object_get_string_member_with_default (a, "country_code", "") : ""));
+  }
+  return codes;
+}
+
+/* an edge's country: its end node's admin */
+static const char *
+edge_country (JsonObject *e, GPtrArray *codes)
+{
+  JsonObject *node = json_object_has_member (e, "end_node") ? json_object_get_object_member (e, "end_node") : NULL;
+  gint64 i = node ? json_object_get_int_member_with_default (node, "admin_index", -1) : -1;
+  return i >= 0 && i < codes->len ? codes->pdata[i] : "";
 }
 
 /* a speed_limit member: a number of km/h, "unlimited", or none */
@@ -79,6 +116,7 @@ navi_road_info_add_answer (NaviRoadInfo *info, const NaviRoute *route, guint fir
                                                            : "no edges in the answer");
     return FALSE;
   }
+  g_autoptr (GPtrArray) codes = admin_codes (o);
   for (guint i = 0; i < json_array_get_length (edges); i++) {
     JsonObject *e = json_array_get_object_element (edges, i);
     if (!e)
@@ -88,6 +126,13 @@ navi_road_info_add_answer (NaviRoadInfo *info, const NaviRoute *route, guint fir
     if (b < 0 || en < b || first + en >= route->n_points)
       continue;
     double from = route->points[first + b].s, to = route->points[first + en].s;
+    const char *cc = edge_country (e, codes);
+    if (*cc && (!info->countries->len ||
+                strcmp (g_array_index (info->countries, NaviCountryMark, info->countries->len - 1).code, cc))) {
+      NaviCountryMark mark = { info->countries->len ? from : 0, "" };
+      g_strlcpy (mark.code, cc, sizeof mark.code);
+      g_array_append_val (info->countries, mark);
+    }
     int kmh = edge_limit (e);
     if (kmh != NAVI_LIMIT_UNKNOWN && to > from) {
       NaviLimitSpan *last = info->limits->len ? &g_array_index (info->limits, NaviLimitSpan, info->limits->len - 1)
@@ -162,6 +207,8 @@ attributes_body (const char *shape_member, const char *shape, JsonNode *shape_ar
   json_builder_add_string_value (b, "edge.speed_limit");
   json_builder_add_string_value (b, "edge.begin_shape_index");
   json_builder_add_string_value (b, "edge.end_shape_index");
+  json_builder_add_string_value (b, "node.admin_index");
+  json_builder_add_string_value (b, "admin.country_code");
   if (signals)
     json_builder_add_string_value (b, "edge.traffic_signal");
   json_builder_end_array (b);
@@ -278,6 +325,11 @@ navi_road_info_request_finish (GAsyncResult *result, GError **error)
 
 /* ---- the road where the car is ---- */
 
+typedef struct {
+  int kmh;
+  char country[4];
+} Here;
+
 static void
 limit_received (GObject *source, GAsyncResult *res, gpointer data)
 {
@@ -306,7 +358,15 @@ limit_received (GObject *source, GAsyncResult *res, gpointer data)
   JsonArray *edges = o && json_object_has_member (o, "edges") ? json_object_get_array_member (o, "edges") : NULL;
   guint n = edges ? json_array_get_length (edges) : 0;
   /* the edge the track ends on */
-  g_task_return_int (task, n ? edge_limit (json_array_get_object_element (edges, n - 1)) : NAVI_LIMIT_UNKNOWN);
+  Here *here = g_new0 (Here, 1);
+  here->kmh = NAVI_LIMIT_UNKNOWN;
+  if (n) {
+    JsonObject *last = json_array_get_object_element (edges, n - 1);
+    g_autoptr (GPtrArray) codes = admin_codes (o);
+    here->kmh = edge_limit (last);
+    g_strlcpy (here->country, edge_country (last, codes), sizeof here->country);
+  }
+  g_task_return_pointer (task, here, g_free);
 }
 
 void
@@ -338,16 +398,13 @@ navi_road_limit_request_async (const double *lat, const double *lng, const doubl
                                     limit_received, g_object_ref (task));
 }
 
-int
-navi_road_limit_request_finish (GAsyncResult *result, GError **error)
+gboolean
+navi_road_limit_request_finish (GAsyncResult *result, int *kmh, char country[4], GError **error)
 {
-  GError *e = NULL;
-  gssize v = g_task_propagate_int (G_TASK (result), &e);
-  if (e) {
-    g_propagate_error (error, e);
-    return NAVI_LIMIT_UNKNOWN;
-  }
-  return (int) v;
+  g_autofree Here *here = g_task_propagate_pointer (G_TASK (result), error);
+  *kmh = here ? here->kmh : NAVI_LIMIT_UNKNOWN;
+  g_strlcpy (country, here ? here->country : "", 4);
+  return here != NULL;
 }
 
 /* ---- units ---- */
@@ -358,6 +415,20 @@ navi_limit_display (int kmh, gboolean mph)
   if (kmh <= 0 || !mph)
     return kmh;
   return (int) lround (kmh / 1.609344 / 5) * 5;
+}
+
+gboolean
+navi_country_uses_mph (const char *cc)
+{
+  static const char *const mph[] = { "GB", "IM", "JE", "GG", "US", "PR", "GU", "VI", "AS", "MP", "LR", "MM", NULL };
+  return cc && g_strv_contains (mph, cc);
+}
+
+gboolean
+navi_country_uses_us_signs (const char *cc)
+{
+  static const char *const us[] = { "US", "PR", "GU", "VI", "AS", "MP", NULL };
+  return cc && g_strv_contains (us, cc);
 }
 
 gboolean
