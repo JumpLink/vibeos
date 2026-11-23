@@ -55,6 +55,10 @@ struct _NaviPanels {
 
   /* the search */
   GtkWidget *search_view, *search_list, *search_status;
+  GtkWidget *search_box;   /* what scrolls in the search: room under it for the keyboard */
+  GDBusProxy *shell;       /* vibeos.Shell: how much of the window the keyboard covers (KeyboardOverlap) */
+  GCancellable *shell_cancel;
+  guint keyboard;          /* that: logical px from the window's bottom, 0 when the keyboard is down */
   GtkWidget *search_host;  /* a tablet's: the card over the map the search opens in */
   GCancellable *search_cancel;
   guint search_source;
@@ -721,7 +725,7 @@ search_closed (VibeosSearchView *view, NaviPanels *p)
     p->along->p = NULL;
     p->along = NULL;
   }
-  p->search_view = p->search_list = p->search_status = NULL;
+  p->search_view = p->search_list = p->search_status = p->search_box = NULL;
   p->choosing = CHOOSE_NONE;
   if (p->search_host)
     gtk_widget_set_visible (p->search_host, FALSE);
@@ -750,6 +754,40 @@ category_chip (NaviPanels *p, NaviCategory category, const char *label, GtkWidge
   g_object_set_data (G_OBJECT (chip), "navi-category", GINT_TO_POINTER (category));
   g_object_set_data_full (G_OBJECT (chip), "navi-label", g_strdup (label), g_free);
   return chip;
+}
+
+/* The keyboard comes up over Navi's window, not with the window squeezed above it (the desktop file's
+ * X-Vibeos-Keyboard=overlay): the map stays as it is, and the search's results get room under them to scroll clear of
+ * the keys. On a tablet the search's card is short of the keys anyway, mostly. */
+static void
+keyboard_room (NaviPanels *p)
+{
+  if (p->search_box)
+    gtk_widget_set_margin_bottom (p->search_box, p->keyboard);
+}
+
+static void
+shell_properties_changed (GDBusProxy *shell, GVariant *changed, GStrv invalidated, NaviPanels *p)
+{
+  g_autoptr (GVariant) v = g_dbus_proxy_get_cached_property (shell, "KeyboardOverlap");
+  guint overlap = v && g_variant_is_of_type (v, G_VARIANT_TYPE_UINT32) ? g_variant_get_uint32 (v) : 0;
+  if (overlap == p->keyboard)
+    return;
+  p->keyboard = overlap;
+  keyboard_room (p);
+}
+
+static void
+shell_ready (GObject *src, GAsyncResult *res, gpointer data)
+{
+  g_autoptr (GError) error = NULL;
+  GDBusProxy *shell = g_dbus_proxy_new_for_bus_finish (res, &error);
+  if (!shell)
+    return; /* cancelled, or no session bus: the keyboard then never covers anything Navi knows of */
+  NaviPanels *p = data;
+  p->shell = shell;
+  g_signal_connect (shell, "g-properties-changed", G_CALLBACK (shell_properties_changed), p);
+  shell_properties_changed (shell, NULL, NULL, p);
 }
 
 static void
@@ -794,6 +832,8 @@ open_search (NaviPanels *p, const char *text)
   p->search_list = vibeos_card_list_new ();
   vibeos_card_list_set_margins (VIBEOS_CARD_LIST (p->search_list), 8, 24);
   gtk_box_append (GTK_BOX (box), p->search_list);
+  p->search_box = box;
+  keyboard_room (p);
   GtkWidget *scroll = spongy_scroll_view_new ();
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), box);
   gtk_widget_set_vexpand (scroll, TRUE);
@@ -1791,6 +1831,11 @@ navi_panels_new (Navi *n)
   p->leave_hour = -1;
   p->voice = navi_voice_new ();
   navi_voice_set_stats (p->voice, n->stats);
+  /* a shell without the property (or none) leaves it 0 */
+  p->shell_cancel = g_cancellable_new ();
+  g_dbus_proxy_new_for_bus (G_BUS_TYPE_SESSION, G_DBUS_PROXY_FLAGS_DO_NOT_AUTO_START |
+                            G_DBUS_PROXY_FLAGS_DO_NOT_CONNECT_SIGNALS, NULL, "vibeos.Shell", "/vibeos/Shell",
+                            "vibeos.Shell", p->shell_cancel, shell_ready, p);
   vibeos_css_load_string (CSS, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
 
   p->stack = gtk_stack_new ();
@@ -1988,6 +2033,11 @@ navi_panels_free (NaviPanels *p)
   g_clear_handle_id (&p->search_source, g_source_remove);
   g_cancellable_cancel (p->search_cancel);
   g_clear_object (&p->search_cancel);
+  g_cancellable_cancel (p->shell_cancel);
+  g_clear_object (&p->shell_cancel);
+  if (p->shell)
+    g_signal_handlers_disconnect_by_data (p->shell, p);
+  g_clear_object (&p->shell);
   g_clear_pointer (&p->place, navi_place_free);
   g_free (p->category_text);
   g_clear_pointer (&p->markers, g_hash_table_unref);
