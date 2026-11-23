@@ -10,6 +10,7 @@
 #include <fcntl.h>
 #include <gio/gdesktopappinfo.h>
 #include <json-glib/json-glib.h>
+#include <linux/input-event-codes.h>
 #include <math.h>
 #include <sys/utsname.h>
 #include <tonal.h>
@@ -736,6 +737,33 @@ timeout_picked (GtkWidget *row, guint i, gpointer session)
   g_settings_set_uint (session, "idle-delay", timeouts[i]);
 }
 
+/* Tap to wake: a touchscreen that sends KEY_WAKEUP for a double tap on a dark screen, which the shell wakes on
+ * (keys.js, power.js): s6sy761's "gestures", NT36xxx's "Wake Gesture", gts4lv-touchd's "double tap" devices. In the
+ * key bits each input device has in sysfs: hexadecimal longs, the most significant first, leading zero ones left out.
+ * Read once: a touchscreen does not come and go. */
+static gboolean
+has_wake_key (void)
+{
+  static int known = -1;
+  if (known >= 0)
+    return known;
+  known = FALSE;
+  g_autoptr (GDir) dir = g_dir_open ("/sys/class/input", 0, NULL);
+  const char *name;
+  while (!known && dir && (name = g_dir_read_name (dir))) {
+    if (!g_str_has_prefix (name, "input"))
+      continue;
+    g_autofree char *path = g_build_filename ("/sys/class/input", name, "capabilities", "key", NULL);
+    g_autofree char *bits = NULL;
+    if (!g_file_get_contents (path, &bits, NULL, NULL))
+      continue;
+    g_auto (GStrv) words = g_strsplit (g_strstrip (bits), " ", -1);
+    guint n = g_strv_length (words), per = sizeof (unsigned long) * 8, w = KEY_WAKEUP / per;
+    known = w < n && (g_ascii_strtoull (words[n - 1 - w], NULL, 16) >> (KEY_WAKEUP % per)) & 1;
+  }
+  return known;
+}
+
 void
 ns_page_display (GtkWidget *row, gpointer data)
 {
@@ -792,7 +820,7 @@ ns_page_display (GtkWidget *row, gpointer data)
       GtkWidget *r = ns_row_switch (g, "Auto-rotate screen", sub, NULL, NULL);
       g_settings_bind (touch, "orientation-lock", ns_row_get_switch (r), "active", G_SETTINGS_BIND_INVERT_BOOLEAN);
     }
-    if (vibeos && ns_has_key (vibeos, "double-tap-wake"))
+    if (vibeos && ns_has_key (vibeos, "double-tap-wake") && has_wake_key ())
       ns_row_switch (g, "Tap to wake", "Wake the screen with a double tap", vibeos, "double-tap-wake");
   }
   ns_push (page);
