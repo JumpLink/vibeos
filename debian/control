@@ -505,6 +505,7 @@ Recommends: accountsservice,
             gnome-keyring,
             pkexec,
             vibeos-sandbox,
+            vibeos-installer,
 Description: settings app for VibeOS
  VibeOS Settings is the settings app of VibeOS: connections (Wi-Fi,
  Bluetooth, mobile network, hotspot), sounds, notifications, display, battery,

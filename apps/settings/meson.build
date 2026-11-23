@@ -8,6 +8,8 @@ add_project_arguments('-DNS_REKEY="@0@"'.format(get_option('prefix') / get_optio
 gnome = import('gnome')
 cc = meson.get_compiler('c')
 deps = [dependency('gtk4', version: '>= 4.14'), dependency('vibeos-1'),
+        # App Installer's sheet over Settings' window, for an uninstall (xdg-foreign)
+        dependency('gtk4-wayland', required: false),
         dependency('json-glib-1.0'), dependency('goa-backend-1.0'), dependency('gio-unix-2.0'), dependency('gmodule-2.0'),
         # the colour swatches show what the theme engine makes of each seed
         dependency('tonal-1'),

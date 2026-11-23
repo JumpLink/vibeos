@@ -8,6 +8,10 @@
 #include "ns-ui.h"
 
 #include <gio/gdesktopappinfo.h>
+#ifdef GDK_WINDOWING_WAYLAND
+#include <gdk/wayland/gdkwayland.h>
+#endif
+#include <string.h>
 
 #define NOTIFY_APP "org.gnome.desktop.notifications.application"
 
@@ -301,76 +305,135 @@ version_row (GtkWidget *g, GAppInfo *app)
 
 /* Uninstall: only an app the user installed (from Software or App Installer: those run sandboxed); VibeOS's own apps
  * and the rest of the system get no button, as system apps on Android. The package that owns the app's desktop file
- * is removed with apt behind pkexec (GNOME Shell's polkit prompt asks for the password). apt-get -s first, as the
- * user: the button shows only when apt would remove something, and the question names every package that goes (a
- * game can take a meta package with it). The app's data goes with it (vibeos-sandbox deletes it once dpkg has removed
- * the package), and the question says so. */
+ * goes through App Installer (vibeos.Installer1 RemovePackage, as Software's Uninstall does), which does the rest by
+ * its own rules: its sheet over this window asks first, naming every package that goes with it and saying the app's
+ * data is deleted (vibeos-sandbox deletes it once dpkg has removed the package); it refuses part of VibeOS; polkit
+ * asks for the password; PackageKit removes it. The button follows the job to its end. */
+#define INSTALLER_NAME  "vibeos.Installer"
+#define INSTALLER_PATH  "/vibeos/Installer"
+#define INSTALLER_IFACE "vibeos.Installer1"
+
 typedef struct {
-  GtkWidget *button;
-  char      *name, *pkg;
-  char     **removes;
+  GtkWidget       *button;
+  char            *pkg;
+  GDBusConnection *bus;
+  guint            job, sub;
 } Uninstall;
 
 static void
 uninstall_free (Uninstall *u)
 {
+  if (u->sub)
+    g_dbus_connection_signal_unsubscribe (u->bus, u->sub);
+  g_clear_object (&u->bus);
   g_object_unref (u->button);
-  g_free (u->name);
   g_free (u->pkg);
-  g_strfreev (u->removes);
   g_free (u);
 }
 
+/* the job ended: "done" leaves the app's page (the app is gone), anything else gives the button back */
 static void
-uninstall_done (GObject *src, GAsyncResult *res, gpointer data)
+uninstall_end (Uninstall *u, const char *result, const char *message)
 {
-  Uninstall *u = data;
-  g_autoptr (GError) err = NULL;
-  if (g_subprocess_wait_check_finish (G_SUBPROCESS (src), res, &err)) {
-    ns_pop (u->button);
+  if (!g_strcmp0 (result, "done")) {
+    if (gtk_widget_get_root (u->button))
+      ns_pop (u->button);
   } else {
-    int st = g_subprocess_get_if_exited (G_SUBPROCESS (src)) ? g_subprocess_get_exit_status (G_SUBPROCESS (src)) : -1;
-    /* 126: the password was not given (pkexec's "not authorized"), nothing to report */
-    gtk_button_set_label (GTK_BUTTON (u->button), st == 126 ? "Uninstall" : "Could not uninstall, try again");
+    /* "cancelled": the sheet or the password was declined, nothing to report */
+    gtk_button_set_label (GTK_BUTTON (u->button),
+                          !g_strcmp0 (result, "cancelled") || !message || !*message ? "Uninstall" : message);
     gtk_widget_set_sensitive (u->button, TRUE);
   }
   uninstall_free (u);
 }
 
 static void
-uninstall_answered (gboolean yes, gpointer data)
+uninstall_signal (GDBusConnection *bus, const char *sender, const char *path, const char *iface, const char *signal,
+                  GVariant *params, gpointer data)
 {
-  Uninstall *u = data;                   /* the question's own copy: button and package */
-  if (!yes) {
-    uninstall_free (u);
+  Uninstall *u = data;
+  guint job;
+  const char *result, *message;
+  if (!u->job || strcmp (signal, "Finished") || !g_variant_is_of_type (params, G_VARIANT_TYPE ("(uss)")))
     return;
-  }
-  g_autoptr (GError) err = NULL;
-  g_autoptr (GSubprocess) p = g_subprocess_new (G_SUBPROCESS_FLAGS_STDOUT_SILENCE | G_SUBPROCESS_FLAGS_STDERR_SILENCE,
-                                                &err, "pkexec", "env", "DEBIAN_FRONTEND=noninteractive",
-                                                "apt-get", "-y", "remove", u->pkg, NULL);
-  if (!p) {
-    gtk_button_set_label (GTK_BUTTON (u->button), err->message);
-    uninstall_free (u);
-    return;
-  }
-  gtk_button_set_label (GTK_BUTTON (u->button), "Uninstalling…");
-  gtk_widget_set_sensitive (u->button, FALSE);
-  g_subprocess_wait_check_async (p, NULL, uninstall_done, u);
+  g_variant_get (params, "(u&s&s)", &job, &result, &message);
+  if (job == u->job)
+    uninstall_end (u, result, message);
 }
 
 static void
-uninstall_tapped (GtkButton *b, Uninstall *u)
+uninstall_started (GObject *src, GAsyncResult *res, gpointer data)
 {
-  g_autofree char *list = g_strjoinv (", ", u->removes);
-  g_autofree char *heading = g_strdup_printf ("Uninstall %s?", u->name);
-  g_autofree char *body = g_strv_length (u->removes) > 1
-    ? g_strdup_printf ("These packages will be removed: %s. The app's data will be deleted.", list)
-    : g_strdup_printf ("The package %s will be removed. The app's data will be deleted.", list);
-  Uninstall *q = g_new0 (Uninstall, 1);
-  q->button = g_object_ref (u->button);
-  q->pkg = g_strdup (u->pkg);
-  ns_confirm (GTK_WIDGET (b), heading, body, "Uninstall", TRUE, uninstall_answered, q);
+  Uninstall *u = data;
+  g_autoptr (GError) err = NULL;
+  g_autoptr (GVariant) r = g_dbus_connection_call_finish (G_DBUS_CONNECTION (src), res, &err);
+  if (!r) {
+    gboolean missing = g_error_matches (err, G_DBUS_ERROR, G_DBUS_ERROR_SERVICE_UNKNOWN);
+    uninstall_end (u, "failed", missing ? "App Installer is not installed: it uninstalls apps"
+                                        : "Could not uninstall, try again");
+    return;
+  }
+  g_variant_get (r, "(u)", &u->job);
+}
+
+static void
+uninstall_call (Uninstall *u, const char *handle)
+{
+  GVariantBuilder options;
+  g_variant_builder_init (&options, G_VARIANT_TYPE_VARDICT);
+  if (handle) {
+    g_autofree char *parent = g_strconcat ("wayland:", handle, NULL);
+    g_variant_builder_add (&options, "{sv}", "parent-window", g_variant_new_string (parent));
+  }
+  /* the job's signals go to the caller alone, from App Installer's path: subscribed before the call, so Finished
+   * cannot come first. App Installer is D-Bus activatable: the call starts it */
+  u->sub = g_dbus_connection_signal_subscribe (u->bus, INSTALLER_NAME, INSTALLER_IFACE, NULL, INSTALLER_PATH, NULL,
+                                               G_DBUS_SIGNAL_FLAGS_NONE, uninstall_signal, u, NULL);
+  g_dbus_connection_call (u->bus, INSTALLER_NAME, INSTALLER_PATH, INSTALLER_IFACE, "RemovePackage",
+                          g_variant_new ("(sa{sv})", u->pkg, &options), G_VARIANT_TYPE ("(u)"),
+                          G_DBUS_CALL_FLAGS_NONE, 60000, NULL, uninstall_started, u);
+}
+
+#ifdef GDK_WINDOWING_WAYLAND
+static void
+uninstall_exported (GdkToplevel *toplevel, const char *handle, gpointer data)
+{
+  /* the handle stays exported while the window lives: App Installer's sheet is made transient for it */
+  uninstall_call (data, handle);
+}
+#endif
+
+static void
+uninstall_tapped (GtkButton *b, Uninstall *proto)
+{
+  g_autoptr (GError) err = NULL;
+  GDBusConnection *bus = g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, &err);
+  if (!bus) {
+    gtk_button_set_label (b, err->message);
+    return;
+  }
+  Uninstall *u = g_new0 (Uninstall, 1);
+  u->button = g_object_ref (proto->button);
+  u->pkg = g_strdup (proto->pkg);
+  u->bus = bus;
+  gtk_button_set_label (b, "Uninstalling…");
+  gtk_widget_set_sensitive (GTK_WIDGET (b), FALSE);
+#ifdef GDK_WINDOWING_WAYLAND
+  GtkNative *native = gtk_widget_get_native (GTK_WIDGET (b));
+  GdkSurface *surface = native ? gtk_native_get_surface (native) : NULL;
+  if (surface && GDK_IS_WAYLAND_TOPLEVEL (surface) &&
+      gdk_wayland_toplevel_export_handle (GDK_TOPLEVEL (surface), uninstall_exported, u, NULL))
+    return;
+#endif
+  uninstall_call (u, NULL);
+}
+
+static void
+uninstall_proto_free (Uninstall *u)
+{
+  g_object_unref (u->button);
+  g_free (u->pkg);
+  g_free (u);
 }
 
 static void
@@ -378,19 +441,16 @@ uninstall_got (GObject *src, GAsyncResult *res, gpointer data)
 {
   Uninstall *u = data;
   g_autofree char *out = NULL;
-  /* the package on the first line, then what apt would remove, one per line */
-  if (g_subprocess_communicate_utf8_finish (G_SUBPROCESS (src), res, &out, NULL, NULL) && out) {
-    g_auto (GStrv) l = g_strsplit (g_strstrip (out), "\n", -1);
-    if (l[0] && *l[0] && l[1] && *l[1]) {
-      u->pkg = g_strdup (l[0]);
-      u->removes = g_strdupv (l + 1);
-      g_signal_connect_data (u->button, "clicked", G_CALLBACK (uninstall_tapped), u,
-                             (GClosureNotify) (void (*) (void)) uninstall_free, 0);
-      gtk_widget_set_visible (u->button, TRUE);
-      return;
-    }
+  /* the package that owns the desktop file */
+  if (g_subprocess_communicate_utf8_finish (G_SUBPROCESS (src), res, &out, NULL, NULL) && out &&
+      *g_strstrip (out) && !strchr (out, '\n')) {
+    u->pkg = g_strdup (out);
+    g_signal_connect_data (u->button, "clicked", G_CALLBACK (uninstall_tapped), u,
+                           (GClosureNotify) (void (*) (void)) uninstall_proto_free, 0);
+    gtk_widget_set_visible (u->button, TRUE);
+    return;
   }
-  uninstall_free (u);
+  uninstall_proto_free (u);
 }
 
 static void
@@ -406,15 +466,12 @@ uninstall_button (GtkWidget *c, GAppInfo *app)
   gtk_box_append (GTK_BOX (c), b);
   g_autoptr (GSubprocess) p = g_subprocess_new (G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_SILENCE,
                                                 NULL, "sh", "-c",
-                                                "p=$(dpkg-query -S \"$1\" 2>/dev/null | head -n1 | cut -d: -f1) && "
-                                                "[ -n \"$p\" ] && echo \"$p\" && "
-                                                "LC_ALL=C apt-get -s remove \"$p\" 2>/dev/null | sed -n 's/^Remv \\([^ ]*\\).*/\\1/p'",
+                                                "dpkg-query -S \"$1\" 2>/dev/null | head -n1 | cut -d: -f1",
                                                 "sh", file, NULL);
   if (!p)
     return;
   Uninstall *u = g_new0 (Uninstall, 1);
   u->button = g_object_ref (b);
-  u->name = g_strdup (g_app_info_get_display_name (app));
   g_subprocess_communicate_utf8_async (p, NULL, NULL, uninstall_got, u);
 }
 
