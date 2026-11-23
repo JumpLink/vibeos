@@ -1098,12 +1098,9 @@ ns_page_display_size (GtkWidget *row, gpointer data)
   g_object_set_data (G_OBJECT (font), "ns-scale", sc);
   g_signal_connect (sc, "value-changed", G_CALLBACK (text_moved), iface);
   g_signal_connect_object (iface, "changed::text-scaling-factor", G_CALLBACK (text_changed), font, 0);
-  /* the shell keeps the size it started at until it can follow a new one: Display size shows, without changing,
-   * unless NS_DISPLAY_SIZE=1 asks for it */
-  gboolean sizes = !g_strcmp0 (g_getenv ("NS_DISPLAY_SIZE"), "1");
-  ns_displays_size_row (GTK_WIDGET (page), g, sizes);
-  if (!sizes)
-    ns_note (c, "Display size can't be changed yet.");
+  /* Display size is the panel's scale in mutter, which the apps, the launcher and the shell (units.js) all lay out
+   * by as it changes */
+  ns_displays_size_row (GTK_WIDGET (page), g, TRUE);
 
   if (vi && ns_has_key (vi, "bold-text")) {
     g = ns_group (c, "Style options");
