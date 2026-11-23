@@ -59,6 +59,11 @@ const IFACE = `<node>
          never covered; one whose app's desktop file says X-Vibeos-Keyboard=overlay is, and the app makes room itself
          (keyboard.js). Changes are announced as the keyboard starts to come up and to go down. -->
     <property name="KeyboardOverlap" type="u" access="read"/>
+    <!-- the apps open now, the ones recents shows a card for, the most recently used first: each app's id (its
+         desktop file's, without ".desktop") and its name. For Agent, which answers "which apps are open?" -->
+    <method name="RunningApps">
+      <arg type="a(ss)" name="apps" direction="out"/>
+    </method>
   </interface>
 </node>`;
 
@@ -188,6 +193,24 @@ export class Service {
         app.activate();
         this._power?.wakeUp('full-screen');
         return true;
+    }
+
+    RunningApps() {
+        const tracker = Shell.WindowTracker.get_default();
+        const seen = new Set();
+        const apps = [];
+        // recents' order: the tab list is the most recently used first (every workspace's)
+        for (const win of global.display.get_tab_list(Meta.TabList.NORMAL, null)) {
+            if (!this._nav.isTask(win))
+                continue;
+            const app = tracker.get_window_app(win);
+            const id = app?.get_id().replace(/\.desktop$/, '');
+            if (!id || seen.has(id))
+                continue;
+            seen.add(id);
+            apps.push([id, app.get_name()]);
+        }
+        return apps;
     }
 
     TakeVolumeKeysAsync([appId, take], invocation) {
