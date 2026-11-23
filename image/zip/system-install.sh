@@ -18,7 +18,8 @@
 #            none, all of userdata becomes "linux" (whole) and gets that GPT, as the POCO's U-Boot boots it: Android
 #            and its data are gone. A "linux" without a GPT of its own (an install cut short between the two) gets it.
 #   prepare  new, whole: unmount Android's data (refused while something reads from it, such as this zip on the
-#            internal storage), then carve or take over the partition; image: make room for the file. Points
+#            internal storage), then carve or take over the partition; image: make room for the file, the Tab S5e's
+#            extent list at the end of recovery cleared first (clear_extents: it names the old file's blocks). Points
 #            /tmp/vibeos-root at where the root goes (a partition, or the root partition inside a "linux" that
 #            carries its own GPT, through a loop device) and clears its first and last MiB (wipe_ends: an earlier
 #            system's GPT or file system there must not outlive the install). The POCO's whole: the GPT tool writes
@@ -88,6 +89,23 @@ image_room() {
 	FREE=$(($(stat -f -c %a /data) / (1073741824 / $(stat -f -c %S /data))))
 	for f in $OLD_IMGS; do [ -f $f ] && { OLDIMG="$OLDIMG $f"; FREE=$((FREE + $(stat -c %b $f) / 2097152)); }; done
 	return 0
+}
+# clear_extents: the Tab S5e's device zip writes where the image file lies on userdata (its extents) into the last
+# 512 KiB of the recovery partition, after a "GTS4LV-EXTENTS 1" line, and the tablet's initramfs maps its root by that
+# list. The new image file lies elsewhere, and the old one's blocks go back to Android: the list goes first, before
+# the old file, so that until the device zip writes the new one the initramfs finds no list and stays, instead of
+# mounting (or checking with e2fsck -fy) blocks that are now Android's. A recovery partition without the list (any
+# other device) is not touched.
+clear_extents() {
+	r=$(part recovery) || return 0
+	n=$(sectors512 $r) && [ "$n" -gt 1024 ] || return 0
+	[ "$(dd if=$r bs=512 skip=$((n - 1024)) count=1 2>/dev/null | head -c 14)" = GTS4LV-EXTENTS ] || return 0
+	guard $r
+	dd if=/dev/zero of=$r bs=512 seek=$((n - 1024)) count=1024 conv=notrunc 2>/dev/null || die "cannot clear the old extent list at the end of recovery"
+	sync
+	[ -z "$(dd if=$r bs=512 skip=$((n - 1024)) count=1024 2>/dev/null | tr -d '\000' | head -c 1)" ] ||
+		die "the old extent list at the end of recovery was not cleared"
+	say "  the old image's extent list cleared: VibeOS starts again once the device zip has run"
 }
 # auto_choose: the POCO's choice, made without a question (see the top)
 other() { if [ -e $BY/userdata ]; then say "No other partition is changed: Android's data stays as it is."; else say "No other partition is changed."; fi; }
@@ -259,6 +277,7 @@ prepare)
 		image_room || die "Android's data cannot be mounted, is not ext4 or has no lost+found"
 		SIZE=$(get size)
 		[ $FREE -ge $((SIZE + 1)) ] || die "Android's data has $FREE GB free; a $SIZE GB image needs $((SIZE + 1))"
+		clear_extents
 		for f in $OLDIMG; do
 			chattr -i $f 2>/dev/null
 			rm -f $f || die "cannot remove the earlier $f"
