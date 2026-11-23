@@ -19,8 +19,8 @@ typedef void (*CalcMenuAction) (gpointer data);
 
 CalcPopupMenu *calc_popup_menu_new     (void);
 void           calc_popup_menu_append  (CalcPopupMenu *self, const char *label, CalcMenuAction action, gpointer data);
-/* shows it over the window `anchor` is in (made by vibeos_window_new), at the anchor's end and top; it destroys
- * itself once closed */
+/* shows it over the window `anchor` is in (made by vibeos_window_new), lined up with the anchor's end, below the
+ * anchor (above it when there is no room below), never over it; it destroys itself once closed */
 void           calc_popup_menu_present (CalcPopupMenu *self, GtkWidget *anchor);
 void           calc_popup_menu_dismiss (CalcPopupMenu *self);
 

@@ -16,8 +16,9 @@ typedef void (*SwMenuAction) (gpointer data);
 SwMenu *sw_menu_new (void);
 void            sw_menu_append (SwMenu *self, const char *label, SwMenuAction action,
                                          gpointer data);
-/* shows it over @anchor's window (one whose root overlay is its "vibeos-overlay"), at the anchor's end and top; it
- * destroys itself once closed */
+/* shows it over @anchor's window (one whose root overlay is its "vibeos-overlay"), lined up with the
+ * anchor's end, below the anchor (above it when there is no room below), never over it; it destroys itself once
+ * closed */
 void            sw_menu_present (SwMenu *self, GtkWidget *anchor);
 
 G_END_DECLS
