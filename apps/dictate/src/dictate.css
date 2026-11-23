@@ -32,6 +32,16 @@
   font-size: 16sp;
 }
 
+/* a language not on the phone yet: what it lacks, under its name */
+.dictate-dialog-item.dictate-dialog-item-two {
+  padding: 8dp 24dp;
+}
+
+.dictate-dialog-item label.dictate-dialog-note {
+  font-size: 14sp;
+  color: @vibeos_on_surface_variant;
+}
+
 .dictate-radio {
   margin-right: 16dp;
   color: @vibeos_on_surface_variant;
@@ -82,4 +92,86 @@
 .dictate-fade {
   min-height: 120dp;
   background-image: linear-gradient(to bottom, alpha(@vibeos_surface, 0), @vibeos_surface 70%);
+}
+
+/* Agent's conversation: what the user said on the right, the reply on the left, as Messages has them */
+.dictate-talk {
+  padding: 0 0 8dp 0;
+}
+
+.dictate-bubble {
+  font-size: 16sp;
+  padding: 10dp 14dp;
+  border-radius: 20dp;
+}
+
+.dictate-bubble-mine {
+  background-color: @vibeos_secondary_container;
+  color: @vibeos_on_secondary_container;
+  border-bottom-right-radius: 6dp;
+}
+
+.dictate-bubble-reply {
+  background-color: @vibeos_surface_container_high;
+  color: @vibeos_on_surface;
+  border-bottom-left-radius: 6dp;
+}
+
+/* the download dialogs: what comes, each with its size at the end, and the sum */
+.dictate-download-list {
+  margin-top: 16dp;
+}
+
+.dictate-download-item {
+  margin-bottom: 12dp;
+}
+
+.dictate-download-name,
+.dictate-download-status {
+  font-size: 16sp;
+  color: @vibeos_on_surface;
+}
+
+.dictate-download-size,
+.dictate-download-percent {
+  font-size: 14sp;
+  color: @vibeos_on_surface;
+  margin-left: 16dp;
+}
+
+.dictate-download-detail {
+  font-size: 14sp;
+  color: @vibeos_on_surface_variant;
+}
+
+.dictate-download-total {
+  font-size: 14sp;
+  font-weight: 500;
+  color: @vibeos_on_surface;
+}
+
+/* the progress: Material's linear indicator, as the App Installer's */
+progressbar.dictate-progress {
+  margin: 12dp 0 8dp 0;
+}
+
+progressbar.dictate-progress trough {
+  min-height: 4dp;
+  border-radius: 2dp;
+  background-color: @vibeos_secondary_container;
+  border: none;
+}
+
+progressbar.dictate-progress progress {
+  min-height: 4dp;
+  min-width: 0;
+  margin: 0;
+  border-radius: 2dp;
+  background-color: @vibeos_primary;
+  border: none;
+}
+
+/* Agent's Settings: rows on cards, on the colour the system's Settings pages have */
+.dictate-settings {
+  background-color: @vibeos_surface_container;
 }
