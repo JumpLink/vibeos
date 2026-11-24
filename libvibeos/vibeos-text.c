@@ -478,6 +478,20 @@ vibeos_font_weight (int weight)
   return weight_for (weight, vibeos_text_get_default ()->bold);
 }
 
+/* Since GTK 4.20 a stylesheet's @media (prefers-contrast: more) rules follow its own provider's prefers-contrast,
+ * which is "no preference" unless set: GTK's settings only say what the user wants (vibeos-style.c sets
+ * gtk-interface-contrast from High contrast). So each of libvibeos's providers, and each it loads for an app, follows
+ * the settings. */
+G_GNUC_INTERNAL void _vibeos_css_follow_contrast (GtkCssProvider *provider);
+void
+_vibeos_css_follow_contrast (GtkCssProvider *provider)
+{
+#if GTK_CHECK_VERSION (4, 20, 0)
+  g_object_bind_property (gtk_settings_get_default (), "gtk-interface-contrast", provider, "prefers-contrast",
+                          G_BINDING_SYNC_CREATE);
+#endif
+}
+
 GtkCssProvider *
 vibeos_css_load_string (const char *css, guint priority)
 {
@@ -488,6 +502,7 @@ vibeos_css_load_string (const char *css, guint priority)
   g_return_val_if_fail (css != NULL, NULL);
   g_return_val_if_fail (display != NULL, NULL);
   sheet.provider = gtk_css_provider_new ();
+  _vibeos_css_follow_contrast (sheet.provider);
   sheet.source = g_strdup (css);
   load_sheet (self, &sheet);
   gtk_style_context_add_provider_for_display (display, GTK_STYLE_PROVIDER (sheet.provider), priority);

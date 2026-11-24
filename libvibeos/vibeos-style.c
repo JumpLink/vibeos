@@ -480,6 +480,11 @@ vibeos_init_full (VibeosInitFlags flags)
   }
   self->initialized = TRUE;
   self->provider = gtk_css_provider_new ();
+  /* its @media (prefers-contrast: more) rules with High contrast (vibeos-text.c) */
+  {
+    extern void _vibeos_css_follow_contrast (GtkCssProvider *provider);
+    _vibeos_css_follow_contrast (self->provider);
+  }
   /* above the theme (APPLICATION), so GTK's own look never shows through a libvibeos widget */
   gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (self->provider),
                                               GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
