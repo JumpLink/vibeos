@@ -145,9 +145,9 @@ sinks_got (pa_context *c, const pa_sink_info *i, int eol, void *data)
     g_ptr_array_add (labels, NULL);
     ns_group_clear (shown->outs);
     if (shown->names->len > 1)
-      ns_row_pick (shown->outs, "Audio will play on", (const char *const *) labels->pdata, sel, out_picked, NULL);
+      ns_row_pick (shown->outs, _("Audio will play on"), (const char *const *) labels->pdata, sel, out_picked, NULL);
     else if (labels->len > 1)
-      ns_row_info (shown->outs, "Audio will play on", labels->pdata[0]);
+      ns_row_info (shown->outs, _("Audio will play on"), labels->pdata[0]);
     ns_group_set_visible (shown->outs, labels->len > 1);
   }
   g_string_truncate (names, 0);
@@ -396,7 +396,7 @@ tone_row (GtkWidget *g, const char *title, GSettings *s, const char *key, const 
 
   g_autoptr (GPtrArray) labels = g_ptr_array_new ();
   if (none)
-    g_ptr_array_add (labels, (gpointer) "None");
+    g_ptr_array_add (labels, (gpointer) N_("None"));
   for (guint i = 0; i < k->tones->len; i++)
     g_ptr_array_add (labels, ((Tone *) k->tones->pdata[i])->title);
   g_ptr_array_add (labels, NULL);
@@ -436,7 +436,7 @@ level_row (GtkWidget *g, const char *title, const char *icon, GSettings *s, cons
 /* ---- the page ---- */
 
 static const char *const profiles[] = { "full", "quiet", "silent", NULL };
-static const char *const profile_labels[] = { "Sound", "Vibrate", "Mute", NULL };
+static const char *const profile_labels[] = { N_("Sound"), N_("Vibrate"), N_("Mute"), NULL };
 
 /* "Louder than 100%" moves the end of the media slider at once */
 static void
@@ -483,7 +483,7 @@ void
 ns_page_sound (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Sound and vibration", &c);
+  NsPage *page = ns_page_new (_("Sound and vibration"), &c);
   Sound *s = g_new0 (Sound, 1);
   s->names = g_ptr_array_new_with_free_func (g_free);
   g_object_set_data_full (G_OBJECT (page), "sound", s, (GDestroyNotify) sound_free);
@@ -505,35 +505,36 @@ ns_page_sound (GtkWidget *row, gpointer data)
   double top = snd && ns_has_key (snd, "allow-volume-above-100-percent")
                && g_settings_get_boolean (snd, "allow-volume-above-100-percent") ? 150 : 100;
   g = ns_group (c, NULL);
-  ns_row_volume (g, "Media volume", "audio-x-generic-symbolic", 0, top, 1, &s->media);
+  ns_row_volume (g, _("Media volume"), "audio-x-generic-symbolic", 0, top, 1, &s->media);
   g_signal_connect (s->media, "value-changed", G_CALLBACK (volume_set), NULL);
   /* what is for calls shows with a modem only */
   if (ns_has_key (phone, "ring-volume"))
-    ns_caps_bind_visible (level_row (g, "Ring volume", "call-start-symbolic", phone, "ring-volume"), NS_CAP_MODEM);
+    ns_caps_bind_visible (level_row (g, _("Ring volume"), "call-start-symbolic", phone, "ring-volume"), NS_CAP_MODEM);
   if (ns_has_key (clock, "alarm-volume"))
-    level_row (g, "Alarm volume", "alarm-symbolic", clock, "alarm-volume");
-  GtkWidget *mr = ns_row_volume (g, "Microphone", "audio-input-microphone-symbolic", 0, 100, 1, &s->mic);
+    level_row (g, _("Alarm volume"), "alarm-symbolic", clock, "alarm-volume");
+  GtkWidget *mr = ns_row_volume (g, _("Microphone"), "audio-input-microphone-symbolic", 0, 100, 1, &s->mic);
   gtk_widget_set_visible (mr, FALSE);
   g_signal_connect (s->mic, "value-changed", G_CALLBACK (volume_set), GINT_TO_POINTER (1));
 
   if (fb) {
     g = ns_group (c, NULL);
-    ns_row_choice (g, "Sound mode", fb, "profile", profiles, profile_labels);
+    ns_row_choice (g, _("Sound mode"), fb, "profile", profiles, profile_labels);
   }
 
   if (fb || phone) {
-    g = ns_group (c, "Vibration");
+    g = ns_group (c, _("Vibration"));
     /* feedbackd's max-haptic-strength, the most it drives the motor with (the shell's ticks, the Phone and the
      * Clock all vibrate through feedbackd); the slider follows the key, whoever sets it */
     gboolean strength = ns_has_key (fb, "max-haptic-strength") && has_vibrator ();
     if (strength) {
       GtkWidget *scale;
-      ns_row_scale (g, "Vibration intensity", "phone-symbolic", 0, 100, 10, &scale);
+      ns_row_scale (g, _("Vibration intensity"), "phone-symbolic", 0, 100, 10, &scale);
       g_settings_bind_with_mapping (fb, "max-haptic-strength", gtk_range_get_adjustment (GTK_RANGE (scale)), "value",
                                     G_SETTINGS_BIND_DEFAULT, level_get, level_set, NULL, NULL);
     }
     if (ns_has_key (phone, "vibrate-when-ringing") && has_vibrator ())
-      ns_caps_bind_visible (ns_row_switch (g, "Vibrate while ringing", "Calls vibrate as well as ring in Sound mode",
+      ns_caps_bind_visible (ns_row_switch (g, _("Vibrate while ringing"),
+                                           _("Calls vibrate as well as ring in Sound mode"),
                                            phone, "vibrate-when-ringing"), NS_CAP_MODEM);
     /* nothing but the calls' row in it, or nothing at all: the card goes with it */
     if (!has_vibrator ())
@@ -543,25 +544,25 @@ ns_page_sound (GtkWidget *row, gpointer data)
   }
 
   if (phone || clock) {
-    g = ns_group (c, "Sound patterns");
+    g = ns_group (c, _("Sound patterns"));
     /* the defaults are the apps' own (ringer.c DEFAULT_RINGTONE, alarm-klaxon.c's kinds[]) */
     if (ns_has_key (phone, "ringtone"))
-      ns_caps_bind_visible (tone_row (g, "Phone ringtone", phone, "ringtone", "sounds/android/ringtones", "Orion",
+      ns_caps_bind_visible (tone_row (g, _("Phone ringtone"), phone, "ringtone", "sounds/android/ringtones", "Orion",
                                       "none"), NS_CAP_MODEM);
     if (ns_has_key (clock, "default-alarm-ringtone"))
-      tone_row (g, "Default alarm sound", clock, "default-alarm-ringtone", "sounds/android/alarms", "Hassium", NULL);
+      tone_row (g, _("Default alarm sound"), clock, "default-alarm-ringtone", "sounds/android/alarms", "Hassium", NULL);
   }
 
   /* the Phone's key tones: a phone's only system sound VibeOS has a switch for */
   if (ns_has_key (phone, "dtmf-tone-when-dialing")) {
-    g = ns_group (c, "System sounds");
-    ns_row_switch (g, "Dial pad tones", NULL, phone, "dtmf-tone-when-dialing");
+    g = ns_group (c, _("System sounds"));
+    ns_row_switch (g, _("Dial pad tones"), NULL, phone, "dtmf-tone-when-dialing");
     ns_caps_bind_visible (g, NS_CAP_MODEM);
   }
 
   if (ns_has_key (snd, "allow-volume-above-100-percent")) {
     g = ns_group (c, NULL);
-    ns_row_switch (g, "Louder than 100%", "Can distort the sound", snd, "allow-volume-above-100-percent");
+    ns_row_switch (g, _("Louder than 100%"), _("Can distort the sound"), snd, "allow-volume-above-100-percent");
     g_signal_connect_object (snd, "changed::allow-volume-above-100-percent", G_CALLBACK (louder_changed), s->media,
                              0);
   }

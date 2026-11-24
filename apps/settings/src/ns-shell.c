@@ -15,7 +15,7 @@
 
 /* ---- the lock type ---- */
 
-static const char *const lock_labels[] = { "Swipe", "Pattern", "PIN", NULL };
+static const char *const lock_labels[] = { N_("Swipe"), N_("Pattern"), N_("PIN"), NULL };
 static const char *const lock_types[] = { "swipe", "pattern", "pin" };
 
 typedef struct {
@@ -40,7 +40,7 @@ lock_show (Lock *l)
   guint i = lock_index (l);
   ns_row_pick_select (l->type, i);
   gtk_widget_set_visible (l->change, i != 0);
-  ns_row_set_title (l->change, i == 1 ? "Change pattern" : "Change PIN");
+  ns_row_set_title (l->change, i == 1 ? _("Change pattern") : _("Change PIN"));
 }
 
 typedef struct {
@@ -137,25 +137,25 @@ ns_page_lock_screen (GtkWidget *row, gpointer data)
     return;
   }
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Lock screen", &c);
+  NsPage *page = ns_page_new (_("Lock screen"), &c);
   Lock *l = g_new0 (Lock, 1);
   l->vibeos = vibeos;
   g_object_set_data_full (G_OBJECT (page), "ns-lock", l, (GDestroyNotify) lock_free);
 
   GtkWidget *g = ns_group (c, NULL);
-  l->type = ns_row_pick (g, "Screen lock type", lock_labels, lock_index (l), lock_picked, l);
-  l->change = ns_row (g, NULL, "Change PIN", "It is also your password");
+  l->type = ns_row_pick (g, _("Screen lock type"), lock_labels, lock_index (l), lock_picked, l);
+  l->change = ns_row (g, NULL, _("Change PIN"), _("It is also your password"));
   ns_row_on_activate (l->change, change_tapped, l);
   g_signal_connect_swapped (vibeos, "changed::lock-type", G_CALLBACK (lock_show), l);
   lock_show (l);
-  ns_note (c, "Swipe unlocks without a password. Pattern and PIN unlock with your password: a pattern or PIN set "
-              "here becomes your password (also for sudo, SSH and the console).");
+  ns_note (c, _("Swipe unlocks without a password. Pattern and PIN unlock with your password: a pattern or PIN set "
+              "here becomes your password (also for sudo, SSH and the console)."));
 
-  g = ns_group (c, "On the lock screen");
+  g = ns_group (c, _("On the lock screen"));
   GSettings *n = ns_page_settings (page, "org.gnome.desktop.notifications");
-  ns_row_switch (g, "Notifications", "Their apps' icons below the clock", n, "show-in-lock-screen");
+  ns_row_switch (g, _("Notifications"), _("Their apps' icons below the clock"), n, "show-in-lock-screen");
   if (ns_has_key (vibeos, "aod") && ns_panel_is_oled ())
-    ns_row_switch (g, "Always On Display", "The time, the date and notifications while the screen is off", vibeos,
+    ns_row_switch (g, _("Always On Display"), _("The time, the date and notifications while the screen is off"), vibeos,
                    "aod");
   ns_push (page);
 }
@@ -240,7 +240,8 @@ xkb_end (GMarkupParseContext *ctx, const char *element, gpointer data, GError **
     if (r->id && r->name && g_file_test (symbols, G_FILE_TEST_EXISTS)) {
       Layout *l = g_new0 (Layout, 1);
       l->id = g_steal_pointer (&r->id);
-      l->name = g_steal_pointer (&r->name);
+      /* its name in the user's language, from xkeyboard-config's own translations */
+      l->name = g_strdup (g_dgettext ("xkeyboard-config", r->name));
       g_ptr_array_add (r->out, l);
     }
     g_clear_pointer (&r->id, g_free);
@@ -337,7 +338,7 @@ layout_add (GtkWidget *row, gpointer page)
 {
   Layouts *l = g_object_get_data (G_OBJECT (page), "ns-layouts");
   GtkWidget *c;
-  NsPage *add = ns_page_new ("Add a layout", &c);
+  NsPage *add = ns_page_new (_("Add a layout"), &c);
   GtkWidget *g = ns_group (c, NULL);
   g_autoptr (GVariant) v = g_settings_get_value (l->src, "sources");
   for (guint i = 0; i < l->all->len; i++) {
@@ -361,17 +362,17 @@ layouts_fill (NsPage *page)
   for (guint i = 0; i < n; i++) {
     const char *t, *id;
     g_variant_get_child (v, i, "(&s&s)", &t, &id);
-    GtkWidget *r = ns_row (l->group, NULL, layout_name (l, t, id), i == 0 ? "Used first" : NULL);
+    GtkWidget *r = ns_row (l->group, NULL, layout_name (l, t, id), i == 0 ? _("Used first") : NULL);
     if (n > 1) {
       GtkWidget *x = vibeos_icon_button_new ("user-trash-symbolic");
-      gtk_accessible_update_property (GTK_ACCESSIBLE (x), GTK_ACCESSIBLE_PROPERTY_LABEL, "Remove", -1);
+      gtk_accessible_update_property (GTK_ACCESSIBLE (x), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Remove"), -1);
       g_object_set_data (G_OBJECT (x), "ns-index", GUINT_TO_POINTER (i));
       g_signal_connect (x, "clicked", G_CALLBACK (layout_remove), page);
       ns_row_suffix (r, x);
     }
   }
   if (l->all->len)
-    ns_row_button (l->group, "Add a layout", FALSE, layout_add, page);
+    ns_row_button (l->group, _("Add a layout"), FALSE, layout_add, page);
 }
 
 static void
@@ -384,7 +385,7 @@ layouts_rows (NsPage *page, GtkWidget *c)
   l->src = src;
   l->all = xkb_layouts ();
   g_object_set_data_full (G_OBJECT (page), "ns-layouts", l, (GDestroyNotify) layouts_free);
-  l->group = ns_group (c, "Layouts");
+  l->group = ns_group (c, _("Layouts"));
   ns_later_init (page, layouts_fill);
   g_signal_connect_object (src, "changed::sources", G_CALLBACK (ns_later), page, G_CONNECT_SWAPPED);
   layouts_fill (page);
@@ -397,29 +398,29 @@ void
 ns_page_keyboard (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Keyboard", &c);
+  NsPage *page = ns_page_new (_("Keyboard"), &c);
   GSettings *shell = ns_page_settings (page, "vibeos.Shell");
   if (ns_has_key (shell, "keyboard")) {
     static const char *const keyboards[] = { "vibeos", "gnome", NULL };
-    static const char *const keyboard_labels[] = { "VibeOS keyboard", "GNOME keyboard", NULL };
+    static const char *const keyboard_labels[] = { N_("VibeOS keyboard"), N_("GNOME keyboard"), NULL };
     GtkWidget *g = ns_group (c, NULL);
-    ns_row_choice (g, "On-screen keyboard", shell, "keyboard", keyboards, keyboard_labels);
+    ns_row_choice (g, _("On-screen keyboard"), shell, "keyboard", keyboards, keyboard_labels);
   }
   if (ns_has_key (shell, "keyboard-autocorrect")) {
-    GtkWidget *g = ns_group (c, "Text correction");
-    ns_row_switch (g, "Auto-correction", "Spacebar and punctuation automatically correct mistyped words", shell,
+    GtkWidget *g = ns_group (c, _("Text correction"));
+    ns_row_switch (g, _("Auto-correction"), _("Spacebar and punctuation automatically correct mistyped words"), shell,
                    "keyboard-autocorrect");
-    ns_row_switch (g, "Show correction suggestions", "Display suggested words while typing", shell,
+    ns_row_switch (g, _("Show correction suggestions"), _("Display suggested words while typing"), shell,
                    "keyboard-suggestions");
-    ns_row_switch (g, "Next-word suggestions", "Use previous word in making suggestions", shell,
+    ns_row_switch (g, _("Next-word suggestions"), _("Use previous word in making suggestions"), shell,
                    "keyboard-next-word");
   }
   GSettings *a11y = ns_page_settings (page, "org.gnome.desktop.a11y.applications");
   if (ns_has_key (a11y, "screen-keyboard-enabled")) {
     GtkWidget *g = ns_group (c, NULL);
-    ns_row_switch (g, "Show on-screen keyboard", "Also while a hardware keyboard or a mouse is used", a11y,
+    ns_row_switch (g, _("Show on-screen keyboard"), _("Also while a hardware keyboard or a mouse is used"), a11y,
                    "screen-keyboard-enabled");
-    ns_note (c, "Typing on the touchscreen opens the on-screen keyboard either way.");
+    ns_note (c, _("Typing on the touchscreen opens the on-screen keyboard either way."));
   }
   layouts_rows (page, c);
   ns_push (page);

@@ -7,6 +7,8 @@
 #include "ns-pages.h"
 #include "ns-ui.h"
 
+#include <string.h>
+
 #define AGENT_PATH "/vibeos/Settings/agent"
 
 static GDBusObjectManager *bluez;
@@ -88,7 +90,8 @@ call_done (GObject *src, GAsyncResult *res, gpointer row)
   g_autoptr (GVariant) v = g_dbus_proxy_call_finish (G_DBUS_PROXY (src), res, &err);
   if (!v && !g_error_matches (err, G_DBUS_ERROR, G_DBUS_ERROR_NO_REPLY)) {
     g_dbus_error_strip_remote_error (err);
-    g_autofree char *t = g_strdup_printf ("Failed: %s", err->message);
+    /* TRANSLATORS: %s is BlueZ's error message */
+    g_autofree char *t = g_strdup_printf (_("Failed: %s"), err->message);
     ns_row_set_subtitle (row, t);
   }
   g_object_unref (row);
@@ -120,7 +123,11 @@ device_name (const char *path)
 {
   g_autoptr (GDBusInterface) i = bluez ? g_dbus_object_manager_get_interface (bluez, path, "org.bluez.Device1") : NULL;
   char *n = i ? prop_string (G_DBUS_PROXY (i), "Alias") : NULL;
-  return n ? n : g_strdup ("the device");
+  if (n)
+    return n;
+  /* its address, as BlueZ's own Alias falls back to: /org/bluez/hci0/dev_AA_BB_CC_DD_EE_FF */
+  const char *dev = strstr (path, "/dev_");
+  return dev ? g_strdelimit (g_strdup (dev + 5), "_", ':') : g_strdup (path);
 }
 
 static void
@@ -179,17 +186,19 @@ agent_call (GDBusConnection *bus, const char *sender, const char *path, const ch
     return;
   }
   pending = inv;
-  g_autofree char *head = g_strdup_printf ("Pair with %s?", name);
+  /* TRANSLATORS: %s is the Bluetooth device's name ("JBL Flip 5") */
+  g_autofree char *head = g_strdup_printf (_("Pair with %s?"), name);
   if (!g_strcmp0 (method, "RequestConfirmation")) {
     guint32 key;
     g_variant_get (args, "(&ou)", &dev, &key);
-    g_autofree char *body = g_strdup_printf ("Make sure %s shows this code:\n\n%06u", name, key);
-    agent_dialog = ns_confirm (agent_parent, head, body, "Pair", FALSE, confirmed, NULL);
+    /* TRANSLATORS: the device's name, then the six-digit code */
+    g_autofree char *body = g_strdup_printf (_("Make sure %s shows this code:\n\n%06u"), name, key);
+    agent_dialog = ns_confirm (agent_parent, head, body, _("Pair"), FALSE, confirmed, NULL);
   } else if (!g_strcmp0 (method, "RequestAuthorization")) {
-    agent_dialog = ns_confirm (agent_parent, head, NULL, "Pair", FALSE, confirmed, NULL);
+    agent_dialog = ns_confirm (agent_parent, head, NULL, _("Pair"), FALSE, confirmed, NULL);
   } else if (!g_strcmp0 (method, "RequestPinCode") || !g_strcmp0 (method, "RequestPasskey")) {
     gboolean passkey = !g_strcmp0 (method, "RequestPasskey");
-    ns_ask (agent_parent, head, "Type the PIN shown on the device (often 0000 or 1234).", NULL, FALSE, "Pair",
+    ns_ask (agent_parent, head, _("Type the PIN shown on the device (often 0000 or 1234)."), NULL, FALSE, _("Pair"),
             pin_entered, GINT_TO_POINTER (passkey));
   } else if (!g_strcmp0 (method, "DisplayPinCode") || !g_strcmp0 (method, "DisplayPasskey")) {
     g_autofree char *code = NULL;
@@ -203,10 +212,11 @@ agent_call (GDBusConnection *bus, const char *sender, const char *path, const ch
       g_variant_get (args, "(&ouq)", &dev, &key, &typed);
       code = g_strdup_printf ("%06u", key);
     }
-    g_autofree char *body = g_strdup_printf ("Type this code on %s:\n\n%s", name, code);
+    /* TRANSLATORS: the device's name, then the code to type on it */
+    g_autofree char *body = g_strdup_printf (_("Type this code on %s:\n\n%s"), name, code);
     /* nothing to answer: the device sends the result */
     agent_reply (g_variant_new ("()"));
-    agent_dialog = ns_confirm (agent_parent, head, body, "OK", FALSE, NULL, NULL);
+    agent_dialog = ns_confirm (agent_parent, head, body, _("OK"), FALSE, NULL, NULL);
     agent_dialog = NULL;
   } else {
     agent_reply (NULL);
@@ -276,7 +286,7 @@ connect_tapped (GtkWidget *row, gpointer data)
 {
   GDBusProxy *dev = g_object_get_data (G_OBJECT (row), "ns-dev");
   gboolean on = prop_bool (dev, "Connected");
-  ns_row_set_subtitle (row, on ? "Disconnecting…" : "Connecting…");
+  ns_row_set_subtitle (row, on ? _("Disconnecting…") : _("Connecting…"));
   g_dbus_proxy_call (dev, on ? "Disconnect" : "Connect", NULL, G_DBUS_CALL_FLAGS_NONE, 30000, NULL, call_done,
                      g_object_ref (row));
 }
@@ -292,7 +302,8 @@ paired (GObject *src, GAsyncResult *res, gpointer row)
     g_dbus_proxy_call (G_DBUS_PROXY (src), "Connect", NULL, G_DBUS_CALL_FLAGS_NONE, 30000, NULL, NULL, NULL);
   } else {
     g_dbus_error_strip_remote_error (err);
-    g_autofree char *t = g_strdup_printf ("Not paired: %s", err->message);
+    /* TRANSLATORS: %s is BlueZ's error message */
+    g_autofree char *t = g_strdup_printf (_("Not paired: %s"), err->message);
     ns_row_set_subtitle (row, t);
   }
   g_object_unref (row);
@@ -302,7 +313,7 @@ static void
 pair_tapped (GtkWidget *row, gpointer data)
 {
   GDBusProxy *dev = g_object_get_data (G_OBJECT (row), "ns-dev");
-  ns_row_set_subtitle (row, "Pairing…");
+  ns_row_set_subtitle (row, _("Pairing…"));
   g_dbus_proxy_call (dev, "Pair", NULL, G_DBUS_CALL_FLAGS_NONE, 60000, NULL, paired, g_object_ref (row));
 }
 
@@ -320,7 +331,7 @@ static void
 rename_tapped (GtkWidget *row, gpointer dev)
 {
   g_autofree char *a = prop_string (dev, "Alias");
-  ns_ask (row, "Rename", NULL, a, FALSE, "Rename", alias_entered, g_object_ref (dev));
+  ns_ask (row, _("Rename"), NULL, a, FALSE, _("Rename"), alias_entered, g_object_ref (dev));
 }
 
 static void
@@ -339,8 +350,8 @@ forget_answered (gboolean yes, gpointer row)
 static void
 forget_tapped (GtkWidget *row, gpointer data)
 {
-  ns_confirm (row, "Unpair this device?", "It has to be paired again to connect.", "Unpair", TRUE, forget_answered,
-              row);
+  ns_confirm (row, _("Unpair this device?"), _("It has to be paired again to connect."), _("Unpair"), TRUE,
+              forget_answered, row);
 }
 
 static void
@@ -349,8 +360,8 @@ device_fill (NsPage *page)
   GDBusProxy *dev = g_object_get_data (G_OBJECT (page), "ns-dev");
   GtkWidget *conn = g_object_get_data (G_OBJECT (page), "ns-conn");
   gboolean on = prop_bool (dev, "Connected");
-  ns_row_set_title (conn, on ? "Disconnect" : "Connect");
-  ns_row_set_subtitle (conn, on ? "Connected" : NULL);
+  ns_row_set_title (conn, on ? _("Disconnect") : _("Connect"));
+  ns_row_set_subtitle (conn, on ? _("Connected") : NULL);
 }
 
 static void
@@ -358,20 +369,20 @@ device_page (GtkWidget *b, GDBusProxy *dev)
 {
   GtkWidget *c;
   g_autofree char *alias = prop_string (dev, "Alias");
-  NsPage *page = ns_page_new (alias ? alias : "Device", &c);
+  NsPage *page = ns_page_new (alias ? alias : _("Device"), &c);
   g_object_set_data_full (G_OBJECT (page), "ns-dev", g_object_ref (dev), g_object_unref);
   ns_later_init (page, device_fill);
   GtkWidget *g = ns_group (c, NULL);
-  GtkWidget *conn = ns_row_button (g, "Connect", FALSE, connect_tapped, NULL);
+  GtkWidget *conn = ns_row_button (g, _("Connect"), FALSE, connect_tapped, NULL);
   g_object_set_data_full (G_OBJECT (conn), "ns-dev", g_object_ref (dev), g_object_unref);
   g_object_set_data (G_OBJECT (page), "ns-conn", conn);
-  GtkWidget *r = ns_row (g, NULL, "Rename", alias);
+  GtkWidget *r = ns_row (g, NULL, _("Rename"), alias);
   ns_row_on_activate (r, rename_tapped, dev);
   g = ns_group (c, NULL);
   g_autofree char *addr = prop_string (dev, "Address");
-  ns_row_info (g, "Bluetooth address", addr);
+  ns_row_info (g, _("Bluetooth address"), addr);
   g = ns_group (c, NULL);
-  r = ns_row_button (g, "Unpair", TRUE, forget_tapped, NULL);
+  r = ns_row_button (g, _("Unpair"), TRUE, forget_tapped, NULL);
   g_object_set_data_full (G_OBJECT (r), "ns-dev", g_object_ref (dev), g_object_unref);
   g_signal_connect_object (dev, "g-properties-changed", G_CALLBACK (ns_later), page, G_CONNECT_SWAPPED);
   device_fill (page);
@@ -394,7 +405,7 @@ bt_fill (NsPage *page)
     bt->adapter = adapter ();
     if (!bt->adapter) {
       gtk_widget_set_sensitive (bt->power, FALSE);
-      ns_row_set_subtitle (bt->power, "No Bluetooth adapter");
+      ns_row_set_subtitle (bt->power, _("No Bluetooth adapter"));
       return;
     }
     g_signal_connect_object (bluez, "object-added", G_CALLBACK (ns_later), page, G_CONNECT_SWAPPED);
@@ -405,7 +416,7 @@ bt_fill (NsPage *page)
   }
   gboolean on = prop_bool (bt->adapter, "Powered");
   ns_switch_quiet (ns_row_get_switch (bt->power), on);
-  ns_row_set_subtitle (bt->power, on ? "On" : "Off");
+  ns_row_set_subtitle (bt->power, on ? _("On") : _("Off"));
   if (on && !bt->scanning) {
     bt->scanning = TRUE;
     prop_set (bt->adapter, "org.bluez.Adapter1", "Discoverable", g_variant_new_boolean (TRUE));
@@ -414,9 +425,11 @@ bt_fill (NsPage *page)
     bt->scanning = FALSE;
   }
   g_autofree char *alias = prop_string (bt->adapter, "Alias");
-  g_autofree char *this_device = g_strdup_printf ("this %s", ns_device_noun ());
-  g_autofree char *vis = g_strdup_printf ("Visible as “%s” to nearby devices while this page is open.",
-                                          alias ? alias : this_device);
+  /* TRANSLATORS: %s is this device's Bluetooth name */
+  g_autofree char *vis =
+    alias ? g_strdup_printf (_("Visible as “%s” to nearby devices while this page is open."), alias)
+          : g_strdup (ns_device_text (_("This phone is visible to nearby devices while this page is open."),
+                                      _("This tablet is visible to nearby devices while this page is open.")));
   gtk_label_set_text (GTK_LABEL (bt->visible), vis);
   gtk_widget_set_visible (bt->visible, on);
   gtk_widget_set_visible (bt->off, !on);
@@ -441,11 +454,11 @@ bt_fill (NsPage *page)
       continue;        /* nameless ones are just addresses */
     gboolean conn = prop_bool (dev, "Connected");
     GtkWidget *r = ns_row (is_paired ? bt->paired : bt->avail, device_icon (dev), alias_,
-                           is_paired ? (conn ? "Connected" : NULL) : NULL);
+                           is_paired ? (conn ? _("Connected") : NULL) : NULL);
     g_object_set_data_full (G_OBJECT (r), "ns-dev", g_object_ref (dev), g_object_unref);
     if (is_paired) {
       GtkWidget *gear = vibeos_icon_button_new ("emblem-system-symbolic");
-      gtk_accessible_update_property (GTK_ACCESSIBLE (gear), GTK_ACCESSIBLE_PROPERTY_LABEL, "Device settings", -1);
+      gtk_accessible_update_property (GTK_ACCESSIBLE (gear), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Device settings"), -1);
       g_signal_connect_data (gear, "clicked", G_CALLBACK (device_page), g_object_ref (dev),
                              (GClosureNotify) (void (*) (void)) g_object_unref, 0);
       ns_row_suffix (r, gear);
@@ -486,20 +499,20 @@ void
 ns_page_bluetooth (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Bluetooth", &c);
+  NsPage *page = ns_page_new (_("Bluetooth"), &c);
   Bt *bt = g_new0 (Bt, 1);
   g_object_set_data_full (G_OBJECT (page), "bt", bt, (GDestroyNotify) bt_free);
   ns_later_init (page, bt_fill);
 
   GtkWidget *g = ns_group (c, NULL);
-  bt->power = ns_row_toggle (g, NULL, "Bluetooth", NULL);
+  bt->power = ns_row_toggle (g, NULL, _("Bluetooth"), NULL);
   g_signal_connect (ns_row_get_switch (bt->power), "notify::active", G_CALLBACK (bt_power), page);
   bt->visible = ns_note (c, "");
   gtk_widget_set_visible (bt->visible, FALSE);
-  bt->off = ns_note (c, "Turn on Bluetooth to connect headphones, speakers, watches and more.");
-  bt->paired = ns_group (c, "Paired devices");
+  bt->off = ns_note (c, _("Turn on Bluetooth to connect headphones, speakers, watches and more."));
+  bt->paired = ns_group (c, _("Paired devices"));
   ns_group_set_visible (bt->paired, FALSE);
-  bt->avail = ns_group (c, "Available devices");
+  bt->avail = ns_group (c, _("Available devices"));
   ns_group_set_visible (bt->avail, FALSE);
   agent_on (GTK_WIDGET (page));
   with_bluez (page, bt_fill);
@@ -527,8 +540,8 @@ static void
 name_tapped (GtkWidget *row, gpointer data)
 {
   const char *cur = g_object_get_data (G_OBJECT (row), "ns-name");
-  ns_ask (row, "Device name", "Shown to Bluetooth devices and on the network.", cur, FALSE, "Rename", pretty_set,
-          g_object_ref (row));
+  ns_ask (row, _("Device name"), _("Shown to Bluetooth devices and on the network."), cur, FALSE, _("Rename"),
+          pretty_set, g_object_ref (row));
 }
 
 static void
@@ -548,7 +561,7 @@ name_got (GObject *src, GAsyncResult *res, gpointer row)
 GtkWidget *
 ns_bt_name_row (GtkWidget *g)
 {
-  GtkWidget *r = ns_row (g, NULL, "Device name", g_get_host_name ());
+  GtkWidget *r = ns_row (g, NULL, _("Device name"), g_get_host_name ());
   ns_row_on_activate (r, name_tapped, NULL);
   g_autoptr (GDBusConnection) bus = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, NULL);
   if (bus)
@@ -590,12 +603,14 @@ void
 ns_page_sharing (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Sharing", &c);
+  NsPage *page = ns_page_new (_("Sharing"), &c);
   ns_later_init (page, visible_fill);
   GtkWidget *g = ns_group (c, NULL);
   ns_bt_name_row (g);
-  g_autofree char *others = g_strdup_printf ("Others can find the %s and pair with it", ns_device_noun ());
-  GtkWidget *r = ns_row_switch (g, "Visible to Bluetooth devices", others, NULL, NULL);
+  GtkWidget *r = ns_row_switch (g, _("Visible to Bluetooth devices"),
+                                ns_device_text (_("Others can find the phone and pair with it"),
+                                                _("Others can find the tablet and pair with it")),
+                                NULL, NULL);
   g_signal_connect (ns_row_get_switch (r), "notify::active", G_CALLBACK (visible_set), NULL);
   gtk_widget_set_visible (r, FALSE);
   g_object_set_data (G_OBJECT (page), "ns-visible", r);

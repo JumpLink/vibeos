@@ -46,23 +46,23 @@ int_row (GtkWidget *g, const char *title, GSettings *s, const char *key, const i
 /* ---- Security and privacy ---- */
 
 static const int ages[] = { -1, 1, 7, 30 };
-static const char *const age_labels[] = { "Forever", "1 day", "7 days", "30 days", NULL };
+static const char *const age_labels[] = { N_("Forever"), N_("1 day"), N_("7 days"), N_("30 days"), NULL };
 static const int cleans[] = { 1, 7, 14, 30 };
-static const char *const clean_labels[] = { "1 day", "7 days", "14 days", "30 days", NULL };
+static const char *const clean_labels[] = { N_("1 day"), N_("7 days"), N_("14 days"), N_("30 days"), NULL };
 
 void
 ns_page_privacy (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Security and privacy", &c);
+  NsPage *page = ns_page_new (_("Security and privacy"), &c);
   GtkWidget *g = ns_group (c, NULL);
-  GtkWidget *r = ns_row (g, "system-lock-screen-symbolic", "Lock screen", "Screen lock type, notifications");
+  GtkWidget *r = ns_row (g, "system-lock-screen-symbolic", _("Lock screen"), _("Screen lock type, notifications"));
   ns_row_on_activate (r, ns_page_lock_screen, NULL);
   if (ns_settings_exists ("org.gnome.system.location")) {
-    r = ns_row (g, "find-location-symbolic", "Location", "Location services, app access");
+    r = ns_row (g, "find-location-symbolic", _("Location"), _("Location services, app access"));
     ns_row_on_activate (r, ns_page_location, NULL);
   }
-  r = ns_row (g, "system-users-symbolic", "Your account", "Name, password");
+  r = ns_row (g, "system-users-symbolic", _("Your account"), _("Name, password"));
   ns_row_on_activate (r, ns_page_users, NULL);
 
   GSettings *p = ns_page_settings (page, "org.gnome.desktop.privacy");
@@ -73,21 +73,21 @@ ns_page_privacy (GtkWidget *row, gpointer data)
   /* Off, no app gets the camera or the microphone, VibeOS's own included: the shell hands the switches to WirePlumber,
    * which hides them from every PipeWire client (vibeos-sandbox's sandbox-access.lua), the camera portal refuses,
    * Camera keeps to it itself, and the status bar shows that they are off */
-  g = ns_group (c, "Permissions");
+  g = ns_group (c, _("Permissions"));
   if (ns_has_key (p, "disable-camera"))
-    inverted (g, "Camera access", "For all apps and services", p, "disable-camera");
+    inverted (g, _("Camera access"), _("For all apps and services"), p, "disable-camera");
   if (ns_has_key (p, "disable-microphone"))
-    inverted (g, "Microphone access", "For all apps and services", p, "disable-microphone");
+    inverted (g, _("Microphone access"), _("For all apps and services"), p, "disable-microphone");
 
-  g = ns_group (c, "History");
-  ns_row_switch (g, "Remember recent files", "Apps show what you opened lately", p, "remember-recent-files");
-  r = int_row (g, "Keep the list for", p, "recent-files-max-age", ages, age_labels);
+  g = ns_group (c, _("History"));
+  ns_row_switch (g, _("Remember recent files"), _("Apps show what you opened lately"), p, "remember-recent-files");
+  r = int_row (g, _("Keep the list for"), p, "recent-files-max-age", ages, age_labels);
   g_settings_bind (p, "remember-recent-files", r, "sensitive", G_SETTINGS_BIND_GET);
 
-  g = ns_group (c, "Clean up");
-  ns_row_switch (g, "Empty the trash", "Delete old files from it automatically", p, "remove-old-trash-files");
-  ns_row_switch (g, "Delete temporary files", "Old ones, automatically", p, "remove-old-temp-files");
-  int_row (g, "Older than", p, "old-files-age", cleans, clean_labels);
+  g = ns_group (c, _("Clean up"));
+  ns_row_switch (g, _("Empty the trash"), _("Delete old files from it automatically"), p, "remove-old-trash-files");
+  ns_row_switch (g, _("Delete temporary files"), _("Old ones, automatically"), p, "remove-old-temp-files");
+  int_row (g, _("Older than"), p, "old-files-age", cleans, clean_labels);
 
   /* no Diagnostics: no crash reporter is installed, and only GNOME Software and Shell read the usage keys */
   ns_push (page);
@@ -96,7 +96,8 @@ ns_page_privacy (GtkWidget *row, gpointer data)
 /* ---- Location ---- */
 
 static const char *const accuracy[] = { "country", "city", "neighborhood", "street", "exact", NULL };
-static const char *const accuracy_labels[] = { "Country", "City", "Neighbourhood", "Street", "Exact", NULL };
+static const char *const accuracy_labels[] = { N_("Country"), N_("City"), N_("Neighbourhood"), N_("Street"),
+                                               N_("Exact"), NULL };
 
 static GDBusConnection *
 session_bus (void)
@@ -152,20 +153,21 @@ void
 ns_page_location (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Location", &c);
+  NsPage *page = ns_page_new (_("Location"), &c);
   GSettings *loc = ns_page_settings (page, "org.gnome.system.location");
   if (!loc)
     return;
   GtkWidget *g = ns_group (c, NULL);
-  g_autofree char *where = g_strdup_printf ("Apps may ask where the %s is", ns_device_noun ());
-  ns_row_switch (g, "Use location", where, loc, "enabled");
+  ns_row_switch (g, _("Use location"),
+                 ns_device_text (_("Apps may ask where the phone is"), _("Apps may ask where the tablet is")), loc,
+                 "enabled");
   if (ns_has_key (loc, "max-accuracy-level")) {
-    GtkWidget *r = ns_row_choice (g, "Accuracy", loc, "max-accuracy-level", accuracy, accuracy_labels);
+    GtkWidget *r = ns_row_choice (g, _("Accuracy"), loc, "max-accuracy-level", accuracy, accuracy_labels);
     g_settings_bind (loc, "enabled", r, "sensitive", G_SETTINGS_BIND_GET);
   }
-  g = ns_group (c, "App access");
+  g = ns_group (c, _("App access"));
   ns_group_set_visible (g, FALSE);
-  GtkWidget *none = ns_note (c, "No app has asked for the location yet.");
+  GtkWidget *none = ns_note (c, _("No app has asked for the location yet."));
   gtk_widget_set_visible (none, FALSE);
   g_object_set_data (G_OBJECT (g), "ns-none", none);
   g_autoptr (GDBusConnection) bus = session_bus ();
@@ -181,46 +183,47 @@ ns_page_location (GtkWidget *row, gpointer data)
 /* ---- Accessibility ---- */
 
 static const int cursors[] = { 24, 32, 48, 64, 96 };
-static const char *const cursor_labels[] = { "Default", "Medium", "Large", "Larger", "Largest", NULL };
+static const char *const cursor_labels[] = { N_("Default"), N_("Medium"), N_("Large"), N_("Larger"), N_("Largest"),
+                                             NULL };
 
 void
 ns_page_accessibility (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Accessibility", &c);
+  NsPage *page = ns_page_new (_("Accessibility"), &c);
   GSettings *a11y = ns_page_settings (page, "org.gnome.desktop.a11y.interface");
   GSettings *iface = ns_page_settings (page, "org.gnome.desktop.interface");
   GSettings *apps = ns_page_settings (page, "org.gnome.desktop.a11y.applications");
   GSettings *keys = ns_page_settings (page, "org.gnome.desktop.a11y.keyboard");
 
   /* No "High contrast in bright light" (Phosh's automatic-high-contrast): nothing switches it by the light now */
-  GtkWidget *g = ns_group (c, "Vision");
+  GtkWidget *g = ns_group (c, _("Vision"));
   if (ns_has_key (a11y, "high-contrast"))
-    ns_row_switch (g, "High contrast", "Stronger colours and outlines", a11y, "high-contrast");
+    ns_row_switch (g, _("High contrast"), _("Stronger colours and outlines"), a11y, "high-contrast");
   if (ns_has_key (iface, "enable-animations"))
-    inverted (g, "Reduce animations", "Less movement on screen", iface, "enable-animations");
-  GtkWidget *r = ns_row (g, NULL, "Display size and text", "Font size, display size, bold text");
+    inverted (g, _("Reduce animations"), _("Less movement on screen"), iface, "enable-animations");
+  GtkWidget *r = ns_row (g, NULL, _("Display size and text"), _("Font size, display size, bold text"));
   ns_row_on_activate (r, ns_page_display_size, NULL);
   if (ns_has_key (iface, "cursor-size"))
-    int_row (g, "Pointer size", iface, "cursor-size", cursors, cursor_labels);
+    int_row (g, _("Pointer size"), iface, "cursor-size", cursors, cursor_labels);
   /* the screen reader is Orca: only when it is installed */
   g_autofree char *orca = g_find_program_in_path ("orca");
   if (orca && ns_has_key (apps, "screen-reader-enabled"))
-    ns_row_switch (g, "Screen reader", "Orca reads out what is on screen", apps, "screen-reader-enabled");
+    ns_row_switch (g, _("Screen reader"), _("Orca reads out what is on screen"), apps, "screen-reader-enabled");
 
-  g = ns_group (c, "Interaction");
+  g = ns_group (c, _("Interaction"));
   /* GNOME Shell's keyboard opens by itself for the touchscreen; the key keeps it on for other input too */
   if (ns_has_key (apps, "screen-keyboard-enabled"))
-    ns_row_switch (g, "Show on-screen keyboard", "Also while a hardware keyboard or a mouse is used", apps,
+    ns_row_switch (g, _("Show on-screen keyboard"), _("Also while a hardware keyboard or a mouse is used"), apps,
                    "screen-keyboard-enabled");
 
   /* the hardware keyboard's helpers: mutter does them (its a11y keyboard settings, read live) */
   if (ns_has_key (keys, "stickykeys-enable")) {
-    g = ns_group (c, "Hardware keyboard");
-    ns_row_switch (g, "Sticky keys", "Shift, Ctrl and Alt stay pressed until the next key", keys,
+    g = ns_group (c, _("Hardware keyboard"));
+    ns_row_switch (g, _("Sticky keys"), _("Shift, Ctrl and Alt stay pressed until the next key"), keys,
                    "stickykeys-enable");
-    ns_row_switch (g, "Slow keys", "A key counts only when held a moment", keys, "slowkeys-enable");
-    ns_row_switch (g, "Bounce keys", "A key pressed again at once counts once", keys, "bouncekeys-enable");
+    ns_row_switch (g, _("Slow keys"), _("A key counts only when held a moment"), keys, "slowkeys-enable");
+    ns_row_switch (g, _("Bounce keys"), _("A key pressed again at once counts once"), keys, "bouncekeys-enable");
   }
   ns_push (page);
 }

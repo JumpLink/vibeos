@@ -25,7 +25,11 @@ void        ns_caps_bind_visible (GtkWidget *widget, NsCap cap);
 /* `cb` runs whenever what the device has changes, as long as `object` lives */
 void        ns_caps_on_changed   (GCallback cb, gpointer object);
 
-/* "phone" or "tablet": the device class of the app's window (a phone before there is one) */
-const char *ns_device_noun       (void);
+/* whether the app's window is on a tablet (a phone before there is one) */
+gboolean    ns_is_tablet         (void);
+/* `phone` or `tablet` by the device class: a sentence that names the device, in its two whole versions (so that a
+ * translation never puts a noun into a sentence), ns_device_text (_("This phone ..."), _("This tablet ...")); either
+ * may be a printf format, which the compiler then checks like the one it is */
+const char *ns_device_text       (const char *phone, const char *tablet) G_GNUC_FORMAT (1) G_GNUC_FORMAT (2);
 /* "About phone" or "About tablet" */
 const char *ns_about_title       (void);

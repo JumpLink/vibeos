@@ -21,6 +21,7 @@
 
 
 #include "ns-pattern.h"
+#include "ns-caps.h"
 #include "ns-ui.h"
 
 #include <math.h>
@@ -231,25 +232,25 @@ set_stage (PatternDialog *pd, Stage stage)
   gtk_widget_set_visible (pd->dots, pad);
   gtk_widget_set_visible (pd->entry, !draw && !pad);
   gtk_widget_set_visible (pd->use_text, stage == STAGE_CURRENT && !pd->current_is_pattern);
-  gtk_button_set_label (GTK_BUTTON (pd->use_text), pd->text_mode ? "Use the PIN pad" : "Use password");
+  gtk_button_set_label (GTK_BUTTON (pd->use_text), pd->text_mode ? _("Use the PIN pad") : _("Use password"));
   clear_typed (pd);
   if (stage == STAGE_CURRENT) {
     gtk_label_set_text (GTK_LABEL (pd->message),
-                        pd->current_is_pattern ? "Draw your current pattern."
-                        : pd->text_mode        ? "Enter your current password."
-                                               : "Enter your current PIN.");
-    gtk_button_set_label (GTK_BUTTON (pd->next), "Continue");
+                        pd->current_is_pattern ? _("Draw your current pattern.")
+                        : pd->text_mode        ? _("Enter your current password.")
+                                               : _("Enter your current PIN."));
+    gtk_button_set_label (GTK_BUTTON (pd->next), _("Continue"));
     if (!pd->current_is_pattern && pd->text_mode)
       gtk_widget_grab_focus (pd->entry);
   } else if (stage == STAGE_DRAW) {
     gtk_label_set_text (GTK_LABEL (pd->message),
-                        pd->pin ? "Enter a new PIN of at least 4 digits. It becomes your password."
-                                : "Draw your unlock pattern. It becomes your password: connect at least 4 dots.");
-    gtk_button_set_label (GTK_BUTTON (pd->next), "Continue");
+                        pd->pin ? _("Enter a new PIN of at least 4 digits. It becomes your password.")
+                                : _("Draw your unlock pattern. It becomes your password: connect at least 4 dots."));
+    gtk_button_set_label (GTK_BUTTON (pd->next), _("Continue"));
   } else {
-    gtk_label_set_text (GTK_LABEL (pd->message), pd->pin ? "Enter the PIN again to confirm."
-                                                         : "Draw the pattern again to confirm.");
-    gtk_button_set_label (GTK_BUTTON (pd->next), "Confirm");
+    gtk_label_set_text (GTK_LABEL (pd->message), pd->pin ? _("Enter the PIN again to confirm.")
+                                                         : _("Draw the pattern again to confirm."));
+    gtk_button_set_label (GTK_BUTTON (pd->next), _("Confirm"));
   }
   gtk_widget_set_sensitive (pd->next, FALSE);
   gtk_widget_queue_draw (pd->area);
@@ -297,13 +298,13 @@ on_drag_end (GtkGestureDrag *drag, double dx, double dy, PatternDialog *pd)
     gtk_widget_set_sensitive (pd->next, TRUE);
   } else if (pd->len < MIN_DOTS) {
     pd->error = TRUE;
-    gtk_label_set_text (GTK_LABEL (pd->message), "Connect at least 4 dots. Try again.");
+    gtk_label_set_text (GTK_LABEL (pd->message), _("Connect at least 4 dots. Try again."));
   } else if (pd->stage == STAGE_CONFIRM && g_strcmp0 (pd->seq, pd->first) != 0) {
     pd->error = TRUE;
-    gtk_label_set_text (GTK_LABEL (pd->message), "That was a different pattern. Try again.");
+    gtk_label_set_text (GTK_LABEL (pd->message), _("That was a different pattern. Try again."));
   } else {
     gtk_label_set_text (GTK_LABEL (pd->message),
-                        pd->stage == STAGE_DRAW ? "Pattern recorded." : "Pattern confirmed.");
+                        pd->stage == STAGE_DRAW ? _("Pattern recorded.") : _("Pattern confirmed."));
     gtk_widget_set_sensitive (pd->next, TRUE);
   }
   gtk_widget_queue_draw (pd->area);
@@ -349,7 +350,7 @@ rekey_keyring (PatternDialog *pd)
   /* the new password, then the current one: with it the keyring's password is changed in place */
   g_autofree char *line = g_strconcat (pd->first, "\n", pd->current, "\n", NULL);
 
-  gtk_label_set_text (GTK_LABEL (pd->message), "Moving the keyring to the new password…");
+  gtk_label_set_text (GTK_LABEL (pd->message), _("Moving the keyring to the new password…"));
   proc = g_subprocess_new (G_SUBPROCESS_FLAGS_STDIN_PIPE | G_SUBPROCESS_FLAGS_STDOUT_SILENCE |
                            G_SUBPROCESS_FLAGS_STDERR_PIPE, &error,
                            NS_REKEY, NULL);
@@ -395,9 +396,11 @@ on_password_set (GObject *source, GAsyncResult *res, gpointer data)
   /* 1: the current secret changed since this page checked it; 126, 127: pkexec, polkit said no (not the active
    * session on this device) */
   gtk_label_set_text (GTK_LABEL (pd->message),
-                      status == 1                     ? "The current one was not accepted: nothing changed."
-                      : status == 126 || status == 127 ? "Only the person using the phone can change it: nothing changed."
-                                                       : "The password was not changed. Try again.");
+                      status == 1 ? _("The current one was not accepted: nothing changed.")
+                      : status == 126 || status == 127
+                          ? ns_device_text (_("Only the person using the phone can change it: nothing changed."),
+                                            _("Only the person using the tablet can change it: nothing changed."))
+                          : _("The password was not changed. Try again."));
   gtk_widget_set_sensitive (pd->next, TRUE);
   gtk_widget_set_sensitive (pd->cancel, TRUE);
 }
@@ -420,7 +423,7 @@ set_password (PatternDialog *pd)
                            "pkexec", NS_SET_PASSWORD, NULL);
   if (!proc) {
     g_warning ("pkexec: %s", error->message);
-    gtk_label_set_text (GTK_LABEL (pd->message), "pkexec is not installed: the password was not changed.");
+    gtk_label_set_text (GTK_LABEL (pd->message), _("pkexec is not installed: the password was not changed."));
     gtk_widget_set_sensitive (pd->cancel, TRUE);
     return;
   }
@@ -476,9 +479,10 @@ on_checked (GObject *source, GAsyncResult *res, gpointer data)
   }
   memset (pd->current, 0, sizeof pd->current);
   pd->error = TRUE;
-  gtk_label_set_text (GTK_LABEL (pd->message), pd->current_is_pattern ? "That is not your current pattern. Try again."
-                                               : pd->text_mode         ? "That is not your current password."
-                                                                       : "That is not your current PIN.");
+  gtk_label_set_text (GTK_LABEL (pd->message),
+                      pd->current_is_pattern ? _("That is not your current pattern. Try again.")
+                                               : pd->text_mode         ? _("That is not your current password.")
+                                                                       : _("That is not your current PIN."));
   clear_typed (pd);
   gtk_widget_queue_draw (pd->area);
 }
@@ -493,7 +497,7 @@ check_current (PatternDialog *pd)
   gtk_widget_set_sensitive (pd->next, FALSE);
   gtk_widget_set_sensitive (pd->cancel, FALSE);
   gtk_widget_set_sensitive (pd->pad, FALSE);
-  gtk_label_set_text (GTK_LABEL (pd->message), "Checking…");
+  gtk_label_set_text (GTK_LABEL (pd->message), _("Checking…"));
   /* the page stays until the answer is in: on_checked writes to it */
   ns_page_set_busy (pd->dialog, TRUE);
   g_task_set_task_data (task, g_strdup (pd->current), g_free);
@@ -532,15 +536,15 @@ on_next (PatternDialog *pd)
     return;
   }
   if (pd->pin && g_strcmp0 (pd->first, typed_text (pd))) {
-    gtk_label_set_text (GTK_LABEL (pd->message), "That was a different PIN. Try again.");
+    gtk_label_set_text (GTK_LABEL (pd->message), _("That was a different PIN. Try again."));
     clear_typed (pd);
     gtk_widget_set_sensitive (pd->next, FALSE);
     return;
   }
   gtk_widget_set_sensitive (pd->next, FALSE);
   gtk_widget_set_sensitive (pd->cancel, FALSE);
-  gtk_label_set_text (GTK_LABEL (pd->message), pd->pin ? "Setting the PIN as your password…"
-                                                         : "Setting the pattern as your password…");
+  gtk_label_set_text (GTK_LABEL (pd->message), pd->pin ? _("Setting the PIN as your password…")
+                                                         : _("Setting the pattern as your password…"));
   set_password (pd);
 }
 
@@ -853,7 +857,7 @@ ns_pattern_dialog_present (GtkWidget *parent, gboolean pin, NsPatternDone callba
   }
   gtk_box_append (GTK_BOX (box), pd->pad);
 
-  pd->use_text = gtk_button_new_with_label ("Use password");
+  pd->use_text = gtk_button_new_with_label (_("Use password"));
   gtk_widget_add_css_class (pd->use_text, "vibeos-text-button");
   gtk_widget_set_halign (pd->use_text, GTK_ALIGN_CENTER);
   g_signal_connect_swapped (pd->use_text, "clicked", G_CALLBACK (on_use_text), pd);
@@ -861,8 +865,8 @@ ns_pattern_dialog_present (GtkWidget *parent, gboolean pin, NsPatternDone callba
 
   buttons = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 12);
   gtk_box_set_homogeneous (GTK_BOX (buttons), TRUE);
-  pd->cancel = ns_button_new ("Cancel", FALSE);
-  pd->next = ns_button_new ("Continue", TRUE);
+  pd->cancel = ns_button_new (_("Cancel"), FALSE);
+  pd->next = ns_button_new (_("Continue"), TRUE);
   g_signal_connect_swapped (pd->cancel, "clicked", G_CALLBACK (on_cancel), pd);
   g_signal_connect_swapped (pd->next, "clicked", G_CALLBACK (on_next), pd);
   gtk_box_append (GTK_BOX (buttons), pd->cancel);
@@ -870,7 +874,7 @@ ns_pattern_dialog_present (GtkWidget *parent, gboolean pin, NsPatternDone callba
   gtk_box_append (GTK_BOX (box), buttons);
 
   /* a page of its own that does not scroll: a scrolling page would take the stroke that draws a pattern */
-  pd->dialog = ns_page_new_fixed (pin ? "Set PIN" : "Set pattern", box);
+  pd->dialog = ns_page_new_fixed (pin ? _("Set PIN") : _("Set pattern"), box);
   g_signal_connect_swapped (pd->dialog, "destroy", G_CALLBACK (on_closed), pd);
   {
     GtkEventController *keys = gtk_event_controller_key_new ();

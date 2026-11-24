@@ -3,6 +3,7 @@
  * and the page of the entry chosen in it are side by side (VibeosListDetail); on a phone the pages open over it. */
 #pragma once
 
+#include <glib/gi18n.h>
 #include <gtk/gtk.h>
 #include <vibeos.h>
 
@@ -68,7 +69,8 @@ GtkWidget *ns_row_add_switch (GtkWidget *row, gboolean split);
 GtkWidget *ns_row_widget (GtkWidget *group, const char *title, GtkWidget *child);
 /* an integer key as a −/+ stepper */
 GtkWidget *ns_row_spin (GtkWidget *group, const char *title, GSettings *s, const char *key, int lo, int hi);
-/* a string key from a fixed list: a row that shows the choice and opens a picker page */
+/* a string key from a fixed list: a row that shows the choice and opens a picker page. The labels are translated
+ * here, so they can be a static list of N_() strings (and so can ns_row_pick's labels and summaries) */
 GtkWidget *ns_row_choice (GtkWidget *group, const char *title, GSettings *s, const char *key,
                           const char *const *values, const char *const *labels);
 

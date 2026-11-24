@@ -9,6 +9,7 @@
 #include "ns-sound.h"
 #include "ns-ui.h"
 
+#include <locale.h>
 #include <string.h>
 
 /* The entries' circles: S20's colours (0.1.2's Settings), darker, the glyph white on them (owner, 11-21: "the
@@ -32,42 +33,47 @@ typedef struct {
 /* The main menu, in Android's order and with its names. NULL title: the next card. Network and Internet's summary
  * and About's title follow the device (entry_texts). */
 static const Entry entries[] = {
-  { "network-wireless-symbolic", TINT_BLUE, "Network and Internet", "Wi-Fi, hotspot",
-    "wlan wifi internet sim mobile data apn vpn hotspot tethering flight airplane proxy wired", ns_page_connections },
-  { "bluetooth-symbolic", TINT_BLUE, "Connected devices", "Bluetooth, pairing",
-    "pair headphones speaker watch sharing visible device name printers printing", ns_page_connected_devices },
+  { "network-wireless-symbolic", TINT_BLUE, N_("Network and Internet"), N_("Wi-Fi, hotspot"),
+    /* TRANSLATORS: this and the other lowercase lists of words here are a page's search keywords: words, separated by
+     * spaces, that find it (as many as fit the language; the English ones find it too) */
+    N_("wlan wifi internet sim mobile data apn vpn hotspot tethering flight airplane proxy wired"),
+    ns_page_connections },
+  { "bluetooth-symbolic", TINT_BLUE, N_("Connected devices"), N_("Bluetooth, pairing"),
+    N_("pair headphones speaker watch sharing visible device name printers printing"), ns_page_connected_devices },
   { NULL },
-  { "view-app-grid-symbolic", TINT_BLUE, "Apps", "Recent apps, default apps",
-    "permissions storage default browser email", ns_page_apps },
-  { "preferences-system-notifications-symbolic", TINT_ORANGE, "Notifications",
-    "App notifications, do not disturb", "dnd banner pop-up lock screen emergency alerts", ns_page_notifications },
-  { "audio-volume-high-symbolic", TINT_VIOLET, "Sound and vibration", "Volume, vibration, ringtone",
-    "ringtone alarm sound speaker microphone vibrate mute silent haptic dial pad tones", ns_page_sound },
-  { "display-brightness-symbolic", TINT_LIME, "Display", "Dark theme, font size, brightness",
-    "screen timeout adaptive brightness night light intensity warm amber rotate scale always on aod display size "
-    "text bold zoom lock screen", ns_page_display },
-  { "preferences-desktop-wallpaper-symbolic", TINT_PINK, "Wallpaper and style", "Wallpapers, colours, home screen",
-    "background accent dark theme colour color parallax launcher grid columns rows layout icon size pack shape "
-    "app names labels drawer", ns_page_wallpaper },
+  { "view-app-grid-symbolic", TINT_BLUE, N_("Apps"), N_("Recent apps, default apps"),
+    N_("permissions storage default browser email"), ns_page_apps },
+  { "preferences-system-notifications-symbolic", TINT_ORANGE, N_("Notifications"),
+    N_("App notifications, do not disturb"), N_("dnd banner pop-up lock screen emergency alerts"),
+    ns_page_notifications },
+  { "audio-volume-high-symbolic", TINT_VIOLET, N_("Sound and vibration"), N_("Volume, vibration, ringtone"),
+    N_("ringtone alarm sound speaker microphone vibrate mute silent haptic dial pad tones"), ns_page_sound },
+  { "display-brightness-symbolic", TINT_LIME, N_("Display"), N_("Dark theme, font size, brightness"),
+    N_("screen timeout adaptive brightness night light intensity warm amber rotate scale always on aod display size "
+    "text bold zoom lock screen"), ns_page_display },
+  { "preferences-desktop-wallpaper-symbolic", TINT_PINK, N_("Wallpaper and style"),
+    N_("Wallpapers, colours, home screen"),
+    N_("background accent dark theme colour color parallax launcher grid columns rows layout icon size pack shape "
+    "app names labels drawer"), ns_page_wallpaper },
   { NULL },
-  { "battery-full-symbolic", TINT_GREEN, "Battery", "Charge, power and screen blank",
-    "power dim health temperature voltage capacity", ns_page_battery, NULL, NS_CAP_BATTERY },
-  { "preferences-system-symbolic", TINT_VIOLET, "System", "Languages, keyboard, time",
-    "region locale language keyboard clock date time users mouse touchpad updates software upgrade gestures power "
-    "button",
+  { "battery-full-symbolic", TINT_GREEN, N_("Battery"), N_("Charge, power and screen blank"),
+    N_("power dim health temperature voltage capacity"), ns_page_battery, NULL, NS_CAP_BATTERY },
+  { "preferences-system-symbolic", TINT_VIOLET, N_("System"), N_("Languages, keyboard, time"),
+    N_("region locale language keyboard clock date time users mouse touchpad updates software upgrade gestures power "
+    "button"),
     ns_page_general },
-  { "help-about-symbolic", TINT_GREY, "About phone", "Device name, versions",
-    "phone tablet model kernel version memory storage name about", ns_page_about },
+  { "help-about-symbolic", TINT_GREY, N_("About phone"), N_("Device name, versions"),
+    N_("phone tablet model kernel version memory storage name about"), ns_page_about },
   { NULL },
-  { "security-high-symbolic", TINT_PURPLE, "Security and privacy", "Screen lock, permissions",
-    "password pin pattern swipe unlock lock screen camera microphone history trash", ns_page_privacy },
-  { "find-location-symbolic", TINT_PURPLE, "Location", "Location services, app access",
-    "gps geoclue", ns_page_location, "org.gnome.system.location" },
-  { "avatar-default-symbolic", TINT_BLUE, "Accounts", "Online accounts",
-    "google nextcloud email", ns_page_accounts },
+  { "security-high-symbolic", TINT_PURPLE, N_("Security and privacy"), N_("Screen lock, permissions"),
+    N_("password pin pattern swipe unlock lock screen camera microphone history trash"), ns_page_privacy },
+  { "find-location-symbolic", TINT_PURPLE, N_("Location"), N_("Location services, app access"),
+    N_("gps geoclue"), ns_page_location, "org.gnome.system.location" },
+  { "avatar-default-symbolic", TINT_BLUE, N_("Accounts"), N_("Online accounts"),
+    N_("google nextcloud email"), ns_page_accounts },
   { NULL },
-  { "preferences-desktop-accessibility-symbolic", TINT_GREEN, "Accessibility", "Display, interaction",
-    "zoom contrast screen reader animations font size bold text display size", ns_page_accessibility },
+  { "preferences-desktop-accessibility-symbolic", TINT_GREEN, N_("Accessibility"), N_("Display, interaction"),
+    N_("zoom contrast screen reader animations font size bold text display size"), ns_page_accessibility },
 };
 
 static GtkWidget *window, *search_bar;
@@ -175,71 +181,82 @@ typedef struct {
 } Inner;
 
 static const Inner inner[] = {
-  { "Wi-Fi", "wlan wireless networks saved password ssid internet", "wifi", ns_page_connections },
-  { "Wi-Fi hotspot", "access point tethering share mobile data", "hotspot", ns_page_connections, NS_CAP_MODEM },
-  { "SIMs", "sim mobile data roaming apn carrier operator pin", "mobile", ns_page_connections, NS_CAP_MODEM },
-  { "Airplane mode", "flight mode offline radios", "network", ns_page_connections },
-  { "Network and VPN", "vpn wired ethernet proxy", "vpn", ns_page_connections },
-  { "Bluetooth", "pair pairing headphones headset speaker watch earbuds", "bluetooth", ns_page_connected_devices },
-  { "Connection preferences", "bluetooth sharing printing", "connection-preferences", ns_page_connected_devices },
-  { "Sharing", "device name visible visibility", "sharing", ns_page_connected_devices },
-  { "Printers", "print printing printer", "printers", ns_page_connected_devices },
-  { "Default apps", "browser email music photos video open with", "default-apps", ns_page_apps },
-  { "Do not disturb", "dnd silence quiet pop-ups", "notifications", ns_page_notifications },
-  { "Volume", "media alarm ring ringtone loudness mute", "sound", ns_page_sound },
-  { "Vibration", "haptic haptics vibrate intensity", "sound", ns_page_sound },
-  { "Brightness", "adaptive brightness dim light", "display", ns_page_display },
-  { "Screen timeout", "sleep screen off timeout", "display", ns_page_display },
-  { "Dark theme", "dark mode night black", "display", ns_page_display },
-  { "Display size and text", "font size bold text zoom scale bigger smaller", "display-size", ns_page_display },
-  { "Night light", "warm amber blue light filter evening", "night-light", ns_page_display },
-  { "Wallpapers", "background picture photo parallax", "wallpapers", ns_page_wallpaper },
-  { "Home screen", "launcher grid columns rows icons drawer app names", "home", ns_page_wallpaper },
-  { "Battery usage", "since last full charge history chart graph", "battery-usage", ns_page_battery, NS_CAP_BATTERY },
-  { "Battery information", "health temperature capacity voltage", "battery-info", ns_page_battery, NS_CAP_BATTERY },
-  { "Power and screen blank", "suspend sleep dim screen blank power saving", "screen-blank", ns_page_battery,
+  { N_("Wi-Fi"),
+    /* TRANSLATORS: this and the other lowercase lists of words here are a setting's search keywords: words,
+     * separated by spaces, that find it (as many as fit the language; the English ones find it too) */
+    N_("wlan wireless networks saved password ssid internet"), "wifi", ns_page_connections },
+  { N_("Wi-Fi hotspot"), N_("access point tethering share mobile data"), "hotspot", ns_page_connections, NS_CAP_MODEM },
+  { N_("SIMs"), N_("sim mobile data roaming apn carrier operator pin"), "mobile", ns_page_connections, NS_CAP_MODEM },
+  { N_("Airplane mode"), N_("flight mode offline radios"), "network", ns_page_connections },
+  { N_("Network and VPN"), N_("vpn wired ethernet proxy"), "vpn", ns_page_connections },
+  { N_("Bluetooth"), N_("pair pairing headphones headset speaker watch earbuds"), "bluetooth",
+    ns_page_connected_devices },
+  { N_("Connection preferences"), N_("bluetooth sharing printing"), "connection-preferences",
+    ns_page_connected_devices },
+  { N_("Sharing"), N_("device name visible visibility"), "sharing", ns_page_connected_devices },
+  { N_("Printers"), N_("print printing printer"), "printers", ns_page_connected_devices },
+  { N_("Default apps"), N_("browser email music photos video open with"), "default-apps", ns_page_apps },
+  { N_("Do not disturb"), N_("dnd silence quiet pop-ups"), "notifications", ns_page_notifications },
+  { N_("Volume"), N_("media alarm ring ringtone loudness mute"), "sound", ns_page_sound },
+  { N_("Vibration"), N_("haptic haptics vibrate intensity"), "sound", ns_page_sound },
+  { N_("Brightness"), N_("adaptive brightness dim light"), "display", ns_page_display },
+  { N_("Screen timeout"), N_("sleep screen off timeout"), "display", ns_page_display },
+  { N_("Dark theme"), N_("dark mode night black"), "display", ns_page_display },
+  { N_("Display size and text"), N_("font size bold text zoom scale bigger smaller"), "display-size", ns_page_display },
+  { N_("Night light"), N_("warm amber blue light filter evening"), "night-light", ns_page_display },
+  { N_("Wallpapers"), N_("background picture photo parallax"), "wallpapers", ns_page_wallpaper },
+  { N_("Home screen"), N_("launcher grid columns rows icons drawer app names"), "home", ns_page_wallpaper },
+  { N_("Battery usage"), N_("since last full charge history chart graph"), "battery-usage", ns_page_battery,
     NS_CAP_BATTERY },
-  { "Language and region", "language region locale formats translation", "language", ns_page_general },
-  { "Keyboard", "on-screen keyboard osk layouts input typing", "keyboard", ns_page_general },
-  { "Auto-correction", "autocorrect spelling typos suggestions next word prediction text correction", "keyboard",
+  { N_("Battery information"), N_("health temperature capacity voltage"), "battery-info", ns_page_battery,
+    NS_CAP_BATTERY },
+  { N_("Power and screen blank"), N_("suspend sleep dim screen blank power saving"), "screen-blank", ns_page_battery,
+    NS_CAP_BATTERY },
+  { N_("Language and region"), N_("language region locale formats translation"), "language", ns_page_general },
+  { N_("Keyboard"), N_("on-screen keyboard osk layouts input typing"), "keyboard", ns_page_general },
+  { N_("Auto-correction"), N_("autocorrect spelling typos suggestions next word prediction text correction"),
+    "keyboard", ns_page_general },
+  { N_("Gestures"), N_("buttons keys shortcut quick launch"), "gestures", ns_page_general },
+  { N_("Double-press power button"), N_("power key twice double press open app camera agent shortcut"), "gestures",
     ns_page_general },
-  { "Gestures", "buttons keys shortcut quick launch", "gestures", ns_page_general },
-  { "Double-press power button", "power key twice double press open app camera agent shortcut", "gestures",
-    ns_page_general },
-  { "Side button", "side key button app recents camera shortcut", "gestures", ns_page_general, NS_CAP_SIDE_KEY },
-  { "Mouse and touchpad", "pointer speed scrolling cursor", "mouse", ns_page_general },
-  { "Date and time", "clock time zone timezone 24-hour automatic", "datetime", ns_page_general },
-  { "Users", "user account password name avatar picture", "users", ns_page_general },
-  { "Software information", "version build kernel device name", "software-information", ns_page_about },
-  { "Lock screen", "screen lock password pin pattern swipe unlock", "lock-screen", ns_page_privacy },
-  { "Camera and microphone", "permission access", "security", ns_page_privacy },
-  { "Recent files", "history remember clean up trash", "security", ns_page_privacy },
-  { "Screen reader", "orca talkback speech read aloud blind", "accessibility", ns_page_accessibility },
-  { "High contrast", "contrast colours colors outlines", "accessibility", ns_page_accessibility },
-  { "Reduce animations", "motion animations movement", "accessibility", ns_page_accessibility },
-  { "Sticky keys", "hardware keyboard slow keys bounce keys", "accessibility", ns_page_accessibility },
+  { N_("Side button"), N_("side key button app recents camera shortcut"), "gestures", ns_page_general,
+    NS_CAP_SIDE_KEY },
+  { N_("Mouse and touchpad"), N_("pointer speed scrolling cursor"), "mouse", ns_page_general },
+  { N_("Date and time"), N_("clock time zone timezone 24-hour automatic"), "datetime", ns_page_general },
+  { N_("Users"), N_("user account password name avatar picture"), "users", ns_page_general },
+  { N_("Software information"), N_("version build kernel device name"), "software-information", ns_page_about },
+  { N_("Lock screen"), N_("screen lock password pin pattern swipe unlock"), "lock-screen", ns_page_privacy },
+  { N_("Camera and microphone"), N_("permission access"), "security", ns_page_privacy },
+  { N_("Recent files"), N_("history remember clean up trash"), "security", ns_page_privacy },
+  { N_("Screen reader"), N_("orca talkback speech read aloud blind"), "accessibility", ns_page_accessibility },
+  { N_("High contrast"), N_("contrast colours colors outlines"), "accessibility", ns_page_accessibility },
+  { N_("Reduce animations"), N_("motion animations movement"), "accessibility", ns_page_accessibility },
+  { N_("Sticky keys"), N_("hardware keyboard slow keys bounce keys"), "accessibility", ns_page_accessibility },
 };
 
+/* every one of `words` (g_str_tokenize_and_fold's) somewhere in `texts` (NULL-terminated), folded the same way:
+ * case-folded and composed ("Größe" is "grösse"), and also without its accents ("écran" is found by "ecran") */
 static gboolean
-matches (const Entry *e, char **words)
+words_in (const char *const *texts, char **words)
 {
-  g_autofree char *joined = g_strjoin (" ", e->title, e->subtitle, e->keywords, NULL);
-  g_autofree char *text = g_utf8_strdown (joined, -1);
+  g_autofree char *joined = g_strjoinv (" ", (char **) texts);
+  g_autofree char *folded = g_utf8_casefold (joined, -1);
+  g_autofree char *composed = g_utf8_normalize (folded, -1, G_NORMALIZE_ALL_COMPOSE);
+  g_autofree char *ascii = g_str_to_ascii (composed, NULL);
+  g_autofree char *text = g_strjoin (" ", composed ? composed : folded, ascii, NULL);
   for (guint w = 0; words && words[w]; w++)
     if (!strstr (text, words[w]))
       return FALSE;
   return TRUE;
 }
 
+/* an entry: its title, summary and keywords as shown, and in English */
 static gboolean
-words_in (const char *a, const char *b, const char *d, char **words)
+matches (const Entry *e, char **words)
 {
-  g_autofree char *joined = g_strjoin (" ", a, b, d, NULL);
-  g_autofree char *text = g_utf8_strdown (joined, -1);
-  for (guint w = 0; words && words[w]; w++)
-    if (!strstr (text, words[w]))
-      return FALSE;
-  return TRUE;
+  const char *const texts[] = { _(e->title), _(e->subtitle), _(e->keywords), e->title, e->subtitle, e->keywords,
+                                NULL };
+  return words_in (texts, words);
 }
 
 static void
@@ -275,7 +292,8 @@ search_changed (VibeosSearchView *view, const char *text, GtkWidget *results)
     /* an entry the device has no use for (no battery) is not found either */
     if (!gtk_widget_get_visible (menu_rows->pdata[i]) || !matches (e, words))
       continue;
-    GtkWidget *r = ns_row (results, NULL, e->page == ns_page_about ? ns_about_title () : e->title, entry_summary (e));
+    GtkWidget *r = ns_row (results, NULL, e->page == ns_page_about ? ns_about_title () : _(e->title),
+                           entry_summary (e));
     set_circle (r, e);
     ns_row_on_activate (r, result_clicked, (gpointer) e);
   }
@@ -286,10 +304,11 @@ search_changed (VibeosSearchView *view, const char *text, GtkWidget *results)
     if (!under || !gtk_widget_get_visible (under) || (p->need && !ns_caps_has (p->need)))
       continue;
     const Entry *e = g_object_get_data (G_OBJECT (under), "ns-entry");
-    const char *where = e->page == ns_page_about ? ns_about_title () : e->title;
-    if (!words_in (p->title, p->keywords, where, words))
+    const char *where = e->page == ns_page_about ? ns_about_title () : _(e->title);
+    const char *const texts[] = { _(p->title), _(p->keywords), where, p->title, p->keywords, e->title, NULL };
+    if (!words_in (texts, words))
       continue;
-    GtkWidget *r = ns_row (results, NULL, p->title, where);
+    GtkWidget *r = ns_row (results, NULL, _(p->title), where);
     set_circle (r, e);
     ns_row_on_activate (r, inner_clicked, (gpointer) p);
   }
@@ -298,7 +317,7 @@ search_changed (VibeosSearchView *view, const char *text, GtkWidget *results)
 static void
 search_open (VibeosSearchBar *bar, gpointer data)
 {
-  GtkWidget *view = vibeos_search_view_new ("Search settings");
+  GtkWidget *view = vibeos_search_view_new (_("Search settings"));
   GtkWidget *results = vibeos_card_list_new ();
   vibeos_card_list_set_margins (VIBEOS_CARD_LIST (results), 8, 16);
   gtk_widget_add_css_class (results, "ns-search-results");
@@ -353,10 +372,10 @@ entry_summary (const Entry *e)
   if (e->page == ns_page_battery && battery_text)
     return battery_text;
   if (e->page == ns_page_connections)
-    return ns_caps_has (NS_CAP_MODEM) ? "Mobile, Wi-Fi, hotspot" : "Wi-Fi, VPN";
+    return ns_caps_has (NS_CAP_MODEM) ? _("Mobile, Wi-Fi, hotspot") : _("Wi-Fi, VPN");
   if (e->page == ns_page_sound)
-    return ns_caps_has (NS_CAP_MODEM) ? "Volume, vibration, ringtone" : "Volume, alarm sound";
-  return e->subtitle;
+    return ns_caps_has (NS_CAP_MODEM) ? _("Volume, vibration, ringtone") : _("Volume, alarm sound");
+  return _(e->subtitle);
 }
 
 static void
@@ -384,7 +403,7 @@ main_page (void)
   GtkWidget *page = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (page, "ns-main");
 
-  search_bar = vibeos_search_bar_new ("Search settings");
+  search_bar = vibeos_search_bar_new (_("Search settings"));
   vibeos_search_bar_set_geometry (VIBEOS_SEARCH_BAR (search_bar), 52, 16, 24, 56);
   /* Android 17's: a line round the page's own colour, not a filled pill */
   vibeos_search_bar_set_outlined (VIBEOS_SEARCH_BAR (search_bar), TRUE);
@@ -407,7 +426,7 @@ main_page (void)
     if (group && menu_rows->len)
       vibeos_card_list_add_group (VIBEOS_CARD_LIST (list), NULL);
     group = FALSE;
-    GtkWidget *r = vibeos_list_row_new (e->title, e->subtitle);
+    GtkWidget *r = vibeos_list_row_new (_(e->title), _(e->subtitle));
     g_object_set_data (G_OBJECT (r), "ns-entry", (gpointer) e);
     set_circle (r, e);
     if (e->needs)
@@ -459,7 +478,7 @@ activate (GtkApplication *app, gpointer data)
     return;
   }
   window = vibeos_window_new (app);
-  gtk_window_set_title (GTK_WINDOW (window), "Settings");
+  gtk_window_set_title (GTK_WINDOW (window), _("Settings"));
   gtk_window_set_default_size (GTK_WINDOW (window), 360, 720);
   gtk_widget_add_css_class (window, "ns-window");
 
@@ -722,6 +741,11 @@ command_line (GApplication *app, GApplicationCommandLine *cl, gpointer data)
 int
 main (int argc, char **argv)
 {
+  setlocale (LC_ALL, "");
+  bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
+  bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
+  textdomain (GETTEXT_PACKAGE);
+
   g_autoptr (GtkApplication) app = gtk_application_new ("vibeos.Settings", G_APPLICATION_HANDLES_COMMAND_LINE);
   const GOptionEntry options[] = {
     { "page", 0, 0, G_OPTION_ARG_STRING, NULL, "Open a page: home, wallpaper, wifi, hotspot, bluetooth, power…", "PAGE" },

@@ -25,15 +25,21 @@ typedef struct {
   const char *open;       /* over the list */
   gboolean    recents;    /* recent apps is a choice (and what an app that is gone falls back to) */
   NsCap       needs;      /* what the device must have for the row */
-  const char *note;       /* the footnote, %s the device's noun */
+  const char *note;       /* the footnote, on a phone */
+  const char *note_tablet;  /* and on a tablet */
 } Button;
 
+/* translated where they are shown */
 static const Button buttons[] = {
-  { "power-double-press-app", "Double-press power button", "Use double-press", "Double-press power button to open",
-    FALSE, 0, "Press the power button twice quickly, with the screen on or off. On a locked %s, the app opens once "
-              "you unlock it." },
-  { "side-key-app", "Side button", "Use side button", "Press side button to open", TRUE, NS_CAP_SIDE_KEY,
-    "Works with the screen on. On a locked %s, an app opens once you unlock it." },
+  { "power-double-press-app", N_("Double-press power button"), N_("Use double-press"),
+    N_("Double-press power button to open"), FALSE, 0,
+    N_("Press the power button twice quickly, with the screen on or off. On a locked phone, the app opens once you "
+       "unlock it."),
+    N_("Press the power button twice quickly, with the screen on or off. On a locked tablet, the app opens once you "
+       "unlock it.") },
+  { "side-key-app", N_("Side button"), N_("Use side button"), N_("Press side button to open"), TRUE, NS_CAP_SIDE_KEY,
+    N_("Works with the screen on. On a locked phone, an app opens once you unlock it."),
+    N_("Works with the screen on. On a locked tablet, an app opens once you unlock it.") },
 };
 
 static GDesktopAppInfo *
@@ -62,11 +68,12 @@ summary (const Button *b, GSettings *s)
 {
   g_autofree char *v = in_effect (b, s);
   if (!v)
-    return g_strdup ("Off");
+    return g_strdup (_("Off"));
   if (g_str_equal (v, RECENTS))
-    return g_strdup ("On / Recent apps");
+    return g_strdup (_("On / Recent apps"));
   g_autoptr (GDesktopAppInfo) app = app_for (v);
-  return g_strdup_printf ("On / Open %s", g_app_info_get_display_name (G_APP_INFO (app)));
+  /* TRANSLATORS: %s is the app the button opens */
+  return g_strdup_printf (_("On / Open %s"), g_app_info_get_display_name (G_APP_INFO (app)));
 }
 
 /* ---- a button's page: the switch, and the list of what it opens ---- */
@@ -171,7 +178,7 @@ button_page (GtkWidget *row, gpointer data)
 {
   const Button *b = data;
   GtkWidget *c;
-  NsPage *page = ns_page_new (b->title, &c);
+  NsPage *page = ns_page_new (_(b->title), &c);
   GSettings *s = ns_page_settings (page, SHELL_SCHEMA);
   if (!s || !ns_has_key (s, b->key)) {
     ns_push (page);
@@ -184,12 +191,12 @@ button_page (GtkWidget *row, gpointer data)
   g_object_set_data_full (G_OBJECT (page), "ns-picker", p, (GDestroyNotify) picker_free);
 
   GtkWidget *g = ns_group (c, NULL);
-  p->use = ns_row_toggle (g, NULL, b->use, NULL);
+  p->use = ns_row_toggle (g, NULL, _(b->use), NULL);
   g_signal_connect (ns_row_get_switch (p->use), "notify::active", G_CALLBACK (use_toggled), p);
 
-  p->list = ns_group (c, b->open);
+  p->list = ns_group (c, _(b->open));
   if (b->recents) {
-    GtkWidget *r = ns_row (p->list, NULL, "Recent apps", NULL);
+    GtkWidget *r = ns_row (p->list, NULL, _("Recent apps"), NULL);
     /* in an app icon's place, a circle as the main menu's: dark, the glyph white */
     GdkRGBA fill, glyph = { 1, 1, 1, 1 };
     gdk_rgba_parse (&fill, "#6c6c80");
@@ -205,8 +212,7 @@ button_page (GtkWidget *row, gpointer data)
   }
   g_list_free_full (apps, g_object_unref);
   ns_apps_bake_icons (icons);
-  g_autofree char *note = g_strdup_printf (b->note, ns_device_noun ());
-  ns_footnote (c, note);
+  ns_footnote (c, ns_device_text (_(b->note), _(b->note_tablet)));
 
   picker_sync (p);
   g_autofree char *sig = g_strconcat ("changed::", b->key, NULL);
@@ -245,7 +251,7 @@ void
 ns_page_gestures (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Gestures", &c);
+  NsPage *page = ns_page_new (_("Gestures"), &c);
   GSettings *s = ns_page_settings (page, SHELL_SCHEMA);
   GPtrArray *rows = g_ptr_array_new ();
   g_object_set_data_full (G_OBJECT (page), "ns-rows", rows, (GDestroyNotify) g_ptr_array_unref);
@@ -254,7 +260,7 @@ ns_page_gestures (GtkWidget *row, gpointer data)
     const Button *b = &buttons[i];
     if (!ns_has_key (s, b->key) || (b->needs && !ns_caps_has (b->needs)))
       continue;
-    GtkWidget *r = ns_row (g, NULL, b->title, NULL);
+    GtkWidget *r = ns_row (g, NULL, _(b->title), NULL);
     g_object_set_data (G_OBJECT (r), "ns-button", (gpointer) b);
     g_object_set_data (G_OBJECT (r), "ns-settings", s);
     ns_row_on_activate (r, button_page, (gpointer) b);
@@ -266,13 +272,14 @@ ns_page_gestures (GtkWidget *row, gpointer data)
   /* holding the power key: Vibe, or the power menu */
   if (s && ns_has_key (s, "power-hold-agent")) {
     g = ns_group (c, NULL);
-    ns_row_switch (g, "Hold power button for Vibe",
-                   "Hold it to talk to Vibe; it listens until you stop speaking. "
-                   "Power menu: power and volume up together",
+    ns_row_switch (g, _("Hold power button for Vibe"),
+                   _("Hold it to talk to Vibe; it listens until you stop speaking. Power menu: power and volume up "
+                     "together"),
                    s, "power-hold-agent");
-    g_autofree char *note = g_strdup_printf ("Off: holding the power button opens the power menu. On a locked %s, "
-                                             "Vibe only answers questions until you unlock it.", ns_device_noun ());
-    ns_footnote (c, note);
+    ns_footnote (c, ns_device_text (_("Off: holding the power button opens the power menu. On a locked phone, Vibe "
+                                      "only answers questions until you unlock it."),
+                                    _("Off: holding the power button opens the power menu. On a locked tablet, Vibe "
+                                      "only answers questions until you unlock it.")));
   }
   ns_page_on_back (page, gestures_back);
   ns_push (page);

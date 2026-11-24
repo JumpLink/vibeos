@@ -9,7 +9,9 @@
  * off). It reads the history again every minute while it is shown. */
 #include "ns-charge.h"
 
+#include <glib/gi18n.h>
 #include <math.h>
+#include <vibeos.h>
 
 #define UPOWER "org.freedesktop.UPower"
 #define DEVICE UPOWER ".Device"
@@ -54,15 +56,13 @@ charge_free (Charge *c)
 
 /* ---- words ---- */
 
-/* "13:20", "Yesterday 13:20", "Mon 13:20" (or 1:20 PM), as the clock shows times */
+/* "13:20", "Yesterday 13:20", "Mon 13:20" (or 1:20 PM), as the clock shows times, in the user's language */
 static char *
 when_text (gint64 time)
 {
   g_autoptr (GDateTime) t = g_date_time_new_from_unix_local (time);
   g_autoptr (GDateTime) now = g_date_time_new_now_local ();
-  g_autoptr (GSettings) iface = g_settings_new ("org.gnome.desktop.interface");
-  g_autofree char *format = g_settings_get_string (iface, "clock-format");
-  g_autofree char *clock = g_date_time_format (t, !g_strcmp0 (format, "12h") ? "%-I:%M %p" : "%H:%M");
+  g_autofree char *clock = vibeos_format_time (t);
   g_autoptr (GDate) d0 = g_date_new_dmy (g_date_time_get_day_of_month (t), g_date_time_get_month (t),
                                          g_date_time_get_year (t));
   g_autoptr (GDate) d1 = g_date_new_dmy (g_date_time_get_day_of_month (now), g_date_time_get_month (now),
@@ -71,9 +71,10 @@ when_text (gint64 time)
   if (days == 0)
     return g_steal_pointer (&clock);
   if (days == 1)
-    return g_strdup_printf ("Yesterday %s", clock);
-  g_autofree char *day = g_date_time_format (t, "%a");
-  return g_strdup_printf ("%s %s", day, clock);
+    /* TRANSLATORS: %s is a time ("13:20") */
+    return g_strdup_printf (_("Yesterday %s"), clock);
+  /* the weekday and the time, in the language's order */
+  return vibeos_format_date (t, "EEEjm");
 }
 
 /* "just now", "25 min", "3 h 12 min", "2 d 5 h" */
@@ -82,14 +83,18 @@ ago_text (gint64 seconds)
 {
   gint64 minutes = seconds / 60, hours = minutes / 60;
   if (minutes < 1)
-    return g_strdup ("just now");
+    return g_strdup (_("just now"));
+  int m = (int) MIN (minutes, G_MAXINT), h = (int) MIN (hours, G_MAXINT);
   if (hours < 1)
-    return g_strdup_printf ("%" G_GINT64_FORMAT " min ago", minutes);
+    /* TRANSLATORS: minutes ago, abbreviated */
+    return g_strdup_printf (g_dngettext (NULL, "%d min ago", "%d min ago", m), m);
   if (hours < 48)
-    return minutes % 60 ? g_strdup_printf ("%" G_GINT64_FORMAT " h %" G_GINT64_FORMAT " min ago", hours, minutes % 60)
-                        : g_strdup_printf ("%" G_GINT64_FORMAT " h ago", hours);
-  return hours % 24 ? g_strdup_printf ("%" G_GINT64_FORMAT " d %" G_GINT64_FORMAT " h ago", hours / 24, hours % 24)
-                    : g_strdup_printf ("%" G_GINT64_FORMAT " d ago", hours / 24);
+    /* TRANSLATORS: hours and minutes ago, abbreviated; then hours ago */
+    return minutes % 60 ? g_strdup_printf (_("%d h %d min ago"), h, m % 60)
+                        : g_strdup_printf (g_dngettext (NULL, "%d h ago", "%d h ago", h), h);
+  /* TRANSLATORS: days and hours ago, abbreviated; then days ago */
+  return hours % 24 ? g_strdup_printf (_("%d d %d h ago"), h / 24, h % 24)
+                    : g_strdup_printf (g_dngettext (NULL, "%d d ago", "%d d ago", h / 24), h / 24);
 }
 
 /* ---- the chart ---- */
@@ -184,7 +189,7 @@ draw (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer data)
     cairo_move_to (cr, width - tw, y - th / 2.0);
     pango_cairo_show_layout (cr, label);
   }
-  const char *times[] = { c->start ? c->start : "", "Now" };
+  const char *times[] = { c->start ? c->start : "", _("Now") };
   for (guint i = 0; i < G_N_ELEMENTS (times); i++) {
     pango_layout_set_text (label, times[i], -1);
     int tw, th;
@@ -230,14 +235,16 @@ show (Charge *c)
   if (some) {
     g_autofree char *when = when_text (c->from);
     g_free (c->start);
-    c->start = c->full && c->from == c->full ? g_strdup_printf ("Full charge %s", when) : g_steal_pointer (&when);
+    /* TRANSLATORS: %s is when ("14:05", "Yesterday 14:05", "Tue 14:05") */
+    c->start = c->full && c->from == c->full ? g_strdup_printf (_("Full charge %s"), when) : g_steal_pointer (&when);
   }
   if (c->full) {
     g_autofree char *ago = ago_text (c->now - c->full);
-    g_autofree char *note = g_strdup_printf ("Last full charge: %s", ago);
+    /* TRANSLATORS: %s is how long ago ("2 h 5 min ago") */
+    g_autofree char *note = g_strdup_printf (_("Last full charge: %s"), ago);
     gtk_label_set_text (GTK_LABEL (c->note), note);
   } else {
-    gtk_label_set_text (GTK_LABEL (c->note), "Not fully charged in the last 24 h");
+    gtk_label_set_text (GTK_LABEL (c->note), _("Not fully charged in the last 24 h"));
   }
   gtk_widget_set_visible (c->note, some || c->full);
   gtk_widget_queue_draw (c->area);
@@ -398,7 +405,7 @@ ns_charge_history_new (void)
   gtk_drawing_area_set_draw_func (GTK_DRAWING_AREA (c->area), draw, c, NULL);
   gtk_box_append (GTK_BOX (c->box), c->area);
 
-  c->empty = small_label ("Charge history appears after some use", 0);
+  c->empty = small_label (_("Charge history appears after some use"), 0);
   gtk_label_set_wrap (GTK_LABEL (c->empty), TRUE);
   gtk_box_append (GTK_BOX (c->box), c->empty);
 

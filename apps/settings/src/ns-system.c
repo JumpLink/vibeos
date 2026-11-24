@@ -258,15 +258,15 @@ lang_rows (NsPage *page, Known *k)
     if (current && !g_strcmp0 (l->locales->pdata[i], current))
       sel = i;
   ns_group_clear (l->group);
-  GtkWidget *r = ns_row_pick (l->group, "Language", (const char *const *) l->labels->pdata, sel, lang_picked, l);
+  GtkWidget *r = ns_row_pick (l->group, _("Language"), (const char *const *) l->labels->pdata, sel, lang_picked, l);
   /* "C.UTF-8" and the like: no language chosen yet, programs speak their own (English) */
   if (sel == G_MAXUINT)
     ns_row_set_subtitle (r, !current || g_str_has_prefix (current, "C.") || !g_strcmp0 (current, "C")
-                            || !g_strcmp0 (current, "POSIX") ? "System default (English)" : current);
+                            || !g_strcmp0 (current, "POSIX") ? _("System default (English)") : current);
   GSettings *s = ns_page_settings (page, "org.gnome.system.locale");
   if (s) {
     g_autoptr (GPtrArray) rl = g_ptr_array_new ();
-    g_ptr_array_add (rl, (gpointer) "Same as the language");
+    g_ptr_array_add (rl, (gpointer) _("Same as the language"));
     for (guint i = 0; i + 1 < l->labels->len; i++)
       g_ptr_array_add (rl, l->labels->pdata[i]);
     g_ptr_array_add (rl, NULL);
@@ -275,7 +275,7 @@ lang_rows (NsPage *page, Known *k)
     for (guint i = 0; i < l->locales->len; i++)
       if (!g_strcmp0 (l->locales->pdata[i], region))
         rs = i + 1;
-    r = ns_row_pick (l->group, "Formats", (const char *const *) rl->pdata, rs, region_picked, l);
+    r = ns_row_pick (l->group, _("Formats"), (const char *const *) rl->pdata, rs, region_picked, l);
     g_object_set_data (G_OBJECT (r), "ns-locale", s);
   }
 }
@@ -383,7 +383,7 @@ void
 ns_page_language (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Language and region", &c);
+  NsPage *page = ns_page_new (_("Language and region"), &c);
   Lang *l = g_new0 (Lang, 1);
   g_object_set_data_full (G_OBJECT (page), "ns-lang", l, (GDestroyNotify) lang_free);
   l->group = ns_group (c, NULL);
@@ -391,10 +391,10 @@ ns_page_language (GtkWidget *row, gpointer data)
   if (k)
     lang_rows (page, k);
   else
-    ns_row_suffix (ns_row (l->group, NULL, "Language", NULL), ns_spinner_new ());
-  ns_note (c, "A new language or format shows in apps after you log out and in again.");
+    ns_row_suffix (ns_row (l->group, NULL, _("Language"), NULL), ns_spinner_new ());
+  ns_note (c, _("A new language or format shows in apps after you log out and in again."));
   GtkWidget *g = ns_group (c, NULL);
-  l->logout = ns_row_button (g, "Log out now", FALSE, logout, NULL);
+  l->logout = ns_row_button (g, _("Log out now"), FALSE, logout, NULL);
   gtk_widget_set_visible (l->logout, FALSE);
   g_autoptr (GTask) t = g_task_new (NULL, NULL, locales_listed, g_object_ref (page));
   g_task_run_in_thread (t, locales_thread);
@@ -473,7 +473,7 @@ zones_page (GtkWidget *row, gpointer page)
   if (!t->zones)
     return;
   GtkWidget *c;
-  NsPage *regions = ns_page_new ("Time zone", &c);
+  NsPage *regions = ns_page_new (_("Time zone"), &c);
   GtkWidget *g = ns_group (c, NULL);
   g_autoptr (GHashTable) seen = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
   for (guint i = 0; i < t->zones->len; i++) {
@@ -546,25 +546,26 @@ void
 ns_page_datetime (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Date and time", &c);
+  NsPage *page = ns_page_new (_("Date and time"), &c);
   Time *t = g_new0 (Time, 1);
   g_object_set_data_full (G_OBJECT (page), "ns-time", t, (GDestroyNotify) time_free);
   GtkWidget *g = ns_group (c, NULL);
-  t->ntp = ns_row_switch (g, "Automatic date and time", "From the network", NULL, NULL);
+  t->ntp = ns_row_switch (g, _("Automatic date and time"), _("From the network"), NULL, NULL);
   g_signal_connect (ns_row_get_switch (t->ntp), "notify::active", G_CALLBACK (ntp_set), NULL);
   GSettings *dt = ns_page_settings (page, "org.gnome.desktop.datetime");
   if (ns_has_key (dt, "automatic-timezone")) {
-    g_autofree char *from = g_strdup_printf ("From the %s's location", ns_device_noun ());
-    ns_row_switch (g, "Automatic time zone", from, dt, "automatic-timezone");
+    ns_row_switch (g, _("Automatic time zone"),
+                   ns_device_text (_("From the phone's location"), _("From the tablet's location")), dt,
+                   "automatic-timezone");
   }
-  t->zone = ns_row (g, NULL, "Time zone", NULL);
+  t->zone = ns_row (g, NULL, _("Time zone"), NULL);
   ns_row_on_activate (t->zone, zones_page, page);
 
   GSettings *iface = ns_page_settings (page, "org.gnome.desktop.interface");
-  g = ns_group (c, "Clock");
+  g = ns_group (c, _("Clock"));
   /* clock-format is read by the status bar and the lock screen (statusbar.js, keyguard.js) and by the apps.
    * No weekday, date or seconds switches (clock-show-*): the status bar shows the time alone. */
-  GtkWidget *r = ns_row_switch (g, "24-hour time", "13:00 rather than 1:00 PM", NULL, NULL);
+  GtkWidget *r = ns_row_switch (g, _("24-hour time"), _("13:00 rather than 1:00 PM"), NULL, NULL);
   g_settings_bind_with_mapping (iface, "clock-format", ns_row_get_switch (r), "active", G_SETTINGS_BIND_DEFAULT,
                                 h24_get, h24_set, NULL, NULL);
 
@@ -600,7 +601,7 @@ real_name_set (const char *text, gpointer row)
 static void
 real_name_tapped (GtkWidget *row, gpointer data)
 {
-  ns_ask (row, "Your name", NULL, g_object_get_data (G_OBJECT (row), "ns-name"), FALSE, "Save", real_name_set,
+  ns_ask (row, _("Your name"), NULL, g_object_get_data (G_OBJECT (row), "ns-name"), FALSE, _("Save"), real_name_set,
           g_object_ref (row));
 }
 
@@ -637,10 +638,10 @@ me_got (GObject *src, GAsyncResult *res, gpointer page)
     g_variant_lookup (props, "RealName", "&s", &real);
     g_variant_lookup (props, "UserName", "&s", &login);
     g_variant_lookup (props, "AccountType", "i", &type);
-    ns_row_set_subtitle (u->name, *real ? real : "Not set");
+    ns_row_set_subtitle (u->name, *real ? real : _("Not set"));
     g_object_set_data_full (G_OBJECT (u->name), "ns-name", g_strdup (real), g_free);
     ns_row_set_subtitle (u->login, login);
-    ns_row_set_subtitle (u->type, type == 1 ? "Administrator" : "Standard");
+    ns_row_set_subtitle (u->type, type == 1 ? _("Administrator") : _("Standard"));
   }
   g_object_unref (page);
 }
@@ -688,18 +689,18 @@ void
 ns_page_users (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Users", &c);
+  NsPage *page = ns_page_new (_("Users"), &c);
   Users *u = g_new0 (Users, 1);
   g_object_set_data_full (G_OBJECT (page), "ns-users", u, g_free);
-  GtkWidget *g = ns_group (c, "Your account");
-  u->name = ns_row (g, NULL, "Name", NULL);
+  GtkWidget *g = ns_group (c, _("Your account"));
+  u->name = ns_row (g, NULL, _("Name"), NULL);
   ns_row_on_activate (u->name, real_name_tapped, NULL);
-  u->login = ns_row_info (g, "User name", g_get_user_name ());
-  u->type = ns_row_info (g, "Account type", NULL);
+  u->login = ns_row_info (g, _("User name"), g_get_user_name ());
+  u->type = ns_row_info (g, _("Account type"), NULL);
   g = ns_group (c, NULL);
-  GtkWidget *r = ns_row (g, NULL, "Screen lock and password", "A pattern or PIN is also your password");
+  GtkWidget *r = ns_row (g, NULL, _("Screen lock and password"), _("A pattern or PIN is also your password"));
   ns_row_on_activate (r, ns_page_lock_screen, NULL);
-  u->others = ns_group (c, "Other users");
+  u->others = ns_group (c, _("Other users"));
   ns_group_set_visible (u->others, FALSE);
   g_autoptr (GDBusConnection) sys = bus (G_BUS_TYPE_SYSTEM);
   if (sys)
@@ -735,8 +736,9 @@ ns_screen_off_sleeper (void)
 }
 
 static const int sleeps[] = { 0, 300, 600, 900, 1800, 3600 };
-static const char *const sleep_labels[] = { "Never", "After 5 minutes", "After 10 minutes", "After 15 minutes",
-                                            "After 30 minutes", "After 1 hour", NULL };
+static const char *const sleep_labels[] = { N_("Never"), N_("After 5 minutes"), N_("After 10 minutes"),
+                                            N_("After 15 minutes"),
+                                            N_("After 30 minutes"), N_("After 1 hour"), NULL };
 
 static void
 sleep_picked (GtkWidget *row, guint i, gpointer power)
@@ -770,32 +772,33 @@ void
 ns_page_power (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Power and screen blank", &c);
+  NsPage *page = ns_page_new (_("Power and screen blank"), &c);
   GSettings *power = ns_page_settings (page, "org.gnome.settings-daemon.plugins.power");
   if (!power)
     return;
   GtkWidget *g;
   if (!ns_screen_off_sleeper ()) {
-    g = ns_group (c, "Automatic suspend");
-    sleep_row (g, power, "On battery", "battery");
-    sleep_row (g, power, "Plugged in", "ac");
-    g_autofree char *missed = g_strdup_printf ("Suspend saves the most power, but calls, messages and alarms can be "
-                                              "missed while the %s sleeps.", ns_device_noun ());
-    ns_note (c, missed);
+    g = ns_group (c, _("Automatic suspend"));
+    sleep_row (g, power, _("On battery"), "battery");
+    sleep_row (g, power, _("Plugged in"), "ac");
+    ns_note (c, ns_device_text (_("Suspend saves the most power, but calls, messages and alarms can be missed "
+                                  "while the phone sleeps."),
+                                _("Suspend saves the most power, but calls, messages and alarms can be missed "
+                                  "while the tablet sleeps.")));
   }
   g = ns_group (c, NULL);
   /* gnome-settings-daemon dims the backlight through the shell a little before the screen timeout */
   if (ns_has_key (power, "idle-dim"))
-    ns_row_switch (g, "Dim the screen", "Before it turns off", power, "idle-dim");
+    ns_row_switch (g, _("Dim the screen"), _("Before it turns off"), power, "idle-dim");
   /* only with power-profiles-daemon, which switches the profile */
   if (ns_has_key (power, "power-saver-profile-on-low-battery") &&
       (g_file_test ("/usr/share/dbus-1/system-services/org.freedesktop.UPower.PowerProfiles.service",
                     G_FILE_TEST_EXISTS) ||
        g_file_test ("/usr/share/dbus-1/system-services/net.hadess.PowerProfiles.service", G_FILE_TEST_EXISTS)))
-    ns_row_switch (g, "Power saving on low battery", NULL, power, "power-saver-profile-on-low-battery");
+    ns_row_switch (g, _("Power saving on low battery"), NULL, power, "power-saver-profile-on-low-battery");
   if (ns_screen_off_sleeper ()) {
-    g_autofree char *sleeps = g_strdup_printf ("This %s sleeps as soon as its screen is off.", ns_device_noun ());
-    ns_note (c, sleeps);
+    ns_note (c, ns_device_text (_("This phone sleeps as soon as its screen is off."),
+                                _("This tablet sleeps as soon as its screen is off.")));
   }
   ns_push (page);
 }
@@ -904,7 +907,8 @@ ns_wallpaper_ask (GtkWidget *w, const char *path, const char *dark)
   a->path = g_strdup (path);
   a->dark = g_strdup (dark);
   a->w = g_object_ref (w);
-  ns_confirm (w, "Set as wallpaper", "On the home screen and the lock screen", "Set", FALSE, apply_response, a);
+  ns_confirm (w, _("Set as wallpaper"), _("On the home screen and the lock screen"), _("Set"), FALSE, apply_response,
+              a);
 }
 
 static void
@@ -930,7 +934,7 @@ from_files (GtkWidget *row, gpointer data)
 {
   GtkFileDialog *fd = gtk_file_dialog_new ();
   GtkFileFilter *ff = gtk_file_filter_new ();
-  gtk_file_filter_set_name (ff, "Pictures");
+  gtk_file_filter_set_name (ff, _("Pictures"));
   gtk_file_filter_add_mime_type (ff, "image/*");
   gtk_file_dialog_set_default_filter (fd, ff);
   g_autoptr (GFile) pics = g_file_new_for_path (g_get_user_special_dir (G_USER_DIRECTORY_PICTURES)
@@ -959,9 +963,9 @@ void
 ns_page_wallpapers (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Wallpapers", &c);
+  NsPage *page = ns_page_new (_("Wallpapers"), &c);
   GtkWidget *g = ns_group (c, NULL);
-  ns_row_button (g, "Choose from your pictures", FALSE, from_files, NULL);
+  ns_row_button (g, _("Choose from your pictures"), FALSE, from_files, NULL);
 
   g = ns_group (c, NULL);
   GtkWidget *flow = gtk_flow_box_new ();
@@ -1038,7 +1042,7 @@ void
 ns_page_software (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Software information", &c);
+  NsPage *page = ns_page_new (_("Software information"), &c);
   GtkWidget *g = ns_group (c, NULL);
   ns_bt_name_row (g);
 
@@ -1060,9 +1064,9 @@ ns_page_software (GtkWidget *row, gpointer data)
   ns_row_info (g, "GTK", gtk);
   struct utsname u;
   uname (&u);
-  ns_row_info (g, "Kernel", u.release);
-  ns_row_info (g, "Kernel build", u.version);
-  ns_row_info (g, "Settings", NS_VERSION);
+  ns_row_info (g, _("Kernel"), u.release);
+  ns_row_info (g, _("Kernel build"), u.version);
+  ns_row_info (g, _("Settings"), NS_VERSION);
   ns_push (page);
 }
 
@@ -1072,14 +1076,14 @@ static void
 speed_row (GtkWidget *g, GSettings *s)
 {
   GtkWidget *scale;
-  ns_row_scale (g, "Pointer speed", "input-mouse-symbolic", -1, 1, 0.1, &scale);
+  ns_row_scale (g, _("Pointer speed"), "input-mouse-symbolic", -1, 1, 0.1, &scale);
   g_settings_bind (s, "speed", gtk_range_get_adjustment (GTK_RANGE (scale)), "value", G_SETTINGS_BIND_DEFAULT);
 }
 
 static const guint delays[] = { 250, 500, 800 };
-static const char *const delay_labels[] = { "Short", "Medium", "Long", NULL };
+static const char *const delay_labels[] = { N_("Short"), N_("Medium"), N_("Long"), NULL };
 static const guint rates[] = { 15, 30, 60 };
-static const char *const rate_labels[] = { "Fast", "Medium", "Slow", NULL };
+static const char *const rate_labels[] = { N_("Fast"), N_("Medium"), N_("Slow"), NULL };
 
 static void
 uint_picked (GtkWidget *row, guint i, gpointer s)
@@ -1106,31 +1110,31 @@ void
 ns_page_mouse (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Mouse and touchpad", &c);
+  NsPage *page = ns_page_new (_("Mouse and touchpad"), &c);
   GSettings *mouse = ns_page_settings (page, "org.gnome.desktop.peripherals.mouse");
   GSettings *pad = ns_page_settings (page, "org.gnome.desktop.peripherals.touchpad");
   GSettings *kbd = ns_page_settings (page, "org.gnome.desktop.peripherals.keyboard");
   if (mouse) {
-    GtkWidget *g = ns_group (c, "Mouse");
+    GtkWidget *g = ns_group (c, _("Mouse"));
     speed_row (g, mouse);
-    ns_row_switch (g, "Natural scrolling", "The content moves with the wheel, like a touchscreen", mouse,
+    ns_row_switch (g, _("Natural scrolling"), _("The content moves with the wheel, like a touchscreen"), mouse,
                    "natural-scroll");
-    ns_row_switch (g, "Left-handed", "The right button is the main one", mouse, "left-handed");
+    ns_row_switch (g, _("Left-handed"), _("The right button is the main one"), mouse, "left-handed");
   }
   if (pad) {
-    GtkWidget *g = ns_group (c, "Touchpad");
+    GtkWidget *g = ns_group (c, _("Touchpad"));
     speed_row (g, pad);
-    ns_row_switch (g, "Tap to click", "A tap counts as a click", pad, "tap-to-click");
-    ns_row_switch (g, "Natural scrolling", "The content moves with your fingers", pad, "natural-scroll");
+    ns_row_switch (g, _("Tap to click"), _("A tap counts as a click"), pad, "tap-to-click");
+    ns_row_switch (g, _("Natural scrolling"), _("The content moves with your fingers"), pad, "natural-scroll");
   }
   if (kbd) {
-    GtkWidget *g = ns_group (c, "Hardware keyboard");
-    ns_row_switch (g, "Repeat keys", "A held key types again and again", kbd, "repeat");
-    GtkWidget *r = uint_row (g, "Delay before repeating", kbd, "delay", delays, G_N_ELEMENTS (delays), delay_labels);
+    GtkWidget *g = ns_group (c, _("Hardware keyboard"));
+    ns_row_switch (g, _("Repeat keys"), _("A held key types again and again"), kbd, "repeat");
+    GtkWidget *r = uint_row (g, _("Delay before repeating"), kbd, "delay", delays, G_N_ELEMENTS (delays), delay_labels);
     g_settings_bind (kbd, "repeat", r, "sensitive", G_SETTINGS_BIND_GET);
-    r = uint_row (g, "Repeat speed", kbd, "repeat-interval", rates, G_N_ELEMENTS (rates), rate_labels);
+    r = uint_row (g, _("Repeat speed"), kbd, "repeat-interval", rates, G_N_ELEMENTS (rates), rate_labels);
     g_settings_bind (kbd, "repeat", r, "sensitive", G_SETTINGS_BIND_GET);
   }
-  ns_note (c, "For a Bluetooth or USB mouse, touchpad or keyboard.");
+  ns_note (c, _("For a Bluetooth or USB mouse, touchpad or keyboard."));
   ns_push (page);
 }

@@ -112,14 +112,14 @@ security_name (NMAccessPoint *ap)
 {
   NM80211ApSecurityFlags f = nm_access_point_get_wpa_flags (ap) | nm_access_point_get_rsn_flags (ap);
   if (f & NM_802_11_AP_SEC_KEY_MGMT_802_1X)
-    return "WPA Enterprise";
+    return _("WPA Enterprise");
   if (f & NM_802_11_AP_SEC_KEY_MGMT_SAE)
     return "WPA3";
   if (nm_access_point_get_rsn_flags (ap))
     return "WPA2";
   if (nm_access_point_get_wpa_flags (ap))
     return "WPA";
-  return nm_access_point_get_flags (ap) & NM_802_11_AP_FLAGS_PRIVACY ? "WEP" : "Open";
+  return nm_access_point_get_flags (ap) & NM_802_11_AP_FLAGS_PRIVACY ? "WEP" : _("Open");
 }
 
 static void
@@ -128,7 +128,7 @@ activated (GObject *src, GAsyncResult *res, gpointer row)
   g_autoptr (GError) err = NULL;
   g_autoptr (NMActiveConnection) ac = nm_client_activate_connection_finish (NM_CLIENT (src), res, &err);
   if (!ac)
-    row_error (row, "Could not connect", err);
+    row_error (row, _("Could not connect"), err);
   g_object_unref (row);
 }
 
@@ -138,7 +138,7 @@ added_activated (GObject *src, GAsyncResult *res, gpointer row)
   g_autoptr (GError) err = NULL;
   g_autoptr (NMActiveConnection) ac = nm_client_add_and_activate_connection_finish (NM_CLIENT (src), res, &err);
   if (!ac)
-    row_error (row, "Could not connect", err);
+    row_error (row, _("Could not connect"), err);
   g_object_unref (row);
 }
 
@@ -169,7 +169,7 @@ password_entered (const char *text, gpointer data)
     g_object_set (sec, NM_SETTING_WIRELESS_SECURITY_KEY_MGMT, j->sae ? "sae" : "wpa-psk",
                   NM_SETTING_WIRELESS_SECURITY_PSK, text, NULL);
     nm_connection_add_setting (conn, sec);
-    ns_row_set_subtitle (j->row, "Connecting…");
+    ns_row_set_subtitle (j->row, _("Connecting…"));
     nm_client_add_and_activate_connection_async (client, conn, j->dev, j->ap_path, NULL, added_activated,
                                                  g_object_ref (j->row));
     g_object_unref (conn);
@@ -196,7 +196,7 @@ ap_tapped (GtkWidget *row, gpointer data)
     return;
   NMRemoteConnection *saved = ap_saved (w->dev, ap);
   if (saved) {
-    ns_row_set_subtitle (row, "Connecting…");
+    ns_row_set_subtitle (row, _("Connecting…"));
     nm_client_activate_connection_async (client, NM_CONNECTION (saved), NM_DEVICE (w->dev), path, NULL, activated,
                                          g_object_ref (row));
     return;
@@ -207,7 +207,7 @@ ap_tapped (GtkWidget *row, gpointer data)
     return;
   }
   if (!ap_secured (ap)) {
-    ns_row_set_subtitle (row, "Connecting…");
+    ns_row_set_subtitle (row, _("Connecting…"));
     nm_client_add_and_activate_connection_async (client, NULL, NM_DEVICE (w->dev), path, NULL, added_activated,
                                                  g_object_ref (row));
     return;
@@ -219,8 +219,10 @@ ap_tapped (GtkWidget *row, gpointer data)
   j->ssid = ap_ssid (ap);
   j->sae = (nm_access_point_get_rsn_flags (ap) & NM_802_11_AP_SEC_KEY_MGMT_SAE)
            && !(nm_access_point_get_rsn_flags (ap) & NM_802_11_AP_SEC_KEY_MGMT_PSK);
-  g_autofree char *head = g_strdup_printf ("Connect to %s", j->ssid ? j->ssid : "the network");
-  ns_ask (row, head, "Enter the network's password.", NULL, TRUE, "Connect", password_entered, j);
+  /* TRANSLATORS: %s is the Wi-Fi network's name */
+  g_autofree char *head = j->ssid ? g_strdup_printf (_("Connect to %s"),
+                                                     j->ssid) : g_strdup (_("Connect to the network"));
+  ns_ask (row, head, _("Enter the network's password."), NULL, TRUE, _("Connect"), password_entered, j);
 }
 
 static GtkWidget *
@@ -232,7 +234,7 @@ ap_row (GtkWidget *g, NsPage *page, NMAccessPoint *ap, const char *sub)
     GtkWidget *lock = gtk_image_new_from_icon_name ("system-lock-screen-symbolic");
     gtk_image_set_pixel_size (GTK_IMAGE (lock), 24);
     gtk_widget_add_css_class (lock, "vibeos-list-row-icon");
-    gtk_accessible_update_property (GTK_ACCESSIBLE (lock), GTK_ACCESSIBLE_PROPERTY_LABEL, "Secured", -1);
+    gtk_accessible_update_property (GTK_ACCESSIBLE (lock), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Secured"), -1);
     ns_row_suffix (r, lock);
   }
   g_object_set_data (G_OBJECT (r), "ns-page", page);
@@ -271,15 +273,15 @@ wifi_fill (NsPage *page)
   }
   gboolean on = nm_client_wireless_get_enabled (client);
   ns_switch_quiet (ns_row_get_switch (w->power), on);
-  ns_row_set_subtitle (w->power, on ? "On" : "Off");
+  ns_row_set_subtitle (w->power, on ? _("On") : _("Off"));
 
   ns_group_clear (w->cur);
   ns_group_clear (w->avail);
   NMAccessPoint *active = nm_device_wifi_get_active_access_point (w->dev);
   NMDeviceState st = nm_device_get_state (NM_DEVICE (w->dev));
   if (active && on) {
-    const char *say = st == NM_DEVICE_STATE_ACTIVATED ? "Connected"
-                    : st == NM_DEVICE_STATE_NEED_AUTH ? "Needs a password" : "Connecting…";
+    const char *say = st == NM_DEVICE_STATE_ACTIVATED ? _("Connected")
+                    : st == NM_DEVICE_STATE_NEED_AUTH ? _("Needs a password") : _("Connecting…");
     GtkWidget *r = ap_row (w->cur, page, active, say);
     ns_row_on_activate (r, wifi_details, NULL);
   }
@@ -304,7 +306,7 @@ wifi_fill (NsPage *page)
       continue;
     }
     g_hash_table_add (seen, ssid);
-    const char *sub = ap_saved (w->dev, ap) ? "Saved" : ap_secured (ap) ? NULL : "Open";
+    const char *sub = ap_saved (w->dev, ap) ? _("Saved") : ap_secured (ap) ? NULL : _("Open");
     GtkWidget *r = ap_row (w->avail, page, ap, sub);
     ns_row_on_activate (r, ap_tapped, NULL);
   }
@@ -354,7 +356,7 @@ forgotten (GObject *src, GAsyncResult *res, gpointer row)
 {
   g_autoptr (GError) err = NULL;
   if (!nm_remote_connection_delete_finish (NM_REMOTE_CONNECTION (src), res, &err))
-    row_error (row, "Could not forget it", err);
+    row_error (row, _("Could not forget it"), err);
   g_object_unref (row);
 }
 
@@ -371,9 +373,9 @@ forget_answered (gboolean yes, gpointer row)
 static void
 forget (GtkWidget *row, gpointer data)
 {
-  g_autofree char *body = g_strdup_printf ("Its password is deleted and the %s no longer joins it by itself.",
-                                           ns_device_noun ());
-  ns_confirm (row, "Forget this network?", body, "Forget", TRUE, forget_answered, row);
+  const char *body = ns_device_text (_("Its password is deleted and the phone no longer joins it by itself."),
+                                     _("Its password is deleted and the tablet no longer joins it by itself."));
+  ns_confirm (row, _("Forget this network?"), body, _("Forget"), TRUE, forget_answered, row);
 }
 
 static void
@@ -381,7 +383,7 @@ disconnected (GObject *src, GAsyncResult *res, gpointer row)
 {
   g_autoptr (GError) err = NULL;
   if (!nm_device_disconnect_finish (NM_DEVICE (src), res, &err))
-    row_error (row, "Could not disconnect", err);
+    row_error (row, _("Could not disconnect"), err);
   g_object_unref (row);
 }
 
@@ -420,34 +422,35 @@ net_page (const char *title, NMRemoteConnection *conn, NMDevice *dev, NMAccessPo
     g = ns_group (c, NULL);
     if (ap) {
       g_autofree char *sig = g_strdup_printf ("%u%%", nm_access_point_get_strength (ap));
-      ns_row_info (g, "Signal strength", sig);
-      g_autofree char *fr = g_strdup_printf ("%.1f GHz", nm_access_point_get_frequency (ap) / 1000.0);
-      ns_row_info (g, "Frequency", fr);
-      ns_row_info (g, "Security", security_name (ap));
+      ns_row_info (g, _("Signal strength"), sig);
+      /* TRANSLATORS: a Wi-Fi frequency in gigahertz */
+      g_autofree char *fr = g_strdup_printf (_("%.1f GHz"), nm_access_point_get_frequency (ap) / 1000.0);
+      ns_row_info (g, _("Frequency"), fr);
+      ns_row_info (g, _("Security"), security_name (ap));
     }
     NMIPConfig *ip4 = dev ? nm_device_get_ip4_config (dev) : NULL;
     GPtrArray *addrs = ip4 ? nm_ip_config_get_addresses (ip4) : NULL;
     if (addrs && addrs->len)
-      ns_row_info (g, "IP address", nm_ip_address_get_address (addrs->pdata[0]));
+      ns_row_info (g, _("IP address"), nm_ip_address_get_address (addrs->pdata[0]));
     if (ip4 && nm_ip_config_get_gateway (ip4))
-      ns_row_info (g, "Router", nm_ip_config_get_gateway (ip4));
+      ns_row_info (g, _("Router"), nm_ip_config_get_gateway (ip4));
     if (dev && nm_device_get_hw_address (dev))
-      ns_row_info (g, "MAC address", nm_device_get_hw_address (dev));
+      ns_row_info (g, _("MAC address"), nm_device_get_hw_address (dev));
   }
   g = ns_group (c, NULL);
   NMSettingConnection *s = conn ? nm_connection_get_setting_connection (NM_CONNECTION (conn)) : NULL;
   if (s) {
-    GtkWidget *r = ns_row_switch (g, "Auto reconnect", "Join this network when it is in reach", NULL, NULL);
+    GtkWidget *r = ns_row_switch (g, _("Auto reconnect"), _("Join this network when it is in reach"), NULL, NULL);
     GtkWidget *sw = ns_row_get_switch (r);
     ns_switch_set_active (sw, nm_setting_connection_get_autoconnect (s));
     g_signal_connect_object (sw, "notify::active", G_CALLBACK (autoconnect_set), conn, 0);
   }
   if (dev) {
-    GtkWidget *r = ns_row_button (g, "Disconnect", FALSE, disconnect, NULL);
+    GtkWidget *r = ns_row_button (g, _("Disconnect"), FALSE, disconnect, NULL);
     g_object_set_data (G_OBJECT (r), "ns-net", n);
   }
   if (conn) {
-    GtkWidget *r = ns_row_button (g, "Forget", TRUE, forget, NULL);
+    GtkWidget *r = ns_row_button (g, _("Forget"), TRUE, forget, NULL);
     g_object_set_data (G_OBJECT (r), "ns-net", n);
   }
   ns_push (page);
@@ -496,10 +499,10 @@ static void
 saved_page (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Saved networks", &c);
+  NsPage *page = ns_page_new (_("Saved networks"), &c);
   GtkWidget *g = ns_group (c, NULL);
   g_object_set_data (G_OBJECT (page), "ns-list", g);
-  GtkWidget *empty = ns_note (c, "No saved networks.");
+  GtkWidget *empty = ns_note (c, _("No saved networks."));
   gtk_widget_set_visible (empty, FALSE);
   g_object_set_data (G_OBJECT (page), "ns-empty", empty);
   ns_later_init (page, saved_fill);
@@ -513,28 +516,27 @@ void
 ns_page_wifi (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Wi-Fi", &c);
+  NsPage *page = ns_page_new (_("Wi-Fi"), &c);
   Wifi *w = g_new0 (Wifi, 1);
   g_object_set_data_full (G_OBJECT (page), "wifi", w, (GDestroyNotify) wifi_free);
   ns_later_init (page, wifi_fill);
 
   GtkWidget *g = ns_group (c, NULL);
-  w->power = ns_row_toggle (g, NULL, "Wi-Fi", NULL);
+  w->power = ns_row_toggle (g, NULL, _("Wi-Fi"), NULL);
   g_signal_connect (ns_row_get_switch (w->power), "notify::active", G_CALLBACK (wifi_power), NULL);
-  g_autofree char *none = g_strdup_printf ("This %s has no Wi-Fi adapter.", ns_device_noun ());
-  w->none = ns_note (c, none);
+  w->none = ns_note (c, ns_device_text (_("This phone has no Wi-Fi adapter."), _("This tablet has no Wi-Fi adapter.")));
   gtk_widget_set_visible (w->none, FALSE);
-  w->cur = ns_group (c, "Current network");
+  w->cur = ns_group (c, _("Current network"));
   ns_group_set_visible (w->cur, FALSE);
-  w->avail = ns_group (c, "Available networks");
+  w->avail = ns_group (c, _("Available networks"));
   ns_group_set_visible (w->avail, FALSE);
   g = ns_group (c, NULL);
-  w->saved = ns_row (g, NULL, "Saved networks", "Forget, auto reconnect");
+  w->saved = ns_row (g, NULL, _("Saved networks"), _("Forget, auto reconnect"));
   ns_row_on_activate (w->saved, saved_page, NULL);
-  GtkWidget *add = ns_row (g, NULL, "Add network", "A hidden network, or one not in reach");
+  GtkWidget *add = ns_row (g, NULL, _("Add network"), _("A hidden network, or one not in reach"));
   g_object_set_data (G_OBJECT (add), "ns-page", page);
   ns_row_on_activate (add, hidden_tapped, NULL);
-  GtkWidget *hot = ns_row (g, NULL, "Wi-Fi hotspot", "Share the mobile data over Wi-Fi");
+  GtkWidget *hot = ns_row (g, NULL, _("Wi-Fi hotspot"), _("Share the mobile data over Wi-Fi"));
   ns_row_on_activate (hot, ns_page_hotspot, NULL);
   ns_caps_bind_visible (hot, NS_CAP_MODEM);
   w->scan = g_timeout_add_seconds (20, wifi_scan, page);
@@ -544,14 +546,15 @@ ns_page_wifi (GtkWidget *row, gpointer data)
 
 /* ---- Joining by hand: a hidden network, or WPA Enterprise (802.1X) ---- */
 
-static const char *const sec_labels[] = { "None", "WPA/WPA2 Personal", "WPA3 Personal", "WPA/WPA2 Enterprise", NULL };
+static const char *const sec_labels[] = { N_("None"), N_("WPA/WPA2 Personal"), N_("WPA3 Personal"),
+                                          N_("WPA/WPA2 Enterprise"), NULL };
 enum { SEC_NONE, SEC_PSK, SEC_SAE, SEC_EAP };
 static const char *const eap_labels[] = { "PEAP", "TTLS", "TLS", "PWD", NULL };
 static const char *const eap_values[] = { "peap", "ttls", "tls", "pwd" };
 enum { EAP_PEAP, EAP_TTLS, EAP_TLS, EAP_PWD };
 static const char *const phase2_labels[] = { "MSCHAPv2", "PAP", "MSCHAP", "GTC", NULL };
 static const char *const phase2_values[] = { "mschapv2", "pap", "mschap", "gtc" };
-static const char *const ca_labels[] = { "System certificates", "Choose a file…", "Do not validate", NULL };
+static const char *const ca_labels[] = { N_("System certificates"), N_("Choose a file…"), N_("Do not validate"), NULL };
 enum { CA_SYSTEM, CA_FILE, CA_NONE };
 
 typedef struct {
@@ -656,20 +659,20 @@ ca_picked (GtkWidget *row, guint i, gpointer data)
   Form *f = data;
   f->ca_i = i;
   if (i == CA_FILE)
-    choose_file (row, &f->ca_path, f, "CA certificate");
+    choose_file (row, &f->ca_path, f, _("CA certificate"));
   form_update (f);
 }
 
 static void
 cert_tapped (GtkWidget *row, gpointer f)
 {
-  choose_file (row, &((Form *) f)->cert_path, NULL, "Your certificate");
+  choose_file (row, &((Form *) f)->cert_path, NULL, _("Your certificate"));
 }
 
 static void
 key_tapped (GtkWidget *row, gpointer f)
 {
-  choose_file (row, &((Form *) f)->key_path, NULL, "Private key");
+  choose_file (row, &((Form *) f)->key_path, NULL, _("Private key"));
 }
 
 static void
@@ -680,7 +683,7 @@ form_added (GObject *src, GAsyncResult *res, gpointer status)
   if (ac) {
     ns_pop (status);
   } else {
-    row_error (status, "Could not connect", err);
+    row_error (status, _("Could not connect"), err);
   }
   g_object_unref (status);
 }
@@ -699,12 +702,12 @@ form_connect (GtkWidget *row, gpointer data)
   g_autoptr (GError) err = NULL;
   const char *ssid = f->name ? value_or_null (f->name) : NULL;
   if (f->name && !ssid) {
-    ns_row_set_subtitle (f->status, "The network's name is missing");
+    ns_row_set_subtitle (f->status, _("The network's name is missing"));
     return;
   }
   const char *pass = value_or_null (f->pass);
   if ((f->sec_i == SEC_PSK || f->sec_i == SEC_SAE) && (!pass || strlen (pass) < 8)) {
-    ns_row_set_subtitle (f->status, "The password has at least 8 characters");
+    ns_row_set_subtitle (f->status, _("The password has at least 8 characters"));
     return;
   }
 
@@ -740,7 +743,7 @@ form_connect (GtkWidget *row, gpointer data)
         g_object_set (x, NM_SETTING_802_1X_SYSTEM_CA_CERTS, TRUE, NULL);
       else if (f->ca_i == CA_FILE && f->ca_path &&
                !nm_setting_802_1x_set_ca_cert (x, f->ca_path, NM_SETTING_802_1X_CK_SCHEME_PATH, NULL, &err)) {
-        row_error (f->status, "CA certificate", err);
+        row_error (f->status, _("CA certificate"), err);
         g_object_unref (x);
         g_object_unref (conn);
         return;
@@ -750,7 +753,7 @@ form_connect (GtkWidget *row, gpointer data)
     }
     if (f->eap_i == EAP_TLS) {
       if (!f->cert_path || !f->key_path) {
-        ns_row_set_subtitle (f->status, "TLS needs your certificate and its private key");
+        ns_row_set_subtitle (f->status, _("TLS needs your certificate and its private key"));
         g_object_unref (x);
         g_object_unref (conn);
         return;
@@ -758,7 +761,7 @@ form_connect (GtkWidget *row, gpointer data)
       if (!nm_setting_802_1x_set_client_cert (x, f->cert_path, NM_SETTING_802_1X_CK_SCHEME_PATH, NULL, &err) ||
           !nm_setting_802_1x_set_private_key (x, f->key_path, value_or_null (f->keypass),
                                               NM_SETTING_802_1X_CK_SCHEME_PATH, NULL, &err)) {
-        row_error (f->status, "Certificate", err);
+        row_error (f->status, _("Certificate"), err);
         g_object_unref (x);
         g_object_unref (conn);
         return;
@@ -766,7 +769,7 @@ form_connect (GtkWidget *row, gpointer data)
     }
     nm_connection_add_setting (conn, NM_SETTING (x));
   }
-  ns_row_set_subtitle (f->status, "Connecting…");
+  ns_row_set_subtitle (f->status, _("Connecting…"));
   nm_client_add_and_activate_connection_async (client, conn, f->dev, f->ap_path, NULL, form_added,
                                                g_object_ref (f->status));
   g_object_unref (conn);
@@ -777,7 +780,7 @@ static void
 join_form (NMDevice *dev, const char *ap_path, const char *ssid)
 {
   GtkWidget *c;
-  g_autofree char *title = ssid ? g_strdup (ssid) : g_strdup ("Add network");
+  g_autofree char *title = ssid ? g_strdup (ssid) : g_strdup (_("Add network"));
   NsPage *page = ns_page_new (title, &c);
   Form *f = g_new0 (Form, 1);
   f->dev = g_object_ref (dev);
@@ -786,29 +789,29 @@ join_form (NMDevice *dev, const char *ap_path, const char *ssid)
 
   GtkWidget *g = ns_group (c, NULL);
   if (!ap_path) {
-    f->name = ns_row_value (g, "Network name", NULL, FALSE, NULL, NULL);
+    f->name = ns_row_value (g, _("Network name"), NULL, FALSE, NULL, NULL);
     f->sec_i = SEC_PSK;
-    f->sec = ns_row_pick (g, "Security", sec_labels, f->sec_i, sec_picked, f);
+    f->sec = ns_row_pick (g, _("Security"), sec_labels, f->sec_i, sec_picked, f);
   } else {
     f->sec_i = SEC_EAP;
   }
-  f->eap = ns_row_pick (g, "Method", eap_labels, f->eap_i, eap_picked, f);
-  f->phase2 = ns_row_pick (g, "Inner authentication", phase2_labels, f->phase2_i, phase2_picked, f);
-  f->ident = ns_row_value (g, "Identity", NULL, FALSE, NULL, NULL);
-  f->anon = ns_row_value (g, "Anonymous identity", NULL, FALSE, NULL, NULL);
-  f->pass = ns_row_value (g, "Password", NULL, TRUE, NULL, NULL);
+  f->eap = ns_row_pick (g, _("Method"), eap_labels, f->eap_i, eap_picked, f);
+  f->phase2 = ns_row_pick (g, _("Inner authentication"), phase2_labels, f->phase2_i, phase2_picked, f);
+  f->ident = ns_row_value (g, _("Identity"), NULL, FALSE, NULL, NULL);
+  f->anon = ns_row_value (g, _("Anonymous identity"), NULL, FALSE, NULL, NULL);
+  f->pass = ns_row_value (g, _("Password"), NULL, TRUE, NULL, NULL);
 
   g = f->certs = ns_group (c, NULL);
-  f->ca = ns_row_pick (g, "CA certificate", ca_labels, f->ca_i, ca_picked, f);
-  f->domain = ns_row_value (g, "Domain", NULL, FALSE, NULL, NULL);
-  f->cert = ns_row (g, NULL, "Your certificate", "Choose a file");
+  f->ca = ns_row_pick (g, _("CA certificate"), ca_labels, f->ca_i, ca_picked, f);
+  f->domain = ns_row_value (g, _("Domain"), NULL, FALSE, NULL, NULL);
+  f->cert = ns_row (g, NULL, _("Your certificate"), _("Choose a file"));
   ns_row_on_activate (f->cert, cert_tapped, f);
-  f->key = ns_row (g, NULL, "Private key", "Choose a file");
+  f->key = ns_row (g, NULL, _("Private key"), _("Choose a file"));
   ns_row_on_activate (f->key, key_tapped, f);
-  f->keypass = ns_row_value (g, "Private key password", NULL, TRUE, NULL, NULL);
+  f->keypass = ns_row_value (g, _("Private key password"), NULL, TRUE, NULL, NULL);
 
   g = ns_group (c, NULL);
-  f->status = ns_row_button (g, "Connect", FALSE, form_connect, f);
+  f->status = ns_row_button (g, _("Connect"), FALSE, form_connect, f);
   form_update (f);
   ns_push (page);
 }
@@ -835,7 +838,7 @@ typedef struct {
   guint               poll;
 } Hot;
 
-static const char *const band_labels[] = { "Automatic", "2.4 GHz", "5 GHz", NULL };
+static const char *const band_labels[] = { N_("Automatic"), N_("2.4 GHz"), N_("5 GHz"), NULL };
 static const char *const band_values[] = { NULL, "bg", "a" };
 
 static void
@@ -955,8 +958,8 @@ hot_fill (NsPage *page)
   NMActiveConnection *ac = hot_active (h);
   NMActiveConnectionState st = ac ? nm_active_connection_get_state (ac) : NM_ACTIVE_CONNECTION_STATE_UNKNOWN;
   ns_switch_quiet (ns_row_get_switch (h->power), ac != NULL);
-  ns_row_set_subtitle (h->power, st == NM_ACTIVE_CONNECTION_STATE_ACTIVATED ? "On"
-                                 : st == NM_ACTIVE_CONNECTION_STATE_ACTIVATING ? "Starting…" : "Off");
+  ns_row_set_subtitle (h->power, st == NM_ACTIVE_CONNECTION_STATE_ACTIVATED ? _("On")
+                                 : st == NM_ACTIVE_CONNECTION_STATE_ACTIVATING ? _("Starting…") : _("Off"));
   hot_clients (page);
 }
 
@@ -1002,7 +1005,7 @@ hot_power (GtkWidget *sw, GParamSpec *ps, gpointer page)
       nm_client_deactivate_connection_async (client, ac, NULL, NULL, NULL);
     return;
   }
-  ns_row_set_subtitle (h->power, "Starting…");
+  ns_row_set_subtitle (h->power, _("Starting…"));
   if (h->conn) {
     nm_client_activate_connection_async (client, NM_CONNECTION (h->conn), NM_DEVICE (h->dev), NULL, NULL,
                                          activated, g_object_ref (h->power));
@@ -1020,7 +1023,7 @@ hot_committed (GObject *src, GAsyncResult *res, gpointer page)
   Hot *h = g_object_get_data (page, "hot");
   g_autoptr (GError) err = NULL;
   if (!nm_remote_connection_commit_changes_finish (NM_REMOTE_CONNECTION (src), res, &err))
-    row_error (h->power, "Could not save it", err);
+    row_error (h->power, _("Could not save it"), err);
   else if (hot_active (h))
     nm_client_activate_connection_async (client, NM_CONNECTION (h->conn), NM_DEVICE (h->dev), NULL, NULL,
                                          activated, g_object_ref (h->power));
@@ -1062,7 +1065,7 @@ hot_pass_changed (const char *text, gpointer page)
 {
   Hot *h = g_object_get_data (page, "hot");
   if (strlen (text) < 8 || strlen (text) > 63) {
-    ns_row_set_subtitle (h->pass, "8 to 63 characters: not changed");
+    ns_row_set_subtitle (h->pass, _("8 to 63 characters: not changed"));
     if (h->conn)
       nm_remote_connection_get_secrets_async (h->conn, NM_SETTING_WIRELESS_SECURITY_SETTING_NAME, NULL,
                                               secrets_got, g_object_ref (h->pass));
@@ -1082,30 +1085,29 @@ void
 ns_page_hotspot (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Wi-Fi hotspot", &c);
+  NsPage *page = ns_page_new (_("Wi-Fi hotspot"), &c);
   Hot *h = g_new0 (Hot, 1);
   g_object_set_data_full (G_OBJECT (page), "hot", h, (GDestroyNotify) hot_free);
   ns_later_init (page, hot_fill);
 
   GtkWidget *g = ns_group (c, NULL);
-  h->power = ns_row_toggle (g, NULL, "Use Wi-Fi hotspot", "Off");
+  h->power = ns_row_toggle (g, NULL, _("Use Wi-Fi hotspot"), _("Off"));
   g_signal_connect (ns_row_get_switch (h->power), "notify::active", G_CALLBACK (hot_power), page);
-  g_autofree char *no_hotspot = g_strdup_printf ("This %s's Wi-Fi cannot be an access point.", ns_device_noun ());
-  h->none = ns_note (c, no_hotspot);
+  h->none = ns_note (c, ns_device_text (_("This phone's Wi-Fi cannot be an access point."),
+                                        _("This tablet's Wi-Fi cannot be an access point.")));
   gtk_widget_set_visible (h->none, FALSE);
 
   g = ns_group (c, NULL);
   g_autofree char *host = g_hostname_to_ascii (g_get_host_name ());
-  h->name = ns_row_value (g, "Network name", host, FALSE, hot_name_changed, page);
+  h->name = ns_row_value (g, _("Network name"), host, FALSE, hot_name_changed, page);
   g_autofree char *key = random_key ();
-  h->pass = ns_row_value (g, "Password", key, FALSE, hot_pass_changed, page);
-  h->band = ns_row_pick (g, "Band", band_labels, 0, hot_band_picked, page);
+  h->pass = ns_row_value (g, _("Password"), key, FALSE, hot_pass_changed, page);
+  h->band = ns_row_pick (g, _("Band"), band_labels, 0, hot_band_picked, page);
 
-  h->clients = ns_group (c, "Connected devices");
+  h->clients = ns_group (c, _("Connected devices"));
   ns_group_set_visible (h->clients, FALSE);
-  g_autofree char *shared = g_strdup_printf ("Other devices use the %s's mobile data. Wi-Fi is off while the hotspot "
-                                             "is on.", ns_device_noun ());
-  ns_note (c, shared);
+  ns_note (c, ns_device_text (_("Other devices use the phone's mobile data. Wi-Fi is off while the hotspot is on."),
+                              _("Other devices use the tablet's mobile data. Wi-Fi is off while the hotspot is on.")));
   h->poll = g_timeout_add_seconds (5, hot_clients, page);
   with_client (page, hot_fill);
   ns_push (page);
@@ -1131,7 +1133,7 @@ static void
 apn_tapped (GtkWidget *row, gpointer conn)
 {
   NMDevice *dev = modem ();
-  ns_row_set_subtitle (row, "Connecting…");
+  ns_row_set_subtitle (row, _("Connecting…"));
   nm_client_activate_connection_async (client, conn, dev, NULL, NULL, activated, g_object_ref (row));
 }
 
@@ -1144,7 +1146,7 @@ mobile_fill (NsPage *page)
   NMDevice *dev = modem ();
   NMActiveConnection *ac = dev ? nm_device_get_active_connection (dev) : NULL;
   NMRemoteConnection *cur = ac ? nm_active_connection_get_connection (ac) : NULL;
-  ns_row_set_subtitle (m->data, !dev ? "No modem" : cur ? "Connected" : on ? "On" : "Off");
+  ns_row_set_subtitle (m->data, !dev ? _("No modem") : cur ? _("Connected") : on ? _("On") : _("Off"));
 
   ns_group_clear (m->apns);
   const GPtrArray *all = nm_client_get_connections (client);
@@ -1156,7 +1158,7 @@ mobile_fill (NsPage *page)
       continue;
     const char *apn = nm_setting_gsm_get_apn (gsm);
     GtkWidget *r = ns_row (m->apns, NULL, nm_connection_get_id (conn),
-                           cur == all->pdata[i] ? "In use" : apn && *apn ? apn : "Automatic APN");
+                           cur == all->pdata[i] ? _("In use") : apn && *apn ? apn : _("Automatic APN"));
     ns_row_suffix (r, ns_mark_new (cur == all->pdata[i]));
     g_object_set_data_full (G_OBJECT (r), "ns-conn", g_object_ref (conn), g_object_unref);
     if (dev)
@@ -1217,23 +1219,24 @@ modems_got (GObject *src, GAsyncResult *res, gpointer page)
       g_variant_lookup (mm, "SignalQuality", "(ub)", &q, &recent);
       g_variant_lookup (mm, "OwnNumbers", "^a&s", &nums);
       gboolean has_sim = sim && g_strcmp0 (sim, "/");
-      ns_row_info (m->info, "SIM", has_sim ? "Inserted" : "No SIM card");
+      ns_row_info (m->info, _("SIM"), has_sim ? _("Inserted") : _("No SIM card"));
       if (op && *op)
-        ns_row_info (m->info, "Network operator", op);
+        ns_row_info (m->info, _("Network operator"), op);
       if (generation (tech)) {
-        g_autofree char *t = g_strdup_printf ("%s • %u%% signal", generation (tech), q);
-        ns_row_info (m->info, "Network", t);
+        /* TRANSLATORS: the mobile network's generation ("4G") and its signal strength in per cent */
+        g_autofree char *t = g_strdup_printf (_("%s • %u%% signal"), generation (tech), q);
+        ns_row_info (m->info, _("Network"), t);
       }
       if (nums && nums[0])
-        ns_row_info (m->info, "Phone number", nums[0]);
+        ns_row_info (m->info, _("Phone number"), nums[0]);
       if (model)
-        ns_row_info (m->info, "Modem", model);
+        ns_row_info (m->info, _("Modem"), model);
       if (imei && *imei)
         ns_row_info (m->info, "IMEI", imei);
     }
   }
   if (!any)
-    ns_row_info (m->info, "Modem", "None found");
+    ns_row_info (m->info, _("Modem"), _("None found"));
   ns_group_set_visible (m->info, TRUE);
   g_object_unref (page);
 }
@@ -1259,22 +1262,23 @@ void
 ns_page_mobile (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("SIMs", &c);
+  NsPage *page = ns_page_new (_("SIMs"), &c);
   Mobile *m = g_new0 (Mobile, 1);
   g_object_set_data_full (G_OBJECT (page), "mobile", m, g_free);
   ns_later_init (page, mobile_fill);
 
   GtkWidget *g = ns_group (c, NULL);
-  m->data = ns_row_toggle (g, NULL, "Mobile data", NULL);
+  m->data = ns_row_toggle (g, NULL, _("Mobile data"), NULL);
   g_signal_connect (ns_row_get_switch (m->data), "notify::active", G_CALLBACK (mobile_data), NULL);
   GSettings *wwan = ns_page_settings (page, "org.gnome.settings-daemon.plugins.wwan");
   if (ns_has_key (wwan, "unlock-sim")) {
-    g_autofree char *when = g_strdup_printf ("When the %s starts", ns_device_noun ());
-    ns_row_switch (g, "Ask for the SIM PIN", when, wwan, "unlock-sim");
+    ns_row_switch (g, _("Ask for the SIM PIN"), ns_device_text (_("When the phone starts"),
+                                                                _("When the tablet starts")),
+                   wwan, "unlock-sim");
   }
-  m->apns = ns_group (c, "Access point names");
+  m->apns = ns_group (c, _("Access point names"));
   ns_group_set_visible (m->apns, FALSE);
-  m->info = ns_group (c, "SIM and network");
+  m->info = ns_group (c, _("SIM and network"));
   ns_group_set_visible (m->info, FALSE);
 
   g_autoptr (GDBusConnection) bus = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, NULL);
@@ -1336,9 +1340,9 @@ network_fill (NsPage *page)
     NMActiveConnectionState st = ac ? nm_active_connection_get_state (ac) : NM_ACTIVE_CONNECTION_STATE_UNKNOWN;
     GtkWidget *r = ns_row_toggle (vpn ? n->vpn : n->other, vpn ? "network-vpn-symbolic" : "network-wired-symbolic",
                                   nm_connection_get_id (conn),
-                                  st == NM_ACTIVE_CONNECTION_STATE_ACTIVATED ? "Connected"
-                                  : st == NM_ACTIVE_CONNECTION_STATE_ACTIVATING ? "Connecting…"
-                                  : vpn ? "VPN" : "Wired");
+                                  st == NM_ACTIVE_CONNECTION_STATE_ACTIVATED ? _("Connected")
+                                  : st == NM_ACTIVE_CONNECTION_STATE_ACTIVATING ? _("Connecting…")
+                                  : vpn ? _("VPN") : _("Wired"));
     GtkWidget *sw = ns_row_get_switch (r);
     ns_switch_quiet (sw, ac != NULL);
     g_object_set_data_full (G_OBJECT (r), "ns-conn", g_object_ref (conn), g_object_unref);
@@ -1351,7 +1355,7 @@ network_fill (NsPage *page)
 }
 
 static const char *const proxy_modes[] = { "none", "auto", "manual", NULL };
-static const char *const proxy_labels[] = { "Off", "Automatic (configuration URL)", "Manual", NULL };
+static const char *const proxy_labels[] = { N_("Off"), N_("Automatic (configuration URL)"), N_("Manual"), NULL };
 
 static void
 proxy_mode (GSettings *s, const char *key, GtkWidget *group)
@@ -1372,20 +1376,20 @@ proxy_rows (NsPage *page, GtkWidget *c)
   GSettings *https = ns_page_settings (page, "org.gnome.system.proxy.https");
   if (!proxy)
     return;
-  GtkWidget *g = ns_group (c, "Proxy");
-  ns_row_choice (g, "Proxy", proxy, "mode", proxy_modes, proxy_labels);
-  GtkWidget *r = ns_row_entry (g, "Configuration URL", proxy, "autoconfig-url");
+  GtkWidget *g = ns_group (c, _("Proxy"));
+  ns_row_choice (g, _("Proxy"), proxy, "mode", proxy_modes, proxy_labels);
+  GtkWidget *r = ns_row_entry (g, _("Configuration URL"), proxy, "autoconfig-url");
   g_object_set_data (G_OBJECT (r), "ns-mode", "auto");
   if (http) {
-    r = ns_row_entry (g, "HTTP proxy", http, "host");
+    r = ns_row_entry (g, _("HTTP proxy"), http, "host");
     g_object_set_data (G_OBJECT (r), "ns-mode", "manual");
-    r = ns_row_entry (g, "HTTP port", http, "port");
+    r = ns_row_entry (g, _("HTTP port"), http, "port");
     g_object_set_data (G_OBJECT (r), "ns-mode", "manual");
   }
   if (https) {
-    r = ns_row_entry (g, "HTTPS proxy", https, "host");
+    r = ns_row_entry (g, _("HTTPS proxy"), https, "host");
     g_object_set_data (G_OBJECT (r), "ns-mode", "manual");
-    r = ns_row_entry (g, "HTTPS port", https, "port");
+    r = ns_row_entry (g, _("HTTPS port"), https, "port");
     g_object_set_data (G_OBJECT (r), "ns-mode", "manual");
   }
   proxy_mode (proxy, NULL, g);
@@ -1405,11 +1409,11 @@ imported (GObject *src, GAsyncResult *res, gpointer row)
   g_autofree char *out = NULL, *err_text = NULL;
   g_autoptr (GError) err = NULL;
   if (!g_subprocess_communicate_utf8_finish (G_SUBPROCESS (src), res, &out, &err_text, &err))
-    row_error (row, "Could not import it", err);
+    row_error (row, _("Could not import it"), err);
   else if (!g_subprocess_get_successful (G_SUBPROCESS (src)))
-    ns_row_set_subtitle (row, err_text && *err_text ? g_strstrip (err_text) : "Could not import it");
+    ns_row_set_subtitle (row, err_text && *err_text ? g_strstrip (err_text) : _("Could not import it"));
   else
-    ns_row_set_subtitle (row, "Imported");
+    ns_row_set_subtitle (row, _("Imported"));
   g_object_unref (row);
 }
 
@@ -1425,7 +1429,7 @@ vpn_chosen (GObject *src, GAsyncResult *res, gpointer row)
   }
   const char *type = strstr (t, "[Interface]") ? "wireguard" : has_openvpn () ? "openvpn" : NULL;
   if (!type) {
-    ns_row_set_subtitle (row, "Not a WireGuard file (OpenVPN needs network-manager-openvpn)");
+    ns_row_set_subtitle (row, _("Not a WireGuard file (OpenVPN needs network-manager-openvpn)"));
     g_object_unref (row);
     return;
   }
@@ -1434,11 +1438,11 @@ vpn_chosen (GObject *src, GAsyncResult *res, gpointer row)
                                                 &err, "nmcli", "connection", "import", "type", type, "file", path,
                                                 NULL);
   if (!p) {
-    row_error (row, "Could not import it", err);
+    row_error (row, _("Could not import it"), err);
     g_object_unref (row);
     return;
   }
-  ns_row_set_subtitle (row, "Importing…");
+  ns_row_set_subtitle (row, _("Importing…"));
   g_subprocess_communicate_utf8_async (p, NULL, NULL, imported, row);
 }
 
@@ -1446,7 +1450,7 @@ static void
 vpn_import (GtkWidget *row, gpointer data)
 {
   g_autoptr (GtkFileDialog) d = gtk_file_dialog_new ();
-  gtk_file_dialog_set_title (d, "VPN file");
+  gtk_file_dialog_set_title (d, _("VPN file"));
   gtk_file_dialog_open (d, GTK_WINDOW (gtk_widget_get_root (row)), NULL, vpn_chosen, g_object_ref (row));
 }
 
@@ -1463,18 +1467,18 @@ void
 ns_page_network (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Network and VPN", &c);
+  NsPage *page = ns_page_new (_("Network and VPN"), &c);
   Network *n = g_new0 (Network, 1);
   g_object_set_data_full (G_OBJECT (page), "network", n, g_free);
   ns_later_init (page, network_fill);
-  n->vpn = ns_group (c, "VPN");
+  n->vpn = ns_group (c, _("VPN"));
   ns_group_set_visible (n->vpn, FALSE);
-  n->novpn = ns_note (c, "No VPN is set up yet.");
+  n->novpn = ns_note (c, _("No VPN is set up yet."));
   GtkWidget *imp = ns_group (c, NULL);
-  ns_row_on_activate (ns_row (imp, "document-open-symbolic", "Import VPN file",
-                              has_openvpn () ? "WireGuard (.conf) • OpenVPN (.ovpn)" : "WireGuard (.conf)"),
+  ns_row_on_activate (ns_row (imp, "document-open-symbolic", _("Import VPN file"),
+                              has_openvpn () ? _("WireGuard (.conf) • OpenVPN (.ovpn)") : _("WireGuard (.conf)")),
                       vpn_import, NULL);
-  n->other = ns_group (c, "Wired and USB");
+  n->other = ns_group (c, _("Wired and USB"));
   ns_group_set_visible (n->other, FALSE);
   proxy_rows (page, c);
   with_client (page, network_connect);
@@ -1495,11 +1499,11 @@ pk_done (GObject *src, GAsyncResult *res, gpointer row)
   if (v)
     g_variant_get (v, "(&s)", &msg);
   if (!v)
-    row_error (row, "Did not work", err);
+    row_error (row, _("Did not work"), err);
   else if (msg && *msg)
     ns_row_set_subtitle (row, msg);
   else {
-    ns_row_set_subtitle (row, "Done");
+    ns_row_set_subtitle (row, _("Done"));
     NsPage *page = g_object_get_data (G_OBJECT (row), "ns-list-page");
     if (page)
       ns_later (page);
@@ -1513,7 +1517,7 @@ pk_call (GtkWidget *row, const char *method, GVariant *args)
   g_autoptr (GDBusConnection) bus = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, NULL);
   if (!bus)
     return;
-  ns_row_set_subtitle (row, "Working…");
+  ns_row_set_subtitle (row, _("Working…"));
   g_dbus_connection_call (bus, "org.opensuse.CupsPkHelper.Mechanism", "/", "org.opensuse.CupsPkHelper.Mechanism",
                           method, args, G_VARIANT_TYPE ("(s)"), G_DBUS_CALL_FLAGS_ALLOW_INTERACTIVE_AUTHORIZATION,
                           120000, NULL, pk_done, g_object_ref (row));
@@ -1527,7 +1531,7 @@ run_done (GObject *src, GAsyncResult *res, gpointer row)
       g_subprocess_get_successful (G_SUBPROCESS (src)))
     ns_row_set_subtitle (row, g_object_get_data (G_OBJECT (row), "ns-ok"));
   else
-    ns_row_set_subtitle (row, err_text && *err_text ? g_strstrip (err_text) : "Did not work");
+    ns_row_set_subtitle (row, err_text && *err_text ? g_strstrip (err_text) : _("Did not work"));
   g_object_unref (row);
 }
 
@@ -1538,7 +1542,7 @@ run_on_row (GtkWidget *row, const char *ok, const char *const *argv)
   g_autoptr (GSubprocess) p = g_subprocess_newv (argv, G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_PIPE,
                                                  &err);
   if (!p) {
-    row_error (row, "Did not work", err);
+    row_error (row, _("Did not work"), err);
     return;
   }
   g_object_set_data_full (G_OBJECT (row), "ns-ok", g_strdup (ok), g_free);
@@ -1549,7 +1553,7 @@ static void
 printer_default (GtkWidget *row, gpointer name)
 {
   const char *argv[] = { "lpoptions", "-d", name, NULL };
-  run_on_row (row, "This is now the default printer", argv);
+  run_on_row (row, _("This is now the default printer"), argv);
 }
 
 static void
@@ -1558,7 +1562,7 @@ printer_test (GtkWidget *row, gpointer name)
   const char *page = g_file_test ("/usr/share/cups/data/testprint", G_FILE_TEST_EXISTS)
                      ? "/usr/share/cups/data/testprint" : "/etc/os-release";
   const char *argv[] = { "lp", "-d", name, page, NULL };
-  run_on_row (row, "Sent to the printer", argv);
+  run_on_row (row, _("Sent to the printer"), argv);
 }
 
 static void
@@ -1571,7 +1575,7 @@ printer_removed (gboolean yes, gpointer row)
 static void
 printer_remove (GtkWidget *row, gpointer name)
 {
-  ns_confirm (row, "Remove this printer?", NULL, "Remove", TRUE, printer_removed, row);
+  ns_confirm (row, _("Remove this printer?"), NULL, _("Remove"), TRUE, printer_removed, row);
 }
 
 static void
@@ -1585,12 +1589,12 @@ printer_page (GtkWidget *row, gpointer data)
   g_object_set_data_full (G_OBJECT (page), "ns-name", g_strdup (name), g_free);
   name = g_object_get_data (G_OBJECT (page), "ns-name");
   GtkWidget *g = ns_group (c, NULL);
-  ns_row_info (g, "Status", g_object_get_data (G_OBJECT (row), "ns-state"));
+  ns_row_info (g, _("Status"), g_object_get_data (G_OBJECT (row), "ns-state"));
   g = ns_group (c, NULL);
-  GtkWidget *r = ns_row_button (g, "Set as default", FALSE, printer_default, (gpointer) name);
-  r = ns_row_button (g, "Print a test page", FALSE, printer_test, (gpointer) name);
+  GtkWidget *r = ns_row_button (g, _("Set as default"), FALSE, printer_default, (gpointer) name);
+  r = ns_row_button (g, _("Print a test page"), FALSE, printer_test, (gpointer) name);
   if (added) {
-    r = ns_row_button (g, "Remove printer", TRUE, printer_remove, (gpointer) name);
+    r = ns_row_button (g, _("Remove printer"), TRUE, printer_remove, (gpointer) name);
     g_object_set_data_full (G_OBJECT (r), "ns-name", g_strdup (name), g_free);
     g_object_set_data (G_OBJECT (r), "ns-list-page", list);
   }
@@ -1661,9 +1665,10 @@ printers_got (GObject *src, GAsyncResult *res, gpointer page)
   for (guint i = 0; p && i < p->names->len; i++) {
     const char *name = p->names->pdata[i];
     const char *st = g_hash_table_lookup (p->states, name);
-    const char *say = !st ? "On the network" : strstr (st, "idle") ? "Ready" : strstr (st, "printing") ? "Printing"
-                    : strstr (st, "disabled") ? "Paused" : "Ready";
-    g_autofree char *sub = !g_strcmp0 (name, p->def) ? g_strdup_printf ("Default • %s", say) : g_strdup (say);
+    const char *say = !st ? _("On the network") : strstr (st, "idle") ? _("Ready")
+                    : strstr (st, "printing") ? _("Printing") : strstr (st, "disabled") ? _("Paused") : _("Ready");
+    /* TRANSLATORS: %s is the printer's state ("Ready") */
+    g_autofree char *sub = !g_strcmp0 (name, p->def) ? g_strdup_printf (_("Default • %s"), say) : g_strdup (say);
     GtkWidget *r = ns_row (g, "printer-symbolic", name, sub);
     g_object_set_data_full (G_OBJECT (r), "ns-name", g_strdup (name), g_free);
     g_object_set_data_full (G_OBJECT (r), "ns-state", g_strdup (say), g_free);
@@ -1694,7 +1699,7 @@ address_entered (const char *text, gpointer row)
   g_autofree char *uri = strstr (text, "://") ? g_strdup (text) : g_strdup_printf ("ipp://%s/ipp/print", text);
   g_autoptr (GUri) u = g_uri_parse (uri, G_URI_FLAGS_NONE, NULL);
   if (!u || !g_uri_get_host (u)) {
-    ns_row_set_subtitle (row, "Not a printer address");
+    ns_row_set_subtitle (row, _("Not a printer address"));
     return;
   }
   g_autofree char *name = g_strcanon (g_strdup (g_uri_get_host (u)),
@@ -1706,23 +1711,24 @@ address_entered (const char *text, gpointer row)
 static void
 printer_add (GtkWidget *row, gpointer data)
 {
-  ns_ask (row, "Add a printer", "Its address, like printer.local or ipp://192.168.1.20/ipp/print. Network printers "
-          "CUPS finds by itself are listed already.", NULL, FALSE, "Add", address_entered, row);
+  ns_ask (row, _("Add a printer"), _("Its address, like printer.local or ipp://192.168.1.20/ipp/print. Network "
+                                      "printers CUPS finds by itself are listed already."),
+          NULL, FALSE, _("Add"), address_entered, row);
 }
 
 void
 ns_page_printers (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Printers", &c);
+  NsPage *page = ns_page_new (_("Printers"), &c);
   GtkWidget *g = ns_group (c, NULL);
   g_object_set_data (G_OBJECT (page), "ns-list", g);
   ns_group_set_visible (g, FALSE);
-  GtkWidget *empty = ns_note (c, "No printers found.");
+  GtkWidget *empty = ns_note (c, _("No printers found."));
   gtk_widget_set_visible (empty, FALSE);
   g_object_set_data (G_OBJECT (page), "ns-empty", empty);
   g = ns_group (c, NULL);
-  GtkWidget *add = ns_row_button (g, "Add printer", FALSE, printer_add, NULL);
+  GtkWidget *add = ns_row_button (g, _("Add printer"), FALSE, printer_add, NULL);
   g_object_set_data (G_OBJECT (add), "ns-list-page", page);
   ns_later_init (page, printers_fill);
   printers_fill (page);
