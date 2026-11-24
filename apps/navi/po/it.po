@@ -17,47 +17,47 @@ msgstr ""
 
 #: data/vibeos.Navi.desktop.in
 msgid "Navi"
-msgstr ""
+msgstr "Navi"
 
 #: data/vibeos.Navi.desktop.in
 msgid "Turn-by-turn directions for driving"
-msgstr ""
+msgstr "Indicazioni passo passo per la guida"
 
 #: data/vibeos.Navi.desktop.in
 msgid "map;navigation;route;directions;drive;"
-msgstr ""
+msgstr "mappa;navigazione;percorso;indicazioni;guida;GPS;"
 
 #: src/navi-alerts.c
 msgid "Red light camera"
-msgstr ""
+msgstr "Telecamera semaforica"
 
 #: src/navi-alerts.c
 msgid "Section control"
-msgstr ""
+msgstr "Tutor"
 
 #: src/navi-alerts.c
 msgid "Speed camera"
-msgstr ""
+msgstr "Autovelox"
 
 #: src/navi-alerts.c
 msgid "Danger zone"
-msgstr ""
+msgstr "Zona pericolosa"
 
 #: src/navi-geo.c
 #, c-format
 msgid "%ld min"
-msgstr ""
+msgstr "%ld min"
 
 #: src/navi-geo.c
 #, c-format
 msgid "%ld h"
-msgstr ""
+msgstr "%ld h"
 
 #. TRANSLATORS: hours and minutes, "1 h 37 min"
 #: src/navi-geo.c
 #, c-format
 msgid "%ld h %ld min"
-msgstr ""
+msgstr "%ld h %ld min"
 
 # android: Framework input_method_nav_back_button_desc (short)
 #: src/navi-main.c
@@ -66,7 +66,7 @@ msgstr "Indietro"
 
 #: src/navi-main.c
 msgid "Destination"
-msgstr ""
+msgstr "Destinazione"
 
 # android: Framework accessibility_system_action_menu_label (short)
 #: src/navi-main.c src/navi-panels.c
@@ -75,7 +75,7 @@ msgstr "Menu"
 
 #: src/navi-main.c
 msgid "Drive"
-msgstr ""
+msgstr "Guida"
 
 # android: Framework search_go (short)
 #: src/navi-main.c src/navi-panels.c
@@ -84,63 +84,63 @@ msgstr "Cerca"
 
 #: src/navi-panels.c
 msgid "Gas station"
-msgstr ""
+msgstr "Distributore di benzina"
 
 #: src/navi-panels.c
 msgid "EV charging"
-msgstr ""
+msgstr "Colonnina di ricarica"
 
 #: src/navi-panels.c
 msgid "Parking"
-msgstr ""
+msgstr "Parcheggio"
 
 #: src/navi-panels.c
 msgid "Restaurant"
-msgstr ""
+msgstr "Ristorante"
 
 #: src/navi-panels.c
 msgid "Fast food"
-msgstr ""
+msgstr "Fast food"
 
 #: src/navi-panels.c
 msgid "Café"
-msgstr ""
+msgstr "Bar"
 
 #: src/navi-panels.c
 msgid "Supermarket"
-msgstr ""
+msgstr "Supermercato"
 
 #: src/navi-panels.c
 msgid "Pharmacy"
-msgstr ""
+msgstr "Farmacia"
 
 #: src/navi-panels.c
 msgid "Hospital"
-msgstr ""
+msgstr "Ospedale"
 
 #: src/navi-panels.c
 msgid "ATM"
-msgstr ""
+msgstr "Bancomat"
 
 #: src/navi-panels.c
 msgid "Bank"
-msgstr ""
+msgstr "Banca"
 
 #: src/navi-panels.c
 msgid "Hotel"
-msgstr ""
+msgstr "Hotel"
 
 #: src/navi-panels.c
 msgid "Toilets"
-msgstr ""
+msgstr "Bagni pubblici"
 
 #: src/navi-panels.c
 msgid "Search for your home address"
-msgstr ""
+msgstr "Cerca l'indirizzo di casa"
 
 #: src/navi-panels.c
 msgid "Search for your work address"
-msgstr ""
+msgstr "Cerca l'indirizzo di lavoro"
 
 # android: Settings bluetooth_rename_button (short)
 #: src/navi-panels.c
@@ -169,12 +169,11 @@ msgstr "Altre opzioni"
 
 #: src/navi-panels.c
 msgid "Cancel reminder"
-msgstr ""
+msgstr "Annulla promemoria"
 
-# android: Framework accessibility_system_action_home_label (several translations, short)
 #: src/navi-panels.c
 msgid "Home"
-msgstr "Home"
+msgstr "Casa"
 
 # android: Framework resolver_work_tab (short)
 #: src/navi-panels.c
@@ -183,16 +182,16 @@ msgstr "Lavoro"
 
 #: src/navi-panels.c
 msgid "Set once and go"
-msgstr ""
+msgstr "Impostalo una volta sola"
 
 #: src/navi-panels.c
 msgid "Planned drive"
-msgstr ""
+msgstr "Viaggio pianificato"
 
 # android: Settings wifi_add_app_single_network_saved_summary (several translations, short)
 #: src/navi-panels.c
 msgid "Saved"
-msgstr "Salvata"
+msgstr "Salvati"
 
 # android: Framework recent_tasks_title (short)
 #: src/navi-panels.c
@@ -201,120 +200,118 @@ msgstr "Recenti"
 
 #: src/navi-panels.c
 msgid "Search is unavailable right now"
-msgstr ""
+msgstr "La ricerca non è disponibile al momento"
 
 #: src/navi-panels.c
 msgid "No results"
-msgstr ""
+msgstr "Nessun risultato"
 
 #: src/navi-panels.c
 msgid "Search is unavailable right now. These are from the map, nearby."
-msgstr ""
+msgstr "La ricerca non è disponibile al momento. Questi provengono dalla mappa, nelle vicinanze."
 
 #: src/navi-panels.c
 msgid "None along the route"
-msgstr ""
+msgstr "Nessuno lungo il percorso"
 
 #: src/navi-panels.c
 msgid "Along the route"
-msgstr ""
+msgstr "Lungo il percorso"
 
 #: src/navi-panels.c
 #, c-format
 msgid "%s ahead · %s"
-msgstr ""
+msgstr "Tra %s · %s"
 
-# android: DeskClock world_time_ahead
 #: src/navi-panels.c
 #, c-format
 msgid "%s ahead"
-msgstr "Avanti di %s"
+msgstr "Tra %s"
 
 #: src/navi-panels.c
 msgid "On the route"
-msgstr ""
+msgstr "Sul percorso"
 
 #: src/navi-panels.c
 #, c-format
 msgid "+%d min"
-msgstr ""
+msgstr "+%d min"
 
 #: src/navi-panels.c
 msgid "Getting ready…"
-msgstr ""
+msgstr "Preparazione…"
 
 #: src/navi-panels.c
 msgid "Say where to go"
-msgstr ""
+msgstr "Di' dove vuoi andare"
 
 #: src/navi-panels.c
 msgid "Search by voice"
-msgstr ""
+msgstr "Cerca con la voce"
 
 #: src/navi-panels.c
 msgid "Where to?"
-msgstr ""
+msgstr "Dove vuoi andare?"
 
 #: src/navi-panels.c
 msgid "Gas"
-msgstr ""
+msgstr "Carburante"
 
-# android: SettingsLib battery_info_status_charging (several translations, short)
 #: src/navi-panels.c
 msgid "Charging"
-msgstr "In carica"
+msgstr "Ricarica"
 
 #: src/navi-panels.c
 msgid "Food"
-msgstr ""
+msgstr "Cibo"
 
 #: src/navi-panels.c
 msgid "Coffee"
-msgstr ""
+msgstr "Caffè"
 
 #: src/navi-panels.c
 msgid "Groceries"
-msgstr ""
+msgstr "Alimentari"
 
 #. Waze's two choices; a tap outside or Back keeps the drive as it is (three buttons do not fit a phone)
 #: src/navi-panels.c
 #, c-format
 msgid "Drive to %s?"
-msgstr ""
+msgstr "Andare a %s?"
 
 #: src/navi-panels.c
 msgid "this place"
-msgstr ""
+msgstr "questo luogo"
 
 #: src/navi-panels.c
 msgid ""
 "Add it as a stop on the way, or make it the new destination and cancel the "
 "current route."
-msgstr ""
+msgstr "Aggiungilo come tappa lungo il percorso, oppure rendilo la nuova destinazione e annulla il percorso attuale."
 
 #: src/navi-panels.c
 msgid "Add a stop"
-msgstr ""
+msgstr "Aggiungi tappa"
 
 #: src/navi-panels.c
 msgid "New destination"
-msgstr ""
+msgstr "Nuova destinazione"
 
 #: src/navi-panels.c
 msgid "Cancel the current route?"
-msgstr ""
+msgstr "Annullare il percorso attuale?"
 
 #: src/navi-panels.c
 msgid "Keep driving"
-msgstr ""
+msgstr "Continua il viaggio"
 
 #: src/navi-panels.c
 msgid "Keep route"
-msgstr ""
+msgstr "Mantieni percorso"
 
 #: src/navi-panels.c
 msgid "Cancel route"
-msgstr ""
+msgstr "Annulla percorso"
 
 # android: Settings vpn_always_on_summary_active (short)
 #: src/navi-panels.c
@@ -328,28 +325,28 @@ msgstr "Off"
 
 #: src/navi-panels.c
 msgid "As the system"
-msgstr ""
+msgstr "Come il sistema"
 
 #: src/navi-panels.c
 msgid "Only at night"
-msgstr ""
+msgstr "Solo di notte"
 
 #: src/navi-panels.c
 msgid "3D"
-msgstr ""
+msgstr "3D"
 
 #: src/navi-panels.c
 msgid "2D"
-msgstr ""
+msgstr "2D"
 
 # android: Aperture effect_auto (adapted, short)
 #: src/navi-panels.c
 msgid "Auto"
-msgstr "AUTO"
+msgstr "Auto"
 
 #: src/navi-panels.c
 msgid "Alerts only"
-msgstr ""
+msgstr "Solo avvisi"
 
 # android: Framework accessibility_shortcut_menu_item_status_on (several translations, short)
 #: src/navi-panels.c
@@ -358,7 +355,7 @@ msgstr "On"
 
 #: src/navi-panels.c
 msgid "Motorcycle"
-msgstr ""
+msgstr "Moto"
 
 # android: Settings zen_mode_icon_options_descriptions[28] (short)
 #: src/navi-panels.c
@@ -367,56 +364,56 @@ msgstr "Auto"
 
 #: src/navi-panels.c
 msgid "Kilometers"
-msgstr ""
+msgstr "Chilometri"
 
 #: src/navi-panels.c
 msgid "Miles"
-msgstr ""
+msgstr "Miglia"
 
 #: src/navi-panels.c
 msgid "At the limit"
-msgstr ""
+msgstr "Al limite"
 
 #: src/navi-panels.c
 msgid "5 mph over"
-msgstr ""
+msgstr "5 mph oltre"
 
 #: src/navi-panels.c
 msgid "10 km/h over"
-msgstr ""
+msgstr "10 km/h oltre"
 
 #: src/navi-panels.c
 #, no-c-format
 msgid "10 % over"
-msgstr ""
+msgstr "10% oltre"
 
 #: src/navi-panels.c
 msgid "3 mph over"
-msgstr ""
+msgstr "3 mph oltre"
 
 #: src/navi-panels.c
 msgid "5 km/h over"
-msgstr ""
+msgstr "5 km/h oltre"
 
 #: src/navi-panels.c
 msgid "Tilted, always"
-msgstr ""
+msgstr "Inclinata, sempre"
 
 #: src/navi-panels.c
 msgid "Flat, always"
-msgstr ""
+msgstr "Piatta, sempre"
 
 #: src/navi-panels.c
 msgid "Flat while browsing, 3D while driving"
-msgstr ""
+msgstr "Piatta durante l'esplorazione, 3D durante la guida"
 
 #: src/navi-panels.c
 msgid "Miles in the UK and the US, else kilometers"
-msgstr ""
+msgstr "Miglia nel Regno Unito e negli Stati Uniti, altrimenti chilometri"
 
 #: src/navi-panels.c
 msgid "Not set: tap to search for it"
-msgstr ""
+msgstr "Non impostato: tocca per cercarlo"
 
 # android: Settings dark_ui_title (adapted, short)
 #: src/navi-panels.c
@@ -425,35 +422,35 @@ msgstr "Modalità scura"
 
 #: src/navi-panels.c
 msgid "Map view"
-msgstr ""
+msgstr "Vista mappa"
 
 #: src/navi-panels.c
 msgid "Speeding warning"
-msgstr ""
+msgstr "Avviso di velocità"
 
 #: src/navi-panels.c
 msgid "Vehicle type"
-msgstr ""
+msgstr "Tipo di veicolo"
 
 #: src/navi-panels.c
 msgid "Units"
-msgstr ""
+msgstr "Unità"
 
 #: src/navi-panels.c
 msgid "Spoken directions"
-msgstr ""
+msgstr "Indicazioni vocali"
 
 #: src/navi-panels.c
 msgid "Voice language"
-msgstr ""
+msgstr "Lingua della voce"
 
 #: src/navi-panels.c
 msgid "Forget Home?"
-msgstr ""
+msgstr "Eliminare Casa?"
 
 #: src/navi-panels.c
 msgid "Forget Work?"
-msgstr ""
+msgstr "Eliminare Lavoro?"
 
 # android: Settings forget (short)
 #: src/navi-panels.c
@@ -467,44 +464,44 @@ msgstr "Impostazioni"
 
 #: src/navi-panels.c
 msgid "Map display"
-msgstr ""
+msgstr "Visualizzazione mappa"
 
 #: src/navi-panels.c
 msgid "Auto: flat while browsing, 3D while driving"
-msgstr ""
+msgstr "Auto: piatta durante l'esplorazione, 3D durante la guida"
 
 #: src/navi-panels.c
 msgid "Keep map north up"
-msgstr ""
+msgstr "Mantieni il nord in alto"
 
 #: src/navi-panels.c
 msgid "Auto zoom"
-msgstr ""
+msgstr "Zoom automatico"
 
 #: src/navi-panels.c
 msgid "Zoom out as the car goes faster"
-msgstr ""
+msgstr "Riduci lo zoom quando l'auto accelera"
 
 #. Waze's Navigation: the next route, and a new one on the way, follow them
 #: src/navi-panels.c
 msgid "Navigation"
-msgstr ""
+msgstr "Navigazione"
 
 #: src/navi-panels.c
 msgid "Avoid toll roads"
-msgstr ""
+msgstr "Evita pedaggi"
 
 #: src/navi-panels.c
 msgid "Avoid highways"
-msgstr ""
+msgstr "Evita autostrade"
 
 #: src/navi-panels.c
 msgid "Avoid ferries"
-msgstr ""
+msgstr "Evita traghetti"
 
 #: src/navi-panels.c
 msgid "Voice and sound"
-msgstr ""
+msgstr "Voce e audio"
 
 # android: Framework notification_channel_network_alert (short)
 #: src/navi-panels.c
@@ -513,25 +510,25 @@ msgstr "Avvisi"
 
 #: src/navi-panels.c
 msgid "Speed camera alerts"
-msgstr ""
+msgstr "Avvisi autovelox"
 
 #: src/navi-panels.c
 msgid ""
 "Where the law allows them: never in Switzerland, only danger zones in "
 "France, and in Germany not for the driver while driving"
-msgstr ""
+msgstr "Dove la legge li consente: mai in Svizzera, solo le zone pericolose in Francia e, in Germania, non per il conducente durante la guida"
 
 #: src/navi-panels.c
 msgid "The speedometer turns red above the limit"
-msgstr ""
+msgstr "Il tachimetro diventa rosso oltre il limite"
 
 #: src/navi-panels.c
 msgid "Saved places"
-msgstr ""
+msgstr "Luoghi salvati"
 
 #: src/navi-panels.c
 msgid "Stop navigation and exit?"
-msgstr ""
+msgstr "Interrompere la navigazione e uscire?"
 
 # android: Settings private_space_exit_label (short)
 #: src/navi-panels.c
@@ -550,11 +547,11 @@ msgstr "Audio attivato"
 
 #: src/navi-panels.c
 msgid "Saved as Home"
-msgstr ""
+msgstr "Salvato come Casa"
 
 #: src/navi-panels.c
 msgid "Saved as Work"
-msgstr ""
+msgstr "Salvato come Lavoro"
 
 # android: Framework aerr_close (several translations, short)
 #: src/navi-panels.c
@@ -563,23 +560,23 @@ msgstr "Chiudi"
 
 #: src/navi-panels.c
 msgid "Set as Home"
-msgstr ""
+msgstr "Imposta come Casa"
 
 #: src/navi-panels.c
 msgid "Set as Work"
-msgstr ""
+msgstr "Imposta come Lavoro"
 
 #: src/navi-panels.c
 msgid "View routes"
-msgstr ""
+msgstr "Visualizza percorsi"
 
 #: src/navi-panels.c
 msgid "Reminders cannot be set here"
-msgstr ""
+msgstr "Qui non è possibile impostare promemoria"
 
 #: src/navi-panels.c
 msgid "Your location"
-msgstr ""
+msgstr "La tua posizione"
 
 # android: Settings retry (short)
 #. after a failure: ask again
@@ -589,11 +586,11 @@ msgstr "Riprova"
 
 #: src/navi-panels.c
 msgid "Leave later"
-msgstr ""
+msgstr "Parti più tardi"
 
 #: src/navi-panels.c
 msgid "Go now"
-msgstr ""
+msgstr "Parti ora"
 
 # android: Contacts contact_status_update_attribution (adapted)
 #: src/navi-panels.c
@@ -603,15 +600,15 @@ msgstr "Tramite %s"
 
 #: src/navi-panels.c
 msgid "Best route"
-msgstr ""
+msgstr "Percorso migliore"
 
 #: src/navi-panels.c
 msgid "Toll road"
-msgstr ""
+msgstr "Strada a pedaggio"
 
 #: src/navi-panels.c
 msgid "Ferry"
-msgstr ""
+msgstr "Traghetto"
 
 # android: SystemUI accessibility_recent (short)
 #: src/navi-panels.c
@@ -620,7 +617,7 @@ msgstr "Panoramica"
 
 #: src/navi-panels.c
 msgid "Re-center"
-msgstr ""
+msgstr "Ricentra"
 
 # android: Framework lockscreen_transport_stop_description (several translations, short)
 #: src/navi-panels.c
@@ -634,7 +631,7 @@ msgstr "Continua"
 
 #: src/navi-panels.c
 msgid "You have arrived"
-msgstr ""
+msgstr "Sei arrivato"
 
 # android: Framework sim_done_button (several translations, short)
 #: src/navi-panels.c
@@ -643,27 +640,27 @@ msgstr "Fine"
 
 #: src/navi-panels.c
 msgid "Your destination is on the right"
-msgstr ""
+msgstr "La destinazione è sulla destra"
 
 #: src/navi-panels.c
 msgid "Your destination is on the left"
-msgstr ""
+msgstr "La destinazione è sulla sinistra"
 
 #: src/navi-panels.c
 msgid "Lanes"
-msgstr ""
+msgstr "Corsie"
 
 #: src/navi-panels.c
 msgid "and then"
-msgstr ""
+msgstr "e poi"
 
 #: src/navi-panels.c
 msgid "North up"
-msgstr ""
+msgstr "Nord in alto"
 
 #: src/navi-panels.c
 msgid "Drive here"
-msgstr ""
+msgstr "Vai qui"
 
 # android: Framework ime_action_go (short)
 #: src/navi-panels.c
@@ -672,45 +669,45 @@ msgstr "Vai"
 
 #: src/navi-panels.c
 msgid "Your Home"
-msgstr ""
+msgstr "Casa tua"
 
 #: src/navi-panels.c
 msgid "Your Work"
-msgstr ""
+msgstr "Il tuo lavoro"
 
 #: src/navi-panels.c
 msgid "Finding the best routes…"
-msgstr ""
+msgstr "Ricerca dei percorsi migliori…"
 
 #: src/navi-panels.c
 msgid "The map's centre"
-msgstr ""
+msgstr "Il centro della mappa"
 
 #: src/navi-panels.c
 msgid "Finding a new route…"
-msgstr ""
+msgstr "Ricerca di un nuovo percorso…"
 
 #: src/navi-panels.c
 msgid "No route from here yet. Trying again…"
-msgstr ""
+msgstr "Ancora nessun percorso da qui. Nuovo tentativo…"
 
 #: src/navi-panels.c
 msgid "Your destination"
-msgstr ""
+msgstr "La tua destinazione"
 
 #: src/navi-panels.c
 #, c-format
 msgid "Speed limit %d mph"
-msgstr ""
+msgstr "Limite di velocità %d mph"
 
 #: src/navi-panels.c
 #, c-format
 msgid "Speed limit %d km/h"
-msgstr ""
+msgstr "Limite di velocità %d km/h"
 
 #: src/navi-panels.c
 msgid "No speed limit"
-msgstr ""
+msgstr "Nessun limite di velocità"
 
 #: src/navi-panels.c
 msgid ""
@@ -720,6 +717,9 @@ msgid ""
 "\n"
 "You can turn them off in Settings at any time."
 msgstr ""
+"Non sono consentiti ovunque. In Germania il conducente non può usarli durante la guida (§23 (1c) StVO); un passeggero sì. In Svizzera Navi non li mostra mai e in Francia solo le zone pericolose.\n"
+"\n"
+"Puoi disattivarli in qualsiasi momento nelle impostazioni."
 
 # android: Framework fp_power_button_enrollment_button_text (short)
 #: src/navi-panels.c
@@ -729,133 +729,133 @@ msgstr "Disattiva"
 # android: Framework httpErrorOk (several translations, short)
 #: src/navi-panels.c ../dictate/src/dictate-download-dialog.c
 msgid "OK"
-msgstr "Ok"
+msgstr "OK"
 
 #: src/navi-plan.c
 #, c-format
 msgid "Time to leave for %s"
-msgstr ""
+msgstr "È ora di partire per %s"
 
 #: src/navi-plan.c
 msgid "Tap for the routes from where you are."
-msgstr ""
+msgstr "Tocca per i percorsi da dove ti trovi."
 
 #. TRANSLATORS: when the reminder to leave comes, "Reminder at 08:15"
 #: src/navi-plan.c
 #, c-format
 msgid "Reminder at %s"
-msgstr ""
+msgstr "Promemoria alle %s"
 
 #. TRANSLATORS: "Reminder tomorrow at 08:15"
 #: src/navi-plan.c
 #, c-format
 msgid "Reminder tomorrow at %s"
-msgstr ""
+msgstr "Promemoria domani alle %s"
 
 #. TRANSLATORS: the day (its short name) and time, "Reminder on Mon at 08:15"
 #: src/navi-plan.c
 #, c-format
 msgid "Reminder on %s at %s"
-msgstr ""
+msgstr "Promemoria %s alle %s"
 
 #: src/navi-voice.c
 #, c-format
 msgid "Piper voice %s, on this device"
-msgstr ""
+msgstr "Voce Piper %s, su questo dispositivo"
 
 #: src/navi-voice.c
 msgid "Piper voice, on this device"
-msgstr ""
+msgstr "Voce Piper, su questo dispositivo"
 
 #: src/navi-voice.c
 msgid "eSpeak NG voices, on this device"
-msgstr ""
+msgstr "Voci eSpeak NG, su questo dispositivo"
 
 #: src/navi-voice.c
 msgid "No voice on this phone"
-msgstr ""
+msgstr "Nessuna voce su questo telefono"
 
 #: src/navi-window.c
 msgid "The map cannot be loaded. Check the connection."
-msgstr ""
+msgstr "Impossibile caricare la mappa. Controlla la connessione."
 
 #: src/navi-window.c
 msgid "Best"
-msgstr ""
+msgstr "Migliore"
 
 #: src/navi-window.c
 msgid "Navigating"
-msgstr ""
+msgstr "Navigazione in corso"
 
 #: src/navi-window.c
 msgid "Navi cannot reach a road there. Choose a place on a road in Europe."
-msgstr ""
+msgstr "Navi non riesce a raggiungere una strada lì. Scegli un luogo su una strada in Europa."
 
 #: src/navi-window.c
 msgid "No route found there. Choose a place on a road."
-msgstr ""
+msgstr "Nessun percorso trovato fin lì. Scegli un luogo su una strada."
 
 #: src/navi-window.c
 msgid "The route server cannot be reached. Check the connection."
-msgstr ""
+msgstr "Impossibile raggiungere il server dei percorsi. Controlla la connessione."
 
 #: src/navi-window.c
 msgid "No GPS – showing your approximate location"
-msgstr ""
+msgstr "Nessun GPS – viene mostrata la posizione approssimativa"
 
 #: src/navi-window.c
 msgid "Dropped pin"
-msgstr ""
+msgstr "Segnaposto"
 
 #: src/navi-window.c
 msgid "Place"
-msgstr ""
+msgstr "Luogo"
 
 #. TRANSLATORS: under a language in the list; %s is a speech recogniser (Vosk)
 #: ../dictate/src/dictate-download-dialog.c
 #, c-format
 msgid "Needs %s, which is not installed"
-msgstr ""
+msgstr "Richiede %s, che non è installato"
 
 #: ../dictate/src/dictate-download-dialog.c
 msgid "Not available on this phone"
-msgstr ""
+msgstr "Non disponibile su questo telefono"
 
 #. TRANSLATORS: under a language in the list; the first %s is a speech recogniser (Vosk), the second a size
 #: ../dictate/src/dictate-download-dialog.c
 #, c-format
 msgid "%s and %s to download"
-msgstr ""
+msgstr "%s e %s da scaricare"
 
 #. TRANSLATORS: under a language in the list; %s is a speech recogniser (Vosk)
 #: ../dictate/src/dictate-download-dialog.c
 #, c-format
 msgid "%s to install"
-msgstr ""
+msgstr "%s da installare"
 
 #. TRANSLATORS: under a language in the list; %s is a size: 90.4 MB
 #: ../dictate/src/dictate-download-dialog.c
 #, c-format
 msgid "%s to download"
-msgstr ""
+msgstr "%s da scaricare"
 
 #. TRANSLATORS: a dialog's title; %s is the language's name for itself (Deutsch)
 #: ../dictate/src/dictate-download-dialog.c
 #, c-format
 msgid "%s was not downloaded"
-msgstr ""
+msgstr "%s non è stato scaricato"
 
 #. TRANSLATORS: the first %s is what went wrong, the second a speech recogniser (Vosk)
 #: ../dictate/src/dictate-download-dialog.c
 #, c-format
 msgid "%s. %s was installed, but none of the files were kept on the phone."
-msgstr ""
+msgstr "%s. %s è stato installato, ma nessuno dei file è stato conservato sul telefono."
 
 #. TRANSLATORS: %s is what went wrong
 #: ../dictate/src/dictate-download-dialog.c
 #, c-format
 msgid "%s. Nothing of it was kept on the phone."
-msgstr ""
+msgstr "%s. Non è stato conservato nulla sul telefono."
 
 # android: SystemUI screen_record_video_preview_elapsed_time_a11y_template
 #. TRANSLATORS: the progress, two sizes: 12.3 MB of 90.4 MB
@@ -866,7 +866,7 @@ msgstr "%s di %s"
 
 #: ../dictate/src/dictate-download-dialog.c
 msgid "Unpacking and installing…"
-msgstr ""
+msgstr "Estrazione e installazione…"
 
 # android: PackageInstaller installing (short)
 #: ../dictate/src/dictate-download-dialog.c
@@ -880,70 +880,70 @@ msgstr "Voce"
 
 #: ../dictate/src/dictate-download-dialog.c
 msgid "Speech recognition"
-msgstr ""
+msgstr "Riconoscimento vocale"
 
 #: ../dictate/src/dictate-download-dialog.c
 msgid "The files came, but the language is still not ready"
-msgstr ""
+msgstr "I file sono arrivati, ma la lingua non è ancora pronta"
 
 #. TRANSLATORS: in the progress dialog; %s is a speech recogniser (Vosk)
 #. TRANSLATORS: what is installed, in the download dialog; %s is a speech recogniser (Vosk)
 #: ../dictate/src/dictate-download-dialog.c
 #, c-format
 msgid "%s speech recogniser"
-msgstr ""
+msgstr "Riconoscimento vocale %s"
 
 #. TRANSLATORS: a dialog's title; %s is the language's name for itself (Deutsch)
 #: ../dictate/src/dictate-download-dialog.c
 #, c-format
 msgid "Downloading %s"
-msgstr ""
+msgstr "Download di %s"
 
 #: ../dictate/src/dictate-download-dialog.c
 msgid "The package was installed, but the language is still not ready"
-msgstr ""
+msgstr "Il pacchetto è stato installato, ma la lingua non è ancora pronta"
 
 #. TRANSLATORS: the sum of the sizes in the download dialog; %s is a size: 90.4 MB
 #: ../dictate/src/dictate-download-dialog.c
 #, c-format
 msgid "%s in all"
-msgstr ""
+msgstr "%s in totale"
 
 #. TRANSLATORS: a dialog's title; %s is the language's name for itself (Deutsch)
 #: ../dictate/src/dictate-download-dialog.c
 #, c-format
 msgid "Download %s?"
-msgstr ""
+msgstr "Scaricare %s?"
 
 #. TRANSLATORS: the first %s is the language's name for itself (Deutsch), the second an app's name (Navi)
 #: ../dictate/src/dictate-download-dialog.c
 #, c-format
 msgid "To speak %s, %s needs this on the phone:"
-msgstr ""
+msgstr "Per parlare in %s, %s ha bisogno di questo sul telefono:"
 
 #. TRANSLATORS: %s is the language's name for itself (Deutsch)
 #: ../dictate/src/dictate-download-dialog.c
 #, c-format
 msgid "To hear and speak %s, Agent needs these on the phone:"
-msgstr ""
+msgstr "Per capire e parlare in %s, Agent ha bisogno di questi elementi sul telefono:"
 
 #. TRANSLATORS: %s is the language's name for itself (Deutsch)
 #: ../dictate/src/dictate-download-dialog.c
 #, c-format
 msgid "To hear %s, Dictate needs these on the phone:"
-msgstr ""
+msgstr "Per riconoscere il parlato in %s, Dictate ha bisogno di questi elementi sul telefono:"
 
 #. TRANSLATORS: under it; %s is its Debian package (vibeos-dictate-vosk)
 #: ../dictate/src/dictate-download-dialog.c
 #, c-format
 msgid "the %s package from the VibeOS archive"
-msgstr ""
+msgstr "il pacchetto %s dall'archivio VibeOS"
 
 #. TRANSLATORS: under what is downloaded: what it is, its licence and where it comes from
 #: ../dictate/src/dictate-download-dialog.c
 #, c-format
 msgid "%s · %s · from %s"
-msgstr ""
+msgstr "%s · %s · da %s"
 
 # android: Messaging action_download (short)
 #: ../dictate/src/dictate-download-dialog.c
@@ -955,7 +955,7 @@ msgstr "Scarica"
 #: ../dictate/src/dictate-download-dialog.c
 #, c-format
 msgid "%s is not available"
-msgstr ""
+msgstr "%s non è disponibile"
 
 #. TRANSLATORS: the first %s is the language's name for itself, the second a speech recogniser (Vosk), the
 #. * third its Debian package (vibeos-dictate-vosk)
@@ -964,56 +964,56 @@ msgstr ""
 msgid ""
 "%s is heard by %s, which is not installed on this phone. Install the %s "
 "package, then choose %s again."
-msgstr ""
+msgstr "%s viene riconosciuto da %s, che non è installato su questo telefono. Installa il pacchetto %s, poi scegli di nuovo %s."
 
 #: ../dictate/src/dictate-download-dialog.c
 msgid "There is nothing to download for it."
-msgstr ""
+msgstr "Non c'è niente da scaricare per questa lingua."
 
 #. TRANSLATORS: %s is what went wrong, from the network or the file system
 #: ../dictate/src/dictate-download.c
 #, c-format
 msgid "The download failed: %s"
-msgstr ""
+msgstr "Download non riuscito: %s"
 
 #. TRANSLATORS: %s is what went wrong
 #: ../dictate/src/dictate-download.c
 #, c-format
 msgid "The files could not be put in place: %s"
-msgstr ""
+msgstr "Impossibile sistemare i file: %s"
 
 #. TRANSLATORS: %s is a file's name
 #: ../dictate/src/dictate-download.c
 #, c-format
 msgid "%s did not come whole"
-msgstr ""
+msgstr "%s non è arrivato completo"
 
 #. TRANSLATORS: %s is a file's name
 #: ../dictate/src/dictate-download.c
 #, c-format
 msgid "%s is not the file it should be: its checksum does not match"
-msgstr ""
+msgstr "%s non è il file previsto: il checksum non corrisponde"
 
 #. TRANSLATORS: %s is a file's name
 #: ../dictate/src/dictate-download.c
 #, c-format
 msgid "%s is larger than it should be"
-msgstr ""
+msgstr "%s è più grande del previsto"
 
 #. TRANSLATORS: %s is a file's name, %u and the last %s the server's answer (404, Not Found)
 #: ../dictate/src/dictate-download.c
 #, c-format
 msgid "The server did not give %s: %u %s"
-msgstr ""
+msgstr "Il server non ha fornito %s: %u %s"
 
 #. TRANSLATORS: %s is a file's name
 #: ../dictate/src/dictate-download.c
 #, c-format
 msgid "%s is not the size it should be: it has changed on the server"
-msgstr ""
+msgstr "%s non ha la dimensione prevista: è cambiato sul server"
 
 #. TRANSLATORS: the %s are sizes: 90.4 MB
 #: ../dictate/src/dictate-download.c
 #, c-format
 msgid "There is not enough space on the phone: %s are needed, %s are free"
-msgstr ""
+msgstr "Spazio insufficiente sul telefono: servono %s, liberi %s"
