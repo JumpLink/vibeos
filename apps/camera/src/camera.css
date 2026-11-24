@@ -1,66 +1,77 @@
 /* The Camera's styles, over libvibeos's (vibeos.css). The camera screen draws itself (cam-widgets.c); this styles its
- * labels, the pro row, the toast and snackbar, the dialogs and the Settings page. */
+ * labels, the pro row, the toast and snackbar, the dialogs and the Settings page. The app is dark in light mode too
+ * (cam-main.c): the dialogs, toast and Settings in the theme's dark roles, the controls over the picture black and
+ * white as on the reference phone. Text sizes are sp and every other size dp; weights are the usual ones, and Bold
+ * text draws each 300 heavier. */
+
+/* The camera's own colours, which are not the theme's: the screen and the controls over the picture are black and
+ * white with Aperture's fixed greys and red in every theme, as cam-constants.h has them for what the app draws. Only
+ * these few are named here; everything else is a theme role. */
+@define-color cam_black #000000;
+@define-color cam_white #ffffff;
+@define-color cam_dark_grey #444444;      /* an unselected mode, a disabled control */
+@define-color cam_rec_red #e95950;        /* the recording's duration pill */
 
 window.vibeos.cam-window {
-  background-color: #000000;
+  background-color: @cam_black;
 }
 
 /* --- the mode selector: the labels dimmed, the chosen one white */
 .cam-mode-label {
   font-family: "Droid Sans Mono", "Noto Mono", monospace;
-  font-size: 14px;
-  font-weight: bold;
-  color: #444444;
+  font-size: 14sp;
+  font-weight: 400;
+  color: @cam_dark_grey;
 }
 
 .cam-mode-label.selected {
-  color: #ffffff;
+  color: @cam_white;
 }
 
 /* the recording's duration: a red pill */
 .cam-duration {
-  background-color: #e95950;
-  border-radius: 20px;
-  color: #ffffff;
+  background-color: @cam_rec_red;
+  border-radius: 20dp;
+  color: @cam_white;
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 14sp;
+  font-weight: 500;
 }
 
 /* --- the pro row: a translucent black band; a disabled button's label dimmed */
 .cam-pro-row {
-  background-color: rgba(0, 0, 0, 0.6);
+  background-color: alpha(@cam_black, 0.6);
 }
 
 .cam-pro-label {
   font-family: "Droid Sans Mono", "Noto Mono", monospace;
-  font-size: 12px;
-  font-weight: bold;
-  color: #ffffff;
-  margin-top: 10px;
-  padding: 0 4px;
+  font-size: 12sp;
+  font-weight: 400;
+  color: @cam_white;
+  margin-top: 10dp;
+  padding: 0 4dp;
 }
 
 .cam-pro-label:disabled {
-  color: #444444;
+  color: @cam_dark_grey;
 }
 
 /* --- the toast: a pill with the app icon, then the text */
 .cam-toast {
-  background-color: #181c1d;
-  border-radius: 31px;
-  padding: 13px 16px;
+  background-color: @vibeos_surface_container;
+  border-radius: 31dp;
+  padding: 13dp 16dp;
 }
 
 .cam-toast-icon {
-  margin-right: 10px;
+  margin-right: 10dp;
 }
 
 .cam-toast-text {
-  color: #f0f0f0;
+  color: @vibeos_on_surface;
   font-family: "VibeOS Roboto", Roboto, sans-serif;
-  font-size: 15px;
-  font-weight: 500;
+  font-size: 15sp;
+  font-weight: 400;
 }
 
 /* --- the snackbar, in the inverse colours */
@@ -69,8 +80,8 @@ vibeos-snackbar-host.cam-snackbar .vibeos-snackbar {
 }
 
 vibeos-snackbar-host.cam-snackbar .vibeos-snackbar-text {
-  color: #1c2627;
-  font-weight: 700;
+  color: @vibeos_inverse_on_surface;
+  font-weight: 400;
 }
 
 vibeos-snackbar-host.cam-snackbar .vibeos-text-button {
@@ -79,23 +90,23 @@ vibeos-snackbar-host.cam-snackbar .vibeos-text-button {
 
 /* --- the screen flash */
 .cam-screen-flash {
-  background-color: #ffffff;
+  background-color: @cam_white;
 }
 
 /* --- the QR sheet */
 .cam-qr-sheet {
   background-color: @vibeos_surface_container_low;
-  border-radius: 28px 28px 0 0;
+  border-radius: 28dp 28dp 0 0;
 }
 
 .cam-qr-handle {
   background-color: @vibeos_on_surface;
-  border-radius: 2px;
+  border-radius: 2dp;
 }
 
 .cam-qr-card {
   background-color: @vibeos_surface_container_highest;
-  border-radius: 12px;
+  border-radius: 12dp;
 }
 
 .cam-qr-icon,
@@ -105,39 +116,39 @@ vibeos-snackbar-host.cam-snackbar .vibeos-text-button {
 
 .cam-qr-title {
   color: @vibeos_on_surface;
-  font-size: 14px;
-  font-weight: 900;
+  font-size: 14sp;
+  font-weight: 600;
 }
 
 .cam-qr-data {
   color: @vibeos_on_surface_variant;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 14sp;
+  font-weight: 400;
 }
 
 /* --- the dialogs */
 vibeos-dialog-scrim.cam-settings-dialog > .vibeos-dialog,
 vibeos-dialog-scrim.cam-location > .vibeos-dialog {
   background-color: @vibeos_surface;
-  border-radius: 16px;
+  border-radius: 16dp;
 }
 
 .cam-dialog-scroll {
-  margin: 0 -24px;
+  margin: 0 -24dp;
 }
 
 .cam-dialog-item {
-  min-height: 48px;
-  padding: 0 24px 0 20px;
-  font-size: 16px;
-  font-weight: 700;
+  min-height: 48dp;
+  padding: 0 24dp 0 20dp;
+  font-size: 16sp;
+  font-weight: 400;
   color: @vibeos_on_surface_variant;
 }
 
 .cam-radio {
   color: @vibeos_on_surface_variant;
-  margin-left: 4px;
-  margin-right: 24px;
+  margin-left: 4dp;
+  margin-right: 24dp;
 }
 
 .cam-radio.checked {
@@ -146,14 +157,14 @@ vibeos-dialog-scrim.cam-location > .vibeos-dialog {
 
 .cam-location-title {
   color: @vibeos_on_surface;
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 22sp;
+  font-weight: 400;
 }
 
 .cam-location-body {
   color: @vibeos_on_surface;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 14sp;
+  font-weight: 400;
 }
 
 .cam-location-button {
@@ -180,33 +191,33 @@ vibeos-dialog-scrim.cam-location > .vibeos-dialog {
 
 .cam-settings-large-title {
   color: @vibeos_on_surface;
-  font-size: 36px;
-  font-weight: 700;
+  font-size: 36sp;
+  font-weight: 400;
 }
 
 .cam-settings-collapsed-title {
   color: @vibeos_on_surface;
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 22sp;
+  font-weight: 400;
   transition: opacity 150ms;
 }
 
 .cam-settings-category {
   color: @vibeos_secondary;
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 14sp;
+  font-weight: 500;
 }
 
 .cam-settings-title {
   color: @vibeos_on_surface;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 16sp;
+  font-weight: 400;
 }
 
 .cam-settings-summary {
   color: @vibeos_on_surface_variant;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 14sp;
+  font-weight: 400;
 }
 
 .cam-settings-row:disabled {

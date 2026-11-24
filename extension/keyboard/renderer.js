@@ -11,7 +11,7 @@ import PangoCairo from 'gi://PangoCairo';
 
 import {Canvas} from '../icons.js';
 import {setSource} from '../palette.js';
-import {drawnRect, navBarParts, stripDividers} from './geometry.js';
+import {drawnRect, navBarParts, stripDividers, stripSlots} from './geometry.js';
 import {paintKeyIcon} from './icons.js';
 
 const FAMILY = 'VibeOS Roboto';
@@ -32,6 +32,10 @@ const TOOL_KEY_ALPHA = 128 / 255;
 // the hint of a key that shows its shifted letter, white over the key (this theme leaves it as the dark theme has it)
 const SHIFTED_HINT = [[255, 255, 255], 0.5];
 const SHIFTED_HINT_ACTIVE = [[255, 255, 255], 0.8];
+// a suggestion too wide for its place is squeezed to this much of its width at most, then cut off
+const MIN_SUGGESTION_SCALE = 0.7;
+// Roboto's capital height, per px of the size: a suggestion's letters centre on it
+const CAP_HEIGHT = 1456 / 2048;
 
 const trunc = Math.trunc;
 
@@ -316,10 +320,20 @@ class MoreKeysPanel extends ScreenCanvas {
     }
 });
 
-// The suggestion strip, as it is with no suggestion: the float and split keys (the tablet's, turned only the
-// float), the dividers between the three words' places. The microphone stays off until dictation is there.
+// The suggestion strip: the float and split keys (the tablet's, turned only the float), the dividers between the three
+// words' places and the words (setWords). The microphone stays off until dictation is there.
 export const StripCanvas = GObject.registerClass(
 class StripCanvas extends ScreenCanvas {
+    // @words: [left, middle, right], null where there is none; @bold: the place whose word is in bold (the one a
+    // space will put in: an auto-correction), -1 for none
+    setWords(words, bold = -1) {
+        if (JSON.stringify(words) === JSON.stringify(this._words ?? [null, null, null]) && bold === (this._bold ?? -1))
+            return;
+        this._words = words;
+        this._bold = bold;
+        this.queue_repaint();
+    }
+
     paint(cr, v) {
         const m = v.m;
         fillBand(cr, v, m.strip);
@@ -339,11 +353,33 @@ class StripCanvas extends ScreenCanvas {
         for (const x of stripDividers(m))
             cr.rectangle(at(x, m.divider.width), trunc((m.strip - m.divider.height) / 2), m.divider.width, m.divider.height);
         cr.fill();
+        // each word in the middle of its place, on the letters' cap height, squeezed (as LatinIME squeezes it, to 70 %
+        // of its width at most) where it is wider than the place less its padding, then cut off
+        const size = m.suggestionText;
+        const [text_, alpha_] = colourAndAlpha(v.colors.text);
+        stripSlots(m).forEach(([x, w], i) => {
+            const word = this._words?.[i];
+            if (!word)
+                return;
+            const t = text(word, size, i === this._bold);
+            const room = w - 2 * m.suggestionPadding;
+            const squeeze = Math.max(MIN_SUGGESTION_SCALE, Math.min(1, room / t.width));
+            cr.save();
+            cr.rectangle(at(x, w), 0, w, m.strip);
+            cr.clip();
+            const left = at(x, w) + (w - Math.min(room, t.width * squeeze)) / 2;
+            cr.translate(left, Math.round(m.strip / 2 + CAP_HEIGHT * size / 2 - t.baseline));
+            cr.scale(squeeze, 1);
+            setSource(cr, text_, alpha_);
+            cr.moveTo(0, 0);
+            PangoCairo.show_layout(cr, t.layout);
+            cr.restore();
+        });
     }
 });
 
-// The tablet keyboard's navigation bar: the hide chevron, the input switcher (with more than one input source) and
-// the gesture handle
+// The tablet keyboard's navigation bar: the hide chevron and the input switcher (with more than one input source).
+// No gesture handle: the tablet shows none, the keyboard up or not (owner, 11-21).
 export const NavCanvas = GObject.registerClass(
 class NavCanvas extends ScreenCanvas {
     paint(cr, v) {
@@ -353,7 +389,7 @@ class NavCanvas extends ScreenCanvas {
         cr.fill();
         const parts = navBarParts(m);
         const [rgb, alpha] = colourAndAlpha(v.colors.navIcon);
-        const {hide, switcher, handle} = parts;
+        const {hide, switcher} = parts;
         cr.save();
         cr.translate(hide.cx, hide.cy);
         // the back chevron, turned to point down
@@ -364,9 +400,6 @@ class NavCanvas extends ScreenCanvas {
             paintKeyIcon(cr, 'nav_switcher', switcher.cx - switcher.size / 2, switcher.cy - switcher.size / 2,
                 switcher.size, switcher.size, rgb, alpha);
         }
-        roundRect(cr, (m.monitorWidth - handle.w) / 2, handle.y, handle.w, handle.h, handle.h / 2);
-        setSource(cr, v.colors.handle);
-        cr.fill();
     }
 
     // what a tap at @x (screen pixels from the monitor's left edge) does: 'hide', 'switch' or null

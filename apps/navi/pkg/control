@@ -1,0 +1,31 @@
+Source: vibeos-navi
+Section: gnome
+Priority: optional
+Maintainer: pulpoff <pashkovsky@gmail.com>
+Standards-Version: 4.7.2
+Rules-Requires-Root: no
+Homepage: https://github.com/pulpoff/vibeos
+
+Package: vibeos-navi
+Architecture: any
+Depends: ${shlibs:Depends},
+         libvibeos-1-0 (>= 1:0.1.3),
+         gstreamer1.0-plugins-base,
+Recommends: geoclue-2.0,
+            gstreamer1.0-pulseaudio,
+            vibeos-dictate-moonshine,
+            vibeos-dictate-en | vibeos-dictate-de | vibeos-dictate-es | vibeos-dictate-fr | vibeos-dictate-it | vibeos-dictate-ru,
+Suggests: speech-dispatcher,
+Description: car navigation for VibeOS
+ Navi gives turn-by-turn directions for driving: a vector map from VibeOS's
+ map server, routes with lanes, speed limits and speed cameras, spoken
+ prompts, search with a microphone, saved places, and a reminder to leave.
+ .
+ MapLibre Native, which draws the map, is built into Navi's own library in
+ /usr/lib/vibeos-navi, next to the libvibeos Navi was built with; no system
+ library is replaced (libvibeos-1-0 still provides its settings schema).
+ .
+ The prompts are spoken with Agent's Piper voices, found in
+ vibeos-dictate/voices/LANGUAGE under the user's or the system's data
+ directories, and through Speech Dispatcher where there is none. The search's
+ microphone uses vibeos-dictate's speech models.

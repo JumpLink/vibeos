@@ -12,9 +12,9 @@ test_uri (void)
   g_autoptr(FmRemote) dav = fm_remote_new (FM_PROTO_DAVS);
   g_autofree char *a = NULL, *b = NULL, *c = NULL, *d = NULL;
 
-  fm_remote_set_address (smb, "plex");
+  fm_remote_set_address (smb, "nas");
   a = fm_remote_uri (smb);
-  g_assert_cmpstr (a, ==, "smb://plex/");
+  g_assert_cmpstr (a, ==, "smb://nas/");
 
   fm_remote_set_address (smb, "192.168.1.101/my share");
   g_free (smb->user);
@@ -91,14 +91,14 @@ test_contains (void)
   g_autoptr(FmRemote) sftp = fm_remote_new (FM_PROTO_SFTP);
   g_autofree char *rest = NULL;
 
-  fm_remote_set_address (remote, "plex");
-  g_assert_true (fm_remote_contains (remote, "smb://plex/VIDEO/a%20b/", &rest));
+  fm_remote_set_address (remote, "nas");
+  g_assert_true (fm_remote_contains (remote, "smb://nas/VIDEO/a%20b/", &rest));
   g_assert_cmpstr (rest, ==, "/VIDEO/a b");
   g_clear_pointer (&rest, g_free);
-  g_assert_true (fm_remote_contains (remote, "smb://plex/", &rest));
+  g_assert_true (fm_remote_contains (remote, "smb://nas/", &rest));
   g_assert_cmpstr (rest, ==, "/");
   g_assert_false (fm_remote_contains (remote, "smb://other/", NULL));
-  g_assert_false (fm_remote_contains (remote, "sftp://plex/", NULL));
+  g_assert_false (fm_remote_contains (remote, "sftp://nas/", NULL));
 
   fm_remote_set_address (sftp, "host:2222/srv");
   g_free (sftp->user);

@@ -704,7 +704,8 @@ cal_accounts_add_caldav (GtkWidget *window)
   gtk_box_append (GTK_BOX (box), caldav->create);
 
   gtk_widget_add_css_class (box, "cal-caldav");
-  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), box);
+  /* on a tablet the form is a column in the middle */
+  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), vibeos_clamp_new (box, VIBEOS_CLAMP_SETTINGS));
   gtk_widget_set_vexpand (scroll, TRUE);
   gtk_box_append (GTK_BOX (page), scroll);
   g_object_set_data_full (G_OBJECT (page), "cal-caldav", caldav, caldav_free);

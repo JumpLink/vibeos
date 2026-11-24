@@ -1,5 +1,6 @@
 /* StopwatchPage: see stopwatch-page.h. Without laps the ring is centred over the buttons; with laps it sits at the
- * top of the tab, the laps under it. */
+ * top of the tab, the laps under it. On a tablet held sideways the laps are beside it instead, at the end, and the
+ * ring is centred in the room they leave. */
 #include "stopwatch-page.h"
 #include "clock-draw.h"
 #include "clock-tab.h"
@@ -13,6 +14,9 @@
 
 #define GUIDELINE       0.1     /* the ring between vertical guidelines at 10 % and 90 % of the width */
 #define MAX_CIRCLE      320
+#define TABLET_CIRCLE   240     /* on a tablet, upright or sideways */
+#define SIDE_GUTTER     (4.0 / 104)     /* sideways: the gutter at each side, of the width */
+#define SIDE_BOTTOM     8       /* sideways: under the laps (the buttons are in their column, not under them) */
 #define STROKE          12      /* the ring's width, and twice the dot's radius */
 #define FAB_ROW         120     /* the buttons' row: the tab's bottom padding, the list's, and its fade */
 #define TIME_SIZE       72      /* at most: it shrinks to fit */
@@ -55,6 +59,11 @@ struct _StopwatchPage
   double move, fade;            /* 0 in the middle .. 1 at the top; the list's opacity */
   double move_from, fade_from;
   double first_ms;              /* how long the first of the two steps takes */
+
+  VibeosLayout *layout;
+  gboolean tablet, sideways;    /* a tablet; held sideways: the laps beside the ring */
+  graphene_rect_t laps_box;     /* where the laps are, for their fade */
+  double laps_fade;             /* how tall the fade at their bottom is */
 };
 
 static void stopwatch_page_tab_init (ClockTabInterface *iface);
@@ -175,7 +184,7 @@ lap_label (const char *css_class, int margin_end)
   GtkWidget *label = gtk_label_new (NULL);
 
   gtk_widget_add_css_class (label, css_class);
-  vibeos_label_set_font_padding (label, 14);
+  vibeos_label_set_font_padding_sp (label, 14);
   /* the row's padding of 4 on top of the font's own */
   gtk_widget_set_margin_top (label, gtk_widget_get_margin_top (label) + 4);
   gtk_widget_set_valign (label, GTK_ALIGN_START);
@@ -632,14 +641,58 @@ place_time (StopwatchPage *self, int scale)
     }
 }
 
+/* a tablet held sideways: the ring and the laps side by side between gutters, the laps at the end as wide as their
+ * rows or half the room, whichever is wider, and centred top to bottom; the ring centred in the rest, or in all of
+ * it without laps, moving between the two as the laps come and go */
+static void
+allocate_sideways (StopwatchPage *self, int width, int height, int scale)
+{
+  int gutter = (int) round (SIDE_GUTTER * width), inner = MAX (width - 2 * gutter, 0);
+  int laps_width = 0, laps_height = 0, room;
+  double size, full_x, rest_x, x, y;
+
+  if (self->rows)
+    {
+      gtk_widget_measure (self->laps, GTK_ORIENTATION_HORIZONTAL, -1, NULL, &laps_width, NULL, NULL);
+      laps_width = MIN (MAX (laps_width, inner / 2), inner);
+      gtk_widget_measure (self->laps, GTK_ORIENTATION_VERTICAL, laps_width, NULL, &laps_height, NULL, NULL);
+    }
+  room = inner - laps_width;
+  size = MAX (MIN (MIN (inner, TABLET_CIRCLE), height - 2 * SIDE_BOTTOM), 0);
+  full_x = gutter + (inner - size) / 2;
+  rest_x = gutter + MAX (room - size, 0) / 2.0;
+  x = floor (scale * (full_x + (rest_x - full_x) * self->move) + 0.5) / scale;
+  y = floor (scale * (height - size) / 2 + 0.5) / scale;
+  self->ring = GRAPHENE_RECT_INIT (x, y, size, size);
+  if (size != self->fitted && !self->refit)
+    self->refit = g_idle_add (on_refit, self);
+  self->fitted = size;
+  place_time (self, scale);
+  if (gtk_widget_get_child_visible (self->scroller))
+    {
+      int laps_y = MAX ((height - laps_height) / 2, 0), laps_h = MIN (laps_height, height);
+
+      self->laps_box = GRAPHENE_RECT_INIT (gutter + room, laps_y, laps_width, laps_h);
+      /* nothing covers them here: they fade only where they go on past the bottom */
+      self->laps_fade = laps_height > height ? MIN (FAB_ROW, laps_h) : 0;
+      gtk_widget_size_allocate (self->scroller, &(GtkAllocation) { gutter + room, laps_y, laps_width, laps_h }, -1);
+    }
+}
+
 static void
 stopwatch_page_size_allocate (GtkWidget *widget, int width, int height, int baseline)
 {
   StopwatchPage *self = STOPWATCH_PAGE (widget);
   int scale = vibeos_device_scale (widget);
   int left = (int) round (GUIDELINE * width), right = (int) round ((1 - GUIDELINE) * width);
-  double size = MIN (MIN (right - left, MAX_CIRCLE), height);
+  double size = MIN (MIN (right - left, self->tablet ? TABLET_CIRCLE : MAX_CIRCLE), height);
   double middle;
+
+  if (self->sideways)
+    {
+      allocate_sideways (self, width, height, scale);
+      return;
+    }
 
   /* in whole device pixels, where GTK's own allocation would round to whole px
    * (up to 4 device pixels off): the ring centred over the button row, or at the top with laps */
@@ -651,6 +704,8 @@ stopwatch_page_size_allocate (GtkWidget *widget, int width, int height, int base
     self->refit = g_idle_add (on_refit, self);
   self->fitted = size;
   place_time (self, scale);
+  self->laps_box = GRAPHENE_RECT_INIT (0, size, width, MAX (height - size, 0));
+  self->laps_fade = MIN (FAB_ROW, self->laps_box.size.height);
   if (gtk_widget_get_child_visible (self->scroller))
     gtk_widget_size_allocate (self->scroller, &(GtkAllocation) { 0, size, width, MAX (height - size, 0) }, -1);
 }
@@ -663,7 +718,7 @@ stopwatch_page_measure (GtkWidget *widget, GtkOrientation orientation, int for_s
 }
 
 /* the ring, the time, the laps, and over the laps' last FAB_ROW a fade into the background (0 % to 50 % over the
- * first quarter, to 100 % by nine tenths) */
+ * first quarter, to 100 % by nine tenths); sideways, only when the laps run on past the bottom */
 static void
 stopwatch_page_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
@@ -671,7 +726,10 @@ stopwatch_page_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
                                    0xBA, 0xC4, 0xCE, 0xD8, 0xE2, 0xEB, 0xF5, 0xFF, 0xFF, 0xFF };
   StopwatchPage *self = STOPWATCH_PAGE (widget);
   GskColorStop stops[G_N_ELEMENTS (alphas)];
-  int width = gtk_widget_get_width (widget), height = gtk_widget_get_height (widget);
+  /* under the laps: their box's bottom, which is the tab's own but sideways */
+  float x = self->laps_box.origin.x, width = self->laps_box.size.width;
+  float height = self->laps_box.origin.y + self->laps_box.size.height;
+  float fade = self->laps_fade;
 
   snapshot_ring (self, snapshot);
   gtk_widget_snapshot_child (widget, self->main_text, snapshot);
@@ -679,12 +737,53 @@ stopwatch_page_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   if (!gtk_widget_get_child_visible (self->scroller))
     return;
   gtk_widget_snapshot_child (widget, self->scroller, snapshot);
+  if (fade <= 0)
+    return;
   for (guint i = 0; i < G_N_ELEMENTS (alphas); i++)
     stops[i] = (GskColorStop) { (float) i / (G_N_ELEMENTS (alphas) - 1),
                                 vibeos_color_alpha (VIBEOS_SURFACE, alphas[i] / 255.f * self->fade) };
-  gtk_snapshot_append_linear_gradient (snapshot, &GRAPHENE_RECT_INIT (0, height - FAB_ROW, width, FAB_ROW),
-                                       &GRAPHENE_POINT_INIT (0, height - FAB_ROW), &GRAPHENE_POINT_INIT (0, height),
+  gtk_snapshot_append_linear_gradient (snapshot, &GRAPHENE_RECT_INIT (x, height - fade, width, fade),
+                                       &GRAPHENE_POINT_INIT (x, height - fade), &GRAPHENE_POINT_INIT (x, height),
                                        stops, G_N_ELEMENTS (stops));
+}
+
+/* a tablet: the smaller ring; held sideways, the laps beside it, with no room kept under them for the buttons, which
+ * are in their own column */
+static void
+on_layout_changed (VibeosLayout *layout, StopwatchPage *self)
+{
+  self->tablet = vibeos_layout_is_tablet (layout);
+  self->sideways = self->tablet && vibeos_layout_is_landscape (layout);
+  gtk_widget_set_margin_bottom (self->laps, self->sideways ? SIDE_BOTTOM : FAB_ROW);
+  gtk_widget_queue_allocate (GTK_WIDGET (self));
+}
+
+static void
+stopwatch_page_root (GtkWidget *widget)
+{
+  StopwatchPage *self = STOPWATCH_PAGE (widget);
+
+  GTK_WIDGET_CLASS (stopwatch_page_parent_class)->root (widget);
+  self->layout = vibeos_layout_get (widget);
+  if (self->layout)
+    {
+      g_object_ref (self->layout);
+      g_signal_connect (self->layout, "changed", G_CALLBACK (on_layout_changed), self);
+      on_layout_changed (self->layout, self);
+    }
+}
+
+static void
+stopwatch_page_unroot (GtkWidget *widget)
+{
+  StopwatchPage *self = STOPWATCH_PAGE (widget);
+
+  if (self->layout)
+    {
+      g_signal_handlers_disconnect_by_data (self->layout, self);
+      g_clear_object (&self->layout);
+    }
+  GTK_WIDGET_CLASS (stopwatch_page_parent_class)->unroot (widget);
 }
 
 static void
@@ -740,6 +839,8 @@ stopwatch_page_class_init (StopwatchPageClass *klass)
   widget_class->snapshot = stopwatch_page_snapshot;
   widget_class->map = stopwatch_page_map;
   widget_class->unmap = stopwatch_page_unmap;
+  widget_class->root = stopwatch_page_root;
+  widget_class->unroot = stopwatch_page_unroot;
   gtk_widget_class_set_css_name (widget_class, "stopwatch-page");
 }
 

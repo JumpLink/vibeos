@@ -57,9 +57,74 @@ export function mix(a, b, t) {
     return a.map((v, i) => v + (b[i] - v) * t);
 }
 
+// A tablet's shade: an opaque scrim under the quick settings, their pill tiles (a two-target tile's icon circle when
+// off, a tile that is unavailable) and the dark panel the notification cards sit in
+export const TabletShade = {
+    scrim: [17, 53, 58],
+    tile: [16, 35, 38],
+    tileTarget: [40, 65, 69],
+    unavailable: [20, 47, 50],
+    panel: Color.surface,
+    card: Color.surfaceContainer,
+};
+
+// A tablet's taskbar: the stashed handle, the pill's fill and outline, its dividers and the all-apps glyph
+export const TabletTaskbar = {
+    handleLight: [255, 255, 255, 0.92],     // the handle over a dark app
+    handleDark: [0, 0, 0, 0.6],             // over a light one
+    fill: [14, 21, 22],
+    outline: [51, 59, 60],
+    divider: [137, 148, 150],
+    glyph: [186, 201, 204],
+};
+
 // The shade panel (behind the scrim): three translucent layers flattened into one colour and alpha
-export const SHADE_PANEL = over([Color.accent1_800, 0.32],
-    over([Color.neutral1_500_l4, 0.32], [[64, 64, 64], 0.40]));
+const shadePanel = () => over([Color.accent1_800, 0.32], over([Color.neutral1_500_l4, 0.32], [[64, 64, 64], 0.40]));
+export const SHADE_PANEL = shadePanel();
+
+// High contrast (Accessibility: org.gnome.desktop.a11y.interface high-contrast, followed by contrast.js): the same
+// roles with the text at full strength, the surfaces under it black or nearly, the tracks and the primary colour
+// lighter, and the translucent fills over the blurred shade nearly opaque, so that text and icons stand out from
+// whatever is behind them. Switched in place: the arrays stay the same objects, so a module that took one at load
+// (qs.js PHONE_TILE = SurfaceEffect[1]) draws with the new values too.
+const HIGH_CONTRAST = {
+    primary: [190, 238, 246],
+    onPrimary: [0, 38, 43],
+    surface: [0, 0, 0],
+    surfaceContainerLow: [0, 0, 0],
+    surfaceContainer: [6, 8, 9],
+    surfaceContainerHigh: [10, 13, 14],
+    surfaceContainerHighest: [84, 98, 101],
+    onSurface: [255, 255, 255],
+    onSurfaceVariant: [240, 246, 247],
+    neutral1_500_l4: [0, 0, 0],
+    neutral1_500_l6: [5, 7, 8],
+    notificationScrim: [0, 0, 0],
+};
+const HIGH_CONTRAST_EFFECT = {0: 0.88, 1: 0.92, 2: 0.30, 3: 0.24};
+const normal = Object.fromEntries(Object.entries(Color).map(([k, c]) => [k, [...c]]));
+const normalEffect = Object.fromEntries(Object.entries(SurfaceEffect).map(([k, [, a]]) => [k, a]));
+let highContrast = false;
+
+export function isHighContrast() {
+    return highContrast;
+}
+
+// true when it changed
+export function setHighContrast(on) {
+    on = !!on;
+    if (on === highContrast)
+        return false;
+    highContrast = on;
+    for (const [key, rgb] of Object.entries(normal))
+        Color[key].splice(0, 3, ...(on ? HIGH_CONTRAST[key] ?? rgb : rgb));
+    for (const key of Object.keys(SurfaceEffect))
+        SurfaceEffect[key][1] = on ? HIGH_CONTRAST_EFFECT[key] : normalEffect[key];
+    const [rgb, a] = shadePanel();
+    SHADE_PANEL[0].splice(0, 3, ...rgb);
+    SHADE_PANEL[1] = a;
+    return true;
+}
 
 const FAMILY = 'Google Sans Flex';
 

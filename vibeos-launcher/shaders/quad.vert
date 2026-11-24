@@ -24,16 +24,24 @@ void main()
   vec2 c = corners[VERTEX_INDEX];
   float mode = i_misc.w;
 
-  // Grow the quad by a pixel on every side so the edge can be antialiased; glyph masks are pixel-aligned and come
-  // from an atlas whose neighbours must not bleed in, so they keep their exact size
-  vec2 grow = vec2(0.0);
-  if (mode != 2.0) {
-    float sx = length(vec2(i_m.x, i_m.z));
-    float sy = length(vec2(i_m.y, i_m.w));
-    grow = vec2(1.0 / max(sx, 1e-4), 1.0 / max(sy, 1e-4));
+  vec2 f, p;
+  if (mode == 5.0) {
+    // A piece of a picture: i_rect holds its edges, x0 y0 x1 y1, and each corner takes them as they are, not worked
+    // out from a size, so a piece sharing an edge with it puts that edge at the very same place
+    f = c;
+    p = vec2(c.x == 0.0 ? i_rect.x : i_rect.z, c.y == 0.0 ? i_rect.y : i_rect.w);
+  } else {
+    // Grow the quad by a pixel on every side so the edge can be antialiased; glyph masks are pixel-aligned and come
+    // from an atlas whose neighbours must not bleed in, so they keep their exact size
+    vec2 grow = vec2(0.0);
+    if (mode != 2.0) {
+      float sx = length(vec2(i_m.x, i_m.z));
+      float sy = length(vec2(i_m.y, i_m.w));
+      grow = vec2(1.0 / max(sx, 1e-4), 1.0 / max(sy, 1e-4));
+    }
+    f = mix(-grow / i_rect.zw, 1.0 + grow / i_rect.zw, c);   // rect-relative, may run past 0..1
+    p = i_rect.xy + f * i_rect.zw;
   }
-  vec2 f = mix(-grow / i_rect.zw, 1.0 + grow / i_rect.zw, c);   // rect-relative, may run past 0..1
-  vec2 p = i_rect.xy + f * i_rect.zw;
 
   vec2 s = vec2(i_m.x * p.x + i_m.y * p.y, i_m.z * p.x + i_m.w * p.y) + i_misc.xy;
   gl_Position = vec4(s / pc.vp * 2.0 - 1.0, 0.0, 1.0);
@@ -42,7 +50,7 @@ void main()
     gl_Position.y = -gl_Position.y;
 #endif
 
-  v_uv = mix(i_uv.xy, i_uv.zw, f);
+  v_uv = mode == 5.0 ? vec2(c.x == 0.0 ? i_uv.x : i_uv.z, c.y == 0.0 ? i_uv.y : i_uv.w) : mix(i_uv.xy, i_uv.zw, f);
   v_local = (f - 0.5) * i_rect.zw;
   v_color = i_color;
   v_shape = vec4(i_rect.zw * 0.5, i_misc.z, mode);

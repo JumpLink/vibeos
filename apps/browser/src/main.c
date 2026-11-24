@@ -8,26 +8,16 @@
  * One process holds every tab; a second start hands its command line to it. */
 #include "nb.h"
 
+#include <gst/gst.h>
 #include <vibeos.h>
 #include <string.h>
 
 static void
-load_style (void)
-{
-  GtkCssProvider *provider = gtk_css_provider_new ();
-
-  gtk_css_provider_load_from_resource (provider, "/vibeos/Browser/browser.css");
-  /* over libvibeos's, which is at APPLICATION priority too: the later provider wins at equal priority */
-  gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (provider),
-                                              GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
-  g_object_unref (provider);
-}
-
-static void
 on_startup (GApplication *app, gpointer data)
 {
-  vibeos_init ();
-  load_style ();
+  /* the text follows Font size and Bold text; the stylesheet in sp and dp, over libvibeos's */
+  vibeos_init_full (VIBEOS_INIT_SCALED_TEXT);
+  vibeos_css_load_resource ("/vibeos/Browser/browser.css", GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
   nb_app_startup (GTK_APPLICATION (app));
 }
 
@@ -83,9 +73,44 @@ on_command_line (GApplication *app, GApplicationCommandLine *cmd, gpointer data)
   return 0;
 }
 
+/* Web video decodes in software. A phone's V4L2 video decoders (stateful, or stateless from v4l2codecs) rank above
+ * FFmpeg's and libvpx's, so WebKit picked them, and their frames failed in WebKit's GL video sink. On the S10e
+ * (Exynos MFC, Mali on Panfrost) a frame whose rows are not aligned as Panfrost wants, a 540 px wide video's, is not
+ * imported into GL ("WSI pitch not properly aligned"): the video played black, the poster gone. And after a loop or
+ * a seek the decoder only ended the stream again, so a looping video stopped at 0. The web processes read
+ * GST_PLUGIN_FEATURE_RANK at their start: every V4L2 video decoder in the registry (one per codec and device) goes in
+ * as NAME:NONE, ahead of what the environment already says, which then still wins. GStreamer's start here takes
+ * ~13 ms on the S10e. */
+static void
+web_video_in_software (void)
+{
+  if (!gst_init_check (NULL, NULL, NULL))
+    return;
+  GString *ranks = g_string_new (NULL);
+  static const char *const plugins[] = { "video4linux2", "v4l2codecs" };
+  for (guint i = 0; i < G_N_ELEMENTS (plugins); i++) {
+    GList *features = gst_registry_get_feature_list_by_plugin (gst_registry_get (), plugins[i]);
+    for (GList *l = features; l; l = l->next)
+      if (GST_IS_ELEMENT_FACTORY (l->data) &&
+          gst_element_factory_list_is_type (GST_ELEMENT_FACTORY (l->data),
+                                            GST_ELEMENT_FACTORY_TYPE_DECODER | GST_ELEMENT_FACTORY_TYPE_MEDIA_VIDEO))
+        g_string_append_printf (ranks, "%s%s:NONE", ranks->len ? "," : "",
+                                gst_plugin_feature_get_name (GST_PLUGIN_FEATURE (l->data)));
+    gst_plugin_feature_list_free (features);
+  }
+  const char *env = g_getenv ("GST_PLUGIN_FEATURE_RANK");
+  if (ranks->len && env && *env)
+    g_string_append_printf (ranks, ",%s", env);
+  if (ranks->len)
+    g_setenv ("GST_PLUGIN_FEATURE_RANK", ranks->str, TRUE);
+  g_string_free (ranks, TRUE);
+}
+
 int
 main (int argc, char **argv)
 {
+  /* before anything starts a thread or a web process */
+  web_video_in_software ();
   g_autoptr (GtkApplication) app = gtk_application_new (NB_APP_ID, G_APPLICATION_HANDLES_COMMAND_LINE);
   static const GOptionEntry entries[] = {
     { "incognito", 0, 0, G_OPTION_ARG_NONE, NULL, "Open an incognito tab", NULL },

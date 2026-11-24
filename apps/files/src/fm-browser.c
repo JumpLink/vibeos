@@ -31,6 +31,7 @@ struct _FmBrowser {
   GHashTable *names;            /* a folder's URI -> the name it was listed under (the crumbs) */
   gboolean searching, search_shown, search_busy;
   gboolean scanning;            /* the Local Network's subnet scan is running */
+  guint crumbs_source;          /* the idle that scrolls the crumbs to their end */
 };
 
 static void load_start (FmBrowser *b, gboolean keep_offset);
@@ -111,12 +112,10 @@ static GtkWidget *
 crumb (FmBrowser *b, GtkWidget *child, GFile *target, const char *css_class)
 {
   GtkWidget *button = vibeos_pressable_new (child);
-  GdkRGBA ripple = fm_rgba (FM_C_RIPPLE);
 
   gtk_widget_add_css_class (button, "fm-crumb");
   gtk_widget_add_css_class (button, css_class);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (button), &ripple);
   if (target)
     {
       g_object_set_data_full (G_OBJECT (button), "fm-file", g_object_ref (target), g_object_unref);
@@ -131,8 +130,18 @@ scroll_crumbs_to_end (gpointer data)
   FmBrowser *b = data;
   GtkAdjustment *adjustment = gtk_scrolled_window_get_hadjustment (GTK_SCROLLED_WINDOW (b->crumb_scroll));
 
+  b->crumbs_source = 0;
   gtk_adjustment_set_value (adjustment, gtk_adjustment_get_upper (adjustment));
   return G_SOURCE_REMOVE;
+}
+
+/* once the layout is done: a value set while the crumbs are being allocated scrolls nothing until the next layout,
+ * which left a phone's last crumb under the free space */
+static void
+queue_scroll_crumbs (FmBrowser *b)
+{
+  if (!b->crumbs_source)
+    b->crumbs_source = g_idle_add (scroll_crumbs_to_end, b);
 }
 
 static void
@@ -140,7 +149,7 @@ on_crumbs_changed (GtkAdjustment *adjustment, FmBrowser *b)
 {
   /* the last crumb stays in view: a deep path shows its end, also when the free space comes in beside it and
    * narrows the crumbs */
-  gtk_adjustment_set_value (adjustment, gtk_adjustment_get_upper (adjustment));
+  queue_scroll_crumbs (b);
 }
 
 static void
@@ -187,7 +196,7 @@ pathbar_build (FmBrowser *b)
   gtk_widget_add_css_class (last, "last");
   gtk_widget_set_visible (b->up, !at_root);
   gtk_widget_set_visible (b->free_label, FALSE);
-  g_idle_add (scroll_crumbs_to_end, b);
+  queue_scroll_crumbs (b);
 }
 
 static GtkWidget *
@@ -758,8 +767,7 @@ on_activate (FmList *list, FmItem *item, FmBrowser *b)
   /* a file in the Recycle Bin is not opened from there: a tap selects it, to restore or delete */
   if (b->place->kind == FM_PLACE_TRASH)
     {
-      fm_list_set_selecting (list, TRUE);
-      fm_list_set_selected (list, item, TRUE);
+      fm_list_start_selection (list, item);
       fm_shell_update_bars (b->shell);
       return;
     }
@@ -769,7 +777,7 @@ on_activate (FmList *list, FmItem *item, FmBrowser *b)
 
       g_hash_table_replace (b->names, g_steal_pointer (&uri), g_strdup (item->name));
     }
-  fm_shell_open_item_location (b->shell, location, fm_item_is_folder (item));
+  fm_shell_open_item_from (b->shell, location, fm_item_is_folder (item), fm_list_get_activated_icon (list));
 }
 
 /* a search result's long press: Open, Open location */
@@ -813,8 +821,7 @@ on_long_press (FmList *list, FmItem *item, double x, double y, FmBrowser *b)
       fm_popup_show (GTK_WIDGET (list), labels, 2, FM_POPUP_AT, x, y, on_result_menu, item);
       return;
     }
-  fm_list_set_selecting (list, TRUE);
-  fm_list_set_selected (list, item, TRUE);
+  fm_list_start_selection (list, item);
   fm_shell_update_bars (b->shell);
 }
 
@@ -1134,6 +1141,7 @@ fm_browser_new (FmShell *shell)
 void
 fm_browser_free (FmBrowser *b)
 {
+  g_clear_handle_id (&b->crumbs_source, g_source_remove);
   cancel_all (b);
   if (b->monitor)
     {

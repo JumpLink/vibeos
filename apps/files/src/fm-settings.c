@@ -28,7 +28,6 @@ check_row (GtkWidget *list, GSettings *settings, const char *key, const char *ti
   GtkWidget *text = fm_label (title, "fm-pref-title", 16, TRUE);
   GtkWidget *check = fm_check_new (FALSE);
   GtkWidget *row;
-  GdkRGBA ripple = fm_rgba (FM_C_RIPPLE);
 
   gtk_widget_set_hexpand (text, TRUE);
   gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
@@ -38,7 +37,6 @@ check_row (GtkWidget *list, GSettings *settings, const char *key, const char *ti
   row = vibeos_pressable_new (box);
   gtk_widget_add_css_class (row, "fm-pref-row");
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
   g_settings_bind (settings, key, check, "active", G_SETTINGS_BIND_DEFAULT);
   g_signal_connect (row, "clicked", G_CALLBACK (on_row), check);
   gtk_accessible_update_property (GTK_ACCESSIBLE (row), GTK_ACCESSIBLE_PROPERTY_LABEL, title, -1);

@@ -7,6 +7,8 @@
 G_BEGIN_DECLS
 
 GtkWidget *ct_settings_new (GtkWidget *window);
+/* About: VibeOS's About sheet over `window` (Settings' About Contacts and the account sheet's About) */
+void       ct_settings_present_about (GtkWidget *window);
 
 /* the .vcf import, as Settings' Import and a .vcf file opened with the app start it: the cards of @file into the
  * default address book, a toast when done */

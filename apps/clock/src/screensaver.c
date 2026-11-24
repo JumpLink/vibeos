@@ -361,7 +361,7 @@ build (SaverView *self)
   self->time = gtk_label_new (NULL);
   gtk_widget_add_css_class (self->time, "saver-time");
   gtk_widget_set_halign (self->time, GTK_ALIGN_CENTER);
-  vibeos_label_set_font_padding (self->time, TIME_SIZE);
+  vibeos_label_set_font_padding_sp (self->time, TIME_SIZE);
   gtk_widget_set_margin_bottom (self->time, gtk_widget_get_margin_bottom (self->time) - 8);
   gtk_widget_set_visible (self->time, !analog);
   gtk_box_append (GTK_BOX (self->block), self->time);
@@ -369,7 +369,7 @@ build (SaverView *self)
   gtk_widget_set_halign (line, GTK_ALIGN_START);
   self->date = gtk_label_new (NULL);
   gtk_widget_add_css_class (self->date, "body");
-  vibeos_label_set_font_padding (self->date, 14);
+  vibeos_label_set_font_padding_sp (self->date, 14);
   gtk_box_append (GTK_BOX (line), self->date);
   self->alarm_icon = gtk_image_new_from_icon_name ("clock-alarm-small-symbolic");
   gtk_image_set_pixel_size (GTK_IMAGE (self->alarm_icon), 14);
@@ -379,7 +379,7 @@ build (SaverView *self)
   gtk_box_append (GTK_BOX (line), self->alarm_icon);
   self->alarm = gtk_label_new (NULL);
   gtk_widget_add_css_class (self->alarm, "body");
-  vibeos_label_set_font_padding (self->alarm, 14);
+  vibeos_label_set_font_padding_sp (self->alarm, 14);
   gtk_box_append (GTK_BOX (line), self->alarm);
   gtk_box_append (GTK_BOX (self->block), line);
   show_time (self);

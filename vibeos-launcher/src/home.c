@@ -41,7 +41,8 @@
 static struct {
   /* geometry */
   float cell_x0, cell_w, cell_y0, cell_h, icon, icon_top, dock_top, dock_icon_top, dots_y;
-  float dock_w;                    /* a dock cell's width */
+  float dock_x0, dock_w;           /* the dock's first cell's left, a dock cell's width */
+  const TabletGrid *tab;           /* a tablet's grid for the way it is turned; NULL on a phone */
   float label_y;                   /* the label's baseline below the icon's top */
 
   /* paging */
@@ -77,19 +78,47 @@ page_cells (int p)
   return p >= 0 && p < (int) N.model->pages->len ? N.model->pages->pdata[p] : NULL;
 }
 
-/* the label's room: LABEL_HOME_MAX_DP in a column of the 5-column grid, and what this grid's columns are wider */
+/* the label's room: LABEL_HOME_MAX_DP in a column of the 5-column grid, and what this grid's columns are wider; a
+ * tablet's, its grid's */
 float
 home_label_width (void)
 {
+  if (N.tablet)
+    return dp ((N.W > N.H ? &TABLET_LAND : &TABLET_PORT)->label_max);
   float span = N.W - 2 * dp (WS_SIDE_DP);
   return dp (LABEL_HOME_MAX_DP) + span / N.model->cols - span / LABEL_REF_COLS;
 }
 
-void
-home_layout (void)
+/* A tablet's: the columns and the dock's cells a pitch apart and centred, the rows a pitch apart from the first one's
+ * height, the dock and the dots above the bottom */
+static void
+tablet_layout (void)
 {
+  const TabletGrid *g = H.tab = N.W > N.H ? &TABLET_LAND : &TABLET_PORT;
+  H.cell_w = dp (g->pitch_x);
+  H.cell_h = dp (g->pitch_y);
+  H.cell_x0 = roundf ((N.W - N.model->cols * H.cell_w) / 2);
+  H.dock_w = H.cell_w;
+  H.dock_x0 = roundf ((N.W - N.model->dock_size * H.dock_w) / 2);
+  H.icon = roundf (dp (N.icon_dp));
+  H.label_y = H.icon + dp (TAB_LABEL_BASELINE_DP - TAB_ICON_DP);
+  H.icon_top = floorf ((H.cell_h - dp (TAB_CONTENT_DP)) / 2);
+  if (!N.labels)
+    H.icon_top = floorf ((H.cell_h - H.icon) / 2);
+  H.cell_y0 = roundf (dp (g->first_icon_top)) - H.icon_top;
+  H.dock_icon_top = N.H - roundf (dp (g->dock_above_bottom)) - H.icon;
+  H.dock_top = H.dock_icon_top - floorf ((dp (HOTSEAT_CELL_DP) - H.icon) / 2);
+  H.dots_y = N.H - dp (g->dots_above_bottom);
+}
+
+/* a phone's: the columns across the whole width, the rows between the status bar and the dock */
+static void
+phone_layout (void)
+{
+  H.tab = NULL;
   H.cell_x0 = dp (WS_SIDE_DP);
   H.cell_w = (N.W - 2 * H.cell_x0) / N.model->cols;
+  H.dock_x0 = H.cell_x0;
   H.dock_w = (N.W - 2 * H.cell_x0) / N.model->dock_size;
   H.cell_y0 = roundf (dp (STATUS_BAR_DP + WS_TOP_DP));
   float bottom = N.H - dp (HOTSEAT_DP) - dp (PAGE_IND_DP);
@@ -105,14 +134,23 @@ home_layout (void)
   H.dock_top = N.H - dp (HOTSEAT_DP);
   H.dock_icon_top = H.dock_top + floorf ((dp (HOTSEAT_CELL_DP) - H.icon) / 2);
   H.dots_y = bottom + dp (PAGE_IND_DP) / 2;
+}
+
+void
+home_layout (void)
+{
+  if (N.tablet)
+    tablet_layout ();
+  else
+    phone_layout ();
   spongy_edge_init (&H.left, N.W);
   spongy_edge_init (&H.right, N.W);
   H.pitch = N.W + dp (PAGE_SPACING_DP);
   H.page = CLAMP (H.page, 0, n_pages () - 1);
   H.scroll = H.page * H.pitch;
   if (!H.time_font) {
-    H.time_font = text_font_axes ("Google Sans Flex", 600, dp (CLOCK_TIME_DP), "opsz=144,wdth=86");
-    H.date_font = text_font_axes ("Google Sans Flex", 700, dp (CLOCK_DATE_DP), "opsz=18,ROND=100");
+    H.time_font = text_font_axes ("VibeOS Roboto", 600, dp (CLOCK_TIME_DP), "opsz=144,wdth=86");
+    H.date_font = text_font_axes ("VibeOS Roboto", 700, dp (CLOCK_DATE_DP), "opsz=18,ROND=100");
   }
   home_clock_tick ();
 }
@@ -146,7 +184,7 @@ slot_rect (int page, int slot, float *x, float *y)
 static void
 dock_rect (int slot, float *x, float *y)
 {
-  *x = roundf (H.cell_x0 + slot * H.dock_w + (H.dock_w - H.icon) / 2);
+  *x = roundf (H.dock_x0 + slot * H.dock_w + (H.dock_w - H.icon) / 2);
   *y = roundf (H.dock_icon_top);
 }
 
@@ -297,7 +335,7 @@ spring (float *S, float *TY)
     return;
   float card[4];
   card_rect (0, card);
-  float to_top = roundf (dp (STATUS_BAR_DP + SPRING_TOP_DP)), to_bottom = N.H - dp (HOTSEAT_DP + SPRING_BOTTOM_DP);
+  float to_top = roundf (dp (N.status_dp + SPRING_TOP_DP)), to_bottom = H.dock_top - dp (SPRING_BOTTOM_DP);
   float s = MIN (1, (to_bottom - to_top) / card[3]);
   if (s * N.W > N.W - 2 * dp (SPRING_SIDE_DP))
     s = (N.W - 2 * dp (SPRING_SIDE_DP)) / N.W;
@@ -413,6 +451,12 @@ home_snapping (void)
   return H.snapping;
 }
 
+bool
+home_dragging (void)
+{
+  return H.dragging;
+}
+
 void
 home_set_extra_page (bool on)
 {
@@ -452,7 +496,7 @@ home_cell_box (int page, int index, float r[4])
   int col, row;
   home_cell_grid (page, index, &col, &row);
   if (page < 0) {
-    r[0] = H.cell_x0 + col * H.dock_w;
+    r[0] = H.dock_x0 + col * H.dock_w;
     r[1] = H.dock_top;
     r[2] = H.dock_w;
     r[3] = dp (HOTSEAT_CELL_DP);
@@ -487,13 +531,14 @@ home_cell_nearest (int page, float x, float y)
 bool
 home_in_dock (float sx, float sy)
 {
-  return sy >= H.dock_top && sy < N.H - dp (NAV_GESTURE_DP) && sx >= H.cell_x0 && sx < N.W - H.cell_x0;
+  return sy >= H.dock_top && sy < N.H - dp (NAV_GESTURE_DP) && sx >= H.dock_x0 &&
+         sx < H.dock_x0 + N.model->dock_size * H.dock_w;
 }
 
 int
 home_dock_nearest (float sx)
 {
-  return CLAMP ((int) floorf ((sx - H.cell_x0) / H.dock_w), 0, N.model->dock_size - 1);
+  return CLAMP ((int) floorf ((sx - H.dock_x0) / H.dock_w), 0, N.model->dock_size - 1);
 }
 
 /* the drag is over: the extra page goes, and so does any page it emptied, the one on show staying on show */

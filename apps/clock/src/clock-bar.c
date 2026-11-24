@@ -52,7 +52,7 @@ clock_bar_new (const char *title)
       gtk_label_set_xalign (GTK_LABEL (label), 0);
       gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
       gtk_widget_add_css_class (label, "clock-bar-title");
-      vibeos_label_set_font_padding (label, 20);
+      vibeos_label_set_font_padding_sp (label, 20);
       gtk_box_append (GTK_BOX (middle), label);
     }
   gtk_box_append (GTK_BOX (bar), middle);

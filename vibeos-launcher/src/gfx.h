@@ -27,6 +27,7 @@ typedef enum {
   GFX_MODE_MASK = 2,    /* colour × texture.r (glyphs) */
   GFX_MODE_CORNERS = 3, /* colour, the corners' radii in u0 v0 u1 v1 (top left, top right, bottom right, left) */
   GFX_MODE_RING = 4,    /* colour, an outline u0 wide inside the rounded rect */
+  GFX_MODE_PIECE = 5,   /* texture × colour, x y w h the edges x0 y0 x1 y1, kept exact: neither grown nor antialiased */
 } GfxMode;
 
 typedef enum {
@@ -34,6 +35,7 @@ typedef enum {
   GFX_PIPE_BLUR_DOWN,
   GFX_PIPE_BLUR_UP,
   GFX_PIPE_STRETCH,
+  GFX_PIPE_OPAQUE,
   GFX_N_PIPES
 } GfxPipe;
 
@@ -92,6 +94,14 @@ void     gfx_rotate          (float radians, float px, float py);        /* cloc
 void     gfx_opacity         (float a);
 void     gfx_clip            (float x0, float y0, float x1, float y1);  /* in the current space */
 
+/* Counting the px shaded, every pass's: blended (and blurred and stretched) and written opaque since the last call */
+void     gfx_count_fill      (bool on);
+void     gfx_fill            (double *blended, double *opaque);
+/* A screen rect (px of this pass) that something opaque drawn later will cover whole: until it is taken away
+ * (gfx_occlude (0, 0, 0, 0); a pass starts without one), rects, images and opaque pictures wholly inside it are not
+ * drawn, and plain rects and opaque pictures across its edge are drawn only around it. Only for what is drawn under a
+ * plain scale and move. */
+void     gfx_occlude         (float x0, float y0, float x1, float y1);
 /* A quad under the current state; zeroed but for its transform/clip/opacity, fill in the rest */
 GfxInst *gfx_push            (GfxTex *tex, GfxPipe pipe);
 void     gfx_effect_params   (const float p[8]);
@@ -103,6 +113,13 @@ void     gfx_ring            (float x, float y, float w, float h, float radius, 
 void     gfx_image           (GfxTex *t, float x, float y, float w, float h, float radius, float alpha);
 void     gfx_image_uv        (GfxTex *t, float x, float y, float w, float h, float u0, float v0, float u1, float v1,
                               float radius, float alpha);
+/* A piece of a picture: the rect between the edges x0 y0 x1 y1, its texture's u0 v0 u1 v1 in it. Its edges are drawn
+ * where they fall, not antialiased: pieces that share an edge (the same numbers, worked out the same way) meet without
+ * a seam and without a pixel drawn twice, as the picture drawn whole would be. */
+void     gfx_image_piece     (GfxTex *t, float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1);
+/* An opaque picture written over what is under it, not blended: the cheapest full-screen draw. Its texture's alpha
+ * is taken as 1. Under an opacity below 1 or a clip it is drawn as gfx_image is. */
+void     gfx_image_opaque    (GfxTex *t, float x, float y, float w, float h);
 
 /* Blur src into a texture of 1/2^levels its size (dual Kawase); returns a target owned by gfx (valid until the next
  * call with the same slot) */

@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name=Navi
+Comment=Turn-by-turn directions for driving
+Exec=vibeos-navi
+Icon=vibeos.Navi
+Terminal=false
+Categories=Utility;Maps;
+Keywords=map;navigation;route;directions;drive;
+StartupNotify=false
+X-Purism-FormFactor=Workstation;Mobile;
+X-GNOME-UsesNotifications=true
+DBusActivatable=true
+X-Vibeos-Keyboard=overlay

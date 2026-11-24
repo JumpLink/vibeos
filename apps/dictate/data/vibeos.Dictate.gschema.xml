@@ -1,11 +1,137 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Dictate's settings: the language chosen in the app bar. -->
+<!-- Dictate's settings (Agent's too): the language chosen in the app bar, Agent's model and voice, and what Agent can use. -->
 <schemalist>
   <schema id="vibeos.Dictate" path="/vibeos/Dictate/">
     <key name="language" type="s">
       <default>''</default>
       <summary>The language listened in</summary>
       <description>Its code: de, en, es, fr, it or ru. Empty, or a language whose speech model is not installed: the first of the user's languages with one, else English.</description>
+    </key>
+    <key name="talk-brain" type="s">
+      <default>'https://vibeos.top:8443/v1'</default>
+      <summary>Agent's language model</summary>
+      <description>A server's address (https://…/v1: the VibeOS Agent gateway, an OpenAI-style API; the phone enrolls with its device id), or a GGUF file's path to answer on the phone itself. Empty, or a file that is not there: the first model in vibeos-dictate/brain under the user's data directory or the system's.</description>
+    </key>
+    <key name="talk-voice" type="s">
+      <default>''</default>
+      <summary>Agent's voice</summary>
+      <description>A Piper or Kokoro ONNX model's path. Empty, or a file that is not there: the first voice in vibeos-dictate/voices/LANGUAGE under the user's data directory or the system's.</description>
+    </key>
+    <key name="talk-voice-name" type="s">
+      <default>''</default>
+      <summary>Kokoro's speaker</summary>
+      <description>The voice file's name in the model's voices directory (af_heart). Empty: the first there is. Piper voices have one speaker each and ignore it.</description>
+    </key>
+    <key name="talk-speed" type="d">
+      <range min="0.5" max="3.0"/>
+      <default>1.0</default>
+      <summary>How fast Agent speaks</summary>
+      <description>"Speech rate" in Agent's settings: 1.0 is the voice's own pace, up to 3.0 for people used to fast speech.</description>
+    </key>
+    <key name="talk-verbosity" type="s">
+      <choices>
+        <choice value="short"/>
+        <choice value="normal"/>
+        <choice value="detailed"/>
+      </choices>
+      <default>"normal"</default>
+      <summary>How much Agent says</summary>
+      <description>"Answers" in Agent's settings: short (a sentence), normal (one to three), or detailed. The model is told it.</description>
+    </key>
+    <key name="cue-sounds" type="b">
+      <default>true</default>
+      <summary>Sounds for Agent's states</summary>
+      <description>A short sound when Agent starts listening, starts working on an answer, is done, or failed; only when the phone's sound is on.</description>
+    </key>
+    <key name="cue-haptics" type="b">
+      <default>true</default>
+      <summary>Vibrations for Agent's states</summary>
+      <description>A short vibration when Agent starts listening, starts working on an answer, is done, or failed; not in Silent mode.</description>
+    </key>
+    <key name="talk-speak" type="b">
+      <default>true</default>
+      <summary>Agent speaks its replies</summary>
+      <description>Off, the replies are only written: the speaker button in Agent's bar.</description>
+    </key>
+    <key name="talk-listen-again" type="b">
+      <default>true</default>
+      <summary>Listen again after an answer</summary>
+      <description>Once a reply has been spoken to its end, Agent listens for the next thing the user says, as in a conversation.</description>
+    </key>
+    <key name="talk-private" type="b">
+      <default>false</default>
+      <summary>Private mode</summary>
+      <description>Agent's replies play only in headphones or earbuds when they are connected; on the speaker they are short, with no names, numbers or message texts read aloud.</description>
+    </key>
+    <key name="announce-calls" type="b">
+      <default>false</default>
+      <summary>Announce calls</summary>
+      <description>Agent says who is calling, even when it is not open, and listens for "answer" or "decline". Open, it always does. It starts with the session while this is on.</description>
+    </key>
+    <key name="quiet-hours" type="s">
+      <default>''</default>
+      <summary>Quiet hours</summary>
+      <description>A time range, "HH:MM-HH:MM" (it may go over midnight), in which Agent says nothing and plays no cue on its own; '' for none.</description>
+    </key>
+    <key name="quiet-calls" type="b">
+      <default>false</default>
+      <summary>Calls in quiet hours</summary>
+      <description>Calls are still announced in the quiet hours.</description>
+    </key>
+    <key name="access-calls" type="b">
+      <default>true</default>
+      <summary>Agent can use calls</summary>
+      <description>"Phone calls" in Agent's settings. Off, Agent is told it has no access to it, and says so when asked.</description>
+    </key>
+    <key name="access-messages" type="b">
+      <default>true</default>
+      <summary>Agent can use messages</summary>
+      <description>"Messages" in Agent's settings. Off, Agent is told it has no access to it, and says so when asked.</description>
+    </key>
+    <key name="access-contacts" type="b">
+      <default>true</default>
+      <summary>Agent can use contacts</summary>
+      <description>"Contacts" in Agent's settings. Off, Agent is told it has no access to it, and says so when asked.</description>
+    </key>
+    <key name="access-calendar" type="b">
+      <default>true</default>
+      <summary>Agent can use the calendar</summary>
+      <description>"Calendar" in Agent's settings. Off, Agent is told it has no access to it, and says so when asked.</description>
+    </key>
+    <key name="access-alarms" type="b">
+      <default>true</default>
+      <summary>Agent can use alarms and timers</summary>
+      <description>"Alarms and timers" in Agent's settings. Off, Agent is told it has no access to it, and says so when asked.</description>
+    </key>
+    <key name="access-settings" type="b">
+      <default>true</default>
+      <summary>Agent can use the phone's settings</summary>
+      <description>"Settings" in Agent's settings. Off, Agent is told it has no access to it, and says so when asked.</description>
+    </key>
+    <key name="access-apps" type="b">
+      <default>true</default>
+      <summary>Agent can use apps</summary>
+      <description>"Apps" in Agent's settings. Off, Agent is told it has no access to it, and says so when asked.</description>
+    </key>
+    <key name="access-files" type="b">
+      <default>true</default>
+      <summary>Agent can use files</summary>
+      <description>"Files" in Agent's settings. Off, Agent is told it has no access to it, and says so when asked.</description>
+    </key>
+    <key name="access-camera" type="b">
+      <default>true</default>
+      <summary>Agent can use the camera</summary>
+      <description>"Camera" in Agent's settings. Off, Agent is told it has no access to it, and says so when asked.</description>
+    </key>
+    <key name="access-location" type="b">
+      <default>true</default>
+      <summary>Agent can use the phone's location, maps and navigation</summary>
+      <description>"Location and maps" in Agent's settings. Off, Agent is told it has no access to it, and says so when asked.</description>
+    </key>
+    <key name="access-web" type="b">
+      <default>true</default>
+      <summary>Agent can use the web</summary>
+      <description>"Web" in Agent's settings. Off, Agent is told it has no access to it, and says so when asked.</description>
     </key>
   </schema>
 </schemalist>

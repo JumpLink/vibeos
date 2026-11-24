@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Video Player
+Comment=Play videos
+Exec=vibeos-video %U
+Icon=vibeos.Video
+Terminal=false
+Categories=AudioVideo;Video;Player;
+NoDisplay=true
+StartupNotify=false
+DBusActivatable=false
+MimeType=application/ogg;application/x-ogg;application/mxf;application/vnd.rn-realmedia;application/vnd.rn-realmedia-vbr;video/mpeg;video/x-mpeg2;video/x-mpeg3;video/mp4v-es;video/x-m4v;video/mp4;video/divx;video/vnd.divx;video/msvideo;video/x-msvideo;video/ogg;video/quicktime;video/vnd.rn-realvideo;video/x-ms-afs;video/x-ms-asf;video/x-ms-wmv;video/x-ms-wmx;video/x-ms-wvxvideo;video/x-avi;video/avi;video/x-flic;video/fli;video/x-flc;video/flv;video/x-flv;video/x-theora;video/x-theora+ogg;video/x-matroska;video/mkv;application/x-matroska;video/webm;video/x-ogm;video/x-ogm+ogg;video/mp2t;video/vnd.mpegurl;video/3gp;video/3gpp;video/3gpp2;video/dv;video/vnd.avi;
+X-Purism-FormFactor=Workstation;Mobile;

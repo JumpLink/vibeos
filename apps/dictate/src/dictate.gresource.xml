@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- the app's stylesheet and its icons (data/icons: the microphone is Material Symbols Rounded's, filled, as the
-     gnome-free icon pack's glyphs; Copy and Clear are the Dialer's, the radio marks the Calendar's), where GtkApplication
-     looks for icons: the resource base path + /icons -->
+     gnome-free icon pack's glyphs; Copy, Clear, More and Agent's speaker are the Dialer's, the speaker off is Material
+     Symbols' volume_off beside it, the radio marks the Calendar's), where GtkApplication looks for icons: the resource
+     base path + /icons -->
 <gresources>
   <gresource prefix="/vibeos/Dictate">
     <file>dictate.css</file>
@@ -11,5 +12,8 @@
     <file alias="icons/scalable/actions/dictate-delete-symbolic.svg">icons/dictate-delete-symbolic.svg</file>
     <file alias="icons/scalable/actions/dictate-radio-on-symbolic.svg">icons/dictate-radio-on-symbolic.svg</file>
     <file alias="icons/scalable/actions/dictate-radio-off-symbolic.svg">icons/dictate-radio-off-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dictate-more-symbolic.svg">icons/dictate-more-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dictate-speak-symbolic.svg">icons/dictate-speak-symbolic.svg</file>
+    <file alias="icons/scalable/actions/dictate-speak-off-symbolic.svg">icons/dictate-speak-off-symbolic.svg</file>
   </gresource>
 </gresources>

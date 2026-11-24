@@ -76,7 +76,6 @@ function withFixed(c, dark) {
         ...c,
         divider: [[255, 255, 255], 0.15],
         navIcon: dark ? [[255, 255, 255], 1] : [[0, 0, 0], 0.6],
-        handle: dark ? [237, 237, 237] : [98, 96, 98],
         dark,
     };
 }

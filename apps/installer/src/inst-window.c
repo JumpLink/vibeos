@@ -1,10 +1,12 @@
 /* App Installer's window (inst-window.h) */
 #include "inst-window.h"
-#include "inst-demo.h"
 #include "inst-view.h"
 
 #include <glib/gi18n.h>
+#include <spongy-gtk.h>
 #include <vibeos.h>
+
+#define CONTENT_MAX 640   /* on a wider window (a tablet) a page's content keeps to this, centred, under its bar */
 
 typedef struct {
   GtkWidget *window, *stack, *start, *job_page, *top_bar, *view, *marker;
@@ -37,6 +39,14 @@ win_free (gpointer data)
     inst_job_cancel (win->job);
   drop_job (win);
   g_free (win);
+}
+
+/* a page's content across a phone's width; on a wider window CONTENT_MAX wide in the middle (a clamp, not margins
+ * worked out from the width: those held the window too wide to turn upright) */
+static GtkWidget *
+cap_width (GtkWidget *content)
+{
+  return vibeos_clamp_new (content, CONTENT_MAX);
 }
 
 gboolean
@@ -140,15 +150,31 @@ on_job_finished (InstJob *job, Win *win)
   notify_end (win);
 }
 
+/* ⋮: About, VibeOS's About sheet, as every VibeOS app has it */
+static const VibeosAboutInfo inst_about = { .name = "App Installer", .icon_name = "vibeos.Installer" };
+
+static void
+on_more (VibeosPressable *button, Win *win)
+{
+  VibeosMenu *menu = vibeos_menu_new ();
+
+  vibeos_menu_append_about (menu, &inst_about);
+  vibeos_menu_present (menu, GTK_WIDGET (button));
+}
+
 static GtkWidget *
 page_new (const char *title, gboolean back, Win *win, GtkWidget **bar_out)
 {
   GtkWidget *page = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *bar = vibeos_top_bar_new (title);
+  GtkWidget *more;
 
   gtk_widget_add_css_class (page, "inst-page");
   vibeos_top_bar_set_back (VIBEOS_TOP_BAR (bar), back);
   g_signal_connect (bar, "back", G_CALLBACK (on_top_bar_back), win);
+  more = vibeos_top_bar_add_action (VIBEOS_TOP_BAR (bar), "view-more-symbolic");
+  gtk_accessible_update_property (GTK_ACCESSIBLE (more), GTK_ACCESSIBLE_PROPERTY_LABEL, _("More options"), -1);
+  g_signal_connect (more, "clicked", G_CALLBACK (on_more), win);
   gtk_box_append (GTK_BOX (page), bar);
   if (bar_out)
     *bar_out = bar;
@@ -177,7 +203,7 @@ inst_window_show_job (GtkWidget *window, InstJob *job, gboolean over_start)
   win->view = inst_view_new (job, INST_VIEW_PAGE);
   gtk_widget_set_vexpand (win->view, TRUE);
   g_signal_connect (win->view, "done", G_CALLBACK (on_view_done), win);
-  gtk_box_append (GTK_BOX (page), win->view);
+  gtk_box_append (GTK_BOX (page), cap_width (win->view));
   win->job_page = page;
   g_signal_connect (job, "changed", G_CALLBACK (on_job_changed), win);
   g_signal_connect (job, "finished", G_CALLBACK (on_job_finished), win);
@@ -206,6 +232,7 @@ on_chosen (GObject *source, GAsyncResult *result, gpointer data)
   if (!file || !win_of (window))
     return;
   job = inst_job_new_file (file);
+  inst_job_set_sandbox (job, TRUE);
   inst_window_show_job (window, job, TRUE);
 }
 
@@ -240,7 +267,7 @@ static GtkWidget *
 start_page (Win *win)
 {
   GtkWidget *page = page_new (_("App Installer"), FALSE, win, NULL);
-  GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0), *icon, *title, *text, *more, *button;
+  GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0), *icon, *title, *text, *more, *button, *scroll;
 
   gtk_widget_add_css_class (box, "inst-start");
   gtk_widget_set_vexpand (box, TRUE);
@@ -278,7 +305,11 @@ start_page (Win *win)
   gtk_widget_add_css_class (more, "inst-start-more");
   gtk_box_append (GTK_BOX (box), more);
 
-  gtk_box_append (GTK_BOX (page), box);
+  /* centred in the page, and scrolled where a large font size makes it taller than the page */
+  scroll = spongy_scroll_view_new ();
+  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), cap_width (box));
+  gtk_widget_set_vexpand (scroll, TRUE);
+  gtk_box_append (GTK_BOX (page), scroll);
   return page;
 }
 
@@ -305,13 +336,6 @@ inst_window_new (GtkApplication *app)
   g_object_set_data_full (G_OBJECT (window), "inst-win", win, win_free);
   gtk_window_set_title (GTK_WINDOW (window), _("App Installer"));
   gtk_widget_add_css_class (window, "inst-window");
-  /* the demo is for pictures: the phone's app area (the Galaxy S10e's, under its status bar), whatever the test
-   * display's size. (libvibeos's layout opens a window at its monitor's size: it is asked first, then overruled.) */
-  if (inst_demo_active ())
-    {
-      vibeos_layout_get_for_window (GTK_WINDOW (window));
-      gtk_window_set_default_size (GTK_WINDOW (window), 360, 721);
-    }
 
   win->stack = vibeos_page_stack_new ();
   gtk_widget_set_vexpand (win->stack, TRUE);

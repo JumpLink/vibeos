@@ -16,8 +16,9 @@
                   "Version/18.0 Mobile/15E148 Safari/604.1"
 #define DESKTOP_UA "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) " \
                    "Version/18.0 Safari/605.1.15"
-/* a favourite saved without a colour of its own */
-#define DEFAULT_FAVORITE_COLOR "#4d7f86"
+/* On a tablet, a tablet's Safari: no "Mobile", so sites send their tablet (or desktop) layout, at its own zoom */
+#define TABLET_UA "Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) " \
+                  "Version/18.0 Safari/604.1"
 
 static void sync_title (NbTab *t);
 
@@ -145,7 +146,8 @@ nb_tab_add_favorite (NbTab *t, const char *title, const char *url)
   if (!url || !*url)
     return;
   g_autofree char *color = vibrant_color (nb_tab_favicon (t));
-  nb_store_add_favorite (nb->store, url, title && *title ? title : url, color ? color : DEFAULT_FAVORITE_COLOR);
+  /* without a colour of its own (no favicon) it is saved with none: its card is then in the theme's colours */
+  nb_store_add_favorite (nb->store, url, title && *title ? title : url, color);
   nb_tab_snackbar (t, "Added to favorites", NULL, NULL, NULL);
 }
 
@@ -157,7 +159,9 @@ nb_apply_view_settings (NbTab *t)
   if (!t->view)
     return;
   WebKitSettings *s = webkit_web_view_get_settings (t->view);
-  webkit_settings_set_user_agent (s, t->desktop ? DESKTOP_UA : MOBILE_UA);
+  webkit_settings_set_user_agent (s, t->desktop ? DESKTOP_UA : nb_is_tablet () ? TABLET_UA : MOBILE_UA);
+  /* a desktop site drawn at half size fits a phone's width; a tablet is wide enough for it at its own size */
+  webkit_web_view_set_zoom_level (t->view, t->desktop && !nb_is_tablet () ? 0.5 : 1);
   webkit_settings_set_enable_javascript (s, nb_store_get_bool (nb->store, "javascript", TRUE));
   /* windows opened without a user's tap: only with Dynamic popups on */
   webkit_settings_set_javascript_can_open_windows_automatically (s, nb_store_get_bool (nb->store, "dynamicPopups",
@@ -174,10 +178,8 @@ nb_tab_set_desktop (NbTab *t, gboolean desktop)
     return;
   t->desktop = !!desktop;
   nb_apply_view_settings (t);
-  if (t->view) {
-    webkit_web_view_set_zoom_level (t->view, desktop ? 0.5 : 1);
+  if (t->view)
     webkit_web_view_reload (t->view);
-  }
   nb_save_session ();
 }
 
@@ -743,6 +745,8 @@ make_view (NbTab *t)
   WebKitSettings *settings = webkit_settings_new ();
   webkit_settings_set_enable_smooth_scrolling (settings, TRUE);
   webkit_settings_set_enable_developer_extras (settings, FALSE);
+  /* sound waits for a tap; a muted video still plays by itself (autoplay, or play() from the page), as in Chrome,
+   * and one the page then unmutes pauses */
   webkit_settings_set_media_playback_requires_user_gesture (settings, TRUE);
   /* WebKit holds a page's rendering near 60 fps (Safari's choice for 120 Hz screens): on a 120 Hz panel a scroll
    * then ran at 40-60 fps. Without it, 117 fps measured. */
@@ -765,11 +769,9 @@ make_view (NbTab *t)
   g_clear_object (&t->related);
   t->view = v;
   nb_apply_view_settings (t);
-  if (t->desktop)
-    webkit_web_view_set_zoom_level (v, 0.5);
   /* the web view's base background, white: a page that paints none (plain text, WebKit's error pages, a page without
    * CSS) reads black on white; one that declares color-scheme: dark gets WebKit's dark canvas */
-  GdkRGBA bg = { 1, 1, 1, 1 };
+  GdkRGBA bg = vibeos_color (VIBEOS_WHITE);
   webkit_web_view_set_background_color (v, &bg);
   g_signal_connect (v, "notify::title", G_CALLBACK (on_title), t);
   g_signal_connect (v, "notify::uri", G_CALLBACK (on_uri), t);

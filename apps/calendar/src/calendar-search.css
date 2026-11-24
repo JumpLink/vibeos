@@ -4,26 +4,26 @@
 
 .cal-search-collapse,
 .cal-search-bar > .cal-toolbar-back {
-  min-width: 56px;
-  min-height: 56px;
+  min-width: 56dp;
+  min-height: 56dp;
 }
 
 .cal-search-view {
-  min-height: 48px;
+  min-height: 48dp;
 }
 
 .cal-search-frame {
-  margin: 0 8px;
+  margin: 0 8dp;
 }
 
 /* the underline: unfocused, thinner than a pixel and just off the bottom, so blended into one pixel row; focused,
  * a full pixel in the primary colour */
 .cal-search-plate {
-  min-height: 48px;
+  min-height: 48dp;
   background-image: linear-gradient(to top, transparent 33.3%, mix(@vibeos_surface, @vibeos_on_surface_variant, 0.5) 33.3%,
                                     mix(@vibeos_surface, @vibeos_on_surface_variant, 0.5) 66.7%,
                                     @vibeos_on_surface_variant 66.7%);
-  background-size: 100% 1px;
+  background-size: 100% 1dp;
   background-position: left bottom;
   background-repeat: no-repeat;
 }
@@ -33,9 +33,9 @@
 }
 
 .cal-search-text {
-  min-height: 36px;
-  padding: 0 8px;
-  font-size: 18px;
+  min-height: 36dp;
+  padding: 0 8dp;
+  font-size: 18sp;
   color: @vibeos_on_surface;
   caret-color: @vibeos_primary;
   background: none;
@@ -46,16 +46,16 @@
 }
 
 .cal-search-close {                      /* the clear (X) button */
-  min-width: 40px;
-  min-height: 48px;
+  min-width: 40dp;
+  min-height: 48dp;
   color: @vibeos_on_surface_variant;
 }
 
 /* --- the suggestions: a history icon, the text, and an arrow that puts the suggestion in the field to change it */
 
 .cal-search-suggestion {
-  min-height: 58px;
-  padding: 0 4px 0 8px;
+  min-height: 58dp;
+  padding: 0 4dp 0 8dp;
 }
 
 .cal-search-suggestion > image {
@@ -63,13 +63,13 @@
 }
 
 .cal-search-suggestion-text {
-  padding: 0 8px;
-  font-size: 18px;
+  padding: 0 8dp;
+  font-size: 18sp;
   color: @vibeos_on_surface;
 }
 
 .cal-search-refine {
-  min-width: 48px;
-  min-height: 48px;
+  min-width: 48dp;
+  min-height: 48dp;
   color: @vibeos_on_surface_variant;
 }

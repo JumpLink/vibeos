@@ -7,6 +7,7 @@
 #include <glib/gi18n.h>
 #include <spongy-gtk.h>
 #include <stdlib.h>
+#include <vibeos.h>
 
 /* --- rows: an icon (its space kept without one), the title, the summary under it, an optional widget at the
  * end */
@@ -66,7 +67,7 @@ cal_pref_row (const char *icon_name, guint32 color, const char *title, const cha
   gtk_label_set_xalign (GTK_LABEL (pref.title), 0);
   gtk_label_set_wrap (GTK_LABEL (pref.title), TRUE);
   gtk_widget_add_css_class (pref.title, "cal-pref-title");
-  vibeos_label_set_font_padding (pref.title, 16);
+  vibeos_label_set_font_padding_sp (pref.title, 16);
   gtk_box_append (GTK_BOX (texts), pref.title);
   pref.summary = gtk_label_new (summary);
   gtk_label_set_xalign (GTK_LABEL (pref.summary), 0);
@@ -121,7 +122,7 @@ cal_pref_category (const char *icon_name, const char *title)
   gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
   gtk_widget_set_hexpand (label, TRUE);
   gtk_widget_add_css_class (label, "cal-pref-category-title");
-  vibeos_label_set_font_padding (label, 14);
+  vibeos_label_set_font_padding_sp (label, 14);
   gtk_box_append (GTK_BOX (box), label);
   gtk_widget_add_css_class (box, "cal-pref-category");
   gtk_accessible_update_property (GTK_ACCESSIBLE (box), GTK_ACCESSIBLE_PROPERTY_LABEL, title, -1);
@@ -151,7 +152,8 @@ cal_pref_page (GtkWidget *window, const char *title, GtkWidget **list)
   gtk_box_append (GTK_BOX (page), cal_page_toolbar (CAL_PAGE (page), title, NULL));
   *list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (*list, "cal-pref-list");
-  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), *list);
+  /* on a tablet the rows are a column in the middle */
+  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), vibeos_clamp_new (*list, VIBEOS_CLAMP_SETTINGS));
   gtk_widget_set_vexpand (scroll, TRUE);
   gtk_box_append (GTK_BOX (page), scroll);
   return page;

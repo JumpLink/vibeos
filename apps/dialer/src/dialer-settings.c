@@ -45,17 +45,17 @@
 #define DEFAULT_TITLE   "Orion" /* the default ringtone (ringer.c) */
 #define DEFAULT_FILE    RINGTONES_DIR "/" DEFAULT_TITLE ".ogg"
 
-/* the switch's and the radio's colours */
-#define TRACK_ON        0x81b5bc
-#define TRACK_OFF       0x889395
-#define THUMB_COLOR     0xfaffff
-#define RADIO_ON        0xedf9fb
-#define RADIO_OFF       0xeff0f2
+/* the switch's and the radio's colours: the theme's roles (the thumb white in both modes), read as they draw */
+#define TRACK_ON        VIBEOS_PRIMARY
+#define TRACK_OFF       VIBEOS_OUTLINE
+#define THUMB_COLOR     VIBEOS_WHITE
+#define RADIO_ON        VIBEOS_PRIMARY
+#define RADIO_OFF       VIBEOS_ON_SURFACE_VARIANT
 
 static GdkRGBA
-rgb (guint32 color)
+rgb (VibeosColor color)
 {
-  return (GdkRGBA) { ((color >> 16) & 0xff) / 255.0, ((color >> 8) & 0xff) / 255.0, (color & 0xff) / 255.0, 1 };
+  return vibeos_color (color);
 }
 
 /* ---- the switch: Dialer.Switch, drawn; its row takes the tap ------------------------------------------------- */
@@ -300,7 +300,8 @@ page_new (void)
   GtkWidget *scroller = spongy_scroll_view_new ();
 
   gtk_widget_set_valign (list, GTK_ALIGN_START);
-  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroller), list);
+  /* on a tablet the rows are a column in the middle */
+  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroller), vibeos_clamp_new (list, VIBEOS_CLAMP_SETTINGS));
   g_object_set_data (G_OBJECT (scroller), "list", list);
   return scroller;
 }
@@ -320,7 +321,7 @@ text_label (const char *text, const char *css_class, double size)
   gtk_label_set_wrap (GTK_LABEL (label), TRUE);
   gtk_label_set_wrap_mode (GTK_LABEL (label), PANGO_WRAP_WORD_CHAR);
   gtk_widget_add_css_class (label, css_class);
-  vibeos_label_set_font_padding (label, size);
+  vibeos_label_set_font_padding_sp (label, size);
   return label;
 }
 

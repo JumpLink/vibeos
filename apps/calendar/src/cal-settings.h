@@ -18,7 +18,6 @@
 G_BEGIN_DECLS
 
 GtkWidget *cal_settings_page_new (GtkWidget *window);
-GtkWidget *cal_about_page_new    (GtkWidget *window);
 /* Display options: General settings' row, and the Month view's "View settings" */
 GtkWidget *cal_display_options_page_new (GtkWidget *window);
 /* the reminders' Notifications page (General settings' "Notifications") */

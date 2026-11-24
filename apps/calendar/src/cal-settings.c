@@ -16,10 +16,6 @@
 #include <vibeos.h>
 #include <spongy-gtk.h>
 
-#ifndef CAL_VERSION
-#define CAL_VERSION "0"
-#endif
-
 /* --- General settings */
 
 typedef struct {
@@ -586,25 +582,5 @@ cal_settings_page_new (GtkWidget *window)
   fill_calendars (settings);
   settings->handler = g_signal_connect (settings->store, "calendars-changed", G_CALLBACK (on_calendars_changed),
                                         settings);
-  return page;
-}
-
-/* --- About: the app's icon, then "Build version" */
-
-GtkWidget *
-cal_about_page_new (GtkWidget *window)
-{
-  GtkWidget *list, *page = cal_pref_page (window, _("About Calendar"), &list);
-  GtkWidget *icon = gtk_image_new_from_icon_name ("vibeos.Calendar");
-  CalPref pref;
-
-  gtk_image_set_pixel_size (GTK_IMAGE (icon), 120);
-  gtk_widget_set_halign (icon, GTK_ALIGN_CENTER);
-  gtk_widget_add_css_class (icon, "cal-about-icon");
-  gtk_box_append (GTK_BOX (list), icon);
-  /* the build version only: no authors, licence or source code rows */
-  pref = cal_pref_row ("cal-pencil-symbolic", 0, _("Build version"), CAL_VERSION, NULL);
-  gtk_widget_add_css_class (pref.row, "cal-about-row");
-  gtk_box_append (GTK_BOX (list), pref.row);
   return page;
 }

@@ -43,6 +43,9 @@ Wl                *wl_open             (const char *app_id, const WlCallbacks *c
 struct wl_display *wl_get_display      (Wl *wl);
 struct wl_surface *wl_get_surface      (Wl *wl);
 void               wl_get_size         (Wl *wl, int *width, int *height, double *scale);
+/* how the screen the window is on is turned: a wl_output transform (1: 90° counter-clockwise, the device turned
+ * clockwise), 0 until the compositor says (wl_surface 6) */
+int                wl_get_transform    (Wl *wl);
 
 /* Ask for a frame callback. Call before presenting (the present commits it). Nothing to draw: don't, and no more
  * frames come until wl_schedule. */

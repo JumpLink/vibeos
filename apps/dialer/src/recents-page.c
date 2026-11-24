@@ -41,11 +41,12 @@
 #define CHUNK_ROWS      30
 
 /* the expanded row's card and the call-type arrows */
-#define CARD_EXPANDED   0x242727
-#define TYPE_INCOMING   0x007fc6
-#define TYPE_OUTGOING   0x009740
-#define TYPE_MISSED     0x922b20
-#define TYPE_PLAIN      0xf6f7f8
+/* the theme's roles; the outgoing arrow in libvibeos's fixed call green */
+#define CARD_EXPANDED   VIBEOS_SURFACE_CONTAINER_HIGH
+#define TYPE_INCOMING   VIBEOS_PRIMARY
+#define TYPE_OUTGOING   VIBEOS_CALL
+#define TYPE_MISSED     VIBEOS_ERROR
+#define TYPE_PLAIN      VIBEOS_ON_SURFACE
 
 #define HEADER_STYLE    TEXT_OVERLINE
 #define NAME_STYLE(bold)  ((TextStyle) { TEXT_ROBOTO, 16, (bold) ? 900 : 700 })  /* bold: an unseen missed call */
@@ -194,7 +195,7 @@ make_groups (GPtrArray *entries, Contacts *contacts, const char *country)
 }
 
 static void
-type_icon (CallType type, const char **icon, guint32 *color)
+type_icon (CallType type, const char **icon, VibeosColor *color)
 {
   switch (type)
     {
@@ -345,7 +346,7 @@ recents_content_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   for (guint i = 0; i < group->n_types; i++)
     {
       const char *icon;
-      guint32 color;
+      VibeosColor color;
       GdkRGBA rgba;
 
       type_icon (group->types[i], &icon, &color);
@@ -574,10 +575,9 @@ action_row (RecentsRow *self, const char *icon_name, const char *text, GCallback
   gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
   gtk_widget_set_margin_start (label, ACTION_TEXT_PAD);
   gtk_widget_add_css_class (label, "dialer-primary-text");
-  vibeos_label_set_font_padding (label, 16);
+  vibeos_label_set_font_padding_sp (label, 16);
   gtk_box_append (GTK_BOX (box), label);
   row = vibeos_pressable_new (box);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &(GdkRGBA) { 1, 1, 1, 0.06 });
   g_signal_connect_swapped (row, "clicked", callback, self);
   return row;
 }
@@ -728,7 +728,6 @@ recents_row_set_group (RecentsRow *self, Group *group)
       /* the call button, borderless */
       content->call = vibeos_icon_button_new ("dialer-call-symbolic");
       gtk_widget_add_css_class (content->call, "dialer-icon");
-      vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (content->call), &(GdkRGBA) { 1, 1, 1, 0.06 });
       gtk_widget_set_parent (content->call, GTK_WIDGET (content));
       g_signal_connect_swapped (content->call, "clicked", G_CALLBACK (on_call_clicked), self);
     }
@@ -783,7 +782,6 @@ recents_row_init (RecentsRow *self)
   self->primary = vibeos_pressable_new (GTK_WIDGET (self->content));
   /* the press ripple, inside the card's corners */
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->primary), VIBEOS_RIPPLE_BOUNDED, CARD_RADIUS);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (self->primary), &(GdkRGBA) { 1, 1, 1, 0.06 });
   gtk_widget_set_parent (self->primary, GTK_WIDGET (self));
   g_signal_connect_swapped (self->primary, "clicked", G_CALLBACK (on_primary_clicked), self);
   g_signal_connect_swapped (self->primary, "long-pressed", G_CALLBACK (on_primary_long_pressed), self);

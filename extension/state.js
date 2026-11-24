@@ -16,6 +16,7 @@ import {BroadbandModem} from 'resource:///org/gnome/shell/misc/modemManager.js';
 import {getRfkillManager} from 'resource:///org/gnome/shell/ui/status/rfkill.js';
 
 import {Brightness} from './brightness.js';
+import {PrivacySwitches} from './privacy.js';
 import {setUserOrientationLock, userOrientationLock} from './rotation.js';
 
 Gio._promisify(NM.Client, 'new_async');
@@ -197,6 +198,8 @@ export const SystemState = GObject.registerClass({
         this.airplane = false;
         this.torch = null;              // null: no torch LED
         this._torch = findTorch();
+        // Settings' Microphone and Camera switches, for every app (privacy.js): true while one is off
+        this._privacy = new PrivacySwitches(() => this._changed());
 
         this._cancellable = new Gio.Cancellable();
         this._changedId = 0;
@@ -263,6 +266,7 @@ export const SystemState = GObject.registerClass({
         this._wifiDevice?.connectObject(
             'notify::active-access-point', () => this._syncAccessPoint(),
             'state-changed', () => this._syncNetwork(),
+            'notify::state', () => this._syncNetwork(),
             this);
         this._syncAccessPoint();
 
@@ -342,6 +346,12 @@ export const SystemState = GObject.registerClass({
     _syncNetwork() {
         const client = this._client;
         const wifiState = this._wifiDevice?.state ?? NM.DeviceState.UNAVAILABLE;
+        // the access point the device has now, whichever change came first: one taken from an earlier notification
+        // can be gone, or not there yet
+        if ((this._wifiDevice?.active_access_point ?? null) !== this._accessPoint) {
+            this._syncAccessPoint();
+            return;
+        }
         const ap = this._accessPoint;
         let name = '';
         if (ap?.ssid)
@@ -349,7 +359,8 @@ export const SystemState = GObject.registerClass({
         this.wifi = {
             available: !!this._wifiDevice,
             enabled: client.wireless_enabled,
-            connected: wifiState === NM.DeviceState.ACTIVATED && !!ap,
+            // connected is the device's state alone: an access point not known yet only leaves the fan empty
+            connected: wifiState === NM.DeviceState.ACTIVATED,
             level: ap ? wifiLevel(ap.strength) : 0,
             name,
         };
@@ -666,7 +677,16 @@ export const SystemState = GObject.registerClass({
             scale.value = v;
     }
 
+    get micOff() {
+        return this._privacy.micOff;
+    }
+
+    get cameraOff() {
+        return this._privacy.cameraOff;
+    }
+
     destroy() {
+        this._privacy.destroy();
         this._cancellable.cancel();
         if (this._changedId)
             global.compositor.get_laters().remove(this._changedId);

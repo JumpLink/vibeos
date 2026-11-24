@@ -1,5 +1,5 @@
 /* TimerSetup: see timer-setup.h. The time over the keypad, in a box as wide as the pad; its digits shrink to fit
- * the box. */
+ * the box. On a tablet held sideways the time is on the left half and the keypad on the right. */
 #include "timer-setup.h"
 
 #include <glib/gi18n.h>
@@ -9,7 +9,9 @@
 
 #define FAB_ROW         120     /* the view's bottom padding, for the buttons' row */
 #define TIME_FRACTION   0.25    /* the time between guidelines at the top and a quarter of the height */
-#define TIME_SIZE       72      /* at most: it shrinks to fit */
+#define TIME_SIZE       72      /* sp, at most: it shrinks to fit */
+#define SIDE_TIME_SIZE  56      /* ... on a tablet held sideways */
+#define SIDE_BOTTOM     8       /* sideways: the view's bottom padding (the buttons are in their own column) */
 #define SUFFIX_SCALE    0.5f    /* h, m and s at half the size */
 #define PAD_MAX_WIDTH   315     /* the pad: 3:4, at most this wide and PAD_MAX_HEIGHT tall */
 #define PAD_MAX_HEIGHT  420
@@ -31,6 +33,8 @@ struct _TimerSetup
   PangoLayout *time;            /* "00h 00m 00s", drawn by the view itself as its size changes with the width */
   graphene_rect_t time_box;
   double time_size;
+  VibeosLayout *layout;
+  gboolean sideways;            /* a tablet held sideways: the time beside the keypad */
 };
 
 G_DEFINE_FINAL_TYPE (TimerSetup, timer_setup, GTK_TYPE_WIDGET)
@@ -107,7 +111,7 @@ static void
 fit_time (TimerSetup *self)
 {
   int scale = vibeos_device_scale (GTK_WIDGET (self));
-  int low = 1, high = TIME_SIZE * scale, size = high;
+  int low = 1, high = (int) floor (vibeos_sp (self->sideways ? SIDE_TIME_SIZE : TIME_SIZE) * scale), size = high;
   double room = round (self->time_box.size.width * scale) + FIT_SLACK;
 
   while (self->time_box.size.width > 0 && high >= low)
@@ -279,16 +283,38 @@ timer_setup_size_allocate (GtkWidget *widget, int width, int height, int baselin
   double pad_x, pad_y, columns[4], rows[5];
   double old_width = self->time_box.size.width;
 
-  /* the pad as large as fits under the time at 3:4, centred; the time above it, as wide */
-  if (pad_width > MIN (width, PAD_MAX_WIDTH))
+  if (self->sideways)
     {
-      pad_width = MIN (width, PAD_MAX_WIDTH);
-      pad_height = pad_width * 4 / 3;
+      /* the pad as large as fits the right half at 3:4, centred in it; the time centred in the left half */
+      double half = floor (scale * width / 2.0) / scale;
+
+      inner = height - SIDE_BOTTOM;
+      pad_height = MIN (inner - 2 * PAD_MARGIN, PAD_MAX_HEIGHT);
+      pad_width = pad_height * 3 / 4;
+      if (pad_width > MIN (half - 2 * PAD_MARGIN, PAD_MAX_WIDTH))
+        {
+          pad_width = MIN (half - 2 * PAD_MARGIN, PAD_MAX_WIDTH);
+          pad_height = pad_width * 4 / 3;
+        }
+      pad_width = MAX (pad_width, 0);
+      pad_height = MAX (pad_height, 0);
+      pad_x = half + floor (scale * (width - half - pad_width) / 2 + 0.5) / scale;
+      pad_y = floor (scale * (inner - pad_height) / 2 + 0.5) / scale;
+      self->time_box = GRAPHENE_RECT_INIT (PAD_MARGIN, 0, MAX (half - 2 * PAD_MARGIN, 0), inner);
     }
-  pad_x = (width - pad_width) / 2;
-  pad_y = time_bottom + (room - pad_height) / 2;
-  self->time_box = GRAPHENE_RECT_INIT (pad_x, 0, pad_width, time_bottom);
-  if (pad_width != old_width)
+  else
+    {
+      /* the pad as large as fits under the time at 3:4, centred; the time above it, as wide */
+      if (pad_width > MIN (width, PAD_MAX_WIDTH))
+        {
+          pad_width = MIN (width, PAD_MAX_WIDTH);
+          pad_height = pad_width * 4 / 3;
+        }
+      pad_x = (width - pad_width) / 2;
+      pad_y = time_bottom + (room - pad_height) / 2;
+      self->time_box = GRAPHENE_RECT_INIT (pad_x, 0, pad_width, time_bottom);
+    }
+  if (self->time_box.size.width != old_width)
     fit_time (self);
 
   /* the keys in cells between the pad's guidelines, square, KEY_MARGIN in from the cell's edges */
@@ -353,6 +379,47 @@ timer_setup_css_changed (GtkWidget *widget, GtkCssStyleChange *change)
   fit_time (self);
 }
 
+/* a tablet held sideways: the time beside the keypad, at its own largest size */
+static void
+on_layout_changed (VibeosLayout *layout, TimerSetup *self)
+{
+  gboolean sideways = vibeos_layout_is_tablet (layout) && vibeos_layout_is_landscape (layout);
+
+  if (sideways == self->sideways)
+    return;
+  self->sideways = sideways;
+  self->time_box.size.width = 0;
+  gtk_widget_queue_allocate (GTK_WIDGET (self));
+}
+
+static void
+timer_setup_root (GtkWidget *widget)
+{
+  TimerSetup *self = TIMER_SETUP (widget);
+
+  GTK_WIDGET_CLASS (timer_setup_parent_class)->root (widget);
+  self->layout = vibeos_layout_get (widget);
+  if (self->layout)
+    {
+      g_object_ref (self->layout);
+      g_signal_connect (self->layout, "changed", G_CALLBACK (on_layout_changed), self);
+      on_layout_changed (self->layout, self);
+    }
+}
+
+static void
+timer_setup_unroot (GtkWidget *widget)
+{
+  TimerSetup *self = TIMER_SETUP (widget);
+
+  if (self->layout)
+    {
+      g_signal_handlers_disconnect_by_data (self->layout, self);
+      g_clear_object (&self->layout);
+    }
+  GTK_WIDGET_CLASS (timer_setup_parent_class)->unroot (widget);
+}
+
 static void
 timer_setup_dispose (GObject *object)
 {
@@ -374,6 +441,8 @@ timer_setup_class_init (TimerSetupClass *klass)
   widget_class->size_allocate = timer_setup_size_allocate;
   widget_class->snapshot = timer_setup_snapshot;
   widget_class->css_changed = timer_setup_css_changed;
+  widget_class->root = timer_setup_root;
+  widget_class->unroot = timer_setup_unroot;
   gtk_widget_class_set_css_name (widget_class, "timer-setup");
   signals[INPUT_CHANGED] = g_signal_new ("input-changed", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0,
                                          NULL, NULL, NULL, G_TYPE_NONE, 0);
@@ -382,8 +451,6 @@ timer_setup_class_init (TimerSetupClass *klass)
 static void
 timer_setup_init (TimerSetup *self)
 {
-  GdkRGBA key_fill = vibeos_color (VIBEOS_SURFACE_CONTAINER_HIGHEST), delete_fill = vibeos_color (VIBEOS_TERTIARY_CONTAINER);
-
   self->pointer = -1;
   self->time = gtk_widget_create_pango_layout (GTK_WIDGET (self), NULL);
   self->time_size = TIME_SIZE;
@@ -407,11 +474,13 @@ timer_setup_init (TimerSetup *self)
 
           child = gtk_label_new (digit);
           gtk_widget_add_css_class (child, "timer-digit");
-          vibeos_label_set_font_padding (child, DIGIT_SIZE);
+          vibeos_label_set_font_padding_sp (child, DIGIT_SIZE);
           gtk_widget_set_valign (child, GTK_ALIGN_CENTER);
         }
       self->keys[i] = vibeos_pressable_new (child);
-      vibeos_pressable_set_fill (VIBEOS_PRESSABLE (self->keys[i]), i == KEY_DELETE ? &delete_fill : &key_fill, FALSE);
+      vibeos_pressable_set_fill_role (VIBEOS_PRESSABLE (self->keys[i]),
+                                      i == KEY_DELETE ? VIBEOS_TERTIARY_CONTAINER : VIBEOS_SURFACE_CONTAINER_HIGHEST,
+                                      FALSE);
       g_object_set_data (G_OBJECT (self->keys[i]), "key", GINT_TO_POINTER (i));
       g_signal_connect (self->keys[i], "clicked", G_CALLBACK (on_key), self);
       gtk_widget_set_parent (self->keys[i], GTK_WIDGET (self));

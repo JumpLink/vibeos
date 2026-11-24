@@ -2,16 +2,18 @@
  * "Set pattern" / "Set PIN" (Lock screen): draw an unlock pattern, draw it again to confirm, and it becomes
  * the user's password: the dots joined in order as digits ("1478"), which VibeOS's lock screen (keyguard.js,
  * bouncer.js) hands vibeos-auth, and vibeos-auth to PAM, when the same pattern is drawn there. The current pattern (or
- * PIN/password) comes first, checked through PAM like the lock screen does; the password is then set through
- * AccountsService (a polkit rule of ours lets the active local user do that without polkit's own text prompt, which
- * wanted the pattern typed as digits). The login keyring then gets the same password (vibeos-keyring-rekey), so that
+ * PIN/password) comes first, on this page, checked through PAM like the lock screen does (as Android asks for the
+ * current PIN before a new one). The password is then set by vibeos-set-own-password, run through pkexec: polkit lets
+ * the active local session run that helper, and only it, without a prompt, and the helper checks the current secret
+ * through PAM again before PAM sets the new one (see vibeos-set-own-password.c). No polkit text prompt, which
+ * AccountsService's SetPassword brought up (auth_admin) and which wanted the pattern typed as digits.
+ * The login keyring then gets the same password (vibeos-keyring-rekey), so that
  * unlocking the lock screen unlocks it too (pam_gnome_keyring) and apps find their secrets. A PIN (or a password)
  * goes the same way, typed instead of drawn: on the lock screen's PIN pad, not the keyboard (owner, 2026-11-12: the
  * current PIN and a new one are typed on "the same numeric keyboard like on lock screen", the phone's first password
  * being a PIN). A current password that is not digits still has a text field, behind "Use password".
  *
- * Taken from a Mobile Settings plugin written for the Poco X3 (ms-plugin-surya). libcrypt is opened at run time: the
- * phone has the library but not its header.
+ * Taken from a Mobile Settings plugin written for the Poco X3 (ms-plugin-surya).
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
@@ -19,8 +21,8 @@
 
 
 #include "ns-pattern.h"
+#include "ns-ui.h"
 
-#include <adwaita.h>
 #include <math.h>
 #include <pango/pangocairo.h>
 #include <security/pam_appl.h>
@@ -39,25 +41,6 @@
 #define PAD_KEYS 12
 static const char *const pad_keys[PAD_KEYS] = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "delete", "0", "enter" };
 
-/* libcrypt's crypt_gensalt and crypt, found at run time */
-static char *
-hash_password (const char *password)
-{
-  static GModule *lib;
-  static char *(*gensalt) (const char *, unsigned long, const char *, int);
-  static char *(*crypt_) (const char *, const char *);
-  if (!lib) {
-    lib = g_module_open ("libcrypt.so.1", G_MODULE_BIND_LAZY);
-    if (!lib || !g_module_symbol (lib, "crypt_gensalt", (gpointer *) &gensalt)
-        || !g_module_symbol (lib, "crypt", (gpointer *) &crypt_))
-      return NULL;
-  }
-  /* yescrypt, as passwd writes it */
-  const char *salt = gensalt ("$y$", 0, NULL, 0);
-  const char *h = salt ? crypt_ (password, salt) : NULL;
-  return h && h[0] != '*' ? g_strdup (h) : NULL;
-}
-
 typedef enum {
   STAGE_CURRENT,
   STAGE_DRAW,
@@ -65,7 +48,7 @@ typedef enum {
 } Stage;
 
 typedef struct {
-  AdwDialog      *dialog;
+  GtkWidget      *dialog;       /* the page it is on */
   GtkWidget      *area;
   GtkWidget      *entry;        /* a current password that is not digits ("Use password") */
   GtkWidget      *pad;          /* the PIN pad: a current PIN, a new one */
@@ -174,11 +157,10 @@ draw_func (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer da
 
   geometry (w, &x0, &y0, &cell);
   gtk_widget_get_color (w, &fg);
+  GdkRGBA line = vibeos_color_alpha (pd->error ? VIBEOS_ERROR : VIBEOS_PRIMARY, 0.9f);
+  GdkRGBA on_dot = vibeos_color (pd->error ? VIBEOS_ERROR : VIBEOS_PRIMARY);
   if (pd->len > 0) {
-    if (pd->error)
-      cairo_set_source_rgba (cr, 0.88, 0.11, 0.14, 0.9);
-    else
-      cairo_set_source_rgba (cr, 0.21, 0.52, 0.89, 0.9);
+    gdk_cairo_set_source_rgba (cr, &line);
     cairo_set_line_width (cr, cell * 0.05);
     cairo_set_line_cap (cr, CAIRO_LINE_CAP_ROUND);
     cairo_set_line_join (cr, CAIRO_LINE_JOIN_ROUND);
@@ -197,10 +179,8 @@ draw_func (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer da
     gboolean on = has_dot (pd, dot);
 
     dot_center (w, dot, &cx, &cy);
-    if (on && pd->error)
-      cairo_set_source_rgba (cr, 0.88, 0.11, 0.14, 1.0);
-    else if (on)
-      cairo_set_source_rgba (cr, 0.21, 0.52, 0.89, 1.0);
+    if (on)
+      gdk_cairo_set_source_rgba (cr, &on_dot);
     else
       cairo_set_source_rgba (cr, fg.red, fg.green, fg.blue, 0.85);
     cairo_arc (cr, cx, cy, cell * (on ? 0.08 : 0.055), 0, 2 * G_PI);
@@ -338,11 +318,12 @@ finish (PatternDialog *pd, gboolean ok)
   pd->done = TRUE;
   if (pd->callback)
     pd->callback (ok, pd->user_data);
-  adw_dialog_force_close (pd->dialog);
+  ns_page_set_busy (pd->dialog, FALSE);
+  ns_pop (pd->dialog);
 }
 
 
-/* --- setting the password through AccountsService ------------------------------------------------------------- */
+/* --- setting the password: vibeos-set-own-password, through pkexec ------------------------------------------ */
 
 /* The account password is set either way; a keyring left on the old password only means apps ask for it. */
 static void
@@ -381,52 +362,69 @@ rekey_keyring (PatternDialog *pd)
 }
 
 
+/* the helper's input: the current secret, a NUL, the new one, a NUL; wiped when the subprocess is done with it */
+#define SECRETS_SIZE (2 * sizeof ((PatternDialog *) 0)->current)
+
+static void
+secrets_free (gpointer data)
+{
+  explicit_bzero (data, SECRETS_SIZE);
+  g_free (data);
+}
+
 static void
 on_password_set (GObject *source, GAsyncResult *res, gpointer data)
 {
   PatternDialog *pd = data;
+  GSubprocess *proc = G_SUBPROCESS (source);
   g_autoptr (GError) error = NULL;
-  g_autoptr (GVariant) ret = g_dbus_connection_call_finish (G_DBUS_CONNECTION (source), res, &error);
+  g_autoptr (GBytes) err_out = NULL;
+  int status = -1;
 
-  if (!ret) {
-    g_warning ("Setting the password failed: %s", error->message);
-    gtk_label_set_text (GTK_LABEL (pd->message), "The password was not changed (not authorized?). Try again.");
-    gtk_widget_set_sensitive (pd->next, TRUE);
-    gtk_widget_set_sensitive (pd->cancel, TRUE);
+  if (g_subprocess_communicate_finish (proc, res, NULL, &err_out, &error))
+    status = g_subprocess_get_if_exited (proc) ? g_subprocess_get_exit_status (proc) : -1;
+  else
+    g_warning ("vibeos-set-own-password: %s", error->message);
+  if (status == 0) {
+    rekey_keyring (pd);
     return;
   }
-  rekey_keyring (pd);
+  if (err_out && g_bytes_get_size (err_out))
+    g_warning ("vibeos-set-own-password: %.*s", (int) g_bytes_get_size (err_out),
+               (const char *) g_bytes_get_data (err_out, NULL));
+  /* 1: the current secret changed since this page checked it; 126, 127: pkexec, polkit said no (not the active
+   * session on this device) */
+  gtk_label_set_text (GTK_LABEL (pd->message),
+                      status == 1                     ? "The current one was not accepted: nothing changed."
+                      : status == 126 || status == 127 ? "Only the person using the phone can change it: nothing changed."
+                                                       : "The password was not changed. Try again.");
+  gtk_widget_set_sensitive (pd->next, TRUE);
+  gtk_widget_set_sensitive (pd->cancel, TRUE);
 }
 
 
 static void
-on_user_found (GObject *source, GAsyncResult *res, gpointer data)
+set_password (PatternDialog *pd)
 {
-  PatternDialog *pd = data;
   g_autoptr (GError) error = NULL;
-  g_autoptr (GVariant) ret = g_dbus_connection_call_finish (G_DBUS_CONNECTION (source), res, &error);
-  g_autofree char *hashed = NULL;
-  const char *path;
+  g_autoptr (GSubprocess) proc = NULL;
+  g_autoptr (GBytes) input = NULL;
+  char *secrets = g_malloc0 (SECRETS_SIZE);
+  size_t current = strlen (pd->current), first = strlen (pd->first);
 
-  if (!ret) {
-    g_warning ("AccountsService has no user: %s", error->message);
-    gtk_label_set_text (GTK_LABEL (pd->message), "AccountsService is not available: the password was not changed.");
+  memcpy (secrets, pd->current, current + 1);
+  memcpy (secrets + current + 1, pd->first, first + 1);
+  input = g_bytes_new_with_free_func (secrets, current + 1 + first + 1, secrets_free, secrets);
+  proc = g_subprocess_new (G_SUBPROCESS_FLAGS_STDIN_PIPE | G_SUBPROCESS_FLAGS_STDOUT_SILENCE |
+                           G_SUBPROCESS_FLAGS_STDERR_PIPE, &error,
+                           "pkexec", NS_SET_PASSWORD, NULL);
+  if (!proc) {
+    g_warning ("pkexec: %s", error->message);
+    gtk_label_set_text (GTK_LABEL (pd->message), "pkexec is not installed: the password was not changed.");
     gtk_widget_set_sensitive (pd->cancel, TRUE);
     return;
   }
-  g_variant_get (ret, "(&o)", &path);
-  hashed = hash_password (pd->first);
-  if (!hashed) {
-    gtk_label_set_text (GTK_LABEL (pd->message), "Could not hash the password.");
-    gtk_widget_set_sensitive (pd->cancel, TRUE);
-    return;
-  }
-  /* AccountsService's polkit policy may ask for the current password (GNOME Shell's polkit prompt) */
-  g_dbus_connection_call (G_DBUS_CONNECTION (source), "org.freedesktop.Accounts", path,
-                          "org.freedesktop.Accounts.User", "SetPassword",
-                          g_variant_new ("(ss)", hashed, ""), NULL,
-                          G_DBUS_CALL_FLAGS_ALLOW_INTERACTIVE_AUTHORIZATION, 120000, NULL,
-                          on_password_set, pd);
+  g_subprocess_communicate_async (proc, input, NULL, on_password_set, pd);
 }
 
 
@@ -469,7 +467,7 @@ on_checked (GObject *source, GAsyncResult *res, gpointer data)
 {
   PatternDialog *pd = data;
 
-  adw_dialog_set_can_close (pd->dialog, TRUE);
+  ns_page_set_busy (pd->dialog, FALSE);
   gtk_widget_set_sensitive (pd->cancel, TRUE);
   gtk_widget_set_sensitive (pd->pad, TRUE);
   if (g_task_propagate_boolean (G_TASK (res), NULL)) {
@@ -496,8 +494,8 @@ check_current (PatternDialog *pd)
   gtk_widget_set_sensitive (pd->cancel, FALSE);
   gtk_widget_set_sensitive (pd->pad, FALSE);
   gtk_label_set_text (GTK_LABEL (pd->message), "Checking…");
-  /* the dialog stays until the answer is in: on_checked writes to it */
-  adw_dialog_set_can_close (pd->dialog, FALSE);
+  /* the page stays until the answer is in: on_checked writes to it */
+  ns_page_set_busy (pd->dialog, TRUE);
   g_task_set_task_data (task, g_strdup (pd->current), g_free);
   g_task_run_in_thread (task, check_thread);
 }
@@ -521,8 +519,6 @@ update_next (PatternDialog *pd)
 static void
 on_next (PatternDialog *pd)
 {
-  g_autoptr (GDBusConnection) bus = NULL;
-
   if (pd->stage == STAGE_CURRENT) {
     if (gtk_widget_get_sensitive (pd->next))
       check_current (pd);
@@ -543,17 +539,9 @@ on_next (PatternDialog *pd)
   }
   gtk_widget_set_sensitive (pd->next, FALSE);
   gtk_widget_set_sensitive (pd->cancel, FALSE);
-  gtk_label_set_text (GTK_LABEL (pd->message), "Setting the pattern as your password…");
-  bus = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, NULL);
-  if (!bus) {
-    gtk_label_set_text (GTK_LABEL (pd->message), "No system bus: the password was not changed.");
-    gtk_widget_set_sensitive (pd->cancel, TRUE);
-    return;
-  }
-  g_dbus_connection_call (bus, "org.freedesktop.Accounts", "/org/freedesktop/Accounts",
-                          "org.freedesktop.Accounts", "FindUserById",
-                          g_variant_new ("(x)", (gint64) getuid ()), G_VARIANT_TYPE ("(o)"),
-                          G_DBUS_CALL_FLAGS_NONE, -1, NULL, on_user_found, pd);
+  gtk_label_set_text (GTK_LABEL (pd->message), pd->pin ? "Setting the PIN as your password…"
+                                                         : "Setting the pattern as your password…");
+  set_password (pd);
 }
 
 
@@ -616,8 +604,11 @@ pad_draw (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer dat
   GtkWidget *w = GTK_WIDGET (area);
   GdkRGBA fg;
   gtk_widget_get_color (w, &fg);
+  GdkRGBA pressed_fill = vibeos_color (VIBEOS_PRIMARY_CONTAINER), pressed_ink = vibeos_color (VIBEOS_ON_PRIMARY_CONTAINER);
   PangoLayout *layout = gtk_widget_create_pango_layout (w, NULL);
-  PangoFontDescription *font = pango_font_description_from_string ("Google Sans Flex Semi-Bold");
+  /* the lock screen's digits: a size that fits the key whatever Font size is, a weight that follows Bold text */
+  PangoFontDescription *font = pango_font_description_from_string ("Google Sans Flex");
+  pango_font_description_set_weight (font, vibeos_font_weight (300));
   pango_font_description_set_absolute_size (font, PAD_DIGIT_PX * PANGO_SCALE);
   pango_layout_set_font_description (layout, font);
 
@@ -627,7 +618,7 @@ pad_draw (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer dat
     pad_center (w, k, &cx, &cy);
     squircle (cr, cx, cy, PAD_KEY / 2, pressed ? 5 : 4);
     if (pressed)
-      cairo_set_source_rgb (cr, 16 / 255.0, 78 / 255.0, 86 / 255.0);          /* primary container */
+      gdk_cairo_set_source_rgba (cr, &pressed_fill);
     else
       cairo_set_source_rgba (cr, fg.red, fg.green, fg.blue, action ? 0.10 : 0.14);
     cairo_fill (cr);
@@ -662,7 +653,7 @@ pad_draw (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer dat
     } else {
       int tw, th;
       if (pressed)
-        cairo_set_source_rgb (cr, 184 / 255.0, 235 / 255.0, 243 / 255.0);     /* accent1_100 */
+        gdk_cairo_set_source_rgba (cr, &pressed_ink);
       pango_layout_set_text (layout, pad_keys[k], -1);
       pango_layout_get_pixel_size (layout, &tw, &th);
       cairo_move_to (cr, cx - tw / 2.0, cy - th / 2.0);
@@ -789,7 +780,7 @@ void
 ns_pattern_dialog_present (GtkWidget *parent, gboolean pin, NsPatternDone callback, gpointer user_data)
 {
   PatternDialog *pd = g_new0 (PatternDialog, 1);
-  GtkWidget *box, *buttons, *toolbar, *header;
+  GtkWidget *box, *buttons;
   GtkGesture *drag;
 
   pd->callback = callback;
@@ -809,14 +800,8 @@ ns_pattern_dialog_present (GtkWidget *parent, gboolean pin, NsPatternDone callba
       g_settings_schema_unref (schema);
     }
   }
-  pd->dialog = ADW_DIALOG (adw_dialog_new ());
-  /* floating, not a bottom sheet: a sheet is dragged down to close, the same stroke that draws a pattern */
-  adw_dialog_set_presentation_mode (pd->dialog, ADW_DIALOG_FLOATING);
-  adw_dialog_set_title (pd->dialog, pin ? "Set PIN" : "Set pattern");
-  adw_dialog_set_content_width (pd->dialog, 360);
-  adw_dialog_set_content_height (pd->dialog, 620);
-
   box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 18);
+  gtk_widget_add_css_class (box, "ns-pattern");
   gtk_widget_set_margin_start (box, 18);
   gtk_widget_set_margin_end (box, 18);
   gtk_widget_set_margin_top (box, 12);
@@ -839,6 +824,7 @@ ns_pattern_dialog_present (GtkWidget *parent, gboolean pin, NsPatternDone callba
   gtk_box_append (GTK_BOX (box), pd->area);
 
   pd->entry = gtk_password_entry_new ();
+  gtk_widget_add_css_class (pd->entry, "vibeos-entry");
   gtk_password_entry_set_show_peek_icon (GTK_PASSWORD_ENTRY (pd->entry), TRUE);
   gtk_widget_set_valign (pd->entry, GTK_ALIGN_START);
   gtk_widget_set_vexpand (pd->entry, TRUE);
@@ -856,6 +842,8 @@ ns_pattern_dialog_present (GtkWidget *parent, gboolean pin, NsPatternDone callba
   gtk_widget_set_vexpand (pd->pad, TRUE);
   gtk_widget_set_valign (pd->pad, GTK_ALIGN_CENTER);
   gtk_drawing_area_set_draw_func (GTK_DRAWING_AREA (pd->pad), pad_draw, pd, NULL);
+  g_signal_connect_object (vibeos_text_get_default (), "changed", G_CALLBACK (gtk_widget_queue_draw), pd->pad,
+                           G_CONNECT_SWAPPED);
   {
     GtkGesture *click = gtk_gesture_click_new ();
     g_signal_connect (click, "pressed", G_CALLBACK (pad_pressed), pd);
@@ -866,30 +854,24 @@ ns_pattern_dialog_present (GtkWidget *parent, gboolean pin, NsPatternDone callba
   gtk_box_append (GTK_BOX (box), pd->pad);
 
   pd->use_text = gtk_button_new_with_label ("Use password");
-  gtk_widget_add_css_class (pd->use_text, "flat");
+  gtk_widget_add_css_class (pd->use_text, "vibeos-text-button");
   gtk_widget_set_halign (pd->use_text, GTK_ALIGN_CENTER);
   g_signal_connect_swapped (pd->use_text, "clicked", G_CALLBACK (on_use_text), pd);
   gtk_box_append (GTK_BOX (box), pd->use_text);
 
   buttons = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 12);
   gtk_box_set_homogeneous (GTK_BOX (buttons), TRUE);
-  pd->cancel = gtk_button_new_with_label ("Cancel");
-  gtk_widget_add_css_class (pd->cancel, "pill");
-  pd->next = gtk_button_new_with_label ("Continue");
-  gtk_widget_add_css_class (pd->next, "pill");
-  gtk_widget_add_css_class (pd->next, "suggested-action");
+  pd->cancel = ns_button_new ("Cancel", FALSE);
+  pd->next = ns_button_new ("Continue", TRUE);
   g_signal_connect_swapped (pd->cancel, "clicked", G_CALLBACK (on_cancel), pd);
   g_signal_connect_swapped (pd->next, "clicked", G_CALLBACK (on_next), pd);
   gtk_box_append (GTK_BOX (buttons), pd->cancel);
   gtk_box_append (GTK_BOX (buttons), pd->next);
   gtk_box_append (GTK_BOX (box), buttons);
 
-  toolbar = adw_toolbar_view_new ();
-  header = adw_header_bar_new ();
-  adw_toolbar_view_add_top_bar (ADW_TOOLBAR_VIEW (toolbar), header);
-  adw_toolbar_view_set_content (ADW_TOOLBAR_VIEW (toolbar), box);
-  adw_dialog_set_child (pd->dialog, toolbar);
-  g_signal_connect_swapped (pd->dialog, "closed", G_CALLBACK (on_closed), pd);
+  /* a page of its own that does not scroll: a scrolling page would take the stroke that draws a pattern */
+  pd->dialog = ns_page_new_fixed (pin ? "Set PIN" : "Set pattern", box);
+  g_signal_connect_swapped (pd->dialog, "destroy", G_CALLBACK (on_closed), pd);
   {
     GtkEventController *keys = gtk_event_controller_key_new ();
     g_signal_connect (keys, "key-pressed", G_CALLBACK (pad_key_pressed), pd);
@@ -897,5 +879,5 @@ ns_pattern_dialog_present (GtkWidget *parent, gboolean pin, NsPatternDone callba
   }
 
   set_stage (pd, STAGE_CURRENT);
-  adw_dialog_present (pd->dialog, parent);
+  ns_push (pd->dialog);
 }

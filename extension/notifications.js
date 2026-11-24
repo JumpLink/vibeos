@@ -3,6 +3,7 @@
 // The shade places the stack once per frame (its top, its expansion ratio, the content alpha); rows expand and
 // collapse, swipe away and close the gaps they leave on animations of their own.
 import Clutter from 'gi://Clutter';
+import Cogl from 'gi://Cogl';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
@@ -18,10 +19,10 @@ import {animate, animateSpring, Animator, bezier, clamp, FAST_OUT_LINEAR_IN, FAS
     lerp, splineFling, Spring, VelocityTracker} from './motion.js';
 import {magnetic} from './magnetic.js';
 import {RoundRect} from './roundrect.js';
-import {Color, cogl, font, rgba, SurfaceEffect} from './palette.js';
+import {Color, cogl, font, rgba, SurfaceEffect, TabletShade} from './palette.js';
 import {openSettings} from './settings.js';
 import {symbolicIcon} from './statusbar.js';
-import {px, SCALE, SCREEN_H, SCREEN_W} from './units.js';
+import {HEIGHT, px, SCALE, SCREEN_H, SCREEN_SCALE, SCREEN_W, WIDTH} from './units.js';
 
 // --- the stack, screen px
 export const SIDE = 48;                 // the margin on each side
@@ -244,11 +245,107 @@ function plainBody(notification) {
 // --- a notification row
 
 // @stack takes the row's taps and swipes; a heads-up has a card of its own colour (@card [rgb, alpha]), and the
-// circle's glyph is punched out in it (@glyph)
+// circle's glyph is punched out in it (@glyph). @width: a tablet's wider card (screen px); the text column, the expand
+// pill and the dismissal keep their distances from its end
+// An app's icon is cut to a circle, as Android 16+ masks every app's launcher icon in a notification
+// (notificationsRedesignAppIcons). A VibeOS icon is a colour tile with a white glyph, so the circle out of it is the
+// coloured disc with the glyph that Lineage shows; drawn as it is, it was a square among round icons.
+const CIRCLE_DECLARATIONS = `
+uniform vec4 bounds;    // the offscreen texture in actor coordinates
+uniform vec3 circle;    // centre x, y and radius, in actor coordinates
+uniform float aa;       // actor units per screen pixel
+`;
+
+const CIRCLE_CODE = `
+vec2 p = bounds.xy + cogl_tex_coord_in[0].xy * bounds.zw;
+cogl_color_out *= clamp(0.5 - (length(p - circle.xy) - circle.z) / aa, 0.0, 1.0);
+`;
+
+const CircleMaskEffect = GObject.registerClass(
+class CircleMaskEffect extends Clutter.ShaderEffect {
+    vfunc_get_static_snippet() {
+        return Cogl.Snippet.new(Cogl.SnippetHook.FRAGMENT, CIRCLE_DECLARATIONS, CIRCLE_CODE);
+    }
+
+    // @size: the square actor's side; @diameter: the circle's, centred in it
+    setGeometry(size, diameter) {
+        // the offscreen texture is the paint box enlarged the way _clutter_actor_box_enlarge_for_effects does
+        // (whole pixels, 3 px of slack), as launch.js's CropEffect measures it
+        const s = Math.round(size), far = Math.ceil(size + 0.75);
+        this.set_uniform_float('bounds', 4, [far - s - 3, far - s - 3, s + 3, s + 3]);
+        this.set_uniform_float('circle', 3, [size / 2, size / 2, diameter / 2]);
+        this.set_uniform_float('aa', 1, [1 / SCREEN_SCALE]);
+        this.queue_repaint();
+    }
+});
+
+let iconTheme = null;
+const tileCover = new Map();
+
+// How much of its box an app icon's tile covers, the circle being cut from inside the tile: all of it for VibeOS's
+// own icons (a rounded square the size of the viewBox, drawn first), less for one inset as the GNOME icon grid
+// (data-vibeos-inset or the older data-neo-inset, scale 0.86: Software's, and some store apps'). null: not a tile, an
+// icon of any shape.
+function tileCoverOf(gicon) {
+    const key = gicon?.to_string?.() ?? '';
+    if (tileCover.has(key))
+        return tileCover.get(key);
+    let cover = null;
+    try {
+        let path = null;
+        if (gicon instanceof Gio.FileIcon) {
+            path = gicon.get_file().get_path();
+        } else if (gicon) {
+            iconTheme ??= new St.IconTheme();
+            path = iconTheme.lookup_by_gicon(gicon, 128, St.IconLookupFlags.FORCE_SVG)?.get_filename() ?? null;
+        }
+        if (path?.endsWith('.svg')) {
+            const head = new TextDecoder().decode(GLib.file_get_contents(path)[1].subarray(0, 4096));
+            const inset = head.match(/data-(?:vibeos|neo)-inset[^>]*?scale\(([0-9.]+)\)/);
+            const box = head.match(/viewBox="0 0 ([0-9.]+) ([0-9.]+)"/);
+            const first = head.match(/<(rect|circle|ellipse|path|g|use|image)\b([^>]*)>/);
+            const attr = (name) => Number(first?.[2].match(new RegExp(`\\b${name}="([0-9.]+)"`))?.[1] ?? NaN);
+            if (inset)
+                cover = Number(inset[1]) || null;
+            else if (box && first?.[1] === 'rect' && !(attr('x') > 0) && !(attr('y') > 0) &&
+                     attr('width') === Number(box[1]) && attr('height') === Number(box[2]))
+                cover = 1;
+        }
+    } catch (e) {
+        logError(e, `notification icon ${key}`);
+    }
+    tileCover.set(key, cover);
+    return cover;
+}
+
+// The app's icon in a circle of @size: a VibeOS tile enlarged until the circle fills with it; any other icon
+// (a third-party one, whatever its shape) smaller on a white disc, as Android shows a legacy launcher icon
+function appCircle(gicon, size) {
+    const box = new St.Widget({width: size, height: size});
+    const cover = tileCoverOf(gicon);
+    if (cover) {
+        const side = Math.round(size / cover);
+        const icon = new St.Icon({gicon, icon_size: side, width: side, height: side});
+        icon.set_position((size - side) / 2, (size - side) / 2);
+        const mask = new CircleMaskEffect();
+        icon.add_effect(mask);
+        mask.setGeometry(side, size);
+        box.add_child(icon);
+    } else {
+        box.style = `background-color: white; border-radius: ${(size / 2).toFixed(2)}px;`;
+        const side = Math.round(size * 0.72);
+        const icon = new St.Icon({gicon, icon_size: side});
+        icon.set_position((size - side) / 2, (size - side) / 2);
+        box.add_child(icon);
+    }
+    return box;
+}
+
 export const Row = GObject.registerClass(
 class Row extends St.Widget {
-    constructor(stack, notification, {card = SurfaceEffect[1], glyph = GLYPH_COLOR} = {}) {
-        super({reactive: true, width: px(ROW_W), height: px(MIN_H)});
+    constructor(stack, notification, {card = SurfaceEffect[1], glyph = GLYPH_COLOR, width = ROW_W} = {}) {
+        super({reactive: true, width: px(width), height: px(MIN_H)});
+        this._w = width;
         this._stack = stack;
         this.notification = notification;
         this._cardColor = card;
@@ -273,7 +370,7 @@ class Row extends St.Widget {
             reactive: true,
             can_focus: true,
             button_mask: St.ButtonMask.PRIMARY,
-            width: px(ROW_W),
+            width: px(width),
             height: px(MIN_H),
         });
         // its fill a shader's: a swipe changes the corners every frame, which St would draw anew each time
@@ -283,7 +380,7 @@ class Row extends St.Widget {
         this._card.connect('clicked', () => this._stack.activate(this));
         this.add_child(this._card);
 
-        this._content = new St.Widget({width: px(ROW_W), height: px(MIN_H)});
+        this._content = new St.Widget({width: px(width), height: px(MIN_H)});
         this.add_child(this._content);
         this._iconBox = new St.Widget({x: px(ICON_POS), y: px(ICON_POS), width: px(ICON), height: px(ICON)});
         this._content.add_child(this._iconBox);
@@ -357,6 +454,40 @@ class Row extends St.Widget {
         return this._urgency === MessageTray.Urgency.LOW;
     }
 
+    // the text column's ends and the pill, as far from the card's end as on the phone's card
+    get _collapsedEnd() {
+        return this._w - (ROW_W - COLLAPSED_END);
+    }
+
+    get _expandedEnd() {
+        return this._w - (ROW_W - EXPANDED_END);
+    }
+
+    // the card's colour and the circle glyph's, as the constructor takes them
+    setColors(card, glyph) {
+        this._cardColor = card;
+        this._glyphColor = glyph;
+        this._iconKey = null;
+        if (this.notification)
+            this._updateIcon();
+        this._applyCard();
+    }
+
+    // the card across another width: the text wraps again, and its height follows
+    setWidth(w) {
+        if (w === this._w)
+            return;
+        this._w = w;
+        this.width = px(w);
+        this._card.width = px(w);
+        this._content.width = px(w);
+        const top = this._visibleTop, bottom = this._visibleH;
+        this._visibleH = -1;
+        this.setVisibleRange(top, bottom);
+        this.update();
+        this._layoutContent();
+    }
+
     get critical() {
         return this._urgency === MessageTray.Urgency.CRITICAL;
     }
@@ -388,18 +519,18 @@ class Row extends St.Widget {
         const markup = `<span line_height="${bodyLineFactor(this._bigText)}">` +
             `${GLib.markup_escape_text(body, -1)}</span>`;
         this._bigText.set_markup(markup);
-        this._bigText.set_size(px(EXPANDED_END - CONTENT_X), -1);
+        this._bigText.set_size(px(this._expandedEnd - CONTENT_X), -1);
         this._bigText.remove_clip();
-        this._lines = this._hasText ? countLines(this._bigText, markup, EXPANDED_END - CONTENT_X) : 0;
+        this._lines = this._hasText ? countLines(this._bigText, markup, this._expandedEnd - CONTENT_X) : 0;
         if (this._lines > MAX_LINES) {
             // a fixed height ends the wrapped text in an ellipsis at that line
             this._bigText.height = px(MAX_LINES * LINE);
-            this._bigText.set_clip(0, 0, px(EXPANDED_END - CONTENT_X), px(MAX_LINES * LINE));
+            this._bigText.set_clip(0, 0, px(this._expandedEnd - CONTENT_X), px(MAX_LINES * LINE));
             this._lines = MAX_LINES;
         }
         // the collapsed line is cut short: the expanded text cross-fades in over it
-        this._crossFade = this._lines > 1 || naturalWidth(this._text) > COLLAPSED_END - CONTENT_X;
-        this._text.width = px(COLLAPSED_END - CONTENT_X);
+        this._crossFade = this._lines > 1 || naturalWidth(this._text) > this._collapsedEnd - CONTENT_X;
+        this._text.width = px(this._collapsedEnd - CONTENT_X);
 
         this._updateIcon();
         this._updateActions();
@@ -439,7 +570,7 @@ class Row extends St.Widget {
         }
     }
 
-    // the app's own icon for an app (notificationsRedesignAppIcons); else the small icon in a primary circle,
+    // the app's own icon in a circle for an app (notificationsRedesignAppIcons); else the small icon in a primary circle,
     // punched out in the card's colour
     _updateIcon() {
         const n = this.notification;
@@ -469,10 +600,7 @@ class Row extends St.Widget {
             circle.add_child(glyph);
             this._iconBox.add_child(circle);
         } else {
-            this._iconBox.add_child(new St.Icon({
-                gicon: app ? app.get_icon() : gicon,
-                icon_size: Math.round(px(ICON)),
-            }));
+            this._iconBox.add_child(appCircle(app ? app.get_icon() : gicon, Math.round(px(ICON))));
         }
     }
 
@@ -542,17 +670,17 @@ class Row extends St.Widget {
         const infoW = 2 * DOT_MARGIN + this._dotW + this._timeW;
         const collapsedBaseline = this._hasText ? TITLE_BASELINE : ONE_LINE_BASELINE;
 
-        const titleW = lerp(Math.min(this._titleW, COLLAPSED_END - CONTENT_X - infoW),
-            Math.min(this._titleW, EXPANDED_END - CONTENT_X), p);
+        const titleW = lerp(Math.min(this._titleW, this._collapsedEnd - CONTENT_X - infoW),
+            Math.min(this._titleW, this._expandedEnd - CONTENT_X), p);
         this._title.width = px(Math.max(titleW, 0));
         placeBaseline(this._title, CONTENT_X, lerp(collapsedBaseline, BIG_TITLE_BASELINE, p));
 
         // "• time": behind the title collapsed, behind the app name expanded
-        const appW = Math.min(this._appW, EXPANDED_END - CONTENT_X - infoW);
+        const appW = Math.min(this._appW, this._expandedEnd - CONTENT_X - infoW);
         this._app.width = px(Math.max(appW, 0));
         placeBaseline(this._app, CONTENT_X, HEADER_BASELINE);
         this._app.opacity = Math.round(255 * fadeIn(p));
-        const collapsedInfoX = CONTENT_X + Math.min(this._titleW, COLLAPSED_END - CONTENT_X - infoW);
+        const collapsedInfoX = CONTENT_X + Math.min(this._titleW, this._collapsedEnd - CONTENT_X - infoW);
         const infoX = lerp(collapsedInfoX, CONTENT_X + appW, p) + DOT_MARGIN;
         const infoBaseline = lerp(collapsedBaseline, HEADER_BASELINE, p);
         placeBaseline(this._dot, infoX, infoBaseline);
@@ -578,7 +706,7 @@ class Row extends St.Widget {
 
         // the pill: centred in a one-line row, at the top otherwise
         const pillY = this._hasText ? PILL_Y : lerp((MIN_H - PILL_H) / 2, PILL_Y, p);
-        this._pill.set_position(px(PILL_X - PILL_TOUCH), px(pillY - PILL_TOUCH));
+        this._pill.set_position(px(this._w - (ROW_W - PILL_X) - PILL_TOUCH), px(pillY - PILL_TOUCH));
     }
 
     // --- the card: its height (the stack's clip) and corners
@@ -595,9 +723,9 @@ class Row extends St.Widget {
         this._visibleH = bottom;
         this.height = px(bottom);
         this._card.set_position(0, px(top));
-        this._card.set_size(px(ROW_W), px(bottom - top));
-        this._shape.set_size(px(ROW_W), px(bottom - top));
-        this._content.set_clip(0, px(top), px(ROW_W), px(bottom - top));
+        this._card.set_size(px(this._w), px(bottom - top));
+        this._shape.set_size(px(this._w), px(bottom - top));
+        this._content.set_clip(0, px(top), px(this._w), px(bottom - top));
     }
 
     // the content's alpha in a heads-up's appear animation
@@ -772,20 +900,21 @@ class Row extends St.Widget {
 
     _applyContentAlpha() {
         this._content.opacity = Math.round(255 * this._contentAlpha *
-            (1 - clamp(Math.abs(this._fadeTx) / ROW_W / FAR_ENOUGH)));
+            (1 - clamp(Math.abs(this._fadeTx) / this._w / FAR_ENOUGH)));
     }
 
     // off the screen: a slow release accelerates out, a fling keeps its speed
     dismiss(v, accelerate, {delay = 0, onDone = null} = {}) {
         this.dismissing = true;
-        const target = (Math.abs(v) > ESCAPE_VELOCITY && v < 0) || this.tx < 0 ? -DISMISS_X : DISMISS_X;
+        const away = this._w + (DISMISS_X - ROW_W);
+        const target = (Math.abs(v) > ESCAPE_VELOCITY && v < 0) || this.tx < 0 ? -away : away;
         let duration, interpolator;
         if (accelerate) {
             duration = v !== 0 ? Math.min(MAX_ESCAPE_MS, Math.abs(target - this.tx) * 1000 / Math.abs(v))
                 : ESCAPE_MS;
             interpolator = FAST_OUT_LINEAR_IN;
         } else {
-            ({duration, interpolator} = flingDismissing(this.tx, target, v, ROW_W));
+            ({duration, interpolator} = flingDismissing(this.tx, target, v, this._w));
         }
         this._swipeAnim?.stop();
         this._magneticAnim?.stop();
@@ -854,7 +983,12 @@ class SectionHeader extends St.Widget {
     }
 
     setVisibleHeight(h) {
-        this.set_clip(0, 0, px(SCREEN_W), px(h));
+        this.set_clip(0, 0, this.width, px(h));
+    }
+
+    // over rows of @rowW: the header spans them and their margins
+    setRowWidth(rowW) {
+        this.width = px(rowW + 2 * SIDE);
     }
 });
 
@@ -864,6 +998,8 @@ const Footer = GObject.registerClass(
 class Footer extends St.Widget {
     constructor(stack) {
         super({width: px(SCREEN_W), height: px(FOOTER_H)});
+        this._pillH = FOOTER_PILL_H;
+        this._fill = SurfaceEffect[1];
         const history = this._button(HISTORY_X, ICON_BUTTON_W, 'Notification history',
             new VectorIcon('notif_footer_btn_history', px(FOOTER_ICON), Color.onSurface));
         // a Clutter.Text right inside a button would take the button's theme font
@@ -872,6 +1008,9 @@ class Footer extends St.Widget {
         const clear = this._button(CLEAR_X, CLEAR_W, 'Clear all', label);
         const settings = this._button(SETTINGS_X, ICON_BUTTON_W, 'Notification settings',
             new VectorIcon('notif_footer_btn_settings', px(FOOTER_ICON), Color.onSurface));
+        this._clear = clear;
+        this._settings = settings;
+        this._buttons = [history, clear, settings];
         // this phone keeps no notification history: both icon buttons open the notification settings
         history.connect('clicked', () => stack.openSettings());
         settings.connect('clicked', () => stack.openSettings());
@@ -897,7 +1036,34 @@ class Footer extends St.Widget {
     }
 
     setVisibleHeight(h) {
-        this.set_clip(0, 0, px(SCREEN_W), px(h));
+        this.set_clip(0, 0, this.width, px(h));
+    }
+
+    // the pills' fill, [rgb, alpha]
+    setFill(fill) {
+        this._fill = fill;
+        for (const button of this._buttons) {
+            button.style = `background-color: ${rgba(...fill)}; ` +
+                `border-radius: ${px(this._pillH / 2).toFixed(2)}px;`;
+        }
+    }
+
+    // the pills' top in the footer and their height (a phone's are taller, nearer the last card)
+    setPill(y, h) {
+        this._pillH = h;
+        for (const button of this._buttons) {
+            button.y = px(y);
+            button.height = px(h);
+        }
+        this.setFill(this._fill);
+    }
+
+    // under rows of @rowW: Clear all takes what the two icon buttons leave
+    setRowWidth(rowW) {
+        this.width = px(rowW + 2 * SIDE);
+        const end = SIDE + rowW;
+        this._settings.x = px(end - ICON_BUTTON_W);
+        this._clear.width = px(rowW - 2 * (CLEAR_X - HISTORY_X));
     }
 });
 
@@ -917,6 +1083,10 @@ class NotificationStack extends St.Widget {
         this._ratio = 1;
         this._scroll = 0;
         this._clearing = false;
+        this._frame = null;             // the notification panel (setFrame); the screen less its margins before
+        this._rowColors = {};           // ... and its cards' colours
+        this._endShift = 0;             // a tablet's panel on its way in: how far above its place it is now
+        this._clipTop = 0;              // ... and the line it comes out from under
 
         this._header = new SectionHeader();
         this._header.visible = false;
@@ -944,11 +1114,51 @@ class NotificationStack extends St.Widget {
         return this._rows.size === 0;
     }
 
+    // "No notifications" as shown: 1 with nothing in the stack, 0 with rows, between while they come or go
+    get emptyAlpha() {
+        return this._emptyAlpha.now;
+    }
+
+    // Where the rows go and where the stack ends, screen px: the notification panel, which the stack is cut to (a
+    // tablet's where it is now, on its way in), or the screen less its margins before the shade has set one
+    get _bounds() {
+        if (!this._frame) {
+            return {top: TOP_PADDING, left: SIDE, width: ROW_W, end: SCREEN_H, scrollEnd: SCREEN_H - BOTTOM_INSET,
+                clipX: null, clipW: 0};
+        }
+        if (this._endShift === 0)
+            return this._frame;
+        return {...this._frame, end: this._frame.end + this._endShift,
+            scrollEnd: this._frame.scrollEnd + this._endShift};
+    }
+
+    // the notification panel (shadelayout.js: rows) for the screen as it is turned now; the rows wrap their text again.
+    // A tablet's cards are opaque, a phone's translucent over the blurred screen.
+    setFrame(frame) {
+        this._frame = frame;
+        this._rowColors = frame.translucent ? {card: SurfaceEffect[1], glyph: GLYPH_COLOR}
+            : {card: [TabletShade.card, 1], glyph: TabletShade.card};
+        this.set_size(px(WIDTH), px(HEIGHT));
+        const rows = new Set([...this._rows.values(), ...[...this._layout.keys()].filter(a => a instanceof Row)]);
+        for (const row of rows) {
+            row.setColors(this._rowColors.card, this._rowColors.glyph);
+            row.setWidth(frame.width);
+        }
+        this._header.setRowWidth(frame.width);
+        this._footer.setRowWidth(frame.width);
+        this._footer.setFill(this._rowColors.card);
+        this._footer.setPill(frame.footerPillY ?? FOOTER_PILL_Y, frame.footerPillH ?? FOOTER_PILL_H);
+        this._relayout(false);
+    }
+
     // stackY: the scrim top (screen px); ratio: the stack's expansion without the shelf
-    // (StackScrollAlgorithm.getExpansionFractionWithoutShelf); alpha: the content alpha
-    layoutFor({stackY, ratio, alpha}) {
+    // (StackScrollAlgorithm.getExpansionFractionWithoutShelf); alpha: the content alpha. A tablet's panel coming
+    // down: endShift moves its end with it, and nothing shows above clipTop (screen px).
+    layoutFor({stackY, ratio, alpha, endShift = 0, clipTop = 0}) {
         this._stackY = stackY;
         this._ratio = ratio;
+        this._endShift = endShift;
+        this._clipTop = clipTop;
         this.opacity = Math.round(255 * alpha);
         this._place();
     }
@@ -962,13 +1172,17 @@ class NotificationStack extends St.Widget {
             if (!state.leaving)
                 height = Math.max(height, state.offset + state.h);
         }
-        const bottom = this._stackY + TOP_PADDING + height;
-        return Math.max(0, bottom - (SCREEN_H - BOTTOM_INSET));
+        const bounds = this._bounds;
+        const bottom = this._stackY + bounds.top + height;
+        return Math.max(0, bottom - bounds.scrollEnd);
     }
 
-    // a drag up (or down) at screen y would scroll the stack
-    canScroll(y, up) {
+    // a drag up (or down) at screen y (and x: a tablet's panel is not the whole width) would scroll the stack
+    canScroll(y, up, x = null) {
         if (y < this._stackY)
+            return false;
+        const {clipX, clipW} = this._bounds;
+        if (x !== null && clipX !== null && (x < clipX || x > clipX + clipW))
             return false;
         return up ? this._scroll < this._maxScroll : this._scroll > 0;
     }
@@ -1029,7 +1243,7 @@ class NotificationStack extends St.Widget {
     _addNotification(notification) {
         if (this._rows.has(notification))
             return;
-        const row = new Row(this, notification);
+        const row = new Row(this, notification, {...this._rowColors, width: this._bounds.width});
         row.order = ++this._order;
         this._rows.set(notification, row);
         this.insert_child_below(row, this._header);
@@ -1210,8 +1424,11 @@ class NotificationStack extends St.Widget {
             if (actor instanceof Row)
                 actor.setExpansion(state.p);
         }
+        const empty = this._emptyAlpha.now;
         this._emptyAlpha.now = lerp(this._emptyAlpha.from, this._emptyAlpha.to, e);
         this._place();
+        if (this._emptyAlpha.now !== empty)
+            this._shade.stackEmptyChanged?.();
     }
 
     // drop what has faded out
@@ -1230,13 +1447,19 @@ class NotificationStack extends St.Widget {
     _place() {
         // what scrolls above the scrim's top is cut there
         this._scroll = clamp(this._scroll, 0, this._maxScroll);
-        if (this._scroll > 0)
+        const bounds = this._bounds;
+        if (bounds.clipX !== null) {
+            // the panel: the stack never shows past it
+            const clipY = Math.max(this._stackY, this._clipTop);
+            this.set_clip(px(bounds.clipX), px(clipY), px(bounds.clipW), px(Math.max(bounds.end - clipY, 0)));
+        } else if (this._scroll > 0) {
             this.set_clip(0, px(this._stackY), px(SCREEN_W), px(SCREEN_H - this._stackY));
-        else
+        } else {
             this.remove_clip();
-        const top = this._stackY + TOP_PADDING - this._scroll;
+        }
+        const top = this._stackY + bounds.top - this._scroll;
         for (const [actor, state] of this._layout) {
-            const x = actor instanceof Row ? SIDE : 0;
+            const x = actor instanceof Row ? bounds.left : bounds.left - SIDE;
             actor.set_position(px(x), px(top + this._ratio * state.offset));
             actor.setVisibleHeight(state.h * this._ratio);
             actor.opacity = Math.round(255 * state.alpha);
@@ -1246,7 +1469,8 @@ class NotificationStack extends St.Widget {
         this._empty.visible = emptyAlpha > 0;
         if (emptyAlpha > 0) {
             const [w, h] = this._empty.get_size();
-            this._empty.set_position(px(SCREEN_W / 2) - w / 2, px((this._stackY + SCREEN_H) / 2) - h / 2);
+            this._empty.set_position(px(bounds.left + bounds.width / 2) - w / 2,
+                px((this._stackY + bounds.end) / 2) - h / 2);
             this._empty.opacity = Math.round(255 * emptyAlpha);
         }
     }
@@ -1293,8 +1517,9 @@ class NotificationStack extends St.Widget {
                 },
             });
 
-        const onScreen = rows.filter(row => this._stackY + TOP_PADDING +
-            this._ratio * (this._layout.get(row)?.offset ?? 0) < SCREEN_H);
+        const bounds = this._bounds;
+        const onScreen = rows.filter(row => this._stackY + bounds.top +
+            this._ratio * (this._layout.get(row)?.offset ?? 0) < bounds.end);
         let delay = 0, step = CLEAR_DELAY, left = onScreen.length;
         const finish = () => {
             for (const row of rows)

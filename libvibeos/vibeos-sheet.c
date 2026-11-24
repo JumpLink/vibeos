@@ -26,6 +26,23 @@
 #define SLIDE_STIFFNESS  1000.0  /* libadwaita's navigation spring */
 #define SLIDE_DAMPING    1.0
 #define MIN_VISIBLE      0.001   /* of the sheet's height or width: the springs stop this close */
+/* libadwaita's dialog (AdwDialog): a bottom sheet on a window up to 450 px wide or 360 px tall, a card floating in the
+ * middle of a larger one (a tablet's), as wide as its content (360 px, AdwAboutDialog's width, unless the sheet says
+ * otherwise) and as tall as it needs, at least 30 px in from the window's sides and 20 px from its top and bottom,
+ * more on a larger window (120 px at 1440). It opens growing from 80 % of its size and fading in, on a spring that
+ * goes a little past (damping 0.62, stiffness 500), and closes back, without going past */
+#define SHEET_MAX_W      450
+#define SHEET_MAX_H      360
+#define FLOAT_WIDTH      360
+#define FLOAT_SIDE       30.0
+#define FLOAT_SIDE_BIG   120.0
+#define FLOAT_ENDS       20.0
+#define FLOAT_ENDS_BIG   120.0
+#define FLOAT_FROM       720.0
+#define FLOAT_TO         1440.0
+#define FLOAT_MIN_SCALE  0.8
+#define FLOAT_STIFFNESS  500.0
+#define FLOAT_DAMPING    0.62
 /* The dim over the window: libadwaita's for a dark sheet, deep enough to set a dark sheet apart from a dark window;
  * Material's scrim for a light one, which also has to show over the Weather's dark sky */
 #define DIM_DARK         0.5
@@ -47,6 +64,8 @@ struct _VibeosSheet {
   guint         tick;
   gboolean      full_height;
   gboolean      closing;
+  gboolean      floating;       /* a card in the middle of the window, not a bottom sheet */
+  int           content_width;  /* the card's width; 0: FLOAT_WIDTH */
 };
 
 G_DEFINE_FINAL_TYPE (VibeosSheet, vibeos_sheet, GTK_TYPE_WIDGET)
@@ -101,10 +120,45 @@ sync_pages (VibeosSheet *self)
 
 /* ---- layout and drawing ---------------------------------------------------------------------------------------- */
 
+/* a card in the middle, or a bottom sheet: AdwDialog's breakpoint */
+static gboolean
+floats_in (int width, int height)
+{
+  return width > SHEET_MAX_W && height > SHEET_MAX_H;
+}
+
+static double
+float_margin (double from, double to, int size)
+{
+  return from + (to - from) * MAX (0, (size - FLOAT_FROM) / (FLOAT_TO - FLOAT_FROM));
+}
+
+/* the floating card, in the middle */
+static graphene_rect_t
+float_rect (VibeosSheet *self, int width, int height)
+{
+  double side = float_margin (FLOAT_SIDE, FLOAT_SIDE_BIG, width), ends = float_margin (FLOAT_ENDS, FLOAT_ENDS_BIG, height);
+  int w = MIN (self->content_width > 0 ? self->content_width : FLOAT_WIDTH, width - (int) round (2 * side));
+  int max_h = MAX (height - (int) round (2 * ends), 0), h = max_h;
+
+  w = MAX (w, 0);
+  if (!self->full_height && self->pages->len > 0)
+    {
+      int min, nat;
+
+      gtk_widget_measure (g_ptr_array_index (self->pages, 0), GTK_ORIENTATION_VERTICAL, w, &min, &nat, NULL, NULL);
+      h = MIN (MAX (min, nat), max_h);
+    }
+  return GRAPHENE_RECT_INIT (round ((width - w) / 2.0), round ((height - h) / 2.0), w, h);
+}
+
 /* where the sheet is in place, in a window `width` x `height` */
 static graphene_rect_t
 rest_rect (VibeosSheet *self, int width, int height)
 {
+  if (self->floating)
+    return float_rect (self, width, height);
+
   double gap = GAP + (GAP_TALL - GAP) * MAX (0, (height - GAP_FROM_H) / (GAP_TO_H - GAP_FROM_H));
   int w = MIN (width, MAX_WIDTH), max_h = MAX (height - (int) round (gap), 0), h = max_h;
 
@@ -143,6 +197,7 @@ vibeos_sheet_size_allocate (GtkWidget *widget, int width, int height, int baseli
   VibeosSheet *self = VIBEOS_SHEET (widget);
   GtkWidget *sliding = sliding_page (self);
 
+  self->floating = floats_in (width, height);
   self->rest = rest_rect (self, width, height);
   for (guint i = 0; i < self->pages->len; i++)
     place (self, g_ptr_array_index (self->pages, i), g_ptr_array_index (self->pages, i) == sliding);
@@ -150,29 +205,17 @@ vibeos_sheet_size_allocate (GtkWidget *widget, int width, int height, int baseli
     place (self, self->leaving, TRUE);
 }
 
+/* the sheet's fill in `shape`, and its pages */
 static void
-vibeos_sheet_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
+snapshot_sheet (VibeosSheet *self, GtkSnapshot *snapshot, const GskRoundedRect *shape)
 {
-  VibeosSheet *self = VIBEOS_SHEET (widget);
+  GtkWidget *widget = GTK_WIDGET (self);
   const graphene_rect_t *r = &self->rest;
-  double width = gtk_widget_get_width (widget), height = gtk_widget_get_height (widget);
-  double shown = self->rise.value, below = (1 - shown) * r->size.height;
-  gboolean dark = vibeos_theme_get_dark (vibeos_theme_get_default ());
-  GdkRGBA dim = vibeos_color_alpha (VIBEOS_SCRIM, (dark ? DIM_DARK : DIM_LIGHT) * CLAMP (shown, 0, 1));
   GdkRGBA fill = vibeos_color (VIBEOS_SURFACE_CONTAINER);
-  graphene_size_t corner = GRAPHENE_SIZE_INIT (CORNER, CORNER), square = GRAPHENE_SIZE_INIT (0, 0);
   GtkWidget *sliding = sliding_page (self);
-  GskRoundedRect shape;
 
-  gtk_snapshot_append_color (snapshot, &dim, &GRAPHENE_RECT_INIT (0, 0, width, height));
-  gtk_snapshot_save (snapshot);
-  gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, below));
-  /* the fill reaches down past the window's bottom as far as the sheet has risen past its place */
-  gsk_rounded_rect_init (&shape, &GRAPHENE_RECT_INIT (r->origin.x, r->origin.y, r->size.width,
-                                                      r->size.height + MAX (0, -below) + 1),
-                         &corner, &corner, &square, &square);
-  gtk_snapshot_push_rounded_clip (snapshot, &shape);
-  gtk_snapshot_append_color (snapshot, &fill, &shape.bounds);
+  gtk_snapshot_push_rounded_clip (snapshot, shape);
+  gtk_snapshot_append_color (snapshot, &fill, &shape->bounds);
   if (sliding)
     {
       /* as libadwaita's navigation does: the page under shows only left of the sliding page's edge, dimmed the
@@ -197,6 +240,47 @@ vibeos_sheet_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   else if (self->pages->len > 0)
     gtk_widget_snapshot_child (widget, page_at (self, 0), snapshot);
   gtk_snapshot_pop (snapshot);
+}
+
+static void
+vibeos_sheet_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
+{
+  VibeosSheet *self = VIBEOS_SHEET (widget);
+  const graphene_rect_t *r = &self->rest;
+  double width = gtk_widget_get_width (widget), height = gtk_widget_get_height (widget);
+  double shown = self->rise.value, below = (1 - shown) * r->size.height;
+  gboolean dark = vibeos_theme_get_dark (vibeos_theme_get_default ());
+  GdkRGBA dim = vibeos_color_alpha (VIBEOS_SCRIM, (dark ? DIM_DARK : DIM_LIGHT) * CLAMP (shown, 0, 1));
+  graphene_size_t corner = GRAPHENE_SIZE_INIT (CORNER, CORNER), square = GRAPHENE_SIZE_INIT (0, 0);
+  GskRoundedRect shape;
+
+  gtk_snapshot_append_color (snapshot, &dim, &GRAPHENE_RECT_INIT (0, 0, width, height));
+  gtk_snapshot_save (snapshot);
+  if (self->floating)
+    {
+      /* the card grows from 80 % about the window's middle as it fades in, as libadwaita's floating dialog */
+      double scale = FLOAT_MIN_SCALE + (1 - FLOAT_MIN_SCALE) * shown;
+
+      gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (width / 2, height / 2));
+      gtk_snapshot_scale (snapshot, scale, scale);
+      gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (-width / 2, -height / 2));
+      gtk_snapshot_push_opacity (snapshot, CLAMP (shown, 0, 1));
+      gsk_rounded_rect_init_from_rect (&shape, (graphene_rect_t *) r, CORNER);
+      /* elevation level 3, as a Material dialog: a soft shadow round the card */
+      gtk_snapshot_append_outset_shadow (snapshot, &shape, (GdkRGBA[]) { vibeos_color_alpha (VIBEOS_SHADOW, 0.3f) },
+                                         0, 4, 0, 12);
+      snapshot_sheet (self, snapshot, &shape);
+      gtk_snapshot_pop (snapshot);
+    }
+  else
+    {
+      gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (0, below));
+      /* the fill reaches down past the window's bottom as far as the sheet has risen past its place */
+      gsk_rounded_rect_init (&shape, &GRAPHENE_RECT_INIT (r->origin.x, r->origin.y, r->size.width,
+                                                          r->size.height + MAX (0, -below) + 1),
+                             &corner, &corner, &square, &square);
+      snapshot_sheet (self, snapshot, &shape);
+    }
   gtk_snapshot_restore (snapshot);
 }
 
@@ -336,7 +420,6 @@ page_new (VibeosSheet *self, const char *title, gboolean back, GtkWidget *conten
   GtkWidget *page = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *bar = vibeos_top_bar_new (title);
   GtkWidget *close;
-  GdkRGBA tonal = vibeos_color (VIBEOS_SURFACE_CONTAINER_HIGHEST);
 
   gtk_widget_add_css_class (page, "vibeos-sheet-page");
   vibeos_top_bar_set_compact (VIBEOS_TOP_BAR (bar), TRUE);
@@ -346,7 +429,9 @@ page_new (VibeosSheet *self, const char *title, gboolean back, GtkWidget *conten
   close = vibeos_top_bar_add_action (VIBEOS_TOP_BAR (bar), "window-close-symbolic");
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (close), VIBEOS_RIPPLE_CIRCLE, CLOSE_RADIUS);
   gtk_image_set_pixel_size (GTK_IMAGE (vibeos_pressable_get_child (VIBEOS_PRESSABLE (close))), CLOSE_ICON);
-  vibeos_pressable_set_fill (VIBEOS_PRESSABLE (close), &tonal, FALSE);
+  /* the theme's colour as it is when it draws: taken once, a sheet open while an app turned dark kept the light
+   * circle (and a light one, the dark circle) under an X in the new theme's colour */
+  vibeos_pressable_set_fill_role (VIBEOS_PRESSABLE (close), VIBEOS_SURFACE_CONTAINER_HIGHEST, FALSE);
   gtk_accessible_update_property (GTK_ACCESSIBLE (close), GTK_ACCESSIBLE_PROPERTY_LABEL, "Close", -1);
   g_signal_connect (close, "clicked", G_CALLBACK (on_close_clicked), self);
   gtk_box_append (GTK_BOX (page), bar);
@@ -383,6 +468,14 @@ vibeos_sheet_set_full_height (VibeosSheet *self, gboolean full_height)
 {
   g_return_if_fail (VIBEOS_IS_SHEET (self));
   self->full_height = !!full_height;
+  gtk_widget_queue_allocate (GTK_WIDGET (self));
+}
+
+void
+vibeos_sheet_set_content_width (VibeosSheet *self, int width)
+{
+  g_return_if_fail (VIBEOS_IS_SHEET (self));
+  self->content_width = width;
   gtk_widget_queue_allocate (GTK_WIDGET (self));
 }
 
@@ -442,6 +535,9 @@ vibeos_sheet_present (VibeosSheet *self, GtkWidget *parent)
   gtk_overlay_set_clip_overlay (overlay, GTK_WIDGET (self), TRUE);
   /* the keys come to it, so that Escape and Alt+Left are its own and do not close the window */
   gtk_widget_grab_focus (GTK_WIDGET (self));
+  self->floating = floats_in (gtk_widget_get_width (GTK_WIDGET (overlay)), gtk_widget_get_height (GTK_WIDGET (overlay)));
+  self->rise.stiffness = self->floating ? FLOAT_STIFFNESS : RISE_STIFFNESS;
+  self->rise.damping = self->floating ? FLOAT_DAMPING : RISE_DAMPING;
   self->rise.value = 0;
   self->rise.velocity = 0;
   rise_to (self, 1);
@@ -470,7 +566,8 @@ on_pressed (GtkGestureClick *click, int n_press, double x, double y, VibeosSheet
 {
   graphene_rect_t shown = self->rest;
 
-  shown.origin.y += (1 - self->rise.value) * self->rest.size.height;
+  if (!self->floating)
+    shown.origin.y += (1 - self->rise.value) * self->rest.size.height;
   if (graphene_rect_contains_point (&shown, &GRAPHENE_POINT_INIT (x, y)))
     return;
   /* a touch on the dim closes the sheet, and does nothing else */

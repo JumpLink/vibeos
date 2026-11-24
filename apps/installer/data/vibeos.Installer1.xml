@@ -24,6 +24,10 @@
 
   No other window of App Installer's opens for a job asked for here: the caller shows the progress.
 
+  What InstallPackage and InstallFile install new runs sandboxed (vibeos-sandbox): the package and every package
+  installed new with it that has an app. That happens before the job finishes as "done", so the app the caller then
+  opens already starts in its sandbox. An update keeps whatever the package had.
+
   Options (a{sv}) for InstallPackage, InstallFile and RemovePackage:
     "parent-window"  s   the caller's window, as an xdg-foreign handle: "wayland:" and the handle
                          gdk_wayland_toplevel_export_handle (GTK 4) gives. App Installer's sheet is made transient

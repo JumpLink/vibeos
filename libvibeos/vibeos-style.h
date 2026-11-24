@@ -75,6 +75,18 @@ typedef enum {
   VIBEOS_SEARCH_CURSOR,                 /* the Settings search field's cursor */
   VIBEOS_EMOJI_TAB_SELECTED,            /* the emoji keyboard's category tabs */
   VIBEOS_EMOJI_TAB,
+  VIBEOS_CATEGORY_APPS,                 /* the rest of Settings' category circles, and their glyphs */
+  VIBEOS_ON_CATEGORY_APPS,
+  VIBEOS_CATEGORY_NOTIFICATIONS,        /* notifications, sound */
+  VIBEOS_ON_CATEGORY_NOTIFICATIONS,
+  VIBEOS_CATEGORY_DISPLAY,              /* display, wallpaper and style */
+  VIBEOS_ON_CATEGORY_DISPLAY,
+  VIBEOS_CATEGORY_BATTERY,
+  VIBEOS_ON_CATEGORY_BATTERY,
+  VIBEOS_CATEGORY_SECURITY,             /* security, location, accounts */
+  VIBEOS_ON_CATEGORY_SECURITY,
+  VIBEOS_CATEGORY_ACCESSIBILITY,
+  VIBEOS_ON_CATEGORY_ACCESSIBILITY,
   VIBEOS_N_COLORS
 } VibeosColor;
 
@@ -120,11 +132,15 @@ void    vibeos_snapshot_icon (GtkSnapshot *snapshot, GtkWidget *widget, const ch
  * stylesheet, redraws every window and emits VibeosTheme::changed: widgets that draw with vibeos_color () at draw
  * time follow by themselves; one that keeps a colour (an app's own GdkRGBA, a fill set once) re-reads it there.
  *
+ * Accessibility's High contrast (org.gnome.desktop.a11y.interface high-contrast) is followed the same way: the scheme
+ * at Material's high contrast level whatever vibeos.Theme's contrast, and GTK's gtk-interface-contrast set to "more",
+ * so a stylesheet's @media (prefers-contrast: more) rules apply (vibeos.css outlines its cards, dialogs and menus).
+ *
  * Without the vibeos.Theme schema (libvibeos on a system without VibeOS's settings) the apps are dark, in the
  * colours of vibeos.Theme's default seed.
  *
  * For tests and development, the environment overrides the settings: VIBEOS_COLOR_SCHEME=light or dark, VIBEOS_SEED
- * (#RRGGBB) and VIBEOS_CONTRAST (-1 to 1). */
+ * (#RRGGBB), VIBEOS_CONTRAST (-1 to 1) and VIBEOS_HIGH_CONTRAST (1 or 0). */
 
 typedef enum {
   VIBEOS_INIT_DEFAULT     = 0,

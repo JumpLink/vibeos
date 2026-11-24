@@ -18,7 +18,9 @@
 #define TAB_FADE_MS 180   /* another tab's content fades in */
 
 typedef struct {
-  GtkWidget  *window, *stack, *tabs, *tab_stack, *nav, *snackbar, *marker;
+  GtkWidget  *window, *stack, *tabs, *tab_stack, *nav, *rail, *snackbar, *marker;
+  GtkWidget  *area;             /* beside the rail (a tablet): the pages, the snackbar and a search over them */
+  VibeosLayout *layout;
   GtkWidget  *homes[4];
   int         tab;
   char      **steps;
@@ -43,8 +45,10 @@ update_marker (Win *win)
   gboolean deeper = vibeos_page_stack_get_depth (VIBEOS_PAGE_STACK (win->stack)) > 1 || win->tab != SW_TAB_FEATURED;
 
   gtk_widget_set_visible (win->marker, deeper);
+  /* on the tabs, the snackbar stays over the navigation bar (a tablet's rail is at the side: nothing under it) */
   gtk_widget_set_margin_bottom (win->snackbar,
-                                vibeos_page_stack_get_depth (VIBEOS_PAGE_STACK (win->stack)) > 1 ? 0 : NAV_HEIGHT);
+                                vibeos_page_stack_get_depth (VIBEOS_PAGE_STACK (win->stack)) > 1
+                                || !gtk_widget_get_visible (win->nav) ? 0 : NAV_HEIGHT);
 }
 
 static void
@@ -69,12 +73,25 @@ select_tab (Win *win, int tab)
     }
   gtk_stack_set_visible_child (GTK_STACK (win->tab_stack), win->homes[tab]);
   vibeos_nav_bar_set_selected (VIBEOS_NAV_BAR (win->nav), tab);
+  vibeos_nav_rail_set_selected (VIBEOS_NAV_RAIL (win->rail), tab);
   update_marker (win);
 }
 
+/* the bar's or the rail's */
 static void
-on_nav_selected (VibeosNavBar *nav, int index, Win *win)
+on_nav_selected (GtkWidget *nav, int index, Win *win)
 {
+  /* the rail stays beside the pages on a tablet: a destination tapped over a search or a page closes them first,
+   * and the tab that showed under them shows as it was */
+  for (GtkWidget *child = gtk_widget_get_first_child (win->area); child; child = gtk_widget_get_next_sibling (child))
+    if (VIBEOS_IS_SEARCH_VIEW (child))
+      vibeos_search_view_close (VIBEOS_SEARCH_VIEW (child));
+  if (vibeos_page_stack_get_depth (VIBEOS_PAGE_STACK (win->stack)) > 1)
+    {
+      vibeos_page_stack_pop_to_root (VIBEOS_PAGE_STACK (win->stack));
+      if (index == win->tab)
+        return;
+    }
   /* the tab that shows already, tapped again: back to its top */
   if (index == win->tab)
     {
@@ -116,6 +133,16 @@ on_top_changed (VibeosPageStack *stack, Win *win)
 }
 
 /* ---- pages ----------------------------------------------------------------------------------------------------- */
+
+GtkOverlay *
+sw_window_search_overlay (GtkWidget *from)
+{
+  Win *win = win_of (from);
+
+  if (win && vibeos_layout_is_tablet (win->layout))
+    return GTK_OVERLAY (win->area);
+  return vibeos_window_get_overlay (from);
+}
 
 void
 sw_window_push (GtkWidget *from, GtkWidget *page)
@@ -206,7 +233,9 @@ sw_window_open_app (GtkWidget *from, const char *app_id, JsonObject *summary)
 void
 sw_window_open_list (GtkWidget *from, const char *title, const char *path)
 {
-  sw_window_push (from, sw_list_page_new (title, path));
+  g_autofree char *shown = sw_device_title (from, title);
+
+  sw_window_push (from, sw_list_page_new (shown, path));
 }
 
 void
@@ -320,6 +349,20 @@ on_updates_changed (SwUpdates *updates, GtkWidget *window)
   g_autofree char *count = list->len ? g_strdup_printf ("%u", list->len) : NULL;
 
   vibeos_nav_bar_set_badge (VIBEOS_NAV_BAR (win->nav), SW_TAB_MINE, count);
+  vibeos_nav_rail_set_badge (VIBEOS_NAV_RAIL (win->rail), SW_TAB_MINE, count);
+}
+
+/* a tablet (upright too) has the rail at the side, a phone the bar at the bottom, its items side by side when it is
+ * turned */
+static void
+update_layout (Win *win)
+{
+  gboolean tablet = vibeos_layout_is_tablet (win->layout);
+
+  gtk_widget_set_visible (win->nav, !tablet);
+  gtk_widget_set_visible (win->rail, tablet);
+  vibeos_nav_bar_set_horizontal_items (VIBEOS_NAV_BAR (win->nav), vibeos_layout_is_landscape (win->layout));
+  update_marker (win);
 }
 
 /* back in front after a while: the updates may be old */
@@ -770,6 +813,11 @@ win_free (gpointer data)
   g_clear_handle_id (&win->step_timeout, g_source_remove);
   g_strfreev (win->steps);
   g_clear_pointer (&win->tab_fade, vibeos_anim_free);
+  if (win->layout)
+    {
+      g_signal_handlers_disconnect_by_data (win->layout, win);
+      g_object_unref (win->layout);
+    }
   g_free (win);
 }
 
@@ -778,7 +826,7 @@ sw_window_new (GtkApplication *app)
 {
   Win *win = g_new0 (Win, 1);
   GtkWidget *window = vibeos_window_new (app), *root = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  GtkWidget *overlay = gtk_overlay_new ();
+  GtkWidget *overlay = gtk_overlay_new (), *page_row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkEventController *shortcuts = gtk_shortcut_controller_new ();
   GtkShortcutAction *action;
   static const char *const icons[] = { "sw-featured-symbolic", "sw-apps-symbolic", "sw-games-symbolic",
@@ -789,15 +837,8 @@ sw_window_new (GtkApplication *app)
   g_object_set_data_full (G_OBJECT (window), "sw-win", win, win_free);
   gtk_window_set_title (GTK_WINDOW (window), "Software");
   gtk_widget_add_css_class (window, "sw-window");
-  /* pictures (VIBEOS_SHOT): the phone's window, whatever the test display's size (libvibeos's layout opens a window
-   * at its monitor's size: it is asked first, then overruled) */
-  if (g_getenv ("VIBEOS_SHOT"))
-    {
-      vibeos_layout_get_for_window (GTK_WINDOW (window));
-      gtk_window_set_default_size (GTK_WINDOW (window), 360, 760);
-    }
 
-  /* the tabs: the four homes over the nav bar */
+  /* the tabs: the four homes over the nav bar, or beside the rail (which is the window's, beside the pages) */
   win->tabs = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   win->tab_stack = gtk_stack_new ();
   /* a tab shows at once, as a nav bar's tabs do */
@@ -805,17 +846,24 @@ sw_window_new (GtkApplication *app)
   win->tab_veil = sw_veil_new (win->tab_stack);
   win->tab_fade = vibeos_anim_new (win->tab_veil, on_tab_fade, win);
   gtk_widget_set_vexpand (win->tab_veil, TRUE);
+  gtk_widget_set_hexpand (win->tab_veil, TRUE);
   win->homes[SW_TAB_FEATURED] = sw_home_new (SW_HOME_FEATURED);
   win->homes[SW_TAB_APPS] = sw_home_new (SW_HOME_APPS);
   win->homes[SW_TAB_GAMES] = sw_home_new (SW_HOME_GAMES);
   win->homes[SW_TAB_MINE] = sw_mine_new ();
   for (int i = 0; i < 4; i++)
     gtk_stack_add_child (GTK_STACK (win->tab_stack), win->homes[i]);
-  gtk_box_append (GTK_BOX (win->tabs), win->tab_veil);
+  win->rail = vibeos_nav_rail_new ();
   win->nav = vibeos_nav_bar_new ();
   for (int i = 0; i < 4; i++)
-    vibeos_nav_bar_append (VIBEOS_NAV_BAR (win->nav), icons[i], labels[i]);
+    {
+      vibeos_nav_bar_append (VIBEOS_NAV_BAR (win->nav), icons[i], labels[i]);
+      vibeos_nav_rail_append (VIBEOS_NAV_RAIL (win->rail), icons[i], labels[i]);
+    }
   g_signal_connect (win->nav, "selected", G_CALLBACK (on_nav_selected), win);
+  g_signal_connect (win->rail, "selected", G_CALLBACK (on_nav_selected), win);
+  g_signal_connect (win->rail, "reselected", G_CALLBACK (on_nav_selected), win);
+  gtk_box_append (GTK_BOX (win->tabs), win->tab_veil);
   gtk_box_append (GTK_BOX (win->tabs), win->nav);
 
   win->stack = vibeos_page_stack_new ();
@@ -827,8 +875,13 @@ sw_window_new (GtkApplication *app)
   gtk_overlay_set_child (GTK_OVERLAY (overlay), win->stack);
   win->snackbar = vibeos_snackbar_new ();
   gtk_overlay_add_overlay (GTK_OVERLAY (overlay), win->snackbar);
-  gtk_widget_set_vexpand (overlay, TRUE);
-  gtk_box_append (GTK_BOX (root), overlay);
+  win->area = overlay;
+  /* the rail (a tablet) at the start, the pages beside it: a page opens over the tabs only, the rail staying */
+  gtk_widget_set_hexpand (overlay, TRUE);
+  gtk_box_append (GTK_BOX (page_row), win->rail);
+  gtk_box_append (GTK_BOX (page_row), overlay);
+  gtk_widget_set_vexpand (page_row, TRUE);
+  gtk_box_append (GTK_BOX (root), page_row);
 
   win->marker = g_object_new (GTK_TYPE_BOX, "accessible-role", GTK_ACCESSIBLE_ROLE_DIALOG, NULL);
   gtk_accessible_update_property (GTK_ACCESSIBLE (win->marker), GTK_ACCESSIBLE_PROPERTY_LABEL, "Software", -1);
@@ -852,7 +905,11 @@ sw_window_new (GtkApplication *app)
   g_signal_connect_object (sw_installer_get_default (), "finished", G_CALLBACK (on_job_finished), window, 0);
   g_signal_connect_object (sw_updates_get_default (), "changed", G_CALLBACK (on_updates_changed), window, 0);
   g_signal_connect_object (sw_account_get_default (), "notice", G_CALLBACK (on_account_notice), window, 0);
+  /* the window's own layout, which goes with the window: held until the window's state goes */
+  win->layout = g_object_ref (vibeos_layout_get_for_window (GTK_WINDOW (window)));
+  g_signal_connect_swapped (win->layout, "changed", G_CALLBACK (update_layout), win);
   select_tab (win, SW_TAB_FEATURED);
+  update_layout (win);
   on_updates_changed (sw_updates_get_default (), window);
   return window;
 }

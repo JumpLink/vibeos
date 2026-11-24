@@ -15,7 +15,15 @@
 #include <vibeos.h>
 
 #define ROW_HIGHLIGHT_MS 120    /* a tapped row's press highlight before its conversation opens */
-#define LIST_RATIO 0.4          /* the list's share of a tablet's width */
+/* Two panes on a tablet, upright too (owner, 11-21: "two panes upright too"), as every app's list and detail are
+ * (VibeosListDetail's default); one on a phone. In two, the list and the conversation are rounded panes on the window's surface, PANE_EDGE from its
+ * sides and bottom and PANE_GAP apart (messaging.css draws them: .msg-split) */
+#define LIST_RATIO 0.36         /* the list pane's share of the width */
+#define LIST_MIN   360          /* as wide as a phone at least */
+#define LIST_MAX   420
+#define PANE_EDGE  16
+#define PANE_GAP   16
+#define EMPTY_ICON 96           /* the picture in the conversation pane with nothing open */
 
 typedef struct
 {
@@ -26,6 +34,10 @@ typedef struct
   GtkWidget *home;              /* the list and the conversation open, beside it on a tablet */
   GtkWidget *list;
   GtkWidget *shown;             /* the conversation view last on top, whose draft is kept when it goes */
+  GtkWidget *menu;              /* the account menu while it is open (a weak pointer) */
+  GtkWidget *empty;             /* the picture and the line on the conversation pane with nothing open */
+  GtkWidget *empty_text;
+  VibeosLayout *layout;
 } Shell;
 
 static void open_conversation (Shell *shell, gint64 id, const char *draft, gboolean replace, GtkWidget *row);
@@ -47,6 +59,12 @@ shell_free (gpointer data)
   g_clear_object (&shell->contacts);
   g_clear_object (&shell->client);
   g_clear_object (&shell->shown);
+  g_clear_weak_pointer (&shell->menu);
+  if (shell->layout)
+    {
+      g_signal_handlers_disconnect_by_data (shell->layout, shell);
+      g_object_unref (shell->layout);
+    }
   g_free (shell);
 }
 
@@ -57,9 +75,44 @@ home (Shell *shell)
 }
 
 static VibeosPageStack *
+list_stack (Shell *shell)
+{
+  return vibeos_list_detail_get_list_stack (home (shell));
+}
+
+static VibeosPageStack *
+detail_stack (Shell *shell)
+{
+  return vibeos_list_detail_get_detail_stack (home (shell));
+}
+
+static gboolean
+is_split (Shell *shell)
+{
+  return vibeos_list_detail_is_split (home (shell));
+}
+
+/* the list beside a conversation: its share of the width, but as wide as a phone at least; the pane holds it with
+ * the window's edge on one side and half the gap on the other */
+static void
+update_list_width (Shell *shell)
+{
+  int list = (int) CLAMP (vibeos_layout_get_width (shell->layout) * LIST_RATIO, LIST_MIN, LIST_MAX);
+
+  vibeos_list_detail_set_list_width (home (shell), list + PANE_EDGE + PANE_GAP / 2);
+}
+
+static VibeosPageStack *
 pager (Shell *shell)
 {
   return VIBEOS_PAGE_STACK (shell->pager);
+}
+
+/* a page's stack, when it is one of the shell's */
+static gboolean
+is_on (GtkWidget *page, VibeosPageStack *stack)
+{
+  return page && gtk_widget_get_parent (page) == GTK_WIDGET (stack);
 }
 
 /* the page in front: a page over everything, else the conversation open, else the list */
@@ -107,6 +160,69 @@ pop (Shell *shell)
   vibeos_page_stack_pop (pager (shell));
 }
 
+/* a page's transition inside the list pane: a shared axis over a pane's short distance */
+static VibeosPageTransition
+in_pane (VibeosPageTransition transition)
+{
+  return transition == VIBEOS_PAGE_TRANSITION_SHARED_AXIS ? VIBEOS_PAGE_TRANSITION_SHARED_AXIS_PANE : transition;
+}
+
+/* In two panes what the list opens (search, the account menu and its places) opens in the list pane, over the list,
+ * and the conversations those open beside it; in one pane over everything. */
+static void
+push_listward (Shell *shell, GtkWidget *page, VibeosPageTransition transition)
+{
+  if (!is_split (shell))
+    {
+      push (shell, page, transition);
+      return;
+    }
+  set_transition (page, transition);
+  vibeos_page_stack_set_transition (list_stack (shell), in_pane (transition));
+  gtk_window_set_focus (GTK_WINDOW (shell->window), NULL);
+  vibeos_page_stack_push (list_stack (shell), page);
+}
+
+/* closes the page on top of the list pane, back to the one under it */
+static void
+pop_list_pane (Shell *shell)
+{
+  vibeos_page_stack_set_transition (list_stack (shell),
+                                    in_pane (transition_of (vibeos_page_stack_get_top (list_stack (shell)))));
+  vibeos_page_stack_pop (list_stack (shell));
+}
+
+/* a page from a page: on the same stack as the one it came from */
+static void
+push_from (Shell *shell, GtkWidget *from, GtkWidget *page, VibeosPageTransition transition)
+{
+  if (is_split (shell) && is_on (from, list_stack (shell)))
+    push_listward (shell, page, transition);
+  else if (is_split (shell) && is_on (from, detail_stack (shell)))
+    {
+      set_transition (page, VIBEOS_PAGE_TRANSITION_SHARED_AXIS_PANE);
+      gtk_window_set_focus (GTK_WINDOW (shell->window), NULL);
+      vibeos_list_detail_push (home (shell), page);
+    }
+  else
+    push (shell, page, transition);
+}
+
+/* closes `page` if it is on top of its stack: the pager's, the list pane's, or the detail pane's (where a turn from
+ * one pane to two moves what was over the list) */
+static void
+close_page (Shell *shell, GtkWidget *page)
+{
+  if (!page)
+    return;
+  if (vibeos_page_stack_get_depth (pager (shell)) > 1 && vibeos_page_stack_get_top (pager (shell)) == page)
+    pop (shell);
+  else if (vibeos_page_stack_get_depth (list_stack (shell)) > 1 && vibeos_page_stack_get_top (list_stack (shell)) == page)
+    pop_list_pane (shell);
+  else if (is_on (page, detail_stack (shell)) && vibeos_page_stack_get_top (detail_stack (shell)) == page)
+    vibeos_list_detail_back (home (shell));
+}
+
 /* --- what is on screen (SetVisible) */
 
 static void
@@ -134,6 +250,24 @@ keep_draft (Shell *shell)
     conversation_view_save_draft (MSG_CONVERSATION_VIEW (shell->shown));
 }
 
+/* the back arrow on a conversation: beside the list it is the pane's first page, and Back there leaves the app (as an
+ * entry's page beside Settings' menu); over the list, or deeper, it goes back */
+static void
+sync_back_arrows (Shell *shell)
+{
+  VibeosPageStack *stacks[] = { list_stack (shell), detail_stack (shell), pager (shell) };
+
+  for (guint s = 0; s < G_N_ELEMENTS (stacks); s++)
+    for (guint i = 0; i < vibeos_page_stack_get_depth (stacks[s]); i++)
+      {
+        GtkWidget *page = vibeos_page_stack_get_page (stacks[s], i);
+
+        if (MSG_IS_CONVERSATION_VIEW (page))
+          conversation_view_set_back_shown (MSG_CONVERSATION_VIEW (page),
+                                            !(is_split (shell) && stacks[s] == detail_stack (shell) && i == 0));
+      }
+}
+
 static void
 on_top_changed (GtkWidget *stack, gpointer data)
 {
@@ -148,15 +282,22 @@ on_top_changed (GtkWidget *stack, gpointer data)
       if (MSG_IS_CONVERSATION_VIEW (top))
         shell->shown = g_object_ref (top);
     }
-  /* beside the list: its row shows which */
+  /* beside the list (or the archived one over it): its row shows which */
   {
-    VibeosPageStack *detail = vibeos_list_detail_get_detail_stack (home (shell));
-    GtkWidget *open = vibeos_list_detail_is_split (home (shell)) && vibeos_page_stack_get_depth (detail)
+    VibeosPageStack *detail = detail_stack (shell);
+    GtkWidget *open = is_split (shell) && vibeos_page_stack_get_depth (detail)
                       ? vibeos_page_stack_get_page (detail, 0) : NULL;
+    gint64 current = MSG_IS_CONVERSATION_VIEW (open) ? conversation_view_get_id (MSG_CONVERSATION_VIEW (open)) : 0;
 
-    conversation_list_set_current (MSG_CONVERSATION_LIST (shell->list), MSG_IS_CONVERSATION_VIEW (open)
-                                   ? conversation_view_get_id (MSG_CONVERSATION_VIEW (open)) : 0);
+    for (guint i = 0; i < vibeos_page_stack_get_depth (list_stack (shell)); i++)
+      {
+        GtkWidget *page = vibeos_page_stack_get_page (list_stack (shell), i);
+
+        if (MSG_IS_CONVERSATION_LIST (page))
+          conversation_list_set_current (MSG_CONVERSATION_LIST (page), current);
+      }
   }
+  sync_back_arrows (shell);
   if (top && !gtk_widget_get_focus_child (top))
     gtk_widget_grab_focus (top);
   update_visible (shell);
@@ -191,13 +332,21 @@ go_back (Shell *shell)
       pop (shell);
       return;
     }
+  /* nothing beside the list: a page over the list in its pane closes */
+  if (is_split (shell) && !vibeos_page_stack_get_depth (detail_stack (shell))
+      && vibeos_page_stack_get_depth (list_stack (shell)) > 1)
+    {
+      pop_list_pane (shell);
+      return;
+    }
   /* a conversation over the list closes as it opened: a cut */
-  vibeos_page_stack_set_transition (vibeos_list_detail_get_list_stack (home (shell)), VIBEOS_PAGE_TRANSITION_NONE);
+  vibeos_page_stack_set_transition (list_stack (shell), VIBEOS_PAGE_TRANSITION_NONE);
   if (!vibeos_list_detail_back (home (shell)))
     gtk_window_close (GTK_WINDOW (shell->window));
 }
 
-/* a page closing itself goes only if it is the one in front (a conversation deleted under the picker stays) */
+/* a page closing itself goes only if it is the one in front (a conversation deleted under the picker stays), or on
+ * top of the list pane beside a conversation (its own back arrow) */
 static void
 on_page_closed (GtkWidget *page, gpointer data)
 {
@@ -205,6 +354,9 @@ on_page_closed (GtkWidget *page, gpointer data)
 
   if (top_page (shell) == page)
     go_back (shell);
+  else if (is_split (shell) && vibeos_page_stack_get_depth (list_stack (shell)) > 1
+           && vibeos_page_stack_get_top (list_stack (shell)) == page)
+    pop_list_pane (shell);
   else if (gtk_widget_get_ancestor (page, VIBEOS_TYPE_LIST_DETAIL) && MSG_IS_CONVERSATION_VIEW (page))
     /* the conversation beside the list, deleted or archived from elsewhere */
     vibeos_list_detail_close_detail (home (shell));
@@ -240,6 +392,8 @@ on_picked (ContactPicker *picker, const char *number, gpointer data)
     open_conversation (shell, id, NULL, TRUE, NULL);
 }
 
+/* New chat: in two panes in the conversation's pane, where the conversation it starts then takes its place; else
+ * over everything */
 static void
 on_start_chat (GtkWidget *list, gpointer data)
 {
@@ -248,14 +402,36 @@ on_start_chat (GtkWidget *list, gpointer data)
 
   g_signal_connect (picker, "picked", G_CALLBACK (on_picked), shell);
   g_signal_connect (picker, "closed", G_CALLBACK (on_page_closed), shell);
-  push (shell, picker, VIBEOS_PAGE_TRANSITION_FADE_THROUGH);
+  if (is_split (shell) && vibeos_page_stack_get_depth (pager (shell)) < 2)
+    {
+      set_transition (picker, VIBEOS_PAGE_TRANSITION_SHARED_AXIS_PANE);
+      gtk_window_set_focus (GTK_WINDOW (shell->window), NULL);
+      vibeos_list_detail_show (home (shell), picker);
+    }
+  else
+    push (shell, picker, VIBEOS_PAGE_TRANSITION_FADE_THROUGH);
   gtk_widget_grab_focus (picker);
+}
+
+/* the conversation pane's line with nothing open: pick one, or with none yet, start one */
+static void
+update_empty_text (Shell *shell)
+{
+  gboolean none = conversation_list_get_n_conversations (MSG_CONVERSATION_LIST (shell->list)) == 0;
+
+  if (shell->empty_text)
+    gtk_label_set_text (GTK_LABEL (shell->empty_text), none ? _("Start a chat to see it here")
+                                                            : _("Pick a conversation to see it here"));
 }
 
 static void
 on_list_at_top (GtkWidget *list, gpointer data)
 {
-  update_visible (data);
+  Shell *shell = data;
+
+  if (list == shell->list)
+    update_empty_text (shell);
+  update_visible (shell);
 }
 
 static GtkWidget *
@@ -277,7 +453,7 @@ on_search (GtkWidget *list, gpointer data)
 
   g_signal_connect (page, "open-conversation", G_CALLBACK (on_open_conversation), shell);
   g_signal_connect (page, "closed", G_CALLBACK (on_page_closed), shell);
-  push (shell, page, VIBEOS_PAGE_TRANSITION_FADE_THROUGH);
+  push_listward (shell, page, VIBEOS_PAGE_TRANSITION_FADE_THROUGH);
   /* the keyboard comes up at once */
   gtk_widget_grab_focus (page);
 }
@@ -289,17 +465,32 @@ on_show_advanced_settings (GtkWidget *settings, gpointer data)
   GtkWidget *page = msg_settings_new_advanced ();
 
   g_signal_connect (page, "closed", G_CALLBACK (on_page_closed), shell);
-  push (shell, page, VIBEOS_PAGE_TRANSITION_SHARED_AXIS);
+  push_from (shell, settings, page, VIBEOS_PAGE_TRANSITION_SHARED_AXIS);
 }
 
-/* a page the account menu opens takes its place: Back from it goes to the list */
+/* a page the account menu opens takes its place, in the list pane or over everything: Back from it goes to the
+ * list */
 static void
 replace_menu (Shell *shell, GtkWidget *page)
 {
+  VibeosPageStack *stacks[] = { pager (shell), list_stack (shell), detail_stack (shell) };
+
   set_transition (page, VIBEOS_PAGE_TRANSITION_SHARED_AXIS);
-  vibeos_page_stack_set_transition (pager (shell), VIBEOS_PAGE_TRANSITION_SHARED_AXIS);
-  vibeos_page_stack_replace (pager (shell), page);
+  for (guint i = 0; i < G_N_ELEMENTS (stacks); i++)
+    if (is_on (shell->menu, stacks[i]) && vibeos_page_stack_get_top (stacks[i]) == shell->menu)
+      {
+        vibeos_page_stack_set_transition (stacks[i], i == 0 ? VIBEOS_PAGE_TRANSITION_SHARED_AXIS
+                                                            : VIBEOS_PAGE_TRANSITION_SHARED_AXIS_PANE);
+        vibeos_page_stack_replace (stacks[i], page);
+        return;
+      }
+  /* the menu went meanwhile */
+  g_object_ref_sink (page);
+  g_object_unref (page);
 }
+
+/* About: VibeOS's About sheet, as every VibeOS app has it */
+static const VibeosAboutInfo msg_about = { .name = "Messaging", .icon_name = "vibeos.Messaging" };
 
 static void
 on_menu (MsgAccountMenuItem item, gpointer data)
@@ -310,11 +501,15 @@ on_menu (MsgAccountMenuItem item, gpointer data)
   switch (item)
     {
     case MSG_ACCOUNT_MENU_CLOSE:
-      go_back (shell);
+      close_page (shell, shell->menu);
       return;
     case MSG_ACCOUNT_MENU_MARK_ALL_READ:
       conversation_list_mark_all_read (shell->client);
-      go_back (shell);
+      close_page (shell, shell->menu);
+      return;
+    case MSG_ACCOUNT_MENU_ABOUT:
+      close_page (shell, shell->menu);
+      vibeos_about_present (shell->window, &msg_about);
       return;
     case MSG_ACCOUNT_MENU_ARCHIVED:
       page = make_list (shell, TRUE);
@@ -336,8 +531,10 @@ static void
 on_account (GtkWidget *list, gpointer data)
 {
   Shell *shell = data;
+  GtkWidget *menu = msg_account_menu_new (on_menu, shell);
 
-  push (shell, msg_account_menu_new (on_menu, shell), VIBEOS_PAGE_TRANSITION_FADE_THROUGH);
+  g_set_weak_pointer (&shell->menu, menu);
+  push_listward (shell, menu, VIBEOS_PAGE_TRANSITION_FADE_THROUGH);
 }
 
 /* the person blocked from the details: the page and its conversation both close */
@@ -361,7 +558,8 @@ on_show_options (ConversationView *view, gpointer data)
 
   g_signal_connect (page, "closed", G_CALLBACK (on_page_closed), shell);
   g_signal_connect (page, "blocked", G_CALLBACK (on_options_blocked), shell);
-  push (shell, page, VIBEOS_PAGE_TRANSITION_SHARED_AXIS);
+  /* beside the list in the conversation's pane, over it; else over everything */
+  push_from (shell, GTK_WIDGET (view), page, VIBEOS_PAGE_TRANSITION_SHARED_AXIS);
 }
 
 /* --- Forward: a dialog over the conversation, titled "Forward message", with the conversations to pick from */
@@ -414,6 +612,9 @@ on_forward (ConversationView *view, const char *text, gpointer data)
   g_object_set_data_full (G_OBJECT (forward->dialog), "msg-forward", forward, forward_free);
   g_signal_connect (list, "open-conversation", G_CALLBACK (on_forward_picked), forward);
   vibeos_dialog_set_content (forward->dialog, list);
+  /* beside the list, over the conversation's pane */
+  if (is_split (shell) && is_on (GTK_WIDGET (view), detail_stack (shell)))
+    vibeos_dialog_set_anchor (forward->dialog, vibeos_list_detail_get_detail_pane (home (shell)));
   vibeos_dialog_present (forward->dialog, shell->pager);
 }
 
@@ -488,23 +689,99 @@ messaging_window_show_conversations (GtkWidget *window)
 
   vibeos_page_stack_pop_to_root (pager (shell));
   vibeos_list_detail_close_detail (home (shell));
+  /* and the list itself, not a page over it in its pane */
+  if (is_split (shell))
+    vibeos_page_stack_pop_to_root (list_stack (shell));
 }
 
-static GtkWidget *
-make_placeholder (void)
+/* a page that belongs in the conversation's pane: a conversation, New chat, People & options */
+static gboolean
+opens_beside (GtkWidget *page)
 {
+  return MSG_IS_CONVERSATION_VIEW (page) || MSG_IS_CONTACT_PICKER (page) || MSG_IS_PEOPLE_OPTIONS (page);
+}
+
+/* Two panes now (a tablet turned on its side): each open page goes where it would have opened in two, the pages the
+ * list opens over the list and a conversation, with what it opens, beside it. The list-detail has moved every page
+ * that was over the list beside it, and the pager holds what was open over everything; in each the pages the list
+ * opens come first */
+static void
+sort_into_panes (Shell *shell)
+{
+  VibeosPageStack *detail = detail_stack (shell);
+  VibeosPageStack *beside = VIBEOS_PAGE_STACK (g_object_ref_sink (vibeos_page_stack_new ()));
+  guint i;
+
+  for (i = 0; i < vibeos_page_stack_get_depth (detail) && !opens_beside (vibeos_page_stack_get_page (detail, i)); i++)
+    ;
+  vibeos_page_stack_move_pages (detail, i, beside);
+  vibeos_page_stack_move_pages (detail, 0, list_stack (shell));
+  for (i = 1; i < vibeos_page_stack_get_depth (pager (shell))
+              && !opens_beside (vibeos_page_stack_get_page (pager (shell), i)); i++)
+    ;
+  vibeos_page_stack_move_pages (pager (shell), i, beside);
+  vibeos_page_stack_move_pages (pager (shell), 1, list_stack (shell));
+  vibeos_page_stack_move_pages (beside, 0, detail);
+  g_object_unref (beside);
+}
+
+/* the conversation pane with nothing open: an empty pane with a quiet picture and a line in its middle */
+static GtkWidget *
+make_placeholder (Shell *shell)
+{
+  GtkWidget *pane = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  GtkWidget *middle = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  GtkWidget *icon = gtk_image_new_from_icon_name ("msg-chat-symbolic");
   GtkWidget *label = gtk_label_new (_("Pick a conversation to see it here"));
 
-  gtk_widget_add_css_class (label, "msg-detail-empty");
+  gtk_widget_add_css_class (pane, "msg-detail-empty");
+  gtk_widget_set_overflow (pane, GTK_OVERFLOW_HIDDEN);
+  gtk_image_set_pixel_size (GTK_IMAGE (icon), EMPTY_ICON);
+  gtk_widget_add_css_class (icon, "msg-detail-empty-icon");
+  gtk_widget_set_name (icon, "empty_state_image");
+  gtk_box_append (GTK_BOX (middle), icon);
   gtk_label_set_wrap (GTK_LABEL (label), TRUE);
   gtk_label_set_justify (GTK_LABEL (label), GTK_JUSTIFY_CENTER);
-  return label;
+  gtk_widget_add_css_class (label, "msg-detail-empty-text");
+  gtk_widget_set_name (label, "empty_state_text");
+  gtk_box_append (GTK_BOX (middle), label);
+  gtk_widget_set_valign (middle, GTK_ALIGN_CENTER);
+  gtk_widget_set_vexpand (middle, TRUE);
+  /* only with a pane to show them on: one pane gives it no width */
+  gtk_widget_set_visible (middle, FALSE);
+  gtk_box_append (GTK_BOX (pane), middle);
+  shell->empty = middle;
+  shell->empty_text = label;
+  update_empty_text (shell);
+  return pane;
 }
 
 static void
 on_detail_closed (VibeosListDetail *ld, Shell *shell)
 {
-  conversation_list_set_current (MSG_CONVERSATION_LIST (shell->list), 0);
+  for (guint i = 0; i < vibeos_page_stack_get_depth (list_stack (shell)); i++)
+    {
+      GtkWidget *page = vibeos_page_stack_get_page (list_stack (shell), i);
+
+      if (MSG_IS_CONVERSATION_LIST (page))
+        conversation_list_set_current (MSG_CONVERSATION_LIST (page), 0);
+    }
+}
+
+/* two panes or one: the panes' look (messaging.css), and the back arrows of the conversations that moved */
+static void
+on_split (Shell *shell)
+{
+  if (is_split (shell))
+    {
+      sort_into_panes (shell);
+      gtk_widget_add_css_class (shell->home, "msg-split");
+    }
+  else
+    gtk_widget_remove_css_class (shell->home, "msg-split");
+  gtk_widget_set_visible (shell->empty, is_split (shell));
+  sync_back_arrows (shell);
+  update_visible (shell);
 }
 
 GtkWidget *
@@ -526,21 +803,25 @@ messaging_window_new (GtkApplication *app)
   g_signal_connect (shell->list, "show-search", G_CALLBACK (on_search), shell);
   g_signal_connect (shell->list, "show-account", G_CALLBACK (on_account), shell);
   shell->home = vibeos_list_detail_new ();
+  gtk_widget_add_css_class (shell->home, "msg-home");
   vibeos_list_detail_set_list (home (shell), shell->list);
-  vibeos_list_detail_set_list_ratio (home (shell), LIST_RATIO);
-  vibeos_list_detail_set_placeholder (home (shell), make_placeholder ());
+  vibeos_list_detail_set_placeholder (home (shell), make_placeholder (shell));
   vibeos_page_stack_set_highlight_time (vibeos_list_detail_get_list_stack (home (shell)), ROW_HIGHLIGHT_MS);
   g_signal_connect (home (shell), "detail-closed", G_CALLBACK (on_detail_closed), shell);
   g_signal_connect (vibeos_list_detail_get_list_stack (home (shell)), "top-changed", G_CALLBACK (on_top_changed),
                     shell);
   g_signal_connect (vibeos_list_detail_get_detail_stack (home (shell)), "top-changed",
                     G_CALLBACK (on_top_changed), shell);
-  g_signal_connect_swapped (home (shell), "notify::split", G_CALLBACK (update_visible), shell);
+  g_signal_connect_swapped (home (shell), "notify::split", G_CALLBACK (on_split), shell);
 
   shell->pager = vibeos_page_stack_new ();
   vibeos_page_stack_push (pager (shell), shell->home);
   g_signal_connect (shell->pager, "top-changed", G_CALLBACK (on_top_changed), shell);
   vibeos_window_set_content (GTK_WINDOW (window), shell->pager);
+  /* the window's own, which goes with the window: held until the shell goes */
+  shell->layout = g_object_ref (vibeos_layout_get_for_window (GTK_WINDOW (window)));
+  g_signal_connect_swapped (shell->layout, "changed", G_CALLBACK (update_list_width), shell);
+  update_list_width (shell);
 
   g_signal_connect (window, "notify::is-active", G_CALLBACK (on_active), shell);
   g_signal_connect_swapped (window, "notify::suspended", G_CALLBACK (update_visible), shell);

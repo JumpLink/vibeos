@@ -51,8 +51,10 @@ function readPanelFile(Gm, compatibles) {
     return null;
 }
 
-// The hole on the upright panel, screen px: [x, y, width, height] around every cutout in the panel's top half, or
-// null. gmobile gives them in the panel's own pixels (x-res wide), scaled here to the mode it runs at.
+// The hole on the upright panel: {box: [x, y, width, height] around every cutout in the panel's top half, in the
+// panel's own pixels (gmobile's), xRes: the panel's width in them}, or null. Scaled to screen px as it is read (rect,
+// upright): a screen px is a reference px, and how many of them the panel is across changes with the scale (Display
+// size).
 async function readHole() {
     let Gm;
     try {
@@ -69,7 +71,6 @@ async function readHole() {
     const panel = new Gm.DeviceInfo({compatibles}).get_display_panel() ?? readPanelFile(Gm, compatibles);
     if (!panel)
         return null;
-    const k = panel.get_x_res() > 0 ? SCREEN_W / panel.get_x_res() : 1;
     const cutouts = panel.get_cutouts();
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (let i = 0; i < cutouts.get_n_items(); i++) {
@@ -83,7 +84,7 @@ async function readHole() {
     }
     if (x1 <= x0)
         return null;
-    return [x0 * k, y0 * k, (x1 - x0) * k, (y1 - y0) * k].map(Math.round);
+    return {box: [x0, y0, x1 - x0, y1 - y0], xRes: panel.get_x_res()};
 }
 
 export const Cutout = GObject.registerClass({
@@ -92,7 +93,7 @@ export const Cutout = GObject.registerClass({
     constructor() {
         super();
         this._transform = 0;
-        this._hole = null;              // [x, y, width, height] on the upright panel, screen px
+        this._hole = null;              // readHole()'s
         readHole().then(hole => {
             if (this._destroyed || !hole)
                 return;
@@ -105,19 +106,24 @@ export const Cutout = GObject.registerClass({
         this._update();
     }
 
-    // 'top', 'right', 'bottom' or 'left'; null with another monitor on (the phone docked)
+    // 'top', 'right', 'bottom' or 'left'; null when the primary monitor is not the phone's own panel (a display
+    // made the primary one: the phone docked)
     get side() {
         return this._transform === null ? null : SIDES[this._transform];
     }
 
     // the hole on the upright panel, screen px: [x, y, width, height] ([0, 0, 0, 0]: none)
     get upright() {
-        return this._hole ?? [0, 0, 0, 0];
+        if (!this._hole)
+            return [0, 0, 0, 0];
+        const k = this._hole.xRes > 0 ? SCREEN_W / this._hole.xRes : 1;
+        return this._hole.box.map(v => Math.round(v * k));
     }
 
     // how far the hole reaches in from the upright panel's top edge, screen px (0: no hole)
     get depth() {
-        return this._hole ? this._hole[1] + this._hole[3] : 0;
+        const [, y, , h] = this.upright;
+        return y + h;
     }
 
     // how far content keeps off each edge for the hole, screen px (Android's safe insets)
@@ -137,7 +143,7 @@ export const Cutout = GObject.registerClass({
         if (!this._hole || !m)
             return [0, 0, 0, 0];
         const W = m.width * SCALE, H = m.height * SCALE;
-        const [x, y, w, h] = this._hole;
+        const [x, y, w, h] = this.upright;
         switch (this.side) {
         case 'top':
             return [x, y, w, h];
@@ -153,27 +159,35 @@ export const Cutout = GObject.registerClass({
     }
 
     // The transform at once from the panel's shape and the sensor (mutter turns the panel by the sensor's reading),
-    // then mutter's own word for it (GNOME's orientation lock can hold a reading the sensor has left)
+    // then mutter's own word for it (GNOME's orientation lock can hold a reading the sensor has left). With a display
+    // plugged in as well the panel keeps its hole for as long as it is the primary monitor: the status bar is still
+    // on it (2026-11-20: a TV on the S10e put the battery under the camera); mutter says which one that is.
     _update() {
-        if (Main.layoutManager.monitors.length !== 1) {
+        const m = Main.layoutManager.primaryMonitor;
+        if (!m) {
             this._set(null);
             return;
         }
-        const m = Main.layoutManager.primaryMonitor;
-        if (m.height >= m.width) {
-            this._set(this._transform === 2 ? 2 : 0);
-        } else {
-            const o = this._sensor.get_orientation();
-            this._set(o === Meta.Orientation.LEFT_UP ? 1 : o === Meta.Orientation.RIGHT_UP ? 3
-                : this._transform === 1 || this._transform === 3 ? this._transform : 1);
+        if (Main.layoutManager.monitors.length === 1) {
+            if (m.height >= m.width) {
+                this._set(this._transform === 2 ? 2 : 0);
+            } else {
+                const o = this._sensor.get_orientation();
+                this._set(o === Meta.Orientation.LEFT_UP ? 1 : o === Meta.Orientation.RIGHT_UP ? 3
+                    : this._transform === 1 || this._transform === 3 ? this._transform : 1);
+            }
         }
         Gio.DBus.session.call('org.gnome.Mutter.DisplayConfig', '/org/gnome/Mutter/DisplayConfig',
             'org.gnome.Mutter.DisplayConfig', 'GetCurrentState', null, new GLib.VariantType(STATE_TYPE),
             Gio.DBusCallFlags.NONE, -1, this._cancellable, (bus, res) => {
                 try {
-                    const [, , logical] = bus.call_finish(res).recursiveUnpack();
-                    if (logical.length === 1)
-                        this._set(logical[0][3] & 3);
+                    const [, monitors, logical] = bus.call_finish(res).recursiveUnpack();
+                    const builtin = monitors.filter(([, , props]) => props['is-builtin']).map(([[c]]) => c);
+                    const primary = logical.find(l => l[4]) ?? (logical.length === 1 ? logical[0] : null);
+                    if (!primary || !primary[5].some(([c]) => builtin.includes(c)))
+                        this._set(null);
+                    else
+                        this._set(primary[3] & 3);
                 } catch (e) {
                     if (!e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
                         logError(e, 'vibeos: the panel\'s rotation');

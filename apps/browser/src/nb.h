@@ -160,6 +160,8 @@ GdkTexture *nb_tab_favicon        (NbTab *t);
 
 /* nb-switcher.c */
 GtkWidget  *nb_window_get         (void);      /* the window, made on first use */
+/* the window is on a tablet: pages get a tablet's user agent (no "Mobile") at their own zoom */
+gboolean    nb_is_tablet          (void);
 void        nb_switcher_open      (void);
 void        nb_switcher_close     (void);
 void        nb_tabs_changed       (void);      /* a tab opened, closed or renamed: the counts, the switcher */

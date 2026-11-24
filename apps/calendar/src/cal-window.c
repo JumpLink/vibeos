@@ -8,6 +8,7 @@
 #include "cal-popup.h"
 #include "cal-search.h"
 #include "cal-settings.h"
+#include "cal-side.h"
 #include "day-view.h"
 #include "event-editor.h"
 #include "event-info.h"
@@ -19,11 +20,18 @@
 typedef enum { VIEW_DAY, VIEW_WEEK, VIEW_MONTH, VIEW_AGENDA, N_VIEWS } ViewType;
 
 static const char *view_names[N_VIEWS] = { "day", "week", "month", "agenda" };
+static const char *view_titles[N_VIEWS] = { N_("Day"), N_("Week"), N_("Month"), N_("Agenda") };
 
 #define DRAWER_WIDTH 296.0
+#define TABLET_DRAWER_WIDTH 360.0
+#define INFO_DIALOG_WIDTH 500                   /* a tablet: the event's info in a dialog this large, over the views */
+#define INFO_DIALOG_HEIGHT 600
+#define INFO_DIALOG_MARGIN 24                   /* ... at least this far from the window's edges */
+#define LIST_SHARE 0.4                  /* a tablet's Agenda: the list's share of the width, the event's pane the rest */
 #define DRAWER_MS 250                   /* the drawer opening or closing, at most */
 #define VIEW_FADE_MS 150                /* one view fading into another */
 #define PAGE_MS 300                     /* a page opening over the main one */
+#define MENU_GAP 4                      /* the overflow menu's top, this far under its ⋮ */
 
 typedef struct {
   GtkWidget *window;
@@ -49,6 +57,15 @@ typedef struct {
   GtkWidget *toast, *toast_label;
   VibeosAnim *toast_anim;
   guint toast_timeout;
+
+  /* a tablet: the view's name as the title and the date in a row under the toolbar, the side controls beside Day
+   * and Week, the tapped event's info beside Agenda */
+  VibeosLayout *layout;
+  gboolean tablet, sideways;
+  GtkWidget *body;                      /* the views, with the side controls or the pane */
+  GtkWidget *date_row, *date, *date_extra, *today_text;
+  GtkWidget *side;
+  GtkWidget *pane, *pane_info;          /* the pane, and the event info in it (or none) */
 
   ViewType view, previous_view;
   gboolean back_to_previous;            /* Back returns to the view before (Month → a day) */
@@ -97,12 +114,68 @@ week_of (Shell *shell, int day)
 
 /* --- the toolbar's title (CalendarToolbarHandler) */
 
+/* a tablet: the view's name in the toolbar; the date in the row under it ("November 15, 2026" and "TODAY, SUNDAY" for
+ * Day, the month for Week and Month, with Week's number when it shows); the side controls' band on the days shown */
+static void
+update_tablet_title (Shell *shell)
+{
+  g_autofree char *date = NULL, *extra = NULL;
+  int day = shell->selected_day;
+
+  gtk_label_set_label (GTK_LABEL (shell->title), _(view_titles[shell->view]));
+  gtk_widget_set_visible (shell->subtitle, FALSE);
+  switch (shell->view)
+    {
+    case VIEW_DAY:
+      {
+        g_autofree char *relative = cal_format_relative_weekday (day, today ());
+
+        date = cal_format_full_date (day);
+        extra = g_utf8_strup (relative, -1);
+      }
+      break;
+    case VIEW_WEEK:
+      date = cal_format_month_year (cal_day_view_get_first_day (CAL_DAY_VIEW (shell->view_widgets[VIEW_WEEK])));
+      if (g_settings_get_boolean (shell->settings, "show-week-number"))
+        {
+          g_autofree char *week = cal_format_week_number (cal_week_number (cal_day_view_get_first_day (
+                                                                             CAL_DAY_VIEW (shell->view_widgets[VIEW_WEEK])),
+                                                                           week_start (shell)));
+
+          extra = g_utf8_strup (week, -1);
+        }
+      break;
+    case VIEW_MONTH:
+      date = cal_format_month_year (cal_month_view_get_focus_day (CAL_MONTH_VIEW (shell->view_widgets[VIEW_MONTH])));
+      break;
+    case VIEW_AGENDA:
+    default:
+      break;
+    }
+  gtk_label_set_label (GTK_LABEL (shell->date), date ? date : "");
+  gtk_label_set_label (GTK_LABEL (shell->date_extra), extra ? extra : "");
+  gtk_widget_set_visible (shell->date_extra, extra != NULL);
+  if (shell->view == VIEW_DAY || shell->view == VIEW_WEEK)
+    {
+      CalDayView *view = CAL_DAY_VIEW (shell->view_widgets[shell->view]);
+      int first = cal_day_view_get_first_day (view);
+
+      cal_side_set_days (CAL_SIDE (shell->side), first, first + cal_day_view_get_num_days (view) - 1);
+    }
+  gtk_widget_queue_draw (shell->today_icon);
+}
+
 static void
 update_title (Shell *shell)
 {
   g_autofree char *title = NULL, *subtitle = NULL;
   int day = shell->selected_day;
 
+  if (shell->tablet)
+    {
+      update_tablet_title (shell);
+      return;
+    }
   switch (shell->view)
     {
     case VIEW_DAY:
@@ -202,6 +275,113 @@ on_store_changed (CalStore *store, Shell *shell)
 
 /* --- views */
 
+/* --- a tablet's layout */
+
+static void place_drawer (Shell *shell);
+
+static void
+apply_tablet (Shell *shell)
+{
+  gboolean days = shell->view == VIEW_DAY || shell->view == VIEW_WEEK;
+
+  gtk_widget_set_visible (shell->date_row, shell->tablet && shell->view != VIEW_AGENDA);
+  gtk_widget_set_visible (shell->side, shell->tablet && days);
+  gtk_widget_set_visible (shell->pane, shell->tablet && shell->view == VIEW_AGENDA);
+  gtk_widget_set_visible (shell->today_text, shell->tablet);
+  if (!shell->tablet || shell->view != VIEW_AGENDA)
+    cal_window_close_pane (shell->window);
+  gtk_widget_queue_allocate (shell->body);
+}
+
+void
+cal_window_close_pane (GtkWidget *window)
+{
+  Shell *shell = shell_of (window);
+
+  if (!shell->pane_info)
+    return;
+  event_info_save (shell->pane_info);
+  gtk_box_remove (GTK_BOX (shell->pane), shell->pane_info);
+  shell->pane_info = NULL;
+  cal_agenda_view_set_selected (CAL_AGENDA_VIEW (shell->view_widgets[VIEW_AGENDA]), NULL);
+}
+
+/* a tablet's Agenda: the tapped event's info in the pane beside the list */
+static void
+show_in_pane (Shell *shell, CalEvent *event)
+{
+  cal_window_close_pane (shell->window);
+  shell->pane_info = event_info_new_pane (shell->window, event);
+  gtk_widget_set_vexpand (shell->pane_info, TRUE);
+  gtk_box_append (GTK_BOX (shell->pane), shell->pane_info);
+  cal_agenda_view_set_selected (CAL_AGENDA_VIEW (shell->view_widgets[VIEW_AGENDA]), event);
+}
+
+/* the views fill the body; on a tablet the side controls take a column at the end (sideways) or a strip at the
+ * bottom (upright) beside Day and Week, and the pane the share of the width the list leaves beside Agenda */
+static void
+body_measure (GtkWidget *body, GtkOrientation orientation, int for_size, int *min, int *nat, int *min_baseline,
+              int *nat_baseline)
+{
+  *min = *nat = 0;
+}
+
+static void
+body_allocate (GtkWidget *body, int width, int height, int baseline)
+{
+  Shell *shell = g_object_get_data (G_OBJECT (body), "cal-shell");
+  int views_width = width, views_height = height;
+
+  if (gtk_widget_get_visible (shell->side) && shell->sideways)
+    {
+      int side = MIN (width, CAL_SIDE_COLUMN_WIDTH);
+
+      views_width = width - side;
+      gtk_widget_allocate (shell->side, side, height, -1,
+                           gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (views_width, 0)));
+    }
+  else if (gtk_widget_get_visible (shell->side))
+    {
+      int side = MIN (height, CAL_SIDE_STRIP_HEIGHT);
+
+      views_height = height - side;
+      gtk_widget_allocate (shell->side, width, side, -1,
+                           gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (0, views_height)));
+    }
+  else if (gtk_widget_get_visible (shell->pane))
+    {
+      views_width = (int) round (width * LIST_SHARE);
+      gtk_widget_allocate (shell->pane, width - views_width, height, -1,
+                           gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (views_width, 0)));
+    }
+  gtk_widget_allocate (shell->views, views_width, views_height, -1, NULL);
+}
+
+static double
+drawer_width (Shell *shell)
+{
+  return shell->tablet ? TABLET_DRAWER_WIDTH : DRAWER_WIDTH;
+}
+
+static void
+on_layout_changed (VibeosLayout *layout, Shell *shell)
+{
+  shell->tablet = vibeos_layout_is_tablet (layout);
+  shell->sideways = vibeos_layout_is_landscape (layout);
+  cal_side_set_strip (CAL_SIDE (shell->side), !shell->sideways);
+  gtk_widget_set_size_request (shell->drawer_sheet, (int) drawer_width (shell), -1);
+  if (shell->drawer_open > 0)
+    place_drawer (shell);
+  apply_tablet (shell);
+  update_title (shell);
+}
+
+static void
+on_side_day (CalSide *side, int day, Shell *shell)
+{
+  cal_window_go_to (shell->window, day);
+}
+
 static void
 select_drawer_item (Shell *shell)
 {
@@ -239,6 +419,7 @@ show_view (Shell *shell, ViewType view, int day)
     }
   gtk_stack_set_visible_child (GTK_STACK (shell->views), widget);
   select_drawer_item (shell);
+  apply_tablet (shell);
   update_title (shell);
   refresh (shell);
   /* for "Previously used view" (the Default view setting's default) */
@@ -322,7 +503,10 @@ on_agenda_top_day (CalAgendaView *view, int day, Shell *shell)
 static void
 on_event_activated (GtkWidget *view, CalEvent *event, Shell *shell)
 {
-  cal_window_show_event (shell->window, event);
+  if (shell->tablet && view == shell->view_widgets[VIEW_AGENDA])
+    show_in_pane (shell, event);
+  else
+    cal_window_show_event (shell->window, event);
 }
 
 static void
@@ -431,7 +615,7 @@ place_drawer (Shell *shell)
   gtk_widget_set_visible (shell->drawer, shell->drawer_open > 0);
   gtk_widget_set_opacity (shell->drawer_scrim, shell->drawer_open);
   /* slid in from the left */
-  CAL_SLIDE (shell->drawer_slide)->offset = round (-DRAWER_WIDTH * (1 - shell->drawer_open));
+  CAL_SLIDE (shell->drawer_slide)->offset = round (-drawer_width (shell) * (1 - shell->drawer_open));
   gtk_widget_queue_allocate (shell->drawer_slide);
 }
 
@@ -467,11 +651,14 @@ on_settings_item (VibeosPressable *item, Shell *shell)
   cal_window_push (shell->window, cal_settings_page_new (shell->window));
 }
 
+/* About, from the drawer or the ⋮ menu: VibeOS's About sheet, as every VibeOS app has it */
+static const VibeosAboutInfo cal_about = { .name = "Calendar", .icon_name = "vibeos.Calendar" };
+
 static void
 on_about_item (VibeosPressable *item, Shell *shell)
 {
   open_drawer (shell, FALSE);
-  cal_window_push (shell->window, cal_about_page_new (shell->window));
+  vibeos_about_present (shell->window, &cal_about);
 }
 
 static void
@@ -493,7 +680,7 @@ on_sheet_drag_update (GtkGestureDrag *gesture, double dx, double dy, Shell *shel
       vibeos_anim_stop (shell->drawer_anim);
       shell->drawer_drag_from = shell->drawer_open;
     }
-  shell->drawer_open = CLAMP (shell->drawer_drag_from + dx / DRAWER_WIDTH, 0, 1);
+  shell->drawer_open = CLAMP (shell->drawer_drag_from + dx / drawer_width (shell), 0, 1);
   place_drawer (shell);
 }
 
@@ -524,7 +711,7 @@ drawer_item (Shell *shell, const char *icon, const char *label, GCallback callba
   gtk_widget_add_css_class (image, "cal-drawer-icon");
   gtk_widget_add_css_class (text, "cal-drawer-label");
   gtk_label_set_xalign (GTK_LABEL (text), 0);
-  vibeos_label_set_font_padding (text, 14);
+  vibeos_label_set_font_padding_sp (text, 14);
   gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (row), image);
   gtk_box_append (GTK_BOX (row), text);
@@ -544,12 +731,8 @@ make_drawer (Shell *shell)
   GtkWidget *sheet = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkGesture *press = gtk_gesture_click_new ();
   GtkGesture *drag = gtk_gesture_drag_new ();
-  static const struct { const char *icon, *label; } items[N_VIEWS] = {
-    { "cal-view-day-symbolic", N_("Day") },
-    { "cal-view-week-symbolic", N_("Week") },
-    { "cal-view-month-symbolic", N_("Month") },
-    { "cal-view-agenda-symbolic", N_("Agenda") },
-  };
+  static const char *icons[N_VIEWS] = { "cal-view-day-symbolic", "cal-view-week-symbolic", "cal-view-month-symbolic",
+                                        "cal-view-agenda-symbolic" };
   GtkWidget *divider = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
 
   gtk_widget_add_css_class (scrim, "vibeos-scrim");
@@ -567,7 +750,7 @@ make_drawer (Shell *shell)
   gtk_accessible_update_property (GTK_ACCESSIBLE (sheet), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Calendar"), -1);
   for (int i = 0; i < N_VIEWS; i++)
     {
-      shell->drawer_items[i] = drawer_item (shell, items[i].icon, _(items[i].label), G_CALLBACK (on_drawer_item), i);
+      shell->drawer_items[i] = drawer_item (shell, icons[i], _(view_titles[i]), G_CALLBACK (on_drawer_item), i);
       gtk_box_append (GTK_BOX (sheet), shell->drawer_items[i]);
     }
   gtk_widget_add_css_class (divider, "cal-drawer-divider");
@@ -611,7 +794,7 @@ on_edge_drag_update (GtkGestureDrag *gesture, double dx, double dy, Shell *shell
   if (dx < 8 && shell->drawer_open == 0)
     return;
   gtk_gesture_set_state (GTK_GESTURE (gesture), GTK_EVENT_SEQUENCE_CLAIMED);
-  shell->drawer_open = CLAMP (dx / DRAWER_WIDTH, 0, 1);
+  shell->drawer_open = CLAMP (dx / drawer_width (shell), 0, 1);
   place_drawer (shell);
 }
 
@@ -655,6 +838,13 @@ on_refreshed (GObject *client, GAsyncResult *result, gpointer data)
   if (!e_client_refresh_finish (E_CLIENT (client), result, &error)
       && !g_error_matches (error, E_CLIENT_ERROR, E_CLIENT_ERROR_NOT_SUPPORTED))
     g_message ("refresh: %s", error->message);
+}
+
+static void
+on_menu_about (VibeosPressable *item, Shell *shell)
+{
+  close_menu (shell);
+  vibeos_about_present (shell->window, &cal_about);
 }
 
 static void
@@ -741,7 +931,7 @@ menu_item (Shell *shell, const char *label, GCallback callback)
 
   gtk_label_set_xalign (GTK_LABEL (text), 0);
   /* font padding: the title sits a little lower than without */
-  vibeos_label_set_font_padding (text, 16);
+  vibeos_label_set_font_padding_sp (text, 16);
   gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
   gtk_widget_add_css_class (item, "cal-menu-item");
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (item), VIBEOS_RIPPLE_BOUNDED, 0);
@@ -756,6 +946,8 @@ on_more (VibeosPressable *button, Shell *shell)
   GtkWidget *menu = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *layer = gtk_overlay_new ();
   GtkGesture *press = gtk_gesture_click_new ();
+  GtkOverlay *overlay = vibeos_window_get_overlay (shell->window);
+  graphene_rect_t at;
 
   close_menu (shell);
   g_signal_connect (press, "pressed", G_CALLBACK (on_menu_scrim), shell);
@@ -765,6 +957,13 @@ on_more (VibeosPressable *button, Shell *shell)
   gtk_widget_add_css_class (menu, "cal-overflow-menu");
   gtk_widget_set_halign (menu, GTK_ALIGN_END);
   gtk_widget_set_valign (menu, GTK_ALIGN_START);
+  /* under the ⋮, never over it (libvibeos's VibeosMenu), its end a little in from the button's */
+  if (gtk_widget_compute_bounds (GTK_WIDGET (button), GTK_WIDGET (overlay), &at))
+    {
+      gtk_widget_set_margin_top (menu, (int) (at.origin.y + at.size.height) + MENU_GAP);
+      gtk_widget_set_margin_end (menu, MAX (0, gtk_widget_get_width (GTK_WIDGET (overlay)) -
+                                               (int) (at.origin.x + at.size.width)));
+    }
   gtk_accessible_update_property (GTK_ACCESSIBLE (menu), GTK_ACCESSIBLE_PROPERTY_LABEL, _("More options"), -1);
   gtk_box_append (GTK_BOX (menu), menu_item (shell, _("Go to…"), G_CALLBACK (on_menu_go_to)));
   gtk_box_append (GTK_BOX (menu), menu_item (shell, _("Refresh"), G_CALLBACK (on_menu_refresh)));
@@ -773,9 +972,10 @@ on_more (VibeosPressable *button, Shell *shell)
   /* View settings: the Month view only */
   if (shell->view == VIEW_MONTH)
     gtk_box_append (GTK_BOX (menu), menu_item (shell, _("View settings"), G_CALLBACK (on_menu_view_settings)));
+  gtk_box_append (GTK_BOX (menu), menu_item (shell, _("About"), G_CALLBACK (on_menu_about)));
   gtk_overlay_add_overlay (GTK_OVERLAY (layer), menu);
   shell->menu = layer;
-  gtk_overlay_add_overlay (vibeos_window_get_overlay (shell->window), layer);
+  gtk_overlay_add_overlay (overlay, layer);
 }
 
 /* --- the Today button: a calendar with today's date in it */
@@ -873,8 +1073,8 @@ make_toolbar (Shell *shell)
   gtk_label_set_ellipsize (GTK_LABEL (shell->title), PANGO_ELLIPSIZE_END);
   gtk_label_set_ellipsize (GTK_LABEL (shell->subtitle), PANGO_ELLIPSIZE_END);
   /* font padding on both lines */
-  vibeos_label_set_font_padding (shell->title, 22);
-  vibeos_label_set_font_padding (shell->subtitle, 16);
+  vibeos_label_set_font_padding_sp (shell->title, 22);
+  vibeos_label_set_font_padding_sp (shell->subtitle, 16);
   gtk_box_append (GTK_BOX (titles), shell->title);
   gtk_box_append (GTK_BOX (titles), shell->subtitle);
   gtk_widget_set_hexpand (titles, TRUE);
@@ -885,8 +1085,19 @@ make_toolbar (Shell *shell)
   gtk_box_append (GTK_BOX (bar), titles);
 
   shell->today_icon = g_object_new (cal_today_icon_get_type (), NULL);
-  today_button = vibeos_pressable_new (shell->today_icon);
-  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (today_button), VIBEOS_RIPPLE_CIRCLE, 20);
+  {
+    GtkWidget *content = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+    g_autofree char *text = g_utf8_strup (_("Today"), -1);
+
+    /* a tablet spells it out after the icon */
+    shell->today_text = gtk_label_new (text);
+    gtk_widget_add_css_class (shell->today_text, "cal-today-text");
+    gtk_widget_set_visible (shell->today_text, FALSE);
+    gtk_box_append (GTK_BOX (content), shell->today_icon);
+    gtk_box_append (GTK_BOX (content), shell->today_text);
+    today_button = vibeos_pressable_new (content);
+  }
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (today_button), VIBEOS_RIPPLE_BOUNDED, 20);
   gtk_accessible_update_property (GTK_ACCESSIBLE (today_button), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Today"), -1);
   g_signal_connect (today_button, "clicked", G_CALLBACK (on_today), shell);
   gtk_box_append (GTK_BOX (bar), today_button);
@@ -940,41 +1151,127 @@ on_page_transition_done (GObject *stack, GParamSpec *pspec, Shell *shell)
     }
 }
 
-void
-cal_window_push (GtkWidget *window, GtkWidget *page)
+/* --- a tablet's dialog: a pushed page in a card over the views and a scrim, rather than in place of them */
+
+/* the dialog a pushed page is in, or NULL for a page in the stack */
+static GtkWidget *
+dialog_of (GtkWidget *page)
+{
+  return g_object_get_data (G_OBJECT (page), "cal-dialog");
+}
+
+/* the card as large as the dialog is, or as the window leaves room for, centred */
+static gboolean
+on_dialog_position (GtkOverlay *overlay, GtkWidget *child, GdkRectangle *rect, gpointer data)
+{
+  int width = gtk_widget_get_width (GTK_WIDGET (overlay)), height = gtk_widget_get_height (GTK_WIDGET (overlay));
+
+  rect->width = MIN (INFO_DIALOG_WIDTH, MAX (width - 2 * INFO_DIALOG_MARGIN, 0));
+  rect->height = MIN (INFO_DIALOG_HEIGHT, MAX (height - 2 * INFO_DIALOG_MARGIN, 0));
+  rect->x = (width - rect->width) / 2;
+  rect->y = (height - rect->height) / 2;
+  return TRUE;
+}
+
+/* a tap on the scrim is Back for the page in the card */
+static void
+on_dialog_scrim (GtkGestureClick *click, int n, double x, double y, GtkWidget *page)
+{
+  cal_page_back (CAL_PAGE (page));
+}
+
+static GtkWidget *
+dialog_new (GtkWidget *page)
+{
+  GtkWidget *dialog = gtk_overlay_new ();
+  GtkWidget *scrim = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  GtkWidget *card = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  GtkGesture *click = gtk_gesture_click_new ();
+
+  gtk_widget_add_css_class (scrim, "vibeos-scrim");
+  gtk_widget_add_controller (scrim, GTK_EVENT_CONTROLLER (click));
+  g_signal_connect (click, "released", G_CALLBACK (on_dialog_scrim), page);
+  gtk_overlay_set_child (GTK_OVERLAY (dialog), scrim);
+  gtk_widget_add_css_class (card, "cal-dialog-card");
+  gtk_widget_set_overflow (card, GTK_OVERFLOW_HIDDEN);
+  gtk_widget_set_vexpand (page, TRUE);
+  gtk_box_append (GTK_BOX (card), page);
+  gtk_overlay_add_overlay (GTK_OVERLAY (dialog), card);
+  g_signal_connect (dialog, "get-child-position", G_CALLBACK (on_dialog_position), NULL);
+  g_object_set_data (G_OBJECT (page), "cal-dialog", dialog);
+  return dialog;
+}
+
+/* the stack shows the top page that is not in a dialog, and only the top dialog shows */
+static void
+show_top (Shell *shell)
+{
+  GtkWidget *shown = shell->main;
+
+  for (guint i = 0; i < shell->pushed->len; i++)
+    {
+      GtkWidget *page = shell->pushed->pdata[i], *dialog = dialog_of (page);
+
+      if (dialog)
+        gtk_widget_set_visible (dialog, i == shell->pushed->len - 1);
+      else
+        shown = page;
+    }
+  gtk_stack_set_visible_child (GTK_STACK (shell->pages), shown);
+}
+
+/* `page` in a dialog over the views on a tablet, and pushed like any page on a phone */
+static void
+push (GtkWidget *window, GtkWidget *page, gboolean dialog)
 {
   Shell *shell = shell_of (window);
-  g_autofree char *name = g_strdup_printf ("page-%u", ++shell->page_serial);
 
   close_menu (shell);
   /* A page opens with nothing focused: with the focus still in the stack, GtkStack would hand it to the new page's
    * first entry, which selects its text and calls up the keyboard. */
   gtk_window_set_focus (GTK_WINDOW (window), NULL);
-  gtk_stack_add_named (GTK_STACK (shell->pages), page, name);
+  if (dialog && shell->tablet)
+    gtk_overlay_add_overlay (vibeos_window_get_overlay (window), dialog_new (page));
+  else
+    {
+      g_autofree char *name = g_strdup_printf ("page-%u", ++shell->page_serial);
+
+      gtk_stack_add_named (GTK_STACK (shell->pages), page, name);
+    }
   g_ptr_array_add (shell->pushed, page);
-  gtk_stack_set_visible_child (GTK_STACK (shell->pages), page);
+  show_top (shell);
+}
+
+void
+cal_window_push (GtkWidget *window, GtkWidget *page)
+{
+  push (window, page, FALSE);
 }
 
 void
 cal_window_pop (GtkWidget *window)
 {
   Shell *shell = shell_of (window);
-  GtkWidget *page;
+  GtkWidget *page, *dialog;
 
   if (!shell->pushed->len)
     return;
   page = g_ptr_array_steal_index (shell->pushed, shell->pushed->len - 1);
-  g_object_set_data (G_OBJECT (page), "cal-popped", GINT_TO_POINTER (TRUE));
-  gtk_stack_set_visible_child (GTK_STACK (shell->pages),
-                               shell->pushed->len ? shell->pushed->pdata[shell->pushed->len - 1] : shell->main);
+  dialog = dialog_of (page);
+  if (dialog)
+    gtk_overlay_remove_overlay (vibeos_window_get_overlay (window), dialog);
+  else
+    g_object_set_data (G_OBJECT (page), "cal-popped", GINT_TO_POINTER (TRUE));
+  show_top (shell);
   if (!gtk_stack_get_transition_running (GTK_STACK (shell->pages)))
     on_page_transition_done (G_OBJECT (shell->pages), NULL, shell);
 }
 
+/* on a tablet in a dialog over the views, as a page of its own on a phone */
 void
 cal_window_show_event (GtkWidget *window, CalEvent *event)
 {
-  cal_window_push (window, event_info_new (window, event));
+  push (window, event_info_new (window, event), TRUE);
 }
 
 void
@@ -1173,6 +1470,9 @@ shell_free (gpointer data)
   g_cancellable_cancel (shell->query);
   g_clear_object (&shell->query);
   g_signal_handlers_disconnect_by_data (shell->store, shell);
+  if (shell->layout)
+    g_signal_handlers_disconnect_by_data (shell->layout, shell);
+  g_clear_object (&shell->layout);
   g_clear_pointer (&shell->drawer_anim, vibeos_anim_free);
   g_ptr_array_unref (shell->pushed);
   g_object_unref (shell->store);
@@ -1236,6 +1536,7 @@ on_settings_changed (GSettings *settings, const char *key, Shell *shell)
   if (g_str_equal (key, "week-start"))
     {
       cal_month_view_set_week_start (CAL_MONTH_VIEW (shell->view_widgets[VIEW_MONTH]), week_start (shell));
+      cal_side_set_week_start (CAL_SIDE (shell->side), week_start (shell));
       show_view (shell, shell->view, shell->selected_day);
     }
   else if (g_str_equal (key, "real-event-colors"))
@@ -1347,7 +1648,38 @@ cal_window_new (GtkApplication *app, CalStore *store, GSettings *settings)
   apply_month_details (shell);
 
   gtk_box_append (GTK_BOX (main), make_toolbar (shell));
-  gtk_box_append (GTK_BOX (main), shell->views);
+
+  /* a tablet's date row, under the toolbar */
+  shell->date_row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+  gtk_widget_add_css_class (shell->date_row, "cal-date-row");
+  shell->date = gtk_label_new (NULL);
+  gtk_widget_add_css_class (shell->date, "cal-date-row-date");
+  shell->date_extra = gtk_label_new (NULL);
+  gtk_widget_add_css_class (shell->date_extra, "cal-date-row-extra");
+  gtk_label_set_ellipsize (GTK_LABEL (shell->date_extra), PANGO_ELLIPSIZE_END);
+  gtk_widget_set_valign (shell->date, GTK_ALIGN_BASELINE_CENTER);
+  gtk_widget_set_valign (shell->date_extra, GTK_ALIGN_BASELINE_CENTER);
+  gtk_box_append (GTK_BOX (shell->date_row), shell->date);
+  gtk_box_append (GTK_BOX (shell->date_row), shell->date_extra);
+  gtk_widget_set_visible (shell->date_row, FALSE);
+  gtk_box_append (GTK_BOX (main), shell->date_row);
+
+  /* the body: the views, the side controls, the pane */
+  shell->body = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+  g_object_set_data (G_OBJECT (shell->body), "cal-shell", shell);
+  gtk_widget_set_layout_manager (shell->body, gtk_custom_layout_new (NULL, body_measure, body_allocate));
+  gtk_widget_set_vexpand (shell->body, TRUE);
+  gtk_box_append (GTK_BOX (shell->body), shell->views);
+  shell->side = cal_side_new (store);
+  cal_side_set_week_start (CAL_SIDE (shell->side), week_start (shell));
+  g_signal_connect (shell->side, "day-activated", G_CALLBACK (on_side_day), shell);
+  gtk_widget_set_visible (shell->side, FALSE);
+  gtk_box_append (GTK_BOX (shell->body), shell->side);
+  shell->pane = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  gtk_widget_add_css_class (shell->pane, "cal-agenda-pane");
+  gtk_widget_set_visible (shell->pane, FALSE);
+  gtk_box_append (GTK_BOX (shell->body), shell->pane);
+  gtk_box_append (GTK_BOX (main), shell->body);
   gtk_overlay_set_child (GTK_OVERLAY (content), main);
 
   /* the FAB: a rounded square with a white plus, for a new event */
@@ -1391,6 +1723,12 @@ cal_window_new (GtkApplication *app, CalStore *store, GSettings *settings)
   g_signal_connect (store, "calendars-changed", G_CALLBACK (on_store_changed), shell);
   g_signal_connect (settings, "changed", G_CALLBACK (on_settings_changed), shell);
   schedule_midnight (shell);
+  shell->layout = g_object_ref (vibeos_layout_get_for_window (GTK_WINDOW (window)));
+  g_signal_connect (shell->layout, "changed", G_CALLBACK (on_layout_changed), shell);
+  shell->tablet = vibeos_layout_is_tablet (shell->layout);
+  shell->sideways = vibeos_layout_is_landscape (shell->layout);
+  cal_side_set_strip (CAL_SIDE (shell->side), !shell->sideways);
+  gtk_widget_set_size_request (shell->drawer_sheet, (int) drawer_width (shell), -1);
   show_view (shell, view, today ());
   return window;
 }

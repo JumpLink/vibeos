@@ -1,3 +1,152 @@
+vibeos (1:0.1.4) unstable; urgency=medium
+
+  * Agent, a new app in vibeos-dictate (vibeos.Agent): a spoken
+    conversation with VibeOS's model server, answered in the language
+    chosen (English, German, Spanish, French, Italian or Russian) with a
+    Piper voice; a language not on the phone is downloaded when it is
+    chosen, from pinned addresses with each file's size and SHA-256
+    checked.
+  * Agent: tools on the phone. It reads the call log, contacts, messages,
+    calendar, alarms, battery, storage, the mobile network, Wi-Fi and
+    Bluetooth, the weather, the open apps and what was missed; sets and
+    cancels alarms and timers, switches Wi-Fi and Bluetooth, opens an app
+    and starts a route in Navi. A call, a message, a new contact or an
+    event stops at a card and happens only on the user's tap. "What Agent
+    can use" switches each kind of data off. What a tool reads is data,
+    never an instruction.
+  * Agent: a log of what it did (vibeos-dictate/agent-log.jsonl, nothing
+    said or read in it) and undo of its last action; in a call it says who
+    is calling, and switches the speaker, the microphone and hold, hangs
+    up, answers and declines; the core commands work offline in six
+    languages; private mode and quiet hours; speech rate, answer length and
+    state cues in its settings, a column on a tablet.
+  * Holding the power key talks to Agent for as long as it is held, on by
+    default (Settings, System, Gestures). On a locked phone Agent only
+    reads until the phone is unlocked. The power menu is now power and
+    volume up together, and logind leaves the power key's long press to
+    the shell (/usr/lib/systemd/logind.conf.d/vibeos-power-key.conf, read at
+    the next boot): Mobian's 5 s hold no longer powers the phone off.
+  * Gestures: a double press of the power key opens an app (Agent at
+    first), and the side button opens any app (Camera at first) or
+    recents.
+  * Settings: Display size changes the display's scale, and the shell keeps
+    it without asking; the volume keys and the quick settings slider go
+    above 100% where Settings allows it; the Microphone and Camera switches
+    block every app (WirePlumber's permissions for every PipeWire client,
+    the Camera app's own check), and the status bar shows them off; High
+    contrast in the apps (libvibeos) and the shell.
+  * Settings: Set PIN and Set pattern ask for the old one on Settings' own
+    screen (vibeos-set-own-password through pkexec, for the active local
+    user only). Its PAM service is in /usr/lib/pam.d, which Debian's
+    libpam 1.7.0 reads but does not promise to keep reading (#1140029).
+  * Settings: an account's "Use for" lists Calendar, Contacts and Files;
+    Uninstall goes through App Installer; Default apps offers every app of
+    a kind; Tap to wake only with a touchscreen that wakes the screen,
+    Vibration only with a motor; an uninstalled app leaves the lists; a
+    page shows what changed elsewhere while it is open; GNOME Settings'
+    privacy and network panels open the matching page.
+  * Files opens folders: the session's default apps
+    (/etc/xdg/gnome-mimeapps.list) move from vibeos-installer to
+    vibeos-session.
+  * Every menu opens below its button (or above it when it does not fit),
+    VibeosMenu's and the ones eight apps draw themselves.
+  * Tablets: Clock has the rail in both orientations, Contacts' detail
+    pane a centred photo and name, Weather's Set City a card, and
+    Software's carousel whole columns.
+  * Shell: an app can have the keyboard come up over its window
+    (X-Vibeos-Keyboard=overlay, vibeos.Shell's KeyboardOverlap);
+    vibeos.Shell tells which apps are open and lists the notifications;
+    Home minimizes only the phone screen's windows, so a game on a
+    plugged-in TV stays open.
+  * App Installer has no icon in the launcher.
+  * Browser: web videos play and loop, decoded in software (the hardware
+    decoder's frames came out black).
+  * libvibeos: a sheet's close and a bar's back circle follow the theme, a
+    search view can have a button at the bar's end, and a dialog gives
+    the focus back only if its answer left it there.
+  * Dictate: a language that needs Vosk installs it with its files, and
+    Piper 1.5 voices read their vowel clusters as one phoneme.
+  * Navi, the car navigation app, is released with this version as a
+    package of its own (vibeos-navi, apps/navi/pkg/build-deb.sh).
+
+ -- pulpoff <pashkovsky@gmail.com>  Mon, 23 Nov 2026 19:40:00 +0100
+
+vibeos (1:0.1.3) unstable; urgency=medium
+
+  * Tablets: the shell and the launcher laid out for a tablet either way up,
+    recents as a grid, a floating drawer, the taskbar, two-part quick
+    settings tiles, the shade's scrim from the top, and the power and volume
+    keys working in recents. The apps lay themselves out for a tablet: two
+    panes in Messages, Contacts and Settings, the rail in Software, and
+    tablet sizes in Clock, Calculator, Calendar, Phone, Dictate, Browser and
+    the Installer.
+  * Video Player, a new app (vibeos-video): videos on libmpv under an
+    Android player's controls; the default application for videos.
+  * Video Player: the ⋮ menu, with the audio and subtitle tracks.
+  * Files: thumbnails for videos and images, files open from their icon,
+    and a long-press bar and menu with Compress and Batch Rename.
+  * Every app has About in its ⋮ menu, and sheets float as cards on a
+    tablet.
+  * Settings: one app for phones and tablets, in Android's sections and
+    names, showing only the rows the device has hardware for; Display in
+    Android's sections, Display size & text with a preview. It replaces
+    GNOME Settings: whatever opens GNOME Settings opens it at the matching
+    page, and installing it removes gnome-control-center. On a tablet it
+    says "tablet", and opened from Clock or Contacts it comes to the front.
+    Battery information charts the charge since the last full charge, and
+    search finds the pages and settings inside the entries. Online
+    accounts have pages of their own.
+  * Every app takes its colours from the theme.
+  * Keyboard: word suggestions in the strip, auto-correction and next-word
+    suggestions as Android's keyboard has them (switches in Settings), a
+    Tab key on the tablet, and a terminal keeps its screen.
+  * Power menu: Android restarts into Android the way the device says
+    (/etc/vibeos/android, from the device package).
+  * Shade: a phone's shade is Android 17's, with a volume slider below the
+    brightness slider.
+  * Launcher: draws with OpenGL ES where the GPU has no Vulkan driver, the
+    wallpaper redraws only when it moves by a whole pixel, the parallax
+    follows the sensor's mount matrix, labels in VibeOS Roboto.
+  * The status bar keeps clear of a punch hole in its middle and of the
+    camera hole with a display plugged in, and follows only the windows on
+    its own screen. Docked, the screen never times out.
+  * The screen coming on keeps the brightness it went off with.
+  * App sandbox, a new package (vibeos-sandbox): the apps installed from
+    Software, or from a .deb file with App Installer, run in a sandbox
+    (bubblewrap) with the system read-only, a home of their own, no other
+    app's files, no system bus, and only the parts of the session bus their
+    permissions allow. The portals ask before an app gets the location or
+    the camera, WirePlumber hides the microphones and cameras from an app
+    without the permission, and VibeOS's own apps do not run sandboxed.
+  * Per-app permissions: Software shows what an app asks for and what an
+    app that declares none still gets; Settings, Apps sets an app's network,
+    location, camera, microphone, contacts, calendar, phone, SMS, files and
+    background permissions, and shows its storage and uninstalls it.
+  * Tablets: the settings rows of Phone, Clock, Contacts, Calendar and the
+    Browser, Calendar's event editor, App Installer's page and an app's page
+    in Software are a column in the middle, so each window turns either way;
+    the rail stays beside the pages and the search in Phone, Contacts and
+    Software. Clock turns upright from sideways, Calculator's history stays
+    open when the tablet is turned, and in a window wider than tall the
+    time picker is Android's landscape picker.
+  * Settings: Android 17's search bar and names, and Display, Battery, Sound
+    and vibration, Connected devices, Apps and Notifications laid out as
+    Android 17's; the menu's Battery row says the level, and Apps the apps
+    used last.
+  * Back closes a dialog with no field; Contacts' editor keeps its fields'
+    height and closes at once when nothing changed; Compass says in words
+    that the sensor service is missing; Files' More menu has icons, and a
+    phone's path bar ends on the folder it shows.
+  * Push messages, a new package (vibeos-unifiedpush): a UnifiedPush
+    distributor that keeps one connection to push.vibeos.top for all the
+    apps, hands each message to its app over D-Bus and starts the app if it
+    does not run; messages sent while the phone was offline come once it is
+    back. Apps register directly or through libvibeos's VibeosUnifiedPush,
+    which decrypts their messages, and sandboxed apps may reach it too.
+  * Settings: the main search bar is compact.
+
+ -- pulpoff <pashkovsky@gmail.com>  Sun, 22 Nov 2026 21:45:43 +0100
+
 vibeos (1:0.1.2) unstable; urgency=medium
 
   * Software, the new app store: Featured, Apps, Games and Mine, search,

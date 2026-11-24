@@ -362,7 +362,6 @@ scan_row_add (Scan *scan, const char *name, const char *host)
 {
   GtkWidget *line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *row, *label;
-  GdkRGBA ripple = fm_rgba (FM_C_RIPPLE_CARD);
 
   gtk_box_append (GTK_BOX (line), fm_icon_new (FM_GLYPH_SERVER, 40));
   label = fm_label (name, "fm-scan-name", 18, FALSE);
@@ -373,7 +372,6 @@ scan_row_add (Scan *scan, const char *name, const char *host)
   row = vibeos_pressable_new (line);
   gtk_widget_add_css_class (row, "fm-scan-row");
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
   g_object_set_data_full (G_OBJECT (row), "fm-host", g_strdup (host), g_free);
   g_signal_connect (row, "clicked", G_CALLBACK (on_scan_row), scan);
   gtk_accessible_update_property (GTK_ACCESSIBLE (row), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);
@@ -753,7 +751,6 @@ fm_remote_page_refresh (FmRemotePage *page)
 {
   GPtrArray *remotes = page->shell->remotes;
   GtkWidget *child, *footer, *line;
-  GdkRGBA ripple = fm_rgba (FM_C_RIPPLE);
 
   while ((child = gtk_widget_get_first_child (page->box)))
     gtk_box_remove (GTK_BOX (page->box), child);
@@ -792,7 +789,6 @@ fm_remote_page_refresh (FmRemotePage *page)
       gtk_widget_add_css_class (row, "fm-row");
       gtk_widget_add_css_class (row, "fm-remote-row");
       vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
-      vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
       ref->page = page;
       ref->id = g_strdup (remote->id);
       g_object_set_data_full (G_OBJECT (row), "fm-ref", ref, remote_ref_free);
@@ -819,7 +815,6 @@ fm_remote_page_refresh (FmRemotePage *page)
   footer = vibeos_pressable_new (line);
   gtk_widget_add_css_class (footer, "fm-remote-footer");
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (footer), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (footer), &ripple);
   g_signal_connect (footer, "clicked", G_CALLBACK (on_footer), page);
   gtk_box_append (GTK_BOX (page->box), footer);
 }

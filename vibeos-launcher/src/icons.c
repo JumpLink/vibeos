@@ -6,6 +6,7 @@
 #include "legacy-ids.h"
 
 #include <cairo.h>
+#include <glib/gstdio.h>
 #include <json-glib/json-glib.h>
 #include <math.h>
 
@@ -70,6 +71,7 @@ our_drawable (GHashTable *map, JsonObject *filter, guint i)
 
 typedef struct {
   char       *dir;
+  char       *stamp;        /* when the pack's files last changed: in the cache key, so an upgraded pack is drawn anew */
   GHashTable *map;          /* desktop id -> drawable */
   char       *shape;        /* the pack's own shape, or NULL */
   double      scale;
@@ -89,6 +91,7 @@ pack_free (Pack *p)
   if (!p)
     return;
   g_free (p->dir);
+  g_free (p->stamp);
   g_hash_table_unref (p->map);
   g_free (p->shape);
   g_ptr_array_unref (p->iconback);
@@ -211,6 +214,22 @@ map_from (GHashTable *map, const char *path, const char *prefix, gboolean keep_e
   json_node_unref (root);
 }
 
+/* The newest modification time of a pack's own files and of its icons' directory (a package upgrade renames each new
+ * file into it), as hex seconds: a pack that changed gets a cache key of its own */
+static char *
+pack_stamp (const char *dir)
+{
+  static const char *const names[] = { ".", "pack.json", "gnome-map.json", "appfilter.json", "icons" };
+  gint64 newest = 0;
+  for (guint i = 0; i < G_N_ELEMENTS (names); i++) {
+    g_autofree char *path = g_build_filename (dir, names[i], NULL);
+    GStatBuf st;
+    if (g_stat (path, &st) == 0)
+      newest = MAX (newest, (gint64) st.st_mtime);
+  }
+  return g_strdup_printf ("%" G_GINT64_MODIFIER "x", newest);
+}
+
 static Pack *
 current_pack (Icons *self)
 {
@@ -233,6 +252,7 @@ current_pack (Icons *self)
 
   Pack *p = g_new0 (Pack, 1);
   p->dir = g_strdup (info->dir);
+  p->stamp = pack_stamp (p->dir);
   p->map = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
   g_autofree char *map_path = g_build_filename (p->dir, "gnome-map.json", NULL);
   g_autofree char *filter_path = g_build_filename (p->dir, "appfilter.json", NULL);
@@ -458,9 +478,11 @@ cache_key (Icons *self, GAppInfo *info, int px)
     if (!g_ascii_isalnum (*c) && *c != '.' && *c != '_' && *c != '-')
       *c = '_';
   /* 'f': icons with their own background take the pack's shape at full size (since 2.0); 's': wrapped icons take
-   * the shape picked, not the backplate's */
-  return g_strdup_printf ("%s_%s_%d%d%sfs_%s_%d", self->pack_id && *self->pack_id ? self->pack_id : "-", shape,
-                          wrap ? 1 : 0, legacy ? 1 : 0, android, safe, px);
+   * the shape picked, not the backplate's. The pack as "<id>@<stamp>": its files' age, so an upgrade draws anew. */
+  g_autofree char *pack = self->pack && self->pack->stamp
+                            ? g_strdup_printf ("%s@%s", self->pack_id, self->pack->stamp)
+                            : g_strdup (self->pack_id && *self->pack_id ? self->pack_id : "-");
+  return g_strdup_printf ("%s_%s_%d%d%sfs_%s_%d", pack, shape, wrap ? 1 : 0, legacy ? 1 : 0, android, safe, px);
 }
 
 char *

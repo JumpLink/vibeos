@@ -118,7 +118,7 @@ add_header (RingtonePicker *self, const char *text)
 
   gtk_label_set_xalign (GTK_LABEL (label), 0);
   gtk_widget_add_css_class (label, "ringtone-header");
-  vibeos_label_set_font_padding (label, 15);
+  vibeos_label_set_font_padding_sp (label, 15);
   gtk_box_append (GTK_BOX (self->list), label);
 }
 
@@ -249,7 +249,7 @@ add_sound (RingtonePicker *self, const char *sound, const char *name, const char
   gtk_widget_set_margin_start (label, 16);
   gtk_widget_set_margin_end (label, 16);
   gtk_widget_add_css_class (label, "ringtone-name");
-  vibeos_label_set_font_padding (label, 16);
+  vibeos_label_set_font_padding_sp (label, 16);
   gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (box), label);
   if (!selected)
@@ -365,7 +365,7 @@ add_add_new (RingtonePicker *self)
   gtk_widget_set_margin_end (label, 16);
   gtk_widget_set_opacity (label, DIMMED);
   gtk_widget_add_css_class (label, "ringtone-name");
-  vibeos_label_set_font_padding (label, 16);
+  vibeos_label_set_font_padding_sp (label, 16);
   gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (box), label);
   row = vibeos_pressable_new (box);

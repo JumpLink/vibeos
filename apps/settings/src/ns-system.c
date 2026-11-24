@@ -1,6 +1,7 @@
-/* Language and region, Date and time, Users, Power, Wallpapers, Software information and Display's screen scale.
- * The system services (AccountsService, localed, timedated, the compositor's DisplayConfig) are asked in the
- * background; what needs the administrator's password asks through polkit, whose prompt GNOME Shell shows. */
+/* Language and region, Date and time, Users, Power, Wallpapers and Software information. The system services
+ * (AccountsService, localed, timedated) are asked in the background; what needs the administrator's password asks
+ * through polkit, whose prompt GNOME Shell shows. */
+#include "ns-caps.h"
 #include "ns-bt.h"
 #include "ns-pages.h"
 #include "ns-ui.h"
@@ -61,19 +62,129 @@ locale_name (Names *n, const char *locale)
   return country ? g_strdup_printf ("%s (%s)", lang, country) : g_strdup (lang);
 }
 
+/* What the page shows: the installed UTF-8 locales, their names (labels: NULL-terminated, as ns_row_pick takes them)
+ * and the user's language. Finding them out is slow: localectl reads every installed locale (0.7 s, and seconds for
+ * the first look after a boot), AccountsService answers after that, and the Language row stood empty all the while
+ * (owner, 11-21). So the last answer is kept, for the app's life and in ~/.cache/vibeos-settings/language, and the
+ * page shows it at once; each time it opens it asks again in the background and redraws only if something changed.
+ * With nothing kept yet (the first look ever), the Language row shows a loading indicator until the answer comes. */
 typedef struct {
   GPtrArray *locales, *labels;
+  char      *language;               /* AccountsService's Language for the user, "" when it has none */
+} Known;
+
+static Known *known;                 /* the last answer, or NULL */
+static gboolean known_read;          /* the cache file was read (once) */
+
+static void
+known_free (Known *k)
+{
+  if (!k)
+    return;
+  g_clear_pointer (&k->locales, g_ptr_array_unref);
+  g_clear_pointer (&k->labels, g_ptr_array_unref);
+  g_free (k->language);
+  g_free (k);
+}
+
+static Known *
+known_new (void)
+{
+  Known *k = g_new0 (Known, 1);
+  k->locales = g_ptr_array_new_with_free_func (g_free);
+  k->labels = g_ptr_array_new_with_free_func (g_free);
+  return k;
+}
+
+static char *
+known_file (void)
+{
+  return g_build_filename (g_get_user_cache_dir (), "vibeos-settings", "language", NULL);
+}
+
+/* the cache: "language\t<it>", then "<locale>\t<its name>" a line each. A few kilobytes, read once. */
+static Known *
+known_get (void)
+{
+  if (known_read)
+    return known;
+  known_read = TRUE;
+  g_autofree char *file = known_file (), *text = NULL;
+  if (!g_file_get_contents (file, &text, NULL, NULL))
+    return NULL;
+  g_auto (GStrv) lines = g_strsplit (text, "\n", -1);
+  if (!lines[0] || !g_str_has_prefix (lines[0], "language\t"))
+    return NULL;
+  Known *k = known_new ();
+  k->language = g_strdup (lines[0] + strlen ("language\t"));
+  for (guint i = 1; lines[i]; i++) {
+    char *tab = strchr (lines[i], '\t');
+    if (!tab || tab == lines[i] || !tab[1])
+      continue;
+    g_ptr_array_add (k->locales, g_strndup (lines[i], tab - lines[i]));
+    g_ptr_array_add (k->labels, g_strdup (tab + 1));
+  }
+  g_ptr_array_add (k->labels, NULL);
+  known = k;
+  return known;
+}
+
+static void
+known_written (GObject *src, GAsyncResult *res, gpointer unused)
+{
+  g_autoptr (GError) error = NULL;
+  if (!g_file_replace_contents_finish (G_FILE (src), res, NULL, &error))
+    g_debug ("the language cache: %s", error->message);
+}
+
+/* keeps @k (taking it) as the last answer, and writes it out in the background */
+static void
+known_keep (Known *k)
+{
+  if (k != known) {
+    known_free (known);
+    known = k;
+  }
+  known_read = TRUE;
+  GString *out = g_string_new (NULL);
+  g_string_append_printf (out, "language\t%s\n", k->language ? k->language : "");
+  for (guint i = 0; i < k->locales->len; i++)
+    g_string_append_printf (out, "%s\t%s\n", (char *) k->locales->pdata[i], (char *) k->labels->pdata[i]);
+  g_autofree char *file = known_file ();
+  g_autofree char *dir = g_path_get_dirname (file);
+  g_mkdir_with_parents (dir, 0700);
+  g_autoptr (GFile) f = g_file_new_for_path (file);
+  g_autoptr (GBytes) bytes = g_string_free_to_bytes (out);
+  g_file_replace_contents_bytes_async (f, bytes, NULL, FALSE, G_FILE_CREATE_REPLACE_DESTINATION, NULL, known_written,
+                                       NULL);
+}
+
+static gboolean
+same_strings (GPtrArray *a, GPtrArray *b)
+{
+  if (!a || !b || a->len != b->len)
+    return FALSE;
+  for (guint i = 0; i < a->len; i++)
+    if (g_strcmp0 (a->pdata[i], b->pdata[i]))
+      return FALSE;
+  return TRUE;
+}
+
+typedef struct {
+  GPtrArray *locales, *labels;       /* what the rows were made from (refs of a Known's) */
+  char      *shown;                  /* the language they show */
   char      *path;                   /* the user in AccountsService */
+  Known     *fresh;                  /* the background look, until AccountsService has answered */
   GtkWidget *group, *logout;
 } Lang;
 
 static void
 lang_free (Lang *l)
 {
-  if (l->locales)
-    g_ptr_array_unref (l->locales);
-  if (l->labels)
-    g_ptr_array_unref (l->labels);
+  g_clear_pointer (&l->locales, g_ptr_array_unref);
+  g_clear_pointer (&l->labels, g_ptr_array_unref);
+  known_free (l->fresh);
+  g_free (l->shown);
   g_free (l->path);
   g_free (l);
 }
@@ -103,6 +214,13 @@ lang_picked (GtkWidget *row, guint i, gpointer data)
    * next log in. Not the system's: Debian's systemd keeps localed read-only (org.freedesktop.locale1.read-only.conf
    * denies SetLocale to everyone, root too), so the SetLocale this page used to send was refused every time. */
   gtk_widget_set_visible (l->logout, TRUE);
+  g_free (l->shown);
+  l->shown = g_strdup (loc);
+  if (known && same_strings (known->locales, l->locales)) {
+    g_free (known->language);
+    known->language = g_strdup (loc);
+    known_keep (known);
+  }
 }
 
 static void
@@ -123,23 +241,28 @@ logout (GtkWidget *row, gpointer data)
                             "Logout", g_variant_new ("(u)", 0), NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 }
 
+/* the Language and Formats rows, from @k */
 static void
-lang_rows (AdwNavigationPage *page, const char *current)
+lang_rows (NsPage *page, Known *k)
 {
   Lang *l = g_object_get_data (G_OBJECT (page), "ns-lang");
-  if (!l->locales)
-    return;
-  g_autofree char *cur_lang = g_strdup (current && *current ? current : g_getenv ("LANG"));
+  g_clear_pointer (&l->locales, g_ptr_array_unref);
+  g_clear_pointer (&l->labels, g_ptr_array_unref);
+  l->locales = g_ptr_array_ref (k->locales);
+  l->labels = g_ptr_array_ref (k->labels);
+  g_free (l->shown);
+  l->shown = g_strdup (k->language ? k->language : "");
+  const char *current = k->language && *k->language ? k->language : g_getenv ("LANG");
   guint sel = G_MAXUINT;
   for (guint i = 0; i < l->locales->len; i++)
-    if (cur_lang && !g_strcmp0 (l->locales->pdata[i], cur_lang))
+    if (current && !g_strcmp0 (l->locales->pdata[i], current))
       sel = i;
   ns_group_clear (l->group);
   GtkWidget *r = ns_row_pick (l->group, "Language", (const char *const *) l->labels->pdata, sel, lang_picked, l);
   /* "C.UTF-8" and the like: no language chosen yet, programs speak their own (English) */
   if (sel == G_MAXUINT)
-    ns_row_set_subtitle (r, !cur_lang || g_str_has_prefix (cur_lang, "C.") || !g_strcmp0 (cur_lang, "C")
-                            || !g_strcmp0 (cur_lang, "POSIX") ? "System default (English)" : cur_lang);
+    ns_row_set_subtitle (r, !current || g_str_has_prefix (current, "C.") || !g_strcmp0 (current, "C")
+                            || !g_strcmp0 (current, "POSIX") ? "System default (English)" : current);
   GSettings *s = ns_page_settings (page, "org.gnome.system.locale");
   if (s) {
     g_autoptr (GPtrArray) rl = g_ptr_array_new ();
@@ -157,6 +280,32 @@ lang_rows (AdwNavigationPage *page, const char *current)
   }
 }
 
+/* the background look is complete: kept, and the rows redrawn if it differs from what they show */
+static void
+lang_fresh (NsPage *page, const char *language)
+{
+  Lang *l = g_object_get_data (G_OBJECT (page), "ns-lang");
+  Known *k = g_steal_pointer (&l->fresh);
+  k->language = g_strdup (language ? language : "");
+  /* localectl gave nothing: the last answer's list stays; with none, the rows show the language without a list,
+   * and nothing is kept */
+  if (!k->locales->len) {
+    if (!known) {
+      lang_rows (page, k);
+      known_free (k);
+      return;
+    }
+    g_free (known->language);
+    known->language = g_strdup (k->language);
+    known_free (k);
+    k = known;
+  }
+  gboolean same = same_strings (l->locales, k->locales) && !g_strcmp0 (l->shown, k->language);
+  known_keep (k);
+  if (!same)
+    lang_rows (page, known);
+}
+
 static void
 user_lang_got (GObject *src, GAsyncResult *res, gpointer page)
 {
@@ -164,7 +313,7 @@ user_lang_got (GObject *src, GAsyncResult *res, gpointer page)
   g_autoptr (GVariant) lang = NULL;
   if (v)
     g_variant_get (v, "(v)", &lang);
-  lang_rows (page, lang ? g_variant_get_string (lang, NULL) : NULL);
+  lang_fresh (page, lang ? g_variant_get_string (lang, NULL) : NULL);
   g_object_unref (page);
 }
 
@@ -174,10 +323,11 @@ user_found (GObject *src, GAsyncResult *res, gpointer page)
   Lang *l = g_object_get_data (page, "ns-lang");
   g_autoptr (GVariant) v = g_dbus_connection_call_finish (G_DBUS_CONNECTION (src), res, NULL);
   if (!v) {
-    lang_rows (page, NULL);
+    lang_fresh (page, NULL);
     g_object_unref (page);
     return;
   }
+  g_free (l->path);
   g_variant_get (v, "(o)", &l->path);
   g_dbus_connection_call (G_DBUS_CONNECTION (src), "org.freedesktop.Accounts", l->path,
                           "org.freedesktop.DBus.Properties", "Get",
@@ -185,54 +335,69 @@ user_found (GObject *src, GAsyncResult *res, gpointer page)
                           G_DBUS_CALL_FLAGS_NONE, 3000, NULL, user_lang_got, page);
 }
 
+/* in a thread: the installed locales from localectl, the UTF-8 ones that name a language, with their names */
+static void
+locales_thread (GTask *task, gpointer src, gpointer data, GCancellable *cancel)
+{
+  const char *argv[] = { "localectl", "list-locales", "--no-pager", NULL };
+  g_autofree char *out = NULL;
+  g_spawn_sync (NULL, (char **) argv, NULL, G_SPAWN_SEARCH_PATH | G_SPAWN_STDERR_TO_DEV_NULL, NULL, NULL, &out, NULL,
+                NULL, NULL);
+  Names n = { iso_table ("/usr/share/iso-codes/json/iso_639-2.json", "639-2", "alpha_2"),
+              iso_table ("/usr/share/iso-codes/json/iso_3166-1.json", "3166-1", "alpha_2") };
+  Known *k = known_new ();
+  g_auto (GStrv) lines = g_strsplit (out ? out : "", "\n", -1);
+  for (guint i = 0; lines[i]; i++) {
+    const char *loc = g_strstrip (lines[i]);
+    if (!*loc || !strstr (loc, "UTF-8") || g_str_has_prefix (loc, "C."))
+      continue;
+    g_ptr_array_add (k->locales, g_strdup (loc));
+    g_ptr_array_add (k->labels, locale_name (&n, loc));
+  }
+  g_ptr_array_add (k->labels, NULL);
+  g_hash_table_unref (n.langs);
+  g_hash_table_unref (n.countries);
+  g_task_return_pointer (task, k, (GDestroyNotify) known_free);
+}
+
 static void
 locales_listed (GObject *src, GAsyncResult *res, gpointer page)
 {
   Lang *l = g_object_get_data (page, "ns-lang");
-  g_autofree char *out = NULL;
-  g_subprocess_communicate_utf8_finish (G_SUBPROCESS (src), res, &out, NULL, NULL);
-  Names n = { iso_table ("/usr/share/iso-codes/json/iso_639-2.json", "639-2", "alpha_2"),
-              iso_table ("/usr/share/iso-codes/json/iso_3166-1.json", "3166-1", "alpha_2") };
-  l->locales = g_ptr_array_new_with_free_func (g_free);
-  l->labels = g_ptr_array_new_with_free_func (g_free);
-  g_auto (GStrv) lines = g_strsplit (out ? out : "", "\n", -1);
-  for (guint i = 0; lines[i]; i++) {
-    const char *loc = g_strstrip (lines[i]);
-    /* the UTF-8 ones that name a language */
-    if (!*loc || !strstr (loc, "UTF-8") || g_str_has_prefix (loc, "C."))
-      continue;
-    g_ptr_array_add (l->locales, g_strdup (loc));
-    g_ptr_array_add (l->labels, locale_name (&n, loc));
-  }
-  g_ptr_array_add (l->labels, NULL);
-  g_hash_table_unref (n.langs);
-  g_hash_table_unref (n.countries);
+  known_free (l->fresh);
+  l->fresh = g_task_propagate_pointer (G_TASK (res), NULL);
+  if (!l->fresh)
+    l->fresh = known_new ();
   g_autoptr (GDBusConnection) sys = bus (G_BUS_TYPE_SYSTEM);
   if (sys)
     g_dbus_connection_call (sys, "org.freedesktop.Accounts", "/org/freedesktop/Accounts", "org.freedesktop.Accounts",
                             "FindUserById", g_variant_new ("(x)", (gint64) getuid ()), G_VARIANT_TYPE ("(o)"),
                             G_DBUS_CALL_FLAGS_NONE, 3000, NULL, user_found, page);
-  else
+  else {
+    lang_fresh (page, known ? known->language : NULL);
     g_object_unref (page);
+  }
 }
 
 void
 ns_page_language (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Language and region", &c);
+  NsPage *page = ns_page_new ("Language and region", &c);
   Lang *l = g_new0 (Lang, 1);
   g_object_set_data_full (G_OBJECT (page), "ns-lang", l, (GDestroyNotify) lang_free);
   l->group = ns_group (c, NULL);
-  ns_row_info (l->group, "Language", "…");
+  Known *k = known_get ();
+  if (k)
+    lang_rows (page, k);
+  else
+    ns_row_suffix (ns_row (l->group, NULL, "Language", NULL), ns_spinner_new ());
   ns_note (c, "A new language or format shows in apps after you log out and in again.");
   GtkWidget *g = ns_group (c, NULL);
   l->logout = ns_row_button (g, "Log out now", FALSE, logout, NULL);
   gtk_widget_set_visible (l->logout, FALSE);
-  g_autoptr (GSubprocess) p = g_subprocess_new (G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_SILENCE,
-                                                NULL, "localectl", "list-locales", "--no-pager", NULL);
-  if (p)
-    g_subprocess_communicate_utf8_async (p, NULL, NULL, locales_listed, g_object_ref (page));
+  g_autoptr (GTask) t = g_task_new (NULL, NULL, locales_listed, g_object_ref (page));
+  g_task_run_in_thread (t, locales_thread);
   ns_push (page);
 }
 
@@ -262,32 +427,31 @@ timedate_call (const char *method, GVariant *args)
 }
 
 static void
-ntp_set (GtkSwitch *sw, GParamSpec *ps, gpointer data)
+ntp_set (GtkWidget *sw, GParamSpec *ps, gpointer data)
 {
   if (!ns_switch_syncing (GTK_WIDGET (sw)))
-    timedate_call ("SetNTP", g_variant_new ("(bb)", gtk_switch_get_active (sw), TRUE));
+    timedate_call ("SetNTP", g_variant_new ("(bb)", ns_switch_get_active (sw), TRUE));
 }
 
 static void
 zone_set (GtkWidget *row, gpointer zone)
 {
-  AdwNavigationPage *page = g_object_get_data (G_OBJECT (row), "ns-page");
+  NsPage *page = g_object_get_data (G_OBJECT (row), "ns-page");
   Time *t = g_object_get_data (G_OBJECT (page), "ns-time");
   timedate_call ("SetTimezone", g_variant_new ("(sb)", (const char *) zone, TRUE));
   g_autofree char *nice = g_strdelimit (g_strdup (zone), "_", ' ');
   ns_row_set_subtitle (t->zone, nice);
-  AdwNavigationView *nav = ADW_NAVIGATION_VIEW (gtk_widget_get_ancestor (row, ADW_TYPE_NAVIGATION_VIEW));
-  adw_navigation_view_pop_to_page (nav, page);
+  ns_pop_to (page);
 }
 
 /* two steps: the region, then its cities */
 static void
 zone_region (GtkWidget *row, gpointer region)
 {
-  AdwNavigationPage *page = g_object_get_data (G_OBJECT (row), "ns-page");
+  NsPage *page = g_object_get_data (G_OBJECT (row), "ns-page");
   Time *t = g_object_get_data (G_OBJECT (page), "ns-time");
   GtkWidget *c;
-  AdwNavigationPage *cities = ns_page_new (region, &c);
+  NsPage *cities = ns_page_new (region, &c);
   GtkWidget *g = ns_group (c, NULL);
   g_autofree char *prefix = g_strconcat (region, "/", NULL);
   for (guint i = 0; i < t->zones->len; i++) {
@@ -295,7 +459,7 @@ zone_region (GtkWidget *row, gpointer region)
     if (!g_str_has_prefix (z, prefix))
       continue;
     g_autofree char *nice = g_strdelimit (g_strdup (z + strlen (prefix)), "_/", ' ');
-    GtkWidget *r = ns_row (g, NULL, NULL, nice, NULL);
+    GtkWidget *r = ns_row (g, NULL, nice, NULL);
     g_object_set_data (G_OBJECT (r), "ns-page", page);
     ns_row_on_activate (r, zone_set, (gpointer) z);
   }
@@ -309,7 +473,7 @@ zones_page (GtkWidget *row, gpointer page)
   if (!t->zones)
     return;
   GtkWidget *c;
-  AdwNavigationPage *regions = ns_page_new ("Time zone", &c);
+  NsPage *regions = ns_page_new ("Time zone", &c);
   GtkWidget *g = ns_group (c, NULL);
   g_autoptr (GHashTable) seen = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
   for (guint i = 0; i < t->zones->len; i++) {
@@ -323,7 +487,7 @@ zones_page (GtkWidget *row, gpointer page)
       continue;
     }
     g_hash_table_add (seen, region);
-    GtkWidget *r = ns_row (g, NULL, NULL, region, NULL);
+    GtkWidget *r = ns_row (g, NULL, region, NULL);
     g_object_set_data (G_OBJECT (r), "ns-page", page);
     ns_row_on_activate (r, zone_region, region);
   }
@@ -382,16 +546,18 @@ void
 ns_page_datetime (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Date and time", &c);
+  NsPage *page = ns_page_new ("Date and time", &c);
   Time *t = g_new0 (Time, 1);
   g_object_set_data_full (G_OBJECT (page), "ns-time", t, (GDestroyNotify) time_free);
   GtkWidget *g = ns_group (c, NULL);
   t->ntp = ns_row_switch (g, "Automatic date and time", "From the network", NULL, NULL);
   g_signal_connect (ns_row_get_switch (t->ntp), "notify::active", G_CALLBACK (ntp_set), NULL);
   GSettings *dt = ns_page_settings (page, "org.gnome.desktop.datetime");
-  if (ns_has_key (dt, "automatic-timezone"))
-    ns_row_switch (g, "Automatic time zone", "From the phone's location", dt, "automatic-timezone");
-  t->zone = ns_row (g, NULL, NULL, "Time zone", NULL);
+  if (ns_has_key (dt, "automatic-timezone")) {
+    g_autofree char *from = g_strdup_printf ("From the %s's location", ns_device_noun ());
+    ns_row_switch (g, "Automatic time zone", from, dt, "automatic-timezone");
+  }
+  t->zone = ns_row (g, NULL, "Time zone", NULL);
   ns_row_on_activate (t->zone, zones_page, page);
 
   GSettings *iface = ns_page_settings (page, "org.gnome.desktop.interface");
@@ -452,7 +618,7 @@ other_got (GObject *src, GAsyncResult *res, gpointer group)
     const char *real = "", *login = "";
     g_variant_lookup (props, "RealName", "&s", &real);
     g_variant_lookup (props, "UserName", "&s", &login);
-    ns_row (group, "avatar-default-symbolic", "grey", *real ? real : login, login);
+    ns_row (group, "avatar-default-symbolic", *real ? real : login, login);
     ns_group_set_visible (group, TRUE);
   }
   g_object_unref (group);
@@ -522,16 +688,16 @@ void
 ns_page_users (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Users", &c);
+  NsPage *page = ns_page_new ("Users", &c);
   Users *u = g_new0 (Users, 1);
   g_object_set_data_full (G_OBJECT (page), "ns-users", u, g_free);
   GtkWidget *g = ns_group (c, "Your account");
-  u->name = ns_row (g, NULL, NULL, "Name", NULL);
+  u->name = ns_row (g, NULL, "Name", NULL);
   ns_row_on_activate (u->name, real_name_tapped, NULL);
   u->login = ns_row_info (g, "User name", g_get_user_name ());
   u->type = ns_row_info (g, "Account type", NULL);
   g = ns_group (c, NULL);
-  GtkWidget *r = ns_row (g, NULL, NULL, "Screen lock and password", "A pattern or PIN is also your password");
+  GtkWidget *r = ns_row (g, NULL, "Screen lock and password", "A pattern or PIN is also your password");
   ns_row_on_activate (r, ns_page_lock_screen, NULL);
   u->others = ns_group (c, "Other users");
   ns_group_set_visible (u->others, FALSE);
@@ -604,7 +770,7 @@ void
 ns_page_power (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Power and screen blank", &c);
+  NsPage *page = ns_page_new ("Power and screen blank", &c);
   GSettings *power = ns_page_settings (page, "org.gnome.settings-daemon.plugins.power");
   if (!power)
     return;
@@ -613,8 +779,9 @@ ns_page_power (GtkWidget *row, gpointer data)
     g = ns_group (c, "Automatic suspend");
     sleep_row (g, power, "On battery", "battery");
     sleep_row (g, power, "Plugged in", "ac");
-    ns_note (c, "Suspend saves the most power, but calls, messages and alarms can be missed while the phone "
-                "sleeps.");
+    g_autofree char *missed = g_strdup_printf ("Suspend saves the most power, but calls, messages and alarms can be "
+                                              "missed while the %s sleeps.", ns_device_noun ());
+    ns_note (c, missed);
   }
   g = ns_group (c, NULL);
   /* gnome-settings-daemon dims the backlight through the shell a little before the screen timeout */
@@ -626,8 +793,10 @@ ns_page_power (GtkWidget *row, gpointer data)
                     G_FILE_TEST_EXISTS) ||
        g_file_test ("/usr/share/dbus-1/system-services/net.hadess.PowerProfiles.service", G_FILE_TEST_EXISTS)))
     ns_row_switch (g, "Power saving on low battery", NULL, power, "power-saver-profile-on-low-battery");
-  if (ns_screen_off_sleeper ())
-    ns_note (c, "This phone sleeps as soon as its screen is off.");
+  if (ns_screen_off_sleeper ()) {
+    g_autofree char *sleeps = g_strdup_printf ("This %s sleeps as soon as its screen is off.", ns_device_noun ());
+    ns_note (c, sleeps);
+  }
   ns_push (page);
 }
 
@@ -715,9 +884,10 @@ typedef struct {
 } Apply;
 
 static void
-apply_response (AdwAlertDialog *d, const char *response, Apply *a)
+apply_response (gboolean yes, gpointer data)
 {
-  if (!g_strcmp0 (response, "set"))
+  Apply *a = data;
+  if (yes)
     wall_apply (a->path, a->dark);
   g_free (a->path);
   g_free (a->dark);
@@ -730,17 +900,11 @@ apply_response (AdwAlertDialog *d, const char *response, Apply *a)
 void
 ns_wallpaper_ask (GtkWidget *w, const char *path, const char *dark)
 {
-  AdwDialog *d = adw_alert_dialog_new ("Set as wallpaper", "On the home screen and the lock screen");
-  adw_alert_dialog_add_responses (ADW_ALERT_DIALOG (d), "cancel", "Cancel", "set", "Set", NULL);
-  adw_alert_dialog_set_response_appearance (ADW_ALERT_DIALOG (d), "set", ADW_RESPONSE_SUGGESTED);
-  adw_alert_dialog_set_prefer_wide_layout (ADW_ALERT_DIALOG (d), FALSE);
-  adw_alert_dialog_set_close_response (ADW_ALERT_DIALOG (d), "cancel");
   Apply *a = g_new0 (Apply, 1);
   a->path = g_strdup (path);
   a->dark = g_strdup (dark);
   a->w = g_object_ref (w);
-  g_signal_connect (d, "response", G_CALLBACK (apply_response), a);
-  adw_dialog_present (d, w);
+  ns_confirm (w, "Set as wallpaper", "On the home screen and the lock screen", "Set", FALSE, apply_response, a);
 }
 
 static void
@@ -795,7 +959,7 @@ void
 ns_page_wallpapers (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Wallpapers", &c);
+  NsPage *page = ns_page_new ("Wallpapers", &c);
   GtkWidget *g = ns_group (c, NULL);
   ns_row_button (g, "Choose from your pictures", FALSE, from_files, NULL);
 
@@ -874,11 +1038,13 @@ void
 ns_page_software (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Software information", &c);
+  NsPage *page = ns_page_new ("Software information", &c);
   GtkWidget *g = ns_group (c, NULL);
   ns_bt_name_row (g);
 
   g = ns_group (c, NULL);
+  if (*vibeos_release ())
+    ns_row_info (g, "VibeOS", vibeos_release ());
   g_autofree char *deb = NULL;
   if (g_file_get_contents ("/etc/debian_version", &deb, NULL, NULL))
     g_strstrip (deb);
@@ -892,153 +1058,12 @@ ns_page_software (GtkWidget *row, gpointer data)
   g_autofree char *gtk = g_strdup_printf ("%u.%u.%u", gtk_get_major_version (), gtk_get_minor_version (),
                                           gtk_get_micro_version ());
   ns_row_info (g, "GTK", gtk);
-  g_autofree char *adw = g_strdup_printf ("%u.%u.%u", adw_get_major_version (), adw_get_minor_version (),
-                                          adw_get_micro_version ());
-  ns_row_info (g, "libadwaita", adw);
   struct utsname u;
   uname (&u);
   ns_row_info (g, "Kernel", u.release);
   ns_row_info (g, "Kernel build", u.version);
   ns_row_info (g, "Settings", NS_VERSION);
   ns_push (page);
-}
-
-/* ---- Display: the screen scale, through mutter's DisplayConfig ----
- *
- * GetCurrentState lists the screen's modes, each with the scales it can take; ApplyMonitorsConfig sets one. The
- * logical monitor keeps its place and its rotation (the turn auto-rotate gave it), only the scale changes. Applied
- * "persistent" (2), mutter keeps it in ~/.config/monitors.xml and the shell asks whether to keep it, going back by
- * itself if nobody answers, as GNOME Settings' Displays does. */
-
-typedef struct {
-  guint32  serial;
-  char    *connector, *mode;
-  GArray  *scales;
-  gint32   x, y;                /* the logical monitor's place and rotation, kept */
-  guint32  transform;
-} Scale;
-
-static void
-scale_free (Scale *s)
-{
-  g_free (s->connector);
-  g_free (s->mode);
-  g_array_unref (s->scales);
-  g_free (s);
-}
-
-static void
-scale_applied (GObject *src, GAsyncResult *res, gpointer row)
-{
-  g_autoptr (GError) err = NULL;
-  g_autoptr (GVariant) v = g_dbus_connection_call_finish (G_DBUS_CONNECTION (src), res, &err);
-  if (!v) {
-    g_dbus_error_strip_remote_error (err);
-    ns_row_set_subtitle (row, err->message);
-  }
-  g_object_unref (row);
-}
-
-static void
-scale_picked (GtkWidget *row, guint i, gpointer data)
-{
-  Scale *s = g_object_get_data (G_OBJECT (row), "ns-scale");
-  GVariantBuilder mons, lms;
-  g_variant_builder_init (&mons, G_VARIANT_TYPE ("a(ssa{sv})"));
-  g_variant_builder_add (&mons, "(ss@a{sv})", s->connector, s->mode, g_variant_new_array (G_VARIANT_TYPE ("{sv}"),
-                                                                                         NULL, 0));
-  g_variant_builder_init (&lms, G_VARIANT_TYPE ("a(iiduba(ssa{sv}))"));
-  g_variant_builder_add (&lms, "(iidub@a(ssa{sv}))", s->x, s->y, g_array_index (s->scales, double, i), s->transform,
-                         TRUE, g_variant_builder_end (&mons));
-  g_autoptr (GDBusConnection) ses = bus (G_BUS_TYPE_SESSION);
-  /* 2: persistent */
-  if (ses)
-    g_dbus_connection_call (ses, "org.gnome.Mutter.DisplayConfig", "/org/gnome/Mutter/DisplayConfig",
-                            "org.gnome.Mutter.DisplayConfig", "ApplyMonitorsConfig",
-                            g_variant_new ("(uu@a(iiduba(ssa{sv}))@a{sv})", s->serial, 2, g_variant_builder_end (&lms),
-                                           g_variant_new_array (G_VARIANT_TYPE ("{sv}"), NULL, 0)),
-                            NULL, G_DBUS_CALL_FLAGS_NONE, 10000, NULL, scale_applied, g_object_ref (row));
-}
-
-static void
-state_got (GObject *src, GAsyncResult *res, gpointer group)
-{
-  g_autoptr (GVariant) v = g_dbus_connection_call_finish (G_DBUS_CONNECTION (src), res, NULL);
-  if (!v) {
-    g_object_unref (group);
-    return;
-  }
-  Scale *s = g_new0 (Scale, 1);
-  s->scales = g_array_new (FALSE, FALSE, sizeof (double));
-  g_autoptr (GVariant) monitors = g_variant_get_child_value (v, 1);
-  g_autoptr (GVariant) logical = g_variant_get_child_value (v, 2);
-  g_variant_get_child (v, 0, "u", &s->serial);
-  double cur = 0;
-  /* the built-in screen: the first monitor, its current mode (or its first) */
-  if (g_variant_n_children (monitors)) {
-    g_autoptr (GVariant) m = g_variant_get_child_value (monitors, 0);
-    g_autoptr (GVariant) spec = g_variant_get_child_value (m, 0);
-    g_autoptr (GVariant) modes = g_variant_get_child_value (m, 1);
-    g_variant_get_child (spec, 0, "s", &s->connector);
-    guint pick = 0;
-    for (guint i = 0; i < g_variant_n_children (modes); i++) {
-      g_autoptr (GVariant) mode = g_variant_get_child_value (modes, i);
-      g_autoptr (GVariant) props = g_variant_get_child_value (mode, 6);
-      gboolean current = FALSE;
-      if (g_variant_lookup (props, "is-current", "b", &current) && current)
-        pick = i;
-    }
-    if (g_variant_n_children (modes)) {
-      g_autoptr (GVariant) mode = g_variant_get_child_value (modes, pick);
-      g_autoptr (GVariant) sc = g_variant_get_child_value (mode, 5);
-      g_variant_get_child (mode, 0, "s", &s->mode);
-      for (guint k = 0; k < g_variant_n_children (sc); k++) {
-        double d;
-        g_variant_get_child (sc, k, "d", &d);
-        g_array_append_val (s->scales, d);
-      }
-    }
-  }
-  if (g_variant_n_children (logical)) {
-    g_autoptr (GVariant) lm = g_variant_get_child_value (logical, 0);
-    g_variant_get_child (lm, 0, "i", &s->x);
-    g_variant_get_child (lm, 1, "i", &s->y);
-    g_variant_get_child (lm, 2, "d", &cur);
-    g_variant_get_child (lm, 3, "u", &s->transform);
-  }
-  if (!cur) {
-    /* no logical monitor listed (none is on): the scale GTK sees */
-    GListModel *ms = gdk_display_get_monitors (gdk_display_get_default ());
-    g_autoptr (GdkMonitor) gm = g_list_model_get_n_items (ms) ? g_list_model_get_item (ms, 0) : NULL;
-    cur = gm ? gdk_monitor_get_scale (gm) : 1;
-  }
-  if (!s->connector || !s->mode || s->scales->len < 2) {
-    scale_free (s);
-    g_object_unref (group);
-    return;
-  }
-  g_autoptr (GPtrArray) labels = g_ptr_array_new_with_free_func (g_free);
-  guint sel = 0;
-  for (guint i = 0; i < s->scales->len; i++) {
-    double d = g_array_index (s->scales, double, i);
-    g_ptr_array_add (labels, g_strdup_printf ("%.0f%%", d * 100));
-    if (ABS (d - cur) < ABS (g_array_index (s->scales, double, sel) - cur))
-      sel = i;
-  }
-  g_ptr_array_add (labels, NULL);
-  GtkWidget *r = ns_row_pick (group, "Screen scale", (const char *const *) labels->pdata, sel, scale_picked, NULL);
-  g_object_set_data_full (G_OBJECT (r), "ns-scale", s, (GDestroyNotify) scale_free);
-  g_object_unref (group);
-}
-
-void
-ns_page_scale_row (GtkWidget *group)
-{
-  g_autoptr (GDBusConnection) ses = bus (G_BUS_TYPE_SESSION);
-  if (ses)
-    g_dbus_connection_call (ses, "org.gnome.Mutter.DisplayConfig", "/org/gnome/Mutter/DisplayConfig",
-                            "org.gnome.Mutter.DisplayConfig", "GetCurrentState", NULL, NULL, G_DBUS_CALL_FLAGS_NONE,
-                            3000, NULL, state_got, g_object_ref (group));
 }
 
 /* ---- Mouse, touchpad and hardware keyboard: mutter follows GNOME's peripherals settings ---- */
@@ -1081,7 +1106,7 @@ void
 ns_page_mouse (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  AdwNavigationPage *page = ns_page_new ("Mouse and touchpad", &c);
+  NsPage *page = ns_page_new ("Mouse and touchpad", &c);
   GSettings *mouse = ns_page_settings (page, "org.gnome.desktop.peripherals.mouse");
   GSettings *pad = ns_page_settings (page, "org.gnome.desktop.peripherals.touchpad");
   GSettings *kbd = ns_page_settings (page, "org.gnome.desktop.peripherals.keyboard");

@@ -6,10 +6,9 @@
 #include <spongy-gtk.h>
 
 GdkRGBA
-fm_rgba (guint32 argb)
+fm_rgba (VibeosColor color)
 {
-  return (GdkRGBA) { ((argb >> 16) & 0xff) / 255.0f, ((argb >> 8) & 0xff) / 255.0f, (argb & 0xff) / 255.0f,
-                     ((argb >> 24) & 0xff) / 255.0f };
+  return vibeos_color (color);
 }
 
 char *
@@ -38,7 +37,7 @@ fm_label (const char *text, const char *css_class, double size, gboolean wrap)
       gtk_label_set_single_line_mode (GTK_LABEL (label), TRUE);
       gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
     }
-  vibeos_label_set_font_padding (label, size);
+  vibeos_label_set_font_padding_sp (label, size);
   return label;
 }
 
@@ -47,14 +46,12 @@ fm_icon_button_sized (const char *icon_name, const char *name, int width, int he
 {
   GtkWidget *image = gtk_image_new_from_icon_name (icon_name);
   GtkWidget *button = vibeos_pressable_new (image);
-  GdkRGBA ripple = fm_rgba (FM_C_RIPPLE);
 
   gtk_image_set_pixel_size (GTK_IMAGE (image), glyph_size);
   gtk_widget_set_size_request (button, width, height);
   gtk_widget_add_css_class (button, "fm-icon-button");
   /* a borderless ripple: a circle of the button's half diagonal, capped to stay near the glyph */
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_CIRCLE, MIN (hypot (width, height) / 2, 24));
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (button), &ripple);
   gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);
   return button;
 }
@@ -71,15 +68,13 @@ fm_text_button (const char *label)
   g_autofree char *caps = fm_caps (label);
   GtkWidget *text = gtk_label_new (caps);
   GtkWidget *button;
-  GdkRGBA ripple = fm_rgba (FM_C_RIPPLE_CARD);
 
-  vibeos_label_set_font_padding (text, 14);
+  vibeos_label_set_font_padding_sp (text, 14);
   gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
   gtk_widget_set_halign (text, GTK_ALIGN_CENTER);
   button = vibeos_pressable_new (text);
   gtk_widget_add_css_class (button, "fm-text-button");
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_BOUNDED, 2);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (button), &ripple);
   gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, label, -1);
   return button;
 }
@@ -133,11 +128,11 @@ fm_check_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
         }
       return;
     }
-  /* the check box: a rounded square, outlined off, filled on with the mark cut out (drawn in the card's colour) */
+  /* the check box: a rounded square, outlined off, filled on with the mark on it */
   if (self->active)
     {
       GskRoundedRect box;
-      GdkRGBA mark = fm_rgba (FM_C_WINDOW);
+      GdkRGBA mark = fm_rgba (FM_C_CHECK_MARK);
       g_autoptr(GskPathBuilder) tick = gsk_path_builder_new ();
       g_autoptr(GskPath) tick_path = NULL;
 
@@ -236,7 +231,6 @@ fm_check_row (const char *label, gboolean radio, gboolean active)
   GtkWidget *check = fm_check_new (radio);
   GtkWidget *text = fm_label (label, "fm-check-text", 16, TRUE);
   GtkWidget *row = vibeos_pressable_new (box);
-  GdkRGBA ripple = fm_rgba (FM_C_RIPPLE_CARD);
 
   fm_check_set_active (check, active);
   gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
@@ -245,7 +239,6 @@ fm_check_row (const char *label, gboolean radio, gboolean active)
   gtk_box_append (GTK_BOX (box), text);
   gtk_widget_add_css_class (row, "fm-check-row");
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
   g_object_set_data (G_OBJECT (row), "fm-check", check);
   g_signal_connect (row, "clicked", G_CALLBACK (on_check_row), check);
   gtk_accessible_update_property (GTK_ACCESSIBLE (row), GTK_ACCESSIBLE_PROPERTY_LABEL, label, -1);
@@ -373,9 +366,13 @@ fm_progress_set_fraction (GtkWidget *progress, double fraction)
 /* ---- the popup menu -------------------------------------------------------------------------------------------- */
 
 #define POPUP_EDGE   8.0
+#define POPUP_GAP    4.0        /* an overflow menu, this far from its ⋮ */
 #define POPUP_ROW_H  48
 #define POPUP_PAD    16
 #define POPUP_MIN_W  196
+#define POPUP_ICON   24
+#define POPUP_ICON_GAP 9        /* from the icon to its label */
+#define POPUP_ICON_PAD 8        /* the icon's inset, in place of the label's */
 
 typedef struct {
   GtkWidget *layer;
@@ -444,6 +441,13 @@ void
 fm_popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, FmPopupPlace place, double x, double y,
                FmPopupChosen chosen, gpointer data)
 {
+  fm_popup_show_icons (anchor, labels, NULL, n_labels, place, x, y, chosen, data);
+}
+
+void
+fm_popup_show_icons (GtkWidget *anchor, const char *const *labels, const char *const *icons, int n_labels,
+                     FmPopupPlace place, double x, double y, FmPopupChosen chosen, gpointer data)
+{
   GtkOverlay *overlay = vibeos_window_get_overlay (anchor);
   GtkWidget *layer, *scrim, *card, *scroll, *list;
   GtkGesture *press;
@@ -451,7 +455,6 @@ fm_popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, FmPop
   Popup *popup;
   graphene_point_t at;
   double window_width, window_height, width, height, left, top, widest = 0;
-  GdkRGBA ripple = fm_rgba (FM_C_RIPPLE_CARD);
 
   if (!overlay || n_labels <= 0)
     return;
@@ -485,18 +488,31 @@ fm_popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, FmPop
   for (int i = 0; i < n_labels; i++)
     {
       GtkWidget *text = fm_label (labels[i], "fm-popup-text", 16, FALSE);
-      GtkWidget *row = vibeos_pressable_new (text);
+      GtkWidget *row;
       PangoLayout *layout = gtk_widget_create_pango_layout (text, labels[i]);
       int w;
 
       pango_layout_get_pixel_size (layout, &w, NULL);
       g_object_unref (layout);
       /* measured in the label's own font only once it is styled: the CSS sets 16 px, the default is 14 */
-      widest = MAX (widest, w * 16.0 / 14.0);
+      widest = MAX (widest, w * 16.0 / 14.0 + (icons ? POPUP_ICON_PAD - POPUP_PAD + POPUP_ICON + POPUP_ICON_GAP : 0));
       gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
+      if (icons)
+        {
+          GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, POPUP_ICON_GAP);
+          GtkWidget *icon = gtk_image_new_from_icon_name (icons[i]);
+
+          gtk_image_set_pixel_size (GTK_IMAGE (icon), POPUP_ICON);
+          gtk_widget_add_css_class (icon, "fm-popup-icon");
+          gtk_box_append (GTK_BOX (box), icon);
+          gtk_box_append (GTK_BOX (box), text);
+          row = vibeos_pressable_new (box);
+          gtk_widget_add_css_class (row, "fm-popup-item-icon");
+        }
+      else
+        row = vibeos_pressable_new (text);
       gtk_widget_add_css_class (row, "fm-popup-item");
       vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
-      vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
       g_object_set_data (G_OBJECT (row), "fm-index", GINT_TO_POINTER (i));
       g_signal_connect (row, "clicked", G_CALLBACK (on_popup_row), popup);
       gtk_box_append (GTK_BOX (list), row);
@@ -509,11 +525,16 @@ fm_popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, FmPop
   gtk_box_append (GTK_BOX (card), scroll);
 
   width = MIN (MAX (widest + 2 * POPUP_PAD, POPUP_MIN_W), window_width - 2 * POPUP_EDGE);
-  height = MIN (n_labels * POPUP_ROW_H + 16, window_height - 2 * POPUP_EDGE);
+  height = MIN (n_labels * POPUP_ROW_H, window_height - 2 * POPUP_EDGE);
   if (place == FM_POPUP_OVER_END)
     {
+      /* next to its ⋮, never over it (libvibeos's VibeosMenu): the end a little in from the anchor's, below the
+       * anchor, or above it when it does not fit below; when it fits neither way, the CLAMP below pushes it onto
+       * the anchor */
       left = at.x + gtk_widget_get_width (anchor) - width - 4;
-      top = at.y + 4;
+      top = at.y + gtk_widget_get_height (anchor) + POPUP_GAP;
+      if (top + height > window_height - POPUP_EDGE && at.y - POPUP_GAP - height >= POPUP_EDGE)
+        top = at.y - POPUP_GAP - height;
     }
   else
     {

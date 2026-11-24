@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=vibeos.Agent
+Exec=@bindir@/vibeos-dictate --agent --gapplication-service

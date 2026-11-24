@@ -24,6 +24,9 @@ GtkWidget *ct_page_get_window        (CtPage *self);
 void       ct_page_set_back_handler  (CtPage *self, CtPageBack back, gpointer data);
 /* Back, as Escape and the toolbar's arrow do: the handler, else the page goes */
 void       ct_page_back              (CtPage *self);
+/* the back handler alone: TRUE when it dealt with Back itself (an editor asking "Discard changes?"), the page
+ * staying; FALSE when the page may go */
+gboolean   ct_page_back_handled      (CtPage *self);
 
 /* A page drawn over the one under it instead of in its place (QuickContact): no slide when it comes or goes; it
  * animates itself */

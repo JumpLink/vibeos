@@ -15,7 +15,7 @@
 #define DIAL_MARGIN     16      /* above the bottom */
 #define SLIDE_MS        400     /* the sheet sliding in and out */
 #define FAB_MS          250     /* the dial button growing in and shrinking out */
-#define DIAL_GREEN      0x3ee0a0        /* the dialpad is not darkened, nor is its dial button */
+#define DIAL_GREEN      VIBEOS_CALL     /* libvibeos's fixed call green, light and dark */
 
 struct _DialpadSheet
 {
@@ -33,12 +33,6 @@ G_DEFINE_FINAL_TYPE (DialpadSheet, dialpad_sheet, GTK_TYPE_WIDGET)
 
 enum { SHOWN_CHANGED, DIGITS_CHANGED, N_SIGNALS };
 static guint signals[N_SIGNALS];
-
-static GdkRGBA
-rgb (guint32 value)
-{
-  return (GdkRGBA) { ((value >> 16) & 0xff) / 255.0, ((value >> 8) & 0xff) / 255.0, (value & 0xff) / 255.0, 1 };
-}
 
 /* ---- the motion ----------------------------------------------------------------------------------------------- */
 
@@ -112,6 +106,12 @@ void
 dialpad_sheet_clear (DialpadSheet *self)
 {
   dialer_dialpad_set_digits (DIALER_DIALPAD (self->dialpad), "");
+}
+
+void
+dialpad_sheet_set_compact (DialpadSheet *self, gboolean compact)
+{
+  dialer_dialpad_set_compact (DIALER_DIALPAD (self->dialpad), compact);
 }
 
 /* ---- dialling ------------------------------------------------------------------------------------------------- */
@@ -308,7 +308,6 @@ dialpad_sheet_init (DialpadSheet *self)
 {
   GtkWidget *icon = gtk_image_new_from_icon_name ("dialer-call-symbolic");
   GtkGesture *space = gtk_gesture_click_new ();
-  GdkRGBA green = rgb (DIAL_GREEN);
 
   self->dialpad = dialer_dialpad_new (DIALPAD_DIALER);
   gtk_widget_set_parent (self->dialpad, GTK_WIDGET (self));
@@ -317,11 +316,11 @@ dialpad_sheet_init (DialpadSheet *self)
   g_signal_connect (self->dialpad, "key-up", G_CALLBACK (on_key_up), self);
   g_signal_connect (self->dialpad, "overflow", G_CALLBACK (on_overflow), self);
 
-  /* the dial button: green with a black handset, its shadow under it */
+  /* the dial button: green with a dark handset, its shadow under it */
   gtk_image_set_pixel_size (GTK_IMAGE (icon), 24);
   gtk_widget_add_css_class (icon, "dial-icon");
   self->dial = vibeos_pressable_new (icon);
-  vibeos_pressable_set_fill (VIBEOS_PRESSABLE (self->dial), &green, TRUE);
+  vibeos_pressable_set_fill_role (VIBEOS_PRESSABLE (self->dial), DIAL_GREEN, TRUE);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->dial), VIBEOS_RIPPLE_CIRCLE, DIAL_SIZE / 2.0);
   vibeos_pressable_set_scale (VIBEOS_PRESSABLE (self->dial), 0);
   gtk_accessible_update_property (GTK_ACCESSIBLE (self->dial), GTK_ACCESSIBLE_PROPERTY_LABEL, _("dial"), -1);

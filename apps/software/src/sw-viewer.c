@@ -452,7 +452,8 @@ sw_viewer_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   graphene_rect_t all = GRAPHENE_RECT_INIT (0, 0, w, h);
   gboolean moving = self->open < 1 || self->closing;
   double shown, backdrop;
-  GdkRGBA black = { 0, 0, 0, 1 };
+  /* a picture viewer is black in either mode: the scrim's colour, all the way */
+  GdkRGBA black = vibeos_color (VIBEOS_SCRIM);
 
   if (w <= 0 || h <= 0)
     return;
@@ -514,7 +515,7 @@ sw_viewer_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
         {
           /* the dot of the page showing lights up, sliding over as the pages slide */
           double lit = clamp01 (1 - fabs (at - i));
-          GdkRGBA dot = { 1, 1, 1, (0.4 + 0.6 * lit) * shown };
+          GdkRGBA dot = vibeos_color_alpha (VIBEOS_WHITE, (0.4 + 0.6 * lit) * shown);
           GskRoundedRect circle;
 
           gsk_rounded_rect_init_from_rect (&circle, &GRAPHENE_RECT_INIT (x0 + i * (DOT + DOT_GAP), y, DOT, DOT),
@@ -1118,7 +1119,7 @@ sw_viewer_init (SwViewer *self)
   GtkEventController *keys = gtk_event_controller_key_new ();
   GtkWidget *arrow = gtk_image_new_from_icon_name ("sw-back-symbolic");
   GtkWidget *cross = gtk_image_new_from_icon_name ("sw-close-symbolic");
-  GdkRGBA scrim = { 0, 0, 0, 0.45 };
+  GdkRGBA scrim = vibeos_color_alpha (VIBEOS_SCRIM, 0.45);
 
   self->thumbs = g_ptr_array_new_with_free_func (weak_ref_free);
   self->aspects = g_array_new (FALSE, FALSE, sizeof (double));

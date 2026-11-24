@@ -60,7 +60,7 @@ static void
 nb_dialog_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   NbDialog *self = NB_DIALOG (widget);
-  GdkRGBA scrim = { 0, 0, 0, DIM };
+  GdkRGBA scrim = vibeos_color_alpha (VIBEOS_SCRIM, DIM);
 
   gtk_snapshot_push_opacity (snapshot, self->shown);
   gtk_snapshot_append_color (snapshot, &scrim,
@@ -207,7 +207,7 @@ nb_dialog_init (NbDialog *self)
   gtk_label_set_xalign (GTK_LABEL (self->title), 0);
   gtk_label_set_wrap (GTK_LABEL (self->title), TRUE);
   gtk_widget_add_css_class (self->title, "nb-dialog-title");
-  vibeos_label_set_font_padding (self->title, 24);
+  vibeos_label_set_font_padding_sp (self->title, 24);
   gtk_widget_set_visible (self->title, FALSE);
   gtk_box_append (GTK_BOX (self->card), self->title);
 
@@ -215,7 +215,7 @@ nb_dialog_init (NbDialog *self)
   gtk_label_set_xalign (GTK_LABEL (self->message), 0);
   gtk_label_set_wrap (GTK_LABEL (self->message), TRUE);
   gtk_widget_add_css_class (self->message, "nb-dialog-message");
-  vibeos_label_set_font_padding (self->message, 14);
+  vibeos_label_set_font_padding_sp (self->message, 14);
   gtk_widget_set_visible (self->message, FALSE);
   gtk_box_append (GTK_BOX (self->card), self->message);
 
@@ -386,7 +386,7 @@ static void
 nb_sheet_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   NbSheet *self = NB_SHEET (widget);
-  GdkRGBA scrim = { 0, 0, 0, self->dim * self->shown };
+  GdkRGBA scrim = vibeos_color_alpha (VIBEOS_SCRIM, self->dim * self->shown);
 
   gtk_snapshot_append_color (snapshot, &scrim,
                              &GRAPHENE_RECT_INIT (0, 0, gtk_widget_get_width (widget), gtk_widget_get_height (widget)));
@@ -878,18 +878,45 @@ nb_icon (const char *icon_name, int size)
   return image;
 }
 
+static void
+apply_label_size (GtkWidget *label)
+{
+  double *sp = g_object_get_data (G_OBJECT (label), "nb-label-sp");
+  double *line = g_object_get_data (G_OBJECT (label), "nb-label-line-sp");
+  PangoAttrList *attrs = pango_attr_list_new ();
+
+  pango_attr_list_insert (attrs, pango_attr_size_new_absolute ((int) round (vibeos_sp (*sp) * PANGO_SCALE)));
+  if (line)
+    pango_attr_list_insert (attrs, pango_attr_line_height_new_absolute ((int) round (vibeos_sp (*line) * PANGO_SCALE)));
+  gtk_label_set_attributes (GTK_LABEL (label), attrs);
+  pango_attr_list_unref (attrs);
+}
+
+void
+nb_label_set_line_height (GtkWidget *label, double sp)
+{
+  double *line = g_new (double, 1);
+
+  *line = sp;
+  g_object_set_data_full (G_OBJECT (label), "nb-label-line-sp", line, g_free);
+  apply_label_size (label);
+}
+
 GtkWidget *
 nb_label (const char *text, double size, const char *css, gboolean ellipsize)
 {
   GtkWidget *label = gtk_label_new (text);
-  PangoAttrList *attrs = pango_attr_list_new ();
+  double *sp = g_new (double, 1);
 
-  pango_attr_list_insert (attrs, pango_attr_size_new_absolute ((int) round (size * PANGO_SCALE)));
-  gtk_label_set_attributes (GTK_LABEL (label), attrs);
-  pango_attr_list_unref (attrs);
+  /* the size in sp: px for the font size in effect, again as it changes */
+  *sp = size;
+  g_object_set_data_full (G_OBJECT (label), "nb-label-sp", sp, g_free);
+  apply_label_size (label);
+  g_signal_connect_object (vibeos_text_get_default (), "changed", G_CALLBACK (apply_label_size), label,
+                           G_CONNECT_SWAPPED);
   gtk_label_set_xalign (GTK_LABEL (label), 0);
   /* font padding: the font's yMax / yMin above and below the line */
-  vibeos_label_set_font_padding (label, size);
+  vibeos_label_set_font_padding_sp (label, size);
   /* centred across a row taller than it; a caller places it otherwise */
   gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
   if (ellipsize) {
@@ -1059,7 +1086,9 @@ indicator_draw (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpoint
     return;
   double len = MAX (height * page / upper, 2 * IND_W);
   double y = (height - len) * value / MAX (1, upper - page);
-  cairo_set_source_rgb (cr, 0x59 / 255.0, 0x61 / 255.0, 0x63 / 255.0);
+  GdkRGBA thumb = vibeos_color (VIBEOS_OUTLINE);
+
+  gdk_cairo_set_source_rgba (cr, &thumb);
   cairo_rectangle (cr, width - IND_W, y, IND_W, len);
   cairo_fill (cr);
 }

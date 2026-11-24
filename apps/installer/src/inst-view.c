@@ -5,6 +5,7 @@
 
 #include <gio/gdesktopappinfo.h>
 #include <glib/gi18n.h>
+#include <string.h>
 #include <spongy-gtk.h>
 #include <vibeos.h>
 
@@ -284,6 +285,28 @@ update_progress (InstView *self)
     gtk_progress_bar_set_fraction (GTK_PROGRESS_BAR (self->progress), percent / 100.0);
 }
 
+/* a package whose apps run sandboxed: uninstalled, its apps' data goes with it (vibeos-sandbox keeps a record of
+ * each in ~/.local/share/vibeos-sandbox/packages, and deletes the data once dpkg has removed the package) */
+static gboolean
+sandboxed (const char *package)
+{
+  if (!package || !*package || strchr (package, '/') || package[0] == '.')
+    return FALSE;
+  g_autofree char *record = g_build_filename (g_get_user_data_dir (), "vibeos-sandbox", "packages", package, NULL);
+  return g_file_test (record, G_FILE_TEST_IS_REGULAR);
+}
+
+static gboolean
+data_goes (const InstPlan *plan)
+{
+  if (sandboxed (plan->package))
+    return TRUE;
+  for (guint i = 0; plan->also_remove && i < plan->also_remove->len; i++)
+    if (sandboxed (plan->also_remove->pdata[i]))
+      return TRUE;
+  return FALSE;
+}
+
 /* the question for a READY plan: a title, and a sentence when the title is not enough */
 static void
 question (InstView *self, GtkWidget *box)
@@ -323,7 +346,8 @@ question (InstView *self, GtkWidget *box)
       break;
     case INST_CHANGE_REMOVE:
       title = g_strdup_printf (_("Uninstall %s?"), name);
-      text = g_strdup (_("Its program files are removed. Your own files stay."));
+      text = g_strdup (data_goes (plan) ? _("Its data will be deleted.")
+                                        : _("Its program files are removed. Your own files stay."));
       break;
     }
   gtk_box_append (GTK_BOX (box), label (title, "inst-lead-title", 0));

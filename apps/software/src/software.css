@@ -1,6 +1,7 @@
 /* Software's styles, over libvibeos's (vibeos.css). Every colour is a role of the theme (the @vibeos_ names), so light
- * and dark follow the system's scheme and colour, or the one chosen in Software's settings. Sizes are GTK px. The
- * weights are Bold text's, as the other apps': regular 700, medium 800, bold 900. */
+ * and dark follow the system's scheme and colour, or the one chosen in Software's settings. Text sizes are sp and
+ * every other size dp (libvibeos converts them for Font size); weights are the usual ones (regular 400, medium 500,
+ * bold 600), and Bold text draws each 300 heavier. */
 
 window.sw-window,
 .sw-page,
@@ -12,59 +13,59 @@ window.sw-window,
 
 .sw-body-text,
 .sw-body-item {
-  font-size: 15px;
+  font-size: 15sp;
   color: @vibeos_on_surface;
 }
 
 .sw-body-item {
-  margin-left: 4px;
+  margin-left: 4dp;
 }
 
 .sw-caption,
 .sw-caption-padded {
-  font-size: 13px;
+  font-size: 13sp;
   color: @vibeos_on_surface_variant;
 }
 
 .sw-caption-padded {
-  margin: 0 24px 4px 24px;
+  margin: 0 24dp 4dp 24dp;
 }
 
 .sw-subtitle {
-  font-size: 16px;
-  font-weight: 800;
+  font-size: 16sp;
+  font-weight: 500;
   color: @vibeos_on_surface;
 }
 
 .sw-summary {
-  font-size: 15px;
-  font-weight: 800;
+  font-size: 15sp;
+  font-weight: 500;
   color: @vibeos_on_surface;
 }
 
 .sw-form-error,
 .sw-list-error,
 .sw-suggest-error {
-  font-size: 14px;
+  font-size: 14sp;
   color: @vibeos_error;
 }
 
 .sw-list-error,
 .sw-suggest-error {
-  margin: 16px 24px;
+  margin: 16dp 24dp;
 }
 
 /* a column with the page's side margins: text 24px in, cards 16px in (a card list keeps 16px of its own on each
  * side), strips from edge to edge. Margins rather than padding, so that a strip need not reach outside its parent. */
 .sw-column {
-  padding: 8px 0 32px 0;
+  padding: 8dp 0 32dp 0;
 }
 
 .sw-column > *,
 .sw-app-details > *,
 .sw-sheet-column > * {
-  margin-left: 24px;
-  margin-right: 24px;
+  margin-left: 24dp;
+  margin-right: 24dp;
 }
 
 .sw-column > vibeos-card-list,
@@ -76,87 +77,87 @@ window.sw-window,
 
 /* in a sheet the cards are as far in as the text */
 .sw-sheet-column > vibeos-card-list {
-  margin-left: 8px;
-  margin-right: 8px;
+  margin-left: 8dp;
+  margin-right: 8dp;
 }
 
 .sw-form {
-  padding-top: 16px;
+  padding-top: 16dp;
 }
 
 .sw-sheet-column {
-  padding: 0 0 16px 0;
+  padding: 0 0 16dp 0;
 }
 
 .sw-divider {
-  min-height: 1px;
+  min-height: 1dp;
   background-color: @vibeos_outline_variant;
-  margin-top: 8px;
-  margin-bottom: 8px;
+  margin-top: 8dp;
+  margin-bottom: 8dp;
 }
 
 /* ---- loading, failed, empty ---- */
 
 .sw-message {
-  padding: 48px 40px;
+  padding: 48dp 40dp;
 }
 
 .sw-message-icon {
   color: @vibeos_on_surface_variant;
-  margin-bottom: 16px;
+  margin-bottom: 16dp;
 }
 
 .sw-message-title {
-  font-size: 20px;
-  font-weight: 800;
+  font-size: 20sp;
+  font-weight: 500;
   color: @vibeos_on_surface;
-  margin-bottom: 8px;
+  margin-bottom: 8dp;
 }
 
 .sw-message-text {
-  font-size: 15px;
+  font-size: 15sp;
   color: @vibeos_on_surface_variant;
 }
 
 .sw-message-button {
-  margin-top: 24px;
+  margin-top: 24dp;
 }
 
 /* ---- buttons: pills ---- */
 
 .sw-button {
-  min-height: 40px;
-  border-radius: 20px;
-  padding: 0 24px;
+  min-height: 40dp;
+  border-radius: 20dp;
+  padding: 0 24dp;
 }
 
 .sw-button label {
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 14sp;
+  font-weight: 500;
 }
 
 .sw-button.large {
-  min-height: 48px;
-  border-radius: 24px;
+  min-height: 48dp;
+  border-radius: 24dp;
 }
 
 .sw-button.large label {
-  font-size: 15px;
+  font-size: 15sp;
 }
 
 .sw-button.small {
-  min-height: 36px;
-  border-radius: 18px;
-  padding: 0 16px;
+  min-height: 36dp;
+  border-radius: 18dp;
+  padding: 0 16dp;
 }
 
 .sw-button.filled { background-color: @vibeos_primary; }
 .sw-button.filled label { color: @vibeos_on_primary; }
 .sw-button.tonal { background-color: @vibeos_secondary_container; }
 .sw-button.tonal label { color: @vibeos_on_secondary_container; }
-.sw-button.outlined { border: 1px solid @vibeos_outline; }
+.sw-button.outlined { border: 1dp solid @vibeos_outline; }
 .sw-button.outlined label { color: @vibeos_primary; }
-.sw-button.text { padding: 0 12px; }
+.sw-button.text { padding: 0 12dp; }
 .sw-button.text label { color: @vibeos_primary; }
 .sw-button.danger { background-color: @vibeos_error; }
 .sw-button.danger label { color: @vibeos_on_error; }
@@ -177,21 +178,21 @@ window.sw-window,
 /* ---- the tabs' homes ---- */
 
 .sw-search-bar {
-  margin: 8px 16px 4px 16px;
+  margin: 8dp 16dp 4dp 16dp;
 }
 
 .sw-home-column {
-  padding-bottom: 24px;
+  padding-bottom: 24dp;
 }
 
 /* the line under the tabs and the chosen one's are drawn by SwTabs (sw-widgets.c) */
 .sw-tab {
-  min-height: 48px;
+  min-height: 48dp;
 }
 
 .sw-tab label {
-  font-size: 15px;
-  font-weight: 800;
+  font-size: 15sp;
+  font-weight: 500;
   color: @vibeos_on_surface_variant;
 }
 
@@ -201,44 +202,44 @@ window.sw-window,
 
 /* a section's title, its count and its action */
 .sw-section-header {
-  margin: 24px 16px 8px 24px;
-  min-height: 40px;
+  margin: 24dp 16dp 8dp 24dp;
+  min-height: 40dp;
 }
 
 .sw-section-title {
-  font-size: 20px;
-  font-weight: 800;
+  font-size: 20sp;
+  font-weight: 500;
   color: @vibeos_on_surface;
 }
 
 .sw-section-count {
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 14sp;
+  font-weight: 500;
   color: @vibeos_on_surface_variant;
   background-color: @vibeos_surface_container_high;
-  border-radius: 12px;
-  min-width: 24px;
-  min-height: 24px;
-  padding: 0 4px;
-  margin-left: 10px;
+  border-radius: 12dp;
+  min-width: 24dp;
+  min-height: 24dp;
+  padding: 0 4dp;
+  margin-left: 10dp;
 }
 
 /* a strip scrolled sideways: 24px in, as the titles */
 .sw-strip {
-  padding: 0 24px;
+  padding: 0 24dp;
 }
 
 /* filter chips: outlined, filled when chosen */
 .sw-chip {
-  min-height: 40px;
-  border-radius: 20px;
-  padding: 0 16px;
-  border: 1px solid @vibeos_outline_variant;
+  min-height: 40dp;
+  border-radius: 20dp;
+  padding: 0 16dp;
+  border: 1dp solid @vibeos_outline_variant;
 }
 
 .sw-chip label {
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 14sp;
+  font-weight: 500;
   color: @vibeos_on_surface;
 }
 
@@ -252,58 +253,58 @@ window.sw-window,
 }
 
 .sw-chips {
-  padding-top: 12px;
-  padding-bottom: 12px;
+  padding-top: 12dp;
+  padding-bottom: 12dp;
 }
 
 /* banners: pictures with their title over a dark fade */
 .sw-banner {
-  border-radius: 20px;
+  border-radius: 20dp;
 }
 
 .sw-banner-text {
-  padding: 16px 20px;
-  background-image: linear-gradient(to bottom, transparent, alpha(black, 0.6));
-  border-radius: 0 0 20px 20px;
+  padding: 16dp 20dp;
+  background-image: linear-gradient(to bottom, transparent, alpha(@vibeos_scrim, 0.6));
+  border-radius: 0 0 20dp 20dp;
 }
 
 .sw-banner-title {
-  font-size: 20px;
-  font-weight: 900;
-  color: white;
+  font-size: 20sp;
+  font-weight: 600;
+  color: @vibeos_white;
 }
 
 .sw-banner-subtitle {
-  font-size: 14px;
-  color: alpha(white, 0.9);
+  font-size: 14sp;
+  color: alpha(@vibeos_white, 0.9);
 }
 
 /* ---- apps in lists and strips ---- */
 
 .sw-app-row-box {
-  padding: 8px 16px 8px 24px;
-  min-height: 72px;
+  padding: 8dp 16dp 8dp 24dp;
+  min-height: 72dp;
 }
 
 .sw-app-row.in-column .sw-app-row-box {
   padding-left: 0;
-  padding-right: 8px;
+  padding-right: 8dp;
 }
 
 .sw-app-name {
-  font-size: 16px;
-  font-weight: 800;
+  font-size: 16sp;
+  font-weight: 500;
   color: @vibeos_on_surface;
 }
 
 .sw-app-summary {
-  font-size: 13px;
+  font-size: 13sp;
   color: @vibeos_on_surface_variant;
 }
 
 .sw-rating {
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 13sp;
+  font-weight: 500;
   color: @vibeos_on_surface_variant;
 }
 
@@ -312,28 +313,28 @@ window.sw-window,
 }
 
 .sw-app-tile-box {
-  padding: 4px 0;
+  padding: 4dp 0;
 }
 
 .sw-tile-name {
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 13sp;
+  font-weight: 500;
   color: @vibeos_on_surface;
 }
 
 .sw-list {
-  padding: 4px 0 16px 0;
+  padding: 4dp 0 16dp 0;
 }
 
 .sw-list-footer {
-  padding: 16px 0 24px 0;
+  padding: 16dp 0 24dp 0;
 }
 
 .sw-list-header,
 .sw-corrected {
-  font-size: 14px;
+  font-size: 14sp;
   color: @vibeos_on_surface_variant;
-  margin: 12px 24px 0 24px;
+  margin: 12dp 24dp 0 24dp;
 }
 
 .sw-ring-stop {
@@ -343,52 +344,52 @@ window.sw-window,
 /* ---- an app's page ---- */
 
 .sw-app-head {
-  padding: 8px 24px 0 24px;
+  padding: 8dp 24dp 0 24dp;
 }
 
 .sw-app-title {
-  font-size: 24px;
-  font-weight: 800;
+  font-size: 24sp;
+  font-weight: 500;
   color: @vibeos_on_surface;
 }
 
 .sw-app-developer {
-  font-size: 15px;
-  font-weight: 800;
+  font-size: 15sp;
+  font-weight: 500;
   color: @vibeos_primary;
 }
 
 .sw-app-action {
-  padding: 20px 24px 4px 24px;
+  padding: 20dp 24dp 4dp 24dp;
 }
 
 .sw-job-line,
 .sw-update-note,
 .sw-installed-note {
-  font-size: 14px;
+  font-size: 14sp;
   color: @vibeos_on_surface_variant;
 }
 
 .sw-installed-note {
-  margin: 12px 0;
+  margin: 12dp 0;
 }
 
 .sw-app-details {
-  padding: 0 0 32px 0;
+  padding: 0 0 32dp 0;
 }
 
 .sw-app-details > .sw-section-header {
-  margin-right: 16px;
+  margin-right: 16dp;
 }
 
 /* rating, installs, size, age, side by side under thin dividers */
 .sw-stats {
-  margin-top: 20px;
-  padding: 8px 0;
+  margin-top: 20dp;
+  padding: 8dp 0;
 }
 
 .sw-stat {
-  border-left: 1px solid @vibeos_outline_variant;
+  border-left: 1dp solid @vibeos_outline_variant;
 }
 
 .sw-stat:first-child {
@@ -396,124 +397,124 @@ window.sw-window,
 }
 
 .sw-stat-value {
-  font-size: 16px;
-  font-weight: 800;
+  font-size: 16sp;
+  font-weight: 500;
   color: @vibeos_on_surface;
 }
 
 .sw-stat-caption {
-  font-size: 12px;
+  font-size: 12sp;
   color: @vibeos_on_surface_variant;
 }
 
 .sw-screenshots {
-  padding-top: 16px;
+  padding-top: 16dp;
 }
 
 .sw-screenshots > vibeos-pressable {
-  margin-right: 8px;
-  border-radius: 12px;
+  margin-right: 8dp;
+  border-radius: 12dp;
 }
 
 /* the full-screen viewer's back arrow and close button, white on a dark circle (drawn by the button) */
 .sw-viewer-back {
-  min-width: 48px;
-  min-height: 48px;
-  color: white;
+  min-width: 48dp;
+  min-height: 48dp;
+  color: @vibeos_white;
 }
 
 .sw-description {
-  margin-top: 8px;
-  margin-bottom: 8px;
+  margin-top: 8dp;
+  margin-bottom: 8dp;
 }
 
 /* a text button's label in line with the text over it */
 .sw-app-details > .sw-read-more {
-  margin-left: 12px;
+  margin-left: 12dp;
 }
 
 /* ratings: the big figure beside the five bars */
 .sw-histogram {
-  padding: 4px 0 16px 0;
+  padding: 4dp 0 16dp 0;
 }
 
 .sw-big-rating {
-  font-size: 48px;
-  font-weight: 800;
+  font-size: 48sp;
+  font-weight: 500;
   color: @vibeos_on_surface;
 }
 
 .sw-histogram-key {
-  font-size: 12px;
-  font-weight: 800;
+  font-size: 12sp;
+  font-weight: 500;
   color: @vibeos_on_surface_variant;
-  min-width: 10px;
+  min-width: 10dp;
 }
 
 progressbar.sw-histogram-bar trough {
-  min-height: 8px;
-  border-radius: 4px;
+  min-height: 8dp;
+  border-radius: 4dp;
   border: none;
   background-color: @vibeos_surface_container_highest;
 }
 
 progressbar.sw-histogram-bar progress {
-  min-height: 8px;
+  min-height: 8dp;
   min-width: 0;
   margin: 0;
-  border-radius: 4px;
+  border-radius: 4dp;
   border: none;
   background-color: @vibeos_primary;
 }
 
 .sw-review-box {
-  padding: 8px 0 16px 0;
+  padding: 8dp 0 16dp 0;
 }
 
 .sw-all-reviews {
-  margin-top: 8px;
+  margin-top: 8dp;
 }
 
 /* ---- reviews ---- */
 
 .sw-review {
-  padding: 16px 0;
-  border-bottom: 1px solid @vibeos_outline_variant;
+  padding: 16dp 0;
+  border-bottom: 1dp solid @vibeos_outline_variant;
 }
 
 .sw-reviews .sw-review {
-  margin: 0 24px;
+  margin: 0 24dp;
 }
 
 .sw-review-initial {
-  min-width: 36px;
-  min-height: 36px;
-  border-radius: 18px;
+  min-width: 36dp;
+  min-height: 36dp;
+  border-radius: 18dp;
   background-color: @vibeos_tertiary_container;
   color: @vibeos_on_tertiary_container;
-  font-size: 16px;
-  font-weight: 800;
+  font-size: 16sp;
+  font-weight: 500;
 }
 
 .sw-review-author {
-  font-size: 15px;
-  font-weight: 800;
+  font-size: 15sp;
+  font-weight: 500;
   color: @vibeos_on_surface;
 }
 
 .sw-review-text {
-  font-size: 15px;
+  font-size: 15sp;
   color: @vibeos_on_surface;
 }
 
 .sw-helpful {
-  min-height: 32px;
-  border-radius: 16px;
-  padding: 0 12px;
-  border: 1px solid @vibeos_outline_variant;
+  min-height: 32dp;
+  border-radius: 16dp;
+  padding: 0 12dp;
+  border: 1dp solid @vibeos_outline_variant;
   color: @vibeos_on_surface_variant;
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 13sp;
+  font-weight: 500;
 }
 
 .sw-helpful.selected {
@@ -524,23 +525,23 @@ progressbar.sw-histogram-bar progress {
 
 /* the review's text field: a rounded outline */
 .sw-text-area {
-  border: 1px solid @vibeos_outline;
-  border-radius: 16px;
-  padding: 12px 16px;
+  border: 1dp solid @vibeos_outline;
+  border-radius: 16dp;
+  padding: 12dp 16dp;
 }
 
 .sw-text-area textview,
 .sw-text-area textview text {
   background-color: transparent;
-  font-size: 16px;
+  font-size: 16sp;
   color: @vibeos_on_surface;
 }
 
 .sw-counter {
-  font-size: 12px;
+  font-size: 12sp;
   color: @vibeos_on_surface_variant;
   /* level with the field's label beside it, which keeps 6px over the field */
-  margin: 0 4px 6px 0;
+  margin: 0 4dp 6dp 0;
 }
 
 .sw-counter.error {
@@ -550,12 +551,12 @@ progressbar.sw-histogram-bar progress {
 /* ---- search ---- */
 
 .sw-suggestions {
-  padding: 8px 0;
+  padding: 8dp 0;
 }
 
 .sw-suggest-box {
-  min-height: 56px;
-  padding: 0 8px 0 24px;
+  min-height: 56dp;
+  padding: 0 8dp 0 24dp;
 }
 
 .sw-suggest-box > image {
@@ -563,12 +564,12 @@ progressbar.sw-histogram-bar progress {
 }
 
 .sw-suggest-box label {
-  font-size: 16px;
+  font-size: 16sp;
   color: @vibeos_on_surface;
 }
 
 .sw-suggest-app {
-  font-weight: 800;
+  font-weight: 500;
 }
 
 /* ---- Mine ---- */
@@ -578,54 +579,54 @@ progressbar.sw-histogram-bar progress {
 }
 
 .sw-mine-header {
-  padding: 12px 16px 4px 24px;
-  min-height: 56px;
+  padding: 12dp 16dp 4dp 24dp;
+  min-height: 56dp;
 }
 
 .sw-mine-title {
-  font-size: 28px;
-  font-weight: 800;
+  font-size: 28sp;
+  font-weight: 500;
   color: @vibeos_on_surface;
 }
 
 .sw-avatar-button {
-  min-width: 48px;
-  min-height: 48px;
+  min-width: 48dp;
+  min-height: 48dp;
 }
 
 .sw-mine-column > vibeos-card-list {
-  margin-bottom: 16px;
+  margin-bottom: 16dp;
 }
 
 .sw-mine-sheet {
   background-color: @vibeos_surface;
-  border-radius: 28px 28px 0 0;
-  padding-bottom: 24px;
+  border-radius: 28dp 28dp 0 0;
+  padding-bottom: 24dp;
 }
 
 .sw-mine-section > .sw-section-header {
-  margin-top: 20px;
+  margin-top: 20dp;
 }
 
 .sw-note {
-  margin: 0 24px 8px 24px;
+  margin: 0 24dp 8dp 24dp;
 }
 
 /* ---- the account ---- */
 
 .sw-avatar {
-  border-radius: 999px;
+  border-radius: 999dp;
   background-color: @vibeos_surface_container_highest;
   color: @vibeos_on_surface_variant;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .sw-avatar label {
-  font-size: 18px;
+  font-size: 18sp;
 }
 
 .sw-avatar.large label {
-  font-size: 32px;
+  font-size: 32sp;
 }
 
 .sw-avatar.signed-in {
@@ -634,40 +635,40 @@ progressbar.sw-histogram-bar progress {
 }
 
 .sw-profile-card {
-  padding: 24px 24px 8px 24px;
+  padding: 24dp 24dp 8dp 24dp;
 }
 
 .sw-profile-name {
-  font-size: 22px;
-  font-weight: 800;
+  font-size: 22sp;
+  font-weight: 500;
   color: @vibeos_on_surface;
-  margin-top: 8px;
+  margin-top: 8dp;
 }
 
 .sw-profile-email,
 .sw-profile-text {
-  font-size: 14px;
+  font-size: 14sp;
   color: @vibeos_on_surface_variant;
 }
 
 .sw-profile-card box {
-  margin-top: 8px;
+  margin-top: 8dp;
 }
 
 /* a field: its label over a rounded box, an error or a hint under it */
 .sw-field-label {
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 13sp;
+  font-weight: 500;
   color: @vibeos_on_surface_variant;
-  margin: 0 0 6px 4px;
+  margin: 0 0 6dp 4dp;
 }
 
 .sw-field-box {
-  min-height: 52px;
-  border-radius: 16px;
-  padding: 0 4px 0 16px;
+  min-height: 52dp;
+  border-radius: 16dp;
+  padding: 0 4dp 0 16dp;
   background-color: @vibeos_surface_container_highest;
-  border: 2px solid transparent;
+  border: 2dp solid transparent;
 }
 
 .sw-field-box:focus-within {
@@ -679,7 +680,7 @@ progressbar.sw-histogram-bar progress {
 }
 
 .sw-field-box text {
-  font-size: 16px;
+  font-size: 16sp;
   color: @vibeos_on_surface;
 }
 
@@ -689,8 +690,8 @@ progressbar.sw-histogram-bar progress {
 
 .sw-field-error,
 .sw-field-hint {
-  font-size: 13px;
-  margin: 6px 0 0 4px;
+  font-size: 13sp;
+  margin: 6dp 0 0 4dp;
 }
 
 .sw-field-error { color: @vibeos_error; }
@@ -698,13 +699,13 @@ progressbar.sw-histogram-bar progress {
 
 /* the code: six boxes */
 .sw-code-box {
-  min-width: 38px;
-  min-height: 56px;
-  border-radius: 12px;
+  min-width: 38dp;
+  min-height: 56dp;
+  border-radius: 12dp;
   background-color: @vibeos_surface_container_highest;
-  border: 2px solid transparent;
-  font-size: 24px;
-  font-weight: 800;
+  border: 2dp solid transparent;
+  font-size: 24sp;
+  font-weight: 500;
   color: @vibeos_on_surface;
 }
 
@@ -720,13 +721,13 @@ progressbar.sw-histogram-bar progress {
 
 .sw-menu {
   background-color: @vibeos_surface_container;
-  border-radius: 4px;
-  padding: 8px 0;
+  border-radius: 4dp;
+  padding: 8dp 0;
   font-family: "VibeOS Roboto", Roboto, sans-serif;
 }
 
 .sw-menu-text {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 16sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }

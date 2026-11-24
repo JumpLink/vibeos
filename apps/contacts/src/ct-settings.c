@@ -28,9 +28,6 @@
 #include <spongy-gtk.h>
 #include <string.h>
 
-#ifndef CT_VERSION
-#define CT_VERSION "1.0"
-#endif
 
 /* ===== a preference row ========================================================================================= */
 
@@ -71,7 +68,6 @@ typedef struct {
   GtkWidget *page, *window, *title;
   CtStore *store;
   GSettings *settings;
-  GtkWidget *main_rows, *about_rows;
   GtkWidget *my_info, *my_info_summary, *default_summary, *filter_summary, *sort_summary, *format_summary;
   GtkWidget *phonetic_summary, *default_row, *export_row;
 } Settings;
@@ -150,7 +146,27 @@ on_my_info (VibeosPressable *row, Settings *s)
     ct_window_edit_contact (s->window, CT_PROFILE_UID);
 }
 
-/* GNOME Settings' Online Accounts panel, through its "launch-panel" action (as GNOME Shell opens its panels) */
+/* the platform data of an activation of Settings: the token that lets its window come to the front (xdg-activation;
+ * without it a Settings already running behind this app only posted "Settings is ready") */
+static GVariant *
+settings_platform_data (GtkWidget *from)
+{
+  g_autoptr (GDesktopAppInfo) info = g_desktop_app_info_new ("vibeos.Settings.desktop");
+  g_autoptr (GdkAppLaunchContext) context = gdk_display_get_app_launch_context (gtk_widget_get_display (from));
+  g_autofree char *token = info ? g_app_launch_context_get_startup_notify_id (G_APP_LAUNCH_CONTEXT (context),
+                                                                             G_APP_INFO (info), NULL) : NULL;
+  GVariantBuilder builder;
+
+  g_variant_builder_init (&builder, G_VARIANT_TYPE_VARDICT);
+  if (token) {
+    g_variant_builder_add (&builder, "{sv}", "activation-token", g_variant_new_string (token));
+    g_variant_builder_add (&builder, "{sv}", "desktop-startup-id", g_variant_new_string (token));
+  }
+  return g_variant_builder_end (&builder);
+}
+
+/* Settings' Online Accounts page, through GNOME Settings' "launch-panel" action (as GNOME Shell opens its panels;
+ * VibeOS Settings answers for GNOME Settings) */
 static void
 on_accounts (VibeosPressable *row, Settings *s)
 {
@@ -163,7 +179,8 @@ on_accounts (VibeosPressable *row, Settings *s)
   g_variant_builder_add (&args, "v", g_variant_new ("(sav)", "online-accounts", NULL));
   g_dbus_connection_call (bus, "org.gnome.Settings", "/org/gnome/Settings", "org.freedesktop.Application",
                           "ActivateAction",
-                          g_variant_new ("(sava{sv})", "launch-panel", &args, NULL),
+                          g_variant_new ("(sav@a{sv})", "launch-panel", &args,
+                                         settings_platform_data (GTK_WIDGET (row))),
                           NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 }
 
@@ -401,31 +418,20 @@ on_export (VibeosPressable *row, Settings *s)
   ct_export_all (s->window, s->page);
 }
 
-/* --- About Contacts: the rows in the screen's place, the title "About Contacts" */
+/* --- About Contacts: VibeOS's About sheet, as every VibeOS app has it */
 
-static void
-show_about (Settings *s, gboolean about)
+static const VibeosAboutInfo ct_about = { .name = "Contacts", .icon_name = "vibeos.Contacts" };
+
+void
+ct_settings_present_about (GtkWidget *window)
 {
-  gtk_widget_set_visible (s->main_rows, !about);
-  gtk_widget_set_visible (s->about_rows, about);
-  gtk_label_set_label (GTK_LABEL (s->title), about ? _("About Contacts") : _("Settings"));
+  vibeos_about_present (window, &ct_about);
 }
 
 static void
 on_about (VibeosPressable *row, Settings *s)
 {
-  show_about (s, TRUE);
-}
-
-static gboolean
-on_back (CtPage *page, gpointer data)
-{
-  Settings *s = data;
-
-  if (!gtk_widget_get_visible (s->about_rows))
-    return FALSE;
-  show_about (s, FALSE);
-  return TRUE;
+  ct_settings_present_about (s->window);
 }
 
 GtkWidget *
@@ -445,11 +451,10 @@ ct_settings_new (GtkWidget *window)
   s->settings = g_object_ref (ct_window_get_settings (window));
   g_object_set_data_full (G_OBJECT (page), "ct-settings", s, settings_free);
   gtk_widget_add_css_class (page, "ct-settings");
-  ct_page_set_back_handler (CT_PAGE (page), on_back, s);
   gtk_box_append (GTK_BOX (page), ct_page_toolbar (CT_PAGE (page), NULL, "ct-arrow-back-symbolic", _("Back"),
                                                    _("Settings"), NULL, &s->title));
 
-  rows = s->main_rows = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  rows = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   s->my_info = pref_row (_("My info"), NULL, &s->my_info_summary, G_CALLBACK (on_my_info), s);
   gtk_box_append (GTK_BOX (rows), s->my_info);
   if (have_gnome_settings ())
@@ -469,12 +474,9 @@ ct_settings_new (GtkWidget *window)
   gtk_box_append (GTK_BOX (rows), pref_row (_("About Contacts"), NULL, NULL, G_CALLBACK (on_about), s));
   gtk_box_append (GTK_BOX (content), rows);
 
-  s->about_rows = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  gtk_box_append (GTK_BOX (s->about_rows), pref_row (_("Build version"), CT_VERSION, NULL, NULL, NULL));
-  gtk_widget_set_visible (s->about_rows, FALSE);
-  gtk_box_append (GTK_BOX (content), s->about_rows);
 
-  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), content);
+  /* on a tablet the rows are a column in the middle */
+  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), vibeos_clamp_new (content, VIBEOS_CLAMP_SETTINGS));
   gtk_overlay_set_child (GTK_OVERLAY (overlay), scroll);
   gtk_widget_add_css_class (shadow, "ct-toolbar-shadow");
   gtk_widget_add_css_class (shadow, "settings");
@@ -657,7 +659,7 @@ customize_new (GtkWidget *window, GtkWidget *filter_page)
       gtk_box_append (GTK_BOX (c->rows), row);
     }
   c->initial = customize_state (c);
-  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), c->rows);
+  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), vibeos_clamp_new (c->rows, VIBEOS_CLAMP_SETTINGS));
   gtk_widget_set_vexpand (scroll, TRUE);
   gtk_box_append (GTK_BOX (page), scroll);
   return page;

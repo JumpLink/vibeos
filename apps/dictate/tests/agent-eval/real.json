@@ -1,0 +1,17 @@
+{
+  "about": "Agent's tools on the phone's own data (agent-eval --real): what each tool reads, the answers redacted. No calls or messages: those stop at the card. Alarms and timers are left out (they would set real ones). The radio toggles are added at run time, each one turned back to what it was.",
+  "cases": [
+    { "id": "real-time", "lang": "en", "turns": [ { "say": "What's the date and time, and which time zone am I in?", "tools": ["get_time"] } ] },
+    { "id": "real-storage", "lang": "en", "turns": [ { "say": "How much free space is left on the phone?", "tools": ["get_storage"] } ] },
+    { "id": "real-calls", "lang": "en", "turns": [ { "say": "Who called me last?", "tools": ["get_recent_calls"], "allowed": ["find_contacts"] } ] },
+    { "id": "real-missed", "lang": "en", "turns": [ { "say": "Did I miss any calls?", "tools": ["get_recent_calls"], "allowed": ["find_contacts"] } ] },
+    { "id": "real-contacts", "lang": "en", "turns": [ { "say": "Is there anyone called Anna in my contacts?", "tools": ["find_contacts"] } ] },
+    { "id": "real-sms", "lang": "en", "turns": [ { "say": "Do I have any unread text messages?", "tools": ["get_messages"], "allowed": ["find_contacts"] } ] },
+    { "id": "real-radios", "lang": "en", "turns": [ { "say": "Is Wi-Fi on, and which network am I on? And is Bluetooth on?", "tools": ["get_wifi_bluetooth"] } ] },
+    { "id": "real-apps", "lang": "en", "turns": [ { "say": "Which apps are open right now?", "tools": ["get_running_apps"] } ] },
+    { "id": "real-calls-off", "lang": "en", "off": ["access-calls"], "turns": [ { "say": "Who called me today?", "none": true, "no_access": true } ] },
+    { "id": "real-de-calls", "lang": "de", "turns": [ { "say": "Wer hat mich zuletzt angerufen?", "tools": ["get_recent_calls"], "allowed": ["find_contacts"] } ] },
+    { "id": "real-de-sms", "lang": "de", "turns": [ { "say": "Habe ich neue Nachrichten?", "tools": ["get_messages"], "allowed": ["find_contacts"] } ] },
+    { "id": "real-de-storage", "lang": "de", "turns": [ { "say": "Wie viel Speicher ist noch frei?", "tools": ["get_storage"] } ] }
+  ]
+}

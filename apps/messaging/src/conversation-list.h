@@ -21,6 +21,8 @@ GtkWidget *conversation_list_new (SmsClient *client, Contacts *contacts, gboolea
 /* Forward message's list: the conversations that are not archived, without the action bar, the
  * FAB, swiping or select mode; a tap or a long press picks one ("open-conversation") */
 GtkWidget *conversation_list_new_forward (SmsClient *client, Contacts *contacts);
+/* how many conversations it shows (it emits "at-top-changed" after every reload) */
+guint      conversation_list_get_n_conversations (ConversationList *self);
 /* scrolled to its top, with nothing selected: what comes is then seen (SetVisible 0) */
 gboolean   conversation_list_is_at_top (ConversationList *self);
 /* leaves select mode; FALSE when it was not in it (Back then closes the screen) */

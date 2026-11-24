@@ -16,8 +16,9 @@ typedef void (*WxMenuAction) (gpointer data);
 WxMenu *wx_menu_new (void);
 void            wx_menu_append (WxMenu *self, const char *label, WxMenuAction action,
                                          gpointer data);
-/* shows it over @anchor's window (one whose root overlay is its "vibeos-overlay"), at the anchor's end and top; it
- * destroys itself once closed */
+/* shows it over @anchor's window (one whose root overlay is its "vibeos-overlay"), lined up with the
+ * anchor's end, below the anchor (above it when there is no room below), never over it; it destroys itself once
+ * closed */
 void            wx_menu_present (WxMenu *self, GtkWidget *anchor);
 
 G_END_DECLS

@@ -19,13 +19,17 @@ import {Canvas, paintIcon, VectorIcon} from './icons.js';
 import {animate, animateSpring, bezier, clamp, EMPHASIZED_DECELERATE, lerp, Spring} from './motion.js';
 import {Color, rgba, setSource} from './palette.js';
 import {openSettings} from './settings.js';
-import {px, SCALE, SCREEN_H, screenPixels} from './units.js';
+import {HEIGHT, px, SCALE, screenPixels, TABLET} from './units.js';
 
 // --- geometry, screen px; the window runs from the status bar's bottom to the screen's
 const ROOT_W = 528;                     // how far the panel slides
 const WINDOW_TOP = 116;
+const TABLET_WINDOW_TOP = 84;           // a tablet's status bar
 const SLIDER_H = 762;                   // centred in the window
-const S = (WINDOW_TOP + SCREEN_H) / 2 - SLIDER_H / 2;      // the slider's top: 817
+// The slider's top on the reference's 2280 px tall screen: 817. Every position below is laid out on it, and the
+// dialog moves down (or up) by what the middle of the screen as it is now differs by.
+const REFERENCE_H = 2280;
+const S = (WINDOW_TOP + REFERENCE_H) / 2 - SLIDER_H / 2;
 const PILL_X = 24;                      // from the screen's edge
 const PILL_W = 180;
 const PILL_RADIUS = 90;
@@ -69,7 +73,7 @@ const RINGER_CLOSE_DELAY_MS = 300;
 const RINGER_CLOSE = bezier(0.2, 0, 0, 1);
 
 // --- behaviour
-const LEVELS = 15;                      // media volume steps
+const LEVELS = 15;                      // media volume steps up to 100%
 const SHOW_STIFFNESS = 700;
 const SHOW_DAMPING = 0.9;
 const VALUE_STIFFNESS = 1500;           // the slider follows the level on a spring, no bounce
@@ -174,7 +178,7 @@ class VolumeSlider extends Canvas {
 
     // the fraction under the finger, unclamped; measured on the screen, not on the slider the overscroll moves
     _fractionAt(gesture) {
-        const y = gesture.get_centroid_abs().y * SCALE - S;
+        const y = (gesture.get_centroid_abs().y - this._dialog.y) * SCALE - S;
         return (TRACK_TOP + TRACK_LEN - y) / TRACK_LEN;
     }
 
@@ -255,7 +259,7 @@ class VolumeDialog extends St.Widget {
         super({
             name: 'vibeosVolume',
             x: monitor.x, y: monitor.y,
-            width: px(ROOT_W), height: px(SCREEN_H),
+            width: px(ROOT_W), height: monitor.height,
             visible: false,
         });
 
@@ -318,6 +322,11 @@ class VolumeDialog extends St.Widget {
         this._dragging = false;
         this._suppressUntil = 0;
 
+        // "Louder than 100%" (Settings > Sound): the slider and the keys go up to PulseAudio's amplified maximum,
+        // as GNOME Shell's own volume does, in steps of the same size
+        this._sound = new Gio.Settings({schema_id: 'org.gnome.desktop.sound'});
+        this._sound.connectObject('changed::allow-volume-above-100-percent', () => this._syncStreamValue(), this);
+
         // the default output
         this._control = Volume.getMixerControl();
         this._control.connectObject(
@@ -326,7 +335,7 @@ class VolumeDialog extends St.Widget {
             this);
         this._syncStream();
 
-        this.chord = null;                  // chord.js's, which volume down goes through
+        this.chord = null;                  // chord.js's, which the volume keys go through
         this._takeVolumeKeys();
         this.connect('destroy', () => this._onDestroy());
     }
@@ -370,9 +379,10 @@ class VolumeDialog extends St.Widget {
                 this._takenKeys.add(action);
                 return;
             }
-            // volume down waits for the power key: the two are a screenshot (chord.js)
-            if (direction < 0 && this.chord)
-                this.chord.volumeDown(() => this.volumeKey(direction, repeat), repeat);
+            // a volume key waits for the power key: with volume down the two are a screenshot, with volume up the
+            // power menu (chord.js)
+            if (this.chord)
+                this.chord.volumeKey(direction, () => this.volumeKey(direction, repeat), repeat);
             else
                 this.volumeKey(direction, repeat);
         };
@@ -381,8 +391,8 @@ class VolumeDialog extends St.Widget {
                 return;
             if (!this._volumeActions.has(action))
                 deactivated.call(dbus, action, device, timestamp);
-            else if (this._volumeActions.get(action) < 0)
-                this.chord?.volumeUp();
+            else
+                this.chord?.volumeRelease();
         };
     }
 
@@ -415,7 +425,17 @@ class VolumeDialog extends St.Widget {
         if (repeat && now < this._suppressUntil)
             return;
         this._keyHaptics = true;
-        this._setLevel(clamp((this._level ?? 0) + direction, 0, LEVELS), true);
+        this._setLevel(clamp((this._level ?? 0) + direction, 0, this._levels()), true);
+    }
+
+    // the volume at the slider's top, and how many steps up to it
+    _maxVolume() {
+        return this._sound.get_boolean('allow-volume-above-100-percent')
+            ? this._control.get_vol_max_amplified() : this._control.get_vol_max_norm();
+    }
+
+    _levels() {
+        return Math.round(LEVELS * this._maxVolume() / this._control.get_vol_max_norm());
     }
 
     _playing() {
@@ -443,7 +463,8 @@ class VolumeDialog extends St.Widget {
         const stream = this._stream;
         if (!stream || stream.is_muted)
             return 0;
-        return clamp(Math.round(stream.volume / this._control.get_vol_max_norm() * LEVELS), 0, LEVELS);
+        const levels = this._levels();
+        return clamp(Math.round(stream.volume / this._maxVolume() * levels), 0, levels);
     }
 
     _streamChanged() {
@@ -455,7 +476,7 @@ class VolumeDialog extends St.Widget {
         // after a drag, what the stream reports is not shown for a while (it lags the finger)
         if (this._dragging || GLib.get_monotonic_time() / 1000 < (this._ignoreUntil ?? 0))
             return;
-        this._showValue(level / LEVELS, this._shown);
+        this._showValue(level / this._levels(), this._shown);
     }
 
     _setLevel(level, animated) {
@@ -464,10 +485,10 @@ class VolumeDialog extends St.Widget {
         if (stream) {
             if (level > 0 && stream.is_muted)
                 stream.change_is_muted(false);
-            stream.volume = Math.round(this._control.get_vol_max_norm() * level / LEVELS);
+            stream.volume = Math.round(this._maxVolume() * level / this._levels());
             stream.push_volume();
         }
-        this._showValue(level / LEVELS, animated);
+        this._showValue(level / this._levels(), animated);
     }
 
     // the slider's value: Animatable.animateTo on spring(1, 1500), velocity kept across presses
@@ -486,7 +507,7 @@ class VolumeDialog extends St.Widget {
         }
         this._valueSpring = new Spring({
             stiffness: VALUE_STIFFNESS, dampingRatio: 1, value: this._slider.value, target: value,
-            threshold: 0.01 / LEVELS,
+            threshold: 0.01 / this._levels(),
         });
         this._valueAnim = animateSpring(this, this._valueSpring, v => {
             this._slider.setValue(v);
@@ -510,11 +531,11 @@ class VolumeDialog extends St.Widget {
         }
         this._restartTimeout();
         this._haptics.progress(clamp(fraction));
-        const level = Math.round(clamp(fraction) * LEVELS);
+        const level = Math.round(clamp(fraction) * this._levels());
         if (level !== this._level)
             this._setLevel(level, false);
         else
-            this._showValue(level / LEVELS, false);
+            this._showValue(level / this._levels(), false);
         // dragged past an end, the panel follows a third of the way, eased onto at most OVERSCROLL_MAX
         const past = fraction > 1 ? (fraction - 1) * TRACK_LEN : fraction < 0 ? fraction * TRACK_LEN : 0;
         const amount = OVERSCROLL(clamp(Math.abs(past) / 3 / OVERSCROLL_MAX)) * OVERSCROLL_MAX;
@@ -692,7 +713,18 @@ class VolumeDialog extends St.Widget {
 
     // --- showing and hiding
 
+    // the slider centred in the window below the status bar of the screen as it is turned now
+    _place() {
+        const monitor = Main.layoutManager.primaryMonitor;
+        const top = TABLET ? TABLET_WINDOW_TOP : WINDOW_TOP;
+        const shift = (top + HEIGHT) / 2 - SLIDER_H / 2 - S;
+        this.set_position(monitor.x, monitor.y + px(shift));
+        this.height = monitor.height - px(shift);
+    }
+
     show() {
+        if (!this._shown)
+            this._place();
         raiseToTop(this);
         this._shown = true;
         this._syncStreamValue();
@@ -716,7 +748,7 @@ class VolumeDialog extends St.Widget {
         this._level = this._streamLevel();
         this._slider.muted = !!this._stream?.is_muted;
         if (this._f === 0)
-            this._showValue(this._level / LEVELS, false);
+            this._showValue(this._level / this._levels(), false);
     }
 
     // one spring both ways: a show during a hide turns it round with its velocity

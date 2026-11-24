@@ -36,8 +36,14 @@ gboolean    fm_list_get_grid           (FmList *self);
 void        fm_list_set_selecting      (FmList *self, gboolean selecting);
 gboolean    fm_list_get_selecting      (FmList *self);
 void        fm_list_set_selected       (FmList *self, FmItem *item, gboolean selected);
+/* selection mode with @item selected, in one change: "selection-changed" never sees the mode on with nothing selected
+ * (which ends it) */
+void        fm_list_start_selection    (FmList *self, FmItem *item);
 /* the selected rows that show, in their order (FmItem, a new array) */
 GPtrArray  *fm_list_get_selected       (FmList *self);
+GtkWidget  *fm_list_get_activated_icon (FmList *self);
+/* the items shown (those the search's filter keeps) */
+guint       fm_list_count_items        (FmList *self);
 guint       fm_list_count_selected     (FmList *self);
 void        fm_list_select_all         (FmList *self);
 /* every row between the first selected and the last (Select a range) */

@@ -13,6 +13,7 @@ typedef enum {
   MSG_ACCOUNT_MENU_BLOCKED,
   MSG_ACCOUNT_MENU_MARK_ALL_READ,
   MSG_ACCOUNT_MENU_SETTINGS,
+  MSG_ACCOUNT_MENU_ABOUT,
 } MsgAccountMenuItem;
 
 typedef void (*MsgAccountMenuFunc) (MsgAccountMenuItem item, gpointer data);

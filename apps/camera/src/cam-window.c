@@ -56,6 +56,7 @@ struct _CamView {
   GtkWindow      *window;
   GtkApplication *app;
   GSettings      *settings;
+  GSettings      *privacy;      /* org.gnome.desktop.privacy, for Settings' Camera switch; NULL without it */
   GPtrArray      *cameras;
   CamCamera      *camera;
   CamPipeline    *pipeline;
@@ -155,6 +156,34 @@ fail (CamView *self, const char *text)
   toast (self, text);
   sync_running (self);
   self->close_timer = g_timeout_add (CAM_MS_TOAST + 300, on_close_timeout, self);
+}
+
+/* Settings' Camera switch (Security and privacy: org.gnome.desktop.privacy disable-camera). Off, no app gets a
+ * camera: WirePlumber hides them from every PipeWire client and the camera portal refuses. This app opens libcamera
+ * itself, past PipeWire, so it keeps to the switch itself: it does not start while the camera is off, and closes
+ * when it is turned off. */
+static gboolean
+camera_off (CamView *self)
+{
+  return self->privacy && g_settings_get_boolean (self->privacy, "disable-camera");
+}
+
+static void
+on_camera_switch (GSettings *settings, const char *key, CamView *self)
+{
+  if (camera_off (self))
+    fail (self, _("Camera access is off. Turn it on in Settings, Security and privacy."));
+}
+
+static GSettings *
+privacy_settings (void)
+{
+  GSettingsSchemaSource *source = g_settings_schema_source_get_default ();
+  g_autoptr (GSettingsSchema) schema = source ? g_settings_schema_source_lookup (source, "org.gnome.desktop.privacy",
+                                                                                 TRUE) : NULL;
+
+  return schema && g_settings_schema_has_key (schema, "disable-camera") ? g_settings_new_full (schema, NULL, NULL)
+                                                                         : NULL;
 }
 
 static GtkWidget *
@@ -1678,10 +1707,20 @@ is_landscape (int width, int height)
   return width > height;
 }
 
+/* the modes' column: wider than CAM_MODE_COLUMN_W where a large font size widens its buttons */
 static int
-viewfinder_width (int width)
+mode_column_w (CamView *self)
 {
-  return width - CAM_SECONDARY_BAR_H - CAM_PRIMARY_BAR_H - CAM_MODE_COLUMN_W;
+  int nat = 0;
+
+  gtk_widget_measure (self->modes, GTK_ORIENTATION_HORIZONTAL, -1, NULL, &nat, NULL, NULL);
+  return MAX (CAM_MODE_COLUMN_W, nat);
+}
+
+static int
+viewfinder_width (CamView *self, int width)
+{
+  return width - CAM_SECONDARY_BAR_H - CAM_PRIMARY_BAR_H - mode_column_w (self);
 }
 
 static void
@@ -1716,7 +1755,7 @@ place_island (CamView *self, int vf_w, int vf_h)
 static void
 allocate_landscape (CamView *self, int width, int height)
 {
-  int vf_w = viewfinder_width (width), w, h;
+  int vf_w = viewfinder_width (self, width), w, h;
   double col2 = vf_w, col1 = vf_w + CAM_SECONDARY_BAR_H, col0 = col1 + CAM_PRIMARY_BAR_H;
   double pro_h = CAM_PRO_ROW_H, shutter_x = col1 + CAM_PRIMARY_BAR_PAD;
   graphene_rect_t picture;
@@ -1762,7 +1801,7 @@ allocate_landscape (CamView *self, int width, int height)
     place (self->shutter, shutter_x, (height - CAM_SHUTTER_VIEW) / 2.0, CAM_SHUTTER_VIEW, CAM_SHUTTER_VIEW);
   place (self->gallery, shutter_x + (CAM_SHUTTER_VIEW - CAM_GALLERY_SIZE) / 2.0,
          height - CAM_GALLERY_MARGIN - CAM_GALLERY_SIZE, CAM_GALLERY_SIZE, CAM_GALLERY_SIZE);
-  place (self->modes, col0, 0, CAM_MODE_COLUMN_W, height);
+  place (self->modes, col0, 0, width - (int) col0, height);
 }
 
 static void
@@ -1856,7 +1895,7 @@ cam_view_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gtk_widget_snapshot_child (widget, self->pro_row, snapshot);
   if (is_landscape (width, height))
     {
-      int vf_w = viewfinder_width (width);
+      int vf_w = viewfinder_width (self, width);
 
       /* the columns, the divider between the secondary and the primary one */
       gtk_snapshot_append_color (snapshot, &black, &GRAPHENE_RECT_INIT (vf_w, 0, width - vf_w, height));
@@ -1949,6 +1988,9 @@ cam_view_dispose (GObject *object)
   g_clear_object (&self->sensors);
   g_clear_object (&self->storage);
   g_clear_object (&self->settings);
+  if (self->privacy)
+    g_signal_handlers_disconnect_by_data (self->privacy, self);
+  g_clear_object (&self->privacy);
   g_clear_pointer (&self->cameras, g_ptr_array_unref);
   g_clear_pointer (&self->rotators, g_ptr_array_unref);
   g_clear_pointer (&self->bound_id, g_free);
@@ -2204,6 +2246,9 @@ cam_window_new (GtkApplication *app)
   g_object_add_weak_pointer (G_OBJECT (window), (gpointer *) &self->window);
   self->app = app;
   self->settings = g_settings_new (APP_ID);
+  self->privacy = privacy_settings ();
+  if (self->privacy)
+    g_signal_connect (self->privacy, "changed::disable-camera", G_CALLBACK (on_camera_switch), self);
   self->cameras = cam_devices_enumerate ();
   self->pipeline = cam_pipeline_new (&error);
   self->sensors = cam_sensors_new ();
@@ -2266,6 +2311,11 @@ cam_window_new (GtkApplication *app)
     cam_encoder_probe (G_CALLBACK (on_encoder), g_object_ref (self));
 
   gtk_window_fullscreen (window);
+  if (camera_off (self))
+    {
+      fail (self, _("Camera access is off. Turn it on in Settings, Security and privacy."));
+      return window;
+    }
   if (!self->cameras->len)
     {
       fail (self, _("No cameras were found on the device, cannot start the app."));

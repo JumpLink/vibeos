@@ -20,7 +20,9 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {EdgeBack} from './back.js';
 import {SidewaysGestures, sideways} from './sideways.js';
 import {capturing} from './capture.js';
+import {FlagFile} from './flagfile.js';
 import {VelocityTracker} from './motion.js';
+import {geometry, SCALE, SCREEN_SCALE, TABLET} from './units.js';
 import {forgetClosing, HINT_SCRIM, PAGER_SNAP_MS, Recents, SETTLE_MS, warmUp} from './recents.js';
 import {
     ACCELERATE, DECELERATE, DECELERATE_3, FRAME_MS, FloatingIcon, HOME_ICON_PX, LINEAR,
@@ -32,9 +34,11 @@ const TOUCH_SLOP = 34;                  // the touch slop × √2, on the hypote
 const QUICKSWITCH_DEG = 15;
 const PAUSE_MIN_UP = 108;               // the travel before a pause counts
 const DRAG_LENGTH = 540;                // H − the recents card's bottom
-const MAX_SHIFT = SCREEN_H / DRAG_LENGTH;
+let MAX_SHIFT;
 const FLING_PX_MS = 1.5;
 const MAX_SWIPE_MS = 350;
+const WATCH_MS = 3000;                  // after a swipe or the recents key: everything it started has ended by then
+const STALL_US = 1000000;               // an animation without a frame for this long has stopped
 const DURATION_MULT = 1 / 0.7;
 const RESIST_TRANS_END = -551.6;
 
@@ -53,12 +57,12 @@ const HOME_VX = [300, 500];             // px/s: the least start velocity, and w
 const HOME_VY = [2000, 5000];
 const HOME_V_FALLOFF = 1.4;
 const HOME_WIN_ALPHA_END = 0.85;        // window alpha 1 − (p/0.85)³
-const HOME_DEFAULT_CENTER = [SCREEN_W / 2, SCREEN_H - 500];    // no icon: availH 2092 − the hotseat's 312
+let HOME_DEFAULT_CENTER;               // no icon: availH 2092 − the hotseat's 312
 const SHOW_ICON_WAIT_MS = 250;              // a launcher that never draws its icon again: the flying one goes anyway
-const DOCK_TOP = SCREEN_H - 312;
+let DOCK_TOP;
 const REVEAL_SCALE_FROM = 0.85;
 const REVEAL_MS = 1000;
-const REVEAL_PIVOT = [SCREEN_W / 2, SCREEN_H / 2];
+let REVEAL_PIVOT;
 
 // the swipe from the home screen: the hint pose, then recents
 const HINT_SCALE = 0.92;                // the workspace's scale in the hint pose
@@ -69,12 +73,23 @@ const HINT_SPRING_V = 0.9;              // … and its start velocity, scale per
 const HOME_PAUSE_MIN_UP = 24;           // the touch slop
 const HOME_FLING = 3;                   // px/ms
 const OVERVIEW_IN_MS = 380;             // the cards sliding in from the side
-const OVERVIEW_WS_SCALE = TASK_W / 1032;    // the workspace down to a card's width (the cell layout is 1032)
+let OVERVIEW_WS_SCALE;                 // the workspace down to a card's width (the cell layout is 1032)
 const OVERVIEW_WS_TY = -(312 - 36) / 2; // up by half the default swipe height (all-apps cell − its label)
 const OVERVIEW_DEPTH = 0.7;
 const OVERVIEW_MOVEMENT = 0.25;         // the cards follow the finger this much once there
 
 const Target = {HOME: 'home', RECENTS: 'recents', NEW_TASK: 'new-task', LAST_TASK: 'last-task'};
+
+// the lengths above that follow the screen (task.js's, read again when it changes)
+function layoutScreen() {
+    MAX_SHIFT = SCREEN_H / DRAG_LENGTH;
+    HOME_DEFAULT_CENTER = [SCREEN_W / 2, SCREEN_H - 500];
+    DOCK_TOP = SCREEN_H - 312;
+    REVEAL_PIVOT = [SCREEN_W / 2, SCREEN_H / 2];
+    OVERVIEW_WS_SCALE = TASK_W / 1032;
+}
+layoutScreen();
+geometry.connect('changed', layoutScreen);
 
 // The flight's start velocity: at least `min`, and past `softMax` only the 1/1.4th power of the rest, so a hard
 // fling does not overshoot
@@ -161,13 +176,18 @@ export class Navigation {
     constructor(home) {
         this.home = home;
         this.icons = new Map();
-        this.scale = global.display.get_monitor_scale(Main.layoutManager.primaryIndex);
+        // reference px per stage px: touches are compared with the reference's lengths
+        this.scale = SCALE;
         this._tracker = new VelocityTracker();
         this._pause = new MotionPause(() => this._paused());
         this.drawerOpen = false;
         this._g = null;
         this._anim = null;
         this._recents = null;
+        // a tablet's taskbar (taskbar.js), told when a swipe or recents takes the screen and when it hands it back
+        this.taskbar = null;
+        // what the side button does (keylaunch.js), for recents, which takes the key while it is open
+        this.sideKey = null;
 
         this._gesture = new Clutter.PanGesture({
             name: 'vibeos swipe up',
@@ -178,8 +198,14 @@ export class Navigation {
             'should-handle-sequence', (_g, event) => this._shouldHandle(event),
             'recognize', () => this._begin(),
             'pan-update', () => this._move(),
-            'end', () => this._release(false),
-            'cancel', () => this._release(true),
+            'end', () => {
+                this._release(false);
+                this._watch();
+            },
+            'cancel', () => {
+                this._release(true);
+                this._watch();
+            },
             this);
         global.stage.add_action_full('vibeos-swipe-up', Clutter.EventPhase.CAPTURE, this._gesture);
 
@@ -187,6 +213,20 @@ export class Navigation {
         this._edgeDrag = Main.overview._singleFingerOverviewEdgeDrag;
         if (this._edgeDrag)
             this._edgeDrag.enabled = false;
+        // and its overview and workspace swipes, with one finger and with three. The one-finger ones wait for that
+        // edge drag only while it is on: off, any upward drag that no gesture here took began GNOME's overview,
+        // which this session cannot lay out, and every gesture stopped with it. The shell turns them on again when
+        // the first window opens or the last closes, so they are turned off after it each time.
+        this._shellSwipes = ['_singleFingerOverviewGesture', '_threeFingerOverviewGesture',
+            '_singleFingerWorkspacesGesture', '_threeFingerWorkspacesGesture']
+            .map(name => Main.overview[name]).filter(swipe => swipe);
+        const swipesOff = () => {
+            for (const swipe of this._shellSwipes)
+                swipe.enabled = false;
+        };
+        swipesOff();
+        Main.wm.workspaceTracker?.connectObject('notify::zero-open-windows', swipesOff, this);
+        global.workspace_manager.connectObject('notify::layout-rows', swipesOff, this);
         this._homeBar = Main.layoutManager.bottomPanelBox ?? null;
         if (this._homeBar) {
             Main.layoutManager.untrackChrome(this._homeBar);
@@ -194,6 +234,8 @@ export class Navigation {
         }
 
         this._back = new EdgeBack(this);
+        // the swipe up's refusals in the journal while $XDG_RUNTIME_DIR/vibeos-swipe-log exists
+        this._swipeLog = new FlagFile('vibeos-swipe-log');
         // the panel sideways (an app in landscape): sideways.js's swipes, not these
         this._sideways = new SidewaysGestures(this);
 
@@ -208,7 +250,9 @@ export class Navigation {
     // The launcher's icons: app id → its rect on the current page or the dock (device px; w 0 when it is not
     // there) and its picture
     setIcons(icons) {
-        this.icons = new Map(icons.map(([id, rect, path]) => [id, {rect, path}]));
+        // the launcher's rectangles are in its buffer's pixels, the screen's: in reference px here
+        const k = SCALE / SCREEN_SCALE;
+        this.icons = new Map(icons.map(([id, rect, path]) => [id, {rect: rect.map(v => v * k), path}]));
     }
 
     launcher(method, params) {
@@ -259,6 +303,10 @@ export class Navigation {
         return !!this._keyguard?.bouncerShowing;
     }
 
+    get locked() {
+        return !!this._keyguard?.showing;
+    }
+
     keyguardBack() {
         this._keyguard?.back();
     }
@@ -274,6 +322,8 @@ export class Navigation {
     // The recents key (the Bixby key, keys.js) toggles recents: an app settles into its card as
     // a paused swipe lets it, the home screen goes HINT → OVERVIEW as after a pause, and in recents it's back again
     toggleRecents() {
+        this._unstick();
+        this._watch();
         if (this._recents?.shown) {
             this._recents.back();
             return;
@@ -286,16 +336,17 @@ export class Navigation {
             this.onGestureBegin?.();
             this.launcherState('background');
             this.statusBarOverApp(false);
-            const recents = this._recents = new Recents(this, win);
+            this.taskbar?.unstash();
+            const recents = this._newRecents(win);
             this._g = {win, recents, shift: 0, rect: [0, 0, SCREEN_W, SCREEN_H], r: 0, x: 0};
-            recents.attach();
+            recents.toGrid(SETTLE_MS);
             this._settle(1, null, OVERSHOOT_1_2, () => {
                 this._g = null;
                 recents.show();
             }, SETTLE_MS, t => recents.setScrim(LINEAR(t)));
         } else if (this._atHome()) {
             this.onGestureBegin?.();
-            const recents = this._recents = new Recents(this, null);
+            const recents = this._newRecents(null);
             // let go already: the overview is up as soon as the cards are in
             this._g = {home: true, recents, p: 0, x: SCREEN_W / 2, y: SCREEN_H, entering: false, reached: false,
                 released: true, anim: null};
@@ -366,29 +417,103 @@ export class Navigation {
     recentsClosed(recents) {
         if (this._recents === recents)
             this._recents = null;
+        this.taskbar?.sync();
+    }
+
+    // a new recents: one still there goes first, its modal grab with it (left up, it would filter out every key)
+    _newRecents(win) {
+        if (this._recents) {
+            console.warn('vibeos: a recents was still there, destroyed');
+            this._recents.destroy();
+        }
+        return (this._recents = new Recents(this, win));
+    }
+
+    // A tablet's taskbar's all-apps button: home, the drawer opening there (from recents, as recents goes home)
+    openApps() {
+        if (this._recents?.shown) {
+            this._recents.goHome('home');
+        } else {
+            if (this._g || this._anim || this._recents)
+                return;
+            for (const win of global.display.get_tab_list(Meta.TabList.NORMAL, null)) {
+                if (!this.isTask(win) || win.minimized)
+                    continue;
+                const actor = win.get_compositor_private();
+                if (actor)
+                    Main.wm.skipNextEffect(actor);
+                win.minimize();
+            }
+            this.home.window?.activate(global.get_current_time());
+            this.launcherState('normal');
+        }
+        this.launcher('Apps', null);
+    }
+
+    // ... and an app's icon on it: the app opens, or its window comes back (from recents, as its card if it has one)
+    openApp(app) {
+        if (this._recents?.shown) {
+            this._recents.openApp(app);
+            return;
+        }
+        if (this._g || this._anim || this._recents)
+            return;
+        app.activate();
     }
 
     _shouldHandle(event) {
-        if (event.type() !== Clutter.EventType.TOUCH_BEGIN || this._g || this._anim || this._recents)
-            return false;
-        if (sideways() || this._sideways?.busy)
-            return false;
-        if (this._back.busy)
-            return false;
-        if (Main.actionMode !== Shell.ActionMode.NORMAL || this.shadeOpen() || (!this._appWindow() && !this._atHome()))
-            return false;
-        // locked with an app's window over the lock screen (whenlocked.js): no way home past the lock
-        if (this._keyguard?.showing)
+        if (event.type() !== Clutter.EventType.TOUCH_BEGIN)
             return false;
         const [x, y] = event.get_coords();
-        if (!inHomeStrip(y, this.scale))
+        if (this._g || this._anim || this._recents)
+            this._unstick();
+        const refusal = this._refusal(y);
+        if (refusal) {
+            if (this._swipeLog.on && inHomeStrip(y, this.scale))
+                this._logRefusal(refusal, y);
             return false;
+        }
         this._down = {x: x * this.scale, y: y * this.scale};
         this._tracker.clear();
         this._tracker.add(event.get_time(), this._down.x, this._down.y);
         this._lastT = event.get_time();
         this._pause.reset();
         return true;
+    }
+
+    // why a touch at y (stage px) is not the swipe up's, or null when it is
+    _refusal(y) {
+        if (this._g)
+            return 'a swipe under way';
+        if (this._anim)
+            return 'its animation under way';
+        if (this._recents)
+            return 'recents open';
+        if (sideways() || this._sideways?.busy)
+            return 'sideways';
+        if (this._back.busy)
+            return 'a back under way';
+        if (Main.actionMode !== Shell.ActionMode.NORMAL)
+            return `action mode ${Main.actionMode}`;
+        if (this.shadeOpen())
+            return 'the shade open';
+        if (!this._appWindow() && !this._atHome())
+            return 'no app and not home';
+        // locked with an app's window over the lock screen (whenlocked.js): no way home past the lock
+        if (this._keyguard?.showing)
+            return 'locked';
+        if (!inHomeStrip(y, this.scale))
+            return 'above the strip';
+        return null;
+    }
+
+    _logRefusal(refusal, y) {
+        const name = win => win?.get_wm_class() ?? 'none';
+        const r = this._recents;
+        console.log(`vibeos: swipe refused: ${refusal}; y ${Math.round(y * this.scale)} of ${SCREEN_H}, ` +
+            `focus ${name(global.display.focus_window)}, app ${name(this._appWindow())}, home ${this._atHome()}, ` +
+            `drawer ${!!this.drawerOpen}, recents ${r ? `shown ${!!r.shown} destroyed ${!!r._destroyed}` : 'none'}, ` +
+            `anim ${this._anim ? `running ${this._anim.running}` : 'none'}, back ${this._back.busy}`);
     }
 
     _begin() {
@@ -403,7 +528,8 @@ export class Navigation {
         }
         this.launcherState('background');
         this.statusBarOverApp(false);
-        const recents = this._recents = new Recents(this, win);
+        this.taskbar?.unstash();
+        const recents = this._newRecents(win);
         this._g = {win, recents, shift: 0, rect: [0, 0, SCREEN_W, SCREEN_H], r: 0, x: this._down.x};
         this._move();
     }
@@ -432,8 +558,10 @@ export class Navigation {
         this._pause.disallow = up < PAUSE_MIN_UP || g.likelyQuickSwitch;
         if (fresh)
             this._pause.add(this._tracker.velocityY / 1000);
-        // the other tasks beside the app from the pause on, or for as long as the swipe runs along the bar
-        if (this._pause.everPaused || g.likelyQuickSwitch)
+        // the other tasks beside the app from the pause on, or for as long as the swipe runs along the bar. A tablet's
+        // swipe up shows the app alone: letting go into recents forms the grid in place (recents.toGrid), with no row
+        // of other apps sliding in over it first (owner, 11-21); only a swipe along the bar brings the row
+        if ((this._pause.everPaused && !TABLET) || g.likelyQuickSwitch)
             g.recents.attach();
         else
             g.recents.detach();
@@ -473,7 +601,7 @@ export class Navigation {
     _paused() {
         if (this._g?.home)
             this._homeToOverview();
-        else
+        else if (!TABLET)
             this._g?.recents.attach();
     }
 
@@ -522,11 +650,14 @@ export class Navigation {
 
         if (target === Target.HOME) {
             recents.detach();
+            this.taskbar?.hide();
             this._flyHome(v);
         } else if (target === Target.RECENTS) {
             // OVERSHOOT_1_2 into the card, the scrim coming up LINEAR on the same clock, the strip to the nearest card
             if (page !== centred)
                 recents.snapTo(centred, SETTLE_MS);
+            // (a tablet's row forms its grid meanwhile)
+            recents.toGrid(SETTLE_MS);
             this._settle(1, null, OVERSHOOT_1_2, () => {
                 this._g = null;
                 recents.show();
@@ -549,6 +680,8 @@ export class Navigation {
             this._settle(0, fling ? v : null, DECELERATE, () => recents.afterScroll(() => this._backToApp()));
         } else {
             recents.detach();
+            // (the taskbar the swipe brought out stays over the app)
+            this.taskbar?.keepOpen();
             const ms = this._settle(0, fling ? v : null, DECELERATE, () => recents.afterScroll(() => this._backToApp()));
             if (scrollingNew)
                 recents.snapTo(0, ms);
@@ -587,6 +720,7 @@ export class Navigation {
         this._g = null;
         this.launcherState('normal');
         this.statusBarOverApp(null);
+        this.taskbar?.sync();
     }
 
     // The springs from the window's rect into its icon (or the icon-sized square above the dock when it has none),
@@ -686,14 +820,14 @@ export class Navigation {
     // ---- from the home screen --------------------------------------------------------------------------------------
 
     _beginHome() {
-        const recents = this._recents = new Recents(this, null);
+        const recents = this._newRecents(null);
         this._g = {home: true, recents, p: 0, entering: false, reached: false, released: false, anim: null};
         this._move();
     }
 
-    // the launcher's workspace and dock, frame by frame
+    // the launcher's workspace and dock, frame by frame; ty in reference px, the launcher's in its buffer's
     _pose(scale, alpha, depth, ty = 0) {
-        this.launcher('Pose', new GLib.Variant('(dddd)', [scale, alpha, depth, ty]));
+        this.launcher('Pose', new GLib.Variant('(dddd)', [scale, alpha, depth, ty * SCREEN_SCALE / SCALE]));
     }
 
     // home → the hint pose, linear in p: the workspace 1 → 0.92, the depth 0 → 0.05, the scrim up to the hint's
@@ -730,6 +864,7 @@ export class Navigation {
     _homeToOverview() {
         const g = this._g;
         g.entering = true;
+        this.taskbar?.unstash();
         g.from = {x: g.x, y: g.y};
         const s0 = lerp(1, HINT_SCALE, g.p), d0 = HINT_DEPTH * g.p;
         g.recents.enterFromHome(OVERVIEW_IN_MS, () => {
@@ -818,9 +953,69 @@ export class Navigation {
         }, done);
     }
 
+    // ---- a swipe that never ended --------------------------------------------------------------------------------
+
+    // A swipe holds _g (with its recents) and _anim until its animation's done, refusing every other swipe and the
+    // recents key till then. A done that never came (S20, 11-20 and 21) left a window's card halfway home on the screen
+    // and recents and the drawer dead until the shell restarted. A while after each swipe and recents key, and at the
+    // next touch, whatever is still held with nothing moving is ended.
+    _watch() {
+        if (this._watchId)
+            GLib.source_remove(this._watchId);
+        this._watchId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, WATCH_MS, () => {
+            this._watchId = 0;
+            if (this._unstick())
+                this._watch();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    // true while something still moves (a finger, an animation): watched again later
+    _unstick() {
+        const state = this._gesture.state;
+        if (state === Clutter.GestureState.POSSIBLE || state === Clutter.GestureState.RECOGNIZING)
+            return true;
+        const moving = a => !!a && !a.stalled(STALL_US);
+        const recents = this._g?.recents ?? this._recents;
+        if (moving(this._anim) || moving(this._g?.anim) || recents?.moving)
+            return true;
+        // an animation stopped short of its end: ended now, its done run (which may start the next step)
+        const stopped = [this._anim, this._g?.anim].filter(a => a?.stalled(STALL_US));
+        for (const anim of stopped) {
+            console.warn('vibeos: navigation: an animation stopped short of its end, ended now');
+            try {
+                anim.finish();
+            } catch (e) {
+                logError(e, 'vibeos: ending a stopped animation');
+            }
+        }
+        if (stopped.length)
+            return true;
+        // held with nothing left to end it: dropped, the launcher at rest
+        if (this._g || this._anim) {
+            console.warn('vibeos: navigation: a swipe held with nothing moving, dropped');
+            const g = this._g;
+            this._anim?.stop();
+            this._anim = null;
+            this._g = null;
+            g?.recents?.destroy();
+            this.launcherState('normal');
+            this.statusBarOverApp(null);
+        }
+        // recents in a transition out that no longer moves, or neither shown nor part of a swipe
+        if (this._recents?.stuck || (this._recents && !this._recents.shown && !this._g)) {
+            console.warn('vibeos: navigation: recents stuck, closed');
+            this._recents.abandon();
+        }
+        return false;
+    }
+
     destroy() {
         if (this._warmId)
             GLib.source_remove(this._warmId);
+        if (this._watchId)
+            GLib.source_remove(this._watchId);
+        this._watchId = 0;
         this._anim?.stop();
         this._anim = null;
         this._g?.anim?.stop();
@@ -834,12 +1029,25 @@ export class Navigation {
         this._pause.destroy();
         this._back.destroy();
         this._sideways.destroy();
+        this._swipeLog.destroy();
         dropKeptViews();
         this._keyboard?.run_dispose();
         global.stage.remove_action(this._gesture);
         this._gesture.disconnectObject(this);
         if (this._edgeDrag)
             this._edgeDrag.enabled = true;
+        // the shell's swipes as it keeps them: the overview's while a window is open, the workspaces' with rows
+        Main.wm.workspaceTracker?.disconnectObject(this);
+        global.workspace_manager.disconnectObject(this);
+        const windows = !(Main.wm.workspaceTracker?.zeroOpenWindows ?? true);
+        const rows = global.workspace_manager.layoutRows !== -1;
+        const {_singleFingerOverviewGesture: one, _threeFingerOverviewGesture: three} = Main.overview;
+        const {_singleFingerWorkspacesGesture: oneWs, _threeFingerWorkspacesGesture: threeWs} = Main.overview;
+        for (const [swipe, on] of [[one, windows], [three, windows], [oneWs, rows], [threeWs, rows]]) {
+            if (swipe)
+                swipe.enabled = on;
+        }
+        this._shellSwipes = [];
         if (this._homeBar) {
             this._homeBar.show();
             Main.layoutManager.trackChrome(this._homeBar, {affectsStruts: true, trackFullscreen: true});

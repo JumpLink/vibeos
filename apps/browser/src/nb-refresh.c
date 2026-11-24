@@ -247,7 +247,8 @@ nb_refresh_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   /* the disc, raised over the page by its shadow */
   GskRoundedRect disc;
   gsk_rounded_rect_init_from_rect (&disc, &GRAPHENE_RECT_INIT (-r, -r, 2 * r, 2 * r), r);
-  gtk_snapshot_append_outset_shadow (snapshot, &disc, &(GdkRGBA) { 0, 0, 0, 0.28 }, 0, 1.75, 0, 3.5);
+  GdkRGBA shadow = vibeos_color_alpha (VIBEOS_SHADOW, 0.28);
+  gtk_snapshot_append_outset_shadow (snapshot, &disc, &shadow, 0, 1.75, 0, 3.5);
   gtk_snapshot_push_rounded_clip (snapshot, &disc);
   GdkRGBA bg = vibeos_color (VIBEOS_SURFACE_CONTAINER_HIGH);
   gtk_snapshot_append_color (snapshot, &bg, &disc.bounds);

@@ -80,7 +80,8 @@ calc_text_toolbar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 
   gtk_snapshot_push_opacity (snapshot, self->shown);
   gsk_rounded_rect_init_from_rect (&shape, &self->bar, CORNER);
-  gtk_snapshot_append_outset_shadow (snapshot, &shape, &(GdkRGBA) { 0, 0, 0, 0.35f }, 0, 4, 0, 8);
+  gtk_snapshot_append_outset_shadow (snapshot, &shape, (GdkRGBA[]) { vibeos_color_alpha (VIBEOS_SHADOW, 0.35f) },
+                                     0, 4, 0, 8);
   gtk_snapshot_push_rounded_clip (snapshot, &shape);
   gtk_snapshot_append_color (snapshot, &background, &self->bar);
   for (guint i = 0; i < self->items->len; i++) {

@@ -1,7 +1,11 @@
 /* VibeOS Weather: the page behind the home screen's weather widget, laid out like One UI's Weather: the place and the
  * temperature over the sky, the next 24 hours as a curve, today against yesterday, the week, and the details.
  * GTK4, so scrolling is the GPU moving what is already drawn; the page scrolls in libspongy's view (a fling, and
- * a stretch at the ends), like the other VibeOS apps. Its ⋮ menu, Set City and About are libvibeos's, as theirs.
+ * a stretch at the ends), like the other VibeOS apps. Its window, ⋮ menu, Set City and About are libvibeos's, as
+ * theirs, and so are its colours (the theme's, light or dark) and its text, which follows Font size and Bold text.
+ *
+ * On a phone the page is one column. On a tablet, and on a phone turned on its side, it is a column of at most
+ * COLUMN_MAX dp in the middle of the window; on a window as wide as a turned tablet, two columns side by side.
  *
  * Where: the city chosen in Set City, if there is one (kept in vibeos.Weather's city; Open-Meteo's geocoding finds
  * the cities as their name is typed); otherwise the first city in GNOME Weather, if it has one; otherwise where the
@@ -11,9 +15,9 @@
  * show the same place.
  * What: one Open-Meteo forecast (no key) with yesterday in it (past_days=1), fetched in curl and kept in
  * ~/.cache/vibeos-launcher/forecast.json; the page shows that at once and asks again when it is 15 minutes old. */
-#include <adwaita.h>
 #include <json-glib/json-glib.h>
 #include <math.h>
+#include <stdarg.h>
 #include <spongy-gtk.h>
 #include <vibeos.h>
 
@@ -22,10 +26,16 @@
 #define STALE_S (15 * 60)
 #define UA "vibeos-weather/1.0 (VibeOS)"
 #define HOURS 24
-#define COL_W 66              /* px, one hour in the hourly strip */
+#define COL_W 66              /* dp, one hour in the hourly strip at a font size of 1; it grows with the text */
+#define COLUMN_MAX 600        /* dp, the page's one column on a wider window */
+#define PAGE_MAX 1200         /* dp, the two columns together */
+#define BAR_CLEAR 64          /* dp, the second column's top: under reload and the menu, which float over the page */
 
 typedef struct {
-  GtkWidget       *win, *sky, *body, *spinner;
+  GtkWidget       *win, *sky, *clamp, *body, *spinner;
+  JsonNode        *forecast;     /* the forecast shown, to lay it out again (a turn, a font-size change) */
+  const char      *sky_name;     /* the sky shown (one of skies[]) */
+  gboolean         two_columns;
   double           lat, lon;
   char            *place;
   gboolean         have_place;
@@ -77,26 +87,30 @@ wx_name (int code)
   return "Cloudy";
 }
 
-/* The sky behind the page, top to bottom: four colours and where each sits (0..1).
+/* The sky behind the page, top to bottom: four colours and where each sits (0..1). Each colour is a stop of one of
+ * the theme's tonal palettes (VibeosPalette), one set of stops for a light theme and one for a dark one: the sky
+ * follows the theme's colour and its light or dark, and the text over it is the theme's text colour.
  *
  * It is a texture, not a CSS linear-gradient on the window. Scrolling redraws the whole window every frame, and on the
  * POCO X3 (Adreno 618, 1080x2400 at 120 Hz) GTK's gradient over the full window took a frame every ~24 ms, a third
  * of the refresh rate, where a flat background or a texture keeps every 8.3 ms vblank (measured 2026-11-12). The
- * texture is one pixel wide and 256 tall, made once per sky, and stretched over the window with linear filtering. */
+ * texture is one pixel wide and 256 tall, made once per sky and theme, and stretched over the window with linear
+ * filtering. */
 typedef struct {
-  const char *name;
-  guint32     rgb[4];
-  float       at[4];
+  const char   *name;
+  VibeosPalette palette;
+  int           light[4], dark[4];   /* palette stops: 0 (white), 10, 50, 100 ... 900, 1000 (black) */
+  float         at[4];
 } Sky;
 
 static const Sky skies[] = {
-  { "cloudy", { 0x56637f, 0x7f8ca8, 0x3a4670, 0x26305a }, { 0, .30f, .55f, 1 } },
-  { "fog",    { 0x4a5578, 0x93a0bc, 0x3c4878, 0x29336a }, { 0, .30f, .55f, 1 } },
-  { "clear",  { 0x2f6fd0, 0x6fb0ee, 0x2c5aa8, 0x1d3c7a }, { 0, .32f, .58f, 1 } },
-  { "night",  { 0x0c1230, 0x1f2a5c, 0x141c44, 0x0c1230 }, { 0, .32f, .60f, 1 } },
-  { "rain",   { 0x35415a, 0x5d6b86, 0x2c3654, 0x1c2440 }, { 0, .30f, .58f, 1 } },
-  { "snow",   { 0x7d8ea8, 0xb8c6da, 0x5a6b8c, 0x34436a }, { 0, .30f, .58f, 1 } },
-  { "storm",  { 0x22263a, 0x474b66, 0x24283e, 0x14172a }, { 0, .30f, .58f, 1 } },
+  { "cloudy", VIBEOS_PALETTE_NEUTRAL2, { 300, 100, 200, 50 }, { 700, 600, 800, 900 }, { 0, .30f, .55f, 1 } },
+  { "fog",    VIBEOS_PALETTE_NEUTRAL1, { 200, 50, 100, 50 },  { 700, 500, 700, 900 }, { 0, .30f, .55f, 1 } },
+  { "clear",  VIBEOS_PALETTE_ACCENT1,  { 300, 100, 200, 50 }, { 600, 500, 700, 800 }, { 0, .32f, .58f, 1 } },
+  { "night",  VIBEOS_PALETTE_ACCENT2,  { 400, 200, 300, 100 }, { 900, 800, 900, 1000 }, { 0, .32f, .60f, 1 } },
+  { "rain",   VIBEOS_PALETTE_ACCENT2,  { 300, 200, 300, 100 }, { 700, 600, 800, 900 }, { 0, .30f, .58f, 1 } },
+  { "snow",   VIBEOS_PALETTE_NEUTRAL1, { 100, 50, 100, 10 },  { 600, 500, 700, 800 }, { 0, .30f, .58f, 1 } },
+  { "storm",  VIBEOS_PALETTE_ACCENT3,  { 400, 300, 400, 200 }, { 800, 700, 900, 1000 }, { 0, .30f, .58f, 1 } },
 };
 
 #define SKY_H 256
@@ -104,18 +118,22 @@ static const Sky skies[] = {
 static GdkTexture *
 sky_texture (const Sky *s)
 {
+  gboolean dark = vibeos_theme_get_dark (vibeos_theme_get_default ());
   guint8 *px = g_malloc (SKY_H * 3);
+  GdkRGBA stops[4];
+
+  for (int i = 0; i < 4; i++)
+    stops[i] = vibeos_palette_stop (s->palette, dark ? s->dark[i] : s->light[i]);
   for (int y = 0; y < SKY_H; y++) {
     float t = y / (float) (SKY_H - 1);
     int i = 0;
     while (i < 2 && t > s->at[i + 1])
       i++;
     float f = CLAMP ((t - s->at[i]) / MAX (s->at[i + 1] - s->at[i], 1e-6f), 0, 1);
-    for (int c = 0; c < 3; c++) {
-      int shift = 16 - 8 * c;
-      float a = (s->rgb[i] >> shift) & 0xff, b = (s->rgb[i + 1] >> shift) & 0xff;
-      px[y * 3 + c] = (guint8) lroundf (a + (b - a) * f);
-    }
+    GdkRGBA c = vibeos_rgba_mix (&stops[i], &stops[i + 1], f);
+    px[y * 3] = (guint8) lroundf (c.red * 255);
+    px[y * 3 + 1] = (guint8) lroundf (c.green * 255);
+    px[y * 3 + 2] = (guint8) lroundf (c.blue * 255);
   }
   g_autoptr (GBytes) bytes = g_bytes_new_take (px, SKY_H * 3);
   return gdk_memory_texture_new (1, SKY_H, GDK_MEMORY_R8G8B8, bytes, 3);
@@ -139,7 +157,7 @@ wx_sky (int code, gboolean day)
   return "cloudy";
 }
 
-/* the sun yellow, the moon pale, everything else white (style.css) */
+/* the sun and the moon in the theme's accents, everything else in its text colour (style.css) */
 static GtkWidget *
 wx_image (const char *icon, int size)
 {
@@ -222,7 +240,16 @@ typedef struct {
   GArray *temps;               /* double per slot */
   GArray *dots;                /* gboolean per slot */
   double  lo, hi;
+  int     col_w;               /* px, one slot */
 } Curve;
+
+/* one slot of the hourly strip: COL_W at a font size of 1, wider as the text grows, so that "12:00" and "Sunrise"
+ * still fit their column */
+static int
+col_width (void)
+{
+  return (int) ceil (COL_W * MAX (1.0, vibeos_sp (14) / 14));
+}
 
 static void
 curve_free (Curve *c)
@@ -238,10 +265,11 @@ draw_curve (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
   Curve *c = data;
   guint n = c->temps->len;
   double span = MAX (c->hi - c->lo, 1);
+  GdkRGBA line = vibeos_color_alpha (VIBEOS_ON_SURFACE, 0.75), dot = vibeos_color (VIBEOS_ON_SURFACE);
   #define CY(t) (h - 6 - ((t) - c->lo) / span * (h - 12))
-  #define CX(i) ((i) * COL_W + COL_W / 2.0)
+  #define CX(i) ((i) * c->col_w + c->col_w / 2.0)
   cairo_set_line_width (cr, 1.6);
-  cairo_set_source_rgba (cr, 1, 1, 1, 0.75);
+  gdk_cairo_set_source_rgba (cr, &line);
   for (guint i = 0; i < n; i++) {
     double t = g_array_index (c->temps, double, i);
     if (i == 0) {
@@ -253,7 +281,7 @@ draw_curve (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
     cairo_curve_to (cr, mx, CY (p), mx, CY (t), CX (i), CY (t));
   }
   cairo_stroke (cr);
-  cairo_set_source_rgb (cr, 1, 1, 1);
+  gdk_cairo_set_source_rgba (cr, &dot);
   for (guint i = 0; i < n; i++)
     if (g_array_index (c->dots, gboolean, i)) {
       cairo_arc (cr, CX (i), CY (g_array_index (c->temps, double, i)), 4, 0, 2 * G_PI);
@@ -288,7 +316,7 @@ add_slot (Strip *st, const char *time, const char *icon, const char *value, gboo
           gboolean dot)
 {
   GtkWidget *col = gtk_box_new (GTK_ORIENTATION_VERTICAL, 8);
-  gtk_widget_set_size_request (col, COL_W, -1);
+  gtk_widget_set_size_request (col, st->curve->col_w, -1);
   gtk_box_append (GTK_BOX (col), label (time, "wx-hour", 0.5));
   GtkWidget *img = wx_image (icon, 28);
   gtk_box_append (GTK_BOX (col), img);
@@ -312,6 +340,7 @@ hourly_strip (JsonObject *hourly, guint first, JsonArray *sunrise, JsonArray *su
   st.curve->dots = g_array_new (FALSE, FALSE, sizeof (gboolean));
   st.curve->lo = G_MAXDOUBLE;
   st.curve->hi = -G_MAXDOUBLE;
+  st.curve->col_w = col_width ();
   JsonArray *time = arr (hourly, "time"), *temp = arr (hourly, "temperature_2m");
   JsonArray *code = arr (hourly, "weather_code"), *pop = arr (hourly, "precipitation_probability");
   JsonArray *isday = arr (hourly, "is_day");
@@ -348,11 +377,12 @@ hourly_strip (JsonObject *hourly, guint first, JsonArray *sunrise, JsonArray *su
 
   GtkWidget *curve = gtk_drawing_area_new ();
   gtk_drawing_area_set_content_height (GTK_DRAWING_AREA (curve), CURVE_H);
-  gtk_drawing_area_set_content_width (GTK_DRAWING_AREA (curve), st.curve->temps->len * COL_W);
+  gtk_drawing_area_set_content_width (GTK_DRAWING_AREA (curve), st.curve->temps->len * st.curve->col_w);
+  int col_w = st.curve->col_w;
   gtk_drawing_area_set_draw_func (GTK_DRAWING_AREA (curve), draw_curve, st.curve, (GDestroyNotify) curve_free);
   GtkWidget *pops = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   for (guint i = 0; i < st.pops->len; i++) {
-    gtk_widget_set_size_request (st.pops->pdata[i], COL_W, -1);
+    gtk_widget_set_size_request (st.pops->pdata[i], col_w, -1);
     gtk_box_append (GTK_BOX (pops), st.pops->pdata[i]);
   }
   g_ptr_array_unref (st.pops);
@@ -396,17 +426,151 @@ detail (const char *title, const char *value, const char *sub)
   return b;
 }
 
+/* the skies made for the theme in effect: each is made the first time it shows */
+static GdkTexture *made_skies[G_N_ELEMENTS (skies)];
+
 static void
 set_sky (Page *p, const char *sky)
 {
-  static GdkTexture *made[G_N_ELEMENTS (skies)];
   for (guint i = 0; i < G_N_ELEMENTS (skies); i++)
     if (!strcmp (skies[i].name, sky)) {
-      if (!made[i])
-        made[i] = sky_texture (&skies[i]);
-      gtk_picture_set_paintable (GTK_PICTURE (p->sky), GDK_PAINTABLE (made[i]));
+      if (!made_skies[i])
+        made_skies[i] = sky_texture (&skies[i]);
+      gtk_picture_set_paintable (GTK_PICTURE (p->sky), GDK_PAINTABLE (made_skies[i]));
+      p->sky_name = skies[i].name;
       return;
     }
+}
+
+/* another theme colour, or light for dark: the skies are made again, in the new palettes */
+static void
+on_theme_changed (VibeosTheme *theme, Page *p)
+{
+  for (guint i = 0; i < G_N_ELEMENTS (made_skies); i++)
+    g_clear_object (&made_skies[i]);
+  set_sky (p, p->sky_name ? p->sky_name : "cloudy");
+}
+
+/* what the page shows goes; a forecast shown is laid out again from p->forecast */
+static void
+clear_body (Page *p)
+{
+  for (GtkWidget *ch; (ch = gtk_widget_get_first_child (p->body));)
+    gtk_box_remove (GTK_BOX (p->body), ch);
+}
+
+/* ---- WxFit: the first of its layouts that fits the width ----
+ *
+ * The same content laid out more than one way, the roomiest first: WxFit shows the first whose least width fits,
+ * and the last when none does. A large font size takes the week's rows and the details to their narrower forms
+ * rather than past the window's edge. */
+
+#define WX_TYPE_FIT (wx_fit_get_type ())
+G_DECLARE_FINAL_TYPE (WxFit, wx_fit, WX, FIT, GtkWidget)
+
+struct _WxFit {
+  GtkWidget parent;
+};
+
+G_DEFINE_FINAL_TYPE (WxFit, wx_fit, GTK_TYPE_WIDGET)
+
+/* the layout for a width: the first that fits, else the last */
+static GtkWidget *
+wx_fit_choose (GtkWidget *widget, int width)
+{
+  GtkWidget *child, *last = NULL;
+
+  for (child = gtk_widget_get_first_child (widget); child; child = gtk_widget_get_next_sibling (child)) {
+    int min;
+
+    gtk_widget_measure (child, GTK_ORIENTATION_HORIZONTAL, -1, &min, NULL, NULL, NULL);
+    if (min <= width)
+      return child;
+    last = child;
+  }
+  return last;
+}
+
+static void
+wx_fit_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, int *minimum, int *natural,
+                int *minimum_baseline, int *natural_baseline)
+{
+  GtkWidget *child = gtk_widget_get_first_child (widget);
+
+  *minimum = *natural = 0;
+  if (!child)
+    return;
+  if (orientation == GTK_ORIENTATION_VERTICAL) {
+    child = wx_fit_choose (widget, for_size < 0 ? G_MAXINT : for_size);
+    gtk_widget_measure (child, orientation, for_size, minimum, natural, NULL, NULL);
+    return;
+  }
+  /* as narrow as the narrowest, as wide as the roomiest would like */
+  gtk_widget_measure (child, orientation, -1, NULL, natural, NULL, NULL);
+  *minimum = G_MAXINT;
+  for (; child; child = gtk_widget_get_next_sibling (child)) {
+    int min;
+
+    gtk_widget_measure (child, orientation, -1, &min, NULL, NULL, NULL);
+    *minimum = MIN (*minimum, min);
+  }
+  *natural = MAX (*natural, *minimum);
+}
+
+static void
+wx_fit_size_allocate (GtkWidget *widget, int width, int height, int baseline)
+{
+  GtkWidget *chosen = wx_fit_choose (widget, width);
+
+  for (GtkWidget *child = gtk_widget_get_first_child (widget); child; child = gtk_widget_get_next_sibling (child)) {
+    gtk_widget_set_child_visible (child, child == chosen);
+    if (child == chosen)
+      gtk_widget_allocate (child, width, height, -1, NULL);
+  }
+}
+
+static GtkSizeRequestMode
+wx_fit_get_request_mode (GtkWidget *widget)
+{
+  return GTK_SIZE_REQUEST_HEIGHT_FOR_WIDTH;
+}
+
+static void
+wx_fit_dispose (GObject *object)
+{
+  for (GtkWidget *child; (child = gtk_widget_get_first_child (GTK_WIDGET (object)));)
+    gtk_widget_unparent (child);
+  G_OBJECT_CLASS (wx_fit_parent_class)->dispose (object);
+}
+
+static void
+wx_fit_class_init (WxFitClass *klass)
+{
+  GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
+
+  G_OBJECT_CLASS (klass)->dispose = wx_fit_dispose;
+  widget_class->measure = wx_fit_measure;
+  widget_class->size_allocate = wx_fit_size_allocate;
+  widget_class->get_request_mode = wx_fit_get_request_mode;
+}
+
+static void
+wx_fit_init (WxFit *self)
+{
+}
+
+/* the layouts, the roomiest first; NULL-terminated */
+static GtkWidget *
+wx_fit_new (GtkWidget *first, ...)
+{
+  GtkWidget *self = g_object_new (WX_TYPE_FIT, NULL);
+  va_list args;
+
+  va_start (args, first);
+  for (GtkWidget *child = first; child; child = va_arg (args, GtkWidget *))
+    gtk_widget_set_parent (child, self);
+  va_end (args);
+  return self;
 }
 
 static void
@@ -417,9 +581,17 @@ fill (Page *p, JsonObject *o)
   JsonObject *d = o && json_object_has_member (o, "daily") ? json_object_get_object_member (o, "daily") : NULL;
   if (!c || !h || !d)
     return;
-  for (GtkWidget *ch; (ch = gtk_widget_get_first_child (p->body));)
-    gtk_box_remove (GTK_BOX (p->body), ch);
+  clear_body (p);
   p->shown = TRUE;
+  /* the first column: now and the next hours; the second: yesterday, the week and the details. One under the other
+   * in one column, side by side in two. */
+  GtkWidget *col_a = gtk_box_new (GTK_ORIENTATION_VERTICAL, 12), *col_b = gtk_box_new (GTK_ORIENTATION_VERTICAL, 12);
+  gtk_widget_set_hexpand (col_a, TRUE);
+  gtk_widget_set_hexpand (col_b, TRUE);
+  if (p->two_columns)
+    gtk_widget_set_margin_top (col_b, BAR_CLEAR);
+  gtk_box_append (GTK_BOX (p->body), col_a);
+  gtk_box_append (GTK_BOX (p->body), col_b);
 
   int code = (int) cur (c, "weather_code");
   gboolean day = cur (c, "is_day") != 0;
@@ -447,7 +619,7 @@ fill (Page *p, JsonObject *o)
   GtkWidget *rl = label (range, "wx-range", 0);
   gtk_widget_set_margin_top (rl, 70);
   gtk_box_append (GTK_BOX (head), rl);
-  gtk_box_append (GTK_BOX (p->body), head);
+  gtk_box_append (GTK_BOX (col_a), head);
 
   /* the next 24 hours */
   GtkWidget *hours = card ();
@@ -464,7 +636,7 @@ fill (Page *p, JsonObject *o)
       break;
     }
   gtk_box_append (GTK_BOX (hours), hourly_strip (h, first, rise, set));
-  gtk_box_append (GTK_BOX (p->body), hours);
+  gtk_box_append (GTK_BOX (col_a), hours);
 
   /* now against this hour yesterday */
   double then = num (arr (h, "temperature_2m"), first >= 24 ? first - 24 : G_MAXUINT);
@@ -489,14 +661,17 @@ fill (Page *p, JsonObject *o)
       gtk_box_append (GTK_BOX (row), label (dd, "wx-delta", 1));
     }
     gtk_box_append (GTK_BOX (cmp), row);
-    gtk_box_append (GTK_BOX (p->body), cmp);
+    gtk_box_append (GTK_BOX (col_b), cmp);
   }
 
-  /* the week: yesterday dim, then today and on */
+  /* the week: yesterday dim, then today and on. A day on a row; with no room for that, the chance of rain and the
+   * icons on a line of their own under the day */
   GtkWidget *week = card ();
   GtkWidget *grid = gtk_grid_new ();
+  GtkWidget *narrow = gtk_grid_new ();
   gtk_grid_set_row_spacing (GTK_GRID (grid), 18);
   gtk_grid_set_column_spacing (GTK_GRID (grid), 10);
+  gtk_grid_set_column_spacing (GTK_GRID (narrow), 10);
   for (guint i = 0; dtime && i < json_array_get_length (dtime); i++) {
     g_autofree char *noon = g_strconcat (str (dtime, i) ? str (dtime, i) : "", "T12:00", NULL);
     g_autoptr (GDateTime) dt = parse_local (noon);
@@ -508,20 +683,35 @@ fill (Page *p, JsonObject *o)
     GtkWidget *n = label (name, cls, 0);
     gtk_widget_set_hexpand (n, TRUE);
     gtk_grid_attach (GTK_GRID (grid), n, 0, i, 1, 1);
+    n = label (name, cls, 0);
+    gtk_widget_set_hexpand (n, TRUE);
+    gtk_widget_set_margin_top (n, i ? 18 : 0);
+    gtk_grid_attach (GTK_GRID (narrow), n, 0, 2 * i, 1, 1);
     if (i > 0) {
       int dc = (int) num (dcode, i);
+      GtkWidget *line = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 10);
       gtk_grid_attach (GTK_GRID (grid), drop_label (num (dpop, i), FALSE), 1, i, 1, 1);
       gtk_grid_attach (GTK_GRID (grid), wx_image (wx_icon (dc, TRUE), 26), 2, i, 1, 1);
       gtk_grid_attach (GTK_GRID (grid), wx_image (wx_icon (dc, FALSE), 26), 3, i, 1, 1);
+      gtk_box_append (GTK_BOX (line), drop_label (num (dpop, i), FALSE));
+      gtk_box_append (GTK_BOX (line), wx_image (wx_icon (dc, TRUE), 26));
+      gtk_box_append (GTK_BOX (line), wx_image (wx_icon (dc, FALSE), 26));
+      gtk_widget_set_halign (line, GTK_ALIGN_END);
+      gtk_widget_set_margin_top (line, 6);
+      gtk_grid_attach (GTK_GRID (narrow), line, 0, 2 * i + 1, 2, 1);
     }
     gtk_grid_attach (GTK_GRID (grid), label (temps, cls, 1), 4, i, 1, 1);
+    GtkWidget *t = label (temps, cls, 1);
+    gtk_widget_set_valign (t, GTK_ALIGN_END);
+    gtk_grid_attach (GTK_GRID (narrow), t, 1, 2 * i, 1, 1);
   }
-  gtk_box_append (GTK_BOX (week), grid);
-  gtk_box_append (GTK_BOX (p->body), week);
+  gtk_box_append (GTK_BOX (week), wx_fit_new (grid, narrow, NULL));
+  gtk_box_append (GTK_BOX (col_b), week);
 
-  /* the details */
+  /* the details: two columns, or one with no room for two */
   GtkWidget *more = card ();
   GtkWidget *dg = gtk_grid_new ();
+  GtkWidget *dl = gtk_box_new (GTK_ORIENTATION_VERTICAL, 16);
   gtk_grid_set_row_spacing (GTK_GRID (dg), 16);
   gtk_grid_set_column_homogeneous (GTK_GRID (dg), TRUE);
   g_autoptr (GDateTime) r = parse_local (str (rise, 1));
@@ -539,18 +729,34 @@ fill (Page *p, JsonObject *o)
   gtk_grid_attach (GTK_GRID (dg), detail ("Humidity", hum, NULL), 0, 1, 1, 1);
   gtk_grid_attach (GTK_GRID (dg), detail ("Wind", wind, NULL), 1, 1, 1, 1);
   gtk_grid_attach (GTK_GRID (dg), detail ("Pressure", pres, NULL), 0, 2, 1, 1);
-  gtk_box_append (GTK_BOX (more), dg);
-  gtk_box_append (GTK_BOX (p->body), more);
+  gtk_box_append (GTK_BOX (dl), detail ("Sunrise", rs, ssub));
+  gtk_box_append (GTK_BOX (dl), detail ("UV index", uvs, isnan (u) ? NULL : uv_word (u)));
+  gtk_box_append (GTK_BOX (dl), detail ("Humidity", hum, NULL));
+  gtk_box_append (GTK_BOX (dl), detail ("Wind", wind, NULL));
+  gtk_box_append (GTK_BOX (dl), detail ("Pressure", pres, NULL));
+  gtk_box_append (GTK_BOX (more), wx_fit_new (dg, dl, NULL));
+  gtk_box_append (GTK_BOX (col_b), more);
 
-  gtk_box_append (GTK_BOX (p->body), label ("Open-Meteo.com", "wx-credit", 0.5));
+  gtk_box_append (GTK_BOX (col_b), label ("Open-Meteo.com", "wx-credit", 0.5));
+}
+
+/* the forecast kept, and shown */
+static void
+show_forecast (Page *p, JsonNode *root)
+{
+  if (root != p->forecast) {
+    g_clear_pointer (&p->forecast, json_node_unref);
+    p->forecast = json_node_ref (root);
+  }
+  fill (p, json_node_get_object (root));
 }
 
 /* the page without a forecast, saying why */
 static void
 waiting (Page *p, const char *text)
 {
-  for (GtkWidget *ch; (ch = gtk_widget_get_first_child (p->body));)
-    gtk_box_remove (GTK_BOX (p->body), ch);
+  clear_body (p);
+  g_clear_pointer (&p->forecast, json_node_unref);
   GtkWidget *message = label (text, "wx-summary", 0);
   gtk_widget_add_css_class (message, "wx-message");
   gtk_box_append (GTK_BOX (p->body), message);
@@ -584,7 +790,7 @@ fetched (GObject *src, GAsyncResult *res, gpointer data)
   g_autofree char *dir = g_path_get_dirname (path);
   g_mkdir_with_parents (dir, 0700);
   g_file_set_contents (path, out, -1, NULL);
-  fill (p, json_node_get_object (json_parser_get_root (jp)));
+  show_forecast (p, json_parser_get_root (jp));
 }
 
 static void
@@ -621,7 +827,7 @@ load_cache (Page *p)
   double lon = json_object_get_double_member_with_default (o, "longitude", 999);
   if (fabs (lat - p->lat) > 0.2 || fabs (lon - p->lon) > 0.2)
     return FALSE;
-  fill (p, o);
+  show_forecast (p, json_parser_get_root (jp));
   g_autoptr (GFile) f = g_file_new_for_path (path);
   g_autoptr (GFileInfo) info = g_file_query_info (f, G_FILE_ATTRIBUTE_TIME_MODIFIED, 0, NULL, NULL);
   return info && g_get_real_time () / G_USEC_PER_SEC -
@@ -996,6 +1202,9 @@ use_my_location (Page *p)
 static void
 page_free (Page *p)
 {
+  g_signal_handlers_disconnect_by_data (vibeos_theme_get_default (), p);
+  g_signal_handlers_disconnect_by_data (vibeos_text_get_default (), p);
+  g_clear_pointer (&p->forecast, json_node_unref);
   geo_stop (p);
   g_clear_object (&p->system);
   g_clear_object (&p->settings);
@@ -1006,12 +1215,16 @@ page_free (Page *p)
 
 /* ---- Set City: a sheet with a field, and the cities matching what is typed, from Open-Meteo's geocoding ----
  *
- * A bottom sheet as tall as the window lets it be, the field at its top. The on-screen keyboard shrinks the window
- * it opens over (the shell gives the window the space above the keyboard), and the sheet with it: the field stays
- * where it is, the list of cities under it gets shorter and scrolls. A search waits for a pause in the typing; an
- * answer for anything but the latest search is dropped, and the search it was for stopped. */
+ * A bottom sheet as tall as the window lets it be, the field at its top (a card in the middle on a tablet: see
+ * fit_search). The on-screen keyboard shrinks the window it opens over (the shell gives the window the space above
+ * the keyboard), and the sheet with it: the field stays where it is, the list of cities under it gets shorter and
+ * scrolls. A search waits for a pause in the typing; an answer for anything but the latest search is dropped, and
+ * the search it was for stopped. */
 
 #define SEARCH_DELAY_MS 250     /* the pause in the typing that starts a search */
+#define CARD_WIDTH      480     /* a larger window (a tablet's): the sheet is a card in the middle, this wide, */
+#define CARD_LIST       400     /* with its list this tall: five cities, the card one size whatever is found */
+#define CARD_BAR        56      /* the card's bar, a compact VibeosTopBar */
 #define SEARCH_MIN      2       /* the characters a search needs: fewer would match half the world */
 #define SEARCH_COUNT    8
 
@@ -1022,7 +1235,7 @@ typedef struct {
 
 typedef struct {
   Page        *p;
-  GtkWidget   *sheet, *text, *clear, *status, *list;
+  GtkWidget   *sheet, *field, *text, *clear, *status, *list, *scroll;
   GArray      *cities;          /* City: the rows', in order */
   guint        delay;           /* the pause before the search */
   guint        serial;          /* the latest search; an answer to an older one is dropped */
@@ -1067,11 +1280,47 @@ search_stop (CitySearch *s)
   g_clear_object (&s->curl);
 }
 
+/* The sheet's size. A bottom sheet (a phone's) is as tall as the window lets it be. On a larger window libvibeos
+ * floats the sheet as a card in the middle, 360 wide and here as tall as the window: a narrow column, empty under
+ * the field until something is typed. The card is CARD_WIDTH wide instead and as tall as its list's CARD_LIST,
+ * less on a window too short for that (the keyboard is up), and it keeps that size as cities come and go: the
+ * status, when it shows, takes its height from the list's. */
+static void
+fit_search (CitySearch *s)
+{
+  VibeosLayout *layout = vibeos_layout_get_for_window (GTK_WINDOW (s->p->win));
+  int width = vibeos_layout_get_width (layout), height = vibeos_layout_get_height (layout);
+  /* libvibeos's floating sheet: on a window over 450 x 360, with these margins at its top and bottom */
+  gboolean card = width > 450 && height > 360;
+  double ends = 20 + 100 * MAX (0, (height - 720) / 720.0);
+  int field = 0, status = 0, room;
+
+  vibeos_sheet_set_full_height (VIBEOS_SHEET (s->sheet), !card);
+  vibeos_sheet_set_content_width (VIBEOS_SHEET (s->sheet), card ? CARD_WIDTH : 0);
+  if (!card)
+    {
+      gtk_widget_set_size_request (s->scroll, -1, -1);
+      return;
+    }
+  gtk_widget_measure (s->field, GTK_ORIENTATION_VERTICAL, CARD_WIDTH, NULL, &field, NULL, NULL);
+  if (gtk_widget_get_visible (s->status))
+    gtk_widget_measure (s->status, GTK_ORIENTATION_VERTICAL, CARD_WIDTH, NULL, &status, NULL, NULL);
+  room = MIN (height - (int) (2 * ends) - CARD_BAR - field, CARD_LIST);
+  gtk_widget_set_size_request (s->scroll, -1, MAX (room - status, 0));
+}
+
+static void
+on_search_layout (VibeosLayout *layout, CitySearch *s)
+{
+  fit_search (s);
+}
+
 static void
 show_status (CitySearch *s, const char *text)
 {
   gtk_label_set_text (GTK_LABEL (s->status), text ? text : "");
   gtk_widget_set_visible (s->status, text != NULL);
+  fit_search (s);
 }
 
 static void
@@ -1240,6 +1489,7 @@ on_search_destroy (GtkWidget *sheet, CitySearch *s)
 {
   s->gone = TRUE;
   search_stop (s);
+  g_signal_handlers_disconnect_by_func (vibeos_layout_get_for_window (GTK_WINDOW (s->p->win)), on_search_layout, s);
 }
 
 /* the ⋮ menu's Set City */
@@ -1254,10 +1504,11 @@ set_city (gpointer data)
   GtkWidget *scroll = spongy_scroll_view_new ();
 
   s->p = p;
+  s->field = field;
+  s->scroll = scroll;
   s->cities = g_array_new (FALSE, TRUE, sizeof (City));
   g_array_set_clear_func (s->cities, city_clear);
   s->sheet = vibeos_sheet_new ("Set City");
-  vibeos_sheet_set_full_height (VIBEOS_SHEET (s->sheet), TRUE);
   g_object_set_data_full (G_OBJECT (s->sheet), "wx-city-search", s, search_release);
   g_signal_connect (s->sheet, "destroy", G_CALLBACK (on_search_destroy), s);
 
@@ -1298,6 +1549,7 @@ set_city (gpointer data)
 
   vibeos_sheet_set_content (VIBEOS_SHEET (s->sheet), content);
   show_idle (s);
+  g_signal_connect (vibeos_layout_get_for_window (GTK_WINDOW (p->win)), "changed", G_CALLBACK (on_search_layout), s);
   vibeos_sheet_present (VIBEOS_SHEET (s->sheet), p->win);
   /* typing at once: the keyboard comes up for a field focused right after a tap */
   gtk_widget_grab_focus (s->text);
@@ -1331,9 +1583,137 @@ about (gpointer data)
 
 /* ---- the window ---- */
 
+/* ---- the page's width: one column, or two on a wide window ----
+ *
+ * WxClamp holds the page: as wide as the window up to its max, and in the middle of the window past that. */
+
+#define WX_TYPE_CLAMP (wx_clamp_get_type ())
+G_DECLARE_FINAL_TYPE (WxClamp, wx_clamp, WX, CLAMP, GtkWidget)
+
+struct _WxClamp {
+  GtkWidget  parent;
+  GtkWidget *child;
+  int        max;               /* dp; G_MAXINT for none */
+};
+
+G_DEFINE_FINAL_TYPE (WxClamp, wx_clamp, GTK_TYPE_WIDGET)
+
+static void
+wx_clamp_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, int *minimum, int *natural,
+                  int *minimum_baseline, int *natural_baseline)
+{
+  WxClamp *self = WX_CLAMP (widget);
+
+  if (orientation == GTK_ORIENTATION_VERTICAL && for_size >= 0)
+    for_size = MIN (for_size, self->max);
+  gtk_widget_measure (self->child, orientation, for_size, minimum, natural, NULL, NULL);
+  if (orientation == GTK_ORIENTATION_HORIZONTAL)
+    *natural = MAX (*minimum, MIN (*natural, self->max));
+}
+
+static void
+wx_clamp_size_allocate (GtkWidget *widget, int width, int height, int baseline)
+{
+  WxClamp *self = WX_CLAMP (widget);
+  int min, w;
+
+  gtk_widget_measure (self->child, GTK_ORIENTATION_HORIZONTAL, -1, &min, NULL, NULL, NULL);
+  w = MIN (width, MAX (self->max, min));
+  gtk_widget_allocate (self->child, w, height, -1,
+                       gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT ((width - w) / 2, 0)));
+}
+
+static GtkSizeRequestMode
+wx_clamp_get_request_mode (GtkWidget *widget)
+{
+  return GTK_SIZE_REQUEST_HEIGHT_FOR_WIDTH;
+}
+
+static void
+wx_clamp_dispose (GObject *object)
+{
+  WxClamp *self = WX_CLAMP (object);
+
+  g_clear_pointer (&self->child, gtk_widget_unparent);
+  G_OBJECT_CLASS (wx_clamp_parent_class)->dispose (object);
+}
+
+static void
+wx_clamp_class_init (WxClampClass *klass)
+{
+  GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
+
+  G_OBJECT_CLASS (klass)->dispose = wx_clamp_dispose;
+  widget_class->measure = wx_clamp_measure;
+  widget_class->size_allocate = wx_clamp_size_allocate;
+  widget_class->get_request_mode = wx_clamp_get_request_mode;
+}
+
+static void
+wx_clamp_init (WxClamp *self)
+{
+  self->max = G_MAXINT;
+}
+
+static GtkWidget *
+wx_clamp_new (GtkWidget *child)
+{
+  WxClamp *self = g_object_new (WX_TYPE_CLAMP, NULL);
+
+  self->child = child;
+  gtk_widget_set_parent (child, GTK_WIDGET (self));
+  return GTK_WIDGET (self);
+}
+
+static void
+wx_clamp_set_max (WxClamp *self, int max)
+{
+  if (self->max == max)
+    return;
+  self->max = max;
+  gtk_widget_queue_resize (GTK_WIDGET (self));
+}
+
+/* a phone upright: one column, the window's width; wider (a tablet, a phone on its side): one column of at most
+ * COLUMN_MAX in the middle; as wide as a turned tablet: two columns. The forecast is laid out again when that
+ * changes. */
+static void
+update_columns (Page *p)
+{
+  VibeosLayout *layout = vibeos_layout_get_for_window (GTK_WINDOW (p->win));
+  VibeosWidthClass width = vibeos_layout_get_width_class (layout);
+  gboolean two = width == VIBEOS_WIDTH_EXPANDED;
+
+  wx_clamp_set_max (WX_CLAMP (p->clamp), width == VIBEOS_WIDTH_COMPACT ? G_MAXINT : two ? PAGE_MAX : COLUMN_MAX);
+  if (two == p->two_columns)
+    return;
+  p->two_columns = two;
+  gtk_orientable_set_orientation (GTK_ORIENTABLE (p->body), two ? GTK_ORIENTATION_HORIZONTAL
+                                                                : GTK_ORIENTATION_VERTICAL);
+  gtk_box_set_homogeneous (GTK_BOX (p->body), two);
+  gtk_box_set_spacing (GTK_BOX (p->body), two ? 16 : 12);
+  /* the second column's top differs between the two */
+  if (p->forecast)
+    fill (p, json_node_get_object (p->forecast));
+}
+
+static void
+on_layout_changed (VibeosLayout *layout, Page *p)
+{
+  update_columns (p);
+}
+
+/* a new font size: the hourly strip's columns are as wide as the new text needs */
+static void
+on_text_changed (VibeosText *text, Page *p)
+{
+  if (p->forecast)
+    fill (p, json_node_get_object (p->forecast));
+}
+
 /* reload: the forecast for the place shown, and where the phone is now (a chosen city stays) */
 static void
-refresh_clicked (GtkButton *b, Page *p)
+refresh_clicked (GtkWidget *b, Page *p)
 {
   if (p->have_place)
     fetch (p);
@@ -1342,13 +1722,13 @@ refresh_clicked (GtkButton *b, Page *p)
 
 /* ⋮: the menu, over the button */
 static void
-more_clicked (GtkButton *button, Page *p)
+more_clicked (GtkWidget *button, Page *p)
 {
   WxMenu *menu = wx_menu_new ();
 
   wx_menu_append (menu, "Set City", set_city, p);
   wx_menu_append (menu, "About", about, p);
-  wx_menu_present (menu, GTK_WIDGET (button));
+  wx_menu_present (menu, button);
 }
 
 /* back (Alt+Left from VibeOS's edge swipe) and Escape close the page, back to the home screen; while the menu or a
@@ -1374,11 +1754,6 @@ activate (GtkApplication *app, gpointer data)
     gtk_window_present (have);
     return;
   }
-  GtkCssProvider *css = gtk_css_provider_new ();
-  gtk_css_provider_load_from_resource (css, "/vibeos/Weather/style.css");
-  gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (css),
-                                              GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-  g_object_unref (css);
 
   Page *p = g_new0 (Page, 1);
   GSettingsSchemaSource *schemas = g_settings_schema_source_get_default ();
@@ -1386,10 +1761,9 @@ activate (GtkApplication *app, gpointer data)
                                                : NULL;
   /* without its schema (run from the build tree) a chosen city lasts as long as the app */
   p->settings = schema ? g_settings_new_full (schema, NULL, NULL) : NULL;
-  GtkWidget *win = p->win = adw_application_window_new (app);
+  GtkWidget *win = p->win = vibeos_window_new (app);
   g_object_set_data_full (G_OBJECT (win), "page", p, (GDestroyNotify) page_free);
   gtk_window_set_title (GTK_WINDOW (win), "Weather");
-  gtk_window_set_default_size (GTK_WINDOW (win), 360, 720);
   gtk_widget_add_css_class (win, "wx");
   add_back (win);
 
@@ -1402,8 +1776,9 @@ activate (GtkApplication *app, gpointer data)
   set_sky (p, "cloudy");
   p->body = gtk_box_new (GTK_ORIENTATION_VERTICAL, 12);
   gtk_widget_add_css_class (p->body, "wx-body");
+  p->clamp = wx_clamp_new (p->body);
   GtkWidget *sc = spongy_scroll_view_new ();
-  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (sc), p->body);
+  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (sc), p->clamp);
   gtk_widget_set_vexpand (sc, TRUE);
   gtk_overlay_add_overlay (GTK_OVERLAY (overlay), sc);
 
@@ -1413,22 +1788,25 @@ activate (GtkApplication *app, gpointer data)
   gtk_widget_set_halign (bar, GTK_ALIGN_END);
   gtk_widget_add_css_class (bar, "wx-bar");
   p->spinner = gtk_spinner_new ();
-  GtkWidget *reload = gtk_button_new_from_icon_name ("view-refresh-symbolic");
-  gtk_widget_add_css_class (reload, "flat");
-  gtk_widget_add_css_class (reload, "circular");
+  gtk_widget_add_css_class (p->spinner, "wx-spinner");
+  GtkWidget *reload = vibeos_icon_button_new ("view-refresh-symbolic");
+  gtk_accessible_update_property (GTK_ACCESSIBLE (reload), GTK_ACCESSIBLE_PROPERTY_LABEL, "Reload", -1);
   g_signal_connect (reload, "clicked", G_CALLBACK (refresh_clicked), p);
-  GtkWidget *more = gtk_button_new_from_icon_name ("view-more-symbolic");
-  gtk_widget_add_css_class (more, "flat");
-  gtk_widget_add_css_class (more, "circular");
+  GtkWidget *more = vibeos_icon_button_new ("view-more-symbolic");
   gtk_accessible_update_property (GTK_ACCESSIBLE (more), GTK_ACCESSIBLE_PROPERTY_LABEL, "More options", -1);
   g_signal_connect (more, "clicked", G_CALLBACK (more_clicked), p);
   gtk_box_append (GTK_BOX (bar), p->spinner);
   gtk_box_append (GTK_BOX (bar), reload);
   gtk_box_append (GTK_BOX (bar), more);
   gtk_overlay_add_overlay (GTK_OVERLAY (overlay), bar);
-  adw_application_window_set_content (ADW_APPLICATION_WINDOW (win), overlay);
-  /* the menu and the sheets go over everything, in this overlay (libvibeos finds it here) */
-  g_object_set_data (G_OBJECT (win), "vibeos-overlay", overlay);
+  /* the menu and the sheets go over everything, in the window's root overlay */
+  vibeos_window_set_content (GTK_WINDOW (win), overlay);
+
+  /* the layout before the window shows: it starts at the size it will have, in the right columns */
+  g_signal_connect (vibeos_layout_get_for_window (GTK_WINDOW (win)), "changed", G_CALLBACK (on_layout_changed), p);
+  g_signal_connect (vibeos_theme_get_default (), "changed", G_CALLBACK (on_theme_changed), p);
+  g_signal_connect (vibeos_text_get_default (), "changed", G_CALLBACK (on_text_changed), p);
+  update_columns (p);
 
   gtk_window_present (GTK_WINDOW (win));
   /* the chosen city, or the last place, at once; then where the phone is now, without a chosen city */
@@ -1440,17 +1818,18 @@ activate (GtkApplication *app, gpointer data)
   where (p);
 }
 
-/* libvibeos's colours, font and icons, for the menu and the sheets */
+/* libvibeos's colours, font, text sizes and icons, for the whole page */
 static void
 startup (GApplication *app, gpointer data)
 {
-  vibeos_init ();
+  vibeos_init_full (VIBEOS_INIT_SCALED_TEXT);
+  vibeos_css_load_resource ("/vibeos/Weather/style.css", GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
 }
 
 int
 main (int argc, char **argv)
 {
-  g_autoptr (AdwApplication) app = adw_application_new ("vibeos.Weather", G_APPLICATION_DEFAULT_FLAGS);
+  g_autoptr (GtkApplication) app = gtk_application_new ("vibeos.Weather", G_APPLICATION_DEFAULT_FLAGS);
   g_signal_connect (app, "startup", G_CALLBACK (startup), NULL);
   g_signal_connect (app, "activate", G_CALLBACK (activate), NULL);
   return g_application_run (G_APPLICATION (app), argc, argv);

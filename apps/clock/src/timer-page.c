@@ -12,6 +12,8 @@
 
 #define CARD_MARGIN  16         /* a card, in from the sides */
 #define CARD_GAP     8          /* ... and over and under it */
+#define GRID_MARGIN  16         /* on a tablet, the cards in columns: each card's margin all round, ... */
+#define GRID_MARGIN3 8          /* ... and in three columns */
 #define UPDATE_MS    20         /* between updates of the time */
 #define CHANGE_MS    400        /* the slide; each fade takes half of it */
 
@@ -20,7 +22,9 @@ struct _TimerPage
   GtkWidget parent;
   TimersClient *client;
 
-  GtkWidget *setup, *scroller, *list;
+  GtkWidget *setup, *scroller, *list;  /* the list: a grid of the cards, one column on a phone */
+  VibeosLayout *layout;
+  int columns;                  /* 1 on a phone; on a tablet 2 upright, 3 sideways (and no rings then) */
   GtkWidget *probe;             /* a card never shown, to know how tall a card's ring is before there is a card */
   GArray *ids;                  /* the timers the cards show, in their order */
   gboolean loaded;              /* the timers came: the tab knows which view to open on */
@@ -86,6 +90,85 @@ start_updating (TimerPage *self)
     on_update (self);
 }
 
+/* The grid's width in a box `width` wide: all of it, but with fewer cards than columns (on a tablet) only that many
+ * columns' share, at the start, so that one or two cards are as wide as they are beside the others rather than each
+ * stretched to half or all of the screen */
+static int
+cards_width (GtkWidget *box, int width)
+{
+  TimerPage *self = g_object_get_data (G_OBJECT (box), "timer-page");
+  int n = 0, min;
+
+  for (GtkWidget *card = gtk_widget_get_first_child (self->list); card; card = gtk_widget_get_next_sibling (card))
+    n++;
+  if (self->columns < 2 || n == 0 || n >= self->columns)
+    return width;
+  gtk_widget_measure (self->list, GTK_ORIENTATION_HORIZONTAL, -1, &min, NULL, NULL, NULL);
+  return MAX (min, width * n / self->columns);
+}
+
+static GtkSizeRequestMode
+cards_request_mode (GtkWidget *box)
+{
+  return GTK_SIZE_REQUEST_HEIGHT_FOR_WIDTH;
+}
+
+static void
+cards_measure (GtkWidget *box, GtkOrientation orientation, int for_size, int *minimum, int *natural,
+               int *minimum_baseline, int *natural_baseline)
+{
+  TimerPage *self = g_object_get_data (G_OBJECT (box), "timer-page");
+
+  if (orientation == GTK_ORIENTATION_VERTICAL && for_size >= 0)
+    for_size = cards_width (box, for_size);
+  gtk_widget_measure (self->list, orientation, for_size, minimum, natural, NULL, NULL);
+}
+
+static void
+cards_allocate (GtkWidget *box, int width, int height, int baseline)
+{
+  TimerPage *self = g_object_get_data (G_OBJECT (box), "timer-page");
+  int list = cards_width (box, width);
+  int x = gtk_widget_get_direction (box) == GTK_TEXT_DIR_RTL ? width - list : 0;
+
+  gtk_widget_allocate (self->list, list, height, -1, gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (x, 0)));
+}
+
+/* the cards in rows of `columns`, in their order, each with the margins of its layout */
+static void
+place_cards (TimerPage *self)
+{
+  int i = 0;
+  gboolean grid = self->columns > 1;
+  int margin = self->columns > 2 ? GRID_MARGIN3 : GRID_MARGIN;
+
+  for (GtkWidget *card = gtk_widget_get_first_child (self->list); card; card = gtk_widget_get_next_sibling (card), i++)
+    {
+      GtkLayoutChild *child = gtk_layout_manager_get_layout_child (gtk_widget_get_layout_manager (self->list), card);
+
+      gtk_grid_layout_child_set_column (GTK_GRID_LAYOUT_CHILD (child), i % self->columns);
+      gtk_grid_layout_child_set_row (GTK_GRID_LAYOUT_CHILD (child), i / self->columns);
+      gtk_widget_set_margin_start (card, grid ? margin : CARD_MARGIN);
+      gtk_widget_set_margin_end (card, grid ? margin : CARD_MARGIN);
+      gtk_widget_set_margin_top (card, grid ? margin : CARD_GAP);
+      gtk_widget_set_margin_bottom (card, grid ? margin : CARD_GAP);
+      timer_card_set_ring (TIMER_CARD (card), self->columns < 3);
+    }
+  /* the grid's share of the width goes with the count of cards and columns */
+  gtk_widget_queue_resize (self->list);
+}
+
+static void
+on_layout_changed (VibeosLayout *layout, TimerPage *self)
+{
+  int columns = !vibeos_layout_is_tablet (layout) ? 1 : vibeos_layout_is_landscape (layout) ? 3 : 2;
+
+  if (columns == self->columns)
+    return;
+  self->columns = columns;
+  place_cards (self);
+}
+
 /* the cards in the client's order: the ones still there kept, new ones made, the others gone. `added` and `removed` say
  * whether any came or went. */
 static void
@@ -116,7 +199,7 @@ sync_cards (TimerPage *self, GPtrArray *timers, gboolean *added, gboolean *remov
   while ((card = gtk_widget_get_first_child (self->list)))
     {
       g_hash_table_insert (cards, GUINT_TO_POINTER (timer_card_get_id (TIMER_CARD (card))), g_object_ref (card));
-      gtk_box_remove (GTK_BOX (self->list), card);
+      gtk_grid_remove (GTK_GRID (self->list), card);
     }
   g_array_set_size (self->ids, 0);
   for (guint i = 0; i < timers->len; i++)
@@ -125,16 +208,11 @@ sync_cards (TimerPage *self, GPtrArray *timers, gboolean *added, gboolean *remov
 
       card = g_hash_table_lookup (cards, GUINT_TO_POINTER (id));
       if (!card)
-        {
-          card = timer_card_new (id, FALSE);
-          gtk_widget_set_margin_start (card, CARD_MARGIN);
-          gtk_widget_set_margin_end (card, CARD_MARGIN);
-          gtk_widget_set_margin_top (card, CARD_GAP);
-          gtk_widget_set_margin_bottom (card, CARD_GAP);
-        }
-      gtk_box_append (GTK_BOX (self->list), card);
+        card = timer_card_new (id, FALSE);
+      gtk_grid_attach (GTK_GRID (self->list), card, 0, 0, 1, 1);
       g_array_append_val (self->ids, id);
     }
+  place_cards (self);
 }
 
 /* --- the two views */
@@ -205,7 +283,10 @@ on_change (VibeosAnim *anim, double value, gpointer data)
 static void
 change_view (TimerPage *self, gboolean to_list, gboolean down)
 {
-  int width = gtk_widget_get_width (GTK_WIDGET (self)) - 2 * CARD_MARGIN;
+  /* a card's width: the page's, or a column's */
+  int width = self->columns > 1 ? gtk_widget_get_width (GTK_WIDGET (self)) / self->columns
+                                    - 2 * (self->columns > 2 ? GRID_MARGIN3 : GRID_MARGIN)
+                                : gtk_widget_get_width (GTK_WIDGET (self)) - 2 * CARD_MARGIN;
 
   if (self->on_list == to_list || vibeos_anim_is_running (self->change))
     return;
@@ -383,6 +464,34 @@ timer_page_measure (GtkWidget *widget, GtkOrientation orientation, int for_size,
 }
 
 static void
+timer_page_root (GtkWidget *widget)
+{
+  TimerPage *self = TIMER_PAGE (widget);
+
+  GTK_WIDGET_CLASS (timer_page_parent_class)->root (widget);
+  self->layout = vibeos_layout_get (widget);
+  if (self->layout)
+    {
+      g_object_ref (self->layout);
+      g_signal_connect (self->layout, "changed", G_CALLBACK (on_layout_changed), self);
+      on_layout_changed (self->layout, self);
+    }
+}
+
+static void
+timer_page_unroot (GtkWidget *widget)
+{
+  TimerPage *self = TIMER_PAGE (widget);
+
+  if (self->layout)
+    {
+      g_signal_handlers_disconnect_by_data (self->layout, self);
+      g_clear_object (&self->layout);
+    }
+  GTK_WIDGET_CLASS (timer_page_parent_class)->unroot (widget);
+}
+
+static void
 timer_page_map (GtkWidget *widget)
 {
   GTK_WIDGET_CLASS (timer_page_parent_class)->map (widget);
@@ -422,12 +531,16 @@ timer_page_class_init (TimerPageClass *klass)
   widget_class->size_allocate = timer_page_size_allocate;
   widget_class->map = timer_page_map;
   widget_class->unmap = timer_page_unmap;
+  widget_class->root = timer_page_root;
+  widget_class->unroot = timer_page_unroot;
   gtk_widget_class_set_css_name (widget_class, "timer-page");
 }
 
 static void
 timer_page_init (TimerPage *self)
 {
+  GtkWidget *cards;
+
   self->ids = g_array_new (FALSE, FALSE, sizeof (guint));
 
   /* both views hidden until the timers come and say which one to open on */
@@ -436,10 +549,18 @@ timer_page_init (TimerPage *self)
   gtk_widget_set_parent (self->setup, GTK_WIDGET (self));
   gtk_widget_set_child_visible (self->setup, FALSE);
 
-  self->list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  self->columns = 1;
+  self->list = gtk_grid_new ();
+  gtk_grid_set_column_homogeneous (GTK_GRID (self->list), TRUE);
   gtk_widget_set_valign (self->list, GTK_ALIGN_START);
+  /* the grid in a box that gives it its share of the width (cards_width) */
+  cards = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  g_object_set_data (G_OBJECT (cards), "timer-page", self);
+  gtk_widget_set_layout_manager (cards, gtk_custom_layout_new (cards_request_mode, cards_measure, cards_allocate));
+  gtk_box_append (GTK_BOX (cards), self->list);
+  gtk_widget_set_valign (cards, GTK_ALIGN_START);
   self->scroller = spongy_scroll_view_new ();
-  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->scroller), self->list);
+  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->scroller), cards);
   gtk_widget_set_parent (self->scroller, GTK_WIDGET (self));
   gtk_widget_set_child_visible (self->scroller, FALSE);
 

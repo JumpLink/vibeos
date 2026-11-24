@@ -32,7 +32,7 @@ void       cam_rotator_set_angle    (CamRotator *self, double angle, gboolean an
 G_DECLARE_FINAL_TYPE (CamIcon, cam_icon, CAM, ICON, GtkWidget)
 GtkWidget *cam_icon_new             (const char *icon_name, double size);
 void       cam_icon_set_icon        (CamIcon *self, const char *icon_name);
-/* NULL: white, #444444 when insensitive */
+/* NULL: white, the camera's dark grey when insensitive */
 void       cam_icon_set_color       (CamIcon *self, const GdkRGBA *color);
 
 #define CAM_TYPE_SHUTTER (cam_shutter_get_type ())

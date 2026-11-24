@@ -386,7 +386,7 @@ on_rdns (GObject *source, GAsyncResult *result, gpointer data)
   Host *host = data;
   g_autofree char *name = g_resolver_lookup_by_address_finish (G_RESOLVER (source), result, NULL);
 
-  /* a name, not the address again; the host's own, without the network's domain ("am6.fritz.box" is "am6") */
+  /* a name, not the address again; the host's own, without the network's domain ("host.home.arpa" is "host") */
   if (name && g_hostname_is_ip_address (name))
     g_clear_pointer (&name, g_free);
   if (name && strchr (name, '.'))

@@ -1,0 +1,101 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: vibeos-navi
+Upstream-Contact: pulpoff <pashkovsky@gmail.com>
+Source: https://github.com/pulpoff/vibeos
+Comment:
+ Navi (apps/navi), the libvibeos it was built with (libvibeos/) and the voice
+ and speech code it shares with Agent and Dictate (apps/dictate/src) are
+ VibeOS's. /usr/lib/vibeos-navi/libvibeos-navi-map.so.0 also holds MapLibre
+ Native and the libraries MapLibre bundles, linked in statically; their
+ notices are in LICENSES.maplibre.md.gz next to this file. No map data is
+ shipped: the tiles come from VibeOS's map server (OpenStreetMap data, ODbL).
+
+Files: *
+Copyright: 2026 pulpoff <pashkovsky@gmail.com>
+License: Expat
+
+Files: data/poi/*
+Copyright: Mapbox (Maki)
+License: CC0-1.0
+Comment:
+ The points of interest's icons are Maki's; see data/poi/LICENSE-maki.txt.
+
+Files: maplibre-native/*
+Copyright: 2021 MapLibre contributors
+           2018-2021 MapTiler.com
+           2014-2020 Mapbox
+License: BSD-2-Clause
+Comment:
+ MapLibre Native's core and its vendored libraries (kdbush, supercluster,
+ shelf-pack, geojson-vt, cheap-ruler, Boost headers, csscolorparser,
+ earcut, eternal, parsedate, polylabel, protozero, unique_resource,
+ vector-tile, wagyu, mapbox-base, expected-lite, RapidJSON, geojson,
+ geometry, variant, FreeType, FSST, FastPFOR, SIMDe, nlohmann json,
+ HarfBuzz), each under the licence LICENSES.maplibre.md gives for it.
+
+Files: maplibre-native/vendor/maplibre-tile-spec/*
+Copyright: 2024 MapLibre contributors
+License: MIT or Apache-2.0
+
+Files: maplibre-native/vendor/nunicode/*
+Copyright: 2013 Aleksey Tulinov <aleksey.tulinov@gmail.com>
+License: Expat
+
+Files: maplibre-native/vendor/sqlite/*
+Copyright: none
+License: public-domain
+ The SQLite authors dedicate SQLite to the public domain.
+
+License: Expat
+ Permission is hereby granted, free of charge, to any person obtaining a copy
+ of this software and associated documentation files (the "Software"), to deal
+ in the Software without restriction, including without limitation the rights
+ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ copies of the Software, and to permit persons to whom the Software is
+ furnished to do so, subject to the following conditions:
+ .
+ The above copyright notice and this permission notice shall be included in
+ all copies or substantial portions of the Software.
+ .
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ SOFTWARE.
+
+License: MIT
+ Same text as Expat above.
+
+License: BSD-2-Clause
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are
+ met:
+ .
+ * Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+ * Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in
+   the documentation and/or other materials provided with the
+   distribution.
+ .
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+License: Apache-2.0
+ On Debian systems, the full text of the Apache License, Version 2.0 is in
+ /usr/share/common-licenses/Apache-2.0.
+
+License: CC0-1.0
+ On Debian systems, the full text of the CC0 1.0 Universal licence is in
+ /usr/share/common-licenses/CC0-1.0.

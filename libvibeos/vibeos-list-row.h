@@ -2,10 +2,11 @@
  *
  * A title, an optional summary under it, something at the start and something at the end:
  *
- *   start   nothing, an outlined icon, an icon in a coloured circle, or an avatar (a picture or initials in a circle)
+ *   start   nothing, an outlined icon, an icon in a coloured circle, an avatar (a picture or initials in a circle),
+ *           or a widget of the app's in the circle's place (an app's own icon)
  *   end     nothing, a switch, a chevron, a chevron and a switch with a divider between them (the row opens a page,
- *           the switch toggles on its own), a value, or another icon (an external link's arrow: the row opens a
- *           web page)
+ *           the switch toggles on its own), a value, another icon (an external link's arrow: the row opens a
+ *           web page), or a widget of the app's (a button, a check mark, a spinner)
  *
  * The text starts at one of two insets, the farther one when there is something at the start. The row is as tall as
  * its lines need, never less than a one-line row: one, two and three lines give the three heights of the list.
@@ -36,6 +37,8 @@ void        vibeos_list_row_set_icon_circle (VibeosListRow *self, const char *ic
 /* the start: a picture in a circle, or without one the initials on `fill` */
 void        vibeos_list_row_set_avatar   (VibeosListRow *self, GdkPaintable *picture, const char *initials,
                                           const GdkRGBA *fill);
+/* the start: `widget` in the icon circle's place, 40 x 40, not clipped (an app's own icon); it takes no taps */
+void        vibeos_list_row_set_start_widget (VibeosListRow *self, GtkWidget *widget);
 /* the start: nothing */
 void        vibeos_list_row_clear_start  (VibeosListRow *self);
 /* the text's inset from the card's edge, in px, instead of the one the start gives (-1: back to that) */
@@ -49,8 +52,16 @@ void        vibeos_list_row_set_chevron  (VibeosListRow *self);
 void        vibeos_list_row_set_end_icon (VibeosListRow *self, const char *icon_name);
 /* the end: a value, in the summary's colour */
 void        vibeos_list_row_set_value    (VibeosListRow *self, const char *value);
+/* the end: `widget` at its natural size, centred on the row's height. Taps on it are its own (a button's); one that
+ * only shows something (a check mark) should be made not to take them (gtk_widget_set_can_target), or a tap there
+ * is lost */
+void        vibeos_list_row_set_end_widget (VibeosListRow *self, GtkWidget *widget);
 /* the end: nothing */
 void        vibeos_list_row_clear_end    (VibeosListRow *self);
+
+/* FALSE: a row that only shows something (a value): no ripple, a tap does nothing, no "clicked". TRUE by default */
+void        vibeos_list_row_set_activatable (VibeosListRow *self, gboolean activatable);
+gboolean    vibeos_list_row_get_activatable (VibeosListRow *self);
 
 void        vibeos_list_row_set_selected (VibeosListRow *self, gboolean selected);
 gboolean    vibeos_list_row_get_selected (VibeosListRow *self);

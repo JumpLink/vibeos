@@ -8,7 +8,7 @@
 #define ICON_VIEW       64      /* the round button */
 #define ICON_PADDING    14      /* around the icon, which is scaled up to fill the rest */
 #define LABEL_GAP       8
-#define LABEL_SIZE      12      /* the label under the button */
+#define LABEL_SIZE      12      /* sp: the label under the button */
 #define LABEL_MAX_EMS   9
 #define WIDTH           104     /* a column of the grid: three to a phone's width */
 #define DISABLED_ALPHA  0.3
@@ -30,13 +30,25 @@ G_DEFINE_FINAL_TYPE (InCallButton, incall_button, GTK_TYPE_WIDGET)
 enum { CLICKED, N_SIGNALS };
 static guint signals[N_SIGNALS];
 
+/* the label at 400 as Bold text draws it, at the font size in effect; unchanged when it is so already */
+static void
+update_label_font (InCallButton *self)
+{
+  g_autoptr(PangoFontDescription) font = pango_font_description_from_string ("VibeOS Roboto");
+
+  pango_font_description_set_absolute_size (font, vibeos_sp (LABEL_SIZE) * PANGO_SCALE);
+  pango_font_description_set_weight (font, vibeos_font_weight (400));
+  pango_layout_set_font_description (self->label, font);
+}
+
 static double
 label_height (InCallButton *self)
 {
   int width, height;
 
+  update_label_font (self);
   pango_layout_get_size (self->label, &width, &height);
-  return PAD_TOP (LABEL_SIZE) + height / (double) PANGO_SCALE + PAD_BOTTOM (LABEL_SIZE);
+  return PAD_TOP (vibeos_sp (LABEL_SIZE)) + height / (double) PANGO_SCALE + PAD_BOTTOM (vibeos_sp (LABEL_SIZE));
 }
 
 static void
@@ -60,7 +72,9 @@ incall_button_size_allocate (GtkWidget *widget, int width, int height, int basel
   InCallButton *self = INCALL_BUTTON (widget);
 
   /* one line, at most 9 ems, ellipsized at the end */
-  pango_layout_set_width (self->label, (int) (MIN (width - 2 * PADDING, LABEL_MAX_EMS * LABEL_SIZE) * PANGO_SCALE));
+  update_label_font (self);
+  pango_layout_set_width (self->label,
+                          (int) (MIN (width - 2 * PADDING, LABEL_MAX_EMS * vibeos_sp (LABEL_SIZE)) * PANGO_SCALE));
 }
 
 static void
@@ -72,19 +86,21 @@ incall_button_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   GskRoundedRect oval;
   PangoRectangle logical;
   /* the icon: black on the light disc, white without it; the ripple faint grey on the disc, faint white off it */
-  GdkRGBA icon = self->checked ? (GdkRGBA) { 0, 0, 0, 1 } : (GdkRGBA) { 1, 1, 1, 1 };
-  GdkRGBA ripple = self->checked ? (GdkRGBA) { 0x88 / 255.0, 0x88 / 255.0, 0x88 / 255.0, 0.25 }
-                                 : (GdkRGBA) { 1, 1, 1, 0.25 };
+  GdkRGBA icon = self->checked ? vibeos_palette_stop (VIBEOS_PALETTE_NEUTRAL1, 1000) : vibeos_color (VIBEOS_WHITE);
+  GdkRGBA ripple = self->checked ? vibeos_palette_stop (VIBEOS_PALETTE_NEUTRAL1, 500) : vibeos_color (VIBEOS_WHITE);
+  GdkRGBA white = vibeos_color (VIBEOS_WHITE), shadow = vibeos_color_alpha (VIBEOS_SHADOW, 0.2);
 
   if (!gtk_widget_is_sensitive (widget))
     gtk_snapshot_push_opacity (snapshot, DISABLED_ALPHA);
   gsk_rounded_rect_init_from_rect (&oval, &box, ICON_VIEW / 2.0);
   if (self->checked)
     {
-      /* a checked button: a light disc, its shadow deeper while pressed; dimmed when disabled */
-      GdkRGBA disc = { 0xed / 255.0, 0xf1 / 255.0, 0xf2 / 255.0, gtk_widget_is_sensitive (widget) ? 1 : 0.6 };
+      /* a checked button: a light disc in the theme's neutral palette, its shadow deeper while pressed; dimmed when
+       * disabled */
+      GdkRGBA disc = vibeos_palette_stop (VIBEOS_PALETTE_NEUTRAL1, 50);
 
-      gtk_snapshot_append_outset_shadow (snapshot, &oval, &(GdkRGBA) { 0, 0, 0, 0.2 }, 0, self->pressed ? 4 : 2, 0,
+      disc.alpha = gtk_widget_is_sensitive (widget) ? 1 : 0.6;
+      gtk_snapshot_append_outset_shadow (snapshot, &oval, &shadow, 0, self->pressed ? 4 : 2, 0,
                                          self->pressed ? 8 : 4);
       gtk_snapshot_push_rounded_clip (snapshot, &oval);
       gtk_snapshot_append_color (snapshot, &disc, &box);
@@ -102,9 +118,10 @@ incall_button_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   /* the layout centres its line in its own width: its logical box says where the line starts */
   pango_layout_get_pixel_extents (self->label, NULL, &logical);
   gtk_snapshot_save (snapshot);
-  gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (round (cx - logical.width / 2.0) - logical.x,
-                                                          PADDING + ICON_VIEW + LABEL_GAP + PAD_TOP (LABEL_SIZE)));
-  gtk_snapshot_append_layout (snapshot, self->label, &(GdkRGBA) { 1, 1, 1, 1 });
+  gtk_snapshot_translate (snapshot,
+                          &GRAPHENE_POINT_INIT (round (cx - logical.width / 2.0) - logical.x,
+                                                PADDING + ICON_VIEW + LABEL_GAP + PAD_TOP (vibeos_sp (LABEL_SIZE))));
+  gtk_snapshot_append_layout (snapshot, self->label, &white);
   gtk_snapshot_restore (snapshot);
   if (!gtk_widget_is_sensitive (widget))
     gtk_snapshot_pop (snapshot);
@@ -182,14 +199,10 @@ static void
 incall_button_init (InCallButton *self)
 {
   GtkGesture *click = gtk_gesture_click_new ();
-  g_autoptr(PangoFontDescription) font = pango_font_description_from_string ("VibeOS Roboto");
 
   vibeos_ripple_init (&self->ripple, GTK_WIDGET (self));
   self->label = gtk_widget_create_pango_layout (GTK_WIDGET (self), NULL);
-  /* 700, not 400: the phone's Bold text setting is on */
-  pango_font_description_set_absolute_size (font, LABEL_SIZE * PANGO_SCALE);
-  pango_font_description_set_weight (font, 700);
-  pango_layout_set_font_description (self->label, font);
+  update_label_font (self);
   pango_layout_set_ellipsize (self->label, PANGO_ELLIPSIZE_END);
   pango_layout_set_alignment (self->label, PANGO_ALIGN_CENTER);
 

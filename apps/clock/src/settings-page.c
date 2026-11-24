@@ -16,6 +16,7 @@
 #include "clock-format.h"
 #include "volume-slider.h"
 
+#include <gio/gdesktopappinfo.h>
 #include <glib/gi18n.h>
 #include <math.h>
 #include <vibeos.h>
@@ -75,7 +76,7 @@ add_category (SettingsPage *self, const char *title)
     }
   gtk_label_set_xalign (GTK_LABEL (label), 0);
   /* the font padding first: it sets the margins, and the category's spacing goes on top of it */
-  vibeos_label_set_font_padding (label, 14);
+  vibeos_label_set_font_padding_sp (label, 14);
   gtk_widget_set_margin_top (label, gtk_widget_get_margin_top (label) + (first ? 24 : 23));
   gtk_widget_set_margin_bottom (label, gtk_widget_get_margin_bottom (label) + 8);
   gtk_widget_set_margin_start (label, 16);
@@ -108,7 +109,7 @@ add_row (SettingsPage *self, const char *title, GtkWidget **summary, GtkWidget *
   gtk_label_set_xalign (GTK_LABEL (label), 0);
   gtk_label_set_wrap (GTK_LABEL (label), TRUE);
   gtk_widget_add_css_class (label, "settings-title");
-  vibeos_label_set_font_padding (label, 16);
+  vibeos_label_set_font_padding_sp (label, 16);
   gtk_box_append (GTK_BOX (column), label);
   if (summary)
     {
@@ -116,7 +117,7 @@ add_row (SettingsPage *self, const char *title, GtkWidget **summary, GtkWidget *
       gtk_label_set_xalign (GTK_LABEL (*summary), 0);
       gtk_label_set_wrap (GTK_LABEL (*summary), TRUE);
       gtk_widget_add_css_class (*summary, "settings-summary");
-      vibeos_label_set_font_padding (*summary, 14);
+      vibeos_label_set_font_padding_sp (*summary, 14);
       gtk_box_append (GTK_BOX (column), *summary);
     }
   gtk_box_append (GTK_BOX (box), column);
@@ -382,7 +383,7 @@ add_volume (SettingsPage *self)
   gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
   gtk_widget_set_margin_start (label, 12);
   gtk_widget_add_css_class (label, "settings-title");
-  vibeos_label_set_font_padding (label, 16);
+  vibeos_label_set_font_padding_sp (label, 16);
   gtk_box_append (GTK_BOX (column), label);
   self->slider = volume_slider_new (VOLUME_STEPS - 1);
   gtk_accessible_update_property (GTK_ACCESSIBLE (self->slider), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Alarm volume"),
@@ -415,12 +416,12 @@ add_brightness (SettingsPage *self)
   gtk_widget_set_margin_bottom (column, 8);
   gtk_label_set_xalign (GTK_LABEL (label), 0);
   gtk_widget_add_css_class (label, "settings-title");
-  vibeos_label_set_font_padding (label, 16);
+  vibeos_label_set_font_padding_sp (label, 16);
   gtk_box_append (GTK_BOX (column), label);
   self->brightness_summary = gtk_label_new (NULL);
   gtk_label_set_xalign (GTK_LABEL (self->brightness_summary), 0);
   gtk_widget_add_css_class (self->brightness_summary, "settings-summary");
-  vibeos_label_set_font_padding (self->brightness_summary, 14);
+  vibeos_label_set_font_padding_sp (self->brightness_summary, 14);
   gtk_box_append (GTK_BOX (column), self->brightness_summary);
   /* negative margins take back the slider's own inset, so its track's ends line up with the text */
   self->brightness = volume_slider_new (100);
@@ -452,6 +453,25 @@ on_date_time_done (GObject *source, GAsyncResult *result, gpointer data)
                           NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, on_date_time_done, GINT_TO_POINTER (1));
 }
 
+/* the platform data of an activation of Settings: the token that lets its window come to the front (xdg-activation;
+ * without it a Settings already running behind this app only posted "Settings is ready") */
+static GVariant *
+settings_platform_data (GtkWidget *from)
+{
+  g_autoptr (GDesktopAppInfo) info = g_desktop_app_info_new ("vibeos.Settings.desktop");
+  g_autoptr (GdkAppLaunchContext) context = gdk_display_get_app_launch_context (gtk_widget_get_display (from));
+  g_autofree char *token = info ? g_app_launch_context_get_startup_notify_id (G_APP_LAUNCH_CONTEXT (context),
+                                                                             G_APP_INFO (info), NULL) : NULL;
+  GVariantBuilder builder;
+
+  g_variant_builder_init (&builder, G_VARIANT_TYPE_VARDICT);
+  if (token) {
+    g_variant_builder_add (&builder, "{sv}", "activation-token", g_variant_new_string (token));
+    g_variant_builder_add (&builder, "{sv}", "desktop-startup-id", g_variant_new_string (token));
+  }
+  return g_variant_builder_end (&builder);
+}
+
 /* "Change date & time" (ACTION_DATE_SETTINGS): the phone's Settings app on its Date & Time page */
 static void
 on_date_time (VibeosPressable *row, SettingsPage *self)
@@ -460,8 +480,10 @@ on_date_time (VibeosPressable *row, SettingsPage *self)
 
   if (bus)
     g_dbus_connection_call (bus, "vibeos.Settings", "/vibeos/Settings", "org.freedesktop.Application",
-                            "ActivateAction", g_variant_new_parsed ("('launch-panel', [<('datetime', @av [])>], "
-                                                                    "@a{sv} {})"),
+                            "ActivateAction",
+                            g_variant_new ("(s@av@a{sv})", "launch-panel",
+                                           g_variant_new_parsed ("[<('datetime', @av [])>]"),
+                                           settings_platform_data (GTK_WIDGET (row))),
                             NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, on_date_time_done, NULL);
 }
 
@@ -627,7 +649,9 @@ settings_page_init (SettingsPage *self)
   gtk_widget_set_margin_end (self->list, 12);
   self->scroller = spongy_scroll_view_new ();
   gtk_widget_set_vexpand (self->scroller, TRUE);
-  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->scroller), self->list);
+  /* on a tablet the rows are a column in the middle */
+  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->scroller),
+                                vibeos_clamp_new (self->list, VIBEOS_CLAMP_SETTINGS));
   g_signal_connect (spongy_scroll_view_get_vadjustment (SPONGY_SCROLL_VIEW (self->scroller)), "value-changed",
                     G_CALLBACK (on_scrolled), self);
   gtk_box_append (GTK_BOX (self->box), self->scroller);

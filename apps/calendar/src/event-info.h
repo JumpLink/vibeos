@@ -16,5 +16,10 @@
 G_BEGIN_DECLS
 
 GtkWidget *event_info_new (GtkWidget *window, CalEvent *event);
+/* the same beside a tablet's Agenda: no Back; deleting the event, or the event going, empties the pane
+ * (cal_window_close_pane) */
+GtkWidget *event_info_new_pane (GtkWidget *window, CalEvent *event);
+/* the reminders as they were changed, written to the calendar (a pane's, before it goes) */
+void       event_info_save (GtkWidget *info);
 
 G_END_DECLS

@@ -314,6 +314,8 @@ static const char IFACE[] =
   "    </method>"
   /* back, as the launcher takes it: the drawer closes */
   "    <method name='Back'/>"
+  /* the drawer opens (a tablet's taskbar's all-apps button) */
+  "    <method name='Apps'/>"
   /* a back swipe began over the launcher: the finger is the shell's from now on */
   "    <method name='Cancel'/>"
   /* the lock screen came up: the launcher goes back to rest, so no menu and no drawer are left
@@ -383,6 +385,11 @@ method_call (GDBusConnection *bus, const char *sender, const char *path, const c
       popup_close ();
     else if (!drawer_search_back ())  /* a search ends first, then the drawer closes */
       drawer_back ();
+  } else if (!g_strcmp0 (method, "Apps")) {
+    popup_close_now ();
+    drag_cancel (true);
+    V.state = NAV_NORMAL;
+    drawer_open ();
   } else if (!g_strcmp0 (method, "Cancel")) {
     touch_drop ();
   } else if (!g_strcmp0 (method, "Locked")) {

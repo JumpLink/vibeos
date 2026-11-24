@@ -76,6 +76,18 @@ static const struct {
   [VIBEOS_SEARCH_CURSOR]              = { "search_cursor", FIXED },
   [VIBEOS_EMOJI_TAB_SELECTED]         = { "emoji_tab_selected", FIXED },
   [VIBEOS_EMOJI_TAB]                  = { "emoji_tab", FIXED },
+  [VIBEOS_CATEGORY_APPS]              = { "category_apps", FIXED },
+  [VIBEOS_ON_CATEGORY_APPS]           = { "on_category_apps", FIXED },
+  [VIBEOS_CATEGORY_NOTIFICATIONS]     = { "category_notifications", FIXED },
+  [VIBEOS_ON_CATEGORY_NOTIFICATIONS]  = { "on_category_notifications", FIXED },
+  [VIBEOS_CATEGORY_DISPLAY]           = { "category_display", FIXED },
+  [VIBEOS_ON_CATEGORY_DISPLAY]        = { "on_category_display", FIXED },
+  [VIBEOS_CATEGORY_BATTERY]           = { "category_battery", FIXED },
+  [VIBEOS_ON_CATEGORY_BATTERY]        = { "on_category_battery", FIXED },
+  [VIBEOS_CATEGORY_SECURITY]          = { "category_security", FIXED },
+  [VIBEOS_ON_CATEGORY_SECURITY]       = { "on_category_security", FIXED },
+  [VIBEOS_CATEGORY_ACCESSIBILITY]     = { "category_accessibility", FIXED },
+  [VIBEOS_ON_CATEGORY_ACCESSIBILITY]  = { "on_category_accessibility", FIXED },
 };
 
 /* what the colours were computed from */

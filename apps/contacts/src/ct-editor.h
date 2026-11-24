@@ -10,4 +10,11 @@ G_BEGIN_DECLS
  * fields filled in (a number or an email address another app sent) when @prefill is not NULL */
 GtkWidget *ct_editor_new (GtkWidget *window, const char *uid, EContact *prefill);
 
+/* @page (an editor) was opened by another app ("insert": the Dialer's Create new contact): closing it, saved or not,
+ * goes back to that app */
+void ct_editor_set_external (GtkWidget *page);
+
+/* @page is an editor another app opened, with nothing changed since: a new request replaces it rather than stack */
+gboolean ct_editor_is_untouched_external (GtkWidget *page);
+
 G_END_DECLS

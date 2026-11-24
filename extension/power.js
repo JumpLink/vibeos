@@ -20,6 +20,8 @@ import * as Signals from 'resource:///org/gnome/shell/misc/signals.js';
 import {Aod, Panel} from './aod.js';
 import {HardwareKeys} from './keys.js';
 import {animate, bezier, LINEAR} from './motion.js';
+import {displayConfig, STATE_TYPE} from './rotation.js';
+import {geometry, TABLET} from './units.js';
 
 Gio._promisify(Gio.DBusProxy.prototype, 'call');
 
@@ -33,10 +35,20 @@ const WAKE_FROM_OFF_MS = 667;
 const DECELERATE = t => 1 - (1 - t) * (1 - t);
 // the lock screen's and the bouncer's own screen timeout: shorter than the session's, nobody is using the phone
 const KEYGUARD_TIMEOUT_MS = 10000;
-// a press of the power key held this long is a long press (the power menu)
+// a press of the power key held this long is a long press: Agent listens while it is held on (keylaunch.js), else the
+// power menu
 const LONG_PRESS_MS = 500;
-// a sleep this soon after waking is taken as a bounce of the key
-const MIN_AWAKE_MS = 300;
+// a press whose down comes less than this after a short press's down is a double press (keylaunch.js), as Android's
+// GestureLauncherService counts one, down to down
+const DOUBLE_PRESS_MS = 300;
+// a sleep this soon after waking is taken as a bounce of the key. The tablet's panel lights about half a second after
+// the wake: a press made then, by someone who saw nothing happen yet (a wake held for the floor below shows nothing
+// for up to a second and a half), turned it straight off again (11-20), so there a press counts only once it is lit.
+const MIN_AWAKE_MS = TABLET ? 1000 : 300;
+// The tablet's panel hung for good when it was turned on again 0.64 s after it went off, and came back from 1.2 s
+// and 2.2 s (Galaxy Tab S5e, 11-19): a wake sooner than this after its outputs went off waits until then. It counts
+// from mutter putting the outputs in power save, about 0.2 s after they were asked to go off.
+const WAKE_FLOOR_MS = 1500;
 // gnome-session's inhibitor flag for idle (video playback, a presentation)
 const INHIBIT_IDLE = 8;
 // org.gnome.Mutter.DisplayConfig's PowerSaveMode (META_POWER_SAVE_ON, META_POWER_SAVE_OFF)
@@ -68,13 +80,21 @@ function vibeosSettings() {
 
 export class Power extends Signals.EventEmitter {
     // @keyguard: lock() as the screen goes off, .showing, .bouncerShowing; @state: the SystemState; @menu: the power
-    // menu a long press opens
+    // menu a long press opens, or power and volume up together (@chord)
     constructor(keyguard, state, menu, chord) {
         super();
         this._keyguard = keyguard;
         this._menu = menu;
         this._chord = chord;
+        if (chord)
+            chord.onPowerMenu = () => this._chordMenu();
         this._longPressId = 0;
+        this._agentHeld = false;    // the key held now has Agent listening (keylaunch.js hold): its up ends that
+        // keylaunch.js's KeyLaunch, set by the extension: what a double press of the key opens
+        this.doublePress = null;
+        this._tapAt = 0;            // the last short press's down (the event's time, ms), for a double press
+        this._doublePressed = false;// the press held now was a double press: its up does nothing
+        this._lockId = 0;           // a sleep's lock that waits for the screen to be dark (_lockWhenDark)
         this._state = State.AWAKE;
         this._sleptAt = 0;
         this._wokeAt = GLib.get_monotonic_time();
@@ -87,6 +107,28 @@ export class Power extends Signals.EventEmitter {
         // mutter keeps the outputs on (see above)
         this._monitors = global.backend.get_monitor_manager();
         this._monitors.power_save_blocked = true;
+        // the outputs off for real: the wake floor counts from here. Only a change to off: the outputs turned on by
+        // someone else while ours are off (gnome-settings-daemon on a touch) are no new "off", and taking them as one
+        // held the next wake back as if the panel had only just gone off. The mode itself is only on D-Bus.
+        this._monitors.connectObject('power-save-mode-changed', () => {
+            if (!this._outputsAreOff)
+                return;
+            const at = GLib.get_monotonic_time();
+            Gio.DBus.session.call('org.gnome.Mutter.DisplayConfig', '/org/gnome/Mutter/DisplayConfig',
+                'org.freedesktop.DBus.Properties', 'Get',
+                new GLib.Variant('(ss)', ['org.gnome.Mutter.DisplayConfig', 'PowerSaveMode']),
+                new GLib.VariantType('(v)'), Gio.DBusCallFlags.NONE, -1, null, (bus, res) => {
+                    let mode;
+                    try {
+                        mode = bus.call_finish(res).recursiveUnpack()[0];
+                    } catch (e) {
+                        log(`vibeos: the outputs' power save mode: ${e.message}`);
+                        return;
+                    }
+                    if (this._outputsAreOff && mode === POWER_SAVE_OFF)
+                        this._offAt = at;
+                });
+        }, this);
         this._panel = new Panel();
         // whatever a shell that crashed asleep left behind
         this._panel.lowPower(false);
@@ -107,6 +149,8 @@ export class Power extends Signals.EventEmitter {
         });
         this._aod = new Aod(this._panel, state);
         this.layer.add_child(this._aod);
+        // the screen as it is turned now: a layer left the size it was built at covered part of a turned screen
+        geometry.connectObject('changed', () => this._fit(), this);
 
         this._keys = new HardwareKeys({
             onPower: (pressed, time) => this._powerKey(pressed, time),
@@ -117,6 +161,12 @@ export class Power extends Signals.EventEmitter {
         this._idleWatch = 0;
         this._inhibited = false;
         this._watchInhibitors();
+        // A display plugged in, anything but the device's own panel: docked. Docked it sleeps when told to (the power
+        // key, the cover) and never on a timeout (owner, 11-20): a sleep on a timeout took the TV down with it.
+        this._docked = false;
+        this._dockCheck = 0;
+        Main.layoutManager.connectObject('monitors-changed', () => this._checkDocked(), this);
+        this._checkDocked();
         keyguard.connectObject('changed', () => this._syncTimeout(), this);
 
         this._exportScreenSaver();
@@ -135,8 +185,15 @@ export class Power extends Signals.EventEmitter {
 
     _powerKey(pressed, time) {
         const now = GLib.get_monotonic_time();
+        // the event's own time where it has one: the gap between two presses as the keys made it
+        const at = time || now / 1000;
+        if (pressed && this._isDoublePress(at)) {
+            this._doublePressDown(now);
+            return;
+        }
         if (pressed) {
             this._pressedAt = now;
+            this._pressedTime = at;
             // with volume down, a screenshot (chord.js); the press then does nothing more
             this._chord?.powerDown(this.interactive);
             // a press with the menu up closes it; the key then does what it would have
@@ -145,14 +202,12 @@ export class Power extends Signals.EventEmitter {
             this._wokeByPress = !this.interactive;
             if (this._wokeByPress)
                 this.wakeUp('power');
-            // ... and held, opens the power menu, with a long-press tick
+            // ... and held, has Agent listen until it is let go (Settings > System > Gestures, on by default; on a
+            // locked phone too, where Agent only reads), else opens the power menu; either with a long-press tick
             this._cancelLongPress();
             this._longPressId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, LONG_PRESS_MS, () => {
                 this._longPressId = 0;
-                if (!this.interactive || this._chord?.powerTaken)
-                    return GLib.SOURCE_REMOVE;
-                haptic();
-                this._menu?.open();
+                this._longPress();
                 return GLib.SOURCE_REMOVE;
             });
             return;
@@ -161,6 +216,18 @@ export class Power extends Signals.EventEmitter {
         const held = (now - (this._pressedAt ?? now)) / 1000;
         this._pressedAt = null;
         const chord = this._chord?.powerUp();
+        // the hold's end: Agent stops listening, and the key does nothing more
+        if (this._agentHeld) {
+            this._agentHeld = false;
+            this.doublePress?.hold(false);
+            return;
+        }
+        if (this._doublePressed) {
+            this._doublePressed = false;
+            return;
+        }
+        // a short press: a second one soon after it is a double press, whatever this one did
+        this._tapAt = !chord && held < LONG_PRESS_MS ? this._pressedTime : 0;
         // ... and goes to sleep on its up, if the down did not wake it and the press was short
         if (chord || this._wokeByPress || held >= LONG_PRESS_MS)
             return;
@@ -169,10 +236,62 @@ export class Power extends Signals.EventEmitter {
         this.goToSleep('power');
     }
 
+    // the key held LONG_PRESS_MS, neither part of a chord nor a double press
+    _longPress() {
+        if (this._chord?.powerTaken)
+            return;
+        // the screen may still be dark here (a tablet's wake waits for its floor): Agent listens all the same
+        if (this.doublePress?.holdArmed) {
+            haptic();
+            this._agentHeld = true;
+            this.doublePress.hold(true);
+            return;
+        }
+        if (!this.interactive)
+            return;
+        haptic();
+        this._menu?.open();
+    }
+
+    // power and volume up together (chord.js): the power menu, and the key held on does nothing more
+    _chordMenu() {
+        this._cancelLongPress();
+        if (!this.interactive)
+            return;
+        haptic();
+        this._menu?.open();
+    }
+
     _cancelLongPress() {
         if (this._longPressId)
             GLib.source_remove(this._longPressId);
         this._longPressId = 0;
+    }
+
+    // A down within DOUBLE_PRESS_MS of a short press's down, while a double press opens something. The first press
+    // already did what a single press does (the screen off or on): the double press takes nothing from it.
+    _isDoublePress(at) {
+        const gap = at - this._tapAt;
+        const tapped = this._tapAt !== 0;
+        this._tapAt = 0;
+        // gap < 0: the event clock (32-bit ms) wrapped between the presses; a missed double press, never a false one
+        return tapped && gap >= 0 && gap < DOUBLE_PRESS_MS && !!this.doublePress?.doublePressArmed;
+    }
+
+    // the double press: the screen on, unlocked if the first press's sleep had not locked it yet, and the app; the
+    // press neither opens the power menu when held nor sleeps on its up
+    _doublePressDown(now) {
+        this._pressedAt = now;
+        this._doublePressed = true;
+        this._cancelLongPress();
+        this._chord?.powerDown(false);
+        this._menu?.closeNow();
+        log('vibeos: power key double press');
+        this._cancelLock();
+        if (!this.interactive)
+            this.wakeUp('power double press');
+        haptic();
+        this.doublePress.doublePress();
     }
 
     _doubleTap() {
@@ -186,14 +305,30 @@ export class Power extends Signals.EventEmitter {
         return this._vibeos?.get_boolean('aod') ?? false;
     }
 
+    // the layer and the AOD over the whole screen as it is now
+    _fit() {
+        const monitor = Main.layoutManager.primaryMonitor;
+        if (!monitor)
+            return;
+        this.layer.set_position(monitor.x, monitor.y);
+        this.layer.set_size(monitor.width, monitor.height);
+        this._aod.fit(monitor);
+    }
+
     goToSleep(reason) {
         if (!this.interactive)
             return;
         log(`vibeos: going to sleep (${reason})`);
+        this._fit();
         this._state = this._aodEnabled ? State.DOZING : State.ASLEEP;
         this._sleptAt = GLib.get_monotonic_time();
         this._menu?.closeNow();
-        this._keyguard.lock();
+        // As Android's KeyguardViewMediator has a pending lock: a sleep by the power key, while a double press opens an
+        // app, locks once the screen is dark, and a double press before that wakes the phone still unlocked
+        if (reason === 'power' && this.doublePress?.doublePressArmed)
+            this._lockWhenDark();
+        else
+            this._keyguard.lock();
 
         this._aod.visible = this._state === State.DOZING;
         this._aod.prepare();
@@ -209,14 +344,35 @@ export class Power extends Signals.EventEmitter {
             this._panel.wakeGesture(this._vibeos?.get_boolean('double-tap-wake') !== false);
         });
         this._syncTimeout();
-        this._setActive(true);
+        // (a tablet's: once its outputs have been off for the wake floor, _outputsOff)
+        if (!TABLET)
+            this._setActive(true);
         this.emit('state-changed');
     }
 
     wakeUp(reason) {
         if (this.interactive)
             return;
+        // the panel went off only just now: the wake waits for the floor, from any source (one waiting wake stands for
+        // every one made meanwhile)
+        if (TABLET && this._outputsAreOff) {
+            const wait = this._floorLeft();
+            if (wait > 0) {
+                if (!this._wakeWaitId) {
+                    log(`vibeos: waking up (${reason}) in ${wait} ms: the panel went off just now`);
+                    this._wakeWaitId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, wait, () => {
+                        this._wakeWaitId = 0;
+                        this.wakeUp(reason);
+                        return GLib.SOURCE_REMOVE;
+                    });
+                }
+                return;
+            }
+        }
         log(`vibeos: waking up (${reason})`);
+        // the sleep's lock still waiting: now, before anything shows (a double press took it back before this)
+        if (this._lockId)
+            this._lockNow();
         const from = this._state;
         this._state = State.AWAKE;
         this._wokeAt = GLib.get_monotonic_time();
@@ -268,14 +424,43 @@ export class Power extends Signals.EventEmitter {
         this._grab = null;
     }
 
+    // the lock once the sleep's fade is over (SLEEP_MS, longer than DOUBLE_PRESS_MS), whether animations run or not
+    _lockWhenDark() {
+        this._cancelLock();
+        this._lockId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, SLEEP_MS, () => {
+            this._lockId = 0;
+            this._lockNow();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    _cancelLock() {
+        if (this._lockId)
+            GLib.source_remove(this._lockId);
+        this._lockId = 0;
+    }
+
+    // Locked now. The black layer's grab stays the top one (it went up before the keyguard's, the other way round from
+    // a sleep that locks at once): touches on the dark screen still go nowhere.
+    _lockNow() {
+        this._cancelLock();
+        const grabbed = !!this._grab;
+        if (grabbed)
+            Main.popModal(this._grab);
+        this._grab = null;
+        this._keyguard.lock();
+        if (grabbed)
+            this._grab = Main.pushModal(this.layer, {actionMode: Main.actionMode});
+    }
+
     // --- the screen timeout: the lock screen's own, else the session's idle delay (0: never) unless an app inhibits
-    // idle; after any input
+    // idle; after any input. None while docked.
 
     _syncTimeout() {
         if (this._idleWatch)
             this._idleMonitor.remove_watch(this._idleWatch);
         this._idleWatch = 0;
-        if (!this.interactive)
+        if (!this.interactive || this._docked)
             return;
         let ms;
         if (this._keyguard.showing)
@@ -296,6 +481,24 @@ export class Power extends Signals.EventEmitter {
             this.goToSleep('timeout');
         });
         this._idleWatch = id;
+    }
+
+    async _checkDocked() {
+        const check = ++this._dockCheck;
+        let docked;
+        try {
+            const [, monitors] = (await displayConfig('GetCurrentState', null, STATE_TYPE)).recursiveUnpack();
+            docked = monitors.some(([, , props]) => !props['is-builtin']);
+        } catch (e) {
+            logError(e, 'vibeos: the displays plugged in');
+            return;
+        }
+        // only the latest answer counts: a plug and an unplug in quick succession
+        if (this._destroyed || check !== this._dockCheck || docked === this._docked)
+            return;
+        this._docked = docked;
+        log(`vibeos: ${docked ? 'docked, no screen timeout' : 'undocked'}`);
+        this._syncTimeout();
     }
 
     _watchInhibitors() {
@@ -344,10 +547,32 @@ export class Power extends Signals.EventEmitter {
     // the outputs go off for real once the black is up, as gnome-settings-daemon would have them: power_save_blocked
     // comes off for that, and back on before they are turned on again (an "on" goes through it anyway). A panel with
     // a low power mode (the S10e's, whose DSI link does not come back from off) stays on, at its lowest brightness.
+    // what is left of the wake floor, in ms (0 or less: none)
+    _floorLeft() {
+        return Math.ceil(WAKE_FLOOR_MS - (GLib.get_monotonic_time() - this._offAt) / 1000);
+    }
+
     _outputsOff(off) {
         if (this._panel.hasLowPower || off === (this._outputsAreOff ?? false))
             return;
         this._outputsAreOff = off;
+        if (off)
+            this._offAt = GLib.get_monotonic_time();
+        // The screen saver's "active" is gnome-settings-daemon's cue to take the outputs as its to blank, and from
+        // then on any input at all (a touch, a volume key) has it turn them on again by itself, past this file and its
+        // wake floor: on a tablet it is told only once the floor is over
+        if (TABLET && off) {
+            const afterFloor = () => {
+                this._activeId = 0;
+                const left = this._floorLeft();
+                if (left > 0)
+                    this._activeId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, left, afterFloor);
+                else if (!this.interactive && !this._wakeWaitId)
+                    this._setActive(true);
+                return GLib.SOURCE_REMOVE;
+            };
+            this._activeId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, WAKE_FLOOR_MS, afterFloor);
+        }
         this._monitors.power_save_blocked = !off;
         Gio.DBus.session.call('org.gnome.Mutter.DisplayConfig', '/org/gnome/Mutter/DisplayConfig',
             'org.freedesktop.DBus.Properties', 'Set',
@@ -363,6 +588,9 @@ export class Power extends Signals.EventEmitter {
     }
 
     _setActive(active) {
+        if (this._activeId)
+            GLib.source_remove(this._activeId);
+        this._activeId = 0;
         if (active === this._active)
             return;
         this._active = active;
@@ -394,11 +622,25 @@ export class Power extends Signals.EventEmitter {
 
     destroy() {
         this._cancelLongPress();
+        // a hold under way ends with the extension: Agent stops listening
+        if (this._agentHeld)
+            this.doublePress?.hold(false);
+        this._agentHeld = false;
+        this._cancelLock();
+        if (this._wakeWaitId)
+            GLib.source_remove(this._wakeWaitId);
+        this._wakeWaitId = 0;
+        if (this._activeId)
+            GLib.source_remove(this._activeId);
+        this._activeId = 0;
         this._fadeAnim?.stop();
+        this._destroyed = true;
         if (this._idleWatch)
             this._idleMonitor.remove_watch(this._idleWatch);
+        Main.layoutManager.disconnectObject(this);
         this._sessionManager?.disconnectObject(this);
         this._keyguard.disconnectObject(this);
+        geometry.disconnectObject(this);
         this._keys.destroy();
         if (this._nameId)
             Gio.bus_unown_name(this._nameId);
@@ -413,6 +655,7 @@ export class Power extends Signals.EventEmitter {
         this._hideLayer();
         this.layer.destroy();
         this._monitors.power_save_blocked = false;
+        this._monitors.disconnectObject(this);
         this._vibeos?.disconnectObject(this);
         this._session.disconnectObject(this);
     }

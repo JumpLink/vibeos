@@ -9,6 +9,7 @@
  *   vibeos-snackbar.h     the snackbar
  *   vibeos-dialog.h       the alert dialog, inside the window
  *   vibeos-time-picker.h  the clock-face time picker and its dialog
+ *   vibeos-clamp.h        a column no wider than a maximum, centred (a page's content on a tablet)
  *
  * Sizes are dp: on the phone (scale 3) one GTK pixel is one dp. */
 #pragma once
@@ -28,6 +29,7 @@
 #include "vibeos-list-detail.h"
 #include "vibeos-fab-column.h"
 #include "vibeos-list-row.h"
+#include "vibeos-clamp.h"
 #include "vibeos-card-list.h"
 #include "vibeos-top-bar.h"
 #include "vibeos-search.h"
@@ -45,11 +47,13 @@
  *   vibeos-search.h       the search bar and the search view it opens */
 #include "vibeos-sheet.h"
 #include "vibeos-about.h"
+#include "vibeos-menu.h"
 
 /* Sheets:
  *
  *   vibeos-sheet.h        the bottom sheet, inside the window, with pages pushed over its first
- *   vibeos-about.h        the About sheet every app shows: its icon, name, the VibeOS release, links, credits, legal */
+ *   vibeos-about.h        the About sheet every app shows: its icon, name, the VibeOS release, links, credits, legal
+ *   vibeos-menu.h         the ⋮ overflow menu, its last row About */
 #include "vibeos-text.h"
 
 /* Text that follows the system's font settings:
@@ -62,3 +66,8 @@
  *
  *   vibeos-original-colors.h  the theme's colours by Material 3's original rules, for apps that draw parts in them
  *   vibeos-extended-fab.h     the extended floating action button, which collapses to its icon on scroll */
+#include "vibeos-unified-push.h"
+
+/* Push messages:
+ *
+ *   vibeos-unified-push.h     an app's push messages, through the system's UnifiedPush distributor */
