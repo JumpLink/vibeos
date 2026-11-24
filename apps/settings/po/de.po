@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-settings\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 15:40+0100\n"
+"POT-Creation-Date: 2026-11-24 18:05+0100\n"
 "PO-Revision-Date: 2026-11-24 03:44+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: German\n"
@@ -1134,7 +1134,7 @@ msgstr "Zugelassen"
 
 # android: Settings autofill_logging_level_entries[0] (several translations, short)
 #: src/ns-apps.c src/ns-bt.c src/ns-buttons.c src/ns-displays.c src/ns-net.c
-#: src/ns-pages.c src/ns-parallax.c
+#: src/ns-pages.c
 msgid "Off"
 msgstr "Aus"
 
@@ -3162,6 +3162,13 @@ msgstr[1] "%u Kerne"
 #: src/ns-pages.c
 msgid "Processor"
 msgstr "Prozessor"
+
+#. TRANSLATORS: the card that turns the parallax wallpaper off, beside the wallpapers' own cards; it names the choice
+#. under a picture a third of the screen wide, so a short word ("None" says it as well as "Off")
+#: src/ns-parallax.c
+msgctxt "parallax wallpaper"
+msgid "Off"
+msgstr "Aus"
 
 #: src/ns-pattern.c
 msgid "Use the PIN pad"
