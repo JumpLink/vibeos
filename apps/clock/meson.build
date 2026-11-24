@@ -2,6 +2,13 @@ project('vibeos-clock', 'c', version: '1.0', meson_version: '>= 1.0',
         default_options: ['warning_level=2', 'c_std=gnu11', 'buildtype=release'])
 add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers', language: 'c')
 
+# glibc's first weekday (_NL_TIME_FIRST_WEEKDAY) is an enum item, not a macro, so no #ifdef sees it: whether the C
+# library has it is found out by compiling, as GTK does
+if meson.get_compiler('c').compiles('''#include <langinfo.h>
+int main (void) { return *nl_langinfo (_NL_TIME_FIRST_WEEKDAY); }''', name: '_NL_TIME_FIRST_WEEKDAY')
+  add_project_arguments('-DHAVE__NL_TIME_FIRST_WEEKDAY', language: 'c')
+endif
+
 gnome = import('gnome')
 gio = dependency('gio-unix-2.0', version: '>= 2.76')
 m = meson.get_compiler('c').find_library('m')

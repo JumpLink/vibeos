@@ -278,7 +278,7 @@ cal_week_start (int setting)
   /* the setting's values are Sunday 1 … Saturday 7 */
   if (setting >= 1 && setting <= 7)
     return setting - 1;
-#ifdef _NL_TIME_FIRST_WEEKDAY
+#ifdef HAVE__NL_TIME_FIRST_WEEKDAY
   {
     /* GtkCalendar's reading of glibc's locale: the week's origin (a Sunday or a Monday) and the first weekday
      * counted from it */

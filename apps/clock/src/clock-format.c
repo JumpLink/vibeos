@@ -20,7 +20,7 @@ clock_week_start (GSettings *settings)
   if (day == 7)
     return G_DATE_SATURDAY;
 
-#ifdef _NL_TIME_FIRST_WEEKDAY
+#ifdef HAVE__NL_TIME_FIRST_WEEKDAY
   /* glibc's locale data, read as GtkCalendar reads it: the first weekday counted from the week's origin
    * (19971130 is a Sunday, 19971201 a Monday) */
   {
