@@ -17,11 +17,11 @@ msgstr ""
 
 #: data/vibeos.Compass.desktop.in main.c
 msgid "Compass"
-msgstr ""
+msgstr "Bussola"
 
 #: data/vibeos.Compass.desktop.in
 msgid "Which way you are facing"
-msgstr ""
+msgstr "La direzione verso cui sei rivolto"
 
 #. GClueAccuracyLevel: exact (the dial prints tenths of a second)
 #. the dial's radius on an upright phone, which the ticks and pointer are drawn for
@@ -29,64 +29,63 @@ msgstr ""
 #: main.c
 msgctxt "direction"
 msgid "N"
-msgstr ""
+msgstr "N"
 
 #: main.c
 msgctxt "direction"
 msgid "NE"
-msgstr ""
+msgstr "NE"
 
 #: main.c
 msgctxt "direction"
 msgid "E"
-msgstr ""
+msgstr "E"
 
 #: main.c
 msgctxt "direction"
 msgid "SE"
-msgstr ""
+msgstr "SE"
 
-# android: Dialer call_details_seconds_abbreviation (adapted, several translations, short)
 #: main.c
 msgctxt "direction"
 msgid "S"
-msgstr "Sec"
+msgstr "S"
 
 #: main.c
 msgctxt "direction"
 msgid "SW"
-msgstr ""
+msgstr "SO"
 
 #: main.c
 msgctxt "direction"
 msgid "W"
-msgstr ""
+msgstr "O"
 
 #: main.c
 msgctxt "direction"
 msgid "NW"
-msgstr ""
+msgstr "NO"
 
 #: main.c
 msgid "The sensor service is not running, so the compass cannot be read."
-msgstr ""
+msgstr "Il servizio dei sensori non è in esecuzione, quindi non è possibile leggere la bussola."
 
 #: main.c
 msgid "The compass cannot be read right now."
-msgstr ""
+msgstr "Al momento non è possibile leggere la bussola."
 
 #: main.c
 msgid ""
 "Hold the device flat, away from metal. Move it in a figure 8 to calibrate."
-msgstr ""
+msgstr "Tieni il dispositivo in piano, lontano dal metallo. Muovilo descrivendo un 8 per calibrarlo."
 
 #: main.c
 msgid "This device has no compass."
-msgstr ""
+msgstr "Questo dispositivo non ha una bussola."
 
 #: main.c
 msgid "Location unavailable"
-msgstr ""
+msgstr "Posizione non disponibile"
 
 # android: Framework permgrouplab_location (several translations, short)
 #: main.c
@@ -95,7 +94,7 @@ msgstr "Posizione"
 
 #: main.c
 msgid "Locating…"
-msgstr ""
+msgstr "Localizzazione…"
 
 # android: Framework action_menu_overflow_description (several translations, short)
 #: main.c
