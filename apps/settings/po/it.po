@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-settings\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 03:44+0100\n"
+"POT-Creation-Date: 2026-11-24 14:27+0100\n"
 "PO-Revision-Date: 2026-11-24 03:44+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Italian\n"
@@ -26,8 +26,8 @@ msgstr "Impostazioni"
 
 #: data/gnome-panel.desktop.in data/org.gnome.Settings.desktop.in
 #: data/vibeos.Settings.desktop.in
-msgid "Phone settings"
-msgstr "Impostazioni del telefono"
+msgid "Wi-Fi, sound, display, apps and more"
+msgstr "Wi-Fi, suono, display, app e altro"
 
 #: data/vibeos.Settings.desktop.in
 msgid "preferences;settings;wifi;display;wallpaper;"
@@ -49,7 +49,9 @@ msgstr "Wi‑Fi, hotspot"
 msgid ""
 "wlan wifi internet sim mobile data apn vpn hotspot tethering flight airplane "
 "proxy wired"
-msgstr "wifi internet sim dati mobili apn vpn hotspot tethering aereo volo proxy cablata rete"
+msgstr ""
+"wifi internet sim dati mobili apn vpn hotspot tethering aereo volo proxy "
+"cablata rete"
 
 # android: Settings connected_devices_dashboard_title
 #: src/main.c src/ns-net.c src/ns-pages.c
@@ -64,7 +66,9 @@ msgstr "Bluetooth, accoppiamento"
 #: src/main.c
 msgid ""
 "pair headphones speaker watch sharing visible device name printers printing"
-msgstr "accoppia accoppiamento cuffie auricolari altoparlante cassa orologio condivisione visibile nome dispositivo stampanti stampa"
+msgstr ""
+"accoppia accoppiamento cuffie auricolari altoparlante cassa orologio "
+"condivisione visibile nome dispositivo stampanti stampa"
 
 # android: Settings running_processes_header_apps_prefix
 #: src/main.c src/ns-apps.c
@@ -78,7 +82,8 @@ msgstr "App recenti, app predefinite"
 
 #: src/main.c
 msgid "permissions storage default browser email"
-msgstr "autorizzazioni permessi archiviazione memoria browser predefinito email posta"
+msgstr ""
+"autorizzazioni permessi archiviazione memoria browser predefinito email posta"
 
 # android: Settings action_corner_action_titles[3]
 #: src/main.c src/ns-apps.c src/ns-shell.c
@@ -106,7 +111,9 @@ msgstr "Volume, vibrazione, suoneria"
 msgid ""
 "ringtone alarm sound speaker microphone vibrate mute silent haptic dial pad "
 "tones"
-msgstr "suoneria sveglia suono altoparlante microfono vibrazione silenzia silenzioso muto aptico toni tastierino"
+msgstr ""
+"suoneria sveglia suono altoparlante microfono vibrazione silenzia silenzioso "
+"muto aptico toni tastierino"
 
 # android: Settings display_settings (several translations, short)
 #: src/main.c src/ns-pages.c
@@ -122,7 +129,9 @@ msgstr "Tema scuro, dimensioni caratteri, luminosità"
 msgid ""
 "screen timeout adaptive brightness night light intensity warm amber rotate "
 "scale always on aod display size text bold zoom lock screen"
-msgstr "spegnimento schermo luminosità adattiva notturna intensità calda ambra rotazione scala sempre attivo display dimensioni testo grassetto zoom blocco"
+msgstr ""
+"spegnimento schermo luminosità adattiva notturna intensità calda ambra "
+"rotazione scala sempre attivo display dimensioni testo grassetto zoom blocco"
 
 # android: Settings style_and_wallpaper_settings_title (adapted)
 #: src/main.c src/ns-pages.c
@@ -130,14 +139,16 @@ msgid "Wallpaper and style"
 msgstr "Sfondo e stile"
 
 #: src/main.c
-msgid "Wallpapers, colours, home screen"
+msgid "Wallpapers, colors, home screen"
 msgstr "Sfondi, colori, schermata Home"
 
 #: src/main.c
 msgid ""
 "background accent dark theme colour color parallax launcher grid columns "
 "rows layout icon size pack shape app names labels drawer"
-msgstr "sfondo accento tema scuro colore parallasse launcher griglia colonne righe layout icone dimensioni pacchetto forma nomi app etichette cassetto"
+msgstr ""
+"sfondo accento tema scuro colore parallasse launcher griglia colonne righe "
+"layout icone dimensioni pacchetto forma nomi app etichette cassetto"
 
 # android: Settings device_details_battery
 #: src/main.c src/ns-pages.c
@@ -150,7 +161,8 @@ msgstr "Ricarica, alimentazione e spegnimento schermo"
 
 #: src/main.c
 msgid "power dim health temperature voltage capacity"
-msgstr "alimentazione energia attenuazione stato salute temperatura tensione capacità"
+msgstr ""
+"alimentazione energia attenuazione stato salute temperatura tensione capacità"
 
 # android: Settings header_category_system
 #: src/main.c src/ns-pages.c
@@ -165,7 +177,9 @@ msgstr "Lingue, tastiera, ora"
 msgid ""
 "region locale language keyboard clock date time users mouse touchpad updates "
 "software upgrade gestures power button"
-msgstr "regione impostazioni locali lingua tastiera orologio data ora utenti mouse touchpad aggiornamenti software gesti tasto accensione"
+msgstr ""
+"regione impostazioni locali lingua tastiera orologio data ora utenti mouse "
+"touchpad aggiornamenti software gesti tasto accensione"
 
 #: src/main.c src/ns-caps.c
 msgid "About phone"
@@ -177,7 +191,9 @@ msgstr "Nome del dispositivo, versioni"
 
 #: src/main.c
 msgid "phone tablet model kernel version memory storage name about"
-msgstr "telefono tablet modello kernel versione memoria archiviazione nome informazioni"
+msgstr ""
+"telefono tablet modello kernel versione memoria archiviazione nome "
+"informazioni"
 
 # android: Settings safety_center_title (adapted)
 #: src/main.c src/ns-privacy.c
@@ -191,7 +207,9 @@ msgstr "Blocco schermo, autorizzazioni"
 #: src/main.c
 msgid ""
 "password pin pattern swipe unlock lock screen camera microphone history trash"
-msgstr "password pin sequenza scorrimento sblocco blocco schermo fotocamera microfono cronologia cestino"
+msgstr ""
+"password pin sequenza scorrimento sblocco blocco schermo fotocamera "
+"microfono cronologia cestino"
 
 # android: Settings app_ops_labels[0] (several translations, short)
 #: src/main.c src/ns-perms.c src/ns-privacy.c
@@ -230,7 +248,9 @@ msgstr "Display, interazione"
 
 #: src/main.c
 msgid "zoom contrast screen reader animations font size bold text display size"
-msgstr "zoom contrasto screen reader lettore schermo animazioni dimensioni carattere grassetto testo display"
+msgstr ""
+"zoom contrasto screen reader lettore schermo animazioni dimensioni carattere "
+"grassetto testo display"
 
 # android: Settings wifi_calling_mode_choices_v2[0] (several translations, short)
 #: src/main.c src/ns-net.c src/ns-pages.c
@@ -464,7 +484,9 @@ msgstr "Correzione automatica"
 #: src/main.c
 msgid ""
 "autocorrect spelling typos suggestions next word prediction text correction"
-msgstr "correzione automatica ortografia errori battitura suggerimenti parola successiva previsione"
+msgstr ""
+"correzione automatica ortografia errori battitura suggerimenti parola "
+"successiva previsione"
 
 # android: Settings gesture_preference_title
 #: src/main.c src/ns-buttons.c src/ns-pages.c
@@ -481,7 +503,9 @@ msgstr "Premi due volte il tasto di accensione"
 
 #: src/main.c
 msgid "power key twice double press open app camera agent shortcut"
-msgstr "tasto accensione due volte doppia pressione apri app fotocamera agente scorciatoia"
+msgstr ""
+"tasto accensione due volte doppia pressione apri app fotocamera agente "
+"scorciatoia"
 
 #: src/main.c src/ns-buttons.c
 msgid "Side button"
@@ -610,7 +634,9 @@ msgstr "L'autorità di certificazione firmataria non è nota."
 msgid ""
 "The certificate does not match the expected identity of the site that it was "
 "retrieved from."
-msgstr "Il certificato non corrisponde all'identità prevista del sito da cui proviene."
+msgstr ""
+"Il certificato non corrisponde all'identità prevista del sito da cui "
+"proviene."
 
 #: src/ns-accounts-net.c
 msgid "The certificate’s activation time is still in the future."
@@ -749,7 +775,7 @@ msgid "Server address"
 msgstr "Indirizzo del server"
 
 #: src/ns-accounts.c
-msgid "For example example.com or 192.168.0.82"
+msgid "For example example.com or 192.0.2.82"
 msgstr "Ad esempio example.com o un indirizzo IP"
 
 # android: Jelly auth_dialog_username (adapted, other app, short)
@@ -801,7 +827,9 @@ msgstr "Connessione al server…"
 msgid ""
 "Your Nextcloud server's files, calendars and contacts. You sign in in the "
 "browser."
-msgstr "File, calendari e contatti del tuo server Nextcloud. L'accesso avviene nel browser."
+msgstr ""
+"File, calendari e contatti del tuo server Nextcloud. L'accesso avviene nel "
+"browser."
 
 #: src/ns-accounts.c
 msgid "The server's sign-in page opens in the browser."
@@ -823,7 +851,8 @@ msgstr "Per questo indirizzo sono stati trovati i server qui sotto."
 
 #: src/ns-accounts.c
 msgid "The servers for this address could not be found: enter them below."
-msgstr "Impossibile trovare i server per questo indirizzo: inseriscili qui sotto."
+msgstr ""
+"Impossibile trovare i server per questo indirizzo: inseriscili qui sotto."
 
 #: src/ns-accounts.c
 msgid "Looking up the servers for this address…"
@@ -881,7 +910,9 @@ msgstr "Ad esempio imap.example.com"
 msgid ""
 "For example smtp.example.com. Leave it empty for an account that only reads "
 "mail."
-msgstr "Ad esempio smtp.example.com. Lascialo vuoto per un account che legge solo la posta."
+msgstr ""
+"Ad esempio smtp.example.com. Lascialo vuoto per un account che legge solo la "
+"posta."
 
 #: src/ns-accounts.c
 msgid "Looking for the Exchange server…"
@@ -893,7 +924,9 @@ msgstr "Calendari, contatti e posta da un server Microsoft Exchange"
 
 #: src/ns-accounts.c
 msgid "The account's details are found from the email address when possible."
-msgstr "Quando possibile, i dettagli dell'account vengono ricavati dall'indirizzo email."
+msgstr ""
+"Quando possibile, i dettagli dell'account vengono ricavati dall'indirizzo "
+"email."
 
 #: src/ns-accounts.c
 msgid "Account details"
@@ -914,7 +947,8 @@ msgstr "Il servizio di identità ha restituito una chiave non valida"
 
 #: src/ns-accounts.c
 msgid "The principal is a user name and a realm: user@EXAMPLE.COM"
-msgstr "Il principal è formato da un nome utente e da un realm: user@EXAMPLE.COM"
+msgstr ""
+"Il principal è formato da un nome utente e da un realm: user@EXAMPLE.COM"
 
 #: src/ns-accounts.c
 msgid "Web and network resources of your organization, by Kerberos"
@@ -953,7 +987,9 @@ msgstr "Continua nella finestra che si è aperta."
 msgid ""
 "This version of GNOME Online Accounts asks for an organization's details "
 "differently."
-msgstr "Questa versione di GNOME Online Accounts chiede i dettagli di un'organizzazione in un altro modo."
+msgstr ""
+"Questa versione di GNOME Online Accounts chiede i dettagli di "
+"un'organizzazione in un altro modo."
 
 #: src/ns-accounts.c
 msgid "The sign-in page opens in the browser."
@@ -971,7 +1007,8 @@ msgstr "Usa un account dell'organizzazione"
 
 #: src/ns-accounts.c
 msgid "Sign in with details from an organization or developer account"
-msgstr "Accedi con i dettagli di un account dell'organizzazione o da sviluppatore"
+msgstr ""
+"Accedi con i dettagli di un account dell'organizzazione o da sviluppatore"
 
 #: src/ns-accounts.c
 msgid "Details from your organization"
@@ -1008,13 +1045,17 @@ msgstr "Contatti"
 msgid ""
 "The phone stops using it and forgets its sign-in. The account itself stays "
 "with its provider."
-msgstr "Il telefono smette di usarlo e dimentica i dati di accesso. L'account resta comunque presso il suo provider."
+msgstr ""
+"Il telefono smette di usarlo e dimentica i dati di accesso. L'account resta "
+"comunque presso il suo provider."
 
 #: src/ns-accounts.c
 msgid ""
 "The tablet stops using it and forgets its sign-in. The account itself stays "
 "with its provider."
-msgstr "Il tablet smette di usarlo e dimentica i dati di accesso. L'account resta comunque presso il suo provider."
+msgstr ""
+"Il tablet smette di usarlo e dimentica i dati di accesso. L'account resta "
+"comunque presso il suo provider."
 
 #: src/ns-accounts.c
 msgid "Remove this account?"
@@ -1046,7 +1087,9 @@ msgstr "Calendari"
 msgid ""
 "The account could not sign in. Its calendars, contacts and files wait until "
 "it does."
-msgstr "L'account non è riuscito ad accedere. Calendari, contatti e file restano in attesa finché non ci riesce."
+msgstr ""
+"L'account non è riuscito ad accedere. Calendari, contatti e file restano in "
+"attesa finché non ci riesce."
 
 #: src/ns-accounts.c
 msgid "Use for"
@@ -1065,7 +1108,9 @@ msgstr "Devi accedere di nuovo"
 msgid ""
 "No online accounts yet. Add one to get its calendars, contacts and files "
 "here."
-msgstr "Ancora nessun account online. Aggiungine uno per avere qui i suoi calendari, contatti e file."
+msgstr ""
+"Ancora nessun account online. Aggiungine uno per avere qui i suoi calendari, "
+"contatti e file."
 
 #: src/ns-apps.c
 msgid "Allow notifications"
@@ -1148,7 +1193,9 @@ msgstr "Test periodici del sistema di allerta"
 msgid ""
 "Presidential alerts are always shown. Alerts need a SIM and a modem that "
 "receives them."
-msgstr "Gli avvisi presidenziali vengono sempre mostrati. Gli avvisi richiedono una SIM e un modem in grado di riceverli."
+msgstr ""
+"Gli avvisi presidenziali vengono sempre mostrati. Gli avvisi richiedono una "
+"SIM e un modem in grado di riceverli."
 
 #: src/ns-apps.c
 msgid "Cell broadcast warnings"
@@ -1263,7 +1310,7 @@ msgid "Calculating…"
 msgstr "Calcolo…"
 
 # android: Settings launch_instant_app
-#: src/ns-apps.c src/ns-net.c
+#: src/ns-apps.c
 msgid "Open"
 msgstr "Apri"
 
@@ -1302,7 +1349,7 @@ msgstr "App aperte di recente"
 
 #: src/ns-apps.c
 #, c-format
-msgid "See all %u app"
+msgid "See %u app"
 msgid_plural "See all %u apps"
 msgstr[0] "Mostra %u app"
 msgstr[1] "Mostra tutte le %u app"
@@ -1481,15 +1528,19 @@ msgstr "On"
 #: src/ns-bt.c
 #, c-format
 msgid "Visible as “%s” to nearby devices while this page is open."
-msgstr "Visibile come «%s» ai dispositivi vicini mentre questa pagina è aperta."
+msgstr ""
+"Visibile come «%s» ai dispositivi vicini mentre questa pagina è aperta."
 
 #: src/ns-bt.c
 msgid "This phone is visible to nearby devices while this page is open."
-msgstr "Questo telefono è visibile ai dispositivi vicini mentre questa pagina è aperta."
+msgstr ""
+"Questo telefono è visibile ai dispositivi vicini mentre questa pagina è "
+"aperta."
 
 #: src/ns-bt.c
 msgid "This tablet is visible to nearby devices while this page is open."
-msgstr "Questo tablet è visibile ai dispositivi vicini mentre questa pagina è aperta."
+msgstr ""
+"Questo tablet è visibile ai dispositivi vicini mentre questa pagina è aperta."
 
 # android: Settings bluetooth_key_missing_device_settings
 #: src/ns-bt.c
@@ -1498,7 +1549,8 @@ msgstr "Impostazioni del dispositivo"
 
 #: src/ns-bt.c
 msgid "Turn on Bluetooth to connect headphones, speakers, watches and more."
-msgstr "Attiva il Bluetooth per collegare cuffie, altoparlanti, smartwatch e altro."
+msgstr ""
+"Attiva il Bluetooth per collegare cuffie, altoparlanti, smartwatch e altro."
 
 # android: SettingsLib adb_paired_devices_title (short)
 #: src/ns-bt.c
@@ -1543,13 +1595,17 @@ msgstr "Premi due volte il tasto di accensione per aprire"
 msgid ""
 "Press the power button twice quickly, with the screen on or off. On a locked "
 "phone, the app opens once you unlock it."
-msgstr "Premi due volte rapidamente il tasto di accensione, con lo schermo acceso o spento. Se il telefono è bloccato, l'app si apre dopo lo sblocco."
+msgstr ""
+"Premi due volte rapidamente il tasto di accensione, con lo schermo acceso o "
+"spento. Se il telefono è bloccato, l'app si apre dopo lo sblocco."
 
 #: src/ns-buttons.c
 msgid ""
 "Press the power button twice quickly, with the screen on or off. On a locked "
 "tablet, the app opens once you unlock it."
-msgstr "Premi due volte rapidamente il tasto di accensione, con lo schermo acceso o spento. Se il tablet è bloccato, l'app si apre dopo lo sblocco."
+msgstr ""
+"Premi due volte rapidamente il tasto di accensione, con lo schermo acceso o "
+"spento. Se il tablet è bloccato, l'app si apre dopo lo sblocco."
 
 #: src/ns-buttons.c
 msgid "Use side button"
@@ -1562,13 +1618,17 @@ msgstr "Premi il tasto laterale per aprire"
 #: src/ns-buttons.c
 msgid ""
 "Works with the screen on. On a locked phone, an app opens once you unlock it."
-msgstr "Funziona con lo schermo acceso. Se il telefono è bloccato, l'app si apre dopo lo sblocco."
+msgstr ""
+"Funziona con lo schermo acceso. Se il telefono è bloccato, l'app si apre "
+"dopo lo sblocco."
 
 #: src/ns-buttons.c
 msgid ""
 "Works with the screen on. On a locked tablet, an app opens once you unlock "
 "it."
-msgstr "Funziona con lo schermo acceso. Se il tablet è bloccato, l'app si apre dopo lo sblocco."
+msgstr ""
+"Funziona con lo schermo acceso. Se il tablet è bloccato, l'app si apre dopo "
+"lo sblocco."
 
 #: src/ns-buttons.c
 msgid "On / Recent apps"
@@ -1592,19 +1652,27 @@ msgstr "Tieni premuto il tasto di accensione per Agent"
 #: src/ns-buttons.c
 msgid ""
 "Talk to Agent while you hold it. Power menu: power and volume up together"
-msgstr "Parla con Agent mentre tieni premuto il tasto. Menu di accensione: tasto di accensione e volume su insieme"
+msgstr ""
+"Parla con Agent mentre tieni premuto il tasto. Menu di accensione: tasto di "
+"accensione e volume su insieme"
 
 #: src/ns-buttons.c
 msgid ""
 "Off: holding the power button opens the power menu. On a locked phone, Agent "
 "only answers questions until you unlock it."
-msgstr "Off: se tieni premuto il tasto di accensione si apre il menu di accensione. Se il telefono è bloccato, Agent risponde solo alle domande finché non lo sblocchi."
+msgstr ""
+"Off: se tieni premuto il tasto di accensione si apre il menu di accensione. "
+"Se il telefono è bloccato, Agent risponde solo alle domande finché non lo "
+"sblocchi."
 
 #: src/ns-buttons.c
 msgid ""
 "Off: holding the power button opens the power menu. On a locked tablet, "
 "Agent only answers questions until you unlock it."
-msgstr "Off: se tieni premuto il tasto di accensione si apre il menu di accensione. Se il tablet è bloccato, Agent risponde solo alle domande finché non lo sblocchi."
+msgstr ""
+"Off: se tieni premuto il tasto di accensione si apre il menu di accensione. "
+"Se il tablet è bloccato, Agent risponde solo alle domande finché non lo "
+"sblocchi."
 
 #: src/ns-caps.c
 msgid "About tablet"
@@ -1762,6 +1830,11 @@ msgid "WPA Enterprise"
 msgstr "WPA Enterprise"
 
 #: src/ns-net.c
+msgctxt "Wi-Fi security"
+msgid "Open"
+msgstr "Aperta"
+
+#: src/ns-net.c
 msgid "Could not connect"
 msgstr "Impossibile connettersi"
 
@@ -1799,11 +1872,15 @@ msgstr "Impossibile eliminare la rete"
 
 #: src/ns-net.c
 msgid "Its password is deleted and the phone no longer joins it by itself."
-msgstr "La password verrà eliminata e il telefono non si connetterà più automaticamente."
+msgstr ""
+"La password verrà eliminata e il telefono non si connetterà più "
+"automaticamente."
 
 #: src/ns-net.c
 msgid "Its password is deleted and the tablet no longer joins it by itself."
-msgstr "La password verrà eliminata e il tablet non si connetterà più automaticamente."
+msgstr ""
+"La password verrà eliminata e il tablet non si connetterà più "
+"automaticamente."
 
 #: src/ns-net.c
 msgid "Forget this network?"
@@ -1903,21 +1980,24 @@ msgstr "Una rete nascosta o non raggiungibile"
 msgid "Share the mobile data over Wi-Fi"
 msgstr "Condividi i dati mobili tramite Wi-Fi"
 
-# android: Settings wifi_proxy_settings[0] (several translations, short)
 #. ---- Joining by hand: a hidden network, or WPA Enterprise (802.1X) ----
-#: src/ns-net.c src/ns-pages.c src/ns-sound.c
+#: src/ns-net.c
+msgctxt "Wi-Fi security"
 msgid "None"
-msgstr "Nessuno"
+msgstr "Nessuna"
 
 #: src/ns-net.c
+msgctxt "Wi-Fi security"
 msgid "WPA/WPA2 Personal"
 msgstr "WPA/WPA2 Personal"
 
 #: src/ns-net.c
+msgctxt "Wi-Fi security"
 msgid "WPA3 Personal"
 msgstr "WPA3 Personal"
 
 #: src/ns-net.c
+msgctxt "Wi-Fi security"
 msgid "WPA/WPA2 Enterprise"
 msgstr "WPA/WPA2 Enterprise"
 
@@ -2041,13 +2121,17 @@ msgstr "Banda"
 msgid ""
 "Other devices use the phone's mobile data. Wi-Fi is off while the hotspot is "
 "on."
-msgstr "Altri dispositivi usano i dati mobili del telefono. Il Wi-Fi resta disattivato mentre l'hotspot è attivo."
+msgstr ""
+"Altri dispositivi usano i dati mobili del telefono. Il Wi-Fi resta "
+"disattivato mentre l'hotspot è attivo."
 
 #: src/ns-net.c
 msgid ""
 "Other devices use the tablet's mobile data. Wi-Fi is off while the hotspot "
 "is on."
-msgstr "Altri dispositivi usano i dati mobili del tablet. Il Wi-Fi resta disattivato mentre l'hotspot è attivo."
+msgstr ""
+"Altri dispositivi usano i dati mobili del tablet. Il Wi-Fi resta disattivato "
+"mentre l'hotspot è attivo."
 
 #: src/ns-net.c
 msgid "No modem"
@@ -2283,9 +2367,7 @@ msgid "Add a printer"
 msgstr "Aggiungi una stampante"
 
 #: src/ns-net.c
-msgid ""
-"Its address, like printer.local or ipp://192.168.1.20/ipp/print. Network "
-"printers CUPS finds by itself are listed already."
+msgid "Its address, like printer.local or ipp://192.0.2.20/ipp/print. Network printers CUPS finds by itself are listed already."
 msgstr "Il suo indirizzo, ad esempio printer.local o ipp://printer.local/ipp/print. Le stampanti di rete che CUPS trova da solo sono già elencate."
 
 # android: Settings add
@@ -2361,13 +2443,18 @@ msgstr "Bluetooth, condivisione"
 msgid "Device name, visibility"
 msgstr "Nome del dispositivo, visibilità"
 
-# android: Settings night_display_auto_mode_custom (several translations)
 #: src/ns-pages.c
+msgctxt "Night Light schedule"
+msgid "None"
+msgstr "Nessuna"
+
+#: src/ns-pages.c
+msgctxt "Night Light schedule"
 msgid "Turns on at custom time"
 msgstr "Attiva in orario personalizzato"
 
-# android: Settings night_display_auto_mode_twilight (several translations)
 #: src/ns-pages.c
+msgctxt "Night Light schedule"
 msgid "Turns on from sunset to sunrise"
 msgstr "Attiva dal tramonto all'alba"
 
@@ -2391,25 +2478,34 @@ msgstr "Dal tramonto (%s) all'alba (%s)"
 #: src/ns-pages.c
 #, c-format
 msgid "The phone's location is not known yet: %s to %s until it is"
-msgstr "La posizione del telefono non è ancora nota: dalle %s alle %s nel frattempo"
+msgstr ""
+"La posizione del telefono non è ancora nota: dalle %s alle %s nel frattempo"
 
 #: src/ns-pages.c
 #, c-format
 msgid "The tablet's location is not known yet: %s to %s until it is"
-msgstr "La posizione del tablet non è ancora nota: dalle %s alle %s nel frattempo"
+msgstr ""
+"La posizione del tablet non è ancora nota: dalle %s alle %s nel frattempo"
 
 # android: Settings night_display_text (adapted)
 #: src/ns-pages.c
-msgid "Night light tints your screen amber. This makes it easier to look at your screen or read in dim light, and may help you fall asleep more easily."
-msgstr "Con la funzione Luminosità notturna, il tuo schermo diventa color ambra. In questo modo potrai guardarlo senza sforzare la vista o leggere in condizioni di luce attenuata e potrai addormentarti più facilmente."
+msgid ""
+"Night light tints your screen amber. This makes it easier to look at your "
+"screen or read in dim light, and may help you fall asleep more easily."
+msgstr ""
+"Con la funzione Luminosità notturna, il tuo schermo diventa color ambra. In "
+"questo modo potrai guardarlo senza sforzare la vista o leggere in condizioni "
+"di luce attenuata e potrai addormentarti più facilmente."
 
 #: src/ns-pages.c
-msgid "This screen cannot change its colours."
+msgid "This screen cannot change its colors."
 msgstr "I colori di questo schermo non possono essere modificati."
 
 #: src/ns-pages.c
 msgid "Night light is GNOME's settings daemon's, which is not installed."
-msgstr "Luminosità notturna è fornita dal daemon delle impostazioni di GNOME, che non è installato."
+msgstr ""
+"Luminosità notturna è fornita dal daemon delle impostazioni di GNOME, che "
+"non è installato."
 
 # android: Settings night_light_main_switch_title (adapted)
 #: src/ns-pages.c
@@ -2547,7 +2643,8 @@ msgstr "Aspetto"
 
 #: src/ns-pages.c src/ns-privacy.c
 msgid "Font size, display size, bold text"
-msgstr "Dimensioni carattere, dimensioni di visualizzazione, testo in grassetto"
+msgstr ""
+"Dimensioni carattere, dimensioni di visualizzazione, testo in grassetto"
 
 # android: Settings color_title
 #: src/ns-pages.c
@@ -2589,7 +2686,9 @@ msgstr "Ripristinare le dimensioni di visualizzazione e testo?"
 #: src/ns-pages.c
 msgid ""
 "Font size, Display size and Bold text go back to how they were at first."
-msgstr "Dimensioni carattere, dimensioni di visualizzazione e testo in grassetto torneranno alle impostazioni iniziali."
+msgstr ""
+"Dimensioni carattere, dimensioni di visualizzazione e testo in grassetto "
+"torneranno alle impostazioni iniziali."
 
 # android: Settings reset_bluetooth_wifi_button_text (several translations, short)
 #: src/ns-pages.c
@@ -2644,7 +2743,9 @@ msgstr "Sam · a me"
 msgid ""
 "Hi! Here are the pictures from the hike. The view from the top was worth "
 "every step. Let's do it again next month."
-msgstr "Ciao! Ecco le foto dell'escursione. La vista dalla cima valeva ogni passo. Rifacciamolo il mese prossimo."
+msgstr ""
+"Ciao! Ecco le foto dell'escursione. La vista dalla cima valeva ogni passo. "
+"Rifacciamolo il mese prossimo."
 
 # android: Settings color_contrast_preview
 #: src/ns-pages.c
@@ -2754,11 +2855,13 @@ msgstr "Capacità massima"
 
 #: src/ns-pages.c
 msgid "This phone's battery reports none of these."
-msgstr "La batteria di questo telefono non fornisce nessuna di queste informazioni."
+msgstr ""
+"La batteria di questo telefono non fornisce nessuna di queste informazioni."
 
 #: src/ns-pages.c
 msgid "This tablet's battery reports none of these."
-msgstr "La batteria di questo tablet non fornisce nessuna di queste informazioni."
+msgstr ""
+"La batteria di questo tablet non fornisce nessuna di queste informazioni."
 
 # android: Settings battery_usage_since_last_full_charge (adapted)
 #: src/ns-pages.c
@@ -2783,7 +2886,9 @@ msgstr "Stato, temperatura, capacità"
 
 #: src/ns-pages.c
 msgid "Remaining battery life is approximate and may change based on usage"
-msgstr "La durata residua della batteria è approssimativa e potrebbe cambiare in base all'utilizzo"
+msgstr ""
+"La durata residua della batteria è approssimativa e potrebbe cambiare in "
+"base all'utilizzo"
 
 #: src/ns-pages.c
 msgid "Teal"
@@ -2835,12 +2940,16 @@ msgstr "Sfondo con parallasse"
 #: src/ns-pages.c
 msgid ""
 "Layers that move as you tilt the phone. Off picks a still picture instead."
-msgstr "Livelli che si muovono quando inclini il telefono. Se è disattivato, viene scelta un'immagine fissa."
+msgstr ""
+"Livelli che si muovono quando inclini il telefono. Se è disattivato, viene "
+"scelta un'immagine fissa."
 
 #: src/ns-pages.c
 msgid ""
 "Layers that move as you tilt the tablet. Off picks a still picture instead."
-msgstr "Livelli che si muovono quando inclini il tablet. Se è disattivato, viene scelta un'immagine fissa."
+msgstr ""
+"Livelli che si muovono quando inclini il tablet. Se è disattivato, viene "
+"scelta un'immagine fissa."
 
 # android: Messaging notification_picture (other app, short)
 #: src/ns-pages.c
@@ -2851,10 +2960,6 @@ msgstr "Immagine"
 #: src/ns-pages.c
 msgid "Style"
 msgstr "Stile"
-
-#: src/ns-pages.c
-msgid "Colour"
-msgstr "Colore"
 
 #: src/ns-pages.c
 msgid "Grid, icon size, icon pack"
@@ -3092,7 +3197,9 @@ msgstr "Inserisci un nuovo PIN di almeno 4 cifre. Diventerà la tua password."
 #: src/ns-pattern.c
 msgid ""
 "Draw your unlock pattern. It becomes your password: connect at least 4 dots."
-msgstr "Traccia la sequenza di sblocco. Diventerà la tua password: collega almeno 4 punti."
+msgstr ""
+"Traccia la sequenza di sblocco. Diventerà la tua password: collega almeno 4 "
+"punti."
 
 #: src/ns-pattern.c
 msgid "Enter the PIN again to confirm."
@@ -3266,7 +3373,9 @@ msgstr "Questa app non chiede autorizzazioni."
 msgid ""
 "Taking a permission away stops the app. What an app does not ask for, it "
 "never gets."
-msgstr "Se togli un'autorizzazione, l'app viene chiusa. Ciò che un'app non chiede, non lo ottiene mai."
+msgstr ""
+"Se togli un'autorizzazione, l'app viene chiusa. Ciò che un'app non chiede, "
+"non lo ottiene mai."
 
 # android: Settings permissions_label
 #. not in a sandbox: nothing here keeps it from anything the user's account may do
@@ -3419,28 +3528,28 @@ msgstr "Accesso dell'app"
 msgid "No app has asked for the location yet."
 msgstr "Nessuna app ha ancora chiesto la posizione."
 
-# android: Settings captioning_typeface_selector_titles[0] (several translations, short)
 #: src/ns-privacy.c
+msgctxt "pointer size"
 msgid "Default"
 msgstr "Predefinito"
 
-# android: Settings accessibility_autoclick_medium_title (several translations, short)
-#: src/ns-privacy.c src/ns-system.c
+#: src/ns-privacy.c
+msgctxt "pointer size"
 msgid "Medium"
 msgstr "Medio"
 
-# android: Settings accessibility_button_size_selector_large (several translations, short)
 #: src/ns-privacy.c
+msgctxt "pointer size"
 msgid "Large"
 msgstr "Grande"
 
-# android: SettingsLib screen_zoom_summary_larger (short)
 #: src/ns-privacy.c
+msgctxt "pointer size"
 msgid "Larger"
 msgstr "Più grande"
 
-# android: SettingsLib screen_zoom_summary_largest (short)
 #: src/ns-privacy.c
+msgctxt "pointer size"
 msgid "Largest"
 msgstr "Massimo"
 
@@ -3542,7 +3651,10 @@ msgid ""
 "Swipe unlocks without a password. Pattern and PIN unlock with your password: "
 "a pattern or PIN set here becomes your password (also for sudo, SSH and the "
 "console)."
-msgstr "Lo scorrimento sblocca senza password. Sequenza e PIN sbloccano con la tua password: una sequenza o un PIN impostati qui diventano la tua password (anche per sudo, SSH e la console)."
+msgstr ""
+"Lo scorrimento sblocca senza password. Sequenza e PIN sbloccano con la tua "
+"password: una sequenza o un PIN impostati qui diventano la tua password "
+"(anche per sudo, SSH e la console)."
 
 #: src/ns-shell.c
 msgid "On the lock screen"
@@ -3584,7 +3696,9 @@ msgstr "Correzione testo"
 
 #: src/ns-shell.c
 msgid "Spacebar and punctuation automatically correct mistyped words"
-msgstr "Barra spaziatrice e punteggiatura correggono automaticamente gli errori di battitura"
+msgstr ""
+"Barra spaziatrice e punteggiatura correggono automaticamente gli errori di "
+"battitura"
 
 # android: LatinIME prefs_show_suggestions
 #: src/ns-shell.c
@@ -3613,6 +3727,11 @@ msgstr "Toccando il touchscreen si apre comunque la tastiera sullo schermo."
 #: src/ns-sound.c
 msgid "Audio will play on"
 msgstr "L'audio verrà riprodotto su"
+
+#: src/ns-sound.c
+msgctxt "no sound"
+msgid "None"
+msgstr "Nessun suono"
 
 # android: Settings sound_settings (several translations, short)
 #: src/ns-sound.c
@@ -3709,12 +3828,12 @@ msgid "Formats"
 msgstr "Formati"
 
 #: src/ns-system.c
-msgid "A new language or format shows in apps after you log out and in again."
-msgstr "Una nuova lingua o un nuovo formato viene applicato alle app dopo che esci e rientri."
+msgid "Apps that were already open change language after a restart."
+msgstr "Le app già aperte cambiano lingua dopo un riavvio."
 
 #: src/ns-system.c
-msgid "Log out now"
-msgstr "Esci ora"
+msgid "Restart now"
+msgstr "Riavvia ora"
 
 # android: Settings date_time_set_timezone_title
 #: src/ns-system.c
@@ -3825,13 +3944,17 @@ msgstr "Collegato alla corrente"
 msgid ""
 "Suspend saves the most power, but calls, messages and alarms can be missed "
 "while the phone sleeps."
-msgstr "La sospensione fa risparmiare più energia, ma chiamate, messaggi e sveglie possono andare persi mentre il telefono è sospeso."
+msgstr ""
+"La sospensione fa risparmiare più energia, ma chiamate, messaggi e sveglie "
+"possono andare persi mentre il telefono è sospeso."
 
 #: src/ns-system.c
 msgid ""
 "Suspend saves the most power, but calls, messages and alarms can be missed "
 "while the tablet sleeps."
-msgstr "La sospensione fa risparmiare più energia, ma chiamate, messaggi e sveglie possono andare persi mentre il tablet è sospeso."
+msgstr ""
+"La sospensione fa risparmiare più energia, ma chiamate, messaggi e sveglie "
+"possono andare persi mentre il tablet è sospeso."
 
 #: src/ns-system.c
 msgid "Before it turns off"
@@ -3878,25 +4001,35 @@ msgstr "Build del kernel"
 msgid "Pointer speed"
 msgstr "Velocità del puntatore"
 
-# android: Settings accessibility_long_press_timeout_option_short
 #: src/ns-system.c
+msgctxt "key repeat delay"
 msgid "Short"
 msgstr "Breve"
 
-# android: Settings accessibility_long_press_timeout_option_long (several translations, short)
 #: src/ns-system.c
+msgctxt "key repeat delay"
+msgid "Medium"
+msgstr "Medio"
+
+#: src/ns-system.c
+msgctxt "key repeat delay"
 msgid "Long"
 msgstr "Lungo"
 
-# android: Settings mouse_keys_acceleration_fast_icon_desc
 #: src/ns-system.c
+msgctxt "key repeat speed"
 msgid "Fast"
 msgstr "Veloce"
 
-# android: Settings mouse_keys_acceleration_slow_icon_desc
 #: src/ns-system.c
+msgctxt "key repeat speed"
+msgid "Medium"
+msgstr "Media"
+
+#: src/ns-system.c
+msgctxt "key repeat speed"
 msgid "Slow"
-msgstr "Lento"
+msgstr "Lenta"
 
 # android: Settings mouse_settings
 #: src/ns-system.c

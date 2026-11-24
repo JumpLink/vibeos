@@ -1020,7 +1020,7 @@ webdav_page (GoaProvider *p, Form *refresh)
     f = form_new (p, NULL, _("Calendars, contacts and files from a WebDAV server"), _("Sign in"));
     GtkWidget *g = ns_group (f->content, NULL);
     form_field (f, g, F_SERVER, _("Server address"), NULL, FALSE, GTK_INPUT_PURPOSE_URL);
-    ns_note (f->content, _("For example example.com or 192.168.0.82"));
+    ns_note (f->content, _("For example example.com or 192.0.2.82"));
     g = ns_group (f->content, NULL);
     form_field (f, g, F_USER, _("User name"), NULL, FALSE, GTK_INPUT_PURPOSE_FREE_FORM);
     form_field (f, g, F_PASSWORD, _("Password"), NULL, TRUE, GTK_INPUT_PURPOSE_PASSWORD);
@@ -1201,7 +1201,7 @@ nextcloud_page (GoaProvider *p, Form *refresh)
                   _("Sign in"));
     GtkWidget *g = ns_group (f->content, NULL);
     form_field (f, g, F_SERVER, _("Server address"), NULL, FALSE, GTK_INPUT_PURPOSE_URL);
-    ns_note (f->content, _("For example example.com or 192.168.0.82"));
+    ns_note (f->content, _("For example example.com or 192.0.2.82"));
   } else {
     GtkWidget *g = ns_group (f->content, NULL);
     refresh_head (f, g);

@@ -995,7 +995,7 @@ ns_page_apps (GtkWidget *row, gpointer data)
     g_autofree char *ago = seen_ago (s->seen);
     app_row (g, G_APP_INFO (app), ago, bake);
   }
-  g_autofree char *see = g_strdup_printf (g_dngettext (NULL, "See all %u app", "See all %u apps", n), n);
+  g_autofree char *see = g_strdup_printf (g_dngettext (NULL, "See %u app", "See all %u apps", n), n);
   GtkWidget *r = ns_row (g, "go-next-symbolic", see, NULL);
   ns_row_on_activate (r, ns_page_all_apps, NULL);
 

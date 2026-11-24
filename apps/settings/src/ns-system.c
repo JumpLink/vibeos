@@ -1163,9 +1163,11 @@ speed_row (GtkWidget *g, GSettings *s)
 }
 
 static const guint delays[] = { 250, 500, 800 };
-static const char *const delay_labels[] = { N_("Short"), N_("Medium"), N_("Long"), NULL };
+static const char *const delay_labels[] = { NC_("key repeat delay", "Short"), NC_("key repeat delay", "Medium"),
+                                            NC_("key repeat delay", "Long"), NULL };
 static const guint rates[] = { 15, 30, 60 };
-static const char *const rate_labels[] = { N_("Fast"), N_("Medium"), N_("Slow"), NULL };
+static const char *const rate_labels[] = { NC_("key repeat speed", "Fast"), NC_("key repeat speed", "Medium"),
+                                           NC_("key repeat speed", "Slow"), NULL };
 
 static void
 uint_picked (GtkWidget *row, guint i, gpointer s)
@@ -1176,13 +1178,13 @@ uint_picked (GtkWidget *row, guint i, gpointer s)
 
 static GtkWidget *
 uint_row (GtkWidget *g, const char *title, GSettings *s, const char *key, const guint *values, guint n,
-          const char *const *labels)
+          const char *context, const char *const *labels)
 {
   guint v = g_settings_get_uint (s, key), sel = 0;
   for (guint i = 0; i < n; i++)
     if (ABS ((int) values[i] - (int) v) < ABS ((int) values[sel] - (int) v))
       sel = i;
-  GtkWidget *r = ns_row_pick (g, title, labels, sel, uint_picked, s);
+  GtkWidget *r = ns_row_pick_in (g, title, context, labels, sel, uint_picked, s);
   g_object_set_data (G_OBJECT (r), "ns-uints", (gpointer) values);
   g_object_set_data (G_OBJECT (r), "ns-key", (gpointer) key);
   return r;
@@ -1212,9 +1214,11 @@ ns_page_mouse (GtkWidget *row, gpointer data)
   if (kbd) {
     GtkWidget *g = ns_group (c, _("Hardware keyboard"));
     ns_row_switch (g, _("Repeat keys"), _("A held key types again and again"), kbd, "repeat");
-    GtkWidget *r = uint_row (g, _("Delay before repeating"), kbd, "delay", delays, G_N_ELEMENTS (delays), delay_labels);
+    GtkWidget *r = uint_row (g, _("Delay before repeating"), kbd, "delay", delays, G_N_ELEMENTS (delays),
+                             "key repeat delay", delay_labels);
     g_settings_bind (kbd, "repeat", r, "sensitive", G_SETTINGS_BIND_GET);
-    r = uint_row (g, _("Repeat speed"), kbd, "repeat-interval", rates, G_N_ELEMENTS (rates), rate_labels);
+    r = uint_row (g, _("Repeat speed"), kbd, "repeat-interval", rates, G_N_ELEMENTS (rates), "key repeat speed",
+                  rate_labels);
     g_settings_bind (kbd, "repeat", r, "sensitive", G_SETTINGS_BIND_GET);
   }
   ns_note (c, _("For a Bluetooth or USB mouse, touchpad or keyboard."));

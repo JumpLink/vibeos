@@ -264,9 +264,9 @@ display_has_gamma (void)
 #define NIGHT_COOLEST 4700
 
 enum { NIGHT_NONE, NIGHT_CUSTOM, NIGHT_SUN };
-static const char *const night_schedules[] = { N_("None"), N_("Turns on at custom time"),
-                                               N_("Turns on from sunset to sunrise"),
-                                               NULL };
+static const char *const night_schedules[] = { NC_("Night Light schedule", "None"),
+                                               NC_("Night Light schedule", "Turns on at custom time"),
+                                               NC_("Night Light schedule", "Turns on from sunset to sunrise"), NULL };
 
 typedef struct {
   GSettings  *color, *iface;
@@ -484,7 +484,7 @@ ns_page_night_light (GtkWidget *row, gpointer data)
   gtk_widget_remove_css_class (intro, "ns-note");
   gtk_widget_add_css_class (intro, "ns-intro");
   if (!color || !display_has_gamma ()) {
-    ns_note (c, color ? _("This screen cannot change its colours.")
+    ns_note (c, color ? _("This screen cannot change its colors.")
                       : _("Night light is GNOME's settings daemon's, which is not installed."));
     ns_push (page);
     return;
@@ -498,7 +498,8 @@ ns_page_night_light (GtkWidget *row, gpointer data)
   n->use = ns_row_switch (g, _("Use night light"), NULL, color, "night-light-enabled");
 
   g = ns_group (c, NULL);
-  n->schedule = ns_row_pick (g, _("Schedule"), night_schedules, night_mode (color), night_schedule_picked, NULL);
+  n->schedule = ns_row_pick_in (g, _("Schedule"), "Night Light schedule", night_schedules, night_mode (color),
+                                night_schedule_picked, NULL);
   g_autoptr (GPtrArray) times = g_ptr_array_new_with_free_func (g_free);
   for (int i = 0; i < 48; i++)
     g_ptr_array_add (times, night_time (i / 2.0));
@@ -1674,7 +1675,7 @@ ns_page_wallpaper (GtkWidget *row, gpointer data)
   dark_row (g, iface);
   GSettings *theme = ns_page_settings (page, "vibeos.Theme");
   if (theme)
-    ns_row_widget (g, _("Colour"), accent_picker (theme));
+    ns_row_widget (g, _("Color"), accent_picker (theme));
 
   /* the launcher's own options: its grid, its icons */
   if (vibeos) {

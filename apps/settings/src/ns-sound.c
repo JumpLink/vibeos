@@ -397,7 +397,7 @@ tone_row (GtkWidget *g, const char *title, GSettings *s, const char *key, const 
 
   g_autoptr (GPtrArray) labels = g_ptr_array_new ();
   if (none)
-    g_ptr_array_add (labels, (gpointer) _("None"));
+    g_ptr_array_add (labels, (gpointer) C_("no sound", "None"));
   for (guint i = 0; i < k->tones->len; i++)
     g_ptr_array_add (labels, ((Tone *) k->tones->pdata[i])->title);
   g_ptr_array_add (labels, NULL);

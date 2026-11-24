@@ -950,14 +950,15 @@ ns_row_flag (GtkWidget *group, const char *title, const char *subtitle, GSetting
 
 /* ---- a choice by position ---- */
 
-/* a copy of `labels`, translated when they are a static list of N_() strings; an empty label stays empty, since
- * gettext's translation of "" is the catalog's header */
+/* a copy of `labels`, translated when they are a static list of N_() strings (NC_() ones in @context); an empty label
+ * stays empty, since gettext's translation of "" is the catalog's header */
 static char **
-labels_copy (const char *const *labels, gboolean translate)
+labels_copy (const char *const *labels, gboolean translate, const char *context)
 {
   GStrvBuilder *b = g_strv_builder_new ();
   for (guint i = 0; labels && labels[i]; i++)
-    g_strv_builder_add (b, translate && *labels[i] ? _(labels[i]) : labels[i]);
+    g_strv_builder_add (b, !translate || !*labels[i] ? labels[i]
+                           : context ? g_dpgettext2 (NULL, context, labels[i]) : _(labels[i]));
   char **out = g_strv_builder_end (b);
   g_strv_builder_unref (b);
   return out;
@@ -1009,11 +1010,11 @@ pick_free (Pick *p)
 }
 
 static GtkWidget *
-pick_new (GtkWidget *group, const char *title, const char *const *labels, gboolean translate, guint selected,
-          NsPicked picked, gpointer data)
+pick_new (GtkWidget *group, const char *title, const char *const *labels, gboolean translate, const char *context,
+          guint selected, NsPicked picked, gpointer data)
 {
   Pick *p = g_new0 (Pick, 1);
-  p->labels = labels_copy (labels, translate);
+  p->labels = labels_copy (labels, translate, context);
   p->picked = picked;
   p->data = data;
   p->row = ns_row (group, NULL, title, NULL);
@@ -1029,14 +1030,21 @@ GtkWidget *
 ns_row_pick (GtkWidget *group, const char *title, const char *const *labels, guint selected, NsPicked picked,
              gpointer data)
 {
-  return pick_new (group, title, labels, TRUE, selected, picked, data);
+  return pick_new (group, title, labels, TRUE, NULL, selected, picked, data);
+}
+
+GtkWidget *
+ns_row_pick_in (GtkWidget *group, const char *title, const char *context, const char *const *labels, guint selected,
+                NsPicked picked, gpointer data)
+{
+  return pick_new (group, title, labels, TRUE, context, selected, picked, data);
 }
 
 GtkWidget *
 ns_row_pick_names (GtkWidget *group, const char *title, const char *const *labels, guint selected, NsPicked picked,
                    gpointer data)
 {
-  return pick_new (group, title, labels, FALSE, selected, picked, data);
+  return pick_new (group, title, labels, FALSE, NULL, selected, picked, data);
 }
 
 void
@@ -1055,7 +1063,7 @@ ns_row_pick_set_summaries (GtkWidget *row, const char *const *summaries)
   Pick *p = g_object_get_data (G_OBJECT (row), "ns-pick");
 
   g_strfreev (p->summaries);
-  p->summaries = labels_copy (summaries, TRUE);
+  p->summaries = labels_copy (summaries, TRUE, NULL);
   ns_row_pick_select (row, p->selected);
 }
 

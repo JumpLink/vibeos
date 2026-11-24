@@ -52,7 +52,7 @@ static const Entry entries[] = {
     N_("screen timeout adaptive brightness night light intensity warm amber rotate scale always on aod display size "
     "text bold zoom lock screen"), ns_page_display },
   { "preferences-desktop-wallpaper-symbolic", TINT_PINK, N_("Wallpaper and style"),
-    N_("Wallpapers, colours, home screen"),
+    N_("Wallpapers, colors, home screen"),
     N_("background accent dark theme colour color parallax launcher grid columns rows layout icon size pack shape "
     "app names labels drawer"), ns_page_wallpaper },
   { NULL },

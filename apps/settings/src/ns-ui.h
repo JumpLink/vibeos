@@ -110,6 +110,10 @@ void       ns_row_steps_set_value_text (GtkWidget *row, const char *text);
 typedef void (*NsPicked) (GtkWidget *row, guint index, gpointer data);
 GtkWidget *ns_row_pick (GtkWidget *group, const char *title, const char *const *labels, guint selected,
                         NsPicked picked, gpointer data);
+/* the same with NC_() strings, all in @context ("Short" a delay's, "Medium" a speed's: words that agree with what
+ * they describe); NULL for N_() ones */
+GtkWidget *ns_row_pick_in (GtkWidget *group, const char *title, const char *context, const char *const *labels,
+                           guint selected, NsPicked picked, gpointer data);
 /* the same with labels shown as they are (copied): names found at run time (an app's, a display mode's, a sound's, a
  * language's), text that is never translated ("4 × 5", "PEAP") or that the caller translated. Only strings marked
  * for translation are looked up: a name that happened to be one of them would come out translated. */

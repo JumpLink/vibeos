@@ -28,7 +28,7 @@ int_picked (GtkWidget *row, guint i, gpointer s)
 
 /* an integer key from a fixed list */
 static GtkWidget *
-int_row (GtkWidget *g, const char *title, GSettings *s, const char *key, const int *values,
+int_row (GtkWidget *g, const char *title, GSettings *s, const char *key, const int *values, const char *context,
          const char *const *labels)
 {
   g_autoptr (GVariant) v = g_settings_get_value (s, key);
@@ -37,7 +37,7 @@ int_row (GtkWidget *g, const char *title, GSettings *s, const char *key, const i
   for (guint i = 0; labels[i]; i++)
     if (values[i] == cur)
       sel = i;
-  GtkWidget *r = ns_row_pick (g, title, labels, sel, int_picked, s);
+  GtkWidget *r = ns_row_pick_in (g, title, context, labels, sel, int_picked, s);
   g_object_set_data (G_OBJECT (r), "ns-values", (gpointer) values);
   g_object_set_data (G_OBJECT (r), "ns-key", (gpointer) key);
   return r;
@@ -81,13 +81,13 @@ ns_page_privacy (GtkWidget *row, gpointer data)
 
   g = ns_group (c, _("History"));
   ns_row_switch (g, _("Remember recent files"), _("Apps show what you opened lately"), p, "remember-recent-files");
-  r = int_row (g, _("Keep the list for"), p, "recent-files-max-age", ages, age_labels);
+  r = int_row (g, _("Keep the list for"), p, "recent-files-max-age", ages, NULL, age_labels);
   g_settings_bind (p, "remember-recent-files", r, "sensitive", G_SETTINGS_BIND_GET);
 
   g = ns_group (c, _("Clean up"));
   ns_row_switch (g, _("Empty the trash"), _("Delete old files from it automatically"), p, "remove-old-trash-files");
   ns_row_switch (g, _("Delete temporary files"), _("Old ones, automatically"), p, "remove-old-temp-files");
-  int_row (g, _("Older than"), p, "old-files-age", cleans, clean_labels);
+  int_row (g, _("Older than"), p, "old-files-age", cleans, NULL, clean_labels);
 
   /* no Diagnostics: no crash reporter is installed, and only GNOME Software and Shell read the usage keys */
   ns_push (page);
@@ -183,8 +183,9 @@ ns_page_location (GtkWidget *row, gpointer data)
 /* ---- Accessibility ---- */
 
 static const int cursors[] = { 24, 32, 48, 64, 96 };
-static const char *const cursor_labels[] = { N_("Default"), N_("Medium"), N_("Large"), N_("Larger"), N_("Largest"),
-                                             NULL };
+static const char *const cursor_labels[] = { NC_("pointer size", "Default"), NC_("pointer size", "Medium"),
+                                             NC_("pointer size", "Large"), NC_("pointer size", "Larger"),
+                                             NC_("pointer size", "Largest"), NULL };
 
 void
 ns_page_accessibility (GtkWidget *row, gpointer data)
@@ -205,7 +206,7 @@ ns_page_accessibility (GtkWidget *row, gpointer data)
   GtkWidget *r = ns_row (g, NULL, _("Display size and text"), _("Font size, display size, bold text"));
   ns_row_on_activate (r, ns_page_display_size, NULL);
   if (ns_has_key (iface, "cursor-size"))
-    int_row (g, _("Pointer size"), iface, "cursor-size", cursors, cursor_labels);
+    int_row (g, _("Pointer size"), iface, "cursor-size", cursors, "pointer size", cursor_labels);
   /* the screen reader is Orca: only when it is installed */
   g_autofree char *orca = g_find_program_in_path ("orca");
   if (orca && ns_has_key (apps, "screen-reader-enabled"))

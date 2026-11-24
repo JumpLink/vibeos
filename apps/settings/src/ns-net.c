@@ -119,7 +119,7 @@ security_name (NMAccessPoint *ap)
     return "WPA2";
   if (nm_access_point_get_wpa_flags (ap))
     return "WPA";
-  return nm_access_point_get_flags (ap) & NM_802_11_AP_FLAGS_PRIVACY ? "WEP" : _("Open");
+  return nm_access_point_get_flags (ap) & NM_802_11_AP_FLAGS_PRIVACY ? "WEP" : C_("Wi-Fi security", "Open");
 }
 
 static void
@@ -306,7 +306,7 @@ wifi_fill (NsPage *page)
       continue;
     }
     g_hash_table_add (seen, ssid);
-    const char *sub = ap_saved (w->dev, ap) ? _("Saved") : ap_secured (ap) ? NULL : _("Open");
+    const char *sub = ap_saved (w->dev, ap) ? _("Saved") : ap_secured (ap) ? NULL : C_("Wi-Fi security", "Open");
     GtkWidget *r = ap_row (w->avail, page, ap, sub);
     ns_row_on_activate (r, ap_tapped, NULL);
   }
@@ -546,8 +546,9 @@ ns_page_wifi (GtkWidget *row, gpointer data)
 
 /* ---- Joining by hand: a hidden network, or WPA Enterprise (802.1X) ---- */
 
-static const char *const sec_labels[] = { N_("None"), N_("WPA/WPA2 Personal"), N_("WPA3 Personal"),
-                                          N_("WPA/WPA2 Enterprise"), NULL };
+static const char *const sec_labels[] = { NC_("Wi-Fi security", "None"), NC_("Wi-Fi security", "WPA/WPA2 Personal"),
+                                          NC_("Wi-Fi security", "WPA3 Personal"),
+                                          NC_("Wi-Fi security", "WPA/WPA2 Enterprise"), NULL };
 enum { SEC_NONE, SEC_PSK, SEC_SAE, SEC_EAP };
 static const char *const eap_labels[] = { "PEAP", "TTLS", "TLS", "PWD", NULL };
 static const char *const eap_values[] = { "peap", "ttls", "tls", "pwd" };
@@ -791,7 +792,7 @@ join_form (NMDevice *dev, const char *ap_path, const char *ssid)
   if (!ap_path) {
     f->name = ns_row_value (g, _("Network name"), NULL, FALSE, NULL, NULL);
     f->sec_i = SEC_PSK;
-    f->sec = ns_row_pick (g, _("Security"), sec_labels, f->sec_i, sec_picked, f);
+    f->sec = ns_row_pick_in (g, _("Security"), "Wi-Fi security", sec_labels, f->sec_i, sec_picked, f);
   } else {
     f->sec_i = SEC_EAP;
   }
@@ -1711,7 +1712,7 @@ address_entered (const char *text, gpointer row)
 static void
 printer_add (GtkWidget *row, gpointer data)
 {
-  ns_ask (row, _("Add a printer"), _("Its address, like printer.local or ipp://192.168.1.20/ipp/print. Network "
+  ns_ask (row, _("Add a printer"), _("Its address, like printer.local or ipp://192.0.2.20/ipp/print. Network "
                                       "printers CUPS finds by itself are listed already."),
           NULL, FALSE, _("Add"), address_entered, row);
 }

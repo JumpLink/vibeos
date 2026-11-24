@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-settings\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 03:44+0100\n"
+"POT-Creation-Date: 2026-11-24 14:27+0100\n"
 "PO-Revision-Date: 2026-11-24 03:44+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Spanish\n"
@@ -26,8 +26,8 @@ msgstr "Ajustes"
 
 #: data/gnome-panel.desktop.in data/org.gnome.Settings.desktop.in
 #: data/vibeos.Settings.desktop.in
-msgid "Phone settings"
-msgstr "Ajustes del teléfono"
+msgid "Wi-Fi, sound, display, apps and more"
+msgstr "Wi-Fi, sonido, pantalla, aplicaciones y más"
 
 #: data/vibeos.Settings.desktop.in
 msgid "preferences;settings;wifi;display;wallpaper;"
@@ -138,7 +138,7 @@ msgid "Wallpaper and style"
 msgstr "Fondo de pantalla y estilo"
 
 #: src/main.c
-msgid "Wallpapers, colours, home screen"
+msgid "Wallpapers, colors, home screen"
 msgstr "Fondos de pantalla, colores, pantalla de inicio"
 
 #: src/main.c
@@ -772,7 +772,7 @@ msgid "Server address"
 msgstr "Dirección del servidor"
 
 #: src/ns-accounts.c
-msgid "For example example.com or 192.168.0.82"
+msgid "For example example.com or 192.0.2.82"
 msgstr "Por ejemplo, example.com o una dirección IP"
 
 # android: Jelly auth_dialog_username (adapted, other app, short)
@@ -1311,7 +1311,7 @@ msgid "Calculating…"
 msgstr "Calculando…"
 
 # android: Settings launch_instant_app
-#: src/ns-apps.c src/ns-net.c
+#: src/ns-apps.c
 msgid "Open"
 msgstr "Abrir"
 
@@ -1350,7 +1350,7 @@ msgstr "Aplicaciones abiertas recientemente"
 
 #: src/ns-apps.c
 #, c-format
-msgid "See all %u app"
+msgid "See %u app"
 msgid_plural "See all %u apps"
 msgstr[0] "Ver todas las aplicaciones (%u)"
 msgstr[1] "Ver todas las aplicaciones (%u)"
@@ -1836,6 +1836,11 @@ msgid "WPA Enterprise"
 msgstr "WPA Enterprise"
 
 #: src/ns-net.c
+msgctxt "Wi-Fi security"
+msgid "Open"
+msgstr "Abierta"
+
+#: src/ns-net.c
 msgid "Could not connect"
 msgstr "No se ha podido conectar"
 
@@ -1981,21 +1986,24 @@ msgstr "Una red oculta o fuera de alcance"
 msgid "Share the mobile data over Wi-Fi"
 msgstr "Compartir los datos móviles por Wi-Fi"
 
-# android: Settings wifi_proxy_settings[0] (several translations, short)
 #. ---- Joining by hand: a hidden network, or WPA Enterprise (802.1X) ----
-#: src/ns-net.c src/ns-pages.c src/ns-sound.c
+#: src/ns-net.c
+msgctxt "Wi-Fi security"
 msgid "None"
 msgstr "Ninguna"
 
 #: src/ns-net.c
+msgctxt "Wi-Fi security"
 msgid "WPA/WPA2 Personal"
 msgstr "WPA/WPA2 Personal"
 
 #: src/ns-net.c
+msgctxt "Wi-Fi security"
 msgid "WPA3 Personal"
 msgstr "WPA3 Personal"
 
 #: src/ns-net.c
+msgctxt "Wi-Fi security"
 msgid "WPA/WPA2 Enterprise"
 msgstr "WPA/WPA2 Enterprise"
 
@@ -2364,12 +2372,8 @@ msgid "Add a printer"
 msgstr "Añadir una impresora"
 
 #: src/ns-net.c
-msgid ""
-"Its address, like printer.local or ipp://192.168.1.20/ipp/print. Network "
-"printers CUPS finds by itself are listed already."
-msgstr ""
-"Su dirección, como printer.local o ipp://printer.local/ipp/print. Las "
-"impresoras de red que CUPS encuentra por sí solo ya aparecen en la lista."
+msgid "Its address, like printer.local or ipp://192.0.2.20/ipp/print. Network printers CUPS finds by itself are listed already."
+msgstr "Su dirección, como printer.local o ipp://printer.local/ipp/print. Las impresoras de red que CUPS encuentra por sí solo ya aparecen en la lista."
 
 # android: Settings add
 #: src/ns-net.c
@@ -2444,13 +2448,18 @@ msgstr "Bluetooth, compartir"
 msgid "Device name, visibility"
 msgstr "Nombre del dispositivo, visibilidad"
 
-# android: Settings night_display_auto_mode_custom
 #: src/ns-pages.c
+msgctxt "Night Light schedule"
+msgid "None"
+msgstr "Ninguna"
+
+#: src/ns-pages.c
+msgctxt "Night Light schedule"
 msgid "Turns on at custom time"
 msgstr "Activar a una hora personalizada"
 
-# android: Settings night_display_auto_mode_twilight
 #: src/ns-pages.c
+msgctxt "Night Light schedule"
 msgid "Turns on from sunset to sunrise"
 msgstr "Activar del anochecer al amanecer"
 
@@ -2494,7 +2503,7 @@ msgstr ""
 "facilidad."
 
 #: src/ns-pages.c
-msgid "This screen cannot change its colours."
+msgid "This screen cannot change its colors."
 msgstr "Esta pantalla no puede cambiar sus colores."
 
 #: src/ns-pages.c
@@ -2957,10 +2966,6 @@ msgstr "Imagen"
 #: src/ns-pages.c
 msgid "Style"
 msgstr "Estilo"
-
-#: src/ns-pages.c
-msgid "Colour"
-msgstr "Color"
 
 #: src/ns-pages.c
 msgid "Grid, icon size, icon pack"
@@ -3532,28 +3537,28 @@ msgstr "Acceso de aplicaciones"
 msgid "No app has asked for the location yet."
 msgstr "Ninguna aplicación ha pedido la ubicación todavía."
 
-# android: Settings captioning_typeface_selector_titles[0] (several translations, short)
 #: src/ns-privacy.c
+msgctxt "pointer size"
 msgid "Default"
 msgstr "Predeterminado"
 
-# android: Settings captioning_font_size_selector_titles[2] (several translations, short)
-#: src/ns-privacy.c src/ns-system.c
-msgid "Medium"
-msgstr "Medio"
-
-# android: Settings captioning_font_size_selector_titles[3]
 #: src/ns-privacy.c
+msgctxt "pointer size"
+msgid "Medium"
+msgstr "Mediano"
+
+#: src/ns-privacy.c
+msgctxt "pointer size"
 msgid "Large"
 msgstr "Grande"
 
-# android: SettingsLib screen_zoom_summary_larger (short)
 #: src/ns-privacy.c
+msgctxt "pointer size"
 msgid "Larger"
 msgstr "Más grande"
 
-# android: SettingsLib screen_zoom_summary_largest (short)
 #: src/ns-privacy.c
+msgctxt "pointer size"
 msgid "Largest"
 msgstr "El más grande"
 
@@ -3734,6 +3739,11 @@ msgstr ""
 msgid "Audio will play on"
 msgstr "El audio se reproducirá en"
 
+#: src/ns-sound.c
+msgctxt "no sound"
+msgid "None"
+msgstr "Ninguno"
+
 # android: Settings notification_channel_sound_title
 #: src/ns-sound.c
 msgid "Sound"
@@ -3830,14 +3840,12 @@ msgid "Formats"
 msgstr "Formatos"
 
 #: src/ns-system.c
-msgid "A new language or format shows in apps after you log out and in again."
-msgstr ""
-"Los cambios de idioma o formato se aplican en las aplicaciones después de "
-"cerrar sesión y volver a iniciarla."
+msgid "Apps that were already open change language after a restart."
+msgstr "Las aplicaciones que ya estaban abiertas cambian de idioma después de reiniciar."
 
 #: src/ns-system.c
-msgid "Log out now"
-msgstr "Cerrar sesión ahora"
+msgid "Restart now"
+msgstr "Reiniciar ahora"
 
 # android: Settings date_time_set_timezone_title
 #: src/ns-system.c
@@ -4006,23 +4014,33 @@ msgstr "Compilación del kernel"
 msgid "Pointer speed"
 msgstr "Velocidad del puntero"
 
-# android: Settings accessibility_long_press_timeout_option_short (several translations, short)
 #: src/ns-system.c
+msgctxt "key repeat delay"
 msgid "Short"
 msgstr "Corto"
 
-# android: Settings accessibility_long_press_timeout_option_long (several translations, short)
 #: src/ns-system.c
+msgctxt "key repeat delay"
+msgid "Medium"
+msgstr "Medio"
+
+#: src/ns-system.c
+msgctxt "key repeat delay"
 msgid "Long"
 msgstr "Largo"
 
-# android: Aperture edge_mode_fast (other app, several translations, short)
 #: src/ns-system.c
+msgctxt "key repeat speed"
 msgid "Fast"
 msgstr "Rápido"
 
-# android: Settings mouse_keys_acceleration_slow_icon_desc
 #: src/ns-system.c
+msgctxt "key repeat speed"
+msgid "Medium"
+msgstr "Medio"
+
+#: src/ns-system.c
+msgctxt "key repeat speed"
 msgid "Slow"
 msgstr "Lento"
 
