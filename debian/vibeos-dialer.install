@@ -8,3 +8,4 @@ usr/share/dbus-1/services/vibeos.Dialer.Calls.service
 usr/share/glib-2.0/schemas/vibeos.Dialer.gschema.xml
 usr/share/icons/hicolor/scalable/apps/vibeos.Dialer.svg
 usr/share/vibeos-dialer/sounds/call-recording-*.opus
+usr/share/locale/*/LC_MESSAGES/vibeos-dialer.mo

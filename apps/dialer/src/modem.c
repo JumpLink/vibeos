@@ -2,6 +2,7 @@
 #include "modem.h"
 #include "phone-number.h"
 
+#include <glib/gi18n.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -299,7 +300,7 @@ modem_create_call (Modem *self, const char *number, GCancellable *cancellable, G
 
   if (!self->voice)
     {
-      g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_NOT_CONNECTED, "There is no modem");
+      g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_NOT_CONNECTED, _("There is no modem"));
       g_object_unref (task);
       return;
     }
@@ -335,7 +336,7 @@ modem_voice_method (Modem *self, const char *method, GAsyncReadyCallback callbac
 
   if (!self->voice)
     {
-      g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_NOT_CONNECTED, "There is no modem");
+      g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_NOT_CONNECTED, _("There is no modem"));
       g_object_unref (task);
       return;
     }

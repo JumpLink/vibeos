@@ -2,6 +2,8 @@
 #include "calls-client.h"
 #include "call-log.h"
 
+#include <glib/gi18n.h>
+
 struct _CallsClient
 {
   GObject parent;
@@ -359,7 +361,7 @@ call (CallsClient *self, const char *method, guint id, GVariant *parameters)
     {
       if (parameters)
         g_variant_unref (g_variant_ref_sink (parameters));
-      g_signal_emit (self, signals[FAILED], 0, method, id, "No call service");
+      g_signal_emit (self, signals[FAILED], 0, method, id, _("No call service"));
       return;
     }
   asking = g_new0 (Asking, 1);
@@ -401,7 +403,7 @@ calls_client_dial (CallsClient *self, const char *number, CallsDialed dialed, gp
   dialing->data = data;
   if (!self->proxy)
     {
-      g_autoptr(GError) error = g_error_new_literal (G_IO_ERROR, G_IO_ERROR_NOT_CONNECTED, "No call service");
+      g_autoptr(GError) error = g_error_new_literal (G_IO_ERROR, G_IO_ERROR_NOT_CONNECTED, _("No call service"));
 
       if (dialed)
         dialed (0, error, data);
@@ -552,7 +554,7 @@ calls_client_get_call_log (CallsClient *self, GCancellable *cancellable, GAsyncR
 
   if (!self->proxy)
     {
-      g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_NOT_CONNECTED, "No call service");
+      g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_NOT_CONNECTED, _("No call service"));
       g_object_unref (task);
       return;
     }

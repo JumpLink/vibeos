@@ -5,6 +5,7 @@ add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers'
                       '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir')), language: 'c')
 
 gnome = import('gnome')
+i18n = import('i18n')
 gio = dependency('gio-unix-2.0', version: '>= 2.76')
 ebook = dependency('libebook-1.2')
 m = meson.get_compiler('c').find_library('m')
@@ -45,8 +46,10 @@ configure_file(input: 'data/vibeos.Dialer.Calls.service.in', output: 'vibeos.Dia
                configuration: unit, install_dir: datadir / 'dbus-1/services')
 configure_file(input: 'data/vibeos.Dialer.service.in', output: 'vibeos.Dialer.service',
                configuration: unit, install_dir: datadir / 'dbus-1/services')
-install_data('data/vibeos.Dialer.desktop', 'data/vibeos.Dialer.InCall.desktop',
-             install_dir: datadir / 'applications')
+foreach desktop : ['vibeos.Dialer.desktop', 'vibeos.Dialer.InCall.desktop']
+  i18n.merge_file(input: 'data' / desktop + '.in', output: desktop, type: 'desktop', po_dir: 'po', install: true,
+                  install_dir: datadir / 'applications')
+endforeach
 install_data('data/vibeos.Dialer.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
 install_data('data/vibeos.Dialer.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
 # "This call is now being recorded" in each of VibeOS's languages (data/sounds/make-sounds.sh: how they were made)
@@ -57,9 +60,16 @@ endforeach
 install_data(announcements, install_dir: datadir / 'vibeos-dialer/sounds')
 gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
 
+# the translations, and their checks
+subdir('po')
+
+# in English: the tests compare the English texts
+test_env = ['LANG=C.UTF-8', 'LANGUAGE=', 'LC_ALL=', 'LC_TIME=', 'LC_MESSAGES=']
+
 foreach name : ['call-log', 'phone-number', 'blocked-numbers']
   test(name, executable('test-' + name, 'tests/test-' + name + '.c', link_with: common,
-                        dependencies: [gio, ebook, dependency('sqlite3')]))
+                        dependencies: [gio, ebook, dependency('sqlite3')]),
+       env: test_env)
 endforeach
 
 # the settings' defaults, from the schema compiled into the build directory
@@ -74,9 +84,9 @@ test('call-recording', executable('test-call-recording', 'tests/test-call-record
 # against the UCM configurations for no card in tests/ucm2
 test('call-audio-ucm', executable('test-call-audio-ucm', 'tests/test-call-audio-ucm.c', link_with: call_audio_ucm,
                                   dependencies: [gio, alsa]),
-     env: ['ALSA_CONFIG_UCM2=' + meson.current_source_dir() / 'tests/ucm2'])
+     env: test_env + ['ALSA_CONFIG_UCM2=' + meson.current_source_dir() / 'tests/ucm2'])
 
 # the call flows end to end, against a mock modem, shell and notification server on buses of their own; GStreamer's
 # registry made first takes up to a minute under arm64 emulation
-test('calls-flow', find_program('python3'), timeout: 180,
+test('calls-flow', find_program('python3'), timeout: 180, env: test_env,
      args: [files('tests/test-calls.py'), meson.current_build_dir(), meson.current_source_dir()])

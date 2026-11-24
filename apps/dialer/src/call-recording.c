@@ -34,7 +34,8 @@ call_recording_folder_display (const char *folder)
 
   /* the home folder as Files calls it */
   if (len > 1 && g_str_has_prefix (folder, home) && (folder[len] == '/' || !folder[len]))
-    return g_strconcat (_("Home"), folder + len, NULL);
+    /* TRANSLATORS: the home folder, the start of a folder's path ("Home/Recordings"), as Files names it */
+    return g_strconcat (C_("folder", "Home"), folder + len, NULL);
   return g_strdup (folder);
 }
 
