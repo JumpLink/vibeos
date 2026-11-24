@@ -9,7 +9,8 @@
  *   vibeos-snackbar.h     the snackbar
  *   vibeos-dialog.h       the alert dialog, inside the window
  *   vibeos-time-picker.h  the clock-face time picker and its dialog
- *   vibeos-locale.h       dates and times in the user's language, the 12/24-hour setting
+ *   vibeos-locale.h       dates and times in the user's language, the 12/24-hour setting, locales' names, the
+ *                         session's language changed at once
  *   vibeos-clamp.h        a column no wider than a maximum, centred (a page's content on a tablet)
  *
  * Sizes are dp: on the phone (scale 3) one GTK pixel is one dp. */
