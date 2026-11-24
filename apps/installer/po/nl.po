@@ -19,19 +19,19 @@ msgstr ""
 #. ⋮: About, VibeOS's About sheet, as every VibeOS app has it
 #: data/vibeos.Installer.desktop.in src/inst-sheet.c src/inst-window.c
 msgid "App Installer"
-msgstr ""
+msgstr "App-installer"
 
 #: data/vibeos.Installer.desktop.in
 msgid "Install apps from package files, and uninstall them"
-msgstr ""
+msgstr "Apps installeren uit pakketbestanden en ze verwijderen"
 
 #: data/vibeos.Installer.desktop.in
 msgid "Install;Uninstall;Package;deb;Software;App;"
-msgstr ""
+msgstr "installeren;verwijderen;pakket;deb;software;app;"
 
 #: src/inst-catalog.c
 msgid "A sample app for trying App Installer"
-msgstr ""
+msgstr "Een voorbeeldapp om App-installer uit te proberen"
 
 #: src/inst-catalog.c
 msgid ""
@@ -39,52 +39,56 @@ msgid ""
 "\n"
 "Nothing is installed or removed while the demo runs."
 msgstr ""
+"Dit pakket is niet echt: de demo van App-installer laat het zien om de "
+"schermen uit te proberen.\n"
+"\n"
+"Tijdens de demo wordt niets geïnstalleerd of verwijderd."
 
 #: src/inst-job.c
 #, c-format
 msgid "%s is part of VibeOS."
-msgstr ""
+msgstr "%s is onderdeel van VibeOS."
 
 #: src/inst-job.c
 #, c-format
 msgid "%s is part of the phone's shell and session."
-msgstr ""
+msgstr "%s is onderdeel van de shell en sessie van de telefoon."
 
 #: src/inst-job.c
 #, c-format
 msgid "%s is essential: the system cannot work without it."
-msgstr ""
+msgstr "%s is essentieel: het systeem werkt niet zonder dit pakket."
 
 #: src/inst-job.c
 #, c-format
 msgid "%s is required by the system."
-msgstr ""
+msgstr "%s is vereist door het systeem."
 
 #: src/inst-job.c
 msgid "Cannot be uninstalled"
-msgstr ""
+msgstr "Kan niet worden verwijderd"
 
 #: src/inst-job.c
 #, c-format
 msgid "Uninstalling it would also remove %s. %s"
-msgstr ""
+msgstr "Bij het verwijderen wordt ook %s verwijderd. %s"
 
 #: src/inst-job.c
 #, c-format
 msgid "Installing it would remove %s. %s"
-msgstr ""
+msgstr "Bij het installeren wordt %s verwijderd. %s"
 
 #: src/inst-job.c
 msgid "Cannot be installed"
-msgstr ""
+msgstr "Kan niet worden geïnstalleerd"
 
 #: src/inst-job.c src/inst-view.c
 msgid "Not uninstalled"
-msgstr ""
+msgstr "Niet verwijderd"
 
 #: src/inst-job.c src/inst-view.c
 msgid "Not installed"
-msgstr ""
+msgstr "Niet geïnstalleerd"
 
 # android: SystemUI fgs_manager_app_item_stop_button_stopped_label (other app, short)
 #: src/inst-job.c
@@ -93,150 +97,167 @@ msgstr "Gestopt"
 
 #: src/inst-job.c
 msgid "Nothing was uninstalled."
-msgstr ""
+msgstr "Er is niets verwijderd."
 
 #: src/inst-job.c
 msgid "Nothing was installed."
-msgstr ""
+msgstr "Er is niets geïnstalleerd."
 
 #. the password dialog closed without the password: the user's no, not a failure
 #: src/inst-job.c
 msgid "The password was not given, so nothing was uninstalled."
-msgstr ""
+msgstr "Het wachtwoord is niet opgegeven, dus er is niets verwijderd."
 
 #: src/inst-job.c
 msgid "The password was not given, so nothing was installed."
-msgstr ""
+msgstr "Het wachtwoord is niet opgegeven, dus er is niets geïnstalleerd."
 
 #: src/inst-job.c
 msgid ""
 "Another app is installing or updating software right now. Try again once it "
 "has finished."
 msgstr ""
+"Een andere app installeert of updatet nu software. Probeer het opnieuw als "
+"die klaar is."
 
 #: src/inst-job.c
 msgid ""
 "Something it needs cannot be installed: it is not in the software sources, "
 "or not in a version that fits."
 msgstr ""
+"Iets wat nodig is, kan niet worden geïnstalleerd: het staat niet in de "
+"softwarebronnen, of niet in een passende versie."
 
 #: src/inst-job.c
 msgid ""
 "Packages it needs could not be downloaded. Check the internet connection and "
 "try again."
 msgstr ""
+"Benodigde pakketten konden niet worden gedownload. Controleer de "
+"internetverbinding en probeer het opnieuw."
 
 #: src/inst-job.c
 msgid ""
 "The package is broken: the file is damaged, or it is not a proper package."
-msgstr ""
+msgstr "Het pakket is defect: het bestand is beschadigd of geen geldig pakket."
 
 #: src/inst-job.c
 msgid "There is not enough free storage for it."
-msgstr ""
+msgstr "Er is niet genoeg vrije opslagruimte."
 
 #: src/inst-job.c
 msgid ""
 "It clashes with software that is already installed: both have the same files."
 msgstr ""
+"Het botst met software die al is geïnstalleerd: beide hebben dezelfde "
+"bestanden."
 
 #: src/inst-job.c
 msgid "The package's own setup failed. It may be only partly installed."
 msgstr ""
+"De installatie van het pakket zelf is mislukt. Het is mogelijk maar "
+"gedeeltelijk geïnstalleerd."
 
 #: src/inst-job.c
 msgid ""
 "The package's own removal script failed. It may be only partly uninstalled."
 msgstr ""
+"Het verwijderscript van het pakket is mislukt. Het is mogelijk maar "
+"gedeeltelijk verwijderd."
 
 #: src/inst-job.c
 msgid "It is made for another kind of device."
-msgstr ""
+msgstr "Het is gemaakt voor een ander soort apparaat."
 
 #: src/inst-job.c
 msgid ""
 "The software sources could not be verified, so nothing was downloaded from "
 "them."
 msgstr ""
+"De softwarebronnen konden niet worden geverifieerd, dus er is niets van "
+"gedownload."
 
 #: src/inst-job.c
 msgid "The software sources do not have it (any more)."
-msgstr ""
+msgstr "De softwarebronnen hebben het niet (meer)."
 
 #: src/inst-job.c
 msgid "Software was installed or removed meanwhile. Try again."
 msgstr ""
+"Intussen is er software geïnstalleerd of verwijderd. Probeer het opnieuw."
 
 #: src/inst-job.c
 msgid "Cannot install software"
-msgstr ""
+msgstr "Kan geen software installeren"
 
 #: src/inst-job.c
 msgid ""
 "PackageKit, the system service that installs software, is missing or not "
 "running."
 msgstr ""
+"PackageKit, de systeemservice die software installeert, ontbreekt of draait "
+"niet."
 
 #: src/inst-job.c
 msgid "Something went wrong while uninstalling."
-msgstr ""
+msgstr "Er is iets misgegaan bij het verwijderen."
 
 #: src/inst-job.c
 msgid "Something went wrong while installing."
-msgstr ""
+msgstr "Er is iets misgegaan bij het installeren."
 
 #: src/inst-job.c
 msgid "Waiting for your password"
-msgstr ""
+msgstr "Wachten op je wachtwoord"
 
 #: src/inst-job.c
 msgid "Waiting for another install to finish"
-msgstr ""
+msgstr "Wachten tot een andere installatie klaar is"
 
 #: src/inst-job.c
 msgid "Downloading"
-msgstr ""
+msgstr "Downloaden"
 
 #: src/inst-job.c
 msgid "Uninstalling"
-msgstr ""
+msgstr "Verwijderen"
 
 #: src/inst-job.c
 msgid "Installing"
-msgstr ""
+msgstr "Installeren"
 
 #: src/inst-job.c
 msgid "Finishing"
-msgstr ""
+msgstr "Afronden"
 
 #: src/inst-job.c
 msgid "Stopping"
-msgstr ""
+msgstr "Stoppen"
 
 #: src/inst-job.c
 msgid "Getting ready"
-msgstr ""
+msgstr "Voorbereiden"
 
 #: src/inst-job.c
 msgid "Checking what else it takes along"
-msgstr ""
+msgstr "Controleren wat er nog meer mee verdwijnt"
 
 #: src/inst-job.c
 msgid "Checking what else it needs"
-msgstr ""
+msgstr "Controleren wat er nog meer nodig is"
 
 #: src/inst-job.c
 msgid "Looking it up"
-msgstr ""
+msgstr "Opzoeken"
 
 #: src/inst-job.c
 msgid "Checking the software sources"
-msgstr ""
+msgstr "Softwarebronnen controleren"
 
 #: src/inst-job.c
 #, c-format
 msgid "The software sources have no package called “%s”."
-msgstr ""
+msgstr "De softwarebronnen hebben geen pakket met de naam “%s”."
 
 # android: SystemUI controls_error_removed (other app, short)
 #: src/inst-job.c
@@ -245,21 +266,21 @@ msgstr "Niet gevonden"
 
 #: src/inst-job.c
 msgid "Removing it would leave other software with something it needs missing."
-msgstr ""
+msgstr "Als je dit verwijdert, mist andere software iets wat die nodig heeft."
 
 #: src/inst-job.c
 #, c-format
 msgid "%s is uninstalled."
-msgstr ""
+msgstr "%s is verwijderd."
 
 #: src/inst-job.c
 msgid "Uninstalled"
-msgstr ""
+msgstr "Verwijderd"
 
 #: src/inst-job.c
 #, c-format
 msgid "%s %s is installed."
-msgstr ""
+msgstr "%s %s is geïnstalleerd."
 
 # android: Settings installed (short)
 #: src/inst-job.c src/inst-view.c
@@ -268,93 +289,94 @@ msgstr "Geïnstalleerd"
 
 #: src/inst-job.c
 msgid "Cannot open the file"
-msgstr ""
+msgstr "Kan het bestand niet openen"
 
 #: src/inst-job.c
 msgid "The file could not be read."
-msgstr ""
+msgstr "Het bestand kon niet worden gelezen."
 
 #: src/inst-job.c
 msgid "dpkg, which reads packages, is missing."
-msgstr ""
+msgstr "dpkg, dat pakketten leest, ontbreekt."
 
 #: src/inst-job.c
 msgid "Not a package"
-msgstr ""
+msgstr "Geen pakket"
 
 #: src/inst-job.c
 msgid ""
 "This file is not a software package that can be installed here, or it is "
 "damaged."
 msgstr ""
+"Dit bestand is geen softwarepakket dat hier kan worden geïnstalleerd, of het "
+"is beschadigd."
 
 #: src/inst-job.c
 #, c-format
 msgid "It is made for %s devices; this one is %s."
-msgstr ""
+msgstr "Het is gemaakt voor %s-apparaten; dit apparaat is %s."
 
 #: src/inst-job.c
 msgid "Made for another kind of device"
-msgstr ""
+msgstr "Gemaakt voor een ander soort apparaat"
 
 #: src/inst-job.c
 msgid "Reading the package"
-msgstr ""
+msgstr "Pakket lezen"
 
 #: src/inst-job.c
 msgid "Cannot uninstall software"
-msgstr ""
+msgstr "Kan geen software verwijderen"
 
 #: src/inst-job.c
 msgid "dpkg, which keeps track of the installed software, is missing."
-msgstr ""
+msgstr "dpkg, dat de geïnstalleerde software bijhoudt, ontbreekt."
 
 #: src/inst-job.c
 #, c-format
 msgid "“%s” is not installed."
-msgstr ""
+msgstr "“%s” is niet geïnstalleerd."
 
 #: src/inst-main.c
 msgid "Install the package NAME from the software sources"
-msgstr ""
+msgstr "Het pakket NAAM installeren uit de softwarebronnen"
 
-# android: Settings security_settings_fingerprint_enroll_dialog_name_label (adapted, short)
 #: src/inst-main.c
 msgid "NAME"
-msgstr "Naam"
+msgstr "NAAM"
 
 #: src/inst-main.c
 msgid "Uninstall the package NAME"
-msgstr ""
+msgstr "Het pakket NAAM verwijderen"
 
 #: src/inst-main.c
 msgid "Print the version"
-msgstr ""
+msgstr "De versie tonen"
 
 #: src/inst-main.c
 msgid "[FILE.deb…]"
-msgstr ""
+msgstr "[BESTAND.deb…]"
 
 #: src/inst-pk.c
 msgid "A library the app needs"
-msgstr ""
+msgstr "Een bibliotheek die de app nodig heeft"
 
 #: src/inst-pk.c
 msgid "A sample app"
-msgstr ""
+msgstr "Een voorbeeldapp"
 
 #: src/inst-service.c
 #, c-format
 msgid "%s %s is installed already."
-msgstr ""
+msgstr "%s %s is al geïnstalleerd."
 
 #. TRANSLATORS: %s is a list of names ("libfoo, libbar"), %u how many more there are
 #: src/inst-view.c
 #, c-format
 msgid "%s and %u more"
 msgid_plural "%s and %u more"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%s en nog %u"
+msgstr[1] "%s en nog %u"
 
 # android: Settings vpn_version_info
 #: src/inst-view.c
@@ -364,7 +386,7 @@ msgstr "Versie %s"
 
 #: src/inst-view.c
 msgid "This file"
-msgstr ""
+msgstr "Dit bestand"
 
 # android: Framework media_route_status_available (short)
 #: src/inst-view.c
@@ -373,7 +395,7 @@ msgstr "Beschikbaar"
 
 #: src/inst-view.c
 msgid "newer"
-msgstr ""
+msgstr "nieuwer"
 
 # android: Framework older (adapted, short)
 #: src/inst-view.c
@@ -383,36 +405,36 @@ msgstr "ouder"
 # android: Framework older (adapted, short)
 #: src/inst-view.c
 msgid "OLDER"
-msgstr "Ouder"
+msgstr "OUDER"
 
 #: src/inst-view.c
 msgid "Install this app?"
-msgstr ""
+msgstr "Deze app installeren?"
 
 #: src/inst-view.c
 msgid "Install this package?"
-msgstr ""
+msgstr "Dit pakket installeren?"
 
 #: src/inst-view.c
 #, c-format
 msgid "Replace %s %s with %s?"
-msgstr ""
+msgstr "%s %s vervangen door %s?"
 
 #: src/inst-view.c
 msgid "This file has a newer version than the one installed."
-msgstr ""
+msgstr "Dit bestand bevat een nieuwere versie dan de geïnstalleerde."
 
 #: src/inst-view.c
 msgid "The software sources have a newer version than the one installed."
-msgstr ""
+msgstr "De softwarebronnen hebben een nieuwere versie dan de geïnstalleerde."
 
 #: src/inst-view.c
 msgid "This file is an OLDER version"
-msgstr ""
+msgstr "Dit bestand is een OUDERE versie"
 
 #: src/inst-view.c
 msgid "The available version is OLDER"
-msgstr ""
+msgstr "De beschikbare versie is OUDER"
 
 #: src/inst-view.c
 #, c-format
@@ -420,6 +442,8 @@ msgid ""
 "%s %s is installed. This file has %s, which is older. Replace the installed "
 "version with the older one?"
 msgstr ""
+"%s %s is geïnstalleerd. Dit bestand bevat %s, een oudere versie. De "
+"geïnstalleerde versie vervangen door de oudere?"
 
 #: src/inst-view.c
 #, c-format
@@ -427,60 +451,66 @@ msgid ""
 "%s %s is installed. The software sources have %s, which is older. Replace "
 "the installed version with the older one?"
 msgstr ""
+"%s %s is geïnstalleerd. De softwarebronnen hebben %s, een oudere versie. De "
+"geïnstalleerde versie vervangen door de oudere?"
 
 #: src/inst-view.c
 msgid "Already installed"
-msgstr ""
+msgstr "Al geïnstalleerd"
 
 #: src/inst-view.c
 #, c-format
 msgid ""
 "%s %s is installed already. Reinstalling puts its files back as they came."
 msgstr ""
+"%s %s is al geïnstalleerd. Opnieuw installeren zet de bestanden terug zoals "
+"ze waren."
 
 #: src/inst-view.c
 #, c-format
 msgid ""
 "%s %s is installed already. The same version cannot be installed over itself."
 msgstr ""
+"%s %s is al geïnstalleerd. Dezelfde versie kan niet over zichzelf worden "
+"geïnstalleerd."
 
 #: src/inst-view.c
 #, c-format
 msgid "Uninstall %s?"
-msgstr ""
+msgstr "%s verwijderen?"
 
 #: src/inst-view.c
 msgid "Its data will be deleted."
-msgstr ""
+msgstr "De bijbehorende gegevens worden verwijderd."
 
 #: src/inst-view.c
 msgid "Its program files are removed. Your own files stay."
 msgstr ""
+"De programmabestanden worden verwijderd. Je eigen bestanden blijven staan."
 
 #: src/inst-view.c
 msgid "Frees"
-msgstr ""
+msgstr "Maakt vrij"
 
-# android: Framework mime_type_generic_ext
 #: src/inst-view.c
 #, c-format
 msgid "%s file"
-msgstr "%s-bestand"
+msgstr "Bestand: %s"
 
 #: src/inst-view.c
 #, c-format
 msgid "%s download"
-msgstr ""
+msgstr "Download: %s"
 
 #: src/inst-view.c
 #, c-format
 msgid "%s · %s installed"
-msgstr ""
+msgstr "%s · %s geïnstalleerd"
 
 #: src/inst-view.c
 #, c-format
 msgid "%s installed"
-msgstr ""
+msgstr "%s geïnstalleerd"
 
 # android: Settings accessibility_button_size_title (short)
 #: src/inst-view.c
@@ -491,24 +521,24 @@ msgstr "Grootte"
 #, c-format
 msgid "Also installs %u other package"
 msgid_plural "Also installs %u other packages"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Installeert ook %u ander pakket"
+msgstr[1] "Installeert ook %u andere pakketten"
 
 #: src/inst-view.c
 #, c-format
 msgid "%s to download: %s"
-msgstr ""
+msgstr "%s te downloaden: %s"
 
 #: src/inst-view.c
 #, c-format
 msgid "Also removes %u other package"
 msgid_plural "Also removes %u other packages"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Verwijdert ook %u ander pakket"
+msgstr[1] "Verwijdert ook %u andere pakketten"
 
 #: src/inst-view.c
 msgid "Package"
-msgstr ""
+msgstr "Pakket"
 
 # android: Contacts header_website_entry (other app, short)
 #: src/inst-view.c
@@ -520,6 +550,8 @@ msgid ""
 "A package can change anything on this device: it installs with full rights. "
 "Install only what you trust."
 msgstr ""
+"Een pakket kan alles op dit apparaat wijzigen: het wordt geïnstalleerd met "
+"volledige rechten. Installeer alleen wat je vertrouwt."
 
 # android: PackageInstaller cancel (several translations, short)
 #: src/inst-view.c
@@ -549,11 +581,11 @@ msgstr "Klaar"
 #: src/inst-view.c
 #, c-format
 msgid "Replace with %s"
-msgstr ""
+msgstr "Vervangen door %s"
 
 #: src/inst-view.c
 msgid "Reinstall"
-msgstr ""
+msgstr "Opnieuw installeren"
 
 # android: Framework lockscreen_transport_stop_description (short)
 #: src/inst-view.c
@@ -572,24 +604,29 @@ msgstr "Meer opties"
 
 #: src/inst-window.c
 msgid "Software packages (.deb)"
-msgstr ""
+msgstr "Softwarepakketten (.deb)"
 
 #: src/inst-window.c
 msgid "Choose a package"
-msgstr ""
+msgstr "Kies een pakket"
 
 #: src/inst-window.c
 msgid "Install apps from packages"
-msgstr ""
+msgstr "Apps installeren uit pakketten"
 
 #: src/inst-window.c
 msgid ""
 "App Installer installs .deb package files. Tap one in Files, or choose one "
 "here: it shows what the package is and asks before anything changes."
 msgstr ""
+"App-installer installeert .deb-pakketbestanden. Tik op een bestand in "
+"Bestanden of kies er hier een: de app laat zien wat het pakket is en vraagt "
+"het voordat er iets verandert."
 
 #: src/inst-window.c
 msgid ""
 "Software uses it too, to install and uninstall apps from the software "
 "sources."
 msgstr ""
+"Ook Software gebruikt deze app om apps uit de softwarebronnen te installeren "
+"en te verwijderen."
