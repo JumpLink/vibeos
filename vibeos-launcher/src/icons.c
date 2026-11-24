@@ -54,6 +54,7 @@ static const struct {
     { "com.google.android.apps.weather", "net.oneplus.weather", "com.sec.android.daemonapp" } },
   { "vibeos.Compass.desktop", NULL,
     { "com.vincentlee.compass", "com.coloros.compass", "com.oneplus.compass", "com.google.android.apps.compass" } },
+  { "vibeos.Terminal.desktop", "org.gnome.Console.desktop", { "com.termux" } },
 };
 
 /* the pack's drawable for one of our apps, or NULL; filter: the pack's appfilter.json (Android package -> drawable) */

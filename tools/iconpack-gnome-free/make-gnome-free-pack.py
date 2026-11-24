@@ -66,6 +66,7 @@ MAP = {
     "vibeos.Files.desktop": "files", "org.gnome.Nautilus.desktop": "files",
     "vibeos.Dictate.desktop": "dictate",
     "vibeos.Installer.desktop": "installer",
+    "vibeos.Terminal.desktop": "terminal",
     "org.gnome.Console.desktop": "terminal", "org.gnome.Ptyxis.desktop": "terminal",
     "org.gnome.Loupe.desktop": "gallery",
     "org.gnome.Papers.desktop": "documents", "org.gnome.Evince.desktop": "documents",

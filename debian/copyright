@@ -55,6 +55,14 @@ Comment:
  Software's app icon, a shopping bag with an arrow into it, is drawn for
  VibeOS on the tile the other apps use.
 
+Files: apps/terminal/data/vibeos.Terminal.svg
+       docs/icons/terminal.png
+Copyright: 2026 pulpoff <pashkovsky@gmail.com>
+License: Expat
+Comment:
+ Terminal's app icon, a prompt's chevron and the cursor, is drawn for VibeOS
+ on the tile the other apps use.
+
 Files: apps/software/data/fontawesome/*
 Copyright: 2025 Fonticons, Inc. (Font Awesome Free 7.0.0)
 License: CC-BY-4.0

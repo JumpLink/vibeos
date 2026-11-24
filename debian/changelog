@@ -35,6 +35,16 @@ vibeos (1:0.1.4.1) unstable; urgency=medium
   * Vibe: the call announcer's autostart entry leaves out
     X-GNOME-Autostart-Phase, which gnome-session warned about at login.
   * Navi: the package's changelog entry is wrapped at 80 columns.
+  * Terminal, a new app (vibeos-terminal, vibeos.Terminal), takes Console's
+    place: GNOME's terminal widget (VTE) made for the touchscreen. A tap
+    brings the keyboard over the window with a row of Esc, Tab, Ctrl, Alt
+    and the arrows on it (Ctrl and Alt sticky, as Termux's); a long press
+    selects with handles and a Copy and Paste toolbar; one finger or two
+    scroll and fling, as a mouse wheel would in less, vim or htop; a pinch
+    zooms the text. The vibeos metapackage recommends it, the default home
+    has it in Console's dock slot, and the launcher shows it instead of
+    Console and puts it in Console's places on a home already set up.
+    Console stays installed where it was.
 
  -- pulpoff <pashkovsky@gmail.com>  Tue, 24 Nov 2026 04:53:21 +0100
 
