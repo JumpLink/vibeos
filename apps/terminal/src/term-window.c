@@ -18,12 +18,13 @@ typedef struct {
 } Window;
 
 static const VibeosAboutSection term_legal[] = {
-  { "VTE", "The terminal itself is <a href=\"https://gitlab.gnome.org/GNOME/vte\">VTE</a>, GNOME's terminal widget, "
-           "under the GNU Lesser General Public License, version 3 or later." },
+  /* TRANSLATORS: keep the link's markup as it is */
+  { "VTE", N_("The terminal itself is <a href=\"https://gitlab.gnome.org/GNOME/vte\">VTE</a>, GNOME's terminal widget, "
+              "under the GNU Lesser General Public License, version 3 or later.") },
   { NULL }
 };
 
-static const VibeosAboutInfo term_about = { .name = "Terminal", .icon_name = "vibeos.Terminal",
+static const VibeosAboutInfo term_about = { .name = N_("Terminal"), .icon_name = "vibeos.Terminal",
                                             .legal = term_legal };
 
 static void

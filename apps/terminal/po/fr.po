@@ -1,0 +1,77 @@
+# French translations of vibeos-terminal.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-terminal\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-24 16:50+0100\n"
+"PO-Revision-Date: 2026-11-24 16:50+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: French\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: data/vibeos.Terminal.desktop.in src/term-window.c
+msgid "Terminal"
+msgstr "Terminal"
+
+#: data/vibeos.Terminal.desktop.in
+msgid "A command line, made for touch"
+msgstr "Une ligne de commande conçue pour le tactile"
+
+#: data/vibeos.Terminal.desktop.in
+msgid "Terminal;Shell;Command;Prompt;Console;"
+msgstr "Terminal;Shell;Commande;Ligne de commande;Invite;Console;"
+
+#: src/term-keys.c
+msgctxt "extra key"
+msgid "Esc"
+msgstr "Échap"
+
+#: src/term-keys.c
+msgctxt "extra key"
+msgid "Tab"
+msgstr "Tab"
+
+#: src/term-keys.c
+msgctxt "extra key"
+msgid "Ctrl"
+msgstr "Ctrl"
+
+#: src/term-keys.c
+msgctxt "extra key"
+msgid "Alt"
+msgstr "Alt"
+
+# android: DocumentsUI menu_copy_to_clipboard
+#: src/term-view.c
+msgid "Copy"
+msgstr "Copier"
+
+# android: DocumentsUI menu_paste_from_clipboard
+#: src/term-view.c src/term-window.c
+msgid "Paste"
+msgstr "Coller"
+
+#: src/term-view.c
+msgid "Select all"
+msgstr "Tout sélectionner"
+
+#. TRANSLATORS: keep the link's markup as it is
+#: src/term-window.c
+msgid ""
+"The terminal itself is <a href=\"https://gitlab.gnome.org/GNOME/vte\">VTE</"
+"a>, GNOME's terminal widget, under the GNU Lesser General Public License, "
+"version 3 or later."
+msgstr ""
+"Le terminal lui-même est <a href=\"https://gitlab.gnome.org/GNOME/vte\">VTE</"
+"a>, le composant de terminal de GNOME, sous GNU Lesser General Public "
+"License, version 3 ou ultérieure."
+
+#: src/term-window.c
+msgid "New window"
+msgstr "Nouvelle fenêtre"

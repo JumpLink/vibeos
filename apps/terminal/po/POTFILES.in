@@ -1,0 +1,5 @@
+# the files with translatable strings
+data/vibeos.Terminal.desktop.in
+src/term-keys.c
+src/term-view.c
+src/term-window.c

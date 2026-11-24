@@ -12,6 +12,7 @@ core = static_library('core', 'src/term-modes.c', 'src/term-input.c', dependenci
 
 # the app
 gnome = import('gnome')
+i18n = import('i18n')
 bindir = get_option('prefix') / get_option('bindir')
 datadir = get_option('prefix') / get_option('datadir')
 resources = gnome.compile_resources('terminal-resources', 'src/terminal.gresource.xml',
@@ -24,10 +25,14 @@ executable('vibeos-terminal', 'src/term-main.c', 'src/term-window.c', 'src/term-
 
 configure_file(input: 'data/vibeos.Terminal.service.in', output: 'vibeos.Terminal.service',
                configuration: configuration_data({'bindir': bindir}), install_dir: datadir / 'dbus-1/services')
-install_data('data/vibeos.Terminal.desktop', install_dir: datadir / 'applications')
+i18n.merge_file(input: 'data/vibeos.Terminal.desktop.in', output: 'vibeos.Terminal.desktop', type: 'desktop',
+                po_dir: 'po', install: true, install_dir: datadir / 'applications')
 install_data('data/vibeos.Terminal.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
 install_data('data/vibeos.Terminal.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
 gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
+
+# the translations, and their checks
+subdir('po')
 
 test('modes', executable('test-modes', 'tests/test-modes.c', include_directories: 'src', link_with: core,
                          dependencies: glib))
