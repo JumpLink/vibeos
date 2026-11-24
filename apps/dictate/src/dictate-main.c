@@ -10,7 +10,8 @@
  * session, data/vibeos.Agent-announce.desktop).
  *
  * The shell has Agent listen while the power key is held (its "hold" action: extension/keylaunch.js), its window
- * opened, or on a locked phone with no window, answering aloud and only reading until the phone is unlocked. */
+ * opened, or on a locked phone with no window, answering aloud and only reading until the phone is unlocked. A hold
+ * the shell gives up ("hold-cancel": the key became part of a chord) sends nothing. */
 #include "dictate-calls.h"
 #include "dictate-device.h"
 #include "dictate-window.h"
@@ -157,6 +158,17 @@ on_hold (GSimpleAction *action, GVariant *parameter, gpointer data)
   dictate_window_hold (window, pressed, locked);
 }
 
+/* "hold-cancel": the hold given up while the key is still down (power and volume up for the power menu): Agent
+ * stops listening and sends nothing; no window is made for it */
+static void
+on_hold_cancel (GSimpleAction *action, GVariant *parameter, gpointer data)
+{
+  GtkWidget *window = agent_window (data);
+
+  if (agent && window)
+    dictate_window_hold_cancel (window);
+}
+
 /* "dictate": the FAB's start and stop, for other programs over D-Bus (org.gtk.Actions on /vibeos/Dictate) */
 static void
 on_dictate (GSimpleAction *action, GVariant *parameter, gpointer data)
@@ -208,6 +220,7 @@ main (int argc, char **argv)
     static const GActionEntry actions[] = {
       { .name = "dictate", .activate = on_dictate },
       { .name = "hold", .activate = on_hold, .parameter_type = "(bb)" },
+      { .name = "hold-cancel", .activate = on_hold_cancel },
     };
 
     g_action_map_add_action_entries (G_ACTION_MAP (app), actions, G_N_ELEMENTS (actions), app);

@@ -17,6 +17,8 @@ void       dictate_window_toggle_dictation (GtkWidget *window);
 /* the power key held (`held`) and let go: Agent listens in between, then answers; `locked`: the phone is locked, and
  * Agent only reads until dictate_window_unlocked () (or a hold on the unlocked phone) */
 void       dictate_window_hold             (GtkWidget *window, gboolean held, gboolean locked);
+/* the hold given up while the key is still down (it became part of a key chord): listening stops, nothing is sent */
+void       dictate_window_hold_cancel      (GtkWidget *window);
 void       dictate_window_unlocked         (GtkWidget *window);
 
 /* Agent's: the call `id` rings, and is said aloud, then Agent listens for what to do (the window need not be on the

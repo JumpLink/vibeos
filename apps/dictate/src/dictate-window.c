@@ -1013,6 +1013,27 @@ dictate_window_hold (GtkWidget *window, gboolean held, gboolean locked)
 }
 
 void
+dictate_window_hold_cancel (GtkWidget *window)
+{
+  Window *self = g_object_get_data (G_OBJECT (window), "dictate-window");
+  DictateState state;
+
+  if (!self || !self->talk || !self->held)
+    return;
+  g_message ("window: the power key's hold is given up: nothing is sent");
+  self->held = FALSE;
+  state = dictate_engine_get_state (self->engine);
+  /* what was heard goes, as when the microphone is stopped while listening */
+  if (state == DICTATE_STARTING || state == DICTATE_LISTENING)
+    {
+      self->drop_when_idle = TRUE;
+      dictate_engine_stop (self->engine);
+    }
+  show_state (self);
+  maybe_close (self);
+}
+
+void
 dictate_window_unlocked (GtkWidget *window)
 {
   Window *self = g_object_get_data (G_OBJECT (window), "dictate-window");
