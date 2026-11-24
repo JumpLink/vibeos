@@ -1,7 +1,11 @@
-/* DictateOrb: Vibe's orb, what it is doing at a glance: a disc in the primary colour in a faint halo. While it
- * listens a ring comes round it and the halo swells with the loudness of the voice; while the model answers the halo
- * breathes. A ✓ in it is something done, a ✕ in the error colours a command not carried out, a grey disc Vibe with
- * less to offer (no connection, quiet hours, nothing heard), and a caller's initials a call ringing.
+/* DictateOrb: Vibe's orb, what it is doing at a glance, in the blue, violet and magenta of Vibe's icon. Idle it is a
+ * still square. While it listens it is a circle in a soft cloud that moves, and swells with the loudness of the
+ * voice; while the model answers the halo round it breathes. A ✓ in it is something done, a ✕ in the error colours a
+ * command not carried out, a grey disc Vibe with less to offer (no connection, quiet hours, nothing heard), and a
+ * caller's initials a call ringing.
+ *
+ * The cloud moves on the frame clock while it listens, and the clock is off otherwise; with animations off
+ * (gtk-enable-animations) it stands still.
  *
  * Beside a bubble of what was said it is smaller (dictate_orb_set_small). It is drawn as large as its box allows, up
  * to its size: on a short screen it shrinks rather than push the text off. */

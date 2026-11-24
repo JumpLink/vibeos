@@ -1,15 +1,26 @@
-/* DictateOrb: see dictate-orb.h. Sizes are the large orb's, in dp; the small one is SMALL of it. */
+/* DictateOrb: see dictate-orb.h. Sizes are the large orb's, in dp; the small one is SMALL of it. The colours are
+ * the blue, violet and magenta of the Vibe icon's background (data/agent-icon/make-icon.py), as the same diagonal
+ * gradient. The cloud is drawn in GtkSnapshot, a few soft closed curves, and moves only while the frame clock ticks
+ * it, which it does for listening and thinking alone. */
 #include "dictate-orb.h"
 
 #include <math.h>
 #include <vibeos.h>
 
-#define RING            216     /* the ring round it while it listens (2 dp, the primary colour at RING_ALPHA) */
+#define RING            216     /* the ring round a caller's initials (2 dp, the magenta at RING_ALPHA) */
 #define RING_WIDTH      2
 #define RING_ALPHA      0.25f
 #define HALO            200     /* the halo at rest */
-#define HALO_LISTENING  180     /* ... and while it listens, stronger, inside the ring */
-#define HALO_SWELL      28      /* how much further it reaches at full loudness */
+#define HALO_LISTENING  180     /* ... and for a caller, stronger, inside the ring */
+#define SQUARE_RADIUS   0.22    /* the idle square's corners, of its side: the icon tile's 28 in 128 */
+#define CLOUD_BLOBS     3       /* the cloud: soft closed curves, each in one of the three colours */
+#define CLOUD_POINTS    7       /* the points a curve is drawn through */
+#define CLOUD_RADIUS    76      /* the first one's radius, dp (the core's is 60) ... */
+#define CLOUD_STEP      7       /* ... and how much larger each next one is */
+#define CLOUD_WOBBLE    0.07    /* how far a point strays from its radius, at rest ... */
+#define CLOUD_LOUD      0.07    /* ... and more at full loudness */
+#define CLOUD_SWELL     0.10    /* how much larger it grows at full loudness */
+#define CLOUD_ALPHA     0.8     /* at the core's edge; it fades to nothing at the outer edge */
 #define HALO_ALPHA      0.08f
 #define HALO_LIVE_ALPHA 0.18f
 #define CORE            120
@@ -31,6 +42,7 @@ struct _DictateOrb
   double change;                /* from `was` to `look`, 0 .. 1 */
   double scale;                 /* 1 large .. SMALL */
   double level;                 /* the loudness as drawn, eased */
+  double cloud_time;            /* seconds the cloud has moved */
   VibeosAnim *look_anim, *size_anim;
   guint tick;
   gint64 last_frame, breath_start;
@@ -47,10 +59,15 @@ animations (DictateOrb *self)
   return enabled;
 }
 
-/* what a look draws: the core's colour, the halo's, and how strong the halo and the ring are */
+/* the icon background's three colours, #1F3BFF #7B2CFF #F21FC2 */
+static const GdkRGBA BLUE = { 0.1216f, 0.2314f, 1.0f, 1.0f }, VIOLET = { 0.4824f, 0.1725f, 1.0f, 1.0f },
+                     MAGENTA = { 0.9490f, 0.1216f, 0.7608f, 1.0f }, WHITE = { 1, 1, 1, 1 };
+
+/* what a look draws: the core's three gradient colours and corner radius (of its side), the halo's colour, and how
+ * strong the halo, the ring and the cloud are */
 typedef struct {
-  GdkRGBA core, halo_color, glyph;
-  double halo, halo_alpha, ring;
+  GdkRGBA stop[3], halo_color, glyph;
+  double corner, halo, halo_alpha, ring, cloud;
   const char *icon;
   double icon_size;
 } Look;
@@ -58,14 +75,15 @@ typedef struct {
 static Look
 look_of (DictateOrb *self, DictateOrbLook look, double breath)
 {
-  Look l = { vibeos_color (VIBEOS_PRIMARY), vibeos_color (VIBEOS_PRIMARY), vibeos_color (VIBEOS_ON_PRIMARY), HALO,
-             HALO_ALPHA, 0, NULL, GLYPH };
+  Look l = { { BLUE, VIOLET, MAGENTA }, VIOLET, WHITE, 0.5, HALO, 0, 0, 0, NULL, GLYPH };
 
   switch (look)
     {
     case DICTATE_ORB_LISTENING:
+      l.cloud = 1;
+      break;
     case DICTATE_ORB_CALLER:
-      l.halo = HALO_LISTENING + HALO_SWELL * (look == DICTATE_ORB_LISTENING ? self->level : 0);
+      l.halo = HALO_LISTENING;
       l.halo_alpha = HALO_LIVE_ALPHA;
       l.ring = 1;
       break;
@@ -74,18 +92,24 @@ look_of (DictateOrb *self, DictateOrbLook look, double breath)
       break;
     case DICTATE_ORB_DONE:
       l.icon = "dictate-check-symbolic";
+      l.halo_alpha = HALO_ALPHA;
       break;
     case DICTATE_ORB_REFUSED:
-      l.core = vibeos_color (VIBEOS_ERROR);
-      l.halo_color = vibeos_color (VIBEOS_ERROR);
-      l.glyph = vibeos_color (VIBEOS_ON_ERROR);
+      /* the same gradient, running into the error colour */
+      l.stop[0] = MAGENTA;
+      l.stop[2] = vibeos_color (VIBEOS_ERROR);
+      l.stop[1] = vibeos_rgba_mix (&l.stop[0], &l.stop[2], 0.5f);
+      l.halo_color = l.stop[2];
+      l.halo_alpha = HALO_ALPHA;
       l.icon = "dictate-close-symbolic";
       l.icon_size = GLYPH + 4;
       break;
     case DICTATE_ORB_DIM:
-      l.core = vibeos_color (VIBEOS_OUTLINE_VARIANT);
+      l.stop[0] = l.stop[1] = l.stop[2] = vibeos_color (VIBEOS_OUTLINE_VARIANT);
       break;
     case DICTATE_ORB_REST:
+      /* a still square */
+      l.corner = SQUARE_RADIUS;
       break;
     }
   return l;
@@ -103,6 +127,82 @@ disc (GtkSnapshot *snapshot, double cx, double cy, double diameter, const GdkRGB
   gtk_snapshot_push_rounded_clip (snapshot, &rect);
   gtk_snapshot_append_color (snapshot, color, &rect.bounds);
   gtk_snapshot_pop (snapshot);
+}
+
+/* the core: a square with the corner radius `corner` (0.5 of the side: a circle), in the diagonal gradient */
+static void
+core_shape (GtkSnapshot *snapshot, double cx, double cy, double side, double corner, const GdkRGBA stop[3])
+{
+  GskRoundedRect rect;
+  graphene_rect_t *b;
+
+  gsk_rounded_rect_init_from_rect (&rect, &GRAPHENE_RECT_INIT (cx - side / 2, cy - side / 2, side, side),
+                                   (float) (side * corner));
+  b = &rect.bounds;
+  gtk_snapshot_push_rounded_clip (snapshot, &rect);
+  gtk_snapshot_append_linear_gradient (snapshot, b, &GRAPHENE_POINT_INIT (b->origin.x, b->origin.y),
+                                       &GRAPHENE_POINT_INIT (b->origin.x + b->size.width,
+                                                             b->origin.y + b->size.height),
+                                       (GskColorStop[3]) { { 0, stop[0] }, { 0.5f, stop[1] }, { 1, stop[2] } }, 3);
+  gtk_snapshot_pop (snapshot);
+}
+
+/* the cloud round the core: CLOUD_BLOBS closed curves through CLOUD_POINTS points whose distances from the middle
+ * drift (each point with its own phase), turning slowly, each filled with a radial gradient that is faint at its
+ * edge, so the three blend into one soft cloud. `t` is the time in seconds (0: still), `level` the loudness,
+ * `strength` how much of it shows (a look coming in or going out) */
+static void
+cloud (GtkSnapshot *snapshot, double cx, double cy, double scale, double t, double level, double strength)
+{
+  const GdkRGBA *colors[CLOUD_BLOBS] = { &BLUE, &VIOLET, &MAGENTA };
+  double wobble = CLOUD_WOBBLE + CLOUD_LOUD * level;
+
+  if (strength <= 0.003)
+    return;
+  for (int b = 0; b < CLOUD_BLOBS; b++)
+    {
+      graphene_point_t p[CLOUD_POINTS];
+      double base = (CLOUD_RADIUS + CLOUD_STEP * b) * scale * (0.7 + 0.3 * strength) * (1 + CLOUD_SWELL * level);
+      double reach = base * (1 + wobble) * 1.04, turn = t * (0.35 + 0.17 * b) * (b % 2 ? -1 : 1) + b * 2.1;
+      GskPathBuilder *builder = gsk_path_builder_new ();
+      GskPath *path;
+      GdkRGBA in = *colors[b], mid = *colors[b], low = *colors[b], out = *colors[b];
+
+      for (int i = 0; i < CLOUD_POINTS; i++)
+        {
+          double a = 2 * G_PI * i / CLOUD_POINTS + turn,
+                 drift = sin (t * (1.1 + 0.23 * b) + i * 2.399 + b) * 0.6 + sin (t * (1.9 - 0.2 * b) + i * 4.1) * 0.4,
+                 r = base * (1 + wobble * drift);
+
+          p[i] = GRAPHENE_POINT_INIT ((float) (cx + r * cos (a)), (float) (cy + r * sin (a)));
+        }
+      /* Catmull-Rom through the points, as cubic curves */
+      gsk_path_builder_move_to (builder, p[0].x, p[0].y);
+      for (int i = 0; i < CLOUD_POINTS; i++)
+        {
+          const graphene_point_t *p0 = &p[(i + CLOUD_POINTS - 1) % CLOUD_POINTS], *p1 = &p[i],
+                                 *p2 = &p[(i + 1) % CLOUD_POINTS], *p3 = &p[(i + 2) % CLOUD_POINTS];
+
+          gsk_path_builder_cubic_to (builder, p1->x + (p2->x - p0->x) / 6, p1->y + (p2->y - p0->y) / 6,
+                                     p2->x - (p3->x - p1->x) / 6, p2->y - (p3->y - p1->y) / 6, p2->x, p2->y);
+        }
+      gsk_path_builder_close (builder);
+      path = gsk_path_builder_free_to_path (builder);
+      in.alpha = (float) (CLOUD_ALPHA * strength);
+      mid.alpha = in.alpha * 0.55f;
+      low.alpha = in.alpha * 0.15f;
+      out.alpha = 0;
+      gtk_snapshot_push_fill (snapshot, path, GSK_FILL_RULE_WINDING);
+      gtk_snapshot_append_radial_gradient (snapshot,
+                                           &GRAPHENE_RECT_INIT ((float) (cx - reach), (float) (cy - reach),
+                                                                (float) (2 * reach), (float) (2 * reach)),
+                                           &GRAPHENE_POINT_INIT ((float) cx, (float) cy), (float) reach,
+                                           (float) reach, 0, 1,
+                                           (GskColorStop[4]) { { 0.0f, in }, { 0.5f, mid }, { 0.8f, low }, { 1.0f, out } },
+                                           4);
+      gtk_snapshot_pop (snapshot);
+      gsk_path_unref (path);
+    }
 }
 
 static void
@@ -147,7 +247,8 @@ dictate_orb_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   double fit = MIN (1.0, MIN (w, h) / RING), scale = self->scale * fit, cx = w / 2, cy = h / 2;
   double breath = 0, t = self->change;
   Look from, to;
-  GdkRGBA core, halo, ring;
+  GdkRGBA stop[3], halo, ring;
+  double ct = animations (self) ? self->cloud_time : 0;
 
   if (self->look == DICTATE_ORB_WORKING || self->was == DICTATE_ORB_WORKING)
     breath = animations (self) && self->breath_start
@@ -155,7 +256,10 @@ dictate_orb_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   from = look_of (self, self->was, breath);
   to = look_of (self, self->look, breath);
 
-  ring = vibeos_color_alpha (VIBEOS_PRIMARY, RING_ALPHA * (float) (from.ring + (to.ring - from.ring) * t));
+  /* the cloud (under everything else): out of a listening look, or into it */
+  cloud (snapshot, cx, cy, scale, ct, self->level, from.cloud + (to.cloud - from.cloud) * t);
+  ring = MAGENTA;
+  ring.alpha = RING_ALPHA * (float) (from.ring + (to.ring - from.ring) * t);
   if (ring.alpha > 0)
     {
       GskRoundedRect outer;
@@ -169,8 +273,9 @@ dictate_orb_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   halo = vibeos_rgba_mix (&from.halo_color, &to.halo_color, (float) t);
   halo.alpha = (float) (from.halo_alpha + (to.halo_alpha - from.halo_alpha) * t);
   disc (snapshot, cx, cy, MIN (from.halo + (to.halo - from.halo) * t, RING - 2 * RING_WIDTH - 2) * scale, &halo);
-  core = vibeos_rgba_mix (&from.core, &to.core, (float) t);
-  disc (snapshot, cx, cy, CORE * scale, &core);
+  for (int i = 0; i < 3; i++)
+    stop[i] = vibeos_rgba_mix (&from.stop[i], &to.stop[i], (float) t);
+  core_shape (snapshot, cx, cy, CORE * scale, from.corner + (to.corner - from.corner) * t, stop);
   glyph (self, snapshot, &from, self->was_initials, cx, cy, scale, (float) (1 - t));
   glyph (self, snapshot, &to, self->initials, cx, cy, scale, (float) t);
 }
@@ -197,11 +302,14 @@ on_tick (GtkWidget *widget, GdkFrameClock *clock, gpointer data)
   double tau = target > self->level ? RISE_TAU_US : FALL_TAU_US;
 
   self->last_frame = now;
+  self->cloud_time += dt / 1e6;
   if (!self->breath_start)
     self->breath_start = now;
   self->level += (target - self->level) * (1.0 - exp (-dt / tau));
   gtk_widget_queue_draw (widget);
-  if (!listening && self->look != DICTATE_ORB_WORKING && self->level < 0.001)
+  /* the clock stops with nothing moving: not listening or thinking, the loudness gone, and the cloud faded out */
+  if (!listening && self->look != DICTATE_ORB_WORKING && self->level < 0.001
+      && !vibeos_anim_is_running (self->look_anim))
     {
       self->tick = 0;
       self->last_frame = self->breath_start = 0;
@@ -243,7 +351,8 @@ dictate_orb_set_look (DictateOrb *self, DictateOrbLook look, const char *initial
     vibeos_anim_start (self->look_anim, 0, 1, LOOK_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
   else
     on_change (self->look_anim, 1, self);
-  if ((look == DICTATE_ORB_LISTENING || look == DICTATE_ORB_WORKING) && !self->tick)
+  /* with animations off nothing ticks: the cloud stands still, and the clock costs nothing */
+  if ((look == DICTATE_ORB_LISTENING || look == DICTATE_ORB_WORKING) && !self->tick && animations (self))
     self->tick = gtk_widget_add_tick_callback (GTK_WIDGET (self), on_tick, NULL, NULL);
   {
     const char *name = look == DICTATE_ORB_CALLER && initials ? initials : NULL;
