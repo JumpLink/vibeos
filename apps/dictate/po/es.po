@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-dictate\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 16:57+0100\n"
+"POT-Creation-Date: 2026-11-24 18:27+0100\n"
 "PO-Revision-Date: 2026-11-24 16:47+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Spanish\n"
@@ -443,7 +443,9 @@ msgid "Installing…"
 msgstr "Instalando…"
 
 # android: Framework serviceClassVoice (short)
-#: src/dictate-download-dialog.c
+#. TRANSLATORS: the dialog choosing whether a man or a woman speaks for Vibe
+#. TRANSLATORS: a row in Vibe's settings, under Speech rate; its summary says what it chooses
+#: src/dictate-download-dialog.c src/dictate-settings.c
 msgid "Voice"
 msgstr "Voz"
 
@@ -1180,6 +1182,18 @@ msgstr "Descargado, %s"
 msgid "Get"
 msgstr "Descargar"
 
+#. TRANSLATORS: Vibe's voice in Settings: a woman speaks (Russian's voice has a man's and a woman's)
+#: src/dictate-settings.c
+msgctxt "voice gender"
+msgid "Female"
+msgstr "Femenina"
+
+#. TRANSLATORS: Vibe's voice in Settings: a man speaks (Russian's voice has a man's and a woman's)
+#: src/dictate-settings.c
+msgctxt "voice gender"
+msgid "Male"
+msgstr "Masculina"
+
 #: src/dictate-settings.c
 msgid "Short"
 msgstr "Cortas"
@@ -1253,6 +1267,10 @@ msgstr "Desactivado, solo se escriben"
 #: src/dictate-settings.c
 msgid "How fast Vibe speaks"
 msgstr "La velocidad a la que habla Vibe"
+
+#: src/dictate-settings.c
+msgid "Whether a man or a woman speaks"
+msgstr "Voz masculina o femenina"
 
 #: src/dictate-settings.c
 msgid "How much Vibe says"

@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-dictate\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 16:57+0100\n"
+"POT-Creation-Date: 2026-11-24 18:27+0100\n"
 "PO-Revision-Date: 2026-11-24 16:47+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Dutch\n"
@@ -443,7 +443,9 @@ msgstr "Uitpakken en installeren…"
 msgid "Installing…"
 msgstr "Installeren…"
 
-#: src/dictate-download-dialog.c
+#. TRANSLATORS: the dialog choosing whether a man or a woman speaks for Vibe
+#. TRANSLATORS: a row in Vibe's settings, under Speech rate; its summary says what it chooses
+#: src/dictate-download-dialog.c src/dictate-settings.c
 msgid "Voice"
 msgstr "Stem"
 
@@ -1182,6 +1184,18 @@ msgstr "Gedownload, %s"
 msgid "Get"
 msgstr "Ophalen"
 
+#. TRANSLATORS: Vibe's voice in Settings: a woman speaks (Russian's voice has a man's and a woman's)
+#: src/dictate-settings.c
+msgctxt "voice gender"
+msgid "Female"
+msgstr "Vrouwelijk"
+
+#. TRANSLATORS: Vibe's voice in Settings: a man speaks (Russian's voice has a man's and a woman's)
+#: src/dictate-settings.c
+msgctxt "voice gender"
+msgid "Male"
+msgstr "Mannelijk"
+
 #: src/dictate-settings.c
 msgid "Short"
 msgstr "Kort"
@@ -1255,6 +1269,10 @@ msgstr "Uit, ze worden alleen geschreven"
 #: src/dictate-settings.c
 msgid "How fast Vibe speaks"
 msgstr "Hoe snel Vibe spreekt"
+
+#: src/dictate-settings.c
+msgid "Whether a man or a woman speaks"
+msgstr "Mannen- of vrouwenstem"
 
 #: src/dictate-settings.c
 msgid "How much Vibe says"
