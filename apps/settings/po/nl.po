@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-settings\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 14:27+0100\n"
+"POT-Creation-Date: 2026-11-24 15:40+0100\n"
 "PO-Revision-Date: 2026-11-24 03:44+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Dutch\n"
@@ -1639,32 +1639,33 @@ msgid "Recent apps"
 msgstr "Recente apps"
 
 #: src/ns-buttons.c
-msgid "Hold power button for Agent"
-msgstr "Aan/uit-knop ingedrukt houden voor Agent"
+msgid "Hold power button for Vibe"
+msgstr "Aan/uit-knop ingedrukt houden voor Vibe"
 
 #: src/ns-buttons.c
 msgid ""
-"Talk to Agent while you hold it. Power menu: power and volume up together"
+"Hold it to talk to Vibe; it listens until you stop speaking. Power menu: "
+"power and volume up together"
 msgstr ""
-"Praat met Agent zolang je hem ingedrukt houdt. Aan/uit-menu: aan/uit-knop en "
-"volume omhoog tegelijk"
+"Houd hem ingedrukt om met Vibe te praten; Vibe luistert tot je stopt met "
+"praten. Aan/uit-menu: aan/uit-knop en volume omhoog tegelijk"
 
 #: src/ns-buttons.c
 msgid ""
-"Off: holding the power button opens the power menu. On a locked phone, Agent "
+"Off: holding the power button opens the power menu. On a locked phone, Vibe "
 "only answers questions until you unlock it."
 msgstr ""
 "Uit: als je de aan/uit-knop ingedrukt houdt, wordt het aan/uit-menu geopend. "
-"Op een vergrendelde telefoon beantwoordt Agent alleen vragen totdat je "
+"Op een vergrendelde telefoon beantwoordt Vibe alleen vragen totdat je "
 "ontgrendelt."
 
 #: src/ns-buttons.c
 msgid ""
-"Off: holding the power button opens the power menu. On a locked tablet, "
-"Agent only answers questions until you unlock it."
+"Off: holding the power button opens the power menu. On a locked tablet, Vibe "
+"only answers questions until you unlock it."
 msgstr ""
 "Uit: als je de aan/uit-knop ingedrukt houdt, wordt het aan/uit-menu geopend. "
-"Op een vergrendelde tablet beantwoordt Agent alleen vragen totdat je "
+"Op een vergrendelde tablet beantwoordt Vibe alleen vragen totdat je "
 "ontgrendelt."
 
 #: src/ns-caps.c
@@ -2359,8 +2360,12 @@ msgid "Add a printer"
 msgstr "Printer toevoegen"
 
 #: src/ns-net.c
-msgid "Its address, like printer.local or ipp://192.0.2.20/ipp/print. Network printers CUPS finds by itself are listed already."
-msgstr "Het adres, zoals printer.local of ipp://192.0.2.20/ipp/print. Netwerkprinters die CUPS zelf vindt, staan al in de lijst."
+msgid ""
+"Its address, like printer.local or ipp://192.0.2.20/ipp/print. Network "
+"printers CUPS finds by itself are listed already."
+msgstr ""
+"Het adres, zoals printer.local of ipp://192.0.2.20/ipp/print. "
+"Netwerkprinters die CUPS zelf vindt, staan al in de lijst."
 
 # android: Settings add
 #: src/ns-net.c

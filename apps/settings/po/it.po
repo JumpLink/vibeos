@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-settings\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 14:27+0100\n"
+"POT-Creation-Date: 2026-11-24 15:40+0100\n"
 "PO-Revision-Date: 2026-11-24 03:44+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Italian\n"
@@ -1646,32 +1646,33 @@ msgid "Recent apps"
 msgstr "App recenti"
 
 #: src/ns-buttons.c
-msgid "Hold power button for Agent"
-msgstr "Tieni premuto il tasto di accensione per Agent"
+msgid "Hold power button for Vibe"
+msgstr "Tieni premuto il tasto di accensione per Vibe"
 
 #: src/ns-buttons.c
 msgid ""
-"Talk to Agent while you hold it. Power menu: power and volume up together"
+"Hold it to talk to Vibe; it listens until you stop speaking. Power menu: "
+"power and volume up together"
 msgstr ""
-"Parla con Agent mentre tieni premuto il tasto. Menu di accensione: tasto di "
-"accensione e volume su insieme"
+"Tienilo premuto per parlare con Vibe; Vibe ascolta finché non smetti di "
+"parlare. Menu di accensione: tasto di accensione e volume su insieme"
 
 #: src/ns-buttons.c
 msgid ""
-"Off: holding the power button opens the power menu. On a locked phone, Agent "
+"Off: holding the power button opens the power menu. On a locked phone, Vibe "
 "only answers questions until you unlock it."
 msgstr ""
 "Off: se tieni premuto il tasto di accensione si apre il menu di accensione. "
-"Se il telefono è bloccato, Agent risponde solo alle domande finché non lo "
+"Se il telefono è bloccato, Vibe risponde solo alle domande finché non lo "
 "sblocchi."
 
 #: src/ns-buttons.c
 msgid ""
-"Off: holding the power button opens the power menu. On a locked tablet, "
-"Agent only answers questions until you unlock it."
+"Off: holding the power button opens the power menu. On a locked tablet, Vibe "
+"only answers questions until you unlock it."
 msgstr ""
 "Off: se tieni premuto il tasto di accensione si apre il menu di accensione. "
-"Se il tablet è bloccato, Agent risponde solo alle domande finché non lo "
+"Se il tablet è bloccato, Vibe risponde solo alle domande finché non lo "
 "sblocchi."
 
 #: src/ns-caps.c
@@ -2367,8 +2368,12 @@ msgid "Add a printer"
 msgstr "Aggiungi una stampante"
 
 #: src/ns-net.c
-msgid "Its address, like printer.local or ipp://192.0.2.20/ipp/print. Network printers CUPS finds by itself are listed already."
-msgstr "Il suo indirizzo, ad esempio printer.local o ipp://printer.local/ipp/print. Le stampanti di rete che CUPS trova da solo sono già elencate."
+msgid ""
+"Its address, like printer.local or ipp://192.0.2.20/ipp/print. Network "
+"printers CUPS finds by itself are listed already."
+msgstr ""
+"Il suo indirizzo, ad esempio printer.local o ipp://printer.local/ipp/print. "
+"Le stampanti di rete che CUPS trova da solo sono già elencate."
 
 # android: Settings add
 #: src/ns-net.c

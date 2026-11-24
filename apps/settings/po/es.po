@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-settings\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 14:27+0100\n"
+"POT-Creation-Date: 2026-11-24 15:40+0100\n"
 "PO-Revision-Date: 2026-11-24 03:44+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Spanish\n"
@@ -1652,33 +1652,34 @@ msgid "Recent apps"
 msgstr "Aplicaciones recientes"
 
 #: src/ns-buttons.c
-msgid "Hold power button for Agent"
-msgstr "Mantener pulsado el botón de encendido para Agent"
+msgid "Hold power button for Vibe"
+msgstr "Mantener pulsado el botón de encendido para Vibe"
 
 #: src/ns-buttons.c
 msgid ""
-"Talk to Agent while you hold it. Power menu: power and volume up together"
+"Hold it to talk to Vibe; it listens until you stop speaking. Power menu: "
+"power and volume up together"
 msgstr ""
-"Habla con Agent mientras lo mantienes pulsado. Menú de apagado: botón de "
-"encendido y subir volumen a la vez"
+"Mantenlo pulsado para hablar con Vibe; Vibe escucha hasta que dejes de "
+"hablar. Menú de apagado: botón de encendido y subir volumen a la vez"
 
 #: src/ns-buttons.c
 msgid ""
-"Off: holding the power button opens the power menu. On a locked phone, Agent "
+"Off: holding the power button opens the power menu. On a locked phone, Vibe "
 "only answers questions until you unlock it."
 msgstr ""
 "Desactivado: al mantener pulsado el botón de encendido se abre el menú de "
-"apagado. Si el teléfono está bloqueado, Agent solo responde preguntas hasta "
+"apagado. Si el teléfono está bloqueado, Vibe solo responde preguntas hasta "
 "que lo desbloquees."
 
 #: src/ns-buttons.c
 msgid ""
-"Off: holding the power button opens the power menu. On a locked tablet, "
-"Agent only answers questions until you unlock it."
+"Off: holding the power button opens the power menu. On a locked tablet, Vibe "
+"only answers questions until you unlock it."
 msgstr ""
 "Desactivado: al mantener pulsado el botón de encendido se abre el menú de "
-"apagado. Si la tablet está bloqueada, Agent solo responde preguntas hasta "
-"que la desbloquees."
+"apagado. Si la tablet está bloqueada, Vibe solo responde preguntas hasta que "
+"la desbloquees."
 
 #: src/ns-caps.c
 msgid "About tablet"
@@ -2372,8 +2373,12 @@ msgid "Add a printer"
 msgstr "Añadir una impresora"
 
 #: src/ns-net.c
-msgid "Its address, like printer.local or ipp://192.0.2.20/ipp/print. Network printers CUPS finds by itself are listed already."
-msgstr "Su dirección, como printer.local o ipp://printer.local/ipp/print. Las impresoras de red que CUPS encuentra por sí solo ya aparecen en la lista."
+msgid ""
+"Its address, like printer.local or ipp://192.0.2.20/ipp/print. Network "
+"printers CUPS finds by itself are listed already."
+msgstr ""
+"Su dirección, como printer.local o ipp://printer.local/ipp/print. Las "
+"impresoras de red que CUPS encuentra por sí solo ya aparecen en la lista."
 
 # android: Settings add
 #: src/ns-net.c
@@ -3841,7 +3846,9 @@ msgstr "Formatos"
 
 #: src/ns-system.c
 msgid "Apps that were already open change language after a restart."
-msgstr "Las aplicaciones que ya estaban abiertas cambian de idioma después de reiniciar."
+msgstr ""
+"Las aplicaciones que ya estaban abiertas cambian de idioma después de "
+"reiniciar."
 
 #: src/ns-system.c
 msgid "Restart now"

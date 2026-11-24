@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-settings\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 14:27+0100\n"
+"POT-Creation-Date: 2026-11-24 15:40+0100\n"
 "PO-Revision-Date: 2026-11-24 03:44+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: French\n"
@@ -1656,32 +1656,33 @@ msgid "Recent apps"
 msgstr "Applis récentes"
 
 #: src/ns-buttons.c
-msgid "Hold power button for Agent"
-msgstr "Maintenir le bouton Marche/Arrêt pour Agent"
+msgid "Hold power button for Vibe"
+msgstr "Maintenir le bouton Marche/Arrêt pour Vibe"
 
 #: src/ns-buttons.c
 msgid ""
-"Talk to Agent while you hold it. Power menu: power and volume up together"
+"Hold it to talk to Vibe; it listens until you stop speaking. Power menu: "
+"power and volume up together"
 msgstr ""
-"Parlez à Agent tant que vous maintenez le bouton. Menu Marche/Arrêt : bouton "
-"Marche/Arrêt et Volume + en même temps"
+"Maintenez-le pour parler à Vibe ; Vibe écoute jusqu'à ce que vous cessiez de "
+"parler. Menu Marche/Arrêt : bouton Marche/Arrêt et Volume + en même temps"
 
 #: src/ns-buttons.c
 msgid ""
-"Off: holding the power button opens the power menu. On a locked phone, Agent "
+"Off: holding the power button opens the power menu. On a locked phone, Vibe "
 "only answers questions until you unlock it."
 msgstr ""
 "Désactivé : maintenir le bouton Marche/Arrêt ouvre le menu Marche/Arrêt. Si "
-"le téléphone est verrouillé, Agent se contente de répondre aux questions "
+"le téléphone est verrouillé, Vibe se contente de répondre aux questions "
 "jusqu'au déverrouillage."
 
 #: src/ns-buttons.c
 msgid ""
-"Off: holding the power button opens the power menu. On a locked tablet, "
-"Agent only answers questions until you unlock it."
+"Off: holding the power button opens the power menu. On a locked tablet, Vibe "
+"only answers questions until you unlock it."
 msgstr ""
 "Désactivé : maintenir le bouton Marche/Arrêt ouvre le menu Marche/Arrêt. Si "
-"la tablette est verrouillée, Agent se contente de répondre aux questions "
+"la tablette est verrouillée, Vibe se contente de répondre aux questions "
 "jusqu'au déverrouillage."
 
 #: src/ns-caps.c
@@ -2378,8 +2379,12 @@ msgid "Add a printer"
 msgstr "Ajouter une imprimante"
 
 #: src/ns-net.c
-msgid "Its address, like printer.local or ipp://192.0.2.20/ipp/print. Network printers CUPS finds by itself are listed already."
-msgstr "Son adresse, par exemple printer.local ou ipp://printer.local/ipp/print. Les imprimantes réseau que CUPS trouve lui-même sont déjà listées."
+msgid ""
+"Its address, like printer.local or ipp://192.0.2.20/ipp/print. Network "
+"printers CUPS finds by itself are listed already."
+msgstr ""
+"Son adresse, par exemple printer.local ou ipp://printer.local/ipp/print. Les "
+"imprimantes réseau que CUPS trouve lui-même sont déjà listées."
 
 # android: Settings add
 #: src/ns-net.c
@@ -3847,7 +3852,8 @@ msgstr "Formats"
 
 #: src/ns-system.c
 msgid "Apps that were already open change language after a restart."
-msgstr "Les applications déjà ouvertes changent de langue après un redémarrage."
+msgstr ""
+"Les applications déjà ouvertes changent de langue après un redémarrage."
 
 #: src/ns-system.c
 msgid "Restart now"

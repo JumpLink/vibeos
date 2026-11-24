@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-settings\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 14:27+0100\n"
+"POT-Creation-Date: 2026-11-24 15:40+0100\n"
 "PO-Revision-Date: 2026-11-24 03:44+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: German\n"
@@ -1647,31 +1647,32 @@ msgid "Recent apps"
 msgstr "Zuletzt aktive Apps"
 
 #: src/ns-buttons.c
-msgid "Hold power button for Agent"
-msgstr "Ein/Aus-Taste gedrückt halten für Agent"
+msgid "Hold power button for Vibe"
+msgstr "Ein/Aus-Taste gedrückt halten für Vibe"
 
 #: src/ns-buttons.c
 msgid ""
-"Talk to Agent while you hold it. Power menu: power and volume up together"
+"Hold it to talk to Vibe; it listens until you stop speaking. Power menu: "
+"power and volume up together"
 msgstr ""
-"Sprich mit Agent, solange du sie gedrückt hältst. Ein/Aus-Menü: Ein/Aus-"
-"Taste und Lauter gleichzeitig"
+"Halte sie gedrückt, um mit Vibe zu sprechen; Vibe hört zu, bis du aufhörst "
+"zu sprechen. Ein/Aus-Menü: Ein/Aus-Taste und Lauter gleichzeitig"
 
 #: src/ns-buttons.c
 msgid ""
-"Off: holding the power button opens the power menu. On a locked phone, Agent "
+"Off: holding the power button opens the power menu. On a locked phone, Vibe "
 "only answers questions until you unlock it."
 msgstr ""
 "Aus: Gedrückthalten der Ein/Aus-Taste öffnet das Ein/Aus-Menü. Auf einem "
-"gesperrten Telefon beantwortet Agent nur Fragen, bis du es entsperrst."
+"gesperrten Telefon beantwortet Vibe nur Fragen, bis du es entsperrst."
 
 #: src/ns-buttons.c
 msgid ""
-"Off: holding the power button opens the power menu. On a locked tablet, "
-"Agent only answers questions until you unlock it."
+"Off: holding the power button opens the power menu. On a locked tablet, Vibe "
+"only answers questions until you unlock it."
 msgstr ""
 "Aus: Gedrückthalten der Ein/Aus-Taste öffnet das Ein/Aus-Menü. Auf einem "
-"gesperrten Tablet beantwortet Agent nur Fragen, bis du es entsperrst."
+"gesperrten Tablet beantwortet Vibe nur Fragen, bis du es entsperrst."
 
 #: src/ns-caps.c
 msgid "About tablet"
@@ -2365,8 +2366,12 @@ msgid "Add a printer"
 msgstr "Drucker hinzufügen"
 
 #: src/ns-net.c
-msgid "Its address, like printer.local or ipp://192.0.2.20/ipp/print. Network printers CUPS finds by itself are listed already."
-msgstr "Die Adresse, z. B. printer.local oder ipp://192.0.2.20/ipp/print. Netzwerkdrucker, die CUPS selbst findet, sind schon aufgeführt."
+msgid ""
+"Its address, like printer.local or ipp://192.0.2.20/ipp/print. Network "
+"printers CUPS finds by itself are listed already."
+msgstr ""
+"Die Adresse, z. B. printer.local oder ipp://192.0.2.20/ipp/print. "
+"Netzwerkdrucker, die CUPS selbst findet, sind schon aufgeführt."
 
 # android: Settings add
 #: src/ns-net.c
@@ -3831,7 +3836,8 @@ msgstr "Formate"
 
 #: src/ns-system.c
 msgid "Apps that were already open change language after a restart."
-msgstr "Apps, die schon geöffnet waren, wechseln die Sprache nach einem Neustart."
+msgstr ""
+"Apps, die schon geöffnet waren, wechseln die Sprache nach einem Neustart."
 
 #: src/ns-system.c
 msgid "Restart now"

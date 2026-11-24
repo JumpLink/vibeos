@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-settings\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 14:27+0100\n"
+"POT-Creation-Date: 2026-11-24 15:40+0100\n"
 "PO-Revision-Date: 2026-11-24 03:44+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Russian\n"
@@ -1639,31 +1639,32 @@ msgid "Recent apps"
 msgstr "Недавние приложения"
 
 #: src/ns-buttons.c
-msgid "Hold power button for Agent"
-msgstr "Вызов Agent удержанием кнопки питания"
+msgid "Hold power button for Vibe"
+msgstr "Вызов Vibe удержанием кнопки питания"
 
 #: src/ns-buttons.c
 msgid ""
-"Talk to Agent while you hold it. Power menu: power and volume up together"
+"Hold it to talk to Vibe; it listens until you stop speaking. Power menu: "
+"power and volume up together"
 msgstr ""
-"Говорите с Agent, пока удерживаете кнопку. Меню питания: кнопки питания и "
-"увеличения громкости вместе"
+"Удерживайте её, чтобы поговорить с Vibe; Vibe слушает, пока вы не замолчите. "
+"Меню питания: кнопки питания и увеличения громкости вместе"
 
 #: src/ns-buttons.c
 msgid ""
-"Off: holding the power button opens the power menu. On a locked phone, Agent "
+"Off: holding the power button opens the power menu. On a locked phone, Vibe "
 "only answers questions until you unlock it."
 msgstr ""
 "Если отключено, удержание кнопки питания открывает меню питания. Пока "
-"телефон заблокирован, Agent только отвечает на вопросы."
+"телефон заблокирован, Vibe только отвечает на вопросы."
 
 #: src/ns-buttons.c
 msgid ""
-"Off: holding the power button opens the power menu. On a locked tablet, "
-"Agent only answers questions until you unlock it."
+"Off: holding the power button opens the power menu. On a locked tablet, Vibe "
+"only answers questions until you unlock it."
 msgstr ""
 "Если отключено, удержание кнопки питания открывает меню питания. Пока "
-"планшет заблокирован, Agent только отвечает на вопросы."
+"планшет заблокирован, Vibe только отвечает на вопросы."
 
 #: src/ns-caps.c
 msgid "About tablet"
@@ -2359,8 +2360,12 @@ msgid "Add a printer"
 msgstr "Добавить принтер"
 
 #: src/ns-net.c
-msgid "Its address, like printer.local or ipp://192.0.2.20/ipp/print. Network printers CUPS finds by itself are listed already."
-msgstr "Адрес принтера, например printer.local или ipp://printer.local/ipp/print. Сетевые принтеры, которые CUPS находит сам, уже есть в списке."
+msgid ""
+"Its address, like printer.local or ipp://192.0.2.20/ipp/print. Network "
+"printers CUPS finds by itself are listed already."
+msgstr ""
+"Адрес принтера, например printer.local или ipp://printer.local/ipp/print. "
+"Сетевые принтеры, которые CUPS находит сам, уже есть в списке."
 
 # android: Settings add (several translations, short)
 #: src/ns-net.c
