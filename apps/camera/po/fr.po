@@ -22,11 +22,11 @@ msgstr "Appareil photo"
 
 #: data/vibeos.Camera.desktop.in
 msgid "Take photos and videos, scan barcodes"
-msgstr ""
+msgstr "Prendre des photos et des vidéos, scanner des codes-barres"
 
 #: data/vibeos.Camera.desktop.in
 msgid "Camera;Photo;Video;Picture;Selfie;QR;Barcode;"
-msgstr ""
+msgstr "Appareil photo;Photo;Vidéo;Image;Selfie;QR;Code-barres;Caméra;"
 
 # android: Aperture cancel_button_description
 #: src/cam-dialogs.c
@@ -85,12 +85,12 @@ msgstr "Ajouter un contact"
 # android: Aperture qr_calendar_title
 #: src/cam-qr-sheet.c
 msgid "Add event to calendar"
-msgstr "Ajouter un événement au calendrier"
+msgstr "Ajouter un événement à l'agenda"
 
 # android: Aperture qr_email_title
 #: src/cam-qr-sheet.c
 msgid "Send a new email"
-msgstr "Envoyer un nouveau courriel"
+msgstr "Envoyer un nouvel e-mail"
 
 # android: Aperture qr_geo_title
 #: src/cam-qr-sheet.c
@@ -141,7 +141,7 @@ msgstr "Copier dans le presse-papiers"
 msgid ""
 "The cameras are driven by <a href=\"https://libcamera.org/\">libcamera</a>, "
 "under the GNU LGPL 2.1 or later."
-msgstr ""
+msgstr "Les caméras sont pilotées par <a href=\"https://libcamera.org/\">libcamera</a>, sous licence GNU LGPL 2.1 ou ultérieure."
 
 # android: Aperture title_activity_settings
 #: src/cam-settings.c
@@ -180,10 +180,9 @@ msgstr "Mise au point"
 msgid "Microphone mute"
 msgstr "Désactiver le microphone"
 
-# android: Aperture gesture_action_zoom (several translations, short)
 #: src/cam-settings.c
 msgid "Zoom"
-msgstr "Agrandir"
+msgstr "Zoom"
 
 # android: Framework system_locale_title (several translations, short)
 #. the keys keep their usual job: the volume
@@ -220,7 +219,7 @@ msgstr "Luminosité maximale"
 # android: Aperture bright_screen_summary
 #: src/cam-settings.c
 msgid "Locks brightness to 100%"
-msgstr "Verrouille la luminosité à 100%"
+msgstr "Verrouille la luminosité à 100 %"
 
 # android: Aperture save_location_title
 #: src/cam-settings.c
@@ -286,11 +285,11 @@ msgstr "Activer le mode miroir en vidéo"
 #. last, About: the camera has no ⋮ (its top corners are the flash's and the flip's), so it is here
 #: src/cam-settings.c
 msgid "About"
-msgstr ""
+msgstr "À propos"
 
 #: src/cam-settings.c
 msgid "About Camera"
-msgstr ""
+msgstr "À propos de l'appareil photo"
 
 # android: Aperture volume_buttons_title (several translations, short)
 #: src/cam-settings.c
@@ -329,7 +328,7 @@ msgstr "Galerie"
 
 #: src/cam-window.c
 msgid "Camera access is off. Turn it on in Settings, Security and privacy."
-msgstr ""
+msgstr "L'accès à l'appareil photo est désactivé. Activez-le dans Paramètres, Sécurité et confidentialité."
 
 # android: Aperture force_torch_help
 #: src/cam-window.c

@@ -22,11 +22,11 @@ msgstr "Fotocamera"
 
 #: data/vibeos.Camera.desktop.in
 msgid "Take photos and videos, scan barcodes"
-msgstr ""
+msgstr "Scatta foto e registra video, scansiona codici a barre"
 
 #: data/vibeos.Camera.desktop.in
 msgid "Camera;Photo;Video;Picture;Selfie;QR;Barcode;"
-msgstr ""
+msgstr "Fotocamera;Foto;Video;Immagine;Selfie;QR;Codice a barre;"
 
 # android: Aperture cancel_button_description
 #: src/cam-dialogs.c
@@ -90,7 +90,7 @@ msgstr "Aggiungi evento al calendario"
 # android: Aperture qr_email_title
 #: src/cam-qr-sheet.c
 msgid "Send a new email"
-msgstr "Invia una nuova e-mail"
+msgstr "Invia una nuova email"
 
 # android: Aperture qr_geo_title
 #: src/cam-qr-sheet.c
@@ -141,7 +141,7 @@ msgstr "Copia negli appunti"
 msgid ""
 "The cameras are driven by <a href=\"https://libcamera.org/\">libcamera</a>, "
 "under the GNU LGPL 2.1 or later."
-msgstr ""
+msgstr "Le fotocamere sono gestite da <a href=\"https://libcamera.org/\">libcamera</a>, con licenza GNU LGPL 2.1 o successiva."
 
 # android: Aperture title_activity_settings
 #: src/cam-settings.c
@@ -286,11 +286,11 @@ msgstr "Abilita la riflessione del video"
 #. last, About: the camera has no ⋮ (its top corners are the flash's and the flip's), so it is here
 #: src/cam-settings.c
 msgid "About"
-msgstr ""
+msgstr "Informazioni"
 
 #: src/cam-settings.c
 msgid "About Camera"
-msgstr ""
+msgstr "Informazioni su Fotocamera"
 
 # android: Aperture volume_buttons_title (several translations, short)
 #: src/cam-settings.c
@@ -329,7 +329,7 @@ msgstr "Galleria"
 
 #: src/cam-window.c
 msgid "Camera access is off. Turn it on in Settings, Security and privacy."
-msgstr ""
+msgstr "L'accesso alla fotocamera è disattivato. Attivalo in Impostazioni, Sicurezza e privacy."
 
 # android: Aperture force_torch_help
 #: src/cam-window.c
@@ -339,7 +339,7 @@ msgstr "In modalità foto, puoi tenere premuto il pulsante del flash per attivar
 # android: Framework httpErrorOk (several translations, short)
 #: src/cam-window.c
 msgid "OK"
-msgstr "Ok"
+msgstr "OK"
 
 # android: Aperture grid_off
 #: src/cam-window.c
@@ -445,7 +445,7 @@ msgstr "Limitazione termica da spegnimento in atto, il dispositivo si spegnerà.
 # android: Aperture save_location_toast
 #: src/cam-window.c
 msgid "Location permissions not granted by the user."
-msgstr "Accesso sulla posizione negato dall'utente."
+msgstr "Accesso alla posizione negato dall'utente."
 
 # android: Aperture pro_button_description
 #: src/cam-window.c
