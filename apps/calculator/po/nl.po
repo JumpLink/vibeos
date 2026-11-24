@@ -22,11 +22,11 @@ msgstr "Rekenmachine"
 
 #: data/vibeos.Calculator.desktop.in
 msgid "Exact arithmetic, with its history"
-msgstr ""
+msgstr "Exact rekenen, met geschiedenis"
 
 #: data/vibeos.Calculator.desktop.in
 msgid "Calculator;Math;Arithmetic;"
-msgstr ""
+msgstr "rekenmachine;calculator;wiskunde;rekenen;"
 
 # android: Framework action_menu_overflow_description (short)
 #: src/calc-display.c src/calc-history.c
@@ -60,8 +60,8 @@ msgstr[1] "%d dagen geleden"
 #, c-format
 msgid "In %d day"
 msgid_plural "In %d days"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Over %d dag"
+msgstr[1] "Over %d dagen"
 
 # android: ExactCalculator no_history
 #: src/calc-history.c
@@ -128,7 +128,7 @@ msgstr "Langere time-outs gebruiken"
 #. the history's Clear: the message, no title
 #: src/calc-window.c
 msgid "Clear history and memory?"
-msgstr "Geschiedenis/geheugen wissen?"
+msgstr "Geschiedenis en geheugen wissen?"
 
 # android: ExactCalculator menu_clear_history
 #: src/calc-window.c
@@ -162,10 +162,15 @@ msgid ""
 "Graphics, Inc., 2001-2004 Hewlett-Packard Development Company, L.P., under "
 "its own permissive licence (Open source licenses in the ⋮ menu)."
 msgstr ""
+"Het exacte rekenen met reële getallen is gebaseerd op de constructive reals "
+"van Hans-J. Boehm (com.hp.creals, zoals de Rekenmachine van Android ze "
+"gebruikt): copyright 1999 Silicon Graphics, Inc., 2001-2004 Hewlett-Packard "
+"Development Company, L.P., onder een eigen permissieve licentie (Open-"
+"sourcelicenties in het ⋮-menu)."
 
 #: src/calc-window.c
 msgid "About"
-msgstr ""
+msgstr "Over"
 
 # android: ExactCalculator desc_del
 #: src/calc-window.c
@@ -195,4 +200,4 @@ msgstr "Afgebroken"
 # android: ExactCalculator error_nan
 #: src/evaluator.c
 msgid "Not a number"
-msgstr "Is geen getal"
+msgstr "Geen getal"
