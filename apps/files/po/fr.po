@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-files\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 03:42+0100\n"
+"POT-Creation-Date: 2026-11-24 14:24+0100\n"
 "PO-Revision-Date: 2026-11-24 03:42+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: French\n"
@@ -29,7 +29,9 @@ msgstr "Parcourir les fichiers du téléphone et les serveurs de votre réseau"
 msgid ""
 "Files;Folders;File Manager;Browse;SMB;Samba;SFTP;FTP;WebDAV;Network;Recycle "
 "Bin;Trash;"
-msgstr "Fichiers;Dossiers;Gestionnaire de fichiers;Parcourir;SMB;Samba;SFTP;FTP;WebDAV;Réseau;Corbeille;"
+msgstr ""
+"Fichiers;Dossiers;Gestionnaire de "
+"fichiers;Parcourir;SMB;Samba;SFTP;FTP;WebDAV;Réseau;Corbeille;"
 
 # android: Framework accessibility_system_action_home_label (several translations, short)
 #: src/fm-browser.c src/fm-drawer.c
@@ -99,8 +101,24 @@ msgstr "Plus"
 
 #: src/fm-dialogs.c
 #, c-format
-msgid "Folder : %u, File : %u"
-msgstr "Dossiers : %u, fichiers : %u"
+msgid "%u folder"
+msgid_plural "%u folders"
+msgstr[0] "%u dossier"
+msgstr[1] "%u dossiers"
+
+#: src/fm-dialogs.c
+#, c-format
+msgid "%u file"
+msgid_plural "%u files"
+msgstr[0] "%u fichier"
+msgstr[1] "%u fichiers"
+
+#. TRANSLATORS: a list of two counts, "3 folders, 12 files"
+#. TRANSLATORS: the counts and the size of what is deleted, "3 folders, 12 files, 4.2 MB"
+#: src/fm-dialogs.c
+#, c-format
+msgid "%s, %s"
+msgstr "%s, %s"
 
 #: src/fm-dialogs.c src/fm-window.c
 msgid "Properties"
@@ -252,11 +270,6 @@ msgid "Are you sure you want to move %d item to the Recycle Bin?"
 msgid_plural "Are you sure you want to move %d items to the Recycle Bin?"
 msgstr[0] "Voulez-vous vraiment placer %d élément dans la corbeille ?"
 msgstr[1] "Voulez-vous vraiment placer %d éléments dans la corbeille ?"
-
-#: src/fm-dialogs.c
-#, c-format
-msgid "Folder : %u, File : %u, Size : %s"
-msgstr "Dossiers : %u, fichiers : %u, taille : %s"
 
 # android: DocumentsUI menu_delete
 #: src/fm-dialogs.c src/fm-window.c
@@ -625,7 +638,7 @@ msgid "USB storage"
 msgstr "Mémoire de stockage USB"
 
 #: src/fm-remote-page.c
-msgid "e.g. 192.168.1.101 or 192.168.1.101/folder"
+msgid "e.g. 192.0.2.101 or 192.0.2.101/folder"
 msgstr "par ex. adresse IP ou adresse IP/dossier"
 
 #: src/fm-remote-page.c
@@ -633,7 +646,7 @@ msgid "e.g. example.com/webdav"
 msgstr "par ex. example.com/webdav"
 
 #: src/fm-remote-page.c
-msgid "e.g. 192.168.1.101"
+msgid "e.g. 192.0.2.101"
 msgstr "par ex. une adresse IP"
 
 #: src/fm-remote-page.c
@@ -799,8 +812,13 @@ msgstr "Impossible de créer le dossier"
 msgid "Create Folder"
 msgstr "Créer un dossier"
 
-# android: DocumentsUI menu_create_dir
 #: src/fm-window.c
+msgctxt "the name a new folder starts with"
+msgid "New folder"
+msgstr "Nouveau dossier"
+
+#: src/fm-window.c
+msgctxt "menu item that makes a folder"
 msgid "New folder"
 msgstr "Nouveau dossier"
 

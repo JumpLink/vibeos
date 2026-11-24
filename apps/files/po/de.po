@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-files\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 03:42+0100\n"
+"POT-Creation-Date: 2026-11-24 14:24+0100\n"
 "PO-Revision-Date: 2026-11-24 03:42+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: German\n"
@@ -99,8 +99,24 @@ msgstr "Mehr"
 
 #: src/fm-dialogs.c
 #, c-format
-msgid "Folder : %u, File : %u"
-msgstr "Ordner: %u, Dateien: %u"
+msgid "%u folder"
+msgid_plural "%u folders"
+msgstr[0] "%u Ordner"
+msgstr[1] "%u Ordner"
+
+#: src/fm-dialogs.c
+#, c-format
+msgid "%u file"
+msgid_plural "%u files"
+msgstr[0] "%u Datei"
+msgstr[1] "%u Dateien"
+
+#. TRANSLATORS: a list of two counts, "3 folders, 12 files"
+#. TRANSLATORS: the counts and the size of what is deleted, "3 folders, 12 files, 4.2 MB"
+#: src/fm-dialogs.c
+#, c-format
+msgid "%s, %s"
+msgstr "%s, %s"
 
 #: src/fm-dialogs.c src/fm-window.c
 msgid "Properties"
@@ -251,11 +267,6 @@ msgid "Are you sure you want to move %d item to the Recycle Bin?"
 msgid_plural "Are you sure you want to move %d items to the Recycle Bin?"
 msgstr[0] "Möchtest du %d Element wirklich in den Papierkorb verschieben?"
 msgstr[1] "Möchtest du %d Elemente wirklich in den Papierkorb verschieben?"
-
-#: src/fm-dialogs.c
-#, c-format
-msgid "Folder : %u, File : %u, Size : %s"
-msgstr "Ordner: %u, Dateien: %u, Größe: %s"
 
 # android: DocumentsUI menu_delete (several translations, short)
 #: src/fm-dialogs.c src/fm-window.c
@@ -623,16 +634,16 @@ msgid "USB storage"
 msgstr "USB-Speicher"
 
 #: src/fm-remote-page.c
-msgid "e.g. 192.168.1.101 or 192.168.1.101/folder"
-msgstr "z. B. 192.168.1.101 oder 192.168.1.101/ordner"
+msgid "e.g. 192.0.2.101 or 192.0.2.101/folder"
+msgstr "z. B. 192.0.2.101 oder 192.0.2.101/ordner"
 
 #: src/fm-remote-page.c
 msgid "e.g. example.com/webdav"
 msgstr "z. B. example.com/webdav"
 
 #: src/fm-remote-page.c
-msgid "e.g. 192.168.1.101"
-msgstr "z. B. 192.168.1.101"
+msgid "e.g. 192.0.2.101"
+msgstr "z. B. 192.0.2.101"
 
 #: src/fm-remote-page.c
 msgid "Host"
@@ -796,8 +807,13 @@ msgstr "Ordner konnte nicht erstellt werden"
 msgid "Create Folder"
 msgstr "Ordner erstellen"
 
-# android: DocumentsUI menu_create_dir
 #: src/fm-window.c
+msgctxt "the name a new folder starts with"
+msgid "New folder"
+msgstr "Neuer Ordner"
+
+#: src/fm-window.c
+msgctxt "menu item that makes a folder"
 msgid "New folder"
 msgstr "Neuer Ordner"
 

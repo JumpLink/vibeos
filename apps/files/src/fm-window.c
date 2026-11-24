@@ -1141,8 +1141,8 @@ new_folder (FmShell *shell)
 {
   if (shell->page != FM_PAGE_BROWSER || fm_browser_is_virtual (shell->browser))
     return;
-  fm_text_dialog (shell->window, _("Create Folder"), _("New folder"), -1, check_new_folder, on_new_folder_done,
-                  shell);
+  fm_text_dialog (shell->window, _("Create Folder"), C_("the name a new folder starts with", "New folder"), -1,
+                  check_new_folder, on_new_folder_done, shell);
 }
 
 typedef enum {
@@ -1198,7 +1198,7 @@ on_overflow (VibeosPressable *button, FmShell *shell)
   int n = 0;
 
   if (shell->page == FM_PAGE_BROWSER && !fm_browser_is_virtual (shell->browser))
-    labels[n++] = _("New folder");
+    labels[n++] = C_("menu item that makes a folder", "New folder");
   labels[n++] = _("Refresh");
   if (shell->page == FM_PAGE_HOME)
     {
