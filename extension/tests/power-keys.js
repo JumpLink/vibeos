@@ -194,13 +194,14 @@ async function main() {
 
     t = phone();
     press(t.power);
-    await wait(300);
+    // past the chord's 150 ms, and well before the long press's 500 (a slow machine dispatches both together)
+    await wait(250);
     key = volume(t.chord, +1);
     await wait(700);
     release(t.power);
     t.chord.volumeRelease();
     await wait(150);
-    check('power held, volume up 300 ms later: the power menu, the volume as it was, no Agent',
+    check('power held, volume up 250 ms later: the power menu, the volume as it was, no Agent',
         [t.menu.shown, key.acted, holds, t.power.slept], [true, 0, [], 0]);
 
     t = phone();
