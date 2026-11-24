@@ -1,0 +1,91 @@
+English	Russian	Note
+Settings	Настройки	
+Notifications	Уведомления	
+Notification	Уведомление	
+Do Not Disturb	Не беспокоить	
+Wi-Fi	Wi-Fi	
+Bluetooth	Bluetooth	
+Airplane mode	Режим полета	as Android writes it (е, not ё)
+Lock screen	Заблокированный экран	Android's name for the screen and its settings
+Screen lock	Блокировка экрана	the PIN/password/pattern lock itself
+Home screen	Главный экран	
+Wallpaper	Обои	
+Alarm	Будильник	
+Timer	Таймер	
+Stopwatch	Секундомер	
+Reminder	Напоминание	
+Event	Мероприятие	as Android's Calendar says it
+Calendar	Календарь	
+Contact	Контакт	
+Conversation	Чат	as Android's Messages says it
+Message	Сообщение	
+Call (noun)	Вызов	as Android's Phone says it; "Звонок" only where "Вызов" reads oddly
+Call (verb, button)	Позвонить	
+Download	Скачать	noun: скачивание; the list: Скачанные файлы
+Install	Установить	
+Uninstall	Удалить	
+Update (verb)	Обновить	
+Update (noun)	Обновление	
+Share	Поделиться	
+Delete	Удалить	
+Remove	Удалить	"Убрать" where the thing stays (removing from a list)
+Clear	Очистить	
+Cancel	Отмена	the button; the verb in a sentence: отменить
+OK	ОК	Cyrillic letters, as Android
+Done	Готово	
+Save	Сохранить	
+Back	Назад	
+Close	Закрыть	
+Search	Поиск	the field or a label; a button that runs it: Найти
+Edit	Изменить	
+Add	Добавить	
+Open	Открыть	
+Rename	Переименовать	
+Copy	Копировать	
+Retry	Повторить	
+Next	Далее	
+Continue	Продолжить	
+Allow	Разрешить	
+Deny	Запретить	
+Turn on	Включить	
+Turn off	Отключить	
+On	Включено	agrees with its noun: Включен, Включена, Включены
+Off	Отключено	agrees with its noun
+Menu	Меню	
+More options	Ещё	Android's name for the ⋮ menu
+About	О приложении	the app's About sheet; "About %s" = "О приложении «%s»"
+Credits	Авторы	
+Legal	Юридическая информация	
+Website	Веб-сайт	
+Report an Issue	Сообщить о проблеме	
+App	Приложение	
+Storage	Хранилище	
+Battery	Батарея	
+Display	Экран	
+Sound	Звук	
+Location	Местоположение	
+Privacy	Конфиденциальность	long: may need a shorter form on a chip
+Security	Безопасность	
+Accessibility	Специальные возможности	
+Mobile data	Мобильный интернет	
+Ringtone	Рингтон	
+Vibrate	Вибрация	
+Password	Пароль	
+PIN	PIN-код	
+Pattern	Графический ключ	
+Fingerprint	Отпечаток пальца	
+Dark theme	Тёмная тема	
+Folder	Папка	
+File	Файл	
+Tab (browser)	Вкладка	
+Bookmark	Закладка	
+History	История	
+Favorites	Избранное	
+Undo	Отменить	
+Device	Устройство	
+Phone	Телефон	
+Tablet	Планшет	
+Keyboard	Клавиатура	
+Language	Язык	
+Date & time	Дата и время	
+Time zone	Часовой пояс	

@@ -18,7 +18,7 @@ msgstr ""
 
 #: vibeos-about.c
 msgid "Developed by"
-msgstr ""
+msgstr "Разработчик"
 
 #. TRANSLATORS: keep the link's markup as it is
 #: vibeos-about.c
@@ -26,14 +26,16 @@ msgid ""
 "The VibeOS Project\n"
 "<a href=\"https://github.com/pulpoff/vibeos\">github.com/pulpoff/vibeos</a>"
 msgstr ""
+"Проект VibeOS\n"
+"<a href=\"https://github.com/pulpoff/vibeos\">github.com/pulpoff/vibeos</a>"
 
 #: vibeos-about.c
 msgid "Built on"
-msgstr ""
+msgstr "На основе"
 
 #: vibeos-about.c
 msgid "Debian, GNOME and GTK."
-msgstr ""
+msgstr "Debian, GNOME и GTK."
 
 #. TRANSLATORS: keep the markup (the link and the line breaks) as it is
 #: vibeos-about.c
@@ -47,14 +49,22 @@ msgid ""
 "Some of its icons and images come from the Android Open Source Project and "
 "LineageOS, under the Apache License 2.0, and so do many of its translations."
 msgstr ""
+"© 2026 pulpoff\n"
+"\n"
+"VibeOS — свободное программное обеспечение, распространяемое по <a "
+"href=\"https://github.com/pulpoff/vibeos/blob/main/LICENSE\">лицензии MIT</"
+"a>. Оно предоставляется без каких-либо гарантий.\n"
+"\n"
+"Некоторые значки и изображения, как и многие переводы, взяты из Android Open "
+"Source Project и LineageOS и распространяются по лицензии Apache 2.0."
 
 #: vibeos-about.c
 msgid "Credits"
-msgstr ""
+msgstr "Авторы"
 
 #: vibeos-about.c
 msgid "Legal"
-msgstr ""
+msgstr "Юридическая информация"
 
 # android: Contacts header_website_entry (other app, short)
 #: vibeos-about.c
@@ -63,17 +73,17 @@ msgstr "Веб-сайт"
 
 #: vibeos-about.c
 msgid "Report an Issue"
-msgstr ""
+msgstr "Сообщить о проблеме"
 
 #. TRANSLATORS: the About sheet's name for a screen reader; %s is the app's name
 #: vibeos-about.c
 #, c-format
 msgid "About %s"
-msgstr ""
+msgstr "О приложении «%s»"
 
 #: vibeos-menu.c
 msgid "About"
-msgstr ""
+msgstr "О приложении"
 
 # android: Framework input_method_nav_back_button_desc
 #: vibeos-search.c vibeos-top-bar.c

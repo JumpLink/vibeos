@@ -1,0 +1,91 @@
+English	Spanish	Note
+Settings	Ajustes	Android's name for the app and the section; never "Configuración"
+Notifications	Notificaciones	
+Notification	Notificación	
+Do Not Disturb	No molestar	
+Wi-Fi	Wi-Fi	
+Bluetooth	Bluetooth	
+Airplane mode	Modo Avión	as Android writes it
+Lock screen	Pantalla de bloqueo	
+Screen lock	Bloqueo de pantalla	the PIN/password/pattern lock itself
+Home screen	Pantalla de inicio	
+Wallpaper	Fondo de pantalla	
+Alarm	Alarma	
+Timer	Temporizador	
+Stopwatch	Cronómetro	
+Reminder	Recordatorio	
+Event	Evento	
+Calendar	Calendario	
+Contact	Contacto	
+Conversation	Conversación	
+Message	Mensaje	
+Call (noun)	Llamada	
+Call (verb, button)	Llamar	
+Download	Descargar	noun: Descarga; the list: Descargas
+Install	Instalar	
+Uninstall	Desinstalar	
+Update (verb)	Actualizar	
+Update (noun)	Actualización	
+Share	Compartir	
+Delete	Eliminar	not "Borrar"
+Remove	Quitar	removes from a list without destroying the thing; "Eliminar" when it is destroyed
+Clear	Borrar	clears a field or a list
+Cancel	Cancelar	
+OK	Aceptar	
+Done	Hecho	
+Save	Guardar	
+Back	Atrás	
+Close	Cerrar	
+Search	Buscar	
+Edit	Editar	
+Add	Añadir	
+Open	Abrir	
+Rename	Cambiar nombre	
+Copy	Copiar	
+Retry	Reintentar	
+Next	Siguiente	
+Continue	Continuar	
+Allow	Permitir	
+Deny	Denegar	
+Turn on	Activar	
+Turn off	Desactivar	
+On	Activado	agrees with its noun: Activada, Activadas
+Off	Desactivado	agrees with its noun: Desactivada, Desactivadas
+Menu	Menú	
+More options	Más opciones	
+About	Información	the app's About sheet; "About %s" = "Información de %s"
+Credits	Créditos	
+Legal	Información legal	
+Website	Sitio web	
+Report an Issue	Informar de un problema	
+App	Aplicación	"Apps" = Aplicaciones
+Storage	Almacenamiento	
+Battery	Batería	
+Display	Pantalla	
+Sound	Sonido	
+Location	Ubicación	
+Privacy	Privacidad	
+Security	Seguridad	
+Accessibility	Accesibilidad	
+Mobile data	Datos móviles	
+Ringtone	Tono de llamada	
+Vibrate	Vibrar	
+Password	Contraseña	
+PIN	PIN	
+Pattern	Patrón	
+Fingerprint	Huella digital	
+Dark theme	Tema oscuro	
+Folder	Carpeta	
+File	Archivo	
+Tab (browser)	Pestaña	
+Bookmark	Marcador	
+History	Historial	
+Favorites	Favoritos	
+Undo	Deshacer	
+Device	Dispositivo	
+Phone	Teléfono	
+Tablet	Tablet	
+Keyboard	Teclado	
+Language	Idioma	
+Date & time	Fecha y hora	
+Time zone	Zona horaria	
