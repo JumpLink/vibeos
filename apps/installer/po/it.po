@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-installer\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 03:42+0100\n"
+"POT-Creation-Date: 2026-11-24 14:32+0100\n"
 "PO-Revision-Date: 2026-11-24 03:42+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Italian\n"
@@ -39,7 +39,8 @@ msgid ""
 "\n"
 "Nothing is installed or removed while the demo runs."
 msgstr ""
-"Questo pacchetto non è reale: la demo di Installer app lo mostra per provarne le schermate.\n"
+"Questo pacchetto non è reale: la demo di Installer app lo mostra per "
+"provarne le schermate.\n"
 "\n"
 "Durante la demo non viene installato né rimosso nulla."
 
@@ -105,7 +106,8 @@ msgstr "Non è stato installato nulla."
 #. the password dialog closed without the password: the user's no, not a failure
 #: src/inst-job.c
 msgid "The password was not given, so nothing was uninstalled."
-msgstr "La password non è stata inserita, quindi non è stato disinstallato nulla."
+msgstr ""
+"La password non è stata inserita, quindi non è stato disinstallato nulla."
 
 #: src/inst-job.c
 msgid "The password was not given, so nothing was installed."
@@ -115,24 +117,32 @@ msgstr "La password non è stata inserita, quindi non è stato installato nulla.
 msgid ""
 "Another app is installing or updating software right now. Try again once it "
 "has finished."
-msgstr "Un'altra app sta installando o aggiornando software in questo momento. Riprova quando avrà finito."
+msgstr ""
+"Un'altra app sta installando o aggiornando software in questo momento. "
+"Riprova quando avrà finito."
 
 #: src/inst-job.c
 msgid ""
 "Something it needs cannot be installed: it is not in the software sources, "
 "or not in a version that fits."
-msgstr "Un componente di cui ha bisogno non può essere installato: non è nelle sorgenti software, o non in una versione compatibile."
+msgstr ""
+"Un componente di cui ha bisogno non può essere installato: non è nelle "
+"sorgenti software, o non in una versione compatibile."
 
 #: src/inst-job.c
 msgid ""
 "Packages it needs could not be downloaded. Check the internet connection and "
 "try again."
-msgstr "Impossibile scaricare i pacchetti di cui ha bisogno. Controlla la connessione a internet e riprova."
+msgstr ""
+"Impossibile scaricare i pacchetti di cui ha bisogno. Controlla la "
+"connessione a internet e riprova."
 
 #: src/inst-job.c
 msgid ""
 "The package is broken: the file is damaged, or it is not a proper package."
-msgstr "Il pacchetto è difettoso: il file è danneggiato oppure non è un pacchetto valido."
+msgstr ""
+"Il pacchetto è difettoso: il file è danneggiato oppure non è un pacchetto "
+"valido."
 
 #: src/inst-job.c
 msgid "There is not enough free storage for it."
@@ -141,16 +151,21 @@ msgstr "Non c'è abbastanza spazio di archiviazione libero."
 #: src/inst-job.c
 msgid ""
 "It clashes with software that is already installed: both have the same files."
-msgstr "È in conflitto con software già installato: entrambi hanno gli stessi file."
+msgstr ""
+"È in conflitto con software già installato: entrambi hanno gli stessi file."
 
 #: src/inst-job.c
 msgid "The package's own setup failed. It may be only partly installed."
-msgstr "La configurazione del pacchetto non è riuscita. Potrebbe essere installato solo in parte."
+msgstr ""
+"La configurazione del pacchetto non è riuscita. Potrebbe essere installato "
+"solo in parte."
 
 #: src/inst-job.c
 msgid ""
 "The package's own removal script failed. It may be only partly uninstalled."
-msgstr "Lo script di rimozione del pacchetto non è riuscito. Potrebbe essere disinstallato solo in parte."
+msgstr ""
+"Lo script di rimozione del pacchetto non è riuscito. Potrebbe essere "
+"disinstallato solo in parte."
 
 #: src/inst-job.c
 msgid "It is made for another kind of device."
@@ -160,7 +175,9 @@ msgstr "È fatto per un altro tipo di dispositivo."
 msgid ""
 "The software sources could not be verified, so nothing was downloaded from "
 "them."
-msgstr "Non è stato possibile verificare le sorgenti software, quindi non è stato scaricato nulla."
+msgstr ""
+"Non è stato possibile verificare le sorgenti software, quindi non è stato "
+"scaricato nulla."
 
 #: src/inst-job.c
 msgid "The software sources do not have it (any more)."
@@ -178,7 +195,9 @@ msgstr "Impossibile installare software"
 msgid ""
 "PackageKit, the system service that installs software, is missing or not "
 "running."
-msgstr "PackageKit, il servizio di sistema che installa il software, manca o non è in esecuzione."
+msgstr ""
+"PackageKit, il servizio di sistema che installa il software, manca o non è "
+"in esecuzione."
 
 #: src/inst-job.c
 msgid "Something went wrong while uninstalling."
@@ -288,7 +307,9 @@ msgstr "Non è un pacchetto"
 msgid ""
 "This file is not a software package that can be installed here, or it is "
 "damaged."
-msgstr "Questo file non è un pacchetto software installabile qui, oppure è danneggiato."
+msgstr ""
+"Questo file non è un pacchetto software installabile qui, oppure è "
+"danneggiato."
 
 #: src/inst-job.c
 #, c-format
@@ -403,7 +424,8 @@ msgstr "Questo file contiene una versione più recente di quella installata."
 
 #: src/inst-view.c
 msgid "The software sources have a newer version than the one installed."
-msgstr "Le sorgenti software hanno una versione più recente di quella installata."
+msgstr ""
+"Le sorgenti software hanno una versione più recente di quella installata."
 
 #: src/inst-view.c
 msgid "This file is an OLDER version"
@@ -418,14 +440,18 @@ msgstr "La versione disponibile è PIÙ VECCHIA"
 msgid ""
 "%s %s is installed. This file has %s, which is older. Replace the installed "
 "version with the older one?"
-msgstr "%s %s è installato. Questo file contiene la versione %s, che è più vecchia. Sostituire la versione installata con quella più vecchia?"
+msgstr ""
+"%s %s è installato. Questo file contiene la versione %s, che è più vecchia. "
+"Sostituire la versione installata con quella più vecchia?"
 
 #: src/inst-view.c
 #, c-format
 msgid ""
 "%s %s is installed. The software sources have %s, which is older. Replace "
 "the installed version with the older one?"
-msgstr "%s %s è installato. Le sorgenti software hanno la versione %s, che è più vecchia. Sostituire la versione installata con quella più vecchia?"
+msgstr ""
+"%s %s è installato. Le sorgenti software hanno la versione %s, che è più "
+"vecchia. Sostituire la versione installata con quella più vecchia?"
 
 #: src/inst-view.c
 msgid "Already installed"
@@ -435,13 +461,17 @@ msgstr "Già installato"
 #, c-format
 msgid ""
 "%s %s is installed already. Reinstalling puts its files back as they came."
-msgstr "%s %s è già installato. La reinstallazione riporta i suoi file allo stato originale."
+msgstr ""
+"%s %s è già installato. La reinstallazione riporta i suoi file allo stato "
+"originale."
 
 #: src/inst-view.c
 #, c-format
 msgid ""
 "%s %s is installed already. The same version cannot be installed over itself."
-msgstr "%s %s è già installato. La stessa versione non può essere installata sopra se stessa."
+msgstr ""
+"%s %s è già installato. La stessa versione non può essere installata sopra "
+"se stessa."
 
 #: src/inst-view.c
 #, c-format
@@ -460,6 +490,23 @@ msgstr "I suoi file di programma vengono rimossi. I tuoi file restano."
 msgid "Frees"
 msgstr "Libera"
 
+#. TRANSLATORS: a package file's size, then the space it takes once installed: "4 MB file · 12 MB installed"
+#: src/inst-view.c
+#, c-format
+msgid "%s file · %s installed"
+msgstr "File da %s · %s una volta installato"
+
+#. TRANSLATORS: what installing downloads, then the space it takes: "4 MB download · 12 MB installed"
+#: src/inst-view.c
+#, c-format
+msgid "%s download · %s installed"
+msgstr "%s da scaricare · %s una volta installato"
+
+#: src/inst-view.c
+#, c-format
+msgid "%s installed"
+msgstr "%s una volta installato"
+
 #: src/inst-view.c
 #, c-format
 msgid "%s file"
@@ -469,16 +516,6 @@ msgstr "File da %s"
 #, c-format
 msgid "%s download"
 msgstr "%s da scaricare"
-
-#: src/inst-view.c
-#, c-format
-msgid "%s · %s installed"
-msgstr "%s · %s una volta installato"
-
-#: src/inst-view.c
-#, c-format
-msgid "%s installed"
-msgstr "%s una volta installato"
 
 # android: Settings accessibility_button_size_title (short)
 #: src/inst-view.c
@@ -517,7 +554,9 @@ msgstr "Sito web"
 msgid ""
 "A package can change anything on this device: it installs with full rights. "
 "Install only what you trust."
-msgstr "Un pacchetto può modificare qualsiasi cosa su questo dispositivo: si installa con tutti i permessi. Installa solo ciò di cui ti fidi."
+msgstr ""
+"Un pacchetto può modificare qualsiasi cosa su questo dispositivo: si "
+"installa con tutti i permessi. Installa solo ciò di cui ti fidi."
 
 # android: PackageInstaller cancel
 #: src/inst-view.c
@@ -584,10 +623,15 @@ msgstr "Installa app dai pacchetti"
 msgid ""
 "App Installer installs .deb package files. Tap one in Files, or choose one "
 "here: it shows what the package is and asks before anything changes."
-msgstr "Installer app installa i file di pacchetto .deb. Toccane uno in File o scegline uno qui: mostra cos'è il pacchetto e chiede conferma prima di cambiare qualcosa."
+msgstr ""
+"Installer app installa i file di pacchetto .deb. Toccane uno in File o "
+"scegline uno qui: mostra cos'è il pacchetto e chiede conferma prima di "
+"cambiare qualcosa."
 
 #: src/inst-window.c
 msgid ""
 "Software uses it too, to install and uninstall apps from the software "
 "sources."
-msgstr "Anche Software lo usa per installare e disinstallare app dalle sorgenti software."
+msgstr ""
+"Anche Software lo usa per installare e disinstallare app dalle sorgenti "
+"software."

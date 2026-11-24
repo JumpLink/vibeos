@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-installer\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 03:42+0100\n"
+"POT-Creation-Date: 2026-11-24 14:32+0100\n"
 "PO-Revision-Date: 2026-11-24 03:42+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Russian\n"
@@ -490,6 +490,23 @@ msgstr "Файлы программы будут удалены. Ваши соб
 msgid "Frees"
 msgstr "Освободится"
 
+#. TRANSLATORS: a package file's size, then the space it takes once installed: "4 MB file · 12 MB installed"
+#: src/inst-view.c
+#, c-format
+msgid "%s file · %s installed"
+msgstr "Файл: %s · после установки: %s"
+
+#. TRANSLATORS: what installing downloads, then the space it takes: "4 MB download · 12 MB installed"
+#: src/inst-view.c
+#, c-format
+msgid "%s download · %s installed"
+msgstr "Загрузка: %s · после установки: %s"
+
+#: src/inst-view.c
+#, c-format
+msgid "%s installed"
+msgstr "После установки: %s"
+
 #: src/inst-view.c
 #, c-format
 msgid "%s file"
@@ -499,16 +516,6 @@ msgstr "Файл: %s"
 #, c-format
 msgid "%s download"
 msgstr "Загрузка: %s"
-
-#: src/inst-view.c
-#, c-format
-msgid "%s · %s installed"
-msgstr "%s · после установки: %s"
-
-#: src/inst-view.c
-#, c-format
-msgid "%s installed"
-msgstr "После установки: %s"
 
 # android: Settings accessibility_button_size_title (short)
 #: src/inst-view.c

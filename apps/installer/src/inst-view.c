@@ -429,26 +429,24 @@ facts (InstView *self)
   else if (!sheet || plan->change == INST_CHANGE_NEW)
     {
       g_autofree char *installed = plan->installed_size ? inst_format_size (plan->installed_size) : NULL;
-      g_autofree char *download = NULL, *text = NULL;
+      gboolean is_file = kind == INST_JOB_FILE && plan->file_size;
+      g_autofree char *file = is_file ? inst_format_size (plan->file_size) : NULL;
+      g_autofree char *download = !is_file && plan->download_size ? inst_format_size (plan->download_size) : NULL;
+      g_autofree char *text = NULL;
 
-      if (kind == INST_JOB_FILE && plan->file_size)
-        {
-          g_autofree char *size = inst_format_size (plan->file_size);
-
-          download = g_strdup_printf (_("%s file"), size);
-        }
-      else if (plan->download_size)
-        {
-          g_autofree char *size = inst_format_size (plan->download_size);
-
-          download = g_strdup_printf (_("%s download"), size);
-        }
-      if (download && installed)
-        text = g_strdup_printf (_("%s · %s installed"), download, installed);
+      /* each a whole sentence: the package file's size or what it downloads, the space it takes once installed */
+      if (file && installed)
+        /* TRANSLATORS: a package file's size, then the space it takes once installed: "4 MB file · 12 MB installed" */
+        text = g_strdup_printf (_("%s file · %s installed"), file, installed);
+      else if (download && installed)
+        /* TRANSLATORS: what installing downloads, then the space it takes: "4 MB download · 12 MB installed" */
+        text = g_strdup_printf (_("%s download · %s installed"), download, installed);
       else if (installed)
         text = g_strdup_printf (_("%s installed"), installed);
-      else
-        text = g_steal_pointer (&download);
+      else if (file)
+        text = g_strdup_printf (_("%s file"), file);
+      else if (download)
+        text = g_strdup_printf (_("%s download"), download);
       if (text)
         {
           fact (list, _("Size"), text);
