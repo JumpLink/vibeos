@@ -9,9 +9,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <vibeos-locale.h>
 
-/* ICU's interval separator: an en dash between thin spaces */
-#define RANGE " – "
 
 gboolean
 cal_format_uses_24h (void)
@@ -47,73 +46,82 @@ cal_format_time (gint64 time)
 {
   g_autoptr(GDateTime) local = local_time (time);
 
-  /* the 12-hour form drops the hour's leading zero */
-  return g_date_time_format (local, cal_format_uses_24h () ? "%H:%M" : "%-I:%M %p");
+  /* in the user's language, by the clock setting: "14:05", "2:05 PM" */
+  return vibeos_format_date (local, cal_format_uses_24h () ? "Hm" : "hm");
+}
+
+/* from @start to @end in the fields @skeleton names, as the language writes a range (vibeos-locale.h) */
+static char *
+format_range (gint64 start, gint64 end, const char *skeleton)
+{
+  g_autoptr(GDateTime) a = local_time (start), b = local_time (end);
+
+  return vibeos_format_interval (a, b, skeleton);
 }
 
 char *
 cal_format_time_range (gint64 start, gint64 end)
 {
-  g_autofree char *a = cal_format_time (start), *b = cal_format_time (end);
-
   if (end <= start)
-    return g_steal_pointer (&a);
-  return g_strconcat (a, RANGE, b, NULL);
+    return cal_format_time (start);
+  /* "10:00 – 11:30", "10:00–11:30 Uhr" */
+  return format_range (start, end, cal_format_uses_24h () ? "Hm" : "hm");
 }
 
+/* the day in the fields @skeleton names (vibeos-locale.h): in the user's language, in the order of the Formats region */
 static char *
-format_day (int day, const char *format)
+format_day (int day, const char *skeleton)
 {
   g_autoptr(GDateTime) local = local_day (day);
 
-  return g_date_time_format (local, format);
+  return vibeos_format_date (local, skeleton);
 }
 
 char *
 cal_format_month_year (int day)
 {
-  /* TRANSLATORS: strftime; the toolbar of the Week and Month views, "November 2026" */
-  return format_day (day, C_("date", "%B %Y"));
+  /* the toolbar of the Week and Month views, "November 2026" */
+  return format_day (day, "yMMMM");
 }
 
 char *
 cal_format_full_date (int day)
 {
-  /* TRANSLATORS: strftime; "November 7, 2026" (the date with the year) */
-  return format_day (day, C_("date", "%B %-d, %Y"));
+  /* "November 7, 2026" (the date with the year) */
+  return format_day (day, "yMMMMd");
 }
 
 char *
 cal_format_month_day (int day)
 {
-  /* TRANSLATORS: strftime; "November 7" */
-  return format_day (day, C_("date", "%B %-d"));
+  /* "November 7" */
+  return format_day (day, "MMMMd");
 }
 
 char *
 cal_format_weekday (int day)
 {
-  return format_day (day, "%A");
+  return format_day (day, "EEEE");
 }
 
 char *
 cal_format_weekday_short (int day)
 {
-  return format_day (day, "%a");
+  return format_day (day, "EEE");
 }
 
 char *
 cal_format_editor_date (int day)
 {
-  /* TRANSLATORS: strftime; "Sun, Nov 1, 2026" (weekday, month, day, year; abbreviated) */
-  return format_day (day, C_("date", "%a, %b %-d, %Y"));
+  /* "Sun, Nov 1, 2026" (weekday, month, day, year; abbreviated) */
+  return format_day (day, "yMMMEd");
 }
 
 char *
 cal_format_picker_date (int day)
 {
-  /* TRANSLATORS: strftime; the date picker's header, "Nov 1, 2026" */
-  return format_day (day, C_("date", "%b %-d, %Y"));
+  /* the date picker's header, "Nov 1, 2026" */
+  return format_day (day, "yMMMd");
 }
 
 char *
@@ -138,10 +146,8 @@ weekday_date (int day, int today)
   g_autoptr(GDateTime) a = local_day (day), b = local_day (today);
 
   if (g_date_time_get_year (a) == g_date_time_get_year (b))
-    /* TRANSLATORS: strftime; "Thursday, April 12" */
-    return g_date_time_format (a, C_("date", "%A, %B %-d"));
-  /* TRANSLATORS: strftime; "Thursday, April 12, 2027" */
-  return g_date_time_format (a, C_("date", "%A, %B %-d, %Y"));
+    return vibeos_format_date (a, "MMMMEEEEd");
+  return vibeos_format_date (a, "yMMMMEEEEd");
 }
 
 char *
@@ -160,9 +166,12 @@ cal_format_event_when (gint64 start, gint64 end, gboolean all_day, gint64 now)
       if (first == last)
         return weekday_date (first, today);
       {
-        g_autofree char *a = weekday_date (first, today), *b = weekday_date (last, today);
+        g_autoptr(GDateTime) a = local_day (first), b = local_day (last), now_day = local_day (today);
 
-        return g_strconcat (a, RANGE, b, NULL);
+        /* the year only when the range does not lie in this one */
+        return vibeos_format_interval (a, b, g_date_time_get_year (a) == g_date_time_get_year (now_day)
+                                             && g_date_time_get_year (b) == g_date_time_get_year (now_day)
+                                             ? "MMMMEEEEd" : "yMMMMEEEEd");
       }
     }
   /* a timed event within one day: "Today at 10:00 – 11:00", "Thursday, April 12, 10:00 – …" */
@@ -182,15 +191,7 @@ cal_format_event_when (gint64 start, gint64 end, gboolean all_day, gint64 now)
       }
     }
   /* over several days: "Fri, Apr 6, 17:00 – Sun, Apr 8, 18:00" */
-  {
-    g_autoptr(GDateTime) a = local_time (start), b = local_time (end);
-    /* TRANSLATORS: strftime; the date of a multi-day event's start or end, "Fri, Apr 6" */
-    g_autofree char *da = g_date_time_format (a, C_("date", "%a, %b %-d"));
-    g_autofree char *db = g_date_time_format (b, C_("date", "%a, %b %-d"));
-    g_autofree char *ta = cal_format_time (start), *tb = cal_format_time (end);
-
-    return g_strdup_printf ("%s, %s" RANGE "%s, %s", da, ta, db, tb);
-  }
+  return format_range (start, end, cal_format_uses_24h () ? "MMMEdHm" : "MMMEdhm");
 }
 
 char *
@@ -199,28 +200,20 @@ cal_format_agenda_when (gint64 start, gint64 end, gboolean all_day)
   if (all_day)
     {
       int first = cal_day_number (start), last = end > start ? cal_day_number (end - 1) : first;
-      g_autofree char *a = cal_format_month_day (first);
 
       if (first == last)
-        return g_steal_pointer (&a);
+        return cal_format_month_day (first);
       {
+        /* "November 7 – 9", "7.–9. November", "November 30 – December 2" */
         g_autoptr(GDateTime) x = local_day (first), y = local_day (last);
-        g_autofree char *b = g_date_time_get_month (x) == g_date_time_get_month (y)
-                             ? g_date_time_format (y, "%-d") : cal_format_month_day (last);
 
-        return g_strconcat (a, RANGE, b, NULL);
+        return vibeos_format_interval (x, y, "MMMMd");
       }
     }
   if (cal_day_number (start) != cal_day_number (end > start ? end - 1 : start))
     {
       /* over midnight: the dates added, "Nov 9, 22:00 – Nov 10, 02:00" */
-      g_autoptr(GDateTime) a = local_time (start), b = local_time (end);
-      /* TRANSLATORS: strftime; "Nov 9" */
-      g_autofree char *da = g_date_time_format (a, C_("date", "%b %-d"));
-      g_autofree char *db = g_date_time_format (b, C_("date", "%b %-d"));
-      g_autofree char *ta = cal_format_time (start), *tb = cal_format_time (end);
-
-      return g_strdup_printf ("%s, %s" RANGE "%s, %s", da, ta, db, tb);
+      return format_range (start, end, cal_format_uses_24h () ? "MMMdHm" : "MMMdhm");
     }
   return cal_format_time_range (start, end);
 }
@@ -236,8 +229,8 @@ cal_format_reminder_text (gint64 start, gboolean all_day, const char *location, 
   if (day < today || day > today + 1)
     {
       g_autoptr(GDateTime) local = local_time (start);
-      /* TRANSLATORS: strftime; "Nov 9" */
-      g_autofree char *date = g_date_time_format (local, C_("date", "%b %-d"));
+      /* "Nov 9" */
+      g_autofree char *date = vibeos_format_date (local, "MMMd");
 
       g_string_append (text, date);
       if (!all_day)
@@ -314,7 +307,7 @@ weekday_name (int weekday, gboolean abbreviated)
   /* 2023-01-01 was a Sunday */
   g_autoptr(GDateTime) date = g_date_time_new_local (2023, 1, 1 + weekday, 12, 0, 0);
 
-  return g_date_time_format (date, abbreviated ? "%a" : "%A");
+  return vibeos_format_date (date, abbreviated ? "EEE" : "EEEE");
 }
 
 char *
@@ -387,8 +380,8 @@ cal_format_rrule (const char *rrule, gint64 start)
 
       if (date)
         {
-          /* TRANSLATORS: strftime; a repeat rule's end date, numeric */
-          g_autofree char *text_date = g_date_time_format (date, C_("date", "%-m/%-d/%Y"));
+          /* a repeat rule's end date, numeric */
+          g_autofree char *text_date = vibeos_format_date (date, "yMd");
 
           g_string_append_printf (end, _("; until %s"), text_date);
         }

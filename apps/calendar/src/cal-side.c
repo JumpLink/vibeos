@@ -118,8 +118,7 @@ cal_mini_month_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   for (int i = 0; i < 7; i++)
     {
       g_autoptr(GDateTime) date = g_date_time_new_from_unix_local (cal_day_start (start + i));
-      g_autofree char *weekday = g_date_time_format (date, "%a");
-      g_autofree char *initial = g_utf8_substring (weekday, 0, 1);
+      g_autofree char *initial = vibeos_format_date (date, "EEEEE");
       g_autofree char *upper = g_utf8_strup (initial, -1);
       g_autoptr(PangoLayout) layout = cal_text_layout (widget, upper, NAMES_SIZE, 700);
 

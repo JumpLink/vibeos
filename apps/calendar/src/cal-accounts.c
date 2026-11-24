@@ -913,7 +913,7 @@ on_calendars_changed (CalStore *store, CalendarPage *page)
 static void
 show_count (CalendarPage *page, int count)
 {
-  g_autofree char *text = g_strdup_printf (_("%d events"), count);
+  g_autofree char *text = g_strdup_printf (g_dngettext (NULL, "%d event", "%d events", count), count);
 
   gtk_label_set_label (GTK_LABEL (page->count), text);
 }

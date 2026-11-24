@@ -1118,7 +1118,7 @@ row_offset_markup (Picker *picker, Zone *zone)
 {
   g_autoptr(GDateTime) time = g_date_time_new_from_unix_utc (g_get_real_time () / G_USEC_PER_SEC
                                                              + zone->offset / 1000);
-  g_autofree char *clock = g_date_time_format (time, picker->use_24h ? "%H:%M" : "%-I:%M %p");
+  g_autofree char *clock = vibeos_format_date (time, picker->use_24h ? "Hm" : "hm");
   g_autofree char *escaped = g_markup_escape_text (clock ? clock : "", -1);
   GString *text = g_string_new (escaped);
 

@@ -1,0 +1,1827 @@
+# German translations of vibeos-calendar.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-calendar\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-24 03:42+0100\n"
+"PO-Revision-Date: 2026-11-24 03:42+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: German\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+# android: Etar app_label (several translations, short)
+#. About, from the drawer or the ⋮ menu: VibeOS's About sheet, as every VibeOS app has it
+#. to assistive technology (and the shell's back gesture) the open drawer is a dialog: Back closes it
+#: data/vibeos.Calendar.desktop.in src/cal-window.c src/event-editor.c
+#: src/reminders-main.c
+msgid "Calendar"
+msgstr "Kalender"
+
+#: data/vibeos.Calendar.desktop.in
+msgid "Your events and reminders"
+msgstr ""
+
+#: data/vibeos.Calendar.desktop.in
+msgid "event;reminder;agenda;"
+msgstr ""
+
+# android: Etar no_title_label
+#: src/agenda-view.c src/cal-alert-page.c src/cal-model.c src/day-view.c
+#: src/event-info.c src/month-view.c src/reminders-main.c
+msgid "(No title)"
+msgstr "(Kein Titel)"
+
+#: src/cal-accounts.c
+msgid "The calendar could not be added."
+msgstr ""
+
+# android: Etar preferences_list_add_offline_error_empty
+#: src/cal-accounts.c
+msgid "Enter a calendar name!"
+msgstr "Geben Sie einen Kalendernamen ein!"
+
+# android: Etar preferences_list_add_offline
+#: src/cal-accounts.c src/cal-settings.c
+msgid "Add offline calendar"
+msgstr "Offline-Kalender hinzufügen"
+
+# android: Etar preferences_list_add_offline_message
+#: src/cal-accounts.c
+msgid "Offline calendars are NOT synchronized to a cloud service and only available on your phone."
+msgstr "Offline-Kalender sind NICHT mit einem Cloud-Service synchronisiert und nur auf deinem Telefon verfügbar."
+
+# android: Etar preferences_list_add_offline_name
+#. the field in a padded frame
+#: src/cal-accounts.c
+msgid "Name"
+msgstr "Name"
+
+# android: Etar discard_label
+#: src/cal-accounts.c src/cal-alert-page.c src/cal-date-picker.c
+#: src/cal-dialogs.c src/cal-time-picker.c
+msgid "Cancel"
+msgstr "Abbrechen"
+
+# android: Etar add_calendar
+#: src/cal-accounts.c
+msgid "Add calendar"
+msgstr "Kalender hinzufügen"
+
+# android: Etar preferences_calendar_no_display_name
+#: src/cal-accounts.c src/cal-settings.c
+msgid "Unnamed calendar"
+msgstr "Unbenannter Kalender"
+
+#: src/cal-accounts.c
+msgid "The server did not accept this user name and password."
+msgstr ""
+
+#: src/cal-accounts.c
+msgid "The server's certificate is not trusted, so nothing was sent to it."
+msgstr ""
+
+#: src/cal-accounts.c
+#, c-format
+msgid "Could not reach the server: %s"
+msgstr ""
+
+#: src/cal-accounts.c
+msgid "unknown error"
+msgstr ""
+
+#: src/cal-accounts.c
+msgid "The server has no calendars for this user."
+msgstr ""
+
+#: src/cal-accounts.c
+msgid "Enter a valid URL"
+msgstr ""
+
+#: src/cal-accounts.c
+msgid "Enter a user name"
+msgstr ""
+
+#: src/cal-accounts.c
+msgid "Enter a password"
+msgstr ""
+
+#: src/cal-accounts.c
+msgid "Looking for calendars…"
+msgstr ""
+
+#: src/cal-accounts.c
+msgid "The account could not be added."
+msgstr ""
+
+#: src/cal-accounts.c
+msgid "Account added. Its calendars appear once they are synchronized."
+msgstr ""
+
+#: src/cal-accounts.c
+msgid ""
+"The password could not be kept (no keyring), so the account was not added."
+msgstr ""
+
+#: src/cal-accounts.c
+msgid "Enter an account name"
+msgstr ""
+
+# android: Etar preferences_list_add_remote
+#: src/cal-accounts.c src/cal-settings.c
+msgid "Add CalDAV calendar"
+msgstr "CalDAV-Kalender hinzufügen"
+
+#. DAVx⁵'s "Login with URL and user name"
+#: src/cal-accounts.c
+msgid "Login with URL and user name"
+msgstr ""
+
+#: src/cal-accounts.c
+msgid "Base URL"
+msgstr ""
+
+# android: Jelly auth_dialog_username (adapted, other app, short)
+#: src/cal-accounts.c
+msgid "User name"
+msgstr "Benutzername"
+
+# android: Framework lockscreen_glogin_password_hint (short)
+#: src/cal-accounts.c
+msgid "Password"
+msgstr "Passwort"
+
+#: src/cal-accounts.c
+msgid "Account name"
+msgstr ""
+
+# android: Jelly auth_dialog_login (other app, short)
+#: src/cal-accounts.c
+msgid "Log in"
+msgstr "Anmelden"
+
+# android: Etar calendars
+#. then what was found, the account's name and "Create account"
+#: src/cal-accounts.c
+msgid "Calendars"
+msgstr "Kalender"
+
+#: src/cal-accounts.c
+msgid "Create account"
+msgstr ""
+
+# android: Etar calendar_color_picker_dialog_title
+#: src/cal-accounts.c
+msgid "Calendar Color"
+msgstr "Kalenderfarbe"
+
+# android: Etar preferences_calendar_color_warning_title
+#: src/cal-accounts.c
+msgid "Warning"
+msgstr "Warnung"
+
+#: src/cal-accounts.c
+msgid ""
+"Changing the color may be reverted when the calendar is synchronized again."
+msgstr ""
+
+# android: Etar preferences_calendar_color_warning_button
+#: src/cal-accounts.c
+msgid "I understand"
+msgstr "Ich verstehe"
+
+# android: Etar preferences_calendar_display_name
+#: src/cal-accounts.c
+msgid "Change name"
+msgstr "Name ändern"
+
+#: src/cal-accounts.c
+msgid "The calendar could not be deleted."
+msgstr ""
+
+# android: Etar preferences_calendar_delete_message
+#: src/cal-accounts.c
+msgid "Do you really want to delete this calendar?"
+msgstr "Willst du diesen Kalender wirklich löschen?"
+
+# android: Etar preferences_calendar_delete
+#: src/cal-accounts.c
+msgid "Delete calendar"
+msgstr "Kalender löschen"
+
+#: src/cal-accounts.c
+#, c-format
+msgid "%d event"
+msgid_plural "%d events"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/cal-accounts.c
+msgid "Google"
+msgstr ""
+
+#: src/cal-accounts.c
+msgid "CalDAV"
+msgstr ""
+
+#: src/cal-accounts.c
+msgid "Nextcloud"
+msgstr ""
+
+#: src/cal-accounts.c
+msgid "Outlook"
+msgstr ""
+
+#: src/cal-accounts.c
+msgid "Microsoft 365"
+msgstr ""
+
+#: src/cal-accounts.c
+msgid "Exchange"
+msgstr ""
+
+# android: Framework imProtocolYahoo (short)
+#: src/cal-accounts.c
+msgid "Yahoo"
+msgstr "Yahoo!"
+
+#: src/cal-accounts.c
+msgid "Web calendar"
+msgstr ""
+
+# android: Framework keyboard_shortcut_group_applications_contacts (short)
+#: src/cal-accounts.c
+msgid "Contacts"
+msgstr "Kontakte"
+
+#: src/cal-accounts.c
+msgid "Weather"
+msgstr ""
+
+# android: Etar preferences_calendar_visible
+#: src/cal-accounts.c
+msgid "Display events"
+msgstr "Termine anzeigen"
+
+# android: Etar preferences_calendar_color
+#. no "Manage notifications": reminders are one notification source for the whole app, with no per-calendar
+#. * settings to open
+#. Color: a circle in the calendar's colour
+#: src/cal-accounts.c
+msgid "Color"
+msgstr "Farbe"
+
+# android: Etar preferences_calendar_configure_account
+#: src/cal-accounts.c
+#, c-format
+msgid "Configure calendar in %s"
+msgstr "Kalender in %s konfigurieren"
+
+# android: Etar preferences_calendar_info_category
+#. Calendar information: the number of events, the account
+#: src/cal-accounts.c
+msgid "Calendar information"
+msgstr "Kalender Information"
+
+# android: Etar preferences_calendar_account_local
+#: src/cal-accounts.c
+msgid "Offline calendar"
+msgstr "Lokaler Kalender"
+
+# android: Etar preferences_calendar_account (several translations)
+#: src/cal-accounts.c
+#, c-format
+msgid "%s account"
+msgstr "%s Konto"
+
+# android: Etar alert_title
+#: src/cal-alert-page.c
+msgid "Calendar notifications"
+msgstr "Benachrichtigungen"
+
+# android: Etar dismiss_all_label
+#: src/cal-alert-page.c
+msgid "Dismiss all"
+msgstr "Alle schließen"
+
+# android: Etar snooze_delay_dialog_title
+#. libvibeos's time picker (not the editor's), titled, its clock always 24-hour: hours and minutes of delay, not a
+#. * time of day
+#: src/cal-alert-page.c
+msgid "Set snooze delay"
+msgstr "Stelle die Schlummerverzögerung ein"
+
+# android: Framework ok (several translations, short)
+#. OK waits for a choice (the dialog's positive button disabled until a row is checked)
+#: src/cal-alert-page.c src/cal-date-picker.c src/cal-dialogs.c
+#: src/cal-time-picker.c src/event-info.c
+msgid "OK"
+msgstr "OK"
+
+# android: Etar quick_response_custom_msg
+#: src/cal-alert-page.c
+msgid "Write your own…"
+msgstr "Eigene Antwort schreiben…"
+
+# android: Etar quick_response_dialog_title
+#: src/cal-alert-page.c
+msgid "Choose quick response"
+msgstr "Kurzantwort auswählen"
+
+# android: Etar date_time_fmt (several translations)
+#. TRANSLATORS: the weekday and the date, "Sunday, November 8"
+#. TRANSLATORS: a date and a time range, "November 8, 10:00 – 11:00"
+#: src/cal-alerts.c
+#, c-format
+msgctxt "alert"
+msgid "%s, %s"
+msgstr "%s, %s"
+
+# android: Etar no_reminder_label (several translations, short)
+#: src/cal-alerts.c src/cal-date-picker.c src/cal-prefs.c
+msgid "None"
+msgstr "Keine"
+
+# android: Settings notification_ringtone_title (other app)
+#: src/cal-alerts.c
+msgid "Default notification sound"
+msgstr "Standard-Benachrichtigungston"
+
+#. each swatch's accessible name, numbered in reading order
+#: src/cal-color-picker.c
+#, c-format
+msgid "Color %d selected"
+msgstr ""
+
+#: src/cal-color-picker.c
+#, c-format
+msgid "Color %d"
+msgstr ""
+
+# android: Etar event_color_set_to_default
+#: src/cal-color-picker.c
+msgid "Set to default calendar color"
+msgstr "Auf Standardkalenderfarbe zurücksetzen"
+
+# android: Etar event_color_picker_dialog_title
+#: src/cal-color-picker.c
+msgid "Event Color"
+msgstr "Terminfarbe"
+
+#: src/cal-date-picker.c
+msgid "Selected date"
+msgstr ""
+
+#: src/cal-date-picker.c
+#, c-format
+msgid "Current selection: %s"
+msgstr ""
+
+# android: Settings date_time_set_date_title (other app, short)
+#: src/cal-date-picker.c
+msgid "Date"
+msgstr "Datum"
+
+#: src/cal-date-picker.c
+msgctxt "date input: day"
+msgid "d"
+msgstr ""
+
+# android: Dialer call_details_minutes_abbreviation (other app, several translations, short)
+#: src/cal-date-picker.c
+msgctxt "date input: month"
+msgid "m"
+msgstr "min"
+
+#: src/cal-date-picker.c
+msgctxt "date input: year"
+msgid "y"
+msgstr ""
+
+#: src/cal-date-picker.c
+#, c-format
+msgid "Use: %s"
+msgstr ""
+
+#: src/cal-date-picker.c
+#, c-format
+msgid "Example: %s"
+msgstr ""
+
+#: src/cal-date-picker.c
+msgid "Invalid format."
+msgstr ""
+
+#: src/cal-date-picker.c
+#, c-format
+msgid "Out of range: %s"
+msgstr ""
+
+#: src/cal-date-picker.c
+msgid "Switch to calendar input mode"
+msgstr ""
+
+#: src/cal-date-picker.c
+msgid "Switch to text input mode"
+msgstr ""
+
+#: src/cal-date-picker.c
+msgid "Switch to year view"
+msgstr ""
+
+#: src/cal-date-picker.c
+msgid "Change to previous month"
+msgstr ""
+
+#: src/cal-date-picker.c
+msgid "Change to next month"
+msgstr ""
+
+# android: Etar agenda_today
+#: src/cal-format.c
+#, c-format
+msgid "Today, %s"
+msgstr "Heute, %s"
+
+# android: Etar agenda_yesterday
+#: src/cal-format.c
+#, c-format
+msgid "Yesterday, %s"
+msgstr "Gestern, %s"
+
+# android: Etar agenda_tomorrow
+#: src/cal-format.c
+#, c-format
+msgid "Tomorrow, %s"
+msgstr "Morgen, %s"
+
+# android: Etar today
+#: src/cal-format.c src/cal-search.c src/cal-window.c
+msgid "Today"
+msgstr "Heute"
+
+# android: Etar tomorrow
+#: src/cal-format.c
+msgid "Tomorrow"
+msgstr "Morgen"
+
+# android: Etar today_at_time_fmt
+#: src/cal-format.c
+#, c-format
+msgid "Today at %s"
+msgstr "Heute, %s"
+
+# android: Etar tomorrow_at_time_fmt
+#: src/cal-format.c
+#, c-format
+msgid "Tomorrow at %s"
+msgstr "Morgen, %s"
+
+# android: Etar date_time_fmt (several translations)
+#. the date, then the times
+#: src/cal-format.c
+#, c-format
+msgid "%s, %s"
+msgstr "%s, %s"
+
+#: src/cal-format.c
+#, c-format
+msgid "%d week"
+msgid_plural "%d weeks"
+msgstr[0] ""
+msgstr[1] ""
+
+# android: Framework duration_days_relative_future
+#: src/cal-format.c
+#, c-format
+msgid "%d day"
+msgid_plural "%d days"
+msgstr[0] "%d Tag"
+msgstr[1] "%d Tage"
+
+# android: Framework duration_hours_relative_future
+#: src/cal-format.c
+#, c-format
+msgid "%d hour"
+msgid_plural "%d hours"
+msgstr[0] "%d Stunde"
+msgstr[1] "%d Stunden"
+
+# android: Framework duration_minutes_relative_future
+#: src/cal-format.c
+#, c-format
+msgid "%d minute"
+msgid_plural "%d minutes"
+msgstr[0] "%d Minute"
+msgstr[1] "%d Minuten"
+
+# android: Etar endByDate
+#: src/cal-format.c
+#, c-format
+msgid "; until %s"
+msgstr ", bis %s"
+
+# android: Etar endByCount
+#: src/cal-format.c
+#, c-format
+msgid "; for one time"
+msgid_plural "; for %d times"
+msgstr[0] ", ein Mal"
+msgstr[1] ", %d Mal"
+
+# android: Etar daily
+#: src/cal-format.c
+#, c-format
+msgid "Daily"
+msgid_plural "Every %d days"
+msgstr[0] "Täglich"
+msgstr[1] "Alle %d Tage"
+
+# android: Etar every_weekday
+#: src/cal-format.c
+msgid "Every weekday (Mon–Fri)"
+msgstr "Jeden Werktag (Mo. - Fr.)"
+
+#: src/cal-format.c
+#, c-format
+msgid "Weekly on %s"
+msgstr ""
+
+#: src/cal-format.c
+#, c-format
+msgid "Every %d week on %s"
+msgid_plural "Every %d weeks on %s"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/cal-format.c
+msgid "first"
+msgstr ""
+
+#: src/cal-format.c
+msgid "second"
+msgstr ""
+
+#: src/cal-format.c
+msgid "third"
+msgstr ""
+
+#: src/cal-format.c
+msgid "fourth"
+msgstr ""
+
+#: src/cal-format.c
+msgid "last"
+msgstr ""
+
+#. "on every first Monday"
+#: src/cal-format.c
+#, c-format
+msgid "Monthly (on every %s %s)"
+msgstr ""
+
+# android: Etar monthly
+#: src/cal-format.c
+msgid "Monthly"
+msgstr "Monatlich"
+
+# android: Etar yearly_plain
+#: src/cal-format.c
+msgid "Yearly"
+msgstr "Jährlich"
+
+# android: Etar weekN
+#: src/cal-format.c
+#, c-format
+msgid "Week %d"
+msgid_plural "Week %d"
+msgstr[0] "Woche %d"
+msgstr[1] "Woche %d"
+
+# android: Framework input_method_nav_back_button_desc (short)
+#. "Back" is the name the shell's back gesture presses (extension/a11y.js)
+#. An invisible "Back" for the shell's back gesture, which presses the button of that name in the top band (it does
+#. * what Cancel does: ask before throwing changes away). Not drawn: the bar has no arrow.
+#: src/cal-page.c src/cal-search.c src/event-editor.c
+msgid "Back"
+msgstr "Zurück"
+
+# android: Etar repeat_by_nth_sun[0]
+#: src/cal-recurrence-picker.c
+msgid "on every first Sunday"
+msgstr "an jedem ersten Sonntag"
+
+# android: Etar repeat_by_nth_sun[1]
+#: src/cal-recurrence-picker.c
+msgid "on every second Sunday"
+msgstr "an jedem zweiten Sonntag"
+
+# android: Etar repeat_by_nth_sun[2]
+#: src/cal-recurrence-picker.c
+msgid "on every third Sunday"
+msgstr "an jedem dritten Sonntag"
+
+# android: Etar repeat_by_nth_sun[3]
+#: src/cal-recurrence-picker.c
+msgid "on every fourth Sunday"
+msgstr "an jedem vierten Sonntag"
+
+# android: Etar repeat_by_nth_sun[4]
+#: src/cal-recurrence-picker.c
+msgid "on every last Sunday"
+msgstr "an jedem letzten Sonntag"
+
+# android: Etar repeat_by_nth_mon[0]
+#: src/cal-recurrence-picker.c
+msgid "on every first Monday"
+msgstr "an jedem ersten Montag"
+
+# android: Etar repeat_by_nth_mon[1]
+#: src/cal-recurrence-picker.c
+msgid "on every second Monday"
+msgstr "an jedem zweiten Montag"
+
+# android: Etar repeat_by_nth_mon[2]
+#: src/cal-recurrence-picker.c
+msgid "on every third Monday"
+msgstr "an jedem dritten Montag"
+
+# android: Etar repeat_by_nth_mon[3]
+#: src/cal-recurrence-picker.c
+msgid "on every fourth Monday"
+msgstr "an jedem vierten Montag"
+
+# android: Etar repeat_by_nth_mon[4]
+#: src/cal-recurrence-picker.c
+msgid "on every last Monday"
+msgstr "an jedem letzten Montag"
+
+# android: Etar repeat_by_nth_tues[0]
+#: src/cal-recurrence-picker.c
+msgid "on every first Tuesday"
+msgstr "an jedem ersten Dienstag"
+
+# android: Etar repeat_by_nth_tues[1]
+#: src/cal-recurrence-picker.c
+msgid "on every second Tuesday"
+msgstr "an jedem zweiten Dienstag"
+
+# android: Etar repeat_by_nth_tues[2]
+#: src/cal-recurrence-picker.c
+msgid "on every third Tuesday"
+msgstr "an jedem dritten Dienstag"
+
+# android: Etar repeat_by_nth_tues[3]
+#: src/cal-recurrence-picker.c
+msgid "on every fourth Tuesday"
+msgstr "an jedem vierten Dienstag"
+
+# android: Etar repeat_by_nth_tues[4]
+#: src/cal-recurrence-picker.c
+msgid "on every last Tuesday"
+msgstr "an jedem letzten Dienstag"
+
+# android: Etar repeat_by_nth_wed[0]
+#: src/cal-recurrence-picker.c
+msgid "on every first Wednesday"
+msgstr "an jedem ersten Mittwoch"
+
+# android: Etar repeat_by_nth_wed[1]
+#: src/cal-recurrence-picker.c
+msgid "on every second Wednesday"
+msgstr "an jedem zweiten Mittwoch"
+
+# android: Etar repeat_by_nth_wed[2]
+#: src/cal-recurrence-picker.c
+msgid "on every third Wednesday"
+msgstr "an jedem dritten Mittwoch"
+
+# android: Etar repeat_by_nth_wed[3]
+#: src/cal-recurrence-picker.c
+msgid "on every fourth Wednesday"
+msgstr "an jedem vierten Mittwoch"
+
+# android: Etar repeat_by_nth_wed[4]
+#: src/cal-recurrence-picker.c
+msgid "on every last Wednesday"
+msgstr "an jedem letzten Mittwoch"
+
+# android: Etar repeat_by_nth_thurs[0]
+#: src/cal-recurrence-picker.c
+msgid "on every first Thursday"
+msgstr "an jedem ersten Donnerstag"
+
+# android: Etar repeat_by_nth_thurs[1]
+#: src/cal-recurrence-picker.c
+msgid "on every second Thursday"
+msgstr "an jedem zweiten Donnerstag"
+
+# android: Etar repeat_by_nth_thurs[2]
+#: src/cal-recurrence-picker.c
+msgid "on every third Thursday"
+msgstr "an jedem dritten Donnerstag"
+
+# android: Etar repeat_by_nth_thurs[3]
+#: src/cal-recurrence-picker.c
+msgid "on every fourth Thursday"
+msgstr "an jedem vierten Donnerstag"
+
+# android: Etar repeat_by_nth_thurs[4]
+#: src/cal-recurrence-picker.c
+msgid "on every last Thursday"
+msgstr "an jedem letzten Donnerstag"
+
+# android: Etar repeat_by_nth_fri[0]
+#: src/cal-recurrence-picker.c
+msgid "on every first Friday"
+msgstr "an jedem ersten Freitag"
+
+# android: Etar repeat_by_nth_fri[1]
+#: src/cal-recurrence-picker.c
+msgid "on every second Friday"
+msgstr "an jedem zweiten Freitag"
+
+# android: Etar repeat_by_nth_fri[2]
+#: src/cal-recurrence-picker.c
+msgid "on every third Friday"
+msgstr "an jedem dritten Freitag"
+
+# android: Etar repeat_by_nth_fri[3]
+#: src/cal-recurrence-picker.c
+msgid "on every fourth Friday"
+msgstr "an jedem vierten Freitag"
+
+# android: Etar repeat_by_nth_fri[4]
+#: src/cal-recurrence-picker.c
+msgid "on every last Friday"
+msgstr "an jedem letzten Freitag"
+
+# android: Etar repeat_by_nth_sat[0]
+#: src/cal-recurrence-picker.c
+msgid "on every first Saturday"
+msgstr "an jedem ersten Samstag"
+
+# android: Etar repeat_by_nth_sat[1]
+#: src/cal-recurrence-picker.c
+msgid "on every second Saturday"
+msgstr "an jedem zweiten Samstag"
+
+# android: Etar repeat_by_nth_sat[2]
+#: src/cal-recurrence-picker.c
+msgid "on every third Saturday"
+msgstr "an jedem dritten Samstag"
+
+# android: Etar repeat_by_nth_sat[3]
+#: src/cal-recurrence-picker.c
+msgid "on every fourth Saturday"
+msgstr "an jedem vierten Samstag"
+
+# android: Etar repeat_by_nth_sat[4]
+#: src/cal-recurrence-picker.c
+msgid "on every last Saturday"
+msgstr "an jedem letzten Samstag"
+
+# android: Etar recurrence_interval_daily
+#: src/cal-recurrence-picker.c
+#, c-format
+msgid "Every %d day"
+msgid_plural "Every %d days"
+msgstr[0] "Nach %d Tag"
+msgstr[1] "Alle %d Tage"
+
+# android: Etar recurrence_interval_weekly
+#: src/cal-recurrence-picker.c
+#, c-format
+msgid "Every %d week"
+msgid_plural "Every %d weeks"
+msgstr[0] "Nach %d Woche"
+msgstr[1] "Alle %d Wochen"
+
+# android: Etar recurrence_interval_monthly
+#: src/cal-recurrence-picker.c
+#, c-format
+msgid "Every %d month"
+msgid_plural "Every %d months"
+msgstr[0] "Nach %d Monat"
+msgstr[1] "Alle %d Monate"
+
+# android: Etar recurrence_interval_yearly
+#: src/cal-recurrence-picker.c
+#, c-format
+msgid "Every %d year"
+msgid_plural "Every %d years"
+msgstr[0] "Nach %d Jahr"
+msgstr[1] "Alle %d Jahre"
+
+# android: Etar recurrence_end_count
+#: src/cal-recurrence-picker.c
+#, c-format
+msgid "For %d event"
+msgid_plural "For %d events"
+msgstr[0] "%d-einmal"
+msgstr[1] "%d-male"
+
+# android: Etar recurrence_end_date
+#: src/cal-recurrence-picker.c
+#, c-format
+msgid "Until %s"
+msgstr "Bis %s"
+
+# android: Etar recurrence_end_date_label
+#: src/cal-recurrence-picker.c
+msgid "Until a date"
+msgstr "Bis zu bestimmtem Datum"
+
+# android: Etar recurrence_end_count_label
+#: src/cal-recurrence-picker.c
+msgid "For a number of events"
+msgstr "Mehrere Wiederholungen"
+
+# android: Etar recurrence_end_continously
+#. the drop-down's rows are the long forms, as wide as the widest
+#: src/cal-recurrence-picker.c
+msgid "Forever"
+msgstr "Dauerhaft"
+
+#. the date dialog, under its own title, "Select date"
+#: src/cal-recurrence-picker.c
+msgid "Select date"
+msgstr ""
+
+# android: Etar recurrence_freq[0]
+#: src/cal-recurrence-picker.c
+msgid "REPEAT DAILY"
+msgstr "Täglich"
+
+# android: Etar recurrence_freq[1]
+#: src/cal-recurrence-picker.c
+msgid "REPEAT WEEKLY"
+msgstr "Jede Woche"
+
+# android: Etar recurrence_freq[2]
+#: src/cal-recurrence-picker.c
+msgid "REPEAT MONTHLY"
+msgstr "Jeden Monat"
+
+# android: Etar recurrence_freq[3]
+#: src/cal-recurrence-picker.c
+msgid "REPEAT YEARLY"
+msgstr "Jedes Jahr"
+
+# android: Etar recurrence_month_pattern_by_day
+#: src/cal-recurrence-picker.c
+msgid "on the same day each month"
+msgstr "am gleichen Tag des Monats"
+
+# android: SystemUI keyboard_key_move_end (other app, short)
+#: src/cal-recurrence-picker.c
+msgid "End"
+msgstr "Ende"
+
+# android: Etar acessibility_recurrence_choose_end_date_description
+#: src/cal-recurrence-picker.c
+msgid "change end date"
+msgstr "Enddatum ändern"
+
+# android: Etar save_label
+#: src/cal-recurrence-picker.c
+msgid "Done"
+msgstr "Fertig"
+
+# android: Etar accessibility_reminder_time
+#: src/cal-reminders.c
+msgid "Reminder time"
+msgstr "Erinnerungszeit"
+
+# android: Etar accessibility_remove_reminder
+#: src/cal-reminders.c
+msgid "Remove reminder"
+msgstr "Erinnerung entfernen"
+
+#: src/cal-search.c
+msgid "Edit query"
+msgstr ""
+
+# android: Framework searchview_description_query (short)
+#: src/cal-search.c
+msgid "Search query"
+msgstr "Suchanfrage"
+
+# android: Etar searchview_description_clear (several translations, short)
+#: src/cal-search.c
+msgid "Clear query"
+msgstr "Suchanfrage löschen"
+
+# android: Etar menu_preferences
+#: src/cal-search.c src/cal-settings.c src/cal-window.c
+msgid "Settings"
+msgstr "Einstellungen"
+
+# android: Framework action_menu_overflow_description (several translations, short)
+#: src/cal-search.c src/cal-window.c src/event-info.c
+msgid "More options"
+msgstr "Weitere Optionen"
+
+# android: Etar search_history_cleared
+#: src/cal-settings.c
+msgid "Search history cleared."
+msgstr "Suchverlauf gelöscht."
+
+# android: Etar preferences_alerts_custom_snooze_delay_summary_on
+#: src/cal-settings.c
+msgid "Ask for snooze delay whenever snoozing reminders"
+msgstr "Jedesmal nach Verzögerung fragen, wenn später erinnert werden soll"
+
+# android: Etar preferences_alerts_custom_snooze_delay_summary_off
+#: src/cal-settings.c
+msgid "Always use default snooze delay"
+msgstr "Immer nach Standardzeit erinnern"
+
+# android: Etar preferences_list_general
+#: src/cal-settings.c
+msgid "General settings"
+msgstr "Allgemeine Einstellungen"
+
+# android: Etar zero_minutes
+#: src/cal-settings.c
+msgid "0 minutes"
+msgstr "0 Minuten"
+
+# android: Etar fifteen_minutes (several translations, short)
+#: src/cal-settings.c
+msgid "15 minutes"
+msgstr "15 Minuten"
+
+# android: Etar thirty_minutes (several translations, short)
+#: src/cal-settings.c
+msgid "30 minutes"
+msgstr "30 Minuten"
+
+# android: Etar one_hour
+#: src/cal-settings.c
+msgid "1 hour"
+msgstr "1 Stunde"
+
+# android: Etar one_and_a_half_hours
+#: src/cal-settings.c
+msgid "1.5 hours"
+msgstr "1,5 Stunden"
+
+# android: Etar two_hours
+#: src/cal-settings.c
+msgid "2 hours"
+msgstr "2 Stunden"
+
+# android: Etar two_days
+#. the days per week
+#: src/cal-settings.c
+msgid "2 days"
+msgstr "2 Tage"
+
+# android: Etar three_days
+#: src/cal-settings.c
+msgid "3 days"
+msgstr "3 Tage"
+
+# android: Etar four_days
+#: src/cal-settings.c
+msgid "4 days"
+msgstr "4 Tage"
+
+# android: Etar five_days
+#: src/cal-settings.c
+msgid "5 days"
+msgstr "5 Tage"
+
+# android: Etar six_days
+#: src/cal-settings.c
+msgid "6 days"
+msgstr "6 Tage"
+
+# android: Etar seven_days
+#: src/cal-settings.c
+msgid "7 days"
+msgstr "7 Tage"
+
+# android: Etar preferences_general_title
+#: src/cal-settings.c
+msgid "Calendar view setting"
+msgstr "Einstellungen für Kalenderansicht"
+
+# android: Etar preferences_theme (several translations, short)
+#. the themes: System default, Light, Dark
+#: src/cal-settings.c
+msgid "Theme"
+msgstr "Darstellung"
+
+# android: Framework system_locale_title (several translations, short)
+#: src/cal-settings.c
+msgid "System default"
+msgstr "Standardeinstellung des Systems"
+
+# android: Etar preferences_light_theme
+#: src/cal-settings.c
+msgid "Light"
+msgstr "Hell"
+
+# android: Etar preferences_dark_theme
+#: src/cal-settings.c
+msgid "Dark"
+msgstr "Dunkel"
+
+# android: Etar preferences_pure_black_night_mode
+#: src/cal-settings.c
+msgid "Pure black night mode"
+msgstr "Rein schwarzer Nachtmodus"
+
+# android: Etar preferences_real_event_colors
+#: src/cal-settings.c
+msgid "Use real event colors"
+msgstr "Echte Terminfarben verwenden"
+
+# android: Etar default_start_title
+#. the views the app can open on
+#: src/cal-settings.c
+msgid "Default view"
+msgstr "Standardansicht"
+
+# android: Etar default_start_last
+#: src/cal-settings.c
+msgid "Previously used view"
+msgstr "Letzte aktive Ansicht"
+
+# android: Etar buttons_list[0]
+#: src/cal-settings.c src/cal-window.c
+msgid "Day"
+msgstr "Tag"
+
+# android: Etar buttons_list[1]
+#: src/cal-settings.c src/cal-window.c
+msgid "Week"
+msgstr "Woche"
+
+# android: Etar buttons_list[2]
+#: src/cal-settings.c src/cal-side.c src/cal-window.c
+msgid "Month"
+msgstr "Monat"
+
+# android: Etar buttons_list[3]
+#: src/cal-settings.c src/cal-window.c
+msgid "Agenda"
+msgstr "Terminübersicht"
+
+# android: Etar display_options
+#: src/cal-settings.c
+msgid "Display options"
+msgstr "Anzeigeoptionen"
+
+# android: Etar preferences_hide_declined_title
+#: src/cal-settings.c
+msgid "Hide declined events"
+msgstr "Abgelehnte Termine ausblenden"
+
+#: src/cal-settings.c
+msgid "Staggered display"
+msgstr ""
+
+#: src/cal-settings.c
+msgid "Display overlapping events in a staggered layout"
+msgstr ""
+
+# android: Etar preferences_show_week_num_title
+#: src/cal-settings.c
+msgid "Show week number"
+msgstr "Kalenderwoche anzeigen"
+
+# android: Etar preferences_week_start_day_title
+#. "Locale default", then the weekdays from Sunday (values 1 … 7)
+#: src/cal-settings.c
+msgid "Week starts on"
+msgstr "Woche beginnt am"
+
+# android: Etar week_start_locale_default
+#: src/cal-settings.c
+msgid "Locale default"
+msgstr "Gebietsschema - Standard"
+
+# android: Etar preferences_days_per_week_title
+#: src/cal-settings.c
+msgid "Days per week"
+msgstr "Anzahl Tage pro Woche"
+
+# android: Etar preferences_default_event_duration_title
+#: src/cal-settings.c
+msgid "Default event duration"
+msgstr "Standard-Termindauer"
+
+# android: Etar preferences_use_home_tz_title (several translations)
+#: src/cal-settings.c
+msgid "Use home time zone"
+msgstr "Heimatzeitzone beibehalten"
+
+# android: Etar preferences_use_home_tz_descrip
+#: src/cal-settings.c
+msgid "Displays calendars and event times in your home time zone when traveling"
+msgstr "Zeigt unterwegs Kalender-/Terminzeiten in Heimatzeitzone"
+
+# android: Etar preferences_home_tz_title
+#: src/cal-settings.c
+msgid "Home time zone"
+msgstr "Heimatzeitzone"
+
+# android: Etar preferences_clear_search_history_title
+#: src/cal-settings.c
+msgid "Clear search history"
+msgstr "Suchverlauf löschen"
+
+# android: Etar preferences_clear_search_history_summary
+#: src/cal-settings.c
+msgid "Remove all the searches you've performed"
+msgstr "Alle Suchen aus dem Verlauf entfernen"
+
+# android: Etar preferences_reminder_title
+#. Notifications & reminders: "Notifications" opens the app's own page (cal_notifications_page_new): what the
+#. * reminder service does, its sound and vibration
+#: src/cal-settings.c
+msgid "Notifications & reminders"
+msgstr "Benachrichtigungen & Erinnerungen"
+
+# android: Etar preferences_alerts_title (several translations, short)
+#: src/cal-settings.c
+msgid "Notifications"
+msgstr "Benachrichtigungen"
+
+# android: Etar preferences_alerts_popup_title
+#: src/cal-settings.c
+msgid "Pop-up notification"
+msgstr "Pop-up-Benachrichtigung"
+
+# android: Etar preferences_alerts_custom_snooze_delay_title
+#: src/cal-settings.c
+msgid "Ask for reminder snooze delay"
+msgstr "Erinnerungs-Wiederholungszeit"
+
+# android: Etar preferences_default_snooze_delay_title
+#: src/cal-settings.c
+msgid "Default snooze delay time"
+msgstr "Standard-Wiederholungszeit"
+
+# android: Etar preferences_default_reminder_title
+#: src/cal-settings.c
+msgid "Default reminder time"
+msgstr "Standard-Erinnerungszeit"
+
+# android: Etar quick_response_settings
+#: src/cal-settings.c
+msgid "Quick responses"
+msgstr "Kurzantworten"
+
+# android: Etar quick_response_settings_summary
+#: src/cal-settings.c
+msgid "Edit default responses when emailing guests"
+msgstr "Standardantworten beim Senden von E-Mails an Gäste bearbeiten"
+
+# android: Etar preferences_experimental_category
+#. Experimental: Skip Reminders (no default, so no summary until one is chosen). There is no battery
+#. * optimization row: nothing here would stand for it.
+#: src/cal-settings.c
+msgid "Experimental"
+msgstr "Experimentell"
+
+# android: Etar preferences_reminders_responded_label
+#: src/cal-settings.c
+msgid "Skip Reminders"
+msgstr "Erinnerungen überspringen"
+
+# android: Etar preferences_skip_reminders_labels[0]
+#: src/cal-settings.c
+msgid "Only if declined"
+msgstr "Nur bei Ablehnung"
+
+# android: Etar preferences_skip_reminders_labels[1]
+#: src/cal-settings.c
+msgid "If declined or not responded"
+msgstr "Bei Ablehnung oder keine Antwort"
+
+# android: Etar maximum_number_of_lines
+#: src/cal-settings.c
+msgid "Max number of lines in event"
+msgstr "Maximale Zeilenanzahl pro Kalendereintrag"
+
+# android: Etar display_time
+#. show_time: a phone (show_time_in_month false) drops the last entry, "Start and end time below the event",
+#. * and shows no time by default
+#: src/cal-settings.c
+msgid "Display time"
+msgstr "Zeit anzeigen"
+
+# android: Etar show_time_no
+#: src/cal-settings.c
+msgid "Don't show time"
+msgstr "Zeit nicht anzeigen"
+
+# android: Etar show_time_start
+#: src/cal-settings.c
+msgid "Only start time"
+msgstr "Nur Startzeit"
+
+# android: Etar show_time_start_end
+#: src/cal-settings.c
+msgid "Start and end time"
+msgstr "Start- und Endzeit"
+
+# android: Etar display_location
+#: src/cal-settings.c
+msgid "Display location"
+msgstr "Ort anzeigen"
+
+# android: Etar preferences_month_view_portrait
+#: src/cal-settings.c
+msgid "Month view layout (Portrait)"
+msgstr "Monatsansicht (Portrait)"
+
+# android: Etar preferences_month_view_landscape
+#: src/cal-settings.c
+msgid "Month view layout (Landscape)"
+msgstr "Monatsansicht (Landscape)"
+
+# android: Settings notification_content_block_title (other app, short)
+#: src/cal-settings.c
+msgid "Show notifications"
+msgstr "Benachrichtigungen anzeigen"
+
+# android: Etar preferences_alerts_ringtone_title (several translations, short)
+#. the sound: the default one, none, or one of the phone's notification sounds
+#: src/cal-settings.c
+msgid "Sound"
+msgstr "Töne"
+
+# android: Settings prevent_ringing_option_vibrate (other app, several translations, short)
+#: src/cal-settings.c
+msgid "Vibrate"
+msgstr "Vibrieren"
+
+# android: Etar quick_response_settings_edit_title
+#: src/cal-settings.c
+msgid "Quick response"
+msgstr "Kurzantwort"
+
+# android: Etar preferences_list_calendar_summary_invisible
+#: src/cal-settings.c
+msgid "Events are not displayed"
+msgstr "Termine werden nicht angezeigt"
+
+# android: Etar event_not_found
+#: src/cal-store.c
+msgid "Event not found."
+msgstr "Termin nicht gefunden."
+
+#: src/cal-time-picker.c
+msgid "Select AM or PM"
+msgstr ""
+
+#: src/cal-time-picker.c
+msgid "PM"
+msgstr ""
+
+#: src/cal-time-picker.c
+msgid "AM"
+msgstr ""
+
+# android: Framework time_picker_minute_label (adapted, short)
+#: src/cal-time-picker.c
+msgid "Minute"
+msgstr "Minute"
+
+# android: Framework hour (adapted, short)
+#: src/cal-time-picker.c
+msgid "Hour"
+msgstr "Stunde"
+
+# android: Framework time_picker_radial_mode_description
+#: src/cal-time-picker.c
+msgid "Switch to clock mode for the time input."
+msgstr "In den Uhrzeitmodus wechseln, um die Uhrzeit einzugeben."
+
+# android: Framework time_picker_text_input_mode_description
+#: src/cal-time-picker.c
+msgid "Switch to text input mode for the time input."
+msgstr "In den Texteingabemodus wechseln, um die Uhrzeit einzugeben."
+
+#: src/cal-time-picker.c
+msgid "Select time"
+msgstr ""
+
+#: src/cal-time-picker.c
+msgid "Clock face"
+msgstr ""
+
+# android: Etar timezone_rename_labels[0]
+#: src/cal-tz-picker.c
+msgid "Australian Central - NT"
+msgstr "Zentral-Australien – NT"
+
+# android: Etar timezone_rename_labels[1]
+#: src/cal-tz-picker.c
+msgid "Australian Central - SA"
+msgstr "Zentral-Australien – SA"
+
+# android: Etar timezone_rename_labels[2]
+#: src/cal-tz-picker.c
+msgid "Australian Eastern - QLD"
+msgstr "Ost-Australien – QLD"
+
+# android: Etar timezone_rename_labels[3]
+#: src/cal-tz-picker.c
+msgid "Australian Eastern - NSW"
+msgstr "Ost-Australien – NSW"
+
+# android: Etar timezone_rename_labels[4]
+#: src/cal-tz-picker.c
+msgid "Mountain Standard - Dawson Creek"
+msgstr "Mountain Standard – Dawson Creek"
+
+# android: Etar timezone_rename_labels[5]
+#: src/cal-tz-picker.c
+msgid "Central Standard - Saskatchewan"
+msgstr "Central Standard – Saskatchewan"
+
+# android: Etar timezone_rename_labels[6]
+#: src/cal-tz-picker.c
+msgid "Eastern Standard - Atikokan"
+msgstr "Eastern Standard – Atikokan"
+
+# android: Etar timezone_rename_labels[7]
+#: src/cal-tz-picker.c
+msgid "Atlantic Standard - Quebec"
+msgstr "Atlantic Standard – Quebec"
+
+# android: Etar timezone_rename_labels[8]
+#: src/cal-tz-picker.c
+msgid "Hawaii-Aleutian - Hawaii"
+msgstr "Hawaii-Aleutian – Hawaii"
+
+# android: Etar timezone_rename_labels[9]
+#: src/cal-tz-picker.c
+msgid "Hawaii-Aleutian - Alaska"
+msgstr "Hawaii-Aleutian – Alaska"
+
+# android: Etar timezone_rename_labels[10]
+#: src/cal-tz-picker.c
+msgid "Pacific Standard - Metlakatla"
+msgstr "Pacific Standard – Metlakatla"
+
+# android: Etar timezone_rename_labels[11]
+#: src/cal-tz-picker.c
+msgid "Mountain Standard - Arizona"
+msgstr "Mountain Standard – Arizona"
+
+# android: Etar timezone_rename_labels[12]
+#: src/cal-tz-picker.c
+msgid "Pacific - Baja California"
+msgstr "Pacific – Baja California"
+
+# android: Etar timezone_rename_labels[13]
+#: src/cal-tz-picker.c
+msgid "Mountain - Chihuahua"
+msgstr "Mountain – Chihuahua"
+
+# android: Etar timezone_rename_labels[14]
+#: src/cal-tz-picker.c
+msgid "Central - Tamaulipas"
+msgstr "Central – Tamaulipas"
+
+# android: Etar timezone_rename_labels[15]
+#: src/cal-tz-picker.c
+msgid "Mountain - Sonora"
+msgstr "Mountain – Sonora"
+
+# android: Etar timezone_rename_labels[16]
+#: src/cal-tz-picker.c
+msgid "East Africa Time"
+msgstr "Ostafrikanische Zeit"
+
+# android: Etar timezone_rename_labels[17]
+#: src/cal-tz-picker.c
+msgid "Atlantic Standard Time"
+msgstr "Atlantische Standardzeit"
+
+# android: Etar timezone_rename_labels[19]
+#: src/cal-tz-picker.c
+msgid "Eastern European Time"
+msgstr "Osteuropäische Zeit"
+
+# android: Etar timezone_rename_labels[20]
+#: src/cal-tz-picker.c
+msgid "Kaliningrad Time"
+msgstr "Kaliningrad"
+
+# android: Etar timezone_rename_labels[21]
+#: src/cal-tz-picker.c
+msgid "Amazon - Rondônia"
+msgstr "Amazonas – Rondônia"
+
+# android: Etar timezone_rename_labels[22]
+#: src/cal-tz-picker.c
+msgid "Brasilia - Pará"
+msgstr "Brasilia – Pará"
+
+# android: Etar palestine_display_name
+#: src/cal-tz-picker.c
+msgid "Palestine"
+msgstr "Palästina"
+
+# android: Etar hint_time_zone_search
+#: src/cal-tz-picker.c
+msgid "Type country name"
+msgstr "Ländernamen eingeben"
+
+# android: Contacts description_clear_search (other app, several translations, short)
+#: src/cal-tz-picker.c
+msgid "Clear search"
+msgstr "Suche zurücksetzen"
+
+# android: Etar no_results_found
+#: src/cal-tz-picker.c
+msgid "No results found"
+msgstr "Keine Ergebnisse gefunden"
+
+#: src/cal-window.c
+msgid "About Calendar"
+msgstr ""
+
+# android: Etar goto_date
+#: src/cal-window.c src/event-editor.c
+msgid "Go to…"
+msgstr "Gehe zu…"
+
+#: src/cal-window.c
+msgid "Calendar files"
+msgstr ""
+
+# android: Etar calendar_refresh
+#: src/cal-window.c
+msgid "Refresh"
+msgstr "Aktualisieren"
+
+# android: Etar search (several translations, short)
+#: src/cal-window.c
+msgid "Search"
+msgstr "Suche"
+
+# android: Etar cal_import_menu_title
+#: src/cal-window.c
+msgid "Import event"
+msgstr "Importiere Termin"
+
+# android: Etar view_settings
+#: src/cal-window.c
+msgid "View settings"
+msgstr "Ansichtseinstellungen"
+
+#: src/cal-window.c
+msgid "About"
+msgstr ""
+
+# android: Contacts navigation_drawer_open (other app)
+#: src/cal-window.c
+msgid "Open navigation drawer"
+msgstr "Navigationsleiste öffnen"
+
+# android: Settings preview_pager_message_title (other app, short)
+#: src/cal-window.c
+msgid "Message"
+msgstr "Nachricht"
+
+# android: Etar event_create
+#: src/cal-window.c
+msgid "New event"
+msgstr "Neuer Termin"
+
+#. "+%d"
+#: src/day-view.c src/month-view.c
+#, c-format
+msgid "+%d"
+msgid_plural "+%d"
+msgstr[0] ""
+msgstr[1] ""
+
+# android: Etar day_view_new_event_hint
+#: src/day-view.c
+msgid "+ New event"
+msgstr "+ neuer Termin"
+
+# android: Etar custom
+#. a rule without words is "Custom (can't customize on phone)" and the button is off,
+#. * as it is for one the dialog cannot show; either stays as it is, made elsewhere
+#: src/event-editor.c
+msgid "Custom (can't customize on phone)"
+msgstr "Benutzerdefiniert (Anpassung über Telefon nicht möglich)"
+
+# android: Etar does_not_repeat
+#: src/event-editor.c
+msgid "One-time event"
+msgstr "Einmaliger Termin"
+
+# android: Etar empty_event
+#: src/event-editor.c
+msgid "Empty event not created."
+msgstr "Leerer Termin nicht erstellt."
+
+# android: Etar creating_event
+#: src/event-editor.c
+msgid "Event created."
+msgstr "Termin erstellt."
+
+# android: Etar saving_event
+#: src/event-editor.c
+msgid "Event saved."
+msgstr "Termin gespeichert."
+
+# android: Etar discard_event_changes
+#: src/event-editor.c
+msgid "Do you want to discard changes?"
+msgstr "Möchten Sie die Änderungen verwerfen?"
+
+# android: Etar discard
+#: src/event-editor.c
+msgid "Discard"
+msgstr "Verwerfen"
+
+# android: Launcher3 dialog_cancel (other app, several translations, short)
+#: src/event-editor.c
+msgid "CANCEL"
+msgstr "ABBRECHEN"
+
+# android: Etar save_label (adapted)
+#: src/event-editor.c
+msgid "DONE"
+msgstr "Fertig"
+
+# android: Etar hint_what
+#: src/event-editor.c
+msgid "Event name"
+msgstr "Terminname"
+
+# android: Etar choose_event_color_label
+#: src/event-editor.c src/event-info.c
+msgid "Choose event color"
+msgstr "Terminfarbe auswählen"
+
+# android: Etar edit_event_all_day_label
+#: src/event-editor.c
+msgid "All day"
+msgstr "Ganztägig"
+
+# android: Etar accessibility_all_day
+#: src/event-editor.c
+msgid "All day event"
+msgstr "Ganztägiger Termin"
+
+# android: Etar accessibility_pick_start_date
+#: src/event-editor.c
+msgid "Start date"
+msgstr "Startdatum"
+
+# android: Etar accessibility_pick_start_time (several translations, short)
+#: src/event-editor.c
+msgid "Start time"
+msgstr "Startzeit"
+
+# android: Etar accessibility_pick_end_date
+#: src/event-editor.c
+msgid "End date"
+msgstr "Enddatum"
+
+# android: Etar accessibility_pick_end_time (several translations, short)
+#: src/event-editor.c
+msgid "End time"
+msgstr "Endzeit"
+
+# android: Etar accessibility_pick_time_zone
+#. the time zone: an outlined button over the row's width, the name and its GMT offset
+#: src/event-editor.c
+msgid "Time zone"
+msgstr "Zeitzone"
+
+#: src/event-editor.c
+msgid "Guests are not sent an invitation"
+msgstr ""
+
+# android: Etar hint_attendees
+#: src/event-editor.c
+msgid "Guests"
+msgstr "Gäste"
+
+# android: Framework permgrouplab_location (several translations, short)
+#. location, description, URL (one under the other, no space between the boxes' layouts)
+#: src/event-editor.c
+msgid "Location"
+msgstr "Standort"
+
+# android: Etar hint_description
+#: src/event-editor.c
+msgid "Description"
+msgstr "Beschreibung"
+
+# android: Etar hint_url
+#: src/event-editor.c
+msgid "URL"
+msgstr "URL"
+
+# android: Etar accessibility_pick_recurrence
+#. repeat: not for one occurrence of a series (it is an exception, it repeats nothing)
+#: src/event-editor.c
+msgid "Repeat event"
+msgstr "Wiederkehrender Termin"
+
+# android: Etar reminders_label
+#: src/event-editor.c src/event-info.c
+msgid "Add reminder"
+msgstr "Erinnerung hinzufügen"
+
+# android: Etar availability[0]
+#: src/event-editor.c
+msgid "Busy"
+msgstr "Beschäftigt"
+
+# android: Etar availability[1]
+#: src/event-editor.c
+msgid "Available"
+msgstr "Verfügbar"
+
+# android: Etar presence_label
+#: src/event-editor.c
+msgid "Show me as"
+msgstr "Mein Status"
+
+# android: Etar visibility_default
+#: src/event-editor.c
+msgid "Default"
+msgstr "Standard"
+
+# android: Etar visibility_confidential
+#: src/event-editor.c
+msgid "Confidential"
+msgstr "Vertraulich"
+
+# android: Framework profile_label_private (several translations, short)
+#: src/event-editor.c
+msgid "Private"
+msgstr "Vertraulich"
+
+# android: Etar visibility_public
+#: src/event-editor.c
+msgid "Public"
+msgstr "Öffentlich"
+
+# android: Etar privacy_label
+#: src/event-editor.c
+msgid "Privacy"
+msgstr "Datenschutz"
+
+# android: Etar modify_event
+#: src/event-editor.c
+msgid "Change only this event"
+msgstr "Nur diesen Termin ändern"
+
+# android: Etar modify_all_following
+#: src/event-editor.c
+msgid "Change this and all future events"
+msgstr "Diesen und alle zukünftigen Termine ändern"
+
+# android: Etar modify_all
+#: src/event-editor.c
+msgid "Change all events in the series"
+msgstr "Alle Termine in dieser Serie ändern"
+
+# android: Etar edit_event_label
+#: src/event-editor.c
+msgid "Details"
+msgstr "Details"
+
+#. no event in the file
+#: src/event-editor.c
+msgid "Invalid iCalendar file"
+msgstr ""
+
+# android: Etar email_guests_label
+#: src/event-info.c src/reminders-main.c
+msgid "Email guests"
+msgstr "E-Mail an Gäste senden"
+
+# android: Etar email_organizer_label
+#: src/event-info.c
+msgid "Email organizer"
+msgstr "E-Mail an Organisator senden"
+
+# android: Etar delete_repeating_labels[0] (several translations)
+#: src/event-info.c
+msgid "Only this event"
+msgstr "Nur dieser Termin"
+
+# android: Etar delete_repeating_labels[1]
+#: src/event-info.c
+msgid "This and future events"
+msgstr "Dieser und zukünftige Termine"
+
+# android: Etar delete_repeating_labels[2]
+#: src/event-info.c
+msgid "All events"
+msgstr "Alle Termine"
+
+# android: Etar delete_recurring_event_title
+#: src/event-info.c
+#, c-format
+msgid "Delete %s?"
+msgstr "%s löschen?"
+
+# android: Etar delete_this_event_title
+#: src/event-info.c
+msgid "Delete this event?"
+msgstr "Diesen Termin löschen?"
+
+# android: Etar cal_export_event_title
+#: src/event-info.c
+msgid "Export event"
+msgstr "Termin exportieren"
+
+# android: Etar response_labels1[1]
+#: src/event-info.c
+msgid "Yes"
+msgstr "Ja"
+
+# android: Etar response_labels1[3]
+#: src/event-info.c
+msgid "No"
+msgstr "Nein"
+
+# android: Etar response_labels1[2]
+#: src/event-info.c
+msgid "Maybe"
+msgstr "Vielleicht"
+
+# android: Etar response_labels1[0]
+#: src/event-info.c
+msgid "No response"
+msgstr "Keine Antwort"
+
+# android: Etar edit_label
+#: src/event-info.c
+msgid "Edit"
+msgstr "Bearbeiten"
+
+# android: Etar delete_label (several translations, short)
+#: src/event-info.c
+msgid "Delete"
+msgstr "Löschen"
+
+# android: Etar duplicate_label
+#: src/event-info.c
+msgid "Duplicate"
+msgstr "Duplizieren"
+
+# android: Etar share_label
+#: src/event-info.c
+msgid "Share"
+msgstr "Teilen"
+
+# android: Etar view_event_calendar_label
+#: src/event-info.c
+msgid "Calendar:"
+msgstr "Kalender:"
+
+# android: Etar view_event_organizer_label
+#: src/event-info.c
+msgid "Organizer:"
+msgstr "Organisator:"
+
+# android: Etar event_info_reminders_label (adapted)
+#: src/event-info.c
+msgid "REMINDERS"
+msgstr "Erinnerungen"
+
+# android: Etar map_label
+#: src/reminders-main.c
+msgid "Map"
+msgstr "Karte"
+
+# android: Etar call_label (several translations, short)
+#: src/reminders-main.c
+msgid "Call"
+msgstr "Anrufen"
+
+# android: Etar snooze_label (several translations, short)
+#: src/reminders-main.c
+msgid "Snooze"
+msgstr "Später erinnern"
+
+# android: Framework whichViewApplicationLabel (short)
+#: src/reminders-main.c
+msgid "Open"
+msgstr "Öffnen"

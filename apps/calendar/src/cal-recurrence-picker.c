@@ -989,7 +989,7 @@ update_dialog (Picker *picker)
     {
       g_autoptr(GDateTime) date = time_at (model->end_day, 12 * 3600, NULL);
       /* a numeric date, as the editor's "; until 12/31/2026" */
-      g_autofree char *text = g_date_time_format (date, C_("date", "%-m/%-d/%Y"));
+      g_autofree char *text = vibeos_format_date (date, "yMd");
 
       gtk_label_set_label (GTK_LABEL (picker->end_date), text);
     }
@@ -1270,8 +1270,8 @@ day_button (Picker *picker, int weekday)
   GtkWidget *button = vibeos_pressable_new (area);
   /* the short weekday name in capitals: "SUN" … (2023-01-01 was a Sunday) */
   g_autoptr(GDateTime) date = g_date_time_new_local (2023, 1, 1 + weekday, 12, 0, 0);
-  g_autofree char *name = g_date_time_format (date, "%a");
-  g_autofree char *full = g_date_time_format (date, "%A");
+  g_autofree char *name = vibeos_format_date (date, "EEE");
+  g_autofree char *full = vibeos_format_date (date, "EEEE");
 
   g_object_set_data_full (G_OBJECT (area), "cal-name", g_utf8_strup (name, -1), g_free);
   g_object_set_data (G_OBJECT (area), "cal-weekday", GINT_TO_POINTER (weekday));

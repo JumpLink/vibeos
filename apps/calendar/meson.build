@@ -3,6 +3,7 @@ project('vibeos-calendar', 'c', version: '1.0', meson_version: '>= 1.0',
 add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers', language: 'c')
 
 gnome = import('gnome')
+i18n = import('i18n')
 gio = dependency('gio-unix-2.0', version: '>= 2.76')
 ecal = dependency('libecal-2.0', version: '>= 3.46')
 m = meson.get_compiler('c').find_library('m')
@@ -11,10 +12,16 @@ datadir = get_option('prefix') / get_option('datadir')
 gettext_args = ['-DGETTEXT_PACKAGE="vibeos-calendar"',
                 '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir'))]
 
+# dates and times in the user's language: libvibeos's vibeos-locale (GLib and ICU only), which the app has from
+# libvibeos and the programs without GTK (the reminder service, the tests) build in
+icu = [dependency('icu-i18n'), dependency('icu-uc')]
+locale_inc = include_directories('../../libvibeos')
+locale_src = files('../../libvibeos/vibeos-locale.c')
+
 # the events and their rules (cal-model), their text (cal-format) and evolution-data-server (cal-store): shared by
 # the app, the reminder service and the tests
 core = static_library('calcore', 'src/cal-model.c', 'src/cal-format.c', 'src/cal-store.c', 'src/cal-alerts.c',
-                      c_args: gettext_args, dependencies: [gio, ecal, m])
+                      c_args: gettext_args, include_directories: locale_inc, dependencies: [gio, ecal, m, icu])
 
 # the app
 resources = gnome.compile_resources('calendar-resources', 'src/calendar.gresource.xml', source_dir: ['src', 'data'])
@@ -27,11 +34,11 @@ executable('vibeos-calendar', 'src/cal-main.c', 'src/cal-window.c', 'src/cal-tex
            'src/cal-alert-page.c', 'src/cal-outlined-field.c', 'src/cal-side.c', resources,
            link_with: core, install: true, c_args: gettext_args,
            dependencies: [gio, ecal, m, dependency('gtk4', version: '>= 4.14'), dependency('vibeos-1'),
-                          dependency('spongy-gtk-1'), dependency('icu-i18n'), dependency('icu-uc')])
+                          dependency('spongy-gtk-1'), icu])
 
 # the reminder service: notifies at each reminder, and wakes the phone for it, with the app closed
-executable('vibeos-calendar-reminders', 'src/reminders-main.c', link_with: core, install: true, c_args: gettext_args,
-           dependencies: [gio, ecal, m])
+executable('vibeos-calendar-reminders', 'src/reminders-main.c', locale_src, link_with: core, install: true,
+           c_args: gettext_args, dependencies: [gio, ecal, m, icu])
 
 unit = configuration_data({'bindir': bindir})
 configure_file(input: 'data/vibeos-calendar-reminders.service.in', output: 'vibeos-calendar-reminders.service',
@@ -40,7 +47,8 @@ configure_file(input: 'data/vibeos.Calendar.Reminders.service.in', output: 'vibe
                configuration: unit, install_dir: datadir / 'dbus-1/services')
 configure_file(input: 'data/vibeos.Calendar.service.in', output: 'vibeos.Calendar.service',
                configuration: unit, install_dir: datadir / 'dbus-1/services')
-install_data('data/vibeos.Calendar.desktop', install_dir: datadir / 'applications')
+i18n.merge_file(input: 'data/vibeos.Calendar.desktop.in', output: 'vibeos.Calendar.desktop', type: 'desktop', po_dir: 'po',
+                install: true, install_dir: datadir / 'applications')
 install_data('data/vibeos.Calendar.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
 install_data('data/vibeos.Calendar.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
 gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
@@ -48,9 +56,13 @@ gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, upda
 # the test rig's events (tests/try-calendar.sh): refuses to run outside the rig
 executable('cal-seed', 'tests/cal-seed.c', dependencies: [gio, ecal])
 
+# the translations, and their checks
+subdir('po')
+
 foreach name : ['cal-model', 'cal-format', 'cal-alerts']
-  test(name, executable('test-' + name, 'tests/test-' + name + '.c', link_with: core, c_args: gettext_args,
-                        dependencies: [gio, ecal, m]))
+  test(name, executable('test-' + name, 'tests/test-' + name + '.c', locale_src, link_with: core, c_args: gettext_args,
+                        dependencies: [gio, ecal, m, icu]),
+       env: ['LANG=C.UTF-8', 'LANGUAGE=', 'LC_ALL=', 'LC_TIME=', 'LC_MESSAGES='])
 endforeach
 # the repeat dialog's rules: cal-recurrence-picker.c without its dialog
 test('cal-recurrence', executable('test-cal-recurrence', 'tests/test-cal-recurrence.c', 'src/cal-recurrence-picker.c',

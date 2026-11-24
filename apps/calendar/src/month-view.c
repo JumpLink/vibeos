@@ -194,7 +194,7 @@ draw_header (CalMonthView *self, GtkSnapshot *snapshot, int scale, double width)
       {
         g_autoptr(GDateTime) date = g_date_time_new_from_unix_local (cal_day_start (day));
 
-        name = g_date_time_format (date, "%a");
+        name = vibeos_format_date (date, "EEE");
       }
       upper = g_utf8_strup (name, -1);
       layout = cal_text_layout (GTK_WIDGET (self), upper, DAY_NAME_SIZE, 700);
@@ -455,8 +455,9 @@ abbreviated_time (CalMonthView *self, gint64 time)
   g_autoptr(GDateTime) local = g_date_time_new_from_unix_local (time);
 
   if (self->h24)
-    return g_date_time_format (local, "%H:%M");
-  return g_date_time_format (local, on_the_hour (time) ? "%-I %p" : "%-I:%M %p");
+    return vibeos_format_date (local, "Hm");
+  /* "2 PM" on the hour, "2:30 PM" otherwise */
+  return vibeos_format_date (local, on_the_hour (time) ? "ha" : "hm");
 }
 
 static char *
@@ -480,8 +481,8 @@ formatted_time (CalMonthView *self, const CalEvent *event, const Details *detail
           /* the date: "Nov 9", with the year when it is not this one */
           g_autoptr(GDateTime) local = g_date_time_new_from_unix_local (event->end);
           g_autoptr(GDateTime) now = g_date_time_new_now_local ();
-          g_autofree char *date = g_date_time_format (local, g_date_time_get_year (local) == g_date_time_get_year (now)
-                                                             ? C_("date", "%b %-d") : C_("date", "%b %-d, %Y"));
+          g_autofree char *date = vibeos_format_date (local, g_date_time_get_year (local) == g_date_time_get_year (now)
+                                                             ? "MMMd" : "yMMMd");
 
           g_string_append_printf (time, "%s, ", date);
         }
