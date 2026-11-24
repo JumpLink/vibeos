@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-contacts\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 03:42+0100\n"
+"POT-Creation-Date: 2026-11-24 14:32+0100\n"
 "PO-Revision-Date: 2026-11-24 03:42+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Russian\n"
@@ -800,10 +800,15 @@ msgstr "Контакты не найдены"
 # android: Contacts contacts_deleted_toast
 #: src/ct-people.c
 msgid "Contact deleted"
-msgid_plural "Contacts deleted"
-msgstr[0] "Контакты удалены."
-msgstr[1] "Контакты удалены."
-msgstr[2] "Контакты удалены."
+msgstr "Контакт удален"
+
+#: src/ct-people.c
+#, c-format
+msgid "%u contact deleted"
+msgid_plural "%u contacts deleted"
+msgstr[0] "%u контакт удален"
+msgstr[1] "%u контакта удалено"
+msgstr[2] "%u контактов удалено"
 
 # android: Contacts batch_delete_confirmation
 #: src/ct-people.c

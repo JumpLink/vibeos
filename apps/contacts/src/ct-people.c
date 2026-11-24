@@ -1167,9 +1167,15 @@ on_deleted (const char *uid, const GError *error, gpointer data)
 
   if (error)
     g_warning ("delete: %s", error->message);
+  else if (deletion->uids->len == 1)
+    ct_window_toast (deletion->people->window, _("Contact deleted"));
   else
-    ct_window_toast (deletion->people->window, g_dngettext (NULL, "Contact deleted", "Contacts deleted",
-                                                            deletion->uids->len));
+    {
+      g_autofree char *text = g_strdup_printf (g_dngettext (NULL, "%u contact deleted", "%u contacts deleted",
+                                                            deletion->uids->len), deletion->uids->len);
+
+      ct_window_toast (deletion->people->window, text);
+    }
   g_ptr_array_unref (deletion->uids);
   g_free (deletion);
 }
