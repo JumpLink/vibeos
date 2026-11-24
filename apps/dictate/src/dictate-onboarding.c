@@ -59,6 +59,8 @@ typedef struct {
   GString *heard;               /* the turn's words */
   guint listens;
   gboolean saying, listening, over, enrolled;
+  gboolean deaf;                /* the microphone or the model failed: the rest is tapped through */
+  char *tapped;                 /* the step's hint for tapping, shown once it is deaf */
   GPtrArray *chips;             /* the access step's, their key in "dictate-access" */
 } Intro;
 
@@ -178,6 +180,8 @@ on_talk_state (DictateTalk *talk, Intro *in)
 static gboolean
 can_listen (Intro *in)
 {
+  if (in->deaf)
+    return FALSE;
   dictate_engine_set_language (in->engine, in->language);
   return dictate_engine_available (in->engine, NULL);
 }
@@ -327,10 +331,13 @@ on_engine_state (DictateEngine *engine, Intro *in)
 static void
 on_engine_error (DictateEngine *engine, const char *message, Intro *in)
 {
-  /* the microphone or the model failed: the steps are tapped through */
+  /* the microphone or the model failed: the steps are tapped through. The step is not shown again: that would say it
+   * again, listen again and fail again, round and round */
   in->listening = FALSE;
-  in->listens = LISTENS;
-  show_step (in);
+  in->deaf = TRUE;
+  dictate_orb_set_look (dictate_stage_get_orb (stage (in)), DICTATE_ORB_REST, NULL);
+  if (in->tapped)
+    dictate_stage_set_hint (stage (in), in->tapped);
 }
 
 /* --- the language step */
@@ -636,6 +643,8 @@ on_tapped (DictateStage *s, Intro *in)
 static void
 hint (Intro *in, const char *said, const char *tapped)
 {
+  g_free (in->tapped);
+  in->tapped = g_strdup (tapped);
   dictate_stage_set_hint (stage (in), can_listen (in) && in->listens < LISTENS ? said : tapped);
 }
 
@@ -784,6 +793,7 @@ intro_free (gpointer data)
   g_clear_object (&in->settings);
   g_ptr_array_unref (in->chips);
   g_string_free (in->heard, TRUE);
+  g_free (in->tapped);
   g_free (in->language);
   g_free (in);
 }
