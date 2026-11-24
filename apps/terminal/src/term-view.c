@@ -400,6 +400,31 @@ term_view_paste (TermView *self)
   vte_terminal_paste_clipboard (VTE_TERMINAL (self));
 }
 
+gboolean
+term_view_get_cursor_bottom (TermView *self, double *y)
+{
+  long row = 0;
+
+  g_return_val_if_fail (TERM_IS_VIEW (self), FALSE);
+
+  if (!update_offset (self))
+    return FALSE;
+  vte_terminal_get_cursor_position (VTE_TERMINAL (self), NULL, &row);
+  *y = row_y (self, row) + cell_height (self);
+  return TRUE;
+}
+
+void
+term_view_scroll_to_end (TermView *self)
+{
+  GtkAdjustment *adj;
+
+  g_return_if_fail (TERM_IS_VIEW (self));
+
+  adj = vadjustment (self);
+  gtk_adjustment_set_value (adj, gtk_adjustment_get_upper (adj) - gtk_adjustment_get_page_size (adj));
+}
+
 void
 term_view_select_all (TermView *self)
 {

@@ -879,8 +879,9 @@ Depends: ${shlibs:Depends},
 Description: terminal for VibeOS
  VibeOS Terminal runs the user's shell in GNOME's terminal widget (VTE),
  made for a touchscreen: a tap brings the keyboard, which opens over the
- window rather than shrinking it, a long press selects a word with handles
- to widen it and a toolbar to copy or paste, and a drag of one finger or two
- scrolls the history and flings it. In less, man or vim scrolling sends the
- cursor keys, and to a program that takes the mouse, such as htop or mc, the
- mouse wheel, as a wheel would.
+ window rather than shrinking it, with a row of Esc, Tab, Ctrl, Alt and the
+ arrow keys on it (Ctrl and Alt sticky, as Termux's); a long press selects a
+ word with handles to widen it and a toolbar to copy or paste; and a drag of
+ one finger or two scrolls the history and flings it. In less, man or vim
+ scrolling sends the cursor keys, and to a program that takes the mouse, such
+ as htop or mc, the mouse wheel, as a wheel would.

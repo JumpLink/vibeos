@@ -45,5 +45,10 @@ void      term_view_copy              (TermView *self);
 void      term_view_paste             (TermView *self);
 /* selects everything VTE keeps, the history and the screen */
 void      term_view_select_all        (TermView *self);
+/* the y of the foot of the text cursor's row, in the view (below it when the view is scrolled back); FALSE when the
+ * view cannot tell where its rows are */
+gboolean  term_view_get_cursor_bottom (TermView *self, double *y);
+/* the view to the end of the text, as a key typed takes it */
+void      term_view_scroll_to_end     (TermView *self);
 
 G_END_DECLS

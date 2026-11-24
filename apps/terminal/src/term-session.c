@@ -31,6 +31,9 @@ struct _TermSession {
   GByteArray  *outgoing;             /* written once the pty takes it */
   guint        write_source;
   gboolean     eof;
+
+  TermSessionFilter filter;          /* what the terminal sends, first */
+  gpointer          filter_data;
 };
 
 G_DEFINE_FINAL_TYPE (TermSession, term_session, G_TYPE_OBJECT)
@@ -188,7 +191,18 @@ term_session_write (TermSession *self, const char *data, gsize length)
 static void
 on_commit (VteTerminal *terminal, const char *text, guint size, TermSession *self)
 {
+  if (self->filter && self->filter (text, size, self->filter_data))
+    return;
   term_session_write (self, text, size);
+}
+
+void
+term_session_set_filter (TermSession *self, TermSessionFilter filter, gpointer data)
+{
+  g_return_if_fail (TERM_IS_SESSION (self));
+
+  self->filter = filter;
+  self->filter_data = data;
 }
 
 /* ---- the child ------------------------------------------------------------------------------------------------ */

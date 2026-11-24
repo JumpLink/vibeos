@@ -7,8 +7,8 @@ add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers'
 glib = dependency('glib-2.0', version: '>= 2.76')
 m = meson.get_compiler('c').find_library('m')
 
-# the private modes read from the program's output: no GTK, shared by the app and the tests
-modes = static_library('modes', 'src/term-modes.c', dependencies: glib)
+# the private modes read from the program's output, and the extra keys' bytes: no GTK, shared by the app and the tests
+core = static_library('core', 'src/term-modes.c', 'src/term-input.c', dependencies: glib)
 
 # the app
 gnome = import('gnome')
@@ -16,9 +16,9 @@ bindir = get_option('prefix') / get_option('bindir')
 datadir = get_option('prefix') / get_option('datadir')
 resources = gnome.compile_resources('terminal-resources', 'src/terminal.gresource.xml',
                                     source_dir: ['src', 'data'])
-executable('vibeos-terminal', 'src/term-main.c', 'src/term-window.c', 'src/term-view.c', 'src/term-session.c',
-           'src/term-toolbar.c', resources,
-           link_with: modes, install: true,
+executable('vibeos-terminal', 'src/term-main.c', 'src/term-window.c', 'src/term-layout.c', 'src/term-view.c',
+           'src/term-session.c', 'src/term-toolbar.c', 'src/term-keys.c', resources,
+           link_with: core, install: true,
            dependencies: [glib, m, dependency('gtk4', version: '>= 4.14'), dependency('vte-2.91-gtk4', version: '>= 0.78'),
                           dependency('vibeos-1'), dependency('spongy-1')])
 
@@ -28,5 +28,7 @@ install_data('data/vibeos.Terminal.desktop', install_dir: datadir / 'application
 install_data('data/vibeos.Terminal.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
 gnome.post_install(gtk_update_icon_cache: true, update_desktop_database: true)
 
-test('modes', executable('test-modes', 'tests/test-modes.c', include_directories: 'src', link_with: modes,
+test('modes', executable('test-modes', 'tests/test-modes.c', include_directories: 'src', link_with: core,
+                         dependencies: glib))
+test('input', executable('test-input', 'tests/test-input.c', include_directories: 'src', link_with: core,
                          dependencies: glib))

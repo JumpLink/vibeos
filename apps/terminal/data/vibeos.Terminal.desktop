@@ -10,4 +10,4 @@ DBusActivatable=true
 Categories=System;TerminalEmulator;GTK;
 Keywords=Terminal;Shell;Command;Prompt;Console;
 X-Purism-FormFactor=Workstation;Mobile;
-X-Vibeos-Keyboard=slide
+X-Vibeos-Keyboard=overlay

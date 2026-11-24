@@ -29,3 +29,30 @@ term-toolbar .vibeos-text-button {
   min-height: 48dp;
   padding: 0 12dp;
 }
+
+/* the extra keys: a strip in the keyboard's colour standing on its top edge, the keys pressed, on and locked */
+term-keys {
+  background-color: @vibeos_surface_container;
+}
+
+term-keys .term-key {
+  color: @vibeos_on_surface;
+  font-weight: 500;
+  min-height: 36dp;
+  margin: 4dp 2dp;
+  border-radius: 8dp;
+}
+
+term-keys .term-key.pressed {
+  background-color: @vibeos_surface_container_highest;
+}
+
+term-keys .term-key.on {
+  color: @vibeos_on_primary_container;
+  background-color: @vibeos_primary_container;
+}
+
+term-keys .term-key.locked {
+  color: @vibeos_on_primary;
+  background-color: @vibeos_primary;
+}

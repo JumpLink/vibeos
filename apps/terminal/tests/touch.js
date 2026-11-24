@@ -3,7 +3,8 @@
 // and keys come from virtual devices of this shell's own, text from its input method. A program of the test's
 // (probe.py) asks for a program's modes and logs what the terminal sends it.
 //
-//   A  a tap opens the keyboard over the window: it keeps its size, and output to the bottom slides it up.
+//   A  a tap opens the keyboard over the window (X-Vibeos-Keyboard=overlay): the window keeps its size and its
+//      place, and output to the bottom slides the terminal up inside it, the cursor's line over the extra keys.
 //   B  on the alternate screen (less) two fingers going up 5½ rows send 5 Down keys, and back down 3½ rows 3 Up; one
 //      finger going up 5½ rows past the touch slop 5 more Down keys; with application cursor keys (DECCKM) they are
 //      ESC O B.
@@ -14,7 +15,13 @@
 //   F  two fingers going down 10 rows scroll the history back 10 rows: the word under the same spot is 10 lines up;
 //      one finger going down 10 rows past the slop, 10 more.
 //   G  the selection's end handle dragged 2 rows down takes the selection to there.
+//   K  the extra keys stand on the keyboard: Esc, Tab and the cursor keys send theirs, a held cursor key repeats,
+//      Ctrl and Alt are on for the next key only, typed or of the row, and locked on by a long press until tapped
+//      off; with the keyboard down they are gone.
 //   H  a tap ends the selection; Ctrl+Shift+V pastes into the shell.
+//
+// The shell's vibeos.Shell service (the extension's service.js) tells an overlay app how much of its window the
+// keyboard covers; this shell runs no extension, so the test serves that one property itself (KeyboardOverlap).
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
@@ -113,6 +120,53 @@ async function swipe1(x, y, dy, ms, hold = 150) {
 }
 // the Terminal's touch slop (term-view.c): a one-finger scroll moves the text by the finger's travel less this
 const SLOP = 8;
+// the extra keys' row (terminal.css: 36 dp keys and 4 dp around them), its keys from the left (term-keys.c)
+const KEYS_H = 44;
+const [ESC, TAB, CTRL, ALT, LEFT, UP, DOWN, RIGHT] = [0, 1, 2, 3, 4, 5, 6, 7];
+const N_KEYS = 8;
+
+// vibeos.Shell's KeyboardOverlap as service.js serves it: from the keyboard's top edge to the bottom of the window in
+// front, when that window's app has the keyboard over it, announced as the keyboard starts to move
+const SHELL_IFACE = `<node><interface name="vibeos.Shell">
+  <property name="KeyboardOverlap" type="u" access="read"/>
+</interface></node>`;
+class KeyboardOverlap {
+    constructor(overlays) {
+        this._overlays = overlays;
+        this._overlap = 0;
+        this._impl = Gio.DBusExportedObject.wrapJSObject(SHELL_IFACE, this);
+        this._impl.export(Gio.DBus.session, '/vibeos/Shell');
+        this._name = Gio.bus_own_name(Gio.BusType.SESSION, 'vibeos.Shell', Gio.BusNameOwnerFlags.NONE, null, null,
+            null);
+        this._id = Main.keyboard.connect('visibility-changed', () => this._update());
+    }
+
+    get KeyboardOverlap() {
+        return this._overlap;
+    }
+
+    _update() {
+        const keyboard = Main.keyboard._keyboard ?? null;
+        const window = global.display.focus_window;
+        const monitor = Main.layoutManager.keyboardMonitor;
+        let overlap = 0;
+        if (Main.keyboard.visible && keyboard && monitor && window && this._overlays(window)) {
+            const top = monitor.y + monitor.height - keyboard.height;
+            const frame = window.get_frame_rect();
+            overlap = Math.max(0, Math.round(frame.y + frame.height - top));
+        }
+        if (overlap === this._overlap)
+            return;
+        this._overlap = overlap;
+        this._impl.emit_property_changed('KeyboardOverlap', GLib.Variant.new_uint32(overlap));
+    }
+
+    destroy() {
+        Main.keyboard.disconnect(this._id);
+        Gio.bus_unown_name(this._name);
+        this._impl.unexport();
+    }
+}
 async function keyCombo(modifiers, keyval) {
     keys ??= seat().create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
     for (const m of modifiers)
@@ -167,6 +221,7 @@ export async function run() {
     const {TouchFocusKeyboard} = await import(`file://${DIR}/ext/oskfocus.js`);
     const swap = new kb.KeyboardSwap();
     const touchFocus = new TouchFocusKeyboard();
+    const overlap = new KeyboardOverlap(kb.keyboardOverlays);
     check('the extension\'s keyboard is in', swap.active && keyboard()?.constructor.name.includes('VibeosKeyboard'));
 
     // the text cursor's cell as mutter has it (the window unslid)
@@ -196,7 +251,7 @@ export async function run() {
     await until(() => global.display.focus_window === win && terminalFocused(), 15000);
     check('the Terminal is up, its terminal focused', !!win && global.display.focus_window === win &&
         terminalFocused(), global.display.list_all_windows().map(w => `"${w.title}"`).join(' '));
-    check('it slides under the keyboard (X-Vibeos-Keyboard=slide)', kb.keyboardSlides(win));
+    check('it has the keyboard over it (X-Vibeos-Keyboard=overlay)', kb.keyboardOverlays(win) && !kb.keyboardSlides(win));
     win.maximize();
     const tall = () => win.get_frame_rect().height > Main.layoutManager.primaryMonitor.height / 2;
     await until(() => win.maximized_vertically && tall(), 10000);
@@ -238,16 +293,25 @@ export async function run() {
     await until(() => Main.keyboard.visible && drawn(), 5000);
     await settled();
     check('A: a tap on the terminal opens the keyboard', Main.keyboard.visible && drawn(), state());
-    check('A: the window keeps its size', sameFrame() && resized === 0, state());
+    check('A: the window keeps its size and its place', sameFrame() && resized === 0 && actor.translation_y === 0,
+        state());
+    // (GTK tells the input method where the cursor is when the cursor moves, not when the text slides: a key typed
+    // after the slide has the cursor's place as it is drawn)
     type('seq 300\r');
-    await until(() => actor.translation_y < 0, 10000);
-    await settled();
-    check('A: output to the bottom slides it up, the cursor\'s line above the keys',
-        actor.translation_y < 0 && cursor.y + cursor.height + actor.translation_y <= top() + 1, state());
-    check('A: still its size', sameFrame() && resized === 0, state());
+    await sleep(1500);
+    type(' ');
+    await sleep(500);
+    const keysTop = () => top() - KEYS_H;
+    check('A: output to the bottom slides the terminal up: the cursor\'s line just over the extra keys',
+        cursor.y + cursor.height <= keysTop() && cursor.y + cursor.height > keysTop() - cursor.height, state());
+    check('A: the window still its size and its place', sameFrame() && resized === 0 && actor.translation_y === 0,
+        state());
     await shot('1-keyboard');
     await closeKeyboard();
-    check('A: the keyboard closed, back down', !Main.keyboard.visible && actor.translation_y === 0, state());
+    type('\x15');
+    await sleep(500);
+    check('A: the keyboard closed, the terminal back down', !Main.keyboard.visible &&
+        cursor.y + cursor.height > frame0.y + frame0.height - 2 * cursor.height, state());
 
     // the grid: probe.py parks the cursor at row 10, column 5
     let grid = null;
@@ -333,6 +397,84 @@ export async function run() {
     await quit(legacyLog);
     await closeKeyboard();
 
+    // K
+    const keysLog = `${DIR}/keys.log`;
+    check('K: the probe is up', await runProbe('alt', keysLog));
+    await tap(midX, cellY(30));
+    await until(() => Main.keyboard.visible && drawn(), 5000);
+    await settled();
+    await sleep(300);
+    const keyX = i => monitor.x + monitor.width * (i + 0.5) / N_KEYS;
+    const keyY = () => top() - KEYS_H / 2;
+    // (the shell sends the input method's text at once, and a touch at the next frame: a key typed right after a tap
+    // would reach the Terminal before the tap; and two texts sent at once are one, the second)
+    const pressKey = async i => {
+        await tap(keyX(i), keyY());
+        await sleep(150);
+    };
+    const typeKey = async text => {
+        type(text);
+        await sleep(150);
+    };
+    let mark = sent(keysLog).length;
+    const since = () => {
+        const all = sent(keysLog);
+        const out = all.slice(mark);
+        mark = all.length;
+        return out;
+    };
+    const step = async () => {
+        await sleep(300);
+        return since();
+    };
+    await shot('5-extra-keys');
+    await pressKey(ESC);
+    await pressKey(TAB);
+    await pressKey(UP);
+    await pressKey(LEFT);
+    s = await step();
+    check('K: Esc, Tab, ↑ and ← on the extra keys', s === '\x1b\t\x1b[A\x1b[D', show(s));
+    await pressKey(CTRL);
+    await typeKey('c');
+    s = await step();
+    check('K: Ctrl, then c typed: ^C', s === '\x03', show(s));
+    await typeKey('c');
+    s = await step();
+    check('K: Ctrl went off after it', s === 'c', show(s));
+    await pressKey(ALT);
+    await typeKey('x');
+    s = await step();
+    check('K: Alt, then x: ESC x', s === '\x1bx', show(s));
+    await pressKey(CTRL);
+    await pressKey(RIGHT);
+    s = await step();
+    check('K: Ctrl, then → of the row: ESC [ 1 ; 5 C', s === '\x1b[1;5C', show(s));
+    await pressKey(CTRL);
+    await pressKey(CTRL);
+    await typeKey('e');
+    s = await step();
+    check('K: Ctrl tapped twice is off', s === 'e', show(s));
+    await longPress(keyX(CTRL), keyY(), 800);
+    await sleep(150);
+    await typeKey('a');
+    await typeKey('b');
+    s = await step();
+    check('K: Ctrl held: locked on, for every key', s === '\x01\x02', show(s));
+    await pressKey(CTRL);
+    await typeKey('d');
+    s = await step();
+    check('K: a tap puts the lock off', s === 'd', show(s));
+    await longPress(keyX(DOWN), keyY(), 1000);
+    s = await step();
+    check('K: ↓ held repeats', count(s, '\x1b[B') >= 8 && s.replace(/\x1b\[B/g, '') === '', show(s));
+    await closeKeyboard();
+    await sleep(300);
+    await tap(keyX(ESC), keyY());
+    s = await step();
+    check('K: with the keyboard down the extra keys are gone', s === '', show(s));
+    await closeKeyboard();
+    await quit(keysLog);
+
     // E: lines L0001 to L0300, the prompt under them
     type('clear; seq -f L%04g 300\r');
     await sleep(2000);
@@ -412,6 +554,7 @@ export async function run() {
     await shot('4-end');
 
     proc.force_exit();
+    overlap.destroy();
     touchFocus.destroy();
     swap.destroy();
     say(failures ? `FAILED ${failures}` : 'ALL PASSED');

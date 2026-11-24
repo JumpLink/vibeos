@@ -1,5 +1,7 @@
 /* term-window: see term-window.h */
 #include "term-window.h"
+#include "term-keys.h"
+#include "term-layout.h"
 #include "term-session.h"
 #include "term-view.h"
 
@@ -11,7 +13,7 @@ typedef struct {
   VibeosTopBar *bar;
   TermView     *view;
   TermSession  *session;
-  GtkWidget    *extra_keys;
+  TermKeys     *keys;           /* the extra keys (a reference of the window's own) */
 } Window;
 
 static const VibeosAboutSection term_legal[] = {
@@ -28,9 +30,12 @@ window_free (gpointer data)
 {
   Window *self = data;
 
-  if (self->session)
+  if (self->session) {
     g_signal_handlers_disconnect_by_data (self->session, self);
+    term_session_set_filter (self->session, NULL, NULL);
+  }
   g_clear_object (&self->session);
+  g_clear_object (&self->keys);
   g_free (self);
 }
 
@@ -85,6 +90,23 @@ on_more (GtkWidget *button, Window *self)
   vibeos_menu_present (menu, button);
 }
 
+/* the extra keys' Ctrl and Alt on what is typed */
+static gboolean
+filter_typed (const char *text, gsize length, gpointer data)
+{
+  Window *self = data;
+
+  return term_keys_filter (self->keys, text, length);
+}
+
+/* a key of the extra keys' row: as a key typed, the end of the text in view, and the selection done with */
+static void
+on_extra_key (TermKeys *keys, Window *self)
+{
+  term_view_end_selection (self->view);
+  term_view_scroll_to_end (self->view);
+}
+
 static gboolean
 on_key_pressed (GtkEventControllerKey *keys, guint keyval, guint keycode, GdkModifierType state, Window *self)
 {
@@ -129,13 +151,10 @@ term_window_new (GtkApplication *app)
   gtk_widget_set_hexpand (GTK_WIDGET (self->view), TRUE);
   gtk_box_append (GTK_BOX (content), GTK_WIDGET (self->view));
 
-  /* the extra keys' row, to come: between the terminal and the keyboard */
-  self->extra_keys = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  gtk_widget_add_css_class (self->extra_keys, "term-extra-keys");
-  gtk_widget_set_visible (self->extra_keys, FALSE);
-  gtk_box_append (GTK_BOX (content), self->extra_keys);
-
-  vibeos_window_set_content (self->window, content);
+  /* the keyboard comes up over the window (X-Vibeos-Keyboard=overlay), the extra keys on it */
+  self->keys = g_object_ref_sink (term_keys_new ());
+  g_signal_connect (self->keys, "sent", G_CALLBACK (on_extra_key), self);
+  vibeos_window_set_content (self->window, term_layout_new (content, self->view, GTK_WIDGET (self->keys)));
   update_title (self);
   g_signal_connect (self->view, "termprop-changed::" VTE_TERMPROP_XTERM_TITLE, G_CALLBACK (on_title_changed), self);
 
@@ -146,6 +165,8 @@ term_window_new (GtkApplication *app)
 
   self->session = term_session_new (VTE_TERMINAL (self->view));
   term_view_set_session (self->view, self->session);
+  term_keys_set_session (self->keys, self->session);
+  term_session_set_filter (self->session, filter_typed, self);
   g_signal_connect (self->session, "exited", G_CALLBACK (on_exited), self);
   if (!term_session_start (self->session, NULL, &error)) {
     g_autofree char *text = g_strdup_printf ("%s\r\n", error->message);
