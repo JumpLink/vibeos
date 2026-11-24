@@ -31,15 +31,15 @@ msgstr "Часы"
 
 #: data/vibeos.Clock.desktop.in
 msgid "Alarms and the time"
-msgstr ""
+msgstr "Будильники и время"
 
 #: data/vibeos.Clock.desktop.in
 msgid "alarm;time;"
-msgstr ""
+msgstr "будильник;время;часы;таймер;секундомер;"
 
 #: src/alarm-card.c
 msgid "Add label"
-msgstr ""
+msgstr "Добавить описание"
 
 # android: DeskClock alarm_tomorrow
 #: src/alarm-card.c
@@ -119,11 +119,11 @@ msgstr "Будильник удален"
 # android: DeskClock alarm_undo
 #: src/alarm-page.c
 msgid "undo"
-msgstr "отмена"
+msgstr "Отменить"
 
 #: src/alarm-page.c
 msgid "Missed alarm has been deleted"
-msgstr ""
+msgstr "Пропущенный будильник удален"
 
 # android: DeskClock button_alarms
 #: src/alarm-page.c
@@ -2812,17 +2812,17 @@ msgstr "Время истекло"
 #, c-format
 msgid "%d hr"
 msgid_plural "%d hr"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "%d ч"
+msgstr[1] "%d ч"
+msgstr[2] "%d ч"
 
 #: src/clock-page.c src/ringing-window.c
 #, c-format
 msgid "%d min"
 msgid_plural "%d min"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "%d мин"
+msgstr[1] "%d мин"
+msgstr[2] "%d мин"
 
 # android: DeskClock world_hours_minutes_ahead
 #: src/clock-page.c
@@ -2860,10 +2860,9 @@ msgstr "Завтра, %s"
 msgid "Yesterday, %s"
 msgstr "Вчера, %s"
 
-# android: Framework accessibility_system_action_home_label (several translations, short)
 #: src/clock-page.c
 msgid "Home"
-msgstr "Главный экран"
+msgstr "Дом"
 
 # android: DeskClock button_cities
 #: src/clock-page.c
@@ -2883,7 +2882,7 @@ msgstr "Секундомер"
 
 #: src/expired-window.c
 msgid "A timer is ringing"
-msgstr ""
+msgstr "Сработал таймер"
 
 # android: DeskClock description_direction_left
 #: src/ringing-window.c
@@ -2908,12 +2907,14 @@ msgstr "Выключено"
 #. KEEP_SCREEN_ON
 #: src/ringing-window.c
 msgid "An alarm is ringing"
-msgstr ""
+msgstr "Звонит будильник"
 
 # android: DeskClock confirm_remove_custom_ringtone
 #: src/ringtone-picker.c
 msgid "Alarms and timers using this sound will play the default sound instead."
-msgstr "Будильники и таймеры, для которых выбран этот сигнал, будут воспроизводить звук, настроенный по умолчанию."
+msgstr ""
+"Будильники и таймеры, для которых выбран этот сигнал, будут воспроизводить "
+"звук, настроенный по умолчанию."
 
 # android: DeskClock remove_sound (several translations, short)
 #: src/ringtone-picker.c
@@ -2999,8 +3000,11 @@ msgstr "Показывать время дома"
 
 # android: DeskClock automatic_home_clock_summary
 #: src/settings-page.c
-msgid "While traveling in an area where the time is different, add a clock for home"
-msgstr "Показывать на отдельных часах, сколько времени дома, когда я нахожусь в другом часовом поясе"
+msgid ""
+"While traveling in an area where the time is different, add a clock for home"
+msgstr ""
+"Показывать на отдельных часах, сколько времени дома, когда я нахожусь в "
+"другом часовом поясе"
 
 # android: DeskClock home_time_zone (several translations)
 #: src/settings-page.c
@@ -3019,11 +3023,11 @@ msgstr "Предпросмотр"
 
 #: src/settings-page.c
 msgid "Starts the screen saver immediately"
-msgstr ""
+msgstr "Сразу запускает заставку"
 
 #: src/settings-page.c
 msgid "Opens Clock's screen saver settings"
-msgstr ""
+msgstr "Открывает настройки заставки приложения «Часы»"
 
 # android: Settings zen_mode_alarms (other app, several translations, short)
 #. (no "Select/enable screen saver": see the top)
@@ -3055,9 +3059,9 @@ msgstr "Постепенно увеличивать громкость"
 #, c-format
 msgid "%d second"
 msgid_plural "%d seconds"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "%d секунда"
+msgstr[1] "%d секунды"
+msgstr[2] "%d секунд"
 
 # android: Framework wifi_calling_off_summary (several translations, short)
 #: src/settings-page.c
@@ -3132,11 +3136,11 @@ msgstr "Цвет"
 
 #: src/settings-page.c
 msgid "Bold clock text"
-msgstr ""
+msgstr "Жирный шрифт часов"
 
 #: src/settings-page.c
 msgid "Show AM/PM indicator"
-msgstr ""
+msgstr "Показывать AM/PM"
 
 # android: DeskClock night_mode_title
 #: src/settings-page.c
@@ -3155,11 +3159,11 @@ msgstr "Тусклый дисплей (для темных помещений)"
 
 #: src/settings-page.c
 msgid "Follow DND state"
-msgstr ""
+msgstr "Следовать режиму «Не беспокоить»"
 
 #: src/settings-page.c
 msgid "Night mode follows Do Not Disturb state"
-msgstr ""
+msgstr "Ночной режим включается вместе с режимом «Не беспокоить»"
 
 # android: DeskClock screensaver_settings
 #. the screen saver's page has a title of its own
@@ -3167,21 +3171,19 @@ msgstr ""
 msgid "Screen saver settings"
 msgstr "Настройки заставки"
 
-# android: DeskClock lap_number_single_digit
 #: src/stopwatch-page.c
 #, c-format
 msgid "# %d"
-msgstr "%d"
+msgstr "№ %d"
 
-# android: DeskClock lap_number_single_digit
 #: src/stopwatch-page.c
 #, c-format
 msgid "# %02d"
-msgstr "%02d"
+msgstr "№ %02d"
 
 #: src/stopwatch-page.c
 msgid "The stopwatch is running"
-msgstr ""
+msgstr "Секундомер запущен"
 
 # android: DeskClock sw_share_main
 #: src/stopwatch-page.c
@@ -3189,14 +3191,13 @@ msgstr ""
 msgid "My time is %s"
 msgstr "Мое время: %s"
 
-# android: DeskClock sw_share_laps
 #: src/stopwatch-page.c
 msgid "Lap times:"
-msgstr "Время круга"
+msgstr "Время кругов:"
 
 #: src/stopwatch-page.c
 msgid "Copied to clipboard"
-msgstr ""
+msgstr "Скопировано в буфер обмена"
 
 # android: DeskClock sw_pause_button (several translations, short)
 #: src/stopwatch-page.c src/stopwatch-service.c src/timer-card.c
@@ -3277,17 +3278,17 @@ msgstr "Сбросить все"
 #, c-format
 msgid "%u timer"
 msgid_plural "%u timers"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "%u таймер"
+msgstr[1] "%u таймера"
+msgstr[2] "%u таймеров"
 
 #: src/timer-service.c
 #, c-format
 msgid "%u timer paused"
 msgid_plural "%u timers paused"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "%u таймер приостановлен"
+msgstr[1] "%u таймера приостановлены"
+msgstr[2] "%u таймеров приостановлено"
 
 # android: DeskClock timer_paused
 #: src/timer-service.c
@@ -3303,9 +3304,9 @@ msgstr "Остановить все таймеры"
 #, c-format
 msgid "%u timer expired"
 msgid_plural "%u timers expired"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "%u таймер истек"
+msgstr[1] "%u таймера истекли"
+msgstr[2] "%u таймеров истекло"
 
 # android: DeskClock timer_times_up
 #: src/timer-service.c
@@ -3316,9 +3317,9 @@ msgstr "Время вышло"
 #, c-format
 msgid "%u timer missed"
 msgid_plural "%u timers missed"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "%u пропущенный таймер"
+msgstr[1] "%u пропущенных таймера"
+msgstr[2] "%u пропущенных таймеров"
 
 # android: DeskClock missed_named_timer_notification_label
 #: src/timer-service.c
@@ -3349,4 +3350,4 @@ msgstr "с."
 #: src/timer-setup.c
 #, c-format
 msgid "Delete %d"
-msgstr ""
+msgstr "Удалить %d"

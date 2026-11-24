@@ -30,15 +30,15 @@ msgstr "Reloj"
 
 #: data/vibeos.Clock.desktop.in
 msgid "Alarms and the time"
-msgstr ""
+msgstr "Alarmas y la hora"
 
 #: data/vibeos.Clock.desktop.in
 msgid "alarm;time;"
-msgstr ""
+msgstr "alarma;hora;reloj;temporizador;cronómetro;"
 
 #: src/alarm-card.c
 msgid "Add label"
-msgstr ""
+msgstr "Añadir nombre"
 
 # android: DeskClock alarm_tomorrow
 #: src/alarm-card.c
@@ -122,7 +122,7 @@ msgstr "Deshacer"
 
 #: src/alarm-page.c
 msgid "Missed alarm has been deleted"
-msgstr ""
+msgstr "Se ha eliminado la alarma perdida"
 
 # android: DeskClock button_alarms
 #: src/alarm-page.c
@@ -1350,7 +1350,7 @@ msgstr "Fiyi"
 #: src/cities-data.h
 msgctxt "city"
 msgid "Guam"
-msgstr "Guaján"
+msgstr "Guam"
 
 # android: DeskClock C209
 #: src/cities-data.h
@@ -2652,7 +2652,7 @@ msgstr "Vladivostok"
 #: src/cities-data.h
 msgctxt "time zone"
 msgid "Guam"
-msgstr "Guaján"
+msgstr "Guam"
 
 # android: DeskClock timezone_labels[80]
 #: src/cities-data.h
@@ -2808,15 +2808,15 @@ msgstr "Temporizador agotado"
 #, c-format
 msgid "%d hr"
 msgid_plural "%d hr"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%d h"
+msgstr[1] "%d h"
 
 #: src/clock-page.c src/ringing-window.c
 #, c-format
 msgid "%d min"
 msgid_plural "%d min"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%d min"
+msgstr[1] "%d min"
 
 # android: DeskClock world_hours_minutes_ahead
 #: src/clock-page.c
@@ -2824,11 +2824,10 @@ msgstr[1] ""
 msgid "%s %s ahead"
 msgstr "%s y %s más"
 
-# android: DeskClock world_hours_minutes_behind
 #: src/clock-page.c
 #, c-format
 msgid "%s %s behind"
-msgstr "%s y %s después"
+msgstr "%s y %s menos"
 
 # android: DeskClock world_time_ahead
 #: src/clock-page.c
@@ -2854,10 +2853,9 @@ msgstr "Mañana, %s"
 msgid "Yesterday, %s"
 msgstr "Ayer, %s"
 
-# android: Framework accessibility_system_action_home_label (several translations, short)
 #: src/clock-page.c
 msgid "Home"
-msgstr "Inicio"
+msgstr "Casa"
 
 # android: DeskClock button_cities
 #: src/clock-page.c
@@ -2877,7 +2875,7 @@ msgstr "Cronómetro"
 
 #: src/expired-window.c
 msgid "A timer is ringing"
-msgstr ""
+msgstr "Está sonando un temporizador"
 
 # android: DeskClock description_direction_left
 #: src/ringing-window.c
@@ -2902,12 +2900,14 @@ msgstr "Alarma desactivada"
 #. KEEP_SCREEN_ON
 #: src/ringing-window.c
 msgid "An alarm is ringing"
-msgstr ""
+msgstr "Está sonando una alarma"
 
 # android: DeskClock confirm_remove_custom_ringtone
 #: src/ringtone-picker.c
 msgid "Alarms and timers using this sound will play the default sound instead."
-msgstr "Las alarmas y los temporizadores que usen este sonido reproducirán en su lugar la melodía predeterminada."
+msgstr ""
+"Las alarmas y los temporizadores que usen este sonido reproducirán en su "
+"lugar la melodía predeterminada."
 
 # android: DeskClock remove_sound (several translations, short)
 #: src/ringtone-picker.c
@@ -2993,8 +2993,11 @@ msgstr "Reloj de tu ciudad automático"
 
 # android: DeskClock automatic_home_clock_summary
 #: src/settings-page.c
-msgid "While traveling in an area where the time is different, add a clock for home"
-msgstr "Cuando viajes a una zona con una hora diferente, añadir un reloj para la hora de tu ciudad"
+msgid ""
+"While traveling in an area where the time is different, add a clock for home"
+msgstr ""
+"Cuando viajes a una zona con una hora diferente, añadir un reloj para la "
+"hora de tu ciudad"
 
 # android: DeskClock home_time_zone (several translations)
 #: src/settings-page.c
@@ -3013,11 +3016,11 @@ msgstr "Vista previa"
 
 #: src/settings-page.c
 msgid "Starts the screen saver immediately"
-msgstr ""
+msgstr "Inicia el salvapantallas inmediatamente"
 
 #: src/settings-page.c
 msgid "Opens Clock's screen saver settings"
-msgstr ""
+msgstr "Abre los ajustes del salvapantallas de Reloj"
 
 # android: DeskClock alarm_settings (several translations, short)
 #. (no "Select/enable screen saver": see the top)
@@ -3049,8 +3052,8 @@ msgstr "Subir volumen gradualmente"
 #, c-format
 msgid "%d second"
 msgid_plural "%d seconds"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%d segundo"
+msgstr[1] "%d segundos"
 
 # android: Framework wifi_calling_off_summary (several translations, short)
 #: src/settings-page.c
@@ -3125,11 +3128,11 @@ msgstr "Color"
 
 #: src/settings-page.c
 msgid "Bold clock text"
-msgstr ""
+msgstr "Reloj en negrita"
 
 #: src/settings-page.c
 msgid "Show AM/PM indicator"
-msgstr ""
+msgstr "Mostrar indicador a. m./p. m."
 
 # android: DeskClock night_mode_title
 #: src/settings-page.c
@@ -3139,7 +3142,7 @@ msgstr "Modo nocturno"
 # android: SettingsLib bt_hci_snoop_log_entries[2] (other app, several translations, short)
 #: src/settings-page.c
 msgid "Enabled"
-msgstr "Habilitado"
+msgstr "Activado"
 
 # android: DeskClock night_mode_summary
 #: src/settings-page.c
@@ -3148,11 +3151,11 @@ msgstr "Pantalla muy atenuada (para habitaciones oscuras)"
 
 #: src/settings-page.c
 msgid "Follow DND state"
-msgstr ""
+msgstr "Seguir el modo No molestar"
 
 #: src/settings-page.c
 msgid "Night mode follows Do Not Disturb state"
-msgstr ""
+msgstr "El modo nocturno sigue el estado de No molestar"
 
 # android: DeskClock screensaver_settings
 #. the screen saver's page has a title of its own
@@ -3174,7 +3177,7 @@ msgstr "Vuelta %02d"
 
 #: src/stopwatch-page.c
 msgid "The stopwatch is running"
-msgstr ""
+msgstr "El cronómetro está en marcha"
 
 # android: DeskClock sw_share_main
 #: src/stopwatch-page.c
@@ -3189,7 +3192,7 @@ msgstr "Duración de las vueltas:"
 
 #: src/stopwatch-page.c
 msgid "Copied to clipboard"
-msgstr ""
+msgstr "Copiado en el portapapeles"
 
 # android: DeskClock timer_pause (several translations, short)
 #: src/stopwatch-page.c src/stopwatch-service.c src/timer-card.c
@@ -3270,15 +3273,15 @@ msgstr "Restablecer todo"
 #, c-format
 msgid "%u timer"
 msgid_plural "%u timers"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%u temporizador"
+msgstr[1] "%u temporizadores"
 
 #: src/timer-service.c
 #, c-format
 msgid "%u timer paused"
 msgid_plural "%u timers paused"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%u temporizador en pausa"
+msgstr[1] "%u temporizadores en pausa"
 
 # android: DeskClock timer_paused
 #: src/timer-service.c
@@ -3294,8 +3297,8 @@ msgstr "Detener temporizadores"
 #, c-format
 msgid "%u timer expired"
 msgid_plural "%u timers expired"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%u temporizador agotado"
+msgstr[1] "%u temporizadores agotados"
 
 # android: DeskClock timer_times_up
 #: src/timer-service.c
@@ -3306,19 +3309,17 @@ msgstr "Tiempo agotado"
 #, c-format
 msgid "%u timer missed"
 msgid_plural "%u timers missed"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%u temporizador perdido"
+msgstr[1] "%u temporizadores perdidos"
 
-# android: DeskClock missed_named_timer_notification_label
 #: src/timer-service.c
 #, c-format
 msgid "Missed timer: %s"
-msgstr "Recordatorio perdido: %s"
+msgstr "Temporizador perdido: %s"
 
-# android: DeskClock missed_timer_notification_label
 #: src/timer-service.c
 msgid "Missed timer"
-msgstr "Recordatorio perdido"
+msgstr "Temporizador perdido"
 
 # android: DeskClock hours_label
 #: src/timer-setup.c
@@ -3338,4 +3339,4 @@ msgstr "s"
 #: src/timer-setup.c
 #, c-format
 msgid "Delete %d"
-msgstr ""
+msgstr "Eliminar %d"
