@@ -1383,13 +1383,14 @@ menu_licenses (gpointer data)
 }
 
 static const VibeosAboutSection calc_legal[] = {
-  { "CRCalc", "The exact real arithmetic is Hans-J. Boehm's constructive reals (com.hp.creals, as Android's "
-              "Calculator uses them): copyright 1999 Silicon Graphics, Inc., 2001-2004 Hewlett-Packard Development "
-              "Company, L.P., under its own permissive licence (Open source licenses in the ⋮ menu)." },
+  { "CRCalc", N_("The exact real arithmetic is Hans-J. Boehm's constructive reals (com.hp.creals, as Android's "
+                 "Calculator uses them): copyright 1999 Silicon Graphics, Inc., 2001-2004 Hewlett-Packard "
+                 "Development Company, L.P., under its own permissive licence (Open source licenses in the ⋮ "
+                 "menu).") },
   { NULL }
 };
 
-static const VibeosAboutInfo calc_about = { .name = "Calculator", .icon_name = "vibeos.Calculator",
+static const VibeosAboutInfo calc_about = { .name = N_("Calculator"), .icon_name = "vibeos.Calculator",
                                             .legal = calc_legal };
 
 static void
