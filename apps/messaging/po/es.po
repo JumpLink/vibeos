@@ -23,11 +23,11 @@ msgstr "Mensajes"
 
 #: data/vibeos.Messaging.desktop.in
 msgid "Send and receive text messages"
-msgstr ""
+msgstr "Envía y recibe mensajes de texto"
 
 #: data/vibeos.Messaging.desktop.in
 msgid "SMS;Text;Message;Messages;Chat;"
-msgstr ""
+msgstr "SMS;Texto;Mensaje;Mensajes;Chat;"
 
 # android: Dialer unblock_number (short)
 #: src/blocked-contacts.c
@@ -48,11 +48,11 @@ msgstr "%s • %s"
 
 #: src/contact-picker.c
 msgid "Top contacts"
-msgstr ""
+msgstr "Contactos principales"
 
 #: src/contact-picker.c
 msgid "Type a name or a phone number to start a chat"
-msgstr ""
+msgstr "Escribe un nombre o un número de teléfono para iniciar un chat"
 
 # android: Messaging to_address_label
 #: src/contact-picker.c
@@ -61,7 +61,7 @@ msgstr "A: "
 
 #: src/contact-picker.c
 msgid "Type name, phone number, or email"
-msgstr ""
+msgstr "Escribe un nombre, un número de teléfono o un correo"
 
 # android: Messaging recipient_hint
 #: src/contact-picker.c
@@ -70,21 +70,21 @@ msgstr "Para"
 
 #: src/contact-picker.c
 msgid "New chat"
-msgstr ""
+msgstr "Nuevo chat"
 
 #: src/conversation-list.c
 #, c-format
 msgid "%d archived"
 msgid_plural "%d archived"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%d archivada"
+msgstr[1] "%d archivadas"
 
 #: src/conversation-list.c
 #, c-format
 msgid "%d unarchived"
 msgid_plural "%d unarchived"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%d desarchivada"
+msgstr[1] "%d desarchivadas"
 
 # android: Messaging snack_bar_undo
 #: src/conversation-list.c
@@ -128,8 +128,12 @@ msgstr "¿Bloquear a %s?"
 
 # android: Messaging block_confirmation_message
 #: src/conversation-list.c src/conversation-view.c src/people-options.c
-msgid "You'll continue to receive messages from this number but won't be notified anymore. This conversation will be archived."
-msgstr "Seguirás recibiendo mensajes de este número pero no volverás a recibir notificaciones. Esta conversación se archivará."
+msgid ""
+"You'll continue to receive messages from this number but won't be notified "
+"anymore. This conversation will be archived."
+msgstr ""
+"Seguirás recibiendo mensajes de este número pero no volverás a recibir "
+"notificaciones. Esta conversación se archivará."
 
 # android: Messaging requires_sms_permissions_close_button (several translations, short)
 #: src/conversation-list.c src/conversation-view.c src/people-options.c
@@ -149,7 +153,7 @@ msgstr "Enviando…"
 #: src/conversation-list.c
 #, c-format
 msgid "You: %s"
-msgstr ""
+msgstr "Tú: %s"
 
 # android: Messaging conversation_deleted
 #: src/conversation-list.c
@@ -158,7 +162,7 @@ msgstr "Conversación eliminada"
 
 #: src/conversation-list.c
 msgid "View latest"
-msgstr ""
+msgstr "Ver lo más reciente"
 
 # android: Messaging archived_conversation_list_empty_text
 #: src/conversation-list.c
@@ -201,10 +205,9 @@ msgstr "Hecho"
 msgid "Archive"
 msgstr "Archivar"
 
-# android: Messaging action_unarchive
 #: src/conversation-list.c src/conversation-view.c
 msgid "Unarchive"
-msgstr "No archivar"
+msgstr "Desarchivar"
 
 # android: Messaging action_add_contact
 #: src/conversation-list.c
@@ -218,7 +221,7 @@ msgstr "Bloquear"
 
 #: src/conversation-list.c
 msgid "Start chat"
-msgstr ""
+msgstr "Iniciar chat"
 
 # android: Framework lockscreen_pattern_wrong (several translations, short)
 #: src/conversation-view.c
@@ -227,15 +230,15 @@ msgstr "Vuelve a intentarlo"
 
 #: src/conversation-view.c
 msgid "Not sent"
-msgstr ""
+msgstr "No enviado"
 
 #: src/conversation-view.c
 msgid "Not sent. Call emergency services instead."
-msgstr ""
+msgstr "No enviado. Llama a los servicios de emergencia."
 
 #: src/conversation-view.c
 msgid "Check options"
-msgstr ""
+msgstr "Ver opciones"
 
 # android: Messaging message_status_send_retrying
 #: src/conversation-view.c
@@ -246,7 +249,7 @@ msgstr "No enviado. Volviendo a intentar…"
 #, c-format
 msgctxt "time, status"
 msgid "%s • Delivered"
-msgstr ""
+msgstr "%s • Entregado"
 
 # android: Messaging message_type_label
 #. Message details: an SMS's type, who, and when
@@ -306,7 +309,7 @@ msgstr "Ver"
 
 #: src/conversation-view.c
 msgid "Show attach options"
-msgstr ""
+msgstr "Mostrar opciones para adjuntar"
 
 # android: Dialer search_shortcut_send_sms_message (short)
 #: src/conversation-view.c
@@ -316,10 +319,12 @@ msgstr "Enviar SMS"
 #: src/conversation-view.c
 msgid "Sender can't accept replies. Contact them directly."
 msgstr ""
+"El remitente no acepta respuestas. Ponte en contacto con él directamente."
 
 #: src/conversation-view.c
 msgid "Can't make a voice call to emergency services here."
 msgstr ""
+"Desde aquí no se pueden hacer llamadas de voz a los servicios de emergencia."
 
 # android: Settings memory_details (other app, short)
 #: src/conversation-view.c
@@ -353,11 +358,11 @@ msgstr "Enviar"
 
 #: src/messaging-window.c
 msgid "Start a chat to see it here"
-msgstr ""
+msgstr "Inicia un chat para verlo aquí"
 
 #: src/messaging-window.c
 msgid "Pick a conversation to see it here"
-msgstr ""
+msgstr "Elige una conversación para verla aquí"
 
 # android: Messaging forward_message_activity_title
 #: src/messaging-window.c
@@ -377,19 +382,19 @@ msgstr "Cerrar"
 
 #: src/msg-account-menu.c
 msgid "Spam & blocked"
-msgstr ""
+msgstr "Spam y bloqueados"
 
 #: src/msg-account-menu.c
 msgid "Mark all as read"
-msgstr ""
+msgstr "Marcar todo como leído"
 
 #: src/msg-account-menu.c src/msg-settings.c
 msgid "Messages settings"
-msgstr ""
+msgstr "Ajustes de Mensajes"
 
 #: src/msg-account-menu.c
 msgid "About"
-msgstr ""
+msgstr "Información"
 
 # android: Framework action_bar_up_description (short)
 #: src/msg-action-bar.c
@@ -431,41 +436,40 @@ msgstr[1] "%d min"
 
 #: src/msg-search.c
 msgid "Unread"
-msgstr ""
+msgstr "No leídos"
 
 #: src/msg-search.c
 msgid "Known"
-msgstr ""
+msgstr "Conocidos"
 
-# android: Messaging unknown_phone_number_pref_display_value (several translations, short)
 #: src/msg-search.c ../dialer/src/phone-number.c
 msgid "Unknown"
-msgstr "Desconocido"
+msgstr "Desconocidos"
 
 #: src/msg-search.c
 msgid "Links"
-msgstr ""
+msgstr "Enlaces"
 
 #: src/msg-search.c
 msgid "Search messages"
-msgstr ""
+msgstr "Buscar mensajes"
 
 #: src/msg-search.c
 msgid "No results"
-msgstr ""
+msgstr "No hay resultados"
 
 #. what this app acts on, less what msg-settings.h leaves out
 #: src/msg-settings.c
 msgid "Hear outgoing message sounds"
-msgstr ""
+msgstr "Sonido al enviar mensajes"
 
 #: src/msg-settings.c
 msgid "Swipe to delete"
-msgstr ""
+msgstr "Deslizar para eliminar"
 
 #: src/msg-settings.c
 msgid "Swipe to the right to delete a conversation"
-msgstr ""
+msgstr "Desliza hacia la derecha para eliminar una conversación"
 
 # android: Messaging advanced_category_pref_title (several translations, short)
 #. the sub-page: the SIM's settings
@@ -550,8 +554,8 @@ msgstr "Abrir"
 #, c-format
 msgid "%d new message"
 msgid_plural "%d new messages"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%d mensaje nuevo"
+msgstr[1] "%d mensajes nuevos"
 
 # android: Messaging notification_send_failures_line1_singular
 #: src/sms-service.c
@@ -565,8 +569,8 @@ msgstr "Mensaje no enviado"
 #, c-format
 msgid "%d messages in one conversation"
 msgid_plural "%d messages in %d conversations"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%d mensajes en una conversación"
+msgstr[1] "%d mensajes en %d conversaciones"
 
 # android: Messaging notification_send_failures_line1_plural
 #: src/sms-service.c
@@ -615,7 +619,7 @@ msgstr "Télex"
 
 #: ../dialer/src/contacts.c
 msgid "TTY/TDD"
-msgstr ""
+msgstr "TTY/TDD"
 
 # android: Framework phoneTypes[3] (adapted, short)
 #: ../dialer/src/contacts.c
