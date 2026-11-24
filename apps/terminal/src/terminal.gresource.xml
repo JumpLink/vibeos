@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- the app's stylesheet and its icon (the ⋮, Material Symbols' more_vert as the other apps have it), where
+     GtkApplication looks for icons: the resource base path + /icons -->
+<gresources>
+  <gresource prefix="/vibeos/Terminal">
+    <file>terminal.css</file>
+    <file alias="icons/scalable/actions/term-more-symbolic.svg">icons/term-more-symbolic.svg</file>
+  </gresource>
+</gresources>

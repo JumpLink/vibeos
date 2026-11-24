@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Terminal
+Comment=A command line, made for touch
+Exec=vibeos-terminal
+Icon=vibeos.Terminal
+Terminal=false
+StartupNotify=false
+DBusActivatable=true
+Categories=System;TerminalEmulator;GTK;
+Keywords=Terminal;Shell;Command;Prompt;Console;
+X-Purism-FormFactor=Workstation;Mobile;
+X-Vibeos-Keyboard=slide

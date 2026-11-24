@@ -1,0 +1,31 @@
+/* The Terminal's styles, over libvibeos's (vibeos.css). The terminal draws its own text in the theme's colours
+ * (term-view.c); this places it, and styles the selection's toolbar. */
+
+window.vibeos.terminal {
+  background-color: @vibeos_surface;
+}
+
+/* no padding of its own: the selection's arithmetic takes the grid from the widget's top left corner */
+window.terminal vte-terminal {
+  padding: 0;
+}
+
+/* the ⋮ */
+window.terminal .vibeos-icon-button {
+  color: @vibeos_on_surface_variant;
+}
+
+/* the floating text toolbar: a raised card of text buttons */
+term-toolbar {
+  background-color: @vibeos_surface_container_high;
+  border-radius: 8dp;
+  box-shadow: 0 4dp 8dp alpha(black, 0.35);
+  padding: 0 4dp;
+  min-height: 48dp;
+}
+
+term-toolbar .vibeos-text-button {
+  color: @vibeos_on_surface;
+  min-height: 48dp;
+  padding: 0 12dp;
+}

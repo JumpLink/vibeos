@@ -1,0 +1,4 @@
+usr/bin/vibeos-terminal
+usr/share/applications/vibeos.Terminal.desktop
+usr/share/dbus-1/services/vibeos.Terminal.service
+usr/share/icons/hicolor/scalable/apps/vibeos.Terminal.svg
