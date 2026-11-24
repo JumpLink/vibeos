@@ -23,11 +23,11 @@ msgstr "Браузер"
 
 #: data/vibeos.Browser.desktop.in
 msgid "Web Browser"
-msgstr ""
+msgstr "Веб-браузер"
 
 #: data/vibeos.Browser.desktop.in
 msgid "Browse the web"
-msgstr ""
+msgstr "Просмотр веб-страниц"
 
 # android: Jelly shortcut_new_incognito_tab
 #: data/vibeos.Browser.desktop.in src/nb-switcher.c
@@ -36,23 +36,23 @@ msgstr "Новая вкладка инкогнито"
 
 #: src/main.c
 msgid "Open an incognito tab"
-msgstr ""
+msgstr "Открыть вкладку инкогнито"
 
 #: src/main.c
 msgid "Open a home-screen shortcut"
-msgstr ""
+msgstr "Открыть ярлык с главного экрана"
 
 #: src/main.c
 msgid "ID"
-msgstr ""
+msgstr "ID"
 
 #: src/main.c
 msgid "URL…"
-msgstr ""
+msgstr "URL…"
 
 #: src/nb-app.c
 msgid "Download complete"
-msgstr ""
+msgstr "Скачивание завершено"
 
 #. TRANSLATORS: keep the link's markup as it is
 #: src/nb-menu.c
@@ -60,6 +60,8 @@ msgid ""
 "Web pages are shown by <a href=\"https://webkitgtk.org/\">WebKitGTK</a>, "
 "under the GNU LGPL 2.1 and BSD licences."
 msgstr ""
+"Веб-страницы отображаются с помощью <a href=\"https://webkitgtk.org/"
+"\">WebKitGTK</a> по лицензиям GNU LGPL 2.1 и BSD."
 
 # android: Jelly menu_desktop_mode
 #: src/nb-menu.c
@@ -145,7 +147,7 @@ msgstr "Настройки"
 
 #: src/nb-menu.c
 msgid "About"
-msgstr ""
+msgstr "О приложении"
 
 # android: Jelly menu_in_new_tab
 #: src/nb-menu.c
@@ -159,11 +161,11 @@ msgstr "Скачать"
 
 #: src/nb-menu.c
 msgid "Link copied"
-msgstr ""
+msgstr "Ссылка скопирована"
 
 #: src/nb-menu.c
 msgid "Copy link"
-msgstr ""
+msgstr "Копировать ссылку"
 
 # android: Jelly share_title
 #: src/nb-menu.c
@@ -172,11 +174,11 @@ msgstr "Отправить"
 
 #: src/nb-menu.c
 msgid "Shortcut not added"
-msgstr ""
+msgstr "Ярлык не добавлен"
 
 #: src/nb-menu.c
 msgid "Touch & hold the shortcut to move it around the home screen"
-msgstr ""
+msgstr "Чтобы переместить ярлык по главному экрану, нажмите и удерживайте его"
 
 # android: Framework cancel (several translations, short)
 #: src/nb-menu.c src/nb-pages.c src/nb-settings.c src/nb-tab.c src/nb-widgets.c
@@ -211,8 +213,12 @@ msgstr "Очистка истории браузера…"
 
 # android: Jelly history_delete_message
 #: src/nb-pages.c
-msgid "You're going to delete all the history, this action cannot be undone. Do you want to proceed?"
-msgstr "Вы собираетесь очистить всю историю. Это действие нельзя отменить. Вы хотите продолжить?"
+msgid ""
+"You're going to delete all the history, this action cannot be undone. Do you "
+"want to proceed?"
+msgstr ""
+"Вы собираетесь очистить всю историю. Это действие нельзя отменить. Вы хотите "
+"продолжить?"
 
 # android: Jelly history_delete_positive (several translations, short)
 #: src/nb-pages.c
@@ -261,12 +267,12 @@ msgstr "Ничего нет. Добавьте закладку, чтобы ув�
 
 #: src/nb-pages.c
 msgid "Download failed"
-msgstr ""
+msgstr "Не удалось скачать"
 
 #: src/nb-pages.c
 #, c-format
 msgid "Downloading… %d%%"
-msgstr ""
+msgstr "Скачивание… %d%%"
 
 # android: Framework mime_type_generic (short)
 #: src/nb-pages.c
@@ -283,7 +289,7 @@ msgstr "%s, %s, %s"
 # android: DocumentsUI empty (other app, short)
 #: src/nb-pages.c
 msgid "No items"
-msgstr "Ничего нет."
+msgstr "Ничего нет"
 
 # android: Jelly background_shortcuts_save_action
 #: src/nb-pages.c
@@ -348,7 +354,9 @@ msgstr "Управление одной рукой"
 # android: Jelly pref_reach_mode_summary
 #: src/nb-settings.c
 msgid "Relocate interface elements for easier one-hand usage"
-msgstr "Изменение расположения элементов интерфейса для удобного управления одной рукой"
+msgstr ""
+"Изменение расположения элементов интерфейса для удобного управления одной "
+"рукой"
 
 # android: Jelly pref_fullscreen_shortcuts_title
 #: src/nb-settings.c
@@ -373,7 +381,8 @@ msgstr "Динамические всплывающие окна"
 # android: Jelly pref_dynamic_popup_summary
 #: src/nb-settings.c
 msgid "Allow JavaScript to open popups without user interaction"
-msgstr "Разрешить JavaScript открывать всплывающие окна без участия пользователя"
+msgstr ""
+"Разрешить JavaScript открывать всплывающие окна без участия пользователя"
 
 # android: Jelly pref_js_summary
 #: src/nb-settings.c
@@ -398,7 +407,7 @@ msgstr "Не отслеживать"
 # android: Jelly pref_do_not_track_summary
 #: src/nb-settings.c
 msgid "Send a Do Not Track request to websites you visit"
-msgstr "Браузер будет сообщать сайтам, что Вы не хотите, чтобы Вас отслеживали"
+msgstr "Браузер будет сообщать сайтам, что вы не хотите, чтобы вас отслеживали"
 
 # android: Jelly pref_cookie_title
 #: src/nb-settings.c
@@ -423,29 +432,29 @@ msgstr "Нет"
 #: src/nb-switcher.c
 #, c-format
 msgid "Close %s"
-msgstr ""
+msgstr "Закрыть «%s»"
 
 #. TRANSLATORS: a screen reader's name for the tab card of the tab that was shown; %s is the tab's title
 #: src/nb-switcher.c
 #, c-format
 msgid "%s, current tab"
-msgstr ""
+msgstr "%s, текущая вкладка"
 
 #: src/nb-switcher.c
 #, c-format
 msgid "%u tab"
 msgid_plural "%u tabs"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "%u вкладка"
+msgstr[1] "%u вкладки"
+msgstr[2] "%u вкладок"
 
 #: src/nb-switcher.c
 msgid "Tabs"
-msgstr ""
+msgstr "Вкладки"
 
 #: src/nb-switcher.c
 msgid "No open tabs"
-msgstr ""
+msgstr "Нет открытых вкладок"
 
 # android: Jelly favorite_added (several translations)
 #: src/nb-tab.c
@@ -488,7 +497,7 @@ msgstr "Разрешить защищенные медиа?"
 # android: Jelly protected_media_dialog_deny (several translations, short)
 #: src/nb-tab.c
 msgid "Deny"
-msgstr "Отклонить"
+msgstr "Запретить"
 
 # android: Jelly protected_media_dialog_grant
 #: src/nb-tab.c
@@ -499,17 +508,17 @@ msgstr "Разрешить"
 #: src/nb-tab.c
 #, c-format
 msgid "%s wants to use your camera and microphone."
-msgstr ""
+msgstr "%s запрашивает доступ к камере и микрофону."
 
 #: src/nb-tab.c
 #, c-format
 msgid "%s wants to use your camera."
-msgstr ""
+msgstr "%s запрашивает доступ к камере."
 
 #: src/nb-tab.c
 #, c-format
 msgid "%s wants to use your microphone."
-msgstr ""
+msgstr "%s запрашивает доступ к микрофону."
 
 # android: Jelly auth_dialog_title
 #: src/nb-tab.c
@@ -536,19 +545,18 @@ msgstr "Пароль:"
 # android: Jelly auth_dialog_login
 #: src/nb-tab.c
 msgid "Log in"
-msgstr "Вход"
+msgstr "Войти"
 
-# android: Jelly download_message
 #. TRANSLATORS: %s is the file's name
 #: src/nb-tab.c
 #, c-format
 msgid "Do you want to download %s?"
-msgstr "Вы действительно хотите скачать %s?"
+msgstr "Скачать %s?"
 
 # android: Jelly download_title
 #: src/nb-tab.c
 msgid "Download file"
-msgstr "Загрузка файла"
+msgstr "Скачивание файла"
 
 # android: Jelly ssl_cert_dialog_dismiss (several translations, short)
 #: src/nb-tab.c
@@ -590,10 +598,9 @@ msgstr "Этот сертификат выдан не доверенным це�
 msgid "This certificate is invalid."
 msgstr "Этот сертификат недействителен."
 
-# android: Jelly ssl_cert_dialog_trust (several translations, short)
 #: src/nb-tab.c
 msgid "Trust"
-msgstr "Trust"
+msgstr "Доверять"
 
 # android: Jelly ssl_cert_dialog_domain
 #: src/nb-tab.c
@@ -635,10 +642,9 @@ msgstr "Срок действия"
 msgid "Issued On"
 msgstr "Дата выдачи"
 
-# android: Jelly ssl_cert_dialog_expires_on
 #: src/nb-tab.c
 msgid "Expires On"
-msgstr "Срок действия"
+msgstr "Действителен до"
 
 # android: Jelly error_no_activity_found
 #: src/nb-tab.c
@@ -647,7 +653,7 @@ msgstr "Нет приложения для этой ссылки"
 
 #: src/nb-tab.c
 msgid "Playing full screen"
-msgstr ""
+msgstr "Воспроизведение в полноэкранном режиме"
 
 # android: Framework input_method_nav_back_button_desc (short)
 #. the shell's back gesture clicks the showing button named "Back"
@@ -659,9 +665,9 @@ msgstr "Назад"
 #, c-format
 msgid "Switch tabs, %u open tab"
 msgid_plural "Switch tabs, %u open tabs"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "Переключить вкладку, открыта %u вкладка"
+msgstr[1] "Переключить вкладку, открыто %u вкладки"
+msgstr[2] "Переключить вкладку, открыто %u вкладок"
 
 # android: Jelly url_bar_auto_complete_hint
 #: src/nb-urlbar.c
@@ -691,7 +697,7 @@ msgstr "Очистить поиск"
 # android: Jelly url_bar_search_previous (several translations, short)
 #: src/nb-urlbar.c
 msgid "Previous"
-msgstr "Пред."
+msgstr "Назад"
 
 # android: Framework ime_action_next (several translations, short)
 #: src/nb-urlbar.c
@@ -701,8 +707,8 @@ msgstr "Далее"
 #. TRANSLATORS: a screen reader's name for a radio mark and a check mark
 #: src/nb-widgets.c
 msgid "radio"
-msgstr ""
+msgstr "переключатель"
 
 #: src/nb-widgets.c
 msgid "check"
-msgstr ""
+msgstr "флажок"

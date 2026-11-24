@@ -22,11 +22,11 @@ msgstr "Navegador"
 
 #: data/vibeos.Browser.desktop.in
 msgid "Web Browser"
-msgstr ""
+msgstr "Navegador web"
 
 #: data/vibeos.Browser.desktop.in
 msgid "Browse the web"
-msgstr ""
+msgstr "Navega por la web"
 
 # android: Jelly shortcut_new_incognito_tab
 #: data/vibeos.Browser.desktop.in src/nb-switcher.c
@@ -35,23 +35,23 @@ msgstr "Nueva pestaña de incógnito"
 
 #: src/main.c
 msgid "Open an incognito tab"
-msgstr ""
+msgstr "Abrir una pestaña de incógnito"
 
 #: src/main.c
 msgid "Open a home-screen shortcut"
-msgstr ""
+msgstr "Abrir un acceso directo de la pantalla de inicio"
 
 #: src/main.c
 msgid "ID"
-msgstr ""
+msgstr "ID"
 
 #: src/main.c
 msgid "URL…"
-msgstr ""
+msgstr "URL…"
 
 #: src/nb-app.c
 msgid "Download complete"
-msgstr ""
+msgstr "Descarga completada"
 
 #. TRANSLATORS: keep the link's markup as it is
 #: src/nb-menu.c
@@ -59,16 +59,17 @@ msgid ""
 "Web pages are shown by <a href=\"https://webkitgtk.org/\">WebKitGTK</a>, "
 "under the GNU LGPL 2.1 and BSD licences."
 msgstr ""
+"Las páginas web se muestran con <a href=\"https://webkitgtk.org/"
+"\">WebKitGTK</a>, con las licencias GNU LGPL 2.1 y BSD."
 
 # android: Jelly menu_desktop_mode
 #: src/nb-menu.c
 msgid "Desktop site"
 msgstr "Modo de escritorio"
 
-# android: Framework satellite_manual_selection_state_popup_cancel (several translations, short)
 #: src/nb-menu.c
 msgid "Go back"
-msgstr "Volver"
+msgstr "Atrás"
 
 # android: Jelly menu_go_forward
 #: src/nb-menu.c
@@ -144,7 +145,7 @@ msgstr "Ajustes"
 
 #: src/nb-menu.c
 msgid "About"
-msgstr ""
+msgstr "Información"
 
 # android: Jelly menu_in_new_tab
 #: src/nb-menu.c
@@ -158,11 +159,11 @@ msgstr "Descargar"
 
 #: src/nb-menu.c
 msgid "Link copied"
-msgstr ""
+msgstr "Enlace copiado"
 
 #: src/nb-menu.c
 msgid "Copy link"
-msgstr ""
+msgstr "Copiar enlace"
 
 # android: Jelly share_title
 #: src/nb-menu.c
@@ -171,11 +172,12 @@ msgstr "Enviar a"
 
 #: src/nb-menu.c
 msgid "Shortcut not added"
-msgstr ""
+msgstr "No se ha añadido el acceso directo"
 
 #: src/nb-menu.c
 msgid "Touch & hold the shortcut to move it around the home screen"
 msgstr ""
+"Mantén pulsado el acceso directo para moverlo por la pantalla de inicio"
 
 # android: Framework cancel (short)
 #: src/nb-menu.c src/nb-pages.c src/nb-settings.c src/nb-tab.c src/nb-widgets.c
@@ -210,8 +212,12 @@ msgstr "Borrando el historial…"
 
 # android: Jelly history_delete_message
 #: src/nb-pages.c
-msgid "You're going to delete all the history, this action cannot be undone. Do you want to proceed?"
-msgstr "Borrarás todo el historial, esta acción no se puede deshacer. ¿Deseas continuar?"
+msgid ""
+"You're going to delete all the history, this action cannot be undone. Do you "
+"want to proceed?"
+msgstr ""
+"Borrarás todo el historial, esta acción no se puede deshacer. ¿Deseas "
+"continuar?"
 
 # android: Jelly history_delete_positive
 #: src/nb-pages.c
@@ -260,12 +266,12 @@ msgstr "Aquí no hay nada, añade un enlace favorito para verlo aquí"
 
 #: src/nb-pages.c
 msgid "Download failed"
-msgstr ""
+msgstr "Error en la descarga"
 
 #: src/nb-pages.c
 #, c-format
 msgid "Downloading… %d%%"
-msgstr ""
+msgstr "Descargando… %d %%"
 
 # android: Framework mime_type_generic (short)
 #: src/nb-pages.c
@@ -302,7 +308,7 @@ msgstr "Proveedor de sugerencias"
 # android: Settings zen_mode_disabled_by_user (other app, several translations, short)
 #: src/nb-settings.c
 msgid "Disabled"
-msgstr "Inhabilitado"
+msgstr "Desactivado"
 
 # android: Jelly pref_start_page_dialog_title
 #: src/nb-settings.c
@@ -317,7 +323,7 @@ msgstr "Escribe la URL de la página de inicio"
 # android: SettingsLib bt_hci_snoop_log_entries[2] (other app, several translations, short)
 #: src/nb-settings.c
 msgid "Enabled"
-msgstr "Habilitado"
+msgstr "Activado"
 
 # android: Jelly pref_start_page
 #: src/nb-settings.c
@@ -339,15 +345,15 @@ msgstr "Aceptar"
 msgid "Cleared all the cookies"
 msgstr "Se han eliminado todas las cookies"
 
-# android: Jelly pref_reach_mode_title
 #: src/nb-settings.c
 msgid "Reach mode"
-msgstr "Modo simplificado"
+msgstr "Modo una mano"
 
 # android: Jelly pref_reach_mode_summary
 #: src/nb-settings.c
 msgid "Relocate interface elements for easier one-hand usage"
-msgstr "Reubica los elementos de la interfaz para facilitar su uso con una sola mano."
+msgstr ""
+"Reubica los elementos de la interfaz para facilitar su uso con una sola mano."
 
 # android: Jelly pref_fullscreen_shortcuts_title
 #: src/nb-settings.c
@@ -372,7 +378,8 @@ msgstr "Ventanas emergentes dinámicas"
 # android: Jelly pref_dynamic_popup_summary
 #: src/nb-settings.c
 msgid "Allow JavaScript to open popups without user interaction"
-msgstr "Permitir que JavaScript abra ventanas emergentes sin interacción del usuario"
+msgstr ""
+"Permitir que JavaScript abra ventanas emergentes sin interacción del usuario"
 
 # android: Jelly pref_js_summary
 #: src/nb-settings.c
@@ -397,7 +404,8 @@ msgstr "No rastrear"
 # android: Jelly pref_do_not_track_summary
 #: src/nb-settings.c
 msgid "Send a Do Not Track request to websites you visit"
-msgstr "Envía una solicitud para evitar el rastreo en los sitios web que visites"
+msgstr ""
+"Envía una solicitud para evitar el rastreo en los sitios web que visites"
 
 # android: Jelly pref_cookie_title
 #: src/nb-settings.c
@@ -422,28 +430,28 @@ msgstr "Ninguno"
 #: src/nb-switcher.c
 #, c-format
 msgid "Close %s"
-msgstr ""
+msgstr "Cerrar %s"
 
 #. TRANSLATORS: a screen reader's name for the tab card of the tab that was shown; %s is the tab's title
 #: src/nb-switcher.c
 #, c-format
 msgid "%s, current tab"
-msgstr ""
+msgstr "%s, pestaña actual"
 
 #: src/nb-switcher.c
 #, c-format
 msgid "%u tab"
 msgid_plural "%u tabs"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%u pestaña"
+msgstr[1] "%u pestañas"
 
 #: src/nb-switcher.c
 msgid "Tabs"
-msgstr ""
+msgstr "Pestañas"
 
 #: src/nb-switcher.c
 msgid "No open tabs"
-msgstr ""
+msgstr "No hay pestañas abiertas"
 
 # android: Jelly favorite_added
 #: src/nb-tab.c
@@ -497,17 +505,17 @@ msgstr "Permitir"
 #: src/nb-tab.c
 #, c-format
 msgid "%s wants to use your camera and microphone."
-msgstr ""
+msgstr "%s quiere usar tu cámara y tu micrófono."
 
 #: src/nb-tab.c
 #, c-format
 msgid "%s wants to use your camera."
-msgstr ""
+msgstr "%s quiere usar tu cámara."
 
 #: src/nb-tab.c
 #, c-format
 msgid "%s wants to use your microphone."
-msgstr ""
+msgstr "%s quiere usar tu micrófono."
 
 # android: Jelly auth_dialog_title
 #: src/nb-tab.c
@@ -613,15 +621,13 @@ msgstr "Emitido por"
 msgid "Common Name (CN)"
 msgstr "Nombre común (CN)"
 
-# android: Jelly ssl_cert_dialog_organization
 #: src/nb-tab.c
 msgid "Organization (O)"
-msgstr "Empresa (O)"
+msgstr "Organización (O)"
 
-# android: Jelly ssl_cert_dialog_organizational_unit
 #: src/nb-tab.c
 msgid "Organizational Unit (UN)"
-msgstr "Consorcio (UN)"
+msgstr "Unidad organizativa (UN)"
 
 # android: Jelly ssl_cert_dialog_validity
 #: src/nb-tab.c
@@ -645,7 +651,7 @@ msgstr "Ninguna aplicación puede abrir este enlace"
 
 #: src/nb-tab.c
 msgid "Playing full screen"
-msgstr ""
+msgstr "Reproduciendo a pantalla completa"
 
 # android: Framework input_method_nav_back_button_desc (several translations, short)
 #. the shell's back gesture clicks the showing button named "Back"
@@ -657,8 +663,8 @@ msgstr "Atrás"
 #, c-format
 msgid "Switch tabs, %u open tab"
 msgid_plural "Switch tabs, %u open tabs"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Cambiar de pestaña, %u pestaña abierta"
+msgstr[1] "Cambiar de pestaña, %u pestañas abiertas"
 
 # android: Jelly url_bar_auto_complete_hint
 #: src/nb-urlbar.c
@@ -698,8 +704,8 @@ msgstr "Siguiente"
 #. TRANSLATORS: a screen reader's name for a radio mark and a check mark
 #: src/nb-widgets.c
 msgid "radio"
-msgstr ""
+msgstr "botón de opción"
 
 #: src/nb-widgets.c
 msgid "check"
-msgstr ""
+msgstr "casilla"
