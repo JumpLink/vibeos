@@ -22,11 +22,11 @@ msgstr "Browser"
 
 #: data/vibeos.Browser.desktop.in
 msgid "Web Browser"
-msgstr ""
+msgstr "Webbrowser"
 
 #: data/vibeos.Browser.desktop.in
 msgid "Browse the web"
-msgstr ""
+msgstr "Im Internet surfen"
 
 # android: Jelly shortcut_new_incognito_tab
 #: data/vibeos.Browser.desktop.in src/nb-switcher.c
@@ -35,23 +35,23 @@ msgstr "Neuer Inkognito-Tab"
 
 #: src/main.c
 msgid "Open an incognito tab"
-msgstr ""
+msgstr "Inkognito-Tab öffnen"
 
 #: src/main.c
 msgid "Open a home-screen shortcut"
-msgstr ""
+msgstr "Eine Verknüpfung vom Startbildschirm öffnen"
 
 #: src/main.c
 msgid "ID"
-msgstr ""
+msgstr "ID"
 
 #: src/main.c
 msgid "URL…"
-msgstr ""
+msgstr "URL…"
 
 #: src/nb-app.c
 msgid "Download complete"
-msgstr ""
+msgstr "Download abgeschlossen"
 
 #. TRANSLATORS: keep the link's markup as it is
 #: src/nb-menu.c
@@ -59,6 +59,8 @@ msgid ""
 "Web pages are shown by <a href=\"https://webkitgtk.org/\">WebKitGTK</a>, "
 "under the GNU LGPL 2.1 and BSD licences."
 msgstr ""
+"Webseiten werden von <a href=\"https://webkitgtk.org/\">WebKitGTK</a> "
+"dargestellt, unter den Lizenzen GNU LGPL 2.1 und BSD."
 
 # android: Jelly menu_desktop_mode
 #: src/nb-menu.c
@@ -83,7 +85,7 @@ msgstr "Seite neu laden"
 # android: Jelly menu_fav_add (several translations)
 #: src/nb-menu.c
 msgid "Add to favorites"
-msgstr "Seite als Lesezeichen speichern"
+msgstr "Als Lesezeichen speichern"
 
 # android: Jelly menu_share
 #: src/nb-menu.c
@@ -98,7 +100,7 @@ msgstr "Neuer Tab"
 # android: Jelly menu_incognito
 #: src/nb-menu.c src/nb-switcher.c
 msgid "Incognito tab"
-msgstr "Privater Tab"
+msgstr "Inkognito-Tab"
 
 # android: Jelly menu_favorites (several translations, short)
 #: src/nb-menu.c src/nb-pages.c
@@ -133,7 +135,7 @@ msgstr "Drucken"
 
 #: src/nb-menu.c src/nb-pages.c
 msgid "Desktop shortcuts"
-msgstr ""
+msgstr "Desktop-Verknüpfungen"
 
 # android: Jelly menu_settings
 #. the pinned toolbar: the up arrow, and the collapsed title
@@ -143,7 +145,7 @@ msgstr "Einstellungen"
 
 #: src/nb-menu.c
 msgid "About"
-msgstr ""
+msgstr "Info"
 
 # android: Jelly menu_in_new_tab
 #: src/nb-menu.c
@@ -157,11 +159,11 @@ msgstr "Herunterladen"
 
 #: src/nb-menu.c
 msgid "Link copied"
-msgstr ""
+msgstr "Link kopiert"
 
 #: src/nb-menu.c
 msgid "Copy link"
-msgstr ""
+msgstr "Link kopieren"
 
 # android: Jelly share_title
 #: src/nb-menu.c
@@ -170,11 +172,12 @@ msgstr "Senden an"
 
 #: src/nb-menu.c
 msgid "Shortcut not added"
-msgstr ""
+msgstr "Verknüpfung nicht hinzugefügt"
 
 #: src/nb-menu.c
 msgid "Touch & hold the shortcut to move it around the home screen"
 msgstr ""
+"Halte die Verknüpfung gedrückt, um sie auf dem Startbildschirm zu verschieben"
 
 # android: Framework cancel (short)
 #: src/nb-menu.c src/nb-pages.c src/nb-settings.c src/nb-tab.c src/nb-widgets.c
@@ -194,7 +197,7 @@ msgstr "Eintrag gelöscht"
 # android: Framework undo (several translations, short)
 #: src/nb-pages.c
 msgid "Undo"
-msgstr "Rückgängig machen"
+msgstr "Rückgängig"
 
 # android: Jelly history_delete_title
 #. "Clear history" over a spinner and "Clearing history…", not cancelable, gone 200 ms after
@@ -209,8 +212,12 @@ msgstr "Verlauf wird gelöscht…"
 
 # android: Jelly history_delete_message
 #: src/nb-pages.c
-msgid "You're going to delete all the history, this action cannot be undone. Do you want to proceed?"
-msgstr "Du möchtest den Verlauf löschen. Diese Aktion kann nicht rückgängig gemacht werden. Möchtest du fortfahren?"
+msgid ""
+"You're going to delete all the history, this action cannot be undone. Do you "
+"want to proceed?"
+msgstr ""
+"Du möchtest den Verlauf löschen. Diese Aktion kann nicht rückgängig gemacht "
+"werden. Möchtest du fortfahren?"
 
 # android: Jelly history_delete_positive (several translations, short)
 #: src/nb-pages.c
@@ -220,7 +227,8 @@ msgstr "Löschen"
 # android: Jelly history_empty
 #: src/nb-pages.c
 msgid "There's nothing here, browse on the internet to see your history here"
-msgstr "Hier ist nichts – surfe im Internet und der Verlauf wird hier angezeigt"
+msgstr ""
+"Hier ist nichts – surfe im Internet und der Verlauf wird hier angezeigt"
 
 # android: Jelly favorite_edit_error
 #: src/nb-pages.c
@@ -259,12 +267,12 @@ msgstr "Hier ist nichts – füge Lesezeichen hinzu, um diese hier zu sehen"
 
 #: src/nb-pages.c
 msgid "Download failed"
-msgstr ""
+msgstr "Download fehlgeschlagen"
 
 #: src/nb-pages.c
 #, c-format
 msgid "Downloading… %d%%"
-msgstr ""
+msgstr "Wird heruntergeladen… %d %%"
 
 # android: Framework mime_type_generic (short)
 #: src/nb-pages.c
@@ -276,7 +284,7 @@ msgstr "Datei"
 #: src/nb-pages.c
 #, c-format
 msgid "%s, %s, %s"
-msgstr "%s, %s. %s"
+msgstr "%s, %s, %s"
 
 # android: DocumentsUI empty (other app, short)
 #: src/nb-pages.c
@@ -346,15 +354,16 @@ msgstr "Einhandmodus"
 # android: Jelly pref_reach_mode_summary
 #: src/nb-settings.c
 msgid "Relocate interface elements for easier one-hand usage"
-msgstr "Elemente der Benutzeroberfläche für einfache Einhand-Nutzung verschieben"
+msgstr ""
+"Elemente der Benutzeroberfläche für einfache Einhand-Nutzung verschieben"
 
 #: src/nb-settings.c
 msgid "Fullscreen shortcuts"
-msgstr ""
+msgstr "Verknüpfungen im Vollbild"
 
 #: src/nb-settings.c
 msgid "Force shortcuts to open in fullscreen mode"
-msgstr ""
+msgstr "Verknüpfungen immer im Vollbildmodus öffnen"
 
 # android: Jelly pref_privacy_security
 #: src/nb-settings.c
@@ -381,30 +390,26 @@ msgstr "JavaScript aktivieren"
 msgid "Location"
 msgstr "Standort"
 
-# android: Jelly pref_location_summary
 #: src/nb-settings.c
 msgid "Allow websites to request access to your location"
-msgstr "Erlaubt Webseiten auf deinen Standort zuzugreifen"
+msgstr "Websites erlauben, deinen Standort abzufragen"
 
-# android: Jelly pref_do_not_track_title
 #: src/nb-settings.c
 msgid "Do Not Track"
-msgstr "Aktivitäten nicht verfolgen"
+msgstr "Nicht verfolgen"
 
-# android: Jelly pref_do_not_track_summary
 #: src/nb-settings.c
 msgid "Send a Do Not Track request to websites you visit"
-msgstr "Websites mitteilen, meine Aktivitäten nicht zu verfolgen"
+msgstr "Besuchten Websites eine „Nicht verfolgen“-Anfrage senden"
 
 # android: Jelly pref_cookie_title
 #: src/nb-settings.c
 msgid "Cookies"
 msgstr "Cookies"
 
-# android: Jelly pref_cookie_summary
 #: src/nb-settings.c
 msgid "Allow websites to save and load cookies"
-msgstr "Erlaubt Webseiten das Speichern und Lesen von Cookies"
+msgstr "Websites erlauben, Cookies zu speichern und zu lesen"
 
 # android: Jelly pref_cookie_clear
 #: src/nb-settings.c
@@ -419,28 +424,28 @@ msgstr "Keine"
 #: src/nb-switcher.c
 #, c-format
 msgid "Close %s"
-msgstr ""
+msgstr "%s schließen"
 
 #. TRANSLATORS: a screen reader's name for the tab card of the tab that was shown; %s is the tab's title
 #: src/nb-switcher.c
 #, c-format
 msgid "%s, current tab"
-msgstr ""
+msgstr "%s, aktueller Tab"
 
 #: src/nb-switcher.c
 #, c-format
 msgid "%u tab"
 msgid_plural "%u tabs"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%u Tab"
+msgstr[1] "%u Tabs"
 
 #: src/nb-switcher.c
 msgid "Tabs"
-msgstr ""
+msgstr "Tabs"
 
 #: src/nb-switcher.c
 msgid "No open tabs"
-msgstr ""
+msgstr "Keine offenen Tabs"
 
 # android: Jelly favorite_added (several translations)
 #: src/nb-tab.c
@@ -494,17 +499,17 @@ msgstr "Erlauben"
 #: src/nb-tab.c
 #, c-format
 msgid "%s wants to use your camera and microphone."
-msgstr ""
+msgstr "%s möchte deine Kamera und dein Mikrofon verwenden."
 
 #: src/nb-tab.c
 #, c-format
 msgid "%s wants to use your camera."
-msgstr ""
+msgstr "%s möchte deine Kamera verwenden."
 
 #: src/nb-tab.c
 #, c-format
 msgid "%s wants to use your microphone."
-msgstr ""
+msgstr "%s möchte dein Mikrofon verwenden."
 
 # android: Jelly auth_dialog_title
 #: src/nb-tab.c
@@ -516,12 +521,12 @@ msgstr "Authentifizierung erforderlich"
 #: src/nb-tab.c
 #, c-format
 msgid "%s requires a username and password."
-msgstr "%s erfordert einen Benutzernamen und ein Passwort."
+msgstr "%s erfordert einen Nutzernamen und ein Passwort."
 
 # android: Jelly auth_dialog_username
 #: src/nb-tab.c
 msgid "User Name:"
-msgstr "Benutzername:"
+msgstr "Nutzername:"
 
 # android: Jelly auth_dialog_password
 #: src/nb-tab.c
@@ -585,10 +590,9 @@ msgstr "Dieses Zertifikat stammt nicht aus einer vertrauenswürdigen Quelle."
 msgid "This certificate is invalid."
 msgstr "Dieses Zertifikat ist ungültig."
 
-# android: Jelly ssl_cert_dialog_trust (several translations, short)
 #: src/nb-tab.c
 msgid "Trust"
-msgstr "Trust"
+msgstr "Vertrauen"
 
 # android: Jelly ssl_cert_dialog_domain
 #: src/nb-tab.c
@@ -635,14 +639,13 @@ msgstr "Ausgestellt am"
 msgid "Expires On"
 msgstr "Gültig bis"
 
-# android: Jelly error_no_activity_found
 #: src/nb-tab.c
 msgid "No app can handle this link"
-msgstr "Keine App zum Öffnen der URL gefunden"
+msgstr "Keine App kann diesen Link öffnen"
 
 #: src/nb-tab.c
 msgid "Playing full screen"
-msgstr ""
+msgstr "Wiedergabe im Vollbildmodus"
 
 # android: Framework input_method_nav_back_button_desc (short)
 #. the shell's back gesture clicks the showing button named "Back"
@@ -654,8 +657,8 @@ msgstr "Zurück"
 #, c-format
 msgid "Switch tabs, %u open tab"
 msgid_plural "Switch tabs, %u open tabs"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Tabs wechseln, %u offener Tab"
+msgstr[1] "Tabs wechseln, %u offene Tabs"
 
 # android: Jelly url_bar_auto_complete_hint
 #: src/nb-urlbar.c
@@ -695,8 +698,8 @@ msgstr "Weiter"
 #. TRANSLATORS: a screen reader's name for a radio mark and a check mark
 #: src/nb-widgets.c
 msgid "radio"
-msgstr ""
+msgstr "Optionsfeld"
 
 #: src/nb-widgets.c
 msgid "check"
-msgstr ""
+msgstr "Kästchen"

@@ -22,11 +22,11 @@ msgstr "Browser"
 
 #: data/vibeos.Browser.desktop.in
 msgid "Web Browser"
-msgstr ""
+msgstr "Webbrowser"
 
 #: data/vibeos.Browser.desktop.in
 msgid "Browse the web"
-msgstr ""
+msgstr "Surfen op internet"
 
 # android: Jelly shortcut_new_incognito_tab
 #: data/vibeos.Browser.desktop.in src/nb-switcher.c
@@ -35,23 +35,23 @@ msgstr "Nieuw incognitotabblad"
 
 #: src/main.c
 msgid "Open an incognito tab"
-msgstr ""
+msgstr "Incognitotabblad openen"
 
 #: src/main.c
 msgid "Open a home-screen shortcut"
-msgstr ""
+msgstr "Een snelkoppeling van het startscherm openen"
 
 #: src/main.c
 msgid "ID"
-msgstr ""
+msgstr "ID"
 
 #: src/main.c
 msgid "URL…"
-msgstr ""
+msgstr "URL…"
 
 #: src/nb-app.c
 msgid "Download complete"
-msgstr ""
+msgstr "Download voltooid"
 
 #. TRANSLATORS: keep the link's markup as it is
 #: src/nb-menu.c
@@ -59,6 +59,8 @@ msgid ""
 "Web pages are shown by <a href=\"https://webkitgtk.org/\">WebKitGTK</a>, "
 "under the GNU LGPL 2.1 and BSD licences."
 msgstr ""
+"Webpagina’s worden weergegeven door <a href=\"https://webkitgtk.org/"
+"\">WebKitGTK</a>, onder de licenties GNU LGPL 2.1 en BSD."
 
 # android: Jelly menu_desktop_mode
 #: src/nb-menu.c
@@ -70,15 +72,14 @@ msgstr "Desktopversie"
 msgid "Go back"
 msgstr "Terug"
 
-# android: Jelly menu_go_forward
 #: src/nb-menu.c
 msgid "Go forward"
-msgstr "Volgende"
+msgstr "Vooruit"
 
 # android: Jelly menu_refresh
 #: src/nb-menu.c
 msgid "Refresh page"
-msgstr "Vernieuw pagina"
+msgstr "Pagina vernieuwen"
 
 # android: Jelly menu_fav_add (several translations)
 #: src/nb-menu.c
@@ -124,16 +125,15 @@ msgstr "Snelkoppeling maken"
 # android: Jelly menu_search
 #: src/nb-menu.c
 msgid "Find in page"
-msgstr "Vinden op pagina"
+msgstr "Zoeken op pagina"
 
-# android: Jelly menu_print
 #: src/nb-menu.c
 msgid "Print"
-msgstr "Druk af"
+msgstr "Afdrukken"
 
 #: src/nb-menu.c src/nb-pages.c
 msgid "Desktop shortcuts"
-msgstr ""
+msgstr "Bureaubladsnelkoppelingen"
 
 # android: Jelly menu_settings
 #. the pinned toolbar: the up arrow, and the collapsed title
@@ -143,7 +143,7 @@ msgstr "Instellingen"
 
 #: src/nb-menu.c
 msgid "About"
-msgstr ""
+msgstr "Over"
 
 # android: Jelly menu_in_new_tab
 #: src/nb-menu.c
@@ -157,11 +157,11 @@ msgstr "Downloaden"
 
 #: src/nb-menu.c
 msgid "Link copied"
-msgstr ""
+msgstr "Link gekopieerd"
 
 #: src/nb-menu.c
 msgid "Copy link"
-msgstr ""
+msgstr "Link kopiëren"
 
 # android: Jelly share_title
 #: src/nb-menu.c
@@ -170,11 +170,12 @@ msgstr "Verzenden naar"
 
 #: src/nb-menu.c
 msgid "Shortcut not added"
-msgstr ""
+msgstr "Snelkoppeling niet toegevoegd"
 
 #: src/nb-menu.c
 msgid "Touch & hold the shortcut to move it around the home screen"
 msgstr ""
+"Houd de snelkoppeling ingedrukt om die op het startscherm te verplaatsen"
 
 # android: Framework cancel (several translations, short)
 #: src/nb-menu.c src/nb-pages.c src/nb-settings.c src/nb-tab.c src/nb-widgets.c
@@ -186,10 +187,9 @@ msgstr "Annuleren"
 msgid "Add to home screen"
 msgstr "Toevoegen aan startscherm"
 
-# android: Jelly history_snackbar_item_deleted
 #: src/nb-pages.c
 msgid "Entry deleted"
-msgstr "Invoer verwijderd"
+msgstr "Item verwijderd"
 
 # android: Jelly history_snackbar_item_deleted_message
 #: src/nb-pages.c
@@ -202,25 +202,26 @@ msgstr "Ongedaan maken"
 msgid "Clear history"
 msgstr "Geschiedenis wissen"
 
-# android: Jelly history_deleting_message
 #: src/nb-pages.c
 msgid "Clearing history…"
-msgstr "Geschiedenis wissen…"
+msgstr "Geschiedenis wordt gewist…"
 
-# android: Jelly history_delete_message
 #: src/nb-pages.c
-msgid "You're going to delete all the history, this action cannot be undone. Do you want to proceed?"
-msgstr "U staat op het punt alle geschiedenis te verwijderen. Deze actie kan niet ongedaan worden gemaakt. Wilt u verdergaan?"
+msgid ""
+"You're going to delete all the history, this action cannot be undone. Do you "
+"want to proceed?"
+msgstr ""
+"Je gaat de hele geschiedenis verwijderen. Dit kan niet ongedaan worden "
+"gemaakt. Wil je doorgaan?"
 
 # android: Jelly history_delete_positive
 #: src/nb-pages.c
 msgid "Clear"
 msgstr "Wissen"
 
-# android: Jelly history_empty
 #: src/nb-pages.c
 msgid "There's nothing here, browse on the internet to see your history here"
-msgstr "Er is hier niks, doorzoek het internet om de geschiedenis hier te bekijken"
+msgstr "Er is hier niets. Surf op internet om je geschiedenis hier te zien."
 
 # android: Jelly favorite_edit_error
 #: src/nb-pages.c
@@ -252,19 +253,18 @@ msgstr "Verwijderen"
 msgid "Edit"
 msgstr "Bewerken"
 
-# android: Jelly favorite_empty
 #: src/nb-pages.c
 msgid "There's nothing here, add a favorite link to see it here"
-msgstr "Er is hier niks, voeg een bladwijzer toe om hier weer te geven"
+msgstr "Er is hier niets. Voeg een bladwijzer toe om die hier te zien."
 
 #: src/nb-pages.c
 msgid "Download failed"
-msgstr ""
+msgstr "Download mislukt"
 
 #: src/nb-pages.c
 #, c-format
 msgid "Downloading… %d%%"
-msgstr ""
+msgstr "Downloaden… %d%%"
 
 # android: Framework mime_type_generic (short)
 #: src/nb-pages.c
@@ -298,25 +298,23 @@ msgstr "Zoekmachine"
 msgid "Suggestions provider"
 msgstr "Aanbieder suggesties"
 
-# android: Settings bluetooth_leaudio_mode[0] (other app, several translations, short)
 #: src/nb-settings.c
 msgid "Disabled"
-msgstr "Uitgezet"
+msgstr "Uitgeschakeld"
 
 # android: Jelly pref_start_page_dialog_title
 #: src/nb-settings.c
 msgid "Select home page"
-msgstr "Selecteer startpagina"
+msgstr "Startpagina selecteren"
 
 # android: Jelly pref_start_page_dialog_message
 #: src/nb-settings.c
 msgid "Write the home page URL"
 msgstr "URL van de startpagina invoeren"
 
-# android: SettingsLib bt_hci_snoop_log_entries[2] (other app, several translations, short)
 #: src/nb-settings.c
 msgid "Enabled"
-msgstr "Aangezet"
+msgstr "Ingeschakeld"
 
 # android: Jelly pref_start_page
 #: src/nb-settings.c
@@ -338,23 +336,22 @@ msgstr "OK"
 msgid "Cleared all the cookies"
 msgstr "Alle cookies gewist"
 
-# android: Jelly pref_reach_mode_title
 #: src/nb-settings.c
 msgid "Reach mode"
-msgstr "Één hand gebruik"
+msgstr "Bediening met één hand"
 
-# android: Jelly pref_reach_mode_summary
 #: src/nb-settings.c
 msgid "Relocate interface elements for easier one-hand usage"
-msgstr "Verplaats elementen van de gebruikersinterface voor eenvoudig gebruik met één hand"
+msgstr ""
+"Elementen van de interface verplaatsen voor makkelijker gebruik met één hand"
 
 #: src/nb-settings.c
 msgid "Fullscreen shortcuts"
-msgstr ""
+msgstr "Snelkoppelingen op volledig scherm"
 
 #: src/nb-settings.c
 msgid "Force shortcuts to open in fullscreen mode"
-msgstr ""
+msgstr "Snelkoppelingen altijd op volledig scherm openen"
 
 # android: Jelly pref_privacy_security
 #: src/nb-settings.c
@@ -369,7 +366,7 @@ msgstr "Dynamische pop-ups"
 # android: Jelly pref_dynamic_popup_summary
 #: src/nb-settings.c
 msgid "Allow JavaScript to open popups without user interaction"
-msgstr "Sta JavaScript toe pop-ups te openen zonder gebruikersinteractie"
+msgstr "JavaScript toestaan pop-ups te openen zonder gebruikersinteractie"
 
 # android: Jelly pref_js_summary
 #: src/nb-settings.c
@@ -384,17 +381,16 @@ msgstr "Locatie"
 # android: Jelly pref_location_summary
 #: src/nb-settings.c
 msgid "Allow websites to request access to your location"
-msgstr "Toestaan dat websites uw locatie kunnen opvragen"
+msgstr "Toestaan dat websites je locatie opvragen"
 
 # android: Jelly pref_do_not_track_title
 #: src/nb-settings.c
 msgid "Do Not Track"
 msgstr "Niet volgen"
 
-# android: Jelly pref_do_not_track_summary
 #: src/nb-settings.c
 msgid "Send a Do Not Track request to websites you visit"
-msgstr "'Niet volgen'-aanvraag versturen naar websites die u bezoekt"
+msgstr "Een “Niet volgen”-verzoek sturen naar websites die je bezoekt"
 
 # android: Jelly pref_cookie_title
 #: src/nb-settings.c
@@ -419,39 +415,38 @@ msgstr "Geen"
 #: src/nb-switcher.c
 #, c-format
 msgid "Close %s"
-msgstr ""
+msgstr "%s sluiten"
 
 #. TRANSLATORS: a screen reader's name for the tab card of the tab that was shown; %s is the tab's title
 #: src/nb-switcher.c
 #, c-format
 msgid "%s, current tab"
-msgstr ""
+msgstr "%s, huidig tabblad"
 
 #: src/nb-switcher.c
 #, c-format
 msgid "%u tab"
 msgid_plural "%u tabs"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%u tabblad"
+msgstr[1] "%u tabbladen"
 
 #: src/nb-switcher.c
 msgid "Tabs"
-msgstr ""
+msgstr "Tabbladen"
 
 #: src/nb-switcher.c
 msgid "No open tabs"
-msgstr ""
+msgstr "Geen geopende tabbladen"
 
 # android: Jelly favorite_added (several translations)
 #: src/nb-tab.c
 msgid "Added to favorites"
 msgstr "Toegevoegd aan bladwijzers"
 
-# android: Jelly location_dialog_title
 #. a site asks for the location
 #: src/nb-tab.c
 msgid "Provide location?"
-msgstr "Locatie aanbieden?"
+msgstr "Locatie delen?"
 
 # android: Jelly location_dialog_message
 #. TRANSLATORS: %s is the site (its origin, "https://example.org")
@@ -460,15 +455,14 @@ msgstr "Locatie aanbieden?"
 msgid "%s wants to use your geolocation."
 msgstr "%s wil je geolocatie gebruiken."
 
-# android: Jelly location_dialog_cancel
 #: src/nb-tab.c
 msgid "Deny for now"
-msgstr "Nu weigeren"
+msgstr "Voorlopig weigeren"
 
 # android: Jelly location_dialog_block (several translations, short)
 #: src/nb-tab.c
 msgid "Block"
-msgstr "Blokkeer"
+msgstr "Blokkeren"
 
 # android: Framework sms_control_yes (several translations, short)
 #: src/nb-tab.c
@@ -477,33 +471,32 @@ msgstr "Toestaan"
 
 #: src/nb-tab.c
 msgid "Allow protected media?"
-msgstr ""
+msgstr "Beveiligde media toestaan?"
 
 # android: Framework sms_control_no (several translations, short)
 #: src/nb-tab.c
 msgid "Deny"
 msgstr "Weigeren"
 
-# android: Jelly protected_media_dialog_grant
 #: src/nb-tab.c
 msgid "Grant"
-msgstr "Sta Toe"
+msgstr "Toestaan"
 
 #. TRANSLATORS: %s is the site (its origin, "https://example.org")
 #: src/nb-tab.c
 #, c-format
 msgid "%s wants to use your camera and microphone."
-msgstr ""
+msgstr "%s wil je camera en microfoon gebruiken."
 
 #: src/nb-tab.c
 #, c-format
 msgid "%s wants to use your camera."
-msgstr ""
+msgstr "%s wil je camera gebruiken."
 
 #: src/nb-tab.c
 #, c-format
 msgid "%s wants to use your microphone."
-msgstr ""
+msgstr "%s wil je microfoon gebruiken."
 
 # android: Jelly auth_dialog_title
 #: src/nb-tab.c
@@ -537,7 +530,7 @@ msgstr "Inloggen"
 #: src/nb-tab.c
 #, c-format
 msgid "Do you want to download %s?"
-msgstr "Wilt u %s downloaden?"
+msgstr "Wil je %s downloaden?"
 
 # android: Jelly download_title
 #: src/nb-tab.c
@@ -572,7 +565,8 @@ msgstr "Dit certificaat is nog niet geldig."
 # android: Jelly ssl_error_mismatch
 #: src/nb-tab.c
 msgid "The name of the site doesn't match the name on the certificate."
-msgstr "De naam van deze site komt niet overeen met de naam op het certificaat."
+msgstr ""
+"De naam van deze site komt niet overeen met de naam op het certificaat."
 
 # android: Jelly ssl_error_untrusted
 #: src/nb-tab.c
@@ -607,7 +601,7 @@ msgstr "Verleend door"
 # android: Jelly ssl_cert_dialog_common_name
 #: src/nb-tab.c
 msgid "Common Name (CN)"
-msgstr "Algemene Naam (CN)"
+msgstr "Algemene naam (CN)"
 
 # android: Jelly ssl_cert_dialog_organization
 #: src/nb-tab.c
@@ -641,7 +635,7 @@ msgstr "Geen app kan deze link openen"
 
 #: src/nb-tab.c
 msgid "Playing full screen"
-msgstr ""
+msgstr "Afspelen op volledig scherm"
 
 # android: Framework input_method_nav_back_button_desc (several translations, short)
 #. the shell's back gesture clicks the showing button named "Back"
@@ -653,13 +647,13 @@ msgstr "Terug"
 #, c-format
 msgid "Switch tabs, %u open tab"
 msgid_plural "Switch tabs, %u open tabs"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Tabbladen wisselen, %u geopend tabblad"
+msgstr[1] "Tabbladen wisselen, %u geopende tabbladen"
 
 # android: Jelly url_bar_auto_complete_hint
 #: src/nb-urlbar.c
 msgid "Search or type URL"
-msgstr "Zoek, of typ een URL"
+msgstr "Zoek of typ een URL"
 
 # android: Jelly url_bar_more
 #: src/nb-urlbar.c
@@ -669,7 +663,7 @@ msgstr "Meer"
 # android: Jelly url_bar_search_cancel
 #: src/nb-urlbar.c
 msgid "Cancel search"
-msgstr "Annuleer zoeken"
+msgstr "Zoeken annuleren"
 
 # android: Jelly search_bar_hint
 #: src/nb-urlbar.c
@@ -679,7 +673,7 @@ msgstr "Zoeken"
 # android: Jelly url_bar_search_clear (several translations, short)
 #: src/nb-urlbar.c
 msgid "Clear search"
-msgstr "Wis zoekopdracht"
+msgstr "Zoekopdracht wissen"
 
 # android: Jelly url_bar_search_previous
 #: src/nb-urlbar.c
@@ -694,8 +688,8 @@ msgstr "Volgende"
 #. TRANSLATORS: a screen reader's name for a radio mark and a check mark
 #: src/nb-widgets.c
 msgid "radio"
-msgstr ""
+msgstr "keuzerondje"
 
 #: src/nb-widgets.c
 msgid "check"
-msgstr ""
+msgstr "selectievakje"
