@@ -118,7 +118,8 @@ struct _DictateTalk {
 G_DEFINE_FINAL_TYPE (DictateTalk, dictate_talk, G_TYPE_OBJECT)
 
 enum { SIGNAL_REPLY, SIGNAL_STATE_CHANGED, SIGNAL_ERROR, SIGNAL_STATUS, SIGNAL_PROPOSE, SIGNAL_TOOL, SIGNAL_BUSY,
-       SIGNAL_REFUSED, SIGNAL_ACTED, SIGNAL_REPLY_INFO, SIGNAL_WRITTEN, SIGNAL_NO_ACCESS, N_SIGNALS };
+       SIGNAL_REFUSED, SIGNAL_ACTED, SIGNAL_REPLY_INFO, SIGNAL_WRITTEN, SIGNAL_NO_ACCESS, SIGNAL_SUGGESTIONS,
+       SIGNAL_CHOICES, SIGNAL_FACTS, SIGNAL_PERSON, N_SIGNALS };
 static guint signals[N_SIGNALS];
 
 static Job *
@@ -1274,6 +1275,36 @@ dictate_talk_restore (DictateTalk *self, const DictateExchange *exchanges, guint
   /* not yet: the model starts the conversation afresh after a restart */
 }
 
+static void
+confirmed (GObject *source, GAsyncResult *result, gpointer data)
+{
+  g_autoptr (GTask) task = data;
+  GError *error = NULL;
+  char *done = dictate_action_run_finish (g_task_get_task_data (task), result, &error);
+
+  if (done)
+    g_task_return_pointer (task, done, g_free);
+  else
+    g_task_return_error (task, error);
+}
+
+void
+dictate_talk_confirm_async (DictateTalk *self, DictateAction *action, GBytes *audio, DictateAskFlags flags,
+                            GCancellable *cancellable, GAsyncReadyCallback callback, gpointer data)
+{
+  GTask *task = g_task_new (self, cancellable, callback, data);
+
+  /* not yet: no voice is checked (Voice Match has no sample yet), so it runs */
+  g_task_set_task_data (task, dictate_action_ref (action), (GDestroyNotify) dictate_action_unref);
+  dictate_action_run_by (action, DICTATE_ACTION_BY_VOICE, cancellable, confirmed, task);
+}
+
+char *
+dictate_talk_confirm_finish (DictateTalk *self, GAsyncResult *result, GError **error)
+{
+  return g_task_propagate_pointer (G_TASK (result), error);
+}
+
 void
 dictate_talk_announce (DictateTalk *self, const char *language, const char *text)
 {
@@ -1431,6 +1462,14 @@ dictate_talk_class_init (DictateTalkClass *klass)
                                           NULL, G_TYPE_NONE, 1, G_TYPE_STRV);
   signals[SIGNAL_NO_ACCESS] = g_signal_new ("no-access", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL,
                                             NULL, NULL, G_TYPE_NONE, 1, G_TYPE_STRING);
+  signals[SIGNAL_SUGGESTIONS] = g_signal_new ("suggestions", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL,
+                                              NULL, NULL, G_TYPE_NONE, 1, G_TYPE_STRV);
+  signals[SIGNAL_CHOICES] = g_signal_new ("choices", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
+                                          NULL, G_TYPE_NONE, 1, G_TYPE_STRV);
+  signals[SIGNAL_FACTS] = g_signal_new ("facts", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL, NULL,
+                                        G_TYPE_NONE, 1, G_TYPE_STRV);
+  signals[SIGNAL_PERSON] = g_signal_new ("person", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
+                                         NULL, G_TYPE_NONE, 1, G_TYPE_STRING);
 }
 
 static void

@@ -1232,3 +1232,10 @@ dictate_offline_reply (const char *language, const char *said, gboolean private_
     return g_strdup (r->hung_up);
   return g_strdup (r->failed);
 }
+
+DictateConfirmWord
+dictate_offline_confirm_word (const char *language, const char *text)
+{
+  /* not yet: every turn goes to the model */
+  return DICTATE_CONFIRM_WORD_NONE;
+}

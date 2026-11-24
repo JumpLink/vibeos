@@ -73,8 +73,34 @@ typedef struct {
 const DictateActionField *dictate_action_get_fields (DictateAction *self);
 /* it deletes, or cannot be undone: its button says so */
 gboolean             dictate_action_get_destructive (DictateAction *self);
+/* it goes to someone, a message or a call; certain: to whom was not guessed (a number given, or the contact's own
+ * name), only then may it count down */
+gboolean             dictate_action_get_outward  (DictateAction *self);
+gboolean             dictate_action_get_certain  (DictateAction *self);
+void                 dictate_action_set_outward  (DictateAction *self, gboolean certain);
+/* the seconds it counts down once Vibe has read it back, then runs by itself (outward-confirm 'countdown'); 0: it
+ * waits for the user's tap or "send". Set by DictateTalk to DICTATE_ACTION_COUNTDOWN when outward-confirm is
+ * 'countdown', the turn's voice passed its check and the phone is unlocked; it takes only on an outward action whose
+ * recipient is certain and that is not destructive. The window shows the countdown and, at 0, runs it with
+ * dictate_action_run_by (DICTATE_ACTION_BY_COUNTDOWN); any new speech or touch, the screen going off or the window
+ * leaving the foreground stops it, and the card then waits */
+#define DICTATE_ACTION_COUNTDOWN 3
+guint                dictate_action_get_countdown (DictateAction *self);
+void                 dictate_action_set_countdown (DictateAction *self, guint seconds);
+/* nothing was decided about it yet */
+gboolean             dictate_action_is_waiting   (DictateAction *self);
+
+/* how an action was run, for the action log and for what the model is told */
+typedef enum {
+  DICTATE_ACTION_BY_TAP,        /* its button */
+  DICTATE_ACTION_BY_COUNTDOWN,  /* its countdown ended */
+  DICTATE_ACTION_BY_VOICE,      /* the user said "send" */
+} DictateActionBy;
 /* the user tapped its button: it runs (once) */
 void                 dictate_action_run         (DictateAction *self, GCancellable *cancellable,
+                                                 GAsyncReadyCallback callback, gpointer data);
+/* the same, run otherwise than by its button */
+void                 dictate_action_run_by      (DictateAction *self, DictateActionBy by, GCancellable *cancellable,
                                                  GAsyncReadyCallback callback, gpointer data);
 /* what was done, for the card ("Sent"), or FALSE with the error */
 char                *dictate_action_run_finish  (DictateAction *self, GAsyncResult *result, GError **error);

@@ -24,6 +24,14 @@ char       *dictate_offline_reply  (const char *language, const char *said, gboo
 /* the line said once, before the first reply offline */
 const char *dictate_offline_notice (const char *language);
 
+/* what the whole of a turn says about a card waiting on the screen ("send it", "cancel"), the model not asked */
+typedef enum {
+  DICTATE_CONFIRM_WORD_NONE,    /* something else: a correction, a question; for the model */
+  DICTATE_CONFIRM_WORD_CONFIRM, /* "send", "yes", "call", "go ahead": dictate_talk_confirm_async () */
+  DICTATE_CONFIRM_WORD_CANCEL,  /* "cancel", "no", "stop", "don't": dictate_action_cancel () */
+} DictateConfirmWord;
+DictateConfirmWord dictate_offline_confirm_word (const char *language, const char *text);
+
 /* for the tests: the tool `said` asks for and its arguments (JSON), or NULL when it is none of the commands. Some
  * commands are a tool name of their own: "read_messages" (get_messages, then each unread conversation's text) */
 char       *dictate_offline_parse  (const char *language, const char *said, char **arguments);

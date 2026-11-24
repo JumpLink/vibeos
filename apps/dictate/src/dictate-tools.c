@@ -623,6 +623,10 @@ struct _DictateAction {
   ActionState state;
   char *failure;
   char *tool, *sent;            /* for the action log (dictate_action_set_log ()) */
+  gboolean outward;             /* it goes to someone: a message, a call */
+  gboolean certain;             /* and to whom was not guessed: a number given, or the contact's own name */
+  guint countdown;              /* seconds it counts down after its read-back; 0: it waits */
+  DictateActionBy by;           /* how it was run */
 };
 
 DictateAction *
@@ -679,6 +683,20 @@ dictate_action_set_log (DictateAction *self, const char *tool, const char *sent)
 }
 
 /* what the user decided, in the action log */
+static const char *
+by_text (DictateAction *self)
+{
+  switch (self->by)
+    {
+    case DICTATE_ACTION_BY_COUNTDOWN:
+      return "its countdown ended, the user not stopping it";
+    case DICTATE_ACTION_BY_VOICE:
+      return "the user said to";
+    default:
+      return "the user tapped it";
+    }
+}
+
 static void
 action_log (DictateAction *self, const char *outcome, gboolean went)
 {
@@ -694,6 +712,24 @@ const char *dictate_action_get_button (DictateAction *self) { return self->butto
 /* not yet: the cards have their title and lines only, and none deletes */
 const DictateActionField *dictate_action_get_fields (DictateAction *self) { return NULL; }
 gboolean dictate_action_get_destructive (DictateAction *self) { return FALSE; }
+gboolean dictate_action_get_outward (DictateAction *self) { return self->outward; }
+gboolean dictate_action_get_certain (DictateAction *self) { return self->certain; }
+guint dictate_action_get_countdown (DictateAction *self) { return self->countdown; }
+gboolean dictate_action_is_waiting (DictateAction *self) { return self->state == ACTION_WAITING; }
+
+void
+dictate_action_set_outward (DictateAction *self, gboolean certain)
+{
+  self->outward = TRUE;
+  self->certain = certain;
+}
+
+void
+dictate_action_set_countdown (DictateAction *self, guint seconds)
+{
+  /* only what goes to someone certain counts down; the rest waits for the user */
+  self->countdown = self->outward && self->certain && !dictate_action_get_destructive (self) ? seconds : 0;
+}
 
 static void
 action_thread (GTask *task, gpointer object, gpointer data, GCancellable *cancellable)
@@ -716,6 +752,13 @@ action_thread (GTask *task, gpointer object, gpointer data, GCancellable *cancel
 void
 dictate_action_run (DictateAction *self, GCancellable *cancellable, GAsyncReadyCallback callback, gpointer data)
 {
+  dictate_action_run_by (self, DICTATE_ACTION_BY_TAP, cancellable, callback, data);
+}
+
+void
+dictate_action_run_by (DictateAction *self, DictateActionBy by, GCancellable *cancellable,
+                       GAsyncReadyCallback callback, gpointer data)
+{
   g_autoptr (GTask) task = g_task_new (NULL, cancellable, callback, data);
 
   g_task_set_task_data (task, dictate_action_ref (self), (GDestroyNotify) dictate_action_unref);
@@ -725,6 +768,7 @@ dictate_action_run (DictateAction *self, GCancellable *cancellable, GAsyncReadyC
       return;
     }
   self->state = ACTION_RUNNING;
+  self->by = by;
   g_task_run_in_thread (task, action_thread);
 }
 
@@ -737,16 +781,22 @@ dictate_action_run_finish (DictateAction *self, GAsyncResult *result, GError **e
     {
       if (self->state == ACTION_RUNNING)
         {
+          g_autofree char *outcome = g_strdup_printf ("%s, and it failed", by_text (self));
+
           self->state = ACTION_FAILED;
           g_free (self->failure), self->failure = g_strdup (failure->message);
-          action_log (self, "the user tapped it, and it failed", FALSE);
+          action_log (self, outcome, FALSE);
         }
       g_propagate_error (error, g_steal_pointer (&failure));
       return NULL;
     }
   self->state = ACTION_DONE;
-  action_log (self, g_getenv ("DICTATE_TEST_DRY_RUN") ? "the user tapped it (a test: nothing was done)"
-                                                     : "the user tapped it, and it was done", TRUE);
+  {
+    g_autofree char *outcome = g_strdup_printf (g_getenv ("DICTATE_TEST_DRY_RUN") ? "%s (a test: nothing was done)"
+                                                                                 : "%s, and it was done",
+                                                by_text (self));
+    action_log (self, outcome, TRUE);
+  }
   return g_strdup (self->done);
 }
 
@@ -756,9 +806,13 @@ dictate_action_outcome (DictateAction *self)
   switch (self->state)
     {
     case ACTION_DONE:
+      if (self->by == DICTATE_ACTION_BY_COUNTDOWN)
+        return g_strdup_printf ("Its countdown ended and the user did not stop it: %s, done.", self->about);
+      if (self->by == DICTATE_ACTION_BY_VOICE)
+        return g_strdup_printf ("The user said to: %s, done.", self->about);
       return g_strdup_printf ("The user tapped %s: %s, done.", self->button, self->about);
     case ACTION_FAILED:
-      return g_strdup_printf ("The user tapped %s, but it failed (%s): %s.", self->button, self->failure,
+      return g_strdup_printf ("It was started (%s), but it failed (%s): %s.", by_text (self), self->failure,
                               self->about);
     case ACTION_CANCELLED:
       return g_strdup_printf ("The user cancelled it: %s.", self->about);

@@ -9,7 +9,9 @@
  * mode (talk-private) the replies play only in headphones; on the speaker they are short and say nothing personal. */
 #pragma once
 
-#include <glib-object.h>
+#include "dictate-tools.h"
+
+#include <gio/gio.h>
 
 G_BEGIN_DECLS
 
@@ -43,6 +45,17 @@ typedef enum {
  * applies, a turn whose voice is not the owner's runs nothing it would need the owner for ("refused") */
 void             dictate_talk_ask_full  (DictateTalk *self, const char *language, const char *text, GBytes *audio,
                                          DictateAskFlags flags);
+
+/* the user said "send" (or "yes", "call": dictate_offline_confirm_word ()) while `action` waits on the screen, on its
+ * card or in its countdown; `audio` and `flags` as for dictate_talk_ask_full (). The voice is checked as for an
+ * Actions turn: when it passes, the action runs (DICTATE_ACTION_BY_VOICE) and `callback` gets what was done
+ * (dictate_talk_confirm_finish (), as dictate_action_run_finish ()); when it does not, "refused" is emitted, its line is
+ * spoken, nothing runs and the error is G_IO_ERROR_PERMISSION_DENIED. "cancel" needs no check: dictate_action_cancel ()
+ * directly. */
+void             dictate_talk_confirm_async  (DictateTalk *self, DictateAction *action, GBytes *audio,
+                                              DictateAskFlags flags, GCancellable *cancellable,
+                                              GAsyncReadyCallback callback, gpointer data);
+char            *dictate_talk_confirm_finish (DictateTalk *self, GAsyncResult *result, GError **error);
 
 /* an exchange of the conversation as the screen keeps it */
 typedef struct {
@@ -88,7 +101,16 @@ gboolean         dictate_talk_get_speak (DictateTalk *self);
  *          back
  *   "reply-info" (guint flags): at a reply's start, DICTATE_REPLY_* below
  *   "written" (const char *const *lines): what is shown and not spoken (private mode on the speaker)
- *   "no-access" (const char *key): the user asked for something whose access-* switch is off */
+ *   "no-access" (const char *key): the user asked for something whose access-* switch is off
+ *   "suggestions" (const char *const *labels): replies the user may tap under the answer ("Read them", "Call back");
+ *          a tap asks its label as said, with DICTATE_ASK_TAPPED
+ *   "choices" (const char *const *rows): Vibe asks the user to pick one ("Which Kim?"): the rows alternate a label and
+ *          its detail ("Kim Novak", "Mobile", "Kim Ortega", "Work"; a detail may be ""); a tap asks the label, with
+ *          DICTATE_ASK_TAPPED
+ *   "facts" (const char *const *rows): what a reading tool found, for the card above the answer: the rows alternate a
+ *          label and its value ("Battery", "64 %, about 9 hours", "Signal", "Good, 4 of 5")
+ *   "person" (const char *name): the contact the answer is about, for the orb's initials ("Sarah Lind")
+ * All of them for the reply being written, before its end; none is emitted for a refused turn. */
 
 /* "reply-info"'s flags */
 #define DICTATE_REPLY_OFFLINE         (1 << 0)  /* the fixed commands answered (dictate-offline.h) */
