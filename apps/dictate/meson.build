@@ -3,6 +3,7 @@ project('vibeos-dictate', 'c', version: '1.0', meson_version: '>= 1.0',
 add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers', language: 'c')
 
 gnome = import('gnome')
+i18n = import('i18n')
 bindir = get_option('prefix') / get_option('bindir')
 datadir = get_option('prefix') / get_option('datadir')
 # the recognisers (Moonshine, Vosk) are not built here: vibeos-dictate loads their libraries at run time
@@ -65,7 +66,8 @@ executable('vibeos-dictate', 'src/dictate-main.c', 'src/dictate-window.c', 'src/
 foreach id : ['vibeos.Dictate', 'vibeos.Agent']
   configure_file(input: 'data' / id + '.service.in', output: id + '.service',
                  configuration: configuration_data({'bindir': bindir}), install_dir: datadir / 'dbus-1/services')
-  install_data('data' / id + '.desktop', install_dir: datadir / 'applications')
+  i18n.merge_file(input: 'data' / id + '.desktop.in', output: id + '.desktop', type: 'desktop', po_dir: 'po',
+                  install: true, install_dir: datadir / 'applications')
   install_data('data' / id + '.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
 endforeach
 install_data('data/vibeos.Dictate.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
@@ -180,3 +182,6 @@ test('offline', executable('test-offline', 'tests/test-offline.c', 'src/dictate-
 executable('download-try', 'tests/download-try.c', 'src/dictate-download.c', 'src/dictate-models.c',
            'src/dictate-pk.c', 'src/dictate-package.c',
            include_directories: 'src', c_args: '-DGETTEXT_PACKAGE="vibeos-dictate"', dependencies: download_deps)
+
+# the translations, and their checks
+subdir('po')

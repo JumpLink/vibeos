@@ -1,0 +1,23 @@
+# the files with translatable strings
+data/vibeos.Agent.desktop.in
+data/vibeos.Dictate.desktop.in
+src/dictate-access.c
+src/dictate-confirm-page.c
+src/dictate-debuglog-page.c
+src/dictate-download-dialog.c
+src/dictate-download.c
+src/dictate-engine.c
+src/dictate-enroll.c
+src/dictate-mic.c
+src/dictate-onboarding.c
+src/dictate-package.c
+src/dictate-remote.c
+src/dictate-settings.c
+src/dictate-stage.c
+src/dictate-talk.c
+src/dictate-tools-device.c
+src/dictate-tools-phone.c
+src/dictate-tools.c
+src/dictate-voicematch-page.c
+src/dictate-voicematch.c
+src/dictate-window.c
