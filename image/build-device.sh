@@ -361,14 +361,18 @@ s5e)
 	# The Tab S5e: device stage device-20261111-dual (device.sh, read from the tablet 11-11; its firmware from
 	# the tablet's vendor/modem partitions), with the tablet's kernel since 11-19 (7.2.15-gts4lv-uc: slot image
 	# linux-k11-uc.img e57e0831, modules from that build's modules_install) and the two device files the tablet
-	# changed since (touchboost.py 4d633e7c, gts4lv-powerkey hand-off) from work-20261119/tabk
+	# changed since, from work-20261119/tabk: touchboost.py 4d633e7c, and gts4lv-powerkey as the tablet runs it
+	# on 11-24 (5ef44a11: radios left as they are for a sleep since 11-20, the power key passed on to the shell,
+	# and only the upside-down portrait swaps the volume keys, as the volume slider is vertical)
 	ST=${S5E_STAGE:?set S5E_STAGE}
 	TK=${S5E_TABK:?set S5E_TABK}
+	[ "$(sha256sum < "$TK/gts4lv-powerkey.20261124" | cut -c1-16)" = 5ef44a117b8b5dda ] ||
+		{ echo "$TK/gts4lv-powerkey.20261124: not the tablet's of 11-24 (5ef44a11)" >&2; exit 1; }
 	(cd "$ST/root" && tar -cf - .) | tar -C "$P" -xpf - --no-same-owner
 	KVER=7.2.15-gts4lv-uc
 	rm -rf "$P/usr/lib/modules"; modules $KVER "${S5E_MODULES:?set S5E_MODULES}"
 	for f in $(cd "$P" && find . -name touchboost.py | sed 's|^\./||'); do install -m 755 "$TK/touchboost.py" "$P/$f"; log "/$f <- tabk/touchboost.py"; done
-	for f in $(cd "$P" && find . -name gts4lv-powerkey -type f | sed 's|^\./||'); do install -m 755 "$TK/gts4lv-powerkey.handoff" "$P/$f"; log "/$f <- tabk/gts4lv-powerkey.handoff"; done
+	for f in $(cd "$P" && find . -name gts4lv-powerkey -type f | sed 's|^\./||'); do install -m 755 "$TK/gts4lv-powerkey.20261124" "$P/$f"; log "/$f <- tabk/gts4lv-powerkey.20261124"; done
 	(cd "$P/usr/lib/firmware" && find . -type f | sed 's|^\./||') > "$L/stage-firmware.txt"
 	echo "stage firmware: $(wc -l < "$L/stage-firmware.txt") files from $ST/root (the tablet's vendor/modem partitions, 11-11)" >> "$L/firmware.txt"
 	for u in $(sed -e 's/#.*//' "$ST/enable"); do
