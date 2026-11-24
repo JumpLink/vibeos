@@ -89,5 +89,30 @@
       <summary>Vibrate every minute</summary>
       <description>Vibrates at the 45 second mark of every minute during outgoing calls</description>
     </key>
+
+    <!-- Call recording, Settings' page of that name (dialer-settings.c); whether the phone's sound card can record a
+         call and play the announcement to the other side is its UCM's to say (call-audio-ucm.h) -->
+    <key name="record-calls" type="b">
+      <default>false</default>
+      <summary>Record every call</summary>
+    </key>
+    <key name="announce-recording" type="b">
+      <default>true</default>
+      <summary>Announce recording</summary>
+      <description>Both sides hear "This call is now being recorded" when a recording starts. A phone that cannot
+        play it to the other side then records no calls</description>
+    </key>
+    <key name="recordings-folder" type="s">
+      <default>''</default>
+      <summary>Storage location</summary>
+      <description>The folder the call recordings go into, a path; empty for the default, "Recordings/Call
+        recordings" in the home folder</description>
+    </key>
+    <key name="recording-notice-shown" type="b">
+      <default>false</default>
+      <summary>Call recording notice shown</summary>
+      <description>The in-call screen's Record button asked "Enable call recording?" (LineageOS's legal notice) and
+        the user went on: it does not ask again</description>
+    </key>
   </schema>
 </schemalist>

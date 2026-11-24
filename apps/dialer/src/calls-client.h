@@ -24,6 +24,7 @@ typedef struct
   gint64 created;               /* Unix ms */
   gint64 connected;             /* Unix ms when it was first up; 0 before */
   gboolean multiparty;
+  gint64 recording;             /* Unix ms when its recording started; 0 when it is not being recorded */
   char *post_dial_wait;         /* at a wait in the number dialled: the tones after it, to ask about; else "" */
 } CallInfo;
 
@@ -51,6 +52,9 @@ gboolean    calls_client_has_feature (CallsClient *self, const char *feature);
 /* the network's country ("DE"), or NULL while it is not known */
 const char *calls_client_get_country (CallsClient *self);
 guint       calls_client_get_missed_count (CallsClient *self);
+/* calls can be recorded on this phone, as Settings has it (Announce recording on needs the announcement to reach the
+ * other side) */
+gboolean    calls_client_get_can_record (CallsClient *self);
 
 typedef void (*CallsDialed) (guint id, const GError *error, gpointer data);
 
@@ -66,6 +70,9 @@ void calls_client_send_dtmf (CallsClient *self, guint id, const char *tones);
 void calls_client_continue_post_dial (CallsClient *self, guint id, gboolean proceed);
 void calls_client_set_muted (CallsClient *self, gboolean muted);
 void calls_client_set_speaker (CallsClient *self, gboolean speaker);
+/* the Record button: the call, which is up, recorded from now on, or no longer. A recording that does not start after
+ * all comes back as "failed" for "SetRecording" */
+void calls_client_set_recording (CallsClient *self, guint id, gboolean recording);
 void calls_client_silence_ringer (CallsClient *self);
 /* Settings' ringtone picker: @uri ("default" for the default ringtone) played once; NULL stops it */
 void calls_client_preview_ringtone (CallsClient *self, const char *uri);
@@ -89,8 +96,8 @@ void       calls_client_mark_missed_read (CallsClient *self);
 /* these missed calls are seen (their row in Recents was opened) */
 void       calls_client_mark_calls_read (CallsClient *self, const gint64 *ids, guint n);
 
-/* Signals: "changed" (the calls), "audio-changed" (mute, speaker), "status-changed" (status, features, country),
- * "missed-changed", "call-log-changed", and "failed" (s method, u call id or 0, s message): the service refused an
- * ask (the modem cannot hold, the call ended meanwhile) */
+/* Signals: "changed" (the calls), "audio-changed" (mute, speaker), "status-changed" (status, features, country,
+ * can record), "missed-changed", "call-log-changed", and "failed" (s method, u call id or 0, s message): the service
+ * refused an ask (the modem cannot hold, the call ended meanwhile) */
 
 G_END_DECLS

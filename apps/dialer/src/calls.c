@@ -1,7 +1,10 @@
 /* The calls (calls.h). */
 #include "calls.h"
 #include "blocked-numbers.h"
+#include "call-audio-ucm.h"
 #include "call-notifications.h"
+#include "call-recorder.h"
+#include "call-recording.h"
 #include "contacts.h"
 #include "modem.h"
 #include "phone.h"
@@ -69,6 +72,8 @@ typedef struct {
   gboolean announced;           /* it rang and its screen was asked for */
   gboolean blocked;             /* from a blocked number: declined unseen, logged as "Blocked call" */
   AnswerAfter answer_after;     /* answered, the other calls going first */
+  gboolean up_seen;             /* up, and "Record every call" has had its say for this time it is up */
+  gboolean record_ended;        /* its recording was ended by the user, or by itself: not started again unasked */
   guint remove_id;              /* an ended call stays a moment */
 } Call;
 
@@ -101,11 +106,18 @@ struct _Calls {
   guint active_id;              /* the call the in-call vibrations count as active */
   gint64 active_connected;
   gboolean active_was_outgoing;
+
+  CallRecorder *recorder;
+  CallAudioUcm ucm;             /* what the sound card can do with a call's audio, read as the first call comes */
+  char *announcement;           /* "This call is now being recorded", in the user's language; NULL without it */
+  guint recording_call;         /* the call being recorded, 0 for none */
+  gint64 recording_since;       /* Unix ms */
 };
 
 static void sync_calls (Calls *self);
 static void track_call (Calls *self, Call *call);
 static void resume_answer (Calls *self);
+static void probe_ucm (Calls *self);
 
 /* --- the calls */
 
@@ -156,6 +168,9 @@ new_call (Calls *self, CallDirection direction, const char *number)
   call->state = CALL_STATE_CONNECTING;
   call->created = g_get_real_time () / 1000;
   call->cancellable = g_cancellable_new ();
+  /* the sound card's UCM read again with the first call, before the call audio changes the card's profile */
+  if (self->calls->len == 0)
+    probe_ucm (self);
   g_ptr_array_add (self->calls, call);
   return call;
 }
@@ -282,6 +297,129 @@ sync_call_audio (Calls *self)
       /* the next call starts on the earpiece, unmuted (CallAudio puts both back as it leaves call mode) */
       self->muted = FALSE;
       self->speaker = FALSE;
+    }
+}
+
+/* --- recording a call (call-recorder.h), one at a time */
+
+/* what the sound card can do with a call's audio; for the tests (tests/test-calls.py), VIBEOS_DIALER_UCM_CARD names
+ * a configuration for no card in ALSA_CONFIG_UCM2's conf.virt.d */
+static void
+probe_ucm (Calls *self)
+{
+  const char *card = g_getenv ("VIBEOS_DIALER_UCM_CARD");
+
+  call_audio_ucm_clear (&self->ucm);
+  if (card && *card)
+    call_audio_ucm_probe_card (card, &self->ucm);
+  else
+    call_audio_ucm_probe (&self->ucm);
+}
+
+gboolean
+calls_get_can_record (Calls *self)
+{
+  if (!self->ucm.capture_pcm)
+    return FALSE;
+  if (!g_settings_get_boolean (self->settings, "announce-recording"))
+    return TRUE;
+  return self->ucm.playback_pcm && self->announcement;
+}
+
+/* who the recording's file is named after: the contact, else the number ("" for a withheld one) */
+static char *
+recording_party (Calls *self, const Call *call)
+{
+  const char *country = calls_get_country (self);
+  const Contact *contact = *call->number ? contacts_lookup (self->contacts, call->number, *country ? country : NULL)
+                                         : NULL;
+
+  if (contact && contact->name && *contact->name)
+    return g_strdup (contact->name);
+  return g_strdup (call->presentation == PRESENTATION_ALLOWED ? call->number : NULL);
+}
+
+static gboolean
+start_recording (Calls *self, Call *call, GError **error)
+{
+  g_autoptr(GDateTime) now = g_date_time_new_now_local ();
+  g_autofree char *party = recording_party (self, call);
+  g_autofree char *folder = call_recording_folder (self->settings);
+  g_autofree char *name = call_recording_file_name (party, now);
+  g_autofree char *path = g_build_filename (folder, name, NULL);
+  gboolean announce = g_settings_get_boolean (self->settings, "announce-recording");
+  g_autoptr(GError) why = NULL;
+
+  if (!calls_get_can_record (self)
+      || !call_recorder_start (self->recorder, path, call_audio_ucm_pcm_path (self->ucm.capture_pcm),
+                               announce ? call_audio_ucm_pcm_path (self->ucm.playback_pcm) : NULL,
+                               announce ? self->announcement : NULL, &why))
+    {
+      g_warning ("calls: call %u not recorded: %s", call->id, why ? why->message : "this phone cannot record it");
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, _("Failed to start call recording"));
+      return FALSE;
+    }
+  g_message ("calls: call %u recorded%s", call->id, announce ? ", announced" : "");
+  self->recording_call = call->id;
+  self->recording_since = g_date_time_to_unix (now) * 1000 + g_date_time_get_microsecond (now) / 1000;
+  return TRUE;
+}
+
+static void
+stop_recording (Calls *self)
+{
+  if (!self->recording_call)
+    return;
+  call_recorder_stop (self->recorder);
+  g_message ("calls: call %u no longer recorded", self->recording_call);
+  self->recording_call = 0;
+  self->recording_since = 0;
+}
+
+/* the recorder ended a recording by itself: failed to start, or its audio went */
+static void
+on_recorder_stopped (gboolean failed, gpointer data)
+{
+  Calls *self = data;
+  Call *call = find_call (self, self->recording_call);
+  guint id = self->recording_call;
+
+  if (call)
+    call->record_ended = TRUE;
+  self->recording_call = 0;
+  self->recording_since = 0;
+  if (failed)
+    self->callbacks.recording_failed (id, _("Failed to start call recording"), self->data);
+  self->callbacks.changed (self->data);
+}
+
+/* a recording lasts while its call is up: held or ended, the recording ends (as LineageOS's does). With "Record
+ * every call" on, a call is recorded as it comes up, unless the user ended its recording */
+static void
+sync_recording (Calls *self)
+{
+  Call *recorded = self->recording_call ? find_call (self, self->recording_call) : NULL;
+  gboolean every = g_settings_get_boolean (self->settings, "record-calls");
+
+  if (self->recording_call && (!recorded || recorded->state != CALL_STATE_ACTIVE))
+    stop_recording (self);
+  for (guint i = 0; i < self->calls->len; i++)
+    {
+      Call *call = self->calls->pdata[i];
+
+      if (call->state != CALL_STATE_ACTIVE)
+        {
+          call->up_seen = FALSE;
+          continue;
+        }
+      if (call->up_seen)
+        continue;
+      call->up_seen = TRUE;
+      if (every && !self->recording_call && !call->record_ended && !start_recording (self, call, NULL))
+        {
+          call->record_ended = TRUE;
+          self->callbacks.recording_failed (call->id, _("Failed to start call recording"), self->data);
+        }
     }
 }
 
@@ -453,6 +591,7 @@ sync_calls (Calls *self)
     }
   resume_answer (self);
   sync_ringer (self);
+  sync_recording (self);
   sync_call_audio (self);
   sync_vibrations (self);
   sync_notification (self);
@@ -1280,6 +1419,43 @@ calls_continue_post_dial (Calls *self, guint id, gboolean proceed, GError **erro
   return TRUE;
 }
 
+static void
+on_announce_changed (Calls *self)
+{
+  self->callbacks.changed (self->data);
+}
+
+gboolean
+calls_set_recording (Calls *self, guint id, gboolean recording, GError **error)
+{
+  Call *call = live_call (self, id, error);
+
+  if (!call)
+    return FALSE;
+  if (!recording)
+    {
+      if (self->recording_call == id)
+        {
+          call->record_ended = TRUE;
+          stop_recording (self);
+          self->callbacks.changed (self->data);
+        }
+      return TRUE;
+    }
+  if (self->recording_call == id)
+    return TRUE;
+  if (call->state != CALL_STATE_ACTIVE)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, _("Failed to start call recording"));
+      return FALSE;
+    }
+  stop_recording (self);
+  if (!start_recording (self, call, error))
+    return FALSE;
+  self->callbacks.changed (self->data);
+  return TRUE;
+}
+
 void
 calls_set_muted (Calls *self, gboolean muted)
 {
@@ -1419,6 +1595,8 @@ calls_get_calls (Calls *self)
       g_variant_builder_add (&dict, "{sv}", "created", g_variant_new_int64 (call->created));
       g_variant_builder_add (&dict, "{sv}", "connected", g_variant_new_int64 (call->connected));
       g_variant_builder_add (&dict, "{sv}", "multiparty", g_variant_new_boolean (call->multiparty));
+      g_variant_builder_add (&dict, "{sv}", "recording",
+                             g_variant_new_int64 (call->id == self->recording_call ? self->recording_since : 0));
       g_variant_builder_add (&dict, "{sv}", "post-dial-wait",
                              g_variant_new_string (call->post_dial_waiting ? call->post_dial + call->post_dial_at
                                                                            : ""));
@@ -1587,6 +1765,15 @@ calls_new (GDBusConnection *session, GDBusConnection *system, GSettings *setting
   g_signal_connect (self->contacts, "changed", G_CALLBACK (on_contacts_changed), self);
   /* the missed calls' notifications wait for the contacts, to say who called */
   g_signal_connect (self->contacts, "changed", G_CALLBACK (on_contacts_loaded), self);
+  self->recorder = call_recorder_new (on_recorder_stopped, self);
+  /* for the tests: GStreamer elements in place of the sound server's source and sink */
+  if (g_getenv ("VIBEOS_DIALER_RECORD_SOURCE"))
+    call_recorder_set_test_elements (self->recorder, g_getenv ("VIBEOS_DIALER_RECORD_SOURCE"),
+                                     g_getenv ("VIBEOS_DIALER_RECORD_SINK"));
+  self->announcement = call_recorder_announcement ();
+  probe_ucm (self);
+  /* CanRecord follows Announce recording */
+  g_signal_connect_swapped (settings, "changed::announce-recording", G_CALLBACK (on_announce_changed), self);
   self->modem = modem_new (system, &modem_callbacks, self);
   return self;
 }
@@ -1595,6 +1782,10 @@ void
 calls_free (Calls *self)
 {
   g_clear_handle_id (&self->vibrate_45_id, g_source_remove);
+  g_signal_handlers_disconnect_by_data (self->settings, self);
+  call_recorder_free (self->recorder);
+  call_audio_ucm_clear (&self->ucm);
+  g_free (self->announcement);
   g_ptr_array_unref (self->calls);
   g_ptr_array_unref (self->deferred);
   modem_free (self->modem);

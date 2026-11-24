@@ -44,6 +44,7 @@ Build-Depends: debhelper-compat (= 13),
                libarchive-dev,
                libgcr-4-dev,
                libpulse-dev,
+               libasound2-dev,
                libwebkitgtk-6.0-dev (>= 2.46),
                libsoup-3.0-dev,
                libgnutls28-dev (>= 3.8.2),
@@ -57,6 +58,7 @@ Build-Depends: debhelper-compat (= 13),
                lua5.4 <!nocheck>,
                python3-gi <!nocheck>,
                gir1.2-glib-2.0 <!nocheck>,
+               gstreamer1.0-plugins-base <!nocheck>,
                tzdata <!nocheck>,
 Standards-Version: 4.7.2
 Rules-Requires-Root: no
@@ -462,6 +464,7 @@ Recommends: modemmanager,
             feedbackd,
             evolution-data-server,
             gstreamer1.0-plugins-good,
+            gstreamer1.0-pulseaudio,
 Description: Phone app for VibeOS
  The LineageOS Dialer rebuilt in GTK 4: favorites, recents and contacts, the
  dialpad, the call log, blocked numbers, and the in-call and incoming-call

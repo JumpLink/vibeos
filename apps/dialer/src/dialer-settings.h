@@ -1,8 +1,9 @@
 /* Settings: the Phone's settings on a screen of its own, over the main one.
  *
  * The top list has what this phone can back: Display options (how contacts are sorted and their names written),
- * Sounds and vibration (the ringtone, vibrating for calls, the keypad tones and the in-call vibrations) and Blocked
- * numbers (the numbers whose calls are turned away, and adding one). The Dialer's other rows open other apps' pages
+ * Sounds and vibration (the ringtone, vibrating for calls, the keypad tones and the in-call vibrations), Call
+ * recording (recording every call, announcing it, and the folder the recordings go into) and Blocked numbers (the
+ * numbers whose calls are turned away, and adding one). The Dialer's other rows open other apps' pages
  * or need what the phone does not have yet, and are left out: Quick responses (no text messages yet), Phone number
  * lookup (no lookup providers), Calling accounts, Voicemail and Accessibility (TTY): see the comment in
  * dialer-settings.c.

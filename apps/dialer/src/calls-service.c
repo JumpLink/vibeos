@@ -34,6 +34,9 @@ static const char introspection[] =
   "    <property name='Country' type='s' access='read'/>"
   /* the missed calls not yet seen: the Recents tab's badge */
   "    <property name='MissedCount' type='u' access='read'/>"
+  /* a call can be recorded here: the sound card has the call's capture, and the announcement, when it is on, can
+   * be played to the other side (calls.h, calls_get_can_record) */
+  "    <property name='CanRecord' type='b' access='read'/>"
   "    <method name='Dial'><arg name='number' type='s' direction='in'/>"
   "      <arg name='id' type='u' direction='out'/></method>"
   "    <method name='Answer'><arg name='id' type='u' direction='in'/></method>"
@@ -49,6 +52,9 @@ static const char introspection[] =
   "      <arg name='proceed' type='b' direction='in'/></method>"
   "    <method name='SetMuted'><arg name='muted' type='b' direction='in'/></method>"
   "    <method name='SetSpeaker'><arg name='speaker' type='b' direction='in'/></method>"
+  /* the in-call screen's Record button: this call recorded from now on, or no longer (its "recording" key) */
+  "    <method name='SetRecording'><arg name='id' type='u' direction='in'/>"
+  "      <arg name='recording' type='b' direction='in'/></method>"
   "    <method name='SilenceRinger'/>"
   /* Settings' ringtone picker: a ringtone (its URI, or 'default') played once; '' stops it */
   "    <method name='PreviewRingtone'><arg name='uri' type='s' direction='in'/></method>"
@@ -69,6 +75,9 @@ static const char introspection[] =
   /* these calls are seen: a missed call's row opened in Recents */
   "    <method name='MarkCallsRead'><arg name='ids' type='ax' direction='in'/></method>"
   "    <signal name='CallLogChanged'/>"
+  /* a call's recording did not start after all (no audio from the call, the file not written, the announcement
+   * not played): what to show the user */
+  "    <signal name='RecordingFailed'><arg name='id' type='u'/><arg name='message' type='s'/></signal>"
   "  </interface>"
   "</node>";
 
@@ -110,6 +119,8 @@ get_property (GDBusConnection *bus, const char *sender, const char *path, const 
     return g_variant_new_string (calls_get_country (self->calls));
   if (g_str_equal (property, "MissedCount"))
     return g_variant_new_uint32 (call_log_count_new_missed (self->log));
+  if (g_str_equal (property, "CanRecord"))
+    return g_variant_new_boolean (calls_get_can_record (self->calls));
   return NULL;
 }
 
@@ -118,7 +129,7 @@ static void
 emit_properties (Service *self)
 {
   static const char * const names[] = { "Calls", "Muted", "Speaker", "Status", "Features", "Country",
-                                        "MissedCount", NULL };
+                                        "MissedCount", "CanRecord", NULL };
   GVariantBuilder changed;
 
   if (!self->registration)
@@ -136,6 +147,16 @@ static void
 on_calls_changed (gpointer data)
 {
   emit_properties (data);
+}
+
+static void
+on_recording_failed (guint id, const char *message, gpointer data)
+{
+  Service *self = data;
+
+  if (self->registration)
+    g_dbus_connection_emit_signal (self->session, NULL, CALLS_PATH, CALLS_INTERFACE, "RecordingFailed",
+                                   g_variant_new ("(us)", id, message), NULL);
 }
 
 static void
@@ -247,6 +268,11 @@ on_method_call (GDBusConnection *bus, const char *sender, const char *path, cons
     {
       g_variant_get (parameters, "(b)", &flag);
       calls_set_speaker (self->calls, flag);
+    }
+  else if (g_str_equal (method, "SetRecording"))
+    {
+      g_variant_get (parameters, "(ub)", &id, &flag);
+      done = calls_set_recording (self->calls, id, flag, &error);
     }
   else if (g_str_equal (method, "SilenceRinger"))
     calls_silence_ringer (self->calls);
@@ -403,7 +429,8 @@ system_bus (GError **error)
 int
 main (int argc, char **argv)
 {
-  static const CallsCallbacks callbacks = { .changed = on_calls_changed, .log_changed = on_log_changed };
+  static const CallsCallbacks callbacks = { .changed = on_calls_changed, .log_changed = on_log_changed,
+                                            .recording_failed = on_recording_failed };
   Service service = { 0 };
   g_autoptr(GError) error = NULL;
   g_autoptr(GDBusNodeInfo) node = NULL;
