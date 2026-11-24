@@ -22,11 +22,11 @@ msgstr "Calculadora"
 
 #: data/vibeos.Calculator.desktop.in
 msgid "Exact arithmetic, with its history"
-msgstr ""
+msgstr "Aritmética exacta, con su historial"
 
 #: data/vibeos.Calculator.desktop.in
 msgid "Calculator;Math;Arithmetic;"
-msgstr ""
+msgstr "Calculadora;Matemáticas;Aritmética;"
 
 # android: Framework action_menu_overflow_description (short)
 #: src/calc-display.c src/calc-history.c
@@ -60,8 +60,8 @@ msgstr[1] "Hace %d días"
 #, c-format
 msgid "In %d day"
 msgid_plural "In %d days"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Dentro de %d día"
+msgstr[1] "Dentro de %d días"
 
 # android: ExactCalculator no_history
 #: src/calc-history.c
@@ -79,10 +79,9 @@ msgstr "Historial"
 msgid "Back"
 msgstr "Atrás"
 
-# android: ExactCalculator menu_licenses (several translations)
 #: src/calc-licenses.c src/calc-window.c
 msgid "Open source licenses"
-msgstr "Lic. soft. libre"
+msgstr "Licencias de código abierto"
 
 # android: ExactCalculator dismiss (several translations, short)
 #: src/calc-window.c
@@ -162,10 +161,15 @@ msgid ""
 "Graphics, Inc., 2001-2004 Hewlett-Packard Development Company, L.P., under "
 "its own permissive licence (Open source licenses in the ⋮ menu)."
 msgstr ""
+"La aritmética real exacta son los reales constructivos de Hans-J. Boehm "
+"(com.hp.creals, los mismos que usa la Calculadora de Android): copyright "
+"1999 Silicon Graphics, Inc., 2001-2004 Hewlett-Packard Development Company, "
+"L.P., con su propia licencia permisiva (Licencias de código abierto, en el "
+"menú ⋮)."
 
 #: src/calc-window.c
 msgid "About"
-msgstr ""
+msgstr "Información"
 
 # android: ExactCalculator desc_del
 #: src/calc-window.c

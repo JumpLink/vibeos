@@ -23,11 +23,11 @@ msgstr "Калькулятор"
 
 #: data/vibeos.Calculator.desktop.in
 msgid "Exact arithmetic, with its history"
-msgstr ""
+msgstr "Точные вычисления с историей"
 
 #: data/vibeos.Calculator.desktop.in
 msgid "Calculator;Math;Arithmetic;"
-msgstr ""
+msgstr "Калькулятор;Математика;Арифметика;"
 
 # android: Framework action_menu_overflow_description (several translations, short)
 #: src/calc-display.c src/calc-history.c
@@ -62,9 +62,9 @@ msgstr[2] "%d дней назад"
 #, c-format
 msgid "In %d day"
 msgid_plural "In %d days"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "Через %d день"
+msgstr[1] "Через %d дня"
+msgstr[2] "Через %d дней"
 
 # android: ExactCalculator no_history
 #: src/calc-history.c
@@ -165,30 +165,33 @@ msgid ""
 "Graphics, Inc., 2001-2004 Hewlett-Packard Development Company, L.P., under "
 "its own permissive licence (Open source licenses in the ⋮ menu)."
 msgstr ""
+"Точная арифметика с вещественными числами основана на библиотеке "
+"constructive reals Ханса-Й. Бёма (com.hp.creals, как и в калькуляторе "
+"Android): copyright 1999 Silicon Graphics, Inc., 2001–2004 Hewlett-Packard "
+"Development Company, L.P., по собственной разрешительной лицензии (Лицензии "
+"открытого ПО в меню ⋮)."
 
 #: src/calc-window.c
 msgid "About"
-msgstr ""
+msgstr "О приложении"
 
 # android: ExactCalculator desc_del
 #: src/calc-window.c
 msgid "delete"
 msgstr "удалить"
 
-# android: ExactCalculator error_syntax
 #: src/evaluator.c
 msgid "Bad expression"
-msgstr "Неправ. выраж-е"
+msgstr "Ошибка в выражении"
 
 # android: ExactCalculator error_zero_divide
 #: src/evaluator.c
 msgid "Can't divide by 0"
 msgstr "На 0 делить нельзя"
 
-# android: ExactCalculator error_overflow
 #: src/evaluator.c
 msgid "Infinite?"
-msgstr "Бесконечное число"
+msgstr "Бесконечность?"
 
 # android: ExactCalculator error_aborted
 #: src/evaluator.c
