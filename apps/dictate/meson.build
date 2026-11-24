@@ -128,7 +128,8 @@ test('access', executable('test-access', 'tests/test-access.c', 'src/dictate-acc
      depends: schemas, env: ['GSETTINGS_SCHEMA_DIR=' + meson.current_build_dir(), 'GSETTINGS_BACKEND=memory'])
 
 # a switch that is off takes its area's tools away from the model, and a call to one anyway is refused
-test('tools', executable('test-tools', 'tests/test-tools.c', 'src/dictate-access.c', tools_sources,
+test('tools', executable('test-tools', 'tests/test-tools.c', 'src/dictate-access.c', 'src/dictate-device.c',
+                         tools_sources,
                          include_directories: 'src', c_args: '-DGETTEXT_PACKAGE="vibeos-dictate"',
                          dependencies: [dependency('gio-2.0')] + tools_deps))
 

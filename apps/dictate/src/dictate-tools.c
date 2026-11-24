@@ -222,6 +222,7 @@ static const struct {
   { "set_wifi_bluetooth", DICTATE_RISK_ACTIONS },
   { "set_phone_switch", DICTATE_RISK_ACTIONS },
   { "request_access", DICTATE_RISK_EVERYDAY },  /* only shows a button */
+  { "web_search", DICTATE_RISK_EVERYDAY },
   { "undo_last_action", DICTATE_RISK_ACTIONS },
 };
 

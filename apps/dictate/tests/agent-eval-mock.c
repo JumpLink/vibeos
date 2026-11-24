@@ -18,6 +18,7 @@
 #include <libebook/libebook.h>
 #include <time.h>
 #include <libecal/libecal.h>
+#include <libsoup/soup.h>
 #include <signal.h>
 #include <sqlite3.h>
 #include <string.h>
@@ -490,6 +491,85 @@ days_of (JsonArray *days)
   return bits;
 }
 
+/* VibeOS's web search (POST {"query", "language", "count"}), stood in for: the fixtures' "web" maps search words to
+ * results ({"Pergamon museum": [{"title", "snippet", "site", "url"}]}); a query holding all of an entry's words gets
+ * its results, any other nothing */
+static void
+on_search (SoupServer *server, SoupServerMessage *msg, const char *path, GHashTable *query, gpointer data)
+{
+  SoupMessageBody *request = soup_server_message_get_request_body (msg);
+  g_autoptr (GBytes) bytes = soup_message_body_flatten (request);
+  g_autoptr (JsonParser) parser = json_parser_new ();
+  g_autoptr (JsonBuilder) b = json_builder_new ();
+  g_autoptr (JsonNode) root = NULL;
+  g_autofree char *said = NULL, *body = NULL;
+  JsonObject *web = member_object (fixture, "web");
+  JsonArray *found = NULL;
+
+  if (strcmp (soup_server_message_get_method (msg), "POST")
+      || !json_parser_load_from_data (parser, g_bytes_get_data (bytes, NULL), g_bytes_get_size (bytes), NULL)
+      || !JSON_NODE_HOLDS_OBJECT (json_parser_get_root (parser)))
+    {
+      soup_server_message_set_status (msg, 422, NULL);
+      return;
+    }
+  said = g_utf8_strdown (member_string (json_node_get_object (json_parser_get_root (parser)), "query", ""), -1);
+  if (web)
+    {
+      g_autoptr (GList) keys = json_object_get_members (web);
+
+      for (GList *l = keys; l && !found; l = l->next)
+        {
+          g_autofree char *low = g_utf8_strdown (l->data, -1);
+          g_auto (GStrv) words = g_strsplit (low, " ", -1);
+          gboolean all = TRUE;
+
+          for (guint i = 0; words[i] && all; i++)
+            all = !*words[i] || strstr (said, words[i]) != NULL;
+          if (all)
+            found = member_array (web, l->data);
+        }
+    }
+  json_builder_begin_object (b);
+  json_builder_set_member_name (b, "data");
+  json_builder_begin_object (b);
+  json_builder_set_member_name (b, "results");
+  if (found)
+    json_builder_add_value (b, json_node_init_array (json_node_alloc (), found));
+  else
+    {
+      json_builder_begin_array (b);
+      json_builder_end_array (b);
+    }
+  json_builder_set_member_name (b, "answer");
+  json_builder_add_null_value (b);
+  json_builder_end_object (b);
+  json_builder_end_object (b);
+  root = json_builder_get_root (b);
+  body = json_to_string (root, FALSE);
+  soup_server_message_set_status (msg, 200, NULL);
+  soup_server_message_set_response (msg, "application/json", SOUP_MEMORY_COPY, body, strlen (body));
+}
+
+/* the search on the main loop, for the run: its address is the tools' (DICTATE_SEARCH_URL) */
+static void
+search_start (void)
+{
+  SoupServer *server = soup_server_new (NULL, NULL);
+  g_autoptr (GError) error = NULL;
+  GSList *uris;
+  g_autofree char *url = NULL;
+
+  soup_server_add_handler (server, "/v1/search", on_search, NULL, NULL);
+  if (!soup_server_listen_local (server, 0, SOUP_SERVER_LISTEN_IPV4_ONLY, &error))
+    g_error ("mock: no web search: %s", error->message);
+  uris = soup_server_get_uris (server);
+  url = g_strdup_printf ("http://127.0.0.1:%d/v1/search", g_uri_get_port (uris->data));
+  g_slist_free_full (uris, (GDestroyNotify) g_uri_unref);
+  g_setenv ("DICTATE_SEARCH_URL", url, TRUE);
+  /* it serves for the rest of the run */
+}
+
 void
 mock_services_start (void)
 {
@@ -526,6 +606,7 @@ mock_services_start (void)
   own (system, "org.freedesktop.ModemManager1");
   own (session, "vibeos.Clock.Alarms");
   own (session, "vibeos.Shell");
+  search_start ();
   /* both connections stay open for the rest of the run */
   g_object_ref (session);
   g_object_ref (system);

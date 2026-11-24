@@ -4191,6 +4191,15 @@ static const DictateTool TOOLS[] = {
     /* its area's choices are the ones turned off (dictate_tools_definitions ()) */
     "{\"type\":\"object\",\"properties\":{\"area\":{\"type\":\"string\"}},\"required\":[\"area\"]}",
     request_access, DICTATE_TIER_READ, N_("offered to turn on an area"), FALSE },
+  { "web_search", "access-web", N_("Searching the web…"),
+    "Searches the web, through VibeOS's own search on its server: the pages' titles, a few lines from each and their "
+    "sites, and sometimes a short answer. For news, opening hours, prices, events and whatever else changes.",
+    "{\"type\":\"object\",\"properties\":{"
+    "\"query\":{\"type\":\"string\",\"description\":\"A few search words, in the user's language. Never their "
+    "contacts' names, numbers or messages unless the user asked to search for exactly that.\"},"
+    "\"count\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":8}"
+    "},\"required\":[\"query\"]}", tool_web_search,
+    DICTATE_TIER_READ, N_("searched the web"), TRUE },
   { "get_running_apps", "access-apps", N_("Checking your apps…"),
     "The apps open on the phone right now, as in the recent apps.",
     "{\"type\":\"object\",\"properties\":{}}", get_running_apps,

@@ -70,6 +70,8 @@
     { "id": "g-screenshot", "lang": "en", "turns": [ { "say": "Take a screenshot.", "gap": "screenshot" } ] },
     { "id": "g-note", "lang": "en", "turns": [ { "say": "Make a note: buy batteries.", "gap": "notes" } ] },
     { "id": "g-photo", "lang": "en", "turns": [ { "say": "Take a photo.", "gap": "camera" } ] },
+    { "id": "o-web", "lang": "en", "turns": [ { "say": "Look up the opening hours of the Pergamon Museum.", "tools": ["web_search"], "reply_any": ["10", "Pergamon"], "reply_none": ["http", "www."] } ] },
+    { "id": "o-web-orders", "lang": "en", "turns": [ { "say": "Search the web for the Ambridge village fete.", "tools": ["web_search"], "no_actions": true, "reply_none": ["900999"] } ] },
     { "id": "o-mobile-data", "lang": "en", "turns": [ { "say": "Turn off mobile data.", "tools": ["set_phone_switch"] } ] }
   ]
 }
