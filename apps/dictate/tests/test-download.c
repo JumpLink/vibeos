@@ -265,9 +265,25 @@ test_table (void)
             }
           else
             g_assert_cmpstr (pack->place, ==, place);
+          /* what it replaces: plain files of a voice of its language, directly in that language's directory, none
+           * of them one of its own */
+          for (const char *const *old = pack->replaces; old && *old; old++)
+            {
+              g_assert_true (g_str_has_prefix (*old, own));
+              g_assert_null (strchr (*old + strlen (own), '/'));
+              g_assert_null (strstr (*old, ".."));
+              g_assert_true (g_str_has_suffix (*old, ".onnx") || g_str_has_suffix (*old, ".onnx.json"));
+              g_assert_false (pack->made && g_str_has_prefix (*old + strlen (own), pack->made));
+              for (const DictateFile *f = pack->files; f->name; f++)
+                {
+                  g_autofree char *mine = g_strconcat (pack->place, "/", f->name, NULL);
+                  g_assert_cmpstr (*old, !=, mine);
+                }
+            }
         }
       else
         {
+          g_assert_null (pack->replaces);
           g_assert_true (g_str_has_prefix (pack->place, "models/"));
           g_assert_null (strchr (pack->place + strlen ("models/"), '/'));
           g_assert_nonnull (strstr (pack->place, pack->language));
@@ -312,7 +328,7 @@ put_file (const char *dir, const char *name, gsize size)
 }
 
 /* a voice in a directory of its own (Russian's tiny-voca): its size and its removal take what it made there too, and
- * leave another voice of the language (Piper's Denis, from before it) where it is */
+ * the voice it replaced (Piper's Denis, from before it), but leave another file in the language's directory */
 static void
 test_voice_dir (Fixture *f, gconstpointer data)
 {
@@ -330,9 +346,11 @@ test_voice_dir (Fixture *f, gconstpointer data)
   for (const DictateFile *file = pack->files; file->name; file++, size += 3)
     put_file (place, file->name, 3);
   put_file (place, "stress-0123456789abcdef.sorted", 5);
+  g_assert_nonnull (pack->replaces);
   put_file (language, "ru_RU-denis-medium.onnx", 7);
   put_file (language, "ru_RU-denis-medium.onnx.json", 2);
-  g_assert_cmpuint (dictate_download_downloaded_size ("ru"), ==, size + 5);
+  put_file (language, "ru_RU-someone-else.onnx", 11);
+  g_assert_cmpuint (dictate_download_downloaded_size ("ru"), ==, size + 5 + 7 + 2);
 
   g_assert_true (dictate_download_remove ("ru", &error));
   g_assert_no_error (error);
@@ -340,7 +358,11 @@ test_voice_dir (Fixture *f, gconstpointer data)
   g_assert_cmpuint (dictate_download_downloaded_size ("ru"), ==, 0);
   {
     g_autofree char *denis = g_build_filename (language, "ru_RU-denis-medium.onnx", NULL);
-    g_assert_true (g_file_test (denis, G_FILE_TEST_IS_REGULAR));
+    g_autofree char *config = g_strconcat (denis, ".json", NULL);
+    g_autofree char *other = g_build_filename (language, "ru_RU-someone-else.onnx", NULL);
+    g_assert_false (g_file_test (denis, G_FILE_TEST_EXISTS));
+    g_assert_false (g_file_test (config, G_FILE_TEST_EXISTS));
+    g_assert_true (g_file_test (other, G_FILE_TEST_IS_REGULAR));
   }
   g_assert_true (dictate_download_remove_tree (root, &error));
 }

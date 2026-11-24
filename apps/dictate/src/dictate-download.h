@@ -48,6 +48,9 @@ typedef struct {
   const DictateFile *files;     /* up to one with a NULL name */
   const char *made;             /* a voice's: the start of the names of files the app makes from them there (a
                                  * sorted dictionary), which go when they go */
+  const char *const *replaces;  /* a voice's: the files of the one it replaces, under vibeos-dictate, as the app
+                                 * downloaded them ("voices/ru/ru_RU-denis-medium.onnx"); they go once it is in place,
+                                 * and are its own until then (its size, its removal) */
 } DictatePack;
 
 /* the pack for `language`'s speech model or voice; NULL if there is none to download */
@@ -100,7 +103,8 @@ gboolean  dictate_download_unpack      (const char *archive, const char *dir, co
 gboolean  dictate_download_remove_tree (const char *path, GError **error);
 
 /* what was downloaded for `language` and is in its place under the user's data directory (its model's directory, its
- * voice's files), in bytes; 0 when nothing (what the system has is not counted) */
+ * voice's files, and those of the voice it replaces while they are there), in bytes; 0 when nothing (what the system
+ * has is not counted) */
 guint64   dictate_download_downloaded_size (const char *language);
 /* takes that off the phone again, without following a link */
 gboolean  dictate_download_remove          (const char *language, GError **error);
