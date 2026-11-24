@@ -17,6 +17,7 @@ import * as Volume from 'resource:///org/gnome/shell/ui/status/volume.js';
 
 import {addEndMark} from './endmark.js';
 import {Canvas, hasIcon, paintIcon, VectorIcon} from './icons.js';
+import {_, DATE_SHORT, formatDate, N_, pgettext} from './l10n.js';
 import {animate, animateSpring, clamp, lerp, Spring} from './motion.js';
 import {Color, cogl, font, mix, rgba, setSource, SurfaceEffect, TabletShade} from './palette.js';
 import {openSettings} from './settings.js';
@@ -127,7 +128,7 @@ const MOBILE_ICONS = ['ic_signal_cellular_0_4_bar', 'ic_signal_cellular_1_4_bar'
 // where a spec has them.
 const TILES = [
     {
-        id: 'wifi', label: 'Wi-Fi', panel: 'wifi',
+        id: 'wifi', label: N_('Wi-Fi'), panel: 'wifi',
         icon: s => !s.wifi.enabled ? 'ic_signal_wifi_off'
             : s.wifi.connected ? `ic_wifi_${[0, 1, 2, 2, 3][s.wifi.level] ?? 0}` : 'ic_wifi_0',
         state: s => !s.wifi.available ? 'unavailable' : s.wifi.enabled ? 'active' : 'inactive',
@@ -135,7 +136,7 @@ const TILES = [
         toggle: s => s.setWifiEnabled(!s.wifi.enabled),
     },
     {
-        id: 'bluetooth', label: 'Bluetooth', panel: 'bluetooth',
+        id: 'bluetooth', label: N_('Bluetooth'), panel: 'bluetooth',
         icon: s => !s.bluetooth.powered ? 'qs_bluetooth_icon_off'
             : s.bluetooth.connected ? 'qs_bluetooth_icon_on' : 'qs_bluetooth_icon_disconnected',
         state: s => !s.bluetooth.available ? 'unavailable' : s.bluetooth.powered ? 'active' : 'inactive',
@@ -143,39 +144,40 @@ const TILES = [
         toggle: s => s.setBluetooth(!s.bluetooth.powered),
     },
     {
-        id: 'flashlight', label: 'Flashlight',
+        id: 'flashlight', label: N_('Flashlight'),
         icon: s => s.torch ? 'qs_flashlight_icon_on' : 'qs_flashlight_icon_off',
         state: s => s.torch === null ? 'unavailable' : s.torch ? 'active' : 'inactive',
         toggle: s => s.setTorch(!s.torch),
     },
     {
-        id: 'dnd', label: 'Do Not Disturb', panel: 'notifications',
+        id: 'dnd', label: N_('Do Not Disturb'), panel: 'notifications',
         icon: () => 'ic_qs_dnd_on',                 // the filled glyph in both states, as on the device
         state: s => s.dnd ? 'active' : 'inactive',
         // a phone's is Android's Modes tile, Do Not Disturb its one mode
-        phoneLabel: 'Modes',
-        phoneSecondary: s => s.dnd ? 'Do Not Disturb' : '',
+        phoneLabel: N_('Modes'),
+        phoneSecondary: s => s.dnd ? _('Do Not Disturb') : '',
         toggle: s => {
             s.dnd = !s.dnd;
         },
     },
     {
-        id: 'airplane', label: 'Airplane mode', panel: 'network',
+        id: 'airplane', label: N_('Airplane mode'), panel: 'network',
         icon: s => s.airplane ? 'qs_airplane_icon_on' : 'qs_airplane_icon_off',
         state: s => s.airplane ? 'active' : 'inactive',
         toggle: s => s.setAirplane(!s.airplane),
     },
     {
-        id: 'mobile', label: 'Mobile data', panel: 'wwan',
+        id: 'mobile', label: N_('Mobile data'), panel: 'wwan',
         icon: s => !s.mobile.present ? 'ic_qs_no_sim'
             : s.mobile.dataEnabled ? MOBILE_ICONS[s.mobile.level] ?? MOBILE_ICONS[0] : 'ic_signal_mobile_data_off',
         state: s => !s.mobile.present || s.airplane ? 'unavailable' : s.mobile.dataEnabled ? 'active' : 'inactive',
-        secondary: s => !s.mobile.present ? 'No SIM' : s.mobile.dataEnabled ? s.mobile.operator || 'On' : 'Off',
-        phoneSecondary: s => !s.mobile.present ? 'No SIM' : s.mobile.dataEnabled ? s.mobile.operator : '',
+        secondary: s => !s.mobile.present ? _('No SIM')
+            : s.mobile.dataEnabled ? s.mobile.operator || pgettext('mobile data', 'On') : pgettext('mobile data', 'Off'),
+        phoneSecondary: s => !s.mobile.present ? _('No SIM') : s.mobile.dataEnabled ? s.mobile.operator : '',
         toggle: s => s.setMobileData(!s.mobile.dataEnabled),
     },
     {
-        id: 'rotation', label: 'Auto-rotate', panel: 'display',
+        id: 'rotation', label: N_('Auto-rotate'), panel: 'display',
         icon: s => s.autoRotate ? 'qs_auto_rotate_icon_on' : 'qs_auto_rotate_icon_off',
         state: s => s.autoRotate ? 'active' : 'inactive',
         toggle: s => {
@@ -183,7 +185,7 @@ const TILES = [
         },
     },
     {
-        id: 'location', label: 'Location', panel: 'location',
+        id: 'location', label: N_('Location'), panel: 'location',
         icon: s => s.location ? 'qs_location_icon_on' : 'qs_location_icon_off',
         state: s => s.location ? 'active' : 'inactive',
         toggle: s => {
@@ -191,7 +193,7 @@ const TILES = [
         },
     },
     {
-        id: 'dark', label: 'Dark theme', panel: 'display',
+        id: 'dark', label: N_('Dark theme'), panel: 'display',
         icon: s => s.darkMode ? 'qs_light_dark_theme_icon_on' : 'qs_light_dark_theme_icon_off',
         state: s => s.darkMode ? 'active' : 'inactive',
         toggle: s => {
@@ -199,13 +201,13 @@ const TILES = [
         },
     },
     {
-        id: 'saver', label: 'Battery Saver', panel: 'power',
+        id: 'saver', label: N_('Battery Saver'), panel: 'power',
         icon: s => s.powerSave ? 'qs_battery_saver_icon_on' : 'qs_battery_saver_icon_off',
         state: s => s.powerSave === null ? 'unavailable' : s.powerSave ? 'active' : 'inactive',
         toggle: s => s.setPowerSave(!s.powerSave),
     },
     {
-        id: 'nightlight', label: 'Night Light', panel: 'night-light',
+        id: 'nightlight', label: N_('Night Light'), panel: 'night-light',
         icon: s => s.nightLight ? 'qs_nightlight_icon_on' : 'qs_nightlight_icon_off',
         state: s => s.nightLight ? 'active' : 'inactive',
         toggle: s => {
@@ -249,7 +251,7 @@ class Tile extends St.Button {
         this._w = w;
         this.wide = kind !== 'small';
         this._phone = kind !== 'tablet';
-        const label = this._phone ? spec.phoneLabel ?? spec.label : spec.label;
+        const label = _(this._phone ? spec.phoneLabel ?? spec.label : spec.label);
         this._secondaryText = (this._phone ? spec.phoneSecondary : null) ?? spec.secondary;
         this.accessible_name = label;
         if (kind === 'tablet')
@@ -648,7 +650,7 @@ function brightnessSlider(state, shade) {
         },
         icon: v => v <= 0.2 ? 'ic_brightness_low' : v >= 0.8 ? 'ic_brightness_full' : 'ic_brightness_medium',
         button: {
-            name: 'Adaptive brightness',
+            name: _('Adaptive brightness'),
             icons: ['ic_qs_brightness_auto_off', 'ic_qs_brightness_auto_on'],
             on: () => state.autoBrightness,
             toggle: () => {
@@ -686,7 +688,7 @@ function volumeSlider() {
         },
         icon: v => v <= 0 ? 'ic_volume_media_mute' : 'ic_volume_media',
         button: {
-            name: 'Mute',
+            name: pgettext('media volume', 'Mute'),
             icons: ['ic_volume_media', 'ic_volume_media_mute'],
             on: () => !!stream?.is_muted,
             toggle: () => stream?.change_is_muted(!stream.is_muted),
@@ -887,7 +889,7 @@ class ShadeHeader extends St.Widget {
             this._clock.text = time;
             this._bigClock.text = time;
         }
-        this._date.text = now.format('%a, %b %-d');
+        this._date.text = formatDate(now, DATE_SHORT);
         this._clockInk = inkBox(this._clock);
         this._bigInk = inkBox(this._bigClock);
         this._dateInk = inkBox(this._date);
@@ -896,7 +898,7 @@ class ShadeHeader extends St.Widget {
 
     _syncCarrier() {
         const {mobile} = this._state;
-        const text = mobile.present ? mobile.operator || '' : 'No SIM';
+        const text = mobile.present ? mobile.operator || '' : _('No SIM');
         if (this._carrier.text !== text) {
             this._carrier.text = text;
             this._carrierInk = inkBox(this._carrier);
@@ -1071,13 +1073,13 @@ class QSPanel extends St.Widget {
 
         this._footer = new St.Widget({width: px(SCREEN_W), height: px(FOOTER_BUTTON)});
         const settings = new FooterButton('ic_qs_footer_settings', SurfaceEffect[1], Color.onSurface, 0,
-            'Settings');
+            _('Settings'));
         settings.connect('clicked', () => {
             shade.close?.();
             openSettings();
         });
         const power = new FooterButton('ic_qs_footer_power', [Color.primary, 1], Color.onPrimary, 0,
-            'Power menu');
+            _('Power menu'));
         power.connect('clicked', () => {
             shade.close?.();
             SystemActions.getDefault().activatePowerOff();

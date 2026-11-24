@@ -6,6 +6,7 @@
     "51"
   ],
   "url": "https://github.com/pulpoff/vibeos",
+  "gettext-domain": "vibeos-shell",
   "session-modes": [
     "user",
     "unlock-dialog"

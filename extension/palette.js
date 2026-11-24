@@ -126,7 +126,9 @@ export function setHighContrast(on) {
     return true;
 }
 
-const FAMILY = 'Google Sans Flex';
+// Google Sans Flex, and for the letters it has none of (Cyrillic) VibeOS Roboto, as Android's system UI falls back
+// to Roboto
+const FAMILY = 'Google Sans Flex, VibeOS Roboto';
 
 // A Pango font description for a Clutter.Text: size in sp, the variable axes set for rounded terminals
 export function font(sizeSp, wght, {wdth = 100, rond = 100, opsz = sizeSp} = {}) {

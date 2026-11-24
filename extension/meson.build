@@ -8,7 +8,7 @@ extdir = get_option('datadir') / 'gnome-shell' / 'extensions' / uuid
 bindir = get_option('prefix') / get_option('bindir')
 
 install_subdir('.', install_dir: extdir, strip_directory: true,
-  exclude_directories: ['tools', 'tests', '__pycache__'],
+  exclude_directories: ['tools', 'tests', 'po', '__pycache__'],
   exclude_files: ['meson.build', 'home.js', 'appmem.py'])
 
 # appmem.py runs as a program of its own (recents.js)
@@ -25,6 +25,12 @@ if gjs.found() and dbus_run_session.found()
   test('power-keys', find_program('tests/power-keys.sh'), args: [meson.current_source_dir()], timeout: 120)
 endif
 
+# the Bluetooth agent, trust after pairing and reconnection against a BlueZ stand-in (tests/bt-agent.sh); needs gjs and a
+# D-Bus daemon
+if gjs.found() and dbus_run_session.found()
+  test('bt-agent', find_program('tests/bt-agent.sh'), args: [meson.current_source_dir()], timeout: 120)
+endif
+
 # Home's rule and a window asking for attention, with GNOME Shell's stand-ins (tests/home-attention.sh); needs gjs
 if gjs.found()
   test('home-attention', find_program('tests/home-attention.sh'), args: [meson.current_source_dir()], timeout: 60)
@@ -38,3 +44,7 @@ if tsc.found()
   test('undefined-names', find_program('tests/undefined-names.sh'), args: [meson.current_source_dir(), tsc],
        timeout: 900)
 endif
+
+# the extension's words in the session's language: the vibeos-shell domain (metadata.json's gettext-domain, l10n.js)
+i18n = import('i18n')
+subdir('po')

@@ -16,6 +16,7 @@ import * as Volume from 'resource:///org/gnome/shell/ui/status/volume.js';
 import {raiseToTop} from './endmark.js';
 import {vibrate} from './haptics.js';
 import {Canvas, paintIcon, VectorIcon} from './icons.js';
+import {_, pgettext} from './l10n.js';
 import {animate, animateSpring, bezier, clamp, EMPHASIZED_DECELERATE, lerp, Spring} from './motion.js';
 import {Color, rgba, setSource} from './palette.js';
 import {openSettings} from './settings.js';
@@ -87,11 +88,12 @@ const ICON_IN_MS = 100;
 const ICON_IN_DELAY_MS = 33;
 const ICON_OUT_MS = 50;
 
-// feedbackd's profiles stand in for Android's ringer modes; index is the drawer slot from the bottom
+// feedbackd's profiles stand in for Android's ringer modes; index is the drawer slot from the bottom. The names are
+// translated where they are shown
 const RINGER_MODES = [
-    {profile: 'full', icon: 'ic_volume_ringer', name: 'Ring'},
-    {profile: 'silent', icon: 'ic_volume_ringer_mute', name: 'Mute'},
-    {profile: 'quiet', icon: 'ic_volume_ringer_vibrate', name: 'Vibrate'},
+    {profile: 'full', icon: 'ic_volume_ringer', name: () => pgettext('ringer mode', 'Ring')},
+    {profile: 'silent', icon: 'ic_volume_ringer_mute', name: () => pgettext('ringer mode', 'Mute')},
+    {profile: 'quiet', icon: 'ic_volume_ringer_vibrate', name: () => pgettext('ringer mode', 'Vibrate')},
 ];
 const FEEDBACKD_SCHEMA = 'org.sigxcpu.feedbackd';
 
@@ -158,7 +160,7 @@ class VolumeSlider extends Canvas {
         super({
             x: px(SLIDER_X), y: px(S), width: px(SLIDER_W), height: px(SLIDER_H),
             reactive: true,
-            accessible_name: 'Media volume',
+            accessible_name: _('Media volume'),
         });
         this._dialog = dialog;
         this.value = 0;                 // the fraction shown, 0..1
@@ -285,7 +287,7 @@ class VolumeDialog extends St.Widget {
             width: px(BUTTON), height: px(BUTTON),
             can_focus: true,
             button_mask: St.ButtonMask.PRIMARY,
-            accessible_name: 'Sound settings',
+            accessible_name: _('Sound settings'),
         });
         const dots = new Canvas({width: px(BUTTON), height: px(BUTTON)});
         dots.draw = cr => {
@@ -578,7 +580,7 @@ class VolumeDialog extends St.Widget {
                 x: px(PILL_X + (PILL_W - RINGER_SLOT) / 2),
                 can_focus: true,
                 button_mask: St.ButtonMask.PRIMARY,
-                accessible_name: mode.name,
+                accessible_name: mode.name(),
             });
             const box = new St.Widget({width: px(RINGER_SLOT), height: px(RINGER_SLOT)});
             const circle = new St.Widget({

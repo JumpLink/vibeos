@@ -16,6 +16,7 @@ import {BroadbandModem} from 'resource:///org/gnome/shell/misc/modemManager.js';
 import {getRfkillManager} from 'resource:///org/gnome/shell/ui/status/rfkill.js';
 
 import {Brightness} from './brightness.js';
+import {_, formatNumber, formatPercent} from './l10n.js';
 import {PrivacySwitches} from './privacy.js';
 import {setUserOrientationLock, userOrientationLock} from './rotation.js';
 
@@ -91,18 +92,23 @@ function readSysfs(path) {
     }
 }
 
-// what the lock screen and the AOD say after the percentage: AOSP's "Charging slowly" and "Charging", One UI's
-// "Fast charging", "Super fast charging" and "Wireless charging"; then, while the battery takes some, how much (the
-// owner asked, 11-08)
-export function chargingText(speed, amps = null) {
-    const text = {
-        slow: 'Charging slowly',
-        fast: 'Fast charging',
-        superfast: 'Super fast charging',
-        // i18n (vibeos-shell): this one, the three above and 'Charging' get _() once the extension has its domain
-        wireless: 'Wireless charging',
-    }[speed] ?? 'Charging';
-    return amps >= 0.05 ? `${text} • ${amps.toFixed(1)} A` : text;
+// what the lock screen and the AOD say while the battery charges: the percentage, then AOSP's "Charging slowly" and
+// "Charging", One UI's "Fast charging", "Super fast charging" and "Wireless charging", as one sentence a language can
+// order its own way; then, while the battery takes some, how much (the owner asked, 11-08)
+export function chargingText(level, speed, amps = null) {
+    const format = {
+        /* TRANSLATORS: the lock screen's charging line; %s is the battery's level ("75%") */
+        slow: _('%s • Charging slowly'),
+        /* TRANSLATORS: the lock screen's charging line; %s is the battery's level ("75%") */
+        fast: _('%s • Fast charging'),
+        /* TRANSLATORS: the lock screen's charging line; %s is the battery's level ("75%") */
+        superfast: _('%s • Super fast charging'),
+        /* TRANSLATORS: the lock screen's charging line; %s is the battery's level ("75%") */
+        wireless: _('%s • Wireless charging'),
+    }[speed] ?? /* TRANSLATORS: the lock screen's charging line; %s is the battery's level ("75%") */ _('%s • Charging');
+    const text = format.replace('%s', formatPercent(level));
+    /* TRANSLATORS: a current the battery charges at; %s is the number of amperes ("1.5") */
+    return amps >= 0.05 ? `${text} • ${_('%s A').replace('%s', formatNumber(amps, 1))}` : text;
 }
 
 // the current into the battery in A: its fuel gauge's current_now, positive while it charges (the S10e's max170xx),

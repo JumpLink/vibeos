@@ -1,0 +1,416 @@
+# Spanish translations of vibeos-shell.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-shell\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-24 20:44+0100\n"
+"PO-Revision-Date: 2026-11-24 19:46+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Spanish\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: bouncer.js
+msgid "Enter PIN"
+msgstr "Introduce el PIN"
+
+#: bouncer.js
+msgid "Wrong PIN. Try again."
+msgstr "PIN incorrecto. Inténtalo de nuevo."
+
+#: bouncer.js
+msgid "Too many attempts with incorrect PIN"
+msgstr "Demasiados intentos con un PIN incorrecto"
+
+#: bouncer.js
+msgid "PIN is required after device restarts"
+msgstr "Se necesita el PIN tras el reinicio"
+
+#: bouncer.js
+msgid "Draw pattern"
+msgstr "Dibuja el patrón"
+
+#: bouncer.js
+msgid "Wrong pattern. Try again."
+msgstr "Patrón incorrecto. Inténtalo de nuevo."
+
+#: bouncer.js
+msgid "Too many attempts with incorrect pattern"
+msgstr "Demasiados intentos con un patrón incorrecto"
+
+#: bouncer.js
+msgid "Pattern is required after device restarts"
+msgstr "Se necesita el patrón tras el reinicio"
+
+#: bouncer.js
+#, javascript-format
+msgid "Try again in %d second."
+msgid_plural "Try again in %d seconds."
+msgstr[0] "Vuelve a intentarlo en %d segundo."
+msgstr[1] "Vuelve a intentarlo en %d segundos."
+
+#. the mobile network, then (the owner's addition) the Wi-Fi network, joined with " | " as two SIMs' names
+#. are
+#: keyguard.js
+msgid "Emergency calls only"
+msgstr "Solo llamadas de emergencia"
+
+#: keyguard.js qs.js
+msgid "No SIM"
+msgstr "No hay ninguna SIM"
+
+#: keyguard.js
+msgid "Charged"
+msgstr "Cargado"
+
+#. PAM could not run: no attempt counted
+#: keyguard.js
+msgid "Could not check"
+msgstr "No se ha podido comprobar"
+
+#: keyguard.js
+msgid "Try again"
+msgstr "Inténtalo de nuevo"
+
+#. TRANSLATORS: an app that failed to start; %s is its name
+#: launch.js
+#, javascript-format
+msgid "%s can't open"
+msgstr "No se puede abrir %s"
+
+#: launch.js
+msgid "It's turned off on this phone"
+msgstr "La aplicación está desactivada en este teléfono"
+
+#. TRANSLATORS: how long ago a notification came, shortest: under a minute
+#: notifications.js
+msgid "now"
+msgstr "ahora"
+
+#. TRANSLATORS: how long ago a notification came, shortest: %d minutes
+#: notifications.js
+#, javascript-format
+msgid "%dm"
+msgstr "%dmin"
+
+#. TRANSLATORS: how long ago a notification came, shortest: %d hours
+#: notifications.js
+#, javascript-format
+msgid "%dh"
+msgstr "%dh"
+
+#. TRANSLATORS: how long ago a notification came, shortest: %d days
+#: notifications.js
+#, javascript-format
+msgid "%dd"
+msgstr "%d d"
+
+#. TRANSLATORS: how long ago a notification came, shortest: %d years
+#: notifications.js
+#, javascript-format
+msgid "%dy"
+msgstr "%da"
+
+#: notifications.js
+msgid "Expand"
+msgstr "Mostrar"
+
+#: notifications.js
+msgid "Collapse"
+msgstr "Ocultar"
+
+#. TRANSLATORS: the heading of the low-priority notifications in the shade
+#: notifications.js
+msgid "Silent"
+msgstr "Silenciadas"
+
+#: notifications.js
+msgid "Notification history"
+msgstr "Historial de notificaciones"
+
+#: notifications.js
+msgctxt "notifications"
+msgid "Clear all"
+msgstr "Borrar todo"
+
+#: notifications.js
+msgid "Notification settings"
+msgstr "Ajustes de notificaciones"
+
+#: notifications.js
+msgid "No notifications"
+msgstr "No hay notificaciones"
+
+#. TRANSLATORS: a Bluetooth device asks to connect to one of the phone's services; %s is its name
+#: pairdialog.js
+#, javascript-format
+msgid "Allow %s to connect?"
+msgstr "¿Permitir que %s se conecte?"
+
+# android: Settings bluetooth_pairing_request
+#. TRANSLATORS: a Bluetooth device asks to pair; %s is its name
+#: pairdialog.js
+#, javascript-format
+msgid "Pair with %s?"
+msgstr "¿Emparejar con %s?"
+
+# android: Settings bluetooth_pin_values_hint
+#: pairdialog.js
+msgid "Usually 0000 or 1234"
+msgstr "Normalmente: 0000 o 1234"
+
+# android: Settings bluetooth_enable_alphanumeric_pin
+#: pairdialog.js
+msgid "PIN contains letters or symbols"
+msgstr "El PIN contiene letras o símbolos"
+
+# android: Settings bluetooth_enter_pin_other_device
+#: pairdialog.js
+msgid "You may also need to type this PIN on the other device."
+msgstr "Es posible que tengas que introducir este PIN en el otro dispositivo."
+
+# android: SettingsLib bluetooth_pairing_decline
+#. authorize: a device pairing without a code
+#: pairdialog.js
+msgid "Cancel"
+msgstr "Cancelar"
+
+# android: SettingsLib bluetooth_pairing_accept
+#: pairdialog.js
+msgid "Pair"
+msgstr "Emparejar"
+
+#. TRANSLATORS: the passkey (six digits) to type here, as the other device shows it
+#: pairdialog.js
+msgid "Type the passkey shown on the other device."
+msgstr "Introduce la llave de acceso que aparece en el otro dispositivo."
+
+# android: Settings bluetooth_pairing_key_msg
+#: pairdialog.js
+msgid "Bluetooth pairing code"
+msgstr "Código de emparejamiento por Bluetooth"
+
+# android: Settings bluetooth_enter_passkey_msg, typed on the other device
+#. TRANSLATORS: over the code shown here, for a keyboard (the other device) to type
+#: pairdialog.js
+msgid "Type this code on the other device, then press Return or Enter."
+msgstr "Escribe este código en el otro dispositivo y, a continuación, pulsa la tecla Intro."
+
+# android: SystemUI usb_authorization_deny
+#: pairdialog.js
+msgid "Don't allow"
+msgstr "No permitir"
+
+# android: SystemUI usb_authorization_allow
+#: pairdialog.js
+msgid "Allow"
+msgstr "Permitir"
+
+#: pairdialog.js qs.js
+msgid "Bluetooth"
+msgstr "Bluetooth"
+
+#. TRANSLATORS: a Bluetooth device's question waits behind this notification while the phone is locked
+#: pairdialog.js
+msgid "Unlock the phone to answer."
+msgstr "Desbloquea el teléfono para responder."
+
+#: powermenu.js
+msgid "Lockdown"
+msgstr "Bloqueo de seguridad"
+
+#: powermenu.js
+msgid "Power off"
+msgstr "Apagar"
+
+#: powermenu.js
+msgid "Restart"
+msgstr "Reiniciar"
+
+#: qs.js
+msgid "Wi-Fi"
+msgstr "Wi-Fi"
+
+#: qs.js
+msgid "Flashlight"
+msgstr "Linterna"
+
+#: qs.js
+msgid "Do Not Disturb"
+msgstr "No molestar"
+
+#. a phone's is Android's Modes tile, Do Not Disturb its one mode
+#: qs.js
+msgid "Modes"
+msgstr "Modos"
+
+#: qs.js
+msgid "Airplane mode"
+msgstr "Modo Avión"
+
+#: qs.js
+msgid "Mobile data"
+msgstr "Datos móviles"
+
+#: qs.js
+msgctxt "mobile data"
+msgid "On"
+msgstr "Activados"
+
+#: qs.js
+msgctxt "mobile data"
+msgid "Off"
+msgstr "Desactivados"
+
+#: qs.js
+msgid "Auto-rotate"
+msgstr "Giro automático"
+
+#: qs.js
+msgid "Location"
+msgstr "Ubicación"
+
+#: qs.js
+msgid "Dark theme"
+msgstr "Tema oscuro"
+
+#: qs.js
+msgid "Battery Saver"
+msgstr "Ahorro de batería"
+
+#: qs.js
+msgid "Night Light"
+msgstr "Luz nocturna"
+
+#: qs.js
+msgid "Adaptive brightness"
+msgstr "Brillo adaptativo"
+
+#: qs.js
+msgctxt "media volume"
+msgid "Mute"
+msgstr "Silenciar"
+
+#: qs.js
+msgid "Settings"
+msgstr "Ajustes"
+
+#: qs.js
+msgid "Power menu"
+msgstr "Menú de encendido"
+
+#. TRANSLATORS: an amount of memory; %s is the number of gigabytes ("1.5")
+#: recents.js
+#, javascript-format
+msgid "%s GB"
+msgstr "%s GB"
+
+#. TRANSLATORS: an amount of memory; %s is the number of megabytes ("512")
+#: recents.js
+#, javascript-format
+msgid "%s MB"
+msgstr "%s MB"
+
+#: recents.js
+msgctxt "memory"
+msgid "Used"
+msgstr "Usada"
+
+#: recents.js
+msgctxt "memory"
+msgid "Cache"
+msgstr "Caché"
+
+#: recents.js
+msgctxt "memory"
+msgid "Free"
+msgstr "Libre"
+
+#: recents.js
+msgctxt "recent apps"
+msgid "Clear all"
+msgstr "Borrar todo"
+
+#: recents.js
+msgid "Screenshot"
+msgstr "Captura de pantalla"
+
+#: recents.js
+msgid "No recent items"
+msgstr "No hay nada reciente"
+
+#. the app's page in Settings, over the home screen (where back from it leads on Android)
+#. (info_24px: the newer App info icon, which the phone has)
+#: recents.js
+msgid "App info"
+msgstr "Datos de app"
+
+#. TRANSLATORS: in a recent app's menu: removes it from the recent apps
+#: recents.js
+msgctxt "recent apps"
+msgid "Clear"
+msgstr "Borrar"
+
+#. TRANSLATORS: the lock screen's charging line; %s is the battery's level ("75%")
+#: state.js
+#, javascript-format
+msgid "%s • Charging slowly"
+msgstr "%s • Cargando lentamente"
+
+#. TRANSLATORS: the lock screen's charging line; %s is the battery's level ("75%")
+#: state.js
+#, javascript-format
+msgid "%s • Fast charging"
+msgstr "%s • Carga rápida"
+
+#. TRANSLATORS: the lock screen's charging line; %s is the battery's level ("75%")
+#: state.js
+#, javascript-format
+msgid "%s • Super fast charging"
+msgstr "%s • Carga superrápida"
+
+#. TRANSLATORS: the lock screen's charging line; %s is the battery's level ("75%")
+#: state.js
+#, javascript-format
+msgid "%s • Wireless charging"
+msgstr "%s • Carga inalámbrica"
+
+#. TRANSLATORS: the lock screen's charging line; %s is the battery's level ("75%")
+#: state.js
+#, javascript-format
+msgid "%s • Charging"
+msgstr "%s • Cargando"
+
+#. TRANSLATORS: a current the battery charges at; %s is the number of amperes ("1.5")
+#: state.js
+#, javascript-format
+msgid "%s A"
+msgstr "%s A"
+
+#: volume.js
+msgctxt "ringer mode"
+msgid "Ring"
+msgstr "Hacer sonar"
+
+#: volume.js
+msgctxt "ringer mode"
+msgid "Mute"
+msgstr "Silenciar"
+
+#: volume.js
+msgctxt "ringer mode"
+msgid "Vibrate"
+msgstr "Vibrar"
+
+#: volume.js
+msgid "Media volume"
+msgstr "Volumen multimedia"
+
+#: volume.js
+msgid "Sound settings"
+msgstr "Ajustes de sonido"
