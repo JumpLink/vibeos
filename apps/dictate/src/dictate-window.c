@@ -92,6 +92,9 @@ typedef struct {
   GString *ex_reply;
   char *ex_note;
   gboolean ex_refused;          /* not carried out for the voice */
+  guint ex_refused_reason;      /* why: DictateTalk's "refused" reason */
+  gboolean ex_record_again;     /* refused as unchecked, and a new sample would let it be checked */
+  gboolean ex_model_gone;       /* refused as unchecked, and Voice match's model is not installed */
   gboolean ex_done, ex_undo;    /* something was done in it, and can be undone */
   char *ex_access;              /* it needed what this access-* switch keeps off */
   guint intro_id;               /* the introduction about to be shown */
@@ -1146,7 +1149,8 @@ on_talk_refused (DictateTalk *talk, guint reason, double score, double needed, c
   /* "send" said to a card in a voice not the owner's: the card stays, and waits for the tap */
   if (self->card)
     {
-      self->refusals++;
+      if (reason != DICTATE_REFUSED_UNCHECKED)
+        self->refusals++;
       dictate_stage_set_who (DICTATE_STAGE (self->stage), _("Not carried out"), TRUE);
       dictate_stage_set_reply (DICTATE_STAGE (self->stage), line ? line : "");
       card_hint (self);
@@ -1154,7 +1158,14 @@ on_talk_refused (DictateTalk *talk, guint reason, double score, double needed, c
     }
   /* nothing more comes for this turn: what it showed so far goes */
   self->ex_refused = TRUE;
-  self->refusals++;
+  self->ex_refused_reason = reason;
+  /* a voice that could not be checked is no sign of another voice: it does not count toward G3's three. Where a model
+   * runs and the sample was made for another (an update), a new sample is the way through. stale () needs the model's
+   * id, which the turn's check has as a rule already worked out and dictate-voicematch.c keeps */
+  self->ex_model_gone = reason == DICTATE_REFUSED_UNCHECKED && !dictate_voice_match_ready ();
+  self->ex_record_again = reason == DICTATE_REFUSED_UNCHECKED && !self->ex_model_gone && dictate_voice_match_stale ();
+  if (reason != DICTATE_REFUSED_UNCHECKED)
+    self->refusals++;
   self->ex_choices = self->ex_opened = FALSE;
   g_clear_pointer (&self->ex_suggestions, g_strfreev);
   g_clear_pointer (&self->ex_person, g_free);
@@ -2002,6 +2013,39 @@ vibe_show (Window *self)
       return;
     }
   dictate_stage_clear_buttons (stage);
+  if (self->ex_refused && self->ex_refused_reason == DICTATE_REFUSED_UNCHECKED)
+    {
+      /* reason 2: a sample, and the voice could not be checked against it. Saying it again is refused the same way;
+       * the PIN lets this one command through, and a new sample, where one can be made, the ones after it */
+      g_autofree char *headline = NULL, *rest = NULL;
+
+      dictate_stage_split_reply (self->ex_reply->str, &headline, &rest);
+      dictate_orb_set_look (orb, DICTATE_ORB_REFUSED, NULL);
+      dictate_stage_set_who (stage, _("Not carried out"), TRUE);
+      dictate_stage_set_text (stage, *headline ? headline : _("I can't check your voice right now."),
+                              self->ex_record_again
+                              ? _("Voice match was updated since your voice was recorded. Record it again and I "
+                                  "can check it.")
+                              : self->ex_model_gone
+                              ? _("The voice model is not installed any more, so I can't tell your voice from "
+                                  "anyone else's.")
+                              /* the model is there and the sample made for it, and the check failed to run */
+                              : _("Voice match couldn't run just now, so I can't tell your voice from anyone "
+                                  "else's."));
+      /* beside "Record again", half the width: the shorter label (the longer one is cut there) */
+      if (dictate_owner_has_secret ())
+        g_signal_connect (dictate_stage_add_button (stage, self->ex_record_again ? _("Use PIN instead")
+                                                                                 : _("Unlock with PIN instead"),
+                                                    DICTATE_STAGE_BUTTON),
+                          "clicked", G_CALLBACK (on_unlock_pin), self);
+      if (self->ex_record_again)
+        g_signal_connect (dictate_stage_add_button (stage, _("Record again"), DICTATE_STAGE_BUTTON_PRIMARY),
+                          "clicked", G_CALLBACK (on_reenroll), self);
+      dictate_stage_set_hint (stage, dictate_owner_has_secret ()
+                              ? _("Until voices can be checked, commands like this one need your PIN")
+                              : _("Until voices can be checked, commands like this one are not carried out"));
+      return;
+    }
   if (self->ex_refused && self->refusals >= 3 && dictate_voice_match_ready ())
     {
       /* G3: three in a row; the voice may have changed (a cold, another microphone) */

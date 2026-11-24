@@ -17,22 +17,12 @@ typedef struct {
   char *language;
   GtkWidget *only, *strict_label, *strict_needed, *strict_note;
   GtkAdjustment *strictness;
+  gboolean stale;               /* dictate_voice_match_stale (), read as the page is built */
   GCancellable *cancellable;
   gboolean syncing;             /* the slider set from the setting, not by the user */
 } Page;
 
 static void build (Page *p);
-
-/* the saved sample was made for another model than the one installed now: the check is not made until the owner
- * records it again. dictate_voice_match_stale () is the engine's; until the engine has it, it is a weak reference
- * and no sample is ever stale */
-gboolean dictate_voice_match_stale (void) __attribute__ ((weak));
-
-static gboolean
-sample_stale (void)
-{
-  return dictate_voice_match_stale && dictate_voice_match_stale ();
-}
 
 /* the strictness's name: 0..33 lenient, ..66 balanced, the rest strict */
 static const char *
@@ -48,10 +38,14 @@ dictate_voicematch_summary (GSettings *settings)
 
   if (!dictate_voice_match_enrolled ())
     return g_strdup (dictate_voice_match_ready () ? _("Off · no voice sample yet") : _("Not on this phone yet"));
-  /* a sample, and nothing to check it with: the model's package removed */
+  /* a sample, and nothing to check it with: the model's package removed. Switched on, what asks for the owner's voice
+   * is refused (DICTATE_REFUSED_UNCHECKED) */
   if (!dictate_voice_match_ready ())
-    return g_strdup (_("Off · the voice model is not installed"));
-  if (sample_stale ())
+    return g_strdup (g_settings_get_boolean (settings, "voice-match")
+                     ? _("Voices can't be checked · the voice model is not installed")
+                     : _("Off · the voice model is not installed"));
+  /* the sample made for a model replaced since */
+  if (dictate_voice_match_stale ())
     return g_strdup (_("Record your voice again"));
   if (!g_settings_get_boolean (settings, "voice-match"))
     return g_strdup (_("Off · voice sample saved"));
@@ -236,9 +230,12 @@ on_setting (GSettings *settings, const char *key, Page *p)
   else if (!g_strcmp0 (key, "voice-match"))
     vibeos_list_row_set_summary (VIBEOS_LIST_ROW (p->only),
                                  !g_settings_get_boolean (settings, key) ? _("Off, Vibe answers anyone")
-                                 /* on, but nothing to check a voice with */
-                                 : !dictate_voice_match_ready () || sample_stale () ? _("Not in effect until voices "
-                                                                                        "can be checked again")
+                                 /* on, and nothing to check a voice with: what asks for it is refused, as for
+                                  * too little speech (dictate-talk.c) */
+                                 : !dictate_voice_match_ready () || p->stale ? _("Voices can't be checked now: "
+                                                                                 "personal and action commands "
+                                                                                 "that ask for my voice are not "
+                                                                                 "carried out")
                                  : _("Other voices can't give Vibe commands"));
 }
 
@@ -322,6 +319,8 @@ build (Page *p)
     gtk_box_remove (GTK_BOX (p->body), child);
   p->only = p->strict_label = p->strict_needed = p->strict_note = NULL;
   p->strictness = NULL;
+  /* the first read after the model changed reads the model: once here, as the page opens */
+  p->stale = dictate_voice_match_stale ();
 
   /* the voice check does not run on this phone yet: nothing to record a sample for */
   coming = !dictate_voice_match_enrolled () && !dictate_voice_match_ready ();
@@ -379,7 +378,7 @@ build (Page *p)
                                                        "until the model is installed again.")));
           gtk_box_append (GTK_BOX (box), card);
         }
-      else if (sample_stale ())
+      else if (p->stale)
         {
           GtkWidget *card = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0), *button;
 
@@ -400,7 +399,7 @@ build (Page *p)
 
       row = vibeos_list_row_new (_("Voice sample"), when);
       /* recorded again only where a recording can be made into a sample; a stale one has its card above for it */
-      if (dictate_voice_match_ready () && !sample_stale ())
+      if (dictate_voice_match_ready () && !p->stale)
         {
           again = gtk_label_new (_("Re-record"));
           gtk_widget_add_css_class (again, "dictate-row-action");
@@ -458,7 +457,7 @@ build (Page *p)
       gtk_box_append (GTK_BOX (box), cards);
 
       /* a test only where the check can be made */
-      if (dictate_voice_match_ready () && !sample_stale ())
+      if (dictate_voice_match_ready () && !p->stale)
         {
           test = pill_new (_("Test voice match"), FALSE);
           gtk_widget_add_css_class (test, "dictate-vm-test");
