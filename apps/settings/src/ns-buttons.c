@@ -2,8 +2,9 @@
  * does. Laid out as Android 17's Gestures and its "Double-press power button" page: a row per button saying what it
  * opens ("On / Open Camera"), and on the button's page a "Use double-press" switch over the list of what it can open,
  * the one it opens marked. Under them, "Hold power button for Vibe" (vibeos.Shell power-hold-agent, read by the
- * shell at each press: extension/keylaunch.js): on, holding the key talks to Vibe for as long as it is held, and the
- * power menu is power and volume up together; off, holding the key opens the power menu, as before.
+ * shell at each press: extension/keylaunch.js): on, holding the key talks to Vibe, who listens on after the key is
+ * let go until the speaker pauses, and the power menu is power and volume up together; off, holding the key opens
+ * the power menu, as before.
  *
  * The choice is the shell's, in vibeos.Shell power-double-press-app and side-key-app (extension/keylaunch.js reads
  * them at each press): an app's desktop file id, 'recents' (the side button only), or '' for off. An app that is not
@@ -266,8 +267,9 @@ ns_page_gestures (GtkWidget *row, gpointer data)
   if (s && ns_has_key (s, "power-hold-agent")) {
     g = ns_group (c, NULL);
     ns_row_switch (g, "Hold power button for Vibe",
-                   "Talk to Vibe while you hold it. Power menu: power and volume up together", s,
-                   "power-hold-agent");
+                   "Hold it to talk to Vibe; it listens until you stop speaking. "
+                   "Power menu: power and volume up together",
+                   s, "power-hold-agent");
     g_autofree char *note = g_strdup_printf ("Off: holding the power button opens the power menu. On a locked %s, "
                                              "Vibe only answers questions until you unlock it.", ns_device_noun ());
     ns_footnote (c, note);
