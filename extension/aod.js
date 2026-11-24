@@ -19,6 +19,7 @@ import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {Canvas} from './icons.js';
+import {DATE_LONG, formatDate, formatPercent} from './l10n.js';
 import {chargingText} from './state.js';
 import {notificationIcon} from './statusbar.js';
 import {px, screenPixels, SCALE} from './units.js';
@@ -292,7 +293,7 @@ class Aod extends St.BoxLayout {
 
     _tick() {
         this._time.text = this._wallClock.clock;
-        this._date.text = GLib.DateTime.new_now_local().format('%A, %B %-e');
+        this._date.text = formatDate(GLib.DateTime.new_now_local(), DATE_LONG);
 
         if (this._useClock) {
             // the content drifts every two hours; a new UTC offset (summer time) goes to the panel's clock
@@ -351,7 +352,7 @@ class Aod extends St.BoxLayout {
         this._batteryIcon.icon_name = battery.icon;
         // plugged in, how fast it charges, as the lock screen says it
         this._batteryLabel.text = battery.plugged && battery.level < 100
-            ? `${battery.level}% • ${chargingText(battery.speed, battery.amps)}` : `${battery.level}%`;
+            ? chargingText(battery.level, battery.speed, battery.amps) : formatPercent(battery.level);
         this._battery.visible = battery.present;
     }
 

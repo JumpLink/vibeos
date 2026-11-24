@@ -14,6 +14,7 @@ import St from 'gi://St';
 
 import {click, DOT_TICK, vibrateRaw} from './haptics.js';
 import {Canvas, paintIcon} from './icons.js';
+import {N_, ngettext} from './l10n.js';
 import {Animator, animate, bezier, clamp, FAST_OUT_LINEAR_IN, FAST_OUT_SLOW_IN, lerp, LINEAR,
     LINEAR_OUT_SLOW_IN} from './motion.js';
 import {Color, setSource, SurfaceEffect} from './palette.js';
@@ -56,23 +57,24 @@ export function bouncerOffsets() {
     };
 }
 
+// what the bouncer says, translated where it is shown (keyguard.js)
 export const Strings = {
     pin: {
-        prompt: 'Enter PIN',
-        wrong: 'Wrong PIN. Try again.',
-        tooMany: 'Too many attempts with incorrect PIN',
-        restart: 'PIN is required after device restarts',
+        prompt: N_('Enter PIN'),
+        wrong: N_('Wrong PIN. Try again.'),
+        tooMany: N_('Too many attempts with incorrect PIN'),
+        restart: N_('PIN is required after device restarts'),
     },
     pattern: {
-        prompt: 'Draw pattern',
-        wrong: 'Wrong pattern. Try again.',
-        tooMany: 'Too many attempts with incorrect pattern',
-        restart: 'Pattern is required after device restarts',
+        prompt: N_('Draw pattern'),
+        wrong: N_('Wrong pattern. Try again.'),
+        tooMany: N_('Too many attempts with incorrect pattern'),
+        restart: N_('Pattern is required after device restarts'),
     },
 };
 
 export function tryAgainIn(seconds) {
-    return seconds === 1 ? 'Try again in 1 second.' : `Try again in ${seconds} seconds.`;
+    return ngettext('Try again in %d second.', 'Try again in %d seconds.', seconds).replace('%d', String(seconds));
 }
 
 // a colour between two: RGB mixed in linear light, alpha linearly

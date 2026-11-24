@@ -30,6 +30,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {TICK, vibrate} from './haptics.js';
 import {ICONS} from './icondata.js';
 import {Canvas, VectorIcon} from './icons.js';
+import {_, formatNumber, pgettext} from './l10n.js';
 import {ICONS as L3_ICONS} from './l3icondata.js';
 import {PathInterpolator} from './launch.js';
 import {VelocityTracker} from './motion.js';
@@ -427,9 +428,12 @@ const RAM_COLOURS = {used: [0xef, 0x53, 0x50], cache: [0xff, 0xb7, 0x4d], free: 
 const RAM = {barH: 30, gap: 18, legendGap: 42, lineGap: 6, badgePadX: 24, badgePadY: 3, badgeBorder: 3};
 const APPMEM_TIMEOUT_S = 3;
 
-// the GJS launcher's formatBytes: binary units, whole megabytes, gigabytes to one place
+// the GJS launcher's formatBytes: binary units, whole megabytes, gigabytes to one place, in the language's numbers
 function formatBytes(n) {
-    return n >= 1024 ** 3 ? `${(n / 1024 ** 3).toFixed(1)} GB` : `${Math.round(n / 1024 ** 2)} MB`;
+    /* TRANSLATORS: an amount of memory; %s is the number of gigabytes ("1.5") */
+    return n >= 1024 ** 3 ? _('%s GB').replace('%s', formatNumber(n / 1024 ** 3, 1))
+        /* TRANSLATORS: an amount of memory; %s is the number of megabytes ("512") */
+        : _('%s MB').replace('%s', formatNumber(Math.round(n / 1024 ** 2)));
 }
 
 // /proc/meminfo in bytes, by key: the kernel's own file, read in place (it never blocks)
@@ -527,7 +531,12 @@ class RamMap {
         const used = Math.max(0, total - free - cache);
         this._m = {total, used, cache, free};
         this._total.setText(formatBytes(total));
-        const names = {used: 'Used', cache: 'Cache', free: 'Free'};
+        /* TRANSLATORS: the parts of the memory bar over the recent apps */
+        const names = {
+            used: pgettext('memory', 'Used'),
+            cache: pgettext('memory', 'Cache'),
+            free: pgettext('memory', 'Free'),
+        };
         for (const part of this._parts)
             part.label.setText(` ${names[part.key]} ${formatBytes(this._m[part.key])}`);
         this._layout();
@@ -724,8 +733,8 @@ export class Recents {
         });
         if (!this._tasks.length)
             this._empty = this._emptyMessage();
-        this._clearAll = new Button('Clear all', null, this._scale, this.layer);
-        this._screenshot = new Button('Screenshot', 'ic_screenshot', this._scale, this.layer);
+        this._clearAll = new Button(pgettext('recent apps', 'Clear all'), null, this._scale, this.layer);
+        this._screenshot = new Button(_('Screenshot'), 'ic_screenshot', this._scale, this.layer);
 
         // the phone's memory between the cards and the Screenshot pill, which moves down to make room
         this._ram = new RamMap(this._scale, this.layer);
@@ -811,7 +820,7 @@ export class Recents {
         const u = v => v / this._scale;
         const root = new Clutter.Actor({opacity: 0});
         const icon = new VectorIcon('ic_view_carousel', u(EMPTY_ICON), Color.onSurface);
-        const text = new AndroidText('No recent items', 14, 700, {colour: Color.onSurface});
+        const text = new AndroidText(_('No recent items'), 14, 700, {colour: Color.onSurface});
         const top = (SCREEN_H - (text.textHeight + EMPTY_PAD + EMPTY_ICON)) / 2 + STATUS_BAR_H / 2 -
             (EMPTY_ICON + EMPTY_PAD) / 2;
         icon.set_position(u((SCREEN_W - EMPTY_ICON) / 2), u(top));
@@ -1918,17 +1927,18 @@ export class Recents {
         if (id) {
             // the app's page in Settings, over the home screen (where back from it leads on Android)
             // (info_24px: the newer App info icon, which the phone has)
-            items.push({icon: 'info_24px', label: 'App info', run: () => {
+            items.push({icon: 'info_24px', label: _('App info'), run: () => {
                 this._closeMenu();
                 this.goHome();
                 openAppInfo(id);
             }});
         }
-        items.push({icon: 'ic_screenshot', label: 'Screenshot', run: () => {
+        items.push({icon: 'ic_screenshot', label: _('Screenshot'), run: () => {
             this._closeMenu();
             this._takeScreenshot(task);
         }});
-        items.push({icon: 'ic_remove_task_option', label: 'Clear', run: () => {
+        /* TRANSLATORS: in a recent app's menu: removes it from the recent apps */
+        items.push({icon: 'ic_remove_task_option', label: pgettext('recent apps', 'Clear'), run: () => {
             this._closeMenu();
             this._dismiss(task, -DIS_V_MIN);
         }});

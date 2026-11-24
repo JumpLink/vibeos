@@ -1,0 +1,346 @@
+# German translations of vibeos-shell.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-shell\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-24 19:46+0100\n"
+"PO-Revision-Date: 2026-11-24 19:46+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: German\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: bouncer.js
+msgid "Enter PIN"
+msgstr "Gib die PIN ein"
+
+#: bouncer.js
+msgid "Wrong PIN. Try again."
+msgstr "PIN ist falsch. Versuche es noch einmal."
+
+#: bouncer.js
+msgid "Too many attempts with incorrect PIN"
+msgstr "Zu viele Versuche mit falscher PIN"
+
+#: bouncer.js
+msgid "PIN is required after device restarts"
+msgstr "Nach Geräteneustart ist die PIN erforderlich"
+
+#: bouncer.js
+msgid "Draw pattern"
+msgstr "Zeichne das Muster"
+
+#: bouncer.js
+msgid "Wrong pattern. Try again."
+msgstr "Muster ist falsch. Versuche es noch einmal."
+
+#: bouncer.js
+msgid "Too many attempts with incorrect pattern"
+msgstr "Zu viele Versuche mit falschem Muster"
+
+#: bouncer.js
+msgid "Pattern is required after device restarts"
+msgstr "Nach Geräteneustart ist das Muster erforderlich"
+
+#: bouncer.js
+#, javascript-format
+msgid "Try again in %d second."
+msgid_plural "Try again in %d seconds."
+msgstr[0] "Versuche es in %d Sekunde noch einmal"
+msgstr[1] "Versuche es in %d Sekunden noch einmal"
+
+#. the mobile network, then (the owner's addition) the Wi-Fi network, joined with " | " as two SIMs' names
+#. are
+#: keyguard.js
+msgid "Emergency calls only"
+msgstr "Nur Notrufe"
+
+#: keyguard.js qs.js
+msgid "No SIM"
+msgstr "Keine SIM-Karte"
+
+#: keyguard.js
+msgid "Charged"
+msgstr "Aufgeladen"
+
+#. PAM could not run: no attempt counted
+#: keyguard.js
+msgid "Could not check"
+msgstr "Prüfung nicht möglich"
+
+#: keyguard.js
+msgid "Try again"
+msgstr "Versuche es noch einmal"
+
+#. TRANSLATORS: an app that failed to start; %s is its name
+#: launch.js
+#, javascript-format
+msgid "%s can't open"
+msgstr "„%s“ kann nicht geöffnet werden"
+
+#: launch.js
+msgid "It's turned off on this phone"
+msgstr "Die App ist auf diesem Smartphone deaktiviert"
+
+#. TRANSLATORS: how long ago a notification came, shortest: under a minute
+#: notifications.js
+msgid "now"
+msgstr "Jetzt"
+
+#. TRANSLATORS: how long ago a notification came, shortest: %d minutes
+#: notifications.js
+#, javascript-format
+msgid "%dm"
+msgstr "%d Min."
+
+#. TRANSLATORS: how long ago a notification came, shortest: %d hours
+#: notifications.js
+#, javascript-format
+msgid "%dh"
+msgstr "%d Std."
+
+#. TRANSLATORS: how long ago a notification came, shortest: %d days
+#: notifications.js
+#, javascript-format
+msgid "%dd"
+msgstr "%d T"
+
+#. TRANSLATORS: how long ago a notification came, shortest: %d years
+#: notifications.js
+#, javascript-format
+msgid "%dy"
+msgstr "%d J"
+
+#: notifications.js
+msgid "Expand"
+msgstr "Maximieren"
+
+#: notifications.js
+msgid "Collapse"
+msgstr "Minimieren"
+
+#. TRANSLATORS: the heading of the low-priority notifications in the shade
+#: notifications.js
+msgid "Silent"
+msgstr "Lautlos"
+
+#: notifications.js
+msgid "Notification history"
+msgstr "Benachrichtigungsverlauf"
+
+#: notifications.js
+msgctxt "notifications"
+msgid "Clear all"
+msgstr "Alle löschen"
+
+#: notifications.js
+msgid "Notification settings"
+msgstr "Benachrichtigungseinstellungen"
+
+#: notifications.js
+msgid "No notifications"
+msgstr "Keine Benachrichtigungen"
+
+#: powermenu.js
+msgid "Lockdown"
+msgstr "Sperren"
+
+#: powermenu.js
+msgid "Power off"
+msgstr "Ausschalten"
+
+#: powermenu.js
+msgid "Restart"
+msgstr "Neustart"
+
+#: qs.js
+msgid "Wi-Fi"
+msgstr "WLAN"
+
+#: qs.js
+msgid "Bluetooth"
+msgstr "Bluetooth"
+
+#: qs.js
+msgid "Flashlight"
+msgstr "Taschenlampe"
+
+#: qs.js
+msgid "Do Not Disturb"
+msgstr "Bitte nicht stören"
+
+#. a phone's is Android's Modes tile, Do Not Disturb its one mode
+#: qs.js
+msgid "Modes"
+msgstr "Modi"
+
+#: qs.js
+msgid "Airplane mode"
+msgstr "Flugmodus"
+
+#: qs.js
+msgid "Mobile data"
+msgstr "Mobile Daten"
+
+#: qs.js
+msgctxt "mobile data"
+msgid "On"
+msgstr "An"
+
+#: qs.js
+msgctxt "mobile data"
+msgid "Off"
+msgstr "Aus"
+
+#: qs.js
+msgid "Auto-rotate"
+msgstr "Autom. drehen"
+
+#: qs.js
+msgid "Location"
+msgstr "Standort"
+
+#: qs.js
+msgid "Dark theme"
+msgstr "Dunkles Design"
+
+#: qs.js
+msgid "Battery Saver"
+msgstr "Energiesparmodus"
+
+#: qs.js
+msgid "Night Light"
+msgstr "Nachtlicht"
+
+#: qs.js
+msgid "Adaptive brightness"
+msgstr "Automatische Helligkeit"
+
+#: qs.js
+msgctxt "media volume"
+msgid "Mute"
+msgstr "Stummschalten"
+
+#: qs.js
+msgid "Settings"
+msgstr "Einstellungen"
+
+#: qs.js
+msgid "Power menu"
+msgstr "Ein/Aus-Menü"
+
+#. TRANSLATORS: an amount of memory; %s is the number of gigabytes ("1.5")
+#: recents.js
+#, javascript-format
+msgid "%s GB"
+msgstr "%s GB"
+
+#. TRANSLATORS: an amount of memory; %s is the number of megabytes ("512")
+#: recents.js
+#, javascript-format
+msgid "%s MB"
+msgstr "%s MB"
+
+#: recents.js
+msgctxt "memory"
+msgid "Used"
+msgstr "Belegt"
+
+#: recents.js
+msgctxt "memory"
+msgid "Cache"
+msgstr "Cache"
+
+#: recents.js
+msgctxt "memory"
+msgid "Free"
+msgstr "Frei"
+
+#: recents.js
+msgctxt "recent apps"
+msgid "Clear all"
+msgstr "Alle Apps schließen"
+
+#: recents.js
+msgid "Screenshot"
+msgstr "Screenshot"
+
+#: recents.js
+msgid "No recent items"
+msgstr "Keine kürzlich verwendeten Elemente"
+
+#. the app's page in Settings, over the home screen (where back from it leads on Android)
+#. (info_24px: the newer App info icon, which the phone has)
+#: recents.js
+msgid "App info"
+msgstr "App-Info"
+
+#. TRANSLATORS: in a recent app's menu: removes it from the recent apps
+#: recents.js
+msgctxt "recent apps"
+msgid "Clear"
+msgstr "Schließen"
+
+#. TRANSLATORS: the lock screen's charging line; %s is the battery's level ("75%")
+#: state.js
+#, javascript-format
+msgid "%s • Charging slowly"
+msgstr "%s • Wird langsam geladen"
+
+#. TRANSLATORS: the lock screen's charging line; %s is the battery's level ("75%")
+#: state.js
+#, javascript-format
+msgid "%s • Fast charging"
+msgstr "%s • Schnelles Laden"
+
+#. TRANSLATORS: the lock screen's charging line; %s is the battery's level ("75%")
+#: state.js
+#, javascript-format
+msgid "%s • Super fast charging"
+msgstr "%s • Superschnelles Laden"
+
+#. TRANSLATORS: the lock screen's charging line; %s is the battery's level ("75%")
+#: state.js
+#, javascript-format
+msgid "%s • Wireless charging"
+msgstr "%s • Kabelloses Laden"
+
+#. TRANSLATORS: the lock screen's charging line; %s is the battery's level ("75%")
+#: state.js
+#, javascript-format
+msgid "%s • Charging"
+msgstr "%s • Wird geladen"
+
+#. TRANSLATORS: a current the battery charges at; %s is the number of amperes ("1.5")
+#: state.js
+#, javascript-format
+msgid "%s A"
+msgstr "%s A"
+
+#: volume.js
+msgctxt "ringer mode"
+msgid "Ring"
+msgstr "Klingeln lassen"
+
+#: volume.js
+msgctxt "ringer mode"
+msgid "Mute"
+msgstr "Stummschalten"
+
+#: volume.js
+msgctxt "ringer mode"
+msgid "Vibrate"
+msgstr "Vibrieren"
+
+#: volume.js
+msgid "Media volume"
+msgstr "Medienlautstärke"
+
+#: volume.js
+msgid "Sound settings"
+msgstr "Toneinstellungen"

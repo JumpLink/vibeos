@@ -25,6 +25,7 @@ import * as Signals from 'resource:///org/gnome/shell/misc/signals.js';
 
 import {PatternView, PinView, Strings, touchSlot, tryAgainIn} from './bouncer.js';
 import {Canvas, paintIcon} from './icons.js';
+import {_, DATE_SHORT, formatDate} from './l10n.js';
 import {animate, clamp, EMPHASIZED_ACCELERATE, FAST_OUT_SLOW_IN, lerp, LINEAR, MIN_FLING_VELOCITY,
     TOUCH_RESPONSE, VelocityTracker} from './motion.js';
 import {Color, rgba, SHADE_PANEL} from './palette.js';
@@ -493,7 +494,7 @@ export class Keyguard extends Signals.EventEmitter {
         const h24 = this._interface.get_string('clock-format') === '24h';
         const time = now.format(h24 ? '%H:%M' : '%-I:%M');
         this._clock.setText(time);
-        this._date.setText(now.format('%a, %b %-e'));
+        this._date.setText(formatDate(now, DATE_SHORT));
         const L = this._L;
         if (!L) {
             placeText(this._clock, {left: CLOCK_LEFT, inkTop: CLOCK_INK_TOP});
@@ -568,7 +569,7 @@ export class Keyguard extends Signals.EventEmitter {
         const {mobile, wifi, battery} = this._state;
         // the mobile network, then (the owner's addition) the Wi-Fi network, joined with " | " as two SIMs' names
         // are
-        const names = [mobile.present ? mobile.operator || 'Emergency calls only' : 'No SIM'];
+        const names = [mobile.present ? mobile.operator || _('Emergency calls only') : _('No SIM')];
         if (wifi.connected && wifi.name)
             names.push(wifi.name);
         const carrier = names.join(' | ');
@@ -580,8 +581,7 @@ export class Keyguard extends Signals.EventEmitter {
         // the charging line, with how fast (One UI's names for the speeds)
         let indication = '';
         if (battery.present && battery.plugged)
-            indication = battery.level >= 100 ? 'Charged'
-                : `${battery.level}% • ${chargingText(battery.speed, battery.amps)}`;
+            indication = battery.level >= 100 ? _('Charged') : chargingText(battery.level, battery.speed, battery.amps);
         if (indication !== this._indicationText) {
             this._indicationText = indication;
             this._indication.setText(indication);
@@ -882,7 +882,7 @@ export class Keyguard extends Signals.EventEmitter {
             return;
         this._bouncer?.destroy();
         this._bouncer = kind === 'pattern' ? new PatternView() : new PinView();
-        this._strings = Strings[this._bouncer.kind];
+        this._strings = Object.fromEntries(Object.entries(Strings[this._bouncer.kind]).map(([k, v]) => [k, _(v)]));
         this._bouncer.connect('submit', (view, secret) => this._submit(secret, view.autoConfirmed));
         this._bouncerBox.add_child(this._bouncer);
         this._bouncer.setMessage(this._strings.prompt, '');
@@ -1080,7 +1080,7 @@ export class Keyguard extends Signals.EventEmitter {
         }
         if (result === 2) {
             // PAM could not run: no attempt counted
-            this._bouncer.setMessage('Could not check', 'Try again');
+            this._bouncer.setMessage(_('Could not check'), _('Try again'));
             this._bouncer.wrong();
             this._bouncer.setEnabled(true);
             return;

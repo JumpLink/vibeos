@@ -16,6 +16,7 @@ import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 
 import {Attention} from './attention.js';
 import {capture, capturing} from './capture.js';
+import {_} from './l10n.js';
 import {dp} from './units.js';
 
 const LAUNCH_MS = 500;
@@ -484,8 +485,9 @@ export class LaunchTransition {
         Main.messageTray.add(source);
         source.addNotification(new MessageTray.Notification({
             source,
-            title: `${app.get_name()} can't open`,
-            body: /masked/.test(error.message) ? "It's turned off on this phone" : error.message,
+            /* TRANSLATORS: an app that failed to start; %s is its name */
+            title: _("%s can't open").replace('%s', app.get_name()),
+            body: /masked/.test(error.message) ? _("It's turned off on this phone") : error.message,
         }));
     }
 

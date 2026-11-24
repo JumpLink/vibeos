@@ -8,7 +8,7 @@ extdir = get_option('datadir') / 'gnome-shell' / 'extensions' / uuid
 bindir = get_option('prefix') / get_option('bindir')
 
 install_subdir('.', install_dir: extdir, strip_directory: true,
-  exclude_directories: ['tools', 'tests', '__pycache__'],
+  exclude_directories: ['tools', 'tests', 'po', '__pycache__'],
   exclude_files: ['meson.build', 'home.js', 'appmem.py'])
 
 # appmem.py runs as a program of its own (recents.js)
@@ -38,3 +38,7 @@ if tsc.found()
   test('undefined-names', find_program('tests/undefined-names.sh'), args: [meson.current_source_dir(), tsc],
        timeout: 900)
 endif
+
+# the extension's words in the session's language: the vibeos-shell domain (metadata.json's gettext-domain, l10n.js)
+i18n = import('i18n')
+subdir('po')

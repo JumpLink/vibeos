@@ -23,6 +23,7 @@ import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {VectorIcon} from './icons.js';
+import {_} from './l10n.js';
 import {animate, bezier, LINEAR} from './motion.js';
 import {Color, cogl, rgba} from './palette.js';
 import {AndroidText} from './text.js';
@@ -39,6 +40,11 @@ const CORNER = 84;              // the panel's corners
 const COLUMNS = 2;
 const LABEL_SP = 14;
 const LABEL_WGHT = 700;
+// a label's widest: its button and half the space to the next, so labels side by side keep half a PAD between them.
+// Android's are one line a cell wide that scrolls (a marquee); a label wider than this is drawn smaller to fit
+// instead, down to LABEL_MIN_SCALE of its size, as Android's autoSize shrinks text
+const LABEL_MAX = BUTTON + PAD / 2;
+const LABEL_MIN_SCALE = 0.8;
 const DIM = 0.6;                // the black dim behind the panel
 const ENTER_MS = 220;           // the standard duration of a window coming in
 const EXIT_MS = 150;            // and the short one, going
@@ -49,6 +55,16 @@ const STANDARD_ACCELERATE = bezier(0.3, 0, 1, 1);
 const PRESSED_SCALE = 0.97;
 const PRESS_MS = 50;
 const RELEASE_MS = 250;
+
+// a button's label: at LABEL_SP, or smaller where that is wider than LABEL_MAX
+function itemLabel(text) {
+    const full = new AndroidText(text, LABEL_SP, LABEL_WGHT, {colour: Color.onSurface});
+    if (full.textWidth <= LABEL_MAX)
+        return full;
+    const scale = Math.max(LABEL_MIN_SCALE, LABEL_MAX / full.textWidth);
+    full.destroy();
+    return new AndroidText(text, LABEL_SP * scale, LABEL_WGHT, {colour: Color.onSurface, opsz: LABEL_SP});
+}
 
 function shapeStyle(color, radius) {
     return `background-color: ${rgba(color)}; border-radius: ${px(radius).toFixed(2)}px;`;
@@ -176,15 +192,14 @@ export class PowerMenu {
     _build() {
         const items = [];
         if (this._secure())
-            items.push(['Lockdown', 'ic_lock_lockdown_round', () => this._lockdown()]);
-        items.push(['Power off', 'ic_lock_power_off_round', () => logind('PowerOff')]);
+            items.push([_('Lockdown'), 'ic_lock_lockdown_round', () => this._lockdown()]);
+        items.push([_('Power off'), 'ic_lock_power_off_round', () => logind('PowerOff')]);
         const android = androidRestart();
         if (android)
             items.push(['Android', 'ic_android', android]);
-        items.push(['Restart', 'ic_restart_round', () => logind('Reboot')]);
+        items.push([_('Restart'), 'ic_restart_round', () => logind('Reboot')]);
 
-        const labels = items.map(([label]) =>
-            new AndroidText(label, LABEL_SP, LABEL_WGHT, {colour: Color.onSurface}));
+        const labels = items.map(([label]) => itemLabel(label));
         const cellH = BUTTON + LABEL_GAP + Math.max(...labels.map(l => l.textHeight));
         const columns = Math.min(items.length, COLUMNS);
         const rows = Math.ceil(items.length / COLUMNS);

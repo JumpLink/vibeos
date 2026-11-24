@@ -15,6 +15,7 @@ import {FdoNotificationDaemonSource} from 'resource:///org/gnome/shell/ui/notifi
 
 import {appCircle, sourceApp} from './appicon.js';
 import {VectorIcon} from './icons.js';
+import {_, pgettext} from './l10n.js';
 import {animate, animateSpring, Animator, bezier, clamp, FAST_OUT_LINEAR_IN, FAST_OUT_SLOW_IN, flingDismissing,
     lerp, splineFling, Spring, VelocityTracker} from './motion.js';
 import {magnetic} from './magnetic.js';
@@ -155,20 +156,23 @@ function countLines(text, markup, width) {
     return layout.get_line_count();
 }
 
-// the short relative time a row's header shows (now, 5m, 2h, 3d, ...)
+// the short relative time a row's header shows (now, 5m, 2h, 3d, ...), Android's shortest durations
 function shortTime(datetime) {
     if (!datetime)
         return '';
     const s = GLib.DateTime.new_now_local().difference(datetime) / 1e6;
     if (s < 60)
-        return 'now';
-    if (s < 3600)
-        return `${Math.floor(s / 60)}m`;
-    if (s < 86400)
-        return `${Math.floor(s / 3600)}h`;
-    if (s < 365 * 86400)
-        return `${Math.floor(s / 86400)}d`;
-    return `${Math.floor(s / (365 * 86400))}y`;
+        /* TRANSLATORS: how long ago a notification came, shortest: under a minute */
+        return _('now');
+    /* TRANSLATORS: how long ago a notification came, shortest: %d minutes */
+    const [format, n] = s < 3600 ? [_('%dm'), s / 60]
+        /* TRANSLATORS: how long ago a notification came, shortest: %d hours */
+        : s < 86400 ? [_('%dh'), s / 3600]
+            /* TRANSLATORS: how long ago a notification came, shortest: %d days */
+            : s < 365 * 86400 ? [_('%dd'), s / 86400]
+                /* TRANSLATORS: how long ago a notification came, shortest: %d years */
+                : [_('%dy'), s / (365 * 86400)];
+    return format.replace('%d', String(Math.floor(n)));
 }
 
 // a running chronometer's text: whole seconds since @base (Unix ms), or left until it, as MM:SS or H:MM:SS;
@@ -312,7 +316,7 @@ class Row extends St.Widget {
         this._pill = new St.Button({
             can_focus: true,
             button_mask: St.ButtonMask.PRIMARY,
-            accessible_name: 'Expand',
+            accessible_name: _('Expand'),
             width: px(PILL_W + 2 * PILL_TOUCH),
             height: px(PILL_H + 2 * PILL_TOUCH),
         });
@@ -557,7 +561,7 @@ class Row extends St.Widget {
 
     setChevron(expanded) {
         this._chevron.name = expanded ? 'ic_notification_2025_collapse' : 'ic_notification_2025_expand';
-        this._pill.accessible_name = expanded ? 'Collapse' : 'Expand';
+        this._pill.accessible_name = expanded ? _('Collapse') : _('Expand');
     }
 
     setExpansion(p) {
@@ -882,7 +886,8 @@ const SectionHeader = GObject.registerClass(
 class SectionHeader extends St.Widget {
     constructor() {
         super({width: px(SCREEN_W), height: px(HEADER_H)});
-        this._label = makeText(SECTION_FONT, Color.onSurface, {text: 'Silent'});
+        /* TRANSLATORS: the heading of the low-priority notifications in the shade */
+        this._label = makeText(SECTION_FONT, Color.onSurface, {text: _('Silent')});
         this.add_child(this._label);
         // the cap height centred in the header
         placeBaseline(this._label, HEADER_LABEL_X, HEADER_H / 2 + CAP_HEIGHT * 14 * 3 / 2);
@@ -906,13 +911,14 @@ class Footer extends St.Widget {
         super({width: px(SCREEN_W), height: px(FOOTER_H)});
         this._pillH = FOOTER_PILL_H;
         this._fill = SurfaceEffect[1];
-        const history = this._button(HISTORY_X, ICON_BUTTON_W, 'Notification history',
+        const history = this._button(HISTORY_X, ICON_BUTTON_W, _('Notification history'),
             new VectorIcon('notif_footer_btn_history', px(FOOTER_ICON), Color.onSurface));
         // a Clutter.Text right inside a button would take the button's theme font
         const label = new St.Widget({layout_manager: new Clutter.BinLayout()});
-        label.add_child(makeText(CLEAR_ALL_FONT, Color.onSurface, {text: 'Clear all'}));
-        const clear = this._button(CLEAR_X, CLEAR_W, 'Clear all', label);
-        const settings = this._button(SETTINGS_X, ICON_BUTTON_W, 'Notification settings',
+        const clearAll = pgettext('notifications', 'Clear all');
+        label.add_child(makeText(CLEAR_ALL_FONT, Color.onSurface, {text: clearAll}));
+        const clear = this._button(CLEAR_X, CLEAR_W, clearAll, label);
+        const settings = this._button(SETTINGS_X, ICON_BUTTON_W, _('Notification settings'),
             new VectorIcon('notif_footer_btn_settings', px(FOOTER_ICON), Color.onSurface));
         this._clear = clear;
         this._settings = settings;
@@ -1000,7 +1006,7 @@ class NotificationStack extends St.Widget {
         this._footer = new Footer(this);
         this._footer.visible = false;
         this.add_child(this._footer);
-        this._empty = makeText(EMPTY_FONT, Color.onSurface, {text: 'No notifications'});
+        this._empty = makeText(EMPTY_FONT, Color.onSurface, {text: _('No notifications')});
         this.add_child(this._empty);
         this._emptyAlpha = {now: 1, from: 1, to: 1};
 
