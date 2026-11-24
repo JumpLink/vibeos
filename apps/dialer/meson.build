@@ -76,6 +76,7 @@ test('call-audio-ucm', executable('test-call-audio-ucm', 'tests/test-call-audio-
                                   dependencies: [gio, alsa]),
      env: ['ALSA_CONFIG_UCM2=' + meson.current_source_dir() / 'tests/ucm2'])
 
-# the call flows end to end, against a mock modem, shell and notification server on buses of their own
+# the call flows end to end, against a mock modem, shell and notification server on buses of their own; GStreamer's
+# registry made first takes up to a minute under arm64 emulation
 test('calls-flow', find_program('python3'), timeout: 180,
      args: [files('tests/test-calls.py'), meson.current_build_dir(), meson.current_source_dir()])
