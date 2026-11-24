@@ -146,6 +146,26 @@ License: SGI-HP-CRCalc
  PURPOSE OR NON-INFRINGING. (The full notice, as the calculator shows it, is
  in apps/calculator/data/licenses.html.)
 
+Files: apps/dictate/src/dictate-ru.c
+       apps/dictate/src/dictate-ru.h
+       apps/dictate/src/dictate-ru-*.c
+       apps/dictate/src/dictate-ru-private.h
+Copyright: 2026 Evgeniy Chetvertkov (tiny-voca-ru)
+           2026 Muhammed Nazeem (tiny-voca)
+           2026 pulpoff <pashkovsky@gmail.com> (the port to C)
+License: Apache-2.0
+Comment:
+ A port to C of tiny-voca-ru's Russian text front end (src/tiny_voca_ru/
+ frontend of https://github.com/yilbegan/tiny-voca-ru, version 0.2.1): its
+ normalisation, stress placement, rules from letters to phones and tokens,
+ with its tables. Its NOTICE: tiny-voca-ru is based on tiny-voca, Copyright
+ 2026 Muhammed Nazeem, https://github.com/n4ze3m/tiny-voca, Apache License
+ 2.0; its stress dictionary, accent model, homograph vocabulary and homograph
+ model are derived from ruaccent (https://github.com/Den4ikAI/ruaccent), MIT
+ License. No model or data is in this package: the voice (egnch/tiny-voca-ru
+ on Hugging Face) and ruaccent's data are downloaded in the app, with their
+ licences beside them.
+
 Files: extension/keyboard/layouts/*
        extension/keyboard/icondata.js
        tools/latinime-dump

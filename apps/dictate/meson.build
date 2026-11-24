@@ -32,6 +32,11 @@ tools_sources = ['src/dictate-tools.c', 'src/dictate-tools-phone.c', 'src/dictat
 # (and the sound server, asked where a reply would play for private mode)
 tools_deps = [dependency('libebook-1.2'), dependency('libecal-2.0'), dependency('sqlite3'), dependency('libpulse'),
               dependency('libsoup-3.0'), dependency('json-glib-1.0'), cc.find_library('m')]
+# Agent's voices (dictate-voice.h): Piper and Kokoro read espeak-ng's phonemes, Russian's tiny-voca its own front end
+# (dictate-ru.h: numbers and dates in words, the stress, the phones)
+ru_sources = ['src/dictate-ru.c', 'src/dictate-ru-numbers.c', 'src/dictate-ru-tables.c', 'src/dictate-ru-text.c',
+              'src/dictate-ru-normalize.c', 'src/dictate-ru-stress.c', 'src/dictate-ru-g2p.c']
+voice_sources = ['src/dictate-voice.c', 'src/dictate-phonemes.c'] + ru_sources
 # a language's model and voice downloaded (dictate-download.c): libsoup for the files, libarchive for Vosk's zips
 download_deps = [dependency('glib-2.0'), dependency('gio-2.0'), dependency('libsoup-3.0'), dependency('libarchive')]
 
@@ -45,7 +50,7 @@ vibe_sources = ['src/dictate-stage.c', 'src/dictate-orb.c', 'src/dictate-history
 executable('vibeos-dictate', 'src/dictate-main.c', 'src/dictate-window.c', 'src/dictate-mic.c',
            'src/dictate-engine.c', 'src/dictate-models.c', 'src/dictate-moonshine.c', 'src/dictate-vosk.c',
            'src/dictate-vad.c', 'src/dictate-talk.c', 'src/dictate-voicematch.c', 'src/dictate-fbank.c',
-           'src/dictate-voice.c', 'src/dictate-phonemes.c', brain_sources,
+           voice_sources, brain_sources,
            'src/dictate-download.c', 'src/dictate-download-dialog.c', 'src/dictate-pk.c', 'src/dictate-package.c',
            'src/dictate-access.c', 'src/dictate-settings.c', 'src/dictate-cues.c', vibe_sources, tools_sources, resources,
            link_with: text, install: true,
@@ -74,7 +79,7 @@ install_data('data/sounds/agent-listening.wav', 'data/sounds/agent-working.wav',
 gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
 
 # the voices and the model, timed on the phone (not run by meson test: they need models)
-executable('voice-bench', 'tests/voice-bench.c', 'src/dictate-voice.c', 'src/dictate-phonemes.c', include_directories: 'src',
+executable('voice-bench', 'tests/voice-bench.c', voice_sources, include_directories: 'src',
            dependencies: [dependency('glib-2.0'), dependency('gio-2.0'), dependency('json-glib-1.0'),
                           cc.find_library('m'), onnxruntime, dependency('espeak-ng')])
 executable('brain-bench', 'tests/brain-bench.c', brain_sources, include_directories: 'src',
@@ -84,8 +89,8 @@ executable('brain-bench', 'tests/brain-bench.c', brain_sources, include_director
 # Agent's whole loop on recorded questions, timed (tests/talk-bench.c)
 executable('talk-bench', 'tests/talk-bench.c', 'src/dictate-engine.c', 'src/dictate-models.c',
            'src/dictate-moonshine.c', 'src/dictate-vosk.c', 'src/dictate-vad.c', 'src/dictate-talk.c',
-           'src/dictate-voicematch.c', 'src/dictate-fbank.c', 'src/dictate-access.c', 'src/dictate-voice.c',
-           'src/dictate-phonemes.c', brain_sources, tools_sources,
+           'src/dictate-voicematch.c', 'src/dictate-fbank.c', 'src/dictate-access.c', voice_sources, brain_sources,
+           tools_sources,
            include_directories: 'src',
            c_args: ['-DGETTEXT_PACKAGE="vibeos-dictate"', '-DLIBRARY_DIR="@0@"'.format(library_dir)],
            dependencies: [dependency('gio-2.0'), dependency('gstreamer-1.0'), dependency('gstreamer-app-1.0'),
@@ -94,7 +99,7 @@ executable('talk-bench', 'tests/talk-bench.c', 'src/dictate-engine.c', 'src/dict
 
 # Agent's loop from typed text: the model's reply spoken on the speaker (tests/agent-say.c)
 executable('agent-say', 'tests/agent-say.c', 'src/dictate-talk.c', 'src/dictate-voicematch.c',
-           'src/dictate-fbank.c', 'src/dictate-access.c', 'src/dictate-voice.c', 'src/dictate-phonemes.c', brain_sources,
+           'src/dictate-fbank.c', 'src/dictate-access.c', voice_sources, brain_sources,
            tools_sources,
            include_directories: 'src',
            c_args: ['-DGETTEXT_PACKAGE="vibeos-dictate"', '-DLIBRARY_DIR="@0@"'.format(library_dir)],
@@ -105,7 +110,7 @@ executable('agent-say', 'tests/agent-say.c', 'src/dictate-talk.c', 'src/dictate-
 # the tools' test set: questions in a private copy of the phone's data (fixtures made by it, the phone's services
 # stood in for on a private bus), each answer scored (tests/agent-eval.c, tests/agent-eval/)
 executable('agent-eval', 'tests/agent-eval.c', 'tests/agent-eval-mock.c', 'src/dictate-talk.c',
-           'tests/agent-eval-voice.c', 'src/dictate-access.c', 'src/dictate-voice.c', 'src/dictate-phonemes.c',
+           'tests/agent-eval-voice.c', 'src/dictate-access.c', voice_sources,
            brain_sources, tools_sources,
            include_directories: 'src',
            c_args: ['-DGETTEXT_PACKAGE="vibeos-dictate"', '-DLIBRARY_DIR="@0@"'.format(library_dir)],
@@ -129,6 +134,11 @@ test('text', executable('test-text', 'tests/test-text.c', include_directories: '
 test('download', executable('test-download', 'tests/test-download.c', 'src/dictate-download.c',
                             include_directories: 'src', c_args: '-DGETTEXT_PACKAGE="vibeos-dictate"',
                             dependencies: download_deps))
+
+# the Russian front end against tiny-voca-ru's own (tests/ru-golden.c): not run by meson test, as it needs the voice's
+# downloaded data
+executable('ru-golden', 'tests/ru-golden.c', ru_sources, include_directories: 'src',
+           dependencies: [dependency('gio-2.0'), onnxruntime, cc.find_library('m')])
 
 # what Agent is told it can use, from the settings' switches (the schema compiled here, a memory backend)
 schemas = custom_target('schemas', input: 'data/vibeos.Dictate.gschema.xml', output: 'gschemas.compiled',
