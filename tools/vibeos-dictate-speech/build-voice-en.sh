@@ -95,6 +95,15 @@ License: MIT
  Blizzard 2013 Lessac research licence described above.
 EOF
 
+{
+	echo "vibeos-dictate-voice-en ($VERSION) unstable; urgency=medium"
+	echo
+	echo "  * Piper's en_US-lessac-medium voice from rhasspy/piper-voices at"
+	echo "    ${PIPER_REVISION%${PIPER_REVISION#???????}}, unmodified."
+	echo
+	echo " -- $MAINTAINER  $(LC_ALL=C date -R)"
+} | gzip -9n > "$DOC/changelog.Debian.gz"
+
 mkdir -p "$ROOT/DEBIAN"
 {
 	echo "Package: vibeos-dictate-voice-en"
@@ -116,4 +125,6 @@ EOF
 } > "$ROOT/DEBIAN/control"
 find "$ROOT/usr" -type d -exec chmod 755 {} +
 find "$ROOT/usr" -type f -exec chmod 644 {} +
+(cd "$ROOT" && find usr -type f -print0 | sort -z | xargs -0 md5sum) > "$ROOT/DEBIAN/md5sums"
+chmod 644 "$ROOT/DEBIAN/md5sums"
 dpkg-deb --root-owner-group -Zxz --build "$ROOT" "$OUT/vibeos-dictate-voice-en_${VERSION}_all.deb"
