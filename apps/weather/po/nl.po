@@ -17,90 +17,89 @@ msgstr ""
 
 #: data/vibeos.Weather.desktop.in src/main.c
 msgid "Weather"
-msgstr ""
+msgstr "Weer"
 
 #: data/vibeos.Weather.desktop.in
 msgid "The weather where you are"
-msgstr ""
+msgstr "Het weer waar je bent"
 
 #: data/vibeos.Weather.desktop.in
 msgid "forecast;temperature;rain;"
-msgstr ""
+msgstr "weer;weersverwachting;temperatuur;regen;"
 
-# android: Settings proxy_clear_text (short)
 #. TRANSLATORS: the sky, as the page names it under the temperature
 #: src/main.c
 msgctxt "sky"
 msgid "Clear"
-msgstr "Wissen"
+msgstr "Helder"
 
 #: src/main.c
 msgid "Mostly clear"
-msgstr ""
+msgstr "Overwegend helder"
 
 #: src/main.c
 msgid "Partly cloudy"
-msgstr ""
+msgstr "Gedeeltelijk bewolkt"
 
 #: src/main.c
 msgid "Cloudy"
-msgstr ""
+msgstr "Bewolkt"
 
 #: src/main.c
 msgid "Fog"
-msgstr ""
+msgstr "Mist"
 
 #: src/main.c
 msgid "Drizzle"
-msgstr ""
+msgstr "Motregen"
 
 #: src/main.c
 msgid "Freezing drizzle"
-msgstr ""
+msgstr "Aanvriezende motregen"
 
 #: src/main.c
 msgid "Rain"
-msgstr ""
+msgstr "Regen"
 
 #: src/main.c
 msgid "Heavy rain"
-msgstr ""
+msgstr "Zware regen"
 
 #: src/main.c
 msgid "Freezing rain"
-msgstr ""
+msgstr "IJzel"
 
 #: src/main.c
 msgid "Snow"
-msgstr ""
+msgstr "Sneeuw"
 
 #: src/main.c
 msgid "Snow grains"
-msgstr ""
+msgstr "Motsneeuw"
 
 #: src/main.c
 msgid "Showers"
-msgstr ""
+msgstr "Buien"
 
 #: src/main.c
 msgid "Heavy showers"
-msgstr ""
+msgstr "Zware buien"
 
 #: src/main.c
 msgid "Snow showers"
-msgstr ""
+msgstr "Sneeuwbuien"
 
 #: src/main.c
 msgid "Thunderstorm"
-msgstr ""
+msgstr "Onweer"
 
 #: src/main.c
 msgid "Sunrise"
-msgstr ""
+msgstr "Zonsopkomst"
 
 #: src/main.c
 msgid "Sunset"
-msgstr ""
+msgstr "Zonsondergang"
 
 # android: Settings ram_states[2] (short)
 #. TRANSLATORS: the UV index's levels
@@ -109,11 +108,10 @@ msgctxt "uv"
 msgid "Low"
 msgstr "Laag"
 
-# android: Settings ram_states[1] (short)
 #: src/main.c
 msgctxt "uv"
 msgid "Moderate"
-msgstr "Gemiddeld"
+msgstr "Matig"
 
 # android: Settings high_label (short)
 #: src/main.c
@@ -124,7 +122,7 @@ msgstr "Hoog"
 #: src/main.c
 msgctxt "uv"
 msgid "Very high"
-msgstr ""
+msgstr "Zeer hoog"
 
 # android: SystemUI extreme_battery_saver_text (short)
 #: src/main.c
@@ -139,36 +137,38 @@ msgid ""
 "↑%s / ↓%s\n"
 "Feels like %s"
 msgstr ""
+"↑%s / ↓%s\n"
+"Voelt als %s"
 
 #. TRANSLATORS: today's sky ("Partly cloudy"), then its highest and lowest temperatures ("12°")
 #: src/main.c
 #, c-format
 msgid "%s. High %s, low %s."
-msgstr ""
+msgstr "%s. Max. %s, min. %s."
 
 #: src/main.c
 msgid "Today's temperature"
-msgstr ""
+msgstr "Temperatuur vandaag"
 
 #: src/main.c
 msgid "About the same as yesterday"
-msgstr ""
+msgstr "Ongeveer hetzelfde als gisteren"
 
 #: src/main.c
 msgid "Temperatures a little lower than yesterday"
-msgstr ""
+msgstr "Iets koeler dan gisteren"
 
 #: src/main.c
 msgid "Much colder than yesterday"
-msgstr ""
+msgstr "Veel kouder dan gisteren"
 
 #: src/main.c
 msgid "Temperatures a little higher than yesterday"
-msgstr ""
+msgstr "Iets warmer dan gisteren"
 
 #: src/main.c
 msgid "Much warmer than yesterday"
-msgstr ""
+msgstr "Veel warmer dan gisteren"
 
 # android: DocumentsUI search_last_modified_2_days (short)
 #: src/main.c
@@ -184,76 +184,80 @@ msgstr "Vandaag"
 #: src/main.c
 #, c-format
 msgid "Sunset %s"
-msgstr ""
+msgstr "Zonsondergang %s"
 
 #. TRANSLATORS: the wind's speed in kilometres an hour
 #: src/main.c
 #, c-format
 msgid "%.0f km/h"
-msgstr ""
+msgstr "%.0f km/u"
 
 #. TRANSLATORS: the air pressure in hectopascals
 #: src/main.c
 #, c-format
 msgid "%.0f hPa"
-msgstr ""
+msgstr "%.0f hPa"
 
 #: src/main.c
 msgid "UV index"
-msgstr ""
+msgstr "Uv-index"
 
 #: src/main.c
 msgid "Humidity"
-msgstr ""
+msgstr "Luchtvochtigheid"
 
 #: src/main.c
 msgid "Wind"
-msgstr ""
+msgstr "Wind"
 
 #: src/main.c
 msgid "Pressure"
-msgstr ""
+msgstr "Luchtdruk"
 
 #: src/main.c
 msgid "No forecast: Open-Meteo did not answer. Tap reload to try again."
 msgstr ""
+"Geen verwachting: Open-Meteo gaf geen antwoord. Tik op vernieuwen om het "
+"opnieuw te proberen."
 
 #: src/main.c
 msgid ""
 "No location. Turn on Location in Settings, then tap reload, or set a city in "
 "the ⋮ menu."
 msgstr ""
+"Geen locatie. Zet Locatie aan in Instellingen en tik dan op vernieuwen, of "
+"stel een stad in via het ⋮-menu."
 
 #: src/main.c
 #, c-format
 msgid "Getting the weather for %s…"
-msgstr ""
+msgstr "Weer ophalen voor %s…"
 
 #. TRANSLATORS: under "Use my location"; %s is the city chosen now
 #: src/main.c
 #, c-format
 msgid "Instead of %s"
-msgstr ""
+msgstr "In plaats van %s"
 
 #: src/main.c
 msgid "Use my location"
-msgstr ""
+msgstr "Mijn locatie gebruiken"
 
 #: src/main.c
 msgid "No answer. Check the connection, then type again."
-msgstr ""
+msgstr "Geen antwoord. Controleer de verbinding en typ opnieuw."
 
 #: src/main.c
 msgid "No cities found"
-msgstr ""
+msgstr "Geen steden gevonden"
 
 #: src/main.c
 msgid "Set City"
-msgstr ""
+msgstr "Stad instellen"
 
 #: src/main.c
 msgid "City name"
-msgstr ""
+msgstr "Plaatsnaam"
 
 # android: Settings proxy_clear_text (short)
 #: src/main.c
@@ -269,6 +273,12 @@ msgid ""
 "Set City finds cities with Open-Meteo's geocoding, on data from <a "
 "href=\"https://www.geonames.org/\">GeoNames</a>, under CC BY 4.0."
 msgstr ""
+"Weersverwachtingen van <a href=\"https://open-meteo.com/\">Open-Meteo.com</"
+"a>, onder <a href=\"https://creativecommons.org/licenses/by/4.0/\">CC BY "
+"4.0</a>.\n"
+"\n"
+"“Stad instellen” zoekt steden met de geocodering van Open-Meteo, op gegevens "
+"van <a href=\"https://www.geonames.org/\">GeoNames</a>, onder CC BY 4.0."
 
 #: src/main.c
 msgid ""
@@ -278,14 +288,19 @@ msgid ""
 "<a href=\"https://opendatacommons.org/licenses/odbl/\">Open Database "
 "License</a> (ODbL)."
 msgstr ""
+"De naam van de plaats waar de telefoon is, komt van <a href=\"https://"
+"nominatim.openstreetmap.org/\">Nominatim</a> van OpenStreetMap. Gegevens © "
+"<a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap-"
+"bijdragers</a>, onder de <a href=\"https://opendatacommons.org/licenses/odbl/"
+"\">Open Database License</a> (ODbL)."
 
 #: src/main.c
 msgid "About"
-msgstr ""
+msgstr "Over"
 
 #: src/main.c
 msgid "Reload"
-msgstr ""
+msgstr "Vernieuwen"
 
 # android: Framework action_menu_overflow_description (short)
 #: src/main.c
@@ -294,4 +309,4 @@ msgstr "Meer opties"
 
 #: src/main.c
 msgid "Finding where you are…"
-msgstr ""
+msgstr "Locatie bepalen…"
