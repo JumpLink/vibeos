@@ -161,5 +161,10 @@
       <summary>Apps the keyboard opens over</summary>
       <description>App ids (desktop file names without .desktop) whose window keeps its size when the on-screen keyboard comes up: it slides up just far enough to keep the text cursor's line above the keys, and back down when they close. For terminals, whose text is reflowed when the window is resized. Other apps' windows are fitted above the keys. An app can ask for this itself with X-Vibeos-Keyboard=slide in its desktop file.</description>
     </key>
+    <key name="cutout-extend-apps" type="as">
+      <default>['vibeos.Video']</default>
+      <summary>Apps whose full screen goes under the camera hole</summary>
+      <description>App ids (desktop file names without .desktop) whose full-screen window fills the whole panel, the camera hole (or notch) inside the picture, instead of being kept clear of it by a black band. For video. Other apps keep clear of the hole. An app that offers the choice adds or removes its own id here, and the shell follows at once, with the window open.</description>
+    </key>
 </schema>
 </schemalist>

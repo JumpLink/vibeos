@@ -14,6 +14,7 @@ import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import Meta from 'gi://Meta';
 import Mtk from 'gi://Mtk';
+import Shell from 'gi://Shell';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -210,6 +211,17 @@ export const Cutout = GObject.registerClass({
     }
 });
 
+// Apps whose fullscreen window goes under the hole, as Android's LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES has it: the
+// picture fills the panel and the hole sits inside it (a video). vibeos.Shell's cutout-extend-apps lists their ids
+// (desktop file names without .desktop); an app turns it on and off for itself by adding or removing its id, which
+// takes effect at once, with the window open. Every other app is kept clear of the hole.
+const EXTEND_APPS_KEY = 'cutout-extend-apps';
+
+function shellSettings() {
+    const schema = Gio.SettingsSchemaSource.get_default()?.lookup('vibeos.Shell', true);
+    return schema?.has_key(EXTEND_APPS_KEY) ? new Gio.Settings({settings_schema: schema}) : null;
+}
+
 // Mutter's word on where a window goes, asked of the band (a function of the window: its place, or null for no say)
 const PlaceConstraint = GObject.registerClass({
     Implements: [Meta.ExternalConstraint],
@@ -241,11 +253,17 @@ class CutoutBand extends St.Widget {
         this._cutout = cutout;
         this._statusBar = statusBar;
         this._released = false;         // destroyed: fullscreen windows have the whole panel again
+        this._settings = shellSettings();
+        this._settings?.connectObject(`changed::${EXTEND_APPS_KEY}`, () => this._sync(), this);
         this._constraint = new PlaceConstraint(win => this._fullscreenRect(win));
-        for (const win of global.display.list_all_windows())
+        const watch = win => {
             win.add_external_constraint(this._constraint);
-        global.display.connectObject('window-created', (_d, win) => win.add_external_constraint(this._constraint),
-            this);
+            win.connectObject('notify::fullscreen', () => this._sync(), this);
+        };
+        for (const win of global.display.list_all_windows())
+            watch(win);
+        global.display.connectObject('window-created', (_d, win) => watch(win),
+            'notify::focus-window', () => this._sync(), this);
         cutout.connectObject('changed', () => this._sync(), this);
         statusBar.connectObject('notify::visible', () => this._sync(), this);
         Main.layoutManager.connectObject('monitors-changed', () => this._sync(), this);
@@ -260,12 +278,29 @@ class CutoutBand extends St.Widget {
         return Math.ceil(px(this._cutout.depth));
     }
 
+    // whether the app has its fullscreen window under the hole (cutout-extend-apps)
+    _extends(win) {
+        if (!this._settings)
+            return false;
+        const id = Shell.WindowTracker.get_default().get_window_app(win)?.get_id()?.replace(/\.desktop$/, '');
+        return !!id && this._settings.get_strv(EXTEND_APPS_KEY).includes(id);
+    }
+
+    // whether the window with the focus is a fullscreen app on the panel that has its picture under the hole: with
+    // it up there is no band (which is drawn over windows) on any edge. Leave fullscreen, or another window in
+    // front, and the band is back.
+    _extended() {
+        const win = global.display.focus_window;
+        return !!win && win.is_fullscreen() && win.get_window_type() === Meta.WindowType.NORMAL &&
+            win.get_monitor() === Main.layoutManager.primaryIndex && this._extends(win);
+    }
+
     // where a fullscreen app window on the panel goes: the panel less the band; null for any other window (the
     // launcher's is fullscreen too, under the status bar), or with no band
     _fullscreenRect(win) {
         const m = Main.layoutManager.primaryMonitor, d = this._depth, side = this._cutout.side;
         if (!d || !win.is_fullscreen() || win.get_window_type() !== Meta.WindowType.NORMAL ||
-            win.get_monitor() !== Main.layoutManager.primaryIndex)
+            win.get_monitor() !== Main.layoutManager.primaryIndex || this._extends(win))
             return null;
         const top = side === 'top' ? d : 0, right = side === 'right' ? d : 0;
         const bottom = side === 'bottom' ? d : 0, left = side === 'left' ? d : 0;
@@ -278,7 +313,7 @@ class CutoutBand extends St.Widget {
         const side = this._cutout.side, d = this._depth;
         // upright the status bar is over the hole but under a fullscreen app (the only time it hides); the shell
         // takes struts from hidden actors too: no band is no size
-        if (!d || (side === 'top' && this._statusBar.visible)) {
+        if (!d || (side === 'top' && this._statusBar.visible) || this._extended()) {
             this.hide();
             this.set_position(m?.x ?? 0, m?.y ?? 0);
             this.set_size(0, 0);
@@ -321,8 +356,11 @@ class CutoutBand extends St.Widget {
 
     destroy() {
         global.display.disconnectObject(this);
-        for (const win of global.display.list_all_windows())
+        this._settings?.disconnectObject(this);
+        for (const win of global.display.list_all_windows()) {
+            win.disconnectObject(this);
             win.remove_external_constraint(this._constraint);
+        }
         this._released = true;
         this._refit();
         this._cutout.disconnectObject(this);
